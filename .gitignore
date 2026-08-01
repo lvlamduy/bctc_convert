@@ -1,0 +1,7 @@
+# Git Ignore Rules
+
+# Ignore PDF files
+*.pdf
+
+# Ignore virtual environment directory
+.venv/

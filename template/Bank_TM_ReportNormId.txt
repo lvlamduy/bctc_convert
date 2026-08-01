@@ -1,0 +1,1385 @@
+,ReportNormId,ReportNormName
+0,560,I. THÔNG TIN BỔ SUNG CHO CÁC KHOẢN MỤC TRÌNH BÀY TRONG BẢNG CÂN ĐỐI KẾ TOÁN
+1,561,"Tiền, kim loại quý và đá quý"
+2,562,Tiền mặt bằng VNĐ
+3,563,Tiền mặt bằng ngoại tệ
+4,564,Chứng từ có giá trị ngoại tệ
+5,565,Vàng tiền tệ
+6,566,Vàng phi tiền tệ
+7,567,"Kim loại quý, đá quý khác"
+8,568,Khác
+9,569,Tiền gửi tại NHNN 
+10,570,Tiền gửi tại NHNN Việt Nam
+11,571, + Bằng VNĐ
+12,572, + Bằng ngoại tệ
+13,573,Tiền gửi phong tỏa
+14,574,Tiền gửi khác
+15,575,"Tiền, vàng gửi tại và cho vay các TCTD khác"
+16,576,Tiền gửi tại các tổ chức tín dụng khác
+17,577,-Tiền gửi không kỳ hạn
+18,578, + Bằng VNĐ
+19,579, + Bằng ngoại tệ
+20,580, - Tiền gửi có kỳ hạn
+21,581, + Bằng VNĐ
+22,582, + Bằng ngoại tệ
+23,583,- Dự phòng rủi ro tiền gửi tại các TCTD khác
+24,584,- Khác
+25,585,Cho vay tổ chức tín dụng khác
+26,586, + Bằng VNĐ
+27,587,"Trong đó: chiết khấu, tái chiết khấu"
+28,588, + Bằng ngoại hối
+29,589,"Trong đó: chiết khấu, tái chiết khấu"
+30,590, + Dự phòng cho vay các tổ chức tín dụng khác(*)
+31,591, + Khác
+32,592,Chứng khoán kinh doanh
+33,593,Chứng khoán kinh doanh (Phân loại theo tổ chức)
+34,594,Chứng khoán nợ
+35,595," + Do Chính phủ phát hành (NHNN, Kho bạc)"
+36,596, + Do các TCTD khác trong nước phát hành
+37,597, + Do các TCKT trong nước phát hành
+38,598, + Do các TCKT nước ngoài phát hành
+39,599, + Khác
+40,600,Chứng khoán vốn
+41,601," + Do Chính phủ phát hành (NHNN, Kho bạc)"
+42,602, + Do các TCTD khác trong nước phát hành
+43,603, + Do các TCKT trong nước phát hành
+44,604, + Do các TCKT nước ngoài phát hành
+45,605, + Khác
+46,606,Chứng khoán kinh doanh khác
+47,607," + Do Chính phủ phát hành (NHNN, Kho bạc)"
+48,608, + Do các TCTD khác trong nước phát hành
+49,609, + Do các TCKT trong nước phát hành
+50,610, + Do các TCKT nước ngoài phát hành
+51,611,Tổng số chứng khoán kinh doanh
+52,612,Dự phòng giảm giá chứng khoán kinh doanh (*)
+53,613,Trong đó:   + Dự phòng giảm giá
+54,614,                 + Dự phòng chung
+55,615,                 + Dự phòng cụ thể
+56,616,Chứng khoán kinh doanh (Phân loại theo đã NY và chưa NY)
+57,617,Chứng khoán nợ
+58,618, + Đã niêm yết
+59,619, + Chưa niêm yết
+60,620,Chứng khoán vốn
+61,621, + Đã niêm yết
+62,622, + Chưa niêm yết
+63,623,Chứng khoán kinh doanh khác
+64,624, + Đã niêm yết
+65,625, + Chưa niêm yết
+66,626,Tổng số chứng khoán kinh doanh
+67,627,Dự phòng giảm giá chứng khoán kinh doanh (*)
+68,628,Trong đó:   + Dự phòng giảm giá
+69,629,                 + Dự phòng chung
+70,630,                 + Dự phòng cụ thể
+71,631,Các công cụ tài chính phái sinh và các tài sản tài chính khác 
+72,632,Các công cụ tài chính phái sinh và các tài sản tài chính khác (tổng giá trị của hợp đồng tại ngày cuối kỳ)
+73,633,Công cụ tài chính phái sinh tiền tệ
+74,634,-Giao dịch kỳ hạn tiền tệ
+75,635,-Giao dịch hoán đổi tiền tệ
+76,636,-Mua quyền chọn tiền tệ
+77,637,+Mua Quyền chọn Mua
+78,638,+Mua quyền chọn bán
+79,639,-Bán Quyền chọn tiền tệ
+80,640,+Bán quyền chọn mua
+81,641,+Bán quyền chọn bán
+82,642,-Giao dịch tương lai tiền tệ
+83,643,Công cụ tài chính phái sinh khác
+84,644,-Giao dịch hoán đổi lãi suất
+85,645,-Công cụ khác
+86,646,Các công cụ tài chính phái sinh và các tài sản tài chính khác (tổng giá trị của hợp đồng tại ngày đầu kỳ)
+87,647,Công cụ tài chính phái sinh tiền tệ
+88,648,-Giao dịch kỳ hạn tiền tệ
+89,649,-Giao dịch hoán đổi tiền tệ
+90,650,-Mua quyền chọn tiền tệ
+91,651,+Mua Quyền chọn Mua
+92,652,+Mua quyền chọn bán
+93,653,-Bán Quyền chọn tiền tệ
+94,654,+Bán quyền chọn mua
+95,655,+Bán quyền chọn bán
+96,656,-Giao dịch tương lai tiền tệ
+97,657,Công cụ tài chính phái sinh khác
+98,658,-Giao dịch hoán đổi lãi suất
+99,659,-Công cụ khác
+100,660,Các công cụ tài chính phái sinh và các tài sản tài chính khác (tổng giá trị Tài sản ghi sổ kế toán tại ngày cuối kỳ)
+101,661,Công cụ tài chính phái sinh tiền tệ
+102,662,-Giao dịch kỳ hạn tiền tệ
+103,663,-Giao dịch hoán đổi tiền tệ
+104,664,-Mua quyền chọn tiền tệ
+105,665,+Mua Quyền chọn Mua
+106,666,+Mua quyền chọn bán
+107,667,-Bán Quyền chọn tiền tệ
+108,668,+Bán quyền chọn mua
+109,669,+Bán quyền chọn bán
+110,670,-Giao dịch tương lai tiền tệ
+111,671,Công cụ tài chính phái sinh khác
+112,672,-Giao dịch hoán đổi lãi suất
+113,673,-Công cụ khác
+114,674,Các công cụ tài chính phái sinh và các tài sản tài chính khác (tổng giá trị Tài sản ghi sổ kế toán tại ngày đầu kỳ)
+115,675,Công cụ tài chính phái sinh tiền tệ
+116,676,-Giao dịch kỳ hạn tiền tệ
+117,677,-Giao dịch hoán đổi tiền tệ
+118,678,-Mua quyền chọn tiền tệ
+119,679,+Mua Quyền chọn Mua
+120,680,+Mua quyền chọn bán
+121,681,-Bán Quyền chọn tiền tệ
+122,682,+Bán quyền chọn mua
+123,683,+Bán quyền chọn bán
+124,684,-Giao dịch tương lai tiền tệ
+125,685,Công cụ tài chính phái sinh khác
+126,686,-Giao dịch hoán đổi lãi suất
+127,687,-Công cụ khác
+128,688,Các công cụ tài chính phái sinh và các tài sản tài chính khác (tổng giá trị Công nợ ghi sổ kế toán tại ngày cuối kỳ)
+129,689,Công cụ tài chính phái sinh tiền tệ
+130,690,-Giao dịch kỳ hạn tiền tệ
+131,691,-Giao dịch hoán đổi tiền tệ
+132,692,-Mua quyền chọn tiền tệ
+133,693,+Mua Quyền chọn Mua
+134,694,+Mua quyền chọn bán
+135,695,-Bán Quyền chọn tiền tệ
+136,696,+Bán quyền chọn mua
+137,697,+Bán quyền chọn bán
+138,698,-Giao dịch tương lai tiền tệ
+139,699,Công cụ tài chính phái sinh khác
+140,700,-Giao dịch hoán đổi lãi suất
+141,701,-Công cụ khác
+142,702,Các công cụ tài chính phái sinh và các tài sản tài chính khác (tổng giá trị Công nợ ghi sổ kế toán tại ngày đầu kỳ)
+143,703,Công cụ tài chính phái sinh tiền tệ
+144,704,-Giao dịch kỳ hạn tiền tệ
+145,705,-Giao dịch hoán đổi tiền tệ
+146,706,-Mua quyền chọn tiền tệ
+147,707,+Mua Quyền chọn Mua
+148,708,+Mua quyền chọn bán
+149,709,-Bán Quyền chọn tiền tệ
+150,710,+Bán quyền chọn mua
+151,711,+Bán quyền chọn bán
+152,712,-Giao dịch tương lai tiền tệ
+153,713,Công cụ tài chính phái sinh khác
+154,714,-Giao dịch hoán đổi lãi suất
+155,715,-Công cụ khác
+156,716,Cho vay  khách hàng
+157,717,Phân tích theo loại hình cho vay
+158,718," + Cho vay các tổ chức kinh tế, cá nhân trong nước"
+159,719, + Cho thuê tài chính
+160,720," + Cho vay từ nguồn vốn từ Chính phủ, các tổ chức quốc tế khác"
+161,721, + Cho vay cá nhân và tổ chức nước ngoài
+162,722, + Cho vay chiết khấu thương phiếu và các giấy tờ có giá
+163,723, + Các khoản trả thay khách hàng
+164,724, + Nợ cho vay được khoanh và nợ chờ xử lý
+165,725," + Cho vay bằng vốn tài trợ, ủy thác đầu tư"
+166,726, + Cho vay khác
+167,727,Phân tích theo ngành nghề kinh doanh
+168,728," + Nông, lâm, thủy hải sản"
+169,729, + Khai khoáng
+170,730," + Tiện ích: Sản xuất, phân phối điện, khí đốt, nước"
+171,731," + Cung cấp nước, quản lý và xử lý rác thải, nước thải"
+172,732, + Xây dựng
+173,733, + Sản xuất công nghiệp và gia công chế biến
+174,734," + Thương mại: bán buôn, bán lẻ"
+175,735, + Hoạt động kinh doanh bất động sản
+176,736, + Vận tải kho bãi và thông tin liên lạc
+177,737," + Giáo dục và đào tạo, y tế"
+178,738," + Dịch vụ lưu trú, nhà hàng, khách sạn, ăn uống"
+179,739, + Dịch vụ cá nhân và cộng đồng
+180,740, + Thông tin và truyền thông
+181,741," + Hoạt động tài chính, ngân hàng, bảo hiểm"
+182,742," + Chuyên môn, khoa học và công nghệ"
+183,743,+ Hoạt động hành chính và dịch vụ hỗ trợ
+184,744,+ Hoạt động tổ chức cơ quan quốc tế
+185,745, + Các ngành nghề khác
+186,746,Phân tích chất lượng nợ cho vay
+187,747, + Nhóm 1: Nợ đủ tiêu chuẩn
+188,748, + Nhóm 2: Nợ cần chú ý
+189,749, + Nhóm 3: Nợ dưới tiêu chuẩn
+190,750, + Nhóm 4: Nợ nghi ngờ
+191,751, + Nhóm 5: Nợ có khả năng mất vốn
+192,752,Phân tích dư nợ theo thời gian đáo hạn
+193,753, + Ngắn hạn
+194,754, + Trung hạn
+195,755, + Dài hạn
+196,756,Phân tích theo loại hình tiền tệ
+197,757, + Cho vay bằng đồng Việt Nam
+198,758, + Cho vay bằng ngoại tệ và vàng
+199,759,Phân tích theo khu vực địa lý
+200,760, + Thành phố Hồ Chí Minh
+201,761, + Đồng bằng sông Cửu Long
+202,762, + Miền Trung và Tây nguyên
+203,763, + Miền Bắc
+204,764, + Miền Đông nam bộ
+205,765, + Nước ngoài
+206,766,Phân tích theo loại hình doanh nghiệp
+207,767,- Doanh nghiệp nhà nước
+208,768,- Công ty TNHH
+209,769,+ Công ty TNHH MTV vốn nhà nước 100%
+210,770,+ Công ty TNHH MTV vốn nhà nước trên 50%
+211,771,+ Công ty TNHH khác
+212,772, - Công ty cổ phần có vốn nhà nước trên 50%
+213,773, - Công ty cổ phần khác
+214,774, - Doanh nghiệp tư nhân
+215,775," - Công ty CP, TNHH, DN tư nhân"
+216,776, - Hợp tác xã và liên hợp tác xã
+217,777," - Công ty liên doanh, hợp doanh"
+218,778, - Công ty hợp danh
+219,779, - Công ty vốn nước ngoài
+220,780," - Hộ kinh doanh, cá nhân"
+221,781," - Dịch vụ hành chính sự nghiệp, Đảng, đoàn thể, hiệp hội"
+222,782, - Khác
+223,783,Biến động số dư dự phòng rủi ro cho vay KH
+224,784,Dự phòng chung
+225,785,Số dư đầu kỳ này
+226,786, + Dự phòng rủi ro trích lập trong kỳ/(Hoàn nhập dự phòng trong kỳ)
+227,787, + Sử dụng dự phòng rủi ro tín dụng trong kỳ
+228,788, + Chênh lệch tỷ giá ngoại tệ
+229,789, + Giảm dự phòng rủi ro tín dụng trong năm
+230,790, + Điều chỉnh khác
+231,791,Số dư cuối kỳ này
+232,792,Dự phòng cụ thể
+233,793,Số dư đầu kỳ này
+234,794, + Dự phòng rủi ro trích lập trong kỳ/(Hoàn nhập dự phòng trong kỳ)
+235,795, + Sử dụng dự phòng rủi ro tín dụng trong kỳ
+236,796, + Chênh lệch tỷ giá ngoại tệ
+237,797, + Giảm dự phòng rủi ro tín dụng trong năm
+238,798, + Điều chỉnh khác
+239,799,Số dư cuối kỳ này
+240,800,Hoạt động mua nợ
+241,801,Mua nợ bằng VNĐ
+242,802,Mua nợ bằng ngoại tệ
+243,803,Dự phòng rủi ro
+244,804,Chứng khoán đầu tư
+245,805,Chứng khoán đầu tư sẵn sàng để bán
+246,806,Chứng khoán nợ
+247,807," + Do Chính phủ phát hành (NHNN, Kho bạc)"
+248,808, + Do các TCTD khác phát hành
+249,809, + Do các tổ chức kinh tế trong nước phát hành
+250,810, + Do các tổ chức kinh tế nước ngoài phát hành
+251,811, + Khác
+252,812,Chứng khoán vốn
+253,813," + Do Chính phủ phát hành (NHNN, Kho bạc)"
+254,814, + Do các TCTD khác phát hành
+255,815, + Do các tổ chức kinh tế trong nước phát hành
+256,816, + Do các tổ chức kinh tế nước ngoài phát hành
+257,817, + Khác
+258,818,Chứng khoán đầu tư sẵn sàng để bán khác
+259,819," + Do Chính phủ phát hành (NHNN, Kho bạc)"
+260,820, + Do các TCTD khác phát hành
+261,821, + Do các tổ chức kinh tế trong nước phát hành
+262,822, + Do các tổ chức kinh tế nước ngoài phát hành
+263,823, + Khác
+264,824,Tổng chứng khoán sẵn sàng để bán
+265,825,Dự phòng giảm giá chứng khoán sẵn sàng để bán
+266,826,Trong đó:   + Dự phòng giảm giá
+267,827,                 + Dự phòng chung
+268,828,                 + Dự phòng cụ thể
+269,829,Chứng khoán đầu tư giữ đến ngày đáo hạn
+270,830,Chứng khoán nợ
+271,831," + Do Chính phủ phát hành (NHNN, Kho bạc)"
+272,832, + Do các TCTD khác phát hành
+273,833, + Do các tổ chức kinh tế trong nước phát hành
+274,834, + Do các tổ chức kinh tế nước ngoài phát hành
+275,835, + Khác
+276,836,Chứng khoán vốn
+277,837," + Do Chính phủ phát hành (NHNN, Kho bạc)"
+278,838, + Do các TCTD khác phát hành
+279,839, + Do các tổ chức kinh tế trong nước phát hành
+280,840, + Do các tổ chức kinh tế nước ngoài phát hành
+281,841, + Khác
+282,842,Chứng khoán đầu tư giữ đến ngày đáo hạn khác
+283,843," + Do Chính phủ phát hành (NHNN, Kho bạc)"
+284,844, + Do các TCTD khác phát hành
+285,845, + Do các tổ chức kinh tế trong nước phát hành
+286,846, + Do các tổ chức kinh tế nước ngoài phát hành
+287,847, + Khác
+288,848,Tổng chứng khoán đầu tư giữ đến ngày đáo hạn
+289,849,Dự phòng giảm giá đầu tư giữ đến ngày đáo hạn
+290,850,Trong đó:   + Dự phòng giảm giá
+291,851,                 + Dự phòng chung
+292,852,                 + Dự phòng cụ thể
+293,853,Phân tích chất lượng chứng khoán được phân loại là tài sản có rủi ro tín dụng
+294,854,Nợ đủ tiêu chuẩn
+295,855,Nợ cần chú ý
+296,856,Nợ dưới tiêu chuẩn
+297,857,Nợ nghi ngờ
+298,858,Nợ có khả năng mất vốn
+299,859,Trái phiếu đặc biệt do VAMC phát hành
+300,860,Mệnh giá trái phiếu đặc biệt
+301,861,Dự phòng trái phiếu đặc biệt
+302,862,Các khoản đầu tư dài hạn khác
+303,863,Đầu tư vào các tổ chức tín dụng
+304,864,Đầu tư vào chứng khoán NY và chưa NY
+305,865, + Đầu tư vào chứng khoán NY
+306,866, + Đầu tư vào  chứng khoán chưa NY
+307,867,Đầu tư dài hạn khác
+308,868,"Tăng, giảm tài sản cố định hữu hình:"
+309,869,Nguyên giá
+310,870, Số dư đầu kỳ
+311,871, + Mua trong kỳ
+312,872, + Đầu tư XDCB hoàn thành
+313,873, + Chuyển từ chi phí xây dựng CBDD
+314,874, + Tăng do hợp nhất kinh doanh
+315,875, + Tăng khác
+316,876, + Chuyển sang BĐS đầu tư (*)
+317,877, + Chuyển sang công cụ dụng cụ
+318,878, + Chuyển sang chi phí chờ phân bổ
+319,879, + Phân loại lại
+320,880, + Thanh lý. nhượng bán (*)
+321,881, + Giảm khác (*)
+322,882, Số dư cuối  kỳ
+323,883,Giá trị hao mòn luỹ kế 
+324,884, Số dư đầu kỳ
+325,885, + Khấu hao trong kỳ
+326,886, + Tăng do hợp nhất kinh doanh
+327,887, + Tăng khác
+328,888, + Chuyển sang BĐS đầu tư (*)
+329,889, + Chuyển sang công cụ dụng cụ
+330,890, + Chuyển sang chi phí chờ phân bổ
+331,891, + Phân loại lại
+332,892, + Thanh lý. nhượng bán (*)
+333,893, + Trích lập quỹ
+334,894, + Giảm khác (*)
+335,895, Số dư cuối  kỳ
+336,896,"Tăng, giảm tài sản cố định thuê tài chính"
+337,897,Nguyên giá TSCĐ thuê TC
+338,898,Số dư đầu kỳ
+339,899,+ Thuê tài chính trong kỳ
+340,900,+ Tăng khác
+341,901,+ Mua lại TSCĐ thuê tài chính (*) 
+342,902,+ Trả lại TSCĐ thuê tài chính (*)
+343,903,+ Giảm khác
+344,904,Số dư cuối kỳ
+345,905,Giá trị hao mòn lũy kế
+346,906,Số dư đầu kỳ
+347,907,+ Khấu hao trong kỳ
+348,908,+ Tăng khác
+349,909,+ Mua lại TSCĐ thuê tài chính (*)
+350,910,+ Trả lại TSCĐ thuê tài chính (*)
+351,911,+ Giảm khác
+352,912,Số dư cuối kỳ
+353,913,"Tăng, giảm tài sản cố định vô hình"
+354,914,Nguyên giá 
+355,915,Số dư đầu kỳ
+356,916, + Mua trong kỳ
+357,917, + Đầu tư XDCB hoàn thành
+358,918, + Chuyển từ chi phí xây dựng CBDD
+359,919, + Tăng do hợp nhất kinh doanh
+360,920, + Tăng khác
+361,921, + Chuyển sang BĐS đầu tư (*)
+362,922, + Chuyển sang công cụ dụng cụ
+363,923, + Chuyển sang chi phí chờ phân bổ
+364,924, + Phân loại lại
+365,925, + Thanh lý. nhượng bán (*)
+366,926, + Trích lập quỹ
+367,927, + Giảm khác (*)
+368,928,Số dư cuối kỳ
+369,929,Giá trị hao mòn luỹ kế
+370,930,Số dư đầu kỳ
+371,931, + Khấu hao trong kỳ
+372,932, + Tăng do hợp nhất kinh doanh
+373,933, + Tăng khác
+374,934, + Chuyển sang BĐS đầu tư (*)
+375,935, + Chuyển sang công cụ dụng cụ
+376,936, + Chuyển sang chi phí chờ phân bổ
+377,937, + Phân loại lại
+378,938, + Thanh lý. nhượng bán (*)
+379,939, + Trích lập quỹ
+380,940, + Giảm khác (*)
+381,941,Số dư cuối kỳ
+382,942,"Tăng, giảm bất động sản đầu tư"
+383,943,Nguyên giá 
+384,944,Số dư đầu kỳ
+385,945, + Mua trong kỳ
+386,946, + Đầu tư XDCB hoàn thành
+387,947, + Chuyển từ TSCĐ hữu hình
+388,948, + Chuyển từ chi phí xây dựng CBDD
+389,949, + Tăng do hợp nhất kinh doanh
+390,950, + Tăng khác
+391,951, + Phân loại lại
+392,952," + Thanh lý, nhượng bán (*)"
+393,953, + Trích lập quỹ
+394,954, + Giảm khác (*)
+395,955,Số dư cuối kỳ
+396,956,Giá trị hao mòn luỹ kế
+397,957,Số dư đầu kỳ
+398,958, + Khấu hao trong kỳ
+399,959, + Chuyển từ TSCĐ hữu hình
+400,960, + Tăng khác
+401,961, + Phân loại lại
+402,962," + Thanh lý, nhượng bán (*)"
+403,963, + Trích lập quỹ
+404,964, + Giảm khác (*)
+405,965,Số dư cuối kỳ
+406,966,Tài sản Có khác
+407,967,Các khoản phải thu
+408,968,Chi phí xây dựng cơ bản dở dang
+409,969,Mua sắm sửa chữa lớn TSCĐ
+410,970,Các khoản phải thu nội bộ
+411,971,Các khoản phải thu bên ngoài
+412,972,+Trả trước cho người bán
+413,973,"+Các khoản kỹ quỹ, bão lãnh, thế chấp, đặt cọc"
+414,974,"+Thuế nộp thừa, được khấu trừ"
+415,975,+Tạm ứng
+416,976,+Phải thu từ bán chứng khoán
+417,977,+Phải thu từ CTCK là công ty con
+418,978,+Phải thu từ Công ty Bảo hiểm là công ty con
+419,979,+Phải thu từ NHNN Việt Nam
+420,980,+Cổ tức phải thu
+421,981,+Phải thu khác
+422,982,Các khoản lãi phí phải thu
+423,983,Từ cho vay khách hàng
+424,984,Từ tiền gửi và cho vay các tổ chức tín dụng khác
+425,985,Từ giao dịch phái sinh
+426,986,Từ các nguồn khác
+427,987,Tài sản Có khác (mục con)
+428,988,-Ủy thác đầu tư
+429,989,-Chi phí chờ phân bổ
+430,990,"-Vật liệu, công cụ lao động"
+431,991,-Thanh toán
+432,992,-Lợi thế thương mại
+433,993,-Tài sản gán nợ chờ xử lý
+434,994,+Bất động sản
+435,995,+Cổ phiếu
+436,996,+Khác
+437,997,Tài sản khác
+438,998,Lợi thế thương mại (kỳ này)
+439,999,-Tổng giá trị Lợi thế thương mại (LTTM)
+440,1000,-Thời gian phân bổ (năm)
+441,1001,-Giá trị LTTM đã phân bổ lũy kế đầu kỳ
+442,1002,-Giá trị LTTM chưa phân bổ đầu kỳ
+443,1003,-Lợi thế thương mại tăng trong kỳ 
+444,1004,+ Lợi thế thương mại phát sinh trong kỳ
+445,1005,+Điều chỉnh do sự thay đổi giá trị của tài sản và công nợ có thể xác định được
+446,1006,-Lợi thế thương mại giảm trong kỳ 
+447,1007,"+LTTM giảm do thanh lý, nhượng bán một phần hoặc toàn bộ TCTD"
+448,1008,+Giá trị LTTM phân bổ trong kỳ
+449,1009,+Các điều chỉnh giảm khác của LTTM
+450,1010,Tổng giá trị Lợi thế thương mại chưa phân bổ cuối kỳ
+451,1011,Biến động chi phí XDCB dở dang
+452,1012,Số dư đầu năm
+453,1013,Tăng trong năm
+454,1014,Chuyển sang TSCĐ hữu hình
+455,1015,Chuyển sang TSCĐ vô hình
+456,1016,Chuyển sang tài sản khác
+457,1017,Số dư cuối năm
+458,1018,Phân tích chất lượng tài sản có khác được phân loại là tài sản có rủi ro tín dụng
+459,1019, + Nhóm 1: Nợ đủ tiêu chuẩn
+460,1020, + Nhóm 2: Nợ cần chú ý
+461,1021, + Nhóm 3: Nợ dưới tiêu chuẩn
+462,1022, + Nhóm 4: Nợ nghi ngờ
+463,1023, + Nhóm 5: Nợ có khả năng mất vốn
+464,1024,Các khoản nợ Chính phủ và Ngân hàng Nhà nước
+465,1025,Vay theo hồ sơ tín dụng
+466,1026,"Vay chiết khấu, tái chiết khấu giấy tờ có giá"
+467,1027,Vay cầm cố các giấy tờ có giá
+468,1028,Vay thanh toán bù trừ
+469,1029,Vay hỗ trợ đặc biệt
+470,1030,Vay dài hạn NHNN từ nguồn của các tổ chức quốc tế
+471,1031,Vay hỗ trợ các DNNN
+472,1032,Vay tái cấp vốn
+473,1033,Vay khác
+474,1034,Nợ quá hạn
+475,1035,Tiền gửi thanh toán của Kho bạc NN
+476,1036,Trong đó:   + Bằng tiền VNĐ
+477,1037,                + Bằng ngoại tệ
+478,1038,Tiền gửi của NHNN
+479,1039,Các khoản nợ khác
+480,1040,"Tiền, vàng gửi và vay các tổ chức tín dụng khác"
+481,1041,Tiền gửi của các tổ chức tín dụng khác
+482,1042, + Tiền gửi có kỳ hạn
+483,1043,Trong đó:   + Bằng tiền VNĐ
+484,1044,                + Bằng ngoại tệ
+485,1045, + Tiền gửi không kỳ hạn
+486,1046,Trong đó:   + Bằng tiền VNĐ
+487,1047,                + Bằng ngoại tệ
+488,1048,Tiền vay các tổ chức tín dụng khác
+489,1049,+ Bằng tiền VNĐ
+490,1050,"Trong đó:   + Vay chiết khấu, tái chiết khấu"
+491,1051,"                + Vay cầm cố, thế chấp"
+492,1052,+ Bằng ngoại tệ
+493,1053,"Trong đó:   + Vay chiết khấu, tái chiết khấu"
+494,1054,"                + Vay cầm cố, thế chấp"
+495,1055,Tiền gửi của khách hàng
+496,1056,Theo tiền tệ và loại tiền gửi
+497,1057, + Tiền gửi không kỳ hạn
+498,1058,Trong đó:   + Bằng tiền VNĐ
+499,1059,                + Bằng ngoại tệ
+500,1060, + Tiền gửi có kỳ hạn
+501,1061,Trong đó:   + Bằng tiền VNĐ
+502,1062,                + Bằng ngoại tệ
+503,1063, + Tiền gửi tiết kiệm
+504,1064,Trong đó:   + Bằng tiền VNĐ
+505,1065,                + Bằng ngoại tệ
+506,1066, + Tiền ký quỹ
+507,1067,Trong đó:   + Bằng tiền VNĐ
+508,1068,                + Bằng ngoại tệ
+509,1069, + Tiền gửi vốn chuyên dùng
+510,1070,Trong đó:   + Bằng tiền VNĐ
+511,1071,                + Bằng ngoại tệ
+512,1072, + Tiền gửi đảm bảo thanh toán khác
+513,1073,Trong đó:   + Bằng tiền VNĐ
+514,1074,                + Bằng ngoại tệ
+515,1075,Theo loại hình doanh nghiệp
+516,1076,- Doanh nghiệp nhà nước
+517,1077,- Công ty TNHH
+518,1078,+ Công ty TNHH MTV vốn nhà nước 100%
+519,1079,+ Công ty TNHH MTV vốn nhà nước trên 50%
+520,1080,+ Công ty TNHH khác
+521,1081, - Công ty cổ phần có vốn nhà nước trên 50%
+522,1082, - Công ty cổ phần khác
+523,1083, - Doanh nghiệp tư nhân
+524,1084,"- Công ty CP, TNHH, DN tư nhân"
+525,1085, - Hợp tác xã và liên hợp tác xã
+526,1086," - Công ty liên doanh, hợp doanh"
+527,1087, - Công ty hợp danh
+528,1088, - Công ty vốn nước ngoài
+529,1089," - Hộ kinh doanh, cá nhân"
+530,1090," - Dịch vụ hành chính sự nghiệp, Đảng, đoàn thể, hiệp hội"
+531,1091, - Khác
+532,1092,"Vốn nhận tài trợ, ủy thác đầu tư, cho vay các tổ chức tín dụng chịu rủi ro"
+533,1093,"Vốn nhận của các tổ chức, cá nhân"
+534,1094,Trong đó:   + Bằng tiền VNĐ
+535,1095,                + Bằng ngoại tệ
+536,1096,Vốn nhận trực tiếp của các tổ chức quốc tế
+537,1097,Trong đó:   + Bằng tiền VNĐ
+538,1098,                + Bằng ngoại tệ
+539,1099,Khác
+540,1100,Phát hành giấy tờ có giá
+541,1101,Chứng chỉ tiền gửi
+542,1102,Dưới 12 tháng
+543,1103,Từ 12 tháng  đến dưới 5 năm
+544,1104,Trên 5 năm
+545,1105,Kỳ phiếu
+546,1106,Dưới 12 tháng
+547,1107,Từ 12 tháng  đến dưới 5 năm
+548,1108,Trên 5 năm
+549,1109,Trái phiếu
+550,1110,Dưới 12 tháng
+551,1111,Từ 12 tháng  đến dưới 5 năm
+552,1112,Trên 5 năm
+553,1113,Tổng kỳ phiếu và trái phiếu
+554,1114,Dưới 12 tháng
+555,1115,Từ 12 tháng  đến dưới 5 năm
+556,1116,Trên 5 năm
+557,1117,Các loại giấy tờ có giá khác
+558,1118,Các khoản phải trả và công nợ khác
+559,1119,Các khoản phải trả nội bộ
+560,1120,Các khoản phải trả nhân viên
+561,1121,Các khoản phải trả nội bộ khác
+562,1122,Các khoản phải trả bên ngoài
+563,1123,Thuế và các khoản phải nộp Nhà nước
+564,1124,Các khoản phải trả khác
+565,1125,Dự phòng rủi ro khác
+566,1126,"Quỹ khen thưởng, phúc lợi"
+567,1127,Khác
+568,1128,Vốn và các quỹ
+569,1129,Số dư đầu kỳ
+570,1130, + Tăng vốn trong kỳ
+571,1131, + Lãi trong kỳ
+572,1132, + Chuyển từ quỹ dự trữ sang vốn
+573,1133, + Tăng do hợp nhất kinh doanh
+574,1134, + Bán cổ phiếu quỹ
+575,1135, + Đánh giá lại tài sản
+576,1136, + Tăng khác
+577,1137, + Chi trả cổ tức
+578,1138, + Trích lập quỹ
+579,1139, + Mua cổ phiếu quỹ
+580,1140, + Giảm khác (*)
+581,1141,Số dư cuối kỳ
+582,1142,II. THÔNG TIN BỔ SUNG CHO CÁC KHOẢN MỤC TRÌNH BÀY TRONG BẢNG KẾT QUẢ KINH DOANH
+583,1143,Thu nhập lãi và các khoản thu nhập tương tự 
+584,1144,Thu lãi tiền gửi
+585,1145,Thu lãi cho vay khách hàng
+586,1146,"Thu lãi từ kinh doanh, đầu tư chứng khoán"
+587,1147,Thu nhập lãi cho thuê tài chính
+588,1148,Thu phí từ nghiệp vụ bảo lãnh
+589,1149,Thu nhập lãi từ nghiệp vụ mua bán nợ
+590,1150,Thu khác từ hoạt động tín dụng
+591,1151,Chi phí lãi và các khoản tương tự chi phí lãi
+592,1152,Trả lãi tiền gửi
+593,1153,Trả lãi tiền vay
+594,1154,Trả lãi phát hành giấy tờ có giá
+595,1155,Trả lãi tiền thuê tài chính
+596,1156,Chi phí khác cho hoạt động tín dụng
+597,1157,Thu nhập từ hoạt động dịch vụ
+598,1158,Dịch vụ thanh toán và tiền mặt
+599,1159,"Dịch vụ ngân quỹ, bảo lãnh"
+600,1160,Dịch vụ chứng khoán
+601,1161,Dịch vụ quản lý quỹ
+602,1162,"Dịch vụ cho thuê và quản lý kho, định giá tài sản"
+603,1163,Thu từ nghiệp vụ ủy thác và đại lý
+604,1164,Hoạt động bảo hiểm
+605,1165,Thu về chi trả kiều hối
+606,1166,Các dịch vụ khác
+607,1167,Chi phí từ hoạt động dịch vụ
+608,1168,Dịch vụ thanh toán
+609,1169,"Dịch vụ ngân quỹ, bảo lãnh"
+610,1170,Dịch vụ môi giới chứng khoán
+611,1171,Hoạt động bảo hiểm
+612,1172,Chi về dịch vụ ủy thác và đại lý
+613,1173,"Chi về dịch vụ viễn thông, nghiệp vụ ủy thác và đại lý"
+614,1174,Chi phí hoạt động khác
+615,1175,Lãi thuần từ hoạt động kinh doanh vàng và ngoại hối
+616,1176,Thu nhập từ hoạt động kinh doanh vàng và ngoại hối
+617,1177,Thu từ kinh doanh ngoại tệ giao ngay
+618,1178,Thu từ kinh doanh vàng
+619,1179,Thu từ các công cụ phái sính tiền tệ
+620,1180,Chênh lệch tỷ giá ngoại tệ kinh doanh
+621,1181,Thu khác
+622,1182,Chi phí từ hoạt động kinh doanh vàng và ngoại hối
+623,1183,Chi từ kinh doanh ngoại tệ giao ngay
+624,1184,Chi từ kinh doanh vàng
+625,1185,Chi từ các công cụ phái sính tiền tệ
+626,1186,Chênh lệch tỷ giá ngoại tệ kinh doanh
+627,1187,Chi khác
+628,1188,Lãi thuần từ hoạt động mua bán chứng khoán kinh doanh
+629,1189,Thu nhập do mua bán chứng khoán kinh doanh
+630,1190,Chi phí mua bán chứng khoán kinh doanh
+631,1191,(Trích lập)/Hoàn nhập dự phòng giảm giá chứng khoán kinh doanh
+632,1192,Khác
+633,1193,Lãi thuần từ hoạt động mua bán chứng khoán đầu tư
+634,1194,Thu nhập do mua bán chứng khoán đầu tư
+635,1195,Chi phí mua bán chứng khoán đầu tư
+636,1196,(Trích lập)/Hoàn nhập dự phòng giảm giá chứng khoán đầu tư
+637,1197,Khác
+638,1198,"Thu nhập từ góp vốn, mua cổ phần và thu nhập cổ tức"
+639,1199,"Cổ tức nhận được trong kỳ từ góp vốn, mua cổ phần"
+640,1200,Trong đó: + Từ chứng khoán Vốn kinh doanh
+641,1201,               + Từ chứng khoán Vốn đầu tư
+642,1202,"               + Từ góp vốn, đầu tư dài hạn"
+643,1203,"Phân chia lãi/lỗ theo phương pháp vốn CSH của các khoản đầu tư vào các công ty liên doanh, liên kết "
+644,1204,Các khoản thu nhập khác
+645,1205,Chi phí quản lý chung (Chi phí hoạt động)
+646,1206,"-Chi nộp thuế và các khoản phí, lệ phí"
+647,1207,-Chi phí cho nhân viên:
+648,1208,Trong đó: + Chi lương và phụ cấp
+649,1209,               + Các khoản chi đóng góp theo lương
+650,1210,               + Chi trợ cấp
+651,1211,               + Chi khác cho nhân viên
+652,1212,-Chi về tài sản
+653,1213,Trong đó: Chi phí khấu hao
+654,1214,-Chi cho hoạt động quản lý công vụ
+655,1215,Trong đó: +Công tác phí
+656,1216,               +Chi về hoạt động đoàn thể của TCTD
+657,1217,-Chi phí bảo hiểm tiền gửi của khách hàng
+658,1218,-Dự phòng giảm giá các khoản đầu tư dài hạn và chi phí dự phòng nợ khó đòi
+659,1219,-Chi phí quản lý (hoạt động) khác
+660,1220,-(Hoàn nhập)/Trích lập chi phí dự phòng cho tài sản có khác
+661,1221,Chi phí dự phòng rủi ro tín dụng
+662,1222,Hoàn nhập dự phòng chung tiền gửi và cho vay các TCTD khác
+663,1223,Trích lập dự phòng cụ thể  tiền gửi  và cho vay các tổ chức tín dụng khác
+664,1224,Trích lập dự phòng chung cho vay khách hàng
+665,1225,Trích lập dự phòng cụ thể cho vay khách hàng
+666,1226,Trích lập dự phòng trái phiếu đặc biệt VAMC
+667,1227,Hoàn nhập dự phòng rủi ro cho các cam kết ngoại bảng
+668,1228,Dự phòng khác
+669,1229,Thu nhập từ hoạt động khác
+670,1230,Nợ xấu đã được xử lý
+671,1231,"Chuyển nhượng, thanh lý tài sản"
+672,1232,Công cụ phái sinh khác
+673,1233,Thanh lý Quyền sử dụng đất và TSCĐ khác
+674,1234,"Thu hồi nợ xấu,nợ đã xử lý,  nợ đã xóa sổ trước đây"
+675,1235,Thu từ hoạt động kinh doanh bất động sản
+676,1236,Thu từ hoạt động ủy thác
+677,1237,Thu từ nghiệp vụ mua bán nợ
+678,1238,Hoàn nhập dự phòng
+679,1239,Khác
+680,1240,Chi phí từ hoạt động khác
+681,1241,Công cụ phái sinh khác
+682,1242,"Chuyển nhượng, thanh lý tài sản"
+683,1243,Chi từ nghiệp vụ mua bán nợ
+684,1244,Chi công tác xã hội
+685,1245,Chi phí thu hồi nợ
+686,1246,Khác
+687,1247,III. THÔNG TIN BỔ SUNG CHO MỘT SỐ KHOẢN MỤC TRÌNH BÀY TRONG LƯU CHUYỂN TIỀN TỆ
+688,1248,Tiền và các khoản tương đương tiền
+689,1249,Tiền mặt và các khoản tương đương tiền tại quỹ
+690,1250,Tiền gửi tại NHNN
+691,1251,"Tiền, ngoại hối gửi tại các TCTD khác"
+692,1252,+ Không kỳ hạn
+693,1253,+ Có kỳ hạn không quá 3 tháng
+694,1254,Chứng khoán có thời hạn thu hồi hoặc đáo hạn không quá 3 tháng kể từ ngày mua
+695,1255,Mua mới và thanh lý các công ty con
+696,1256,Tổng giá trị mua hoặc thanh lý
+697,1257,Phần giá trị mua hoặc thanh lý được thanh toán bằng tiền và các khoản tương đương tiền
+698,1258,Số tiền và các khoản tương đương tiền thực có trong công ty con hoặc đơn vị kinh doanh khác được mua hoặc thanh lý
+699,1259,IV. MỘT SỐ THÔNG TIN KHÁC
+700,1260,Thu nhập nhân viên của ngân hàng
+701,1261,Số lượng nhân viên
+702,1262,Thu nhập nhân viên
+703,1263,Tổng quỹ lương
+704,1264,Thưởng
+705,1265,Thu nhập khác
+706,1266,Tổng thu nhập
+707,1267,Lương bình quân người/tháng
+708,1268,Thu nhập bình quân người/tháng
+709,1269,Tình hình thực hiện nghĩa vụ với ngân sách nhà nước
+710,1270,Thuế giá trị gia tăng
+711,1271,Thuế TNDN
+712,1272,Thuế Thu nhập Cá nhân
+713,1273,Thuế xuất nhập khẩu
+714,1274,Thuế tài nguyên
+715,1275,Thuế sử dụng vốn NSNN
+716,1276,Thuế tiêu thụ đặc biệt
+717,1277,Thuế nhà - đất
+718,1278,Các loại thuế khác
+719,1279,Các khoản phải nộp khác
+720,1280,Tài sản thế chấp của khách hàng mà ngân hàng đang nắm giữ
+721,1281,Bất động sản
+722,1282,Động sản
+723,1283,"Máy móc, thiết bị"
+724,1284,Phương tiện vận tải
+725,1285,Hàng tồn kho
+726,1286,Giấy tờ có giá
+727,1287,-Trong đó: Giấy tờ có giá do doanh nghiệp phát hành
+728,1288,Khác
+729,1289,"Tài sản, GTCG đưa đi thế chấp, cầm cố và chiết khấu, tái chiết khấu"
+730,1290,Chứng khoán kinh doanh
+731,1291,Chứng khoán đầu tư
+732,1292,Tài sản cố định
+733,1293,Tài sản khác
+734,1294,Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra
+735,1295,Cam kết nghiệp vụ thư tín dụng (L/C)
+736,1296,Bảo lãnh vay vốn
+737,1297,Bảo lãnh thanh toán
+738,1298,Bảo lãnh thực hiện hợp đồng
+739,1299,Bảo lãnh dự thầu
+740,1300,Các bảo lãnh khác
+741,1301,Cam kết giao dịch hối đoái
+742,1302,Cam kết giao dịch hoán đổi
+743,1303,Hợp đồng mua bán giấy tờ có giá
+744,1304,Cam kết khác
+745,1305,Công cụ tài chính
+746,1306,Giá trị ghi sổ - Công cụ tài chính
+747,1307,Tổng tài sản tài chính
+748,1308,"Tiền mặt, vàng bạc đá quý"
+749,1309,Tiền gửi tại NHNN
+750,1310,Tiền gửi và cho vay các TCTD khác
+751,1311,Chứng khoán kinh doanh
+752,1312,Công cụ tài chính phái sinh và các tài sản tài chính khác
+753,1313,Cho vay khách hàng
+754,1314,Chứng khoán đầu tư
+755,1315,Đầu tư dài hạn khác
+756,1316,Các khoản phải thu
+757,1317,"Các khoản lãi, phí phải thu"
+758,1318,Tài sản Có khác
+759,1319,Công nợ tài chính
+760,1320,Tiền gửi và vay từ NHNN và các TCTD khác
+761,1321,Các khoản nợ chính phủ và NHNN
+762,1322,Tiền gửi và vay các TCTD khác
+763,1323,Tiền gửi của khách hàng
+764,1324,Công cụ tài chính phái sinh và các khoản nợ tài chính khác
+765,1325,"Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro"
+766,1326,Phát hành giấy tờ có giá
+767,1327,"Các khoản lãi, phí phải trả"
+768,1328,Các khoản phải trả và công nợ khác
+769,1329,Giá trị hợp lý - Công cụ tài chính
+770,1330,Tổng tài sản tài chính
+771,1331,"Tiền mặt, vàng bạc đá quý"
+772,1332,Tiền gửi tại NHNN
+773,1333,Tiền gửi và cho vay các TCTD khác
+774,1334,Chứng khoán kinh doanh
+775,1335,Công cụ tài chính phái sinh và các tài sản tài chính khác
+776,1336,Cho vay khách hàng
+777,1337,Chứng khoán đầu tư
+778,1338,Đầu tư dài hạn khác
+779,1339,Các khoản phải thu
+780,1340,"Các khoản lãi, phí phải thu"
+781,1341,Tài sản Có khác
+782,1342,Công nợ tài chính
+783,1343,Tiền gửi và vay từ NHNN và các TCTD khác
+784,1344,Các khoản nợ chính phủ và NHNN
+785,1345,Tiền gửi và vay các TCTD khác
+786,1346,Tiền gửi của khách hàng
+787,1347,Công cụ tài chính phái sinh và các khoản nợ tài chính khác
+788,1348,"Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro"
+789,1349,Phát hành giấy tờ có giá
+790,1350,"Các khoản lãi, phí phải trả"
+791,1351,Các khoản phải trả và công nợ khác
+792,1352,Rủi ro tiền tệ
+793,1353,Rủi ro tiền tệ - EUR quy đổi
+794,1354,Tổng tài sản 
+795,1355,"Tiền mặt, vàng bạc đá quý"
+796,1356,Tiền gửi tại NHNN
+797,1357,Tiền gửi và cho vay các TCTD khác
+798,1358,Chứng khoán kinh doanh
+799,1359,Công cụ tài chính phái sinh và các tài sản tài chính khác
+800,1360,Cho vay khách hàng
+801,1361,Chứng khoán  đầu tư
+802,1362,"Góp vốn, đầu tư dài hạn"
+803,1363,Tài sản cố định
+804,1364,Bất động sản đầu tư
+805,1365,Tài sản Có khác
+806,1366,Nợ phải trả và vốn  chủ sở hữu
+807,1367,Tiền gửi và vay từ NHNN và các TCTD khác
+808,1368,Các khoản nợ chính phủ và NHNN
+809,1369,Tiền gửi và vay các TCTD khác
+810,1370,Tiền gửi của khách hàng
+811,1371,Công cụ tài chính phái sinh và các khoản nợ tài chính khác
+812,1372,"Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro"
+813,1373,Phát hành giấy tờ có giá
+814,1374,Các khoản nợ khác
+815,1375,Vốn và các quỹ
+816,1376,Trạng thái tiền tệ nội bảng
+817,1377,Trạng thái tiền tệ ngoại bảng
+818,1378,"Trạng thái tiền tệ nội, ngoại bảng"
+819,1379,Rủi ro tiền tệ - USD quy đổi
+820,1380,Tổng tài sản 
+821,1381,"Tiền mặt, vàng bạc đá quý"
+822,1382,Tiền gửi tại NHNN
+823,1383,Tiền gửi và cho vay các TCTD khác
+824,1384,Chứng khoán kinh doanh
+825,1385,Công cụ tài chính phái sinh và các tài sản tài chính khác
+826,1386,Cho vay khách hàng
+827,1387,Chứng khoán  đầu tư
+828,1388,"Góp vốn, đầu tư dài hạn"
+829,1389,Bất động sản đầu tư
+830,1390,Tài sản cố định
+831,1391,Tài sản Có khác
+832,1392,Nợ phải trả và vốn  chủ sở hữu
+833,1393,Tiền gửi và vay từ NHNN và các TCTD khác
+834,1394,Các khoản nợ chính phủ và NHNN
+835,1395,Tiền gửi và vay các TCTD khác
+836,1396,Tiền gửi của khách hàng
+837,1397,Công cụ tài chính phái sinh và các khoản nợ tài chính khác
+838,1398,"Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro"
+839,1399,Phát hành giấy tờ có giá
+840,1400,Các khoản nợ khác
+841,1401,Vốn và các quỹ
+842,1402,Trạng thái tiền tệ nội bảng
+843,1403,Trạng thái tiền tệ ngoại bảng
+844,1404,"Trạng thái tiền tệ nội, ngoại bảng"
+845,1405,Rủi ro tiền tệ - VND
+846,1406,Tổng tài sản 
+847,1407,"Tiền mặt, vàng bạc đá quý"
+848,1408,Tiền gửi tại NHNN
+849,1409,Tiền gửi và cho vay các TCTD khác
+850,1410,Chứng khoán kinh doanh
+851,1411,Công cụ tài chính phái sinh và các tài sản tài chính khác
+852,1412,Cho vay khách hàng
+853,1413,Chứng khoán  đầu tư
+854,1414,"Góp vốn, đầu tư dài hạn"
+855,1415,Tài sản cố định
+856,1416,Bất động sản đầu tư
+857,1417,Tài sản Có khác
+858,1418,Nợ phải trả và vốn  chủ sở hữu
+859,1419,Tiền gửi và vay từ NHNN và các TCTD khác
+860,1420,Các khoản nợ chính phủ và NHNN
+861,1421,Tiền gửi và vay các TCTD khác
+862,1422,Tiền gửi của khách hàng
+863,1423,Công cụ tài chính phái sinh và các khoản nợ tài chính khác
+864,1424,"Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro"
+865,1425,Phát hành giấy tờ có giá
+866,1426,Các khoản nợ khác
+867,1427,Vốn và các quỹ
+868,1428,Trạng thái tiền tệ nội bảng
+869,1429,Trạng thái tiền tệ ngoại bảng
+870,1430,"Trạng thái tiền tệ nội, ngoại bảng"
+871,1431,Rủi ro tiền tệ - Các ngoại tệ khác
+872,1432,Tổng tài sản 
+873,1433,"Tiền mặt, vàng bạc đá quý"
+874,1434,Tiền gửi tại NHNN
+875,1435,Tiền gửi và cho vay các TCTD khác
+876,1436,Chứng khoán kinh doanh
+877,1437,Công cụ tài chính phái sinh và các tài sản tài chính khác
+878,1438,Cho vay khách hàng
+879,1439,Chứng khoán  đầu tư
+880,1440,"Góp vốn, đầu tư dài hạn"
+881,1441,Tài sản cố định
+882,1442,Bất động sản đầu tư
+883,1443,Tài sản Có khác
+884,1444,Nợ phải trả và vốn  chủ sở hữu
+885,1445,Tiền gửi và vay từ NHNN và các TCTD khác
+886,1446,Các khoản nợ chính phủ và NHNN
+887,1447,Tiền gửi và vay các TCTD khác
+888,1448,Tiền gửi của khách hàng
+889,1449,Công cụ tài chính phái sinh và các khoản nợ tài chính khác
+890,1450,"Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro"
+891,1451,Phát hành giấy tờ có giá
+892,1452,Các khoản nợ khác
+893,1453,Vốn và các quỹ
+894,1454,Trạng thái tiền tệ nội bảng
+895,1455,Trạng thái tiền tệ ngoại bảng
+896,1456,"Trạng thái tiền tệ nội, ngoại bảng"
+897,1457,Rủi ro tiền tệ - Tổng cộng
+898,1458,Tổng tài sản 
+899,1459,"Tiền mặt, vàng bạc đá quý"
+900,1460,Tiền gửi tại NHNN
+901,1461,Tiền gửi và cho vay các TCTD khác
+902,1462,Chứng khoán kinh doanh
+903,1463,Công cụ tài chính phái sinh và các tài sản tài chính khác
+904,1464,Cho vay khách hàng
+905,1465,Chứng khoán  đầu tư
+906,1466,"Góp vốn, đầu tư dài hạn"
+907,1467,Tài sản cố định
+908,1468,Bất động sản đầu tư
+909,1469,Tài sản Có khác
+910,1470,Nợ phải trả và vốn chủ sở hữu
+911,1471,Tiền gửi và vay từ NHNN và các TCTD khác
+912,1472,Các khoản nợ chính phủ và NHNN
+913,1473,Tiền gửi và vay các TCTD khác
+914,1474,Tiền gửi của khách hàng
+915,1475,Công cụ tài chính phái sinh và các khoản nợ tài chính khác
+916,1476,"Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro"
+917,1477,Phát hành giấy tờ có giá
+918,1478,Các khoản nợ khác
+919,1479,Vốn và các quỹ
+920,1480,Trạng thái tiền tệ nội bảng
+921,1481,Trạng thái tiền tệ ngoại bảng
+922,1482,"Trạng thái tiền tệ nội, ngoại bảng"
+923,1483,Rủi ro lãi suất
+924,1484,Rủi ro lãi suất - Không chịu lãi
+925,1485,Tổng Tài sản
+926,1486,"Tiền mặt, vàng bạc đá quý"
+927,1487,Tiền gửi tại NHNN
+928,1488,Tiền gửi và cho vay các TCTD khác
+929,1489,Chứng khoán kinh doanh
+930,1490,Công cụ tài chính phái sinh và các tài sản tài chính khác
+931,1491,Cho vay khách hàng
+932,1492,Chứng khoán  đầu tư
+933,1493,"Góp vốn, đầu tư dài hạn"
+934,1494,Tài sản cố định
+935,1495,Bất động sản đầu tư
+936,1496,Tài sản Có khác
+937,1497,Tổng Nợ phải trả
+938,1498,Tiền gửi và vay từ NHNN và các TCTD khác
+939,1499,Các khoản nợ chính phủ và NHNN
+940,1500,Tiền gửi và cho vay các TCTD khác
+941,1501,Tiền gửi của khách hàng
+942,1502,Công cụ tài chính phái sinh và các khoản nợ tài chính khác
+943,1503,"Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro"
+944,1504,Phát hành giấy tờ có giá
+945,1505,Các khoản nợ khác
+946,1506,Chênh lệch nhạy cảm với lãi suất nội bảng
+947,1507,Chênh lệch nhạy cảm với lãi suất ngoại bảng
+948,1508,"Chênh lệch nhạy cảm với lãi suất nội, ngoại bảng"
+949,1509,Rủi ro lãi suất - Quá hạn
+950,1510,Tổng Tài sản
+951,1511,"Tiền mặt, vàng bạc đá quý"
+952,1512,Tiền gửi tại NHNN
+953,1513,Tiền gửi và cho vay các TCTD khác
+954,1514,Chứng khoán kinh doanh
+955,1515,Công cụ tài chính phái sinh và các tài sản tài chính khác
+956,1516,Cho vay khách hàng
+957,1517,Chứng khoán  đầu tư
+958,1518,"Góp vốn, đầu tư dài hạn"
+959,1519,Tài sản cố định
+960,1520,Bất động sản đầu tư
+961,1521,Tài sản Có khác
+962,1522,Tổng Nợ phải trả
+963,1523,Tiền gửi và vay từ NHNN và các TCTD khác
+964,1524,Các khoản nợ chính phủ và NHNN
+965,1525,Tiền gửi và cho vay các TCTD khác
+966,1526,Tiền gửi của khách hàng
+967,1527,Công cụ tài chính phái sinh và các khoản nợ tài chính khác
+968,1528,"Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro"
+969,1529,Phát hành giấy tờ có giá
+970,1530,Các khoản nợ khác
+971,1531,Chênh lệch nhạy cảm với lãi suất nội bảng
+972,1532,Chênh lệch nhạy cảm với lãi suất ngoại bảng
+973,1533,"Chênh lệch nhạy cảm với lãi suất nội, ngoại bảng"
+974,1534,Rủi ro lãi suất - Quá hạn trên 3 tháng
+975,1535,Tổng Tài sản
+976,1536,"Tiền mặt, vàng bạc đá quý"
+977,1537,Tiền gửi tại NHNN
+978,1538,Tiền gửi và cho vay các TCTD khác
+979,1539,Chứng khoán kinh doanh
+980,1540,Công cụ tài chính phái sinh và các tài sản tài chính khác
+981,1541,Cho vay khách hàng
+982,1542,Chứng khoán  đầu tư
+983,1543,"Góp vốn, đầu tư dài hạn"
+984,1544,Tài sản cố định
+985,1545,Bất động sản đầu tư
+986,1546,Tài sản Có khác
+987,1547,Tổng Nợ phải trả
+988,1548,Tiền gửi và vay từ NHNN và các TCTD khác
+989,1549,Các khoản nợ chính phủ và NHNN
+990,1550,Tiền gửi và cho vay các TCTD khác
+991,1551,Tiền gửi của khách hàng
+992,1552,Công cụ tài chính phái sinh và các khoản nợ tài chính khác
+993,1553,"Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro"
+994,1554,Phát hành giấy tờ có giá
+995,1555,Các khoản nợ khác
+996,1556,Chênh lệch nhạy cảm với lãi suất nội bảng
+997,1557,Chênh lệch nhạy cảm với lãi suất ngoại bảng
+998,1558,"Chênh lệch nhạy cảm với lãi suất nội, ngoại bảng"
+999,1559,Rủi ro lãi suất - Quá hạn đến 3 tháng
+1000,1560,Tổng Tài sản
+1001,1561,"Tiền mặt, vàng bạc đá quý"
+1002,1562,Tiền gửi tại NHNN
+1003,1563,Tiền gửi và cho vay các TCTD khác
+1004,1564,Chứng khoán kinh doanh
+1005,1565,Công cụ tài chính phái sinh và các tài sản tài chính khác
+1006,1566,Cho vay khách hàng
+1007,1567,Chứng khoán  đầu tư
+1008,1568,"Góp vốn, đầu tư dài hạn"
+1009,1569,Tài sản cố định
+1010,1570,Bất động sản đầu tư
+1011,1571,Tài sản Có khác
+1012,1572,Tổng Nợ phải trả
+1013,1573,Tiền gửi và vay từ NHNN và các TCTD khác
+1014,1574,Các khoản nợ chính phủ và NHNN
+1015,1575,Tiền gửi và cho vay các TCTD khác
+1016,1576,Tiền gửi của khách hàng
+1017,1577,Công cụ tài chính phái sinh và các khoản nợ tài chính khác
+1018,1578,"Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro"
+1019,1579,Phát hành giấy tờ có giá
+1020,1580,Các khoản nợ khác
+1021,1581,Chênh lệch nhạy cảm với lãi suất nội bảng
+1022,1582,Chênh lệch nhạy cảm với lãi suất ngoại bảng
+1023,1583,"Chênh lệch nhạy cảm với lãi suất nội, ngoại bảng"
+1024,1584,Rủi ro lãi suất - Trong hạn đến 01 tháng
+1025,1585,Tổng Tài sản
+1026,1586,"Tiền mặt, vàng bạc đá quý"
+1027,1587,Tiền gửi tại NHNN
+1028,1588,Tiền gửi và cho vay các TCTD khác
+1029,1589,Chứng khoán kinh doanh
+1030,1590,Công cụ tài chính phái sinh và các tài sản tài chính khác
+1031,1591,Cho vay khách hàng
+1032,1592,Chứng khoán  đầu tư
+1033,1593,"Góp vốn, đầu tư dài hạn"
+1034,1594,Tài sản cố định
+1035,1595,Bất động sản đầu tư
+1036,1596,Tài sản Có khác
+1037,1597,Tổng Nợ phải trả
+1038,1598,Tiền gửi và vay từ NHNN và các TCTD khác
+1039,1599,Các khoản nợ chính phủ và NHNN
+1040,1600,Tiền gửi và cho vay các TCTD khác
+1041,1601,Tiền gửi của khách hàng
+1042,1602,Công cụ tài chính phái sinh và các khoản nợ tài chính khác
+1043,1603,"Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro"
+1044,1604,Phát hành giấy tờ có giá
+1045,1605,Các khoản nợ khác
+1046,1606,Chênh lệch nhạy cảm với lãi suất nội bảng
+1047,1607,Chênh lệch nhạy cảm với lãi suất ngoại bảng
+1048,1608,"Chênh lệch nhạy cảm với lãi suất nội, ngoại bảng"
+1049,1609,Rủi ro lãi suất - Trong hạn từ 01-03 tháng
+1050,1610,Tổng Tài sản
+1051,1611,"Tiền mặt, vàng bạc đá quý"
+1052,1612,Tiền gửi tại NHNN
+1053,1613,Tiền gửi và cho vay các TCTD khác
+1054,1614,Chứng khoán kinh doanh
+1055,1615,Công cụ tài chính phái sinh và các tài sản tài chính khác
+1056,1616,Cho vay khách hàng
+1057,1617,Chứng khoán  đầu tư
+1058,1618,"Góp vốn, đầu tư dài hạn"
+1059,1619,Tài sản cố định
+1060,1620,Bất động sản đầu tư
+1061,1621,Tài sản Có khác
+1062,1622,Tổng Nợ phải trả
+1063,1623,Tiền gửi và vay từ NHNN và các TCTD khác
+1064,1624,Các khoản nợ chính phủ và NHNN
+1065,1625,Tiền gửi và cho vay các TCTD khác
+1066,1626,Tiền gửi của khách hàng
+1067,1627,Công cụ tài chính phái sinh và các khoản nợ tài chính khác
+1068,1628,"Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro"
+1069,1629,Phát hành giấy tờ có giá
+1070,1630,Các khoản nợ khác
+1071,1631,Chênh lệch nhạy cảm với lãi suất nội bảng
+1072,1632,Chênh lệch nhạy cảm với lãi suất ngoại bảng
+1073,1633,"Chênh lệch nhạy cảm với lãi suất nội, ngoại bảng"
+1074,1634,Rủi ro lãi suất - Trong hạn từ 03-06 tháng
+1075,1635,Tổng Tài sản
+1076,1636,"Tiền mặt, vàng bạc đá quý"
+1077,1637,Tiền gửi tại NHNN
+1078,1638,Tiền gửi và cho vay các TCTD khác
+1079,1639,Chứng khoán kinh doanh
+1080,1640,Công cụ tài chính phái sinh và các tài sản tài chính khác
+1081,1641,Cho vay khách hàng
+1082,1642,Chứng khoán  đầu tư
+1083,1643,"Góp vốn, đầu tư dài hạn"
+1084,1644,Tài sản cố định
+1085,1645,Bất động sản đầu tư
+1086,1646,Tài sản Có khác
+1087,1647,Tổng Nợ phải trả
+1088,1648,Tiền gửi và vay từ NHNN và các TCTD khác
+1089,1649,Các khoản nợ chính phủ và NHNN
+1090,1650,Tiền gửi và cho vay các TCTD khác
+1091,1651,Tiền gửi của khách hàng
+1092,1652,Công cụ tài chính phái sinh và các khoản nợ tài chính khác
+1093,1653,"Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro"
+1094,1654,Phát hành giấy tờ có giá
+1095,1655,Các khoản nợ khác
+1096,1656,Chênh lệch nhạy cảm với lãi suất nội bảng
+1097,1657,Chênh lệch nhạy cảm với lãi suất ngoại bảng
+1098,1658,"Chênh lệch nhạy cảm với lãi suất nội, ngoại bảng"
+1099,1659,Rủi ro lãi suất - Trong hạn từ 06-12 tháng
+1100,1660,Tổng Tài sản
+1101,1661,"Tiền mặt, vàng bạc đá quý"
+1102,1662,Tiền gửi tại NHNN
+1103,1663,Tiền gửi và cho vay các TCTD khác
+1104,1664,Chứng khoán kinh doanh
+1105,1665,Công cụ tài chính phái sinh và các tài sản tài chính khác
+1106,1666,Cho vay khách hàng
+1107,1667,Chứng khoán  đầu tư
+1108,1668,"Góp vốn, đầu tư dài hạn"
+1109,1669,Tài sản cố định
+1110,1670,Bất động sản đầu tư
+1111,1671,Tài sản Có khác
+1112,1672,Tổng Nợ phải trả
+1113,1673,Tiền gửi và vay từ NHNN và các TCTD khác
+1114,1674,Các khoản nợ chính phủ và NHNN
+1115,1675,Tiền gửi và cho vay các TCTD khác
+1116,1676,Tiền gửi của khách hàng
+1117,1677,Công cụ tài chính phái sinh và các khoản nợ tài chính khác
+1118,1678,"Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro"
+1119,1679,Phát hành giấy tờ có giá
+1120,1680,Các khoản nợ khác
+1121,1681,Chênh lệch nhạy cảm với lãi suất nội bảng
+1122,1682,Chênh lệch nhạy cảm với lãi suất ngoại bảng
+1123,1683,"Chênh lệch nhạy cảm với lãi suất nội, ngoại bảng"
+1124,1684,Rủi ro lãi suất - Trong hạn từ 01-05 năm
+1125,1685,Tổng Tài sản
+1126,1686,"Tiền mặt, vàng bạc đá quý"
+1127,1687,Tiền gửi tại NHNN
+1128,1688,Tiền gửi và cho vay các TCTD khác
+1129,1689,Chứng khoán kinh doanh
+1130,1690,Công cụ tài chính phái sinh và các tài sản tài chính khác
+1131,1691,Cho vay khách hàng
+1132,1692,Chứng khoán  đầu tư
+1133,1693,"Góp vốn, đầu tư dài hạn"
+1134,1694,Tài sản cố định
+1135,1695,Bất động sản đầu tư
+1136,1696,Tài sản Có khác
+1137,1697,Tổng Nợ phải trả
+1138,1698,Tiền gửi và vay từ NHNN và các TCTD khác
+1139,1699,Các khoản nợ chính phủ và NHNN
+1140,1700,Tiền gửi và cho vay các TCTD khác
+1141,1701,Tiền gửi của khách hàng
+1142,1702,Công cụ tài chính phái sinh và các khoản nợ tài chính khác
+1143,1703,"Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro"
+1144,1704,Phát hành giấy tờ có giá
+1145,1705,Các khoản nợ khác
+1146,1706,Chênh lệch nhạy cảm với lãi suất nội bảng
+1147,1707,Chênh lệch nhạy cảm với lãi suất ngoại bảng
+1148,1708,"Chênh lệch nhạy cảm với lãi suất nội, ngoại bảng"
+1149,1709,Rủi ro lãi suất - Trong hạn trên 05 năm
+1150,1710,Tổng Tài sản
+1151,1711,"Tiền mặt, vàng bạc đá quý"
+1152,1712,Tiền gửi tại NHNN
+1153,1713,Tiền gửi và cho vay các TCTD khác
+1154,1714,Chứng khoán kinh doanh
+1155,1715,Công cụ tài chính phái sinh và các tài sản tài chính khác
+1156,1716,Cho vay khách hàng
+1157,1717,Chứng khoán  đầu tư
+1158,1718,"Góp vốn, đầu tư dài hạn"
+1159,1719,Tài sản cố định
+1160,1720,Bất động sản đầu tư
+1161,1721,Tài sản Có khác
+1162,1722,Tổng Nợ phải trả
+1163,1723,Tiền gửi và vay từ NHNN và các TCTD khác
+1164,1724,Các khoản nợ chính phủ và NHNN
+1165,1725,Tiền gửi và cho vay các TCTD khác
+1166,1726,Tiền gửi của khách hàng
+1167,1727,Công cụ tài chính phái sinh và các khoản nợ tài chính khác
+1168,1728,"Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro"
+1169,1729,Phát hành giấy tờ có giá
+1170,1730,Các khoản nợ khác
+1171,1731,Chênh lệch nhạy cảm với lãi suất nội bảng
+1172,1732,Chênh lệch nhạy cảm với lãi suất ngoại bảng
+1173,1733,"Chênh lệch nhạy cảm với lãi suất nội, ngoại bảng"
+1174,1734,Rủi ro lãi suất - Tổng cộng
+1175,1735,Tổng Tài sản
+1176,1736,"Tiền mặt, vàng bạc đá quý"
+1177,1737,Tiền gửi tại NHNN
+1178,1738,Tiền gửi và cho vay các TCTD khác
+1179,1739,Chứng khoán kinh doanh
+1180,1740,Công cụ tài chính phái sinh và các tài sản tài chính khác
+1181,1741,Cho vay khách hàng
+1182,1742,Chứng khoán  đầu tư
+1183,1743,"Góp vốn, đầu tư dài hạn"
+1184,1744,Tài sản cố định
+1185,1745,Bất động sản đầu tư
+1186,1746,Tài sản Có khác
+1187,1747,Tổng Nợ phải trả
+1188,1748,Tiền gửi và vay từ NHNN và các TCTD khác
+1189,1749,Các khoản nợ chính phủ và NHNN
+1190,1750,Tiền gửi và cho vay các TCTD khác
+1191,1751,Tiền gửi của khách hàng
+1192,1752,Công cụ tài chính phái sinh và các khoản nợ tài chính khác
+1193,1753,"Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro"
+1194,1754,Phát hành giấy tờ có giá
+1195,1755,Các khoản nợ khác
+1196,1756,Chênh lệch nhạy cảm với lãi suất nội bảng
+1197,1757,Chênh lệch nhạy cảm với lãi suất ngoại bảng
+1198,1758,"Chênh lệch nhạy cảm với lãi suất nội, ngoại bảng"
+1199,1759,Rủi ro thanh khoản
+1200,1760,Rủi ro thanh khoản - Quá hạn trên 3 tháng
+1201,1761,Tổng Tài sản
+1202,1762,"Tiền mặt, vàng bạc đá quý"
+1203,1763,Tiền gửi tại NHNN
+1204,1764,Tiền gửi và cho vay các TCTD khác
+1205,1765,Chứng khoán kinh doanh
+1206,1766,Công cụ tài chính phái sinh và các tài sản tài chính khác
+1207,1767,Cho vay khách hàng
+1208,1768,Chứng khoán đầu tư
+1209,1769,"Góp vốn, đầu tư dài hạn"
+1210,1770,Tài sản cố định
+1211,1771,Bất động sản đầu tư
+1212,1772,Tài sản Có khác
+1213,1773,Tổng Nợ phải trả
+1214,1774,Tiền gửi và vay từ NHNN và các TCTD khác
+1215,1775,Các khoản nợ chính phủ và NHNN
+1216,1776,Tiền gửi và cho vay các TCTD khác
+1217,1777,Tiền gửi của khách hàng
+1218,1778,Công cụ tài chính phái sinh và các khoản nợ tài chính khác
+1219,1779,"Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro"
+1220,1780,Phát hành giấy tờ có giá
+1221,1781,Các khoản nợ khác
+1222,1782,Chênh lệch thanh khoản ròng
+1223,1783,Rủi ro thanh khoản - Quá hạn dưới 3 tháng
+1224,1784,Tổng Tài sản
+1225,1785,"Tiền mặt, vàng bạc đá quý"
+1226,1786,Tiền gửi tại NHNN
+1227,1787,Tiền gửi và cho vay các TCTD khác
+1228,1788,Chứng khoán kinh doanh
+1229,1789,Công cụ tài chính phái sinh và các tài sản tài chính khác
+1230,1790,Cho vay khách hàng
+1231,1791,Chứng khoán đầu tư
+1232,1792,"Góp vốn, đầu tư dài hạn"
+1233,1793,Tài sản cố định
+1234,1794,Bất động sản đầu tư
+1235,1795,Tài sản Có khác
+1236,1796,Tổng Nợ phải trả
+1237,1797,Tiền gửi và vay từ NHNN và các TCTD khác
+1238,1798,Các khoản nợ chính phủ và NHNN
+1239,1799,Tiền gửi và cho vay các TCTD khác
+1240,1800,Tiền gửi của khách hàng
+1241,1801,Công cụ tài chính phái sinh và các khoản nợ tài chính khác
+1242,1802,"Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro"
+1243,1803,Phát hành giấy tờ có giá
+1244,1804,Các khoản nợ khác
+1245,1805,Chênh lệch thanh khoản ròng
+1246,1806,Rủi ro thanh khoản - Trong hạn đến 1 tháng
+1247,1807,Tổng Tài sản
+1248,1808,"Tiền mặt, vàng bạc đá quý"
+1249,1809,Tiền gửi tại NHNN
+1250,1810,Tiền gửi và cho vay các TCTD khác
+1251,1811,Chứng khoán kinh doanh
+1252,1812,Công cụ tài chính phái sinh và các tài sản tài chính khác
+1253,1813,Cho vay khách hàng
+1254,1814,Chứng khoán đầu tư
+1255,1815,"Góp vốn, đầu tư dài hạn"
+1256,1816,Tài sản cố định
+1257,1817,Bất động sản đầu tư
+1258,1818,Tài sản Có khác
+1259,1819,Tổng Nợ phải trả
+1260,1820,Tiền gửi và vay từ NHNN và các TCTD khác
+1261,1821,Các khoản nợ chính phủ và NHNN
+1262,1822,Tiền gửi và cho vay các TCTD khác
+1263,1823,Tiền gửi của khách hàng
+1264,1824,Công cụ tài chính phái sinh và các khoản nợ tài chính khác
+1265,1825,"Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro"
+1266,1826,Phát hành giấy tờ có giá
+1267,1827,Các khoản nợ khác
+1268,1828,Chênh lệch thanh khoản ròng
+1269,1829,Rủi ro thanh khoản - Trong hạn đến 01-03  tháng
+1270,1830,Tổng Tài sản
+1271,1831,"Tiền mặt, vàng bạc đá quý"
+1272,1832,Tiền gửi tại NHNN
+1273,1833,Tiền gửi và cho vay các TCTD khác
+1274,1834,Chứng khoán kinh doanh
+1275,1835,Công cụ tài chính phái sinh và các tài sản tài chính khác
+1276,1836,Cho vay khách hàng
+1277,1837,Chứng khoán đầu tư
+1278,1838,"Góp vốn, đầu tư dài hạn"
+1279,1839,Tài sản cố định
+1280,1840,Bất động sản đầu tư
+1281,1841,Tài sản Có khác
+1282,1842,Tổng Nợ phải trả
+1283,1843,Tiền gửi và vay từ NHNN và các TCTD khác
+1284,1844,Các khoản nợ chính phủ và NHNN
+1285,1845,Tiền gửi và cho vay các TCTD khác
+1286,1846,Tiền gửi của khách hàng
+1287,1847,Công cụ tài chính phái sinh và các khoản nợ tài chính khác
+1288,1848,"Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro"
+1289,1849,Phát hành giấy tờ có giá
+1290,1850,Các khoản nợ khác
+1291,1851,Chênh lệch thanh khoản ròng
+1292,1852,Rủi ro thanh khoản - Trong hạn đến 03-12  tháng
+1293,1853,Tổng Tài sản
+1294,1854,"Tiền mặt, vàng bạc đá quý"
+1295,1855,Tiền gửi tại NHNN
+1296,1856,Tiền gửi và cho vay các TCTD khác
+1297,1857,Chứng khoán kinh doanh
+1298,1858,Công cụ tài chính phái sinh và các tài sản tài chính khác
+1299,1859,Cho vay khách hàng
+1300,1860,Chứng khoán đầu tư
+1301,1861,"Góp vốn, đầu tư dài hạn"
+1302,1862,Tài sản cố định
+1303,1863,Bất động sản đầu tư
+1304,1864,Tài sản Có khác
+1305,1865,Tổng Nợ phải trả
+1306,1866,Tiền gửi và vay từ NHNN và các TCTD khác
+1307,1867,Các khoản nợ chính phủ và NHNN
+1308,1868,Tiền gửi và cho vay các TCTD khác
+1309,1869,Tiền gửi của khách hàng
+1310,1870,Công cụ tài chính phái sinh và các khoản nợ tài chính khác
+1311,1871,"Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro"
+1312,1872,Phát hành giấy tờ có giá
+1313,1873,Các khoản nợ khác
+1314,1874,Chênh lệch thanh khoản ròng
+1315,1875,Rủi ro thanh khoản - Trong hạn từ 01-05 năm
+1316,1876,Tổng Tài sản
+1317,1877,"Tiền mặt, vàng bạc đá quý"
+1318,1878,Tiền gửi tại NHNN
+1319,1879,Tiền gửi và cho vay các TCTD khác
+1320,1880,Chứng khoán kinh doanh
+1321,1881,Công cụ tài chính phái sinh và các tài sản tài chính khác
+1322,1882,Cho vay khách hàng
+1323,1883,Chứng khoán đầu tư
+1324,1884,"Góp vốn, đầu tư dài hạn"
+1325,1885,Tài sản cố định
+1326,1886,Bất động sản đầu tư
+1327,1887,Tài sản Có khác
+1328,1888,Tổng Nợ phải trả
+1329,1889,Tiền gửi và vay từ NHNN và các TCTD khác
+1330,1890,Các khoản nợ chính phủ và NHNN
+1331,1891,Tiền gửi và cho vay các TCTD khác
+1332,1892,Tiền gửi của khách hàng
+1333,1893,Công cụ tài chính phái sinh và các khoản nợ tài chính khác
+1334,1894,"Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro"
+1335,1895,Phát hành giấy tờ có giá
+1336,1896,Các khoản nợ khác
+1337,1897,Chênh lệch thanh khoản ròng
+1338,1898,Rủi ro thanh khoản - Trong hạn trên 05 năm
+1339,1899,Tổng Tài sản
+1340,1900,"Tiền mặt, vàng bạc đá quý"
+1341,1901,Tiền gửi tại NHNN
+1342,1902,Tiền gửi và cho vay các TCTD khác
+1343,1903,Chứng khoán kinh doanh
+1344,1904,Công cụ tài chính phái sinh và các tài sản tài chính khác
+1345,1905,Cho vay khách hàng
+1346,1906,Chứng khoán đầu tư
+1347,1907,"Góp vốn, đầu tư dài hạn"
+1348,1908,Tài sản cố định
+1349,1909,Bất động sản đầu tư
+1350,1910,Tài sản Có khác
+1351,1911,Tổng Nợ phải trả
+1352,1912,Tiền gửi và vay từ NHNN và các TCTD khác
+1353,1913,Các khoản nợ chính phủ và NHNN
+1354,1914,Tiền gửi và cho vay các TCTD khác
+1355,1915,Tiền gửi của khách hàng
+1356,1916,Công cụ tài chính phái sinh và các khoản nợ tài chính khác
+1357,1917,"Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro"
+1358,1918,Phát hành giấy tờ có giá
+1359,1919,Các khoản nợ khác
+1360,1920,Chênh lệch thanh khoản ròng
+1361,1921,Rủi ro thanh khoản - Tổng
+1362,1922,Tổng Tài sản
+1363,1923,"Tiền mặt, vàng bạc đá quý"
+1364,1924,Tiền gửi tại NHNN
+1365,1925,Tiền gửi và cho vay các TCTD khác
+1366,1926,Chứng khoán kinh doanh
+1367,1927,Công cụ tài chính phái sinh và các tài sản tài chính khác
+1368,1928,Cho vay khách hàng
+1369,1929,Chứng khoán đầu tư
+1370,1930,"Góp vốn, đầu tư dài hạn"
+1371,1931,Tài sản cố định
+1372,1932,Bất động sản đầu tư
+1373,1933,Tài sản Có khác
+1374,1934,Tổng Nợ phải trả
+1375,1935,Tiền gửi và vay từ NHNN và các TCTD khác
+1376,1936,Các khoản nợ chính phủ và NHNN
+1377,1937,Tiền gửi và cho vay các TCTD khác
+1378,1938,Tiền gửi của khách hàng
+1379,1939,Công cụ tài chính phái sinh và các khoản nợ tài chính khác
+1380,1940,"Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro"
+1381,1941,Phát hành giấy tờ có giá
+1382,1942,Các khoản nợ khác
+1383,1943,Chênh lệch thanh khoản ròng

@@ -1,0 +1,108 @@
+,ReportNormId,ReportNormName
+0,4155,Lưu chuyển tiền từ hoạt động kinh doanh
+1,4162,Lợi nhuận trước thuế
+2,4156,Điều chỉnh cho các khoản
+3,4195,"Khấu hao TSCĐ, bất động sản đầu tư"
+4,4196,"Dự phòng rủi ro tín dụng, giảm giá, đầu tư tăng thêm / (hoàn nhập) trong năm"
+5,4197,Lãi và phí phải thu trong kỳ (thực tế chưa thu)
+6,4198,Lãi và phí phải trả trong kỳ (thực tế chưa trả)
+7,4199,"Lãi, lỗ do thanh lý TSCĐ"
+8,4200,"Lãi, lỗ do bán, thanh lý bất động sản đầu tư"
+9,4201,"Lãi, lỗ do thanh lý những khoản đầu tư, góp vốn dài hạn vào đơn vị khác, cổ tức nhận được, lợi nhuận được chia từ HĐ đầu tư, góp vốn dài hạn"
+10,4202,Chênh lệch tỷ giá hối đoái chưa thực hiện
+11,4203,Các điều chỉnh khác
+12,4161,Những thay đổi về tài sản và công nợ hoạt động
+13,4159,Những thay đổi về tài sản hoạt động
+14,4174,"Tăng, giảm các khoản tiền, vàng gửi và cho vay các TCTD khác"
+15,4175,"Tăng, giảm các khoản về kinh doanh chứng khoán"
+16,4204,"Tăng, giảm các công cụ tài chính phái sinh và các tài sản tài chính khác"
+17,4176,"Tăng, giảm các khoản cho vay khách hàng"
+18,4205,"Tăng, giảm lãi, phí phải thu"
+19,4206,"Tăng, giảm nguồn dự phòng để bù đắp tổn thất các khoản"
+20,4177,"Tăng, giảm khác về tài sản hoạt động"
+21,4160,Những thay đổi về công nợ hoạt động
+22,4178,"Tăng, giảm các khoản nợ chính phủ và NHNN"
+23,4179,"Tăng, giảm các khoản tiền gửi và vay các TCTD"
+24,4180,"Tăng, giảm tiền gửi của khách hàng (bao gồm cả Kho bạc Nhà nước)"
+25,4182,"Tăng, giảm các công cụ tài chính phái sinh và các khoản nợ tài chính khác"
+26,4181,"Tăng, giảm vốn tài trợ, ủy thác đầu tư, cho vay mà TCTD chịu rủi ro"
+27,4207,"Tăng, giảm phát hành giấy tờ có giá (ngoại trừ GTCG được tính vào hoạt động tài chính)"
+28,4208,"Tăng, giảm lãi, phí phải trả"
+29,4183,"Tăng, giảm khác về công nợ hoạt động"
+30,4169,Lưu chuyển tiền thuần từ hoạt động kinh doanh trước thuế thu nhập
+31,4171,Thuế thu nhập doanh nghiệp đã nộp
+32,4184,Chi từ các quỹ của TCTD
+33,4163,Lưu chuyển tiền thuần từ hoạt động kinh doanh
+34,4157,Lưu chuyển tiền từ hoạt động đầu tư
+35,4172,"Tiền chi để mua sắm, xây dựng TSCĐ và các tài sản dài hạn khác"
+36,4173,"Tiền thu từ thanh lý, nhượng bán TSCĐ và các tài sản dài hạn khác"
+37,4185,"Tiền chi từ thanh lý, nhượng bán TSCĐ"
+38,4186,Mua sắm bất động sản đầu tư
+39,4187,"Tiền thu từ bán, thanh lý bất động sản đầu tư"
+40,4188,"Tiền chi ra do bán, thanh lý bất động sản đầu tư"
+41,4209,"Tiền chi đầu tư, góp vốn vào các đơn vị khác (Chi đầu tư mua công ty con, góp vốn liên doanh, liên kết, và các khoản đầu tư dài hạn khác)"
+42,4210,"Tiền thu đầu tư, góp vốn vào các đơn vị khác (Thu bán, thanh lý công ty con, góp vốn liên doanh, liên kết, các khoản đầu tư dài hạn khác)"
+43,4189,"Tiền thu cổ tức và lợi nhuận được chia từ các khoản đầu tư, góp vốn dài hạn"
+44,4164,Lưu chuyển tiền thuần từ hoạt động đầu tư
+45,4158,Lưu chuyển tiền từ hoạt động tài chính
+46,4190,Tăng vốn cổ phần từ góp vốn và / hoặc phát hành cổ phiếu
+47,4191,Tiền thu từ phát hành giấy tờ có giá dài hạn có đủ điều kiện tính vào vốn tự có và các khoản vốn vay dài hạn khác
+48,4192,Tiền chi thanh toán giấy tờ có giá dài hạn có đủ điều kiện tính vào vốn tự có và các khoản vốn vay dài hạn khác
+49,4211,"Cổ tức trả cho cổ đông, lợi nhuận đã chia"
+50,4193,Tiền chi ra mua cổ phiếu quỹ
+51,4194,Tiền thu được do bán cổ phiếu quỹ
+52,4165,Lưu chuyển tiền thuần từ hoạt động tài chính
+53,4166,Lưu chuyển tiền thuần trong kỳ
+54,4167,Tiền và tương đương tiền đầu kỳ
+55,4170,Điều chỉnh ảnh hưởng của thay đổi tỷ giá
+56,4168,Tiền và tương đương tiền cuối kỳ
+57,4104,Lưu chuyển tiền từ hoạt động kinh doanh
+58,4123,Thu nhập lãi và các khoản thu nhập tương tự nhận được
+59,4124,Chi phí lãi và các chi phí tương tự đã trả
+60,4125,Thu nhập từ hoạt động dịch vụ nhận được
+61,4126,"Chênh lệch số tiền thực thu/thực chi từ hoạt động kinh doanh (ngoại tệ, vàng bạc, chứng khoán)"
+62,4154,Thu nhập khác của NH
+63,4127,"Tiền thu các khoản nợ đã được xử lý xóa, bù đắp bằng nguồn rủi ro"
+64,4122,Tiền chi trả cho người lao động
+65,4128,Tiền thuế thu nhập thực nộp trong kỳ
+66,4109,Lợi nhuận từ hoạt động kinh doanh trước thay đổi vốn lưu động
+67,4107,Những thay đổi về tài sản hoạt động
+68,4129,"Tăng, giảm các khoản tiền, vàng gửi và cho vay các TCTD khác"
+69,4130,"Tăng, giảm các khoản về kinh doanh chứng khoán"
+70,4131,"Tăng, giảm các công cụ tài chính phái sinh và các công cụ tài chính khác"
+71,4132,"Tăng, giảm các khoản cho vay khách hàng"
+72,4133,Giảm nguồn dự phòng để bù đắp tổn thất các khoản
+73,4134,"Tăng, giảm khác về tài sản hoạt động"
+74,4108,Những thay đổi về công nợ hoạt động
+75,4135,"Tăng, giảm các khoản nợ chính phủ và NHNN"
+76,4136,"Tăng, giảm các khoản tiền gửi và vay các TCTD"
+77,4137,"Tăng, giảm tiền gửi của khách hàng (bao gồm cả Kho bạc Nhà nước)"
+78,4138,"Tăng, giảm phát hành giấy tờ có giá (ngoại trừ giấy tờ có giá phát hành được tính vào hoạt động tài chính)"
+79,4139,"Tăng, giảm vốn tài trợ, ủy thác đầu tư, cho vay mà TCTD chịu rủi ro"
+80,4140,"Tăng, giảm các công cụ tài chính phái sinh và các khoản nợ tài chính khác"
+81,4141,"Tăng, giảm khác về công nợ hoạt động"
+82,4142,Chi từ các quỹ của TCTD
+83,4110,Lưu chuyển tiền thuần từ hoạt động kinh doanh
+84,4105,Lưu chuyển tiền từ hoạt động đầu tư
+85,4118,"Tiền chi để mua sắm, xây dựng TSCĐ và các tài sản dài hạn khác"
+86,4119,"Tiền thu từ thanh lý, nhượng bán TSCĐ và các tài sản dài hạn khác"
+87,4143,"Tiền chi từ thanh lý, nhượng bán TSCĐ"
+88,4144,Mua sắm bất động sản đầu tư
+89,4145,"Tiền thu từ bán, thanh lý bất động sản đầu tư"
+90,4146,"Tiền chi ra do bán, thanh lý bất động sản đầu tư"
+91,4120,Tiền chi đầu tư góp vốn vào đơn vị khác
+92,4121,Tiền thu hồi đầu tư góp vốn vào đơn vị khác
+93,4147,"Tiền thu cổ tức và lợi nhuận được chia từ các khoản đầu tư, góp vốn dài hạn"
+94,4111,Lưu chuyển tiền thuần từ hoạt động đầu tư
+95,4106,Lưu chuyển tiền từ hoạt động tài chính
+96,4148,Tăng vốn cổ phần từ góp vốn và / hoặc phát hành cổ phiếu
+97,4149,Tiền thu từ phát hành giấy tờ có giá dài hạn có đủ điều kiện tính vào vốn tự có và các khoản vốn vay dài hạn khác
+98,4150,Tiền chi thanh toán giấy tờ có giá dài hạn có đủ điều kiện tính vào vốn tự có và các khoản vốn vay dài hạn khác
+99,4153,"Cổ tức trả cho cổ đông, lợi nhuận đã chia"
+100,4151,Tiền chi ra mua cổ phiếu quỹ
+101,4152,Tiền thu được do bán cổ phiếu quỹ
+102,4112,Lưu chuyển tiền thuần từ hoạt động tài chính
+103,4114,Lưu chuyển tiền thuần trong kỳ
+104,4115,Tiền và tương đương tiền đầu kỳ
+105,4117,Điều chỉnh ảnh hưởng của thay đổi tỷ giá
+106,4116,Tiền và tương đương tiền cuối kỳ

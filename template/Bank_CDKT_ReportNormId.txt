@@ -1,0 +1,78 @@
+,ReportNormId,ReportNormName
+0,4302,TÀI SẢN
+1,4310,"Tiền mặt, vàng bạc, đá quý"
+2,4311,Tiền gửi tại NHNN
+3,4312,"Tiền, vàng gửi tại các TCTD khác và cho vay các TCTD khác"
+4,4344,"Tiền, vàng gửi tại các TCTD khác"
+5,4326,Cho vay các TCTD khác
+6,4345,Dự phòng rủi ro cho vay các TCTD khác
+7,4313,Chứng khoán kinh doanh
+8,4346,Chi tiết chứng khoán kinh doanh
+9,4347,Dự phòng giảm giá chứng khoán kinh doanh
+10,4314,Các công cụ tài chính phái sinh và các tài sản tài chính khác
+11,4315,Cho vay khách hàng
+12,4348,Chi tiết cho vay khách hàng
+13,4349,Dự phòng rủi ro cho vay khách hàng
+14,5322,Hoạt động mua nợ
+15,5323,Mua nợ
+16,5324,Dự phòng rủi ro hoạt động mua nợ
+17,4316,Chứng khoán đầu tư
+18,4350,Chứng khoán đầu tư sẵn sàng để hàng
+19,4351,Chứng khoán đầu tư giữ đến ngày đáo hạn
+20,4352,Dự phòng giảm giá chứng khoán đầu tư
+21,4317,"Góp vốn, đầu tư dài hạn"
+22,4333,Đầu tư vào công ty con
+23,4354,Đầu tư vào công ty liên kết
+24,4334,Đầu tư dài hạn khác
+25,4355,Dự phòng giảm giá đầu tư dài hạn
+26,4307,Tài sản cố định
+27,4328,Tài sản cố định hữu hình
+28,4367,Nguyên giá tài sản cố định hữu hình
+29,4368,Giá trị hao mòn lũy kế tài sản cố định hữu hình
+30,4329,Tài sản cố định thuê tài chính
+31,4369,Nguyên giá tài sản cố định thuê tài chính
+32,4370,Giá trị hao mòn lũy kế tài sản cố định thuê tài chính
+33,4330,Tài sản cố định vô hình
+34,4371,Nguyên giá tài sản cố định vô hình
+35,4372,Giá trị hao mòn lũy kế tài sản cố định vô hình
+36,4308,Bất động sản đầu tư
+37,4331,Nguyên giá bất động sản đầu tư
+38,4332,Giá trị hao mòn lũy kế bất động sản đầu tư
+39,4327,Tài sản “Có” khác
+40,4356,Các khoản phải thu (NH)
+41,4357,"Các khoản lãi, phí phải thu"
+42,4335,Tài sản thuế thu nhập hoãn lại
+43,4366,Chi tiết Tài sản “Có” khác
+44,4309,Lợi thế thương mại
+45,4358,Các khoản dự phòng rủi ro cho các tài sản Có nội bảng khác
+46,4375,TỔNG CỘNG TÀI SẢN
+47,4303,NỢ PHẢ TRẢ VÀ VỐN CHỦ SỞ HỮU
+48,4318,Các khoản nợ Chính phủ và NHNN
+49,4319,Tiền gửi và vay các TCTD khác
+50,4359,Tiền gửi của các TCTD khác
+51,4360,Vay các TCTD khác
+52,4320,Tiền gửi của khách hàng
+53,4321,Các công cụ tài chính phái sinh và các khoản nợ tài chính khác
+54,4322,"Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro"
+55,4323,Phát hành giấy tờ có giá
+56,4324,Các khoản nợ khác
+57,4361,"Các khoản lãi, phí phải trả"
+58,4336,Thuế thu nhập hoãn lại phải trả
+59,4362,Các khoản phải trả và công nợ khác
+60,4363,Dự phòng rủi ro khác (Dự phòng cho công nợ tiềm ẩn và cam kết ngoại bảng)
+61,4304,TỔNG NỢ PHẢI TRẢ
+62,4325,Vốn và các quỹ
+63,4364,Vốn của TCTD
+64,4337,Vốn đầu tư của chủ sở hữu
+65,4373,Vốn đầu tư XDCB
+66,4338,Thặng dư vốn cổ phần
+67,4340,Cổ phiếu quỹ
+68,4374,Cổ phiếu ưu đãi
+69,4339,Vốn khác của chủ sở hữu
+70,4365,Quỹ của TCTD
+71,4342,Chênh lệch tỷ giá hối đoái
+72,4341,Chênh lệch đánh giá lại tài sản
+73,4343,Lợi nhuận chưa phân phối
+74,5699,Lợi ích cổ đông không kiểm soát
+75,4306,LỢI ÍCH CỦA CỔ ĐÔNG THIỂU SỐ (CDKT)
+76,4305,TỔNG NỢ PHẢI TRẢ VÀ VỐN CHỦ SỞ HỮU

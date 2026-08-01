@@ -1,0 +1,31 @@
+,ReportNormId,ReportNormName
+0,53,Thu nhập trên mỗi cổ phần của 4 quý gần nhất (EPS)
+1,54,Giá trị sổ sách của cổ phiếu (BVPS)
+2,55,Chỉ số giá thị trường trên thu nhập (P/E)
+3,57,Chỉ số giá thị trường trên giá trị sổ sách (P/B)
+4,60,Tỷ suất cổ tức
+5,61,Beta
+6,45,Tỷ suất lợi nhuận trên vốn chủ sở hữu bình quân (ROEA)
+7,47,Tỷ suất sinh lợi trên tổng tài sản bình quân (ROAA)
+8,106,Tỷ suất sinh lợi của Tài sản Có sinh lãi (YOEA)
+9,107,Tỷ lệ chi phí hình thành Tài sản Có sinh lãi (COF)
+10,108,Tỷ lệ thu nhập lãi thuần (NIM)
+11,109,Tỷ lệ chi phí hoạt động/Tổng thu nhập HĐKD trước dự phòng (CIR)
+12,32,Tăng trưởng lợi nhuận trước thuế 
+13,33,Tăng trưởng lợi nhuận sau thuế của CĐ ngân hàng mẹ
+14,34,Tăng trưởng tổng tài sản
+15,37,Tăng trưởng vốn chủ sở hữu
+16,38,Tăng trưởng vốn điều lệ
+17,72,Tăng trưởng dư nợ cho vay
+18,111,Tăng trưởng huy động vốn khách hàng
+19,112,Tăng trưởng thu nhập lãi thuần
+20,113,Tăng trưởng dự phòng rủi ro tín dụng
+21,114,Tăng trưởng thu phí dịch vụ thuần
+22,115,Tăng trưởng tổng thu nhập HĐKD trước dự phòng
+23,116,Tăng trưởng tổng chi phí HĐKD
+24,80,Dư nợ cho vay khách hàng/Tổng vốn huy động (LDR)
+25,81,Dư nợ cho vay/Tổng tài sản Có
+26,119,Vốn chủ sở hữu/Tổng vốn huy động 
+27,120,Vốn chủ sở hữu/Tổng tài sản Có
+28,117,Dự phòng rủi ro tín dụng/Tổng dư nợ
+29,118,Tài sản Có sinh lãi/Tổng tài sản Có
