@@ -52,6 +52,16 @@ BCTC_MODEL_CACHE_DIR=/dev/shm/bctc-paddlex \
   bash scripts/models/run_paddleocr_vl.sh INPUT.png OUTPUT_DIRECTORY
 ```
 
+Run PP-OCRv6 on an image that has already passed the page-quality/preprocessing gate:
+
+```bash
+BCTC_MODEL_CACHE_DIR=/dev/shm/bctc-paddlex \
+BCTC_DATASET_ROLE=CALIBRATION \
+  bash scripts/models/run_ppocrv6_word_boxes.sh PREPROCESSED.png OUTPUT_DIRECTORY
+```
+
+The PP-OCRv6 runner refuses an existing output directory and a dirty Git worktree, verifies both local model hashes, blocks all process socket connections, disables implicit orientation/unwarp, and writes only `ocr_result.json` plus an atomic `run_manifest.json`. It does not render an image or download a font. `BCTC_ALLOW_DIRTY_OCR_SMOKE=true` exists only for non-evidence development smoke tests and is recorded as `code.dirty=true`; such output cannot be sealed or promoted.
+
 Measure the same run:
 
 ```bash
@@ -76,8 +86,11 @@ For a clean born-digital page, E-0007 explicitly disabled orientation classifica
 | E-0007 attempt 3 | inference succeeded, export FAIL | CLI `save_all` imported missing `docx` | pin python-docx 1.2.0 |
 | E-0007 attempt 4 | PASS | full inference and all registered exports completed | retain as the current logic-development baseline |
 | E-0011 backend preflight | GPU wheel rejected before install | Paddle 3.3.0 CUDA 13.0 requires exact NVIDIA dependency versions that conflict with PyTorch 2.12 | use the official hash-pinned Paddle 3.3.0 CPU FP32 backend for PP-OCRv6; keep PyTorch CUDA unchanged |
+| E-0011 runtime attempt 1 | FAIL during detection | oneDNN/MKLDNN could not convert a PP-OCRv6 PIR array attribute | disable MKLDNN; use Paddle static CPU FP32 |
+| E-0011 runtime attempt 2 | core OCR PASS, export path rejected | generic CLI called its renderer and attempted an unpinned font download after inference | replace CLI export with the network-blocked JSON-only runner |
+| E-0011 runtime attempt 3 | development smoke PASS | JSON-only runner returned 50 line boxes and 380 word tokens from TCB scan page 15 in 24.11 seconds | commit runner, then rerun from a clean commit for evidence |
 
-The three measured failures and final pass remain in `docs/experiments/E-0007-paddleocr-vl-runtime.json`. Do not delete failed attempts from the experimental record.
+The E-0007 measured failures and final pass remain in `docs/experiments/E-0007-paddleocr-vl-runtime.json`. E-0011 retains its backend/runtime attempts in its own experiment record. Do not delete failed attempts from either record.
 
 ## Known warnings and gates
 
