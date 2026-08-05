@@ -1,0 +1,9 @@
+version: 1
+CDKT:
+  excluded_section: OFF_BALANCE_SHEET
+  exact_or_heading_anchors:
+    - Bảo lãnh vay vốn
+    - Cam kết giao dịch hối đoái
+    - Tài sản và chứng từ khác
+  action: DO_NOT_MAP_TO_CDKT
+  rationale: User confirmed these are outside the balance sheet on 2026-08-05.

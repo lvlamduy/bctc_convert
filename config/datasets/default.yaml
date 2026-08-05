@@ -1,0 +1,8 @@
+version: 1
+source_roots:
+  - vietstock_bctc
+registry: data/registered/source_registry.jsonl
+default_role: LOGIC_DEVELOPMENT
+holdout:
+  immutable_assignments: true
+  allowed_evidence_manifest_required: true

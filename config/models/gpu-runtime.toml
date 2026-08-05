@@ -1,0 +1,12 @@
+version = 1
+status = "PLANNED_NOT_INSTALLED"
+python = "3.11"
+torch = "2.12.0"
+torch_index_url = "https://download.pytorch.org/whl/cu130"
+cuda_runtime = "13.0"
+required_compute_capability = "12.0"
+required_native_arch = "sm_120"
+minimum_linux_driver = "580.65.06"
+host_driver = "595.80"
+isolation_directory = ".gpu-venv"
+acceptance_command = ".gpu-venv/bin/python scripts/diagnostics/gpu_smoke.py"

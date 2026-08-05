@@ -1,0 +1,9 @@
+version: 1
+statuses:
+  - AUTO_VERIFIED_HIGH
+  - AUTO_VERIFIED_MEDIUM
+  - REVIEW_REQUIRED
+  - UNRESOLVED
+  - NOT_APPLICABLE
+  - NOT_OBSERVED
+question_grouping: table_axis_first

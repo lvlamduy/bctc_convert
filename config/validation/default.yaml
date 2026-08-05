@@ -1,0 +1,16 @@
+version: 1
+may_generate_values: false
+checks:
+  - assets_equal_liabilities_plus_equity
+  - parent_equals_children
+  - gross_plus_allowance_equals_net
+  - opening_plus_movement_equals_closing
+  - opening_cash_plus_net_change_equals_closing_cash
+  - loan_quality_children_equal_parent
+on_failure:
+  - reread_cell
+  - check_sign
+  - check_period
+  - check_unit
+  - check_row
+  - check_branch

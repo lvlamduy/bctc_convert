@@ -1,0 +1,13 @@
+services:
+  cpu-pipeline:
+    build: .
+    volumes:
+      - ./:/workspace/bctc-ai
+    working_dir: /workspace/bctc-ai
+    environment:
+      PYTHONPATH: /workspace/bctc-ai/src
+    command: ["audit"]
+
+# GPU document/OCR/mapper services receive separate, benchmarked images later.
+# They are not placed in this bootstrap image because the host GPU requires
+# compute capability 12.0 support absent from the preinstalled PyTorch build.

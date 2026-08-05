@@ -1,0 +1,8 @@
+version: 1
+append_only: true
+sources:
+  CDKT: template/Bank_CDKT_ReportNormId.xlsx
+  KQKD: template/Bank_KQKD_ReportNormId.xlsx
+  LCTT: template/Bank_LCTT_ReportNormId.xlsx
+  TM: template/Bank_TM_ReportNormId.xlsx
+pending_additions: proposed_schema_additions.jsonl

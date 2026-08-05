@@ -1,0 +1,13 @@
+{"fixture_id":"clear-cdkt","status":"SPECIFIED_NOT_CAPTURED","requirement":"Clear CDKT table"}
+{"fixture_id":"duplicate-label","status":"SPECIFIED_NOT_CAPTURED","requirement":"Duplicate label with hierarchy"}
+{"fixture_id":"short-child","status":"SPECIFIED_NOT_CAPTURED","requirement":"Short child label"}
+{"fixture_id":"lctt-branches","status":"BLOCKED_BY_Q_BOOT_001","requirement":"Direct and indirect cash-flow branches"}
+{"fixture_id":"opening-closing-cash","status":"SPECIFIED_NOT_CAPTURED","requirement":"Opening and closing cash"}
+{"fixture_id":"multi-page-notes","status":"SPECIFIED_NOT_CAPTURED","requirement":"Multi-page Notes table"}
+{"fixture_id":"transposed-table","status":"SPECIFIED_NOT_CAPTURED","requirement":"Transposed table"}
+{"fixture_id":"blurry-crop","status":"SPECIFIED_NOT_CAPTURED","requirement":"Blurry crop"}
+{"fixture_id":"missing-final-digit","status":"SPECIFIED_NOT_CAPTURED","requirement":"Missing final digit disagreement"}
+{"fixture_id":"vietnamese-font-corruption","status":"SPECIFIED_NOT_CAPTURED","requirement":"Vietnamese font corruption"}
+{"fixture_id":"unit-previous-page","status":"SPECIFIED_NOT_CAPTURED","requirement":"Unit propagated from previous page"}
+{"fixture_id":"current-comparative-headers","status":"SPECIFIED_NOT_CAPTURED","requirement":"Geometry-bound current/comparative headers"}
+{"fixture_id":"parent-child-reconciliation","status":"SPECIFIED_NOT_CAPTURED","requirement":"Parent-child reconciliation"}

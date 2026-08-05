@@ -1,0 +1,419 @@
+{
+  "backup": {
+    "archive": "/workspace/bctc-ai-backups/bctc-ai-control-plane-20260805T183355Z.tar.gz",
+    "archive_sha256": "d1a0ea0fd3ea1e78a1ef1cb1f06fb0bfd5c880c05bd88d14f27c571023cb7b15",
+    "development_status": "PASS",
+    "file_count": 142,
+    "manifest": "/workspace/bctc-ai-backups/bctc-ai-control-plane-20260805T183355Z.tar.gz.manifest.json",
+    "off_machine": false,
+    "production_status": "FAIL",
+    "restored_and_verified": true
+  },
+  "bank_list": {
+    "counts": {
+      "BANK": 27,
+      "INSURANCE": 13,
+      "SECURITIES_OR_FUND": 59
+    },
+    "path": "Bank_list_id.xlsx",
+    "registry": "data/registered/bank_registry.json",
+    "sha256": "4857e8124574ab127844a9605ea340648052469c1c1965394a317f2aba69da3b",
+    "size_bytes": 11175
+  },
+  "captured_at": "2026-08-05T18:33:55.133988+00:00",
+  "environment": {
+    "architecture": "x86_64",
+    "captured_at": "2026-08-05T18:33:51.243118+00:00",
+    "cpu": {
+      "logical_count": 32,
+      "model": "AMD Ryzen 9 5950X 16-Core Processor"
+    },
+    "disk": {
+      "free_bytes": 13178277888,
+      "total_bytes": 42283094016,
+      "used_bytes": 29104816128
+    },
+    "gpu": {
+      "available": true,
+      "devices": [
+        {
+          "compute_capability": "12.0",
+          "driver_version": "595.80",
+          "index": 0,
+          "memory_free_mib": 15805,
+          "memory_total_mib": 16303,
+          "name": "NVIDIA GeForce RTX 5070 Ti",
+          "uuid": "GPU-e2e6d226-6c1f-bbb8-70c6-6d7fb8323b81"
+        }
+      ],
+      "reported_cuda": "13.2"
+    },
+    "hostname": "O-2004251",
+    "kernel": "6.6.0-hiveos",
+    "memory": {
+      "Active": 3112239104,
+      "Active(anon)": 782946304,
+      "Active(file)": 2329292800,
+      "AnonHugePages": 421527552,
+      "AnonPages": 856227840,
+      "Bounce": 0,
+      "Buffers": 106000384,
+      "Cached": 60276727808,
+      "CmaFree": 0,
+      "CmaTotal": 0,
+      "CommitLimit": 67354472448,
+      "Committed_AS": 5038780416,
+      "DirectMap1G": 130996502528,
+      "DirectMap2M": 6006243328,
+      "DirectMap4k": 338546688,
+      "Dirty": 1216512,
+      "FileHugePages": 35651584,
+      "FilePmdMapped": 0,
+      "HardwareCorrupted": 0,
+      "HugePages_Free": 131072,
+      "HugePages_Rsvd": 0,
+      "HugePages_Surp": 0,
+      "HugePages_Total": 131072,
+      "Hugepagesize": 2097152,
+      "Hugetlb": 268435456,
+      "Inactive": 58149810176,
+      "Inactive(anon)": 1453527040,
+      "Inactive(file)": 56696283136,
+      "KReclaimable": 1280167936,
+      "KernelStack": 13123584,
+      "Mapped": 571699200,
+      "MemAvailable": 130407931904,
+      "MemFree": 71379599360,
+      "MemTotal": 134977380352,
+      "Mlocked": 0,
+      "NFS_Unstable": 0,
+      "PageTables": 10772480,
+      "Percpu": 28311552,
+      "SReclaimable": 1204088832,
+      "SUnreclaim": 382750720,
+      "SecPageTables": 0,
+      "Shmem": 1357148160,
+      "ShmemHugePages": 0,
+      "ShmemPmdMapped": 0,
+      "Slab": 1586839552,
+      "SwapCached": 0,
+      "SwapFree": 0,
+      "SwapTotal": 0,
+      "Unevictable": 0,
+      "VmallocChunk": 0,
+      "VmallocTotal": 35184372087808,
+      "VmallocUsed": 82558976,
+      "Writeback": 0,
+      "WritebackTmp": 0,
+      "Zswap": 0,
+      "Zswapped": 0
+    },
+    "mongodb": {
+      "client_available": true,
+      "environment_variable_names": [],
+      "external_connection_verified": false,
+      "local_loopback_connection_verified": false,
+      "local_template_document_count": null
+    },
+    "os": {
+      "BUG_REPORT_URL": "https://bugs.launchpad.net/ubuntu/",
+      "HOME_URL": "https://www.ubuntu.com/",
+      "ID": "ubuntu",
+      "ID_LIKE": "debian",
+      "NAME": "Ubuntu",
+      "PRETTY_NAME": "Ubuntu 22.04.5 LTS",
+      "PRIVACY_POLICY_URL": "https://www.ubuntu.com/legal/terms-and-policies/privacy-policy",
+      "SUPPORT_URL": "https://help.ubuntu.com/",
+      "UBUNTU_CODENAME": "jammy",
+      "VERSION": "22.04.5 LTS (Jammy Jellyfish)",
+      "VERSION_CODENAME": "jammy",
+      "VERSION_ID": "22.04"
+    },
+    "tools": {
+      "docker": {
+        "available": false,
+        "version": "[Errno 2] No such file or directory: 'docker'"
+      },
+      "git": {
+        "available": true,
+        "version": "git version 2.34.1"
+      },
+      "mongod": {
+        "available": true,
+        "version": "db version v7.0.34"
+      },
+      "mongorestore": {
+        "available": true,
+        "version": "mongorestore version: 100.14.0"
+      },
+      "mongosh": {
+        "available": false,
+        "version": "[Errno 2] No such file or directory: 'mongosh'"
+      },
+      "nvcc": {
+        "available": false,
+        "version": "[Errno 2] No such file or directory: 'nvcc'"
+      },
+      "pdfinfo": {
+        "available": false,
+        "version": "[Errno 2] No such file or directory: 'pdfinfo'"
+      },
+      "python": {
+        "available": true,
+        "version": "Python 3.11.10"
+      },
+      "tesseract": {
+        "available": false,
+        "version": "[Errno 2] No such file or directory: 'tesseract'"
+      },
+      "uv": {
+        "available": true,
+        "version": "uv 0.12.1 (x86_64-unknown-linux-gnu)"
+      }
+    },
+    "torch": {
+      "architectures": [
+        "sm_50",
+        "sm_60",
+        "sm_70",
+        "sm_75",
+        "sm_80",
+        "sm_86",
+        "sm_90"
+      ],
+      "available": true,
+      "cuda_available": true,
+      "cuda_build": "12.4",
+      "version": "2.5.1+cu124"
+    }
+  },
+  "format_version": 1,
+  "git": {
+    "branch": "codex/rebuild-bootstrap",
+    "commit": "9b96a86773dd866688d48614b67bd3eb83ad89d2",
+    "dirty": true,
+    "remotes": [
+      "origin"
+    ]
+  },
+  "mongodb": {
+    "dump_registry": {
+      "archive": {
+        "header": {
+          "database": "financial_20_02_2022",
+          "first_collection": "industry_comparison_definitions",
+          "server_version": "7.0.28",
+          "tool_version": "100.14.0"
+        },
+        "path": "financial_20_02_2022.gz",
+        "sha256": "0456df4aebb93b58c433b0d2a8c13bbb9402e1511d07758716976b94989204b9",
+        "size_bytes": 526178025
+      },
+      "captured_at": "2026-08-05T18:27:43.654565+00:00",
+      "collision_audit": {
+        "append_safe_from_id_collision_perspective": true,
+        "hierarchy_reference_collisions": [],
+        "mongodb_template_collisions": [],
+        "nearest_mongodb_name_candidates": [
+          {
+            "chart_menu_id": 1097,
+            "name_similarity": 0.597701,
+            "report_name": "Cho vay tổ chức tín dụng khác",
+            "report_norm_id": 585
+          },
+          {
+            "chart_menu_id": 1097,
+            "name_similarity": 0.588235,
+            "report_name": "+Phải thu từ bán chứng khoán",
+            "report_norm_id": 976
+          },
+          {
+            "chart_menu_id": 1153,
+            "name_similarity": 0.584906,
+            "report_name": "10. (Tăng)/Giảm các khoản về kinh doanh chứng khoán",
+            "report_norm_id": 4130
+          },
+          {
+            "chart_menu_id": 1102,
+            "name_similarity": 0.568627,
+            "report_name": "V. Lãi/lỗ thuần từ mua bán chứng khoán đầu tư",
+            "report_norm_id": 4389
+          },
+          {
+            "chart_menu_id": 1026,
+            "name_similarity": 0.56,
+            "report_name": "1. Cho vay và cho thuê tài chính khách hàng",
+            "report_norm_id": 4348
+          },
+          {
+            "chart_menu_id": 1097,
+            "name_similarity": 0.557692,
+            "report_name": "+ Cho vay các tổ chức kinh tế, cá nhân trong nước",
+            "report_norm_id": 718
+          },
+          {
+            "chart_menu_id": 1097,
+            "name_similarity": 0.542056,
+            "report_name": "Lãi thuần từ hoạt động mua bán chứng khoán đầu tư",
+            "report_norm_id": 1193
+          },
+          {
+            "chart_menu_id": 1102,
+            "name_similarity": 0.542056,
+            "report_name": "IV. Lãi/lỗ thuần từ mua bán chứng khoán kinh doanh",
+            "report_norm_id": 4388
+          },
+          {
+            "chart_menu_id": 1097,
+            "name_similarity": 0.54,
+            "report_name": "+ Dự phòng cho vay các tổ chức tín dụng khác(*)",
+            "report_norm_id": 590
+          },
+          {
+            "chart_menu_id": 1097,
+            "name_similarity": 0.534884,
+            "report_name": "Dịch vụ môi giới chứng khoán",
+            "report_norm_id": 1170
+          }
+        ],
+        "proposed_id": 1944,
+        "proposed_name": "Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
+        "semantic_or_parent_approval_still_required": true,
+        "supplied_schema_collisions": []
+      },
+      "format_version": 1,
+      "hierarchy_reference_status": "VALIDATED_SUPPORTING_REFERENCE",
+      "restored_scope": {
+        "bank_document_count": 1571,
+        "collection": "financial_report_templates",
+        "database": "financial_20_02_2022",
+        "document_count": 1851,
+        "excluded_out_of_scope_collections": [
+          "user",
+          "chat_sessions"
+        ]
+      }
+    },
+    "runtime": {
+      "client_available": true,
+      "environment_variable_names": [],
+      "external_connection_verified": false,
+      "local_loopback_connection_verified": false,
+      "local_template_document_count": null
+    }
+  },
+  "project": "bctc-ai",
+  "schemas": {
+    "contains_tm_1944": false,
+    "counts": {
+      "CDKT": 77,
+      "KQKD": 24,
+      "LCTT": 107,
+      "TM": 1384
+    },
+    "graph": "reference/schemas/schema_graph.jsonl",
+    "graph_hash": "22cbcc6fe8bbddf787a43c588c9b5f445bb2b75dd6a4b02c5e9f81f7d0418368",
+    "hierarchy_reference": {
+      "authority": "USER_SUPPLIED_VST_LEVEL",
+      "item_count": 1535,
+      "status": "VALIDATED_SUPPORTING_REFERENCE",
+      "version": 1,
+      "workbooks": [
+        {
+          "coverage": "FULL_STATEMENT",
+          "item_count": 77,
+          "maximum_id": 5699,
+          "minimum_id": 4302,
+          "non_id_labels": [],
+          "path": "vst_level/vst_bank_balance_sheet.xlsx",
+          "sha256": "3d57157859f08dd21b029a0ad7488e64c7df7d4b1ad6cde424296d02836da065",
+          "skipped_blank_rows": 47,
+          "statement_type": "CDKT"
+        },
+        {
+          "coverage": "FULL_STATEMENT",
+          "item_count": 24,
+          "maximum_id": 4399,
+          "minimum_id": 4376,
+          "non_id_labels": [],
+          "path": "vst_level/vst_bank_income_sheet.xlsx",
+          "sha256": "eb2895882ad523344aee3b2ff83c34f0367d42c0245acc3f04c82cbc3eb78730",
+          "skipped_blank_rows": 0,
+          "statement_type": "KQKD"
+        },
+        {
+          "coverage": "BRANCH_DIRECT",
+          "item_count": 50,
+          "maximum_id": 4154,
+          "minimum_id": 4104,
+          "non_id_labels": [
+            "LƯU CHUYỂN TIỀN TỆ TRỰC TIẾP"
+          ],
+          "path": "vst_level/vst_bank_cashflow_sheet.xlsx",
+          "sha256": "a52815dd606ca74ba7cbc713ec34494474a5d7ac567223da84b346300eb658fe",
+          "skipped_blank_rows": 0,
+          "statement_type": "LCTT"
+        },
+        {
+          "coverage": "FULL_STATEMENT",
+          "item_count": 1384,
+          "maximum_id": 1943,
+          "minimum_id": 560,
+          "non_id_labels": [],
+          "path": "vst_level/vst_bank_detailed_notes_sheet.xlsx",
+          "sha256": "6f322f7ba3b1b737643d21890b9bd51ea00224cea6ac65cfa41036d68ccd885b",
+          "skipped_blank_rows": 0,
+          "statement_type": "TM"
+        }
+      ]
+    },
+    "lctt_semantics": "WORKBOOK_BLOCKS_VERIFIED_SEMANTIC_CONFLICT_REOPENED_2026_08_05",
+    "total_items": 1592,
+    "workbooks": [
+      {
+        "item_count": 77,
+        "maximum_id": 5699,
+        "minimum_id": 4302,
+        "path": "template/Bank_CDKT_ReportNormId.xlsx",
+        "sha256": "a07ff47f7c41011fe4ca5a66681106d476586ded9013b5874cbb9f67a6ad8486",
+        "statement_type": "CDKT"
+      },
+      {
+        "item_count": 24,
+        "maximum_id": 4399,
+        "minimum_id": 4376,
+        "path": "template/Bank_KQKD_ReportNormId.xlsx",
+        "sha256": "6033001b85a236fce4b29437d56cc02d7c6a21f95e82b43de043b1268eb74615",
+        "statement_type": "KQKD"
+      },
+      {
+        "item_count": 107,
+        "maximum_id": 4211,
+        "minimum_id": 4104,
+        "path": "template/Bank_LCTT_ReportNormId.xlsx",
+        "sha256": "2c9d52737c492f115895eab9a571da2269fcfd3c3e77539ec581782e579d260a",
+        "statement_type": "LCTT"
+      },
+      {
+        "item_count": 1384,
+        "maximum_id": 1943,
+        "minimum_id": 560,
+        "path": "template/Bank_TM_ReportNormId.xlsx",
+        "sha256": "6af23d7bf930fe6db7cbfb83df78c7c7ab876142757d1dde5707c1667b54a8a0",
+        "statement_type": "TM"
+      }
+    ]
+  },
+  "sources": {
+    "added_during_registration": [],
+    "inventory_attempts": 1,
+    "inventory_stable": true,
+    "pdf_count": 2567,
+    "registry": "data/registered/source_registry.jsonl",
+    "registry_hash": "c243bf88668eeba67ab14eebf11aba37e31f9c1bf80e180f72643f8491035c84",
+    "removed_during_registration": [],
+    "total_bytes": 17761344114,
+    "unique_content_count": 2435,
+    "unstable_file_count": 0
+  }
+}

@@ -1,8 +1,31 @@
-# Git Ignore Rules
-
-# Ignore PDF files
+# Source PDFs are registered by SHA-256 and stored outside Git.
 *.pdf
-
-# Ignore virtual environment directory
+*.gz
 vietstock_bctc/
-*.pdf
+
+# Local environments and caches.
+.venv/
+.gpu-venv/
+.tools/
+.local-mongodb/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Generated/run artifacts. Registry manifests remain tracked.
+output/**
+!output/.gitkeep
+data/incoming/**
+!data/incoming/.gitkeep
+data/immutable/**
+!data/immutable/.gitkeep
+
+# Secrets and local overrides.
+.env
+*.pem
+*.key
+config/local/
+data/registered/*.lock

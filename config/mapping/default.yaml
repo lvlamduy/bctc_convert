@@ -1,0 +1,22 @@
+version: 1
+fail_closed: true
+candidate_limit: 20
+minimum_candidate_gap_for_high: 0.15
+features:
+  - exact_label
+  - normalized_label
+  - accent_insensitive_retrieval
+  - parent
+  - previous_next
+  - section
+  - statement
+  - physical_proximity
+  - schema_order
+  - unit
+  - period
+  - sign
+  - scope
+  - historical_weak_reference
+  - accounting_check
+global_alignment: ordered_subtree
+value_similarity_alone_allowed: false

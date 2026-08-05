@@ -1,0 +1,35 @@
+version: 1
+approval_state: UNBENCHMARKED
+execution:
+  location: USER_VPS
+  external_token_cost: false
+  targeted_passes: AS_MANY_AS_EVIDENCE_REQUIRES
+scheduler:
+  concurrent_large_gpu_models: 1
+  checkpoint_before_unload: true
+  clear_cuda_cache_between_models: true
+adapters:
+  primary_document:
+    candidates:
+      - PaddleOCR-VL-1.6
+      - MinerU2.5-Pro
+      - PP-StructureV3
+  independent_geometry:
+    candidates:
+      - PP-OCRv6
+      - PDF_NATIVE_WORD_GEOMETRY
+  difficult_region:
+    candidates:
+      - DeepSeek-OCR-2
+  mapping_reranker:
+    candidates:
+      - Qwen3.6-27B
+research_basis:
+  paddleocr_vl_1_6: https://arxiv.org/abs/2606.03264
+  mineru_2_5_pro: https://arxiv.org/abs/2604.04771
+  deepseek_ocr_2: https://arxiv.org/abs/2601.20552
+  findocbench: https://arxiv.org/abs/2603.11044
+runtime_constraint:
+  gpu_compute_capability: "12.0"
+  vram_mib: 16303
+  current_torch_approved: false

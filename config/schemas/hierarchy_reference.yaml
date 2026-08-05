@@ -1,0 +1,37 @@
+version: 1
+authority: USER_SUPPLIED_VST_LEVEL
+root: vst_level
+sources:
+  CDKT:
+    path: vst_bank_balance_sheet.xlsx
+    coverage: FULL_STATEMENT
+    columns:
+      label: ReportName
+      schema_id: ReportNormID
+      level: LevelData
+      parent_id: ParentID
+  KQKD:
+    path: vst_bank_income_sheet.xlsx
+    coverage: FULL_STATEMENT
+    columns:
+      label: ReportName
+      schema_id: ReportNormID
+      level: Level
+      parent_id: ParentID
+  LCTT:
+    path: vst_bank_cashflow_sheet.xlsx
+    coverage: BRANCH_DIRECT
+    allow_labeled_rows_without_id: true
+    columns:
+      label: ReportName
+      schema_id: ReportNormID
+      level: Level
+      parent_id: ParentID
+  TM:
+    path: vst_bank_detailed_notes_sheet.xlsx
+    coverage: FULL_STATEMENT
+    columns:
+      label: ReportName
+      schema_id: ReportNormID
+      level: LevelData
+      parent_id: ParentID

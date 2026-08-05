@@ -1,0 +1,102 @@
+# Project memory, strategy, results, and change log
+
+This is the durable retrieval point for project context. It summarizes user authority, design strategy, verified results, open constraints, and changes. Detailed normative checks remain in `ACCURACY_REQUIREMENTS.md`; current metrics remain in `PROGRESS_REPORT.md`; individual decisions live under `docs/decisions/`.
+
+## Authoritative user clarifications
+
+### 2026-08-05 — mapping context
+
+- Item order is critical because many labels repeat.
+- Resolve ambiguity using item clusters, parent/child, preceding/following rows, physical position, section, and schema order; never use a name alone when it returns several candidates.
+- Main-statement note columns are references into TM, not values.
+- Assess and correct blur, dark/colored table headers, skew, and perspective before OCR.
+- The user supplied a hierarchy reference folder named approximately `vsl_level`; it is present as `vst_level` and now contains four hierarchy workbooks. Treat those workbooks as supporting structural evidence, preserve their hashes, and never let them override visible PDF evidence.
+
+### 2026-08-05 — cash flow and scope
+
+- Indirect LCTT ordered anchors: 4162 “Lợi nhuận trước thuế” then 4156 “Điều chỉnh cho các khoản”.
+- Direct LCTT ordered anchors: 4123 interest received then 4124 interest paid.
+- Cash-flow schema membership must be segmented by contiguous workbook position, never by numeric interval. The workbook has block 1 at positions 1–57 (endpoint IDs 4155→4168, profit/adjustment anchors) and block 2 at positions 58–107 (endpoint IDs 4104→4116, receipt/payment anchors); ID 4154 is at position 63, not a branch endpoint.
+- The user's latest wording calls 4104–4154 indirect and 4155–4168 direct, which conflicts with the earlier ordered examples, visible labels, the `vst_level` direct-title workbook, and the actual endpoints. `Q-BOOT-001` is reopened; branch blocks are preserved and semantic high-confidence acceptance is fail-closed meanwhile.
+- “Bảo lãnh vay vốn”, “Cam kết giao dịch hối đoái”, “Tài sản và chứng từ khác”, and similar off-balance-sheet indicators must not map to CDKT.
+
+### 2026-08-05 — tables and validation
+
+- Tables and even rows can break across pages.
+- Long item labels can wrap across several lines and must become one logical row.
+- Validate horizontal totals, vertical totals, and child sums against parents. Validation diagnoses and triggers rereads; it never invents a value.
+- Models run locally on the user’s VPS with no external token charge, so use as many targeted independent passes as accuracy needs while respecting GPU VRAM.
+
+### 2026-08-05 — scale, models, and cumulative periods
+
+- Use current state-of-the-art model candidates, but the main reliability comes from general logic and algorithms.
+- The system must generalize across thousands of banks/companies, separate/parent/consolidated scope, quarters, years, audit/review status, and layouts. Never enumerate bank/page/coordinate cases.
+- Regulatory forms and semantic order are reusable; bank- and period-specific names belong in evidence-backed alias data/config, not procedural code.
+- Some quarterly reports present cumulative/YTD values. When the requested output is quarter-only, derive by subtraction only from two visible PDF values with matching schema, scope, unit, accounting basis, and compatible periods. Preserve both source-cell provenances and the formula. A derived result can never be high-confidence as a directly observed cell.
+- Store project notes, strategies, results, and changes durably in Markdown so they are not dependent on chat history.
+- Commit every verified implementation milestone to the feature branch so code can be recovered and compared by version. Keep source PDFs, model weights, secrets, and generated run output outside Git.
+- Record every installed package/model/driver, version, upstream URL/revision, SHA-256, configuration, smoke test, and rebuild command. Preserve test strategy and paper-derived hypotheses in versioned files.
+
+## General strategy
+
+1. Register every input by SHA-256 and freeze dataset role before inspection.
+2. Classify PDF pages with a sequence decoder, retaining UNKNOWN when text/OCR evidence is absent.
+3. Render at controlled DPI; assess page and local regions; create only relevant reversible variants.
+4. Run a document parser plus independent word/cell geometry OCR; escalate difficult crops to another model family.
+5. Reconstruct tables through proposal fusion, logical wrapped rows, and evidence-gated cross-page continuation.
+6. Bind period, unit, sign, scope, and note reference by header-to-column geometry.
+7. Generate candidates from schema/aliases, then use ordered dynamic-programming/subtree alignment and global constraints. Values are not standalone mapping features.
+8. Validate arithmetic without value generation; reread disagreements.
+9. Keep Role A and Role B evidence isolated for frozen evaluation.
+10. Export accepted values plus complete provenance/review/unresolved/questions/schema-additions/run metadata.
+
+## Model/runtime strategy
+
+- Primary benchmark candidate: PaddleOCR-VL-1.6 (0.9B) for document structure.
+- Independent geometry/numeric candidate: the current PP-OCR generation and PP-StructureV3.
+- Independent document candidate: MinerU 3.x hybrid.
+- Difficult-region candidate: DeepSeek-OCR-2.
+- Mapping reranker candidate: Qwen3.6-27B quantized, with small row/block prompts only. Its fit on 16 GB VRAM must be measured; it is not the numeric reader.
+- Model names do not grant approval. Each must pass Vietnamese bank fixtures, exact-number/sign tests, table geometry, throughput, VRAM, and hallucination measurements.
+- The RTX 5070 Ti is Blackwell `sm_120`. Preinstalled PyTorch 2.5.1+cu124 fails a real CUDA kernel smoke test. An isolated PyTorch 2.12 CUDA 13.0 candidate is documented but will not be installed until upload finishes and disk is re-audited.
+
+## Verified current results
+
+- Git remote exists and is reachable; work is on feature branch `codex/rebuild-bootstrap`.
+- Hardware audit: RTX 5070 Ti 16,303 MiB, Ryzen 9 5950X, about 125.7 GiB RAM, Ubuntu 22.04, NVIDIA driver 595.80.
+- Supplied schema contains 1,592 unique IDs: CDKT 77, KQKD 24, LCTT 107, TM 1,384. TM ID 1944 is absent and remains an append-only proposal.
+- CPU environment is locked in `uv.lock`; bootstrap, atomic storage, source identity registry, role freezing, content-addressed materialization, render/preprocess, local difficult-region variants, perspective correction, ordered alignment, continuation graph, row wrapping, arithmetic validation, and workbook export have executable tests.
+- Latest full test run before this entry: 52 passed; Ruff formatting and lint passed.
+- A real scanned/mixed ACB PDF page rendered and passed preprocessing checkpoint/hash verification.
+- A local control-plane backup restored and hash-verified, but production backup is still FAIL because it is not off-machine.
+- MongoDB access has not been discovered.
+- PDF upload is still active, so corpus count/size and source-registry completeness are not final.
+- `vst_level` contains four workbooks: balance sheet (77 populated IDs), income statement (24), direct cash flow (50 plus one title row without an ID), and detailed notes (1,384). IDs are unique within every file and all referenced parent IDs exist. The balance workbook contains 47 trailing blank rows; these must be ignored rather than interpreted as data. Cash-flow hierarchy coverage is direct-only and must not be treated as a complete LCTT hierarchy.
+- LCTT ordered blocks/anchors and CDKT scope exclusions are loaded from versioned YAML. Missing policy fails closed; branch assignment follows workbook positions and the algorithm contains no bank/page/coordinate-specific branch list.
+- Uploaded `financial_20_02_2022.gz` is a MongoDB gzip archive: 526,178,025 bytes, SHA-256 `0456df4aebb93b58c433b0d2a8c13bbb9402e1511d07758716976b94989204b9`, source server 7.0.28, Database Tools 100.14.0, database `financial_20_02_2022`.
+- Official Database Tools dry-run found 25 namespaces. Only `financial_report_templates` was restored locally for the first audit: 1,851 documents total, 1,571 bank documents. `user` and `chat_sessions` are explicitly out of scope.
+- ReportNormID 1944 has no collision in the 1,592 supplied schema IDs, the 1,535 validated hierarchy records, or all 1,851 Mongo template documents. This clears the ID-collision gate only; semantic name/parent and append authority remain separate gates.
+- Local Mongo reference runtime is pinned to Database Tools 100.14.0 and patched server 7.0.34, loopback-only on port 27018. Versions, official URLs, archive hashes, setup scripts, and rebuild procedure are under `docs/environment/`.
+
+## Open constraints and next decisions
+
+- Wait for source upload stability, rerun the drift-aware registry, and record the final denominator.
+- Register the `vst_level` workbook hashes and import its validated hierarchy as supporting SchemaGraph edges, retaining explicit partial coverage for LCTT.
+- The user accepts VPS-local artifacts during development and requires periodic working Git commits. Local restore remains required; document the single-server-loss risk rather than silently claiming off-machine protection.
+- Selectively restore `report_yearly` and `report_quaterly`, inventory their fields, and build a local DuckDB weak-reference index. Do not restore unrelated user/chat collections.
+- Install/benchmark the isolated Blackwell runtime only after disk capacity is stable.
+- Capture matched scan/searchable PDF pairs as golden fixtures, then measure parser/OCR disagreement.
+- Confirm the exact output-period expectations per template/run so PDF-only YTD-to-quarter derivation is applied only where required.
+
+## Change log
+
+- 2026-08-05: Created greenfield repository architecture, bootstrap documents, schema/source registries, atomic writes, local backup/restore verification, and fail-closed status contracts.
+- 2026-08-05: Recorded actual schema counts and proposed missing TM 1944 without mutating the workbook.
+- 2026-08-05: Added image quality, controlled variants, local dark-header crops, deskew/perspective handling, and real-PDF smoke run.
+- 2026-08-05: Added ordered contextual alignment, user-confirmed LCTT branch anchors, CDKT off-balance exclusions, continuation graph, wrapped-row assembly, arithmetic validation, and template-preserving workbook export.
+- 2026-08-05: Added dataset-role freeze, content-addressed immutable materialization for holdout/production, sequence phase decoder, and born-digital text evidence extraction.
+- 2026-08-05: Configured LCTT ordered anchors and CDKT off-balance exclusions as versioned data with fail-closed loading; full suite reached 48 passing tests.
+- 2026-08-05: Inventoried the newly populated `vst_level` hierarchy workbooks and recorded their partial/direct-only LCTT coverage.
+- 2026-08-05: Registered and allowlist-audited the uploaded MongoDB archive; verified ReportNormID 1944 has no collision in schema, hierarchy, or Mongo template documents.
+- 2026-08-05: Reopened the LCTT semantic decision after directly inspecting all 107 workbook rows; replaced numeric-range reasoning with contiguous workbook-order blocks.
+- 2026-08-05: Added pinned MongoDB install/start/restore/audit scripts, server rebuild documentation, test strategy, experiment log, and paper-to-experiment research notes.

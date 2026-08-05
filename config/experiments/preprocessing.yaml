@@ -1,0 +1,23 @@
+version: 1
+render:
+  default_dpi: 300
+  small_text_dpi: 450
+  difficult_crop_dpi: 600
+quality_thresholds:
+  blur_variance_minimum: 85.0
+  foreground_contrast_minimum: 65.0
+  background_nonuniformity_maximum: 10.0
+  noise_residual_maximum: 13.0
+  skew_degrees_minimum: 0.6
+  compression_blockiness_maximum: 1.8
+variant_selection:
+  requires_ocr_evidence: true
+  signals:
+    - ocr_confidence
+    - vietnamese_lexicon_consistency
+    - exact_numeric_consistency
+    - word_box_stability
+    - table_line_preservation
+    - cross_model_agreement
+    - accounting_result
+    - hallucination_rate

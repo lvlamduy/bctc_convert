@@ -1,0 +1,21 @@
+version: 1
+authority: USER_STATEMENTS_AND_VISIBLE_WORKBOOK_EVIDENCE_2026_08_05
+semantic_authority_status: REOPENED_EVIDENCE_CONFLICT
+maximum_anchor_distance: 8
+branches:
+  INDIRECT:
+    schema_order_blocks:
+      - [4155, 4168]
+    ordered_anchor_sequences:
+      - [4162, 4156]
+    label_anchor_sequences:
+      - ["Lợi nhuận trước thuế", "Điều chỉnh cho các khoản"]
+  DIRECT:
+    schema_order_blocks:
+      - [4104, 4116]
+    ordered_anchor_sequences:
+      - [4123, 4124]
+    label_anchor_sequences:
+      - ["Thu nhập lãi và các khoản thu nhập tương tự nhận được", "Chi phí lãi và các chi phí tương tự đã trả"]
+coverage_denominator: APPLICABLE_BRANCH_ONLY
+cross_branch_mapping: FORBIDDEN
