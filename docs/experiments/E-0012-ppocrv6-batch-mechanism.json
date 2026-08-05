@@ -1,0 +1,155 @@
+{
+  "format_version": 1,
+  "experiment_id": "E-0012",
+  "date": "2026-08-05",
+  "design": "CLEAN_COMMIT_BATCH_MECHANISM_REGRESSION",
+  "dataset_role": "CALIBRATION",
+  "status": "PASS_BATCH_EQUIVALENCE_RESUME_AND_SEAL",
+  "claim_boundary": "This result proves batch output equivalence, checkpoint verification, no-op resume, and seal compatibility on one previously measured calibration page. It adds no new accuracy sample, human gold, schema mapping, or production approval.",
+  "code": {
+    "git_commit": "3291f9dca0843b5d67858b44019a7b2319f69057",
+    "git_dirty": false
+  },
+  "source": {
+    "path": "vietstock_bctc/TCB/2024/techcombank-vas-bao-cao-tai-chinh-rieng-le-ye24.pdf",
+    "sha256": "7e3f491783a9895d7716199c3981cddebfc060ef7fa125724f421b7b646faafa",
+    "dataset_role_frozen": true,
+    "page": 15,
+    "render": {
+      "path": "output/calibration/e0009-tcb-role-b/7e3f491783a9895d7716/renders/page-0015.png",
+      "sha256": "2e18b2b90fb265734471b0f0ad5aabf9fe25375224fd020132e6d78a0c141048",
+      "dpi": 200,
+      "rotation": 270,
+      "width_pixels": 1654,
+      "height_pixels": 2338
+    }
+  },
+  "input_manifest": {
+    "path": "output/calibration/e0009-tcb-role-b/7e3f491783a9895d7716/manifest.json",
+    "sha256": "2cff09cf46ed8cba2eb02a76768f39bb756a57f267965c913454b4dc9564b058"
+  },
+  "upstream_role_b_seal": {
+    "path": "output/calibration/e0009-tcb-role-b/7e3f491783a9895d7716/role_b_ocr_seal.json",
+    "sha256": "2007b9281e0ee5eb80b12f6df069403d91186d710dcff68cb97fb085b7c32d89",
+    "artifact_set_sha256": "350ce77034a2adf1775b7117d1785588d17b905f5819fcc9e564f486a83b75d9"
+  },
+  "algorithm_files_sha256": {
+    "scripts/models/run_ppocrv6_word_boxes_batch.py": "7a716b0aa47dacc0b95454a46371721cc0af613892767f6e58e97035602322cb",
+    "scripts/models/run_ppocrv6_word_boxes.py": "bbbf2f101cec88ae99727393397df463623d47c2b31ef888e565fbe42c05d4b9",
+    "scripts/experiments/seal_independent_geometry_run.py": "98b02ad2ee29ab8c40514c4517be26142b46acb5b60a126ae2eb4742971d7460",
+    "src/bctc_ai/evaluation/sealing.py": "52e689730029f0317ceea4ea2aecc3e5bb662356c6d0ebc1b6096c496fadb2ad"
+  },
+  "configuration": {
+    "path": "config/models/pp-ocrv6-word-box.yaml",
+    "sha256": "a200fbbc8ba85460c9233875a7a025e8d08d892172d353ed820f69fd258e997b",
+    "cpu_threads": 8,
+    "device": "cpu",
+    "precision": "fp32",
+    "mkldnn": false,
+    "implicit_orientation_or_unwarp": false,
+    "network_policy": "PROCESS_SOCKET_CONNECT_DENIED"
+  },
+  "runtime": {
+    "manifest": {
+      "path": "config/models/gpu-runtime.toml",
+      "sha256": "9141e0a4177f66f152bdb9eecbbfdbdd3add566dbabb81b43207a018c1ba18d8"
+    },
+    "package_freeze": {
+      "path": "config/models/gpu-requirements.freeze.txt",
+      "sha256": "c0e8c43f84360a8eb0ebeff1ef5de43969bdd291eb2c7cee363c35ef2c78437b"
+    },
+    "packages": {
+      "paddlepaddle": "3.3.0",
+      "paddleocr": "3.7.0",
+      "paddlex": "3.7.2"
+    },
+    "models": [
+      {
+        "key": "pp_ocrv6_medium_det",
+        "revision": "8e0f56fb2ef86b461d99cfc7ac5c137738985f61",
+        "weights_sha256": "85218d2e3d98f5a21c58b4220627be923a97aee5db3cc71f39536ab31ac53960"
+      },
+      {
+        "key": "pp_ocrv6_medium_rec",
+        "revision": "e5a92bcbc5cc1b494628e458d267778f0704fd7c",
+        "weights_sha256": "1b01c79a914587933f615569e75de54f2e638ebb5d3f3b3c1b38c24ede8c7319"
+      }
+    ]
+  },
+  "batch": {
+    "path": "output/calibration/e0012-batch-mechanism-tcb15",
+    "identity_sha256": "3e9f83facd6dcda50487410b79ded4204a595565e970e0af4bf666e3e818d00c",
+    "manifest_sha256_after_resume": "76071509c1cff46d6018e2c8f9265eb46c4a8308bd023d72075beb198e49b6ce",
+    "state": "OCR_COMPLETE",
+    "metrics": {
+      "completed_page_count": 1,
+      "line_count": 50,
+      "word_token_count": 380,
+      "lines_below_0_8": 1,
+      "lines_below_0_9": 1,
+      "minimum_line_score": 0.7611584663391113,
+      "mean_line_score": 0.9787058293819427,
+      "model_load_session_count": 1,
+      "model_load_wall_seconds_total": 0.606621,
+      "page_inference_wall_seconds": 20.883811
+    },
+    "page_manifest": {
+      "path": "output/calibration/e0012-batch-mechanism-tcb15/ppocrv6-page-0015/run_manifest.json",
+      "sha256": "93e2d3a0c2912e7f51784cdc3df0ca684388ad92d1f8f1b17f1950e4a4cd4cab"
+    },
+    "ocr_result": {
+      "path": "output/calibration/e0012-batch-mechanism-tcb15/ppocrv6-page-0015/ocr_result.json",
+      "sha256": "91779b3e22fadc01eeca7605c71a356e577e56541363ac91ea2750645721c54b"
+    }
+  },
+  "equivalence": {
+    "baseline": "E-0011 single-page runner output for TCB page 15",
+    "baseline_ocr_result_path": "output/calibration/e0011-tcb-role-c/7e3f491783a9895d7716/ppocrv6-page-0015/ocr_result.json",
+    "baseline_ocr_result_sha256": "91779b3e22fadc01eeca7605c71a356e577e56541363ac91ea2750645721c54b",
+    "batch_ocr_result_sha256": "91779b3e22fadc01eeca7605c71a356e577e56541363ac91ea2750645721c54b",
+    "byte_identical": true
+  },
+  "resume": {
+    "status": "PASS_ALREADY_COMPLETE",
+    "completed_pages_before": 1,
+    "completed_pages_after": 1,
+    "model_load_sessions_before": 1,
+    "model_load_sessions_after": 1,
+    "model_reloaded": false
+  },
+  "sealing": {
+    "status": "GEOMETRY_OCR_COMPLETE",
+    "path": "output/calibration/e0012-batch-mechanism-tcb15/role_c_geometry_seal.json",
+    "sha256": "c45dba46013f7ec4cba3bfdf0d531da5caa1d08772e50c5e6ed71d4ff2990da3",
+    "artifact_set_sha256": "9f379dad2b85a99e89fc081c0d8d19823029483d2d02fdb1b430a9a1dbd2fe04",
+    "batch_runner_verified": true,
+    "single_page_helper_verified": true,
+    "automatic_truth_promotion": false,
+    "automatic_schema_promotion": false,
+    "automatic_pdf_confidence_promotion": false
+  },
+  "tests_before_clean_inference": {
+    "passed": 125,
+    "skipped_immutable_historical_replays": 2,
+    "ruff": "PASS"
+  },
+  "software_or_model_change": false,
+  "historical_weak_reference": {
+    "invoked": false
+  },
+  "report_norm_id": {
+    "ids_proposed_or_added": 0,
+    "collision_check_required_for_this_mechanism_test": false
+  },
+  "ytd_derivation": {
+    "invoked": false
+  },
+  "acceptance": {
+    "batch_output_equivalence": "PASS",
+    "checkpoint_resume": "PASS",
+    "batch_seal_compatibility": "PASS",
+    "new_accuracy_sample": false,
+    "production_accuracy_approved": false,
+    "next_gate": "RUN_UNCHANGED_FROZEN_ROLE_B_ROLE_C_LOGIC_ON_MBB_AND_VCB"
+  }
+}

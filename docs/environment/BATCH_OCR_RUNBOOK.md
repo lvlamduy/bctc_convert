@@ -152,6 +152,8 @@ resume identity, full-identity orphan adoption, multi-session timing, and the
 no-download wrapper contract. A real development smoke on TCB page 15 produced
 50 lines and 380 word tokens and was byte-identical to the previously sealed
 E-0011 OCR JSON (`91779b3e22fadc01eeca7605c71a356e577e56541363ac91ea2750645721c54b`).
-That dirty-worktree smoke validates the mechanism only and is not retained as
-accuracy evidence; a clean-commit smoke must be recorded before using the batch
-runner for a new sealed experiment.
+That first dirty-worktree smoke was mechanism-only. E-0012 then repeated the
+run from clean commit `3291f9d`, retained the same byte hash, completed a no-op
+resume without another model load, and passed the batch-aware geometry sealer.
+Exact commands and artifact hashes are in `docs/experiments/E-0012-REPLAY.md`.
+Because page 15 was already measured in E-0011, E-0012 adds no accuracy sample.

@@ -102,6 +102,14 @@ E-0010 reused this exact frozen runtime and model cache; no Python distribution,
 
 E-0011 added no software, system package, driver, or model weight beyond the inventory above. Role C ran the pinned PP-OCRv6 detector/recognizer sequentially on the same six sealed 200-DPI renders using Paddle CPU FP32. It produced 586 line boxes and 4,024 word tokens in 191.635581 seconds; mean line confidence was 0.9876259247 and 5 lines were below 0.8. Inference commit was `d57ceee5ce12bfeac36eaa0b7d059043f45fd16c`; sealed artifact-set SHA-256 is `968e6bf93a5af2e6552a2820350c075415d29905df279c31c54d2b095ae6c3a2`. Deterministic row reconstruction and pixel-dash checks use the already pinned control-plane OpenCV 4.14.0.94 and NumPy 2.4.6. Exact transfer/replay commands are in `docs/experiments/E-0011-REPLAY.md`.
 
+E-0012 also added no software, package, driver, or model. Clean commit
+`3291f9dca0843b5d67858b44019a7b2319f69057` ran the batch wrapper on the
+existing TCB page-15 render with eight CPU threads. It produced the same
+50-line/380-word JSON and exact SHA-256 as E-0011; checkpoint resume kept the
+model-load session count at one, and the batch/helper-aware seal passed. This
+is a mechanism regression, not another accuracy observation. Exact hashes and
+replay commands are in `docs/experiments/E-0012-REPLAY.md`.
+
 Detailed commands, disk checks, cache rules, failure history, and rollback are in `docs/environment/GPU_RUNTIME_RUNBOOK.md`.
 
 ## Maintenance rule

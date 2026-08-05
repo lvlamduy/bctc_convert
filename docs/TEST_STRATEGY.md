@@ -66,7 +66,12 @@ orphan-page recovery; and preservation of all model-load sessions across
 resume. Sealing additionally locks both the batch orchestrator and its
 single-page helper and rejects either hash drifting. A real development smoke
 must reproduce a known OCR artifact byte for byte before the runner is used for
-new evidence. This proves batch equivalence
-and recovery behavior only; it does not add an accuracy sample.
+new evidence. This proves batch equivalence and recovery behavior only; it does
+not add an accuracy sample.
+
+E-0012 is the clean mechanism regression: TCB page 15 remained byte-identical
+to its E-0011 single-page result, no-op resume retained exactly one model-load
+session, and sealing verified both batch/helper hashes. The integration test
+locks these outcomes and re-hashes local artifacts when they are available.
 
 Explicit page numbers in a golden/calibration fixture are expected test data, not production routing rules. Production page pairing must continue to use document-order and visual evidence; no bank, page offset, or coordinate constant may enter the algorithm.
