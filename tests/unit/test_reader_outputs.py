@@ -43,6 +43,10 @@ def test_paddle_table_parser_preserves_merged_numeric_cell_as_invalid(tmp_path):
 
     assert page.tables[0].header == ("", "TM", "2024", "2023")
     assert page.tables[0].rows[0].cells[0].observation.value == "INVALID"
+    assert (
+        page.tables[0].rows[0].cells[0].reason
+        == "multiple financial numbers in one cell"
+    )
     assert "LƯU CHUYỂN" in page.context_text
 
 

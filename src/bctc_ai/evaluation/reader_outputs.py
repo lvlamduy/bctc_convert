@@ -178,6 +178,8 @@ def _cell_comparison(
         "candidate_observation": candidate.observation.value,
         "reference_value": str(reference.value) if reference.value is not None else None,
         "candidate_value": str(candidate.value) if candidate.value is not None else None,
+        "reference_reason": reference.reason,
+        "candidate_reason": candidate.reason,
         "reference_present": reference_present,
         "candidate_present": candidate_present,
         "exact": exact,
