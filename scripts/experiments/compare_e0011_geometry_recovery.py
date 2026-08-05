@@ -147,14 +147,20 @@ def _verify_role_a(project_root: Path, seal_path: Path) -> tuple[dict[str, Any],
     return seal, _load_json(result_path)
 
 
-def _verify_role_b(project_root: Path, seal_path: Path) -> dict[str, Any]:
+def _verify_role_b(
+    project_root: Path, seal_path: Path
+) -> tuple[dict[str, Any], bool]:
     seal = _load_json(seal_path)
     if seal.get("state") != "OCR_COMPLETE":
         raise GeometryRecoveryComparisonError("Role B seal is incomplete")
     implementation = seal.get("seal_implementation")
     if not isinstance(implementation, dict):
         raise GeometryRecoveryComparisonError("Role B seal lacks implementation identity")
-    _verify_record(project_root, implementation, "Role B seal implementation")
+    implementation_path = _resolve(project_root, str(implementation.get("path", "")))
+    historical_implementation_matches = (
+        implementation_path.is_file()
+        and sha256_file(implementation_path) == implementation.get("sha256")
+    )
     pages = seal.get("pages")
     if not isinstance(pages, list):
         raise GeometryRecoveryComparisonError("Role B seal contains no pages")
@@ -168,7 +174,7 @@ def _verify_role_b(project_root: Path, seal_path: Path) -> dict[str, Any]:
             raise GeometryRecoveryComparisonError("Role B page has no sealed outputs")
         for output in outputs:
             _verify_record(project_root, output, "Role B output")
-    return seal
+    return seal, historical_implementation_matches
 
 
 def _verify_role_c(
@@ -383,7 +389,9 @@ def main() -> int:
     role_b_seal_path = _resolve(project_root, args.role_b_seal)
     role_c_seal_path = _resolve(project_root, args.role_c_seal)
     role_a_seal, role_a = _verify_role_a(project_root, role_a_seal_path)
-    role_b = _verify_role_b(project_root, role_b_seal_path)
+    role_b, role_b_historical_implementation_matches = _verify_role_b(
+        project_root, role_b_seal_path
+    )
     role_c = _verify_role_c(project_root, role_c_seal_path, role_b_seal_path)
     reference_source = suite.source(str(suite.pairing["reference_fixture_id"]))
     candidate_source = suite.source(str(suite.pairing["candidate_fixture_id"]))
@@ -702,6 +710,13 @@ def main() -> int:
                 "path": _relative(project_root, role_b_seal_path),
                 "sha256": sha256_file(role_b_seal_path),
                 "artifact_set_sha256": role_b["artifact_set_sha256"],
+                "historical_seal_implementation_matches_current_tree": (
+                    role_b_historical_implementation_matches
+                ),
+                "historical_replay_policy": (
+                    "Every sealed render/result/metric is hash-verified. A later extension of "
+                    "the seal implementation does not rewrite the immutable historical seal."
+                ),
             },
             "role_c_seal": {
                 "path": _relative(project_root, role_c_seal_path),
