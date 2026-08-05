@@ -66,7 +66,7 @@ This is the durable retrieval point for project context. It summarizes user auth
 - Hardware audit: RTX 5070 Ti 16,303 MiB, Ryzen 9 5950X, about 125.7 GiB RAM, Ubuntu 22.04, NVIDIA driver 595.80.
 - Supplied schema contains 1,592 unique IDs: CDKT 77, KQKD 24, LCTT 107, TM 1,384. TM ID 1944 is absent and remains an append-only proposal.
 - CPU environment is locked in `uv.lock`; bootstrap, atomic storage, source identity registry, role freezing, content-addressed materialization, render/preprocess, local difficult-region variants, perspective correction, ordered alignment, continuation graph, row wrapping, arithmetic validation, and workbook export have executable tests.
-- Latest full test run before this entry: 59 passed, including the hash-locked VPB native-geometry integration fixture; Ruff formatting and lint passed.
+- Latest full test run before this entry: 62 passed, including the hash-locked VPB native-geometry integration fixture and source-registry drift/idempotence tests; Ruff formatting and lint passed.
 - A real scanned/mixed ACB PDF page rendered and passed preprocessing checkpoint/hash verification.
 - Relative word-gap segmentation, numeric right-edge clustering, note-axis separation, wrapped-row assembly, label-only section retention, and axis-local period/unit binding are implemented without institution/page coordinate rules.
 - On the registered VPB logic-development fixture (pages 5–10), the native text path reconstructed 134 logical rows and 252 value cells, preserved 48 note references, and found two value axes on every page. It correctly separated snapshot dates from three-month durations, retained direct-LCTT anchors and section headings, and left one visible unlabeled off-balance total unresolved instead of inventing a label. See `docs/experiments/E-0006-vpb-native-geometry.json`.
@@ -102,3 +102,4 @@ This is the durable retrieval point for project context. It summarizes user auth
 - 2026-08-05: Reopened the LCTT semantic decision after directly inspecting all 107 workbook rows; replaced numeric-range reasoning with contiguous workbook-order blocks.
 - 2026-08-05: Added pinned MongoDB install/start/restore/audit scripts, server rebuild documentation, test strategy, experiment log, and paper-to-experiment research notes.
 - 2026-08-05: Added relative word-run segmentation, value/note column inference, wrapped and section-row reconstruction, explicit snapshot/duration/YTD header binding, and a hash-locked six-page VPB integration fixture; suite reached 59 tests.
+- 2026-08-05: Made source registration idempotent, preserved first-seen timestamps, and changed disappeared or content-mutated registered paths into hard audit conflicts; suite reached 62 tests.

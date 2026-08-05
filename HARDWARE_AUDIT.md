@@ -1,6 +1,6 @@
 # Hardware audit
 
-Captured: 2026-08-05T18:33:51.243118+00:00
+Captured: 2026-08-05T19:07:09.709965+00:00
 
 - Host: `O-2004251`
 - OS: Ubuntu 22.04.5 LTS; kernel `6.6.0-hiveos`
@@ -12,8 +12,8 @@ Captured: 2026-08-05T18:33:51.243118+00:00
 - Driver-reported CUDA: 13.2
 - CUDA toolkit (`nvcc`): not installed
 - Python: Python 3.11.10
-- PyTorch: 2.5.1+cu124 (build CUDA 12.4)
+- PyTorch: not installed in the control-plane interpreter
 
 ## Blocking compatibility finding
 
-The installed PyTorch architecture list is `['sm_50', 'sm_60', 'sm_70', 'sm_75', 'sm_80', 'sm_86', 'sm_90']` while the GPU reports compute capability `12.0`. The current build does not contain `sm_120` kernels. No GPU model runtime is approved until an isolated image passes a real inference smoke test and VRAM benchmark.
+The control-plane environment intentionally has no PyTorch. The separately observed incompatible host build and the required isolated GPU benchmark are recorded in `docs/environment/SOFTWARE_INVENTORY.md`. No GPU model runtime is approved until an isolated image passes a real inference smoke test and VRAM benchmark.

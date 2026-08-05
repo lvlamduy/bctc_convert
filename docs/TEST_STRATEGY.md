@@ -37,3 +37,5 @@ Each representative fixture is tested in original form and controlled variants: 
 Every experiment is appended to `docs/experiments/EXPERIMENT_LOG.md` with hypothesis, code/config/model/data hashes, frozen fixtures, metrics, result, failure analysis, and decision. Cherry-picked examples or visual impressions are not acceptance evidence.
 
 Any edit to a geometry algorithm or its threshold file invalidates the recorded implementation/config hash in `E-0006` and requires an explicit fixture rerun and reviewed expectation update.
+
+Source-registry tests require byte-identical repeated registration, preservation of the original first-seen time, and hard failure when registered content changes in place or a registered path disappears. A routine audit may append new paths but may not silently rewrite existing source identity.

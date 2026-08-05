@@ -130,6 +130,21 @@ def _write_dynamic_audits(
     memory = environment.get("memory", {})
     total_ram = int(memory.get("MemTotal", 0)) if isinstance(memory, dict) else 0
     disk = environment.get("disk", {})
+    torch = environment.get("torch", {})
+    torch_available = isinstance(torch, dict) and bool(torch.get("available"))
+    torch_text = (
+        f"{torch.get('version')} (build CUDA {torch.get('cuda_build')})"
+        if torch_available
+        else "not installed in the control-plane interpreter"
+    )
+    torch_finding = (
+        f"The active interpreter exposes architectures `{torch.get('architectures', [])}` "
+        "while the GPU reports compute capability `12.0`; this runtime is not approved."
+        if torch_available
+        else "The control-plane environment intentionally has no PyTorch. The separately "
+        "observed incompatible host build and the required isolated GPU benchmark are "
+        "recorded in `docs/environment/SOFTWARE_INVENTORY.md`."
+    )
     schema_counts = manifest["schemas"]["counts"]
     resolved_questions = sum(
         str(question.get("resolution_status", "")).startswith("RESOLVED") for question in questions
@@ -162,11 +177,11 @@ Captured: {environment["captured_at"]}
 - Driver-reported CUDA: {gpu.get("reported_cuda") if isinstance(gpu, dict) else None}
 - CUDA toolkit (`nvcc`): {"available" if environment["tools"]["nvcc"]["available"] else "not installed"}
 - Python: {environment["tools"]["python"]["version"]}
-- PyTorch: {environment["torch"].get("version", "not importable")} (build CUDA {environment["torch"].get("cuda_build")})
+- PyTorch: {torch_text}
 
 ## Blocking compatibility finding
 
-The installed PyTorch architecture list is `{environment["torch"].get("architectures", [])}` while the GPU reports compute capability `12.0`. The current build does not contain `sm_120` kernels. No GPU model runtime is approved until an isolated image passes a real inference smoke test and VRAM benchmark.
+{torch_finding} No GPU model runtime is approved until an isolated image passes a real inference smoke test and VRAM benchmark.
 """
     atomic_write_text(project_root / "HARDWARE_AUDIT.md", hardware)
 
@@ -228,6 +243,12 @@ Generated artifacts use atomic write, fsync, rename, and post-write hash verific
 
 def run_bootstrap(project_root: Path, *, workers: int = 4) -> BootstrapResult:
     project_root = project_root.resolve()
+    git_state = {
+        "commit": _git(project_root, "rev-parse", "HEAD"),
+        "branch": _git(project_root, "branch", "--show-current"),
+        "dirty": bool(_git(project_root, "status", "--porcelain")),
+        "remotes": (_git(project_root, "remote") or "").splitlines(),
+    }
     environment = collect_environment(project_root)
     source_root = project_root / "vietstock_bctc"
     inventory_stable = False
@@ -273,12 +294,7 @@ def run_bootstrap(project_root: Path, *, workers: int = 4) -> BootstrapResult:
         "format_version": 1,
         "project": "bctc-ai",
         "captured_at": datetime.now(UTC).isoformat(),
-        "git": {
-            "commit": _git(project_root, "rev-parse", "HEAD"),
-            "branch": _git(project_root, "branch", "--show-current"),
-            "dirty": bool(_git(project_root, "status", "--porcelain")),
-            "remotes": (_git(project_root, "remote") or "").splitlines(),
-        },
+        "git": git_state,
         "environment": environment,
         "sources": {
             "pdf_count": len(source_records),

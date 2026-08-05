@@ -1,8 +1,8 @@
 # Progress report
 
-- Date/time: 2026-08-05T18:33:51.243118+00:00
+- Date/time: 2026-08-05T19:07:09.709965+00:00
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16303 MiB, compute 12.0); 125.71 GiB RAM
-- Code hash: bootstrap is on `codex/rebuild-bootstrap` at `9b96a86773dd866688d48614b67bd3eb83ad89d2` with dirty state `True`
+- Code hash: bootstrap is on `codex/rebuild-bootstrap` at `493a3608f7f7a28f030b0496fdec1541ad2f00f3` with dirty state `True`
 - Schema count: 1592 (CDKT 77; KQKD 24; LCTT 107; TM 1384)
 - PDFs registered: 2567
 - ROLE A completed: 0 documents
@@ -15,9 +15,9 @@
 - Autonomous decisions: preserve supplied schema unchanged; keep 1944 as a collision-cleared proposal; segment LCTT by workbook position and fail closed on the semantic conflict
 - Not applicable / not observed / unresolved: 0 / 0 / 0 (no production records yet)
 - Workbooks: 0
-- Largest error: no approved GPU runtime and no parser/OCR results yet
-- Last change: fail-closed configuration, ordered mapping, page preprocessing, continuation, validation, and evidence-preserving workbook export
-- Before/after: no code -> tested fail-closed pipeline foundation
+- Largest error: no approved GPU model runtime and no frozen end-to-end multi-institution accuracy result yet
+- Last change: relative native-PDF value/note axes, wrapped/section rows, semantic period/unit binding, and a hash-locked real-PDF geometry regression
+- Before/after: raw native words -> traceable logical rows/cells on a registered six-page development fixture
 - Regression: run separately with `.venv/bin/pytest`; latest verified count is recorded in `PROJECT_MEMORY.md`
 - Backup status: development=PASS; production=FAIL (local restore verified=True, off-machine=False)
-- Next bounded action: reconstruct borderless statement rows and bind period/unit axes from PDF word geometry, then validate on frozen real fixtures
+- Next bounded action: broaden frozen geometry fixtures and benchmark isolated Blackwell-compatible OCR/document-model runtimes

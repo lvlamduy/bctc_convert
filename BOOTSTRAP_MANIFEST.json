@@ -1,10 +1,10 @@
 {
   "backup": {
-    "archive": "/workspace/bctc-ai-backups/bctc-ai-control-plane-20260805T183355Z.tar.gz",
-    "archive_sha256": "d1a0ea0fd3ea1e78a1ef1cb1f06fb0bfd5c880c05bd88d14f27c571023cb7b15",
+    "archive": "/workspace/bctc-ai-backups/bctc-ai-control-plane-20260805T190711Z.tar.gz",
+    "archive_sha256": "b77bf21a9064f25971e888806735f237f9b7eb02848e845e06b37a0ebe92c53c",
     "development_status": "PASS",
-    "file_count": 142,
-    "manifest": "/workspace/bctc-ai-backups/bctc-ai-control-plane-20260805T183355Z.tar.gz.manifest.json",
+    "file_count": 150,
+    "manifest": "/workspace/bctc-ai-backups/bctc-ai-control-plane-20260805T190711Z.tar.gz.manifest.json",
     "off_machine": false,
     "production_status": "FAIL",
     "restored_and_verified": true
@@ -20,18 +20,18 @@
     "sha256": "4857e8124574ab127844a9605ea340648052469c1c1965394a317f2aba69da3b",
     "size_bytes": 11175
   },
-  "captured_at": "2026-08-05T18:33:55.133988+00:00",
+  "captured_at": "2026-08-05T19:07:11.552450+00:00",
   "environment": {
     "architecture": "x86_64",
-    "captured_at": "2026-08-05T18:33:51.243118+00:00",
+    "captured_at": "2026-08-05T19:07:09.709965+00:00",
     "cpu": {
       "logical_count": 32,
       "model": "AMD Ryzen 9 5950X 16-Core Processor"
     },
     "disk": {
-      "free_bytes": 13178277888,
+      "free_bytes": 13176197120,
       "total_bytes": 42283094016,
-      "used_bytes": 29104816128
+      "used_bytes": 29106896896
     },
     "gpu": {
       "available": true,
@@ -51,22 +51,22 @@
     "hostname": "O-2004251",
     "kernel": "6.6.0-hiveos",
     "memory": {
-      "Active": 3112239104,
-      "Active(anon)": 782946304,
-      "Active(file)": 2329292800,
-      "AnonHugePages": 421527552,
-      "AnonPages": 856227840,
+      "Active": 20870529024,
+      "Active(anon)": 789336064,
+      "Active(file)": 20081192960,
+      "AnonHugePages": 429916160,
+      "AnonPages": 941117440,
       "Bounce": 0,
-      "Buffers": 106000384,
-      "Cached": 60276727808,
+      "Buffers": 106020864,
+      "Cached": 60291600384,
       "CmaFree": 0,
       "CmaTotal": 0,
       "CommitLimit": 67354472448,
-      "Committed_AS": 5038780416,
+      "Committed_AS": 5127487488,
       "DirectMap1G": 130996502528,
       "DirectMap2M": 6006243328,
       "DirectMap4k": 338546688,
-      "Dirty": 1216512,
+      "Dirty": 274432,
       "FileHugePages": 35651584,
       "FilePmdMapped": 0,
       "HardwareCorrupted": 0,
@@ -76,34 +76,34 @@
       "HugePages_Total": 131072,
       "Hugepagesize": 2097152,
       "Hugetlb": 268435456,
-      "Inactive": 58149810176,
-      "Inactive(anon)": 1453527040,
-      "Inactive(file)": 56696283136,
-      "KReclaimable": 1280167936,
-      "KernelStack": 13123584,
-      "Mapped": 571699200,
-      "MemAvailable": 130407931904,
-      "MemFree": 71379599360,
+      "Inactive": 40490029056,
+      "Inactive(anon)": 1531715584,
+      "Inactive(file)": 38958313472,
+      "KReclaimable": 1282162688,
+      "KernelStack": 13402112,
+      "Mapped": 580743168,
+      "MemAvailable": 130318200832,
+      "MemFree": 71273943040,
       "MemTotal": 134977380352,
       "Mlocked": 0,
       "NFS_Unstable": 0,
-      "PageTables": 10772480,
-      "Percpu": 28311552,
-      "SReclaimable": 1204088832,
-      "SUnreclaim": 382750720,
+      "PageTables": 11198464,
+      "Percpu": 28573696,
+      "SReclaimable": 1206083584,
+      "SUnreclaim": 382894080,
       "SecPageTables": 0,
-      "Shmem": 1357148160,
+      "Shmem": 1358110720,
       "ShmemHugePages": 0,
       "ShmemPmdMapped": 0,
-      "Slab": 1586839552,
+      "Slab": 1588977664,
       "SwapCached": 0,
       "SwapFree": 0,
       "SwapTotal": 0,
       "Unevictable": 0,
       "VmallocChunk": 0,
       "VmallocTotal": 35184372087808,
-      "VmallocUsed": 82558976,
-      "Writeback": 0,
+      "VmallocUsed": 82542592,
+      "Writeback": 20480,
       "WritebackTmp": 0,
       "Zswap": 0,
       "Zswapped": 0
@@ -112,8 +112,8 @@
       "client_available": true,
       "environment_variable_names": [],
       "external_connection_verified": false,
-      "local_loopback_connection_verified": false,
-      "local_template_document_count": null
+      "local_loopback_connection_verified": true,
+      "local_template_document_count": 1851
     },
     "os": {
       "BUG_REPORT_URL": "https://bugs.launchpad.net/ubuntu/",
@@ -172,25 +172,14 @@
       }
     },
     "torch": {
-      "architectures": [
-        "sm_50",
-        "sm_60",
-        "sm_70",
-        "sm_75",
-        "sm_80",
-        "sm_86",
-        "sm_90"
-      ],
-      "available": true,
-      "cuda_available": true,
-      "cuda_build": "12.4",
-      "version": "2.5.1+cu124"
+      "available": false,
+      "reason": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'torch'"
     }
   },
   "format_version": 1,
   "git": {
     "branch": "codex/rebuild-bootstrap",
-    "commit": "9b96a86773dd866688d48614b67bd3eb83ad89d2",
+    "commit": "493a3608f7f7a28f030b0496fdec1541ad2f00f3",
     "dirty": true,
     "remotes": [
       "origin"
@@ -298,8 +287,8 @@
       "client_available": true,
       "environment_variable_names": [],
       "external_connection_verified": false,
-      "local_loopback_connection_verified": false,
-      "local_template_document_count": null
+      "local_loopback_connection_verified": true,
+      "local_template_document_count": 1851
     }
   },
   "project": "bctc-ai",
