@@ -1,8 +1,8 @@
 # Progress report
 
-- Date/time: 2026-08-05T19:07:09.709965+00:00
+- Date/time: 2026-08-05T19:08:14.424478+00:00
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16303 MiB, compute 12.0); 125.71 GiB RAM
-- Code hash: bootstrap is on `codex/rebuild-bootstrap` at `493a3608f7f7a28f030b0496fdec1541ad2f00f3` with dirty state `True`
+- Code hash: bootstrap is on `codex/rebuild-bootstrap` at `51a76688a38a94127c9a731e0f04660eac225a4d` with dirty state `False`
 - Schema count: 1592 (CDKT 77; KQKD 24; LCTT 107; TM 1384)
 - PDFs registered: 2567
 - ROLE A completed: 0 documents
