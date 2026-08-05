@@ -483,8 +483,18 @@ def main() -> int:
         ]:
             raise GeometryRecoveryComparisonError(
                 "off-balance Role C rows remained eligible for CDKT mapping"
-            )
+        )
         for row_index, proposal in enumerate(parsed.rows):
+            if not proposal.row.cells:
+                continue
+            if not (
+                len(proposal.row.cells)
+                == len(proposal.value_line_indices)
+                == len(proposal.visual_cell_evidence)
+            ):
+                raise GeometryRecoveryComparisonError(
+                    f"financial cell evidence width drift on page {candidate_page}, row {row_index}"
+                )
             for axis_index, (cell, line_indices, visual) in enumerate(
                 zip(
                     proposal.row.cells,
