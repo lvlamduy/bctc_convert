@@ -1,7 +1,6 @@
-version = 1
-status = "PLANNED_NOT_INSTALLED"
+version = 2
+status = "LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED"
 python = "3.11"
-torch = "2.12.0"
 torch_index_url = "https://download.pytorch.org/whl/cu130"
 cuda_runtime = "13.0"
 required_compute_capability = "12.0"
@@ -9,4 +8,77 @@ required_native_arch = "sm_120"
 minimum_linux_driver = "580.65.06"
 host_driver = "595.80"
 isolation_directory = ".gpu-venv"
-acceptance_command = ".gpu-venv/bin/python scripts/diagnostics/gpu_smoke.py"
+system_dependency_command = "scripts/bootstrap/install_gpu_system_deps.sh"
+create_command = "scripts/bootstrap/create_gpu_runtime.sh"
+acceptance_command = ".gpu-venv/bin/python scripts/diagnostics/gpu_model_runtime_smoke.py"
+compatibility_check_command = ".venv/bin/uv pip check --python .gpu-venv/bin/python"
+freeze_path = "config/models/gpu-requirements.freeze.txt"
+freeze_sha256 = "d8e60d2423f60fcb5b4ce631ca4446ecb5d2855efa5578bc07589076521d8005"
+installed_size_bytes = 5663276925
+installed_size_gib = 5.28
+
+[packages]
+torch = "2.12.0+cu130"
+torchvision = "0.27.0+cu130"
+paddleocr = "3.7.0"
+paddlex = "3.7.2"
+transformers = "5.14.1"
+opencv-contrib-python = "4.10.0.84"
+numpy = "2.3.5"
+python-docx = "1.2.0"
+
+[import_modules]
+torch = "torch"
+torchvision = "torchvision"
+paddleocr = "paddleocr"
+paddlex = "paddlex"
+transformers = "transformers"
+opencv-contrib-python = "cv2"
+numpy = "numpy"
+python-docx = "docx"
+
+[system_packages.ubuntu_22_04]
+libgl1 = "1.4.0-1"
+libglib2_0_0 = "2.72.4-0ubuntu2.9"
+
+[artifacts.torch_cp311_linux_x86_64]
+filename = "torch-2.12.0+cu130-cp311-cp311-manylinux_2_28_x86_64.whl"
+size_bytes = 532624500
+sha256 = "5038f09ee161339a52145d006f605f60ceaa735627e2e351b93419cba60696c3"
+
+[artifacts.torchvision_cp311_linux_x86_64]
+filename = "torchvision-0.27.0+cu130-cp311-cp311-manylinux_2_28_x86_64.whl"
+size_bytes = 7575579
+sha256 = "f90237398efb8ce7001b80e1870c921b3a375d91c892ba8b46415f8085a3711d"
+
+[artifacts.python_docx]
+filename = "python_docx-1.2.0-py3-none-any.whl"
+size_bytes = 252987
+sha256 = "3fd478f3250fbbbfd3b94fe1e985955737c145627498896a8a6bf81f4baf66c7"
+
+[models.paddleocr_vl_1_6]
+upstream = "https://huggingface.co/PaddlePaddle/PaddleOCR-VL-1.6"
+repo_id = "PaddlePaddle/PaddleOCR-VL-1.6"
+revision = "cdc88f5feff0e4079e75863205053a68358e52f7"
+total_bytes = 1930462795
+cache_directory = "PaddleOCR-VL-1.6"
+weights_file = "model.safetensors"
+weights_size_bytes = 1917255968
+weights_sha256 = "85a479d506a11e724e7285d395c551be69f41dbc16b6342d3cacfb189aed71db"
+license = "Apache-2.0"
+
+[models.pp_doclayout_v3_safetensors]
+upstream = "https://huggingface.co/PaddlePaddle/PP-DocLayoutV3_safetensors"
+repo_id = "PaddlePaddle/PP-DocLayoutV3_safetensors"
+revision = "97d101e6db2642e162a1d05392d1b0231c91033e"
+total_bytes = 133289651
+cache_directory = "PP-DocLayoutV3_safetensors"
+weights_file = "model.safetensors"
+weights_size_bytes = 133270468
+weights_sha256 = "5ea422c6cc5fe759a47e1357c35639b58173508e025a3131cbe4b6ac59e2b85e"
+license = "Apache-2.0"
+
+[cache]
+paddlex_environment_variable = "PADDLE_PDX_CACHE_HOME"
+huggingface_environment_variable = "HF_HOME"
+ephemeral_benchmark_root = "/dev/shm/bctc-paddlex-e0007"

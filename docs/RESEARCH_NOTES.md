@@ -13,6 +13,14 @@ This is a decision-oriented paper log, not a list of model claims. A paper contr
 - [Uncertainty-Aware Complex Scientific Table Data Extraction](https://arxiv.org/abs/2507.02009) applies conformal prediction to table-extraction uncertainty. Evaluate split-conformal thresholds on the frozen Vietnamese holdout for review routing; do not claim calibrated coverage before exchangeability and subgroup behavior are measured.
 - [Document dewarping by grid regularization](https://arxiv.org/abs/2203.16850) combines boundaries and text lines. Test a geometry-constrained dewarp candidate only on pages where perspective/curvature is detected, and select it by exact OCR/cell geometry rather than visual smoothness.
 - [DeepSeek-OCR 2](https://arxiv.org/abs/2601.20552) explicitly models semantic visual reading order. Benchmark it only as an independent difficult-region/layout reader; generative output cannot directly establish numeric truth.
+- [RT-DocLayout / PP-DocLayoutV3](https://arxiv.org/abs/2606.23344) predicts polygonal layout regions and reading order for non-planar documents. Benchmark its claimed robustness on controlled skew, curve, and screen-photo variants; E-0007 only establishes execution on one flat born-digital page.
+
+## Measured implementation findings
+
+- The official full PaddleOCR-VL-1.6 path is layout detection plus regional VLM recognition; testing the 0.9B recognizer alone would not test the document pipeline used in practice.
+- A single global BF16 setting is invalid for the tested Transformers path because PP-DocLayoutV3 post-processing converts tensors to NumPy. Per-module FP32 layout and BF16 VLM completed inference with low VRAM.
+- On E-0007, generative recognition preserved every numeric value/sign/state but introduced two Vietnamese diacritic errors and split one long row. This directly supports independent geometry, ordered row fusion, and source-exact string disagreement gates.
+- Model recency and benchmark leadership do not eliminate packaging gaps: TorchVision and python-docx had to be explicitly pinned after official extras omitted them from the exercised paths.
 
 ## Planned controlled experiments
 

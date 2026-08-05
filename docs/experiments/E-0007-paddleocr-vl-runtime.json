@@ -1,0 +1,1258 @@
+{
+  "algorithm_files_sha256": {
+    "scripts/experiments/evaluate_paddleocr_vl_fixture.py": "83c8cbf432cbc0b4620cbd2e75848e4cd6ccb27353a63a04ea16fdf3b8ab7ac3",
+    "src/bctc_ai/validation/reader_agreement.py": "75023541c83aa54d01424626aa7150e4534103d3e5c57b7ccaf309c9862e0468"
+  },
+  "alignment": [
+    {
+      "action": "MATCH",
+      "candidate_indices": [
+        0
+      ],
+      "candidate_label": "Thu nhập lãi và các khoản thu nhập tương tự",
+      "candidate_note": "27",
+      "cell_width_exact": true,
+      "cells": [
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "31.549.594",
+          "candidate_value": "31549594",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "31.549.594",
+          "reference_value": "31549594"
+        },
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "22.211.069",
+          "candidate_value": "22211069",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "22.211.069",
+          "reference_value": "22211069"
+        }
+      ],
+      "label_exact": true,
+      "note_exact": true,
+      "reference_indices": [
+        0
+      ],
+      "reference_label": "Thu nhập lãi và các khoản thu nhập tương tự",
+      "reference_note": "27",
+      "semantic_key_exact": true,
+      "semantic_similarity": 1.0
+    },
+    {
+      "action": "MATCH",
+      "candidate_indices": [
+        1
+      ],
+      "candidate_label": "Chi phí lãi và các chi phí tương tự",
+      "candidate_note": "28",
+      "cell_width_exact": true,
+      "cells": [
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "(14.588.966)",
+          "candidate_value": "-14588966",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "(14.588.966)",
+          "reference_value": "-14588966"
+        },
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "(8.828.531)",
+          "candidate_value": "-8828531",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "(8.828.531)",
+          "reference_value": "-8828531"
+        }
+      ],
+      "label_exact": true,
+      "note_exact": true,
+      "reference_indices": [
+        1
+      ],
+      "reference_label": "Chi phí lãi và các chi phí tương tự",
+      "reference_note": "28",
+      "semantic_key_exact": true,
+      "semantic_similarity": 1.0
+    },
+    {
+      "action": "MATCH",
+      "candidate_indices": [
+        2
+      ],
+      "candidate_label": "Thu nhập lãi thuần",
+      "candidate_note": null,
+      "cell_width_exact": true,
+      "cells": [
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "16.960.628",
+          "candidate_value": "16960628",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "16.960.628",
+          "reference_value": "16960628"
+        },
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "13.382.538",
+          "candidate_value": "13382538",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "13.382.538",
+          "reference_value": "13382538"
+        }
+      ],
+      "label_exact": true,
+      "note_exact": true,
+      "reference_indices": [
+        2
+      ],
+      "reference_label": "Thu nhập lãi thuần",
+      "reference_note": null,
+      "semantic_key_exact": true,
+      "semantic_similarity": 1.0
+    },
+    {
+      "action": "MATCH",
+      "candidate_indices": [
+        3
+      ],
+      "candidate_label": "Thu nhập từ hoạt động dịch vụ",
+      "candidate_note": null,
+      "cell_width_exact": true,
+      "cells": [
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "3.843.225",
+          "candidate_value": "3843225",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "3.843.225",
+          "reference_value": "3843225"
+        },
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "2.850.616",
+          "candidate_value": "2850616",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "2.850.616",
+          "reference_value": "2850616"
+        }
+      ],
+      "label_exact": true,
+      "note_exact": true,
+      "reference_indices": [
+        3
+      ],
+      "reference_label": "Thu nhập từ hoạt động dịch vụ",
+      "reference_note": null,
+      "semantic_key_exact": true,
+      "semantic_similarity": 1.0
+    },
+    {
+      "action": "MATCH",
+      "candidate_indices": [
+        4
+      ],
+      "candidate_label": "Chi phí hoạt động dịch vụ",
+      "candidate_note": null,
+      "cell_width_exact": true,
+      "cells": [
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "(1.778.702)",
+          "candidate_value": "-1778702",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "(1.778.702)",
+          "reference_value": "-1778702"
+        },
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "(1.708.591)",
+          "candidate_value": "-1708591",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "(1.708.591)",
+          "reference_value": "-1708591"
+        }
+      ],
+      "label_exact": true,
+      "note_exact": true,
+      "reference_indices": [
+        4
+      ],
+      "reference_label": "Chi phí hoạt động dịch vụ",
+      "reference_note": null,
+      "semantic_key_exact": true,
+      "semantic_similarity": 1.0
+    },
+    {
+      "action": "MATCH",
+      "candidate_indices": [
+        5
+      ],
+      "candidate_label": "Lãi thuần từ hoạt động dịch vụ",
+      "candidate_note": "29",
+      "cell_width_exact": true,
+      "cells": [
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "2.064.523",
+          "candidate_value": "2064523",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "2.064.523",
+          "reference_value": "2064523"
+        },
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "1.142.025",
+          "candidate_value": "1142025",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "1.142.025",
+          "reference_value": "1142025"
+        }
+      ],
+      "label_exact": true,
+      "note_exact": true,
+      "reference_indices": [
+        5
+      ],
+      "reference_label": "Lãi thuần từ hoạt động dịch vụ",
+      "reference_note": "29",
+      "semantic_key_exact": true,
+      "semantic_similarity": 1.0
+    },
+    {
+      "action": "MATCH",
+      "candidate_indices": [
+        6
+      ],
+      "candidate_label": "(Lỗ)/lãi thuần từ hoạt động kinh doanh ngoại hối",
+      "candidate_note": "30",
+      "cell_width_exact": true,
+      "cells": [
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "(419.768)",
+          "candidate_value": "-419768",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "(419.768)",
+          "reference_value": "-419768"
+        },
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "119.466",
+          "candidate_value": "119466",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "119.466",
+          "reference_value": "119466"
+        }
+      ],
+      "label_exact": true,
+      "note_exact": true,
+      "reference_indices": [
+        6
+      ],
+      "reference_label": "(Lỗ)/lãi thuần từ hoạt động kinh doanh ngoại hối",
+      "reference_note": "30",
+      "semantic_key_exact": true,
+      "semantic_similarity": 1.0
+    },
+    {
+      "action": "MERGE_CANDIDATE",
+      "candidate_indices": [
+        7,
+        8
+      ],
+      "candidate_label": "(Lỗ)/lãi thuần từ mua bán chứng khoán kinh doanh",
+      "candidate_note": "31",
+      "cell_width_exact": true,
+      "cells": [
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "(224.125)",
+          "candidate_value": "-224125",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "(224.125)",
+          "reference_value": "-224125"
+        },
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "184.151",
+          "candidate_value": "184151",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "184.151",
+          "reference_value": "184151"
+        }
+      ],
+      "label_exact": true,
+      "note_exact": true,
+      "reference_indices": [
+        7
+      ],
+      "reference_label": "(Lỗ)/lãi thuần từ mua bán chứng khoán kinh doanh",
+      "reference_note": "31",
+      "semantic_key_exact": true,
+      "semantic_similarity": 1.0
+    },
+    {
+      "action": "MATCH",
+      "candidate_indices": [
+        9
+      ],
+      "candidate_label": "Lãi/(lỗ) thuần từ mua bán chứng khoán đầu tư",
+      "candidate_note": "32",
+      "cell_width_exact": true,
+      "cells": [
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "14.393",
+          "candidate_value": "14393",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "14.393",
+          "reference_value": "14393"
+        },
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "(134.849)",
+          "candidate_value": "-134849",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "(134.849)",
+          "reference_value": "-134849"
+        }
+      ],
+      "label_exact": true,
+      "note_exact": true,
+      "reference_indices": [
+        8
+      ],
+      "reference_label": "Lãi/(lỗ) thuần từ mua bán chứng khoán đầu tư",
+      "reference_note": "32",
+      "semantic_key_exact": true,
+      "semantic_similarity": 1.0
+    },
+    {
+      "action": "MATCH",
+      "candidate_indices": [
+        10
+      ],
+      "candidate_label": "Thu nhập từ hoạt động khác",
+      "candidate_note": null,
+      "cell_width_exact": true,
+      "cells": [
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "2.364.329",
+          "candidate_value": "2364329",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "2.364.329",
+          "reference_value": "2364329"
+        },
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "2.128.736",
+          "candidate_value": "2128736",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "2.128.736",
+          "reference_value": "2128736"
+        }
+      ],
+      "label_exact": true,
+      "note_exact": true,
+      "reference_indices": [
+        9
+      ],
+      "reference_label": "Thu nhập từ hoạt động khác",
+      "reference_note": null,
+      "semantic_key_exact": true,
+      "semantic_similarity": 1.0
+    },
+    {
+      "action": "MATCH",
+      "candidate_indices": [
+        11
+      ],
+      "candidate_label": "Chi phí cho hoạt động khác",
+      "candidate_note": null,
+      "cell_width_exact": true,
+      "cells": [
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "(882.398)",
+          "candidate_value": "-882398",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "(882.398)",
+          "reference_value": "-882398"
+        },
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "(1.057.916)",
+          "candidate_value": "-1057916",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "(1.057.916)",
+          "reference_value": "-1057916"
+        }
+      ],
+      "label_exact": true,
+      "note_exact": true,
+      "reference_indices": [
+        10
+      ],
+      "reference_label": "Chi phí cho hoạt động khác",
+      "reference_note": null,
+      "semantic_key_exact": true,
+      "semantic_similarity": 1.0
+    },
+    {
+      "action": "MATCH",
+      "candidate_indices": [
+        12
+      ],
+      "candidate_label": "Lãi thuần từ hoạt động khác",
+      "candidate_note": "33",
+      "cell_width_exact": true,
+      "cells": [
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "1.481.931",
+          "candidate_value": "1481931",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "1.481.931",
+          "reference_value": "1481931"
+        },
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "1.070.820",
+          "candidate_value": "1070820",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "1.070.820",
+          "reference_value": "1070820"
+        }
+      ],
+      "label_exact": true,
+      "note_exact": true,
+      "reference_indices": [
+        11
+      ],
+      "reference_label": "Lãi thuần từ hoạt động khác",
+      "reference_note": "33",
+      "semantic_key_exact": true,
+      "semantic_similarity": 1.0
+    },
+    {
+      "action": "MATCH",
+      "candidate_indices": [
+        13
+      ],
+      "candidate_label": "Thu nhập từ góp vốn mua cổ phần",
+      "candidate_note": "34",
+      "cell_width_exact": true,
+      "cells": [
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "30.625",
+          "candidate_value": "30625",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "30.625",
+          "reference_value": "30625"
+        },
+        {
+          "candidate_observation": "DASH",
+          "candidate_raw": "-",
+          "candidate_value": null,
+          "exact": true,
+          "reference_observation": "DASH",
+          "reference_raw": "-",
+          "reference_value": null
+        }
+      ],
+      "label_exact": true,
+      "note_exact": true,
+      "reference_indices": [
+        12
+      ],
+      "reference_label": "Thu nhập từ góp vốn mua cổ phần",
+      "reference_note": "34",
+      "semantic_key_exact": true,
+      "semantic_similarity": 1.0
+    },
+    {
+      "action": "MATCH",
+      "candidate_indices": [
+        14
+      ],
+      "candidate_label": "TỔNG THU NHẬP HOẠT ĐỘNG",
+      "candidate_note": null,
+      "cell_width_exact": true,
+      "cells": [
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "19.908.207",
+          "candidate_value": "19908207",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "19.908.207",
+          "reference_value": "19908207"
+        },
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "15.764.151",
+          "candidate_value": "15764151",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "15.764.151",
+          "reference_value": "15764151"
+        }
+      ],
+      "label_exact": true,
+      "note_exact": true,
+      "reference_indices": [
+        13
+      ],
+      "reference_label": "TỔNG THU NHẬP HOẠT ĐỘNG",
+      "reference_note": null,
+      "semantic_key_exact": true,
+      "semantic_similarity": 1.0
+    },
+    {
+      "action": "MATCH",
+      "candidate_indices": [
+        15
+      ],
+      "candidate_label": "TỔNG CHI PHÍ HOẠT ĐỘNG",
+      "candidate_note": "35",
+      "cell_width_exact": true,
+      "cells": [
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "(4.318.327)",
+          "candidate_value": "-4318327",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "(4.318.327)",
+          "reference_value": "-4318327"
+        },
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "(4.071.964)",
+          "candidate_value": "-4071964",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "(4.071.964)",
+          "reference_value": "-4071964"
+        }
+      ],
+      "label_exact": true,
+      "note_exact": true,
+      "reference_indices": [
+        14
+      ],
+      "reference_label": "TỔNG CHI PHÍ HOẠT ĐỘNG",
+      "reference_note": "35",
+      "semantic_key_exact": true,
+      "semantic_similarity": 1.0
+    },
+    {
+      "action": "MATCH",
+      "candidate_indices": [
+        16
+      ],
+      "candidate_label": "Lợi nhuận thuần từ HĐKD trước chi phí dự phòng rủi ro tín dụng",
+      "candidate_note": null,
+      "cell_width_exact": true,
+      "cells": [
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "15.589.880",
+          "candidate_value": "15589880",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "15.589.880",
+          "reference_value": "15589880"
+        },
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "11.692.187",
+          "candidate_value": "11692187",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "11.692.187",
+          "reference_value": "11692187"
+        }
+      ],
+      "label_exact": true,
+      "note_exact": true,
+      "reference_indices": [
+        15
+      ],
+      "reference_label": "Lợi nhuận thuần từ HĐKD trước chi phí dự phòng rủi ro tín dụng",
+      "reference_note": null,
+      "semantic_key_exact": true,
+      "semantic_similarity": 1.0
+    },
+    {
+      "action": "MATCH",
+      "candidate_indices": [
+        17
+      ],
+      "candidate_label": "Chi phí dự phòng rủi ro tín dụng",
+      "candidate_note": "36",
+      "cell_width_exact": true,
+      "cells": [
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "(7.669.094)",
+          "candidate_value": "-7669094",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "(7.669.094)",
+          "reference_value": "-7669094"
+        },
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "(6.677.305)",
+          "candidate_value": "-6677305",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "(6.677.305)",
+          "reference_value": "-6677305"
+        }
+      ],
+      "label_exact": true,
+      "note_exact": true,
+      "reference_indices": [
+        16
+      ],
+      "reference_label": "Chi phí dự phòng rủi ro tín dụng",
+      "reference_note": "36",
+      "semantic_key_exact": true,
+      "semantic_similarity": 1.0
+    },
+    {
+      "action": "MATCH",
+      "candidate_indices": [
+        18
+      ],
+      "candidate_label": "TỔNG LỘI NHUẬN TRƯỜC THUẾ",
+      "candidate_note": null,
+      "cell_width_exact": true,
+      "cells": [
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "7.920.786",
+          "candidate_value": "7920786",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "7.920.786",
+          "reference_value": "7920786"
+        },
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "5.014.882",
+          "candidate_value": "5014882",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "5.014.882",
+          "reference_value": "5014882"
+        }
+      ],
+      "label_exact": false,
+      "note_exact": true,
+      "reference_indices": [
+        17
+      ],
+      "reference_label": "TỔNG LỢI NHUẬN TRƯỚC THUẾ",
+      "reference_note": null,
+      "semantic_key_exact": true,
+      "semantic_similarity": 1.0
+    },
+    {
+      "action": "MATCH",
+      "candidate_indices": [
+        19
+      ],
+      "candidate_label": "Chi phí thuế TNDN hiện hành",
+      "candidate_note": "24.1",
+      "cell_width_exact": true,
+      "cells": [
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "(1.667.459)",
+          "candidate_value": "-1667459",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "(1.667.459)",
+          "reference_value": "-1667459"
+        },
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "(1.078.750)",
+          "candidate_value": "-1078750",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "(1.078.750)",
+          "reference_value": "-1078750"
+        }
+      ],
+      "label_exact": true,
+      "note_exact": true,
+      "reference_indices": [
+        18
+      ],
+      "reference_label": "Chi phí thuế TNDN hiện hành",
+      "reference_note": "24.1",
+      "semantic_key_exact": true,
+      "semantic_similarity": 1.0
+    },
+    {
+      "action": "MATCH",
+      "candidate_indices": [
+        20
+      ],
+      "candidate_label": "Thu nhập/(Chi phí) thuế TNDN hoãn lại",
+      "candidate_note": null,
+      "cell_width_exact": true,
+      "cells": [
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "76.141",
+          "candidate_value": "76141",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "76.141",
+          "reference_value": "76141"
+        },
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "(1.178)",
+          "candidate_value": "-1178",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "(1.178)",
+          "reference_value": "-1178"
+        }
+      ],
+      "label_exact": true,
+      "note_exact": true,
+      "reference_indices": [
+        19
+      ],
+      "reference_label": "Thu nhập/(Chi phí) thuế TNDN hoãn lại",
+      "reference_note": null,
+      "semantic_key_exact": true,
+      "semantic_similarity": 1.0
+    },
+    {
+      "action": "MATCH",
+      "candidate_indices": [
+        21
+      ],
+      "candidate_label": "Tổng chi phí thuế thu nhập doanh nghiệp",
+      "candidate_note": null,
+      "cell_width_exact": true,
+      "cells": [
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "(1.591.318)",
+          "candidate_value": "-1591318",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "(1.591.318)",
+          "reference_value": "-1591318"
+        },
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "(1.079.928)",
+          "candidate_value": "-1079928",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "(1.079.928)",
+          "reference_value": "-1079928"
+        }
+      ],
+      "label_exact": true,
+      "note_exact": true,
+      "reference_indices": [
+        20
+      ],
+      "reference_label": "Tổng chi phí thuế thu nhập doanh nghiệp",
+      "reference_note": null,
+      "semantic_key_exact": true,
+      "semantic_similarity": 1.0
+    },
+    {
+      "action": "MATCH",
+      "candidate_indices": [
+        22
+      ],
+      "candidate_label": "LỖI NHUẬN SAU THUẾ",
+      "candidate_note": null,
+      "cell_width_exact": true,
+      "cells": [
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "6.329.468",
+          "candidate_value": "6329468",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "6.329.468",
+          "reference_value": "6329468"
+        },
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "3.934.954",
+          "candidate_value": "3934954",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "3.934.954",
+          "reference_value": "3934954"
+        }
+      ],
+      "label_exact": false,
+      "note_exact": true,
+      "reference_indices": [
+        21
+      ],
+      "reference_label": "LỢI NHUẬN SAU THUẾ",
+      "reference_note": null,
+      "semantic_key_exact": true,
+      "semantic_similarity": 1.0
+    },
+    {
+      "action": "MATCH",
+      "candidate_indices": [
+        23
+      ],
+      "candidate_label": "Lợi ích của cổ đông không kiểm soát",
+      "candidate_note": null,
+      "cell_width_exact": true,
+      "cells": [
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "130.807",
+          "candidate_value": "130807",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "130.807",
+          "reference_value": "130807"
+        },
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "40.045",
+          "candidate_value": "40045",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "40.045",
+          "reference_value": "40045"
+        }
+      ],
+      "label_exact": true,
+      "note_exact": true,
+      "reference_indices": [
+        22
+      ],
+      "reference_label": "Lợi ích của cổ đông không kiểm soát",
+      "reference_note": null,
+      "semantic_key_exact": true,
+      "semantic_similarity": 1.0
+    },
+    {
+      "action": "MATCH",
+      "candidate_indices": [
+        24
+      ],
+      "candidate_label": "Lợi nhuận thuần cổ đông ngân hàng",
+      "candidate_note": null,
+      "cell_width_exact": true,
+      "cells": [
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "6.198.661",
+          "candidate_value": "6198661",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "6.198.661",
+          "reference_value": "6198661"
+        },
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "3.894.909",
+          "candidate_value": "3894909",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "3.894.909",
+          "reference_value": "3894909"
+        }
+      ],
+      "label_exact": true,
+      "note_exact": true,
+      "reference_indices": [
+        23
+      ],
+      "reference_label": "Lợi nhuận thuần cổ đông ngân hàng",
+      "reference_note": null,
+      "semantic_key_exact": true,
+      "semantic_similarity": 1.0
+    },
+    {
+      "action": "MATCH",
+      "candidate_indices": [
+        25
+      ],
+      "candidate_label": "Lãi cơ bản trên cổ phiếu (VND)",
+      "candidate_note": "26",
+      "cell_width_exact": true,
+      "cells": [
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "781",
+          "candidate_value": "781",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "781",
+          "reference_value": "781"
+        },
+        {
+          "candidate_observation": "VALUE",
+          "candidate_raw": "491",
+          "candidate_value": "491",
+          "exact": true,
+          "reference_observation": "VALUE",
+          "reference_raw": "491",
+          "reference_value": "491"
+        }
+      ],
+      "label_exact": true,
+      "note_exact": true,
+      "reference_indices": [
+        24
+      ],
+      "reference_label": "Lãi cơ bản trên cổ phiếu (VND)",
+      "reference_note": "26",
+      "semantic_key_exact": true,
+      "semantic_similarity": 1.0
+    }
+  ],
+  "benchmark_attempts": [
+    {
+      "path": "output/e0007/paddleocr-vl-1.6-page8-metrics.json",
+      "result": {
+        "command": [
+          "env",
+          "PADDLE_PDX_CACHE_HOME=/dev/shm/bctc-paddlex-e0007",
+          "PADDLE_PDX_MODEL_SOURCE=huggingface",
+          "PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=True",
+          "HF_HOME=/dev/shm/bctc-hf-e0007",
+          "XDG_CACHE_HOME=/dev/shm/bctc-xdg-e0007",
+          "TMPDIR=/dev/shm/bctc-tmp-e0007",
+          ".gpu-venv/bin/paddleocr",
+          "doc_parser",
+          "--input",
+          "output/e0007/input/page-0008.png",
+          "--save_path",
+          "output/e0007/paddleocr-vl-1.6-page8",
+          "--pipeline_version",
+          "v1.6",
+          "--paddlex_config",
+          "config/models/paddleocr-vl-1.6-transformers.yaml",
+          "--device",
+          "gpu:0",
+          "--use_queues",
+          "false",
+          "--use_doc_orientation_classify",
+          "false",
+          "--use_doc_unwarping",
+          "false",
+          "--max_new_tokens",
+          "8192"
+        ],
+        "finished_at": "2026-08-05T19:24:14.288839+00:00",
+        "format_version": 1,
+        "gpu": {
+          "baseline_memory_used_mib": 35.0,
+          "index": 0,
+          "memory_total_mib": 16303.0,
+          "name": "NVIDIA GeForce RTX 5070 Ti",
+          "peak_memory_delta_mib": 0.0,
+          "peak_memory_used_mib": 35.0,
+          "peak_power_watts": 12.57,
+          "peak_utilization_percent": 0.0,
+          "uuid": "GPU-e2e6d226-6c1f-bbb8-70c6-6d7fb8323b81"
+        },
+        "process_peak_rss_kib": 1025528,
+        "return_code": 1,
+        "sample_count": 33,
+        "sample_interval_ms": 250,
+        "started_at": "2026-08-05T19:24:05.221045+00:00",
+        "status": "FAIL",
+        "wall_seconds": 9.067794
+      },
+      "sha256": "6e52897f846325bffe14223d2d8c6bb03963d7b7d99ff428172cb1883e112f5c"
+    },
+    {
+      "path": "output/e0007/paddleocr-vl-1.6-page8-attempt2-metrics.json",
+      "result": {
+        "command": [
+          "env",
+          "PADDLE_PDX_CACHE_HOME=/dev/shm/bctc-paddlex-e0007",
+          "PADDLE_PDX_MODEL_SOURCE=huggingface",
+          "PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=True",
+          "HF_HOME=/dev/shm/bctc-hf-e0007",
+          "XDG_CACHE_HOME=/dev/shm/bctc-xdg-e0007",
+          "TMPDIR=/dev/shm/bctc-tmp-e0007",
+          ".gpu-venv/bin/paddleocr",
+          "doc_parser",
+          "--input",
+          "output/e0007/input/page-0008.png",
+          "--save_path",
+          "output/e0007/paddleocr-vl-1.6-page8-attempt2",
+          "--pipeline_version",
+          "v1.6",
+          "--paddlex_config",
+          "config/models/paddleocr-vl-1.6-transformers.yaml",
+          "--engine",
+          "transformers",
+          "--device",
+          "gpu:0",
+          "--use_queues",
+          "false",
+          "--use_doc_orientation_classify",
+          "false",
+          "--use_doc_unwarping",
+          "false",
+          "--max_new_tokens",
+          "8192"
+        ],
+        "finished_at": "2026-08-05T19:25:59.400181+00:00",
+        "format_version": 1,
+        "gpu": {
+          "baseline_memory_used_mib": 35.0,
+          "index": 0,
+          "memory_total_mib": 16303.0,
+          "name": "NVIDIA GeForce RTX 5070 Ti",
+          "peak_memory_delta_mib": 2680.0,
+          "peak_memory_used_mib": 2715.0,
+          "peak_power_watts": 44.45,
+          "peak_utilization_percent": 38.0,
+          "uuid": "GPU-e2e6d226-6c1f-bbb8-70c6-6d7fb8323b81"
+        },
+        "process_peak_rss_kib": 3108284,
+        "return_code": 1,
+        "sample_count": 91,
+        "sample_interval_ms": 250,
+        "started_at": "2026-08-05T19:25:35.158368+00:00",
+        "status": "FAIL",
+        "wall_seconds": 24.241813
+      },
+      "sha256": "e3bc7fa5fb77261cd8f839d1fdbda3b568f509cd834ea1130fae117e1d298925"
+    },
+    {
+      "path": "output/e0007/paddleocr-vl-1.6-page8-attempt3-metrics.json",
+      "result": {
+        "command": [
+          "env",
+          "PADDLE_PDX_CACHE_HOME=/dev/shm/bctc-paddlex-e0007",
+          "PADDLE_PDX_MODEL_SOURCE=huggingface",
+          "PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=True",
+          "HF_HOME=/dev/shm/bctc-hf-e0007",
+          "XDG_CACHE_HOME=/dev/shm/bctc-xdg-e0007",
+          "TMPDIR=/dev/shm/bctc-tmp-e0007",
+          ".gpu-venv/bin/paddleocr",
+          "doc_parser",
+          "--input",
+          "output/e0007/input/page-0008.png",
+          "--save_path",
+          "output/e0007/paddleocr-vl-1.6-page8-attempt3",
+          "--pipeline_version",
+          "v1.6",
+          "--paddlex_config",
+          "config/models/paddleocr-vl-1.6-transformers.yaml",
+          "--engine",
+          "transformers",
+          "--device",
+          "gpu:0",
+          "--use_queues",
+          "false",
+          "--use_doc_orientation_classify",
+          "false",
+          "--use_doc_unwarping",
+          "false",
+          "--max_new_tokens",
+          "8192"
+        ],
+        "finished_at": "2026-08-05T19:27:27.074141+00:00",
+        "format_version": 1,
+        "gpu": {
+          "baseline_memory_used_mib": 35.0,
+          "index": 0,
+          "memory_total_mib": 16303.0,
+          "name": "NVIDIA GeForce RTX 5070 Ti",
+          "peak_memory_delta_mib": 3204.0,
+          "peak_memory_used_mib": 3239.0,
+          "peak_power_watts": 90.8,
+          "peak_utilization_percent": 28.0,
+          "uuid": "GPU-e2e6d226-6c1f-bbb8-70c6-6d7fb8323b81"
+        },
+        "process_peak_rss_kib": 2982916,
+        "return_code": 1,
+        "sample_count": 224,
+        "sample_interval_ms": 250,
+        "started_at": "2026-08-05T19:26:26.066475+00:00",
+        "status": "FAIL",
+        "wall_seconds": 61.007666
+      },
+      "sha256": "58962a6749ff8ad2ce0e1c3fcecc4e0d2183a17193c702b04085ba79690b6540"
+    },
+    {
+      "path": "output/e0007/paddleocr-vl-1.6-page8-attempt4-metrics.json",
+      "result": {
+        "command": [
+          "env",
+          "PADDLE_PDX_CACHE_HOME=/dev/shm/bctc-paddlex-e0007",
+          "PADDLE_PDX_MODEL_SOURCE=huggingface",
+          "PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=True",
+          "HF_HOME=/dev/shm/bctc-hf-e0007",
+          "XDG_CACHE_HOME=/dev/shm/bctc-xdg-e0007",
+          "TMPDIR=/dev/shm/bctc-tmp-e0007",
+          ".gpu-venv/bin/paddleocr",
+          "doc_parser",
+          "--input",
+          "output/e0007/input/page-0008.png",
+          "--save_path",
+          "output/e0007/paddleocr-vl-1.6-page8-attempt4",
+          "--pipeline_version",
+          "v1.6",
+          "--paddlex_config",
+          "config/models/paddleocr-vl-1.6-transformers.yaml",
+          "--engine",
+          "transformers",
+          "--device",
+          "gpu:0",
+          "--use_queues",
+          "false",
+          "--use_doc_orientation_classify",
+          "false",
+          "--use_doc_unwarping",
+          "false",
+          "--max_new_tokens",
+          "8192"
+        ],
+        "finished_at": "2026-08-05T19:28:47.608234+00:00",
+        "format_version": 1,
+        "gpu": {
+          "baseline_memory_used_mib": 35.0,
+          "index": 0,
+          "memory_total_mib": 16303.0,
+          "name": "NVIDIA GeForce RTX 5070 Ti",
+          "peak_memory_delta_mib": 3204.0,
+          "peak_memory_used_mib": 3239.0,
+          "peak_power_watts": 91.26,
+          "peak_utilization_percent": 25.0,
+          "uuid": "GPU-e2e6d226-6c1f-bbb8-70c6-6d7fb8323b81"
+        },
+        "process_peak_rss_kib": 2983624,
+        "return_code": 0,
+        "sample_count": 73,
+        "sample_interval_ms": 250,
+        "started_at": "2026-08-05T19:28:28.086488+00:00",
+        "status": "PASS",
+        "wall_seconds": 19.521746
+      },
+      "sha256": "432ff577bcc683f703289e9653906c56c8b9a3ff198e0b7d6b677aee9d183443"
+    }
+  ],
+  "counts": {
+    "alignment_actions": {
+      "MATCH": 24,
+      "MERGE_CANDIDATE": 1
+    },
+    "compared_cells": 50,
+    "exact_cells": 50,
+    "exact_note_references": 12,
+    "matched_logical_rows": 25,
+    "native_financial_rows": 25,
+    "reference_or_candidate_note_rows": 12,
+    "semantic_key_exact_labels": 25,
+    "source_exact_labels": 23,
+    "vlm_rows_excluded_outside_financial_span": 1,
+    "vlm_rows_inside_financial_span": 26
+  },
+  "dataset_role": "LOGIC_DEVELOPMENT",
+  "excluded_vlm_rows": [
+    [
+      "Người lập:",
+      "Người kiểm soát:",
+      "Người phê duyệt:",
+      ""
+    ]
+  ],
+  "experiment_id": "E-0007",
+  "geometry_config": {
+    "path": "config/tables/geometry.yaml",
+    "sha256": "8570dc627f0c285c1738064421ed8ef14e96810bb50823632d85015f76f10436"
+  },
+  "inference_config": {
+    "path": "config/models/paddleocr-vl-1.6-transformers.yaml",
+    "sha256": "e6e60f949e31c8d6afc58fb4dc28acf55da8b569a6d608cab319c6a7f2793042"
+  },
+  "input_image": {
+    "dpi": 200,
+    "height": 2200,
+    "path": "output/e0007/input/page-0008.png",
+    "sha256": "bfefb5b5e7f5bb015796497a8729fd3be18c0441be281714c986b9302ad829db",
+    "width": 1700
+  },
+  "interpretation": [
+    "The complete PP-DocLayoutV3 plus PaddleOCR-VL-1.6 Transformers pipeline runs on the RTX 5070 Ti.",
+    "Ordered alignment proposed one two-row-to-one-row merge for a wrapped financial label; values and notes were excluded from the alignment score.",
+    "Diacritic-sensitive label comparison remains separate from accent-stripped semantic matching so OCR spelling errors cannot disappear during normalization.",
+    "This is a logic-development cross-reader experiment, not ground-truth accuracy or model approval."
+  ],
+  "package_freeze": {
+    "path": "config/models/gpu-requirements.freeze.txt",
+    "sha256": "d8e60d2423f60fcb5b4ce631ca4446ecb5d2855efa5578bc07589076521d8005"
+  },
+  "runtime_manifest": {
+    "path": "config/models/gpu-runtime.toml",
+    "sha256": "7e2ff8f127cf474d39f9f26791f3adf61b811792b6485b619171e174ef114a4c"
+  },
+  "source": {
+    "page": 8,
+    "path": "vietstock_bctc/VPB/2026/3-bctc-hop-nhat-ban-tra-cuu.pdf",
+    "sha256": "614be8877c21ef189da90266c5b059eb0b7d47024444156241725820bb11dcde"
+  },
+  "status": "PASS_RUNTIME_WITH_READER_DISAGREEMENTS",
+  "vlm_result": {
+    "header": [
+      "",
+      "Thuyết minh",
+      "Cho kỳ kế toán\\n3 tháng kết thúc\\nngày 31 tháng 3 năm 2026",
+      "Cho kỳ kế toán\\n3 tháng kết thúc\\nngày 31 tháng 3 năm 2025\\n(Trình bày lại)\\nTriệu đồng"
+    ],
+    "path": "output/e0007/paddleocr-vl-1.6-page8-attempt4/page-0008_res.json",
+    "sha256": "e2747d1afd2c469dba34c0dbaa53bd0b54ef502c58100af0f0530a94350eea51"
+  }
+}

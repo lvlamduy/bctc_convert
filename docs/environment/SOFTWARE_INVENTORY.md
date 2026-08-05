@@ -48,7 +48,39 @@ The server binds only to `127.0.0.1:27018`; diagnostic data collection is disabl
 
 ## GPU model runtime
 
-The control plane remains CPU-only and stable. The proposed GPU environment is isolated as `.gpu-venv` and documented in `config/models/gpu-runtime.toml` plus `docs/decisions/0003-blackwell-gpu-runtime.md`. No GPU runtime or model is approved until the `sm_120` smoke test, exact-number fixtures, VRAM, throughput, and hallucination gates pass.
+The control plane remains CPU-only and stable. The model environment is isolated as `.gpu-venv`; it contains 122 frozen distributions and occupies 5,663,276,925 bytes on this host. The complete freeze is `config/models/gpu-requirements.freeze.txt` (SHA-256 `d8e60d2423f60fcb5b4ce631ca4446ecb5d2855efa5578bc07589076521d8005`). Direct requirements and all artifact/model hashes are in `config/models/gpu-requirements.in` and `config/models/gpu-runtime.toml`.
+
+Primary runtime versions:
+
+| Component | Frozen version | Purpose |
+|---|---:|---|
+| PyTorch | 2.12.0+cu130 | Blackwell CUDA execution |
+| TorchVision | 0.27.0+cu130 | Transformers image processors and layout model operators |
+| PaddleOCR | 3.7.0 | document-pipeline API/CLI |
+| PaddleX | 3.7.2 | model resolution and pipeline orchestration |
+| Transformers | 5.14.1 | common PyTorch inference engine |
+| OpenCV contrib | 4.10.0.84 | PaddleOCR image dependency |
+| NumPy | 2.3.5 | model/post-process arrays |
+| python-docx | 1.2.0 | completion of the CLI `save_all` export path |
+
+Ubuntu 22.04 additionally needs `libgl1` and `libglib2.0-0`. The observed versions are `1.4.0-1` and `2.72.4-0ubuntu2.9`; the exact dependency closure added on this VPS is recorded in `config/system/ubuntu-22.04-gpu-apt-observed.tsv`. The rebuild script installs current security-compatible packages from the configured Ubuntu 22.04 repositories rather than forcing an obsolete patch version.
+
+The approved runtime smoke performs imports plus a real CUDA matrix multiplication and verifies `sm_120`, capability 12.0, package versions, and CUDA 13.0. It passed on the RTX 5070 Ti. `uv pip check` also passed for all 122 distributions. This approves the runtime mechanism, not model accuracy.
+
+### Pinned document models
+
+| Model | Revision | Weight bytes | Weight SHA-256 | License |
+|---|---|---:|---|---|
+| PaddleOCR-VL-1.6 | `cdc88f5feff0e4079e75863205053a68358e52f7` | 1,917,255,968 | `85a479d506a11e724e7285d395c551be69f41dbc16b6342d3cacfb189aed71db` | Apache-2.0 |
+| PP-DocLayoutV3 safetensors | `97d101e6db2642e162a1d05392d1b0231c91033e` | 133,270,468 | `5ea422c6cc5fe759a47e1357c35639b58173508e025a3131cbe4b6ac59e2b85e` | Apache-2.0 |
+
+`scripts/bootstrap/download_paddleocr_vl_models.py` downloads those exact Hugging Face revisions and refuses a weight size/hash mismatch. Model weights and caches remain outside Git. During E-0007, `PADDLE_PDX_CACHE_HOME`, `HF_HOME`, `XDG_CACHE_HOME`, and `TMPDIR` were all routed to `/dev/shm`; the model cache occupied 2,074,691,105 bytes. `/dev/shm` is suitable for cache but not for a virtual environment because this VPS mounts it `noexec`.
+
+The pinned full pipeline uses `config/models/paddleocr-vl-1.6-transformers.yaml`: PP-DocLayoutV3 runs FP32, PaddleOCR-VL-1.6 runs BF16, remote code is disabled, and both use the Transformers engine. The split precision is required because PP-DocLayoutV3's Transformers post-process cannot convert a BF16 tensor directly to NumPy in the tested stack.
+
+E-0007 passed a complete 200-DPI VPB KQKD-page inference in 19.52 seconds with peak total GPU memory 3,239 MiB (3,204 MiB over baseline). Cross-reader evaluation recovered 25 logical rows, 50/50 exact value/state cells, and 12/12 exact note references. It also exposed two diacritic-sensitive label errors and one wrapped row split, so the model remains a logic-development candidate and cannot establish truth alone. See `docs/experiments/E-0007-paddleocr-vl-runtime.json`.
+
+Detailed commands, disk checks, cache rules, failure history, and rollback are in `docs/environment/GPU_RUNTIME_RUNBOOK.md`.
 
 ## Maintenance rule
 

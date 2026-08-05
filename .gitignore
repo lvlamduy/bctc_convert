@@ -6,6 +6,7 @@ vietstock_bctc/
 # Local environments and caches.
 .venv/
 .gpu-venv/
+.model-cache/
 .tools/
 .local-mongodb/
 __pycache__/

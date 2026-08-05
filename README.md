@@ -28,6 +28,10 @@ document. Recovery procedures are in
 [BACKUP_AND_RESTORE_RUNBOOK.md](BACKUP_AND_RESTORE_RUNBOOK.md).
 The durable strategy, clarification, result, and change index is
 [PROJECT_MEMORY.md](PROJECT_MEMORY.md).
+Server reconstruction is documented in
+[docs/environment/SERVER_REBUILD.md](docs/environment/SERVER_REBUILD.md); the
+isolated Blackwell/PaddleOCR-VL setup and its retained failure history are in
+[docs/environment/GPU_RUNTIME_RUNBOOK.md](docs/environment/GPU_RUNTIME_RUNBOOK.md).
 
 
 

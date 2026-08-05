@@ -11,6 +11,8 @@
 
 The first real-PDF geometry regression is `E-0006`: a registered, hash-locked VPB logic-development document covering CDKT, off-balance disclosures, KQKD, and direct LCTT across pages 5–10. The fixture asserts row/value/note counts, section boundaries, multiline labels, period/unit bindings, direct-method anchors, and fail-closed retention of an unlabeled numeric total. Because the PDF is an external source artifact, the integration test skips only when that exact file is absent; a hash mismatch fails rather than accepting a substitute.
 
+`E-0007` is the first full GPU document-model cross-reader experiment. Ordered dynamic programming aligns native-PDF rows and VLM rows using only order and labels. It may propose two adjacent candidate rows as one logical wrapped row only when exactly one carries financial evidence. Numeric values and note references do not affect the alignment path; they are compared afterward. Diacritic-sensitive exact text and accent-stripped semantic keys are separate metrics, preventing normalization from hiding OCR spelling errors. Unit tests inject wrong values to prove they do not shift structural alignment and retain missing/extra rows explicitly.
+
 ## Distortion matrix
 
 Each representative fixture is tested in original form and controlled variants: blur, low contrast, dark/colored header, uneven lighting, JPEG blocking, noise, rotation, skew, perspective/warp, crop loss, and small text. This follows the factor-wise idea of Real5-OmniDocBench but uses Vietnamese financial pages and exact cell truth.
@@ -23,6 +25,7 @@ Each representative fixture is tested in original form and controlled variants: 
 - Cross-page continuation precision/recall; false merge rate is reported separately.
 - Calibration: error rate by confidence bucket, selective accuracy versus review rate, and conformal/holdout coverage if adopted.
 - Parser/OCR/model pairwise disagreement, escalation recovery rate, throughput, VRAM, and failure/hallucination rate.
+- Source-exact label accuracy and semantic-key accuracy must be reported separately; semantic normalization can never count as exact OCR.
 
 ## Acceptance gates
 
@@ -31,6 +34,7 @@ Each representative fixture is tested in original form and controlled variants: 
 - Missing geometry/config/period/unit/sign or unresolved semantic conflict fails closed.
 - Derived quarter values retain both operands and formula and cannot be classified as directly observed/high confidence.
 - Any regression that changes an accepted value, sign, period, scope, or ID must produce a reviewed diff before merge.
+- A cross-reader match is corroboration, not ground truth. Correlated readers, shared rendering, or shared model weights must be disclosed.
 
 ## Experiment record
 

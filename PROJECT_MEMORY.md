@@ -58,7 +58,7 @@ This is the durable retrieval point for project context. It summarizes user auth
 - Difficult-region candidate: DeepSeek-OCR-2.
 - Mapping reranker candidate: Qwen3.6-27B quantized, with small row/block prompts only. Its fit on 16 GB VRAM must be measured; it is not the numeric reader.
 - Model names do not grant approval. Each must pass Vietnamese bank fixtures, exact-number/sign tests, table geometry, throughput, VRAM, and hallucination measurements.
-- The RTX 5070 Ti is Blackwell `sm_120`. Preinstalled PyTorch 2.5.1+cu124 fails a real CUDA kernel smoke test. An isolated PyTorch 2.12 CUDA 13.0 candidate is documented but will not be installed until upload finishes and disk is re-audited.
+- The RTX 5070 Ti is Blackwell `sm_120`. Preinstalled PyTorch 2.5.1+cu124 fails a real CUDA kernel smoke test. The isolated PyTorch 2.12.0+cu130/TorchVision 0.27.0+cu130 runtime now passes imports, dependency consistency, a real CUDA kernel, and the first full document-model inference; it remains separate from the control plane.
 
 ## Verified current results
 
@@ -66,11 +66,14 @@ This is the durable retrieval point for project context. It summarizes user auth
 - Hardware audit: RTX 5070 Ti 16,303 MiB, Ryzen 9 5950X, about 125.7 GiB RAM, Ubuntu 22.04, NVIDIA driver 595.80.
 - Supplied schema contains 1,592 unique IDs: CDKT 77, KQKD 24, LCTT 107, TM 1,384. TM ID 1944 is absent and remains an append-only proposal.
 - CPU environment is locked in `uv.lock`; bootstrap, atomic storage, source identity registry, role freezing, content-addressed materialization, render/preprocess, local difficult-region variants, perspective correction, ordered alignment, continuation graph, row wrapping, arithmetic validation, and workbook export have executable tests.
-- Latest full test run before this entry: 62 passed, including the hash-locked VPB native-geometry integration fixture and source-registry drift/idempotence tests; Ruff formatting and lint passed.
+- Latest full test run before this entry: 64 passed in 34.53 seconds, including the hash-locked VPB native-geometry integration fixture, source-registry drift/idempotence tests, and order-only cross-reader alignment tests; Ruff formatting and lint passed.
 - A real scanned/mixed ACB PDF page rendered and passed preprocessing checkpoint/hash verification.
 - Relative word-gap segmentation, numeric right-edge clustering, note-axis separation, wrapped-row assembly, label-only section retention, and axis-local period/unit binding are implemented without institution/page coordinate rules.
 - On the registered VPB logic-development fixture (pages 5–10), the native text path reconstructed 134 logical rows and 252 value cells, preserved 48 note references, and found two value axes on every page. It correctly separated snapshot dates from three-month durations, retained direct-LCTT anchors and section headings, and left one visible unlabeled off-balance total unresolved instead of inventing a label. See `docs/experiments/E-0006-vpb-native-geometry.json`.
 - A local control-plane backup restored and hash-verified, but production backup is still FAIL because it is not off-machine.
+- The isolated GPU environment contains 122 frozen distributions, occupies 5,663,276,925 bytes, and is reproducible from a complete freeze plus recorded critical wheel hashes. Ubuntu `libgl1` and `libglib2.0-0`, their observed dependency closure, cache variables, disk thresholds, and rebuild/rollback commands are versioned under `docs/environment/` and `config/system/`.
+- Pinned PaddleOCR-VL-1.6 and PP-DocLayoutV3 weights were verified against their recorded sizes, revisions, and SHA-256 hashes. A revision-pinned downloader refuses mismatches; benchmark caches remain outside Git.
+- E-0007 completed the full PP-DocLayoutV3 FP32 + PaddleOCR-VL-1.6 BF16 Transformers pipeline on VPB KQKD page 8 in 19.52 seconds with 3,239 MiB peak total GPU memory. Independent ordered alignment found 25/25 logical rows, 50/50 exact value/state cells, 12/12 exact note references, one two-row wrapped-label proposal, and only 23/25 source-exact labels. The two diacritic errors prove the VLM cannot be standalone truth even when numbers agree.
 - The source inventory is currently stable at 2,567 PDFs and 17,761,344,114 bytes; later additions must trigger a new drift-aware registration rather than silently changing the denominator.
 - `vst_level` contains four workbooks: balance sheet (77 populated IDs), income statement (24), direct cash flow (50 plus one title row without an ID), and detailed notes (1,384). IDs are unique within every file and all referenced parent IDs exist. The balance workbook contains 47 trailing blank rows; these must be ignored rather than interpreted as data. Cash-flow hierarchy coverage is direct-only and must not be treated as a complete LCTT hierarchy.
 - LCTT ordered blocks/anchors and CDKT scope exclusions are loaded from versioned YAML. Missing policy fails closed; branch assignment follows workbook positions and the algorithm contains no bank/page/coordinate-specific branch list.
@@ -85,7 +88,7 @@ This is the durable retrieval point for project context. It summarizes user auth
 - Expand frozen native-geometry fixtures across institutions, years, scopes, scans, borderless layouts, broken pages, and multi-page rows before assigning production confidence.
 - The user accepts VPS-local artifacts during development and requires periodic working Git commits. Local restore remains required; document the single-server-loss risk rather than silently claiming off-machine protection.
 - Selectively restore `report_yearly` and `report_quaterly`, inventory their fields, and build a local DuckDB weak-reference index. Do not restore unrelated user/chat collections.
-- Install/benchmark the isolated Blackwell runtime only after disk capacity is stable.
+- Broaden the now-working Blackwell model benchmark across institutions, years, scans, distortions, cross-page tables, and frozen holdout roles; E-0007 is logic-development evidence only.
 - Capture matched scan/searchable PDF pairs as golden fixtures, then measure parser/OCR disagreement.
 - Confirm the exact output-period expectations per template/run so PDF-only YTD-to-quarter derivation is applied only where required.
 
@@ -103,3 +106,4 @@ This is the durable retrieval point for project context. It summarizes user auth
 - 2026-08-05: Added pinned MongoDB install/start/restore/audit scripts, server rebuild documentation, test strategy, experiment log, and paper-to-experiment research notes.
 - 2026-08-05: Added relative word-run segmentation, value/note column inference, wrapped and section-row reconstruction, explicit snapshot/duration/YTD header binding, and a hash-locked six-page VPB integration fixture; suite reached 59 tests.
 - 2026-08-05: Made source registration idempotent, preserved first-seen timestamps, and changed disappeared or content-mutated registered paths into hard audit conflicts; suite reached 62 tests.
+- 2026-08-05: Built and froze the isolated Blackwell runtime, pinned exact model revisions/hashes, retained three failed PaddleOCR-VL bootstrap attempts, completed full inference, and added order-only cross-reader alignment that exposes wrapped rows and diacritic disagreements without using values to choose the path.
