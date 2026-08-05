@@ -17,7 +17,9 @@ The first real-PDF geometry regression is `E-0006`: a registered, hash-locked VP
 
 `E-0009` starts the frozen multi-document calibration layer. Four PDFs were assigned the immutable `CALIBRATION` role before content inspection: a TCB 2024 separate scan/searchable pair and image-heavy MBB/VCB 2025 consolidated filings. Page correspondence is inferred with ordered dynamic programming over Otsu-ink, low-resolution layout, and row/column projection fingerprints. It does not read text or numeric values. Low-similarity or ambiguous pairs remain explicit but cannot enter the benchmark. The first run paired all six TCB main-statement target pages, including the off-balance exclusion and two-page direct LCTT. Evidence-manifest tests prohibit Role B from reading Role A inputs/results and prohibit historical values during mapping; history is admitted only in post-mapping validation after a resolved ID.
 
-The E-0010 runner seals Role B before comparison. Unit tests cover dirty-start rejection, overwrite refusal, and successful verification of render/result/metrics/package/model hashes. Reader-output tests preserve a VLM cell containing two visible numbers as `INVALID`, prove numeric disagreement cannot alter ordered alignment, and require all rows under an off-balance page heading to remain ineligible for CDKT. Exact text, semantic-key text, exact cell state/value, row width, notes, and escalation causes are separate metrics.
+The E-0010 runner seals Role B before comparison. Unit tests cover dirty-start rejection, overwrite refusal, and successful verification of render/result/metrics/package/model hashes. Reader-output tests preserve a VLM cell containing two visible numbers as `INVALID`, prove numeric disagreement cannot alter ordered alignment, and require all rows under an off-balance page heading to remain ineligible for CDKT. Ordered alignment can identify both a logical row split across two candidate rows (`MERGE_CANDIDATE`) and two reference rows collapsed into one candidate (`MERGE_REFERENCE`) using labels/order only. The latter is never numerically repaired; it enters table reconstruction review.
+
+E-0010 reports coverage and agreement separately so missing/merged evidence cannot disappear from the denominator. On the six-page TCB calibration block, reference financial row/cell coverage is 94.70%; conditional agreement on aligned evidence is 96.80% rows and 97.60% cells, while strict whole-reference agreement is 91.67% rows and 92.42% cells. These are cross-reader machine-reference results, not human-gold, schema, full-tuple, holdout, or production accuracy. The integration test locks the exact metrics, algorithm/config hashes, zero confidence promotion, zero off-balance eligibility, direct-LCTT fail-closed semantic state, accepted page continuation, four row collapses, and the explicit multi-number-cell reason.
 
 ## Distortion matrix
 
@@ -30,7 +32,7 @@ Each representative fixture is tested in original form and controlled variants: 
 - Full-tuple exact accuracy and coverage by CDKT, KQKD, applicable LCTT branch, and each TM group.
 - Cross-page continuation precision/recall; false merge rate is reported separately.
 - Calibration: error rate by confidence bucket, selective accuracy versus review rate, and conformal/holdout coverage if adopted.
-- Parser/OCR/model pairwise disagreement, escalation recovery rate, throughput, VRAM, and failure/hallucination rate.
+- Parser/OCR/model pairwise disagreement, reference-evidence coverage, conditional agreement, strict whole-reference agreement, escalation recovery rate, throughput, VRAM, and failure/hallucination rate.
 - Source-exact label accuracy and semantic-key accuracy must be reported separately; semantic normalization can never count as exact OCR.
 
 ## Acceptance gates
@@ -46,7 +48,7 @@ Each representative fixture is tested in original form and controlled variants: 
 
 Every experiment is appended to `docs/experiments/EXPERIMENT_LOG.md` with hypothesis, code/config/model/data hashes, frozen fixtures, metrics, result, failure analysis, and decision. Cherry-picked examples or visual impressions are not acceptance evidence.
 
-Any edit to a geometry algorithm or its threshold file invalidates the recorded implementation/config hash in `E-0006` and requires an explicit fixture rerun and reviewed expectation update.
+Historical experiment records are immutable. `E-0006` remains bound to geometry configuration v1 and its recorded algorithm hashes; a newer implementation cannot silently rewrite its expectations. When the exact historical implementation is not present, CI verifies source/config identity and skips replay rather than pretending the current code reproduced it. A versioned successor fixture must lock the current algorithm. E-0010 uses `config/tables/geometry-v2.yaml` and locks the current implementation separately.
 
 Source-registry tests require byte-identical repeated registration, preservation of the original first-seen time, and hard failure when registered content changes in place or a registered path disappears. A routine audit may append new paths but may not silently rewrite existing source identity.
 

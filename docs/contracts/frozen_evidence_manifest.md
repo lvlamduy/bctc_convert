@@ -17,7 +17,8 @@ Every artifact presented to a frozen/calibration process is typed. A path label 
 - Historical evidence is rejected during mapping and candidate generation.
 - A Role B seal requires a clean preprocessing Git revision and revalidates render, inference output, metrics, package freeze, config, model revision/weights, and sealing-code hashes.
 - Seals are append-only for a run. Existing seals are never overwritten.
-- Agreement has `NO_PROMOTION` confidence effect. Missing rows, invalid/multi-number cells, value/state disagreements, note disagreements, and label disagreements route to explicit reread/review classes.
+- Agreement has `NO_PROMOTION` confidence effect. Missing/extra rows, two reference rows collapsed into one candidate, invalid/multi-number cells, value/state disagreements, note disagreements, and label disagreements route to explicit reread/review classes.
+- Coverage, conditional agreement, and strict whole-reference agreement are separate. A missing or structurally merged reference row remains in the strict denominator.
 - Searchable/native Role A is still a machine reference, not human gold. It cannot prove schema/full-tuple or production accuracy.
 
 The executable policy is in `src/bctc_ai/evaluation/frozen_suite.py`; sealing is in `src/bctc_ai/evaluation/sealing.py`.

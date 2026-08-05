@@ -84,6 +84,8 @@ The pinned full pipeline uses `config/models/paddleocr-vl-1.6-transformers.yaml`
 
 E-0007 passed a complete 200-DPI VPB KQKD-page inference in 19.52 seconds with peak total GPU memory 3,239 MiB (3,204 MiB over baseline). Cross-reader evaluation recovered 25 logical rows, 50/50 exact value/state cells, and 12/12 exact note references. It also exposed two diacritic-sensitive label errors and one wrapped row split, so the model remains a logic-development candidate and cannot establish truth alone. See `docs/experiments/E-0007-paddleocr-vl-runtime.json`.
 
+E-0010 reused this exact frozen runtime and model cache; no Python distribution, Ubuntu package, driver, or model weight was added. Six TCB scan pages (10–15) were rendered at 200 DPI after the quality gate classified each page `CLEAN`, then processed sequentially in 101.791746 seconds. Peak observed GPU memory was 3,243 MiB. Role B used inference commit `5e4cb033a70735deff3dc136330d078e457e0748`; its sealed artifact-set SHA-256 is `350ce77034a2adf1775b7117d1785588d17b905f5819fcc9e564f486a83b75d9`. The exact staged replay, including the clean Git commits for preprocessing, sealing, Role A, and comparison, is documented in `docs/experiments/E-0010-REPLAY.md`.
+
 Detailed commands, disk checks, cache rules, failure history, and rollback are in `docs/environment/GPU_RUNTIME_RUNBOOK.md`.
 
 ## Maintenance rule

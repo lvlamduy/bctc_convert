@@ -14,7 +14,8 @@
 12. Choose a model cache with at least 3 GiB free. Download the exact revisions using `scripts/bootstrap/download_paddleocr_vl_models.py`, then run it again with `--verify-only`.
 13. Re-register source PDFs after transfer. Dataset roles are append-only; never silently reuse development files as holdout.
 14. Run a final `bctc-ai audit`; it must remain fail-closed if Mongo, historical index, GPU, schema, source hashes, or backup evidence differ.
-15. Run golden fixtures, E-0006, a pinned E-0007 replay, E-0008 verification, and a frozen end-to-end sample before any production batch. Generated output is never a substitute for the registered source hashes.
+15. Run golden fixtures, verify immutable E-0006, replay pinned E-0007, verify E-0008, and replay E-0009/E-0010 from `docs/experiments/E-0010-REPLAY.md` before any production batch. Generated output is never a substitute for the registered source hashes.
+16. Verify both geometry configurations. `config/tables/geometry.yaml` is historical v1 and must retain its registered hash; current calibration uses `config/tables/geometry-v2.yaml`. Never edit v1 to make a newer fixture pass.
 
 Recovery is accepted only when file hashes, schema order/count, test suite, local Mongo reference audit, and generated-workbook integrity all pass. A copied directory without these checks is not a valid rebuild.
 

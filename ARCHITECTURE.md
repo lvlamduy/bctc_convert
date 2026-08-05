@@ -28,6 +28,8 @@ Matched scan/searchable fixtures are registered before content inspection. Page 
 
 Each Role B OCR run is sealed before Role A comparison. The seal re-hashes every render, model output, metrics file, package freeze, model configuration, pinned model weights, and the sealing implementation. It also requires preprocessing to have begun from a clean Git commit. Comparison refuses a changed or incomplete seal.
 
+Cross-reader alignment is ordered and value-independent. It may represent a wrapped logical row as two candidate rows or flag two reference rows collapsed into one generated row, but it never uses numeric agreement to choose the path. A collapsed-reference action has no automatic numeric interpretation and is routed to table reconstruction. Evaluation reports aligned-evidence coverage, conditional agreement, and strict whole-reference agreement separately; missing or merged rows therefore cannot inflate the headline denominator.
+
 Scope exclusion is stateful within an ordered statement block. A page/section heading such as “CÁC CHỈ TIÊU NGOÀI BÁO CÁO TÌNH HÌNH TÀI CHÍNH” switches the entire following CDKT row sequence to `OFF_BALANCE_SHEET`; it is not sufficient to blacklist a few familiar item names. State resets at an explicit statement boundary.
 
 ## Core boundaries
@@ -46,13 +48,15 @@ Scope exclusion is stateful within an ordered statement block. A page/section he
 - `export`: template-preserving workbook and supporting sheets.
 - `storage`: atomic checkpoints, manifests, backup, integrity, and resume.
 
-For usable native text layers, the first deterministic table path segments PDF words into runs at relative word-gap discontinuities, clusters repeated numeric right edges into value axes, identifies a distinct note-reference axis, groups y-aligned bands, and then attaches preceding wrapped label lines only when geometric/typographic continuation evidence is sufficient. Label-only rows remain ordered section context. Thresholds are relative to page or text height and live in `config/tables/geometry.yaml`; report-, bank-, page-, and absolute-coordinate rules are prohibited.
+For usable native text layers, the first deterministic table path segments PDF words into runs at relative word-gap discontinuities, clusters repeated numeric right edges into value axes, identifies a distinct note-reference axis, groups y-aligned bands, and then attaches preceding wrapped label lines only when geometric/typographic continuation evidence is sufficient. Geometry v2 additionally separates adjacent financial tokens when both tokens are independently valid and their gap exceeds a configured fraction of text height; tightly spaced digit groups remain one value. Short parenthetical continuation lines may attach to the preceding label. Trailing axis-assigned text without numeric evidence is excluded from the table span, while malformed digit-bearing cells remain visible for reread. Label-only rows remain ordered section context. Historical v1 thresholds remain in `config/tables/geometry.yaml`; the current calibration thresholds are versioned in `config/tables/geometry-v2.yaml`. Report-, bank-, page-, and absolute-coordinate rules are prohibited.
 
 Header binding is axis-local. Dates determine current/comparative roles rather than left/right order. Snapshot dates, explicit date ranges, stated month durations, and YTD wording have separate paths, and unit evidence retains its source box. Ambiguous or absent axes fail closed instead of defaulting to a conventional column order.
 
 ## Model adapters and scheduling
 
 Every backend sits behind `read_page`, `read_region`, `read_table`, `read_row`, `read_cell`, `return_text_boxes`, and `return_structure`. Large models run sequentially in isolated services; each batch is checkpointed and verified before the next model loads. Candidate backends from the directive are not approved merely by name: each must pass Vietnamese banking-document fixtures, GPU compatibility, throughput, VRAM, numeric exactness, and hallucination tests.
+
+Generated Markdown/HTML is not a cell-geometry interface. E-0010 demonstrated that a VLM may preserve many visible numbers while collapsing neighboring rows and shifting later value pairs. High-confidence acceptance therefore requires an independently verified cell axis/bounding-box reader and targeted original-image rereads for every structural or numeric disagreement.
 
 The current RTX 5070 Ti has 16,303 MiB and compute capability 12.0. The preinstalled PyTorch build lacks `sm_120`; therefore the initial architecture treats model services as isolated, replaceable runtimes rather than importing them into the bootstrap environment.
 

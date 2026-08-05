@@ -19,6 +19,8 @@ All four source hashes were assigned `CALIBRATION` before their contents were op
 5. Explicit target page numbers belong only to the hash-locked fixture expectation. They must never become a production bank/page routing rule.
 6. Seal Role B OCR before Role A output is admitted to comparison. The seal verifies all render/output/metric hashes, the clean inference code revision, package freeze, exact model revisions and weight hashes, and the sealing implementation.
 7. Propagate configured exclusions as section state. Once the visible outside-balance heading is detected, every following CDKT candidate row remains excluded even when its individual name is not on an anchor list.
+8. Align sealed reader rows by order and labels only. Detect candidate wrapped-row splits and candidate collapses of two reference rows as distinct structural actions. Never use values or notes to choose alignment.
+9. Report reference coverage, conditional agreement, and strict whole-reference agreement separately. Unaligned evidence counts against strict agreement and can never vanish from the denominator.
 
 ## Initial evidence
 
@@ -31,4 +33,6 @@ All four source hashes were assigned `CALIBRATION` before their contents were op
 
 ## Consequences and next gate
 
-The searchable-side rows can now seed an independent Role A machine reference while PaddleOCR-VL and later geometry OCR read only the paired scan pages for Role B. No OCR, mapping, or full-tuple accuracy claim is valid until both outputs are independently produced, sealed by hash, and compared.
+The searchable-side rows seeded an independent Role A machine reference while PaddleOCR-VL read only the paired scan pages for Role B. Both outputs were independently produced and sealed. E-0010 compared 140 reference rows with 139 Role B rows: strict whole-reference agreement was 91.67% by financial row and 92.42% by financial cell, with 94.70% row/cell coverage. The runner detected four two-row collapses on LCTT page 14, one multi-number invalid cell and one displaced value on page 15, two extra numeric rows, three numeric disagreements, and one note disagreement. It excluded all 20 off-balance rows, accepted the page-14→15 continuation, did not invoke history, and promoted no row to high confidence.
+
+This completes the first sealed calibration comparison, not an OCR/mapping/full-tuple or production-accuracy gate. The next gate is an independent word/cell geometry reader plus targeted rereads of the detected regions, followed by multi-bank and distortion calibration with unchanged policies.
