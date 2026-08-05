@@ -4,6 +4,7 @@ import json
 
 from bctc_ai.core.hashing import sha256_file
 from bctc_ai.reporting.bootstrap import (
+    _load_batch_mechanism_summary,
     _load_calibration_summary,
     _load_geometry_recovery_summary,
     _write_dynamic_audits,
@@ -162,6 +163,116 @@ def test_geometry_recovery_summary_locks_targeted_gates_and_three_seals(tmp_path
     assert failed["errors"] == ["E-0011 reconstruction_config hash drift"]
 
 
+def test_batch_mechanism_summary_locks_equivalence_resume_and_seal(tmp_path):
+    artifact_path = tmp_path / "docs/experiments/E-0012-ppocrv6-batch-mechanism.json"
+    paths = {
+        "algorithm": tmp_path / "src/batch.py",
+        "config": tmp_path / "config/ocr.yaml",
+        "runtime": tmp_path / "config/runtime.toml",
+        "freeze": tmp_path / "config/freeze.txt",
+        "source": tmp_path / "source.pdf",
+        "input": tmp_path / "output/upstream/manifest.json",
+        "role_b": tmp_path / "output/upstream/role_b.json",
+        "render": tmp_path / "output/upstream/page.png",
+        "page_manifest": tmp_path / "output/batch/page/run_manifest.json",
+        "result": tmp_path / "output/batch/page/ocr_result.json",
+        "seal": tmp_path / "output/batch/seal.json",
+        "baseline": tmp_path / "output/baseline/ocr_result.json",
+        "batch_manifest": tmp_path / "output/batch/batch_manifest.json",
+    }
+    for name, path in paths.items():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(f"{name}-v1", encoding="utf-8")
+    artifact_path.parent.mkdir(parents=True, exist_ok=True)
+
+    def identity(name: str) -> dict[str, str]:
+        path = paths[name]
+        return {
+            "path": path.relative_to(tmp_path).as_posix(),
+            "sha256": sha256_file(path),
+        }
+
+    result_digest = sha256_file(paths["result"])
+    paths["baseline"].write_text(paths["result"].read_text(encoding="utf-8"), encoding="utf-8")
+    artifact_path.write_text(
+        json.dumps(
+            {
+                "format_version": 1,
+                "experiment_id": "E-0012",
+                "dataset_role": "CALIBRATION",
+                "design": "CLEAN_COMMIT_BATCH_MECHANISM_REGRESSION",
+                "status": "PASS_BATCH_EQUIVALENCE_RESUME_AND_SEAL",
+                "code": {"git_commit": "abc", "git_dirty": False},
+                "algorithm_files_sha256": {
+                    identity("algorithm")["path"]: identity("algorithm")["sha256"]
+                },
+                "configuration": identity("config"),
+                "runtime": {
+                    "manifest": identity("runtime"),
+                    "package_freeze": identity("freeze"),
+                },
+                "source": {**identity("source"), "render": identity("render")},
+                "input_manifest": identity("input"),
+                "upstream_role_b_seal": identity("role_b"),
+                "batch": {
+                    "path": "output/batch",
+                    "manifest_sha256_after_resume": sha256_file(paths["batch_manifest"]),
+                    "state": "OCR_COMPLETE",
+                    "page_manifest": identity("page_manifest"),
+                    "ocr_result": identity("result"),
+                    "metrics": {
+                        "completed_page_count": 1,
+                        "line_count": 50,
+                        "word_token_count": 380,
+                        "model_load_session_count": 1,
+                    },
+                },
+                "equivalence": {
+                    "byte_identical": True,
+                    "batch_ocr_result_sha256": result_digest,
+                    "baseline_ocr_result_path": identity("baseline")["path"],
+                    "baseline_ocr_result_sha256": result_digest,
+                },
+                "resume": {
+                    "status": "PASS_ALREADY_COMPLETE",
+                    "model_reloaded": False,
+                    "model_load_sessions_before": 1,
+                    "model_load_sessions_after": 1,
+                },
+                "sealing": {
+                    **identity("seal"),
+                    "status": "GEOMETRY_OCR_COMPLETE",
+                    "batch_runner_verified": True,
+                    "single_page_helper_verified": True,
+                    "automatic_truth_promotion": False,
+                    "automatic_schema_promotion": False,
+                    "automatic_pdf_confidence_promotion": False,
+                },
+                "acceptance": {
+                    "new_accuracy_sample": False,
+                    "production_accuracy_approved": False,
+                },
+                "software_or_model_change": False,
+                "historical_weak_reference": {"invoked": False},
+                "report_norm_id": {"ids_proposed_or_added": 0},
+                "ytd_derivation": {"invoked": False},
+                "claim_boundary": "mechanism only",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    passed = _load_batch_mechanism_summary(tmp_path)
+
+    assert passed["integrity_status"] == "PASS_TRACKED_AND_LOCAL_ARTIFACTS"
+    assert passed["local_artifact_count"] == 9
+    assert passed["verified_local_artifact_count"] == 9
+    paths["batch_manifest"].write_text("drift", encoding="utf-8")
+    failed = _load_batch_mechanism_summary(tmp_path)
+    assert failed["integrity_status"] == "FAIL"
+    assert failed["errors"] == ["local E-0012 artifact hash drift: batch_manifest"]
+
+
 def test_dynamic_audits_separate_runtime_acceptance_from_model_approval(tmp_path):
     environment = {
         "captured_at": "2026-08-05T00:00:00+00:00",
@@ -243,6 +354,19 @@ def test_dynamic_audits_separate_runtime_acceptance_from_model_approval(tmp_path
             "verified_local_seal_count": 3,
             "errors": [],
         },
+        "batch_mechanism": {
+            "integrity_status": "PASS_TRACKED_AND_LOCAL_ARTIFACTS",
+            "metrics": {
+                "completed_page_count": 1,
+                "line_count": 50,
+                "word_token_count": 380,
+                "model_load_session_count": 1,
+            },
+            "equivalence": {"byte_identical": True},
+            "local_artifact_count": 9,
+            "verified_local_artifact_count": 9,
+            "errors": [],
+        },
     }
     backup = {
         "restored_and_verified": True,
@@ -266,8 +390,11 @@ def test_dynamic_audits_separate_runtime_acceptance_from_model_approval(tmp_path
     assert "reference coverage=94.70%" in progress
     assert "auto-high=0" in progress
     assert "Targeted independent geometry recovery" in progress
+    assert "Batch/checkpoint mechanism" in progress
+    assert "byte-identical=True" in progress
     assert "strict rows=100.00%" in progress
     assert "strict cells=100.00%" in progress
     recovery = (tmp_path / "RECOVERY_AUDIT.md").read_text(encoding="utf-8")
     assert "2/2 locally present seals verify" in recovery
     assert "3/3 locally present seals verify" in recovery
+    assert "9/9 locally present artifacts verify" in recovery

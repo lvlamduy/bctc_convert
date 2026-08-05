@@ -157,3 +157,6 @@ run from clean commit `3291f9d`, retained the same byte hash, completed a no-op
 resume without another model load, and passed the batch-aware geometry sealer.
 Exact commands and artifact hashes are in `docs/experiments/E-0012-REPLAY.md`.
 Because page 15 was already measured in E-0011, E-0012 adds no accuracy sample.
+`bctc-ai audit` re-hashes the tracked E-0012 code/config/runtime identities and
+every retained local source, render, result, checkpoint, baseline, and seal; a
+present-but-drifted artifact changes the mechanism status to `FAIL`.

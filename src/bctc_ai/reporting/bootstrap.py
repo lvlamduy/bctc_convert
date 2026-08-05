@@ -422,6 +422,197 @@ def _load_geometry_recovery_summary(project_root: Path) -> dict[str, object]:
     }
 
 
+def _load_batch_mechanism_summary(project_root: Path) -> dict[str, object]:
+    artifact_path = Path("docs/experiments/E-0012-ppocrv6-batch-mechanism.json")
+    absolute_artifact = project_root / artifact_path
+    if not absolute_artifact.is_file():
+        return {
+            "integrity_status": "NOT_AVAILABLE",
+            "artifact": artifact_path.as_posix(),
+            "errors": ["tracked E-0012 artifact is absent"],
+        }
+    try:
+        artifact = json.loads(absolute_artifact.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        return {
+            "integrity_status": "FAIL",
+            "artifact": artifact_path.as_posix(),
+            "errors": [f"cannot read E-0012 artifact: {exc}"],
+        }
+
+    errors: list[str] = []
+    expected_header = {
+        "format_version": 1,
+        "experiment_id": "E-0012",
+        "dataset_role": "CALIBRATION",
+        "design": "CLEAN_COMMIT_BATCH_MECHANISM_REGRESSION",
+        "status": "PASS_BATCH_EQUIVALENCE_RESUME_AND_SEAL",
+    }
+    for key, value in expected_header.items():
+        if artifact.get(key) != value:
+            errors.append(f"unexpected E-0012 {key}")
+    code = artifact.get("code")
+    if not isinstance(code, dict) or code.get("git_dirty") is not False:
+        errors.append("E-0012 was not recorded from clean code")
+
+    algorithm_files = artifact.get("algorithm_files_sha256")
+    if not isinstance(algorithm_files, dict) or not algorithm_files:
+        errors.append("E-0012 has no algorithm hash set")
+    else:
+        for relative_path, digest in algorithm_files.items():
+            local_path = project_root / str(relative_path)
+            if not local_path.is_file() or sha256_file(local_path) != digest:
+                errors.append(f"E-0012 algorithm hash drift: {relative_path}")
+
+    identities = [artifact.get("configuration")]
+    runtime = artifact.get("runtime")
+    if isinstance(runtime, dict):
+        identities.extend((runtime.get("manifest"), runtime.get("package_freeze")))
+    else:
+        errors.append("E-0012 has no runtime identity")
+    for record in identities:
+        if not isinstance(record, dict):
+            errors.append("E-0012 config/runtime identity is invalid")
+            continue
+        local_path = project_root / str(record.get("path", ""))
+        if not local_path.is_file() or sha256_file(local_path) != record.get("sha256"):
+            errors.append(f"E-0012 config/runtime hash drift: {record.get('path')}")
+
+    batch = artifact.get("batch")
+    metrics: dict[str, object] = {}
+    if not isinstance(batch, dict) or batch.get("state") != "OCR_COMPLETE":
+        errors.append("E-0012 batch completion state drift")
+    else:
+        raw_metrics = batch.get("metrics")
+        if isinstance(raw_metrics, dict):
+            metrics = raw_metrics
+        required_metrics = {
+            "completed_page_count": 1,
+            "line_count": 50,
+            "word_token_count": 380,
+            "model_load_session_count": 1,
+        }
+        if any(metrics.get(key) != value for key, value in required_metrics.items()):
+            errors.append("E-0012 batch metric gate drift")
+
+    equivalence = artifact.get("equivalence")
+    if (
+        not isinstance(equivalence, dict)
+        or equivalence.get("byte_identical") is not True
+        or equivalence.get("batch_ocr_result_sha256")
+        != equivalence.get("baseline_ocr_result_sha256")
+    ):
+        errors.append("E-0012 byte-equivalence gate drift")
+    resume = artifact.get("resume")
+    if (
+        not isinstance(resume, dict)
+        or resume.get("status") != "PASS_ALREADY_COMPLETE"
+        or resume.get("model_reloaded") is not False
+        or resume.get("model_load_sessions_before") != 1
+        or resume.get("model_load_sessions_after") != 1
+    ):
+        errors.append("E-0012 no-op resume gate drift")
+    sealing = artifact.get("sealing")
+    if (
+        not isinstance(sealing, dict)
+        or sealing.get("status") != "GEOMETRY_OCR_COMPLETE"
+        or sealing.get("batch_runner_verified") is not True
+        or sealing.get("single_page_helper_verified") is not True
+        or sealing.get("automatic_truth_promotion") is not False
+        or sealing.get("automatic_schema_promotion") is not False
+        or sealing.get("automatic_pdf_confidence_promotion") is not False
+    ):
+        errors.append("E-0012 sealing safety gate drift")
+    acceptance = artifact.get("acceptance")
+    if (
+        not isinstance(acceptance, dict)
+        or acceptance.get("new_accuracy_sample") is not False
+        or acceptance.get("production_accuracy_approved") is not False
+    ):
+        errors.append("E-0012 claim boundary drift")
+    if artifact.get("software_or_model_change") is not False:
+        errors.append("E-0012 unexpectedly records a software/model change")
+    historical = artifact.get("historical_weak_reference")
+    report_norm = artifact.get("report_norm_id")
+    ytd = artifact.get("ytd_derivation")
+    if not isinstance(historical, dict) or historical.get("invoked") is not False:
+        errors.append("E-0012 historical-reference gate drift")
+    if not isinstance(report_norm, dict) or report_norm.get("ids_proposed_or_added") != 0:
+        errors.append("E-0012 unexpectedly proposes ReportNormID changes")
+    if not isinstance(ytd, dict) or ytd.get("invoked") is not False:
+        errors.append("E-0012 unexpectedly invokes YTD derivation")
+
+    local_artifacts = []
+    candidate_records: list[tuple[str, object]] = [
+        ("source", artifact.get("source")),
+        ("input_manifest", artifact.get("input_manifest")),
+        ("upstream_role_b_seal", artifact.get("upstream_role_b_seal")),
+        ("render", artifact.get("source", {}).get("render") if isinstance(artifact.get("source"), dict) else None),
+        ("page_manifest", batch.get("page_manifest") if isinstance(batch, dict) else None),
+        ("ocr_result", batch.get("ocr_result") if isinstance(batch, dict) else None),
+        ("seal", sealing),
+    ]
+    if isinstance(equivalence, dict):
+        candidate_records.append(
+            (
+                "baseline_ocr_result",
+                {
+                    "path": equivalence.get("baseline_ocr_result_path"),
+                    "sha256": equivalence.get("baseline_ocr_result_sha256"),
+                },
+            )
+        )
+    if isinstance(batch, dict):
+        candidate_records.append(
+            (
+                "batch_manifest",
+                {
+                    "path": f"{batch.get('path', '')}/batch_manifest.json",
+                    "sha256": batch.get("manifest_sha256_after_resume"),
+                },
+            )
+        )
+    for name, record in candidate_records:
+        if not isinstance(record, dict):
+            errors.append(f"E-0012 has no {name} identity")
+            continue
+        local_path = project_root / str(record.get("path", ""))
+        present = local_path.is_file()
+        verified = present and sha256_file(local_path) == record.get("sha256")
+        local_artifacts.append({"name": name, "present": present, "verified": verified})
+        if present and not verified:
+            errors.append(f"local E-0012 artifact hash drift: {name}")
+
+    local_count = sum(bool(record["present"]) for record in local_artifacts)
+    verified_count = sum(bool(record["verified"]) for record in local_artifacts)
+    if errors:
+        integrity_status = "FAIL"
+    elif local_count:
+        integrity_status = "PASS_TRACKED_AND_LOCAL_ARTIFACTS"
+    else:
+        integrity_status = "PASS_TRACKED_ARTIFACT"
+    return {
+        "integrity_status": integrity_status,
+        "artifact": artifact_path.as_posix(),
+        "artifact_sha256": sha256_file(absolute_artifact),
+        "experiment_id": artifact.get("experiment_id"),
+        "recorded_status": artifact.get("status"),
+        "dataset_role": artifact.get("dataset_role"),
+        "design": artifact.get("design"),
+        "code_commit": code.get("git_commit") if isinstance(code, dict) else None,
+        "claim_boundary": artifact.get("claim_boundary"),
+        "metrics": metrics,
+        "equivalence": equivalence,
+        "resume": resume,
+        "sealing": sealing,
+        "acceptance": acceptance,
+        "local_artifacts": local_artifacts,
+        "local_artifact_count": local_count,
+        "verified_local_artifact_count": verified_count,
+        "errors": errors,
+    }
+
+
 def _write_dynamic_audits(
     project_root: Path,
     environment: dict[str, object],
@@ -602,6 +793,34 @@ def _write_dynamic_audits(
             f"Tracked E-0011 targeted geometry-recovery integrity is **{geometry_status}**; "
             "its metrics are disabled until the recorded hashes verify."
         )
+    batch_mechanism = manifest.get("batch_mechanism", {})
+    batch_mechanism = batch_mechanism if isinstance(batch_mechanism, dict) else {}
+    batch_metrics = batch_mechanism.get("metrics", {})
+    batch_metrics = batch_metrics if isinstance(batch_metrics, dict) else {}
+    batch_status = str(batch_mechanism.get("integrity_status", "NOT_AVAILABLE"))
+    if batch_status.startswith("PASS"):
+        batch_progress = (
+            f"E-0012 {batch_status}; pages={batch_metrics.get('completed_page_count', 0)}, "
+            f"lines={batch_metrics.get('line_count', 0)}, "
+            f"words={batch_metrics.get('word_token_count', 0)}, "
+            f"model-load sessions={batch_metrics.get('model_load_session_count', 0)}, "
+            f"byte-identical={batch_mechanism.get('equivalence', {}).get('byte_identical')}"
+        )
+        batch_finding = (
+            f"Tracked E-0012 batch/checkpoint integrity is **{batch_status}**; "
+            f"{batch_mechanism.get('verified_local_artifact_count', 0)}/"
+            f"{batch_mechanism.get('local_artifact_count', 0)} locally present artifacts "
+            "verify. It is a mechanism regression on an existing page, not a new accuracy "
+            "sample."
+        )
+    else:
+        batch_progress = (
+            f"{batch_status}; errors={batch_mechanism.get('errors', [])}"
+        )
+        batch_finding = (
+            f"Tracked E-0012 batch/checkpoint integrity is **{batch_status}**; "
+            "batch evidence is disabled until the recorded hashes verify."
+        )
     hardware = f"""# Hardware audit
 
 Captured: {environment["captured_at"]}
@@ -650,6 +869,7 @@ Captured: {environment["captured_at"]}
 - {mongo_finding}
 - {calibration_finding}
 - {geometry_finding}
+- {batch_finding}
 - A local control-plane backup restored successfully: `{backup["restored_and_verified"]}`. Per the user's development policy, development backup status is **{backup["development_status"]}**. It is not off-machine and does not protect against total VPS loss; production status remains `{backup["production_status"]}`.
 
 ## Recovery posture
@@ -673,13 +893,14 @@ Generated artifacts use atomic write, fsync, rename, and post-write hash verific
 - PDF_ONLY metrics: not yet measured
 - Frozen cross-reader calibration: {calibration_progress}
 - Targeted independent geometry recovery: {geometry_progress}
+- Batch/checkpoint mechanism: {batch_progress}
 - Mongo-assisted metrics: {mongo_progress}
 - Questions created / resolved: {len(questions)} / {resolved_questions}
 - Autonomous decisions: preserve supplied schema unchanged; keep 1944 as a collision-cleared proposal; segment LCTT by workbook position and fail closed on the semantic conflict
 - Not applicable / not observed / unresolved: 0 / 0 / 0 (no production records yet)
 - Workbooks: 0
 - Largest error: no frozen end-to-end multi-institution accuracy result or production-calibrated acceptance threshold yet
-- Last change: sealed E-0011 PP-OCRv6 geometry/value recovery with visible dash evidence, trailing-context isolation, cross-page arithmetic validation, and zero history/schema/confidence promotion
+- Last change: locked clean E-0012 PP-OCRv6 batch equivalence, no-op resume, and batch/helper-aware sealing without adding an accuracy sample
 - Before/after on the targeted TCB calibration: strict reference coverage/cell agreement 94.70%/92.42% -> 100%/100%; Role C label exactness remains only 3/140
 - Regression: run separately with `.venv/bin/pytest`; latest verified count is recorded in `PROJECT_MEMORY.md`
 - Backup status: development={backup["development_status"]}; production={backup["production_status"]} (local restore verified={backup["restored_and_verified"]}, off-machine={backup["off_machine"]})
@@ -790,6 +1011,7 @@ def run_bootstrap(project_root: Path, *, workers: int = 4) -> BootstrapResult:
         },
         "calibration": _load_calibration_summary(project_root),
         "geometry_recovery": _load_geometry_recovery_summary(project_root),
+        "batch_mechanism": _load_batch_mechanism_summary(project_root),
     }
     atomic_write_json(project_root / "BOOTSTRAP_MANIFEST.json", manifest)
 
