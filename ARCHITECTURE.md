@@ -26,6 +26,10 @@ Role B executes the production PDF-to-Excel pipeline. In frozen evaluation, its 
 
 Matched scan/searchable fixtures are registered before content inspection. Page correspondence is a comparison-stage operation based on ordered pixel fingerprints; it cannot use OCR text, numeric values, filenames, or a fixed page offset. Role B receives only the scan-side PDF/render, model/config, and its own intermediate artifacts. The searchable PDF and Role A result are inaccessible until the compare stage. Historical weak reference is also excluded from mapping and becomes visible only after a schema ID is resolved for discrepancy/reread decisions.
 
+Each Role B OCR run is sealed before Role A comparison. The seal re-hashes every render, model output, metrics file, package freeze, model configuration, pinned model weights, and the sealing implementation. It also requires preprocessing to have begun from a clean Git commit. Comparison refuses a changed or incomplete seal.
+
+Scope exclusion is stateful within an ordered statement block. A page/section heading such as “CÁC CHỈ TIÊU NGOÀI BÁO CÁO TÌNH HÌNH TÀI CHÍNH” switches the entire following CDKT row sequence to `OFF_BALANCE_SHEET`; it is not sufficient to blacklist a few familiar item names. State resets at an explicit statement boundary.
+
 ## Core boundaries
 
 - `ingestion`: discovery, immutable identity, document registration, dataset role.

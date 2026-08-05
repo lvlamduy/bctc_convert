@@ -32,6 +32,33 @@ pairing:
   reference_fixture_id: tcb-2024-separate-searchable
   candidate_fixture_id: tcb-2024-separate-scan
   target_reference_pages: [9, 10, 11, 12, 13, 14]
+  target_page_contracts:
+    - reference_page: 9
+      candidate_page: 10
+      statement_type: CDKT
+      expected_scope: MAIN_STATEMENT
+    - reference_page: 10
+      candidate_page: 11
+      statement_type: CDKT
+      expected_scope: MAIN_STATEMENT
+    - reference_page: 11
+      candidate_page: 12
+      statement_type: CDKT
+      expected_scope: OFF_BALANCE_SHEET
+    - reference_page: 12
+      candidate_page: 13
+      statement_type: KQKD
+      expected_scope: MAIN_STATEMENT
+    - reference_page: 13
+      candidate_page: 14
+      statement_type: LCTT
+      expected_scope: MAIN_STATEMENT
+      continued_to_reference_page: 14
+    - reference_page: 14
+      candidate_page: 15
+      statement_type: LCTT
+      expected_scope: MAIN_STATEMENT
+      continued_from_reference_page: 13
   target_content:
     - CDKT
     - OFF_BALANCE_EXCLUSION
@@ -63,4 +90,3 @@ historical_policy:
   pdf_confidence_promotion: false
   pdf_value_overwrite: false
   pdf_ytd_operand: false
-

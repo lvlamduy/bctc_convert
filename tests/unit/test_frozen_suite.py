@@ -75,6 +75,14 @@ def _suite(tmp_path):
             "reference_fixture_id": "left",
             "candidate_fixture_id": "right",
             "target_reference_pages": [1],
+            "target_page_contracts": [
+                {
+                    "reference_page": 1,
+                    "candidate_page": 2,
+                    "statement_type": "CDKT",
+                    "expected_scope": "MAIN_STATEMENT",
+                }
+            ],
         },
         "evidence_policy": {
             "role_b_can_read_role_a_source": False,

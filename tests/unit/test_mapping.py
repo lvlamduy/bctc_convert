@@ -8,7 +8,11 @@ from bctc_ai.mapping.lctt import (
     classify_cash_flow_method,
     load_cash_flow_rules,
 )
-from bctc_ai.mapping.scope import classify_mapping_scope, load_scope_policy
+from bctc_ai.mapping.scope import (
+    classify_mapping_scope,
+    classify_mapping_scopes,
+    load_scope_policy,
+)
 from bctc_ai.schema.registry import SchemaItem
 
 
@@ -58,6 +62,35 @@ def test_off_balance_items_are_not_candidates_for_cdkt(project_root):
         assert not decision.allowed
         assert decision.detected_section == "OFF_BALANCE_SHEET"
     assert classify_mapping_scope("TM", "Bảo lãnh vay vốn", policy).allowed
+
+
+def test_off_balance_heading_excludes_entire_following_cdkt_section(project_root):
+    policy = load_scope_policy(project_root / "config/mapping/scope_exclusions.yaml")
+    decisions = classify_mapping_scopes(
+        [
+            ("CDKT", "CÁC CHỈ TIÊU NGOÀI BÁO CÁO TÌNH HÌNH TÀI CHÍNH RIÊNG"),
+            ("CDKT", "Cam kết khác"),
+            ("CDKT", "Hạn mức tín dụng chưa sử dụng"),
+            ("KQKD", "Thu nhập lãi"),
+        ],
+        policy,
+    )
+
+    assert [decision.allowed for decision in decisions] == [False, False, False, True]
+    assert decisions[1].inherited_from_section
+    assert decisions[2].detected_section == "OFF_BALANCE_SHEET"
+
+
+def test_page_heading_can_seed_off_balance_scope_for_table_rows(project_root):
+    policy = load_scope_policy(project_root / "config/mapping/scope_exclusions.yaml")
+    decisions = classify_mapping_scopes(
+        [("CDKT", "Cam kết khác"), ("CDKT", "Nợ khó đòi đã xử lý")],
+        policy,
+        initial_section_label="CÁC CHỈ TIÊU NGOÀI BÁO CÁO TÌNH HÌNH TÀI CHÍNH RIÊNG",
+    )
+
+    assert all(not decision.allowed for decision in decisions)
+    assert all(decision.inherited_from_section for decision in decisions)
 
 
 def test_lctt_method_uses_ordered_anchor_pairs(project_root):

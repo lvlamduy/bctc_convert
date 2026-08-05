@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from rapidfuzz.fuzz import ratio
 
 from bctc_ai.core.text import normalize_text, retrieval_key
-from bctc_ai.mapping.scope import ScopePolicy, classify_mapping_scope
+from bctc_ai.mapping.scope import ScopeDecision, ScopePolicy, classify_mapping_scopes
 from bctc_ai.schema.registry import SchemaItem
 
 
@@ -87,6 +87,7 @@ def _candidate_features(
     schema: list[SchemaItem],
     schema_index: int,
     scope_policy: ScopePolicy,
+    scope_decision: ScopeDecision,
 ) -> MatchFeatures:
     row = rows[row_index]
     item = schema[schema_index]
@@ -115,7 +116,6 @@ def _candidate_features(
             parent_context = _similarity(retrieval_key(row.parent_label), parent.normalized_name)
     row_position = row_index / max(1, len(rows) - 1)
     schema_position = schema_index / max(1, len(schema) - 1)
-    scope = classify_mapping_scope(row.statement_type, row.label, scope_policy)
     return MatchFeatures(
         exact_label=float(raw_left == raw_right),
         normalized_label=_similarity(raw_left, raw_right),
@@ -125,7 +125,7 @@ def _candidate_features(
         parent_context=parent_context,
         relative_position=max(0.0, 1.0 - abs(row_position - schema_position)),
         statement_compatible=float(row.statement_type == item.statement_type),
-        scope_allowed=float(scope.allowed),
+        scope_allowed=float(scope_decision.allowed),
     )
 
 
@@ -137,8 +137,10 @@ def generate_candidates(
     limit: int = 20,
 ) -> dict[str, list[Candidate]]:
     result: dict[str, list[Candidate]] = {}
-    for row_index, row in enumerate(rows):
-        scope = classify_mapping_scope(row.statement_type, row.label, scope_policy)
+    scopes = classify_mapping_scopes(
+        [(row.statement_type, row.label) for row in rows], scope_policy
+    )
+    for row_index, (row, scope) in enumerate(zip(rows, scopes, strict=True)):
         if not scope.allowed:
             result[row.row_id] = []
             continue
@@ -154,6 +156,7 @@ def generate_candidates(
                 schema,
                 schema_index,
                 scope_policy,
+                scope,
             )
             candidate = Candidate(row.row_id, item.schema_id, features, features.total)
             candidates.append(candidate)

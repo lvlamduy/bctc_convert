@@ -1,13 +1,13 @@
 {
   "algorithm_files_sha256": {
     "scripts/experiments/build_paired_calibration_fixture.py": "43ff38a04a994e79684a6cb27bbc92c4d8d1c10531cf816184aac09ebb205061",
-    "src/bctc_ai/evaluation/frozen_suite.py": "a15c64146ad2d00f48319faea87d9ae46ab345e2a31922f348ed9cbcc185553c",
+    "src/bctc_ai/evaluation/frozen_suite.py": "1b4378d6fc2a5ad69792eb75893acffc3ce3dbad75cd921ae557c31fe673b92d",
     "src/bctc_ai/evaluation/page_pairing.py": "e328fd83080e23e3d0571fda17bcf6c5c4882cb7e70bbff53e4bbbee68c0310d"
   },
   "claim_boundary": "Page correspondence and evidence isolation only; this is not OCR, mapping, full-tuple, or production accuracy.",
   "config": {
     "path": "config/experiments/e0009-frozen-paired-calibration.yaml",
-    "sha256": "29a699efb0463cb27448a0a553da7975dbed30885d011456b5dd2cf6380aa4e9"
+    "sha256": "549d17e1569a3e4aca886261c3bd60de125aeb9dd11f3be7370e58401615c72f"
   },
   "dataset_role": "CALIBRATION",
   "evidence_isolation": {
@@ -32,7 +32,7 @@
         {
           "kind": "CONFIG",
           "path": "config/experiments/e0009-frozen-paired-calibration.yaml",
-          "sha256": "29a699efb0463cb27448a0a553da7975dbed30885d011456b5dd2cf6380aa4e9"
+          "sha256": "549d17e1569a3e4aca886261c3bd60de125aeb9dd11f3be7370e58401615c72f"
         }
       ],
       "ROLE_A_BUILD": [

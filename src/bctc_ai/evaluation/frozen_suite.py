@@ -276,6 +276,22 @@ def load_frozen_suite(project_root: Path, config_path: Path) -> FrozenSuite:
         or target_pages != sorted(set(target_pages))
     ):
         raise FrozenSuiteError("target_reference_pages must be sorted unique positive integers")
+    contracts = pairing.get("target_page_contracts")
+    if not isinstance(contracts, list) or len(contracts) != len(target_pages):
+        raise FrozenSuiteError("one target_page_contract is required per target page")
+    contract_reference_pages = [
+        contract.get("reference_page") for contract in contracts if isinstance(contract, dict)
+    ]
+    if contract_reference_pages != target_pages:
+        raise FrozenSuiteError("target page contracts do not match target_reference_pages")
+    if any(
+        not isinstance(contract.get("candidate_page"), int)
+        or contract.get("statement_type") not in {"CDKT", "KQKD", "LCTT", "TM"}
+        or contract.get("expected_scope") not in {"MAIN_STATEMENT", "OFF_BALANCE_SHEET"}
+        for contract in contracts
+        if isinstance(contract, dict)
+    ) or any(not isinstance(contract, dict) for contract in contracts):
+        raise FrozenSuiteError("target page contract contains invalid fields")
 
     evidence_policy = payload.get("evidence_policy")
     if not isinstance(evidence_policy, dict):
@@ -303,4 +319,3 @@ def load_frozen_suite(project_root: Path, config_path: Path) -> FrozenSuite:
         evidence_policy=evidence_policy,
         historical_policy=historical_policy,
     )
-

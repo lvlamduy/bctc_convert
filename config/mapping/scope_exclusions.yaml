@@ -1,6 +1,9 @@
 version: 1
 CDKT:
   excluded_section: OFF_BALANCE_SHEET
+  section_start_anchors:
+    - Các chỉ tiêu ngoài báo cáo tình hình tài chính
+    - Các chỉ tiêu ngoài bảng cân đối kế toán
   exact_or_heading_anchors:
     - Bảo lãnh vay vốn
     - Cam kết giao dịch hối đoái
