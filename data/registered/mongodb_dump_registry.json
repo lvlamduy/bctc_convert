@@ -10,10 +10,11 @@
     "sha256": "0456df4aebb93b58c433b0d2a8c13bbb9402e1511d07758716976b94989204b9",
     "size_bytes": 526178025
   },
-  "captured_at": "2026-08-05T18:27:43.654565+00:00",
+  "captured_at": "2026-08-05T20:37:39.089466+00:00",
   "collision_audit": {
     "append_safe_from_id_collision_perspective": true,
     "hierarchy_reference_collisions": [],
+    "mongodb_data_chart_key_collisions": [],
     "mongodb_template_collisions": [],
     "nearest_mongodb_name_candidates": [
       {
@@ -84,6 +85,12 @@
   },
   "format_version": 1,
   "hierarchy_reference_status": "VALIDATED_SUPPORTING_REFERENCE",
+  "historical_data_chart_scope": {
+    "audited": true,
+    "bank_document_count": 54,
+    "collection": "data_chart",
+    "document_count": 1318
+  },
   "restored_scope": {
     "bank_document_count": 1571,
     "collection": "financial_report_templates",

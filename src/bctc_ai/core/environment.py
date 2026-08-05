@@ -298,6 +298,7 @@ def collect_environment(project_root: Path) -> dict[str, Any]:
     )
     local_mongo_verified = False
     local_mongo_template_count: int | None = None
+    local_mongo_data_chart_count: int | None = None
     try:
         from pymongo import MongoClient
 
@@ -306,6 +307,9 @@ def collect_environment(project_root: Path) -> dict[str, Any]:
         local_mongo_template_count = client["financial_20_02_2022"][
             "financial_report_templates"
         ].count_documents({})
+        local_mongo_data_chart_count = client["financial_20_02_2022"]["data_chart"].count_documents(
+            {}
+        )
         local_mongo_verified = True
         client.close()
     except Exception:
@@ -328,6 +332,7 @@ def collect_environment(project_root: Path) -> dict[str, Any]:
             "client_available": tools["mongorestore"]["available"],
             "local_loopback_connection_verified": local_mongo_verified,
             "local_template_document_count": local_mongo_template_count,
+            "local_data_chart_document_count": local_mongo_data_chart_count,
             "external_connection_verified": False,
         },
     }

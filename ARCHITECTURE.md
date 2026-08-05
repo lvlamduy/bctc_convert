@@ -34,7 +34,7 @@ Role B executes the production PDF-to-Excel pipeline. In frozen evaluation, its 
 - `axes`: geometry-backed period, unit, sign, and scope binding.
 - `schema`: append-only SchemaGraph and migration checks.
 - `mapping`: candidate retrieval, ordered subtree alignment, constrained assignment, optional small-context reranking.
-- `mongodb_reference`: read-only historical weak-reference index and conflict reporting.
+- `reference`: read-only historical weak-reference index and conflict reporting. It can be queried only after an ID is resolved and cannot participate in mapping or confidence promotion.
 - `reference_builder`: isolated Role A outputs.
 - `validation`: checks only; never value generation.
 - `export`: template-preserving workbook and supporting sheets.

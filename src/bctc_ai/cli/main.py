@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -48,6 +49,29 @@ def _run_restore_test(args: argparse.Namespace) -> int:
     passed = restore_test(Path(args.archive).resolve(), Path(args.manifest).resolve())
     print(f"RESTORE_TEST={'PASS' if passed else 'FAIL'}")
     return 0 if passed else 1
+
+
+def _run_history_index(args: argparse.Namespace) -> int:
+    from bctc_ai.reference.historical import build_historical_weak_reference
+
+    mongo_uri = os.environ.get(args.mongo_uri_env)
+    if not mongo_uri:
+        print(
+            f"history-index: environment variable {args.mongo_uri_env!r} is not set",
+            file=sys.stderr,
+        )
+        return 2
+    result = build_historical_weak_reference(
+        _project_root(args.project_root),
+        mongo_uri=mongo_uri,
+        output_path=Path(args.output),
+        registry_path=Path(args.registry),
+        replace=args.replace,
+    )
+    print(f"HISTORICAL_REFERENCE_STATUS={result['status']}")
+    print(f"HISTORICAL_REFERENCE_DATABASE={result['database']['path']}")
+    print(f"HISTORICAL_REFERENCE_ROWS={result['cells']['count']}")
+    return 0
 
 
 def _parse_pages(value: str | None) -> set[int] | None:
@@ -180,6 +204,18 @@ def build_parser() -> argparse.ArgumentParser:
     restore.add_argument("--archive", required=True)
     restore.add_argument("--manifest", required=True)
     restore.set_defaults(handler=_run_restore_test)
+
+    history = subparsers.add_parser(
+        "history-index", help="build the resolved-ID-only historical weak reference"
+    )
+    history.add_argument("--mongo-uri-env", default="BCTC_HISTORY_MONGO_URI")
+    history.add_argument("--output", default="data/local/historical_weak_reference.duckdb")
+    history.add_argument(
+        "--registry",
+        default="data/registered/historical_weak_reference_registry.json",
+    )
+    history.add_argument("--replace", action="store_true")
+    history.set_defaults(handler=_run_history_index)
     return parser
 
 

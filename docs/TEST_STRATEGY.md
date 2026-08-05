@@ -13,6 +13,8 @@ The first real-PDF geometry regression is `E-0006`: a registered, hash-locked VP
 
 `E-0007` is the first full GPU document-model cross-reader experiment. Ordered dynamic programming aligns native-PDF rows and VLM rows using only order and labels. It may propose two adjacent candidate rows as one logical wrapped row only when exactly one carries financial evidence. Numeric values and note references do not affect the alignment path; they are compared afterward. Diacritic-sensitive exact text and accent-stripped semantic keys are separate metrics, preventing normalization from hiding OCR spelling errors. Unit tests inject wrong values to prove they do not shift structural alignment and retain missing/extra rows explicitly.
 
+`E-0008` selects and indexes the uploaded historical bank source. Tests reject non-bank documents, unknown period types, misaligned series lengths, unknown numeric keys, and policy changes that weaken safety gates. DuckDB constraints and routine verification require zero duplicate identities, zero ID 1944 rows, and zero rows permitted to map or promote PDF evidence. NAN, NULL, and negative zero have separate preservation checks. The source evaluator proves that generic `report_yearly`/`report_quaterly` have no registered banks and that allowlisted `data_chart` covers all 27 banks with annual and quarterly documents.
+
 ## Distortion matrix
 
 Each representative fixture is tested in original form and controlled variants: blur, low contrast, dark/colored header, uneven lighting, JPEG blocking, noise, rotation, skew, perspective/warp, crop loss, and small text. This follows the factor-wise idea of Real5-OmniDocBench but uses Vietnamese financial pages and exact cell truth.

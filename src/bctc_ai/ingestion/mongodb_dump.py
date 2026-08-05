@@ -113,10 +113,35 @@ def audit_financial_reference_dump(
             )
         candidates.sort(key=lambda record: (-record["name_similarity"], record["report_norm_id"]))
         bank_template_count = collection.count_documents({"stock_industry": "bank"})
+        collection_names = set(database.list_collection_names())
+        data_chart_count: int | None = None
+        data_chart_bank_count: int | None = None
+        data_chart_key_collisions: list[dict[str, object]] = []
+        if "data_chart" in collection_names:
+            data_chart = database["data_chart"]
+            data_chart_count = data_chart.count_documents({})
+            data_chart_bank_count = data_chart.count_documents({"stock_industry": "bank"})
+            data_chart_key_collisions = list(
+                data_chart.find(
+                    {
+                        "stock_industry": "bank",
+                        "$or": [
+                            {f"data.{proposed_id}": {"$exists": True}},
+                            {f"data.YTD_{proposed_id}": {"$exists": True}},
+                        ],
+                    },
+                    {"_id": 0, "stock_id": 1, "term_type": 1},
+                )
+            )
     finally:
         client.close()
 
-    append_safe = not schema_collisions and not hierarchy_collisions and not mongo_collisions
+    append_safe = (
+        not schema_collisions
+        and not hierarchy_collisions
+        and not mongo_collisions
+        and not data_chart_key_collisions
+    )
     return {
         "format_version": 1,
         "captured_at": datetime.now(UTC).isoformat(),
@@ -133,12 +158,19 @@ def audit_financial_reference_dump(
             "bank_document_count": bank_template_count,
             "excluded_out_of_scope_collections": ["user", "chat_sessions"],
         },
+        "historical_data_chart_scope": {
+            "audited": data_chart_count is not None,
+            "collection": "data_chart",
+            "document_count": data_chart_count,
+            "bank_document_count": data_chart_bank_count,
+        },
         "collision_audit": {
             "proposed_id": proposed_id,
             "proposed_name": proposed_name,
             "supplied_schema_collisions": schema_collisions,
             "hierarchy_reference_collisions": hierarchy_collisions,
             "mongodb_template_collisions": mongo_collisions,
+            "mongodb_data_chart_key_collisions": data_chart_key_collisions,
             "append_safe_from_id_collision_perspective": append_safe,
             "semantic_or_parent_approval_still_required": True,
             "nearest_mongodb_name_candidates": candidates[:10],

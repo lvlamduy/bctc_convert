@@ -34,6 +34,7 @@ def test_control_plane_backup_excludes_reconstructable_and_large_local_assets(tm
         project / ".local-mongodb/data.wt",
         project / ".tools/tool.bin",
         project / ".model-cache/weights.bin",
+        project / "data/local/historical_weak_reference.duckdb",
         project / "vietstock_bctc/BANK/report.pdf",
         project / "output/run/result.json",
     ]

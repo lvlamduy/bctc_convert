@@ -16,6 +16,8 @@ bctc-ai backup --destination /absolute/backup/path
 
 The local archive is an allowlisted **control-plane** backup: tracked source code, tests, configs, small registries/manifests, templates, hierarchy references, and operating Markdown. It intentionally excludes source PDFs, `.gpu-venv`, `.venv`, `.local-mongodb`, `.tools`, `.model-cache`, generated output, and model caches/weights. Those large or reconstructable assets use their own hash registries, rebuild manifests, or future versioned artifact store. A regression test asserts this boundary so installing a large runtime cannot silently inflate every routine backup.
 
+`data/local/historical_weak_reference.duckdb` is also excluded. Its versioned registry contains archive/source/code/policy/database hashes and it is rebuilt from the allowlisted `data_chart` collection. A copied DuckDB without a passing current-host registry verification is not an accepted restore.
+
 Use `--off-machine` only when the mounted destination is independently versioned and failure-isolated. The flag is an operator assertion and must be documented in the run record.
 
 Re-run a verification without restoring into the workspace:

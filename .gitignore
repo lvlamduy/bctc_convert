@@ -23,6 +23,8 @@ data/incoming/**
 !data/incoming/.gitkeep
 data/immutable/**
 !data/immutable/.gitkeep
+data/local/**
+!data/local/.gitkeep
 
 # Secrets and local overrides.
 .env

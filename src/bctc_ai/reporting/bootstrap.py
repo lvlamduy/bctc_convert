@@ -13,6 +13,7 @@ from bctc_ai.ingestion.bank_registry import load_bank_registry
 from bctc_ai.ingestion.discovery import discover_pdfs
 from bctc_ai.ingestion.registry import register_sources
 from bctc_ai.questions.bootstrap import bootstrap_questions, write_questions
+from bctc_ai.reference.historical import verify_historical_weak_reference
 from bctc_ai.schema.hierarchy import apply_hierarchy_reference, load_hierarchy_reference
 from bctc_ai.schema.registry import load_all
 from bctc_ai.storage.backup import create_backup
@@ -71,18 +72,40 @@ def _write_schema_artifacts(
     return workbook_records, len(items), graph_hash, hierarchy_record
 
 
-def _write_schema_proposal(project_root: Path) -> None:
+def _write_schema_proposal(
+    project_root: Path,
+    historical_verification: dict[str, object] | None = None,
+) -> None:
     dump_registry_path = project_root / "data/registered/mongodb_dump_registry.json"
     dump_registry = (
         json.loads(dump_registry_path.read_text(encoding="utf-8"))
         if dump_registry_path.is_file()
         else None
     )
-    collision_safe = bool(
+    historical_registry_path = (
+        project_root / "data/registered/historical_weak_reference_registry.json"
+    )
+    historical_registry = (
+        json.loads(historical_registry_path.read_text(encoding="utf-8"))
+        if historical_registry_path.is_file()
+        else None
+    )
+    template_collision_safe = bool(
         dump_registry
         and dump_registry.get("collision_audit", {}).get(
             "append_safe_from_id_collision_perspective"
         )
+    )
+    historical_collision_safe = bool(
+        historical_registry
+        and historical_verification
+        and historical_verification.get("status") == "PASS"
+        and historical_registry.get("schema", {}).get(
+            "append_safe_from_historical_key_collision_perspective"
+        )
+    )
+    collision_safe = template_collision_safe and (
+        historical_registry is None or historical_collision_safe
     )
     proposal = {
         "proposal_id": "SCHEMA-TM-1944",
@@ -101,7 +124,27 @@ def _write_schema_proposal(project_root: Path) -> None:
         "reason": "Named append-only item in the master directive is absent from the supplied TM workbook.",
         "confidence": "PROPOSAL_REQUIRES_USER_CONFIRMATION",
         "question_id": "Q-BOOT-004",
-        "collision_evidence": (dump_registry.get("collision_audit") if dump_registry else None),
+        "collision_evidence": {
+            "schema_hierarchy_and_mongodb_templates": (
+                dump_registry.get("collision_audit") if dump_registry else None
+            ),
+            "historical_data_chart_keys": (
+                {
+                    "source_contains_proposed_id": historical_registry["schema"][
+                        "source_contains_proposed_id"
+                    ],
+                    "append_safe_from_historical_key_collision_perspective": (
+                        historical_collision_safe
+                    ),
+                    "selected_document_count": historical_registry["source"][
+                        "selected_document_count"
+                    ],
+                    "cell_count": historical_registry["cells"]["count"],
+                }
+                if historical_registry
+                else None
+            ),
+        },
         "status": (
             "COLLISION_CHECK_PASSED_APPEND_DECISION_OPEN"
             if collision_safe
@@ -182,14 +225,35 @@ def _write_dynamic_audits(
         str(question.get("resolution_status", "")).startswith("RESOLVED") for question in questions
     )
     dump_registry = manifest.get("mongodb", {}).get("dump_registry")
+    historical_reference = manifest.get("mongodb", {}).get("historical_weak_reference", {})
+    historical_reference = historical_reference if isinstance(historical_reference, dict) else {}
     if isinstance(dump_registry, dict):
+        if historical_reference.get("status") == "PASS":
+            history_finding = (
+                "The local historical weak-reference index was revalidated at "
+                f"{historical_reference.get('row_count')} cells across "
+                f"{historical_reference.get('bank_count')} banks. Its database constraints "
+                "forbid mapping and confidence promotion."
+            )
+            mongo_progress = (
+                f"PASS weak-reference-only ({historical_reference.get('row_count')} cells; "
+                f"{historical_reference.get('bank_count')} banks)"
+            )
+        else:
+            history_finding = (
+                "The historical weak-reference index status is "
+                f"`{historical_reference.get('status', 'NOT_CONFIGURED')}` and it is disabled."
+            )
+            mongo_progress = (
+                "disabled; local historical weak-reference verification status="
+                f"{historical_reference.get('status', 'NOT_CONFIGURED')}"
+            )
         mongo_finding = (
             "The uploaded MongoDB archive is hash-registered. The allowlisted "
             f"financial template audit contains {dump_registry['restored_scope']['document_count']} "
-            "documents and found no ReportNormID 1944 collision; historical value collections "
-            "are not indexed yet."
+            "documents and found no ReportNormID 1944 collision. "
+            f"{history_finding}"
         )
-        mongo_progress = "template/schema reference available; historical value index pending"
     else:
         mongo_finding = (
             "No registered MongoDB archive audit is available; Mongo-assisted mode is disabled."
@@ -268,11 +332,11 @@ Generated artifacts use atomic write, fsync, rename, and post-write hash verific
 - Not applicable / not observed / unresolved: 0 / 0 / 0 (no production records yet)
 - Workbooks: 0
 - Largest error: no frozen end-to-end multi-institution accuracy result or production-calibrated acceptance threshold yet
-- Last change: reproducible Blackwell runtime, pinned PaddleOCR-VL model revisions, measured full inference, and value-independent ordered cross-reader alignment
-- Before/after: incompatible host model stack -> exact 122-package isolated runtime plus a measured native-PDF/VLM disagreement record on a registered fixture
+- Last change: allowlisted Mongo `data_chart` weak-reference index with resolved-ID-only lookup, unknown unit/scope, and database-enforced no-map/no-promote gates
+- Before/after: non-bank historical collections and slow row-wise writes -> 27-bank, 112,147-cell guarded index built by transactional DuckDB bulk load
 - Regression: run separately with `.venv/bin/pytest`; latest verified count is recorded in `PROJECT_MEMORY.md`
 - Backup status: development={backup["development_status"]}; production={backup["production_status"]} (local restore verified={backup["restored_and_verified"]}, off-machine={backup["off_machine"]})
-- Next bounded action: broaden frozen cross-reader fixtures across institutions, scans, distortions, and page breaks, then build the allowlisted historical weak-reference index
+- Next bounded action: broaden frozen cross-reader fixtures across institutions, scans, distortions, and page breaks, then measure calibrated disagreement escalation with the weak reference kept non-authoritative
 """
     atomic_write_text(project_root / "PROGRESS_REPORT.md", progress)
 
@@ -286,6 +350,7 @@ def run_bootstrap(project_root: Path, *, workers: int = 4) -> BootstrapResult:
         "remotes": (_git(project_root, "remote") or "").splitlines(),
     }
     environment = collect_environment(project_root)
+    historical_weak_reference = verify_historical_weak_reference(project_root)
     source_root = project_root / "vietstock_bctc"
     inventory_stable = False
     inventory_attempts = 0
@@ -319,7 +384,7 @@ def run_bootstrap(project_root: Path, *, workers: int = 4) -> BootstrapResult:
         if inventory_stable:
             break
     workbooks, schema_count, graph_hash, hierarchy_reference = _write_schema_artifacts(project_root)
-    _write_schema_proposal(project_root)
+    _write_schema_proposal(project_root, historical_weak_reference)
     questions = bootstrap_questions()
     write_questions(project_root, questions)
 
@@ -374,6 +439,7 @@ def run_bootstrap(project_root: Path, *, workers: int = 4) -> BootstrapResult:
                 if (project_root / "data/registered/mongodb_dump_registry.json").is_file()
                 else None
             ),
+            "historical_weak_reference": historical_weak_reference,
         },
     }
     atomic_write_json(project_root / "BOOTSTRAP_MANIFEST.json", manifest)

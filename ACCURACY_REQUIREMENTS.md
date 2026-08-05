@@ -7,6 +7,9 @@ This file is the durable checklist for every design, experiment, review, and pro
 - The visible source PDF is the final authority for label, value, sign, unit, period, scope, section, table, row, cell, hierarchy, and order.
 - OCR, document models, LLM/VLM output, MongoDB history, historical filings, and accounting equations are supporting evidence only.
 - Never invent a value, fill a blank, turn a dash into zero, repair a total by synthesis, or let historical data overwrite legible PDF evidence.
+- Query historical values only after PDF structure has independently resolved a ReportNormID. Historical label/value similarity cannot generate or choose mapping candidates.
+- Treat historical unit and separate/consolidated scope as UNKNOWN unless the historical source itself proves them. A historical mismatch triggers rereading/review only; agreement cannot promote confidence.
+- Keep upstream raw-quarter and YTD series distinct. Upstream YTD values cannot serve as operands for PDF derivation; only two visible compatible PDF cells may do so.
 - Preserve raw and normalized text and every image/preprocessing variant used to reach a decision.
 - Distinguish VALUE, ZERO, BLANK, DASH, NOT_APPLICABLE, NOT_OBSERVED, and invalid/unreadable evidence.
 

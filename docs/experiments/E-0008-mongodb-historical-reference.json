@@ -1,0 +1,233 @@
+{
+  "artifacts": {
+    "archive_sha256": "0456df4aebb93b58c433b0d2a8c13bbb9402e1511d07758716976b94989204b9",
+    "builder_sha256": "6fb067c2e9fccf3cad5313a6654ad98ff0cf20ce788751bd475ce367a9e89494",
+    "database_sha256": "ca0142c0ac3508c7c9330cb39f983edcef30869dbef0183447f49b7fe8168697",
+    "evaluation_sha256": "3d609ed16bc7bd449c3ceded70ca064bcbef0db2d8649bd47a38f54800bc1580",
+    "implementation_sha256": "cfab69915da048895c2fd9dbb8d10662e15e32056fae7b9ed0587a3378650e8d",
+    "policy_sha256": "736a7dc5738ef23bbdd7b3e60b6215d7278a3a43573de5af64a73ce0d06c6a50",
+    "registry_path": "data/registered/historical_weak_reference_registry.json",
+    "registry_sha256": "62911ea7f27e2b739499951f519913f0d51ce45d18d60ffd2c2989457fbe8b77"
+  },
+  "captured_at": "2026-08-05T20:38:36.894216+00:00",
+  "checks": {
+    "data_chart_covers_all_registered_banks": true,
+    "data_chart_has_no_unregistered_bank_codes": true,
+    "data_chart_has_one_annual_and_quarterly_document_per_bank": true,
+    "database_covers_27_banks": true,
+    "database_has_no_duplicate_identity": true,
+    "database_has_no_mapping_or_promotion_rows": true,
+    "database_hash_matches_registry": true,
+    "database_row_count_matches_registry": true,
+    "mapped_numeric_ids_match_registry": true,
+    "mapped_ytd_ids_match_registry": true,
+    "q1_raw_and_ytd_are_separate_equal_series": true,
+    "q4_raw_and_ytd_are_separate_different_series": true,
+    "report_quaterly_has_no_registered_bank": true,
+    "report_yearly_has_no_registered_bank": true,
+    "selected_document_hash_matches_registry": true,
+    "source_and_database_have_no_1944": true
+  },
+  "database_audit": {
+    "duplicate_identity_count": 0,
+    "forbidden_row_count": 0,
+    "indexed_1944_count": 0,
+    "indexed_bank_count": 27,
+    "path": "data/local/historical_weak_reference.duckdb",
+    "row_count": 112147,
+    "sha256": "ca0142c0ac3508c7c9330cb39f983edcef30869dbef0183447f49b7fe8168697",
+    "size_bytes": 17838080,
+    "value_state_counts": {
+      "NAN": 5823,
+      "VALUE": 79455,
+      "ZERO": 26869
+    }
+  },
+  "experiment_id": "E-0008",
+  "hypothesis": "The uploaded Mongo archive can provide post-mapping bank discrepancy evidence without participating in schema mapping or PDF confidence promotion.",
+  "limitations": [
+    "Historical scope and unit are not proven by PDF provenance.",
+    "The archive can be stale, transformed, rounded, or based on a different filing revision.",
+    "NaN is preserved as NAN and never converted to zero.",
+    "Only a previously resolved ReportNormID may be queried.",
+    "No historical row may map, overwrite, or promote a PDF observation."
+  ],
+  "mongo_uri_persisted": false,
+  "performance_attempts": [
+    {
+      "elapsed_lower_bound_seconds": 216.0,
+      "method": "PYTHON_EXECUTEMANY_AUTOCOMMIT",
+      "status": "INTENTIONALLY_TERMINATED_BEFORE_PUBLISH"
+    },
+    {
+      "elapsed_lower_bound_seconds": 194.0,
+      "method": "PYTHON_EXECUTEMANY_SINGLE_TRANSACTION",
+      "status": "INTENTIONALLY_TERMINATED_BEFORE_PUBLISH"
+    },
+    {
+      "method": "DUCKDB_COPY_CSV_SINGLE_TRANSACTION",
+      "status": "PASS_PRIOR_BUILD",
+      "write_elapsed_seconds": 3.536062
+    },
+    {
+      "method": "DUCKDB_COPY_CSV_SINGLE_TRANSACTION",
+      "status": "PASS",
+      "write_elapsed_seconds": 1.835431
+    }
+  ],
+  "period_semantics_probe": {
+    "interpretation": "The source keeps quarter-only and upstream YTD series separately. They are weak discrepancy evidence only and cannot supply PDF derivation operands.",
+    "q1_2026": {
+      "UPSTREAM_DERIVED_YTD": {
+        "numeric_value": 16960.628,
+        "raw_value": "16960.628"
+      },
+      "UPSTREAM_NUMERIC_SERIES": {
+        "numeric_value": 16960.628,
+        "raw_value": "16960.628"
+      }
+    },
+    "q4_2025": {
+      "UPSTREAM_DERIVED_YTD": {
+        "numeric_value": 58635.939,
+        "raw_value": "58635.939"
+      },
+      "UPSTREAM_NUMERIC_SERIES": {
+        "numeric_value": 16767.175,
+        "raw_value": "16767.175"
+      }
+    },
+    "report_norm_id": 4385,
+    "stock_id": "VPB"
+  },
+  "safety_contract": {
+    "can_trigger_targeted_reread_or_review": true,
+    "lookup_requires_resolved_report_norm_id": true,
+    "mapping_candidate_generation_allowed": false,
+    "pdf_confidence_promotion_allowed": false,
+    "pdf_value_overwrite_allowed": false,
+    "scope": "UNKNOWN",
+    "unit": "UNKNOWN",
+    "upstream_ytd_can_supply_pdf_derivation_operand": false
+  },
+  "software": {
+    "duckdb": "1.5.5",
+    "pymongo": "4.17.0"
+  },
+  "source_audit": {
+    "data_chart": {
+      "annual_terms": [
+        "N/2008",
+        "N/2009",
+        "N/2010",
+        "N/2011",
+        "N/2012",
+        "N/2013",
+        "N/2014",
+        "N/2015",
+        "N/2016",
+        "N/2017",
+        "N/2018",
+        "N/2019",
+        "N/2020",
+        "N/2021",
+        "N/2022",
+        "N/2023",
+        "N/2024",
+        "N/2025"
+      ],
+      "bank_count": 27,
+      "bank_document_count": 54,
+      "document_count": 1318,
+      "index_size_bytes": 106496,
+      "logical_size_bytes": 35299250,
+      "mapped_schema_id_count": 79,
+      "mapped_ytd_schema_id_count": 16,
+      "numeric_feature_count": 91,
+      "quarterly_terms": [
+        "Q1/2019",
+        "Q1/2020",
+        "Q1/2021",
+        "Q1/2022",
+        "Q1/2023",
+        "Q1/2024",
+        "Q1/2025",
+        "Q1/2026",
+        "Q2/2019",
+        "Q2/2020",
+        "Q2/2021",
+        "Q2/2022",
+        "Q2/2023",
+        "Q2/2024",
+        "Q2/2025",
+        "Q3/2019",
+        "Q3/2020",
+        "Q3/2021",
+        "Q3/2022",
+        "Q3/2023",
+        "Q3/2024",
+        "Q3/2025",
+        "Q4/2019",
+        "Q4/2020",
+        "Q4/2021",
+        "Q4/2022",
+        "Q4/2023",
+        "Q4/2024",
+        "Q4/2025"
+      ],
+      "selected_registered_bank_document_count": 54,
+      "source_contains_1944": false,
+      "storage_size_bytes": 24559616,
+      "term_type_counts": {
+        "quaterly": 27,
+        "yearly": 27
+      },
+      "unexpected_bank_codes": []
+    },
+    "rejected_for_bank_reference": [
+      "report_yearly",
+      "report_quaterly"
+    ],
+    "report_quaterly": {
+      "distinct_identifier_count": 1327,
+      "document_count": 2581,
+      "index_size_bytes": 155648,
+      "intersection_by_category": {
+        "INSURANCE": 1,
+        "SECURITIES_OR_FUND": 6
+      },
+      "logical_size_bytes": 126611963,
+      "registered_financial_code_intersection": [
+        "API",
+        "IBC",
+        "IPA",
+        "PIV",
+        "PV2",
+        "PVI",
+        "TVC"
+      ],
+      "storage_size_bytes": 51027968
+    },
+    "report_yearly": {
+      "distinct_identifier_count": 1558,
+      "document_count": 5723,
+      "index_size_bytes": 262144,
+      "intersection_by_category": {
+        "INSURANCE": 1,
+        "SECURITIES_OR_FUND": 6
+      },
+      "logical_size_bytes": 116594169,
+      "registered_financial_code_intersection": [
+        "API",
+        "IBC",
+        "IPA",
+        "PIV",
+        "PV2",
+        "PVI",
+        "TVC"
+      ],
+      "storage_size_bytes": 30269440
+    }
+  },
+  "status": "PASS_LOGIC_DEVELOPMENT_WEAK_REFERENCE"
+}

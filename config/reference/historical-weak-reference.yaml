@@ -1,0 +1,36 @@
+version: 1
+authority: HISTORICAL_WEAK_REFERENCE_ONLY
+
+source:
+  archive_registry: data/registered/mongodb_dump_registry.json
+  collection: data_chart
+  industry_field: stock_industry
+  allowed_industry_value: bank
+  stock_id_field: stock_id
+  term_type_field: term_type
+  data_field: data
+  norm_term_feature: NormTerm
+  allowed_term_types:
+    yearly: ANNUAL
+    quaterly: QUARTERLY  # Source spelling is retained exactly.
+
+series:
+  numeric_feature_is_report_norm_id: true
+  upstream_ytd_prefix: YTD_
+  identity_features:
+    - NormTerm
+    - Q
+    - Y
+    - Stock_ID
+  unknown_numeric_feature_action: EXCLUDE_AND_AUDIT
+  unknown_named_feature_action: EXCLUDE_AND_AUDIT
+
+safety:
+  mapping_candidate_generation_allowed: false
+  pdf_confidence_promotion_allowed: false
+  pdf_value_overwrite_allowed: false
+  can_trigger_targeted_reread_or_review: true
+  upstream_ytd_can_supply_pdf_derivation_operand: false
+  lookup_requires_resolved_report_norm_id: true
+  unit: UNKNOWN
+  scope: UNKNOWN

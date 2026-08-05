@@ -32,6 +32,9 @@ Server reconstruction is documented in
 [docs/environment/SERVER_REBUILD.md](docs/environment/SERVER_REBUILD.md); the
 isolated Blackwell/PaddleOCR-VL setup and its retained failure history are in
 [docs/environment/GPU_RUNTIME_RUNBOOK.md](docs/environment/GPU_RUNTIME_RUNBOOK.md).
+The allowlisted, non-authoritative Mongo/DuckDB reference and rebuild procedure
+are in
+[docs/environment/HISTORICAL_REFERENCE_RUNBOOK.md](docs/environment/HISTORICAL_REFERENCE_RUNBOOK.md).
 
 
 

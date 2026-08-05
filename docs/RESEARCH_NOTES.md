@@ -21,6 +21,8 @@ This is a decision-oriented paper log, not a list of model claims. A paper contr
 - A single global BF16 setting is invalid for the tested Transformers path because PP-DocLayoutV3 post-processing converts tensors to NumPy. Per-module FP32 layout and BF16 VLM completed inference with low VRAM.
 - On E-0007, generative recognition preserved every numeric value/sign/state but introduced two Vietnamese diacritic errors and split one long row. This directly supports independent geometry, ordered row fusion, and source-exact string disagreement gates.
 - Model recency and benchmark leadership do not eliminate packaging gaps: TorchVision and python-docx had to be explicitly pinned after official extras omitted them from the exercised paths.
+- E-0008 shows why source selection must precede historical retrieval: collections named yearly/quarterly contained no registered banks, while `data_chart` had exact 27-bank coverage and explicit ReportNormID-like keys. Collection names or similar labels are not sufficient provenance.
+- The archive exposes quarter-only and upstream YTD series separately for mapped IDs. Preserve both representations and their source keys, but keep them outside PDF derivation because historical scope, unit, filing revision, and transformation provenance are incomplete.
 
 ## Planned controlled experiments
 

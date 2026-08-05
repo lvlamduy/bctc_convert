@@ -46,6 +46,8 @@ PYTHONPATH=src .venv/bin/python scripts/mongodb/audit_reference_dump.py \
 
 The server binds only to `127.0.0.1:27018`; diagnostic data collection is disabled. Restoration is namespace-allowlisted. `user` and `chat_sessions` are out of scope and must not be restored. `.local-mongodb/` and `.tools/` are excluded from Git.
 
+The persistent reference instance now also contains allowlisted `data_chart`: 1,318 documents total, including exactly 54 documents for all 27 registered banks (one annual and one source-spelled `quaterly` document each). The guarded DuckDB 1.5.5 index contains 112,147 cells and occupies 17,838,080 bytes; PyMongo is 4.17.0. No additional operating-system package was installed for E-0008. Rebuild, policy, query, performance, and teardown details are in `HISTORICAL_REFERENCE_RUNBOOK.md`.
+
 ## GPU model runtime
 
 The control plane remains CPU-only and stable. The model environment is isolated as `.gpu-venv`; it contains 122 frozen distributions and occupies 5,663,276,925 bytes on this host. The complete freeze is `config/models/gpu-requirements.freeze.txt` (SHA-256 `d8e60d2423f60fcb5b4ce631ca4446ecb5d2855efa5578bc07589076521d8005`). Direct requirements and all artifact/model hashes are in `config/models/gpu-requirements.in` and `config/models/gpu-runtime.toml`.

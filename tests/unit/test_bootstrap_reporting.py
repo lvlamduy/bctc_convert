@@ -52,7 +52,14 @@ def test_dynamic_audits_separate_runtime_acceptance_from_model_approval(tmp_path
             "graph_hash": "schema-hash",
             "hierarchy_reference": {"status": "PASS", "item_count": 1535},
         },
-        "mongodb": {"dump_registry": None},
+        "mongodb": {
+            "dump_registry": {"restored_scope": {"document_count": 1851}},
+            "historical_weak_reference": {
+                "status": "PASS",
+                "row_count": 112147,
+                "bank_count": 27,
+            },
+        },
     }
     backup = {
         "restored_and_verified": True,
@@ -70,3 +77,4 @@ def test_dynamic_audits_separate_runtime_acceptance_from_model_approval(tmp_path
     assert "production model approval remains blocked" in hardware
     assert "Largest error: no frozen end-to-end multi-institution" in progress
     assert "no approved GPU model runtime" not in progress
+    assert "PASS weak-reference-only (112147 cells; 27 banks)" in progress
