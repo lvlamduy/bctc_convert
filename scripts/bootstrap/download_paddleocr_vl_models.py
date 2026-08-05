@@ -9,7 +9,12 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 RUNTIME_MANIFEST = PROJECT_ROOT / "config/models/gpu-runtime.toml"
-MODEL_KEYS = ("pp_doclayout_v3_safetensors", "paddleocr_vl_1_6")
+MODEL_KEYS = (
+    "pp_doclayout_v3_safetensors",
+    "paddleocr_vl_1_6",
+    "pp_ocrv6_medium_det",
+    "pp_ocrv6_medium_rec",
+)
 
 
 def _sha256(path: Path) -> str:
@@ -66,7 +71,7 @@ def _download_model(directory: Path, config: dict[str, object]) -> dict[str, obj
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Fetch hash-pinned PaddleOCR-VL models")
+    parser = argparse.ArgumentParser(description="Fetch hash-pinned Paddle document models")
     parser.add_argument("--cache-root", type=Path, required=True)
     parser.add_argument("--verify-only", action="store_true")
     return parser.parse_args()

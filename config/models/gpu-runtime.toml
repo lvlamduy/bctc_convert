@@ -1,4 +1,4 @@
-version = 2
+version = 3
 status = "LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED"
 python = "3.11"
 torch_index_url = "https://download.pytorch.org/whl/cu130"
@@ -76,6 +76,28 @@ cache_directory = "PP-DocLayoutV3_safetensors"
 weights_file = "model.safetensors"
 weights_size_bytes = 133270468
 weights_sha256 = "5ea422c6cc5fe759a47e1357c35639b58173508e025a3131cbe4b6ac59e2b85e"
+license = "Apache-2.0"
+
+[models.pp_ocrv6_medium_det]
+upstream = "https://huggingface.co/PaddlePaddle/PP-OCRv6_medium_det"
+repo_id = "PaddlePaddle/PP-OCRv6_medium_det"
+revision = "8e0f56fb2ef86b461d99cfc7ac5c137738985f61"
+total_bytes = 62298334
+cache_directory = "PP-OCRv6_medium_det"
+weights_file = "inference.pdiparams"
+weights_size_bytes = 61960476
+weights_sha256 = "85218d2e3d98f5a21c58b4220627be923a97aee5db3cc71f39536ab31ac53960"
+license = "Apache-2.0"
+
+[models.pp_ocrv6_medium_rec]
+upstream = "https://huggingface.co/PaddlePaddle/PP-OCRv6_medium_rec"
+repo_id = "PaddlePaddle/PP-OCRv6_medium_rec"
+revision = "e5a92bcbc5cc1b494628e458d267778f0704fd7c"
+total_bytes = 76862530
+cache_directory = "PP-OCRv6_medium_rec"
+weights_file = "inference.pdiparams"
+weights_size_bytes = 76465087
+weights_sha256 = "1b01c79a914587933f615569e75de54f2e638ebb5d3f3b3c1b38c24ede8c7319"
 license = "Apache-2.0"
 
 [cache]
