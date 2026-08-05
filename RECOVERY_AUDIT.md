@@ -1,6 +1,6 @@
 # Recovery audit
 
-Captured: 2026-08-05T19:56:53.587820+00:00
+Captured: 2026-08-05T20:43:25.831390+00:00
 
 ## Authoritative starting state
 
@@ -19,7 +19,7 @@ Captured: 2026-08-05T19:56:53.587820+00:00
 - Actual schema counts are CDKT=77, KQKD=24, LCTT=107, TM=1384 (total 1592), not the historical 1,773-item count.
 - The supplied TM workbook does not contain ID 1944. It remains a proposal in `proposed_schema_additions.jsonl`.
 - LCTT membership is now based on contiguous workbook positions, not numeric ID ranges. The latest semantic wording conflicts with the visible anchors/endpoints, so semantic high-confidence acceptance remains fail-closed.
-- The uploaded MongoDB archive is hash-registered. The allowlisted financial template audit contains 1851 documents and found no ReportNormID 1944 collision; historical value collections are not indexed yet.
+- The uploaded MongoDB archive is hash-registered. The allowlisted financial template audit contains 1851 documents and found no ReportNormID 1944 collision. The local historical weak-reference index was revalidated at 112147 cells across 27 banks. Its database constraints forbid mapping and confidence promotion.
 - A local control-plane backup restored successfully: `True`. Per the user's development policy, development backup status is **PASS**. It is not off-machine and does not protect against total VPS loss; production status remains `FAIL`.
 
 ## Recovery posture

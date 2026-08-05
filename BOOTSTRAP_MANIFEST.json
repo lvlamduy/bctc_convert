@@ -1,10 +1,10 @@
 {
   "backup": {
-    "archive": "/workspace/bctc-ai-backups/bctc-ai-control-plane-20260805T195701Z.tar.gz",
-    "archive_sha256": "e6245f3103fe1fb3235dd9c8fafc5acb8af4d8498e82ff48b700169a709262f1",
+    "archive": "/workspace/bctc-ai-backups/bctc-ai-control-plane-20260805T204333Z.tar.gz",
+    "archive_sha256": "48c5c6313ea5eaf5dcae548495984be03b10406e0041024dbe2d9ffc3f59aa5e",
     "development_status": "PASS",
-    "file_count": 166,
-    "manifest": "/workspace/bctc-ai-backups/bctc-ai-control-plane-20260805T195701Z.tar.gz.manifest.json",
+    "file_count": 177,
+    "manifest": "/workspace/bctc-ai-backups/bctc-ai-control-plane-20260805T204333Z.tar.gz.manifest.json",
     "off_machine": false,
     "production_status": "FAIL",
     "restored_and_verified": true
@@ -20,18 +20,18 @@
     "sha256": "4857e8124574ab127844a9605ea340648052469c1c1965394a317f2aba69da3b",
     "size_bytes": 11175
   },
-  "captured_at": "2026-08-05T19:57:00.403590+00:00",
+  "captured_at": "2026-08-05T20:43:32.715841+00:00",
   "environment": {
     "architecture": "x86_64",
-    "captured_at": "2026-08-05T19:56:53.587820+00:00",
+    "captured_at": "2026-08-05T20:43:25.831390+00:00",
     "cpu": {
       "logical_count": 32,
       "model": "AMD Ryzen 9 5950X 16-Core Processor"
     },
     "disk": {
-      "free_bytes": 7193169920,
+      "free_bytes": 7136772096,
       "total_bytes": 42283094016,
-      "used_bytes": 35089924096
+      "used_bytes": 35146321920
     },
     "gpu": {
       "available": true,
@@ -124,22 +124,22 @@
     "hostname": "O-2004251",
     "kernel": "6.6.0-hiveos",
     "memory": {
-      "Active": 29374533632,
-      "Active(anon)": 8299732992,
-      "Active(file)": 21074800640,
-      "AnonHugePages": 438304768,
-      "AnonPages": 1022517248,
+      "Active": 29440102400,
+      "Active(anon)": 8295833600,
+      "Active(file)": 21144268800,
+      "AnonHugePages": 503316480,
+      "AnonPages": 1183424512,
       "Bounce": 0,
       "Buffers": 106045440,
-      "Cached": 79384887296,
+      "Cached": 79691071488,
       "CmaFree": 0,
       "CmaTotal": 0,
       "CommitLimit": 67354472448,
-      "Committed_AS": 12985450496,
+      "Committed_AS": 13425352704,
       "DirectMap1G": 130996502528,
       "DirectMap2M": 5989466112,
       "DirectMap4k": 355323904,
-      "Dirty": 1179648,
+      "Dirty": 94208,
       "FileHugePages": 35651584,
       "FilePmdMapped": 0,
       "HardwareCorrupted": 0,
@@ -149,34 +149,34 @@
       "HugePages_Total": 131072,
       "Hugepagesize": 2097152,
       "Hugetlb": 268435456,
-      "Inactive": 51162693632,
-      "Inactive(anon)": 1866227712,
-      "Inactive(file)": 49296465920,
-      "KReclaimable": 1600749568,
-      "KernelStack": 13385728,
-      "Mapped": 587522048,
-      "MemAvailable": 122333155328,
-      "MemFree": 51638550528,
+      "Inactive": 51573559296,
+      "Inactive(anon)": 2039590912,
+      "Inactive(file)": 49533968384,
+      "KReclaimable": 1606815744,
+      "KernelStack": 13844480,
+      "Mapped": 624242688,
+      "MemAvailable": 122161893376,
+      "MemFree": 51154251776,
       "MemTotal": 134977380352,
       "Mlocked": 0,
       "NFS_Unstable": 0,
-      "PageTables": 11034624,
+      "PageTables": 11530240,
       "Percpu": 28573696,
-      "SReclaimable": 1524670464,
-      "SUnreclaim": 482160640,
+      "SReclaimable": 1530736640,
+      "SUnreclaim": 483995648,
       "SecPageTables": 0,
-      "Shmem": 9119666176,
+      "Shmem": 9118879744,
       "ShmemHugePages": 0,
       "ShmemPmdMapped": 0,
-      "Slab": 2006831104,
+      "Slab": 2014732288,
       "SwapCached": 0,
       "SwapFree": 0,
       "SwapTotal": 0,
       "Unevictable": 0,
       "VmallocChunk": 0,
       "VmallocTotal": 35184372087808,
-      "VmallocUsed": 82477056,
-      "Writeback": 102400,
+      "VmallocUsed": 83345408,
+      "Writeback": 0,
       "WritebackTmp": 0,
       "Zswap": 0,
       "Zswapped": 0
@@ -185,6 +185,7 @@
       "client_available": true,
       "environment_variable_names": [],
       "external_connection_verified": false,
+      "local_data_chart_document_count": 1318,
       "local_loopback_connection_verified": true,
       "local_template_document_count": 1851
     },
@@ -252,8 +253,8 @@
   "format_version": 1,
   "git": {
     "branch": "codex/rebuild-bootstrap",
-    "commit": "a7579024fdaac06a42129431f239b83b2d0fb9b5",
-    "dirty": false,
+    "commit": "3d09f827214b228ae0fe9b5db7389c199520be3b",
+    "dirty": true,
     "remotes": [
       "origin"
     ]
@@ -271,10 +272,11 @@
         "sha256": "0456df4aebb93b58c433b0d2a8c13bbb9402e1511d07758716976b94989204b9",
         "size_bytes": 526178025
       },
-      "captured_at": "2026-08-05T18:27:43.654565+00:00",
+      "captured_at": "2026-08-05T20:37:39.089466+00:00",
       "collision_audit": {
         "append_safe_from_id_collision_perspective": true,
         "hierarchy_reference_collisions": [],
+        "mongodb_data_chart_key_collisions": [],
         "mongodb_template_collisions": [],
         "nearest_mongodb_name_candidates": [
           {
@@ -345,6 +347,12 @@
       },
       "format_version": 1,
       "hierarchy_reference_status": "VALIDATED_SUPPORTING_REFERENCE",
+      "historical_data_chart_scope": {
+        "audited": true,
+        "bank_document_count": 54,
+        "collection": "data_chart",
+        "document_count": 1318
+      },
       "restored_scope": {
         "bank_document_count": 1571,
         "collection": "financial_report_templates",
@@ -356,10 +364,42 @@
         ]
       }
     },
+    "historical_weak_reference": {
+      "bank_count": 27,
+      "checks": {
+        "archive_identity": true,
+        "database_sha256": true,
+        "declared_weak_status": true,
+        "duplicate_identity_count_zero": true,
+        "forbidden_row_count_zero": true,
+        "historical_1944_collision_clear": true,
+        "lookup_requires_resolved_id": true,
+        "mapping_candidate_generation_forbidden": true,
+        "module_sha256": true,
+        "pdf_confidence_promotion_forbidden": true,
+        "pdf_value_overwrite_forbidden": true,
+        "policy_sha256": true,
+        "proposed_id_row_count_zero": true,
+        "registered_bank_count_matches": true,
+        "row_count_matches": true,
+        "unit_and_scope_unknown": true,
+        "upstream_ytd_operand_forbidden": true
+      },
+      "database": "data/local/historical_weak_reference.duckdb",
+      "database_present": true,
+      "declared_status": "PASS_WEAK_REFERENCE_ONLY",
+      "duplicate_identity_count": 0,
+      "forbidden_row_count": 0,
+      "registry": "data/registered/historical_weak_reference_registry.json",
+      "registry_sha256": "62911ea7f27e2b739499951f519913f0d51ce45d18d60ffd2c2989457fbe8b77",
+      "row_count": 112147,
+      "status": "PASS"
+    },
     "runtime": {
       "client_available": true,
       "environment_variable_names": [],
       "external_connection_verified": false,
+      "local_data_chart_document_count": 1318,
       "local_loopback_connection_verified": true,
       "local_template_document_count": 1851
     }

@@ -1,9 +1,9 @@
 # Progress report
 
-- Date/time: 2026-08-05T19:56:53.587820+00:00
+- Date/time: 2026-08-05T20:43:25.831390+00:00
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16303 MiB, compute 12.0); 125.71 GiB RAM
 - Isolated GPU runtime: PASS; recorded model state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
-- Code hash: bootstrap is on `codex/rebuild-bootstrap` at `a7579024fdaac06a42129431f239b83b2d0fb9b5` with dirty state `False`
+- Code hash: bootstrap is on `codex/rebuild-bootstrap` at `3d09f827214b228ae0fe9b5db7389c199520be3b` with dirty state `True`
 - Schema count: 1592 (CDKT 77; KQKD 24; LCTT 107; TM 1384)
 - PDFs registered: 2567
 - ROLE A completed: 0 documents
@@ -11,14 +11,14 @@
 - Reference IDs / values: 0 / 0
 - CDKT, KQKD, applicable LCTT, TM coverage: not measurable before MACHINE_REFERENCE
 - PDF_ONLY metrics: not yet measured
-- Mongo-assisted metrics: template/schema reference available; historical value index pending
+- Mongo-assisted metrics: PASS weak-reference-only (112147 cells; 27 banks)
 - Questions created / resolved: 4 / 2
 - Autonomous decisions: preserve supplied schema unchanged; keep 1944 as a collision-cleared proposal; segment LCTT by workbook position and fail closed on the semantic conflict
 - Not applicable / not observed / unresolved: 0 / 0 / 0 (no production records yet)
 - Workbooks: 0
 - Largest error: no frozen end-to-end multi-institution accuracy result or production-calibrated acceptance threshold yet
-- Last change: reproducible Blackwell runtime, pinned PaddleOCR-VL model revisions, measured full inference, and value-independent ordered cross-reader alignment
-- Before/after: incompatible host model stack -> exact 122-package isolated runtime plus a measured native-PDF/VLM disagreement record on a registered fixture
+- Last change: allowlisted Mongo `data_chart` weak-reference index with resolved-ID-only lookup, unknown unit/scope, and database-enforced no-map/no-promote gates
+- Before/after: non-bank historical collections and slow row-wise writes -> 27-bank, 112,147-cell guarded index built by transactional DuckDB bulk load
 - Regression: run separately with `.venv/bin/pytest`; latest verified count is recorded in `PROJECT_MEMORY.md`
 - Backup status: development=PASS; production=FAIL (local restore verified=True, off-machine=False)
-- Next bounded action: broaden frozen cross-reader fixtures across institutions, scans, distortions, and page breaks, then build the allowlisted historical weak-reference index
+- Next bounded action: broaden frozen cross-reader fixtures across institutions, scans, distortions, and page breaks, then measure calibrated disagreement escalation with the weak reference kept non-authoritative
