@@ -154,6 +154,106 @@ def _write_schema_proposal(
     atomic_write_jsonl(project_root / "proposed_schema_additions.jsonl", [proposal])
 
 
+def _load_calibration_summary(project_root: Path) -> dict[str, object]:
+    artifact_path = Path("docs/experiments/E-0010-tcb-cross-reader-calibration.json")
+    absolute_artifact = project_root / artifact_path
+    if not absolute_artifact.is_file():
+        return {
+            "integrity_status": "NOT_AVAILABLE",
+            "artifact": artifact_path.as_posix(),
+            "errors": ["tracked E-0010 artifact is absent"],
+        }
+    try:
+        artifact = json.loads(absolute_artifact.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        return {
+            "integrity_status": "FAIL",
+            "artifact": artifact_path.as_posix(),
+            "errors": [f"cannot read E-0010 artifact: {exc}"],
+        }
+
+    errors: list[str] = []
+    if artifact.get("format_version") != 2:
+        errors.append("unexpected E-0010 format version")
+    if artifact.get("experiment_id") != "E-0010":
+        errors.append("unexpected calibration experiment ID")
+    if artifact.get("dataset_role") != "CALIBRATION":
+        errors.append("E-0010 dataset role is not CALIBRATION")
+    if artifact.get("status") != "PASS_CALIBRATION_WITH_REQUIRED_ESCALATIONS":
+        errors.append("E-0010 recorded status is not the accepted calibration state")
+    code = artifact.get("code")
+    if not isinstance(code, dict) or code.get("git_dirty") is not False:
+        errors.append("E-0010 was not recorded from a clean code state")
+
+    algorithm_files = artifact.get("algorithm_files_sha256")
+    if not isinstance(algorithm_files, dict) or not algorithm_files:
+        errors.append("E-0010 has no algorithm hash set")
+    else:
+        for relative_path, digest in algorithm_files.items():
+            local_path = project_root / str(relative_path)
+            if not local_path.is_file() or sha256_file(local_path) != digest:
+                errors.append(f"algorithm hash drift: {relative_path}")
+
+    suite = artifact.get("suite_config")
+    if not isinstance(suite, dict):
+        errors.append("E-0010 has no suite config identity")
+    else:
+        suite_path = project_root / str(suite.get("path", ""))
+        if not suite_path.is_file() or sha256_file(suite_path) != suite.get("sha256"):
+            errors.append("E-0010 suite config hash drift")
+
+    local_seals = []
+    sealed_inputs = artifact.get("sealed_inputs")
+    if not isinstance(sealed_inputs, dict):
+        errors.append("E-0010 has no sealed input identities")
+    else:
+        for role, seal in sealed_inputs.items():
+            if not isinstance(seal, dict):
+                errors.append(f"invalid sealed input record: {role}")
+                continue
+            seal_path = project_root / str(seal.get("path", ""))
+            present = seal_path.is_file()
+            verified = present and sha256_file(seal_path) == seal.get("sha256")
+            local_seals.append({"role": role, "present": present, "verified": verified})
+            if present and not verified:
+                errors.append(f"local seal hash drift: {role}")
+
+    metrics = artifact.get("metrics")
+    if not isinstance(metrics, dict):
+        errors.append("E-0010 has no metrics")
+        metrics = {}
+    local_count = sum(bool(record["present"]) for record in local_seals)
+    verified_count = sum(bool(record["verified"]) for record in local_seals)
+    if errors:
+        integrity_status = "FAIL"
+    elif local_count:
+        integrity_status = "PASS_TRACKED_AND_LOCAL_SEALS"
+    else:
+        integrity_status = "PASS_TRACKED_ARTIFACT"
+    return {
+        "integrity_status": integrity_status,
+        "artifact": artifact_path.as_posix(),
+        "artifact_sha256": sha256_file(absolute_artifact),
+        "experiment_id": artifact.get("experiment_id"),
+        "recorded_status": artifact.get("status"),
+        "dataset_role": artifact.get("dataset_role"),
+        "code_commit": code.get("git_commit") if isinstance(code, dict) else None,
+        "claim_boundary": artifact.get("claim_boundary"),
+        "metrics": metrics,
+        "acceptance": artifact.get("acceptance"),
+        "off_balance_gate": artifact.get("off_balance_gate"),
+        "cash_flow": artifact.get("cash_flow"),
+        "continuation_accepted": all(
+            bool(record.get("accepted")) for record in artifact.get("continuation", [])
+        ),
+        "historical_weak_reference": artifact.get("historical_weak_reference"),
+        "local_seals": local_seals,
+        "local_seal_count": local_count,
+        "verified_local_seal_count": verified_count,
+        "errors": errors,
+    }
+
+
 def _write_dynamic_audits(
     project_root: Path,
     environment: dict[str, object],
@@ -259,6 +359,42 @@ def _write_dynamic_audits(
             "No registered MongoDB archive audit is available; Mongo-assisted mode is disabled."
         )
         mongo_progress = "unavailable; MongoDB archive not audited"
+    calibration = manifest.get("calibration", {})
+    calibration = calibration if isinstance(calibration, dict) else {}
+    calibration_metrics = calibration.get("metrics", {})
+    calibration_metrics = calibration_metrics if isinstance(calibration_metrics, dict) else {}
+    calibration_status = str(calibration.get("integrity_status", "NOT_AVAILABLE"))
+    if calibration_status.startswith("PASS"):
+        strict_rows = float(
+            calibration_metrics.get(
+                "strict_exact_reference_financial_row_agreement_rate", 0.0
+            )
+        )
+        strict_cells = float(
+            calibration_metrics.get("strict_exact_reference_cell_agreement_rate", 0.0)
+        )
+        coverage = float(
+            calibration_metrics.get("reference_financial_row_coverage_rate", 0.0)
+        )
+        calibration_progress = (
+            f"E-0010 {calibration_status}; strict rows={strict_rows:.2%}, "
+            f"strict cells={strict_cells:.2%}, reference coverage={coverage:.2%}, "
+            f"auto-high={calibration.get('acceptance', {}).get('auto_verified_high', 'unknown')}"
+        )
+        calibration_finding = (
+            f"Tracked E-0010 calibration integrity is **{calibration_status}**; "
+            f"{calibration.get('verified_local_seal_count', 0)}/"
+            f"{calibration.get('local_seal_count', 0)} locally present seals verify. "
+            "It remains machine-reference calibration, not production accuracy."
+        )
+    else:
+        calibration_progress = (
+            f"{calibration_status}; errors={calibration.get('errors', [])}"
+        )
+        calibration_finding = (
+            f"Tracked E-0010 calibration integrity is **{calibration_status}**; "
+            "its metrics are disabled until the recorded hashes verify."
+        )
     hardware = f"""# Hardware audit
 
 Captured: {environment["captured_at"]}
@@ -305,6 +441,7 @@ Captured: {environment["captured_at"]}
 - The supplied TM workbook does not contain ID 1944. It remains a proposal in `proposed_schema_additions.jsonl`.
 - LCTT membership is now based on contiguous workbook positions, not numeric ID ranges. The latest semantic wording conflicts with the visible anchors/endpoints, so semantic high-confidence acceptance remains fail-closed.
 - {mongo_finding}
+- {calibration_finding}
 - A local control-plane backup restored successfully: `{backup["restored_and_verified"]}`. Per the user's development policy, development backup status is **{backup["development_status"]}**. It is not off-machine and does not protect against total VPS loss; production status remains `{backup["production_status"]}`.
 
 ## Recovery posture
@@ -326,17 +463,18 @@ Generated artifacts use atomic write, fsync, rename, and post-write hash verific
 - Reference IDs / values: 0 / 0
 - CDKT, KQKD, applicable LCTT, TM coverage: not measurable before MACHINE_REFERENCE
 - PDF_ONLY metrics: not yet measured
+- Frozen cross-reader calibration: {calibration_progress}
 - Mongo-assisted metrics: {mongo_progress}
 - Questions created / resolved: {len(questions)} / {resolved_questions}
 - Autonomous decisions: preserve supplied schema unchanged; keep 1944 as a collision-cleared proposal; segment LCTT by workbook position and fail closed on the semantic conflict
 - Not applicable / not observed / unresolved: 0 / 0 / 0 (no production records yet)
 - Workbooks: 0
 - Largest error: no frozen end-to-end multi-institution accuracy result or production-calibrated acceptance threshold yet
-- Last change: allowlisted Mongo `data_chart` weak-reference index with resolved-ID-only lookup, unknown unit/scope, and database-enforced no-map/no-promote gates
-- Before/after: non-bank historical collections and slow row-wise writes -> 27-bank, 112,147-cell guarded index built by transactional DuckDB bulk load
+- Last change: sealed E-0010 TCB scan/searchable comparison with strict coverage, bidirectional row-collapse detection, off-balance exclusion, and zero history/confidence promotion
+- Before/after: conditional aligned-cell agreement alone -> separate 94.70% reference coverage, 97.60% conditional cell agreement, and 92.42% strict whole-reference cell agreement
 - Regression: run separately with `.venv/bin/pytest`; latest verified count is recorded in `PROJECT_MEMORY.md`
 - Backup status: development={backup["development_status"]}; production={backup["production_status"]} (local restore verified={backup["restored_and_verified"]}, off-machine={backup["off_machine"]})
-- Next bounded action: broaden frozen cross-reader fixtures across institutions, scans, distortions, and page breaks, then measure calibrated disagreement escalation with the weak reference kept non-authoritative
+- Next bounded action: add independent word/cell-box OCR and targeted native-resolution rereads for E-0010 failures, then run the unchanged gates on frozen MBB/VCB and distortion fixtures
 """
     atomic_write_text(project_root / "PROGRESS_REPORT.md", progress)
 
@@ -441,6 +579,7 @@ def run_bootstrap(project_root: Path, *, workers: int = 4) -> BootstrapResult:
             ),
             "historical_weak_reference": historical_weak_reference,
         },
+        "calibration": _load_calibration_summary(project_root),
     }
     atomic_write_json(project_root / "BOOTSTRAP_MANIFEST.json", manifest)
 
