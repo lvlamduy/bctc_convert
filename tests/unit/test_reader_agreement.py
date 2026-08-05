@@ -42,3 +42,26 @@ def test_ordered_alignment_retains_extra_and_missing_rows_explicitly():
 
     assert aligned[0].action == "MATCH"
     assert {step.action for step in aligned[1:]} == {"MISSING_CANDIDATE", "EXTRA_CANDIDATE"}
+
+
+def test_ordered_alignment_flags_two_reference_rows_collapsed_into_one_candidate():
+    reference = (
+        _row("r0", "Tiền chi trả cho nhân viên", None, ("(9)", "(8)")),
+        _row("r1", "Tiền thuế thu nhập thực nộp", "22.1", ("(3)", "(4)")),
+        _row("r2", "Lưu chuyển tiền thuần", None, ("10", "11")),
+    )
+    candidate = (
+        _row(
+            "c0",
+            "Tiền chi trả cho nhân viên Tiền thuế thu nhập thực nộp",
+            "22.1",
+            ("(9)", "(8)"),
+        ),
+        _row("c1", "Lưu chuyển tiền thuần", None, ("10", "11")),
+    )
+
+    aligned = align_ordered_reader_rows(reference, candidate)
+
+    assert [step.action for step in aligned] == ["MERGE_REFERENCE", "MATCH"]
+    assert aligned[0].reference_indices == (0, 1)
+    assert aligned[0].candidate_indices == (0,)

@@ -59,7 +59,7 @@ def test_numeric_disagreement_escalates_without_changing_order(project_root):
     )
 
     assert result["counts"]["alignment_actions"] == {"MATCH": 1}
-    assert result["counts"]["exact_cells"] == 1
+    assert result["counts"]["exact_reference_financial_cells"] == 1
     assert result["alignment"][0]["escalation"] == "TARGETED_NUMERIC_REREAD_DISAGREEMENT"
     assert result["alignment"][0]["confidence_effect"] == "NO_PROMOTION"
 

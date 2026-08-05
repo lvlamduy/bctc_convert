@@ -63,6 +63,19 @@ def combine_reader_rows(rows: tuple[ReaderRow, ...]) -> ReaderRow:
     )
 
 
+def combine_reader_labels(rows: tuple[ReaderRow, ...]) -> ReaderRow:
+    """Combine only row identity and labels for a structural merge hypothesis."""
+
+    if not rows:
+        raise ValueError("cannot combine an empty row sequence")
+    return ReaderRow(
+        source_row_ids=tuple(source_id for row in rows for source_id in row.source_row_ids),
+        label=normalize_text(" ".join(row.label for row in rows if normalize_text(row.label))),
+        note_reference=None,
+        cells=(),
+    )
+
+
 def _label_similarity(reference: ReaderRow, candidate: ReaderRow) -> float:
     left = retrieval_key(reference.label)
     right = retrieval_key(candidate.label)
@@ -91,6 +104,17 @@ def _may_merge_candidate_pair(rows: tuple[ReaderRow, ReaderRow]) -> bool:
     return bool(rows[0].label and rows[1].label) and (
         _has_row_evidence(rows[0]) != _has_row_evidence(rows[1])
     )
+
+
+def _may_merge_reference_pair(
+    rows: tuple[ReaderRow, ReaderRow], candidate: ReaderRow
+) -> bool:
+    if not all(row.label for row in rows) or not candidate.label:
+        return False
+    combined = combine_reader_labels(rows)
+    combined_similarity = _label_similarity(combined, candidate)
+    best_individual = max(_label_similarity(row, candidate) for row in rows)
+    return combined_similarity >= 0.72 and combined_similarity >= best_individual + 0.08
 
 
 def _step(
@@ -129,15 +153,17 @@ def align_ordered_reader_rows(
     *,
     gap_penalty: float = 0.65,
     candidate_merge_penalty: float = 0.05,
+    reference_merge_penalty: float = 0.10,
 ) -> tuple[AlignmentStep, ...]:
     """Align two independent readers using row order and labels only.
 
-    Candidate pairs may propose one logical wrapped row. Values and notes are
-    deliberately excluded from the path score; they remain independent evidence
-    measured after alignment.
+    Candidate pairs may propose one logical wrapped row. Reference pairs may
+    identify two source rows collapsed into one candidate row. Values and notes
+    are deliberately excluded from the path score; they remain independent
+    evidence measured after alignment.
     """
 
-    if gap_penalty <= 0 or candidate_merge_penalty < 0:
+    if gap_penalty <= 0 or candidate_merge_penalty < 0 or reference_merge_penalty < 0:
         raise ValueError("alignment penalties must be non-negative and gap must be positive")
     reference_count = len(reference_rows)
     candidate_count = len(candidate_rows)
@@ -146,7 +172,13 @@ def align_ordered_reader_rows(
         [None] * (candidate_count + 1) for _ in range(reference_count + 1)
     ]
     costs[0][0] = 0.0
-    priorities = {"MATCH": 0, "MERGE_CANDIDATE": 1, "MISSING_CANDIDATE": 2, "EXTRA_CANDIDATE": 3}
+    priorities = {
+        "MATCH": 0,
+        "MERGE_CANDIDATE": 1,
+        "MERGE_REFERENCE": 2,
+        "MISSING_CANDIDATE": 3,
+        "EXTRA_CANDIDATE": 4,
+    }
 
     def update(i: int, j: int, cost: float, state: tuple[int, int, str]) -> None:
         current = costs[i][j]
@@ -186,6 +218,18 @@ def align_ordered_reader_rows(
                         + candidate_merge_penalty,
                         (i, j, "MERGE_CANDIDATE"),
                     )
+            if i + 1 < reference_count and j < candidate_count:
+                pair = reference_rows[i : i + 2]
+                if _may_merge_reference_pair(pair, candidate_rows[j]):
+                    combined = combine_reader_labels(pair)
+                    update(
+                        i + 2,
+                        j + 1,
+                        base
+                        + _label_cost(combined, candidate_rows[j])
+                        + reference_merge_penalty,
+                        (i, j, "MERGE_REFERENCE"),
+                    )
             if i < reference_count:
                 update(i + 1, j, base + gap_penalty, (i, j, "MISSING_CANDIDATE"))
             if j < candidate_count:
@@ -213,6 +257,18 @@ def align_ordered_reader_rows(
                     action,
                     (previous_i,),
                     tuple(range(previous_j, j)),
+                    reference,
+                    candidate,
+                )
+            )
+        elif action == "MERGE_REFERENCE":
+            reference = combine_reader_labels(reference_rows[previous_i:i])
+            candidate = candidate_rows[previous_j]
+            aligned.append(
+                _step(
+                    action,
+                    tuple(range(previous_i, i)),
+                    (previous_j,),
                     reference,
                     candidate,
                 )

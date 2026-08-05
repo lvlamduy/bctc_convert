@@ -161,7 +161,13 @@ def reader_row_from_dict(record: dict[str, object]) -> ReaderRow:
     )
 
 
-def _cell_comparison(reference, candidate) -> dict[str, object]:
+def _cell_comparison(
+    reference,
+    candidate,
+    *,
+    reference_present: bool,
+    candidate_present: bool,
+) -> dict[str, object]:
     exact = (
         reference.observation is candidate.observation and reference.value == candidate.value
     )
@@ -172,6 +178,8 @@ def _cell_comparison(reference, candidate) -> dict[str, object]:
         "candidate_observation": candidate.observation.value,
         "reference_value": str(reference.value) if reference.value is not None else None,
         "candidate_value": str(candidate.value) if candidate.value is not None else None,
+        "reference_present": reference_present,
+        "candidate_present": candidate_present,
         "exact": exact,
     }
 
@@ -215,7 +223,11 @@ def compare_reader_rows(
             "semantic_key_exact": step.semantic_key_exact,
             "confidence_effect": "NO_PROMOTION",
         }
-        if step.reference is not None and step.candidate is not None:
+        if (
+            step.action in {"MATCH", "MERGE_CANDIDATE"}
+            and step.reference is not None
+            and step.candidate is not None
+        ):
             width = max(len(step.reference.cells), len(step.candidate.cells))
             cells = []
             for index in range(width):
@@ -229,18 +241,50 @@ def compare_reader_rows(
                     if index < len(step.candidate.cells)
                     else parse_financial_number(None)
                 )
-                cells.append(_cell_comparison(reference_cell, candidate_cell))
+                cells.append(
+                    _cell_comparison(
+                        reference_cell,
+                        candidate_cell,
+                        reference_present=index < len(step.reference.cells),
+                        candidate_present=index < len(step.candidate.cells),
+                    )
+                )
+            reference_has_observation = any(
+                cell.observation is not ObservationKind.BLANK for cell in step.reference.cells
+            )
+            candidate_has_observation = any(
+                cell.observation is not ObservationKind.BLANK for cell in step.candidate.cells
+            )
             record.update(
                 reference_note=step.reference.note_reference,
                 candidate_note=step.candidate.note_reference,
                 note_exact=step.reference.note_reference == step.candidate.note_reference,
-                cell_width_exact=len(step.reference.cells) == len(step.candidate.cells),
+                cell_width_exact=(
+                    len(step.reference.cells) == len(step.candidate.cells)
+                    or not (reference_has_observation or candidate_has_observation)
+                ),
                 cells=cells,
             )
         record["escalation"] = _escalation(record)
         records.append(record)
 
-    matched = [record for record in records if record["label_exact"] is not None]
+    matched = [
+        record
+        for record in records
+        if record["action"] in {"MATCH", "MERGE_CANDIDATE"}
+        and record["label_exact"] is not None
+    ]
+    reference_financial_indices = {
+        index
+        for index, row in enumerate(reference_rows)
+        if any(cell.observation is not ObservationKind.BLANK for cell in row.cells)
+    }
+    covered_reference_financial_indices = {
+        int(index)
+        for record in matched
+        for index in record["reference_indices"]
+        if int(index) in reference_financial_indices
+    }
     financial = [
         record
         for record in matched
@@ -250,6 +294,7 @@ def compare_reader_rows(
         )
     ]
     cells = [cell for record in financial for cell in record.get("cells", [])]
+    reference_cells = [cell for cell in cells if cell["reference_present"]]
     note_records = [
         record
         for record in matched
@@ -279,19 +324,31 @@ def compare_reader_rows(
             "alignment_actions": dict(
                 sorted(Counter(str(record["action"]) for record in records).items())
             ),
-            "matched_rows": len(matched),
+            "structurally_comparable_rows": len(matched),
             "source_exact_labels": sum(record["label_exact"] is True for record in matched),
             "semantic_key_exact_labels": sum(
                 record["semantic_key_exact"] is True for record in matched
             ),
-            "financial_rows": len(financial),
-            "exact_financial_rows": sum(
+            "reference_financial_rows": len(reference_financial_indices),
+            "covered_reference_financial_rows": len(
+                covered_reference_financial_indices
+            ),
+            "exact_reference_financial_rows": sum(
                 record.get("cell_width_exact") is True
-                and all(cell["exact"] for cell in record.get("cells", []))
+                and all(
+                    cell["exact"]
+                    for cell in record.get("cells", [])
+                    if cell["reference_present"]
+                )
                 for record in financial
             ),
-            "compared_cells": len(cells),
-            "exact_cells": sum(cell["exact"] for cell in cells),
+            "reference_financial_cells": sum(
+                len(reference_rows[index].cells) for index in reference_financial_indices
+            ),
+            "compared_reference_financial_cells": len(reference_cells),
+            "exact_reference_financial_cells": sum(
+                cell["exact"] for cell in reference_cells
+            ),
             "candidate_invalid_cells": sum(
                 cell["candidate_observation"] == ObservationKind.INVALID.value for cell in cells
             ),
@@ -304,4 +361,3 @@ def compare_reader_rows(
         "scope": scope_records,
         "alignment": records,
     }
-

@@ -236,13 +236,15 @@ def main() -> int:
     sum_fields = (
         "reference_rows",
         "candidate_rows",
-        "matched_rows",
+        "structurally_comparable_rows",
         "source_exact_labels",
         "semantic_key_exact_labels",
-        "financial_rows",
-        "exact_financial_rows",
-        "compared_cells",
-        "exact_cells",
+        "reference_financial_rows",
+        "covered_reference_financial_rows",
+        "exact_reference_financial_rows",
+        "reference_financial_cells",
+        "compared_reference_financial_cells",
+        "exact_reference_financial_cells",
         "candidate_invalid_cells",
         "note_rows",
         "exact_note_references",
@@ -261,16 +263,30 @@ def main() -> int:
     totals["alignment_actions"] = dict(sorted(actions.items()))
     totals["escalations"] = dict(sorted(escalations.items()))
     totals["source_exact_label_rate"] = _ratio(
-        totals["source_exact_labels"], totals["matched_rows"]
+        totals["source_exact_labels"], totals["structurally_comparable_rows"]
     )
     totals["semantic_key_exact_label_rate"] = _ratio(
-        totals["semantic_key_exact_labels"], totals["matched_rows"]
+        totals["semantic_key_exact_labels"], totals["structurally_comparable_rows"]
     )
-    totals["exact_cell_agreement_rate"] = _ratio(
-        totals["exact_cells"], totals["compared_cells"]
+    totals["reference_financial_row_coverage_rate"] = _ratio(
+        totals["covered_reference_financial_rows"], totals["reference_financial_rows"]
     )
-    totals["exact_financial_row_agreement_rate"] = _ratio(
-        totals["exact_financial_rows"], totals["financial_rows"]
+    totals["reference_financial_cell_coverage_rate"] = _ratio(
+        totals["compared_reference_financial_cells"], totals["reference_financial_cells"]
+    )
+    totals["conditional_exact_cell_agreement_rate"] = _ratio(
+        totals["exact_reference_financial_cells"],
+        totals["compared_reference_financial_cells"],
+    )
+    totals["conditional_exact_financial_row_agreement_rate"] = _ratio(
+        totals["exact_reference_financial_rows"],
+        totals["covered_reference_financial_rows"],
+    )
+    totals["strict_exact_reference_cell_agreement_rate"] = _ratio(
+        totals["exact_reference_financial_cells"], totals["reference_financial_cells"]
+    )
+    totals["strict_exact_reference_financial_row_agreement_rate"] = _ratio(
+        totals["exact_reference_financial_rows"], totals["reference_financial_rows"]
     )
 
     continuation = [
@@ -292,7 +308,7 @@ def main() -> int:
         Path("scripts/experiments/compare_e0010_paired_readers.py"),
     )
     payload = {
-        "format_version": 1,
+        "format_version": 2,
         "experiment_id": "E-0010",
         "status": "PASS_CALIBRATION_WITH_REQUIRED_ESCALATIONS",
         "dataset_role": suite.dataset_role.value,
