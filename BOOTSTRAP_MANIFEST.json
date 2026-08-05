@@ -1,10 +1,10 @@
 {
   "backup": {
-    "archive": "/workspace/bctc-ai-backups/bctc-ai-control-plane-20260805T214310Z.tar.gz",
-    "archive_sha256": "2e5c03f5189e3f95e4ab99a14899d375da7d2e750ec7a142756142d13fb75b55",
+    "archive": "/workspace/bctc-ai-backups/bctc-ai-control-plane-20260805T225120Z.tar.gz",
+    "archive_sha256": "eae2f54fd63af1500e75d4a34f02dd43a2e840db7c4fc4faf7d11945abc38ea9",
     "development_status": "PASS",
-    "file_count": 199,
-    "manifest": "/workspace/bctc-ai-backups/bctc-ai-control-plane-20260805T214310Z.tar.gz.manifest.json",
+    "file_count": 217,
+    "manifest": "/workspace/bctc-ai-backups/bctc-ai-control-plane-20260805T225120Z.tar.gz.manifest.json",
     "off_machine": false,
     "production_status": "FAIL",
     "restored_and_verified": true
@@ -120,18 +120,18 @@
     "recorded_status": "PASS_CALIBRATION_WITH_REQUIRED_ESCALATIONS",
     "verified_local_seal_count": 2
   },
-  "captured_at": "2026-08-05T21:43:09.547389+00:00",
+  "captured_at": "2026-08-05T22:51:19.960815+00:00",
   "environment": {
     "architecture": "x86_64",
-    "captured_at": "2026-08-05T21:43:02.684534+00:00",
+    "captured_at": "2026-08-05T22:51:14.081849+00:00",
     "cpu": {
       "logical_count": 32,
       "model": "AMD Ryzen 9 5950X 16-Core Processor"
     },
     "disk": {
-      "free_bytes": 7114690560,
+      "free_bytes": 6342672384,
       "total_bytes": 42283094016,
-      "used_bytes": 35168403456
+      "used_bytes": 35940421632
     },
     "gpu": {
       "available": true,
@@ -150,7 +150,7 @@
     },
     "gpu_model_runtime": {
       "compatibility": {
-        "detail": "Using Python 3.11.10 environment at: .gpu-venv\nChecked 122 packages in 1ms\nAll installed packages are compatible",
+        "detail": "Using Python 3.11.10 environment at: .gpu-venv\nChecked 125 packages in 1ms\nAll installed packages are compatible",
         "return_code": 0,
         "status": "PASS"
       },
@@ -159,6 +159,7 @@
         "numpy": "2.3.5",
         "opencv-contrib-python": "4.10.0.84",
         "paddleocr": "3.7.0",
+        "paddlepaddle": "3.3.0",
         "paddlex": "3.7.2",
         "python-docx": "1.2.0",
         "torch": "2.12.0+cu130",
@@ -167,18 +168,18 @@
       },
       "declared_status": "LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED",
       "freeze": {
-        "expected_package_count": 122,
-        "expected_sha256": "d8e60d2423f60fcb5b4ce631ca4446ecb5d2855efa5578bc07589076521d8005",
+        "expected_package_count": 125,
+        "expected_sha256": "c0e8c43f84360a8eb0ebeff1ef5de43969bdd291eb2c7cee363c35ef2c78437b",
         "installed_freeze_return_code": 0,
         "installed_matches_expected": true,
-        "installed_package_count": 122,
+        "installed_package_count": 125,
         "manifest_hash_matches": true,
         "path": "config/models/gpu-requirements.freeze.txt",
-        "tracked_sha256": "d8e60d2423f60fcb5b4ce631ca4446ecb5d2855efa5578bc07589076521d8005"
+        "tracked_sha256": "c0e8c43f84360a8eb0ebeff1ef5de43969bdd291eb2c7cee363c35ef2c78437b"
       },
       "local_acceptance": "PASS",
       "manifest": "config/models/gpu-runtime.toml",
-      "manifest_sha256": "7e2ff8f127cf474d39f9f26791f3adf61b811792b6485b619171e174ef114a4c",
+      "manifest_sha256": "9141e0a4177f66f152bdb9eecbbfdbdd3add566dbabb81b43207a018c1ba18d8",
       "required_compute_capability": "12.0",
       "required_native_arch": "sm_120",
       "runtime_path": ".gpu-venv",
@@ -201,11 +202,17 @@
           "numpy": "2.3.5",
           "opencv-contrib-python": "4.10.0.84",
           "paddleocr": "3.7.0",
+          "paddlepaddle": "3.3.0",
           "paddlex": "3.7.2",
           "python-docx": "1.2.0",
           "torch": "2.12.0+cu130",
           "torchvision": "0.27.0+cu130",
           "transformers": "5.14.1"
+        },
+        "paddle": {
+          "checksum": 1099064147968.0,
+          "compiled_with_cuda": false,
+          "device": "cpu"
         },
         "return_code": 0,
         "stage": "complete",
@@ -224,22 +231,22 @@
     "hostname": "O-2004251",
     "kernel": "6.6.0-hiveos",
     "memory": {
-      "Active": 29481906176,
-      "Active(anon)": 8306135040,
-      "Active(file)": 21175771136,
-      "AnonHugePages": 490733568,
-      "AnonPages": 1215422464,
+      "Active": 31527051264,
+      "Active(anon)": 10095337472,
+      "Active(file)": 21431713792,
+      "AnonHugePages": 509607936,
+      "AnonPages": 1323044864,
       "Bounce": 0,
       "Buffers": 106057728,
-      "Cached": 79735128064,
+      "Cached": 83269283840,
       "CmaFree": 0,
       "CmaTotal": 0,
       "CommitLimit": 67354472448,
-      "Committed_AS": 13492109312,
+      "Committed_AS": 15388340224,
       "DirectMap1G": 130996502528,
       "DirectMap2M": 5989466112,
       "DirectMap4k": 355323904,
-      "Dirty": 1236992,
+      "Dirty": 1110016,
       "FileHugePages": 35651584,
       "FilePmdMapped": 0,
       "HardwareCorrupted": 0,
@@ -249,33 +256,33 @@
       "HugePages_Total": 131072,
       "Hugepagesize": 2097152,
       "Hugetlb": 268435456,
-      "Inactive": 51608002560,
-      "Inactive(anon)": 2071576576,
-      "Inactive(file)": 49536425984,
-      "KReclaimable": 1608921088,
-      "KernelStack": 14024704,
-      "Mapped": 637313024,
-      "MemAvailable": 122138615808,
-      "MemFree": 51094908928,
+      "Inactive": 53205745664,
+      "Inactive(anon)": 2185265152,
+      "Inactive(file)": 51020480512,
+      "KReclaimable": 1661489152,
+      "KernelStack": 14204928,
+      "Mapped": 650776576,
+      "MemAvailable": 120210685952,
+      "MemFree": 47374413824,
       "MemTotal": 134977380352,
       "Mlocked": 0,
       "NFS_Unstable": 0,
-      "PageTables": 12009472,
+      "PageTables": 12775424,
       "Percpu": 28966912,
-      "SReclaimable": 1532841984,
-      "SUnreclaim": 484573184,
+      "SReclaimable": 1585410048,
+      "SUnreclaim": 491913216,
       "SecPageTables": 0,
-      "Shmem": 9128988672,
+      "Shmem": 10923143168,
       "ShmemHugePages": 0,
       "ShmemPmdMapped": 0,
-      "Slab": 2017415168,
+      "Slab": 2077323264,
       "SwapCached": 0,
       "SwapFree": 0,
       "SwapTotal": 0,
       "Unevictable": 0,
       "VmallocChunk": 0,
       "VmallocTotal": 35184372087808,
-      "VmallocUsed": 83197952,
+      "VmallocUsed": 83329024,
       "Writeback": 0,
       "WritebackTmp": 0,
       "Zswap": 0,
@@ -351,9 +358,536 @@
     }
   },
   "format_version": 1,
+  "geometry_recovery": {
+    "acceptance": {
+      "agreement_promotes_pdf_confidence": false,
+      "auto_verified_high": 0,
+      "configured": {
+        "required_accepted_continuation_edges": 1,
+        "required_alignment_actions": {
+          "MATCH": 140
+        },
+        "required_arithmetic_failures": 0,
+        "required_arithmetic_not_testable": 1,
+        "required_arithmetic_passes": 11,
+        "required_candidate_invalid_cells": 0,
+        "required_exact_note_references": 50,
+        "required_ocr_dash_alias_recoveries": 1,
+        "required_off_balance_eligible_rows": 0,
+        "required_pixel_dash_recoveries": 3,
+        "required_reference_financial_cell_coverage_rate": 1.0,
+        "required_reference_financial_row_coverage_rate": 1.0,
+        "required_strict_exact_reference_cell_agreement_rate": 1.0,
+        "required_strict_exact_reference_financial_row_agreement_rate": 1.0,
+        "required_trailing_context_rows": 14
+      },
+      "geometry_reader_can_override_label_or_schema_identity": false,
+      "observed": {
+        "required_accepted_continuation_edges": 1,
+        "required_alignment_actions": {
+          "MATCH": 140
+        },
+        "required_arithmetic_failures": 0,
+        "required_arithmetic_not_testable": 1,
+        "required_arithmetic_passes": 11,
+        "required_candidate_invalid_cells": 0,
+        "required_exact_note_references": 50,
+        "required_ocr_dash_alias_recoveries": 1,
+        "required_off_balance_eligible_rows": 0,
+        "required_pixel_dash_recoveries": 3,
+        "required_reference_financial_cell_coverage_rate": 1.0,
+        "required_reference_financial_row_coverage_rate": 1.0,
+        "required_strict_exact_reference_cell_agreement_rate": 1.0,
+        "required_strict_exact_reference_financial_row_agreement_rate": 1.0,
+        "required_trailing_context_rows": 14
+      },
+      "status": "PASS_ALL_TARGETED_GATES_WITHOUT_CONFIDENCE_PROMOTION"
+    },
+    "arithmetic_validation": {
+      "counts": {
+        "NOT_TESTABLE": 1,
+        "PASS": 11
+      },
+      "findings": [
+        {
+          "check_type": "CONFIGURED_SUM:operating_before_working_capital",
+          "equation_id": "operating_before_working_capital",
+          "expected": "27581993",
+          "may_generate_value": false,
+          "observed": "27581993",
+          "operand_ids": [
+            "page-0014:row-0009:value-1",
+            "page-0014:row-0001:value-1",
+            "page-0014:row-0002:value-1",
+            "page-0014:row-0003:value-1",
+            "page-0014:row-0004:value-1",
+            "page-0014:row-0005:value-1",
+            "page-0014:row-0006:value-1",
+            "page-0014:row-0007:value-1",
+            "page-0014:row-0008:value-1"
+          ],
+          "period_index": 0,
+          "remediation": [],
+          "residual": "0",
+          "result": "PASS",
+          "tolerance": "0"
+        },
+        {
+          "check_type": "CONFIGURED_SUM:operating_before_working_capital",
+          "equation_id": "operating_before_working_capital",
+          "expected": "23033001",
+          "may_generate_value": false,
+          "observed": "23033001",
+          "operand_ids": [
+            "page-0014:row-0009:value-2",
+            "page-0014:row-0001:value-2",
+            "page-0014:row-0002:value-2",
+            "page-0014:row-0003:value-2",
+            "page-0014:row-0004:value-2",
+            "page-0014:row-0005:value-2",
+            "page-0014:row-0006:value-2",
+            "page-0014:row-0007:value-2",
+            "page-0014:row-0008:value-2"
+          ],
+          "period_index": 1,
+          "remediation": [],
+          "residual": "0",
+          "result": "PASS",
+          "tolerance": "0"
+        },
+        {
+          "check_type": "CONFIGURED_SUM:operating_cash_flow",
+          "equation_id": "operating_cash_flow",
+          "expected": "43219830",
+          "may_generate_value": false,
+          "observed": "43219830",
+          "operand_ids": [
+            "page-0014:row-0024:value-1",
+            "page-0014:row-0009:value-1",
+            "page-0014:row-0011:value-1",
+            "page-0014:row-0012:value-1",
+            "page-0014:row-0013:value-1",
+            "page-0014:row-0014:value-1",
+            "page-0014:row-0015:value-1",
+            "page-0014:row-0016:value-1",
+            "page-0014:row-0018:value-1",
+            "page-0014:row-0019:value-1",
+            "page-0014:row-0020:value-1",
+            "page-0014:row-0021:value-1",
+            "page-0014:row-0022:value-1",
+            "page-0014:row-0023:value-1"
+          ],
+          "period_index": 0,
+          "remediation": [],
+          "residual": "0",
+          "result": "PASS",
+          "tolerance": "0"
+        },
+        {
+          "check_type": "CONFIGURED_SUM:operating_cash_flow",
+          "equation_id": "operating_cash_flow",
+          "expected": "19024971",
+          "may_generate_value": false,
+          "observed": "19024971",
+          "operand_ids": [
+            "page-0014:row-0024:value-2",
+            "page-0014:row-0009:value-2",
+            "page-0014:row-0011:value-2",
+            "page-0014:row-0012:value-2",
+            "page-0014:row-0013:value-2",
+            "page-0014:row-0014:value-2",
+            "page-0014:row-0015:value-2",
+            "page-0014:row-0016:value-2",
+            "page-0014:row-0018:value-2",
+            "page-0014:row-0019:value-2",
+            "page-0014:row-0020:value-2",
+            "page-0014:row-0021:value-2",
+            "page-0014:row-0022:value-2",
+            "page-0014:row-0023:value-2"
+          ],
+          "period_index": 1,
+          "remediation": [],
+          "residual": "0",
+          "result": "PASS",
+          "tolerance": "0"
+        },
+        {
+          "check_type": "CONFIGURED_SUM:investing_cash_flow",
+          "equation_id": "investing_cash_flow",
+          "expected": "759119",
+          "may_generate_value": false,
+          "observed": "759119",
+          "operand_ids": [
+            "page-0014:row-0031:value-1",
+            "page-0014:row-0026:value-1",
+            "page-0014:row-0027:value-1",
+            "page-0014:row-0028:value-1",
+            "page-0014:row-0029:value-1",
+            "page-0014:row-0030:value-1"
+          ],
+          "period_index": 0,
+          "remediation": [],
+          "residual": "0",
+          "result": "PASS",
+          "tolerance": "0"
+        },
+        {
+          "check_type": "CONFIGURED_SUM:investing_cash_flow",
+          "equation_id": "investing_cash_flow",
+          "expected": "-11436617",
+          "may_generate_value": false,
+          "observed": "-11436617",
+          "operand_ids": [
+            "page-0014:row-0031:value-2",
+            "page-0014:row-0026:value-2",
+            "page-0014:row-0027:value-2",
+            "page-0014:row-0028:value-2",
+            "page-0014:row-0029:value-2",
+            "page-0014:row-0030:value-2"
+          ],
+          "period_index": 1,
+          "remediation": [],
+          "residual": "0",
+          "result": "PASS",
+          "tolerance": "0"
+        },
+        {
+          "check_type": "CONFIGURED_SUM:financing_cash_flow",
+          "equation_id": "financing_cash_flow",
+          "expected": "-4942242",
+          "may_generate_value": false,
+          "observed": "-4942242",
+          "operand_ids": [
+            "page-0015:row-0003:value-1",
+            "page-0015:row-0001:value-1",
+            "page-0015:row-0002:value-1"
+          ],
+          "period_index": 0,
+          "remediation": [],
+          "residual": "0",
+          "result": "PASS",
+          "tolerance": "0"
+        },
+        {
+          "check_type": "CONFIGURED_SUM:financing_cash_flow",
+          "equation_id": "financing_cash_flow",
+          "expected": null,
+          "may_generate_value": false,
+          "observed": "52664",
+          "operand_ids": [
+            "page-0015:row-0003:value-2",
+            "page-0015:row-0001:value-2",
+            "page-0015:row-0002:value-2"
+          ],
+          "period_index": 1,
+          "remediation": [
+            "collect missing visible operands"
+          ],
+          "residual": null,
+          "result": "NOT_TESTABLE",
+          "tolerance": "0"
+        },
+        {
+          "check_type": "CONFIGURED_SUM:net_cash_flow_across_page_boundary",
+          "equation_id": "net_cash_flow_across_page_boundary",
+          "expected": "39036707",
+          "may_generate_value": false,
+          "observed": "39036707",
+          "operand_ids": [
+            "page-0015:row-0004:value-1",
+            "page-0014:row-0024:value-1",
+            "page-0014:row-0031:value-1",
+            "page-0015:row-0003:value-1"
+          ],
+          "period_index": 0,
+          "remediation": [],
+          "residual": "0",
+          "result": "PASS",
+          "tolerance": "0"
+        },
+        {
+          "check_type": "CONFIGURED_SUM:net_cash_flow_across_page_boundary",
+          "equation_id": "net_cash_flow_across_page_boundary",
+          "expected": "7641018",
+          "may_generate_value": false,
+          "observed": "7641018",
+          "operand_ids": [
+            "page-0015:row-0004:value-2",
+            "page-0014:row-0024:value-2",
+            "page-0014:row-0031:value-2",
+            "page-0015:row-0003:value-2"
+          ],
+          "period_index": 1,
+          "remediation": [],
+          "residual": "0",
+          "result": "PASS",
+          "tolerance": "0"
+        },
+        {
+          "check_type": "CONFIGURED_SUM:ending_cash_rollforward",
+          "equation_id": "ending_cash_rollforward",
+          "expected": "147128207",
+          "may_generate_value": false,
+          "observed": "147128207",
+          "operand_ids": [
+            "page-0015:row-0006:value-1",
+            "page-0015:row-0004:value-1",
+            "page-0015:row-0005:value-1"
+          ],
+          "period_index": 0,
+          "remediation": [],
+          "residual": "0",
+          "result": "PASS",
+          "tolerance": "0"
+        },
+        {
+          "check_type": "CONFIGURED_SUM:ending_cash_rollforward",
+          "equation_id": "ending_cash_rollforward",
+          "expected": "108091500",
+          "may_generate_value": false,
+          "observed": "108091500",
+          "operand_ids": [
+            "page-0015:row-0006:value-2",
+            "page-0015:row-0004:value-2",
+            "page-0015:row-0005:value-2"
+          ],
+          "period_index": 1,
+          "remediation": [],
+          "residual": "0",
+          "result": "PASS",
+          "tolerance": "0"
+        }
+      ],
+      "policy": {
+        "blank_operand_policy": "NOT_TESTABLE",
+        "dash_operand_policy": "NOT_TESTABLE",
+        "may_generate_or_overwrite_values": false,
+        "purpose": "VALIDATION_AND_REREAD_TRIGGER_ONLY",
+        "tolerance": "0"
+      },
+      "value_generation_or_overwrite": false
+    },
+    "artifact": "docs/experiments/E-0011-tcb-geometry-recovery.json",
+    "artifact_sha256": "4df17c6b19e5121ae047c699e52f4a81662b3580c07e1b492d0ca4f1e38cf03c",
+    "cash_flow": {
+      "combined_structural_observation": "DIRECT_LIKE_VISIBLE_ORDER",
+      "reason": "Role B sees the configured direct anchor order and Role C recovers its rows, but Q-BOOT-001/workbook branch semantics remain REOPENED_EVIDENCE_CONFLICT.",
+      "role_b_label_reader": {
+        "direct_anchor_positions": [
+          1,
+          2
+        ],
+        "indirect_anchor_positions": null,
+        "method": "DIRECT",
+        "reason": "configured direct ordered anchor sequence observed; semantic status=REOPENED_EVIDENCE_CONFLICT, acceptance fail-closed",
+        "semantic_high_confidence_allowed": false
+      },
+      "role_c_geometry_reader": {
+        "direct_anchor_positions": null,
+        "indirect_anchor_positions": null,
+        "method": "UNKNOWN",
+        "reason": "neither configured ordered anchor sequence is sufficiently observed; semantic status=REOPENED_EVIDENCE_CONFLICT, acceptance fail-closed",
+        "semantic_high_confidence_allowed": false
+      },
+      "schema_branch_assignment_permitted": false
+    },
+    "claim_boundary": "This is a targeted, post-failure calibration against one sealed TCB machine reference. It demonstrates recovery of these pages, not human-gold, schema, multi-bank holdout, or production accuracy.",
+    "code_commit": "a0a034dc24ed67636ed5a5f564c7867cd5a61373",
+    "continuation_accepted": true,
+    "dataset_role": "CALIBRATION",
+    "design": "TARGETED_POST_FAILURE_ANALYSIS",
+    "errors": [],
+    "experiment_id": "E-0011",
+    "historical_weak_reference": {
+      "invoked": false,
+      "mapping_or_confidence_effect": "NONE",
+      "policy": {
+        "lookup_requires_resolved_id": true,
+        "lookup_stage": "POST_SCHEMA_RESOLUTION_ONLY",
+        "mapping_candidate_generation": false,
+        "pdf_confidence_promotion": false,
+        "pdf_value_overwrite": false,
+        "pdf_ytd_operand": false
+      },
+      "reason": "Rows are not schema-resolved; resolved-ID-only history lookup is unavailable."
+    },
+    "integrity_status": "PASS_TRACKED_AND_LOCAL_SEALS",
+    "local_seal_count": 3,
+    "local_seals": [
+      {
+        "present": true,
+        "role": "role_a_seal",
+        "verified": true
+      },
+      {
+        "present": true,
+        "role": "role_b_seal",
+        "verified": true
+      },
+      {
+        "present": true,
+        "role": "role_c_seal",
+        "verified": true
+      }
+    ],
+    "metrics": {
+      "alignment_actions": {
+        "MATCH": 140
+      },
+      "candidate_invalid_cells": 0,
+      "candidate_rows": 140,
+      "compared_reference_financial_cells": 264,
+      "conditional_exact_cell_agreement_rate": 1.0,
+      "conditional_exact_financial_row_agreement_rate": 1.0,
+      "covered_reference_financial_rows": 132,
+      "escalations": {
+        "CORROBORATED_NO_CONFIDENCE_PROMOTION": 3,
+        "LABEL_REREAD_OR_STRUCTURAL_REVIEW": 137
+      },
+      "exact_note_references": 50,
+      "exact_reference_financial_cells": 264,
+      "exact_reference_financial_rows": 132,
+      "note_rows": 50,
+      "reference_financial_cell_coverage_rate": 1.0,
+      "reference_financial_cells": 264,
+      "reference_financial_row_coverage_rate": 1.0,
+      "reference_financial_rows": 132,
+      "reference_rows": 140,
+      "scope_allowed_candidate_rows": 120,
+      "scope_excluded_candidate_rows": 20,
+      "semantic_key_exact_label_rate": 0.1,
+      "semantic_key_exact_labels": 14,
+      "source_exact_label_rate": 0.021429,
+      "source_exact_labels": 3,
+      "strict_exact_reference_cell_agreement_rate": 1.0,
+      "strict_exact_reference_financial_row_agreement_rate": 1.0,
+      "structurally_comparable_rows": 140
+    },
+    "off_balance_gate": {
+      "eligible_rows_on_off_balance_pages": 0,
+      "excluded_rows_on_off_balance_pages": 20,
+      "status": "PASS_ZERO_CDKT_ELIGIBLE_ROWS"
+    },
+    "recorded_status": "PASS_TARGETED_GEOMETRY_RECOVERY_CALIBRATION",
+    "recovery_evidence": {
+      "automatic_confidence_effect": "NONE",
+      "ocr_dash_alias_recoveries": [
+        {
+          "axis_index": 0,
+          "confidence_effect": "NO_PROMOTION",
+          "label": "Các công c tài chính phái sinh và các tài sàn tài chính khác",
+          "normalized_observation": "DASH",
+          "page": 10,
+          "raw_ocr_tokens": [
+            "一"
+          ],
+          "row_index": 9,
+          "source_line_indices": [
+            48
+          ]
+        }
+      ],
+      "pixel_dash_recoveries": [
+        {
+          "axis_index": 1,
+          "confidence_effect": "NO_PROMOTION",
+          "evidence": {
+            "aspect_ratio": 3.0,
+            "component_box": [
+              1434,
+              1254,
+              1443,
+              1257
+            ],
+            "crop_box": [
+              1402,
+              1230,
+              1462,
+              1267
+            ],
+            "fill_ratio": 0.925926,
+            "foreground_contrast": 130.074074,
+            "height_line_heights": 0.088235,
+            "observation": "DASH",
+            "source_image_path": "output/calibration/e0009-tcb-role-b/7e3f491783a9895d7716/renders/page-0010.png",
+            "threshold": 183.0,
+            "width_line_heights": 0.264706
+          },
+          "label": "Chng khoán đu tư gi đn ngày đáo hn",
+          "page": 10,
+          "row_index": 18
+        },
+        {
+          "axis_index": 1,
+          "confidence_effect": "NO_PROMOTION",
+          "evidence": {
+            "aspect_ratio": 1.8,
+            "component_box": [
+              1437,
+              789,
+              1446,
+              794
+            ],
+            "crop_box": [
+              1400,
+              766,
+              1462,
+              804
+            ],
+            "fill_ratio": 0.777778,
+            "foreground_contrast": 130.755556,
+            "height_line_heights": 0.142857,
+            "observation": "DASH",
+            "source_image_path": "output/calibration/e0009-tcb-role-b/7e3f491783a9895d7716/renders/page-0011.png",
+            "threshold": 174.0,
+            "width_line_heights": 0.257143
+          },
+          "label": "Các công c tài chính phái sinh và các khoàn n tài chính khác",
+          "page": 11,
+          "row_index": 7
+        },
+        {
+          "axis_index": 1,
+          "confidence_effect": "NO_PROMOTION",
+          "evidence": {
+            "aspect_ratio": 1.8,
+            "component_box": [
+              1439,
+              478,
+              1448,
+              483
+            ],
+            "crop_box": [
+              1400,
+              455,
+              1464,
+              496
+            ],
+            "fill_ratio": 0.688889,
+            "foreground_contrast": 106.444444,
+            "height_line_heights": 0.135135,
+            "observation": "DASH",
+            "source_image_path": "output/calibration/e0009-tcb-role-b/7e3f491783a9895d7716/renders/page-0015.png",
+            "threshold": 193.0,
+            "width_line_heights": 0.243243
+          },
+          "label": "Cồ tc trà cho c đông",
+          "page": 15,
+          "row_index": 2
+        }
+      ],
+      "trailing_context_rows_preserved_but_mapping_ineligible": 14
+    },
+    "report_norm_id": {
+      "collision_check_invoked": false,
+      "ids_proposed_or_added": 0,
+      "reason": "E-0011 performs no schema assignment and adds no ReportNormID."
+    },
+    "verified_local_seal_count": 3
+  },
   "git": {
     "branch": "codex/rebuild-bootstrap",
-    "commit": "61ea6b8e7c00d86e5b421a2c9975f25de03e7cde",
+    "commit": "62d93dfd5396c483a45c6cc2f5d80440d2a0fb39",
     "dirty": false,
     "remotes": [
       "origin"
