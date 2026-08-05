@@ -12,7 +12,9 @@ from bctc_ai.evaluation.sealing import (
 )
 
 
-def _geometry_fixture(tmp_path: Path, *, dirty: bool = False) -> dict[str, Path]:
+def _geometry_fixture(
+    tmp_path: Path, *, dirty: bool = False, batch: bool = False
+) -> dict[str, Path]:
     render = tmp_path / "output/upstream/renders/page-0001.png"
     render.parent.mkdir(parents=True)
     render.write_bytes(b"render")
@@ -43,12 +45,14 @@ def _geometry_fixture(tmp_path: Path, *, dirty: bool = False) -> dict[str, Path]
     freeze = tmp_path / "config/models/gpu-requirements.freeze.txt"
     runtime = tmp_path / "config/models/gpu-runtime.toml"
     runner = tmp_path / "scripts/models/run_ppocrv6_word_boxes.py"
+    batch_runner = tmp_path / "scripts/models/run_ppocrv6_word_boxes_batch.py"
     implementation = tmp_path / "src/bctc_ai/evaluation/sealing.py"
-    for path in (config, freeze, runtime, runner, implementation):
+    for path in (config, freeze, runtime, runner, batch_runner, implementation):
         path.parent.mkdir(parents=True, exist_ok=True)
     config.write_text("pipeline_name: OCR\n", encoding="utf-8")
     freeze.write_text("paddlepaddle==3.3.0\n", encoding="utf-8")
     runner.write_text("# runner\n", encoding="utf-8")
+    batch_runner.write_text("# batch runner\n", encoding="utf-8")
     implementation.write_text("# sealer\n", encoding="utf-8")
 
     model_cache = tmp_path / "model-cache"
@@ -95,6 +99,22 @@ def _geometry_fixture(tmp_path: Path, *, dirty: bool = False) -> dict[str, Path]
         encoding="utf-8",
     )
     manifest = page_root / "run_manifest.json"
+    configuration = {
+        "sha256": sha256_file(config),
+        "runner_sha256": sha256_file(batch_runner if batch else runner),
+        "network_policy": "PROCESS_SOCKET_CONNECT_DENIED",
+        "implicit_orientation_or_unwarp": False,
+        "mkldnn": False,
+        "precision": "fp32",
+    }
+    if batch:
+        configuration.update(
+            {
+                "runner_path": batch_runner.relative_to(tmp_path).as_posix(),
+                "single_page_helper_path": runner.relative_to(tmp_path).as_posix(),
+                "single_page_helper_sha256": sha256_file(runner),
+            }
+        )
     manifest.write_text(
         json.dumps(
             {
@@ -102,15 +122,15 @@ def _geometry_fixture(tmp_path: Path, *, dirty: bool = False) -> dict[str, Path]
                 "dataset_role": "CALIBRATION",
                 "evidence_role": "INDEPENDENT_GEOMETRY_PROPOSAL_ONLY",
                 "code": {"commit": "abc", "dirty": dirty},
-                "input": {"path": render.resolve().as_posix(), "sha256": sha256_file(render)},
-                "configuration": {
-                    "sha256": sha256_file(config),
-                    "runner_sha256": sha256_file(runner),
-                    "network_policy": "PROCESS_SOCKET_CONNECT_DENIED",
-                    "implicit_orientation_or_unwarp": False,
-                    "mkldnn": False,
-                    "precision": "fp32",
+                "input": {
+                    "path": (
+                        render.relative_to(tmp_path).as_posix()
+                        if batch
+                        else render.resolve().as_posix()
+                    ),
+                    "sha256": sha256_file(render),
                 },
+                "configuration": configuration,
                 "runtime": {
                     "manifest_sha256": sha256_file(runtime),
                     "device": "cpu",
@@ -164,6 +184,42 @@ def test_independent_geometry_seal_rejects_dirty_inference(tmp_path: Path):
     fixture = _geometry_fixture(tmp_path, dirty=True)
 
     with pytest.raises(IndependentGeometrySealError, match="did not use clean code"):
+        seal_independent_geometry_run(
+            tmp_path,
+            fixture["run_root"],
+            pages=(1,),
+            role_b_seal_path=fixture["role_b_seal"],
+            model_cache_root=fixture["model_cache"],
+            seal_implementation_path=fixture["implementation"],
+        )
+
+
+def test_independent_geometry_seal_accepts_hash_locked_batch_runner(tmp_path: Path):
+    fixture = _geometry_fixture(tmp_path, batch=True)
+
+    sealed = seal_independent_geometry_run(
+        tmp_path,
+        fixture["run_root"],
+        pages=(1,),
+        role_b_seal_path=fixture["role_b_seal"],
+        model_cache_root=fixture["model_cache"],
+        seal_implementation_path=fixture["implementation"],
+    )
+
+    assert sealed["runtime"]["runner_path"] == ("scripts/models/run_ppocrv6_word_boxes_batch.py")
+    assert sealed["runtime"]["single_page_helper_path"] == (
+        "scripts/models/run_ppocrv6_word_boxes.py"
+    )
+
+
+def test_independent_geometry_seal_rejects_batch_helper_drift(tmp_path: Path):
+    fixture = _geometry_fixture(tmp_path, batch=True)
+    manifest_path = fixture["run_root"] / "ppocrv6-page-0001/run_manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["configuration"]["single_page_helper_sha256"] = "0" * 64
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(IndependentGeometrySealError, match="batch helper identity drift"):
         seal_independent_geometry_run(
             tmp_path,
             fixture["run_root"],

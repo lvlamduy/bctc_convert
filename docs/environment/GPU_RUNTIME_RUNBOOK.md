@@ -62,6 +62,25 @@ BCTC_DATASET_ROLE=CALIBRATION \
 
 The PP-OCRv6 runner refuses an existing output directory and a dirty Git worktree, verifies both local model hashes, blocks all process socket connections, disables implicit orientation/unwarp, and writes only `ocr_result.json` plus an atomic `run_manifest.json`. It does not render an image or download a font. `BCTC_ALLOW_DIRTY_OCR_SMOKE=true` exists only for non-evidence development smoke tests and is recorded as `code.dirty=true`; such output cannot be sealed or promoted.
 
+For many pages, use the checkpointed runner so the detector and recognizer load
+once per process:
+
+```bash
+BCTC_MODEL_CACHE_DIR=/dev/shm/bctc-paddlex-e0007 \
+BCTC_DATASET_ROLE=CALIBRATION \
+  bash scripts/models/run_ppocrv6_word_boxes_batch.sh \
+  output/calibration/RUN/DOCUMENT/manifest.json \
+  output/calibration/ROLE_C_BATCH \
+  10-15
+```
+
+The input must be the top-level preprocessing manifest. Set
+`BCTC_BATCH_RESUME=true` with the identical command after interruption. The
+runner verifies the immutable dataset role, source/render/config/code/model
+hashes, and every completed page before continuing. Full input/output,
+parameter, checkpoint, transfer, and recovery rules are in
+`BATCH_OCR_RUNBOOK.md`.
+
 Measure the same run:
 
 ```bash

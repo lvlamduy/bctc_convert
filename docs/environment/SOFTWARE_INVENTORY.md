@@ -87,6 +87,13 @@ PP-OCRv6 requires the Paddle inference backend. Paddle's [official 3.3 installat
 
 `scripts/models/run_ppocrv6_word_boxes.sh` invokes a JSON-only Python runner. It verifies the two OCR weight hashes, refuses dirty evidence runs and output replacement, disables MKLDNN plus implicit geometric transforms, blocks process network connections, and atomically records line/word boxes, confidence, runtime/model/config/code hashes, and dataset role. The generic PaddleOCR CLI is not used because its visualization export attempted to download an unpinned font after successful OCR.
 
+`scripts/models/run_ppocrv6_word_boxes_batch.sh` adds no dependency or model.
+It reuses the same JSON-only helper and frozen CPU-FP32 runtime, loads the two
+models once per process, atomically checkpoints each page, and permits resume
+only under an identical source/render/role/code/config/runtime/model identity.
+Its settings, output contract, and migration procedure are versioned in
+`BATCH_OCR_RUNBOOK.md`.
+
 The pinned full pipeline uses `config/models/paddleocr-vl-1.6-transformers.yaml`: PP-DocLayoutV3 runs FP32, PaddleOCR-VL-1.6 runs BF16, remote code is disabled, and both use the Transformers engine. The split precision is required because PP-DocLayoutV3's Transformers post-process cannot convert a BF16 tensor directly to NumPy in the tested stack.
 
 E-0007 passed a complete 200-DPI VPB KQKD-page inference in 19.52 seconds with peak total GPU memory 3,239 MiB (3,204 MiB over baseline). Cross-reader evaluation recovered 25 logical rows, 50/50 exact value/state cells, and 12/12 exact note references. It also exposed two diacritic-sensitive label errors and one wrapped row split, so the model remains a logic-development candidate and cannot establish truth alone. See `docs/experiments/E-0007-paddleocr-vl-runtime.json`.

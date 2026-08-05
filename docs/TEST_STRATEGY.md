@@ -58,4 +58,15 @@ Source-registry tests require byte-identical repeated registration, preservation
 
 GPU-runtime audit tests are fail-closed: a current CUDA/import smoke, dependency compatibility, tracked freeze hash, and exact installed package sequence must all pass. Unit tests cover the configured-pass path, an absent manifest, and installed-freeze drift. Runtime acceptance and production model acceptance are deliberately separate states.
 
+The PP-OCRv6 batch runner has a separate mechanism gate. Unit tests require
+normalized sorted page selection; relocation only by exact hash; immutable role
+agreement across request, preprocess manifest, and registry; a bound clean
+preprocess envelope; rejection of render/config/runtime drift; full-identity
+orphan-page recovery; and preservation of all model-load sessions across
+resume. Sealing additionally locks both the batch orchestrator and its
+single-page helper and rejects either hash drifting. A real development smoke
+must reproduce a known OCR artifact byte for byte before the runner is used for
+new evidence. This proves batch equivalence
+and recovery behavior only; it does not add an accuracy sample.
+
 Explicit page numbers in a golden/calibration fixture are expected test data, not production routing rules. Production page pairing must continue to use document-order and visual evidence; no bank, page offset, or coordinate constant may enter the algorithm.

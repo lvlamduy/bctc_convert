@@ -325,6 +325,34 @@ def _verify_geometry_models(
     return records
 
 
+def _geometry_inference_runner(
+    configuration: dict[str, object],
+    *,
+    project_root: Path,
+    single_runner_path: Path,
+    batch_runner_path: Path,
+) -> Path:
+    single_relative = _geometry_relative(single_runner_path, project_root)
+    configured_path = configuration.get("runner_path")
+    configured_sha256 = configuration.get("runner_sha256")
+    if configured_sha256 == sha256_file(single_runner_path) and configured_path in {
+        None,
+        single_relative,
+    }:
+        return single_runner_path
+
+    if not batch_runner_path.is_file():
+        raise IndependentGeometrySealError("configured geometry batch runner is missing")
+    batch_relative = _geometry_relative(batch_runner_path, project_root)
+    if configured_path != batch_relative or configured_sha256 != sha256_file(batch_runner_path):
+        raise IndependentGeometrySealError("geometry page used an unrecognized runner")
+    if configuration.get("single_page_helper_path") != single_relative or configuration.get(
+        "single_page_helper_sha256"
+    ) != sha256_file(single_runner_path):
+        raise IndependentGeometrySealError("geometry batch helper identity drift")
+    return batch_runner_path
+
+
 def seal_independent_geometry_run(
     project_root: Path,
     run_root: Path,
@@ -336,6 +364,7 @@ def seal_independent_geometry_run(
     inference_config: Path = Path("config/models/pp-ocrv6-word-box.yaml"),
     package_freeze: Path = Path("config/models/gpu-requirements.freeze.txt"),
     runner_path: Path = Path("scripts/models/run_ppocrv6_word_boxes.py"),
+    batch_runner_path: Path = Path("scripts/models/run_ppocrv6_word_boxes_batch.py"),
     seal_name: str = "role_c_geometry_seal.json",
     seal_implementation_path: Path | None = None,
 ) -> dict[str, object]:
@@ -375,6 +404,7 @@ def seal_independent_geometry_run(
     config_path = (project_root / inference_config).resolve()
     freeze_path = (project_root / package_freeze).resolve()
     runner_path = (project_root / runner_path).resolve()
+    batch_runner_path = (project_root / batch_runner_path).resolve()
     for path in (runtime_path, config_path, freeze_path, runner_path):
         if not path.is_file():
             raise IndependentGeometrySealError(f"geometry runtime artifact is missing: {path}")
@@ -408,6 +438,7 @@ def seal_independent_geometry_run(
     total_below_09 = 0
     score_sum = 0.0
     minimum_score: float | None = None
+    inference_runner_path: Path | None = None
     for page in pages:
         page_code = f"{page:04d}"
         upstream_page = role_b_pages[page]
@@ -440,7 +471,10 @@ def seal_independent_geometry_run(
         source = manifest.get("input")
         if not isinstance(source, dict):
             raise IndependentGeometrySealError(f"geometry page {page} has no input identity")
-        source_path = Path(str(source.get("path", ""))).resolve()
+        source_path = Path(str(source.get("path", "")))
+        if not source_path.is_absolute():
+            source_path = project_root / source_path
+        source_path = source_path.resolve()
         if source_path != render_path.resolve() or source.get("sha256") != render_digest:
             raise IndependentGeometrySealError(f"geometry input differs from Role B page {page}")
         configuration = manifest.get("configuration")
@@ -448,7 +482,6 @@ def seal_independent_geometry_run(
             raise IndependentGeometrySealError(f"geometry page {page} has no configuration")
         required_configuration = {
             "sha256": sha256_file(config_path),
-            "runner_sha256": sha256_file(runner_path),
             "network_policy": "PROCESS_SOCKET_CONNECT_DENIED",
             "implicit_orientation_or_unwarp": False,
             "mkldnn": False,
@@ -456,6 +489,15 @@ def seal_independent_geometry_run(
         }
         if any(configuration.get(key) != value for key, value in required_configuration.items()):
             raise IndependentGeometrySealError(f"geometry page {page} configuration drift")
+        page_runner_path = _geometry_inference_runner(
+            configuration,
+            project_root=project_root,
+            single_runner_path=runner_path,
+            batch_runner_path=batch_runner_path,
+        )
+        inference_runner_path = inference_runner_path or page_runner_path
+        if page_runner_path != inference_runner_path:
+            raise IndependentGeometrySealError("geometry pages used different runners")
         page_runtime = manifest.get("runtime")
         if not isinstance(page_runtime, dict) or page_runtime.get(
             "manifest_sha256"
@@ -532,6 +574,8 @@ def seal_independent_geometry_run(
     implementation_path = (seal_implementation_path or Path(__file__)).resolve()
     if not implementation_path.is_file():
         raise IndependentGeometrySealError("geometry seal implementation is missing")
+    if inference_runner_path is None:
+        raise IndependentGeometrySealError("geometry run contains no inference runner")
     payload: dict[str, object] = {
         "format_version": 1,
         "state": "GEOMETRY_OCR_COMPLETE",
@@ -554,8 +598,10 @@ def seal_independent_geometry_run(
             "inference_config_sha256": sha256_file(config_path),
             "package_freeze_path": _geometry_relative(freeze_path, project_root),
             "package_freeze_sha256": sha256_file(freeze_path),
-            "runner_path": _geometry_relative(runner_path, project_root),
-            "runner_sha256": sha256_file(runner_path),
+            "runner_path": _geometry_relative(inference_runner_path, project_root),
+            "runner_sha256": sha256_file(inference_runner_path),
+            "single_page_helper_path": _geometry_relative(runner_path, project_root),
+            "single_page_helper_sha256": sha256_file(runner_path),
             "models": models,
         },
         "evidence_stage": EvidenceStage.INDEPENDENT_GEOMETRY_READ.value,
