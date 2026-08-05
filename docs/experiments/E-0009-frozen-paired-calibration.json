@@ -1,0 +1,1479 @@
+{
+  "algorithm_files_sha256": {
+    "scripts/experiments/build_paired_calibration_fixture.py": "43ff38a04a994e79684a6cb27bbc92c4d8d1c10531cf816184aac09ebb205061",
+    "src/bctc_ai/evaluation/frozen_suite.py": "a15c64146ad2d00f48319faea87d9ae46ab345e2a31922f348ed9cbcc185553c",
+    "src/bctc_ai/evaluation/page_pairing.py": "e328fd83080e23e3d0571fda17bcf6c5c4882cb7e70bbff53e4bbbee68c0310d"
+  },
+  "claim_boundary": "Page correspondence and evidence isolation only; this is not OCR, mapping, full-tuple, or production accuracy.",
+  "config": {
+    "path": "config/experiments/e0009-frozen-paired-calibration.yaml",
+    "sha256": "29a699efb0463cb27448a0a553da7975dbed30885d011456b5dd2cf6380aa4e9"
+  },
+  "dataset_role": "CALIBRATION",
+  "evidence_isolation": {
+    "policy": {
+      "compare_starts_after_role_b_complete": true,
+      "page_pairing_uses_text_or_values": false,
+      "role_b_can_read_role_a_result": false,
+      "role_b_can_read_role_a_source": false
+    },
+    "validated_manifests": {
+      "PAIR_REGISTRATION": [
+        {
+          "kind": "ROLE_A_SOURCE_PDF",
+          "path": "vietstock_bctc/TCB/2024/techcombank-vas-bao-cao-tai-chinh-rieng-le-ye24-searchable.pdf",
+          "sha256": "f48ff3a87b68d7bccc72a4503afa6d83c868b0d1635243e1e3106f5ff559c552"
+        },
+        {
+          "kind": "ROLE_B_SOURCE_PDF",
+          "path": "vietstock_bctc/TCB/2024/techcombank-vas-bao-cao-tai-chinh-rieng-le-ye24.pdf",
+          "sha256": "7e3f491783a9895d7716199c3981cddebfc060ef7fa125724f421b7b646faafa"
+        },
+        {
+          "kind": "CONFIG",
+          "path": "config/experiments/e0009-frozen-paired-calibration.yaml",
+          "sha256": "29a699efb0463cb27448a0a553da7975dbed30885d011456b5dd2cf6380aa4e9"
+        }
+      ],
+      "ROLE_A_BUILD": [
+        {
+          "kind": "ROLE_A_SOURCE_PDF",
+          "path": "vietstock_bctc/TCB/2024/techcombank-vas-bao-cao-tai-chinh-rieng-le-ye24-searchable.pdf",
+          "sha256": "f48ff3a87b68d7bccc72a4503afa6d83c868b0d1635243e1e3106f5ff559c552"
+        },
+        {
+          "kind": "CONFIG",
+          "path": "config/tables/geometry.yaml",
+          "sha256": null
+        }
+      ],
+      "ROLE_B_POST_MAPPING_VALIDATION": [
+        {
+          "kind": "ROLE_B_RESULT",
+          "path": "pipeline_results.jsonl",
+          "sha256": null
+        },
+        {
+          "kind": "HISTORICAL_WEAK_REFERENCE",
+          "path": "data/local/historical_weak_reference.duckdb",
+          "sha256": null
+        }
+      ],
+      "ROLE_B_READ": [
+        {
+          "kind": "ROLE_B_SOURCE_PDF",
+          "path": "vietstock_bctc/TCB/2024/techcombank-vas-bao-cao-tai-chinh-rieng-le-ye24.pdf",
+          "sha256": "7e3f491783a9895d7716199c3981cddebfc060ef7fa125724f421b7b646faafa"
+        },
+        {
+          "kind": "CONFIG",
+          "path": "config/models/paddleocr-vl-1.6-transformers.yaml",
+          "sha256": null
+        },
+        {
+          "kind": "MODEL",
+          "path": "PaddleOCR-VL-1.6@pinned-revision",
+          "sha256": null
+        }
+      ]
+    }
+  },
+  "experiment_id": "E-0009",
+  "frozen_at": "2026-08-05T20:50:47+00:00",
+  "historical_weak_reference_policy": {
+    "lookup_requires_resolved_id": true,
+    "lookup_stage": "POST_SCHEMA_RESOLUTION_ONLY",
+    "mapping_candidate_generation": false,
+    "pdf_confidence_promotion": false,
+    "pdf_value_overwrite": false,
+    "pdf_ytd_operand": false
+  },
+  "next_gate": "Run Role A on searchable pages and Role B on paired scan pages independently, then compare only after Role B artifacts are sealed.",
+  "pairing": {
+    "config": {
+      "column_projection_size": 96,
+      "content_crop_quantile": 0.005,
+      "feature_height": 64,
+      "feature_width": 48,
+      "minimum_ink_ratio": 0.002,
+      "minimum_runner_up_margin": 0.05,
+      "minimum_similarity": 0.45,
+      "render_scale": 0.75,
+      "row_projection_size": 128,
+      "skip_penalty": 0.12
+    },
+    "method": "ORDERED_DYNAMIC_PROGRAMMING_ON_PIXEL_FINGERPRINTS",
+    "missing_target_pages": [],
+    "result": {
+      "candidate_page_count": 85,
+      "counts": {
+        "accepted": 71,
+        "candidate_only": 2,
+        "matched": 83,
+        "reference_only": 0,
+        "steps": 85
+      },
+      "mean_matched_similarity": 0.816052,
+      "reference_page_count": 83,
+      "steps": [
+        {
+          "accepted": false,
+          "action": "CANDIDATE_ONLY",
+          "candidate_page": 1,
+          "evidence": [
+            "unpaired page retained explicitly"
+          ],
+          "reference_page": null,
+          "runner_up_margin": null,
+          "sequence_supported": false,
+          "similarity": null
+        },
+        {
+          "accepted": false,
+          "action": "MATCH",
+          "candidate_page": 2,
+          "evidence": [
+            "visual similarity below threshold",
+            "adjacent monotonic page pair supports alignment",
+            "pair retained but rejected for benchmark use"
+          ],
+          "reference_page": 1,
+          "runner_up_margin": -0.150333,
+          "sequence_supported": true,
+          "similarity": 0.044978
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 3,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 2,
+          "runner_up_margin": 0.588334,
+          "sequence_supported": true,
+          "similarity": 0.817554
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 4,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 3,
+          "runner_up_margin": 0.758118,
+          "sequence_supported": true,
+          "similarity": 0.965074
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 5,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 4,
+          "runner_up_margin": 0.705401,
+          "sequence_supported": true,
+          "similarity": 0.943817
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 6,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 5,
+          "runner_up_margin": 0.71228,
+          "sequence_supported": true,
+          "similarity": 0.94725
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 7,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 6,
+          "runner_up_margin": 0.52003,
+          "sequence_supported": true,
+          "similarity": 0.775363
+        },
+        {
+          "accepted": false,
+          "action": "MATCH",
+          "candidate_page": 8,
+          "evidence": [
+            "visual similarity below threshold",
+            "adjacent monotonic page pair supports alignment",
+            "pair retained but rejected for benchmark use"
+          ],
+          "reference_page": 7,
+          "runner_up_margin": -0.111075,
+          "sequence_supported": true,
+          "similarity": 0.180815
+        },
+        {
+          "accepted": false,
+          "action": "MATCH",
+          "candidate_page": 9,
+          "evidence": [
+            "visual similarity below threshold",
+            "adjacent monotonic page pair supports alignment",
+            "pair retained but rejected for benchmark use"
+          ],
+          "reference_page": 8,
+          "runner_up_margin": -0.0025,
+          "sequence_supported": true,
+          "similarity": 0.267018
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 10,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 9,
+          "runner_up_margin": 0.524342,
+          "sequence_supported": true,
+          "similarity": 0.947814
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 11,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 10,
+          "runner_up_margin": 0.619135,
+          "sequence_supported": true,
+          "similarity": 0.930997
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 12,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 11,
+          "runner_up_margin": 0.455898,
+          "sequence_supported": true,
+          "similarity": 0.873507
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 13,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 12,
+          "runner_up_margin": 0.478426,
+          "sequence_supported": true,
+          "similarity": 0.896036
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 14,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 13,
+          "runner_up_margin": 0.485951,
+          "sequence_supported": true,
+          "similarity": 0.909423
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 15,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 14,
+          "runner_up_margin": 0.549477,
+          "sequence_supported": true,
+          "similarity": 0.834428
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 16,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 15,
+          "runner_up_margin": 0.552815,
+          "sequence_supported": true,
+          "similarity": 0.920807
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 17,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 16,
+          "runner_up_margin": 0.689236,
+          "sequence_supported": true,
+          "similarity": 0.964682
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 18,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 17,
+          "runner_up_margin": 0.506438,
+          "sequence_supported": true,
+          "similarity": 0.955794
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 19,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 18,
+          "runner_up_margin": 0.531945,
+          "sequence_supported": true,
+          "similarity": 0.951963
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 20,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 19,
+          "runner_up_margin": 0.643711,
+          "sequence_supported": true,
+          "similarity": 0.965093
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 21,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 20,
+          "runner_up_margin": 0.555948,
+          "sequence_supported": true,
+          "similarity": 0.96649
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 22,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 21,
+          "runner_up_margin": 0.491082,
+          "sequence_supported": true,
+          "similarity": 0.96048
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 23,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 22,
+          "runner_up_margin": 0.546405,
+          "sequence_supported": true,
+          "similarity": 0.965494
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 24,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 23,
+          "runner_up_margin": 0.49622,
+          "sequence_supported": true,
+          "similarity": 0.949537
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 25,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 24,
+          "runner_up_margin": 0.481517,
+          "sequence_supported": true,
+          "similarity": 0.950915
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 26,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 25,
+          "runner_up_margin": 0.573305,
+          "sequence_supported": true,
+          "similarity": 0.96793
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 27,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 26,
+          "runner_up_margin": 0.575095,
+          "sequence_supported": true,
+          "similarity": 0.973471
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 28,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 27,
+          "runner_up_margin": 0.580594,
+          "sequence_supported": true,
+          "similarity": 0.972423
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 29,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 28,
+          "runner_up_margin": 0.621351,
+          "sequence_supported": true,
+          "similarity": 0.969112
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 30,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 29,
+          "runner_up_margin": 0.657754,
+          "sequence_supported": true,
+          "similarity": 0.963347
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 31,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 30,
+          "runner_up_margin": 0.610128,
+          "sequence_supported": true,
+          "similarity": 0.957296
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 32,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 31,
+          "runner_up_margin": 0.589017,
+          "sequence_supported": true,
+          "similarity": 0.971672
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 33,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 32,
+          "runner_up_margin": 0.572306,
+          "sequence_supported": true,
+          "similarity": 0.971323
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 34,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 33,
+          "runner_up_margin": 0.570929,
+          "sequence_supported": true,
+          "similarity": 0.969305
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 35,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 34,
+          "runner_up_margin": 0.523002,
+          "sequence_supported": true,
+          "similarity": 0.972359
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 36,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 35,
+          "runner_up_margin": 0.55653,
+          "sequence_supported": true,
+          "similarity": 0.961237
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 37,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 36,
+          "runner_up_margin": 0.566439,
+          "sequence_supported": true,
+          "similarity": 0.974938
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 38,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 37,
+          "runner_up_margin": 0.667881,
+          "sequence_supported": true,
+          "similarity": 0.973456
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 39,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 38,
+          "runner_up_margin": 0.479865,
+          "sequence_supported": true,
+          "similarity": 0.95518
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 40,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 39,
+          "runner_up_margin": 0.663458,
+          "sequence_supported": true,
+          "similarity": 0.966715
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 41,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 40,
+          "runner_up_margin": 0.662209,
+          "sequence_supported": true,
+          "similarity": 0.954938
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 42,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 41,
+          "runner_up_margin": 0.646377,
+          "sequence_supported": true,
+          "similarity": 0.959135
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 43,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 42,
+          "runner_up_margin": 0.645213,
+          "sequence_supported": true,
+          "similarity": 0.9694
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 44,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 43,
+          "runner_up_margin": 0.589509,
+          "sequence_supported": true,
+          "similarity": 0.959427
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 45,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 44,
+          "runner_up_margin": 0.584785,
+          "sequence_supported": true,
+          "similarity": 0.947161
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 46,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 45,
+          "runner_up_margin": 0.618249,
+          "sequence_supported": true,
+          "similarity": 0.954487
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 47,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 46,
+          "runner_up_margin": 0.663431,
+          "sequence_supported": true,
+          "similarity": 0.959579
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 48,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 47,
+          "runner_up_margin": 0.655357,
+          "sequence_supported": true,
+          "similarity": 0.957159
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 49,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 48,
+          "runner_up_margin": 0.65546,
+          "sequence_supported": true,
+          "similarity": 0.94541
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 50,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 49,
+          "runner_up_margin": 0.590809,
+          "sequence_supported": true,
+          "similarity": 0.974289
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 51,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 50,
+          "runner_up_margin": 0.619694,
+          "sequence_supported": true,
+          "similarity": 0.96699
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 52,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 51,
+          "runner_up_margin": 0.635567,
+          "sequence_supported": true,
+          "similarity": 0.967584
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 53,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 52,
+          "runner_up_margin": 0.489433,
+          "sequence_supported": true,
+          "similarity": 0.964747
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 54,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 53,
+          "runner_up_margin": 0.692036,
+          "sequence_supported": true,
+          "similarity": 0.967684
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 55,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 54,
+          "runner_up_margin": 0.587421,
+          "sequence_supported": true,
+          "similarity": 0.957339
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 56,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 55,
+          "runner_up_margin": 0.590969,
+          "sequence_supported": true,
+          "similarity": 0.963973
+        },
+        {
+          "accepted": false,
+          "action": "MATCH",
+          "candidate_page": 57,
+          "evidence": [
+            "visual similarity below threshold",
+            "adjacent monotonic page pair supports alignment",
+            "pair retained but rejected for benchmark use"
+          ],
+          "reference_page": 56,
+          "runner_up_margin": -0.213644,
+          "sequence_supported": true,
+          "similarity": -0.029949
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 58,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 57,
+          "runner_up_margin": 0.586491,
+          "sequence_supported": true,
+          "similarity": 0.960751
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 59,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 58,
+          "runner_up_margin": 0.542544,
+          "sequence_supported": true,
+          "similarity": 0.965845
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 60,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 59,
+          "runner_up_margin": 0.657243,
+          "sequence_supported": true,
+          "similarity": 0.965159
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 61,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 60,
+          "runner_up_margin": 0.524816,
+          "sequence_supported": true,
+          "similarity": 0.9527
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 62,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 61,
+          "runner_up_margin": 0.61634,
+          "sequence_supported": true,
+          "similarity": 0.928535
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 63,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 62,
+          "runner_up_margin": 0.507676,
+          "sequence_supported": true,
+          "similarity": 0.964605
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 64,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 63,
+          "runner_up_margin": 0.561426,
+          "sequence_supported": true,
+          "similarity": 0.954745
+        },
+        {
+          "accepted": false,
+          "action": "MATCH",
+          "candidate_page": 65,
+          "evidence": [
+            "visual similarity below threshold",
+            "adjacent monotonic page pair supports alignment",
+            "pair retained but rejected for benchmark use"
+          ],
+          "reference_page": 64,
+          "runner_up_margin": -0.234591,
+          "sequence_supported": true,
+          "similarity": 0.008653
+        },
+        {
+          "accepted": false,
+          "action": "MATCH",
+          "candidate_page": 66,
+          "evidence": [
+            "visual similarity below threshold",
+            "adjacent monotonic page pair supports alignment",
+            "pair retained but rejected for benchmark use"
+          ],
+          "reference_page": 65,
+          "runner_up_margin": -0.354806,
+          "sequence_supported": true,
+          "similarity": -0.017555
+        },
+        {
+          "accepted": false,
+          "action": "MATCH",
+          "candidate_page": 67,
+          "evidence": [
+            "visual similarity below threshold",
+            "adjacent monotonic page pair supports alignment",
+            "pair retained but rejected for benchmark use"
+          ],
+          "reference_page": 66,
+          "runner_up_margin": -0.314588,
+          "sequence_supported": true,
+          "similarity": -0.042674
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 68,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 67,
+          "runner_up_margin": 0.5462,
+          "sequence_supported": true,
+          "similarity": 0.974083
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 69,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 68,
+          "runner_up_margin": 0.591541,
+          "sequence_supported": true,
+          "similarity": 0.969224
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 70,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 69,
+          "runner_up_margin": 0.614778,
+          "sequence_supported": true,
+          "similarity": 0.964064
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 71,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 70,
+          "runner_up_margin": 0.627327,
+          "sequence_supported": true,
+          "similarity": 0.961362
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 72,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 71,
+          "runner_up_margin": 0.5766,
+          "sequence_supported": true,
+          "similarity": 0.936769
+        },
+        {
+          "accepted": false,
+          "action": "MATCH",
+          "candidate_page": 73,
+          "evidence": [
+            "visual similarity below threshold",
+            "adjacent monotonic page pair supports alignment",
+            "pair retained but rejected for benchmark use"
+          ],
+          "reference_page": 72,
+          "runner_up_margin": -0.205307,
+          "sequence_supported": true,
+          "similarity": 0.008027
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 74,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 73,
+          "runner_up_margin": 0.533406,
+          "sequence_supported": true,
+          "similarity": 0.966465
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 75,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 74,
+          "runner_up_margin": 0.608554,
+          "sequence_supported": true,
+          "similarity": 0.945804
+        },
+        {
+          "accepted": false,
+          "action": "MATCH",
+          "candidate_page": 76,
+          "evidence": [
+            "visual similarity below threshold",
+            "adjacent monotonic page pair supports alignment",
+            "pair retained but rejected for benchmark use"
+          ],
+          "reference_page": 75,
+          "runner_up_margin": -0.136723,
+          "sequence_supported": true,
+          "similarity": 0.082075
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 77,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 76,
+          "runner_up_margin": 0.587705,
+          "sequence_supported": true,
+          "similarity": 0.947875
+        },
+        {
+          "accepted": false,
+          "action": "MATCH",
+          "candidate_page": 78,
+          "evidence": [
+            "visual similarity below threshold",
+            "adjacent monotonic page pair supports alignment",
+            "pair retained but rejected for benchmark use"
+          ],
+          "reference_page": 77,
+          "runner_up_margin": -0.150738,
+          "sequence_supported": true,
+          "similarity": 0.071151
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 79,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 78,
+          "runner_up_margin": 0.533546,
+          "sequence_supported": true,
+          "similarity": 0.966605
+        },
+        {
+          "accepted": false,
+          "action": "MATCH",
+          "candidate_page": 80,
+          "evidence": [
+            "visual similarity below threshold",
+            "adjacent monotonic page pair supports alignment",
+            "pair retained but rejected for benchmark use"
+          ],
+          "reference_page": 79,
+          "runner_up_margin": -0.113607,
+          "sequence_supported": true,
+          "similarity": 0.106702
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 81,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 80,
+          "runner_up_margin": 0.7038,
+          "sequence_supported": true,
+          "similarity": 0.961286
+        },
+        {
+          "accepted": false,
+          "action": "MATCH",
+          "candidate_page": 82,
+          "evidence": [
+            "visual similarity below threshold",
+            "adjacent monotonic page pair supports alignment",
+            "pair retained but rejected for benchmark use"
+          ],
+          "reference_page": 81,
+          "runner_up_margin": -0.176591,
+          "sequence_supported": true,
+          "similarity": 0.028335
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 83,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 82,
+          "runner_up_margin": 0.673903,
+          "sequence_supported": true,
+          "similarity": 0.974019
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 84,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 83,
+          "runner_up_margin": 0.151241,
+          "sequence_supported": true,
+          "similarity": 0.483258
+        },
+        {
+          "accepted": false,
+          "action": "CANDIDATE_ONLY",
+          "candidate_page": 85,
+          "evidence": [
+            "unpaired page retained explicitly"
+          ],
+          "reference_page": null,
+          "runner_up_margin": null,
+          "sequence_supported": false,
+          "similarity": null
+        }
+      ]
+    },
+    "target_content": [
+      "CDKT",
+      "OFF_BALANCE_EXCLUSION",
+      "KQKD",
+      "LCTT_DIRECT",
+      "CROSS_PAGE_CONTINUATION"
+    ],
+    "target_pairs": [
+      {
+        "accepted": true,
+        "action": "MATCH",
+        "candidate_page": 10,
+        "evidence": [
+          "visual similarity above threshold",
+          "runner-up margin above threshold",
+          "adjacent monotonic page pair supports alignment"
+        ],
+        "reference_page": 9,
+        "runner_up_margin": 0.524342,
+        "sequence_supported": true,
+        "similarity": 0.947814
+      },
+      {
+        "accepted": true,
+        "action": "MATCH",
+        "candidate_page": 11,
+        "evidence": [
+          "visual similarity above threshold",
+          "runner-up margin above threshold",
+          "adjacent monotonic page pair supports alignment"
+        ],
+        "reference_page": 10,
+        "runner_up_margin": 0.619135,
+        "sequence_supported": true,
+        "similarity": 0.930997
+      },
+      {
+        "accepted": true,
+        "action": "MATCH",
+        "candidate_page": 12,
+        "evidence": [
+          "visual similarity above threshold",
+          "runner-up margin above threshold",
+          "adjacent monotonic page pair supports alignment"
+        ],
+        "reference_page": 11,
+        "runner_up_margin": 0.455898,
+        "sequence_supported": true,
+        "similarity": 0.873507
+      },
+      {
+        "accepted": true,
+        "action": "MATCH",
+        "candidate_page": 13,
+        "evidence": [
+          "visual similarity above threshold",
+          "runner-up margin above threshold",
+          "adjacent monotonic page pair supports alignment"
+        ],
+        "reference_page": 12,
+        "runner_up_margin": 0.478426,
+        "sequence_supported": true,
+        "similarity": 0.896036
+      },
+      {
+        "accepted": true,
+        "action": "MATCH",
+        "candidate_page": 14,
+        "evidence": [
+          "visual similarity above threshold",
+          "runner-up margin above threshold",
+          "adjacent monotonic page pair supports alignment"
+        ],
+        "reference_page": 13,
+        "runner_up_margin": 0.485951,
+        "sequence_supported": true,
+        "similarity": 0.909423
+      },
+      {
+        "accepted": true,
+        "action": "MATCH",
+        "candidate_page": 15,
+        "evidence": [
+          "visual similarity above threshold",
+          "runner-up margin above threshold",
+          "adjacent monotonic page pair supports alignment"
+        ],
+        "reference_page": 14,
+        "runner_up_margin": 0.549477,
+        "sequence_supported": true,
+        "similarity": 0.834428
+      }
+    ],
+    "target_reference_pages": [
+      9,
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "uses_text": false,
+    "uses_values": false
+  },
+  "registries": {
+    "dataset_roles_sha256": "586aa53d764a888867f2c0dbb87f9db377c314a2f5e7aed2abc2f4a59acda0b6",
+    "sources_sha256": "cfe4077e1a8579f29c8c93fd526eb9aa094c51c3938c59c5263d1867811f1c71"
+  },
+  "sources": [
+    {
+      "bank": "TCB",
+      "dataset_role": "CALIBRATION",
+      "fixture_id": "tcb-2024-separate-searchable",
+      "fixture_role": "ROLE_A_SOURCE",
+      "path": "vietstock_bctc/TCB/2024/techcombank-vas-bao-cao-tai-chinh-rieng-le-ye24-searchable.pdf",
+      "profile": {
+        "document_kind": "BORN_DIGITAL_OR_SEARCHABLE_VECTOR",
+        "image_only_pages": 0,
+        "mixed_pages": 0,
+        "native_text_pages": 83,
+        "page_count": 83
+      },
+      "sha256": "f48ff3a87b68d7bccc72a4503afa6d83c868b0d1635243e1e3106f5ff559c552"
+    },
+    {
+      "bank": "TCB",
+      "dataset_role": "CALIBRATION",
+      "fixture_id": "tcb-2024-separate-scan",
+      "fixture_role": "ROLE_B_SOURCE",
+      "path": "vietstock_bctc/TCB/2024/techcombank-vas-bao-cao-tai-chinh-rieng-le-ye24.pdf",
+      "profile": {
+        "document_kind": "SCAN_IMAGE_ONLY",
+        "image_only_pages": 85,
+        "mixed_pages": 0,
+        "native_text_pages": 0,
+        "page_count": 85
+      },
+      "sha256": "7e3f491783a9895d7716199c3981cddebfc060ef7fa125724f421b7b646faafa"
+    },
+    {
+      "bank": "MBB",
+      "dataset_role": "CALIBRATION",
+      "fixture_id": "mbb-2025-consolidated-scan",
+      "fixture_role": "ROLE_B_SCAN_CALIBRATION",
+      "path": "vietstock_bctc/MBB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+      "profile": {
+        "document_kind": "MIXED",
+        "image_only_pages": 101,
+        "mixed_pages": 2,
+        "native_text_pages": 2,
+        "page_count": 103
+      },
+      "sha256": "9853cc4909dc73ddea9907465b09d7ecdb96cf6c1627f56943f3a20d14b49f80"
+    },
+    {
+      "bank": "VCB",
+      "dataset_role": "CALIBRATION",
+      "fixture_id": "vcb-2025-consolidated-scan",
+      "fixture_role": "ROLE_B_SCAN_CALIBRATION",
+      "path": "vietstock_bctc/VCB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+      "profile": {
+        "document_kind": "SCAN_IMAGE_ONLY",
+        "image_only_pages": 84,
+        "mixed_pages": 0,
+        "native_text_pages": 0,
+        "page_count": 84
+      },
+      "sha256": "295f397de287f84c26dafbfa06f668604aa696a013e236253149d8547d032d1f"
+    }
+  ],
+  "status": "PASS_FROZEN_PAIRING_FOUND",
+  "suite_id": "vietnamese-bank-paired-calibration-v1"
+}

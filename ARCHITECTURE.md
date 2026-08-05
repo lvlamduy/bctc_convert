@@ -24,6 +24,8 @@ Role A builds `machine_reference.jsonl` from independent PDF reading, pixel evid
 
 Role B executes the production PDF-to-Excel pipeline. In frozen evaluation, its process identity and allowed-evidence manifest must exclude Role A outputs. A comparison job receives both outputs only after Role B completes.
 
+Matched scan/searchable fixtures are registered before content inspection. Page correspondence is a comparison-stage operation based on ordered pixel fingerprints; it cannot use OCR text, numeric values, filenames, or a fixed page offset. Role B receives only the scan-side PDF/render, model/config, and its own intermediate artifacts. The searchable PDF and Role A result are inaccessible until the compare stage. Historical weak reference is also excluded from mapping and becomes visible only after a schema ID is resolved for discrepancy/reread decisions.
+
 ## Core boundaries
 
 - `ingestion`: discovery, immutable identity, document registration, dataset role.

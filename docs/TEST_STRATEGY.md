@@ -15,6 +15,8 @@ The first real-PDF geometry regression is `E-0006`: a registered, hash-locked VP
 
 `E-0008` selects and indexes the uploaded historical bank source. Tests reject non-bank documents, unknown period types, misaligned series lengths, unknown numeric keys, and policy changes that weaken safety gates. DuckDB constraints and routine verification require zero duplicate identities, zero ID 1944 rows, and zero rows permitted to map or promote PDF evidence. NAN, NULL, and negative zero have separate preservation checks. The source evaluator proves that generic `report_yearly`/`report_quaterly` have no registered banks and that allowlisted `data_chart` covers all 27 banks with annual and quarterly documents.
 
+`E-0009` starts the frozen multi-document calibration layer. Four PDFs were assigned the immutable `CALIBRATION` role before content inspection: a TCB 2024 separate scan/searchable pair and image-heavy MBB/VCB 2025 consolidated filings. Page correspondence is inferred with ordered dynamic programming over Otsu-ink, low-resolution layout, and row/column projection fingerprints. It does not read text or numeric values. Low-similarity or ambiguous pairs remain explicit but cannot enter the benchmark. The first run paired all six TCB main-statement target pages, including the off-balance exclusion and two-page direct LCTT. Evidence-manifest tests prohibit Role B from reading Role A inputs/results and prohibit historical values during mapping; history is admitted only in post-mapping validation after a resolved ID.
+
 ## Distortion matrix
 
 Each representative fixture is tested in original form and controlled variants: blur, low contrast, dark/colored header, uneven lighting, JPEG blocking, noise, rotation, skew, perspective/warp, crop loss, and small text. This follows the factor-wise idea of Real5-OmniDocBench but uses Vietnamese financial pages and exact cell truth.
@@ -47,3 +49,5 @@ Any edit to a geometry algorithm or its threshold file invalidates the recorded 
 Source-registry tests require byte-identical repeated registration, preservation of the original first-seen time, and hard failure when registered content changes in place or a registered path disappears. A routine audit may append new paths but may not silently rewrite existing source identity.
 
 GPU-runtime audit tests are fail-closed: a current CUDA/import smoke, dependency compatibility, tracked freeze hash, and exact installed package sequence must all pass. Unit tests cover the configured-pass path, an absent manifest, and installed-freeze drift. Runtime acceptance and production model acceptance are deliberately separate states.
+
+Explicit page numbers in a golden/calibration fixture are expected test data, not production routing rules. Production page pairing must continue to use document-order and visual evidence; no bank, page offset, or coordinate constant may enter the algorithm.

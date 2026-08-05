@@ -1,0 +1,66 @@
+version: 1
+suite_id: vietnamese-bank-paired-calibration-v1
+experiment_id: E-0009
+dataset_role: CALIBRATION
+frozen_at: "2026-08-05T20:50:47+00:00"
+selection_basis: registered bank, year, scope, audit-status, and filename metadata only
+content_inspected_before_role_assignment: false
+
+sources:
+  - fixture_id: tcb-2024-separate-searchable
+    bank: TCB
+    fixture_role: ROLE_A_SOURCE
+    path: vietstock_bctc/TCB/2024/techcombank-vas-bao-cao-tai-chinh-rieng-le-ye24-searchable.pdf
+    sha256: f48ff3a87b68d7bccc72a4503afa6d83c868b0d1635243e1e3106f5ff559c552
+  - fixture_id: tcb-2024-separate-scan
+    bank: TCB
+    fixture_role: ROLE_B_SOURCE
+    path: vietstock_bctc/TCB/2024/techcombank-vas-bao-cao-tai-chinh-rieng-le-ye24.pdf
+    sha256: 7e3f491783a9895d7716199c3981cddebfc060ef7fa125724f421b7b646faafa
+  - fixture_id: mbb-2025-consolidated-scan
+    bank: MBB
+    fixture_role: ROLE_B_SCAN_CALIBRATION
+    path: vietstock_bctc/MBB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf
+    sha256: 9853cc4909dc73ddea9907465b09d7ecdb96cf6c1627f56943f3a20d14b49f80
+  - fixture_id: vcb-2025-consolidated-scan
+    bank: VCB
+    fixture_role: ROLE_B_SCAN_CALIBRATION
+    path: vietstock_bctc/VCB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf
+    sha256: 295f397de287f84c26dafbfa06f668604aa696a013e236253149d8547d032d1f
+
+pairing:
+  reference_fixture_id: tcb-2024-separate-searchable
+  candidate_fixture_id: tcb-2024-separate-scan
+  target_reference_pages: [9, 10, 11, 12, 13, 14]
+  target_content:
+    - CDKT
+    - OFF_BALANCE_EXCLUSION
+    - KQKD
+    - LCTT_DIRECT
+    - CROSS_PAGE_CONTINUATION
+  visual_fingerprint:
+    render_scale: 0.75
+    feature_width: 48
+    feature_height: 64
+    row_projection_size: 128
+    column_projection_size: 96
+    content_crop_quantile: 0.005
+    skip_penalty: 0.12
+    minimum_similarity: 0.45
+    minimum_runner_up_margin: 0.05
+    minimum_ink_ratio: 0.002
+
+evidence_policy:
+  role_b_can_read_role_a_source: false
+  role_b_can_read_role_a_result: false
+  compare_starts_after_role_b_complete: true
+  page_pairing_uses_text_or_values: false
+
+historical_policy:
+  lookup_stage: POST_SCHEMA_RESOLUTION_ONLY
+  lookup_requires_resolved_id: true
+  mapping_candidate_generation: false
+  pdf_confidence_promotion: false
+  pdf_value_overwrite: false
+  pdf_ytd_operand: false
+
