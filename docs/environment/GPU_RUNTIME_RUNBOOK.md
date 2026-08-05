@@ -15,6 +15,8 @@ This runbook reconstructs the isolated RTX 5070 Ti (`sm_120`) runtime and the ex
 
 The measured footprints on 2026-08-05 were 5,663,276,925 bytes for `.gpu-venv`, 5,585,681,842 bytes for the warm uv cache, and 2,074,691,105 bytes for the model cache.
 
+After the runtime was installed beside the 17 GiB PDF corpus, the 40 GiB workspace filesystem had about 6.70 GiB free. That is enough to run the accepted environment but below the builder's 7 GiB preflight for a second environment. Before an upgrade, use `df -h /workspace /dev/shm`; increase/relocate storage rather than attempting a side-by-side rebuild without the required headroom. Routine control-plane backups exclude `.gpu-venv` and measured only about 2.9 MiB in aggregate during bootstrap.
+
 ## Rebuild
 
 From a clean repository checkout with the control-plane `.venv` already synced:

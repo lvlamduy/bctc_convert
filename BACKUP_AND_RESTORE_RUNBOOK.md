@@ -14,6 +14,8 @@ This command writes a timestamped archive outside the repository and immediately
 bctc-ai backup --destination /absolute/backup/path
 ```
 
+The local archive is an allowlisted **control-plane** backup: tracked source code, tests, configs, small registries/manifests, templates, hierarchy references, and operating Markdown. It intentionally excludes source PDFs, `.gpu-venv`, `.venv`, `.local-mongodb`, `.tools`, `.model-cache`, generated output, and model caches/weights. Those large or reconstructable assets use their own hash registries, rebuild manifests, or future versioned artifact store. A regression test asserts this boundary so installing a large runtime cannot silently inflate every routine backup.
+
 Use `--off-machine` only when the mounted destination is independently versioned and failure-isolated. The flag is an operator assertion and must be documented in the run record.
 
 Re-run a verification without restoring into the workspace:
