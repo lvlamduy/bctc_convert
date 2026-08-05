@@ -1,6 +1,6 @@
 # Recovery audit
 
-Captured: 2026-08-05T19:53:05.836129+00:00
+Captured: 2026-08-05T19:56:53.587820+00:00
 
 ## Authoritative starting state
 
