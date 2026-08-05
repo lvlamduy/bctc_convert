@@ -1,6 +1,6 @@
 # Recovery audit
 
-Captured: 2026-08-05T19:08:14.424478+00:00
+Captured: 2026-08-05T19:53:05.836129+00:00
 
 ## Authoritative starting state
 
@@ -12,6 +12,7 @@ Captured: 2026-08-05T19:08:14.424478+00:00
 - Supporting hierarchy status: `VALIDATED_SUPPORTING_REFERENCE` with 1535 validated edges/items; LCTT coverage is explicitly direct-branch-only.
 - Source files were read and hashed only; none were overwritten.
 - Inventory stable across registration: **True** (attempts: 1).
+- Isolated GPU runtime local acceptance: **PASS**; production model approval remains separate and pending.
 
 ## Material discrepancies
 

@@ -1,8 +1,9 @@
 # Progress report
 
-- Date/time: 2026-08-05T19:08:14.424478+00:00
+- Date/time: 2026-08-05T19:53:05.836129+00:00
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16303 MiB, compute 12.0); 125.71 GiB RAM
-- Code hash: bootstrap is on `codex/rebuild-bootstrap` at `51a76688a38a94127c9a731e0f04660eac225a4d` with dirty state `False`
+- Isolated GPU runtime: PASS; recorded model state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
+- Code hash: bootstrap is on `codex/rebuild-bootstrap` at `a6a6b6ee4c589a4838c999fb6d9f11fda03b1b85` with dirty state `False`
 - Schema count: 1592 (CDKT 77; KQKD 24; LCTT 107; TM 1384)
 - PDFs registered: 2567
 - ROLE A completed: 0 documents
@@ -15,9 +16,9 @@
 - Autonomous decisions: preserve supplied schema unchanged; keep 1944 as a collision-cleared proposal; segment LCTT by workbook position and fail closed on the semantic conflict
 - Not applicable / not observed / unresolved: 0 / 0 / 0 (no production records yet)
 - Workbooks: 0
-- Largest error: no approved GPU model runtime and no frozen end-to-end multi-institution accuracy result yet
-- Last change: relative native-PDF value/note axes, wrapped/section rows, semantic period/unit binding, and a hash-locked real-PDF geometry regression
-- Before/after: raw native words -> traceable logical rows/cells on a registered six-page development fixture
+- Largest error: no frozen end-to-end multi-institution accuracy result or production-calibrated acceptance threshold yet
+- Last change: reproducible Blackwell runtime, pinned PaddleOCR-VL model revisions, measured full inference, and value-independent ordered cross-reader alignment
+- Before/after: incompatible host model stack -> exact 122-package isolated runtime plus a measured native-PDF/VLM disagreement record on a registered fixture
 - Regression: run separately with `.venv/bin/pytest`; latest verified count is recorded in `PROJECT_MEMORY.md`
 - Backup status: development=PASS; production=FAIL (local restore verified=True, off-machine=False)
-- Next bounded action: broaden frozen geometry fixtures and benchmark isolated Blackwell-compatible OCR/document-model runtimes
+- Next bounded action: broaden frozen cross-reader fixtures across institutions, scans, distortions, and page breaks, then build the allowlisted historical weak-reference index
