@@ -6,7 +6,7 @@ from bctc_ai.axes.header_binding import bind_value_headers
 from bctc_ai.core.contracts import BoundingBox, ObservationKind, RowType
 from bctc_ai.core.text import normalize_text
 from bctc_ai.ocr.pdf_text import PDFTextPage, PDFWord
-from bctc_ai.rows.pdf_statement import reconstruct_statement_rows
+from bctc_ai.rows.pdf_statement import financial_table_span, reconstruct_statement_rows
 from bctc_ai.tables.geometry import (
     ColumnAxis,
     ColumnRole,
@@ -52,7 +52,7 @@ def _page(words: list[PDFWord]) -> PDFTextPage:
 
 
 def _config(project_root) -> GeometryConfig:
-    return load_geometry_config(project_root / "config/tables/geometry.yaml")
+    return load_geometry_config(project_root / "config/tables/geometry-v2.yaml")
 
 
 def _single_axis_header_geometry(header: str) -> PageGeometry:
@@ -93,6 +93,64 @@ def test_text_run_segmentation_separates_cells_inside_one_pdf_line():
 
     assert [run.raw_text for run in runs] == ["Tiền mặt", "5", "1.000", "900"]
     assert len({run.run_id for run in runs}) == 4
+
+
+def test_close_financial_tokens_split_but_tight_digit_groups_stay_together():
+    separate_columns = [
+        _word("(28.930.618)", 390, 200, 447, 214, 1, 0, 0),
+        _word("(14.449.250)", 467, 200, 524, 214, 1, 0, 1),
+    ]
+    spaced_thousands = [
+        _word("12", 420, 220, 432, 234, 2, 0, 0),
+        _word("345", 435, 220, 452, 234, 2, 0, 1),
+    ]
+
+    runs = build_text_runs(
+        separate_columns + spaced_thousands,
+        gap_height_factor=2.0,
+        financial_gap_height_factor=0.5,
+    )
+
+    assert [run.raw_text for run in runs] == [
+        "(28.930.618)",
+        "(14.449.250)",
+        "12 345",
+    ]
+
+
+def test_short_parenthetical_wrap_and_trailing_signatures_are_handled(project_root):
+    words = [
+        _word("31/12/2024", 400, 90, 450, 100, 1, 0),
+        _word("31/12/2023", 500, 90, 550, 100, 2, 0),
+        _word("Thuyết minh", 325, 115, 360, 125, 3, 0),
+        _word("Triệu đồng", 405, 115, 450, 125, 4, 0),
+        _word("Triệu đồng", 505, 115, 550, 125, 5, 0),
+        _word("Tiền gửi tại Ngân hàng Nhà nước Việt Nam", 50, 165, 285, 175, 6, 0),
+        _word('(“NHNN”)', 50, 178, 105, 188, 6, 1),
+        _word("6", 345, 178, 350, 188, 7, 0),
+        _word("54.353.153", 400, 178, 450, 188, 8, 0),
+        _word("27.140.592", 500, 178, 550, 188, 9, 0),
+        _word("Khoản mục tiếp theo", 50, 205, 160, 215, 10, 0),
+        _word("1", 449, 205, 450, 215, 11, 0),
+        _word("2", 549, 205, 550, 215, 12, 0),
+        _word("Người lập", 50, 240, 100, 250, 13, 0),
+        _word("Ông A", 515, 240, 550, 250, 14, 0),
+    ]
+    config = _config(project_root)
+
+    rows = reconstruct_statement_rows(
+        analyze_page_geometry(_page(words), config),
+        config,
+        table_id="parenthetical-wrap",
+    )
+
+    assert rows[0].label == 'Tiền gửi tại Ngân hàng Nhà nước Việt Nam ("NHNN")'
+    assert len(rows[0].label_boxes) == 2
+    assert rows[-1].cells[0].parsed.observation is ObservationKind.INVALID
+    assert [row.label for row in financial_table_span(rows)] == [
+        'Tiền gửi tại Ngân hàng Nhà nước Việt Nam ("NHNN")',
+        "Khoản mục tiếp theo",
+    ]
 
 
 def test_geometry_reconstructs_note_values_wraps_and_section_rows(project_root):

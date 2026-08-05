@@ -23,6 +23,7 @@ class GeometryConfig:
     version: int
     footer_y_ratio: float
     run_separation_gap_height_factor: float
+    financial_token_separation_gap_height_factor: float
     edge_tolerance_ratio: float
     minimum_edge_tolerance_points: float
     assignment_tolerance_multiplier: float
@@ -116,6 +117,12 @@ def load_geometry_config(path: Path) -> GeometryConfig:
         version=payload["version"],
         footer_y_ratio=float(payload["footer_y_ratio"]),
         run_separation_gap_height_factor=float(axis["run_separation_gap_height_factor"]),
+        financial_token_separation_gap_height_factor=float(
+            axis.get(
+                "financial_token_separation_gap_height_factor",
+                axis["run_separation_gap_height_factor"],
+            )
+        ),
         edge_tolerance_ratio=float(axis["edge_tolerance_ratio"]),
         minimum_edge_tolerance_points=float(axis["minimum_edge_tolerance_points"]),
         assignment_tolerance_multiplier=float(axis["assignment_tolerance_multiplier"]),
@@ -139,6 +146,7 @@ def load_geometry_config(path: Path) -> GeometryConfig:
         raise ValueError(f"geometry minimum numeric sample count must be positive: {path}")
     positive = (
         config.run_separation_gap_height_factor,
+        config.financial_token_separation_gap_height_factor,
         config.edge_tolerance_ratio,
         config.minimum_edge_tolerance_points,
         config.assignment_tolerance_multiplier,
@@ -168,6 +176,7 @@ def _split_line_words(
     members: list[tuple[int, PDFWord]],
     *,
     gap_height_factor: float,
+    financial_gap_height_factor: float,
 ) -> list[list[tuple[int, PDFWord]]]:
     ordered = sorted(
         members,
@@ -186,7 +195,18 @@ def _split_line_words(
     for member in ordered[1:]:
         previous_word = segments[-1][-1][1]
         horizontal_gap = member[1].bbox_points.x0 - previous_word.bbox_points.x1
-        if horizontal_gap > maximum_inline_gap:
+        previous_observation = parse_financial_number(
+            previous_word.normalized_text
+        ).observation
+        current_observation = parse_financial_number(member[1].normalized_text).observation
+        independent_financial_tokens = (
+            previous_observation
+            in {ObservationKind.VALUE, ObservationKind.ZERO, ObservationKind.DASH}
+            and current_observation
+            in {ObservationKind.VALUE, ObservationKind.ZERO, ObservationKind.DASH}
+            and horizontal_gap >= line_height * financial_gap_height_factor
+        )
+        if horizontal_gap > maximum_inline_gap or independent_financial_tokens:
             segments.append([member])
         else:
             segments[-1].append(member)
@@ -197,9 +217,10 @@ def build_text_runs(
     words: list[PDFWord],
     *,
     gap_height_factor: float = 2.0,
+    financial_gap_height_factor: float = 0.5,
 ) -> list[TextRun]:
-    if gap_height_factor <= 0:
-        raise ValueError("gap_height_factor must be positive")
+    if gap_height_factor <= 0 or financial_gap_height_factor <= 0:
+        raise ValueError("gap factors must be positive")
     grouped: dict[tuple[int, int], list[tuple[int, PDFWord]]] = {}
     for index, word in enumerate(words):
         grouped.setdefault((word.block_number, word.line_number), []).append((index, word))
@@ -208,6 +229,7 @@ def build_text_runs(
         segments = _split_line_words(
             members,
             gap_height_factor=gap_height_factor,
+            financial_gap_height_factor=financial_gap_height_factor,
         )
         for segment_index, segment in enumerate(segments, start=1):
             member_words = [member[1] for member in segment]
@@ -284,6 +306,7 @@ def analyze_page_geometry(page: PDFTextPage, config: GeometryConfig) -> PageGeom
     runs = build_text_runs(
         page.words,
         gap_height_factor=config.run_separation_gap_height_factor,
+        financial_gap_height_factor=config.financial_token_separation_gap_height_factor,
     )
     heights = [run.height for run in runs if run.height > 0]
     median_height = float(median(heights)) if heights else 8.0

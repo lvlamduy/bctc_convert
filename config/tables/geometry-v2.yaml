@@ -1,0 +1,19 @@
+version: 2
+footer_y_ratio: 0.94
+axis:
+  run_separation_gap_height_factor: 2.0
+  financial_token_separation_gap_height_factor: 0.5
+  edge_tolerance_ratio: 0.012
+  minimum_edge_tolerance_points: 5.0
+  assignment_tolerance_multiplier: 2.0
+  minimum_numeric_samples: 2
+  value_minimum_x_ratio: 0.63
+  note_minimum_x_ratio: 0.45
+  note_header_aliases: ["Thuyết minh", "Notes", "Note"]
+row:
+  band_y_tolerance_height_factor: 0.68
+  maximum_wrap_gap_height_factor: 1.25
+  indentation_tolerance_ratio: 0.025
+  preceding_line_occupancy_threshold: 0.80
+header:
+  left_margin_from_value_ratio: 0.08

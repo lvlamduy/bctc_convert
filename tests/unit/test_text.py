@@ -62,6 +62,14 @@ def test_invalid_numeric_is_not_guessed():
     assert parsed.observation is ObservationKind.INVALID
 
 
+def test_multiple_financial_numbers_in_one_cell_are_rejected_explicitly():
+    parsed = parse_financial_number("198.242 (5.140.484)")
+
+    assert parsed.value is None
+    assert parsed.observation is ObservationKind.INVALID
+    assert parsed.reason == "multiple financial numbers in one cell"
+
+
 def test_unicode_normalization_and_retrieval_are_separate():
     assert normalize_text("  Vốn\u200b  chủ  sở hữu … ") == "Vốn chủ sở hữu ..."
     assert retrieval_key("Vốn chủ sở hữu") == "von chu so huu"

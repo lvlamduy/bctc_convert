@@ -17,6 +17,11 @@ _DATE_PATTERN = re.compile(
     r"(?P<month>\d{1,2})\s*(?:/|-|\. |\s+năm\s+)\s*(?P<year>\d{4})",
     re.IGNORECASE,
 )
+_FINANCIAL_TOKEN = r"(?:\(\s*\d[\d.,]*\s*\)|-?\d[\d.,]*-?|--?)"
+_MULTIPLE_FINANCIAL_TOKENS = re.compile(
+    rf"^{_FINANCIAL_TOKEN}(?:\s+{_FINANCIAL_TOKEN})+$"
+)
+_SPACED_THOUSANDS = re.compile(r"^\d{1,3}(?:\s+\d{3})+$")
 
 
 def normalize_text(value: str) -> str:
@@ -53,6 +58,18 @@ def parse_financial_number(raw_text: str | None) -> ParsedNumber:
         return ParsedNumber(raw, text, None, ObservationKind.NOT_APPLICABLE, None)
     if text in {"-", "--"}:
         return ParsedNumber(raw, text, None, ObservationKind.DASH, "dash")
+    unsigned_for_grouping = text.removeprefix("-").removesuffix("-").strip()
+    if _MULTIPLE_FINANCIAL_TOKENS.fullmatch(text) and not _SPACED_THOUSANDS.fullmatch(
+        unsigned_for_grouping
+    ):
+        return ParsedNumber(
+            raw,
+            text,
+            None,
+            ObservationKind.INVALID,
+            None,
+            "multiple financial numbers in one cell",
+        )
 
     negative = False
     sign_evidence: str | None = None

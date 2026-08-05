@@ -284,6 +284,7 @@ def main() -> int:
         for edge in continuation_graph.edges
     ]
     implementation_paths = (
+        Path("src/bctc_ai/core/text.py"),
         Path("src/bctc_ai/evaluation/reader_outputs.py"),
         Path("src/bctc_ai/validation/reader_agreement.py"),
         Path("src/bctc_ai/mapping/scope.py"),

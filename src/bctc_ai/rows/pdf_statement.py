@@ -158,13 +158,45 @@ def _should_prepend(
     available_width = max(1.0, geometry.label_right_boundary - candidate_box.x0)
     occupancy = (candidate_box.x1 - candidate_box.x0) / available_width
     punctuation_continues = candidate_text.endswith((",", "/", "-", "("))
+    short_parenthetical_continues = (
+        current_text.startswith("(")
+        and current_text.endswith(")")
+        and len(current_text) <= 32
+    )
     if _uppercase_ratio(candidate_text) >= 0.75:
         return False
     return (
         _first_alpha_is_lower(current_text)
         or occupancy >= config.preceding_line_occupancy_threshold
         or punctuation_continues
+        or short_parenthetical_continues
     )
+
+
+def financial_table_span(rows: list[StatementRow]) -> list[StatementRow]:
+    """Trim non-table material around rows without hiding malformed numeric cells.
+
+    A malformed numeric-looking cell is retained for rereading. Trailing material
+    whose axis-assigned cells contain no digits (for example signatory names) is
+    excluded from the table span without relying on bank- or person-specific text.
+    """
+
+    substantive = [
+        index
+        for index, row in enumerate(rows)
+        if any(
+            cell.parsed.observation
+            in {ObservationKind.VALUE, ObservationKind.ZERO, ObservationKind.DASH}
+            or any(character.isdigit() for character in cell.raw_text)
+            for cell in row.cells
+        )
+    ]
+    if not substantive:
+        return []
+    start, end = substantive[0], substantive[-1]
+    if start > 0 and not rows[start - 1].cells:
+        start -= 1
+    return rows[start : end + 1]
 
 
 def reconstruct_statement_rows(

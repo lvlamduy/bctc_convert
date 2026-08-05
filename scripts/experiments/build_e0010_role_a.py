@@ -19,7 +19,7 @@ from bctc_ai.evaluation.frozen_suite import (
 )
 from bctc_ai.evaluation.reader_outputs import reader_row_to_dict
 from bctc_ai.ocr.pdf_text import extract_pdf_text
-from bctc_ai.rows.pdf_statement import reconstruct_statement_rows
+from bctc_ai.rows.pdf_statement import financial_table_span, reconstruct_statement_rows
 from bctc_ai.tables.geometry import analyze_page_geometry, load_geometry_config
 from bctc_ai.validation.reader_agreement import ReaderRow
 
@@ -55,16 +55,6 @@ def _date(value: date | None) -> str | None:
     return value.isoformat() if value is not None else None
 
 
-def _financial_span(rows):
-    substantive = [index for index, row in enumerate(rows) if row.cells]
-    if not substantive:
-        return []
-    start, end = substantive[0], substantive[-1]
-    if start > 0 and not rows[start - 1].cells:
-        start -= 1
-    return rows[start : end + 1]
-
-
 def main() -> int:
     args = _parse_args()
     project_root = args.project_root.resolve()
@@ -74,7 +64,7 @@ def main() -> int:
     suite = load_frozen_suite(project_root, suite_config)
     reference = suite.source(str(suite.pairing["reference_fixture_id"]))
     source_path = project_root / reference.path
-    geometry_config_path = project_root / "config/tables/geometry.yaml"
+    geometry_config_path = project_root / "config/tables/geometry-v2.yaml"
     geometry_config = load_geometry_config(geometry_config_path)
     output_root = (project_root / args.output_root / reference.sha256[:20]).resolve()
     result_path = output_root / "role_a_rows.json"
@@ -107,7 +97,7 @@ def main() -> int:
         reference_page = int(contract["reference_page"])
         page = extracted[reference_page]
         geometry = analyze_page_geometry(page, geometry_config)
-        statement_rows = _financial_span(
+        statement_rows = financial_table_span(
             reconstruct_statement_rows(
                 geometry,
                 geometry_config,
@@ -172,6 +162,7 @@ def main() -> int:
         )
 
     implementation_paths = (
+        Path("src/bctc_ai/core/text.py"),
         Path("src/bctc_ai/ocr/pdf_text.py"),
         Path("src/bctc_ai/tables/geometry.py"),
         Path("src/bctc_ai/rows/pdf_statement.py"),
@@ -247,4 +238,3 @@ def normalize_text_for_record(page) -> str:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
