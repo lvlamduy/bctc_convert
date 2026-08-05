@@ -67,6 +67,8 @@ Ubuntu 22.04 additionally needs `libgl1` and `libglib2.0-0`. The observed versio
 
 The approved runtime smoke performs imports plus a real CUDA matrix multiplication and verifies `sm_120`, capability 12.0, package versions, and CUDA 13.0. It passed on the RTX 5070 Ti. `uv pip check` also passed for all 122 distributions. This approves the runtime mechanism, not model accuracy.
 
+Every `bctc-ai audit` now re-runs that kernel/import smoke, `uv pip check`, the tracked-freeze SHA-256 check, and an exact installed-versus-tracked package comparison. The machine-readable result is stored at `environment.gpu_model_runtime` in `BOOTSTRAP_MANIFEST.json`. A missing environment, dependency drift, freeze drift, import failure, wrong architecture, or failed CUDA operation changes local acceptance to `ABSENT` or `FAIL`; the recorded historical E-0007 result cannot override a current-host failure.
+
 ### Pinned document models
 
 | Model | Revision | Weight bytes | Weight SHA-256 | License |

@@ -29,6 +29,8 @@ BCTC_GPU_UV_CACHE_DIR=/dev/shm/bctc-ai-uv-cache \
 
 The runtime builder refuses to overwrite an existing environment, checks both required shared libraries and disk capacity, installs the official CUDA 13.0 PyTorch/TorchVision pair, constrains the remaining dependency closure, diffs all 122 installed versions against the freeze, and runs the GPU smoke.
 
+After reconstruction, run `.venv/bin/bctc-ai audit`. In addition to the explicit commands above, the audit records the current smoke payload, package compatibility, tracked freeze hash, exact installed-freeze match, and local acceptance in `BOOTSTRAP_MANIFEST.json`. `PASS` approves only the runtime mechanism for model experiments; it does not approve model accuracy for production.
+
 Select a model cache. Use persistent storage for service deployment; `/dev/shm` is acceptable for a disposable benchmark and avoids filling the 40 GiB workspace filesystem:
 
 ```bash

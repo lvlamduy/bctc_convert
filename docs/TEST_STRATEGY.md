@@ -43,3 +43,5 @@ Every experiment is appended to `docs/experiments/EXPERIMENT_LOG.md` with hypoth
 Any edit to a geometry algorithm or its threshold file invalidates the recorded implementation/config hash in `E-0006` and requires an explicit fixture rerun and reviewed expectation update.
 
 Source-registry tests require byte-identical repeated registration, preservation of the original first-seen time, and hard failure when registered content changes in place or a registered path disappears. A routine audit may append new paths but may not silently rewrite existing source identity.
+
+GPU-runtime audit tests are fail-closed: a current CUDA/import smoke, dependency compatibility, tracked freeze hash, and exact installed package sequence must all pass. Unit tests cover the configured-pass path, an absent manifest, and installed-freeze drift. Runtime acceptance and production model acceptance are deliberately separate states.

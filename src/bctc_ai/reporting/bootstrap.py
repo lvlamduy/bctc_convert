@@ -138,13 +138,45 @@ def _write_dynamic_audits(
         else "not installed in the control-plane interpreter"
     )
     torch_finding = (
-        f"The active interpreter exposes architectures `{torch.get('architectures', [])}` "
-        "while the GPU reports compute capability `12.0`; this runtime is not approved."
+        f"The control-plane interpreter exposes architectures `{torch.get('architectures', [])}`. "
+        "It is not the document-model environment of record."
         if torch_available
-        else "The control-plane environment intentionally has no PyTorch. The separately "
-        "observed incompatible host build and the required isolated GPU benchmark are "
-        "recorded in `docs/environment/SOFTWARE_INVENTORY.md`."
+        else "The control-plane environment intentionally has no PyTorch; model dependencies "
+        "remain isolated from orchestration and validation code."
     )
+    gpu_runtime = environment.get("gpu_model_runtime", {})
+    gpu_runtime = gpu_runtime if isinstance(gpu_runtime, dict) else {}
+    runtime_status = str(gpu_runtime.get("local_acceptance", "NOT_CONFIGURED"))
+    runtime_smoke = gpu_runtime.get("smoke", {})
+    runtime_smoke = runtime_smoke if isinstance(runtime_smoke, dict) else {}
+    runtime_freeze = gpu_runtime.get("freeze", {})
+    runtime_freeze = runtime_freeze if isinstance(runtime_freeze, dict) else {}
+    runtime_packages = gpu_runtime.get("declared_packages", {})
+    runtime_packages = runtime_packages if isinstance(runtime_packages, dict) else {}
+    if runtime_status == "PASS":
+        runtime_text = (
+            f"PASS — PyTorch {runtime_packages.get('torch', 'unknown')}, "
+            f"CUDA {runtime_smoke.get('torch_cuda_build', 'unknown')}, "
+            f"native {gpu_runtime.get('required_native_arch', 'unknown')}, "
+            f"{runtime_freeze.get('installed_package_count', 'unknown')}-package exact freeze"
+        )
+        runtime_finding = (
+            "The isolated runtime was revalidated on this host: imports and dependency "
+            "compatibility passed, the installed freeze exactly matched the tracked freeze, "
+            "and a real CUDA matrix kernel ran on the detected GPU."
+        )
+    elif runtime_status == "ABSENT":
+        runtime_text = "ABSENT — rebuild required from the tracked runtime manifest"
+        runtime_finding = (
+            "The isolated runtime is not present on this host. Rebuild and rerun the acceptance "
+            "commands in `docs/environment/GPU_RUNTIME_RUNBOOK.md` before model inference."
+        )
+    else:
+        runtime_text = f"{runtime_status} — local acceptance did not pass"
+        runtime_finding = (
+            "The isolated runtime did not satisfy every fail-closed acceptance check. Inspect "
+            "`environment.gpu_model_runtime` in `BOOTSTRAP_MANIFEST.json` before inference."
+        )
     schema_counts = manifest["schemas"]["counts"]
     resolved_questions = sum(
         str(question.get("resolution_status", "")).startswith("RESOLVED") for question in questions
@@ -178,10 +210,12 @@ Captured: {environment["captured_at"]}
 - CUDA toolkit (`nvcc`): {"available" if environment["tools"]["nvcc"]["available"] else "not installed"}
 - Python: {environment["tools"]["python"]["version"]}
 - PyTorch: {torch_text}
+- Isolated GPU runtime: {runtime_text}
+- Recorded document-model status: `{gpu_runtime.get("declared_status", "NOT_CONFIGURED")}`
 
-## Blocking compatibility finding
+## Compatibility and approval finding
 
-{torch_finding} No GPU model runtime is approved until an isolated image passes a real inference smoke test and VRAM benchmark.
+{torch_finding} {runtime_finding} This accepts the runtime for logic development; production model approval remains blocked until frozen multi-institution, scan/distortion, cross-page, and holdout accuracy gates pass.
 """
     atomic_write_text(project_root / "HARDWARE_AUDIT.md", hardware)
 
@@ -199,6 +233,7 @@ Captured: {environment["captured_at"]}
 - Supporting hierarchy status: `{manifest["schemas"]["hierarchy_reference"]["status"]}` with {manifest["schemas"]["hierarchy_reference"]["item_count"]} validated edges/items; LCTT coverage is explicitly direct-branch-only.
 - Source files were read and hashed only; none were overwritten.
 - Inventory stable across registration: **{manifest["sources"]["inventory_stable"]}** (attempts: {manifest["sources"]["inventory_attempts"]}).
+- Isolated GPU runtime local acceptance: **{runtime_status}**; production model approval remains separate and pending.
 
 ## Material discrepancies
 
@@ -218,6 +253,7 @@ Generated artifacts use atomic write, fsync, rename, and post-write hash verific
 
 - Date/time: {environment["captured_at"]}
 - Hardware: {gpu_text}; {total_ram / (1024**3):.2f} GiB RAM
+- Isolated GPU runtime: {runtime_status}; recorded model state: `{gpu_runtime.get("declared_status", "NOT_CONFIGURED")}`
 - Code hash: bootstrap is on `{manifest["git"]["branch"]}` at `{manifest["git"]["commit"]}` with dirty state `{manifest["git"]["dirty"]}`
 - Schema count: {manifest["schemas"]["total_items"]} (CDKT {schema_counts["CDKT"]}; KQKD {schema_counts["KQKD"]}; LCTT {schema_counts["LCTT"]}; TM {schema_counts["TM"]})
 - PDFs registered: {manifest["sources"]["pdf_count"]}
@@ -231,12 +267,12 @@ Generated artifacts use atomic write, fsync, rename, and post-write hash verific
 - Autonomous decisions: preserve supplied schema unchanged; keep 1944 as a collision-cleared proposal; segment LCTT by workbook position and fail closed on the semantic conflict
 - Not applicable / not observed / unresolved: 0 / 0 / 0 (no production records yet)
 - Workbooks: 0
-- Largest error: no approved GPU model runtime and no frozen end-to-end multi-institution accuracy result yet
-- Last change: relative native-PDF value/note axes, wrapped/section rows, semantic period/unit binding, and a hash-locked real-PDF geometry regression
-- Before/after: raw native words -> traceable logical rows/cells on a registered six-page development fixture
+- Largest error: no frozen end-to-end multi-institution accuracy result or production-calibrated acceptance threshold yet
+- Last change: reproducible Blackwell runtime, pinned PaddleOCR-VL model revisions, measured full inference, and value-independent ordered cross-reader alignment
+- Before/after: incompatible host model stack -> exact 122-package isolated runtime plus a measured native-PDF/VLM disagreement record on a registered fixture
 - Regression: run separately with `.venv/bin/pytest`; latest verified count is recorded in `PROJECT_MEMORY.md`
 - Backup status: development={backup["development_status"]}; production={backup["production_status"]} (local restore verified={backup["restored_and_verified"]}, off-machine={backup["off_machine"]})
-- Next bounded action: broaden frozen geometry fixtures and benchmark isolated Blackwell-compatible OCR/document-model runtimes
+- Next bounded action: broaden frozen cross-reader fixtures across institutions, scans, distortions, and page breaks, then build the allowlisted historical weak-reference index
 """
     atomic_write_text(project_root / "PROGRESS_REPORT.md", progress)
 

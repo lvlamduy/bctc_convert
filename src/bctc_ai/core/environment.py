@@ -1,28 +1,169 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import platform
 import shutil
 import subprocess
 import sys
+import tomllib
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 
-def _run(command: list[str]) -> tuple[int, str]:
+def _run(command: list[str], *, timeout: int = 20) -> tuple[int, str]:
     try:
         completed = subprocess.run(
             command,
             check=False,
             capture_output=True,
             text=True,
-            timeout=20,
+            timeout=timeout,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
         return 127, str(exc)
     return completed.returncode, completed.stdout.strip() or completed.stderr.strip()
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _last_json_object(output: str) -> dict[str, Any] | None:
+    for line in reversed(output.splitlines()):
+        try:
+            candidate = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(candidate, dict):
+            return candidate
+    return None
+
+
+def collect_gpu_model_runtime(project_root: Path) -> dict[str, Any]:
+    """Revalidate the isolated GPU runtime without downloading models or running OCR."""
+
+    manifest_path = project_root / "config/models/gpu-runtime.toml"
+    relative_manifest = manifest_path.relative_to(project_root).as_posix()
+    if not manifest_path.is_file():
+        return {
+            "configured": False,
+            "manifest": relative_manifest,
+            "local_acceptance": "NOT_CONFIGURED",
+        }
+    try:
+        manifest = tomllib.loads(manifest_path.read_text(encoding="utf-8"))
+        isolation_directory = str(manifest["isolation_directory"])
+        freeze_relative = str(manifest["freeze_path"])
+        expected_freeze_hash = str(manifest["freeze_sha256"])
+    except (OSError, KeyError, TypeError, tomllib.TOMLDecodeError) as error:
+        return {
+            "configured": False,
+            "manifest": relative_manifest,
+            "local_acceptance": "INVALID_MANIFEST",
+            "error": str(error),
+        }
+
+    runtime_python = project_root / isolation_directory / "bin/python"
+    freeze_path = project_root / freeze_relative
+    freeze_exists = freeze_path.is_file()
+    tracked_freeze_hash = _sha256(freeze_path) if freeze_exists else None
+    expected_lines = freeze_path.read_text(encoding="utf-8").splitlines() if freeze_exists else []
+    freeze_record: dict[str, Any] = {
+        "path": freeze_relative,
+        "expected_sha256": expected_freeze_hash,
+        "tracked_sha256": tracked_freeze_hash,
+        "manifest_hash_matches": tracked_freeze_hash == expected_freeze_hash,
+        "expected_package_count": len(expected_lines),
+        "installed_package_count": None,
+        "installed_matches_expected": False,
+    }
+    result: dict[str, Any] = {
+        "configured": True,
+        "manifest": relative_manifest,
+        "manifest_sha256": _sha256(manifest_path),
+        "declared_status": manifest.get("status"),
+        "runtime_path": isolation_directory,
+        "runtime_present": runtime_python.is_file(),
+        "required_compute_capability": manifest.get("required_compute_capability"),
+        "required_native_arch": manifest.get("required_native_arch"),
+        "declared_packages": manifest.get("packages", {}),
+        "freeze": freeze_record,
+        "smoke": {"status": "NOT_RUN"},
+        "compatibility": {"status": "NOT_RUN"},
+        "local_acceptance": "ABSENT",
+    }
+    if not runtime_python.is_file():
+        return result
+
+    smoke_script = project_root / "scripts/diagnostics/gpu_model_runtime_smoke.py"
+    smoke_code, smoke_output = _run(
+        [str(runtime_python), str(smoke_script)],
+        timeout=120,
+    )
+    smoke_payload = _last_json_object(smoke_output)
+    if smoke_payload is None:
+        smoke_record: dict[str, Any] = {
+            "status": "FAIL",
+            "return_code": smoke_code,
+            "error": smoke_output[-1000:] or "smoke emitted no JSON object",
+        }
+    else:
+        smoke_record = {**smoke_payload, "return_code": smoke_code}
+    result["smoke"] = smoke_record
+    smoke_verification = {
+        "return_code_pass": smoke_code == 0,
+        "reported_status_pass": smoke_record.get("status") == "PASS",
+        "capability_matches": (
+            smoke_record.get("capability") == manifest.get("required_compute_capability")
+        ),
+        "native_arch_present": manifest.get("required_native_arch")
+        in smoke_record.get("architectures", []),
+        "cuda_build_matches": smoke_record.get("torch_cuda_build") == manifest.get("cuda_runtime"),
+        "package_versions_match": smoke_record.get("packages") == manifest.get("packages", {}),
+    }
+    result["smoke_verification"] = smoke_verification
+    smoke_pass = all(smoke_verification.values())
+
+    uv = project_root / ".venv/bin/uv"
+    uv_command = str(uv) if uv.is_file() else shutil.which("uv")
+    if uv_command is None:
+        result["compatibility"] = {"status": "FAIL", "error": "uv executable not found"}
+    else:
+        check_code, check_output = _run(
+            [uv_command, "pip", "check", "--python", str(runtime_python)],
+            timeout=120,
+        )
+        result["compatibility"] = {
+            "status": "PASS" if check_code == 0 else "FAIL",
+            "return_code": check_code,
+            "detail": check_output[-1000:],
+        }
+        freeze_code, freeze_output = _run(
+            [uv_command, "pip", "freeze", "--python", str(runtime_python)],
+            timeout=120,
+        )
+        installed_lines = freeze_output.splitlines() if freeze_code == 0 else []
+        freeze_record.update(
+            installed_package_count=len(installed_lines) if freeze_code == 0 else None,
+            installed_matches_expected=freeze_code == 0 and installed_lines == expected_lines,
+            installed_freeze_return_code=freeze_code,
+        )
+
+    compatibility_pass = result["compatibility"].get("status") == "PASS"
+    freeze_pass = bool(
+        freeze_record["manifest_hash_matches"] and freeze_record["installed_matches_expected"]
+    )
+    result["local_acceptance"] = (
+        "PASS" if smoke_pass and compatibility_pass and freeze_pass else "FAIL"
+    )
+    return result
 
 
 def _os_release() -> dict[str, str]:
@@ -180,6 +321,7 @@ def collect_environment(project_root: Path) -> dict[str, Any]:
         "disk": {"total_bytes": disk.total, "used_bytes": disk.used, "free_bytes": disk.free},
         "gpu": _gpu(),
         "torch": _torch(),
+        "gpu_model_runtime": collect_gpu_model_runtime(project_root),
         "tools": tools,
         "mongodb": {
             "environment_variable_names": mongo_environment_names,
