@@ -111,20 +111,32 @@ def parse_financial_number(raw_text: str | None) -> ParsedNumber:
     return ParsedNumber(raw, str(value), value, observation, sign_evidence)
 
 
-def parse_vietnamese_date(text: str) -> date | None:
+def parse_vietnamese_dates(text: str) -> tuple[date, ...]:
     normalized = normalize_text(text).replace(".", ". ")
-    match = _DATE_PATTERN.search(normalized)
-    if not match:
-        compact = re.search(r"(?<!\d)(\d{1,2})[./-](\d{1,2})[./-](\d{4})(?!\d)", text)
-        if not compact:
-            return None
-        day, month, year = map(int, compact.groups())
-    else:
-        day, month, year = (int(match.group(name)) for name in ("day", "month", "year"))
-    try:
-        return date(year, month, day)
-    except ValueError:
-        return None
+    candidates = [
+        tuple(int(match.group(name)) for name in ("day", "month", "year"))
+        for match in _DATE_PATTERN.finditer(normalized)
+    ]
+    if not candidates:
+        candidates = [
+            tuple(map(int, match.groups()))
+            for match in re.finditer(
+                r"(?<!\d)(\d{1,2})[./-](\d{1,2})[./-](\d{4})(?!\d)",
+                text,
+            )
+        ]
+    parsed = []
+    for day, month, year in candidates:
+        try:
+            parsed.append(date(year, month, day))
+        except ValueError:
+            continue
+    return tuple(parsed)
+
+
+def parse_vietnamese_date(text: str) -> date | None:
+    parsed = parse_vietnamese_dates(text)
+    return parsed[0] if parsed else None
 
 
 @dataclass(frozen=True)

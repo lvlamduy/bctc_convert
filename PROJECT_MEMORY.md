@@ -54,7 +54,7 @@ This is the durable retrieval point for project context. It summarizes user auth
 
 - Primary benchmark candidate: PaddleOCR-VL-1.6 (0.9B) for document structure.
 - Independent geometry/numeric candidate: the current PP-OCR generation and PP-StructureV3.
-- Independent document candidate: MinerU 3.x hybrid.
+- Independent document candidate: MinerU2.5-Pro or the newest reproducibly available MinerU release.
 - Difficult-region candidate: DeepSeek-OCR-2.
 - Mapping reranker candidate: Qwen3.6-27B quantized, with small row/block prompts only. Its fit on 16 GB VRAM must be measured; it is not the numeric reader.
 - Model names do not grant approval. Each must pass Vietnamese bank fixtures, exact-number/sign tests, table geometry, throughput, VRAM, and hallucination measurements.
@@ -66,11 +66,12 @@ This is the durable retrieval point for project context. It summarizes user auth
 - Hardware audit: RTX 5070 Ti 16,303 MiB, Ryzen 9 5950X, about 125.7 GiB RAM, Ubuntu 22.04, NVIDIA driver 595.80.
 - Supplied schema contains 1,592 unique IDs: CDKT 77, KQKD 24, LCTT 107, TM 1,384. TM ID 1944 is absent and remains an append-only proposal.
 - CPU environment is locked in `uv.lock`; bootstrap, atomic storage, source identity registry, role freezing, content-addressed materialization, render/preprocess, local difficult-region variants, perspective correction, ordered alignment, continuation graph, row wrapping, arithmetic validation, and workbook export have executable tests.
-- Latest full test run before this entry: 52 passed; Ruff formatting and lint passed.
+- Latest full test run before this entry: 59 passed, including the hash-locked VPB native-geometry integration fixture; Ruff formatting and lint passed.
 - A real scanned/mixed ACB PDF page rendered and passed preprocessing checkpoint/hash verification.
+- Relative word-gap segmentation, numeric right-edge clustering, note-axis separation, wrapped-row assembly, label-only section retention, and axis-local period/unit binding are implemented without institution/page coordinate rules.
+- On the registered VPB logic-development fixture (pages 5–10), the native text path reconstructed 134 logical rows and 252 value cells, preserved 48 note references, and found two value axes on every page. It correctly separated snapshot dates from three-month durations, retained direct-LCTT anchors and section headings, and left one visible unlabeled off-balance total unresolved instead of inventing a label. See `docs/experiments/E-0006-vpb-native-geometry.json`.
 - A local control-plane backup restored and hash-verified, but production backup is still FAIL because it is not off-machine.
-- MongoDB access has not been discovered.
-- PDF upload is still active, so corpus count/size and source-registry completeness are not final.
+- The source inventory is currently stable at 2,567 PDFs and 17,761,344,114 bytes; later additions must trigger a new drift-aware registration rather than silently changing the denominator.
 - `vst_level` contains four workbooks: balance sheet (77 populated IDs), income statement (24), direct cash flow (50 plus one title row without an ID), and detailed notes (1,384). IDs are unique within every file and all referenced parent IDs exist. The balance workbook contains 47 trailing blank rows; these must be ignored rather than interpreted as data. Cash-flow hierarchy coverage is direct-only and must not be treated as a complete LCTT hierarchy.
 - LCTT ordered blocks/anchors and CDKT scope exclusions are loaded from versioned YAML. Missing policy fails closed; branch assignment follows workbook positions and the algorithm contains no bank/page/coordinate-specific branch list.
 - Uploaded `financial_20_02_2022.gz` is a MongoDB gzip archive: 526,178,025 bytes, SHA-256 `0456df4aebb93b58c433b0d2a8c13bbb9402e1511d07758716976b94989204b9`, source server 7.0.28, Database Tools 100.14.0, database `financial_20_02_2022`.
@@ -80,8 +81,8 @@ This is the durable retrieval point for project context. It summarizes user auth
 
 ## Open constraints and next decisions
 
-- Wait for source upload stability, rerun the drift-aware registry, and record the final denominator.
-- Register the `vst_level` workbook hashes and import its validated hierarchy as supporting SchemaGraph edges, retaining explicit partial coverage for LCTT.
+- Preserve the current stable corpus denominator and rerun drift-aware registration whenever new files arrive.
+- Expand frozen native-geometry fixtures across institutions, years, scopes, scans, borderless layouts, broken pages, and multi-page rows before assigning production confidence.
 - The user accepts VPS-local artifacts during development and requires periodic working Git commits. Local restore remains required; document the single-server-loss risk rather than silently claiming off-machine protection.
 - Selectively restore `report_yearly` and `report_quaterly`, inventory their fields, and build a local DuckDB weak-reference index. Do not restore unrelated user/chat collections.
 - Install/benchmark the isolated Blackwell runtime only after disk capacity is stable.
@@ -100,3 +101,4 @@ This is the durable retrieval point for project context. It summarizes user auth
 - 2026-08-05: Registered and allowlist-audited the uploaded MongoDB archive; verified ReportNormID 1944 has no collision in schema, hierarchy, or Mongo template documents.
 - 2026-08-05: Reopened the LCTT semantic decision after directly inspecting all 107 workbook rows; replaced numeric-range reasoning with contiguous workbook-order blocks.
 - 2026-08-05: Added pinned MongoDB install/start/restore/audit scripts, server rebuild documentation, test strategy, experiment log, and paper-to-experiment research notes.
+- 2026-08-05: Added relative word-run segmentation, value/note column inference, wrapped and section-row reconstruction, explicit snapshot/duration/YTD header binding, and a hash-locked six-page VPB integration fixture; suite reached 59 tests.

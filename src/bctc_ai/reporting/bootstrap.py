@@ -216,12 +216,12 @@ Generated artifacts use atomic write, fsync, rename, and post-write hash verific
 - Autonomous decisions: preserve supplied schema unchanged; keep 1944 as a collision-cleared proposal; segment LCTT by workbook position and fail closed on the semantic conflict
 - Not applicable / not observed / unresolved: 0 / 0 / 0 (no production records yet)
 - Workbooks: 0
-- Largest error: no approved GPU runtime and no parser/OCR results yet
-- Last change: fail-closed configuration, ordered mapping, page preprocessing, continuation, validation, and evidence-preserving workbook export
-- Before/after: no code -> tested fail-closed pipeline foundation
+- Largest error: no approved GPU model runtime and no frozen end-to-end multi-institution accuracy result yet
+- Last change: relative native-PDF value/note axes, wrapped/section rows, semantic period/unit binding, and a hash-locked real-PDF geometry regression
+- Before/after: raw native words -> traceable logical rows/cells on a registered six-page development fixture
 - Regression: run separately with `.venv/bin/pytest`; latest verified count is recorded in `PROJECT_MEMORY.md`
 - Backup status: development={backup["development_status"]}; production={backup["production_status"]} (local restore verified={backup["restored_and_verified"]}, off-machine={backup["off_machine"]})
-- Next bounded action: reconstruct borderless statement rows and bind period/unit axes from PDF word geometry, then validate on frozen real fixtures
+- Next bounded action: broaden frozen geometry fixtures and benchmark isolated Blackwell-compatible OCR/document-model runtimes
 """
     atomic_write_text(project_root / "PROGRESS_REPORT.md", progress)
 

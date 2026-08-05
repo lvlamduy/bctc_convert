@@ -11,6 +11,7 @@ from bctc_ai.core.text import (
     parse_financial_number,
     parse_unit,
     parse_vietnamese_date,
+    parse_vietnamese_dates,
     retrieval_key,
 )
 
@@ -27,6 +28,13 @@ from bctc_ai.core.text import (
 )
 def test_vietnamese_date_parser(raw, expected):
     assert parse_vietnamese_date(raw) == expected
+
+
+def test_vietnamese_date_parser_preserves_explicit_range_order():
+    assert parse_vietnamese_dates("Từ ngày 1 tháng 1 năm 2026 đến ngày 31 tháng 3 năm 2026") == (
+        date(2026, 1, 1),
+        date(2026, 3, 31),
+    )
 
 
 @pytest.mark.parametrize(

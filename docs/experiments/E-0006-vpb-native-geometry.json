@@ -1,0 +1,141 @@
+{
+  "experiment_id": "E-0006",
+  "captured_at": "2026-08-05",
+  "status": "PASS_LOGIC_DEVELOPMENT",
+  "runtime_change": "NONE",
+  "dataset_role": "LOGIC_DEVELOPMENT",
+  "source_path": "vietstock_bctc/VPB/2026/3-bctc-hop-nhat-ban-tra-cuu.pdf",
+  "source_sha256": "614be8877c21ef189da90266c5b059eb0b7d47024444156241725820bb11dcde",
+  "config_path": "config/tables/geometry.yaml",
+  "config_sha256": "8570dc627f0c285c1738064421ed8ef14e96810bb50823632d85015f76f10436",
+  "algorithm_files_sha256": {
+    "src/bctc_ai/core/text.py": "e5e3c5c67ffa6e935672d8f2097426f5132b8a0d4f509743d58e3865a6a1500f",
+    "src/bctc_ai/tables/geometry.py": "746eba64a6f2ee3d9b22bfec27fb3341a9e64af8706e9872976600ff7e4b2a56",
+    "src/bctc_ai/rows/pdf_statement.py": "fb65b1f091ceece0c6a22cb85776cb3a66dcbd97fb5d83105df68703ec73be9c",
+    "src/bctc_ai/axes/header_binding.py": "5eea0a74382bfff17d027e19f19ea66fcca1fb3d3377cc663cffb60a3c89f3bd"
+  },
+  "aggregate": {
+    "pages": 6,
+    "logical_rows": 134,
+    "value_cells": 252,
+    "note_references": 48,
+    "value_axes_per_page": 2,
+    "numeric_rows_without_visible_label": 1
+  },
+  "pages": {
+    "5": {
+      "semantic_scope": "CDKT",
+      "row_count": 34,
+      "value_cell_count": 66,
+      "note_reference_count": 18,
+      "multiline_row_count": 2,
+      "numeric_without_label_count": 0,
+      "section_labels": ["TÀI SẢN"],
+      "required_multiline_labels": [
+        "Tiền gửi tại Ngân hàng Nhà nước Việt Nam (\"NHNN\")",
+        "Tiền gửi và cấp tín dụng cho các tổ chức tín dụng (\"TCTD\") khác"
+      ],
+      "periods": [
+        ["SNAPSHOT", null, "2026-03-31", "2026-03-31", "CURRENT", 1000000],
+        ["SNAPSHOT", null, "2025-12-31", "2025-12-31", "COMPARATIVE", 1000000]
+      ]
+    },
+    "6": {
+      "semantic_scope": "CDKT",
+      "row_count": 25,
+      "value_cell_count": 44,
+      "note_reference_count": 11,
+      "multiline_row_count": 4,
+      "numeric_without_label_count": 0,
+      "section_labels": ["NỢ PHẢI TRẢ", "VỐN CHỦ SỞ HỮU", "Vốn chủ sở hữu"],
+      "required_multiline_labels": [
+        "Các công cụ tài chính phái sinh và các khoản nợ tài chính khác"
+      ],
+      "periods": [
+        ["SNAPSHOT", null, "2026-03-31", "2026-03-31", "CURRENT", 1000000],
+        ["SNAPSHOT", null, "2025-12-31", "2025-12-31", "COMPARATIVE", 1000000]
+      ]
+    },
+    "7": {
+      "semantic_scope": "OFF_BALANCE_SHEET_NOT_CDKT",
+      "row_count": 16,
+      "value_cell_count": 32,
+      "note_reference_count": 5,
+      "multiline_row_count": 1,
+      "numeric_without_label_count": 1,
+      "section_labels": [],
+      "required_labels": [
+        "Bảo lãnh vay vốn",
+        "Cam kết giao dịch hối đoái",
+        "Tài sản và chứng từ khác"
+      ],
+      "periods": [
+        ["SNAPSHOT", null, "2026-03-31", "2026-03-31", "CURRENT", 1000000],
+        ["SNAPSHOT", null, "2025-12-31", "2025-12-31", "COMPARATIVE", 1000000]
+      ]
+    },
+    "8": {
+      "semantic_scope": "KQKD",
+      "row_count": 25,
+      "value_cell_count": 50,
+      "note_reference_count": 12,
+      "multiline_row_count": 2,
+      "numeric_without_label_count": 0,
+      "section_labels": [],
+      "required_multiline_labels": [
+        "Lợi nhuận thuần từ HĐKD trước chi phí dự phòng rủi ro tín dụng"
+      ],
+      "periods": [
+        ["DURATION", 3, "2026-01-01", "2026-03-31", "CURRENT", 1000000],
+        ["DURATION", 3, "2025-01-01", "2025-03-31", "COMPARATIVE", 1000000]
+      ]
+    },
+    "9": {
+      "semantic_scope": "LCTT_DIRECT",
+      "row_count": 26,
+      "value_cell_count": 46,
+      "note_reference_count": 1,
+      "multiline_row_count": 14,
+      "numeric_without_label_count": 0,
+      "section_labels": [
+        "LƯU CHUYỂN TIỀN TỪ HOẠT ĐỘNG KINH DOANH",
+        "Những thay đổi về tài sản hoạt động",
+        "Những thay đổi về nợ phải trả hoạt động"
+      ],
+      "required_labels": [
+        "Thu nhập lãi và các khoản thu nhập tương tự nhận được",
+        "Chi phí lãi và các chi phí tương tự đã trả"
+      ],
+      "required_multiline_labels": [
+        "Lưu chuyển tiền thuần từ hoạt động kinh doanh trước những thay đổi về tài sản và nợ phải trả hoạt động"
+      ],
+      "periods": [
+        ["DURATION", 3, "2026-01-01", "2026-03-31", "CURRENT", 1000000],
+        ["DURATION", 3, "2025-01-01", "2025-03-31", "COMPARATIVE", 1000000]
+      ]
+    },
+    "10": {
+      "semantic_scope": "LCTT_DIRECT",
+      "row_count": 8,
+      "value_cell_count": 14,
+      "note_reference_count": 1,
+      "multiline_row_count": 1,
+      "numeric_without_label_count": 0,
+      "section_labels": ["LƯU CHUYỂN TIỀN TỪ HOẠT ĐỘNG ĐẦU TƯ"],
+      "required_multiline_labels": [
+        "Tiền thu cổ tức và lợi nhuận được chia từ các khoản đầu tư, góp vốn dài hạn"
+      ],
+      "periods": [
+        ["DURATION", 3, "2026-01-01", "2026-03-31", "CURRENT", 1000000],
+        ["DURATION", 3, "2025-01-01", "2025-03-31", "COMPARATIVE", 1000000]
+      ]
+    }
+  },
+  "interpretation": [
+    "Page-relative numeric right-edge clustering recovered two value axes and a separate note-reference axis without bank/page coordinate rules.",
+    "Snapshot headers no longer confuse the day in '31 tháng' with a duration; three-month headers bind to January-through-March periods.",
+    "Uppercase and short label-only section rows remain ordered context instead of being merged into the following data row.",
+    "The one unlabeled total on page 7 remains explicitly unresolved; no label or value is synthesized.",
+    "This is a logic-development fixture, not holdout accuracy evidence and not an approval of the full pipeline."
+  ]
+}

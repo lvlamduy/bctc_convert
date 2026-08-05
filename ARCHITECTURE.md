@@ -40,6 +40,10 @@ Role B executes the production PDF-to-Excel pipeline. In frozen evaluation, its 
 - `export`: template-preserving workbook and supporting sheets.
 - `storage`: atomic checkpoints, manifests, backup, integrity, and resume.
 
+For usable native text layers, the first deterministic table path segments PDF words into runs at relative word-gap discontinuities, clusters repeated numeric right edges into value axes, identifies a distinct note-reference axis, groups y-aligned bands, and then attaches preceding wrapped label lines only when geometric/typographic continuation evidence is sufficient. Label-only rows remain ordered section context. Thresholds are relative to page or text height and live in `config/tables/geometry.yaml`; report-, bank-, page-, and absolute-coordinate rules are prohibited.
+
+Header binding is axis-local. Dates determine current/comparative roles rather than left/right order. Snapshot dates, explicit date ranges, stated month durations, and YTD wording have separate paths, and unit evidence retains its source box. Ambiguous or absent axes fail closed instead of defaulting to a conventional column order.
+
 ## Model adapters and scheduling
 
 Every backend sits behind `read_page`, `read_region`, `read_table`, `read_row`, `read_cell`, `return_text_boxes`, and `return_structure`. Large models run sequentially in isolated services; each batch is checkpointed and verified before the next model loads. Candidate backends from the directive are not approved merely by name: each must pass Vietnamese banking-document fixtures, GPU compatibility, throughput, VRAM, numeric exactness, and hallucination tests.

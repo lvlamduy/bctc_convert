@@ -9,6 +9,8 @@
 5. Frozen Role A holdout establishes the independent machine denominator. Role B is scored without seeing Role A artifacts.
 6. Restore/replay tests rebuild from manifests, replay mapping/validation without OCR, export Excel atomically, reopen it, and verify sheet/schema order plus provenance links.
 
+The first real-PDF geometry regression is `E-0006`: a registered, hash-locked VPB logic-development document covering CDKT, off-balance disclosures, KQKD, and direct LCTT across pages 5–10. The fixture asserts row/value/note counts, section boundaries, multiline labels, period/unit bindings, direct-method anchors, and fail-closed retention of an unlabeled numeric total. Because the PDF is an external source artifact, the integration test skips only when that exact file is absent; a hash mismatch fails rather than accepting a substitute.
+
 ## Distortion matrix
 
 Each representative fixture is tested in original form and controlled variants: blur, low contrast, dark/colored header, uneven lighting, JPEG blocking, noise, rotation, skew, perspective/warp, crop loss, and small text. This follows the factor-wise idea of Real5-OmniDocBench but uses Vietnamese financial pages and exact cell truth.
@@ -33,3 +35,5 @@ Each representative fixture is tested in original form and controlled variants: 
 ## Experiment record
 
 Every experiment is appended to `docs/experiments/EXPERIMENT_LOG.md` with hypothesis, code/config/model/data hashes, frozen fixtures, metrics, result, failure analysis, and decision. Cherry-picked examples or visual impressions are not acceptance evidence.
+
+Any edit to a geometry algorithm or its threshold file invalidates the recorded implementation/config hash in `E-0006` and requires an explicit fixture rerun and reviewed expectation update.
