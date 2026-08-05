@@ -54,6 +54,7 @@ This file is the durable checklist for every design, experiment, review, and pro
 - A table may break mid-page, continue on the next page, or carry an unfinished row across pages.
 - Build a continuation graph using repeated headers, matching column axes, unit, period, Notes number/parent, page adjacency, and row-continuation evidence. Adjacency alone is never enough.
 - Long labels may wrap across multiple visual lines. Reconstruct the logical row before candidate generation and keep every contributing line box.
+- Preserve label-only material after the last numeric row as unresolved trailing-page context. Do not let signatures, stamps, addresses, dates, or a possible next-page heading enter mapping until table/continuation evidence resolves their role.
 - Handle borderless tables, merged cells, multi-level headers, transposed tables, movement schedules, and repeated headers.
 - Every accepted value retains source page, table, logical row, column, label box, value box, header box, unit box, render hash, and coordinate transform through preprocessing.
 - No cell geometry means no `AUTO_VERIFIED_HIGH`.
@@ -64,6 +65,7 @@ This file is the durable checklist for every design, experiment, review, and pro
 - Distinguish snapshot, duration, quarter, YTD, opening, closing, current, and comparative periods.
 - Propagate a unit only across a traceable page/section/table continuation.
 - Verify parentheses, leading/trailing minus, contra-asset presentation, and OCR-lost punctuation. Dash is not automatically zero.
+- An OCR-empty cell may become `DASH` only from visible source evidence: a correctly positioned dash-like OCR glyph or a constrained pixel component with recorded crop, shape, contrast, row, and axis measurements. Blank crops, digits, table rules, and ambiguous/multiple components fail closed.
 
 ## 8. Arithmetic validation
 

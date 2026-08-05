@@ -26,6 +26,9 @@ This is a decision-oriented paper log, not a list of model claims. A paper contr
 - E-0010 shows a generative-table failure that aggregate numeric accuracy would hide. On scan page 14, PaddleOCR-VL generated four rows whose labels each collapse two source rows; subsequent values were shifted into plausible neighboring labels. On page 15 it placed `198.242` and `(5.140.484)` in one cell and left the next current-period cell blank. The parser retained the first cell as `INVALID`; no split, arithmetic repair, or historical substitution was allowed.
 - The E-0010 failure supports PubTables-1M's canonical logical-structure principle: evaluation must distinguish a wrapped label from two accounting rows collapsed together. It also makes the LingDT/FinDocBench cell-localization hypothesis directly testable: an independent cell-box reader should recover row ownership before any value can be accepted.
 - The MinerU2.5 coarse-to-fine idea now has a concrete trigger policy: use low-resolution layout for the page, then reread only the original-resolution cells/row bands implicated by `MERGE_REFERENCE`, extra numeric rows, invalid cells, note mismatch, or numeric disagreement. More full-page generative passes are not the default response.
+- E-0011 validates the independent-localization hypothesis on the targeted TCB failures. PP-OCRv6 right-edge/y geometry restored all four page-14 row pairs and localized `198.242` and `(5.140.484)` to separate page-15 rows without splitting a VLM string. Coverage rose from 94.70% to 100% and strict cell agreement from 92.42% to 100% against the same machine reference.
+- Geometry and language quality are separable: the E-0011 reader matched 264/264 cells but only 3/140 labels exactly. The operational design must fuse a label reader with independently boxed numeric evidence, retain disagreements, and avoid interpreting any single model's full-page serialization as truth.
+- Small punctuation needs a non-language fallback. Three source-visible dashes omitted by OCR were recovered only after a constrained pixel-component check; one more was recognized as `一`. The detector uses relative text-height/axis gates and rejects empty crops, digits, long rules, and multiple components. This is source-image evidence, not arithmetic repair.
 
 ## Planned controlled experiments
 
@@ -34,8 +37,8 @@ This is a decision-oriented paper log, not a list of model claims. A paper contr
 3. Measure correlated errors; require independent architecture/decoding paths for “two-reader” evidence.
 4. Evaluate word-geometry reconstruction against VLM/table-model proposals on borderless, merged, transposed, and cross-page tables.
 5. Fit confidence/review thresholds on development/calibration data, then measure unchanged rules on frozen holdout and by distortion/report subgroup.
-6. On E-0010 page 14, compare an independent word/cell geometry OCR and native-resolution row crops against the four detected row collapses. Success requires correct row ownership, both value columns, note ownership, and source boxes—not merely the right multiset of numbers.
-7. On E-0010 page 15, test targeted current-period cell crops at controlled DPI/contrast. The pass condition is two separately localized cells (`198.242` and `(5.140.484)`) with correct row identities; concatenating then heuristically splitting the VLM string is prohibited.
+6. Completed in E-0011 on page 14: the independent word/cell geometry path recovered all four collapsed row pairs, both value columns, notes, and source boxes. Repeat unchanged on other banks and distortions.
+7. Completed in E-0011 on page 15: `198.242` and `(5.140.484)` were independently localized to separate rows without splitting the VLM output. The next test varies DPI/contrast on frozen distortion fixtures.
 
 ## Rejection rules
 

@@ -254,6 +254,174 @@ def _load_calibration_summary(project_root: Path) -> dict[str, object]:
     }
 
 
+def _load_geometry_recovery_summary(project_root: Path) -> dict[str, object]:
+    artifact_path = Path("docs/experiments/E-0011-tcb-geometry-recovery.json")
+    absolute_artifact = project_root / artifact_path
+    if not absolute_artifact.is_file():
+        return {
+            "integrity_status": "NOT_AVAILABLE",
+            "artifact": artifact_path.as_posix(),
+            "errors": ["tracked E-0011 artifact is absent"],
+        }
+    try:
+        artifact = json.loads(absolute_artifact.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        return {
+            "integrity_status": "FAIL",
+            "artifact": artifact_path.as_posix(),
+            "errors": [f"cannot read E-0011 artifact: {exc}"],
+        }
+
+    errors: list[str] = []
+    if artifact.get("format_version") != 1:
+        errors.append("unexpected E-0011 format version")
+    if artifact.get("experiment_id") != "E-0011":
+        errors.append("unexpected geometry-recovery experiment ID")
+    if artifact.get("dataset_role") != "CALIBRATION":
+        errors.append("E-0011 dataset role is not CALIBRATION")
+    if artifact.get("design") != "TARGETED_POST_FAILURE_ANALYSIS":
+        errors.append("E-0011 design is not targeted post-failure analysis")
+    if artifact.get("content_inspected_before_design") is not True:
+        errors.append("E-0011 does not disclose post-inspection design")
+    if artifact.get("status") != "PASS_TARGETED_GEOMETRY_RECOVERY_CALIBRATION":
+        errors.append("E-0011 recorded status is not the accepted targeted state")
+    code = artifact.get("code")
+    if not isinstance(code, dict) or code.get("git_dirty") is not False:
+        errors.append("E-0011 was not recorded from a clean code state")
+
+    algorithm_files = artifact.get("algorithm_files_sha256")
+    if not isinstance(algorithm_files, dict) or not algorithm_files:
+        errors.append("E-0011 has no algorithm hash set")
+    else:
+        for relative_path, digest in algorithm_files.items():
+            local_path = project_root / str(relative_path)
+            if not local_path.is_file() or sha256_file(local_path) != digest:
+                errors.append(f"algorithm hash drift: {relative_path}")
+
+    for key in ("experiment_config", "suite_config", "reconstruction_config"):
+        record = artifact.get(key)
+        if not isinstance(record, dict):
+            errors.append(f"E-0011 has no {key} identity")
+            continue
+        local_path = project_root / str(record.get("path", ""))
+        if not local_path.is_file() or sha256_file(local_path) != record.get("sha256"):
+            errors.append(f"E-0011 {key} hash drift")
+
+    local_seals = []
+    sealed_inputs = artifact.get("sealed_inputs")
+    if not isinstance(sealed_inputs, dict):
+        errors.append("E-0011 has no sealed input identities")
+    else:
+        for role, seal in sealed_inputs.items():
+            if not isinstance(seal, dict):
+                errors.append(f"invalid E-0011 sealed input record: {role}")
+                continue
+            seal_path = project_root / str(seal.get("path", ""))
+            present = seal_path.is_file()
+            verified = present and sha256_file(seal_path) == seal.get("sha256")
+            local_seals.append({"role": role, "present": present, "verified": verified})
+            if present and not verified:
+                errors.append(f"local E-0011 seal hash drift: {role}")
+
+    metrics = artifact.get("metrics")
+    if not isinstance(metrics, dict):
+        errors.append("E-0011 has no metrics")
+        metrics = {}
+    else:
+        required_metrics = {
+            "reference_financial_row_coverage_rate": 1.0,
+            "strict_exact_reference_financial_row_agreement_rate": 1.0,
+            "reference_financial_cell_coverage_rate": 1.0,
+            "strict_exact_reference_cell_agreement_rate": 1.0,
+            "candidate_invalid_cells": 0,
+            "exact_note_references": 50,
+        }
+        if any(metrics.get(key) != value for key, value in required_metrics.items()):
+            errors.append("E-0011 required metric gate drift")
+    acceptance = artifact.get("acceptance")
+    if (
+        not isinstance(acceptance, dict)
+        or acceptance.get("auto_verified_high") != 0
+        or acceptance.get("configured") != acceptance.get("observed")
+    ):
+        errors.append("E-0011 automatic high-confidence gate drift")
+    off_balance = artifact.get("off_balance_gate")
+    if not isinstance(off_balance, dict) or off_balance.get(
+        "eligible_rows_on_off_balance_pages"
+    ) != 0:
+        errors.append("E-0011 off-balance exclusion gate drift")
+    arithmetic = artifact.get("arithmetic_validation")
+    if (
+        not isinstance(arithmetic, dict)
+        or arithmetic.get("value_generation_or_overwrite") is not False
+        or not isinstance(arithmetic.get("counts"), dict)
+        or arithmetic["counts"].get("FAIL", 0) != 0
+    ):
+        errors.append("E-0011 arithmetic safety gate drift")
+    cash_flow = artifact.get("cash_flow")
+    if not isinstance(cash_flow, dict) or cash_flow.get(
+        "schema_branch_assignment_permitted"
+    ) is not False:
+        errors.append("E-0011 cash-flow fail-closed gate drift")
+    continuation = artifact.get("continuation")
+    if (
+        not isinstance(continuation, list)
+        or not continuation
+        or not all(bool(record.get("accepted")) for record in continuation)
+    ):
+        errors.append("E-0011 continuation gate drift")
+    recovery = artifact.get("recovery_evidence")
+    if (
+        not isinstance(recovery, dict)
+        or len(recovery.get("pixel_dash_recoveries", [])) != 3
+        or len(recovery.get("ocr_dash_alias_recoveries", [])) != 1
+        or recovery.get("trailing_context_rows_preserved_but_mapping_ineligible") != 14
+        or recovery.get("automatic_confidence_effect") != "NONE"
+    ):
+        errors.append("E-0011 recovery-evidence gate drift")
+    historical = artifact.get("historical_weak_reference")
+    if not isinstance(historical, dict) or historical.get("invoked") is not False:
+        errors.append("E-0011 historical-reference gate drift")
+    report_norm = artifact.get("report_norm_id")
+    if not isinstance(report_norm, dict) or report_norm.get("ids_proposed_or_added") != 0:
+        errors.append("E-0011 unexpectedly proposes ReportNormID changes")
+
+    local_count = sum(bool(record["present"]) for record in local_seals)
+    verified_count = sum(bool(record["verified"]) for record in local_seals)
+    if errors:
+        integrity_status = "FAIL"
+    elif local_count:
+        integrity_status = "PASS_TRACKED_AND_LOCAL_SEALS"
+    else:
+        integrity_status = "PASS_TRACKED_ARTIFACT"
+    return {
+        "integrity_status": integrity_status,
+        "artifact": artifact_path.as_posix(),
+        "artifact_sha256": sha256_file(absolute_artifact),
+        "experiment_id": artifact.get("experiment_id"),
+        "recorded_status": artifact.get("status"),
+        "dataset_role": artifact.get("dataset_role"),
+        "design": artifact.get("design"),
+        "code_commit": code.get("git_commit") if isinstance(code, dict) else None,
+        "claim_boundary": artifact.get("claim_boundary"),
+        "metrics": metrics,
+        "acceptance": acceptance,
+        "off_balance_gate": off_balance,
+        "cash_flow": cash_flow,
+        "arithmetic_validation": arithmetic,
+        "recovery_evidence": recovery,
+        "continuation_accepted": all(
+            bool(record.get("accepted")) for record in continuation
+        ),
+        "historical_weak_reference": historical,
+        "report_norm_id": report_norm,
+        "local_seals": local_seals,
+        "local_seal_count": local_count,
+        "verified_local_seal_count": verified_count,
+        "errors": errors,
+    }
+
+
 def _write_dynamic_audits(
     project_root: Path,
     environment: dict[str, object],
@@ -395,6 +563,45 @@ def _write_dynamic_audits(
             f"Tracked E-0010 calibration integrity is **{calibration_status}**; "
             "its metrics are disabled until the recorded hashes verify."
         )
+    geometry_recovery = manifest.get("geometry_recovery", {})
+    geometry_recovery = (
+        geometry_recovery if isinstance(geometry_recovery, dict) else {}
+    )
+    geometry_metrics = geometry_recovery.get("metrics", {})
+    geometry_metrics = geometry_metrics if isinstance(geometry_metrics, dict) else {}
+    geometry_status = str(geometry_recovery.get("integrity_status", "NOT_AVAILABLE"))
+    if geometry_status.startswith("PASS"):
+        strict_geometry_rows = float(
+            geometry_metrics.get(
+                "strict_exact_reference_financial_row_agreement_rate", 0.0
+            )
+        )
+        strict_geometry_cells = float(
+            geometry_metrics.get("strict_exact_reference_cell_agreement_rate", 0.0)
+        )
+        geometry_coverage = float(
+            geometry_metrics.get("reference_financial_row_coverage_rate", 0.0)
+        )
+        geometry_progress = (
+            f"E-0011 {geometry_status}; strict rows={strict_geometry_rows:.2%}, "
+            f"strict cells={strict_geometry_cells:.2%}, "
+            f"reference coverage={geometry_coverage:.2%}, "
+            f"auto-high={geometry_recovery.get('acceptance', {}).get('auto_verified_high', 'unknown')}"
+        )
+        geometry_finding = (
+            f"Tracked E-0011 targeted geometry-recovery integrity is **{geometry_status}**; "
+            f"{geometry_recovery.get('verified_local_seal_count', 0)}/"
+            f"{geometry_recovery.get('local_seal_count', 0)} locally present seals verify. "
+            "It remains post-failure machine-reference calibration, not production accuracy."
+        )
+    else:
+        geometry_progress = (
+            f"{geometry_status}; errors={geometry_recovery.get('errors', [])}"
+        )
+        geometry_finding = (
+            f"Tracked E-0011 targeted geometry-recovery integrity is **{geometry_status}**; "
+            "its metrics are disabled until the recorded hashes verify."
+        )
     hardware = f"""# Hardware audit
 
 Captured: {environment["captured_at"]}
@@ -442,6 +649,7 @@ Captured: {environment["captured_at"]}
 - LCTT membership is now based on contiguous workbook positions, not numeric ID ranges. The latest semantic wording conflicts with the visible anchors/endpoints, so semantic high-confidence acceptance remains fail-closed.
 - {mongo_finding}
 - {calibration_finding}
+- {geometry_finding}
 - A local control-plane backup restored successfully: `{backup["restored_and_verified"]}`. Per the user's development policy, development backup status is **{backup["development_status"]}**. It is not off-machine and does not protect against total VPS loss; production status remains `{backup["production_status"]}`.
 
 ## Recovery posture
@@ -464,17 +672,18 @@ Generated artifacts use atomic write, fsync, rename, and post-write hash verific
 - CDKT, KQKD, applicable LCTT, TM coverage: not measurable before MACHINE_REFERENCE
 - PDF_ONLY metrics: not yet measured
 - Frozen cross-reader calibration: {calibration_progress}
+- Targeted independent geometry recovery: {geometry_progress}
 - Mongo-assisted metrics: {mongo_progress}
 - Questions created / resolved: {len(questions)} / {resolved_questions}
 - Autonomous decisions: preserve supplied schema unchanged; keep 1944 as a collision-cleared proposal; segment LCTT by workbook position and fail closed on the semantic conflict
 - Not applicable / not observed / unresolved: 0 / 0 / 0 (no production records yet)
 - Workbooks: 0
 - Largest error: no frozen end-to-end multi-institution accuracy result or production-calibrated acceptance threshold yet
-- Last change: sealed E-0010 TCB scan/searchable comparison with strict coverage, bidirectional row-collapse detection, off-balance exclusion, and zero history/confidence promotion
-- Before/after: conditional aligned-cell agreement alone -> separate 94.70% reference coverage, 97.60% conditional cell agreement, and 92.42% strict whole-reference cell agreement
+- Last change: sealed E-0011 PP-OCRv6 geometry/value recovery with visible dash evidence, trailing-context isolation, cross-page arithmetic validation, and zero history/schema/confidence promotion
+- Before/after on the targeted TCB calibration: strict reference coverage/cell agreement 94.70%/92.42% -> 100%/100%; Role C label exactness remains only 3/140
 - Regression: run separately with `.venv/bin/pytest`; latest verified count is recorded in `PROJECT_MEMORY.md`
 - Backup status: development={backup["development_status"]}; production={backup["production_status"]} (local restore verified={backup["restored_and_verified"]}, off-machine={backup["off_machine"]})
-- Next bounded action: add independent word/cell-box OCR and targeted native-resolution rereads for E-0010 failures, then run the unchanged gates on frozen MBB/VCB and distortion fixtures
+- Next bounded action: run the frozen Role B/Role C gates unchanged on MBB/VCB, controlled distortions, and then an untouched holdout
 """
     atomic_write_text(project_root / "PROGRESS_REPORT.md", progress)
 
@@ -580,6 +789,7 @@ def run_bootstrap(project_root: Path, *, workers: int = 4) -> BootstrapResult:
             "historical_weak_reference": historical_weak_reference,
         },
         "calibration": _load_calibration_summary(project_root),
+        "geometry_recovery": _load_geometry_recovery_summary(project_root),
     }
     atomic_write_json(project_root / "BOOTSTRAP_MANIFEST.json", manifest)
 

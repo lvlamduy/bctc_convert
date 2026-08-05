@@ -16,6 +16,7 @@
 14. Run a final `bctc-ai audit`; it must remain fail-closed if Mongo, historical index, GPU, schema, source hashes, or backup evidence differ.
 15. Run golden fixtures, verify immutable E-0006, replay pinned E-0007, verify E-0008, and replay E-0009/E-0010 from `docs/experiments/E-0010-REPLAY.md` before any production batch. Generated output is never a substitute for the registered source hashes.
 16. Verify both geometry configurations. `config/tables/geometry.yaml` is historical v1 and must retain its registered hash; current calibration uses `config/tables/geometry-v2.yaml`. Never edit v1 to make a newer fixture pass.
+17. Rebuild/verify the two PP-OCRv6 models, transfer the three exact external evidence directories, and replay E-0011 with `docs/experiments/E-0011-REPLAY.md`. Verify `config/tables/word-box-reconstruction.yaml`, all three seals, and the tracked result hash. A fresh OCR run must use a new experiment identity.
 
 Recovery is accepted only when file hashes, schema order/count, test suite, local Mongo reference audit, and generated-workbook integrity all pass. A copied directory without these checks is not a valid rebuild.
 

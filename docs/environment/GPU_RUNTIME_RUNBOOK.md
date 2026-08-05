@@ -89,8 +89,9 @@ For a clean born-digital page, E-0007 explicitly disabled orientation classifica
 | E-0011 runtime attempt 1 | FAIL during detection | oneDNN/MKLDNN could not convert a PP-OCRv6 PIR array attribute | disable MKLDNN; use Paddle static CPU FP32 |
 | E-0011 runtime attempt 2 | core OCR PASS, export path rejected | generic CLI called its renderer and attempted an unpinned font download after inference | replace CLI export with the network-blocked JSON-only runner |
 | E-0011 runtime attempt 3 | development smoke PASS | JSON-only runner returned 50 line boxes and 380 word tokens from TCB scan page 15 in 24.11 seconds | commit runner, then rerun from a clean commit for evidence |
+| E-0011 sealed run | PASS | six clean TCB renders produced 586 line boxes and 4,024 word tokens in 191.635581 seconds | seal every render/result/manifest; compare only after Role C completion |
 
-The E-0007 measured failures and final pass remain in `docs/experiments/E-0007-paddleocr-vl-runtime.json`. E-0011 retains its backend/runtime attempts in its own experiment record. Do not delete failed attempts from either record.
+The E-0007 measured failures and final pass remain in `docs/experiments/E-0007-paddleocr-vl-runtime.json`. E-0011 retains its backend/runtime attempts and exact migration procedure in `docs/experiments/E-0011-REPLAY.md`; its tracked comparison result is `docs/experiments/E-0011-tcb-geometry-recovery.json`. Do not delete failed attempts from either record.
 
 ## Known warnings and gates
 

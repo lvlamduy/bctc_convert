@@ -5,6 +5,7 @@ import json
 from bctc_ai.core.hashing import sha256_file
 from bctc_ai.reporting.bootstrap import (
     _load_calibration_summary,
+    _load_geometry_recovery_summary,
     _write_dynamic_audits,
 )
 
@@ -64,6 +65,101 @@ def test_calibration_summary_verifies_tracked_inputs_and_local_seals(tmp_path):
     failed = _load_calibration_summary(tmp_path)
     assert failed["integrity_status"] == "FAIL"
     assert failed["errors"] == ["algorithm hash drift: src/algorithm.py"]
+
+
+def test_geometry_recovery_summary_locks_targeted_gates_and_three_seals(tmp_path):
+    artifact_path = tmp_path / "docs/experiments/E-0011-tcb-geometry-recovery.json"
+    algorithm_path = tmp_path / "src/geometry.py"
+    experiment_path = tmp_path / "config/experiment.yaml"
+    suite_path = tmp_path / "config/suite.yaml"
+    reconstruction_path = tmp_path / "config/reconstruction.yaml"
+    seal_paths = [tmp_path / f"output/role-{role}-seal.json" for role in "abc"]
+    for path, content in (
+        (algorithm_path, "geometry-v1"),
+        (experiment_path, "experiment-v1"),
+        (suite_path, "suite-v1"),
+        (reconstruction_path, "reconstruction-v1"),
+        *((path, f"seal-{index}") for index, path in enumerate(seal_paths)),
+    ):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+    configured = {"required_alignment_actions": {"MATCH": 140}}
+    artifact_path.parent.mkdir(parents=True, exist_ok=True)
+    artifact_path.write_text(
+        json.dumps(
+            {
+                "format_version": 1,
+                "experiment_id": "E-0011",
+                "dataset_role": "CALIBRATION",
+                "design": "TARGETED_POST_FAILURE_ANALYSIS",
+                "content_inspected_before_design": True,
+                "status": "PASS_TARGETED_GEOMETRY_RECOVERY_CALIBRATION",
+                "code": {"git_commit": "abc", "git_dirty": False},
+                "algorithm_files_sha256": {
+                    "src/geometry.py": sha256_file(algorithm_path)
+                },
+                "experiment_config": {
+                    "path": "config/experiment.yaml",
+                    "sha256": sha256_file(experiment_path),
+                },
+                "suite_config": {
+                    "path": "config/suite.yaml",
+                    "sha256": sha256_file(suite_path),
+                },
+                "reconstruction_config": {
+                    "path": "config/reconstruction.yaml",
+                    "sha256": sha256_file(reconstruction_path),
+                },
+                "sealed_inputs": {
+                    f"role_{role}_seal": {
+                        "path": f"output/role-{role}-seal.json",
+                        "sha256": sha256_file(path),
+                    }
+                    for role, path in zip("abc", seal_paths, strict=True)
+                },
+                "metrics": {
+                    "reference_financial_row_coverage_rate": 1.0,
+                    "strict_exact_reference_financial_row_agreement_rate": 1.0,
+                    "reference_financial_cell_coverage_rate": 1.0,
+                    "strict_exact_reference_cell_agreement_rate": 1.0,
+                    "candidate_invalid_cells": 0,
+                    "exact_note_references": 50,
+                },
+                "acceptance": {
+                    "auto_verified_high": 0,
+                    "configured": configured,
+                    "observed": configured,
+                },
+                "off_balance_gate": {"eligible_rows_on_off_balance_pages": 0},
+                "arithmetic_validation": {
+                    "value_generation_or_overwrite": False,
+                    "counts": {"PASS": 11, "NOT_TESTABLE": 1},
+                },
+                "cash_flow": {"schema_branch_assignment_permitted": False},
+                "continuation": [{"accepted": True}],
+                "recovery_evidence": {
+                    "pixel_dash_recoveries": [{}, {}, {}],
+                    "ocr_dash_alias_recoveries": [{}],
+                    "trailing_context_rows_preserved_but_mapping_ineligible": 14,
+                    "automatic_confidence_effect": "NONE",
+                },
+                "historical_weak_reference": {"invoked": False},
+                "report_norm_id": {"ids_proposed_or_added": 0},
+                "claim_boundary": "targeted calibration only",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    passed = _load_geometry_recovery_summary(tmp_path)
+
+    assert passed["integrity_status"] == "PASS_TRACKED_AND_LOCAL_SEALS"
+    assert passed["local_seal_count"] == 3
+    assert passed["verified_local_seal_count"] == 3
+    reconstruction_path.write_text("reconstruction-drift", encoding="utf-8")
+    failed = _load_geometry_recovery_summary(tmp_path)
+    assert failed["integrity_status"] == "FAIL"
+    assert failed["errors"] == ["E-0011 reconstruction_config hash drift"]
 
 
 def test_dynamic_audits_separate_runtime_acceptance_from_model_approval(tmp_path):
@@ -135,6 +231,18 @@ def test_dynamic_audits_separate_runtime_acceptance_from_model_approval(tmp_path
             "verified_local_seal_count": 2,
             "errors": [],
         },
+        "geometry_recovery": {
+            "integrity_status": "PASS_TRACKED_AND_LOCAL_SEALS",
+            "metrics": {
+                "strict_exact_reference_financial_row_agreement_rate": 1.0,
+                "strict_exact_reference_cell_agreement_rate": 1.0,
+                "reference_financial_row_coverage_rate": 1.0,
+            },
+            "acceptance": {"auto_verified_high": 0},
+            "local_seal_count": 3,
+            "verified_local_seal_count": 3,
+            "errors": [],
+        },
     }
     backup = {
         "restored_and_verified": True,
@@ -157,5 +265,9 @@ def test_dynamic_audits_separate_runtime_acceptance_from_model_approval(tmp_path
     assert "strict cells=92.42%" in progress
     assert "reference coverage=94.70%" in progress
     assert "auto-high=0" in progress
+    assert "Targeted independent geometry recovery" in progress
+    assert "strict rows=100.00%" in progress
+    assert "strict cells=100.00%" in progress
     recovery = (tmp_path / "RECOVERY_AUDIT.md").read_text(encoding="utf-8")
     assert "2/2 locally present seals verify" in recovery
+    assert "3/3 locally present seals verify" in recovery

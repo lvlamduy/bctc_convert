@@ -93,6 +93,8 @@ E-0007 passed a complete 200-DPI VPB KQKD-page inference in 19.52 seconds with p
 
 E-0010 reused this exact frozen runtime and model cache; no Python distribution, Ubuntu package, driver, or model weight was added. Six TCB scan pages (10–15) were rendered at 200 DPI after the quality gate classified each page `CLEAN`, then processed sequentially in 101.791746 seconds. Peak observed GPU memory was 3,243 MiB. Role B used inference commit `5e4cb033a70735deff3dc136330d078e457e0748`; its sealed artifact-set SHA-256 is `350ce77034a2adf1775b7117d1785588d17b905f5819fcc9e564f486a83b75d9`. The exact staged replay, including the clean Git commits for preprocessing, sealing, Role A, and comparison, is documented in `docs/experiments/E-0010-REPLAY.md`.
 
+E-0011 added no software, system package, driver, or model weight beyond the inventory above. Role C ran the pinned PP-OCRv6 detector/recognizer sequentially on the same six sealed 200-DPI renders using Paddle CPU FP32. It produced 586 line boxes and 4,024 word tokens in 191.635581 seconds; mean line confidence was 0.9876259247 and 5 lines were below 0.8. Inference commit was `d57ceee5ce12bfeac36eaa0b7d059043f45fd16c`; sealed artifact-set SHA-256 is `968e6bf93a5af2e6552a2820350c075415d29905df279c31c54d2b095ae6c3a2`. Deterministic row reconstruction and pixel-dash checks use the already pinned control-plane OpenCV 4.14.0.94 and NumPy 2.4.6. Exact transfer/replay commands are in `docs/experiments/E-0011-REPLAY.md`.
+
 Detailed commands, disk checks, cache rules, failure history, and rollback are in `docs/environment/GPU_RUNTIME_RUNBOOK.md`.
 
 ## Maintenance rule

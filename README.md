@@ -35,6 +35,9 @@ isolated Blackwell/PaddleOCR-VL setup and its retained failure history are in
 The first sealed six-page scan/searchable calibration and its migration-safe
 replay procedure are in
 [docs/experiments/E-0010-REPLAY.md](docs/experiments/E-0010-REPLAY.md).
+The independent PP-OCRv6 geometry recovery, exact hashes, and server replay
+procedure are in
+[docs/experiments/E-0011-REPLAY.md](docs/experiments/E-0011-REPLAY.md).
 The allowlisted, non-authoritative Mongo/DuckDB reference and rebuild procedure
 are in
 [docs/environment/HISTORICAL_REFERENCE_RUNBOOK.md](docs/environment/HISTORICAL_REFERENCE_RUNBOOK.md).
