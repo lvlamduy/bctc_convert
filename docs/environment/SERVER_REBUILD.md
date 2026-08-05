@@ -8,10 +8,10 @@
 6. Verify the uploaded dump SHA-256 against `data/registered/mongodb_dump_registry.json`, then start and selectively restore the financial reference namespaces.
 7. Restore only `data_chart` with `scripts/mongodb/restore_financial_reference.sh financial_20_02_2022.gz bank-weak-reference`; never restore user/chat namespaces.
 8. Set `BCTC_HISTORY_MONGO_URI` to the loopback/read-only URI and build `data/local/historical_weak_reference.duckdb`. Verify its registry and safety constraints using `bctc-ai audit`.
-9. Build the isolated GPU environment only from the pinned model-runtime manifest. Run a real CUDA kernel smoke test before downloading model weights.
+9. Build the isolated document-model environment only from the pinned model-runtime manifest. Run both the real CUDA kernel smoke and Paddle CPU kernel smoke before downloading model weights.
 10. Install the two Ubuntu GPU image libraries with `scripts/bootstrap/install_gpu_system_deps.sh`; compare the resulting package set with `config/system/ubuntu-22.04-gpu-apt-observed.tsv`.
-11. Set `BCTC_GPU_UV_CACHE_DIR` to a filesystem with at least 8 GiB free and run `scripts/bootstrap/create_gpu_runtime.sh`. Its freeze diff, dependency check, import check, `sm_120` check, and real CUDA kernel must all pass.
-12. Choose a model cache with at least 3 GiB free. Download the exact revisions using `scripts/bootstrap/download_paddleocr_vl_models.py`, then run it again with `--verify-only`.
+11. Set `BCTC_GPU_UV_CACHE_DIR` to a filesystem with at least 8 GiB free and run `scripts/bootstrap/create_gpu_runtime.sh`. It must verify the pinned Paddle wheel before installation; its freeze diff, dependency check, import check, `sm_120` check, CUDA kernel, and Paddle CPU kernel must all pass.
+12. Choose a model cache with at least 3 GiB free. Download all four exact revisions using `scripts/bootstrap/download_paddleocr_vl_models.py`, then run it again with `--verify-only`.
 13. Re-register source PDFs after transfer. Dataset roles are append-only; never silently reuse development files as holdout.
 14. Run a final `bctc-ai audit`; it must remain fail-closed if Mongo, historical index, GPU, schema, source hashes, or backup evidence differ.
 15. Run golden fixtures, verify immutable E-0006, replay pinned E-0007, verify E-0008, and replay E-0009/E-0010 from `docs/experiments/E-0010-REPLAY.md` before any production batch. Generated output is never a substitute for the registered source hashes.

@@ -1,7 +1,9 @@
-version = 3
+version = 4
 status = "LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED"
 python = "3.11"
 torch_index_url = "https://download.pytorch.org/whl/cu130"
+paddle_index_url = "https://www.paddlepaddle.org.cn/packages/stable/cpu/"
+paddle_inference_device = "cpu"
 cuda_runtime = "13.0"
 required_compute_capability = "12.0"
 required_native_arch = "sm_120"
@@ -13,13 +15,14 @@ create_command = "scripts/bootstrap/create_gpu_runtime.sh"
 acceptance_command = ".gpu-venv/bin/python scripts/diagnostics/gpu_model_runtime_smoke.py"
 compatibility_check_command = ".venv/bin/uv pip check --python .gpu-venv/bin/python"
 freeze_path = "config/models/gpu-requirements.freeze.txt"
-freeze_sha256 = "d8e60d2423f60fcb5b4ce631ca4446ecb5d2855efa5578bc07589076521d8005"
-installed_size_bytes = 5663276925
-installed_size_gib = 5.28
+freeze_sha256 = "c0e8c43f84360a8eb0ebeff1ef5de43969bdd291eb2c7cee363c35ef2c78437b"
+installed_size_bytes = 6383286857
+installed_size_gib = 5.94
 
 [packages]
 torch = "2.12.0+cu130"
 torchvision = "0.27.0+cu130"
+paddlepaddle = "3.3.0"
 paddleocr = "3.7.0"
 paddlex = "3.7.2"
 transformers = "5.14.1"
@@ -30,6 +33,7 @@ python-docx = "1.2.0"
 [import_modules]
 torch = "torch"
 torchvision = "torchvision"
+paddlepaddle = "paddle"
 paddleocr = "paddleocr"
 paddlex = "paddlex"
 transformers = "transformers"
@@ -55,6 +59,14 @@ sha256 = "f90237398efb8ce7001b80e1870c921b3a375d91c892ba8b46415f8085a3711d"
 filename = "python_docx-1.2.0-py3-none-any.whl"
 size_bytes = 252987
 sha256 = "3fd478f3250fbbbfd3b94fe1e985955737c145627498896a8a6bf81f4baf66c7"
+
+[artifacts.paddlepaddle_cpu_cp311_linux_x86_64]
+upstream = "https://www.paddlepaddle.org.cn/packages/stable/cpu/"
+url = "https://paddle-whl.bj.bcebos.com/stable/cpu/paddlepaddle/paddlepaddle-3.3.0-cp311-cp311-linux_x86_64.whl"
+filename = "paddlepaddle-3.3.0-cp311-cp311-linux_x86_64.whl"
+size_bytes = 193703893
+sha256 = "a4f2e0595e827c179b4fff4278fb41a24f4abe5927ffd5efb1ace26a916145f2"
+license = "Apache-2.0"
 
 [models.paddleocr_vl_1_6]
 upstream = "https://huggingface.co/PaddlePaddle/PaddleOCR-VL-1.6"

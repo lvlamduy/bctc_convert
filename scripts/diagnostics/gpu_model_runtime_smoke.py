@@ -29,6 +29,7 @@ def main() -> int:
                 raise RuntimeError(
                     f"{distribution} version {installed!r} does not match {expected[distribution]!r}"
                 )
+        import paddle
         import torch
     except Exception as error:
         result["error"] = str(error)
@@ -67,6 +68,26 @@ def main() -> int:
         result["checksum"] = float(output.sum().cpu())
     except Exception as error:
         result.update(stage="kernel", error=str(error))
+        print(json.dumps(result, sort_keys=True))
+        return 1
+
+    try:
+        paddle.set_device(manifest["paddle_inference_device"])
+        paddle_left = paddle.arange(4096, dtype="float32").reshape((64, 64))
+        paddle_output = paddle.matmul(paddle_left, paddle.transpose(paddle_left, (1, 0)))
+        paddle_device = paddle.device.get_device()
+        result["paddle"] = {
+            "compiled_with_cuda": paddle.device.is_compiled_with_cuda(),
+            "device": paddle_device,
+            "checksum": float(paddle.sum(paddle_output).numpy()),
+        }
+        if paddle_device != manifest["paddle_inference_device"]:
+            raise RuntimeError(
+                f"Paddle device {paddle_device!r} does not match "
+                f"{manifest['paddle_inference_device']!r}"
+            )
+    except Exception as error:
+        result.update(stage="paddle_kernel", error=str(error))
         print(json.dumps(result, sort_keys=True))
         return 1
 

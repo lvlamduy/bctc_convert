@@ -50,9 +50,20 @@ export UV_CACHE_DIR="$gpu_uv_cache_dir"
   --index-url https://download.pytorch.org/whl/cu130 \
   "torch==2.12.0" \
   "torchvision==0.27.0"
+paddle_wheel_directory="$gpu_uv_cache_dir/pinned-wheels"
+.venv/bin/python scripts/bootstrap/download_paddle_runtime_wheel.py \
+  --destination-directory "$paddle_wheel_directory"
+.venv/bin/uv pip install \
+  --python "$runtime_dir/bin/python" \
+  --no-index \
+  --no-deps \
+  --find-links "$paddle_wheel_directory" \
+  "paddlepaddle==3.3.0"
 .venv/bin/uv pip install \
   --python "$runtime_dir/bin/python" \
   --constraint config/models/gpu-requirements.freeze.txt \
+  "opt-einsum==3.3.0" \
+  "protobuf==7.35.1" \
   "paddleocr[doc-parser]==3.7.0" \
   "python-docx==1.2.0" \
   "transformers==5.14.1"

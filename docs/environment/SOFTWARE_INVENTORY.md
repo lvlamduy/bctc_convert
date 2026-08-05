@@ -50,7 +50,7 @@ The persistent reference instance now also contains allowlisted `data_chart`: 1,
 
 ## GPU model runtime
 
-The control plane remains CPU-only and stable. The model environment is isolated as `.gpu-venv`; it contains 122 frozen distributions and occupies 5,663,276,925 bytes on this host. The complete freeze is `config/models/gpu-requirements.freeze.txt` (SHA-256 `d8e60d2423f60fcb5b4ce631ca4446ecb5d2855efa5578bc07589076521d8005`). Direct requirements and all artifact/model hashes are in `config/models/gpu-requirements.in` and `config/models/gpu-runtime.toml`.
+The control plane remains CPU-only and stable. The document-model environment is isolated as `.gpu-venv`; it contains 125 frozen distributions and occupies 6,383,286,857 bytes on this host. The complete freeze is `config/models/gpu-requirements.freeze.txt` (SHA-256 `c0e8c43f84360a8eb0ebeff1ef5de43969bdd291eb2c7cee363c35ef2c78437b`). Direct requirements and all artifact/model hashes are in `config/models/gpu-requirements.in` and `config/models/gpu-runtime.toml`.
 
 Primary runtime versions:
 
@@ -58,6 +58,7 @@ Primary runtime versions:
 |---|---:|---|
 | PyTorch | 2.12.0+cu130 | Blackwell CUDA execution |
 | TorchVision | 0.27.0+cu130 | Transformers image processors and layout model operators |
+| PaddlePaddle | 3.3.0 CPU FP32 | PP-OCRv6 detection/recognition without contaminating the PyTorch CUDA closure |
 | PaddleOCR | 3.7.0 | document-pipeline API/CLI |
 | PaddleX | 3.7.2 | model resolution and pipeline orchestration |
 | Transformers | 5.14.1 | common PyTorch inference engine |
@@ -67,7 +68,7 @@ Primary runtime versions:
 
 Ubuntu 22.04 additionally needs `libgl1` and `libglib2.0-0`. The observed versions are `1.4.0-1` and `2.72.4-0ubuntu2.9`; the exact dependency closure added on this VPS is recorded in `config/system/ubuntu-22.04-gpu-apt-observed.tsv`. The rebuild script installs current security-compatible packages from the configured Ubuntu 22.04 repositories rather than forcing an obsolete patch version.
 
-The approved runtime smoke performs imports plus a real CUDA matrix multiplication and verifies `sm_120`, capability 12.0, package versions, and CUDA 13.0. It passed on the RTX 5070 Ti. `uv pip check` also passed for all 122 distributions. This approves the runtime mechanism, not model accuracy.
+The approved runtime smoke performs imports, a real PyTorch CUDA matrix multiplication, and a separate Paddle CPU matrix multiplication. It verifies `sm_120`, capability 12.0, package versions, CUDA 13.0, and the declared Paddle device `cpu`. Both kernels and Paddle's official `paddle.utils.run_check()` passed on this host. `uv pip check` also passed for all 125 distributions. This approves the runtime mechanism, not model accuracy.
 
 Every `bctc-ai audit` now re-runs that kernel/import smoke, `uv pip check`, the tracked-freeze SHA-256 check, and an exact installed-versus-tracked package comparison. The machine-readable result is stored at `environment.gpu_model_runtime` in `BOOTSTRAP_MANIFEST.json`. A missing environment, dependency drift, freeze drift, import failure, wrong architecture, or failed CUDA operation changes local acceptance to `ABSENT` or `FAIL`; the recorded historical E-0007 result cannot override a current-host failure.
 
@@ -77,8 +78,12 @@ Every `bctc-ai audit` now re-runs that kernel/import smoke, `uv pip check`, the 
 |---|---|---:|---|---|
 | PaddleOCR-VL-1.6 | `cdc88f5feff0e4079e75863205053a68358e52f7` | 1,917,255,968 | `85a479d506a11e724e7285d395c551be69f41dbc16b6342d3cacfb189aed71db` | Apache-2.0 |
 | PP-DocLayoutV3 safetensors | `97d101e6db2642e162a1d05392d1b0231c91033e` | 133,270,468 | `5ea422c6cc5fe759a47e1357c35639b58173508e025a3131cbe4b6ac59e2b85e` | Apache-2.0 |
+| PP-OCRv6 medium detection | `8e0f56fb2ef86b461d99cfc7ac5c137738985f61` | 61,960,476 | `85218d2e3d98f5a21c58b4220627be923a97aee5db3cc71f39536ab31ac53960` | Apache-2.0 |
+| PP-OCRv6 medium recognition | `e5a92bcbc5cc1b494628e458d267778f0704fd7c` | 76,465,087 | `1b01c79a914587933f615569e75de54f2e638ebb5d3f3b3c1b38c24ede8c7319` | Apache-2.0 |
 
-`scripts/bootstrap/download_paddleocr_vl_models.py` downloads those exact Hugging Face revisions and refuses a weight size/hash mismatch. Model weights and caches remain outside Git. During E-0007, `PADDLE_PDX_CACHE_HOME`, `HF_HOME`, `XDG_CACHE_HOME`, and `TMPDIR` were all routed to `/dev/shm`; the model cache occupied 2,074,691,105 bytes. `/dev/shm` is suitable for cache but not for a virtual environment because this VPS mounts it `noexec`.
+`scripts/bootstrap/download_paddleocr_vl_models.py` downloads those four exact Hugging Face revisions and refuses a weight size/hash mismatch. Model weights and caches remain outside Git. With all four models present, the verified cache occupies 2,213,856,016 bytes. `PADDLE_PDX_CACHE_HOME`, `HF_HOME`, `XDG_CACHE_HOME`, and `TMPDIR` may be routed to `/dev/shm`; that filesystem is suitable for cache but not for a virtual environment because this VPS mounts it `noexec`.
+
+PP-OCRv6 requires the Paddle inference backend. Paddle's [official 3.3 installation guide](https://www.paddlepaddle.org.cn/documentation/docs/zh/install/pip/linux-pip_en.html) publishes both CPU and CUDA 13.0 wheels, and its [hardware table](https://www.paddlepaddle.org.cn/documentation/docs/install/Tables_en.html/) lists CUDA 12.9/13.0 for Blackwell `sm_120`. The CUDA wheel's exact cuDNN, cuBLAS, runtime, and NCCL dependencies conflict with the newer exact versions required by PyTorch 2.12 in this environment. E-0011 therefore uses the official PaddlePaddle 3.3.0 CPU wheel and FP32 inference; this preserves the pinned PP-OCRv6 graph/weights while isolating the dependency closures, at the cost of speed rather than a different model. The CPython 3.11 wheel is 193,703,893 bytes with SHA-256 `a4f2e0595e827c179b4fff4278fb41a24f4abe5927ffd5efb1ace26a916145f2`. `scripts/bootstrap/download_paddle_runtime_wheel.py` verifies it before installation; `create_gpu_runtime.sh` then installs only that local wheel with `--no-index --no-deps` and installs its exact missing dependencies from the tracked freeze.
 
 The pinned full pipeline uses `config/models/paddleocr-vl-1.6-transformers.yaml`: PP-DocLayoutV3 runs FP32, PaddleOCR-VL-1.6 runs BF16, remote code is disabled, and both use the Transformers engine. The split precision is required because PP-DocLayoutV3's Transformers post-process cannot convert a BF16 tensor directly to NumPy in the tested stack.
 

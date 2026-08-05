@@ -1,8 +1,8 @@
-# GPU and PaddleOCR-VL runtime runbook
+# Document-model runtime runbook
 
 ## Scope and current approval
 
-This runbook reconstructs the isolated RTX 5070 Ti (`sm_120`) runtime and the exact E-0007 model stack. The runtime and one logic-development inference have passed. Production approval remains blocked until frozen multi-institution, scan/distortion, cross-page, and holdout accuracy gates pass.
+This runbook reconstructs the isolated RTX 5070 Ti (`sm_120`) runtime, the exact E-0007 PaddleOCR-VL stack, and the E-0011 PP-OCRv6 word-box stack. Runtime kernels have passed, but production approval remains blocked until frozen multi-institution, scan/distortion, cross-page, and holdout accuracy gates pass.
 
 ## Capacity and host prerequisites
 
@@ -10,12 +10,12 @@ This runbook reconstructs the isolated RTX 5070 Ti (`sm_120`) runtime and the ex
 - NVIDIA Linux driver at least 580.65.06; verified host driver 595.80.
 - At least 7 GiB free on the filesystem holding `.gpu-venv`.
 - At least 8 GiB free for the uv wheel cache during installation.
-- At least 3 GiB free for the two document models.
+- At least 3 GiB free for the four document models.
 - A cache filesystem may be `noexec`; the virtual environment filesystem must allow executable mappings.
 
-The measured footprints on 2026-08-05 were 5,663,276,925 bytes for `.gpu-venv`, 5,585,681,842 bytes for the warm uv cache, and 2,074,691,105 bytes for the model cache.
+After adding the pinned Paddle 3.3.0 CPU backend, the measured footprints on 2026-08-05 were 6,383,286,857 bytes for `.gpu-venv`, 7,213,410,166 bytes for the warm uv cache (including the retained 193,703,893-byte verified Paddle wheel), and 2,213,856,016 bytes for the four-model cache.
 
-After the runtime was installed beside the 17 GiB PDF corpus, the 40 GiB workspace filesystem had about 6.70 GiB free. That is enough to run the accepted environment but below the builder's 7 GiB preflight for a second environment. Before an upgrade, use `df -h /workspace /dev/shm`; increase/relocate storage rather than attempting a side-by-side rebuild without the required headroom. Routine control-plane backups exclude `.gpu-venv` and measured only about 2.9 MiB in aggregate during bootstrap.
+After the Paddle backend was added beside the 17 GiB PDF corpus, the 40 GiB workspace filesystem had about 6.0 GiB free. That is enough to run the accepted environment but below the builder's 7 GiB preflight for a second environment. Before an upgrade, use `df -h /workspace /dev/shm`; increase/relocate storage rather than attempting a side-by-side rebuild without the required headroom. Routine control-plane backups exclude `.gpu-venv` and measured only about 2.9 MiB in aggregate during bootstrap.
 
 ## Rebuild
 
@@ -29,7 +29,7 @@ BCTC_GPU_UV_CACHE_DIR=/dev/shm/bctc-ai-uv-cache \
 .venv/bin/uv pip check --python .gpu-venv/bin/python
 ```
 
-The runtime builder refuses to overwrite an existing environment, checks both required shared libraries and disk capacity, installs the official CUDA 13.0 PyTorch/TorchVision pair, constrains the remaining dependency closure, diffs all 122 installed versions against the freeze, and runs the GPU smoke.
+The runtime builder refuses to overwrite an existing environment, checks both required shared libraries and disk capacity, installs the official CUDA 13.0 PyTorch/TorchVision pair, downloads and verifies the official PaddlePaddle 3.3.0 CPU wheel, constrains the remaining dependency closure, diffs all 125 installed versions against the freeze, and runs both the CUDA and Paddle CPU kernel smoke.
 
 After reconstruction, run `.venv/bin/bctc-ai audit`. In addition to the explicit commands above, the audit records the current smoke payload, package compatibility, tracked freeze hash, exact installed-freeze match, and local acceptance in `BOOTSTRAP_MANIFEST.json`. `PASS` approves only the runtime mechanism for model experiments; it does not approve model accuracy for production.
 
@@ -75,6 +75,7 @@ For a clean born-digital page, E-0007 explicitly disabled orientation classifica
 | E-0007 attempt 2 | FAIL after model load | global BF16 made PP-DocLayoutV3 post-process call NumPy on BF16 | layout FP32; VLM BF16 in per-module configuration |
 | E-0007 attempt 3 | inference succeeded, export FAIL | CLI `save_all` imported missing `docx` | pin python-docx 1.2.0 |
 | E-0007 attempt 4 | PASS | full inference and all registered exports completed | retain as the current logic-development baseline |
+| E-0011 backend preflight | GPU wheel rejected before install | Paddle 3.3.0 CUDA 13.0 requires exact NVIDIA dependency versions that conflict with PyTorch 2.12 | use the official hash-pinned Paddle 3.3.0 CPU FP32 backend for PP-OCRv6; keep PyTorch CUDA unchanged |
 
 The three measured failures and final pass remain in `docs/experiments/E-0007-paddleocr-vl-runtime.json`. Do not delete failed attempts from the experimental record.
 
@@ -84,6 +85,7 @@ The three measured failures and final pass remain in `docs/experiments/E-0007-pa
 - Generated HTML/Markdown is a proposal. E-0007 split one long row and misspelled two labels while reading all 50 numeric cells exactly.
 - Values and note references are excluded from the ordered alignment path score. They are compared only after structural alignment so model agreement cannot circularly select a row mapping.
 - Model downloads must use the pinned revision helper; PaddleX's convenient auto-download follows the current upstream state and is not sufficient for a reproducible production build.
+- The PP-OCRv6 CPU backend is a deliberate dependency-isolation decision, not a model downgrade. Any future Paddle GPU runtime must be a separate frozen environment and must rerun exact OCR regression before adoption.
 
 ## Rollback and cleanup
 
