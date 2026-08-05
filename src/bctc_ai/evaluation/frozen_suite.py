@@ -23,6 +23,8 @@ class EvidenceStage(StrEnum):
     ROLE_B_READ = "ROLE_B_READ"
     ROLE_B_MAPPING = "ROLE_B_MAPPING"
     ROLE_B_POST_MAPPING_VALIDATION = "ROLE_B_POST_MAPPING_VALIDATION"
+    INDEPENDENT_GEOMETRY_READ = "INDEPENDENT_GEOMETRY_READ"
+    INDEPENDENT_GEOMETRY_COMPARE = "INDEPENDENT_GEOMETRY_COMPARE"
     COMPARE = "COMPARE"
 
 
@@ -40,6 +42,7 @@ class EvidenceKind(StrEnum):
     HISTORICAL_WEAK_REFERENCE = "HISTORICAL_WEAK_REFERENCE"
     ROLE_A_RESULT = "ROLE_A_RESULT"
     ROLE_B_RESULT = "ROLE_B_RESULT"
+    INDEPENDENT_GEOMETRY_RESULT = "INDEPENDENT_GEOMETRY_RESULT"
 
 
 @dataclass(frozen=True)
@@ -87,6 +90,18 @@ _ALLOWED_EVIDENCE: dict[EvidenceStage, set[EvidenceKind]] = {
         EvidenceKind.CONFIG,
         EvidenceKind.HISTORICAL_WEAK_REFERENCE,
     },
+    EvidenceStage.INDEPENDENT_GEOMETRY_READ: {
+        EvidenceKind.ROLE_B_SOURCE_PDF,
+        EvidenceKind.SOURCE_RENDER,
+        EvidenceKind.CONFIG,
+        EvidenceKind.MODEL,
+    },
+    EvidenceStage.INDEPENDENT_GEOMETRY_COMPARE: {
+        EvidenceKind.ROLE_A_RESULT,
+        EvidenceKind.ROLE_B_RESULT,
+        EvidenceKind.INDEPENDENT_GEOMETRY_RESULT,
+        EvidenceKind.CONFIG,
+    },
     EvidenceStage.COMPARE: {
         EvidenceKind.ROLE_A_RESULT,
         EvidenceKind.ROLE_B_RESULT,
@@ -108,6 +123,7 @@ def validate_evidence_manifest(
         EvidenceStage.ROLE_B_READ,
         EvidenceStage.ROLE_B_MAPPING,
         EvidenceStage.ROLE_B_POST_MAPPING_VALIDATION,
+        EvidenceStage.INDEPENDENT_GEOMETRY_READ,
     }:
         forbidden_tokens = ("machine_reference", "role_a_result", "pipeline_vs_reference")
         leaked = [
