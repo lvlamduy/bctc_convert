@@ -1,6 +1,6 @@
 # Hardware audit
 
-Captured: 2026-08-05T21:39:33.683094+00:00
+Captured: 2026-08-05T21:43:02.684534+00:00
 
 - Host: `O-2004251`
 - OS: Ubuntu 22.04.5 LTS; kernel `6.6.0-hiveos`

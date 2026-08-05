@@ -1,9 +1,9 @@
 # Progress report
 
-- Date/time: 2026-08-05T21:39:33.683094+00:00
+- Date/time: 2026-08-05T21:43:02.684534+00:00
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16303 MiB, compute 12.0); 125.71 GiB RAM
 - Isolated GPU runtime: PASS; recorded model state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
-- Code hash: bootstrap is on `codex/rebuild-bootstrap` at `b973f5a0d2c258ea8e26382cf6a32aca017f49cb` with dirty state `False`
+- Code hash: bootstrap is on `codex/rebuild-bootstrap` at `61ea6b8e7c00d86e5b421a2c9975f25de03e7cde` with dirty state `False`
 - Schema count: 1592 (CDKT 77; KQKD 24; LCTT 107; TM 1384)
 - PDFs registered: 2567
 - ROLE A completed: 0 documents
@@ -11,14 +11,15 @@
 - Reference IDs / values: 0 / 0
 - CDKT, KQKD, applicable LCTT, TM coverage: not measurable before MACHINE_REFERENCE
 - PDF_ONLY metrics: not yet measured
+- Frozen cross-reader calibration: E-0010 PASS_TRACKED_AND_LOCAL_SEALS; strict rows=91.67%, strict cells=92.42%, reference coverage=94.70%, auto-high=0
 - Mongo-assisted metrics: PASS weak-reference-only (112147 cells; 27 banks)
 - Questions created / resolved: 4 / 2
 - Autonomous decisions: preserve supplied schema unchanged; keep 1944 as a collision-cleared proposal; segment LCTT by workbook position and fail closed on the semantic conflict
 - Not applicable / not observed / unresolved: 0 / 0 / 0 (no production records yet)
 - Workbooks: 0
 - Largest error: no frozen end-to-end multi-institution accuracy result or production-calibrated acceptance threshold yet
-- Last change: allowlisted Mongo `data_chart` weak-reference index with resolved-ID-only lookup, unknown unit/scope, and database-enforced no-map/no-promote gates
-- Before/after: non-bank historical collections and slow row-wise writes -> 27-bank, 112,147-cell guarded index built by transactional DuckDB bulk load
+- Last change: sealed E-0010 TCB scan/searchable comparison with strict coverage, bidirectional row-collapse detection, off-balance exclusion, and zero history/confidence promotion
+- Before/after: conditional aligned-cell agreement alone -> separate 94.70% reference coverage, 97.60% conditional cell agreement, and 92.42% strict whole-reference cell agreement
 - Regression: run separately with `.venv/bin/pytest`; latest verified count is recorded in `PROJECT_MEMORY.md`
 - Backup status: development=PASS; production=FAIL (local restore verified=True, off-machine=False)
-- Next bounded action: broaden frozen cross-reader fixtures across institutions, scans, distortions, and page breaks, then measure calibrated disagreement escalation with the weak reference kept non-authoritative
+- Next bounded action: add independent word/cell-box OCR and targeted native-resolution rereads for E-0010 failures, then run the unchanged gates on frozen MBB/VCB and distortion fixtures

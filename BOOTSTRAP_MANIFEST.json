@@ -1,10 +1,10 @@
 {
   "backup": {
-    "archive": "/workspace/bctc-ai-backups/bctc-ai-control-plane-20260805T213941Z.tar.gz",
-    "archive_sha256": "9a891c13f2a0e6a366b481473a72d2d20bdf46c464ad119766d76bfc46ee1c4c",
+    "archive": "/workspace/bctc-ai-backups/bctc-ai-control-plane-20260805T214310Z.tar.gz",
+    "archive_sha256": "2e5c03f5189e3f95e4ab99a14899d375da7d2e750ec7a142756142d13fb75b55",
     "development_status": "PASS",
     "file_count": 199,
-    "manifest": "/workspace/bctc-ai-backups/bctc-ai-control-plane-20260805T213941Z.tar.gz.manifest.json",
+    "manifest": "/workspace/bctc-ai-backups/bctc-ai-control-plane-20260805T214310Z.tar.gz.manifest.json",
     "off_machine": false,
     "production_status": "FAIL",
     "restored_and_verified": true
@@ -20,18 +20,118 @@
     "sha256": "4857e8124574ab127844a9605ea340648052469c1c1965394a317f2aba69da3b",
     "size_bytes": 11175
   },
-  "captured_at": "2026-08-05T21:39:40.538304+00:00",
+  "calibration": {
+    "acceptance": {
+      "agreement_promotes_pdf_confidence": false,
+      "auto_verified_high": 0,
+      "disagreements_trigger_reread_or_review": true,
+      "reason": "PaddleOCR-VL exposes table-level but not independently verified cell geometry; reader agreement alone cannot satisfy the high-confidence gate."
+    },
+    "artifact": "docs/experiments/E-0010-tcb-cross-reader-calibration.json",
+    "artifact_sha256": "706545d738aa5b4b3bf7795b0fee4e4264d693fe1f75c2e5a1d5709908a7e160",
+    "cash_flow": {
+      "direct_anchor_positions": [
+        1,
+        2
+      ],
+      "indirect_anchor_positions": null,
+      "method": "DIRECT",
+      "reason": "configured direct ordered anchor sequence observed; semantic status=REOPENED_EVIDENCE_CONFLICT, acceptance fail-closed",
+      "semantic_high_confidence_allowed": false
+    },
+    "claim_boundary": "Metrics are cross-reader agreement against a native machine reference on one calibration filing. They are not human-gold, schema, full-tuple, holdout, or production accuracy.",
+    "code_commit": "379396200fb11e7695e341c918f313a308e6206b",
+    "continuation_accepted": true,
+    "dataset_role": "CALIBRATION",
+    "errors": [],
+    "experiment_id": "E-0010",
+    "historical_weak_reference": {
+      "invoked": false,
+      "mapping_or_confidence_effect": "NONE",
+      "policy": {
+        "lookup_requires_resolved_id": true,
+        "lookup_stage": "POST_SCHEMA_RESOLUTION_ONLY",
+        "mapping_candidate_generation": false,
+        "pdf_confidence_promotion": false,
+        "pdf_value_overwrite": false,
+        "pdf_ytd_operand": false
+      },
+      "reason": "Rows are not schema-resolved; resolved-ID-only history lookup is unavailable."
+    },
+    "integrity_status": "PASS_TRACKED_AND_LOCAL_SEALS",
+    "local_seal_count": 2,
+    "local_seals": [
+      {
+        "present": true,
+        "role": "role_a_seal",
+        "verified": true
+      },
+      {
+        "present": true,
+        "role": "role_b_seal",
+        "verified": true
+      }
+    ],
+    "metrics": {
+      "alignment_actions": {
+        "EXTRA_CANDIDATE": 2,
+        "MATCH": 131,
+        "MERGE_CANDIDATE": 1,
+        "MERGE_REFERENCE": 4
+      },
+      "candidate_invalid_cells": 1,
+      "candidate_rows": 139,
+      "compared_reference_financial_cells": 250,
+      "conditional_exact_cell_agreement_rate": 0.976,
+      "conditional_exact_financial_row_agreement_rate": 0.968,
+      "covered_reference_financial_rows": 125,
+      "escalations": {
+        "CELL_AXIS_RECONSTRUCTION_AND_REREAD": 1,
+        "CORROBORATED_NO_CONFIDENCE_PROMOTION": 94,
+        "LABEL_REREAD_OR_STRUCTURAL_REVIEW": 32,
+        "NOTE_REFERENCE_REREAD": 1,
+        "TABLE_RECONSTRUCTION_REVIEW": 6,
+        "TARGETED_NUMERIC_REREAD_DISAGREEMENT": 3,
+        "TARGETED_NUMERIC_REREAD_INVALID_CELL": 1
+      },
+      "exact_note_references": 47,
+      "exact_reference_financial_cells": 244,
+      "exact_reference_financial_rows": 121,
+      "note_rows": 48,
+      "reference_financial_cell_coverage_rate": 0.94697,
+      "reference_financial_cells": 264,
+      "reference_financial_row_coverage_rate": 0.94697,
+      "reference_financial_rows": 132,
+      "reference_rows": 140,
+      "scope_allowed_candidate_rows": 119,
+      "scope_excluded_candidate_rows": 20,
+      "semantic_key_exact_label_rate": 0.969697,
+      "semantic_key_exact_labels": 128,
+      "source_exact_label_rate": 0.742424,
+      "source_exact_labels": 98,
+      "strict_exact_reference_cell_agreement_rate": 0.924242,
+      "strict_exact_reference_financial_row_agreement_rate": 0.916667,
+      "structurally_comparable_rows": 132
+    },
+    "off_balance_gate": {
+      "eligible_rows_on_off_balance_pages": 0,
+      "status": "PASS_ZERO_CDKT_ELIGIBLE_ROWS"
+    },
+    "recorded_status": "PASS_CALIBRATION_WITH_REQUIRED_ESCALATIONS",
+    "verified_local_seal_count": 2
+  },
+  "captured_at": "2026-08-05T21:43:09.547389+00:00",
   "environment": {
     "architecture": "x86_64",
-    "captured_at": "2026-08-05T21:39:33.683094+00:00",
+    "captured_at": "2026-08-05T21:43:02.684534+00:00",
     "cpu": {
       "logical_count": 32,
       "model": "AMD Ryzen 9 5950X 16-Core Processor"
     },
     "disk": {
-      "free_bytes": 7116550144,
+      "free_bytes": 7114690560,
       "total_bytes": 42283094016,
-      "used_bytes": 35166543872
+      "used_bytes": 35168403456
     },
     "gpu": {
       "available": true,
@@ -124,22 +224,22 @@
     "hostname": "O-2004251",
     "kernel": "6.6.0-hiveos",
     "memory": {
-      "Active": 29480308736,
-      "Active(anon)": 8305553408,
-      "Active(file)": 21174755328,
-      "AnonHugePages": 488636416,
-      "AnonPages": 1213149184,
+      "Active": 29481906176,
+      "Active(anon)": 8306135040,
+      "Active(file)": 21175771136,
+      "AnonHugePages": 490733568,
+      "AnonPages": 1215422464,
       "Bounce": 0,
       "Buffers": 106057728,
-      "Cached": 79733977088,
+      "Cached": 79735128064,
       "CmaFree": 0,
       "CmaTotal": 0,
       "CommitLimit": 67354472448,
-      "Committed_AS": 13487579136,
+      "Committed_AS": 13492109312,
       "DirectMap1G": 130996502528,
       "DirectMap2M": 5989466112,
       "DirectMap4k": 355323904,
-      "Dirty": 737280,
+      "Dirty": 1236992,
       "FileHugePages": 35651584,
       "FilePmdMapped": 0,
       "HardwareCorrupted": 0,
@@ -149,33 +249,33 @@
       "HugePages_Total": 131072,
       "Hugepagesize": 2097152,
       "Hugetlb": 268435456,
-      "Inactive": 51606724608,
-      "Inactive(anon)": 2070331392,
-      "Inactive(file)": 49536393216,
-      "KReclaimable": 1608945664,
-      "KernelStack": 13942784,
-      "Mapped": 637140992,
-      "MemAvailable": 122121297920,
-      "MemFree": 51078615040,
+      "Inactive": 51608002560,
+      "Inactive(anon)": 2071576576,
+      "Inactive(file)": 49536425984,
+      "KReclaimable": 1608921088,
+      "KernelStack": 14024704,
+      "Mapped": 637313024,
+      "MemAvailable": 122138615808,
+      "MemFree": 51094908928,
       "MemTotal": 134977380352,
       "Mlocked": 0,
       "NFS_Unstable": 0,
-      "PageTables": 11657216,
+      "PageTables": 12009472,
       "Percpu": 28966912,
-      "SReclaimable": 1532866560,
-      "SUnreclaim": 484007936,
+      "SReclaimable": 1532841984,
+      "SUnreclaim": 484573184,
       "SecPageTables": 0,
-      "Shmem": 9128886272,
+      "Shmem": 9128988672,
       "ShmemHugePages": 0,
       "ShmemPmdMapped": 0,
-      "Slab": 2016874496,
+      "Slab": 2017415168,
       "SwapCached": 0,
       "SwapFree": 0,
       "SwapTotal": 0,
       "Unevictable": 0,
       "VmallocChunk": 0,
       "VmallocTotal": 35184372087808,
-      "VmallocUsed": 83263488,
+      "VmallocUsed": 83197952,
       "Writeback": 0,
       "WritebackTmp": 0,
       "Zswap": 0,
@@ -253,7 +353,7 @@
   "format_version": 1,
   "git": {
     "branch": "codex/rebuild-bootstrap",
-    "commit": "b973f5a0d2c258ea8e26382cf6a32aca017f49cb",
+    "commit": "61ea6b8e7c00d86e5b421a2c9975f25de03e7cde",
     "dirty": false,
     "remotes": [
       "origin"
