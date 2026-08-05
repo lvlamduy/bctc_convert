@@ -1,9 +1,9 @@
 # Progress report
 
-- Date/time: 2026-08-05T22:51:14.081849+00:00
+- Date/time: 2026-08-05T23:22:46.123559+00:00
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16303 MiB, compute 12.0); 125.71 GiB RAM
 - Isolated GPU runtime: PASS; recorded model state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
-- Code hash: bootstrap is on `codex/rebuild-bootstrap` at `62d93dfd5396c483a45c6cc2f5d80440d2a0fb39` with dirty state `False`
+- Code hash: bootstrap is on `codex/rebuild-bootstrap` at `86dbdf91251f1060cc3c7f3052d72544359ba055` with dirty state `False`
 - Schema count: 1592 (CDKT 77; KQKD 24; LCTT 107; TM 1384)
 - PDFs registered: 2567
 - ROLE A completed: 0 documents
@@ -13,13 +13,14 @@
 - PDF_ONLY metrics: not yet measured
 - Frozen cross-reader calibration: E-0010 PASS_TRACKED_AND_LOCAL_SEALS; strict rows=91.67%, strict cells=92.42%, reference coverage=94.70%, auto-high=0
 - Targeted independent geometry recovery: E-0011 PASS_TRACKED_AND_LOCAL_SEALS; strict rows=100.00%, strict cells=100.00%, reference coverage=100.00%, auto-high=0
+- Batch/checkpoint mechanism: E-0012 PASS_TRACKED_AND_LOCAL_ARTIFACTS; pages=1, lines=50, words=380, model-load sessions=1, byte-identical=True
 - Mongo-assisted metrics: PASS weak-reference-only (112147 cells; 27 banks)
 - Questions created / resolved: 4 / 2
 - Autonomous decisions: preserve supplied schema unchanged; keep 1944 as a collision-cleared proposal; segment LCTT by workbook position and fail closed on the semantic conflict
 - Not applicable / not observed / unresolved: 0 / 0 / 0 (no production records yet)
 - Workbooks: 0
 - Largest error: no frozen end-to-end multi-institution accuracy result or production-calibrated acceptance threshold yet
-- Last change: sealed E-0011 PP-OCRv6 geometry/value recovery with visible dash evidence, trailing-context isolation, cross-page arithmetic validation, and zero history/schema/confidence promotion
+- Last change: locked clean E-0012 PP-OCRv6 batch equivalence, no-op resume, and batch/helper-aware sealing without adding an accuracy sample
 - Before/after on the targeted TCB calibration: strict reference coverage/cell agreement 94.70%/92.42% -> 100%/100%; Role C label exactness remains only 3/140
 - Regression: run separately with `.venv/bin/pytest`; latest verified count is recorded in `PROJECT_MEMORY.md`
 - Backup status: development=PASS; production=FAIL (local restore verified=True, off-machine=False)

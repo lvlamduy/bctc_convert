@@ -1,6 +1,6 @@
 # Recovery audit
 
-Captured: 2026-08-05T22:51:14.081849+00:00
+Captured: 2026-08-05T23:22:46.123559+00:00
 
 ## Authoritative starting state
 
@@ -22,6 +22,7 @@ Captured: 2026-08-05T22:51:14.081849+00:00
 - The uploaded MongoDB archive is hash-registered. The allowlisted financial template audit contains 1851 documents and found no ReportNormID 1944 collision. The local historical weak-reference index was revalidated at 112147 cells across 27 banks. Its database constraints forbid mapping and confidence promotion.
 - Tracked E-0010 calibration integrity is **PASS_TRACKED_AND_LOCAL_SEALS**; 2/2 locally present seals verify. It remains machine-reference calibration, not production accuracy.
 - Tracked E-0011 targeted geometry-recovery integrity is **PASS_TRACKED_AND_LOCAL_SEALS**; 3/3 locally present seals verify. It remains post-failure machine-reference calibration, not production accuracy.
+- Tracked E-0012 batch/checkpoint integrity is **PASS_TRACKED_AND_LOCAL_ARTIFACTS**; 9/9 locally present artifacts verify. It is a mechanism regression on an existing page, not a new accuracy sample.
 - A local control-plane backup restored successfully: `True`. Per the user's development policy, development backup status is **PASS**. It is not off-machine and does not protect against total VPS loss; production status remains `FAIL`.
 
 ## Recovery posture

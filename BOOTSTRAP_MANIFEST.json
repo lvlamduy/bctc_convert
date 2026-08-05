@@ -1,10 +1,10 @@
 {
   "backup": {
-    "archive": "/workspace/bctc-ai-backups/bctc-ai-control-plane-20260805T225120Z.tar.gz",
-    "archive_sha256": "eae2f54fd63af1500e75d4a34f02dd43a2e840db7c4fc4faf7d11945abc38ea9",
+    "archive": "/workspace/bctc-ai-backups/bctc-ai-control-plane-20260805T232252Z.tar.gz",
+    "archive_sha256": "fafcd8d4dcd5991ac46043a2ced084563d57063fc7a6c2a8811521b6179134d1",
     "development_status": "PASS",
-    "file_count": 217,
-    "manifest": "/workspace/bctc-ai-backups/bctc-ai-control-plane-20260805T225120Z.tar.gz.manifest.json",
+    "file_count": 224,
+    "manifest": "/workspace/bctc-ai-backups/bctc-ai-control-plane-20260805T232252Z.tar.gz.manifest.json",
     "off_machine": false,
     "production_status": "FAIL",
     "restored_and_verified": true
@@ -19,6 +19,113 @@
     "registry": "data/registered/bank_registry.json",
     "sha256": "4857e8124574ab127844a9605ea340648052469c1c1965394a317f2aba69da3b",
     "size_bytes": 11175
+  },
+  "batch_mechanism": {
+    "acceptance": {
+      "batch_output_equivalence": "PASS",
+      "batch_seal_compatibility": "PASS",
+      "checkpoint_resume": "PASS",
+      "new_accuracy_sample": false,
+      "next_gate": "RUN_UNCHANGED_FROZEN_ROLE_B_ROLE_C_LOGIC_ON_MBB_AND_VCB",
+      "production_accuracy_approved": false
+    },
+    "artifact": "docs/experiments/E-0012-ppocrv6-batch-mechanism.json",
+    "artifact_sha256": "3c8880e50a1a7846cfd06b96c9d46c5189c74589f6166929fdf7712f229f0c0b",
+    "claim_boundary": "This result proves batch output equivalence, checkpoint verification, no-op resume, and seal compatibility on one previously measured calibration page. It adds no new accuracy sample, human gold, schema mapping, or production approval.",
+    "code_commit": "3291f9dca0843b5d67858b44019a7b2319f69057",
+    "dataset_role": "CALIBRATION",
+    "design": "CLEAN_COMMIT_BATCH_MECHANISM_REGRESSION",
+    "equivalence": {
+      "baseline": "E-0011 single-page runner output for TCB page 15",
+      "baseline_ocr_result_path": "output/calibration/e0011-tcb-role-c/7e3f491783a9895d7716/ppocrv6-page-0015/ocr_result.json",
+      "baseline_ocr_result_sha256": "91779b3e22fadc01eeca7605c71a356e577e56541363ac91ea2750645721c54b",
+      "batch_ocr_result_sha256": "91779b3e22fadc01eeca7605c71a356e577e56541363ac91ea2750645721c54b",
+      "byte_identical": true
+    },
+    "errors": [],
+    "experiment_id": "E-0012",
+    "integrity_status": "PASS_TRACKED_AND_LOCAL_ARTIFACTS",
+    "local_artifact_count": 9,
+    "local_artifacts": [
+      {
+        "name": "source",
+        "present": true,
+        "verified": true
+      },
+      {
+        "name": "input_manifest",
+        "present": true,
+        "verified": true
+      },
+      {
+        "name": "upstream_role_b_seal",
+        "present": true,
+        "verified": true
+      },
+      {
+        "name": "render",
+        "present": true,
+        "verified": true
+      },
+      {
+        "name": "page_manifest",
+        "present": true,
+        "verified": true
+      },
+      {
+        "name": "ocr_result",
+        "present": true,
+        "verified": true
+      },
+      {
+        "name": "seal",
+        "present": true,
+        "verified": true
+      },
+      {
+        "name": "baseline_ocr_result",
+        "present": true,
+        "verified": true
+      },
+      {
+        "name": "batch_manifest",
+        "present": true,
+        "verified": true
+      }
+    ],
+    "metrics": {
+      "completed_page_count": 1,
+      "line_count": 50,
+      "lines_below_0_8": 1,
+      "lines_below_0_9": 1,
+      "mean_line_score": 0.9787058293819427,
+      "minimum_line_score": 0.7611584663391113,
+      "model_load_session_count": 1,
+      "model_load_wall_seconds_total": 0.606621,
+      "page_inference_wall_seconds": 20.883811,
+      "word_token_count": 380
+    },
+    "recorded_status": "PASS_BATCH_EQUIVALENCE_RESUME_AND_SEAL",
+    "resume": {
+      "completed_pages_after": 1,
+      "completed_pages_before": 1,
+      "model_load_sessions_after": 1,
+      "model_load_sessions_before": 1,
+      "model_reloaded": false,
+      "status": "PASS_ALREADY_COMPLETE"
+    },
+    "sealing": {
+      "artifact_set_sha256": "9f379dad2b85a99e89fc081c0d8d19823029483d2d02fdb1b430a9a1dbd2fe04",
+      "automatic_pdf_confidence_promotion": false,
+      "automatic_schema_promotion": false,
+      "automatic_truth_promotion": false,
+      "batch_runner_verified": true,
+      "path": "output/calibration/e0012-batch-mechanism-tcb15/role_c_geometry_seal.json",
+      "sha256": "c45dba46013f7ec4cba3bfdf0d531da5caa1d08772e50c5e6ed71d4ff2990da3",
+      "single_page_helper_verified": true,
+      "status": "GEOMETRY_OCR_COMPLETE"
+    },
+    "verified_local_artifact_count": 9
   },
   "calibration": {
     "acceptance": {
@@ -120,18 +227,18 @@
     "recorded_status": "PASS_CALIBRATION_WITH_REQUIRED_ESCALATIONS",
     "verified_local_seal_count": 2
   },
-  "captured_at": "2026-08-05T22:51:19.960815+00:00",
+  "captured_at": "2026-08-05T23:22:51.991553+00:00",
   "environment": {
     "architecture": "x86_64",
-    "captured_at": "2026-08-05T22:51:14.081849+00:00",
+    "captured_at": "2026-08-05T23:22:46.123559+00:00",
     "cpu": {
       "logical_count": 32,
       "model": "AMD Ryzen 9 5950X 16-Core Processor"
     },
     "disk": {
-      "free_bytes": 6342672384,
+      "free_bytes": 6337949696,
       "total_bytes": 42283094016,
-      "used_bytes": 35940421632
+      "used_bytes": 35945144320
     },
     "gpu": {
       "available": true,
@@ -231,22 +338,22 @@
     "hostname": "O-2004251",
     "kernel": "6.6.0-hiveos",
     "memory": {
-      "Active": 31527051264,
-      "Active(anon)": 10095337472,
-      "Active(file)": 21431713792,
-      "AnonHugePages": 509607936,
-      "AnonPages": 1323044864,
+      "Active": 31536001024,
+      "Active(anon)": 10100002816,
+      "Active(file)": 21435998208,
+      "AnonHugePages": 501219328,
+      "AnonPages": 1384607744,
       "Bounce": 0,
       "Buffers": 106057728,
-      "Cached": 83269283840,
+      "Cached": 83304189952,
       "CmaFree": 0,
       "CmaTotal": 0,
       "CommitLimit": 67354472448,
-      "Committed_AS": 15388340224,
+      "Committed_AS": 15477161984,
       "DirectMap1G": 130996502528,
       "DirectMap2M": 5989466112,
       "DirectMap4k": 355323904,
-      "Dirty": 1110016,
+      "Dirty": 917504,
       "FileHugePages": 35651584,
       "FilePmdMapped": 0,
       "HardwareCorrupted": 0,
@@ -256,33 +363,33 @@
       "HugePages_Total": 131072,
       "Hugepagesize": 2097152,
       "Hugetlb": 268435456,
-      "Inactive": 53205745664,
-      "Inactive(anon)": 2185265152,
-      "Inactive(file)": 51020480512,
-      "KReclaimable": 1661489152,
-      "KernelStack": 14204928,
-      "Mapped": 650776576,
-      "MemAvailable": 120210685952,
-      "MemFree": 47374413824,
+      "Inactive": 53292908544,
+      "Inactive(anon)": 2267942912,
+      "Inactive(file)": 51024965632,
+      "KReclaimable": 1662930944,
+      "KernelStack": 14467072,
+      "Mapped": 658575360,
+      "MemAvailable": 120134369280,
+      "MemFree": 47287885824,
       "MemTotal": 134977380352,
       "Mlocked": 0,
       "NFS_Unstable": 0,
-      "PageTables": 12775424,
+      "PageTables": 12492800,
       "Percpu": 28966912,
-      "SReclaimable": 1585410048,
-      "SUnreclaim": 491913216,
+      "SReclaimable": 1586851840,
+      "SUnreclaim": 492531712,
       "SecPageTables": 0,
-      "Shmem": 10923143168,
+      "Shmem": 10949283840,
       "ShmemHugePages": 0,
       "ShmemPmdMapped": 0,
-      "Slab": 2077323264,
+      "Slab": 2079383552,
       "SwapCached": 0,
       "SwapFree": 0,
       "SwapTotal": 0,
       "Unevictable": 0,
       "VmallocChunk": 0,
       "VmallocTotal": 35184372087808,
-      "VmallocUsed": 83329024,
+      "VmallocUsed": 84262912,
       "Writeback": 0,
       "WritebackTmp": 0,
       "Zswap": 0,
@@ -887,7 +994,7 @@
   },
   "git": {
     "branch": "codex/rebuild-bootstrap",
-    "commit": "62d93dfd5396c483a45c6cc2f5d80440d2a0fb39",
+    "commit": "86dbdf91251f1060cc3c7f3052d72544359ba055",
     "dirty": false,
     "remotes": [
       "origin"
