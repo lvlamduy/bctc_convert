@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -84,18 +85,19 @@ def _verify_source_artifacts(project_root: Path, registry: dict[str, Any]) -> li
     return records
 
 
-def capture_e0031_numeric_cell_verification_benchmark(
+def capture_numeric_cell_verification_benchmark(
     project_root: Path,
     *,
     experiment_config_path: Path,
     crop_registry_path: Path,
     reader_output_directory: Path,
     output_path: Path,
+    expected_experiment_id: str | None = None,
 ) -> dict[str, Any]:
     project_root = project_root.resolve()
     if _git(project_root, "status", "--porcelain"):
         raise NumericCellVerificationBenchmarkError(
-            "formal E-0031 capture requires clean Git code"
+            "formal numeric-verification capture requires clean Git code"
         )
     output = _resolve(project_root, output_path, "output")
     if not output.is_relative_to((project_root / "docs" / "experiments").resolve()):
@@ -104,21 +106,45 @@ def capture_e0031_numeric_cell_verification_benchmark(
         raise NumericCellVerificationBenchmarkError(f"refusing to overwrite capture: {output}")
 
     experiment_path = _resolve(project_root, experiment_config_path, "experiment config")
-    experiment = _load_yaml(experiment_path, "E-0031 experiment config")
+    experiment = _load_yaml(experiment_path, "numeric-verification experiment config")
+    experiment_id = experiment.get("experiment_id")
     if (
         experiment.get("version") != 1
-        or experiment.get("experiment_id") != "E-0031"
+        or not isinstance(experiment_id, str)
+        or re.fullmatch(r"E-\d{4}", experiment_id) is None
+        or (expected_experiment_id is not None and experiment_id != expected_experiment_id)
         or experiment.get("dataset_role") != "CALIBRATION"
         or experiment.get("design")
         != "REFERENCE_BLIND_FIXED_GRID_INDEPENDENT_NUMERIC_VERIFICATION"
     ):
-        raise NumericCellVerificationBenchmarkError("E-0031 experiment identity drifted")
+        raise NumericCellVerificationBenchmarkError(
+            "numeric-verification experiment identity drifted"
+        )
     source = experiment.get("source")
     frozen = experiment.get("frozen_inputs")
     candidate = experiment.get("candidate")
     acceptance = experiment.get("acceptance_policy")
-    if not all(isinstance(value, dict) for value in (source, frozen, candidate, acceptance)):
-        raise NumericCellVerificationBenchmarkError("E-0031 controls are incomplete")
+    row_contract_control = experiment.get("row_contract")
+    registry_contract = experiment.get("registry_contract")
+    if row_contract_control is None and experiment_id == "E-0031":
+        row_contract_control = {
+            "frozen_input_key": "e0029_row_contract",
+            "experiment_id": "E-0029",
+            "status": "PASS_REFERENCE_BLIND_ROW_RECONSTRUCTION",
+        }
+    if not all(
+        isinstance(value, dict)
+        for value in (
+            source,
+            frozen,
+            candidate,
+            acceptance,
+            row_contract_control,
+        )
+    ) or (registry_contract is not None and not isinstance(registry_contract, dict)):
+        raise NumericCellVerificationBenchmarkError(
+            "numeric-verification controls are incomplete"
+        )
 
     verified_inputs: dict[str, dict[str, Any]] = {}
     verified_paths: dict[str, Path] = {}
@@ -131,14 +157,18 @@ def capture_e0031_numeric_cell_verification_benchmark(
             project_root, candidate.get(name), name
         )
 
-    row_contract = _load_json(verified_paths["e0029_row_contract"], "E-0029 contract")
+    row_contract_key = row_contract_control.get("frozen_input_key")
+    if not isinstance(row_contract_key, str) or row_contract_key not in verified_paths:
+        raise NumericCellVerificationBenchmarkError("row-contract input key is invalid")
+    row_contract = _load_json(verified_paths[row_contract_key], "row contract")
     if (
         not isinstance(row_contract, dict)
-        or row_contract.get("status") != "PASS_REFERENCE_BLIND_ROW_RECONSTRUCTION"
+        or row_contract.get("experiment_id") != row_contract_control.get("experiment_id")
+        or row_contract.get("status") != row_contract_control.get("status")
         or [record.get("page") for record in row_contract.get("after", [])]
         != source.get("target_pages")
     ):
-        raise NumericCellVerificationBenchmarkError("E-0029 row contract drifted")
+        raise NumericCellVerificationBenchmarkError("row contract drifted")
 
     registry_path = _resolve(project_root, crop_registry_path, "crop registry")
     registry = _load_json(registry_path, "numeric crop registry")
@@ -146,13 +176,18 @@ def capture_e0031_numeric_cell_verification_benchmark(
         raise NumericCellVerificationBenchmarkError("numeric crop registry must be an object")
     if (
         registry.get("row_contract", {}).get("sha256")
-        != frozen["e0029_row_contract"]["sha256"]
+        != frozen[row_contract_key]["sha256"]
         or registry.get("crop_policy", {}).get("sha256")
         != candidate["crop_policy"]["sha256"]
         or [page.get("page") for page in registry.get("pages", [])]
         != source.get("target_pages")
     ):
         raise NumericCellVerificationBenchmarkError("numeric crop contract drifted")
+    if registry_contract is not None and any(
+        registry.get(key) != registry_contract.get(key)
+        for key in ("format_version", "policy", "geometry_authority")
+    ):
+        raise NumericCellVerificationBenchmarkError("numeric crop registry identity drifted")
     source_artifacts = _verify_source_artifacts(project_root, registry)
 
     reader_root = _resolve(project_root, reader_output_directory, "reader output")
@@ -218,8 +253,19 @@ def capture_e0031_numeric_cell_verification_benchmark(
         and metrics["blank_to_zero_or_value_promotion_count"] == 0,
         "zero_automatic_overwrite": metrics["automatic_reader_overwrite_count"] == 0,
         "reader_score_not_used": metrics["reader_score_decision_use_count"] == 0,
-        "off_balance_page_not_loaded": 5 not in [page["page"] for page in registry["pages"]],
+        "excluded_off_balance_pages_not_loaded": set(
+            source.get("excluded_off_balance_pages", [])
+        ).isdisjoint(page["page"] for page in registry["pages"]),
     }
+    optional_metric_gates = {
+        "exact_post_crop_padded_cell_count": "post_crop_padded_cell_count",
+        "exact_post_crop_bottom_padding_pixel_count": "post_crop_bottom_padding_pixel_count",
+    }
+    for acceptance_key, metric_key in optional_metric_gates.items():
+        if acceptance_key in acceptance:
+            gates[acceptance_key] = registry["metrics"].get(metric_key) == int(
+                acceptance[acceptance_key]
+            )
     isolation = {
         "human_review_loaded": False,
         "historical_or_mongodb_values_loaded": False,
@@ -230,14 +276,14 @@ def capture_e0031_numeric_cell_verification_benchmark(
         "blank_promoted_to_zero_or_value": False,
         "reader_disagreement_automatically_repaired": False,
         "e0022_evidence_loaded": False,
-        "off_balance_page_5_loaded": False,
+        "excluded_off_balance_pages_loaded": False,
         "schema_mapping_invoked": False,
         "accounting_validation_invoked": False,
         "excel_export_invoked": False,
     }
     result = {
         "format_version": 1,
-        "experiment_id": "E-0031",
+        "experiment_id": experiment_id,
         "dataset_role": "CALIBRATION",
         "capture_git_commit": _git(project_root, "rev-parse", "HEAD"),
         "capture_git_dirty": False,
@@ -264,3 +310,23 @@ def capture_e0031_numeric_cell_verification_benchmark(
     }
     atomic_write_json(output, result)
     return result
+
+
+def capture_e0031_numeric_cell_verification_benchmark(
+    project_root: Path,
+    *,
+    experiment_config_path: Path,
+    crop_registry_path: Path,
+    reader_output_directory: Path,
+    output_path: Path,
+) -> dict[str, Any]:
+    """Backward-compatible entry point for the sealed E-0031 denominator."""
+
+    return capture_numeric_cell_verification_benchmark(
+        project_root,
+        experiment_config_path=experiment_config_path,
+        crop_registry_path=crop_registry_path,
+        reader_output_directory=reader_output_directory,
+        output_path=output_path,
+        expected_experiment_id="E-0031",
+    )

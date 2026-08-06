@@ -66,8 +66,8 @@ def main() -> int:
     batch = _load_json(batch_path, "OCR batch manifest")
     contract = _load_json(row_contract, "row contract")
     target_pages = [int(record["page"]) for record in contract.get("after", [])]
-    if target_pages != [3, 4]:
-        raise NumericCellCropError("numeric crop V1 requires the exact E-0029 pages")
+    if not target_pages or len(target_pages) != len(set(target_pages)):
+        raise NumericCellCropError("row contract must contain unique target pages")
 
     page_records = {
         int(record["page"]): record

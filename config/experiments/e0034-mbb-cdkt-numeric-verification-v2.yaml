@@ -1,0 +1,92 @@
+version: 1
+experiment_id: E-0034
+dataset_role: CALIBRATION
+design: REFERENCE_BLIND_FIXED_GRID_INDEPENDENT_NUMERIC_VERIFICATION
+
+source:
+  target_pages: [3, 4]
+  excluded_off_balance_pages: [5]
+  statement_type: CDKT
+  statement_instance_id: mbb-q1-2026-cdkt
+  scope: UNKNOWN
+
+row_contract:
+  frozen_input_key: e0033_row_contract
+  experiment_id: E-0033
+  status: PASS_REFERENCE_BLIND_NOTE_ROW_ANCHOR_SPLIT
+
+registry_contract:
+  format_version: 2
+  policy: FIXED_GRID_NUMERIC_CELL_CROPS_V2
+  geometry_authority: E0033_PP_OCRV6_FIXED_GRID
+
+frozen_inputs:
+  e0033_row_contract:
+    path: docs/experiments/E-0033-mbb-cdkt-note-row-split-immutable.json
+    sha256: d9c0ecf44f6a0f652e6c991d3ab95b7ab0e821068366764e39a3f0de7f0711fb
+  ocr_batch:
+    path: output/calibration/e0027-mbb-q1-2026-end-to-end-role-c/batch_manifest.json
+    sha256: 0d94762ba4a0d383793fe93a56e48fa7b79d6a3f7faaf62e9dcf40935b8c2889
+
+candidate:
+  git_commit: 84a9eedad1bc331e4417b3cc7e17f41c87432f10
+  crop_policy:
+    path: config/tables/numeric-cell-crops-v2.yaml
+    sha256: f1dcbe668b70a9d71f08483f46aad01fc7cd719db96f8bd202d32554c5a7907b
+  model_config:
+    path: config/models/numeric-recognizer-v1.toml
+    sha256: 2e17cdad62d452e8591afd697781ebceb6d483df14570bb7b8b4281ed1a40b03
+  crop_algorithm:
+    path: src/bctc_ai/evaluation/numeric_cell_crops.py
+    sha256: fe2aa1d33d422888f2efa0399503743f978b1af1605e4f99ac2a872ba249cb29
+  reader_algorithm:
+    path: src/bctc_ai/ocr/numeric_cell_reader.py
+    sha256: 5e4a7ea2a229c489c804d335d6e3f12d46904cdc5dd1c051b7dce419cccab5cd
+  verification_algorithm:
+    path: src/bctc_ai/evaluation/numeric_cell_verification.py
+    sha256: 4e19837ca93341e7bdcc8e4b3999d3276cf0ba00a88e3c3011f4de6d378db5c3
+  model_repo_id: PaddlePaddle/en_PP-OCRv5_mobile_rec
+  model_revision: 267c36e24c331595590fe7bd72bde2436fd286f2
+  model_weights_sha256: 3ec8a97ed6cefe8568d3e2ee90bb193299b566a7661aa4fd52d224b96b59f66b
+
+acceptance_policy:
+  exact_page_set: [3, 4]
+  exact_row_count: 64
+  exact_cell_count: 128
+  exact_primary_observation_counts:
+    BLANK: 9
+    DASH: 5
+    VALUE: 114
+  exact_post_crop_padded_cell_count: 114
+  exact_post_crop_bottom_padding_pixel_count: 1368
+  minimum_observed_exact_agreement_rate: 0.99
+  maximum_unresolved_observed_cells: 1
+  exact_verified_dash_count: 5
+  human_gold_or_production_accuracy_claim: false
+
+forbidden_inputs:
+  - human_review_labels_ids_or_values
+  - mongodb_or_historical_values
+  - template_labels_or_report_norm_ids
+  - row_labels_or_notes_as_numeric_reader_input
+  - period_or_unit_as_numeric_reader_input
+  - reader_probability_as_acceptance_or_truth
+  - blank_to_zero_or_value_promotion
+  - automatic_repair_or_overwrite_on_reader_disagreement
+  - E-0022_source_artifacts_output_or_diagnosis
+  - off_balance_page_5
+
+development_note: >-
+  The 0.99 agreement, one-cell abstention and geometry-only 0.27-line-height
+  bottom-canvas policy were selected after dirty calibration smoke tests on
+  this block. Padding depends only on the presence of immutable PP-OCRv6 source
+  value-line indices; no label, OCR text, expected value, sign, schema ID,
+  history or human review enters the crop decision. These are calibration
+  controls, not untouched-holdout thresholds or a production-accuracy claim.
+
+claim_boundary: >-
+  E-0034 measures independent numeric/sign/dash agreement on the corrected
+  E-0033 MBB CDKT grid. Exact agreement verifies a bounded cell proposal;
+  disagreement abstains. It does not verify Vietnamese labels, blank-row
+  semantics, schema IDs, accounting equations, Excel output, human-gold
+  accuracy or untouched-holdout performance.
