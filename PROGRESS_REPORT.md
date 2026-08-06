@@ -1,13 +1,13 @@
 # Progress report
 
-- Updated: 2026-08-06T09:29:00+00:00
+- Updated: 2026-08-06T10:06:00+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `cf83314`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
+- Latest clean, tested, pushed checkpoint: `2e92e9e`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
 - Registered PDFs: 2,567
-- Latest full regression: 279 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
+- Latest full regression: 283 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
 
 ## Accuracy focus and measurable state
 
@@ -22,10 +22,10 @@
 - Baseline before the current change remains E-0010: 140 Role A rows versus 139
   Role B rows; financial-row/cell coverage 94.70%; conditional exact row/cell
   agreement 96.80%/97.60%; strict exact row/cell agreement 91.67%/92.42%.
-- Current logic being improved: replace a generative table's row grid with an
-  independently reconstructed geometry grid, retain the semantic reader for
-  labels/context, inherit verified period axes across continuation pages, and
-  send unresolved merges or multi-number cells to localized rereading.
+- Current logic being improved: reliable full-document statement discovery from
+  noisy Vietnamese headers before table extraction, followed by independent row
+  geometry, semantic labels, inherited continuation-page period axes and
+  localized rereading only for unresolved cells.
 - New before-result from E-0017: 147 Role A versus 146 Role B rows; row/cell
   coverage 94.964%; conditional exact row/cell agreement 90.9091%/91.2879%;
   strict exact row/cell agreement 86.3309%/86.6906%. The first four pages have
@@ -89,9 +89,20 @@
   logic-development evidence, not a real-document or human-gold accuracy claim.
   E-0023 now seals this result from clean commit `48043d0`; artifact SHA-256 is
   `87121a2eee5e29213e06c43bcd92db14d62291fbf79afced7f5c9eec90ae5bd1`.
-- Next bounded action: preprocess all 33 E-0022 Role B pages at 300 DPI, then run
-  PP-OCRv6 word-box discovery over the full document. Locate the main statements
-  without preselected page numbers and seal Role B before any Role A access.
+- New untouched E-0022 Role B result: preprocessing covered 33/33 pages at 300
+  DPI and hash-verified 70 render/variant artifacts. Full-document PP-OCRv6
+  completed 33/33 pages with 2,477 lines, 24,299 word tokens, mean line score
+  0.950141, 214 lines below 0.8 and 1,420.994 seconds of page inference. The
+  frozen locator correctly abstained with zero candidates and zero
+  mapping-eligible pages. Main observed error class is
+  `STATEMENT_DISCOVERY_TITLE_ANCHOR_VARIANT`: title scores on the apparent main
+  statement starts are just below the frozen 0.74 gate (approximately
+  0.720/0.696/0.722), while OCR emits form variants `B02a/B03a/B04a` that do not
+  exactly match the frozen `B02/B03/B04` anchors. This is diagnosis only; no
+  threshold or page selection was changed and no semantic reader was invoked.
+- Next bounded action: commit the evidence-only unresolved-discovery sealer,
+  capture the Role B seal from a clean tree, and only then hydrate Role A for the
+  predeclared one-shot diagnosis/comparison.
 
 ## Completed tasks
 
@@ -130,6 +141,12 @@
   absent Role B output root, and byte identities for 11 execution runners plus
   the 24 previously frozen pipeline/schema files. Artifact SHA-256:
   `c56721c3164c42e5ddd869778134b0196a914d04144b7a591524b0a6bc200d81`.
+- Completed E-0022 Role B preprocessing and full-document PP-OCRv6 discovery.
+  All 33 page checkpoints and their identity/hash chains passed a real resume
+  verification. The preprocess manifest SHA-256 is
+  `10bb4f544d21bcd0f633189e8b7ff715a0869453ca31d27d1446d4bcaa03272b`;
+  the final batch manifest SHA-256 is
+  `462e23dae7581043362dd577917e1ce10d00f56dc216b67e16fba895a08c7c64`.
 - Built reproducible bootstrap, GPU runtime, package/model hashes, source registry,
   dataset-role registry, backup/restore checks, and server rebuild documentation.
 - Restored and audited `financial_20_02_2022.gz` as a read-only MongoDB historical
@@ -353,12 +370,12 @@
   `2026-08-06T08:34:37Z`; code/config/model/schema identities were frozen at
   `2026-08-06T08:35:17Z`. Role B must be hydrated, processed and sealed before
   Role A source access, and the frozen thresholds cannot be tuned on this pair.
-- The exact Role B scan was hydrated from the immutable S3 manifest: SHA-256
-  `a85402445a34e80dd4248471c2d23d4cf4b349ab2455b91db457f3e6effbdd4a`,
-  8,027,105 bytes. It has 33 pages and no text layer on the first five inspected
-  pages. Role A remains locally absent. A pre-preprocessing execution gate now
-  binds all OCR/locator/sealer runners to their byte-identical versions at the
-  frozen `e0496e2` commit; no page or threshold was selected from content.
+- The frozen statement locator returned `UNRESOLVED` with no complete ordered
+  `CDKT→KQKD→LCTT→TM` block, zero candidates and zero mapping-eligible pages.
+  Role A remains absent. An evidence-only sealer is being added to hash-lock the
+  108 source/preprocess/OCR/locator artifacts and both PP-OCRv6 weights without
+  changing the frozen algorithms, selecting pages, invoking PaddleOCR-VL,
+  mapping rows or using history.
 - Ordered SchemaGraph v1 and E-0023 are sealed. Work now returns to E-0022 under
   its frozen pre-access contract: hydrate/process/seal Role B only. The new mapper
   remains intentionally excluded from that already-frozen pipeline.
@@ -367,6 +384,12 @@
 
 ## Major challenges and obstacles
 
+- E-0022 exposes a statement-discovery recall failure before table extraction.
+  PP-OCRv6 recognizes visibly structured header variants such as
+  `BÁO CÁO TINH HìNH ... HP NHÁT` and form codes `B02a/TCTD-HN`, but the frozen
+  title scores remain narrowly below 0.74 and the form-anchor token differs by
+  the suffix `a`. The holdout must remain unresolved; normalization/form-anchor
+  improvements can only be developed later on separate data.
 - A higher-resolution crop is not sufficient by itself. On MBB LCTT page 14,
   PaddleOCR-VL still concatenates rows and numeric cells at 450 DPI; its current
   HTML proposal has 18 rows and 14 invalid multi-number cells, while independent
@@ -446,9 +469,10 @@
 
 ## Planned next steps
 
-1. Preprocess all 33 E-0022 Role B pages at 300 DPI, run frozen full-document
-   statement discovery/OCR, and seal Role B before any Role A access.
-2. Complete the one-shot E-0022 Role A/Role B comparison with frozen thresholds
+1. Seal the exact unresolved E-0022 Role B result without page selection,
+   threshold changes, semantic-reader execution, mapping or history.
+2. Hydrate Role A only after that seal, then complete the one-shot E-0022
+   Role A/Role B diagnosis/comparison with frozen thresholds
    and report the main error class and measurable before/after results.
 3. Apply ordered SchemaGraph v1 next on separate development/validation blocks
    reconstructed from real PDFs; do not reuse E-0022 to tune its weights.

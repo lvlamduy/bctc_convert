@@ -10,7 +10,18 @@ from bctc_ai.evaluation.holdout_execution import (
 )
 
 
-def test_e0022_role_b_execution_control_allows_only_full_document_role_b(project_root):
+def test_e0022_role_b_execution_control_allows_only_full_document_role_b(project_root, monkeypatch):
+    expected_output = (
+        project_root / "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424"
+    ).resolve()
+    original_exists = type(project_root).exists
+
+    def pre_execution_exists(path):
+        if path.resolve() == expected_output:
+            return False
+        return original_exists(path)
+
+    monkeypatch.setattr(type(project_root), "exists", pre_execution_exists)
     result = validate_role_b_execution_control(
         project_root,
         project_root / "config/experiments/e0022-role-b-execution-control.yaml",
