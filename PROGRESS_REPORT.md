@@ -1,14 +1,15 @@
 # Progress report
 
-- Updated: 2026-08-06T11:26:19+00:00
+- Updated: 2026-08-06T11:46:13+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `1d46626`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
+- Latest clean, tested, pushed checkpoint: `c351c70`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
 - Registered PDFs: 2,567
-- Latest full regression including multi-signal discovery v3: 311 passed, 2
-  intentionally skipped historical replays in 97.76 seconds; Ruff and
+- Latest full regression including multi-signal discovery v3 and the frozen
+  VietOCR reader/gates: 328 passed, 2 intentionally skipped historical replays
+  in 100.90 seconds; Ruff and
   `git diff --check` passed
 
 ## Accuracy focus and measurable state
@@ -159,13 +160,30 @@
   VGG-Transformer weight are now installed in an isolated exact-hash overlay.
   The 151,815,373-byte weight SHA-256 is
   `380512193a8b6cbf6fad80deacdc9b6939d10d473d199892fc6408d13775ea59`;
-  no base environment changed. Seventeen focused tests now lock reference-blind
+  no base environment changed. Seventeen focused tests lock reference-blind
   request fields, artifact/safety policy, CER/WER/edit categories, suffix
-  truncation and the adoption gate. No challenger inference has been run.
-- Next bounded action: commit the reader/runtime/metric gate, rebuild crops for
-  the updated config hash, generate a reference-free request, and run VietOCR
-  once. Integrate only if CER decreases without title-exactness or truncation
-  regression; E-0022 will not be rerun or retuned.
+  truncation and the adoption gate. These pre-inference mechanisms were pushed
+  at `c351c70` after the full regression passed.
+- Formal E-0024 reference-blind inference is complete on the unchanged 37-line
+  crop set. PP-OCRv6 baseline: 0/37 source-exact lines, 186 character edits,
+  CER 14.9518%, WER 55.2448%, and 0/10 exact titles. VietOCR: 30/37
+  source-exact lines, 8 character edits, CER 0.6431%, WER 2.7972%, and 6/10
+  exact titles. Both have zero empty/suffix-truncated lines, so all three
+  predeclared adoption gates pass. A diagnostic accent-insensitive retrieval
+  key comparison is 11/37 for PP-OCRv6 versus 37/37 for VietOCR; it did not
+  participate in the adoption gate.
+- E-0024's remaining class is narrow: 8 substitutions across 7 lines, comprising
+  7 diacritic-only differences and one capitalization difference, with zero
+  base-character substitutions, insertions, deletions or truncations. Confidence
+  overlaps correct lines, so raw output cannot be auto-promoted from probability.
+  The artifact SHA-256 is
+  `18b896f7174992dd16a4372a5c24ec46df967e763223b9c85b25919ca5e89289`.
+- Next bounded action: add a source-box-preserving semantic-line adapter that
+  routes only headings/labels to VietOCR and feeds its raw proposal into
+  statement discovery/mapping while PP-OCRv6 retains geometry and all numeric
+  evidence. Re-run unchanged E-0013 calibration plus safety mutations; never
+  auto-correct the seven residual accent/case differences and do not touch
+  E-0022.
 
 ## Completed tasks
 
@@ -463,11 +481,11 @@
   anchors pass exact validation. The active task is its clean-commit build and
   bounded VietOCR inference; no model output receives numeric, geometry or
   mapping authority.
-- The E-0024 model runtime and comparison mechanism are ready but remain
-  pre-inference. Official artifacts and the extracted overlay pass exact hash
-  verification; the runner can read only crop ID/category/path/hash, blocks
-  socket/DNS access and never loads the source transcription or PP-OCR baseline.
-  Metrics and adoption gates are fixed before its first output.
+- E-0024 passes its bounded semantic-reader gate. The runtime read only crop
+  ID/category/path/hash, blocked socket/DNS access and never loaded source
+  transcription or PP-OCR baseline. Integration is now in progress at the
+  adapter/evidence-contract level; no output has numeric, geometry, mapping or
+  automatic truth authority.
 - Ordered SchemaGraph v1 and E-0023 are sealed. The mapper remains intentionally
   excluded from the
   already-frozen E-0022 pipeline and will next be evaluated on separate real-PDF
@@ -507,6 +525,11 @@
   runtime unless intercepted. E-0024 therefore pins the wheel hash, will vendor
   the exact downloaded config/weight hashes outside Git, disables ground-truth
   input to decoding, and decides adoption only from the predeclared crop set.
+- E-0024 also proves decoded probability is not a source-exact gate: one wrong
+  `VỐN`→`VÓN` line scored about 0.9324, overlapping exact lines whose observed
+  range starts near 0.9175. The adapter must retain reader disagreement/raw crops
+  and use semantic/structural evidence with abstention instead of trusting one
+  probability threshold.
 - A higher-resolution crop is not sufficient by itself. On MBB LCTT page 14,
   PaddleOCR-VL still concatenates rows and numeric cells at 450 DPI; its current
   HTML proposal has 18 rows and 14 invalid multi-number cells, while independent
@@ -600,20 +623,17 @@
 
 ## Planned next steps
 
-1. Commit and push the reference-blind runner, exact VietOCR runtime manifest,
-   fixed metrics and no-regression gate before any challenger inference.
-2. Rebuild the unchanged 37 selected crops under the updated config hash,
-   generate the allowlisted reference-free inference request, and run official
-   VietOCR 0.3.13 VGG-Transformer once with network access blocked.
-3. Capture exact-line accuracy, CER, WER, base-character/diacritic-only edits,
-   deletions and truncations with the registered PP-OCRv6 baseline. Integrate an
-   independent Vietnamese heading/label reader only if the
-   fixed-crop result shows a bounded gain. PP-OCRv6 remains geometry
-   and numeric authority; the challenger is proposal-only.
-4. Capture E-0024 from the clean mechanism/model-benchmark commit: hash-bind the
-   E-0013 no-regression replay, multi-signal safety mutations, three-document
-   Unicode quality audit and the bounded line-recognizer result. Add an immutable
-   integration gate. Do not rerun or retune E-0022.
+1. Commit and push the E-0024 result, replay record, measured runtime and
+   residual error analysis.
+2. Implement the semantic-line adapter with immutable PP-OCR source boxes,
+   raw-reader disagreement, numeric/period/unit/sign field exclusion and
+   truncation/ambiguity abstention.
+3. Feed the adapter into multi-signal discovery v3 on unchanged E-0013
+   calibration and focused lone-title/continuation/off-balance mutations. It may
+   improve heading/label evidence only; PP-OCRv6 remains geometry/numeric
+   authority and E-0022 is neither rerun nor retuned.
+4. Seal the combined statement-discovery plus independent-reader mechanism and
+   add an immutable integration gate before selecting a new holdout.
 5. Apply ordered SchemaGraph v1 next on separate development/validation blocks
    reconstructed from real PDFs; do not reuse E-0022 to tune its weights.
 6. Build a human-gold evaluation split separated by bank and reporting period,

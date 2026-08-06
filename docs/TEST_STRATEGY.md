@@ -242,3 +242,11 @@ errors and diacritic-only errors, stratified at least by title versus non-title.
 Adoption requires strictly lower aggregate CER, no title-exactness regression
 and no increase in empty/truncated lines. Regardless of result, PP-OCRv6 retains
 all geometry/numeric authority and E-0022 remains excluded.
+
+The first formal E-0024 run passes those three bounded gates: PP-OCRv6 versus
+VietOCR is 0/37 versus 30/37 exact lines, 14.9518% versus 0.6431% CER, 55.2448%
+versus 2.7972% WER, and 0/10 versus 6/10 exact titles, with zero empty or
+suffix-truncated predictions for either reader. Seven lines remain non-exact:
+eight substitutions comprising seven accent-only edits and one capitalization
+edit. The integration gate must preserve every raw disagreement and source crop,
+must reject probability-only promotion, and remains calibration-only.

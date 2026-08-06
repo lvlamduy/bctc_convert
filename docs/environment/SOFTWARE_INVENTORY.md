@@ -313,9 +313,12 @@ weights, disables beam search and network/DNS, and loads the local state dict
 with `weights_only=true`. The PyPI classifier says MIT while the wheel's actual
 LICENSE and project description say Apache-2.0; that upstream metadata
 inconsistency is recorded rather than silently resolved. Installation has
-passed exact artifact and wheel-overlay verification. Accuracy, latency and
-VRAM remain pending the frozen E-0024 run and this runtime has no production
-acceptance.
+passed exact artifact and wheel-overlay verification. The frozen E-0024 run
+loaded the model in 2.452926 seconds and processed 37 single-line crops in
+6.977124 total seconds. Peak allocated/reserved GPU memory was
+464.441406/656 MiB. It passed only the bounded semantic-proposal gate; the
+runtime has no production, numeric, period, unit, sign, geometry, mapping or
+automatic-truth acceptance.
 
 Rebuild/verify command:
 

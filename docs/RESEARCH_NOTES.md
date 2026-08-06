@@ -58,6 +58,15 @@ This is a decision-oriented paper log, not a list of model claims. A paper contr
   pixels; expected strings are evaluation-only. Adoption requires lower
   aggregate CER without title-exactness or truncation regression and grants no
   numeric, period, unit, sign, geometry or mapping authority.
+- The measured E-0024 result supports reader specialization rather than
+  unrestricted post-correction. On the frozen 37-line set, VietOCR reduced CER
+  from 14.9518% to 0.6431% and WER from 55.2448% to 2.7972%; exact lines improved
+  from 0/37 to 30/37 and exact titles from 0/10 to 6/10. The eight remaining
+  character edits were seven accent-only substitutions and one capitalization
+  substitution; all 37 predictions nevertheless share the reference retrieval
+  key. Incorrect accents overlap the confidence range of exact lines, so the
+  reader is adopted only as a raw semantic proposal on an immutable PP-OCRv6
+  source box, never as numeric, geometric or source-truth authority.
 - Direct/indirect titles cannot be evaluated independently because “phương pháp trực tiếp” and “phương pháp gián tiếp” share most tokens. Competitive title margin plus ordered method-specific row anchors removed that conflict on both coarse MBB/VCB runs. Q-BOOT-001 was subsequently resolved on 2026-08-06, so a non-conflicting PDF method may select the same-named contiguous block through mapping policy v2; historical experiment outputs remain unchanged.
 - E-0014 confirms that full-page generative table serialization can fail even on a quality-gated clean render. PaddleOCR-VL-1.6 spent 91.814474 seconds on dense VCB CDKT continuation page 9 but emitted only seven HTML table rows including the header and unrelated non-Vietnamese margin text. Completion and model recency are therefore not evidence of row coverage; an independent word-box path and explicit missing-row accounting remain mandatory.
 - E-0014 also exposes two general parser requirements rather than bank-specific exceptions: one page may contain several table blocks including a heading-only block, and the leading columns may be `STT`, label, note, then periods rather than label-first. Column roles must be inferred from headers plus geometry/content, every block must retain reading order, and page-level off-balance scope must be applied before any row can become mapping-eligible.
