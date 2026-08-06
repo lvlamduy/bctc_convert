@@ -1,0 +1,49 @@
+version: 1
+experiment_id: E-0021
+phase: CALIBRATION_VIETNAMESE_LABEL_CORRECTION
+dataset_role: CALIBRATION
+selection_policy: REPLAY_ALL_140_E0020_ROWS_WITHOUT_REFERENCE_LABELS_AS_INPUT_FEATURES
+
+target:
+  upstream_rows: 140
+  expected_statement_types: [CDKT, KQKD, LCTT]
+  expected_raw_semantic_key_exact_labels: 136
+  expected_corrected_semantic_key_exact_labels: 140
+  expected_proposed_rows: 4
+  reference_fixture_id: e0009-tcb-2024-separate-searchable
+  candidate_fixture_id: e0009-tcb-2024-separate-scan
+
+upstream:
+  e0020_result:
+    path: docs/experiments/E-0020-ordered-label-segmentation-tcb.json
+    sha256: 2879361149a50c068f0d7590c6454535f4abae4002963f2f7defd471176d1ffb
+  correction_config:
+    path: config/ocr/vietnamese-label-correction-v1.yaml
+    sha256: c802aec5dc04380977ceb89a29ab5b5ae5be56b0cd8f0326e7e73ff621289414
+  schema_sources:
+    path: config/schemas/sources.yaml
+    sha256: af4a16f1040063d1fd28fd24de5056794867afc56dbbf130ae3ff74d1d466221
+  cdkt_template:
+    path: template/Bank_CDKT_ReportNormId.xlsx
+    sha256: a07ff47f7c41011fe4ca5a66681106d476586ded9013b5874cbb9f67a6ad8486
+  kqkd_template:
+    path: template/Bank_KQKD_ReportNormId.xlsx
+    sha256: 6033001b85a236fce4b29437d56cc02d7c6a21f95e82b43de043b1268eb74615
+  lctt_template:
+    path: template/Bank_LCTT_ReportNormId.xlsx
+    sha256: 2c9d52737c492f115895eab9a571da2269fcfd3c3e77539ec581782e579d260a
+  tm_template:
+    path: template/Bank_TM_ReportNormId.xlsx
+    sha256: fa284e3af1f90c8a206308f63e6d35e77a9fbf1abcaf60abcb59877c47275140
+
+safety:
+  role_a_labels_available_to_correction_algorithm: false
+  raw_label_replacement: false
+  numeric_or_note_input: false
+  automatic_schema_mapping: false
+  automatic_period_assignment: false
+  automatic_scope_assignment: false
+  automatic_confidence_promotion: false
+  historical_reference_invoked: false
+  production_threshold_claim: false
+
