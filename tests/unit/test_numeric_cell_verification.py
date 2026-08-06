@@ -170,3 +170,20 @@ def test_crop_identity_and_denominator_are_immutable():
         verify_numeric_cell_proposals(_registry([cell]), [bad_hash])
     with pytest.raises(NumericCellVerificationError, match="denominator"):
         verify_numeric_cell_proposals(_registry([cell]), [])
+
+
+def test_verifier_accepts_e0033_v2_registry_without_changing_policy():
+    cell = _cell("page-0003-row-001-axis-1", "VALUE", "1.234", "1234", None)
+    registry = _registry([cell])
+    registry.update(
+        {
+            "format_version": 2,
+            "policy": "FIXED_GRID_NUMERIC_CELL_CROPS_V2",
+            "geometry_authority": "E0033_PP_OCRV6_FIXED_GRID",
+        }
+    )
+
+    result = verify_numeric_cell_proposals(registry, [_prediction(cell, "1.234")])
+
+    assert result["policy"] == "EXACT_VALUE_SIGN_AND_PIXEL_DASH_AGREEMENT_V1"
+    assert result["cells"][0]["verification_status"] == "VERIFIED_OBSERVED_VALUE"

@@ -208,3 +208,65 @@ def test_numeric_crop_policy_withholds_context_from_recognizer(project_root):
         "historical_or_mongodb_value",
         "human_review_value",
     } == set(policy.forbidden_recognizer_inputs)
+
+
+def test_v2_numeric_crops_require_and_record_e0033_geometry(project_root, tmp_path):
+    contract, ocr, renders = _fixture(tmp_path)
+    payload = json.loads(contract.read_text(encoding="utf-8"))
+    payload["experiment_id"] = "E-0033"
+    payload["status"] = "PASS_REFERENCE_BLIND_NOTE_ROW_ANCHOR_SPLIT"
+    contract.write_text(json.dumps(payload), encoding="utf-8")
+    policy = load_numeric_cell_crop_policy(
+        project_root / "config/tables/numeric-cell-crops-v2.yaml"
+    )
+
+    registry = build_numeric_cell_crop_registry(
+        row_contract_path=contract,
+        ocr_paths_by_page=ocr,
+        render_paths_by_page=renders,
+        output_directory=tmp_path / "numeric-crops-v2",
+        policy=policy,
+    )
+
+    assert policy.row_contract_experiment_id == "E-0033"
+    assert registry["format_version"] == 2
+    assert registry["policy"] == "FIXED_GRID_NUMERIC_CELL_CROPS_V2"
+    assert registry["geometry_authority"] == "E0033_PP_OCRV6_FIXED_GRID"
+    assert policy.source_value_line_bottom_padding_line_heights == 0.27
+    first = registry["cells"][0]
+    first_image = cv2.imread(str(tmp_path / "numeric-crops-v2" / first["crop_path"]))
+    assert first_image is not None
+    assert first["post_crop_canvas"] == {
+        "trigger": "SOURCE_VALUE_LINE_INDICES_NONEMPTY",
+        "bottom_padding_pixels": 11,
+        "fill_bgr": [255, 255, 255],
+        "source_pixels_unchanged": True,
+    }
+    assert first_image.shape[0] == first["crop_bbox"][3] - first["crop_bbox"][1] + 11
+    blank = registry["cells"][1]
+    assert blank["value_line_indices"] == []
+    assert blank["post_crop_canvas"]["bottom_padding_pixels"] == 0
+
+
+def test_v2_numeric_crop_pages_come_from_row_contract_not_hard_code(
+    project_root, tmp_path
+):
+    contract, ocr, renders = _fixture(tmp_path)
+    payload = json.loads(contract.read_text(encoding="utf-8"))
+    payload["experiment_id"] = "E-0033"
+    payload["status"] = "PASS_REFERENCE_BLIND_NOTE_ROW_ANCHOR_SPLIT"
+    payload["after"][0]["page"] = 30
+    payload["after"][1]["page"] = 31
+    contract.write_text(json.dumps(payload), encoding="utf-8")
+
+    registry = build_numeric_cell_crop_registry(
+        row_contract_path=contract,
+        ocr_paths_by_page={30: ocr[3], 31: ocr[4]},
+        render_paths_by_page={30: renders[3], 31: renders[4]},
+        output_directory=tmp_path / "numeric-crops-other-pages",
+        policy=load_numeric_cell_crop_policy(
+            project_root / "config/tables/numeric-cell-crops-v2.yaml"
+        ),
+    )
+
+    assert [page["page"] for page in registry["pages"]] == [30, 31]

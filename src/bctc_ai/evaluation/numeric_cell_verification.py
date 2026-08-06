@@ -43,10 +43,17 @@ def _validate_inputs(
     registry: dict[str, Any], predictions: list[dict[str, Any]]
 ) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]]]:
     cells = registry.get("cells")
+    allowed_registries = {
+        (1, "FIXED_GRID_NUMERIC_CELL_CROPS_V1", "E0029_PP_OCRV6_FIXED_GRID"),
+        (2, "FIXED_GRID_NUMERIC_CELL_CROPS_V2", "E0033_PP_OCRV6_FIXED_GRID"),
+    }
     if (
-        registry.get("format_version") != 1
-        or registry.get("policy") != "FIXED_GRID_NUMERIC_CELL_CROPS_V1"
-        or registry.get("geometry_authority") != "E0029_PP_OCRV6_FIXED_GRID"
+        (
+            registry.get("format_version"),
+            registry.get("policy"),
+            registry.get("geometry_authority"),
+        )
+        not in allowed_registries
         or not isinstance(cells, list)
         or registry.get("metrics", {}).get("cell_count") != len(cells)
     ):

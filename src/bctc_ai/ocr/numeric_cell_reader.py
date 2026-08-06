@@ -123,11 +123,18 @@ def load_reference_blind_numeric_request(
         registry = json.loads(resolved.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise NumericCellReaderError(f"cannot load numeric crop registry: {resolved}") from exc
+    allowed_registries = {
+        (1, "FIXED_GRID_NUMERIC_CELL_CROPS_V1", "E0029_PP_OCRV6_FIXED_GRID"),
+        (2, "FIXED_GRID_NUMERIC_CELL_CROPS_V2", "E0033_PP_OCRV6_FIXED_GRID"),
+    }
     if (
         not isinstance(registry, dict)
-        or registry.get("format_version") != 1
-        or registry.get("policy") != "FIXED_GRID_NUMERIC_CELL_CROPS_V1"
-        or registry.get("geometry_authority") != "E0029_PP_OCRV6_FIXED_GRID"
+        or (
+            registry.get("format_version"),
+            registry.get("policy"),
+            registry.get("geometry_authority"),
+        )
+        not in allowed_registries
         or registry.get("recognizer_input_fields") != ["crop_path"]
         or not isinstance(registry.get("cells"), list)
         or registry.get("metrics", {}).get("cell_count") != len(registry["cells"])

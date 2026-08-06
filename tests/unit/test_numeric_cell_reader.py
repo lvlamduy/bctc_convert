@@ -137,3 +137,42 @@ def test_numeric_request_rejects_extra_reader_payload(project_root):
         crop.unlink(missing_ok=True)
         registry.unlink(missing_ok=True)
         root.rmdir()
+
+
+def test_numeric_request_accepts_e0033_v2_registry(project_root):
+    root = project_root / "output" / "unit-numeric-reader-v2"
+    root.mkdir(parents=True, exist_ok=True)
+    try:
+        crop = root / "cell.png"
+        crop.write_bytes(b"fixed-crop-v2")
+        registry = root / "crop_registry.json"
+        registry.write_text(
+            json.dumps(
+                {
+                    "format_version": 2,
+                    "policy": "FIXED_GRID_NUMERIC_CELL_CROPS_V2",
+                    "geometry_authority": "E0033_PP_OCRV6_FIXED_GRID",
+                    "recognizer_input_fields": ["crop_path"],
+                    "metrics": {"cell_count": 1},
+                    "cells": [
+                        {
+                            "cell_id": "page-0003-row-001-axis-1",
+                            "crop_path": "cell.png",
+                            "crop_size_bytes": crop.stat().st_size,
+                            "crop_sha256": sha256_file(crop),
+                            "recognizer_payload": {"crop_path": "cell.png"},
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        loaded, samples, _ = load_reference_blind_numeric_request(project_root, registry)
+
+        assert loaded["geometry_authority"] == "E0033_PP_OCRV6_FIXED_GRID"
+        assert len(samples) == 1
+    finally:
+        crop.unlink(missing_ok=True)
+        registry.unlink(missing_ok=True)
+        root.rmdir()

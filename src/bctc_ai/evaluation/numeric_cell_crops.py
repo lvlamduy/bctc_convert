@@ -24,9 +24,15 @@ class NumericCellCropError(RuntimeError):
 @dataclass(frozen=True)
 class NumericCellCropPolicy:
     source_path: Path
+    format_version: int
+    policy_name: str
+    geometry_authority: str
+    row_contract_experiment_id: str
+    row_contract_status: str
     left_padding_line_heights: float
     right_padding_line_heights: float
     minimum_crop_height_line_heights: float
+    source_value_line_bottom_padding_line_heights: float
     recognizer_input_fields: tuple[str, ...]
     forbidden_recognizer_inputs: tuple[str, ...]
 
@@ -46,11 +52,40 @@ def load_numeric_cell_crop_policy(path: Path) -> NumericCellCropPolicy:
     horizontal = payload.get("horizontal_bounds") if isinstance(payload, dict) else None
     vertical = payload.get("vertical_bounds") if isinstance(payload, dict) else None
     encoding = payload.get("encoding") if isinstance(payload, dict) else None
+    post_crop_canvas = (
+        payload.get("post_crop_canvas") if isinstance(payload, dict) else None
+    )
+    identities = {
+        (
+            1,
+            "FIXED_GRID_NUMERIC_CELL_CROPS_V1",
+            "E0029_PP_OCRV6_FIXED_GRID",
+        ): ("E-0029", "PASS_REFERENCE_BLIND_ROW_RECONSTRUCTION"),
+        (
+            2,
+            "FIXED_GRID_NUMERIC_CELL_CROPS_V2",
+            "E0033_PP_OCRV6_FIXED_GRID",
+        ): ("E-0033", "PASS_REFERENCE_BLIND_NOTE_ROW_ANCHOR_SPLIT"),
+    }
+    identity = (
+        payload.get("version") if isinstance(payload, dict) else None,
+        payload.get("policy") if isinstance(payload, dict) else None,
+        payload.get("geometry_authority") if isinstance(payload, dict) else None,
+    )
+    expected_post_crop_canvas = (
+        None
+        if identity[0] == 1
+        else {
+            "apply_when": "source_value_line_indices_nonempty",
+            "bottom_padding_line_heights": 0.27,
+            "fill_bgr": [255, 255, 255],
+            "source_pixels_unchanged": True,
+            "semantic_or_value_features_allowed": False,
+        }
+    )
     if (
         not isinstance(payload, dict)
-        or payload.get("version") != 1
-        or payload.get("policy") != "FIXED_GRID_NUMERIC_CELL_CROPS_V1"
-        or payload.get("geometry_authority") != "E0029_PP_OCRV6_FIXED_GRID"
+        or identity not in identities
         or not isinstance(horizontal, dict)
         or horizontal.get("left_boundary") != "midpoint_between_previous_and_current_right_edges"
         or horizontal.get("first_previous_edge") != "note_axis_right_edge"
@@ -67,6 +102,7 @@ def load_numeric_cell_crop_policy(path: Path) -> NumericCellCropPolicy:
             "threshold": False,
             "deskew": False,
         }
+        or post_crop_canvas != expected_post_crop_canvas
     ):
         raise NumericCellCropError("numeric-cell crop identity or geometry policy drifted")
     inputs = payload.get("recognizer_input_fields")
@@ -87,11 +123,22 @@ def load_numeric_cell_crop_policy(path: Path) -> NumericCellCropPolicy:
         or set(forbidden) != expected_forbidden
     ):
         raise NumericCellCropError("numeric recognizer input isolation drifted")
+    experiment_id, contract_status = identities[identity]
     return NumericCellCropPolicy(
         source_path=path.resolve(),
+        format_version=int(identity[0]),
+        policy_name=str(identity[1]),
+        geometry_authority=str(identity[2]),
+        row_contract_experiment_id=experiment_id,
+        row_contract_status=contract_status,
         left_padding_line_heights=_positive(horizontal, "left_padding_line_heights"),
         right_padding_line_heights=_positive(horizontal, "right_padding_line_heights"),
         minimum_crop_height_line_heights=_positive(vertical, "minimum_crop_height_line_heights"),
+        source_value_line_bottom_padding_line_heights=(
+            0.0
+            if post_crop_canvas is None
+            else _positive(post_crop_canvas, "bottom_padding_line_heights")
+        ),
         recognizer_input_fields=("crop_path",),
         forbidden_recognizer_inputs=tuple(str(value) for value in forbidden),
     )
@@ -138,15 +185,15 @@ def build_numeric_cell_crop_registry(
     contract = _load_json(row_contract_path, "row contract")
     pages_raw = contract.get("after")
     if (
-        contract.get("experiment_id") != "E-0029"
-        or contract.get("status") != "PASS_REFERENCE_BLIND_ROW_RECONSTRUCTION"
+        contract.get("experiment_id") != policy.row_contract_experiment_id
+        or contract.get("status") != policy.row_contract_status
         or not isinstance(pages_raw, list)
         or not pages_raw
     ):
-        raise NumericCellCropError("numeric crops require the sealed E-0029 row contract")
+        raise NumericCellCropError(
+            "numeric crops require the row contract bound by the selected crop policy"
+        )
     pages = {int(record["page"]) for record in pages_raw}
-    if pages != {3, 4}:
-        raise NumericCellCropError("numeric crop V1 target-page contract drifted")
     ocr_paths = _resolve_mapping(ocr_paths_by_page, pages, "OCR paths")
     render_paths = _resolve_mapping(render_paths_by_page, pages, "render paths")
     if output_directory.exists():
@@ -256,13 +303,33 @@ def build_numeric_cell_crop_registry(
                             f"page {page} cell crop clips visual punctuation evidence"
                         )
                     crop = image[y0:y1, x0:x1]
+                    bottom_padding_pixels = (
+                        int(
+                            math.floor(
+                                line_height
+                                * policy.source_value_line_bottom_padding_line_heights
+                                + 0.5
+                            )
+                        )
+                        if line_indices
+                        else 0
+                    )
+                    if bottom_padding_pixels:
+                        crop = cv2.copyMakeBorder(
+                            crop,
+                            0,
+                            bottom_padding_pixels,
+                            0,
+                            0,
+                            cv2.BORDER_CONSTANT,
+                            value=(255, 255, 255),
+                        )
                     cell_id = f"page-{page:04d}-row-{row_ordinal:03d}-axis-{axis_ordinal + 1}"
                     relative_path = Path("crops") / f"{cell_id}.png"
                     crop_path = temporary / relative_path
                     if not cv2.imwrite(str(crop_path), crop):
                         raise NumericCellCropError(f"cannot write numeric crop {crop_path}")
-                    cells.append(
-                        {
+                    cell_record = {
                             "cell_id": cell_id,
                             "page": page,
                             "row_ordinal": row_ordinal,
@@ -286,7 +353,14 @@ def build_numeric_cell_crop_registry(
                             "visual_punctuation_evidence": visual,
                             "recognizer_payload": {"crop_path": relative_path.as_posix()},
                         }
-                    )
+                    if policy.format_version >= 2:
+                        cell_record["post_crop_canvas"] = {
+                            "trigger": "SOURCE_VALUE_LINE_INDICES_NONEMPTY",
+                            "bottom_padding_pixels": bottom_padding_pixels,
+                            "fill_bgr": [255, 255, 255],
+                            "source_pixels_unchanged": True,
+                        }
+                    cells.append(cell_record)
                     page_cell_count += 1
                     previous_right = axis_right
             page_records.append(
@@ -301,10 +375,28 @@ def build_numeric_cell_crop_registry(
                 }
             )
         observation_counts = Counter(cell["primary_observation"] for cell in cells)
+        metrics = {
+            "page_count": len(page_records),
+            "row_count": sum(record["row_count"] for record in page_records),
+            "cell_count": len(cells),
+            "primary_observation_counts": dict(sorted(observation_counts.items())),
+            "crop_line_clip_count": 0,
+            "visual_evidence_clip_count": 0,
+        }
+        if policy.format_version >= 2:
+            padding_pixels = [
+                int(cell["post_crop_canvas"]["bottom_padding_pixels"]) for cell in cells
+            ]
+            metrics.update(
+                {
+                    "post_crop_padded_cell_count": sum(value > 0 for value in padding_pixels),
+                    "post_crop_bottom_padding_pixel_count": sum(padding_pixels),
+                }
+            )
         registry = {
-            "format_version": 1,
-            "policy": "FIXED_GRID_NUMERIC_CELL_CROPS_V1",
-            "geometry_authority": "E0029_PP_OCRV6_FIXED_GRID",
+            "format_version": policy.format_version,
+            "policy": policy.policy_name,
+            "geometry_authority": policy.geometry_authority,
             "row_contract": {
                 "path": row_contract_path.as_posix(),
                 "sha256": sha256_file(row_contract_path),
@@ -316,14 +408,7 @@ def build_numeric_cell_crop_registry(
             "recognizer_input_fields": list(policy.recognizer_input_fields),
             "forbidden_recognizer_inputs": list(policy.forbidden_recognizer_inputs),
             "pages": page_records,
-            "metrics": {
-                "page_count": len(page_records),
-                "row_count": sum(record["row_count"] for record in page_records),
-                "cell_count": len(cells),
-                "primary_observation_counts": dict(sorted(observation_counts.items())),
-                "crop_line_clip_count": 0,
-                "visual_evidence_clip_count": 0,
-            },
+            "metrics": metrics,
             "cells": cells,
             "reference_isolation": {
                 "human_review_loaded": False,

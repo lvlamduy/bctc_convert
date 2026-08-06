@@ -2,6 +2,10 @@ version: 1
 experiment_id: E-0031
 dataset_role: CALIBRATION
 design: REFERENCE_BLIND_FIXED_GRID_INDEPENDENT_NUMERIC_VERIFICATION
+status: SUPERSEDED_DENOMINATOR_BY_E0033
+superseded_reason: >-
+  E-0033 separated one missing row and changed the active denominator from 126
+  to 128 numeric cells. This artifact remains valid only for its original grid.
 
 source:
   target_pages: [3, 4]
