@@ -126,6 +126,8 @@ wrapped label's values sit lower than its code, alphanumeric note references,
 two visibly supported OCR-blank dashes, and quarantine of right-margin numbers.
 Fusion tests mutate values without changing the label/order path, retain a
 reader-truncated row, and prove an upstream off-balance page has zero eligible
-alignment units. Agreement always has confidence effect `NONE`.
+alignment units. Page boundaries remain hard alignment separators; table
+continuation records preserve both readers' boundary rows but cannot
+automatically merge them. Agreement always has confidence effect `NONE`.
 
 Explicit page numbers in a golden/calibration fixture are expected test data, not production routing rules. Production page pairing must continue to use document-order and visual evidence; no bank, page offset, or coordinate constant may enter the algorithm.

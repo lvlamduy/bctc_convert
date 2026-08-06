@@ -4,6 +4,7 @@ from bctc_ai.core.text import parse_financial_number
 from bctc_ai.evaluation.structural_fusion_v2 import (
     StructuredReaderRow,
     compare_structural_readers_v2,
+    preserve_continuation_boundary_v2,
 )
 from bctc_ai.mapping.scope import load_scope_policy
 from bctc_ai.validation.reader_agreement import ReaderRow
@@ -94,3 +95,25 @@ def test_structural_fusion_retains_role_b_truncation_as_missing_evidence(project
     assert missing["escalation"] == "ROLE_B_MISSING_OR_TRUNCATED_ROW_REREAD"
     assert missing["automatic_acceptance"] is False
     assert missing["confidence_effect"] == "NONE"
+
+
+def test_cross_page_boundary_is_preserved_without_automatic_row_merge():
+    role_b_from = (_item("b1", "Tổng tài sản", ("100", "90")),)
+    role_b_to = ()
+    role_c_from = (_item("c1", "Tổng tài sản", ("100", "90")),)
+    role_c_to = (_item("c2", "Nợ phải trả", ("", "")),)
+
+    record = preserve_continuation_boundary_v2(
+        statement_type="CDKT",
+        from_page=8,
+        to_page=9,
+        role_b_from=role_b_from,
+        role_b_to=role_b_to,
+        role_c_from=role_c_from,
+        role_c_to=role_c_to,
+    )
+
+    assert record["accepted"] is True
+    assert record["automatic_cross_page_row_merge"] is False
+    assert record["boundary_evidence"]["role_b_next_head"] == []
+    assert record["boundary_evidence"]["role_c_next_head"][0]["row"]["label"] == "Nợ phải trả"

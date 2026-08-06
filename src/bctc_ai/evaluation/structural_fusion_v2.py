@@ -16,6 +16,48 @@ class StructuredReaderRow:
     row_code: str | None = None
 
 
+def _structured_row_record(item: StructuredReaderRow) -> dict[str, Any]:
+    return {"row_code": item.row_code, "row": reader_row_to_dict(item.row)}
+
+
+def preserve_continuation_boundary_v2(
+    *,
+    statement_type: str,
+    from_page: int,
+    to_page: int,
+    role_b_from: tuple[StructuredReaderRow, ...],
+    role_b_to: tuple[StructuredReaderRow, ...],
+    role_c_from: tuple[StructuredReaderRow, ...],
+    role_c_to: tuple[StructuredReaderRow, ...],
+    context_rows: int = 2,
+) -> dict[str, Any]:
+    if statement_type not in {"CDKT", "KQKD", "LCTT"}:
+        raise ValueError("invalid continuation statement type")
+    if from_page < 1 or to_page != from_page + 1:
+        raise ValueError("continuation pages must be positive and adjacent")
+    if context_rows < 1:
+        raise ValueError("context_rows must be positive")
+    return {
+        "statement_type": statement_type,
+        "from_page": from_page,
+        "to_page": to_page,
+        "accepted": True,
+        "table_continuation_only": True,
+        "automatic_cross_page_row_merge": False,
+        "boundary_evidence": {
+            "role_b_previous_tail": [
+                _structured_row_record(item) for item in role_b_from[-context_rows:]
+            ],
+            "role_b_next_head": [_structured_row_record(item) for item in role_b_to[:context_rows]],
+            "role_c_previous_tail": [
+                _structured_row_record(item) for item in role_c_from[-context_rows:]
+            ],
+            "role_c_next_head": [_structured_row_record(item) for item in role_c_to[:context_rows]],
+        },
+        "status": "BOUNDARY_PRESERVED_PENDING_EXPLICIT_ROW_CONTINUATION_EVIDENCE",
+    }
+
+
 def _financial(row: ReaderRow) -> bool:
     return any(cell.observation is not ObservationKind.BLANK for cell in row.cells)
 

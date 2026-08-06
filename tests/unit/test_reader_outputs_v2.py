@@ -38,7 +38,7 @@ def test_v2_parser_infers_optional_index_label_note_and_value_columns(project_ro
         ],
     )
 
-    page = parse_paddle_vl_page_v2(path, _config(project_root))
+    page = parse_paddle_vl_page_v2(path, _config(project_root), page_tag="page-0001")
 
     table = page.tables[0]
     assert table.status == "PARSED"
@@ -50,6 +50,7 @@ def test_v2_parser_infers_optional_index_label_note_and_value_columns(project_ro
     assert table.rows[0].row_code == "I"
     assert table.rows[0].row.label == "Tiền mặt, vàng bạc"
     assert table.rows[0].row.note_reference == "4"
+    assert table.rows[0].row.source_row_ids == ("page-0001:table-1:grid-row-0001",)
     assert [cell.value for cell in table.rows[0].row.cells] == [15542769, 14268064]
 
 

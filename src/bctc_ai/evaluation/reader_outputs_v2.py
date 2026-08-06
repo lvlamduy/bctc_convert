@@ -400,7 +400,7 @@ def _compatible_inherited_roles(
 
 
 def _parse_table_rows(
-    grid: list[list[str]], roles: TableColumnRoles, table_index: int
+    grid: list[list[str]], roles: TableColumnRoles, table_index: int, page_tag: str
 ) -> tuple[ParsedVLMRowV2, ...]:
     start = roles.header_row_index + 1 if roles.header_row_index is not None else 0
     parsed: list[ParsedVLMRowV2] = []
@@ -434,7 +434,7 @@ def _parse_table_rows(
         parsed.append(
             ParsedVLMRowV2(
                 row=ReaderRow(
-                    source_row_ids=(f"vlm-table-{table_index}:grid-row-{grid_index:04d}",),
+                    source_row_ids=(f"{page_tag}:table-{table_index}:grid-row-{grid_index:04d}",),
                     label=label,
                     note_reference=note,
                     cells=cells,
@@ -447,7 +447,14 @@ def _parse_table_rows(
     return tuple(parsed)
 
 
-def parse_paddle_vl_page_v2(path: Path, config: VLMTableParserConfig) -> ParsedVLMPageV2:
+def parse_paddle_vl_page_v2(
+    path: Path,
+    config: VLMTableParserConfig,
+    *,
+    page_tag: str = "vlm-page",
+) -> ParsedVLMPageV2:
+    if not page_tag or ":" in page_tag:
+        raise ReaderOutputV2Error("page_tag must be non-empty and cannot contain a colon")
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError) as exc:
@@ -537,7 +544,7 @@ def parse_paddle_vl_page_v2(path: Path, config: VLMTableParserConfig) -> ParsedV
             header_label = normalize_text(header[roles.label_column])
             if header_label and not _matches_alias(header_label, config.label_aliases):
                 context.append(header_label)
-        rows = _parse_table_rows(grid, roles, table_index)
+        rows = _parse_table_rows(grid, roles, table_index, page_tag)
         status = "HEADER_ONLY" if not rows else "PARSED"
         if status == "HEADER_ONLY" and roles.inherited_from_table is None:
             pending_header_roles = roles

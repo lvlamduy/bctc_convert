@@ -36,8 +36,14 @@ This covers label–note–period, `STT`–label–note–period, `STT`–label�
 label–period layouts under the same code. Heading-only and unresolved blocks
 remain visible in the output. Period-like cells with long report titles are
 rejected, and grouped numbers with inconsistent three-digit groups are
-`INVALID`; this prevents concatenated row values such as
+  `INVALID`; this prevents concatenated row values such as
 `3.645.303941.493` from becoming a plausible integer.
+
+The VCB page-9 E-0014 output demonstrates the fail-closed boundary: only one
+period header remains trustworthy, the comparative header is replaced by
+regulatory metadata, and the dense body is truncated. V2 retains that full raw
+grid as `UNRESOLVED_COLUMN_ROLES`; it does not infer the missing column from the
+bank, page, neighboring values, or a previous page.
 
 ## Role C: geometry, row codes, notes, and values
 
@@ -94,13 +100,16 @@ mapping-eligible. An off-balance page remains excluded even if both readers
 produce perfect-looking names and numbers. The configured row/section scope
 policy is an additional gate, never a way to re-enable an excluded page.
 
-Rows from pages classified as the same statement may be concatenated in page
-order for a second alignment pass. A continuation edge is permitted only when
-the statement type and report scope agree, page order is monotonic, and no
-excluded/unknown page lies between them. Headers repeated on a continuation
-page are context, not financial rows. A row split across a page boundary may be
-proposed as a structural merge, but numeric cells are never shifted across rows
-to make it fit.
+Page boundaries are hard separators for the ordinary alignment pass. An
+unrestricted concatenated dynamic program can falsely merge the last total of
+one page with the first heading of the next when one reader truncates a page.
+A table-continuation edge is therefore recorded only when statement type and
+report scope agree, page order is monotonic, and no excluded/unknown page lies
+between them. The last/first row evidence from both readers is preserved at the
+edge, but automatic cross-page row merge is disabled until a separate detector
+has explicit incomplete-label/cell geometry. Headers repeated on a continuation
+page are context, not financial rows, and numeric cells are never shifted
+across rows to make a continuation fit.
 
 ## Mapping and validation boundary
 
@@ -133,4 +142,3 @@ any future ReportNormId proposal is appended.
 No new package, system library, driver, model, or weight is required. Rebuild
 the existing locked environments, verify both v2 configurations and source
 hashes, then run the complete suite before creating a clean formal experiment.
-

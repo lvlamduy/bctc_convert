@@ -1,0 +1,61 @@
+version: 1
+experiment_id: E-0015
+dataset_role: CALIBRATION
+design: POST_ACQUISITION_STRUCTURAL_FUSION_WITHOUT_TRUTH_PROMOTION
+content_inspected_before_design: true
+
+upstream:
+  reader_acquisition_artifact:
+    path: docs/experiments/E-0014-mbb-vcb-200dpi-reader-seals.json
+    sha256: 0c174f9974388c3e41374954e0620b9ba565144d832cd963d3874bfe81a2e187
+  role_b_parser_config: config/tables/vlm-table-parser-v2.yaml
+  role_c_reconstruction_config: config/tables/word-box-reconstruction-v2.yaml
+  scope_policy: config/mapping/scope_exclusions.yaml
+
+safety:
+  role_a_or_searchable_reference_permitted: false
+  historical_reference_permitted: false
+  arithmetic_value_generation_permitted: false
+  schema_mapping_permitted: false
+  cash_flow_schema_branch_assignment_permitted: false
+  automatic_truth_promotion_permitted: false
+  automatic_schema_promotion_permitted: false
+  automatic_pdf_confidence_promotion_permitted: false
+  ytd_derivation_permitted: false
+
+acceptance:
+  required_document_count: 2
+  required_page_count: 13
+  required_role_b_table_block_count: 14
+  required_role_b_unresolved_table_blocks: 1
+  required_role_c_two_axis_pages: 13
+  required_off_balance_mapping_eligible_alignment_units: 0
+  required_report_norm_ids_proposed_or_added: 0
+  accuracy_threshold_configured: false
+
+documents:
+  - key: MBB_2025_CONSOLIDATED
+    pages:
+      - {page: 10, statement_type: CDKT, mapping_eligible: true, scope_reason: MAIN_STATEMENT_PAGE}
+      - {page: 11, statement_type: CDKT, mapping_eligible: true, scope_reason: MAIN_STATEMENT_CONTINUATION}
+      - {page: 12, statement_type: CDKT, mapping_eligible: false, scope_reason: OFF_BALANCE_B02_EXCLUSION}
+      - {page: 13, statement_type: KQKD, mapping_eligible: true, scope_reason: MAIN_STATEMENT_PAGE}
+      - {page: 14, statement_type: LCTT, mapping_eligible: true, scope_reason: MAIN_STATEMENT_PAGE}
+      - {page: 15, statement_type: LCTT, mapping_eligible: true, scope_reason: MAIN_STATEMENT_CONTINUATION}
+    continuation_edges:
+      - {statement_type: CDKT, from_page: 10, to_page: 11}
+      - {statement_type: LCTT, from_page: 14, to_page: 15}
+
+  - key: VCB_2025_CONSOLIDATED
+    pages:
+      - {page: 8, statement_type: CDKT, mapping_eligible: true, scope_reason: MAIN_STATEMENT_PAGE}
+      - {page: 9, statement_type: CDKT, mapping_eligible: true, scope_reason: MAIN_STATEMENT_CONTINUATION}
+      - {page: 10, statement_type: CDKT, mapping_eligible: false, scope_reason: OFF_BALANCE_B02_EXCLUSION}
+      - {page: 11, statement_type: KQKD, mapping_eligible: true, scope_reason: MAIN_STATEMENT_PAGE}
+      - {page: 12, statement_type: KQKD, mapping_eligible: true, scope_reason: MAIN_STATEMENT_CONTINUATION}
+      - {page: 13, statement_type: LCTT, mapping_eligible: true, scope_reason: MAIN_STATEMENT_PAGE}
+      - {page: 14, statement_type: LCTT, mapping_eligible: true, scope_reason: MAIN_STATEMENT_CONTINUATION}
+    continuation_edges:
+      - {statement_type: CDKT, from_page: 8, to_page: 9}
+      - {statement_type: KQKD, from_page: 11, to_page: 12}
+      - {statement_type: LCTT, from_page: 13, to_page: 14}
