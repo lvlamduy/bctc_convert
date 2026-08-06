@@ -1,0 +1,94 @@
+version: 1
+experiment_id: E-0030
+dataset_role: CALIBRATION
+design: REFERENCE_BLIND_VISIBLE_WORD_BOX_PERIOD_UNIT_BINDING
+
+source:
+  target_pages: [3, 4]
+  excluded_off_balance_pages: [5]
+  statement_type: CDKT
+  statement_instance_id: mbb-q1-2026-cdkt
+  scope: UNKNOWN
+
+frozen_inputs:
+  e0029_row_contract:
+    path: docs/experiments/E-0029-mbb-cdkt-row-reconstruction.json
+    sha256: affe74a243e342b56c4ead2fac984f10d9a1f42378823b50ccdde8946eeed373
+  ocr_batch:
+    path: output/calibration/e0027-mbb-q1-2026-end-to-end-role-c/batch_manifest.json
+    sha256: 0d94762ba4a0d383793fe93a56e48fa7b79d6a3f7faaf62e9dcf40935b8c2889
+  row_config:
+    path: config/tables/word-box-reconstruction-v3.yaml
+    sha256: c1cf55a6187a1b2a6f54b74b1566619d046446bc3ad7e628473004103c5d0f7e
+  period_propagation_policy:
+    path: config/tables/period-propagation-v1.yaml
+    sha256: dd7e2d23b39a2f16741cf4cb3ff47bc849f6c4a6d2fcabf570f2eddf6ba6c1a7
+
+candidate:
+  git_commit: 480f0eb51e909fcd0b52d448792aa51f82e70534
+  config:
+    path: config/tables/word-box-header-binding-v1.yaml
+    sha256: 77ad8962b0e9bb3173561108b0d20357433af0a76a0cacb1ff4c9f6ad57a8620
+  algorithm:
+    path: src/bctc_ai/axes/word_box_header_binding.py
+    sha256: ad5069ed5ba2e89bc86c40077be746d17ab37342ba06cf3995416cd7dd425e4b
+
+expected_visible_bindings:
+  3:
+    - axis_id: value-1
+      raw_period_header: 31/03/2026
+      period_end: "2026-03-31"
+      role: CURRENT
+      raw_unit_text: triu đồng
+      canonical_unit: VND
+      unit_multiplier: 1000000
+    - axis_id: value-2
+      raw_period_header: 31/12/2025
+      period_end: "2025-12-31"
+      role: COMPARATIVE
+      raw_unit_text: triu đồng
+      canonical_unit: VND
+      unit_multiplier: 1000000
+  4:
+    - axis_id: value-1
+      raw_period_header: 31/03/2026
+      period_end: "2026-03-31"
+      role: CURRENT
+      raw_unit_text: triu đồng
+      canonical_unit: VND
+      unit_multiplier: 1000000
+    - axis_id: value-2
+      raw_period_header: 31/12/2025
+      period_end: "2025-12-31"
+      role: COMPARATIVE
+      raw_unit_text: triu đồng
+      canonical_unit: VND
+      unit_multiplier: 1000000
+
+acceptance_policy:
+  exact_page_set: [3, 4]
+  exact_axis_count: 4
+  exact_visible_bindings: true
+  minimum_unit_similarity: 0.86
+  minimum_distinct_semantics_margin: 0.08
+  binding_mode: LOCAL_VISIBLE_HEADERS
+  propagation_issue_count: 0
+  page_5_loaded: false
+  human_gold_or_production_accuracy_claim: false
+
+forbidden_inputs:
+  - human_review_period_answers_labels_ids_or_values
+  - mongodb_or_historical_values
+  - template_labels_or_report_norm_ids
+  - numeric_cell_text_or_value_as_period_unit_feature
+  - numeric_value_magnitude
+  - horizontal_position_as_period_role
+  - continuation_inheritance_when_local_headers_are_visible
+  - E-0022_source_artifacts_output_or_diagnosis
+  - off_balance_page_5
+
+claim_boundary: >-
+  E-0030 measures visible period/unit binding on the already accepted and
+  reconstructed MBB CDKT pages only. It does not verify numeric-cell truth,
+  Vietnamese accounting labels, schema IDs, accounting equations, Excel output
+  or untouched-holdout performance.
