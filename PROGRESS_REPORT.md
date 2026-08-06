@@ -1,8 +1,10 @@
 # Progress report
 
-- Updated: 2026-08-06T12:42:03+00:00
+- Updated: 2026-08-06T12:47:42+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `471fe75`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
+- Latest sealed accuracy checkpoint: `471fe75`; latest pushed progress checkpoint:
+  `2a93396`; E-0021 clean evaluation base:
+  `c32741a217ca16e7224d416b2c14245f580e610d`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
@@ -527,6 +529,13 @@
   Measurement will use Role A versus Role B row coverage, schema assignment,
   full `(ReportNormId, period, raw value, normalized value, status)` tuples and
   workbook-cell agreement; no character-only metric can complete this stage.
+- E-0027 is now predeclared for the scanned MBB consolidated Q1/2026
+  `CALIBRATION` document. Role B will process the contiguous 1–9 page prefix at
+  300 DPI and discover CDKT pages without receiving reviewed pages, labels,
+  IDs, values or period answers. Only after the Role B output is sealed may the
+  six reviewed CDKT rows/12 cells score page, row, schema, period, raw/normalized
+  value, status, full-tuple and Excel-cell agreement. History, numeric-ID order
+  and every E-0022 artifact are forbidden inputs.
 - Ordered SchemaGraph v1 and E-0023 are sealed. The mapper remains intentionally
   excluded from the
   already-frozen E-0022 pipeline and will next be evaluated on separate real-PDF
@@ -671,10 +680,10 @@
 
 ## Planned next steps
 
-1. Freeze the E-0026 artifact and regression, then stop direct-line model
-   retuning on this crop set. DeepSeek is a bounded semantic component, not the
-   end-to-end deliverable.
-2. Carry the same fixed-grid evidence through canonical logical rows, ordered
+1. Commit/push the E-0027 reference-blind control before preprocessing; then
+   render/OCR only the contiguous 1–9 page prefix and seal Role B page discovery
+   before opening the MBB review subset for scoring.
+2. Carry the resulting fixed-grid evidence through canonical logical rows, ordered
    SchemaGraph mapping, validation and a provenance-bearing Excel development
    output on the existing MBB/VCB calibration block. Measure page, row,
    ReportNormId, full-tuple and workbook-cell impact before freezing.

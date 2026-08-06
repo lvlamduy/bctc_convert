@@ -1,0 +1,105 @@
+version: 1
+experiment_id: E-0027
+dataset_role: CALIBRATION
+design: REFERENCE_BLIND_ROLE_B_PREFIX_TO_PROVENANCE_EXCEL
+selection_policy: >-
+  Existing hash-bound scanned calibration document with reviewed CDKT rows;
+  process one contiguous document prefix so statement pages are discovered by
+  the general locator rather than supplied by the review registry.
+
+source:
+  path: vietstock_bctc/MBB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf
+  sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+  size_bytes: 3977471
+  page_count: 61
+  scope: CONSOLIDATED
+  input_page_window: {start: 1, end: 9, dpi: 300}
+
+frozen_components:
+  statement_discovery:
+    path: config/document_phase/statement-discovery-v3.yaml
+    sha256: f8188fdf53b8f3907ab89d5407bcea178fe927dfe02ccad291a79d1b5f1ba182
+  ppocrv6:
+    path: config/models/pp-ocrv6-word-box.yaml
+    sha256: a200fbbc8ba85460c9233875a7a025e8d08d892172d353ed820f69fd258e997b
+  row_reconstruction:
+    path: config/tables/word-box-reconstruction-v2.yaml
+    sha256: 3dc1ccb331c6601b8c23e59966feb84429f04e372c6961672949e6f9565e64ee
+  deepseek_semantic_reader:
+    path: config/models/deepseek-ocr2-line-v2.toml
+    sha256: cbe01394ca7c17bcf02c09389187afdd5f0611c010aedb6399313fe7abf5f04c
+  fixed_grid_fusion:
+    path: config/ocr/semantic-line-fusion-v1.yaml
+    sha256: b8a465f0d635b6020fe0bf942bfbf70c2231dcee365109eec8024075e71cd05f
+  period_propagation:
+    path: config/tables/period-propagation-v1.yaml
+    sha256: dd7e2d23b39a2f16741cf4cb3ff47bc849f6c4a6d2fcabf570f2eddf6ba6c1a7
+  ordered_schema_graph:
+    path: config/mapping/ordered-subgraph-v1.yaml
+    sha256: c311cae354ff7890e92a964821dabd5e845d72cf475595395f4ab84a86600eaf
+  target_schema:
+    path: template/Bank_CDKT_ReportNormId.xlsx
+    sha256: a07ff47f7c41011fe4ca5a66681106d476586ded9013b5874cbb9f67a6ad8486
+
+role_b_contract:
+  target_statement: CDKT
+  geometry_authority: PP_OCRV6_SOURCE_BOXES
+  semantic_reader: DEEPSEEK_OCR_2_BOUNDED_TITLE_LINE_LOGICAL_ROW_PROPOSALS
+  numeric_path: FIXED_PP_CELL_GEOMETRY_PLUS_LOCALIZED_NUMERIC_REREAD
+  mapping_order: WORKBOOK_DISPLAY_ORDER_ONLY
+  output: PROVENANCE_BEARING_TEMPLATE_EXCEL
+  allowed_inputs:
+    - source PDF pixels
+    - preprocessing and PP-OCRv6 artifacts generated from the source
+    - frozen template names, aliases, hierarchy and workbook display order
+    - fixed model/configuration artifacts listed above
+  forbidden_inputs:
+    - human-review pages, labels, IDs, values or period answers
+    - MongoDB or any historical numeric value
+    - numeric ReportNormId magnitude or numeric-ID sorting
+    - E-0022 source, artifacts, output or diagnosis
+  reference_fields_available_to_reader: false
+  values_allowed_as_schema_mapping_features: false
+  history_allowed_as_schema_mapping_features: false
+  deepseek_numeric_period_unit_sign_scope_mapping_authority: false
+  automatic_confidence_promotion: false
+
+evaluation_only_after_role_b_seal:
+  policy_path: config/reference/human-review-v1.yaml
+  dataset_path: reference/human_review/reviewed-mapping-corrections-2026-08-06.yaml
+  dataset_sha256: 32c86c0bf7642d3bd7596225331fc6f10906970476e1a9ba982b2f478d0f8e74
+  document_key: mbb-q1-2026-consolidated
+  reviewed_schema_row_count: 6
+  reviewed_value_cell_count: 12
+  reviewed_pages_are_not_routing_inputs: true
+
+required_metrics:
+  - statement_page_exactness_on_reviewed_scope
+  - logical_row_coverage
+  - reviewed_schema_id_exactness
+  - period_role_and_date_exactness
+  - raw_and_normalized_numeric_exactness
+  - value_status_exactness
+  - full_tuple_exactness
+  - workbook_cell_exactness
+  - abstention_and_review_count
+  - arithmetic_pass_fail_not_testable_count
+
+acceptance_policy:
+  role_b_must_be_sealed_before_reference_access: true
+  at_least_one_cdkt_page_discovered: true
+  off_balance_rows_must_not_enter_target_cdkt: true
+  duplicate_schema_assignment_count: 0
+  schema_mapping_requires_clear_runner_up_margin: true
+  continuation_periods_require_visible_or_inherited_table_headers: true
+  not_observed_must_not_become_zero: true
+  out_of_scope_must_not_become_mapping_failure: true
+  unresolved_evidence_must_not_be_exported_as_value: true
+  human_gold_or_production_accuracy_claim: false
+
+claim_boundary: >-
+  E-0027 is a bounded calibration slice that measures a contiguous scanned-PDF
+  prefix through discovery, rows, values, mapping, validation and Excel against
+  six hash-bound reviewed CDKT rows only after Role B is sealed. It is not a
+  bank/period-disjoint validation or holdout, not full-document accuracy, and
+  cannot establish a production confidence threshold.
