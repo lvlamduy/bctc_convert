@@ -1,0 +1,7058 @@
+{
+  "after": [
+    {
+      "axes": [
+        {
+          "axis_id": "value-1",
+          "header_line_index": 7,
+          "raw_header": "31/03/2026",
+          "right_edge": 1872.0
+        },
+        {
+          "axis_id": "value-2",
+          "header_line_index": 5,
+          "raw_header": "31/12/2025",
+          "right_edge": 2400.0
+        }
+      ],
+      "excluded_after_table_line_indices": [],
+      "index_band": null,
+      "line_height": 46.0,
+      "note_right_edge": 1341.0,
+      "page": 3,
+      "rows": [
+        {
+          "cells": [
+            {
+              "normalized_text": "",
+              "observation": "BLANK",
+              "raw_text": "",
+              "reason": null,
+              "sign_evidence": null,
+              "value": null
+            },
+            {
+              "normalized_text": "",
+              "observation": "BLANK",
+              "raw_text": "",
+              "reason": null,
+              "sign_evidence": null,
+              "value": null
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              12
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [],
+              []
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 844.5
+          },
+          "label": "TÀI SÁN",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0012"
+          ],
+          "warnings": [
+            "label-only row retained without structural merge"
+          ]
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "5741287",
+              "observation": "VALUE",
+              "raw_text": "5.741.287",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "5741287"
+            },
+            {
+              "normalized_text": "4965786",
+              "observation": "VALUE",
+              "raw_text": "4.965.786",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "4965786"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              13
+            ],
+            "note_line_indices": [
+              14
+            ],
+            "value_line_indices": [
+              [
+                15
+              ],
+              [
+                16
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 902.0
+          },
+          "label": "Tin mt, vàng bc, đá quý",
+          "note_reference": "III.1",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0013",
+            "page-0003:line-0014",
+            "page-0003:line-0015",
+            "page-0003:line-0016"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "15156039",
+              "observation": "VALUE",
+              "raw_text": "15.156.039",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "15156039"
+            },
+            {
+              "normalized_text": "68494426",
+              "observation": "VALUE",
+              "raw_text": "68.494.426",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "68494426"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              17
+            ],
+            "note_line_indices": [
+              18
+            ],
+            "value_line_indices": [
+              [
+                19
+              ],
+              [
+                20
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 959.5
+          },
+          "label": "Tin gri ti Ngân hàng Nhà nưc (\"NHNN\")",
+          "note_reference": "III.2",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0017",
+            "page-0003:line-0018",
+            "page-0003:line-0019",
+            "page-0003:line-0020"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "165297962",
+              "observation": "VALUE",
+              "raw_text": "165.297.962",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "165297962"
+            },
+            {
+              "normalized_text": "182923726",
+              "observation": "VALUE",
+              "raw_text": "182.923.726",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "182923726"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              21
+            ],
+            "note_line_indices": [
+              22
+            ],
+            "value_line_indices": [
+              [
+                23
+              ],
+              [
+                24
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1013.75
+          },
+          "label": "Tin, vàng gi và cho vay các t chc tín dng (\"TCTD\") khác",
+          "note_reference": "IlI.3",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0021",
+            "page-0003:line-0022",
+            "page-0003:line-0023",
+            "page-0003:line-0024"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "5058769",
+              "observation": "VALUE",
+              "raw_text": "5.058.769",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "5058769"
+            },
+            {
+              "normalized_text": "4653229",
+              "observation": "VALUE",
+              "raw_text": "4.653.229",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "4653229"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              25
+            ],
+            "note_line_indices": [
+              26
+            ],
+            "value_line_indices": [
+              [
+                27
+              ],
+              [
+                28
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1073.0
+          },
+          "label": "Chng khoán kinh doanh",
+          "note_reference": "III.4",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0025",
+            "page-0003:line-0026",
+            "page-0003:line-0027",
+            "page-0003:line-0028"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "5093432",
+              "observation": "VALUE",
+              "raw_text": "5.093.432",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "5093432"
+            },
+            {
+              "normalized_text": "4692622",
+              "observation": "VALUE",
+              "raw_text": "4.692.622",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "4692622"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              29
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                30
+              ],
+              [
+                31
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1128.25
+          },
+          "label": "Chng khoán kinh doanh",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0029",
+            "page-0003:line-0030",
+            "page-0003:line-0031"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "-34663",
+              "observation": "VALUE",
+              "raw_text": "(34.663)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-34663"
+            },
+            {
+              "normalized_text": "-39393",
+              "observation": "VALUE",
+              "raw_text": "(39.393)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-39393"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              32
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                33
+              ],
+              [
+                34
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1185.25
+          },
+          "label": "D phòng ri ro chng khoán kinh doanh",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0032",
+            "page-0003:line-0033",
+            "page-0003:line-0034"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "-",
+              "observation": "DASH",
+              "raw_text": "-",
+              "reason": null,
+              "sign_evidence": "dash",
+              "value": null
+            },
+            {
+              "normalized_text": "-",
+              "observation": "DASH",
+              "raw_text": "-",
+              "reason": null,
+              "sign_evidence": "dash",
+              "value": null
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              35
+            ],
+            "note_line_indices": [
+              36
+            ],
+            "value_line_indices": [
+              [],
+              []
+            ],
+            "visual_cell_evidence": [
+              {
+                "aspect_ratio": 2.0,
+                "component_box": [
+                  1862,
+                  1244,
+                  1872,
+                  1249
+                ],
+                "crop_box": [
+                  1803,
+                  1218,
+                  1884,
+                  1268
+                ],
+                "fill_ratio": 1.0,
+                "foreground_contrast": 162.02,
+                "height_line_heights": 0.108696,
+                "observation": "DASH",
+                "source_image_path": "/workspace/bctc-ai/output/calibration/e0027-mbb-q1-2026-end-to-end/eebeda2ebc09b0d42032/renders/page-0003.png",
+                "threshold": 168.0,
+                "width_line_heights": 0.217391
+              },
+              {
+                "aspect_ratio": 1.833333,
+                "component_box": [
+                  2390,
+                  1243,
+                  2401,
+                  1249
+                ],
+                "crop_box": [
+                  2331,
+                  1218,
+                  2412,
+                  1268
+                ],
+                "fill_ratio": 0.772727,
+                "foreground_contrast": 138.636364,
+                "height_line_heights": 0.130435,
+                "observation": "DASH",
+                "source_image_path": "/workspace/bctc-ai/output/calibration/e0027-mbb-q1-2026-end-to-end/eebeda2ebc09b0d42032/renders/page-0003.png",
+                "threshold": 158.0,
+                "width_line_heights": 0.23913
+              }
+            ],
+            "y_anchor": 1243.0
+          },
+          "label": "Các công cu tài chính phái sinh và các tài sn tài chính khác",
+          "note_reference": "III.18",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0035",
+            "page-0003:line-0036"
+          ],
+          "warnings": [
+            "OCR-blank cell recovered as DASH from constrained pixel evidence"
+          ]
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "1105852151",
+              "observation": "VALUE",
+              "raw_text": "1.105.852.151",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "1105852151"
+            },
+            {
+              "normalized_text": "1070868777",
+              "observation": "VALUE",
+              "raw_text": "1.070.868.777",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "1070868777"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              37
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                38
+              ],
+              [
+                39
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1295.25
+          },
+          "label": "Chovay khách hàng",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0037",
+            "page-0003:line-0038",
+            "page-0003:line-0039"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "1120562481",
+              "observation": "VALUE",
+              "raw_text": "1.120.562.481",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "1120562481"
+            },
+            {
+              "normalized_text": "1084019370",
+              "observation": "VALUE",
+              "raw_text": "1.084.019.370",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "1084019370"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              40
+            ],
+            "note_line_indices": [
+              41
+            ],
+            "value_line_indices": [
+              [
+                42
+              ],
+              [
+                43
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1348.0
+          },
+          "label": "Cho vay khách hàng",
+          "note_reference": "III.5",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0040",
+            "page-0003:line-0041",
+            "page-0003:line-0042",
+            "page-0003:line-0043"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "-14710330",
+              "observation": "VALUE",
+              "raw_text": "(14.710.330)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-14710330"
+            },
+            {
+              "normalized_text": "-13150593",
+              "observation": "VALUE",
+              "raw_text": "(13.150.593)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-13150593"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              44
+            ],
+            "note_line_indices": [
+              45
+            ],
+            "value_line_indices": [
+              [
+                46
+              ],
+              [
+                47
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1404.5
+          },
+          "label": "D phòng ri ro cho vay khách hàng",
+          "note_reference": "III.6",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0044",
+            "page-0003:line-0045",
+            "page-0003:line-0046",
+            "page-0003:line-0047"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "2264075",
+              "observation": "VALUE",
+              "raw_text": "2.264.075",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "2264075"
+            },
+            {
+              "normalized_text": "2443895",
+              "observation": "VALUE",
+              "raw_text": "2.443.895",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "2443895"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              48
+            ],
+            "note_line_indices": [
+              49
+            ],
+            "value_line_indices": [
+              [
+                50
+              ],
+              [
+                51
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1456.0
+          },
+          "label": "Hot đng mua n",
+          "note_reference": "III.7",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0048",
+            "page-0003:line-0049",
+            "page-0003:line-0050",
+            "page-0003:line-0051"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "2287269",
+              "observation": "VALUE",
+              "raw_text": "2.287.269",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "2287269"
+            },
+            {
+              "normalized_text": "2465314",
+              "observation": "VALUE",
+              "raw_text": "2.465.314",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "2465314"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              52
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                53
+              ],
+              [
+                54
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1507.5
+          },
+          "label": "Mua no",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0052",
+            "page-0003:line-0053",
+            "page-0003:line-0054"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "-23194",
+              "observation": "VALUE",
+              "raw_text": "(23.194)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-23194"
+            },
+            {
+              "normalized_text": "-21419",
+              "observation": "VALUE",
+              "raw_text": "(21.419)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-21419"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              55
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                56
+              ],
+              [
+                57
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1561.5
+          },
+          "label": "D phòng ri ro hot đng mua n",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0055",
+            "page-0003:line-0056",
+            "page-0003:line-0057"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "262829936",
+              "observation": "VALUE",
+              "raw_text": "262.829.936",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "262829936"
+            },
+            {
+              "normalized_text": "225574850",
+              "observation": "VALUE",
+              "raw_text": "225.574.850",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "225574850"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              58
+            ],
+            "note_line_indices": [
+              59
+            ],
+            "value_line_indices": [
+              [
+                60
+              ],
+              [
+                61
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1614.75
+          },
+          "label": "Chng khoán đàu tư",
+          "note_reference": "III.8",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0058",
+            "page-0003:line-0059",
+            "page-0003:line-0060",
+            "page-0003:line-0061"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "259054739",
+              "observation": "VALUE",
+              "raw_text": "259.054.739",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "259054739"
+            },
+            {
+              "normalized_text": "221512464",
+              "observation": "VALUE",
+              "raw_text": "221.512.464",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "221512464"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              62
+            ],
+            "note_line_indices": [
+              63
+            ],
+            "value_line_indices": [
+              [
+                64
+              ],
+              [
+                65
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1675.5
+          },
+          "label": "Chng khoán đu tu săn sàng đ bán",
+          "note_reference": "III.8.1",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0062",
+            "page-0003:line-0063",
+            "page-0003:line-0064",
+            "page-0003:line-0065"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "4336559",
+              "observation": "VALUE",
+              "raw_text": "4.336.559",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "4336559"
+            },
+            {
+              "normalized_text": "4295125",
+              "observation": "VALUE",
+              "raw_text": "4.295.125",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "4295125"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              66
+            ],
+            "note_line_indices": [
+              67
+            ],
+            "value_line_indices": [
+              [
+                68
+              ],
+              [
+                69
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1736.0
+          },
+          "label": "Chng khoán đu tư gi đn ngày đáo hn",
+          "note_reference": "III.7.2",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0066",
+            "page-0003:line-0067",
+            "page-0003:line-0068",
+            "page-0003:line-0069"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "-561362",
+              "observation": "VALUE",
+              "raw_text": "(561.362)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-561362"
+            },
+            {
+              "normalized_text": "-232739",
+              "observation": "VALUE",
+              "raw_text": "(232.739)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-232739"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              70
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                71
+              ],
+              [
+                72
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1799.0
+          },
+          "label": "D phòng ri ro chng khoán đu tư",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0070",
+            "page-0003:line-0071",
+            "page-0003:line-0072"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "467906",
+              "observation": "VALUE",
+              "raw_text": "467.906",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "467906"
+            },
+            {
+              "normalized_text": "468396",
+              "observation": "VALUE",
+              "raw_text": "468.396",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "468396"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              73
+            ],
+            "note_line_indices": [
+              74
+            ],
+            "value_line_indices": [
+              [
+                75
+              ],
+              [
+                76
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1858.25
+          },
+          "label": "Góp vn, đu tư dài hn",
+          "note_reference": "III.9",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0073",
+            "page-0003:line-0074",
+            "page-0003:line-0075",
+            "page-0003:line-0076"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "-",
+              "observation": "DASH",
+              "raw_text": "-",
+              "reason": null,
+              "sign_evidence": "dash",
+              "value": null
+            },
+            {
+              "normalized_text": "",
+              "observation": "BLANK",
+              "raw_text": "",
+              "reason": null,
+              "sign_evidence": null,
+              "value": null
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              77
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [],
+              []
+            ],
+            "visual_cell_evidence": [
+              {
+                "aspect_ratio": 2.75,
+                "component_box": [
+                  1858,
+                  1922,
+                  1869,
+                  1926
+                ],
+                "crop_box": [
+                  1803,
+                  1896,
+                  1884,
+                  1947
+                ],
+                "fill_ratio": 0.886364,
+                "foreground_contrast": 139.727273,
+                "height_line_heights": 0.086957,
+                "observation": "DASH",
+                "source_image_path": "/workspace/bctc-ai/output/calibration/e0027-mbb-q1-2026-end-to-end/eebeda2ebc09b0d42032/renders/page-0003.png",
+                "threshold": 163.0,
+                "width_line_heights": 0.23913
+              },
+              null
+            ],
+            "y_anchor": 1921.5
+          },
+          "label": "Đu tư vào công ty liên kêt",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0077"
+          ],
+          "warnings": [
+            "label-only row retained without structural merge"
+          ]
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "559134",
+              "observation": "VALUE",
+              "raw_text": "559.134",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "559134"
+            },
+            {
+              "normalized_text": "559624",
+              "observation": "VALUE",
+              "raw_text": "559.624",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "559624"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              78
+            ],
+            "note_line_indices": [
+              79
+            ],
+            "value_line_indices": [
+              [
+                80
+              ],
+              [
+                81
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1977.75
+          },
+          "label": "Đu tư dài hn khác",
+          "note_reference": "III.9.1",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0078",
+            "page-0003:line-0079",
+            "page-0003:line-0080",
+            "page-0003:line-0081"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "-91228",
+              "observation": "VALUE",
+              "raw_text": "(91.228)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-91228"
+            },
+            {
+              "normalized_text": "-91228",
+              "observation": "VALUE",
+              "raw_text": "(91.228)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-91228"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              82
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                83
+              ],
+              [
+                84
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2040.75
+          },
+          "label": "D phòng gim giá đu tư dài hn",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0082",
+            "page-0003:line-0083",
+            "page-0003:line-0084"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "5500662",
+              "observation": "VALUE",
+              "raw_text": "5.500.662",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "5500662"
+            },
+            {
+              "normalized_text": "5616547",
+              "observation": "VALUE",
+              "raw_text": "5.616.547",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "5616547"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              85
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                86
+              ],
+              [
+                87
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2100.75
+          },
+          "label": "Tài sán c đįnh",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0085",
+            "page-0003:line-0086",
+            "page-0003:line-0087"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "3717028",
+              "observation": "VALUE",
+              "raw_text": "3.717.028",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "3717028"
+            },
+            {
+              "normalized_text": "3805533",
+              "observation": "VALUE",
+              "raw_text": "3.805.533",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "3805533"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              88
+            ],
+            "note_line_indices": [
+              89
+            ],
+            "value_line_indices": [
+              [
+                90
+              ],
+              [
+                91
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2162.5
+          },
+          "label": "Tài sán cô đinh hũu hinh",
+          "note_reference": "1/1.10",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0088",
+            "page-0003:line-0089",
+            "page-0003:line-0090",
+            "page-0003:line-0091"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "9473484",
+              "observation": "VALUE",
+              "raw_text": "9.473.484",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "9473484"
+            },
+            {
+              "normalized_text": "9423236",
+              "observation": "VALUE",
+              "raw_text": "9.423.236",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "9423236"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              92
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                93
+              ],
+              [
+                94
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2223.0
+          },
+          "label": "Nguyên giá tài sn cô đnh",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0092",
+            "page-0003:line-0093",
+            "page-0003:line-0094"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "-5756456",
+              "observation": "VALUE",
+              "raw_text": "(5.756.456)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-5756456"
+            },
+            {
+              "normalized_text": "-5617703",
+              "observation": "VALUE",
+              "raw_text": "(5.617.703)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-5617703"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              95
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                96
+              ],
+              [
+                97
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2286.5
+          },
+          "label": "Hao mòn tài sn c đnh",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0095",
+            "page-0003:line-0096",
+            "page-0003:line-0097"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "1783634",
+              "observation": "VALUE",
+              "raw_text": "1.783.634",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "1783634"
+            },
+            {
+              "normalized_text": "1811014",
+              "observation": "VALUE",
+              "raw_text": "1.811.014",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "1811014"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              98
+            ],
+            "note_line_indices": [
+              99
+            ],
+            "value_line_indices": [
+              [
+                100
+              ],
+              [
+                101
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2347.0
+          },
+          "label": "Tài săn c đinh vô hinh",
+          "note_reference": "111.11",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0098",
+            "page-0003:line-0099",
+            "page-0003:line-0100",
+            "page-0003:line-0101"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "5762160",
+              "observation": "VALUE",
+              "raw_text": "5.762.160",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "5762160"
+            },
+            {
+              "normalized_text": "5684904",
+              "observation": "VALUE",
+              "raw_text": "5.684.904",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "5684904"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              102
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                103
+              ],
+              [
+                104
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2407.0
+          },
+          "label": "Nguyên giá tài sn cô đnh",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0102",
+            "page-0003:line-0103",
+            "page-0003:line-0104"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "-3978526",
+              "observation": "VALUE",
+              "raw_text": "(3.978.526)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-3978526"
+            },
+            {
+              "normalized_text": "-3873890",
+              "observation": "VALUE",
+              "raw_text": "(3.873.890)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-3873890"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              105
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                106
+              ],
+              [
+                107
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2469.0
+          },
+          "label": "Hao mòn tài sn c đnh",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0105",
+            "page-0003:line-0106",
+            "page-0003:line-0107"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "216314",
+              "observation": "VALUE",
+              "raw_text": "216.314",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "216314"
+            },
+            {
+              "normalized_text": "222813",
+              "observation": "VALUE",
+              "raw_text": "222.813",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "222813"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              108
+            ],
+            "note_line_indices": [
+              109
+            ],
+            "value_line_indices": [
+              [
+                110
+              ],
+              [
+                111
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2527.25
+          },
+          "label": "Bt đng sn đu tư",
+          "note_reference": "III.12",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0108",
+            "page-0003:line-0109",
+            "page-0003:line-0110",
+            "page-0003:line-0111"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "250155",
+              "observation": "VALUE",
+              "raw_text": "250.155",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "250155"
+            },
+            {
+              "normalized_text": "255126",
+              "observation": "VALUE",
+              "raw_text": "255.126",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "255126"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              112
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                113
+              ],
+              [
+                114
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2588.5
+          },
+          "label": "Nguyên giá bt đng sn đu tư",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0112",
+            "page-0003:line-0113",
+            "page-0003:line-0114"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "-33841",
+              "observation": "VALUE",
+              "raw_text": "(33.841)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-33841"
+            },
+            {
+              "normalized_text": "-32313",
+              "observation": "VALUE",
+              "raw_text": "(32.313)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-32313"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              115
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                116
+              ],
+              [
+                117
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2651.75
+          },
+          "label": "Hao mòn bt đng sn đu tư",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0115",
+            "page-0003:line-0116",
+            "page-0003:line-0117"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "42837663",
+              "observation": "VALUE",
+              "raw_text": "42.837.663",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "42837663"
+            },
+            {
+              "normalized_text": "49531482",
+              "observation": "VALUE",
+              "raw_text": "49.531.482",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "49531482"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              120
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                118
+              ],
+              [
+                119
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2711.25
+          },
+          "label": "Tài săn Có khác",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0118",
+            "page-0003:line-0119",
+            "page-0003:line-0120"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "20164815",
+              "observation": "VALUE",
+              "raw_text": "20.164.815",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "20164815"
+            },
+            {
+              "normalized_text": "28125764",
+              "observation": "VALUE",
+              "raw_text": "28.125.764",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "28125764"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              121
+            ],
+            "note_line_indices": [
+              122
+            ],
+            "value_line_indices": [
+              [
+                123
+              ],
+              [
+                124
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2773.0
+          },
+          "label": "Các khon phi thu",
+          "note_reference": "III.13",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0121",
+            "page-0003:line-0122",
+            "page-0003:line-0123",
+            "page-0003:line-0124"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "16082037",
+              "observation": "VALUE",
+              "raw_text": "16.082.037",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "16082037"
+            },
+            {
+              "normalized_text": "13549018",
+              "observation": "VALUE",
+              "raw_text": "13.549.018",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "13549018"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              125
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                126
+              ],
+              [
+                127
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2834.0
+          },
+          "label": "Các khon lāi, phí phi thu",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0125",
+            "page-0003:line-0126",
+            "page-0003:line-0127"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "37793",
+              "observation": "VALUE",
+              "raw_text": "37.793",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "37793"
+            },
+            {
+              "normalized_text": "34339",
+              "observation": "VALUE",
+              "raw_text": "34.339",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "34339"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              128
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                129
+              ],
+              [
+                130
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2894.75
+          },
+          "label": "Tài sn thu TNDN hon li",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0128",
+            "page-0003:line-0129",
+            "page-0003:line-0130"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "6622398",
+              "observation": "VALUE",
+              "raw_text": "6.622.398",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "6622398"
+            },
+            {
+              "normalized_text": "7894091",
+              "observation": "VALUE",
+              "raw_text": "7.894.091",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "7894091"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              131
+            ],
+            "note_line_indices": [
+              132
+            ],
+            "value_line_indices": [
+              [
+                133
+              ],
+              [
+                134
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2955.75
+          },
+          "label": "Tài sán Có khác",
+          "note_reference": "III.14",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0131",
+            "page-0003:line-0132",
+            "page-0003:line-0133",
+            "page-0003:line-0134"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "-69380",
+              "observation": "VALUE",
+              "raw_text": "(69.380)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-69380"
+            },
+            {
+              "normalized_text": "-71730",
+              "observation": "VALUE",
+              "raw_text": "(71.730)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-71730"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              137
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                135
+              ],
+              [
+                136
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 3017.5
+          },
+          "label": "D phòng rúi ro cho các tài sn Có ni bng khác",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0135",
+            "page-0003:line-0136",
+            "page-0003:line-0137"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "1611222764",
+              "observation": "VALUE",
+              "raw_text": "1.611.222.764",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "1611222764"
+            },
+            {
+              "normalized_text": "1615763927",
+              "observation": "VALUE",
+              "raw_text": "1.615.763.927",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "1615763927"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              138
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                139
+              ],
+              [
+                140
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 3082.5
+          },
+          "label": "TÓNG TÀI SÁN CÓ",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0138",
+            "page-0003:line-0139",
+            "page-0003:line-0140"
+          ],
+          "warnings": []
+        }
+      ],
+      "summary": {
+        "axis_headers_left_to_right": [
+          "31/03/2026",
+          "31/12/2025"
+        ],
+        "blank_cell_count": 3,
+        "cell_count": 78,
+        "dash_cell_count": 3,
+        "duplicate_source_line_assignment_count": 0,
+        "header_companion_leak_count": 0,
+        "invalid_cell_count": 0,
+        "note_reference_count": 18,
+        "note_reference_prefix_leak_count": 0,
+        "observation_counts": {
+          "BLANK": 3,
+          "DASH": 3,
+          "VALUE": 72
+        },
+        "page": 3,
+        "row_count": 39,
+        "rows_with_exactly_two_cells": 39,
+        "trailing_row_count": 0,
+        "unassigned_numeric_line_count": 0,
+        "unassigned_numeric_line_indices": []
+      },
+      "table_bbox": [
+        51.0,
+        818.0,
+        2406.0,
+        3112.0
+      ],
+      "trailing_rows": []
+    },
+    {
+      "axes": [
+        {
+          "axis_id": "value-1",
+          "header_line_index": 6,
+          "raw_header": "31/03/2026",
+          "right_edge": 1863.0
+        },
+        {
+          "axis_id": "value-2",
+          "header_line_index": 5,
+          "raw_header": "31/12/2025",
+          "right_edge": 2394.0
+        }
+      ],
+      "excluded_after_table_line_indices": [],
+      "index_band": null,
+      "line_height": 44.5,
+      "note_right_edge": 1334.0,
+      "page": 4,
+      "rows": [
+        {
+          "cells": [
+            {
+              "normalized_text": "",
+              "observation": "BLANK",
+              "raw_text": "",
+              "reason": null,
+              "sign_evidence": null,
+              "value": null
+            },
+            {
+              "normalized_text": "",
+              "observation": "BLANK",
+              "raw_text": "",
+              "reason": null,
+              "sign_evidence": null,
+              "value": null
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              12
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [],
+              []
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 925.5
+          },
+          "label": "NÇ PHÁI TRÁ",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0012"
+          ],
+          "warnings": [
+            "label-only row retained without structural merge"
+          ]
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "28346499",
+              "observation": "VALUE",
+              "raw_text": "28.346.499",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "28346499"
+            },
+            {
+              "normalized_text": "47474800",
+              "observation": "VALUE",
+              "raw_text": "47.474.800",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "47474800"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              13
+            ],
+            "note_line_indices": [
+              14
+            ],
+            "value_line_indices": [
+              [
+                15
+              ],
+              [
+                16
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 981.75
+          },
+          "label": "Các khon n Chính ph và NHNN",
+          "note_reference": "III.15",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0013",
+            "page-0004:line-0014",
+            "page-0004:line-0015",
+            "page-0004:line-0016"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "256891475",
+              "observation": "VALUE",
+              "raw_text": "256.891.475",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "256891475"
+            },
+            {
+              "normalized_text": "248017489",
+              "observation": "VALUE",
+              "raw_text": "248.017.489",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "248017489"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              17
+            ],
+            "note_line_indices": [
+              18
+            ],
+            "value_line_indices": [
+              [
+                19
+              ],
+              [
+                20
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1052.75
+          },
+          "label": "Tingi và vay các TCTD khác",
+          "note_reference": "III.16",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0017",
+            "page-0004:line-0018",
+            "page-0004:line-0019",
+            "page-0004:line-0020"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "905918332",
+              "observation": "VALUE",
+              "raw_text": "905.918.332",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "905918332"
+            },
+            {
+              "normalized_text": "921368132",
+              "observation": "VALUE",
+              "raw_text": "921.368.132",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "921368132"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              21
+            ],
+            "note_line_indices": [
+              22
+            ],
+            "value_line_indices": [
+              [
+                23
+              ],
+              [
+                24
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1119.75
+          },
+          "label": "Tièn gi ca khách hàng",
+          "note_reference": "III.17",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0021",
+            "page-0004:line-0022",
+            "page-0004:line-0023",
+            "page-0004:line-0024"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "661326",
+              "observation": "VALUE",
+              "raw_text": "661.326",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "661326"
+            },
+            {
+              "normalized_text": "698507",
+              "observation": "VALUE",
+              "raw_text": "698.507",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "698507"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              28
+            ],
+            "note_line_indices": [
+              25
+            ],
+            "value_line_indices": [
+              [
+                26
+              ],
+              [
+                27
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1182.5
+          },
+          "label": "Các công cu tài chính phái sinh và các khon n tài chính khác",
+          "note_reference": "III.18",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0025",
+            "page-0004:line-0026",
+            "page-0004:line-0027",
+            "page-0004:line-0028"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "3247015",
+              "observation": "VALUE",
+              "raw_text": "3.247.015",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "3247015"
+            },
+            {
+              "normalized_text": "3912833",
+              "observation": "VALUE",
+              "raw_text": "3.912.833",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "3912833"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              29
+            ],
+            "note_line_indices": [
+              30
+            ],
+            "value_line_indices": [
+              [
+                31
+              ],
+              [
+                32
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1248.75
+          },
+          "label": "Vón tài tr, y thác đàu tư, cho vay TCTD chu ri ro",
+          "note_reference": "III.19",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0029",
+            "page-0004:line-0030",
+            "page-0004:line-0031",
+            "page-0004:line-0032"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "208816453",
+              "observation": "VALUE",
+              "raw_text": "208.816.453",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "208816453"
+            },
+            {
+              "normalized_text": "187236104",
+              "observation": "VALUE",
+              "raw_text": "187.236.104",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "187236104"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              33
+            ],
+            "note_line_indices": [
+              34
+            ],
+            "value_line_indices": [
+              [
+                35
+              ],
+              [
+                36
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1315.25
+          },
+          "label": "Phát hành giy t có giá",
+          "note_reference": "III.20",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0033",
+            "page-0004:line-0034",
+            "page-0004:line-0035",
+            "page-0004:line-0036"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "57596339",
+              "observation": "VALUE",
+              "raw_text": "57.596.339",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "57596339"
+            },
+            {
+              "normalized_text": "65033537",
+              "observation": "VALUE",
+              "raw_text": "65.033.537",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "65033537"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              37
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                38
+              ],
+              [
+                39
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1380.75
+          },
+          "label": "Các khon nơ khác",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0037",
+            "page-0004:line-0038",
+            "page-0004:line-0039"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "16185467",
+              "observation": "VALUE",
+              "raw_text": "16.185.467",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "16185467"
+            },
+            {
+              "normalized_text": "13245868",
+              "observation": "VALUE",
+              "raw_text": "13.245.868",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "13245868"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              40
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                41
+              ],
+              [
+                42
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1446.0
+          },
+          "label": "Các khon lāi, phí phi tr",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0040",
+            "page-0004:line-0041",
+            "page-0004:line-0042"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "-",
+              "observation": "DASH",
+              "raw_text": "-",
+              "reason": null,
+              "sign_evidence": "dash",
+              "value": null
+            },
+            {
+              "normalized_text": "-",
+              "observation": "DASH",
+              "raw_text": "-",
+              "reason": null,
+              "sign_evidence": "dash",
+              "value": null
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              43
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [],
+              []
+            ],
+            "visual_cell_evidence": [
+              {
+                "aspect_ratio": 2.5,
+                "component_box": [
+                  1853,
+                  1517,
+                  1863,
+                  1521
+                ],
+                "crop_box": [
+                  1796,
+                  1496,
+                  1874,
+                  1544
+                ],
+                "fill_ratio": 0.85,
+                "foreground_contrast": 138.8,
+                "height_line_heights": 0.089888,
+                "observation": "DASH",
+                "source_image_path": "/workspace/bctc-ai/output/calibration/e0027-mbb-q1-2026-end-to-end/eebeda2ebc09b0d42032/renders/page-0004.png",
+                "threshold": 165.0,
+                "width_line_heights": 0.224719
+              },
+              {
+                "aspect_ratio": 2.75,
+                "component_box": [
+                  2384,
+                  1514,
+                  2395,
+                  1518
+                ],
+                "crop_box": [
+                  2327,
+                  1496,
+                  2405,
+                  1544
+                ],
+                "fill_ratio": 0.863636,
+                "foreground_contrast": 126.204545,
+                "height_line_heights": 0.089888,
+                "observation": "DASH",
+                "source_image_path": "/workspace/bctc-ai/output/calibration/e0027-mbb-q1-2026-end-to-end/eebeda2ebc09b0d42032/renders/page-0004.png",
+                "threshold": 171.0,
+                "width_line_heights": 0.247191
+              }
+            ],
+            "y_anchor": 1520.0
+          },
+          "label": "Thu TNDN hon li phi tr",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0043"
+          ],
+          "warnings": [
+            "label-only row retained without structural merge"
+          ]
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "41408552",
+              "observation": "VALUE",
+              "raw_text": "41.408.552",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "41408552"
+            },
+            {
+              "normalized_text": "51785481",
+              "observation": "VALUE",
+              "raw_text": "51.785.481",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "51785481"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              44
+            ],
+            "note_line_indices": [
+              45
+            ],
+            "value_line_indices": [
+              [
+                46
+              ],
+              [
+                47
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1577.0
+          },
+          "label": "Các khon phái tr và công n khác",
+          "note_reference": "IlI.21",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0044",
+            "page-0004:line-0045",
+            "page-0004:line-0046",
+            "page-0004:line-0047"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "2320",
+              "observation": "VALUE",
+              "raw_text": "2.320",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "2320"
+            },
+            {
+              "normalized_text": "2188",
+              "observation": "VALUE",
+              "raw_text": "2.188",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "2188"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              50
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                48
+              ],
+              [
+                49
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1640.25
+          },
+          "label": "D phòng các khon n khác",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0048",
+            "page-0004:line-0049",
+            "page-0004:line-0050"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "1461477439",
+              "observation": "VALUE",
+              "raw_text": "1.461.477.439",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "1461477439"
+            },
+            {
+              "normalized_text": "1473741402",
+              "observation": "VALUE",
+              "raw_text": "1.473.741.402",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "1473741402"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              51
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                52
+              ],
+              [
+                53
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1706.5
+          },
+          "label": "TÓNG NO PHÁI TRÁ",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0051",
+            "page-0004:line-0052",
+            "page-0004:line-0053"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "",
+              "observation": "BLANK",
+              "raw_text": "",
+              "reason": null,
+              "sign_evidence": null,
+              "value": null
+            },
+            {
+              "normalized_text": "",
+              "observation": "BLANK",
+              "raw_text": "",
+              "reason": null,
+              "sign_evidence": null,
+              "value": null
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              54
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [],
+              []
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1778.0
+          },
+          "label": "VÓN CHÙ s HU",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0054"
+          ],
+          "warnings": [
+            "label-only row retained without structural merge"
+          ]
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "",
+              "observation": "BLANK",
+              "raw_text": "",
+              "reason": null,
+              "sign_evidence": null,
+              "value": null
+            },
+            {
+              "normalized_text": "",
+              "observation": "BLANK",
+              "raw_text": "",
+              "reason": null,
+              "sign_evidence": null,
+              "value": null
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              55
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [],
+              []
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1848.5
+          },
+          "label": "Vn và các qu",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0055"
+          ],
+          "warnings": [
+            "label-only row retained without structural merge"
+          ]
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "83965544",
+              "observation": "VALUE",
+              "raw_text": "83.965.544",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "83965544"
+            },
+            {
+              "normalized_text": "83965544",
+              "observation": "VALUE",
+              "raw_text": "83.965.544",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "83965544"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              56
+            ],
+            "note_line_indices": [
+              57
+            ],
+            "value_line_indices": [
+              [
+                58
+              ],
+              [
+                59
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1904.0
+          },
+          "label": "Vón cúa TCTD",
+          "note_reference": "I/I.22",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0056",
+            "page-0004:line-0057",
+            "page-0004:line-0058",
+            "page-0004:line-0059"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "80549999",
+              "observation": "VALUE",
+              "raw_text": "80.549.999",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "80549999"
+            },
+            {
+              "normalized_text": "80549999",
+              "observation": "VALUE",
+              "raw_text": "80.549.999",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "80549999"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              60
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                61
+              ],
+              [
+                62
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1969.5
+          },
+          "label": "Vôn điu l",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0060",
+            "page-0004:line-0061",
+            "page-0004:line-0062"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "1304334",
+              "observation": "VALUE",
+              "raw_text": "1.304.334",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "1304334"
+            },
+            {
+              "normalized_text": "1304334",
+              "observation": "VALUE",
+              "raw_text": "1.304.334",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "1304334"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              63
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                64
+              ],
+              [
+                65
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2035.0
+          },
+          "label": "Thng dư vôn cphn",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0063",
+            "page-0004:line-0064",
+            "page-0004:line-0065"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "2111211",
+              "observation": "VALUE",
+              "raw_text": "2.111.211",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "2111211"
+            },
+            {
+              "normalized_text": "2111211",
+              "observation": "VALUE",
+              "raw_text": "2.111.211",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "2111211"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              67
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                68
+              ],
+              [
+                69
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2101.0
+          },
+          "label": "Vôn khác",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0067",
+            "page-0004:line-0068",
+            "page-0004:line-0069"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "19352028",
+              "observation": "VALUE",
+              "raw_text": "19.352.028",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "19352028"
+            },
+            {
+              "normalized_text": "19390884",
+              "observation": "VALUE",
+              "raw_text": "19.390.884",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "19390884"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              72
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                70
+              ],
+              [
+                71
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2165.75
+          },
+          "label": "Qu ca TCTD",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0070",
+            "page-0004:line-0071",
+            "page-0004:line-0072"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "205588",
+              "observation": "VALUE",
+              "raw_text": "205.588",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "205588"
+            },
+            {
+              "normalized_text": "202211",
+              "observation": "VALUE",
+              "raw_text": "202.211",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "202211"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              75
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                73
+              ],
+              [
+                74
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2234.0
+          },
+          "label": "Chênhlch t giá hôi đoái",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0073",
+            "page-0004:line-0074",
+            "page-0004:line-0075"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "40061058",
+              "observation": "VALUE",
+              "raw_text": "40.061.058",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "40061058"
+            },
+            {
+              "normalized_text": "32577391",
+              "observation": "VALUE",
+              "raw_text": "32.577.391",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "32577391"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              78
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                76
+              ],
+              [
+                77
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2297.75
+          },
+          "label": "Li nhun chưa phân phói",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0076",
+            "page-0004:line-0077",
+            "page-0004:line-0078"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "6161107",
+              "observation": "VALUE",
+              "raw_text": "6.161.107",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "6161107"
+            },
+            {
+              "normalized_text": "5886495",
+              "observation": "VALUE",
+              "raw_text": "5.886.495",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "5886495"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              79
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                80
+              ],
+              [
+                81
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2375.0
+          },
+          "label": "LI ÍCH CÙA CÓ DÔNG KHÔNG KIÉM SOÁT",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0079",
+            "page-0004:line-0080",
+            "page-0004:line-0081"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "149745325",
+              "observation": "VALUE",
+              "raw_text": "149.745.325",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "149745325"
+            },
+            {
+              "normalized_text": "142022525",
+              "observation": "VALUE",
+              "raw_text": "142.022.525",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "142022525"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              82
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                83
+              ],
+              [
+                84
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2445.0
+          },
+          "label": "TÓNG VÓN CHÙ S HÜU",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0082",
+            "page-0004:line-0083",
+            "page-0004:line-0084"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "1611222764",
+              "observation": "VALUE",
+              "raw_text": "1.611.222.764",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "1611222764"
+            },
+            {
+              "normalized_text": "1615763927",
+              "observation": "VALUE",
+              "raw_text": "1.615.763.927",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "1615763927"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              85
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                86
+              ],
+              [
+                87
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2520.5
+          },
+          "label": "TÓNG NQ PHÁI TRÁ VÀ VÓN CHÙ S HÜU",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0085",
+            "page-0004:line-0086",
+            "page-0004:line-0087"
+          ],
+          "warnings": []
+        }
+      ],
+      "summary": {
+        "axis_headers_left_to_right": [
+          "31/03/2026",
+          "31/12/2025"
+        ],
+        "blank_cell_count": 6,
+        "cell_count": 50,
+        "dash_cell_count": 2,
+        "duplicate_source_line_assignment_count": 0,
+        "header_companion_leak_count": 0,
+        "invalid_cell_count": 0,
+        "note_reference_count": 8,
+        "note_reference_prefix_leak_count": 0,
+        "observation_counts": {
+          "BLANK": 6,
+          "DASH": 2,
+          "VALUE": 42
+        },
+        "page": 4,
+        "row_count": 25,
+        "rows_with_exactly_two_cells": 25,
+        "trailing_row_count": 0,
+        "unassigned_numeric_line_count": 1,
+        "unassigned_numeric_line_indices": [
+          66
+        ]
+      },
+      "table_bbox": [
+        50.0,
+        898.0,
+        2400.0,
+        2556.0
+      ],
+      "trailing_rows": []
+    }
+  ],
+  "before": [
+    {
+      "axes": [
+        {
+          "axis_id": "value-1",
+          "header_line_index": 7,
+          "raw_header": "31/03/2026",
+          "right_edge": 1872.0
+        },
+        {
+          "axis_id": "value-2",
+          "header_line_index": 5,
+          "raw_header": "31/12/2025",
+          "right_edge": 2400.0
+        }
+      ],
+      "excluded_after_table_line_indices": [],
+      "index_band": null,
+      "line_height": 46.0,
+      "note_right_edge": 1341.0,
+      "page": 3,
+      "rows": [
+        {
+          "cells": [
+            {
+              "normalized_text": "",
+              "observation": "BLANK",
+              "raw_text": "",
+              "reason": null,
+              "sign_evidence": null,
+              "value": null
+            },
+            {
+              "normalized_text": "",
+              "observation": "BLANK",
+              "raw_text": "",
+              "reason": null,
+              "sign_evidence": null,
+              "value": null
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              12
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [],
+              []
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 844.5
+          },
+          "label": "TÀI SÁN",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0012"
+          ],
+          "warnings": [
+            "label-only row retained without structural merge"
+          ]
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "5741287",
+              "observation": "VALUE",
+              "raw_text": "5.741.287",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "5741287"
+            },
+            {
+              "normalized_text": "4965786",
+              "observation": "VALUE",
+              "raw_text": "4.965.786",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "4965786"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              13
+            ],
+            "note_line_indices": [
+              14
+            ],
+            "value_line_indices": [
+              [
+                15
+              ],
+              [
+                16
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 902.0
+          },
+          "label": "Tin mt, vàng bc, đá quý",
+          "note_reference": "III.1",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0013",
+            "page-0003:line-0014",
+            "page-0003:line-0015",
+            "page-0003:line-0016"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "15156039",
+              "observation": "VALUE",
+              "raw_text": "15.156.039",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "15156039"
+            },
+            {
+              "normalized_text": "68494426",
+              "observation": "VALUE",
+              "raw_text": "68.494.426",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "68494426"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              17
+            ],
+            "note_line_indices": [
+              18
+            ],
+            "value_line_indices": [
+              [
+                19
+              ],
+              [
+                20
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 959.5
+          },
+          "label": "Tin gri ti Ngân hàng Nhà nưc (\"NHNN\")",
+          "note_reference": "III.2",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0017",
+            "page-0003:line-0018",
+            "page-0003:line-0019",
+            "page-0003:line-0020"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "165297962",
+              "observation": "VALUE",
+              "raw_text": "165.297.962",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "165297962"
+            },
+            {
+              "normalized_text": "182923726",
+              "observation": "VALUE",
+              "raw_text": "182.923.726",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "182923726"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              21
+            ],
+            "note_line_indices": [
+              22
+            ],
+            "value_line_indices": [
+              [
+                23
+              ],
+              [
+                24
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1013.75
+          },
+          "label": "Tin, vàng gi và cho vay các t chc tín dng (\"TCTD\") khác",
+          "note_reference": "IlI.3",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0021",
+            "page-0003:line-0022",
+            "page-0003:line-0023",
+            "page-0003:line-0024"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "5058769",
+              "observation": "VALUE",
+              "raw_text": "5.058.769",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "5058769"
+            },
+            {
+              "normalized_text": "4653229",
+              "observation": "VALUE",
+              "raw_text": "4.653.229",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "4653229"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              25
+            ],
+            "note_line_indices": [
+              26
+            ],
+            "value_line_indices": [
+              [
+                27
+              ],
+              [
+                28
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1073.0
+          },
+          "label": "Chng khoán kinh doanh",
+          "note_reference": "III.4",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0025",
+            "page-0003:line-0026",
+            "page-0003:line-0027",
+            "page-0003:line-0028"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "5093432",
+              "observation": "VALUE",
+              "raw_text": "5.093.432",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "5093432"
+            },
+            {
+              "normalized_text": "4692622",
+              "observation": "VALUE",
+              "raw_text": "4.692.622",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "4692622"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              29
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                30
+              ],
+              [
+                31
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1128.25
+          },
+          "label": "Chng khoán kinh doanh",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0029",
+            "page-0003:line-0030",
+            "page-0003:line-0031"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "-34663",
+              "observation": "VALUE",
+              "raw_text": "(34.663)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-34663"
+            },
+            {
+              "normalized_text": "-39393",
+              "observation": "VALUE",
+              "raw_text": "(39.393)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-39393"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              32
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                33
+              ],
+              [
+                34
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1185.25
+          },
+          "label": "D phòng ri ro chng khoán kinh doanh",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0032",
+            "page-0003:line-0033",
+            "page-0003:line-0034"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "1105852151",
+              "observation": "VALUE",
+              "raw_text": "1.105.852.151",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "1105852151"
+            },
+            {
+              "normalized_text": "1070868777",
+              "observation": "VALUE",
+              "raw_text": "1.070.868.777",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "1070868777"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              35,
+              37
+            ],
+            "note_line_indices": [
+              36
+            ],
+            "value_line_indices": [
+              [
+                38
+              ],
+              [
+                39
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1295.25
+          },
+          "label": "Các công cu tài chính phái sinh và các tài sn tài chính khác Chovay khách hàng",
+          "note_reference": "III.18",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0035",
+            "page-0003:line-0036",
+            "page-0003:line-0037",
+            "page-0003:line-0038",
+            "page-0003:line-0039"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "1120562481",
+              "observation": "VALUE",
+              "raw_text": "1.120.562.481",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "1120562481"
+            },
+            {
+              "normalized_text": "1084019370",
+              "observation": "VALUE",
+              "raw_text": "1.084.019.370",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "1084019370"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              40
+            ],
+            "note_line_indices": [
+              41
+            ],
+            "value_line_indices": [
+              [
+                42
+              ],
+              [
+                43
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1348.0
+          },
+          "label": "Cho vay khách hàng",
+          "note_reference": "III.5",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0040",
+            "page-0003:line-0041",
+            "page-0003:line-0042",
+            "page-0003:line-0043"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "-14710330",
+              "observation": "VALUE",
+              "raw_text": "(14.710.330)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-14710330"
+            },
+            {
+              "normalized_text": "-13150593",
+              "observation": "VALUE",
+              "raw_text": "(13.150.593)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-13150593"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              44
+            ],
+            "note_line_indices": [
+              45
+            ],
+            "value_line_indices": [
+              [
+                46
+              ],
+              [
+                47
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1404.5
+          },
+          "label": "D phòng ri ro cho vay khách hàng",
+          "note_reference": "III.6",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0044",
+            "page-0003:line-0045",
+            "page-0003:line-0046",
+            "page-0003:line-0047"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "2264075",
+              "observation": "VALUE",
+              "raw_text": "2.264.075",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "2264075"
+            },
+            {
+              "normalized_text": "2443895",
+              "observation": "VALUE",
+              "raw_text": "2.443.895",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "2443895"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              48
+            ],
+            "note_line_indices": [
+              49
+            ],
+            "value_line_indices": [
+              [
+                50
+              ],
+              [
+                51
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1456.0
+          },
+          "label": "Hot đng mua n",
+          "note_reference": "III.7",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0048",
+            "page-0003:line-0049",
+            "page-0003:line-0050",
+            "page-0003:line-0051"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "2287269",
+              "observation": "VALUE",
+              "raw_text": "2.287.269",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "2287269"
+            },
+            {
+              "normalized_text": "2465314",
+              "observation": "VALUE",
+              "raw_text": "2.465.314",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "2465314"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              52
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                53
+              ],
+              [
+                54
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1507.5
+          },
+          "label": "Mua no",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0052",
+            "page-0003:line-0053",
+            "page-0003:line-0054"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "-23194",
+              "observation": "VALUE",
+              "raw_text": "(23.194)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-23194"
+            },
+            {
+              "normalized_text": "-21419",
+              "observation": "VALUE",
+              "raw_text": "(21.419)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-21419"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              55
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                56
+              ],
+              [
+                57
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1561.5
+          },
+          "label": "D phòng ri ro hot đng mua n",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0055",
+            "page-0003:line-0056",
+            "page-0003:line-0057"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "262829936",
+              "observation": "VALUE",
+              "raw_text": "262.829.936",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "262829936"
+            },
+            {
+              "normalized_text": "225574850",
+              "observation": "VALUE",
+              "raw_text": "225.574.850",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "225574850"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              58
+            ],
+            "note_line_indices": [
+              59
+            ],
+            "value_line_indices": [
+              [
+                60
+              ],
+              [
+                61
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1614.75
+          },
+          "label": "Chng khoán đàu tư",
+          "note_reference": "III.8",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0058",
+            "page-0003:line-0059",
+            "page-0003:line-0060",
+            "page-0003:line-0061"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "259054739",
+              "observation": "VALUE",
+              "raw_text": "259.054.739",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "259054739"
+            },
+            {
+              "normalized_text": "221512464",
+              "observation": "VALUE",
+              "raw_text": "221.512.464",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "221512464"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              62
+            ],
+            "note_line_indices": [
+              63
+            ],
+            "value_line_indices": [
+              [
+                64
+              ],
+              [
+                65
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1675.5
+          },
+          "label": "Chng khoán đu tu săn sàng đ bán",
+          "note_reference": "III.8.1",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0062",
+            "page-0003:line-0063",
+            "page-0003:line-0064",
+            "page-0003:line-0065"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "4336559",
+              "observation": "VALUE",
+              "raw_text": "4.336.559",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "4336559"
+            },
+            {
+              "normalized_text": "4295125",
+              "observation": "VALUE",
+              "raw_text": "4.295.125",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "4295125"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              66
+            ],
+            "note_line_indices": [
+              67
+            ],
+            "value_line_indices": [
+              [
+                68
+              ],
+              [
+                69
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1736.0
+          },
+          "label": "Chng khoán đu tư gi đn ngày đáo hn",
+          "note_reference": "III.7.2",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0066",
+            "page-0003:line-0067",
+            "page-0003:line-0068",
+            "page-0003:line-0069"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "-561362",
+              "observation": "VALUE",
+              "raw_text": "(561.362)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-561362"
+            },
+            {
+              "normalized_text": "-232739",
+              "observation": "VALUE",
+              "raw_text": "(232.739)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-232739"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              70
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                71
+              ],
+              [
+                72
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1799.0
+          },
+          "label": "D phòng ri ro chng khoán đu tư",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0070",
+            "page-0003:line-0071",
+            "page-0003:line-0072"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "467906",
+              "observation": "VALUE",
+              "raw_text": "467.906",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "467906"
+            },
+            {
+              "normalized_text": "468396",
+              "observation": "VALUE",
+              "raw_text": "468.396",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "468396"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              73
+            ],
+            "note_line_indices": [
+              74
+            ],
+            "value_line_indices": [
+              [
+                75
+              ],
+              [
+                76
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1858.25
+          },
+          "label": "Góp vn, đu tư dài hn",
+          "note_reference": "III.9",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0073",
+            "page-0003:line-0074",
+            "page-0003:line-0075",
+            "page-0003:line-0076"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "-",
+              "observation": "DASH",
+              "raw_text": "-",
+              "reason": null,
+              "sign_evidence": "dash",
+              "value": null
+            },
+            {
+              "normalized_text": "",
+              "observation": "BLANK",
+              "raw_text": "",
+              "reason": null,
+              "sign_evidence": null,
+              "value": null
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              77
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [],
+              []
+            ],
+            "visual_cell_evidence": [
+              {
+                "aspect_ratio": 2.75,
+                "component_box": [
+                  1858,
+                  1922,
+                  1869,
+                  1926
+                ],
+                "crop_box": [
+                  1803,
+                  1896,
+                  1884,
+                  1947
+                ],
+                "fill_ratio": 0.886364,
+                "foreground_contrast": 139.727273,
+                "height_line_heights": 0.086957,
+                "observation": "DASH",
+                "source_image_path": "/workspace/bctc-ai/output/calibration/e0027-mbb-q1-2026-end-to-end/eebeda2ebc09b0d42032/renders/page-0003.png",
+                "threshold": 163.0,
+                "width_line_heights": 0.23913
+              },
+              null
+            ],
+            "y_anchor": 1921.5
+          },
+          "label": "Đu tư vào công ty liên kêt",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0077"
+          ],
+          "warnings": [
+            "label-only row retained without structural merge"
+          ]
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "559134",
+              "observation": "VALUE",
+              "raw_text": "559.134",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "559134"
+            },
+            {
+              "normalized_text": "559624",
+              "observation": "VALUE",
+              "raw_text": "559.624",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "559624"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              78
+            ],
+            "note_line_indices": [
+              79
+            ],
+            "value_line_indices": [
+              [
+                80
+              ],
+              [
+                81
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1977.75
+          },
+          "label": "Đu tư dài hn khác",
+          "note_reference": "III.9.1",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0078",
+            "page-0003:line-0079",
+            "page-0003:line-0080",
+            "page-0003:line-0081"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "-91228",
+              "observation": "VALUE",
+              "raw_text": "(91.228)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-91228"
+            },
+            {
+              "normalized_text": "-91228",
+              "observation": "VALUE",
+              "raw_text": "(91.228)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-91228"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              82
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                83
+              ],
+              [
+                84
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2040.75
+          },
+          "label": "D phòng gim giá đu tư dài hn",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0082",
+            "page-0003:line-0083",
+            "page-0003:line-0084"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "5500662",
+              "observation": "VALUE",
+              "raw_text": "5.500.662",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "5500662"
+            },
+            {
+              "normalized_text": "5616547",
+              "observation": "VALUE",
+              "raw_text": "5.616.547",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "5616547"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              85
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                86
+              ],
+              [
+                87
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2100.75
+          },
+          "label": "Tài sán c đįnh",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0085",
+            "page-0003:line-0086",
+            "page-0003:line-0087"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "3717028",
+              "observation": "VALUE",
+              "raw_text": "3.717.028",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "3717028"
+            },
+            {
+              "normalized_text": "3805533",
+              "observation": "VALUE",
+              "raw_text": "3.805.533",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "3805533"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              88
+            ],
+            "note_line_indices": [
+              89
+            ],
+            "value_line_indices": [
+              [
+                90
+              ],
+              [
+                91
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2162.5
+          },
+          "label": "Tài sán cô đinh hũu hinh",
+          "note_reference": "1/1.10",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0088",
+            "page-0003:line-0089",
+            "page-0003:line-0090",
+            "page-0003:line-0091"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "9473484",
+              "observation": "VALUE",
+              "raw_text": "9.473.484",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "9473484"
+            },
+            {
+              "normalized_text": "9423236",
+              "observation": "VALUE",
+              "raw_text": "9.423.236",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "9423236"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              92
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                93
+              ],
+              [
+                94
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2223.0
+          },
+          "label": "Nguyên giá tài sn cô đnh",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0092",
+            "page-0003:line-0093",
+            "page-0003:line-0094"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "-5756456",
+              "observation": "VALUE",
+              "raw_text": "(5.756.456)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-5756456"
+            },
+            {
+              "normalized_text": "-5617703",
+              "observation": "VALUE",
+              "raw_text": "(5.617.703)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-5617703"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              95
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                96
+              ],
+              [
+                97
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2286.5
+          },
+          "label": "Hao mòn tài sn c đnh",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0095",
+            "page-0003:line-0096",
+            "page-0003:line-0097"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "1783634",
+              "observation": "VALUE",
+              "raw_text": "1.783.634",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "1783634"
+            },
+            {
+              "normalized_text": "1811014",
+              "observation": "VALUE",
+              "raw_text": "1.811.014",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "1811014"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              98
+            ],
+            "note_line_indices": [
+              99
+            ],
+            "value_line_indices": [
+              [
+                100
+              ],
+              [
+                101
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2347.0
+          },
+          "label": "Tài săn c đinh vô hinh",
+          "note_reference": "111.11",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0098",
+            "page-0003:line-0099",
+            "page-0003:line-0100",
+            "page-0003:line-0101"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "5762160",
+              "observation": "VALUE",
+              "raw_text": "5.762.160",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "5762160"
+            },
+            {
+              "normalized_text": "5684904",
+              "observation": "VALUE",
+              "raw_text": "5.684.904",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "5684904"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              102
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                103
+              ],
+              [
+                104
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2407.0
+          },
+          "label": "Nguyên giá tài sn cô đnh",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0102",
+            "page-0003:line-0103",
+            "page-0003:line-0104"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "-3978526",
+              "observation": "VALUE",
+              "raw_text": "(3.978.526)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-3978526"
+            },
+            {
+              "normalized_text": "-3873890",
+              "observation": "VALUE",
+              "raw_text": "(3.873.890)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-3873890"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              105
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                106
+              ],
+              [
+                107
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2469.0
+          },
+          "label": "Hao mòn tài sn c đnh",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0105",
+            "page-0003:line-0106",
+            "page-0003:line-0107"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "216314",
+              "observation": "VALUE",
+              "raw_text": "216.314",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "216314"
+            },
+            {
+              "normalized_text": "222813",
+              "observation": "VALUE",
+              "raw_text": "222.813",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "222813"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              108
+            ],
+            "note_line_indices": [
+              109
+            ],
+            "value_line_indices": [
+              [
+                110
+              ],
+              [
+                111
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2527.25
+          },
+          "label": "Bt đng sn đu tư",
+          "note_reference": "III.12",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0108",
+            "page-0003:line-0109",
+            "page-0003:line-0110",
+            "page-0003:line-0111"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "250155",
+              "observation": "VALUE",
+              "raw_text": "250.155",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "250155"
+            },
+            {
+              "normalized_text": "255126",
+              "observation": "VALUE",
+              "raw_text": "255.126",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "255126"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              112
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                113
+              ],
+              [
+                114
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2588.5
+          },
+          "label": "Nguyên giá bt đng sn đu tư",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0112",
+            "page-0003:line-0113",
+            "page-0003:line-0114"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "-33841",
+              "observation": "VALUE",
+              "raw_text": "(33.841)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-33841"
+            },
+            {
+              "normalized_text": "-32313",
+              "observation": "VALUE",
+              "raw_text": "(32.313)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-32313"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              115
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                116
+              ],
+              [
+                117
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2651.75
+          },
+          "label": "Hao mòn bt đng sn đu tư",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0115",
+            "page-0003:line-0116",
+            "page-0003:line-0117"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "42837663",
+              "observation": "VALUE",
+              "raw_text": "42.837.663",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "42837663"
+            },
+            {
+              "normalized_text": "49531482",
+              "observation": "VALUE",
+              "raw_text": "49.531.482",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "49531482"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              120
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                118
+              ],
+              [
+                119
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2711.25
+          },
+          "label": "Tài săn Có khác",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0118",
+            "page-0003:line-0119",
+            "page-0003:line-0120"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "20164815",
+              "observation": "VALUE",
+              "raw_text": "20.164.815",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "20164815"
+            },
+            {
+              "normalized_text": "28125764",
+              "observation": "VALUE",
+              "raw_text": "28.125.764",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "28125764"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              121
+            ],
+            "note_line_indices": [
+              122
+            ],
+            "value_line_indices": [
+              [
+                123
+              ],
+              [
+                124
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2773.0
+          },
+          "label": "Các khon phi thu",
+          "note_reference": "III.13",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0121",
+            "page-0003:line-0122",
+            "page-0003:line-0123",
+            "page-0003:line-0124"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "16082037",
+              "observation": "VALUE",
+              "raw_text": "16.082.037",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "16082037"
+            },
+            {
+              "normalized_text": "13549018",
+              "observation": "VALUE",
+              "raw_text": "13.549.018",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "13549018"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              125
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                126
+              ],
+              [
+                127
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2834.0
+          },
+          "label": "Các khon lāi, phí phi thu",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0125",
+            "page-0003:line-0126",
+            "page-0003:line-0127"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "37793",
+              "observation": "VALUE",
+              "raw_text": "37.793",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "37793"
+            },
+            {
+              "normalized_text": "34339",
+              "observation": "VALUE",
+              "raw_text": "34.339",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "34339"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              128
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                129
+              ],
+              [
+                130
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2894.75
+          },
+          "label": "Tài sn thu TNDN hon li",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0128",
+            "page-0003:line-0129",
+            "page-0003:line-0130"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "6622398",
+              "observation": "VALUE",
+              "raw_text": "6.622.398",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "6622398"
+            },
+            {
+              "normalized_text": "7894091",
+              "observation": "VALUE",
+              "raw_text": "7.894.091",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "7894091"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              131
+            ],
+            "note_line_indices": [
+              132
+            ],
+            "value_line_indices": [
+              [
+                133
+              ],
+              [
+                134
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2955.75
+          },
+          "label": "Tài sán Có khác",
+          "note_reference": "III.14",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0131",
+            "page-0003:line-0132",
+            "page-0003:line-0133",
+            "page-0003:line-0134"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "-69380",
+              "observation": "VALUE",
+              "raw_text": "(69.380)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-69380"
+            },
+            {
+              "normalized_text": "-71730",
+              "observation": "VALUE",
+              "raw_text": "(71.730)",
+              "reason": null,
+              "sign_evidence": "parentheses",
+              "value": "-71730"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              137
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                135
+              ],
+              [
+                136
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 3017.5
+          },
+          "label": "D phòng rúi ro cho các tài sn Có ni bng khác",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0135",
+            "page-0003:line-0136",
+            "page-0003:line-0137"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "1611222764",
+              "observation": "VALUE",
+              "raw_text": "1.611.222.764",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "1611222764"
+            },
+            {
+              "normalized_text": "1615763927",
+              "observation": "VALUE",
+              "raw_text": "1.615.763.927",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "1615763927"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              138
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                139
+              ],
+              [
+                140
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 3082.5
+          },
+          "label": "TÓNG TÀI SÁN CÓ",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0003:line-0138",
+            "page-0003:line-0139",
+            "page-0003:line-0140"
+          ],
+          "warnings": []
+        }
+      ],
+      "summary": {
+        "axis_headers_left_to_right": [
+          "31/03/2026",
+          "31/12/2025"
+        ],
+        "blank_cell_count": 3,
+        "cell_count": 76,
+        "dash_cell_count": 1,
+        "duplicate_source_line_assignment_count": 0,
+        "header_companion_leak_count": 0,
+        "invalid_cell_count": 0,
+        "note_reference_count": 18,
+        "note_reference_prefix_leak_count": 0,
+        "observation_counts": {
+          "BLANK": 3,
+          "DASH": 1,
+          "VALUE": 72
+        },
+        "page": 3,
+        "row_count": 38,
+        "rows_with_exactly_two_cells": 38,
+        "trailing_row_count": 0,
+        "unassigned_numeric_line_count": 0,
+        "unassigned_numeric_line_indices": []
+      },
+      "table_bbox": [
+        51.0,
+        818.0,
+        2406.0,
+        3112.0
+      ],
+      "trailing_rows": []
+    },
+    {
+      "axes": [
+        {
+          "axis_id": "value-1",
+          "header_line_index": 6,
+          "raw_header": "31/03/2026",
+          "right_edge": 1863.0
+        },
+        {
+          "axis_id": "value-2",
+          "header_line_index": 5,
+          "raw_header": "31/12/2025",
+          "right_edge": 2394.0
+        }
+      ],
+      "excluded_after_table_line_indices": [],
+      "index_band": null,
+      "line_height": 44.5,
+      "note_right_edge": 1334.0,
+      "page": 4,
+      "rows": [
+        {
+          "cells": [
+            {
+              "normalized_text": "",
+              "observation": "BLANK",
+              "raw_text": "",
+              "reason": null,
+              "sign_evidence": null,
+              "value": null
+            },
+            {
+              "normalized_text": "",
+              "observation": "BLANK",
+              "raw_text": "",
+              "reason": null,
+              "sign_evidence": null,
+              "value": null
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              12
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [],
+              []
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 925.5
+          },
+          "label": "NÇ PHÁI TRÁ",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0012"
+          ],
+          "warnings": [
+            "label-only row retained without structural merge"
+          ]
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "28346499",
+              "observation": "VALUE",
+              "raw_text": "28.346.499",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "28346499"
+            },
+            {
+              "normalized_text": "47474800",
+              "observation": "VALUE",
+              "raw_text": "47.474.800",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "47474800"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              13
+            ],
+            "note_line_indices": [
+              14
+            ],
+            "value_line_indices": [
+              [
+                15
+              ],
+              [
+                16
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 981.75
+          },
+          "label": "Các khon n Chính ph và NHNN",
+          "note_reference": "III.15",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0013",
+            "page-0004:line-0014",
+            "page-0004:line-0015",
+            "page-0004:line-0016"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "256891475",
+              "observation": "VALUE",
+              "raw_text": "256.891.475",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "256891475"
+            },
+            {
+              "normalized_text": "248017489",
+              "observation": "VALUE",
+              "raw_text": "248.017.489",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "248017489"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              17
+            ],
+            "note_line_indices": [
+              18
+            ],
+            "value_line_indices": [
+              [
+                19
+              ],
+              [
+                20
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1052.75
+          },
+          "label": "Tingi và vay các TCTD khác",
+          "note_reference": "III.16",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0017",
+            "page-0004:line-0018",
+            "page-0004:line-0019",
+            "page-0004:line-0020"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "905918332",
+              "observation": "VALUE",
+              "raw_text": "905.918.332",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "905918332"
+            },
+            {
+              "normalized_text": "921368132",
+              "observation": "VALUE",
+              "raw_text": "921.368.132",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "921368132"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              21
+            ],
+            "note_line_indices": [
+              22
+            ],
+            "value_line_indices": [
+              [
+                23
+              ],
+              [
+                24
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1119.75
+          },
+          "label": "Tièn gi ca khách hàng",
+          "note_reference": "III.17",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0021",
+            "page-0004:line-0022",
+            "page-0004:line-0023",
+            "page-0004:line-0024"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "661326",
+              "observation": "VALUE",
+              "raw_text": "661.326",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "661326"
+            },
+            {
+              "normalized_text": "698507",
+              "observation": "VALUE",
+              "raw_text": "698.507",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "698507"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              28
+            ],
+            "note_line_indices": [
+              25
+            ],
+            "value_line_indices": [
+              [
+                26
+              ],
+              [
+                27
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1182.5
+          },
+          "label": "Các công cu tài chính phái sinh và các khon n tài chính khác",
+          "note_reference": "III.18",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0025",
+            "page-0004:line-0026",
+            "page-0004:line-0027",
+            "page-0004:line-0028"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "3247015",
+              "observation": "VALUE",
+              "raw_text": "3.247.015",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "3247015"
+            },
+            {
+              "normalized_text": "3912833",
+              "observation": "VALUE",
+              "raw_text": "3.912.833",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "3912833"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              29
+            ],
+            "note_line_indices": [
+              30
+            ],
+            "value_line_indices": [
+              [
+                31
+              ],
+              [
+                32
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1248.75
+          },
+          "label": "Vón tài tr, y thác đàu tư, cho vay TCTD chu ri ro",
+          "note_reference": "III.19",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0029",
+            "page-0004:line-0030",
+            "page-0004:line-0031",
+            "page-0004:line-0032"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "208816453",
+              "observation": "VALUE",
+              "raw_text": "208.816.453",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "208816453"
+            },
+            {
+              "normalized_text": "187236104",
+              "observation": "VALUE",
+              "raw_text": "187.236.104",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "187236104"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              33
+            ],
+            "note_line_indices": [
+              34
+            ],
+            "value_line_indices": [
+              [
+                35
+              ],
+              [
+                36
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1315.25
+          },
+          "label": "Phát hành giy t có giá",
+          "note_reference": "III.20",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0033",
+            "page-0004:line-0034",
+            "page-0004:line-0035",
+            "page-0004:line-0036"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "57596339",
+              "observation": "VALUE",
+              "raw_text": "57.596.339",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "57596339"
+            },
+            {
+              "normalized_text": "65033537",
+              "observation": "VALUE",
+              "raw_text": "65.033.537",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "65033537"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              37
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                38
+              ],
+              [
+                39
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1380.75
+          },
+          "label": "Các khon nơ khác",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0037",
+            "page-0004:line-0038",
+            "page-0004:line-0039"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "16185467",
+              "observation": "VALUE",
+              "raw_text": "16.185.467",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "16185467"
+            },
+            {
+              "normalized_text": "13245868",
+              "observation": "VALUE",
+              "raw_text": "13.245.868",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "13245868"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              40
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                41
+              ],
+              [
+                42
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1446.0
+          },
+          "label": "Các khon lāi, phí phi tr",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0040",
+            "page-0004:line-0041",
+            "page-0004:line-0042"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "-",
+              "observation": "DASH",
+              "raw_text": "-",
+              "reason": null,
+              "sign_evidence": "dash",
+              "value": null
+            },
+            {
+              "normalized_text": "-",
+              "observation": "DASH",
+              "raw_text": "-",
+              "reason": null,
+              "sign_evidence": "dash",
+              "value": null
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              43
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [],
+              []
+            ],
+            "visual_cell_evidence": [
+              {
+                "aspect_ratio": 2.5,
+                "component_box": [
+                  1853,
+                  1517,
+                  1863,
+                  1521
+                ],
+                "crop_box": [
+                  1796,
+                  1496,
+                  1874,
+                  1544
+                ],
+                "fill_ratio": 0.85,
+                "foreground_contrast": 138.8,
+                "height_line_heights": 0.089888,
+                "observation": "DASH",
+                "source_image_path": "/workspace/bctc-ai/output/calibration/e0027-mbb-q1-2026-end-to-end/eebeda2ebc09b0d42032/renders/page-0004.png",
+                "threshold": 165.0,
+                "width_line_heights": 0.224719
+              },
+              {
+                "aspect_ratio": 2.75,
+                "component_box": [
+                  2384,
+                  1514,
+                  2395,
+                  1518
+                ],
+                "crop_box": [
+                  2327,
+                  1496,
+                  2405,
+                  1544
+                ],
+                "fill_ratio": 0.863636,
+                "foreground_contrast": 126.204545,
+                "height_line_heights": 0.089888,
+                "observation": "DASH",
+                "source_image_path": "/workspace/bctc-ai/output/calibration/e0027-mbb-q1-2026-end-to-end/eebeda2ebc09b0d42032/renders/page-0004.png",
+                "threshold": 171.0,
+                "width_line_heights": 0.247191
+              }
+            ],
+            "y_anchor": 1520.0
+          },
+          "label": "Thu TNDN hon li phi tr",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0043"
+          ],
+          "warnings": [
+            "label-only row retained without structural merge"
+          ]
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "41408552",
+              "observation": "VALUE",
+              "raw_text": "41.408.552",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "41408552"
+            },
+            {
+              "normalized_text": "51785481",
+              "observation": "VALUE",
+              "raw_text": "51.785.481",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "51785481"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              44
+            ],
+            "note_line_indices": [
+              45
+            ],
+            "value_line_indices": [
+              [
+                46
+              ],
+              [
+                47
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1577.0
+          },
+          "label": "Các khon phái tr và công n khác",
+          "note_reference": "IlI.21",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0044",
+            "page-0004:line-0045",
+            "page-0004:line-0046",
+            "page-0004:line-0047"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "2320",
+              "observation": "VALUE",
+              "raw_text": "2.320",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "2320"
+            },
+            {
+              "normalized_text": "2188",
+              "observation": "VALUE",
+              "raw_text": "2.188",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "2188"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              50
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                48
+              ],
+              [
+                49
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1640.25
+          },
+          "label": "D phòng các khon n khác",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0048",
+            "page-0004:line-0049",
+            "page-0004:line-0050"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "1461477439",
+              "observation": "VALUE",
+              "raw_text": "1.461.477.439",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "1461477439"
+            },
+            {
+              "normalized_text": "1473741402",
+              "observation": "VALUE",
+              "raw_text": "1.473.741.402",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "1473741402"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              51
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                52
+              ],
+              [
+                53
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1706.5
+          },
+          "label": "TÓNG NO PHÁI TRÁ",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0051",
+            "page-0004:line-0052",
+            "page-0004:line-0053"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "",
+              "observation": "BLANK",
+              "raw_text": "",
+              "reason": null,
+              "sign_evidence": null,
+              "value": null
+            },
+            {
+              "normalized_text": "",
+              "observation": "BLANK",
+              "raw_text": "",
+              "reason": null,
+              "sign_evidence": null,
+              "value": null
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              54
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [],
+              []
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1778.0
+          },
+          "label": "VÓN CHÙ s HU",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0054"
+          ],
+          "warnings": [
+            "label-only row retained without structural merge"
+          ]
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "",
+              "observation": "BLANK",
+              "raw_text": "",
+              "reason": null,
+              "sign_evidence": null,
+              "value": null
+            },
+            {
+              "normalized_text": "",
+              "observation": "BLANK",
+              "raw_text": "",
+              "reason": null,
+              "sign_evidence": null,
+              "value": null
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              55
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [],
+              []
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1848.5
+          },
+          "label": "Vn và các qu",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0055"
+          ],
+          "warnings": [
+            "label-only row retained without structural merge"
+          ]
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "83965544",
+              "observation": "VALUE",
+              "raw_text": "83.965.544",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "83965544"
+            },
+            {
+              "normalized_text": "83965544",
+              "observation": "VALUE",
+              "raw_text": "83.965.544",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "83965544"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              56
+            ],
+            "note_line_indices": [
+              57
+            ],
+            "value_line_indices": [
+              [
+                58
+              ],
+              [
+                59
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1904.0
+          },
+          "label": "Vón cúa TCTD",
+          "note_reference": "I/I.22",
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0056",
+            "page-0004:line-0057",
+            "page-0004:line-0058",
+            "page-0004:line-0059"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "80549999",
+              "observation": "VALUE",
+              "raw_text": "80.549.999",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "80549999"
+            },
+            {
+              "normalized_text": "80549999",
+              "observation": "VALUE",
+              "raw_text": "80.549.999",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "80549999"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              60
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                61
+              ],
+              [
+                62
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 1969.5
+          },
+          "label": "Vôn điu l",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0060",
+            "page-0004:line-0061",
+            "page-0004:line-0062"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "1304334",
+              "observation": "VALUE",
+              "raw_text": "1.304.334",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "1304334"
+            },
+            {
+              "normalized_text": "1304334",
+              "observation": "VALUE",
+              "raw_text": "1.304.334",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "1304334"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              63
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                64
+              ],
+              [
+                65
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2035.0
+          },
+          "label": "Thng dư vôn cphn",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0063",
+            "page-0004:line-0064",
+            "page-0004:line-0065"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "2111211",
+              "observation": "VALUE",
+              "raw_text": "2.111.211",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "2111211"
+            },
+            {
+              "normalized_text": "2111211",
+              "observation": "VALUE",
+              "raw_text": "2.111.211",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "2111211"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              67
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                68
+              ],
+              [
+                69
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2101.0
+          },
+          "label": "Vôn khác",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0067",
+            "page-0004:line-0068",
+            "page-0004:line-0069"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "19352028",
+              "observation": "VALUE",
+              "raw_text": "19.352.028",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "19352028"
+            },
+            {
+              "normalized_text": "19390884",
+              "observation": "VALUE",
+              "raw_text": "19.390.884",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "19390884"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              72
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                70
+              ],
+              [
+                71
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2165.75
+          },
+          "label": "Qu ca TCTD",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0070",
+            "page-0004:line-0071",
+            "page-0004:line-0072"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "205588",
+              "observation": "VALUE",
+              "raw_text": "205.588",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "205588"
+            },
+            {
+              "normalized_text": "202211",
+              "observation": "VALUE",
+              "raw_text": "202.211",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "202211"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              75
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                73
+              ],
+              [
+                74
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2234.0
+          },
+          "label": "Chênhlch t giá hôi đoái",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0073",
+            "page-0004:line-0074",
+            "page-0004:line-0075"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "40061058",
+              "observation": "VALUE",
+              "raw_text": "40.061.058",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "40061058"
+            },
+            {
+              "normalized_text": "32577391",
+              "observation": "VALUE",
+              "raw_text": "32.577.391",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "32577391"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              78
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                76
+              ],
+              [
+                77
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2297.75
+          },
+          "label": "Li nhun chưa phân phói",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0076",
+            "page-0004:line-0077",
+            "page-0004:line-0078"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "6161107",
+              "observation": "VALUE",
+              "raw_text": "6.161.107",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "6161107"
+            },
+            {
+              "normalized_text": "5886495",
+              "observation": "VALUE",
+              "raw_text": "5.886.495",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "5886495"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              79
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                80
+              ],
+              [
+                81
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2375.0
+          },
+          "label": "LI ÍCH CÙA CÓ DÔNG KHÔNG KIÉM SOÁT",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0079",
+            "page-0004:line-0080",
+            "page-0004:line-0081"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "149745325",
+              "observation": "VALUE",
+              "raw_text": "149.745.325",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "149745325"
+            },
+            {
+              "normalized_text": "142022525",
+              "observation": "VALUE",
+              "raw_text": "142.022.525",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "142022525"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              82
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                83
+              ],
+              [
+                84
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2445.0
+          },
+          "label": "TÓNG VÓN CHÙ S HÜU",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0082",
+            "page-0004:line-0083",
+            "page-0004:line-0084"
+          ],
+          "warnings": []
+        },
+        {
+          "cells": [
+            {
+              "normalized_text": "1611222764",
+              "observation": "VALUE",
+              "raw_text": "1.611.222.764",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "1611222764"
+            },
+            {
+              "normalized_text": "1615763927",
+              "observation": "VALUE",
+              "raw_text": "1.615.763.927",
+              "reason": null,
+              "sign_evidence": null,
+              "value": "1615763927"
+            }
+          ],
+          "geometry": {
+            "index_line_indices": [],
+            "label_line_indices": [
+              85
+            ],
+            "note_line_indices": [],
+            "value_line_indices": [
+              [
+                86
+              ],
+              [
+                87
+              ]
+            ],
+            "visual_cell_evidence": [
+              null,
+              null
+            ],
+            "y_anchor": 2520.5
+          },
+          "label": "TÓNG NQ PHÁI TRÁ VÀ VÓN CHÙ S HÜU",
+          "note_reference": null,
+          "row_code": null,
+          "source_row_ids": [
+            "page-0004:line-0085",
+            "page-0004:line-0086",
+            "page-0004:line-0087"
+          ],
+          "warnings": []
+        }
+      ],
+      "summary": {
+        "axis_headers_left_to_right": [
+          "31/03/2026",
+          "31/12/2025"
+        ],
+        "blank_cell_count": 6,
+        "cell_count": 50,
+        "dash_cell_count": 2,
+        "duplicate_source_line_assignment_count": 0,
+        "header_companion_leak_count": 0,
+        "invalid_cell_count": 0,
+        "note_reference_count": 8,
+        "note_reference_prefix_leak_count": 0,
+        "observation_counts": {
+          "BLANK": 6,
+          "DASH": 2,
+          "VALUE": 42
+        },
+        "page": 4,
+        "row_count": 25,
+        "rows_with_exactly_two_cells": 25,
+        "trailing_row_count": 0,
+        "unassigned_numeric_line_count": 1,
+        "unassigned_numeric_line_indices": [
+          66
+        ]
+      },
+      "table_bbox": [
+        50.0,
+        898.0,
+        2400.0,
+        2556.0
+      ],
+      "trailing_rows": []
+    }
+  ],
+  "capture_git_commit": "bf5ff340d08bbb53f0ed59f8f47fcc126e5f3e33",
+  "capture_git_dirty": false,
+  "claim_boundary": "E-0032 measures one reference-blind note/value anchor separation correction on the already accepted MBB CDKT pages 3-4. It does not establish Vietnamese source-exact labels, independent numeric truth on the revised grid, period roles, schema IDs, accounting validity, Excel accuracy, human-gold accuracy or untouched-holdout performance.",
+  "comparison": {
+    "after_row_count": 64,
+    "after_source_line_count": 204,
+    "before_row_count": 63,
+    "before_source_line_count": 204,
+    "changed_common_row_count": 0,
+    "common_row_count": 62,
+    "partitioned_split_count": 1,
+    "partitions": [
+      {
+        "exactly_one_replacement_preserves_old_cells": true,
+        "removed_source_row_ids": [
+          "page-0003:line-0035",
+          "page-0003:line-0036",
+          "page-0003:line-0037",
+          "page-0003:line-0038",
+          "page-0003:line-0039"
+        ],
+        "replacement_source_row_ids": [
+          [
+            "page-0003:line-0035",
+            "page-0003:line-0036"
+          ],
+          [
+            "page-0003:line-0037",
+            "page-0003:line-0038",
+            "page-0003:line-0039"
+          ]
+        ]
+      }
+    ],
+    "preserved_value_cell_split_count": 1,
+    "removed_composite_row_count": 1,
+    "removed_rows": [
+      {
+        "cells": [
+          {
+            "normalized_text": "1105852151",
+            "observation": "VALUE",
+            "raw_text": "1.105.852.151",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "1105852151"
+          },
+          {
+            "normalized_text": "1070868777",
+            "observation": "VALUE",
+            "raw_text": "1.070.868.777",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "1070868777"
+          }
+        ],
+        "geometry": {
+          "index_line_indices": [],
+          "label_line_indices": [
+            35,
+            37
+          ],
+          "note_line_indices": [
+            36
+          ],
+          "value_line_indices": [
+            [
+              38
+            ],
+            [
+              39
+            ]
+          ],
+          "visual_cell_evidence": [
+            null,
+            null
+          ],
+          "y_anchor": 1295.25
+        },
+        "label": "Các công cu tài chính phái sinh và các tài sn tài chính khác Chovay khách hàng",
+        "note_reference": "III.18",
+        "row_code": null,
+        "source_row_ids": [
+          "page-0003:line-0035",
+          "page-0003:line-0036",
+          "page-0003:line-0037",
+          "page-0003:line-0038",
+          "page-0003:line-0039"
+        ],
+        "warnings": []
+      }
+    ],
+    "replacement_row_count": 2,
+    "replacement_rows": [
+      {
+        "cells": [
+          {
+            "normalized_text": "-",
+            "observation": "DASH",
+            "raw_text": "-",
+            "reason": null,
+            "sign_evidence": "dash",
+            "value": null
+          },
+          {
+            "normalized_text": "-",
+            "observation": "DASH",
+            "raw_text": "-",
+            "reason": null,
+            "sign_evidence": "dash",
+            "value": null
+          }
+        ],
+        "geometry": {
+          "index_line_indices": [],
+          "label_line_indices": [
+            35
+          ],
+          "note_line_indices": [
+            36
+          ],
+          "value_line_indices": [
+            [],
+            []
+          ],
+          "visual_cell_evidence": [
+            {
+              "aspect_ratio": 2.0,
+              "component_box": [
+                1862,
+                1244,
+                1872,
+                1249
+              ],
+              "crop_box": [
+                1803,
+                1218,
+                1884,
+                1268
+              ],
+              "fill_ratio": 1.0,
+              "foreground_contrast": 162.02,
+              "height_line_heights": 0.108696,
+              "observation": "DASH",
+              "source_image_path": "/workspace/bctc-ai/output/calibration/e0027-mbb-q1-2026-end-to-end/eebeda2ebc09b0d42032/renders/page-0003.png",
+              "threshold": 168.0,
+              "width_line_heights": 0.217391
+            },
+            {
+              "aspect_ratio": 1.833333,
+              "component_box": [
+                2390,
+                1243,
+                2401,
+                1249
+              ],
+              "crop_box": [
+                2331,
+                1218,
+                2412,
+                1268
+              ],
+              "fill_ratio": 0.772727,
+              "foreground_contrast": 138.636364,
+              "height_line_heights": 0.130435,
+              "observation": "DASH",
+              "source_image_path": "/workspace/bctc-ai/output/calibration/e0027-mbb-q1-2026-end-to-end/eebeda2ebc09b0d42032/renders/page-0003.png",
+              "threshold": 158.0,
+              "width_line_heights": 0.23913
+            }
+          ],
+          "y_anchor": 1243.0
+        },
+        "label": "Các công cu tài chính phái sinh và các tài sn tài chính khác",
+        "note_reference": "III.18",
+        "row_code": null,
+        "source_row_ids": [
+          "page-0003:line-0035",
+          "page-0003:line-0036"
+        ],
+        "warnings": [
+          "OCR-blank cell recovered as DASH from constrained pixel evidence"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "1105852151",
+            "observation": "VALUE",
+            "raw_text": "1.105.852.151",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "1105852151"
+          },
+          {
+            "normalized_text": "1070868777",
+            "observation": "VALUE",
+            "raw_text": "1.070.868.777",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "1070868777"
+          }
+        ],
+        "geometry": {
+          "index_line_indices": [],
+          "label_line_indices": [
+            37
+          ],
+          "note_line_indices": [],
+          "value_line_indices": [
+            [
+              38
+            ],
+            [
+              39
+            ]
+          ],
+          "visual_cell_evidence": [
+            null,
+            null
+          ],
+          "y_anchor": 1295.25
+        },
+        "label": "Chovay khách hàng",
+        "note_reference": null,
+        "row_code": null,
+        "source_row_ids": [
+          "page-0003:line-0037",
+          "page-0003:line-0038",
+          "page-0003:line-0039"
+        ],
+        "warnings": []
+      }
+    ],
+    "source_line_coverage_delta_count": 0,
+    "unchanged_common_row_count": 62
+  },
+  "dataset_role": "CALIBRATION",
+  "development_note": "The exact structural delta gates were recorded after a dirty development replay on this calibration block. They do not encode expected labels, values, schema IDs, human review or historical evidence and are not holdout gates.",
+  "experiment_config": {
+    "path": "config/experiments/e0032-mbb-cdkt-note-row-split.yaml",
+    "sha256": "059b65abbc7193e59a8185292157eadd93bc23286c719d46b05ec7ccadc98e7b",
+    "size_bytes": 3134
+  },
+  "experiment_id": "E-0032",
+  "format_version": 1,
+  "gates": {
+    "all_common_rows_unchanged": true,
+    "exact_cells_by_page": true,
+    "exact_common_row_count": true,
+    "exact_observation_counts_by_page": true,
+    "exact_page_set": true,
+    "exact_partitioned_split_count": true,
+    "exact_preserved_value_cell_split_count": true,
+    "exact_removed_composite_row_count": true,
+    "exact_replacement_row_count": true,
+    "exact_rows_by_page": true,
+    "off_balance_page_not_reconstructed": true,
+    "zero_duplicate_source_lines": true,
+    "zero_invalid_cells": true,
+    "zero_source_line_coverage_delta": true
+  },
+  "reference_isolation": {
+    "accounting_validation_invoked": false,
+    "e0022_evidence_loaded": false,
+    "excel_export_invoked": false,
+    "historical_or_mongodb_values_loaded": false,
+    "human_review_loaded": false,
+    "label_text_or_semantics_used_as_split_feature": false,
+    "numeric_value_or_magnitude_used_as_split_feature": false,
+    "off_balance_page_5_loaded": false,
+    "period_role_assignment_invoked": false,
+    "schema_mapping_invoked": false,
+    "semantic_reader_invoked": false,
+    "template_labels_or_report_norm_ids_loaded": false
+  },
+  "source": {
+    "path": "vietstock_bctc/MBB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf",
+    "sha256": "eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83",
+    "size_bytes": 3977471
+  },
+  "status": "PASS_REFERENCE_BLIND_NOTE_ROW_ANCHOR_SPLIT",
+  "target_artifacts": [
+    {
+      "path": "output/calibration/e0027-mbb-q1-2026-end-to-end-role-c/ppocrv6-page-0003/ocr_result.json",
+      "sha256": "070dc9045cab52669a9bee9f548996cf7d3e4125cc93077400bbc916cbe666f2",
+      "size_bytes": 145594
+    },
+    {
+      "path": "output/calibration/e0027-mbb-q1-2026-end-to-end/eebeda2ebc09b0d42032/renders/page-0003.png",
+      "sha256": "40544c98908d2ca59d5e78a840594cbbea1622d33ac6a72b187c413670bef599",
+      "size_bytes": 1709301
+    },
+    {
+      "path": "output/calibration/e0027-mbb-q1-2026-end-to-end-role-c/ppocrv6-page-0004/ocr_result.json",
+      "sha256": "6ef9d5af3b87ee4368bb63fd8ee5f02832104404f39820e659fdd79c37cd3bd4",
+      "size_bytes": 93433
+    },
+    {
+      "path": "output/calibration/e0027-mbb-q1-2026-end-to-end/eebeda2ebc09b0d42032/renders/page-0004.png",
+      "sha256": "0c872315d09faebaba24c3b4badcc355d235841b0e1e57d4dda443e76f7b16b7",
+      "size_bytes": 1033463
+    }
+  ],
+  "verified_inputs": {
+    "algorithm": {
+      "path": "src/bctc_ai/evaluation/word_box_rows_v4.py",
+      "sha256": "ab3e2880ebe6ae76d99c046718adcd6a413609249947baf1d0a356f1f2fa568e",
+      "size_bytes": 3601
+    },
+    "config": {
+      "path": "config/tables/word-box-reconstruction-v4.yaml",
+      "sha256": "e4a2880510b50e1b20429d9e9b138fe1ec5166dfb09fde0333d3179b7581c224",
+      "size_bytes": 801
+    },
+    "e0029_row_contract": {
+      "path": "docs/experiments/E-0029-mbb-cdkt-row-reconstruction.json",
+      "sha256": "affe74a243e342b56c4ead2fac984f10d9a1f42378823b50ccdde8946eeed373",
+      "size_bytes": 92652
+    },
+    "inherited_v3_algorithm": {
+      "path": "src/bctc_ai/evaluation/word_box_rows_v3.py",
+      "sha256": "06c897139ea3b036ad5253a6aa0aca99fbeb5bae5e4bff7d002cc4812abcbc46",
+      "size_bytes": 26801
+    },
+    "ocr_batch": {
+      "path": "output/calibration/e0027-mbb-q1-2026-end-to-end-role-c/batch_manifest.json",
+      "sha256": "0d94762ba4a0d383793fe93a56e48fa7b79d6a3f7faaf62e9dcf40935b8c2889",
+      "size_bytes": 13563
+    }
+  }
+}
