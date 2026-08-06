@@ -1,18 +1,18 @@
 # Progress report
 
-- Updated: 2026-08-06T14:17:07+00:00
+- Updated: 2026-08-06T14:34:00+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest sealed accuracy checkpoint: `8fc483d`; preceding table-metadata seal:
-  `1ed17a5`; E-0021 clean evaluation base:
+- Latest sealed accuracy checkpoint: `198c5d8`; preceding numeric verification
+  seal: `8fc483d`; E-0021 clean evaluation base:
   `c32741a217ca16e7224d416b2c14245f580e610d`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
 - Registered PDFs: 2,567
 - Latest full regression including multi-signal discovery v4, fixed-grid
-  semantic fusion, E-0029/E-0030 controls and independent numeric verification:
-  428 passed, 2 intentionally skipped historical/external replays; Ruff and
-  `git diff --check` passed
+  semantic fusion, E-0029/E-0030 controls, numeric verification and immutable
+  V4 note-row splitting: 438 passed, 2 intentionally skipped historical/external
+  replays in 98.82 seconds; Ruff and `git diff --check` passed
 
 ## Accuracy focus and measurable state
 
@@ -275,6 +275,25 @@
   acceptance and blank-to-zero/value promotion are all zero. This is bounded
   calibration evidence, not human gold or end-to-end accuracy. Artifact SHA-256
   is `27561d0975d6e9d1e59b61f3b7dbd838ef1a91864f9f5955f87a6807033b6d9a`.
+- Logical-row crop preparation exposed a structural residual before DeepSeek
+  inference: one E-0029 row contained two independent label lines. The first
+  label had note `III.18` one full line above the valued anchor and had its own
+  two visible dashes; V3's broad structural tolerance merged it with the next
+  `Cho vay khách hàng` row. E-0033 isolates a relative-geometry V4 correction:
+  a note more than 0.5 median line-height from a value anchor forms an independent
+  row only when label lines partition geometrically around both anchors.
+  Page 3 moves from 38 rows/76 cells to 39/78; page 4 remains 25/50. Exactly one
+  five-source-line composite becomes two disjoint rows, all 62 common rows are
+  object-identical, all 204 source lines remain covered, the valued replacement
+  preserves its old cells exactly, and the new row has 2/2 pixel-supported
+  `DASH` observations. E-0032 measured the same delta but is retained as
+  superseded because its first implementation modified the hash-locked V3 file.
+  E-0033 restores V3 SHA-256
+  `e5650bd48866340cec32ed41e8b131cdf8289c25479be43a11c29763ea153663`
+  and keeps all V4 code isolated. E-0033 artifact SHA-256 is
+  `d9c0ecf44f6a0f652e6c991d3ab95b7ab0e821068366764e39a3f0de7f0711fb`.
+  E-0031 remains valid only for its original 126-cell denominator and cannot be
+  treated as complete numeric verification of the corrected 128-cell grid.
 
 ## Completed tasks
 
@@ -585,6 +604,11 @@
   review are withheld. The checkpoint pins the official model revision and all
   six file hashes and records the exact rebuild/verify commands in the software
   inventory.
+- Completed the corrected V4 row reconstruction and sealed its immutable replay
+  as E-0033 at `198c5d8`. E-0032 remains in Git as an explicit superseded audit
+  artifact; no evidence was deleted or overwritten. The hash gate proves the
+  historical V3 implementation is byte-identical while V4 reproduces the
+  one-row split and two newly recovered dashes.
 
 ## Currently in progress
 
@@ -602,19 +626,19 @@
   propose Vietnamese text on immutable PP-OCRv6 line/row boxes; VietOCR remains a
   challenger and the independent numeric path remains authoritative for values,
   signs and dashes.
-- The active end-to-end task is to carry the now located, geometrically
-  reconstructed, period/unit-bound and independently numeric-verified MBB
-  Q1/2026 CDKT pages 3–4 through bounded Vietnamese logical-row recognition,
-  then ordered SchemaGraph mapping, accounting validation and
-  provenance-bearing Excel.
+- The active end-to-end task is to rebuild isolated numeric crops and independent
+  verification on the corrected E-0033 64-row/128-cell grid, then carry those
+  rows through bounded Vietnamese logical-row recognition, ordered SchemaGraph
+  mapping, accounting validation and provenance-bearing Excel.
   Measurement will use Role A versus Role B row coverage, schema assignment,
   full `(ReportNormId, period, raw value, normalized value, status)` tuples and
   workbook-cell agreement; no character-only metric can complete this stage.
-- E-0027 page discovery, E-0028 locator V4, E-0029 row reconstruction, E-0030
-  table metadata and E-0031 numeric verification are sealed. The next Role B
-  stage may consume only their accepted page/row/axis/value contracts plus
-  source pixels. The three reader-disagreement cells and nine unresolved blanks
-  cannot silently enter a mapped output. Human-reviewed
+- E-0027 page discovery, E-0028 locator V4, E-0030 table metadata and E-0033
+  corrected row reconstruction are the active upstream seals. E-0029 remains
+  the before-contract and E-0031 is a superseded-denominator numeric result.
+  The next Role B stage may consume only the active page/row/axis contracts plus
+  source pixels. Reader disagreements and unresolved blanks cannot silently
+  enter a mapped output. Human-reviewed
   pages/IDs/values remain evaluation-only until the value/mapping/Excel output
   itself is sealed.
 - Ordered SchemaGraph v1 and E-0023 are sealed. The mapper remains intentionally
@@ -671,13 +695,17 @@
 - E-0027 showed that whole-line similarity dilutes a valid short accounting core;
   E-0028 resolves that locator class, and E-0029 resolves the observed staggered-
   header/row-grid failure without consulting schema or review. E-0030 binds both
-  repeated MBB period/unit header sets locally. E-0031 verifies 114/117 observed
-  numeric cells but exposes three genuine independent-reader failures: one
+  repeated MBB period/unit header sets locally. E-0031 verified 114/117 observed
+  numeric cells on the then-current grid but exposed three genuine independent-
+  reader failures: one
   missing opening parenthesis, one mixed grouping separator and one dropped
   digit. Those cells must remain unresolved or receive localized pixel evidence;
   the nine `BLANK` cells still require row semantics to distinguish headings,
-  visible empty cells and obscured evidence. Later headerless pages may inherit
-  only a verified table-level map and are outside the current local-header result.
+  visible empty cells and obscured evidence. E-0033 then found the missing
+  note-bearing row and raised the denominator from 126 to 128 cells, so numeric
+  verification must be replayed before semantic mapping. Later headerless pages
+  may inherit only a verified table-level map and are outside the current
+  local-header result.
 - A higher-resolution crop is not sufficient by itself. On MBB LCTT page 14,
   PaddleOCR-VL still concatenates rows and numeric cells at 450 DPI; its current
   HTML proposal has 18 rows and 14 invalid multi-number cells, while independent
@@ -780,26 +808,31 @@
 
 ## Planned next steps
 
-1. Read bounded title/line/logical-row crops with DeepSeek-OCR-2, fuse proposals
-   onto the immutable E-0029 grid, and preserve PP geometry plus independent
-   E-0031 numeric decisions. Resolve only true group/heading blanks from semantic
+1. Rebuild fixed numeric crops and independent value/sign/dash verification on
+   the E-0033 128-cell contract. Require the two newly separated dash cells to
+   pass both reader and pixel gates, preserve the three known reader
+   disagreements as abstentions, and do not carry E-0031's old denominator
+   forward.
+2. Read bounded title/line/logical-row crops with DeepSeek-OCR-2, fuse proposals
+   onto the immutable E-0033 grid, and preserve PP geometry plus independent
+   revised-grid numeric decisions. Resolve only true group/heading blanks from semantic
    row type; retain the seal-obscured and three reader-disagreement cells for
    localized evidence rather than inferring values from neighbors.
-2. Carry the sealed rows and period/value tuples through ordered SchemaGraph
+3. Carry the sealed rows and period/value tuples through ordered SchemaGraph
    mapping, accounting validation and a provenance-bearing Excel development
    output. Enforce workbook display order, parent/previous/next context,
    statement scope and off-balance exclusion; never sort by ReportNormId.
    Only then open the six-row/12-cell review subset to measure page, row,
    ReportNormId, period, raw/normalized value, status, full-tuple and workbook
    cell accuracy.
-3. Seal the combined mechanism before selecting a new untouched holdout.
+4. Seal the combined mechanism before selecting a new untouched holdout.
    VietOCR stays challenger-only; domain fine-tuning stays deferred unless the
    frozen downstream evaluation proves a material recognition blocker.
-4. Build a human-gold evaluation split separated by bank and reporting period,
+5. Build a human-gold evaluation split separated by bank and reporting period,
    including skew, warp, dark headers, blurred digits, wrapped rows, continuation
    pages, direct/indirect LCTT, separate/consolidated scope, and quarterly/YTD
    derivation cases.
-5. Define calibrated abstention thresholds only after the human-gold benchmark;
+6. Define calibrated abstention thresholds only after the human-gold benchmark;
    unresolved evidence must continue to produce review statuses rather than
    guessed output.
 

@@ -278,3 +278,16 @@ regardless of challenger output and cannot become zero before logical-row/table
 semantics. The formal 126-cell calibration result and all isolation gates are
 protected by an artifact SHA-256 integration test; it grants no label, schema,
 accounting, Excel, holdout or production authority.
+
+E-0033 supersedes E-0032 and the E-0029 grid for downstream reconstruction. A
+mutation places a note anchor 1.17 line-heights above a value anchor while the
+two label lines remain geometrically nearest to different anchors; V3 must show
+the original merge and isolated V4 must produce two disjoint rows. A same-line
+note/value control must remain one row. The real-artifact gate requires exactly
+62 object-identical common rows, one composite-row removal, two replacement
+rows, unchanged 204-line source coverage, exact preservation of the old value
+cells in one replacement, and two pixel-supported dashes in the other. The
+integration test also asserts the sealed V3 source SHA-256 remains byte-identical.
+E-0032 is retained as a superseded audit artifact because its first V4 hook
+caused that immutable-source gate to fail. E-0031 must be rerun on E-0033's
+128-cell denominator before any downstream numeric completeness claim.
