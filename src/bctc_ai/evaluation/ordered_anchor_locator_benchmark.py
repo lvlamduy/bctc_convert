@@ -91,6 +91,12 @@ def structural_statement_summary(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _json_canonical(value: Any) -> Any:
+    """Compare in-memory tuples with their immutable JSON artifact form."""
+
+    return json.loads(json.dumps(value, ensure_ascii=False, sort_keys=True))
+
+
 def _verify_hash_record(
     project_root: Path, record: object, name: str
 ) -> tuple[Path, dict[str, Any]]:
@@ -202,7 +208,7 @@ def capture_e0028_ordered_anchor_benchmark(
     v3_config = load_multisignal_statement_config(paths["base_config"])
     v4_config = load_multisignal_statement_config_v4(paths["config"])
     before = discover_statement_pages(geometry_pages, v3_config)
-    if before != baseline_artifact.get("discovery_result"):
+    if _json_canonical(before) != baseline_artifact.get("discovery_result"):
         raise OrderedAnchorLocatorBenchmarkError("E-0027 V3 replay differs from sealed result")
     after = discover_statement_pages_v4(geometry_pages, v4_config)
 

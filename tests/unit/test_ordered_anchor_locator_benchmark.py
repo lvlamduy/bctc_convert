@@ -7,6 +7,7 @@ import pytest
 from bctc_ai.evaluation import ordered_anchor_locator_benchmark
 from bctc_ai.evaluation.ordered_anchor_locator_benchmark import (
     OrderedAnchorLocatorBenchmarkError,
+    _json_canonical,
     capture_e0028_ordered_anchor_benchmark,
     structural_statement_summary,
 )
@@ -41,6 +42,10 @@ def test_structural_summary_excludes_text_and_numeric_content():
         "runner_up_margin": 8.5,
         "cash_flow_method": "DIRECT",
     }
+
+
+def test_json_canonical_normalizes_tuple_to_sealed_list_representation():
+    assert _json_canonical({"period": ("2026", "2025")}) == {"period": ["2026", "2025"]}
 
 
 def test_e0028_capture_rejects_dirty_worktree(project_root, monkeypatch):
