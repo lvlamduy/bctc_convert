@@ -1,14 +1,14 @@
 # Progress report
 
-- Updated: 2026-08-06T10:43:00+00:00
+- Updated: 2026-08-06T11:15:02+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `267bee8`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
+- Latest clean, tested, pushed checkpoint: `f10a70c`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
 - Registered PDFs: 2,567
-- Latest full regression including locator/native-text v2: 299 passed, 2
-  intentionally skipped historical replays in 98.24 seconds; Ruff and
+- Latest full regression including multi-signal discovery v3: 311 passed, 2
+  intentionally skipped historical replays in 97.76 seconds; Ruff and
   `git diff --check` passed
 
 ## Accuracy focus and measurable state
@@ -117,7 +117,9 @@
   artifact SHA-256 values are respectively
   `e9c14d49ba30451aaebdfb8f8632bc342f58517c6bf1e4ba29d892366706fcba`
   and `f47036761c4d00c5d4b7734a9e1183f9146be5fead604b9e08e9de0c4efd3234`.
-- Preliminary locator/text-quality v2 development is isolated from E-0022. A
+- Preliminary header-candidate/text-quality v2 development is isolated from
+  E-0022. It is not the final page classifier: form/title matches now serve only
+  as candidates for the multi-signal document classifier being built. A
   synthetic optional-suffix/long-title mutation moves from v1 `UNRESOLVED` to a
   v2 ordered block with 5/5 expected eligible pages and the one off-balance page
   still excluded; malformed/conflicting forms, narrative title mentions and
@@ -125,13 +127,30 @@
   OCR, v2 reproduces all 11 eligible pages, both off-balance exclusions, both TM
   boundaries and both DIRECT decisions exactly. Across the three registered
   ACB/MBB/CTG human-review calibration PDFs (155 total pages; six with native
-  words), v1 marks two native pages corrupt while v2 marks one: it removes the
-  ACB cover false positive caused only by `CHÂU`/`NGÂN` and retains the MBB page
-  containing ten real U+0086–U+008C controls. This is calibration/mechanism
+  words), v1 marks two legitimate cover pages corrupt while missing a different
+  truly corrupt page; v2 removes both the ACB and MBB cover false positives
+  caused by legitimate `Â`/`Ã`, and detects the separate MBB page containing ten
+  real U+0086–U+008C controls. This is calibration/mechanism
   evidence, not holdout or end-to-end accuracy.
-- Next bounded action: commit the standalone v2 mechanism, then capture and
-  hash-lock an E-0024 calibration artifact from the clean commit before any new
-  holdout is selected.
+- New multi-signal discovery v3 development result: 12/12 focused tests pass.
+  A lone CDKT title, a lone TM title, semantic text without PP-OCRv6 numeric
+  geometry, incompatible neighbor axes, mismatched neighbor periods and two
+  equal complete document paths all abstain. Multi-line headings, a complete
+  five-signal statement page, and one-page forward/backward inference with
+  visible accounting rows plus aligned axes/table edges pass. Inference is
+  sourced only from a locally accepted adjacent page and cannot chain.
+- On the unchanged E-0013 MBB/VCB calibration batches, v3 exactly reproduces all
+  11 mapping-eligible statement pages, both off-balance exclusions, both TM
+  boundaries and both DIRECT decisions. MBB is CDKT 10–11, excluded 12, KQKD
+  13, LCTT 14–15, TM 16; VCB is CDKT 8–9, excluded 10, KQKD 11–12, LCTT 13–14,
+  TM 15. Both best/runner-up document-path margins are 8.5. The period matcher
+  pairs reporting axes to nearby unit lines, retaining 2025/2024 and excluding
+  the form-boilerplate 2014 date. This is calibration, not holdout evidence.
+- Next bounded action: freeze a fixed E-0013 heading/label crop set and benchmark
+  one independent Vietnamese line recognizer against PP-OCRv6 using source-text
+  CER/WER and exact-line accuracy. Integrate it only if the measured error-class
+  gain is decisive; then capture E-0024 before selecting a new holdout. E-0022
+  will not be rerun or retuned.
 
 ## Completed tasks
 
@@ -416,12 +435,19 @@
   result and all 108 evidence files were sealed before Role A access; the two
   post-seal diagnostic artifacts were then hash-locked and pushed at `267bee8`.
   It cannot be rerun or used for threshold selection.
-- Locator/text-quality v2 is currently in logic-development/calibration. It
-  lives in new modules/configs so the v1 files bound by E-0013/E-0022 remain
-  byte-identical. Twenty-three focused v1/v2 tests pass, and the separate MBB/
-  VCB calibration replay currently has zero page/type/scope/method regressions.
-- Ordered SchemaGraph v1 and E-0023 are sealed. Work now returns to E-0022 under
-  its frozen contract. The mapper remains intentionally excluded from the
+- Header-candidate/text-quality v2 is committed at `f10a70c` and remains
+  isolated from the immutable v1 files. The active work is the final statement
+  discovery layer: multi-line local evidence, PP-OCRv6 geometry/numeric axes,
+  independent semantic heading/label proposals, document-order decoding,
+  narrative penalties, and verified one-page neighbor inference. A form code or
+  a single occurrence of a statement/notes title can create a candidate only;
+  it cannot make a page mapping-eligible by itself.
+- Multi-signal discovery v3 now passes its focused mutation suite and the real
+  E-0013 two-document replay. It has not yet been frozen into E-0024. The next
+  active task is the bounded independent Vietnamese heading/label recognizer
+  benchmark; no model output will receive numeric, geometry or mapping authority.
+- Ordered SchemaGraph v1 and E-0023 are sealed. The mapper remains intentionally
+  excluded from the
   already-frozen E-0022 pipeline and will next be evaluated on separate real-PDF
   development/validation blocks.
 - Raw-PDF-dependent experiments now hydrate only their bounded registered inputs
@@ -439,12 +465,20 @@
   headings such as `BÁO CÁO TÌNH HÌNH TÀI CHÍNH HỢP NHẤT GIỮA NIÊN ĐỘ` are
   scored with a whole-string ratio against much shorter title cores, and form
   families such as `B02a/B03a/B04a` are not normalized to `B02/B03/B04`.
-  Separately, the native-text quality gate falsely marks all 33 pages corrupt
-  because standalone legitimate Vietnamese letters `Â` and `Ã` are treated as
-  mojibake markers. Actual replacement/encoded-byte sequences are absent. These
-  are general algorithm defects. V2 now addresses them in separate code and is
-  being validated only on synthetic mutations plus pre-existing calibration;
-  it cannot be remeasured on E-0022 after reference access.
+  Separately, v1 native-text quality produces legitimate-letter false positives
+  and can miss control bytes. V2 fixes those general Unicode defects on separate
+  calibration data. The remaining discovery risk is broader: even a perfect
+  title/form line can occur in an audit narrative or notes page, while a true
+  continuation can lose its title. Therefore final acceptance must combine
+  independent period, unit, accounting-anchor, numeric-geometry and sequence
+  evidence; it cannot be remeasured or tuned on E-0022 after reference access.
+- Vietnamese OCR errors are context-sensitive: missing/misplaced diacritics,
+  visually confusable base characters, dark header fills, blur and wrapped lines
+  can damage labels while leaving numeric geometry intact. Research review is
+  now bounded to methods that preserve raw OCR and propose corrections only:
+  independent Vietnamese line recognition, dictionary/schema-constrained
+  decoding, and confidence/margin-gated post-correction. No language model may
+  rewrite digits, periods, signs, geometry or source-visible values.
 - A higher-resolution crop is not sufficient by itself. On MBB LCTT page 14,
   PaddleOCR-VL still concatenates rows and numeric cells at 450 DPI; its current
   HTML proposal has 18 rows and 14 invalid multi-number cells, while independent
@@ -484,12 +518,16 @@
 
 1. Treat the visible PDF and inherited table structure as source authority.
 2. Locate statement/table/page scope before row mapping; exclude off-balance
-   sections before candidate generation.
-   V2 normalizes form-code families (`B02a` to `B02`, etc.), matches canonical
-   title cores by Unicode-normalized token-boundary containment while retaining
-   discriminator/table/order gates, and distinguishes legitimate Vietnamese
-   `Â`/`Ã` letters from real decoding/control fragments. Freeze and validate
-   those rules before a new holdout.
+   sections before candidate generation. Header v2 normalizes form-code families
+   (`B02a` to `B02`, etc.) and long title cores, but supplies candidate evidence
+   only. The final classifier groups independent signals: title/form identity,
+   period axis, unit, accounting-row anchors, numeric/table geometry,
+   continuation, and narrative penalties. Decode the whole document in expected
+   workbook statement order with a best/runner-up margin. A missing-title page
+   may inherit the neighboring state across at most one page only when visible
+   row labels, normalized numeric axes, period/unit signatures and continuation
+   geometry corroborate it; otherwise abstain. Freeze on separate calibration
+   documents before choosing a new holdout.
 3. Reconstruct logical rows across wrapped text and page continuations while
    retaining hard page-boundary provenance.
 4. Rank schema candidates lexicographically by statement/table context, parent,
@@ -529,19 +567,25 @@
 
 ## Planned next steps
 
-1. Commit and push the separate locator/native-text v2 implementation and its
-   focused mutation/fail-closed tests without modifying v1 or E-0022.
-2. Capture E-0024 from the clean mechanism commit: hash-bind the real E-0013
-   MBB/VCB no-regression replay, three-document native-text quality audit and
-   synthetic suffix/title safety mutations. Then add an immutable integration
-   hash gate and update this report with the formal artifact SHA-256.
-3. Apply ordered SchemaGraph v1 next on separate development/validation blocks
+1. Commit and push the tested multi-signal discovery mechanism without the
+   unfinished E-0024 capture files, preserving v1/v2 and all E-0022 artifacts.
+2. Freeze a source/hash/box-bound E-0013 heading/label crop set and benchmark an
+   independent Vietnamese line recognizer using exact-line accuracy, CER, WER,
+   diacritic errors and omissions against source text.
+3. Integrate an independent Vietnamese heading/label line recognizer only if the
+   fixed-crop result shows a bounded gain. PP-OCRv6 remains geometry
+   and numeric authority; the challenger is proposal-only.
+4. Capture E-0024 from the clean mechanism/model-benchmark commit: hash-bind the
+   E-0013 no-regression replay, multi-signal safety mutations, three-document
+   Unicode quality audit and the bounded line-recognizer result. Add an immutable
+   integration gate. Do not rerun or retune E-0022.
+5. Apply ordered SchemaGraph v1 next on separate development/validation blocks
    reconstructed from real PDFs; do not reuse E-0022 to tune its weights.
-4. Build a human-gold evaluation split separated by bank and reporting period,
+6. Build a human-gold evaluation split separated by bank and reporting period,
    including skew, warp, dark headers, blurred digits, wrapped rows, continuation
    pages, direct/indirect LCTT, separate/consolidated scope, and quarterly/YTD
    derivation cases.
-5. Define calibrated abstention thresholds only after the human-gold benchmark;
+7. Define calibrated abstention thresholds only after the human-gold benchmark;
    unresolved evidence must continue to produce review statuses rather than
    guessed output.
 

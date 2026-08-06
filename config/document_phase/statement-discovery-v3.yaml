@@ -1,0 +1,177 @@
+version: 3
+policy: MULTI_LINE_MULTI_SIGNAL_ORDERED_DOCUMENT_DISCOVERY_V3
+
+# V2 is a candidate generator only. A title or form-code occurrence can never
+# make a page mapping-eligible without independent table/row evidence below.
+header_candidate_config: statement-locator-v2.yaml
+header_candidate_config_sha256: 503f3fdb62dd5dcd1a460200750edfe18d7cf50039b62278666e572c6cccb730
+
+geometry_authority: PP_OCRV6_WORD_BOXES
+semantic_reader_authority: HEADING_AND_LABEL_PROPOSAL_ONLY
+ordered_statement_types: [CDKT, KQKD, LCTT]
+
+forbidden_inputs:
+  - bank_identity
+  - filename_identity
+  - page_number_rules
+  - numeric_values_for_page_type
+  - historical_values
+  - mongodb_values
+  - report_norm_id_numeric_order
+  - role_a_text_for_threshold_tuning
+
+text_windows:
+  header_fraction: 0.30
+  label_x_max_fraction: 0.66
+  max_joined_lines: 3
+  max_vertical_gap_height_ratio: 2.8
+  max_left_edge_delta_fraction: 0.08
+
+header_identity:
+  title_candidate_min_similarity: 0.68
+  title_candidate_min_margin: 0.05
+  audit_min_similarity: 0.74
+  toc_min_similarity: 0.72
+
+period_axis:
+  top_fraction: 0.24
+  right_region_min_x_fraction: 0.55
+  max_token_count: 6
+  min_distinct_columns: 2
+  axis_cluster_tolerance_fraction: 0.055
+
+unit:
+  top_fraction: 0.24
+  right_region_min_x_fraction: 0.50
+  min_similarity: 0.70
+  anchors:
+    - triệu đồng
+    - triệu VND
+    - nghìn đồng
+    - nghìn VND
+    - VND million
+
+numeric_geometry:
+  content_min_y_fraction: 0.17
+  numeric_min_x_fraction: 0.58
+  numeric_min_right_edge_fraction: 0.66
+  axis_cluster_tolerance_fraction: 0.045
+  min_axis_count: 2
+  min_cells_per_axis: 3
+  top_table_edge_fraction: 0.25
+  bottom_table_edge_fraction: 0.72
+
+accounting_rows:
+  min_similarity: 0.66
+  min_distinct_hits: 2
+  anchors:
+    CDKT:
+      - tiền mặt vàng bạc đá quý
+      - tiền gửi tại ngân hàng nhà nước
+      - tiền gửi và cho vay các tổ chức tín dụng khác
+      - chứng khoán kinh doanh
+      - cho vay khách hàng
+      - tài sản cố định
+      - tổng tài sản
+      - nợ phải trả
+      - tiền gửi của khách hàng
+      - vốn chủ sở hữu
+    KQKD:
+      - thu nhập lãi và các khoản thu nhập tương tự
+      - chi phí lãi và các chi phí tương tự
+      - thu nhập lãi thuần
+      - lãi thuần từ hoạt động dịch vụ
+      - tổng lợi nhuận trước thuế
+      - lợi nhuận sau thuế
+    LCTT:
+      - lưu chuyển tiền từ hoạt động kinh doanh
+      - thu nhập lãi và các khoản thu nhập tương tự nhận được
+      - chi phí lãi và các chi phí tương tự đã trả
+      - lợi nhuận trước thuế
+      - điều chỉnh cho các khoản
+      - lưu chuyển tiền từ hoạt động đầu tư
+      - lưu chuyển tiền từ hoạt động tài chính
+      - tiền và các khoản tương đương tiền
+    TM:
+      - các thuyết minh này là một bộ phận hợp thành
+      - thông tin về ngân hàng
+      - đơn vị báo cáo
+      - thành lập và hoạt động
+      - cơ sở lập báo cáo tài chính
+      - các chính sách kế toán
+
+off_balance_scope:
+  heading_min_similarity: 0.70
+  item_min_similarity: 0.72
+  min_distinct_item_hits: 2
+  headings:
+    - các chỉ tiêu ngoài báo cáo tình hình tài chính
+    - các chỉ tiêu ngoài bảng cân đối kế toán
+    - các chỉ tiêu ngoài báo cáo tài chính
+    - off balance sheet items
+  items:
+    - bảo lãnh vay vốn
+    - cam kết giao dịch hối đoái
+    - cam kết mua ngoại tệ
+    - cam kết bán ngoại tệ
+    - cam kết giao dịch hoán đổi
+    - cam kết trong nghiệp vụ thư tín dụng
+    - bảo lãnh khác
+    - các cam kết khác
+    - lãi cho vay và phí phải thu chưa thu được
+    - nợ khó đòi đã xử lý
+    - tài sản và chứng từ khác
+
+narrative:
+  long_line_min_characters: 60
+  long_line_min_span_fraction: 0.52
+  penalty_fraction: 0.34
+  audit_anchors:
+    - báo cáo kiểm toán độc lập
+    - báo cáo soát xét
+    - ý kiến của kiểm toán viên
+    - trách nhiệm của kiểm toán viên
+    - cơ sở của ý kiến kiểm toán
+    - independent auditors report
+
+notes_structure:
+  section_marker_max_x_fraction: 0.25
+  min_long_prose_lines: 2
+
+signal_weights:
+  header_identity: 2.0
+  period_axis: 1.25
+  unit: 0.75
+  accounting_rows: 2.5
+  numeric_geometry: 2.0
+  notes_structure: 1.5
+  continuation: 0.5
+  off_balance_scope: 1.0
+  narrative_penalty: 3.5
+  audit_or_toc_penalty: 20.0
+
+acceptance:
+  main_min_independent_groups: 4
+  notes_min_independent_groups: 4
+  min_local_score: 6.5
+  require_header_for_local_acceptance: true
+  require_accounting_rows_for_main: true
+  require_numeric_geometry_for_main: true
+  require_notes_structure_for_notes: true
+  page_type_runner_up_margin: 0.75
+  document_path_runner_up_margin: 1.25
+
+neighbor_inference:
+  max_distance_pages: 1
+  axis_max_delta_fraction: 0.055
+  require_accounting_rows: true
+  require_numeric_geometry: true
+  require_no_header_conflict: true
+  shared_metadata_mode: PERIOD_AND_UNIT_OR_MARKED_CONTINUATION_OR_TABLE_EDGE
+  score_discount: 0.80
+
+document_sequence:
+  states: [PRE, CDKT, KQKD, LCTT, TM, POST]
+  allow_interstitial_inside_statement_block: false
+  notes_boundary_page_count: 1
+  k_best_paths_per_state: 4

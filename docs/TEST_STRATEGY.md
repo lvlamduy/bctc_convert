@@ -213,3 +213,21 @@ real mojibake/control-byte/replacement markers while accepting legitimate
 Vietnamese `Â`/`Ã` tokens including word-final punctuation. Real calibration
 replay must reproduce the E-0013 MBB/VCB page/type/scope/method contracts exactly
 before the v2 mechanism can be frozen; E-0022 is excluded from tuning and replay.
+
+Final statement discovery v3 treats those header matches as candidates only.
+Its focused tests require: multi-line heading joins; rejection of a lone
+balance-sheet title in narrative prose; rejection of a lone TM title after an
+otherwise complete statement block; full multi-signal acceptance; exact
+off-balance exclusion; semantic-reader text that cannot manufacture PP-OCRv6
+numeric geometry; one-page forward and backward inference with visible rows,
+aligned numeric axes and table-edge continuity; abstention for incompatible
+axes or mismatched period axes; and document-level abstention when two complete
+paths tie. Inference tests must prove that only a locally accepted neighbor can
+support the missing page, so inferred pages can never form a propagation chain.
+
+The real calibration gate uses the pre-existing E-0013 MBB/VCB batches only. It
+must reproduce MBB eligible pages CDKT 10–11, KQKD 13, LCTT 14–15, excluded page
+12 and TM boundary 16; and VCB eligible pages CDKT 8–9, KQKD 11–12, LCTT 13–14,
+excluded page 10 and TM boundary 15. Both LCTT blocks must remain DIRECT. These
+are calibration page/scope contracts, not human-gold accuracy. E-0022 is never
+rerun, replayed or used to choose v3 thresholds.

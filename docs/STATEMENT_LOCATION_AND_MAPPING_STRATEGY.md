@@ -46,9 +46,11 @@ changing word boxes or source text.
 ## Stage 2 — ordered main-statement location
 
 The frozen v1 implementation is `statement-locator-v1.yaml` plus
-`statement_locator.py`. Locator v2 is implemented separately in
+`statement_locator.py`. Header-candidate v2 is implemented separately in
 `statement-locator-v2.yaml` and `statement_locator_v2.py` so historical v1
-artifacts remain byte-replayable. Neither version uses a bank or page-specific
+artifacts remain byte-replayable. Final discovery v3 is implemented in
+`statement-discovery-v3.yaml` and `multisignal_statement_discovery.py`. None of
+these versions uses a bank, filename, ReportNormId magnitude or page-specific
 rule.
 
 V2 inherits every v1 threshold and accounting anchor by a required SHA-256. It
@@ -61,12 +63,59 @@ changes only two header representations:
   containment evidence instead of being penalized merely because valid suffix
   text such as “hợp nhất giữa niên độ” makes the line longer.
 
-Containment is not sufficient by itself. Title-only main-statement pages retain
-the v1 discriminator, numeric-line-density, audit, contents, off-balance,
-ordered-block and runner-up gates. Malformed families (`B020`), conflicting form
-families, narrative mentions without table evidence and wrong statement order
-remain unresolved. The v2 locator detects PDF cash-flow method evidence only;
-the mapper applies Q-BOOT-001 separately using workbook display order.
+V2 output is candidate evidence, not final page acceptance. In particular, a
+form code, an exact “bảng cân đối kế toán” line, or an exact “thuyết minh” line
+cannot make a page mapping-eligible. Final v3 acceptance requires independent
+row/table evidence and document-sequence consistency. Malformed families
+(`B020`), conflicting form families, narrative mentions without table evidence
+and wrong statement order remain unresolved. Cash-flow method evidence remains
+separate; the mapper applies Q-BOOT-001 using workbook display order.
+
+### Multi-line, multi-signal final decision
+
+PP-OCRv6 is the authority for source-space word boxes, numeric cells, period
+axes and unit placement. A second Vietnamese recognizer may propose heading and
+label text on fixed crops, but it cannot create geometry, numbers, periods,
+scope, mapping or confidence. Title and label matching uses individual lines
+plus bounded two/three-line windows with compatible left edges and vertical
+gaps, so a wrapped heading is not treated as unrelated fragments.
+
+V3 records these independent signal groups per candidate page:
+
+- header identity: normalized B02/B03/B04/B05 family or multi-line title;
+- two or more right-side period columns paired to nearby unit lines;
+- visible unit evidence;
+- at least two statement-specific accounting row anchors;
+- at least two stable right-aligned numeric axes with repeated cells;
+- notes-specific section numbering plus prose structure for TM;
+- continuation marker or source-space table-edge continuity; and
+- audit/contents and high-narrative penalties.
+
+Header identity is capped as one group even when both title and form match. Main
+statements require header identity, accounting rows, numeric geometry and at
+least one additional independent group. TM requires header identity, reporting
+period, multiple notes anchors and numbered/prose notes structure. Suspected
+off-balance rows are allowed inside the B02 sequence but are always emitted as
+`OFF_BALANCE_SHEET` and mapping-ineligible.
+
+The off-balance heading matcher uses whole-line edit similarity plus the
+discriminative phrase “chỉ tiêu ngoài”/“ngoài báo cáo”; it deliberately does not
+use token-subset similarity because the normal balance-sheet title is a subset
+of the off-balance heading. Off-balance item anchors also use whole-label edit
+similarity and require a cluster, preventing generic `Tài sản` rows or a bank
+name containing `Ngoại thương` from changing scope.
+
+### Bounded missing-title inference
+
+A locally confident neighboring page may support exactly one missing/unreadable
+page forward or backward. Inference cannot chain through another inferred page.
+The missing page must still contain at least two compatible accounting labels,
+repeated numeric geometry and two source-space axes aligned with the confident
+neighbor. It must additionally have either the same period and unit signatures,
+an explicit continuation marker with shared metadata, or visible table-edge
+continuity (earlier page reaches the bottom band and later page begins in the
+top table band). Conflicting headers, audit/contents evidence, incompatible
+axes, an off-balance scope or two competing neighbor types force abstention.
 
 ### Page emissions
 
@@ -86,19 +135,18 @@ this blocks audit prose and covers from becoming false statement starts.
 
 ### Global sequence
 
-Candidate blocks must contain the contiguous order:
+The document decoder uses bounded k-best dynamic programming over:
 
 ```text
-CDKT (one or more pages) -> KQKD (one or more pages)
--> LCTT (one or more pages) -> first TM boundary
+PRE -> CDKT+ -> KQKD+ -> LCTT+ -> one TM boundary -> POST
 ```
 
-No unknown/interstitial page may be silently skipped. A candidate cannot start
-on an explicit continuation page or an off-balance page. Competing candidates
-are scored from versioned weights for start-form evidence, number of form-bound
-pages, and average page confidence. A small winner/runner-up margin returns
-`UNRESOLVED` rather than guessing. All candidates, score components, page
-decisions, and evidence are retained in the output.
+No unknown/interstitial page may be silently skipped inside the statement
+block. PRE/POST may absorb unrelated document pages, but the ordered accounting
+states cannot jump over one. The decoder retains distinct complete paths and
+requires a configured winner/runner-up margin; two equally plausible statement
+blocks return `UNRESOLVED`. All local candidates, rejected signals, inference
+checks, path summaries, scores and margins remain in the audit output.
 
 ### Off-balance scope
 
