@@ -143,4 +143,17 @@ cell agreement is conditional machine-reader agreement, not human-gold or
 production accuracy; missing/truncated rows remain outside that numerator and
 are reported separately through bilateral financial-row coverage.
 
+Targeted reread v1 has a separate fail-closed gate. Unit tests require relative
+line-height localization, one header-bound full-table crop for dense failures,
+one 600-DPI strip for adjacent numeric disagreements, context around wrapped or
+missing rows, and order-bracket localization when only Role B observes a row.
+An upstream mapping-ineligible page must yield zero regions; a new escalation,
+bad line index, unsafe path, dirty formal Git state, source/upstream hash drift,
+or output overwrite must stop the run. Renders must come from the registered
+PDF, preserve the original image, record variant-to-PDF/baseline transforms,
+and leave value replacement and confidence promotion false. The E-0016
+integration gate will hash-lock the exact 2-document/13-page/8-region input
+contract; it is an acquisition/localization regression, not an OCR-accuracy or
+production gate.
+
 Explicit page numbers in a golden/calibration fixture are expected test data, not production routing rules. Production page pairing must continue to use document-order and visual evidence; no bank, page offset, or coordinate constant may enter the algorithm.

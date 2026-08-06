@@ -14,6 +14,9 @@ This is a decision-oriented paper log, not a list of model claims. A paper contr
 - [Document dewarping by grid regularization](https://arxiv.org/abs/2203.16850) combines boundaries and text lines. Test a geometry-constrained dewarp candidate only on pages where perspective/curvature is detected, and select it by exact OCR/cell geometry rather than visual smoothness.
 - [DeepSeek-OCR 2](https://arxiv.org/abs/2601.20552) explicitly models semantic visual reading order. Benchmark it only as an independent difficult-region/layout reader; generative output cannot directly establish numeric truth.
 - [RT-DocLayout / PP-DocLayoutV3](https://arxiv.org/abs/2606.23344) predicts polygonal layout regions and reading order for non-planar documents. Benchmark its claimed robustness on controlled skew, curve, and screen-photo variants; E-0007 only establishes execution on one flat born-digital page.
+- The [official PaddleOCR repository](https://github.com/PaddlePaddle/PaddleOCR) was rechecked on 2026-08-06. Its current documented stack still includes PaddleOCR-VL-1.6 and PP-OCRv6, so E-0016 first reuses the already pinned and measured weights instead of changing two variables at once.
+- The [official DeepSeek-OCR-2 repository](https://github.com/deepseek-ai/DeepSeek-OCR-2) exposes dynamic image/crop modes, which makes it a relevant later difficult-region reader. Its published CUDA 11.8/PyTorch 2.6 setup is not installed into the current CUDA 13/PyTorch 2.12 environment; benchmark it in a separate frozen runtime or container after storage preflight.
+- The current [official MinerU repository](https://github.com/opendatalab/MinerU) and [MinerU-Popo repository](https://github.com/opendatalab/MinerU-Popo) retain coarse-to-fine, hybrid, and cross-page/table reconstruction as useful comparison hypotheses. They remain unapproved candidates until the same Vietnamese crops and exact failure denominators are frozen.
 
 ## Measured implementation findings
 
@@ -37,10 +40,11 @@ This is a decision-oriented paper log, not a list of model claims. A paper contr
 - Formal E-0015 quantifies why conditional cell agreement cannot stand alone. The paired observed cells agree 432/454 (95.154185%), but Role C-side financial-row structural coverage is only 230/275 (83.636364%) because Role B truncated VCB page 9 and heavily collapsed MBB page 14. Reporting both denominators prevents a plausible high agreement rate from hiding absent rows.
 - Role specialization is reinforced across banks: Role C yields zero invalid cells after geometry/noise gates, but only 7/240 paired labels are source-exact and 50/240 share the semantic key. It can corroborate cell ownership/value geometry, not establish the label or schema identity. Role B supplies better language while retaining eight explicit invalid serialized cells and 46 missing/truncated alignment outcomes.
 - Unrestricted cross-page alignment was rejected during the E-0015 development smoke because a fully truncated next page could merge its first heading with the preceding page's last total. Hard page separators plus retained boundary evidence are safer; automatic row continuation requires a future detector with explicit incomplete-label/cell geometry.
+- The E-0016 development smoke converts E-0015's failures into exactly eight source-PDF regions without bank/page rules: two full tables, five row bands, and one numeric strip. Seven use 450 DPI and one uses 600 DPI. The two upstream off-balance pages create no crop. All original regions were retained; one MBB full-table crop triggered uneven-background candidates and all candidate selections remain pending OCR evidence.
 
 ## Planned controlled experiments
 
-1. Compare original versus coarse-to-fine crops at 300/450/600 DPI by exact digit/sign, cell IoU, and latency.
+1. E-0016 now freezes the 450/600-DPI coarse-to-fine input mechanism. Next compare original versus generated candidates by exact digit/sign, cell IoU, and latency without selecting from arithmetic or history.
 2. Compare PaddleOCR-VL-1.6, MinerU2.5-Pro/available MinerU release, DeepSeek-OCR 2, and a non-generative OCR/geometry stack on the same frozen pages.
 3. Measure correlated errors; require independent architecture/decoding paths for “two-reader” evidence.
 4. Evaluate word-geometry reconstruction against VLM/table-model proposals on borderless, merged, transposed, and cross-page tables.

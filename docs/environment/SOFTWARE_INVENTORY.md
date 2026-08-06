@@ -152,6 +152,15 @@ expected metrics, transfer prerequisites, and replay command are in
 `../experiments/E-0015-REPLAY.md`. The tracked result is about 2.1 MiB; large
 renders/OCR/model assets remain outside Git.
 
+Targeted reread v1 and its E-0016 input builder add no Python distribution,
+Ubuntu package, driver, model, weight, or runtime setting. High-resolution
+source-PDF clipping and quality candidates reuse the locked control-plane
+PyMuPDF 1.28.0, OpenCV headless 4.14.0.94, NumPy 2.4.6, and PyYAML 6.0.3.
+Deskew and perspective candidates record inverse 3×3 transforms; photometric
+candidates retain identity geometry. Subsequent readers reuse the existing four
+pinned Paddle weights. DeepSeek-OCR-2 and MinerU remain separately isolated
+benchmark proposals and are not installed in this environment.
+
 Detailed commands, disk checks, cache rules, failure history, and rollback are in `docs/environment/GPU_RUNTIME_RUNBOOK.md`.
 
 ## Maintenance rule

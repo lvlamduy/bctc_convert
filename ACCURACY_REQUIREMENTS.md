@@ -11,6 +11,7 @@ This file is the durable checklist for every design, experiment, review, and pro
 - Treat historical unit and separate/consolidated scope as UNKNOWN unless the historical source itself proves them. A historical mismatch triggers rereading/review only; agreement cannot promote confidence.
 - Keep upstream raw-quarter and YTD series distinct. Upstream YTD values cannot serve as operands for PDF derivation; only two visible compatible PDF cells may do so.
 - Preserve raw and normalized text and every image/preprocessing variant used to reach a decision.
+- A high-DPI reread must be rendered directly from the registered PDF or original image. Never upscale a lower-DPI OCR render and treat interpolation as new source detail.
 - Distinguish VALUE, ZERO, BLANK, DASH, NOT_APPLICABLE, NOT_OBSERVED, and invalid/unreadable evidence.
 
 ## 2. Ordered and hierarchical mapping
@@ -47,6 +48,7 @@ This file is the durable checklist for every design, experiment, review, and pro
 - Render ordinary pages at 300 DPI, small text at 400–450 DPI, and only difficult crops at 600 DPI.
 - Keep the original render. Do not indiscriminately sharpen, binarize, denoise, or super-resolve every page.
 - Select a variant using OCR confidence, Vietnamese lexicon consistency, exact numeric agreement, word-box stability, table-line preservation, independent model agreement, accounting results, and hallucination rate.
+- Variant generation and variant selection are separate stages. Preserve the original, hash every candidate, record every geometric inverse transform, and leave selection unresolved until a versioned evidence rule is satisfied.
 - Reread a numeric cell when readers disagree, confidence is low, a final digit or sign is uncertain, history is anomalous, or an accounting check fails.
 
 ## 6. Tables, pages, rows, and cells

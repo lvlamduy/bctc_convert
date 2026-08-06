@@ -145,3 +145,5 @@ proposal is appended.
 No new package, system library, driver, model, or weight is required. Rebuild
 the existing locked environments, verify both v2 configurations and source
 hashes, then run the complete suite before creating a clean formal experiment.
+The downstream region-localization, source-PDF rerender, image-quality, and
+provenance rules are versioned separately in `TARGETED_REREAD_STRATEGY.md`.

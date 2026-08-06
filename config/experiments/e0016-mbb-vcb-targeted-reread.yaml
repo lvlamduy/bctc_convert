@@ -1,0 +1,47 @@
+version: 1
+experiment_id: E-0016
+dataset_role: CALIBRATION
+design: POST_FAILURE_TARGETED_REREAD_FROM_ORIGINAL_PDF_WITHOUT_VALUE_SELECTION
+content_inspected_before_design: true
+
+upstream:
+  structural_fusion_artifact:
+    path: docs/experiments/E-0015-mbb-vcb-structural-fusion.json
+    sha256: ee49ea1595c0d6507366739046005023308529352a3457d2d925cfd10c70d35a
+  targeted_reread_policy:
+    path: config/preprocessing/targeted-reread-v1.yaml
+    sha256: 728951c716f46728f76842c73eabf52651f1d090020d59173a24ca8675b6cafe
+
+expected_input_contract:
+  document_count: 2
+  page_count: 13
+  planned_page_count: 6
+  planned_region_count: 8
+  full_table_structural_region_count: 2
+  row_band_structural_region_count: 5
+  numeric_cell_strip_region_count: 1
+  skipped_mapping_ineligible_page_count: 2
+  no_reread_trigger_page_count: 5
+  unsupported_escalation_count: 0
+  source_pdf_rerendered_region_count: 8
+  report_norm_ids_proposed_or_added: 0
+
+safety:
+  role_a_or_searchable_reference_permitted: false
+  historical_reference_permitted: false
+  arithmetic_variant_selection_permitted: false
+  schema_variant_selection_permitted: false
+  automatic_variant_selection_permitted: false
+  automatic_value_replacement_permitted: false
+  automatic_confidence_promotion_permitted: false
+  mapping_ineligible_page_crop_permitted: false
+  cross_page_crop_permitted: false
+  source_or_upstream_overwrite_permitted: false
+  ytd_derivation_permitted: false
+
+claim_boundary: >-
+  This calibration stage localizes E-0015 failure signals and rerenders only
+  those regions from the registered source PDFs at 450 or 600 DPI. It creates
+  immutable candidate images and geometry transforms; it does not select an
+  OCR value, map a schema ID, use history or arithmetic, promote confidence,
+  or estimate production accuracy.

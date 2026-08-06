@@ -41,7 +41,7 @@ This is the durable retrieval point for project context. It summarizes user auth
 
 1. Register every input by SHA-256 and freeze dataset role before inspection.
 2. Classify PDF pages with a sequence decoder, retaining UNKNOWN when text/OCR evidence is absent.
-3. Render at controlled DPI; assess page and local regions; create only relevant reversible variants.
+3. Render at controlled DPI; assess page and local regions; preserve the original and create only relevant provenance-bound variants with inverse geometry where applicable.
 4. Run a document parser plus independent word/cell geometry OCR; escalate difficult crops to another model family.
    Keep language/context and geometry/value roles separate when their measured strengths differ.
 5. Reconstruct tables through proposal fusion, logical wrapped rows, and evidence-gated cross-page continuation.
@@ -147,3 +147,5 @@ This is the durable retrieval point for project context. It summarizes user auth
 - 2026-08-06: Rerendered the selected MBB/VCB blocks at 200 DPI, quality-gated 13 clean pages, independently ran and sealed Role B/Role C, retained generative truncation/multi-table/column-shift failures, and locked the acquisition as E-0014 without mapping or accuracy claims.
 - 2026-08-06: Added structural fusion v2 with all-block/span-aware variable-column parsing, worded-period and geometry-derived index/note/value reconstruction, strict grouped-number and margin-noise gates, upstream scope exclusion, order-only comparison, and focused regressions; no dependency/model/ReportNormId changed.
 - 2026-08-06: Ran clean E-0015 on the four E-0014 seals, hash-locked 13-page structural/conditional-agreement evidence, retained one unresolved table and all missing/collapse/invalid/noise outcomes, prohibited automatic cross-page row merges, and added exact replay/integration gates without schema or confidence promotion.
+- 2026-08-06: Resolved Q-BOOT-001 by contiguous template order: 4155→4168 is INDIRECT and 4104→4116 is DIRECT; current policy v2 applies only after an independently resolved PDF method, while historical artifacts remain immutable.
+- 2026-08-06: Added targeted reread v1: relative failure localization, source-PDF 450/600-DPI rerendering, quality-gated photometric/deskew/perspective/dark-region candidates, inverse geometry, complete evidence-chain checks, and an exact E-0016 13-page/8-region calibration contract with no value selection.

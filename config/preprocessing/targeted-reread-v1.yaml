@@ -1,0 +1,48 @@
+version: 1
+
+# All distances are relative to the median OCR line height.  No institution,
+# document, page, or absolute-coordinate exception is permitted here.
+localization:
+  dense_structural_trigger_fraction: 0.35
+  dense_structural_trigger_minimum: 6
+  group_gap_line_heights: 2.5
+  context_rows_before: 1
+  context_rows_after: 1
+  horizontal_margin_line_heights: 0.75
+  vertical_margin_line_heights: 0.75
+  maximum_trigger_units_per_band: 8
+
+reread_profiles:
+  full_table_structural:
+    dpi: 450
+    readers: [PADDLEOCR_VL_1_6, PP_OCRV6_MEDIUM]
+    variant_policy: QUALITY_GATED_ORIGINAL_PLUS_PROVENANCED_VARIANTS
+  row_band_structural:
+    dpi: 450
+    readers: [PADDLEOCR_VL_1_6, PP_OCRV6_MEDIUM]
+    variant_policy: QUALITY_GATED_ORIGINAL_PLUS_PROVENANCED_VARIANTS
+  numeric_cell_strip:
+    dpi: 600
+    readers: [PP_OCRV6_MEDIUM]
+    variant_policy: QUALITY_GATED_ORIGINAL_PLUS_PROVENANCED_VARIANTS
+
+trigger_escalations:
+  - ROLE_B_MISSING_OR_TRUNCATED_ROW_REREAD
+  - ROLE_C_MISSING_ROW_RECONSTRUCTION_OR_REREAD
+  - ROW_COLLAPSE_OR_WRAP_STRUCTURAL_REVIEW
+  - CELL_AXIS_WIDTH_REVIEW
+  - TARGETED_INVALID_CELL_REREAD
+  - TARGETED_NUMERIC_DISAGREEMENT_REREAD
+
+non_trigger_escalations:
+  - CROSS_READER_AGREEMENT_NO_CONFIDENCE_PROMOTION
+
+safety:
+  require_upstream_mapping_eligible: true
+  preserve_original: true
+  arithmetic_selects_variant: false
+  history_selects_variant: false
+  schema_selects_variant: false
+  automatic_value_replacement: false
+  automatic_confidence_promotion: false
+  cross_page_region: false
