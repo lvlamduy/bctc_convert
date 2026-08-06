@@ -18,6 +18,7 @@
 16. Verify both geometry configurations. `config/tables/geometry.yaml` is historical v1 and must retain its registered hash; current calibration uses `config/tables/geometry-v2.yaml`. Never edit v1 to make a newer fixture pass.
 17. Rebuild/verify the two PP-OCRv6 models, transfer the three exact external evidence directories, and replay E-0011 with `docs/experiments/E-0011-REPLAY.md`. Verify `config/tables/word-box-reconstruction.yaml`, all three seals, and the tracked result hash. A fresh OCR run must use a new experiment identity.
 18. Replay the clean E-0012 batch-equivalence mechanism with `docs/experiments/E-0012-REPLAY.md`. Before any later multi-page PP-OCRv6 run or resume, follow `BATCH_OCR_RUNBOOK.md`. Resume must use the same inference commit, manifest, page set, role, thread count, config, runtime, and model hashes; otherwise start a new output/experiment identity.
+19. Before row extraction, replay the statement-boundary gate using `STATEMENT_LOCATION_RUNBOOK.md`. It must verify the complete preprocess/batch/render/OCR identity chain, find a contiguous CDKT→KQKD→LCTT→TM block, keep off-balance pages mapping-ineligible, and retain Q-BOOT-001 as fail-closed.
 
 Recovery is accepted only when file hashes, schema order/count, test suite, local Mongo reference audit, and generated-workbook integrity all pass. A copied directory without these checks is not a valid rebuild.
 

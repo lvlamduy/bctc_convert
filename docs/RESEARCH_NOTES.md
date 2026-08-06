@@ -29,6 +29,8 @@ This is a decision-oriented paper log, not a list of model claims. A paper contr
 - E-0011 validates the independent-localization hypothesis on the targeted TCB failures. PP-OCRv6 right-edge/y geometry restored all four page-14 row pairs and localized `198.242` and `(5.140.484)` to separate page-15 rows without splitting a VLM string. Coverage rose from 94.70% to 100% and strict cell agreement from 92.42% to 100% against the same machine reference.
 - Geometry and language quality are separable: the E-0011 reader matched 264/264 cells but only 3/140 labels exactly. The operational design must fuse a label reader with independently boxed numeric evidence, retain disagreements, and avoid interpreting any single model's full-page serialization as truth.
 - Small punctuation needs a non-language fallback. Three source-visible dashes omitted by OCR were recovered only after a constrained pixel-component check; one more was recognized as `一`. The detector uses relative text-height/axis gates and rejects empty crops, digits, long rules, and multiple components. This is source-image evidence, not arithmetic repair.
+- The MBB/VCB coarse document pass exposed a general fuzzy-matching failure: token-set similarity treated an audit sentence containing “báo cáo tài chính” as a statement heading, and treated a normal CDKT title as a subset of the longer off-balance heading. Statement-location v1 now uses full edit similarity for headings, a separately fuzzy discriminative phrase, numeric-line density for title-only main statements, and an ordered global block. The same unchanged rules then found both calibration blocks and excluded both off-balance pages. This is development evidence for structure-first localization, not a production accuracy estimate.
+- Direct/indirect titles cannot be evaluated independently because “phương pháp trực tiếp” and “phương pháp gián tiếp” share most tokens. Competitive title margin plus ordered method-specific row anchors removed that conflict on both coarse MBB/VCB runs. The resulting PDF method remains deliberately disconnected from workbook-branch assignment while Q-BOOT-001 is open.
 
 ## Planned controlled experiments
 
@@ -39,6 +41,7 @@ This is a decision-oriented paper log, not a list of model claims. A paper contr
 5. Fit confidence/review thresholds on development/calibration data, then measure unchanged rules on frozen holdout and by distortion/report subgroup.
 6. Completed in E-0011 on page 14: the independent word/cell geometry path recovered all four collapsed row pairs, both value columns, notes, and source boxes. Repeat unchanged on other banks and distortions.
 7. Completed in E-0011 on page 15: `198.242` and `(5.140.484)` were independently localized to separate rows without splitting the VLM output. The next test varies DPI/contrast on frozen distortion fixtures.
+8. In progress for E-0013: use the 120-DPI PP-OCRv6 pass only to locate the statement block, then rerender/reread the selected eligible plus exclusion-boundary pages at 200 DPI. Compare page/scope/method stability before row-level Role B/Role C evaluation.
 
 ## Rejection rules
 

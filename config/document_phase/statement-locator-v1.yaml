@@ -1,0 +1,122 @@
+version: 1
+policy: GENERAL_ORDERED_STATEMENT_BLOCK_NO_BANK_OR_PAGE_RULES
+
+header_fraction: 0.30
+title_min_similarity: 0.74
+title_min_margin: 0.06
+continuation_title_min_similarity: 0.70
+continuation_anchor_min_similarity: 0.88
+title_only_min_numeric_line_fraction: 0.20
+title_discriminator_min_similarity: 0.72
+audit_min_similarity: 0.78
+toc_min_similarity: 0.72
+toc_min_distinct_statement_titles: 3
+off_balance_heading_min_similarity: 0.76
+off_balance_item_min_similarity: 0.82
+off_balance_min_item_hits: 2
+max_interstitial_pages: 0
+minimum_candidate_margin: 1.0
+
+candidate_score_weights:
+  start_form_anchor: 4.0
+  form_anchor_page: 2.0
+  average_confidence: 2.0
+
+ordered_statement_types: [CDKT, KQKD, LCTT]
+
+form_anchors:
+  CDKT:
+    - b02 tctd
+  KQKD:
+    - b03 tctd
+  LCTT:
+    - b04 tctd
+  TM:
+    - b05 tctd
+
+title_anchors:
+  CDKT:
+    - báo cáo tình hình tài chính
+    - bảng cân đối kế toán
+    - statement of financial position
+    - balance sheet
+  KQKD:
+    - báo cáo kết quả hoạt động
+    - báo cáo kết quả kinh doanh
+    - statement of profit or loss
+    - income statement
+  LCTT:
+    - báo cáo lưu chuyển tiền tệ
+    - cash flow statement
+    - statement of cash flows
+  TM:
+    - thuyết minh báo cáo tài chính
+    - notes to the financial statements
+    - note to the financial statements
+
+title_discriminator_anchors:
+  CDKT:
+    - tình hình tài chính
+    - cân đối kế toán
+    - financial position
+    - balance sheet
+  KQKD:
+    - kết quả hoạt động
+    - kết quả kinh doanh
+    - profit or loss
+    - income statement
+  LCTT:
+    - lưu chuyển tiền
+    - cash flow
+  TM:
+    - thuyết minh
+    - notes
+
+audit_anchors:
+  - báo cáo kiểm toán độc lập
+  - báo cáo soát xét
+  - independent auditors report
+  - review report
+
+toc_anchors:
+  - mục lục
+  - mc lc
+  - table of contents
+
+continuation_anchors:
+  - tiếp theo
+  - continued
+
+off_balance_heading_anchors:
+  - các chỉ tiêu ngoài báo cáo tình hình tài chính
+  - các chỉ tiêu ngoài bảng cân đối kế toán
+  - các chỉ tiêu ngoài báo cáo tài chính
+  - off balance sheet items
+
+off_balance_item_anchors:
+  - bảo lãnh vay vốn
+  - cam kết giao dịch hối đoái
+  - cam kết trong nghiệp vụ thư tín dụng
+  - tài sản và chứng từ khác
+  - nghĩa vụ nợ tiềm ẩn
+
+cash_flow_method:
+  title_min_similarity: 0.84
+  title_min_margin: 0.08
+  row_min_similarity: 0.84
+  direct:
+    title_anchors:
+      - phương pháp trực tiếp
+      - direct method
+    ordered_row_anchors:
+      - thu nhập lãi và các khoản thu nhập tương tự nhận được
+      - chi phí lãi và các chi phí tương tự đã trả
+  indirect:
+    title_anchors:
+      - phương pháp gián tiếp
+      - indirect method
+    ordered_row_anchors:
+      - lợi nhuận trước thuế
+      - điều chỉnh cho các khoản
+  schema_branch_assignment_permitted: false
+  schema_reason: Q-BOOT-001 remains semantically conflicted; PDF method evidence cannot choose a workbook block until the conflict is resolved.

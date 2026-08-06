@@ -35,6 +35,10 @@ isolated Blackwell/PaddleOCR-VL setup and its retained failure history are in
 Crash-safe multi-page PP-OCRv6 execution, exact parameters, and server-transfer
 rules are in
 [docs/environment/BATCH_OCR_RUNBOOK.md](docs/environment/BATCH_OCR_RUNBOOK.md).
+The general, order/hierarchy-based statement and row-mapping design is in
+[docs/STATEMENT_LOCATION_AND_MAPPING_STRATEGY.md](docs/STATEMENT_LOCATION_AND_MAPPING_STRATEGY.md),
+with executable boundary/recovery commands in
+[docs/environment/STATEMENT_LOCATION_RUNBOOK.md](docs/environment/STATEMENT_LOCATION_RUNBOOK.md).
 The first sealed six-page scan/searchable calibration and its migration-safe
 replay procedure are in
 [docs/experiments/E-0010-REPLAY.md](docs/experiments/E-0010-REPLAY.md).

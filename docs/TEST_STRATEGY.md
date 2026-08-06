@@ -74,4 +74,17 @@ to its E-0011 single-page result, no-op resume retained exactly one model-load
 session, and sealing verified both batch/helper hashes. The integration test
 locks these outcomes and re-hashes local artifacts when they are available.
 
+The statement-location v1 gate tests the document boundary before row mapping.
+It rejects narrative title mentions without numeric table density and a
+discriminative phrase, suppresses audit/contents pages, requires the contiguous
+CDKT→KQKD→LCTT→TM order, and refuses any unknown interstitial page. Candidate
+start scoring is versioned and a close runner-up fails closed. Scope tests prove
+that an off-balance B02 page is excluded from eligible CDKT pages and cannot be
+linked as a continuation of the main CDKT table. Cash-flow tests cover ordered
+direct/indirect anchors, competing shared-title text, conflict, unknown, and the
+Q-BOOT-001 no-schema-assignment invariant. Evidence-loader tests reject hash
+drift, path traversal, render identity drift, malformed page axes, out-of-bounds
+boxes, and role/batch identity changes before classification. MBB/VCB smoke
+results are not formal accuracy evidence until rerun clean and hash-locked.
+
 Explicit page numbers in a golden/calibration fixture are expected test data, not production routing rules. Production page pairing must continue to use document-order and visual evidence; no bank, page offset, or coordinate constant may enter the algorithm.

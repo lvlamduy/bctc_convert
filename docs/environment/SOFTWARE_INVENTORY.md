@@ -110,6 +110,13 @@ model-load session count at one, and the batch/helper-aware seal passed. This
 is a mechanism regression, not another accuracy observation. Exact hashes and
 replay commands are in `docs/experiments/E-0012-REPLAY.md`.
 
+The statement-location v1 implementation and its MBB/VCB coarse-pass smoke add
+no software, operating-system package, model, weight, or runtime setting. They
+reuse the locked control-plane PyYAML/RapidFuzz dependencies and the existing
+PP-OCRv6 CPU-FP32 batch artifacts. Configuration, execution, recovery, and
+failure gates are documented in `STATEMENT_LOCATION_RUNBOOK.md`. Therefore no
+dependency lock or model inventory changed for this milestone.
+
 Detailed commands, disk checks, cache rules, failure history, and rollback are in `docs/environment/GPU_RUNTIME_RUNBOOK.md`.
 
 ## Maintenance rule
