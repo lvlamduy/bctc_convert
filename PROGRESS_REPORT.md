@@ -1,21 +1,22 @@
 # Progress report
 
-- Updated: 2026-08-06T06:16:00+00:00
+- Updated: 2026-08-06T06:37:00+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `4a469fab2334e479ebd5117a4e130986e36cb6c9`
+- Latest clean, tested, pushed checkpoint: `a7306c963b70cc189cd935422fbe02dfaaaa344b`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
 - Registered PDFs: 2,567
-- Latest full regression: 229 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
+- Latest full regression: 234 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
 
 ## Accuracy focus and measurable state
 
-- Main measured error class: `STRUCTURAL_ROW_CELL_RECONSTRUCTION`. Replaying
-  the E-0010 Role A/Role B baseline with the new common taxonomy gives 21 direct
-  impact units: 7 non-`MATCH` alignment units plus 14 missing reference cells.
-  The other measured classes are 6 aligned numeric/sign disagreements, 4
-  semantic-label disagreements, and 1 note-reference disagreement.
+- Main measured error class: `STRUCTURAL_ROW_CELL_RECONSTRUCTION`. E-0017 adds
+  42 direct impact units: 7 non-`MATCH` alignment units, 14 missing reference
+  cells, and 21 structurally damaged compared cells. Twelve of those cells
+  contain multiple financial numbers collapsed into one generated cell. Only 2
+  disagreements remain attributable to numeric/sign OCR itself; label and note
+  disagreements contribute 3 and 1 units respectively.
 - Baseline before the current change remains E-0010: 140 Role A rows versus 139
   Role B rows; financial-row/cell coverage 94.70%; conditional exact row/cell
   agreement 96.80%/97.60%; strict exact row/cell agreement 91.67%/92.42%.
@@ -23,12 +24,14 @@
   independently reconstructed geometry grid, retain the semantic reader for
   labels/context, inherit verified period axes across continuation pages, and
   send unresolved merges or multi-number cells to localized rereading.
-- Measurable after-result: pending the clean E-0017 acquisition and comparison;
-  no improvement is claimed from parser refactoring alone. The v2 parser replay
-  on E-0010 is deliberately byte-for-metric identical to the existing baseline.
-- Next bounded action: run the newly frozen six-page TCB 2024 consolidated pair,
-  build its native Role A reference, seal image-only Role B output, and publish
-  row/cell coverage plus the same error taxonomy before changing fusion logic.
+- New before-result from E-0017: 147 Role A versus 146 Role B rows; row/cell
+  coverage 94.964%; conditional exact row/cell agreement 90.9091%/91.2879%;
+  strict exact row/cell agreement 86.3309%/86.6906%. The first four pages have
+  206/206 exact financial cells; all material loss is localized to the first
+  dense LCTT page. No after-result is claimed yet.
+- Next bounded action: run independent word-box geometry and DeepSeek-OCR-2 only
+  on the failed E-0017 LCTT region, construct a canonical row grid, then rerun
+  E-0010 and E-0017 against the same Role A denominators.
 
 ## Completed tasks
 
@@ -134,12 +137,27 @@
   impact error taxonomy. A focused 17-test regression passed; the pairing gate
   reports `PASS_FROZEN_PAIRING_FOUND` with 0 missing target pages. The full
   regression is 229 passed with 2 intentional immutable-history skips.
+- Completed and sealed E-0017 Role A and Role B at clean commit `932a481`.
+  Role B processed six image-only pages sequentially in 109.336706 seconds at
+  3,243 MiB peak GPU memory. The formal comparison is tied to clean correction
+  commit `a7306c9`, where multi-number cells are attributed to their structural
+  root cause instead of double-counted as digit OCR failures.
+- E-0017 keeps all 20 off-balance rows outside target CDKT, accepts the LCTT
+  page-13→14 continuation from adjacency/header/axis/unit/period/section evidence,
+  and returns cash-flow method `UNKNOWN` because row collapse destroys the
+  required ordered direct anchors. It does not guess the method from ID values.
+- Persistent workspace free space is 5,367,824,384 bytes, which is insufficient
+  for the 6,789,163,745-byte pinned DeepSeek-OCR-2 artifact set. `/dev/shm` has
+  15,407,611,904 bytes free, so an ephemeral, hash-verified model load is viable
+  while retaining a 4 GiB safety reserve. The official 3B BF16 revision and all
+  required file hashes are now pinned; the model has no mapping/value/period/
+  scope/confidence authority and may run only on failed or ambiguous regions.
 
 ## Currently in progress
 
 - Preparing a clean checkpoint for the reusable Role A/Role B evaluator and
-  E-0017 frozen pair, then acquiring the six Role B pages and measuring the new
-  cross-reader baseline.
+  E-0017 formal artifact plus the hash-pinned DeepSeek-OCR-2 downloader. The
+  next inference target is only the failed first LCTT page, not a model survey.
 - The already-started S3 snapshot has uploaded and HEAD-verified all 4,192 unique
   objects and is performing the required full sequential content restore.
   No local deletion has started; this background safety gate is not delaying
@@ -159,6 +177,11 @@
   preserved as explicit evidence, not hidden or repaired from history.
 - There is still no human-gold, bank-disjoint and period-disjoint end-to-end
   benchmark large enough to support a production accuracy threshold.
+- DeepSeek-OCR-2's official tested stack is CUDA 11.8/Torch 2.6/Transformers
+  4.46.3 with FlashAttention 2.7.3, while this Blackwell host uses CUDA 13/Torch
+  2.12/Transformers 5.14.1. The first load uses the pinned official custom code
+  with eager attention and must fail closed on any API incompatibility; the base
+  GPU runtime will not be downgraded or silently modified.
 - The S3 bucket is reachable, encrypted, publicly blocked, and versioned. The
   remaining backup obstacle is operational: complete the ~18.6 GB upload and a
   full sequential content restore before any local source is removed. Object
@@ -195,10 +218,11 @@
 
 ## Planned next steps
 
-1. Commit and push the reusable Role A/Role B evaluator and frozen E-0017 pair.
-2. Build E-0017 Role A, run and seal Role B on its six scan pages, then publish
-   coverage, strict/conditional agreement, and the main error class.
-3. Use the E-0017 failures plus the existing E-0010 failures to implement one
+1. Commit and push the formal E-0017 baseline and pinned DeepSeek-OCR-2 fetch gate.
+2. Download the exact official model once into `/dev/shm`, verify every byte,
+   and attempt an offline Blackwell load with eager attention.
+3. Run independent word-box and DeepSeek OCR only on E-0017 page 13, then use
+   the E-0017 failures plus the existing E-0010 failures to implement one
    bounded canonical-row-grid change, then rerun both baselines for before/after.
 4. Finish the full-content restore-test of the immutable snapshot, then offload the 2,567
    registered PDFs and Mongo dump to reclaim about 18.3 GB. Preserve the local
