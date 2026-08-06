@@ -1,8 +1,8 @@
 # Progress report
 
-- Updated: 2026-08-06T11:15:02+00:00
+- Updated: 2026-08-06T11:26:19+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `f10a70c`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
+- Latest clean, tested, pushed checkpoint: `fe02da8`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
@@ -146,11 +146,18 @@
   TM 15. Both best/runner-up document-path margins are 8.5. The period matcher
   pairs reporting axes to nearby unit lines, retaining 2025/2024 and excluding
   the form-boilerplate 2014 date. This is calibration, not holdout evidence.
-- Next bounded action: freeze a fixed E-0013 heading/label crop set and benchmark
-  one independent Vietnamese line recognizer against PP-OCRv6 using source-text
-  CER/WER and exact-line accuracy. Integrate it only if the measured error-class
-  gain is decisive; then capture E-0024 before selecting a new holdout. E-0022
-  will not be rerun or retuned.
+- E-0024 input selection is now fixed before challenger inference: 37 visible
+  single-line crops from MBB/VCB cover statement/notes titles, section/method
+  headings, ordinary and duplicate labels, and off-balance title/label controls.
+  The registry binds both source PDFs, 14 renders, 14 PP-OCRv6 JSON files, every
+  line index/bbox/raw prediction, and source-visible transcription by SHA-256.
+  Its three focused tests pass and an independent real-artifact audit reports
+  zero source/render/OCR/bbox/text drift. No challenger output has been read.
+- Next bounded action: commit the frozen E-0024 crop registry, build its crops
+  from that clean commit, then run the official VietOCR 0.3.13 VGG-Transformer
+  once. Compare exact-line accuracy, CER/WER, deletion/truncation and separated
+  base-letter/diacritic errors against PP-OCRv6. Integrate only on the declared
+  no-regression gate; E-0022 will not be rerun or retuned.
 
 ## Completed tasks
 
@@ -443,9 +450,11 @@
   a single occurrence of a statement/notes title can create a candidate only;
   it cannot make a page mapping-eligible by itself.
 - Multi-signal discovery v3 now passes its focused mutation suite and the real
-  E-0013 two-document replay. It has not yet been frozen into E-0024. The next
-  active task is the bounded independent Vietnamese heading/label recognizer
-  benchmark; no model output will receive numeric, geometry or mapping authority.
+  E-0013 two-document replay and is pushed at `fe02da8`. E-0024 now has a
+  pre-inference, source-visible 37-line crop registry whose source and PP-OCR
+  anchors pass exact validation. The active task is its clean-commit build and
+  bounded VietOCR inference; no model output receives numeric, geometry or
+  mapping authority.
 - Ordered SchemaGraph v1 and E-0023 are sealed. The mapper remains intentionally
   excluded from the
   already-frozen E-0022 pipeline and will next be evaluated on separate real-PDF
@@ -479,6 +488,12 @@
   independent Vietnamese line recognition, dictionary/schema-constrained
   decoding, and confidence/margin-gated post-correction. No language model may
   rewrite digits, periods, signs, geometry or source-visible values.
+- VietOCR's published aggregate score is not directly transferable: the fixed
+  financial-line crops contain all-uppercase headings, long labels and small
+  120-DPI accents. The official package also downloads mutable config/weights at
+  runtime unless intercepted. E-0024 therefore pins the wheel hash, will vendor
+  the exact downloaded config/weight hashes outside Git, disables ground-truth
+  input to decoding, and decides adoption only from the predeclared crop set.
 - A higher-resolution crop is not sufficient by itself. On MBB LCTT page 14,
   PaddleOCR-VL still concatenates rows and numeric cells at 450 DPI; its current
   HTML proposal has 18 rows and 14 invalid multi-number cells, while independent
@@ -549,6 +564,11 @@
    Numeric fingerprints may gate a structural overflow hypothesis but never
    replace output values. Require a score margin and abstain on ambiguity. None
    of the readers can independently map IDs or establish numeric truth.
+   For Vietnamese line recognition, report NFC source-exact accuracy, CER/WER,
+   deletions/truncations and separate base-character versus diacritic-only
+   errors. Schema/dictionary text may generate later correction candidates but
+   must be reconciled with the source crop and structural margin; nearest edit
+   distance alone is insufficient.
 9. Segment semantic text over that fixed grid when row counts differ: allow only
    explicit 1→2 collapsed-label splits, 2→1 adjacent label fragments, or
    duplicate edge trimming with per-segment thresholds and runner-up margins.
@@ -567,12 +587,15 @@
 
 ## Planned next steps
 
-1. Commit and push the tested multi-signal discovery mechanism without the
-   unfinished E-0024 capture files, preserving v1/v2 and all E-0022 artifacts.
-2. Freeze a source/hash/box-bound E-0013 heading/label crop set and benchmark an
-   independent Vietnamese line recognizer using exact-line accuracy, CER, WER,
-   diacritic errors and omissions against source text.
-3. Integrate an independent Vietnamese heading/label line recognizer only if the
+1. Commit and push the source/hash/box-bound 37-line E-0024 input registry before
+   any challenger inference, then build and inspect its crops from the clean
+   commit.
+2. Install official VietOCR 0.3.13 in an isolated overlay, pin the downloaded
+   base/model configs and VGG-Transformer weights by size/hash, and run it once
+   on the frozen crops without reference-text decoder input.
+3. Compare exact-line accuracy, CER, WER, base-character/diacritic-only edits,
+   deletions and truncations with the registered PP-OCRv6 baseline. Integrate an
+   independent Vietnamese heading/label reader only if the
    fixed-crop result shows a bounded gain. PP-OCRv6 remains geometry
    and numeric authority; the challenger is proposal-only.
 4. Capture E-0024 from the clean mechanism/model-benchmark commit: hash-bind the

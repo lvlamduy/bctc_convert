@@ -231,3 +231,14 @@ must reproduce MBB eligible pages CDKT 10–11, KQKD 13, LCTT 14–15, excluded 
 excluded page 10 and TM boundary 15. Both LCTT blocks must remain DIRECT. These
 are calibration page/scope contracts, not human-gold accuracy. E-0022 is never
 rerun, replayed or used to choose v3 thresholds.
+
+E-0024 freezes its input before challenger inference. The 37 single-line
+MBB/VCB samples bind source-PDF, render and PP-OCRv6 JSON hashes plus line index,
+bbox, raw prediction and source-visible transcription. Tests reject unsafe
+semantic-reader authority and any PP-OCR anchor drift. The challenger never
+receives reference text. Required comparison metrics are NFC exact/casefold
+line accuracy, CER, WER, insertions, deletions, substitutions, base-character
+errors and diacritic-only errors, stratified at least by title versus non-title.
+Adoption requires strictly lower aggregate CER, no title-exactness regression
+and no increase in empty/truncated lines. Regardless of result, PP-OCRv6 retains
+all geometry/numeric authority and E-0022 remains excluded.

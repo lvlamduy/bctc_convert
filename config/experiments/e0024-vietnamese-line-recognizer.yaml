@@ -1,0 +1,135 @@
+version: 1
+experiment_id: E-0024
+dataset_role: LOGIC_DEVELOPMENT_AND_CALIBRATION
+selection_policy: FROZEN_BEFORE_CHALLENGER_INFERENCE_SOURCE_VISIBLE_SINGLE_LINES
+
+forbidden_holdout_sha256:
+  - a85402445a34e80dd4248471c2d23d4cf4b349ab2455b91db457f3e6effbdd4a
+  - d8be301b9169577a0be2bbd8721cdaaab7cb37a32493ead0de5871bfcbc168dd
+
+authority:
+  source_render_is_ground_truth: true
+  expected_text_is_evaluation_only: true
+  expected_text_must_not_enter_decoder: true
+  semantic_reader_may_read_headings_and_labels_only: true
+  semantic_reader_may_create_numeric_geometry: false
+  semantic_reader_may_replace_digits_periods_units_or_signs: false
+  ppocrv6_remains_geometry_and_numeric_authority: true
+  automatic_ocr_post_correction: false
+
+crop_policy:
+  source_padding_left_top_right_bottom: [4, 1, 4, 1]
+  white_border_left_top_right_bottom: [8, 4, 8, 4]
+  color_mode: RGB
+  image_format: PNG
+  reject_numeric_only_samples: true
+
+evaluation_policy:
+  unicode_normalization: NFC
+  metrics:
+    - exact_line_accuracy
+    - casefold_exact_line_accuracy
+    - character_error_rate
+    - word_error_rate
+    - base_character_error_count
+    - diacritic_only_error_count
+    - deletion_count
+    - insertion_count
+    - substitution_count
+  adoption_gate: >-
+    Challenger aggregate CER must be strictly lower than PP-OCRv6, title exact-line
+    count must not regress, empty or truncated-line count must not increase, and no
+    numeric/period/unit/sign authority is granted. Otherwise retain it only as an
+    abstaining proposal reader or reject it.
+
+challenger:
+  name: VietOCR VGG Transformer
+  package: vietocr
+  version: 0.3.13
+  wheel_url: https://files.pythonhosted.org/packages/83/8a/84762197abf9b4c0a8ca0ebceda2c79adb5773a64578fd6d0776f93142ab/vietocr-0.3.13-py3-none-any.whl
+  wheel_sha256: 07b3777e5176b0d733cb056b68bd817371605f4b3514795fbf91ad4e181b8ccf
+  config_base_url: https://vocr.vn/data/vietocr/config/base.yml
+  config_model_url: https://vocr.vn/data/vietocr/config/vgg-transformer.yml
+  weights_url: https://vocr.vn/data/vietocr/vgg_transformer.pth
+  architecture: vgg19_bn_transformer
+  device: cuda:0
+  beam_search: false
+  evidence_role: INDEPENDENT_VIETNAMESE_SEMANTIC_PROPOSAL_ONLY
+
+documents:
+  MBB_2025_CONSOLIDATED:
+    source_pdf: vietstock_bctc/MBB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf
+    source_sha256: 9853cc4909dc73ddea9907465b09d7ecdb96cf6c1627f56943f3a20d14b49f80
+    source_size_bytes: 10165066
+    render_root: output/calibration/e0013-mbb-phase120/9853cc4909dc73ddea99/renders
+    ppocr_root: output/calibration/e0013-mbb-phase120-role-c
+    pages:
+      10: {render_sha256: 6613304f2f3c53666b702e4319f6639b4c5aef984a06a0d42a9640fa703d33d6, ppocr_sha256: 584a7429a845b70dd50163f6b031b2c2bd231401704b53adc08197baba8d8d15}
+      11: {render_sha256: 3e374a65e85e7c342d4b141428fa609045b77ffeae03a15ed8b6e0bb516f2f71, ppocr_sha256: 9cd7c8cef87a5f8b1c32636fb54a08fcb30f146493803c22d27e37c004d4231c}
+      12: {render_sha256: 609d497955042ac3db0facb51e18e0756c40c405e2fa7c551be0e85fca21619a, ppocr_sha256: b320ff809ef32e031345ed570ee7b7792866a48a22641d4af0fd13ab1201aba9}
+      13: {render_sha256: 18721fe4da820a8c308a8a904215a606eead028e8fba9a914f81a4b3b4746d7d, ppocr_sha256: bdba574642cb31cdcdd723dc5134324e1c706a5389e687e8fe25774b7921d5f5}
+      14: {render_sha256: 0f66203faff3cb145294a2df3d2ee762f5f6f5e68810f2b5429a8ce39e93046d, ppocr_sha256: e7e560bcfd2d4700c971342fac3ee09261db9279b377ee6fa2936232b0511dfb}
+      15: {render_sha256: 9ddf9af358d2b61afc5a696d9c9ff69b5107d4cf2f336a6a8b44f7d6066d94a9, ppocr_sha256: a9eea4e6d6cf190a720373e5af90d05f30ac62aae283c19610d18de371a5ef30}
+      16: {render_sha256: 7b7456cc2f3438a4b952ffd88c975e657f3e02d3c1f0f51c8b8d91d145de21f8, ppocr_sha256: 8aecc9240dea5b471da534513af14dc65cf26472d3e34d32d0c03e6f8b3edd38}
+  VCB_2025_CONSOLIDATED:
+    source_pdf: vietstock_bctc/VCB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf
+    source_sha256: 295f397de287f84c26dafbfa06f668604aa696a013e236253149d8547d032d1f
+    source_size_bytes: 11552186
+    render_root: output/calibration/e0013-vcb-phase120/295f397de287f84c26da/renders
+    ppocr_root: output/calibration/e0013-vcb-phase120-role-c
+    pages:
+      8: {render_sha256: 916399e372fea40948201c684e568f6fe56d34fdc66a3419059f8f31a954713d, ppocr_sha256: f11c089bd6b8da8e472b9227730c8d9aebe6d1f05b968c80eca23aa1d8848cce}
+      9: {render_sha256: d375f3961cfb9a684ed5e9398bdf29e19adeabc0ee8410f4ee0b3ff837e0515d, ppocr_sha256: 944e9f9c1fbfc5e26d7f78e668e1f0a8fa90a6a1a67dcb627fa6f8b362016320}
+      10: {render_sha256: dac5a4443861b3591325bea4b2e127e6ace1d6957b4a39c8d5d8105183133f20, ppocr_sha256: 941a013e8c75937fc6700e4bdfec167da8edf8f2cd6d51afd154710f9b32736c}
+      11: {render_sha256: c2707454b1ebe6e16fbe1a348e42d93c63ac17095f5cdddad942219cdc7157b1, ppocr_sha256: b2b77c9a5e35795c36fab5a42ab169d500163132aacefa18c5a73541526d1eaf}
+      13: {render_sha256: 26dd2d3da53c88dfe724d99ea2a410a1576dfe4b7a9fabe08d917c87c5c7ed84, ppocr_sha256: 2c2395afb609f82787233e29903cc9a0e4ceb47c21ce6b56469a510b01f5abd7}
+      14: {render_sha256: c981b669d993ffd2c03a2fafc1aa8f1f254c84a021e92a9354033561e383acea, ppocr_sha256: ef4ff1f601eb811267283adfb4cdd9b0e5d490a765190445a255a056389cafd2}
+      15: {render_sha256: 6c58e3561a7b3b13a13a987487957aa735ffc8898c0e023b06e31c0172ea2dc6, ppocr_sha256: d78c3b84ccfc335a4d2964bffbd5b18883eb574c03e62ade4d095c1919c993ca}
+
+samples:
+  - {id: mbb-p10-cdkt-title, document: MBB_2025_CONSOLIDATED, page: 10, category: TITLE, ppocr_index: 3, bbox: [127, 97, 481, 117], expected: "BÁO CÁO TÌNH HÌNH TÀI CHÍNH HỢP NHẤT", ppocr_text: "BÁO CÁO TINH HINH TÀI CHÍNH HOP NHÁT"}
+  - {id: mbb-p10-assets, document: MBB_2025_CONSOLIDATED, page: 10, category: SECTION, ppocr_index: 14, bbox: [125, 224, 199, 249], expected: "TÀI SẢN", ppocr_text: "TÀI SÁN"}
+  - {id: mbb-p10-cash-gold, document: MBB_2025_CONSOLIDATED, page: 10, category: LABEL, ppocr_index: 15, bbox: [126, 256, 344, 279], expected: "Tiền mặt, vàng bạc, đá quý", ppocr_text: "Tièn mt, vàng bc, đá quý"}
+  - {id: mbb-p10-central-bank, document: MBB_2025_CONSOLIDATED, page: 10, category: LABEL, ppocr_index: 19, bbox: [128, 287, 396, 307], expected: "Tiền gửi tại Ngân hàng Nhà nước", ppocr_text: "Tin gri ti Ngân hàng Nhà nưóc"}
+  - {id: mbb-p10-risk-provision, document: MBB_2025_CONSOLIDATED, page: 10, category: DUPLICATE_LABEL, ppocr_index: 33, bbox: [174, 377, 294, 394], expected: "Dự phòng rủi ro", ppocr_text: "Du phòng rui ro"}
+  - {id: mbb-p11-liabilities, document: MBB_2025_CONSOLIDATED, page: 11, category: SECTION, ppocr_index: 14, bbox: [132, 249, 246, 270], expected: "NỢ PHẢI TRẢ", ppocr_text: "NO PHÀI TRÁ"}
+  - {id: mbb-p12-off-balance-title, document: MBB_2025_CONSOLIDATED, page: 12, category: OFF_BALANCE_TITLE, ppocr_index: 8, bbox: [128, 192, 660, 217], expected: "CÁC CHỈ TIÊU NGOÀI BÁO CÁO TÌNH HÌNH TÀI CHÍNH HỢP NHẤT", ppocr_text: "CÁC CHÍ TIÊU NGOÀI BÁO CÁO TINH HINH TÀI CHÍNH HO'P NHÁT"}
+  - {id: mbb-p12-off-balance-asset, document: MBB_2025_CONSOLIDATED, page: 12, category: OFF_BALANCE_LABEL, ppocr_index: 54, bbox: [132, 498, 328, 520], expected: "Tài sản và chứng từ khác", ppocr_text: "Tài sàn và chng tr khác"}
+  - {id: mbb-p13-kqkd-title, document: MBB_2025_CONSOLIDATED, page: 13, category: TITLE, ppocr_index: 3, bbox: [129, 102, 493, 124], expected: "BÁO CÁO KẾT QUẢ HOẠT ĐỘNG HỢP NHẤT", ppocr_text: "BÁO CÁO KÉT QUÀ HOAT ĐÓNG HOP NHÁT"}
+  - {id: mbb-p13-interest-income, document: MBB_2025_CONSOLIDATED, page: 13, category: LABEL, ppocr_index: 14, bbox: [129, 262, 470, 284], expected: "Thu nhập lãi và các khoản thu nhập tương tự", ppocr_text: "Thu nhp lãi và các khon thu nhp turong t"}
+  - {id: mbb-p13-interest-expense, document: MBB_2025_CONSOLIDATED, page: 13, category: LABEL, ppocr_index: 17, bbox: [129, 284, 385, 306], expected: "Chi phí lãi và các chi phí tương tự", ppocr_text: "Chi phí lăi và các chi phí turong t"}
+  - {id: mbb-p14-lctt-title, document: MBB_2025_CONSOLIDATED, page: 14, category: TITLE, ppocr_index: 3, bbox: [132, 99, 494, 121], expected: "BÁO CÁO LƯU CHUYỂN TIỀN TỆ HỢP NHẤT", ppocr_text: "BÁO CÁO LU'U CHUYÉN TIÈN TE HOP NHÁT"}
+  - {id: mbb-p14-direct-method, document: MBB_2025_CONSOLIDATED, page: 14, category: METHOD, ppocr_index: 7, bbox: [131, 140, 329, 162], expected: "(Phương pháp trực tiếp)", ppocr_text: "(Phưong pháp trc tip)"}
+  - {id: mbb-p14-operating-heading, document: MBB_2025_CONSOLIDATED, page: 14, category: SECTION, ppocr_index: 13, bbox: [132, 232, 538, 252], expected: "LƯU CHUYỂN TIỀN TỪ HOẠT ĐỘNG KINH DOANH", ppocr_text: "LU'U CHUYÉN TIÈN TÙ HOAT DONG KINH DOANH"}
+  - {id: mbb-p14-interest-received, document: MBB_2025_CONSOLIDATED, page: 14, category: LABEL, ppocr_index: 14, bbox: [131, 262, 559, 283], expected: "Thu nhập lãi và các khoản thu nhập tương tự nhận được", ppocr_text: "Thu nhp lāi và các khon thu nhp turong t nhn đurc"}
+  - {id: mbb-p14-interest-paid, document: MBB_2025_CONSOLIDATED, page: 14, category: LABEL, ppocr_index: 17, bbox: [132, 281, 435, 302], expected: "Chi phí lãi và các chi phí tương tự đã trả", ppocr_text: "Chi phí lăi và các chi phí turong t đă trà"}
+  - {id: mbb-p15-investing-heading, document: MBB_2025_CONSOLIDATED, page: 15, category: SECTION, ppocr_index: 13, bbox: [126, 248, 490, 268], expected: "LƯU CHUYỂN TIỀN TỪ HOẠT ĐỘNG ĐẦU TƯ", ppocr_text: "LUU CHUYÉN TIÈN TÙ HOAT ĐONG DÀU TU"}
+  - {id: mbb-p16-notes-title, document: MBB_2025_CONSOLIDATED, page: 16, category: TITLE, ppocr_index: 3, bbox: [134, 98, 519, 120], expected: "THUYẾT MINH BÁO CÁO TÀI CHÍNH HỢP NHẤT", ppocr_text: "THUYÉT MINH BÁO CÁO TÀI CHÍNH HO'P NHÁT"}
+  - {id: mbb-p16-bank-info, document: MBB_2025_CONSOLIDATED, page: 16, category: NOTES_ANCHOR, ppocr_index: 11, bbox: [193, 246, 423, 268], expected: "THÔNG TIN VỀ NGÂN HÀNG", ppocr_text: "THÔNG TIN VÈ NGÂN HÀNG"}
+  - {id: vcb-p08-cdkt-title, document: VCB_2025_CONSOLIDATED, page: 8, category: TITLE, ppocr_index: 4, bbox: [135, 113, 426, 132], expected: "Báo cáo tình hình tài chính hợp nhất", ppocr_text: "Báo cáo tình hình tài chính hop nhât"}
+  - {id: vcb-p08-cash-gold, document: VCB_2025_CONSOLIDATED, page: 8, category: LABEL, ppocr_index: 19, bbox: [182, 304, 400, 329], expected: "Tiền mặt, vàng bạc, đá quý", ppocr_text: "Tin mt, vàng bc, đá quý"}
+  - {id: vcb-p08-central-bank, document: VCB_2025_CONSOLIDATED, page: 8, category: LABEL, ppocr_index: 24, bbox: [183, 340, 538, 362], expected: "Tiền gửi tại Ngân hàng Nhà nước (\"NHNN\")", ppocr_text: "Tin gri ti Ngân hàng Nhà nuróc (\"NHNN\")"}
+  - {id: vcb-p09-liabilities-equity, document: VCB_2025_CONSOLIDATED, page: 9, category: SECTION, ppocr_index: 17, bbox: [184, 285, 508, 310], expected: "NỢ PHẢI TRẢ VÀ VỐN CHỦ SỞ HỮU", ppocr_text: "NQ PHÀI TRÀ VÀ VÓN CHÙ SÒ HÙU"}
+  - {id: vcb-p10-off-balance-title, document: VCB_2025_CONSOLIDATED, page: 10, category: OFF_BALANCE_TITLE, ppocr_index: 15, bbox: [185, 272, 777, 297], expected: "CÁC CHỈ TIÊU NGOÀI BÁO CÁO TÌNH HÌNH TÀI CHÍNH HỢP NHẤT", ppocr_text: "CÁC CHI TIÊU NGOÀI BÁO CÁO TINH HINH TÀI CHÍNH HQP NHÁT"}
+  - {id: vcb-p10-off-balance-asset, document: VCB_2025_CONSOLIDATED, page: 10, category: OFF_BALANCE_LABEL, ppocr_index: 55, bbox: [183, 530, 372, 552], expected: "Tài sản và chứng từ khác", ppocr_text: "Tài sàn và chúng tù khác"}
+  - {id: vcb-p11-kqkd-title, document: VCB_2025_CONSOLIDATED, page: 11, category: TITLE, ppocr_index: 4, bbox: [136, 110, 425, 133], expected: "Báo cáo kết quả hoạt động hợp nhất", ppocr_text: "Báo cáo kt qua hoat đng hop nht"}
+  - {id: vcb-p11-interest-income, document: VCB_2025_CONSOLIDATED, page: 11, category: LABEL, ppocr_index: 18, bbox: [190, 278, 524, 301], expected: "Thu nhập lãi và các khoản thu nhập tương tự", ppocr_text: "Thu nhp lãi và các khoān thu nhp tuong tr"}
+  - {id: vcb-p11-interest-expense, document: VCB_2025_CONSOLIDATED, page: 11, category: LABEL, ppocr_index: 24, bbox: [190, 300, 447, 322], expected: "Chi phí lãi và các chi phí tương tự", ppocr_text: "Chi phí lãi và các chi phí tuong t"}
+  - {id: vcb-p13-lctt-title, document: VCB_2025_CONSOLIDATED, page: 13, category: TITLE, ppocr_index: 4, bbox: [138, 113, 423, 133], expected: "Báo cáo lưu chuyển tiền tệ hợp nhất", ppocr_text: "Báo cáo lru chuyn tin t hop nht"}
+  - {id: vcb-p13-direct-method, document: VCB_2025_CONSOLIDATED, page: 13, category: METHOD, ppocr_index: 8, bbox: [137, 156, 330, 176], expected: "(Phương pháp trực tiếp)", ppocr_text: "(Phuong pháp trc tip)"}
+  - {id: vcb-p13-operating-heading, document: VCB_2025_CONSOLIDATED, page: 13, category: SECTION, ppocr_index: 17, bbox: [198, 278, 653, 298], expected: "LƯU CHUYỂN TIỀN TỪ HOẠT ĐỘNG KINH DOANH", ppocr_text: "LUU CHUYÊN TIÈN TU HOAT DONG KINH DOANH"}
+  - {id: vcb-p13-interest-received, document: VCB_2025_CONSOLIDATED, page: 13, category: LABEL, ppocr_index: 20, bbox: [199, 309, 613, 329], expected: "Thu nhập lãi và các khoản thu nhập tương tự nhận được", ppocr_text: "Thu nhp lãi và các khon thu nhp tuong t nhn đuc"}
+  - {id: vcb-p13-interest-paid, document: VCB_2025_CONSOLIDATED, page: 13, category: LABEL, ppocr_index: 25, bbox: [198, 330, 500, 350], expected: "Chi phí lãi và các chi phí tương tự đã trả", ppocr_text: "Chi phí lãi và các chi phí turong t đã trà"}
+  - {id: vcb-p14-investing-heading, document: VCB_2025_CONSOLIDATED, page: 14, category: SECTION, ppocr_index: 14, bbox: [198, 275, 602, 298], expected: "LƯU CHUYỂN TIỀN TỪ HOẠT ĐỘNG ĐẦU TƯ", ppocr_text: "LUU CHUYĒN TIÈN TÙ HOAT DQNG DÀU TU"}
+  - {id: vcb-p15-notes-title-line, document: VCB_2025_CONSOLIDATED, page: 15, category: TITLE, ppocr_index: 4, bbox: [138, 111, 619, 131], expected: "Thuyết minh báo cáo tài chính hợp nhất cho năm kết thúc", ppocr_text: "Thuyt minh báo cáo tài chính ho'p nht cho năm kt thúc"}
+  - {id: vcb-p15-reporting-entity, document: VCB_2025_CONSOLIDATED, page: 15, category: NOTES_ANCHOR, ppocr_index: 12, bbox: [137, 245, 287, 266], expected: "Đơn vị báo cáo", ppocr_text: "Đon vi báo cáo"}
+  - {id: vcb-p15-establishment, document: VCB_2025_CONSOLIDATED, page: 15, category: NOTES_ANCHOR, ppocr_index: 14, bbox: [137, 280, 344, 301], expected: "Thành lập và hoạt động", ppocr_text: "Thành lp và hot đng"}
+
+expected_sample_count: 37
+output_root: output/calibration/e0024-vietnamese-line-recognizer
+
+claim_boundary: >-
+  Fixed two-document calibration comparison of visible single-line headings and
+  labels only. It is not a holdout, E-0022 reuse, full-page OCR score, table/value/
+  period/schema/Excel accuracy, automatic truth promotion, or authority to infer
+  ReportNormId order numerically.
