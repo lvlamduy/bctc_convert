@@ -94,6 +94,34 @@ attention_implementation = "eager"
 network_permitted = false
 target_policy = "FAILED_OR_AMBIGUOUS_REGIONS_ONLY"
 
+[runtime_overlay]
+platform = "CPython 3.11 / Linux x86_64"
+requirements_path = "config/models/deepseek-ocr2-overlay-requirements.txt"
+requirements_sha256 = "8095b7aa0be41c055784c024c49c4353ab36ace75d1cdee33b9fc7228932d9f9"
+install_command = ".venv/bin/python -m pip install --require-hashes --no-deps --target <executable-filesystem-overlay> -r config/models/deepseek-ocr2-overlay-requirements.txt"
+pythonpath_policy = "prepend overlay to .gpu-venv without modifying .gpu-venv"
+compiled_wheels_require_executable_filesystem = true
+flash_attention_required = false
+
+[runtime_compatibility]
+python_major_minor = "3.11"
+cuda_runtime = "13.0"
+minimum_compute_capability = [12, 0]
+
+[runtime_compatibility.packages]
+torch = "2.12.0+cu130"
+torchvision = "0.27.0+cu130"
+transformers = "4.46.3"
+tokenizers = "0.20.3"
+huggingface-hub = "0.26.3"
+safetensors = "0.8.0"
+einops = "0.8.2"
+addict = "2.4.0"
+easydict = "1.13"
+matplotlib = "3.10.8"
+numpy = "2.3.5"
+Pillow = "12.3.0"
+
 [safety]
 mapping_authority = false
 value_authority = false

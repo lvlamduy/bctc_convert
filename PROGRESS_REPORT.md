@@ -1,13 +1,13 @@
 # Progress report
 
-- Updated: 2026-08-06T06:37:00+00:00
+- Updated: 2026-08-06T06:50:23+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `a7306c963b70cc189cd935422fbe02dfaaaa344b`
+- Latest clean, tested, pushed checkpoint: `f859ccce6b0ae8ea6950a50189c1a4b51de221a5`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
 - Registered PDFs: 2,567
-- Latest full regression: 234 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
+- Latest full regression: 237 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
 
 ## Accuracy focus and measurable state
 
@@ -146,18 +146,37 @@
   page-13→14 continuation from adjacency/header/axis/unit/period/section evidence,
   and returns cash-flow method `UNKNOWN` because row collapse destroys the
   required ordered direct anchors. It does not guess the method from ID values.
-- Persistent workspace free space is 5,367,824,384 bytes, which is insufficient
+- At model-download preflight, persistent workspace free space was
+  5,367,824,384 bytes, which was insufficient
   for the 6,789,163,745-byte pinned DeepSeek-OCR-2 artifact set. `/dev/shm` has
   15,407,611,904 bytes free, so an ephemeral, hash-verified model load is viable
   while retaining a 4 GiB safety reserve. The official 3B BF16 revision and all
   required file hashes are now pinned; the model has no mapping/value/period/
   scope/confidence authority and may run only on failed or ambiguous regions.
+- Downloaded and independently verified all 14 pinned DeepSeek-OCR-2 artifacts
+  (6,789,163,745 required bytes) into `/dev/shm`; the weight SHA-256 is
+  `d8ff67a424ba6f4dd077885eb9d6a05d2537e76fe5491f0e2a9b712f8c8870fa`.
+  No source PDF or Mongo dump was deleted. Persistent free space is currently
+  4,931,727,360 bytes and `/dev/shm` free space is 8,481,501,184 bytes.
+- Confirmed the expected runtime incompatibility instead of hiding it:
+  Transformers 5.14.1 cannot import the official custom model because it no
+  longer exports `LlamaFlashAttention2`. A hash-locked, external overlay using
+  the official Transformers 4.46.3/tokenizers 0.20.3 pair plus
+  huggingface-hub 0.26.3 now loads the unchanged model with eager attention on
+  the existing Torch 2.12/CUDA 13 Blackwell runtime. The successful load took
+  4.255978 seconds, allocated 6,883,116,544 GPU bytes, and left 9,389,604,864
+  GPU bytes free; no FlashAttention or base-runtime downgrade was used.
+- Added a targeted DeepSeek runner and 11-package hash-locked overlay contract.
+  It verifies a clean Git state, every model file, exact package versions, BF16
+  and GPU capability, and denies DNS/socket access during inference. Its output
+  is explicitly non-authoritative for geometry, values, periods, scope,
+  confidence and schema mapping. Six focused downloader/runner tests pass.
 
 ## Currently in progress
 
-- Preparing a clean checkpoint for the reusable Role A/Role B evaluator and
-  E-0017 formal artifact plus the hash-pinned DeepSeek-OCR-2 downloader. The
-  next inference target is only the failed first LCTT page, not a model survey.
+- Preparing a clean checkpoint for the isolated DeepSeek-OCR-2 compatibility
+  overlay and targeted runner. The next formal inference target is only the
+  failed first E-0017 LCTT page, not a broad model survey.
 - The already-started S3 snapshot has uploaded and HEAD-verified all 4,192 unique
   objects and is performing the required full sequential content restore.
   No local deletion has started; this background safety gate is not delaying
@@ -178,10 +197,12 @@
 - There is still no human-gold, bank-disjoint and period-disjoint end-to-end
   benchmark large enough to support a production accuracy threshold.
 - DeepSeek-OCR-2's official tested stack is CUDA 11.8/Torch 2.6/Transformers
-  4.46.3 with FlashAttention 2.7.3, while this Blackwell host uses CUDA 13/Torch
-  2.12/Transformers 5.14.1. The first load uses the pinned official custom code
-  with eager attention and must fail closed on any API incompatibility; the base
-  GPU runtime will not be downgraded or silently modified.
+  4.46.3 with FlashAttention 2.7.3, while this Blackwell host needs CUDA 13/Torch
+  2.12. The exact Transformers/tokenizers API pair now loads through an external
+  overlay, but the first real document inference must still prove generation
+  compatibility and VRAM headroom. The overlay's compiled wheels require an
+  executable filesystem; model weights remain safely in non-executable
+  `/dev/shm`.
 - The S3 bucket is reachable, encrypted, publicly blocked, and versioned. The
   remaining backup obstacle is operational: complete the ~18.6 GB upload and a
   full sequential content restore before any local source is removed. Object
@@ -218,28 +239,24 @@
 
 ## Planned next steps
 
-1. Commit and push the formal E-0017 baseline and pinned DeepSeek-OCR-2 fetch gate.
-2. Download the exact official model once into `/dev/shm`, verify every byte,
-   and attempt an offline Blackwell load with eager attention.
-3. Run independent word-box and DeepSeek OCR only on E-0017 page 13, then use
+1. Commit and push the hash-locked DeepSeek compatibility overlay and targeted
+   non-authoritative runner after full regression.
+2. Run independent word-box and DeepSeek OCR only on E-0017 page 13, then use
    the E-0017 failures plus the existing E-0010 failures to implement one
    bounded canonical-row-grid change, then rerun both baselines for before/after.
-4. Finish the full-content restore-test of the immutable snapshot, then offload the 2,567
+3. Finish the full-content restore-test of the immutable snapshot, then offload the 2,567
    registered PDFs and Mongo dump to reclaim about 18.3 GB. Preserve the local
    eviction journal and remote record; do not delete output/runtime/tool assets.
-5. Record remote object/version/checksum, manifest, restore and disk-reclamation
+4. Record remote object/version/checksum, manifest, restore and disk-reclamation
    evidence in this report; mark Q-BOOT-003 resolved only after all gates pass.
-6. Expand Role A next to a different bank and period after E-0017, using the
+5. Expand Role A next to a different bank and period after E-0017, using the
    same pre-inspection role freeze and common metrics rather than a new one-off
    experiment script.
-6. Build an isolated Blackwell-compatible DeepSeek-OCR-2 benchmark without
-   modifying the approved base runtime, then score Vietnamese labels and exact
-   digits/signs against the same source-bound crops.
-7. Build a human-gold evaluation split separated by bank and reporting period,
+6. Build a human-gold evaluation split separated by bank and reporting period,
    including skew, warp, dark headers, blurred digits, wrapped rows, continuation
    pages, direct/indirect LCTT, separate/consolidated scope, and quarterly/YTD
    derivation cases.
-8. Define calibrated abstention thresholds only after the human-gold benchmark;
+7. Define calibrated abstention thresholds only after the human-gold benchmark;
    unresolved evidence must continue to produce review statuses rather than
    guessed output.
 
