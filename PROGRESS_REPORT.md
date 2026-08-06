@@ -1,17 +1,17 @@
 # Progress report
 
-- Updated: 2026-08-06T13:33:29+00:00
+- Updated: 2026-08-06T13:49:07+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest sealed accuracy checkpoint: `9e4c208`; preceding pushed progress checkpoint:
-  `ec2296c`; E-0021 clean evaluation base:
+- Latest sealed accuracy checkpoint: `1ed17a5`; preceding pushed progress checkpoint:
+  `37fdf7e`; E-0021 clean evaluation base:
   `c32741a217ca16e7224d416b2c14245f580e610d`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
 - Registered PDFs: 2,567
 - Latest full regression including multi-signal discovery v4, fixed-grid
-  semantic fusion and both bounded reader contracts: 383 passed, 2 intentionally
-  skipped historical/external replays in 100.74 seconds; Ruff and
+  semantic fusion, E-0029 row controls and word-box header binding: 397 passed,
+  2 intentionally skipped historical/external replays in 98.98 seconds; Ruff and
   `git diff --check` passed
 
 ## Accuracy focus and measurable state
@@ -250,6 +250,18 @@
   numeric truth, labels, schema IDs, validation and Excel were not invoked.
   Artifact SHA-256 is
   `affe74a243e342b56c4ead2fac984f10d9a1f42378823b50ccdde8946eeed373`.
+- E-0030 closes the next bounded metadata gap,
+  `NO_WORD_BOX_VISIBLE_HEADER_BINDING_CONTRACT`. The before-state resolves 0/4
+  word-box axes. The after-state resolves 4/4 on MBB CDKT pages 3–4 from local
+  visible headers: both pages bind `31/03/2026` to `CURRENT` and `31/12/2025`
+  to `COMPARATIVE`, with `SNAPSHOT` semantics. Raw OCR unit `triu đồng` is
+  retained while the bounded unit proposal resolves `VND × 1,000,000` at
+  similarity 0.947368 and distinct-semantics margin 0.315789 on all four axes.
+  Both table maps use `LOCAL_VISIBLE_HEADERS`; propagation issues are zero and
+  continuation inheritance is not invoked. Numeric cell text/magnitude,
+  horizontal position, history, review, schema and page 5 are not decision
+  features. Artifact SHA-256 is
+  `3e0e6888802fc190879f360cf8c679f1cefb334e9188b4baec05a668fee12577`.
 
 ## Completed tasks
 
@@ -550,6 +562,10 @@
   immutable PP-OCRv6 boxes/pixels and frozen V2/V3 reconstruction code. It did
   not load human review, template labels/IDs, MongoDB/history, E-0022, semantic
   proposals, period roles, validation or Excel.
+- Completed and sealed E-0030 at `1ed17a5`. Its integration seal and 13 focused
+  metadata/control tests pass. The reusable adapter deliberately supports only
+  explicit CDKT snapshot semantics in V1; unsupported duration statements,
+  duplicate dates, missing units and insufficient fuzzy margins fail closed.
 
 ## Currently in progress
 
@@ -567,17 +583,18 @@
   propose Vietnamese text on immutable PP-OCRv6 line/row boxes; VietOCR remains a
   challenger and the independent numeric path remains authoritative for values,
   signs and dashes.
-- The active end-to-end task is to carry the now located and geometrically
-  reconstructed MBB Q1/2026 CDKT pages 3–4 through deterministic period/unit
-  binding and independent numeric/sign/dash verification, then ordered
+- The active end-to-end task is to carry the now located, geometrically
+  reconstructed and period/unit-bound MBB Q1/2026 CDKT pages 3–4 through
+  independent numeric/sign/dash verification, then ordered
   SchemaGraph mapping, accounting validation and provenance-bearing Excel.
   Measurement will use Role A versus Role B row coverage, schema assignment,
   full `(ReportNormId, period, raw value, normalized value, status)` tuples and
   workbook-cell agreement; no character-only metric can complete this stage.
-- E-0027 page discovery, E-0028 locator V4 and E-0029 row reconstruction are
-  sealed. The next Role B stage may consume only their accepted page/row
-  contracts plus source pixels. Human-reviewed pages/IDs/values remain
-  evaluation-only until the period/value/mapping/Excel output itself is sealed.
+- E-0027 page discovery, E-0028 locator V4, E-0029 row reconstruction and E-0030
+  table metadata are sealed. The next Role B stage may consume only their
+  accepted page/row/axis contracts plus source pixels. Human-reviewed
+  pages/IDs/values remain evaluation-only until the value/mapping/Excel output
+  itself is sealed.
 - Ordered SchemaGraph v1 and E-0023 are sealed. The mapper remains intentionally
   excluded from the
   already-frozen E-0022 pipeline and will next be evaluated on separate real-PDF
@@ -632,12 +649,11 @@
 - E-0027 showed that whole-line similarity dilutes a valid short accounting core;
   E-0028 resolves that locator class, and E-0029 resolves the observed staggered-
   header/row-grid failure without consulting schema or review. The active risk is
-  now value semantics: the fixed grid contains nine `BLANK` cells versus three
-  independently detected `DASH` cells, while a visible empty table cell and an
-  OCR-missed dash are not interchangeable. Both MBB pages repeat period headers,
-  so their roles must be parsed from those visible dates; later headerless pages
-  may inherit only a verified table-level map. The OCR unit text also lacks
-  diacritics and must retain raw evidence beside a bounded canonical proposal.
+  now numeric-cell truth: the fixed grid contains nine `BLANK` cells versus
+  three independently detected `DASH` cells, while a visible empty table cell
+  and an OCR-missed dash are not interchangeable. E-0030 now binds both repeated
+  MBB period/unit header sets locally. Later headerless pages may inherit only a
+  verified table-level map and are outside this local-header result.
 - A higher-resolution crop is not sufficient by itself. On MBB LCTT page 14,
   PaddleOCR-VL still concatenates rows and numeric cells at 450 DPI; its current
   HTML proposal has 18 rows and 14 invalid multi-number cells, while independent
@@ -736,17 +752,11 @@
 
 ## Planned next steps
 
-1. Freeze a reference-blind table-metadata contract for MBB CDKT pages 3–4:
-   parse each visible date header, bind the later date to current and the earlier
-   year-end date to comparative from header text (never value magnitude), retain
-   raw/canonical unit evidence, and keep page 5 excluded. General continuation
-   propagation must remain a separate fail-closed mechanism for pages where the
-   headers are genuinely absent.
-2. Verify digits, separators, parentheses and dash/empty observations on fixed
+1. Verify digits, separators, parentheses and dash/empty observations on fixed
    numeric-cell crops independently of label recognition. Retain raw pixels/text
    and do not normalize any of E-0029's nine `BLANK` cells to zero until visible
    cell evidence verifies that interpretation.
-3. Read bounded title/line/logical-row crops with DeepSeek-OCR-2, fuse proposals
+2. Read bounded title/line/logical-row crops with DeepSeek-OCR-2, fuse proposals
    onto the immutable E-0029 grid, and preserve PP geometry plus independent
    numeric cells. Then carry the sealed rows and value tuples through ordered
    SchemaGraph mapping, accounting validation and a provenance-bearing Excel
@@ -754,14 +764,14 @@
    Only then open the six-row/12-cell review subset to measure page, row,
    ReportNormId, period, raw/normalized value, status, full-tuple and workbook
    cell accuracy.
-4. Seal the combined mechanism before selecting a new untouched holdout.
+3. Seal the combined mechanism before selecting a new untouched holdout.
    VietOCR stays challenger-only; domain fine-tuning stays deferred unless the
    frozen downstream evaluation proves a material recognition blocker.
-5. Build a human-gold evaluation split separated by bank and reporting period,
+4. Build a human-gold evaluation split separated by bank and reporting period,
    including skew, warp, dark headers, blurred digits, wrapped rows, continuation
    pages, direct/indirect LCTT, separate/consolidated scope, and quarterly/YTD
    derivation cases.
-6. Define calibrated abstention thresholds only after the human-gold benchmark;
+5. Define calibrated abstention thresholds only after the human-gold benchmark;
    unresolved evidence must continue to produce review statuses rather than
    guessed output.
 
