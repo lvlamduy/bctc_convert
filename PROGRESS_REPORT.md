@@ -1,14 +1,14 @@
 # Progress report
 
-- Updated: 2026-08-06T10:24:00+00:00
+- Updated: 2026-08-06T10:29:00+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `a1b76f2`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
+- Latest clean, tested, pushed checkpoint: `08dec6c`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
 - Registered PDFs: 2,567
-- Latest full regression on the current diagnosis implementation: 287 passed, 2
-  intentionally skipped historical replays in 100.07 seconds; focused Ruff and
+- Latest full regression including the hash-locked diagnosis artifacts: 288
+  passed, 2 intentionally skipped historical replays in 97.68 seconds; Ruff and
   `git diff --check` passed
 
 ## Accuracy focus and measurable state
@@ -113,10 +113,13 @@
   Three pages are matcher/header-family failures and two additional pages are
   OCR-title degradation failures. This classifier was created after Role A
   access and is diagnostic evidence only, not human gold, an after-result or
-  permission to retune E-0022.
-- Next bounded action: commit the post-seal diagnosis mechanism, capture the two
-  immutable Role A/reference comparison artifacts from that clean commit, and
-  hash-lock their 0/5 versus 2/5 measurements before changing any algorithm.
+  permission to retune E-0022. The Role A page-reference and one-shot comparison
+  artifact SHA-256 values are respectively
+  `e9c14d49ba30451aaebdfb8f8632bc342f58517c6bf1e4ba29d892366706fcba`
+  and `f47036761c4d00c5d4b7734a9e1183f9146be5fead604b9e08e9de0c4efd3234`.
+- Next bounded action: commit and push both hash-locked diagnosis artifacts and
+  their integration gate, then develop the general text-quality/title/form
+  fixes on separate development and validation documents.
 
 ## Completed tasks
 
@@ -170,6 +173,13 @@
 - Committed and pushed the Role B seal artifact/integration checkpoint as
   `a1b76f2`. Only then was the exact Role A searchable source hydrated; its
   registered SHA-256, 1,060,293-byte size and 33-page count verify.
+- Captured the post-seal Role A statement-page reference and one-shot comparison
+  from clean commit `08dec6cada1f0237109c9c4e303061c4ddab2d9b`. They bind the
+  five accepted pixel-only target pairs, page 5 off-balance exclusion, DIRECT
+  LCTT on pages 7–8, the unchanged frozen locator outputs and all source/config/
+  implementation hashes. The comparison records 0/5 Role B versus 2/5
+  exact-native frozen-locator recall, zero false-positive eligible pages, no
+  Role B rerun, no threshold/page tuning and no history or mapping use.
 - Built reproducible bootstrap, GPU runtime, package/model hashes, source registry,
   dataset-role registry, backup/restore checks, and server rebuild documentation.
 - Restored and audited `financial_20_02_2022.gz` as a read-only MongoDB historical
@@ -392,10 +402,10 @@
   current post-seal work is limited to a one-shot statement-page diagnosis: it
   cannot rerun Role B, change thresholds, select alternate pages, invoke mapping
   or report the new reference classifier as holdout accuracy.
-- The diagnosis artifacts are being prepared from a clean, hash-bound capture.
-  The reference scope is deliberately limited to statement page/type/scope,
-  direct LCTT method and pixel-only page pairing; no row, value, period, unit,
-  ReportNormId, MongoDB or Excel claim is made.
+- The diagnosis artifacts are complete and awaiting their final artifact/test/
+  report checkpoint commit. Their scope is deliberately limited to statement
+  page/type/scope, direct LCTT method and pixel-only page pairing; no row, value,
+  period, unit, ReportNormId, MongoDB or Excel claim is made.
 - Ordered SchemaGraph v1 and E-0023 are sealed. Work now returns to E-0022 under
   its frozen contract. The mapper remains intentionally excluded from the
   already-frozen E-0022 pipeline and will next be evaluated on separate real-PDF
@@ -504,11 +514,9 @@
 
 ## Planned next steps
 
-1. Commit and push the post-seal E-0022 diagnosis implementation, then capture
-   and hash-lock the Role A page-scope reference and one-shot comparison from the
-   clean commit. Record 0/5 Role B page recall, 2/5 exact-native frozen-locator
-   recall and their matcher-versus-OCR decomposition; do not call this an
-   after-result.
+1. Commit and push the two E-0022 diagnosis artifacts, immutable integration
+   hash gate and final progress record. Preserve the 0/5 Role B versus 2/5
+   exact-native frozen-locator result as a before-diagnosis, not an after-result.
 2. Implement Unicode-aware native-text quality, form-family normalization and
    guarded title-core containment on separate development/validation documents.
    Freeze the revised locator before selecting a new bank/period-disjoint

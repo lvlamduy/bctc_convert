@@ -1,0 +1,2934 @@
+{
+  "capture_git_commit": "08dec6cada1f0237109c9c4e303061c4ddab2d9b",
+  "capture_git_dirty": false,
+  "claim_boundary": "This is a post-Role-B-seal machine-reference diagnosis at statement-page scope. It is not human gold, is not an untouched evaluation of the reference classifier, cannot retune E-0022, and does not evaluate row, value, period, schema or Excel accuracy.",
+  "configuration": {
+    "path": "config/experiments/e0022-role-a-statement-diagnosis.yaml",
+    "sha256": "e2cf00e7e0b612946030ecb75c4f3406a355aa0aa71408f3ebddd493caebb869"
+  },
+  "dataset_role": "UNTOUCHED_HOLDOUT",
+  "diagnosis_implementation": {
+    "path": "src/bctc_ai/evaluation/holdout_statement_diagnosis.py",
+    "sha256": "69aa95d736f6e9853e96448be45fa480327b7ec9baba8e2d8fd86454a0c78230"
+  },
+  "eligible_for_holdout_retuning": false,
+  "experiment_id": "E-0022",
+  "format_version": 1,
+  "frozen_component_files_sha256": {
+    "config/document_phase/statement-locator-v1.yaml": "d25ff6da2a1ce48428b4ab1ac20a31b989a27849d93326ae839507dce2ff107e",
+    "src/bctc_ai/core/text.py": "2a97e6626fa6f747ff0f8e9de827b02f50dcd9a0c8e058937cd221acf1420af6",
+    "src/bctc_ai/document_phase/statement_locator.py": "8b4b283cb3eeaa3e2457e84950574cc79502143e09ae4b3b712e93e1dde8b35c",
+    "src/bctc_ai/evaluation/page_pairing.py": "e328fd83080e23e3d0571fda17bcf6c5c4882cb7e70bbff53e4bbbee68c0310d",
+    "src/bctc_ai/ocr/pdf_text.py": "186577f31b421afe2b9db0d1d8f7fab37756c9723010bbdec8e3363258991459"
+  },
+  "frozen_locator_on_exact_native_text": {
+    "candidate_count": 0,
+    "candidate_summaries": [],
+    "errors": [
+      "no complete ordered CDKT->KQKD->LCTT->TM block"
+    ],
+    "observed_pages": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33
+    ],
+    "page_decisions": [
+      {
+        "confidence": 0.363636,
+        "evidence": [],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.0,
+        "off_balance_item_hits": [],
+        "page": 1,
+        "page_type": "OTHER",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 0.611111,
+          "KQKD": 0.625,
+          "LCTT": 0.48,
+          "TM": 0.555556
+        },
+        "title_scores": {
+          "CDKT": 0.636364,
+          "KQKD": 0.5625,
+          "LCTT": 0.553846,
+          "TM": 0.5
+        }
+      },
+      {
+        "confidence": 0.363636,
+        "evidence": [],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.04,
+        "off_balance_item_hits": [],
+        "page": 2,
+        "page_type": "OTHER",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 1.0,
+          "KQKD": 0.625,
+          "LCTT": 0.48,
+          "TM": 0.571429
+        },
+        "title_scores": {
+          "CDKT": 0.636364,
+          "KQKD": 0.5625,
+          "LCTT": 0.553846,
+          "TM": 0.5
+        }
+      },
+      {
+        "confidence": 0.289474,
+        "evidence": [],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.57485,
+        "off_balance_item_hits": [],
+        "page": 3,
+        "page_type": "OTHER",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 1.0,
+          "KQKD": 1.0,
+          "LCTT": 1.0,
+          "TM": 1.0
+        },
+        "title_scores": {
+          "CDKT": 0.710526,
+          "KQKD": 0.513514,
+          "LCTT": 0.48,
+          "TM": 0.507463
+        }
+      },
+      {
+        "confidence": 0.289474,
+        "evidence": [],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.551724,
+        "off_balance_item_hits": [],
+        "page": 4,
+        "page_type": "OTHER",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 1.0,
+          "KQKD": 1.0,
+          "LCTT": 1.0,
+          "TM": 1.0
+        },
+        "title_scores": {
+          "CDKT": 0.710526,
+          "KQKD": 0.513514,
+          "LCTT": 0.48,
+          "TM": 0.46875
+        }
+      },
+      {
+        "confidence": 0.260274,
+        "evidence": [],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.492537,
+        "off_balance_item_hits": [],
+        "page": 5,
+        "page_type": "OTHER",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 1.0,
+          "KQKD": 0.75,
+          "LCTT": 0.666667,
+          "TM": 1.0
+        },
+        "title_scores": {
+          "CDKT": 0.739726,
+          "KQKD": 0.576923,
+          "LCTT": 0.48,
+          "TM": 0.586667
+        }
+      },
+      {
+        "confidence": 0.305556,
+        "evidence": [],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.564103,
+        "off_balance_item_hits": [],
+        "page": 6,
+        "page_type": "OTHER",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 1.0,
+          "KQKD": 1.0,
+          "LCTT": 1.0,
+          "TM": 1.0
+        },
+        "title_scores": {
+          "CDKT": 0.513514,
+          "KQKD": 0.694444,
+          "LCTT": 0.493151,
+          "TM": 0.553191
+        }
+      },
+      {
+        "confidence": 0.702703,
+        "evidence": [
+          "continuation title similarity=0.702703, marker_similarity=1.000000: BÁO CÁO LƯU CHUYỂN TIỀN TỆ HỢP NHẤT GIỮA NIÊN ĐỘ"
+        ],
+        "form_hits": [],
+        "is_continuation": true,
+        "mapping_eligible": true,
+        "numeric_line_fraction": 0.462366,
+        "off_balance_item_hits": [],
+        "page": 7,
+        "page_type": "LCTT",
+        "scope": "MAIN_STATEMENT",
+        "title_discriminator_scores": {
+          "CDKT": 0.6,
+          "KQKD": 0.764706,
+          "LCTT": 1.0,
+          "TM": 0.636364
+        },
+        "title_scores": {
+          "CDKT": 0.533333,
+          "KQKD": 0.553846,
+          "LCTT": 0.702703,
+          "TM": 0.470588
+        }
+      },
+      {
+        "confidence": 0.702703,
+        "evidence": [
+          "continuation title similarity=0.702703, marker_similarity=1.000000: BÁO CÁO LƯU CHUYỂN TIỀN TỆ HỢP NHẤT GIỮA NIÊN ĐỘ"
+        ],
+        "form_hits": [],
+        "is_continuation": true,
+        "mapping_eligible": true,
+        "numeric_line_fraction": 0.411765,
+        "off_balance_item_hits": [],
+        "page": 8,
+        "page_type": "LCTT",
+        "scope": "MAIN_STATEMENT",
+        "title_discriminator_scores": {
+          "CDKT": 0.571429,
+          "KQKD": 0.764706,
+          "LCTT": 1.0,
+          "TM": 0.636364
+        },
+        "title_scores": {
+          "CDKT": 0.533333,
+          "KQKD": 0.533333,
+          "LCTT": 0.702703,
+          "TM": 0.509091
+        }
+      },
+      {
+        "confidence": 0.763158,
+        "evidence": [
+          "unique header title similarity=0.763158, margin=0.111995: THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+        ],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.018182,
+        "off_balance_item_hits": [],
+        "page": 9,
+        "page_type": "TM",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 1.0,
+          "KQKD": 1.0,
+          "LCTT": 1.0,
+          "TM": 1.0
+        },
+        "title_scores": {
+          "CDKT": 0.567568,
+          "KQKD": 0.651163,
+          "LCTT": 0.438356,
+          "TM": 0.763158
+        }
+      },
+      {
+        "confidence": 0.763158,
+        "evidence": [
+          "unique header title similarity=0.763158, margin=0.150255: THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+        ],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.019608,
+        "off_balance_item_hits": [],
+        "page": 10,
+        "page_type": "TM",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 0.727273,
+          "KQKD": 0.758621,
+          "LCTT": 0.56,
+          "TM": 1.0
+        },
+        "title_scores": {
+          "CDKT": 0.612903,
+          "KQKD": 0.590909,
+          "LCTT": 0.438356,
+          "TM": 0.763158
+        }
+      },
+      {
+        "confidence": 0.763158,
+        "evidence": [
+          "unique header title similarity=0.763158, margin=0.195590: THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+        ],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.022222,
+        "off_balance_item_hits": [],
+        "page": 11,
+        "page_type": "TM",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 0.789474,
+          "KQKD": 0.764706,
+          "LCTT": 0.583333,
+          "TM": 1.0
+        },
+        "title_scores": {
+          "CDKT": 0.567568,
+          "KQKD": 0.493151,
+          "LCTT": 0.438356,
+          "TM": 0.763158
+        }
+      },
+      {
+        "confidence": 0.763158,
+        "evidence": [
+          "unique header title similarity=0.763158, margin=0.195590: THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+        ],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.096154,
+        "off_balance_item_hits": [],
+        "page": 12,
+        "page_type": "TM",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 0.631579,
+          "KQKD": 0.611111,
+          "LCTT": 0.56,
+          "TM": 1.0
+        },
+        "title_scores": {
+          "CDKT": 0.567568,
+          "KQKD": 0.493151,
+          "LCTT": 0.44898,
+          "TM": 0.763158
+        }
+      },
+      {
+        "confidence": 0.763158,
+        "evidence": [
+          "unique header title similarity=0.763158, margin=0.195590: THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+        ],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.071429,
+        "off_balance_item_hits": [],
+        "page": 13,
+        "page_type": "TM",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 0.631579,
+          "KQKD": 0.6,
+          "LCTT": 0.56,
+          "TM": 1.0
+        },
+        "title_scores": {
+          "CDKT": 0.567568,
+          "KQKD": 0.538462,
+          "LCTT": 0.438356,
+          "TM": 0.763158
+        }
+      },
+      {
+        "confidence": 0.763158,
+        "evidence": [
+          "unique header title similarity=0.763158, margin=0.195590: THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+        ],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.02381,
+        "off_balance_item_hits": [],
+        "page": 14,
+        "page_type": "TM",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 0.631579,
+          "KQKD": 1.0,
+          "LCTT": 0.56,
+          "TM": 1.0
+        },
+        "title_scores": {
+          "CDKT": 0.567568,
+          "KQKD": 0.533333,
+          "LCTT": 0.488889,
+          "TM": 0.763158
+        }
+      },
+      {
+        "confidence": 0.763158,
+        "evidence": [
+          "unique header title similarity=0.763158, margin=0.195590: THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+        ],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.085106,
+        "off_balance_item_hits": [],
+        "page": 15,
+        "page_type": "TM",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 1.0,
+          "KQKD": 0.606061,
+          "LCTT": 0.592593,
+          "TM": 1.0
+        },
+        "title_scores": {
+          "CDKT": 0.567568,
+          "KQKD": 0.517241,
+          "LCTT": 0.438356,
+          "TM": 0.763158
+        }
+      },
+      {
+        "confidence": 0.763158,
+        "evidence": [
+          "unique header title similarity=0.763158, margin=0.195590: THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+        ],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.583333,
+        "off_balance_item_hits": [],
+        "page": 16,
+        "page_type": "TM",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 1.0,
+          "KQKD": 0.75,
+          "LCTT": 0.571429,
+          "TM": 1.0
+        },
+        "title_scores": {
+          "CDKT": 0.567568,
+          "KQKD": 0.493151,
+          "LCTT": 0.438356,
+          "TM": 0.763158
+        }
+      },
+      {
+        "confidence": 0.763158,
+        "evidence": [
+          "unique header title similarity=0.763158, margin=0.123158: THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+        ],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.455556,
+        "off_balance_item_hits": [],
+        "page": 17,
+        "page_type": "TM",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 0.789474,
+          "KQKD": 0.75,
+          "LCTT": 0.571429,
+          "TM": 1.0
+        },
+        "title_scores": {
+          "CDKT": 0.580645,
+          "KQKD": 0.64,
+          "LCTT": 0.52459,
+          "TM": 0.763158
+        }
+      },
+      {
+        "confidence": 0.763158,
+        "evidence": [
+          "unique header title similarity=0.763158, margin=0.195590: THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+        ],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.56044,
+        "off_balance_item_hits": [],
+        "page": 18,
+        "page_type": "TM",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 0.631579,
+          "KQKD": 0.75,
+          "LCTT": 0.571429,
+          "TM": 1.0
+        },
+        "title_scores": {
+          "CDKT": 0.567568,
+          "KQKD": 0.493151,
+          "LCTT": 0.473684,
+          "TM": 0.763158
+        }
+      },
+      {
+        "confidence": 0.763158,
+        "evidence": [
+          "unique header title similarity=0.763158, margin=0.195590: THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+        ],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.597826,
+        "off_balance_item_hits": [],
+        "page": 19,
+        "page_type": "TM",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 0.64,
+          "KQKD": 0.75,
+          "LCTT": 0.571429,
+          "TM": 1.0
+        },
+        "title_scores": {
+          "CDKT": 0.567568,
+          "KQKD": 0.493151,
+          "LCTT": 0.438356,
+          "TM": 0.763158
+        }
+      },
+      {
+        "confidence": 0.763158,
+        "evidence": [
+          "unique header title similarity=0.763158, margin=0.195590: THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+        ],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.581081,
+        "off_balance_item_hits": [],
+        "page": 20,
+        "page_type": "TM",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 0.631579,
+          "KQKD": 0.75,
+          "LCTT": 0.571429,
+          "TM": 1.0
+        },
+        "title_scores": {
+          "CDKT": 0.567568,
+          "KQKD": 0.493151,
+          "LCTT": 0.438356,
+          "TM": 0.763158
+        }
+      },
+      {
+        "confidence": 0.763158,
+        "evidence": [
+          "unique header title similarity=0.763158, margin=0.157097: THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+        ],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.607143,
+        "off_balance_item_hits": [],
+        "page": 21,
+        "page_type": "TM",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 0.631579,
+          "KQKD": 0.75,
+          "LCTT": 0.6,
+          "TM": 1.0
+        },
+        "title_scores": {
+          "CDKT": 0.606061,
+          "KQKD": 0.5,
+          "LCTT": 0.45,
+          "TM": 0.763158
+        }
+      },
+      {
+        "confidence": 0.763158,
+        "evidence": [
+          "unique header title similarity=0.763158, margin=0.195590: THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+        ],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.592233,
+        "off_balance_item_hits": [],
+        "page": 22,
+        "page_type": "TM",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 0.631579,
+          "KQKD": 0.75,
+          "LCTT": 0.571429,
+          "TM": 1.0
+        },
+        "title_scores": {
+          "CDKT": 0.567568,
+          "KQKD": 0.493151,
+          "LCTT": 0.438356,
+          "TM": 0.763158
+        }
+      },
+      {
+        "confidence": 0.763158,
+        "evidence": [
+          "unique header title similarity=0.763158, margin=0.195590: THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+        ],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.561224,
+        "off_balance_item_hits": [],
+        "page": 23,
+        "page_type": "TM",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 0.666667,
+          "KQKD": 0.75,
+          "LCTT": 0.571429,
+          "TM": 1.0
+        },
+        "title_scores": {
+          "CDKT": 0.567568,
+          "KQKD": 0.493151,
+          "LCTT": 0.438356,
+          "TM": 0.763158
+        }
+      },
+      {
+        "confidence": 0.763158,
+        "evidence": [
+          "unique header title similarity=0.763158, margin=0.078947: THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+        ],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.5375,
+        "off_balance_item_hits": [],
+        "page": 24,
+        "page_type": "TM",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 0.636364,
+          "KQKD": 1.0,
+          "LCTT": 0.8,
+          "TM": 1.0
+        },
+        "title_scores": {
+          "CDKT": 0.567568,
+          "KQKD": 0.684211,
+          "LCTT": 0.438356,
+          "TM": 0.763158
+        }
+      },
+      {
+        "confidence": 0.763158,
+        "evidence": [
+          "unique header title similarity=0.763158, margin=0.195590: THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+        ],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.566667,
+        "off_balance_item_hits": [],
+        "page": 25,
+        "page_type": "TM",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 0.631579,
+          "KQKD": 0.75,
+          "LCTT": 0.8,
+          "TM": 1.0
+        },
+        "title_scores": {
+          "CDKT": 0.567568,
+          "KQKD": 0.493151,
+          "LCTT": 0.457143,
+          "TM": 0.763158
+        }
+      },
+      {
+        "confidence": 0.763158,
+        "evidence": [
+          "unique header title similarity=0.763158, margin=0.172994: THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+        ],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.576923,
+        "off_balance_item_hits": [],
+        "page": 26,
+        "page_type": "TM",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 0.756757,
+          "KQKD": 0.75,
+          "LCTT": 0.8,
+          "TM": 1.0
+        },
+        "title_scores": {
+          "CDKT": 0.590164,
+          "KQKD": 0.493151,
+          "LCTT": 0.458333,
+          "TM": 0.763158
+        }
+      },
+      {
+        "confidence": 0.763158,
+        "evidence": [
+          "unique header title similarity=0.763158, margin=0.195590: THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+        ],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.40625,
+        "off_balance_item_hits": [],
+        "page": 27,
+        "page_type": "TM",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 0.631579,
+          "KQKD": 0.75,
+          "LCTT": 0.6,
+          "TM": 1.0
+        },
+        "title_scores": {
+          "CDKT": 0.567568,
+          "KQKD": 0.535714,
+          "LCTT": 0.474576,
+          "TM": 0.763158
+        }
+      },
+      {
+        "confidence": 0.763158,
+        "evidence": [
+          "unique header title similarity=0.763158, margin=0.195590: THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+        ],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.04,
+        "off_balance_item_hits": [],
+        "page": 28,
+        "page_type": "TM",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 0.727273,
+          "KQKD": 0.777778,
+          "LCTT": 0.571429,
+          "TM": 1.0
+        },
+        "title_scores": {
+          "CDKT": 0.567568,
+          "KQKD": 0.493151,
+          "LCTT": 0.438356,
+          "TM": 0.763158
+        }
+      },
+      {
+        "confidence": 0.763158,
+        "evidence": [
+          "unique header title similarity=0.763158, margin=0.195590: THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+        ],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.779141,
+        "off_balance_item_hits": [],
+        "page": 29,
+        "page_type": "TM",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 0.8,
+          "KQKD": 0.666667,
+          "LCTT": 0.8,
+          "TM": 1.0
+        },
+        "title_scores": {
+          "CDKT": 0.567568,
+          "KQKD": 0.493151,
+          "LCTT": 0.545455,
+          "TM": 0.763158
+        }
+      },
+      {
+        "confidence": 0.763158,
+        "evidence": [
+          "unique header title similarity=0.763158, margin=0.195590: THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+        ],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.076923,
+        "off_balance_item_hits": [],
+        "page": 30,
+        "page_type": "TM",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 0.631579,
+          "KQKD": 0.722222,
+          "LCTT": 0.56,
+          "TM": 1.0
+        },
+        "title_scores": {
+          "CDKT": 0.567568,
+          "KQKD": 0.493151,
+          "LCTT": 0.438356,
+          "TM": 0.763158
+        }
+      },
+      {
+        "confidence": 0.763158,
+        "evidence": [
+          "unique header title similarity=0.763158, margin=0.195590: THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+        ],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.718062,
+        "off_balance_item_hits": [],
+        "page": 31,
+        "page_type": "TM",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 0.75,
+          "KQKD": 0.857143,
+          "LCTT": 0.75,
+          "TM": 1.0
+        },
+        "title_scores": {
+          "CDKT": 0.567568,
+          "KQKD": 0.493151,
+          "LCTT": 0.438356,
+          "TM": 0.763158
+        }
+      },
+      {
+        "confidence": 0.763158,
+        "evidence": [
+          "unique header title similarity=0.763158, margin=0.195590: THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+        ],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.755,
+        "off_balance_item_hits": [],
+        "page": 32,
+        "page_type": "TM",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 0.631579,
+          "KQKD": 0.857143,
+          "LCTT": 0.56,
+          "TM": 1.0
+        },
+        "title_scores": {
+          "CDKT": 0.567568,
+          "KQKD": 0.493151,
+          "LCTT": 0.438356,
+          "TM": 0.763158
+        }
+      },
+      {
+        "confidence": 0.763158,
+        "evidence": [
+          "unique header title similarity=0.763158, margin=0.195590: THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+        ],
+        "form_hits": [],
+        "is_continuation": false,
+        "mapping_eligible": false,
+        "numeric_line_fraction": 0.034483,
+        "off_balance_item_hits": [],
+        "page": 33,
+        "page_type": "TM",
+        "scope": "NOT_APPLICABLE",
+        "title_discriminator_scores": {
+          "CDKT": 0.666667,
+          "KQKD": 0.764706,
+          "LCTT": 0.56,
+          "TM": 1.0
+        },
+        "title_scores": {
+          "CDKT": 0.567568,
+          "KQKD": 0.541667,
+          "LCTT": 0.438356,
+          "TM": 0.763158
+        }
+      }
+    ],
+    "runner_up_margin": null,
+    "status": "UNRESOLVED"
+  },
+  "main_statement_pages": [
+    3,
+    4,
+    6,
+    7,
+    8
+  ],
+  "native_text_quality_audit": {
+    "actual_mojibake_sequence_counts": {
+      "Ä": 0,
+      "áº": 0,
+      "á»": 0,
+      "�": 0
+    },
+    "parser_reported_corrupt_pages": 33,
+    "policy": "Standalone Unicode Vietnamese letters Â/Ã do not establish mojibake; replacement/encoded-byte sequences remain forbidden.",
+    "valid_vietnamese_marker_tokens": {
+      "Â": [
+        "CHÂU",
+        "NGÂN",
+        "NHÂN"
+      ],
+      "Ã": [
+        "HOÃN",
+        "LÃI",
+        "LÃI/(LỖ)"
+      ]
+    }
+  },
+  "off_balance_pages": [
+    5
+  ],
+  "page_decisions": [
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": null,
+      "line_count": 3,
+      "off_balance_evidence": [],
+      "page": 1,
+      "page_type": "OTHER",
+      "scope": "NOT_APPLICABLE",
+      "source_corruption_markers": [
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [],
+        "KQKD": [],
+        "LCTT": [],
+        "TM": []
+      }
+    },
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": {
+        "normalized_family": "B02",
+        "retrieval_key": "bao cao tinh hinh tai chinh hop nhat giua nien do mau b02a tctd hn ban",
+        "suffix": "a",
+        "text": "Báo cáo tình hình tài chính hợp nhất giữa niên độ (Mẫu B02a/TCTD-HN ban"
+      },
+      "line_count": 25,
+      "off_balance_evidence": [],
+      "page": 2,
+      "page_type": "TABLE_OF_CONTENTS",
+      "scope": "NOT_APPLICABLE",
+      "source_corruption_markers": [
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [
+          {
+            "bbox": [
+              107.87999725341797,
+              191.7460479736328,
+              469.5169372558594,
+              203.30552673339844
+            ],
+            "matched_core": "báo cáo tình hình tài chính",
+            "retrieval_key": "bao cao tinh hinh tai chinh hop nhat giua nien do mau b02a tctd hn ban",
+            "text": "Báo cáo tình hình tài chính hợp nhất giữa niên độ (Mẫu B02a/TCTD-HN ban"
+          }
+        ],
+        "KQKD": [
+          {
+            "bbox": [
+              107.87999725341797,
+              245.02606201171875,
+              469.4772033691406,
+              256.5855407714844
+            ],
+            "matched_core": "báo cáo kết quả hoạt động",
+            "retrieval_key": "bao cao ket qua hoat dong hop nhat giua nien do mau b03a tctd hn ban",
+            "text": "Báo cáo kết quả hoạt động hợp nhất giữa niên độ (Mẫu B03a/TCTD-HN ban"
+          }
+        ],
+        "LCTT": [
+          {
+            "bbox": [
+              107.87999725341797,
+              298.0660705566406,
+              469.45831298828125,
+              309.6255187988281
+            ],
+            "matched_core": "báo cáo lưu chuyển tiền tệ",
+            "retrieval_key": "bao cao luu chuyen tien te hop nhat giua nien do mau b04a tctd hn ban",
+            "text": "Báo cáo lưu chuyển tiền tệ hợp nhất giữa niên độ (Mẫu B04a/TCTD-HN ban"
+          }
+        ],
+        "TM": [
+          {
+            "bbox": [
+              107.87999725341797,
+              351.3460693359375,
+              469.54217529296875,
+              362.905517578125
+            ],
+            "matched_core": "thuyết minh báo cáo tài chính",
+            "retrieval_key": "thuyet minh bao cao tai chinh chon loc hop nhat mau b05a tctd hn ban",
+            "text": "Thuyết minh báo cáo tài chính chọn lọc hợp nhất (Mẫu B05a/TCTD-HN ban"
+          }
+        ]
+      }
+    },
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": {
+        "normalized_family": "B02",
+        "retrieval_key": "mau b02a tctd hn",
+        "suffix": "a",
+        "text": "Mẫu B02a/TCTD-HN"
+      },
+      "line_count": 167,
+      "off_balance_evidence": [],
+      "page": 3,
+      "page_type": "CDKT",
+      "scope": "MAIN_STATEMENT",
+      "source_corruption_markers": [
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [
+          {
+            "bbox": [
+              107.16000366210938,
+              86.98605346679688,
+              399.4787292480469,
+              98.54552459716797
+            ],
+            "matched_core": "báo cáo tình hình tài chính",
+            "retrieval_key": "bao cao tinh hinh tai chinh hop nhat giua nien do",
+            "text": "BÁO CÁO TÌNH HÌNH TÀI CHÍNH HỢP NHẤT GIỮA NIÊN ĐỘ"
+          }
+        ],
+        "KQKD": [],
+        "LCTT": [],
+        "TM": []
+      }
+    },
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": {
+        "normalized_family": "B02",
+        "retrieval_key": "mau b02a tctd hn",
+        "suffix": "a",
+        "text": "Mẫu B02a/TCTD-HN"
+      },
+      "line_count": 116,
+      "off_balance_evidence": [],
+      "page": 4,
+      "page_type": "CDKT",
+      "scope": "MAIN_STATEMENT",
+      "source_corruption_markers": [
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [
+          {
+            "bbox": [
+              107.16000366210938,
+              96.7060546875,
+              399.4787292480469,
+              108.2655258178711
+            ],
+            "matched_core": "báo cáo tình hình tài chính",
+            "retrieval_key": "bao cao tinh hinh tai chinh hop nhat giua nien do",
+            "text": "BÁO CÁO TÌNH HÌNH TÀI CHÍNH HỢP NHẤT GIỮA NIÊN ĐỘ"
+          }
+        ],
+        "KQKD": [],
+        "LCTT": [],
+        "TM": []
+      }
+    },
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": {
+        "normalized_family": "B02",
+        "retrieval_key": "mau b02a tctd hn",
+        "suffix": "a",
+        "text": "Mẫu B02a/TCTD-HN"
+      },
+      "line_count": 67,
+      "off_balance_evidence": [
+        {
+          "bbox": [
+            107.16000366210938,
+            145.7860565185547,
+            375.356689453125,
+            157.3455352783203
+          ],
+          "matched_core": "các chỉ tiêu ngoài báo cáo tình hình tài chính",
+          "retrieval_key": "cac chi tieu ngoai bao cao tinh hinh tai chinh",
+          "text": "CÁC CHỈ TIÊU NGOÀI BÁO CÁO TÌNH HÌNH TÀI CHÍNH"
+        }
+      ],
+      "page": 5,
+      "page_type": "CDKT",
+      "scope": "OUT_OF_SCOPE_FOR_TARGET_TEMPLATE",
+      "source_corruption_markers": [
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [
+          {
+            "bbox": [
+              107.16000366210938,
+              97.06605529785156,
+              399.4787292480469,
+              108.62552642822266
+            ],
+            "matched_core": "báo cáo tình hình tài chính",
+            "retrieval_key": "bao cao tinh hinh tai chinh hop nhat giua nien do",
+            "text": "BÁO CÁO TÌNH HÌNH TÀI CHÍNH HỢP NHẤT GIỮA NIÊN ĐỘ"
+          },
+          {
+            "bbox": [
+              107.16000366210938,
+              145.7860565185547,
+              375.356689453125,
+              157.3455352783203
+            ],
+            "matched_core": "báo cáo tình hình tài chính",
+            "retrieval_key": "cac chi tieu ngoai bao cao tinh hinh tai chinh",
+            "text": "CÁC CHỈ TIÊU NGOÀI BÁO CÁO TÌNH HÌNH TÀI CHÍNH"
+          }
+        ],
+        "KQKD": [],
+        "LCTT": [],
+        "TM": []
+      }
+    },
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": {
+        "normalized_family": "B03",
+        "retrieval_key": "mau b03a tctd hn",
+        "suffix": "a",
+        "text": "Mẫu B03a/TCTD-HN"
+      },
+      "line_count": 156,
+      "off_balance_evidence": [],
+      "page": 6,
+      "page_type": "KQKD",
+      "scope": "MAIN_STATEMENT",
+      "source_corruption_markers": [
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [],
+        "KQKD": [
+          {
+            "bbox": [
+              94.91999816894531,
+              88.04943084716797,
+              393.0272521972656,
+              99.62940979003906
+            ],
+            "matched_core": "báo cáo kết quả hoạt động",
+            "retrieval_key": "bao cao ket qua hoat dong hop nhat giua nien do",
+            "text": "BÁO CÁO KẾT QUẢ HOẠT ĐỘNG HỢP NHẤT GIỮA NIÊN ĐỘ"
+          }
+        ],
+        "LCTT": [],
+        "TM": []
+      }
+    },
+    {
+      "cash_flow_method": "DIRECT",
+      "cash_flow_method_evidence": {
+        "DIRECT": [
+          {
+            "bbox": [
+              107.16000366210938,
+              127.7694320678711,
+              244.01119995117188,
+              139.3494110107422
+            ],
+            "matched_core": "theo phương pháp trực tiếp",
+            "retrieval_key": "theo phuong phap truc tiep",
+            "text": "(Theo phương pháp trực tiếp)"
+          }
+        ],
+        "INDIRECT": []
+      },
+      "form": {
+        "normalized_family": "B04",
+        "retrieval_key": "mau b04a tctd hn",
+        "suffix": "a",
+        "text": "Mẫu B04a/TCTD-HN"
+      },
+      "line_count": 93,
+      "off_balance_evidence": [],
+      "page": 7,
+      "page_type": "LCTT",
+      "scope": "MAIN_STATEMENT",
+      "source_corruption_markers": [
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [],
+        "KQKD": [],
+        "LCTT": [
+          {
+            "bbox": [
+              107.16000366210938,
+              101.36942291259766,
+              404.1402282714844,
+              112.94940185546875
+            ],
+            "matched_core": "báo cáo lưu chuyển tiền tệ",
+            "retrieval_key": "bao cao luu chuyen tien te hop nhat giua nien do",
+            "text": "BÁO CÁO LƯU CHUYỂN TIỀN TỆ HỢP NHẤT GIỮA NIÊN ĐỘ"
+          }
+        ],
+        "TM": []
+      }
+    },
+    {
+      "cash_flow_method": "DIRECT",
+      "cash_flow_method_evidence": {
+        "DIRECT": [
+          {
+            "bbox": [
+              107.16000366210938,
+              128.84942626953125,
+              244.01119995117188,
+              140.42941284179688
+            ],
+            "matched_core": "theo phương pháp trực tiếp",
+            "retrieval_key": "theo phuong phap truc tiep",
+            "text": "(Theo phương pháp trực tiếp)"
+          }
+        ],
+        "INDIRECT": []
+      },
+      "form": {
+        "normalized_family": "B04",
+        "retrieval_key": "mau b04a tctd hn",
+        "suffix": "a",
+        "text": "Mẫu B04a/TCTD-HN"
+      },
+      "line_count": 85,
+      "off_balance_evidence": [],
+      "page": 8,
+      "page_type": "LCTT",
+      "scope": "MAIN_STATEMENT",
+      "source_corruption_markers": [
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [],
+        "KQKD": [],
+        "LCTT": [
+          {
+            "bbox": [
+              107.16000366210938,
+              102.08942413330078,
+              404.1315002441406,
+              113.66940307617188
+            ],
+            "matched_core": "báo cáo lưu chuyển tiền tệ",
+            "retrieval_key": "bao cao luu chuyen tien te hop nhat giua nien do",
+            "text": "BÁO CÁO LƯU CHUYỂN TIỀN TỆ HỢP NHẤT GIỮA NIÊN ĐỘ"
+          }
+        ],
+        "TM": []
+      }
+    },
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": null,
+      "line_count": 55,
+      "off_balance_evidence": [],
+      "page": 9,
+      "page_type": "TM",
+      "scope": "NOT_APPLICABLE",
+      "source_corruption_markers": [
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [],
+        "KQKD": [],
+        "LCTT": [],
+        "TM": [
+          {
+            "bbox": [
+              107.16000366210938,
+              78.34605407714844,
+              399.90533447265625,
+              89.90552520751953
+            ],
+            "matched_core": "thuyết minh báo cáo tài chính",
+            "retrieval_key": "thuyet minh bao cao tai chinh chon loc hop nhat",
+            "text": "THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+          }
+        ]
+      }
+    },
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": null,
+      "line_count": 51,
+      "off_balance_evidence": [],
+      "page": 10,
+      "page_type": "TABLE_OF_CONTENTS",
+      "scope": "NOT_APPLICABLE",
+      "source_corruption_markers": [
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [
+          {
+            "bbox": [
+              124.08000183105469,
+              655.4260864257812,
+              545.1886596679688,
+              666.985595703125
+            ],
+            "matched_core": "báo cáo tình hình tài chính",
+            "retrieval_key": "nhan vao tai khoan chenh lech danh gia lai ngoai te trong bao cao tinh hinh tai chinh so du",
+            "text": "nhận vào tài khoản chênh lệch đánh giá lại ngoại tệ trong báo cáo tình hình tài chính. Số dư"
+          }
+        ],
+        "KQKD": [
+          {
+            "bbox": [
+              124.08000183105469,
+              669.5860595703125,
+              545.3031616210938,
+              681.1455688476562
+            ],
+            "matched_core": "báo cáo kết quả hoạt động",
+            "retrieval_key": "chenh lech do danh gia lai duoc ket chuyen vao bao cao ket qua hoat dong vao thoi diem",
+            "text": "chênh lệch do đánh giá lại được kết chuyển vào báo cáo kết quả hoạt động vào thời điểm"
+          }
+        ],
+        "LCTT": [],
+        "TM": [
+          {
+            "bbox": [
+              107.16000366210938,
+              78.34605407714844,
+              399.90533447265625,
+              89.90552520751953
+            ],
+            "matched_core": "thuyết minh báo cáo tài chính",
+            "retrieval_key": "thuyet minh bao cao tai chinh chon loc hop nhat",
+            "text": "THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+          }
+        ]
+      }
+    },
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": null,
+      "line_count": 45,
+      "off_balance_evidence": [],
+      "page": 11,
+      "page_type": "TABLE_OF_CONTENTS",
+      "scope": "NOT_APPLICABLE",
+      "source_corruption_markers": [
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [
+          {
+            "bbox": [
+              124.08000183105469,
+              344.3860778808594,
+              545.3759155273438,
+              355.9455261230469
+            ],
+            "matched_core": "báo cáo tình hình tài chính",
+            "retrieval_key": "cac cong cu tai chinh phai sinh duoc ghi nhan tren bao cao tinh hinh tai chinh theo gia tri",
+            "text": "Các công cụ tài chính phái sinh được ghi nhận trên báo cáo tình hình tài chính theo giá trị"
+          },
+          {
+            "bbox": [
+              124.08000183105469,
+              414.8260498046875,
+              545.5478515625,
+              426.385498046875
+            ],
+            "matched_core": "báo cáo tình hình tài chính",
+            "retrieval_key": "phai sinh tren bao cao tinh hinh tai chinh va duoc ket chuyen vao bao cao ket qua hoat dong",
+            "text": "phái sinh trên báo cáo tình hình tài chính và được kết chuyển vào báo cáo kết quả hoạt động"
+          }
+        ],
+        "KQKD": [
+          {
+            "bbox": [
+              124.08000183105469,
+              414.8260498046875,
+              545.5478515625,
+              426.385498046875
+            ],
+            "matched_core": "báo cáo kết quả hoạt động",
+            "retrieval_key": "phai sinh tren bao cao tinh hinh tai chinh va duoc ket chuyen vao bao cao ket qua hoat dong",
+            "text": "phái sinh trên báo cáo tình hình tài chính và được kết chuyển vào báo cáo kết quả hoạt động"
+          },
+          {
+            "bbox": [
+              124.08000183105469,
+              542.5060424804688,
+              372.154052734375,
+              554.0655517578125
+            ],
+            "matched_core": "báo cáo kết quả hoạt động",
+            "retrieval_key": "ghi nhan vao bao cao ket qua hoat dong khi thu duoc",
+            "text": "ghi nhận vào báo cáo kết quả hoạt động khi thu được."
+          },
+          {
+            "bbox": [
+              124.08000183105469,
+              661.4260864257812,
+              545.3118896484375,
+              672.985595703125
+            ],
+            "matched_core": "báo cáo kết quả hoạt động",
+            "retrieval_key": "chi phi hoat dong dich vu duoc ghi nhan trong bao cao ket qua hoat dong hop nhat khi phat",
+            "text": "Chi phí hoạt động dịch vụ được ghi nhận trong báo cáo kết quả hoạt động hợp nhất khi phát"
+          }
+        ],
+        "LCTT": [],
+        "TM": [
+          {
+            "bbox": [
+              107.16000366210938,
+              78.34605407714844,
+              399.90533447265625,
+              89.90552520751953
+            ],
+            "matched_core": "thuyết minh báo cáo tài chính",
+            "retrieval_key": "thuyet minh bao cao tai chinh chon loc hop nhat",
+            "text": "THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+          }
+        ]
+      }
+    },
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": null,
+      "line_count": 52,
+      "off_balance_evidence": [],
+      "page": 12,
+      "page_type": "TM",
+      "scope": "NOT_APPLICABLE",
+      "source_corruption_markers": [
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [],
+        "KQKD": [],
+        "LCTT": [],
+        "TM": [
+          {
+            "bbox": [
+              107.16000366210938,
+              78.34605407714844,
+              399.90533447265625,
+              89.90552520751953
+            ],
+            "matched_core": "thuyết minh báo cáo tài chính",
+            "retrieval_key": "thuyet minh bao cao tai chinh chon loc hop nhat",
+            "text": "THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+          }
+        ]
+      }
+    },
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": null,
+      "line_count": 42,
+      "off_balance_evidence": [],
+      "page": 13,
+      "page_type": "AMBIGUOUS",
+      "scope": "NOT_APPLICABLE",
+      "source_corruption_markers": [
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [],
+        "KQKD": [
+          {
+            "bbox": [
+              124.08000183105469,
+              259.66607666015625,
+              346.19061279296875,
+              271.22552490234375
+            ],
+            "matched_core": "báo cáo kết quả hoạt động",
+            "retrieval_key": "vao bao cao ket qua hoat dong khi thu hoi duoc",
+            "text": "vào báo cáo kết quả hoạt động khi thu hồi được."
+          },
+          {
+            "bbox": [
+              124.08000183105469,
+              571.666015625,
+              545.4083862304688,
+              583.2255249023438
+            ],
+            "matched_core": "báo cáo kết quả hoạt động",
+            "retrieval_key": "lai hoac lo tu kinh doanh chung khoan duoc ghi nhan tren bao cao ket qua hoat dong theo",
+            "text": "Lãi hoặc lỗ từ kinh doanh chứng khoán được ghi nhận trên báo cáo kết quả hoạt động theo"
+          },
+          {
+            "bbox": [
+              124.08000183105469,
+              605.5060424804688,
+              545.2711181640625,
+              617.0655517578125
+            ],
+            "matched_core": "báo cáo kết quả hoạt động",
+            "retrieval_key": "thu nhap lai tu chung khoan sau ngay mua duoc ghi nhan tren bao cao ket qua hoat dong",
+            "text": "Thu nhập lãi từ chứng khoán sau ngày mua được ghi nhận trên báo cáo kết quả hoạt động"
+          }
+        ],
+        "LCTT": [],
+        "TM": [
+          {
+            "bbox": [
+              107.16000366210938,
+              78.34605407714844,
+              399.90533447265625,
+              89.90552520751953
+            ],
+            "matched_core": "thuyết minh báo cáo tài chính",
+            "retrieval_key": "thuyet minh bao cao tai chinh chon loc hop nhat",
+            "text": "THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+          }
+        ]
+      }
+    },
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": null,
+      "line_count": 42,
+      "off_balance_evidence": [],
+      "page": 14,
+      "page_type": "AMBIGUOUS",
+      "scope": "NOT_APPLICABLE",
+      "source_corruption_markers": [
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [],
+        "KQKD": [
+          {
+            "bbox": [
+              124.08000183105469,
+              211.6660614013672,
+              545.2711181640625,
+              223.2255401611328
+            ],
+            "matched_core": "báo cáo kết quả hoạt động",
+            "retrieval_key": "thu nhap lai tu chung khoan sau ngay mua duoc ghi nhan tren bao cao ket qua hoat dong",
+            "text": "Thu nhập lãi từ chứng khoán sau ngày mua được ghi nhận trên báo cáo kết quả hoạt động"
+          },
+          {
+            "bbox": [
+              124.08000183105469,
+              409.0660705566406,
+              545.2711181640625,
+              420.6255187988281
+            ],
+            "matched_core": "báo cáo kết quả hoạt động",
+            "retrieval_key": "thu nhap lai tu chung khoan sau ngay mua duoc ghi nhan tren bao cao ket qua hoat dong",
+            "text": "Thu nhập lãi từ chứng khoán sau ngày mua được ghi nhận trên báo cáo kết quả hoạt động"
+          },
+          {
+            "bbox": [
+              124.08000183105469,
+              666.5860595703125,
+              545.31689453125,
+              678.1455688476562
+            ],
+            "matched_core": "báo cáo kết quả hoạt động",
+            "retrieval_key": "thue thu nhap doanh nghiep duoc ghi nhan trong bao cao ket qua hoat dong ngoai tru truong",
+            "text": "Thuế thu nhập doanh nghiệp được ghi nhận trong báo cáo kết quả hoạt động ngoại trừ trường"
+          }
+        ],
+        "LCTT": [],
+        "TM": [
+          {
+            "bbox": [
+              107.16000366210938,
+              78.34605407714844,
+              399.90533447265625,
+              89.90552520751953
+            ],
+            "matched_core": "thuyết minh báo cáo tài chính",
+            "retrieval_key": "thuyet minh bao cao tai chinh chon loc hop nhat",
+            "text": "THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+          }
+        ]
+      }
+    },
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": null,
+      "line_count": 47,
+      "off_balance_evidence": [],
+      "page": 15,
+      "page_type": "AMBIGUOUS",
+      "scope": "NOT_APPLICABLE",
+      "source_corruption_markers": [
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [
+          {
+            "bbox": [
+              124.08000183105469,
+              160.9060516357422,
+              545.31591796875,
+              172.4655303955078
+            ],
+            "matched_core": "báo cáo tình hình tài chính",
+            "retrieval_key": "thue thu nhap hoan lai duoc tinh theo phuong phap bao cao tinh hinh tai chinh cho cac",
+            "text": "Thuế thu nhập hoãn lại được tính theo phương pháp báo cáo tình hình tài chính cho các"
+          }
+        ],
+        "KQKD": [],
+        "LCTT": [],
+        "TM": [
+          {
+            "bbox": [
+              107.16000366210938,
+              78.34605407714844,
+              399.90533447265625,
+              89.90552520751953
+            ],
+            "matched_core": "thuyết minh báo cáo tài chính",
+            "retrieval_key": "thuyet minh bao cao tai chinh chon loc hop nhat",
+            "text": "THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+          }
+        ]
+      }
+    },
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": null,
+      "line_count": 84,
+      "off_balance_evidence": [],
+      "page": 16,
+      "page_type": "TM",
+      "scope": "NOT_APPLICABLE",
+      "source_corruption_markers": [
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [],
+        "KQKD": [],
+        "LCTT": [],
+        "TM": [
+          {
+            "bbox": [
+              107.16000366210938,
+              78.34605407714844,
+              399.90533447265625,
+              89.90552520751953
+            ],
+            "matched_core": "thuyết minh báo cáo tài chính",
+            "retrieval_key": "thuyet minh bao cao tai chinh chon loc hop nhat",
+            "text": "THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+          }
+        ]
+      }
+    },
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": null,
+      "line_count": 90,
+      "off_balance_evidence": [],
+      "page": 17,
+      "page_type": "TM",
+      "scope": "NOT_APPLICABLE",
+      "source_corruption_markers": [
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [],
+        "KQKD": [],
+        "LCTT": [],
+        "TM": [
+          {
+            "bbox": [
+              107.16000366210938,
+              78.34605407714844,
+              399.90533447265625,
+              89.90552520751953
+            ],
+            "matched_core": "thuyết minh báo cáo tài chính",
+            "retrieval_key": "thuyet minh bao cao tai chinh chon loc hop nhat",
+            "text": "THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+          }
+        ]
+      }
+    },
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": null,
+      "line_count": 91,
+      "off_balance_evidence": [],
+      "page": 18,
+      "page_type": "TM",
+      "scope": "NOT_APPLICABLE",
+      "source_corruption_markers": [
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [],
+        "KQKD": [],
+        "LCTT": [],
+        "TM": [
+          {
+            "bbox": [
+              107.16000366210938,
+              78.34605407714844,
+              399.90533447265625,
+              89.90552520751953
+            ],
+            "matched_core": "thuyết minh báo cáo tài chính",
+            "retrieval_key": "thuyet minh bao cao tai chinh chon loc hop nhat",
+            "text": "THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+          }
+        ]
+      }
+    },
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": null,
+      "line_count": 92,
+      "off_balance_evidence": [],
+      "page": 19,
+      "page_type": "TM",
+      "scope": "NOT_APPLICABLE",
+      "source_corruption_markers": [
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [],
+        "KQKD": [],
+        "LCTT": [],
+        "TM": [
+          {
+            "bbox": [
+              107.16000366210938,
+              78.34605407714844,
+              399.90533447265625,
+              89.90552520751953
+            ],
+            "matched_core": "thuyết minh báo cáo tài chính",
+            "retrieval_key": "thuyet minh bao cao tai chinh chon loc hop nhat",
+            "text": "THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+          }
+        ]
+      }
+    },
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": null,
+      "line_count": 74,
+      "off_balance_evidence": [],
+      "page": 20,
+      "page_type": "TM",
+      "scope": "NOT_APPLICABLE",
+      "source_corruption_markers": [
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [],
+        "KQKD": [],
+        "LCTT": [],
+        "TM": [
+          {
+            "bbox": [
+              107.16000366210938,
+              78.34605407714844,
+              399.90533447265625,
+              89.90552520751953
+            ],
+            "matched_core": "thuyết minh báo cáo tài chính",
+            "retrieval_key": "thuyet minh bao cao tai chinh chon loc hop nhat",
+            "text": "THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+          }
+        ]
+      }
+    },
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": null,
+      "line_count": 112,
+      "off_balance_evidence": [],
+      "page": 21,
+      "page_type": "TM",
+      "scope": "NOT_APPLICABLE",
+      "source_corruption_markers": [
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [],
+        "KQKD": [],
+        "LCTT": [],
+        "TM": [
+          {
+            "bbox": [
+              107.16000366210938,
+              78.34605407714844,
+              399.90533447265625,
+              89.90552520751953
+            ],
+            "matched_core": "thuyết minh báo cáo tài chính",
+            "retrieval_key": "thuyet minh bao cao tai chinh chon loc hop nhat",
+            "text": "THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+          }
+        ]
+      }
+    },
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": null,
+      "line_count": 103,
+      "off_balance_evidence": [],
+      "page": 22,
+      "page_type": "TM",
+      "scope": "NOT_APPLICABLE",
+      "source_corruption_markers": [
+        "Ã",
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [],
+        "KQKD": [],
+        "LCTT": [],
+        "TM": [
+          {
+            "bbox": [
+              107.16000366210938,
+              78.34605407714844,
+              399.90533447265625,
+              89.90552520751953
+            ],
+            "matched_core": "thuyết minh báo cáo tài chính",
+            "retrieval_key": "thuyet minh bao cao tai chinh chon loc hop nhat",
+            "text": "THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+          }
+        ]
+      }
+    },
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": null,
+      "line_count": 98,
+      "off_balance_evidence": [],
+      "page": 23,
+      "page_type": "TM",
+      "scope": "NOT_APPLICABLE",
+      "source_corruption_markers": [
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [],
+        "KQKD": [],
+        "LCTT": [],
+        "TM": [
+          {
+            "bbox": [
+              107.16000366210938,
+              78.34605407714844,
+              399.90533447265625,
+              89.90552520751953
+            ],
+            "matched_core": "thuyết minh báo cáo tài chính",
+            "retrieval_key": "thuyet minh bao cao tai chinh chon loc hop nhat",
+            "text": "THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+          }
+        ]
+      }
+    },
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": null,
+      "line_count": 80,
+      "off_balance_evidence": [],
+      "page": 24,
+      "page_type": "TM",
+      "scope": "NOT_APPLICABLE",
+      "source_corruption_markers": [
+        "Ã",
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [],
+        "KQKD": [],
+        "LCTT": [],
+        "TM": [
+          {
+            "bbox": [
+              107.16000366210938,
+              89.02604675292969,
+              399.90533447265625,
+              100.58551788330078
+            ],
+            "matched_core": "thuyết minh báo cáo tài chính",
+            "retrieval_key": "thuyet minh bao cao tai chinh chon loc hop nhat",
+            "text": "THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+          }
+        ]
+      }
+    },
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": null,
+      "line_count": 90,
+      "off_balance_evidence": [],
+      "page": 25,
+      "page_type": "TM",
+      "scope": "NOT_APPLICABLE",
+      "source_corruption_markers": [
+        "Ã",
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [],
+        "KQKD": [],
+        "LCTT": [],
+        "TM": [
+          {
+            "bbox": [
+              107.16000366210938,
+              89.02604675292969,
+              399.90533447265625,
+              100.58551788330078
+            ],
+            "matched_core": "thuyết minh báo cáo tài chính",
+            "retrieval_key": "thuyet minh bao cao tai chinh chon loc hop nhat",
+            "text": "THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+          }
+        ]
+      }
+    },
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": null,
+      "line_count": 78,
+      "off_balance_evidence": [],
+      "page": 26,
+      "page_type": "TM",
+      "scope": "NOT_APPLICABLE",
+      "source_corruption_markers": [
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [],
+        "KQKD": [],
+        "LCTT": [],
+        "TM": [
+          {
+            "bbox": [
+              107.16000366210938,
+              89.02604675292969,
+              399.90533447265625,
+              100.58551788330078
+            ],
+            "matched_core": "thuyết minh báo cáo tài chính",
+            "retrieval_key": "thuyet minh bao cao tai chinh chon loc hop nhat",
+            "text": "THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+          }
+        ]
+      }
+    },
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": null,
+      "line_count": 64,
+      "off_balance_evidence": [],
+      "page": 27,
+      "page_type": "TM",
+      "scope": "NOT_APPLICABLE",
+      "source_corruption_markers": [
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [],
+        "KQKD": [],
+        "LCTT": [],
+        "TM": [
+          {
+            "bbox": [
+              107.16000366210938,
+              89.02604675292969,
+              399.90533447265625,
+              100.58551788330078
+            ],
+            "matched_core": "thuyết minh báo cáo tài chính",
+            "retrieval_key": "thuyet minh bao cao tai chinh chon loc hop nhat",
+            "text": "THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+          }
+        ]
+      }
+    },
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": null,
+      "line_count": 25,
+      "off_balance_evidence": [],
+      "page": 28,
+      "page_type": "TM",
+      "scope": "NOT_APPLICABLE",
+      "source_corruption_markers": [
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [],
+        "KQKD": [],
+        "LCTT": [],
+        "TM": [
+          {
+            "bbox": [
+              107.16000366210938,
+              89.02604675292969,
+              399.90533447265625,
+              100.58551788330078
+            ],
+            "matched_core": "thuyết minh báo cáo tài chính",
+            "retrieval_key": "thuyet minh bao cao tai chinh chon loc hop nhat",
+            "text": "THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+          }
+        ]
+      }
+    },
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": null,
+      "line_count": 163,
+      "off_balance_evidence": [],
+      "page": 29,
+      "page_type": "TM",
+      "scope": "NOT_APPLICABLE",
+      "source_corruption_markers": [
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [],
+        "KQKD": [],
+        "LCTT": [],
+        "TM": [
+          {
+            "bbox": [
+              40.560001373291016,
+              95.35041809082031,
+              334.0488586425781,
+              106.95382690429688
+            ],
+            "matched_core": "thuyết minh báo cáo tài chính",
+            "retrieval_key": "thuyet minh bao cao tai chinh chon loc hop nhat",
+            "text": "THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+          }
+        ]
+      }
+    },
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": null,
+      "line_count": 13,
+      "off_balance_evidence": [],
+      "page": 30,
+      "page_type": "TM",
+      "scope": "NOT_APPLICABLE",
+      "source_corruption_markers": [
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [],
+        "KQKD": [],
+        "LCTT": [],
+        "TM": [
+          {
+            "bbox": [
+              93.60000610351562,
+              69.46605682373047,
+              386.4090881347656,
+              81.02552795410156
+            ],
+            "matched_core": "thuyết minh báo cáo tài chính",
+            "retrieval_key": "thuyet minh bao cao tai chinh chon loc hop nhat",
+            "text": "THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+          }
+        ]
+      }
+    },
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": null,
+      "line_count": 227,
+      "off_balance_evidence": [],
+      "page": 31,
+      "page_type": "TM",
+      "scope": "NOT_APPLICABLE",
+      "source_corruption_markers": [
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [],
+        "KQKD": [],
+        "LCTT": [],
+        "TM": [
+          {
+            "bbox": [
+              40.560001373291016,
+              95.35041809082031,
+              334.0488586425781,
+              106.95382690429688
+            ],
+            "matched_core": "thuyết minh báo cáo tài chính",
+            "retrieval_key": "thuyet minh bao cao tai chinh chon loc hop nhat",
+            "text": "THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+          }
+        ]
+      }
+    },
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": null,
+      "line_count": 200,
+      "off_balance_evidence": [],
+      "page": 32,
+      "page_type": "TM",
+      "scope": "NOT_APPLICABLE",
+      "source_corruption_markers": [
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [],
+        "KQKD": [],
+        "LCTT": [],
+        "TM": [
+          {
+            "bbox": [
+              40.560001373291016,
+              99.07041931152344,
+              334.0488586425781,
+              110.673828125
+            ],
+            "matched_core": "thuyết minh báo cáo tài chính",
+            "retrieval_key": "thuyet minh bao cao tai chinh chon loc hop nhat",
+            "text": "THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+          }
+        ]
+      }
+    },
+    {
+      "cash_flow_method": null,
+      "cash_flow_method_evidence": {
+        "DIRECT": [],
+        "INDIRECT": []
+      },
+      "form": null,
+      "line_count": 29,
+      "off_balance_evidence": [],
+      "page": 33,
+      "page_type": "TM",
+      "scope": "NOT_APPLICABLE",
+      "source_corruption_markers": [
+        "Â"
+      ],
+      "source_text_quality": "CORRUPT_TEXT_LAYER",
+      "title_evidence": {
+        "CDKT": [],
+        "KQKD": [],
+        "LCTT": [],
+        "TM": [
+          {
+            "bbox": [
+              107.16000366210938,
+              89.86605834960938,
+              399.90533447265625,
+              101.42552947998047
+            ],
+            "matched_core": "thuyết minh báo cáo tài chính",
+            "retrieval_key": "thuyet minh bao cao tai chinh chon loc hop nhat",
+            "text": "THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT"
+          }
+        ]
+      }
+    }
+  ],
+  "reference_kind": "POST_ROLE_B_SEAL_NATIVE_PAGE_SCOPE_MACHINE_REFERENCE",
+  "source": {
+    "native_text_page_count": 33,
+    "page_count": 33,
+    "path": "vietstock_bctc/ACB/2026/ACB BCTC HOP NHAT Q1_26_ban tra cuu.pdf",
+    "sha256": "d8be301b9169577a0be2bbd8721cdaaab7cb37a32493ead0de5871bfcbc168dd",
+    "size_bytes": 1060293
+  },
+  "state": "ROLE_A_STATEMENT_PAGE_REFERENCE_COMPLETE",
+  "target_pairs": [
+    {
+      "candidate_page": 3,
+      "cash_flow_method": null,
+      "expected_scope": "MAIN_STATEMENT",
+      "reference_page": 3,
+      "statement_type": "CDKT",
+      "visual_runner_up_margin": 0.617168,
+      "visual_sequence_supported": true,
+      "visual_similarity": 0.971912
+    },
+    {
+      "candidate_page": 4,
+      "cash_flow_method": null,
+      "expected_scope": "MAIN_STATEMENT",
+      "reference_page": 4,
+      "statement_type": "CDKT",
+      "visual_runner_up_margin": 0.614794,
+      "visual_sequence_supported": true,
+      "visual_similarity": 0.973479
+    },
+    {
+      "candidate_page": 6,
+      "cash_flow_method": null,
+      "expected_scope": "MAIN_STATEMENT",
+      "reference_page": 6,
+      "statement_type": "KQKD",
+      "visual_runner_up_margin": 0.695877,
+      "visual_sequence_supported": true,
+      "visual_similarity": 0.935386
+    },
+    {
+      "candidate_page": 7,
+      "cash_flow_method": "DIRECT",
+      "expected_scope": "MAIN_STATEMENT",
+      "reference_page": 7,
+      "statement_type": "LCTT",
+      "visual_runner_up_margin": 0.558776,
+      "visual_sequence_supported": true,
+      "visual_similarity": 0.972226
+    },
+    {
+      "candidate_page": 8,
+      "cash_flow_method": "DIRECT",
+      "expected_scope": "MAIN_STATEMENT",
+      "reference_page": 8,
+      "statement_type": "LCTT",
+      "visual_runner_up_margin": 0.534691,
+      "visual_sequence_supported": true,
+      "visual_similarity": 0.948141
+    }
+  ],
+  "upstream_role_b_seal": {
+    "path": "docs/experiments/E-0022-role-b-unresolved-discovery.json",
+    "sha256": "41ef962361cfead7cdfa4d7b8a782e61ab3fc4a938aa4fa86ebb45cbe637660e",
+    "state": "ROLE_B_DISCOVERY_SEALED_UNRESOLVED"
+  },
+  "visual_pairing": {
+    "config": {
+      "column_projection_size": 96,
+      "content_crop_quantile": 0.005,
+      "feature_height": 64,
+      "feature_width": 48,
+      "minimum_ink_ratio": 0.002,
+      "minimum_runner_up_margin": 0.05,
+      "minimum_similarity": 0.45,
+      "render_scale": 0.75,
+      "row_projection_size": 128,
+      "skip_penalty": 0.12
+    },
+    "result": {
+      "candidate_page_count": 33,
+      "counts": {
+        "accepted": 25,
+        "candidate_only": 0,
+        "matched": 33,
+        "reference_only": 0,
+        "steps": 33
+      },
+      "mean_matched_similarity": 0.707635,
+      "reference_page_count": 33,
+      "steps": [
+        {
+          "accepted": false,
+          "action": "MATCH",
+          "candidate_page": 1,
+          "evidence": [
+            "visual similarity below threshold",
+            "adjacent monotonic page pair supports alignment",
+            "pair retained but rejected for benchmark use"
+          ],
+          "reference_page": 1,
+          "runner_up_margin": -0.054986,
+          "sequence_supported": true,
+          "similarity": 0.075516
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 2,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 2,
+          "runner_up_margin": 0.706503,
+          "sequence_supported": true,
+          "similarity": 0.958133
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 3,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 3,
+          "runner_up_margin": 0.617168,
+          "sequence_supported": true,
+          "similarity": 0.971912
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 4,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 4,
+          "runner_up_margin": 0.614794,
+          "sequence_supported": true,
+          "similarity": 0.973479
+        },
+        {
+          "accepted": false,
+          "action": "MATCH",
+          "candidate_page": 5,
+          "evidence": [
+            "visual similarity below threshold",
+            "adjacent monotonic page pair supports alignment",
+            "pair retained but rejected for benchmark use"
+          ],
+          "reference_page": 5,
+          "runner_up_margin": -0.075433,
+          "sequence_supported": true,
+          "similarity": 0.148739
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 6,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 6,
+          "runner_up_margin": 0.695877,
+          "sequence_supported": true,
+          "similarity": 0.935386
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 7,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 7,
+          "runner_up_margin": 0.558776,
+          "sequence_supported": true,
+          "similarity": 0.972226
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 8,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 8,
+          "runner_up_margin": 0.534691,
+          "sequence_supported": true,
+          "similarity": 0.948141
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 9,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 9,
+          "runner_up_margin": 0.742745,
+          "sequence_supported": true,
+          "similarity": 0.969539
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 10,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 10,
+          "runner_up_margin": 0.611792,
+          "sequence_supported": true,
+          "similarity": 0.971497
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 11,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 11,
+          "runner_up_margin": 0.648603,
+          "sequence_supported": true,
+          "similarity": 0.961328
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 12,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 12,
+          "runner_up_margin": 0.549582,
+          "sequence_supported": true,
+          "similarity": 0.853501
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 13,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 13,
+          "runner_up_margin": 0.315641,
+          "sequence_supported": true,
+          "similarity": 0.675346
+        },
+        {
+          "accepted": false,
+          "action": "MATCH",
+          "candidate_page": 14,
+          "evidence": [
+            "visual similarity below threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment",
+            "pair retained but rejected for benchmark use"
+          ],
+          "reference_page": 14,
+          "runner_up_margin": 0.060007,
+          "sequence_supported": true,
+          "similarity": 0.401105
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 15,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 15,
+          "runner_up_margin": 0.590307,
+          "sequence_supported": true,
+          "similarity": 0.931405
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 16,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 16,
+          "runner_up_margin": 0.498627,
+          "sequence_supported": true,
+          "similarity": 0.977122
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 17,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 17,
+          "runner_up_margin": 0.576089,
+          "sequence_supported": true,
+          "similarity": 0.921458
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 18,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 18,
+          "runner_up_margin": 0.586593,
+          "sequence_supported": true,
+          "similarity": 0.972789
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 19,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 19,
+          "runner_up_margin": 0.607365,
+          "sequence_supported": true,
+          "similarity": 0.970164
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 20,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 20,
+          "runner_up_margin": 0.061834,
+          "sequence_supported": true,
+          "similarity": 0.450129
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 21,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 21,
+          "runner_up_margin": 0.531809,
+          "sequence_supported": true,
+          "similarity": 0.918005
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 22,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 22,
+          "runner_up_margin": 0.227077,
+          "sequence_supported": true,
+          "similarity": 0.561006
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 23,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 23,
+          "runner_up_margin": 0.157491,
+          "sequence_supported": true,
+          "similarity": 0.511072
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 24,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 24,
+          "runner_up_margin": 0.484243,
+          "sequence_supported": true,
+          "similarity": 0.962737
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 25,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 25,
+          "runner_up_margin": 0.573749,
+          "sequence_supported": true,
+          "similarity": 0.949254
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 26,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 26,
+          "runner_up_margin": 0.553231,
+          "sequence_supported": true,
+          "similarity": 0.972434
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 27,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 27,
+          "runner_up_margin": 0.656434,
+          "sequence_supported": true,
+          "similarity": 0.916929
+        },
+        {
+          "accepted": true,
+          "action": "MATCH",
+          "candidate_page": 28,
+          "evidence": [
+            "visual similarity above threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment"
+          ],
+          "reference_page": 28,
+          "runner_up_margin": 0.717815,
+          "sequence_supported": true,
+          "similarity": 0.967496
+        },
+        {
+          "accepted": false,
+          "action": "MATCH",
+          "candidate_page": 29,
+          "evidence": [
+            "visual similarity below threshold",
+            "adjacent monotonic page pair supports alignment",
+            "pair retained but rejected for benchmark use"
+          ],
+          "reference_page": 29,
+          "runner_up_margin": -0.091287,
+          "sequence_supported": true,
+          "similarity": 0.069284
+        },
+        {
+          "accepted": false,
+          "action": "MATCH",
+          "candidate_page": 30,
+          "evidence": [
+            "visual similarity below threshold",
+            "adjacent monotonic page pair supports alignment",
+            "pair retained but rejected for benchmark use"
+          ],
+          "reference_page": 30,
+          "runner_up_margin": -0.218035,
+          "sequence_supported": true,
+          "similarity": 0.029679
+        },
+        {
+          "accepted": false,
+          "action": "MATCH",
+          "candidate_page": 31,
+          "evidence": [
+            "visual similarity below threshold",
+            "adjacent monotonic page pair supports alignment",
+            "pair retained but rejected for benchmark use"
+          ],
+          "reference_page": 31,
+          "runner_up_margin": -0.073349,
+          "sequence_supported": true,
+          "similarity": 0.058542
+        },
+        {
+          "accepted": false,
+          "action": "MATCH",
+          "candidate_page": 32,
+          "evidence": [
+            "visual similarity below threshold",
+            "adjacent monotonic page pair supports alignment",
+            "pair retained but rejected for benchmark use"
+          ],
+          "reference_page": 32,
+          "runner_up_margin": -0.033913,
+          "sequence_supported": true,
+          "similarity": 0.067185
+        },
+        {
+          "accepted": false,
+          "action": "MATCH",
+          "candidate_page": 33,
+          "evidence": [
+            "visual similarity below threshold",
+            "runner-up margin above threshold",
+            "adjacent monotonic page pair supports alignment",
+            "pair retained but rejected for benchmark use"
+          ],
+          "reference_page": 33,
+          "runner_up_margin": 0.103062,
+          "sequence_supported": true,
+          "similarity": 0.329404
+        }
+      ]
+    },
+    "uses_text_or_values": false
+  }
+}

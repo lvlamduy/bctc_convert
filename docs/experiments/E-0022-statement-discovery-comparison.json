@@ -1,0 +1,238 @@
+{
+  "capture_git_commit": "08dec6cada1f0237109c9c4e303061c4ddab2d9b",
+  "capture_git_dirty": false,
+  "claim_boundary": "This one-shot comparison measures statement-page discovery only. The Role A classifier was built after Role B was sealed and is a diagnostic machine reference, not human gold or an accuracy estimate for that classifier.",
+  "configuration": {
+    "path": "config/experiments/e0022-role-a-statement-diagnosis.yaml",
+    "sha256": "e2cf00e7e0b612946030ecb75c4f3406a355aa0aa71408f3ebddd493caebb869"
+  },
+  "dataset_role": "UNTOUCHED_HOLDOUT",
+  "diagnosis_implementation": {
+    "path": "src/bctc_ai/evaluation/holdout_statement_diagnosis.py",
+    "sha256": "69aa95d736f6e9853e96448be45fa480327b7ec9baba8e2d8fd86454a0c78230"
+  },
+  "experiment_id": "E-0022",
+  "format_version": 1,
+  "historical_reference_invoked": false,
+  "mapping_invoked": false,
+  "metrics": {
+    "expected_main_statement_pages": 5,
+    "frozen_locator_exact_native_correct_pages": 2,
+    "frozen_locator_exact_native_page_recall": 0.4,
+    "reference_expected_by_statement": {
+      "CDKT": 2,
+      "KQKD": 1,
+      "LCTT": 2
+    },
+    "role_b_complete_ordered_block": false,
+    "role_b_correct_by_statement": {
+      "CDKT": 0,
+      "KQKD": 0,
+      "LCTT": 0
+    },
+    "role_b_correct_mapping_eligible_pages": 0,
+    "role_b_main_statement_page_recall": 0.0,
+    "role_b_mapping_eligible_false_positive_pages": 0
+  },
+  "next_bounded_action": "Develop Unicode-aware native-text quality and form/title containment changes on separate development/validation documents, then freeze before a new holdout.",
+  "page_comparisons": [
+    {
+      "candidate_page": 3,
+      "cash_flow_method": null,
+      "expected_scope": "MAIN_STATEMENT",
+      "frozen_locator_on_exact_native_text": {
+        "form_hits": [],
+        "mapping_eligible": false,
+        "page_type": "OTHER",
+        "scope": "NOT_APPLICABLE",
+        "title_score": 0.710526,
+        "title_score_gap_to_gate": 0.029474
+      },
+      "reference_form": {
+        "normalized_family": "B02",
+        "retrieval_key": "mau b02a tctd hn",
+        "suffix": "a",
+        "text": "Mẫu B02a/TCTD-HN"
+      },
+      "reference_page": 3,
+      "reference_title": "BÁO CÁO TÌNH HÌNH TÀI CHÍNH HỢP NHẤT GIỮA NIÊN ĐỘ",
+      "role_b": {
+        "form_hits": [],
+        "mapping_eligible": false,
+        "page_type": "OTHER",
+        "scope": "NOT_APPLICABLE",
+        "title_score": 0.72,
+        "title_score_gap_to_gate": 0.02
+      },
+      "role_b_ocr_title": "BÁO CÁO TINH HìNH TÀI CHÍNH HP NHÁT GIÛ'A NIÊN Đ",
+      "statement_type": "CDKT",
+      "visual_runner_up_margin": 0.617168,
+      "visual_sequence_supported": true,
+      "visual_similarity": 0.971912
+    },
+    {
+      "candidate_page": 4,
+      "cash_flow_method": null,
+      "expected_scope": "MAIN_STATEMENT",
+      "frozen_locator_on_exact_native_text": {
+        "form_hits": [],
+        "mapping_eligible": false,
+        "page_type": "OTHER",
+        "scope": "NOT_APPLICABLE",
+        "title_score": 0.710526,
+        "title_score_gap_to_gate": 0.029474
+      },
+      "reference_form": {
+        "normalized_family": "B02",
+        "retrieval_key": "mau b02a tctd hn",
+        "suffix": "a",
+        "text": "Mẫu B02a/TCTD-HN"
+      },
+      "reference_page": 4,
+      "reference_title": "BÁO CÁO TÌNH HÌNH TÀI CHÍNH HỢP NHẤT GIỮA NIÊN ĐỘ",
+      "role_b": {
+        "form_hits": [],
+        "mapping_eligible": false,
+        "page_type": "OTHER",
+        "scope": "NOT_APPLICABLE",
+        "title_score": 0.72,
+        "title_score_gap_to_gate": 0.02
+      },
+      "role_b_ocr_title": "BÁO CÁO TìNH HINH TÀI CHÍNH HOP NHÁT GIÛA NIÊN Đ",
+      "statement_type": "CDKT",
+      "visual_runner_up_margin": 0.614794,
+      "visual_sequence_supported": true,
+      "visual_similarity": 0.973479
+    },
+    {
+      "candidate_page": 6,
+      "cash_flow_method": null,
+      "expected_scope": "MAIN_STATEMENT",
+      "frozen_locator_on_exact_native_text": {
+        "form_hits": [],
+        "mapping_eligible": false,
+        "page_type": "OTHER",
+        "scope": "NOT_APPLICABLE",
+        "title_score": 0.694444,
+        "title_score_gap_to_gate": 0.045556
+      },
+      "reference_form": {
+        "normalized_family": "B03",
+        "retrieval_key": "mau b03a tctd hn",
+        "suffix": "a",
+        "text": "Mẫu B03a/TCTD-HN"
+      },
+      "reference_page": 6,
+      "reference_title": "BÁO CÁO KẾT QUẢ HOẠT ĐỘNG HỢP NHẤT GIỮA NIÊN ĐỘ",
+      "role_b": {
+        "form_hits": [],
+        "mapping_eligible": false,
+        "page_type": "OTHER",
+        "scope": "NOT_APPLICABLE",
+        "title_score": 0.695652,
+        "title_score_gap_to_gate": 0.044348
+      },
+      "role_b_ocr_title": "BÁO CÁO KÉT QUÀ HOAT ĐNG HP NHÁT GIÛA NIÊN Đ",
+      "statement_type": "KQKD",
+      "visual_runner_up_margin": 0.695877,
+      "visual_sequence_supported": true,
+      "visual_similarity": 0.935386
+    },
+    {
+      "candidate_page": 7,
+      "cash_flow_method": "DIRECT",
+      "expected_scope": "MAIN_STATEMENT",
+      "frozen_locator_on_exact_native_text": {
+        "form_hits": [],
+        "mapping_eligible": true,
+        "page_type": "LCTT",
+        "scope": "MAIN_STATEMENT",
+        "title_score": 0.702703,
+        "title_score_gap_to_gate": 0.037297
+      },
+      "reference_form": {
+        "normalized_family": "B04",
+        "retrieval_key": "mau b04a tctd hn",
+        "suffix": "a",
+        "text": "Mẫu B04a/TCTD-HN"
+      },
+      "reference_page": 7,
+      "reference_title": "BÁO CÁO LƯU CHUYỂN TIỀN TỆ HỢP NHẤT GIỮA NIÊN ĐỘ",
+      "role_b": {
+        "form_hits": [],
+        "mapping_eligible": false,
+        "page_type": "OTHER",
+        "scope": "NOT_APPLICABLE",
+        "title_score": 0.722222,
+        "title_score_gap_to_gate": 0.017778
+      },
+      "role_b_ocr_title": "BÁO CÁO LUU CHUYÉN TIÈN TĘ HP NHÁT GIÛA NIÊN d",
+      "statement_type": "LCTT",
+      "visual_runner_up_margin": 0.558776,
+      "visual_sequence_supported": true,
+      "visual_similarity": 0.972226
+    },
+    {
+      "candidate_page": 8,
+      "cash_flow_method": "DIRECT",
+      "expected_scope": "MAIN_STATEMENT",
+      "frozen_locator_on_exact_native_text": {
+        "form_hits": [],
+        "mapping_eligible": true,
+        "page_type": "LCTT",
+        "scope": "MAIN_STATEMENT",
+        "title_score": 0.702703,
+        "title_score_gap_to_gate": 0.037297
+      },
+      "reference_form": {
+        "normalized_family": "B04",
+        "retrieval_key": "mau b04a tctd hn",
+        "suffix": "a",
+        "text": "Mẫu B04a/TCTD-HN"
+      },
+      "reference_page": 8,
+      "reference_title": "BÁO CÁO LƯU CHUYỂN TIỀN TỆ HỢP NHẤT GIỮA NIÊN ĐỘ",
+      "role_b": {
+        "form_hits": [],
+        "mapping_eligible": false,
+        "page_type": "OTHER",
+        "scope": "NOT_APPLICABLE",
+        "title_score": 0.732394,
+        "title_score_gap_to_gate": 0.007606
+      },
+      "role_b_ocr_title": "BÁO CÁO LUU CHUYÉN TIÈN T HP NHÁT GIÛA NIÊN Đ",
+      "statement_type": "LCTT",
+      "visual_runner_up_margin": 0.534691,
+      "visual_sequence_supported": true,
+      "visual_similarity": 0.948141
+    }
+  ],
+  "reference_classifier_metric_is_holdout_accuracy": false,
+  "role_a_reference": {
+    "path": "docs/experiments/E-0022-role-a-statement-reference.json",
+    "sha256": "e9c14d49ba30451aaebdfb8f8632bc342f58517c6bf1e4ba29d892366706fcba",
+    "state": "ROLE_A_STATEMENT_PAGE_REFERENCE_COMPLETE"
+  },
+  "role_b_location": {
+    "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/layout/statement-location.json",
+    "sha256": "3257f21f5d8e95b0d58a733e57cab8d15bec8641fd1be9746c61e64a6340a8a6",
+    "state": "UNRESOLVED"
+  },
+  "role_b_rerun_after_reference_access": false,
+  "role_b_was_sealed_before_role_a_access": true,
+  "root_cause": {
+    "exact_native_pages_missed_by_frozen_matcher": 3,
+    "interpretation": "Long exact Vietnamese statement titles are penalized by whole-string ratio against shorter cores; form-family suffixes such as B02a are not normalized; OCR diacritic loss then pushes the remaining LCTT titles below the gate.",
+    "native_pages_falsely_flagged_corrupt_by_unicode_letters": 33,
+    "pages_lost_only_after_ocr_title_degradation": 2,
+    "primary_class": "STATEMENT_DISCOVERY_HEADER_MATCHING",
+    "target_pages_with_form_suffix_not_recognized_by_frozen_anchor": 5
+  },
+  "state": "STATEMENT_DISCOVERY_COMPARISON_COMPLETE",
+  "threshold_or_page_selection_tuning_performed": false,
+  "upstream_role_b_seal": {
+    "path": "docs/experiments/E-0022-role-b-unresolved-discovery.json",
+    "sha256": "41ef962361cfead7cdfa4d7b8a782e61ab3fc4a938aa4fa86ebb45cbe637660e",
+    "state": "ROLE_B_DISCOVERY_SEALED_UNRESOLVED"
+  }
+}
