@@ -1,0 +1,69 @@
+version: 1
+experiment_id: E-0029
+dataset_role: CALIBRATION
+design: REFERENCE_BLIND_ROLE_B_ROW_CELL_RECONSTRUCTION_BEFORE_AFTER
+selection_policy: >-
+  Consume only E-0028's accepted MBB CDKT main-page contracts and the exact
+  frozen PP-OCRv6/render artifacts for pages 3–4. Compare immutable V2 failure
+  with one precommitted V3 structural change. Human review remains unavailable.
+
+source:
+  path: vietstock_bctc/MBB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf
+  sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+  size_bytes: 3977471
+  target_pages: [3, 4]
+  excluded_off_balance_pages: [5]
+
+frozen_inputs:
+  accepted_page_contract:
+    path: docs/experiments/E-0028-bounded-ordered-anchor-locator.json
+    sha256: 4c6e644f4f764d08b4c4dae580e49bfee50b3efeadedede668436e3b8d6d396a
+  ocr_batch:
+    path: output/calibration/e0027-mbb-q1-2026-end-to-end-role-c/batch_manifest.json
+    sha256: 0d94762ba4a0d383793fe93a56e48fa7b79d6a3f7faaf62e9dcf40935b8c2889
+  v2_config:
+    path: config/tables/word-box-reconstruction-v2.yaml
+    sha256: 3dc1ccb331c6601b8c23e59966feb84429f04e372c6961672949e6f9565e64ee
+
+candidate:
+  git_commit: 88a28cfb04151b9c13d1631a1cff44effa1cfd90
+  config:
+    path: config/tables/word-box-reconstruction-v3.yaml
+    sha256: c1cf55a6187a1b2a6f54b74b1566619d046446bc3ad7e628473004103c5d0f7e
+  algorithm:
+    path: src/bctc_ai/evaluation/word_box_rows_v3.py
+    sha256: e5650bd48866340cec32ed41e8b131cdf8289c25479be43a11c29763ea153663
+  bounded_changes:
+    - staggered_period_header_group
+    - stacked_header_companion_exclusion
+    - roman_and_ocr_confusable_note_reference
+    - dash_component_shape_filter_before_uniqueness
+
+forbidden_inputs:
+  - human_review_pages_labels_ids_values_or_period_answers
+  - mongodb_or_historical_values
+  - template_labels_or_report_norm_ids
+  - numeric_value_plausibility
+  - E-0022_source_artifacts_output_or_diagnosis
+  - off_balance_page_5_rows
+
+acceptance_policy:
+  v2_failure_on_both_pages: could not infer two separated period header axes
+  exact_axis_headers_left_to_right: [31/03/2026, 31/12/2025]
+  minimum_rows_by_page: {3: 35, 4: 24}
+  minimum_note_references_by_page: {3: 15, 4: 8}
+  maximum_unassigned_numeric_lines_by_page: {3: 0, 4: 1}
+  exactly_two_cells_per_row: true
+  invalid_cell_count: 0
+  duplicate_source_line_assignment_count: 0
+  header_companion_leak_count: 0
+  note_reference_prefix_leak_count: 0
+  page_5_row_count: 0
+  human_gold_or_production_accuracy_claim: false
+
+claim_boundary: >-
+  E-0029 measures reference-blind geometry row/cell reconstruction only. It does
+  not establish Vietnamese source-exact labels, independent numeric-cell truth,
+  period roles, schema IDs, accounting validity, Excel accuracy or holdout
+  performance. BLANK and DASH remain distinct observations.
+
