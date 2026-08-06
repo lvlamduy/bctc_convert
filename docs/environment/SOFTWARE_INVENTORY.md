@@ -203,6 +203,15 @@ Configuration, research basis, rebuild behavior and fail-closed gates are in
 `config/mapping/ordered-subgraph-v1.yaml` and
 `../ORDERED_SCHEMA_GRAPH_MAPPING.md`.
 
+Statement locator v2 and native-text quality v2 add no Python distribution,
+Ubuntu package, model, weight, driver or runtime setting. They reuse Python
+Unicode metadata, regular expressions, PyYAML 6.0.3, RapidFuzz 3.14.5 and the
+existing PyMuPDF text boxes. Rebuilds must preserve
+`config/document_phase/statement-locator-v1.yaml` at the SHA-256 pinned by
+`statement-locator-v2.yaml`; v2 intentionally inherits the frozen v1 thresholds
+while changing only title/form normalization. No DeepSeek, TATR or historical
+value is invoked in this header-only mechanism.
+
 The E-0016 original-crop evidence sealer also installs nothing. It reuses the
 same locked standard-library JSON/TOML/HTML parsing, PyYAML, strict financial
 cell parser, PP-OCRv6 CPU-FP32 configuration, and PaddleOCR-VL-1.6 GPU-BF16

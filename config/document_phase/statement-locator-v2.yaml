@@ -1,0 +1,32 @@
+version: 2
+policy: GENERAL_ORDERED_STATEMENT_BLOCK_UNICODE_FORM_FAMILY_V2
+
+# V2 deliberately inherits all numeric gates and accounting anchors from V1.
+# It changes only header representation/matching and the stale schema-reason text.
+base_config: statement-locator-v1.yaml
+base_config_sha256: d25ff6da2a1ce48428b4ab1ac20a31b989a27849d93326ae839507dce2ff107e
+
+form_family_matching:
+  strategy: REGEX_CANONICAL_FAMILY_WITH_OPTIONAL_SINGLE_ASCII_SUFFIX
+  normalized_families: [B02, B03, B04, B05]
+  required_context_token: TCTD
+  permit_optional_hn_token: true
+
+title_matching:
+  strategy: TOKEN_BOUNDARY_CORE_CONTAINMENT_THEN_FULL_EDIT_RATIO
+  exact_containment_score: 1.0
+  require_existing_discriminator_and_table_gates: true
+
+cash_flow_schema_reason: >-
+  The statement locator detects PDF method evidence only. The schema mapper
+  applies Q-BOOT-001 separately using workbook display order, never numeric
+  ReportNormId magnitude.
+
+forbidden_inputs:
+  - bank_identity
+  - filename_identity
+  - page_number_rules
+  - numeric_values_for_page_type
+  - historical_values
+  - report_norm_id_numeric_order
+

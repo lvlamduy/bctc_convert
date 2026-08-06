@@ -1,14 +1,14 @@
 # Progress report
 
-- Updated: 2026-08-06T10:29:00+00:00
+- Updated: 2026-08-06T10:43:00+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `08dec6c`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
+- Latest clean, tested, pushed checkpoint: `267bee8`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
 - Registered PDFs: 2,567
-- Latest full regression including the hash-locked diagnosis artifacts: 288
-  passed, 2 intentionally skipped historical replays in 97.68 seconds; Ruff and
+- Latest full regression including locator/native-text v2: 299 passed, 2
+  intentionally skipped historical replays in 98.24 seconds; Ruff and
   `git diff --check` passed
 
 ## Accuracy focus and measurable state
@@ -117,9 +117,21 @@
   artifact SHA-256 values are respectively
   `e9c14d49ba30451aaebdfb8f8632bc342f58517c6bf1e4ba29d892366706fcba`
   and `f47036761c4d00c5d4b7734a9e1183f9146be5fead604b9e08e9de0c4efd3234`.
-- Next bounded action: commit and push both hash-locked diagnosis artifacts and
-  their integration gate, then develop the general text-quality/title/form
-  fixes on separate development and validation documents.
+- Preliminary locator/text-quality v2 development is isolated from E-0022. A
+  synthetic optional-suffix/long-title mutation moves from v1 `UNRESOLVED` to a
+  v2 ordered block with 5/5 expected eligible pages and the one off-balance page
+  still excluded; malformed/conflicting forms, narrative title mentions and
+  wrong order still abstain. On the unchanged real E-0013 MBB/VCB calibration
+  OCR, v2 reproduces all 11 eligible pages, both off-balance exclusions, both TM
+  boundaries and both DIRECT decisions exactly. Across the three registered
+  ACB/MBB/CTG human-review calibration PDFs (155 total pages; six with native
+  words), v1 marks two native pages corrupt while v2 marks one: it removes the
+  ACB cover false positive caused only by `CHÂU`/`NGÂN` and retains the MBB page
+  containing ten real U+0086–U+008C controls. This is calibration/mechanism
+  evidence, not holdout or end-to-end accuracy.
+- Next bounded action: commit the standalone v2 mechanism, then capture and
+  hash-lock an E-0024 calibration artifact from the clean commit before any new
+  holdout is selected.
 
 ## Completed tasks
 
@@ -180,6 +192,9 @@
   implementation hashes. The comparison records 0/5 Role B versus 2/5
   exact-native frozen-locator recall, zero false-positive eligible pages, no
   Role B rerun, no threshold/page tuning and no history or mapping use.
+- Committed and pushed those E-0022 artifacts plus their immutable integration
+  hash gate as `267bee8`; the complete suite was 288 passed with two intentional
+  historical skips.
 - Built reproducible bootstrap, GPU runtime, package/model hashes, source registry,
   dataset-role registry, backup/restore checks, and server rebuild documentation.
 - Restored and audited `financial_20_02_2022.gz` as a read-only MongoDB historical
@@ -397,15 +412,14 @@
 
 ## Currently in progress
 
-- E-0022 remains an `UNTOUCHED_HOLDOUT` for the frozen Role B pipeline. Its Role
-  B result and all 108 evidence files were sealed before Role A access. The
-  current post-seal work is limited to a one-shot statement-page diagnosis: it
-  cannot rerun Role B, change thresholds, select alternate pages, invoke mapping
-  or report the new reference classifier as holdout accuracy.
-- The diagnosis artifacts are complete and awaiting their final artifact/test/
-  report checkpoint commit. Their scope is deliberately limited to statement
-  page/type/scope, direct LCTT method and pixel-only page pairing; no row, value,
-  period, unit, ReportNormId, MongoDB or Excel claim is made.
+- E-0022 is complete and immutable at statement-page diagnosis scope. Its Role B
+  result and all 108 evidence files were sealed before Role A access; the two
+  post-seal diagnostic artifacts were then hash-locked and pushed at `267bee8`.
+  It cannot be rerun or used for threshold selection.
+- Locator/text-quality v2 is currently in logic-development/calibration. It
+  lives in new modules/configs so the v1 files bound by E-0013/E-0022 remain
+  byte-identical. Twenty-three focused v1/v2 tests pass, and the separate MBB/
+  VCB calibration replay currently has zero page/type/scope/method regressions.
 - Ordered SchemaGraph v1 and E-0023 are sealed. Work now returns to E-0022 under
   its frozen contract. The mapper remains intentionally excluded from the
   already-frozen E-0022 pipeline and will next be evaluated on separate real-PDF
@@ -428,8 +442,9 @@
   Separately, the native-text quality gate falsely marks all 33 pages corrupt
   because standalone legitimate Vietnamese letters `Â` and `Ã` are treated as
   mojibake markers. Actual replacement/encoded-byte sequences are absent. These
-  are general algorithm defects, but they cannot be repaired or remeasured on
-  E-0022 after reference access.
+  are general algorithm defects. V2 now addresses them in separate code and is
+  being validated only on synthetic mutations plus pre-existing calibration;
+  it cannot be remeasured on E-0022 after reference access.
 - A higher-resolution crop is not sufficient by itself. On MBB LCTT page 14,
   PaddleOCR-VL still concatenates rows and numeric cells at 450 DPI; its current
   HTML proposal has 18 rows and 14 invalid multi-number cells, while independent
@@ -470,11 +485,11 @@
 1. Treat the visible PDF and inherited table structure as source authority.
 2. Locate statement/table/page scope before row mapping; exclude off-balance
    sections before candidate generation.
-   On the next development version, normalize form-code families (`B02a` to
-   `B02`, etc.), match canonical title cores by Unicode-normalized containment
-   with discriminator/form/order guards, and distinguish legitimate Vietnamese
-   `Â`/`Ã` letters from actual mojibake sequences. Freeze those rules before a
-   new holdout.
+   V2 normalizes form-code families (`B02a` to `B02`, etc.), matches canonical
+   title cores by Unicode-normalized token-boundary containment while retaining
+   discriminator/table/order gates, and distinguishes legitimate Vietnamese
+   `Â`/`Ã` letters from real decoding/control fragments. Freeze and validate
+   those rules before a new holdout.
 3. Reconstruct logical rows across wrapped text and page continuations while
    retaining hard page-boundary provenance.
 4. Rank schema candidates lexicographically by statement/table context, parent,
@@ -514,13 +529,12 @@
 
 ## Planned next steps
 
-1. Commit and push the two E-0022 diagnosis artifacts, immutable integration
-   hash gate and final progress record. Preserve the 0/5 Role B versus 2/5
-   exact-native frozen-locator result as a before-diagnosis, not an after-result.
-2. Implement Unicode-aware native-text quality, form-family normalization and
-   guarded title-core containment on separate development/validation documents.
-   Freeze the revised locator before selecting a new bank/period-disjoint
-   holdout; E-0022 remains immutable and unresolved.
+1. Commit and push the separate locator/native-text v2 implementation and its
+   focused mutation/fail-closed tests without modifying v1 or E-0022.
+2. Capture E-0024 from the clean mechanism commit: hash-bind the real E-0013
+   MBB/VCB no-regression replay, three-document native-text quality audit and
+   synthetic suffix/title safety mutations. Then add an immutable integration
+   hash gate and update this report with the formal artifact SHA-256.
 3. Apply ordered SchemaGraph v1 next on separate development/validation blocks
    reconstructed from real PDFs; do not reuse E-0022 to tune its weights.
 4. Build a human-gold evaluation split separated by bank and reporting period,

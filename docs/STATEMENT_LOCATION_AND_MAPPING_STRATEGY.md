@@ -34,10 +34,39 @@ The final numeric pass must return to the registered source and render only the
 selected pages/regions at the controlled higher DPI. This is the coarse-to-fine
 policy; a low-DPI value is not automatically promoted to final evidence.
 
+Native PDF text quality v2 is Unicode-aware. It treats U+FFFD, unexpected
+control bytes and characteristic multi-codepoint UTF-8/legacy-decoding fragments
+as corruption evidence. Standalone Vietnamese letters `Â` and `Ã` are not
+corruption markers: they occur legitimately in `NGÂN`, `NHÂN`, `LÃI`, `HOÃN`
+and `MÃ`. Raw tokens and every detected fragment remain in the audit record.
+The implementation/config pair is `native_text_quality_v2.py` and
+`native-text-quality-v2.yaml`; it wraps the immutable v1 extractor without
+changing word boxes or source text.
+
 ## Stage 2 — ordered main-statement location
 
-The current implementation is `statement-locator-v1.yaml` plus
-`statement_locator.py`. It uses no bank or page-specific rule.
+The frozen v1 implementation is `statement-locator-v1.yaml` plus
+`statement_locator.py`. Locator v2 is implemented separately in
+`statement-locator-v2.yaml` and `statement_locator_v2.py` so historical v1
+artifacts remain byte-replayable. Neither version uses a bank or page-specific
+rule.
+
+V2 inherits every v1 threshold and accounting anchor by a required SHA-256. It
+changes only two header representations:
+
+- form codes are parsed as canonical B02/B03/B04/B05 families with an optional
+  single ASCII suffix before the required `TCTD` token, so `B02a/TCTD-HN`
+  remains the B02 family without enumerating banks or periods; and
+- a complete normalized title core on token boundaries receives exact
+  containment evidence instead of being penalized merely because valid suffix
+  text such as “hợp nhất giữa niên độ” makes the line longer.
+
+Containment is not sufficient by itself. Title-only main-statement pages retain
+the v1 discriminator, numeric-line-density, audit, contents, off-balance,
+ordered-block and runner-up gates. Malformed families (`B020`), conflicting form
+families, narrative mentions without table evidence and wrong statement order
+remain unresolved. The v2 locator detects PDF cash-flow method evidence only;
+the mapper applies Q-BOOT-001 separately using workbook display order.
 
 ### Page emissions
 

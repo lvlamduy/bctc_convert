@@ -1,0 +1,16 @@
+version: 2
+policy: UNICODE_AWARE_VIETNAMESE_NATIVE_TEXT_QUALITY
+
+replacement_character: "�"
+maximum_replacement_ratio: 0.001
+
+# These are byte-decoding artifacts, not ordinary Vietnamese letters.
+always_suspicious_leads: ["Ä", "Æ"]
+contextual_leads: ["Ã", "Â"]
+contextual_safe_follow: ASCII_CHARACTER_OR_BOUNDARY
+double_encoded_prefixes: ["á»", "áº"]
+
+# Â and Ã are valid Vietnamese letters inside words such as NGÂN, NHÂN, LÃI
+# and HOÃN. Their presence alone must never mark a page corrupt.
+legitimate_vietnamese_letters: ["Â", "Ã"]
+reject_unexpected_control_characters: true

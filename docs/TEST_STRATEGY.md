@@ -203,3 +203,13 @@ template test asserts the graph retains 77 workbook-ordered nodes, the
 `4337 → 4373 → 4338` non-numeric sequence, and the three distinct fixed-asset
 parents. A skipped schema node becomes `NOT_OBSERVED` only in a resolved block
 declared exhaustive; otherwise it remains unmatched-in-block evidence.
+
+Statement-header/text-quality v2 has a separate regression family. Mutation
+tests cover optional form suffixes, long valid title suffixes, a damaged title
+rescued only by an independent form family, off-balance scope, direct LCTT,
+conflicting and malformed form codes, wrong statement order, and an exact title
+inside narrative text without numeric table evidence. Unicode tests must retain
+real mojibake/control-byte/replacement markers while accepting legitimate
+Vietnamese `Â`/`Ã` tokens including word-final punctuation. Real calibration
+replay must reproduce the E-0013 MBB/VCB page/type/scope/method contracts exactly
+before the v2 mechanism can be frozen; E-0022 is excluded from tuning and replay.
