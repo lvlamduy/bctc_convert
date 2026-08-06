@@ -431,10 +431,31 @@ def main() -> int:
                 for row in parsed_c.rows
                 for evidence in row.visual_cell_evidence
             )
-            totals["role_b_invalid_cells"] += comparison["counts"]["role_b_invalid_cells"]
-            totals["role_c_invalid_cells"] += comparison["counts"]["role_c_invalid_cells"]
-            totals["paired_cells"] += comparison["counts"]["paired_cells"]
-            totals["exact_paired_cells"] += comparison["counts"]["exact_paired_cells"]
+            for name in (
+                "paired_alignment_units",
+                "paired_financial_alignment_units",
+                "exact_paired_financial_alignment_units",
+                "source_exact_labels",
+                "semantic_key_exact_labels",
+                "role_b_financial_rows",
+                "role_c_financial_rows",
+                "covered_role_b_financial_rows",
+                "covered_role_c_financial_rows",
+                "paired_cells",
+                "exact_paired_cells",
+                "paired_observed_cells",
+                "exact_paired_observed_cells",
+                "note_comparison_units",
+                "exact_note_units",
+                "row_code_comparison_units",
+                "exact_row_code_units",
+                "exact_cell_width_units",
+                "role_b_invalid_cells",
+                "role_c_invalid_cells",
+                "mapping_eligible_alignment_units",
+                "mapping_excluded_alignment_units",
+            ):
+                totals[name] += comparison["counts"][name]
             if not contract["mapping_eligible"]:
                 off_balance_eligible += comparison["counts"]["mapping_eligible_alignment_units"]
             page_results.append(
@@ -558,6 +579,35 @@ def main() -> int:
         Path("src/bctc_ai/validation/reader_agreement.py"),
         Path("src/bctc_ai/mapping/scope.py"),
     ]
+
+    def rate(numerator: str, denominator: str) -> float | None:
+        return round(totals[numerator] / totals[denominator], 8) if totals[denominator] else None
+
+    metrics = {
+        **dict(sorted(totals.items())),
+        "alignment_actions": dict(sorted(total_actions.items())),
+        "escalations": dict(sorted(total_escalations.items())),
+        "off_balance_mapping_eligible_alignment_units": off_balance_eligible,
+        "paired_observed_cell_exact_agreement_rate": rate(
+            "exact_paired_observed_cells", "paired_observed_cells"
+        ),
+        "paired_financial_unit_exact_agreement_rate": rate(
+            "exact_paired_financial_alignment_units",
+            "paired_financial_alignment_units",
+        ),
+        "role_b_financial_row_structural_coverage_rate": rate(
+            "covered_role_b_financial_rows", "role_b_financial_rows"
+        ),
+        "role_c_financial_row_structural_coverage_rate": rate(
+            "covered_role_c_financial_rows", "role_c_financial_rows"
+        ),
+        "paired_source_exact_label_rate": rate("source_exact_labels", "paired_alignment_units"),
+        "paired_semantic_key_exact_label_rate": rate(
+            "semantic_key_exact_labels", "paired_alignment_units"
+        ),
+        "paired_note_exact_rate": rate("exact_note_units", "note_comparison_units"),
+        "paired_row_code_exact_rate": rate("exact_row_code_units", "row_code_comparison_units"),
+    }
     payload = {
         "format_version": 1,
         "experiment_id": "E-0015",
@@ -600,12 +650,7 @@ def main() -> int:
             "reader_agreement_is_truth": False,
             "automatic_confidence_effect": "NONE",
         },
-        "metrics": {
-            **dict(sorted(totals.items())),
-            "alignment_actions": dict(sorted(total_actions.items())),
-            "escalations": dict(sorted(total_escalations.items())),
-            "off_balance_mapping_eligible_alignment_units": off_balance_eligible,
-        },
+        "metrics": metrics,
         "acceptance": {
             "configured": acceptance,
             "observed": observed,

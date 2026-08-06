@@ -56,7 +56,10 @@ def test_structural_fusion_alignment_is_unchanged_by_numeric_disagreement(projec
     assert [record["action"] for record in second["alignment"]] == ["MATCH", "MATCH"]
     assert first["policy"]["values_or_notes_affect_alignment"] is False
     assert first["counts"]["exact_paired_cells"] == 4
+    assert first["counts"]["exact_paired_observed_cells"] == 4
+    assert first["counts"]["exact_row_code_units"] == 2
     assert second["counts"]["exact_paired_cells"] == 3
+    assert second["counts"]["exact_paired_financial_alignment_units"] == 1
     assert second["alignment"][0]["escalation"] == "TARGETED_NUMERIC_DISAGREEMENT_REREAD"
 
 

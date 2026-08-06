@@ -204,6 +204,33 @@ def compare_structural_readers_v2(
 
     paired = [record for record in records if record["role_b"] and record["role_c"]]
     paired_cells = [cell for record in paired for cell in record["cells"]]
+    observed_paired_cells = [
+        cell
+        for cell in paired_cells
+        if cell["role_b_observation"] != ObservationKind.BLANK.value
+        or cell["role_c_observation"] != ObservationKind.BLANK.value
+    ]
+    financial_paired_units = [
+        record
+        for record in paired
+        if any(
+            cell["role_b_observation"] != ObservationKind.BLANK.value
+            or cell["role_c_observation"] != ObservationKind.BLANK.value
+            for cell in record["cells"]
+        )
+    ]
+    note_units = [
+        record
+        for record in paired
+        if record["role_b"]["note_reference"] is not None
+        or record["role_c"]["note_reference"] is not None
+    ]
+    row_code_units = [
+        record
+        for record in paired
+        if any(code is not None for code in record["role_b_row_codes"])
+        or any(code is not None for code in record["role_c_row_codes"])
+    ]
     b_financial = {index for index, item in enumerate(role_b_rows) if _financial(item.row)}
     c_financial = {index for index, item in enumerate(role_c_rows) if _financial(item.row)}
     return {
@@ -222,6 +249,11 @@ def compare_structural_readers_v2(
                 sorted(Counter(record["action"] for record in records).items())
             ),
             "paired_alignment_units": len(paired),
+            "paired_financial_alignment_units": len(financial_paired_units),
+            "exact_paired_financial_alignment_units": sum(
+                record["cell_width_exact"] and all(cell["exact"] for cell in record["cells"])
+                for record in financial_paired_units
+            ),
             "source_exact_labels": sum(record["label_exact"] is True for record in paired),
             "semantic_key_exact_labels": sum(
                 record["semantic_key_exact"] is True for record in paired
@@ -232,6 +264,16 @@ def compare_structural_readers_v2(
             "covered_role_c_financial_rows": len(covered_c & c_financial),
             "paired_cells": len(paired_cells),
             "exact_paired_cells": sum(cell["exact"] for cell in paired_cells),
+            "paired_observed_cells": len(observed_paired_cells),
+            "exact_paired_observed_cells": sum(cell["exact"] for cell in observed_paired_cells),
+            "note_comparison_units": len(note_units),
+            "exact_note_units": sum(record["note_exact"] is True for record in note_units),
+            "row_code_comparison_units": len(row_code_units),
+            "exact_row_code_units": sum(
+                record["role_b_row_codes"] == record["role_c_row_codes"]
+                for record in row_code_units
+            ),
+            "exact_cell_width_units": sum(record["cell_width_exact"] for record in paired),
             "role_b_invalid_cells": sum(
                 cell.observation is ObservationKind.INVALID
                 for item in role_b_rows
