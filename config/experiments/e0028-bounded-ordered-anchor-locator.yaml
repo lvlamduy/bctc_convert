@@ -1,0 +1,75 @@
+version: 1
+experiment_id: E-0028
+dataset_role: CALIBRATION
+design: FROZEN_BEFORE_AFTER_BOUNDED_ORDERED_ANCHOR_LOCATOR
+selection_policy: >-
+  Reuse the exact reference-blind E-0027 OCR prefix whose immutable V3 result
+  failed only because the notes boundary had one accounting anchor. Evaluate
+  one precommitted matcher change; do not rerun OCR and do not access human
+  review, historical values or E-0022.
+
+source:
+  path: vietstock_bctc/MBB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf
+  sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+  size_bytes: 3977471
+  input_pages: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+frozen_inputs:
+  e0027_v3_baseline:
+    path: docs/experiments/E-0027-mbb-q1-2026-role-b-discovery-v3.json
+    sha256: 9ccfd0faf869adee4cb885a4a87a32c86354101e82adc1d62c32e4ce7e9089c8
+  e0027_ocr_batch:
+    path: output/calibration/e0027-mbb-q1-2026-end-to-end-role-c/batch_manifest.json
+    sha256: 0d94762ba4a0d383793fe93a56e48fa7b79d6a3f7faaf62e9dcf40935b8c2889
+  e0013_no_regression:
+    path: docs/experiments/E-0013-mbb-vcb-statement-location.json
+    sha256: b49fed32210d3d69994e440398048deabe33f92d5f6b7ce527096098405907b5
+
+candidate:
+  git_commit: 7250d022dbfd8ddc020c1028fb17de1017b015d0
+  base_config:
+    path: config/document_phase/statement-discovery-v3.yaml
+    sha256: f8188fdf53b8f3907ab89d5407bcea178fe927dfe02ccad291a79d1b5f1ba182
+  config:
+    path: config/document_phase/statement-discovery-v4.yaml
+    sha256: 5562b775b7c25ebf6591bc4dda0e213ae75d96b97ba7738c8a0fd5f87d61976b
+  algorithm:
+    path: src/bctc_ai/document_phase/multisignal_statement_discovery_v4.py
+    sha256: 44c69c4110f51cc7c956bff29ebba1f98c8d05d32df97015329a0f25f0e9eb52
+  only_change: ACCOUNTING_ROW_ANCHOR_SCORER_ONLY
+
+forbidden_inputs:
+  - human_review_pages_labels_ids_values_or_period_answers
+  - mongodb_or_historical_values
+  - report_norm_id_numeric_order
+  - filename_or_bank_specific_page_rules
+  - E-0022_source_artifacts_output_or_diagnosis
+
+expected_structure_from_reference_blind_v3_signals:
+  mapping_eligible_pages_by_statement_type:
+    CDKT: [3, 4]
+    KQKD: [6]
+    LCTT: [7, 8]
+  off_balance_excluded_pages: [5]
+  notes_boundary_page: 9
+  added_page_9_tm_anchor: thành lập và hoạt động
+  page_9_tm_minimum_anchor_count: 2
+
+acceptance_policy:
+  v3_baseline_replay_must_equal_sealed_result: true
+  v4_status: ACCEPTED_MULTI_SIGNAL_STATEMENT_BLOCK
+  preserve_v3_local_main_and_off_balance_acceptances: true
+  expected_structure_must_match_exactly: true
+  document_runner_up_margin_at_least: 1.25
+  e0013_mbb_vcb_structural_no_regression: true
+  one_phrase_never_classifies_a_page: true
+  token_order_must_be_contiguous_and_preserved: true
+  long_narrative_and_short_anchor_window_paths_disabled: true
+  human_gold_or_production_accuracy_claim: false
+
+claim_boundary: >-
+  E-0028 is a bounded locator calibration on existing PP-OCRv6 evidence plus
+  frozen cross-document no-regression replays. It does not evaluate table
+  reconstruction, numeric extraction, schema mapping, Excel accuracy or an
+  untouched holdout, and it cannot establish a production threshold.
+
