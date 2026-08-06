@@ -1,15 +1,15 @@
 # Progress report
 
-- Updated: 2026-08-06T11:52:32+00:00
+- Updated: 2026-08-06T12:12:03+00:00
 - Branch: `codex/rebuild-bootstrap`
 - Latest clean, tested, pushed checkpoint: `2577b15`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
 - Registered PDFs: 2,567
-- Latest full regression including multi-signal discovery v3 and the frozen
-  VietOCR reader/gates: 328 passed, 2 intentionally skipped historical replays
-  in 100.90 seconds; Ruff and
+- Latest full regression including multi-signal discovery v3, fixed-grid
+  semantic fusion and both bounded reader contracts: 357 passed, 2 intentionally
+  skipped historical/external replays in 99.17 seconds; Ruff and
   `git diff --check` passed
 
 ## Accuracy focus and measurable state
@@ -178,12 +178,21 @@
   overlaps correct lines, so raw output cannot be auto-promoted from probability.
   The artifact SHA-256 is
   `18b896f7174992dd16a4372a5c24ec46df967e763223b9c85b25919ca5e89289`.
-- Next bounded action: add a source-box-preserving semantic-line adapter that
-  routes only headings/labels to VietOCR and feeds its raw proposal into
-  statement discovery/mapping while PP-OCRv6 retains geometry and all numeric
-  evidence. Re-run unchanged E-0013 calibration plus safety mutations; never
-  auto-correct the seven residual accent/case differences and do not touch
-  E-0022.
+- The reader decision is now explicit: PP-OCRv6 detection is source-space
+  geometry authority; DeepSeek-OCR-2 is the primary Vietnamese recognizer on
+  bounded title/line/logical-row crops; numeric/sign/dash cells follow an
+  independent verification path. VietOCR remains a frozen-crop benchmark
+  challenger only, not a planned production component. `PP-OCRv6-VI-BCTC`
+  fine-tuning is deferred behind an end-to-end material-error gate.
+- A model-neutral fixed-grid semantic adapter and a reference-blind batched
+  DeepSeek line runner are implemented pre-inference. The adapter accepts at
+  most four exact PP source lines, derives only their union box, preserves raw
+  text/crop/reader output, rejects numeric/period/unit/sign fields, accepts only
+  source-verified form-code families, rejects truncation/layout serialization,
+  and ignores reader probability for promotion. Its 14 tests plus 14 DeepSeek
+  request/parser/config tests pass. The next bounded action is a clean commit,
+  one offline DeepSeek pass on the unchanged 37 E-0024 crops, then downstream
+  locator impact; E-0022 remains untouched.
 
 ## Completed tasks
 
@@ -475,17 +484,17 @@
   narrative penalties, and verified one-page neighbor inference. A form code or
   a single occurrence of a statement/notes title can create a candidate only;
   it cannot make a page mapping-eligible by itself.
-- Multi-signal discovery v3 now passes its focused mutation suite and the real
-  E-0013 two-document replay and is pushed at `fe02da8`. E-0024 now has a
-  pre-inference, source-visible 37-line crop registry whose source and PP-OCR
-  anchors pass exact validation. The active task is its clean-commit build and
-  bounded VietOCR inference; no model output receives numeric, geometry or
-  mapping authority.
-- E-0024 passes its bounded semantic-reader gate. The runtime read only crop
-  ID/category/path/hash, blocked socket/DNS access and never loaded source
-  transcription or PP-OCR baseline. Integration is now in progress at the
-  adapter/evidence-contract level; no output has numeric, geometry, mapping or
-  automatic truth authority.
+- Multi-signal discovery v3 passes its focused mutation suite and the real
+  E-0013 two-document replay and is pushed at `fe02da8`. E-0024 has a frozen,
+  source-visible 37-line crop registry and a completed VietOCR challenger
+  baseline. The active task is the clean-commit DeepSeek bounded-crop mechanism
+  and fixed-grid adapter, followed by one reference-blind DeepSeek run on the
+  same crops; no model output receives numeric, geometry or mapping authority.
+- E-0024 proves VietOCR is a useful challenger on the fixed crops, but the
+  production decision now prioritizes DeepSeek-OCR-2 on bounded semantic
+  regions. A reusable adapter/runner contract is in progress so the comparison
+  and downstream locator use identical PP source boxes; VietOCR is not being
+  silently inserted into production.
 - Ordered SchemaGraph v1 and E-0023 are sealed. The mapper remains intentionally
   excluded from the
   already-frozen E-0022 pipeline and will next be evaluated on separate real-PDF
@@ -623,19 +632,22 @@
 
 ## Planned next steps
 
-1. Commit and push the E-0024 result, replay record, measured runtime and
-   residual error analysis.
-2. Implement the semantic-line adapter with immutable PP-OCR source boxes,
-   raw-reader disagreement, numeric/period/unit/sign field exclusion and
-   truncation/ambiguity abstention.
-3. Feed the adapter into multi-signal discovery v3 on unchanged E-0013
-   calibration and focused lone-title/continuation/off-balance mutations. It may
-   improve heading/label evidence only; PP-OCRv6 remains geometry/numeric
-   authority and E-0022 is neither rerun nor retuned.
-4. Seal the combined statement-discovery plus independent-reader mechanism and
-   add an immutable integration gate before selecting a new holdout.
-5. Apply ordered SchemaGraph v1 next on separate development/validation blocks
-   reconstructed from real PDFs; do not reuse E-0022 to tune its weights.
+1. Commit and push the generic source-box semantic adapter plus the
+   reference-blind batched DeepSeek line-reader mechanism before inference.
+2. Run pinned DeepSeek-OCR-2 once, offline, on the unchanged 37 E-0024 crops;
+   compare PP-OCRv6, DeepSeek and the optional VietOCR challenger for CER,
+   diacritic/base errors, exact labels/titles, structural rejection, time and
+   VRAM. Do not promote a reader from character metrics alone.
+3. Feed safe DeepSeek proposals into multi-signal discovery v3 on unchanged
+   E-0013 calibration and focused lone-title/continuation/off-balance mutations.
+   PP-OCRv6 remains geometry authority; the separate numeric path remains value/
+   sign/dash authority; E-0022 is neither rerun nor retuned.
+4. Carry the same fixed-grid evidence through canonical logical rows, ordered
+   SchemaGraph mapping, validation and a provenance-bearing Excel development
+   output. Measure page, row, full-tuple and workbook impact before freezing.
+5. Seal the combined mechanism before selecting a new untouched holdout.
+   VietOCR stays challenger-only; domain fine-tuning stays deferred unless the
+   frozen downstream evaluation proves a material recognition blocker.
 6. Build a human-gold evaluation split separated by bank and reporting period,
    including skew, warp, dark headers, blurred digits, wrapped rows, continuation
    pages, direct/indirect LCTT, separate/consolidated scope, and quarterly/YTD

@@ -1,0 +1,35 @@
+version = 1
+status = "CALIBRATION_ONLY_REFERENCE_BLIND_BOUNDED_SEMANTIC_READER"
+reader = "DEEPSEEK_OCR_2"
+geometry_authority = "PP_OCRV6_WORD_BOXES"
+evidence_role = "VIETNAMESE_TITLE_LABEL_READING_ORDER_PROPOSAL_ONLY"
+
+[base_model]
+config_path = "config/models/deepseek-ocr2-v1.toml"
+config_sha256 = "5b3bc57a2f8c56d0a3ee133f0649cb177105b731b96376fa869e8971c1bd924d"
+
+[inference]
+prompt = "<image>\nFree OCR."
+base_size = 1024
+image_size = 768
+crop_mode = false
+attention_implementation = "eager"
+network_permitted = false
+reference_text_available_to_decoder = false
+target_policy = "FROZEN_PP_OCRV6_LINE_TITLE_OR_LOGICAL_ROW_CROPS_ONLY"
+maximum_nonempty_output_lines = 4
+
+[safety]
+geometry_authority = false
+numeric_value_authority = false
+period_authority = false
+unit_authority = false
+sign_authority = false
+scope_authority = false
+statement_type_authority = false
+report_norm_id_authority = false
+schema_mapping_authority = false
+automatic_truth_promotion = false
+reader_probability_acceptance = false
+history_access = false
+arithmetic_repair = false

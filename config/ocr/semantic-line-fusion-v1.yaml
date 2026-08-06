@@ -1,0 +1,45 @@
+version: 1
+policy: SOURCE_BOX_PRESERVING_MULTI_READER_SEMANTIC_FUSION_V1
+geometry_authority: PP_OCRV6_WORD_BOXES
+semantic_authority: TITLE_LABEL_READING_ORDER_PROPOSAL_ONLY
+
+allowed_field_roles:
+  - TITLE
+  - LABEL
+  - SECTION
+  - METHOD
+  - FORM_CODE
+  - SCOPE_WORDING
+  - READING_ORDER_LABEL_GROUP
+
+source_binding:
+  exact_source_text: true
+  exact_source_bbox: true
+  require_monotone_unique_line_indices: true
+  maximum_source_lines_per_proposal: 4
+  union_bbox_must_be_derived_from_source_boxes: true
+
+proposal_safety:
+  maximum_nonempty_output_lines: 4
+  minimum_missing_suffix_characters: 2
+  minimum_missing_suffix_fraction: 0.10
+  reject_markdown_or_layout_serialization: true
+  reject_numeric_fields: true
+  reject_period_fields: true
+  reject_unit_fields: true
+  reject_sign_only_fields: true
+  form_code_family_must_match_source: true
+  reader_probability_is_not_an_acceptance_gate: true
+
+forbidden_authority:
+  geometry: false
+  numeric_value: false
+  period: false
+  unit: false
+  sign: false
+  scope: false
+  statement_type: false
+  report_norm_id: false
+  schema_mapping: false
+  automatic_truth: false
+  confidence_promotion: false

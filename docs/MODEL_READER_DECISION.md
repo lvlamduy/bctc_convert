@@ -2,19 +2,23 @@
 
 ## Outcome
 
-The pipeline will use a complementary-reader architecture rather than select a
-single model as universal OCR truth:
+The pipeline uses specialized readers rather than one universal OCR truth:
 
-1. Implement Microsoft TATR v1.1 All now as a non-generative row/column/cell
-   structure proposal reader.
-2. Benchmark DeepSeek-OCR-2 next as an independent semantic, Vietnamese-text,
-   table-serialization, and reading-order proposal reader in an isolated
-   runtime.
-3. Keep IBM TableFormer Accurate as the maintained structure challenger once
-   the TATR baseline is frozen.
-4. Do not make ClusterTabNet a production dependency. Reuse its word-relation
-   idea in the planned custom row/cell graph model and retain its released
-   checkpoint only as a research baseline.
+1. PP-OCRv6 detection is the source-space authority for polygons, words, lines,
+   logical-row grouping inputs and numeric-cell locations. Its Vietnamese text
+   prediction is retained as raw evidence, not the preferred semantic reading.
+2. DeepSeek-OCR-2 is the primary Vietnamese semantic recognizer on bounded
+   title, line and logical-row crops. Its text and reading order are attached
+   only to unions of immutable PP-OCRv6 source boxes.
+3. A separate numeric path verifies values, final digits, parentheses, minus
+   signs and visible dashes. Semantic-reader text cannot alter those cells.
+4. VietOCR remains an optional frozen-crop challenger. It is not a planned
+   production component unless a bank- and period-separated comparison proves
+   that it improves downstream title/accounting-label accuracy over DeepSeek.
+5. TATR/TableFormer and relation-graph methods remain structure proposals when
+   PP geometry is insufficient. `PP-OCRv6-VI-BCTC` fine-tuning is a gated future
+   fallback only after validated end-to-end evidence shows semantic recognition
+   remains material; no large dataset/training effort is currently authorized.
 
 No model in this decision can assign a `ReportNormId`, determine template order,
 bind a period without visible/inherited table headers, replace a numeric value,
@@ -80,7 +84,7 @@ is not the first production dependency.
 | Candidate | Code/model revision inspected | Weight identity | License | Installation state |
 |---|---|---|---|---|
 | TATR v1.1 All | HF `7587a7ef111d9dcbf8ac695f1376ab7014340a0c`; Microsoft code `16d124f616109746b7785f03085100f1f6247575` | 115,437,156 bytes; SHA-256 `9df416…6a501` | MIT | selected for immediate calibration |
-| DeepSeek-OCR-2 | HF `aaa02f3811945a91062062994c5c4a3f4c0af2b0`; code `2f3699ebbb96fa8af32212e8c170f2cc28730fad` | 6,778,573,880 bytes; SHA-256 `d8ff67…70fa` | Apache-2.0 | not installed; isolated benchmark next |
+| DeepSeek-OCR-2 | HF `aaa02f3811945a91062062994c5c4a3f4c0af2b0`; code `2f3699ebbb96fa8af32212e8c170f2cc28730fad` | 6,778,573,880 bytes; SHA-256 `d8ff67…70fa` | Apache-2.0 | hash-verified ephemeral runtime; bounded line-reader gate in progress |
 | IBM TableFormer Accurate | code `5787142002b4063efe30f172dd91fbc7a94b43a6`; HF bundle `2199320848bb9a8a519d22e4b528185a4f9a6f64` | 212,758,388 bytes; SHA-256 `2a7d6c…74d9` | MIT | not installed; challenger |
 | ClusterTabNet | archived code `e1051c05cd337ad1ac82aabbb0530c784ea21cb0` | released `table_recognition.pth`, 30,292,814 bytes | Apache-2.0 | not installed; deferred |
 
@@ -101,19 +105,23 @@ Primary sources:
 ## Fusion contract
 
 ```text
-source PDF crop
-  ├─ PP-OCRv6 word boxes and source-visible punctuation
-  ├─ TATR row/column/header/spanning-cell boxes
-  └─ DeepSeek-OCR-2 semantic text/table proposal (later benchmark)
-          ↓
-canonical logical-row graph
-  - geometry assigns word ownership to candidate cells
-  - labels/order align rows; values never choose the alignment
-  - inherited table headers bind periods on continuation crops
-  - disagreement/missing evidence remains explicit
-          ↓
-hierarchy-first schema mapping in workbook display order
+source PDF page
+  → PP-OCRv6 polygons/word/line boxes
+  → geometry-only title/line/logical-row/numeric-cell grouping
+  → bounded source crops with padding
+  → DeepSeek-OCR-2 Vietnamese semantic proposals
+  → attach proposals to immutable PP box/box-union identities
+  → independent numeric/sign/dash verification on numeric cells
+  → multi-signal statement discovery and continuation graph
+  → canonical logical rows and ordered SchemaGraph mapping
+  → accounting/period/unit/sign validation
+  → provenance-bearing Excel output
 ```
+
+VietOCR is evaluated only on the same frozen semantic crops. It is not fused
+into production merely because it beats the PP-OCRv6 text baseline. DeepSeek or
+any challenger must improve downstream page/row/schema behavior while all raw
+reader disagreements remain available for review.
 
 The first clean TATR attempt stopped before inference because the official
 checkpoint serializes an obsolete top-level `dilation` field as `null`, while
