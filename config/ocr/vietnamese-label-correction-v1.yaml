@@ -1,0 +1,49 @@
+version: 1
+algorithm: STATEMENT_SCOPED_VIETNAMESE_LABEL_CORRECTION_PROPOSAL_V1
+
+vocabulary:
+  source: APPEND_ONLY_REPORT_TEMPLATE_NAMES
+  maximum_phrase_tokens: 4
+  require_same_statement_type: true
+  require_cross_row_document_support_for_phrases: true
+  minimum_document_support: 3
+  minimum_document_support_ratio: 2.0
+  protected_function_keys:
+    - và
+    - vào
+    - về
+    - từ
+    - cho
+    - của
+    - các
+    - những
+    - trong
+    - theo
+    - bằng
+    - được
+    - đã
+    - tại
+    - đến
+    - khi
+    - hoặc
+
+candidate_gates:
+  maximum_damerau_distance: 1
+  minimum_full_label_similarity: 0.96
+  minimum_full_label_runner_up_margin: 0.08
+  minimum_phrase_similarity: 0.88
+  minimum_acronym_similarity: 0.72
+  minimum_phrase_runner_up_margin: 0.05
+  minimum_acronym_characters: 3
+  maximum_replacements_per_label: 3
+
+safety:
+  raw_label_may_change: false
+  row_order_may_change: false
+  row_count_may_change: false
+  numeric_cells_may_change: false
+  note_reference_may_change: false
+  automatic_schema_mapping: false
+  automatic_period_assignment: false
+  automatic_scope_assignment: false
+  automatic_confidence_promotion: false

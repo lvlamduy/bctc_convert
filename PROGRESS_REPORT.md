@@ -1,13 +1,13 @@
 # Progress report
 
-- Updated: 2026-08-06T08:08:00+00:00
+- Updated: 2026-08-06T08:20:00+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `5660f3e`; E-0019 clean evaluation base: `1a23b7b437e7d95a652c69e8748a037ad6d2224a`
+- Latest clean, tested, pushed checkpoint: `0a6a28d`; E-0019 clean evaluation base: `1a23b7b437e7d95a652c69e8748a037ad6d2224a`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
 - Registered PDFs: 2,567
-- Latest full regression: 252 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
+- Latest full regression: 259 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
 
 ## Accuracy focus and measurable state
 
@@ -62,8 +62,20 @@
   Vietnamese OCR substitutions, not table or numeric errors. E-0020 is bound to
   the unchanged E-0010/E-0011 Role A/B/C seals and was evaluated from clean
   commit `21d39cc5fbcb0d0411e08d8d61cd0b8df5aecaf3`.
-- Next bounded action: implement and measure a constrained Vietnamese
-  label-correction proposal on only those four retained substitutions.
+- New bounded Vietnamese correction replay: a statement-scoped, proposal-only
+  layer uses append-only template vocabulary, Damerau edit distance, decisive
+  full-label margins, repeated evidence from other document rows, candidate
+  support dominance, protected Vietnamese function words and immutable row
+  order. It proposes changes for exactly the four E-0020 semantic-key residuals
+  and no other row. All four proposals agree with Role A, raising semantic-key
+  label agreement from 136/140 to 140/140 and case-insensitive source-exact
+  label agreement from 104/140 to 108/140. Raw labels remain separately retained;
+  the layer contains no numeric/note fields and has no output, mapping, period,
+  scope or confidence authority. This is still a calibration replay, not
+  human-gold or holdout evidence.
+- Next bounded action: seal the replay as E-0021, then evaluate the same frozen
+  thresholds on a bank- and period-disjoint Role A/Role B document before any
+  confidence promotion.
 
 ## Completed tasks
 
@@ -260,14 +272,24 @@
   A final live check confirms bucket versioning `Enabled`, AES-256 default
   encryption, all public-access blocks enabled, and versioned encrypted manifest
   and run-record objects. Object Lock remains disabled.
+- Completed the guarded local offload only after those gates passed. The command
+  re-verified all 2,568 selected remote objects, fsynced journal SHA-256
+  `8a41318512d58ce8842c318852f573980b00be953c07809259ed9b70e9d9b813`,
+  then removed 2,567 registered PDFs plus the MongoDB source dump totaling
+  18,287,522,139 bytes. Offload record SHA-256
+  `2c285d831129b577e8dbba3490167c4b36011b73580682aaae17cda93078a913`
+  was uploaded as a versioned AES-256 object and downloaded back hash-exact.
+  A source PDF was also restored after offload and matched its expected SHA-256;
+  all 2,568 selected logical paths are now absent locally and recoverable through
+  the immutable manifest. Free disk increased from 4.6 GiB to 22 GiB (46% used).
 
 ## Currently in progress
 
 - Designing the constrained Vietnamese correction layer for the four E-0020
-  residual labels, with original text retained and automatic abstention required.
-- Preparing the verified local offload of only `source_pdf` and `mongodb_dump`
-  assets. No local source has yet been removed; the immutable manifest, remote
-  object catalog and real restore prerequisites now all pass.
+  residual labels is complete at feature/replay level; formal E-0021 artifact
+  sealing and an independent-bank holdout remain in progress.
+- Raw-PDF-dependent experiments now hydrate only their bounded registered inputs
+  from the immutable S3 manifest and must not overwrite a mismatched local file.
 
 ## Major challenges and obstacles
 
@@ -296,8 +318,8 @@
   numeric/sign agreement must be tested against E-0010 and bank/period-disjoint
   holdouts. DeepSeek's table bounding box is model-normalized proposal geometry,
   not source-pixel authority; independent word boxes are still required.
-- The S3 backup/restore obstacle is resolved. After local source offload, tests
-  that require raw PDFs must explicitly hydrate the required logical paths;
+- The S3 backup/restore obstacle is resolved. Because local source offload is
+  complete, tests that require raw PDFs must explicitly hydrate required paths;
   control-plane checks must never claim local source-byte verification while
   those files are absent.
 
@@ -338,22 +360,17 @@
 
 ## Planned next steps
 
-1. Build the next bounded Vietnamese correction layer for the four retained
-   substitutions using statement-local vocabulary and high-margin candidates;
-   never overwrite source labels or let schema similarity bypass hierarchy.
-2. Execute the already-verified offload plan for the 2,567 registered PDFs and
-   Mongo dump to reclaim about 18.3 GB. Preserve the fsynced local journal and
-   remote offload record; do not delete generated output, runtimes or tools.
-3. Record the exact offload record, removed count/bytes and post-offload free
-   space here; hydrate only the bounded PDFs needed by the next accuracy run.
-4. Expand Role A next to a different bank and period after E-0017, using the
+1. Seal E-0021 for the four retained substitutions, preserving raw labels and
+   recording every candidate source, edit distance, support count, dominance
+   ratio and runner-up margin; do not let correction imply schema mapping.
+2. Expand Role A next to a different bank and period after E-0017, using the
    same pre-inspection role freeze and common metrics rather than a new one-off
    experiment script.
-5. Build a human-gold evaluation split separated by bank and reporting period,
+3. Build a human-gold evaluation split separated by bank and reporting period,
    including skew, warp, dark headers, blurred digits, wrapped rows, continuation
    pages, direct/indirect LCTT, separate/consolidated scope, and quarterly/YTD
    derivation cases.
-6. Define calibrated abstention thresholds only after the human-gold benchmark;
+4. Define calibrated abstention thresholds only after the human-gold benchmark;
    unresolved evidence must continue to produce review statuses rather than
    guessed output.
 
