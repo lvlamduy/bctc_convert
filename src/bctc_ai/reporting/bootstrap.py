@@ -346,9 +346,10 @@ def _load_geometry_recovery_summary(project_root: Path) -> dict[str, object]:
     ):
         errors.append("E-0011 automatic high-confidence gate drift")
     off_balance = artifact.get("off_balance_gate")
-    if not isinstance(off_balance, dict) or off_balance.get(
-        "eligible_rows_on_off_balance_pages"
-    ) != 0:
+    if (
+        not isinstance(off_balance, dict)
+        or off_balance.get("eligible_rows_on_off_balance_pages") != 0
+    ):
         errors.append("E-0011 off-balance exclusion gate drift")
     arithmetic = artifact.get("arithmetic_validation")
     if (
@@ -359,9 +360,10 @@ def _load_geometry_recovery_summary(project_root: Path) -> dict[str, object]:
     ):
         errors.append("E-0011 arithmetic safety gate drift")
     cash_flow = artifact.get("cash_flow")
-    if not isinstance(cash_flow, dict) or cash_flow.get(
-        "schema_branch_assignment_permitted"
-    ) is not False:
+    if (
+        not isinstance(cash_flow, dict)
+        or cash_flow.get("schema_branch_assignment_permitted") is not False
+    ):
         errors.append("E-0011 cash-flow fail-closed gate drift")
     continuation = artifact.get("continuation")
     if (
@@ -410,9 +412,7 @@ def _load_geometry_recovery_summary(project_root: Path) -> dict[str, object]:
         "cash_flow": cash_flow,
         "arithmetic_validation": arithmetic,
         "recovery_evidence": recovery,
-        "continuation_accepted": all(
-            bool(record.get("accepted")) for record in continuation
-        ),
+        "continuation_accepted": all(bool(record.get("accepted")) for record in continuation),
         "historical_weak_reference": historical,
         "report_norm_id": report_norm,
         "local_seals": local_seals,
@@ -547,7 +547,12 @@ def _load_batch_mechanism_summary(project_root: Path) -> dict[str, object]:
         ("source", artifact.get("source")),
         ("input_manifest", artifact.get("input_manifest")),
         ("upstream_role_b_seal", artifact.get("upstream_role_b_seal")),
-        ("render", artifact.get("source", {}).get("render") if isinstance(artifact.get("source"), dict) else None),
+        (
+            "render",
+            artifact.get("source", {}).get("render")
+            if isinstance(artifact.get("source"), dict)
+            else None,
+        ),
         ("page_manifest", batch.get("page_manifest") if isinstance(batch, dict) else None),
         ("ocr_result", batch.get("ocr_result") if isinstance(batch, dict) else None),
         ("seal", sealing),
@@ -605,6 +610,302 @@ def _load_batch_mechanism_summary(project_root: Path) -> dict[str, object]:
         "equivalence": equivalence,
         "resume": resume,
         "sealing": sealing,
+        "acceptance": acceptance,
+        "local_artifacts": local_artifacts,
+        "local_artifact_count": local_count,
+        "verified_local_artifact_count": verified_count,
+        "errors": errors,
+    }
+
+
+def _safe_project_file(project_root: Path, value: object) -> Path | None:
+    if not isinstance(value, str) or not value:
+        return None
+    relative = Path(value)
+    if relative.is_absolute():
+        return None
+    root = project_root.resolve()
+    candidate = (root / relative).resolve()
+    if not candidate.is_relative_to(root):
+        return None
+    return candidate
+
+
+def _load_statement_location_summary(project_root: Path) -> dict[str, object]:
+    artifact_path = Path("docs/experiments/E-0013-mbb-vcb-statement-location.json")
+    absolute_artifact = project_root / artifact_path
+    if not absolute_artifact.is_file():
+        return {
+            "integrity_status": "NOT_AVAILABLE",
+            "artifact": artifact_path.as_posix(),
+            "errors": ["tracked E-0013 artifact is absent"],
+        }
+    try:
+        artifact = json.loads(absolute_artifact.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        return {
+            "integrity_status": "FAIL",
+            "artifact": artifact_path.as_posix(),
+            "errors": [f"cannot read E-0013 artifact: {exc}"],
+        }
+
+    errors: list[str] = []
+    expected_header = {
+        "format_version": 1,
+        "experiment_id": "E-0013",
+        "dataset_role": "CALIBRATION",
+        "design": "CLEAN_MULTI_INSTITUTION_COARSE_STATEMENT_LOCATION_CALIBRATION",
+        "status": "PASS_ORDERED_STATEMENT_LOCATION_AND_SCOPE_EXCLUSION",
+    }
+    for key, value in expected_header.items():
+        if artifact.get(key) != value:
+            errors.append(f"unexpected E-0013 {key}")
+    code = artifact.get("code")
+    if not isinstance(code, dict) or code.get("git_dirty") is not False:
+        errors.append("E-0013 was not recorded from clean code")
+    recorded_commit = code.get("git_commit") if isinstance(code, dict) else None
+
+    algorithm_files = artifact.get("algorithm_files_sha256")
+    if not isinstance(algorithm_files, dict) or not algorithm_files:
+        errors.append("E-0013 has no algorithm hash set")
+    else:
+        for relative_path, digest in algorithm_files.items():
+            local_path = _safe_project_file(project_root, relative_path)
+            if local_path is None or not local_path.is_file() or sha256_file(local_path) != digest:
+                errors.append(f"E-0013 algorithm hash drift: {relative_path}")
+
+    upstream = artifact.get("upstream_reader")
+    identities: list[tuple[str, object]] = [("configuration", artifact.get("configuration"))]
+    if isinstance(upstream, dict):
+        identities.extend(
+            (
+                ("ocr_configuration", upstream.get("ocr_configuration")),
+                ("runtime_manifest", upstream.get("runtime_manifest")),
+                ("package_freeze", upstream.get("package_freeze")),
+            )
+        )
+        if any(
+            upstream.get(key) is not False
+            for key in (
+                "automatic_truth_promotion",
+                "automatic_schema_promotion",
+                "automatic_pdf_confidence_promotion",
+            )
+        ):
+            errors.append("E-0013 upstream promotion safety gate drift")
+    else:
+        errors.append("E-0013 has no upstream reader identity")
+    for name, record in identities:
+        if not isinstance(record, dict):
+            errors.append(f"E-0013 {name} identity is invalid")
+            continue
+        local_path = _safe_project_file(project_root, record.get("path"))
+        if (
+            local_path is None
+            or not local_path.is_file()
+            or sha256_file(local_path) != record.get("sha256")
+        ):
+            errors.append(f"E-0013 {name} hash drift")
+
+    # Immutable E-0013 calibration expectations; these are audit assertions,
+    # never document-routing rules for an unseen filing.
+    expected_contracts = {
+        "MBB_2025_CONSOLIDATED": {
+            "eligible": {"CDKT": [10, 11], "KQKD": [13], "LCTT": [14, 15]},
+            "excluded": [12],
+            "notes_boundary": 16,
+        },
+        "VCB_2025_CONSOLIDATED": {
+            "eligible": {"CDKT": [8, 9], "KQKD": [11, 12], "LCTT": [13, 14]},
+            "excluded": [10],
+            "notes_boundary": 15,
+        },
+    }
+    documents = artifact.get("documents")
+    if not isinstance(documents, list) or len(documents) != len(expected_contracts):
+        errors.append("E-0013 document set drift")
+        documents = []
+    elif {record.get("key") for record in documents if isinstance(record, dict)} != set(
+        expected_contracts
+    ):
+        errors.append("E-0013 document identity set drift")
+
+    local_artifacts: list[dict[str, object]] = []
+    document_summaries: list[dict[str, object]] = []
+    for document in documents:
+        if not isinstance(document, dict):
+            errors.append("E-0013 document record is invalid")
+            continue
+        key = str(document.get("key", ""))
+        contract = expected_contracts.get(key)
+        if contract is None:
+            continue
+        source = document.get("source")
+        preprocess = document.get("preprocess_manifest")
+        batch = document.get("ocr_batch")
+        location = document.get("location_output")
+        result = document.get("result")
+        if not all(
+            isinstance(record, dict) for record in (source, preprocess, batch, location, result)
+        ):
+            errors.append(f"E-0013 {key} identity/result structure drift")
+            continue
+        assert isinstance(source, dict)
+        assert isinstance(preprocess, dict)
+        assert isinstance(batch, dict)
+        assert isinstance(location, dict)
+        assert isinstance(result, dict)
+
+        if source.get("dataset_role_frozen") is not True:
+            errors.append(f"E-0013 {key} dataset-role gate drift")
+        if preprocess.get("dpi") != 120:
+            errors.append(f"E-0013 {key} coarse-render DPI drift")
+        if (
+            batch.get("checkpoint_state") != "PARTIAL"
+            or batch.get("completed_pages") != 18
+            or not isinstance(batch.get("requested_pages"), int)
+            or batch["requested_pages"] <= batch["completed_pages"]
+        ):
+            errors.append(f"E-0013 {key} adaptive-batch boundary drift")
+        if location.get("state") != "STATEMENT_LOCATION_COMPLETE":
+            errors.append(f"E-0013 {key} location state drift")
+
+        eligible = result.get("mapping_eligible_pages_by_statement_type")
+        excluded = result.get("off_balance_excluded_pages")
+        cash_flow = result.get("cash_flow")
+        if (
+            eligible != contract["eligible"]
+            or excluded != contract["excluded"]
+            or result.get("notes_boundary_page") != contract["notes_boundary"]
+            or result.get("interstitial_pages") != []
+            or result.get("candidate_count") != 2
+            or result.get("winner_runner_up_margin") != 2.0
+        ):
+            errors.append(f"E-0013 {key} page/scope contract drift")
+        ordered_anchors = cash_flow.get("ordered_anchors") if isinstance(cash_flow, dict) else None
+        if not isinstance(cash_flow, dict) or (
+            cash_flow.get("pdf_method") != "DIRECT"
+            or cash_flow.get("indirect_sequence_complete") is not False
+            or cash_flow.get("schema_branch_assignment_permitted") is not False
+            or not isinstance(ordered_anchors, list)
+            or len(ordered_anchors) != 2
+        ):
+            errors.append(f"E-0013 {key} cash-flow evidence gate drift")
+
+        candidate_records: list[tuple[str, dict[str, object]]] = [
+            (f"{key}:source", source),
+            (f"{key}:preprocess_manifest", preprocess),
+            (
+                f"{key}:batch_manifest",
+                {
+                    "path": f"{batch.get('path', '')}/batch_manifest.json",
+                    "sha256": batch.get("manifest_sha256"),
+                },
+            ),
+            (f"{key}:location_output", location),
+        ]
+        for name, record in candidate_records:
+            local_path = _safe_project_file(project_root, record.get("path"))
+            if local_path is None:
+                errors.append(f"E-0013 local artifact path is invalid: {name}")
+            present = local_path is not None and local_path.is_file()
+            verified = present and sha256_file(local_path) == record.get("sha256")
+            local_artifacts.append({"name": name, "present": present, "verified": verified})
+            if present and not verified:
+                errors.append(f"local E-0013 artifact hash drift: {name}")
+
+        location_path = _safe_project_file(project_root, location.get("path"))
+        if location_path is not None and location_path.is_file():
+            try:
+                local_output = json.loads(location_path.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError) as exc:
+                errors.append(f"cannot read local E-0013 output {key}: {exc}")
+            else:
+                local_result = local_output.get("result", {})
+                local_block = (
+                    local_result.get("block", {}) if isinstance(local_result, dict) else {}
+                )
+                local_cash_flow = (
+                    local_result.get("cash_flow", {}) if isinstance(local_result, dict) else {}
+                )
+                if (
+                    local_output.get("state") != "STATEMENT_LOCATION_COMPLETE"
+                    or local_output.get("code") != {"commit": recorded_commit, "dirty": False}
+                    or local_result.get("errors") != []
+                    or local_result.get("runner_up_margin") != 2.0
+                    or local_block.get("mapping_eligible_pages_by_statement_type")
+                    != contract["eligible"]
+                    or local_block.get("off_balance_excluded_pages") != contract["excluded"]
+                    or local_cash_flow.get("method") != "DIRECT"
+                    or local_cash_flow.get("schema_branch_assignment_permitted") is not False
+                ):
+                    errors.append(f"local E-0013 output contract drift: {key}")
+
+        document_summaries.append(
+            {
+                "key": key,
+                "eligible_pages": eligible,
+                "off_balance_excluded_pages": excluded,
+                "notes_boundary_page": result.get("notes_boundary_page"),
+                "cash_flow_method": (
+                    cash_flow.get("pdf_method") if isinstance(cash_flow, dict) else None
+                ),
+            }
+        )
+
+    checks = artifact.get("cross_document_checks")
+    required_checks = {
+        "same_algorithm_and_configuration": True,
+        "bank_name_or_page_rule_in_algorithm": False,
+        "ordered_form_sequence_passed": True,
+        "unknown_interstitial_pages": 0,
+        "off_balance_pages_mapping_eligible": 0,
+        "scope_crossing_continuation_links": 0,
+        "direct_title_and_ordered_anchor_agreement": 2,
+        "cash_flow_schema_assignment_attempts": 0,
+        "historical_reference_invoked": False,
+        "arithmetic_value_generation_invoked": False,
+        "ytd_derivation_invoked": False,
+    }
+    if not isinstance(checks, dict) or any(
+        checks.get(key) != value for key, value in required_checks.items()
+    ):
+        errors.append("E-0013 cross-document safety gate drift")
+    acceptance = artifact.get("acceptance")
+    if not isinstance(acceptance, dict) or (
+        acceptance.get("cash_flow_schema_branch_assignment") != "BLOCKED_BY_Q_BOOT_001"
+        or acceptance.get("row_or_schema_mapping_evaluated") is not False
+        or acceptance.get("human_gold_evaluated") is not False
+        or acceptance.get("production_accuracy_approved") is not False
+    ):
+        errors.append("E-0013 claim boundary drift")
+    report_norm = artifact.get("report_norm_id")
+    if artifact.get("software_or_model_change") is not False:
+        errors.append("E-0013 unexpectedly records a software/model change")
+    if not isinstance(report_norm, dict) or report_norm.get("ids_proposed_or_added") != 0:
+        errors.append("E-0013 unexpectedly proposes ReportNormID changes")
+
+    local_count = sum(bool(record["present"]) for record in local_artifacts)
+    verified_count = sum(bool(record["verified"]) for record in local_artifacts)
+    if errors:
+        integrity_status = "FAIL"
+    elif local_count:
+        integrity_status = "PASS_TRACKED_AND_LOCAL_ARTIFACTS"
+    else:
+        integrity_status = "PASS_TRACKED_ARTIFACT"
+    return {
+        "integrity_status": integrity_status,
+        "artifact": artifact_path.as_posix(),
+        "artifact_sha256": sha256_file(absolute_artifact),
+        "experiment_id": artifact.get("experiment_id"),
+        "recorded_status": artifact.get("status"),
+        "dataset_role": artifact.get("dataset_role"),
+        "design": artifact.get("design"),
+        "code_commit": recorded_commit,
+        "claim_boundary": artifact.get("claim_boundary"),
+        "documents": document_summaries,
+        "document_count": len(document_summaries),
+        "cross_document_checks": checks,
         "acceptance": acceptance,
         "local_artifacts": local_artifacts,
         "local_artifact_count": local_count,
@@ -725,16 +1026,12 @@ def _write_dynamic_audits(
     calibration_status = str(calibration.get("integrity_status", "NOT_AVAILABLE"))
     if calibration_status.startswith("PASS"):
         strict_rows = float(
-            calibration_metrics.get(
-                "strict_exact_reference_financial_row_agreement_rate", 0.0
-            )
+            calibration_metrics.get("strict_exact_reference_financial_row_agreement_rate", 0.0)
         )
         strict_cells = float(
             calibration_metrics.get("strict_exact_reference_cell_agreement_rate", 0.0)
         )
-        coverage = float(
-            calibration_metrics.get("reference_financial_row_coverage_rate", 0.0)
-        )
+        coverage = float(calibration_metrics.get("reference_financial_row_coverage_rate", 0.0))
         calibration_progress = (
             f"E-0010 {calibration_status}; strict rows={strict_rows:.2%}, "
             f"strict cells={strict_cells:.2%}, reference coverage={coverage:.2%}, "
@@ -747,25 +1044,19 @@ def _write_dynamic_audits(
             "It remains machine-reference calibration, not production accuracy."
         )
     else:
-        calibration_progress = (
-            f"{calibration_status}; errors={calibration.get('errors', [])}"
-        )
+        calibration_progress = f"{calibration_status}; errors={calibration.get('errors', [])}"
         calibration_finding = (
             f"Tracked E-0010 calibration integrity is **{calibration_status}**; "
             "its metrics are disabled until the recorded hashes verify."
         )
     geometry_recovery = manifest.get("geometry_recovery", {})
-    geometry_recovery = (
-        geometry_recovery if isinstance(geometry_recovery, dict) else {}
-    )
+    geometry_recovery = geometry_recovery if isinstance(geometry_recovery, dict) else {}
     geometry_metrics = geometry_recovery.get("metrics", {})
     geometry_metrics = geometry_metrics if isinstance(geometry_metrics, dict) else {}
     geometry_status = str(geometry_recovery.get("integrity_status", "NOT_AVAILABLE"))
     if geometry_status.startswith("PASS"):
         strict_geometry_rows = float(
-            geometry_metrics.get(
-                "strict_exact_reference_financial_row_agreement_rate", 0.0
-            )
+            geometry_metrics.get("strict_exact_reference_financial_row_agreement_rate", 0.0)
         )
         strict_geometry_cells = float(
             geometry_metrics.get("strict_exact_reference_cell_agreement_rate", 0.0)
@@ -786,9 +1077,7 @@ def _write_dynamic_audits(
             "It remains post-failure machine-reference calibration, not production accuracy."
         )
     else:
-        geometry_progress = (
-            f"{geometry_status}; errors={geometry_recovery.get('errors', [])}"
-        )
+        geometry_progress = f"{geometry_status}; errors={geometry_recovery.get('errors', [])}"
         geometry_finding = (
             f"Tracked E-0011 targeted geometry-recovery integrity is **{geometry_status}**; "
             "its metrics are disabled until the recorded hashes verify."
@@ -814,12 +1103,44 @@ def _write_dynamic_audits(
             "sample."
         )
     else:
-        batch_progress = (
-            f"{batch_status}; errors={batch_mechanism.get('errors', [])}"
-        )
+        batch_progress = f"{batch_status}; errors={batch_mechanism.get('errors', [])}"
         batch_finding = (
             f"Tracked E-0012 batch/checkpoint integrity is **{batch_status}**; "
             "batch evidence is disabled until the recorded hashes verify."
+        )
+    statement_location = manifest.get("statement_location", {})
+    statement_location = statement_location if isinstance(statement_location, dict) else {}
+    location_status = str(statement_location.get("integrity_status", "NOT_AVAILABLE"))
+    location_documents = statement_location.get("documents", [])
+    location_documents = location_documents if isinstance(location_documents, list) else []
+    if location_status.startswith("PASS"):
+        location_contracts = []
+        for document in location_documents:
+            if not isinstance(document, dict):
+                continue
+            short_key = str(document.get("key", "unknown")).split("_")[0]
+            eligible = document.get("eligible_pages", {})
+            eligible = eligible if isinstance(eligible, dict) else {}
+            location_contracts.append(
+                f"{short_key} CDKT={eligible.get('CDKT', [])}, "
+                f"KQKD={eligible.get('KQKD', [])}, LCTT={eligible.get('LCTT', [])}, "
+                f"excluded={document.get('off_balance_excluded_pages', [])}"
+            )
+        location_progress = f"E-0013 {location_status}; " + "; ".join(location_contracts)
+        location_finding = (
+            f"Tracked E-0013 ordered statement-location integrity is "
+            f"**{location_status}**; "
+            f"{statement_location.get('verified_local_artifact_count', 0)}/"
+            f"{statement_location.get('local_artifact_count', 0)} locally present "
+            "source/preprocess/batch/result artifacts verify. It remains page/scope "
+            "calibration, not row/schema/numeric or production accuracy."
+        )
+    else:
+        location_progress = f"{location_status}; errors={statement_location.get('errors', [])}"
+        location_finding = (
+            f"Tracked E-0013 ordered statement-location integrity is "
+            f"**{location_status}**; its page contracts are disabled until the "
+            "recorded hashes and safety gates verify."
         )
     hardware = f"""# Hardware audit
 
@@ -870,6 +1191,7 @@ Captured: {environment["captured_at"]}
 - {calibration_finding}
 - {geometry_finding}
 - {batch_finding}
+- {location_finding}
 - A local control-plane backup restored successfully: `{backup["restored_and_verified"]}`. Per the user's development policy, development backup status is **{backup["development_status"]}**. It is not off-machine and does not protect against total VPS loss; production status remains `{backup["production_status"]}`.
 
 ## Recovery posture
@@ -894,17 +1216,18 @@ Generated artifacts use atomic write, fsync, rename, and post-write hash verific
 - Frozen cross-reader calibration: {calibration_progress}
 - Targeted independent geometry recovery: {geometry_progress}
 - Batch/checkpoint mechanism: {batch_progress}
+- Ordered statement location: {location_progress}
 - Mongo-assisted metrics: {mongo_progress}
 - Questions created / resolved: {len(questions)} / {resolved_questions}
 - Autonomous decisions: preserve supplied schema unchanged; keep 1944 as a collision-cleared proposal; segment LCTT by workbook position and fail closed on the semantic conflict
 - Not applicable / not observed / unresolved: 0 / 0 / 0 (no production records yet)
 - Workbooks: 0
 - Largest error: no frozen end-to-end multi-institution accuracy result or production-calibrated acceptance threshold yet
-- Last change: locked clean E-0012 PP-OCRv6 batch equivalence, no-op resume, and batch/helper-aware sealing without adding an accuracy sample
+- Last change: locked and bootstrap-audited clean E-0013 MBB/VCB page/type/scope evidence without claiming row/schema/numeric or production accuracy
 - Before/after on the targeted TCB calibration: strict reference coverage/cell agreement 94.70%/92.42% -> 100%/100%; Role C label exactness remains only 3/140
 - Regression: run separately with `.venv/bin/pytest`; latest verified count is recorded in `PROJECT_MEMORY.md`
 - Backup status: development={backup["development_status"]}; production={backup["production_status"]} (local restore verified={backup["restored_and_verified"]}, off-machine={backup["off_machine"]})
-- Next bounded action: run the frozen Role B/Role C gates unchanged on MBB/VCB, controlled distortions, and then an untouched holdout
+- Next bounded action: rerender only the E-0013 eligible pages plus exclusion boundaries at 200 DPI, run the frozen Role B/Role C row gates unchanged, then continue to controlled distortions and an untouched holdout
 """
     atomic_write_text(project_root / "PROGRESS_REPORT.md", progress)
 
@@ -1012,6 +1335,7 @@ def run_bootstrap(project_root: Path, *, workers: int = 4) -> BootstrapResult:
         "calibration": _load_calibration_summary(project_root),
         "geometry_recovery": _load_geometry_recovery_summary(project_root),
         "batch_mechanism": _load_batch_mechanism_summary(project_root),
+        "statement_location": _load_statement_location_summary(project_root),
     }
     atomic_write_json(project_root / "BOOTSTRAP_MANIFEST.json", manifest)
 

@@ -119,6 +119,10 @@ output identities and replay commands are in
 `../experiments/E-0013-REPLAY.md`. Therefore no dependency lock or model
 inventory changed for this milestone.
 
+The E-0013 bootstrap audit also adds no dependency. It uses the existing JSON,
+path, and SHA-256 control-plane utilities and publishes its result under
+`statement_location` in `BOOTSTRAP_MANIFEST.json`.
+
 Detailed commands, disk checks, cache rules, failure history, and rollback are in `docs/environment/GPU_RUNTIME_RUNBOOK.md`.
 
 ## Maintenance rule

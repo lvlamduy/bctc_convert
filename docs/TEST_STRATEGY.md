@@ -95,4 +95,12 @@ artifact does not turn a Git clone into a false failure. The regression does
 not assert human-gold, row/schema/numeric, holdout, confidence, or production
 accuracy, and it requires schema branch assignment to remain disabled.
 
+The bootstrap unit gate independently reconstructs a two-document E-0013
+artifact and eight local identities. It requires exact MBB/VCB contracts and
+then tampers with a location output while updating that file's recorded hash;
+the audit still fails because the semantic page/scope contract drifted. Unsafe
+or escaping paths, tracked code/config drift, present external hash drift,
+promotion flags, ReportNormId additions, and Q-BOOT-001 relaxation also fail
+closed in the loader.
+
 Explicit page numbers in a golden/calibration fixture are expected test data, not production routing rules. Production page pairing must continue to use document-order and visual evidence; no bank, page offset, or coordinate constant may enter the algorithm.

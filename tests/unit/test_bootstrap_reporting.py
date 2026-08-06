@@ -7,6 +7,7 @@ from bctc_ai.reporting.bootstrap import (
     _load_batch_mechanism_summary,
     _load_calibration_summary,
     _load_geometry_recovery_summary,
+    _load_statement_location_summary,
     _write_dynamic_audits,
 )
 
@@ -32,9 +33,7 @@ def test_calibration_summary_verifies_tracked_inputs_and_local_seals(tmp_path):
                 "dataset_role": "CALIBRATION",
                 "status": "PASS_CALIBRATION_WITH_REQUIRED_ESCALATIONS",
                 "code": {"git_commit": "abc", "git_dirty": False},
-                "algorithm_files_sha256": {
-                    "src/algorithm.py": sha256_file(algorithm_path)
-                },
+                "algorithm_files_sha256": {"src/algorithm.py": sha256_file(algorithm_path)},
                 "suite_config": {
                     "path": "config/suite.yaml",
                     "sha256": sha256_file(config_path),
@@ -96,9 +95,7 @@ def test_geometry_recovery_summary_locks_targeted_gates_and_three_seals(tmp_path
                 "content_inspected_before_design": True,
                 "status": "PASS_TARGETED_GEOMETRY_RECOVERY_CALIBRATION",
                 "code": {"git_commit": "abc", "git_dirty": False},
-                "algorithm_files_sha256": {
-                    "src/geometry.py": sha256_file(algorithm_path)
-                },
+                "algorithm_files_sha256": {"src/geometry.py": sha256_file(algorithm_path)},
                 "experiment_config": {
                     "path": "config/experiment.yaml",
                     "sha256": sha256_file(experiment_path),
@@ -273,6 +270,171 @@ def test_batch_mechanism_summary_locks_equivalence_resume_and_seal(tmp_path):
     assert failed["errors"] == ["local E-0012 artifact hash drift: batch_manifest"]
 
 
+def test_statement_location_summary_locks_scope_contract_and_local_outputs(tmp_path):
+    artifact_path = tmp_path / "docs/experiments/E-0013-mbb-vcb-statement-location.json"
+    tracked_paths = {
+        "algorithm": tmp_path / "src/locator.py",
+        "configuration": tmp_path / "config/locator.yaml",
+        "ocr_configuration": tmp_path / "config/ocr.yaml",
+        "runtime_manifest": tmp_path / "config/runtime.toml",
+        "package_freeze": tmp_path / "config/freeze.txt",
+    }
+    for name, path in tracked_paths.items():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(f"{name}-v1", encoding="utf-8")
+
+    def identity(path):
+        return {
+            "path": path.relative_to(tmp_path).as_posix(),
+            "sha256": sha256_file(path),
+        }
+
+    contracts = {
+        "MBB_2025_CONSOLIDATED": {
+            "eligible": {"CDKT": [10, 11], "KQKD": [13], "LCTT": [14, 15]},
+            "excluded": [12],
+            "notes": 16,
+        },
+        "VCB_2025_CONSOLIDATED": {
+            "eligible": {"CDKT": [8, 9], "KQKD": [11, 12], "LCTT": [13, 14]},
+            "excluded": [10],
+            "notes": 15,
+        },
+    }
+    documents = []
+    output_paths = {}
+    for key, contract in contracts.items():
+        prefix = key.split("_")[0].lower()
+        source_path = tmp_path / f"sources/{prefix}.pdf"
+        preprocess_path = tmp_path / f"output/{prefix}/preprocess.json"
+        batch_root = tmp_path / f"output/{prefix}/batch"
+        batch_manifest_path = batch_root / "batch_manifest.json"
+        output_path = batch_root / "statement-location.json"
+        for path, content in (
+            (source_path, f"{prefix}-source"),
+            (preprocess_path, f"{prefix}-preprocess"),
+            (batch_manifest_path, f"{prefix}-batch"),
+        ):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content, encoding="utf-8")
+        local_output = {
+            "state": "STATEMENT_LOCATION_COMPLETE",
+            "code": {"commit": "clean-commit", "dirty": False},
+            "result": {
+                "errors": [],
+                "runner_up_margin": 2.0,
+                "block": {
+                    "mapping_eligible_pages_by_statement_type": contract["eligible"],
+                    "off_balance_excluded_pages": contract["excluded"],
+                },
+                "cash_flow": {
+                    "method": "DIRECT",
+                    "schema_branch_assignment_permitted": False,
+                },
+            },
+        }
+        output_path.write_text(json.dumps(local_output), encoding="utf-8")
+        output_paths[key] = output_path
+        documents.append(
+            {
+                "key": key,
+                "source": {**identity(source_path), "dataset_role_frozen": True},
+                "preprocess_manifest": {**identity(preprocess_path), "dpi": 120},
+                "ocr_batch": {
+                    "path": batch_root.relative_to(tmp_path).as_posix(),
+                    "manifest_sha256": sha256_file(batch_manifest_path),
+                    "checkpoint_state": "PARTIAL",
+                    "completed_pages": 18,
+                    "requested_pages": 80,
+                },
+                "location_output": {
+                    **identity(output_path),
+                    "state": "STATEMENT_LOCATION_COMPLETE",
+                },
+                "result": {
+                    "candidate_count": 2,
+                    "winner_runner_up_margin": 2.0,
+                    "notes_boundary_page": contract["notes"],
+                    "interstitial_pages": [],
+                    "mapping_eligible_pages_by_statement_type": contract["eligible"],
+                    "off_balance_excluded_pages": contract["excluded"],
+                    "cash_flow": {
+                        "pdf_method": "DIRECT",
+                        "ordered_anchors": [{"page": 1}, {"page": 1}],
+                        "indirect_sequence_complete": False,
+                        "schema_branch_assignment_permitted": False,
+                    },
+                },
+            }
+        )
+
+    artifact = {
+        "format_version": 1,
+        "experiment_id": "E-0013",
+        "dataset_role": "CALIBRATION",
+        "design": "CLEAN_MULTI_INSTITUTION_COARSE_STATEMENT_LOCATION_CALIBRATION",
+        "status": "PASS_ORDERED_STATEMENT_LOCATION_AND_SCOPE_EXCLUSION",
+        "code": {"git_commit": "clean-commit", "git_dirty": False},
+        "algorithm_files_sha256": {
+            identity(tracked_paths["algorithm"])["path"]: identity(tracked_paths["algorithm"])[
+                "sha256"
+            ]
+        },
+        "configuration": identity(tracked_paths["configuration"]),
+        "upstream_reader": {
+            "ocr_configuration": identity(tracked_paths["ocr_configuration"]),
+            "runtime_manifest": identity(tracked_paths["runtime_manifest"]),
+            "package_freeze": identity(tracked_paths["package_freeze"]),
+            "automatic_truth_promotion": False,
+            "automatic_schema_promotion": False,
+            "automatic_pdf_confidence_promotion": False,
+        },
+        "documents": documents,
+        "cross_document_checks": {
+            "same_algorithm_and_configuration": True,
+            "bank_name_or_page_rule_in_algorithm": False,
+            "ordered_form_sequence_passed": True,
+            "unknown_interstitial_pages": 0,
+            "off_balance_pages_mapping_eligible": 0,
+            "scope_crossing_continuation_links": 0,
+            "direct_title_and_ordered_anchor_agreement": 2,
+            "cash_flow_schema_assignment_attempts": 0,
+            "historical_reference_invoked": False,
+            "arithmetic_value_generation_invoked": False,
+            "ytd_derivation_invoked": False,
+        },
+        "acceptance": {
+            "cash_flow_schema_branch_assignment": "BLOCKED_BY_Q_BOOT_001",
+            "row_or_schema_mapping_evaluated": False,
+            "human_gold_evaluated": False,
+            "production_accuracy_approved": False,
+        },
+        "software_or_model_change": False,
+        "report_norm_id": {"ids_proposed_or_added": 0},
+        "claim_boundary": "page/scope calibration only",
+    }
+    artifact_path.parent.mkdir(parents=True, exist_ok=True)
+    artifact_path.write_text(json.dumps(artifact), encoding="utf-8")
+
+    passed = _load_statement_location_summary(tmp_path)
+
+    assert passed["integrity_status"] == "PASS_TRACKED_AND_LOCAL_ARTIFACTS"
+    assert passed["document_count"] == 2
+    assert passed["local_artifact_count"] == 8
+    assert passed["verified_local_artifact_count"] == 8
+
+    mbb_output = output_paths["MBB_2025_CONSOLIDATED"]
+    drifted_output = json.loads(mbb_output.read_text(encoding="utf-8"))
+    drifted_output["state"] = "UNRESOLVED"
+    mbb_output.write_text(json.dumps(drifted_output), encoding="utf-8")
+    documents[0]["location_output"]["sha256"] = sha256_file(mbb_output)
+    artifact_path.write_text(json.dumps(artifact), encoding="utf-8")
+
+    failed = _load_statement_location_summary(tmp_path)
+    assert failed["integrity_status"] == "FAIL"
+    assert failed["errors"] == ["local E-0013 output contract drift: MBB_2025_CONSOLIDATED"]
+
+
 def test_dynamic_audits_separate_runtime_acceptance_from_model_approval(tmp_path):
     environment = {
         "captured_at": "2026-08-05T00:00:00+00:00",
@@ -367,6 +529,32 @@ def test_dynamic_audits_separate_runtime_acceptance_from_model_approval(tmp_path
             "verified_local_artifact_count": 9,
             "errors": [],
         },
+        "statement_location": {
+            "integrity_status": "PASS_TRACKED_AND_LOCAL_ARTIFACTS",
+            "documents": [
+                {
+                    "key": "MBB_2025_CONSOLIDATED",
+                    "eligible_pages": {
+                        "CDKT": [10, 11],
+                        "KQKD": [13],
+                        "LCTT": [14, 15],
+                    },
+                    "off_balance_excluded_pages": [12],
+                },
+                {
+                    "key": "VCB_2025_CONSOLIDATED",
+                    "eligible_pages": {
+                        "CDKT": [8, 9],
+                        "KQKD": [11, 12],
+                        "LCTT": [13, 14],
+                    },
+                    "off_balance_excluded_pages": [10],
+                },
+            ],
+            "local_artifact_count": 8,
+            "verified_local_artifact_count": 8,
+            "errors": [],
+        },
     }
     backup = {
         "restored_and_verified": True,
@@ -391,6 +579,9 @@ def test_dynamic_audits_separate_runtime_acceptance_from_model_approval(tmp_path
     assert "auto-high=0" in progress
     assert "Targeted independent geometry recovery" in progress
     assert "Batch/checkpoint mechanism" in progress
+    assert "Ordered statement location" in progress
+    assert "MBB CDKT=[10, 11]" in progress
+    assert "VCB CDKT=[8, 9]" in progress
     assert "byte-identical=True" in progress
     assert "strict rows=100.00%" in progress
     assert "strict cells=100.00%" in progress
@@ -398,3 +589,4 @@ def test_dynamic_audits_separate_runtime_acceptance_from_model_approval(tmp_path
     assert "2/2 locally present seals verify" in recovery
     assert "3/3 locally present seals verify" in recovery
     assert "9/9 locally present artifacts verify" in recovery
+    assert "8/8 locally present source/preprocess/batch/result artifacts verify" in recovery

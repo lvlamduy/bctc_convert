@@ -85,6 +85,17 @@ E-0013 approves only the coarse calibration locator for selected-page
 rerendering. It does not approve rows, schema IDs, numeric cells, or production
 confidence. No ReportNormId was proposed or added.
 
+## Routine audit
+
+Run `.venv/bin/bctc-ai audit` after cloning or transferring artifacts. The
+`statement_location` section of `BOOTSTRAP_MANIFEST.json` verifies the tracked
+E-0013 code/config/runtime identities, exact page/scope/method contract, safety
+and claim boundaries, and all locally present source, preprocess, batch, and
+location-output hashes. `PASS_TRACKED_ARTIFACT` means only the tracked record is
+available; `PASS_TRACKED_AND_LOCAL_ARTIFACTS` additionally reports counts for
+verified external files. A present mismatch, unsafe path, or contract drift is
+`FAIL` and disables the page contracts.
+
 ## Transfer/recovery
 
 Transfer the registered PDFs, preprocessing directories, PP-OCRv6 batch
