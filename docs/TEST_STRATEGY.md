@@ -115,4 +115,17 @@ present mismatch fails. The retained VCB page-9 truncation and multi-table
 page-10 structure are required failure triggers for the next fusion version,
 not visually sampled claims of document accuracy.
 
+Structural fusion v2 has isolated unit gates before it can consume E-0014.
+Role B tests require all HTML table blocks to remain observable, safe
+rowspan/colspan grid expansion, one-use header-only role inheritance, variable
+optional index/note columns, concise-period discrimination, strict rejection of
+concatenated grouped values, and fail-closed unresolved roles. Role C tests
+require worded period headers, rejection of report/regulatory metadata as value
+axes, repeated geometry-derived index bands, correct index ownership when a
+wrapped label's values sit lower than its code, alphanumeric note references,
+two visibly supported OCR-blank dashes, and quarantine of right-margin numbers.
+Fusion tests mutate values without changing the label/order path, retain a
+reader-truncated row, and prove an upstream off-balance page has zero eligible
+alignment units. Agreement always has confidence effect `NONE`.
+
 Explicit page numbers in a golden/calibration fixture are expected test data, not production routing rules. Production page pairing must continue to use document-order and visual evidence; no bank, page offset, or coordinate constant may enter the algorithm.

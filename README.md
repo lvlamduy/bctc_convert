@@ -39,6 +39,9 @@ The general, order/hierarchy-based statement and row-mapping design is in
 [docs/STATEMENT_LOCATION_AND_MAPPING_STRATEGY.md](docs/STATEMENT_LOCATION_AND_MAPPING_STRATEGY.md),
 with executable boundary/recovery commands in
 [docs/environment/STATEMENT_LOCATION_RUNBOOK.md](docs/environment/STATEMENT_LOCATION_RUNBOOK.md).
+The general multi-table, variable-column Role B parser, Role C row/axis
+reconstruction, and order-only fusion safety rules are in
+[docs/STRUCTURAL_READER_FUSION_STRATEGY.md](docs/STRUCTURAL_READER_FUSION_STRATEGY.md).
 The first sealed six-page scan/searchable calibration and its migration-safe
 replay procedure are in
 [docs/experiments/E-0010-REPLAY.md](docs/experiments/E-0010-REPLAY.md).

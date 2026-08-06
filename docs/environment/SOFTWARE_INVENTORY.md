@@ -135,6 +135,14 @@ words. Exact environment/config/model/code hashes and replay commands are in
 `../experiments/E-0014-REPLAY.md`; generated images and OCR outputs remain
 outside Git.
 
+Structural reader fusion v2 also adds no dependency, runtime setting, model, or
+weight. Its HTML span parser uses the Python standard library; YAML, text
+normalization, OpenCV pixel evidence, and ordered alignment reuse the pinned
+control-plane environment. The new configuration and algorithm are documented
+in `../STRUCTURAL_READER_FUSION_STRATEGY.md`. A formal evaluation must be run
+from a clean commit and record all new source/config hashes before its result is
+accepted.
+
 Detailed commands, disk checks, cache rules, failure history, and rollback are in `docs/environment/GPU_RUNTIME_RUNBOOK.md`.
 
 ## Maintenance rule

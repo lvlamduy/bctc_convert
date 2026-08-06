@@ -1,0 +1,27 @@
+version: 2
+minimum_value_columns: 2
+maximum_header_scan_rows: 10
+maximum_period_header_tokens: 8
+minimum_body_numeric_density: 0.45
+
+column_header_aliases:
+  index:
+    - stt
+    - số thứ tự
+    - mã số
+  label:
+    - chỉ tiêu
+    - khoản mục
+    - nội dung
+  note:
+    - thuyết minh
+    - ghi chú
+
+period_context_aliases:
+  - năm
+  - kỳ
+  - quý
+  - tháng
+  - tại ngày
+  - triệu
+  - vnd

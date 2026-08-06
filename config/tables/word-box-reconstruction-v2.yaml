@@ -1,0 +1,13 @@
+version: 2
+base_config: word-box-reconstruction.yaml
+
+maximum_period_header_tokens: 8
+period_header_y_tolerance_line_heights: 0.70
+period_header_minimum_x_separation_line_heights: 3.0
+
+index_candidate_max_width_line_heights: 4.0
+index_left_gap_line_heights: 0.25
+index_minimum_repeated_rows: 3
+label_candidate_min_width_line_heights: 2.0
+structural_anchor_attach_line_heights: 1.25
+axis_right_overrun_line_heights: 0.40
