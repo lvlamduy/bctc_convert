@@ -1,0 +1,85 @@
+version: 1
+experiment_id: E-0022
+phase: POST_ROLE_B_SEAL_ROLE_A_PAGE_SCOPE_DIAGNOSIS
+dataset_role: UNTOUCHED_HOLDOUT
+created_after_role_a_access: true
+eligible_for_holdout_retuning: false
+
+upstream_role_b_seal:
+  path: docs/experiments/E-0022-role-b-unresolved-discovery.json
+  sha256: 41ef962361cfead7cdfa4d7b8a782e61ab3fc4a938aa4fa86ebb45cbe637660e
+  required_state: ROLE_B_DISCOVERY_SEALED_UNRESOLVED
+
+sources:
+  role_a:
+    path: vietstock_bctc/ACB/2026/ACB BCTC HOP NHAT Q1_26_ban tra cuu.pdf
+    sha256: d8be301b9169577a0be2bbd8721cdaaab7cb37a32493ead0de5871bfcbc168dd
+    size_bytes: 1060293
+    expected_page_count: 33
+  role_b:
+    path: vietstock_bctc/ACB/2026/20260422 - ACB - BCTC Hop nhat Quy 1 nam 2026.pdf
+    sha256: a85402445a34e80dd4248471c2d23d4cf4b349ab2455b91db457f3e6effbdd4a
+    size_bytes: 8027105
+    expected_page_count: 33
+
+native_page_reference:
+  matching_policy: NORMALIZED_CANONICAL_CORE_CONTAINMENT_REFERENCE_ONLY
+  ordered_main_statement_types: [CDKT, KQKD, LCTT]
+  title_cores:
+    CDKT:
+      - báo cáo tình hình tài chính
+      - bảng cân đối kế toán
+    KQKD:
+      - báo cáo kết quả hoạt động
+      - báo cáo kết quả kinh doanh
+    LCTT:
+      - báo cáo lưu chuyển tiền tệ
+    TM:
+      - thuyết minh báo cáo tài chính
+  table_of_contents_cores:
+    - mục lục
+  off_balance_cores:
+    - các chỉ tiêu ngoài báo cáo tình hình tài chính
+    - các chỉ tiêu ngoài bảng cân đối kế toán
+  cash_flow_method_cores:
+    DIRECT:
+      - theo phương pháp trực tiếp
+    INDIRECT:
+      - theo phương pháp gián tiếp
+  actual_mojibake_sequences:
+    - "�"
+    - "á»"
+    - "áº"
+    - "Ä"
+  unicode_letters_not_sufficient_for_corruption: ["Â", "Ã"]
+
+visual_pairing:
+  render_scale: 0.75
+  feature_width: 48
+  feature_height: 64
+  row_projection_size: 128
+  column_projection_size: 96
+  content_crop_quantile: 0.005
+  skip_penalty: 0.12
+  minimum_similarity: 0.45
+  minimum_runner_up_margin: 0.05
+  minimum_ink_ratio: 0.002
+  uses_text_or_values: false
+
+frozen_diagnostic_components:
+  git_commit: e0496e2196ada0a66213469d09296528dd37cc54
+  files:
+    src/bctc_ai/core/text.py: 2a97e6626fa6f747ff0f8e9de827b02f50dcd9a0c8e058937cd221acf1420af6
+    src/bctc_ai/ocr/pdf_text.py: 186577f31b421afe2b9db0d1d8f7fab37756c9723010bbdec8e3363258991459
+    src/bctc_ai/evaluation/page_pairing.py: e328fd83080e23e3d0571fda17bcf6c5c4882cb7e70bbff53e4bbbee68c0310d
+    src/bctc_ai/document_phase/statement_locator.py: 8b4b283cb3eeaa3e2457e84950574cc79502143e09ae4b3b712e93e1dde8b35c
+    config/document_phase/statement-locator-v1.yaml: d25ff6da2a1ce48428b4ab1ac20a31b989a27849d93326ae839507dce2ff107e
+
+outputs:
+  role_a_reference: docs/experiments/E-0022-role-a-statement-reference.json
+  comparison: docs/experiments/E-0022-statement-discovery-comparison.json
+
+claim_boundary: >-
+  This is a post-Role-B-seal machine-reference diagnosis at statement-page scope.
+  It is not human gold, is not an untouched evaluation of the reference classifier,
+  cannot retune E-0022, and does not evaluate row, value, period, schema or Excel accuracy.

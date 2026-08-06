@@ -8,20 +8,31 @@ from bctc_ai.evaluation.holdout_execution import (
     HoldoutExecutionError,
     validate_role_b_execution_control,
 )
+from bctc_ai.storage.content_store import content_path
 
 
-def test_e0022_role_b_execution_control_allows_only_full_document_role_b(project_root, monkeypatch):
-    expected_output = (
-        project_root / "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424"
-    ).resolve()
+def _simulate_pre_execution_filesystem(project_root, monkeypatch):
+    """Replay the frozen pre-execution filesystem after Role A was hydrated."""
+    role_a_digest = "d8be301b9169577a0be2bbd8721cdaaab7cb37a32493ead0de5871bfcbc168dd"
+    hidden_paths = {
+        (
+            project_root / "vietstock_bctc/ACB/2026/ACB BCTC HOP NHAT Q1_26_ban tra cuu.pdf"
+        ).resolve(),
+        content_path(project_root / "data/immutable", role_a_digest, ".pdf").resolve(),
+        (project_root / "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424").resolve(),
+    }
     original_exists = type(project_root).exists
 
     def pre_execution_exists(path):
-        if path.resolve() == expected_output:
+        if path.resolve() in hidden_paths:
             return False
         return original_exists(path)
 
     monkeypatch.setattr(type(project_root), "exists", pre_execution_exists)
+
+
+def test_e0022_role_b_execution_control_allows_only_full_document_role_b(project_root, monkeypatch):
+    _simulate_pre_execution_filesystem(project_root, monkeypatch)
     result = validate_role_b_execution_control(
         project_root,
         project_root / "config/experiments/e0022-role-b-execution-control.yaml",
@@ -78,6 +89,7 @@ def test_e0022_role_b_execution_control_rejects_cross_gate_drift(
     value,
     message,
 ):
+    _simulate_pre_execution_filesystem(project_root, monkeypatch)
     config_path = project_root / "config/experiments/e0022-role-b-execution-control.yaml"
     payload = yaml.safe_load(config_path.read_text(encoding="utf-8"))
     payload[section][key] = value

@@ -1,13 +1,15 @@
 # Progress report
 
-- Updated: 2026-08-06T10:08:00+00:00
+- Updated: 2026-08-06T10:24:00+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `d8daad3`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
+- Latest clean, tested, pushed checkpoint: `a1b76f2`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
 - Registered PDFs: 2,567
-- Latest full regression: 283 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
+- Latest full regression on the current diagnosis implementation: 287 passed, 2
+  intentionally skipped historical replays in 100.07 seconds; focused Ruff and
+  `git diff --check` passed
 
 ## Accuracy focus and measurable state
 
@@ -100,9 +102,21 @@
   0.720/0.696/0.722), while OCR emits form variants `B02a/B03a/B04a` that do not
   exactly match the frozen `B02/B03/B04` anchors. This is diagnosis only; no
   threshold or page selection was changed and no semantic reader was invoked.
-- Next bounded action: commit the hash-locked unresolved Role B seal, hydrate
-  only the exact Role A source, build its machine reference, and perform the
-  predeclared one-shot diagnosis/comparison without changing frozen thresholds.
+- E-0022 Role A was hydrated only after the Role B seal was committed and
+  pushed. The exact 33-page searchable PDF has native text on all 33 pages and
+  pairs visually one-to-one with Role B on all five target main-statement pages
+  (Role A/Role B pages 3/3, 4/4, 6/6, 7/7 and 8/8; visual similarities
+  0.935386–0.973479 with margins 0.534691–0.695877). A post-seal page-scope
+  machine diagnosis identifies two independent losses: the frozen matcher finds
+  only 2/5 target pages even on exact native titles, and scan OCR removes those
+  remaining two, so Role B has 0/5 correct mapping-eligible statement pages.
+  Three pages are matcher/header-family failures and two additional pages are
+  OCR-title degradation failures. This classifier was created after Role A
+  access and is diagnostic evidence only, not human gold, an after-result or
+  permission to retune E-0022.
+- Next bounded action: commit the post-seal diagnosis mechanism, capture the two
+  immutable Role A/reference comparison artifacts from that clean commit, and
+  hash-lock their 0/5 versus 2/5 measurements before changing any algorithm.
 
 ## Completed tasks
 
@@ -153,6 +167,9 @@
   zero mapping-eligible pages, zero semantic-reader/downstream/history use and
   absent Role A; and permits Role A hydration only after this point. Seal
   SHA-256: `41ef962361cfead7cdfa4d7b8a782e61ab3fc4a938aa4fa86ebb45cbe637660e`.
+- Committed and pushed the Role B seal artifact/integration checkpoint as
+  `a1b76f2`. Only then was the exact Role A searchable source hydrated; its
+  registered SHA-256, 1,060,293-byte size and 33-page count verify.
 - Built reproducible bootstrap, GPU runtime, package/model hashes, source registry,
   dataset-role registry, backup/restore checks, and server rebuild documentation.
 - Restored and audited `financial_20_02_2022.gz` as a read-only MongoDB historical
@@ -370,20 +387,19 @@
 
 ## Currently in progress
 
-- E-0022 now freezes an ACB consolidated Q1/2026 searchable/scan pair as
-  `UNTOUCHED_HOLDOUT`, selected only from registry filename metadata while both
-  sources remained offloaded and locally absent. Role assignments were made at
-  `2026-08-06T08:34:37Z`; code/config/model/schema identities were frozen at
-  `2026-08-06T08:35:17Z`. Role B must be hydrated, processed and sealed before
-  Role A source access, and the frozen thresholds cannot be tuned on this pair.
-- The frozen statement locator returned `UNRESOLVED` with no complete ordered
-  `CDKT→KQKD→LCTT→TM` block, zero candidates and zero mapping-eligible pages.
-  Role B is now formally sealed without changing the frozen algorithms,
-  selecting pages, invoking PaddleOCR-VL, mapping rows or using history. Role A
-  remains absent pending the seal checkpoint commit.
+- E-0022 remains an `UNTOUCHED_HOLDOUT` for the frozen Role B pipeline. Its Role
+  B result and all 108 evidence files were sealed before Role A access. The
+  current post-seal work is limited to a one-shot statement-page diagnosis: it
+  cannot rerun Role B, change thresholds, select alternate pages, invoke mapping
+  or report the new reference classifier as holdout accuracy.
+- The diagnosis artifacts are being prepared from a clean, hash-bound capture.
+  The reference scope is deliberately limited to statement page/type/scope,
+  direct LCTT method and pixel-only page pairing; no row, value, period, unit,
+  ReportNormId, MongoDB or Excel claim is made.
 - Ordered SchemaGraph v1 and E-0023 are sealed. Work now returns to E-0022 under
-  its frozen pre-access contract: hydrate/process/seal Role B only. The new mapper
-  remains intentionally excluded from that already-frozen pipeline.
+  its frozen contract. The mapper remains intentionally excluded from the
+  already-frozen E-0022 pipeline and will next be evaluated on separate real-PDF
+  development/validation blocks.
 - Raw-PDF-dependent experiments now hydrate only their bounded registered inputs
   from the immutable S3 manifest and must not overwrite a mismatched local file.
 
@@ -395,6 +411,15 @@
   title scores remain narrowly below 0.74 and the form-anchor token differs by
   the suffix `a`. The holdout must remain unresolved; normalization/form-anchor
   improvements can only be developed later on separate data.
+- Exact Role A text isolates the mechanism failure: long, valid Vietnamese
+  headings such as `BÁO CÁO TÌNH HÌNH TÀI CHÍNH HỢP NHẤT GIỮA NIÊN ĐỘ` are
+  scored with a whole-string ratio against much shorter title cores, and form
+  families such as `B02a/B03a/B04a` are not normalized to `B02/B03/B04`.
+  Separately, the native-text quality gate falsely marks all 33 pages corrupt
+  because standalone legitimate Vietnamese letters `Â` and `Ã` are treated as
+  mojibake markers. Actual replacement/encoded-byte sequences are absent. These
+  are general algorithm defects, but they cannot be repaired or remeasured on
+  E-0022 after reference access.
 - A higher-resolution crop is not sufficient by itself. On MBB LCTT page 14,
   PaddleOCR-VL still concatenates rows and numeric cells at 450 DPI; its current
   HTML proposal has 18 rows and 14 invalid multi-number cells, while independent
@@ -435,6 +460,11 @@
 1. Treat the visible PDF and inherited table structure as source authority.
 2. Locate statement/table/page scope before row mapping; exclude off-balance
    sections before candidate generation.
+   On the next development version, normalize form-code families (`B02a` to
+   `B02`, etc.), match canonical title cores by Unicode-normalized containment
+   with discriminator/form/order guards, and distinguish legitimate Vietnamese
+   `Â`/`Ã` letters from actual mojibake sequences. Freeze those rules before a
+   new holdout.
 3. Reconstruct logical rows across wrapped text and page continuations while
    retaining hard page-boundary provenance.
 4. Rank schema candidates lexicographically by statement/table context, parent,
@@ -474,11 +504,15 @@
 
 ## Planned next steps
 
-1. Commit the hash-locked unresolved E-0022 Role B seal.
-2. Hydrate Role A only after that checkpoint, build the native machine reference,
-   then complete the one-shot E-0022
-   Role A/Role B diagnosis/comparison with frozen thresholds
-   and report the main error class and measurable before/after results.
+1. Commit and push the post-seal E-0022 diagnosis implementation, then capture
+   and hash-lock the Role A page-scope reference and one-shot comparison from the
+   clean commit. Record 0/5 Role B page recall, 2/5 exact-native frozen-locator
+   recall and their matcher-versus-OCR decomposition; do not call this an
+   after-result.
+2. Implement Unicode-aware native-text quality, form-family normalization and
+   guarded title-core containment on separate development/validation documents.
+   Freeze the revised locator before selecting a new bank/period-disjoint
+   holdout; E-0022 remains immutable and unresolved.
 3. Apply ordered SchemaGraph v1 next on separate development/validation blocks
    reconstructed from real PDFs; do not reuse E-0022 to tune its weights.
 4. Build a human-gold evaluation split separated by bank and reporting period,
