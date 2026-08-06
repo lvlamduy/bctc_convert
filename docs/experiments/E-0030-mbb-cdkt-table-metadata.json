@@ -1,0 +1,305 @@
+{
+  "after": [
+    {
+      "axes": [
+        {
+          "axis_id": "value-1",
+          "axis_right_edge": 1872.0,
+          "canonical_unit": "VND",
+          "current_or_comparative": "CURRENT",
+          "distinct_semantics_margin": 0.315789,
+          "evidence": [
+            "period parsed from the axis-local visible header",
+            "current/comparative role assigned by parsed date, not x-order or values",
+            "unit matched inside the bounded axis-local visible header band",
+            "raw unit retained as 'triu đồng'"
+          ],
+          "header_bbox": [
+            1674.0,
+            694.0,
+            1872.0,
+            734.0
+          ],
+          "header_line_index": 7,
+          "matched_unit_anchor": "triệu đồng",
+          "ordinal": 0,
+          "period_end": "2026-03-31",
+          "period_start": "2026-03-31",
+          "period_type": "SNAPSHOT",
+          "raw_period_header": "31/03/2026",
+          "raw_unit_text": "triu đồng",
+          "unit_bbox": [
+            1692.0,
+            747.0,
+            1872.0,
+            793.0
+          ],
+          "unit_line_index": 10,
+          "unit_multiplier": 1000000,
+          "unit_similarity": 0.947368
+        },
+        {
+          "axis_id": "value-2",
+          "axis_right_edge": 2400.0,
+          "canonical_unit": "VND",
+          "current_or_comparative": "COMPARATIVE",
+          "distinct_semantics_margin": 0.315789,
+          "evidence": [
+            "period parsed from the axis-local visible header",
+            "current/comparative role assigned by parsed date, not x-order or values",
+            "unit matched inside the bounded axis-local visible header band",
+            "raw unit retained as 'triu đồng'"
+          ],
+          "header_bbox": [
+            2206.0,
+            645.0,
+            2400.0,
+            687.0
+          ],
+          "header_line_index": 5,
+          "matched_unit_anchor": "triệu đồng",
+          "ordinal": 1,
+          "period_end": "2025-12-31",
+          "period_start": "2025-12-31",
+          "period_type": "SNAPSHOT",
+          "raw_period_header": "31/12/2025",
+          "raw_unit_text": "triu đồng",
+          "unit_bbox": [
+            2223.0,
+            745.0,
+            2401.0,
+            794.0
+          ],
+          "unit_line_index": 11,
+          "unit_multiplier": 1000000,
+          "unit_similarity": 0.947368
+        }
+      ],
+      "binding_mode": "LOCAL_VISIBLE_HEADERS",
+      "page": 3,
+      "period_map_columns": [
+        {
+          "axis_id": "value-1",
+          "current_or_comparative": "CURRENT",
+          "ordinal": 0,
+          "period_end": "2026-03-31",
+          "source_header_page": 3,
+          "unit": "VND",
+          "unit_multiplier": 1000000
+        },
+        {
+          "axis_id": "value-2",
+          "current_or_comparative": "COMPARATIVE",
+          "ordinal": 1,
+          "period_end": "2025-12-31",
+          "source_header_page": 3,
+          "unit": "VND",
+          "unit_multiplier": 1000000
+        }
+      ],
+      "table_evidence": [
+        "all required period roles resolved from unique visible dates",
+        "numeric cells, history, schema IDs and human review were not inputs"
+      ],
+      "table_id": "mbb-cdkt-p3"
+    },
+    {
+      "axes": [
+        {
+          "axis_id": "value-1",
+          "axis_right_edge": 1863.0,
+          "canonical_unit": "VND",
+          "current_or_comparative": "CURRENT",
+          "distinct_semantics_margin": 0.315789,
+          "evidence": [
+            "period parsed from the axis-local visible header",
+            "current/comparative role assigned by parsed date, not x-order or values",
+            "unit matched inside the bounded axis-local visible header band",
+            "raw unit retained as 'triu đồng'"
+          ],
+          "header_bbox": [
+            1667.0,
+            765.0,
+            1863.0,
+            806.0
+          ],
+          "header_line_index": 6,
+          "matched_unit_anchor": "triệu đồng",
+          "ordinal": 0,
+          "period_end": "2026-03-31",
+          "period_start": "2026-03-31",
+          "period_type": "SNAPSHOT",
+          "raw_period_header": "31/03/2026",
+          "raw_unit_text": "triu đồng",
+          "unit_bbox": [
+            1683.0,
+            822.0,
+            1865.0,
+            875.0
+          ],
+          "unit_line_index": 9,
+          "unit_multiplier": 1000000,
+          "unit_similarity": 0.947368
+        },
+        {
+          "axis_id": "value-2",
+          "axis_right_edge": 2394.0,
+          "canonical_unit": "VND",
+          "current_or_comparative": "COMPARATIVE",
+          "distinct_semantics_margin": 0.315789,
+          "evidence": [
+            "period parsed from the axis-local visible header",
+            "current/comparative role assigned by parsed date, not x-order or values",
+            "unit matched inside the bounded axis-local visible header band",
+            "raw unit retained as 'triu đồng'"
+          ],
+          "header_bbox": [
+            2196.0,
+            711.0,
+            2394.0,
+            755.0
+          ],
+          "header_line_index": 5,
+          "matched_unit_anchor": "triệu đồng",
+          "ordinal": 1,
+          "period_end": "2025-12-31",
+          "period_start": "2025-12-31",
+          "period_type": "SNAPSHOT",
+          "raw_period_header": "31/12/2025",
+          "raw_unit_text": "triu đồng",
+          "unit_bbox": [
+            2218.0,
+            821.0,
+            2395.0,
+            871.0
+          ],
+          "unit_line_index": 10,
+          "unit_multiplier": 1000000,
+          "unit_similarity": 0.947368
+        }
+      ],
+      "binding_mode": "LOCAL_VISIBLE_HEADERS",
+      "page": 4,
+      "period_map_columns": [
+        {
+          "axis_id": "value-1",
+          "current_or_comparative": "CURRENT",
+          "ordinal": 0,
+          "period_end": "2026-03-31",
+          "source_header_page": 4,
+          "unit": "VND",
+          "unit_multiplier": 1000000
+        },
+        {
+          "axis_id": "value-2",
+          "current_or_comparative": "COMPARATIVE",
+          "ordinal": 1,
+          "period_end": "2025-12-31",
+          "source_header_page": 4,
+          "unit": "VND",
+          "unit_multiplier": 1000000
+        }
+      ],
+      "table_evidence": [
+        "all required period roles resolved from unique visible dates",
+        "numeric cells, history, schema IDs and human review were not inputs"
+      ],
+      "table_id": "mbb-cdkt-p4"
+    }
+  ],
+  "before": {
+    "resolved_axis_count": 0,
+    "status": "NO_WORD_BOX_VISIBLE_HEADER_BINDING_CONTRACT"
+  },
+  "capture_git_commit": "10cd8bf1a2a8d0210f4820ed9d637a70ec99537b",
+  "capture_git_dirty": false,
+  "claim_boundary": "E-0030 measures visible period/unit binding on the already accepted and reconstructed MBB CDKT pages only. It does not verify numeric-cell truth, Vietnamese accounting labels, schema IDs, accounting equations, Excel output or untouched-holdout performance.",
+  "dataset_role": "CALIBRATION",
+  "experiment_config": {
+    "path": "config/experiments/e0030-mbb-cdkt-table-metadata.yaml",
+    "sha256": "3dc3f0d477512d7f4c06b408480a3c0d8f180ce168c4185db48b823e3f157434",
+    "size_bytes": 3125
+  },
+  "experiment_id": "E-0030",
+  "format_version": 1,
+  "gates": {
+    "exact_axis_count": true,
+    "exact_page_set": true,
+    "exact_visible_bindings": true,
+    "local_visible_header_binding_only": true,
+    "minimum_distinct_semantics_margin": true,
+    "minimum_unit_similarity": true,
+    "off_balance_page_not_loaded": true,
+    "zero_propagation_issues": true
+  },
+  "propagation_issues": [],
+  "reference_isolation": {
+    "accounting_validation_invoked": false,
+    "continuation_inheritance_used": false,
+    "e0022_evidence_loaded": false,
+    "excel_export_invoked": false,
+    "historical_or_mongodb_values_loaded": false,
+    "horizontal_position_used_as_period_role": false,
+    "human_review_loaded": false,
+    "numeric_cell_text_or_value_used_as_period_unit_feature": false,
+    "numeric_value_magnitude_used": false,
+    "off_balance_page_5_loaded": false,
+    "schema_mapping_invoked": false,
+    "template_labels_or_report_norm_ids_loaded": false
+  },
+  "status": "PASS_REFERENCE_BLIND_VISIBLE_HEADER_BINDING",
+  "target_artifacts": [
+    {
+      "path": "output/calibration/e0027-mbb-q1-2026-end-to-end-role-c/ppocrv6-page-0003/ocr_result.json",
+      "sha256": "070dc9045cab52669a9bee9f548996cf7d3e4125cc93077400bbc916cbe666f2",
+      "size_bytes": 145594
+    },
+    {
+      "path": "output/calibration/e0027-mbb-q1-2026-end-to-end/eebeda2ebc09b0d42032/renders/page-0003.png",
+      "sha256": "40544c98908d2ca59d5e78a840594cbbea1622d33ac6a72b187c413670bef599",
+      "size_bytes": 1709301
+    },
+    {
+      "path": "output/calibration/e0027-mbb-q1-2026-end-to-end-role-c/ppocrv6-page-0004/ocr_result.json",
+      "sha256": "6ef9d5af3b87ee4368bb63fd8ee5f02832104404f39820e659fdd79c37cd3bd4",
+      "size_bytes": 93433
+    },
+    {
+      "path": "output/calibration/e0027-mbb-q1-2026-end-to-end/eebeda2ebc09b0d42032/renders/page-0004.png",
+      "sha256": "0c872315d09faebaba24c3b4badcc355d235841b0e1e57d4dda443e76f7b16b7",
+      "size_bytes": 1033463
+    }
+  ],
+  "verified_inputs": {
+    "algorithm": {
+      "path": "src/bctc_ai/axes/word_box_header_binding.py",
+      "sha256": "ad5069ed5ba2e89bc86c40077be746d17ab37342ba06cf3995416cd7dd425e4b",
+      "size_bytes": 15993
+    },
+    "config": {
+      "path": "config/tables/word-box-header-binding-v1.yaml",
+      "sha256": "77ad8962b0e9bb3173561108b0d20357433af0a76a0cacb1ff4c9f6ad57a8620",
+      "size_bytes": 1354
+    },
+    "e0029_row_contract": {
+      "path": "docs/experiments/E-0029-mbb-cdkt-row-reconstruction.json",
+      "sha256": "affe74a243e342b56c4ead2fac984f10d9a1f42378823b50ccdde8946eeed373",
+      "size_bytes": 92652
+    },
+    "ocr_batch": {
+      "path": "output/calibration/e0027-mbb-q1-2026-end-to-end-role-c/batch_manifest.json",
+      "sha256": "0d94762ba4a0d383793fe93a56e48fa7b79d6a3f7faaf62e9dcf40935b8c2889",
+      "size_bytes": 13563
+    },
+    "period_propagation_policy": {
+      "path": "config/tables/period-propagation-v1.yaml",
+      "sha256": "dd7e2d23b39a2f16741cf4cb3ff47bc849f6c4a6d2fcabf570f2eddf6ba6c1a7",
+      "size_bytes": 642
+    },
+    "row_config": {
+      "path": "config/tables/word-box-reconstruction-v3.yaml",
+      "sha256": "c1cf55a6187a1b2a6f54b74b1566619d046446bc3ad7e628473004103c5d0f7e",
+      "size_bytes": 1030
+    }
+  }
+}
