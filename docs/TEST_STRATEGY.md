@@ -291,3 +291,16 @@ integration test also asserts the sealed V3 source SHA-256 remains byte-identica
 E-0032 is retained as a superseded audit artifact because its first V4 hook
 caused that immutable-source gate to fail. E-0031 must be rerun on E-0033's
 128-cell denominator before any downstream numeric completeness claim.
+
+E-0034 performs that required replay on the immutable E-0033 denominator. The
+V2 crop policy may add a white bottom canvas only when immutable PP-OCRv6
+`value_line_indices` are present; it may not inspect label text, primary value,
+sign, schema, history or review. Tests require 114/128 value-line-triggered
+crops, exactly 1,368 added pixels, zero source-line/punctuation clipping, 5/5
+verified dashes and no blank promotion. The formal gate requires at least 99%
+exact agreement across observed cells and at most one observed disagreement.
+The measured result is 118/119 exact observed cells (113/114 values plus 5/5
+dashes); the remaining disagreement retains both proposals and no selected
+value, while all nine blanks remain pending row semantics. The integration test
+hash-locks the 128-cell artifact and grants no label, schema, accounting, Excel,
+human-gold, holdout or production authority.

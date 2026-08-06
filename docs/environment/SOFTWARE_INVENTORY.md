@@ -341,6 +341,9 @@ CPU-FP32 runtime with MKLDNN disabled. The Apache-2.0 checkpoint is
 All six repository files, versions, sizes and hashes are pinned in
 `config/models/numeric-recognizer-v1.toml`. The formal E-0031 run loaded the
 model once and processed 126 source-pixel crops in 11.938103 seconds on CPU.
+The corrected-grid E-0034 run used the same unchanged model/runtime, loaded it
+once and processed 128 crops in 12.124202 seconds. It verified 118/119 observed
+cells exactly; this adds no distribution, checkpoint or environment change.
 The process blocks network connections; input contains only `crop_path`; model
 probability has no acceptance authority.
 
