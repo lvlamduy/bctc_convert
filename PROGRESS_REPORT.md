@@ -1,8 +1,8 @@
 # Progress report
 
-- Updated: 2026-08-06T10:06:00+00:00
+- Updated: 2026-08-06T10:08:00+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `2e92e9e`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
+- Latest clean, tested, pushed checkpoint: `d8daad3`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
@@ -100,9 +100,9 @@
   0.720/0.696/0.722), while OCR emits form variants `B02a/B03a/B04a` that do not
   exactly match the frozen `B02/B03/B04` anchors. This is diagnosis only; no
   threshold or page selection was changed and no semantic reader was invoked.
-- Next bounded action: commit the evidence-only unresolved-discovery sealer,
-  capture the Role B seal from a clean tree, and only then hydrate Role A for the
-  predeclared one-shot diagnosis/comparison.
+- Next bounded action: commit the hash-locked unresolved Role B seal, hydrate
+  only the exact Role A source, build its machine reference, and perform the
+  predeclared one-shot diagnosis/comparison without changing frozen thresholds.
 
 ## Completed tasks
 
@@ -147,6 +147,12 @@
   `10bb4f544d21bcd0f633189e8b7ff715a0869453ca31d27d1446d4bcaa03272b`;
   the final batch manifest SHA-256 is
   `462e23dae7581043362dd577917e1ce10d00f56dc216b67e16fba895a08c7c64`.
+- Sealed the exact E-0022 Role B unresolved outcome from clean commit
+  `d8daad3f2976ae474e16ae50076aac860f43f7d8`. The seal binds 108 artifacts and
+  two verified PP-OCRv6 weight files; records 33/33 OCR pages, zero candidates,
+  zero mapping-eligible pages, zero semantic-reader/downstream/history use and
+  absent Role A; and permits Role A hydration only after this point. Seal
+  SHA-256: `41ef962361cfead7cdfa4d7b8a782e61ab3fc4a938aa4fa86ebb45cbe637660e`.
 - Built reproducible bootstrap, GPU runtime, package/model hashes, source registry,
   dataset-role registry, backup/restore checks, and server rebuild documentation.
 - Restored and audited `financial_20_02_2022.gz` as a read-only MongoDB historical
@@ -372,10 +378,9 @@
   Role A source access, and the frozen thresholds cannot be tuned on this pair.
 - The frozen statement locator returned `UNRESOLVED` with no complete ordered
   `CDKT→KQKD→LCTT→TM` block, zero candidates and zero mapping-eligible pages.
-  Role A remains absent. An evidence-only sealer is being added to hash-lock the
-  108 source/preprocess/OCR/locator artifacts and both PP-OCRv6 weights without
-  changing the frozen algorithms, selecting pages, invoking PaddleOCR-VL,
-  mapping rows or using history.
+  Role B is now formally sealed without changing the frozen algorithms,
+  selecting pages, invoking PaddleOCR-VL, mapping rows or using history. Role A
+  remains absent pending the seal checkpoint commit.
 - Ordered SchemaGraph v1 and E-0023 are sealed. Work now returns to E-0022 under
   its frozen pre-access contract: hydrate/process/seal Role B only. The new mapper
   remains intentionally excluded from that already-frozen pipeline.
@@ -469,9 +474,9 @@
 
 ## Planned next steps
 
-1. Seal the exact unresolved E-0022 Role B result without page selection,
-   threshold changes, semantic-reader execution, mapping or history.
-2. Hydrate Role A only after that seal, then complete the one-shot E-0022
+1. Commit the hash-locked unresolved E-0022 Role B seal.
+2. Hydrate Role A only after that checkpoint, build the native machine reference,
+   then complete the one-shot E-0022
    Role A/Role B diagnosis/comparison with frozen thresholds
    and report the main error class and measurable before/after results.
 3. Apply ordered SchemaGraph v1 next on separate development/validation blocks

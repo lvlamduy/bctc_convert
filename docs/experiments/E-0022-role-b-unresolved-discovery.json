@@ -1,0 +1,618 @@
+{
+  "allowed_next_action": "HYDRATE_ROLE_A_AND_BUILD_MACHINE_REFERENCE_FOR_ONE_SHOT_DIAGNOSIS",
+  "artifact_records": [
+    {
+      "path": "config/document_phase/statement-locator-v1.yaml",
+      "sha256": "d25ff6da2a1ce48428b4ab1ac20a31b989a27849d93326ae839507dce2ff107e",
+      "size_bytes": 3127
+    },
+    {
+      "path": "docs/experiments/E-0022-role-b-execution-control.json",
+      "sha256": "c56721c3164c42e5ddd869778134b0196a914d04144b7a591524b0a6bc200d81",
+      "size_bytes": 3101
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/layout/statement-location.json",
+      "sha256": "3257f21f5d8e95b0d58a733e57cab8d15bec8641fd1be9746c61e64a6340a8a6",
+      "size_bytes": 25407
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/manifest.json",
+      "sha256": "10bb4f544d21bcd0f633189e8b7ff715a0869453ca31d27d1446d4bcaa03272b",
+      "size_bytes": 104564
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/batch_manifest.json",
+      "sha256": "462e23dae7581043362dd577917e1ce10d00f56dc216b67e16fba895a08c7c64",
+      "size_bytes": 40153
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0001/ocr_result.json",
+      "sha256": "fe30937cae3b6e4454ca1e1923573346bb7a5a33b9431321d02b68fb60b1a409",
+      "size_bytes": 8741
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0001/run_manifest.json",
+      "sha256": "ce6f0aff69497efac63f0ca490b02a1a4b9c4289847852abd24bc994a355399e",
+      "size_bytes": 2907
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0002/ocr_result.json",
+      "sha256": "7b7254a187530a82c1b9809647615862bb504d2498d6ef650655f2446f515308",
+      "size_bytes": 61665
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0002/run_manifest.json",
+      "sha256": "4a99bdc733435d30d4a0b66ac0dc1307f77762ff09aed5369471423d2067a3a9",
+      "size_bytes": 2908
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0003/ocr_result.json",
+      "sha256": "f959eba1ca9262da13236dda12a01cf564273740a6da6b9c19041e999293a884",
+      "size_bytes": 153762
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0003/run_manifest.json",
+      "sha256": "814eb73caf57fb35baf430361e5e3059dc322b91dddfb7284e2888b2f2c09653",
+      "size_bytes": 2912
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0004/ocr_result.json",
+      "sha256": "6b0db587bdddd2471736e5ea277e09c9f1a4d044d9f820035c414bfcde993ba7",
+      "size_bytes": 111675
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0004/run_manifest.json",
+      "sha256": "5a69e4191e7d491613c01534c8d064b081cf847502c1e1ca0f99fb434cffe681",
+      "size_bytes": 2913
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0005/ocr_result.json",
+      "sha256": "e62ba686b848909c561cd6fd2cbf1a824398ca3dc8af5cc777e227a8636ef4e1",
+      "size_bytes": 67579
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0005/run_manifest.json",
+      "sha256": "3f6b1091216da236b9954a637ddfbc46a0262433283ba69a653220e15d23f90c",
+      "size_bytes": 2910
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0006/ocr_result.json",
+      "sha256": "53ba7eb26431a3da739ef29977d051cb90eb50ab47d501e1ba2eb76f8bd30fd5",
+      "size_bytes": 140160
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0006/run_manifest.json",
+      "sha256": "117654f7d9f689ed94d36a5597b74c26c6eaa8526617880b132ec6850bc07c21",
+      "size_bytes": 2911
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0007/ocr_result.json",
+      "sha256": "03f53b9b34070ebca1bd682bbbb0e0e28a025e25c92016472b0ccbe431a49b71",
+      "size_bytes": 130967
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0007/run_manifest.json",
+      "sha256": "b13229562f0235e63f88a7bf668dd2bb4bd3d715c4ea891ff0f452d6f05da0a1",
+      "size_bytes": 2913
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0008/ocr_result.json",
+      "sha256": "ff2632cf0951b4d823c208045945e87beba2e9b1faf3877547924ba88749217c",
+      "size_bytes": 115300
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0008/run_manifest.json",
+      "sha256": "c9ef4d93480665ae56149c7350d76c1103ceefdd912dc4065309e78c7846c451",
+      "size_bytes": 2912
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0009/ocr_result.json",
+      "sha256": "0d91402f4fdf2201828c0b34f2c801c42ce829366bc67b45be9ee68f18d02376",
+      "size_bytes": 100538
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0009/run_manifest.json",
+      "sha256": "25a49de4f8424bc74afbd4564a0b8c00ec19e9f6019e63ea6984af3c13e4a759",
+      "size_bytes": 2911
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0010/ocr_result.json",
+      "sha256": "60b5fb7da0f92349bf0ff078cb8aed5662c526e7262afc8f94ca2043cca0e081",
+      "size_bytes": 145063
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0010/run_manifest.json",
+      "sha256": "4846e340c275a71851bbeda65efc044b6f25be192b8330b6a72930bb0d855afa",
+      "size_bytes": 2913
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0011/ocr_result.json",
+      "sha256": "0c9ce1582bec9c0dec6833a0b4891f104afe4bc1c045fd69093bd572ed0e44dc",
+      "size_bytes": 165978
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0011/run_manifest.json",
+      "sha256": "d0f13b599dafab8853815510a592dd319ce21771ffc3ef8971d0025473e37876",
+      "size_bytes": 2899
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0012/ocr_result.json",
+      "sha256": "ddda7bd8f8059522f7be1a5b5f0df75d3d800dbd38a82c913f16eec7dbea2671",
+      "size_bytes": 132652
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0012/run_manifest.json",
+      "sha256": "9c92684f50b52fb0ac185aa4234b690670f90e8fd72d5b408da548228d07624b",
+      "size_bytes": 2914
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0013/ocr_result.json",
+      "sha256": "a8726f85013a85bbe682f6f8c131ec99994a230940584ce280e41a5ff56947d1",
+      "size_bytes": 128481
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0013/run_manifest.json",
+      "sha256": "7107864c7d86bc703addde1bfbffbacacd1efc5526d184f57bff865651052115",
+      "size_bytes": 2914
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0014/ocr_result.json",
+      "sha256": "5a6e08de4e6f4459b879403f5bf99aae2d0259234305df294bc08e605b81035d",
+      "size_bytes": 140617
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0014/run_manifest.json",
+      "sha256": "7cd4951809a47bcbab4180e2a3e9f1a0f39c4d72092e82e43fa862e0558e94c4",
+      "size_bytes": 2914
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0015/ocr_result.json",
+      "sha256": "ce188ffcda85ae192258a4f0adc63f64e3ca31f42ce39e726276620b97676259",
+      "size_bytes": 152635
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0015/run_manifest.json",
+      "sha256": "96924a628a52e0c71d69d372aaba70b127f171e0d26ea005880c81402db32118",
+      "size_bytes": 2914
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0016/ocr_result.json",
+      "sha256": "b48f737b9d55833eba8fd7abb506055d0e909b1eed58313aae3903f21e84fa30",
+      "size_bytes": 84527
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0016/run_manifest.json",
+      "sha256": "7c95bda82ea1fbc5c12ff2f7b709ada5967b5fc25ce571fa4c4b5b63f71bca4a",
+      "size_bytes": 2912
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0017/ocr_result.json",
+      "sha256": "6d5ef45017dea65598b39059790e9f83e7b0321b2279c79d7d9a16ffc1702e1e",
+      "size_bytes": 100228
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0017/run_manifest.json",
+      "sha256": "6016ecb2f159257a632ec36f99709208ef84137cbc645f752394e87ca89079ab",
+      "size_bytes": 2914
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0018/ocr_result.json",
+      "sha256": "f4407903dfa3dfb672c00a29bc62167c3e7a78b504d820f17289b2e17ce04f51",
+      "size_bytes": 81790
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0018/run_manifest.json",
+      "sha256": "7ac2b862f7b7b5fd96467c08ebc6313555fa75c14f0c3dbf5cef18f423789a2e",
+      "size_bytes": 2911
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0019/ocr_result.json",
+      "sha256": "a54f3407a3a37d898a4e8bc802a346da87948d0e83c80448f39c5fad53032ef6",
+      "size_bytes": 93620
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0019/run_manifest.json",
+      "sha256": "7183d49d04aa9cb99b76ae5daaa8febc1800d3f9e6a7c5a183c1aef809754b5f",
+      "size_bytes": 2912
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0020/ocr_result.json",
+      "sha256": "8e04e86797ecd4daae970514d7e15ef10c8764501afd0533c8f1af424fcc8378",
+      "size_bytes": 71101
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0020/run_manifest.json",
+      "sha256": "6d0d84d2b06febf52a583b6afbccbc47878779c85fd33c4da2a1e2b0c8fb1e75",
+      "size_bytes": 2913
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0021/ocr_result.json",
+      "sha256": "48ec577cb447ffbe2ca3b19a7489d30fc2b39adb3b6c2474bbe370bc8e8886fe",
+      "size_bytes": 99801
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0021/run_manifest.json",
+      "sha256": "878a64f367abc7f12b22cd00f9f062c9972207cb01cfedb4a0050da933081a99",
+      "size_bytes": 2913
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0022/ocr_result.json",
+      "sha256": "8b2cbf7842666f12affa1578e97079bc6029dc32d224a3315c36124be770a5c0",
+      "size_bytes": 93953
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0022/run_manifest.json",
+      "sha256": "644791e6d20fb8d7bf055d4f385038765de18060e74b47e063beb66c22d0d74d",
+      "size_bytes": 2898
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0023/ocr_result.json",
+      "sha256": "1ae245de9c112de431611333dfc2073f27c132c813f34a394243931f56eaf730",
+      "size_bytes": 95548
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0023/run_manifest.json",
+      "sha256": "de586fc8ec9582b92097d38e2bb0a5adcd64b48063e349483c0c885520322cbe",
+      "size_bytes": 2911
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0024/ocr_result.json",
+      "sha256": "04e1e013dc4d07bf7881cf81a592f3f4b89807203fcb36c56eeda57ea57eddee",
+      "size_bytes": 84916
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0024/run_manifest.json",
+      "sha256": "4611fa89fbfb882bf32c41b65bc882879df7ba2cbd91db2378c6b9fd253b1ac5",
+      "size_bytes": 2912
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0025/ocr_result.json",
+      "sha256": "3f2d63ddc9ff9dfbda73ae486b69c89327a461abb30307c84b3580e8d8dc331a",
+      "size_bytes": 93339
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0025/run_manifest.json",
+      "sha256": "b7f3b5b95f61a79cf8b865ded12348f17c9785e1b20b4471a5708f09ba758f4b",
+      "size_bytes": 2914
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0026/ocr_result.json",
+      "sha256": "fe0978ea8fc7273b51f2efec3d51c0b44ae1dfb84224b0476cc66dbc9e68e8ff",
+      "size_bytes": 75761
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0026/run_manifest.json",
+      "sha256": "a91b22ba116cfa864a1f0736c078f1dec37642d70f1956122f6197a306a4872c",
+      "size_bytes": 2913
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0027/ocr_result.json",
+      "sha256": "35729723474d7402ee164bd19982d9ad98faba57559cf86f825a92de0b6851f4",
+      "size_bytes": 81564
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0027/run_manifest.json",
+      "sha256": "4a225713572a2ab3ada4a8174dde57eeed0163d798ce337346d0f87c279eb145",
+      "size_bytes": 2912
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0028/ocr_result.json",
+      "sha256": "40011026e0be32af3607a2fd07781776d72ffd3bcf299097121a9ff92db60bf7",
+      "size_bytes": 85649
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0028/run_manifest.json",
+      "sha256": "b39bdd9793386f435024cca515d4035d10b95d095d09865e0320d4019a1e2de3",
+      "size_bytes": 2912
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0029/ocr_result.json",
+      "sha256": "8859cdeae80d7fe3b6983e427b94266732d96fe4d9c0bc03d0953d11be4a1438",
+      "size_bytes": 82571
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0029/run_manifest.json",
+      "sha256": "4744e3be5b1a37d904c205b80460724f156e64c024e94c2115110e7e4fd3c484",
+      "size_bytes": 2917
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0030/ocr_result.json",
+      "sha256": "0e35977d6c96e2b228a389e0e30e331d54d5c35a71b1d7fac513bfc725d8c928",
+      "size_bytes": 37741
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0030/run_manifest.json",
+      "sha256": "b899f28745b02e2127ba064b0243c281213c765e6b1f7e8c8d3fac4b9f8c8347",
+      "size_bytes": 2913
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0031/ocr_result.json",
+      "sha256": "e3c8de27bd64716ecee192f5fe71f125df6934c08f44d34fecb137351c29088d",
+      "size_bytes": 101534
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0031/run_manifest.json",
+      "sha256": "48c9c45e259cd07b1d64c98a56fb2b784c250920441757e08adf4b784c704dd1",
+      "size_bytes": 2902
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0032/ocr_result.json",
+      "sha256": "92aca793da31fc7b302912a364a4c39bce5cc5cbf6129d2bfa99adc7d7608d4e",
+      "size_bytes": 96461
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0032/run_manifest.json",
+      "sha256": "25587b4e91dd83a1421e180cc58650828270bd240002380c6b0fdd8e775525db",
+      "size_bytes": 2901
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0033/ocr_result.json",
+      "sha256": "2f9bf4775944786c5ebd113932e49101439cb7854a48b6e0c3b723d6e350ab59",
+      "size_bytes": 87716
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document/ppocrv6-page-0033/run_manifest.json",
+      "sha256": "d96f5e48022b23423f511e9bcd4e966d7945dda3fd14110e6c430e8dac587413",
+      "size_bytes": 2911
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0001.png",
+      "sha256": "e01ace175a3536d324e9b11279990760cf6d4079bbc80c5c00d2c5288a7ce29e",
+      "size_bytes": 527579
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0002.png",
+      "sha256": "f790ffe45c44b350d3eb87e912e0f0021a9e29499d2b396db4bfa1d52bcb2869",
+      "size_bytes": 1928059
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0003.png",
+      "sha256": "b7e8700790a5e04c7a893a37166b3ae4d11c488619617e88be2db668411a71cf",
+      "size_bytes": 3713380
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0004.png",
+      "sha256": "eadd6916955fd1b5fbed8d9d2e01d4c6981b36363d2a560fb410aad8a5db62b8",
+      "size_bytes": 2927289
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0005.png",
+      "sha256": "93465bf52682907a325ca5cc733497dcc8398a14ea82a59681b00082af9ed707",
+      "size_bytes": 2057521
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0006.png",
+      "sha256": "a096ce264f872582c95ca52c2fb0c6505f739bd599abf0491033e2226938c3bf",
+      "size_bytes": 3854289
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0007.png",
+      "sha256": "9015d5408d32d0e6b8132490d54b71a852d86ba5b74e99b3544325adc111014a",
+      "size_bytes": 3824112
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0008.png",
+      "sha256": "36c77a87002325ea2c81f661bcbedc50aa3ec366e343b9285a6862359a82048d",
+      "size_bytes": 3738992
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0009.png",
+      "sha256": "3747973b74322c0f729204a497bc08b659839ac48f4f352329f20bf156c306a1",
+      "size_bytes": 2898446
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0010.png",
+      "sha256": "81f50c1441b1f492352e8370e90b976164fd5cf27541552d1901e3659ec46328",
+      "size_bytes": 3965111
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0011.png",
+      "sha256": "3164e0398755f95eed57bc3cc4d04ab989cce8f0a5bef43549a641036eac7ab4",
+      "size_bytes": 4584138
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0012.png",
+      "sha256": "d7078444f19e8532ebbc7e678a9f9216a33a2fccf58c0f4c393c34a6cbb2d882",
+      "size_bytes": 3689532
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0013.png",
+      "sha256": "659caea4bee32819f372665719ac54f84b7abca851394720678f8371d889a59f",
+      "size_bytes": 3883561
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0014.png",
+      "sha256": "fd4fef0313a3265e8921d8486e71c1b74b08aeaec39f32ba92f964b0ea75bae5",
+      "size_bytes": 4246750
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0015.png",
+      "sha256": "ace7368cac2b66a5267deae7a0b35d7693613307b3a67facb981d1ef52457434",
+      "size_bytes": 4075083
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0016.png",
+      "sha256": "ba4bc8e3fc8d5b23644e1af770d5eb3d94fff24db8109461151da942af7ff441",
+      "size_bytes": 2666140
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0017.png",
+      "sha256": "a4ac8fd63a8b7be5d9ccb4159f43d0089a8a5174f14087b73abf05fa4621d9f7",
+      "size_bytes": 2700288
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0018.png",
+      "sha256": "a8556211a2cfb15ce5c6c4e0ea7373bfae1d4e25ef4d8b62b1e0f28da843aa8a",
+      "size_bytes": 2617740
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0019.png",
+      "sha256": "ebc1685b5254687de9f538b2a58dbe35d65e84aa696800db3e73dc1eebceca80",
+      "size_bytes": 2828881
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0020.png",
+      "sha256": "86b0dc5c948ec1fca45c129552a3138b243eb9f22d3f7100e1f037a45dffb16d",
+      "size_bytes": 2140867
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0021.png",
+      "sha256": "0b7bf58cc5d3cc2aaf83b4898e1b8888d19b88c5a15610a14d46d1bb126f5dba",
+      "size_bytes": 3096309
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0022.png",
+      "sha256": "f8113e2a8876bf4b66a0275189eafd668e0e4e1f2535c62bc9f6b9662fa69a07",
+      "size_bytes": 2841571
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0023.png",
+      "sha256": "fe60e1d7ebb83282b1cc00eba77e209fdfecd01d83d8353d278dde024a40decf",
+      "size_bytes": 3250890
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0024.png",
+      "sha256": "068a6c0b1cd7a09fd731192f2c4bb5249fbf25ae0fe1409f87bf8182faee4292",
+      "size_bytes": 2547086
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0025.png",
+      "sha256": "001c693f0c8ac22e5e3b4c2437ea08ffe761ab80ff1719a9c4d18e0d5a935621",
+      "size_bytes": 2380742
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0026.png",
+      "sha256": "43d20ac9ee11e723b7455824123bae858da0de6506f901f8760e85acfbda70c3",
+      "size_bytes": 2291273
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0027.png",
+      "sha256": "28ce74ce78e9722eec806ced933a29e9be80c05a3979f1fec5c2a3d3241b3781",
+      "size_bytes": 2250312
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0028.png",
+      "sha256": "69ca5d55b12f1ce91f107357135207cbf945d5f0d57f307f5330ace759b43c9b",
+      "size_bytes": 2660907
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0029.png",
+      "sha256": "02ec021dc0bcf57ce3ceeb7e8fa7562fb7cdb19e9866194f8b2400b840c1567f",
+      "size_bytes": 3217157
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0030.png",
+      "sha256": "1744d27d22b86c34af657c35682fe886edb315ccca2bcc4fdd76f2fce94e7945",
+      "size_bytes": 1160746
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0031.png",
+      "sha256": "e91c882ccf2188759beac573a24e9bf793ddb5466991095c0d10383bc9ba0466",
+      "size_bytes": 3945290
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0032.png",
+      "sha256": "f4749a06cfaab5741d45ff9f185871240d6417bc9cbe37eb8800494a88341a5c",
+      "size_bytes": 3460998
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/renders/page-0033.png",
+      "sha256": "c4b3ee0b780b3f6717f9b863cac39260b5b07a4d4ca470d1399295d8400a0315",
+      "size_bytes": 3132387
+    },
+    {
+      "path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/run_manifest.json",
+      "sha256": "a11f05fa8fcb7345323c0972a0228721b9a7a80a72d979ef808fbbf63e5df64a",
+      "size_bytes": 237
+    },
+    {
+      "path": "scripts/experiments/locate_statement_pages.py",
+      "sha256": "a274aad0b7090fd1d0a162608d4240e64a6356573ed0e24519537e0321f2bd79",
+      "size_bytes": 4064
+    },
+    {
+      "path": "src/bctc_ai/document_phase/statement_locator.py",
+      "sha256": "8b4b283cb3eeaa3e2457e84950574cc79502143e09ae4b3b712e93e1dde8b35c",
+      "size_bytes": 29711
+    },
+    {
+      "path": "vietstock_bctc/ACB/2026/20260422 - ACB - BCTC Hop nhat Quy 1 nam 2026.pdf",
+      "sha256": "a85402445a34e80dd4248471c2d23d4cf4b349ab2455b91db457f3e6effbdd4a",
+      "size_bytes": 8027105
+    }
+  ],
+  "capture_git_commit": "d8daad3f2976ae474e16ae50076aac860f43f7d8",
+  "capture_git_dirty": false,
+  "claim_boundary": "This seal proves the exact unresolved Role B full-document discovery/OCR outcome. It contains no manually selected pages, no threshold change, no Role A evidence, no schema mapping, and no accuracy claim.",
+  "dataset_role": "UNTOUCHED_HOLDOUT",
+  "experiment_id": "E-0022",
+  "format_version": 1,
+  "historical_reference": {
+    "invoked": false
+  },
+  "mapping": {
+    "invoked": false
+  },
+  "models": [
+    {
+      "model_key": "pp_ocrv6_medium_det",
+      "repo_id": "PaddlePaddle/PP-OCRv6_medium_det",
+      "revision": "8e0f56fb2ef86b461d99cfc7ac5c137738985f61",
+      "weights_sha256": "85218d2e3d98f5a21c58b4220627be923a97aee5db3cc71f39536ab31ac53960",
+      "weights_size_bytes": 61960476
+    },
+    {
+      "model_key": "pp_ocrv6_medium_rec",
+      "repo_id": "PaddlePaddle/PP-OCRv6_medium_rec",
+      "revision": "e5a92bcbc5cc1b494628e458d267778f0704fd7c",
+      "weights_sha256": "1b01c79a914587933f615569e75de54f2e638ebb5d3f3b3c1b38c24ede8c7319",
+      "weights_size_bytes": 76465087
+    }
+  ],
+  "role_a_access_permitted_during_role_b": false,
+  "seal_implementation": {
+    "path": "src/bctc_ai/evaluation/holdout_discovery_seal.py",
+    "sha256": "b5b7aa84628ea246714df0379eb1679bceef699ddd42d1aadadbfe30db0ba140"
+  },
+  "semantic_reader": {
+    "invoked": false,
+    "reason": "NO_DISCOVERED_MAIN_STATEMENT_BLOCK"
+  },
+  "state": "ROLE_B_DISCOVERY_SEALED_UNRESOLVED",
+  "threshold_or_page_selection_tuning_performed": false,
+  "validation": {
+    "batch_identity_sha256": "56ae17eccd0e9ab7f75370828086a7e2a793d5915cb4f948cd56098d17588168",
+    "batch_line_count": 2477,
+    "batch_lines_below_0_8": 214,
+    "batch_lines_below_0_9": 388,
+    "batch_manifest_sha256": "462e23dae7581043362dd577917e1ce10d00f56dc216b67e16fba895a08c7c64",
+    "batch_mean_line_score": 0.9501405286545902,
+    "batch_minimum_line_score": 0.0,
+    "batch_page_count": 33,
+    "batch_root": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/ocr/ppocrv6-full-document",
+    "batch_word_token_count": 24299,
+    "downstream_extraction_file_count": 0,
+    "location_candidate_count": 0,
+    "location_mapping_eligible_page_count": 0,
+    "location_path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/layout/statement-location.json",
+    "location_sha256": "3257f21f5d8e95b0d58a733e57cab8d15bec8641fd1be9746c61e64a6340a8a6",
+    "location_state": "UNRESOLVED",
+    "preprocess_dpi": 300,
+    "preprocess_git_commit": "2e92e9e5ffa256f7869adc5b2ee1e9718c7d7a51",
+    "preprocess_manifest_path": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424/manifest.json",
+    "preprocess_manifest_sha256": "10bb4f544d21bcd0f633189e8b7ff715a0869453ca31d27d1446d4bcaa03272b",
+    "preprocess_page_count": 33,
+    "role_a_holdout_output_count": 0,
+    "role_a_immutable_locally_present": false,
+    "role_a_immutable_path": "data/immutable/sha256/d8/d8be301b9169577a0be2bbd8721cdaaab7cb37a32493ead0de5871bfcbc168dd.pdf",
+    "role_a_locally_present": false,
+    "role_a_path": "vietstock_bctc/ACB/2026/ACB BCTC HOP NHAT Q1_26_ban tra cuu.pdf",
+    "sealed_artifact_file_count": 108,
+    "sealed_artifact_set_sha256": "4bdec4bad026d6ee5ad5fd69b7236692c0ee36e6a5e4a95181b142c81df700d9",
+    "semantic_reader_invoked": false,
+    "source_path": "vietstock_bctc/ACB/2026/20260422 - ACB - BCTC Hop nhat Quy 1 nam 2026.pdf",
+    "source_sha256": "a85402445a34e80dd4248471c2d23d4cf4b349ab2455b91db457f3e6effbdd4a",
+    "source_size_bytes": 8027105
+  }
+}
