@@ -1,8 +1,8 @@
 # Progress report
 
-- Updated: 2026-08-06T09:27:00+00:00
+- Updated: 2026-08-06T09:29:00+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `9f2cf50`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
+- Latest clean, tested, pushed checkpoint: `cf83314`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
@@ -89,10 +89,9 @@
   logic-development evidence, not a real-document or human-gold accuracy claim.
   E-0023 now seals this result from clean commit `48043d0`; artifact SHA-256 is
   `87121a2eee5e29213e06c43bcd92db14d62291fbf79afced7f5c9eec90ae5bd1`.
-- Next bounded action: commit and capture the E-0022 pre-preprocessing execution
-  control from a clean tree, then preprocess all 33 Role B pages at 300 DPI and
-  run the already-frozen full-document locator/OCR pipeline. Seal Role B before
-  any Role A source access.
+- Next bounded action: preprocess all 33 E-0022 Role B pages at 300 DPI, then run
+  PP-OCRv6 word-box discovery over the full document. Locate the main statements
+  without preselected page numbers and seal Role B before any Role A access.
 
 ## Completed tasks
 
@@ -125,6 +124,12 @@
   verified its registered SHA-256, 8,027,105-byte size and 33-page count. The
   first five pages have no PDF text layer. Role A remains locally absent and no
   statement page has been selected from Role B content.
+- Captured the pre-preprocessing execution-control artifact from clean commit
+  `cf83314391e1cb94669481acc48bca2d12535579`. It proves the exact Role B source,
+  full-document/300-DPI policy, absent Role A logical/immutable/output paths,
+  absent Role B output root, and byte identities for 11 execution runners plus
+  the 24 previously frozen pipeline/schema files. Artifact SHA-256:
+  `c56721c3164c42e5ddd869778134b0196a914d04144b7a591524b0a6bc200d81`.
 - Built reproducible bootstrap, GPU runtime, package/model hashes, source registry,
   dataset-role registry, backup/restore checks, and server rebuild documentation.
 - Restored and audited `financial_20_02_2022.gz` as a read-only MongoDB historical
@@ -441,9 +446,8 @@
 
 ## Planned next steps
 
-1. Capture the clean E-0022 Role B execution-control artifact, preprocess all 33
-   pages at 300 DPI, run frozen full-document statement discovery/OCR, and seal
-   Role B before any Role A access.
+1. Preprocess all 33 E-0022 Role B pages at 300 DPI, run frozen full-document
+   statement discovery/OCR, and seal Role B before any Role A access.
 2. Complete the one-shot E-0022 Role A/Role B comparison with frozen thresholds
    and report the main error class and measurable before/after results.
 3. Apply ordered SchemaGraph v1 next on separate development/validation blocks

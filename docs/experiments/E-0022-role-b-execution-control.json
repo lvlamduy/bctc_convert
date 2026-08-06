@@ -1,0 +1,54 @@
+{
+  "allowed_next_action": "PREPROCESS_ROLE_B_FULL_DOCUMENT",
+  "capture_git_commit": "cf83314391e1cb94669481acc48bca2d12535579",
+  "capture_git_dirty": false,
+  "claim_boundary": "Role B input/execution readiness only; no OCR, mapping, value or accuracy claim.",
+  "configuration": {
+    "path": "config/experiments/e0022-role-b-execution-control.yaml",
+    "sha256": "f41249a055fd711d5ed36793cafa72da5f8ddb2ad9643b90a9ba14ab736aa57c"
+  },
+  "dataset_role": "UNTOUCHED_HOLDOUT",
+  "experiment_id": "E-0022",
+  "format_version": 1,
+  "role_a_access_permitted": false,
+  "state": "ROLE_B_EXECUTION_READY",
+  "threshold_or_page_selection_tuning_performed": false,
+  "validation": {
+    "allowed_next_action": "PREPROCESS_ROLE_B_FULL_DOCUMENT",
+    "execution_file_count": 11,
+    "execution_files_sha256": {
+      "config/tables/vlm-table-parser-v2.yaml": "dd6779c8951fff530941e16643b52638b5abfe5d1c3f977d6d65367eb0f842f2",
+      "scripts/experiments/locate_statement_pages.py": "a274aad0b7090fd1d0a162608d4240e64a6356573ed0e24519537e0321f2bd79",
+      "scripts/experiments/seal_role_b_ocr_run.py": "0a636afa79d75d26a7a0c7d422895927df163111e7addb9485599083209b3033",
+      "scripts/models/run_paddleocr_vl.sh": "980b64163b4d72a5afded3e168afcd6daa39b7743010fcfbb9de860b4cb5e3b3",
+      "scripts/models/run_ppocrv6_word_boxes.py": "bbbf2f101cec88ae99727393397df463623d47c2b31ef888e565fbe42c05d4b9",
+      "scripts/models/run_ppocrv6_word_boxes_batch.py": "7a716b0aa47dacc0b95454a46371721cc0af613892767f6e58e97035602322cb",
+      "scripts/models/run_ppocrv6_word_boxes_batch.sh": "c48c063ccf3f9a976acb4773e434891490f3aeaa219d07a4c96de68b91940d6a",
+      "src/bctc_ai/cli/main.py": "0317619eb5f19ffae14f2b2f4a048abc942e6437aa5b8bca962f4402fa719a0a",
+      "src/bctc_ai/document_phase/statement_evidence.py": "7cf1074d62c2fa133fdf2277a17df20163d0c504c191fbe9fb1901c115713954",
+      "src/bctc_ai/evaluation/reader_outputs_v2.py": "30e81f1473454fdb4d4dbe38e4b31384ac6e8d4f69fd78f49ccb31aa8c4beb80",
+      "src/bctc_ai/evaluation/sealing.py": "52e689730029f0317ceea4ea2aecc3e5bb662356c6d0ebc1b6096c496fadb2ad"
+    },
+    "experiment_id": "E-0022",
+    "frozen_git_commit": "e0496e2196ada0a66213469d09296528dd37cc54",
+    "output_root": "output/holdout/e0022-acb-q1-2026-role-b/a85402445a34e80dd424",
+    "output_root_exists": false,
+    "phase": "ROLE_B_EXECUTION_CONTROL_AFTER_AUTHORIZED_HYDRATION_BEFORE_PREPROCESSING",
+    "role_a_holdout_output_count": 0,
+    "role_a_immutable_locally_present": false,
+    "role_a_immutable_path": "data/immutable/sha256/d8/d8be301b9169577a0be2bbd8721cdaaab7cb37a32493ead0de5871bfcbc168dd.pdf",
+    "role_a_locally_present": false,
+    "role_a_path": "vietstock_bctc/ACB/2026/ACB BCTC HOP NHAT Q1_26_ban tra cuu.pdf",
+    "role_b_page_count": 33,
+    "role_b_path": "vietstock_bctc/ACB/2026/20260422 - ACB - BCTC Hop nhat Quy 1 nam 2026.pdf",
+    "role_b_sha256": "a85402445a34e80dd4248471c2d23d4cf4b349ab2455b91db457f3e6effbdd4a",
+    "role_b_size_bytes": 8027105,
+    "role_b_text_layer_chars_first_five_pages": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  }
+}
