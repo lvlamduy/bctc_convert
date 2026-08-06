@@ -14,6 +14,7 @@ from openpyxl.utils import get_column_letter
 
 from bctc_ai.core.atomic import atomic_write_bytes
 from bctc_ai.core.contracts import EvidenceStatus, PipelineRecord, ValueStatus
+from bctc_ai.schema.coverage import load_schema_coverage
 from bctc_ai.schema.registry import SchemaItem, SchemaWorkbook, load_all
 
 MAIN_SHEETS = ("CDKT", "KQKD", "LCTT", "TM")
@@ -363,6 +364,10 @@ def export_workbook(
     for record in records:
         record.validate()
     workbooks, items = load_all(project_root / "template", project_root)
+    coverage = load_schema_coverage(project_root, schema_items=items)
+    coverage.assert_exact_consumer_order(
+        "EXCEL_OUTPUT", (item.schema_id for item in items)
+    )
     schema_counts = {workbook.statement_type: workbook.item_count for workbook in workbooks}
     output = Workbook()
     output.remove(output.active)
@@ -389,6 +394,8 @@ def export_workbook(
                 workbook.statement_type: workbook.sha256 for workbook in workbooks
             },
             "schema_counts": schema_counts,
+            "schema_coverage_contract_sha256": coverage.ordered_targets_sha256,
+            "schema_coverage_target_count": len(coverage.ids_for("EXCEL_OUTPUT")),
             "exported_value_count": exported,
         },
     )
@@ -406,7 +413,11 @@ def export_workbook(
     )
 
 
-def verify_export(path: Path, expected_workbooks: list[SchemaWorkbook]) -> None:
+def verify_export(
+    path: Path,
+    expected_workbooks: list[SchemaWorkbook],
+    expected_items: list[SchemaItem],
+) -> None:
     workbook = load_workbook(path, read_only=True, data_only=False)
     expected_sheets = list(MAIN_SHEETS + SUPPORT_SHEETS)
     if workbook.sheetnames != expected_sheets:
@@ -415,8 +426,16 @@ def verify_export(path: Path, expected_workbooks: list[SchemaWorkbook]) -> None:
     for statement in MAIN_SHEETS:
         sheet = workbook[statement]
         identifiers = [sheet.cell(row=row, column=2).value for row in range(2, sheet.max_row + 1)]
+        names = [sheet.cell(row=row, column=3).value for row in range(2, sheet.max_row + 1)]
+        expected_statement_items = [
+            item for item in expected_items if item.statement_type == statement
+        ]
+        expected_identifiers = [item.schema_id for item in expected_statement_items]
+        expected_names = [item.canonical_name for item in expected_statement_items]
         if len(identifiers) != count_by_statement[statement]:
             raise ValueError(f"schema row count changed in {statement}")
         if len(identifiers) != len(set(identifiers)):
             raise ValueError(f"duplicate schema ID exported in {statement}")
+        if identifiers != expected_identifiers or names != expected_names:
+            raise ValueError(f"schema identity/name/display order changed in {statement}")
     workbook.close()

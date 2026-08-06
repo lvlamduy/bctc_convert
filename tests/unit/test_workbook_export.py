@@ -42,11 +42,20 @@ def test_workbook_preserves_schema_order_and_support_sheets(tmp_path, project_ro
         questions_path=project_root / "questions_for_user.jsonl",
         schema_additions_path=project_root / "proposed_schema_additions.jsonl",
     )
-    workbooks, _ = load_all(project_root / "template", project_root)
-    verify_export(output, workbooks)
+    workbooks, items = load_all(project_root / "template", project_root)
+    verify_export(output, workbooks, items)
     assert result.exported_value_count == 1
     assert result.review_count == 1
-    assert result.schema_counts == {"CDKT": 77, "KQKD": 24, "LCTT": 107, "TM": 1384}
+    assert result.schema_counts == {"CDKT": 77, "KQKD": 24, "LCTT": 107, "TM": 1385}
+
+    workbook = load_workbook(output, read_only=True, data_only=True)
+    tm = workbook["TM"]
+    assert tm.cell(tm.max_row, 2).value == 1944
+    assert (
+        tm.cell(tm.max_row, 3).value
+        == "Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán"
+    )
+    workbook.close()
 
 
 def test_workbook_exports_observed_zero_but_never_out_of_scope_value(tmp_path, project_root):
@@ -94,4 +103,32 @@ def test_workbook_exports_observed_zero_but_never_out_of_scope_value(tmp_path, p
     assert sheet.cell(zero_row, 10).value == ValueStatus.OBSERVED_ZERO.value
     assert sheet.cell(outside_row, 4).value is None
     assert sheet.cell(outside_row, 10).value == ValueStatus.OUT_OF_SCOPE_FOR_TARGET_TEMPLATE.value
+    workbook.close()
+
+
+def test_workbook_exports_tm_1944_value_on_its_appended_row(tmp_path, project_root):
+    output = tmp_path / "tm-1944.xlsx"
+    record = PipelineRecord(
+        document_id="sha256:sample",
+        statement_type="TM",
+        schema_id=1944,
+        canonical_name="Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
+        raw_value="1.234",
+        normalized_value="1234",
+        current_or_comparative="CURRENT",
+        status=EvidenceStatus.AUTO_VERIFIED_MEDIUM,
+        value_status=ValueStatus.OBSERVED_VALUE,
+        observation=ObservationKind.VALUE,
+    )
+    result = export_workbook(
+        project_root,
+        output,
+        [record],
+        run_metadata={"run_id": "tm-1944"},
+    )
+    assert result.exported_value_count == 1
+    workbook = load_workbook(output, read_only=True, data_only=True)
+    tm = workbook["TM"]
+    assert tm.cell(tm.max_row, 2).value == 1944
+    assert tm.cell(tm.max_row, 4).value == 1234
     workbook.close()

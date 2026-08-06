@@ -42,7 +42,7 @@ Recommended safe default: Keep it as a pending append-only proposal; do not alte
 
 Recorded response: Approved on 2026-08-06: append TM ReportNormID 1944 with the exact proposed name under the append-only policy, preserving every existing ID, name, order, and mapping; include it in Role A, Role B, Excel, evaluation, mandatory search, and PROGRESS_REPORT.md.
 
-Status: APPROVED_APPEND_IMPLEMENTATION_IN_PROGRESS
+Status: RESOLVED
 
 ## Q-BOOT-005 — HIGH
 

@@ -18,6 +18,9 @@ def test_vst_hierarchy_is_complete_where_claimed_and_partial_for_direct_lctt(pro
     assert lctt.non_id_labels == ("LƯU CHUYỂN TIỀN TỆ TRỰC TIẾP",)
     cdkt = next(workbook for workbook in registry.workbooks if workbook.statement_type == "CDKT")
     assert cdkt.skipped_blank_rows == 47
+    tm = next(workbook for workbook in registry.workbooks if workbook.statement_type == "TM")
+    assert tm.schema_only_append_ids == (1944,)
+    assert registry.status == "VALIDATED_SUPPORTING_REFERENCE_WITH_SCHEMA_ONLY_APPENDS"
     assert len(hierarchy) == 1535
 
 
@@ -37,3 +40,5 @@ def test_hierarchy_edges_and_structural_aliases_are_attached_without_reordering(
     assert by_id[4344].siblings == [4326, 4345]
     assert by_id[560].parent_id is None
     assert by_id[4162].hierarchy_source is None
+    assert by_id[1944].parent_id is None
+    assert by_id[1944].hierarchy_source is None

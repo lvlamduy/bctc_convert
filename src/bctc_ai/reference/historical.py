@@ -661,11 +661,16 @@ def build_historical_weak_reference(
             "unknown_ytd_features_excluded": sorted(unknown_ytd),
             "named_or_formula_features_excluded": sorted(excluded_named),
             "proposed_id": proposed_id,
+            "schema_append_id": proposed_id,
+            "schema_append_registered": proposed_id in schema_by_id,
+            "schema_append_authority": "Q-BOOT-004_APPROVED_2026_08_06",
             "source_contains_proposed_id": source_contains_proposed_id,
+            "source_contains_schema_append_id": source_contains_proposed_id,
             "append_safe_from_historical_key_collision_perspective": (
                 not source_contains_proposed_id
             ),
-            "semantic_or_parent_approval_still_required": True,
+            "semantic_or_parent_approval_still_required": False,
+            "hierarchy_parent_reference_status": "NOT_INFERRED_WITHOUT_SOURCE_AUTHORITY",
         },
         "cells": {
             "count": len(cells),
@@ -768,6 +773,20 @@ def verify_historical_weak_reference(
                 safety["unit"] == "UNKNOWN" and safety["scope"] == "UNKNOWN"
             ),
         }
+        schema_graph_path = project_root / "reference/schemas/schema_graph.jsonl"
+        if registry["schema"].get("schema_graph_sha256") is not None:
+            checks["schema_graph_identity"] = (
+                schema_graph_path.is_file()
+                and sha256_file(schema_graph_path)
+                == registry["schema"]["schema_graph_sha256"]
+            )
+        if registry["schema"].get("schema_append_registered") is not None:
+            checks["schema_append_1944_registered"] = (
+                registry["schema"]["schema_append_id"] == 1944
+                and registry["schema"]["schema_append_registered"] is True
+                and registry["schema"]["schema_append_authority"]
+                == "Q-BOOT-004_APPROVED_2026_08_06"
+            )
         if not checks["database_sha256"]:
             return {**base_result, "status": "FAIL", "checks": checks}
 
@@ -803,7 +822,7 @@ def verify_historical_weak_reference(
             registered_bank_count_matches=(
                 bank_count == registry["scope"]["registered_bank_count"]
             ),
-            proposed_id_row_count_zero=collision_count == 0,
+            schema_append_id_historical_row_count_zero=collision_count == 0,
         )
         return {
             **base_result,

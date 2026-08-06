@@ -13,6 +13,7 @@ from bctc_ai.mapping.lctt import (
     assign_cash_flow_schema_branches,
     load_cash_flow_rules,
 )
+from bctc_ai.schema.append_only import verify_tm_1944_append
 from bctc_ai.schema.xlsx_reader import read_rows
 
 
@@ -124,6 +125,8 @@ def load_all(
     sources = payload.get("sources")
     if not isinstance(payload.get("version"), int) or not isinstance(sources, dict):
         raise ValueError(f"invalid schema source configuration: {config_path}")
+    if payload.get("append_only") is not True:
+        raise ValueError(f"schema sources must remain append-only: {config_path}")
     raw_cash_flow_rules = payload.get("cash_flow_rules")
     if not isinstance(raw_cash_flow_rules, str) or not raw_cash_flow_rules:
         raise ValueError(f"schema source configuration has no cash_flow_rules: {config_path}")
@@ -161,4 +164,29 @@ def load_all(
     expected_root = template_root.resolve()
     if any(expected_root not in path.parents for path in configured_paths):
         raise ValueError(f"schema source is outside configured template root: {config_path}")
+    append_audits = payload.get("approved_append_audits", [])
+    if not isinstance(append_audits, list) or not all(
+        isinstance(relative, str) and relative for relative in append_audits
+    ):
+        raise ValueError(f"invalid approved append audit list: {config_path}")
+    for relative in append_audits:
+        audit_path = (project_root / relative).resolve()
+        try:
+            audit_path.relative_to(project_root)
+        except ValueError as exc:
+            raise ValueError(f"schema append audit escapes project root: {relative}") from exc
+        # Q-BOOT-004 is the first append-only migration. Its verifier binds the
+        # baseline workbook, unchanged prefix, authorized row and resulting hash.
+        audit = verify_tm_1944_append(project_root, audit_path)
+        appended = audit["appended_item"]
+        matched = [
+            item
+            for item in all_items
+            if item.statement_type == appended["statement_type"]
+            and item.schema_id == appended["schema_id"]
+        ]
+        if len(matched) != 1 or matched[0].canonical_name != appended["canonical_name"]:
+            raise ValueError(f"approved schema append is not loaded exactly: {relative}")
+        if matched[0].display_order != appended["display_order_zero_based"]:
+            raise ValueError(f"approved schema append order drift: {relative}")
     return workbooks, all_items

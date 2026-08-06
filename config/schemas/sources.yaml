@@ -1,4 +1,4 @@
-version: 1
+version: 2
 append_only: true
 cash_flow_rules: config/mapping/lctt-v2.yaml
 sources:
@@ -7,3 +7,5 @@ sources:
   LCTT: template/Bank_LCTT_ReportNormId.xlsx
   TM: template/Bank_TM_ReportNormId.xlsx
 pending_additions: proposed_schema_additions.jsonl
+approved_append_audits:
+  - data/registered/schema_append_1944.json

@@ -14,7 +14,7 @@ The machine-readable policy is `config/reference/historical-weak-reference.yaml`
 | `report_quaterly` | 2,581 | 0/27 | Reject for bank reference |
 | `data_chart` | 1,318 total; 54 bank | 27/27, annual + quarterly | Allowlist |
 
-The first two collections intersect the supplied financial-entity registry only at six securities/fund codes and one insurance code. They must not be used as if they described bank forms. `data_chart` contains one `yearly` and one source-spelled `quaterly` document for every registered bank. It contains 91 numeric features, of which 79 are existing supplied ReportNormIDs; the other 12 are excluded and audited. ID 1944 is absent from raw and `YTD_` keys.
+The first two collections intersect the supplied financial-entity registry only at six securities/fund codes and one insurance code. They must not be used as if they described bank forms. `data_chart` contains one `yearly` and one source-spelled `quaterly` document for every registered bank. It contains 91 numeric features, of which 79 are registered ReportNormIDs; the other 12 are excluded and audited. The fixed historical source has no raw or `YTD_` key for newly appended ID 1944, so history cannot fabricate an observation for it.
 
 ## Persistent local rebuild
 
@@ -70,6 +70,6 @@ Q1 raw and YTD series can be equal, while later-quarter raw and YTD series diffe
 
 ## Verification and recovery behavior
 
-Routine `bctc-ai audit` checks database SHA-256, module/policy hashes, archive identity, row count, bank count, duplicate identity, ID 1944, and database-enforced no-map/no-promote flags. A missing local database reports `ABSENT_REBUILD_REQUIRED`; code/config drift or corruption reports `FAIL`. A prior E-0008 pass cannot override a current-host failure.
+Routine `bctc-ai audit` checks database SHA-256, module/policy hashes, current schema-graph identity, archive identity, row count, bank count, duplicate identity, the approved 1944 registration and its historical-source absence, plus database-enforced no-map/no-promote flags. A missing local database reports `ABSENT_REBUILD_REQUIRED`; code/config drift or corruption reports `FAIL`. A prior E-0008 pass cannot override a current-host failure.
 
 The E-0008 evaluator additionally requires an isolated diagnostic restore of `report_yearly`, `report_quaterly`, and `data_chart`; this broader restore is for source-selection evidence, not routine operation. Keep such diagnostics in a dedicated temporary MongoDB instance, stop it with the pinned `mongod --shutdown --dbpath ...` command, and remove only its explicitly created temporary root after the evaluation artifact and hashes pass.

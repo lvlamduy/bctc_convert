@@ -64,7 +64,8 @@ This is the durable retrieval point for project context. It summarizes user auth
   reverified without changing encryption/public blocking. Object Lock remains
   absent by explicit instruction.
 - Offload is authorized only after a content-addressed S3 snapshot, remote
-  checksum/HEAD verification, published manifest, and passing sampled restore.
+  checksum/HEAD verification, published manifest, manifest validation, and a
+  passing real full-content sequential restore.
   The first safe reclaim set is all 2,567 registered PDFs plus the Mongo dump,
   about 18.3 GB. Active output, DuckDB, environments, model runtime, and tools
   remain local.
@@ -109,9 +110,16 @@ This is the durable retrieval point for project context. It summarizes user auth
 
 - Git remote exists and is reachable; work is on feature branch `codex/rebuild-bootstrap`.
 - Hardware audit: RTX 5070 Ti 16,303 MiB, Ryzen 9 5950X, about 125.7 GiB RAM, Ubuntu 22.04, NVIDIA driver 595.80.
-- Supplied schema contains 1,592 unique IDs: CDKT 77, KQKD 24, LCTT 107, TM 1,384. TM ID 1944 is absent and remains an append-only proposal.
+- The approved append-only schema contains 1,593 unique IDs: CDKT 77, KQKD 24,
+  LCTT 107, TM 1,385. TM ID 1944 is the final workbook-order item after 1943;
+  its exact name is “Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán”.
+  The migration audit proves all 1,384 prior TM identities/names/order mappings
+  unchanged and binds both workbook hashes.
 - CPU environment is locked in `uv.lock`; bootstrap, atomic storage, source identity registry, role freezing, content-addressed materialization, render/preprocess, local difficult-region variants, perspective correction, ordered alignment, continuation graph, row wrapping, arithmetic validation, and workbook export have executable tests.
-- Latest full test run after the TATR compatibility checkpoint: 216 passed and 2 immutable-historical replays skipped; Ruff lint and the changed-file formatter gate passed. E-0006 and E-0009 source/config identities remain verified, but exact replay is skipped when their historical algorithm byte hashes are not the current implementation. E-0010 through E-0016 provide current hash-locked integration regressions.
+- Latest full test run after the S3 mechanism checkpoint: 222 passed and 2
+  immutable-historical replays skipped; Ruff lint and the changed-file formatter
+  gate passed. The Q-BOOT-004 focused regression currently passes eight tests;
+  its full regression is pending before commit.
 - A real scanned/mixed ACB PDF page rendered and passed preprocessing checkpoint/hash verification.
 - Relative word-gap segmentation, numeric right-edge clustering, note-axis separation, wrapped-row assembly, label-only section retention, and axis-local period/unit binding are implemented without institution/page coordinate rules.
 - On the registered VPB logic-development fixture (pages 5–10), the native text path reconstructed 134 logical rows and 252 value cells, preserved 48 note references, and found two value axes on every page. It correctly separated snapshot dates from three-month durations, retained direct-LCTT anchors and section headings, and left one visible unlabeled off-balance total unresolved instead of inventing a label. See `docs/experiments/E-0006-vpb-native-geometry.json`.
@@ -124,11 +132,21 @@ This is the durable retrieval point for project context. It summarizes user auth
 - Routine bootstrap audit now revalidates the isolated runtime on the current host: real CUDA/import smoke, `uv pip check`, tracked-freeze SHA-256, and exact installed-versus-tracked package sequence. Runtime acceptance is recorded separately from production model approval and fails closed on absence or drift.
 - Post-install disk observation: the 40 GiB workspace filesystem holds about 17 GiB of source PDFs and 5.4 GiB of isolated runtime, leaving about 6.70 GiB free. Local control-plane backups total only about 2.9 MiB and explicitly exclude `.gpu-venv`, source PDFs, local Mongo data/tools, model caches, and generated output; a regression test protects that scope.
 - The source inventory is currently stable at 2,567 PDFs and 17,761,344,114 bytes; later additions must trigger a new drift-aware registration rather than silently changing the denominator.
-- `vst_level` contains four workbooks: balance sheet (77 populated IDs), income statement (24), direct cash flow (50 plus one title row without an ID), and detailed notes (1,384). IDs are unique within every file and all referenced parent IDs exist. The balance workbook contains 47 trailing blank rows; these must be ignored rather than interpreted as data. Cash-flow hierarchy coverage is direct-only and must not be treated as a complete LCTT hierarchy.
+- `vst_level` contains four unmodified supporting workbooks: balance sheet (77
+  populated IDs), income statement (24), direct cash flow (50 plus one title row
+  without an ID), and detailed notes (1,384). TM 1944 is explicitly registered
+  as a schema-only append with no inferred parent because the supporting file has
+  no authoritative row for it. IDs are unique within every file and all existing
+  referenced parent IDs exist.
 - LCTT ordered blocks/anchors and CDKT scope exclusions are loaded from versioned YAML. Missing policy fails closed; branch assignment follows workbook positions and the algorithm contains no bank/page/coordinate-specific branch list.
 - Uploaded `financial_20_02_2022.gz` is a MongoDB gzip archive: 526,178,025 bytes, SHA-256 `0456df4aebb93b58c433b0d2a8c13bbb9402e1511d07758716976b94989204b9`, source server 7.0.28, Database Tools 100.14.0, database `financial_20_02_2022`.
 - Official Database Tools dry-run found 25 namespaces. Only `financial_report_templates` was restored locally for the first audit: 1,851 documents total, 1,571 bank documents. `user` and `chat_sessions` are explicitly out of scope.
-- ReportNormID 1944 has no collision in the 1,592 supplied schema IDs, 1,535 validated hierarchy records, 1,851 Mongo template documents, all raw/YTD keys in the 54 selected bank `data_chart` documents, or the 112,147-cell guarded DuckDB. This clears the ID-collision gate only; semantic name/parent and append authority remain separate gates.
+- The pre-append collision audit found no ReportNormID 1944 in the 1,592-item
+  baseline schema, 1,535 hierarchy records, 1,851 Mongo template documents, or
+  any raw/YTD key in 54 selected bank `data_chart` documents. Q-BOOT-004 then
+  supplied semantic and append authority. The rebuilt 1,593-item historical
+  registry still contains zero historical value rows for 1944; history cannot
+  fabricate a PDF observation.
 - Local Mongo reference runtime is pinned to Database Tools 100.14.0 and patched server 7.0.34, loopback-only on port 27018. Versions, official URLs, archive hashes, setup scripts, and rebuild procedure are under `docs/environment/`.
 - E-0008 rejected `report_yearly` (5,723 documents) and `report_quaterly` (2,581) as bank references because both cover 0/27 registered banks. Allowlisted `data_chart` covers all 27 banks with one annual and one quarterly document each. Its selected 54-document BSON hash is `fe07234c123a9bb80da414d0d98ec38f0b114b3784500cec053fcf239c9f13de`.
 - The local historical DuckDB contains 112,147 weak-reference cells: 99,619 upstream numeric and 12,528 separately marked upstream-derived YTD cells, spanning 79 supplied ReportNormIDs. It preserves VALUE/ZERO/NAN and negative zero, records unit/scope UNKNOWN, accepts lookup only by resolved ID, and enforces zero rows allowed to map/promote PDF evidence.
@@ -236,3 +254,10 @@ This is the durable retrieval point for project context. It summarizes user auth
   verified bucket security posture, defined a SHA-256 content-addressed,
   conditional-write snapshot plus independent restore gate, and added exact-file
   journaled offload/no-overwrite hydration logic without adding a dependency.
+- 2026-08-06: Committed and pushed the versioned S3 snapshot/offload/hydration
+  mechanism as `3e07735`; enabled and verified bucket versioning while retaining
+  AES-256 default encryption, all public-access blocks, and no Object Lock.
+- 2026-08-06: Applied Q-BOOT-004 as an audited XML-level append of TM 1944 after
+  1943; preserved every prior workbook identity/order/mapping; enrolled all 1,593
+  template items in Role A, Role B, Excel, evaluation, and mandatory search; and
+  rebuilt the schema graph plus the 112,147-cell weak-reference registry.

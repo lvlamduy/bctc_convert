@@ -144,8 +144,9 @@ reused; an existing mismatched file is a hard failure.
 ## Current status
 
 The bootstrap creates and verifies a local control-plane backup. The user has
-supplied the S3 target and its security preflight passes. Snapshot
-upload/offload is pending the clean implementation and schema-1944 checkpoints.
+supplied the S3 target and its security preflight passes. The snapshot mechanism
+and schema-1944 checkpoints are implemented; the initial full upload, manifest
+validation, real full-content restore, and gated offload remain pending.
 Versioning is enabled, encryption/public blocking remain active, and Object Lock
 is absent. Production status remains `FAIL` until a complete off-machine full
 content restore record has been published.

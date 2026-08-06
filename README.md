@@ -75,12 +75,17 @@ are in
 The hash-bound CTG/ACB/MBB human corrections, period orientation, value-status
 semantics, and exact reviewed amounts are in
 [docs/HUMAN_REVIEW_CORRECTIONS_2026-08-06.md](docs/HUMAN_REVIEW_CORRECTIONS_2026-08-06.md).
+The approved TM 1944 identity, before/after workbook hashes, preservation proof,
+hierarchy boundary, and all-consumer search contract are in
+[docs/SCHEMA_APPEND_1944.md](docs/SCHEMA_APPEND_1944.md).
 
 
 
 ## Safety invariants
 
-- Never modify a source PDF, schema workbook, or template in place.
+- Never modify a source PDF. Modify a schema workbook only through an explicitly
+  approved append-only migration that binds the before/after hashes and proves
+  every existing ID, name, order, and mapping unchanged.
 - Never turn an absent row or unverified OCR blank into zero. A visible dash or
   verified empty numeric cell is retained raw and normalized to
   `OBSERVED_ZERO`.

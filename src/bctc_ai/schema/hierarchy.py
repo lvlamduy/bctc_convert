@@ -34,6 +34,7 @@ class HierarchyWorkbook:
     item_count: int
     skipped_blank_rows: int
     non_id_labels: tuple[str, ...]
+    schema_only_append_ids: tuple[int, ...]
     minimum_id: int
     maximum_id: int
 
@@ -139,6 +140,13 @@ def _load_source(
     if missing_parents:
         raise ValueError(f"hierarchy has missing parent IDs {missing_parents} in {path}")
     _reject_cycles(result, path)
+    raw_schema_only_append_ids = source_config.get("schema_only_append_ids", [])
+    if not isinstance(raw_schema_only_append_ids, list) or not all(
+        isinstance(item, int) and item > 0 for item in raw_schema_only_append_ids
+    ):
+        raise ValueError(f"invalid schema-only append IDs for {statement_type}: {path}")
+    if len(raw_schema_only_append_ids) != len(set(raw_schema_only_append_ids)):
+        raise ValueError(f"duplicate schema-only append IDs for {statement_type}: {path}")
     workbook = HierarchyWorkbook(
         statement_type=statement_type,
         path=path.relative_to(project_root).as_posix(),
@@ -147,6 +155,7 @@ def _load_source(
         item_count=len(result),
         skipped_blank_rows=skipped_blank_rows,
         non_id_labels=tuple(non_id_labels),
+        schema_only_append_ids=tuple(raw_schema_only_append_ids),
         minimum_id=min(ids),
         maximum_id=max(ids),
     )
@@ -204,8 +213,23 @@ def load_hierarchy_reference(
         if hierarchy_root not in path.parents or not path.is_file():
             raise FileNotFoundError(f"required hierarchy workbook missing or out of root: {path}")
         workbook, items = _load_source(path, project_root, statement_type, source_config)
-        expected = _expected_ids(statement_type, workbook.coverage, schema)
+        full_expected = _expected_ids(statement_type, workbook.coverage, schema)
+        schema_only_appends = set(workbook.schema_only_append_ids)
+        statement_schema = {
+            item.schema_id: item for item in schema if item.statement_type == statement_type
+        }
+        unknown_appends = schema_only_appends - set(statement_schema)
+        if unknown_appends:
+            raise ValueError(
+                f"schema-only append IDs are absent from {statement_type}: {sorted(unknown_appends)}"
+            )
+        expected = full_expected - schema_only_appends
         actual = {item.schema_id for item in items}
+        represented_appends = actual & schema_only_appends
+        if represented_appends:
+            raise ValueError(
+                f"schema-only append IDs unexpectedly occur in hierarchy: {sorted(represented_appends)}"
+            )
         if actual != expected:
             raise ValueError(
                 f"hierarchy coverage mismatch for {statement_type}: "
@@ -214,12 +238,17 @@ def load_hierarchy_reference(
         workbooks.append(workbook)
         all_items.extend(items)
 
+    has_schema_only_appends = any(workbook.schema_only_append_ids for workbook in workbooks)
     registry = HierarchyRegistry(
         version=version,
         authority=str(payload.get("authority", "UNSPECIFIED")),
         workbooks=tuple(workbooks),
         item_count=len(all_items),
-        status="VALIDATED_SUPPORTING_REFERENCE",
+        status=(
+            "VALIDATED_SUPPORTING_REFERENCE_WITH_SCHEMA_ONLY_APPENDS"
+            if has_schema_only_appends
+            else "VALIDATED_SUPPORTING_REFERENCE"
+        ),
     )
     return registry, all_items
 

@@ -1,18 +1,27 @@
 {
   "append_only": true,
-  "authority": "SUPPLIED_WORKBOOKS",
-  "contains_tm_1944": false,
+  "authority": "SUPPLIED_WORKBOOKS_PLUS_APPROVED_APPEND_ONLY_MIGRATIONS",
+  "contains_tm_1944": true,
   "counts": {
     "CDKT": 77,
     "KQKD": 24,
     "LCTT": 107,
-    "TM": 1384
+    "TM": 1385
+  },
+  "coverage_contract": {
+    "contains_tm_1944": true,
+    "path": "data/registered/schema_coverage_registry.json",
+    "sha256": "1a3110952bcca791435e2d7d791586963232f055b6ecfc489cffe3a2a2edd166",
+    "status": "PASS_ALL_TEMPLATE_ITEMS_ENROLLED",
+    "target_count": 1593
   },
   "format_version": 1,
+  "graph": "reference/schemas/schema_graph.jsonl",
+  "graph_sha256": "f14912b1a6eeb9df6c57f86deca1381cf2bddee8d626cba2143d6d3367009e88",
   "hierarchy_reference": {
     "authority": "USER_SUPPLIED_VST_LEVEL",
     "item_count": 1535,
-    "status": "VALIDATED_SUPPORTING_REFERENCE",
+    "status": "VALIDATED_SUPPORTING_REFERENCE_WITH_SCHEMA_ONLY_APPENDS",
     "version": 1,
     "workbooks": [
       {
@@ -22,6 +31,7 @@
         "minimum_id": 4302,
         "non_id_labels": [],
         "path": "vst_level/vst_bank_balance_sheet.xlsx",
+        "schema_only_append_ids": [],
         "sha256": "3d57157859f08dd21b029a0ad7488e64c7df7d4b1ad6cde424296d02836da065",
         "skipped_blank_rows": 47,
         "statement_type": "CDKT"
@@ -33,6 +43,7 @@
         "minimum_id": 4376,
         "non_id_labels": [],
         "path": "vst_level/vst_bank_income_sheet.xlsx",
+        "schema_only_append_ids": [],
         "sha256": "eb2895882ad523344aee3b2ff83c34f0367d42c0245acc3f04c82cbc3eb78730",
         "skipped_blank_rows": 0,
         "statement_type": "KQKD"
@@ -46,6 +57,7 @@
           "LƯU CHUYỂN TIỀN TỆ TRỰC TIẾP"
         ],
         "path": "vst_level/vst_bank_cashflow_sheet.xlsx",
+        "schema_only_append_ids": [],
         "sha256": "a52815dd606ca74ba7cbc713ec34494474a5d7ac567223da84b346300eb658fe",
         "skipped_blank_rows": 0,
         "statement_type": "LCTT"
@@ -57,6 +69,9 @@
         "minimum_id": 560,
         "non_id_labels": [],
         "path": "vst_level/vst_bank_detailed_notes_sheet.xlsx",
+        "schema_only_append_ids": [
+          1944
+        ],
         "sha256": "6f322f7ba3b1b737643d21890b9bd51ea00224cea6ac65cfa41036d68ccd885b",
         "skipped_blank_rows": 0,
         "statement_type": "TM"
@@ -64,7 +79,7 @@
     ]
   },
   "lctt_semantics": "WORKBOOK_BLOCKS_VERIFIED_SEMANTIC_CONFLICT_REOPENED_2026_08_05",
-  "total_items": 1592,
+  "total_items": 1593,
   "workbooks": [
     {
       "item_count": 77,
@@ -91,11 +106,11 @@
       "statement_type": "LCTT"
     },
     {
-      "item_count": 1384,
-      "maximum_id": 1943,
+      "item_count": 1385,
+      "maximum_id": 1944,
       "minimum_id": 560,
       "path": "template/Bank_TM_ReportNormId.xlsx",
-      "sha256": "6af23d7bf930fe6db7cbfb83df78c7c7ab876142757d1dde5707c1667b54a8a0",
+      "sha256": "fa284e3af1f90c8a206308f63e6d35e77a9fbf1abcaf60abcb59877c47275140",
       "statement_type": "TM"
     }
   ]

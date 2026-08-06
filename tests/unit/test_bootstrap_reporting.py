@@ -479,8 +479,8 @@ def test_dynamic_audits_separate_runtime_acceptance_from_model_approval(tmp_path
             "inventory_attempts": 1,
         },
         "schemas": {
-            "counts": {"CDKT": 77, "KQKD": 24, "LCTT": 107, "TM": 1384},
-            "total_items": 1592,
+            "counts": {"CDKT": 77, "KQKD": 24, "LCTT": 107, "TM": 1385},
+            "total_items": 1593,
             "graph_hash": "schema-hash",
             "hierarchy_reference": {"status": "PASS", "item_count": 1535},
         },

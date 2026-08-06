@@ -30,6 +30,8 @@ sources:
   TM:
     path: vst_bank_detailed_notes_sheet.xlsx
     coverage: FULL_STATEMENT
+    schema_only_append_ids:
+      - 1944
     columns:
       label: ReportName
       schema_id: ReportNormID

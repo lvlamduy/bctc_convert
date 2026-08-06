@@ -128,8 +128,9 @@ E-0015 made no Q-BOOT-001 assignment because the question was open when that
 artifact was frozen. The user resolved it on 2026-08-06: current policy maps a
 resolved PDF INDIRECT method to template-order block 4155→4168 and DIRECT to
 4104→4116. E-0015 remains unchanged, and an `UNKNOWN`/`CONFLICT` PDF method
-still fails closed. Q-BOOT-004 remains mandatory before any future ReportNormId
-proposal is appended.
+still fails closed. Q-BOOT-004 was resolved on 2026-08-06 and TM 1944 was added
+through a hash-bound append-only migration. Any later ReportNormId proposal still
+requires its own explicit authority and preservation audit.
 
 ## Versioned configuration and tests
 

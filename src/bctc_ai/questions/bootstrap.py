@@ -114,7 +114,9 @@ def bootstrap_questions() -> list[dict[str, Any]]:
             "statement_type": "TM",
             "schema_id": 1944,
             "canonical_name": "Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
-            "root_cause": "APPEND_ONLY_SCHEMA_ITEM_MISSING",
+            "role_a_result": "SCHEMA_TARGET_ENROLLED_MANDATORY_SEARCH_PENDING_PER_DOCUMENT",
+            "role_b_result": "SCHEMA_TARGET_ENROLLED_MANDATORY_SEARCH_PENDING_PER_DOCUMENT",
+            "root_cause": "APPEND_ONLY_SCHEMA_ITEM_APPLIED",
             "exact_question": (
                 "The supplied TM schema ends at ID 1943. Should proposed TM ID 1944 be appended "
                 "with the name stated in the directive?"
@@ -127,7 +129,7 @@ def bootstrap_questions() -> list[dict[str, Any]]:
                 "and mapping; include it in Role A, Role B, Excel, evaluation, mandatory search, "
                 "and PROGRESS_REPORT.md."
             ),
-            "resolution_status": "APPROVED_APPEND_IMPLEMENTATION_IN_PROGRESS",
+            "resolution_status": "RESOLVED",
         },
         {
             **common,

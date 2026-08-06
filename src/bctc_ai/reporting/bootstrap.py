@@ -14,6 +14,7 @@ from bctc_ai.ingestion.discovery import discover_pdfs
 from bctc_ai.ingestion.registry import register_sources
 from bctc_ai.questions.bootstrap import bootstrap_questions, write_questions
 from bctc_ai.reference.historical import verify_historical_weak_reference
+from bctc_ai.schema.coverage import load_schema_coverage
 from bctc_ai.schema.hierarchy import apply_hierarchy_reference, load_hierarchy_reference
 from bctc_ai.schema.registry import load_all
 from bctc_ai.storage.backup import create_backup
@@ -52,23 +53,35 @@ def _write_schema_artifacts(
     workbook_records = [asdict(workbook) for workbook in workbooks]
     graph_records = [item.to_dict() for item in items]
     atomic_write_jsonl(project_root / "reference/schemas/schema_graph.jsonl", graph_records)
+    graph_hash = stable_records_hash(
+        json.dumps(record, ensure_ascii=False, sort_keys=True) for record in graph_records
+    )
+    coverage = load_schema_coverage(project_root, schema_items=items)
+    coverage_path = project_root / "data/registered/schema_coverage_registry.json"
+    atomic_write_json(coverage_path, coverage.to_registry())
     registry = {
         "format_version": 1,
-        "authority": "SUPPLIED_WORKBOOKS",
+        "authority": "SUPPLIED_WORKBOOKS_PLUS_APPROVED_APPEND_ONLY_MIGRATIONS",
         "append_only": True,
         "workbooks": workbook_records,
         "counts": {
             workbook["statement_type"]: workbook["item_count"] for workbook in workbook_records
         },
         "total_items": len(items),
+        "graph": "reference/schemas/schema_graph.jsonl",
+        "graph_sha256": graph_hash,
         "contains_tm_1944": any(item.schema_id == 1944 for item in items),
+        "coverage_contract": {
+            "path": coverage_path.relative_to(project_root).as_posix(),
+            "sha256": sha256_file(coverage_path),
+            "status": "PASS_ALL_TEMPLATE_ITEMS_ENROLLED",
+            "target_count": len(coverage.targets),
+            "contains_tm_1944": 1944 in coverage.ids_for("MANDATORY_SEARCH"),
+        },
         "lctt_semantics": "WORKBOOK_BLOCKS_VERIFIED_SEMANTIC_CONFLICT_REOPENED_2026_08_05",
         "hierarchy_reference": hierarchy_record,
     }
     atomic_write_json(project_root / "data/registered/schema_registry.json", registry)
-    graph_hash = stable_records_hash(
-        json.dumps(record, ensure_ascii=False, sort_keys=True) for record in graph_records
-    )
     return workbook_records, len(items), graph_hash, hierarchy_record
 
 
@@ -90,6 +103,21 @@ def _write_schema_proposal(
         if historical_registry_path.is_file()
         else None
     )
+    _, schema = load_all(project_root / "template", project_root)
+    applied_items = [
+        item
+        for item in schema
+        if item.statement_type == "TM"
+        and item.schema_id == 1944
+        and item.canonical_name
+        == "Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán"
+    ]
+    append_audit_path = project_root / "data/registered/schema_append_1944.json"
+    append_audit = (
+        json.loads(append_audit_path.read_text(encoding="utf-8"))
+        if append_audit_path.is_file()
+        else None
+    )
     template_collision_safe = bool(
         dump_registry
         and dump_registry.get("collision_audit", {}).get(
@@ -107,6 +135,13 @@ def _write_schema_proposal(
     collision_safe = template_collision_safe and (
         historical_registry is None or historical_collision_safe
     )
+    applied_and_verified = bool(
+        len(applied_items) == 1
+        and append_audit
+        and append_audit.get("status") == "APPLIED_AND_VERIFIED"
+        and append_audit.get("workbook", {}).get("after_sha256")
+        == sha256_file(project_root / "template/Bank_TM_ReportNormId.xlsx")
+    )
     proposal = {
         "proposal_id": "SCHEMA-TM-1944",
         "pdf_name": None,
@@ -121,8 +156,17 @@ def _write_schema_proposal(
         "period": None,
         "unit": None,
         "mongodb_evidence": [],
-        "reason": "Named append-only item in the master directive is absent from the supplied TM workbook.",
-        "confidence": "PROPOSAL_REQUIRES_USER_CONFIRMATION",
+        "reason": (
+            "Q-BOOT-004 authorized this append-only schema identity; the migration audit "
+            "proves every prior ID/name/order mapping was preserved."
+            if applied_and_verified
+            else "Named append-only item in the master directive is absent from the supplied TM workbook."
+        ),
+        "confidence": (
+            "HUMAN_APPROVED_AND_MIGRATION_VERIFIED"
+            if applied_and_verified
+            else "PROPOSAL_REQUIRES_USER_CONFIRMATION"
+        ),
         "question_id": "Q-BOOT-004",
         "collision_evidence": {
             "schema_hierarchy_and_mongodb_templates": (
@@ -145,10 +189,27 @@ def _write_schema_proposal(
                 else None
             ),
         },
+        "application_evidence": (
+            {
+                "append_audit": append_audit_path.relative_to(project_root).as_posix(),
+                "append_audit_sha256": sha256_file(append_audit_path),
+                "source_row": applied_items[0].source_row,
+                "display_order_zero_based": applied_items[0].display_order,
+                "previous_schema_id": applied_items[0].previous_id,
+                "next_schema_id": applied_items[0].next_id,
+                "hierarchy_parent_status": "NOT_INFERRED_WITHOUT_SOURCE_AUTHORITY",
+            }
+            if applied_and_verified
+            else None
+        ),
         "status": (
-            "COLLISION_CHECK_PASSED_APPEND_DECISION_OPEN"
-            if collision_safe
-            else "PENDING_COLLISION_CHECK"
+            "APPEND_ONLY_SCHEMA_ADDITION_APPLIED_AND_VERIFIED"
+            if applied_and_verified
+            else (
+                "COLLISION_CHECK_PASSED_APPEND_DECISION_OPEN"
+                if collision_safe
+                else "PENDING_COLLISION_CHECK"
+            )
         ),
     }
     atomic_write_jsonl(project_root / "proposed_schema_additions.jsonl", [proposal])
@@ -1011,7 +1072,8 @@ def _write_dynamic_audits(
         mongo_finding = (
             "The uploaded MongoDB archive is hash-registered. The allowlisted "
             f"financial template audit contains {dump_registry['restored_scope']['document_count']} "
-            "documents and found no ReportNormID 1944 collision. "
+            "documents and found no pre-append ReportNormID 1944 collision; the approved "
+            "schema append is now separately bound by its migration audit. "
             f"{history_finding}"
         )
     else:
@@ -1178,14 +1240,15 @@ Captured: {environment["captured_at"]}
 - PDF registry hash: `{manifest["sources"]["registry_hash"]}`.
 - SchemaGraph hash: `{manifest["schemas"]["graph_hash"]}`.
 - Supporting hierarchy status: `{manifest["schemas"]["hierarchy_reference"]["status"]}` with {manifest["schemas"]["hierarchy_reference"]["item_count"]} validated edges/items; LCTT coverage is explicitly direct-branch-only.
-- Source files were read and hashed only; none were overwritten.
+- Source PDFs were read and hashed only. The sole authorized source-workbook mutation is the Q-BOOT-004 append of TM 1944, recorded by `data/registered/schema_append_1944.json`.
 - Inventory stable across registration: **{manifest["sources"]["inventory_stable"]}** (attempts: {manifest["sources"]["inventory_attempts"]}).
 - Isolated GPU runtime local acceptance: **{runtime_status}**; production model approval remains separate and pending.
 
 ## Material discrepancies
 
 - Actual schema counts are CDKT={schema_counts["CDKT"]}, KQKD={schema_counts["KQKD"]}, LCTT={schema_counts["LCTT"]}, TM={schema_counts["TM"]} (total {manifest["schemas"]["total_items"]}), not the historical 1,773-item count.
-- The supplied TM workbook does not contain ID 1944. It remains a proposal in `proposed_schema_additions.jsonl`.
+- Q-BOOT-004 is applied: TM ID 1944 is the final workbook-order row after 1943. Its append audit binds the original and resulting workbook hashes and proves all 1,384 prior ID/name/order mappings unchanged. Role A, Role B, Excel, evaluation and mandatory search all derive their targets from the complete template-order contract.
+- The supporting `vst_level` workbook was not mutated and has no authoritative parent for 1944. That schema-only append remains parentless rather than inheriting the unrelated final liquidity-risk branch.
 - Q-BOOT-001 is resolved: LCTT membership uses contiguous workbook positions, never numeric ID ranges. Template-order block 4155→4168 is INDIRECT and 4104→4116 is DIRECT; historical frozen artifacts retain their earlier fail-closed flag.
 - {mongo_finding}
 - {calibration_finding}
@@ -1219,7 +1282,7 @@ Generated artifacts use atomic write, fsync, rename, and post-write hash verific
 - Ordered statement location: {location_progress}
 - Mongo-assisted metrics: {mongo_progress}
 - Questions created / resolved: {len(questions)} / {resolved_questions}
-- Autonomous decisions: preserve supplied schema unchanged; keep 1944 as a collision-cleared proposal; apply the user-confirmed LCTT branch names by workbook position through policy v2
+- Autonomous decisions: preserve all pre-existing schema identities/order/mappings; apply approved TM 1944 only as the final append; leave its hierarchy parent uninferred; apply the user-confirmed LCTT branch names by workbook position through policy v2
 - Not applicable / not observed / unresolved: 0 / 0 / 0 (no production records yet)
 - Workbooks: 0
 - Largest error: no frozen end-to-end multi-institution accuracy result or production-calibrated acceptance threshold yet
@@ -1229,7 +1292,13 @@ Generated artifacts use atomic write, fsync, rename, and post-write hash verific
 - Backup status: development={backup["development_status"]}; production={backup["production_status"]} (local restore verified={backup["restored_and_verified"]}, off-machine={backup["off_machine"]})
 - Next bounded action: rerender only the E-0013 eligible pages plus exclusion boundaries at 200 DPI, run the frozen Role B/Role C row gates unchanged, then continue to controlled distortions and an untouched holdout
 """
-    atomic_write_text(project_root / "PROGRESS_REPORT.md", progress)
+    atomic_write_text(project_root / "data/registered/bootstrap_status.md", progress)
+    # The top-level report is the cumulative project log. A bootstrap refresh
+    # must not erase later experiment, schema-migration, or S3 evidence. Fresh
+    # fixture/rebuild roots still receive an initial report automatically.
+    cumulative_progress = project_root / "PROGRESS_REPORT.md"
+    if not cumulative_progress.exists():
+        atomic_write_text(cumulative_progress, progress)
 
 
 def run_bootstrap(project_root: Path, *, workers: int = 4) -> BootstrapResult:
@@ -1275,6 +1344,11 @@ def run_bootstrap(project_root: Path, *, workers: int = 4) -> BootstrapResult:
         if inventory_stable:
             break
     workbooks, schema_count, graph_hash, hierarchy_reference = _write_schema_artifacts(project_root)
+    schema_coverage = json.loads(
+        (project_root / "data/registered/schema_coverage_registry.json").read_text(
+            encoding="utf-8"
+        )
+    )
     _write_schema_proposal(project_root, historical_weak_reference)
     questions = bootstrap_questions()
     write_questions(project_root, questions)
@@ -1308,9 +1382,18 @@ def run_bootstrap(project_root: Path, *, workers: int = 4) -> BootstrapResult:
             "total_items": schema_count,
             "graph": "reference/schemas/schema_graph.jsonl",
             "graph_hash": graph_hash,
-            "contains_tm_1944": False,
+            "contains_tm_1944": schema_coverage["contains_tm_1944"],
             "lctt_semantics": "WORKBOOK_BLOCKS_VERIFIED_SEMANTIC_CONFLICT_REOPENED_2026_08_05",
             "hierarchy_reference": hierarchy_reference,
+            "coverage_contract": {
+                "path": "data/registered/schema_coverage_registry.json",
+                "sha256": sha256_file(
+                    project_root / "data/registered/schema_coverage_registry.json"
+                ),
+                "status": schema_coverage["status"],
+                "target_count": schema_coverage["target_count"],
+                "contains_tm_1944": schema_coverage["contains_tm_1944"],
+            },
         },
         "bank_list": {
             "path": "Bank_list_id.xlsx",

@@ -1,0 +1,56 @@
+{
+  "appended_item": {
+    "canonical_name": "Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
+    "display_order_zero_based": 1384,
+    "next_schema_id": null,
+    "previous_schema_id": 1943,
+    "schema_id": 1944,
+    "source_row": 1386,
+    "statement_type": "TM"
+  },
+  "applied_at": "2026-08-06T04:42:11.791559+00:00",
+  "authority": {
+    "approved_on": "2026-08-06",
+    "policy": "APPEND_ONLY",
+    "question_id": "Q-BOOT-004"
+  },
+  "format_version": 1,
+  "preservation": {
+    "changed_zip_members_after_sha256": {
+      "xl/sharedStrings.xml": "87463962aba1d6ee92ac962947a92d7e5ece85da17106de00b3e5535a77dabdf",
+      "xl/worksheets/sheet1.xml": "26666b119f388d351bcc8f6ab62e28375c6c76b4ec09698eedf43bbf680e77c5"
+    },
+    "changed_zip_members_before_sha256": {
+      "xl/sharedStrings.xml": "7f935c561e2f6f10f6c50c70b673c6ad35c9cade99affdc3d57cfcd603db65fe",
+      "xl/worksheets/sheet1.xml": "37d9f2f3f92586f0847a5587e7be7c6dd6c6117bf912402762e6b2ca9e1f9618"
+    },
+    "existing_id_name_order_mapping_preserved": true,
+    "existing_rows_preserved": true,
+    "existing_rows_sha256": "199a2f851c68d7e8044c63b85af0230c32005ea4b1dbe951116725e5f32c3e88",
+    "hierarchy_parent_status": "NOT_INFERRED_WITHOUT_SOURCE_AUTHORITY",
+    "only_changed_zip_members": [
+      "xl/sharedStrings.xml",
+      "xl/worksheets/sheet1.xml"
+    ],
+    "supporting_hierarchy_workbook_mutated": false,
+    "unchanged_zip_members_sha256": {
+      "[Content_Types].xml": "bfa02ea1994b73dca866ea3b6596340fe00063d19eab5957c7d8e6a5fa10599a",
+      "_rels/.rels": "73e5a29f48d5ab979eeda062493bc7e679265c1344ef936978b8becec5549497",
+      "docProps/app.xml": "22b3e2a4f41a0a0b6c93cd0da7b28b84a2375b815f787624e81acaaf32a5d191",
+      "docProps/core.xml": "a746a065207ccadb6c96c5c55b00626efd0f22bce0e5a718b98e6019344776c1",
+      "xl/_rels/workbook.xml.rels": "353383fbe90f202be596bdf0a86439c704d7024f4f8c19ebc9d06b42a341dba1",
+      "xl/styles.xml": "404b6d41048ce8f19817fa9d87851f9624acaf4a882b05af5611efdace624cf2",
+      "xl/theme/theme1.xml": "86ec2470fa58614325ef1b0480fcbf0eeb4f27a208e5c762df49166a71947988",
+      "xl/workbook.xml": "6ee2b1e1a926baacd6a06aec53a46e9a43081cfaf109aa7500b4f9dba9dedf9a"
+    },
+    "zip_member_set_preserved": true
+  },
+  "status": "APPLIED_AND_VERIFIED",
+  "workbook": {
+    "after_row_count_including_header": 1386,
+    "after_sha256": "fa284e3af1f90c8a206308f63e6d35e77a9fbf1abcaf60abcb59877c47275140",
+    "before_row_count_including_header": 1385,
+    "before_sha256": "6af23d7bf930fe6db7cbfb83df78c7c7ab876142757d1dde5707c1667b54a8a0",
+    "path": "template/Bank_TM_ReportNormId.xlsx"
+  }
+}

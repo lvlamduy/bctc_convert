@@ -1,13 +1,13 @@
 # Progress report
 
-- Updated: 2026-08-06T04:28:00+00:00
+- Updated: 2026-08-06T04:55:00+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `8dd54226d7c889d68ad88489132a01a348418408`
+- Latest clean, tested, pushed checkpoint: `3e07735aabff470067acdbdf3c1c9647dd9fd8ca`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
-- Registered schema rows: 1,592 (CDKT 77; KQKD 24; LCTT 107; TM 1,384)
+- Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
 - Registered PDFs: 2,567
-- Latest full regression: 222 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
+- Latest full regression: 226 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
 
 ## Completed tasks
 
@@ -76,18 +76,38 @@
   the 17,838,080-byte accepted DuckDB, a control-plane archive, and a Git bundle.
   The initial content-addressed snapshot will contain about 18.6 GB before
   content deduplication.
+- Committed and pushed the S3 snapshot/offload/hydration mechanism as `3e07735`.
+  Its regression passed 222 tests with two intentional historical skips; it
+  rejects unversioned buckets and keeps offload dry-run by default.
+- Q-BOOT-004 is implemented. Appended TM ReportNormID `1944 — Cho vay giao
+  dịch ký quỹ và ứng trước tiền bán chứng khoán` as the final workbook-order
+  row after 1943. The source workbook changed from SHA-256
+  `6af23d7bf930fe6db7cbfb83df78c7c7ab876142757d1dde5707c1667b54a8a0`
+  to `fa284e3af1f90c8a206308f63e6d35e77a9fbf1abcaf60abcb59877c47275140`.
+- The append audit proves all 1,384 existing TM ID/name/order mappings are
+  byte-semantically unchanged. Only `xl/worksheets/sheet1.xml` and
+  `xl/sharedStrings.xml` changed; all eight other XLSX members retain their
+  original SHA-256. No `vst_level` hierarchy workbook was modified and no
+  unsupported parent was inferred for 1944.
+- Added a schema-coverage contract derived from workbook display order. Role A,
+  Role B, Excel output, evaluation, and mandatory search each contain all 1,593
+  IDs and end with TM 1944. Mandatory search fails unless both roles record
+  exactly one terminal outcome for every template ID; `NOT_OBSERVED` remains
+  distinct from zero.
+- Rebuilt the historical weak-reference registry against the 1,593-item graph.
+  Its 112,147 cells remain unchanged in authority and contain zero historical
+  rows for 1944; all no-map/no-promote gates and the current graph hash verify.
+- The complete Q-BOOT-004 regression passed: 226 tests, two intentional
+  immutable-historical replay skips, Ruff clean, and `git diff --check` clean.
 
 ## Currently in progress
 
-- Implementing and testing the S3 snapshot/offload/hydration checkpoint before
-  uploading large files. Every object is content-addressed by SHA-256, written
-  with `If-None-Match: *`, checked by S3 SHA-256 plus HEAD metadata, and published
-  through a final immutable manifest. Offload remains dry-run by default and is
-  limited to exact `source_pdf` and `mongodb_dump` manifest records.
-- Q-BOOT-004 is approved and queued as the next isolated checkpoint: append TM
-  ID 1944 with its exact authorized name, preserving every existing workbook
-  row, ID, name, order, and mapping, then extend Role A, Role B, Excel,
-  evaluation, and mandatory-search contracts.
+- Performing the final generated-artifact/hash consistency review before the
+  isolated Q-BOOT-004 commit and push.
+- Preparing the first complete S3 snapshot from the clean schema checkpoint.
+  Every object is content-addressed by SHA-256, written with
+  `If-None-Match: *`, checked by S3 SHA-256 plus HEAD metadata, and published
+  through a final immutable manifest. No local deletion has started.
 
 ## Major challenges and obstacles
 
@@ -140,19 +160,19 @@
    same-label/different-parent hard negatives, specialized digit/sign recognition,
    and conditional dewarping. Evaluate on bank- and period-disjoint holdouts.
 9. Protect large inputs with immutable S3 content keys and a manifest-first
-   restore contract. Reclaim local space only after remote HEAD/checksum and
-   sampled download/semantic restore checks pass; hydrate exact logical paths
-   without overwriting a mismatched local file.
+   restore contract. Reclaim local space only after remote HEAD/checksum,
+   manifest validation, and a real full-content sequential restore pass; hydrate
+   exact logical paths without overwriting a mismatched local file.
 
 ## Planned next steps
 
-1. Finish the S3 snapshot/offload/hydration regression, update the recovery
-   documentation, then commit and push the mechanism from a clean worktree.
-2. Append and fully propagate TM ID 1944 under the approved append-only policy;
-   verify workbook preservation/collision/order and commit/push separately.
-3. Publish and full-content restore-test the immutable snapshot, then offload the 2,567
+1. Finish the full Q-BOOT-004 regression and consistency audit, then commit and
+   push the 1944 schema checkpoint separately.
+2. Publish and full-content restore-test the immutable snapshot, then offload the 2,567
    registered PDFs and Mongo dump to reclaim about 18.3 GB. Preserve the local
    eviction journal and remote record; do not delete output/runtime/tool assets.
+3. Record remote object/version/checksum, manifest, restore and disk-reclamation
+   evidence in this report; mark Q-BOOT-003 resolved only after all gates pass.
 4. Run TATR v1.1 All on the two frozen E-0016 full-table
    originals; seal row/column/header coverage and retained failure evidence.
 5. Implement canonical logical-row fusion for headerless row bands and full-table
@@ -171,5 +191,5 @@
 
 ## Questions requiring user feedback
 
-- Q-BOOT-004 and Q-BOOT-005 are approved. Their implementation/verification is
-  in progress; neither requires further user feedback.
+- Q-BOOT-004 and Q-BOOT-005 are resolved. No open question currently requires
+  user feedback.
