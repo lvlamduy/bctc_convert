@@ -1,13 +1,13 @@
 # Progress report
 
-- Updated: 2026-08-06T06:50:23+00:00
+- Updated: 2026-08-06T07:17:11+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `f859ccce6b0ae8ea6950a50189c1a4b51de221a5`
+- Latest clean, tested, pushed checkpoint: `254bf5d20cc20cf983eeb740805cfbb3fe277090`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
 - Registered PDFs: 2,567
-- Latest full regression: 237 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
+- Latest full regression: 241 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
 
 ## Accuracy focus and measurable state
 
@@ -28,10 +28,18 @@
   coverage 94.964%; conditional exact row/cell agreement 90.9091%/91.2879%;
   strict exact row/cell agreement 86.3309%/86.6906%. The first four pages have
   206/206 exact financial cells; all material loss is localized to the first
-  dense LCTT page. No after-result is claimed yet.
-- Next bounded action: run independent word-box geometry and DeepSeek-OCR-2 only
-  on the failed E-0017 LCTT region, construct a canonical row grid, then rerun
-  E-0010 and E-0017 against the same Role A denominators.
+  dense LCTT page; these figures remain the frozen whole-suite before-result.
+- New bounded after-result from E-0018 on that predeclared dense LCTT page:
+  DeepSeek-OCR-2 plus one explicit adjacent label-only/value-only fragment merge
+  reconstructs 33/33 rows, covers 58/58 financial cells, and exactly agrees
+  with all 58/58 machine-reference numeric/sign cells. Strict exact cell
+  agreement rises from 36.2069% to 100%; strict exact financial-row agreement
+  rises from 34.4828% to 100%; invalid cells fall from 12 to zero, and measured
+  structural impact falls from 41 to zero. This is target-page calibration
+  against a native machine reference, not human-gold or end-to-end accuracy.
+- Next bounded action: bind independent PP-OCRv6 word boxes for E-0017 pages
+  13→14 to the E-0018 semantic rows, then rerun E-0010 and the full E-0017
+  suite against the same frozen Role A denominators.
 
 ## Completed tasks
 
@@ -171,14 +179,26 @@
   and GPU capability, and denies DNS/socket access during inference. Its output
   is explicitly non-authoritative for geometry, values, periods, scope,
   confidence and schema mapping. Six focused downloader/runner tests pass.
+- Completed the clean E-0018 inference on the E-0017 page-13 image in 32.836091
+  seconds. Peak allocated/reserved VRAM was 8,189,789,184/9,137,291,264 bytes.
+  The reader emitted a 35-row span-aware raw HTML grid; the canonicalizer joined
+  exactly one adjacent label-only row with its immediately following value-only
+  row, retained both source-row IDs, and did not alter either financial cell.
+- The ordered direct cash-flow anchors are now observed at candidate positions
+  1 and 2, changing the targeted reader proposal from `UNKNOWN` to `DIRECT`.
+  The acceptance gate remains fail-closed: semantic high confidence is false,
+  and there is no automatic value, period, scope, geometry, confidence or
+  ReportNormId authority. One `cố tức`/`cổ tức` Vietnamese label disagreement
+  and one note-placement disagreement remain for review.
 
 ## Currently in progress
 
-- Preparing a clean checkpoint for the isolated DeepSeek-OCR-2 compatibility
-  overlay and targeted runner. The next formal inference target is only the
-  failed first E-0017 LCTT page, not a broad model survey.
+- Integrating independent PP-OCRv6 word boxes for E-0017 pages 13→14 with the
+  E-0018 semantic rows. DeepSeek supplies labels and reading order; source-space
+  word/line geometry must still establish canonical row and cell boundaries.
 - The already-started S3 snapshot has uploaded and HEAD-verified all 4,192 unique
-  objects and is performing the required full sequential content restore.
+  objects and is performing the required full sequential content restore; the
+  latest observed position is 3,484/4,192 objects (83.11%).
   No local deletion has started; this background safety gate is not delaying
   the accuracy work.
 
@@ -203,6 +223,10 @@
   compatibility and VRAM headroom. The overlay's compiled wheels require an
   executable filesystem; model weights remain safely in non-executable
   `/dev/shm`.
+- E-0018 is one selected calibration page from one bank/year. Its perfect
+  numeric/sign agreement must be tested against E-0010 and bank/period-disjoint
+  holdouts. DeepSeek's table bounding box is model-normalized proposal geometry,
+  not source-pixel authority; independent word boxes are still required.
 - The S3 bucket is reachable, encrypted, publicly blocked, and versioned. The
   remaining backup obstacle is operational: complete the ~18.6 GB upload and a
   full sequential content restore before any local source is removed. Object
@@ -239,11 +263,11 @@
 
 ## Planned next steps
 
-1. Commit and push the hash-locked DeepSeek compatibility overlay and targeted
-   non-authoritative runner after full regression.
-2. Run independent word-box and DeepSeek OCR only on E-0017 page 13, then use
-   the E-0017 failures plus the existing E-0010 failures to implement one
-   bounded canonical-row-grid change, then rerun both baselines for before/after.
+1. Run PP-OCRv6 word-box evidence on E-0017 pages 13→14 and bind the 33 E-0018
+   semantic rows to source-space row/cell geometry without allowing either
+   reader to override the visible numeric token evidence.
+2. Apply the bounded canonical-row-grid fusion to the existing E-0010 failures,
+   then rerun E-0010 and the full six-page E-0017 denominators for before/after.
 3. Finish the full-content restore-test of the immutable snapshot, then offload the 2,567
    registered PDFs and Mongo dump to reclaim about 18.3 GB. Preserve the local
    eviction journal and remote record; do not delete output/runtime/tool assets.

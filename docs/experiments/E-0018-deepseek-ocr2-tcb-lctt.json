@@ -1,0 +1,3136 @@
+{
+  "acceptance": {
+    "automatic_confidence_promotion": false,
+    "automatic_geometry_authority": false,
+    "automatic_period_assignment": false,
+    "automatic_schema_mapping": false,
+    "automatic_scope_assignment": false,
+    "automatic_value_replacement": false,
+    "full_pipeline_or_production_claim": false,
+    "historical_reference_invoked": false,
+    "targeted_reader_eligible_for_geometry_fusion": true
+  },
+  "after": {
+    "comparison": {
+      "alignment": [
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            0
+          ],
+          "candidate_label": "LƯU CHUYỂN TIỂN TỪ HOẠT ĐỘNG KINH DOANH",
+          "candidate_note": null,
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "BLANK",
+              "candidate_present": true,
+              "candidate_raw": "",
+              "candidate_reason": null,
+              "candidate_value": null,
+              "exact": true,
+              "reference_observation": "BLANK",
+              "reference_present": false,
+              "reference_raw": "",
+              "reference_reason": null,
+              "reference_value": null
+            },
+            {
+              "candidate_observation": "BLANK",
+              "candidate_present": true,
+              "candidate_raw": "",
+              "candidate_reason": null,
+              "candidate_value": null,
+              "exact": true,
+              "reference_observation": "BLANK",
+              "reference_present": false,
+              "reference_raw": "",
+              "reference_reason": null,
+              "reference_value": null
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "LABEL_REREAD_OR_STRUCTURAL_REVIEW",
+          "label_exact": false,
+          "note_exact": true,
+          "reference_indices": [
+            0
+          ],
+          "reference_label": "LƯU CHUYỂN TIỀN TỪ HOẠT ĐỘNG KINH DOANH",
+          "reference_note": null,
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            1
+          ],
+          "candidate_label": "Thu nhập lãi và các khoản thu nhập tương tự nhận được",
+          "candidate_note": null,
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "61.748.921",
+              "candidate_reason": null,
+              "candidate_value": "61748921",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "61.748.921",
+              "reference_reason": null,
+              "reference_value": "61748921"
+            },
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "53.749.365",
+              "candidate_reason": null,
+              "candidate_value": "53749365",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "53.749.365",
+              "reference_reason": null,
+              "reference_value": "53749365"
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "CORROBORATED_NO_CONFIDENCE_PROMOTION",
+          "label_exact": true,
+          "note_exact": true,
+          "reference_indices": [
+            1
+          ],
+          "reference_label": "Thu nhập lãi và các khoản thu nhập tương tự nhận được",
+          "reference_note": null,
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            2
+          ],
+          "candidate_label": "Chi phí lãi và các chi phí tương tự đã trả",
+          "candidate_note": null,
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(26.124.464)",
+              "candidate_reason": null,
+              "candidate_value": "-26124464",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(26.124.464)",
+              "reference_reason": null,
+              "reference_value": "-26124464"
+            },
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(25.941.911)",
+              "candidate_reason": null,
+              "candidate_value": "-25941911",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(25.941.911)",
+              "reference_reason": null,
+              "reference_value": "-25941911"
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "CORROBORATED_NO_CONFIDENCE_PROMOTION",
+          "label_exact": true,
+          "note_exact": true,
+          "reference_indices": [
+            2
+          ],
+          "reference_label": "Chi phí lãi và các chi phí tương tự đã trả",
+          "reference_note": null,
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            3
+          ],
+          "candidate_label": "Thu nhập từ hoạt động dịch vụ nhận được",
+          "candidate_note": null,
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "7.679.933",
+              "candidate_reason": null,
+              "candidate_value": "7679933",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "7.679.933",
+              "reference_reason": null,
+              "reference_value": "7679933"
+            },
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "9.134.752",
+              "candidate_reason": null,
+              "candidate_value": "9134752",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "9.134.752",
+              "reference_reason": null,
+              "reference_value": "9134752"
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "CORROBORATED_NO_CONFIDENCE_PROMOTION",
+          "label_exact": true,
+          "note_exact": true,
+          "reference_indices": [
+            3
+          ],
+          "reference_label": "Thu nhập từ hoạt động dịch vụ nhận được",
+          "reference_note": null,
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            4
+          ],
+          "candidate_label": "Chênh lệch số tiền thực thu từ hoạt động kinh doanh (ngoại tệ và chứng khoán)",
+          "candidate_note": null,
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "3.150.018",
+              "candidate_reason": null,
+              "candidate_value": "3150018",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "3.150.018",
+              "reference_reason": null,
+              "reference_value": "3150018"
+            },
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "1.168.505",
+              "candidate_reason": null,
+              "candidate_value": "1168505",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "1.168.505",
+              "reference_reason": null,
+              "reference_value": "1168505"
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "CORROBORATED_NO_CONFIDENCE_PROMOTION",
+          "label_exact": true,
+          "note_exact": true,
+          "reference_indices": [
+            4
+          ],
+          "reference_label": "Chênh lệch số tiền thực thu từ hoạt động kinh doanh (ngoại tệ và chứng khoán)",
+          "reference_note": null,
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            5
+          ],
+          "candidate_label": "Thu nhập/(chi phí) khác",
+          "candidate_note": null,
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(2.359.679)",
+              "candidate_reason": null,
+              "candidate_value": "-2359679",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(2.359.679)",
+              "reference_reason": null,
+              "reference_value": "-2359679"
+            },
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "1.384.616",
+              "candidate_reason": null,
+              "candidate_value": "1384616",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "1.384.616",
+              "reference_reason": null,
+              "reference_value": "1384616"
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "CORROBORATED_NO_CONFIDENCE_PROMOTION",
+          "label_exact": true,
+          "note_exact": true,
+          "reference_indices": [
+            5
+          ],
+          "reference_label": "Thu nhập/(chi phí) khác",
+          "reference_note": null,
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            6
+          ],
+          "candidate_label": "Tiền thu các khoản nợ đã được xử lý bằng nguồn dự phòng rủi ro",
+          "candidate_note": "30",
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "1.138.200",
+              "candidate_reason": null,
+              "candidate_value": "1138200",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "1.138.200",
+              "reference_reason": null,
+              "reference_value": "1138200"
+            },
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "831.790",
+              "candidate_reason": null,
+              "candidate_value": "831790",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "831.790",
+              "reference_reason": null,
+              "reference_value": "831790"
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "CORROBORATED_NO_CONFIDENCE_PROMOTION",
+          "label_exact": true,
+          "note_exact": true,
+          "reference_indices": [
+            6
+          ],
+          "reference_label": "Tiền thu các khoản nợ đã được xử lý bằng nguồn dự phòng rủi ro",
+          "reference_note": "30",
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            7
+          ],
+          "candidate_label": "Tiền chi trả cho nhân viên và hoạt động quản lý, công vụ",
+          "candidate_note": null,
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(10.106.171)",
+              "candidate_reason": null,
+              "candidate_value": "-10106171",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(10.106.171)",
+              "reference_reason": null,
+              "reference_value": "-10106171"
+            },
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(10.339.365)",
+              "candidate_reason": null,
+              "candidate_value": "-10339365",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(10.339.365)",
+              "reference_reason": null,
+              "reference_value": "-10339365"
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "CORROBORATED_NO_CONFIDENCE_PROMOTION",
+          "label_exact": true,
+          "note_exact": true,
+          "reference_indices": [
+            7
+          ],
+          "reference_label": "Tiền chi trả cho nhân viên và hoạt động quản lý, công vụ",
+          "reference_note": null,
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            8
+          ],
+          "candidate_label": "Tiền thuế thu nhập thực nộp trong năm",
+          "candidate_note": "22.1",
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(4.089.321)",
+              "candidate_reason": null,
+              "candidate_value": "-4089321",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(4.089.321)",
+              "reference_reason": null,
+              "reference_value": "-4089321"
+            },
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(5.048.936)",
+              "candidate_reason": null,
+              "candidate_value": "-5048936",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(5.048.936)",
+              "reference_reason": null,
+              "reference_value": "-5048936"
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "CORROBORATED_NO_CONFIDENCE_PROMOTION",
+          "label_exact": true,
+          "note_exact": true,
+          "reference_indices": [
+            8
+          ],
+          "reference_label": "Tiền thuế thu nhập thực nộp trong năm",
+          "reference_note": "22.1",
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            9
+          ],
+          "candidate_label": "Lưu chuyển tiền thuần từ hoạt động kinh doanh trước những thay đổi về tài sản và vốn lưu động",
+          "candidate_note": null,
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "31.037.437",
+              "candidate_reason": null,
+              "candidate_value": "31037437",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "31.037.437",
+              "reference_reason": null,
+              "reference_value": "31037437"
+            },
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "24.938.816",
+              "candidate_reason": null,
+              "candidate_value": "24938816",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "24.938.816",
+              "reference_reason": null,
+              "reference_value": "24938816"
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "CORROBORATED_NO_CONFIDENCE_PROMOTION",
+          "label_exact": true,
+          "note_exact": true,
+          "reference_indices": [
+            9
+          ],
+          "reference_label": "Lưu chuyển tiền thuần từ hoạt động kinh doanh trước những thay đổi về tài sản và vốn lưu động",
+          "reference_note": null,
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            10
+          ],
+          "candidate_label": "Những thay đổi về tài sản hoạt động",
+          "candidate_note": null,
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "BLANK",
+              "candidate_present": true,
+              "candidate_raw": "",
+              "candidate_reason": null,
+              "candidate_value": null,
+              "exact": true,
+              "reference_observation": "BLANK",
+              "reference_present": false,
+              "reference_raw": "",
+              "reference_reason": null,
+              "reference_value": null
+            },
+            {
+              "candidate_observation": "BLANK",
+              "candidate_present": true,
+              "candidate_raw": "",
+              "candidate_reason": null,
+              "candidate_value": null,
+              "exact": true,
+              "reference_observation": "BLANK",
+              "reference_present": false,
+              "reference_raw": "",
+              "reference_reason": null,
+              "reference_value": null
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "CORROBORATED_NO_CONFIDENCE_PROMOTION",
+          "label_exact": true,
+          "note_exact": true,
+          "reference_indices": [
+            10
+          ],
+          "reference_label": "Những thay đổi về tài sản hoạt động",
+          "reference_note": null,
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            11
+          ],
+          "candidate_label": "(Tăng)/giảm các khoản tiền gửi và cấp tín dụng cho các TCTD khác",
+          "candidate_note": null,
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "12.721.924",
+              "candidate_reason": null,
+              "candidate_value": "12721924",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "12.721.924",
+              "reference_reason": null,
+              "reference_value": "12721924"
+            },
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(12.287.858)",
+              "candidate_reason": null,
+              "candidate_value": "-12287858",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(12.287.858)",
+              "reference_reason": null,
+              "reference_value": "-12287858"
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "CORROBORATED_NO_CONFIDENCE_PROMOTION",
+          "label_exact": true,
+          "note_exact": true,
+          "reference_indices": [
+            11
+          ],
+          "reference_label": "(Tăng)/giảm các khoản tiền gửi và cấp tín dụng cho các TCTD khác",
+          "reference_note": null,
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            12
+          ],
+          "candidate_label": "Tăng các khoản về kinh doanh chứng khoán",
+          "candidate_note": null,
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(31.627.229)",
+              "candidate_reason": null,
+              "candidate_value": "-31627229",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(31.627.229)",
+              "reference_reason": null,
+              "reference_value": "-31627229"
+            },
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(19.582.416)",
+              "candidate_reason": null,
+              "candidate_value": "-19582416",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(19.582.416)",
+              "reference_reason": null,
+              "reference_value": "-19582416"
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "CORROBORATED_NO_CONFIDENCE_PROMOTION",
+          "label_exact": true,
+          "note_exact": true,
+          "reference_indices": [
+            12
+          ],
+          "reference_label": "Tăng các khoản về kinh doanh chứng khoán",
+          "reference_note": null,
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            13
+          ],
+          "candidate_label": "(Tăng)/giảm các công cụ tài chính phái sinh và các tài sản tài chính khác",
+          "candidate_note": null,
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "143.611",
+              "candidate_reason": null,
+              "candidate_value": "143611",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "143.611",
+              "reference_reason": null,
+              "reference_value": "143611"
+            },
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(143.611)",
+              "candidate_reason": null,
+              "candidate_value": "-143611",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(143.611)",
+              "reference_reason": null,
+              "reference_value": "-143611"
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "CORROBORATED_NO_CONFIDENCE_PROMOTION",
+          "label_exact": true,
+          "note_exact": true,
+          "reference_indices": [
+            13
+          ],
+          "reference_label": "(Tăng)/giảm các công cụ tài chính phái sinh và các tài sản tài chính khác",
+          "reference_note": null,
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            14
+          ],
+          "candidate_label": "Tăng các khoản cho vay khách hàng",
+          "candidate_note": null,
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(113.083.396)",
+              "candidate_reason": null,
+              "candidate_value": "-113083396",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(113.083.396)",
+              "reference_reason": null,
+              "reference_value": "-113083396"
+            },
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(98.117.863)",
+              "candidate_reason": null,
+              "candidate_value": "-98117863",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(98.117.863)",
+              "reference_reason": null,
+              "reference_value": "-98117863"
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "CORROBORATED_NO_CONFIDENCE_PROMOTION",
+          "label_exact": true,
+          "note_exact": true,
+          "reference_indices": [
+            14
+          ],
+          "reference_label": "Tăng các khoản cho vay khách hàng",
+          "reference_note": null,
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            15
+          ],
+          "candidate_label": "Giảm nguồn dự phòng để xử lý rủi ro, xử lý, bù đắp tổn thất các khoản",
+          "candidate_note": "10, 15",
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(2.670.781)",
+              "candidate_reason": null,
+              "candidate_value": "-2670781",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(2.670.781)",
+              "reference_reason": null,
+              "reference_value": "-2670781"
+            },
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(2.667.877)",
+              "candidate_reason": null,
+              "candidate_value": "-2667877",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(2.667.877)",
+              "reference_reason": null,
+              "reference_value": "-2667877"
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "NOTE_REFERENCE_REREAD",
+          "label_exact": false,
+          "note_exact": false,
+          "reference_indices": [
+            15
+          ],
+          "reference_label": "Giảm nguồn dự phòng để xử lý rủi ro, xử lý, bù đắp tổn thất các khoản 10, 15",
+          "reference_note": null,
+          "semantic_key_exact": false,
+          "semantic_similarity": 0.957143
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            16
+          ],
+          "candidate_label": "(Tăng)/giảm khác về tài sản hoạt động",
+          "candidate_note": null,
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "34.701.809",
+              "candidate_reason": null,
+              "candidate_value": "34701809",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "34.701.809",
+              "reference_reason": null,
+              "reference_value": "34701809"
+            },
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(9.317.279)",
+              "candidate_reason": null,
+              "candidate_value": "-9317279",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(9.317.279)",
+              "reference_reason": null,
+              "reference_value": "-9317279"
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "CORROBORATED_NO_CONFIDENCE_PROMOTION",
+          "label_exact": true,
+          "note_exact": true,
+          "reference_indices": [
+            16
+          ],
+          "reference_label": "(Tăng)/giảm khác về tài sản hoạt động",
+          "reference_note": null,
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            17
+          ],
+          "candidate_label": "Những thay đổi về công nợ hoạt động",
+          "candidate_note": null,
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "BLANK",
+              "candidate_present": true,
+              "candidate_raw": "",
+              "candidate_reason": null,
+              "candidate_value": null,
+              "exact": true,
+              "reference_observation": "BLANK",
+              "reference_present": false,
+              "reference_raw": "",
+              "reference_reason": null,
+              "reference_value": null
+            },
+            {
+              "candidate_observation": "BLANK",
+              "candidate_present": true,
+              "candidate_raw": "",
+              "candidate_reason": null,
+              "candidate_value": null,
+              "exact": true,
+              "reference_observation": "BLANK",
+              "reference_present": false,
+              "reference_raw": "",
+              "reference_reason": null,
+              "reference_value": null
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "CORROBORATED_NO_CONFIDENCE_PROMOTION",
+          "label_exact": true,
+          "note_exact": true,
+          "reference_indices": [
+            17
+          ],
+          "reference_label": "Những thay đổi về công nợ hoạt động",
+          "reference_note": null,
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            18
+          ],
+          "candidate_label": "Giảm các khoản tiền gửi, tiền vay các TCTD khác",
+          "candidate_note": null,
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(20.933.914)",
+              "candidate_reason": null,
+              "candidate_value": "-20933914",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(20.933.914)",
+              "reference_reason": null,
+              "reference_value": "-20933914"
+            },
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(14.389.967)",
+              "candidate_reason": null,
+              "candidate_value": "-14389967",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(14.389.967)",
+              "reference_reason": null,
+              "reference_value": "-14389967"
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "CORROBORATED_NO_CONFIDENCE_PROMOTION",
+          "label_exact": true,
+          "note_exact": true,
+          "reference_indices": [
+            18
+          ],
+          "reference_label": "Giảm các khoản tiền gửi, tiền vay các TCTD khác",
+          "reference_note": null,
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            19
+          ],
+          "candidate_label": "Tăng tiền gửi của khách hàng",
+          "candidate_note": null,
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "78.742.971",
+              "candidate_reason": null,
+              "candidate_value": "78742971",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "78.742.971",
+              "reference_reason": null,
+              "reference_value": "78742971"
+            },
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "96.249.299",
+              "candidate_reason": null,
+              "candidate_value": "96249299",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "96.249.299",
+              "reference_reason": null,
+              "reference_value": "96249299"
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "CORROBORATED_NO_CONFIDENCE_PROMOTION",
+          "label_exact": true,
+          "note_exact": true,
+          "reference_indices": [
+            19
+          ],
+          "reference_label": "Tăng tiền gửi của khách hàng",
+          "reference_note": null,
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            20
+          ],
+          "candidate_label": "Tăng phát hành giấy tờ có giá (ngoại trừ giấy tờ có giá phát hành được tính vào hoạt động tài chính)",
+          "candidate_note": null,
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "55.719.021",
+              "candidate_reason": null,
+              "candidate_value": "55719021",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "55.719.021",
+              "reference_reason": null,
+              "reference_value": "55719021"
+            },
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "50.696.681",
+              "candidate_reason": null,
+              "candidate_value": "50696681",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "50.696.681",
+              "reference_reason": null,
+              "reference_value": "50696681"
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "CORROBORATED_NO_CONFIDENCE_PROMOTION",
+          "label_exact": true,
+          "note_exact": true,
+          "reference_indices": [
+            20
+          ],
+          "reference_label": "Tăng phát hành giấy tờ có giá (ngoại trừ giấy tờ có giá phát hành được tính vào hoạt động tài chính)",
+          "reference_note": null,
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            21
+          ],
+          "candidate_label": "Tăng/(giảm) các công cụ tài chính phái sinh và các khoản nợ tài chính khác",
+          "candidate_note": null,
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "931.231",
+              "candidate_reason": null,
+              "candidate_value": "931231",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "931.231",
+              "reference_reason": null,
+              "reference_value": "931231"
+            },
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(1.851.213)",
+              "candidate_reason": null,
+              "candidate_value": "-1851213",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(1.851.213)",
+              "reference_reason": null,
+              "reference_value": "-1851213"
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "CORROBORATED_NO_CONFIDENCE_PROMOTION",
+          "label_exact": true,
+          "note_exact": true,
+          "reference_indices": [
+            21
+          ],
+          "reference_label": "Tăng/(giảm) các công cụ tài chính phái sinh và các khoản nợ tài chính khác",
+          "reference_note": null,
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            22
+          ],
+          "candidate_label": "Giảm khác về công nợ hoạt động",
+          "candidate_note": null,
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(3.303.550)",
+              "candidate_reason": null,
+              "candidate_value": "-3303550",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(3.303.550)",
+              "reference_reason": null,
+              "reference_value": "-3303550"
+            },
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(1.468.412)",
+              "candidate_reason": null,
+              "candidate_value": "-1468412",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(1.468.412)",
+              "reference_reason": null,
+              "reference_value": "-1468412"
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "CORROBORATED_NO_CONFIDENCE_PROMOTION",
+          "label_exact": true,
+          "note_exact": true,
+          "reference_indices": [
+            22
+          ],
+          "reference_label": "Giảm khác về công nợ hoạt động",
+          "reference_note": null,
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            23
+          ],
+          "candidate_label": "Chi từ các quỹ",
+          "candidate_note": "23.1",
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(2.579)",
+              "candidate_reason": null,
+              "candidate_value": "-2579",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(2.579)",
+              "reference_reason": null,
+              "reference_value": "-2579"
+            },
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(5.013)",
+              "candidate_reason": null,
+              "candidate_value": "-5013",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(5.013)",
+              "reference_reason": null,
+              "reference_value": "-5013"
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "CORROBORATED_NO_CONFIDENCE_PROMOTION",
+          "label_exact": true,
+          "note_exact": true,
+          "reference_indices": [
+            23
+          ],
+          "reference_label": "Chi từ các quỹ",
+          "reference_note": "23.1",
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            24
+          ],
+          "candidate_label": "Lưu chuyển tiền thuần từ hoạt động kinh doanh",
+          "candidate_note": null,
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "42.376.555",
+              "candidate_reason": null,
+              "candidate_value": "42376555",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "42.376.555",
+              "reference_reason": null,
+              "reference_value": "42376555"
+            },
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "12.053.287",
+              "candidate_reason": null,
+              "candidate_value": "12053287",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "12.053.287",
+              "reference_reason": null,
+              "reference_value": "12053287"
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "CORROBORATED_NO_CONFIDENCE_PROMOTION",
+          "label_exact": true,
+          "note_exact": true,
+          "reference_indices": [
+            24
+          ],
+          "reference_label": "Lưu chuyển tiền thuần từ hoạt động kinh doanh",
+          "reference_note": null,
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            25
+          ],
+          "candidate_label": "LƯU CHUYỂN TIỂN TỪ HOẠT ĐỘNG ĐẦU TƯ",
+          "candidate_note": null,
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "BLANK",
+              "candidate_present": true,
+              "candidate_raw": "",
+              "candidate_reason": null,
+              "candidate_value": null,
+              "exact": true,
+              "reference_observation": "BLANK",
+              "reference_present": false,
+              "reference_raw": "",
+              "reference_reason": null,
+              "reference_value": null
+            },
+            {
+              "candidate_observation": "BLANK",
+              "candidate_present": true,
+              "candidate_raw": "",
+              "candidate_reason": null,
+              "candidate_value": null,
+              "exact": true,
+              "reference_observation": "BLANK",
+              "reference_present": false,
+              "reference_raw": "",
+              "reference_reason": null,
+              "reference_value": null
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "LABEL_REREAD_OR_STRUCTURAL_REVIEW",
+          "label_exact": false,
+          "note_exact": true,
+          "reference_indices": [
+            25
+          ],
+          "reference_label": "LƯU CHUYỂN TIỀN TỪ HOẠT ĐỘNG ĐẦU TƯ",
+          "reference_note": null,
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            26
+          ],
+          "candidate_label": "Mua sắm tài sản cố định",
+          "candidate_note": null,
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(1.618.886)",
+              "candidate_reason": null,
+              "candidate_value": "-1618886",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(1.618.886)",
+              "reference_reason": null,
+              "reference_value": "-1618886"
+            },
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(1.232.358)",
+              "candidate_reason": null,
+              "candidate_value": "-1232358",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(1.232.358)",
+              "reference_reason": null,
+              "reference_value": "-1232358"
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "CORROBORATED_NO_CONFIDENCE_PROMOTION",
+          "label_exact": true,
+          "note_exact": true,
+          "reference_indices": [
+            26
+          ],
+          "reference_label": "Mua sắm tài sản cố định",
+          "reference_note": null,
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            27
+          ],
+          "candidate_label": "Tiền thu từ thanh lý tài sản cố định",
+          "candidate_note": null,
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "1.741.528",
+              "candidate_reason": null,
+              "candidate_value": "1741528",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "1.741.528",
+              "reference_reason": null,
+              "reference_value": "1741528"
+            },
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "22.156",
+              "candidate_reason": null,
+              "candidate_value": "22156",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "22.156",
+              "reference_reason": null,
+              "reference_value": "22156"
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "CORROBORATED_NO_CONFIDENCE_PROMOTION",
+          "label_exact": true,
+          "note_exact": true,
+          "reference_indices": [
+            27
+          ],
+          "reference_label": "Tiền thu từ thanh lý tài sản cố định",
+          "reference_note": null,
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            28
+          ],
+          "candidate_label": "Tiền chi từ thanh lý tài sản cố định",
+          "candidate_note": null,
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(1.249.743)",
+              "candidate_reason": null,
+              "candidate_value": "-1249743",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(1.249.743)",
+              "reference_reason": null,
+              "reference_value": "-1249743"
+            },
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(35)",
+              "candidate_reason": null,
+              "candidate_value": "-35",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(35)",
+              "reference_reason": null,
+              "reference_value": "-35"
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "CORROBORATED_NO_CONFIDENCE_PROMOTION",
+          "label_exact": true,
+          "note_exact": true,
+          "reference_indices": [
+            28
+          ],
+          "reference_label": "Tiền chi từ thanh lý tài sản cố định",
+          "reference_note": null,
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            29
+          ],
+          "candidate_label": "Tiền thu từ bán bất động sản đầu tư",
+          "candidate_note": null,
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "736.219",
+              "candidate_reason": null,
+              "candidate_value": "736219",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "736.219",
+              "reference_reason": null,
+              "reference_value": "736219"
+            },
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "1.296.447",
+              "candidate_reason": null,
+              "candidate_value": "1296447",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "1.296.447",
+              "reference_reason": null,
+              "reference_value": "1296447"
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "CORROBORATED_NO_CONFIDENCE_PROMOTION",
+          "label_exact": true,
+          "note_exact": true,
+          "reference_indices": [
+            29
+          ],
+          "reference_label": "Tiền thu từ bán bất động sản đầu tư",
+          "reference_note": null,
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            30
+          ],
+          "candidate_label": "Tiền chi đầu tư, góp vốn vào các đơn vị khác",
+          "candidate_note": null,
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(56.278)",
+              "candidate_reason": null,
+              "candidate_value": "-56278",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(56.278)",
+              "reference_reason": null,
+              "reference_value": "-56278"
+            },
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(3.033.432)",
+              "candidate_reason": null,
+              "candidate_value": "-3033432",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(3.033.432)",
+              "reference_reason": null,
+              "reference_value": "-3033432"
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "CORROBORATED_NO_CONFIDENCE_PROMOTION",
+          "label_exact": true,
+          "note_exact": true,
+          "reference_indices": [
+            30
+          ],
+          "reference_label": "Tiền chi đầu tư, góp vốn vào các đơn vị khác",
+          "reference_note": null,
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            31
+          ],
+          "candidate_label": "Tiền thu cố tức và lợi nhuận được chia từ các khoản đầu tư, góp vốn dài hạn",
+          "candidate_note": "31",
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "64.561",
+              "candidate_reason": null,
+              "candidate_value": "64561",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "64.561",
+              "reference_reason": null,
+              "reference_value": "64561"
+            },
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "34.756",
+              "candidate_reason": null,
+              "candidate_value": "34756",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "34.756",
+              "reference_reason": null,
+              "reference_value": "34756"
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "LABEL_REREAD_OR_STRUCTURAL_REVIEW",
+          "label_exact": false,
+          "note_exact": true,
+          "reference_indices": [
+            31
+          ],
+          "reference_label": "Tiền thu cổ tức và lợi nhuận được chia từ các khoản đầu tư, góp vốn dài hạn",
+          "reference_note": "31",
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        },
+        {
+          "action": "MATCH",
+          "candidate_indices": [
+            32
+          ],
+          "candidate_label": "Lưu chuyển tiền thuần sử dụng vào hoạt động đầu tư",
+          "candidate_note": null,
+          "cell_width_exact": true,
+          "cells": [
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(382.599)",
+              "candidate_reason": null,
+              "candidate_value": "-382599",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(382.599)",
+              "reference_reason": null,
+              "reference_value": "-382599"
+            },
+            {
+              "candidate_observation": "VALUE",
+              "candidate_present": true,
+              "candidate_raw": "(2.912.466)",
+              "candidate_reason": null,
+              "candidate_value": "-2912466",
+              "exact": true,
+              "reference_observation": "VALUE",
+              "reference_present": true,
+              "reference_raw": "(2.912.466)",
+              "reference_reason": null,
+              "reference_value": "-2912466"
+            }
+          ],
+          "confidence_effect": "NO_PROMOTION",
+          "escalation": "CORROBORATED_NO_CONFIDENCE_PROMOTION",
+          "label_exact": true,
+          "note_exact": true,
+          "reference_indices": [
+            32
+          ],
+          "reference_label": "Lưu chuyển tiền thuần sử dụng vào hoạt động đầu tư",
+          "reference_note": null,
+          "semantic_key_exact": true,
+          "semantic_similarity": 1.0
+        }
+      ],
+      "counts": {
+        "alignment_actions": {
+          "MATCH": 33
+        },
+        "candidate_invalid_cells": 0,
+        "candidate_rows": 33,
+        "compared_reference_financial_cells": 58,
+        "covered_reference_financial_rows": 29,
+        "escalations": {
+          "CORROBORATED_NO_CONFIDENCE_PROMOTION": 29,
+          "LABEL_REREAD_OR_STRUCTURAL_REVIEW": 3,
+          "NOTE_REFERENCE_REREAD": 1
+        },
+        "exact_note_references": 4,
+        "exact_reference_financial_cells": 58,
+        "exact_reference_financial_rows": 29,
+        "note_rows": 5,
+        "reference_financial_cells": 58,
+        "reference_financial_rows": 29,
+        "reference_rows": 33,
+        "scope_allowed_candidate_rows": 33,
+        "scope_excluded_candidate_rows": 0,
+        "semantic_key_exact_labels": 32,
+        "source_exact_labels": 29,
+        "structurally_comparable_rows": 33
+      },
+      "scope": [
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "LƯU CHUYỂN TIỂN TỪ HOẠT ĐỘNG KINH DOANH",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0001"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "Thu nhập lãi và các khoản thu nhập tương tự nhận được",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0002"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "Chi phí lãi và các chi phí tương tự đã trả",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0003"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "Thu nhập từ hoạt động dịch vụ nhận được",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0004"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "Chênh lệch số tiền thực thu từ hoạt động kinh doanh (ngoại tệ và chứng khoán)",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0005"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "Thu nhập/(chi phí) khác",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0006"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "Tiền thu các khoản nợ đã được xử lý bằng nguồn dự phòng rủi ro",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0007"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "Tiền chi trả cho nhân viên và hoạt động quản lý, công vụ",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0008"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "Tiền thuế thu nhập thực nộp trong năm",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0009"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "Lưu chuyển tiền thuần từ hoạt động kinh doanh trước những thay đổi về tài sản và vốn lưu động",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0010"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "Những thay đổi về tài sản hoạt động",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0011"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "(Tăng)/giảm các khoản tiền gửi và cấp tín dụng cho các TCTD khác",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0012"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "Tăng các khoản về kinh doanh chứng khoán",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0013"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "(Tăng)/giảm các công cụ tài chính phái sinh và các tài sản tài chính khác",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0014"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "Tăng các khoản cho vay khách hàng",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0015"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "Giảm nguồn dự phòng để xử lý rủi ro, xử lý, bù đắp tổn thất các khoản",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0016"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "(Tăng)/giảm khác về tài sản hoạt động",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0017"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "Những thay đổi về công nợ hoạt động",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0018"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "Giảm các khoản tiền gửi, tiền vay các TCTD khác",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0019"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "Tăng tiền gửi của khách hàng",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0020"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "Tăng phát hành giấy tờ có giá (ngoại trừ giấy tờ có giá phát hành được tính vào hoạt động tài chính)",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0021"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "Tăng/(giảm) các công cụ tài chính phái sinh và các khoản nợ tài chính khác",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0022"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "Giảm khác về công nợ hoạt động",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0023"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "Chi từ các quỹ",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0024"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "Lưu chuyển tiền thuần từ hoạt động kinh doanh",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0025"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "LƯU CHUYỂN TIỂN TỪ HOẠT ĐỘNG ĐẦU TƯ",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0026"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "Mua sắm tài sản cố định",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0027"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "Tiền thu từ thanh lý tài sản cố định",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0028"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "Tiền chi từ thanh lý tài sản cố định",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0029"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "Tiền thu từ bán bất động sản đầu tư",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0030"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "Tiền chi đầu tư, góp vốn vào các đơn vị khác",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0031"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "Tiền thu cố tức và lợi nhuận được chia từ các khoản đầu tư, góp vốn dài hạn",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0032"
+        },
+        {
+          "allowed": true,
+          "detected_section": null,
+          "inherited_from_section": false,
+          "label": "Lưu chuyển tiền thuần sử dụng vào hoạt động đầu tư",
+          "reason": "no exclusion matched in scope policy v1",
+          "row_id": "deepseek-role-b-page-0013:table-1:grid-row-0033"
+        }
+      ]
+    },
+    "error_analysis": {
+      "classes": {
+        "LABEL_SEMANTICS": {
+          "impact_count": 1,
+          "semantic_key_disagreements": 1
+        },
+        "NOTE_REFERENCE": {
+          "impact_count": 1,
+          "note_disagreements": 1
+        },
+        "NUMERIC_SIGN_OCR": {
+          "all_invalid_candidate_cells": 0,
+          "compared_cell_disagreements": 0,
+          "impact_count": 0,
+          "invalid_candidate_cells_attributed_to_numeric": 0
+        },
+        "STRUCTURAL_ROW_CELL_RECONSTRUCTION": {
+          "impact_count": 0,
+          "missing_reference_cells": 0,
+          "multi_number_candidate_cells": 0,
+          "structural_alignment_units": 0,
+          "structural_compared_cell_disagreements": 0
+        }
+      },
+      "main_error_class": "LABEL_SEMANTICS",
+      "root_cause_mode": "CELL_AND_ALIGNMENT_EVIDENCE",
+      "selection_rule": "largest directly measured impact count; deterministic priority resolves ties"
+    },
+    "metrics": {
+      "alignment_actions": {
+        "MATCH": 33
+      },
+      "candidate_invalid_cells": 0,
+      "candidate_rows": 33,
+      "compared_reference_financial_cells": 58,
+      "conditional_exact_cell_agreement_rate": 1.0,
+      "conditional_exact_financial_row_agreement_rate": 1.0,
+      "covered_reference_financial_rows": 29,
+      "escalations": {
+        "CORROBORATED_NO_CONFIDENCE_PROMOTION": 29,
+        "LABEL_REREAD_OR_STRUCTURAL_REVIEW": 3,
+        "NOTE_REFERENCE_REREAD": 1
+      },
+      "exact_note_references": 4,
+      "exact_reference_financial_cells": 58,
+      "exact_reference_financial_rows": 29,
+      "note_rows": 5,
+      "reference_financial_cell_coverage_rate": 1.0,
+      "reference_financial_cells": 58,
+      "reference_financial_row_coverage_rate": 1.0,
+      "reference_financial_rows": 29,
+      "reference_rows": 33,
+      "scope_allowed_candidate_rows": 33,
+      "scope_excluded_candidate_rows": 0,
+      "semantic_key_exact_label_rate": 0.969697,
+      "semantic_key_exact_labels": 32,
+      "source_exact_label_rate": 0.878788,
+      "source_exact_labels": 29,
+      "strict_exact_reference_cell_agreement_rate": 1.0,
+      "strict_exact_reference_financial_row_agreement_rate": 1.0,
+      "structurally_comparable_rows": 33
+    },
+    "reader": "DeepSeek-OCR-2_PLUS_EXPLICIT_FRAGMENT_REASSEMBLY",
+    "rows": [
+      {
+        "cells": [
+          {
+            "normalized_text": "",
+            "observation": "BLANK",
+            "raw_text": "",
+            "reason": null,
+            "sign_evidence": null,
+            "value": null
+          },
+          {
+            "normalized_text": "",
+            "observation": "BLANK",
+            "raw_text": "",
+            "reason": null,
+            "sign_evidence": null,
+            "value": null
+          }
+        ],
+        "label": "LƯU CHUYỂN TIỂN TỪ HOẠT ĐỘNG KINH DOANH",
+        "note_reference": null,
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0001"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "61748921",
+            "observation": "VALUE",
+            "raw_text": "61.748.921",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "61748921"
+          },
+          {
+            "normalized_text": "53749365",
+            "observation": "VALUE",
+            "raw_text": "53.749.365",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "53749365"
+          }
+        ],
+        "label": "Thu nhập lãi và các khoản thu nhập tương tự nhận được",
+        "note_reference": null,
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0002"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "-26124464",
+            "observation": "VALUE",
+            "raw_text": "(26.124.464)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-26124464"
+          },
+          {
+            "normalized_text": "-25941911",
+            "observation": "VALUE",
+            "raw_text": "(25.941.911)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-25941911"
+          }
+        ],
+        "label": "Chi phí lãi và các chi phí tương tự đã trả",
+        "note_reference": null,
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0003"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "7679933",
+            "observation": "VALUE",
+            "raw_text": "7.679.933",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "7679933"
+          },
+          {
+            "normalized_text": "9134752",
+            "observation": "VALUE",
+            "raw_text": "9.134.752",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "9134752"
+          }
+        ],
+        "label": "Thu nhập từ hoạt động dịch vụ nhận được",
+        "note_reference": null,
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0004"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "3150018",
+            "observation": "VALUE",
+            "raw_text": "3.150.018",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "3150018"
+          },
+          {
+            "normalized_text": "1168505",
+            "observation": "VALUE",
+            "raw_text": "1.168.505",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "1168505"
+          }
+        ],
+        "label": "Chênh lệch số tiền thực thu từ hoạt động kinh doanh (ngoại tệ và chứng khoán)",
+        "note_reference": null,
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0005"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "-2359679",
+            "observation": "VALUE",
+            "raw_text": "(2.359.679)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-2359679"
+          },
+          {
+            "normalized_text": "1384616",
+            "observation": "VALUE",
+            "raw_text": "1.384.616",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "1384616"
+          }
+        ],
+        "label": "Thu nhập/(chi phí) khác",
+        "note_reference": null,
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0006"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "1138200",
+            "observation": "VALUE",
+            "raw_text": "1.138.200",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "1138200"
+          },
+          {
+            "normalized_text": "831790",
+            "observation": "VALUE",
+            "raw_text": "831.790",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "831790"
+          }
+        ],
+        "label": "Tiền thu các khoản nợ đã được xử lý bằng nguồn dự phòng rủi ro",
+        "note_reference": "30",
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0007"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "-10106171",
+            "observation": "VALUE",
+            "raw_text": "(10.106.171)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-10106171"
+          },
+          {
+            "normalized_text": "-10339365",
+            "observation": "VALUE",
+            "raw_text": "(10.339.365)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-10339365"
+          }
+        ],
+        "label": "Tiền chi trả cho nhân viên và hoạt động quản lý, công vụ",
+        "note_reference": null,
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0008"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "-4089321",
+            "observation": "VALUE",
+            "raw_text": "(4.089.321)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-4089321"
+          },
+          {
+            "normalized_text": "-5048936",
+            "observation": "VALUE",
+            "raw_text": "(5.048.936)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-5048936"
+          }
+        ],
+        "label": "Tiền thuế thu nhập thực nộp trong năm",
+        "note_reference": "22.1",
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0009"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "31037437",
+            "observation": "VALUE",
+            "raw_text": "31.037.437",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "31037437"
+          },
+          {
+            "normalized_text": "24938816",
+            "observation": "VALUE",
+            "raw_text": "24.938.816",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "24938816"
+          }
+        ],
+        "label": "Lưu chuyển tiền thuần từ hoạt động kinh doanh trước những thay đổi về tài sản và vốn lưu động",
+        "note_reference": null,
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0010"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "",
+            "observation": "BLANK",
+            "raw_text": "",
+            "reason": null,
+            "sign_evidence": null,
+            "value": null
+          },
+          {
+            "normalized_text": "",
+            "observation": "BLANK",
+            "raw_text": "",
+            "reason": null,
+            "sign_evidence": null,
+            "value": null
+          }
+        ],
+        "label": "Những thay đổi về tài sản hoạt động",
+        "note_reference": null,
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0011"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "12721924",
+            "observation": "VALUE",
+            "raw_text": "12.721.924",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "12721924"
+          },
+          {
+            "normalized_text": "-12287858",
+            "observation": "VALUE",
+            "raw_text": "(12.287.858)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-12287858"
+          }
+        ],
+        "label": "(Tăng)/giảm các khoản tiền gửi và cấp tín dụng cho các TCTD khác",
+        "note_reference": null,
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0012"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "-31627229",
+            "observation": "VALUE",
+            "raw_text": "(31.627.229)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-31627229"
+          },
+          {
+            "normalized_text": "-19582416",
+            "observation": "VALUE",
+            "raw_text": "(19.582.416)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-19582416"
+          }
+        ],
+        "label": "Tăng các khoản về kinh doanh chứng khoán",
+        "note_reference": null,
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0013"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "143611",
+            "observation": "VALUE",
+            "raw_text": "143.611",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "143611"
+          },
+          {
+            "normalized_text": "-143611",
+            "observation": "VALUE",
+            "raw_text": "(143.611)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-143611"
+          }
+        ],
+        "label": "(Tăng)/giảm các công cụ tài chính phái sinh và các tài sản tài chính khác",
+        "note_reference": null,
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0014"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "-113083396",
+            "observation": "VALUE",
+            "raw_text": "(113.083.396)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-113083396"
+          },
+          {
+            "normalized_text": "-98117863",
+            "observation": "VALUE",
+            "raw_text": "(98.117.863)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-98117863"
+          }
+        ],
+        "label": "Tăng các khoản cho vay khách hàng",
+        "note_reference": null,
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0015"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "-2670781",
+            "observation": "VALUE",
+            "raw_text": "(2.670.781)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-2670781"
+          },
+          {
+            "normalized_text": "-2667877",
+            "observation": "VALUE",
+            "raw_text": "(2.667.877)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-2667877"
+          }
+        ],
+        "label": "Giảm nguồn dự phòng để xử lý rủi ro, xử lý, bù đắp tổn thất các khoản",
+        "note_reference": "10, 15",
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0016"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "34701809",
+            "observation": "VALUE",
+            "raw_text": "34.701.809",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "34701809"
+          },
+          {
+            "normalized_text": "-9317279",
+            "observation": "VALUE",
+            "raw_text": "(9.317.279)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-9317279"
+          }
+        ],
+        "label": "(Tăng)/giảm khác về tài sản hoạt động",
+        "note_reference": null,
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0017"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "",
+            "observation": "BLANK",
+            "raw_text": "",
+            "reason": null,
+            "sign_evidence": null,
+            "value": null
+          },
+          {
+            "normalized_text": "",
+            "observation": "BLANK",
+            "raw_text": "",
+            "reason": null,
+            "sign_evidence": null,
+            "value": null
+          }
+        ],
+        "label": "Những thay đổi về công nợ hoạt động",
+        "note_reference": null,
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0018"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "-20933914",
+            "observation": "VALUE",
+            "raw_text": "(20.933.914)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-20933914"
+          },
+          {
+            "normalized_text": "-14389967",
+            "observation": "VALUE",
+            "raw_text": "(14.389.967)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-14389967"
+          }
+        ],
+        "label": "Giảm các khoản tiền gửi, tiền vay các TCTD khác",
+        "note_reference": null,
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0019"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "78742971",
+            "observation": "VALUE",
+            "raw_text": "78.742.971",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "78742971"
+          },
+          {
+            "normalized_text": "96249299",
+            "observation": "VALUE",
+            "raw_text": "96.249.299",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "96249299"
+          }
+        ],
+        "label": "Tăng tiền gửi của khách hàng",
+        "note_reference": null,
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0020"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "55719021",
+            "observation": "VALUE",
+            "raw_text": "55.719.021",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "55719021"
+          },
+          {
+            "normalized_text": "50696681",
+            "observation": "VALUE",
+            "raw_text": "50.696.681",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "50696681"
+          }
+        ],
+        "label": "Tăng phát hành giấy tờ có giá (ngoại trừ giấy tờ có giá phát hành được tính vào hoạt động tài chính)",
+        "note_reference": null,
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0021"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "931231",
+            "observation": "VALUE",
+            "raw_text": "931.231",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "931231"
+          },
+          {
+            "normalized_text": "-1851213",
+            "observation": "VALUE",
+            "raw_text": "(1.851.213)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-1851213"
+          }
+        ],
+        "label": "Tăng/(giảm) các công cụ tài chính phái sinh và các khoản nợ tài chính khác",
+        "note_reference": null,
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0022"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "-3303550",
+            "observation": "VALUE",
+            "raw_text": "(3.303.550)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-3303550"
+          },
+          {
+            "normalized_text": "-1468412",
+            "observation": "VALUE",
+            "raw_text": "(1.468.412)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-1468412"
+          }
+        ],
+        "label": "Giảm khác về công nợ hoạt động",
+        "note_reference": null,
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0023"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "-2579",
+            "observation": "VALUE",
+            "raw_text": "(2.579)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-2579"
+          },
+          {
+            "normalized_text": "-5013",
+            "observation": "VALUE",
+            "raw_text": "(5.013)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-5013"
+          }
+        ],
+        "label": "Chi từ các quỹ",
+        "note_reference": "23.1",
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0024"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "42376555",
+            "observation": "VALUE",
+            "raw_text": "42.376.555",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "42376555"
+          },
+          {
+            "normalized_text": "12053287",
+            "observation": "VALUE",
+            "raw_text": "12.053.287",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "12053287"
+          }
+        ],
+        "label": "Lưu chuyển tiền thuần từ hoạt động kinh doanh",
+        "note_reference": null,
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0025"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "",
+            "observation": "BLANK",
+            "raw_text": "",
+            "reason": null,
+            "sign_evidence": null,
+            "value": null
+          },
+          {
+            "normalized_text": "",
+            "observation": "BLANK",
+            "raw_text": "",
+            "reason": null,
+            "sign_evidence": null,
+            "value": null
+          }
+        ],
+        "label": "LƯU CHUYỂN TIỂN TỪ HOẠT ĐỘNG ĐẦU TƯ",
+        "note_reference": null,
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0026"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "-1618886",
+            "observation": "VALUE",
+            "raw_text": "(1.618.886)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-1618886"
+          },
+          {
+            "normalized_text": "-1232358",
+            "observation": "VALUE",
+            "raw_text": "(1.232.358)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-1232358"
+          }
+        ],
+        "label": "Mua sắm tài sản cố định",
+        "note_reference": null,
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0027"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "1741528",
+            "observation": "VALUE",
+            "raw_text": "1.741.528",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "1741528"
+          },
+          {
+            "normalized_text": "22156",
+            "observation": "VALUE",
+            "raw_text": "22.156",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "22156"
+          }
+        ],
+        "label": "Tiền thu từ thanh lý tài sản cố định",
+        "note_reference": null,
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0028"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "-1249743",
+            "observation": "VALUE",
+            "raw_text": "(1.249.743)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-1249743"
+          },
+          {
+            "normalized_text": "-35",
+            "observation": "VALUE",
+            "raw_text": "(35)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-35"
+          }
+        ],
+        "label": "Tiền chi từ thanh lý tài sản cố định",
+        "note_reference": null,
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0029"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "736219",
+            "observation": "VALUE",
+            "raw_text": "736.219",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "736219"
+          },
+          {
+            "normalized_text": "1296447",
+            "observation": "VALUE",
+            "raw_text": "1.296.447",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "1296447"
+          }
+        ],
+        "label": "Tiền thu từ bán bất động sản đầu tư",
+        "note_reference": null,
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0030"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "-56278",
+            "observation": "VALUE",
+            "raw_text": "(56.278)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-56278"
+          },
+          {
+            "normalized_text": "-3033432",
+            "observation": "VALUE",
+            "raw_text": "(3.033.432)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-3033432"
+          }
+        ],
+        "label": "Tiền chi đầu tư, góp vốn vào các đơn vị khác",
+        "note_reference": null,
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0031"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "64561",
+            "observation": "VALUE",
+            "raw_text": "64.561",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "64561"
+          },
+          {
+            "normalized_text": "34756",
+            "observation": "VALUE",
+            "raw_text": "34.756",
+            "reason": null,
+            "sign_evidence": null,
+            "value": "34756"
+          }
+        ],
+        "label": "Tiền thu cố tức và lợi nhuận được chia từ các khoản đầu tư, góp vốn dài hạn",
+        "note_reference": "31",
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0032"
+        ]
+      },
+      {
+        "cells": [
+          {
+            "normalized_text": "-382599",
+            "observation": "VALUE",
+            "raw_text": "(382.599)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-382599"
+          },
+          {
+            "normalized_text": "-2912466",
+            "observation": "VALUE",
+            "raw_text": "(2.912.466)",
+            "reason": null,
+            "sign_evidence": "parentheses",
+            "value": "-2912466"
+          }
+        ],
+        "label": "Lưu chuyển tiền thuần sử dụng vào hoạt động đầu tư",
+        "note_reference": null,
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0033",
+          "deepseek-role-b-page-0013:table-1:grid-row-0034"
+        ]
+      }
+    ]
+  },
+  "algorithm_files_sha256": {
+    "src/bctc_ai/evaluation/cross_reader_metrics.py": "4294c7a84b149236460a926b7333de8297c19413692c3d77fa83727929ab567a",
+    "src/bctc_ai/evaluation/deepseek_output.py": "be9ec4a1134f43de16e06620b5a8b52cbd3cf257bd2b50cda185070b35d2d284",
+    "src/bctc_ai/evaluation/reader_outputs.py": "290d9ee9d4efc7bc1b89368bdfa84ddd0ea71202c7211e95ef75b8a985b4e0cc",
+    "src/bctc_ai/evaluation/reader_outputs_v2.py": "30e81f1473454fdb4d4dbe38e4b31384ac6e8d4f69fd78f49ccb31aa8c4beb80",
+    "src/bctc_ai/evaluation/semantic_html_tables.py": "f66bb6b66e2af0b65cea1b7e21f05b39dee868171e43ff16e15b01034c3ea57d",
+    "src/bctc_ai/evaluation/targeted_semantic_evaluation.py": "44e170ed37cd6769db398a4a144cd72b837da54c33bfb76287dec1976766cf44",
+    "src/bctc_ai/mapping/lctt.py": "5662e1edd47b0d75f95682421518eefb83eb84aaa5c95e4b7c67817a7ddfa848",
+    "src/bctc_ai/mapping/scope.py": "0804e1d2a7103d2186f54ceafc49fe14f35f3ddabc2797eb14bd3c09b2e44774",
+    "src/bctc_ai/validation/reader_agreement.py": "2619bff148618f0c3fc4d018d6c7da4b906facbc623cbacc331427ce5555fb1f"
+  },
+  "before": {
+    "error_analysis": {
+      "classes": {
+        "LABEL_SEMANTICS": {
+          "impact_count": 0,
+          "semantic_key_disagreements": 0
+        },
+        "NOTE_REFERENCE": {
+          "impact_count": 0,
+          "note_disagreements": 0
+        },
+        "NUMERIC_SIGN_OCR": {
+          "all_invalid_candidate_cells": 12,
+          "compared_cell_disagreements": 2,
+          "impact_count": 2,
+          "invalid_candidate_cells_attributed_to_numeric": 0
+        },
+        "STRUCTURAL_ROW_CELL_RECONSTRUCTION": {
+          "impact_count": 41,
+          "missing_reference_cells": 14,
+          "multi_number_candidate_cells": 12,
+          "structural_alignment_units": 6,
+          "structural_compared_cell_disagreements": 21
+        }
+      },
+      "main_error_class": "STRUCTURAL_ROW_CELL_RECONSTRUCTION",
+      "root_cause_mode": "CELL_AND_ALIGNMENT_EVIDENCE",
+      "selection_rule": "largest directly measured impact count; deterministic priority resolves ties"
+    },
+    "metrics": {
+      "alignment_actions": {
+        "MATCH": 24,
+        "MERGE_CANDIDATE": 2,
+        "MERGE_REFERENCE": 3,
+        "MISSING_CANDIDATE": 1
+      },
+      "candidate_invalid_cells": 12,
+      "candidate_rows": 31,
+      "compared_reference_financial_cells": 44,
+      "conditional_exact_cell_agreement_rate": 0.477273,
+      "conditional_exact_financial_row_agreement_rate": 0.454545,
+      "covered_reference_financial_rows": 22,
+      "escalations": {
+        "CORROBORATED_NO_CONFIDENCE_PROMOTION": 6,
+        "LABEL_REREAD_OR_STRUCTURAL_REVIEW": 8,
+        "TABLE_RECONSTRUCTION_REVIEW": 4,
+        "TARGETED_NUMERIC_REREAD_DISAGREEMENT": 6,
+        "TARGETED_NUMERIC_REREAD_INVALID_CELL": 6
+      },
+      "exact_note_references": 3,
+      "exact_reference_financial_cells": 21,
+      "exact_reference_financial_rows": 10,
+      "note_rows": 3,
+      "reference_financial_cell_coverage_rate": 0.758621,
+      "reference_financial_cells": 58,
+      "reference_financial_row_coverage_rate": 0.758621,
+      "reference_financial_rows": 29,
+      "reference_rows": 33,
+      "scope_allowed_candidate_rows": 31,
+      "scope_excluded_candidate_rows": 0,
+      "semantic_key_exact_label_rate": 1.0,
+      "semantic_key_exact_labels": 26,
+      "source_exact_label_rate": 0.5,
+      "source_exact_labels": 13,
+      "strict_exact_reference_cell_agreement_rate": 0.362069,
+      "strict_exact_reference_financial_row_agreement_rate": 0.344828,
+      "structurally_comparable_rows": 26
+    },
+    "reader": "PaddleOCR-VL-1.6"
+  },
+  "cash_flow": {
+    "baseline_method": "UNKNOWN",
+    "direct_anchor_positions": [
+      1,
+      2
+    ],
+    "indirect_anchor_positions": null,
+    "reason": "configured direct ordered anchor sequence observed; semantic status=REOPENED_EVIDENCE_CONFLICT, acceptance fail-closed",
+    "semantic_high_confidence_allowed": false,
+    "targeted_reader_method": "DIRECT"
+  },
+  "claim_boundary": "Target-page calibration against an independent native-PDF machine reference; not human gold, not end-to-end schema accuracy, and not a production threshold. Reader agreement and arithmetic are supporting evidence only.",
+  "code": {
+    "git_commit": "254bf5d20cc20cf983eeb740805cfbb3fe277090",
+    "git_dirty": false
+  },
+  "dataset_role": "CALIBRATION",
+  "delta": {
+    "candidate_invalid_cells": -12,
+    "conditional_exact_cell_agreement_rate": 0.522727,
+    "conditional_exact_financial_row_agreement_rate": 0.545455,
+    "exact_reference_financial_cells": 37,
+    "reference_financial_cell_coverage_rate": 0.241379,
+    "reference_financial_row_coverage_rate": 0.241379,
+    "semantic_key_exact_label_rate": -0.030303,
+    "strict_exact_reference_cell_agreement_rate": 0.637931,
+    "strict_exact_reference_financial_row_agreement_rate": 0.655172,
+    "structural_error_impact": -41
+  },
+  "evidence_manifest": [
+    {
+      "kind": "BASELINE",
+      "path": "docs/experiments/E-0017-tcb-consolidated-native-role-ab.json",
+      "sha256": "66264103c5cab88f22d1d73aa029cac7f29c9f59839f313fe859d2aa4f11a7ac"
+    },
+    {
+      "kind": "ROLE_A_SEAL",
+      "path": "output/calibration/e0017-tcb-consolidated-role-a/7896de6dc47804395b12/role_a_seal.json",
+      "sha256": "116d5439ed617721ad2b26aa99dd162b6569c1f470a33749bfc45c43c1cb3c76"
+    },
+    {
+      "kind": "ROLE_A_RESULT",
+      "path": "output/calibration/e0017-tcb-consolidated-role-a/7896de6dc47804395b12/role_a_rows.json",
+      "sha256": "927e1c2b263c7015fae54302deb2f414b9d32f8695aad00e5a41a4dcf7cd5ab1"
+    },
+    {
+      "kind": "DEEPSEEK_RUN_MANIFEST",
+      "path": "output/calibration/e0017-tcb-consolidated-role-b/d45f99342b8e126914a2/deepseek-ocr2/page-0013-full/run_manifest.json",
+      "sha256": "eef744e2dd00d817fe34f68be87989771a5f820f02adedf696f4876dd2ba1106"
+    },
+    {
+      "kind": "DEEPSEEK_RESULT",
+      "path": "output/calibration/e0017-tcb-consolidated-role-b/d45f99342b8e126914a2/deepseek-ocr2/page-0013-full/ocr_result.json",
+      "sha256": "31016691db26cbc68759dd08010b4bd231c65267e0405b30fd28aa53b1dca87b"
+    },
+    {
+      "kind": "CANDIDATE_RENDER",
+      "path": "output/calibration/e0017-tcb-consolidated-role-b/d45f99342b8e126914a2/renders/page-0013.png",
+      "sha256": "072959ed3bbd7cfc02da2ebbd4a00b9f6ab036ab7a2c0b1c6b8e999740ea0c4c"
+    },
+    {
+      "kind": "TABLE_PARSER_CONFIG",
+      "path": "config/tables/vlm-table-parser-v2.yaml",
+      "sha256": "dd6779c8951fff530941e16643b52638b5abfe5d1c3f977d6d65367eb0f842f2"
+    },
+    {
+      "kind": "CASH_FLOW_RULES",
+      "path": "config/mapping/lctt.yaml",
+      "sha256": "766aa95cb95c75698212a786930ead056d1fbaf08e32d9f50c0a5793cf67ebb5"
+    },
+    {
+      "kind": "SCOPE_POLICY",
+      "path": "config/mapping/scope_exclusions.yaml",
+      "sha256": "79e4dabdce260c96f52446421a93660042558478b78f0a11a68be99f92fe0dc9"
+    },
+    {
+      "kind": "EXPERIMENT_CONFIG",
+      "path": "config/experiments/e0018-deepseek-ocr2-tcb-lctt.yaml",
+      "sha256": "5f40e0ba4584e6d08e47aae881ee434bb8c48359f401362183c7b37c5e4002a1"
+    }
+  ],
+  "experiment_id": "E-0018",
+  "format_version": 1,
+  "raw_semantic_output": "<|ref|>text<|/ref|><|det|>[[128, 71, 545, 103]]<|/det|>\nBÁO CÁO LƯU CHUYỂN TIỂN TỆ HỢP NHẤT cho năm tài chính kết thúc ngày 31 tháng 12 năm 2024 \n\n<|ref|>table<|/ref|><|det|>[[125, 127, 876, 848]]<|/det|>\n<table><tr><td></td><td>Thuyết<br/>minh</td><td>2024<br/>triệu đồng</td><td>2023<br/>triệu đồng</td></tr><tr><td colspan=\"4\">LƯU CHUYỂN TIỂN TỪ HOẠT ĐỘNG KINH DOANH</td></tr><tr><td>Thu nhập lãi và các khoản thu nhập tương tự nhận được</td><td></td><td>61.748.921</td><td>53.749.365</td></tr><tr><td>Chi phí lãi và các chi phí tương tự đã trả</td><td></td><td>(26.124.464)</td><td>(25.941.911)</td></tr><tr><td>Thu nhập từ hoạt động dịch vụ nhận được</td><td></td><td>7.679.933</td><td>9.134.752</td></tr><tr><td>Chênh lệch số tiền thực thu từ hoạt động kinh doanh (ngoại tệ và chứng khoán)</td><td></td><td>3.150.018</td><td>1.168.505</td></tr><tr><td>Thu nhập/(chi phí) khác</td><td></td><td>(2.359.679)</td><td>1.384.616</td></tr><tr><td>Tiền thu các khoản nợ đã được xử lý bằng nguồn dự phòng rủi ro</td><td>30</td><td>1.138.200</td><td>831.790</td></tr><tr><td>Tiền chi trả cho nhân viên và hoạt động quản lý, công vụ</td><td></td><td>(10.106.171)</td><td>(10.339.365)</td></tr><tr><td>Tiền thuế thu nhập thực nộp trong năm</td><td>22.1</td><td>(4.089.321)</td><td>(5.048.936)</td></tr><tr><td>Lưu chuyển tiền thuần từ hoạt động kinh doanh trước những thay đổi về tài sản và vốn lưu động</td><td></td><td>31.037.437</td><td>24.938.816</td></tr><tr><td colspan=\"4\">Những thay đổi về tài sản hoạt động</td></tr><tr><td>(Tăng)/giảm các khoản tiền gửi và cấp tín dụng cho các TCTD khác</td><td></td><td>12.721.924</td><td>(12.287.858)</td></tr><tr><td>Tăng các khoản về kinh doanh chứng khoán</td><td></td><td>(31.627.229)</td><td>(19.582.416)</td></tr><tr><td>(Tăng)/giảm các công cụ tài chính phái sinh và các tài sản tài chính khác</td><td></td><td>143.611</td><td>(143.611)</td></tr><tr><td>Tăng các khoản cho vay khách hàng</td><td></td><td>(113.083.396)</td><td>(98.117.863)</td></tr><tr><td>Giảm nguồn dự phòng để xử lý rủi ro, xử lý, bù đắp tổn thất các khoản</td><td>10, 15</td><td>(2.670.781)</td><td>(2.667.877)</td></tr><tr><td>(Tăng)/giảm khác về tài sản hoạt động</td><td></td><td>34.701.809</td><td>(9.317.279)</td></tr><tr><td colspan=\"4\">Những thay đổi về công nợ hoạt động</td></tr><tr><td>Giảm các khoản tiền gửi, tiền vay các TCTD khác</td><td></td><td>(20.933.914)</td><td>(14.389.967)</td></tr><tr><td>Tăng tiền gửi của khách hàng</td><td></td><td>78.742.971</td><td>96.249.299</td></tr><tr><td>Tăng phát hành giấy tờ có giá (ngoại trừ giấy tờ có giá phát hành được tính vào hoạt động tài chính)</td><td></td><td>55.719.021</td><td>50.696.681</td></tr><tr><td>Tăng/(giảm) các công cụ tài chính phái sinh và các khoản nợ tài chính khác</td><td></td><td>931.231</td><td>(1.851.213)</td></tr><tr><td>Giảm khác về công nợ hoạt động</td><td></td><td>(3.303.550)</td><td>(1.468.412)</td></tr><tr><td>Chi từ các quỹ</td><td>23.1</td><td>(2.579)</td><td>(5.013)</td></tr><tr><td>Lưu chuyển tiền thuần từ hoạt động kinh doanh</td><td></td><td>42.376.555</td><td>12.053.287</td></tr><tr><td colspan=\"4\">LƯU CHUYỂN TIỂN TỪ HOẠT ĐỘNG ĐẦU TƯ</td></tr><tr><td>Mua sắm tài sản cố định</td><td></td><td>(1.618.886)</td><td>(1.232.358)</td></tr><tr><td>Tiền thu từ thanh lý tài sản cố định</td><td></td><td>1.741.528</td><td>22.156</td></tr><tr><td>Tiền chi từ thanh lý tài sản cố định</td><td></td><td>(1.249.743)</td><td>(35)</td></tr><tr><td>Tiền thu từ bán bất động sản đầu tư</td><td></td><td>736.219</td><td>1.296.447</td></tr><tr><td>Tiền chi đầu tư, góp vốn vào các đơn vị khác</td><td></td><td>(56.278)</td><td>(3.033.432)</td></tr><tr><td>Tiền thu cố tức và lợi nhuận được chia từ các khoản đầu tư, góp vốn dài hạn</td><td>31</td><td>64.561</td><td>34.756</td></tr><tr><td colspan=\"4\">Lưu chuyển tiền thuần sử dụng vào hoạt động đầu tư</td></tr><tr><td></td><td></td><td>(382.599)</td><td>(2.912.466)</td></tr></table>",
+  "reader_runtime": {
+    "inference_git_commit": "50f079240f0e901b968ad942a60e1667cbf91ad3",
+    "metrics": {
+      "free_vram_bytes_after_inference": 7122583552,
+      "inference_seconds": 32.836091128061526,
+      "invalid_layout_reference_count": 0,
+      "layout_reference_count": 2,
+      "load_seconds": 4.182444832986221,
+      "markdown_table_line_count": 0,
+      "output_character_count": 3939,
+      "output_line_count": 5,
+      "peak_allocated_vram_bytes": 8189789184,
+      "peak_reserved_vram_bytes": 9137291264,
+      "total_vram_bytes": 16608133120,
+      "wall_seconds": 37.01879786502104
+    },
+    "model": {
+      "artifacts": [
+        {
+          "key": "config",
+          "path": "config.json",
+          "sha256": "e2bb23b49b445f0bfd6eeb978bac9f19a2df82cb38472754e4ae83662d18f845",
+          "size_bytes": 2588
+        },
+        {
+          "key": "configuration_deepseek_v2",
+          "path": "configuration_deepseek_v2.py",
+          "sha256": "6ab21f29a4722e26fa28c8e0d4277591689a598df17cf6c712330e8f62b3fc7c",
+          "size_bytes": 10646
+        },
+        {
+          "key": "conversation",
+          "path": "conversation.py",
+          "sha256": "ec7b6ce89bcda643de1f43269ffa66a7b2e65dc3ed30e427958f776546b4ba03",
+          "size_bytes": 9253
+        },
+        {
+          "key": "encoder",
+          "path": "deepencoderv2.py",
+          "sha256": "562e4da383b7ba5ef5db79b5ddfb705c649a80044b99122fe4d5d42c16284193",
+          "size_bytes": 36299
+        },
+        {
+          "key": "license",
+          "path": "LICENSE.txt",
+          "sha256": "9debfe045c2a2755a52d0ae1087605d15770fe6636798c09efd93c1dc732ef28",
+          "size_bytes": 11342
+        },
+        {
+          "key": "modeling_deepseek_v2",
+          "path": "modeling_deepseekv2.py",
+          "sha256": "69184a0493d1fdac21c360f9f9eabc5b5af3188e0265df44cfaeafc44f9095e3",
+          "size_bytes": 82224
+        },
+        {
+          "key": "modeling_ocr2",
+          "path": "modeling_deepseekocr2.py",
+          "sha256": "4166e8f014250143e257f48fb4eaa57a2ef49fa6ad375ecc016bc7d262fc7160",
+          "size_bytes": 39226
+        },
+        {
+          "key": "processor",
+          "path": "processor_config.json",
+          "sha256": "0fe7ba9aa6b967a90e4af40d43c8030cbdd3dbcfbb387b8907625d5e54f0dbbe",
+          "size_bytes": 460
+        },
+        {
+          "key": "readme",
+          "path": "README.md",
+          "sha256": "507812c8e4620f72625305377daa697faf7135d7400ac25ab4b7d6299a92d60b",
+          "size_bytes": 4143
+        },
+        {
+          "key": "special_tokens",
+          "path": "special_tokens_map.json",
+          "sha256": "ab4bd57ce17d62e39e0a39e739de1e407484f090f0b2c7e391312bca7a5b061a",
+          "size_bytes": 801
+        },
+        {
+          "key": "tokenizer",
+          "path": "tokenizer.json",
+          "sha256": "a02f8fd5228c90256bb4f6554c34a579d48f909e5beb232dc4afad870b55a8b4",
+          "size_bytes": 9979544
+        },
+        {
+          "key": "tokenizer_config",
+          "path": "tokenizer_config.json",
+          "sha256": "a0cbe8464049da1f891b7a12676de06af4cb54c130995d42f71adc1c30c6e9f3",
+          "size_bytes": 165938
+        },
+        {
+          "key": "weights",
+          "path": "model-00001-of-000001.safetensors",
+          "sha256": "d8ff67a424ba6f4dd077885eb9d6a05d2537e76fe5491f0e2a9b712f8c8870fa",
+          "size_bytes": 6778573880
+        },
+        {
+          "key": "weights_index",
+          "path": "model.safetensors.index.json",
+          "sha256": "f97aa45bbff64ccb2d645789303b1e2be17f45990812e5f0c2f80d169587aed7",
+          "size_bytes": 247401
+        }
+      ],
+      "directory": "/dev/shm/bctc-deepseek-ocr2-cache/official_models/DeepSeek-OCR-2",
+      "repo_id": "deepseek-ai/DeepSeek-OCR-2",
+      "revision": "aaa02f3811945a91062062994c5c4a3f4c0af2b0"
+    },
+    "network_policy": "PROCESS_SOCKET_CONNECT_AND_DNS_DENIED",
+    "packages": {
+      "Pillow": "12.3.0",
+      "addict": "2.4.0",
+      "easydict": "1.13",
+      "einops": "0.8.2",
+      "huggingface-hub": "0.26.3",
+      "matplotlib": "3.10.8",
+      "numpy": "2.3.5",
+      "safetensors": "0.8.0",
+      "tokenizers": "0.20.3",
+      "torch": "2.12.0+cu130",
+      "torchvision": "0.27.0+cu130",
+      "transformers": "4.46.3"
+    }
+  },
+  "selection_policy": "PREDECLARED_E0017_MAIN_STRUCTURAL_FAILURE_ONLY",
+  "status": "PASS_CALIBRATION_TARGETED_READER_WITH_NO_CONFIDENCE_PROMOTION",
+  "table_reconstruction": {
+    "bbox": [
+      125,
+      127,
+      876,
+      848
+    ],
+    "bbox_coordinate_space": "MODEL_NORMALIZED_0_999_PROPOSAL_ONLY",
+    "canonical_row_count": 33,
+    "fragment_merges": [
+      {
+        "label_source_grid_row": 33,
+        "rule": "ADJACENT_LABEL_ONLY_THEN_VALUE_ONLY_SAME_WIDTH",
+        "source_row_ids": [
+          "deepseek-role-b-page-0013:table-1:grid-row-0033",
+          "deepseek-role-b-page-0013:table-1:grid-row-0034"
+        ],
+        "table_index": 1,
+        "value_cells_unmodified": true,
+        "value_source_grid_row": 34
+      }
+    ],
+    "header": [
+      "",
+      "Thuyết minh",
+      "2024 triệu đồng",
+      "2023 triệu đồng"
+    ],
+    "raw_grid_row_count": 35,
+    "roles": {
+      "evidence": [
+        "period headers in row 0",
+        "note header alias",
+        "text-density label column"
+      ],
+      "header_row_index": 0,
+      "index_column": null,
+      "inherited_from_table": null,
+      "label_column": 0,
+      "note_column": 1,
+      "value_columns": [
+        2,
+        3
+      ],
+      "width": 4
+    },
+    "span_expansion_count": 15,
+    "status": "PARSED",
+    "warnings": [
+      "HTML row/column spans expanded without splitting cell text",
+      "explicit adjacent row fragments reassembled with unchanged values"
+    ]
+  },
+  "target": {
+    "candidate_fixture_id": "e0017-tcb-2024-consolidated-scan",
+    "candidate_page": 13,
+    "reference_fixture_id": "e0017-tcb-2024-consolidated-searchable",
+    "reference_page": 12,
+    "statement_type": "LCTT"
+  }
+}
