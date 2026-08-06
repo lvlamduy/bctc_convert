@@ -1,0 +1,24 @@
+version: 3
+policy: STAGGERED_HEADER_ROMAN_NOTE_RULE_AWARE_DASH_V3
+
+base_config: word-box-reconstruction-v2.yaml
+base_config_sha256: 3dc1ccb331c6601b8c23e59966feb84429f04e372c6961672949e6f9565e64ee
+
+# Period headers may be vertically staggered by a multiline comparative label,
+# but remain a compact horizontally separated header group.
+maximum_period_header_stagger_line_heights: 1.25
+
+# Keep stacked note/unit/audit header fragments above the first body row. These
+# bounds are geometry-only and are relative to the accepted period header band.
+header_companion_max_above_period_line_heights: 1.0
+header_companion_max_below_period_line_heights: 2.0
+header_companion_left_margin_line_heights: 2.0
+
+# Structural note references are evaluated only near the detected note axis.
+roman_note_reference_enabled: true
+ocr_confusable_roman_note_reference_enabled: true
+
+# Reject table rules and seals by component shape before requiring one unique
+# dash candidate in a fixed numeric-cell crop.
+dash_shape_filter_before_uniqueness: true
+
