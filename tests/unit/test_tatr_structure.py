@@ -12,6 +12,8 @@ from bctc_ai.evaluation.tatr_structure import (
     TatrStructureError,
     build_query_predictions,
     cxcywh_to_clipped_xyxy,
+    resolve_checkpoint_compatibility,
+    resolve_processor_size_compatibility,
     summarize_thresholds,
 )
 
@@ -51,6 +53,57 @@ def test_tatr_checkpoint_has_exact_integrity_and_safety_pins():
     )
     assert all(len(item["sha256"]) == 64 for item in config["artifacts"].values())
     assert all(value is False for value in config["safety"].values())
+
+
+def test_tatr_legacy_null_resolution_is_explicit_in_memory_and_version_bound():
+    config = tomllib.loads(
+        (PROJECT_ROOT / "config/models/tatr-v1.1-all.toml").read_text(encoding="utf-8")
+    )
+    source = {"model_type": "table-transformer", "dilation": None}
+    resolved, record = resolve_checkpoint_compatibility(
+        source,
+        config["compatibility"],
+        transformers_version="5.14.1",
+    )
+    assert source["dilation"] is None
+    assert resolved["dilation"] is False
+    assert record["checkpoint_artifact_mutated"] is False
+
+    with pytest.raises(TatrStructureError, match="not approved"):
+        resolve_checkpoint_compatibility(
+            source,
+            config["compatibility"],
+            transformers_version="5.15.0",
+        )
+    with pytest.raises(TatrStructureError, match="not the pinned legacy null"):
+        resolve_checkpoint_compatibility(
+            {**source, "dilation": True},
+            config["compatibility"],
+            transformers_version="5.14.1",
+        )
+
+
+def test_tatr_legacy_processor_size_resolution_preserves_aspect_ratio_contract():
+    config = tomllib.loads(
+        (PROJECT_ROOT / "config/models/tatr-v1.1-all.toml").read_text(encoding="utf-8")
+    )
+    source = {"longest_edge": 800}
+    resolved, record = resolve_processor_size_compatibility(
+        source,
+        config["processor_compatibility"],
+        transformers_version="5.14.1",
+    )
+    assert source == {"longest_edge": 800}
+    assert resolved == {"shortest_edge": 800, "longest_edge": 800}
+    assert record["aspect_ratio_preserved"] is True
+    assert record["checkpoint_artifact_mutated"] is False
+
+    with pytest.raises(TatrStructureError, match="keys drifted"):
+        resolve_processor_size_compatibility(
+            {"shortest_edge": 800, "longest_edge": 800},
+            config["processor_compatibility"],
+            transformers_version="5.14.1",
+        )
 
 
 def test_tatr_downloader_rejects_artifact_hash_drift(tmp_path: Path):

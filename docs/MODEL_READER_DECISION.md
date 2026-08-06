@@ -115,6 +115,29 @@ canonical logical-row graph
 hierarchy-first schema mapping in workbook display order
 ```
 
+The first clean TATR attempt stopped before inference because the official
+checkpoint serializes an obsolete top-level `dilation` field as `null`, while
+Transformers 5.14.1 now validates it as a strict boolean. The hashed artifact
+is not edited. The runner has a version-bound in-memory compatibility rule that
+accepts exactly this null field and resolves it to `false`, the current
+`TableTransformerConfig` default and the non-dilated checkpoint behavior; any
+other field/value/runtime version fails closed.
+
+A subsequent dirty development smoke exposed the same compatibility class in
+the image processor before tensor inference: the legacy processor stores only
+`longest_edge=800`, while Transformers 5.14.1 requires a complete
+`shortest_edge`/`longest_edge` pair. The in-memory resolution sets both to 800,
+which preserves aspect ratio and the checkpoint's maximum-edge behavior. The
+preprocessor artifact remains unchanged; unexpected keys, sizes, or runtime
+versions fail closed.
+
+After both guards were added, a dirty mechanism smoke completed the MBB crop in
+0.187929 seconds at 249.096680 MiB peak allocated VRAM and retained all 125
+queries. It proposed 36, 30, and 23 table-row boxes at score thresholds 0.5,
+0.7, and 0.9. These differing counts prohibit selecting a threshold merely
+because it resembles the 27-row PP-OCRv6 proposal; the formal comparison must
+use source-coordinate geometry and report precision/recall across thresholds.
+
 The first TATR calibration uses only the two original full-table crops already
 frozen by E-0016. It reports every one of the model's object-query probabilities
 so confidence thresholds can be analyzed later without rerunning or silently

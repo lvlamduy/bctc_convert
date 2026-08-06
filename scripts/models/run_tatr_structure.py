@@ -15,7 +15,12 @@ from pathlib import Path
 from typing import Any
 
 from bctc_ai.core.hashing import sha256_file
-from bctc_ai.evaluation.tatr_structure import build_query_predictions, summarize_thresholds
+from bctc_ai.evaluation.tatr_structure import (
+    build_query_predictions,
+    resolve_checkpoint_compatibility,
+    resolve_processor_size_compatibility,
+    summarize_thresholds,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = PROJECT_ROOT / "config/models/tatr-v1.1-all.toml"
@@ -143,7 +148,11 @@ def main() -> int:
     _deny_network_connections()
     import torch
     from PIL import Image, ImageOps
-    from transformers import AutoImageProcessor, AutoModelForObjectDetection
+    from transformers import (
+        AutoImageProcessor,
+        AutoModelForObjectDetection,
+        TableTransformerConfig,
+    )
 
     if not torch.cuda.is_available():
         raise RuntimeError("TATR evidence run requires the approved CUDA runtime")
@@ -153,15 +162,36 @@ def main() -> int:
     processor = AutoImageProcessor.from_pretrained(
         model_directory.as_posix(), local_files_only=True
     )
-    processor_size = dict(processor.size)
+    checkpoint_processor_size = dict(processor.size)
     expected_longest_edge = int(config["processor"]["longest_edge"])
-    if processor_size.get("longest_edge") != expected_longest_edge:
+    if checkpoint_processor_size.get("longest_edge") != expected_longest_edge:
         raise RuntimeError(
-            f"checkpoint processor longest edge drifted: {processor_size} "
+            f"checkpoint processor longest edge drifted: {checkpoint_processor_size} "
             f"!= {expected_longest_edge}"
         )
+    transformers_version = importlib.metadata.version("transformers")
+    processor_size, processor_compatibility_record = resolve_processor_size_compatibility(
+        checkpoint_processor_size,
+        config["processor_compatibility"],
+        transformers_version=transformers_version,
+    )
+    processor.size = processor_size
+    checkpoint_config_payload = json.loads(
+        (model_directory / str(config["artifacts"]["config_json"]["path"])).read_text(
+            encoding="utf-8"
+        )
+    )
+    resolved_config_payload, compatibility_record = resolve_checkpoint_compatibility(
+        checkpoint_config_payload,
+        config["compatibility"],
+        transformers_version=transformers_version,
+    )
+    model_config = TableTransformerConfig.from_dict(resolved_config_payload)
     model = AutoModelForObjectDetection.from_pretrained(
-        model_directory.as_posix(), local_files_only=True, use_safetensors=True
+        model_directory.as_posix(),
+        config=model_config,
+        local_files_only=True,
+        use_safetensors=True,
     ).eval()
     model.to(device)
 
@@ -223,10 +253,16 @@ def main() -> int:
             "sha256": sha256_file(config_path),
             "runner_path": Path(__file__).relative_to(PROJECT_ROOT).as_posix(),
             "runner_sha256": sha256_file(Path(__file__)),
-            "checkpoint_processor_size": processor_size,
-            "processor_override": False,
+            "checkpoint_processor_size": checkpoint_processor_size,
+            "runtime_processor_size": processor_size,
+            "processor_compatibility_applied": True,
+            "experimental_processor_size_override": False,
             "implicit_orientation_or_unwarp": False,
             "network_policy": "PROCESS_SOCKET_CONNECT_DENIED",
+            "checkpoint_compatibility": {
+                "model_config": compatibility_record,
+                "image_processor": processor_compatibility_record,
+            },
         },
         "runtime": {
             "base_manifest_path": config["runtime_manifest"],
@@ -234,7 +270,7 @@ def main() -> int:
             "python": sys.version.split()[0],
             "torch": importlib.metadata.version("torch"),
             "torchvision": importlib.metadata.version("torchvision"),
-            "transformers": importlib.metadata.version("transformers"),
+            "transformers": transformers_version,
             "device": torch.cuda.get_device_name(device),
             "compute_capability": ".".join(map(str, torch.cuda.get_device_capability(device))),
             "model": {
@@ -242,6 +278,12 @@ def main() -> int:
                 "revision": config["model"]["revision"],
                 "license": config["license"],
                 "artifacts": model_artifacts,
+                "loaded_parameter_count": sum(
+                    parameter.numel() for parameter in model.parameters()
+                ),
+                "loaded_state_element_count": sum(
+                    tensor.numel() for tensor in model.state_dict().values()
+                ),
             },
         },
         "metrics": {

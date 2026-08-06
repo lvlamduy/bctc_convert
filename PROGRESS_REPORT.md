@@ -1,13 +1,13 @@
 # Progress report
 
-- Updated: 2026-08-06T03:47:00+00:00
+- Updated: 2026-08-06T04:02:00+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `70fefa9392aaa56d481f406a78999ea938f0a589`
+- Latest clean, tested, pushed checkpoint: `dcf1bbc62bb6f4d72bbc9c23ca882624b2645d25`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,592 (CDKT 77; KQKD 24; LCTT 107; TM 1,384)
 - Registered PDFs: 2,567
-- Latest full regression: 214 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
+- Latest full regression: 216 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
 
 ## Completed tasks
 
@@ -52,16 +52,24 @@
   a custom-graph research reference.
 - Added a hash-pinned TATR downloader, no-network/clean-Git structure runner,
   all-query/source-box evidence representation, candidate-policy configuration,
-  and 6 focused passing unit tests. The full regression is 214 passed with 2
-  intentional historical skips. No model has yet been downloaded or run in this
-  uncommitted development checkpoint.
+  and 8 focused passing unit tests. The full regression is 216 passed with 2
+  intentional historical skips. The mechanism commit itself preceded the model
+  download so its source/config state remained independently reviewable.
+- Downloaded and independently verified the 115,514,291 required TATR artifact
+  bytes in the ephemeral model cache. The first clean load attempt stopped
+  before inference because Transformers 5.14.1 rejects the checkpoint's legacy
+  `dilation=null`; no partial result directory was published.
+- The corrected dirty development smoke now completes actual GPU inference in
+  0.187929 seconds with 249.096680 MiB peak allocated VRAM. It retains all 125
+  queries and reports 36/30/23 row boxes at thresholds 0.5/0.7/0.9; no threshold
+  is selected from these counts. This is mechanism evidence, not a formal run.
 
 ## Currently in progress
 
-- Preparing a clean, tested Git checkpoint for the reader-model decision and
-  TATR mechanism. After that checkpoint, download the 115 MB pinned model and
-  run it on the two original E-0016 full-table crops as a new calibration
-  experiment.
+- Preparing a clean commit for the two exact-version TATR compatibility rules
+  and their 216-test regression. Formal two-crop inference starts only after the
+  new checkpoint is pushed; threshold evaluation will use geometry/IoU rather
+  than the expected row count.
 
 ## Major challenges and obstacles
 
@@ -81,6 +89,12 @@
   workspace headroom, and its official CUDA 11.8/PyTorch 2.6 stack is not native
   to the Blackwell GPU. The first run needs an isolated Blackwell-compatible
   runtime and ephemeral `/dev/shm` cache or expanded persistent storage.
+- Current Transformers strict configuration validation exposes a legacy-null
+  field in TATR's official 2023 checkpoint. Compatibility must remain narrowly
+  version-bound; a generic config rewrite would hide upstream drift.
+- The legacy processor's one-key size representation is also rejected by the
+  current runtime. Its explicit 800/800 resolution must retain aspect ratio and
+  be recorded separately from an experimental high-resolution override.
 - Production backup remains incomplete because the user-authorized development
   policy keeps large artifacts on this VPS; Git protects code/config/docs but is
   not an off-machine backup for PDFs, OCR artifacts, model weights, or databases.

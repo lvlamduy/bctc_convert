@@ -90,6 +90,15 @@ hashes, disables network access, keeps the checkpoint-native 800-pixel
 longest-edge preprocessing, and records all object-query probabilities and
 source-coordinate boxes. It has structure-proposal authority only; it cannot
 read or replace a financial value, bind periods, map IDs, or promote confidence.
+Transformers 5.14.1 strictly rejects the official checkpoint's legacy
+top-level `dilation=null`. The versioned runner leaves the model artifact
+unchanged and resolves only that exact field to the model default `false` in
+memory. Any changed value, additional compatibility field, or Transformers
+version fails closed.
+The same checkpoint's processor stores only `longest_edge=800`; the current
+processor requires a shortest/longest pair. The runner resolves it in memory to
+`shortest_edge=800,longest_edge=800`, retaining aspect ratio and an 800-pixel
+maximum edge. It records both representations and refuses any source-key drift.
 
 For many pages, use the checkpointed runner so the detector and recognizer load
 once per process:
@@ -140,6 +149,9 @@ For a clean born-digital page, E-0007 explicitly disabled orientation classifica
 | E-0011 sealed run | PASS | six clean TCB renders produced 586 line boxes and 4,024 word tokens in 191.635581 seconds | seal every render/result/manifest; compare only after Role C completion |
 | E-0012 batch mechanism | PASS | clean batch page 15 was byte-identical to E-0011, no-op resume did not reload models, and the batch/helper-aware seal passed | use the checkpointed runner for multi-page calibration; this adds no accuracy sample |
 | E-0014 MBB/VCB acquisition | PASS with retained reader failures | four seals cover 13 clean 200-DPI pages; Role B truncated dense VCB page 9 and encountered multi-table/variable-leading-column layouts | accept acquisition only; use Role C geometry plus all-block Role B parsing and explicit coverage before row comparison |
+| TATR attempt 1 | FAIL before inference; no output published | official nested-backbone checkpoint stores obsolete top-level `dilation=null`, rejected by Transformers 5.14.1 strict bool validation | add an exact-version, exact-field in-memory `null→false` compatibility rule; preserve the hashed checkpoint unchanged and rerun only from a new clean commit |
+| TATR dirty smoke 2 | FAIL before tensor inference; no output published | official legacy processor stores only `longest_edge=800`, while Transformers 5.14.1 requires both shortest and longest edges | resolve only this exact representation in memory to `800/800`, preserve aspect ratio and checkpoint bytes, and test source-key/version drift |
+| TATR dirty smoke 3 | PASS mechanism only | one MBB full-table crop completed in 0.187929 s at 249.096680 MiB peak allocated VRAM; all 125 queries retained, with 36/30/23 row boxes at 0.5/0.7/0.9 | commit the compatibility rules, then rerun clean on both frozen crops; never choose a threshold from expected row count |
 
 The E-0007 measured failures and final pass remain in `docs/experiments/E-0007-paddleocr-vl-runtime.json`. E-0011 retains its backend/runtime attempts and exact migration procedure in `docs/experiments/E-0011-REPLAY.md`; its tracked comparison result is `docs/experiments/E-0011-tcb-geometry-recovery.json`. E-0012 locks the clean batch/resume/seal mechanism in `docs/experiments/E-0012-REPLAY.md`. E-0014 records its four reader seals, exact settings, and retained VCB/MBB failures in `docs/experiments/E-0014-REPLAY.md`. Do not delete failed attempts from these records.
 

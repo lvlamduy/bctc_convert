@@ -2,11 +2,96 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping, Sequence
+from copy import deepcopy
 from typing import Any
 
 
 class TatrStructureError(RuntimeError):
     pass
+
+
+def resolve_checkpoint_compatibility(
+    payload: Mapping[str, Any],
+    compatibility: Mapping[str, Any],
+    *,
+    transformers_version: str,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Resolve one pinned legacy-null field in memory without changing the artifact."""
+
+    if compatibility.get("mode") != "EXPLICIT_IN_MEMORY_CHECKPOINT_CONFIG_RESOLUTION":
+        raise TatrStructureError("unsupported TATR checkpoint compatibility mode")
+    expected_version = str(compatibility.get("runtime_transformers", ""))
+    if transformers_version != expected_version:
+        raise TatrStructureError(
+            f"TATR compatibility is not approved for Transformers {transformers_version}; "
+            f"expected {expected_version}"
+        )
+    field = str(compatibility.get("field", ""))
+    if field != "dilation":
+        raise TatrStructureError(f"unsupported TATR compatibility field: {field!r}")
+    if compatibility.get("checkpoint_value_kind") != "NULL" or payload.get(field) is not None:
+        raise TatrStructureError("TATR checkpoint dilation is not the pinned legacy null")
+    resolved_value = compatibility.get("resolved_value")
+    if resolved_value is not False:
+        raise TatrStructureError("TATR compatibility may resolve dilation only to false")
+    if compatibility.get("checkpoint_artifact_mutated") is not False:
+        raise TatrStructureError("TATR compatibility must not mutate the checkpoint artifact")
+    resolved = deepcopy(dict(payload))
+    resolved[field] = False
+    return resolved, {
+        "mode": compatibility["mode"],
+        "field": field,
+        "checkpoint_value": None,
+        "resolved_value": False,
+        "runtime_transformers": transformers_version,
+        "checkpoint_artifact_mutated": False,
+        "reason": str(compatibility.get("reason", "")),
+    }
+
+
+def resolve_processor_size_compatibility(
+    size: Mapping[str, Any],
+    compatibility: Mapping[str, Any],
+    *,
+    transformers_version: str,
+) -> tuple[dict[str, int], dict[str, Any]]:
+    """Resolve the legacy longest-edge-only processor size without image distortion."""
+
+    if compatibility.get("mode") != "EXPLICIT_IN_MEMORY_PROCESSOR_SIZE_RESOLUTION":
+        raise TatrStructureError("unsupported TATR processor compatibility mode")
+    expected_version = str(compatibility.get("runtime_transformers", ""))
+    if transformers_version != expected_version:
+        raise TatrStructureError(
+            f"TATR processor compatibility is not approved for Transformers "
+            f"{transformers_version}; expected {expected_version}"
+        )
+    expected_keys = [str(value) for value in compatibility.get("checkpoint_keys", [])]
+    if expected_keys != ["longest_edge"] or set(size) != {"longest_edge"}:
+        raise TatrStructureError(
+            f"TATR checkpoint processor keys drifted: {sorted(size)} != ['longest_edge']"
+        )
+    checkpoint_longest = int(compatibility.get("checkpoint_longest_edge", -1))
+    if size.get("longest_edge") != checkpoint_longest:
+        raise TatrStructureError(
+            f"TATR checkpoint longest edge drifted: {size.get('longest_edge')} "
+            f"!= {checkpoint_longest}"
+        )
+    shortest = int(compatibility.get("resolved_shortest_edge", -1))
+    longest = int(compatibility.get("resolved_longest_edge", -1))
+    if shortest != checkpoint_longest or longest != checkpoint_longest:
+        raise TatrStructureError("TATR processor resolution must retain maximum edge 800")
+    if compatibility.get("checkpoint_artifact_mutated") is not False:
+        raise TatrStructureError("TATR processor compatibility must not mutate the artifact")
+    resolved = {"shortest_edge": shortest, "longest_edge": longest}
+    return resolved, {
+        "mode": compatibility["mode"],
+        "checkpoint_size": dict(size),
+        "resolved_size": resolved,
+        "runtime_transformers": transformers_version,
+        "aspect_ratio_preserved": True,
+        "checkpoint_artifact_mutated": False,
+        "reason": str(compatibility.get("reason", "")),
+    }
 
 
 def _finite_float(value: object, *, field: str) -> float:

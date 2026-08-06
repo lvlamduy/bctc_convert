@@ -132,6 +132,22 @@ This is the durable retrieval point for project context. It summarizes user auth
   `config/models/reader-candidate-policy-v1.yaml`. A hash-pinned TATR downloader
   and no-network structure runner are implemented; no candidate output can map
   or reorder ReportNormIds, replace values, bind periods, or promote confidence.
+- TATR attempt 1 from clean commit `dcf1bbc` verified all checkpoint bytes but
+  stopped before inference: Transformers 5.14.1 rejects the official config's
+  obsolete top-level `dilation=null` as a non-boolean. No output was published.
+  The correction is deliberately a version-bound in-memory `null→false`
+  resolution matching the current model default; the checkpoint file is never
+  edited and any other compatibility drift fails closed.
+- A dirty follow-up smoke then found the official processor's legacy
+  longest-edge-only size is incomplete under Transformers 5.14.1. The second
+  narrow compatibility rule resolves exactly `{longest_edge: 800}` to the
+  aspect-preserving `{shortest_edge: 800, longest_edge: 800}` in memory; the
+  hashed preprocessor remains unchanged.
+- With both guards present, the dirty TATR mechanism smoke completed one MBB
+  full-table crop in 0.187929 seconds at 249.096680 MiB peak allocated VRAM and
+  retained all 125 queries. Row-box counts vary materially by threshold
+  (36/30/23 at 0.5/0.7/0.9), so the formal experiment must use source geometry
+  and precision/recall rather than selecting the count closest to a reader.
 
 ## Open constraints and next decisions
 
@@ -183,3 +199,6 @@ This is the durable retrieval point for project context. It summarizes user auth
   exact TATR model pin/downloader/structure runner and tests while preserving all
   historical runtime hashes. DeepSeek-OCR-2 remains uninstalled pending a
   separate Blackwell-compatible runtime and exact Vietnamese benchmark.
+- 2026-08-06: Retained the first clean TATR pre-inference compatibility failure,
+  then added a tested exact-field/exact-version in-memory resolution for the
+  official checkpoint's legacy `dilation=null` without changing model bytes.

@@ -39,6 +39,25 @@ implicit_orientation_correction = false
 implicit_dewarp = false
 input_requirement = "TIGHT_TABLE_CROP"
 
+[compatibility]
+mode = "EXPLICIT_IN_MEMORY_CHECKPOINT_CONFIG_RESOLUTION"
+runtime_transformers = "5.14.1"
+field = "dilation"
+checkpoint_value_kind = "NULL"
+resolved_value = false
+checkpoint_artifact_mutated = false
+reason = "Transformers 5.14 strictly types dilation as bool while this official nested-backbone checkpoint serializes the obsolete top-level field as null; false is the TableTransformerConfig default and matches the non-dilated ResNet-18 checkpoint."
+
+[processor_compatibility]
+mode = "EXPLICIT_IN_MEMORY_PROCESSOR_SIZE_RESOLUTION"
+runtime_transformers = "5.14.1"
+checkpoint_keys = ["longest_edge"]
+checkpoint_longest_edge = 800
+resolved_shortest_edge = 800
+resolved_longest_edge = 800
+checkpoint_artifact_mutated = false
+reason = "The official legacy processor stores only longest_edge=800. Transformers 5.14 requires either both shortest_edge/longest_edge or height/width; setting both edges to 800 preserves aspect ratio and retains the checkpoint's maximum-edge behavior."
+
 [reporting]
 object_score_thresholds = [0.05, 0.3, 0.5, 0.7, 0.9]
 retain_all_query_probabilities = true
@@ -55,4 +74,3 @@ automatic_value_replacement = false
 history_permitted = false
 arithmetic_repair_permitted = false
 network_permitted_during_inference = false
-

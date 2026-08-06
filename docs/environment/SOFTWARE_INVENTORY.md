@@ -195,6 +195,25 @@ already frozen. Its separate `config/models/tatr-v1.1-all.toml` pins:
 - MIT license, checkpoint-native 800-pixel longest-edge preprocessing, and
   no-network/no-map/no-value/no-period/no-confidence authority.
 
+The first clean load attempt on commit `dcf1bbc` stopped before inference and
+published no output because Transformers 5.14.1 strictly rejects the official
+checkpoint's legacy `dilation=null`. The checkpoint remains byte-identical.
+`config/models/tatr-v1.1-all.toml` now binds a single in-memory compatibility
+resolution from null to the `TableTransformerConfig` default `false`, only for
+Transformers 5.14.1. Tests reject a non-null source value, any other field, or
+runtime-version drift.
+The next dirty smoke stopped before tensor inference because the legacy image
+processor contains only `longest_edge=800`. A second exact compatibility rule
+resolves it in memory to `shortest_edge=800,longest_edge=800`, preserving aspect
+ratio and the checkpoint's maximum-edge behavior. The original processor JSON
+is unchanged and source-key/value drift is rejected.
+
+The resulting dirty mechanism smoke passed a real GPU inference in 0.187929
+seconds with 249.096680 MiB peak allocated VRAM. It used the same frozen Python
+environment and added no package. The 115,514,291 required TATR artifact bytes
+are verified in the ephemeral `/dev/shm/bctc-paddlex-e0007` cache; model caches
+remain reconstructible and outside Git.
+
 Rebuild/verify commands:
 
 ```bash
