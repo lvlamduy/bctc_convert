@@ -1,0 +1,80 @@
+version: 1
+experiment_id: E-0031
+dataset_role: CALIBRATION
+design: REFERENCE_BLIND_FIXED_GRID_INDEPENDENT_NUMERIC_VERIFICATION
+
+source:
+  target_pages: [3, 4]
+  excluded_off_balance_pages: [5]
+  statement_type: CDKT
+  statement_instance_id: mbb-q1-2026-cdkt
+  scope: UNKNOWN
+
+frozen_inputs:
+  e0029_row_contract:
+    path: docs/experiments/E-0029-mbb-cdkt-row-reconstruction.json
+    sha256: affe74a243e342b56c4ead2fac984f10d9a1f42378823b50ccdde8946eeed373
+  ocr_batch:
+    path: output/calibration/e0027-mbb-q1-2026-end-to-end-role-c/batch_manifest.json
+    sha256: 0d94762ba4a0d383793fe93a56e48fa7b79d6a3f7faaf62e9dcf40935b8c2889
+
+candidate:
+  git_commit: 686a73137474ffff5a2d738da31e74d7719aa2bc
+  crop_policy:
+    path: config/tables/numeric-cell-crops-v1.yaml
+    sha256: 87325d9fcc58b384e908b9093b0c2dfd82020543bc633b8d79ae58b69fa6fd2c
+  model_config:
+    path: config/models/numeric-recognizer-v1.toml
+    sha256: 2e17cdad62d452e8591afd697781ebceb6d483df14570bb7b8b4281ed1a40b03
+  crop_algorithm:
+    path: src/bctc_ai/evaluation/numeric_cell_crops.py
+    sha256: 36f68a0db459cb71d1b1980c41df1c8eea7efa1051d94ceb33202568fb491d37
+  reader_algorithm:
+    path: src/bctc_ai/ocr/numeric_cell_reader.py
+    sha256: f6e6c48df134890170dd94c919eca03fe17c4d6e6021b7fa3c8b742dbf84cca3
+  verification_algorithm:
+    path: src/bctc_ai/evaluation/numeric_cell_verification.py
+    sha256: 1698b1c85d9b09f245dd364e0a64ab955aa9df73d1ecdab6d013c4a28ccb23c2
+  model_repo_id: PaddlePaddle/en_PP-OCRv5_mobile_rec
+  model_revision: 267c36e24c331595590fe7bd72bde2436fd286f2
+  model_weights_sha256: 3ec8a97ed6cefe8568d3e2ee90bb193299b566a7661aa4fd52d224b96b59f66b
+
+acceptance_policy:
+  exact_page_set: [3, 4]
+  exact_row_count: 63
+  exact_cell_count: 126
+  exact_primary_observation_counts:
+    BLANK: 9
+    DASH: 3
+    VALUE: 114
+  minimum_observed_exact_agreement_rate: 0.95
+  maximum_unresolved_observed_cells: 6
+  exact_verified_dash_count: 3
+  page_5_loaded: false
+  human_gold_or_production_accuracy_claim: false
+
+forbidden_inputs:
+  - human_review_labels_ids_or_values
+  - mongodb_or_historical_values
+  - template_labels_or_report_norm_ids
+  - row_labels_or_notes_as_numeric_reader_input
+  - period_or_unit_as_numeric_reader_input
+  - reader_probability_as_acceptance_or_truth
+  - blank_to_zero_or_value_promotion
+  - automatic_repair_or_overwrite_on_reader_disagreement
+  - E-0022_source_artifacts_output_or_diagnosis
+  - off_balance_page_5
+
+development_note: >-
+  The 0.95 agreement and six-cell abstention gates were selected after a dirty
+  development smoke on this calibration block. They are calibration controls,
+  not untouched-holdout thresholds or an accuracy claim. No expected value,
+  disagreement cell identity, human review, schema ID or historical value is
+  encoded in this control.
+
+claim_boundary: >-
+  E-0031 measures independent numeric/sign/dash agreement on the already
+  accepted and reconstructed MBB CDKT pages 3-4. Exact agreement verifies a
+  bounded cell proposal; disagreement abstains. It does not verify Vietnamese
+  labels, row semantics for blank cells, schema IDs, accounting equations,
+  Excel output, human-gold accuracy or untouched-holdout performance.
