@@ -1,0 +1,55 @@
+version: 1
+policy: VISIBLE_WORD_BOX_TABLE_HEADER_BINDING_V1
+
+geometry_authority: PP_OCRV6_WORD_BOXES
+role_assignment: PARSED_DATE_RECENCY_NOT_HORIZONTAL_ORDER_OR_VALUE
+
+supported_statement_period_types:
+  CDKT: SNAPSHOT
+
+header_geometry:
+  maximum_axis_right_edge_drift_line_heights: 0.25
+  maximum_unit_vertical_distance_line_heights: 3.0
+  maximum_unit_axis_right_edge_distance_line_heights: 1.25
+  maximum_unit_tokens: 3
+
+unit_matching:
+  minimum_similarity: 0.86
+  minimum_distinct_semantics_margin: 0.08
+  anchors:
+    - text: triệu đồng
+      canonical: VND
+      multiplier: 1000000
+    - text: triệu VND
+      canonical: VND
+      multiplier: 1000000
+    - text: VND million
+      canonical: VND
+      multiplier: 1000000
+    - text: nghìn đồng
+      canonical: VND
+      multiplier: 1000
+    - text: ngàn đồng
+      canonical: VND
+      multiplier: 1000
+    - text: nghìn VND
+      canonical: VND
+      multiplier: 1000
+    - text: đồng
+      canonical: VND
+      multiplier: 1
+    - text: VND
+      canonical: VND
+      multiplier: 1
+
+required_roles:
+  CURRENT: 1
+  COMPARATIVE: 1
+
+forbidden_inputs:
+  - numeric_cell_text_or_value_as_period_unit_feature
+  - numeric_value_magnitude
+  - historical_or_mongodb_values
+  - template_labels_or_report_norm_ids
+  - human_review_period_answers
+  - horizontal_position_as_period_role
