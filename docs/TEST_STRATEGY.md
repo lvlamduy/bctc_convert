@@ -264,3 +264,17 @@ off-balance exclusions, TM boundaries, DIRECT methods and runner-up margins.
 Its measured result is 27/37 exact lines, 5/10 exact titles, 0.9646% CER and
 zero downstream regression. This grants bounded semantic-proposal eligibility
 only; schema/full-tuple/Excel fields remain explicitly unevaluated.
+
+E-0031 verifies numbers independently on the immutable E-0029 grid. Crop tests
+require source pixels without resize, thresholding or deskew, exact containment
+of every source box/punctuation component, and a reader payload containing only
+`crop_path`. Model tests pin every checkpoint file and block network access.
+Fusion tests accept a value only when normalized numeric value and sign evidence
+match exactly; a dash also requires the fixed-grid pixel component. Mutations
+cover a missing parenthesis, a mixed separator, a dropped digit, sign loss,
+reader-score extremes, crop/hash drift and denominator changes. Every mismatch
+must abstain with both proposals retained. A primary `BLANK` remains unresolved
+regardless of challenger output and cannot become zero before logical-row/table
+semantics. The formal 126-cell calibration result and all isolation gates are
+protected by an artifact SHA-256 integration test; it grants no label, schema,
+accounting, Excel, holdout or production authority.

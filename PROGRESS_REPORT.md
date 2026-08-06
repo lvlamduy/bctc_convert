@@ -1,17 +1,17 @@
 # Progress report
 
-- Updated: 2026-08-06T13:49:07+00:00
+- Updated: 2026-08-06T14:17:07+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest sealed accuracy checkpoint: `1ed17a5`; preceding pushed progress checkpoint:
-  `37fdf7e`; E-0021 clean evaluation base:
+- Latest sealed accuracy checkpoint: `8fc483d`; preceding table-metadata seal:
+  `1ed17a5`; E-0021 clean evaluation base:
   `c32741a217ca16e7224d416b2c14245f580e610d`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
 - Registered PDFs: 2,567
 - Latest full regression including multi-signal discovery v4, fixed-grid
-  semantic fusion, E-0029 row controls and word-box header binding: 397 passed,
-  2 intentionally skipped historical/external replays in 98.98 seconds; Ruff and
+  semantic fusion, E-0029/E-0030 controls and independent numeric verification:
+  428 passed, 2 intentionally skipped historical/external replays; Ruff and
   `git diff --check` passed
 
 ## Accuracy focus and measurable state
@@ -262,6 +262,19 @@
   horizontal position, history, review, schema and page 5 are not decision
   features. Artifact SHA-256 is
   `3e0e6888802fc190879f360cf8c679f1cefb334e9188b4baec05a668fee12577`.
+- E-0031 closes the next bounded verification gap,
+  `SINGLE_READER_NUMERIC_CELLS_NOT_INDEPENDENTLY_VERIFIED`. The fixed E-0029
+  grid yields 126 isolated source-pixel crops: 114 primary `VALUE`, three
+  pixel-supported `DASH` and nine `BLANK`. The pinned digit-specific
+  `en_PP-OCRv5_mobile_rec` reader processed all crops in one CPU-FP32 model
+  session and 11.938103 seconds. Exact normalized value and sign agreement is
+  111/114; dash plus independent pixel agreement is 3/3. Thus 114/117 observed
+  cells are independently verified (97.4359%). The three disagreements retain
+  both reader proposals with no selected value; all nine blanks remain
+  unresolved pending row semantics. Automatic overwrite, reader-probability
+  acceptance and blank-to-zero/value promotion are all zero. This is bounded
+  calibration evidence, not human gold or end-to-end accuracy. Artifact SHA-256
+  is `27561d0975d6e9d1e59b61f3b7dbd838ef1a91864f9f5955f87a6807033b6d9a`.
 
 ## Completed tasks
 
@@ -566,6 +579,12 @@
   metadata/control tests pass. The reusable adapter deliberately supports only
   explicit CDKT snapshot semantics in V1; unsupported duration statements,
   duplicate dates, missing units and insufficient fuzzy margins fail closed.
+- Completed and sealed E-0031 at `8fc483d`. Its crop/model/verifier controls,
+  126-cell artifact and integration hash gate pass. Model input contains only
+  `crop_path`; labels, notes, periods, units, schema IDs, history and human
+  review are withheld. The checkpoint pins the official model revision and all
+  six file hashes and records the exact rebuild/verify commands in the software
+  inventory.
 
 ## Currently in progress
 
@@ -584,15 +603,18 @@
   challenger and the independent numeric path remains authoritative for values,
   signs and dashes.
 - The active end-to-end task is to carry the now located, geometrically
-  reconstructed and period/unit-bound MBB Q1/2026 CDKT pages 3–4 through
-  independent numeric/sign/dash verification, then ordered
-  SchemaGraph mapping, accounting validation and provenance-bearing Excel.
+  reconstructed, period/unit-bound and independently numeric-verified MBB
+  Q1/2026 CDKT pages 3–4 through bounded Vietnamese logical-row recognition,
+  then ordered SchemaGraph mapping, accounting validation and
+  provenance-bearing Excel.
   Measurement will use Role A versus Role B row coverage, schema assignment,
   full `(ReportNormId, period, raw value, normalized value, status)` tuples and
   workbook-cell agreement; no character-only metric can complete this stage.
-- E-0027 page discovery, E-0028 locator V4, E-0029 row reconstruction and E-0030
-  table metadata are sealed. The next Role B stage may consume only their
-  accepted page/row/axis contracts plus source pixels. Human-reviewed
+- E-0027 page discovery, E-0028 locator V4, E-0029 row reconstruction, E-0030
+  table metadata and E-0031 numeric verification are sealed. The next Role B
+  stage may consume only their accepted page/row/axis/value contracts plus
+  source pixels. The three reader-disagreement cells and nine unresolved blanks
+  cannot silently enter a mapped output. Human-reviewed
   pages/IDs/values remain evaluation-only until the value/mapping/Excel output
   itself is sealed.
 - Ordered SchemaGraph v1 and E-0023 are sealed. The mapper remains intentionally
@@ -648,12 +670,14 @@
   it therefore supplies semantic proposals rather than source truth.
 - E-0027 showed that whole-line similarity dilutes a valid short accounting core;
   E-0028 resolves that locator class, and E-0029 resolves the observed staggered-
-  header/row-grid failure without consulting schema or review. The active risk is
-  now numeric-cell truth: the fixed grid contains nine `BLANK` cells versus
-  three independently detected `DASH` cells, while a visible empty table cell
-  and an OCR-missed dash are not interchangeable. E-0030 now binds both repeated
-  MBB period/unit header sets locally. Later headerless pages may inherit only a
-  verified table-level map and are outside this local-header result.
+  header/row-grid failure without consulting schema or review. E-0030 binds both
+  repeated MBB period/unit header sets locally. E-0031 verifies 114/117 observed
+  numeric cells but exposes three genuine independent-reader failures: one
+  missing opening parenthesis, one mixed grouping separator and one dropped
+  digit. Those cells must remain unresolved or receive localized pixel evidence;
+  the nine `BLANK` cells still require row semantics to distinguish headings,
+  visible empty cells and obscured evidence. Later headerless pages may inherit
+  only a verified table-level map and are outside the current local-header result.
 - A higher-resolution crop is not sufficient by itself. On MBB LCTT page 14,
   PaddleOCR-VL still concatenates rows and numeric cells at 450 DPI; its current
   HTML proposal has 18 rows and 14 invalid multi-number cells, while independent
@@ -722,6 +746,10 @@
    `AMBIGUOUS_MAPPING` with ranked evidence for review.
 6. Validate period bindings, raw/normalized numeric semantics, signs, horizontal
    and vertical arithmetic, parent-child totals, and template display order.
+   The numeric layer accepts only exact value/sign agreement between the primary
+   fixed-grid reader and an isolated digit reader. A dash additionally requires
+   constrained pixel evidence. Reader confidence cannot select truth; mismatch
+   abstains; a blank cannot become zero before row/table semantics verify it.
 7. Escalate only localized failures to high-resolution rereads and independent
    readers. Reader agreement is supporting evidence, never automatic truth.
 8. Fuse specialized readers on a fixed source-space row grid: PP-OCRv6 preserves
@@ -752,15 +780,15 @@
 
 ## Planned next steps
 
-1. Verify digits, separators, parentheses and dash/empty observations on fixed
-   numeric-cell crops independently of label recognition. Retain raw pixels/text
-   and do not normalize any of E-0029's nine `BLANK` cells to zero until visible
-   cell evidence verifies that interpretation.
-2. Read bounded title/line/logical-row crops with DeepSeek-OCR-2, fuse proposals
+1. Read bounded title/line/logical-row crops with DeepSeek-OCR-2, fuse proposals
    onto the immutable E-0029 grid, and preserve PP geometry plus independent
-   numeric cells. Then carry the sealed rows and value tuples through ordered
-   SchemaGraph mapping, accounting validation and a provenance-bearing Excel
-   development output.
+   E-0031 numeric decisions. Resolve only true group/heading blanks from semantic
+   row type; retain the seal-obscured and three reader-disagreement cells for
+   localized evidence rather than inferring values from neighbors.
+2. Carry the sealed rows and period/value tuples through ordered SchemaGraph
+   mapping, accounting validation and a provenance-bearing Excel development
+   output. Enforce workbook display order, parent/previous/next context,
+   statement scope and off-balance exclusion; never sort by ReportNormId.
    Only then open the six-row/12-cell review subset to measure page, row,
    ReportNormId, period, raw/normalized value, status, full-tuple and workbook
    cell accuracy.
