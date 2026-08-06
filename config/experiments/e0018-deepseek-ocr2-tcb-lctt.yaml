@@ -1,0 +1,66 @@
+version: 1
+experiment_id: E-0018
+phase: CALIBRATION_TARGETED_SEMANTIC_READER
+dataset_role: CALIBRATION
+selection_policy: PREDECLARED_E0017_MAIN_STRUCTURAL_FAILURE_ONLY
+
+target:
+  statement_type: LCTT
+  reference_page: 12
+  candidate_page: 13
+  reference_fixture_id: e0017-tcb-2024-consolidated-searchable
+  candidate_fixture_id: e0017-tcb-2024-consolidated-scan
+
+upstream:
+  baseline:
+    path: docs/experiments/E-0017-tcb-consolidated-native-role-ab.json
+    sha256: 66264103c5cab88f22d1d73aa029cac7f29c9f59839f313fe859d2aa4f11a7ac
+  role_a_seal:
+    path: output/calibration/e0017-tcb-consolidated-role-a/7896de6dc47804395b12/role_a_seal.json
+    sha256: 116d5439ed617721ad2b26aa99dd162b6569c1f470a33749bfc45c43c1cb3c76
+  role_a_result:
+    path: output/calibration/e0017-tcb-consolidated-role-a/7896de6dc47804395b12/role_a_rows.json
+    sha256: 927e1c2b263c7015fae54302deb2f414b9d32f8695aad00e5a41a4dcf7cd5ab1
+  deepseek_run_manifest:
+    path: output/calibration/e0017-tcb-consolidated-role-b/d45f99342b8e126914a2/deepseek-ocr2/page-0013-full/run_manifest.json
+    sha256: eef744e2dd00d817fe34f68be87989771a5f820f02adedf696f4876dd2ba1106
+  deepseek_result:
+    path: output/calibration/e0017-tcb-consolidated-role-b/d45f99342b8e126914a2/deepseek-ocr2/page-0013-full/ocr_result.json
+    sha256: 31016691db26cbc68759dd08010b4bd231c65267e0405b30fd28aa53b1dca87b
+  candidate_render:
+    path: output/calibration/e0017-tcb-consolidated-role-b/d45f99342b8e126914a2/renders/page-0013.png
+    sha256: 072959ed3bbd7cfc02da2ebbd4a00b9f6ab036ab7a2c0b1c6b8e999740ea0c4c
+  table_parser_config:
+    path: config/tables/vlm-table-parser-v2.yaml
+    sha256: dd6779c8951fff530941e16643b52638b5abfe5d1c3f977d6d65367eb0f842f2
+  cash_flow_rules:
+    path: config/mapping/lctt.yaml
+    sha256: 766aa95cb95c75698212a786930ead056d1fbaf08e32d9f50c0a5793cf67ebb5
+  scope_policy:
+    path: config/mapping/scope_exclusions.yaml
+    sha256: 79e4dabdce260c96f52446421a93660042558478b78f0a11a68be99f92fe0dc9
+
+inference_contract:
+  git_commit: 50f079240f0e901b968ad942a60e1667cbf91ad3
+  git_dirty: false
+  input_sha256: 072959ed3bbd7cfc02da2ebbd4a00b9f6ab036ab7a2c0b1c6b8e999740ea0c4c
+  dataset_role: CALIBRATION
+  evidence_role: SEMANTIC_AND_READING_ORDER_PROPOSAL_ONLY
+  network_policy: PROCESS_SOCKET_CONNECT_AND_DNS_DENIED
+
+row_fragment_policy:
+  rule: ADJACENT_LABEL_ONLY_THEN_VALUE_ONLY_SAME_WIDTH
+  adjacency_required: true
+  label_fragment_value_cells_must_be_blank: true
+  value_fragment_label_note_and_code_must_be_blank: true
+  value_cells_may_be_repaired: false
+  provenance_may_be_dropped: false
+
+safety:
+  automatic_value_replacement: false
+  automatic_schema_mapping: false
+  automatic_period_assignment: false
+  automatic_scope_assignment: false
+  automatic_geometry_authority: false
+  automatic_confidence_promotion: false
+  historical_reference_invoked: false
