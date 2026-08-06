@@ -1,8 +1,8 @@
 # Progress report
 
-- Updated: 2026-08-06T11:46:13+00:00
+- Updated: 2026-08-06T11:52:32+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `c351c70`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
+- Latest clean, tested, pushed checkpoint: `2577b15`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
