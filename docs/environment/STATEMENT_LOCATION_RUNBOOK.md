@@ -61,19 +61,29 @@ failure raises an error and must not be converted into an accepted result.
 - `schema_branch_assignment_permitted == false` while Q-BOOT-001 is open;
 - code/config/batch paths are project-relative and hashes match.
 
-## MBB/VCB development smoke (dirty, not formal evidence)
+## MBB/VCB clean calibration result (E-0013)
 
-The final pre-commit smoke used the first 18 pages of each 120-DPI calibration
-batch and found:
+The unchanged locator at clean commit
+`b165c6001b914d1d2ab234903c45c91f557974ed` used the first 18 pages of each
+120-DPI calibration batch and found:
 
 | Source | Eligible CDKT | Excluded off-balance | KQKD | LCTT | TM boundary | Method |
 |---|---:|---:|---:|---:|---:|---|
 | MBB 2025 consolidated | 10–11 | 12 | 13 | 14–15 | 16 | DIRECT |
 | VCB 2025 consolidated | 8–9 | 10 | 11–12 | 13–14 | 15 | DIRECT |
 
-Both direct-method decisions have a direct-title winner and the interest-income
-received row preceding the interest-expense paid row. These results must be
-rerun from a clean commit and hash-locked before entering the experiment log.
+Both direct-method decisions have a direct-title winner and a globally ordered
+interest-income-received then interest-expense-paid sequence. Both runs had two
+valid block candidates, winner/runner-up margin 2.0, no hidden interstitial
+page, and no continuation crossing the off-balance boundary. The clean output
+hashes are `6e8c5826…f0f70d` (MBB) and `2e9e556e…574b` (VCB). Exact paths,
+identities, full hashes, replay commands, and claim boundaries are in
+`../experiments/E-0013-REPLAY.md` and
+`../experiments/E-0013-mbb-vcb-statement-location.json`.
+
+E-0013 approves only the coarse calibration locator for selected-page
+rerendering. It does not approve rows, schema IDs, numeric cells, or production
+confidence. No ReportNormId was proposed or added.
 
 ## Transfer/recovery
 

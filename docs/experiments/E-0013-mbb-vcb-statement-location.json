@@ -1,0 +1,265 @@
+{
+  "format_version": 1,
+  "experiment_id": "E-0013",
+  "date": "2026-08-06",
+  "design": "CLEAN_MULTI_INSTITUTION_COARSE_STATEMENT_LOCATION_CALIBRATION",
+  "dataset_role": "CALIBRATION",
+  "status": "PASS_ORDERED_STATEMENT_LOCATION_AND_SCOPE_EXCLUSION",
+  "claim_boundary": "This result locks page/type/scope and cash-flow method evidence on two calibration documents. It is not human gold, row/schema mapping, numeric-cell accuracy, full-document OCR completion, holdout evidence, confidence calibration, or production approval.",
+  "code": {
+    "git_commit": "b165c6001b914d1d2ab234903c45c91f557974ed",
+    "git_dirty": false
+  },
+  "algorithm_files_sha256": {
+    "scripts/experiments/locate_statement_pages.py": "a274aad0b7090fd1d0a162608d4240e64a6356573ed0e24519537e0321f2bd79",
+    "src/bctc_ai/document_phase/statement_evidence.py": "7cf1074d62c2fa133fdf2277a17df20163d0c504c191fbe9fb1901c115713954",
+    "src/bctc_ai/document_phase/statement_locator.py": "8b4b283cb3eeaa3e2457e84950574cc79502143e09ae4b3b712e93e1dde8b35c"
+  },
+  "configuration": {
+    "path": "config/document_phase/statement-locator-v1.yaml",
+    "sha256": "d25ff6da2a1ce48428b4ab1ac20a31b989a27849d93326ae839507dce2ff107e",
+    "policy": "GENERAL_ORDERED_STATEMENT_BLOCK_NO_BANK_OR_PAGE_RULES",
+    "max_interstitial_pages": 0,
+    "schema_branch_assignment_permitted": false
+  },
+  "upstream_reader": {
+    "role": "INDEPENDENT_GEOMETRY_PROPOSAL_ONLY",
+    "model": "PP-OCRv6 medium detection and recognition",
+    "device": "cpu",
+    "precision": "fp32",
+    "ocr_configuration": {
+      "path": "config/models/pp-ocrv6-word-box.yaml",
+      "sha256": "a200fbbc8ba85460c9233875a7a025e8d08d892172d353ed820f69fd258e997b"
+    },
+    "runtime_manifest": {
+      "path": "config/models/gpu-runtime.toml",
+      "sha256": "9141e0a4177f66f152bdb9eecbbfdbdd3add566dbabb81b43207a018c1ba18d8"
+    },
+    "package_freeze": {
+      "path": "config/models/gpu-requirements.freeze.txt",
+      "sha256": "c0e8c43f84360a8eb0ebeff1ef5de43969bdd291eb2c7cee363c35ef2c78437b"
+    },
+    "inference_git_commit": "4194ec6675d19a210c9936bfb08961f74ef755a2",
+    "inference_git_dirty": false,
+    "automatic_truth_promotion": false,
+    "automatic_schema_promotion": false,
+    "automatic_pdf_confidence_promotion": false
+  },
+  "documents": [
+    {
+      "key": "MBB_2025_CONSOLIDATED",
+      "source": {
+        "path": "vietstock_bctc/MBB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+        "sha256": "9853cc4909dc73ddea9907465b09d7ecdb96cf6c1627f56943f3a20d14b49f80",
+        "size_bytes": 10165066,
+        "dataset_role_frozen": true
+      },
+      "preprocess_manifest": {
+        "path": "output/calibration/e0013-mbb-phase120/9853cc4909dc73ddea99/manifest.json",
+        "sha256": "6eebe419a7b1a7ac8201d94656d5ecd98439fb43760e33330e62acbe89e02d17",
+        "dpi": 120
+      },
+      "ocr_batch": {
+        "path": "output/calibration/e0013-mbb-phase120-role-c",
+        "manifest_sha256": "8db8d1ade79cdd9e9af7c7f1a96ae69602824765c09eb559be4719011644dde0",
+        "identity_sha256": "c5e928ace3e4e5574940fc8bdff203c2bde771d72a54efa24118159136ac74a9",
+        "checkpoint_state": "PARTIAL",
+        "completed_pages": 18,
+        "requested_pages": 103,
+        "adaptive_stop_reason": "Main statements plus first notes boundary were present; later TM pages were not required for coarse location.",
+        "metrics": {
+          "line_count": 1209,
+          "word_token_count": 16791,
+          "lines_below_0_8": 17,
+          "lines_below_0_9": 50,
+          "minimum_line_score": 0.0,
+          "mean_line_score": 0.969272054805797,
+          "model_load_session_count": 1,
+          "page_inference_wall_seconds": 488.570623
+        }
+      },
+      "location_output": {
+        "path": "output/calibration/e0013-mbb-phase120-role-c/statement-location-clean-b165c60.json",
+        "sha256": "6e8c5826ac8d8150d77aa29ebea9362a56accf51b49f1760b4736afc87f0f70d",
+        "size_bytes": 22227,
+        "state": "STATEMENT_LOCATION_COMPLETE"
+      },
+      "result": {
+        "candidate_count": 2,
+        "winner_runner_up_margin": 2.0,
+        "start_page": 10,
+        "end_page": 15,
+        "notes_boundary_page": 16,
+        "interstitial_pages": [],
+        "recognized_pages_by_statement_form": {
+          "CDKT": [10, 11, 12],
+          "KQKD": [13],
+          "LCTT": [14, 15]
+        },
+        "mapping_eligible_pages_by_statement_type": {
+          "CDKT": [10, 11],
+          "KQKD": [13],
+          "LCTT": [14, 15]
+        },
+        "off_balance_excluded_pages": [12],
+        "off_balance_item_hits": [
+          "bảo lãnh vay vốn",
+          "cam kết giao dịch hối đoái",
+          "tài sản và chứng từ khác"
+        ],
+        "continuation_contracts": [
+          {"statement": "CDKT", "from_page": 10, "to_page": 11},
+          {"statement": "LCTT", "from_page": 14, "to_page": 15}
+        ],
+        "scope_boundary_continuation_blocked": {"from_page": 11, "to_page": 12},
+        "cash_flow": {
+          "pdf_method": "DIRECT",
+          "title_similarity": 0.95,
+          "title_text": "(Phưong pháp trc tip)",
+          "ordered_anchors": [
+            {
+              "page": 14,
+              "line_index": 14,
+              "similarity": 0.917647,
+              "anchor": "thu nhập lãi và các khoản thu nhập tương tự nhận được"
+            },
+            {
+              "page": 14,
+              "line_index": 17,
+              "similarity": 0.970588,
+              "anchor": "chi phí lãi và các chi phí tương tự đã trả"
+            }
+          ],
+          "indirect_sequence_complete": false,
+          "schema_branch_assignment_permitted": false
+        }
+      }
+    },
+    {
+      "key": "VCB_2025_CONSOLIDATED",
+      "source": {
+        "path": "vietstock_bctc/VCB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+        "sha256": "295f397de287f84c26dafbfa06f668604aa696a013e236253149d8547d032d1f",
+        "size_bytes": 11552186,
+        "dataset_role_frozen": true
+      },
+      "preprocess_manifest": {
+        "path": "output/calibration/e0013-vcb-phase120/295f397de287f84c26da/manifest.json",
+        "sha256": "513d1c9451b67560b63c4f43aac459571f101856d370cee70c8e1e700b32faf0",
+        "dpi": 120
+      },
+      "ocr_batch": {
+        "path": "output/calibration/e0013-vcb-phase120-role-c",
+        "manifest_sha256": "1ecb329c9c69f2bde94611d49571ff2c6c52f45f142a3daac564b6e8a56ec9e1",
+        "identity_sha256": "6a506a1e8216e30bb9acd0c0d152877d847c5f2dcc8242169ff98caa16fff81d",
+        "checkpoint_state": "PARTIAL",
+        "completed_pages": 18,
+        "requested_pages": 84,
+        "adaptive_stop_reason": "Main statements plus first notes boundary were present; later TM pages were not required for coarse location.",
+        "metrics": {
+          "line_count": 1351,
+          "word_token_count": 18035,
+          "lines_below_0_8": 21,
+          "lines_below_0_9": 47,
+          "minimum_line_score": 0.0,
+          "mean_line_score": 0.9735421403569702,
+          "model_load_session_count": 1,
+          "page_inference_wall_seconds": 520.68573
+        }
+      },
+      "location_output": {
+        "path": "output/calibration/e0013-vcb-phase120-role-c/statement-location-clean-b165c60.json",
+        "sha256": "2e9e556eef8cbe91603a8c39d62fafff33b11b5b21730835cd457f7ee644574b",
+        "size_bytes": 22520,
+        "state": "STATEMENT_LOCATION_COMPLETE"
+      },
+      "result": {
+        "candidate_count": 2,
+        "winner_runner_up_margin": 2.0,
+        "start_page": 8,
+        "end_page": 14,
+        "notes_boundary_page": 15,
+        "interstitial_pages": [],
+        "recognized_pages_by_statement_form": {
+          "CDKT": [8, 9, 10],
+          "KQKD": [11, 12],
+          "LCTT": [13, 14]
+        },
+        "mapping_eligible_pages_by_statement_type": {
+          "CDKT": [8, 9],
+          "KQKD": [11, 12],
+          "LCTT": [13, 14]
+        },
+        "off_balance_excluded_pages": [10],
+        "off_balance_item_hits": [
+          "bảo lãnh vay vốn",
+          "cam kết giao dịch hối đoái",
+          "cam kết trong nghiệp vụ thư tín dụng",
+          "tài sản và chứng từ khác"
+        ],
+        "continuation_contracts": [
+          {"statement": "CDKT", "from_page": 8, "to_page": 9},
+          {"statement": "KQKD", "from_page": 11, "to_page": 12},
+          {"statement": "LCTT", "from_page": 13, "to_page": 14}
+        ],
+        "scope_boundary_continuation_blocked": {"from_page": 9, "to_page": 10},
+        "cash_flow": {
+          "pdf_method": "DIRECT",
+          "title_similarity": 0.95,
+          "title_text": "(Phuong pháp trc tip)",
+          "ordered_anchors": [
+            {
+              "page": 13,
+              "line_index": 20,
+              "similarity": 0.939759,
+              "anchor": "thu nhập lãi và các khoản thu nhập tương tự nhận được"
+            },
+            {
+              "page": 13,
+              "line_index": 25,
+              "similarity": 0.970588,
+              "anchor": "chi phí lãi và các chi phí tương tự đã trả"
+            }
+          ],
+          "indirect_sequence_complete": false,
+          "schema_branch_assignment_permitted": false
+        }
+      }
+    }
+  ],
+  "cross_document_checks": {
+    "same_algorithm_and_configuration": true,
+    "bank_name_or_page_rule_in_algorithm": false,
+    "ordered_form_sequence_passed": true,
+    "unknown_interstitial_pages": 0,
+    "off_balance_pages_mapping_eligible": 0,
+    "scope_crossing_continuation_links": 0,
+    "direct_title_and_ordered_anchor_agreement": 2,
+    "cash_flow_schema_assignment_attempts": 0,
+    "historical_reference_invoked": false,
+    "arithmetic_value_generation_invoked": false,
+    "ytd_derivation_invoked": false
+  },
+  "tests_before_clean_location": {
+    "passed": 143,
+    "skipped_immutable_historical_replays": 2,
+    "ruff_lint": "PASS",
+    "changed_file_format_check": "PASS"
+  },
+  "software_or_model_change": false,
+  "report_norm_id": {
+    "ids_proposed_or_added": 0,
+    "collision_check_required_for_this_page_location_experiment": false
+  },
+  "acceptance": {
+    "preprocess_batch_ocr_identity_chain": "PASS",
+    "ordered_statement_block": "PASS_TWO_OF_TWO_CALIBRATION_DOCUMENTS",
+    "off_balance_scope_exclusion": "PASS_TWO_OF_TWO_CALIBRATION_DOCUMENTS",
+    "cash_flow_pdf_method_evidence": "PASS_TWO_OF_TWO_DIRECT",
+    "cash_flow_schema_branch_assignment": "BLOCKED_BY_Q_BOOT_001",
+    "row_or_schema_mapping_evaluated": false,
+    "human_gold_evaluated": false,
+    "production_accuracy_approved": false,
+    "next_gate": "RERENDER_ONLY_ACCEPTED_PLUS_EXCLUSION_BOUNDARY_PAGES_AT_200_DPI_AND_RUN_FROZEN_ROLE_B_ROLE_C_LOGIC"
+  }
+}

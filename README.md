@@ -47,6 +47,8 @@ procedure are in
 [docs/experiments/E-0011-REPLAY.md](docs/experiments/E-0011-REPLAY.md).
 The clean batch/checkpoint equivalence and seal regression is in
 [docs/experiments/E-0012-REPLAY.md](docs/experiments/E-0012-REPLAY.md).
+The clean MBB/VCB ordered statement-location and scope-exclusion calibration is
+in [docs/experiments/E-0013-REPLAY.md](docs/experiments/E-0013-REPLAY.md).
 The allowlisted, non-authoritative Mongo/DuckDB reference and rebuild procedure
 are in
 [docs/environment/HISTORICAL_REFERENCE_RUNBOOK.md](docs/environment/HISTORICAL_REFERENCE_RUNBOOK.md).

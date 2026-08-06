@@ -84,7 +84,15 @@ linked as a continuation of the main CDKT table. Cash-flow tests cover ordered
 direct/indirect anchors, competing shared-title text, conflict, unknown, and the
 Q-BOOT-001 no-schema-assignment invariant. Evidence-loader tests reject hash
 drift, path traversal, render identity drift, malformed page axes, out-of-bounds
-boxes, and role/batch identity changes before classification. MBB/VCB smoke
-results are not formal accuracy evidence until rerun clean and hash-locked.
+boxes, and role/batch identity changes before classification.
+
+E-0013 is the clean two-document calibration regression for this gate. Its
+integration test locks the algorithm/config/source/preprocess/batch/output
+hashes, exact eligible and excluded pages, zero interstitial/scope-crossing
+pages, candidate margin, and DIRECT title-plus-ordered-anchor evidence for MBB
+and VCB. Locally present external artifacts are re-hashed; an absent external
+artifact does not turn a Git clone into a false failure. The regression does
+not assert human-gold, row/schema/numeric, holdout, confidence, or production
+accuracy, and it requires schema branch assignment to remain disabled.
 
 Explicit page numbers in a golden/calibration fixture are expected test data, not production routing rules. Production page pairing must continue to use document-order and visual evidence; no bank, page offset, or coordinate constant may enter the algorithm.

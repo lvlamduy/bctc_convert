@@ -41,7 +41,7 @@ This is a decision-oriented paper log, not a list of model claims. A paper contr
 5. Fit confidence/review thresholds on development/calibration data, then measure unchanged rules on frozen holdout and by distortion/report subgroup.
 6. Completed in E-0011 on page 14: the independent word/cell geometry path recovered all four collapsed row pairs, both value columns, notes, and source boxes. Repeat unchanged on other banks and distortions.
 7. Completed in E-0011 on page 15: `198.242` and `(5.140.484)` were independently localized to separate rows without splitting the VLM output. The next test varies DPI/contrast on frozen distortion fixtures.
-8. In progress for E-0013: use the 120-DPI PP-OCRv6 pass only to locate the statement block, then rerender/reread the selected eligible plus exclusion-boundary pages at 200 DPI. Compare page/scope/method stability before row-level Role B/Role C evaluation.
+8. Coarse stage completed in E-0013: the clean 120-DPI PP-OCRv6 pass located and scope-separated both MBB/VCB statement blocks under one unchanged rule set. Next, rerender/reread only the selected eligible plus exclusion-boundary pages at 200 DPI and compare page/scope/method stability before row-level Role B/Role C evaluation.
 
 ## Rejection rules
 
