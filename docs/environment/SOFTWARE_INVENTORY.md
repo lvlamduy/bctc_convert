@@ -331,6 +331,32 @@ The runtime is reconstructible. If it must be rolled back, remove only the
 explicit `/workspace/bctc-ai-runtime/vietocr-0.3.13` overlay after preserving
 any required run manifests; the base environments are unchanged.
 
+The independent numeric-cell reader adds no Python distribution. It reuses the
+existing `.gpu-venv` PaddlePaddle 3.3.0, PaddleOCR 3.7.0 and PaddleX 3.7.2
+CPU-FP32 runtime with MKLDNN disabled. The Apache-2.0 checkpoint is
+`PaddlePaddle/en_PP-OCRv5_mobile_rec` at revision
+`267c36e24c331595590fe7bd72bde2436fd286f2`; `inference.pdiparams` is
+7,772,315 bytes with SHA-256
+`3ec8a97ed6cefe8568d3e2ee90bb193299b566a7661aa4fd52d224b96b59f66b`.
+All six repository files, versions, sizes and hashes are pinned in
+`config/models/numeric-recognizer-v1.toml`. The formal E-0031 run loaded the
+model once and processed 126 source-pixel crops in 11.938103 seconds on CPU.
+The process blocks network connections; input contains only `crop_path`; model
+probability has no acceptance authority.
+
+Rebuild/verify commands:
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/bootstrap/download_numeric_recognizer.py \
+  --cache-root "$BCTC_NUMERIC_MODEL_CACHE_DIR"
+PYTHONPATH=src .venv/bin/python scripts/bootstrap/download_numeric_recognizer.py \
+  --cache-root "$BCTC_NUMERIC_MODEL_CACHE_DIR" --verify-only
+```
+
+The cache is reconstructible and remains outside Git. Rollback removes only the
+explicit `official_models/en_PP-OCRv5_mobile_rec` directory after preserving
+required manifests; neither Python environment is changed.
+
 IBM TableFormer and ClusterTabNet are also not installed. The inspected
 TableFormer/Docling source revision is
 `5787142002b4063efe30f172dd91fbc7a94b43a6` (package version 3.13.3, MIT);

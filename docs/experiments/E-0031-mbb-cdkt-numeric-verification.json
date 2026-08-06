@@ -1,0 +1,4000 @@
+{
+  "after": {
+    "authority": "BOUNDED_NUMERIC_VERIFICATION_ONLY",
+    "cells": [
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-000-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "BLANK",
+          "parsed_value": null,
+          "proposal_status": "EMPTY_PROPOSAL",
+          "raw_text": "",
+          "reader_score": 0.0,
+          "sign_evidence": null
+        },
+        "crop_sha256": "de2d67707d76903ff8363623c1db717d7c44d108e55a34bb7f5f9ff8b28014c1",
+        "decision": "RETAIN_BLANK_WITHOUT_ZERO_OR_VALUE_PROMOTION",
+        "final_value_status": null,
+        "normalized_numeric_value": null,
+        "page": 3,
+        "primary": {
+          "normalized_text": "",
+          "observation": "BLANK",
+          "raw_text": "",
+          "sign_evidence": null,
+          "value": null,
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 0,
+        "selected_raw_value": null,
+        "verification_status": "UNRESOLVED_BLANK_PENDING_ROW_SEMANTICS"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-000-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "BLANK",
+          "parsed_value": null,
+          "proposal_status": "EMPTY_PROPOSAL",
+          "raw_text": "",
+          "reader_score": 0.0,
+          "sign_evidence": null
+        },
+        "crop_sha256": "d5ae27a338c539ca8189e8b5df095928f9cfe56f8869dbd3eb6e8aade3b03d0d",
+        "decision": "RETAIN_BLANK_WITHOUT_ZERO_OR_VALUE_PROMOTION",
+        "final_value_status": null,
+        "normalized_numeric_value": null,
+        "page": 3,
+        "primary": {
+          "normalized_text": "",
+          "observation": "BLANK",
+          "raw_text": "",
+          "sign_evidence": null,
+          "value": null,
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 0,
+        "selected_raw_value": null,
+        "verification_status": "UNRESOLVED_BLANK_PENDING_ROW_SEMANTICS"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-001-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "5741287",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "5.741.287",
+          "reader_score": 0.9485068917274475,
+          "sign_evidence": null
+        },
+        "crop_sha256": "bda6e043dd798ea1c5a5b08a5a9be09b183315073dbbe79645d1450ead08d32b",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "5741287",
+        "page": 3,
+        "primary": {
+          "normalized_text": "5741287",
+          "observation": "VALUE",
+          "raw_text": "5.741.287",
+          "sign_evidence": null,
+          "value": "5741287",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 1,
+        "selected_raw_value": "5.741.287",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-001-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "4965786",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "4.965.786",
+          "reader_score": 0.9480317234992981,
+          "sign_evidence": null
+        },
+        "crop_sha256": "3fe578a93c3e43223a790d5fbacbadd0149102341b71a871f68d42b9053aee1f",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "4965786",
+        "page": 3,
+        "primary": {
+          "normalized_text": "4965786",
+          "observation": "VALUE",
+          "raw_text": "4.965.786",
+          "sign_evidence": null,
+          "value": "4965786",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 1,
+        "selected_raw_value": "4.965.786",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-002-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "15156039",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "15.156.039",
+          "reader_score": 0.9990207552909851,
+          "sign_evidence": null
+        },
+        "crop_sha256": "459908d76265b5e84a4875a76316eeb449aed5c74400c7a8264c1bd82f52a3ca",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "15156039",
+        "page": 3,
+        "primary": {
+          "normalized_text": "15156039",
+          "observation": "VALUE",
+          "raw_text": "15.156.039",
+          "sign_evidence": null,
+          "value": "15156039",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 2,
+        "selected_raw_value": "15.156.039",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-002-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "68494426",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "68.494.426",
+          "reader_score": 0.9993325471878052,
+          "sign_evidence": null
+        },
+        "crop_sha256": "61c0f83a83d8f2ea03cb475619667a34032df8af2100f8c2e27e58272543efd8",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "68494426",
+        "page": 3,
+        "primary": {
+          "normalized_text": "68494426",
+          "observation": "VALUE",
+          "raw_text": "68.494.426",
+          "sign_evidence": null,
+          "value": "68494426",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 2,
+        "selected_raw_value": "68.494.426",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-003-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "165297962",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "165.297.962",
+          "reader_score": 0.9708942174911499,
+          "sign_evidence": null
+        },
+        "crop_sha256": "082ee5a6d1074e225b0b4de2f877fd2b1c0d1bd3c2ea77e7c97317a316725fc3",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "165297962",
+        "page": 3,
+        "primary": {
+          "normalized_text": "165297962",
+          "observation": "VALUE",
+          "raw_text": "165.297.962",
+          "sign_evidence": null,
+          "value": "165297962",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 3,
+        "selected_raw_value": "165.297.962",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-003-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "182923726",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "182.923.726",
+          "reader_score": 0.9995718598365784,
+          "sign_evidence": null
+        },
+        "crop_sha256": "122c4aa59c7a0680ea5a274ca20f03cee1bafe8f63e60adace96c47d96bc960e",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "182923726",
+        "page": 3,
+        "primary": {
+          "normalized_text": "182923726",
+          "observation": "VALUE",
+          "raw_text": "182.923.726",
+          "sign_evidence": null,
+          "value": "182923726",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 3,
+        "selected_raw_value": "182.923.726",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-004-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "5058769",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "5.058.769",
+          "reader_score": 0.9973503947257996,
+          "sign_evidence": null
+        },
+        "crop_sha256": "32abd5c93c4c77abd10646c30036ebffe87b3fff070d0b9128cab4181350726e",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "5058769",
+        "page": 3,
+        "primary": {
+          "normalized_text": "5058769",
+          "observation": "VALUE",
+          "raw_text": "5.058.769",
+          "sign_evidence": null,
+          "value": "5058769",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 4,
+        "selected_raw_value": "5.058.769",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-004-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "4653229",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "4.653.229",
+          "reader_score": 0.9953810572624207,
+          "sign_evidence": null
+        },
+        "crop_sha256": "f36412838896b50d84e2ae5e81dc4b315f797cc00bb123908c63d6f994ea3eed",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "4653229",
+        "page": 3,
+        "primary": {
+          "normalized_text": "4653229",
+          "observation": "VALUE",
+          "raw_text": "4.653.229",
+          "sign_evidence": null,
+          "value": "4653229",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 4,
+        "selected_raw_value": "4.653.229",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-005-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "5093432",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "5.093.432",
+          "reader_score": 0.9938942790031433,
+          "sign_evidence": null
+        },
+        "crop_sha256": "d0e0fd3df04573c4ee31a12a1e7b88764e1a51a2577715555c14b1c5c4f2a658",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "5093432",
+        "page": 3,
+        "primary": {
+          "normalized_text": "5093432",
+          "observation": "VALUE",
+          "raw_text": "5.093.432",
+          "sign_evidence": null,
+          "value": "5093432",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 5,
+        "selected_raw_value": "5.093.432",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-005-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "4692622",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "4.692.622",
+          "reader_score": 0.9927104115486145,
+          "sign_evidence": null
+        },
+        "crop_sha256": "f4b8fcafe5b4bf065f44dd622c669b9a1c058a4b3285344193d0d0c1cbaa02db",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "4692622",
+        "page": 3,
+        "primary": {
+          "normalized_text": "4692622",
+          "observation": "VALUE",
+          "raw_text": "4.692.622",
+          "sign_evidence": null,
+          "value": "4692622",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 5,
+        "selected_raw_value": "4.692.622",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-006-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "-34663",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "(34.663)",
+          "reader_score": 0.9262470006942749,
+          "sign_evidence": "parentheses"
+        },
+        "crop_sha256": "3bdee03c8f43196a4bcbe9b3047bf41beaada1f4d034c79b9c606a5fe4283569",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "-34663",
+        "page": 3,
+        "primary": {
+          "normalized_text": "-34663",
+          "observation": "VALUE",
+          "raw_text": "(34.663)",
+          "sign_evidence": "parentheses",
+          "value": "-34663",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 6,
+        "selected_raw_value": "(34.663)",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-006-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "-39393",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "(39.393)",
+          "reader_score": 0.8036465644836426,
+          "sign_evidence": "parentheses"
+        },
+        "crop_sha256": "1de595cd500f1a3952737fb637effa51bb22f58a87fa3521d0bc783ee9205385",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "-39393",
+        "page": 3,
+        "primary": {
+          "normalized_text": "-39393",
+          "observation": "VALUE",
+          "raw_text": "(39.393)",
+          "sign_evidence": "parentheses",
+          "value": "-39393",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 6,
+        "selected_raw_value": "(39.393)",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-007-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "1105852151",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "1.105.852.151",
+          "reader_score": 0.9905761480331421,
+          "sign_evidence": null
+        },
+        "crop_sha256": "d184a373e00616cd9cf45687d90c4687e1fa433ce75258ef7835c3698cd80cef",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "1105852151",
+        "page": 3,
+        "primary": {
+          "normalized_text": "1105852151",
+          "observation": "VALUE",
+          "raw_text": "1.105.852.151",
+          "sign_evidence": null,
+          "value": "1105852151",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 7,
+        "selected_raw_value": "1.105.852.151",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-007-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "1070868777",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "1.070.868.777",
+          "reader_score": 0.9956541657447815,
+          "sign_evidence": null
+        },
+        "crop_sha256": "92bde0d8d68c55c8c051ee930a29fd2a4b9ef767e68ffbebea47b822a07a3d23",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "1070868777",
+        "page": 3,
+        "primary": {
+          "normalized_text": "1070868777",
+          "observation": "VALUE",
+          "raw_text": "1.070.868.777",
+          "sign_evidence": null,
+          "value": "1070868777",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 7,
+        "selected_raw_value": "1.070.868.777",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-008-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "1120562481",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "1.120.562.481",
+          "reader_score": 0.9990884065628052,
+          "sign_evidence": null
+        },
+        "crop_sha256": "a8852eea829b86a33b17a6e05644c3f2feed8acac4bc40382a61f5f7ce882909",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "1120562481",
+        "page": 3,
+        "primary": {
+          "normalized_text": "1120562481",
+          "observation": "VALUE",
+          "raw_text": "1.120.562.481",
+          "sign_evidence": null,
+          "value": "1120562481",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 8,
+        "selected_raw_value": "1.120.562.481",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-008-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "1084019370",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "1.084.019.370",
+          "reader_score": 0.9982308745384216,
+          "sign_evidence": null
+        },
+        "crop_sha256": "fb27c801af5ccd8f417b365f5304646624e0a328c50ce021e5773f8c0cb20bf7",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "1084019370",
+        "page": 3,
+        "primary": {
+          "normalized_text": "1084019370",
+          "observation": "VALUE",
+          "raw_text": "1.084.019.370",
+          "sign_evidence": null,
+          "value": "1084019370",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 8,
+        "selected_raw_value": "1.084.019.370",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-009-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "-14710330",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "(14.710.330)",
+          "reader_score": 0.9903087019920349,
+          "sign_evidence": "parentheses"
+        },
+        "crop_sha256": "f595bc65f96cc638edd12b33f268d3b90b605fd6b0f6c52bd485b4dd762185f4",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "-14710330",
+        "page": 3,
+        "primary": {
+          "normalized_text": "-14710330",
+          "observation": "VALUE",
+          "raw_text": "(14.710.330)",
+          "sign_evidence": "parentheses",
+          "value": "-14710330",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 9,
+        "selected_raw_value": "(14.710.330)",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-009-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "-13150593",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "(13.150.593)",
+          "reader_score": 0.9253091812133789,
+          "sign_evidence": "parentheses"
+        },
+        "crop_sha256": "f6b044f77b24e354456e290e9850e61e3c100e60f4a56032f3d879300276abae",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "-13150593",
+        "page": 3,
+        "primary": {
+          "normalized_text": "-13150593",
+          "observation": "VALUE",
+          "raw_text": "(13.150.593)",
+          "sign_evidence": "parentheses",
+          "value": "-13150593",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 9,
+        "selected_raw_value": "(13.150.593)",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-010-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "2264075",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "2.264.075",
+          "reader_score": 0.9932733178138733,
+          "sign_evidence": null
+        },
+        "crop_sha256": "980883ff97b0a0fc90832f295dbe47094fcba88524cd7a15a0276b3d41026409",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "2264075",
+        "page": 3,
+        "primary": {
+          "normalized_text": "2264075",
+          "observation": "VALUE",
+          "raw_text": "2.264.075",
+          "sign_evidence": null,
+          "value": "2264075",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 10,
+        "selected_raw_value": "2.264.075",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-010-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "2443895",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "2.443.895",
+          "reader_score": 0.9801367521286011,
+          "sign_evidence": null
+        },
+        "crop_sha256": "f7f4673121c375c9913ab414bb13982315116365abaea9baca91183c93773c10",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "2443895",
+        "page": 3,
+        "primary": {
+          "normalized_text": "2443895",
+          "observation": "VALUE",
+          "raw_text": "2.443.895",
+          "sign_evidence": null,
+          "value": "2443895",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 10,
+        "selected_raw_value": "2.443.895",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-011-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "2287269",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "2.287.269",
+          "reader_score": 0.9851481914520264,
+          "sign_evidence": null
+        },
+        "crop_sha256": "f284e1c5199aa9f4cefa47ecbcf594d794c70354697d311ea400d53979b28dd8",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "2287269",
+        "page": 3,
+        "primary": {
+          "normalized_text": "2287269",
+          "observation": "VALUE",
+          "raw_text": "2.287.269",
+          "sign_evidence": null,
+          "value": "2287269",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 11,
+        "selected_raw_value": "2.287.269",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-011-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "2465314",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "2.465.314",
+          "reader_score": 0.9848728179931641,
+          "sign_evidence": null
+        },
+        "crop_sha256": "ec58f29e542683f1bf1fbf8500efe4b17d2055168b1ada77c7279ffd0902c09e",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "2465314",
+        "page": 3,
+        "primary": {
+          "normalized_text": "2465314",
+          "observation": "VALUE",
+          "raw_text": "2.465.314",
+          "sign_evidence": null,
+          "value": "2465314",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 11,
+        "selected_raw_value": "2.465.314",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-012-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "-23194",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "(23.194)",
+          "reader_score": 0.9195370674133301,
+          "sign_evidence": "parentheses"
+        },
+        "crop_sha256": "ed2071812afa8b29a3d70ebdcb99f4f7a0863f0b30488d5eabea6462d6a1558e",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "-23194",
+        "page": 3,
+        "primary": {
+          "normalized_text": "-23194",
+          "observation": "VALUE",
+          "raw_text": "(23.194)",
+          "sign_evidence": "parentheses",
+          "value": "-23194",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 12,
+        "selected_raw_value": "(23.194)",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-012-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "-21419",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "(21.419)",
+          "reader_score": 0.8583438396453857,
+          "sign_evidence": "parentheses"
+        },
+        "crop_sha256": "72813c6d1f36ccdaa435085f5136c7fbdf0d1baacd42fedf97d17aba78fbdeab",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "-21419",
+        "page": 3,
+        "primary": {
+          "normalized_text": "-21419",
+          "observation": "VALUE",
+          "raw_text": "(21.419)",
+          "sign_evidence": "parentheses",
+          "value": "-21419",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 12,
+        "selected_raw_value": "(21.419)",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-013-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "262829936",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "262.829.936",
+          "reader_score": 0.9996421337127686,
+          "sign_evidence": null
+        },
+        "crop_sha256": "c4fe81b99059d89217109df1191754c5f8d64462f7537fc06cb6e081a5489332",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "262829936",
+        "page": 3,
+        "primary": {
+          "normalized_text": "262829936",
+          "observation": "VALUE",
+          "raw_text": "262.829.936",
+          "sign_evidence": null,
+          "value": "262829936",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 13,
+        "selected_raw_value": "262.829.936",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-013-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "225574850",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "225.574.850",
+          "reader_score": 0.9993088245391846,
+          "sign_evidence": null
+        },
+        "crop_sha256": "a1b16d4de473d89c9749a181bddfaa837b47e96cd9abebc813a73f2f24502080",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "225574850",
+        "page": 3,
+        "primary": {
+          "normalized_text": "225574850",
+          "observation": "VALUE",
+          "raw_text": "225.574.850",
+          "sign_evidence": null,
+          "value": "225574850",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 13,
+        "selected_raw_value": "225.574.850",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-014-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "259054739",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "259.054.739",
+          "reader_score": 0.9993190169334412,
+          "sign_evidence": null
+        },
+        "crop_sha256": "fe6867174ac366ca457e951a43864dfdecbbc83b9a59ce29c1f778d6b4d63ffa",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "259054739",
+        "page": 3,
+        "primary": {
+          "normalized_text": "259054739",
+          "observation": "VALUE",
+          "raw_text": "259.054.739",
+          "sign_evidence": null,
+          "value": "259054739",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 14,
+        "selected_raw_value": "259.054.739",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-014-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "221512464",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "221.512.464",
+          "reader_score": 0.9986358880996704,
+          "sign_evidence": null
+        },
+        "crop_sha256": "f1c5883afff7d0a981b90ff073df614191edb5bccc24938e7660509f3826d164",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "221512464",
+        "page": 3,
+        "primary": {
+          "normalized_text": "221512464",
+          "observation": "VALUE",
+          "raw_text": "221.512.464",
+          "sign_evidence": null,
+          "value": "221512464",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 14,
+        "selected_raw_value": "221.512.464",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-015-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "4336559",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "4.336.559",
+          "reader_score": 0.9893202185630798,
+          "sign_evidence": null
+        },
+        "crop_sha256": "5d1e8caa5f1420dbaa8a37bc8ecb79de2d34b66faa718f6ba237de94a84c7fd7",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "4336559",
+        "page": 3,
+        "primary": {
+          "normalized_text": "4336559",
+          "observation": "VALUE",
+          "raw_text": "4.336.559",
+          "sign_evidence": null,
+          "value": "4336559",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 15,
+        "selected_raw_value": "4.336.559",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-015-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "4295125",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "4.295.125",
+          "reader_score": 0.9671173095703125,
+          "sign_evidence": null
+        },
+        "crop_sha256": "686edce44758563560cae448110e511fbc9f9068d302e644e7b9f24e86e0c397",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "4295125",
+        "page": 3,
+        "primary": {
+          "normalized_text": "4295125",
+          "observation": "VALUE",
+          "raw_text": "4.295.125",
+          "sign_evidence": null,
+          "value": "4295125",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 15,
+        "selected_raw_value": "4.295.125",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-016-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "-561362",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "(561.362)",
+          "reader_score": 0.9081116914749146,
+          "sign_evidence": "parentheses"
+        },
+        "crop_sha256": "139b54b68307d2821033602a8df3fba0160e80935ba3bd369f52c3e33b61ed91",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "-561362",
+        "page": 3,
+        "primary": {
+          "normalized_text": "-561362",
+          "observation": "VALUE",
+          "raw_text": "(561.362)",
+          "sign_evidence": "parentheses",
+          "value": "-561362",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 16,
+        "selected_raw_value": "(561.362)",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-016-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "-232739",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "(232.739)",
+          "reader_score": 0.9675911664962769,
+          "sign_evidence": "parentheses"
+        },
+        "crop_sha256": "e31ad0ff14d8ef11e55c6cd8b7e9acd94bf4d58ca905853164790074132eabbe",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "-232739",
+        "page": 3,
+        "primary": {
+          "normalized_text": "-232739",
+          "observation": "VALUE",
+          "raw_text": "(232.739)",
+          "sign_evidence": "parentheses",
+          "value": "-232739",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 16,
+        "selected_raw_value": "(232.739)",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-017-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "467906",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "467.906",
+          "reader_score": 0.9933770895004272,
+          "sign_evidence": null
+        },
+        "crop_sha256": "f8db0524c2920cb3ae0719d3cfa1fa2c0616e65d11674e44e55c0e40e6ed6243",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "467906",
+        "page": 3,
+        "primary": {
+          "normalized_text": "467906",
+          "observation": "VALUE",
+          "raw_text": "467.906",
+          "sign_evidence": null,
+          "value": "467906",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 17,
+        "selected_raw_value": "467.906",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-017-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "468396",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "468.396",
+          "reader_score": 0.9014571905136108,
+          "sign_evidence": null
+        },
+        "crop_sha256": "3f20f11638aba79d57a82c9fdc6a9bdc9eba9b984669ca84b0a7cf24b15b4607",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "468396",
+        "page": 3,
+        "primary": {
+          "normalized_text": "468396",
+          "observation": "VALUE",
+          "raw_text": "468.396",
+          "sign_evidence": null,
+          "value": "468396",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 17,
+        "selected_raw_value": "468.396",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-018-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "DASH",
+          "parsed_value": null,
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "-",
+          "reader_score": 0.9305528998374939,
+          "sign_evidence": "dash"
+        },
+        "crop_sha256": "918b369819b361c9ce1879e042e411522dbe85162f6d4e4bf3449646c11d9171",
+        "decision": "ACCEPT_DASH_WITH_READER_AND_PIXEL_AGREEMENT",
+        "final_value_status": "OBSERVED_ZERO",
+        "normalized_numeric_value": "0",
+        "page": 3,
+        "primary": {
+          "normalized_text": "-",
+          "observation": "DASH",
+          "raw_text": "-",
+          "sign_evidence": "dash",
+          "value": null,
+          "visual_punctuation_evidence": {
+            "aspect_ratio": 2.75,
+            "component_box": [
+              1858,
+              1922,
+              1869,
+              1926
+            ],
+            "crop_box": [
+              1803,
+              1896,
+              1884,
+              1947
+            ],
+            "fill_ratio": 0.886364,
+            "foreground_contrast": 139.727273,
+            "height_line_heights": 0.086957,
+            "observation": "DASH",
+            "source_image_path": "/workspace/bctc-ai/output/calibration/e0027-mbb-q1-2026-end-to-end/eebeda2ebc09b0d42032/renders/page-0003.png",
+            "threshold": 163.0,
+            "width_line_heights": 0.23913
+          }
+        },
+        "row_ordinal": 18,
+        "selected_raw_value": "-",
+        "verification_status": "VERIFIED_OBSERVED_DASH"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-018-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "BLANK",
+          "parsed_value": null,
+          "proposal_status": "EMPTY_PROPOSAL",
+          "raw_text": "",
+          "reader_score": 0.0,
+          "sign_evidence": null
+        },
+        "crop_sha256": "4c2b267f66bff79ba02e5f0c51ba8da345fbd8f70197a73688b9b956a5744bf5",
+        "decision": "RETAIN_BLANK_WITHOUT_ZERO_OR_VALUE_PROMOTION",
+        "final_value_status": null,
+        "normalized_numeric_value": null,
+        "page": 3,
+        "primary": {
+          "normalized_text": "",
+          "observation": "BLANK",
+          "raw_text": "",
+          "sign_evidence": null,
+          "value": null,
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 18,
+        "selected_raw_value": null,
+        "verification_status": "UNRESOLVED_BLANK_PENDING_ROW_SEMANTICS"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-019-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "559134",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "559.134",
+          "reader_score": 0.9581864476203918,
+          "sign_evidence": null
+        },
+        "crop_sha256": "993a5613b8629f03b5a1f28a9086d4a28c4bf45f69bd1521d5bc195c538575f2",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "559134",
+        "page": 3,
+        "primary": {
+          "normalized_text": "559134",
+          "observation": "VALUE",
+          "raw_text": "559.134",
+          "sign_evidence": null,
+          "value": "559134",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 19,
+        "selected_raw_value": "559.134",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-019-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "559624",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "559.624",
+          "reader_score": 0.9736867547035217,
+          "sign_evidence": null
+        },
+        "crop_sha256": "8d2c83c01894841a836236737e23dbc0f0436be9746957585955733e078ac319",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "559624",
+        "page": 3,
+        "primary": {
+          "normalized_text": "559624",
+          "observation": "VALUE",
+          "raw_text": "559.624",
+          "sign_evidence": null,
+          "value": "559624",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 19,
+        "selected_raw_value": "559.624",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-020-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "-91228",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "(91.228)",
+          "reader_score": 0.9237980842590332,
+          "sign_evidence": "parentheses"
+        },
+        "crop_sha256": "9d8289bd6132fac5d5487fd76e0cb09ef723c8e65d24d9a8b6f34058f9f81c8a",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "-91228",
+        "page": 3,
+        "primary": {
+          "normalized_text": "-91228",
+          "observation": "VALUE",
+          "raw_text": "(91.228)",
+          "sign_evidence": "parentheses",
+          "value": "-91228",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 20,
+        "selected_raw_value": "(91.228)",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-020-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "-91228",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "(91.228)",
+          "reader_score": 0.8888667821884155,
+          "sign_evidence": "parentheses"
+        },
+        "crop_sha256": "d909ac86b131ec1f73d49f81f4ad51e7c12ff7cdca17ca21ff88c8dea0e92eba",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "-91228",
+        "page": 3,
+        "primary": {
+          "normalized_text": "-91228",
+          "observation": "VALUE",
+          "raw_text": "(91.228)",
+          "sign_evidence": "parentheses",
+          "value": "-91228",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 20,
+        "selected_raw_value": "(91.228)",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-021-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "5500662",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "5.500.662",
+          "reader_score": 0.9986922740936279,
+          "sign_evidence": null
+        },
+        "crop_sha256": "9dcfaf9a4b6926352f99d9e246f2f9cb65d2bbd6cb1800efb910224ee8edb5b2",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "5500662",
+        "page": 3,
+        "primary": {
+          "normalized_text": "5500662",
+          "observation": "VALUE",
+          "raw_text": "5.500.662",
+          "sign_evidence": null,
+          "value": "5500662",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 21,
+        "selected_raw_value": "5.500.662",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-021-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "5616547",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "5.616.547",
+          "reader_score": 0.9971158504486084,
+          "sign_evidence": null
+        },
+        "crop_sha256": "d4b724082f1bfe51905ec3173f000f535cc6d24707ef6f4f237650619976926d",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "5616547",
+        "page": 3,
+        "primary": {
+          "normalized_text": "5616547",
+          "observation": "VALUE",
+          "raw_text": "5.616.547",
+          "sign_evidence": null,
+          "value": "5616547",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 21,
+        "selected_raw_value": "5.616.547",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-022-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "3717028",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "3.717.028",
+          "reader_score": 0.9984878897666931,
+          "sign_evidence": null
+        },
+        "crop_sha256": "680bc48703bd77f7d05d57630f3571befcdcd10bf9e63d94e8556f6a068e7ae1",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "3717028",
+        "page": 3,
+        "primary": {
+          "normalized_text": "3717028",
+          "observation": "VALUE",
+          "raw_text": "3.717.028",
+          "sign_evidence": null,
+          "value": "3717028",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 22,
+        "selected_raw_value": "3.717.028",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-022-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "3805533",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "3.805.533",
+          "reader_score": 0.9966087341308594,
+          "sign_evidence": null
+        },
+        "crop_sha256": "765717d3cdf06818af720fd0515e212540c5492d603f9fe86e55f5abb15c94b0",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "3805533",
+        "page": 3,
+        "primary": {
+          "normalized_text": "3805533",
+          "observation": "VALUE",
+          "raw_text": "3.805.533",
+          "sign_evidence": null,
+          "value": "3805533",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 22,
+        "selected_raw_value": "3.805.533",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-023-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "9473484",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "9.473.484",
+          "reader_score": 0.9727649688720703,
+          "sign_evidence": null
+        },
+        "crop_sha256": "8bd2d9c4d1c836652869663bb5de7c173ac5e0e211b3142ea507c83b880e4d76",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "9473484",
+        "page": 3,
+        "primary": {
+          "normalized_text": "9473484",
+          "observation": "VALUE",
+          "raw_text": "9.473.484",
+          "sign_evidence": null,
+          "value": "9473484",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 23,
+        "selected_raw_value": "9.473.484",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-023-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "9423236",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "9.423.236",
+          "reader_score": 0.9901808500289917,
+          "sign_evidence": null
+        },
+        "crop_sha256": "c310d143f76bb34c3473ca8cb6556f6bfd82d32ee9e80c7d385be4a0686ca985",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "9423236",
+        "page": 3,
+        "primary": {
+          "normalized_text": "9423236",
+          "observation": "VALUE",
+          "raw_text": "9.423.236",
+          "sign_evidence": null,
+          "value": "9423236",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 23,
+        "selected_raw_value": "9.423.236",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-024-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "-5756456",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "(5.756.456)",
+          "reader_score": 0.9718255400657654,
+          "sign_evidence": "parentheses"
+        },
+        "crop_sha256": "a729a02f2aae9e6a10fe6d9f4cdf834804280b93545ad8b58feadce8049ab8a2",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "-5756456",
+        "page": 3,
+        "primary": {
+          "normalized_text": "-5756456",
+          "observation": "VALUE",
+          "raw_text": "(5.756.456)",
+          "sign_evidence": "parentheses",
+          "value": "-5756456",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 24,
+        "selected_raw_value": "(5.756.456)",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-024-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "-5617703",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "(5.617.703)",
+          "reader_score": 0.9805536866188049,
+          "sign_evidence": "parentheses"
+        },
+        "crop_sha256": "9b6512e8deb67d40d1cb864eab30d1d2144958b3184de36955b179733417f7ac",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "-5617703",
+        "page": 3,
+        "primary": {
+          "normalized_text": "-5617703",
+          "observation": "VALUE",
+          "raw_text": "(5.617.703)",
+          "sign_evidence": "parentheses",
+          "value": "-5617703",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 24,
+        "selected_raw_value": "(5.617.703)",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-025-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "1783634",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "1.783.634",
+          "reader_score": 0.9961116313934326,
+          "sign_evidence": null
+        },
+        "crop_sha256": "019461042ef160b8e41a4ad54f6664f3debcdbf4013937cbbe0a6325b048d201",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "1783634",
+        "page": 3,
+        "primary": {
+          "normalized_text": "1783634",
+          "observation": "VALUE",
+          "raw_text": "1.783.634",
+          "sign_evidence": null,
+          "value": "1783634",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 25,
+        "selected_raw_value": "1.783.634",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-025-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "1811014",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "1.811.014",
+          "reader_score": 0.9820886254310608,
+          "sign_evidence": null
+        },
+        "crop_sha256": "475e5727eec1e892ad75ea08a785f8b5e0f25edaedd3605a64d41cc6e1e3f48f",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "1811014",
+        "page": 3,
+        "primary": {
+          "normalized_text": "1811014",
+          "observation": "VALUE",
+          "raw_text": "1.811.014",
+          "sign_evidence": null,
+          "value": "1811014",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 25,
+        "selected_raw_value": "1.811.014",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-026-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "5762160",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "5.762.160",
+          "reader_score": 0.9949930906295776,
+          "sign_evidence": null
+        },
+        "crop_sha256": "0eac36e45e5b7577d45c7c1432dc914685374b3c4bb76ea448e8bc3baf1c8369",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "5762160",
+        "page": 3,
+        "primary": {
+          "normalized_text": "5762160",
+          "observation": "VALUE",
+          "raw_text": "5.762.160",
+          "sign_evidence": null,
+          "value": "5762160",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 26,
+        "selected_raw_value": "5.762.160",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-026-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "5684904",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "5.684.904",
+          "reader_score": 0.9983372092247009,
+          "sign_evidence": null
+        },
+        "crop_sha256": "0dd89dbeba54f50b8ef1df21d2a3572dedf5fe024bbe02e4b17dcb114f7c168a",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "5684904",
+        "page": 3,
+        "primary": {
+          "normalized_text": "5684904",
+          "observation": "VALUE",
+          "raw_text": "5.684.904",
+          "sign_evidence": null,
+          "value": "5684904",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 26,
+        "selected_raw_value": "5.684.904",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-027-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "-3978526",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "(3.978.526)",
+          "reader_score": 0.9826257824897766,
+          "sign_evidence": "parentheses"
+        },
+        "crop_sha256": "80fcedf216e0295017e27fafd7daeec7a473b7f556e35e88b7a72a95d21d1e34",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "-3978526",
+        "page": 3,
+        "primary": {
+          "normalized_text": "-3978526",
+          "observation": "VALUE",
+          "raw_text": "(3.978.526)",
+          "sign_evidence": "parentheses",
+          "value": "-3978526",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 27,
+        "selected_raw_value": "(3.978.526)",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-027-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "-3873890",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "(3.873.890)",
+          "reader_score": 0.955162763595581,
+          "sign_evidence": "parentheses"
+        },
+        "crop_sha256": "c40e8188d6fe3f21b3e6af0f7981b0d7af00a0602ddd4da0a1699ad7a320e970",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "-3873890",
+        "page": 3,
+        "primary": {
+          "normalized_text": "-3873890",
+          "observation": "VALUE",
+          "raw_text": "(3.873.890)",
+          "sign_evidence": "parentheses",
+          "value": "-3873890",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 27,
+        "selected_raw_value": "(3.873.890)",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-028-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "216314",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "216.314",
+          "reader_score": 0.9917820692062378,
+          "sign_evidence": null
+        },
+        "crop_sha256": "d6c940d2e7c2da529bacc3d06db585a7341f6dfc01130b6aba6364b996541ba7",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "216314",
+        "page": 3,
+        "primary": {
+          "normalized_text": "216314",
+          "observation": "VALUE",
+          "raw_text": "216.314",
+          "sign_evidence": null,
+          "value": "216314",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 28,
+        "selected_raw_value": "216.314",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-028-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "222813",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "222.813",
+          "reader_score": 0.8981223106384277,
+          "sign_evidence": null
+        },
+        "crop_sha256": "e1d7e3a1cf68f1d567741e28aa1dff546cc7b0e95b49919e2b44d2a49df10997",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "222813",
+        "page": 3,
+        "primary": {
+          "normalized_text": "222813",
+          "observation": "VALUE",
+          "raw_text": "222.813",
+          "sign_evidence": null,
+          "value": "222813",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 28,
+        "selected_raw_value": "222.813",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-029-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "250155",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "250.155",
+          "reader_score": 0.8507843017578125,
+          "sign_evidence": null
+        },
+        "crop_sha256": "44e82c8bb9fe289cfd929f964e780d42f9608c0923b7232f395c74f1405a837f",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "250155",
+        "page": 3,
+        "primary": {
+          "normalized_text": "250155",
+          "observation": "VALUE",
+          "raw_text": "250.155",
+          "sign_evidence": null,
+          "value": "250155",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 29,
+        "selected_raw_value": "250.155",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-029-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "255126",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "255.126",
+          "reader_score": 0.9351671934127808,
+          "sign_evidence": null
+        },
+        "crop_sha256": "13ff99ac2b9edf53780d3d3386f7db1dcb8a77a8c793cbc4d8283db9d9f4add3",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "255126",
+        "page": 3,
+        "primary": {
+          "normalized_text": "255126",
+          "observation": "VALUE",
+          "raw_text": "255.126",
+          "sign_evidence": null,
+          "value": "255126",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 29,
+        "selected_raw_value": "255.126",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-030-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "-33841",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "(33.841)",
+          "reader_score": 0.9653042554855347,
+          "sign_evidence": "parentheses"
+        },
+        "crop_sha256": "d8569a663beb80094db2f3639beea507ec4f83bd2e3de77ed4b3fffb7158c9a4",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "-33841",
+        "page": 3,
+        "primary": {
+          "normalized_text": "-33841",
+          "observation": "VALUE",
+          "raw_text": "(33.841)",
+          "sign_evidence": "parentheses",
+          "value": "-33841",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 30,
+        "selected_raw_value": "(33.841)",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-030-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "-32313",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "(32.313)",
+          "reader_score": 0.9209326505661011,
+          "sign_evidence": "parentheses"
+        },
+        "crop_sha256": "649387ca819a75bc2f254d8048fb96b03231b248636ea3e4ebb24fe8c400d5ad",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "-32313",
+        "page": 3,
+        "primary": {
+          "normalized_text": "-32313",
+          "observation": "VALUE",
+          "raw_text": "(32.313)",
+          "sign_evidence": "parentheses",
+          "value": "-32313",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 30,
+        "selected_raw_value": "(32.313)",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-031-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "42837663",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "42.837.663",
+          "reader_score": 0.9959751963615417,
+          "sign_evidence": null
+        },
+        "crop_sha256": "1121f4b69822263a329ce0d4d01156600bd01c2b50061469add669cad3713062",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "42837663",
+        "page": 3,
+        "primary": {
+          "normalized_text": "42837663",
+          "observation": "VALUE",
+          "raw_text": "42.837.663",
+          "sign_evidence": null,
+          "value": "42837663",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 31,
+        "selected_raw_value": "42.837.663",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-031-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "49531482",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "49.531.482",
+          "reader_score": 0.9902944564819336,
+          "sign_evidence": null
+        },
+        "crop_sha256": "95da135252999115e9410ae6dfff0480cb6c606535362b7663a5ff9b29529177",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "49531482",
+        "page": 3,
+        "primary": {
+          "normalized_text": "49531482",
+          "observation": "VALUE",
+          "raw_text": "49.531.482",
+          "sign_evidence": null,
+          "value": "49531482",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 31,
+        "selected_raw_value": "49.531.482",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-032-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "20164815",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "20.164.815",
+          "reader_score": 0.9826408624649048,
+          "sign_evidence": null
+        },
+        "crop_sha256": "8b92f46330dfbdf06b2ec7b91c07f9a29341a1241d456daf6c9a6ab4dcd42554",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "20164815",
+        "page": 3,
+        "primary": {
+          "normalized_text": "20164815",
+          "observation": "VALUE",
+          "raw_text": "20.164.815",
+          "sign_evidence": null,
+          "value": "20164815",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 32,
+        "selected_raw_value": "20.164.815",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-032-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "28125764",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "28.125.764",
+          "reader_score": 0.9833289980888367,
+          "sign_evidence": null
+        },
+        "crop_sha256": "1661a7c44f39f9431f041887140b0d8f3f7a589861546793e75c0716dbfa1f98",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "28125764",
+        "page": 3,
+        "primary": {
+          "normalized_text": "28125764",
+          "observation": "VALUE",
+          "raw_text": "28.125.764",
+          "sign_evidence": null,
+          "value": "28125764",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 32,
+        "selected_raw_value": "28.125.764",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-033-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "16082037",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "16.082.037",
+          "reader_score": 0.986822783946991,
+          "sign_evidence": null
+        },
+        "crop_sha256": "697c5f3242eef7b1e6818c24d88c2773e66b59b3d7e4730bad0605709944a29b",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "16082037",
+        "page": 3,
+        "primary": {
+          "normalized_text": "16082037",
+          "observation": "VALUE",
+          "raw_text": "16.082.037",
+          "sign_evidence": null,
+          "value": "16082037",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 33,
+        "selected_raw_value": "16.082.037",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-033-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "13549018",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "13.549.018",
+          "reader_score": 0.9946352243423462,
+          "sign_evidence": null
+        },
+        "crop_sha256": "6a92dea408fff8e233e34938e880795798636e11edfaee819e9995d27da436a0",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "13549018",
+        "page": 3,
+        "primary": {
+          "normalized_text": "13549018",
+          "observation": "VALUE",
+          "raw_text": "13.549.018",
+          "sign_evidence": null,
+          "value": "13549018",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 33,
+        "selected_raw_value": "13.549.018",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-034-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "37793",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "37.793",
+          "reader_score": 0.9221534729003906,
+          "sign_evidence": null
+        },
+        "crop_sha256": "f81ff8f417471e05431fe87b80b4951070c409dd5d9a53a58d78f44efdb96e5a",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "37793",
+        "page": 3,
+        "primary": {
+          "normalized_text": "37793",
+          "observation": "VALUE",
+          "raw_text": "37.793",
+          "sign_evidence": null,
+          "value": "37793",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 34,
+        "selected_raw_value": "37.793",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-034-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "34339",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "34.339",
+          "reader_score": 0.9777757525444031,
+          "sign_evidence": null
+        },
+        "crop_sha256": "56e88baf3b90f7617a88f08c01b4bef1b71817ece35482326501320a2efc72f7",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "34339",
+        "page": 3,
+        "primary": {
+          "normalized_text": "34339",
+          "observation": "VALUE",
+          "raw_text": "34.339",
+          "sign_evidence": null,
+          "value": "34339",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 34,
+        "selected_raw_value": "34.339",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-035-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "6622398",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "6.622.398",
+          "reader_score": 0.9888285398483276,
+          "sign_evidence": null
+        },
+        "crop_sha256": "7d95b7a2b737524d2b8bcd55377633f9f09655f29d79ad294223b6d8c1d336e0",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "6622398",
+        "page": 3,
+        "primary": {
+          "normalized_text": "6622398",
+          "observation": "VALUE",
+          "raw_text": "6.622.398",
+          "sign_evidence": null,
+          "value": "6622398",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 35,
+        "selected_raw_value": "6.622.398",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-035-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "7894091",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "7.894.091",
+          "reader_score": 0.9983353018760681,
+          "sign_evidence": null
+        },
+        "crop_sha256": "19791328e8ede066af43bc26e17aa203fde0e9c956fb667c8d3115837beb4465",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "7894091",
+        "page": 3,
+        "primary": {
+          "normalized_text": "7894091",
+          "observation": "VALUE",
+          "raw_text": "7.894.091",
+          "sign_evidence": null,
+          "value": "7894091",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 35,
+        "selected_raw_value": "7.894.091",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-036-axis-1",
+        "challenger": {
+          "parse_reason": "unsupported characters",
+          "parsed_observation": "INVALID",
+          "parsed_value": null,
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "69.380)",
+          "reader_score": 0.9571012258529663,
+          "sign_evidence": null
+        },
+        "crop_sha256": "e79ffdcb6eb6b9a3b0e41afb58cc147a7658bff0ad0e295a7d865400108f9e06",
+        "decision": "ABSTAIN_AND_RETAIN_BOTH_READER_PROPOSALS",
+        "final_value_status": null,
+        "normalized_numeric_value": null,
+        "page": 3,
+        "primary": {
+          "normalized_text": "-69380",
+          "observation": "VALUE",
+          "raw_text": "(69.380)",
+          "sign_evidence": "parentheses",
+          "value": "-69380",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 36,
+        "selected_raw_value": null,
+        "verification_status": "UNRESOLVED_READER_DISAGREEMENT"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-036-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "-71730",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "(71.730)",
+          "reader_score": 0.9527732133865356,
+          "sign_evidence": "parentheses"
+        },
+        "crop_sha256": "0fd5995fe08ce42063434165a11ded96cf984acd51a0051958b059213cc42aee",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "-71730",
+        "page": 3,
+        "primary": {
+          "normalized_text": "-71730",
+          "observation": "VALUE",
+          "raw_text": "(71.730)",
+          "sign_evidence": "parentheses",
+          "value": "-71730",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 36,
+        "selected_raw_value": "(71.730)",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0003-row-037-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "1611222764",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "1.611.222.764",
+          "reader_score": 0.9927186965942383,
+          "sign_evidence": null
+        },
+        "crop_sha256": "8e843d503ff3b929acc2f30c8cbdaf010a2128da4ccf2738ea87eab64db0fac3",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "1611222764",
+        "page": 3,
+        "primary": {
+          "normalized_text": "1611222764",
+          "observation": "VALUE",
+          "raw_text": "1.611.222.764",
+          "sign_evidence": null,
+          "value": "1611222764",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 37,
+        "selected_raw_value": "1.611.222.764",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0003-row-037-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "1615763927",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "1.615.763.927",
+          "reader_score": 0.9996665716171265,
+          "sign_evidence": null
+        },
+        "crop_sha256": "ad2aad61a860fbf2bb6497c107539560df8b4f4a5b3f33a5f8911dd48c5b72b7",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "1615763927",
+        "page": 3,
+        "primary": {
+          "normalized_text": "1615763927",
+          "observation": "VALUE",
+          "raw_text": "1.615.763.927",
+          "sign_evidence": null,
+          "value": "1615763927",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 37,
+        "selected_raw_value": "1.615.763.927",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0004-row-000-axis-1",
+        "challenger": {
+          "parse_reason": "unsupported characters",
+          "parsed_observation": "INVALID",
+          "parsed_value": null,
+          "proposal_status": "REJECT_NON_NUMERIC_CHARACTERS",
+          "raw_text": "E",
+          "reader_score": 0.16999313235282898,
+          "sign_evidence": null
+        },
+        "crop_sha256": "f0928c21d533b6cb819304df3a3fb56e4cc6a672d1f73b51d5f5b5723999506a",
+        "decision": "RETAIN_BLANK_WITHOUT_ZERO_OR_VALUE_PROMOTION",
+        "final_value_status": null,
+        "normalized_numeric_value": null,
+        "page": 4,
+        "primary": {
+          "normalized_text": "",
+          "observation": "BLANK",
+          "raw_text": "",
+          "sign_evidence": null,
+          "value": null,
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 0,
+        "selected_raw_value": null,
+        "verification_status": "UNRESOLVED_BLANK_PENDING_ROW_SEMANTICS"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0004-row-000-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "BLANK",
+          "parsed_value": null,
+          "proposal_status": "EMPTY_PROPOSAL",
+          "raw_text": "",
+          "reader_score": 0.0,
+          "sign_evidence": null
+        },
+        "crop_sha256": "b7a9586662b2b7b1c9adb3b3e365b01551afef5c8ff72127d8bdc038539ce29c",
+        "decision": "RETAIN_BLANK_WITHOUT_ZERO_OR_VALUE_PROMOTION",
+        "final_value_status": null,
+        "normalized_numeric_value": null,
+        "page": 4,
+        "primary": {
+          "normalized_text": "",
+          "observation": "BLANK",
+          "raw_text": "",
+          "sign_evidence": null,
+          "value": null,
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 0,
+        "selected_raw_value": null,
+        "verification_status": "UNRESOLVED_BLANK_PENDING_ROW_SEMANTICS"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0004-row-001-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "28346499",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "28.346.499",
+          "reader_score": 0.9988914728164673,
+          "sign_evidence": null
+        },
+        "crop_sha256": "085be351f6b34392ec1bfc5d088f34836417fabda92e2af261e17d079f56dcb2",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "28346499",
+        "page": 4,
+        "primary": {
+          "normalized_text": "28346499",
+          "observation": "VALUE",
+          "raw_text": "28.346.499",
+          "sign_evidence": null,
+          "value": "28346499",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 1,
+        "selected_raw_value": "28.346.499",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0004-row-001-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "47474800",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "47.474.800",
+          "reader_score": 0.9313710927963257,
+          "sign_evidence": null
+        },
+        "crop_sha256": "cf5e3db00af5a1e2456f1f5edfebeaacb0591b901ad548b980192a2073442625",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "47474800",
+        "page": 4,
+        "primary": {
+          "normalized_text": "47474800",
+          "observation": "VALUE",
+          "raw_text": "47.474.800",
+          "sign_evidence": null,
+          "value": "47474800",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 1,
+        "selected_raw_value": "47.474.800",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0004-row-002-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "256891475",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "256.891.475",
+          "reader_score": 0.9995242953300476,
+          "sign_evidence": null
+        },
+        "crop_sha256": "82674f2fb673b94a2b80c31902db6f8c4426838c7299836134d31b37fafaa479",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "256891475",
+        "page": 4,
+        "primary": {
+          "normalized_text": "256891475",
+          "observation": "VALUE",
+          "raw_text": "256.891.475",
+          "sign_evidence": null,
+          "value": "256891475",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 2,
+        "selected_raw_value": "256.891.475",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0004-row-002-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "248017489",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "248.017.489",
+          "reader_score": 0.9981406927108765,
+          "sign_evidence": null
+        },
+        "crop_sha256": "8619b7289451898a2669f94af2aaf505a5516ed0d56fab9316ddda386383d8ba",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "248017489",
+        "page": 4,
+        "primary": {
+          "normalized_text": "248017489",
+          "observation": "VALUE",
+          "raw_text": "248.017.489",
+          "sign_evidence": null,
+          "value": "248017489",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 2,
+        "selected_raw_value": "248.017.489",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0004-row-003-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "905918332",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "905.918.332",
+          "reader_score": 0.9687748551368713,
+          "sign_evidence": null
+        },
+        "crop_sha256": "2370d2a77b9cecf2bf5f4806a121ae1025fcf7f87b2027d4a510c89f4b679c0a",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "905918332",
+        "page": 4,
+        "primary": {
+          "normalized_text": "905918332",
+          "observation": "VALUE",
+          "raw_text": "905.918.332",
+          "sign_evidence": null,
+          "value": "905918332",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 3,
+        "selected_raw_value": "905.918.332",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0004-row-003-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "921368132",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "921.368.132",
+          "reader_score": 0.9994633197784424,
+          "sign_evidence": null
+        },
+        "crop_sha256": "845fd14a86440f82879cfa8bf3d376b66b8b4c86b6884bbc3f0c1449a915a45a",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "921368132",
+        "page": 4,
+        "primary": {
+          "normalized_text": "921368132",
+          "observation": "VALUE",
+          "raw_text": "921.368.132",
+          "sign_evidence": null,
+          "value": "921368132",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 3,
+        "selected_raw_value": "921.368.132",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0004-row-004-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "661326",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "661.326",
+          "reader_score": 0.9953464269638062,
+          "sign_evidence": null
+        },
+        "crop_sha256": "0d094d353d2f2d38d6d03f28668d688df7e671015240eba392c5199dff4b2063",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "661326",
+        "page": 4,
+        "primary": {
+          "normalized_text": "661326",
+          "observation": "VALUE",
+          "raw_text": "661.326",
+          "sign_evidence": null,
+          "value": "661326",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 4,
+        "selected_raw_value": "661.326",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0004-row-004-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "698507",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "698.507",
+          "reader_score": 0.9968157410621643,
+          "sign_evidence": null
+        },
+        "crop_sha256": "994ba664a24969a548399e681198318140f99a5fda123a5b7b2861c46a75a2a8",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "698507",
+        "page": 4,
+        "primary": {
+          "normalized_text": "698507",
+          "observation": "VALUE",
+          "raw_text": "698.507",
+          "sign_evidence": null,
+          "value": "698507",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 4,
+        "selected_raw_value": "698.507",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0004-row-005-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "3247015",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "3.247.015",
+          "reader_score": 0.9983182549476624,
+          "sign_evidence": null
+        },
+        "crop_sha256": "ed2f5d2935f57749fbb035d689e7e6801e325e002fe33ed65d607c3aca3a2bfb",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "3247015",
+        "page": 4,
+        "primary": {
+          "normalized_text": "3247015",
+          "observation": "VALUE",
+          "raw_text": "3.247.015",
+          "sign_evidence": null,
+          "value": "3247015",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 5,
+        "selected_raw_value": "3.247.015",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0004-row-005-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "3912833",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "3.912.833",
+          "reader_score": 0.9870727062225342,
+          "sign_evidence": null
+        },
+        "crop_sha256": "140f0cc279b725bc08abd1a5c18ab6db46663bf9c1947b1f897bd7c2b75eb8d4",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "3912833",
+        "page": 4,
+        "primary": {
+          "normalized_text": "3912833",
+          "observation": "VALUE",
+          "raw_text": "3.912.833",
+          "sign_evidence": null,
+          "value": "3912833",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 5,
+        "selected_raw_value": "3.912.833",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0004-row-006-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "208816453",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "208.816.453",
+          "reader_score": 0.9994644522666931,
+          "sign_evidence": null
+        },
+        "crop_sha256": "0e2827d50fe55370a922ab0896fc7b47e227a0528210980569ee5a457eb681f2",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "208816453",
+        "page": 4,
+        "primary": {
+          "normalized_text": "208816453",
+          "observation": "VALUE",
+          "raw_text": "208.816.453",
+          "sign_evidence": null,
+          "value": "208816453",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 6,
+        "selected_raw_value": "208.816.453",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0004-row-006-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "187236104",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "187.236.104",
+          "reader_score": 0.9506759643554688,
+          "sign_evidence": null
+        },
+        "crop_sha256": "53c5e4ebc4263c059aba56a27a4d831df2b50c239aaea655ac39c2e35be6817c",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "187236104",
+        "page": 4,
+        "primary": {
+          "normalized_text": "187236104",
+          "observation": "VALUE",
+          "raw_text": "187.236.104",
+          "sign_evidence": null,
+          "value": "187236104",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 6,
+        "selected_raw_value": "187.236.104",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0004-row-007-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "57596339",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "57.596.339",
+          "reader_score": 0.9982198476791382,
+          "sign_evidence": null
+        },
+        "crop_sha256": "2d35b469ef9a298cec83fb8e6a6873987369978829bac5f8c8d9f09a2fe95a7e",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "57596339",
+        "page": 4,
+        "primary": {
+          "normalized_text": "57596339",
+          "observation": "VALUE",
+          "raw_text": "57.596.339",
+          "sign_evidence": null,
+          "value": "57596339",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 7,
+        "selected_raw_value": "57.596.339",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0004-row-007-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "65033537",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "65.033.537",
+          "reader_score": 0.9988645315170288,
+          "sign_evidence": null
+        },
+        "crop_sha256": "84385d43de389120cf9f8e76f3c6defb1d02568c130cad3726b6d6524d4074ba",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "65033537",
+        "page": 4,
+        "primary": {
+          "normalized_text": "65033537",
+          "observation": "VALUE",
+          "raw_text": "65.033.537",
+          "sign_evidence": null,
+          "value": "65033537",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 7,
+        "selected_raw_value": "65.033.537",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0004-row-008-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "16185467",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "16.185.467",
+          "reader_score": 0.9977448582649231,
+          "sign_evidence": null
+        },
+        "crop_sha256": "a986fffd53e23e1c696af225f9011e698dde5b6a727e75ece32d3d9d42493e34",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "16185467",
+        "page": 4,
+        "primary": {
+          "normalized_text": "16185467",
+          "observation": "VALUE",
+          "raw_text": "16.185.467",
+          "sign_evidence": null,
+          "value": "16185467",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 8,
+        "selected_raw_value": "16.185.467",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0004-row-008-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "13245868",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "13.245.868",
+          "reader_score": 0.9989250898361206,
+          "sign_evidence": null
+        },
+        "crop_sha256": "3457ee00414a75a711be457ae49a359fe87d022fd6ac2161e9a914d9b7ba733f",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "13245868",
+        "page": 4,
+        "primary": {
+          "normalized_text": "13245868",
+          "observation": "VALUE",
+          "raw_text": "13.245.868",
+          "sign_evidence": null,
+          "value": "13245868",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 8,
+        "selected_raw_value": "13.245.868",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0004-row-009-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "DASH",
+          "parsed_value": null,
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "-",
+          "reader_score": 0.6403096914291382,
+          "sign_evidence": "dash"
+        },
+        "crop_sha256": "c8b14b9ee6c2b8695e7a5776718c2772baa4f728a0cce154a4d54c4691c45164",
+        "decision": "ACCEPT_DASH_WITH_READER_AND_PIXEL_AGREEMENT",
+        "final_value_status": "OBSERVED_ZERO",
+        "normalized_numeric_value": "0",
+        "page": 4,
+        "primary": {
+          "normalized_text": "-",
+          "observation": "DASH",
+          "raw_text": "-",
+          "sign_evidence": "dash",
+          "value": null,
+          "visual_punctuation_evidence": {
+            "aspect_ratio": 2.5,
+            "component_box": [
+              1853,
+              1517,
+              1863,
+              1521
+            ],
+            "crop_box": [
+              1796,
+              1496,
+              1874,
+              1544
+            ],
+            "fill_ratio": 0.85,
+            "foreground_contrast": 138.8,
+            "height_line_heights": 0.089888,
+            "observation": "DASH",
+            "source_image_path": "/workspace/bctc-ai/output/calibration/e0027-mbb-q1-2026-end-to-end/eebeda2ebc09b0d42032/renders/page-0004.png",
+            "threshold": 165.0,
+            "width_line_heights": 0.224719
+          }
+        },
+        "row_ordinal": 9,
+        "selected_raw_value": "-",
+        "verification_status": "VERIFIED_OBSERVED_DASH"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0004-row-009-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "DASH",
+          "parsed_value": null,
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "-",
+          "reader_score": 0.9464821815490723,
+          "sign_evidence": "dash"
+        },
+        "crop_sha256": "89dbecff198c2097fc6f1a0ead81c6cd1c622169b12178accc37a768636d856c",
+        "decision": "ACCEPT_DASH_WITH_READER_AND_PIXEL_AGREEMENT",
+        "final_value_status": "OBSERVED_ZERO",
+        "normalized_numeric_value": "0",
+        "page": 4,
+        "primary": {
+          "normalized_text": "-",
+          "observation": "DASH",
+          "raw_text": "-",
+          "sign_evidence": "dash",
+          "value": null,
+          "visual_punctuation_evidence": {
+            "aspect_ratio": 2.75,
+            "component_box": [
+              2384,
+              1514,
+              2395,
+              1518
+            ],
+            "crop_box": [
+              2327,
+              1496,
+              2405,
+              1544
+            ],
+            "fill_ratio": 0.863636,
+            "foreground_contrast": 126.204545,
+            "height_line_heights": 0.089888,
+            "observation": "DASH",
+            "source_image_path": "/workspace/bctc-ai/output/calibration/e0027-mbb-q1-2026-end-to-end/eebeda2ebc09b0d42032/renders/page-0004.png",
+            "threshold": 171.0,
+            "width_line_heights": 0.247191
+          }
+        },
+        "row_ordinal": 9,
+        "selected_raw_value": "-",
+        "verification_status": "VERIFIED_OBSERVED_DASH"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0004-row-010-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "41408.552",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "41,408.552",
+          "reader_score": 0.9535220861434937,
+          "sign_evidence": null
+        },
+        "crop_sha256": "975fd7722d3b80047e2650c9223b09542a8105ff568f2133cdc616f713b44c28",
+        "decision": "ABSTAIN_AND_RETAIN_BOTH_READER_PROPOSALS",
+        "final_value_status": null,
+        "normalized_numeric_value": null,
+        "page": 4,
+        "primary": {
+          "normalized_text": "41408552",
+          "observation": "VALUE",
+          "raw_text": "41.408.552",
+          "sign_evidence": null,
+          "value": "41408552",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 10,
+        "selected_raw_value": null,
+        "verification_status": "UNRESOLVED_READER_DISAGREEMENT"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0004-row-010-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "51785481",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "51.785.481",
+          "reader_score": 0.9630071520805359,
+          "sign_evidence": null
+        },
+        "crop_sha256": "56f877818ba490a3400640b5b84dba6ae0dd1845ae763790bc718eb3bcedea61",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "51785481",
+        "page": 4,
+        "primary": {
+          "normalized_text": "51785481",
+          "observation": "VALUE",
+          "raw_text": "51.785.481",
+          "sign_evidence": null,
+          "value": "51785481",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 10,
+        "selected_raw_value": "51.785.481",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0004-row-011-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "2.20",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "2.20",
+          "reader_score": 0.4477347731590271,
+          "sign_evidence": null
+        },
+        "crop_sha256": "e1bc6e96ff7200c90672f8d02e509a308941b8e8429eafd19f7224ee71ec1363",
+        "decision": "ABSTAIN_AND_RETAIN_BOTH_READER_PROPOSALS",
+        "final_value_status": null,
+        "normalized_numeric_value": null,
+        "page": 4,
+        "primary": {
+          "normalized_text": "2320",
+          "observation": "VALUE",
+          "raw_text": "2.320",
+          "sign_evidence": null,
+          "value": "2320",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 11,
+        "selected_raw_value": null,
+        "verification_status": "UNRESOLVED_READER_DISAGREEMENT"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0004-row-011-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "2188",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "2.188",
+          "reader_score": 0.6859890818595886,
+          "sign_evidence": null
+        },
+        "crop_sha256": "dfd382e773186feeae345d784def30bfb3d9d44bce9721e5a4ffad6b99e885b5",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "2188",
+        "page": 4,
+        "primary": {
+          "normalized_text": "2188",
+          "observation": "VALUE",
+          "raw_text": "2.188",
+          "sign_evidence": null,
+          "value": "2188",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 11,
+        "selected_raw_value": "2.188",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0004-row-012-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "1461477439",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "1.461.477.439",
+          "reader_score": 0.9558724761009216,
+          "sign_evidence": null
+        },
+        "crop_sha256": "8acb1956cf5f439cf2417e82e579b2195bb325304b44f9be9f706125ae764192",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "1461477439",
+        "page": 4,
+        "primary": {
+          "normalized_text": "1461477439",
+          "observation": "VALUE",
+          "raw_text": "1.461.477.439",
+          "sign_evidence": null,
+          "value": "1461477439",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 12,
+        "selected_raw_value": "1.461.477.439",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0004-row-012-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "1473741402",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "1.473.741.402",
+          "reader_score": 0.9969819784164429,
+          "sign_evidence": null
+        },
+        "crop_sha256": "153f4a3610f08ab0a7cd7756693b1d62bfa4870e972f49a54d222ba603bd0fbb",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "1473741402",
+        "page": 4,
+        "primary": {
+          "normalized_text": "1473741402",
+          "observation": "VALUE",
+          "raw_text": "1.473.741.402",
+          "sign_evidence": null,
+          "value": "1473741402",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 12,
+        "selected_raw_value": "1.473.741.402",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0004-row-013-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "BLANK",
+          "parsed_value": null,
+          "proposal_status": "EMPTY_PROPOSAL",
+          "raw_text": "",
+          "reader_score": 0.0,
+          "sign_evidence": null
+        },
+        "crop_sha256": "94b0c5cc8b755f7368eade1fbdd0c4b27d68b85ec0887aa699787d7216bd0e2e",
+        "decision": "RETAIN_BLANK_WITHOUT_ZERO_OR_VALUE_PROMOTION",
+        "final_value_status": null,
+        "normalized_numeric_value": null,
+        "page": 4,
+        "primary": {
+          "normalized_text": "",
+          "observation": "BLANK",
+          "raw_text": "",
+          "sign_evidence": null,
+          "value": null,
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 13,
+        "selected_raw_value": null,
+        "verification_status": "UNRESOLVED_BLANK_PENDING_ROW_SEMANTICS"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0004-row-013-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "BLANK",
+          "parsed_value": null,
+          "proposal_status": "EMPTY_PROPOSAL",
+          "raw_text": "",
+          "reader_score": 0.0,
+          "sign_evidence": null
+        },
+        "crop_sha256": "c445f2114f7a5d42453c966d6a690ed7dd377cc9d1854a5dc962e9e52eec766d",
+        "decision": "RETAIN_BLANK_WITHOUT_ZERO_OR_VALUE_PROMOTION",
+        "final_value_status": null,
+        "normalized_numeric_value": null,
+        "page": 4,
+        "primary": {
+          "normalized_text": "",
+          "observation": "BLANK",
+          "raw_text": "",
+          "sign_evidence": null,
+          "value": null,
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 13,
+        "selected_raw_value": null,
+        "verification_status": "UNRESOLVED_BLANK_PENDING_ROW_SEMANTICS"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0004-row-014-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "BLANK",
+          "parsed_value": null,
+          "proposal_status": "EMPTY_PROPOSAL",
+          "raw_text": "",
+          "reader_score": 0.0,
+          "sign_evidence": null
+        },
+        "crop_sha256": "46e5562ad5f78cb0a53c141c22d4c5b9dc724d4407881fab0291ad0832e2b358",
+        "decision": "RETAIN_BLANK_WITHOUT_ZERO_OR_VALUE_PROMOTION",
+        "final_value_status": null,
+        "normalized_numeric_value": null,
+        "page": 4,
+        "primary": {
+          "normalized_text": "",
+          "observation": "BLANK",
+          "raw_text": "",
+          "sign_evidence": null,
+          "value": null,
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 14,
+        "selected_raw_value": null,
+        "verification_status": "UNRESOLVED_BLANK_PENDING_ROW_SEMANTICS"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0004-row-014-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "BLANK",
+          "parsed_value": null,
+          "proposal_status": "EMPTY_PROPOSAL",
+          "raw_text": "",
+          "reader_score": 0.0,
+          "sign_evidence": null
+        },
+        "crop_sha256": "a25427b9d689ff07000695ffda6a04f585a0b8d6ff49e40460cef9ceeb9d12d2",
+        "decision": "RETAIN_BLANK_WITHOUT_ZERO_OR_VALUE_PROMOTION",
+        "final_value_status": null,
+        "normalized_numeric_value": null,
+        "page": 4,
+        "primary": {
+          "normalized_text": "",
+          "observation": "BLANK",
+          "raw_text": "",
+          "sign_evidence": null,
+          "value": null,
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 14,
+        "selected_raw_value": null,
+        "verification_status": "UNRESOLVED_BLANK_PENDING_ROW_SEMANTICS"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0004-row-015-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "83965544",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "83.965.544",
+          "reader_score": 0.9771812558174133,
+          "sign_evidence": null
+        },
+        "crop_sha256": "53804990174f53357b2572fe9ba12aa415cd3703d792b8505f990f4cb00e9ad0",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "83965544",
+        "page": 4,
+        "primary": {
+          "normalized_text": "83965544",
+          "observation": "VALUE",
+          "raw_text": "83.965.544",
+          "sign_evidence": null,
+          "value": "83965544",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 15,
+        "selected_raw_value": "83.965.544",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0004-row-015-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "83965544",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "83.965.544",
+          "reader_score": 0.9989045858383179,
+          "sign_evidence": null
+        },
+        "crop_sha256": "b77f8f9a2038280bf504e36e443d0aa3e03ed729102cd15f1c2acb8f18e903ae",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "83965544",
+        "page": 4,
+        "primary": {
+          "normalized_text": "83965544",
+          "observation": "VALUE",
+          "raw_text": "83.965.544",
+          "sign_evidence": null,
+          "value": "83965544",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 15,
+        "selected_raw_value": "83.965.544",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0004-row-016-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "80549999",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "80.549.999",
+          "reader_score": 0.8838138580322266,
+          "sign_evidence": null
+        },
+        "crop_sha256": "3b9af78b9e76536157476b0ecb8f5f1b7fb840093ba4e88809599745f575436f",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "80549999",
+        "page": 4,
+        "primary": {
+          "normalized_text": "80549999",
+          "observation": "VALUE",
+          "raw_text": "80.549.999",
+          "sign_evidence": null,
+          "value": "80549999",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 16,
+        "selected_raw_value": "80.549.999",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0004-row-016-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "80549999",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "80.549.999",
+          "reader_score": 0.9960652589797974,
+          "sign_evidence": null
+        },
+        "crop_sha256": "264f87e836f9c694c810a77075471e4b645b58ced53cc8879d1331b0642495db",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "80549999",
+        "page": 4,
+        "primary": {
+          "normalized_text": "80549999",
+          "observation": "VALUE",
+          "raw_text": "80.549.999",
+          "sign_evidence": null,
+          "value": "80549999",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 16,
+        "selected_raw_value": "80.549.999",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0004-row-017-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "1304334",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "1.304.334",
+          "reader_score": 0.9791911244392395,
+          "sign_evidence": null
+        },
+        "crop_sha256": "6af66d7d94bb127fd3aa32635da4bc87c807f573eacf8f4a81442bb044666f71",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "1304334",
+        "page": 4,
+        "primary": {
+          "normalized_text": "1304334",
+          "observation": "VALUE",
+          "raw_text": "1.304.334",
+          "sign_evidence": null,
+          "value": "1304334",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 17,
+        "selected_raw_value": "1.304.334",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0004-row-017-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "1304334",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "1.304.334",
+          "reader_score": 0.9908181428909302,
+          "sign_evidence": null
+        },
+        "crop_sha256": "d6f484a31b41b81689c0d19964b2d9e92a869d12fc280a54698b64faf1b200bb",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "1304334",
+        "page": 4,
+        "primary": {
+          "normalized_text": "1304334",
+          "observation": "VALUE",
+          "raw_text": "1.304.334",
+          "sign_evidence": null,
+          "value": "1304334",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 17,
+        "selected_raw_value": "1.304.334",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0004-row-018-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "2111211",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "2.111.211",
+          "reader_score": 0.9670295715332031,
+          "sign_evidence": null
+        },
+        "crop_sha256": "457cf1f4a294a58123054394ce151814bb1599c8c9bcddd9c7066c07974c2026",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "2111211",
+        "page": 4,
+        "primary": {
+          "normalized_text": "2111211",
+          "observation": "VALUE",
+          "raw_text": "2.111.211",
+          "sign_evidence": null,
+          "value": "2111211",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 18,
+        "selected_raw_value": "2.111.211",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0004-row-018-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "2111211",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "2.111.211",
+          "reader_score": 0.9505307674407959,
+          "sign_evidence": null
+        },
+        "crop_sha256": "e7fcfc2b96b0877fbd4f5a0bc3617876df77721bd7eab76063a32f3ac0637211",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "2111211",
+        "page": 4,
+        "primary": {
+          "normalized_text": "2111211",
+          "observation": "VALUE",
+          "raw_text": "2.111.211",
+          "sign_evidence": null,
+          "value": "2111211",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 18,
+        "selected_raw_value": "2.111.211",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0004-row-019-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "19352028",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "19.352.028",
+          "reader_score": 0.964026927947998,
+          "sign_evidence": null
+        },
+        "crop_sha256": "239d17503d797c7541456032b97e140af49d141a1d8667ecd1216210b5d03cc0",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "19352028",
+        "page": 4,
+        "primary": {
+          "normalized_text": "19352028",
+          "observation": "VALUE",
+          "raw_text": "19.352.028",
+          "sign_evidence": null,
+          "value": "19352028",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 19,
+        "selected_raw_value": "19.352.028",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0004-row-019-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "19390884",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "19.390.884",
+          "reader_score": 0.9847465753555298,
+          "sign_evidence": null
+        },
+        "crop_sha256": "76dba8c859c7b3c6398563fb8bfe5b4a04753b3427248fd23dfcefa0f9cd765e",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "19390884",
+        "page": 4,
+        "primary": {
+          "normalized_text": "19390884",
+          "observation": "VALUE",
+          "raw_text": "19.390.884",
+          "sign_evidence": null,
+          "value": "19390884",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 19,
+        "selected_raw_value": "19.390.884",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0004-row-020-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "205588",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "205.588",
+          "reader_score": 0.9340682029724121,
+          "sign_evidence": null
+        },
+        "crop_sha256": "b449517ca04c7192d7a101298cc74ad9b16f317f6297595146f83d9ef5efd154",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "205588",
+        "page": 4,
+        "primary": {
+          "normalized_text": "205588",
+          "observation": "VALUE",
+          "raw_text": "205.588",
+          "sign_evidence": null,
+          "value": "205588",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 20,
+        "selected_raw_value": "205.588",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0004-row-020-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "202211",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "202.211",
+          "reader_score": 0.9507144093513489,
+          "sign_evidence": null
+        },
+        "crop_sha256": "6559c0624ea484e8543c8a44d228029c6b8d9769dcd3bdc8d195fe89a3c0c3f3",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "202211",
+        "page": 4,
+        "primary": {
+          "normalized_text": "202211",
+          "observation": "VALUE",
+          "raw_text": "202.211",
+          "sign_evidence": null,
+          "value": "202211",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 20,
+        "selected_raw_value": "202.211",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0004-row-021-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "40061058",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "40.061.058",
+          "reader_score": 0.9916580319404602,
+          "sign_evidence": null
+        },
+        "crop_sha256": "b06ed41543ba93c970262542843707bf9ec02d4931cf55e5ec67e3b4b07b06c0",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "40061058",
+        "page": 4,
+        "primary": {
+          "normalized_text": "40061058",
+          "observation": "VALUE",
+          "raw_text": "40.061.058",
+          "sign_evidence": null,
+          "value": "40061058",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 21,
+        "selected_raw_value": "40.061.058",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0004-row-021-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "32577391",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "32.577.391",
+          "reader_score": 0.9469233751296997,
+          "sign_evidence": null
+        },
+        "crop_sha256": "c4394024b9a9c53a993f6caccaacf39bacea9a85ab242e3112cb1ac29d0c3e0e",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "32577391",
+        "page": 4,
+        "primary": {
+          "normalized_text": "32577391",
+          "observation": "VALUE",
+          "raw_text": "32.577.391",
+          "sign_evidence": null,
+          "value": "32577391",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 21,
+        "selected_raw_value": "32.577.391",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0004-row-022-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "6161107",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "6.161.107",
+          "reader_score": 0.9941815137863159,
+          "sign_evidence": null
+        },
+        "crop_sha256": "65890999de1f738c5b2b2176bdc8cb0024a173c4c4ac7e31efeffb3a757d8758",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "6161107",
+        "page": 4,
+        "primary": {
+          "normalized_text": "6161107",
+          "observation": "VALUE",
+          "raw_text": "6.161.107",
+          "sign_evidence": null,
+          "value": "6161107",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 22,
+        "selected_raw_value": "6.161.107",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0004-row-022-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "5886495",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "5.886.495",
+          "reader_score": 0.997773289680481,
+          "sign_evidence": null
+        },
+        "crop_sha256": "707c20f0a8e4a2bebe1d1053bfa487679dce86fbe36956bcaeec2eea139e205f",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "5886495",
+        "page": 4,
+        "primary": {
+          "normalized_text": "5886495",
+          "observation": "VALUE",
+          "raw_text": "5.886.495",
+          "sign_evidence": null,
+          "value": "5886495",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 22,
+        "selected_raw_value": "5.886.495",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0004-row-023-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "149745325",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "149.745.325",
+          "reader_score": 0.965140700340271,
+          "sign_evidence": null
+        },
+        "crop_sha256": "d946e57614a5abda23c645f826324bb47291f66a45d11963c9ad27cd971d6fa9",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "149745325",
+        "page": 4,
+        "primary": {
+          "normalized_text": "149745325",
+          "observation": "VALUE",
+          "raw_text": "149.745.325",
+          "sign_evidence": null,
+          "value": "149745325",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 23,
+        "selected_raw_value": "149.745.325",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0004-row-023-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "142022525",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "142.022.525",
+          "reader_score": 0.9910765290260315,
+          "sign_evidence": null
+        },
+        "crop_sha256": "b2bc9a083ccb4d54e007b422732ca001ccc69542d30c79ffbe216b3cef1b11a7",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "142022525",
+        "page": 4,
+        "primary": {
+          "normalized_text": "142022525",
+          "observation": "VALUE",
+          "raw_text": "142.022.525",
+          "sign_evidence": null,
+          "value": "142022525",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 23,
+        "selected_raw_value": "142.022.525",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-1",
+        "axis_ordinal": 0,
+        "cell_id": "page-0004-row-024-axis-1",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "1611222764",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "1.611.222.764",
+          "reader_score": 0.9025981426239014,
+          "sign_evidence": null
+        },
+        "crop_sha256": "78e34f9de0a8bbe5ce7f3cf7b1c19fa8e39cd5d8d76e778acd53e29615b1679a",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "1611222764",
+        "page": 4,
+        "primary": {
+          "normalized_text": "1611222764",
+          "observation": "VALUE",
+          "raw_text": "1.611.222.764",
+          "sign_evidence": null,
+          "value": "1611222764",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 24,
+        "selected_raw_value": "1.611.222.764",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      },
+      {
+        "axis_id": "value-2",
+        "axis_ordinal": 1,
+        "cell_id": "page-0004-row-024-axis-2",
+        "challenger": {
+          "parse_reason": null,
+          "parsed_observation": "VALUE",
+          "parsed_value": "1615763927",
+          "proposal_status": "NUMERIC_CHARACTERS_ONLY_PROPOSAL",
+          "raw_text": "1.615.763.927",
+          "reader_score": 0.9810086488723755,
+          "sign_evidence": null
+        },
+        "crop_sha256": "2643d1bbd61a879e6c5127cb42ba6552d8c194604ba4e73747a700343f4845e3",
+        "decision": "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT",
+        "final_value_status": "OBSERVED_VALUE",
+        "normalized_numeric_value": "1615763927",
+        "page": 4,
+        "primary": {
+          "normalized_text": "1615763927",
+          "observation": "VALUE",
+          "raw_text": "1.615.763.927",
+          "sign_evidence": null,
+          "value": "1615763927",
+          "visual_punctuation_evidence": null
+        },
+        "row_ordinal": 24,
+        "selected_raw_value": "1.615.763.927",
+        "verification_status": "VERIFIED_OBSERVED_VALUE"
+      }
+    ],
+    "format_version": 1,
+    "metrics": {
+      "automatic_reader_overwrite_count": 0,
+      "blank_cell_count": 9,
+      "blank_to_zero_or_value_promotion_count": 0,
+      "cell_count": 126,
+      "observed_cell_count": 117,
+      "observed_exact_agreement_rate": 0.974359,
+      "primary_observation_counts": {
+        "BLANK": 9,
+        "DASH": 3,
+        "VALUE": 114
+      },
+      "reader_proposal_status_counts": {
+        "EMPTY_PROPOSAL": 8,
+        "NUMERIC_CHARACTERS_ONLY_PROPOSAL": 117,
+        "REJECT_NON_NUMERIC_CHARACTERS": 1
+      },
+      "reader_score_decision_use_count": 0,
+      "unresolved_observed_cell_count": 3,
+      "verification_status_counts": {
+        "UNRESOLVED_BLANK_PENDING_ROW_SEMANTICS": 9,
+        "UNRESOLVED_READER_DISAGREEMENT": 3,
+        "VERIFIED_OBSERVED_DASH": 3,
+        "VERIFIED_OBSERVED_VALUE": 111
+      },
+      "verified_observed_cell_count": 114
+    },
+    "policy": "EXACT_VALUE_SIGN_AND_PIXEL_DASH_AGREEMENT_V1"
+  },
+  "before": {
+    "status": "SINGLE_READER_NUMERIC_CELLS_NOT_INDEPENDENTLY_VERIFIED",
+    "verified_observed_cell_count": 0
+  },
+  "capture_git_commit": "665454df1d0b0f855d246343bd5d8eada6035d77",
+  "capture_git_dirty": false,
+  "claim_boundary": "E-0031 measures independent numeric/sign/dash agreement on the already accepted and reconstructed MBB CDKT pages 3-4. Exact agreement verifies a bounded cell proposal; disagreement abstains. It does not verify Vietnamese labels, row semantics for blank cells, schema IDs, accounting equations, Excel output, human-gold accuracy or untouched-holdout performance.",
+  "crop_registry": {
+    "path": "output/calibration/e0031-mbb-cdkt-numeric-cells/crop_registry.json",
+    "sha256": "b8c64b86ece697d909bb10e8bddbba8f0dac9406f5471042cc4af5699010224c",
+    "size_bytes": 180495
+  },
+  "dataset_role": "CALIBRATION",
+  "development_note": "The 0.95 agreement and six-cell abstention gates were selected after a dirty development smoke on this calibration block. They are calibration controls, not untouched-holdout thresholds or an accuracy claim. No expected value, disagreement cell identity, human review, schema ID or historical value is encoded in this control.",
+  "experiment_config": {
+    "path": "config/experiments/e0031-mbb-cdkt-numeric-verification.yaml",
+    "sha256": "69fdc3ec049d8589cf047fa1203376c74b275306234abd3761e5cd8c061db1bc",
+    "size_bytes": 3185
+  },
+  "experiment_id": "E-0031",
+  "format_version": 1,
+  "gates": {
+    "all_blank_cells_retained": true,
+    "exact_cell_count": true,
+    "exact_page_set": true,
+    "exact_primary_observation_counts": true,
+    "exact_row_count": true,
+    "exact_verified_dash_count": true,
+    "maximum_unresolved_observed_cells": true,
+    "minimum_observed_exact_agreement_rate": true,
+    "off_balance_page_not_loaded": true,
+    "one_model_load_session": true,
+    "reader_score_not_used": true,
+    "zero_automatic_overwrite": true,
+    "zero_crop_clips": true
+  },
+  "reader_manifest": {
+    "path": "output/calibration/e0031-mbb-cdkt-numeric-reader/run_manifest.json",
+    "sha256": "85d245599ed5e09554cca741bdaa21a95607b37f2ece2cc11a50312cee74edf1",
+    "size_bytes": 3040
+  },
+  "reader_predictions": {
+    "path": "output/calibration/e0031-mbb-cdkt-numeric-reader/predictions.json",
+    "sha256": "797f74481a08f0614c5479d3cabfade2406ccbc80827c8df92785c72a4a5c3cd",
+    "size_bytes": 49328
+  },
+  "reference_isolation": {
+    "accounting_validation_invoked": false,
+    "blank_promoted_to_zero_or_value": false,
+    "e0022_evidence_loaded": false,
+    "excel_export_invoked": false,
+    "historical_or_mongodb_values_loaded": false,
+    "human_review_loaded": false,
+    "numeric_reader_probability_used_for_acceptance": false,
+    "off_balance_page_5_loaded": false,
+    "period_or_unit_loaded_by_numeric_reader": false,
+    "reader_disagreement_automatically_repaired": false,
+    "row_labels_loaded_by_numeric_reader": false,
+    "schema_mapping_invoked": false,
+    "template_labels_or_report_norm_ids_loaded": false
+  },
+  "source_artifacts": [
+    {
+      "path": "output/calibration/e0027-mbb-q1-2026-end-to-end/eebeda2ebc09b0d42032/renders/page-0003.png",
+      "sha256": "40544c98908d2ca59d5e78a840594cbbea1622d33ac6a72b187c413670bef599",
+      "size_bytes": 1709301
+    },
+    {
+      "path": "output/calibration/e0027-mbb-q1-2026-end-to-end-role-c/ppocrv6-page-0003/ocr_result.json",
+      "sha256": "070dc9045cab52669a9bee9f548996cf7d3e4125cc93077400bbc916cbe666f2",
+      "size_bytes": 145594
+    },
+    {
+      "path": "output/calibration/e0027-mbb-q1-2026-end-to-end/eebeda2ebc09b0d42032/renders/page-0004.png",
+      "sha256": "0c872315d09faebaba24c3b4badcc355d235841b0e1e57d4dda443e76f7b16b7",
+      "size_bytes": 1033463
+    },
+    {
+      "path": "output/calibration/e0027-mbb-q1-2026-end-to-end-role-c/ppocrv6-page-0004/ocr_result.json",
+      "sha256": "6ef9d5af3b87ee4368bb63fd8ee5f02832104404f39820e659fdd79c37cd3bd4",
+      "size_bytes": 93433
+    }
+  ],
+  "status": "PASS_REFERENCE_BLIND_INDEPENDENT_NUMERIC_VERIFICATION",
+  "verified_inputs": {
+    "crop_algorithm": {
+      "path": "src/bctc_ai/evaluation/numeric_cell_crops.py",
+      "sha256": "36f68a0db459cb71d1b1980c41df1c8eea7efa1051d94ceb33202568fb491d37",
+      "size_bytes": 15714
+    },
+    "crop_policy": {
+      "path": "config/tables/numeric-cell-crops-v1.yaml",
+      "sha256": "87325d9fcc58b384e908b9093b0c2dfd82020543bc633b8d79ae58b69fa6fd2c",
+      "size_bytes": 891
+    },
+    "e0029_row_contract": {
+      "path": "docs/experiments/E-0029-mbb-cdkt-row-reconstruction.json",
+      "sha256": "affe74a243e342b56c4ead2fac984f10d9a1f42378823b50ccdde8946eeed373",
+      "size_bytes": 92652
+    },
+    "model_config": {
+      "path": "config/models/numeric-recognizer-v1.toml",
+      "sha256": "2e17cdad62d452e8591afd697781ebceb6d483df14570bb7b8b4281ed1a40b03",
+      "size_bytes": 1815
+    },
+    "ocr_batch": {
+      "path": "output/calibration/e0027-mbb-q1-2026-end-to-end-role-c/batch_manifest.json",
+      "sha256": "0d94762ba4a0d383793fe93a56e48fa7b79d6a3f7faaf62e9dcf40935b8c2889",
+      "size_bytes": 13563
+    },
+    "reader_algorithm": {
+      "path": "src/bctc_ai/ocr/numeric_cell_reader.py",
+      "sha256": "f6e6c48df134890170dd94c919eca03fe17c4d6e6021b7fa3c8b742dbf84cca3",
+      "size_bytes": 12941
+    },
+    "verification_algorithm": {
+      "path": "src/bctc_ai/evaluation/numeric_cell_verification.py",
+      "sha256": "1698b1c85d9b09f245dd364e0a64ab955aa9df73d1ecdab6d013c4a28ccb23c2",
+      "size_bytes": 10321
+    }
+  }
+}
