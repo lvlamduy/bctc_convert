@@ -1,8 +1,8 @@
 # Progress report
 
-- Updated: 2026-08-06T08:30:00+00:00
+- Updated: 2026-08-06T08:49:00+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `09670c0`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
+- Latest clean, tested, pushed checkpoint: `e0496e2`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
@@ -300,8 +300,18 @@
 
 ## Currently in progress
 
-- Selecting and freezing an independent-bank/period Role A/Role B holdout for
-  the already-fixed E-0021 correction thresholds is now in progress.
+- E-0022 now freezes an ACB consolidated Q1/2026 searchable/scan pair as
+  `UNTOUCHED_HOLDOUT`, selected only from registry filename metadata while both
+  sources remained offloaded and locally absent. Role assignments were made at
+  `2026-08-06T08:34:37Z`; code/config/model/schema identities were frozen at
+  `2026-08-06T08:35:17Z`. Role B must be hydrated, processed and sealed before
+  Role A source access, and the frozen thresholds cannot be tuned on this pair.
+- A reusable ordered-subgraph mapper is being specified for blocks where PDF
+  row count exceeds applicable schema-row count. It will align the entire PDF
+  block to workbook display order with dynamic programming or bounded beam
+  search, preserve unmatched PDF rows, use hierarchy and neighbor anchors to
+  disambiguate duplicate labels, and abstain unless the best structurally valid
+  path has a configured margin over alternatives.
 - Raw-PDF-dependent experiments now hydrate only their bounded registered inputs
   from the immutable S3 manifest and must not overwrite a mismatched local file.
 
@@ -336,6 +346,11 @@
   complete, tests that require raw PDFs must explicitly hydrate required paths;
   control-plane checks must never claim local source-byte verification while
   those files are absent.
+- Independent row-wise mapping can select locally plausible but globally
+  incompatible duplicate labels, and can force extra PDF rows into a smaller
+  schema cluster. The next mapping change must therefore score one monotone
+  cluster path, distinguish PDF skips from absent schema rows, and expose the
+  runner-up path and score margin instead of hiding ambiguity.
 
 ## Current strategy
 
@@ -347,41 +362,53 @@
 4. Rank schema candidates lexicographically by statement/table context, parent,
    previous/next template rows, indentation/numbering, then normalized label.
    Same-bank and cross-bank history are lower-priority weak evidence only.
-5. Validate period bindings, raw/normalized numeric semantics, signs, horizontal
+5. When independent row candidates are insufficient, align the whole local
+   block against the ordered `SchemaGraph`. Use workbook `display_order` rather
+   than numeric ReportNormId order; allow explicit PDF-row and schema-row skips;
+   score label/accounting meaning, statement/section, parent/level, indentation,
+   previous/next order and mapped neighbor anchors. Accept only a structurally
+   valid best path with a clear runner-up margin; otherwise return
+   `AMBIGUOUS_MAPPING` with ranked evidence for review.
+6. Validate period bindings, raw/normalized numeric semantics, signs, horizontal
    and vertical arithmetic, parent-child totals, and template display order.
-6. Escalate only localized failures to high-resolution rereads and independent
+7. Escalate only localized failures to high-resolution rereads and independent
    readers. Reader agreement is supporting evidence, never automatic truth.
-7. Fuse specialized readers on a fixed source-space row grid: PP-OCRv6 preserves
+8. Fuse specialized readers on a fixed source-space row grid: PP-OCRv6 preserves
    row/cell pixels and values; DeepSeek proposes Vietnamese labels and order.
    Numeric fingerprints may gate a structural overflow hypothesis but never
    replace output values. Require a score margin and abstain on ambiguity. None
    of the readers can independently map IDs or establish numeric truth.
-8. Segment semantic text over that fixed grid when row counts differ: allow only
+9. Segment semantic text over that fixed grid when row counts differ: allow only
    explicit 1→2 collapsed-label splits, 2→1 adjacent label fragments, or
    duplicate edge trimming with per-segment thresholds and runner-up margins.
    Label-empty extra rows require an exact observed numeric fingerprint before
    they can be treated as displaced evidence.
-9. Develop custom learned components only behind frozen baselines: graph-based
+10. Develop custom learned components only behind frozen baselines: graph-based
    row/cell relation modeling, Vietnamese label encoders trained with
    same-label/different-parent hard negatives, specialized digit/sign recognition,
    and conditional dewarping. Evaluate on bank- and period-disjoint holdouts.
-10. Keep model experiments bounded to a specific observed pipeline failure; do
+11. Keep model experiments bounded to a specific observed pipeline failure; do
    not accumulate reader benchmarks without a measurable extraction objective.
-11. Protect large inputs with immutable S3 content keys and a manifest-first
+12. Protect large inputs with immutable S3 content keys and a manifest-first
    restore contract. Reclaim local space only after remote HEAD/checksum,
    manifest validation, and a real full-content sequential restore pass; hydrate
    exact logical paths without overwriting a mismatched local file.
 
 ## Planned next steps
 
-1. Expand Role A next to a different bank and period after E-0017, using the
-   same pre-inspection role freeze and common metrics rather than a new one-off
-   experiment script, then replay E-0021 with thresholds unchanged.
-2. Build a human-gold evaluation split separated by bank and reporting period,
+1. Commit and seal the E-0022 pre-access artifact while both holdout sources are
+   still absent; then process and seal Role B before any Role A access.
+2. Review primary research on monotone sequence alignment and ordered
+   tree/subgraph matching, then implement the fail-closed ordered-subsequence
+   mapper and a six-PDF-row to three-schema-row development fixture. Compare it
+   with the current row-wise baseline without tuning on E-0022.
+3. Complete the one-shot E-0022 Role A/Role B comparison with frozen thresholds
+   and report the main error class and measurable before/after results.
+4. Build a human-gold evaluation split separated by bank and reporting period,
    including skew, warp, dark headers, blurred digits, wrapped rows, continuation
    pages, direct/indirect LCTT, separate/consolidated scope, and quarterly/YTD
    derivation cases.
-3. Define calibrated abstention thresholds only after the human-gold benchmark;
+5. Define calibrated abstention thresholds only after the human-gold benchmark;
    unresolved evidence must continue to produce review statuses rather than
    guessed output.
 

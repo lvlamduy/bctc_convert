@@ -1,0 +1,106 @@
+version: 1
+experiment_id: E-0022
+suite_id: acb-q1-2026-paired-untouched-holdout-v1
+phase: SOURCE_AND_PIPELINE_FREEZE_BEFORE_CONTENT_ACCESS
+dataset_role: UNTOUCHED_HOLDOUT
+frozen_at: "2026-08-06T08:35:17+00:00"
+selection_basis: registered bank, year, consolidated scope, quarter and filename metadata only
+content_inspected_before_role_assignment: false
+source_access_state_at_freeze: BOTH_SOURCES_OFFLOADED_AND_ABSENT_LOCALLY
+
+sources:
+  - fixture_id: acb-q1-2026-consolidated-searchable
+    bank: ACB
+    fixture_role: ROLE_A_SOURCE
+    path: vietstock_bctc/ACB/2026/ACB BCTC HOP NHAT Q1_26_ban tra cuu.pdf
+    sha256: d8be301b9169577a0be2bbd8721cdaaab7cb37a32493ead0de5871bfcbc168dd
+    size_bytes: 1060293
+    s3_object_key: bctc-ai/objects/sha256/d8/d8be301b9169577a0be2bbd8721cdaaab7cb37a32493ead0de5871bfcbc168dd
+    role_assigned_at: "2026-08-06T08:34:37.414459+00:00"
+  - fixture_id: acb-q1-2026-consolidated-scan
+    bank: ACB
+    fixture_role: ROLE_B_SOURCE
+    path: vietstock_bctc/ACB/2026/20260422 - ACB - BCTC Hop nhat Quy 1 nam 2026.pdf
+    sha256: a85402445a34e80dd4248471c2d23d4cf4b349ab2455b91db457f3e6effbdd4a
+    size_bytes: 8027105
+    s3_object_key: bctc-ai/objects/sha256/a8/a85402445a34e80dd4248471c2d23d4cf4b349ab2455b91db457f3e6effbdd4a
+    role_assigned_at: "2026-08-06T08:34:37.426933+00:00"
+
+pairing:
+  reference_fixture_id: acb-q1-2026-consolidated-searchable
+  candidate_fixture_id: acb-q1-2026-consolidated-scan
+  same_filing_assertion_basis: FILENAME_METADATA_ONLY_NOT_CONTENT
+  evaluation_scope: FULL_DOCUMENT_STATEMENT_DISCOVERY_THEN_ALL_DISCOVERED_CDKT_KQKD_LCTT_PAGES
+  target_page_numbers_preselected: false
+  page_pairing_uses: VISUAL_FINGERPRINT_ONLY
+
+execution_order:
+  - FREEZE_SOURCE_ROLES
+  - FREEZE_CODE_CONFIG_MODELS_AND_SCHEMA
+  - HYDRATE_ROLE_B_SOURCE_ONLY
+  - RUN_AND_SEAL_ROLE_B_FULL_DOCUMENT_DISCOVERY_AND_OCR
+  - HYDRATE_AND_OPEN_ROLE_A_SOURCE
+  - BUILD_AND_SEAL_ROLE_A_MACHINE_REFERENCE
+  - COMPARE_WITHOUT_THRESHOLD_CHANGES
+role_a_access_before_role_b_seal: FORBIDDEN
+threshold_changes_after_holdout_open: FORBIDDEN_FOR_THIS_HOLDOUT
+
+storage:
+  bucket: test-s3-duylv
+  manifest_key: bctc-ai/snapshots/20260806T050030130746Z-4a469fab2334/manifest-74be9ea09905f0c7842d5a0b46bfe44f3fc5f32cc2c15b5040efcc4e99e8981b.json
+  manifest_sha256: 74be9ea09905f0c7842d5a0b46bfe44f3fc5f32cc2c15b5040efcc4e99e8981b
+  bucket_versioning_required: true
+  default_encryption_required: AES256
+  public_access_block_required: true
+
+frozen_pipeline:
+  git_commit: e0496e2196ada0a66213469d09296528dd37cc54
+  config_files:
+    config/experiments/preprocessing.yaml: d83851ce312251e4586238a2919be950a031b969bc8de19257a0728bc298e704
+    config/document_phase/statement-locator-v1.yaml: d25ff6da2a1ce48428b4ab1ac20a31b989a27849d93326ae839507dce2ff107e
+    config/models/pp-ocrv6-word-box.yaml: a200fbbc8ba85460c9233875a7a025e8d08d892172d353ed820f69fd258e997b
+    config/models/paddleocr-vl-1.6-transformers.yaml: e6e60f949e31c8d6afc58fb4dc28acf55da8b569a6d608cab319c6a7f2793042
+    config/models/deepseek-ocr2-v1.toml: 5b3bc57a2f8c56d0a3ee133f0649cb177105b731b96376fa869e8971c1bd924d
+    config/tables/word-box-reconstruction.yaml: 5aefee12f3ab760bcd203aa647bc76a0232897f16b11fec221eed0244cbbe5da
+    config/tables/semantic-geometry-fusion-v2.yaml: 8961bd96e25de5868b29e1d51ab46adb7f9e702d24c472e90275a8ddf0006c0c
+    config/ocr/vietnamese-label-correction-v1.yaml: c802aec5dc04380977ceb89a29ab5b5ae5be56b0cd8f0326e7e73ff621289414
+    config/tables/period-propagation-v1.yaml: dd7e2d23b39a2f16741cf4cb3ff47bc849f6c4a6d2fcabf570f2eddf6ba6c1a7
+    config/mapping/lctt-v2.yaml: d07908e912bb9c75dd526a76cdd90986fbb4dfa2b060fb0cafa1e767c40c95bd
+    config/mapping/scope_exclusions.yaml: 79e4dabdce260c96f52446421a93660042558478b78f0a11a68be99f92fe0dc9
+    config/schemas/sources.yaml: af4a16f1040063d1fd28fd24de5056794867afc56dbbf130ae3ff74d1d466221
+  algorithm_files:
+    src/bctc_ai/preprocessing/quality.py: 8ce752c71c5e603413ed615e4854b8b36ca770b213e32217c16dbec3578cb335
+    src/bctc_ai/preprocessing/variants.py: 754b45fa6a4a281600c54240a4187b2fd93b68c42bbdd88d4ca425f5d6a648bd
+    src/bctc_ai/preprocessing/pipeline.py: b06cdaa4f8bd8002aeb628c230bc55c1053051a92b8b5ba26f13acbc9ec9c71a
+    src/bctc_ai/rendering/pdf.py: fcd426007b93ff006b0abc16a07a760affd46acf9adf270642b751e77bdfb586
+    src/bctc_ai/document_phase/statement_locator.py: 8b4b283cb3eeaa3e2457e84950574cc79502143e09ae4b3b712e93e1dde8b35c
+    src/bctc_ai/evaluation/word_box_rows.py: 84dcb6303f94e8135300be08fa7762c311330edc0ef08982a59cd66c09265775
+    src/bctc_ai/evaluation/semantic_geometry_fusion_v2.py: 37aaa0596b3a18217dea23458427642887763224df7f6fa91dd464d0110962a8
+    src/bctc_ai/ocr/vietnamese_label_correction.py: 5b07eeabe7eb83840ba453a616d0dcee995d1676c1ee737a6171d6a16ab792f6
+  schema_workbooks:
+    template/Bank_CDKT_ReportNormId.xlsx: a07ff47f7c41011fe4ca5a66681106d476586ded9013b5874cbb9f67a6ad8486
+    template/Bank_KQKD_ReportNormId.xlsx: 6033001b85a236fce4b29437d56cc02d7c6a21f95e82b43de043b1268eb74615
+    template/Bank_LCTT_ReportNormId.xlsx: 2c9d52737c492f115895eab9a571da2269fcfd3c3e77539ec581782e579d260a
+    template/Bank_TM_ReportNormId.xlsx: fa284e3af1f90c8a206308f63e6d35e77a9fbf1abcaf60abcb59877c47275140
+  model_identities:
+    pp_ocrv6: PP-OCRv6_medium_det_and_rec_FROM_HASHED_CONFIG
+    paddle_document: PaddleOCR-VL-1.6-0.9B_FROM_HASHED_CONFIG
+    deepseek_ocr2_revision: aaa02f3811945a91062062994c5c4a3f4c0af2b0
+    deepseek_ocr2_weights_sha256: d8ff67a424ba6f4dd077885eb9d6a05d2537e76fe5491f0e2a9b712f8c8870fa
+
+evidence_policy:
+  role_b_can_read_role_a_source: false
+  role_b_can_read_role_a_result: false
+  role_b_can_use_historical_mongodb: false
+  role_b_can_tune_frozen_thresholds: false
+  compare_starts_after_role_b_complete: true
+  reference_labels_available_to_role_b: false
+  page_pairing_uses_text_or_values: false
+  visible_pdf_remains_source_authority: true
+
+claim_boundary: >-
+  This is a one-shot machine-reference holdout, not human gold and not a legal or
+  production truth set. Source roles and the pipeline were frozen before either
+  offloaded PDF was hydrated or inspected. Failures may guide later development
+  only on separate validation data; this holdout must not be retuned and relabeled
+  untouched.
