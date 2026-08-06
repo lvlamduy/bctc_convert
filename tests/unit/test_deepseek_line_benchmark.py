@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from bctc_ai.evaluation.deepseek_line_benchmark import (
+    _commit_identity_matches,
     semantic_reader_gate,
     statement_result_summary,
 )
@@ -14,6 +15,17 @@ def _score(*, cer, titles, empty_or_truncated):
             "empty_or_suffix_truncated_count": empty_or_truncated,
         }
     }
+
+
+def test_commit_identity_accepts_only_safe_prefix_of_full_recorded_commit():
+    commit = "a44b08bdd1378e4cd1524ee02d426ad6dbb4e2c0"
+
+    assert _commit_identity_matches(commit, "a44b08b") is True
+    assert _commit_identity_matches(commit, commit) is True
+    assert _commit_identity_matches(commit, "a44b08c") is False
+    assert _commit_identity_matches(commit, "a44b08") is False
+    assert _commit_identity_matches("a44b08b", "a44b08b") is False
+    assert _commit_identity_matches(commit, None) is False
 
 
 def test_semantic_gate_requires_quality_structure_and_output_budget_together():

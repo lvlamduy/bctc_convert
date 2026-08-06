@@ -26,6 +26,22 @@ class DeepSeekLineBenchmarkError(RuntimeError):
     pass
 
 
+def _commit_identity_matches(actual: object, expected: object) -> bool:
+    """Match a full recorded Git object name to an explicit, safe abbreviation."""
+    if not isinstance(actual, str) or not isinstance(expected, str):
+        return False
+    actual = actual.lower()
+    expected = expected.lower()
+    hexadecimal = set("0123456789abcdef")
+    return (
+        len(actual) == 40
+        and 7 <= len(expected) <= len(actual)
+        and set(actual) <= hexadecimal
+        and set(expected) <= hexadecimal
+        and actual.startswith(expected)
+    )
+
+
 def _load_json(path: Path, name: str) -> dict[str, Any]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -199,7 +215,9 @@ def capture_deepseek_line_benchmark(
     if (
         sha256_file(e0025_root / "ocr_result.json") != diagnosis["result_sha256"]
         or sha256_file(e0025_root / "run_manifest.json") != diagnosis["run_manifest_sha256"]
-        or e0025_manifest.get("git_commit") != diagnosis["inference_commit"]
+        or not _commit_identity_matches(
+            e0025_manifest.get("git_commit"), diagnosis["inference_commit"]
+        )
     ):
         raise DeepSeekLineBenchmarkError("E-0025 failure diagnosis identity drifted")
     candidate = config["candidate"]
@@ -263,6 +281,8 @@ def capture_deepseek_line_benchmark(
         baseline_summary = statement_result_summary(baseline_result)
         semantic_summary = statement_result_summary(semantic_result)
         expected_result = document.get("result")
+        if not isinstance(expected_result, dict):
+            raise DeepSeekLineBenchmarkError("E-0013 expected result is absent")
         expected_summary = {
             "status": "ACCEPTED_MULTI_SIGNAL_STATEMENT_BLOCK",
             "mapping_eligible_pages_by_statement_type": expected_result.get(
