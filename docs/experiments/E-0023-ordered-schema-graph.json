@@ -1,0 +1,376 @@
+{
+  "algorithm_files_sha256": {
+    "src/bctc_ai/core/text.py": "2a97e6626fa6f747ff0f8e9de827b02f50dcd9a0c8e058937cd221acf1420af6",
+    "src/bctc_ai/evaluation/ordered_subgraph_evaluation.py": "1e2ebf67efc29069c1d25fc5e3a073df4f9636e5f1e44c738418b7904c964fa9",
+    "src/bctc_ai/mapping/ordered_subgraph.py": "79556011591cf30e492eb5deef1f77b860b71ba3d0549f7556e9f61b5f59c12a",
+    "src/bctc_ai/mapping/scope.py": "0804e1d2a7103d2186f54ceafc49fe14f35f3ddabc2797eb14bd3c09b2e44774",
+    "src/bctc_ai/schema/hierarchy.py": "e2d737ba21f96a280c1e6c08f69ad1df0f8a1913b10149b0899fc03ff5a2ddab",
+    "src/bctc_ai/schema/registry.py": "04a88f848a70f96c04ae0a974aed06e45446350cef3e218c0b6be09b8ed6659e"
+  },
+  "authority": {
+    "e0022_pipeline_changed": false,
+    "historical_evidence_used": false,
+    "holdout_evidence_used": false,
+    "numeric_value_features_used": false,
+    "pdf_or_ocr_evidence_used": false,
+    "production_confidence_promoted": false
+  },
+  "baseline": {
+    "minimum_candidate_similarity": 0.35,
+    "name": "INDEPENDENT_LABEL_TOP1_NO_GLOBAL_CONSTRAINT",
+    "predictions": [
+      [
+        "p0",
+        700
+      ],
+      [
+        "p1",
+        50
+      ],
+      [
+        "p2",
+        700
+      ],
+      [
+        "p3",
+        700
+      ],
+      [
+        "p4",
+        50
+      ],
+      [
+        "p5",
+        10
+      ]
+    ]
+  },
+  "claim_boundary": "Controlled logic-development fixture only. It isolates the effect of global ordered cluster matching and is neither real-document OCR accuracy, human gold, nor an untouched holdout. E-0022 remains frozen and unused for tuning.",
+  "code": {
+    "git_commit": "48043d0335448b051f79b2768695a30ddc84b3b4",
+    "git_dirty": false
+  },
+  "config": {
+    "experiment": {
+      "path": "config/experiments/e0023-ordered-schema-graph.yaml",
+      "sha256": "11058510c9080535c537ed13c8455d4604a585120674173cbd9abfc1f4572667"
+    },
+    "mapping_policy": {
+      "path": "config/mapping/ordered-subgraph-v1.yaml",
+      "sha256": "c311cae354ff7890e92a964821dabd5e845d72cf475595395f4ab84a86600eaf"
+    },
+    "scope_policy": {
+      "path": "config/mapping/scope_exclusions.yaml",
+      "sha256": "79e4dabdce260c96f52446421a93660042558478b78f0a11a68be99f92fe0dc9"
+    }
+  },
+  "dataset_role": "LOGIC_DEVELOPMENT",
+  "delta": {
+    "duplicate_schema_assignments": -3,
+    "false_positive_pairs": -3,
+    "precision": 0.5,
+    "retained_extra_pdf_rows": 3
+  },
+  "experiment_id": "E-0023",
+  "fixture_id": "ordered-subgraph-six-to-three-v1",
+  "format_version": 1,
+  "metrics": {
+    "baseline": {
+      "correct_pairs": 3,
+      "duplicate_schema_assignments": 3,
+      "false_positive_pairs": 3,
+      "precision": 0.5,
+      "predicted_pairs": 6,
+      "recall": 1.0,
+      "retained_extra_pdf_rows": 0
+    },
+    "ordered_subgraph": {
+      "correct_pairs": 3,
+      "duplicate_schema_assignments": 0,
+      "false_positive_pairs": 0,
+      "precision": 1.0,
+      "predicted_pairs": 3,
+      "recall": 1.0,
+      "retained_extra_pdf_rows": 3
+    }
+  },
+  "ordered_subgraph": {
+    "automatic_selection_allowed_for_fixture": true,
+    "best_path": {
+      "matches": [
+        {
+          "features": {
+            "accounting_semantic_similarity": null,
+            "evidence": [
+              "statement and table context matched",
+              "source-normalized label matched exactly",
+              "unmapped PDF parent label corroborates schema parent"
+            ],
+            "exact_label": true,
+            "indentation_distance": 0,
+            "label_similarity": 1.0,
+            "local_score": 2.25,
+            "numbering_match": null,
+            "parent_similarity": null,
+            "section_similarity": null
+          },
+          "pair_score": 2.25,
+          "pdf_order": 1,
+          "row_id": "p1",
+          "schema_display_order": 1,
+          "schema_id": 50
+        },
+        {
+          "features": {
+            "accounting_semantic_similarity": null,
+            "evidence": [
+              "statement and table context matched",
+              "source-normalized label matched exactly",
+              "unmapped PDF parent label corroborates schema parent",
+              "same-indentation rows map as schema siblings"
+            ],
+            "exact_label": true,
+            "indentation_distance": 0,
+            "label_similarity": 1.0,
+            "local_score": 2.37,
+            "numbering_match": null,
+            "parent_similarity": null,
+            "section_similarity": null
+          },
+          "pair_score": 2.37,
+          "pdf_order": 3,
+          "row_id": "p3",
+          "schema_display_order": 2,
+          "schema_id": 700
+        },
+        {
+          "features": {
+            "accounting_semantic_similarity": null,
+            "evidence": [
+              "statement and table context matched",
+              "source-normalized label matched exactly",
+              "unmapped PDF parent label corroborates schema parent",
+              "same-indentation rows map as schema siblings"
+            ],
+            "exact_label": true,
+            "indentation_distance": 0,
+            "label_similarity": 1.0,
+            "local_score": 2.37,
+            "numbering_match": null,
+            "parent_similarity": null,
+            "section_similarity": null
+          },
+          "pair_score": 2.37,
+          "pdf_order": 5,
+          "row_id": "p5",
+          "schema_display_order": 3,
+          "schema_id": 10
+        }
+      ],
+      "mean_pair_score": 2.33,
+      "rank": 1,
+      "schema_coverage": 1.0,
+      "skipped_pdf_row_ids": [
+        "p0",
+        "p2",
+        "p4"
+      ],
+      "skipped_schema_ids": [],
+      "structural_issues": [],
+      "total_score": 6.09
+    },
+    "row_dispositions": [
+      {
+        "reason": "row was not forced into the smaller schema cluster",
+        "row_id": "p0",
+        "schema_id": null,
+        "status": "UNMATCHED_PDF_ROW_RETAINED"
+      },
+      {
+        "reason": "cluster path selected this row/schema pair",
+        "row_id": "p1",
+        "schema_id": 50,
+        "status": "RESOLVED"
+      },
+      {
+        "reason": "row was not forced into the smaller schema cluster",
+        "row_id": "p2",
+        "schema_id": null,
+        "status": "UNMATCHED_PDF_ROW_RETAINED"
+      },
+      {
+        "reason": "cluster path selected this row/schema pair",
+        "row_id": "p3",
+        "schema_id": 700,
+        "status": "RESOLVED"
+      },
+      {
+        "reason": "row was not forced into the smaller schema cluster",
+        "row_id": "p4",
+        "schema_id": null,
+        "status": "UNMATCHED_PDF_ROW_RETAINED"
+      },
+      {
+        "reason": "cluster path selected this row/schema pair",
+        "row_id": "p5",
+        "schema_id": 10,
+        "status": "RESOLVED"
+      }
+    ],
+    "runner_up_path": {
+      "matches": [
+        {
+          "features": {
+            "accounting_semantic_similarity": null,
+            "evidence": [
+              "statement and table context matched"
+            ],
+            "exact_label": false,
+            "indentation_distance": null,
+            "label_similarity": 0.44,
+            "local_score": 0.59,
+            "numbering_match": null,
+            "parent_similarity": null,
+            "section_similarity": null
+          },
+          "pair_score": 0.59,
+          "pdf_order": 2,
+          "row_id": "p2",
+          "schema_display_order": 1,
+          "schema_id": 50
+        },
+        {
+          "features": {
+            "accounting_semantic_similarity": null,
+            "evidence": [
+              "statement and table context matched",
+              "source-normalized label matched exactly",
+              "unmapped PDF parent label corroborates schema parent",
+              "adjacent PDF rows match adjacent workbook rows"
+            ],
+            "exact_label": true,
+            "indentation_distance": 0,
+            "label_similarity": 1.0,
+            "local_score": 2.6,
+            "numbering_match": null,
+            "parent_similarity": null,
+            "section_similarity": null
+          },
+          "pair_score": 2.6,
+          "pdf_order": 3,
+          "row_id": "p3",
+          "schema_display_order": 2,
+          "schema_id": 700
+        },
+        {
+          "features": {
+            "accounting_semantic_similarity": null,
+            "evidence": [
+              "statement and table context matched",
+              "source-normalized label matched exactly",
+              "unmapped PDF parent label corroborates schema parent",
+              "same-indentation rows map as schema siblings"
+            ],
+            "exact_label": true,
+            "indentation_distance": 0,
+            "label_similarity": 1.0,
+            "local_score": 2.37,
+            "numbering_match": null,
+            "parent_similarity": null,
+            "section_similarity": null
+          },
+          "pair_score": 2.37,
+          "pdf_order": 5,
+          "row_id": "p5",
+          "schema_display_order": 3,
+          "schema_id": 10
+        }
+      ],
+      "mean_pair_score": 1.853333,
+      "rank": 2,
+      "schema_coverage": 1.0,
+      "skipped_pdf_row_ids": [
+        "p0",
+        "p1",
+        "p4"
+      ],
+      "skipped_schema_ids": [],
+      "structural_issues": [],
+      "total_score": 4.66
+    },
+    "schema_dispositions": [
+      {
+        "reason": "cluster path selected this schema/PDF-row pair",
+        "row_id": "p1",
+        "schema_id": 50,
+        "status": "RESOLVED"
+      },
+      {
+        "reason": "cluster path selected this schema/PDF-row pair",
+        "row_id": "p3",
+        "schema_id": 700,
+        "status": "RESOLVED"
+      },
+      {
+        "reason": "cluster path selected this schema/PDF-row pair",
+        "row_id": "p5",
+        "schema_id": 10,
+        "status": "RESOLVED"
+      }
+    ],
+    "score_margin": 1.43,
+    "search": {
+      "algorithm": "K_BEST_MONOTONE_DYNAMIC_PROGRAMMING_FAIL_CLOSED",
+      "beam_width_per_cell": 32,
+      "dp_cells": 28,
+      "generated_states": 326,
+      "pdf_rows": 6,
+      "retained_states": 228,
+      "schema_nodes": 3
+    },
+    "status": "RESOLVED"
+  },
+  "real_schema_graph": {
+    "cdkt_node_count": 77,
+    "fixed_asset_parent_ids": {
+      "4367": 4328,
+      "4369": 4329,
+      "4371": 4330
+    },
+    "graph_sha256": "831cde59c00b87a23c79b840484e580b6fa8786711d42bd894e3beccd1fddb5b",
+    "non_numeric_workbook_sequence": [
+      4337,
+      4373,
+      4338
+    ]
+  },
+  "safety_fixtures": {
+    "ambiguity_fixture": {
+      "automatic_selection_allowed": false,
+      "score_margin": 0.0,
+      "status": "AMBIGUOUS_MAPPING",
+      "top_schema_ids": [
+        10,
+        900
+      ]
+    },
+    "off_balance_fixture": {
+      "matched_pairs": 0,
+      "row_status": "OUT_OF_SCOPE_FOR_TARGET_TEMPLATE",
+      "status": "OUT_OF_SCOPE_FOR_TARGET_TEMPLATE"
+    },
+    "verified_parent_fixture": {
+      "selected_schema_id": 801,
+      "status": "RESOLVED",
+      "wrong_semantic_candidate_appears_in_any_path": false,
+      "wrong_semantic_schema_id": 901
+    }
+  },
+  "schema_registry": {
+    "item_count": 1593,
+    "numeric_report_norm_id_sort_used": false,
+    "tm_1944_present": true
+  },
+  "source_documents_read": [],
+  "status": "PASS_LOGIC_DEVELOPMENT_NO_PRODUCTION_CONFIDENCE_PROMOTION"
+}

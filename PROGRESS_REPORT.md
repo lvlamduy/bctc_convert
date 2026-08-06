@@ -1,13 +1,13 @@
 # Progress report
 
-- Updated: 2026-08-06T09:08:31+00:00
+- Updated: 2026-08-06T09:14:00+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `867d6e9`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
+- Latest clean, tested, pushed checkpoint: `48043d0`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
 - Registered PDFs: 2,567
-- Latest full regression: 274 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
+- Latest full regression: 275 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
 
 ## Accuracy focus and measurable state
 
@@ -87,6 +87,8 @@
   retains all three extra PDF rows, produces no duplicate assignment, and has a
   best/runner-up path score of 6.09/4.66 (margin 1.43). This is deterministic
   logic-development evidence, not a real-document or human-gold accuracy claim.
+  E-0023 now seals this result from clean commit `48043d0`; artifact SHA-256 is
+  `87121a2eee5e29213e06c43bcd92db14d62291fbf79afced7f5c9eec90ae5bd1`.
 - Next bounded action: run the full regression and commit SchemaGraph v1, then
   seal the controlled 6→3 before/after artifact from that clean commit before
   resuming the frozen E-0022 Role B run.
@@ -103,6 +105,11 @@
   rows, duplicate labels, verified-parent dominance over a wrong semantic score,
   tie abstention, non-numeric workbook order, numbering, off-balance exclusion,
   exhaustive-only `NOT_OBSERVED`, and the real 77-node CDKT hierarchy graph.
+- Captured E-0023 without reading any source document, OCR artifact, Mongo value
+  or E-0022 holdout evidence. Besides the 6→3 delta, it proves zero-margin tie
+  abstention, verified-parent dominance over an adversarial semantic proposal,
+  exact off-balance exclusion, 77 real CDKT graph nodes, fixed-asset parents
+  4328/4329/4330, TM 1944 presence and zero production-confidence promotion.
 - Sealed E-0022 source roles and the frozen code/config/model/schema identities
   before either ACB Q1/2026 holdout source was locally present. The pre-access
   artifact was captured from clean commit
@@ -333,12 +340,11 @@
   `2026-08-06T08:34:37Z`; code/config/model/schema identities were frozen at
   `2026-08-06T08:35:17Z`. Role B must be hydrated, processed and sealed before
   Role A source access, and the frozen thresholds cannot be tuned on this pair.
-- Ordered SchemaGraph v1 is committed and pushed at `867d6e9`; its full
-  regression passes. The E-0023 evaluator now independently computes the
-  row-wise baseline, ordered result, three safety fixtures and real-template
-  graph invariants. It must be committed first, then run from a clean tree and
-  sealed by artifact hash. It is intentionally excluded from the already-frozen
-  E-0022 pipeline.
+- Ordered SchemaGraph v1 is committed at `867d6e9`; E-0023 was captured from
+  clean evaluator commit `48043d0`. Its immutable integration hash gate and final
+  275-pass/2-skip regression now pass; only the artifact-seal commit remains.
+  The mapper remains intentionally excluded from the already-frozen E-0022
+  pipeline.
 - Raw-PDF-dependent experiments now hydrate only their bounded registered inputs
   from the immutable S3 manifest and must not overwrite a mismatched local file.
 
@@ -425,8 +431,8 @@
 
 1. Commit and seal the E-0022 pre-access artifact while both holdout sources are
    still absent; then process and seal Role B before any Role A access.
-2. Commit the E-0023 evaluator after full regression, then generate and seal its
-   clean, hash-bound 6→3 before/after artifact. Do not tune it on E-0022.
+2. Seal E-0023 with its integration hash test and full regression, then resume
+   E-0022 by hydrating Role B only. Do not tune the frozen pipeline on E-0022.
 3. Complete the one-shot E-0022 Role A/Role B comparison with frozen thresholds
    and report the main error class and measurable before/after results.
 4. Build a human-gold evaluation split separated by bank and reporting period,
