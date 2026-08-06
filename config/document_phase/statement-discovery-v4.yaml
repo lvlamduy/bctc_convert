@@ -1,0 +1,21 @@
+version: 4
+policy: MULTI_LINE_MULTI_SIGNAL_ORDERED_DOCUMENT_DISCOVERY_V4
+
+# V4 is one bounded change over immutable V3: accounting-row anchors may also
+# match a contiguous, order-preserving token window inside a longer logical
+# label. Header, period, unit, geometry, narrative, sequence and acceptance
+# gates are inherited unchanged from V3.
+base_policy_config: statement-discovery-v3.yaml
+base_policy_config_sha256: f8188fdf53b8f3907ab89d5407bcea178fe927dfe02ccad291a79d1b5f1ba182
+change_scope: ACCOUNTING_ROW_ANCHOR_SCORER_ONLY
+
+ordered_anchor_matching:
+  policy: FULL_LINE_OR_BOUNDED_CONTIGUOUS_ORDERED_TOKEN_WINDOW
+  apply_to: ACCOUNTING_ROWS_ONLY
+  preserve_v3_matches: true
+  require_contiguous_token_order: true
+  minimum_anchor_tokens: 4
+  maximum_source_tokens: 18
+  maximum_token_count_delta: 1
+  minimum_window_similarity: 0.78
+
