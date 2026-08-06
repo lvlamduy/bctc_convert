@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
+from decimal import Decimal, InvalidOperation
 from enum import StrEnum
 from typing import Any
 
@@ -21,6 +22,17 @@ class ObservationKind(StrEnum):
     DASH = "DASH"
     NOT_APPLICABLE = "NOT_APPLICABLE"
     INVALID = "INVALID"
+
+
+class ValueStatus(StrEnum):
+    """Semantic disposition of a target value, separate from confidence status."""
+
+    OBSERVED_VALUE = "OBSERVED_VALUE"
+    OBSERVED_ZERO = "OBSERVED_ZERO"
+    NOT_OBSERVED = "NOT_OBSERVED"
+    OUT_OF_SCOPE_FOR_TARGET_TEMPLATE = "OUT_OF_SCOPE_FOR_TARGET_TEMPLATE"
+    AMBIGUOUS_MAPPING = "AMBIGUOUS_MAPPING"
+    REFERENCE_NOT_YET_BUILT = "REFERENCE_NOT_YET_BUILT"
 
 
 class DatasetRole(StrEnum):
@@ -126,6 +138,7 @@ class PipelineRecord:
     raw_value: str | None
     normalized_value: str | None
     status: EvidenceStatus
+    value_status: ValueStatus | None = None
     observation: ObservationKind | None = None
     provenance: Provenance | None = None
     schema_id: int | None = None
@@ -152,3 +165,44 @@ class PipelineRecord:
                 raise ValueError("AUTO_VERIFIED_HIGH requires cell provenance")
             if not self.acceptance_gate.high_confidence_allowed():
                 raise ValueError("AUTO_VERIFIED_HIGH requires every evidence gate")
+        self._validate_value_status()
+
+    def _validate_value_status(self) -> None:
+        if self.value_status is None:
+            # Backward-compatible path for historical artifacts. New extraction
+            # records are required by their versioned producer to populate it.
+            return
+        if self.value_status is ValueStatus.NOT_OBSERVED:
+            if self.status is not EvidenceStatus.NOT_OBSERVED:
+                raise ValueError("NOT_OBSERVED value requires NOT_OBSERVED evidence status")
+            if self.raw_value is not None or self.normalized_value is not None:
+                raise ValueError("NOT_OBSERVED cannot carry a raw or normalized value")
+            if self.observation is not None:
+                raise ValueError("NOT_OBSERVED cannot carry a cell observation")
+            return
+        if self.status is EvidenceStatus.NOT_OBSERVED:
+            raise ValueError("a visible/reference value cannot use NOT_OBSERVED evidence status")
+        if self.value_status not in {
+            ValueStatus.OBSERVED_VALUE,
+            ValueStatus.OBSERVED_ZERO,
+        }:
+            return
+        if self.raw_value is None or self.normalized_value is None:
+            raise ValueError(f"{self.value_status.value} requires raw and normalized values")
+        try:
+            numeric = Decimal(self.normalized_value)
+        except InvalidOperation as exc:
+            raise ValueError(
+                f"{self.value_status.value} requires a numeric normalized value"
+            ) from exc
+        if self.value_status is ValueStatus.OBSERVED_VALUE:
+            if numeric == 0 or self.observation is not ObservationKind.VALUE:
+                raise ValueError("OBSERVED_VALUE requires a visible non-zero VALUE observation")
+        elif numeric != 0 or self.observation not in {
+            ObservationKind.ZERO,
+            ObservationKind.DASH,
+            ObservationKind.BLANK,
+        }:
+            raise ValueError(
+                "OBSERVED_ZERO requires normalized zero and ZERO, DASH, or BLANK observation"
+            )

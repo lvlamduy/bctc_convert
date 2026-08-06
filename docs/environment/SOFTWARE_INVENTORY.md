@@ -161,6 +161,13 @@ candidates retain identity geometry. Subsequent readers reuse the existing four
 pinned Paddle weights. DeepSeek-OCR-2 and MinerU remain separately isolated
 benchmark proposals and are not installed in this environment.
 
+The 2026-08-06 human-review registry, period propagation v1, value-status
+normalization, and structural ranking v2 add no Python distribution, Ubuntu
+package, driver, model, weight, or runtime setting. Source verification reuses
+the pinned control-plane PyMuPDF and SHA-256 utilities; YAML/config validation
+reuses PyYAML. The paper candidates GraphTSR/TGRNet, DocTr/DocGeoNet/UVDoc,
+FastTab, and TabSniper are research hypotheses only and were not installed.
+
 Detailed commands, disk checks, cache rules, failure history, and rollback are in `docs/environment/GPU_RUNTIME_RUNBOOK.md`.
 
 ## Maintenance rule

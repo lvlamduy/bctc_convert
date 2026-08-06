@@ -61,15 +61,21 @@ failure set, and exact replay are in
 The allowlisted, non-authoritative Mongo/DuckDB reference and rebuild procedure
 are in
 [docs/environment/HISTORICAL_REFERENCE_RUNBOOK.md](docs/environment/HISTORICAL_REFERENCE_RUNBOOK.md).
+The hash-bound CTG/ACB/MBB human corrections, period orientation, value-status
+semantics, and exact reviewed amounts are in
+[docs/HUMAN_REVIEW_CORRECTIONS_2026-08-06.md](docs/HUMAN_REVIEW_CORRECTIONS_2026-08-06.md).
 
 
 
 ## Safety invariants
 
 - Never modify a source PDF, schema workbook, or template in place.
-- Never turn a blank or dash into zero.
+- Never turn an absent row or unverified OCR blank into zero. A visible dash or
+  verified empty numeric cell is retained raw and normalized to
+  `OBSERVED_ZERO`.
 - Never synthesize a value to make an accounting equation balance.
 - Never call a value high confidence without cell-level geometry and
   independent numeric agreement.
 - Never use Role A output during a frozen Role B evaluation.
-- Never reuse, reorder, or delete an existing schema ID.
+- Never reuse or delete an existing schema ID. Preserve source-workbook row
+  order; numeric ReportNormId magnitude has no ordering meaning.

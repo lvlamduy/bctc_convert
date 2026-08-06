@@ -37,6 +37,17 @@ This is the durable retrieval point for project context. It summarizes user auth
 - Commit every verified implementation milestone to the feature branch so code can be recovered and compared by version. Keep source PDFs, model weights, secrets, and generated run output outside Git.
 - Record every installed package/model/driver, version, upstream URL/revision, SHA-256, configuration, smoke test, and rebuild command. Preserve test strategy and paper-derived hypotheses in versioned files.
 
+### 2026-08-06 — authoritative human review and schema order
+
+- The reviewed CTG Q2/2026, ACB Q2/2026, and MBB Q1/2026 consolidated PDFs are frozen as hash-bound calibration. The decisions are authoritative only for those exact files/pages.
+- CTG CDKT left/right columns are current 2026-06-30/comparative audited 2025-12-31 and this orientation continues across the same table even when a continuation page omits headers. MBB current is 2026-03-31; ACB current is 2026-06-30.
+- A visible dash or verified empty numeric cell is zero while retaining its raw representation. An absent row is `NOT_OBSERVED` and must never be converted to zero.
+- CTG external IDs 5701–5711 are visible off-balance rows and `OUT_OF_SCOPE_FOR_TARGET_TEMPLATE`; they are not CDKT additions or mapping failures. ID 5711 must not map to 4366.
+- CTG 4337 is absent; the visible XDCB row maps once to 4373. CTG non-controlling interest maps once to 5699, not also to legacy 4306.
+- Parent, neighbors, indentation, section, and physical/template position outrank names. MongoDB remains weak post-PDF evidence.
+- ReportNormId magnitude is not order. Template workbook row order is authoritative because newly added indicators can receive a large ID and be inserted anywhere logically; the real sequence `4337 → 4373 → 4338` must remain intact.
+- Paper research and custom local models are authorized, but adoption requires calibration, ablation, and bank/period-disjoint holdout evidence.
+
 ## General strategy
 
 1. Register every input by SHA-256 and freeze dataset role before inspection.
@@ -67,7 +78,7 @@ This is the durable retrieval point for project context. It summarizes user auth
 - Hardware audit: RTX 5070 Ti 16,303 MiB, Ryzen 9 5950X, about 125.7 GiB RAM, Ubuntu 22.04, NVIDIA driver 595.80.
 - Supplied schema contains 1,592 unique IDs: CDKT 77, KQKD 24, LCTT 107, TM 1,384. TM ID 1944 is absent and remains an append-only proposal.
 - CPU environment is locked in `uv.lock`; bootstrap, atomic storage, source identity registry, role freezing, content-addressed materialization, render/preprocess, local difficult-region variants, perspective correction, ordered alignment, continuation graph, row wrapping, arithmetic validation, and workbook export have executable tests.
-- Latest full test run after formal E-0015: 162 passed and 2 immutable-historical replays skipped; Ruff lint and the changed-file formatter gate passed. E-0006 and E-0009 source/config identities remain verified, but exact replay is skipped when their historical algorithm byte hashes are not the current implementation. E-0010 through E-0015 provide current hash-locked integration regressions.
+- Latest full test run after the human-review/period/mapping v2 checkpoint: 202 passed and 2 immutable-historical replays skipped; Ruff lint and the changed-file formatter gate passed. E-0006 and E-0009 source/config identities remain verified, but exact replay is skipped when their historical algorithm byte hashes are not the current implementation. E-0010 through E-0015 provide current hash-locked integration regressions.
 - A real scanned/mixed ACB PDF page rendered and passed preprocessing checkpoint/hash verification.
 - Relative word-gap segmentation, numeric right-edge clustering, note-axis separation, wrapped-row assembly, label-only section retention, and axis-local period/unit binding are implemented without institution/page coordinate rules.
 - On the registered VPB logic-development fixture (pages 5–10), the native text path reconstructed 134 logical rows and 252 value cells, preserved 48 note references, and found two value axes on every page. It correctly separated snapshot dates from three-month durations, retained direct-LCTT anchors and section headings, and left one visible unlabeled off-balance total unresolved instead of inventing a label. See `docs/experiments/E-0006-vpb-native-geometry.json`.
@@ -149,3 +160,4 @@ This is the durable retrieval point for project context. It summarizes user auth
 - 2026-08-06: Ran clean E-0015 on the four E-0014 seals, hash-locked 13-page structural/conditional-agreement evidence, retained one unresolved table and all missing/collapse/invalid/noise outcomes, prohibited automatic cross-page row merges, and added exact replay/integration gates without schema or confidence promotion.
 - 2026-08-06: Resolved Q-BOOT-001 by contiguous template order: 4155→4168 is INDIRECT and 4104→4116 is DIRECT; current policy v2 applies only after an independently resolved PDF method, while historical artifacts remain immutable.
 - 2026-08-06: Added targeted reread v1: relative failure localization, source-PDF 450/600-DPI rerendering, quality-gated photometric/deskew/perspective/dark-region candidates, inverse geometry, complete evidence-chain checks, and an exact E-0016 13-page/8-region calibration contract with no value selection.
+- 2026-08-06: Added the 3-document/30-decision human-review registry, exact PDF/schema/role audit, table-level period propagation v1, raw-versus-normalized value statuses, hierarchy-first structural ranking v2, template-display-order/one-to-one sequence gates, reviewed digit corrections, and external-ID collision tests. No package, model, or ReportNormId was added.

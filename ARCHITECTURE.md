@@ -41,10 +41,11 @@ Scope exclusion is stateful within an ordered statement block. A page/section he
 - `ocr`: model-neutral adapters implementing page/region/table/row/cell reads and text boxes.
 - `layout`, `tables`, `rows`: reading order, table proposal ensemble, continuation graph, cell provenance.
 - `document_phase`: sequence-based COVER/AUDIT/STATEMENT/POLICY/NOTES/APPENDIX classification.
-- `axes`: geometry-backed period, unit, sign, and scope binding.
+- `axes`: geometry-backed period, unit, sign, and scope binding, including versioned table-level period propagation across accepted continuations.
 - `schema`: append-only SchemaGraph and migration checks.
-- `mapping`: candidate retrieval, ordered subtree alignment, constrained assignment, optional small-context reranking.
-- `reference`: read-only historical weak-reference index and conflict reporting. It can be queried only after an ID is resolved and cannot participate in mapping or confidence promotion.
+- `mapping`: candidate retrieval, hierarchy-first lexicographic ranking, template-workbook-order alignment, constrained one-to-one assignment, and optional small-context reranking.
+- `reference`: read-only historical weak-reference index and hash-bound calibration review registries. History can be queried only after an ID is resolved and cannot participate in mapping or confidence promotion; reviewed fixtures cannot route production pages.
+- `values`: non-destructive raw observation and normalized numeric/value-status contracts.
 - `reference_builder`: isolated Role A outputs.
 - `validation`: checks only; never value generation.
 - `export`: template-preserving workbook and supporting sheets.
@@ -52,9 +53,9 @@ Scope exclusion is stateful within an ordered statement block. A page/section he
 
 For usable native text layers, the first deterministic table path segments PDF words into runs at relative word-gap discontinuities, clusters repeated numeric right edges into value axes, identifies a distinct note-reference axis, groups y-aligned bands, and then attaches preceding wrapped label lines only when geometric/typographic continuation evidence is sufficient. Geometry v2 additionally separates adjacent financial tokens when both tokens are independently valid and their gap exceeds a configured fraction of text height; tightly spaced digit groups remain one value. Short parenthetical continuation lines may attach to the preceding label. Trailing axis-assigned text without numeric evidence is excluded from the table span, while malformed digit-bearing cells remain visible for reread. Label-only rows remain ordered section context. Historical v1 thresholds remain in `config/tables/geometry.yaml`; the current calibration thresholds are versioned in `config/tables/geometry-v2.yaml`. Report-, bank-, page-, and absolute-coordinate rules are prohibited.
 
-For scan word boxes, `word_box_rows.py` infers period axes from header geometry, uses right edges for right-aligned values, clusters y anchors, and attaches label lines toward the next compatible downstream anchor. It preserves internal parent/section labels but moves label-only material below the final numeric anchor into a separate trailing-context collection that is mapping-ineligible until continuation evidence resolves it. OCR-empty cells are never filled from neighbors or arithmetic. A dash may be recovered only from a dash-like token on the correct axis or from one constrained, high-contrast horizontal image component passing normalized shape/position gates; the crop and component measurements become provenance. Multiple substantive numbers in one cell remain `INVALID`.
+For scan word boxes, `word_box_rows.py` infers period axes from header geometry, uses right edges for right-aligned values, clusters y anchors, and attaches label lines toward the next compatible downstream anchor. It preserves internal parent/section labels but moves label-only material below the final numeric anchor into a separate trailing-context collection that is mapping-ineligible until continuation evidence resolves it. OCR-empty cells are never filled from neighbors or arithmetic. A visibly empty cell can normalize to zero only after the row, numeric-cell geometry, and table structure are verified. A dash may be recovered only from a dash-like token on the correct axis or from one constrained, high-contrast horizontal image component passing normalized shape/position gates; the crop and component measurements become provenance. Multiple substantive numbers in one cell remain `INVALID`.
 
-Header binding is axis-local. Dates determine current/comparative roles rather than left/right order. Snapshot dates, explicit date ranges, stated month durations, and YTD wording have separate paths, and unit evidence retains its source box. Ambiguous or absent axes fail closed instead of defaulting to a conventional column order.
+Header binding is axis-local. Dates determine current/comparative roles rather than left/right order. Snapshot dates, explicit date ranges, stated month durations, and YTD wording have separate paths, and unit evidence retains its source box. A complete table map can propagate to a headerless continuation only through versioned adjacency/context/axis gates while retaining the original header page and box. Ambiguous, partial, or changed axes fail closed instead of defaulting to a conventional column order.
 
 ## Model adapters and scheduling
 
@@ -71,6 +72,8 @@ The current RTX 5070 Ti has 16,303 MiB and compute capability 12.0. The preinsta
 `AUTO_VERIFIED_HIGH` requires every evidence gate, including clear cell geometry, independent numeric verification, header-bound period, sourced unit, verified sign, contextual schema alignment, no PDF/history conflict, accounting pass, and sufficient candidate gap. A single model vote can never satisfy this gate.
 
 Other terminal statuses are `AUTO_VERIFIED_MEDIUM`, `REVIEW_REQUIRED`, `UNRESOLVED`, `NOT_APPLICABLE`, and `NOT_OBSERVED`. Absence of evidence is not zero.
+
+Confidence status is separate from value disposition. The latter is one of `OBSERVED_VALUE`, `OBSERVED_ZERO`, `NOT_OBSERVED`, `OUT_OF_SCOPE_FOR_TARGET_TEMPLATE`, `AMBIGUOUS_MAPPING`, or `REFERENCE_NOT_YET_BUILT`. A visible dash or verified empty numeric cell is zero while retaining its raw observation; a row absent from the PDF has no cell value.
 
 ## Replay and frozen evaluation
 

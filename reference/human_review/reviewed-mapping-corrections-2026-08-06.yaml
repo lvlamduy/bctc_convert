@@ -1,0 +1,517 @@
+version: 1
+review_id: HR-2026-08-06-CTG-ACB-MBB
+authority: HUMAN_REVIEW_AUTHORITATIVE_FOR_CITED_SOURCE_HASH_AND_PAGE
+source_page_numbering: PDF_ONE_BASED
+documents:
+  - document_key: ctg-q2-2026-consolidated
+    bank: CTG
+    scope: CONSOLIDATED
+    source:
+      path: vietstock_bctc/CTG/2026/BCTC Hợp nhất quý 2 năm 2026.pdf
+      sha256: f7453816648cac21536621e09d4e52a40e8ce9fcdbaf824981b3b997a8197318
+      size_bytes: 6703623
+      page_count: 61
+    period_maps:
+      - period_map_id: ctg-cdkt-2026q2
+        statement_type: CDKT
+        unit: Triệu đồng
+        applies_to_pages: [4]
+        provenance: visible PDF headers on the first section of the same statement, propagated through the reviewed main-CDKT table structure
+        columns:
+          - ordinal: 0
+            side: LEFT
+            role: CURRENT
+            period_end: "2026-06-30"
+            raw_header: Ngày 30 tháng 06 năm 2026
+          - ordinal: 1
+            side: RIGHT
+            role: COMPARATIVE
+            period_end: "2025-12-31"
+            raw_header: Ngày 31 tháng 12 năm 2025 (Số kiểm toán)
+      - period_map_id: ctg-off-balance-2026q2
+        statement_type: CDKT
+        unit: Triệu đồng
+        applies_to_pages: [5]
+        provenance: human-reviewed page-5 off-balance table orientation; separate map because the section is outside target CDKT
+        columns:
+          - ordinal: 0
+            side: LEFT
+            role: CURRENT
+            period_end: "2026-06-30"
+            raw_header: Ngày 30 tháng 06 năm 2026
+          - ordinal: 1
+            side: RIGHT
+            role: COMPARATIVE
+            period_end: "2025-12-31"
+            raw_header: Ngày 31 tháng 12 năm 2025 (Số kiểm toán)
+    decisions:
+      - visible_row_id: ctg-p4-4340
+        page: 4
+        statement_type: CDKT
+        reviewed_item_id: 4340
+        template_membership: CURRENT_TARGET_TEMPLATE
+        canonical_name: Cổ phiếu quỹ
+        pdf_label: Cố phiếu quỹ
+        normalized_label: Cổ phiếu quỹ
+        parent_id: 4364
+        previous_id: 4338
+        next_id: 4374
+        period_map_id: ctg-cdkt-2026q2
+        mapping_action: MAP_ONCE
+        value_status: OBSERVED_ZERO
+        current: {raw_value: "-", normalized_numeric_value: 0}
+        comparative: {raw_value: "-", normalized_numeric_value: 0}
+      - visible_row_id: ctg-p4-4374
+        page: 4
+        statement_type: CDKT
+        reviewed_item_id: 4374
+        template_membership: CURRENT_TARGET_TEMPLATE
+        canonical_name: Cổ phiếu ưu đãi
+        pdf_label: Cố phiếu ưu đãi
+        normalized_label: Cổ phiếu ưu đãi
+        parent_id: 4364
+        previous_id: 4340
+        next_id: 4339
+        period_map_id: ctg-cdkt-2026q2
+        mapping_action: MAP_ONCE
+        value_status: OBSERVED_ZERO
+        current: {raw_value: "-", normalized_numeric_value: 0}
+        comparative: {raw_value: "-", normalized_numeric_value: 0}
+      - visible_row_id: ctg-p4-4339
+        page: 4
+        statement_type: CDKT
+        reviewed_item_id: 4339
+        template_membership: CURRENT_TARGET_TEMPLATE
+        canonical_name: Vốn khác của chủ sở hữu
+        pdf_label: Vốn khác
+        parent_id: 4364
+        previous_id: 4374
+        next_id: 4365
+        period_map_id: ctg-cdkt-2026q2
+        mapping_action: MAP_ONCE
+        value_status: OBSERVED_VALUE
+        current: {raw_value: "2.170.078", normalized_numeric_value: 2170078}
+        comparative: {raw_value: "1.574.563", normalized_numeric_value: 1574563}
+      - visible_row_id: ctg-p4-4365
+        page: 4
+        statement_type: CDKT
+        reviewed_item_id: 4365
+        template_membership: CURRENT_TARGET_TEMPLATE
+        canonical_name: Quỹ của TCTD
+        pdf_label: Quỹ của TCTD
+        parent_id: 4364
+        previous_id: 4339
+        next_id: 4342
+        period_map_id: ctg-cdkt-2026q2
+        mapping_action: MAP_ONCE
+        value_status: OBSERVED_VALUE
+        current: {raw_value: "31.651.682", normalized_numeric_value: 31651682}
+        comparative: {raw_value: "31.654.355", normalized_numeric_value: 31654355}
+      - visible_row_id: ctg-p4-4342
+        page: 4
+        statement_type: CDKT
+        reviewed_item_id: 4342
+        template_membership: CURRENT_TARGET_TEMPLATE
+        canonical_name: Chênh lệch tỷ giá hối đoái
+        pdf_label: Chênh lệch tỷ giá hối đoái
+        parent_id: 4325
+        previous_id: 4365
+        next_id: 4341
+        period_map_id: ctg-cdkt-2026q2
+        mapping_action: MAP_ONCE
+        value_status: OBSERVED_VALUE
+        current: {raw_value: "346.575", normalized_numeric_value: 346575}
+        comparative: {raw_value: "362.748", normalized_numeric_value: 362748}
+      - visible_row_id: ctg-p4-4343
+        page: 4
+        statement_type: CDKT
+        reviewed_item_id: 4343
+        template_membership: CURRENT_TARGET_TEMPLATE
+        canonical_name: Lợi nhuận chưa phân phối
+        pdf_label: Lợi nhuận sau thuế chưa phân phối
+        parent_id: 4325
+        previous_id: 4341
+        visible_next_external_id: 5716
+        period_map_id: ctg-cdkt-2026q2
+        mapping_action: MAP_ONCE
+        value_status: OBSERVED_VALUE
+        current: {raw_value: "78.144.110", normalized_numeric_value: 78144110}
+        comparative: {raw_value: "58.212.794", normalized_numeric_value: 58212794}
+      - visible_row_id: ctg-p4-5699
+        page: 4
+        statement_type: CDKT
+        reviewed_item_id: 5699
+        template_membership: CURRENT_TARGET_TEMPLATE
+        canonical_name: Lợi ích cổ đông không kiểm soát
+        pdf_label: Lợi ích của cổ đông không kiểm soát
+        parent_id: 4325
+        visible_previous_external_id: 5717
+        next_id: 4306
+        period_map_id: ctg-cdkt-2026q2
+        mapping_action: MAP_ONCE_NO_LEGACY_DUPLICATE
+        forbidden_duplicate_id: 4306
+        value_status: OBSERVED_VALUE
+        current: {raw_value: "1.257.755", normalized_numeric_value: 1257755}
+        comparative: {raw_value: "1.206.433", normalized_numeric_value: 1206433}
+      - visible_row_id: ctg-p4-4305
+        page: 4
+        statement_type: CDKT
+        reviewed_item_id: 4305
+        template_membership: CURRENT_TARGET_TEMPLATE
+        canonical_name: TỔNG NỢ PHẢI TRẢ VÀ VỐN CHỦ SỞ HỮU
+        pdf_label: TỔNG NỘ PHẢI TRẢ VÀ VÓN CHỦ SỐ HỮ U
+        normalized_label: TỔNG NỢ PHẢI TRẢ VÀ VỐN CHỦ SỞ HỮU
+        visible_next_external_id: 5700
+        period_map_id: ctg-cdkt-2026q2
+        mapping_action: MAP_ONCE
+        value_status: OBSERVED_VALUE
+        current: {raw_value: "2.962.003.670", normalized_numeric_value: 2962003670}
+        comparative: {raw_value: "2.767.699.300", normalized_numeric_value: 2767699300}
+      - visible_row_id: ctg-p5-5701
+        page: 5
+        statement_type: CDKT
+        reviewed_item_id: 5701
+        template_membership: OUTSIDE_CURRENT_TARGET_TEMPLATE
+        canonical_name: Bảo lãnh vay vốn
+        pdf_label: Bảo lãnh vay vốn
+        parent_external_id: 5700
+        period_map_id: ctg-off-balance-2026q2
+        mapping_action: DO_NOT_MAP_TO_TARGET_CDKT
+        value_status: OUT_OF_SCOPE_FOR_TARGET_TEMPLATE
+        current: {raw_value: "36.255.058", normalized_numeric_value: 36255058}
+        comparative: {raw_value: "28.630.320", normalized_numeric_value: 28630320}
+      - visible_row_id: ctg-p5-5702
+        page: 5
+        statement_type: CDKT
+        reviewed_item_id: 5702
+        template_membership: OUTSIDE_CURRENT_TARGET_TEMPLATE
+        canonical_name: Cam kết giao dịch hối đoái
+        pdf_label: Cam kết giao dịch hối đoái
+        parent_external_id: 5700
+        period_map_id: ctg-off-balance-2026q2
+        mapping_action: DO_NOT_MAP_TO_TARGET_CDKT
+        value_status: OUT_OF_SCOPE_FOR_TARGET_TEMPLATE
+        current: {raw_value: "953.123.645", normalized_numeric_value: 953123645}
+        comparative: {raw_value: "860.422.276", normalized_numeric_value: 860422276}
+      - visible_row_id: ctg-p5-5703
+        page: 5
+        statement_type: CDKT
+        reviewed_item_id: 5703
+        template_membership: OUTSIDE_CURRENT_TARGET_TEMPLATE
+        canonical_name: Cam kết mua ngoại tệ
+        pdf_label: Cam kết mua ngoại tệ
+        parent_external_id: 5700
+        period_map_id: ctg-off-balance-2026q2
+        mapping_action: DO_NOT_MAP_TO_TARGET_CDKT
+        value_status: OUT_OF_SCOPE_FOR_TARGET_TEMPLATE
+        current: {raw_value: "7.973.593", normalized_numeric_value: 7973593}
+        comparative: {raw_value: "5.341.651", normalized_numeric_value: 5341651}
+      - visible_row_id: ctg-p5-5704
+        page: 5
+        statement_type: CDKT
+        reviewed_item_id: 5704
+        template_membership: OUTSIDE_CURRENT_TARGET_TEMPLATE
+        canonical_name: Cam kết bán ngoại tệ
+        pdf_label: Cam kết bán ngoại tệ
+        parent_external_id: 5700
+        period_map_id: ctg-off-balance-2026q2
+        mapping_action: DO_NOT_MAP_TO_TARGET_CDKT
+        value_status: OUT_OF_SCOPE_FOR_TARGET_TEMPLATE
+        current: {raw_value: "7.970.563", normalized_numeric_value: 7970563}
+        comparative: {raw_value: "5.341.779", normalized_numeric_value: 5341779}
+      - visible_row_id: ctg-p5-5705
+        page: 5
+        statement_type: CDKT
+        reviewed_item_id: 5705
+        template_membership: OUTSIDE_CURRENT_TARGET_TEMPLATE
+        canonical_name: Cam kết giao dịch hoán đổi
+        pdf_label: Cam kết giao dịch hoán đổi
+        parent_external_id: 5700
+        period_map_id: ctg-off-balance-2026q2
+        mapping_action: DO_NOT_MAP_TO_TARGET_CDKT
+        value_status: OUT_OF_SCOPE_FOR_TARGET_TEMPLATE
+        current: {raw_value: "937.179.489", normalized_numeric_value: 937179489}
+        comparative: {raw_value: "849.738.846", normalized_numeric_value: 849738846}
+      - visible_row_id: ctg-p5-5706
+        page: 5
+        statement_type: CDKT
+        reviewed_item_id: 5706
+        template_membership: OUTSIDE_CURRENT_TARGET_TEMPLATE
+        canonical_name: Cam kết trong nghiệp vụ L/C
+        pdf_label: Cam kết trong nghiệp vụ L/C
+        parent_external_id: 5700
+        period_map_id: ctg-off-balance-2026q2
+        mapping_action: DO_NOT_MAP_TO_TARGET_CDKT
+        value_status: OUT_OF_SCOPE_FOR_TARGET_TEMPLATE
+        current: {raw_value: "104.889.002", normalized_numeric_value: 104889002}
+        comparative: {raw_value: "91.019.626", normalized_numeric_value: 91019626}
+      - visible_row_id: ctg-p5-5707
+        page: 5
+        statement_type: CDKT
+        reviewed_item_id: 5707
+        template_membership: OUTSIDE_CURRENT_TARGET_TEMPLATE
+        canonical_name: Bảo lãnh khác
+        pdf_label: Bảo lãnh khác
+        parent_external_id: 5700
+        period_map_id: ctg-off-balance-2026q2
+        mapping_action: DO_NOT_MAP_TO_TARGET_CDKT
+        value_status: OUT_OF_SCOPE_FOR_TARGET_TEMPLATE
+        current: {raw_value: "155.889.602", normalized_numeric_value: 155889602}
+        comparative: {raw_value: "147.475.860", normalized_numeric_value: 147475860}
+      - visible_row_id: ctg-p5-5708
+        page: 5
+        statement_type: CDKT
+        reviewed_item_id: 5708
+        template_membership: OUTSIDE_CURRENT_TARGET_TEMPLATE
+        canonical_name: Các cam kết khác
+        pdf_label: Các cam kết khác
+        parent_external_id: 5700
+        period_map_id: ctg-off-balance-2026q2
+        mapping_action: DO_NOT_MAP_TO_TARGET_CDKT
+        value_status: OUT_OF_SCOPE_FOR_TARGET_TEMPLATE
+        current: {raw_value: "89.547.959", normalized_numeric_value: 89547959}
+        comparative: {raw_value: "83.119.399", normalized_numeric_value: 83119399}
+      - visible_row_id: ctg-p5-5709
+        page: 5
+        statement_type: CDKT
+        reviewed_item_id: 5709
+        template_membership: OUTSIDE_CURRENT_TARGET_TEMPLATE
+        canonical_name: Lãi cho vay và phí phải thu chưa thu được
+        pdf_label: Lãi cho vay và phí phải thu chưa thu được
+        parent_external_id: 5700
+        period_map_id: ctg-off-balance-2026q2
+        mapping_action: DO_NOT_MAP_TO_TARGET_CDKT
+        value_status: OUT_OF_SCOPE_FOR_TARGET_TEMPLATE
+        current: {raw_value: "10.115.233", normalized_numeric_value: 10115233}
+        comparative: {raw_value: "10.640.841", normalized_numeric_value: 10640841}
+      - visible_row_id: ctg-p5-5710
+        page: 5
+        statement_type: CDKT
+        reviewed_item_id: 5710
+        template_membership: OUTSIDE_CURRENT_TARGET_TEMPLATE
+        canonical_name: Nợ khó đòi đã xử lý
+        pdf_label: Nợ khó đòi đã xử lý
+        parent_external_id: 5700
+        period_map_id: ctg-off-balance-2026q2
+        mapping_action: DO_NOT_MAP_TO_TARGET_CDKT
+        value_status: OUT_OF_SCOPE_FOR_TARGET_TEMPLATE
+        current: {raw_value: "203.790.510", normalized_numeric_value: 203790510}
+        comparative: {raw_value: "185.652.293", normalized_numeric_value: 185652293}
+      - visible_row_id: ctg-p5-5711
+        page: 5
+        statement_type: CDKT
+        reviewed_item_id: 5711
+        template_membership: OUTSIDE_CURRENT_TARGET_TEMPLATE
+        canonical_name: Tài sản và chứng từ khác
+        pdf_label: Tài sản và chứng từ khác
+        parent_external_id: 5700
+        period_map_id: ctg-off-balance-2026q2
+        mapping_action: DO_NOT_MAP_TO_TARGET_CDKT
+        forbidden_target_id: 4366
+        value_status: OUT_OF_SCOPE_FOR_TARGET_TEMPLATE
+        current: {raw_value: "115.147.331", normalized_numeric_value: 115147331}
+        comparative: {raw_value: "95.027.390", normalized_numeric_value: 95027390}
+      - visible_row_id: null
+        page: 4
+        statement_type: CDKT
+        reviewed_item_id: 4337
+        template_membership: CURRENT_TARGET_TEMPLATE
+        canonical_name: Vốn đầu tư của chủ sở hữu
+        candidate_pdf_label_must_not_map: Vốn đầu tư XDCB, mua sắm TSCĐ
+        visible_previous_external_id: 5715
+        next_id: 4373
+        mapping_action: NO_VISIBLE_ROW
+        value_status: NOT_OBSERVED
+      - visible_row_id: ctg-p4-4373
+        page: 4
+        statement_type: CDKT
+        reviewed_item_id: 4373
+        template_membership: CURRENT_TARGET_TEMPLATE
+        canonical_name: Vốn đầu tư XDCB
+        pdf_label: Vốn đầu tư XDCB, mua sắm TSCĐ
+        parent_id: 4364
+        previous_id: 4337
+        next_id: 4338
+        period_map_id: ctg-cdkt-2026q2
+        mapping_action: MAP_ONCE
+        forbidden_duplicate_id: 4337
+        value_status: OBSERVED_ZERO
+        current: {raw_value: "-", normalized_numeric_value: 0}
+        comparative: {raw_value: "-", normalized_numeric_value: 0}
+
+  - document_key: acb-q2-2026-consolidated
+    bank: ACB
+    scope: CONSOLIDATED
+    source:
+      path: vietstock_bctc/ACB/2026/BCTC Hợp nhất quý 2 năm 2026.pdf
+      sha256: db55bb607d254aeef6daafd873a8199d621ac0740849e68d09ab0db772d11c86
+      size_bytes: 8000750
+      page_count: 33
+    period_maps:
+      - period_map_id: acb-cdkt-2026q2
+        statement_type: CDKT
+        unit: Triệu đồng
+        applies_to_pages: [3]
+        provenance: visible PDF table headers
+        columns:
+          - {ordinal: 0, side: LEFT, role: CURRENT, period_end: "2026-06-30", raw_header: "30.6.2026"}
+          - {ordinal: 1, side: RIGHT, role: COMPARATIVE, period_end: "2025-12-31", raw_header: "31.12.2025"}
+    decisions:
+      - visible_row_id: acb-p3-4345
+        page: 3
+        statement_type: CDKT
+        reviewed_item_id: 4345
+        template_membership: CURRENT_TARGET_TEMPLATE
+        canonical_name: Dự phòng rủi ro cho vay các TCTD khác
+        pdf_label: 3 Dự phòng rủi ro
+        parent_id: 4312
+        previous_id: 4326
+        next_id: 4313
+        period_map_id: acb-cdkt-2026q2
+        mapping_action: MAP_ONCE
+        value_status: OBSERVED_ZERO
+        current: {raw_value: "-", normalized_numeric_value: 0}
+        comparative: {raw_value: "-", normalized_numeric_value: 0}
+      - visible_row_id: acb-p3-4367
+        page: 3
+        statement_type: CDKT
+        reviewed_item_id: 4367
+        template_membership: CURRENT_TARGET_TEMPLATE
+        canonical_name: Nguyên giá tài sản cố định hữu hình
+        pdf_label: Nguyên giá tài sản cố định
+        parent_id: 4328
+        previous_id: 4328
+        next_id: 4368
+        period_map_id: acb-cdkt-2026q2
+        mapping_action: MAP_ONCE
+        value_status: OBSERVED_VALUE
+        current: {raw_value: "7.212.349", normalized_numeric_value: 7212349}
+        comparative: {raw_value: "6.806.108", normalized_numeric_value: 6806108}
+      - visible_row_id: acb-p3-4368
+        page: 3
+        statement_type: CDKT
+        reviewed_item_id: 4368
+        template_membership: CURRENT_TARGET_TEMPLATE
+        canonical_name: Giá trị hao mòn lũy kế tài sản cố định hữu hình
+        pdf_label: Hao mòn tài sản cố định
+        parent_id: 4328
+        previous_id: 4367
+        next_id: 4329
+        period_map_id: acb-cdkt-2026q2
+        mapping_action: MAP_ONCE
+        value_status: OBSERVED_VALUE
+        current: {raw_value: "(3.801.708)", normalized_numeric_value: -3801708}
+        comparative: {raw_value: "(3.605.621)", normalized_numeric_value: -3605621}
+
+  - document_key: mbb-q1-2026-consolidated
+    bank: MBB
+    scope: CONSOLIDATED
+    source:
+      path: vietstock_bctc/MBB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf
+      sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+      size_bytes: 3977471
+      page_count: 61
+    period_maps:
+      - period_map_id: mbb-cdkt-2026q1
+        statement_type: CDKT
+        unit: Triệu đồng
+        applies_to_pages: [3, 4]
+        provenance: visible PDF headers propagated across the same balance-sheet table
+        columns:
+          - {ordinal: 0, side: LEFT, role: CURRENT, period_end: "2026-03-31", raw_header: "31/03/2026"}
+          - {ordinal: 1, side: RIGHT, role: COMPARATIVE, period_end: "2025-12-31", raw_header: "31/12/2025"}
+    decisions:
+      - visible_row_id: mbb-p3-4317
+        page: 3
+        statement_type: CDKT
+        reviewed_item_id: 4317
+        template_membership: CURRENT_TARGET_TEMPLATE
+        canonical_name: Góp vốn, đầu tư dài hạn
+        pdf_label: Góp vốn, đầu tư dài hạn
+        parent_id: 4375
+        previous_id: 4352
+        next_id: 4333
+        period_map_id: mbb-cdkt-2026q1
+        mapping_action: MAP_ONCE
+        value_status: OBSERVED_VALUE
+        supersedes_extracted_comparative: 468896
+        current: {raw_value: "467.906", normalized_numeric_value: 467906}
+        comparative: {raw_value: "468.396", normalized_numeric_value: 468396}
+      - visible_row_id: mbb-p3-4354
+        page: 3
+        statement_type: CDKT
+        reviewed_item_id: 4354
+        template_membership: CURRENT_TARGET_TEMPLATE
+        canonical_name: Đầu tư vào công ty liên kết
+        pdf_label: Đầu tư vào công ty liên kết
+        parent_id: 4317
+        previous_id: 4333
+        next_id: 4334
+        period_map_id: mbb-cdkt-2026q1
+        mapping_action: MAP_ONCE
+        value_status: OBSERVED_ZERO
+        current: {raw_value: "-", normalized_numeric_value: 0}
+        comparative: {raw_value: "-", normalized_numeric_value: 0}
+      - visible_row_id: mbb-p3-4357
+        page: 3
+        statement_type: CDKT
+        reviewed_item_id: 4357
+        template_membership: CURRENT_TARGET_TEMPLATE
+        canonical_name: Các khoản lãi, phí phải thu
+        pdf_label: Các khoản lãi, phí phải thu
+        parent_id: 4327
+        previous_id: 4356
+        next_id: 4335
+        period_map_id: mbb-cdkt-2026q1
+        mapping_action: MAP_ONCE
+        value_status: OBSERVED_VALUE
+        supersedes_extracted_comparative: 13549010
+        current: {raw_value: "16.082.037", normalized_numeric_value: 16082037}
+        comparative: {raw_value: "13.549.018", normalized_numeric_value: 13549018}
+      - visible_row_id: mbb-p3-4335
+        page: 3
+        statement_type: CDKT
+        reviewed_item_id: 4335
+        template_membership: CURRENT_TARGET_TEMPLATE
+        canonical_name: Tài sản thuế thu nhập hoãn lại
+        pdf_label: Tài sản thuế TNDN hoãn lại
+        parent_id: 4327
+        previous_id: 4357
+        next_id: 4366
+        period_map_id: mbb-cdkt-2026q1
+        mapping_action: MAP_ONCE
+        value_status: OBSERVED_VALUE
+        supersedes_extracted_comparative: 34333
+        current: {raw_value: "37.793", normalized_numeric_value: 37793}
+        comparative: {raw_value: "34.339", normalized_numeric_value: 34339}
+      - visible_row_id: mbb-p3-4366
+        page: 3
+        statement_type: CDKT
+        reviewed_item_id: 4366
+        template_membership: CURRENT_TARGET_TEMPLATE
+        canonical_name: Chi tiết Tài sản "Có" khác
+        pdf_label: Tài sản Có khác
+        parent_id: 4327
+        previous_id: 4335
+        next_id: 4309
+        period_map_id: mbb-cdkt-2026q1
+        mapping_action: MAP_ONCE
+        value_status: OBSERVED_VALUE
+        supersedes_extracted_comparative: 7894090
+        current: {raw_value: "6.622.398", normalized_numeric_value: 6622398}
+        comparative: {raw_value: "7.894.091", normalized_numeric_value: 7894091}
+      - visible_row_id: mbb-p4-4336
+        page: 4
+        statement_type: CDKT
+        reviewed_item_id: 4336
+        template_membership: CURRENT_TARGET_TEMPLATE
+        canonical_name: Thuế thu nhập hoãn lại phải trả
+        pdf_label: Thuế TNDN hoãn lại phải trả
+        parent_id: 4324
+        previous_id: 4361
+        next_id: 4362
+        period_map_id: mbb-cdkt-2026q1
+        mapping_action: MAP_ONCE
+        value_status: OBSERVED_ZERO
+        current: {raw_value: "-", normalized_numeric_value: 0}
+        comparative: {raw_value: "-", normalized_numeric_value: 0}

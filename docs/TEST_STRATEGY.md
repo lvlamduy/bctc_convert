@@ -157,3 +157,9 @@ contract; it is an acquisition/localization regression, not an OCR-accuracy or
 production gate.
 
 Explicit page numbers in a golden/calibration fixture are expected test data, not production routing rules. Production page pairing must continue to use document-order and visual evidence; no bank, page offset, or coordinate constant may enter the algorithm.
+
+The hash-bound human-review registry `HR-2026-08-06-CTG-ACB-MBB` adds a calibration truth layer above machine-reader agreement. Its tests verify 3 exact PDF identities, 30 decisions, 58 visible period values, 12 `OBSERVED_VALUE` rows, 6 `OBSERVED_ZERO` rows, 1 `NOT_OBSERVED` row, and 11 `OUT_OF_SCOPE_FOR_TARGET_TEMPLATE` rows. They also assert that external IDs 5701–5711 do not collide with any current template. This is fixture truth only; production code cannot inspect its bank/page entries.
+
+Period propagation v1 is tested independently of all values and history. A complete visible table header binds the axes; a headerless adjacent continuation inherits by column ordinal only after continuation/context/geometry gates. New statements/tables, changed period structures, non-adjacent pages, incompatible axes, and partial local headers remain unresolved.
+
+Structural ranking v2 uses a lexicographic evidence order. Mutation tests deliberately give a wrong-parent candidate stronger same-bank history and require the correct parent candidate to remain first. A history-only difference must remain `AMBIGUOUS_MAPPING`. Sequence tests use the real non-monotonic `4337 → 4373 → 4338` template block to prove that workbook `display_order`, not numeric ID, controls order and that a schema ID cannot be assigned to two visible rows.

@@ -13,7 +13,7 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 from bctc_ai.core.atomic import atomic_write_bytes
-from bctc_ai.core.contracts import EvidenceStatus, PipelineRecord
+from bctc_ai.core.contracts import EvidenceStatus, PipelineRecord, ValueStatus
 from bctc_ai.schema.registry import SchemaItem, SchemaWorkbook, load_all
 
 MAIN_SHEETS = ("CDKT", "KQKD", "LCTT", "TM")
@@ -96,6 +96,8 @@ def _write_main_sheet(
         "ComparativeObservation",
         "CurrentStatus",
         "ComparativeStatus",
+        "CurrentValueStatus",
+        "ComparativeValueStatus",
         "Unit",
         "CurrentPeriodEnd",
         "ComparativePeriodEnd",
@@ -110,6 +112,11 @@ def _write_main_sheet(
         EvidenceStatus.AUTO_VERIFIED_HIGH,
         EvidenceStatus.AUTO_VERIFIED_MEDIUM,
     }
+    exportable_value_statuses = {
+        None,  # compatibility for historical records created before this contract
+        ValueStatus.OBSERVED_VALUE,
+        ValueStatus.OBSERVED_ZERO,
+    }
     for item in sorted(items, key=lambda candidate: candidate.display_order):
         item_records = by_id.get(item.schema_id, [])
         current = next(
@@ -122,12 +129,16 @@ def _write_main_sheet(
         )
         current_value = (
             _excel_value(current.normalized_value)
-            if current is not None and current.status in accepted
+            if current is not None
+            and current.status in accepted
+            and current.value_status in exportable_value_statuses
             else None
         )
         comparative_value = (
             _excel_value(comparative.normalized_value)
-            if comparative is not None and comparative.status in accepted
+            if comparative is not None
+            and comparative.status in accepted
+            and comparative.value_status in exportable_value_statuses
             else None
         )
         exported += int(current_value is not None) + int(comparative_value is not None)
@@ -143,6 +154,16 @@ def _write_main_sheet(
                 comparative.observation.value if comparative and comparative.observation else None,
                 current.status.value if current else EvidenceStatus.NOT_OBSERVED.value,
                 comparative.status.value if comparative else EvidenceStatus.NOT_OBSERVED.value,
+                current.value_status.value
+                if current and current.value_status
+                else ValueStatus.NOT_OBSERVED.value
+                if current is None
+                else None,
+                comparative.value_status.value
+                if comparative and comparative.value_status
+                else ValueStatus.NOT_OBSERVED.value
+                if comparative is None
+                else None,
                 ";".join(units),
                 current.period_end if current else None,
                 comparative.period_end if comparative else None,
@@ -151,7 +172,22 @@ def _write_main_sheet(
     _style_header(sheet)
     _set_widths(
         sheet,
-        {1: 10, 2: 16, 3: 72, 4: 20, 5: 20, 6: 22, 7: 22, 8: 28, 9: 28, 10: 18, 11: 20, 12: 22},
+        {
+            1: 10,
+            2: 16,
+            3: 72,
+            4: 20,
+            5: 20,
+            6: 22,
+            7: 22,
+            8: 28,
+            9: 28,
+            10: 34,
+            11: 34,
+            12: 18,
+            13: 20,
+            14: 22,
+        },
     )
     for row in sheet.iter_rows(min_row=2):
         row[2].alignment = Alignment(wrap_text=True, vertical="top")
@@ -184,6 +220,7 @@ def _write_provenance(workbook: Workbook, records: list[PipelineRecord]) -> None
         "MappingReason",
         "Confidence",
         "Status",
+        "ValueStatus",
         "PeriodStart",
         "PeriodEnd",
         "PeriodType",
@@ -217,6 +254,7 @@ def _write_provenance(workbook: Workbook, records: list[PipelineRecord]) -> None
                 record.mapping_reason,
                 record.confidence,
                 record.status.value,
+                record.value_status.value if record.value_status else None,
                 record.period_start,
                 record.period_end,
                 record.period_type,
@@ -246,6 +284,7 @@ def _write_record_queue(workbook: Workbook, name: str, records: list[PipelineRec
         "Unit",
         "Sign",
         "Status",
+        "ValueStatus",
         "Confidence",
         "RejectionReason",
         "CandidateList",
@@ -265,6 +304,7 @@ def _write_record_queue(workbook: Workbook, name: str, records: list[PipelineRec
                 record.unit,
                 record.sign,
                 record.status.value,
+                record.value_status.value if record.value_status else None,
                 record.confidence,
                 record.rejection_reason,
                 json.dumps(record.candidate_list, ensure_ascii=False, sort_keys=True),

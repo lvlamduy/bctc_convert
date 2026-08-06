@@ -18,3 +18,9 @@ def test_history_index_cli_fails_before_build_when_uri_environment_is_missing(mo
 
     assert arguments.handler(arguments) == 2
     assert "is not set" in capsys.readouterr().err
+
+
+def test_review_audit_cli_has_rebuild_safe_defaults():
+    arguments = build_parser().parse_args(["review-audit"])
+    assert arguments.policy == "config/reference/human-review-v1.yaml"
+    assert not arguments.allow_missing_sources

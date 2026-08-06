@@ -1,0 +1,19 @@
+version: 2
+mode: LEXICOGRAPHIC_FAIL_CLOSED
+priority:
+  - exact_table_and_statement_context
+  - parent_child_relationship
+  - previous_and_next_rows
+  - indentation_and_numbering
+  - exact_or_normalized_label
+  - same_bank_historical_reference
+  - cross_bank_historical_reference
+minimum_label_similarity: 0.35
+minimum_label_gap_when_label_decides: 0.06
+maximum_history_score: 1.0
+history_policy:
+  same_bank: REVIEW_TIE_BREAK_ONLY
+  cross_bank: REVIEW_TIE_BREAK_ONLY
+  may_override_verified_structure: false
+  may_use_numeric_value_for_mapping: false
+scope_policy: config/mapping/scope_exclusions.yaml

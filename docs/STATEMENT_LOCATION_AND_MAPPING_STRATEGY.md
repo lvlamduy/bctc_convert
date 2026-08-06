@@ -121,6 +121,19 @@ Row reconstruction precedes schema mapping:
 5. Retain unmatched fragments and page-boundary ambiguity explicitly. Never
    drop them merely to produce a rectangular table.
 
+### Table-level period propagation v1
+
+A row never decides its own current/comparative period. Complete visible
+headers establish a `TablePeriodMap`; a headerless page can inherit it only
+through an accepted adjacent continuation edge with the same statement
+instance/type/scope and compatible left-to-right value axes. Source header
+text, box, page, and axis remain attached through every inheritance hop.
+
+Partial local headers do not mix with inherited fields. A new statement, a new
+non-continuation table, changed period structure, non-adjacent page, or changed
+value-axis geometry leaves the table unresolved. Numeric values and MongoDB are
+not inputs to `period_propagation_v1`.
+
 ## Stage 4 — contextual schema alignment
 
 Labels generate candidates; they do not decide the mapping. For each observed
@@ -142,6 +155,18 @@ must use the surrounding block and hierarchy. If the global winner is absent,
 inconsistent, or too close to a runner-up, the row remains unresolved. Numeric
 values must not select a schema candidate.
 
+`alignment_v2` makes this priority lexicographic rather than allowing a large
+name/history weight to compensate for a structural conflict: table/statement,
+parent, previous/next plus workbook-order direction, indentation/numbering,
+label, same-bank history, then cross-bank history. If history is the first
+discriminator the result remains `AMBIGUOUS_MAPPING` and review-only.
+
+ReportNormId is never sorted numerically. `display_order` is read from the
+source workbook row order and is the sequence invariant for mapping/export.
+This permits later-added large IDs to occupy their correct logical location.
+The mapping-sequence gate also prohibits assigning one schema ID to two visible
+rows.
+
 Before adding any `ReportNormId`, check collisions against the supplied schema,
 all hierarchy workbooks, Mongo template metadata, and known historical keys.
 An unused ID clears only the collision gate; it does not establish the correct
@@ -152,6 +177,13 @@ name, parent, statement, or authority to append.
 Every accepted cell retains statement, scope, unit, period start/end, column,
 sign evidence, observation state (`VALUE`, `ZERO`, `BLANK`, `DASH`, etc.),
 source box, render/source hashes, and reader provenance.
+
+Value presence is separate from evidence confidence. A visible dash or a
+verified empty numeric cell normalizes to zero with `OBSERVED_ZERO` while raw
+evidence is preserved. An absent schema row is `NOT_OBSERVED` and has no cell
+value. A visible off-balance row is
+`OUT_OF_SCOPE_FOR_TARGET_TEMPLATE`, not a mapping error. Missing machine
+reference is `REFERENCE_NOT_YET_BUILT`, not evidence against the PDF result.
 
 For quarter-only output from cumulative/YTD reports, subtraction is permitted
 only when both visible PDF operands have the same resolved schema ID, scope,

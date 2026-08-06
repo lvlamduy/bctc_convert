@@ -74,6 +74,30 @@ def _run_history_index(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_review_audit(args: argparse.Namespace) -> int:
+    from bctc_ai.reference.human_review import (
+        load_human_review_registry,
+        verify_human_review_source_files,
+    )
+
+    root = _project_root(args.project_root)
+    policy_path = Path(args.policy)
+    if not policy_path.is_absolute():
+        policy_path = root / policy_path
+    registry = load_human_review_registry(policy_path, root)
+    sources = verify_human_review_source_files(
+        registry,
+        root,
+        require_present=not args.allow_missing_sources,
+    )
+    print("HUMAN_REVIEW_STATUS=PASS")
+    print(f"HUMAN_REVIEW_ID={registry.review_id}")
+    print(f"HUMAN_REVIEW_DOCUMENTS={len(registry.documents)}")
+    print(f"HUMAN_REVIEW_DECISIONS={len(registry.decisions)}")
+    print(f"HUMAN_REVIEW_SOURCES_PRESENT={sum(source.present for source in sources)}")
+    return 0
+
+
 def _parse_pages(value: str | None) -> set[int] | None:
     if not value:
         return None
@@ -216,6 +240,20 @@ def build_parser() -> argparse.ArgumentParser:
     )
     history.add_argument("--replace", action="store_true")
     history.set_defaults(handler=_run_history_index)
+
+    review = subparsers.add_parser(
+        "review-audit", help="verify the immutable hash-bound human-review calibration registry"
+    )
+    review.add_argument(
+        "--policy",
+        default="config/reference/human-review-v1.yaml",
+    )
+    review.add_argument(
+        "--allow-missing-sources",
+        action="store_true",
+        help="validate tracked identities while permitting PDFs absent from a Git-only clone",
+    )
+    review.set_defaults(handler=_run_review_audit)
     return parser
 
 

@@ -6,4 +6,15 @@ statuses:
   - UNRESOLVED
   - NOT_APPLICABLE
   - NOT_OBSERVED
+value_statuses:
+  - OBSERVED_VALUE
+  - OBSERVED_ZERO
+  - NOT_OBSERVED
+  - OUT_OF_SCOPE_FOR_TARGET_TEMPLATE
+  - AMBIGUOUS_MAPPING
+  - REFERENCE_NOT_YET_BUILT
+status_dimensions:
+  evidence_status_is_confidence: true
+  value_status_is_presence_scope_or_reference_disposition: true
+  dimensions_must_not_be_collapsed: true
 question_grouping: table_axis_first

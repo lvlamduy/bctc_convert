@@ -6,7 +6,7 @@ This file is the durable checklist for every design, experiment, review, and pro
 
 - The visible source PDF is the final authority for label, value, sign, unit, period, scope, section, table, row, cell, hierarchy, and order.
 - OCR, document models, LLM/VLM output, MongoDB history, historical filings, and accounting equations are supporting evidence only.
-- Never invent a value, fill a blank, turn a dash into zero, repair a total by synthesis, or let historical data overwrite legible PDF evidence.
+- Never invent a value, fill an unverified OCR blank, repair a total by synthesis, or let historical data overwrite legible PDF evidence. A visible dash in a verified numeric cell is preserved raw and normalized to zero by the reviewed project rule.
 - Query historical values only after PDF structure has independently resolved a ReportNormID. Historical label/value similarity cannot generate or choose mapping candidates.
 - Treat historical unit and separate/consolidated scope as UNKNOWN unless the historical source itself proves them. A historical mismatch triggers rereading/review only; agreement cannot promote confidence.
 - Keep upstream raw-quarter and YTD series distinct. Upstream YTD values cannot serve as operands for PDF derivation; only two visible compatible PDF cells may do so.
@@ -66,8 +66,8 @@ This file is the durable checklist for every design, experiment, review, and pro
 - Bind period headers to value columns by geometry; never assume the left column is current.
 - Distinguish snapshot, duration, quarter, YTD, opening, closing, current, and comparative periods.
 - Propagate a unit only across a traceable page/section/table continuation.
-- Verify parentheses, leading/trailing minus, contra-asset presentation, and OCR-lost punctuation. Dash is not automatically zero.
-- An OCR-empty cell may become `DASH` only from visible source evidence: a correctly positioned dash-like OCR glyph or a constrained pixel component with recorded crop, shape, contrast, row, and axis measurements. Blank crops, digits, table rules, and ambiguous/multiple components fail closed.
+- Verify parentheses, leading/trailing minus, contra-asset presentation, and OCR-lost punctuation. A dash visibly located in a verified numeric cell is `OBSERVED_ZERO`; preserve the raw dash and normalize the value to zero.
+- A visibly empty numeric cell in an otherwise visible financial-statement row is `OBSERVED_ZERO` only after row presence, numeric-cell geometry, and table structure are verified. An OCR omission, blank crop without a verified cell, digit, table rule, or ambiguous component fails closed. A schema row absent from the PDF is `NOT_OBSERVED`, never zero.
 
 ## 8. Arithmetic validation
 
@@ -98,3 +98,14 @@ This file is the durable checklist for every design, experiment, review, and pro
 - Keep feature-branch Git history and a protected remote main branch; never commit secrets.
 - Commit each working, tested version. Keep a rebuild manifest for software, model, driver, binary/model hashes, install commands, smoke tests, and rollback steps.
 - During model development, the user accepts VPS-local versioned artifacts plus periodic tested Git commits. Local backups still require an isolated hash-verified restore; record that this does not protect against total VPS loss. Revisit off-machine data protection before any later production policy change.
+
+## 12. Human-reviewed correction contract
+
+- Human answers are authoritative only for the cited PDF hash and page; freeze those PDFs as calibration before using the answers.
+- Store reviewed raw text, normalized numeric value, row/status, period map, parent, neighbors, and prohibited duplicate/target IDs in a machine-validated registry.
+- A visible dash or verified empty numeric cell is `OBSERVED_ZERO`; an absent schema row is `NOT_OBSERVED` and never zero.
+- A visible off-balance row is `OUT_OF_SCOPE_FOR_TARGET_TEMPLATE`, not a mapping failure. It must not enter CDKT even when its label resembles an asset or liability row.
+- Period orientation is inherited from visible table headers through a verified continuation graph. Amount magnitude and MongoDB are forbidden period inputs.
+- Candidate ranking is structural and lexicographic. Parent and template-order context outrank label similarity; history is review-only when it is the first discriminator.
+- ReportNormId magnitude has no ordering semantics. Preserve the template workbook row order through schema load, mapping, validation, and export.
+- Calibration corrections cannot become institution/page hard-code or be used to claim holdout/production accuracy.

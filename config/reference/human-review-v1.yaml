@@ -1,0 +1,26 @@
+version: 1
+authority: HUMAN_REVIEW_AUTHORITATIVE_FOR_HASH_BOUND_PDF_PAGES
+dataset: reference/human_review/reviewed-mapping-corrections-2026-08-06.yaml
+dataset_sha256: 32c86c0bf7642d3bd7596225331fc6f10906970476e1a9ba982b2f478d0f8e74
+required_dataset_role: CALIBRATION
+dataset_role_registry: data/registered/dataset_roles.jsonl
+source_registry: data/registered/source_registry.jsonl
+target_schema:
+  statement_type: CDKT
+  path: template/Bank_CDKT_ReportNormId.xlsx
+  sha256: a07ff47f7c41011fe4ca5a66681106d476586ded9013b5874cbb9f67a6ad8486
+status_vocabulary:
+  - OBSERVED_VALUE
+  - OBSERVED_ZERO
+  - NOT_OBSERVED
+  - OUT_OF_SCOPE_FOR_TARGET_TEMPLATE
+  - AMBIGUOUS_MAPPING
+  - REFERENCE_NOT_YET_BUILT
+safety:
+  production_routing_allowed: false
+  bank_or_page_hardcoding_allowed: false
+  absent_row_can_be_zero: false
+  outside_target_can_be_mapping_failure: false
+  mongo_can_override_pdf: false
+  numeric_id_order_allowed: false
+  schema_order_source: TEMPLATE_WORKBOOK_ROW_ORDER
