@@ -130,4 +130,17 @@ alignment units. Page boundaries remain hard alignment separators; table
 continuation records preserve both readers' boundary rows but cannot
 automatically merge them. Agreement always has confidence effect `NONE`.
 
+E-0015 is the clean two-document integration regression for structural fusion
+v2. It hash-locks the evaluator, every direct/transitive algorithm, four table
+policies, E-0014 artifact, source/seal/result identities, and the 2.1 MiB
+evidence artifact. It requires 14 retained Role B blocks with exactly one
+fail-closed unresolved VCB page-9 block, 13 two-axis Role C pages, exact row and
+action counts, observed-cell/note/code/label metrics, eight retained Role B
+invalid cells, zero Role C invalid cells, ten pixel dashes, three quarantined
+margin numbers, zero off-balance eligibility, and five hard page boundaries.
+Locally present external inputs are re-hashed. The 95.154185% paired-observed
+cell agreement is conditional machine-reader agreement, not human-gold or
+production accuracy; missing/truncated rows remain outside that numerator and
+are reported separately through bilateral financial-row coverage.
+
 Explicit page numbers in a golden/calibration fixture are expected test data, not production routing rules. Production page pairing must continue to use document-order and visual evidence; no bank, page offset, or coordinate constant may enter the algorithm.

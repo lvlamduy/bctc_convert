@@ -143,6 +143,15 @@ in `../STRUCTURAL_READER_FUSION_STRATEGY.md`. A formal evaluation must be run
 from a clean commit and record all new source/config hashes before its result is
 accepted.
 
+Formal E-0015 reused that exact control-plane environment from clean commit
+`94a2c7c4c4809764a59f9f8c977fcd6318e2d6ad`; it ran no OCR/model inference and
+added no Python/Ubuntu package, model, weight, driver, or cache. Its parser and
+comparison complete in about 1.4 seconds on this VPS when the 13 sealed page
+artifacts are local. Exact code/config/source/seal/result hashes, parameters,
+expected metrics, transfer prerequisites, and replay command are in
+`../experiments/E-0015-REPLAY.md`. The tracked result is about 2.1 MiB; large
+renders/OCR/model assets remain outside Git.
+
 Detailed commands, disk checks, cache rules, failure history, and rollback are in `docs/environment/GPU_RUNTIME_RUNBOOK.md`.
 
 ## Maintenance rule

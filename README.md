@@ -55,6 +55,9 @@ in [docs/experiments/E-0013-REPLAY.md](docs/experiments/E-0013-REPLAY.md).
 The independently sealed 200-DPI MBB/VCB Role B and Role C acquisition, exact
 settings, retained failures, and migration-safe replay are in
 [docs/experiments/E-0014-REPLAY.md](docs/experiments/E-0014-REPLAY.md).
+The clean multi-table/variable-column structural fusion comparison, metrics,
+failure set, and exact replay are in
+[docs/experiments/E-0015-REPLAY.md](docs/experiments/E-0015-REPLAY.md).
 The allowlisted, non-authoritative Mongo/DuckDB reference and rebuild procedure
 are in
 [docs/environment/HISTORICAL_REFERENCE_RUNBOOK.md](docs/environment/HISTORICAL_REFERENCE_RUNBOOK.md).
