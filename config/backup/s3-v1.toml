@@ -1,0 +1,54 @@
+format_version = 1
+policy_id = "S3_CONTENT_ADDRESSED_SNAPSHOT_V1"
+
+[aws]
+bucket = "test-s3-duylv"
+prefix = "bctc-ai"
+profile = "bctc-backup"
+region = "us-east-1"
+server_side_encryption = "AES256"
+retry_mode = "standard"
+max_attempts = 8
+workers = 8
+
+[bucket_gate]
+require_public_access_block = true
+require_default_encryption = true
+production_requires_versioning = true
+production_requires_full_content_restore = true
+allow_unversioned_immutable_snapshot = false
+
+[object_layout]
+content_prefix = "objects/sha256"
+snapshot_prefix = "snapshots"
+run_prefix = "runs"
+put_if_none_match = "*"
+include_sha256_checksum = true
+delete_operations_enabled = false
+overwrite_operations_enabled = false
+
+[inventory]
+source_root = "vietstock_bctc"
+source_registry = "data/registered/source_registry.jsonl"
+generated_output_root = "output"
+mongodb_dump_registry = "data/registered/mongodb_dump_registry.json"
+historical_reference_registry = "data/registered/historical_weak_reference_registry.json"
+include_control_plane_archive = true
+include_git_bundle = true
+
+[restore]
+sample_one_per_asset_class = true
+restore_all_control_plane_objects = true
+restore_all_singleton_critical_objects = true
+catalog_head_verification = true
+full_content_stream_restore_default = false
+
+[excluded_reconstructable]
+paths = [
+  ".venv",
+  ".gpu-venv",
+  ".tools",
+  ".local-mongodb",
+  ".model-cache",
+]
+reason = "Runtimes, tools, MongoDB data files, and model weights are rebuilt from tracked versions, scripts, revisions, and hashes. The source dump and accepted generated evidence are backed up."

@@ -1,7 +1,11 @@
 # Server rebuild procedure
 
 1. Clone the repository and check out the required tagged/committed version.
-2. Copy source PDFs and large local artifacts separately; verify them against `data/registered/*.json*` hashes.
+2. Restore source PDFs and large local artifacts from the immutable S3 snapshot
+   recorded in `PROGRESS_REPORT.md`/the backup run record. Use `bctc-ai
+   s3-hydrate` for exact logical paths or asset classes; it must reject local
+   conflicts and verify the manifest, S3 checksum, size, and SHA-256. If S3 is
+   unavailable, copy them separately and verify against `data/registered/*.json*`.
 3. Create the Python environment exactly from `uv.lock` using the commands in `SOFTWARE_INVENTORY.md`.
 4. Run `.venv/bin/ruff check src tests scripts` and `.venv/bin/pytest` before processing data.
 5. Install the local MongoDB runtime with `scripts/bootstrap/install_mongodb_runtime.sh`.
@@ -12,7 +16,10 @@
 10. Install the two Ubuntu GPU image libraries with `scripts/bootstrap/install_gpu_system_deps.sh`; compare the resulting package set with `config/system/ubuntu-22.04-gpu-apt-observed.tsv`.
 11. Set `BCTC_GPU_UV_CACHE_DIR` to a filesystem with at least 8 GiB free and run `scripts/bootstrap/create_gpu_runtime.sh`. It must verify the pinned Paddle wheel before installation; its freeze diff, dependency check, import check, `sm_120` check, CUDA kernel, and Paddle CPU kernel must all pass.
 12. Choose a model cache with at least 3 GiB free. Download all four exact revisions using `scripts/bootstrap/download_paddleocr_vl_models.py`, then run it again with `--verify-only`.
-13. Re-register source PDFs after transfer. Dataset roles are append-only; never silently reuse development files as holdout.
+13. Re-register or audit hydrated source PDFs after transfer. Dataset roles are
+    append-only; never silently reuse development files as holdout. A Git-only or
+    offloaded workspace may use `review-audit --allow-missing-sources` only for
+    control-plane checks and may not claim source bytes were locally verified.
 14. Run a final `bctc-ai audit`; it must remain fail-closed if Mongo, historical index, GPU, schema, source hashes, or backup evidence differ.
 15. Run golden fixtures, verify immutable E-0006, replay pinned E-0007, verify E-0008, and replay E-0009/E-0010 from `docs/experiments/E-0010-REPLAY.md` before any production batch. Generated output is never a substitute for the registered source hashes.
 16. Verify both geometry configurations. `config/tables/geometry.yaml` is historical v1 and must retain its registered hash; current calibration uses `config/tables/geometry-v2.yaml`. Never edit v1 to make a newer fixture pass.
@@ -26,6 +33,11 @@
 24. Verify the human-reviewed calibration registry with `.venv/bin/bctc-ai review-audit`. It must report 3 documents and 30 decisions, validate the current CDKT template hash, confirm all three immutable `CALIBRATION` roles, and re-hash each locally restored PDF. In a Git-only control-plane check, `--allow-missing-sources` may validate tracked identities without claiming the absent PDFs were verified.
 25. Verify `config/tables/period-propagation-v1.yaml` and `config/mapping/structural-ranking-v2.yaml`. Run the focused period/value/mapping/human-review tests before a full suite. Do not change template rows into numeric ReportNormId order; source-workbook `display_order` is authoritative.
 26. For the optional TATR calibration reader, read `../MODEL_READER_DECISION.md`, download and verify the exact checkpoint with `scripts/bootstrap/download_tatr_model.py`, and run only against source/hash-bound tight table crops. Its output is geometry proposal evidence and must not alter value, period, scope, schema, confidence, or template order. DeepSeek-OCR-2, IBM TableFormer, and ClusterTabNet are not part of the base rebuild until separate runtime/model manifests and clean experiments approve them.
+27. Verify the S3 run record, manifest SHA-256, catalog HEAD count, sampled/full
+    restore level, and local-offload journal. Bucket versioning must be enabled
+    before the backup is reported as production PASS; immutable object names on
+    an unversioned bucket are useful disaster recovery but do not satisfy that
+    stricter gate.
 
 Recovery is accepted only when file hashes, schema order/count, test suite, local Mongo reference audit, and generated-workbook integrity all pass. A copied directory without these checks is not a valid rebuild.
 

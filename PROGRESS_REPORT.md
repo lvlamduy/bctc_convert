@@ -1,13 +1,13 @@
 # Progress report
 
-- Updated: 2026-08-06T04:02:00+00:00
+- Updated: 2026-08-06T04:28:00+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `dcf1bbc62bb6f4d72bbc9c23ca882624b2645d25`
+- Latest clean, tested, pushed checkpoint: `8dd54226d7c889d68ad88489132a01a348418408`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,592 (CDKT 77; KQKD 24; LCTT 107; TM 1,384)
 - Registered PDFs: 2,567
-- Latest full regression: 216 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
+- Latest full regression: 222 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
 
 ## Completed tasks
 
@@ -63,13 +63,31 @@
   0.187929 seconds with 249.096680 MiB peak allocated VRAM. It retains all 125
   queries and reports 36/30/23 row boxes at thresholds 0.5/0.7/0.9; no threshold
   is selected from these counts. This is mechanism evidence, not a formal run.
+- Committed and pushed the exact-version TATR compatibility checkpoint as
+  `8dd5422`; Ruff and all 216 tests passed with two intentional historical skips.
+- Validated the user-supplied `s3://test-s3-duylv/` target through the existing
+  `bctc-backup` AWS profile. It is in `us-east-1`, defaults to AES-256 server-side
+  encryption, and blocks all public access.
+- Q-BOOT-005 was approved. Enabled bucket versioning and verified `Enabled`;
+  default AES-256 encryption and all four public-access blocks remain active.
+  Object Lock was not enabled and the bucket reports no Object Lock configuration.
+- Inventoried the off-machine snapshot scope: 2,567 registered PDFs plus source
+  acquisition metadata, all generated output, the 526,178,025-byte Mongo dump,
+  the 17,838,080-byte accepted DuckDB, a control-plane archive, and a Git bundle.
+  The initial content-addressed snapshot will contain about 18.6 GB before
+  content deduplication.
 
 ## Currently in progress
 
-- Preparing a clean commit for the two exact-version TATR compatibility rules
-  and their 216-test regression. Formal two-crop inference starts only after the
-  new checkpoint is pushed; threshold evaluation will use geometry/IoU rather
-  than the expected row count.
+- Implementing and testing the S3 snapshot/offload/hydration checkpoint before
+  uploading large files. Every object is content-addressed by SHA-256, written
+  with `If-None-Match: *`, checked by S3 SHA-256 plus HEAD metadata, and published
+  through a final immutable manifest. Offload remains dry-run by default and is
+  limited to exact `source_pdf` and `mongodb_dump` manifest records.
+- Q-BOOT-004 is approved and queued as the next isolated checkpoint: append TM
+  ID 1944 with its exact authorized name, preserving every existing workbook
+  row, ID, name, order, and mapping, then extend Role A, Role B, Excel,
+  evaluation, and mandatory-search contracts.
 
 ## Major challenges and obstacles
 
@@ -95,9 +113,10 @@
 - The legacy processor's one-key size representation is also rejected by the
   current runtime. Its explicit 800/800 resolution must retain aspect ratio and
   be recorded separately from an experimental high-resolution override.
-- Production backup remains incomplete because the user-authorized development
-  policy keeps large artifacts on this VPS; Git protects code/config/docs but is
-  not an off-machine backup for PDFs, OCR artifacts, model weights, or databases.
+- The S3 bucket is reachable, encrypted, publicly blocked, and versioned. The
+  remaining backup obstacle is operational: complete the ~18.6 GB upload and a
+  full sequential content restore before any local source is removed. Object
+  Lock is deliberately disabled per user instruction.
 
 ## Current strategy
 
@@ -120,30 +139,37 @@
    row/cell relation modeling, Vietnamese label encoders trained with
    same-label/different-parent hard negatives, specialized digit/sign recognition,
    and conditional dewarping. Evaluate on bank- and period-disjoint holdouts.
+9. Protect large inputs with immutable S3 content keys and a manifest-first
+   restore contract. Reclaim local space only after remote HEAD/checksum and
+   sampled download/semantic restore checks pass; hydrate exact logical paths
+   without overwriting a mismatched local file.
 
 ## Planned next steps
 
-1. Run the complete regression, then commit/push the TATR mechanism and model
-   decision from a clean worktree.
-2. Download/verify TATR v1.1 All and run it on the two frozen E-0016 full-table
+1. Finish the S3 snapshot/offload/hydration regression, update the recovery
+   documentation, then commit and push the mechanism from a clean worktree.
+2. Append and fully propagate TM ID 1944 under the approved append-only policy;
+   verify workbook preservation/collision/order and commit/push separately.
+3. Publish and full-content restore-test the immutable snapshot, then offload the 2,567
+   registered PDFs and Mongo dump to reclaim about 18.3 GB. Preserve the local
+   eviction journal and remote record; do not delete output/runtime/tool assets.
+4. Run TATR v1.1 All on the two frozen E-0016 full-table
    originals; seal row/column/header coverage and retained failure evidence.
-3. Implement canonical logical-row fusion for headerless row bands and full-table
+5. Implement canonical logical-row fusion for headerless row bands and full-table
    disagreement cases without using values, ReportNormId magnitude, history, or
    arithmetic to force alignment.
-4. Build an isolated Blackwell-compatible DeepSeek-OCR-2 benchmark without
+6. Build an isolated Blackwell-compatible DeepSeek-OCR-2 benchmark without
    modifying the approved base runtime, then score Vietnamese labels and exact
    digits/signs against the same source-bound crops.
-5. Build a human-gold evaluation split separated by bank and reporting period,
+7. Build a human-gold evaluation split separated by bank and reporting period,
    including skew, warp, dark headers, blurred digits, wrapped rows, continuation
    pages, direct/indirect LCTT, separate/consolidated scope, and quarterly/YTD
    derivation cases.
-6. Define calibrated abstention thresholds only after the human-gold benchmark;
+8. Define calibrated abstention thresholds only after the human-gold benchmark;
    unresolved evidence must continue to produce review statuses rather than
    guessed output.
 
 ## Questions requiring user feedback
 
-- No new blocking question at this checkpoint.
-- Q-BOOT-004 remains open in `questions_for_user.md`: collision checking for the
-  proposed TM ID 1944 passed, but it will not be appended until the user explicitly
-  approves the schema mutation.
+- Q-BOOT-004 and Q-BOOT-005 are approved. Their implementation/verification is
+  in progress; neither requires further user feedback.

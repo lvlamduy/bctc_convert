@@ -94,7 +94,7 @@ def bootstrap_questions() -> list[dict[str, Any]]:
             **common,
             "question_id": "Q-BOOT-003",
             "statement_type": "ALL",
-            "root_cause": "OFF_MACHINE_BACKUP_NOT_CONFIGURED",
+            "root_cause": "OFF_MACHINE_BACKUP_TARGET_CONFIGURED",
             "exact_question": (
                 "Which versioned off-machine target should receive source PDFs, schemas, OCR, "
                 "references, workbooks, experiments, database dumps, and model manifests?"
@@ -102,10 +102,11 @@ def bootstrap_questions() -> list[dict[str, Any]]:
             "recommended_default": "Use a versioned S3-compatible bucket with object lock and a dedicated prefix.",
             "priority": "CRITICAL",
             "user_response": (
-                "During model development, keep artifacts on the VPS and commit every working "
-                "version to Git."
+                "On 2026-08-06 the user supplied s3://test-s3-duylv/ and authorized backup; "
+                "profile access, region, AES-256 default encryption and public-access blocking "
+                "are verified."
             ),
-            "resolution_status": "RESOLVED_FOR_DEVELOPMENT",
+            "resolution_status": "TARGET_CONFIGURED_UPLOAD_IN_PROGRESS",
         },
         {
             **common,
@@ -120,8 +121,31 @@ def bootstrap_questions() -> list[dict[str, Any]]:
             ),
             "recommended_default": "Keep it as a pending append-only proposal; do not alter the supplied workbook yet.",
             "priority": "HIGH",
-            "user_response": "Check that ReportNormID 1944 does not collide before adding it.",
-            "resolution_status": "COLLISION_CHECK_PASSED_APPEND_DECISION_OPEN",
+            "user_response": (
+                "Approved on 2026-08-06: append TM ReportNormID 1944 with the exact proposed "
+                "name under the append-only policy, preserving every existing ID, name, order, "
+                "and mapping; include it in Role A, Role B, Excel, evaluation, mandatory search, "
+                "and PROGRESS_REPORT.md."
+            ),
+            "resolution_status": "APPROVED_APPEND_IMPLEMENTATION_IN_PROGRESS",
+        },
+        {
+            **common,
+            "question_id": "Q-BOOT-005",
+            "statement_type": "ALL",
+            "root_cause": "S3_BUCKET_VERSIONING_ENABLED",
+            "exact_question": "May bucket versioning be enabled on test-s3-duylv?",
+            "recommended_default": (
+                "Do not change retention settings without explicit approval; use unique "
+                "content-addressed keys and keep the production gate failed until versioning "
+                "is enabled."
+            ),
+            "priority": "HIGH",
+            "user_response": (
+                "Approved on 2026-08-06. Enable bucket versioning, retain public-access "
+                "blocking and default encryption, and do not enable Object Lock."
+            ),
+            "resolution_status": "RESOLVED",
         },
     ]
 
@@ -146,6 +170,7 @@ def write_questions(project_root: Path, records: list[dict[str, Any]]) -> None:
         "",
         "Only material ambiguities that cannot be safely resolved from current evidence are listed.",
         "Answers should be recorded in the CSV or JSONL `user_response` field; IDs remain stable.",
+        "Q-BOOT-004 and Q-BOOT-005 are approved; implementation evidence is tracked separately.",
         "",
     ]
     for record in records:

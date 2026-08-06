@@ -26,6 +26,10 @@ See [PROJECT_GOAL.md](PROJECT_GOAL.md), [ARCHITECTURE.md](ARCHITECTURE.md), and
 [ACCURACY_REQUIREMENTS.md](ACCURACY_REQUIREMENTS.md) before running a production
 document. Recovery procedures are in
 [BACKUP_AND_RESTORE_RUNBOOK.md](BACKUP_AND_RESTORE_RUNBOOK.md).
+That runbook also defines the authorized content-addressed S3 snapshot,
+checksum-gated local PDF/dump offload, and no-overwrite on-demand hydration
+commands. Never remove a local source merely because an upload command returned
+success; use the manifest-bound `s3-offload` gate.
 The durable strategy, clarification, result, and change index is
 [PROJECT_MEMORY.md](PROJECT_MEMORY.md).
 Server reconstruction is documented in

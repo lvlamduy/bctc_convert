@@ -51,6 +51,75 @@ def _run_restore_test(args: argparse.Namespace) -> int:
     return 0 if passed else 1
 
 
+def _run_s3_backup(args: argparse.Namespace) -> int:
+    from bctc_ai.storage.s3_snapshot import create_s3_snapshot
+
+    root = _project_root(args.project_root)
+    result = create_s3_snapshot(
+        root,
+        config_path=(root / args.config).resolve(),
+        staging_root=Path(args.staging),
+        restore_temp_root=Path(args.restore_temp_root) if args.restore_temp_root else None,
+        full_content_stream_restore=args.full_content_restore,
+        workers=args.workers,
+        progress=print,
+    )
+    print(f"S3_SNAPSHOT_ID={result.snapshot_id}")
+    print(f"S3_MANIFEST_KEY={result.manifest_key}")
+    print(f"S3_MANIFEST_SHA256={result.manifest_sha256}")
+    print(f"S3_RUN_RECORD={result.run_record_path}")
+    print(f"S3_OFF_MACHINE_STATUS={result.off_machine_status}")
+    print(f"S3_RESTORE_STATUS={result.restore_status}")
+    print(f"S3_PRODUCTION_STATUS={result.production_status}")
+    return 0 if result.off_machine_status == "PASS" else 1
+
+
+def _run_s3_offload(args: argparse.Namespace) -> int:
+    from bctc_ai.storage.s3_snapshot import OffloadResult, offload_local_assets
+
+    root = _project_root(args.project_root)
+    result = offload_local_assets(
+        root,
+        config_path=(root / args.config).resolve(),
+        manifest_path=Path(args.manifest),
+        run_record_path=Path(args.run_record),
+        asset_classes=args.asset_class,
+        apply=args.apply,
+        progress=print,
+    )
+    if isinstance(result, OffloadResult):
+        print("S3_OFFLOAD_STATUS=PASS")
+        print(f"S3_OFFLOAD_REMOVED_FILES={result.removed_file_count}")
+        print(f"S3_OFFLOAD_REMOVED_BYTES={result.removed_bytes}")
+        print(f"S3_OFFLOAD_RECORD={result.record_path}")
+        print(f"S3_OFFLOAD_RECORD_KEY={result.record_key}")
+    else:
+        print("S3_OFFLOAD_STATUS=DRY_RUN_PASS")
+        print(f"S3_OFFLOAD_PLANNED_FILES={result['file_count']}")
+        print(f"S3_OFFLOAD_PLANNED_BYTES={result['bytes']}")
+    return 0
+
+
+def _run_s3_hydrate(args: argparse.Namespace) -> int:
+    from bctc_ai.storage.s3_snapshot import hydrate_from_snapshot
+
+    root = _project_root(args.project_root)
+    result = hydrate_from_snapshot(
+        root,
+        config_path=(root / args.config).resolve(),
+        manifest_key=args.manifest_key,
+        manifest_sha256=args.manifest_sha256,
+        logical_paths=args.logical_path,
+        asset_classes=args.asset_class,
+        progress=print,
+    )
+    print("S3_HYDRATE_STATUS=PASS")
+    print(f"S3_HYDRATE_RESTORED_FILES={result.restored_file_count}")
+    print(f"S3_HYDRATE_REUSED_FILES={result.reused_file_count}")
+    print(f"S3_HYDRATE_RESTORED_BYTES={result.restored_bytes}")
+    return 0
+
+
 def _run_history_index(args: argparse.Namespace) -> int:
     from bctc_ai.reference.historical import build_historical_weak_reference
 
@@ -228,6 +297,36 @@ def build_parser() -> argparse.ArgumentParser:
     restore.add_argument("--archive", required=True)
     restore.add_argument("--manifest", required=True)
     restore.set_defaults(handler=_run_restore_test)
+
+    s3_backup = subparsers.add_parser(
+        "s3-backup", help="publish a content-addressed immutable S3 snapshot"
+    )
+    s3_backup.add_argument("--config", default="config/backup/s3-v1.toml")
+    s3_backup.add_argument("--staging", required=True)
+    s3_backup.add_argument("--restore-temp-root")
+    s3_backup.add_argument("--workers", type=int)
+    s3_backup.add_argument("--full-content-restore", action="store_true", default=None)
+    s3_backup.set_defaults(handler=_run_s3_backup)
+
+    s3_offload = subparsers.add_parser(
+        "s3-offload", help="remove verified large local inputs after an S3 snapshot"
+    )
+    s3_offload.add_argument("--config", default="config/backup/s3-v1.toml")
+    s3_offload.add_argument("--manifest", required=True)
+    s3_offload.add_argument("--run-record", required=True)
+    s3_offload.add_argument("--asset-class", action="append", required=True)
+    s3_offload.add_argument("--apply", action="store_true")
+    s3_offload.set_defaults(handler=_run_s3_offload)
+
+    s3_hydrate = subparsers.add_parser(
+        "s3-hydrate", help="restore selected files from an immutable S3 manifest"
+    )
+    s3_hydrate.add_argument("--config", default="config/backup/s3-v1.toml")
+    s3_hydrate.add_argument("--manifest-key", required=True)
+    s3_hydrate.add_argument("--manifest-sha256", required=True)
+    s3_hydrate.add_argument("--logical-path", action="append", default=[])
+    s3_hydrate.add_argument("--asset-class", action="append", default=[])
+    s3_hydrate.set_defaults(handler=_run_s3_hydrate)
 
     history = subparsers.add_parser(
         "history-index", help="build the resolved-ID-only historical weak reference"

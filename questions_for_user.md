@@ -2,12 +2,7 @@
 
 Only material ambiguities that cannot be safely resolved from current evidence are listed.
 Answers should be recorded in the CSV or JSONL `user_response` field; IDs remain stable.
-
-Last reviewed: 2026-08-06T03:47:00+00:00. No new blocking question was
-introduced by the reader-model decision. TATR can use the existing runtime and
-DeepSeek-OCR-2 can be benchmarked from an ephemeral cache without requiring a
-user choice. The user's clarification that workbook row order—not
-`ReportNormId` magnitude—is authoritative remains a resolved global rule.
+Q-BOOT-004 and Q-BOOT-005 are approved; implementation evidence is tracked separately.
 
 ## Q-BOOT-001 — CRITICAL
 
@@ -35,9 +30,9 @@ Which versioned off-machine target should receive source PDFs, schemas, OCR, ref
 
 Recommended safe default: Use a versioned S3-compatible bucket with object lock and a dedicated prefix.
 
-Recorded response: During model development, keep artifacts on the VPS and commit every working version to Git.
+Recorded response: On 2026-08-06 the user supplied s3://test-s3-duylv/ and authorized backup; profile access, region, AES-256 default encryption and public-access blocking are verified.
 
-Status: RESOLVED_FOR_DEVELOPMENT
+Status: TARGET_CONFIGURED_UPLOAD_IN_PROGRESS
 
 ## Q-BOOT-004 — HIGH
 
@@ -45,6 +40,16 @@ The supplied TM schema ends at ID 1943. Should proposed TM ID 1944 be appended w
 
 Recommended safe default: Keep it as a pending append-only proposal; do not alter the supplied workbook yet.
 
-Recorded response: Check that ReportNormID 1944 does not collide before adding it.
+Recorded response: Approved on 2026-08-06: append TM ReportNormID 1944 with the exact proposed name under the append-only policy, preserving every existing ID, name, order, and mapping; include it in Role A, Role B, Excel, evaluation, mandatory search, and PROGRESS_REPORT.md.
 
-Status: COLLISION_CHECK_PASSED_APPEND_DECISION_OPEN
+Status: APPROVED_APPEND_IMPLEMENTATION_IN_PROGRESS
+
+## Q-BOOT-005 — HIGH
+
+May bucket versioning be enabled on test-s3-duylv?
+
+Recommended safe default: Do not change retention settings without explicit approval; use unique content-addressed keys and keep the production gate failed until versioning is enabled.
+
+Recorded response: Approved on 2026-08-06. Enable bucket versioning, retain public-access blocking and default encryption, and do not enable Object Lock.
+
+Status: RESOLVED

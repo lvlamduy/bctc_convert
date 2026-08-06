@@ -24,6 +24,31 @@ python3 -m venv .venv
 .venv/bin/uv sync --frozen --extra dev
 ```
 
+## S3 backup client and settings
+
+- AWS CLI: 2.36.17, bundled Python 3.14.6, installed at `/usr/local/bin/aws`.
+- Credential selector: host profile `bctc-backup`; credentials are not tracked.
+- Bucket/prefix: `s3://test-s3-duylv/bctc-ai/`, region `us-east-1`.
+- Bucket controls observed 2026-08-06: default `AES256` encryption, all four
+  public-access-block flags enabled, and versioning `Enabled`. Object Lock is not
+  configured, as required by the user's approval boundary.
+- Machine-readable policy: `config/backup/s3-v1.toml`.
+- Transfer implementation: Python standard library plus the existing AWS CLI;
+  no Python package or Ubuntu package was added.
+- Runtime settings: standard AWS retry mode, 8 attempts, 8 concurrent object
+  workers, expected-owner binding, SHA-256 checksum, and `If-None-Match: *`.
+- No S3 delete operation and no overwrite mode exist. The safe offload command
+  can unlink only locally verified `source_pdf` and `mongodb_dump` records after
+  a passing remote restore record.
+
+On a rebuilt server, install AWS CLI v2, create a least-privilege profile named
+`bctc-backup` outside the repository, then run the preflight through
+`bctc-ai s3-backup`. Required permissions are bucket location/versioning/
+encryption/public-access inspection plus ListBucket, HeadObject, GetObject, and
+conditional PutObject within `bctc-ai/`. DeleteObject is neither required nor
+used. Exact backup, restore, offload, and hydration commands are in
+`BACKUP_AND_RESTORE_RUNBOOK.md`.
+
 ## Local MongoDB reference runtime
 
 The uploaded archive reports MongoDB server 7.0.28 and Database Tools 100.14.0. For read-only development restoration, the local server is patched MongoDB 7.0.34 from the same 7.0 major line; Database Tools matches archive tool version 100.14.0.

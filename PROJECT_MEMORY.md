@@ -47,6 +47,31 @@ This is the durable retrieval point for project context. It summarizes user auth
 - Parent, neighbors, indentation, section, and physical/template position outrank names. MongoDB remains weak post-PDF evidence.
 - ReportNormId magnitude is not order. Template workbook row order is authoritative because newly added indicators can receive a large ID and be inserted anywhere logically; the real sequence `4337 → 4373 → 4338` must remain intact.
 - Paper research and custom local models are authorized, but adoption requires calibration, ablation, and bank/period-disjoint holdout evidence.
+- Q-BOOT-004 was approved on 2026-08-06: append TM ReportNormID 1944 with the
+  exact name “Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán” under
+  the append-only policy. Preserve every existing ID/name/order/mapping and add
+  the new identity to Role A, Role B, Excel output, evaluation, mandatory search,
+  and progress reporting.
+
+### 2026-08-06 — off-machine backup and local offload authority
+
+- The user supplied `s3://test-s3-duylv/` as an authorized backup target and
+  subsequently instructed the project to move large PDFs and other heavy files
+  there to free VPS storage, with later download on demand.
+- The existing host profile `bctc-backup` can access the bucket. Initial
+  preflight confirms `us-east-1`, default AES-256 encryption, and all public
+  access blocks. Q-BOOT-005 was then approved; versioning was enabled and
+  reverified without changing encryption/public blocking. Object Lock remains
+  absent by explicit instruction.
+- Offload is authorized only after a content-addressed S3 snapshot, remote
+  checksum/HEAD verification, published manifest, and passing sampled restore.
+  The first safe reclaim set is all 2,567 registered PDFs plus the Mongo dump,
+  about 18.3 GB. Active output, DuckDB, environments, model runtime, and tools
+  remain local.
+- Local removal must operate on exact manifest records, never a recursive path
+  or glob. It must journal every unlink and provide no-overwrite hydration by
+  logical path or asset class. The production gate now requires enabled
+  versioning plus a full sequential content restore.
 
 ## General strategy
 
@@ -86,11 +111,13 @@ This is the durable retrieval point for project context. It summarizes user auth
 - Hardware audit: RTX 5070 Ti 16,303 MiB, Ryzen 9 5950X, about 125.7 GiB RAM, Ubuntu 22.04, NVIDIA driver 595.80.
 - Supplied schema contains 1,592 unique IDs: CDKT 77, KQKD 24, LCTT 107, TM 1,384. TM ID 1944 is absent and remains an append-only proposal.
 - CPU environment is locked in `uv.lock`; bootstrap, atomic storage, source identity registry, role freezing, content-addressed materialization, render/preprocess, local difficult-region variants, perspective correction, ordered alignment, continuation graph, row wrapping, arithmetic validation, and workbook export have executable tests.
-- Latest full test run after the reader-candidate/TATR mechanism checkpoint: 214 passed and 2 immutable-historical replays skipped; Ruff lint and the changed-file formatter gate passed. E-0006 and E-0009 source/config identities remain verified, but exact replay is skipped when their historical algorithm byte hashes are not the current implementation. E-0010 through E-0016 provide current hash-locked integration regressions.
+- Latest full test run after the TATR compatibility checkpoint: 216 passed and 2 immutable-historical replays skipped; Ruff lint and the changed-file formatter gate passed. E-0006 and E-0009 source/config identities remain verified, but exact replay is skipped when their historical algorithm byte hashes are not the current implementation. E-0010 through E-0016 provide current hash-locked integration regressions.
 - A real scanned/mixed ACB PDF page rendered and passed preprocessing checkpoint/hash verification.
 - Relative word-gap segmentation, numeric right-edge clustering, note-axis separation, wrapped-row assembly, label-only section retention, and axis-local period/unit binding are implemented without institution/page coordinate rules.
 - On the registered VPB logic-development fixture (pages 5–10), the native text path reconstructed 134 logical rows and 252 value cells, preserved 48 note references, and found two value axes on every page. It correctly separated snapshot dates from three-month durations, retained direct-LCTT anchors and section headings, and left one visible unlabeled off-balance total unresolved instead of inventing a label. See `docs/experiments/E-0006-vpb-native-geometry.json`.
-- A local control-plane backup restored and hash-verified, but production backup is still FAIL because it is not off-machine.
+- Local control-plane backups restore and hash-verify. The authorized S3 target
+  has passed credential/region/encryption/public-access preflight; the initial
+  full snapshot and restore are pending a clean implementation checkpoint.
 - The isolated GPU environment contains 125 frozen distributions, occupies 6,383,286,857 bytes, and is reproducible from a complete freeze plus recorded critical wheel hashes. Ubuntu `libgl1` and `libglib2.0-0`, their observed dependency closure, cache variables, disk thresholds, and rebuild/rollback commands are versioned under `docs/environment/` and `config/system/`.
 - Pinned PaddleOCR-VL-1.6 and PP-DocLayoutV3 weights were verified against their recorded sizes, revisions, and SHA-256 hashes. A revision-pinned downloader refuses mismatches; benchmark caches remain outside Git.
 - E-0007 completed the full PP-DocLayoutV3 FP32 + PaddleOCR-VL-1.6 BF16 Transformers pipeline on VPB KQKD page 8 in 19.52 seconds with 3,239 MiB peak total GPU memory. Independent ordered alignment found 25/25 logical rows, 50/50 exact value/state cells, 12/12 exact note references, one two-row wrapped-label proposal, and only 23/25 source-exact labels. The two diacritic errors prove the VLM cannot be standalone truth even when numbers agree.
@@ -153,7 +180,10 @@ This is the durable retrieval point for project context. It summarizes user auth
 
 - Preserve the current stable corpus denominator and rerun drift-aware registration whenever new files arrive.
 - Expand frozen native-geometry fixtures across institutions, years, scopes, scans, borderless layouts, broken pages, and multi-page rows before assigning production confidence.
-- The user accepts VPS-local artifacts during development and requires periodic working Git commits. Local restore remains required; document the single-server-loss risk rather than silently claiming off-machine protection.
+- Use the authorized S3 prefix for content-addressed off-machine artifacts and
+  periodic Git commits for the control plane. Versioning is approved/enabled;
+  Object Lock remains outside authority. Do not mark the backup PASS before the
+  manifest-bound full-content restore succeeds.
 - Calibrate how historical discrepancies trigger targeted rereads/review on frozen fixtures without ever feeding history into candidate generation, PDF derivation, value overwrite, or confidence promotion.
 - Broaden the now-working Blackwell model benchmark across institutions, years, scans, distortions, cross-page tables, and frozen holdout roles; E-0007 is logic-development evidence only.
 - Target E-0015's explicit escalations at native source resolution: VCB page 9 truncation, MBB page 14 concatenation, two Role B collapses on MBB CDKT, the MBB KQKD missing/collapse cases, eight invalid cells, six numeric disagreements, four invalid-cell paired escalations, and five structural merges. Canonical fusion must remain general and must not repair from history/arithmetic.
@@ -202,3 +232,7 @@ This is the durable retrieval point for project context. It summarizes user auth
 - 2026-08-06: Retained the first clean TATR pre-inference compatibility failure,
   then added a tested exact-field/exact-version in-memory resolution for the
   official checkpoint's legacy `dilation=null` without changing model bytes.
+- 2026-08-06: Received the authorized S3 target and large-file offload directive;
+  verified bucket security posture, defined a SHA-256 content-addressed,
+  conditional-write snapshot plus independent restore gate, and added exact-file
+  journaled offload/no-overwrite hydration logic without adding a dependency.
