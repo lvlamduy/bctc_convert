@@ -1,0 +1,2544 @@
+{
+  "after": {
+    "cash_flow_method": "DIRECT",
+    "mapping_eligible_pages_by_statement_type": {
+      "CDKT": [
+        3,
+        4
+      ],
+      "KQKD": [
+        6
+      ],
+      "LCTT": [
+        7,
+        8
+      ]
+    },
+    "notes_boundary_page": 9,
+    "off_balance_excluded_pages": [
+      5
+    ],
+    "runner_up_margin": 8.5,
+    "status": "ACCEPTED_MULTI_SIGNAL_STATEMENT_BLOCK"
+  },
+  "before": {
+    "cash_flow_method": null,
+    "mapping_eligible_pages_by_statement_type": null,
+    "notes_boundary_page": null,
+    "off_balance_excluded_pages": null,
+    "runner_up_margin": null,
+    "status": "UNRESOLVED"
+  },
+  "benchmark_implementation": {
+    "path": "src/bctc_ai/evaluation/ordered_anchor_locator_benchmark.py",
+    "sha256": "4770ce10e4dace8f732d6c276511fda8904d8f4106cc18982ac31e5bae9aa64f",
+    "size_bytes": 13324
+  },
+  "candidate_result": {
+    "algorithm_revision": 4,
+    "base_algorithm_revision": 3,
+    "block": {
+      "end_page": 8,
+      "mapping_eligible_pages": [
+        3,
+        4,
+        6,
+        7,
+        8
+      ],
+      "mapping_eligible_pages_by_statement_type": {
+        "CDKT": [
+          3,
+          4
+        ],
+        "KQKD": [
+          6
+        ],
+        "LCTT": [
+          7,
+          8
+        ]
+      },
+      "notes_boundary_page": 9,
+      "off_balance_excluded_pages": [
+        5
+      ],
+      "page_contracts": [
+        {
+          "continuation_from_page": null,
+          "continuation_to_page": 4,
+          "independent_signal_groups": [
+            "HEADER_IDENTITY",
+            "PERIOD_AXIS",
+            "UNIT",
+            "ACCOUNTING_ROWS",
+            "NUMERIC_GEOMETRY"
+          ],
+          "inference_checks": [],
+          "inference_direction": null,
+          "inferred_from_page": null,
+          "locally_accepted": true,
+          "mapping_eligible": true,
+          "page": 3,
+          "scope": "MAIN_STATEMENT",
+          "score": 8.5,
+          "statement_type": "CDKT"
+        },
+        {
+          "continuation_from_page": 3,
+          "continuation_to_page": 5,
+          "independent_signal_groups": [
+            "HEADER_IDENTITY",
+            "PERIOD_AXIS",
+            "ACCOUNTING_ROWS",
+            "NUMERIC_GEOMETRY"
+          ],
+          "inference_checks": [],
+          "inference_direction": null,
+          "inferred_from_page": null,
+          "locally_accepted": true,
+          "mapping_eligible": true,
+          "page": 4,
+          "scope": "MAIN_STATEMENT",
+          "score": 7.75,
+          "statement_type": "CDKT"
+        },
+        {
+          "continuation_from_page": 4,
+          "continuation_to_page": null,
+          "independent_signal_groups": [
+            "HEADER_IDENTITY",
+            "ACCOUNTING_ROWS",
+            "NUMERIC_GEOMETRY",
+            "OFF_BALANCE_SCOPE"
+          ],
+          "inference_checks": [],
+          "inference_direction": null,
+          "inferred_from_page": null,
+          "locally_accepted": true,
+          "mapping_eligible": false,
+          "page": 5,
+          "scope": "OFF_BALANCE_SHEET",
+          "score": 7.5,
+          "statement_type": "CDKT"
+        },
+        {
+          "continuation_from_page": null,
+          "continuation_to_page": null,
+          "independent_signal_groups": [
+            "HEADER_IDENTITY",
+            "UNIT",
+            "ACCOUNTING_ROWS",
+            "NUMERIC_GEOMETRY"
+          ],
+          "inference_checks": [],
+          "inference_direction": null,
+          "inferred_from_page": null,
+          "locally_accepted": true,
+          "mapping_eligible": true,
+          "page": 6,
+          "scope": "MAIN_STATEMENT",
+          "score": 7.25,
+          "statement_type": "KQKD"
+        },
+        {
+          "continuation_from_page": null,
+          "continuation_to_page": 8,
+          "independent_signal_groups": [
+            "HEADER_IDENTITY",
+            "PERIOD_AXIS",
+            "UNIT",
+            "ACCOUNTING_ROWS",
+            "NUMERIC_GEOMETRY"
+          ],
+          "inference_checks": [],
+          "inference_direction": null,
+          "inferred_from_page": null,
+          "locally_accepted": true,
+          "mapping_eligible": true,
+          "page": 7,
+          "scope": "MAIN_STATEMENT",
+          "score": 8.5,
+          "statement_type": "LCTT"
+        },
+        {
+          "continuation_from_page": 7,
+          "continuation_to_page": null,
+          "independent_signal_groups": [
+            "HEADER_IDENTITY",
+            "PERIOD_AXIS",
+            "ACCOUNTING_ROWS",
+            "NUMERIC_GEOMETRY"
+          ],
+          "inference_checks": [],
+          "inference_direction": null,
+          "inferred_from_page": null,
+          "locally_accepted": true,
+          "mapping_eligible": true,
+          "page": 8,
+          "scope": "MAIN_STATEMENT",
+          "score": 7.75,
+          "statement_type": "LCTT"
+        }
+      ],
+      "recognized_pages_by_statement_type": {
+        "CDKT": [
+          3,
+          4,
+          5
+        ],
+        "KQKD": [
+          6
+        ],
+        "LCTT": [
+          7,
+          8
+        ]
+      },
+      "score": 54.5,
+      "start_page": 3
+    },
+    "candidate_path_count": 3,
+    "candidate_path_summaries": [
+      {
+        "end_page": 8,
+        "notes_boundary_page": 9,
+        "score": 54.5,
+        "start_page": 3,
+        "typed_pages": [
+          {
+            "page": 3,
+            "statement_type": "CDKT"
+          },
+          {
+            "page": 4,
+            "statement_type": "CDKT"
+          },
+          {
+            "page": 5,
+            "statement_type": "CDKT"
+          },
+          {
+            "page": 6,
+            "statement_type": "KQKD"
+          },
+          {
+            "page": 7,
+            "statement_type": "LCTT"
+          },
+          {
+            "page": 8,
+            "statement_type": "LCTT"
+          },
+          {
+            "page": 9,
+            "statement_type": "TM"
+          }
+        ]
+      },
+      {
+        "end_page": 8,
+        "notes_boundary_page": 9,
+        "score": 46.0,
+        "start_page": 4,
+        "typed_pages": [
+          {
+            "page": 4,
+            "statement_type": "CDKT"
+          },
+          {
+            "page": 5,
+            "statement_type": "CDKT"
+          },
+          {
+            "page": 6,
+            "statement_type": "KQKD"
+          },
+          {
+            "page": 7,
+            "statement_type": "LCTT"
+          },
+          {
+            "page": 8,
+            "statement_type": "LCTT"
+          },
+          {
+            "page": 9,
+            "statement_type": "TM"
+          }
+        ]
+      },
+      {
+        "end_page": 8,
+        "notes_boundary_page": 9,
+        "score": 38.25,
+        "start_page": 5,
+        "typed_pages": [
+          {
+            "page": 5,
+            "statement_type": "CDKT"
+          },
+          {
+            "page": 6,
+            "statement_type": "KQKD"
+          },
+          {
+            "page": 7,
+            "statement_type": "LCTT"
+          },
+          {
+            "page": 8,
+            "statement_type": "LCTT"
+          },
+          {
+            "page": 9,
+            "statement_type": "TM"
+          }
+        ]
+      }
+    ],
+    "cash_flow": {
+      "evidence": {
+        "direct": {
+          "ordered_row_sequence": {
+            "complete": true,
+            "matches": [
+              {
+                "anchor": "thu nhập lãi và các khoản thu nhập tương tự nhận được",
+                "line_index": 16,
+                "page": 7,
+                "similarity": 0.886076,
+                "text": "Thu lãi và các khon thu tưong t nhn đưc"
+              },
+              {
+                "anchor": "chi phí lãi và các chi phí tương tự đã trả",
+                "line_index": 19,
+                "page": 7,
+                "similarity": 0.898551,
+                "text": "Chi lāi và các khon chi tưrong t đã trà"
+              }
+            ]
+          },
+          "title_pass": false,
+          "title_similarity": 0.6875,
+          "title_text": "BÁO CÁO LUU CHUYÊN TIÊN TĘ HP NHÁT (phưong pháp trc tip)"
+        },
+        "indirect": {
+          "ordered_row_sequence": {
+            "complete": false,
+            "matches": []
+          },
+          "title_pass": false,
+          "title_similarity": 0.6875,
+          "title_text": "BÁO CÁO LUU CHUYÊN TIÊN TĘ HP NHÁT (phưong pháp trc tip)"
+        }
+      },
+      "method": "DIRECT",
+      "schema_branch_assignment_permitted": false,
+      "schema_reason": "The statement locator detects PDF method evidence only. The schema mapper applies Q-BOOT-001 separately using workbook display order, never numeric ReportNormId magnitude."
+    },
+    "change_scope": "ACCOUNTING_ROW_ANCHOR_SCORER_ONLY",
+    "errors": [],
+    "geometry_authority": "PP_OCRV6_WORD_BOXES",
+    "observed_pages": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "ordered_anchor_matching": {
+      "apply_to": "ACCOUNTING_ROWS_ONLY",
+      "incremental_evidence": [
+        {
+          "page": 1,
+          "statement_types": [
+            {
+              "added_hits": [
+                {
+                  "anchor": "cơ sở lập báo cáo tài chính",
+                  "bbox": [
+                    479.0,
+                    2593.0,
+                    2101.0,
+                    2652.0
+                  ],
+                  "line_indices": [
+                    71
+                  ],
+                  "similarity": 0.823529,
+                  "source": "PP_OCRV6_GEOMETRY",
+                  "text": "Ni dung thông tin công b: Báo cáo tài chính riêng và hp nht quý I năm 2026"
+                }
+              ],
+              "baseline_hit_count": 1,
+              "extended_hit_count": 2,
+              "statement_type": "TM"
+            }
+          ]
+        },
+        {
+          "page": 7,
+          "statement_types": [
+            {
+              "added_hits": [
+                {
+                  "anchor": "chứng khoán kinh doanh",
+                  "bbox": [
+                    44.0,
+                    1680.0,
+                    907.0,
+                    1738.0
+                  ],
+                  "line_indices": [
+                    53
+                  ],
+                  "similarity": 0.790698,
+                  "source": "PP_OCRV6_GEOMETRY",
+                  "text": "(Tăng)/Gim các khon v kinh doanh chng khoán"
+                }
+              ],
+              "baseline_hit_count": 4,
+              "extended_hit_count": 5,
+              "statement_type": "CDKT"
+            }
+          ]
+        },
+        {
+          "page": 9,
+          "statement_types": [
+            {
+              "added_hits": [
+                {
+                  "anchor": "tiền gửi tại ngân hàng nhà nước",
+                  "bbox": [
+                    469.0,
+                    950.0,
+                    2219.0,
+                    1015.0
+                  ],
+                  "line_indices": [
+                    12
+                  ],
+                  "similarity": 0.807018,
+                  "source": "PP_OCRV6_GEOMETRY",
+                  "text": "16/01/2026 do Thng đc Ngân hàng Nhà nưóc Vit Nam (\"NHNNVN\") cáp, thay thé Giáy"
+                }
+              ],
+              "baseline_hit_count": 0,
+              "extended_hit_count": 1,
+              "statement_type": "CDKT"
+            },
+            {
+              "added_hits": [
+                {
+                  "anchor": "thành lập và hoạt động",
+                  "bbox": [
+                    350.0,
+                    652.0,
+                    1528.0,
+                    778.0
+                  ],
+                  "line_indices": [
+                    5,
+                    8
+                  ],
+                  "similarity": 0.926829,
+                  "source": "PP_OCRV6_GEOMETRY",
+                  "text": "I Giáy phép thành lp và hot đng, thi hn có giá tr"
+                }
+              ],
+              "baseline_hit_count": 1,
+              "extended_hit_count": 2,
+              "statement_type": "TM"
+            }
+          ]
+        }
+      ],
+      "maximum_source_tokens": 18,
+      "maximum_token_count_delta": 1,
+      "minimum_anchor_tokens": 4,
+      "minimum_window_similarity": 0.78,
+      "policy": "FULL_LINE_OR_BOUNDED_CONTIGUOUS_ORDERED_TOKEN_WINDOW",
+      "preserve_v3_matches": true,
+      "require_contiguous_token_order": true
+    },
+    "page_signals": [
+      {
+        "audit_suppression": false,
+        "candidates": [
+          {
+            "accounting_hits": [],
+            "independent_signal_groups": [],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": false,
+            "page_type": "CDKT",
+            "scope": "MAIN_STATEMENT",
+            "score": 0.0
+          },
+          {
+            "accounting_hits": [],
+            "independent_signal_groups": [],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": false,
+            "page_type": "KQKD",
+            "scope": "MAIN_STATEMENT",
+            "score": 0.0
+          },
+          {
+            "accounting_hits": [],
+            "independent_signal_groups": [],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": false,
+            "page_type": "LCTT",
+            "scope": "MAIN_STATEMENT",
+            "score": 0.0
+          },
+          {
+            "accounting_hits": [
+              {
+                "anchor": "thông tin về ngân hàng",
+                "bbox": [
+                  418.0,
+                  1063.0,
+                  644.0,
+                  1084.0
+                ],
+                "line_indices": [
+                  22
+                ],
+                "similarity": 0.682927,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "HÀ NOI, CN=NGÂN HÀNG"
+              },
+              {
+                "anchor": "cơ sở lập báo cáo tài chính",
+                "bbox": [
+                  479.0,
+                  2593.0,
+                  2101.0,
+                  2652.0
+                ],
+                "line_indices": [
+                  71
+                ],
+                "similarity": 0.823529,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Ni dung thông tin công b: Báo cáo tài chính riêng và hp nht quý I năm 2026"
+              }
+            ],
+            "independent_signal_groups": [
+              "HEADER_IDENTITY",
+              "REPORTING_PERIOD",
+              "NOTES_ANCHORS",
+              "NOTES_STRUCTURE"
+            ],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": true,
+            "page_type": "TM",
+            "scope": "NOT_APPLICABLE",
+            "score": 6.618422
+          }
+        ],
+        "continuation_marker": false,
+        "form_types": [],
+        "header_candidate_type": "TM",
+        "header_conflict": false,
+        "narrative_fraction": 0.049383,
+        "narrative_penalty": false,
+        "notes_structure": true,
+        "numeric_geometry": {
+          "axes": [],
+          "axis_cell_counts": [],
+          "financial_cell_count": 0,
+          "first_cell_y_fraction": null,
+          "last_cell_y_fraction": null,
+          "passes": false
+        },
+        "off_balance_heading_score": 0.625,
+        "off_balance_item_hits": [],
+        "page": 1,
+        "period": {
+          "axis_positions": [],
+          "axis_year_signatures": [],
+          "passes_main_axis": false,
+          "report_years": [
+            "2026"
+          ]
+        },
+        "title_scores": {
+          "CDKT": 0.535211,
+          "KQKD": 0.489796,
+          "LCTT": 0.483871,
+          "TM": 0.684211
+        },
+        "title_sources": {
+          "CDKT": "PP_OCRV6_GEOMETRY",
+          "KQKD": "PP_OCRV6_GEOMETRY",
+          "LCTT": "PP_OCRV6_GEOMETRY",
+          "TM": "PP_OCRV6_GEOMETRY"
+        },
+        "toc_suppression": false,
+        "unit": {
+          "axis_positions": [],
+          "canonical_signatures": [],
+          "passes": false,
+          "raw_texts": []
+        }
+      },
+      {
+        "audit_suppression": false,
+        "candidates": [
+          {
+            "accounting_hits": [],
+            "independent_signal_groups": [],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": false,
+            "page_type": "CDKT",
+            "scope": "MAIN_STATEMENT",
+            "score": 0.0
+          },
+          {
+            "accounting_hits": [],
+            "independent_signal_groups": [],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": false,
+            "page_type": "KQKD",
+            "scope": "MAIN_STATEMENT",
+            "score": 0.0
+          },
+          {
+            "accounting_hits": [],
+            "independent_signal_groups": [],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": false,
+            "page_type": "LCTT",
+            "scope": "MAIN_STATEMENT",
+            "score": 0.0
+          },
+          {
+            "accounting_hits": [],
+            "independent_signal_groups": [],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": false,
+            "page_type": "TM",
+            "scope": "NOT_APPLICABLE",
+            "score": 0.0
+          }
+        ],
+        "continuation_marker": false,
+        "form_types": [],
+        "header_candidate_type": null,
+        "header_conflict": false,
+        "narrative_fraction": 0.166667,
+        "narrative_penalty": false,
+        "notes_structure": false,
+        "numeric_geometry": {
+          "axes": [],
+          "axis_cell_counts": [],
+          "financial_cell_count": 1,
+          "first_cell_y_fraction": 0.540336,
+          "last_cell_y_fraction": 0.540336,
+          "passes": false
+        },
+        "off_balance_heading_score": 0.521739,
+        "off_balance_item_hits": [],
+        "page": 2,
+        "period": {
+          "axis_positions": [],
+          "axis_year_signatures": [],
+          "passes_main_axis": false,
+          "report_years": []
+        },
+        "title_scores": {
+          "CDKT": 0.490566,
+          "KQKD": 0.436364,
+          "LCTT": 0.5,
+          "TM": 0.472727
+        },
+        "title_sources": {
+          "CDKT": "PP_OCRV6_GEOMETRY",
+          "KQKD": "PP_OCRV6_GEOMETRY",
+          "LCTT": "PP_OCRV6_GEOMETRY",
+          "TM": "PP_OCRV6_GEOMETRY"
+        },
+        "toc_suppression": false,
+        "unit": {
+          "axis_positions": [],
+          "canonical_signatures": [],
+          "passes": false,
+          "raw_texts": []
+        }
+      },
+      {
+        "audit_suppression": false,
+        "candidates": [
+          {
+            "accounting_hits": [
+              {
+                "anchor": "tiền mặt vàng bạc đá quý",
+                "bbox": [
+                  60.0,
+                  880.0,
+                  538.0,
+                  930.0
+                ],
+                "line_indices": [
+                  13
+                ],
+                "similarity": 0.933333,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Tin mt, vàng bc, đá quý"
+              },
+              {
+                "anchor": "tiền gửi tại ngân hàng nhà nước",
+                "bbox": [
+                  60.0,
+                  935.0,
+                  833.0,
+                  989.0
+                ],
+                "line_indices": [
+                  17
+                ],
+                "similarity": 0.84375,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Tin gri ti Ngân hàng Nhà nưc (\"NHNN\")"
+              },
+              {
+                "anchor": "tiền gửi và cho vay các tổ chức tín dụng khác",
+                "bbox": [
+                  58.0,
+                  989.0,
+                  1170.0,
+                  1046.0
+                ],
+                "line_indices": [
+                  21
+                ],
+                "similarity": 0.842105,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Tin, vàng gi và cho vay các t chc tín dng (\"TCTD\") khác"
+              },
+              {
+                "anchor": "chứng khoán kinh doanh",
+                "bbox": [
+                  59.0,
+                  1053.0,
+                  513.0,
+                  1100.0
+                ],
+                "line_indices": [
+                  25
+                ],
+                "similarity": 0.976744,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Chng khoán kinh doanh"
+              },
+              {
+                "anchor": "cho vay khách hàng",
+                "bbox": [
+                  57.0,
+                  1223.0,
+                  1142.0,
+                  1377.0
+                ],
+                "line_indices": [
+                  35,
+                  37,
+                  40
+                ],
+                "similarity": 1.0,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Các công cu tài chính phái sinh và các tài sn tài chính khác Chovay khách hàng Cho vay khách hàng"
+              },
+              {
+                "anchor": "tài sản cố định",
+                "bbox": [
+                  54.0,
+                  2020.0,
+                  627.0,
+                  2192.0
+                ],
+                "line_indices": [
+                  82,
+                  85,
+                  88
+                ],
+                "similarity": 1.0,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "D phòng gim giá đu tư dài hn Tài sán c đįnh Tài sán cô đinh hũu hinh"
+              },
+              {
+                "anchor": "tổng tài sản",
+                "bbox": [
+                  52.0,
+                  2939.0,
+                  885.0,
+                  3112.0
+                ],
+                "line_indices": [
+                  131,
+                  137,
+                  138
+                ],
+                "similarity": 1.0,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Tài sán Có khác D phòng rúi ro cho các tài sn Có ni bng khác TÓNG TÀI SÁN CÓ"
+              }
+            ],
+            "independent_signal_groups": [
+              "HEADER_IDENTITY",
+              "PERIOD_AXIS",
+              "UNIT",
+              "ACCOUNTING_ROWS",
+              "NUMERIC_GEOMETRY"
+            ],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": true,
+            "page_type": "CDKT",
+            "scope": "MAIN_STATEMENT",
+            "score": 8.5
+          },
+          {
+            "accounting_hits": [],
+            "independent_signal_groups": [
+              "PERIOD_AXIS",
+              "UNIT",
+              "NUMERIC_GEOMETRY"
+            ],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": false,
+            "page_type": "KQKD",
+            "scope": "MAIN_STATEMENT",
+            "score": 4.0
+          },
+          {
+            "accounting_hits": [],
+            "independent_signal_groups": [
+              "PERIOD_AXIS",
+              "UNIT",
+              "NUMERIC_GEOMETRY"
+            ],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": false,
+            "page_type": "LCTT",
+            "scope": "MAIN_STATEMENT",
+            "score": 4.0
+          },
+          {
+            "accounting_hits": [],
+            "independent_signal_groups": [
+              "REPORTING_PERIOD"
+            ],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": false,
+            "page_type": "TM",
+            "scope": "NOT_APPLICABLE",
+            "score": 1.25
+          }
+        ],
+        "continuation_marker": false,
+        "form_types": [
+          "CDKT"
+        ],
+        "header_candidate_type": "CDKT",
+        "header_conflict": false,
+        "narrative_fraction": 0.0,
+        "narrative_penalty": false,
+        "notes_structure": false,
+        "numeric_geometry": {
+          "axes": [
+            0.754624,
+            0.968068
+          ],
+          "axis_cell_counts": [
+            36,
+            36
+          ],
+          "financial_cell_count": 72,
+          "first_cell_y_fraction": 0.256842,
+          "last_cell_y_fraction": 0.878848,
+          "passes": true
+        },
+        "off_balance_heading_score": 0.666667,
+        "off_balance_item_hits": [],
+        "page": 3,
+        "period": {
+          "axis_positions": [
+            0.714631,
+            0.928255
+          ],
+          "axis_year_signatures": [
+            [
+              "2026"
+            ],
+            [
+              "2025"
+            ]
+          ],
+          "passes_main_axis": true,
+          "report_years": [
+            "2026"
+          ]
+        },
+        "title_scores": {
+          "CDKT": 1.0,
+          "KQKD": 0.590164,
+          "LCTT": 0.557377,
+          "TM": 0.55
+        },
+        "title_sources": {
+          "CDKT": "PP_OCRV6_GEOMETRY",
+          "KQKD": "PP_OCRV6_GEOMETRY",
+          "LCTT": "PP_OCRV6_GEOMETRY",
+          "TM": "PP_OCRV6_GEOMETRY"
+        },
+        "toc_suppression": false,
+        "unit": {
+          "axis_positions": [
+            0.718259,
+            0.931882
+          ],
+          "canonical_signatures": [
+            "trieu dong"
+          ],
+          "passes": true,
+          "raw_texts": [
+            "triu đồng",
+            "triu đồng"
+          ]
+        }
+      },
+      {
+        "audit_suppression": false,
+        "candidates": [
+          {
+            "accounting_hits": [
+              {
+                "anchor": "tiền gửi và cho vay các tổ chức tín dụng khác",
+                "bbox": [
+                  55.0,
+                  1035.0,
+                  602.0,
+                  1083.0
+                ],
+                "line_indices": [
+                  17
+                ],
+                "similarity": 0.732394,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Tingi và vay các TCTD khác"
+              },
+              {
+                "anchor": "tiền gửi của khách hàng",
+                "bbox": [
+                  52.0,
+                  1100.0,
+                  496.0,
+                  1156.0
+                ],
+                "line_indices": [
+                  21
+                ],
+                "similarity": 0.954545,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Tièn gi ca khách hàng"
+              },
+              {
+                "anchor": "nợ phải trả",
+                "bbox": [
+                  53.0,
+                  1564.0,
+                  655.0,
+                  1738.0
+                ],
+                "line_indices": [
+                  44,
+                  50,
+                  51
+                ],
+                "similarity": 1.0,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Các khon phái tr và công n khác D phòng các khon n khác TÓNG NO PHÁI TRÁ"
+              },
+              {
+                "anchor": "vốn chủ sở hữu",
+                "bbox": [
+                  52.0,
+                  1753.0,
+                  388.0,
+                  1803.0
+                ],
+                "line_indices": [
+                  54
+                ],
+                "similarity": 0.923077,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "VÓN CHÙ s HU"
+              }
+            ],
+            "independent_signal_groups": [
+              "HEADER_IDENTITY",
+              "PERIOD_AXIS",
+              "ACCOUNTING_ROWS",
+              "NUMERIC_GEOMETRY"
+            ],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": true,
+            "page_type": "CDKT",
+            "scope": "MAIN_STATEMENT",
+            "score": 7.75
+          },
+          {
+            "accounting_hits": [],
+            "independent_signal_groups": [
+              "PERIOD_AXIS",
+              "NUMERIC_GEOMETRY"
+            ],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": false,
+            "page_type": "KQKD",
+            "scope": "MAIN_STATEMENT",
+            "score": 3.25
+          },
+          {
+            "accounting_hits": [],
+            "independent_signal_groups": [
+              "PERIOD_AXIS",
+              "NUMERIC_GEOMETRY"
+            ],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": false,
+            "page_type": "LCTT",
+            "scope": "MAIN_STATEMENT",
+            "score": 3.25
+          },
+          {
+            "accounting_hits": [],
+            "independent_signal_groups": [
+              "REPORTING_PERIOD"
+            ],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": false,
+            "page_type": "TM",
+            "scope": "NOT_APPLICABLE",
+            "score": 1.25
+          }
+        ],
+        "continuation_marker": false,
+        "form_types": [
+          "CDKT"
+        ],
+        "header_candidate_type": "CDKT",
+        "header_conflict": false,
+        "narrative_fraction": 0.0,
+        "narrative_penalty": false,
+        "notes_structure": false,
+        "numeric_geometry": {
+          "axes": [
+            0.752231,
+            0.967535
+          ],
+          "axis_cell_counts": [
+            21,
+            22
+          ],
+          "financial_cell_count": 43,
+          "first_cell_y_fraction": 0.279504,
+          "last_cell_y_fraction": 0.718928,
+          "passes": true
+        },
+        "off_balance_heading_score": 0.6,
+        "off_balance_item_hits": [],
+        "page": 4,
+        "period": {
+          "axis_positions": [
+            0.711407,
+            0.92503
+          ],
+          "axis_year_signatures": [
+            [
+              "2026"
+            ],
+            [
+              "2025"
+            ]
+          ],
+          "passes_main_axis": true,
+          "report_years": [
+            "2026"
+          ]
+        },
+        "title_scores": {
+          "CDKT": 1.0,
+          "KQKD": 0.553191,
+          "LCTT": 0.514286,
+          "TM": 0.55
+        },
+        "title_sources": {
+          "CDKT": "PP_OCRV6_GEOMETRY",
+          "KQKD": "PP_OCRV6_GEOMETRY",
+          "LCTT": "PP_OCRV6_GEOMETRY",
+          "TM": "PP_OCRV6_GEOMETRY"
+        },
+        "toc_suppression": false,
+        "unit": {
+          "axis_positions": [],
+          "canonical_signatures": [],
+          "passes": false,
+          "raw_texts": []
+        }
+      },
+      {
+        "audit_suppression": false,
+        "candidates": [
+          {
+            "accounting_hits": [],
+            "independent_signal_groups": [
+              "HEADER_IDENTITY",
+              "ACCOUNTING_ROWS",
+              "NUMERIC_GEOMETRY",
+              "OFF_BALANCE_SCOPE"
+            ],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": true,
+            "page_type": "CDKT",
+            "scope": "OFF_BALANCE_SHEET",
+            "score": 7.5
+          },
+          {
+            "accounting_hits": [],
+            "independent_signal_groups": [
+              "NUMERIC_GEOMETRY"
+            ],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": false,
+            "page_type": "KQKD",
+            "scope": "MAIN_STATEMENT",
+            "score": 2.0
+          },
+          {
+            "accounting_hits": [],
+            "independent_signal_groups": [
+              "NUMERIC_GEOMETRY"
+            ],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": false,
+            "page_type": "LCTT",
+            "scope": "MAIN_STATEMENT",
+            "score": 2.0
+          },
+          {
+            "accounting_hits": [],
+            "independent_signal_groups": [
+              "REPORTING_PERIOD"
+            ],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": false,
+            "page_type": "TM",
+            "scope": "NOT_APPLICABLE",
+            "score": 1.25
+          }
+        ],
+        "continuation_marker": false,
+        "form_types": [
+          "CDKT"
+        ],
+        "header_candidate_type": "CDKT",
+        "header_conflict": false,
+        "narrative_fraction": 0.0,
+        "narrative_penalty": false,
+        "notes_structure": false,
+        "numeric_geometry": {
+          "axes": [
+            0.76161,
+            0.975637
+          ],
+          "axis_cell_counts": [
+            9,
+            9
+          ],
+          "financial_cell_count": 18,
+          "first_cell_y_fraction": 0.299658,
+          "last_cell_y_fraction": 0.424622,
+          "passes": true
+        },
+        "off_balance_heading_score": 0.910891,
+        "off_balance_item_hits": [
+          {
+            "anchor": "bảo lãnh vay vốn",
+            "bbox": [
+              72.0,
+              1031.0,
+              361.0,
+              1076.0
+            ],
+            "line_indices": [
+              15
+            ],
+            "similarity": 0.967742,
+            "source": "PP_OCRV6_GEOMETRY",
+            "text": "Bo lãnh vay vôn"
+          },
+          {
+            "anchor": "cam kết giao dịch hối đoái",
+            "bbox": [
+              72.0,
+              1083.0,
+              514.0,
+              1129.0
+            ],
+            "line_indices": [
+              18
+            ],
+            "similarity": 0.96,
+            "source": "PP_OCRV6_GEOMETRY",
+            "text": "Cam kt giao dch hôi đoái"
+          },
+          {
+            "anchor": "cam kết mua ngoại tệ",
+            "bbox": [
+              101.0,
+              1137.0,
+              473.0,
+              1186.0
+            ],
+            "line_indices": [
+              21
+            ],
+            "similarity": 0.947368,
+            "source": "PP_OCRV6_GEOMETRY",
+            "text": "Cam két mua ngoi t"
+          },
+          {
+            "anchor": "cam kết bán ngoại tệ",
+            "bbox": [
+              101.0,
+              1191.0,
+              462.0,
+              1241.0
+            ],
+            "line_indices": [
+              24
+            ],
+            "similarity": 0.947368,
+            "source": "PP_OCRV6_GEOMETRY",
+            "text": "Cam két bán ngoi t"
+          },
+          {
+            "anchor": "cam kết giao dịch hoán đổi",
+            "bbox": [
+              100.0,
+              1246.0,
+              784.0,
+              1297.0
+            ],
+            "line_indices": [
+              27
+            ],
+            "similarity": 0.819672,
+            "source": "PP_OCRV6_GEOMETRY",
+            "text": "Cam két mua giao dch hoán đi ngoi t"
+          },
+          {
+            "anchor": "bảo lãnh khác",
+            "bbox": [
+              70.0,
+              1416.0,
+              313.0,
+              1456.0
+            ],
+            "line_indices": [
+              36
+            ],
+            "similarity": 1.0,
+            "source": "PP_OCRV6_GEOMETRY",
+            "text": "Bào lānh khác"
+          },
+          {
+            "anchor": "các cam kết khác",
+            "bbox": [
+              68.0,
+              1465.0,
+              371.0,
+              1512.0
+            ],
+            "line_indices": [
+              39
+            ],
+            "similarity": 0.967742,
+            "source": "PP_OCRV6_GEOMETRY",
+            "text": "Các cam kt khác"
+          }
+        ],
+        "page": 5,
+        "period": {
+          "axis_positions": [
+            0.936921
+          ],
+          "axis_year_signatures": [
+            [
+              "2025"
+            ]
+          ],
+          "passes_main_axis": false,
+          "report_years": [
+            "2026"
+          ]
+        },
+        "title_scores": {
+          "CDKT": 1.0,
+          "KQKD": 0.521739,
+          "LCTT": 0.507042,
+          "TM": 0.590909
+        },
+        "title_sources": {
+          "CDKT": "PP_OCRV6_GEOMETRY",
+          "KQKD": "PP_OCRV6_GEOMETRY",
+          "LCTT": "PP_OCRV6_GEOMETRY",
+          "TM": "PP_OCRV6_GEOMETRY"
+        },
+        "toc_suppression": false,
+        "unit": {
+          "axis_positions": [],
+          "canonical_signatures": [],
+          "passes": false,
+          "raw_texts": []
+        }
+      },
+      {
+        "audit_suppression": false,
+        "candidates": [
+          {
+            "accounting_hits": [
+              {
+                "anchor": "chứng khoán kinh doanh",
+                "bbox": [
+                  18.0,
+                  830.0,
+                  830.0,
+                  876.0
+                ],
+                "line_indices": [
+                  55
+                ],
+                "similarity": 0.677419,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Lãi thun t mua bán chng khoán kinh doanh"
+              }
+            ],
+            "independent_signal_groups": [
+              "UNIT",
+              "NUMERIC_GEOMETRY"
+            ],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": false,
+            "page_type": "CDKT",
+            "scope": "MAIN_STATEMENT",
+            "score": 2.75
+          },
+          {
+            "accounting_hits": [
+              {
+                "anchor": "thu nhập lãi và các khoản thu nhập tương tự",
+                "bbox": [
+                  21.0,
+                  479.0,
+                  748.0,
+                  522.0
+                ],
+                "line_indices": [
+                  17
+                ],
+                "similarity": 0.95122,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Thu nhp lāi và các khon thu nhp tưong t"
+              },
+              {
+                "anchor": "chi phí lãi và các chi phí tương tự",
+                "bbox": [
+                  20.0,
+                  526.0,
+                  674.0,
+                  569.0
+                ],
+                "line_indices": [
+                  22
+                ],
+                "similarity": 0.918919,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Chi phí lāi và các khon chi phí tưong t"
+              },
+              {
+                "anchor": "thu nhập lãi thuần",
+                "bbox": [
+                  20.0,
+                  572.0,
+                  347.0,
+                  617.0
+                ],
+                "line_indices": [
+                  27
+                ],
+                "similarity": 0.941176,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Thu nhp lāi thun"
+              },
+              {
+                "anchor": "lãi thuần từ hoạt động dịch vụ",
+                "bbox": [
+                  18.0,
+                  727.0,
+                  552.0,
+                  775.0
+                ],
+                "line_indices": [
+                  43
+                ],
+                "similarity": 0.888889,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Lāi thun t hot đng dch v"
+              },
+              {
+                "anchor": "tổng lợi nhuận trước thuế",
+                "bbox": [
+                  22.0,
+                  1189.0,
+                  593.0,
+                  1323.0
+                ],
+                "line_indices": [
+                  91,
+                  96,
+                  102
+                ],
+                "similarity": 1.0,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "phòng ri ro Chi phí d phòng ri ro TÓnG LOI nhuAN TruÓC ThUÉ"
+              },
+              {
+                "anchor": "lợi nhuận sau thuế",
+                "bbox": [
+                  23.0,
+                  1386.0,
+                  499.0,
+                  1539.0
+                ],
+                "line_indices": [
+                  112,
+                  117,
+                  123
+                ],
+                "similarity": 1.0,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Chi phí thu TNDN hon li Chi phí thué TNDN trong k LOI NHUAN SaU ThUÉ"
+              }
+            ],
+            "independent_signal_groups": [
+              "HEADER_IDENTITY",
+              "UNIT",
+              "ACCOUNTING_ROWS",
+              "NUMERIC_GEOMETRY"
+            ],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": true,
+            "page_type": "KQKD",
+            "scope": "MAIN_STATEMENT",
+            "score": 7.25
+          },
+          {
+            "accounting_hits": [
+              {
+                "anchor": "thu nhập lãi và các khoản thu nhập tương tự nhận được",
+                "bbox": [
+                  21.0,
+                  479.0,
+                  748.0,
+                  522.0
+                ],
+                "line_indices": [
+                  17
+                ],
+                "similarity": 0.847826,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Thu nhp lāi và các khon thu nhp tưong t"
+              },
+              {
+                "anchor": "chi phí lãi và các chi phí tương tự đã trả",
+                "bbox": [
+                  20.0,
+                  526.0,
+                  674.0,
+                  569.0
+                ],
+                "line_indices": [
+                  22
+                ],
+                "similarity": 0.839506,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Chi phí lāi và các khon chi phí tưong t"
+              },
+              {
+                "anchor": "lưu chuyển tiền từ hoạt động kinh doanh",
+                "bbox": [
+                  21.0,
+                  931.0,
+                  710.0,
+                  971.0
+                ],
+                "line_indices": [
+                  67
+                ],
+                "similarity": 0.72,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Lāi thuân tù hot đng kinh doanh khác"
+              },
+              {
+                "anchor": "lợi nhuận trước thuế",
+                "bbox": [
+                  22.0,
+                  1189.0,
+                  593.0,
+                  1323.0
+                ],
+                "line_indices": [
+                  91,
+                  96,
+                  102
+                ],
+                "similarity": 1.0,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "phòng ri ro Chi phí d phòng ri ro TÓnG LOI nhuAN TruÓC ThUÉ"
+              }
+            ],
+            "independent_signal_groups": [
+              "UNIT",
+              "ACCOUNTING_ROWS",
+              "NUMERIC_GEOMETRY"
+            ],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": false,
+            "page_type": "LCTT",
+            "scope": "MAIN_STATEMENT",
+            "score": 5.25
+          },
+          {
+            "accounting_hits": [
+              {
+                "anchor": "thành lập và hoạt động",
+                "bbox": [
+                  22.0,
+                  1031.0,
+                  551.0,
+                  1077.0
+                ],
+                "line_indices": [
+                  79
+                ],
+                "similarity": 0.711111,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "TONG THU NHAP HOAT DÔNG"
+              }
+            ],
+            "independent_signal_groups": [
+              "REPORTING_PERIOD"
+            ],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": false,
+            "page_type": "TM",
+            "scope": "NOT_APPLICABLE",
+            "score": 1.25
+          }
+        ],
+        "continuation_marker": false,
+        "form_types": [
+          "KQKD"
+        ],
+        "header_candidate_type": "KQKD",
+        "header_conflict": false,
+        "narrative_fraction": 0.0,
+        "narrative_penalty": false,
+        "notes_structure": false,
+        "numeric_geometry": {
+          "axes": [
+            0.759877,
+            0.890334
+          ],
+          "axis_cell_counts": [
+            22,
+            22
+          ],
+          "financial_cell_count": 44,
+          "first_cell_y_fraction": 0.203345,
+          "last_cell_y_fraction": 0.658202,
+          "passes": true
+        },
+        "off_balance_heading_score": 0.613333,
+        "off_balance_item_hits": [],
+        "page": 6,
+        "period": {
+          "axis_positions": [],
+          "axis_year_signatures": [],
+          "passes_main_axis": false,
+          "report_years": [
+            "2026"
+          ]
+        },
+        "title_scores": {
+          "CDKT": 0.52459,
+          "KQKD": 1.0,
+          "LCTT": 0.5,
+          "TM": 0.55
+        },
+        "title_sources": {
+          "CDKT": "PP_OCRV6_GEOMETRY",
+          "KQKD": "PP_OCRV6_GEOMETRY",
+          "LCTT": "PP_OCRV6_GEOMETRY",
+          "TM": "PP_OCRV6_GEOMETRY"
+        },
+        "toc_suppression": false,
+        "unit": {
+          "axis_positions": [
+            0.604731,
+            0.733685,
+            0.864064
+          ],
+          "canonical_signatures": [
+            "trieu dong"
+          ],
+          "passes": true,
+          "raw_texts": [
+            "triu đng",
+            "triu đồng",
+            "triu đng"
+          ]
+        }
+      },
+      {
+        "audit_suppression": false,
+        "candidates": [
+          {
+            "accounting_hits": [
+              {
+                "anchor": "tiền gửi và cho vay các tổ chức tín dụng khác",
+                "bbox": [
+                  41.0,
+                  1622.0,
+                  1026.0,
+                  1685.0
+                ],
+                "line_indices": [
+                  50
+                ],
+                "similarity": 0.666667,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "(Tăng)/Gimcác khon tin gi và cho vay các TCTD khác"
+              },
+              {
+                "anchor": "chứng khoán kinh doanh",
+                "bbox": [
+                  44.0,
+                  1680.0,
+                  907.0,
+                  1738.0
+                ],
+                "line_indices": [
+                  53
+                ],
+                "similarity": 0.790698,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "(Tăng)/Gim các khon v kinh doanh chng khoán"
+              },
+              {
+                "anchor": "cho vay khách hàng",
+                "bbox": [
+                  41.0,
+                  1725.0,
+                  1071.0,
+                  1896.0
+                ],
+                "line_indices": [
+                  54,
+                  55,
+                  58
+                ],
+                "similarity": 1.0,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "(Tăng)/Gim các công cu tài chính phái sinh và các tài sn tài chính khác (Tăng)/Gim các khon cho vay khách hàng và mua n"
+              },
+              {
+                "anchor": "tiền gửi của khách hàng",
+                "bbox": [
+                  47.0,
+                  2237.0,
+                  671.0,
+                  2294.0
+                ],
+                "line_indices": [
+                  77
+                ],
+                "similarity": 0.769231,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Tăng/(Gim) tin gi ca khách hàng"
+              },
+              {
+                "anchor": "tài sản cố định",
+                "bbox": [
+                  52.0,
+                  2679.0,
+                  908.0,
+                  2869.0
+                ],
+                "line_indices": [
+                  97,
+                  98,
+                  101
+                ],
+                "similarity": 1.0,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Lưu chuyn tin thun t hot đng kinh doanh LUU CHUYÉN TIÈN TÙ HOAT DQNG DÀU TU Mua sám tài săn có đinh"
+              }
+            ],
+            "independent_signal_groups": [
+              "PERIOD_AXIS",
+              "UNIT",
+              "ACCOUNTING_ROWS",
+              "NUMERIC_GEOMETRY"
+            ],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": false,
+            "page_type": "CDKT",
+            "scope": "MAIN_STATEMENT",
+            "score": 6.5
+          },
+          {
+            "accounting_hits": [
+              {
+                "anchor": "thu nhập lãi và các khoản thu nhập tương tự",
+                "bbox": [
+                  34.0,
+                  900.0,
+                  791.0,
+                  955.0
+                ],
+                "line_indices": [
+                  16
+                ],
+                "similarity": 0.780488,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Thu lãi và các khon thu tưong t nhn đưc"
+              },
+              {
+                "anchor": "chi phí lãi và các chi phí tương tự",
+                "bbox": [
+                  34.0,
+                  956.0,
+                  692.0,
+                  1011.0
+                ],
+                "line_indices": [
+                  19
+                ],
+                "similarity": 0.72973,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Chi lāi và các khon chi tưrong t đã trà"
+              },
+              {
+                "anchor": "lãi thuần từ hoạt động dịch vụ",
+                "bbox": [
+                  35.0,
+                  1010.0,
+                  739.0,
+                  1067.0
+                ],
+                "line_indices": [
+                  22
+                ],
+                "similarity": 0.688525,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Thu nhp t hot đng dch v nhn đưc"
+              }
+            ],
+            "independent_signal_groups": [
+              "PERIOD_AXIS",
+              "UNIT",
+              "ACCOUNTING_ROWS",
+              "NUMERIC_GEOMETRY"
+            ],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": false,
+            "page_type": "KQKD",
+            "scope": "MAIN_STATEMENT",
+            "score": 6.5
+          },
+          {
+            "accounting_hits": [
+              {
+                "anchor": "lưu chuyển tiền từ hoạt động kinh doanh",
+                "bbox": [
+                  34.0,
+                  839.0,
+                  924.0,
+                  897.0
+                ],
+                "line_indices": [
+                  13
+                ],
+                "similarity": 0.987342,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "LU'U CHUYÉN TIÈN TÙ HOAT DONG KINH DOANH"
+              },
+              {
+                "anchor": "thu nhập lãi và các khoản thu nhập tương tự nhận được",
+                "bbox": [
+                  34.0,
+                  900.0,
+                  791.0,
+                  955.0
+                ],
+                "line_indices": [
+                  16
+                ],
+                "similarity": 0.847826,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Thu lãi và các khon thu tưong t nhn đưc"
+              },
+              {
+                "anchor": "chi phí lãi và các chi phí tương tự đã trả",
+                "bbox": [
+                  34.0,
+                  956.0,
+                  692.0,
+                  1011.0
+                ],
+                "line_indices": [
+                  19
+                ],
+                "similarity": 0.839506,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Chi lāi và các khon chi tưrong t đã trà"
+              },
+              {
+                "anchor": "lưu chuyển tiền từ hoạt động tài chính",
+                "bbox": [
+                  52.0,
+                  2679.0,
+                  908.0,
+                  2744.0
+                ],
+                "line_indices": [
+                  97
+                ],
+                "similarity": 0.753247,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Lưu chuyn tin thun t hot đng kinh doanh"
+              },
+              {
+                "anchor": "lưu chuyển tiền từ hoạt động đầu tư",
+                "bbox": [
+                  54.0,
+                  2744.0,
+                  855.0,
+                  2807.0
+                ],
+                "line_indices": [
+                  98
+                ],
+                "similarity": 0.971429,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "LUU CHUYÉN TIÈN TÙ HOAT DQNG DÀU TU"
+              }
+            ],
+            "independent_signal_groups": [
+              "HEADER_IDENTITY",
+              "PERIOD_AXIS",
+              "UNIT",
+              "ACCOUNTING_ROWS",
+              "NUMERIC_GEOMETRY"
+            ],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": true,
+            "page_type": "LCTT",
+            "scope": "MAIN_STATEMENT",
+            "score": 8.5
+          },
+          {
+            "accounting_hits": [],
+            "independent_signal_groups": [
+              "REPORTING_PERIOD"
+            ],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": false,
+            "page_type": "TM",
+            "scope": "NOT_APPLICABLE",
+            "score": 1.25
+          }
+        ],
+        "continuation_marker": false,
+        "form_types": [
+          "LCTT"
+        ],
+        "header_candidate_type": "LCTT",
+        "header_conflict": false,
+        "narrative_fraction": 0.0,
+        "narrative_penalty": false,
+        "notes_structure": false,
+        "numeric_geometry": {
+          "axes": [
+            0.749268,
+            0.963079
+          ],
+          "axis_cell_counts": [
+            30,
+            30
+          ],
+          "financial_cell_count": 60,
+          "first_cell_y_fraction": 0.255559,
+          "last_cell_y_fraction": 0.905217,
+          "passes": true
+        },
+        "off_balance_heading_score": 0.561404,
+        "off_balance_item_hits": [],
+        "page": 7,
+        "period": {
+          "axis_positions": [
+            0.686417,
+            0.900443
+          ],
+          "axis_year_signatures": [
+            [
+              "2026"
+            ],
+            [
+              "2025"
+            ]
+          ],
+          "passes_main_axis": true,
+          "report_years": [
+            "2026"
+          ]
+        },
+        "title_scores": {
+          "CDKT": 0.493827,
+          "KQKD": 0.545455,
+          "LCTT": 1.0,
+          "TM": 0.55
+        },
+        "title_sources": {
+          "CDKT": "PP_OCRV6_GEOMETRY",
+          "KQKD": "PP_OCRV6_GEOMETRY",
+          "LCTT": "PP_OCRV6_GEOMETRY",
+          "TM": "PP_OCRV6_GEOMETRY"
+        },
+        "toc_suppression": false,
+        "unit": {
+          "axis_positions": [
+            0.706167,
+            0.919992
+          ],
+          "canonical_signatures": [
+            "trieu dong"
+          ],
+          "passes": true,
+          "raw_texts": [
+            "triu đồng",
+            "triu đồng"
+          ]
+        }
+      },
+      {
+        "audit_suppression": false,
+        "candidates": [
+          {
+            "accounting_hits": [],
+            "independent_signal_groups": [
+              "PERIOD_AXIS",
+              "NUMERIC_GEOMETRY"
+            ],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": false,
+            "page_type": "CDKT",
+            "scope": "MAIN_STATEMENT",
+            "score": 3.25
+          },
+          {
+            "accounting_hits": [],
+            "independent_signal_groups": [
+              "PERIOD_AXIS",
+              "NUMERIC_GEOMETRY"
+            ],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": false,
+            "page_type": "KQKD",
+            "scope": "MAIN_STATEMENT",
+            "score": 3.25
+          },
+          {
+            "accounting_hits": [
+              {
+                "anchor": "lưu chuyển tiền từ hoạt động tài chính",
+                "bbox": [
+                  69.0,
+                  926.0,
+                  910.0,
+                  973.0
+                ],
+                "line_indices": [
+                  13
+                ],
+                "similarity": 0.987013,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "LU'U ChUYÊN TIÈN TÙ' HOAT DÔNG TÀI CHÍNH"
+              },
+              {
+                "anchor": "lưu chuyển tiền từ hoạt động kinh doanh",
+                "bbox": [
+                  64.0,
+                  1342.0,
+                  875.0,
+                  1396.0
+                ],
+                "line_indices": [
+                  23
+                ],
+                "similarity": 0.753247,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Lưu chuyn tin thun t hot đng tài chính"
+              },
+              {
+                "anchor": "lưu chuyển tiền từ hoạt động đầu tư",
+                "bbox": [
+                  66.0,
+                  1413.0,
+                  623.0,
+                  1464.0
+                ],
+                "line_indices": [
+                  26
+                ],
+                "similarity": 0.721311,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Lưu chuyn tin thun trong k"
+              },
+              {
+                "anchor": "tiền và các khoản tương đương tiền",
+                "bbox": [
+                  65.0,
+                  1514.0,
+                  1085.0,
+                  1564.0
+                ],
+                "line_indices": [
+                  29
+                ],
+                "similarity": 0.75,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Tin và các khon tưong đưng tin ti thi đim đu k"
+              }
+            ],
+            "independent_signal_groups": [
+              "HEADER_IDENTITY",
+              "PERIOD_AXIS",
+              "ACCOUNTING_ROWS",
+              "NUMERIC_GEOMETRY"
+            ],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": true,
+            "page_type": "LCTT",
+            "scope": "MAIN_STATEMENT",
+            "score": 7.75
+          },
+          {
+            "accounting_hits": [],
+            "independent_signal_groups": [
+              "REPORTING_PERIOD"
+            ],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": false,
+            "page_type": "TM",
+            "scope": "NOT_APPLICABLE",
+            "score": 1.25
+          }
+        ],
+        "continuation_marker": false,
+        "form_types": [
+          "LCTT"
+        ],
+        "header_candidate_type": "LCTT",
+        "header_conflict": false,
+        "narrative_fraction": 0.0,
+        "narrative_penalty": false,
+        "notes_structure": false,
+        "numeric_geometry": {
+          "axes": [
+            0.760513,
+            0.975494
+          ],
+          "axis_cell_counts": [
+            6,
+            5
+          ],
+          "financial_cell_count": 11,
+          "first_cell_y_fraction": 0.290111,
+          "last_cell_y_fraction": 0.45882,
+          "passes": true
+        },
+        "off_balance_heading_score": 0.613333,
+        "off_balance_item_hits": [],
+        "page": 8,
+        "period": {
+          "axis_positions": [
+            0.704152,
+            0.919589
+          ],
+          "axis_year_signatures": [
+            [
+              "2026"
+            ],
+            [
+              "2025"
+            ]
+          ],
+          "passes_main_axis": true,
+          "report_years": [
+            "2026"
+          ]
+        },
+        "title_scores": {
+          "CDKT": 0.575758,
+          "KQKD": 0.5,
+          "LCTT": 0.742857,
+          "TM": 0.617647
+        },
+        "title_sources": {
+          "CDKT": "PP_OCRV6_GEOMETRY",
+          "KQKD": "PP_OCRV6_GEOMETRY",
+          "LCTT": "PP_OCRV6_GEOMETRY",
+          "TM": "PP_OCRV6_GEOMETRY"
+        },
+        "toc_suppression": false,
+        "unit": {
+          "axis_positions": [],
+          "canonical_signatures": [],
+          "passes": false,
+          "raw_texts": []
+        }
+      },
+      {
+        "audit_suppression": false,
+        "candidates": [
+          {
+            "accounting_hits": [
+              {
+                "anchor": "tiền gửi tại ngân hàng nhà nước",
+                "bbox": [
+                  469.0,
+                  950.0,
+                  2219.0,
+                  1015.0
+                ],
+                "line_indices": [
+                  12
+                ],
+                "similarity": 0.807018,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "16/01/2026 do Thng đc Ngân hàng Nhà nưóc Vit Nam (\"NHNNVN\") cáp, thay thé Giáy"
+              }
+            ],
+            "independent_signal_groups": [],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": false,
+            "page_type": "CDKT",
+            "scope": "MAIN_STATEMENT",
+            "score": 0.0
+          },
+          {
+            "accounting_hits": [],
+            "independent_signal_groups": [],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": false,
+            "page_type": "KQKD",
+            "scope": "MAIN_STATEMENT",
+            "score": 0.0
+          },
+          {
+            "accounting_hits": [],
+            "independent_signal_groups": [],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": false,
+            "page_type": "LCTT",
+            "scope": "MAIN_STATEMENT",
+            "score": 0.0
+          },
+          {
+            "accounting_hits": [
+              {
+                "anchor": "đơn vị báo cáo",
+                "bbox": [
+                  351.0,
+                  344.0,
+                  1230.0,
+                  403.0
+                ],
+                "line_indices": [
+                  1
+                ],
+                "similarity": 1.0,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "Đon vį báo cáo: Ngân hàng TMCP Quân Đi"
+              },
+              {
+                "anchor": "thành lập và hoạt động",
+                "bbox": [
+                  350.0,
+                  652.0,
+                  1528.0,
+                  778.0
+                ],
+                "line_indices": [
+                  5,
+                  8
+                ],
+                "similarity": 0.926829,
+                "source": "PP_OCRV6_GEOMETRY",
+                "text": "I Giáy phép thành lp và hot đng, thi hn có giá tr"
+              }
+            ],
+            "independent_signal_groups": [
+              "HEADER_IDENTITY",
+              "REPORTING_PERIOD",
+              "NOTES_ANCHORS",
+              "NOTES_STRUCTURE"
+            ],
+            "inference_checks": [],
+            "inference_direction": null,
+            "inferred_from_page": null,
+            "locally_accepted": true,
+            "page_type": "TM",
+            "scope": "NOT_APPLICABLE",
+            "score": 7.25
+          }
+        ],
+        "continuation_marker": false,
+        "form_types": [
+          "TM"
+        ],
+        "header_candidate_type": "TM",
+        "header_conflict": false,
+        "narrative_fraction": 0.063291,
+        "narrative_penalty": false,
+        "notes_structure": true,
+        "numeric_geometry": {
+          "axes": [],
+          "axis_cell_counts": [],
+          "financial_cell_count": 1,
+          "first_cell_y_fraction": 0.951967,
+          "last_cell_y_fraction": 0.951967,
+          "passes": false
+        },
+        "off_balance_heading_score": 0.594595,
+        "off_balance_item_hits": [],
+        "page": 9,
+        "period": {
+          "axis_positions": [],
+          "axis_year_signatures": [],
+          "passes_main_axis": false,
+          "report_years": [
+            "2026"
+          ]
+        },
+        "title_scores": {
+          "CDKT": 0.584615,
+          "KQKD": 0.5625,
+          "LCTT": 0.47619,
+          "TM": 1.0
+        },
+        "title_sources": {
+          "CDKT": "PP_OCRV6_GEOMETRY",
+          "KQKD": "PP_OCRV6_GEOMETRY",
+          "LCTT": "PP_OCRV6_GEOMETRY",
+          "TM": "PP_OCRV6_GEOMETRY"
+        },
+        "toc_suppression": false,
+        "unit": {
+          "axis_positions": [],
+          "canonical_signatures": [],
+          "passes": false,
+          "raw_texts": []
+        }
+      }
+    ],
+    "policy": "MULTI_LINE_MULTI_SIGNAL_ORDERED_DOCUMENT_DISCOVERY_V4",
+    "runner_up_margin": 8.5,
+    "semantic_reader_authority": "HEADING_AND_LABEL_PROPOSAL_ONLY",
+    "status": "ACCEPTED_MULTI_SIGNAL_STATEMENT_BLOCK"
+  },
+  "capture_git_commit": "6e07119f6fad2274d43394cadc5dfd58d4ab45ab",
+  "capture_git_dirty": false,
+  "claim_boundary": "E-0028 is a bounded locator calibration on existing PP-OCRv6 evidence plus frozen cross-document no-regression replays. It does not evaluate table reconstruction, numeric extraction, schema mapping, Excel accuracy or an untouched holdout, and it cannot establish a production threshold.",
+  "cross_document_no_regression": [
+    {
+      "baseline": {
+        "cash_flow_method": "DIRECT",
+        "mapping_eligible_pages_by_statement_type": {
+          "CDKT": [
+            10,
+            11
+          ],
+          "KQKD": [
+            13
+          ],
+          "LCTT": [
+            14,
+            15
+          ]
+        },
+        "notes_boundary_page": 16,
+        "off_balance_excluded_pages": [
+          12
+        ],
+        "runner_up_margin": 8.5,
+        "status": "ACCEPTED_MULTI_SIGNAL_STATEMENT_BLOCK"
+      },
+      "candidate": {
+        "cash_flow_method": "DIRECT",
+        "mapping_eligible_pages_by_statement_type": {
+          "CDKT": [
+            10,
+            11
+          ],
+          "KQKD": [
+            13
+          ],
+          "LCTT": [
+            14,
+            15
+          ]
+        },
+        "notes_boundary_page": 16,
+        "off_balance_excluded_pages": [
+          12
+        ],
+        "runner_up_margin": 8.5,
+        "status": "ACCEPTED_MULTI_SIGNAL_STATEMENT_BLOCK"
+      },
+      "document": "MBB_2025_CONSOLIDATED",
+      "structural_exact_match": true
+    },
+    {
+      "baseline": {
+        "cash_flow_method": "DIRECT",
+        "mapping_eligible_pages_by_statement_type": {
+          "CDKT": [
+            8,
+            9
+          ],
+          "KQKD": [
+            11,
+            12
+          ],
+          "LCTT": [
+            13,
+            14
+          ]
+        },
+        "notes_boundary_page": 15,
+        "off_balance_excluded_pages": [
+          10
+        ],
+        "runner_up_margin": 8.5,
+        "status": "ACCEPTED_MULTI_SIGNAL_STATEMENT_BLOCK"
+      },
+      "candidate": {
+        "cash_flow_method": "DIRECT",
+        "mapping_eligible_pages_by_statement_type": {
+          "CDKT": [
+            8,
+            9
+          ],
+          "KQKD": [
+            11,
+            12
+          ],
+          "LCTT": [
+            13,
+            14
+          ]
+        },
+        "notes_boundary_page": 15,
+        "off_balance_excluded_pages": [
+          10
+        ],
+        "runner_up_margin": 8.5,
+        "status": "ACCEPTED_MULTI_SIGNAL_STATEMENT_BLOCK"
+      },
+      "document": "VCB_2025_CONSOLIDATED",
+      "structural_exact_match": true
+    }
+  ],
+  "dataset_role": "CALIBRATION",
+  "experiment_config": {
+    "path": "config/experiments/e0028-bounded-ordered-anchor-locator.yaml",
+    "sha256": "e7605f6c5d9042e2806c3eeffff70495b59250b2e8b32452d5cf7e47b5e39dfb",
+    "size_bytes": 3113
+  },
+  "experiment_id": "E-0028",
+  "format_version": 1,
+  "ocr_batch_identity_sha256": "2d60b9cf108d305e259c5e083aba50de063e1d7fa6a9e60b7657389af626afe4",
+  "page_9_tm_incremental_evidence": {
+    "added_hits": [
+      {
+        "anchor": "thành lập và hoạt động",
+        "bbox": [
+          350.0,
+          652.0,
+          1528.0,
+          778.0
+        ],
+        "line_indices": [
+          5,
+          8
+        ],
+        "similarity": 0.926829,
+        "source": "PP_OCRV6_GEOMETRY",
+        "text": "I Giáy phép thành lp và hot đng, thi hn có giá tr"
+      }
+    ],
+    "baseline_hit_count": 1,
+    "extended_hit_count": 2,
+    "statement_type": "TM"
+  },
+  "reference_isolation": {
+    "e0022_evidence_loaded": false,
+    "excel_export_invoked": false,
+    "historical_values_loaded": false,
+    "human_review_loaded": false,
+    "mapping_invoked": false,
+    "numeric_extraction_invoked": false,
+    "semantic_reader_invoked": false
+  },
+  "source": {
+    "path": "vietstock_bctc/MBB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf",
+    "sha256": "eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83",
+    "size_bytes": 3977471
+  },
+  "status": "PASS_BOUNDED_ORDERED_ANCHOR_LOCATOR",
+  "target_gates": {
+    "e0013_mbb_vcb_structural_no_regression": true,
+    "mapping_eligible_pages_exact": true,
+    "notes_boundary_exact": true,
+    "off_balance_exclusion_exact": true,
+    "page_9_tm_anchor_added": true,
+    "page_9_tm_has_minimum_anchor_count": true,
+    "runner_up_margin_clear": true,
+    "v3_replay_equals_sealed_baseline": true,
+    "v4_status_accepted": true
+  },
+  "verified_inputs": {
+    "algorithm": {
+      "path": "src/bctc_ai/document_phase/multisignal_statement_discovery_v4.py",
+      "sha256": "44c69c4110f51cc7c956bff29ebba1f98c8d05d32df97015329a0f25f0e9eb52",
+      "size_bytes": 19051
+    },
+    "base_config": {
+      "path": "config/document_phase/statement-discovery-v3.yaml",
+      "sha256": "f8188fdf53b8f3907ab89d5407bcea178fe927dfe02ccad291a79d1b5f1ba182",
+      "size_bytes": 5400
+    },
+    "config": {
+      "path": "config/document_phase/statement-discovery-v4.yaml",
+      "sha256": "5562b775b7c25ebf6591bc4dda0e213ae75d96b97ba7738c8a0fd5f87d61976b",
+      "size_bytes": 843
+    },
+    "e0013_no_regression": {
+      "path": "docs/experiments/E-0013-mbb-vcb-statement-location.json",
+      "sha256": "b49fed32210d3d69994e440398048deabe33f92d5f6b7ce527096098405907b5",
+      "size_bytes": 10761
+    },
+    "e0027_ocr_batch": {
+      "path": "output/calibration/e0027-mbb-q1-2026-end-to-end-role-c/batch_manifest.json",
+      "sha256": "0d94762ba4a0d383793fe93a56e48fa7b79d6a3f7faaf62e9dcf40935b8c2889",
+      "size_bytes": 13563
+    },
+    "e0027_v3_baseline": {
+      "path": "docs/experiments/E-0027-mbb-q1-2026-role-b-discovery-v3.json",
+      "sha256": "9ccfd0faf869adee4cb885a4a87a32c86354101e82adc1d62c32e4ce7e9089c8",
+      "size_bytes": 61566
+    }
+  }
+}
