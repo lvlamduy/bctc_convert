@@ -290,6 +290,44 @@ mapping or confidence authority. Exact overlay hashes/install command are in
 the source/config/model/result evidence. The model cache is reconstructible and
 remains outside Git.
 
+VietOCR 0.3.13 is installed only as an inference overlay at
+`/workspace/bctc-ai-runtime/vietocr-0.3.13`; no distribution was added to the
+control-plane or `.gpu-venv`. The official wheel is 34,641 bytes (SHA-256
+`07b3777e5176b0d733cb056b68bd817371605f4b3514795fbf91ad4e181b8ccf`).
+The upstream `base.yml` and `vgg-transformer.yml` are respectively 1,809 and
+505 bytes with SHA-256 `9c8283fadb950f06f5d3400475f80d5355700ff315c9c48b7875e6ea66647d1c`
+and `0df9feee197754c7381871e5dfd07c6f3e292a4853eece6f1af240923e57c907`.
+The VGG-Transformer weight is 151,815,373 bytes with SHA-256
+`380512193a8b6cbf6fad80deacdc9b6939d10d473d199892fc6408d13775ea59`.
+All four URLs, sizes and hashes are locked in
+`config/models/vietocr-0.3.13.toml`; the installer verifies existing files and
+refuses to overwrite a mismatch.
+
+The wheel is extracted byte-for-byte into an isolated `site-packages` overlay.
+The inference-only compatibility path reuses PyTorch 2.12.0+cu130,
+TorchVision 0.27.0+cu130, Pillow 12.3.0, NumPy 2.3.5, einops 0.8.2 and PyYAML
+6.0.2 from `.gpu-venv`; it deliberately does not install the wheel's old
+training/download dependency pins. The runner imports the local translate path
+directly, forces `cnn.pretrained=false` so TorchVision cannot download ImageNet
+weights, disables beam search and network/DNS, and loads the local state dict
+with `weights_only=true`. The PyPI classifier says MIT while the wheel's actual
+LICENSE and project description say Apache-2.0; that upstream metadata
+inconsistency is recorded rather than silently resolved. Installation has
+passed exact artifact and wheel-overlay verification. Accuracy, latency and
+VRAM remain pending the frozen E-0024 run and this runtime has no production
+acceptance.
+
+Rebuild/verify command:
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/bootstrap/install_vietocr_line_runtime.py \
+  --runtime-root /workspace/bctc-ai-runtime/vietocr-0.3.13
+```
+
+The runtime is reconstructible. If it must be rolled back, remove only the
+explicit `/workspace/bctc-ai-runtime/vietocr-0.3.13` overlay after preserving
+any required run manifests; the base environments are unchanged.
+
 IBM TableFormer and ClusterTabNet are also not installed. The inspected
 TableFormer/Docling source revision is
 `5787142002b4063efe30f172dd91fbc7a94b43a6` (package version 3.13.3, MIT);

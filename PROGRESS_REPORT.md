@@ -2,7 +2,7 @@
 
 - Updated: 2026-08-06T11:26:19+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `fe02da8`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
+- Latest clean, tested, pushed checkpoint: `1d46626`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
@@ -152,12 +152,20 @@
   The registry binds both source PDFs, 14 renders, 14 PP-OCRv6 JSON files, every
   line index/bbox/raw prediction, and source-visible transcription by SHA-256.
   Its three focused tests pass and an independent real-artifact audit reports
-  zero source/render/OCR/bbox/text drift. No challenger output has been read.
-- Next bounded action: commit the frozen E-0024 crop registry, build its crops
-  from that clean commit, then run the official VietOCR 0.3.13 VGG-Transformer
-  once. Compare exact-line accuracy, CER/WER, deletion/truncation and separated
-  base-letter/diacritic errors against PP-OCRv6. Integrate only on the declared
-  no-regression gate; E-0022 will not be rerun or retuned.
+  zero source/render/OCR/bbox/text drift. The pre-inference registry was pushed
+  at `1d46626`; 37 crops were then built and representative title/long-label/
+  off-balance crops were visually checked for clipping or neighbor leakage.
+- The official VietOCR 0.3.13 wheel, two upstream configs and
+  VGG-Transformer weight are now installed in an isolated exact-hash overlay.
+  The 151,815,373-byte weight SHA-256 is
+  `380512193a8b6cbf6fad80deacdc9b6939d10d473d199892fc6408d13775ea59`;
+  no base environment changed. Seventeen focused tests now lock reference-blind
+  request fields, artifact/safety policy, CER/WER/edit categories, suffix
+  truncation and the adoption gate. No challenger inference has been run.
+- Next bounded action: commit the reader/runtime/metric gate, rebuild crops for
+  the updated config hash, generate a reference-free request, and run VietOCR
+  once. Integrate only if CER decreases without title-exactness or truncation
+  regression; E-0022 will not be rerun or retuned.
 
 ## Completed tasks
 
@@ -455,6 +463,11 @@
   anchors pass exact validation. The active task is its clean-commit build and
   bounded VietOCR inference; no model output receives numeric, geometry or
   mapping authority.
+- The E-0024 model runtime and comparison mechanism are ready but remain
+  pre-inference. Official artifacts and the extracted overlay pass exact hash
+  verification; the runner can read only crop ID/category/path/hash, blocks
+  socket/DNS access and never loads the source transcription or PP-OCR baseline.
+  Metrics and adoption gates are fixed before its first output.
 - Ordered SchemaGraph v1 and E-0023 are sealed. The mapper remains intentionally
   excluded from the
   already-frozen E-0022 pipeline and will next be evaluated on separate real-PDF
@@ -587,13 +600,12 @@
 
 ## Planned next steps
 
-1. Commit and push the source/hash/box-bound 37-line E-0024 input registry before
-   any challenger inference, then build and inspect its crops from the clean
-   commit.
-2. Install official VietOCR 0.3.13 in an isolated overlay, pin the downloaded
-   base/model configs and VGG-Transformer weights by size/hash, and run it once
-   on the frozen crops without reference-text decoder input.
-3. Compare exact-line accuracy, CER, WER, base-character/diacritic-only edits,
+1. Commit and push the reference-blind runner, exact VietOCR runtime manifest,
+   fixed metrics and no-regression gate before any challenger inference.
+2. Rebuild the unchanged 37 selected crops under the updated config hash,
+   generate the allowlisted reference-free inference request, and run official
+   VietOCR 0.3.13 VGG-Transformer once with network access blocked.
+3. Capture exact-line accuracy, CER, WER, base-character/diacritic-only edits,
    deletions and truncations with the registered PP-OCRv6 baseline. Integrate an
    independent Vietnamese heading/label reader only if the
    fixed-crop result shows a bounded gain. PP-OCRv6 remains geometry

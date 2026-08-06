@@ -26,6 +26,10 @@ crop_policy:
 
 evaluation_policy:
   unicode_normalization: NFC
+  whitespace_normalization: STRIP_AND_COLLAPSE_RUNS
+  title_categories: [TITLE, OFF_BALANCE_TITLE]
+  suffix_truncation_minimum_missing_characters: 2
+  suffix_truncation_minimum_missing_fraction: 0.10
   metrics:
     - exact_line_accuracy
     - casefold_exact_line_accuracy
