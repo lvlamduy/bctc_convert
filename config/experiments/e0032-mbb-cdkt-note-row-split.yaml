@@ -1,0 +1,76 @@
+version: 1
+experiment_id: E-0032
+dataset_role: CALIBRATION
+design: REFERENCE_BLIND_NOTE_ROW_ANCHOR_SPLIT_BEFORE_AFTER
+selection_policy: >-
+  Compare the sealed E-0029 V3 row contract with one precommitted V4 change on
+  the same accepted pages and immutable PP-OCRv6/render artifacts. The change
+  may use only relative note/value geometry. Human review remains unavailable.
+
+source:
+  path: vietstock_bctc/MBB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf
+  sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+  size_bytes: 3977471
+  target_pages: [3, 4]
+  excluded_off_balance_pages: [5]
+
+frozen_inputs:
+  e0029_row_contract:
+    path: docs/experiments/E-0029-mbb-cdkt-row-reconstruction.json
+    sha256: affe74a243e342b56c4ead2fac984f10d9a1f42378823b50ccdde8946eeed373
+  ocr_batch:
+    path: output/calibration/e0027-mbb-q1-2026-end-to-end-role-c/batch_manifest.json
+    sha256: 0d94762ba4a0d383793fe93a56e48fa7b79d6a3f7faaf62e9dcf40935b8c2889
+
+candidate:
+  git_commit: 44afda2231db8728ff1be548fb06c7e00f0319bd
+  config:
+    path: config/tables/word-box-reconstruction-v4.yaml
+    sha256: e4a2880510b50e1b20429d9e9b138fe1ec5166dfb09fde0333d3179b7581c224
+  algorithm:
+    path: src/bctc_ai/evaluation/word_box_rows_v4.py
+    sha256: ab3e2880ebe6ae76d99c046718adcd6a413609249947baf1d0a356f1f2fa568e
+  inherited_v3_algorithm:
+    path: src/bctc_ai/evaluation/word_box_rows_v3.py
+    sha256: 06c897139ea3b036ad5253a6aa0aca99fbeb5bae5e4bff7d002cc4812abcbc46
+  bounded_change: distant_note_reference_creates_independent_structural_anchor
+
+acceptance_policy:
+  exact_page_set: [3, 4]
+  exact_rows_by_page: {3: 39, 4: 25}
+  exact_cells_by_page: {3: 78, 4: 50}
+  exact_observation_counts_by_page:
+    3: {BLANK: 3, DASH: 3, VALUE: 72}
+    4: {BLANK: 6, DASH: 2, VALUE: 42}
+  exact_common_row_count: 62
+  exact_unchanged_common_row_count: 62
+  exact_removed_composite_row_count: 1
+  exact_replacement_row_count: 2
+  exact_partitioned_split_count: 1
+  exact_preserved_value_cell_split_count: 1
+  source_line_coverage_delta_count: 0
+  invalid_cell_count: 0
+  duplicate_source_line_assignment_count: 0
+  page_5_row_count: 0
+  human_gold_or_production_accuracy_claim: false
+
+forbidden_inputs:
+  - human_review_pages_labels_ids_values_or_period_answers
+  - mongodb_or_historical_values
+  - template_labels_or_report_norm_ids
+  - label_text_or_accounting_semantics_as_split_feature
+  - numeric_value_or_magnitude_as_split_feature
+  - E-0022_source_artifacts_output_or_diagnosis
+  - off_balance_page_5_rows
+
+development_note: >-
+  The exact structural delta gates were recorded after a dirty development
+  replay on this calibration block. They do not encode expected labels, values,
+  schema IDs, human review or historical evidence and are not holdout gates.
+
+claim_boundary: >-
+  E-0032 measures one reference-blind note/value anchor separation correction on
+  the already accepted MBB CDKT pages 3-4. It does not establish Vietnamese
+  source-exact labels, independent numeric truth on the revised grid, period
+  roles, schema IDs, accounting validity, Excel accuracy, human-gold accuracy or
+  untouched-holdout performance.
