@@ -109,6 +109,27 @@ VCB CDKT continuation page. These page identities are frozen calibration data,
 not production routing rules. The unchanged algorithm must discover future
 targets from scope, failure type, order, and relative geometry.
 
+## Formal original-crop evidence result
+
+The clean E-0016 evidence sealer verified 15/15 requested reads across all eight
+regions. PP-OCRv6 processed 308 lines and 2,241 word tokens. The VCB full-table
+crop recovered 26 VLM rows and 27 geometry rows from a baseline whose VLM table
+was truncated to seven raw grid rows and zero safe rows; all 48 structurally
+paired observed cells agreed. This is conditional two-reader evidence, not
+human-gold accuracy.
+
+The MBB LCTT full-table crop demonstrates the limit of the same intervention.
+PaddleOCR-VL increased from 6 baseline rows to 18 at 450 DPI, but still joined
+rows and retained 14 invalid multi-number cells; only 18/36 paired observed cells
+agreed with the 27-row, zero-invalid-cell geometry proposal. One row band stayed
+unresolved and another produced no table block. These outcomes rule out a global
+“higher DPI fixes structure” rule and motivate geometry-led canonical row fusion.
+All ten non-original photometric candidates remain unevaluated and unselected.
+
+The exact artifact and commands are in
+`experiments/E-0016-mbb-vcb-targeted-reread-evidence.json` and
+`experiments/E-0016-REPLAY.md`.
+
 ## Files, tests, and rebuild
 
 - Policy: `config/preprocessing/targeted-reread-v1.yaml`.
@@ -117,8 +138,13 @@ targets from scope, failure type, order, and relative geometry.
 - Evidence-chain builder: `src/bctc_ai/preprocessing/targeted_run.py`.
 - Frozen calibration contract:
   `config/experiments/e0016-mbb-vcb-targeted-reread.yaml`.
-- CLI:
+- Input-builder CLI:
   `scripts/experiments/build_e0016_targeted_reread_inputs.py`.
+- Original-crop evidence contract:
+  `config/experiments/e0016-mbb-vcb-targeted-reread-evidence.yaml`.
+- Evidence sealer/CLI:
+  `src/bctc_ai/evaluation/targeted_reread_evidence.py` and
+  `scripts/experiments/seal_e0016_targeted_reread_evidence.py`.
 
 Unit tests cover dense-table collapse, local numeric grouping, Role B-only
 order-gap localization, mapping-ineligible exclusion, unknown escalation,

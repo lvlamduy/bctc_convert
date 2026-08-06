@@ -1,13 +1,13 @@
 # Progress report
 
-- Updated: 2026-08-06T03:18:53+00:00
+- Updated: 2026-08-06T03:36:26+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `a2b2f1b5e4d65bd31cbf577a7626c4738b82ea6e`
+- Latest clean, tested, pushed checkpoint: `8c2f7fbe08affce491df26113eaee10920fd459c`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,592 (CDKT 77; KQKD 24; LCTT 107; TM 1,384)
 - Registered PDFs: 2,567
-- Latest full regression: 207 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
+- Latest full regression: 208 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
 
 ## Completed tasks
 
@@ -37,19 +37,16 @@
   to the current target balance-sheet templates. ID 4337 is `NOT_OBSERVED` in the
   cited CTG section; the visible XDCB row maps only to 4373.
 - Committed and pushed the latest correctness checkpoint as
-  `a2b2f1b feat: enforce hash-bound structural mapping corrections`.
+  `8c2f7fb feat: seal targeted reread reader evidence`.
+- Generated the formal E-0016 artifact from clean commit `8c2f7fb`. It verifies
+  15/15 original-crop reader runs and a 52-file output set while retaining one
+  unresolved table, one no-table crop, 14 invalid VLM cells, both full-table row
+  count disagreements, and all no-selection/no-mapping safety flags.
 
 ## Currently in progress
 
-- Testing and preparing a clean commit for the new general E-0016 evidence
-  auditor. It now verifies every crop/result hash, reader/input binding, runtime
-  identity, parser outcome, output-set completeness, and retained failure.
-- Sealing E-0016 targeted-reread OCR evidence without selecting a value or image
-  variant. Eight original source-PDF crops completed PP-OCRv6 reads; the seven
-  structural crops requested for PaddleOCR-VL also completed. A dirty-worktree
-  development audit passed the exact 15-run contract; it is not the formal seal.
-- Preparing a tracked replay artifact, integration regression, rebuild steps, and
-  experiment-log entry for the E-0016 evidence milestone.
+- Preparing the tested E-0016 artifact/replay/integration documentation for its
+  final Git commit and push. The full 208-test regression is green.
 
 ## Major challenges and obstacles
 
@@ -90,18 +87,16 @@
 
 ## Planned next steps
 
-1. Finish the E-0016 evidence auditor and unit tests, then commit/push the clean
-   mechanism version.
-2. Generate the immutable E-0016 result from that clean commit; add an exact
-   replay document and integration test; run the full suite; commit/push again.
-3. Implement canonical logical-row fusion for headerless row bands and full-table
+1. Run the full suite against the immutable E-0016 artifact, then commit/push its
+   replay, integration gate, experiment decision, and rebuild documentation.
+2. Implement canonical logical-row fusion for headerless row bands and full-table
    disagreement cases without using values, ReportNormId magnitude, history, or
    arithmetic to force alignment.
-4. Build a human-gold evaluation split separated by bank and reporting period,
+3. Build a human-gold evaluation split separated by bank and reporting period,
    including skew, warp, dark headers, blurred digits, wrapped rows, continuation
    pages, direct/indirect LCTT, separate/consolidated scope, and quarterly/YTD
    derivation cases.
-5. Define calibrated abstention thresholds only after the human-gold benchmark;
+4. Define calibrated abstention thresholds only after the human-gold benchmark;
    unresolved evidence must continue to produce review statuses rather than
    guessed output.
 

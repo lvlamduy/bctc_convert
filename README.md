@@ -58,6 +58,9 @@ settings, retained failures, and migration-safe replay are in
 The clean multi-table/variable-column structural fusion comparison, metrics,
 failure set, and exact replay are in
 [docs/experiments/E-0015-REPLAY.md](docs/experiments/E-0015-REPLAY.md).
+The 450/600-DPI targeted-reread inputs, 15 original-crop reader runs, retained
+high-resolution failures, and hash-bound replay are in
+[docs/experiments/E-0016-REPLAY.md](docs/experiments/E-0016-REPLAY.md).
 The allowlisted, non-authoritative Mongo/DuckDB reference and rebuild procedure
 are in
 [docs/environment/HISTORICAL_REFERENCE_RUNBOOK.md](docs/environment/HISTORICAL_REFERENCE_RUNBOOK.md).
