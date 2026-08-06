@@ -1,0 +1,61 @@
+version: 1
+experiment_id: E-0020
+phase: CALIBRATION_ORDERED_LABEL_SEGMENTATION
+dataset_role: CALIBRATION
+selection_policy: REPLAY_ALL_SIX_FROZEN_E0010_E0011_PAGES
+
+target:
+  pages:
+    - {reference_page: 9, candidate_page: 10, statement_type: CDKT, expected_scope: MAIN_STATEMENT}
+    - {reference_page: 10, candidate_page: 11, statement_type: CDKT, expected_scope: MAIN_STATEMENT}
+    - {reference_page: 11, candidate_page: 12, statement_type: CDKT, expected_scope: OFF_BALANCE_SHEET}
+    - {reference_page: 12, candidate_page: 13, statement_type: KQKD, expected_scope: MAIN_STATEMENT}
+    - {reference_page: 13, candidate_page: 14, statement_type: LCTT, expected_scope: MAIN_STATEMENT}
+    - {reference_page: 14, candidate_page: 15, statement_type: LCTT, expected_scope: MAIN_STATEMENT}
+  reference_fixture_id: e0009-tcb-2024-separate-searchable
+  candidate_fixture_id: e0009-tcb-2024-separate-scan
+
+upstream:
+  baseline:
+    path: docs/experiments/E-0010-tcb-cross-reader-calibration.json
+    sha256: 706545d738aa5b4b3bf7795b0fee4e4264d693fe1f75c2e5a1d5709908a7e160
+  geometry_recovery:
+    path: docs/experiments/E-0011-tcb-geometry-recovery.json
+    sha256: 4df17c6b19e5121ae047c699e52f4a81662b3580c07e1b492d0ca4f1e38cf03c
+  role_a_seal:
+    path: output/calibration/e0010-tcb-role-a/f48ff3a87b68d7bccc72/role_a_seal.json
+    sha256: 1fd1ac2979c114b5b6938ef6c4e7ea51c0d5ea82bd67edf6abc3633d13d125f8
+  role_a_result:
+    path: output/calibration/e0010-tcb-role-a/f48ff3a87b68d7bccc72/role_a_rows.json
+    sha256: ef61dc102845dbc9c918a92fb75683d3d82378a9774b4f3beba8936c66d6165b
+  role_b_seal:
+    path: output/calibration/e0009-tcb-role-b/7e3f491783a9895d7716/role_b_ocr_seal.json
+    sha256: 2007b9281e0ee5eb80b12f6df069403d91186d710dcff68cb97fb085b7c32d89
+  role_c_seal:
+    path: output/calibration/e0011-tcb-role-c/7e3f491783a9895d7716/role_c_geometry_seal.json
+    sha256: 0c0e3972d1d050bb24abe05019040e66b089fb0cf9a5501d0cd8a017ef560461
+  suite_config:
+    path: config/experiments/e0009-frozen-paired-calibration.yaml
+    sha256: 549d17e1569a3e4aca886261c3bd60de125aeb9dd11f3be7370e58401615c72f
+  geometry_parser_config:
+    path: config/tables/word-box-reconstruction.yaml
+    sha256: 5aefee12f3ab760bcd203aa647bc76a0232897f16b11fec221eed0244cbbe5da
+  fusion_config:
+    path: config/tables/semantic-geometry-fusion-v2.yaml
+    sha256: 8961bd96e25de5868b29e1d51ab46adb7f9e702d24c472e90275a8ddf0006c0c
+  cash_flow_rules:
+    path: config/mapping/lctt.yaml
+    sha256: 766aa95cb95c75698212a786930ead056d1fbaf08e32d9f50c0a5793cf67ebb5
+  scope_policy:
+    path: config/mapping/scope_exclusions.yaml
+    sha256: 79e4dabdce260c96f52446421a93660042558478b78f0a11a68be99f92fe0dc9
+
+safety:
+  automatic_value_replacement: false
+  automatic_schema_mapping: false
+  automatic_period_assignment: false
+  automatic_scope_assignment: false
+  automatic_geometry_replacement: false
+  automatic_confidence_promotion: false
+  historical_reference_invoked: false
+  production_threshold_claim: false
