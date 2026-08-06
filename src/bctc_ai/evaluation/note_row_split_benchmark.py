@@ -152,10 +152,13 @@ def capture_e0032_note_row_split_benchmark(
     experiment_config_path: Path,
     batch_root: Path,
     output_path: Path,
+    expected_experiment_id: str = "E-0032",
 ) -> dict[str, Any]:
     project_root = project_root.resolve()
     if _git(project_root, "status", "--porcelain"):
-        raise NoteRowSplitBenchmarkError("formal E-0032 capture requires clean Git code")
+        raise NoteRowSplitBenchmarkError(
+            f"formal {expected_experiment_id} capture requires clean Git code"
+        )
     output = _resolve(project_root, output_path, "output")
     if not output.is_relative_to((project_root / "docs" / "experiments").resolve()):
         raise NoteRowSplitBenchmarkError("output must remain in docs/experiments")
@@ -165,12 +168,15 @@ def capture_e0032_note_row_split_benchmark(
     experiment_path = _resolve(project_root, experiment_config_path, "experiment config")
     experiment = _load_yaml(experiment_path, "E-0032 experiment config")
     if (
-        experiment.get("version") != 1
-        or experiment.get("experiment_id") != "E-0032"
+        expected_experiment_id not in {"E-0032", "E-0033"}
+        or experiment.get("version") != 1
+        or experiment.get("experiment_id") != expected_experiment_id
         or experiment.get("dataset_role") != "CALIBRATION"
         or experiment.get("design") != "REFERENCE_BLIND_NOTE_ROW_ANCHOR_SPLIT_BEFORE_AFTER"
     ):
-        raise NoteRowSplitBenchmarkError("E-0032 experiment identity drifted")
+        raise NoteRowSplitBenchmarkError(
+            f"{expected_experiment_id} experiment identity drifted"
+        )
     source = experiment.get("source")
     frozen = experiment.get("frozen_inputs")
     candidate = experiment.get("candidate")
@@ -313,7 +319,7 @@ def capture_e0032_note_row_split_benchmark(
     }
     result = {
         "format_version": 1,
-        "experiment_id": "E-0032",
+        "experiment_id": expected_experiment_id,
         "dataset_role": "CALIBRATION",
         "capture_git_commit": _git(project_root, "rev-parse", "HEAD"),
         "capture_git_dirty": False,
@@ -351,8 +357,25 @@ def capture_e0032_note_row_split_benchmark(
     return result
 
 
+def capture_e0033_note_row_split_benchmark(
+    project_root: Path,
+    *,
+    experiment_config_path: Path,
+    batch_root: Path,
+    output_path: Path,
+) -> dict[str, Any]:
+    return capture_e0032_note_row_split_benchmark(
+        project_root,
+        experiment_config_path=experiment_config_path,
+        batch_root=batch_root,
+        output_path=output_path,
+        expected_experiment_id="E-0033",
+    )
+
+
 __all__ = [
     "NoteRowSplitBenchmarkError",
     "capture_e0032_note_row_split_benchmark",
+    "capture_e0033_note_row_split_benchmark",
     "compare_row_contracts",
 ]

@@ -1,16 +1,12 @@
 version: 1
-experiment_id: E-0032
+experiment_id: E-0033
 dataset_role: CALIBRATION
 design: REFERENCE_BLIND_NOTE_ROW_ANCHOR_SPLIT_BEFORE_AFTER
-status: SUPERSEDED_BY_E0033_IMMUTABLE_V3_CORRECTION
-superseded_reason: >-
-  The measured structural delta is retained, but the candidate implementation
-  temporarily modified the hash-locked V3 source file. E-0033 repeats the same
-  bounded comparison with V3 restored byte-identical and V4 fully isolated.
+status: ACTIVE_IMMUTABLE_V3_CORRECTION
 selection_policy: >-
-  Compare the sealed E-0029 V3 row contract with one precommitted V4 change on
-  the same accepted pages and immutable PP-OCRv6/render artifacts. The change
-  may use only relative note/value geometry. Human review remains unavailable.
+  Repeat the E-0032 structural comparison after restoring the sealed V3 source
+  byte-identical. V4 is now an independent post-reconstruction module and may
+  use only relative note/value geometry. Human review remains unavailable.
 
 source:
   path: vietstock_bctc/MBB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf
@@ -28,16 +24,16 @@ frozen_inputs:
     sha256: 0d94762ba4a0d383793fe93a56e48fa7b79d6a3f7faaf62e9dcf40935b8c2889
 
 candidate:
-  git_commit: 44afda2231db8728ff1be548fb06c7e00f0319bd
+  git_commit: dbba296de95638750286e898e82536d35c466bcc
   config:
     path: config/tables/word-box-reconstruction-v4.yaml
     sha256: e4a2880510b50e1b20429d9e9b138fe1ec5166dfb09fde0333d3179b7581c224
   algorithm:
     path: src/bctc_ai/evaluation/word_box_rows_v4.py
-    sha256: ab3e2880ebe6ae76d99c046718adcd6a413609249947baf1d0a356f1f2fa568e
+    sha256: e0b9203c6d807bcf555199bf0bc175c31b7e180263ac3c9ebaef9719b25d4908
   inherited_v3_algorithm:
     path: src/bctc_ai/evaluation/word_box_rows_v3.py
-    sha256: 06c897139ea3b036ad5253a6aa0aca99fbeb5bae5e4bff7d002cc4812abcbc46
+    sha256: e5650bd48866340cec32ed41e8b131cdf8289c25479be43a11c29763ea153663
   bounded_change: distant_note_reference_creates_independent_structural_anchor
 
 acceptance_policy:
@@ -69,13 +65,13 @@ forbidden_inputs:
   - off_balance_page_5_rows
 
 development_note: >-
-  The exact structural delta gates were recorded after a dirty development
-  replay on this calibration block. They do not encode expected labels, values,
-  schema IDs, human review or historical evidence and are not holdout gates.
+  E-0033 repeats the already observed E-0032 calibration delta solely to repair
+  immutable-code provenance. No threshold, expected label, value, schema ID,
+  review item or historical evidence changed after E-0032.
 
 claim_boundary: >-
-  E-0032 measures one reference-blind note/value anchor separation correction on
-  the already accepted MBB CDKT pages 3-4. It does not establish Vietnamese
-  source-exact labels, independent numeric truth on the revised grid, period
-  roles, schema IDs, accounting validity, Excel accuracy, human-gold accuracy or
-  untouched-holdout performance.
+  E-0033 measures one reference-blind note/value anchor separation correction on
+  the already accepted MBB CDKT pages 3-4 while preserving sealed V3 bytes. It
+  does not establish Vietnamese source-exact labels, independent numeric truth
+  on the revised grid, period roles, schema IDs, accounting validity, Excel
+  accuracy, human-gold accuracy or untouched-holdout performance.
