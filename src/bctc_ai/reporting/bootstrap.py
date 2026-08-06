@@ -1186,7 +1186,7 @@ Captured: {environment["captured_at"]}
 
 - Actual schema counts are CDKT={schema_counts["CDKT"]}, KQKD={schema_counts["KQKD"]}, LCTT={schema_counts["LCTT"]}, TM={schema_counts["TM"]} (total {manifest["schemas"]["total_items"]}), not the historical 1,773-item count.
 - The supplied TM workbook does not contain ID 1944. It remains a proposal in `proposed_schema_additions.jsonl`.
-- LCTT membership is now based on contiguous workbook positions, not numeric ID ranges. The latest semantic wording conflicts with the visible anchors/endpoints, so semantic high-confidence acceptance remains fail-closed.
+- Q-BOOT-001 is resolved: LCTT membership uses contiguous workbook positions, never numeric ID ranges. Template-order block 4155→4168 is INDIRECT and 4104→4116 is DIRECT; historical frozen artifacts retain their earlier fail-closed flag.
 - {mongo_finding}
 - {calibration_finding}
 - {geometry_finding}
@@ -1219,7 +1219,7 @@ Generated artifacts use atomic write, fsync, rename, and post-write hash verific
 - Ordered statement location: {location_progress}
 - Mongo-assisted metrics: {mongo_progress}
 - Questions created / resolved: {len(questions)} / {resolved_questions}
-- Autonomous decisions: preserve supplied schema unchanged; keep 1944 as a collision-cleared proposal; segment LCTT by workbook position and fail closed on the semantic conflict
+- Autonomous decisions: preserve supplied schema unchanged; keep 1944 as a collision-cleared proposal; apply the user-confirmed LCTT branch names by workbook position through policy v2
 - Not applicable / not observed / unresolved: 0 / 0 / 0 (no production records yet)
 - Workbooks: 0
 - Largest error: no frozen end-to-end multi-institution accuracy result or production-calibrated acceptance threshold yet

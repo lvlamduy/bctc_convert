@@ -100,10 +100,12 @@ Direct and indirect title scores are compared against each other because the
 shared phrase “phương pháp ... tiếp” can otherwise trigger both. Contradictory
 strong evidence yields `CONFLICT`; absent evidence yields `UNKNOWN`.
 
-`Q-BOOT-001` remains semantically conflicted. The locator may report the PDF
-method, but `schema_branch_assignment_permitted` stays false. The future schema
-branch must be selected by the contiguous positions in
-`Bank_LCTT_ReportNormId.xlsx`, never by increasing numeric ID or an ID interval.
+`Q-BOOT-001` was resolved on 2026-08-06. Once the PDF method is independently
+classified without `UNKNOWN` or `CONFLICT`, current mapping policy v2 selects
+the same-named contiguous template block: 4155→4168 is INDIRECT and
+4104→4116 is DIRECT. These are workbook-order endpoints, never numeric ranges.
+Historical E-0013 locator output keeps `schema_branch_assignment_permitted=false`
+because that experiment predates the resolution and must remain hash-replayable.
 
 ## Stage 3 — logical rows across lines and pages
 

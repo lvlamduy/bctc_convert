@@ -1,0 +1,25 @@
+version: 2
+authority: USER_CONFIRMED_TEMPLATE_ORDER_2026_08_06_Q_BOOT_001
+semantic_authority_status: RESOLVED
+maximum_anchor_distance: 8
+
+# Endpoints identify contiguous blocks in workbook display order. They are not
+# numeric ranges; for example, ReportNormId 4154 is inside the DIRECT block.
+branches:
+  INDIRECT:
+    schema_order_blocks:
+      - [4155, 4168]
+    ordered_anchor_sequences:
+      - [4162, 4156]
+    label_anchor_sequences:
+      - ["Lợi nhuận trước thuế", "Điều chỉnh cho các khoản"]
+  DIRECT:
+    schema_order_blocks:
+      - [4104, 4116]
+    ordered_anchor_sequences:
+      - [4123, 4124]
+    label_anchor_sequences:
+      - ["Thu nhập lãi và các khoản thu nhập tương tự nhận được", "Chi phí lãi và các chi phí tương tự đã trả"]
+
+coverage_denominator: APPLICABLE_BRANCH_ONLY
+cross_branch_mapping: FORBIDDEN

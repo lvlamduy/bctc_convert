@@ -17,7 +17,7 @@ This is the durable retrieval point for project context. It summarizes user auth
 - Indirect LCTT ordered anchors: 4162 “Lợi nhuận trước thuế” then 4156 “Điều chỉnh cho các khoản”.
 - Direct LCTT ordered anchors: 4123 interest received then 4124 interest paid.
 - Cash-flow schema membership must be segmented by contiguous workbook position, never by numeric interval. The workbook has block 1 at positions 1–57 (endpoint IDs 4155→4168, profit/adjustment anchors) and block 2 at positions 58–107 (endpoint IDs 4104→4116, receipt/payment anchors); ID 4154 is at position 63, not a branch endpoint.
-- The user's latest wording calls 4104–4154 indirect and 4155–4168 direct, which conflicts with the earlier ordered examples, visible labels, the `vst_level` direct-title workbook, and the actual endpoints. `Q-BOOT-001` is reopened; branch blocks are preserved and semantic high-confidence acceptance is fail-closed meanwhile.
+- On 2026-08-06 the user resolved `Q-BOOT-001`: the contiguous template-order block with endpoints 4155→4168 is INDIRECT and the block with endpoints 4104→4116 is DIRECT. These are endpoints in workbook order, not integer ranges; ID 4154 remains an interior DIRECT item. Current policy is `config/mapping/lctt-v2.yaml`; historical v1 artifacts remain unchanged for replay.
 - “Bảo lãnh vay vốn”, “Cam kết giao dịch hối đoái”, “Tài sản và chứng từ khác”, and similar off-balance-sheet indicators must not map to CDKT.
 
 ### 2026-08-05 — tables and validation

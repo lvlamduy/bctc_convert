@@ -124,9 +124,12 @@ reread or downgrade; they cannot create, overwrite, change the sign/state of,
 or move an observed value. Quarterly YTD subtraction remains a separately
 provenanced derived-value stage.
 
-Q-BOOT-001 remains fail-closed. No PDF direct/indirect observation in this
-version assigns the workbook LCTT branch. Q-BOOT-004 remains mandatory before
-any future ReportNormId proposal is appended.
+E-0015 made no Q-BOOT-001 assignment because the question was open when that
+artifact was frozen. The user resolved it on 2026-08-06: current policy maps a
+resolved PDF INDIRECT method to template-order block 4155→4168 and DIRECT to
+4104→4116. E-0015 remains unchanged, and an `UNKNOWN`/`CONFLICT` PDF method
+still fails closed. Q-BOOT-004 remains mandatory before any future ReportNormId
+proposal is appended.
 
 ## Versioned configuration and tests
 

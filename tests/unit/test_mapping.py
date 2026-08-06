@@ -94,13 +94,13 @@ def test_page_heading_can_seed_off_balance_scope_for_table_rows(project_root):
 
 
 def test_lctt_method_uses_ordered_anchor_pairs(project_root):
-    rules = load_cash_flow_rules(project_root / "config/mapping/lctt.yaml")
+    rules = load_cash_flow_rules(project_root / "config/mapping/lctt-v2.yaml")
     indirect = classify_cash_flow_method(
         ["Lợi nhuận trước thuế", "Điều chỉnh cho các khoản", "Khấu hao TSCĐ"],
         rules,
     )
     assert indirect.method is CashFlowMethod.INDIRECT
-    assert not indirect.semantic_high_confidence_allowed
+    assert indirect.semantic_high_confidence_allowed
     direct = classify_cash_flow_method(
         [
             "Thu nhập lãi và các khoản thu nhập tương tự nhận được",
@@ -109,6 +109,7 @@ def test_lctt_method_uses_ordered_anchor_pairs(project_root):
         rules,
     )
     assert direct.method is CashFlowMethod.DIRECT
+    assert direct.semantic_high_confidence_allowed
     reversed_rows = classify_cash_flow_method(
         ["Điều chỉnh cho các khoản", "Lợi nhuận trước thuế"],
         rules,

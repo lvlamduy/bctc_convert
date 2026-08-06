@@ -58,8 +58,13 @@ failure raises an error and must not be converted into an accepted result.
 - `mapping_eligible_pages_by_statement_type` excludes every off-balance page;
 - page contracts do not continue across a scope boundary;
 - direct/indirect evidence uses title competition and ordered row anchors;
-- `schema_branch_assignment_permitted == false` while Q-BOOT-001 is open;
+- for historical E-0013 replay, `schema_branch_assignment_permitted == false` because Q-BOOT-001 was open at freeze time;
 - code/config/batch paths are project-relative and hashes match.
+
+After reproducing E-0013, use `config/mapping/lctt-v2.yaml` for current mapping.
+Q-BOOT-001 was resolved on 2026-08-06: template-order block 4155→4168 is
+INDIRECT and 4104→4116 is DIRECT. Never edit the v1 locator artifact/config to
+retrofit this later authority.
 
 ## MBB/VCB clean calibration result (E-0013)
 

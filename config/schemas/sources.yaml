@@ -1,5 +1,6 @@
 version: 1
 append_only: true
+cash_flow_rules: config/mapping/lctt-v2.yaml
 sources:
   CDKT: template/Bank_CDKT_ReportNormId.xlsx
   KQKD: template/Bank_KQKD_ReportNormId.xlsx

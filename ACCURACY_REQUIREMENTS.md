@@ -36,7 +36,7 @@ This file is the durable checklist for every design, experiment, review, and pro
 - User-confirmed indirect ordered anchors: 4162 “Lợi nhuận trước thuế” followed by 4156 “Điều chỉnh cho các khoản”.
 - User-confirmed direct ordered anchors: 4123 “Thu nhập lãi và các khoản thu nhập tương tự nhận được” followed by 4124 “Chi phí lãi và các chi phí tương tự đã trả”.
 - Branch membership follows contiguous row order in `Bank_LCTT_ReportNormId.xlsx`, never integer-range comparison. The first block is workbook positions 1–57 (endpoint IDs 4155→4168; profit/adjustment anchors); the second is positions 58–107 (endpoint IDs 4104→4116; receipt/payment anchors). ID 4154 is only an interior row of the second block.
-- The user's latest DIRECT/INDIRECT wording conflicts with the visible anchor semantics and workbook endpoints. Until reconciled, preserve both ordered blocks but disallow semantic high-confidence acceptance.
+- Q-BOOT-001 was resolved by the user on 2026-08-06: the template-order block with endpoints 4155→4168 is INDIRECT and the block with endpoints 4104→4116 is DIRECT. This authorizes semantic branch selection only after the PDF method is independently established; it does not relax any cell, period, unit, sign, mapping, or confidence gate.
 - Use title, opening rows, ordered anchors, parent/child structure, and historical same-bank filings together. Never cross-map branches because a label is similar.
 - The coverage denominator contains only the applicable branch; the other branch is NOT_APPLICABLE.
 

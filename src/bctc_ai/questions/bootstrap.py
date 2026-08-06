@@ -56,26 +56,22 @@ def bootstrap_questions() -> list[dict[str, Any]]:
             **common,
             "question_id": "Q-BOOT-001",
             "statement_type": "LCTT",
-            "root_cause": "SCHEMA_AUTHORITY_CONFLICT",
+            "root_cause": "SCHEMA_AUTHORITY_RESOLVED",
             "exact_question": (
-                "The directive says IDs 4104-4154 are indirect and 4155-4168 are direct, "
-                "but the supplied workbook labels 4155+ with profit-before-tax adjustments "
-                "(indirect) and 4104+ with cash received/paid rows (direct). Which authority "
-                "should define the semantic DIRECT/INDIRECT branch names?"
+                "Which contiguous workbook-order blocks define the semantic INDIRECT and "
+                "DIRECT cash-flow branches?"
             ),
             "recommended_default": (
-                "Segment by contiguous workbook position, never numeric ranges. Workbook rows 1-57 "
-                "run 4155→4168 and contain the profit/adjustment anchors; rows 58-107 run "
-                "4104→4116 and contain cash-receipt/payment anchors. Withhold semantic "
-                "high-confidence acceptance until the contradictory labels/endpoints are confirmed."
+                "Use contiguous workbook positions, never increasing numeric ranges: positions "
+                "1-57 with endpoints 4155→4168 are INDIRECT; positions 58-107 with endpoints "
+                "4104→4116 are DIRECT."
             ),
             "priority": "CRITICAL",
             "user_response": (
-                "Use workbook order, not increasing numeric ID. The response also states "
-                "4104-4154 is indirect and 4155-4168 is direct, which conflicts with the "
-                "visible ordered anchor examples and with 4154 being mid-block."
+                "Q-BOOT-001 confirmed on 2026-08-06: 4155→4168 in template order is "
+                "INDIRECT; 4104→4116 in template order is DIRECT."
             ),
-            "resolution_status": "REOPENED_EVIDENCE_CONFLICT",
+            "resolution_status": "RESOLVED",
         },
         {
             **common,

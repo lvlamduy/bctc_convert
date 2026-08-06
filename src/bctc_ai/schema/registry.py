@@ -124,7 +124,15 @@ def load_all(
     sources = payload.get("sources")
     if not isinstance(payload.get("version"), int) or not isinstance(sources, dict):
         raise ValueError(f"invalid schema source configuration: {config_path}")
-    cash_flow_rules = load_cash_flow_rules(project_root / "config/mapping/lctt.yaml")
+    raw_cash_flow_rules = payload.get("cash_flow_rules")
+    if not isinstance(raw_cash_flow_rules, str) or not raw_cash_flow_rules:
+        raise ValueError(f"schema source configuration has no cash_flow_rules: {config_path}")
+    cash_flow_rules_path = (project_root / raw_cash_flow_rules).resolve()
+    try:
+        cash_flow_rules_path.relative_to(project_root)
+    except ValueError as exc:
+        raise ValueError(f"cash-flow rules escape project root: {config_path}") from exc
+    cash_flow_rules = load_cash_flow_rules(cash_flow_rules_path)
     workbooks: list[SchemaWorkbook] = []
     all_items: list[SchemaItem] = []
     global_ids: dict[int, str] = {}
