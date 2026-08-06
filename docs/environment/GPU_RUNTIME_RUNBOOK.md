@@ -2,7 +2,7 @@
 
 ## Scope and current approval
 
-This runbook reconstructs the isolated RTX 5070 Ti (`sm_120`) runtime, the exact E-0007 PaddleOCR-VL stack, and the E-0011 PP-OCRv6 word-box stack. Runtime kernels have passed, but production approval remains blocked until frozen multi-institution, scan/distortion, cross-page, and holdout accuracy gates pass.
+This runbook reconstructs the isolated RTX 5070 Ti (`sm_120`) runtime, the exact E-0007 PaddleOCR-VL stack, the E-0011 PP-OCRv6 word-box stack, and the calibration-only TATR structure reader. Runtime kernels have passed, but production approval remains blocked until frozen multi-institution, scan/distortion, cross-page, and holdout accuracy gates pass.
 
 ## Capacity and host prerequisites
 
@@ -11,6 +11,8 @@ This runbook reconstructs the isolated RTX 5070 Ti (`sm_120`) runtime, the exact
 - At least 7 GiB free on the filesystem holding `.gpu-venv`.
 - At least 8 GiB free for the uv wheel cache during installation.
 - At least 3 GiB free for the four document models.
+- Add 116 MiB for the pinned TATR checkpoint when the structure-reader
+  calibration is enabled.
 - A cache filesystem may be `noexec`; the virtual environment filesystem must allow executable mappings.
 
 After adding the pinned Paddle 3.3.0 CPU backend, the measured footprints on 2026-08-05 were 6,383,286,857 bytes for `.gpu-venv`, 7,213,410,166 bytes for the warm uv cache (including the retained 193,703,893-byte verified Paddle wheel), and 2,213,856,016 bytes for the four-model cache.
@@ -43,7 +45,17 @@ export HF_HOME=/dev/shm/bctc-huggingface
 .gpu-venv/bin/python scripts/bootstrap/download_paddleocr_vl_models.py \
   --cache-root "$BCTC_MODEL_CACHE_DIR" \
   --verify-only
+.gpu-venv/bin/python scripts/bootstrap/download_tatr_model.py \
+  --cache-root "$BCTC_MODEL_CACHE_DIR"
+.gpu-venv/bin/python scripts/bootstrap/download_tatr_model.py \
+  --cache-root "$BCTC_MODEL_CACHE_DIR" \
+  --verify-only
 ```
+
+The TATR downloader verifies the full revision plus the exact config,
+preprocessor, and safetensors hashes from `config/models/tatr-v1.1-all.toml`.
+It does not change the historical four-model downloader or the base runtime
+manifest hashes bound into E-0010 through E-0016.
 
 Run a single image without overwriting prior output:
 
@@ -61,6 +73,23 @@ BCTC_DATASET_ROLE=CALIBRATION \
 ```
 
 The PP-OCRv6 runner refuses an existing output directory and a dirty Git worktree, verifies both local model hashes, blocks all process socket connections, disables implicit orientation/unwarp, and writes only `ocr_result.json` plus an atomic `run_manifest.json`. It does not render an image or download a font. `BCTC_ALLOW_DIRTY_OCR_SMOKE=true` exists only for non-evidence development smoke tests and is recorded as `code.dirty=true`; such output cannot be sealed or promoted.
+
+Run TATR only on a tightly bounded table crop whose source and transform are
+already registered:
+
+```bash
+PYTHONPATH=src .gpu-venv/bin/python scripts/models/run_tatr_structure.py \
+  --input TABLE_CROP.png \
+  --output-directory output/calibration/TATR_RUN \
+  --model-cache "$BCTC_MODEL_CACHE_DIR" \
+  --dataset-role CALIBRATION
+```
+
+The runner refuses dirty Git or output replacement, verifies the model/runtime
+hashes, disables network access, keeps the checkpoint-native 800-pixel
+longest-edge preprocessing, and records all object-query probabilities and
+source-coordinate boxes. It has structure-proposal authority only; it cannot
+read or replace a financial value, bind periods, map IDs, or promote confidence.
 
 For many pages, use the checkpointed runner so the detector and recognizer load
 once per process:

@@ -66,8 +66,16 @@ This is the durable retrieval point for project context. It summarizes user auth
 
 - Primary benchmark candidate: PaddleOCR-VL-1.6 (0.9B) for document structure.
 - Independent geometry/numeric candidate: the current PP-OCR generation and PP-StructureV3.
+- First additional table-structure candidate: hash-pinned Microsoft TATR v1.1
+  All, used only for row/column/header/spanning-cell boxes and fused with
+  independent OCR words. IBM TableFormer Accurate is the maintained challenger.
+- ClusterTabNet is not a production dependency because its official repository
+  is archived; its OCR-word relation graph is retained as a custom-model design
+  hypothesis.
 - Independent document candidate: MinerU2.5-Pro or the newest reproducibly available MinerU release.
-- Difficult-region candidate: DeepSeek-OCR-2.
+- Difficult-region candidate: DeepSeek-OCR-2 in a separate Blackwell-compatible
+  runtime. Its generative output has no numeric/mapping authority and must pass
+  Vietnamese source-exact digit/sign tests.
 - Mapping reranker candidate: Qwen3.6-27B quantized, with small row/block prompts only. Its fit on 16 GB VRAM must be measured; it is not the numeric reader.
 - Model names do not grant approval. Each must pass Vietnamese bank fixtures, exact-number/sign tests, table geometry, throughput, VRAM, and hallucination measurements.
 - The RTX 5070 Ti is Blackwell `sm_120`. Preinstalled PyTorch 2.5.1+cu124 fails a real CUDA kernel smoke test. The isolated PyTorch 2.12.0+cu130/TorchVision 0.27.0+cu130 runtime now passes imports, dependency consistency, a real CUDA kernel, and the first full document-model inference; it remains separate from the control plane.
@@ -78,7 +86,7 @@ This is the durable retrieval point for project context. It summarizes user auth
 - Hardware audit: RTX 5070 Ti 16,303 MiB, Ryzen 9 5950X, about 125.7 GiB RAM, Ubuntu 22.04, NVIDIA driver 595.80.
 - Supplied schema contains 1,592 unique IDs: CDKT 77, KQKD 24, LCTT 107, TM 1,384. TM ID 1944 is absent and remains an append-only proposal.
 - CPU environment is locked in `uv.lock`; bootstrap, atomic storage, source identity registry, role freezing, content-addressed materialization, render/preprocess, local difficult-region variants, perspective correction, ordered alignment, continuation graph, row wrapping, arithmetic validation, and workbook export have executable tests.
-- Latest full test run after the human-review/period/mapping v2 checkpoint: 202 passed and 2 immutable-historical replays skipped; Ruff lint and the changed-file formatter gate passed. E-0006 and E-0009 source/config identities remain verified, but exact replay is skipped when their historical algorithm byte hashes are not the current implementation. E-0010 through E-0015 provide current hash-locked integration regressions.
+- Latest full test run after the reader-candidate/TATR mechanism checkpoint: 214 passed and 2 immutable-historical replays skipped; Ruff lint and the changed-file formatter gate passed. E-0006 and E-0009 source/config identities remain verified, but exact replay is skipped when their historical algorithm byte hashes are not the current implementation. E-0010 through E-0016 provide current hash-locked integration regressions.
 - A real scanned/mixed ACB PDF page rendered and passed preprocessing checkpoint/hash verification.
 - Relative word-gap segmentation, numeric right-edge clustering, note-axis separation, wrapped-row assembly, label-only section retention, and axis-local period/unit binding are implemented without institution/page coordinate rules.
 - On the registered VPB logic-development fixture (pages 5–10), the native text path reconstructed 134 logical rows and 252 value cells, preserved 48 note references, and found two value axes on every page. It correctly separated snapshot dates from three-month durations, retained direct-LCTT anchors and section headings, and left one visible unlabeled off-balance total unresolved instead of inventing a label. See `docs/experiments/E-0006-vpb-native-geometry.json`.
@@ -116,6 +124,14 @@ This is the durable retrieval point for project context. It summarizes user auth
 - Page boundaries are hard separators in fusion v2. Same-statement continuation edges preserve the last/first evidence from both readers, but do not automatically merge rows; this prevents an entirely truncated next page from pulling its first heading into the previous page's final total.
 - Formal E-0015 from clean commit `94a2c7c` retained all 14 Role B blocks and two Role C axes on all 13 pages. It compared 244 Role B and 288 Role C rows with 235 matches, five structural merges, one Role C-missing row, and 46 Role B-missing/truncated rows. Of 454 paired observed cells, 432 agree (95.154185% conditional agreement); bilateral financial-row structural coverage is 99.565217% for Role B and 83.636364% for Role C. These are cross-reader calibration metrics, not accuracy.
 - E-0015 retains eight Role B invalid cells, zero Role C invalid cells, ten source-pixel dash recoveries, three unassigned margin-number lines, 86/94 exact notes, and 97/104 exact row codes. Only 7/240 paired labels are source-exact and 50/240 semantic-key exact, so Role C remains geometry/value evidence only. Both off-balance pages have zero mapping-eligible units; five continuation edges preserve boundaries with automatic row merge false.
+- The 2026-08-06 model review selected TATR as the first new structure reader,
+  DeepSeek-OCR-2 as the next isolated semantic reader, IBM TableFormer as a
+  structure challenger, and ClusterTabNet as a graph-model research reference.
+  Exact inspected revisions, weights, licenses, runtime constraints, and safety
+  roles are in `docs/MODEL_READER_DECISION.md` and
+  `config/models/reader-candidate-policy-v1.yaml`. A hash-pinned TATR downloader
+  and no-network structure runner are implemented; no candidate output can map
+  or reorder ReportNormIds, replace values, bind periods, or promote confidence.
 
 ## Open constraints and next decisions
 
@@ -162,3 +178,8 @@ This is the durable retrieval point for project context. It summarizes user auth
 - 2026-08-06: Added targeted reread v1: relative failure localization, source-PDF 450/600-DPI rerendering, quality-gated photometric/deskew/perspective/dark-region candidates, inverse geometry, complete evidence-chain checks, and an exact E-0016 13-page/8-region calibration contract with no value selection.
 - 2026-08-06: Added the 3-document/30-decision human-review registry, exact PDF/schema/role audit, table-level period propagation v1, raw-versus-normalized value statuses, hierarchy-first structural ranking v2, template-display-order/one-to-one sequence gates, reviewed digit corrections, and external-ID collision tests. No package, model, or ReportNormId was added.
 - 2026-08-06: Added the E-0016 original-crop evidence sealer and fail-closed tests, then ran it from clean commit `8c2f7fb`. The formal 52-file/15-run evidence set contains eight PP-OCRv6 and seven PaddleOCR-VL reads. VCB page 9 recovered 26/27 reader rows with 48/48 paired observed cells agreeing; MBB page 14 retained 18 versus 27 rows, 14 VLM invalid cells, and only 18/36 paired observed agreements. One row band remains unresolved and one has no table. All variant/value/schema/ReportNormId/history/arithmetic/confidence actions remain false, and no package or model was added.
+- 2026-08-06: Evaluated DeepSeek-OCR-2, TATR, IBM TableFormer, and ClusterTabNet
+  from primary sources; selected a specialized-reader architecture; added an
+  exact TATR model pin/downloader/structure runner and tests while preserving all
+  historical runtime hashes. DeepSeek-OCR-2 remains uninstalled pending a
+  separate Blackwell-compatible runtime and exact Vietnamese benchmark.

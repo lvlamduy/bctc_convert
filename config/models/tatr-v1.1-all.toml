@@ -1,0 +1,58 @@
+version = 1
+status = "CALIBRATION_ONLY_STRUCTURE_PROPOSAL"
+model_key = "TATR_V1_1_ALL"
+runtime_manifest = "config/models/gpu-runtime.toml"
+runtime_manifest_sha256 = "9141e0a4177f66f152bdb9eecbbfdbdd3add566dbabb81b43207a018c1ba18d8"
+cache_directory = "table-transformer-structure-recognition-v1.1-all"
+required_artifact_bytes = 115514291
+license = "MIT"
+
+[model]
+repo_id = "microsoft/table-transformer-structure-recognition-v1.1-all"
+revision = "7587a7ef111d9dcbf8ac695f1376ab7014340a0c"
+architecture = "TableTransformerForObjectDetection"
+parameter_count = 28847819
+tensor_type = "F32"
+training_domains = ["PubTables-1M", "FinTabNet.c"]
+
+[artifacts.config_json]
+path = "config.json"
+size_bytes = 76761
+sha256 = "17a8a6edfb9e394263fa6ba9b82176ebccdfcc5d6cd29121ec91572c7d6be22c"
+
+[artifacts.preprocessor_config]
+path = "preprocessor_config.json"
+size_bytes = 374
+sha256 = "eead409bb80e36ae85b8377642c54550f0504f65688ba3a4967950cafe461df2"
+
+[artifacts.weights]
+path = "model.safetensors"
+size_bytes = 115437156
+sha256 = "9df416575a3a36ebd0129342d4f597f14d6e5170268f3d52d28584ab4466a501"
+
+[processor]
+source = "PINNED_CHECKPOINT"
+do_resize = true
+longest_edge = 800
+override_checkpoint_size = false
+implicit_orientation_correction = false
+implicit_dewarp = false
+input_requirement = "TIGHT_TABLE_CROP"
+
+[reporting]
+object_score_thresholds = [0.05, 0.3, 0.5, 0.7, 0.9]
+retain_all_query_probabilities = true
+retain_no_object_probability = true
+retain_original_coordinate_boxes = true
+
+[safety]
+mapping_authority = false
+value_authority = false
+period_authority = false
+scope_authority = false
+automatic_confidence_promotion = false
+automatic_value_replacement = false
+history_permitted = false
+arithmetic_repair_permitted = false
+network_permitted_during_inference = false
+

@@ -1,13 +1,13 @@
 # Progress report
 
-- Updated: 2026-08-06T03:36:26+00:00
+- Updated: 2026-08-06T03:47:00+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `8c2f7fbe08affce491df26113eaee10920fd459c`
+- Latest clean, tested, pushed checkpoint: `70fefa9392aaa56d481f406a78999ea938f0a589`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,592 (CDKT 77; KQKD 24; LCTT 107; TM 1,384)
 - Registered PDFs: 2,567
-- Latest full regression: 208 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
+- Latest full regression: 214 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
 
 ## Completed tasks
 
@@ -42,11 +42,26 @@
   15/15 original-crop reader runs and a 52-file output set while retaining one
   unresolved table, one no-table crop, 14 invalid VLM cells, both full-table row
   count disagreements, and all no-selection/no-mapping safety flags.
+- Committed and pushed the E-0016 replay/integration checkpoint as `70fefa9`;
+  the full suite is 208 passed with 2 intentionally skipped historical replays.
+- Reviewed DeepSeek-OCR-2, Microsoft TATR, IBM TableFormer, and ClusterTabNet
+  against official papers/repositories, exact available weights, licenses,
+  runtime compatibility, and the observed E-0016 failures. Selected TATR as the
+  first structure-only addition and DeepSeek-OCR-2 as the next isolated semantic
+  reader benchmark; TableFormer is the challenger and archived ClusterTabNet is
+  a custom-graph research reference.
+- Added a hash-pinned TATR downloader, no-network/clean-Git structure runner,
+  all-query/source-box evidence representation, candidate-policy configuration,
+  and 6 focused passing unit tests. The full regression is 214 passed with 2
+  intentional historical skips. No model has yet been downloaded or run in this
+  uncommitted development checkpoint.
 
 ## Currently in progress
 
-- Preparing the tested E-0016 artifact/replay/integration documentation for its
-  final Git commit and push. The full 208-test regression is green.
+- Preparing a clean, tested Git checkpoint for the reader-model decision and
+  TATR mechanism. After that checkpoint, download the 115 MB pinned model and
+  run it on the two original E-0016 full-table crops as a new calibration
+  experiment.
 
 ## Major challenges and obstacles
 
@@ -62,6 +77,10 @@
   preserved as explicit evidence, not hidden or repaired from history.
 - There is still no human-gold, bank-disjoint and period-disjoint end-to-end
   benchmark large enough to support a production accuracy threshold.
+- DeepSeek-OCR-2's 6.78 GB weight is larger than the current 5.7 GB persistent
+  workspace headroom, and its official CUDA 11.8/PyTorch 2.6 stack is not native
+  to the Blackwell GPU. The first run needs an isolated Blackwell-compatible
+  runtime and ephemeral `/dev/shm` cache or expanded persistent storage.
 - Production backup remains incomplete because the user-authorized development
   policy keeps large artifacts on this VPS; Git protects code/config/docs but is
   not an off-machine backup for PDFs, OCR artifacts, model weights, or databases.
@@ -80,23 +99,31 @@
    and vertical arithmetic, parent-child totals, and template display order.
 6. Escalate only localized failures to high-resolution rereads and independent
    readers. Reader agreement is supporting evidence, never automatic truth.
-7. Develop custom learned components only behind frozen baselines: graph-based
+7. Fuse specialized readers by role: TATR/TableFormer propose table geometry;
+   PP-OCRv6 proposes word/cell pixels; DeepSeek/Paddle VLMs propose language and
+   reading order. None can independently map IDs or establish numeric truth.
+8. Develop custom learned components only behind frozen baselines: graph-based
    row/cell relation modeling, Vietnamese label encoders trained with
    same-label/different-parent hard negatives, specialized digit/sign recognition,
    and conditional dewarping. Evaluate on bank- and period-disjoint holdouts.
 
 ## Planned next steps
 
-1. Run the full suite against the immutable E-0016 artifact, then commit/push its
-   replay, integration gate, experiment decision, and rebuild documentation.
-2. Implement canonical logical-row fusion for headerless row bands and full-table
+1. Run the complete regression, then commit/push the TATR mechanism and model
+   decision from a clean worktree.
+2. Download/verify TATR v1.1 All and run it on the two frozen E-0016 full-table
+   originals; seal row/column/header coverage and retained failure evidence.
+3. Implement canonical logical-row fusion for headerless row bands and full-table
    disagreement cases without using values, ReportNormId magnitude, history, or
    arithmetic to force alignment.
-3. Build a human-gold evaluation split separated by bank and reporting period,
+4. Build an isolated Blackwell-compatible DeepSeek-OCR-2 benchmark without
+   modifying the approved base runtime, then score Vietnamese labels and exact
+   digits/signs against the same source-bound crops.
+5. Build a human-gold evaluation split separated by bank and reporting period,
    including skew, warp, dark headers, blurred digits, wrapped rows, continuation
    pages, direct/indirect LCTT, separate/consolidated scope, and quarterly/YTD
    derivation cases.
-4. Define calibrated abstention thresholds only after the human-gold benchmark;
+6. Define calibrated abstention thresholds only after the human-gold benchmark;
    unresolved evidence must continue to produce review statuses rather than
    guessed output.
 

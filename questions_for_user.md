@@ -3,10 +3,11 @@
 Only material ambiguities that cannot be safely resolved from current evidence are listed.
 Answers should be recorded in the CSV or JSONL `user_response` field; IDs remain stable.
 
-Last reviewed: 2026-08-06T03:18:53+00:00. No new blocking question was
-introduced by the E-0016 evidence work. The user's clarification that workbook
-row order—not `ReportNormId` magnitude—is authoritative has been accepted as a
-resolved global rule.
+Last reviewed: 2026-08-06T03:47:00+00:00. No new blocking question was
+introduced by the reader-model decision. TATR can use the existing runtime and
+DeepSeek-OCR-2 can be benchmarked from an ephemeral cache without requiring a
+user choice. The user's clarification that workbook row order—not
+`ReportNormId` magnitude—is authoritative remains a resolved global rule.
 
 ## Q-BOOT-001 — CRITICAL
 

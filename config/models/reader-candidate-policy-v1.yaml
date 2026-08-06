@@ -1,0 +1,108 @@
+version: 1
+status: RESEARCH_DECISION_CALIBRATION_ONLY
+decision_date: 2026-08-06
+
+authority:
+  visible_pdf_is_source_of_truth: true
+  report_norm_id_is_identity_not_order: true
+  template_display_order_is_authoritative: true
+  structure_reader_may_assign_schema_id: false
+  generative_reader_may_replace_numeric_value: false
+  reader_agreement_is_ground_truth: false
+
+implementation_order:
+  - candidate: TATR_V1_1_ALL
+    phase: IMPLEMENT_NOW
+    role: NON_GENERATIVE_TABLE_STRUCTURE_PROPOSAL
+    reason: >-
+      It directly proposes row, column, header, projected-row-header, and
+      spanning-cell boxes; its official FinTabNet/PubTables checkpoint runs in
+      the already frozen CUDA-13 Transformers runtime without adding packages.
+  - candidate: DEEPSEEK_OCR_2
+    phase: BENCHMARK_NEXT_IN_ISOLATED_RUNTIME
+    role: INDEPENDENT_SEMANTIC_AND_READING_ORDER_PROPOSAL
+    reason: >-
+      It is a current 3B multilingual document reader with dynamic crops, but
+      its generative text and table output must be checked character by
+      character against independently localized source pixels.
+  - candidate: IBM_TABLEFORMER_ACCURATE
+    phase: STRUCTURE_CHALLENGER_AFTER_TATR_BASELINE
+    role: TABLE_STRUCTURE_AND_CELL_BOX_PROPOSAL
+    reason: >-
+      The maintained Docling implementation has a current runtime and a
+      financial-table-trained checkpoint, but adds a larger dependency surface
+      than the Transformers-native TATR baseline.
+  - candidate: CLUSTERTABNET
+    phase: DEFER_AS_RESEARCH_OR_CUSTOM_GRAPH_BASELINE
+    role: OCR_WORD_RELATION_PROPOSAL
+    reason: >-
+      Its relation-clustering formulation is useful for a custom word graph,
+      but the official repository is archived and its released runtime is tied
+      to an older PyTorch stack.
+
+candidates:
+  TATR_V1_1_ALL:
+    family: microsoft-table-transformer
+    generative: false
+    consumes: TABLE_IMAGE
+    produces: [TABLE_ROW_BOX, TABLE_COLUMN_BOX, COLUMN_HEADER_BOX, PROJECTED_ROW_HEADER_BOX, SPANNING_CELL_BOX]
+    checkpoint_config: config/models/tatr-v1.1-all.toml
+    mapping_authority: NONE
+    value_authority: NONE
+  DEEPSEEK_OCR_2:
+    family: deepseek-ocr-2
+    generative: true
+    consumes: DOCUMENT_OR_REGION_IMAGE
+    produces: [TEXT_PROPOSAL, MARKDOWN_TABLE_PROPOSAL, READING_ORDER_PROPOSAL]
+    mapping_authority: NONE
+    value_authority: NONE
+    runtime_isolation_required: true
+  IBM_TABLEFORMER_ACCURATE:
+    family: docling-tableformer
+    generative: true
+    consumes: TABLE_IMAGE_AND_OCR_CELLS
+    produces: [OTSL_STRUCTURE_PROPOSAL, CELL_BOX_PROPOSAL]
+    mapping_authority: NONE
+    value_authority: NONE
+  CLUSTERTABNET:
+    family: supervised-word-clustering
+    generative: false
+    consumes: OCR_WORD_BOXES_AND_OPTIONAL_IMAGE_PATCHES
+    produces: [ROW_RELATION, COLUMN_RELATION, HEADER_RELATION, TABLE_RELATION]
+    mapping_authority: NONE
+    value_authority: NONE
+
+benchmark_contract:
+  calibration_inputs:
+    - E-0016_FULL_TABLE_ORIGINAL_CROPS
+  required_future_evaluation:
+    - HUMAN_GOLD
+    - BANK_DISJOINT
+    - PERIOD_DISJOINT
+    - SOURCE_PDF_HASH_BOUND
+  metrics:
+    - TABLE_COVERAGE
+    - ROW_BOUNDARY_PRECISION_RECALL
+    - COLUMN_BOUNDARY_PRECISION_RECALL
+    - CELL_ADJACENCY_F1
+    - FALSE_ROW_MERGE_RATE
+    - FALSE_ROW_SPLIT_RATE
+    - WRAPPED_LABEL_ROW_OWNERSHIP
+    - EXACT_NUMERIC_STRING
+    - EXACT_SIGN_AND_ZERO_STATE
+    - SOURCE_EXACT_VIETNAMESE_LABEL
+    - SELECTIVE_ACCURACY_VS_REVIEW_RATE
+    - WALL_TIME_AND_PEAK_VRAM
+  values_or_notes_may_affect_structure_alignment: false
+  history_or_arithmetic_may_select_candidate: false
+  production_threshold_state: NOT_DEFINED_UNTIL_HUMAN_GOLD_SPLIT_IS_FROZEN
+
+safety:
+  automatic_schema_mapping: false
+  automatic_report_norm_id_ordering: false
+  automatic_value_replacement: false
+  automatic_confidence_promotion: false
+  automatic_candidate_promotion: false
+  history_invocation: false
+  arithmetic_repair: false
+

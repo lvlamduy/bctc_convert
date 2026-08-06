@@ -179,6 +179,54 @@ and every output byte without claiming stronger provenance. A future runner
 version should add its own atomic inference manifest rather than retroactively
 asserting a commit for these completed reads.
 
+## Reader candidates inspected 2026-08-06
+
+The model decision and source snapshot are in `../MODEL_READER_DECISION.md`.
+The first implementation candidate is Microsoft TATR v1.1 All. It requires no
+new Python package in the existing GPU environment: PyTorch 2.12.0+cu130,
+TorchVision 0.27.0+cu130, Transformers 5.14.1, Pillow, and safetensors are
+already frozen. Its separate `config/models/tatr-v1.1-all.toml` pins:
+
+- repository `microsoft/table-transformer-structure-recognition-v1.1-all`;
+- revision `7587a7ef111d9dcbf8ac695f1376ab7014340a0c`;
+- `model.safetensors`, 115,437,156 bytes, SHA-256
+  `9df416575a3a36ebd0129342d4f597f14d6e5170268f3d52d28584ab4466a501`;
+- `config.json` and `preprocessor_config.json` by exact size/hash; and
+- MIT license, checkpoint-native 800-pixel longest-edge preprocessing, and
+  no-network/no-map/no-value/no-period/no-confidence authority.
+
+Rebuild/verify commands:
+
+```bash
+.gpu-venv/bin/python scripts/bootstrap/download_tatr_model.py \
+  --cache-root "$BCTC_MODEL_CACHE_DIR"
+.gpu-venv/bin/python scripts/bootstrap/download_tatr_model.py \
+  --cache-root "$BCTC_MODEL_CACHE_DIR" \
+  --verify-only
+```
+
+DeepSeek-OCR-2 is not installed. The inspected Apache-2.0 HF revision is
+`aaa02f3811945a91062062994c5c4a3f4c0af2b0`; its BF16 weight is
+6,778,573,880 bytes with SHA-256
+`d8ff67a424ba6f4dd077885eb9d6a05d2537e76fe5491f0e2a9b712f8c8870fa`.
+The official code snapshot is
+`2f3699ebbb96fa8af32212e8c170f2cc28730fad` and declares CUDA 11.8,
+PyTorch 2.6.0, Transformers 4.46.3, and FlashAttention 2.7.3. That stack is not
+approved for this Blackwell `sm_120` host. A later isolated benchmark must pin
+all remote code, use a Blackwell-capable PyTorch build, disable runtime network,
+measure VRAM, and use `/dev/shm` or expanded storage because persistent free
+space is currently below the single weight size.
+
+IBM TableFormer and ClusterTabNet are also not installed. The inspected
+TableFormer/Docling source revision is
+`5787142002b4063efe30f172dd91fbc7a94b43a6` (package version 3.13.3, MIT);
+the Accurate weight is 212,758,388 bytes with SHA-256
+`2a7d6c924b3cd12fb99a09280ca9c33a89c5d60b93253617d2e088c1a40374d9`.
+The official ClusterTabNet repository revision is
+`e1051c05cd337ad1ac82aabbb0530c784ea21cb0`, Apache-2.0; its released
+`table_recognition.pth` is 30,292,814 bytes. The repository is archived and its
+requirements pin PyTorch 1.13.1, so it remains a research/custom-graph baseline.
+
 Detailed commands, disk checks, cache rules, failure history, and rollback are in `docs/environment/GPU_RUNTIME_RUNBOOK.md`.
 
 ## Maintenance rule

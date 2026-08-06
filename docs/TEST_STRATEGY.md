@@ -166,6 +166,18 @@ outcomes even when every inference process exited successfully. The formal
 artifact is generated only from a clean mechanism commit and is then protected
 by a separate hash-locked integration regression.
 
+The reader-candidate policy adds a structure-only TATR gate before any new
+model can enter fusion. Unit tests lock its official revision and artifact
+hashes, checkpoint-native preprocessing, complete all-query retention, source-
+coordinate box conversion, and zero mapping/value/period/scope/confidence
+authority. The first real run is calibration on only E-0016's two original
+full-table crops. It may compare row/column boxes with independent word
+geometry, but values and history cannot influence box matching and the result
+cannot establish human-gold accuracy. DeepSeek-OCR-2 requires a separately
+frozen Blackwell runtime and exact Vietnamese digit/sign/hallucination metrics;
+IBM TableFormer is a later structure challenger and ClusterTabNet remains a
+research graph baseline.
+
 Explicit page numbers in a golden/calibration fixture are expected test data, not production routing rules. Production page pairing must continue to use document-order and visual evidence; no bank, page offset, or coordinate constant may enter the algorithm.
 
 The hash-bound human-review registry `HR-2026-08-06-CTG-ACB-MBB` adds a calibration truth layer above machine-reader agreement. Its tests verify 3 exact PDF identities, 30 decisions, 58 visible period values, 12 `OBSERVED_VALUE` rows, 6 `OBSERVED_ZERO` rows, 1 `NOT_OBSERVED` row, and 11 `OUT_OF_SCOPE_FOR_TARGET_TEMPLATE` rows. They also assert that external IDs 5701–5711 do not collide with any current template. This is fixture truth only; production code cannot inspect its bank/page entries.

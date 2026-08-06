@@ -42,6 +42,10 @@ with executable boundary/recovery commands in
 The general multi-table, variable-column Role B parser, Role C row/axis
 reconstruction, and order-only fusion safety rules are in
 [docs/STRUCTURAL_READER_FUSION_STRATEGY.md](docs/STRUCTURAL_READER_FUSION_STRATEGY.md).
+The source-backed decision for DeepSeek-OCR-2, Microsoft TATR, IBM TableFormer,
+and ClusterTabNet—including exact inspected revisions, runtime constraints, and
+the no-authority fusion contract—is in
+[docs/MODEL_READER_DECISION.md](docs/MODEL_READER_DECISION.md).
 The first sealed six-page scan/searchable calibration and its migration-safe
 replay procedure are in
 [docs/experiments/E-0010-REPLAY.md](docs/experiments/E-0010-REPLAY.md).

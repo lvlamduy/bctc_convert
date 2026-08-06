@@ -18,6 +18,11 @@ adapters:
     candidates:
       - PP-OCRv6
       - PDF_NATIVE_WORD_GEOMETRY
+  table_structure:
+    candidates:
+      - TATR-v1.1-All
+      - IBM-TableFormer-Accurate
+      - ClusterTabNet
   difficult_region:
     candidates:
       - DeepSeek-OCR-2
@@ -28,8 +33,11 @@ research_basis:
   paddleocr_vl_1_6: https://arxiv.org/abs/2606.03264
   mineru_2_5_pro: https://arxiv.org/abs/2604.04771
   deepseek_ocr_2: https://arxiv.org/abs/2601.20552
+  table_transformer: https://arxiv.org/abs/2303.00716
+  tableformer: https://arxiv.org/abs/2203.01017
+  clustertabnet: https://arxiv.org/abs/2402.07502
   findocbench: https://arxiv.org/abs/2603.11044
 runtime_constraint:
   gpu_compute_capability: "12.0"
   vram_mib: 16303
-  current_torch_approved: false
+  current_torch_approved: true
