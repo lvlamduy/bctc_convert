@@ -250,3 +250,17 @@ suffix-truncated predictions for either reader. Seven lines remain non-exact:
 eight substitutions comprising seven accent-only edits and one capitalization
 edit. The integration gate must preserve every raw disagreement and source crop,
 must reject probability-only promotion, and remains calibration-only.
+
+E-0026 reuses exactly those crop pixels and references but tests a predeclared
+DeepSeek-OCR-2 packaging change. The formal evaluator must verify the E-0025 and
+E-0026 result/manifest hashes, clean inference identities, frozen E-0024 inputs,
+source-line index/text/bbox binding, zero reference fields read during fusion,
+zero semantic authority over numbers/periods/units/signs, and refusal to
+overwrite an existing artifact. The character gate requires lower CER than the
+PP-OCRv6 text baseline, no title-exactness regression, zero structural reject,
+zero empty/truncated output and at most 512 raw characters. The downstream gate
+must reproduce the unchanged E-0013 MBB/VCB mapping-eligible pages,
+off-balance exclusions, TM boundaries, DIRECT methods and runner-up margins.
+Its measured result is 27/37 exact lines, 5/10 exact titles, 0.9646% CER and
+zero downstream regression. This grants bounded semantic-proposal eligibility
+only; schema/full-tuple/Excel fields remain explicitly unevaluated.

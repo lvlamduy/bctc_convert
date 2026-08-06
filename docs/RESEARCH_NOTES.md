@@ -67,6 +67,14 @@ This is a decision-oriented paper log, not a list of model claims. A paper contr
   key. Incorrect accents overlap the confidence range of exact lines, so the
   reader is adopted only as a raw semantic proposal on an immutable PP-OCRv6
   source box, never as numeric, geometric or source-truth authority.
+- E-0025/E-0026 isolate a model-packaging failure from recognition capability.
+  Direct square resize plus an 8,192-token decoder yielded 123.7138% CER and a
+  36,314-character hallucination. The same pixels with official aspect-preserving
+  padding and a 128-token/512-character bound yield 0.9646% CER, 27/37 exact
+  lines and zero structural rejection. Ten of the remaining twelve character
+  edits are diacritic-only. Fixed-grid replay preserves every MBB/VCB discovery
+  decision, so the next useful experiment is downstream logical-row/schema/
+  workbook impact, not more tuning on these 37 lines.
 - Direct/indirect titles cannot be evaluated independently because “phương pháp trực tiếp” and “phương pháp gián tiếp” share most tokens. Competitive title margin plus ordered method-specific row anchors removed that conflict on both coarse MBB/VCB runs. Q-BOOT-001 was subsequently resolved on 2026-08-06, so a non-conflicting PDF method may select the same-named contiguous block through mapping policy v2; historical experiment outputs remain unchanged.
 - E-0014 confirms that full-page generative table serialization can fail even on a quality-gated clean render. PaddleOCR-VL-1.6 spent 91.814474 seconds on dense VCB CDKT continuation page 9 but emitted only seven HTML table rows including the header and unrelated non-Vietnamese margin text. Completion and model recency are therefore not evidence of row coverage; an independent word-box path and explicit missing-row accounting remain mandatory.
 - E-0014 also exposes two general parser requirements rather than bank-specific exceptions: one page may contain several table blocks including a heading-only block, and the leading columns may be `STT`, label, note, then periods rather than label-first. Column roles must be inferred from headers plus geometry/content, every block must retain reading order, and page-level off-balance scope must be applied before any row can become mapping-eligible.
@@ -79,7 +87,7 @@ This is a decision-oriented paper log, not a list of model claims. A paper contr
 ## Planned controlled experiments
 
 1. E-0016 now freezes the 450/600-DPI coarse-to-fine input mechanism. First run hash-pinned TATR v1.1 All on the two original full-table crops and compare its row/column/header boxes with independent word geometry without using values or history.
-2. Build an isolated Blackwell-compatible DeepSeek-OCR-2 runtime, then compare its source-exact Vietnamese text, digits/signs, row coverage, reading order, and hallucination/omission rates on the same frozen crops. The official CUDA 11.8 environment is not accepted on `sm_120`.
+2. Completed E-0026: the isolated Blackwell-compatible DeepSeek-OCR-2 runtime and bounded line configuration pass the semantic-proposal/no-regression gate. Next carry its fixed-grid proposals through logical rows, ordered SchemaGraph mapping, validation and Excel; keep digits/signs on the independent numeric path.
 3. Compare IBM TableFormer Accurate against the frozen TATR result before considering either for a canonical cell graph. Use ClusterTabNet as a relation-model research baseline rather than a maintained production dependency.
 4. Compare original versus generated image candidates by exact digit/sign, cell IoU, and latency without selecting from arithmetic or history.
 5. Measure correlated errors; require independent architecture/decoding paths for “two-reader” evidence.

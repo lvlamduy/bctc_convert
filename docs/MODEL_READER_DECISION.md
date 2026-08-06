@@ -55,13 +55,13 @@ accepted.
 
 The official DeepSeek-OCR-2 instructions pin CUDA 11.8, PyTorch 2.6,
 Transformers 4.46.3, and remote model code. CUDA 11.8 is not an appropriate
-native runtime for this Blackwell `sm_120` host. The model must therefore be
-tested in a separate hash-pinned environment using a Blackwell-capable PyTorch
-build; remote code and weights must be pinned and hashed before network access
-is disabled for inference. Its 6.78 GB weight file also exceeds the current
-5.7 GB persistent workspace headroom, so the first benchmark cache must use the
-16 GB currently free in `/dev/shm` or storage must be expanded. An ephemeral
-cache is acceptable for a replayable calibration run, not for deployment.
+native runtime for this Blackwell `sm_120` host. All 14 model artifacts are now
+hash-verified in an ephemeral `/dev/shm` cache. A hash-locked external overlay
+provides the official Transformers 4.46.3/tokenizers 0.20.3 API while retaining
+the host's Blackwell-capable Torch 2.12/CUDA 13 runtime. Inference denies
+network access and uses eager BF16 attention; no base environment or model file
+is modified. The exact reconstruction command is recorded in
+`docs/experiments/E-0026-REPLAY.md`.
 
 IBM's maintained Docling model package is a credible second structure reader.
 The inspected 3.13.3 source accepts PyTorch 2.2.2–2.x and provides an Accurate
@@ -84,7 +84,7 @@ is not the first production dependency.
 | Candidate | Code/model revision inspected | Weight identity | License | Installation state |
 |---|---|---|---|---|
 | TATR v1.1 All | HF `7587a7ef111d9dcbf8ac695f1376ab7014340a0c`; Microsoft code `16d124f616109746b7785f03085100f1f6247575` | 115,437,156 bytes; SHA-256 `9df416…6a501` | MIT | selected for immediate calibration |
-| DeepSeek-OCR-2 | HF `aaa02f3811945a91062062994c5c4a3f4c0af2b0`; code `2f3699ebbb96fa8af32212e8c170f2cc28730fad` | 6,778,573,880 bytes; SHA-256 `d8ff67…70fa` | Apache-2.0 | hash-verified ephemeral runtime; bounded line-reader gate in progress |
+| DeepSeek-OCR-2 | HF `aaa02f3811945a91062062994c5c4a3f4c0af2b0`; code `2f3699ebbb96fa8af32212e8c170f2cc28730fad` | 6,778,573,880 bytes; SHA-256 `d8ff67…70fa` | Apache-2.0 | hash-verified ephemeral runtime; bounded semantic-proposal gate passed on calibration |
 | IBM TableFormer Accurate | code `5787142002b4063efe30f172dd91fbc7a94b43a6`; HF bundle `2199320848bb9a8a519d22e4b528185a4f9a6f64` | 212,758,388 bytes; SHA-256 `2a7d6c…74d9` | MIT | not installed; challenger |
 | ClusterTabNet | archived code `e1051c05cd337ad1ac82aabbb0530c784ea21cb0` | released `table_recognition.pth`, 30,292,814 bytes | Apache-2.0 | not installed; deferred |
 
@@ -128,9 +128,15 @@ official path resized 98–616 by 27–35 pixel crops directly to 768×768; the
 unbounded 8,192-token decoder also produced one 36,314-character hallucination.
 The result was 0/37 exact lines, 123.7138% CER and seven structural rejections.
 E-0026 changes only these general mechanics: the official aspect-preserving pad
-path and a predeclared 128-token/512-character fail-closed budget. If that retry
-still fails, direct isolated-line tuning stops and development moves to bounded
-logical-row/context crops; neither run receives locator or mapping authority.
+path and a predeclared 128-token/512-character fail-closed budget. It produces
+27/37 exact lines, 5/10 exact titles, 0.9646% CER and zero structural or
+truncation rejects in 23.1651 seconds at 7,058.903 MiB peak allocated VRAM.
+Nineteen MBB and eighteen VCB fixed-grid proposals preserve all existing
+statement-discovery decisions and margins. This passes only the bounded
+semantic-proposal gate. VietOCR is slightly better on the same crops but remains
+challenger-only pending bank/period-separated downstream evidence. Development
+now moves to logical rows, SchemaGraph, validation and Excel rather than further
+retuning these 37 lines.
 
 The first clean TATR attempt stopped before inference because the official
 checkpoint serializes an obsolete top-level `dilation` field as `null`, while
