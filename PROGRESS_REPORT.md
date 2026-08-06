@@ -1,13 +1,13 @@
 # Progress report
 
-- Updated: 2026-08-06T09:16:00+00:00
+- Updated: 2026-08-06T09:27:00+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `0a14d37`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
+- Latest clean, tested, pushed checkpoint: `9f2cf50`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
 - Registered PDFs: 2,567
-- Latest full regression: 275 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
+- Latest full regression: 279 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
 
 ## Accuracy focus and measurable state
 
@@ -89,9 +89,10 @@
   logic-development evidence, not a real-document or human-gold accuracy claim.
   E-0023 now seals this result from clean commit `48043d0`; artifact SHA-256 is
   `87121a2eee5e29213e06c43bcd92db14d62291fbf79afced7f5c9eec90ae5bd1`.
-- Next bounded action: hydrate only the E-0022 Role B scan from its immutable S3
-  object, run the already-frozen full-document locator/OCR pipeline, and seal
-  Role B before any Role A source access.
+- Next bounded action: commit and capture the E-0022 pre-preprocessing execution
+  control from a clean tree, then preprocess all 33 Role B pages at 300 DPI and
+  run the already-frozen full-document locator/OCR pipeline. Seal Role B before
+  any Role A source access.
 
 ## Completed tasks
 
@@ -120,6 +121,10 @@
   permits only Role B hydration next, and forbids Role A access before the Role B
   result is sealed. Artifact SHA-256:
   `33c296c0cc2e0d2bd3a54a2d6835b6eea8c634a6a626f7de5ca1b0940c786b4c`.
+- Hydrated only the exact E-0022 Role B scan from the immutable S3 manifest and
+  verified its registered SHA-256, 8,027,105-byte size and 33-page count. The
+  first five pages have no PDF text layer. Role A remains locally absent and no
+  statement page has been selected from Role B content.
 - Built reproducible bootstrap, GPU runtime, package/model hashes, source registry,
   dataset-role registry, backup/restore checks, and server rebuild documentation.
 - Restored and audited `financial_20_02_2022.gz` as a read-only MongoDB historical
@@ -343,6 +348,12 @@
   `2026-08-06T08:34:37Z`; code/config/model/schema identities were frozen at
   `2026-08-06T08:35:17Z`. Role B must be hydrated, processed and sealed before
   Role A source access, and the frozen thresholds cannot be tuned on this pair.
+- The exact Role B scan was hydrated from the immutable S3 manifest: SHA-256
+  `a85402445a34e80dd4248471c2d23d4cf4b349ab2455b91db457f3e6effbdd4a`,
+  8,027,105 bytes. It has 33 pages and no text layer on the first five inspected
+  pages. Role A remains locally absent. A pre-preprocessing execution gate now
+  binds all OCR/locator/sealer runners to their byte-identical versions at the
+  frozen `e0496e2` commit; no page or threshold was selected from content.
 - Ordered SchemaGraph v1 and E-0023 are sealed. Work now returns to E-0022 under
   its frozen pre-access contract: hydrate/process/seal Role B only. The new mapper
   remains intentionally excluded from that already-frozen pipeline.
@@ -430,8 +441,9 @@
 
 ## Planned next steps
 
-1. Hydrate the E-0022 Role B scan only, run frozen full-document statement
-   discovery/OCR, and seal Role B before any Role A access.
+1. Capture the clean E-0022 Role B execution-control artifact, preprocess all 33
+   pages at 300 DPI, run frozen full-document statement discovery/OCR, and seal
+   Role B before any Role A access.
 2. Complete the one-shot E-0022 Role A/Role B comparison with frozen thresholds
    and report the main error class and measurable before/after results.
 3. Apply ordered SchemaGraph v1 next on separate development/validation blocks
