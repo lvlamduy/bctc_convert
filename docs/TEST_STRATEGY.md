@@ -192,3 +192,14 @@ The hash-bound human-review registry `HR-2026-08-06-CTG-ACB-MBB` adds a calibrat
 Period propagation v1 is tested independently of all values and history. A complete visible table header binds the axes; a headerless adjacent continuation inherits by column ordinal only after continuation/context/geometry gates. New statements/tables, changed period structures, non-adjacent pages, incompatible axes, and partial local headers remain unresolved.
 
 Structural ranking v2 uses a lexicographic evidence order. Mutation tests deliberately give a wrong-parent candidate stronger same-bank history and require the correct parent candidate to remain first. A history-only difference must remain `AMBIGUOUS_MAPPING`. Sequence tests use the real non-monotonic `4337 → 4373 → 4338` template block to prove that workbook `display_order`, not numeric ID, controls order and that a schema ID cannot be assigned to two visible rows.
+
+Ordered SchemaGraph mapping v1 is the block-level fallback above that row-wise
+ranker. Its focused tests cover a six-PDF-row/three-schema-row ordered
+subsequence, retained extra PDF rows, same-label/different-parent clusters,
+mapped parent and neighbor consistency, external semantic evidence that cannot
+override a verified parent, numbering conflict, exact off-balance labels that
+remain excluded, and tied path alternatives that must abstain. The real CDKT
+template test asserts the graph retains 77 workbook-ordered nodes, the
+`4337 → 4373 → 4338` non-numeric sequence, and the three distinct fixed-asset
+parents. A skipped schema node becomes `NOT_OBSERVED` only in a resolved block
+declared exhaustive; otherwise it remains unmatched-in-block evidence.

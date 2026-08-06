@@ -183,8 +183,9 @@ source-PDF clipping and quality candidates reuse the locked control-plane
 PyMuPDF 1.28.0, OpenCV headless 4.14.0.94, NumPy 2.4.6, and PyYAML 6.0.3.
 Deskew and perspective candidates record inverse 3×3 transforms; photometric
 candidates retain identity geometry. Subsequent readers reuse the existing four
-pinned Paddle weights. DeepSeek-OCR-2 and MinerU remain separately isolated
-benchmark proposals and are not installed in this environment.
+pinned Paddle weights. DeepSeek-OCR-2 remains isolated from the base
+`.gpu-venv`; it is now load- and inference-tested through the hash-locked
+external overlay described below. MinerU remains an uninstalled proposal.
 
 The 2026-08-06 human-review registry, period propagation v1, value-status
 normalization, and structural ranking v2 add no Python distribution, Ubuntu
@@ -192,6 +193,15 @@ package, driver, model, weight, or runtime setting. Source verification reuses
 the pinned control-plane PyMuPDF and SHA-256 utilities; YAML/config validation
 reuses PyYAML. The paper candidates GraphTSR/TGRNet, DocTr/DocGeoNet/UVDoc,
 FastTab, and TabSniper are research hypotheses only and were not installed.
+
+Ordered SchemaGraph mapping v1 adds no Python distribution, Ubuntu package,
+model, weight, driver or runtime setting. It reuses Python 3.11, PyYAML 6.0.3,
+RapidFuzz 3.14.5 and the existing schema/hierarchy readers. Search is a bounded
+k-best dynamic program on CPU; optional accounting-semantic scores are inputs
+from separately governed model components and cause no model installation here.
+Configuration, research basis, rebuild behavior and fail-closed gates are in
+`config/mapping/ordered-subgraph-v1.yaml` and
+`../ORDERED_SCHEMA_GRAPH_MAPPING.md`.
 
 The E-0016 original-crop evidence sealer also installs nothing. It reuses the
 same locked standard-library JSON/TOML/HTML parsing, PyYAML, strict financial
@@ -249,17 +259,27 @@ Rebuild/verify commands:
   --verify-only
 ```
 
-DeepSeek-OCR-2 is not installed. The inspected Apache-2.0 HF revision is
+DeepSeek-OCR-2 is not installed into the base `.gpu-venv`. All 14 artifacts for
+the inspected Apache-2.0 HF revision were instead downloaded and verified in an
+ephemeral `/dev/shm` cache. The revision is
 `aaa02f3811945a91062062994c5c4a3f4c0af2b0`; its BF16 weight is
 6,778,573,880 bytes with SHA-256
 `d8ff67a424ba6f4dd077885eb9d6a05d2537e76fe5491f0e2a9b712f8c8870fa`.
 The official code snapshot is
 `2f3699ebbb96fa8af32212e8c170f2cc28730fad` and declares CUDA 11.8,
-PyTorch 2.6.0, Transformers 4.46.3, and FlashAttention 2.7.3. That stack is not
-approved for this Blackwell `sm_120` host. A later isolated benchmark must pin
-all remote code, use a Blackwell-capable PyTorch build, disable runtime network,
-measure VRAM, and use `/dev/shm` or expanded storage because persistent free
-space is currently below the single weight size.
+PyTorch 2.6.0, Transformers 4.46.3, and FlashAttention 2.7.3. The published
+CUDA/PyTorch stack is not installed on this Blackwell `sm_120` host. A separate
+11-package, hash-locked overlay supplies Transformers 4.46.3 and tokenizers
+0.20.3 on top of the existing PyTorch 2.12.0+cu130 runtime, uses eager attention,
+and leaves the base environment unchanged. Its successful model load took
+4.255978 seconds and allocated 6,883,116,544 GPU bytes. Two real table-page
+inferences completed; observed peak allocated VRAM was 8,189,789,184 bytes.
+Inference disables DNS/socket access and has no geometry, value, period, scope,
+mapping or confidence authority. Exact overlay hashes/install command are in
+`config/models/deepseek-ocr2-v1.toml` and
+`config/models/deepseek-ocr2-overlay-requirements.txt`; E-0018 and E-0019 retain
+the source/config/model/result evidence. The model cache is reconstructible and
+remains outside Git.
 
 IBM TableFormer and ClusterTabNet are also not installed. The inspected
 TableFormer/Docling source revision is

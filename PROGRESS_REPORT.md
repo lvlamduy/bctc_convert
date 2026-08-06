@@ -1,13 +1,13 @@
 # Progress report
 
-- Updated: 2026-08-06T08:55:00+00:00
+- Updated: 2026-08-06T09:03:00+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `d56a86a`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
+- Latest clean, tested, pushed checkpoint: `d7a3f60`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
 - Registered PDFs: 2,567
-- Latest full regression: 263 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
+- Latest full regression: 273 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
 
 ## Accuracy focus and measurable state
 
@@ -78,11 +78,31 @@
   `accefa38db2131ebf5b0aa9fa37394d382fe0c98cbcfa6358ef304c0d626ba9a`
   and binds the run to clean commit
   `c32741a217ca16e7224d416b2c14245f580e610d`.
-- Next bounded action: evaluate the unchanged E-0021 thresholds on a bank- and
-  period-disjoint Role A/Role B document before any confidence promotion.
+- New mapping-development result targets
+  `ROW_WISE_FORCED_DUPLICATE_MAPPING`. On the bounded six-visible-row/
+  three-applicable-schema fixture, independent label top-1 at the same 0.35
+  retrieval gate assigns all six rows, producing 3 correct pairs, 3 false
+  positive extra-row mappings, 50% precision and three duplicate schema
+  assignments. Ordered SchemaGraph v1 selects exactly the expected 3/3 pairs,
+  retains all three extra PDF rows, produces no duplicate assignment, and has a
+  best/runner-up path score of 6.09/4.66 (margin 1.43). This is deterministic
+  logic-development evidence, not a real-document or human-gold accuracy claim.
+- Next bounded action: run the full regression and commit SchemaGraph v1, then
+  seal the controlled 6→3 before/after artifact from that clean commit before
+  resuming the frozen E-0022 Role B run.
 
 ## Completed tasks
 
+- Reviewed the primary Needleman-Wunsch, Zhang-Shasha, Cupid and Similarity
+  Flooding work and implemented the relevant constrained form: a hashable
+  statement `SchemaGraph` plus bounded k-best monotone DP with PDF/schema gaps,
+  mapped parent/sibling/neighbor transitions, optional accounting-semantic
+  proposals, distinct runner-up paths and fail-closed cluster abstention. Numeric
+  values, history and numeric ReportNormId order are absent from its feature API.
+- Added 10 focused ordered-subgraph tests covering 6→3 selection, retained extra
+  rows, duplicate labels, verified-parent dominance over a wrong semantic score,
+  tie abstention, non-numeric workbook order, numbering, off-balance exclusion,
+  exhaustive-only `NOT_OBSERVED`, and the real 77-node CDKT hierarchy graph.
 - Sealed E-0022 source roles and the frozen code/config/model/schema identities
   before either ACB Q1/2026 holdout source was locally present. The pre-access
   artifact was captured from clean commit
@@ -313,12 +333,10 @@
   `2026-08-06T08:34:37Z`; code/config/model/schema identities were frozen at
   `2026-08-06T08:35:17Z`. Role B must be hydrated, processed and sealed before
   Role A source access, and the frozen thresholds cannot be tuned on this pair.
-- A reusable ordered-subgraph mapper is being specified for blocks where PDF
-  row count exceeds applicable schema-row count. It will align the entire PDF
-  block to workbook display order with dynamic programming or bounded beam
-  search, preserve unmatched PDF rows, use hierarchy and neighbor anchors to
-  disambiguate duplicate labels, and abstain unless the best structurally valid
-  path has a configured margin over alternatives.
+- Ordered SchemaGraph v1 and its focused fixtures now pass locally. A clean
+  mechanism commit, full regression and hash-bound before/after development
+  artifact remain before it can be called a sealed version. It is intentionally
+  excluded from the already-frozen E-0022 pipeline.
 - Raw-PDF-dependent experiments now hydrate only their bounded registered inputs
   from the immutable S3 manifest and must not overwrite a mismatched local file.
 
@@ -405,10 +423,9 @@
 
 1. Commit and seal the E-0022 pre-access artifact while both holdout sources are
    still absent; then process and seal Role B before any Role A access.
-2. Review primary research on monotone sequence alignment and ordered
-   tree/subgraph matching, then implement the fail-closed ordered-subsequence
-   mapper and a six-PDF-row to three-schema-row development fixture. Compare it
-   with the current row-wise baseline without tuning on E-0022.
+2. Commit the ordered-subgraph mechanism after full regression, then generate a
+   clean, hash-bound development artifact comparing the 6→3 fixture with the
+   independent row-wise label baseline. Do not tune it on E-0022.
 3. Complete the one-shot E-0022 Role A/Role B comparison with frozen thresholds
    and report the main error class and measurable before/after results.
 4. Build a human-gold evaluation split separated by bank and reporting period,

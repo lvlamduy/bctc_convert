@@ -161,6 +161,14 @@ parent, previous/next plus workbook-order direction, indentation/numbering,
 label, same-bank history, then cross-bank history. If history is the first
 discriminator the result remains `AMBIGUOUS_MAPPING` and review-only.
 
+When row-wise ranking is insufficient, `ordered_subgraph.py` aligns an entire
+PDF block to a caller-bounded `SchemaGraph` cluster. Its k-best monotone dynamic
+program explicitly supports PDF-row and schema-row gaps, scores mapped parent/
+sibling and neighbor-anchor consistency, and retains a distinct runner-up path.
+Extra PDF rows therefore remain visible and unmatched instead of being forced
+into a smaller template cluster. The complete research basis, score contract,
+complexity and abstention rules are in `ORDERED_SCHEMA_GRAPH_MAPPING.md`.
+
 ReportNormId is never sorted numerically. `display_order` is read from the
 source workbook row order and is the sequence invariant for mapping/export.
 This permits later-added large IDs to occupy their correct logical location.

@@ -1,0 +1,49 @@
+version: 1
+mode: K_BEST_MONOTONE_DYNAMIC_PROGRAMMING_FAIL_CLOSED
+calibration_status: LOGIC_DEVELOPMENT_NOT_PRODUCTION_CALIBRATED
+ordering_authority: WORKBOOK_DISPLAY_ORDER_ONLY
+numeric_report_norm_id_sort_allowed: false
+value_features_allowed: false
+historical_features_allowed: false
+
+search:
+  beam_width_per_dp_cell: 32
+  returned_path_limit: 3
+
+candidate_gates:
+  minimum_label_or_accounting_semantic_similarity: 0.35
+  minimum_pair_score: 0.50
+  parent_label_similarity: 0.70
+  section_label_similarity: 0.65
+
+acceptance_gates:
+  minimum_matches: 1
+  minimum_mean_pair_score: 0.90
+  minimum_best_runner_up_margin: 0.15
+  default_minimum_schema_coverage: 0.50
+  maximum_indentation_distance: 1
+  require_zero_structural_issues: true
+
+scoring:
+  pdf_row_skip_penalty: -0.30
+  out_of_scope_pdf_row_skip_penalty: 0.00
+  schema_row_skip_penalty: -0.04
+  label_similarity_weight: 1.00
+  accounting_semantic_similarity_weight: 0.35
+  exact_label_bonus: 0.40
+  statement_context_bonus: 0.15
+  section_context_bonus: 0.35
+  parent_exact_bonus: 0.75
+  parent_label_similarity_weight: 0.45
+  neighbor_immediate_bonus: 0.45
+  neighbor_direction_bonus: 0.12
+  indentation_exact_bonus: 0.25
+  indentation_near_bonus: 0.08
+  indentation_conflict_penalty: -0.20
+  numbering_exact_bonus: 0.25
+  numbering_conflict_penalty: -0.25
+  adjacent_schema_bonus: 0.35
+  sibling_consistency_bonus: 0.18
+  child_consistency_bonus: 0.25
+  unresolved_parent_penalty: -0.35
+  gap_imbalance_penalty: -0.06
