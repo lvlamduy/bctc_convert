@@ -1,13 +1,13 @@
 # Progress report
 
-- Updated: 2026-08-06T08:49:00+00:00
+- Updated: 2026-08-06T08:55:00+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `e0496e2`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
+- Latest clean, tested, pushed checkpoint: `d56a86a`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
 - Registered PDFs: 2,567
-- Latest full regression: 260 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
+- Latest full regression: 263 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
 
 ## Accuracy focus and measurable state
 
@@ -83,6 +83,13 @@
 
 ## Completed tasks
 
+- Sealed E-0022 source roles and the frozen code/config/model/schema identities
+  before either ACB Q1/2026 holdout source was locally present. The pre-access
+  artifact was captured from clean commit
+  `d56a86a837a1e6a1d1318cd73dbba7bee888d515`, records both sources absent,
+  permits only Role B hydration next, and forbids Role A access before the Role B
+  result is sealed. Artifact SHA-256:
+  `33c296c0cc2e0d2bd3a54a2d6835b6eea8c634a6a626f7de5ca1b0940c786b4c`.
 - Built reproducible bootstrap, GPU runtime, package/model hashes, source registry,
   dataset-role registry, backup/restore checks, and server rebuild documentation.
 - Restored and audited `financial_20_02_2022.gz` as a read-only MongoDB historical
