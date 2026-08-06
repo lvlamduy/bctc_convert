@@ -1,0 +1,17 @@
+version: 4
+policy: NOTE_SEPARATED_STRUCTURAL_ANCHOR_V4
+
+base_config: word-box-reconstruction-v3.yaml
+base_config_sha256: c1cf55a6187a1b2a6f54b74b1566619d046446bc3ad7e628473004103c5d0f7e
+
+# A note reference must be on the same visual line as a valued row to join its
+# numeric anchor. More distant note references create their own structural row.
+# This prevents a blank/note-bearing row from being swallowed by the next row.
+maximum_note_to_value_anchor_gap_line_heights: 0.50
+
+# The rule uses relative source geometry only. Labels, numeric values, schema,
+# history and human review cannot influence whether an anchor is split.
+require_same_page_source_geometry: true
+forbid_label_semantics_as_split_feature: true
+forbid_numeric_magnitude_as_split_feature: true
+forbid_schema_history_or_review: true
