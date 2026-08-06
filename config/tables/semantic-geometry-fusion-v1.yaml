@@ -1,0 +1,27 @@
+version: 1
+algorithm: FIXED_GEOMETRY_GRID_SEMANTIC_LABEL_FUSION_V1
+
+# Geometry rows are the canonical page grid. Semantic OCR may propose labels and
+# reading order, but it may never replace geometry, period, sign, or value cells.
+minimum_concatenated_label_similarity: 0.80
+minimum_shifted_label_similarity: 0.80
+minimum_local_mean_score_gain: 0.15
+minimum_output_label_similarity: 0.72
+minimum_path_score_margin: 0.05
+
+overflow_pattern:
+  semantic_rows_consumed: 3
+  geometry_rows_produced: 2
+  require_first_two_numeric_fingerprints_exact: true
+  require_third_semantic_row_cells_blank: true
+  require_all_three_labels_present: true
+
+safety:
+  geometry_row_count_may_change: false
+  geometry_cells_may_change: false
+  geometry_note_may_change: false
+  semantic_values_have_output_authority: false
+  automatic_schema_mapping: false
+  automatic_period_assignment: false
+  automatic_scope_assignment: false
+  automatic_confidence_promotion: false

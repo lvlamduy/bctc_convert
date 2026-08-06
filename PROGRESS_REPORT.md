@@ -1,13 +1,13 @@
 # Progress report
 
-- Updated: 2026-08-06T07:17:11+00:00
+- Updated: 2026-08-06T07:31:34+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `254bf5d20cc20cf983eeb740805cfbb3fe277090`
+- Latest clean, tested, pushed checkpoint: `ed7d7954dcda8f332cbbf4cfbc1f83158d472cbc`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
 - Registered PDFs: 2,567
-- Latest full regression: 241 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
+- Latest full regression: 245 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
 
 ## Accuracy focus and measurable state
 
@@ -37,9 +37,18 @@
   rises from 34.4828% to 100%; invalid cells fall from 12 to zero, and measured
   structural impact falls from 41 to zero. This is target-page calibration
   against a native machine reference, not human-gold or end-to-end accuracy.
-- Next bounded action: bind independent PP-OCRv6 word boxes for E-0017 pages
-  13→14 to the E-0018 semantic rows, then rerun E-0010 and the full E-0017
-  suite against the same frozen Role A denominators.
+- New development result for fixed-grid fusion on E-0017 pages 13→14:
+  independent PP-OCRv6 reconstructs 41/41 Role A rows and exactly agrees on
+  72/72 financial cells with zero invalid cells. DeepSeek proposes 42 semantic
+  rows because one wrapped label on page 14 is split and the next value is
+  shifted upward. A fail-closed dynamic program now resolves the verified
+  3-semantic-row→2-geometry-row pattern to 41 canonical rows. All final cells,
+  notes, geometry source IDs and row count remain object-identical to PP-OCR;
+  DeepSeek supplies only Vietnamese labels and reading-order evidence. This is
+  still calibration against machine Role A, not human gold.
+- Next bounded action: seal the two-page fusion as E-0019, measure its semantic
+  label and direct-LCTT recovery against frozen Role A, then apply the same
+  algorithm to the existing E-0010 structural failures.
 
 ## Completed tasks
 
@@ -190,15 +199,25 @@
   and there is no automatic value, period, scope, geometry, confidence or
   ReportNormId authority. One `cố tức`/`cổ tức` Vietnamese label disagreement
   and one note-placement disagreement remain for review.
+- Ran a clean, hash-manifested PP-OCRv6 word-box batch for E-0017 scan pages
+  13–14: 170 lines and 1,509 words in 56.570324 seconds. The v2 geometry parser
+  recovers 33+8 canonical rows, 58+14 exact numeric/sign cells, zero invalid
+  cells, and the visible 2024/2023 axes on both pages.
+- Added `FIXED_GEOMETRY_GRID_SEMANTIC_LABEL_FUSION_V1`. Its dynamic program
+  supports ordinary one-to-one label binding plus one explicit overflow repair:
+  two consecutive semantic numeric fingerprints must exactly match two geometry
+  rows, the third semantic row must have a label but blank cells, and the repaired
+  Vietnamese-label score must improve by at least a configured margin. It
+  abstains when row loss, fingerprint disagreement, weak similarity or ambiguous
+  paths remain. Four focused tests and the full 245-test regression pass.
 
 ## Currently in progress
 
-- Integrating independent PP-OCRv6 word boxes for E-0017 pages 13→14 with the
-  E-0018 semantic rows. DeepSeek supplies labels and reading order; source-space
-  word/line geometry must still establish canonical row and cell boundaries.
+- Sealing E-0019 for the two-page PP-OCRv6 geometry plus DeepSeek semantic-label
+  fusion and measuring it against the unchanged E-0017 Role A denominator.
 - The already-started S3 snapshot has uploaded and HEAD-verified all 4,192 unique
   objects and is performing the required full sequential content restore; the
-  latest observed position is 3,484/4,192 objects (83.11%).
+  latest observed position is 4,132/4,192 objects (98.57%).
   No local deletion has started; this background safety gate is not delaying
   the accuracy work.
 
@@ -216,13 +235,11 @@
   preserved as explicit evidence, not hidden or repaired from history.
 - There is still no human-gold, bank-disjoint and period-disjoint end-to-end
   benchmark large enough to support a production accuracy threshold.
-- DeepSeek-OCR-2's official tested stack is CUDA 11.8/Torch 2.6/Transformers
-  4.46.3 with FlashAttention 2.7.3, while this Blackwell host needs CUDA 13/Torch
-  2.12. The exact Transformers/tokenizers API pair now loads through an external
-  overlay, but the first real document inference must still prove generation
-  compatibility and VRAM headroom. The overlay's compiled wheels require an
-  executable filesystem; model weights remain safely in non-executable
-  `/dev/shm`.
+- DeepSeek-OCR-2's official tested stack differs from this Blackwell host, so its
+  exact Transformers/tokenizers API pair remains isolated in a hash-locked
+  external overlay. Two real document inferences now complete with about 8.19 GB
+  peak allocated VRAM; the remaining obstacle is structural fallibility, not
+  runtime capacity: page 14 emitted one wrapped-label/value-shift error.
 - E-0018 is one selected calibration page from one bank/year. Its perfect
   numeric/sign agreement must be tested against E-0010 and bank/period-disjoint
   holdouts. DeepSeek's table bounding box is model-normalized proposal geometry,
@@ -246,10 +263,11 @@
    and vertical arithmetic, parent-child totals, and template display order.
 6. Escalate only localized failures to high-resolution rereads and independent
    readers. Reader agreement is supporting evidence, never automatic truth.
-7. Fuse specialized readers by role only when they improve the end-to-end frozen
-   baseline: a structure reader proposes table geometry, PP-OCRv6 proposes
-   word/cell pixels, and a semantic reader proposes labels/context. None can
-   independently map IDs or establish numeric truth.
+7. Fuse specialized readers on a fixed source-space row grid: PP-OCRv6 preserves
+   row/cell pixels and values; DeepSeek proposes Vietnamese labels and order.
+   Numeric fingerprints may gate a structural overflow hypothesis but never
+   replace output values. Require a score margin and abstain on ambiguity. None
+   of the readers can independently map IDs or establish numeric truth.
 8. Develop custom learned components only behind frozen baselines: graph-based
    row/cell relation modeling, Vietnamese label encoders trained with
    same-label/different-parent hard negatives, specialized digit/sign recognition,
@@ -263,10 +281,9 @@
 
 ## Planned next steps
 
-1. Run PP-OCRv6 word-box evidence on E-0017 pages 13→14 and bind the 33 E-0018
-   semantic rows to source-space row/cell geometry without allowing either
-   reader to override the visible numeric token evidence.
-2. Apply the bounded canonical-row-grid fusion to the existing E-0010 failures,
+1. Seal E-0019 from the completed E-0017 pages 13→14 PP-OCRv6 and DeepSeek runs;
+   report row/cell/label/method before-and-after against the frozen reference.
+2. Apply the same fixed-grid overflow fusion to the existing E-0010 failures,
    then rerun E-0010 and the full six-page E-0017 denominators for before/after.
 3. Finish the full-content restore-test of the immutable snapshot, then offload the 2,567
    registered PDFs and Mongo dump to reclaim about 18.3 GB. Preserve the local
