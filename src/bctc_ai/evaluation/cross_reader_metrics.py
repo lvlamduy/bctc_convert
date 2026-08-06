@@ -79,7 +79,29 @@ def aggregate_cross_reader_metrics(
     return totals
 
 
-def classify_cross_reader_error_classes(metrics: Mapping[str, Any]) -> dict[str, Any]:
+def _cell_error_root_cause(cell: Mapping[str, Any], action: str) -> str | None:
+    if cell.get("exact") is True:
+        return None
+    if action != "MATCH":
+        return "STRUCTURAL_ROW_CELL_RECONSTRUCTION"
+    if not cell.get("reference_present", True) or not cell.get("candidate_present", True):
+        return "STRUCTURAL_ROW_CELL_RECONSTRUCTION"
+    candidate_reason = str(cell.get("candidate_reason") or "")
+    if candidate_reason == "multiple financial numbers in one cell":
+        return "STRUCTURAL_ROW_CELL_RECONSTRUCTION"
+    observations = {
+        str(cell.get("reference_observation") or ""),
+        str(cell.get("candidate_observation") or ""),
+    }
+    if "BLANK" in observations:
+        return "STRUCTURAL_ROW_CELL_RECONSTRUCTION"
+    return "NUMERIC_SIGN_OCR"
+
+
+def classify_cross_reader_error_classes(
+    metrics: Mapping[str, Any],
+    comparisons: Iterable[Mapping[str, Any]] | None = None,
+) -> dict[str, Any]:
     """Classify measurable errors by their direct downstream impact.
 
     This deliberately does not count the generic "no confidence promotion"
@@ -96,11 +118,45 @@ def classify_cross_reader_error_classes(metrics: Mapping[str, Any]) -> dict[str,
         int(metrics["reference_financial_cells"])
         - int(metrics["compared_reference_financial_cells"]),
     )
-    compared_numeric_disagreements = max(
+    measured_cell_disagreements = max(
         0,
         int(metrics["compared_reference_financial_cells"])
         - int(metrics["exact_reference_financial_cells"]),
     )
+    structural_compared_cell_disagreements = 0
+    numeric_disagreements = measured_cell_disagreements
+    structural_multi_number_cells = 0
+    numeric_invalid_cells = int(metrics["candidate_invalid_cells"])
+    root_cause_mode = "AGGREGATE_FALLBACK"
+    if comparisons is not None:
+        root_cause_mode = "CELL_AND_ALIGNMENT_EVIDENCE"
+        numeric_invalid_cells = 0
+        causes: Counter[str] = Counter()
+        for comparison in comparisons:
+            for record in comparison["alignment"]:
+                action = str(record["action"])
+                cells = record.get("cells", [])
+                if not any(
+                    cell.get("reference_observation") != "BLANK" for cell in cells
+                ):
+                    continue
+                for cell in cells:
+                    cause = _cell_error_root_cause(cell, action)
+                    if cause is not None and cell.get("reference_present", True):
+                        causes[cause] += 1
+                        if cell.get("candidate_observation") == "INVALID":
+                            if cause == "STRUCTURAL_ROW_CELL_RECONSTRUCTION":
+                                structural_multi_number_cells += 1
+                            else:
+                                numeric_invalid_cells += 1
+        structural_compared_cell_disagreements = causes[
+            "STRUCTURAL_ROW_CELL_RECONSTRUCTION"
+        ]
+        numeric_disagreements = causes["NUMERIC_SIGN_OCR"]
+        if structural_compared_cell_disagreements + numeric_disagreements != (
+            measured_cell_disagreements
+        ):
+            raise ValueError("cell-level error causes do not reconcile with aggregate metrics")
     semantic_label_disagreements = max(
         0,
         int(metrics["structurally_comparable_rows"])
@@ -111,14 +167,23 @@ def classify_cross_reader_error_classes(metrics: Mapping[str, Any]) -> dict[str,
     )
     classes = {
         "STRUCTURAL_ROW_CELL_RECONSTRUCTION": {
-            "impact_count": structural_alignment_units + missing_reference_cells,
+            "impact_count": (
+                structural_alignment_units
+                + missing_reference_cells
+                + structural_compared_cell_disagreements
+            ),
             "structural_alignment_units": structural_alignment_units,
             "missing_reference_cells": missing_reference_cells,
+            "structural_compared_cell_disagreements": (
+                structural_compared_cell_disagreements
+            ),
+            "multi_number_candidate_cells": structural_multi_number_cells,
         },
         "NUMERIC_SIGN_OCR": {
-            "impact_count": compared_numeric_disagreements,
-            "compared_cell_disagreements": compared_numeric_disagreements,
-            "invalid_candidate_cells": int(metrics["candidate_invalid_cells"]),
+            "impact_count": numeric_disagreements,
+            "compared_cell_disagreements": numeric_disagreements,
+            "invalid_candidate_cells_attributed_to_numeric": numeric_invalid_cells,
+            "all_invalid_candidate_cells": int(metrics["candidate_invalid_cells"]),
         },
         "LABEL_SEMANTICS": {
             "impact_count": semantic_label_disagreements,
@@ -142,6 +207,7 @@ def classify_cross_reader_error_classes(metrics: Mapping[str, Any]) -> dict[str,
     return {
         "main_error_class": main_error_class,
         "classes": classes,
+        "root_cause_mode": root_cause_mode,
         "selection_rule": (
             "largest directly measured impact count; deterministic priority resolves ties"
         ),

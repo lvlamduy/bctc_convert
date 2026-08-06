@@ -301,10 +301,9 @@ def compare_paired_native_readers(
         raise PairedNativeEvaluationError(
             "configured statement continuation did not pass the evidence gate"
         )
-    metrics = aggregate_cross_reader_metrics(
-        page["comparison"] for page in page_results
-    )
-    error_analysis = classify_cross_reader_error_classes(metrics)
+    comparisons = tuple(page["comparison"] for page in page_results)
+    metrics = aggregate_cross_reader_metrics(comparisons)
+    error_analysis = classify_cross_reader_error_classes(metrics, comparisons)
     cash_flow = classify_cash_flow_method(lctt_labels, cash_flow_rules)
     off_balance_eligible = sum(
         int(page["comparison"]["counts"]["scope_allowed_candidate_rows"])
