@@ -1,8 +1,8 @@
 # Progress report
 
-- Updated: 2026-08-06T09:14:00+00:00
+- Updated: 2026-08-06T09:16:00+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `48043d0`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
+- Latest clean, tested, pushed checkpoint: `0a14d37`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
@@ -89,9 +89,9 @@
   logic-development evidence, not a real-document or human-gold accuracy claim.
   E-0023 now seals this result from clean commit `48043d0`; artifact SHA-256 is
   `87121a2eee5e29213e06c43bcd92db14d62291fbf79afced7f5c9eec90ae5bd1`.
-- Next bounded action: run the full regression and commit SchemaGraph v1, then
-  seal the controlled 6→3 before/after artifact from that clean commit before
-  resuming the frozen E-0022 Role B run.
+- Next bounded action: hydrate only the E-0022 Role B scan from its immutable S3
+  object, run the already-frozen full-document locator/OCR pipeline, and seal
+  Role B before any Role A source access.
 
 ## Completed tasks
 
@@ -110,6 +110,9 @@
   abstention, verified-parent dominance over an adversarial semantic proposal,
   exact off-balance exclusion, 77 real CDKT graph nodes, fixed-asset parents
   4328/4329/4330, TM 1944 presence and zero production-confidence promotion.
+- Sealed and pushed the E-0023 artifact plus immutable integration hash gate at
+  `0a14d37`; the full regression is 275 passed with 2 intentional historical
+  replay skips.
 - Sealed E-0022 source roles and the frozen code/config/model/schema identities
   before either ACB Q1/2026 holdout source was locally present. The pre-access
   artifact was captured from clean commit
@@ -340,11 +343,9 @@
   `2026-08-06T08:34:37Z`; code/config/model/schema identities were frozen at
   `2026-08-06T08:35:17Z`. Role B must be hydrated, processed and sealed before
   Role A source access, and the frozen thresholds cannot be tuned on this pair.
-- Ordered SchemaGraph v1 is committed at `867d6e9`; E-0023 was captured from
-  clean evaluator commit `48043d0`. Its immutable integration hash gate and final
-  275-pass/2-skip regression now pass; only the artifact-seal commit remains.
-  The mapper remains intentionally excluded from the already-frozen E-0022
-  pipeline.
+- Ordered SchemaGraph v1 and E-0023 are sealed. Work now returns to E-0022 under
+  its frozen pre-access contract: hydrate/process/seal Role B only. The new mapper
+  remains intentionally excluded from that already-frozen pipeline.
 - Raw-PDF-dependent experiments now hydrate only their bounded registered inputs
   from the immutable S3 manifest and must not overwrite a mismatched local file.
 
@@ -429,12 +430,12 @@
 
 ## Planned next steps
 
-1. Commit and seal the E-0022 pre-access artifact while both holdout sources are
-   still absent; then process and seal Role B before any Role A access.
-2. Seal E-0023 with its integration hash test and full regression, then resume
-   E-0022 by hydrating Role B only. Do not tune the frozen pipeline on E-0022.
-3. Complete the one-shot E-0022 Role A/Role B comparison with frozen thresholds
+1. Hydrate the E-0022 Role B scan only, run frozen full-document statement
+   discovery/OCR, and seal Role B before any Role A access.
+2. Complete the one-shot E-0022 Role A/Role B comparison with frozen thresholds
    and report the main error class and measurable before/after results.
+3. Apply ordered SchemaGraph v1 next on separate development/validation blocks
+   reconstructed from real PDFs; do not reuse E-0022 to tune its weights.
 4. Build a human-gold evaluation split separated by bank and reporting period,
    including skew, warp, dark headers, blurred digits, wrapped rows, continuation
    pages, direct/indirect LCTT, separate/consolidated scope, and quarterly/YTD
