@@ -1,17 +1,17 @@
 # Progress report
 
-- Updated: 2026-08-06T12:47:42+00:00
+- Updated: 2026-08-06T13:16:22+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest sealed accuracy checkpoint: `471fe75`; latest pushed progress checkpoint:
-  `2a93396`; E-0021 clean evaluation base:
+- Latest sealed accuracy checkpoint: `2a0426a`; latest pushed progress checkpoint:
+  `2a0426a`; E-0021 clean evaluation base:
   `c32741a217ca16e7224d416b2c14245f580e610d`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
 - Registered PDFs: 2,567
-- Latest full regression including multi-signal discovery v3, fixed-grid
-  semantic fusion and both bounded reader contracts: 367 passed, 2 intentionally
-  skipped historical/external replays in 98.17 seconds; Ruff and
+- Latest full regression including multi-signal discovery v4, fixed-grid
+  semantic fusion and both bounded reader contracts: 383 passed, 2 intentionally
+  skipped historical/external replays in 100.74 seconds; Ruff and
   `git diff --check` passed
 
 ## Accuracy focus and measurable state
@@ -27,10 +27,9 @@
 - Baseline before the current change remains E-0010: 140 Role A rows versus 139
   Role B rows; financial-row/cell coverage 94.70%; conditional exact row/cell
   agreement 96.80%/97.60%; strict exact row/cell agreement 91.67%/92.42%.
-- Current logic being improved: reliable full-document statement discovery from
-  noisy Vietnamese headers before table extraction, followed by independent row
-  geometry, semantic labels, inherited continuation-page period axes and
-  localized rereading only for unresolved cells.
+- Current logic being improved: canonical row/cell reconstruction on the newly
+  located MBB CDKT pages, followed by semantic labels, inherited continuation-
+  page period axes and localized numeric rereading only for unresolved cells.
 - New before-result from E-0017: 147 Role A versus 146 Role B rows; row/cell
   coverage 94.964%; conditional exact row/cell agreement 90.9091%/91.2879%;
   strict exact row/cell agreement 86.3309%/86.6906%. The first four pages have
@@ -219,6 +218,22 @@
   `PP-OCRv6-VI-BCTC` fine-tuning remains gated and has not started. E-0022 was
   not read, rerun or retuned. E-0026 artifact SHA-256 is
   `1753f382e141fbeb48e94cb1ef30a89ebd08cb2f1bb0836bdbf960e811eb33dd`.
+- E-0027/E-0028 isolate and resolve the next end-to-end locator error class,
+  `EMBEDDED_ACCOUNTING_ANCHOR_WHOLE_LINE_DILUTION`. On the frozen MBB Q1/2026
+  pages 1–9, V3 correctly accepted CDKT pages 3–5 (page 5 off-balance), KQKD
+  page 6 and LCTT pages 7–8 locally, but returned `UNRESOLVED`, zero complete
+  paths and zero mapping-eligible pages because notes page 9 had only 1/2
+  recognized anchors. V4 adds only a bounded contiguous order-preserving token
+  window for accounting-row anchors; all other header, period, geometry,
+  narrative, sequence and acceptance gates are unchanged. It recognizes the
+  OCR-damaged embedded phrase `thành lập và hoạt động` at 0.926829, raises page
+  9 to 2 anchors, and produces the exact complete block CDKT `[3,4]`, excluded
+  off-balance `[5]`, KQKD `[6]`, LCTT `[7,8]`, TM boundary `9`, with runner-up
+  margin 8.5. Frozen MBB 2025 and VCB 2025 replays are structurally identical
+  before/after. This is locator calibration, not table/value/mapping/Excel or
+  holdout accuracy. E-0027 V3 and E-0028 artifact SHA-256 values are
+  `9ccfd0faf869adee4cb885a4a87a32c86354101e82adc1d62c32e4ce7e9089c8`
+  and `4c6e644f4f764d08b4c4dae580e49bfee50b3efeadedede668436e3b8d6d396a`.
 
 ## Completed tasks
 
@@ -504,6 +519,15 @@
 - Completed E-0026 from clean inference commit `a013cb8` and clean evaluator
   commit `3ea0fb9`; its formal statement-discovery replay has zero regression.
   Artifact, replay and immutable regression were pushed at `471fe75`.
+- Completed the reference-blind E-0027 PP-OCRv6 prefix run: 9/9 pages, 794
+  lines, 6,915 word tokens, mean line score 0.977278 and one clean model-load
+  session. The unresolved V3 result was sealed before the V4 candidate replay;
+  no human review, history, E-0022, semantic reader, mapping, numeric extraction
+  or Excel output was invoked.
+- Completed and sealed E-0028 at `2a0426a`. Every target gate passes, including
+  exact off-balance exclusion, complete-page sequence, 8.5 path margin and exact
+  structural no-regression on both frozen E-0013 documents. The full project
+  regression now passes 383 tests with 2 intentional skips.
 
 ## Currently in progress
 
@@ -511,31 +535,27 @@
   result and all 108 evidence files were sealed before Role A access; the two
   post-seal diagnostic artifacts were then hash-locked and pushed at `267bee8`.
   It cannot be rerun or used for threshold selection.
-- Header-candidate/text-quality v2 is committed at `f10a70c` and remains
-  isolated from the immutable v1 files. The active work is the final statement
-  discovery layer: multi-line local evidence, PP-OCRv6 geometry/numeric axes,
-  independent semantic heading/label proposals, document-order decoding,
-  narrative penalties, and verified one-page neighbor inference. A form code or
-  a single occurrence of a statement/notes title can create a candidate only;
-  it cannot make a page mapping-eligible by itself.
-- Multi-signal discovery v3, E-0024, E-0025 and E-0026 are complete at their
-  bounded calibration scopes. DeepSeek-OCR-2 is now eligible only to propose
-  Vietnamese text on immutable PP-OCRv6 line/row boxes; VietOCR remains a
+- Header-candidate/text-quality v2 and multi-signal discovery v4 are now frozen
+  on separate calibration data. A form code, statement title or one accounting
+  phrase can create evidence only; none can make a page mapping-eligible by
+  itself. The bounded token-window matcher is restricted to 4+ token accounting
+  anchors, at most 18 source tokens, contiguous order and 0.78 window similarity.
+- Multi-signal discovery v3/v4, E-0024, E-0025, E-0026 and E-0028 are complete
+  at their bounded calibration scopes. DeepSeek-OCR-2 is now eligible only to
+  propose Vietnamese text on immutable PP-OCRv6 line/row boxes; VietOCR remains a
   challenger and the independent numeric path remains authoritative for values,
   signs and dashes.
-- The active end-to-end task is to carry already located MBB/VCB calibration
-  tables through canonical logical rows, inherited period/unit axes, ordered
+- The active end-to-end task is to carry the now located MBB Q1/2026 CDKT pages
+  3–4 through canonical logical rows, inherited period/unit axes, ordered
   SchemaGraph mapping, accounting validation and provenance-bearing Excel.
   Measurement will use Role A versus Role B row coverage, schema assignment,
   full `(ReportNormId, period, raw value, normalized value, status)` tuples and
   workbook-cell agreement; no character-only metric can complete this stage.
-- E-0027 is now predeclared for the scanned MBB consolidated Q1/2026
-  `CALIBRATION` document. Role B will process the contiguous 1–9 page prefix at
-  300 DPI and discover CDKT pages without receiving reviewed pages, labels,
-  IDs, values or period answers. Only after the Role B output is sealed may the
-  six reviewed CDKT rows/12 cells score page, row, schema, period, raw/normalized
-  value, status, full-tuple and Excel-cell agreement. History, numeric-ID order
-  and every E-0022 artifact are forbidden inputs.
+- E-0027 page discovery is sealed and E-0028 supplies the accepted replacement
+  locator. The next Role B stage may consume only the accepted page contracts,
+  PP geometry, source pixels and frozen template structure. Human-reviewed
+  pages/IDs/values remain evaluation-only until the row/value/mapping/Excel
+  output itself is sealed.
 - Ordered SchemaGraph v1 and E-0023 are sealed. The mapper remains intentionally
   excluded from the
   already-frozen E-0022 pipeline and will next be evaluated on separate real-PDF
@@ -587,6 +607,12 @@
   reader configuration is rejected. E-0026 fixes that packaging failure, but
   its remaining 12 edits are dominated by ten Vietnamese diacritic-only errors;
   it therefore supplies semantic proposals rather than source truth.
+- E-0027 showed that whole-line similarity also dilutes a valid short accounting
+  core embedded in a longer logical heading. E-0028 resolves this specific class
+  without loosening page acceptance, but the next risk moves downstream: page 3
+  has dense rows and page 4 is a continuation with no independent permission to
+  invent period roles. Logical-row joins, label/value column separation and
+  table-level period propagation must now be proven before schema mapping.
 - A higher-resolution crop is not sufficient by itself. On MBB LCTT page 14,
   PaddleOCR-VL still concatenates rows and numeric cells at 450 DPI; its current
   HTML proposal has 18 rows and 14 invalid multi-number cells, while independent
@@ -630,7 +656,10 @@
    (`B02a` to `B02`, etc.) and long title cores, but supplies candidate evidence
    only. The final classifier groups independent signals: title/form identity,
    period axis, unit, accounting-row anchors, numeric/table geometry,
-   continuation, and narrative penalties. Decode the whole document in expected
+   continuation, and narrative penalties. For accounting labels only, V4 may
+   also compare a 4+ token anchor against a bounded contiguous ordered token
+   window inside a logical line; it preserves all V3 matches and disables that
+   path for long prose. Decode the whole document in expected
    workbook statement order with a best/runner-up margin. A missing-title page
    may inherit the neighboring state across at most one page only when visible
    row labels, normalized numeric axes, period/unit signatures and continuation
@@ -680,16 +709,17 @@
 
 ## Planned next steps
 
-1. Commit/push the E-0027 reference-blind control before preprocessing; then
-   render/OCR only the contiguous 1–9 page prefix and seal Role B page discovery
-   before opening the MBB review subset for scoring.
-2. Carry the resulting fixed-grid evidence through canonical logical rows, ordered
-   SchemaGraph mapping, validation and a provenance-bearing Excel development
-   output on the existing MBB/VCB calibration block. Measure page, row,
-   ReportNormId, full-tuple and workbook-cell impact before freezing.
-3. Add independent numeric-cell verification and table-level period propagation
-   to any row lacking a complete verified value tuple; never infer a continuation
-   page's periods from value magnitude or history.
+1. Freeze a Role B row/cell reconstruction control for MBB Q1/2026 CDKT pages
+   3–4, then build logical rows from immutable PP-OCRv6 boxes, including wrapped
+   labels and the page boundary. Keep page 5 out of the target CDKT flow.
+2. Detect numeric columns and propagate the visible page-3 current/comparative
+   period map to page 4 at table level. Verify digits, dashes and parentheses on
+   fixed cell crops; never infer period roles from value magnitude or history.
+3. Carry the sealed rows and value tuples through ordered SchemaGraph mapping,
+   accounting validation and a provenance-bearing Excel development output.
+   Only then open the six-row/12-cell review subset to measure page, row,
+   ReportNormId, period, raw/normalized value, status, full-tuple and workbook
+   cell accuracy.
 4. Seal the combined mechanism before selecting a new untouched holdout.
    VietOCR stays challenger-only; domain fine-tuning stays deferred unless the
    frozen downstream evaluation proves a material recognition blocker.
