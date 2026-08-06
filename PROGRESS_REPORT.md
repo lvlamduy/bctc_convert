@@ -1,13 +1,34 @@
 # Progress report
 
-- Updated: 2026-08-06T04:55:00+00:00
+- Updated: 2026-08-06T06:16:00+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `3e07735aabff470067acdbdf3c1c9647dd9fd8ca`
+- Latest clean, tested, pushed checkpoint: `4a469fab2334e479ebd5117a4e130986e36cb6c9`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
 - Registered PDFs: 2,567
-- Latest full regression: 226 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
+- Latest full regression: 229 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
+
+## Accuracy focus and measurable state
+
+- Main measured error class: `STRUCTURAL_ROW_CELL_RECONSTRUCTION`. Replaying
+  the E-0010 Role A/Role B baseline with the new common taxonomy gives 21 direct
+  impact units: 7 non-`MATCH` alignment units plus 14 missing reference cells.
+  The other measured classes are 6 aligned numeric/sign disagreements, 4
+  semantic-label disagreements, and 1 note-reference disagreement.
+- Baseline before the current change remains E-0010: 140 Role A rows versus 139
+  Role B rows; financial-row/cell coverage 94.70%; conditional exact row/cell
+  agreement 96.80%/97.60%; strict exact row/cell agreement 91.67%/92.42%.
+- Current logic being improved: replace a generative table's row grid with an
+  independently reconstructed geometry grid, retain the semantic reader for
+  labels/context, inherit verified period axes across continuation pages, and
+  send unresolved merges or multi-number cells to localized rereading.
+- Measurable after-result: pending the clean E-0017 acquisition and comparison;
+  no improvement is claimed from parser refactoring alone. The v2 parser replay
+  on E-0010 is deliberately byte-for-metric identical to the existing baseline.
+- Next bounded action: run the newly frozen six-page TCB 2024 consolidated pair,
+  build its native Role A reference, seal image-only Role B output, and publish
+  row/cell coverage plus the same error taxonomy before changing fusion logic.
 
 ## Completed tasks
 
@@ -99,15 +120,30 @@
   rows for 1944; all no-map/no-promote gates and the current graph hash verify.
 - The complete Q-BOOT-004 regression passed: 226 tests, two intentional
   immutable-historical replay skips, Ruff clean, and `git diff --check` clean.
+- Committed and pushed the append-only schema checkpoint as `4a469fa`; TM 1944
+  is present in Role A, Role B, Excel output, evaluation, and mandatory search.
+- Selected the next Role A/Role B expansion strictly from filename metadata
+  before content inspection and froze both TCB 2024 consolidated documents as
+  `CALIBRATION`. The searchable file is a 90-page native-text Role A source and
+  the scan is a 93-page image-only Role B source.
+- Pixel-only ordered pairing accepted 76 page pairs and all six target contracts:
+  Role A pages 8–13 correspond to Role B pages 9–14 and cover CDKT, the excluded
+  off-balance page, KQKD, and a two-page direct LCTT continuation.
+- Added reusable, experiment-independent Role A construction, Role A/Role B
+  comparison, strict parser-v2 table handling, metric aggregation, and a direct
+  impact error taxonomy. A focused 17-test regression passed; the pairing gate
+  reports `PASS_FROZEN_PAIRING_FOUND` with 0 missing target pages. The full
+  regression is 229 passed with 2 intentional immutable-history skips.
 
 ## Currently in progress
 
-- Performing the final generated-artifact/hash consistency review before the
-  isolated Q-BOOT-004 commit and push.
-- Preparing the first complete S3 snapshot from the clean schema checkpoint.
-  Every object is content-addressed by SHA-256, written with
-  `If-None-Match: *`, checked by S3 SHA-256 plus HEAD metadata, and published
-  through a final immutable manifest. No local deletion has started.
+- Preparing a clean checkpoint for the reusable Role A/Role B evaluator and
+  E-0017 frozen pair, then acquiring the six Role B pages and measuring the new
+  cross-reader baseline.
+- The already-started S3 snapshot has uploaded and HEAD-verified all 4,192 unique
+  objects and is performing the required full sequential content restore.
+  No local deletion has started; this background safety gate is not delaying
+  the accuracy work.
 
 ## Major challenges and obstacles
 
@@ -123,16 +159,6 @@
   preserved as explicit evidence, not hidden or repaired from history.
 - There is still no human-gold, bank-disjoint and period-disjoint end-to-end
   benchmark large enough to support a production accuracy threshold.
-- DeepSeek-OCR-2's 6.78 GB weight is larger than the current 5.7 GB persistent
-  workspace headroom, and its official CUDA 11.8/PyTorch 2.6 stack is not native
-  to the Blackwell GPU. The first run needs an isolated Blackwell-compatible
-  runtime and ephemeral `/dev/shm` cache or expanded persistent storage.
-- Current Transformers strict configuration validation exposes a legacy-null
-  field in TATR's official 2023 checkpoint. Compatibility must remain narrowly
-  version-bound; a generic config rewrite would hide upstream drift.
-- The legacy processor's one-key size representation is also rejected by the
-  current runtime. Its explicit 800/800 resolution must retain aspect ratio and
-  be recorded separately from an experimental high-resolution override.
 - The S3 bucket is reachable, encrypted, publicly blocked, and versioned. The
   remaining backup obstacle is operational: complete the ~18.6 GB upload and a
   full sequential content restore before any local source is removed. Object
@@ -152,32 +178,36 @@
    and vertical arithmetic, parent-child totals, and template display order.
 6. Escalate only localized failures to high-resolution rereads and independent
    readers. Reader agreement is supporting evidence, never automatic truth.
-7. Fuse specialized readers by role: TATR/TableFormer propose table geometry;
-   PP-OCRv6 proposes word/cell pixels; DeepSeek/Paddle VLMs propose language and
-   reading order. None can independently map IDs or establish numeric truth.
+7. Fuse specialized readers by role only when they improve the end-to-end frozen
+   baseline: a structure reader proposes table geometry, PP-OCRv6 proposes
+   word/cell pixels, and a semantic reader proposes labels/context. None can
+   independently map IDs or establish numeric truth.
 8. Develop custom learned components only behind frozen baselines: graph-based
    row/cell relation modeling, Vietnamese label encoders trained with
    same-label/different-parent hard negatives, specialized digit/sign recognition,
    and conditional dewarping. Evaluate on bank- and period-disjoint holdouts.
-9. Protect large inputs with immutable S3 content keys and a manifest-first
+9. Keep model experiments bounded to a specific observed pipeline failure; do
+   not accumulate reader benchmarks without a measurable extraction objective.
+10. Protect large inputs with immutable S3 content keys and a manifest-first
    restore contract. Reclaim local space only after remote HEAD/checksum,
    manifest validation, and a real full-content sequential restore pass; hydrate
    exact logical paths without overwriting a mismatched local file.
 
 ## Planned next steps
 
-1. Finish the full Q-BOOT-004 regression and consistency audit, then commit and
-   push the 1944 schema checkpoint separately.
-2. Publish and full-content restore-test the immutable snapshot, then offload the 2,567
+1. Commit and push the reusable Role A/Role B evaluator and frozen E-0017 pair.
+2. Build E-0017 Role A, run and seal Role B on its six scan pages, then publish
+   coverage, strict/conditional agreement, and the main error class.
+3. Use the E-0017 failures plus the existing E-0010 failures to implement one
+   bounded canonical-row-grid change, then rerun both baselines for before/after.
+4. Finish the full-content restore-test of the immutable snapshot, then offload the 2,567
    registered PDFs and Mongo dump to reclaim about 18.3 GB. Preserve the local
    eviction journal and remote record; do not delete output/runtime/tool assets.
-3. Record remote object/version/checksum, manifest, restore and disk-reclamation
+5. Record remote object/version/checksum, manifest, restore and disk-reclamation
    evidence in this report; mark Q-BOOT-003 resolved only after all gates pass.
-4. Run TATR v1.1 All on the two frozen E-0016 full-table
-   originals; seal row/column/header coverage and retained failure evidence.
-5. Implement canonical logical-row fusion for headerless row bands and full-table
-   disagreement cases without using values, ReportNormId magnitude, history, or
-   arithmetic to force alignment.
+6. Expand Role A next to a different bank and period after E-0017, using the
+   same pre-inspection role freeze and common metrics rather than a new one-off
+   experiment script.
 6. Build an isolated Blackwell-compatible DeepSeek-OCR-2 benchmark without
    modifying the approved base runtime, then score Vietnamese labels and exact
    digits/signs against the same source-bound crops.

@@ -1,0 +1,82 @@
+version: 1
+suite_id: vietnamese-bank-native-paired-calibration-tcb-consolidated-v1
+experiment_id: E-0017
+dataset_role: CALIBRATION
+frozen_at: "2026-08-06T06:06:35+00:00"
+selection_basis: registered bank, year, consolidated scope, audit status, and filename metadata only
+content_inspected_before_role_assignment: false
+
+sources:
+  - fixture_id: tcb-2024-consolidated-searchable
+    bank: TCB
+    fixture_role: ROLE_A_SOURCE
+    path: vietstock_bctc/TCB/2024/techcombank-vas-bao-cao-tai-chinh-hop-nhat-ye24-searchable.pdf
+    sha256: 7896de6dc47804395b125d9c679b218423a7bac64639ec58e93e3c646af2abdf
+  - fixture_id: tcb-2024-consolidated-scan
+    bank: TCB
+    fixture_role: ROLE_B_SOURCE
+    path: vietstock_bctc/TCB/2024/techcombank-vas-bao-cao-tai-chinh-hop-nhat-ye24.pdf
+    sha256: d45f99342b8e126914a2d757acc045fb269ae75614552d2984d1ab243bfbd387
+
+pairing:
+  reference_fixture_id: tcb-2024-consolidated-searchable
+  candidate_fixture_id: tcb-2024-consolidated-scan
+  target_reference_pages: [8, 9, 10, 11, 12, 13]
+  target_page_contracts:
+    - reference_page: 8
+      candidate_page: 9
+      statement_type: CDKT
+      expected_scope: MAIN_STATEMENT
+    - reference_page: 9
+      candidate_page: 10
+      statement_type: CDKT
+      expected_scope: MAIN_STATEMENT
+    - reference_page: 10
+      candidate_page: 11
+      statement_type: CDKT
+      expected_scope: OFF_BALANCE_SHEET
+    - reference_page: 11
+      candidate_page: 12
+      statement_type: KQKD
+      expected_scope: MAIN_STATEMENT
+    - reference_page: 12
+      candidate_page: 13
+      statement_type: LCTT
+      expected_scope: MAIN_STATEMENT
+      continued_to_reference_page: 13
+    - reference_page: 13
+      candidate_page: 14
+      statement_type: LCTT
+      expected_scope: MAIN_STATEMENT
+      continued_from_reference_page: 12
+  target_content:
+    - CDKT
+    - OFF_BALANCE_EXCLUSION
+    - KQKD
+    - LCTT_DIRECT
+    - CROSS_PAGE_CONTINUATION
+  visual_fingerprint:
+    render_scale: 0.75
+    feature_width: 48
+    feature_height: 64
+    row_projection_size: 128
+    column_projection_size: 96
+    content_crop_quantile: 0.005
+    skip_penalty: 0.12
+    minimum_similarity: 0.45
+    minimum_runner_up_margin: 0.05
+    minimum_ink_ratio: 0.002
+
+evidence_policy:
+  role_b_can_read_role_a_source: false
+  role_b_can_read_role_a_result: false
+  compare_starts_after_role_b_complete: true
+  page_pairing_uses_text_or_values: false
+
+historical_policy:
+  lookup_stage: POST_SCHEMA_RESOLUTION_ONLY
+  lookup_requires_resolved_id: true
+  mapping_candidate_generation: false
+  pdf_confidence_promotion: false
+  pdf_value_overwrite: false
+  pdf_ytd_operand: false
