@@ -1,9 +1,9 @@
 # Progress report
 
-- Date/time: 2026-08-06T00:20:24+00:00
+- Date/time: 2026-08-06T00:31:18.199477+00:00
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16303 MiB, compute 12.0); 125.71 GiB RAM
 - Isolated GPU runtime: PASS; recorded model state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
-- Code hash: statement-location implementation is on `codex/rebuild-bootstrap` at clean commit `b165c6001b914d1d2ab234903c45c91f557974ed`
+- Code hash: bootstrap is on `codex/rebuild-bootstrap` at `69811c9c277d2d4e2f1e781ff22ffd7891ccff1e` with dirty state `False`
 - Schema count: 1592 (CDKT 77; KQKD 24; LCTT 107; TM 1384)
 - PDFs registered: 2567
 - ROLE A completed: 0 documents
@@ -14,14 +14,14 @@
 - Frozen cross-reader calibration: E-0010 PASS_TRACKED_AND_LOCAL_SEALS; strict rows=91.67%, strict cells=92.42%, reference coverage=94.70%, auto-high=0
 - Targeted independent geometry recovery: E-0011 PASS_TRACKED_AND_LOCAL_SEALS; strict rows=100.00%, strict cells=100.00%, reference coverage=100.00%, auto-high=0
 - Batch/checkpoint mechanism: E-0012 PASS_TRACKED_AND_LOCAL_ARTIFACTS; pages=1, lines=50, words=380, model-load sessions=1, byte-identical=True
-- Ordered statement location: E-0013 PASS; MBB eligible CDKT/KQKD/LCTT=10–11/13/14–15 with page 12 excluded; VCB=8–9/11–12/13–14 with page 10 excluded; both DIRECT, margin=2.0, schema assignment disabled
+- Ordered statement location: E-0013 PASS_TRACKED_AND_LOCAL_ARTIFACTS; MBB CDKT=[10, 11], KQKD=[13], LCTT=[14, 15], excluded=[12]; VCB CDKT=[8, 9], KQKD=[11, 12], LCTT=[13, 14], excluded=[10]
 - Mongo-assisted metrics: PASS weak-reference-only (112147 cells; 27 banks)
 - Questions created / resolved: 4 / 2
 - Autonomous decisions: preserve supplied schema unchanged; keep 1944 as a collision-cleared proposal; segment LCTT by workbook position and fail closed on the semantic conflict
 - Not applicable / not observed / unresolved: 0 / 0 / 0 (no production records yet)
 - Workbooks: 0
 - Largest error: no frozen end-to-end multi-institution accuracy result or production-calibrated acceptance threshold yet
-- Last change: locked clean E-0013 MBB/VCB page/type/scope results and replay hashes without claiming row/schema/numeric or production accuracy
+- Last change: locked and bootstrap-audited clean E-0013 MBB/VCB page/type/scope evidence without claiming row/schema/numeric or production accuracy
 - Before/after on the targeted TCB calibration: strict reference coverage/cell agreement 94.70%/92.42% -> 100%/100%; Role C label exactness remains only 3/140
 - Regression: run separately with `.venv/bin/pytest`; latest verified count is recorded in `PROJECT_MEMORY.md`
 - Backup status: development=PASS; production=FAIL (local restore verified=True, off-machine=False)

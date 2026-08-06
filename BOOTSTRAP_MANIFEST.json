@@ -1,10 +1,10 @@
 {
   "backup": {
-    "archive": "/workspace/bctc-ai-backups/bctc-ai-control-plane-20260805T232252Z.tar.gz",
-    "archive_sha256": "fafcd8d4dcd5991ac46043a2ced084563d57063fc7a6c2a8811521b6179134d1",
+    "archive": "/workspace/bctc-ai-backups/bctc-ai-control-plane-20260806T003126Z.tar.gz",
+    "archive_sha256": "1e1776aed08bc39b32183ebf150a32e1fa2db7185ca9263d0b98d9219279ea02",
     "development_status": "PASS",
-    "file_count": 224,
-    "manifest": "/workspace/bctc-ai-backups/bctc-ai-control-plane-20260805T232252Z.tar.gz.manifest.json",
+    "file_count": 235,
+    "manifest": "/workspace/bctc-ai-backups/bctc-ai-control-plane-20260806T003126Z.tar.gz.manifest.json",
     "off_machine": false,
     "production_status": "FAIL",
     "restored_and_verified": true
@@ -227,18 +227,18 @@
     "recorded_status": "PASS_CALIBRATION_WITH_REQUIRED_ESCALATIONS",
     "verified_local_seal_count": 2
   },
-  "captured_at": "2026-08-05T23:22:51.991553+00:00",
+  "captured_at": "2026-08-06T00:31:25.496945+00:00",
   "environment": {
     "architecture": "x86_64",
-    "captured_at": "2026-08-05T23:22:46.123559+00:00",
+    "captured_at": "2026-08-06T00:31:18.199477+00:00",
     "cpu": {
       "logical_count": 32,
       "model": "AMD Ryzen 9 5950X 16-Core Processor"
     },
     "disk": {
-      "free_bytes": 6337949696,
+      "free_bytes": 6170931200,
       "total_bytes": 42283094016,
-      "used_bytes": 35945144320
+      "used_bytes": 36112162816
     },
     "gpu": {
       "available": true,
@@ -338,22 +338,22 @@
     "hostname": "O-2004251",
     "kernel": "6.6.0-hiveos",
     "memory": {
-      "Active": 31536001024,
-      "Active(anon)": 10100002816,
-      "Active(file)": 21435998208,
-      "AnonHugePages": 501219328,
-      "AnonPages": 1384607744,
+      "Active": 31717421056,
+      "Active(anon)": 10112933888,
+      "Active(file)": 21604487168,
+      "AnonHugePages": 497025024,
+      "AnonPages": 1533001728,
       "Bounce": 0,
       "Buffers": 106057728,
-      "Cached": 83304189952,
+      "Cached": 83569475584,
       "CmaFree": 0,
       "CmaTotal": 0,
       "CommitLimit": 67354472448,
-      "Committed_AS": 15477161984,
+      "Committed_AS": 15647723520,
       "DirectMap1G": 130996502528,
       "DirectMap2M": 5989466112,
       "DirectMap4k": 355323904,
-      "Dirty": 917504,
+      "Dirty": 1699840,
       "FileHugePages": 35651584,
       "FilePmdMapped": 0,
       "HardwareCorrupted": 0,
@@ -363,33 +363,33 @@
       "HugePages_Total": 131072,
       "Hugepagesize": 2097152,
       "Hugetlb": 268435456,
-      "Inactive": 53292908544,
-      "Inactive(anon)": 2267942912,
-      "Inactive(file)": 51024965632,
-      "KReclaimable": 1662930944,
-      "KernelStack": 14467072,
-      "Mapped": 658575360,
-      "MemAvailable": 120134369280,
-      "MemFree": 47287885824,
+      "Inactive": 53520576512,
+      "Inactive(anon)": 2409193472,
+      "Inactive(file)": 51111383040,
+      "KReclaimable": 1669984256,
+      "KernelStack": 13893632,
+      "Mapped": 669708288,
+      "MemAvailable": 119974637568,
+      "MemFree": 46866194432,
       "MemTotal": 134977380352,
       "Mlocked": 0,
       "NFS_Unstable": 0,
-      "PageTables": 12492800,
+      "PageTables": 14536704,
       "Percpu": 28966912,
-      "SReclaimable": 1586851840,
-      "SUnreclaim": 492531712,
+      "SReclaimable": 1593905152,
+      "SUnreclaim": 493584384,
       "SecPageTables": 0,
-      "Shmem": 10949283840,
+      "Shmem": 10959663104,
       "ShmemHugePages": 0,
       "ShmemPmdMapped": 0,
-      "Slab": 2079383552,
+      "Slab": 2087489536,
       "SwapCached": 0,
       "SwapFree": 0,
       "SwapTotal": 0,
       "Unevictable": 0,
       "VmallocChunk": 0,
       "VmallocTotal": 35184372087808,
-      "VmallocUsed": 84262912,
+      "VmallocUsed": 83312640,
       "Writeback": 0,
       "WritebackTmp": 0,
       "Zswap": 0,
@@ -994,7 +994,7 @@
   },
   "git": {
     "branch": "codex/rebuild-bootstrap",
-    "commit": "86dbdf91251f1060cc3c7f3052d72544359ba055",
+    "commit": "69811c9c277d2d4e2f1e781ff22ffd7891ccff1e",
     "dirty": false,
     "remotes": [
       "origin"
@@ -1258,5 +1258,131 @@
     "total_bytes": 17761344114,
     "unique_content_count": 2435,
     "unstable_file_count": 0
+  },
+  "statement_location": {
+    "acceptance": {
+      "cash_flow_pdf_method_evidence": "PASS_TWO_OF_TWO_DIRECT",
+      "cash_flow_schema_branch_assignment": "BLOCKED_BY_Q_BOOT_001",
+      "human_gold_evaluated": false,
+      "next_gate": "RERENDER_ONLY_ACCEPTED_PLUS_EXCLUSION_BOUNDARY_PAGES_AT_200_DPI_AND_RUN_FROZEN_ROLE_B_ROLE_C_LOGIC",
+      "off_balance_scope_exclusion": "PASS_TWO_OF_TWO_CALIBRATION_DOCUMENTS",
+      "ordered_statement_block": "PASS_TWO_OF_TWO_CALIBRATION_DOCUMENTS",
+      "preprocess_batch_ocr_identity_chain": "PASS",
+      "production_accuracy_approved": false,
+      "row_or_schema_mapping_evaluated": false
+    },
+    "artifact": "docs/experiments/E-0013-mbb-vcb-statement-location.json",
+    "artifact_sha256": "b49fed32210d3d69994e440398048deabe33f92d5f6b7ce527096098405907b5",
+    "claim_boundary": "This result locks page/type/scope and cash-flow method evidence on two calibration documents. It is not human gold, row/schema mapping, numeric-cell accuracy, full-document OCR completion, holdout evidence, confidence calibration, or production approval.",
+    "code_commit": "b165c6001b914d1d2ab234903c45c91f557974ed",
+    "cross_document_checks": {
+      "arithmetic_value_generation_invoked": false,
+      "bank_name_or_page_rule_in_algorithm": false,
+      "cash_flow_schema_assignment_attempts": 0,
+      "direct_title_and_ordered_anchor_agreement": 2,
+      "historical_reference_invoked": false,
+      "off_balance_pages_mapping_eligible": 0,
+      "ordered_form_sequence_passed": true,
+      "same_algorithm_and_configuration": true,
+      "scope_crossing_continuation_links": 0,
+      "unknown_interstitial_pages": 0,
+      "ytd_derivation_invoked": false
+    },
+    "dataset_role": "CALIBRATION",
+    "design": "CLEAN_MULTI_INSTITUTION_COARSE_STATEMENT_LOCATION_CALIBRATION",
+    "document_count": 2,
+    "documents": [
+      {
+        "cash_flow_method": "DIRECT",
+        "eligible_pages": {
+          "CDKT": [
+            10,
+            11
+          ],
+          "KQKD": [
+            13
+          ],
+          "LCTT": [
+            14,
+            15
+          ]
+        },
+        "key": "MBB_2025_CONSOLIDATED",
+        "notes_boundary_page": 16,
+        "off_balance_excluded_pages": [
+          12
+        ]
+      },
+      {
+        "cash_flow_method": "DIRECT",
+        "eligible_pages": {
+          "CDKT": [
+            8,
+            9
+          ],
+          "KQKD": [
+            11,
+            12
+          ],
+          "LCTT": [
+            13,
+            14
+          ]
+        },
+        "key": "VCB_2025_CONSOLIDATED",
+        "notes_boundary_page": 15,
+        "off_balance_excluded_pages": [
+          10
+        ]
+      }
+    ],
+    "errors": [],
+    "experiment_id": "E-0013",
+    "integrity_status": "PASS_TRACKED_AND_LOCAL_ARTIFACTS",
+    "local_artifact_count": 8,
+    "local_artifacts": [
+      {
+        "name": "MBB_2025_CONSOLIDATED:source",
+        "present": true,
+        "verified": true
+      },
+      {
+        "name": "MBB_2025_CONSOLIDATED:preprocess_manifest",
+        "present": true,
+        "verified": true
+      },
+      {
+        "name": "MBB_2025_CONSOLIDATED:batch_manifest",
+        "present": true,
+        "verified": true
+      },
+      {
+        "name": "MBB_2025_CONSOLIDATED:location_output",
+        "present": true,
+        "verified": true
+      },
+      {
+        "name": "VCB_2025_CONSOLIDATED:source",
+        "present": true,
+        "verified": true
+      },
+      {
+        "name": "VCB_2025_CONSOLIDATED:preprocess_manifest",
+        "present": true,
+        "verified": true
+      },
+      {
+        "name": "VCB_2025_CONSOLIDATED:batch_manifest",
+        "present": true,
+        "verified": true
+      },
+      {
+        "name": "VCB_2025_CONSOLIDATED:location_output",
+        "present": true,
+        "verified": true
+      }
+    ],
+    "recorded_status": "PASS_ORDERED_STATEMENT_LOCATION_AND_SCOPE_EXCLUSION",
+    "verified_local_artifact_count": 8
   }
 }

@@ -1,12 +1,12 @@
 # Hardware audit
 
-Captured: 2026-08-05T23:22:46.123559+00:00
+Captured: 2026-08-06T00:31:18.199477+00:00
 
 - Host: `O-2004251`
 - OS: Ubuntu 22.04.5 LTS; kernel `6.6.0-hiveos`
 - CPU: AMD Ryzen 9 5950X 16-Core Processor (32 logical CPUs)
 - RAM: 125.71 GiB; swap: 0.00 GiB
-- Workspace disk: 39.38 GiB total, 5.90 GiB free
+- Workspace disk: 39.38 GiB total, 5.75 GiB free
 - GPU: NVIDIA GeForce RTX 5070 Ti (16303 MiB, compute 12.0)
 - NVIDIA driver: 595.80
 - Driver-reported CUDA: 13.2
