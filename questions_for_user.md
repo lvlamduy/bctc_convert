@@ -32,7 +32,17 @@ Recommended safe default: Use a versioned S3-compatible bucket with object lock 
 
 Recorded response: On 2026-08-06 the user supplied s3://test-s3-duylv/ and authorized backup; profile access, region, AES-256 default encryption and public-access blocking are verified.
 
-Status: TARGET_CONFIGURED_UPLOAD_IN_PROGRESS
+Recorded completion: Snapshot `20260806T050030130746Z-4a469fab2334` uploaded
+4,192 unique objects and passed catalog HEAD verification, manifest download,
+sampled restore across all seven asset classes, Git-bundle/control-plane checks,
+sample-PDF open, and a full sequential content restore. Run-record SHA-256 is
+`24eb066b51443066dfd14538ef7aeb21e9b700cc6ce995c49e56ff23b6701b04`;
+manifest SHA-256 is
+`74be9ea09905f0c7842d5a0b46bfe44f3fc5f32cc2c15b5040efcc4e99e8981b`.
+Versioning, default AES-256 encryption and all public-access blocks were verified
+again after completion; Object Lock remains disabled as directed.
+
+Status: RESOLVED
 
 ## Q-BOOT-004 — HIGH
 

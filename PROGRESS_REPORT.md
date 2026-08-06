@@ -1,13 +1,13 @@
 # Progress report
 
-- Updated: 2026-08-06T07:31:34+00:00
+- Updated: 2026-08-06T07:38:01+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `ed7d7954dcda8f332cbbf4cfbc1f83158d472cbc`
+- Latest pushed algorithm checkpoint: `6caafad`; E-0019 clean evaluation base: `1a23b7b437e7d95a652c69e8748a037ad6d2224a`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
 - Registered PDFs: 2,567
-- Latest full regression: 245 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
+- Latest full regression: 246 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
 
 ## Accuracy focus and measurable state
 
@@ -37,7 +37,7 @@
   rises from 34.4828% to 100%; invalid cells fall from 12 to zero, and measured
   structural impact falls from 41 to zero. This is target-page calibration
   against a native machine reference, not human-gold or end-to-end accuracy.
-- New development result for fixed-grid fusion on E-0017 pages 13→14:
+- New formal E-0019 result for fixed-grid fusion on E-0017 pages 13→14:
   independent PP-OCRv6 reconstructs 41/41 Role A rows and exactly agrees on
   72/72 financial cells with zero invalid cells. DeepSeek proposes 42 semantic
   rows because one wrapped label on page 14 is split and the next value is
@@ -45,7 +45,11 @@
   3-semantic-row→2-geometry-row pattern to 41 canonical rows. All final cells,
   notes, geometry source IDs and row count remain object-identical to PP-OCR;
   DeepSeek supplies only Vietnamese labels and reading-order evidence. This is
-  still calibration against machine Role A, not human gold.
+  still calibration against machine Role A, not human gold. Across both pages,
+  financial row/cell coverage improves from 80.5556%/80.5556% to 100%/100%,
+  strict exact row/cell agreement improves from 47.2222%/48.6111% to 100%/100%,
+  invalid cells fall from 12 to zero, and structural impact falls from 42 to
+  zero. The remaining main class is one Vietnamese label disagreement.
 - Next bounded action: seal the two-page fusion as E-0019, measure its semantic
   label and direct-LCTT recovery against frozen Role A, then apply the same
   algorithm to the existing E-0010 structural failures.
@@ -209,17 +213,33 @@
   rows, the third semantic row must have a label but blank cells, and the repaired
   Vietnamese-label score must improve by at least a configured margin. It
   abstains when row loss, fingerprint disagreement, weak similarity or ambiguous
-  paths remain. Four focused tests and the full 245-test regression pass.
+  paths remain. Four focused tests and the full 246-test regression pass.
+- Completed formal E-0019 from clean commit `1a23b7b`. It binds the two clean
+  DeepSeek runs and the 170-line/1,509-word PP-OCRv6 batch by SHA-256, preserves
+  41/41 geometry cell tuples, verifies 41/41 supporting semantic numeric
+  fingerprints, performs one 3→2 overflow repair, and recovers the configured
+  DIRECT cash-flow anchors at positions 1 and 2. Confidence, periods, scope,
+  schema mapping and ReportNormId authority all remain disabled.
+- Completed the immutable S3 snapshot and real restore gate. Snapshot
+  `20260806T050030130746Z-4a469fab2334` contains 4,361 logical files,
+  4,192 unique objects and 18,388,413,612 unique bytes. Upload and 4,192 HEAD
+  checks passed; the downloaded manifest, control plane, Git bundle, sample PDF,
+  all seven asset classes and a full 4,184-content-object sequential restore
+  passed. The run record is SHA-256
+  `24eb066b51443066dfd14538ef7aeb21e9b700cc6ce995c49e56ff23b6701b04`;
+  the manifest is SHA-256
+  `74be9ea09905f0c7842d5a0b46bfe44f3fc5f32cc2c15b5040efcc4e99e8981b`.
+  A final live check confirms bucket versioning `Enabled`, AES-256 default
+  encryption, all public-access blocks enabled, and versioned encrypted manifest
+  and run-record objects. Object Lock remains disabled.
 
 ## Currently in progress
 
-- Sealing E-0019 for the two-page PP-OCRv6 geometry plus DeepSeek semantic-label
-  fusion and measuring it against the unchanged E-0017 Role A denominator.
-- The already-started S3 snapshot has uploaded and HEAD-verified all 4,192 unique
-  objects and is performing the required full sequential content restore; the
-  latest observed position is 4,132/4,192 objects (98.57%).
-  No local deletion has started; this background safety gate is not delaying
-  the accuracy work.
+- Applying the sealed fixed-grid fusion to the existing E-0010 failures to test
+  whether the improvement generalizes beyond the selected TCB pages.
+- Preparing the verified local offload of only `source_pdf` and `mongodb_dump`
+  assets. No local source has yet been removed; the immutable manifest, remote
+  object catalog and real restore prerequisites now all pass.
 
 ## Major challenges and obstacles
 
@@ -244,10 +264,10 @@
   numeric/sign agreement must be tested against E-0010 and bank/period-disjoint
   holdouts. DeepSeek's table bounding box is model-normalized proposal geometry,
   not source-pixel authority; independent word boxes are still required.
-- The S3 bucket is reachable, encrypted, publicly blocked, and versioned. The
-  remaining backup obstacle is operational: complete the ~18.6 GB upload and a
-  full sequential content restore before any local source is removed. Object
-  Lock is deliberately disabled per user instruction.
+- The S3 backup/restore obstacle is resolved. After local source offload, tests
+  that require raw PDFs must explicitly hydrate the required logical paths;
+  control-plane checks must never claim local source-byte verification while
+  those files are absent.
 
 ## Current strategy
 
@@ -285,11 +305,11 @@
    report row/cell/label/method before-and-after against the frozen reference.
 2. Apply the same fixed-grid overflow fusion to the existing E-0010 failures,
    then rerun E-0010 and the full six-page E-0017 denominators for before/after.
-3. Finish the full-content restore-test of the immutable snapshot, then offload the 2,567
-   registered PDFs and Mongo dump to reclaim about 18.3 GB. Preserve the local
-   eviction journal and remote record; do not delete output/runtime/tool assets.
-4. Record remote object/version/checksum, manifest, restore and disk-reclamation
-   evidence in this report; mark Q-BOOT-003 resolved only after all gates pass.
+3. Execute the already-verified offload plan for the 2,567 registered PDFs and
+   Mongo dump to reclaim about 18.3 GB. Preserve the fsynced local journal and
+   remote offload record; do not delete generated output, runtimes or tools.
+4. Record the exact offload record, removed count/bytes and post-offload free
+   space here; hydrate only the bounded PDFs needed by the next accuracy run.
 5. Expand Role A next to a different bank and period after E-0017, using the
    same pre-inspection role freeze and common metrics rather than a new one-off
    experiment script.
