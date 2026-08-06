@@ -1,0 +1,54 @@
+version = 1
+policy = "INDEPENDENT_FIXED_CELL_NUMERIC_PROPOSAL_V1"
+runtime_python = ".gpu-venv/bin/python"
+runtime_paddlepaddle = "3.3.0"
+runtime_paddleocr = "3.7.0"
+runtime_paddlex = "3.7.2"
+device = "cpu"
+precision = "fp32"
+network_during_inference = false
+authority = "NUMERIC_CELL_PROPOSAL_ONLY"
+allowed_semantics = ["DIGITS", "GROUPING_SEPARATORS", "PARENTHESES", "MINUS", "DASH", "EMPTY"]
+forbidden_authority = ["GEOMETRY", "PERIOD", "UNIT", "SCOPE", "LABEL", "REPORT_NORM_ID", "SCHEMA_MAPPING", "ACCOUNTING_REPAIR", "CONFIDENCE_PROMOTION"]
+
+[model]
+repo_id = "PaddlePaddle/en_PP-OCRv5_mobile_rec"
+revision = "267c36e24c331595590fe7bd72bde2436fd286f2"
+cache_directory = "en_PP-OCRv5_mobile_rec"
+license = "Apache-2.0"
+published_accuracy = 85.25
+published_accuracy_scope = "official English recognition benchmark; not financial-statement accuracy"
+weights_file = "inference.pdiparams"
+weights_size_bytes = 7772315
+weights_sha256 = "3ec8a97ed6cefe8568d3e2ee90bb193299b566a7661aa4fd52d224b96b59f66b"
+
+[[model.files]]
+path = ".gitattributes"
+size_bytes = 1575
+sha256 = "a3a43406012ee8c7b9b38dfab1b11610f33e8245cd864a9a9302d042616a859e"
+
+[[model.files]]
+path = "README.md"
+size_bytes = 6908
+sha256 = "4c1cfd6e103b0966fe97505b5254cfa35a931d47d7effca97a9db47fb57dd699"
+
+[[model.files]]
+path = "config.json"
+size_bytes = 10455
+sha256 = "16103ac291a82fca50f0bb000d62a4b8168f6042f03c89c44cf32f241d1eb1f2"
+
+[[model.files]]
+path = "inference.json"
+size_bytes = 217712
+sha256 = "fd1b6ec722ea841a72d3ba43e527df1d1066d5d7808e0503ee3eec7265188753"
+
+[[model.files]]
+path = "inference.pdiparams"
+size_bytes = 7772315
+sha256 = "3ec8a97ed6cefe8568d3e2ee90bb193299b566a7661aa4fd52d224b96b59f66b"
+
+[[model.files]]
+path = "inference.yml"
+size_bytes = 3964
+sha256 = "27e91d0582f40168aa218303c76e184bc78fa7a5d105aad0cfbad8458b441067"
+

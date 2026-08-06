@@ -1,0 +1,35 @@
+version: 1
+policy: FIXED_GRID_NUMERIC_CELL_CROPS_V1
+geometry_authority: E0029_PP_OCRV6_FIXED_GRID
+
+horizontal_bounds:
+  left_boundary: midpoint_between_previous_and_current_right_edges
+  first_previous_edge: note_axis_right_edge
+  left_padding_line_heights: 0.25
+  right_boundary: max_axis_right_edge_source_text_or_visual_component
+  right_padding_line_heights: 0.03
+
+vertical_bounds:
+  boundary: midpoint_between_adjacent_row_anchors
+  first_and_last_boundary: reconstructed_table_bbox
+  minimum_crop_height_line_heights: 0.75
+
+encoding:
+  format: PNG
+  preserve_source_pixels: true
+  resize: false
+  threshold: false
+  deskew: false
+
+recognizer_input_fields:
+  - crop_path
+
+forbidden_recognizer_inputs:
+  - row_label
+  - note_reference
+  - primary_ocr_text
+  - primary_ocr_value
+  - period_or_unit
+  - schema_label_or_report_norm_id
+  - historical_or_mongodb_value
+  - human_review_value
