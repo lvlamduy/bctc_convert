@@ -123,6 +123,18 @@ The E-0013 bootstrap audit also adds no dependency. It uses the existing JSON,
 path, and SHA-256 control-plane utilities and publishes its result under
 `statement_location` in `BOOTSTRAP_MANIFEST.json`.
 
+E-0014 added no software, Python distribution, Ubuntu package, driver, model,
+weight, or runtime setting. It reused clean inference commit
+`116c1879cef7f3f63b2bf1e7d71561d8c7ef78c8`, the frozen 125-distribution GPU
+environment, and the four pinned models above. Role B used PP-DocLayoutV3 FP32
+plus PaddleOCR-VL-1.6 BF16 sequentially and took 306.225279 seconds over 13
+pages at 3,241 MiB peak. Role C used PP-OCRv6 CPU FP32 with eight threads, one
+model load per document, and took 510.263426 seconds over 1,435 lines/10,776
+words. Exact environment/config/model/code hashes and replay commands are in
+`../experiments/E-0014-mbb-vcb-200dpi-reader-seals.json` and
+`../experiments/E-0014-REPLAY.md`; generated images and OCR outputs remain
+outside Git.
+
 Detailed commands, disk checks, cache rules, failure history, and rollback are in `docs/environment/GPU_RUNTIME_RUNBOOK.md`.
 
 ## Maintenance rule

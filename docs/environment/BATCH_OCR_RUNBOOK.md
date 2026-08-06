@@ -160,3 +160,12 @@ Because page 15 was already measured in E-0011, E-0012 adds no accuracy sample.
 `bctc-ai audit` re-hashes the tracked E-0012 code/config/runtime identities and
 every retained local source, render, result, checkpoint, baseline, and seal; a
 present-but-drifted artifact changes the mechanism status to `FAIL`.
+
+E-0014 is the first two-document use of this batch mechanism after the clean
+smoke: MBB pages 10–15 and VCB pages 8–14 each loaded the pinned detector and
+recognizer once, checkpointed all 13 pages, and produced sealed Role C output.
+It used eight CPU threads per process and the same frozen configuration. The
+two document processes may run concurrently, but page execution inside each
+batch remains sequential and output roots must be distinct. Exact commands,
+counts, hashes, and migration rules are in `docs/experiments/E-0014-REPLAY.md`;
+this records acquisition completion, not row/cell accuracy.

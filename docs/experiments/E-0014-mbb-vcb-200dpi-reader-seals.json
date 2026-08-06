@@ -1,0 +1,309 @@
+{
+  "format_version": 1,
+  "experiment_id": "E-0014",
+  "date": "2026-08-06",
+  "design": "SELECTED_PAGE_200_DPI_INDEPENDENT_READER_ACQUISITION",
+  "dataset_role": "CALIBRATION",
+  "status": "PASS_FOUR_READER_SEALS_PENDING_FUSION",
+  "claim_boundary": "This result proves quality-gated 200-DPI rendering plus Role B and Role C input/output identity and completion on two calibration documents. It is not row or cell accuracy, human gold, schema mapping, holdout evidence, confidence calibration, or production approval.",
+  "code": {
+    "git_commit": "116c1879cef7f3f63b2bf1e7d71561d8c7ef78c8",
+    "git_dirty": false
+  },
+  "algorithm_files_sha256": {
+    "scripts/diagnostics/run_gpu_benchmark.py": "7935670514b7d6825e9563882939b98ee4e6232b37d1aefdd26eea596c9d7009",
+    "scripts/models/run_paddleocr_vl.sh": "980b64163b4d72a5afded3e168afcd6daa39b7743010fcfbb9de860b4cb5e3b3",
+    "scripts/models/run_ppocrv6_word_boxes.py": "bbbf2f101cec88ae99727393397df463623d47c2b31ef888e565fbe42c05d4b9",
+    "scripts/models/run_ppocrv6_word_boxes_batch.py": "7a716b0aa47dacc0b95454a46371721cc0af613892767f6e58e97035602322cb",
+    "src/bctc_ai/evaluation/sealing.py": "52e689730029f0317ceea4ea2aecc3e5bb662356c6d0ebc1b6096c496fadb2ad",
+    "src/bctc_ai/preprocessing/pipeline.py": "b06cdaa4f8bd8002aeb628c230bc55c1053051a92b8b5ba26f13acbc9ec9c71a",
+    "src/bctc_ai/preprocessing/quality.py": "8ce752c71c5e603413ed615e4854b8b36ca770b213e32217c16dbec3578cb335",
+    "src/bctc_ai/preprocessing/variants.py": "754b45fa6a4a281600c54240a4187b2fd93b68c42bbdd88d4ca425f5d6a648bd",
+    "src/bctc_ai/rendering/pdf.py": "fcd426007b93ff006b0abc16a07a760affd46acf9adf270642b751e77bdfb586"
+  },
+  "runtime": {
+    "manifest": {
+      "path": "config/models/gpu-runtime.toml",
+      "sha256": "9141e0a4177f66f152bdb9eecbbfdbdd3add566dbabb81b43207a018c1ba18d8"
+    },
+    "package_freeze": {
+      "path": "config/models/gpu-requirements.freeze.txt",
+      "sha256": "c0e8c43f84360a8eb0ebeff1ef5de43969bdd291eb2c7cee363c35ef2c78437b"
+    },
+    "role_b_configuration": {
+      "path": "config/models/paddleocr-vl-1.6-transformers.yaml",
+      "sha256": "e6e60f949e31c8d6afc58fb4dc28acf55da8b569a6d608cab319c6a7f2793042",
+      "device": "gpu:0",
+      "layout_precision": "fp32",
+      "vlm_precision": "bf16",
+      "implicit_orientation_or_unwarp": false
+    },
+    "role_c_configuration": {
+      "path": "config/models/pp-ocrv6-word-box.yaml",
+      "sha256": "a200fbbc8ba85460c9233875a7a025e8d08d892172d353ed820f69fd258e997b",
+      "device": "cpu",
+      "precision": "fp32",
+      "threads": 8,
+      "implicit_orientation_or_unwarp": false,
+      "network_policy": "PROCESS_SOCKET_CONNECT_DENIED"
+    },
+    "models": [
+      {
+        "role": "ROLE_B_LAYOUT",
+        "repo_id": "PaddlePaddle/PP-DocLayoutV3_safetensors",
+        "revision": "97d101e6db2642e162a1d05392d1b0231c91033e",
+        "weights_sha256": "5ea422c6cc5fe759a47e1357c35639b58173508e025a3131cbe4b6ac59e2b85e"
+      },
+      {
+        "role": "ROLE_B_LABEL_CONTEXT",
+        "repo_id": "PaddlePaddle/PaddleOCR-VL-1.6",
+        "revision": "cdc88f5feff0e4079e75863205053a68358e52f7",
+        "weights_sha256": "85a479d506a11e724e7285d395c551be69f41dbc16b6342d3cacfb189aed71db"
+      },
+      {
+        "role": "ROLE_C_DETECTION",
+        "repo_id": "PaddlePaddle/PP-OCRv6_medium_det",
+        "revision": "8e0f56fb2ef86b461d99cfc7ac5c137738985f61",
+        "weights_sha256": "85218d2e3d98f5a21c58b4220627be923a97aee5db3cc71f39536ab31ac53960"
+      },
+      {
+        "role": "ROLE_C_RECOGNITION",
+        "repo_id": "PaddlePaddle/PP-OCRv6_medium_rec",
+        "revision": "e5a92bcbc5cc1b494628e458d267778f0704fd7c",
+        "weights_sha256": "1b01c79a914587933f615569e75de54f2e638ebb5d3f3b3c1b38c24ede8c7319"
+      }
+    ]
+  },
+  "documents": [
+    {
+      "key": "MBB_2025_CONSOLIDATED",
+      "source": {
+        "path": "vietstock_bctc/MBB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+        "sha256": "9853cc4909dc73ddea9907465b09d7ecdb96cf6c1627f56943f3a20d14b49f80",
+        "size_bytes": 10165066
+      },
+      "page_contract": {
+        "selected_pages": [10, 11, 12, 13, 14, 15],
+        "mapping_eligible_pages_by_statement_type": {
+          "CDKT": [10, 11],
+          "KQKD": [13],
+          "LCTT": [14, 15]
+        },
+        "off_balance_exclusion_pages": [12]
+      },
+      "preprocess": {
+        "manifest": {
+          "path": "output/calibration/e0014-mbb-selected-200dpi/9853cc4909dc73ddea99/manifest.json",
+          "sha256": "2d7ccedda267c76263446bf8b39ab505ad6c155f0d08a795ebf354528a929439",
+          "size_bytes": 24615
+        },
+        "run_manifest": {
+          "path": "output/calibration/e0014-mbb-selected-200dpi/9853cc4909dc73ddea99/run_manifest.json",
+          "sha256": "aca30f50c8917e4cace16b1531fdc08f351b98aed7d99ce71de22ebeb9d395bb",
+          "size_bytes": 237
+        },
+        "dpi": 200,
+        "quality": {
+          "clean_pages": 6,
+          "selected_pages": 6,
+          "minimum_blur_variance": 159.815877,
+          "minimum_foreground_contrast": 156.0,
+          "maximum_absolute_skew_degrees": 0.296755,
+          "perspective_candidates": 0,
+          "difficult_regions": 0,
+          "full_page_variants": 6,
+          "region_variants": 0,
+          "selected_input": "ORIGINAL_RENDER"
+        }
+      },
+      "role_b": {
+        "seal": {
+          "path": "output/calibration/e0014-mbb-selected-200dpi/9853cc4909dc73ddea99/role_b_ocr_seal.json",
+          "sha256": "7dd55cb297bf895942a56bd29e56baddc46d4782aa618621cf51d4d5772853cc",
+          "size_bytes": 16560
+        },
+        "artifact_set_sha256": "adcd12de7c90378b896f883b26d81b881833fdefef8ce608a89faf92d66744b3",
+        "metrics": {
+          "page_count": 6,
+          "total_wall_seconds_sequential_processes": 109.028548,
+          "peak_memory_used_mib": 3241.0
+        }
+      },
+      "role_c": {
+        "batch_manifest": {
+          "path": "output/calibration/e0014-mbb-selected-200dpi-role-c/batch_manifest.json",
+          "sha256": "5c55ca5bdafd81bb66abbd74a06c44083970a68c766f4e2e579d94ede9a56a6e",
+          "size_bytes": 10236
+        },
+        "batch_identity": "4bcc4c3086807cbf7f2051cdb4fe468d4ed96b93221eac8a352d1ca63c80df0c",
+        "seal": {
+          "path": "output/calibration/e0014-mbb-selected-200dpi-role-c/role_c_geometry_seal.json",
+          "sha256": "0ba5e5461c4950e6b1466c3bb99f2f80c7eb05df82cfdd9ce5f0d868d9e6b925",
+          "size_bytes": 11432
+        },
+        "artifact_set_sha256": "2b61cd54c31c4dda7b743562ad7d50b5beb42b26d0e01f10d15a5145bb9581e6",
+        "metrics": {
+          "page_count": 6,
+          "line_count": 656,
+          "word_token_count": 5365,
+          "lines_below_0_8": 5,
+          "lines_below_0_9": 14,
+          "mean_line_score": 0.98101357370615,
+          "minimum_line_score": 0.3547327220439911,
+          "model_load_session_count": 1,
+          "page_inference_wall_seconds": 242.85952
+        }
+      }
+    },
+    {
+      "key": "VCB_2025_CONSOLIDATED",
+      "source": {
+        "path": "vietstock_bctc/VCB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+        "sha256": "295f397de287f84c26dafbfa06f668604aa696a013e236253149d8547d032d1f",
+        "size_bytes": 11552186
+      },
+      "page_contract": {
+        "selected_pages": [8, 9, 10, 11, 12, 13, 14],
+        "mapping_eligible_pages_by_statement_type": {
+          "CDKT": [8, 9],
+          "KQKD": [11, 12],
+          "LCTT": [13, 14]
+        },
+        "off_balance_exclusion_pages": [10]
+      },
+      "preprocess": {
+        "manifest": {
+          "path": "output/calibration/e0014-vcb-selected-200dpi/295f397de287f84c26da/manifest.json",
+          "sha256": "8684c008db7b94d8bf1f1ef7287395f5e4a1077ad0317ec8dd3ec5395381a3fc",
+          "size_bytes": 27299
+        },
+        "run_manifest": {
+          "path": "output/calibration/e0014-vcb-selected-200dpi/295f397de287f84c26da/run_manifest.json",
+          "sha256": "cf5a45e3384b8a5f692c5fea3e159a37e42b786a870bd34f62d2385766e04783",
+          "size_bytes": 237
+        },
+        "dpi": 200,
+        "quality": {
+          "clean_pages": 7,
+          "selected_pages": 7,
+          "minimum_blur_variance": 192.467016,
+          "minimum_foreground_contrast": 157.0,
+          "maximum_absolute_skew_degrees": 0.0,
+          "perspective_candidates": 0,
+          "difficult_regions": 0,
+          "full_page_variants": 7,
+          "region_variants": 0,
+          "selected_input": "ORIGINAL_RENDER"
+        }
+      },
+      "role_b": {
+        "seal": {
+          "path": "output/calibration/e0014-vcb-selected-200dpi/295f397de287f84c26da/role_b_ocr_seal.json",
+          "sha256": "e1cf24984149444161fba8c26c984d7d84c0280ac06872e69ef56ee1f237bcb3",
+          "size_bytes": 18269
+        },
+        "artifact_set_sha256": "9f4a52fb2e6a8b2923fc3fa88902602cd797bcd264fdaac77da05b07624b77e2",
+        "metrics": {
+          "page_count": 7,
+          "total_wall_seconds_sequential_processes": 197.196731,
+          "peak_memory_used_mib": 3241.0
+        }
+      },
+      "role_c": {
+        "batch_manifest": {
+          "path": "output/calibration/e0014-vcb-selected-200dpi-role-c/batch_manifest.json",
+          "sha256": "9c0a31686aebacdb99a2353d959de2ae27313fc39e6b082454f6ecc1a8236e74",
+          "size_bytes": 11309
+        },
+        "batch_identity": "093d1009f60d6feb3c8b3ea4c6a3ccfec8dc44039cbe7f0b0758788b05e95765",
+        "seal": {
+          "path": "output/calibration/e0014-vcb-selected-200dpi-role-c/role_c_geometry_seal.json",
+          "sha256": "a5db28be4c6c882593208ee69850b14d1777cfa7574c9303abcfd3ddd5705352",
+          "size_bytes": 12620
+        },
+        "artifact_set_sha256": "545e940337e52fb85293d9a7166e54dc983debb4a083dc8ac837cb007d86abe9",
+        "metrics": {
+          "page_count": 7,
+          "line_count": 779,
+          "word_token_count": 5411,
+          "lines_below_0_8": 24,
+          "lines_below_0_9": 42,
+          "mean_line_score": 0.9710529004923033,
+          "minimum_line_score": 0.0,
+          "model_load_session_count": 1,
+          "page_inference_wall_seconds": 267.403906
+        }
+      }
+    }
+  ],
+  "cross_document_metrics": {
+    "document_count": 2,
+    "selected_page_count": 13,
+    "quality_clean_page_count": 13,
+    "off_balance_exclusion_page_count": 2,
+    "role_b_total_wall_seconds": 306.225279,
+    "role_b_peak_memory_used_mib": 3241.0,
+    "role_c_total_wall_seconds": 510.263426,
+    "role_c_line_count": 1435,
+    "role_c_word_token_count": 10776,
+    "role_c_lines_below_0_8": 29,
+    "role_c_lines_below_0_9": 56,
+    "role_c_model_load_session_count": 2,
+    "reader_seal_count": 4
+  },
+  "retained_failure_observations": [
+    {
+      "document": "VCB_2025_CONSOLIDATED",
+      "page": 9,
+      "reader": "ROLE_B",
+      "result": {
+        "path": "output/calibration/e0014-vcb-selected-200dpi/295f397de287f84c26da/ocr/paddleocr-vl-page-0009/page-0009_res.json",
+        "sha256": "98886655beac4e2b893f81d436328b6154f36cecb2adc6e611509a8122b224cd"
+      },
+      "wall_seconds": 91.814474,
+      "generated_table_tr_count_including_header": 7,
+      "failure": "The generated table visibly truncates the dense CDKT continuation and emits unrelated non-Vietnamese aside text from the seal margin.",
+      "required_action": "Retain the raw output, reject it as a standalone row source, and reconstruct/alignment-check against Role C geometry. This visual observation is a failure trigger, not a human-gold accuracy denominator."
+    },
+    {
+      "document": "VCB_2025_CONSOLIDATED",
+      "page": 10,
+      "reader": "ROLE_B",
+      "generated_table_block_count": 2,
+      "failure": "A heading-only table block precedes the off-balance data table, so a parser that assumes the first table contains the financial body fails.",
+      "required_action": "Parse all table blocks in reading order, retain heading context, and enforce page-level off-balance exclusion before row mapping."
+    },
+    {
+      "document": "MBB_2025_CONSOLIDATED",
+      "page": 10,
+      "reader": "ROLE_B",
+      "failure": "Several child rows are serialized with financial values shifted into columns that otherwise carry note references.",
+      "required_action": "Infer value and note axes from Role C geometry; never accept the VLM column position alone."
+    }
+  ],
+  "safety": {
+    "role_a_or_searchable_reference_used": false,
+    "historical_reference_invoked": false,
+    "arithmetic_value_generation_invoked": false,
+    "schema_mapping_attempted": false,
+    "cash_flow_schema_branch_assignment_attempted": false,
+    "automatic_truth_promotion": false,
+    "automatic_schema_promotion": false,
+    "automatic_pdf_confidence_promotion": false,
+    "ytd_derivation_invoked": false
+  },
+  "software_or_model_change": false,
+  "report_norm_id": {
+    "ids_proposed_or_added": 0,
+    "collision_check_required_for_this_reader_acquisition_experiment": false
+  },
+  "acceptance": {
+    "quality_gated_original_render": "PASS_THIRTEEN_OF_THIRTEEN",
+    "role_b_seals": "PASS_TWO_OF_TWO",
+    "role_c_seals": "PASS_TWO_OF_TWO",
+    "row_or_cell_accuracy_evaluated": false,
+    "human_gold_evaluated": false,
+    "production_accuracy_approved": false,
+    "next_gate": "GENERAL_MULTI_TABLE_ROLE_B_PARSER_PLUS_ROLE_C_ROW_AXIS_RECONSTRUCTION_AND_ORDERED_CROSS_READER_COMPARISON"
+  }
+}

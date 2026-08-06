@@ -103,4 +103,16 @@ or escaping paths, tracked code/config drift, present external hash drift,
 promotion flags, ReportNormId additions, and Q-BOOT-001 relaxation also fail
 closed in the loader.
 
+E-0014 is the selected-page reader-acquisition gate, not an accuracy gate. Its
+integration test locks the clean inference commit, algorithm/config/runtime and
+model identities, exact page/scope contracts, 13/13 quality-gated original
+renders, four reader seals, Role C counts and single-load behavior, and all
+no-history/no-schema/no-arithmetic/no-promotion boundaries. When external
+artifacts are locally present the test re-hashes their source, preprocess,
+batch, and seal files and verifies both readers cover the same exact 200-DPI
+page set. An absent external artifact keeps a Git-only rebuild portable; a
+present mismatch fails. The retained VCB page-9 truncation and multi-table
+page-10 structure are required failure triggers for the next fusion version,
+not visually sampled claims of document accuracy.
+
 Explicit page numbers in a golden/calibration fixture are expected test data, not production routing rules. Production page pairing must continue to use document-order and visual evidence; no bank, page offset, or coordinate constant may enter the algorithm.
