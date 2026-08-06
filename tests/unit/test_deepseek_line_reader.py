@@ -4,6 +4,7 @@ import pytest
 
 from bctc_ai.ocr.deepseek_line_reader import (
     DeepSeekLineReaderError,
+    install_generation_token_cap,
     load_deepseek_line_config,
     parse_free_ocr_output,
     validate_reference_blind_line_request,
@@ -62,6 +63,19 @@ def test_config_cannot_escape_project_root(project_root, tmp_path):
         load_deepseek_line_config(project_root, external)
 
 
+def test_v2_config_preserves_aspect_and_bounds_generation_before_inference(project_root):
+    config, _, _ = load_deepseek_line_config(
+        project_root, project_root / "config/models/deepseek-ocr2-line-v2.toml"
+    )
+
+    assert config["version"] == 2
+    assert config["inference"]["crop_mode"] is True
+    assert config["inference"]["aspect_preservation"] == "OFFICIAL_IMAGEOPS_PAD"
+    assert config["inference"]["maximum_new_tokens"] == 128
+    assert config["inference"]["upstream_requested_maximum_new_tokens"] == 8192
+    assert config["inference"]["maximum_output_characters"] == 512
+
+
 def test_request_is_reference_blind_and_allowlisted():
     assert validate_reference_blind_line_request(_request()) == _request()["samples"]
 
@@ -98,6 +112,39 @@ def test_free_ocr_parser_preserves_one_line_and_joins_bounded_wrapped_row():
     }
     assert wrapped["proposal_text"] == "Các khoản phải thu từ khách hàng và đối tác"
     assert wrapped["nonempty_line_count"] == 2
+
+
+def test_free_ocr_parser_rejects_output_character_budget_before_semantic_use():
+    parsed = parse_free_ocr_output(
+        "Tài sản " * 100,
+        maximum_nonempty_lines=4,
+        maximum_output_characters=64,
+    )
+
+    assert parsed["status"] == "REJECT_OUTPUT_CHARACTER_BUDGET_EXCEEDED"
+    assert parsed["proposal_text"] == ""
+
+
+def test_generation_cap_fails_closed_if_upstream_budget_drifts():
+    class Model:
+        def __init__(self):
+            self.calls = []
+
+        def generate(self, *args, **kwargs):
+            self.calls.append((args, kwargs))
+            return kwargs["max_new_tokens"]
+
+    model = Model()
+    install_generation_token_cap(
+        model,
+        upstream_requested_maximum_new_tokens=8192,
+        maximum_new_tokens=128,
+    )
+
+    assert model.generate("input", max_new_tokens=8192) == 128
+    assert model.calls[0][1]["max_new_tokens"] == 128
+    with pytest.raises(DeepSeekLineReaderError, match="upstream generation budget changed"):
+        model.generate("input", max_new_tokens=4096)
 
 
 @pytest.mark.parametrize(

@@ -1,15 +1,15 @@
 # Progress report
 
-- Updated: 2026-08-06T12:12:03+00:00
+- Updated: 2026-08-06T12:25:21+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `2577b15`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
+- Latest clean, tested, pushed checkpoint: `a44b08b`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
 - Registered PDFs: 2,567
 - Latest full regression including multi-signal discovery v3, fixed-grid
-  semantic fusion and both bounded reader contracts: 357 passed, 2 intentionally
-  skipped historical/external replays in 99.17 seconds; Ruff and
+  semantic fusion and both bounded reader contracts: 360 passed, 2 intentionally
+  skipped historical/external replays in 99.68 seconds; Ruff and
   `git diff --check` passed
 
 ## Accuracy focus and measurable state
@@ -190,9 +190,22 @@
   text/crop/reader output, rejects numeric/period/unit/sign fields, accepts only
   source-verified form-code families, rejects truncation/layout serialization,
   and ignores reader probability for promotion. Its 14 tests plus 14 DeepSeek
-  request/parser/config tests pass. The next bounded action is a clean commit,
-  one offline DeepSeek pass on the unchanged 37 E-0024 crops, then downstream
-  locator impact; E-0022 remains untouched.
+  request/parser/config tests pass. The mechanism was frozen and pushed at
+  `a44b08b` before the first DeepSeek line output.
+- E-0025 rejects the first direct-resize DeepSeek line configuration. On the
+  unchanged 37 crops it produced 0/37 exact lines, 0/10 exact titles, CER
+  123.7138%, WER 125.8741%, seven structural rejections, and seven empty
+  evaluation predictions versus PP-OCRv6 CER 14.9518% and VietOCR-challenger
+  CER 0.6431%. Wall time was 263.6341 seconds and peak allocated VRAM
+  7,121.935 MiB; one 30-pixel-high crop generated 36,314 characters and consumed
+  199.871 seconds. No proposal is integrated into locator or mapping.
+- The observed root cause is bounded and implementation-specific: v1 used
+  `crop_mode=false`, whose official custom code stretches every 98–616 by 27–35
+  pixel crop to 768×768, and the upstream decoder requested 8,192 new tokens.
+  E-0026 is predeclared to reuse identical crop pixels with the official
+  aspect-preserving `ImageOps.pad` path plus a fail-closed 128-token/512-character
+  budget. It is the final direct-line packaging retry before moving to bounded
+  logical-row/context crops; E-0022 remains untouched.
 
 ## Completed tasks
 
@@ -492,9 +505,10 @@
   same crops; no model output receives numeric, geometry or mapping authority.
 - E-0024 proves VietOCR is a useful challenger on the fixed crops, but the
   production decision now prioritizes DeepSeek-OCR-2 on bounded semantic
-  regions. A reusable adapter/runner contract is in progress so the comparison
-  and downstream locator use identical PP source boxes; VietOCR is not being
-  silently inserted into production.
+  regions. The first direct-resize DeepSeek configuration is now rejected and
+  retained as E-0025 evidence. E-0026 freezes the aspect-preserving/token-bounded
+  correction before its output; VietOCR is not being silently inserted into
+  production.
 - Ordered SchemaGraph v1 and E-0023 are sealed. The mapper remains intentionally
   excluded from the
   already-frozen E-0022 pipeline and will next be evaluated on separate real-PDF
@@ -539,6 +553,12 @@
   range starts near 0.9175. The adapter must retain reader disagreement/raw crops
   and use semantic/structural evidence with abstention instead of trusting one
   probability threshold.
+- E-0025 proves that a bounded source crop is not sufficient unless the model's
+  internal image path preserves its aspect ratio and the decoder is bounded.
+  DeepSeek v1 stretched low-height lines to a square, hallucinated Cyrillic/
+  English content, and allowed one 36,314-character generation. This entire
+  reader configuration is rejected. E-0026 changes only those two general
+  mechanics on the same crop pixels and has fixed its gates before inference.
 - A higher-resolution crop is not sufficient by itself. On MBB LCTT page 14,
   PaddleOCR-VL still concatenates rows and numeric cells at 450 DPI; its current
   HTML proposal has 18 rows and 14 invalid multi-number cells, while independent
@@ -632,12 +652,14 @@
 
 ## Planned next steps
 
-1. Commit and push the generic source-box semantic adapter plus the
-   reference-blind batched DeepSeek line-reader mechanism before inference.
-2. Run pinned DeepSeek-OCR-2 once, offline, on the unchanged 37 E-0024 crops;
-   compare PP-OCRv6, DeepSeek and the optional VietOCR challenger for CER,
-   diacritic/base errors, exact labels/titles, structural rejection, time and
-   VRAM. Do not promote a reader from character metrics alone.
+1. Commit and push the E-0025 failure diagnosis plus the predeclared E-0026
+   aspect-preserving and generation-bounded runner before its inference.
+2. Run E-0026 once, offline, on the unchanged 37 E-0024 crops and compare
+   PP-OCRv6, both DeepSeek configurations and the optional VietOCR challenger
+   for CER, diacritic/base errors, exact labels/titles, structural rejection,
+   time and VRAM. If direct-line DeepSeek still fails, stop retuning this crop
+   set and move to bounded logical-row/context crops. Do not promote a reader
+   from character metrics alone.
 3. Feed safe DeepSeek proposals into multi-signal discovery v3 on unchanged
    E-0013 calibration and focused lone-title/continuation/off-balance mutations.
    PP-OCRv6 remains geometry authority; the separate numeric path remains value/

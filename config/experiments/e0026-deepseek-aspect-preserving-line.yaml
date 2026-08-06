@@ -1,0 +1,92 @@
+version: 1
+experiment_id: E-0026
+dataset_role: LOGIC_DEVELOPMENT_AND_CALIBRATION
+selection_policy: REUSE_UNCHANGED_E0024_FROZEN_PP_OCRV6_SOURCE_LINE_CROPS
+
+frozen_inputs:
+  crop_manifest:
+    path: output/calibration/e0024-vietnamese-line-recognizer/ee0a18b4e96cd42d74a3/crop_manifest.json
+    sha256: c8cece50c8e22a24bdc391ace3836c6735e82f8f1183f33533a3315b7c7b7cfd
+  reference_blind_request:
+    path: output/calibration/e0024-vietnamese-line-recognizer/ee0a18b4e96cd42d74a3/vietocr_inference_request.json
+    sha256: 4f94bd2e7898595721b8b56ef7f07944430ef8901936314ddce093b2cc7cc11f
+  e0024_evaluation:
+    path: docs/experiments/E-0024-vietnamese-line-recognizer.json
+    sha256: 18b896f7174992dd16a4372a5c24ec46df967e763223b9c85b25919ca5e89289
+
+failed_direct_resize_diagnosis:
+  inference_commit: a44b08b
+  result_sha256: 4a8ddaf5082f1401514d211d8ebc31a7fe705149277314128ad18b62aab14200
+  run_manifest_sha256: ce42c3247fb92283799d553b7b578a4c6a9591ab994c9f9daca949545315fc3d
+  sample_count: 37
+  parsed_proposal_count: 30
+  structural_rejection_count: 7
+  exact_line_count: 0
+  exact_title_count: 0
+  character_error_rate: 1.2371382636655948
+  word_error_rate: 1.2587412587412588
+  wall_seconds: 263.6340953479521
+  peak_allocated_vram_mib: 7121.9345703125
+  maximum_raw_output_characters: 36314
+  root_cause: >-
+    crop_mode=false forces every 98-616 by 27-35 pixel source line to a square
+    768 by 768 tensor and the upstream decoder allows 8192 new tokens. This is
+    a crop-packaging and decoder-control failure, not evidence that the model is
+    unsuitable for bounded logical rows.
+
+candidate:
+  config_path: config/models/deepseek-ocr2-line-v2.toml
+  config_sha256: cbe01394ca7c17bcf02c09389187afdd5f0611c010aedb6399313fe7abf5f04c
+  aspect_preservation: OFFICIAL_IMAGEOPS_PAD
+  maximum_new_tokens: 128
+  maximum_output_characters: 512
+  input_crop_pixels_unchanged: true
+
+evaluation_policy:
+  unicode_normalization: NFC
+  whitespace_normalization: STRIP_AND_COLLAPSE_RUNS
+  title_categories: [TITLE, OFF_BALANCE_TITLE]
+  metrics:
+    - exact_line_accuracy
+    - exact_title_accuracy
+    - character_error_rate
+    - word_error_rate
+    - base_character_error_count
+    - diacritic_only_error_count
+    - insertion_count
+    - deletion_count
+    - substitution_count
+    - structural_rejection_count
+    - maximum_raw_output_characters
+    - wall_seconds
+    - peak_allocated_vram_mib
+  semantic_reader_gate:
+    lower_cer_than_ppocrv6: true
+    no_title_exactness_regression_vs_ppocrv6: true
+    zero_structural_rejections: true
+    zero_empty_or_suffix_truncated_predictions: true
+    maximum_raw_output_characters_at_most: 512
+  downstream_gate_required: true
+  downstream_metrics:
+    - statement_page_exactness
+    - off_balance_exclusion
+    - continuation_exactness
+    - logical_row_coverage
+    - ordered_schema_agreement
+    - full_tuple_agreement
+    - workbook_cell_agreement
+
+authority:
+  ppocrv6_geometry: true
+  deepseek_semantic_proposal_only: true
+  independent_numeric_reader_required: true
+  vietocr_challenger_only: true
+  automatic_model_promotion: false
+  numeric_period_unit_sign_scope_mapping_truth: false
+  e0022_reuse_or_retuning: false
+
+claim_boundary: >-
+  E-0026 is a second bounded configuration on the already frozen E-0024
+  calibration crops. It tests aspect preservation and a fail-closed decoder
+  budget only. It is not bank/period-disjoint validation, human gold, a
+  production reader decision, end-to-end accuracy, or permission to use E-0022.

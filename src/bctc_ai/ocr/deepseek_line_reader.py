@@ -87,10 +87,14 @@ def load_deepseek_line_config(
     if not resolved.is_relative_to(project_root):
         raise DeepSeekLineReaderError("line config escapes the project root")
     config = _load_toml(resolved, "DeepSeek line config")
+    version = config.get("version")
+    expected_status = {
+        1: "CALIBRATION_ONLY_REFERENCE_BLIND_BOUNDED_SEMANTIC_READER",
+        2: "CALIBRATION_ONLY_REFERENCE_BLIND_ASPECT_PRESERVING_BOUNDED_SEMANTIC_READER",
+    }.get(version)
     if (
-        config.get("version") != 1
-        or config.get("status")
-        != "CALIBRATION_ONLY_REFERENCE_BLIND_BOUNDED_SEMANTIC_READER"
+        expected_status is None
+        or config.get("status") != expected_status
         or config.get("reader") != "DEEPSEEK_OCR_2"
         or config.get("geometry_authority") != "PP_OCRV6_WORD_BOXES"
         or config.get("evidence_role")
@@ -109,7 +113,7 @@ def load_deepseek_line_config(
     inference = config.get("inference")
     if not isinstance(inference, dict) or (
         inference.get("prompt") != "<image>\nFree OCR."
-        or inference.get("crop_mode") is not False
+        or inference.get("crop_mode") is not (version == 2)
         or inference.get("attention_implementation") != "eager"
         or inference.get("network_permitted") is not False
         or inference.get("reference_text_available_to_decoder") is not False
@@ -126,6 +130,17 @@ def load_deepseek_line_config(
         for key in ("base_size", "image_size")
     ):
         raise DeepSeekLineReaderError("DeepSeek line image sizing is invalid")
+    if version == 2 and (
+        inference.get("aspect_preservation") != "OFFICIAL_IMAGEOPS_PAD"
+        or inference.get("upstream_requested_maximum_new_tokens") != 8192
+        or isinstance(inference.get("maximum_new_tokens"), bool)
+        or not isinstance(inference.get("maximum_new_tokens"), int)
+        or not 1 <= int(inference["maximum_new_tokens"]) <= 512
+        or isinstance(inference.get("maximum_output_characters"), bool)
+        or not isinstance(inference.get("maximum_output_characters"), int)
+        or int(inference["maximum_output_characters"]) < 1
+    ):
+        raise DeepSeekLineReaderError("DeepSeek aspect/token/output bound policy drifted")
     safety = config.get("safety")
     if not isinstance(safety, dict) or not safety or any(bool(value) for value in safety.values()):
         raise DeepSeekLineReaderError("DeepSeek line config grants forbidden authority")
@@ -177,12 +192,23 @@ def validate_reference_blind_line_request(payload: dict[str, Any]) -> list[dict[
     return samples
 
 
-def parse_free_ocr_output(raw_output: str, *, maximum_nonempty_lines: int) -> dict[str, Any]:
+def parse_free_ocr_output(
+    raw_output: str,
+    *,
+    maximum_nonempty_lines: int,
+    maximum_output_characters: int | None = None,
+) -> dict[str, Any]:
     if not isinstance(raw_output, str) or not raw_output.strip():
         return {
             "status": "REJECT_EMPTY_OUTPUT",
             "proposal_text": "",
             "nonempty_line_count": 0,
+        }
+    if maximum_output_characters is not None and len(raw_output) > maximum_output_characters:
+        return {
+            "status": "REJECT_OUTPUT_CHARACTER_BUDGET_EXCEEDED",
+            "proposal_text": "",
+            "nonempty_line_count": len([line for line in raw_output.splitlines() if line.strip()]),
         }
     lines = [normalize_text(line) for line in raw_output.splitlines() if normalize_text(line)]
     if len(lines) > maximum_nonempty_lines:
@@ -209,6 +235,32 @@ def parse_free_ocr_output(raw_output: str, *, maximum_nonempty_lines: int) -> di
         "proposal_text": proposal,
         "nonempty_line_count": len(lines),
     }
+
+
+def install_generation_token_cap(
+    model: Any,
+    *,
+    upstream_requested_maximum_new_tokens: int,
+    maximum_new_tokens: int,
+) -> None:
+    if (
+        isinstance(upstream_requested_maximum_new_tokens, bool)
+        or isinstance(maximum_new_tokens, bool)
+        or not 1 <= maximum_new_tokens < upstream_requested_maximum_new_tokens
+    ):
+        raise DeepSeekLineReaderError("invalid DeepSeek generation-token cap")
+    original_generate = model.generate
+
+    def bounded_generate(*args: Any, **kwargs: Any) -> Any:
+        requested = kwargs.get("max_new_tokens")
+        if requested != upstream_requested_maximum_new_tokens:
+            raise DeepSeekLineReaderError(
+                "DeepSeek upstream generation budget changed; refusing silent override"
+            )
+        kwargs["max_new_tokens"] = maximum_new_tokens
+        return original_generate(*args, **kwargs)
+
+    model.generate = bounded_generate
 
 
 def _verify_model(model_directory: Path, base: dict[str, Any]) -> list[dict[str, Any]]:
@@ -384,6 +436,7 @@ def run_deepseek_line_reader(
     started_at = datetime.now(UTC)
     total_started = time.perf_counter()
     torch.cuda.reset_peak_memory_stats()
+    inference = config["inference"]
     load_started = time.perf_counter()
     tokenizer = AutoTokenizer.from_pretrained(
         model_directory.as_posix(), trust_remote_code=True, local_files_only=True
@@ -396,10 +449,17 @@ def run_deepseek_line_reader(
         _attn_implementation="eager",
         torch_dtype=torch.bfloat16,
     ).eval().cuda()
+    if config["version"] == 2:
+        install_generation_token_cap(
+            model,
+            upstream_requested_maximum_new_tokens=int(
+                inference["upstream_requested_maximum_new_tokens"]
+            ),
+            maximum_new_tokens=int(inference["maximum_new_tokens"]),
+        )
     torch.cuda.synchronize()
     load_seconds = time.perf_counter() - load_started
 
-    inference = config["inference"]
     temporary_internal = Path(
         tempfile.mkdtemp(prefix="bctc-deepseek-line-", dir="/dev/shm")
     )
@@ -415,7 +475,7 @@ def run_deepseek_line_reader(
                 output_path=internal_output.as_posix(),
                 base_size=int(inference["base_size"]),
                 image_size=int(inference["image_size"]),
-                crop_mode=False,
+                crop_mode=bool(inference["crop_mode"]),
                 save_results=False,
                 eval_mode=True,
             )
@@ -427,6 +487,11 @@ def run_deepseek_line_reader(
             parsed = parse_free_ocr_output(
                 raw_output,
                 maximum_nonempty_lines=int(inference["maximum_nonempty_output_lines"]),
+                maximum_output_characters=(
+                    int(inference["maximum_output_characters"])
+                    if config["version"] == 2
+                    else None
+                ),
             )
             if internal_output.exists():
                 shutil.rmtree(internal_output)
@@ -451,7 +516,7 @@ def run_deepseek_line_reader(
     total_seconds = time.perf_counter() - total_started
     result: dict[str, Any] = {
         "format_version": 1,
-        "experiment_id": "E-0025",
+        "experiment_id": "E-0026" if config["version"] == 2 else "E-0025",
         "state": "REFERENCE_BLIND_DEEPSEEK_BOUNDED_LINE_INFERENCE_COMPLETE",
         "dataset_role": request["dataset_role"],
         "evidence_role": config["evidence_role"],
@@ -463,7 +528,7 @@ def run_deepseek_line_reader(
     free_bytes, total_bytes = torch.cuda.mem_get_info()
     manifest: dict[str, Any] = {
         "format_version": 1,
-        "experiment_id": "E-0025",
+        "experiment_id": "E-0026" if config["version"] == 2 else "E-0025",
         "state": "REFERENCE_BLIND_DEEPSEEK_BOUNDED_LINE_INFERENCE_COMPLETE",
         "dataset_role": request["dataset_role"],
         "evidence_role": config["evidence_role"],
@@ -482,7 +547,10 @@ def run_deepseek_line_reader(
             "prompt": inference["prompt"],
             "base_size": inference["base_size"],
             "image_size": inference["image_size"],
-            "crop_mode": False,
+            "crop_mode": inference["crop_mode"],
+            "aspect_preservation": inference.get("aspect_preservation"),
+            "maximum_new_tokens": inference.get("maximum_new_tokens"),
+            "maximum_output_characters": inference.get("maximum_output_characters"),
             "network_policy": "PROCESS_SOCKET_CONNECT_AND_DNS_DENIED",
         },
         "runtime": {
@@ -522,6 +590,7 @@ def run_deepseek_line_reader(
 
 __all__ = [
     "DeepSeekLineReaderError",
+    "install_generation_token_cap",
     "load_deepseek_line_config",
     "parse_free_ocr_output",
     "run_deepseek_line_reader",

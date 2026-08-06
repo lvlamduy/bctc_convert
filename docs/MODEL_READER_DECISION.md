@@ -123,6 +123,15 @@ into production merely because it beats the PP-OCRv6 text baseline. DeepSeek or
 any challenger must improve downstream page/row/schema behavior while all raw
 reader disagreements remain available for review.
 
+The first DeepSeek bounded-line run is rejected. With `crop_mode=false`, the
+official path resized 98–616 by 27–35 pixel crops directly to 768×768; the
+unbounded 8,192-token decoder also produced one 36,314-character hallucination.
+The result was 0/37 exact lines, 123.7138% CER and seven structural rejections.
+E-0026 changes only these general mechanics: the official aspect-preserving pad
+path and a predeclared 128-token/512-character fail-closed budget. If that retry
+still fails, direct isolated-line tuning stops and development moves to bounded
+logical-row/context crops; neither run receives locator or mapping authority.
+
 The first clean TATR attempt stopped before inference because the official
 checkpoint serializes an obsolete top-level `dilation` field as `null`, while
 Transformers 5.14.1 now validates it as a strict boolean. The hashed artifact
