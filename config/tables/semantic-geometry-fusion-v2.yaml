@@ -1,0 +1,32 @@
+version: 2
+algorithm: ORDERED_LABEL_SEGMENTATION_ON_FIXED_GEOMETRY_GRID_V2
+
+alignment:
+  gap_penalty: 0.65
+  candidate_merge_penalty: 0.05
+  reference_merge_penalty: 0.10
+
+label_segmentation:
+  minimum_output_label_similarity: 0.72
+  minimum_split_segment_similarity: 0.80
+  minimum_split_mean_similarity: 0.85
+  minimum_split_runner_up_margin: 0.02
+  minimum_trimmed_similarity: 0.85
+  minimum_trimmed_gain: 0.10
+  minimum_trimmed_runner_up_margin: 0.03
+  maximum_trimmed_token_fraction: 0.35
+
+extra_semantic_row:
+  require_empty_label: true
+  require_exact_observed_numeric_fingerprint: true
+  require_note_match_when_present: true
+
+safety:
+  geometry_row_count_may_change: false
+  geometry_cells_may_change: false
+  geometry_note_may_change: false
+  semantic_values_have_output_authority: false
+  automatic_schema_mapping: false
+  automatic_period_assignment: false
+  automatic_scope_assignment: false
+  automatic_confidence_promotion: false

@@ -1,22 +1,22 @@
 # Progress report
 
-- Updated: 2026-08-06T07:38:01+00:00
+- Updated: 2026-08-06T07:55:00+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest pushed algorithm checkpoint: `6caafad`; E-0019 clean evaluation base: `1a23b7b437e7d95a652c69e8748a037ad6d2224a`
+- Latest clean, tested, pushed checkpoint: `5660f3e`; E-0019 clean evaluation base: `1a23b7b437e7d95a652c69e8748a037ad6d2224a`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
 - Registered PDFs: 2,567
-- Latest full regression: 246 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
+- Latest full regression: 251 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
 
 ## Accuracy focus and measurable state
 
-- Main measured error class: `STRUCTURAL_ROW_CELL_RECONSTRUCTION`. E-0017 adds
-  42 direct impact units: 7 non-`MATCH` alignment units, 14 missing reference
-  cells, and 21 structurally damaged compared cells. Twelve of those cells
-  contain multiple financial numbers collapsed into one generated cell. Only 2
-  disagreements remain attributable to numeric/sign OCR itself; label and note
-  disagreements contribute 3 and 1 units respectively.
+- Main baseline error class was `STRUCTURAL_ROW_CELL_RECONSTRUCTION`: E-0017 had
+  42 direct impact units from 7 non-`MATCH` units, 14 missing cells and 21
+  structurally damaged compared cells. E-0019 reduces that class to zero on its
+  two-page target; the six-page E-0010 v2 replay also reduces structural and
+  numeric/sign impact to zero. The current measurable residual class is now
+  `LABEL_SEMANTICS` (one E-0019 disagreement; four E-0010 disagreements).
 - Baseline before the current change remains E-0010: 140 Role A rows versus 139
   Role B rows; financial-row/cell coverage 94.70%; conditional exact row/cell
   agreement 96.80%/97.60%; strict exact row/cell agreement 91.67%/92.42%.
@@ -50,9 +50,20 @@
   strict exact row/cell agreement improves from 47.2222%/48.6111% to 100%/100%,
   invalid cells fall from 12 to zero, and structural impact falls from 42 to
   zero. The remaining main class is one Vietnamese label disagreement.
-- Next bounded action: seal the two-page fusion as E-0019, measure its semantic
-  label and direct-LCTT recovery against frozen Role A, then apply the same
-  algorithm to the existing E-0010 structural failures.
+- New six-page generalization result on E-0010: ordered label segmentation v2
+  handles the reverse failure mode where one semantic row contains two accounting
+  labels. It expands four 1→2 collapsed labels, contracts one 2→1 wrapped-label
+  pair, accepts two label-empty displaced-value rows only after exact numeric
+  fingerprint checks, and trims one duplicated edge fragment with a decisive
+  score margin. Against the unchanged 140-row Role A denominator, row/cell
+  coverage rises from 94.6970% to 100%, strict exact financial row/cell agreement
+  rises from 91.6667%/92.4242% to 100%/100%, and invalid cells fall from one to
+  zero. Semantic-key labels are 136/140; the four remaining disagreements are
+  Vietnamese OCR substitutions, not table or numeric errors. This is development
+  replay pending a clean formal seal.
+- Next bounded action: seal the six-page E-0010 v2 replay, then implement and
+  measure a constrained Vietnamese label-correction proposal on only those four
+  retained substitutions.
 
 ## Completed tasks
 
@@ -220,6 +231,15 @@
   fingerprints, performs one 3→2 overflow repair, and recovers the configured
   DIRECT cash-flow anchors at positions 1 and 2. Confidence, periods, scope,
   schema mapping and ReportNormId authority all remain disabled.
+- Added ordered label-segmentation fusion v2 without modifying the hash-locked
+  E-0019 v1 algorithm. It uses the existing values-excluded ordered aligner,
+  splits a collapsed semantic label only when both geometry-row segments exceed
+  configured similarity and runner-up-margin gates, merges adjacent semantic
+  label fragments, and removes duplicate leading/trailing tokens only under a
+  separate gain/fraction/margin contract. Extra semantic rows are ignored only
+  when their label is empty and their observed numeric fingerprint (and note,
+  when present) matches geometry. Five focused tests pass; all final cell tuples,
+  notes and geometry source IDs remain unchanged.
 - Completed the immutable S3 snapshot and real restore gate. Snapshot
   `20260806T050030130746Z-4a469fab2334` contains 4,361 logical files,
   4,192 unique objects and 18,388,413,612 unique bytes. Upload and 4,192 HEAD
@@ -235,8 +255,8 @@
 
 ## Currently in progress
 
-- Applying the sealed fixed-grid fusion to the existing E-0010 failures to test
-  whether the improvement generalizes beyond the selected TCB pages.
+- Sealing the six-page E-0010 ordered-segmentation replay as a new calibration
+  experiment with the existing Role A, Role B and Role C hashes unchanged.
 - Preparing the verified local offload of only `source_pdf` and `mongodb_dump`
   assets. No local source has yet been removed; the immutable manifest, remote
   object catalog and real restore prerequisites now all pass.
@@ -253,6 +273,10 @@
 - One MBB row-band crop was classified as text/image rather than a table, and one
   other row-band table still has unresolved column roles. These failures are being
   preserved as explicit evidence, not hidden or repaired from history.
+- After fixed-grid fusion, the current measurable residual class is Vietnamese
+  label semantics. E-0010 has four substitutions such as `LUỞU`/`LƯU`,
+  `HOẶT`/`HOẠT`, `tính`/`tín`, and `TCDT`/`TCTD`; these require constrained
+  language/schema correction with abstention, not changes to cell geometry.
 - There is still no human-gold, bank-disjoint and period-disjoint end-to-end
   benchmark large enough to support a production accuracy threshold.
 - DeepSeek-OCR-2's official tested stack differs from this Blackwell host, so its
@@ -288,23 +312,29 @@
    Numeric fingerprints may gate a structural overflow hypothesis but never
    replace output values. Require a score margin and abstain on ambiguity. None
    of the readers can independently map IDs or establish numeric truth.
-8. Develop custom learned components only behind frozen baselines: graph-based
+8. Segment semantic text over that fixed grid when row counts differ: allow only
+   explicit 1→2 collapsed-label splits, 2→1 adjacent label fragments, or
+   duplicate edge trimming with per-segment thresholds and runner-up margins.
+   Label-empty extra rows require an exact observed numeric fingerprint before
+   they can be treated as displaced evidence.
+9. Develop custom learned components only behind frozen baselines: graph-based
    row/cell relation modeling, Vietnamese label encoders trained with
    same-label/different-parent hard negatives, specialized digit/sign recognition,
    and conditional dewarping. Evaluate on bank- and period-disjoint holdouts.
-9. Keep model experiments bounded to a specific observed pipeline failure; do
+10. Keep model experiments bounded to a specific observed pipeline failure; do
    not accumulate reader benchmarks without a measurable extraction objective.
-10. Protect large inputs with immutable S3 content keys and a manifest-first
+11. Protect large inputs with immutable S3 content keys and a manifest-first
    restore contract. Reclaim local space only after remote HEAD/checksum,
    manifest validation, and a real full-content sequential restore pass; hydrate
    exact logical paths without overwriting a mismatched local file.
 
 ## Planned next steps
 
-1. Seal E-0019 from the completed E-0017 pages 13→14 PP-OCRv6 and DeepSeek runs;
-   report row/cell/label/method before-and-after against the frozen reference.
-2. Apply the same fixed-grid overflow fusion to the existing E-0010 failures,
-   then rerun E-0010 and the full six-page E-0017 denominators for before/after.
+1. Seal the six-page E-0010 v2 result as a new immutable experiment and verify
+   the full suite from a clean commit.
+2. Build the next bounded Vietnamese correction layer for the four retained
+   substitutions using statement-local vocabulary and high-margin candidates;
+   never overwrite source labels or let schema similarity bypass hierarchy.
 3. Execute the already-verified offload plan for the 2,567 registered PDFs and
    Mongo dump to reclaim about 18.3 GB. Preserve the fsynced local journal and
    remote offload record; do not delete generated output, runtimes or tools.
