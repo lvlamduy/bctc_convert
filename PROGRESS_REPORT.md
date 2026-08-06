@@ -1,13 +1,13 @@
 # Progress report
 
-- Updated: 2026-08-06T07:55:00+00:00
+- Updated: 2026-08-06T08:08:00+00:00
 - Branch: `codex/rebuild-bootstrap`
 - Latest clean, tested, pushed checkpoint: `5660f3e`; E-0019 clean evaluation base: `1a23b7b437e7d95a652c69e8748a037ad6d2224a`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
 - Registered PDFs: 2,567
-- Latest full regression: 251 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
+- Latest full regression: 252 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
 
 ## Accuracy focus and measurable state
 
@@ -50,7 +50,7 @@
   strict exact row/cell agreement improves from 47.2222%/48.6111% to 100%/100%,
   invalid cells fall from 12 to zero, and structural impact falls from 42 to
   zero. The remaining main class is one Vietnamese label disagreement.
-- New six-page generalization result on E-0010: ordered label segmentation v2
+- New formal E-0020 six-page generalization result on E-0010: ordered label segmentation v2
   handles the reverse failure mode where one semantic row contains two accounting
   labels. It expands four 1→2 collapsed labels, contracts one 2→1 wrapped-label
   pair, accepts two label-empty displaced-value rows only after exact numeric
@@ -59,11 +59,11 @@
   coverage rises from 94.6970% to 100%, strict exact financial row/cell agreement
   rises from 91.6667%/92.4242% to 100%/100%, and invalid cells fall from one to
   zero. Semantic-key labels are 136/140; the four remaining disagreements are
-  Vietnamese OCR substitutions, not table or numeric errors. This is development
-  replay pending a clean formal seal.
-- Next bounded action: seal the six-page E-0010 v2 replay, then implement and
-  measure a constrained Vietnamese label-correction proposal on only those four
-  retained substitutions.
+  Vietnamese OCR substitutions, not table or numeric errors. E-0020 is bound to
+  the unchanged E-0010/E-0011 Role A/B/C seals and was evaluated from clean
+  commit `21d39cc5fbcb0d0411e08d8d61cd0b8df5aecaf3`.
+- Next bounded action: implement and measure a constrained Vietnamese
+  label-correction proposal on only those four retained substitutions.
 
 ## Completed tasks
 
@@ -240,6 +240,14 @@
   when their label is empty and their observed numeric fingerprint (and note,
   when present) matches geometry. Five focused tests pass; all final cell tuples,
   notes and geometry source IDs remain unchanged.
+- Completed and hash-locked E-0020 over all six frozen TCB pages. It produces
+  140 rows from 139 semantic rows and 140 geometry rows, preserves all 264
+  financial cells, retains all 20 off-balance rows as mapping-ineligible, and
+  keeps DIRECT LCTT evidence at positions 1 and 2 with semantic confidence false.
+  The formal action record contains four collapsed-label splits, one adjacent
+  fragment merge, one duplicate-edge trim, and two ignored blank-label displaced
+  value rows. Only 130/140 rows have a supporting semantic numeric fingerprint;
+  this is recorded rather than fabricated, while geometry cells stay unchanged.
 - Completed the immutable S3 snapshot and real restore gate. Snapshot
   `20260806T050030130746Z-4a469fab2334` contains 4,361 logical files,
   4,192 unique objects and 18,388,413,612 unique bytes. Upload and 4,192 HEAD
@@ -255,8 +263,8 @@
 
 ## Currently in progress
 
-- Sealing the six-page E-0010 ordered-segmentation replay as a new calibration
-  experiment with the existing Role A, Role B and Role C hashes unchanged.
+- Designing the constrained Vietnamese correction layer for the four E-0020
+  residual labels, with original text retained and automatic abstention required.
 - Preparing the verified local offload of only `source_pdf` and `mongodb_dump`
   assets. No local source has yet been removed; the immutable manifest, remote
   object catalog and real restore prerequisites now all pass.
@@ -330,24 +338,22 @@
 
 ## Planned next steps
 
-1. Seal the six-page E-0010 v2 result as a new immutable experiment and verify
-   the full suite from a clean commit.
-2. Build the next bounded Vietnamese correction layer for the four retained
+1. Build the next bounded Vietnamese correction layer for the four retained
    substitutions using statement-local vocabulary and high-margin candidates;
    never overwrite source labels or let schema similarity bypass hierarchy.
-3. Execute the already-verified offload plan for the 2,567 registered PDFs and
+2. Execute the already-verified offload plan for the 2,567 registered PDFs and
    Mongo dump to reclaim about 18.3 GB. Preserve the fsynced local journal and
    remote offload record; do not delete generated output, runtimes or tools.
-4. Record the exact offload record, removed count/bytes and post-offload free
+3. Record the exact offload record, removed count/bytes and post-offload free
    space here; hydrate only the bounded PDFs needed by the next accuracy run.
-5. Expand Role A next to a different bank and period after E-0017, using the
+4. Expand Role A next to a different bank and period after E-0017, using the
    same pre-inspection role freeze and common metrics rather than a new one-off
    experiment script.
-6. Build a human-gold evaluation split separated by bank and reporting period,
+5. Build a human-gold evaluation split separated by bank and reporting period,
    including skew, warp, dark headers, blurred digits, wrapped rows, continuation
    pages, direct/indirect LCTT, separate/consolidated scope, and quarterly/YTD
    derivation cases.
-7. Define calibrated abstention thresholds only after the human-gold benchmark;
+6. Define calibrated abstention thresholds only after the human-gold benchmark;
    unresolved evidence must continue to produce review statuses rather than
    guessed output.
 
