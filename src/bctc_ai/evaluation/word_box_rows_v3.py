@@ -29,7 +29,6 @@ from bctc_ai.evaluation.word_box_rows_v2 import (
     GeometryRowProposalV2,
     ParsedGeometryPageV2,
     WordBoxReconstructionV2Config,
-    _Anchor,
     _build_anchors,
     _header_axes_v2,
     _infer_index_band,
@@ -299,45 +298,12 @@ def _blank_or_dash_cells_v3(
     return tuple(cells), tuple(evidence_records)
 
 
-def _build_anchors_with_bounded_note_distance(
-    value_lines: list[OCRLine],
-    note_lines: list[OCRLine],
-    index_lines: list[OCRLine],
-    line_height: float,
-    config: WordBoxReconstructionV3Config,
-    note_attach_line_heights: float,
-) -> list[_Anchor]:
-    """Keep a distant note row independent from the following value row.
-
-    V3 used the same broad structural tolerance for row indices and note
-    references. A note one full line above a numeric row could therefore merge
-    its label-only row into the following valued row. V4 supplies a tighter,
-    explicit note-to-value bound while preserving the V3 anchor behavior for
-    indices and all close note references.
-    """
-
-    anchors = _build_anchors(value_lines, index_lines, line_height, config.base)
-    tolerance = line_height * note_attach_line_heights
-    for line in sorted(note_lines, key=lambda item: item.y_center):
-        distances = [abs(line.y_center - anchor.center) for anchor in anchors]
-        if distances:
-            closest = min(range(len(distances)), key=distances.__getitem__)
-        else:
-            closest = -1
-        if distances and distances[closest] <= tolerance:
-            anchors[closest].structural_lines.append(line)
-        else:
-            anchors.append(_Anchor(line.y_center, [], [line]))
-    return sorted(anchors, key=lambda anchor: anchor.center)
-
-
 def parse_ppocrv6_word_box_page_v3(
     result_path: Path,
     config: WordBoxReconstructionV3Config,
     *,
     page_tag: str,
     source_image_path: Path | None = None,
-    note_to_value_anchor_attach_line_heights: float | None = None,
 ) -> ParsedGeometryPageV2:
     try:
         payload = json.loads(result_path.read_text(encoding="utf-8"))
@@ -419,18 +385,7 @@ def parse_ppocrv6_word_box_page_v3(
     unassigned_numeric = [
         line for line in numeric_candidates if line.index not in assigned_numeric_indices
     ]
-    anchors = (
-        _build_anchors(value_lines, note_lines + index_lines, line_height, config.base)
-        if note_to_value_anchor_attach_line_heights is None
-        else _build_anchors_with_bounded_note_distance(
-            value_lines,
-            note_lines,
-            index_lines,
-            line_height,
-            config,
-            note_to_value_anchor_attach_line_heights,
-        )
-    )
+    anchors = _build_anchors(value_lines, note_lines + index_lines, line_height, config.base)
     anchor_centers = [anchor.center for anchor in anchors]
 
     excluded_label_indices = {
