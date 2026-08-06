@@ -1,13 +1,13 @@
 # Progress report
 
-- Updated: 2026-08-06T08:20:00+00:00
+- Updated: 2026-08-06T08:30:00+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `0a6a28d`; E-0019 clean evaluation base: `1a23b7b437e7d95a652c69e8748a037ad6d2224a`
+- Latest clean, tested, pushed checkpoint: `a525f9f`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
 - Registered PDFs: 2,567
-- Latest full regression: 259 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
+- Latest full regression: 260 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
 
 ## Accuracy focus and measurable state
 
@@ -15,8 +15,10 @@
   42 direct impact units from 7 non-`MATCH` units, 14 missing cells and 21
   structurally damaged compared cells. E-0019 reduces that class to zero on its
   two-page target; the six-page E-0010 v2 replay also reduces structural and
-  numeric/sign impact to zero. The current measurable residual class is now
-  `LABEL_SEMANTICS` (one E-0019 disagreement; four E-0010 disagreements).
+  numeric/sign impact to zero. E-0021 removes all four retrieval-key semantic
+  disagreements on the six-page E-0010 replay. Its remaining measurable class
+  is source-exact Vietnamese orthography/wording: 32/140 labels still differ
+  after casefolding, without numeric or structural impact.
 - Baseline before the current change remains E-0010: 140 Role A rows versus 139
   Role B rows; financial-row/cell coverage 94.70%; conditional exact row/cell
   agreement 96.80%/97.60%; strict exact row/cell agreement 91.67%/92.42%.
@@ -62,7 +64,7 @@
   Vietnamese OCR substitutions, not table or numeric errors. E-0020 is bound to
   the unchanged E-0010/E-0011 Role A/B/C seals and was evaluated from clean
   commit `21d39cc5fbcb0d0411e08d8d61cd0b8df5aecaf3`.
-- New bounded Vietnamese correction replay: a statement-scoped, proposal-only
+- Formal E-0021 Vietnamese correction replay: a statement-scoped, proposal-only
   layer uses append-only template vocabulary, Damerau edit distance, decisive
   full-label margins, repeated evidence from other document rows, candidate
   support dominance, protected Vietnamese function words and immutable row
@@ -72,10 +74,12 @@
   label agreement from 104/140 to 108/140. Raw labels remain separately retained;
   the layer contains no numeric/note fields and has no output, mapping, period,
   scope or confidence authority. This is still a calibration replay, not
-  human-gold or holdout evidence.
-- Next bounded action: seal the replay as E-0021, then evaluate the same frozen
-  thresholds on a bank- and period-disjoint Role A/Role B document before any
-  confidence promotion.
+  human-gold or holdout evidence. The artifact SHA-256 is
+  `accefa38db2131ebf5b0aa9fa37394d382fe0c98cbcfa6358ef304c0d626ba9a`
+  and binds the run to clean commit
+  `c32741a217ca16e7224d416b2c14245f580e610d`.
+- Next bounded action: evaluate the unchanged E-0021 thresholds on a bank- and
+  period-disjoint Role A/Role B document before any confidence promotion.
 
 ## Completed tasks
 
@@ -260,6 +264,11 @@
   fragment merge, one duplicate-edge trim, and two ignored blank-label displaced
   value rows. Only 130/140 rows have a supporting semantic numeric fingerprint;
   this is recorded rather than fabricated, while geometry cells stay unchanged.
+- Completed and hash-locked E-0021 over all 140 E-0020 rows. It emits exactly
+  four correction proposals with five one-edit replacements; every proposed row
+  becomes Role A casefold-exact, proposal precision is 1.0 on this calibration
+  set, semantic-key regressions are zero, and 136 rows remain untouched. Role A
+  labels are withheld from proposal generation and used only for scoring.
 - Completed the immutable S3 snapshot and real restore gate. Snapshot
   `20260806T050030130746Z-4a469fab2334` contains 4,361 logical files,
   4,192 unique objects and 18,388,413,612 unique bytes. Upload and 4,192 HEAD
@@ -280,14 +289,19 @@
   `2c285d831129b577e8dbba3490167c4b36011b73580682aaae17cda93078a913`
   was uploaded as a versioned AES-256 object and downloaded back hash-exact.
   A source PDF was also restored after offload and matched its expected SHA-256;
-  all 2,568 selected logical paths are now absent locally and recoverable through
-  the immutable manifest. Free disk increased from 4.6 GiB to 22 GiB (46% used).
+  immediately after offload all 2,568 selected logical paths were absent and
+  recoverable through the immutable manifest. Free disk increased from 4.6 GiB
+  to 22 GiB (46% used).
+- Hydrated only the three CTG/ACB/MBB human-review fixtures (18,681,844 bytes)
+  after the full regression correctly reported their absence. Their manifest
+  hashes, sizes and PDF page counts pass; the other 2,565 offloaded logical paths
+  remain absent locally. This preserves strict review tests without restoring
+  the full 18.3 GB corpus.
 
 ## Currently in progress
 
-- Designing the constrained Vietnamese correction layer for the four E-0020
-  residual labels is complete at feature/replay level; formal E-0021 artifact
-  sealing and an independent-bank holdout remain in progress.
+- Selecting and freezing an independent-bank/period Role A/Role B holdout for
+  the already-fixed E-0021 correction thresholds is now in progress.
 - Raw-PDF-dependent experiments now hydrate only their bounded registered inputs
   from the immutable S3 manifest and must not overwrite a mismatched local file.
 
@@ -360,17 +374,14 @@
 
 ## Planned next steps
 
-1. Seal E-0021 for the four retained substitutions, preserving raw labels and
-   recording every candidate source, edit distance, support count, dominance
-   ratio and runner-up margin; do not let correction imply schema mapping.
-2. Expand Role A next to a different bank and period after E-0017, using the
+1. Expand Role A next to a different bank and period after E-0017, using the
    same pre-inspection role freeze and common metrics rather than a new one-off
-   experiment script.
-3. Build a human-gold evaluation split separated by bank and reporting period,
+   experiment script, then replay E-0021 with thresholds unchanged.
+2. Build a human-gold evaluation split separated by bank and reporting period,
    including skew, warp, dark headers, blurred digits, wrapped rows, continuation
    pages, direct/indirect LCTT, separate/consolidated scope, and quarterly/YTD
    derivation cases.
-4. Define calibrated abstention thresholds only after the human-gold benchmark;
+3. Define calibrated abstention thresholds only after the human-gold benchmark;
    unresolved evidence must continue to produce review statuses rather than
    guessed output.
 

@@ -1,0 +1,336 @@
+{
+  "acceptance": {
+    "all_140_rows_replayed": true,
+    "all_four_semantic_residuals_corrected": true,
+    "automatic_confidence_promotion": false,
+    "automatic_period_assignment": false,
+    "automatic_schema_mapping": false,
+    "automatic_scope_assignment": false,
+    "automatic_value_replacement": false,
+    "full_pipeline_or_production_claim": false,
+    "historical_reference_invoked": false,
+    "non_target_proposal_count": 0
+  },
+  "algorithm_files_sha256": {
+    "src/bctc_ai/core/text.py": "2a97e6626fa6f747ff0f8e9de827b02f50dcd9a0c8e058937cd221acf1420af6",
+    "src/bctc_ai/evaluation/vietnamese_label_correction_evaluation.py": "55ba5d3e15c58d3343616e11d971aa9ce06ea7fc18d872c0b1dace516a431de6",
+    "src/bctc_ai/ocr/vietnamese_label_correction.py": "5b07eeabe7eb83840ba453a616d0dcee995d1676c1ee737a6171d6a16ab792f6",
+    "src/bctc_ai/schema/registry.py": "04a88f848a70f96c04ae0a974aed06e45446350cef3e218c0b6be09b8ed6659e"
+  },
+  "claim_boundary": "Whole-six-page calibration replay against the same native-PDF machine Role A; not human gold, not bank/period-disjoint, not a schema mapping decision, and not a production threshold. Reference labels are used only after proposal generation for scoring. Raw OCR labels remain immutable evidence.",
+  "code": {
+    "git_commit": "c32741a217ca16e7224d416b2c14245f580e610d",
+    "git_dirty": false
+  },
+  "corrections": [
+    {
+      "after_casefold_exact": true,
+      "after_semantic_key_exact": true,
+      "alignment_index": 0,
+      "before_casefold_exact": false,
+      "before_semantic_key_exact": false,
+      "candidate_page": 14,
+      "proposal": {
+        "automatic_output_authority": false,
+        "automatic_schema_mapping_authority": false,
+        "corrected_label": "LƯU CHUYỂN TIỀN TỪ HOẠT ĐỘNG KINH DOANH",
+        "next_raw_label": "Thu nhập lãi và các khoản thu nhập tương tự nhận được",
+        "previous_raw_label": "Lợi nhuận sau thuế",
+        "raw_label": "LUỞU CHUYỀN TIÊN TỪ HOẶT ĐỘNG KINH DOANH",
+        "raw_label_preserved": true,
+        "replacements": [
+          {
+            "candidate_key": "luu chuyen tien tu hoat dong kinh doanh",
+            "candidate_kind": "SCHEMA_FULL_LABEL",
+            "damerau_distance": 1,
+            "document_support_count": 0,
+            "document_support_ratio": 0.0,
+            "end_token_exclusive": 8,
+            "proposed_text": "LƯU CHUYỂN TIỀN TỪ HOẠT ĐỘNG KINH DOANH",
+            "runner_up_similarity": 0.844444,
+            "score_margin": 0.130556,
+            "similarity": 0.975,
+            "source_document_support_count": 0,
+            "source_key": "luou chuyen tien tu hoat dong kinh doanh",
+            "source_text": "LUỞU CHUYỀN TIÊN TỪ HOẶT ĐỘNG KINH DOANH",
+            "start_token": 0,
+            "vocabulary_source_ids": [
+              "ReportNormId:4104",
+              "ReportNormId:4155"
+            ]
+          }
+        ],
+        "row_id": "page-0014:alignment-0000",
+        "row_order_preserved": true,
+        "row_position": 101,
+        "statement_type": "LCTT",
+        "status": "PROPOSED_CORRECTION"
+      },
+      "reference_label": "LƯU CHUYỂN TIỀN TỪ HOẠT ĐỘNG KINH DOANH",
+      "row_id": "page-0014:alignment-0000",
+      "statement_type": "LCTT"
+    },
+    {
+      "after_casefold_exact": true,
+      "after_semantic_key_exact": true,
+      "alignment_index": 11,
+      "before_casefold_exact": false,
+      "before_semantic_key_exact": false,
+      "candidate_page": 14,
+      "proposal": {
+        "automatic_output_authority": false,
+        "automatic_schema_mapping_authority": false,
+        "corrected_label": "(Tăng)/Giảm các khoản tiền gửi và cấp tín dụng cho các TCTD khác",
+        "next_raw_label": "Tăng các khoản về kinh doanh chứng khoán",
+        "previous_raw_label": "Những thay đổi về tài sản hoạt động",
+        "raw_label": "(Tăng)/Giảm các khoản tiền gửi và cấp tính dụng cho các TCDT khác",
+        "raw_label_preserved": true,
+        "replacements": [
+          {
+            "candidate_key": "tin dung",
+            "candidate_kind": "SCHEMA_PHRASE_WITH_DOCUMENT_SUPPORT",
+            "damerau_distance": 1,
+            "document_support_count": 8,
+            "document_support_ratio": 8.0,
+            "end_token_exclusive": 10,
+            "proposed_text": "tín dụng",
+            "runner_up_similarity": null,
+            "score_margin": null,
+            "similarity": 0.888889,
+            "source_document_support_count": 0,
+            "source_key": "tinh dung",
+            "source_text": "tính dụng",
+            "start_token": 8,
+            "vocabulary_source_ids": [
+              "ReportNormId:4196"
+            ]
+          },
+          {
+            "candidate_key": "cac tctd khac",
+            "candidate_kind": "SCHEMA_PHRASE_WITH_DOCUMENT_SUPPORT",
+            "damerau_distance": 1,
+            "document_support_count": 6,
+            "document_support_ratio": 6.0,
+            "end_token_exclusive": 14,
+            "proposed_text": "các TCTD khác",
+            "runner_up_similarity": null,
+            "score_margin": null,
+            "similarity": 0.923077,
+            "source_document_support_count": 1,
+            "source_key": "cac tcdt khac",
+            "source_text": "các TCDT khác",
+            "start_token": 11,
+            "vocabulary_source_ids": [
+              "ReportNormId:4129",
+              "ReportNormId:4174"
+            ]
+          }
+        ],
+        "row_id": "page-0014:alignment-0011",
+        "row_order_preserved": true,
+        "row_position": 112,
+        "statement_type": "LCTT",
+        "status": "PROPOSED_CORRECTION"
+      },
+      "reference_label": "(Tăng)/Giảm các khoản tiền gửi và cấp tín dụng cho các TCTD khác",
+      "row_id": "page-0014:alignment-0011",
+      "statement_type": "LCTT"
+    },
+    {
+      "after_casefold_exact": true,
+      "after_semantic_key_exact": true,
+      "alignment_index": 18,
+      "before_casefold_exact": false,
+      "before_semantic_key_exact": false,
+      "candidate_page": 14,
+      "proposal": {
+        "automatic_output_authority": false,
+        "automatic_schema_mapping_authority": false,
+        "corrected_label": "Giảm các khoản tiền gửi, tiền vay các TCTD khác",
+        "next_raw_label": "Tăng tiền gửi của khách hàng",
+        "previous_raw_label": "Những thay đổi về công nợ hoạt động",
+        "raw_label": "Giảm các khoản tiền gửi, tiền vay các TCDT khác",
+        "raw_label_preserved": true,
+        "replacements": [
+          {
+            "candidate_key": "cac tctd khac",
+            "candidate_kind": "SCHEMA_PHRASE_WITH_DOCUMENT_SUPPORT",
+            "damerau_distance": 1,
+            "document_support_count": 6,
+            "document_support_ratio": 6.0,
+            "end_token_exclusive": 10,
+            "proposed_text": "các TCTD khác",
+            "runner_up_similarity": null,
+            "score_margin": null,
+            "similarity": 0.923077,
+            "source_document_support_count": 1,
+            "source_key": "cac tcdt khac",
+            "source_text": "các TCDT khác",
+            "start_token": 7,
+            "vocabulary_source_ids": [
+              "ReportNormId:4129",
+              "ReportNormId:4174"
+            ]
+          }
+        ],
+        "row_id": "page-0014:alignment-0018",
+        "row_order_preserved": true,
+        "row_position": 119,
+        "statement_type": "LCTT",
+        "status": "PROPOSED_CORRECTION"
+      },
+      "reference_label": "Giảm các khoản tiền gửi, tiền vay các TCTD khác",
+      "row_id": "page-0014:alignment-0018",
+      "statement_type": "LCTT"
+    },
+    {
+      "after_casefold_exact": true,
+      "after_semantic_key_exact": true,
+      "alignment_index": 25,
+      "before_casefold_exact": false,
+      "before_semantic_key_exact": false,
+      "candidate_page": 14,
+      "proposal": {
+        "automatic_output_authority": false,
+        "automatic_schema_mapping_authority": false,
+        "corrected_label": "LƯU CHUYỂN TIỀN TỪ HOẠT ĐỘNG ĐẦU TƯ",
+        "next_raw_label": "Mua sắm tài sản cố định",
+        "previous_raw_label": "Lưu chuyển tiền thuần từ hoạt động kinh doanh",
+        "raw_label": "LUỞU CHUYỀN TIÊN TỪ HOẶT ĐỘNG ĐẦU TƯ",
+        "raw_label_preserved": true,
+        "replacements": [
+          {
+            "candidate_key": "luu chuyen tien tu hoat dong dau tu",
+            "candidate_kind": "SCHEMA_FULL_LABEL",
+            "damerau_distance": 1,
+            "document_support_count": 0,
+            "document_support_ratio": 0.0,
+            "end_token_exclusive": 8,
+            "proposed_text": "LƯU CHUYỂN TIỀN TỪ HOẠT ĐỘNG ĐẦU TƯ",
+            "runner_up_similarity": 0.829268,
+            "score_margin": 0.142954,
+            "similarity": 0.972222,
+            "source_document_support_count": 0,
+            "source_key": "luou chuyen tien tu hoat dong dau tu",
+            "source_text": "LUỞU CHUYỀN TIÊN TỪ HOẶT ĐỘNG ĐẦU TƯ",
+            "start_token": 0,
+            "vocabulary_source_ids": [
+              "ReportNormId:4105",
+              "ReportNormId:4157"
+            ]
+          }
+        ],
+        "row_id": "page-0014:alignment-0025",
+        "row_order_preserved": true,
+        "row_position": 126,
+        "statement_type": "LCTT",
+        "status": "PROPOSED_CORRECTION"
+      },
+      "reference_label": "LƯU CHUYỂN TIỀN TỪ HOẠT ĐỘNG ĐẦU TƯ",
+      "row_id": "page-0014:alignment-0025",
+      "statement_type": "LCTT"
+    }
+  ],
+  "dataset_role": "CALIBRATION",
+  "delta": {
+    "casefold_exact_labels": 4,
+    "semantic_key_exact_labels": 4
+  },
+  "evidence_manifest": [
+    {
+      "kind": "E0020_RESULT",
+      "path": "docs/experiments/E-0020-ordered-label-segmentation-tcb.json",
+      "sha256": "2879361149a50c068f0d7590c6454535f4abae4002963f2f7defd471176d1ffb"
+    },
+    {
+      "kind": "CORRECTION_CONFIG",
+      "path": "config/ocr/vietnamese-label-correction-v1.yaml",
+      "sha256": "c802aec5dc04380977ceb89a29ab5b5ae5be56b0cd8f0326e7e73ff621289414"
+    },
+    {
+      "kind": "SCHEMA_SOURCES",
+      "path": "config/schemas/sources.yaml",
+      "sha256": "af4a16f1040063d1fd28fd24de5056794867afc56dbbf130ae3ff74d1d466221"
+    },
+    {
+      "kind": "CDKT_TEMPLATE",
+      "path": "template/Bank_CDKT_ReportNormId.xlsx",
+      "sha256": "a07ff47f7c41011fe4ca5a66681106d476586ded9013b5874cbb9f67a6ad8486"
+    },
+    {
+      "kind": "KQKD_TEMPLATE",
+      "path": "template/Bank_KQKD_ReportNormId.xlsx",
+      "sha256": "6033001b85a236fce4b29437d56cc02d7c6a21f95e82b43de043b1268eb74615"
+    },
+    {
+      "kind": "LCTT_TEMPLATE",
+      "path": "template/Bank_LCTT_ReportNormId.xlsx",
+      "sha256": "2c9d52737c492f115895eab9a571da2269fcfd3c3e77539ec581782e579d260a"
+    },
+    {
+      "kind": "TM_TEMPLATE",
+      "path": "template/Bank_TM_ReportNormId.xlsx",
+      "sha256": "fa284e3af1f90c8a206308f63e6d35e77a9fbf1abcaf60abcb59877c47275140"
+    },
+    {
+      "kind": "EXPERIMENT_CONFIG",
+      "path": "config/experiments/e0021-vietnamese-label-correction-tcb.yaml",
+      "sha256": "43aafb175aa35c6a8ed6141a1ef61dbba861737c99b2e37d1ef2525b27609914"
+    }
+  ],
+  "experiment_id": "E-0021",
+  "format_version": 1,
+  "metrics": {
+    "corrected_casefold_exact_labels": 108,
+    "corrected_semantic_key_exact_labels": 140,
+    "non_improving_proposals": 0,
+    "proposal_casefold_precision": 1.0,
+    "proposed_rows": 4,
+    "raw_casefold_exact_labels": 104,
+    "raw_semantic_key_exact_labels": 136,
+    "rows": 140,
+    "semantic_key_regressions": 0,
+    "unchanged_rows": 136
+  },
+  "safety": {
+    "automatic_output_authority": false,
+    "automatic_schema_mapping_authority": false,
+    "confidence_promoted": false,
+    "numeric_or_note_fields_present": false,
+    "period_or_scope_fields_present": false,
+    "raw_labels_preserved": true,
+    "role_a_labels_used_as_correction_features": false,
+    "row_order_preserved": true
+  },
+  "schema_vocabulary": {
+    "item_count": 1593,
+    "numeric_report_norm_id_sort_used": false,
+    "ordered_ids_sha256": "57e363c4cb37eb185e8fca6420e8476489465eb715c4d7608a0ad94e50f05c84",
+    "report_norm_id_output_or_mapping_emitted": false,
+    "tm_1944_name": "Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
+    "tm_1944_present": true,
+    "workbook_display_order_preserved": true
+  },
+  "selection_policy": "REPLAY_ALL_140_E0020_ROWS_WITHOUT_REFERENCE_LABELS_AS_INPUT_FEATURES",
+  "status": "PASS_CALIBRATION_VIETNAMESE_LABEL_CORRECTION_NO_CONFIDENCE_PROMOTION",
+  "target": {
+    "candidate_fixture_id": "e0009-tcb-2024-separate-scan",
+    "expected_corrected_semantic_key_exact_labels": 140,
+    "expected_proposed_rows": 4,
+    "expected_raw_semantic_key_exact_labels": 136,
+    "expected_statement_types": [
+      "CDKT",
+      "KQKD",
+      "LCTT"
+    ],
+    "reference_fixture_id": "e0009-tcb-2024-separate-searchable",
+    "upstream_rows": 140
+  },
+  "upstream_numeric_structure": {
+    "candidate_invalid_cells": 0,
+    "correction_layer_received_numeric_or_note_fields": false,
+    "e0020_after_metrics_sha256": "c05ffb9ecfdf04008a9497bde135712d9aa7a3f5aa656fab599c919345d3382c",
+    "exact_financial_cells": 264,
+    "financial_cells": 264
+  }
+}
