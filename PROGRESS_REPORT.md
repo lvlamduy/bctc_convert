@@ -1,9 +1,9 @@
 # Progress report
 
-- Updated: 2026-08-06T13:16:22+00:00
+- Updated: 2026-08-06T13:33:29+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest sealed accuracy checkpoint: `2a0426a`; latest pushed progress checkpoint:
-  `2a0426a`; E-0021 clean evaluation base:
+- Latest sealed accuracy checkpoint: `9e4c208`; preceding pushed progress checkpoint:
+  `ec2296c`; E-0021 clean evaluation base:
   `c32741a217ca16e7224d416b2c14245f580e610d`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
@@ -234,6 +234,22 @@
   holdout accuracy. E-0027 V3 and E-0028 artifact SHA-256 values are
   `9ccfd0faf869adee4cb885a4a87a32c86354101e82adc1d62c32e4ce7e9089c8`
   and `4c6e644f4f764d08b4c4dae580e49bfee50b3efeadedede668436e3b8d6d396a`.
+- E-0029 isolates the next error class,
+  `STAGGERED_HEADER_AND_NOTE_AXIS_ROW_RECONSTRUCTION`. The unchanged V2 parser
+  fails closed on both accepted MBB CDKT pages because the two visible period
+  headings are vertically staggered. Reference-blind V3 permits only a bounded
+  1.25-line-height header stagger, excludes stacked note/unit/audit companions,
+  recognizes Roman/OCR-confusable note references only at the note axis, and
+  filters vertical rules before dash-component uniqueness. It reconstructs
+  38 rows/76 cells on page 3 and 25 rows/50 cells on page 4; every row has two
+  cells, with zero invalid cells, duplicate source-line assignments, header
+  leaks or note-prefix leaks. Page 3 has 72 `VALUE`, 1 `DASH` and 3 `BLANK`
+  cells; page 4 has 42 `VALUE`, 2 `DASH` and 6 `BLANK` cells. One page-4 mark
+  remains explicitly unassigned within the predeclared bound. Page 5 remains
+  excluded. This is geometry calibration only: period roles, unit semantics,
+  numeric truth, labels, schema IDs, validation and Excel were not invoked.
+  Artifact SHA-256 is
+  `affe74a243e342b56c4ead2fac984f10d9a1f42378823b50ccdde8946eeed373`.
 
 ## Completed tasks
 
@@ -528,6 +544,12 @@
   exact off-balance exclusion, complete-page sequence, 8.5 path margin and exact
   structural no-regression on both frozen E-0013 documents. The full project
   regression now passes 383 tests with 2 intentional skips.
+- Completed and sealed E-0029 at `9e4c208`. The artifact is hash-locked by an
+  integration test; 9 focused reconstruction/control tests, Ruff and
+  `git diff --check` pass. The run consumed only the E-0028 page contract,
+  immutable PP-OCRv6 boxes/pixels and frozen V2/V3 reconstruction code. It did
+  not load human review, template labels/IDs, MongoDB/history, E-0022, semantic
+  proposals, period roles, validation or Excel.
 
 ## Currently in progress
 
@@ -545,17 +567,17 @@
   propose Vietnamese text on immutable PP-OCRv6 line/row boxes; VietOCR remains a
   challenger and the independent numeric path remains authoritative for values,
   signs and dashes.
-- The active end-to-end task is to carry the now located MBB Q1/2026 CDKT pages
-  3–4 through canonical logical rows, inherited period/unit axes, ordered
+- The active end-to-end task is to carry the now located and geometrically
+  reconstructed MBB Q1/2026 CDKT pages 3–4 through deterministic period/unit
+  binding and independent numeric/sign/dash verification, then ordered
   SchemaGraph mapping, accounting validation and provenance-bearing Excel.
   Measurement will use Role A versus Role B row coverage, schema assignment,
   full `(ReportNormId, period, raw value, normalized value, status)` tuples and
   workbook-cell agreement; no character-only metric can complete this stage.
-- E-0027 page discovery is sealed and E-0028 supplies the accepted replacement
-  locator. The next Role B stage may consume only the accepted page contracts,
-  PP geometry, source pixels and frozen template structure. Human-reviewed
-  pages/IDs/values remain evaluation-only until the row/value/mapping/Excel
-  output itself is sealed.
+- E-0027 page discovery, E-0028 locator V4 and E-0029 row reconstruction are
+  sealed. The next Role B stage may consume only their accepted page/row
+  contracts plus source pixels. Human-reviewed pages/IDs/values remain
+  evaluation-only until the period/value/mapping/Excel output itself is sealed.
 - Ordered SchemaGraph v1 and E-0023 are sealed. The mapper remains intentionally
   excluded from the
   already-frozen E-0022 pipeline and will next be evaluated on separate real-PDF
@@ -607,12 +629,15 @@
   reader configuration is rejected. E-0026 fixes that packaging failure, but
   its remaining 12 edits are dominated by ten Vietnamese diacritic-only errors;
   it therefore supplies semantic proposals rather than source truth.
-- E-0027 showed that whole-line similarity also dilutes a valid short accounting
-  core embedded in a longer logical heading. E-0028 resolves this specific class
-  without loosening page acceptance, but the next risk moves downstream: page 3
-  has dense rows and page 4 is a continuation with no independent permission to
-  invent period roles. Logical-row joins, label/value column separation and
-  table-level period propagation must now be proven before schema mapping.
+- E-0027 showed that whole-line similarity dilutes a valid short accounting core;
+  E-0028 resolves that locator class, and E-0029 resolves the observed staggered-
+  header/row-grid failure without consulting schema or review. The active risk is
+  now value semantics: the fixed grid contains nine `BLANK` cells versus three
+  independently detected `DASH` cells, while a visible empty table cell and an
+  OCR-missed dash are not interchangeable. Both MBB pages repeat period headers,
+  so their roles must be parsed from those visible dates; later headerless pages
+  may inherit only a verified table-level map. The OCR unit text also lacks
+  diacritics and must retain raw evidence beside a bounded canonical proposal.
 - A higher-resolution crop is not sufficient by itself. On MBB LCTT page 14,
   PaddleOCR-VL still concatenates rows and numeric cells at 450 DPI; its current
   HTML proposal has 18 rows and 14 invalid multi-number cells, while independent
@@ -666,7 +691,9 @@
    geometry corroborate it; otherwise abstain. Freeze on separate calibration
    documents before choosing a new holdout.
 3. Reconstruct logical rows across wrapped text and page continuations while
-   retaining hard page-boundary provenance.
+   retaining hard page-boundary provenance. The current V3 grid permits only
+   bounded header staggering, axis-local note references and shape-verified dash
+   components; it keeps `VALUE`, `DASH`, `BLANK` and `INVALID` distinct.
 4. Rank schema candidates lexicographically by statement/table context, parent,
    previous/next template rows, indentation/numbering, then normalized label.
    Same-bank and cross-bank history are lower-priority weak evidence only.
@@ -709,14 +736,21 @@
 
 ## Planned next steps
 
-1. Freeze a Role B row/cell reconstruction control for MBB Q1/2026 CDKT pages
-   3–4, then build logical rows from immutable PP-OCRv6 boxes, including wrapped
-   labels and the page boundary. Keep page 5 out of the target CDKT flow.
-2. Detect numeric columns and propagate the visible page-3 current/comparative
-   period map to page 4 at table level. Verify digits, dashes and parentheses on
-   fixed cell crops; never infer period roles from value magnitude or history.
-3. Carry the sealed rows and value tuples through ordered SchemaGraph mapping,
-   accounting validation and a provenance-bearing Excel development output.
+1. Freeze a reference-blind table-metadata contract for MBB CDKT pages 3–4:
+   parse each visible date header, bind the later date to current and the earlier
+   year-end date to comparative from header text (never value magnitude), retain
+   raw/canonical unit evidence, and keep page 5 excluded. General continuation
+   propagation must remain a separate fail-closed mechanism for pages where the
+   headers are genuinely absent.
+2. Verify digits, separators, parentheses and dash/empty observations on fixed
+   numeric-cell crops independently of label recognition. Retain raw pixels/text
+   and do not normalize any of E-0029's nine `BLANK` cells to zero until visible
+   cell evidence verifies that interpretation.
+3. Read bounded title/line/logical-row crops with DeepSeek-OCR-2, fuse proposals
+   onto the immutable E-0029 grid, and preserve PP geometry plus independent
+   numeric cells. Then carry the sealed rows and value tuples through ordered
+   SchemaGraph mapping, accounting validation and a provenance-bearing Excel
+   development output.
    Only then open the six-row/12-cell review subset to measure page, row,
    ReportNormId, period, raw/normalized value, status, full-tuple and workbook
    cell accuracy.
