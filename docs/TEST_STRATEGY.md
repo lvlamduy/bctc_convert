@@ -156,6 +156,16 @@ integration gate will hash-lock the exact 2-document/13-page/8-region input
 contract; it is an acquisition/localization regression, not an OCR-accuracy or
 production gate.
 
+The E-0016 original-crop OCR evidence gate additionally requires 15/15 requested
+reader runs (eight PP-OCRv6 and seven PaddleOCR-VL), exact input/output/runtime
+bindings, and zero schema mapping, variant selection, value replacement, or
+confidence promotion. Full-table comparisons align on order and normalized
+labels only. Headerless crops cannot invoke the period-axis parser. Tests must
+retain no-table, unresolved-table, invalid-cell, and reader-count disagreement
+outcomes even when every inference process exited successfully. The formal
+artifact is generated only from a clean mechanism commit and is then protected
+by a separate hash-locked integration regression.
+
 Explicit page numbers in a golden/calibration fixture are expected test data, not production routing rules. Production page pairing must continue to use document-order and visual evidence; no bank, page offset, or coordinate constant may enter the algorithm.
 
 The hash-bound human-review registry `HR-2026-08-06-CTG-ACB-MBB` adds a calibration truth layer above machine-reader agreement. Its tests verify 3 exact PDF identities, 30 decisions, 58 visible period values, 12 `OBSERVED_VALUE` rows, 6 `OBSERVED_ZERO` rows, 1 `NOT_OBSERVED` row, and 11 `OUT_OF_SCOPE_FOR_TARGET_TEMPLATE` rows. They also assert that external IDs 5701–5711 do not collide with any current template. This is fixture truth only; production code cannot inspect its bank/page entries.

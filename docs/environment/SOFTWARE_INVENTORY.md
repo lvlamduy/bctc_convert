@@ -168,6 +168,17 @@ the pinned control-plane PyMuPDF and SHA-256 utilities; YAML/config validation
 reuses PyYAML. The paper candidates GraphTSR/TGRNet, DocTr/DocGeoNet/UVDoc,
 FastTab, and TabSniper are research hypotheses only and were not installed.
 
+The E-0016 original-crop evidence sealer also installs nothing. It reuses the
+same locked standard-library JSON/TOML/HTML parsing, PyYAML, strict financial
+cell parser, PP-OCRv6 CPU-FP32 configuration, and PaddleOCR-VL-1.6 GPU-BF16
+configuration. The PP-OCRv6 per-run manifests self-record clean Git, runner,
+runtime, package, model-weight, input, and result identities. The current
+PaddleOCR-VL shell runner does not self-record a Git commit; the evidence pack
+therefore states `NOT_SELF_RECORDED_BY_RUNNER` and binds the runner/config/runtime
+and every output byte without claiming stronger provenance. A future runner
+version should add its own atomic inference manifest rather than retroactively
+asserting a commit for these completed reads.
+
 Detailed commands, disk checks, cache rules, failure history, and rollback are in `docs/environment/GPU_RUNTIME_RUNBOOK.md`.
 
 ## Maintenance rule

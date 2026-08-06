@@ -3,6 +3,11 @@
 Only material ambiguities that cannot be safely resolved from current evidence are listed.
 Answers should be recorded in the CSV or JSONL `user_response` field; IDs remain stable.
 
+Last reviewed: 2026-08-06T03:18:53+00:00. No new blocking question was
+introduced by the E-0016 evidence work. The user's clarification that workbook
+row order—not `ReportNormId` magnitude—is authoritative has been accepted as a
+resolved global rule.
+
 ## Q-BOOT-001 — CRITICAL
 
 Which contiguous workbook-order blocks define the semantic INDIRECT and DIRECT cash-flow branches?

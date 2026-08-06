@@ -128,6 +128,24 @@ from a clean commit into a new output directory; its formal tracked manifest
 will bind all algorithms, configs, upstream evidence, source PDFs, baseline
 renders, OCR results, and generated crop manifests.
 
+The follow-on original-crop evidence sealer is deliberately a separate gate.
+It traverses the input manifest rather than a bank/page list, verifies the full
+E-0015→source/seal/baseline→targeted-render chain, and requires exactly the
+readers requested by each region. It rejects extra reader outputs, variant
+outputs, missing metrics, dirty PP-OCRv6 inference, input/result hash drift,
+implicit geometry preprocessing, runtime/model/config drift, and overwrite.
+Only the `original` image is read in this phase as a neutral baseline; that is
+recorded as `NO_VARIANT_SELECTED_BASELINE_EVIDENCE_ONLY`, not as a decision that
+the original is best.
+
+Full-table regions may reuse the frozen Role B/Role C parsers and order/label
+comparison to measure structural recovery. Headerless row bands and numeric
+strips are not allowed to infer period axes. A parser failure, unresolved table,
+multi-number cell, or reader row-count disagreement is retained in the evidence
+artifact; successful process execution does not convert it into a successful
+row/value extraction. Conditional cross-reader equality remains explicitly
+different from human-gold accuracy.
+
 This stage adds no package, model, weight, driver, or operating-system setting.
 It reuses the control-plane PyMuPDF/OpenCV/NumPy/PyYAML lock and the existing
 pinned PaddleOCR-VL-1.6 and PP-OCRv6 model runtime for subsequent reads.
