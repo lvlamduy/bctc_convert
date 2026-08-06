@@ -1,13 +1,13 @@
 # Progress report
 
-- Updated: 2026-08-06T09:03:00+00:00
+- Updated: 2026-08-06T09:08:31+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest clean, tested, pushed checkpoint: `d7a3f60`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
+- Latest clean, tested, pushed checkpoint: `867d6e9`; E-0021 clean evaluation base: `c32741a217ca16e7224d416b2c14245f580e610d`
 - Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
 - Registered PDFs: 2,567
-- Latest full regression: 273 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
+- Latest full regression: 274 passed, 2 intentionally skipped historical replays; Ruff and `git diff --check` passed
 
 ## Accuracy focus and measurable state
 
@@ -333,10 +333,12 @@
   `2026-08-06T08:34:37Z`; code/config/model/schema identities were frozen at
   `2026-08-06T08:35:17Z`. Role B must be hydrated, processed and sealed before
   Role A source access, and the frozen thresholds cannot be tuned on this pair.
-- Ordered SchemaGraph v1 and its focused fixtures now pass locally. A clean
-  mechanism commit, full regression and hash-bound before/after development
-  artifact remain before it can be called a sealed version. It is intentionally
-  excluded from the already-frozen E-0022 pipeline.
+- Ordered SchemaGraph v1 is committed and pushed at `867d6e9`; its full
+  regression passes. The E-0023 evaluator now independently computes the
+  row-wise baseline, ordered result, three safety fixtures and real-template
+  graph invariants. It must be committed first, then run from a clean tree and
+  sealed by artifact hash. It is intentionally excluded from the already-frozen
+  E-0022 pipeline.
 - Raw-PDF-dependent experiments now hydrate only their bounded registered inputs
   from the immutable S3 manifest and must not overwrite a mismatched local file.
 
@@ -423,9 +425,8 @@
 
 1. Commit and seal the E-0022 pre-access artifact while both holdout sources are
    still absent; then process and seal Role B before any Role A access.
-2. Commit the ordered-subgraph mechanism after full regression, then generate a
-   clean, hash-bound development artifact comparing the 6→3 fixture with the
-   independent row-wise label baseline. Do not tune it on E-0022.
+2. Commit the E-0023 evaluator after full regression, then generate and seal its
+   clean, hash-bound 6→3 before/after artifact. Do not tune it on E-0022.
 3. Complete the one-shot E-0022 Role A/Role B comparison with frozen thresholds
    and report the main error class and measurable before/after results.
 4. Build a human-gold evaluation split separated by bank and reporting period,

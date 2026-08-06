@@ -1,0 +1,49 @@
+version: 1
+experiment_id: E-0023
+dataset_role: LOGIC_DEVELOPMENT
+fixture_id: ordered-subgraph-six-to-three-v1
+mapping_policy: config/mapping/ordered-subgraph-v1.yaml
+scope_policy: config/mapping/scope_exclusions.yaml
+baseline: INDEPENDENT_LABEL_TOP1_NO_GLOBAL_CONSTRAINT
+baseline_uses_same_candidate_similarity_gate: true
+pdf_or_ocr_evidence_used: false
+holdout_evidence_used: false
+historical_evidence_used: false
+numeric_value_features_used: false
+numeric_report_norm_id_sort_used: false
+
+expected_pairs:
+  - [p1, 50]
+  - [p3, 700]
+  - [p5, 10]
+expected_extra_pdf_rows: [p0, p2, p4]
+
+expected_metrics:
+  baseline:
+    predicted_pairs: 6
+    correct_pairs: 3
+    false_positive_pairs: 3
+    duplicate_schema_assignments: 3
+    retained_extra_pdf_rows: 0
+    precision: 0.5
+    recall: 1.0
+  ordered_subgraph:
+    predicted_pairs: 3
+    correct_pairs: 3
+    false_positive_pairs: 0
+    duplicate_schema_assignments: 0
+    retained_extra_pdf_rows: 3
+    precision: 1.0
+    recall: 1.0
+
+required_safety:
+  ambiguity_fixture_abstains: true
+  verified_parent_overrides_wrong_semantic_score: true
+  off_balance_exact_label_excluded: true
+  workbook_display_order_used: true
+  automatic_production_confidence_promotion: false
+
+claim_boundary: >-
+  Controlled logic-development fixture only. It isolates the effect of global
+  ordered cluster matching and is neither real-document OCR accuracy, human gold,
+  nor an untouched holdout. E-0022 remains frozen and unused for tuning.
