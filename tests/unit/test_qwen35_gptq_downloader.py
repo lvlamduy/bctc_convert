@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import tomllib
 from pathlib import Path
 from types import ModuleType
@@ -77,6 +78,44 @@ def test_qwen35_gptq_verifier_rejects_unregistered_files(tmp_path: Path):
         downloader._verify_model(tmp_path, config)
 
 
+def test_qwen35_gptq_verifier_rejects_unregistered_special_files(tmp_path: Path):
+    artifact = tmp_path / "model.safetensors"
+    artifact.write_bytes(b"pinned")
+    config = {
+        "model": {"repo_id": "owner/model", "revision": "a" * 40},
+        "required_artifact_bytes": artifact.stat().st_size,
+        "artifacts": {
+            "weights": {
+                "path": artifact.name,
+                "size_bytes": artifact.stat().st_size,
+                "sha256": downloader._sha256_file(artifact),
+            }
+        },
+    }
+    os.mkfifo(tmp_path / "unregistered.pipe")
+
+    with pytest.raises(RuntimeError, match="non-regular filesystem entry"):
+        downloader._verify_model(tmp_path, config)
+
+
+def test_qwen35_gptq_verifier_rejects_registered_fifo_without_blocking(tmp_path: Path):
+    os.mkfifo(tmp_path / "weights.bin")
+    config = {
+        "model": {"repo_id": "owner/model", "revision": "a" * 40},
+        "required_artifact_bytes": 0,
+        "artifacts": {
+            "weights": {
+                "path": "weights.bin",
+                "size_bytes": 0,
+                "sha256": "0" * 64,
+            }
+        },
+    }
+
+    with pytest.raises(RuntimeError, match="not a regular file"):
+        downloader._verify_model(tmp_path, config)
+
+
 def test_qwen35_capacity_preflight_counts_registered_partial_files(tmp_path: Path, monkeypatch):
     staging = tmp_path / ".partial"
     staging.mkdir()
@@ -107,7 +146,7 @@ def test_qwen35_capacity_preflight_counts_registered_partial_files(tmp_path: Pat
 
 
 def test_qwen35_toml_inventory_matches_declared_selected_artifacts():
-    config = tomllib.loads(downloader.DEFAULT_CONFIG.read_text(encoding="utf-8"))
+    config = tomllib.loads((PROJECT_ROOT / downloader.DEFAULT_CONFIG).read_text(encoding="utf-8"))
 
     assert config["required_artifact_bytes"] == 30_258_477_628
     assert (
@@ -118,3 +157,35 @@ def test_qwen35_toml_inventory_matches_declared_selected_artifacts():
         )
         == 30_235_264_416
     )
+
+
+def test_qwen35_downloader_rejects_alternate_config_path(tmp_path: Path):
+    alternate = tmp_path / "qwen.toml"
+    alternate.write_bytes((PROJECT_ROOT / downloader.DEFAULT_CONFIG).read_bytes())
+
+    with pytest.raises(RuntimeError, match="canonical lexical path"):
+        downloader._load_config(alternate)
+
+
+def test_qwen35_downloader_rejects_symlinked_model_artifact_parent(tmp_path: Path):
+    model = tmp_path / "model"
+    real = tmp_path / "real"
+    model.mkdir()
+    real.mkdir()
+    artifact = real / "weights.bin"
+    artifact.write_bytes(b"pinned")
+    (model / "nested").symlink_to(real, target_is_directory=True)
+    config = {
+        "model": {"repo_id": "owner/model", "revision": "a" * 40},
+        "required_artifact_bytes": len(b"pinned"),
+        "artifacts": {
+            "weights": {
+                "path": "nested/weights.bin",
+                "size_bytes": len(b"pinned"),
+                "sha256": downloader._sha256_file(artifact),
+            }
+        },
+    }
+
+    with pytest.raises(RuntimeError, match="symlink component"):
+        downloader._verify_model(model, config)

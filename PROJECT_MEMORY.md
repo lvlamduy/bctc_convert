@@ -125,9 +125,10 @@ This is the durable retrieval point for project context. It summarizes user auth
   The migration audit proves all 1,384 prior TM identities/names/order mappings
   unchanged and binds both workbook hashes.
 - CPU environment is locked in `uv.lock`; bootstrap, atomic storage, source identity registry, role freezing, content-addressed materialization, render/preprocess, local difficult-region variants, perspective correction, ordered alignment, continuation graph, row wrapping, arithmetic validation, and workbook export have executable tests.
-- Latest full test run through the E-0036 Qwen pre-inference controls: 499 passed
-  and 2 immutable-historical/external replays skipped in 97.78 seconds; Ruff
-  lint, formatting and `git diff --check` passed.
+- Latest full test run through the hardened E-0036 Qwen pre-inference and
+  session-backup controls: 544 passed and 2 immutable-historical/external
+  replays skipped in 102.03 seconds; Ruff check, targeted formatting and
+  `git diff --check` pass.
 - A real scanned/mixed ACB PDF page rendered and passed preprocessing checkpoint/hash verification.
 - Relative word-gap segmentation, numeric right-edge clustering, note-axis separation, wrapped-row assembly, label-only section retention, and axis-local period/unit binding are implemented without institution/page coordinate rules.
 - On the registered VPB logic-development fixture (pages 5–10), the native text path reconstructed 134 logical rows and 252 value cells, preserved 48 note references, and found two value axes on every page. It correctly separated snapshot dates from three-month durations, retained direct-LCTT anchors and section headings, and left one visible unlabeled off-balance total unresolved instead of inventing a label. See `docs/experiments/E-0006-vpb-native-geometry.json`.
@@ -211,9 +212,17 @@ This is the durable retrieval point for project context. It summarizes user auth
 - The Qwen gate is authorized through a minimal answer-free artifact. The
   pre-inference mechanism pins the official 27B GPTQ-Int4 revision, 24
   artifacts/30,258,477,628 bytes, deterministic bounded offline decoding and an
-  explicit RTX4090/CPU layer split. At this checkpoint no registered Qwen weight
-  shard or Qwen output exists, so load feasibility, speed, memory and accuracy
-  remain unmeasured.
+  explicit RTX4090/CPU layer split. All 24 registered artifacts are now local
+  and pass the hardened canonical downloader's size/SHA-256 verification. No
+  model load or Qwen output exists, so load feasibility, speed, memory and
+  accuracy remain unmeasured.
+- Three historical Codex-session S3 archive versions are integrity-restorable
+  but security-quarantined because they captured a GitHub credential from the
+  conversation stream. Session-backup V2 now scans paths and bytes, verifies an
+  exact-inventory archive locally before any AWS call, then verifies the remote
+  copy again. No new session backup is allowed until the credential is revoked
+  and the source sessions pass; destructive deletion of the contaminated S3
+  versions requires explicit user approval.
 
 ## Open constraints and next decisions
 
@@ -292,3 +301,8 @@ This is the durable retrieval point for project context. It summarizes user auth
   exact pre-inference Qwen3.5-27B GPTQ-Int4 model/runtime/downloader/reader
   contract. No Qwen weights were downloaded and no Qwen inference or result was
   claimed.
+- 2026-08-07: Downloaded and independently hash-verified the exact 24-artifact
+  Qwen3.5 GPTQ-Int4 registry without running inference; hardened canonical
+  config/model paths and the pre-review output seal against symlink, TOCTOU and
+  overwrite races. Quarantined the three historical session archives after a
+  credential-content audit and added a V2 pre-upload secret-scan/restore gate.

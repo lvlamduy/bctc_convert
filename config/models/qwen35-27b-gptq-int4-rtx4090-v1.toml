@@ -22,6 +22,22 @@ path = "output/calibration/e0036-mbb-cdkt-semantic-label-readers/request.json"
 sha256 = "ad4c1a9fecf9686249a9c4eea2a5b6a2a903fc4716536e5804c481facc217781"
 sample_count = 64
 
+[output]
+directory = "output/calibration/e0036-mbb-cdkt-semantic-label-readers/qwen-reader"
+seal_path = "docs/experiments/E-0036-qwen-output-seal.json"
+exact_files = ["ocr_result.json", "run_manifest.json"]
+required_seal_state = "QWEN_OUTPUT_HASH_SEALED_BEFORE_REVIEW_ACCESS"
+
+[output.sealer]
+path = "src/bctc_ai/evaluation/qwen35_logical_row_output_seal.py"
+sha256 = "1d0e96f4ea35a40fbe024b272397c12d823cb28d701017ebc968eb62eae38ab5"
+size_bytes = 38658
+
+[output.capture_script]
+path = "scripts/experiments/capture_e0036_qwen_output_seal.py"
+sha256 = "87f249368058f8c61a242e6c61d78a71e7995fa69ccd2d267f3d11f012bd1ccc"
+size_bytes = 1439
+
 [hard_watchdog]
 path = "scripts/models/qwen35_inference_watchdog.py"
 sha256 = "f99056c24acaa7df3bf230b30a45d094ec4d7a764e3cd415fde538988d6adcc0"

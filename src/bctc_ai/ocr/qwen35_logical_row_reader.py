@@ -3,21 +3,24 @@ from __future__ import annotations
 import hashlib
 import importlib.metadata
 import importlib.util
+import io
 import json
 import os
 import re
 import select
 import shutil
 import signal
+import stat
 import subprocess
 import sys
 import tempfile
 import time
 import tomllib
 from datetime import UTC, datetime
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import Any
 
+import yaml
 from PIL import Image
 
 from bctc_ai.core.hashing import sha256_file
@@ -33,6 +36,16 @@ class Qwen35LogicalRowReaderError(RuntimeError):
 
 
 EXPECTED_STATUS = "CONDITIONAL_E0036_CALIBRATION_ONLY_REFERENCE_BLIND_QWEN_CHALLENGER"
+_CANONICAL_CONFIG_PATH = Path("config/models/qwen35-27b-gptq-int4-rtx4090-v1.toml")
+_E0036_CONTROL_PATH = Path("config/experiments/e0036-mbb-cdkt-semantic-label-readers.yaml")
+_E0036_CONTROL_ARTIFACT_PATHS = {
+    "model_config": _CANONICAL_CONFIG_PATH,
+    "reader_algorithm": Path("src/bctc_ai/ocr/qwen35_logical_row_reader.py"),
+    "runner": Path("scripts/models/run_qwen35_logical_row_reader.py"),
+    "hard_watchdog": Path("scripts/models/qwen35_inference_watchdog.py"),
+    "output_sealer": Path("src/bctc_ai/evaluation/qwen35_logical_row_output_seal.py"),
+    "output_seal_capture_script": Path("scripts/experiments/capture_e0036_qwen_output_seal.py"),
+}
 AUTHORIZATION_KEYS = {
     "authorization_scope",
     "dataset_role",
@@ -106,30 +119,130 @@ def _expected_device_map() -> dict[str, str]:
     }
 
 
-def _load_toml(path: Path, label: str) -> dict[str, Any]:
+def _identity(value: os.stat_result) -> tuple[int, int, int, int, int, int]:
+    return (
+        value.st_dev,
+        value.st_ino,
+        value.st_mode,
+        value.st_size,
+        value.st_mtime_ns,
+        value.st_ctime_ns,
+    )
+
+
+def _stable_file_bytes(path: Path, label: str) -> tuple[bytes, os.stat_result]:
+    flags = (
+        os.O_RDONLY
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_NONBLOCK", 0)
+    )
     try:
-        payload = tomllib.loads(path.read_text(encoding="utf-8"))
-    except (OSError, tomllib.TOMLDecodeError) as error:
-        raise Qwen35LogicalRowReaderError(f"cannot load {label}: {path}") from error
-    if not isinstance(payload, dict):
-        raise Qwen35LogicalRowReaderError(f"{label} must be a TOML object")
-    return payload
+        descriptor = os.open(path, flags)
+    except OSError as error:
+        raise Qwen35LogicalRowReaderError(f"cannot open {label}: {path}") from error
+    try:
+        before = os.fstat(descriptor)
+        if not stat.S_ISREG(before.st_mode):
+            raise Qwen35LogicalRowReaderError(f"{label} is not a regular file")
+        chunks: list[bytes] = []
+        while block := os.read(descriptor, 8 * 1024 * 1024):
+            chunks.append(block)
+        after = os.fstat(descriptor)
+    except OSError as error:
+        raise Qwen35LogicalRowReaderError(f"cannot read {label}: {path}") from error
+    finally:
+        os.close(descriptor)
+    payload = b"".join(chunks)
+    if _identity(before) != _identity(after) or len(payload) != before.st_size:
+        raise Qwen35LogicalRowReaderError(f"{label} changed while being read")
+    return payload, before
+
+
+def _stable_file_digest(path: Path, label: str) -> tuple[str, os.stat_result]:
+    flags = (
+        os.O_RDONLY
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_NONBLOCK", 0)
+    )
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as error:
+        raise Qwen35LogicalRowReaderError(f"cannot open {label}: {path}") from error
+    digest = hashlib.sha256()
+    byte_count = 0
+    try:
+        before = os.fstat(descriptor)
+        if not stat.S_ISREG(before.st_mode):
+            raise Qwen35LogicalRowReaderError(f"{label} is not a regular file")
+        while block := os.read(descriptor, 8 * 1024 * 1024):
+            digest.update(block)
+            byte_count += len(block)
+        after = os.fstat(descriptor)
+    except OSError as error:
+        raise Qwen35LogicalRowReaderError(f"cannot hash {label}: {path}") from error
+    finally:
+        os.close(descriptor)
+    if _identity(before) != _identity(after) or byte_count != before.st_size:
+        raise Qwen35LogicalRowReaderError(f"{label} changed while being hashed")
+    return digest.hexdigest(), before
 
 
 def _load_json(path: Path, label: str) -> dict[str, Any]:
     try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as error:
+        payload = json.loads(_stable_file_bytes(path, label)[0].decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise Qwen35LogicalRowReaderError(f"cannot load {label}: {path}") from error
     if not isinstance(payload, dict):
         raise Qwen35LogicalRowReaderError(f"{label} must be a JSON object")
     return payload
 
 
-def _project_path(project_root: Path, value: str, label: str) -> Path:
-    path = (project_root / value).resolve()
-    if not path.is_relative_to(project_root):
-        raise Qwen35LogicalRowReaderError(f"{label} escapes project root")
+def _reject_symlink_components(path: Path, anchor: Path, label: str) -> None:
+    try:
+        relative = path.relative_to(anchor)
+    except ValueError as error:
+        raise Qwen35LogicalRowReaderError(f"{label} escapes its lexical root") from error
+    current = anchor
+    for component in relative.parts:
+        current /= component
+        try:
+            mode = current.lstat().st_mode
+        except FileNotFoundError:
+            break
+        except OSError as error:
+            raise Qwen35LogicalRowReaderError(f"cannot inspect {label}: {current}") from error
+        if stat.S_ISLNK(mode):
+            raise Qwen35LogicalRowReaderError(f"{label} contains a symlink component")
+
+
+def _project_path(project_root: Path, value: str | Path, label: str) -> Path:
+    raw = Path(value)
+    if raw.is_absolute() or not raw.parts or ".." in raw.parts:
+        raise Qwen35LogicalRowReaderError(f"{label} is not a safe relative path")
+    path = project_root / raw
+    _reject_symlink_components(path, project_root, label)
+    return path
+
+
+def _canonical_project_argument(
+    project_root: Path,
+    value: str | Path,
+    canonical: Path,
+    label: str,
+) -> Path:
+    raw = Path(value)
+    if raw != canonical or raw.is_absolute():
+        raise Qwen35LogicalRowReaderError(f"{label} must use its canonical lexical path")
+    return _project_path(project_root, raw, label)
+
+
+def _absolute_lexical_path(path: Path, label: str) -> Path:
+    if not path.is_absolute() or ".." in path.parts:
+        raise Qwen35LogicalRowReaderError(f"{label} must be an absolute lexical path")
+    anchor = Path(path.anchor)
+    _reject_symlink_components(path, anchor, label)
     return path
 
 
@@ -151,12 +264,45 @@ def _verify_bound_file(
     if not {"path", "sha256"} <= set(record):
         raise Qwen35LogicalRowReaderError(f"{label} identity is incomplete")
     path = _project_path(project_root, str(record["path"]), label)
-    if not path.is_file() or sha256_file(path) != record["sha256"]:
+    digest, identity = _stable_file_digest(path, label)
+    if digest != record["sha256"]:
         raise Qwen35LogicalRowReaderError(f"{label} is absent or hash-drifted")
     expected_size = record.get("size_bytes")
-    if expected_size is not None and path.stat().st_size != int(expected_size):
+    if expected_size is not None and identity.st_size != int(expected_size):
         raise Qwen35LogicalRowReaderError(f"{label} size drifted")
     return path
+
+
+def _verify_e0036_control(project_root: Path) -> dict[str, dict[str, Any]]:
+    control_path = _project_path(project_root, _E0036_CONTROL_PATH, "E-0036 control")
+    try:
+        payload = yaml.safe_load(_stable_file_bytes(control_path, "E-0036 control")[0])
+    except yaml.YAMLError as error:
+        raise Qwen35LogicalRowReaderError("cannot load canonical E-0036 control") from error
+    challenger = payload.get("conditional_qwen_challenger") if isinstance(payload, dict) else None
+    implementation = challenger.get("implementation") if isinstance(challenger, dict) else None
+    if (
+        not isinstance(payload, dict)
+        or payload.get("experiment_id") != "E-0036"
+        or not isinstance(implementation, dict)
+    ):
+        raise Qwen35LogicalRowReaderError("canonical E-0036 control identity drifted")
+    records: dict[str, dict[str, Any]] = {}
+    for key, expected_path in _E0036_CONTROL_ARTIFACT_PATHS.items():
+        record = implementation.get(key)
+        if (
+            not isinstance(record, dict)
+            or set(record) != {"path", "sha256", "size_bytes"}
+            or record.get("path") != expected_path.as_posix()
+            or _SHA256.fullmatch(str(record.get("sha256", ""))) is None
+            or isinstance(record.get("size_bytes"), bool)
+            or not isinstance(record.get("size_bytes"), int)
+            or record["size_bytes"] < 1
+        ):
+            raise Qwen35LogicalRowReaderError(f"E-0036 {key} control record drifted")
+        _verify_bound_file(project_root, record, f"E-0036 {key}")
+        records[key] = record
+    return records
 
 
 def _verify_authorization(
@@ -164,10 +310,29 @@ def _verify_authorization(
     config: dict[str, Any],
 ) -> tuple[dict[str, Any], Path]:
     identity = config.get("authorization")
-    if not isinstance(identity, dict):
+    if (
+        not isinstance(identity, dict)
+        or not {"path", "sha256", "size_bytes"} <= set(identity)
+        or isinstance(identity.get("size_bytes"), bool)
+        or not isinstance(identity.get("size_bytes"), int)
+    ):
         raise Qwen35LogicalRowReaderError("Qwen authorization identity is missing")
-    path = _verify_bound_file(project_root, identity, "Qwen inference authorization")
-    authorization = _load_json(path, "Qwen inference authorization")
+    path = _project_path(
+        project_root, str(identity.get("path", "")), "Qwen inference authorization"
+    )
+    authorization_bytes, authorization_stat = _stable_file_bytes(
+        path, "Qwen inference authorization"
+    )
+    if hashlib.sha256(authorization_bytes).hexdigest() != identity.get(
+        "sha256"
+    ) or authorization_stat.st_size != int(identity.get("size_bytes", -1)):
+        raise Qwen35LogicalRowReaderError("Qwen inference authorization is hash-drifted")
+    try:
+        authorization = json.loads(authorization_bytes.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise Qwen35LogicalRowReaderError("cannot load Qwen inference authorization") from error
+    if not isinstance(authorization, dict):
+        raise Qwen35LogicalRowReaderError("Qwen inference authorization must be an object")
     model = authorization.get("model")
     request = authorization.get("request")
     expected_model = config["model"]
@@ -204,14 +369,24 @@ def load_qwen35_logical_row_config(
     config_path: Path,
 ) -> tuple[dict[str, Any], dict[str, Any], Path, Path]:
     project_root = project_root.resolve()
-    resolved = (
-        config_path.resolve()
-        if config_path.is_absolute()
-        else _project_path(project_root, config_path.as_posix(), "Qwen config")
+    resolved = _canonical_project_argument(
+        project_root,
+        config_path,
+        _CANONICAL_CONFIG_PATH,
+        "Qwen config",
     )
-    if not resolved.is_relative_to(project_root):
-        raise Qwen35LogicalRowReaderError("Qwen config escapes project root")
-    config = _load_toml(resolved, "Qwen config")
+    control_records = _verify_e0036_control(project_root)
+    config_bytes, config_stat = _stable_file_bytes(resolved, "Qwen config")
+    config_record = control_records["model_config"]
+    if (
+        hashlib.sha256(config_bytes).hexdigest() != config_record["sha256"]
+        or config_stat.st_size != config_record["size_bytes"]
+    ):
+        raise Qwen35LogicalRowReaderError("Qwen config changed during control validation")
+    try:
+        config = tomllib.loads(config_bytes.decode("utf-8"))
+    except (UnicodeDecodeError, tomllib.TOMLDecodeError) as error:
+        raise Qwen35LogicalRowReaderError("cannot load Qwen config") from error
     model = config.get("model")
     quantization = config.get("quantization")
     inference = config.get("inference")
@@ -221,6 +396,7 @@ def load_qwen35_logical_row_config(
     artifacts = config.get("artifacts")
     safety = config.get("safety")
     request = config.get("request")
+    output = config.get("output")
     hard_watchdog = config.get("hard_watchdog")
     if (
         config.get("version") != 1
@@ -340,8 +516,23 @@ def load_qwen35_logical_row_config(
         or request.get("sha256")
         != "ad4c1a9fecf9686249a9c4eea2a5b6a2a903fc4716536e5804c481facc217781"
         or request.get("sample_count") != 64
+        or not isinstance(output, dict)
+        or output.get("directory")
+        != "output/calibration/e0036-mbb-cdkt-semantic-label-readers/qwen-reader"
+        or output.get("seal_path") != "docs/experiments/E-0036-qwen-output-seal.json"
+        or output.get("exact_files") != ["ocr_result.json", "run_manifest.json"]
+        or output.get("required_seal_state") != "QWEN_OUTPUT_HASH_SEALED_BEFORE_REVIEW_ACCESS"
+        or not isinstance(output.get("sealer"), dict)
+        or output["sealer"].get("path")
+        != "src/bctc_ai/evaluation/qwen35_logical_row_output_seal.py"
+        or not isinstance(output.get("capture_script"), dict)
+        or output["capture_script"].get("path")
+        != "scripts/experiments/capture_e0036_qwen_output_seal.py"
         or not isinstance(hard_watchdog, dict)
         or hard_watchdog.get("ready_timeout_seconds") != 5
+        or hard_watchdog != control_records["hard_watchdog"] | {"ready_timeout_seconds": 5}
+        or output.get("sealer") != control_records["output_sealer"]
+        or output.get("capture_script") != control_records["output_seal_capture_script"]
     ):
         raise Qwen35LogicalRowReaderError("Qwen logical-row configuration drifted")
     for key, sha_key in (
@@ -353,44 +544,61 @@ def load_qwen35_logical_row_config(
             raise Qwen35LogicalRowReaderError(f"Qwen runtime control drifted: {key}")
     authorization, authorization_path = _verify_authorization(project_root, config)
     _verify_bound_file(project_root, hard_watchdog, "Qwen hard watchdog")
+    _verify_bound_file(project_root, output["sealer"], "Qwen output sealer")
+    _verify_bound_file(project_root, output["capture_script"], "Qwen seal capture script")
     return config, authorization, resolved, authorization_path
 
 
 def _verify_model(model_directory: Path, config: dict[str, Any]) -> list[dict[str, Any]]:
-    if not model_directory.is_dir() or model_directory.is_symlink():
+    model_directory = _absolute_lexical_path(model_directory, "Qwen model directory")
+    if not model_directory.is_dir():
         raise Qwen35LogicalRowReaderError("Qwen model directory is absent or unsafe")
     records: list[dict[str, Any]] = []
     registered_paths: set[str] = set()
     total_bytes = 0
     for key, raw in sorted(config["artifacts"].items()):
-        path = (model_directory / str(raw.get("path", ""))).resolve()
-        if not path.is_relative_to(model_directory.resolve()):
+        relative = Path(str(raw.get("path", "")))
+        if relative.is_absolute() or not relative.parts or ".." in relative.parts:
             raise Qwen35LogicalRowReaderError("Qwen model artifact escapes model directory")
-        if (
-            path.is_symlink()
-            or not path.is_file()
-            or path.stat().st_size != int(raw.get("size_bytes", -1))
-            or sha256_file(path) != str(raw.get("sha256", ""))
+        path = model_directory / relative
+        _reject_symlink_components(path, model_directory, "Qwen model artifact")
+        digest, identity = _stable_file_digest(path, f"Qwen model artifact {key}")
+        if identity.st_size != int(raw.get("size_bytes", -1)) or digest != str(
+            raw.get("sha256", "")
         ):
             raise Qwen35LogicalRowReaderError(f"Qwen model artifact is absent or drifted: {key}")
-        total_bytes += path.stat().st_size
-        registered_paths.add(path.relative_to(model_directory.resolve()).as_posix())
+        total_bytes += identity.st_size
+        registered_paths.add(path.relative_to(model_directory).as_posix())
         records.append(
             {
                 "key": key,
                 "path": str(raw["path"]),
-                "size_bytes": path.stat().st_size,
+                "size_bytes": identity.st_size,
                 "sha256": str(raw["sha256"]),
             }
         )
     if total_bytes != int(config["required_artifact_bytes"]):
         raise Qwen35LogicalRowReaderError("Qwen verified artifact byte count drifted")
-    actual_paths = {
-        path.relative_to(model_directory).as_posix()
-        for path in model_directory.rglob("*")
-        if path.is_file() or path.is_symlink()
+    actual_paths: set[str] = set()
+    actual_directories: set[str] = set()
+    for path in model_directory.rglob("*"):
+        relative = path.relative_to(model_directory).as_posix()
+        mode = path.lstat().st_mode
+        if stat.S_ISREG(mode):
+            actual_paths.add(relative)
+        elif stat.S_ISDIR(mode):
+            actual_directories.add(relative)
+        else:
+            raise Qwen35LogicalRowReaderError(
+                "Qwen model directory contains a non-regular filesystem entry"
+            )
+    registered_directories = {
+        parent.as_posix()
+        for registered in registered_paths
+        for parent in PurePath(registered).parents
+        if parent != PurePath(".")
     }
-    if actual_paths != registered_paths:
+    if actual_paths != registered_paths or actual_directories != registered_directories:
         extra = sorted(actual_paths - registered_paths)
         missing = sorted(registered_paths - actual_paths)
         raise Qwen35LogicalRowReaderError(
@@ -468,21 +676,29 @@ def _exact_tree_identity(root: Path) -> dict[str, int | str]:
         raise Qwen35LogicalRowReaderError("Qwen runtime overlay root is absent or unsafe")
     files: list[Path] = []
     for path in root.rglob("*"):
-        if path.is_symlink():
-            raise Qwen35LogicalRowReaderError(f"Qwen runtime overlay contains symlink: {path}")
-        if path.is_file():
+        mode = path.lstat().st_mode
+        if stat.S_ISREG(mode):
             files.append(path)
+        elif stat.S_ISDIR(mode):
+            continue
+        elif stat.S_ISLNK(mode):
+            raise Qwen35LogicalRowReaderError(f"Qwen runtime overlay contains symlink: {path}")
+        else:
+            raise Qwen35LogicalRowReaderError(
+                "Qwen runtime overlay contains a non-regular filesystem entry"
+            )
     digest = hashlib.sha256()
     total_bytes = 0
     for path in sorted(files, key=lambda item: item.relative_to(root).as_posix()):
         relative = path.relative_to(root).as_posix()
-        size = path.stat().st_size
+        file_digest, identity = _stable_file_digest(path, "Qwen runtime overlay file")
+        size = identity.st_size
         total_bytes += size
         digest.update(relative.encode("utf-8"))
         digest.update(b"\0")
         digest.update(str(size).encode("ascii"))
         digest.update(b"\0")
-        digest.update(sha256_file(path).encode("ascii"))
+        digest.update(file_digest.encode("ascii"))
         digest.update(b"\n")
     return {
         "file_count": len(files),
@@ -735,19 +951,31 @@ def _run_qwen35_logical_row_reader_impl(
         project_root, config_path
     )
     watchdog_path = _verify_bound_file(project_root, config["hard_watchdog"], "Qwen hard watchdog")
-    request_file = _project_path(project_root, request_path.as_posix(), "Qwen request")
-    configured_request = _project_path(
-        project_root, str(config["request"]["path"]), "configured Qwen request"
+    configured_request_relative = Path(str(config["request"]["path"]))
+    request_file = _canonical_project_argument(
+        project_root,
+        request_path,
+        configured_request_relative,
+        "Qwen request",
     )
-    if (
-        request_file != configured_request
-        or sha256_file(request_file) != config["request"]["sha256"]
-    ):
+    request_bytes, request_stat = _stable_file_bytes(request_file, "E-0036 Qwen request")
+    if hashlib.sha256(request_bytes).hexdigest() != config["request"]["sha256"]:
         raise Qwen35LogicalRowReaderError("Qwen must receive the unchanged E-0036 request")
-    destination = _project_path(project_root, output_directory.as_posix(), "Qwen output")
+    configured_output_relative = Path(str(config["output"]["directory"]))
+    destination = _canonical_project_argument(
+        project_root,
+        output_directory,
+        configured_output_relative,
+        "Qwen output",
+    )
     if destination.exists():
         raise Qwen35LogicalRowReaderError(f"refusing to overwrite Qwen output: {destination}")
-    request = _load_json(request_file, "E-0036 Qwen request")
+    try:
+        request = json.loads(request_bytes.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise Qwen35LogicalRowReaderError("cannot load E-0036 Qwen request") from error
+    if not isinstance(request, dict):
+        raise Qwen35LogicalRowReaderError("E-0036 Qwen request must be a JSON object")
     try:
         samples = validate_logical_row_label_reader_request(request)
     except LogicalRowLabelReaderContractError as error:
@@ -756,25 +984,33 @@ def _run_qwen35_logical_row_reader_impl(
         raise Qwen35LogicalRowReaderError("Qwen request sample denominator drifted")
     crop_manifest = request["crop_manifest"]
     crop_manifest_path = _project_path(project_root, crop_manifest["path"], "crop manifest")
-    if (
-        not crop_manifest_path.is_file()
-        or sha256_file(crop_manifest_path) != crop_manifest["sha256"]
-    ):
+    crop_manifest_digest, _ = _stable_file_digest(crop_manifest_path, "E-0035 crop manifest")
+    if crop_manifest_digest != crop_manifest["sha256"]:
         raise Qwen35LogicalRowReaderError("E-0035 crop manifest is absent or drifted")
     verified_samples: list[dict[str, Any]] = []
     for sample in samples:
         crop = _project_path(project_root, sample["crop_path"], "logical-row crop")
-        if not crop.is_file() or sha256_file(crop) != sample["crop_sha256"]:
+        crop_bytes, _ = _stable_file_bytes(crop, f"logical-row crop {sample['sample_id']}")
+        if hashlib.sha256(crop_bytes).hexdigest() != sample["crop_sha256"]:
             raise Qwen35LogicalRowReaderError(f"crop is absent or drifted: {sample['sample_id']}")
         try:
-            with Image.open(crop) as image:
+            with Image.open(io.BytesIO(crop_bytes)) as image:
                 width, height = image.size
                 image.verify()
         except OSError as error:
             raise Qwen35LogicalRowReaderError(f"invalid crop image: {crop}") from error
-        verified_samples.append(sample | {"resolved_crop": crop, "width": width, "height": height})
+        verified_samples.append(
+            sample
+            | {
+                "crop_bytes": crop_bytes,
+                "resolved_crop": crop,
+                "width": width,
+                "height": height,
+            }
+        )
 
-    model_directory = model_cache_root.resolve() / "official_models" / config["cache_directory"]
+    model_cache_root = _absolute_lexical_path(model_cache_root, "Qwen model cache root")
+    model_directory = model_cache_root / "official_models" / config["cache_directory"]
     model_artifacts = _verify_model(model_directory, config)
     weight_map_coverage = _verify_weight_map_coverage(model_directory, config)
     package_versions, overlay_tree_identity = _verify_packages(config)
@@ -786,7 +1022,6 @@ def _run_qwen35_logical_row_reader_impl(
         raise Qwen35LogicalRowReaderError(
             "insufficient available host memory for bounded Qwen CPU offload"
         )
-    model_cache_root = model_cache_root.resolve()
     temporary_load_minimum_free = int(
         config["device_map"]["temporary_load_staging_minimum_free_bytes"]
     )
@@ -795,7 +1030,9 @@ def _run_qwen35_logical_row_reader_impl(
         raise Qwen35LogicalRowReaderError(
             "insufficient filesystem space for controlled Qwen load staging"
         )
-    controlled_load_temp = Path(tempfile.gettempdir()).resolve()
+    controlled_load_temp = _absolute_lexical_path(
+        Path(tempfile.gettempdir()), "Qwen controlled temporary load directory"
+    )
     if controlled_load_temp.parent != model_cache_root or not controlled_load_temp.name.startswith(
         "qwen-e0036-load-"
     ):
@@ -869,7 +1106,7 @@ def _run_qwen35_logical_row_reader_impl(
         or int(processor_size.longest_edge) != int(inference["processor_max_pixels"])
     ):
         raise Qwen35LogicalRowReaderError("Qwen processor pixel bounds drifted")
-    with Image.open(verified_samples[0]["resolved_crop"]) as probe_source:
+    with Image.open(io.BytesIO(verified_samples[0]["crop_bytes"])) as probe_source:
         probe_image = probe_source.convert("RGB")
         rendered_probe = processor.apply_chat_template(
             [
@@ -957,7 +1194,7 @@ def _run_qwen35_logical_row_reader_impl(
     mechanism_probe: dict[str, Any] | None = None
     for sample in verified_samples:
         item_started = time.perf_counter()
-        with Image.open(sample["resolved_crop"]) as source_image:
+        with Image.open(io.BytesIO(sample["crop_bytes"])) as source_image:
             image = source_image.convert("RGB")
             messages = [
                 {
@@ -1126,7 +1363,7 @@ def _run_qwen35_logical_row_reader_impl(
         },
         "request": {
             "path": request_file.relative_to(project_root).as_posix(),
-            "sha256": sha256_file(request_file),
+            "sha256": config["request"]["sha256"],
         },
         "crop_manifest": dict(crop_manifest),
         "configuration": {
@@ -1222,6 +1459,17 @@ def _run_qwen35_logical_row_reader_impl(
         project_root, "status", "--porcelain"
     ):
         raise Qwen35LogicalRowReaderError("Git code drifted during formal Qwen inference")
+    if _verify_model(model_directory, config) != model_artifacts:
+        raise Qwen35LogicalRowReaderError("Qwen model registry drifted during formal inference")
+    final_request_digest, final_request_stat = _stable_file_digest(
+        request_file, "E-0036 Qwen request"
+    )
+    if (
+        _identity(final_request_stat) != _identity(request_stat)
+        or final_request_digest != config["request"]["sha256"]
+    ):
+        raise Qwen35LogicalRowReaderError("Qwen request changed during formal inference")
+    _reject_symlink_components(destination, project_root, "Qwen output")
     _write_output_directory(destination, result, manifest)
     return manifest
 
@@ -1238,8 +1486,11 @@ def run_qwen35_logical_row_reader(
         raise Qwen35LogicalRowReaderError(
             "Qwen formal inference must run in the declared one-shot worker process"
         )
-    cache_root = model_cache_root.resolve()
-    if not cache_root.is_dir() or cache_root.is_symlink():
+    raw_cache_root = Path(model_cache_root)
+    if not raw_cache_root.is_absolute():
+        raw_cache_root = project_root.resolve() / raw_cache_root
+    cache_root = _absolute_lexical_path(raw_cache_root, "Qwen model cache root")
+    if not cache_root.is_dir():
         raise Qwen35LogicalRowReaderError(f"Qwen model cache root is invalid: {cache_root}")
     environment_keys = (
         "TMPDIR",

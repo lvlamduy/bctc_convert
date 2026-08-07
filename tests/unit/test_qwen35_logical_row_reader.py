@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import inspect
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -20,7 +21,7 @@ from bctc_ai.ocr.qwen35_logical_row_reader import (
 def test_qwen35_config_is_reference_blind_and_uses_explicit_triton_map(project_root):
     config, authorization, path, authorization_path = load_qwen35_logical_row_config(
         project_root,
-        project_root / "config/models/qwen35-27b-gptq-int4-rtx4090-v1.toml",
+        Path("config/models/qwen35-27b-gptq-int4-rtx4090-v1.toml"),
     )
 
     assert path.is_file()
@@ -44,6 +45,22 @@ def test_qwen35_config_is_reference_blind_and_uses_explicit_triton_map(project_r
     assert all(modules[f"model.language_model.layers.{index}"] == "cuda:0" for index in range(38))
     assert all(modules[f"model.language_model.layers.{index}"] == "cpu" for index in range(38, 64))
     assert set(modules.values()) == {"cuda:0", "cpu"}
+    assert config["output"] == {
+        "directory": "output/calibration/e0036-mbb-cdkt-semantic-label-readers/qwen-reader",
+        "seal_path": "docs/experiments/E-0036-qwen-output-seal.json",
+        "exact_files": ["ocr_result.json", "run_manifest.json"],
+        "required_seal_state": "QWEN_OUTPUT_HASH_SEALED_BEFORE_REVIEW_ACCESS",
+        "sealer": {
+            "path": "src/bctc_ai/evaluation/qwen35_logical_row_output_seal.py",
+            "sha256": "1d0e96f4ea35a40fbe024b272397c12d823cb28d701017ebc968eb62eae38ab5",
+            "size_bytes": 38658,
+        },
+        "capture_script": {
+            "path": "scripts/experiments/capture_e0036_qwen_output_seal.py",
+            "sha256": "87f249368058f8c61a242e6c61d78a71e7995fa69ccd2d267f3d11f012bd1ccc",
+            "size_bytes": 1439,
+        },
+    }
     assert not any(config["safety"].values())
 
 
@@ -75,16 +92,15 @@ def test_qwen35_authorization_is_minimal_but_derived_from_sealed_evaluation(proj
 
 
 def test_qwen35_config_rejects_human_review_access(monkeypatch, project_root):
-    source = project_root / "config/models/qwen35-27b-gptq-int4-rtx4090-v1.toml"
-    original_load_toml = qwen35_logical_row_reader._load_toml
+    source = Path("config/models/qwen35-27b-gptq-int4-rtx4090-v1.toml")
+    original_loads = qwen35_logical_row_reader.tomllib.loads
 
-    def load_with_drift(path, label):
-        payload = original_load_toml(path, label)
-        if label == "Qwen config":
-            payload["safety"]["human_review_access"] = True
+    def load_with_drift(value):
+        payload = original_loads(value)
+        payload["safety"]["human_review_access"] = True
         return payload
 
-    monkeypatch.setattr(qwen35_logical_row_reader, "_load_toml", load_with_drift)
+    monkeypatch.setattr(qwen35_logical_row_reader.tomllib, "loads", load_with_drift)
 
     with pytest.raises(Qwen35LogicalRowReaderError, match="configuration drifted"):
         load_qwen35_logical_row_config(project_root, source)
@@ -193,6 +209,47 @@ def test_qwen35_formal_runner_requires_one_shot_worker(monkeypatch, tmp_path: Pa
         )
 
 
+def test_qwen35_formal_runner_rejects_noncanonical_output(monkeypatch, project_root: Path):
+    monkeypatch.setattr(qwen35_logical_row_reader, "_git", lambda *_args: "")
+    monkeypatch.setattr(
+        qwen35_logical_row_reader,
+        "load_qwen35_logical_row_config",
+        lambda *_args: (
+            {
+                "output": {
+                    "directory": (
+                        "output/calibration/e0036-mbb-cdkt-semantic-label-readers/qwen-reader"
+                    )
+                },
+                "hard_watchdog": {
+                    "path": "scripts/models/qwen35_inference_watchdog.py",
+                    "sha256": "f99056c24acaa7df3bf230b30a45d094ec4d7a764e3cd415fde538988d6adcc0",
+                    "size_bytes": 1309,
+                },
+                "request": {
+                    "path": "output/calibration/e0036-mbb-cdkt-semantic-label-readers/request.json",
+                    "sha256": "ad4c1a9fecf9686249a9c4eea2a5b6a2a903fc4716536e5804c481facc217781",
+                },
+            },
+            {},
+            project_root / "config/models/qwen35-27b-gptq-int4-rtx4090-v1.toml",
+            project_root
+            / "docs/experiments/E-0036-qwen-reference-blind-inference-authorization.json",
+        ),
+    )
+    with pytest.raises(Qwen35LogicalRowReaderError, match="canonical lexical path"):
+        qwen35_logical_row_reader._run_qwen35_logical_row_reader_impl(
+            project_root,
+            request_path=Path(
+                "output/calibration/e0036-mbb-cdkt-semantic-label-readers/request.json"
+            ),
+            output_directory=Path(
+                "output/calibration/e0036-mbb-cdkt-semantic-label-readers/qwen-reader-alternate"
+            ),
+            model_cache_root=project_root,
+        )
+
+
 def test_qwen35_control_token_range_is_rejected_after_terminal_eos_removal():
     assert qwen35_logical_row_reader._forbidden_generated_control_tokens(
         [100, 248044, 248058, 248067, 300000],
@@ -270,3 +327,96 @@ def test_qwen35_weight_index_requires_full_explicit_map_coverage(tmp_path: Path)
     config["device_map"]["modules"] = {"model.visual": "cuda:0"}
     with pytest.raises(Qwen35LogicalRowReaderError, match="not fully covered"):
         qwen35_logical_row_reader._verify_weight_map_coverage(model_directory, config)
+
+
+def test_qwen35_loader_rejects_alternate_config_even_with_identical_bytes(project_root, tmp_path):
+    alternate = tmp_path / "qwen.toml"
+    alternate.write_bytes(
+        (project_root / "config/models/qwen35-27b-gptq-int4-rtx4090-v1.toml").read_bytes()
+    )
+
+    with pytest.raises(Qwen35LogicalRowReaderError, match="canonical lexical path"):
+        load_qwen35_logical_row_config(project_root, alternate)
+
+
+def test_qwen35_loader_rejects_symlinked_canonical_config(project_root, tmp_path):
+    fake_root = tmp_path / "project"
+    config = fake_root / "config/models/qwen35-27b-gptq-int4-rtx4090-v1.toml"
+    config.parent.mkdir(parents=True)
+    config.symlink_to(project_root / "config/models/qwen35-27b-gptq-int4-rtx4090-v1.toml")
+
+    with pytest.raises(Qwen35LogicalRowReaderError, match="symlink component"):
+        load_qwen35_logical_row_config(
+            fake_root,
+            Path("config/models/qwen35-27b-gptq-int4-rtx4090-v1.toml"),
+        )
+
+
+def test_qwen35_model_verifier_rejects_symlinked_artifact_parent(tmp_path: Path):
+    model = tmp_path / "model"
+    real = tmp_path / "real"
+    model.mkdir()
+    real.mkdir()
+    artifact = real / "weights.bin"
+    artifact.write_bytes(b"pinned")
+    (model / "nested").symlink_to(real, target_is_directory=True)
+    config = {
+        "required_artifact_bytes": len(b"pinned"),
+        "artifacts": {
+            "weights": {
+                "path": "nested/weights.bin",
+                "size_bytes": len(b"pinned"),
+                "sha256": sha256_file(artifact),
+            }
+        },
+    }
+
+    with pytest.raises(Qwen35LogicalRowReaderError, match="symlink component"):
+        qwen35_logical_row_reader._verify_model(model, config)
+
+
+def test_qwen35_model_and_overlay_verifiers_reject_special_files(tmp_path: Path):
+    model = tmp_path / "model"
+    model.mkdir()
+    artifact = model / "weights.bin"
+    artifact.write_bytes(b"pinned")
+    os.mkfifo(model / "unregistered.pipe")
+    config = {
+        "required_artifact_bytes": len(b"pinned"),
+        "artifacts": {
+            "weights": {
+                "path": artifact.name,
+                "size_bytes": len(b"pinned"),
+                "sha256": sha256_file(artifact),
+            }
+        },
+    }
+
+    with pytest.raises(Qwen35LogicalRowReaderError, match="non-regular filesystem entry"):
+        qwen35_logical_row_reader._verify_model(model, config)
+
+    overlay = tmp_path / "overlay"
+    overlay.mkdir()
+    (overlay / "module.py").write_text("value = 1\n", encoding="utf-8")
+    os.mkfifo(overlay / "unregistered.pipe")
+    with pytest.raises(Qwen35LogicalRowReaderError, match="non-regular filesystem entry"):
+        qwen35_logical_row_reader._exact_tree_identity(overlay)
+
+
+def test_qwen35_model_verifier_rejects_registered_fifo_without_blocking(tmp_path: Path):
+    model = tmp_path / "model"
+    model.mkdir()
+    os.mkfifo(model / "weights.bin")
+    config = {
+        "required_artifact_bytes": 0,
+        "artifacts": {
+            "weights": {
+                "path": "weights.bin",
+                "size_bytes": 0,
+                "sha256": "0" * 64,
+            }
+        },
+    }
+
+    with pytest.raises(Qwen35LogicalRowReaderError, match="not a regular file"):
+        qwen35_logical_row_reader._verify_model(model, config)

@@ -111,6 +111,10 @@ conditional_qwen_challenger:
   enable_thinking: false
   network_permitted_during_inference: false
   mapping_or_numeric_authority: NONE
+  output_directory: output/calibration/e0036-mbb-cdkt-semantic-label-readers/qwen-reader
+  output_seal_path: docs/experiments/E-0036-qwen-output-seal.json
+  exact_output_files: [ocr_result.json, run_manifest.json]
+  reviewed_evaluation_requires_qwen_output_seal: true
   authorization:
     path: docs/experiments/E-0036-qwen-reference-blind-inference-authorization.json
     sha256: 18167f50ea63a86681950bacbbc8d2fb5c8c57affdb1f035e20de110758164f1
@@ -119,20 +123,20 @@ conditional_qwen_challenger:
   implementation:
     model_config:
       path: config/models/qwen35-27b-gptq-int4-rtx4090-v1.toml
-      sha256: 05833c615f799451fa7614eeb962e3ba756fc0ca74476a850260392ef18a4cdf
-      size_bytes: 13489
+      sha256: 73171d8637e4b9f83ad643b5a332ca10b661bdc868cdb118547ff7d7c7b135a4
+      size_bytes: 14126
     overlay_requirements:
       path: config/models/qwen35-gptq-overlay-requirements.txt
       sha256: 730cf24c76d60f8060172db45af05e9e7a39697e5415fcd90aae371e4e33b801
       size_bytes: 1910
     downloader:
       path: scripts/bootstrap/download_qwen35_gptq.py
-      sha256: 5be53cdd16d70cf209c8f1dbbfe7cb413436bf2e03c0f1e60afdf6b9fe15b06f
-      size_bytes: 8701
+      sha256: c31147b4b3bc512dde73b89b3db754fcfe2b6d08c2c548db73f2d66f08754d4c
+      size_bytes: 16156
     reader_algorithm:
       path: src/bctc_ai/ocr/qwen35_logical_row_reader.py
-      sha256: b51543b3e4c1759744612c203e817505231e4a5f156d0beafaa9f7d860d42e66
-      size_bytes: 57778
+      sha256: f295974362db3e06dcb3fbaaf20648e5f49384f9484a622afbb60655bd4aaf5d
+      size_bytes: 68920
     runner:
       path: scripts/models/run_qwen35_logical_row_reader.py
       sha256: 9d18878ed792065f22cc9dc4689682a3f4b774f695bb68a15e431a2fcf687796
@@ -141,6 +145,14 @@ conditional_qwen_challenger:
       path: scripts/models/qwen35_inference_watchdog.py
       sha256: f99056c24acaa7df3bf230b30a45d094ec4d7a764e3cd415fde538988d6adcc0
       size_bytes: 1309
+    output_sealer:
+      path: src/bctc_ai/evaluation/qwen35_logical_row_output_seal.py
+      sha256: 1d0e96f4ea35a40fbe024b272397c12d823cb28d701017ebc968eb62eae38ab5
+      size_bytes: 38658
+    output_seal_capture_script:
+      path: scripts/experiments/capture_e0036_qwen_output_seal.py
+      sha256: 87f249368058f8c61a242e6c61d78a71e7995fa69ccd2d267f3d11f012bd1ccc
+      size_bytes: 1439
     loader: GPTQModel.from_quantized
     backend: gptq_triton
     device_map: EXPLICIT_LAYER_SPLIT_38_GPU_26_CPU

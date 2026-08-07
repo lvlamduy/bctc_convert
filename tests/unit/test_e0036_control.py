@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import tomllib
+
 import yaml
 
 from bctc_ai.core.hashing import sha256_file
@@ -34,6 +36,20 @@ def test_e0036_control_freezes_same_crops_and_delays_reference_access(project_ro
     assert payload["conditional_qwen_challenger"]["required_same_request_sha256"] == (
         "ad4c1a9fecf9686249a9c4eea2a5b6a2a903fc4716536e5804c481facc217781"
     )
+    assert payload["conditional_qwen_challenger"]["output_directory"] == (
+        "output/calibration/e0036-mbb-cdkt-semantic-label-readers/qwen-reader"
+    )
+    assert payload["conditional_qwen_challenger"]["output_seal_path"] == (
+        "docs/experiments/E-0036-qwen-output-seal.json"
+    )
+    assert payload["conditional_qwen_challenger"]["exact_output_files"] == [
+        "ocr_result.json",
+        "run_manifest.json",
+    ]
+    assert (
+        payload["conditional_qwen_challenger"]["reviewed_evaluation_requires_qwen_output_seal"]
+        is True
+    )
     assert payload["baseline_output_sealing"]["exact_reader_count"] == 2
     assert payload["baseline_output_sealing"]["exact_sample_count_per_reader"] == 64
     assert payload["baseline_output_sealing"]["reference_or_human_review_loaded_by_sealer"] is False
@@ -65,6 +81,20 @@ def test_e0036_control_freezes_same_crops_and_delays_reference_access(project_ro
     assert (
         payload["conditional_qwen_challenger"]["implementation"]["hf_transformers_gptq_loader_used"]
         is False
+    )
+    model_config = tomllib.loads(
+        (
+            project_root
+            / payload["conditional_qwen_challenger"]["implementation"]["model_config"]["path"]
+        ).read_text(encoding="utf-8")
+    )
+    assert (
+        model_config["output"]["sealer"]
+        == payload["conditional_qwen_challenger"]["implementation"]["output_sealer"]
+    )
+    assert (
+        model_config["output"]["capture_script"]
+        == payload["conditional_qwen_challenger"]["implementation"]["output_seal_capture_script"]
     )
 
     for record in (
@@ -109,6 +139,8 @@ def test_e0036_control_freezes_same_crops_and_delays_reference_access(project_ro
                 "reader_algorithm",
                 "runner",
                 "hard_watchdog",
+                "output_sealer",
+                "output_seal_capture_script",
             )
         ),
     ):

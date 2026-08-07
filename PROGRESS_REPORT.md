@@ -1,10 +1,12 @@
 # Progress report
 
-- Updated: 2026-08-07T07:38:30+00:00
+- Updated: 2026-08-07T08:42:00+00:00
 - Branch: `codex/rebuild-bootstrap`
 - Latest sealed semantic decision checkpoint: `a7913847d072360d18c6bcb62bdd442d07f7b992`;
-  the Qwen challenger is authorized and hash-pinned pre-inference, with no
-  downloaded model weights or Qwen output.
+  the Qwen challenger is authorized and hash-pinned pre-inference. All 24
+  registered model artifacts (30,258,477,628 bytes) are now local and passed an
+  independent canonical `--verify-only` size/SHA-256 check; no model load,
+  Qwen inference or Qwen output exists yet.
 - Latest clean numeric capture base: `278e1ed`; corrected row-grid seal:
   `198c5d8`; E-0021 clean evaluation base:
   `c32741a217ca16e7224d416b2c14245f580e610d`
@@ -15,9 +17,9 @@
 - Latest full regression including multi-signal discovery v4, fixed-grid
   semantic fusion, E-0029/E-0030 controls, immutable V4 note-row splitting,
   corrected-grid E-0034 numeric verification, R-0001 recovery verification and
-  the E-0036 Qwen pre-inference controls: 499 passed, 2 intentionally skipped
-  historical/external replays in 97.78 seconds; Ruff and `git diff --check`
-  passed.
+  the hardened E-0036 Qwen pre-inference/session-backup controls: 544 passed, 2
+  intentionally skipped historical/external replays in 102.03 seconds; Ruff
+  check, targeted format checks and `git diff --check` passed.
 - New-VPS recovery: the historical E-0027 batch manifest was not present in the
   2026-08-06 S3 snapshot and could not be found in Git, S3 versions or GitHub
   artifacts. R-0001 transparently reproduces the exact source/render/OCR and V3
@@ -25,8 +27,10 @@
   The exact 125-package runtime and two PP-OCRv6 weights were rebuilt; stable
   nine-page OCR metrics are identical, and pages 3–4 become byte-identical to
   their historical OCR hashes after changing only the seven-byte-longer
-  `input_path` provenance. A dedicated Codex-session S3 backup now passes a
-  real restore test. All 61 R-0001 generated artifacts are now protected by a
+  `input_path` provenance. Three historical Codex-session archives restore by
+  hash but are security-quarantined because session content captured a GitHub
+  credential; V2 now scans and locally verifies before any S3 call. All 61
+  R-0001 generated artifacts are now protected by a
   parent-linked bounded S3 artifact snapshot with a complete download/restore
   pass and a successful no-overwrite hydration probe. See `RECOVERY_AUDIT.md` and
   `docs/recovery/R-0001-e0027-functional-reproduction.json`.
@@ -346,10 +350,10 @@
   30,258,477,628 bytes, official GPTQ Int4, a sealed isolated overlay, the
   unchanged 64-crop request, a 4,096-token context, at most 96 generated tokens,
   deterministic no-thinking decoding, offline inference and an explicit
-  38-GPU-layer/26-CPU-layer split. This is mechanism configuration only: the
-  registered weights are not local, the configured split has not completed a
-  model load, and no Qwen inference/output/seal/evaluation or performance claim
-  exists yet.
+  38-GPU-layer/26-CPU-layer split. The exact 24 registered artifacts are now
+  local and hash-verified, but the configured split has not completed a model
+  load, and no Qwen inference/output/seal/evaluation or performance claim exists
+  yet.
 
 ## Completed tasks
 
