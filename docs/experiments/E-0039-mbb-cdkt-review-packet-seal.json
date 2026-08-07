@@ -1,0 +1,199 @@
+{
+  "access_contract": {
+    "exact_unique_direct_read_path_count": 10,
+    "full_page_render_opened": false,
+    "history_or_mongodb_artifact_opened": false,
+    "holdout_artifact_opened": false,
+    "mapping_invocation_count": 0,
+    "network_or_s3_write_allowed": false,
+    "numeric_or_accounting_artifact_opened": false,
+    "opened_input_paths": [
+      "config/experiments/e0039-mbb-cdkt-review-packet-seal.yaml",
+      "src/bctc_ai/evaluation/e0039_review_packet_seal.py",
+      "scripts/experiments/capture_e0039_mbb_cdkt_review_packet_seal.py",
+      "config/experiments/e0039-mbb-cdkt-review-packet.yaml",
+      "src/bctc_ai/evaluation/e0039_review_packet.py",
+      "scripts/experiments/capture_e0039_mbb_cdkt_review_packet.py",
+      "src/bctc_ai/evaluation/e0037_evidence_assembly.py",
+      "src/bctc_ai/evaluation/e0037_sealed_mapping.py",
+      "src/bctc_ai/evaluation/e0038_exact_mapping.py",
+      "output/calibration/e0039-mbb-cdkt-review-packet/evidence_packet.json"
+    ],
+    "packet_builder_or_capture_invocation_count": 0,
+    "packet_control_and_implementation_opened": true,
+    "packet_evidence_inputs_reopened": false,
+    "packet_opened_after_control_and_implementation_validation": true,
+    "prior_review_artifact_or_answer_opened": false,
+    "prior_review_module_import_allowed": false,
+    "prior_review_module_loaded": false,
+    "process_module_isolation_rechecked_before_publication": true,
+    "qwen_raw_rejected_or_token_output_opened": false,
+    "review_or_steward_decision_invocation_count": 0,
+    "review_or_steward_response_opened": false
+  },
+  "authority": {
+    "accounting_or_excel": false,
+    "automatic_mapping_adoption": false,
+    "blank_predecision_contract_identity": true,
+    "dataset_role": "CALIBRATION_ONLY",
+    "exact_packet_hash_identity": true,
+    "history_or_mongodb": false,
+    "holdout_or_production": false,
+    "mapping_accuracy": false,
+    "numeric_period_or_unit": false,
+    "row_adjudication_completed": false,
+    "s3_durability_registration": false,
+    "schema_alias_approval": false,
+    "schema_authority": false,
+    "schema_steward_decision_completed": false
+  },
+  "claim_boundary": "This calibration-only artifact hash-seals exactly one immutable E-0039 answer-free pre-decision evidence packet. It binds the packet capture commit, canonical packet bytes, exact six-row and separate two-alias blank response contracts, and their independent authorities. It opens no packet source-evidence inputs or response answers and adds no row adjudication, schema-steward decision, alias approval, mapping adoption or accuracy, schema, numeric, period, unit, accounting, Excel, history, MongoDB, holdout, S3 durability, or production claim.",
+  "dataset_role": "CALIBRATION",
+  "experiment_id": "E-0039",
+  "format_version": 1,
+  "input_hash_ledger": {
+    "packet_control": {
+      "path": "config/experiments/e0039-mbb-cdkt-review-packet.yaml",
+      "sha256": "c92f37b177afba90e97683296119fa783a58ed959054aabb3476293d21c9927a",
+      "size_bytes": 8361
+    },
+    "packet_implementation": {
+      "capture_script": {
+        "path": "scripts/experiments/capture_e0039_mbb_cdkt_review_packet.py",
+        "sha256": "5df83d983dd6724e911ed47a76aba2fdcc72af8086bfcd2ec153ecfe1495d576",
+        "size_bytes": 1632
+      },
+      "e0037_mapping_validator": {
+        "path": "src/bctc_ai/evaluation/e0037_sealed_mapping.py",
+        "sha256": "de92349a1efdd0bc3cc5ab78d4651bf7987006d3883d15bc9a4e1a1753862e04",
+        "size_bytes": 133670
+      },
+      "hardened_io_and_e0038_payload_validator": {
+        "path": "src/bctc_ai/evaluation/e0038_exact_mapping.py",
+        "sha256": "ac1ba96456f9541cd3612b0763dc521f6c916681bafe455e330643ab17739a04",
+        "size_bytes": 113104
+      },
+      "packet_builder": {
+        "path": "src/bctc_ai/evaluation/e0039_review_packet.py",
+        "sha256": "9049ae53faf8c8cbd19133020c9d23d80716cd6b9acacd0f7417cd21596814fe",
+        "size_bytes": 134406
+      },
+      "source_structure_validator": {
+        "path": "src/bctc_ai/evaluation/e0037_evidence_assembly.py",
+        "sha256": "cbef18c15ca23bc08b3539144f89cd8de201194cb29f610fe44d2ef325ffa2c3",
+        "size_bytes": 56692
+      }
+    },
+    "seal_control": {
+      "path": "config/experiments/e0039-mbb-cdkt-review-packet-seal.yaml",
+      "sha256": "07dbcbfad13d6dd20a1243830b97e0577179ac9c25034b5edda8f70d1bf0e11a",
+      "size_bytes": 5074
+    },
+    "seal_implementation": {
+      "capture_script": {
+        "path": "scripts/experiments/capture_e0039_mbb_cdkt_review_packet_seal.py",
+        "sha256": "b4ba0307693145486ee1c433182ecacb6de54bdbe062fb6f295709f128f69e0b",
+        "size_bytes": 1759
+      },
+      "seal_builder": {
+        "path": "src/bctc_ai/evaluation/e0039_review_packet_seal.py",
+        "sha256": "8f22a5954cbf374118dc74b70bdfbe98db024bdef81ddeaa824d26621e661a77",
+        "size_bytes": 35897
+      }
+    }
+  },
+  "inventory": {
+    "file_count": 1,
+    "files": [
+      {
+        "path": "output/calibration/e0039-mbb-cdkt-review-packet/evidence_packet.json",
+        "sha256": "04c6b0509713f46423b03857a5e509d36cfa95d9ffd34bbe981f564915cdf93d",
+        "size_bytes": 74601
+      }
+    ]
+  },
+  "packet_capture_git_commit": "35d02d62e96b2fa449f4eb8ee6a13982a5f2fe75",
+  "packet_contract": {
+    "access_contract_sha256": "6a1a2396d00dc14b6a4d34b73d570f2ae36ba7046960a037c03619575d843bd1",
+    "alias_authority_required": "REVIEW_INDEPENDENT_SCHEMA_STEWARD",
+    "alias_candidate_count": 2,
+    "alias_candidate_ids": [
+      "CDKT_4375_TOTAL_ASSETS_BANKING_WORDING",
+      "CDKT_5699_NCI_POSSESSIVE_PARTICLE"
+    ],
+    "alias_decision_status": "NOT_STARTED_BLANK_RESPONSE_REQUIRED",
+    "alias_response_template": {
+      "authority_role": null,
+      "decided_at_utc": null,
+      "decision": null,
+      "rationale": null,
+      "replacement_text": null,
+      "steward_identity": null
+    },
+    "alias_response_vocabulary": {
+      "authority_role": [
+        "REVIEW_INDEPENDENT_SCHEMA_STEWARD"
+      ],
+      "decision": [
+        "APPROVE_ID_SCOPED_ALIAS",
+        "DEFER",
+        "REJECT",
+        "REPLACE"
+      ]
+    },
+    "all_response_template_values_null": true,
+    "authority_sha256": "d435b75649cc63948b4c727f68a26b67eb418c0771191b199e2aa31cf891e4d5",
+    "blank_response_contracts_sha256": "5765fa5f61703ad360ff8260a97df879ae1475ef922c1aa4e6b105a3774ebf72",
+    "evidence_identity_sha256": "ef3608a824e476a0982477bdc3ae7b31a68fcaa5ecd9ea3f4c51134c0a161260",
+    "evidence_sections_sha256": "a4cd5cb429d5894424c9e50fa8c559ef6ad042cafc940da73b4cd2ed0d831185",
+    "input_artifacts_sha256": "bac9d64913017fee94e6362af8fe49b0155b526b9d1ee3eb6cbf71f0d0734a13",
+    "packet_state": "E0039_PREDECISION_REVIEW_AND_STEWARD_EVIDENCE_PACKET",
+    "recommended_or_default_response_fields_present": false,
+    "row_and_alias_authorities_separate": true,
+    "row_authority_required": "INDEPENDENT_ROW_ADJUDICATOR",
+    "row_count": 6,
+    "row_decision_status": "NOT_STARTED_BLANK_RESPONSE_REQUIRED",
+    "row_ids": [
+      "page-0003-row-002-label",
+      "page-0003-row-003-label",
+      "page-0004-row-000-label",
+      "page-0004-row-002-label",
+      "page-0004-row-013-label",
+      "page-0004-row-023-label"
+    ],
+    "row_response_template": {
+      "adjudicated_row_role": null,
+      "adjudicated_source_label": null,
+      "authority_role": null,
+      "decision": null,
+      "rationale": null,
+      "report_norm_id": null,
+      "reviewed_at_utc": null,
+      "reviewer_identity": null
+    },
+    "row_response_vocabulary": {
+      "authority_role": [
+        "INDEPENDENT_ROW_ADJUDICATOR"
+      ],
+      "decision": [
+        "MAP_EXISTING_REPORT_NORM_ID",
+        "OUT_OF_SCOPE_FOR_TARGET_TEMPLATE",
+        "REQUIRES_SCHEMA_CHANGE",
+        "SOURCE_ONLY_STRUCTURAL_ROW",
+        "UNRESOLVED"
+      ]
+    }
+  },
+  "replay": {
+    "canonical_encoding": "UTF8_JSON_SORTED_KEYS_COMPACT_NO_NAN_NO_DUPLICATE_KEYS_V1",
+    "clean_git_commit_equal_before_publication": true,
+    "exact_canonical_byte_equality": true,
+    "packet_evidence_assembly_invocation_count": 2,
+    "packet_evidence_exact_canonical_byte_equality": true,
+    "packet_rebuilt_or_recaptured": false,
+    "packet_validation_invocation_count": 2
+  },
+  "seal_git_commit": "9a1b3f7c58cbcfdea0c006bcf7365a2ec9a3c144",
+  "seal_git_dirty": false,
+  "state": "E0039_PREDECISION_REVIEW_PACKET_HASH_SEALED_BEFORE_RESPONSE_ACCESS"
+}
