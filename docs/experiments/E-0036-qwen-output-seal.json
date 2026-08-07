@@ -1,0 +1,93 @@
+{
+  "authority": {
+    "automatic_model_promotion": false,
+    "geometry": false,
+    "label_truth": false,
+    "numeric_value_or_status": false,
+    "period_unit_scope": false,
+    "report_norm_id_or_schema_mapping": false
+  },
+  "authorization": {
+    "path": "docs/experiments/E-0036-qwen-reference-blind-inference-authorization.json",
+    "sha256": "18167f50ea63a86681950bacbbc8d2fb5c8c57affdb1f035e20de110758164f1",
+    "size_bytes": 749
+  },
+  "captured_at": "2026-08-07T14:37:12.689819+00:00",
+  "claim_boundary": "This artifact seals the one canonical, complete reference-blind E-0036 Qwen output before reviewed labels or ReportNormIds are opened. It establishes output, runtime and request identity only; it makes no label, mapping, numeric, accounting, holdout or production claim.",
+  "crop_manifest": {
+    "path": "output/calibration/e0035-mbb-cdkt-logical-row-label-crops/a177792e8b98f340f562/crop_manifest.json",
+    "sha256": "3b12da05e19467e85bfc6d828b73a3e35598c53d7c57cfb932b76763bec57eac"
+  },
+  "dataset_role": "CALIBRATION",
+  "evaluation_allowed_only_after_this_seal": true,
+  "exact_output_file_count": 2,
+  "experiment_id": "E-0036",
+  "format_version": 1,
+  "inference_git_commit": "7ccd452e873ffadab742a426f977fff03a4e1e62",
+  "model_config": {
+    "path": "config/models/qwen35-27b-gptq-int4-rtx4090-v1.toml",
+    "sha256": "fedcdcd1f054fb54f07c729717f40148fb6eb13e078ae29cae366bd5a07fbe55",
+    "size_bytes": 14390
+  },
+  "reader": {
+    "all_authority_flags": false,
+    "human_review_available_to_reader": false,
+    "manifest": {
+      "path": "output/calibration/e0036-mbb-cdkt-semantic-label-readers/qwen-reader/run_manifest.json",
+      "sha256": "a1c039a4594a4bf10c7ee659615f11656780e0cdf6c7abf39c0674619af9a9f4",
+      "size_bytes": 16259
+    },
+    "metrics": {
+      "free_vram_bytes_after_inference": 3956080640,
+      "maximum_visual_tokens": 108,
+      "mechanism_probe": {
+        "generated_token_count": 96,
+        "inference_seconds": 235.43688510699985,
+        "projected_maximum_total_wall_seconds": 15306.351756966991,
+        "projection_policy": "FIRST_CROP_SECONDS_PER_TOKEN_TIMES_96_TOKENS_TIMES_64",
+        "sample_id": "page-0003-row-000-label"
+      },
+      "minimum_visual_tokens": 66,
+      "model_load_seconds": 238.39111011900013,
+      "parsed_proposal_count": 0,
+      "peak_gpu_memory_allocated_mib": 19723.64697265625,
+      "peak_gpu_memory_reserved_mib": 19952.0,
+      "sample_count": 64,
+      "structural_rejection_count": 64,
+      "total_vram_bytes": 25248530432,
+      "total_wall_seconds": 15586.394586092
+    },
+    "output_directory": "output/calibration/e0036-mbb-cdkt-semantic-label-readers/qwen-reader",
+    "reader": "QWEN3_5_27B_GPTQ_INT4",
+    "reference_text_available_to_reader": false,
+    "result": {
+      "path": "output/calibration/e0036-mbb-cdkt-semantic-label-readers/qwen-reader/ocr_result.json",
+      "sha256": "34cd996a97d63a5d347c6f509889c12c9e8efb19d2896f8a4d7ab92d63f850c0",
+      "size_bytes": 216539
+    },
+    "sample_count": 64,
+    "status_counts": {
+      "REJECT_TOKEN_BUDGET_EXHAUSTED": 64
+    }
+  },
+  "reference_or_human_review_loaded_by_sealer": false,
+  "request": {
+    "path": "output/calibration/e0036-mbb-cdkt-semantic-label-readers/request.json",
+    "sha256": "ad4c1a9fecf9686249a9c4eea2a5b6a2a903fc4716536e5804c481facc217781",
+    "size_bytes": 21167
+  },
+  "same_ordered_sample_ids_as_request": true,
+  "seal_algorithm": {
+    "path": "src/bctc_ai/evaluation/qwen35_logical_row_output_seal.py",
+    "sha256": "d4726772431cae3695d89985d919e1e3d30ab36611d4adc7bdfb826c534ccaff",
+    "size_bytes": 39500
+  },
+  "seal_capture_script": {
+    "path": "scripts/experiments/capture_e0036_qwen_output_seal.py",
+    "sha256": "87f249368058f8c61a242e6c61d78a71e7995fa69ccd2d267f3d11f012bd1ccc",
+    "size_bytes": 1439
+  },
+  "seal_git_commit": "7ccd452e873ffadab742a426f977fff03a4e1e62",
+  "seal_git_dirty": false,
+  "state": "QWEN_OUTPUT_HASH_SEALED_BEFORE_REVIEW_ACCESS"
+}
