@@ -1,0 +1,139 @@
+{
+  "authority": {
+    "accounting_or_excel": false,
+    "mapping_output_hash_identity": true,
+    "numeric_value_or_status": false,
+    "period_or_unit": false,
+    "review_or_history": false
+  },
+  "claim_boundary": "This artifact seals the E-0037 mapping-only bytes before any E-0030 period/unit or E-0034 numeric/status evidence is opened. It does not add, rerun, repair, or reinterpret a mapping and makes no numeric, accounting, Excel, holdout, or production claim.",
+  "dataset_role": "CALIBRATION",
+  "experiment_id": "E-0037",
+  "format_version": 1,
+  "input_hash_ledger": {
+    "authentication_replay_implementation": {
+      "capture_script": {
+        "path": "scripts/experiments/capture_e0037_mbb_cdkt_mapping.py",
+        "sha256": "8438dba2c23195458c20f5a6fd550401c9b668accd96132d3bb143c7c9bc0a19",
+        "size_bytes": 3858
+      },
+      "integration": {
+        "path": "src/bctc_ai/evaluation/e0037_sealed_mapping.py",
+        "sha256": "de92349a1efdd0bc3cc5ab78d4651bf7987006d3883d15bc9a4e1a1753862e04",
+        "size_bytes": 133670
+      },
+      "mapper": {
+        "path": "src/bctc_ai/mapping/ordered_subgraph_v2.py",
+        "sha256": "cf737243cbcecf919a2cf2012aa269655341b5c8c6b8c4038c76ed510a68b40a",
+        "size_bytes": 81923
+      },
+      "source_structure_validator": {
+        "path": "src/bctc_ai/evaluation/e0037_evidence_assembly.py",
+        "sha256": "cbef18c15ca23bc08b3539144f89cd8de201194cb29f610fe44d2ef325ffa2c3",
+        "size_bytes": 56692
+      }
+    },
+    "authentication_replay_inputs": {
+      "cdkt_hierarchy_workbook": {
+        "path": "vst_level/vst_bank_balance_sheet.xlsx",
+        "sha256": "3d57157859f08dd21b029a0ad7488e64c7df7d4b1ad6cde424296d02836da065",
+        "size_bytes": 12360
+      },
+      "cdkt_workbook": {
+        "path": "template/Bank_CDKT_ReportNormId.xlsx",
+        "sha256": "a07ff47f7c41011fe4ca5a66681106d476586ded9013b5874cbb9f67a6ad8486",
+        "size_bytes": 10945
+      },
+      "control": {
+        "path": "config/experiments/e0037-mbb-cdkt-sealed-evidence-mapping.yaml",
+        "sha256": "e74bfc54c5b530ab8ef773b6b110fbd9ebc29b7fc9b9927897a3e6b595ca501c",
+        "size_bytes": 8782
+      },
+      "deepseek_result": {
+        "path": "output/calibration/e0036-mbb-cdkt-semantic-label-readers/deepseek-reader/ocr_result.json",
+        "sha256": "3273a5cd3f847e52e1178b888a6b9e246d8c1b73778de5d936fbbc9960909474",
+        "size_bytes": 44781
+      },
+      "e0035_crop_manifest": {
+        "path": "output/calibration/e0035-mbb-cdkt-logical-row-label-crops/a177792e8b98f340f562/crop_manifest.json",
+        "sha256": "3b12da05e19467e85bfc6d828b73a3e35598c53d7c57cfb932b76763bec57eac",
+        "size_bytes": 70663
+      },
+      "e0035_seal": {
+        "path": "docs/experiments/E-0035-mbb-cdkt-logical-row-label-crops.json",
+        "sha256": "a1bb81e895b45d003910aba523ba121461f15079b9452dde8d508600c5dcc3e3",
+        "size_bytes": 5131
+      },
+      "e0036_baseline_output_seal": {
+        "path": "docs/experiments/E-0036-mbb-cdkt-baseline-output-seal.json",
+        "sha256": "768f10f564b8a51e60c95af432cf6d11e68e4be4d3b6cb4da31c21b856e8a8a0",
+        "size_bytes": 5459
+      },
+      "e0036_request": {
+        "path": "output/calibration/e0036-mbb-cdkt-semantic-label-readers/request.json",
+        "sha256": "ad4c1a9fecf9686249a9c4eea2a5b6a2a903fc4716536e5804c481facc217781",
+        "size_bytes": 21167
+      },
+      "hierarchy_config": {
+        "path": "config/schemas/hierarchy_reference.yaml",
+        "sha256": "aa376b14b4677f1070acb0408e84fda2406f3e6f4311c98c5229b47c4cc72d4a",
+        "size_bytes": 912
+      },
+      "mapping_policy": {
+        "path": "config/mapping/ordered-subgraph-v2.yaml",
+        "sha256": "063d3339f90f7099487509bfa1c23cfa5354ed54a27435e22ac53dcfaf97734a",
+        "size_bytes": 2080
+      },
+      "scope_policy": {
+        "path": "config/mapping/scope_exclusions.yaml",
+        "sha256": "79e4dabdce260c96f52446421a93660042558478b78f0a11a68be99f92fe0dc9",
+        "size_bytes": 449
+      },
+      "source_structure": {
+        "path": "output/calibration/e0037-mbb-cdkt-sealed-evidence-mapping/source_structure.json",
+        "sha256": "ef098a659f8b557ac3a801edccfc7c0848be9a512b47ba7c9278cd3873f70728",
+        "size_bytes": 136042
+      },
+      "vietocr_result": {
+        "path": "output/calibration/e0036-mbb-cdkt-semantic-label-readers/vietocr-reader/ocr_result.json",
+        "sha256": "204c897d0d7419be6194f626c033624b52ddbec4d8aa2b3cd0f02f4645ceacf6",
+        "size_bytes": 35990
+      }
+    },
+    "control": {
+      "path": "config/experiments/e0037-mbb-cdkt-sealed-evidence-mapping.yaml",
+      "sha256": "e74bfc54c5b530ab8ef773b6b110fbd9ebc29b7fc9b9927897a3e6b595ca501c",
+      "size_bytes": 8782
+    },
+    "mapping_only": {
+      "path": "output/calibration/e0037-mbb-cdkt-sealed-evidence-mapping/mapping_only.json",
+      "sha256": "e18f6b20825f93b20023c0d89caca1737481008b244696594852ca9fa972f99e",
+      "size_bytes": 646393
+    }
+  },
+  "mapping_capture_git_commit": "3dd2681133e939671f9c1818656804a7753fde8a",
+  "mapping_only": {
+    "path": "output/calibration/e0037-mbb-cdkt-sealed-evidence-mapping/mapping_only.json",
+    "sha256": "e18f6b20825f93b20023c0d89caca1737481008b244696594852ca9fa972f99e",
+    "size_bytes": 646393
+  },
+  "postjoin_access": {
+    "deterministic_mapping_replay_byte_equal": true,
+    "deterministic_mapping_replay_invocation_count": 1,
+    "e0030_opened": false,
+    "e0033_opened": false,
+    "e0034_opened": false,
+    "mapper_replay_used_to_change_mapping": false,
+    "mapping_only_validated_before_postjoin_access": true
+  },
+  "row_count": 64,
+  "row_mapping_status_counts": {
+    "AMBIGUOUS_ACROSS_PATHS": 60,
+    "NO_ADMISSIBLE_PAIR": 4
+  },
+  "schema_disposition_count": 77,
+  "schema_projection_sha256": "7025ca729c01a3f2030af38e9745a0ee8d72b1dad60c8d4e3b7cf749e5eb860c",
+  "seal_git_commit": "3dd2681133e939671f9c1818656804a7753fde8a",
+  "seal_git_dirty": false,
+  "state": "MAPPING_ONLY_HASH_SEALED_BEFORE_POSTJOIN"
+}
