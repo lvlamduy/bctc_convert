@@ -1,0 +1,62 @@
+version: 2
+mode: ANCHORED_INTERVAL_K_BEST_MONOTONE_DP_FAIL_CLOSED
+calibration_status: LOGIC_DEVELOPMENT_NOT_PRODUCTION_CALIBRATED
+ordering_authority: WORKBOOK_DISPLAY_ORDER_ONLY
+policy_bytes_authority: SINGLE_IMMUTABLE_BYTE_SNAPSHOT_FOR_PARSE_AND_SHA256
+numeric_report_norm_id_sort_allowed: false
+numeric_features_allowed: false
+value_features_allowed: false
+period_features_allowed: false
+historical_features_allowed: false
+human_review_features_allowed: false
+
+anchor_prepass:
+  minimum_stream_score: 0.90
+  minimum_stream_runner_up_margin: 0.15
+  minimum_independent_valid_streams: 2
+  require_stream_agreement: true
+  require_one_to_one: true
+  require_global_monotonicity: true
+  require_role_compatibility: true
+  require_direct_parent_compatibility: true
+  require_earlier_schema_parent_compatibility: true
+
+candidate_admissibility:
+  reader_aggregation: MAX_PER_READER_LABEL_SCORE_NO_VOTE_BONUS
+  minimum_strong_aggregate_label_score: 0.65
+  minimum_parent_relaxed_aggregate_label_score: 0.35
+  parent_relaxed_relation_type: DIRECT_PARENT
+  threshold_comparison: RAW_UNROUNDED_SCORE_DIAGNOSTIC_ROUNDING_ONLY
+  unknown_role_behavior: NEUTRAL_NO_BONUS
+
+scope_gate:
+  unknown_scope_behavior: NEUTRAL_NO_BONUS
+  reject_known_known_conflict: true
+
+parent_orphan_gate:
+  explicit_direct_parent_is_hard_constraint: true
+  earlier_schema_parent_inside_active_interval_is_hard_constraint: true
+  out_of_interval_schema_parent_behavior: NEUTRAL
+  trailing_aggregate_report_norm_ids:
+    - 4375
+    - 4304
+    - 4305
+
+search:
+  beam_width_per_dp_cell: 64
+  returned_path_limit: 8
+
+objective:
+  skip_baseline: 0.00
+  coverage_reward: 0.00
+  cardinality_reward: 0.00
+  direct_parent_gain_baseline: MINIMUM_PARENT_RELAXED_LABEL_SCORE
+  parent_corroboration_gain: 0.20
+  adjacency_behavior: TIE_BREAK_ONLY_AFTER_ADMISSIBILITY
+
+acceptance_gates:
+  minimum_interval_best_runner_up_margin: 0.15
+  margin_comparison: RAW_UNROUNDED_SCORE_DIAGNOSTIC_ROUNDING_ONLY
+  require_zero_structural_issues: true
+  require_pair_exclusion_counterfactual_stability: true
+  require_zero_beam_pruning: true
