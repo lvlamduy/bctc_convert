@@ -1,0 +1,184 @@
+version: 1
+experiment_id: E-0039
+dataset_role: CALIBRATION
+design: PREDECISION_SIX_ROW_REVIEW_AND_SEPARATE_TWO_ALIAS_STEWARD_EVIDENCE_PACKET
+state: READY_FOR_E0039_PREDECISION_REVIEW_PACKET_CAPTURE
+
+frozen_inputs:
+  e0035_seal:
+    path: docs/experiments/E-0035-mbb-cdkt-logical-row-label-crops.json
+    sha256: a1bb81e895b45d003910aba523ba121461f15079b9452dde8d508600c5dcc3e3
+    size_bytes: 5131
+  crop_manifest:
+    path: output/calibration/e0035-mbb-cdkt-logical-row-label-crops/a177792e8b98f340f562/crop_manifest.json
+    sha256: 3b12da05e19467e85bfc6d828b73a3e35598c53d7c57cfb932b76763bec57eac
+    size_bytes: 70663
+  crop_page_0003_row_002:
+    path: output/calibration/e0035-mbb-cdkt-logical-row-label-crops/a177792e8b98f340f562/crops/page-0003-row-002-label.png
+    sha256: 65dbe5ad066c7594f663b0e238704deb39fddb3de106b7f9c2a96dae523faebc
+    size_bytes: 20391
+  crop_page_0003_row_003:
+    path: output/calibration/e0035-mbb-cdkt-logical-row-label-crops/a177792e8b98f340f562/crops/page-0003-row-003-label.png
+    sha256: 006c84ce6e05a2f333aca27d4e799659ca67572c1e20e320fa21f102787a7922
+    size_bytes: 28306
+  crop_page_0004_row_000:
+    path: output/calibration/e0035-mbb-cdkt-logical-row-label-crops/a177792e8b98f340f562/crops/page-0004-row-000-label.png
+    sha256: 92f88087df31e5163d14d2a26241929cb3bf9b41f63a50645424fad9fa780ff8
+    size_bytes: 6928
+  crop_page_0004_row_002:
+    path: output/calibration/e0035-mbb-cdkt-logical-row-label-crops/a177792e8b98f340f562/crops/page-0004-row-002-label.png
+    sha256: 9efc3fb45de4d440770ff8cd217e3fe1b3941e407f8c5e39081e264299322af7
+    size_bytes: 14587
+  crop_page_0004_row_013:
+    path: output/calibration/e0035-mbb-cdkt-logical-row-label-crops/a177792e8b98f340f562/crops/page-0004-row-013-label.png
+    sha256: 14319e9219d628fded8b85569967f011e77eecd16853a4e4fa2dac2603474102
+    size_bytes: 10159
+  crop_page_0004_row_023:
+    path: output/calibration/e0035-mbb-cdkt-logical-row-label-crops/a177792e8b98f340f562/crops/page-0004-row-023-label.png
+    sha256: 6ed40472f6435591c991c21d42faa707e16747bd18fe0e21e6f17b8cc3aca765
+    size_bytes: 12642
+  crop_page_0003_row_038:
+    path: output/calibration/e0035-mbb-cdkt-logical-row-label-crops/a177792e8b98f340f562/crops/page-0003-row-038-label.png
+    sha256: a7cde46da05efdd8e7fb37a6df332f3d61a3f00fae244f6a9a626dce932f1c48
+    size_bytes: 12494
+  crop_page_0004_row_022:
+    path: output/calibration/e0035-mbb-cdkt-logical-row-label-crops/a177792e8b98f340f562/crops/page-0004-row-022-label.png
+    sha256: 86e999b464befca56f8cd8f60c1f2ef24b483f7b4dd7cee13f211efc85b3f083
+    size_bytes: 20010
+  e0036_baseline_seal:
+    path: docs/experiments/E-0036-mbb-cdkt-baseline-output-seal.json
+    sha256: 768f10f564b8a51e60c95af432cf6d11e68e4be4d3b6cb4da31c21b856e8a8a0
+    size_bytes: 5459
+  vietocr_result:
+    path: output/calibration/e0036-mbb-cdkt-semantic-label-readers/vietocr-reader/ocr_result.json
+    sha256: 204c897d0d7419be6194f626c033624b52ddbec4d8aa2b3cd0f02f4645ceacf6
+    size_bytes: 35990
+  deepseek_result:
+    path: output/calibration/e0036-mbb-cdkt-semantic-label-readers/deepseek-reader/ocr_result.json
+    sha256: 3273a5cd3f847e52e1178b888a6b9e246d8c1b73778de5d936fbbc9960909474
+    size_bytes: 44781
+  e0037_source_structure:
+    path: output/calibration/e0037-mbb-cdkt-sealed-evidence-mapping/source_structure.json
+    sha256: ef098a659f8b557ac3a801edccfc7c0848be9a512b47ba7c9278cd3873f70728
+    size_bytes: 136042
+  e0037_mapping_only:
+    path: output/calibration/e0037-mbb-cdkt-sealed-evidence-mapping/mapping_only.json
+    sha256: e18f6b20825f93b20023c0d89caca1737481008b244696594852ca9fa972f99e
+    size_bytes: 646393
+  e0037_mapping_seal:
+    path: docs/experiments/E-0037-mbb-cdkt-mapping-only-seal.json
+    sha256: 665aa1b3ac96881df0a4cd7b2f7da2425c3635ad1e8ea024e299b668c79ed0e5
+    size_bytes: 6016
+  s3_registry:
+    path: data/registered/s3_artifact_snapshot_registry.jsonl
+    sha256: 25da6b205a775d87eca8e4ffe55e3f762ee64e92cbb7190c2834708a7de0d78d
+    size_bytes: 6050
+  e0038_mapping_control:
+    path: config/experiments/e0038-mbb-cdkt-exact-mapping.yaml
+    sha256: 59db541208b6295aeff0cead9b0c9cb8624962738726b128432b1ca4cb074855
+    size_bytes: 8814
+  e0038_mapping_only:
+    path: output/calibration/e0038-mbb-cdkt-exact-mapping/mapping_only.json
+    sha256: 8b1074d2ca57efcb1c6da123615ace86438069b4d581b9afb4b6e4cfbf01a9e9
+    size_bytes: 646606
+  e0038_mapping_seal:
+    path: docs/experiments/E-0038-mbb-cdkt-exact-mapping-seal.json
+    sha256: bffcaf56d80af458187a646269862b8bf669237d865fa1561ab41b056db06137
+    size_bytes: 6421
+  e0038_s3_registration:
+    path: docs/experiments/E-0038-mbb-cdkt-exact-mapping-s3-registration.json
+    sha256: 6baf6a90842066e5253533072a800c5066e97248745efed8480cb67c410601e4
+    size_bytes: 9555
+  e0038_alias_policy:
+    path: config/mapping/e0038-cdkt-structural-alias-candidates.yaml
+    sha256: d1cfbfd3782e1c5af1e605f8218d3f656358877f7d70c360e6bc9555e8be8948
+    size_bytes: 1496
+  cdkt_workbook:
+    path: template/Bank_CDKT_ReportNormId.xlsx
+    sha256: a07ff47f7c41011fe4ca5a66681106d476586ded9013b5874cbb9f67a6ad8486
+    size_bytes: 10945
+
+implementation:
+  packet_builder:
+    path: src/bctc_ai/evaluation/e0039_review_packet.py
+    sha256: 9049ae53faf8c8cbd19133020c9d23d80716cd6b9acacd0f7417cd21596814fe
+    size_bytes: 134406
+  capture_script:
+    path: scripts/experiments/capture_e0039_mbb_cdkt_review_packet.py
+    sha256: 5df83d983dd6724e911ed47a76aba2fdcc72af8086bfcd2ec153ecfe1495d576
+    size_bytes: 1632
+  source_structure_validator:
+    path: src/bctc_ai/evaluation/e0037_evidence_assembly.py
+    sha256: cbef18c15ca23bc08b3539144f89cd8de201194cb29f610fe44d2ef325ffa2c3
+    size_bytes: 56692
+  e0037_mapping_validator:
+    path: src/bctc_ai/evaluation/e0037_sealed_mapping.py
+    sha256: de92349a1efdd0bc3cc5ab78d4651bf7987006d3883d15bc9a4e1a1753862e04
+    size_bytes: 133670
+  hardened_io_and_e0038_payload_validator:
+    path: src/bctc_ai/evaluation/e0038_exact_mapping.py
+    sha256: ac1ba96456f9541cd3612b0763dc521f6c916681bafe455e330643ab17739a04
+    size_bytes: 113104
+packet_contract:
+  exact_unselected_row_count: 6
+  exact_alias_hypothesis_count: 2
+  unselected_row_ids:
+    - page-0003-row-002-label
+    - page-0003-row-003-label
+    - page-0004-row-000-label
+    - page-0004-row-002-label
+    - page-0004-row-013-label
+    - page-0004-row-023-label
+  alias_candidate_ids:
+    - CDKT_4375_TOTAL_ASSETS_BANKING_WORDING
+    - CDKT_5699_NCI_POSSESSIVE_PARTICLE
+  reader_proposal_sources:
+    - deepseek_ocr2
+    - vietocr
+  ppocr_text_role: SOURCE_VISIBLE_PROVENANCE_NOT_READER_PROPOSAL
+  full_ordered_interval_universe_required: true
+  full_schema_node_snapshots_required: true
+  adjacent_selected_anchors_required: true
+  row_and_alias_packets_must_be_separate: true
+  response_templates_must_be_blank: true
+  recommended_or_selected_response_answers_allowed: false
+  formal_adjudication_or_steward_decision_allowed: false
+  automatic_mapping_adoption_allowed: false
+
+access_contract:
+  e0030_or_e0034_numeric_period_unit_artifacts_allowed: false
+  e0033_row_contract_direct_access_allowed: false
+  history_or_mongodb_allowed: false
+  qwen_raw_rejected_or_token_output_allowed: false
+  old_human_review_rows_or_answers_allowed: false
+  prior_review_artifact_or_coverage_receipt_allowed: false
+  holdout_access_allowed: false
+  accounting_or_excel_allowed: false
+
+resource_caps:
+  maximum_control_bytes: 262144
+  maximum_total_direct_input_bytes: 4194304
+  maximum_total_control_implementation_and_input_bytes: 6291456
+  maximum_json_input_bytes: 2097152
+  maximum_source_crop_bytes_each: 65536
+  maximum_workbook_bytes: 65536
+  maximum_packet_bytes: 2097152
+  exact_source_row_count: 64
+  exact_schema_node_count: 77
+  exact_e0038_interval_count: 42
+  maximum_text_codepoints: 512
+
+publication:
+  canonical_paths_only: true
+  clean_git_required_before_any_evidence_read: true
+  clean_git_required_immediately_before_publication: true
+  tracked_control_implementation_and_input_head_binding_required: true
+  stable_nofollow_reads_required: true
+  all_direct_inputs_rechecked_before_publication: true
+  atomic_exclusive_no_overwrite: true
+  exclusive_output_directory_inventory:
+    - evidence_packet.json
+  formal_capture_requires_committed_mechanism: true
+
+output:
+  path: output/calibration/e0039-mbb-cdkt-review-packet/evidence_packet.json
