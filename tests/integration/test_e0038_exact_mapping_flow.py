@@ -14,9 +14,37 @@ from bctc_ai.evaluation.e0038_exact_mapping import (
     build_e0038_mapping_only,
 )
 
+PUBLISHED_E0038_ARTIFACTS = (
+    {
+        "path": MAPPING_ONLY_RELATIVE_PATH.as_posix(),
+        "sha256": "8b1074d2ca57efcb1c6da123615ace86438069b4d581b9afb4b6e4cfbf01a9e9",
+        "size_bytes": 646_606,
+    },
+    {
+        "path": MAPPING_SEAL_RELATIVE_PATH.as_posix(),
+        "sha256": "bffcaf56d80af458187a646269862b8bf669237d865fa1561ab41b056db06137",
+        "size_bytes": 6_421,
+    },
+)
+
+
+def _read_published_artifact(project_root: Path, record: dict[str, object]) -> bytes:
+    payload = (project_root / str(record["path"])).read_bytes()
+    assert len(payload) == record["size_bytes"]
+    assert hashlib.sha256(payload).hexdigest() == record["sha256"]
+    return payload
+
 
 @pytest.fixture(scope="module")
-def exact_payload(project_root: Path):
+def published_e0038_artifacts(project_root: Path):
+    return {
+        str(record["path"]): _read_published_artifact(project_root, record)
+        for record in PUBLISHED_E0038_ARTIFACTS
+    }
+
+
+@pytest.fixture(scope="module")
+def exact_payload(project_root: Path, published_e0038_artifacts):
     opened: list[str] = []
 
     def tracking_reader(root, path, label, **kwargs):
@@ -28,12 +56,18 @@ def exact_payload(project_root: Path):
         capture_git_commit=exact_mapping._git_commit(project_root),
         _reader=tracking_reader,
     )
+    for record in PUBLISHED_E0038_ARTIFACTS:
+        assert (
+            _read_published_artifact(project_root, record)
+            == published_e0038_artifacts[str(record["path"])]
+        )
     return payload, opened
 
 
 def test_real_dry_run_orders_authority_checks_and_pins_exact_result(
     project_root: Path,
     exact_payload,
+    published_e0038_artifacts,
 ):
     payload, opened = exact_payload
     first = {label: opened.index(label) for label in set(opened)}
@@ -140,13 +174,17 @@ def test_real_dry_run_orders_authority_checks_and_pins_exact_result(
         exact_mapping.MAPPING_RESULT_SHA256
     )
     assert payload["runtime_versions"] == exact_mapping._RUNTIME_VERSIONS
-    assert not (project_root / MAPPING_ONLY_RELATIVE_PATH).exists()
-    assert not (project_root / MAPPING_SEAL_RELATIVE_PATH).exists()
+    for record in PUBLISHED_E0038_ARTIFACTS:
+        assert (
+            _read_published_artifact(project_root, record)
+            == published_e0038_artifacts[str(record["path"])]
+        )
 
 
 def test_real_mapping_replay_is_byte_deterministic_and_does_not_publish(
     project_root: Path,
     exact_payload,
+    published_e0038_artifacts,
 ):
     first_payload, _opened = exact_payload
     second_payload = build_e0038_mapping_only(
@@ -159,8 +197,11 @@ def test_real_mapping_replay_is_byte_deterministic_and_does_not_publish(
     assert first_payload == second_payload
     assert first_bytes == second_bytes
     assert hashlib.sha256(first_bytes).hexdigest() == hashlib.sha256(second_bytes).hexdigest()
-    assert not (project_root / MAPPING_ONLY_RELATIVE_PATH).exists()
-    assert not (project_root / MAPPING_SEAL_RELATIVE_PATH).exists()
+    for record in PUBLISHED_E0038_ARTIFACTS:
+        assert (
+            _read_published_artifact(project_root, record)
+            == published_e0038_artifacts[str(record["path"])]
+        )
 
 
 def test_mapping_validator_rejects_injected_review_or_accuracy_authority(

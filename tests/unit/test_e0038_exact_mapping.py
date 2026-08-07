@@ -335,14 +335,23 @@ def test_mapping_inventory_rejects_ignored_extra_file(tmp_path: Path):
         _mapping_output_inventory(tmp_path, require_mapping=False)
 
 
-def test_formal_capture_requires_clean_git_before_any_output(
+def test_formal_capture_clean_git_failure_preserves_published_artifacts(
     project_root: Path,
     monkeypatch: pytest.MonkeyPatch,
 ):
     output = project_root / MAPPING_ONLY_RELATIVE_PATH
     seal = project_root / MAPPING_SEAL_RELATIVE_PATH
-    assert not output.exists()
-    assert not seal.exists()
+    output_before = output.read_bytes()
+    seal_before = seal.read_bytes()
+    assert len(output_before) == 646_606
+    assert hashlib.sha256(output_before).hexdigest() == (
+        "8b1074d2ca57efcb1c6da123615ace86438069b4d581b9afb4b6e4cfbf01a9e9"
+    )
+    assert len(seal_before) == 6_421
+    assert hashlib.sha256(seal_before).hexdigest() == (
+        "bffcaf56d80af458187a646269862b8bf669237d865fa1561ab41b056db06137"
+    )
+    monkeypatch.setattr(exact_mapping, "_mapping_output_inventory", lambda *_args, **_kwargs: ())
     monkeypatch.setattr(
         exact_mapping,
         "_clean_git_commit",
@@ -351,5 +360,5 @@ def test_formal_capture_requires_clean_git_before_any_output(
 
     with pytest.raises(E0038ExactMappingError, match="dirty fixture"):
         exact_mapping.capture_e0038_mapping_only(project_root)
-    assert not output.exists()
-    assert not seal.exists()
+    assert output.read_bytes() == output_before
+    assert seal.read_bytes() == seal_before
