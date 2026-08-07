@@ -89,6 +89,31 @@
     "sha256": "ad4c1a9fecf9686249a9c4eea2a5b6a2a903fc4716536e5804c481facc217781",
     "size_bytes": 21167
   },
+  "s3_artifact_snapshot": {
+    "artifact_snapshot_id": "20260807T055643Z-e0036-baseline-semantic-readers-3273a5cd3f84",
+    "file_count": 5,
+    "hydrate_probe": {
+      "logical_path": "output/calibration/e0036-mbb-cdkt-semantic-label-readers/request.json",
+      "restored_file_count": 0,
+      "reused_file_count": 1,
+      "status": "PASS"
+    },
+    "manifest": {
+      "key": "bctc-ai/artifact-snapshots/20260807T055643Z-e0036-baseline-semantic-readers-3273a5cd3f84/manifest-2065a4745986bf3dd2b5438bfb5d56601625ae1c0de2551a28241dba186282dd.json",
+      "sha256": "2065a4745986bf3dd2b5438bfb5d56601625ae1c0de2551a28241dba186282dd"
+    },
+    "parent_full_snapshot": {
+      "manifest_sha256": "74be9ea09905f0c7842d5a0b46bfe44f3fc5f32cc2c15b5040efcc4e99e8981b",
+      "snapshot_id": "20260806T050030130746Z-4a469fab2334"
+    },
+    "restore_verified": true,
+    "run_record": {
+      "key": "bctc-ai/artifact-runs/20260807T055643Z-e0036-baseline-semantic-readers-3273a5cd3f84/run-6c7475959f29ed15742d5ba133f2fd202b19b2af3d516e7ce8122264feea8a13.json",
+      "sha256": "6c7475959f29ed15742d5ba133f2fd202b19b2af3d516e7ce8122264feea8a13"
+    },
+    "total_bytes": 111675,
+    "uploaded_object_count": 5
+  },
   "same_ordered_sample_ids": true,
   "sample_count_per_reader": 64,
   "seal_git_commit": "8a91393406e0bfc05050bba37c79fb19d1f8d076",
