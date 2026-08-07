@@ -76,6 +76,32 @@
     "sha256": "ad4c1a9fecf9686249a9c4eea2a5b6a2a903fc4716536e5804c481facc217781",
     "size_bytes": 21167
   },
+  "s3_artifact_snapshot": {
+    "artifact_snapshot_id": "20260807T143806Z-e0036-qwen-semantic-reader-34cd996a97d6",
+    "file_count": 2,
+    "hydrate_probe": {
+      "existing_target_no_overwrite_refused": true,
+      "logical_path": "output/calibration/e0036-mbb-cdkt-semantic-label-readers/qwen-reader",
+      "restored_file_count": 2,
+      "seal_hashes_match": true,
+      "status": "PASS"
+    },
+    "manifest": {
+      "key": "bctc-ai/artifact-snapshots/20260807T143806Z-e0036-qwen-semantic-reader-34cd996a97d6/manifest-3b3dbf09972dcaabb8496a28f1576d3d62091f77ff76e1d8515fb3add47185d1.json",
+      "sha256": "3b3dbf09972dcaabb8496a28f1576d3d62091f77ff76e1d8515fb3add47185d1"
+    },
+    "parent_full_snapshot": {
+      "manifest_sha256": "74be9ea09905f0c7842d5a0b46bfe44f3fc5f32cc2c15b5040efcc4e99e8981b",
+      "snapshot_id": "20260806T050030130746Z-4a469fab2334"
+    },
+    "restore_verified": true,
+    "run_record": {
+      "key": "bctc-ai/artifact-runs/20260807T143806Z-e0036-qwen-semantic-reader-34cd996a97d6/run-3ebde45b15aacddea299aa472cc205cbe89511f5df79302ead702e000604a64b.json",
+      "sha256": "3ebde45b15aacddea299aa472cc205cbe89511f5df79302ead702e000604a64b"
+    },
+    "total_bytes": 232798,
+    "uploaded_object_count": 2
+  },
   "same_ordered_sample_ids_as_request": true,
   "seal_algorithm": {
     "path": "src/bctc_ai/evaluation/qwen35_logical_row_output_seal.py",

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import tomllib
 
 import yaml
@@ -147,3 +148,40 @@ def test_e0036_control_freezes_same_crops_and_delays_reference_access(project_ro
         artifact = project_root / record["path"]
         assert artifact.stat().st_size == record["size_bytes"]
         assert sha256_file(artifact) == record["sha256"]
+
+
+def test_e0036_qwen_output_is_sealed_and_s3_restore_verified(project_root):
+    seal = json.loads(
+        (project_root / "docs/experiments/E-0036-qwen-output-seal.json").read_text(encoding="utf-8")
+    )
+    snapshot = seal["s3_artifact_snapshot"]
+    assert seal["state"] == "QWEN_OUTPUT_HASH_SEALED_BEFORE_REVIEW_ACCESS"
+    assert seal["reader"]["sample_count"] == 64
+    assert seal["reader"]["status_counts"] == {"REJECT_TOKEN_BUDGET_EXHAUSTED": 64}
+    assert snapshot["file_count"] == 2
+    assert snapshot["total_bytes"] == 232_798
+    assert snapshot["restore_verified"] is True
+    assert snapshot["hydrate_probe"] == {
+        "existing_target_no_overwrite_refused": True,
+        "logical_path": "output/calibration/e0036-mbb-cdkt-semantic-label-readers/qwen-reader",
+        "restored_file_count": 2,
+        "seal_hashes_match": True,
+        "status": "PASS",
+    }
+
+    registry = [
+        json.loads(line)
+        for line in (project_root / "data/registered/s3_artifact_snapshot_registry.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
+        if line
+    ]
+    matches = [
+        record
+        for record in registry
+        if record["artifact_snapshot_id"] == snapshot["artifact_snapshot_id"]
+    ]
+    assert len(matches) == 1
+    assert matches[0]["manifest"] == snapshot["manifest"]
+    assert matches[0]["run_record"] == snapshot["run_record"]
+    assert matches[0]["restore_verified"] is True
