@@ -104,7 +104,7 @@ conditional_qwen_challenger:
   model_type: IMAGE_TEXT_TO_TEXT
   quantization: OFFICIAL_GPTQ_INT4
   hardware_constraint: SINGLE_RTX4090_24564_MIB_WITH_BOUNDED_CPU_OFFLOAD
-  required_same_request_sha256: TO_BE_FILLED_AFTER_CLEAN_REQUEST_CAPTURE
+  required_same_request_sha256: ad4c1a9fecf9686249a9c4eea2a5b6a2a903fc4716536e5804c481facc217781
   maximum_new_tokens_per_crop: 96
   context_length: 4096
   enable_thinking: false
@@ -112,6 +112,14 @@ conditional_qwen_challenger:
   mapping_or_numeric_authority: NONE
 
 evaluation_only_after_both_baseline_seals:
+  baseline_output_seal:
+    path: docs/experiments/E-0036-mbb-cdkt-baseline-output-seal.json
+    sha256: 768f10f564b8a51e60c95af432cf6d11e68e4be4d3b6cb4da31c21b856e8a8a0
+    size_bytes: 5459
+  numeric_row_linkage:
+    path: docs/experiments/E-0034-mbb-cdkt-numeric-verification-v2.json
+    sha256: 08ecf8823154df415cc4f5bcbe65c5697412605eadc1a41f22315990ea20cc70
+    size_bytes: 149232
   human_review_policy:
     path: config/reference/human-review-v1.yaml
     sha256: 88011b6f9b85cc3561e0a4dddef39a9f57aa73f7d19e5fc4cb09825d2ea6fa34
@@ -131,6 +139,59 @@ evaluation_only_after_both_baseline_seals:
     path: config/mapping/ordered-subgraph-v1.yaml
     sha256: c311cae354ff7890e92a964821dabd5e845d72cf475595395f4ab84a86600eaf
     size_bytes: 1479
+  scope_policy:
+    path: config/mapping/scope_exclusions.yaml
+    sha256: 79e4dabdce260c96f52446421a93660042558478b78f0a11a68be99f92fe0dc9
+    size_bytes: 449
+  hierarchy_reference:
+    path: config/schemas/hierarchy_reference.yaml
+    sha256: aa376b14b4677f1070acb0408e84fda2406f3e6f4311c98c5229b47c4cc72d4a
+    size_bytes: 912
+  schema_graph:
+    statement_type: CDKT
+    node_count: 77
+    sha256: 831cde59c00b87a23c79b840484e580b6fa8786711d42bd894e3beccd1fddb5b
+    order_source: WORKBOOK_DISPLAY_ORDER
+    numeric_report_norm_id_sort_used: false
+  reviewed_row_binding:
+    primary: E0034_PAGE_AND_NUMERIC_PAIR_WITH_UNRESOLVED_CELL_AS_WILDCARD
+    tiebreak: E0035_PP_OCR_LABEL_SIMILARITY_EVALUATION_ONLY
+    minimum_ppocr_label_similarity: 0.75
+    minimum_ppocr_runner_up_margin: 0.15
+    binding_occurs_only_after_all_reader_mappings_complete: true
+  reviewed_label_scoring:
+    unicode_normalization: NFC
+    whitespace_normalization: STRIP_AND_COLLAPSE_RUNS
+    source_exact_is_case_sensitive: true
+    character_error_rate_is_codepoint_levenshtein: true
+  output_path: docs/experiments/E-0036-mbb-cdkt-reviewed-reader-evaluation.json
+  algorithm:
+    path: src/bctc_ai/evaluation/logical_row_label_review_evaluation.py
+    sha256: eae037ece0c6f944ded8c1fa034584f9519a80e49a53e01152338c71804cb6fa
+    size_bytes: 30394
+  capture_script:
+    path: scripts/experiments/capture_e0036_reviewed_reader_evaluation.py
+    sha256: b9d38b157e1c335f5e04c25058c0a166ced86070d4e2d0517f04f86972902a25
+    size_bytes: 1466
+  algorithm_dependencies:
+    - path: src/bctc_ai/mapping/ordered_subgraph.py
+      sha256: 79556011591cf30e492eb5deef1f77b860b71ba3d0549f7556e9f61b5f59c12a
+      size_bytes: 43088
+    - path: src/bctc_ai/schema/registry.py
+      sha256: 04a88f848a70f96c04ae0a974aed06e45446350cef3e218c0b6be09b8ed6659e
+      size_bytes: 7869
+    - path: src/bctc_ai/schema/hierarchy.py
+      sha256: e2d737ba21f96a280c1e6c08f69ad1df0f8a1913b10149b0899fc03ff5a2ddab
+      size_bytes: 10897
+    - path: src/bctc_ai/mapping/scope.py
+      sha256: 0804e1d2a7103d2186f54ceafc49fe14f35f3ddabc2797eb14bd3c09b2e44774
+      size_bytes: 6728
+    - path: src/bctc_ai/evaluation/line_recognition_metrics.py
+      sha256: 035dd5bc37cb71926fb3b96d115008803fa177c9ec2f4d7051b0bee76a739f4c
+      size_bytes: 10598
+    - path: src/bctc_ai/reference/human_review.py
+      sha256: e6c5450709711b64594d51bb06af11bec3c89e98eeaea94879c788bbd216fd56
+      size_bytes: 21772
 
 decision_metrics_in_order:
   - reviewed_report_norm_id_exact_count

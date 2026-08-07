@@ -31,6 +31,9 @@ def test_e0036_control_freezes_same_crops_and_delays_reference_access(project_ro
     assert payload["conditional_qwen_challenger"]["model_revision"] == (
         "8f0c09f227ae570e79617c6d9172b59df9c16081"
     )
+    assert payload["conditional_qwen_challenger"]["required_same_request_sha256"] == (
+        "ad4c1a9fecf9686249a9c4eea2a5b6a2a903fc4716536e5804c481facc217781"
+    )
     assert payload["baseline_output_sealing"]["exact_reader_count"] == 2
     assert payload["baseline_output_sealing"]["exact_sample_count_per_reader"] == 64
     assert payload["baseline_output_sealing"]["reference_or_human_review_loaded_by_sealer"] is False
@@ -43,6 +46,22 @@ def test_e0036_control_freezes_same_crops_and_delays_reference_access(project_ro
         payload["request"]["reader_contract"],
         payload["baseline_output_sealing"]["algorithm"],
         payload["baseline_output_sealing"]["capture_script"],
+        *(
+            payload["evaluation_only_after_both_baseline_seals"][key]
+            for key in (
+                "baseline_output_seal",
+                "numeric_row_linkage",
+                "human_review_policy",
+                "human_review_dataset",
+                "target_schema",
+                "ordered_mapping_policy",
+                "scope_policy",
+                "hierarchy_reference",
+                "algorithm",
+                "capture_script",
+            )
+        ),
+        *payload["evaluation_only_after_both_baseline_seals"]["algorithm_dependencies"],
         *(
             record[key]
             for record in payload["baseline_readers"].values()
