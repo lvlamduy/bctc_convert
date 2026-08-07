@@ -1,0 +1,98 @@
+format_version: 1
+recovery_id: R-0001
+policy: LOST_BATCH_MANIFEST_FUNCTIONAL_REPRODUCTION_V1
+dataset_role: CALIBRATION
+
+lost_artifact:
+  path: output/calibration/e0027-mbb-q1-2026-end-to-end-role-c/batch_manifest.json
+  sha256: 0d94762ba4a0d383793fe93a56e48fa7b79d6a3f7faaf62e9dcf40935b8c2889
+  size_bytes: 13563
+  batch_identity: 2d60b9cf108d305e259c5e083aba50de063e1d7fa6a9e60b7657389af626afe4
+  recovery_state: ABSENT_FROM_LOCAL_GIT_S3_VERSIONS_GITHUB_ACTIONS_AND_RELEASES
+
+historical_seals:
+  discovery:
+    path: docs/experiments/E-0027-mbb-q1-2026-role-b-discovery-v3.json
+    sha256: 9ccfd0faf869adee4cb885a4a87a32c86354101e82adc1d62c32e4ce7e9089c8
+  numeric_grid:
+    path: docs/experiments/E-0034-mbb-cdkt-numeric-verification-v2.json
+    sha256: 08ecf8823154df415cc4f5bcbe65c5697412605eadc1a41f22315990ea20cc70
+
+source:
+  path: vietstock_bctc/MBB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf
+  sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+  size_bytes: 3977471
+
+reproduction:
+  generated_from_clean_commit: a14074634fb795f18342dc01b2ff3372958fce24
+  preprocess_manifest:
+    path: output/calibration/recovery-e0027-mbb-q1-2026-20260807/eebeda2ebc09b0d42032/manifest.json
+    sha256: 8a1cca495582228717adac3116637b9bed82ed92cf4543e2f3bfefbc15db264b
+    size_bytes: 36804
+  batch_manifest:
+    path: output/calibration/recovery-e0027-mbb-q1-2026-role-c-20260807/batch_manifest.json
+    sha256: 90273b4ade90ab0055860b6111981c37a9fa71013b3f277ce589ea68e6353397
+    size_bytes: 13631
+    batch_identity: c686efde044b6772747af8bb646beb2666ee777b0b9715118a07d2a93329b449
+  pages:
+    3:
+      render_path: output/calibration/recovery-e0027-mbb-q1-2026-20260807/eebeda2ebc09b0d42032/renders/page-0003.png
+      historical_render_path: /workspace/bctc-ai/output/calibration/e0027-mbb-q1-2026-end-to-end/eebeda2ebc09b0d42032/renders/page-0003.png
+      render_sha256: 40544c98908d2ca59d5e78a840594cbbea1622d33ac6a72b187c413670bef599
+      render_size_bytes: 1709301
+      ocr_path: output/calibration/recovery-e0027-mbb-q1-2026-role-c-20260807/ppocrv6-page-0003/ocr_result.json
+      reproduced_ocr_sha256: dceca77d8867eef696e8c1f54e2d92dcc72056da0ee9cff651ef6e3ba5974ab1
+      reproduced_ocr_size_bytes: 145601
+      historical_canonical_ocr_sha256: 070dc9045cab52669a9bee9f548996cf7d3e4125cc93077400bbc916cbe666f2
+      historical_canonical_ocr_size_bytes: 145594
+    4:
+      render_path: output/calibration/recovery-e0027-mbb-q1-2026-20260807/eebeda2ebc09b0d42032/renders/page-0004.png
+      historical_render_path: /workspace/bctc-ai/output/calibration/e0027-mbb-q1-2026-end-to-end/eebeda2ebc09b0d42032/renders/page-0004.png
+      render_sha256: 0c872315d09faebaba24c3b4badcc355d235841b0e1e57d4dda443e76f7b16b7
+      render_size_bytes: 1033463
+      ocr_path: output/calibration/recovery-e0027-mbb-q1-2026-role-c-20260807/ppocrv6-page-0004/ocr_result.json
+      reproduced_ocr_sha256: 510e6c57d47210369043e4028bca2fb55d2e1f127a23a536edd6733ad8cf9d25
+      reproduced_ocr_size_bytes: 93440
+      historical_canonical_ocr_sha256: 6ef9d5af3b87ee4368bb63fd8ee5f02832104404f39820e659fdd79c37cd3bd4
+      historical_canonical_ocr_size_bytes: 93433
+
+stable_metric_fields:
+  - completed_page_count
+  - line_count
+  - lines_below_0_8
+  - lines_below_0_9
+  - mean_line_score
+  - minimum_line_score
+  - model_load_session_count
+  - word_token_count
+observational_metric_fields:
+  - model_load_wall_seconds_total
+  - page_inference_wall_seconds
+
+frozen_runtime:
+  manifest:
+    path: config/models/gpu-runtime.toml
+    sha256: 9141e0a4177f66f152bdb9eecbbfdbdd3add566dbabb81b43207a018c1ba18d8
+  package_freeze:
+    path: config/models/gpu-requirements.freeze.txt
+    sha256: c0e8c43f84360a8eb0ebeff1ef5de43969bdd291eb2c7cee363c35ef2c78437b
+  statement_discovery:
+    path: config/document_phase/statement-discovery-v3.yaml
+    sha256: f8188fdf53b8f3907ab89d5407bcea178fe927dfe02ccad291a79d1b5f1ba182
+
+acceptance:
+  source_exact: true
+  render_pages_3_4_byte_exact: true
+  canonical_ocr_pages_3_4_byte_exact: true
+  aggregate_stable_metrics_exact: true
+  discovery_result_json_exact: true
+  original_batch_manifest_recovered: false
+  timing_metrics_may_differ: true
+  human_gold_or_production_claim: false
+
+claim_boundary: >-
+  R-0001 may establish that the recovered source, rendering, PP-OCRv6 semantic
+  payload on pages 3-4, stable nine-page metrics and V3 discovery decision are
+  functionally identical to the tracked historical seals. It must never claim
+  that the lost E-0027 batch manifest, its timestamps, timing records, page run
+  manifests or original batch identity were recovered byte-for-byte.
