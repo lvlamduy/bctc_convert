@@ -3,6 +3,7 @@ from __future__ import annotations
 import yaml
 
 from bctc_ai.core.hashing import sha256_file
+from bctc_ai.recovery.artifact_registry import verify_frozen_artifact
 
 
 def test_e0034_control_binds_corrected_grid_and_geometry_only_padding(project_root):
@@ -26,7 +27,7 @@ def test_e0034_control_binds_corrected_grid_and_geometry_only_padding(project_ro
     assert payload["acceptance_policy"]["exact_cell_count"] == 128
     assert payload["acceptance_policy"]["exact_verified_dash_count"] == 5
     for record in payload["frozen_inputs"].values():
-        assert sha256_file(project_root / record["path"]) == record["sha256"]
+        verify_frozen_artifact(project_root, record)
     for key in (
         "crop_policy",
         "model_config",

@@ -1,19 +1,29 @@
 # Progress report
 
-- Updated: 2026-08-06T15:08:40+00:00
+- Updated: 2026-08-07T04:35:00+00:00
 - Branch: `codex/rebuild-bootstrap`
 - Latest clean numeric capture base: `278e1ed`; corrected row-grid seal:
   `198c5d8`; E-0021 clean evaluation base:
   `c32741a217ca16e7224d416b2c14245f580e610d`
-- Hardware: NVIDIA GeForce RTX 5070 Ti (16,303 MiB, compute capability 12.0); 125.71 GiB RAM
+- Hardware: NVIDIA GeForce RTX 4090 (24,564 MiB, compute capability 8.9); 62 GiB RAM
 - Runtime state: `LOGIC_DEVELOPMENT_INFERENCE_PASS_NOT_PRODUCTION_APPROVED`
 - Registered schema rows: 1,593 (CDKT 77; KQKD 24; LCTT 107; TM 1,385)
 - Registered PDFs: 2,567
 - Latest full regression including multi-signal discovery v4, fixed-grid
-  semantic fusion, E-0029/E-0030 controls, immutable V4 note-row splitting and
-  corrected-grid E-0034 numeric verification: 444 passed, 2 intentionally
-  skipped historical/external replays in 99.80 seconds; Ruff and
-  `git diff --check` passed
+  semantic fusion, E-0029/E-0030 controls, immutable V4 note-row splitting,
+  corrected-grid E-0034 numeric verification and R-0001 recovery verification:
+  450 passed, 2 intentionally skipped historical/external replays in 98.38
+  seconds; Ruff and `git diff --check` passed.
+- New-VPS recovery: the historical E-0027 batch manifest was not present in the
+  2026-08-06 S3 snapshot and could not be found in Git, S3 versions or GitHub
+  artifacts. R-0001 transparently reproduces the exact source/render/OCR and V3
+  discovery evidence while retaining the original manifest as `NOT_RECOVERED`.
+  The exact 125-package runtime and two PP-OCRv6 weights were rebuilt; stable
+  nine-page OCR metrics are identical, and pages 3–4 become byte-identical to
+  their historical OCR hashes after changing only the seven-byte-longer
+  `input_path` provenance. A dedicated Codex-session S3 backup now passes a
+  real restore test. See `RECOVERY_AUDIT.md` and
+  `docs/recovery/R-0001-e0027-functional-reproduction.json`.
 
 ## Accuracy focus and measurable state
 

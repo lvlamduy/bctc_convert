@@ -3,6 +3,7 @@ from __future__ import annotations
 import yaml
 
 from bctc_ai.core.hashing import sha256_file
+from bctc_ai.recovery.artifact_registry import verify_frozen_artifact
 
 
 def test_e0028_control_freezes_one_reference_blind_locator_change(project_root):
@@ -13,7 +14,7 @@ def test_e0028_control_freezes_one_reference_blind_locator_change(project_root):
     assert payload["experiment_id"] == "E-0028"
     assert payload["dataset_role"] == "CALIBRATION"
     for record in payload["frozen_inputs"].values():
-        assert sha256_file(project_root / record["path"]) == record["sha256"]
+        verify_frozen_artifact(project_root, record)
     candidate = payload["candidate"]
     assert candidate["git_commit"] == "7250d022dbfd8ddc020c1028fb17de1017b015d0"
     assert candidate["only_change"] == "ACCOUNTING_ROW_ANCHOR_SCORER_ONLY"

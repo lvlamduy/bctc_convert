@@ -3,6 +3,7 @@ from __future__ import annotations
 import yaml
 
 from bctc_ai.core.hashing import sha256_file
+from bctc_ai.recovery.artifact_registry import verify_frozen_artifact
 
 
 def test_e0032_control_uses_geometry_only_and_hashes_candidate(project_root):
@@ -16,7 +17,7 @@ def test_e0032_control_uses_geometry_only_and_hashes_candidate(project_root):
         "44afda2231db8728ff1be548fb06c7e00f0319bd"
     )
     for record in payload["frozen_inputs"].values():
-        assert sha256_file(project_root / record["path"]) == record["sha256"]
+        verify_frozen_artifact(project_root, record)
     assert payload["candidate"]["algorithm"]["sha256"] != sha256_file(
         project_root / payload["candidate"]["algorithm"]["path"]
     )
@@ -41,7 +42,7 @@ def test_e0033_control_restores_v3_and_hashes_isolated_v4(project_root):
         "dbba296de95638750286e898e82536d35c466bcc"
     )
     for record in payload["frozen_inputs"].values():
-        assert sha256_file(project_root / record["path"]) == record["sha256"]
+        verify_frozen_artifact(project_root, record)
     for key in ("config", "algorithm", "inherited_v3_algorithm"):
         record = payload["candidate"][key]
         assert sha256_file(project_root / record["path"]) == record["sha256"]

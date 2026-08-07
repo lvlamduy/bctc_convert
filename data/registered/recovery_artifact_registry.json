@@ -1,0 +1,40 @@
+{
+  "format_version": 1,
+  "policy": "EXPLICIT_LOST_ARTIFACT_FUNCTIONAL_REPRODUCTION_V1",
+  "records": [
+    {
+      "lost_artifact": {
+        "path": "output/calibration/e0027-mbb-q1-2026-end-to-end-role-c/batch_manifest.json",
+        "sha256": "0d94762ba4a0d383793fe93a56e48fa7b79d6a3f7faaf62e9dcf40935b8c2889",
+        "size_bytes": 13563
+      },
+      "recovery_seal": {
+        "path": "docs/recovery/R-0001-e0027-functional-reproduction.json",
+        "sha256": "f6b263096a12e6c92000af6f15b4577241423053acba0e5bab61c6876389890d",
+        "size_bytes": 57309,
+        "required_status": "PASS_FUNCTIONAL_REPRODUCTION_NOT_ORIGINAL_BATCH_MANIFEST"
+      },
+      "accepted_equivalence_scope": [
+        "source_identity",
+        "render_pages_3_4_byte_identity",
+        "canonical_ocr_pages_3_4_byte_identity",
+        "nine_page_stable_ocr_metrics",
+        "statement_discovery_v3_json_result"
+      ],
+      "not_recovered": [
+        "original_batch_manifest_bytes",
+        "original_batch_identity",
+        "original_timestamps",
+        "original_timing_metrics",
+        "original_page_run_manifests"
+      ],
+      "allowed_use": "CONTROL_REGRESSION_WITH_EXPLICIT_RECOVERY_STATUS",
+      "forbidden_use": [
+        "claim_original_artifact_recovered",
+        "claim_new_accuracy_measurement",
+        "claim_human_gold_or_holdout_result",
+        "silently_replace_historical_hash"
+      ]
+    }
+  ]
+}

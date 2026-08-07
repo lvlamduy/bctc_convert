@@ -3,6 +3,7 @@ from __future__ import annotations
 import yaml
 
 from bctc_ai.core.hashing import sha256_file
+from bctc_ai.recovery.artifact_registry import verify_frozen_artifact
 
 
 def test_e0029_control_is_reference_blind_and_hash_locked(project_root):
@@ -14,7 +15,7 @@ def test_e0029_control_is_reference_blind_and_hash_locked(project_root):
     assert payload["source"]["target_pages"] == [3, 4]
     assert payload["source"]["excluded_off_balance_pages"] == [5]
     for record in payload["frozen_inputs"].values():
-        assert sha256_file(project_root / record["path"]) == record["sha256"]
+        verify_frozen_artifact(project_root, record)
     candidate = payload["candidate"]
     assert candidate["git_commit"] == "88a28cfb04151b9c13d1631a1cff44effa1cfd90"
     for name in ("config", "algorithm"):

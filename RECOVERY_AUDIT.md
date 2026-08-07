@@ -1,5 +1,46 @@
 # Recovery audit
 
+## New VPS recovery — 2026-08-07
+
+- Git branch `codex/rebuild-bootstrap` was recovered from GitHub. The initial
+  recovered tip was `3b69c9e`; recovery protection was then committed and
+  pushed through `8dd3a09`. Git fetch and authenticated push both pass.
+- The working host is an RTX 4090 (compute capability 8.9, 24,564 MiB), 62 GiB
+  RAM, Python 3.11.10 and NVIDIA driver 580.126.09/CUDA 13.0. The exact
+  125-package historical runtime was rebuilt: its installed freeze SHA-256 is
+  `c0e8c43f84360a8eb0ebeff1ef5de43969bdd291eb2c7cee363c35ef2c78437b`.
+  PP-OCRv6 uses the pinned Paddle 3.3.0 CPU FP32 path and reproduced the sealed
+  output. The historical GPU smoke correctly rejects this host's 8.9 capability
+  against the old RTX 5070 Ti `sm_120` identity; that historical manifest was
+  not rewritten.
+- S3 list/read/write/read-back/delete connectivity passes. Bucket versioning,
+  default AES-256 encryption and all public-access blocks remain enabled. The
+  newest full snapshot is `20260806T050030130746Z-4a469fab2334`, manifest
+  SHA-256 `74be9ea09905f0c7842d5a0b46bfe44f3fc5f32cc2c15b5040efcc4e99e8981b`.
+- The full snapshot's run record proves 4,192 catalog objects and a full stream
+  restore. Four bounded PDFs needed by recovery regression were hydrated by the
+  no-overwrite manifest path and verified.
+- Recovery found one post-snapshot loss: E-0027 `batch_manifest.json`, expected
+  SHA-256 `0d94762b…c2889`, is absent from local disk, Git objects, every S3
+  object/version, GitHub Actions and releases. It has not been fabricated.
+- R-0001 rebuilt pages 1–9 from the registered MBB PDF using the exact pinned
+  runtime and two model revisions. Aggregate non-timing OCR metrics are exact
+  (794 lines, 6,915 tokens, mean `0.9772775223108022`, minimum
+  `0.4495129883289337`); pages 3–4 renders are byte-identical. After changing
+  only the `input_path` provenance string to its historical path, both OCR JSON
+  files are byte-identical to their historical hashes. The full V3 discovery
+  JSON is exact. R-0001 explicitly remains a functional reproduction, not the
+  original batch manifest or identity.
+- A dedicated `~/.codex/sessions/` S3 backup now uploads archive then manifest
+  with SHA-256, encryption and `If-None-Match`, downloads both, safely restores
+  and verifies every file, mode and timestamp. The post-checkpoint restore gate
+  passed. No systemd manager or crontab exists on this container, so no local
+  timer was installed.
+- Current control-plane regression after the recovery overlay: **450 passed,
+  2 intentionally skipped**; Ruff and `git diff --check` pass. The overlay is
+  allowed only for the exact missing path/hash and exposes recovery status; it
+  cannot silently replace the historical hash.
+
 Captured: 2026-08-06T00:31:18.199477+00:00
 
 Schema/S3 posture refreshed: 2026-08-06T04:48:37+00:00

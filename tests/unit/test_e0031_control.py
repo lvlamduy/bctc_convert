@@ -3,6 +3,7 @@ from __future__ import annotations
 import yaml
 
 from bctc_ai.core.hashing import sha256_file
+from bctc_ai.recovery.artifact_registry import verify_frozen_artifact
 
 
 def test_e0031_control_is_reference_blind_and_fail_closed(project_root):
@@ -18,7 +19,7 @@ def test_e0031_control_is_reference_blind_and_fail_closed(project_root):
         "686a73137474ffff5a2d738da31e74d7719aa2bc"
     )
     for record in payload["frozen_inputs"].values():
-        assert sha256_file(project_root / record["path"]) == record["sha256"]
+        verify_frozen_artifact(project_root, record)
     for key in ("crop_policy", "model_config"):
         record = payload["candidate"][key]
         assert sha256_file(project_root / record["path"]) == record["sha256"]
