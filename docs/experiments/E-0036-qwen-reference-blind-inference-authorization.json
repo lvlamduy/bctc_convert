@@ -1,0 +1,20 @@
+{
+  "authorization_scope": "UNCHANGED_E0036_FROZEN_64_CROP_REQUEST_ONLY",
+  "dataset_role": "CALIBRATION",
+  "decision": "RUN_QWEN_SAME_REQUEST",
+  "derived_from_reviewed_evaluation_sha256": "8ea952bc008d4bf4c274c25299cadb1c624424114be9ea3a38ba9b15d1b1c133",
+  "experiment_id": "E-0036",
+  "format_version": 1,
+  "model": {
+    "quantization": "OFFICIAL_GPTQ_INT4",
+    "repo_id": "Qwen/Qwen3.5-27B-GPTQ-Int4",
+    "revision": "8f0c09f227ae570e79617c6d9172b59df9c16081"
+  },
+  "reference_labels_ids_values_or_periods_available_to_reader": false,
+  "request": {
+    "sample_count": 64,
+    "sha256": "ad4c1a9fecf9686249a9c4eea2a5b6a2a903fc4716536e5804c481facc217781"
+  },
+  "state": "QWEN_REFERENCE_BLIND_INFERENCE_AUTHORIZED",
+  "triggered": true
+}

@@ -102,30 +102,40 @@ This is the durable retrieval point for project context. It summarizes user auth
 - Difficult-region candidate: DeepSeek-OCR-2 in a separate Blackwell-compatible
   runtime. Its generative output has no numeric/mapping authority and must pass
   Vietnamese source-exact digit/sign tests.
-- Mapping reranker candidate: Qwen3.6-27B quantized, with small row/block prompts only. Its fit on 16 GB VRAM must be measured; it is not the numeric reader.
+- Conditional semantic challenger: official `Qwen/Qwen3.5-27B-GPTQ-Int4`
+  revision `8f0c09f227ae570e79617c6d9172b59df9c16081` on the unchanged E-0036
+  logical-row crops only. It was triggered by reviewed source-inexact baseline
+  labels, not by wrong reviewed best-path IDs. It is not a mapping reranker,
+  numeric reader or truth source.
 - Model names do not grant approval. Each must pass Vietnamese bank fixtures, exact-number/sign tests, table geometry, throughput, VRAM, and hallucination measurements.
-- The RTX 5070 Ti is Blackwell `sm_120`. Preinstalled PyTorch 2.5.1+cu124 fails a real CUDA kernel smoke test. The isolated PyTorch 2.12.0+cu130/TorchVision 0.27.0+cu130 runtime now passes imports, dependency consistency, a real CUDA kernel, and the first full document-model inference; it remains separate from the control plane.
+- The failed historical host used an RTX 5070 Ti Blackwell runtime. The recovered
+  current host is an RTX 4090 with 24,564 MiB VRAM, compute capability 8.9 and
+  about 62 GiB RAM; the isolated PyTorch 2.12.0+cu130 runtime is revalidated on
+  this host.
 
 ## Verified current results
 
 - Git remote exists and is reachable; work is on feature branch `codex/rebuild-bootstrap`.
-- Hardware audit: RTX 5070 Ti 16,303 MiB, Ryzen 9 5950X, about 125.7 GiB RAM, Ubuntu 22.04, NVIDIA driver 595.80.
+- Hardware audit: the recovered host has an RTX 4090 with 24,564 MiB VRAM,
+  compute capability 8.9 and about 62 GiB RAM. The former RTX 5070 Ti audit is
+  retained only as historical failure evidence.
 - The approved append-only schema contains 1,593 unique IDs: CDKT 77, KQKD 24,
   LCTT 107, TM 1,385. TM ID 1944 is the final workbook-order item after 1943;
   its exact name is “Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán”.
   The migration audit proves all 1,384 prior TM identities/names/order mappings
   unchanged and binds both workbook hashes.
 - CPU environment is locked in `uv.lock`; bootstrap, atomic storage, source identity registry, role freezing, content-addressed materialization, render/preprocess, local difficult-region variants, perspective correction, ordered alignment, continuation graph, row wrapping, arithmetic validation, and workbook export have executable tests.
-- Latest full test run after the S3 mechanism checkpoint: 222 passed and 2
-  immutable-historical replays skipped; Ruff lint and the changed-file formatter
-  gate passed. The Q-BOOT-004 focused regression currently passes eight tests;
-  its full regression is pending before commit.
+- Latest full test run through the E-0036 Qwen pre-inference controls: 499 passed
+  and 2 immutable-historical/external replays skipped in 97.78 seconds; Ruff
+  lint, formatting and `git diff --check` passed.
 - A real scanned/mixed ACB PDF page rendered and passed preprocessing checkpoint/hash verification.
 - Relative word-gap segmentation, numeric right-edge clustering, note-axis separation, wrapped-row assembly, label-only section retention, and axis-local period/unit binding are implemented without institution/page coordinate rules.
 - On the registered VPB logic-development fixture (pages 5–10), the native text path reconstructed 134 logical rows and 252 value cells, preserved 48 note references, and found two value axes on every page. It correctly separated snapshot dates from three-month durations, retained direct-LCTT anchors and section headings, and left one visible unlabeled off-balance total unresolved instead of inventing a label. See `docs/experiments/E-0006-vpb-native-geometry.json`.
 - Local control-plane backups restore and hash-verify. The authorized S3 target
-  has passed credential/region/encryption/public-access preflight; the initial
-  full snapshot and restore are pending a clean implementation checkpoint.
+  has versioning enabled, AES-256 default encryption and all public-access blocks.
+  Full parent snapshot `20260806T050030130746Z-4a469fab2334` passed a
+  manifest-bound restore of 4,192 objects / 4,361 logical files, including the
+  2,567 registered PDFs.
 - The isolated GPU environment contains 125 frozen distributions, occupies 6,383,286,857 bytes, and is reproducible from a complete freeze plus recorded critical wheel hashes. Ubuntu `libgl1` and `libglib2.0-0`, their observed dependency closure, cache variables, disk thresholds, and rebuild/rollback commands are versioned under `docs/environment/` and `config/system/`.
 - Pinned PaddleOCR-VL-1.6 and PP-DocLayoutV3 weights were verified against their recorded sizes, revisions, and SHA-256 hashes. A revision-pinned downloader refuses mismatches; benchmark caches remain outside Git.
 - E-0007 completed the full PP-DocLayoutV3 FP32 + PaddleOCR-VL-1.6 BF16 Transformers pipeline on VPB KQKD page 8 in 19.52 seconds with 3,239 MiB peak total GPU memory. Independent ordered alignment found 25/25 logical rows, 50/50 exact value/state cells, 12/12 exact note references, one two-row wrapped-label proposal, and only 23/25 source-exact labels. The two diacritic errors prove the VLM cannot be standalone truth even when numbers agree.
@@ -193,9 +203,24 @@ This is the durable retrieval point for project context. It summarizes user auth
   retained all 125 queries. Row-box counts vary materially by threshold
   (36/30/23 at 0.5/0.7/0.9), so the formal experiment must use source geometry
   and precision/recall rather than selecting the count closest to a reader.
+- E-0036 sealed VietOCR and DeepSeek logical-row outputs before review and later
+  evaluated only six pre-existing reviewed MBB CDKT rows. VietOCR/DeepSeek
+  source-exact counts are 3/6 and 1/6. Both best ordered paths contain the
+  reviewed IDs on 6/6 rows, but margins 0.051282/0.008494 remain non-decisive;
+  both mappings abstain on 6/6 and automatically accept zero.
+- The Qwen gate is authorized through a minimal answer-free artifact. The
+  pre-inference mechanism pins the official 27B GPTQ-Int4 revision, 24
+  artifacts/30,258,477,628 bytes, deterministic bounded offline decoding and an
+  explicit RTX4090/CPU layer split. At this checkpoint no registered Qwen weight
+  shard or Qwen output exists, so load feasibility, speed, memory and accuracy
+  remain unmeasured.
 
 ## Open constraints and next decisions
 
+- The immediate extraction blocker is decisive ordered structural mapping, not
+  merely label CER: a correct reviewed ID in the best path is insufficient when
+  the runner-up margin is ambiguous. Preserve `AMBIGUOUS_MAPPING` and review
+  abstention; Qwen may alter label evidence only.
 - Preserve the current stable corpus denominator and rerun drift-aware registration whenever new files arrive.
 - Expand frozen native-geometry fixtures across institutions, years, scopes, scans, borderless layouts, broken pages, and multi-page rows before assigning production confidence.
 - Use the authorized S3 prefix for content-addressed off-machine artifacts and
@@ -261,3 +286,9 @@ This is the durable retrieval point for project context. It summarizes user auth
   1943; preserved every prior workbook identity/order/mapping; enrolled all 1,593
   template items in Role A, Role B, Excel, evaluation, and mandatory search; and
   rebuilt the schema graph plus the 112,147-cell weak-reference registry.
+- 2026-08-07: Sealed the E-0036 VietOCR/DeepSeek reference-blind outputs before
+  review, evaluated the fixed six-row sample, triggered Qwen only under the
+  predeclared source-inexact rule, and added an answer-free authorization plus
+  exact pre-inference Qwen3.5-27B GPTQ-Int4 model/runtime/downloader/reader
+  contract. No Qwen weights were downloaded and no Qwen inference or result was
+  claimed.

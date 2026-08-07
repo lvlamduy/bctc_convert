@@ -94,13 +94,14 @@ baseline_output_sealing:
   exact_sample_count_per_reader: 64
 
 conditional_qwen_challenger:
-  invocation_state: NOT_ALLOWED_UNTIL_BASELINES_SEALED_AND_EVALUATED
+  invocation_state: AUTHORIZED_BY_SEALED_BASELINE_REVIEW_EVALUATION_NOT_YET_RUN
   trigger: >-
     At least one of the six pre-existing reviewed rows is source-inexact or has
     the wrong reviewed ReportNormId after both baseline outputs are sealed.
   model_repo_id: Qwen/Qwen3.5-27B-GPTQ-Int4
   model_revision: 8f0c09f227ae570e79617c6d9172b59df9c16081
-  model_repository_bytes: 30248072398
+  model_repository_bytes: 30258483742
+  selected_pinned_runtime_artifact_bytes: 30258477628
   model_type: IMAGE_TEXT_TO_TEXT
   quantization: OFFICIAL_GPTQ_INT4
   hardware_constraint: SINGLE_RTX4090_24564_MIB_WITH_BOUNDED_CPU_OFFLOAD
@@ -110,6 +111,45 @@ conditional_qwen_challenger:
   enable_thinking: false
   network_permitted_during_inference: false
   mapping_or_numeric_authority: NONE
+  authorization:
+    path: docs/experiments/E-0036-qwen-reference-blind-inference-authorization.json
+    sha256: 18167f50ea63a86681950bacbbc8d2fb5c8c57affdb1f035e20de110758164f1
+    size_bytes: 749
+    contains_review_labels_ids_values_or_periods: false
+  implementation:
+    model_config:
+      path: config/models/qwen35-27b-gptq-int4-rtx4090-v1.toml
+      sha256: 05833c615f799451fa7614eeb962e3ba756fc0ca74476a850260392ef18a4cdf
+      size_bytes: 13489
+    overlay_requirements:
+      path: config/models/qwen35-gptq-overlay-requirements.txt
+      sha256: 730cf24c76d60f8060172db45af05e9e7a39697e5415fcd90aae371e4e33b801
+      size_bytes: 1910
+    downloader:
+      path: scripts/bootstrap/download_qwen35_gptq.py
+      sha256: 5be53cdd16d70cf209c8f1dbbfe7cb413436bf2e03c0f1e60afdf6b9fe15b06f
+      size_bytes: 8701
+    reader_algorithm:
+      path: src/bctc_ai/ocr/qwen35_logical_row_reader.py
+      sha256: b51543b3e4c1759744612c203e817505231e4a5f156d0beafaa9f7d860d42e66
+      size_bytes: 57778
+    runner:
+      path: scripts/models/run_qwen35_logical_row_reader.py
+      sha256: 9d18878ed792065f22cc9dc4689682a3f4b774f695bb68a15e431a2fcf687796
+      size_bytes: 1215
+    hard_watchdog:
+      path: scripts/models/qwen35_inference_watchdog.py
+      sha256: f99056c24acaa7df3bf230b30a45d094ec4d7a764e3cd415fde538988d6adcc0
+      size_bytes: 1309
+    loader: GPTQModel.from_quantized
+    backend: gptq_triton
+    device_map: EXPLICIT_LAYER_SPLIT_38_GPU_26_CPU
+    installed_overlay_tree_sha256: d703e549fad8a65f86b137695f8a2bab3f6b77cbb39289220aa136cfe7feeeba
+    installed_overlay_tree_file_count: 3347
+    exact_registered_model_file_set_required: true
+    execution_model: ONE_SHOT_PROCESS_REQUIRED
+    hard_timeout_per_sample_seconds: 900
+    hf_transformers_gptq_loader_used: false
 
 evaluation_only_after_both_baseline_seals:
   baseline_output_seal:

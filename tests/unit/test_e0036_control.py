@@ -26,7 +26,7 @@ def test_e0036_control_freezes_same_crops_and_delays_reference_access(project_ro
         is True
     )
     assert payload["conditional_qwen_challenger"]["invocation_state"] == (
-        "NOT_ALLOWED_UNTIL_BASELINES_SEALED_AND_EVALUATED"
+        "AUTHORIZED_BY_SEALED_BASELINE_REVIEW_EVALUATION_NOT_YET_RUN"
     )
     assert payload["conditional_qwen_challenger"]["model_revision"] == (
         "8f0c09f227ae570e79617c6d9172b59df9c16081"
@@ -39,6 +39,33 @@ def test_e0036_control_freezes_same_crops_and_delays_reference_access(project_ro
     assert payload["baseline_output_sealing"]["reference_or_human_review_loaded_by_sealer"] is False
     assert payload["authority"]["semantic_readers_propose_label_text_only"] is True
     assert payload["authority"]["semantic_reader_may_assign_report_norm_id"] is False
+    assert payload["conditional_qwen_challenger"]["selected_pinned_runtime_artifact_bytes"] == (
+        30_258_477_628
+    )
+    assert (
+        payload["conditional_qwen_challenger"]["authorization"][
+            "contains_review_labels_ids_values_or_periods"
+        ]
+        is False
+    )
+    assert payload["conditional_qwen_challenger"]["implementation"]["loader"] == (
+        "GPTQModel.from_quantized"
+    )
+    assert payload["conditional_qwen_challenger"]["implementation"]["backend"] == ("gptq_triton")
+    assert (
+        payload["conditional_qwen_challenger"]["implementation"]["installed_overlay_tree_sha256"]
+        == "d703e549fad8a65f86b137695f8a2bab3f6b77cbb39289220aa136cfe7feeeba"
+    )
+    assert (
+        payload["conditional_qwen_challenger"]["implementation"][
+            "exact_registered_model_file_set_required"
+        ]
+        is True
+    )
+    assert (
+        payload["conditional_qwen_challenger"]["implementation"]["hf_transformers_gptq_loader_used"]
+        is False
+    )
 
     for record in (
         payload["request"]["algorithm"],
@@ -70,6 +97,18 @@ def test_e0036_control_freezes_same_crops_and_delays_reference_access(project_ro
                 "reader_algorithm",
                 "immutable_runtime_helper",
                 "runner",
+            )
+        ),
+        payload["conditional_qwen_challenger"]["authorization"],
+        *(
+            payload["conditional_qwen_challenger"]["implementation"][key]
+            for key in (
+                "model_config",
+                "overlay_requirements",
+                "downloader",
+                "reader_algorithm",
+                "runner",
+                "hard_watchdog",
             )
         ),
     ):

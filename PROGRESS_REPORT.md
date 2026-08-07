@@ -1,7 +1,10 @@
 # Progress report
 
-- Updated: 2026-08-07T04:35:00+00:00
+- Updated: 2026-08-07T07:38:30+00:00
 - Branch: `codex/rebuild-bootstrap`
+- Latest sealed semantic decision checkpoint: `a7913847d072360d18c6bcb62bdd442d07f7b992`;
+  the Qwen challenger is authorized and hash-pinned pre-inference, with no
+  downloaded model weights or Qwen output.
 - Latest clean numeric capture base: `278e1ed`; corrected row-grid seal:
   `198c5d8`; E-0021 clean evaluation base:
   `c32741a217ca16e7224d416b2c14245f580e610d`
@@ -11,9 +14,10 @@
 - Registered PDFs: 2,567
 - Latest full regression including multi-signal discovery v4, fixed-grid
   semantic fusion, E-0029/E-0030 controls, immutable V4 note-row splitting,
-  corrected-grid E-0034 numeric verification and R-0001 recovery verification:
-  452 passed, 2 intentionally skipped historical/external replays in 101.48
-  seconds; Ruff and `git diff --check` passed.
+  corrected-grid E-0034 numeric verification, R-0001 recovery verification and
+  the E-0036 Qwen pre-inference controls: 499 passed, 2 intentionally skipped
+  historical/external replays in 97.78 seconds; Ruff and `git diff --check`
+  passed.
 - New-VPS recovery: the historical E-0027 batch manifest was not present in the
   2026-08-06 S3 snapshot and could not be found in Git, S3 versions or GitHub
   artifacts. R-0001 transparently reproduces the exact source/render/OCR and V3
@@ -319,6 +323,33 @@
   acceptance and blank promotion are zero. All predeclared gates pass. Artifact
   SHA-256 is
   `08ecf8823154df415cc4f5bcbe65c5697412605eadc1a41f22315990ea20cc70`.
+- E-0035/E-0036 now complete the fixed-input and two-baseline semantic sequence.
+  E-0035 froze 64 unresized source-pixel label crops: 39 on page 3 and 25 on
+  page 4. VietOCR and DeepSeek-OCR-2 then read the identical reference-blind
+  request at SHA-256
+  `ad4c1a9fecf9686249a9c4eea2a5b6a2a903fc4716536e5804c481facc217781`,
+  and both outputs were hash-sealed before the six reviewed rows were loaded.
+  On those rows VietOCR is source-exact on 3/6 and DeepSeek on 1/6; the
+  predeclared source-inexact gate therefore returns `RUN_QWEN_SAME_REQUEST`.
+- The reviewed mapping result isolates the current structural blocker. Both
+  readers' best ordered CDKT paths contain the reviewed ReportNormId on 6/6
+  rows, but neither path has a decisive runner-up margin: VietOCR is 0.051282
+  and DeepSeek is 0.008494. Both results are `AMBIGUOUS_MAPPING`, automatic
+  acceptance is 0/6, and review abstention is 6/6. Qwen may strengthen label
+  evidence only; it cannot assign ReportNormId or bypass structural abstention.
+- Qwen pre-inference v1 is authorized by a minimal artifact derived from
+  reviewed-evaluation SHA-256
+  `8ea952bc008d4bf4c274c25299cadb1c624424114be9ea3a38ba9b15d1b1c133`
+  while exposing no reviewed label, ID, value or period. It pins
+  `Qwen/Qwen3.5-27B-GPTQ-Int4` revision
+  `8f0c09f227ae570e79617c6d9172b59df9c16081`, 24 selected artifacts totaling
+  30,258,477,628 bytes, official GPTQ Int4, a sealed isolated overlay, the
+  unchanged 64-crop request, a 4,096-token context, at most 96 generated tokens,
+  deterministic no-thinking decoding, offline inference and an explicit
+  38-GPU-layer/26-CPU-layer split. This is mechanism configuration only: the
+  registered weights are not local, the configured split has not completed a
+  model load, and no Qwen inference/output/seal/evaluation or performance claim
+  exists yet.
 
 ## Completed tasks
 
@@ -651,9 +682,10 @@
   propose Vietnamese text on immutable PP-OCRv6 line/row boxes; VietOCR remains a
   challenger and the independent numeric path remains authoritative for values,
   signs and dashes.
-- The active end-to-end task is to carry the E-0034 verified numeric grid
-  through bounded Vietnamese logical-row recognition, ordered SchemaGraph
-  mapping, accounting validation and provenance-bearing Excel.
+- The active end-to-end task is to finish the authorized E-0036 Qwen challenger,
+  seal it before evaluation, then carry the selected semantic proposals plus the
+  E-0034 verified numeric grid through decisive ordered SchemaGraph mapping,
+  accounting validation and provenance-bearing Excel.
   Measurement will use Role A versus Role B row coverage, schema assignment,
   full `(ReportNormId, period, raw value, normalized value, status)` tuples and
   workbook-cell agreement; no character-only metric can complete this stage.
@@ -661,8 +693,8 @@
   corrected row reconstruction and E-0034 numeric verification are the active
   upstream seals. E-0029 remains the before-contract and E-0031 is a
   superseded-denominator numeric result.
-  The next Role B stage may consume only the active page/row/axis contracts plus
-  source pixels. Reader disagreements and unresolved blanks cannot silently
+  Any semantic-reader stage may consume only the active page/row/axis contracts
+  plus source pixels. Reader disagreements and unresolved blanks cannot silently
   enter a mapped output. Human-reviewed
   pages/IDs/values remain evaluation-only until the value/mapping/Excel output
   itself is sealed.
@@ -832,26 +864,31 @@
 
 ## Planned next steps
 
-1. Read bounded title/line/logical-row crops with DeepSeek-OCR-2, fuse proposals
-   onto the immutable E-0033 grid, and preserve PP geometry plus independent
-   E-0034 numeric decisions. Resolve only true group/heading blanks from semantic
-   row type; retain the seal-obscured and one reader-disagreement cell for
-   localized evidence rather than inferring values from neighbors.
-2. Carry the sealed rows and period/value tuples through ordered SchemaGraph
-   mapping, accounting validation and a provenance-bearing Excel development
-   output. Enforce workbook display order, parent/previous/next context,
-   statement scope and off-balance exclusion; never sort by ReportNormId.
-   Only then open the six-row/12-cell review subset to measure page, row,
-   ReportNormId, period, raw/normalized value, status, full-tuple and workbook
-   cell accuracy.
-3. Seal the combined mechanism before selecting a new untouched holdout.
+1. Freeze, commit and push the Qwen pre-inference mechanism after all recorded
+   sizes and SHA-256 values match and the full regression passes. Download only
+   the 24 pinned artifacts, verify every size/hash, and run the unchanged
+   64-crop request offline. Do not expose review, template, numeric, period,
+   scope or historical evidence to the reader.
+2. Hash-seal and S3-back up the complete Qwen output before any Qwen-specific
+   reviewed evaluation. Compare it on the same six reviewed rows and 64-row
+   ordered mapping task; report source-exact/CER, structural rejection,
+   best/runner-up margin, abstention, wall time and peak GPU/host memory. Do not
+   adopt it from CER alone.
+3. Select or fuse semantic label proposals only after that sealed comparison,
+   then carry immutable E-0033 geometry, E-0030 period/unit bindings and E-0034
+   numeric/status evidence through ordered SchemaGraph mapping. Preserve the one
+   numeric disagreement and nine blanks as unresolved unless new source-pixel
+   evidence resolves them. Require a decisive structural margin or abstain,
+   then run accounting validation and produce the provenance-bearing
+   development Excel.
+4. Seal the combined mechanism before selecting a new untouched holdout.
    VietOCR stays challenger-only; domain fine-tuning stays deferred unless the
    frozen downstream evaluation proves a material recognition blocker.
-4. Build a human-gold evaluation split separated by bank and reporting period,
+5. Build a human-gold evaluation split separated by bank and reporting period,
    including skew, warp, dark headers, blurred digits, wrapped rows, continuation
    pages, direct/indirect LCTT, separate/consolidated scope, and quarterly/YTD
    derivation cases.
-5. Define calibrated abstention thresholds only after the human-gold benchmark;
+6. Define calibrated abstention thresholds only after the human-gold benchmark;
    unresolved evidence must continue to produce review statuses rather than
    guessed output.
 

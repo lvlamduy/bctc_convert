@@ -1,0 +1,374 @@
+version = 1
+status = "CONDITIONAL_E0036_CALIBRATION_ONLY_REFERENCE_BLIND_QWEN_CHALLENGER"
+model_key = "QWEN3_5_27B_GPTQ_INT4"
+reader = "QWEN3_5_27B_GPTQ_INT4"
+cache_directory = "Qwen3.5-27B-GPTQ-Int4"
+geometry_authority = "PP_OCRV6_WORD_BOXES"
+evidence_role = "VIETNAMESE_LOGICAL_ROW_LABEL_PROPOSAL_ONLY"
+required_artifact_bytes = 30258477628
+minimum_free_bytes_after_download = 53687091200
+license = "Apache-2.0"
+
+[authorization]
+path = "docs/experiments/E-0036-qwen-reference-blind-inference-authorization.json"
+sha256 = "18167f50ea63a86681950bacbbc8d2fb5c8c57affdb1f035e20de110758164f1"
+size_bytes = 749
+required_state = "QWEN_REFERENCE_BLIND_INFERENCE_AUTHORIZED"
+required_decision = "RUN_QWEN_SAME_REQUEST"
+reference_content_available_to_reader = false
+
+[request]
+path = "output/calibration/e0036-mbb-cdkt-semantic-label-readers/request.json"
+sha256 = "ad4c1a9fecf9686249a9c4eea2a5b6a2a903fc4716536e5804c481facc217781"
+sample_count = 64
+
+[hard_watchdog]
+path = "scripts/models/qwen35_inference_watchdog.py"
+sha256 = "f99056c24acaa7df3bf230b30a45d094ec4d7a764e3cd415fde538988d6adcc0"
+size_bytes = 1309
+ready_timeout_seconds = 5
+
+[model]
+repo_id = "Qwen/Qwen3.5-27B-GPTQ-Int4"
+revision = "8f0c09f227ae570e79617c6d9172b59df9c16081"
+architecture = "Qwen3_5ForConditionalGeneration"
+model_type = "qwen3_5"
+parameter_count = 27000000000
+tensor_type = "GPTQ_INT4_WITH_UNQUANTIZED_EXCLUSIONS"
+
+[quantization]
+method = "GPTQ"
+bits = 4
+group_size = 128
+symmetric = true
+desc_act = false
+official_prequantized_weights = true
+runtime = "GPTQMODEL"
+runtime_bits = 4
+format = "gptq"
+lm_head = false
+pack_dtype = "torch.int32"
+backend = "gptq_triton"
+loader = "GPTQModel.from_quantized"
+expected_quantized_linear_module_count = 192
+dynamic_exclusion_keys = [
+  "lm_head",
+  "model.language_model.embed_tokens",
+  "-:.*attn.*",
+  "-:.*shared_expert.*",
+  "-:.*mtp.*",
+  "-:.*visual.*",
+]
+
+[inference]
+prompt = "Transcribe exactly the visible Vietnamese text in this crop. Do not correct spelling. Do not normalize. Do not infer missing text. Return only the transcription."
+network_permitted = false
+reference_text_available_to_decoder = false
+target_policy = "UNCHANGED_E0036_FROZEN_64_LOGICAL_ROW_LABEL_CROPS_ONLY"
+aspect_preservation = "QWEN_SMART_RESIZE_NO_SQUARE_STRETCH"
+processor_min_pixels = 65536
+processor_max_pixels = 1048576
+processor_use_fast = false
+linear_attention_implementation = "TRANSFORMERS_TORCH_FALLBACK"
+minimum_observed_visual_tokens = 66
+maximum_observed_visual_tokens = 108
+context_length = 4096
+maximum_new_tokens = 96
+maximum_output_characters = 512
+maximum_nonempty_output_lines = 4
+enable_thinking = false
+do_sample = false
+eos_token_ids = [248044, 248046]
+pad_token_id = 248044
+attention_implementation = "sdpa"
+use_cache = true
+execution_model = "ONE_SHOT_PROCESS_REQUIRED"
+one_shot_worker_environment_variable = "BCTC_QWEN35_ONE_SHOT_WORKER"
+mechanism_probe_sample_count = 1
+maximum_mechanism_probe_seconds = 900
+maximum_sample_inference_seconds = 900
+maximum_projected_total_wall_seconds = 21600
+forbidden_generated_control_token_id_min = 248045
+forbidden_generated_control_token_id_max = 248076
+expected_assistant_prompt_suffix = "<|im_start|>assistant\n<think>\n\n</think>\n\n"
+
+[device_map]
+strategy = "EXPLICIT_LAYER_SPLIT_38_GPU_26_CPU"
+persistent_weight_device_map_disk_permitted = false
+temporary_load_staging_required = true
+temporary_load_staging_minimum_free_bytes = 17179869184
+gpu_and_cpu_both_required = true
+native_loader_offload_state_dict = true
+native_loader_offload_buffers = true
+estimated_registered_tensor_bytes_gpu = 19899114624
+estimated_registered_tensor_bytes_cpu = 9486530400
+excluded_auxiliary_mtp_tensor_bytes = 849398784
+minimum_runtime_vram_headroom_bytes = 4294967296
+expected_weight_index_tensor_count = 1775
+expected_device_map_covered_tensor_count = 1760
+expected_excluded_auxiliary_mtp_tensor_count = 15
+
+[device_map.modules]
+"model.visual" = "cuda:0"
+"model.language_model.embed_tokens" = "cuda:0"
+"model.language_model.layers.0" = "cuda:0"
+"model.language_model.layers.1" = "cuda:0"
+"model.language_model.layers.2" = "cuda:0"
+"model.language_model.layers.3" = "cuda:0"
+"model.language_model.layers.4" = "cuda:0"
+"model.language_model.layers.5" = "cuda:0"
+"model.language_model.layers.6" = "cuda:0"
+"model.language_model.layers.7" = "cuda:0"
+"model.language_model.layers.8" = "cuda:0"
+"model.language_model.layers.9" = "cuda:0"
+"model.language_model.layers.10" = "cuda:0"
+"model.language_model.layers.11" = "cuda:0"
+"model.language_model.layers.12" = "cuda:0"
+"model.language_model.layers.13" = "cuda:0"
+"model.language_model.layers.14" = "cuda:0"
+"model.language_model.layers.15" = "cuda:0"
+"model.language_model.layers.16" = "cuda:0"
+"model.language_model.layers.17" = "cuda:0"
+"model.language_model.layers.18" = "cuda:0"
+"model.language_model.layers.19" = "cuda:0"
+"model.language_model.layers.20" = "cuda:0"
+"model.language_model.layers.21" = "cuda:0"
+"model.language_model.layers.22" = "cuda:0"
+"model.language_model.layers.23" = "cuda:0"
+"model.language_model.layers.24" = "cuda:0"
+"model.language_model.layers.25" = "cuda:0"
+"model.language_model.layers.26" = "cuda:0"
+"model.language_model.layers.27" = "cuda:0"
+"model.language_model.layers.28" = "cuda:0"
+"model.language_model.layers.29" = "cuda:0"
+"model.language_model.layers.30" = "cuda:0"
+"model.language_model.layers.31" = "cuda:0"
+"model.language_model.layers.32" = "cuda:0"
+"model.language_model.layers.33" = "cuda:0"
+"model.language_model.layers.34" = "cuda:0"
+"model.language_model.layers.35" = "cuda:0"
+"model.language_model.layers.36" = "cuda:0"
+"model.language_model.layers.37" = "cuda:0"
+"model.language_model.layers.38" = "cpu"
+"model.language_model.layers.39" = "cpu"
+"model.language_model.layers.40" = "cpu"
+"model.language_model.layers.41" = "cpu"
+"model.language_model.layers.42" = "cpu"
+"model.language_model.layers.43" = "cpu"
+"model.language_model.layers.44" = "cpu"
+"model.language_model.layers.45" = "cpu"
+"model.language_model.layers.46" = "cpu"
+"model.language_model.layers.47" = "cpu"
+"model.language_model.layers.48" = "cpu"
+"model.language_model.layers.49" = "cpu"
+"model.language_model.layers.50" = "cpu"
+"model.language_model.layers.51" = "cpu"
+"model.language_model.layers.52" = "cpu"
+"model.language_model.layers.53" = "cpu"
+"model.language_model.layers.54" = "cpu"
+"model.language_model.layers.55" = "cpu"
+"model.language_model.layers.56" = "cpu"
+"model.language_model.layers.57" = "cpu"
+"model.language_model.layers.58" = "cpu"
+"model.language_model.layers.59" = "cpu"
+"model.language_model.layers.60" = "cpu"
+"model.language_model.layers.61" = "cpu"
+"model.language_model.layers.62" = "cpu"
+"model.language_model.layers.63" = "cpu"
+"model.language_model.norm" = "cuda:0"
+"lm_head" = "cuda:0"
+
+[runtime_overlay]
+platform = "CPython 3.11 / Linux x86_64"
+base_runtime_manifest = "config/models/gpu-runtime.toml"
+base_runtime_manifest_sha256 = "9141e0a4177f66f152bdb9eecbbfdbdd3add566dbabb81b43207a018c1ba18d8"
+requirements_path = "config/models/qwen35-gptq-overlay-requirements.txt"
+requirements_sha256 = "730cf24c76d60f8060172db45af05e9e7a39697e5415fcd90aae371e4e33b801"
+install_command = ".venv/bin/python -m pip install --require-hashes --no-deps --no-compile --target <executable-filesystem-overlay> -r config/models/qwen35-gptq-overlay-requirements.txt"
+pythonpath_policy = "prepend isolated overlay to .gpu-venv without modifying .gpu-venv"
+compiled_artifacts_require_executable_filesystem = true
+installed_tree_distributions = ["accelerate", "datasets", "defuser", "device-smi", "dill", "gptqmodel", "logbar", "maturin", "multiprocess", "ninja", "numpy", "optimum", "pyarrow", "pypcre", "tokenicer", "torchao", "xxhash"]
+installed_tree_import_roots = ["accelerate", "datasets", "defuser", "device_smi", "dill", "gptqmodel", "logbar", "maturin", "multiprocess", "ninja", "numpy", "optimum", "pyarrow", "pcre", "tokenicer", "torchao", "xxhash"]
+installed_tree_file_count = 3347
+installed_tree_total_bytes = 260712989
+installed_tree_pyc_file_count = 1
+installed_tree_sha256 = "d703e549fad8a65f86b137695f8a2bab3f6b77cbb39289220aa136cfe7feeeba"
+
+[runtime_compatibility]
+python_major_minor = "3.11"
+cuda_runtime = "13.0"
+gpu_family = "NVIDIA_GEFORCE_RTX_4090_ADA"
+minimum_compute_capability = [8, 9]
+bf16_supported_required = true
+minimum_host_available_memory_bytes = 42949672960
+native_shell_probe_without_weights = "PASS_192_GPTQ_MLP_MODULES"
+native_shell_probe_peak_rss_bytes = 10209718272
+native_shell_quantized_buffer_bytes = 8897691976
+native_shell_lazy_remaining_parameter_bytes = 20487936480
+
+[runtime_compatibility.packages]
+torch = "2.12.0+cu130"
+torchvision = "0.27.0+cu130"
+transformers = "5.14.1"
+tokenizers = "0.22.2"
+huggingface-hub = "1.26.0"
+safetensors = "0.8.0"
+Pillow = "12.3.0"
+accelerate = "1.14.0"
+optimum = "2.3.0"
+gptqmodel = "7.3.2"
+numpy = "2.2.6"
+device-smi = "0.5.6"
+pypcre = "0.4.0"
+tokenicer = "0.0.14"
+logbar = "0.4.12"
+ninja = "1.13.0"
+maturin = "1.14.1"
+multiprocess = "0.70.19"
+datasets = "5.0.1"
+pyarrow = "25.0.0"
+dill = "0.4.1"
+torchao = "0.18.0"
+defuser = "0.0.25"
+threadpoolctl = "3.6.0"
+packaging = "26.3"
+protobuf = "7.35.1"
+Jinja2 = "3.1.6"
+xxhash = "3.8.1"
+
+[artifacts.license]
+path = "LICENSE"
+size_bytes = 11343
+sha256 = "50cbab8a892c5f2993b8c7351a99182507472def3b1374558308605d99b86b32"
+
+[artifacts.readme]
+path = "README.md"
+size_bytes = 92793
+sha256 = "0f9e794f6a0f6d3fcc9b050a522d52d7498080b082a6100814d6e8605c904b95"
+
+[artifacts.chat_template]
+path = "chat_template.jinja"
+size_bytes = 7756
+sha256 = "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715"
+
+[artifacts.config]
+path = "config.json"
+size_bytes = 4669
+sha256 = "3d8342d9eaa840fcfcb754184ba10ed9f48de47799f683d2ed424b93c20884ae"
+
+[artifacts.configuration]
+path = "configuration.json"
+size_bytes = 51
+sha256 = "2d4464e2ead06bc9bc718c781309ad1e7baded626d66e8dcdc8b469ba185faf0"
+
+[artifacts.generation_config]
+path = "generation_config.json"
+size_bytes = 244
+sha256 = "303aba891d66ab63908a7b3cc9163bcb835fdf8b9f6301c73216f3f1eb3992dd"
+
+[artifacts.merges]
+path = "merges.txt"
+size_bytes = 3353259
+sha256 = "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d"
+
+[artifacts.weights_index]
+path = "model.safetensors.index.json"
+size_bytes = 194871
+sha256 = "8d2252b5507242ac58adf024541090843e8866527e3919f5fd5f2bc8241a770b"
+
+[artifacts.preprocessor]
+path = "preprocessor_config.json"
+size_bytes = 390
+sha256 = "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516"
+
+[artifacts.tokenizer]
+path = "tokenizer.json"
+size_bytes = 12807982
+sha256 = "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42"
+
+[artifacts.tokenizer_config]
+path = "tokenizer_config.json"
+size_bytes = 16710
+sha256 = "316230d6a809701f4db5ea8f8fc862bc3a6f3229c937c174e674ff3ca0a64ac8"
+
+[artifacts.video_preprocessor]
+path = "video_preprocessor_config.json"
+size_bytes = 385
+sha256 = "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13"
+
+[artifacts.vocab]
+path = "vocab.json"
+size_bytes = 6722759
+sha256 = "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003"
+
+[artifacts.weights_00001]
+path = "model.safetensors-00001-of-00011.safetensors"
+size_bytes = 5131969216
+sha256 = "0b01785e669196ff2fe4f9cd4d19439872bb06fb18effc287725d4096abeebbe"
+
+[artifacts.weights_00002]
+path = "model.safetensors-00002-of-00011.safetensors"
+size_bytes = 1786025456
+sha256 = "8b4cf248fc6f0f2eee0da1a868d8f7b45c65b4681d3d5446cc591a8017ba6ec5"
+
+[artifacts.weights_00003]
+path = "model.safetensors-00003-of-00011.safetensors"
+size_bytes = 1390279328
+sha256 = "d85936c75ca775cd3ffc4dc58c973b43e9b5dc24caab5abfac960164023e2a13"
+
+[artifacts.weights_00004]
+path = "model.safetensors-00004-of-00011.safetensors"
+size_bytes = 1390230184
+sha256 = "20c35f321c4e8b834c4a4e1e312e55eeb4298ce5e960070bf2b42b73e17d57ed"
+
+[artifacts.weights_00005]
+path = "model.safetensors-00005-of-00011.safetensors"
+size_bytes = 1390279328
+sha256 = "cb74599dd6cece8bd37bfe075dfa97615ef9276c65c957bc53252f2280386ffa"
+
+[artifacts.weights_00006]
+path = "model.safetensors-00006-of-00011.safetensors"
+size_bytes = 1390328480
+sha256 = "92df5e75752ae53ab86fdc381a36c3c40a7ae99a0f113a5a217c1f57e272c6c9"
+
+[artifacts.weights_00007]
+path = "model.safetensors-00007-of-00011.safetensors"
+size_bytes = 1390279312
+sha256 = "b519c144601884c2c051efa4e926529c8f2210bdb4b34c7597ab79d2b10d14a9"
+
+[artifacts.weights_00008]
+path = "model.safetensors-00008-of-00011.safetensors"
+size_bytes = 3521865632
+sha256 = "104ee5a904437fec15e93a35f6ec32f165ad6d557df99c571497357cb82dfc2f"
+
+[artifacts.weights_00009]
+path = "model.safetensors-00009-of-00011.safetensors"
+size_bytes = 5347745520
+sha256 = "71a153d882242734a1fc7e000734727f00f6ec8ca70b044f5e44fcf97736ef8f"
+
+[artifacts.weights_00010]
+path = "model.safetensors-00010-of-00011.safetensors"
+size_bytes = 5347749200
+sha256 = "146745698b9f21940e2982beb1816a0eef3b80d77ab9cd884695b9a08c2697eb"
+
+[artifacts.weights_00011]
+path = "model.safetensors-00011-of-00011.safetensors"
+size_bytes = 2148512760
+sha256 = "d947ce7483c4109b55039f1359f4494d22390cf123568100abd89816802f097d"
+
+[safety]
+geometry_authority = false
+numeric_value_authority = false
+period_authority = false
+unit_authority = false
+sign_authority = false
+scope_authority = false
+statement_type_authority = false
+report_norm_id_authority = false
+schema_mapping_authority = false
+automatic_truth_promotion = false
+reader_probability_acceptance = false
+history_access = false
+arithmetic_repair = false
+human_review_access = false
+template_access = false
