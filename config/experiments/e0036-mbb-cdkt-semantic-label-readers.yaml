@@ -1,0 +1,154 @@
+version: 1
+experiment_id: E-0036
+dataset_role: CALIBRATION
+design: SEALED_SAME_CROP_SEMANTIC_LABEL_PROPOSALS_THEN_REVIEWED_MAPPING_EVALUATION
+selection_policy: >-
+  Run VietOCR and DeepSeek-OCR-2 over all 64 E-0035 crops before loading any
+  reviewed label or ReportNormId. Seal both outputs first. Open only the six
+  pre-existing hash-bound MBB review rows for evaluation. Qwen3.5-27B is
+  eligible only if at least one reviewed row remains source-inexact or
+  incorrectly mapped, and must receive the unchanged 64-crop request.
+
+frozen_input:
+  crop_seal:
+    path: docs/experiments/E-0035-mbb-cdkt-logical-row-label-crops.json
+    sha256: a1bb81e895b45d003910aba523ba121461f15079b9452dde8d508600c5dcc3e3
+    size_bytes: 5131
+  crop_manifest:
+    path: output/calibration/e0035-mbb-cdkt-logical-row-label-crops/a177792e8b98f340f562/crop_manifest.json
+    sha256: 3b12da05e19467e85bfc6d828b73a3e35598c53d7c57cfb932b76763bec57eac
+    size_bytes: 70663
+  exact_sample_count: 64
+  exact_page_counts: {3: 39, 4: 25}
+
+request:
+  output_path: output/calibration/e0036-mbb-cdkt-semantic-label-readers/request.json
+  algorithm:
+    path: src/bctc_ai/evaluation/logical_row_label_request.py
+    sha256: 6f24745ac9df0995e7c9a71487358681d2cc7eced0e7e88263ad1428710f9492
+    size_bytes: 5317
+  capture_script:
+    path: scripts/experiments/prepare_e0036_logical_row_label_request.py
+    sha256: 2d0712460dba6b9d9676cf806dee54546df04797d7cec3f5dd38163282889b93
+    size_bytes: 1056
+  reader_contract:
+    path: src/bctc_ai/ocr/logical_row_label_reader_contract.py
+    sha256: 08ecc67a575bd2b62486c26fa6fa55abe070da4bc3212130f9f0e510639e75f0
+    size_bytes: 3579
+  decoder_visible_sample_fields: [sample_id, category, crop_path, crop_sha256]
+  reference_text_available_to_reader: false
+
+baseline_readers:
+  vietocr:
+    role: CHALLENGER_VIETNAMESE_LINE_RECOGNIZER
+    output_directory: output/calibration/e0036-mbb-cdkt-semantic-label-readers/vietocr-reader
+    model_config:
+      path: config/models/vietocr-0.3.13-rtx4090.toml
+      sha256: aa007448e2ed4f940693c3b4c03ae47111cf1ed00580d13c05a41941e5094119
+      size_bytes: 2342
+    reader_algorithm:
+      path: src/bctc_ai/ocr/vietocr_logical_row_reader.py
+      sha256: 5f02fee2e41fa5b3b4f143ea7b554e5494e66f8560322c8e653e7a95f0eaf31a
+      size_bytes: 10643
+    immutable_runtime_helper:
+      path: src/bctc_ai/ocr/vietocr_line_reader.py
+      sha256: 51c8608d231d0c2e4d7b30b861ead07343f2fde8cc90bd74e198850c2e643f96
+      size_bytes: 17327
+    runner:
+      path: scripts/models/run_vietocr_logical_row_reader.py
+      sha256: 502788938ab1c31242a2853d314b5ece66d62279083e5abb3237f3f8cb0a77e7
+      size_bytes: 1131
+  deepseek_ocr2:
+    role: PRIMARY_BOUNDED_SEMANTIC_PROPOSAL_BASELINE
+    output_directory: output/calibration/e0036-mbb-cdkt-semantic-label-readers/deepseek-reader
+    model_config:
+      path: config/models/deepseek-ocr2-line-rtx4090-v3.toml
+      sha256: aebbc2fb4c9d6da22d83b71ca79567fca2c904a48c686ced8121438d42f31d6d
+      size_bytes: 1466
+    reader_algorithm:
+      path: src/bctc_ai/ocr/deepseek_logical_row_reader.py
+      sha256: f68f2e18781eea50ed7f6fbebf4f839529bb8bad02d0fdeb4016b449640fb5ef
+      size_bytes: 14753
+    immutable_runtime_helper:
+      path: src/bctc_ai/ocr/deepseek_line_reader.py
+      sha256: 23d970c5b5a226241609d3e1015fa0d1dae8e1ceb842a391aa66f0925a217206
+      size_bytes: 25061
+    runner:
+      path: scripts/models/run_deepseek_ocr2_logical_row_reader.py
+      sha256: 6df0eb1630ebcc55bbba88993b0a0bee44c5a27a25d154765e7739084273e7a6
+      size_bytes: 1156
+
+conditional_qwen_challenger:
+  invocation_state: NOT_ALLOWED_UNTIL_BASELINES_SEALED_AND_EVALUATED
+  trigger: >-
+    At least one of the six pre-existing reviewed rows is source-inexact or has
+    the wrong reviewed ReportNormId after both baseline outputs are sealed.
+  model_repo_id: Qwen/Qwen3.5-27B-GPTQ-Int4
+  model_revision: 8f0c09f227ae570e79617c6d9172b59df9c16081
+  model_repository_bytes: 30248072398
+  model_type: IMAGE_TEXT_TO_TEXT
+  quantization: OFFICIAL_GPTQ_INT4
+  hardware_constraint: SINGLE_RTX4090_24564_MIB_WITH_BOUNDED_CPU_OFFLOAD
+  required_same_request_sha256: TO_BE_FILLED_AFTER_CLEAN_REQUEST_CAPTURE
+  maximum_new_tokens_per_crop: 96
+  context_length: 4096
+  enable_thinking: false
+  network_permitted_during_inference: false
+  mapping_or_numeric_authority: NONE
+
+evaluation_only_after_both_baseline_seals:
+  human_review_policy:
+    path: config/reference/human-review-v1.yaml
+    sha256: 88011b6f9b85cc3561e0a4dddef39a9f57aa73f7d19e5fc4cb09825d2ea6fa34
+    size_bytes: 980
+  human_review_dataset:
+    path: reference/human_review/reviewed-mapping-corrections-2026-08-06.yaml
+    sha256: 32c86c0bf7642d3bd7596225331fc6f10906970476e1a9ba982b2f478d0f8e74
+    size_bytes: 22000
+  document_key: mbb-q1-2026-consolidated
+  exact_reviewed_row_count: 6
+  reviewed_rows_are_not_reader_routing_inputs: true
+  target_schema:
+    path: template/Bank_CDKT_ReportNormId.xlsx
+    sha256: a07ff47f7c41011fe4ca5a66681106d476586ded9013b5874cbb9f67a6ad8486
+    size_bytes: 10945
+  ordered_mapping_policy:
+    path: config/mapping/ordered-subgraph-v1.yaml
+    sha256: c311cae354ff7890e92a964821dabd5e845d72cf475595395f4ab84a86600eaf
+    size_bytes: 1479
+
+decision_metrics_in_order:
+  - reviewed_report_norm_id_exact_count
+  - reviewed_source_exact_label_count
+  - reviewed_label_character_error_rate
+  - all_row_pairwise_exact_agreement
+  - mapping_abstention_and_review_count
+  - wall_seconds_and_peak_gpu_memory
+
+authority:
+  ppocrv6_and_e0033_geometry_authority: true
+  e0034_numeric_value_and_status_authority: true
+  semantic_readers_propose_label_text_only: true
+  semantic_reader_score_establishes_truth: false
+  reader_agreement_establishes_truth: false
+  semantic_reader_may_change_numeric_value_sign_blank_or_dash: false
+  semantic_reader_may_assign_report_norm_id: false
+  reviewed_rows_may_be_loaded_before_baseline_seals: false
+  automatic_model_promotion: false
+
+forbidden_inputs_during_baseline_inference:
+  - ppocr_primary_text
+  - human_review_labels_ids_values_or_period_answers
+  - template_labels_aliases_hierarchy_or_report_norm_ids
+  - numeric_cell_text_value_sign_blank_dash_or_status
+  - historical_or_mongodb_data
+  - period_unit_scope_or_statement_answer
+  - E_0022_source_artifacts_output_or_diagnosis
+  - off_balance_page_5
+
+claim_boundary: >-
+  E-0036 is a bounded calibration decision on the same 64 MBB CDKT label crops.
+  It can compare label proposals and downstream mapping on six pre-existing
+  reviewed rows only after baseline outputs are sealed. It cannot establish
+  full-document, bank-disjoint, period-disjoint, holdout or production accuracy;
+  no reader may alter E-0033 geometry or E-0034 numbers.

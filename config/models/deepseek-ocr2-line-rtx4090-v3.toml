@@ -1,0 +1,48 @@
+version = 3
+status = "CALIBRATION_ONLY_RTX4090_REFERENCE_BLIND_ASPECT_PRESERVING_LOGICAL_ROW_LABEL_READER"
+reader = "DEEPSEEK_OCR_2"
+geometry_authority = "PP_OCRV6_WORD_BOXES"
+evidence_role = "VIETNAMESE_LOGICAL_ROW_LABEL_PROPOSAL_ONLY"
+
+[base_model]
+config_path = "config/models/deepseek-ocr2-v1.toml"
+config_sha256 = "5b3bc57a2f8c56d0a3ee133f0649cb177105b731b96376fa869e8971c1bd924d"
+
+[inference]
+prompt = "<image>\nFree OCR."
+base_size = 1024
+image_size = 768
+crop_mode = true
+aspect_preservation = "OFFICIAL_IMAGEOPS_PAD"
+attention_implementation = "eager"
+network_permitted = false
+reference_text_available_to_decoder = false
+target_policy = "FROZEN_PP_OCRV6_LINE_TITLE_OR_LOGICAL_ROW_CROPS_ONLY"
+maximum_new_tokens = 128
+upstream_requested_maximum_new_tokens = 8192
+maximum_nonempty_output_lines = 4
+maximum_output_characters = 512
+
+[runtime_compatibility]
+gpu_family = "NVIDIA_GEFORCE_RTX_4090_ADA"
+minimum_compute_capability = [8, 9]
+cuda_runtime = "13.0"
+bf16_required = true
+historical_blackwell_runtime_claimed = false
+
+[safety]
+geometry_authority = false
+numeric_value_authority = false
+period_authority = false
+unit_authority = false
+sign_authority = false
+scope_authority = false
+statement_type_authority = false
+report_norm_id_authority = false
+schema_mapping_authority = false
+automatic_truth_promotion = false
+reader_probability_acceptance = false
+history_access = false
+arithmetic_repair = false
+human_review_access = false
+template_access = false
