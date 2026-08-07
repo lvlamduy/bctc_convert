@@ -1,0 +1,102 @@
+version: 1
+experiment_id: E-0035
+dataset_role: CALIBRATION
+design: REFERENCE_BLIND_ALL_FIXED_GRID_LOGICAL_ROW_LABEL_CROPS
+selection_policy: ALL_E0033_CDKT_ROWS_SELECTED_BEFORE_ANY_SEMANTIC_READER_OUTPUT
+
+source:
+  path: vietstock_bctc/MBB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf
+  sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+  size_bytes: 3977471
+
+statement:
+  type: CDKT
+  instance_id: mbb-q1-2026-cdkt
+  target_pages: [3, 4]
+  excluded_off_balance_pages: [5]
+  exact_rows_by_page: {3: 39, 4: 25}
+  exact_row_count: 64
+
+frozen_inputs:
+  e0033_row_contract:
+    path: docs/experiments/E-0033-mbb-cdkt-note-row-split-immutable.json
+    sha256: d9c0ecf44f6a0f652e6c991d3ab95b7ab0e821068366764e39a3f0de7f0711fb
+    size_bytes: 190290
+  e0034_numeric_verification:
+    path: docs/experiments/E-0034-mbb-cdkt-numeric-verification-v2.json
+    sha256: 08ecf8823154df415cc4f5bcbe65c5697412605eadc1a41f22315990ea20cc70
+    size_bytes: 149232
+  recovery_seal:
+    path: docs/recovery/R-0001-e0027-functional-reproduction.json
+    sha256: f6b263096a12e6c92000af6f15b4577241423053acba0e5bab61c6876389890d
+    size_bytes: 57309
+
+page_sources:
+  3:
+    render:
+      path: output/calibration/recovery-e0027-mbb-q1-2026-20260807/eebeda2ebc09b0d42032/renders/page-0003.png
+      sha256: 40544c98908d2ca59d5e78a840594cbbea1622d33ac6a72b187c413670bef599
+      size_bytes: 1709301
+    ocr:
+      path: output/calibration/recovery-e0027-mbb-q1-2026-role-c-20260807/ppocrv6-page-0003/ocr_result.json
+      sha256: dceca77d8867eef696e8c1f54e2d92dcc72056da0ee9cff651ef6e3ba5974ab1
+      size_bytes: 145601
+  4:
+    render:
+      path: output/calibration/recovery-e0027-mbb-q1-2026-20260807/eebeda2ebc09b0d42032/renders/page-0004.png
+      sha256: 0c872315d09faebaba24c3b4badcc355d235841b0e1e57d4dda443e76f7b16b7
+      size_bytes: 1033463
+    ocr:
+      path: output/calibration/recovery-e0027-mbb-q1-2026-role-c-20260807/ppocrv6-page-0004/ocr_result.json
+      sha256: 510e6c57d47210369043e4028bca2fb55d2e1f127a23a536edd6733ad8cf9d25
+      size_bytes: 93440
+
+candidate:
+  crop_algorithm:
+    path: src/bctc_ai/evaluation/logical_row_label_crops.py
+    sha256: b6361836e65ef45a0a78c77d08c8f70c3cdb265f3096097ae5138464942bd2f4
+    size_bytes: 22433
+
+authority:
+  source_render_is_pixel_authority: true
+  e0033_is_row_and_label_geometry_authority: true
+  e0034_numeric_cells_remain_immutable: true
+  all_logical_rows_are_selected_before_semantic_inference: true
+  reader_receives_crop_pixels_only: true
+  reader_may_propose_vietnamese_label_text: true
+  reader_may_change_geometry: false
+  reader_may_change_numeric_value_or_status: false
+  reader_may_assign_period_unit_scope_or_schema_id: false
+  human_review_is_available_to_crop_builder: false
+  template_or_history_is_available_to_crop_builder: false
+
+crop_policy:
+  horizontal_source: UNION_OF_E0033_LABEL_LINE_PP_OCRV6_BOXES
+  vertical_source: UNION_OF_E0033_LABEL_LINE_PP_OCRV6_BOXES
+  source_padding_left_top_right_bottom: [8, 4, 8, 4]
+  white_border_left_top_right_bottom: [12, 8, 12, 8]
+  right_boundary_guard: STRICTLY_LEFT_OF_E0033_NOTE_RIGHT_EDGE
+  color_mode: RGB
+  image_format: PNG
+  resize: false
+  threshold: false
+  deskew: false
+
+forbidden_inputs:
+  - human_review_labels_ids_values_or_period_answers
+  - template_labels_aliases_or_report_norm_ids
+  - historical_or_mongodb_labels_or_values
+  - numeric_cell_text_value_sign_or_status
+  - period_unit_scope_or_statement_answer
+  - E_0022_source_artifacts_output_or_diagnosis
+  - off_balance_page_5
+
+output_root: output/calibration/e0035-mbb-cdkt-logical-row-label-crops
+
+claim_boundary: >-
+  E-0035 freezes one source-pixel label crop for every logical row in the
+  already accepted E-0033 MBB CDKT pages 3-4 while preserving the immutable
+  E-0034 numeric grid. It makes no Vietnamese-label accuracy, blank-cell,
+  period, unit, scope, schema, accounting, Excel, holdout or production claim.
+  R-0001 supplies explicit recovered-artifact provenance and never replaces or
+  claims recovery of the lost historical E-0027 batch manifest.
