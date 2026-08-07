@@ -134,6 +134,40 @@ needed. Hydration downloads to a temporary sibling, verifies SHA-256 and size,
 then installs it by a no-overwrite hard link. An existing matching file is
 reused; an existing mismatched file is a hard failure.
 
+## Codex-session backup
+
+Codex session history is protected independently from both Git and the project
+snapshot. The backup command reads only `~/.codex/sessions/`; files merely
+adjacent to that directory, including `~/.codex/auth*`, AWS credentials, SSH
+material, Git credentials and `.env` files, are outside its collection root.
+Symlinks and special files fail closed.
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/backup/backup_codex_sessions.py
+```
+
+The script stages a stable copy of every regular session file, records its
+relative path, SHA-256, byte size, mode and nanosecond modification time, and
+creates a dedicated archive under:
+
+```text
+s3://test-s3-duylv/codex-sessions/<host>/<UTC timestamp>-<archive hash>/
+```
+
+Both archive and manifest are written with SHA-256 checksums, `AES256`, the
+expected bucket owner and `If-None-Match: *`. The manifest is uploaded last.
+The command then downloads both objects into a new temporary directory,
+verifies their hashes, safely extracts only the `sessions/` tree, reapplies
+recorded modes/timestamps, and verifies the complete restored inventory. A PUT
+response alone is not a successful backup; `"restore_verified": true` is the
+acceptance gate.
+
+Run this command after important project checkpoints, before environment or
+host changes, and before reboot/shutdown/migration. A scheduler may invoke the
+same command periodically. This VPS currently has neither a running systemd
+manager nor `crontab`, so no misleading local timer is installed; the command
+is the portable scheduling target for the host/orchestrator.
+
 ## MongoDB restore acceptance
 
 - Never restore over the historical source database.
@@ -143,10 +177,22 @@ reused; an existing mismatched file is a hard failure.
 
 ## Current status
 
-The bootstrap creates and verifies a local control-plane backup. The user has
-supplied the S3 target and its security preflight passes. The snapshot mechanism
-and schema-1944 checkpoints are implemented; the initial full upload, manifest
-validation, real full-content restore, and gated offload remain pending.
-Versioning is enabled, encryption/public blocking remain active, and Object Lock
-is absent. Production status remains `FAIL` until a complete off-machine full
-content restore record has been published.
+Snapshot `20260806T050030130746Z-4a469fab2334` uploaded 4,192 unique objects and
+published manifest SHA-256
+`74be9ea09905f0c7842d5a0b46bfe44f3fc5f32cc2c15b5040efcc4e99e8981b`.
+Its run record verifies all 4,192 catalog objects, a full sequential content
+restore, the control plane, Git bundle and a sample PDF; the subsequent guarded
+offload removed 2,567 verified PDFs and the MongoDB dump from local disk.
+Versioning, default AES-256 encryption and public-access blocking remain active.
+
+Recovery on 2026-08-07 also found that the later E-0027 batch manifest SHA-256
+`0d94762ba4a0d383793fe93a56e48fa7b79d6a3f7faaf62e9dcf40935b8c2889`,
+referenced by Git checkpoints E-0028 through E-0034, was created after that
+snapshot and was never enrolled as an S3 content object. Therefore the snapshot
+itself remains verified, but it does not prove recoverability of every artifact
+referenced by the newer Git tip. This gap must be resolved with a transparent
+reproduction seal; the historical hash must not be fabricated.
+
+The first dedicated Codex-session backup was uploaded and fully restore-tested
+on 2026-08-07. No host scheduler is available in the current container, so the
+script remains an explicit checkpoint/migration command.
