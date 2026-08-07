@@ -106,7 +106,10 @@ This is the durable retrieval point for project context. It summarizes user auth
   revision `8f0c09f227ae570e79617c6d9172b59df9c16081` on the unchanged E-0036
   logical-row crops only. It was triggered by reviewed source-inexact baseline
   labels, not by wrong reviewed best-path IDs. It is not a mapping reranker,
-  numeric reader or truth source.
+  numeric reader or truth source. The exact current pinned configuration is now
+  rejected because it produced zero valid proposals; the Qwen model-family
+  conclusion remains `NOT_ESTABLISHED`. Any retry requires a corrected,
+  format-pinned GPTQ canary before a full request.
 - Model names do not grant approval. Each must pass Vietnamese bank fixtures, exact-number/sign tests, table geometry, throughput, VRAM, and hallucination measurements.
 - The failed historical host used an RTX 5070 Ti Blackwell runtime. The recovered
   current host is an RTX 4090 with 24,564 MiB VRAM, compute capability 8.9 and
@@ -125,9 +128,9 @@ This is the durable retrieval point for project context. It summarizes user auth
   The migration audit proves all 1,384 prior TM identities/names/order mappings
   unchanged and binds both workbook hashes.
 - CPU environment is locked in `uv.lock`; bootstrap, atomic storage, source identity registry, role freezing, content-addressed materialization, render/preprocess, local difficult-region variants, perspective correction, ordered alignment, continuation graph, row wrapping, arithmetic validation, and workbook export have executable tests.
-- Latest full test run through the hardened E-0036 Qwen pre-inference and
-  session-backup controls: 544 passed and 2 immutable-historical/external
-  replays skipped in 102.03 seconds; Ruff check, targeted formatting and
+- Latest full test run through the hardened E-0036 Qwen reviewed-evaluation and
+  session-backup controls: 558 passed and 2 immutable-historical/external
+  replays skipped in 99.60 seconds; Ruff check, targeted formatting and
   `git diff --check` pass.
 - A real scanned/mixed ACB PDF page rendered and passed preprocessing checkpoint/hash verification.
 - Relative word-gap segmentation, numeric right-edge clustering, note-axis separation, wrapped-row assembly, label-only section retention, and axis-local period/unit binding are implemented without institution/page coordinate rules.
@@ -209,13 +212,24 @@ This is the durable retrieval point for project context. It summarizes user auth
   source-exact counts are 3/6 and 1/6. Both best ordered paths contain the
   reviewed IDs on 6/6 rows, but margins 0.051282/0.008494 remain non-decisive;
   both mappings abstain on 6/6 and automatically accept zero.
-- The Qwen gate is authorized through a minimal answer-free artifact. The
+- The Qwen gate was authorized through a minimal answer-free artifact. The
   pre-inference mechanism pins the official 27B GPTQ-Int4 revision, 24
   artifacts/30,258,477,628 bytes, deterministic bounded offline decoding and an
-  explicit RTX4090/CPU layer split. All 24 registered artifacts are now local
-  and pass the hardened canonical downloader's size/SHA-256 verification. No
-  model load or Qwen output exists, so load feasibility, speed, memory and
-  accuracy remain unmeasured.
+  explicit 38-GPU-layer/26-CPU-layer split. The formal 64-crop run loaded in
+  238.391 seconds, used 15,586.395 seconds wall time and peaked at 19,723.647
+  MiB allocated GPU memory. Its two output files were hash-sealed before review,
+  backed up as S3 snapshot
+  `20260807T143806Z-e0036-qwen-semantic-reader-34cd996a97d6`, and passed full
+  restore plus no-overwrite hydration verification.
+- The current pinned Qwen configuration produced 0/64 valid semantic proposals
+  and 64/64 `REJECT_TOKEN_BUDGET_EXHAUSTED` results. Every sample generated
+  token ID 163749 exactly 96 times, so there was one identical raw sequence;
+  rejected raw output was neither scored nor mapped. Post-seal evaluation has
+  0/6 valid reviewed proposals, no accepted-only metric, 6/6 mapping
+  abstentions, and `NOT_RUN_NO_VALID_PROPOSALS`. The exact configuration is
+  rejected, while the model-family conclusion is `NOT_ESTABLISHED`. Formal
+  artifact SHA-256 is
+  `d0be37a35d43091f8bd9575893e713b603877f3ea517597a3c0f6a5481e0382d`.
 - Three historical Codex-session S3 archive versions are integrity-restorable
   but security-quarantined because they captured a GitHub credential from the
   conversation stream. Session-backup V2 now scans paths and bytes, verifies an
@@ -229,7 +243,10 @@ This is the durable retrieval point for project context. It summarizes user auth
 - The immediate extraction blocker is decisive ordered structural mapping, not
   merely label CER: a correct reviewed ID in the best path is insufficient when
   the runner-up margin is ambiguous. Preserve `AMBIGUOUS_MAPPING` and review
-  abstention; Qwen may alter label evidence only.
+  abstention. Exclude the rejected current Qwen configuration from proposal
+  fusion; a future Qwen retry is secondary and must first pass a format-pinned
+  short canary. E-0037 should add source-visible anchors and parent/section
+  constraints without review, history or numeric hints.
 - Preserve the current stable corpus denominator and rerun drift-aware registration whenever new files arrive.
 - Expand frozen native-geometry fixtures across institutions, years, scopes, scans, borderless layouts, broken pages, and multi-page rows before assigning production confidence.
 - Use the authorized S3 prefix for content-addressed off-machine artifacts and
@@ -306,3 +323,13 @@ This is the durable retrieval point for project context. It summarizes user auth
   config/model paths and the pre-review output seal against symlink, TOCTOU and
   overwrite races. Quarantined the three historical session archives after a
   credential-content audit and added a V2 pre-upload secret-scan/restore gate.
+- 2026-08-07: Ran the unchanged 64-crop Qwen request, hash-sealed its two output
+  files, and protected them with a manifest-bound S3 snapshot plus verified
+  restore before opening the baseline review artifact. All 64 outputs exhausted
+  the token budget with one repeated-token sequence, leaving zero valid label
+  proposals.
+- 2026-08-07: Completed the post-seal Qwen reviewed evaluation without invoking
+  mapping or exposing rejected raw text as a proposal. Rejected the exact pinned
+  configuration, retained `NOT_ESTABLISHED` for the model family, and returned
+  the primary development path to E-0037 structural mapping, accounting
+  validation and provenance Excel.

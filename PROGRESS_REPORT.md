@@ -1,12 +1,14 @@
 # Progress report
 
-- Updated: 2026-08-07T08:42:00+00:00
+- Updated: 2026-08-07T15:11:21+00:00
 - Branch: `codex/rebuild-bootstrap`
-- Latest sealed semantic decision checkpoint: `a7913847d072360d18c6bcb62bdd442d07f7b992`;
-  the Qwen challenger is authorized and hash-pinned pre-inference. All 24
-  registered model artifacts (30,258,477,628 bytes) are now local and passed an
-  independent canonical `--verify-only` size/SHA-256 check; no model load,
-  Qwen inference or Qwen output exists yet.
+- Latest clean semantic-evaluation mechanism checkpoint:
+  `e1d3f6bbd5c7c23f7c9bd48bf7292d975abdbcc7`. Formal post-seal E-0036 Qwen
+  reviewed-evaluation artifact SHA-256 is
+  `d0be37a35d43091f8bd9575893e713b603877f3ea517597a3c0f6a5481e0382d`:
+  zero of 64 outputs are valid semantic proposals, all 64 exhaust the token
+  budget, mapping is not run, and the exact pinned configuration is rejected.
+  This does not establish a conclusion about the Qwen model family.
 - Latest clean numeric capture base: `278e1ed`; corrected row-grid seal:
   `198c5d8`; E-0021 clean evaluation base:
   `c32741a217ca16e7224d416b2c14245f580e610d`
@@ -17,8 +19,9 @@
 - Latest full regression including multi-signal discovery v4, fixed-grid
   semantic fusion, E-0029/E-0030 controls, immutable V4 note-row splitting,
   corrected-grid E-0034 numeric verification, R-0001 recovery verification and
-  the hardened E-0036 Qwen pre-inference/session-backup controls: 544 passed, 2
-  intentionally skipped historical/external replays in 102.03 seconds; Ruff
+  the hardened E-0036 Qwen reviewed-evaluation/session-backup controls: 558
+  passed, 2 intentionally skipped historical/external replays in 99.60
+  seconds; Ruff
   check, targeted format checks and `git diff --check` passed.
 - New-VPS recovery: the historical E-0027 batch manifest was not present in the
   2026-08-06 S3 snapshot and could not be found in Git, S3 versions or GitHub
@@ -341,7 +344,7 @@
   and DeepSeek is 0.008494. Both results are `AMBIGUOUS_MAPPING`, automatic
   acceptance is 0/6, and review abstention is 6/6. Qwen may strengthen label
   evidence only; it cannot assign ReportNormId or bypass structural abstention.
-- Qwen pre-inference v1 is authorized by a minimal artifact derived from
+- Qwen pre-inference v1 was authorized by a minimal artifact derived from
   reviewed-evaluation SHA-256
   `8ea952bc008d4bf4c274c25299cadb1c624424114be9ea3a38ba9b15d1b1c133`
   while exposing no reviewed label, ID, value or period. It pins
@@ -350,10 +353,27 @@
   30,258,477,628 bytes, official GPTQ Int4, a sealed isolated overlay, the
   unchanged 64-crop request, a 4,096-token context, at most 96 generated tokens,
   deterministic no-thinking decoding, offline inference and an explicit
-  38-GPU-layer/26-CPU-layer split. The exact 24 registered artifacts are now
-  local and hash-verified, but the configured split has not completed a model
-  load, and no Qwen inference/output/seal/evaluation or performance claim exists
-  yet.
+  38-GPU-layer/26-CPU-layer split. The exact 24 registered artifacts were local
+  and hash-verified before the formal run. The run loaded the model in
+  238.391 seconds, processed the first crop in 235.437 seconds, used
+  15,586.395 seconds total, and peaked at 19,723.647 MiB allocated GPU memory.
+- The complete two-file Qwen output was hash-sealed before review access, then
+  protected as S3 artifact snapshot
+  `20260807T143806Z-e0036-qwen-semantic-reader-34cd996a97d6`; its full restore
+  and no-overwrite hydration probe both passed. Every one of the 64 outputs was
+  rejected as `REJECT_TOKEN_BUDGET_EXHAUSTED`: each generated token ID 163749
+  96 times, producing one identical raw sequence across the full request. Raw
+  rejected output was never scored as label text or passed to mapping.
+- Post-seal evaluation on the same six pre-existing reviewed rows therefore has
+  0/6 valid proposals and 6/6 mapping abstentions. Accepted-only label metrics
+  are not scorable; fixed-denominator CER and WER are both 1.0. Mapping status
+  is `NOT_RUN_NO_VALID_PROPOSALS`, with no best or runner-up path. The decision
+  is `REJECT_CURRENT_PINNED_CONFIGURATION_NO_VALID_SEMANTIC_PROPOSALS`, while
+  `model_family_conclusion` remains `NOT_ESTABLISHED`. Outside the formal
+  artifact, a separate read-only diagnostic audit found strong evidence for a
+  checkpoint/runtime GPTQ-format mismatch; this run neither measures OCR
+  quality nor proves that causal diagnosis. Any retry must first pass a short,
+  format-pinned canary.
 
 ## Completed tasks
 
@@ -686,10 +706,11 @@
   propose Vietnamese text on immutable PP-OCRv6 line/row boxes; VietOCR remains a
   challenger and the independent numeric path remains authoritative for values,
   signs and dashes.
-- The active end-to-end task is to finish the authorized E-0036 Qwen challenger,
-  seal it before evaluation, then carry the selected semantic proposals plus the
-  E-0034 verified numeric grid through decisive ordered SchemaGraph mapping,
-  accounting validation and provenance-bearing Excel.
+- The active end-to-end task is E-0037 hierarchy- and anchor-aware ordered
+  SchemaGraph mapping. It will map the sealed E-0036 baseline semantic
+  proposals without numeric evidence, seal that decision, and only then join
+  the immutable E-0034 numeric grid for accounting validation and
+  provenance-bearing Excel.
   Measurement will use Role A versus Role B row coverage, schema assignment,
   full `(ReportNormId, period, raw value, normalized value, status)` tuples and
   workbook-cell agreement; no character-only metric can complete this stage.
@@ -868,23 +889,22 @@
 
 ## Planned next steps
 
-1. Freeze, commit and push the Qwen pre-inference mechanism after all recorded
-   sizes and SHA-256 values match and the full regression passes. Download only
-   the 24 pinned artifacts, verify every size/hash, and run the unchanged
-   64-crop request offline. Do not expose review, template, numeric, period,
-   scope or historical evidence to the reader.
-2. Hash-seal and S3-back up the complete Qwen output before any Qwen-specific
-   reviewed evaluation. Compare it on the same six reviewed rows and 64-row
-   ordered mapping task; report source-exact/CER, structural rejection,
-   best/runner-up margin, abstention, wall time and peak GPU/host memory. Do not
-   adopt it from CER alone.
-3. Select or fuse semantic label proposals only after that sealed comparison,
-   then carry immutable E-0033 geometry, E-0030 period/unit bindings and E-0034
-   numeric/status evidence through ordered SchemaGraph mapping. Preserve the one
-   numeric disagreement and nine blanks as unresolved unless new source-pixel
-   evidence resolves them. Require a decisive structural margin or abstain,
-   then run accounting validation and produce the provenance-bearing
-   development Excel.
+1. Preserve the sealed E-0036 rejection. Before any Qwen retry, verify and pin
+   the checkpoint/runtime GPTQ format interpretation and static zero-point
+   checks, then run only a one- or two-crop, eight-token canary with
+   same-token-run and finite/top-k-logit gates. Do not rerun all 64 crops unless
+   that canary passes.
+2. Make E-0037 the primary path: combine the sealed E-0036 baseline semantic
+   proposals with structural anchors, parent/section context and workbook order,
+   without review, history, values or numeric ReportNormId ordering as hints.
+   Retain PDF-row/schema-row skips and require the existing decisive margin or
+   abstain.
+3. After the E-0037 mapping-only result is sealed, join immutable E-0033
+   geometry, E-0030 period/unit bindings and E-0034 numeric/status evidence.
+   Preserve the one numeric disagreement and nine blanks as unresolved unless
+   new source-pixel evidence resolves them. Bind consolidated scope from visible
+   source evidence, run accounting validation, and produce the provenance-bearing
+   development Excel without fabricating unresolved values.
 4. Seal the combined mechanism before selecting a new untouched holdout.
    VietOCR stays challenger-only; domain fine-tuning stays deferred unless the
    frozen downstream evaluation proves a material recognition blocker.
