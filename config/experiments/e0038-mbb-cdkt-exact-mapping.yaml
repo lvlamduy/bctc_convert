@@ -1,0 +1,192 @@
+version: 1
+experiment_id: E-0038
+dataset_role: CALIBRATION
+design: SEALED_E0037_MAPPING_RECONSTRUCTION_ALIAS_OVERLAY_EXACT_SEARCH_THEN_HASH_SEAL
+state: READY_FOR_MAPPING_ONLY_THEN_HASH_SEAL
+
+phase_outputs:
+  mapping_only:
+    path: output/calibration/e0038-mbb-cdkt-exact-mapping/mapping_only.json
+    required_state: E0038_EXACT_MAPPING_ONLY_CALIBRATION_HYPOTHESIS_SEALED_BEFORE_REVIEW
+    encoding: UTF8_JSON_SORTED_KEYS_INDENT2_NEWLINE_NO_NAN_V1
+  mapping_seal:
+    path: docs/experiments/E-0038-mbb-cdkt-exact-mapping-seal.json
+    required_state: E0038_EXACT_MAPPING_HASH_SEALED_BEFORE_REVIEW
+    encoding: UTF8_JSON_SORTED_KEYS_INDENT2_NEWLINE_NO_NAN_V1
+    inventory_file_count: 1
+    inventory_paths:
+      - output/calibration/e0038-mbb-cdkt-exact-mapping/mapping_only.json
+
+input_authority:
+  e0037_mapping_only:
+    path: output/calibration/e0037-mbb-cdkt-sealed-evidence-mapping/mapping_only.json
+    sha256: e18f6b20825f93b20023c0d89caca1737481008b244696594852ca9fa972f99e
+    size_bytes: 646393
+  e0037_mapping_seal:
+    path: docs/experiments/E-0037-mbb-cdkt-mapping-only-seal.json
+    sha256: 665aa1b3ac96881df0a4cd7b2f7da2425c3635ad1e8ea024e299b668c79ed0e5
+    size_bytes: 6016
+  s3_snapshot_registry:
+    path: data/registered/s3_artifact_snapshot_registry.jsonl
+    sha256: 25da6b205a775d87eca8e4ffe55e3f762ee64e92cbb7190c2834708a7de0d78d
+    size_bytes: 6050
+  e0037_mapping_policy:
+    path: config/mapping/ordered-subgraph-v2.yaml
+    sha256: 063d3339f90f7099487509bfa1c23cfa5354ed54a27435e22ac53dcfaf97734a
+    size_bytes: 2080
+  e0038_exact_mapping_policy:
+    path: config/mapping/ordered-subgraph-v2-exact-e0038.yaml
+    sha256: 2f18880339b8e2c04ec3ba900919f174f8af478515adfbfb0e43ff80ddd13268
+    size_bytes: 2082
+  e0038_alias_policy:
+    path: config/mapping/e0038-cdkt-structural-alias-candidates.yaml
+    sha256: d1cfbfd3782e1c5af1e605f8218d3f656358877f7d70c360e6bc9555e8be8948
+    size_bytes: 1496
+  s3_snapshot:
+    artifact_snapshot_id: 20260807T170440Z-e0037-source-and-mapping-seal-e18f6b20825f
+    dataset_role: CALIBRATION
+    file_count: 2
+    format_version: 1
+    git_commit: 4e475d503ee02328241140faba3399387d18f2dd
+    hydrate_probe:
+      logical_paths:
+        - output/calibration/e0037-mbb-cdkt-sealed-evidence-mapping/source_structure.json
+        - output/calibration/e0037-mbb-cdkt-sealed-evidence-mapping/mapping_only.json
+      restored_file_count: 2
+      reused_file_count_on_second_hydrate: 2
+      sealed_hashes_match: true
+      status: PASS
+    label: e0037-source-and-mapping-seal
+    manifest:
+      key: bctc-ai/artifact-snapshots/20260807T170440Z-e0037-source-and-mapping-seal-e18f6b20825f/manifest-b7b2b5bd4249d93fc8bca2210228ffd000eb36e5ebc0bb7167dde4e774478c8c.json
+      sha256: b7b2b5bd4249d93fc8bca2210228ffd000eb36e5ebc0bb7167dde4e774478c8c
+    parent_full_snapshot:
+      manifest_sha256: 74be9ea09905f0c7842d5a0b46bfe44f3fc5f32cc2c15b5040efcc4e99e8981b
+      snapshot_id: 20260806T050030130746Z-4a469fab2334
+    policy: S3_BOUNDED_ARTIFACT_SNAPSHOT_V1
+    restore_verified: true
+    run_record:
+      key: bctc-ai/artifact-runs/20260807T170440Z-e0037-source-and-mapping-seal-e18f6b20825f/run-68b35baa1f3993021db5e550b87bd42af515076dd84e2e968248a27d02a22a34.json
+      sha256: 68b35baa1f3993021db5e550b87bd42af515076dd84e2e968248a27d02a22a34
+    total_bytes: 782435
+
+implementation:
+  text_normalization:
+    path: src/bctc_ai/core/text.py
+    sha256: 2a97e6626fa6f747ff0f8e9de827b02f50dcd9a0c8e058937cd221acf1420af6
+    size_bytes: 5947
+  mapper:
+    path: src/bctc_ai/mapping/ordered_subgraph_v2.py
+    sha256: cf737243cbcecf919a2cf2012aa269655341b5c8c6b8c4038c76ed510a68b40a
+    size_bytes: 81923
+  exact_search_helper:
+    path: src/bctc_ai/mapping/e0038_exact_search.py
+    sha256: cd15e7732f613bcab8ab8723f472d63d58ee76ca62d06023259ed930459fbdbf
+    size_bytes: 39493
+  alias_overlay:
+    path: src/bctc_ai/mapping/structural_alias_overlay.py
+    sha256: 16903a62be8677aff2e43499c48959f5baca0bd8de3c2118d64a85f08bba7d7f
+    size_bytes: 31651
+  stable_io_and_e0037_payload_validator:
+    path: src/bctc_ai/evaluation/e0037_sealed_mapping.py
+    sha256: de92349a1efdd0bc3cc5ab78d4651bf7987006d3883d15bc9a4e1a1753862e04
+    size_bytes: 133670
+  integration:
+    path: src/bctc_ai/evaluation/e0038_exact_mapping.py
+    sha256: ac1ba96456f9541cd3612b0763dc521f6c916681bafe455e330643ab17739a04
+    size_bytes: 113104
+  capture_script:
+    path: scripts/experiments/capture_e0038_mbb_cdkt_exact_mapping.py
+    sha256: a9c6615d38e16d621a209a88ec54b2c2fac1c633cbad935bbdb7cc21966396fc
+    size_bytes: 2670
+  seal_script:
+    path: scripts/experiments/capture_e0038_mbb_cdkt_exact_mapping_seal.py
+    sha256: 5d66d43bb200232a05b4579786468fff63eb8be996b41f9a07ce9552997a122e
+    size_bytes: 1691
+
+runtime_authority:
+  artifacts:
+    project_metadata:
+      path: pyproject.toml
+      sha256: 59ad1366246975921df36b6d1f9bf2a91680a7b2c02d3777e772b0c3aa4ba045
+      size_bytes: 1094
+    dependency_lock:
+      path: uv.lock
+      sha256: 3edf1c8471e283e74b721140b417456afc713b7d859d33bb600939eb18b79a9a
+      size_bytes: 86842
+  versions:
+    python: 3.11.10
+    rapidfuzz: 3.14.5
+    pyyaml: 6.0.3
+
+mapping_contract:
+  source_row_count: 64
+  source_rows_sha256: 43242aa3e777810e7fe28b43eba25940818cac8568ba954f10e6f673da167c09
+  source_row_ids_sha256: b4fe87949522195ded7beae958cb5235aa36805db102b0f49675e29d855863d0
+  base_schema_node_count: 77
+  schema_ids_sha256: c8467e5ae646924500548cacab46b7e1e8440106c110997da31eed349014edbb
+  sealed_e0037_interval_count: 40
+  sealed_e0037_intervals_sha256: e0e02daaa015329976d264e3fbd223b3d71bf91f138321f2d6e194ad763f5c83
+  base_projection_sha256: 7025ca729c01a3f2030af38e9745a0ee8d72b1dad60c8d4e3b7cf749e5eb860c
+  result_projection_sha256: d0934db910063bdb98db83f02bc2444fc1fe6e1dce7e1ebc7e09c7d36e434283
+  alias_receipt_sha256: 768867b636c137b26804e6bcfb4230491e07d91299160e4071b8ac72664aa7b9
+  mapping_result_sha256: 45133c4c6a441327afc611d6cce6c4711b7fe18b945339d854944817b90a9e86
+  exact_plan_sha256: 6047288ca4bb69cb31ffad8a08a419b1232c04d8c9227dba657c1ce023e1641a
+  exact_outcome_reason_sha256: c8be4502af2eaade4e302440a4f2ddd7e8e40e8dda176917bb37fc23aa91a165
+  changed_report_norm_ids:
+    - 4375
+    - 5699
+  base_alias_authority: CANONICAL_AND_STRUCTURAL_ALIASES_ONLY
+  overlay_alias_authority: E0038_CALIBRATION_FAILURE_HYPOTHESIS
+  internal_mapper_compatibility_authority: CANONICAL_AND_STRUCTURAL_ALIASES_ONLY
+  alias_policy_loaded_from_one_immutable_byte_snapshot: true
+  full_sealed_interval_chain_required: true
+  raw_projection_published: false
+  raw_core_result_published_without_overlay_receipt: false
+  exact_search_resource_cap_semantics: RETAINED_SIGNATURE_CERTIFICATE_BOUND_NOT_GENERATED_STATE_OR_TOTAL_COMPUTE_CAP
+  actual_generated_and_retained_states_recorded: true
+  result_input_binding_required: true
+
+validation_order:
+  - CONTROL_AND_IMPLEMENTATION
+  - E0037_MAPPING_SEAL
+  - S3_REGISTRY_RESTORE_RECORD
+  - E0037_MAPPING_ONLY_BYTES
+
+forbidden_inputs:
+  - E_0030_PERIOD_OR_UNIT_METADATA
+  - E_0033_ROWS_LABELS_GEOMETRY_OR_CELLS
+  - E_0034_NUMERIC_VALUES_SIGNS_BLANKS_DASHES_OR_STATUS
+  - HUMAN_REVIEW_LABELS_IDS_VALUES_OR_PERIOD_ANSWERS
+  - REVIEWED_READER_EVALUATION_ARTIFACTS
+  - HISTORICAL_OR_MONGODB_LABELS_ALIASES_IDS_OR_VALUES
+  - QWEN_RAW_OUTPUT_REJECTED_OUTPUT_OR_TOKEN_STREAM
+  - NUMERIC_VALUE_FEATURES
+  - PERIOD_OR_UNIT_FEATURES
+
+publication:
+  canonical_paths_only: true
+  atomic_exclusive_no_overwrite: true
+  clean_git_required_before_and_immediately_before_publication: true
+  stable_input_identity_recheck_required: true
+  exact_input_and_implementation_hash_ledgers_required: true
+  mapping_only_sealed_before_review_access: true
+  deterministic_sealer_replay_required: true
+  exact_one_file_seal_inventory_required: true
+  tracked_ledger_head_blob_binding_required: true
+  fresh_canonical_input_revalidation_required: true
+  post_link_canonical_parent_and_file_revalidation_required: true
+  mapping_directory_exact_inventory_required: true
+
+claim_boundaries:
+  mapping_only: >-
+    E-0038 is an MBB CDKT calibration-only mechanism run over the exact hash-sealed
+    E-0037 mapping-only evidence. Its two ID-scoped aliases are unapproved calibration
+    hypotheses, not schema authority or review evidence. Exact-search completion records
+    deterministic zero-pruning behavior under pinned inputs; it does not establish mapping
+    accuracy, schema correctness, period, unit, numeric truth, accounting validity, Excel
+    correctness, holdout performance, or production readiness.
+  mapping_seal: >-
+    This artifact hash-seals exactly one E-0038 mapping-only file after deterministic replay
+    from a clean Git commit and before review access. It adds no schema, mapping-accuracy,
+    numeric, period, unit, accounting, Excel, holdout, or production claim.

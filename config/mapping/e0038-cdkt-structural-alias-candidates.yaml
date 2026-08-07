@@ -1,0 +1,43 @@
+version: 1
+mode: ID_SCOPED_ADDITIVE_EXACT_STRUCTURAL_ALIAS_CANDIDATES
+status: CALIBRATION_HYPOTHESIS_NOT_SCHEMA_AUTHORITY
+statement_type: CDKT
+candidate_count: 2
+
+base_projection:
+  node_count: 77
+  sha256: 7025ca729c01a3f2030af38e9745a0ee8d72b1dad60c8d4e3b7cf749e5eb860c
+
+normalization: EXISTING_RETRIEVAL_KEY_V1_UNCHANGED
+
+score_audit:
+  method: RAPIDFUZZ_RATIO_MAX_CANONICAL_AND_STRUCTURAL_ALIASES
+  target_score_must_equal: 1.0
+  minimum_role_neutral_runner_up_margin: 0.15
+  comparison: RAW_DECIMAL_FROM_FLOAT_STRING_NO_ROUNDING
+
+collision_gate:
+  universe: ALL_CANONICAL_AND_STRUCTURAL_ALIAS_KEYS_ACROSS_77_NODE_BASE_PROJECTION
+  behavior: REJECT_ANY_NEW_CROSS_ID_EXACT_RETRIEVAL_KEY_COLLISION
+
+authority:
+  source: E0038_CALIBRATION_FAILURE_HYPOTHESIS
+  review_or_steward_approved: false
+  production_allowed: false
+  holdout_evidence_allowed: false
+  historical_alias_authority_allowed: false
+  numeric_period_or_value_features_allowed: false
+
+candidates:
+  - candidate_id: CDKT_4375_TOTAL_ASSETS_BANKING_WORDING
+    report_norm_id: 4375
+    alias_text: TỔNG TÀI SẢN CÓ
+    provenance: E0038_CALIBRATION_FAILURE_HYPOTHESIS
+    approval_status: NOT_REVIEW_OR_STEWARD_APPROVED
+    production_allowed: false
+  - candidate_id: CDKT_5699_NCI_POSSESSIVE_PARTICLE
+    report_norm_id: 5699
+    alias_text: Lợi ích của cổ đông không kiểm soát
+    provenance: E0038_CALIBRATION_FAILURE_HYPOTHESIS
+    approval_status: NOT_REVIEW_OR_STEWARD_APPROVED
+    production_allowed: false
