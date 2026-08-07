@@ -196,3 +196,37 @@ reproduction seal; the historical hash must not be fabricated.
 The first dedicated Codex-session backup was uploaded and fully restore-tested
 on 2026-08-07. No host scheduler is available in the current container, so the
 script remains an explicit checkpoint/migration command.
+
+## Bounded post-offload artifact snapshots
+
+After the source corpus has been safely offloaded, a new full snapshot must not
+force hydration of all 2,567 PDFs merely to protect a bounded experiment. Back
+up exact generated-output paths as a restore-tested child of the last passing
+full snapshot:
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/backup/backup_project_artifacts.py \
+  --label '<bounded-run-label>' \
+  --path 'output/<exact-run-directory>' \
+  --parent-manifest-key \
+    'bctc-ai/snapshots/20260806T050030130746Z-4a469fab2334/manifest-74be9ea09905f0c7842d5a0b46bfe44f3fc5f32cc2c15b5040efcc4e99e8981b.json' \
+  --parent-manifest-sha256 \
+    '74be9ea09905f0c7842d5a0b46bfe44f3fc5f32cc2c15b5040efcc4e99e8981b' \
+  --parent-run-record-key \
+    'bctc-ai/runs/20260806T050030130746Z-4a469fab2334/run-24eb066b51443066dfd14538ef7aeb21e9b700cc6ce995c49e56ff23b6701b04.json' \
+  --parent-run-record-sha256 \
+    '24eb066b51443066dfd14538ef7aeb21e9b700cc6ce995c49e56ff23b6701b04'
+```
+
+The command accepts only existing paths below `output/`, refuses symlinks and
+special files, requires a clean Git commit, and verifies that the supplied
+parent run record binds a production-`PASS` full-content restore. It hashes and
+uploads every selected file to the standard content-addressed object store,
+publishes an immutable child manifest, downloads and verifies every unique
+incremental object, then publishes a passing run record. It never deletes or
+overwrites an object and does not weaken the parent snapshot.
+
+The child manifest retains normal `files` records and can be supplied directly
+to `s3-hydrate` for exact no-overwrite restoration of any enrolled logical
+path. Restore the parent full snapshot/control plane separately when rebuilding
+the entire project.
