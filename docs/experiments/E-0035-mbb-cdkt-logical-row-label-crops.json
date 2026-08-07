@@ -1,0 +1,120 @@
+{
+  "capture_git_commit": "bf7be982b109de537f5b2ab280be0c3144750573",
+  "capture_git_dirty": false,
+  "claim_boundary": "E-0035 freezes one source-pixel label crop for every logical row in the already accepted E-0033 MBB CDKT pages 3-4 while preserving the immutable E-0034 numeric grid. It makes no Vietnamese-label accuracy, blank-cell, period, unit, scope, schema, accounting, Excel, holdout or production claim. R-0001 supplies explicit recovered-artifact provenance and never replaces or claims recovery of the lost historical E-0027 batch manifest.",
+  "crop_manifest": {
+    "path": "output/calibration/e0035-mbb-cdkt-logical-row-label-crops/a177792e8b98f340f562/crop_manifest.json",
+    "sha256": "3b12da05e19467e85bfc6d828b73a3e35598c53d7c57cfb932b76763bec57eac",
+    "size_bytes": 70663
+  },
+  "dataset_role": "CALIBRATION",
+  "experiment_config": {
+    "path": "config/experiments/e0035-mbb-cdkt-logical-row-label-crops.yaml",
+    "sha256": "a177792e8b98f340f562844eb0ca1ea65b95632da2da457d0f9de83c89c4136b",
+    "size_bytes": 4063
+  },
+  "experiment_id": "E-0035",
+  "format_version": 1,
+  "gates": {
+    "all_crops_have_unique_hashes": true,
+    "all_rows_selected_before_semantic_inference": true,
+    "crop_pixels_preserved_without_resize_threshold_or_deskew": true,
+    "decoder_has_no_reference_text": true,
+    "exact_crop_count": true,
+    "exact_page_set": true,
+    "exact_rows_by_page": true,
+    "human_review_template_and_history_not_loaded": true,
+    "lost_batch_manifest_not_claimed_recovered": true,
+    "minimum_note_boundary_clearance_positive": true,
+    "numeric_grid_bound_and_immutable": true,
+    "off_balance_page_not_loaded": true,
+    "s3_all_files_restore_verified": true,
+    "s3_no_overwrite_reuse_probe": true,
+    "semantic_reader_not_invoked": true
+  },
+  "metrics": {
+    "crop_count": 64,
+    "crop_height_pixels": {
+      "maximum": 83,
+      "minimum": 65
+    },
+    "crop_width_pixels": {
+      "maximum": 1177,
+      "minimum": 178
+    },
+    "logical_crop_bytes": 868861,
+    "minimum_note_boundary_clearance_pixels": 137.0,
+    "page_crop_counts": {
+      "3": 39,
+      "4": 25
+    },
+    "ppocr_label_line_count_distribution": {
+      "1": 64
+    },
+    "unique_crop_sha256_count": 64
+  },
+  "recovery_provenance": {
+    "accepted_equivalence": "RENDER_AND_CANONICAL_OCR_PAGES_3_4_BYTE_EXACT",
+    "original_batch_manifest_recovered": false,
+    "path": "docs/recovery/R-0001-e0027-functional-reproduction.json",
+    "recovery_id": "R-0001",
+    "sha256": "f6b263096a12e6c92000af6f15b4577241423053acba0e5bab61c6876389890d",
+    "status": "PASS_FUNCTIONAL_REPRODUCTION_NOT_ORIGINAL_BATCH_MANIFEST"
+  },
+  "reference_isolation": {
+    "accounting_validation_invoked": false,
+    "e0022_evidence_loaded": false,
+    "excel_export_invoked": false,
+    "historical_or_mongodb_data_loaded": false,
+    "human_review_loaded": false,
+    "numeric_cell_text_or_value_loaded_by_crop_builder": false,
+    "off_balance_page_5_loaded": false,
+    "period_unit_or_scope_answer_loaded": false,
+    "schema_mapping_invoked": false,
+    "semantic_reader_invoked": false,
+    "template_labels_aliases_or_ids_loaded": false
+  },
+  "s3_artifact_snapshot": {
+    "artifact_snapshot_id": "20260807T050850Z-e0035-logical-row-label-crops-3b12da05e194",
+    "file_count": 65,
+    "hydrate_probe": {
+      "logical_path": "output/calibration/e0035-mbb-cdkt-logical-row-label-crops/a177792e8b98f340f562/crop_manifest.json",
+      "restored_file_count": 0,
+      "reused_file_count": 1,
+      "status": "PASS"
+    },
+    "manifest": {
+      "key": "bctc-ai/artifact-snapshots/20260807T050850Z-e0035-logical-row-label-crops-3b12da05e194/manifest-1bb059311684c0a44bea7db0205437f22b970209f1342fe8a0c9f9782ce22294.json",
+      "sha256": "1bb059311684c0a44bea7db0205437f22b970209f1342fe8a0c9f9782ce22294"
+    },
+    "parent_full_snapshot": {
+      "manifest_sha256": "74be9ea09905f0c7842d5a0b46bfe44f3fc5f32cc2c15b5040efcc4e99e8981b",
+      "snapshot_id": "20260806T050030130746Z-4a469fab2334"
+    },
+    "restore_verified": true,
+    "run_record": {
+      "key": "bctc-ai/artifact-runs/20260807T050850Z-e0035-logical-row-label-crops-3b12da05e194/run-e114a317ef05ded156c48e8384429b3ddd16261086d43ef28f6d4132783f62be.json",
+      "sha256": "e114a317ef05ded156c48e8384429b3ddd16261086d43ef28f6d4132783f62be"
+    },
+    "total_bytes": 939524,
+    "uploaded_object_count": 65
+  },
+  "source": {
+    "path": "vietstock_bctc/MBB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf",
+    "sha256": "eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83",
+    "size_bytes": 3977471
+  },
+  "status": "PASS_REFERENCE_BLIND_ALL_LOGICAL_ROW_LABEL_CROPS_FROZEN",
+  "verified_implementation": {
+    "algorithm": {
+      "path": "src/bctc_ai/evaluation/logical_row_label_crops.py",
+      "sha256": "b6361836e65ef45a0a78c77d08c8f70c3cdb265f3096097ae5138464942bd2f4",
+      "size_bytes": 22433
+    },
+    "capture_script": {
+      "path": "scripts/experiments/capture_e0035_logical_row_label_crops.py",
+      "sha256": "34338321854938f9cb46b503cd0317623e990af3bd66a0b3c9bd81b6d30e0a50",
+      "size_bytes": 1064
+    }
+  }
+}
