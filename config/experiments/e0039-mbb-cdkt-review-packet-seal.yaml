@@ -1,0 +1,115 @@
+version: 1
+experiment_id: E-0039
+dataset_role: CALIBRATION
+design: SEPARATE_IMMUTABLE_PREDECISION_REVIEW_PACKET_HASH_SEAL
+state: READY_FOR_E0039_PREDECISION_REVIEW_PACKET_HASH_SEAL
+
+frozen_inputs:
+  packet_control:
+    path: config/experiments/e0039-mbb-cdkt-review-packet.yaml
+    sha256: c92f37b177afba90e97683296119fa783a58ed959054aabb3476293d21c9927a
+    size_bytes: 8361
+  packet_builder:
+    path: src/bctc_ai/evaluation/e0039_review_packet.py
+    sha256: 9049ae53faf8c8cbd19133020c9d23d80716cd6b9acacd0f7417cd21596814fe
+    size_bytes: 134406
+  packet_capture_script:
+    path: scripts/experiments/capture_e0039_mbb_cdkt_review_packet.py
+    sha256: 5df83d983dd6724e911ed47a76aba2fdcc72af8086bfcd2ec153ecfe1495d576
+    size_bytes: 1632
+  source_structure_validator:
+    path: src/bctc_ai/evaluation/e0037_evidence_assembly.py
+    sha256: cbef18c15ca23bc08b3539144f89cd8de201194cb29f610fe44d2ef325ffa2c3
+    size_bytes: 56692
+  e0037_mapping_validator:
+    path: src/bctc_ai/evaluation/e0037_sealed_mapping.py
+    sha256: de92349a1efdd0bc3cc5ab78d4651bf7987006d3883d15bc9a4e1a1753862e04
+    size_bytes: 133670
+  hardened_io_and_e0038_payload_validator:
+    path: src/bctc_ai/evaluation/e0038_exact_mapping.py
+    sha256: ac1ba96456f9541cd3612b0763dc521f6c916681bafe455e330643ab17739a04
+    size_bytes: 113104
+  packet:
+    path: output/calibration/e0039-mbb-cdkt-review-packet/evidence_packet.json
+    sha256: 04c6b0509713f46423b03857a5e509d36cfa95d9ffd34bbe981f564915cdf93d
+    size_bytes: 74601
+
+implementation:
+  seal_builder:
+    path: src/bctc_ai/evaluation/e0039_review_packet_seal.py
+    sha256: 8f22a5954cbf374118dc74b70bdfbe98db024bdef81ddeaa824d26621e661a77
+    size_bytes: 35897
+  capture_script:
+    path: scripts/experiments/capture_e0039_mbb_cdkt_review_packet_seal.py
+    sha256: b4ba0307693145486ee1c433182ecacb6de54bdbe062fb6f295709f128f69e0b
+    size_bytes: 1759
+
+seal_contract:
+  packet_path: output/calibration/e0039-mbb-cdkt-review-packet/evidence_packet.json
+  packet_required_state: E0039_PREDECISION_REVIEW_AND_STEWARD_EVIDENCE_PACKET
+  packet_capture_git_commit: 35d02d62e96b2fa449f4eb8ee6a13982a5f2fe75
+  packet_capture_commit_must_be_ancestor_of_seal_commit: true
+  packet_control_and_implementation_must_match_capture_commit_and_head: true
+  seal_state: E0039_PREDECISION_REVIEW_PACKET_HASH_SEALED_BEFORE_RESPONSE_ACCESS
+  exact_inventory_file_count: 1
+  packet_encoding: UTF8_JSON_SORTED_KEYS_COMPACT_NO_NAN_NO_DUPLICATE_KEYS_V1
+  seal_encoding: UTF8_JSON_SORTED_KEYS_INDENT2_NEWLINE_NO_NAN_NO_DUPLICATE_KEYS_V1
+  packet_validation_invocation_count: 2
+  packet_rebuild_or_recapture_allowed: false
+  exact_row_count: 6
+  exact_alias_candidate_count: 2
+  blank_response_contract_required: true
+  separate_row_and_alias_authority_required: true
+
+access_contract:
+  exact_unique_direct_read_path_count: 10
+  packet_control_and_implementation_opened: true
+  packet_opened_after_control_and_implementation_validation: true
+  packet_evidence_inputs_reopened: false
+  prior_review_module_import_allowed: false
+  prior_review_module_loaded: false
+  process_module_isolation_rechecked_before_publication: true
+  prior_review_artifact_or_answer_opened: false
+  review_or_steward_response_opened: false
+  full_page_render_opened: false
+  numeric_or_accounting_artifact_opened: false
+  history_or_mongodb_artifact_opened: false
+  qwen_raw_rejected_or_token_output_opened: false
+  holdout_artifact_opened: false
+  network_or_s3_write_allowed: false
+  packet_builder_or_capture_invocation_count: 0
+  mapping_invocation_count: 0
+  review_or_steward_decision_invocation_count: 0
+
+resource_caps:
+  maximum_control_bytes: 262144
+  maximum_implementation_bytes_each: 2097152
+  maximum_packet_bytes: 2097152
+  maximum_seal_bytes: 65536
+  maximum_total_direct_input_bytes: 4194304
+  exact_unique_direct_read_path_count: 10
+
+publication:
+  canonical_paths_only: true
+  clean_git_required_before_any_input_read: true
+  clean_git_required_immediately_before_publication: true
+  capture_commit_ancestor_of_seal_commit_required: true
+  tracked_control_and_implementation_head_binding_required: true
+  tracked_packet_mechanism_capture_commit_binding_required: true
+  stable_nofollow_reads_required: true
+  all_direct_inputs_rechecked_before_publication: true
+  atomic_exclusive_no_overwrite: true
+  post_link_canonical_parent_and_file_revalidation_required: true
+  formal_seal_requires_committed_mechanism: true
+
+output:
+  path: docs/experiments/E-0039-mbb-cdkt-review-packet-seal.json
+
+claim_boundary: >-
+  This calibration-only artifact hash-seals exactly one immutable E-0039
+  answer-free pre-decision evidence packet. It binds the packet capture commit,
+  canonical packet bytes, exact six-row and separate two-alias blank response
+  contracts, and their independent authorities. It opens no packet source-evidence
+  inputs or response answers and adds no row adjudication, schema-steward decision,
+  alias approval, mapping adoption or accuracy, schema, numeric, period, unit,
+  accounting, Excel, history, MongoDB, holdout, S3 durability, or production claim.
