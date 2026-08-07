@@ -223,6 +223,16 @@ def _build_complete_output(tmp_path: Path, project_root: Path) -> dict[str, obje
             "quantized_linear_module_count": config["quantization"][
                 "expected_quantized_linear_module_count"
             ],
+            "quantized_placeholder_initialization": {
+                "mechanism": "GPTQ_META_AFTER_CPU_SOURCE_SHAPE_VALIDATION",
+                "module_count": config["quantization"]["expected_quantized_linear_module_count"],
+                "buffer_count": compatibility["native_shell_quantized_placeholder_buffer_count"],
+                "buffer_names": compatibility["native_shell_quantized_placeholder_buffer_names"],
+                "nominal_buffer_bytes": compatibility["native_shell_quantized_buffer_bytes"],
+                "placeholder_device": compatibility["native_shell_quantized_placeholder_device"],
+                "hooks_restored_after_load": True,
+                "materialized_after_checkpoint_load": True,
+            },
             "temporary_load_staging": {
                 "persistent_weight_device_map_disk": False,
                 "controlled_root": "/tmp/qwen-model-cache",

@@ -30,8 +30,8 @@ required_seal_state = "QWEN_OUTPUT_HASH_SEALED_BEFORE_REVIEW_ACCESS"
 
 [output.sealer]
 path = "src/bctc_ai/evaluation/qwen35_logical_row_output_seal.py"
-sha256 = "1d0e96f4ea35a40fbe024b272397c12d823cb28d701017ebc968eb62eae38ab5"
-size_bytes = 38658
+sha256 = "d4726772431cae3695d89985d919e1e3d30ab36611d4adc7bdfb826c534ccaff"
+size_bytes = 39500
 
 [output.capture_script]
 path = "scripts/experiments/capture_e0036_qwen_output_seal.py"
@@ -217,9 +217,13 @@ gpu_family = "NVIDIA_GEFORCE_RTX_4090_ADA"
 minimum_compute_capability = [8, 9]
 bf16_supported_required = true
 minimum_host_available_memory_bytes = 42949672960
-native_shell_probe_without_weights = "PASS_192_GPTQ_MLP_MODULES"
-native_shell_probe_peak_rss_bytes = 10209718272
-native_shell_quantized_buffer_bytes = 8897691976
+native_shell_probe_without_weights = "PASS_192_GPTQ_MLP_MODULES_META_PLACEHOLDERS"
+native_shell_probe_peak_rss_bytes = 1325391872
+native_shell_quantized_buffer_bytes = 8897691648
+native_shell_quantized_placeholder_device = "meta"
+native_shell_quantized_placeholder_buffer_count = 768
+native_shell_quantized_placeholder_buffer_names = ["g_idx", "qweight", "qzeros", "scales"]
+native_shell_nonpersistent_real_buffer_bytes = 328
 native_shell_lazy_remaining_parameter_bytes = 20487936480
 
 [runtime_compatibility.packages]

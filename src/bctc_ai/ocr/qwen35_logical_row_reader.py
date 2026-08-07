@@ -16,6 +16,8 @@ import sys
 import tempfile
 import time
 import tomllib
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path, PurePath
 from typing import Any
@@ -117,6 +119,99 @@ def _expected_device_map() -> dict[str, str]:
         "model.language_model.norm": "cuda:0",
         "lm_head": "cuda:0",
     }
+
+
+@contextmanager
+def _meta_quantized_placeholder_initialization(
+    torch: Any,
+    base_quant_linear: type[Any],
+    model_utils: Any,
+    *,
+    expected_module_count: int,
+    expected_buffer_names: frozenset[str],
+) -> Iterator[dict[str, Any]]:
+    """Keep GPTQ checkpoint placeholders on meta until Accelerate materializes them."""
+    original_create = model_utils.create_quant_module
+    original_to = base_quant_linear.to
+    had_own_to = "to" in base_quant_linear.__dict__
+    own_to = base_quant_linear.__dict__.get("to")
+    created_names: set[str] = set()
+    evidence: dict[str, Any] = {
+        "mechanism": "GPTQ_META_AFTER_CPU_SOURCE_SHAPE_VALIDATION",
+        "module_count": 0,
+        "buffer_count": 0,
+        "buffer_names": sorted(expected_buffer_names),
+        "nominal_buffer_bytes": 0,
+        "placeholder_device": "meta",
+        "hooks_restored_after_load": False,
+    }
+
+    def restore_to() -> None:
+        if had_own_to:
+            base_quant_linear.to = own_to
+        elif "to" in base_quant_linear.__dict__:
+            delattr(base_quant_linear, "to")
+
+    def preserve_meta_on_cpu_to(instance: Any, *args: Any, **kwargs: Any) -> Any:
+        target = args[0] if len(args) == 1 and not kwargs else None
+        try:
+            target_type = torch.device(target).type if target is not None else None
+        except (TypeError, RuntimeError):
+            target_type = None
+        buffers = instance.list_buffers()
+        if (
+            target_type == "cpu"
+            and buffers
+            and all(buffer.device.type == "meta" for buffer in buffers)
+        ):
+            return instance
+        return original_to(instance, *args, **kwargs)
+
+    def create_meta_quant_module(*args: Any, **kwargs: Any) -> Any:
+        name = kwargs.get("name")
+        module = kwargs.get("module")
+        if not isinstance(name, str) or not name or module is None:
+            raise Qwen35LogicalRowReaderError("GPTQ quant placeholder call shape drifted")
+        if name in created_names:
+            raise Qwen35LogicalRowReaderError("duplicate GPTQ meta quant placeholder")
+        if int(evidence["module_count"]) >= expected_module_count:
+            raise Qwen35LogicalRowReaderError("too many GPTQ meta quant placeholders")
+        base_quant_linear.to = preserve_meta_on_cpu_to
+        try:
+            with torch.device("meta"):
+                result = original_create(*args, **kwargs)
+        finally:
+            restore_to()
+        created = model_utils.recurse_getattr(module, name)
+        buffers = list(created.named_buffers(recurse=False))
+        if (
+            not isinstance(created, base_quant_linear)
+            or not buffers
+            or len(buffers) != len(expected_buffer_names)
+            or {buffer_name for buffer_name, _ in buffers} != expected_buffer_names
+            or any(buffer.device.type != "meta" for _, buffer in buffers)
+        ):
+            raise Qwen35LogicalRowReaderError("GPTQ meta quant placeholder drifted")
+        created_names.add(name)
+        evidence["module_count"] = int(evidence["module_count"]) + 1
+        evidence["buffer_count"] = int(evidence["buffer_count"]) + len(buffers)
+        evidence["nominal_buffer_bytes"] = int(evidence["nominal_buffer_bytes"]) + sum(
+            buffer.numel() * buffer.element_size() for _, buffer in buffers
+        )
+        return result
+
+    model_utils.create_quant_module = create_meta_quant_module
+    try:
+        yield evidence
+    finally:
+        model_utils.create_quant_module = original_create
+        restore_to()
+        if (
+            model_utils.create_quant_module is not original_create
+            or base_quant_linear.to is not original_to
+        ):
+            raise Qwen35LogicalRowReaderError("GPTQ meta placeholder hooks were not restored")
+        evidence["hooks_restored_after_load"] = True
 
 
 def _identity(value: os.stat_result) -> tuple[int, int, int, int, int, int]:
@@ -493,9 +588,15 @@ def load_qwen35_logical_row_config(
         or compatibility.get("minimum_compute_capability") != [8, 9]
         or compatibility.get("bf16_supported_required") is not True
         or compatibility.get("minimum_host_available_memory_bytes") != 42949672960
-        or compatibility.get("native_shell_probe_without_weights") != "PASS_192_GPTQ_MLP_MODULES"
-        or compatibility.get("native_shell_probe_peak_rss_bytes") != 10209718272
-        or compatibility.get("native_shell_quantized_buffer_bytes") != 8897691976
+        or compatibility.get("native_shell_probe_without_weights")
+        != "PASS_192_GPTQ_MLP_MODULES_META_PLACEHOLDERS"
+        or compatibility.get("native_shell_probe_peak_rss_bytes") != 1325391872
+        or compatibility.get("native_shell_quantized_buffer_bytes") != 8897691648
+        or compatibility.get("native_shell_quantized_placeholder_device") != "meta"
+        or compatibility.get("native_shell_quantized_placeholder_buffer_count") != 768
+        or compatibility.get("native_shell_quantized_placeholder_buffer_names")
+        != ["g_idx", "qweight", "qzeros", "scales"]
+        or compatibility.get("native_shell_nonpersistent_real_buffer_bytes") != 328
         or compatibility.get("native_shell_lazy_remaining_parameter_bytes") != 20487936480
         or not isinstance(overlay, dict)
         or overlay.get("installed_tree_distributions") != list(_OVERLAY_DISTRIBUTIONS)
@@ -1056,6 +1157,7 @@ def _run_qwen35_logical_row_reader_impl(
     from gptqmodel.nn_modules.qlinear.tritonv2 import TritonV2Linear
     from gptqmodel.quantization import FORMAT, METHOD
     from gptqmodel.utils.backend import BACKEND
+    from gptqmodel.utils import model as gptq_model_utils
     from transformers import AutoProcessor
 
     if not torch.cuda.is_available() or not torch.cuda.is_bf16_supported():
@@ -1131,15 +1233,35 @@ def _run_qwen35_logical_row_reader_impl(
     if not rendered_probe.endswith(inference["expected_assistant_prompt_suffix"]):
         raise Qwen35LogicalRowReaderError("Qwen no-thinking chat-template suffix drifted")
     load_started = time.perf_counter()
-    qmodel = GPTQModel.from_quantized(
-        model_directory.as_posix(),
-        device_map=dict(config["device_map"]["modules"]),
-        backend=BACKEND.GPTQ_TRITON,
-        dtype=torch.bfloat16,
-        local_files_only=True,
-        trust_remote_code=False,
-        attn_implementation=inference["attention_implementation"],
-    )
+    compatibility = config["runtime_compatibility"]
+    with _meta_quantized_placeholder_initialization(
+        torch,
+        BaseQuantLinear,
+        gptq_model_utils,
+        expected_module_count=int(config["quantization"]["expected_quantized_linear_module_count"]),
+        expected_buffer_names=frozenset(
+            compatibility["native_shell_quantized_placeholder_buffer_names"]
+        ),
+    ) as placeholder_initialization:
+        qmodel = GPTQModel.from_quantized(
+            model_directory.as_posix(),
+            device_map=dict(config["device_map"]["modules"]),
+            backend=BACKEND.GPTQ_TRITON,
+            dtype=torch.bfloat16,
+            local_files_only=True,
+            trust_remote_code=False,
+            attn_implementation=inference["attention_implementation"],
+        )
+    if placeholder_initialization != {
+        "mechanism": "GPTQ_META_AFTER_CPU_SOURCE_SHAPE_VALIDATION",
+        "module_count": int(config["quantization"]["expected_quantized_linear_module_count"]),
+        "buffer_count": int(compatibility["native_shell_quantized_placeholder_buffer_count"]),
+        "buffer_names": compatibility["native_shell_quantized_placeholder_buffer_names"],
+        "nominal_buffer_bytes": int(compatibility["native_shell_quantized_buffer_bytes"]),
+        "placeholder_device": compatibility["native_shell_quantized_placeholder_device"],
+        "hooks_restored_after_load": True,
+    }:
+        raise Qwen35LogicalRowReaderError("Qwen GPTQ meta placeholder evidence drifted")
     model = qmodel.model.eval()
     expected_dynamic = set(config["quantization"]["dynamic_exclusion_keys"])
     actual_dynamic = qmodel.quantize_config.dynamic
@@ -1404,6 +1526,8 @@ def _run_qwen35_logical_row_reader_impl(
             "gptq_backend": "gptq_triton",
             "gptq_dynamic_exclusion_keys": sorted(expected_dynamic),
             "quantized_linear_module_count": len(quantized_module_names),
+            "quantized_placeholder_initialization": placeholder_initialization
+            | {"materialized_after_checkpoint_load": True},
             "temporary_load_staging": {
                 "persistent_weight_device_map_disk": False,
                 "controlled_root": model_cache_root.as_posix(),

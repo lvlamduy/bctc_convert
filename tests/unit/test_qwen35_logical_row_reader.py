@@ -6,6 +6,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -45,6 +46,17 @@ def test_qwen35_config_is_reference_blind_and_uses_explicit_triton_map(project_r
     assert all(modules[f"model.language_model.layers.{index}"] == "cuda:0" for index in range(38))
     assert all(modules[f"model.language_model.layers.{index}"] == "cpu" for index in range(38, 64))
     assert set(modules.values()) == {"cuda:0", "cpu"}
+    assert config["runtime_compatibility"]["native_shell_probe_without_weights"] == (
+        "PASS_192_GPTQ_MLP_MODULES_META_PLACEHOLDERS"
+    )
+    assert config["runtime_compatibility"]["native_shell_quantized_placeholder_device"] == ("meta")
+    assert config["runtime_compatibility"]["native_shell_quantized_placeholder_buffer_count"] == 768
+    assert config["runtime_compatibility"]["native_shell_quantized_placeholder_buffer_names"] == [
+        "g_idx",
+        "qweight",
+        "qzeros",
+        "scales",
+    ]
     assert config["output"] == {
         "directory": "output/calibration/e0036-mbb-cdkt-semantic-label-readers/qwen-reader",
         "seal_path": "docs/experiments/E-0036-qwen-output-seal.json",
@@ -52,8 +64,8 @@ def test_qwen35_config_is_reference_blind_and_uses_explicit_triton_map(project_r
         "required_seal_state": "QWEN_OUTPUT_HASH_SEALED_BEFORE_REVIEW_ACCESS",
         "sealer": {
             "path": "src/bctc_ai/evaluation/qwen35_logical_row_output_seal.py",
-            "sha256": "1d0e96f4ea35a40fbe024b272397c12d823cb28d701017ebc968eb62eae38ab5",
-            "size_bytes": 38658,
+            "sha256": "d4726772431cae3695d89985d919e1e3d30ab36611d4adc7bdfb826c534ccaff",
+            "size_bytes": 39500,
         },
         "capture_script": {
             "path": "scripts/experiments/capture_e0036_qwen_output_seal.py",
@@ -70,6 +82,102 @@ def test_qwen35_freezes_transformers_torch_fallback_before_gptq_kernel_patch():
     assert source.index("from transformers.models.qwen3_5 import modeling_qwen3_5") < source.index(
         "from gptqmodel import GPTQModel"
     )
+
+
+def test_qwen35_meta_quant_placeholders_are_scoped_and_restored():
+    class FakeDevice:
+        def __init__(self, torch, value):
+            self._torch = torch
+            self.type = value.type if isinstance(value, FakeDevice) else str(value)
+            self._previous = None
+
+        def __enter__(self):
+            self._previous = self._torch.current_device
+            self._torch.current_device = self.type
+            return self
+
+        def __exit__(self, *_exc):
+            self._torch.current_device = self._previous
+
+    class FakeTorch:
+        def __init__(self):
+            self.current_device = "cpu"
+
+        def device(self, value):
+            return FakeDevice(self, value)
+
+    fake_torch = FakeTorch()
+
+    class FakeTensor:
+        def __init__(self):
+            self.device = SimpleNamespace(type=fake_torch.current_device)
+
+        def numel(self):
+            return 4
+
+        def element_size(self):
+            return 4
+
+    class DummyQuantLinear:
+        def __init__(self):
+            self.qweight = FakeTensor()
+
+        def list_buffers(self):
+            return [self.qweight]
+
+        def named_buffers(self, *, recurse):
+            assert recurse is False
+            return [("qweight", self.qweight)]
+
+        def to(self, target):
+            self.qweight.device = SimpleNamespace(type=fake_torch.device(target).type)
+            return self
+
+    class Parent:
+        def __init__(self):
+            self.slot = object()
+            self.extra = object()
+
+    parent = Parent()
+
+    def create_quant_module(*, name, module):
+        replacement = DummyQuantLinear().to(fake_torch.device("cpu"))
+        setattr(module, name, replacement)
+
+    model_utils = SimpleNamespace(
+        create_quant_module=create_quant_module,
+        recurse_getattr=lambda module, name: getattr(module, name),
+    )
+    original_to = DummyQuantLinear.to
+
+    with qwen35_logical_row_reader._meta_quantized_placeholder_initialization(
+        fake_torch,
+        DummyQuantLinear,
+        model_utils,
+        expected_module_count=1,
+        expected_buffer_names=frozenset({"qweight"}),
+    ) as evidence:
+        model_utils.create_quant_module(name="slot", module=parent)
+        assert parent.slot.qweight.device.type == "meta"
+        assert model_utils.create_quant_module is not create_quant_module
+        with pytest.raises(
+            qwen35_logical_row_reader.Qwen35LogicalRowReaderError,
+            match="too many GPTQ meta quant placeholders",
+        ):
+            model_utils.create_quant_module(name="extra", module=parent)
+        assert not isinstance(parent.extra, DummyQuantLinear)
+
+    assert model_utils.create_quant_module is create_quant_module
+    assert DummyQuantLinear.to is original_to
+    assert evidence == {
+        "mechanism": "GPTQ_META_AFTER_CPU_SOURCE_SHAPE_VALIDATION",
+        "module_count": 1,
+        "buffer_count": 1,
+        "buffer_names": ["qweight"],
+        "nominal_buffer_bytes": 16,
+        "placeholder_device": "meta",
+        "hooks_restored_after_load": True,
+    }
 
 
 def test_qwen35_authorization_is_minimal_but_derived_from_sealed_evaluation(project_root):
