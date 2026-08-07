@@ -1,0 +1,31 @@
+version: 1
+experiment_id: E-0036
+dataset_role: CALIBRATION
+state: READY_FOR_QWEN_REVIEWED_EVALUATION
+
+frozen_inputs:
+  qwen_output_seal:
+    path: docs/experiments/E-0036-qwen-output-seal.json
+    sha256: a3b84101639735f3aeba97cdf7238ee6393b43e8b478c443646c6fe15099c629
+    size_bytes: 5235
+  baseline_reviewed_evaluation:
+    path: docs/experiments/E-0036-mbb-cdkt-reviewed-reader-evaluation.json
+    sha256: 8ea952bc008d4bf4c274c25299cadb1c624424114be9ea3a38ba9b15d1b1c133
+    size_bytes: 213025
+  e0036_control:
+    path: config/experiments/e0036-mbb-cdkt-semantic-label-readers.yaml
+    sha256: f5ab8d319ecde075018b395e4c1ffe3e276103c801317f5d00450629e1b644c4
+    size_bytes: 12731
+
+implementation:
+  evaluator:
+    path: src/bctc_ai/evaluation/qwen35_reviewed_evaluation.py
+    sha256: aac114d7bff1bbbe446b55c290c915d3b5c1b2ce3fbe1d5e366fe0fe5a205315
+    size_bytes: 44152
+  capture_script:
+    path: scripts/experiments/capture_e0036_qwen_reviewed_evaluation.py
+    sha256: e7eb3a222d3e351df5b6fd590a396d7be16440ecb373a6d0681d264440250811
+    size_bytes: 1461
+
+output:
+  path: docs/experiments/E-0036-qwen-reviewed-evaluation.json

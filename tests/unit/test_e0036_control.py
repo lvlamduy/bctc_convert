@@ -185,3 +185,27 @@ def test_e0036_qwen_output_is_sealed_and_s3_restore_verified(project_root):
     assert matches[0]["manifest"] == snapshot["manifest"]
     assert matches[0]["run_record"] == snapshot["run_record"]
     assert matches[0]["restore_verified"] is True
+
+
+def test_e0036_qwen_review_control_binds_only_sealed_inputs(project_root):
+    control = yaml.safe_load(
+        (project_root / "config/experiments/e0036-qwen-reviewed-evaluation.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert control["experiment_id"] == "E-0036"
+    assert control["dataset_role"] == "CALIBRATION"
+    assert control["state"] == "READY_FOR_QWEN_REVIEWED_EVALUATION"
+    assert control["output"] == {"path": "docs/experiments/E-0036-qwen-reviewed-evaluation.json"}
+    assert set(control["frozen_inputs"]) == {
+        "qwen_output_seal",
+        "baseline_reviewed_evaluation",
+        "e0036_control",
+    }
+    assert set(control["implementation"]) == {"evaluator", "capture_script"}
+
+    for record in (*control["frozen_inputs"].values(), *control["implementation"].values()):
+        artifact = project_root / record["path"]
+        assert artifact.stat().st_size == record["size_bytes"]
+        assert sha256_file(artifact) == record["sha256"]
