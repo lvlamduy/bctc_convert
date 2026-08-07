@@ -1,0 +1,97 @@
+{
+  "authority": {
+    "automatic_model_promotion": false,
+    "geometry": false,
+    "label_truth": false,
+    "numeric_value_or_status": false,
+    "period_unit_scope": false,
+    "report_norm_id_or_schema_mapping": false
+  },
+  "captured_at": "2026-08-07T05:55:31.126006+00:00",
+  "claim_boundary": "This artifact seals the unchanged E-0036 request and both complete reference-blind baseline outputs before any reviewed label or ReportNormId is loaded. It establishes artifact identity and structural completeness only; it makes no label, mapping, numeric, accounting, holdout or production claim.",
+  "crop_manifest": {
+    "path": "output/calibration/e0035-mbb-cdkt-logical-row-label-crops/a177792e8b98f340f562/crop_manifest.json",
+    "sha256": "3b12da05e19467e85bfc6d828b73a3e35598c53d7c57cfb932b76763bec57eac"
+  },
+  "dataset_role": "CALIBRATION",
+  "evaluation_allowed_only_after_this_seal": true,
+  "experiment_config": {
+    "path": "config/experiments/e0036-mbb-cdkt-semantic-label-readers.yaml",
+    "sha256": "3288b267288775ad0ad74e967853e739a3bcc93e8b7580303520034d0c7724fa",
+    "size_bytes": 7350
+  },
+  "experiment_id": "E-0036",
+  "format_version": 1,
+  "inference_git_commit": "b08278d3452f59541de56e8187dc08e7345e16f8",
+  "readers": {
+    "deepseek_ocr2": {
+      "all_authority_flags": false,
+      "human_review_available_to_reader": false,
+      "manifest": {
+        "path": "output/calibration/e0036-mbb-cdkt-semantic-label-readers/deepseek-reader/run_manifest.json",
+        "sha256": "bfae9bd5158b000137771da85e1e1201885c69e393e9408b6e15295406aa1b77",
+        "size_bytes": 6282
+      },
+      "metrics": {
+        "free_vram_bytes_after_inference": 15677128704,
+        "model_load_seconds": 4.345598989006248,
+        "parsed_proposal_count": 51,
+        "peak_gpu_memory_allocated_mib": 7779.95751953125,
+        "peak_gpu_memory_reserved_mib": 8622.0,
+        "sample_count": 64,
+        "structural_rejection_count": 13,
+        "total_vram_bytes": 25248530432,
+        "total_wall_seconds": 32.14361431999714
+      },
+      "output_directory": "output/calibration/e0036-mbb-cdkt-semantic-label-readers/deepseek-reader",
+      "parsed_proposal_count": 51,
+      "reader": "DEEPSEEK_OCR_2",
+      "reference_text_available_to_reader": false,
+      "result": {
+        "path": "output/calibration/e0036-mbb-cdkt-semantic-label-readers/deepseek-reader/ocr_result.json",
+        "sha256": "3273a5cd3f847e52e1178b888a6b9e246d8c1b73778de5d936fbbc9960909474",
+        "size_bytes": 44781
+      },
+      "sample_count": 64,
+      "structural_rejection_count": 13
+    },
+    "vietocr": {
+      "all_authority_flags": false,
+      "human_review_available_to_reader": false,
+      "manifest": {
+        "path": "output/calibration/e0036-mbb-cdkt-semantic-label-readers/vietocr-reader/run_manifest.json",
+        "sha256": "9d8031f6f400d23eb81bb933f77f475e1799bdfbcfdf8295f8fb021391ed5c99",
+        "size_bytes": 3455
+      },
+      "metrics": {
+        "model_load_seconds": 0.9866302099981112,
+        "peak_gpu_memory_allocated_mib": 328.916015625,
+        "peak_gpu_memory_reserved_mib": 346.0,
+        "sample_count": 64,
+        "total_wall_seconds": 7.271159885000088
+      },
+      "output_directory": "output/calibration/e0036-mbb-cdkt-semantic-label-readers/vietocr-reader",
+      "parsed_proposal_count": 64,
+      "reader": "VIETOCR_VGG_TRANSFORMER",
+      "reference_text_available_to_reader": false,
+      "result": {
+        "path": "output/calibration/e0036-mbb-cdkt-semantic-label-readers/vietocr-reader/ocr_result.json",
+        "sha256": "204c897d0d7419be6194f626c033624b52ddbec4d8aa2b3cd0f02f4645ceacf6",
+        "size_bytes": 35990
+      },
+      "sample_count": 64,
+      "structural_rejection_count": 0
+    }
+  },
+  "reference_or_human_review_loaded_by_sealer": false,
+  "request": {
+    "path": "output/calibration/e0036-mbb-cdkt-semantic-label-readers/request.json",
+    "sha256": "ad4c1a9fecf9686249a9c4eea2a5b6a2a903fc4716536e5804c481facc217781",
+    "size_bytes": 21167
+  },
+  "same_ordered_sample_ids": true,
+  "sample_count_per_reader": 64,
+  "seal_git_commit": "8a91393406e0bfc05050bba37c79fb19d1f8d076",
+  "seal_git_dirty": false,
+  "state": "BASELINE_OUTPUTS_HASH_SEALED_BEFORE_REVIEW_ACCESS"
+}
