@@ -1044,14 +1044,19 @@ def _run_qwen35_logical_row_reader_impl(
     os.environ.setdefault("HF_HOME", "/dev/shm/bctc-qwen-e0036-hf")
     _deny_network_connections()
 
-    import torch
+    import torch  # noqa: I001 - the following import order is part of the sealed contract
+
+    # Import the Transformers implementation before GPTQModel installs its bundled
+    # causal-conv compatibility module.  The E-0036 contract deliberately freezes
+    # the complete Qwen3.5 linear-attention path to the Transformers torch fallback.
+    from transformers.models.qwen3_5 import modeling_qwen3_5
+
     from gptqmodel import GPTQModel
     from gptqmodel.nn_modules.qlinear import BaseQuantLinear
     from gptqmodel.nn_modules.qlinear.tritonv2 import TritonV2Linear
     from gptqmodel.quantization import FORMAT, METHOD
     from gptqmodel.utils.backend import BACKEND
     from transformers import AutoProcessor
-    from transformers.models.qwen3_5 import modeling_qwen3_5
 
     if not torch.cuda.is_available() or not torch.cuda.is_bf16_supported():
         raise Qwen35LogicalRowReaderError("Qwen E-0036 requires BF16-capable CUDA")

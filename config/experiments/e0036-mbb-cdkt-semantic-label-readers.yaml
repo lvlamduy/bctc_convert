@@ -135,8 +135,8 @@ conditional_qwen_challenger:
       size_bytes: 16156
     reader_algorithm:
       path: src/bctc_ai/ocr/qwen35_logical_row_reader.py
-      sha256: f295974362db3e06dcb3fbaaf20648e5f49384f9484a622afbb60655bd4aaf5d
-      size_bytes: 68920
+      sha256: 54d14044b020d6cbdc85be76b70aa2276d86cde29bda4f084ab53e11fcb3ede8
+      size_bytes: 69246
     runner:
       path: scripts/models/run_qwen35_logical_row_reader.py
       sha256: 9d18878ed792065f22cc9dc4689682a3f4b774f695bb68a15e431a2fcf687796

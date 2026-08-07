@@ -64,6 +64,14 @@ def test_qwen35_config_is_reference_blind_and_uses_explicit_triton_map(project_r
     assert not any(config["safety"].values())
 
 
+def test_qwen35_freezes_transformers_torch_fallback_before_gptq_kernel_patch():
+    source = inspect.getsource(qwen35_logical_row_reader._run_qwen35_logical_row_reader_impl)
+
+    assert source.index("from transformers.models.qwen3_5 import modeling_qwen3_5") < source.index(
+        "from gptqmodel import GPTQModel"
+    )
+
+
 def test_qwen35_authorization_is_minimal_but_derived_from_sealed_evaluation(project_root):
     authorization_path = (
         project_root / "docs/experiments/E-0036-qwen-reference-blind-inference-authorization.json"
