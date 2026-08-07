@@ -36,7 +36,14 @@
   and verifies every file, mode and timestamp. The post-checkpoint restore gate
   passed. No systemd manager or crontab exists on this container, so no local
   timer was installed.
-- Current control-plane regression after the recovery overlay: **450 passed,
+- The 61 generated R-0001 files (21,754,667 bytes) are enrolled in bounded
+  artifact snapshot
+  `20260807T045030Z-r0001-e0027-reproduction-8a1cca495582`, child of the passing
+  full snapshot. Manifest SHA-256 is
+  `fbfe05928536f20043330fc0f9aab4a5d88557dad03e69ac1467917e69f353ff`;
+  all 61 unique objects were downloaded and hash-verified after publication.
+  A no-overwrite `s3-hydrate` probe against the child manifest also passed.
+- Current control-plane regression after the recovery overlay: **452 passed,
   2 intentionally skipped**; Ruff and `git diff --check` pass. The overlay is
   allowed only for the exact missing path/hash and exposes recovery status; it
   cannot silently replace the historical hash.

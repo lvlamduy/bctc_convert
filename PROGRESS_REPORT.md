@@ -12,7 +12,7 @@
 - Latest full regression including multi-signal discovery v4, fixed-grid
   semantic fusion, E-0029/E-0030 controls, immutable V4 note-row splitting,
   corrected-grid E-0034 numeric verification and R-0001 recovery verification:
-  450 passed, 2 intentionally skipped historical/external replays in 98.38
+  452 passed, 2 intentionally skipped historical/external replays in 101.48
   seconds; Ruff and `git diff --check` passed.
 - New-VPS recovery: the historical E-0027 batch manifest was not present in the
   2026-08-06 S3 snapshot and could not be found in Git, S3 versions or GitHub
@@ -22,7 +22,9 @@
   nine-page OCR metrics are identical, and pages 3–4 become byte-identical to
   their historical OCR hashes after changing only the seven-byte-longer
   `input_path` provenance. A dedicated Codex-session S3 backup now passes a
-  real restore test. See `RECOVERY_AUDIT.md` and
+  real restore test. All 61 R-0001 generated artifacts are now protected by a
+  parent-linked bounded S3 artifact snapshot with a complete download/restore
+  pass and a successful no-overwrite hydration probe. See `RECOVERY_AUDIT.md` and
   `docs/recovery/R-0001-e0027-functional-reproduction.json`.
 
 ## Accuracy focus and measurable state
