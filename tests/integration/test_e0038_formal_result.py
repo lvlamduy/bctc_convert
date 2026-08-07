@@ -20,6 +20,41 @@ S3_REGISTRATION = {
     "sha256": "6baf6a90842066e5253533072a800c5066e97248745efed8480cb67c410601e4",
     "size_bytes": 9_555,
 }
+REVIEWED_EVALUATION = {
+    "path": "docs/experiments/E-0038-mbb-cdkt-reviewed-evaluation.json",
+    "sha256": "324d7aff03447ca9ae5538debb5b71735c475f7408b5c8aa8381ddee7872b12e",
+    "size_bytes": 18_273,
+}
+E0037_MAPPING_ONLY = {
+    "path": "output/calibration/e0037-mbb-cdkt-sealed-evidence-mapping/mapping_only.json",
+    "sha256": "e18f6b20825f93b20023c0d89caca1737481008b244696594852ca9fa972f99e",
+    "size_bytes": 646_393,
+}
+MAPPING_CONTROL = {
+    "path": "config/experiments/e0038-mbb-cdkt-exact-mapping.yaml",
+    "sha256": "59db541208b6295aeff0cead9b0c9cb8624962738726b128432b1ca4cb074855",
+    "size_bytes": 8_814,
+}
+PRIOR_REVIEWED_EVALUATION = {
+    "path": "docs/experiments/E-0036-mbb-cdkt-reviewed-reader-evaluation.json",
+    "sha256": "8ea952bc008d4bf4c274c25299cadb1c624424114be9ea3a38ba9b15d1b1c133",
+    "size_bytes": 213_025,
+}
+REVIEW_CONTROL = {
+    "path": "config/experiments/e0038-mbb-cdkt-reviewed-evaluation.yaml",
+    "sha256": "9e82b9bd134eac643879192895fdc1d02b6211739c2817ed99c9218d849d1daf",
+    "size_bytes": 2_249,
+}
+REVIEW_EVALUATOR = {
+    "path": "src/bctc_ai/evaluation/e0038_reviewed_evaluation.py",
+    "sha256": "99a3e363f78022c72aa3dd7cdaf4feb22bda061faf3946ef933fe6948b34f7e2",
+    "size_bytes": 58_816,
+}
+REVIEW_CAPTURE_SCRIPT = {
+    "path": "scripts/experiments/capture_e0038_mbb_cdkt_reviewed_evaluation.py",
+    "sha256": "98df640fedfe216e626ff757f157dc440d9b0a742f41909b27f158423a467157",
+    "size_bytes": 1_863,
+}
 SHARED_REGISTRY = {
     "path": "data/registered/s3_artifact_snapshot_registry.jsonl",
     "sha256": "25da6b205a775d87eca8e4ffe55e3f762ee64e92cbb7190c2834708a7de0d78d",
@@ -59,6 +94,28 @@ REGISTRATION_CLAIM_BOUNDARY = (
     "the already hash-sealed E-0038 calibration mapping. It does not add or imply schema "
     "authority, mapping accuracy, review or steward approval, numeric, period, unit, "
     "accounting, Excel, holdout, or production authority."
+)
+REVIEWED_CLAIM_BOUNDARY = (
+    "This calibration-only post-seal evaluation compares the immutable E-0038 mapping "
+    "against exactly six pre-existing reviewed MBB CDKT rows after validating the mapping "
+    "seal, its immutable post-seal S3 registration, and the mapping bytes and internal "
+    "identities. All six reviewed rows are selected with the reviewed ReportNormId, which "
+    "is fixed-six non-contradiction evidence only. The six rows cover neither E-0038 alias "
+    "target and none of the six unselected rows, so aliases remain unapproved and the result "
+    "grants no automatic adoption, schema, numeric, period, unit, accounting, Excel, "
+    "history, holdout, or production authority. The frozen review interface contains "
+    "numeric linkage fields, but this evaluator neither extracts nor uses them and opens no "
+    "separate numeric artifact."
+)
+REVIEW_COMMIT = "e825c51f4725062b00ecaee0d098d6e278fe4ade"
+SELECTED_PAIR_PROJECTION_SHA256 = "8135658100d83772812aeecff4beb4378ad7163c96a286a3770d430027a87df3"
+FIXED_REVIEWED_ROWS = (
+    ("page-0003-row-018-label", 4317, "mbb-p3-4317", 3, 18, "RESOLVED_ANCHOR"),
+    ("page-0003-row-019-label", 4354, "mbb-p3-4354", 3, 19, "RESOLVED_ANCHOR"),
+    ("page-0003-row-034-label", 4357, "mbb-p3-4357", 3, 34, "RESOLVED_PATH"),
+    ("page-0003-row-035-label", 4335, "mbb-p3-4335", 3, 35, "RESOLVED_ANCHOR"),
+    ("page-0003-row-036-label", 4366, "mbb-p3-4366", 3, 36, "RESOLVED_ANCHOR"),
+    ("page-0004-row-009-label", 4336, "mbb-p4-4336", 4, 9, "RESOLVED_ANCHOR"),
 )
 
 
@@ -416,3 +473,435 @@ def test_e0038_post_seal_s3_registration_is_exact_and_registry_stays_frozen(
         "unchanged": True,
     }
     assert not any(record.get("artifact_snapshot_id") == SNAPSHOT_ID for record in registry_records)
+
+
+def test_e0038_reviewed_evaluation_is_exactly_postseal_and_mapping_immutable(
+    project_root: Path,
+):
+    reviewed_bytes = _read_exact_artifact(project_root, REVIEWED_EVALUATION)
+    reviewed = json.loads(reviewed_bytes)
+    registration = json.loads(_read_exact_artifact(project_root, S3_REGISTRATION))
+    mapping = json.loads(_read_exact_artifact(project_root, MAPPING_ONLY))
+    e0037 = json.loads(_read_exact_artifact(project_root, E0037_MAPPING_ONLY))
+
+    assert reviewed_bytes == (
+        json.dumps(
+            reviewed,
+            allow_nan=False,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n"
+    ).encode("utf-8")
+    assert set(reviewed) == {
+        "authority",
+        "claim_boundary",
+        "conclusion",
+        "fixed_review_contract",
+        "identity",
+        "input_artifacts",
+        "mechanism_calibration_gate",
+        "pre_review_validation",
+        "prior_comparison",
+        "review_access_order",
+        "review_authority_chain",
+        "reviewed_mapping_evaluation",
+        "state",
+    }
+    assert reviewed["identity"] == {
+        "capture_script": REVIEW_CAPTURE_SCRIPT,
+        "control": REVIEW_CONTROL,
+        "dataset_role": "CALIBRATION",
+        "evaluation_git_commit": REVIEW_COMMIT,
+        "evaluation_git_dirty": False,
+        "evaluator": REVIEW_EVALUATOR,
+        "experiment_id": "E-0038",
+        "format_version": 1,
+    }
+    assert reviewed["input_artifacts"] == {
+        "e0037_mapping_only": E0037_MAPPING_ONLY,
+        "mapping_control": MAPPING_CONTROL,
+        "mapping_only": MAPPING_ONLY,
+        "mapping_seal": MAPPING_SEAL,
+        "postseal_s3_registration": S3_REGISTRATION,
+        "prior_reviewed_evaluation": PRIOR_REVIEWED_EVALUATION,
+    }
+    assert reviewed["state"] == "E0038_POSTSEAL_REVIEWED_EVALUATION_COMPLETE"
+    assert reviewed["mechanism_calibration_gate"] == "PASS_FIXED_SIX_AUTOMATIC_SELECTION_EXACT"
+
+    validation = reviewed["pre_review_validation"]
+    assert set(validation) == {
+        "align_invocation_count",
+        "automatic_selection_allowed",
+        "changed_alias_report_norm_ids",
+        "core_result_status",
+        "counterfactual_search_pruned_states",
+        "e0037_e0038_selected_pair_parity",
+        "exact_interval_count",
+        "exact_status",
+        "formal_result_summary",
+        "main_search_pruned_states",
+        "mapping_bytes_validated",
+        "mapping_mutation_count",
+        "mapping_payload_validated_without_replay",
+        "mapping_rerun_invocation_count",
+        "mapping_result_sha256",
+        "mapping_seal_validated",
+        "plan_certificate",
+        "postseal_s3_registration_validated",
+        "result_projection_sha256",
+        "result_pruned_states",
+        "row_mapping_status_counts",
+        "s3_internal_restore_status",
+        "s3_isolated_hydrate_status",
+        "s3_snapshot_id",
+        "schema_disposition_status_counts",
+        "schema_node_count",
+        "score_margin",
+        "sealed_e0037_interval_count",
+        "search",
+        "selected_row_count",
+        "source_row_count",
+        "unselected_row_count",
+        "validation_order",
+    }
+    assert validation["validation_order"] == [
+        "REVIEW_CONTROL_AND_IMPLEMENTATION",
+        "E0038_MAPPING_SEAL",
+        "E0038_POSTSEAL_S3_REGISTRATION",
+        "E0038_MAPPING_CONTROL",
+        "E0038_MAPPING_ONLY_BYTES_AND_IDENTITIES",
+        "E0037_DIAGNOSTIC_BEST_PATH_IDENTITY",
+        "PRE_EXISTING_E0036_REVIEWED_ROWS",
+    ]
+    assert validation["mapping_seal_validated"] is True
+    assert validation["postseal_s3_registration_validated"] is True
+    assert validation["mapping_bytes_validated"] is True
+    assert validation["mapping_payload_validated_without_replay"] is True
+    assert validation["mapping_rerun_invocation_count"] == 0
+    assert validation["mapping_mutation_count"] == 0
+    assert validation["formal_result_summary"] == registration["formal_result_summary"]
+    formal = validation["formal_result_summary"]
+    assert len(formal) == 25
+    assert formal == {
+        **registration["formal_result_summary"],
+        "align_invocation_count": 1,
+        "automatic_selection_allowed": True,
+        "changed_report_norm_ids": [4375, 5699],
+        "core_result_status": "RESOLVED",
+        "counterfactual_search_pruned_states": 0,
+        "exact_interval_count": 42,
+        "exact_status": "EXACT_SEARCH_COMPLETE",
+        "main_search_pruned_states": 0,
+        "mapping_result_sha256": (
+            "45133c4c6a441327afc611d6cce6c4711b7fe18b945339d854944817b90a9e86"
+        ),
+        "result_projection_sha256": (
+            "d0934db910063bdb98db83f02bc2444fc1fe6e1dce7e1ebc7e09c7d36e434283"
+        ),
+        "result_pruned_states": 0,
+        "schema_node_count": 77,
+        "score_margin": 0.224488,
+        "sealed_e0037_interval_count": 40,
+        "selected_row_count": 58,
+        "source_row_count": 64,
+        "unselected_row_count": 6,
+    }
+    assert validation["search"] == {
+        "algorithm": "ANCHORED_INTERVAL_K_BEST_MONOTONE_DP_FAIL_CLOSED",
+        "beam_width_per_dp_cell": 8192,
+        "counterfactual_search_pruned_states": 0,
+        "counterfactual_searches": 17,
+        "dp_cells": 675,
+        "generated_states": 9977,
+        "intervals": 42,
+        "main_search_pruned_states": 0,
+        "pruned_states": 0,
+        "retained_states": 6833,
+    }
+    assert validation["plan_certificate"] == {
+        "hard_retained_states_per_cell_cap": 8192,
+        "maximum_monotone_signature_bound": 5005,
+        "total_signature_work_bound": 136661,
+        "total_signature_work_cap": 150000,
+    }
+
+    e0037_projection = [
+        {"row_id": record["row_id"], "report_norm_id": record["report_norm_id"]}
+        for record in e0037["mapping"]["best_path"]["matches"]
+    ]
+    e0038_rows = mapping["exact_mapping_bundle"]["exact_search"][
+        "mapping_result_without_internal_alias_authority"
+    ]["row_mappings"]
+    e0038_projection = [
+        {
+            "row_id": record["row_id"],
+            "report_norm_id": record["selected_report_norm_id"],
+        }
+        for record in e0038_rows
+        if record["selected_report_norm_id"] is not None
+    ]
+    assert e0037_projection == e0038_projection
+    assert len(e0038_projection) == 58
+    assert _canonical_sha256(e0038_projection) == SELECTED_PAIR_PROJECTION_SHA256
+    parity = validation["e0037_e0038_selected_pair_parity"]
+    assert parity["selected_pairs_identical"] is True
+    assert parity["same_selected_pair_count"] == 58
+    assert parity["same_unselected_row_count"] == 6
+    assert parity["selected_pair_projection_sha256"] == SELECTED_PAIR_PROJECTION_SHA256
+    assert parity["e0037_status"] == "AMBIGUOUS_MAPPING"
+    assert parity["e0037_automatic_selection_allowed"] is False
+    assert parity["e0037_score_margin"] == 0.1
+    assert parity["e0038_status"] == "RESOLVED"
+    assert parity["e0038_automatic_selection_allowed"] is True
+    assert parity["e0038_score_margin"] == 0.224488
+
+
+def test_e0038_reviewed_evaluation_is_fixed_six_only_and_grants_no_authority(
+    project_root: Path,
+):
+    reviewed = json.loads(_read_exact_artifact(project_root, REVIEWED_EVALUATION))
+    prior_review = json.loads(_read_exact_artifact(project_root, PRIOR_REVIEWED_EVALUATION))
+    evaluation = reviewed["reviewed_mapping_evaluation"]
+
+    assert set(evaluation) == {
+        "abstention_count",
+        "automatically_selected_count",
+        "automatically_selected_exact_count",
+        "coverage_limits",
+        "exact_rate",
+        "exact_report_norm_id_count",
+        "reviewed_row_count",
+        "row_mapping_status_counts",
+        "rows",
+        "selected_row_count",
+        "unselected_row_count",
+        "wrong_report_norm_id_count",
+    }
+    assert evaluation["reviewed_row_count"] == 6
+    assert evaluation["selected_row_count"] == 6
+    assert evaluation["automatically_selected_count"] == 6
+    assert evaluation["automatically_selected_exact_count"] == 6
+    assert evaluation["exact_report_norm_id_count"] == 6
+    assert evaluation["wrong_report_norm_id_count"] == 0
+    assert evaluation["unselected_row_count"] == 0
+    assert evaluation["abstention_count"] == 0
+    assert evaluation["exact_rate"] == 1.0
+    assert evaluation["row_mapping_status_counts"] == {
+        "RESOLVED_ANCHOR": 5,
+        "RESOLVED_PATH": 1,
+    }
+    rows = evaluation["rows"]
+    assert all(
+        set(row)
+        == {
+            "changed_alias_target",
+            "exact_report_norm_id",
+            "mapping_status",
+            "page",
+            "reviewed_report_norm_id",
+            "row_ordinal",
+            "sample_id",
+            "selected",
+            "selected_report_norm_id",
+            "visible_row_id",
+        }
+        for row in rows
+    )
+    assert [
+        (
+            row["sample_id"],
+            row["reviewed_report_norm_id"],
+            row["visible_row_id"],
+            row["page"],
+            row["row_ordinal"],
+            row["mapping_status"],
+        )
+        for row in rows
+    ] == list(FIXED_REVIEWED_ROWS)
+    assert all(row["selected_report_norm_id"] == row["reviewed_report_norm_id"] for row in rows)
+    assert all(row["selected"] is True for row in rows)
+    assert all(row["exact_report_norm_id"] is True for row in rows)
+    assert all(row["changed_alias_target"] is False for row in rows)
+
+    prior_bindings = prior_review["human_review"]["row_bindings"]
+    assert [
+        (
+            binding["sample_id"],
+            binding["reviewed_item_id"],
+            binding["visible_row_id"],
+            binding["page"],
+            binding["row_ordinal"],
+        )
+        for binding in prior_bindings
+    ] == [record[:5] for record in FIXED_REVIEWED_ROWS]
+    assert all("reviewed_numeric_pair" in binding for binding in prior_bindings)
+    assert evaluation["coverage_limits"] == {
+        "all_mapping_selected_row_count": 58,
+        "all_mapping_source_row_count": 64,
+        "all_mapping_unselected_row_count": 6,
+        "changed_alias_target_reviewed_count": 0,
+        "changed_alias_target_reviewed_rate": 0.0,
+        "changed_alias_target_total_count": 2,
+        "schema_alias_hypotheses_reviewed": False,
+        "selected_row_reviewed_count": 6,
+        "selected_row_reviewed_rate": 0.10344827586206896,
+        "source_row_reviewed_count": 6,
+        "source_row_reviewed_rate": 0.09375,
+        "unselected_row_mechanism_reviewed": False,
+        "unselected_row_reviewed_count": 0,
+        "unselected_row_reviewed_rate": 0.0,
+    }
+
+    comparison = reviewed["prior_comparison"]
+    assert comparison["same_fixed_six_reviewed_rows"] is True
+    assert comparison["e0036_baseline_readers"] == {
+        "deepseek_ocr2": {
+            "label_exact_count": 1,
+            "label_row_count": 6,
+            "mapping_status": "AMBIGUOUS_MAPPING",
+            "reader": "DEEPSEEK_OCR_2",
+            "reviewed_abstention_count": 6,
+            "reviewed_automatically_selected_exact_count": 0,
+            "reviewed_best_path_exact_count": 6,
+            "score_margin": 0.008494,
+        },
+        "vietocr": {
+            "label_exact_count": 3,
+            "label_row_count": 6,
+            "mapping_status": "AMBIGUOUS_MAPPING",
+            "reader": "VIETOCR_VGG_TRANSFORMER",
+            "reviewed_abstention_count": 6,
+            "reviewed_automatically_selected_exact_count": 0,
+            "reviewed_best_path_exact_count": 6,
+            "score_margin": 0.051282,
+        },
+    }
+    assert comparison["e0037_diagnostic_best_path"] == {
+        "mapping_status": "AMBIGUOUS_MAPPING",
+        "reviewed_abstention_count": 6,
+        "reviewed_automatically_selected_exact_count": 0,
+        "reviewed_best_path_exact_count": 6,
+        "score_margin": 0.1,
+        "selected_pair_count": 58,
+        "selected_pair_projection_sha256": SELECTED_PAIR_PROJECTION_SHA256,
+    }
+    assert comparison["e0038_exact_mapping"] == {
+        "mapping_status": "RESOLVED",
+        "reviewed_abstention_count": 0,
+        "reviewed_automatically_selected_exact_count": 6,
+        "reviewed_selected_exact_count": 6,
+        "score_margin": 0.224488,
+        "selected_pair_count": 58,
+        "selected_pair_projection_sha256": SELECTED_PAIR_PROJECTION_SHA256,
+    }
+
+    assert reviewed["fixed_review_contract"] == {
+        "alias_approval_allowed": False,
+        "automatic_mapping_adoption_allowed": False,
+        "exact_reviewed_row_count": 6,
+        "history_inputs_allowed": False,
+        "holdout_or_production_claim_allowed": False,
+        "mapping_must_be_validated_before_review_open": True,
+        "mapping_mutation_allowed": False,
+        "mapping_rerun_allowed": False,
+        "numeric_fields_may_be_present_but_must_not_be_extracted_or_used": True,
+        "review_source": "PRE_EXISTING_E0036_REVIEWED_EVALUATION_ONLY",
+        "separate_numeric_artifact_allowed": False,
+    }
+    assert reviewed["review_access_order"] == {
+        "e0030_artifact_opened": False,
+        "e0033_artifact_opened": False,
+        "e0034_artifact_opened": False,
+        "e0037_diagnostic_pair_parity_validated_before_review_open": True,
+        "history_or_mongodb_artifact_loaded": False,
+        "human_review_registry_loaded_directly": False,
+        "mapping_bytes_and_internal_identities_validated_before_review_open": True,
+        "mapping_mutated_after_review_open": False,
+        "mapping_rerun_after_review_open": False,
+        "mapping_seal_validated_before_review_open": True,
+        "numeric_fields_extracted_or_used": False,
+        "opened_input_paths": [
+            REVIEW_CONTROL["path"],
+            REVIEW_EVALUATOR["path"],
+            REVIEW_CAPTURE_SCRIPT["path"],
+            MAPPING_SEAL["path"],
+            S3_REGISTRATION["path"],
+            MAPPING_CONTROL["path"],
+            MAPPING_ONLY["path"],
+            E0037_MAPPING_ONLY["path"],
+            PRIOR_REVIEWED_EVALUATION["path"],
+        ],
+        "postseal_s3_registration_validated_before_review_open": True,
+        "qwen_raw_or_rejected_output_opened": False,
+        "review_interface_contains_numeric_fields": True,
+        "review_source": PRIOR_REVIEWED_EVALUATION["path"],
+        "review_source_count": 1,
+        "separate_numeric_artifact_opened": False,
+    }
+    assert reviewed["review_authority_chain"] == {
+        "authority_records_bound_through_frozen_artifacts": True,
+        "authority_records_opened_directly": False,
+        "document_key": "mbb-q1-2026-consolidated",
+        "document_source_sha256": (
+            "eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83"
+        ),
+        "human_review_dataset": {
+            "path": "reference/human_review/reviewed-mapping-corrections-2026-08-06.yaml",
+            "sha256": ("32c86c0bf7642d3bd7596225331fc6f10906970476e1a9ba982b2f478d0f8e74"),
+            "size_bytes": 22_000,
+        },
+        "human_review_policy": {
+            "path": "config/reference/human-review-v1.yaml",
+            "sha256": ("88011b6f9b85cc3561e0a4dddef39a9f57aa73f7d19e5fc4cb09825d2ea6fa34"),
+            "size_bytes": 980,
+        },
+        "review_id": "HR-2026-08-06-CTG-ACB-MBB",
+        "schema_graph": {
+            "graph_sha256": ("831cde59c00b87a23c79b840484e580b6fa8786711d42bd894e3beccd1fddb5b"),
+            "node_count": 77,
+            "numeric_report_norm_id_sort_used": False,
+            "statement_type": "CDKT",
+            "workbook_display_order_used": True,
+        },
+        "target_workbook": {
+            "path": "template/Bank_CDKT_ReportNormId.xlsx",
+            "sha256": ("a07ff47f7c41011fe4ca5a66681106d476586ded9013b5874cbb9f67a6ad8486"),
+            "size_bytes": 10_945,
+        },
+    }
+    assert reviewed["authority"] == {
+        "accounting_or_excel": False,
+        "automatic_mapping_adoption": False,
+        "dataset_role": "CALIBRATION_ONLY",
+        "exact_search_zero_pruning_mechanism_evidence": True,
+        "fixed_six_reviewed_non_contradiction": True,
+        "history_or_mongodb": False,
+        "holdout_or_production": False,
+        "mapping_accuracy_beyond_fixed_six": False,
+        "numeric_period_or_unit": False,
+        "schema_alias_approval": False,
+        "schema_authority": False,
+        "sealed_mapping_identity_and_s3_durability": True,
+    }
+    assert reviewed["conclusion"] == {
+        "accepted_evidence": [
+            "EXACT_SEARCH_ZERO_PRUNING_MECHANICAL_EVIDENCE",
+            "FIXED_SIX_REVIEWED_ROWS_DO_NOT_CONTRADICT_SELECTED_MAPPING",
+        ],
+        "automatic_mapping_adoption": False,
+        "next_milestone": (
+            "E-0039 schema-governed alias approval or replacement plus a "
+            "review/adjudication of the exact six unselected rows and a "
+            "review-independent unmatched-row role/acronym mechanism; numeric and history "
+            "evidence remain unused and out of scope."
+        ),
+        "production": False,
+        "reason": (
+            "The fixed six are selected and exact, but they cover zero of two alias targets "
+            "and zero of six unselected rows."
+        ),
+        "schema_alias_approval": False,
+    }
+    assert reviewed["claim_boundary"] == REVIEWED_CLAIM_BOUNDARY

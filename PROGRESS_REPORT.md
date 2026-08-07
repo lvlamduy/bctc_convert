@@ -1,7 +1,18 @@
 # Progress report
 
-- Updated: 2026-08-07T17:15:55+00:00
+- Updated: 2026-08-07T20:30:25+00:00
 - Branch: `codex/rebuild-bootstrap`
+- Latest formal E-0038 reviewed evaluation was captured at clean commit
+  `e825c51f4725062b00ecaee0d098d6e278fe4ade`. Artifact
+  `docs/experiments/E-0038-mbb-cdkt-reviewed-evaluation.json` is SHA-256
+  `324d7aff03447ca9ae5538debb5b71735c475f7408b5c8aa8381ddee7872b12e`
+  (18,273 bytes). The sealed zero-pruning mapping selects 58/64 rows and leaves
+  six unselected. All fixed six reviewed rows are automatically selected with
+  the exact reviewed ReportNormId (five anchors and one path), so the mechanism
+  gate is `PASS_FIXED_SIX_AUTOMATIC_SELECTION_EXACT`. Coverage is only 6/58
+  selected rows and 6/64 source rows, with 0/2 alias hypotheses and 0/6
+  unselected rows reviewed; automatic adoption, alias/schema authority and
+  production authority therefore remain false.
 - Latest clean E-0037 checkpoints: mechanism `3dd2681`, source/mapping seal
   `4e475d5`, and bounded S3 registry `f41e9ce`. Formal postjoin artifact
   SHA-256 is
@@ -344,7 +355,8 @@
   and both outputs were hash-sealed before the six reviewed rows were loaded.
   On those rows VietOCR is source-exact on 3/6 and DeepSeek on 1/6; the
   predeclared source-inexact gate therefore returns `RUN_QWEN_SAME_REQUEST`.
-- The reviewed mapping result isolates the current structural blocker. Both
+- The reviewed E-0036 mapping result isolated the then-current structural
+  blocker. Both
   readers' best ordered CDKT paths contain the reviewed ReportNormId on 6/6
   rows, but neither path has a decisive runner-up margin: VietOCR is 0.051282
   and DeepSeek is 0.008494. Both results are `AMBIGUOUS_MAPPING`, automatic
@@ -715,6 +727,18 @@
   Manifest `b7b2b5…78c8c` and run record `68b35b…a34` passed restore, exact
   sealed-hash comparison and a second no-overwrite hydration that reused both
   files.
+- Completed the formal E-0038 post-seal reviewed evaluation at clean commit
+  `e825c51f4725062b00ecaee0d098d6e278fe4ade`. The evaluator validated
+  `docs/experiments/E-0038-mbb-cdkt-exact-mapping-seal.json`, the immutable
+  `docs/experiments/E-0038-mbb-cdkt-exact-mapping-s3-registration.json` and the
+  sealed mapping bytes before opening the fixed review. The mapping selects 58
+  rows, leaves six unselected and records zero pruning. The fixed six are 6/6
+  exact automatic selections (five anchors and one path), but cover only 6/58
+  selected and 6/64 total rows, 0/2 aliases and 0/6 unselected rows. Artifact
+  `docs/experiments/E-0038-mbb-cdkt-reviewed-evaluation.json` is
+  `324d7aff…72b12e` (18,273 bytes). The pass gate is mechanism-calibration and
+  fixed-six non-contradiction evidence only; adoption, alias/schema and
+  production authority remain false, and numeric/history evidence was unused.
 
 ## Currently in progress
 
@@ -739,24 +763,24 @@
   values and five dashes, with nine blanks and one disagreement, but all
   selected/displayed/canonical value fields remain null. E-0037 is therefore
   not the final physical-provenance export and cannot populate the template.
-- Post-result diagnosis localizes the global abstention to three root intervals:
-  interval 17 has margin 0.224488 but cannot certify exhaustiveness after
-  pruning 122 main-search and 328 counterfactual states; interval 23 leaves
-  page-3 row 38→4375 at margin 0.1; interval 38 leaves page-4 row 22 between
-  5699 and 4306 at margin 0.145276. All 39 provisional anchors individually
-  pass the 0.15 counterfactual gate. The diagnostic best path has 58 matches
-  and six unmatched rows and agrees with 6/6 reviewed IDs, but remains
-  non-authoritative and unselected.
-- The active primary milestone is E-0038 mechanism-only mapping. It will run
-  exact bounded interval search for state spaces no larger than 5,005 under a
-  hard 8,192-state cap, require zero pruning for acceptance and otherwise
-  abstain. Existing thresholds, dependency closure and phase firewall remain
-  unchanged. Accounting, scope binding and export follow only after a decisive
-  mapping; they are not the current primary task.
+- E-0038 exact bounded search is complete at calibration scope. It preserves
+  E-0037's 58 diagnostic best-path pairs, now selects those 58 rows, leaves six
+  unselected and records zero pruning. The formal fixed-six review is 6/6 exact
+  (five anchors and one path), but it covers none of the six unselected rows and
+  neither of the two alias hypotheses. Thus the internal mapping result is
+  `RESOLVED`, while automatic project adoption and alias/schema approval remain
+  false.
+- The active primary milestone is E-0039: immutably supplement/adjudicate the
+  exact six unselected rows and run a separate review-independent schema-steward
+  gate for the two alias hypotheses. A single sealed eight-row adoption gate is
+  acceptable only if it keeps those authorities explicit. Neither route may
+  use or grant numeric or history authority. Accounting, scope binding and
+  export remain downstream of an adoption decision.
 - E-0027 page discovery, E-0028 locator V4, E-0030 table metadata, E-0033
   corrected row reconstruction, E-0034 numeric verification, E-0036 baseline
-  semantic proposals and E-0037 mapping abstention are the active upstream
-  seals. E-0029 remains the before-contract and E-0031 is a
+  semantic proposals, E-0037 mapping abstention and the E-0038 exact mapping,
+  seal, S3 registration and fixed-six evaluation are the active upstream
+  evidence. E-0029 remains the before-contract and E-0031 is a
   superseded-denominator numeric result.
   Any semantic-reader stage may consume only the active page/row/axis contracts
   plus source pixels. Reader disagreements and unresolved blanks cannot silently
@@ -856,12 +880,12 @@
   complete, tests that require raw PDFs must explicitly hydrate required paths;
   control-plane checks must never claim local source-byte verification while
   those files are absent.
-- E-0037 now scores fail-closed monotone anchored intervals, distinguishes PDF
-  skips from absent schema nodes and exposes ranked paths, counterfactuals and
-  runner-up margin. Its three root failures are one non-exhaustive pruned
-  interval and two exhaustive alias/margin intervals at 0.1 and 0.145276.
-  Decisive schema mapping therefore remains the blocker; the 58-match best
-  diagnostic path must not be promoted into an accepted ReportNormId or value.
+- E-0038 removes the bounded-search pruning blocker and seals the same 58 pairs
+  as selected, but the formal review covers only 6/58 selected rows and 6/64
+  source rows. It covers 0/6 unselected rows and 0/2 alias hypotheses. The
+  remaining blocker is therefore adoption evidence and schema stewardship, not
+  search exhaustiveness; the fixed-six pass must not be generalized into
+  mapping accuracy, alias approval, schema authority or production approval.
 
 ## Current strategy
 
@@ -897,10 +921,14 @@
    score label/accounting meaning, statement/section, parent/level, indentation,
    previous/next order and mapped neighbor anchors. Accept only a structurally
    valid best path with a clear runner-up margin; otherwise return
-   `AMBIGUOUS_MAPPING` with ranked evidence for review. E-0038 may replace beam
-   search only inside a bounded interval with at most 5,005 exact states under
-   an 8,192-state safety cap; acceptance requires zero pruning. All existing
-   score thresholds, anchor/dependency closure and access firewall stay fixed.
+   `AMBIGUOUS_MAPPING` with ranked evidence for review. E-0038 replaced beam
+   search only inside certified bounded intervals under the 8,192-state safety
+   cap and completed with zero pruning, selecting 58 rows and leaving six
+   unselected. That mechanical result remains a calibration hypothesis until
+   E-0039 adjudicates the six unselected rows and separately obtains
+   review-independent schema-steward decisions on the two aliases, or seals an
+   equivalent combined eight-row adoption gate. Numeric and history evidence
+   remain outside this gate.
 6. Validate period bindings, raw/normalized numeric semantics, signs, horizontal
    and vertical arithmetic, parent-child totals, and template display order.
    The numeric layer accepts only exact value/sign agreement between the primary
@@ -937,20 +965,21 @@
 
 ## Planned next steps
 
-1. Make E-0038 the next mechanism-only milestone: replace interval-17 beam
-   pruning with exact bounded search for at most 5,005 states under a hard
-   8,192-state cap. Acceptance requires zero pruning; cap overflow abstains.
-2. Preserve E-0037's sealed mapping abstention and keep all current thresholds,
-   anchor/dependency closure and phase firewalls unchanged. Do not promote its
-   58-match best path,
-   margin-0.1 diagnostic candidates or nested numeric evidence into accepted
-   ReportNormIds, displayed values or canonical values.
-3. Add `TỔNG TÀI SẢN CÓ`→4375 or
-   `Lợi ích của cổ đông không kiểm soát`→5699 only through a hash-pinned,
-   schema-governed alias source with review-independent steward authority. If
-   that authority is absent, preserve abstention.
-4. Only after decisive mapping, bind consolidated scope from visible source
-   evidence, run physical-row accounting diagnostics without repair, and build
+1. Make E-0039 the next adoption-gate milestone: immutably supplement and
+   adjudicate the exact six E-0038 unselected rows without opening numeric or
+   history evidence.
+2. Gate `TỔNG TÀI SẢN CÓ`→4375 and
+   `Lợi ích của cổ đông không kiểm soát`→5699 separately through a hash-pinned,
+   schema-governed source with review-independent steward authority. A combined
+   sealed eight-row gate may replace the two artifacts only if it preserves the
+   distinction between row adjudication and schema-alias approval.
+3. Preserve the E-0038 mapping bytes, seal, post-seal S3 registration and formal
+   fixed-six evaluation immutably. `PASS_FIXED_SIX_AUTOMATIC_SELECTION_EXACT`
+   is not automatic project adoption or mapping accuracy beyond those six, and
+   grants no alias, schema, numeric, history or production authority.
+4. Only after the E-0039 adoption prerequisites pass, bind consolidated scope
+   from visible source evidence, run physical-row accounting diagnostics
+   without repair, and build
    the provenance-bearing development export. Retain the one numeric
    disagreement and nine blanks and never use arithmetic to repair mapping.
 5. Complete and seal the final physical-cell provenance layer before selecting

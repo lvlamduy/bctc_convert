@@ -1,0 +1,447 @@
+{
+  "authority": {
+    "accounting_or_excel": false,
+    "automatic_mapping_adoption": false,
+    "dataset_role": "CALIBRATION_ONLY",
+    "exact_search_zero_pruning_mechanism_evidence": true,
+    "fixed_six_reviewed_non_contradiction": true,
+    "history_or_mongodb": false,
+    "holdout_or_production": false,
+    "mapping_accuracy_beyond_fixed_six": false,
+    "numeric_period_or_unit": false,
+    "schema_alias_approval": false,
+    "schema_authority": false,
+    "sealed_mapping_identity_and_s3_durability": true
+  },
+  "claim_boundary": "This calibration-only post-seal evaluation compares the immutable E-0038 mapping against exactly six pre-existing reviewed MBB CDKT rows after validating the mapping seal, its immutable post-seal S3 registration, and the mapping bytes and internal identities. All six reviewed rows are selected with the reviewed ReportNormId, which is fixed-six non-contradiction evidence only. The six rows cover neither E-0038 alias target and none of the six unselected rows, so aliases remain unapproved and the result grants no automatic adoption, schema, numeric, period, unit, accounting, Excel, history, holdout, or production authority. The frozen review interface contains numeric linkage fields, but this evaluator neither extracts nor uses them and opens no separate numeric artifact.",
+  "conclusion": {
+    "accepted_evidence": [
+      "EXACT_SEARCH_ZERO_PRUNING_MECHANICAL_EVIDENCE",
+      "FIXED_SIX_REVIEWED_ROWS_DO_NOT_CONTRADICT_SELECTED_MAPPING"
+    ],
+    "automatic_mapping_adoption": false,
+    "next_milestone": "E-0039 schema-governed alias approval or replacement plus a review/adjudication of the exact six unselected rows and a review-independent unmatched-row role/acronym mechanism; numeric and history evidence remain unused and out of scope.",
+    "production": false,
+    "reason": "The fixed six are selected and exact, but they cover zero of two alias targets and zero of six unselected rows.",
+    "schema_alias_approval": false
+  },
+  "fixed_review_contract": {
+    "alias_approval_allowed": false,
+    "automatic_mapping_adoption_allowed": false,
+    "exact_reviewed_row_count": 6,
+    "history_inputs_allowed": false,
+    "holdout_or_production_claim_allowed": false,
+    "mapping_must_be_validated_before_review_open": true,
+    "mapping_mutation_allowed": false,
+    "mapping_rerun_allowed": false,
+    "numeric_fields_may_be_present_but_must_not_be_extracted_or_used": true,
+    "review_source": "PRE_EXISTING_E0036_REVIEWED_EVALUATION_ONLY",
+    "separate_numeric_artifact_allowed": false
+  },
+  "identity": {
+    "capture_script": {
+      "path": "scripts/experiments/capture_e0038_mbb_cdkt_reviewed_evaluation.py",
+      "sha256": "98df640fedfe216e626ff757f157dc440d9b0a742f41909b27f158423a467157",
+      "size_bytes": 1863
+    },
+    "control": {
+      "path": "config/experiments/e0038-mbb-cdkt-reviewed-evaluation.yaml",
+      "sha256": "9e82b9bd134eac643879192895fdc1d02b6211739c2817ed99c9218d849d1daf",
+      "size_bytes": 2249
+    },
+    "dataset_role": "CALIBRATION",
+    "evaluation_git_commit": "e825c51f4725062b00ecaee0d098d6e278fe4ade",
+    "evaluation_git_dirty": false,
+    "evaluator": {
+      "path": "src/bctc_ai/evaluation/e0038_reviewed_evaluation.py",
+      "sha256": "99a3e363f78022c72aa3dd7cdaf4feb22bda061faf3946ef933fe6948b34f7e2",
+      "size_bytes": 58816
+    },
+    "experiment_id": "E-0038",
+    "format_version": 1
+  },
+  "input_artifacts": {
+    "e0037_mapping_only": {
+      "path": "output/calibration/e0037-mbb-cdkt-sealed-evidence-mapping/mapping_only.json",
+      "sha256": "e18f6b20825f93b20023c0d89caca1737481008b244696594852ca9fa972f99e",
+      "size_bytes": 646393
+    },
+    "mapping_control": {
+      "path": "config/experiments/e0038-mbb-cdkt-exact-mapping.yaml",
+      "sha256": "59db541208b6295aeff0cead9b0c9cb8624962738726b128432b1ca4cb074855",
+      "size_bytes": 8814
+    },
+    "mapping_only": {
+      "path": "output/calibration/e0038-mbb-cdkt-exact-mapping/mapping_only.json",
+      "sha256": "8b1074d2ca57efcb1c6da123615ace86438069b4d581b9afb4b6e4cfbf01a9e9",
+      "size_bytes": 646606
+    },
+    "mapping_seal": {
+      "path": "docs/experiments/E-0038-mbb-cdkt-exact-mapping-seal.json",
+      "sha256": "bffcaf56d80af458187a646269862b8bf669237d865fa1561ab41b056db06137",
+      "size_bytes": 6421
+    },
+    "postseal_s3_registration": {
+      "path": "docs/experiments/E-0038-mbb-cdkt-exact-mapping-s3-registration.json",
+      "sha256": "6baf6a90842066e5253533072a800c5066e97248745efed8480cb67c410601e4",
+      "size_bytes": 9555
+    },
+    "prior_reviewed_evaluation": {
+      "path": "docs/experiments/E-0036-mbb-cdkt-reviewed-reader-evaluation.json",
+      "sha256": "8ea952bc008d4bf4c274c25299cadb1c624424114be9ea3a38ba9b15d1b1c133",
+      "size_bytes": 213025
+    }
+  },
+  "mechanism_calibration_gate": "PASS_FIXED_SIX_AUTOMATIC_SELECTION_EXACT",
+  "pre_review_validation": {
+    "align_invocation_count": 1,
+    "automatic_selection_allowed": true,
+    "changed_alias_report_norm_ids": [
+      4375,
+      5699
+    ],
+    "core_result_status": "RESOLVED",
+    "counterfactual_search_pruned_states": 0,
+    "e0037_e0038_selected_pair_parity": {
+      "e0037_automatic_selection_allowed": false,
+      "e0037_row_mapping_status_counts": {
+        "AMBIGUOUS_ACROSS_PATHS": 60,
+        "NO_ADMISSIBLE_PAIR": 4
+      },
+      "e0037_score_margin": 0.1,
+      "e0037_search": {
+        "algorithm": "ANCHORED_INTERVAL_K_BEST_MONOTONE_DP_FAIL_CLOSED",
+        "beam_width_per_dp_cell": 64,
+        "counterfactual_search_pruned_states": 328,
+        "counterfactual_searches": 19,
+        "dp_cells": 701,
+        "generated_states": 9799,
+        "intervals": 40,
+        "main_search_pruned_states": 122,
+        "pruned_states": 450,
+        "retained_states": 6336
+      },
+      "e0037_status": "AMBIGUOUS_MAPPING",
+      "e0038_automatic_selection_allowed": true,
+      "e0038_score_margin": 0.224488,
+      "e0038_status": "RESOLVED",
+      "interpretation": "E-0038 makes the same 58 diagnostic best-path pairs automatically decisive; it does not add new reviewed ReportNormId correctness.",
+      "same_selected_pair_count": 58,
+      "same_unselected_row_count": 6,
+      "selected_pair_projection_sha256": "8135658100d83772812aeecff4beb4378ad7163c96a286a3770d430027a87df3",
+      "selected_pairs_identical": true
+    },
+    "exact_interval_count": 42,
+    "exact_status": "EXACT_SEARCH_COMPLETE",
+    "formal_result_summary": {
+      "align_invocation_count": 1,
+      "automatic_selection_allowed": true,
+      "changed_report_norm_ids": [
+        4375,
+        5699
+      ],
+      "core_result_status": "RESOLVED",
+      "counterfactual_search_pruned_states": 0,
+      "counterfactual_searches": 17,
+      "dp_cells": 675,
+      "exact_interval_count": 42,
+      "exact_status": "EXACT_SEARCH_COMPLETE",
+      "generated_states": 9977,
+      "main_search_pruned_states": 0,
+      "mapping_result_sha256": "45133c4c6a441327afc611d6cce6c4711b7fe18b945339d854944817b90a9e86",
+      "mapping_state": "E0038_EXACT_MAPPING_ONLY_CALIBRATION_HYPOTHESIS_SEALED_BEFORE_REVIEW",
+      "plan_certificate": {
+        "hard_retained_states_per_cell_cap": 8192,
+        "maximum_monotone_signature_bound": 5005,
+        "total_signature_work_bound": 136661,
+        "total_signature_work_cap": 150000
+      },
+      "result_projection_sha256": "d0934db910063bdb98db83f02bc2444fc1fe6e1dce7e1ebc7e09c7d36e434283",
+      "result_pruned_states": 0,
+      "retained_states": 6833,
+      "row_mapping_status_counts": {
+        "BEST_PATH_SKIPPED": 2,
+        "NO_ADMISSIBLE_PAIR": 4,
+        "RESOLVED_ANCHOR": 41,
+        "RESOLVED_PATH": 17
+      },
+      "schema_disposition_status_counts": {
+        "MAPPED": 58,
+        "UNMATCHED_SCHEMA_NODE": 13,
+        "UNMATCHED_SCHEMA_NODE_WITH_SKIPPED_CANDIDATES": 6
+      },
+      "schema_node_count": 77,
+      "score_margin": 0.224488,
+      "sealed_e0037_interval_count": 40,
+      "selected_row_count": 58,
+      "source_row_count": 64,
+      "unselected_row_count": 6
+    },
+    "main_search_pruned_states": 0,
+    "mapping_bytes_validated": true,
+    "mapping_mutation_count": 0,
+    "mapping_payload_validated_without_replay": true,
+    "mapping_rerun_invocation_count": 0,
+    "mapping_result_sha256": "45133c4c6a441327afc611d6cce6c4711b7fe18b945339d854944817b90a9e86",
+    "mapping_seal_validated": true,
+    "plan_certificate": {
+      "hard_retained_states_per_cell_cap": 8192,
+      "maximum_monotone_signature_bound": 5005,
+      "total_signature_work_bound": 136661,
+      "total_signature_work_cap": 150000
+    },
+    "postseal_s3_registration_validated": true,
+    "result_projection_sha256": "d0934db910063bdb98db83f02bc2444fc1fe6e1dce7e1ebc7e09c7d36e434283",
+    "result_pruned_states": 0,
+    "row_mapping_status_counts": {
+      "BEST_PATH_SKIPPED": 2,
+      "NO_ADMISSIBLE_PAIR": 4,
+      "RESOLVED_ANCHOR": 41,
+      "RESOLVED_PATH": 17
+    },
+    "s3_internal_restore_status": "PASS",
+    "s3_isolated_hydrate_status": "PASS",
+    "s3_snapshot_id": "20260807T192436Z-e0038-exact-mapping-seal-8b1074d2ca57",
+    "schema_disposition_status_counts": {
+      "MAPPED": 58,
+      "UNMATCHED_SCHEMA_NODE": 13,
+      "UNMATCHED_SCHEMA_NODE_WITH_SKIPPED_CANDIDATES": 6
+    },
+    "schema_node_count": 77,
+    "score_margin": 0.224488,
+    "sealed_e0037_interval_count": 40,
+    "search": {
+      "algorithm": "ANCHORED_INTERVAL_K_BEST_MONOTONE_DP_FAIL_CLOSED",
+      "beam_width_per_dp_cell": 8192,
+      "counterfactual_search_pruned_states": 0,
+      "counterfactual_searches": 17,
+      "dp_cells": 675,
+      "generated_states": 9977,
+      "intervals": 42,
+      "main_search_pruned_states": 0,
+      "pruned_states": 0,
+      "retained_states": 6833
+    },
+    "selected_row_count": 58,
+    "source_row_count": 64,
+    "unselected_row_count": 6,
+    "validation_order": [
+      "REVIEW_CONTROL_AND_IMPLEMENTATION",
+      "E0038_MAPPING_SEAL",
+      "E0038_POSTSEAL_S3_REGISTRATION",
+      "E0038_MAPPING_CONTROL",
+      "E0038_MAPPING_ONLY_BYTES_AND_IDENTITIES",
+      "E0037_DIAGNOSTIC_BEST_PATH_IDENTITY",
+      "PRE_EXISTING_E0036_REVIEWED_ROWS"
+    ]
+  },
+  "prior_comparison": {
+    "e0036_baseline_readers": {
+      "deepseek_ocr2": {
+        "label_exact_count": 1,
+        "label_row_count": 6,
+        "mapping_status": "AMBIGUOUS_MAPPING",
+        "reader": "DEEPSEEK_OCR_2",
+        "reviewed_abstention_count": 6,
+        "reviewed_automatically_selected_exact_count": 0,
+        "reviewed_best_path_exact_count": 6,
+        "score_margin": 0.008494
+      },
+      "vietocr": {
+        "label_exact_count": 3,
+        "label_row_count": 6,
+        "mapping_status": "AMBIGUOUS_MAPPING",
+        "reader": "VIETOCR_VGG_TRANSFORMER",
+        "reviewed_abstention_count": 6,
+        "reviewed_automatically_selected_exact_count": 0,
+        "reviewed_best_path_exact_count": 6,
+        "score_margin": 0.051282
+      }
+    },
+    "e0037_diagnostic_best_path": {
+      "mapping_status": "AMBIGUOUS_MAPPING",
+      "reviewed_abstention_count": 6,
+      "reviewed_automatically_selected_exact_count": 0,
+      "reviewed_best_path_exact_count": 6,
+      "score_margin": 0.1,
+      "selected_pair_count": 58,
+      "selected_pair_projection_sha256": "8135658100d83772812aeecff4beb4378ad7163c96a286a3770d430027a87df3"
+    },
+    "e0038_exact_mapping": {
+      "mapping_status": "RESOLVED",
+      "reviewed_abstention_count": 0,
+      "reviewed_automatically_selected_exact_count": 6,
+      "reviewed_selected_exact_count": 6,
+      "score_margin": 0.224488,
+      "selected_pair_count": 58,
+      "selected_pair_projection_sha256": "8135658100d83772812aeecff4beb4378ad7163c96a286a3770d430027a87df3"
+    },
+    "interpretation": "E-0036 and the sealed E-0037 diagnostic best path were already 6/6 on the fixed reviewed IDs. E-0038 changes decisiveness and abstention for the same 58 row-to-ID pairs; it does not create new reviewed ID correctness.",
+    "same_fixed_six_reviewed_rows": true
+  },
+  "review_access_order": {
+    "e0030_artifact_opened": false,
+    "e0033_artifact_opened": false,
+    "e0034_artifact_opened": false,
+    "e0037_diagnostic_pair_parity_validated_before_review_open": true,
+    "history_or_mongodb_artifact_loaded": false,
+    "human_review_registry_loaded_directly": false,
+    "mapping_bytes_and_internal_identities_validated_before_review_open": true,
+    "mapping_mutated_after_review_open": false,
+    "mapping_rerun_after_review_open": false,
+    "mapping_seal_validated_before_review_open": true,
+    "numeric_fields_extracted_or_used": false,
+    "opened_input_paths": [
+      "config/experiments/e0038-mbb-cdkt-reviewed-evaluation.yaml",
+      "src/bctc_ai/evaluation/e0038_reviewed_evaluation.py",
+      "scripts/experiments/capture_e0038_mbb_cdkt_reviewed_evaluation.py",
+      "docs/experiments/E-0038-mbb-cdkt-exact-mapping-seal.json",
+      "docs/experiments/E-0038-mbb-cdkt-exact-mapping-s3-registration.json",
+      "config/experiments/e0038-mbb-cdkt-exact-mapping.yaml",
+      "output/calibration/e0038-mbb-cdkt-exact-mapping/mapping_only.json",
+      "output/calibration/e0037-mbb-cdkt-sealed-evidence-mapping/mapping_only.json",
+      "docs/experiments/E-0036-mbb-cdkt-reviewed-reader-evaluation.json"
+    ],
+    "postseal_s3_registration_validated_before_review_open": true,
+    "qwen_raw_or_rejected_output_opened": false,
+    "review_interface_contains_numeric_fields": true,
+    "review_source": "docs/experiments/E-0036-mbb-cdkt-reviewed-reader-evaluation.json",
+    "review_source_count": 1,
+    "separate_numeric_artifact_opened": false
+  },
+  "review_authority_chain": {
+    "authority_records_bound_through_frozen_artifacts": true,
+    "authority_records_opened_directly": false,
+    "document_key": "mbb-q1-2026-consolidated",
+    "document_source_sha256": "eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83",
+    "human_review_dataset": {
+      "path": "reference/human_review/reviewed-mapping-corrections-2026-08-06.yaml",
+      "sha256": "32c86c0bf7642d3bd7596225331fc6f10906970476e1a9ba982b2f478d0f8e74",
+      "size_bytes": 22000
+    },
+    "human_review_policy": {
+      "path": "config/reference/human-review-v1.yaml",
+      "sha256": "88011b6f9b85cc3561e0a4dddef39a9f57aa73f7d19e5fc4cb09825d2ea6fa34",
+      "size_bytes": 980
+    },
+    "review_id": "HR-2026-08-06-CTG-ACB-MBB",
+    "schema_graph": {
+      "graph_sha256": "831cde59c00b87a23c79b840484e580b6fa8786711d42bd894e3beccd1fddb5b",
+      "node_count": 77,
+      "numeric_report_norm_id_sort_used": false,
+      "statement_type": "CDKT",
+      "workbook_display_order_used": true
+    },
+    "target_workbook": {
+      "path": "template/Bank_CDKT_ReportNormId.xlsx",
+      "sha256": "a07ff47f7c41011fe4ca5a66681106d476586ded9013b5874cbb9f67a6ad8486",
+      "size_bytes": 10945
+    }
+  },
+  "reviewed_mapping_evaluation": {
+    "abstention_count": 0,
+    "automatically_selected_count": 6,
+    "automatically_selected_exact_count": 6,
+    "coverage_limits": {
+      "all_mapping_selected_row_count": 58,
+      "all_mapping_source_row_count": 64,
+      "all_mapping_unselected_row_count": 6,
+      "changed_alias_target_reviewed_count": 0,
+      "changed_alias_target_reviewed_rate": 0.0,
+      "changed_alias_target_total_count": 2,
+      "schema_alias_hypotheses_reviewed": false,
+      "selected_row_reviewed_count": 6,
+      "selected_row_reviewed_rate": 0.10344827586206896,
+      "source_row_reviewed_count": 6,
+      "source_row_reviewed_rate": 0.09375,
+      "unselected_row_mechanism_reviewed": false,
+      "unselected_row_reviewed_count": 0,
+      "unselected_row_reviewed_rate": 0.0
+    },
+    "exact_rate": 1.0,
+    "exact_report_norm_id_count": 6,
+    "reviewed_row_count": 6,
+    "row_mapping_status_counts": {
+      "RESOLVED_ANCHOR": 5,
+      "RESOLVED_PATH": 1
+    },
+    "rows": [
+      {
+        "changed_alias_target": false,
+        "exact_report_norm_id": true,
+        "mapping_status": "RESOLVED_ANCHOR",
+        "page": 3,
+        "reviewed_report_norm_id": 4317,
+        "row_ordinal": 18,
+        "sample_id": "page-0003-row-018-label",
+        "selected": true,
+        "selected_report_norm_id": 4317,
+        "visible_row_id": "mbb-p3-4317"
+      },
+      {
+        "changed_alias_target": false,
+        "exact_report_norm_id": true,
+        "mapping_status": "RESOLVED_ANCHOR",
+        "page": 3,
+        "reviewed_report_norm_id": 4354,
+        "row_ordinal": 19,
+        "sample_id": "page-0003-row-019-label",
+        "selected": true,
+        "selected_report_norm_id": 4354,
+        "visible_row_id": "mbb-p3-4354"
+      },
+      {
+        "changed_alias_target": false,
+        "exact_report_norm_id": true,
+        "mapping_status": "RESOLVED_PATH",
+        "page": 3,
+        "reviewed_report_norm_id": 4357,
+        "row_ordinal": 34,
+        "sample_id": "page-0003-row-034-label",
+        "selected": true,
+        "selected_report_norm_id": 4357,
+        "visible_row_id": "mbb-p3-4357"
+      },
+      {
+        "changed_alias_target": false,
+        "exact_report_norm_id": true,
+        "mapping_status": "RESOLVED_ANCHOR",
+        "page": 3,
+        "reviewed_report_norm_id": 4335,
+        "row_ordinal": 35,
+        "sample_id": "page-0003-row-035-label",
+        "selected": true,
+        "selected_report_norm_id": 4335,
+        "visible_row_id": "mbb-p3-4335"
+      },
+      {
+        "changed_alias_target": false,
+        "exact_report_norm_id": true,
+        "mapping_status": "RESOLVED_ANCHOR",
+        "page": 3,
+        "reviewed_report_norm_id": 4366,
+        "row_ordinal": 36,
+        "sample_id": "page-0003-row-036-label",
+        "selected": true,
+        "selected_report_norm_id": 4366,
+        "visible_row_id": "mbb-p3-4366"
+      },
+      {
+        "changed_alias_target": false,
+        "exact_report_norm_id": true,
+        "mapping_status": "RESOLVED_ANCHOR",
+        "page": 4,
+        "reviewed_report_norm_id": 4336,
+        "row_ordinal": 9,
+        "sample_id": "page-0004-row-009-label",
+        "selected": true,
+        "selected_report_norm_id": 4336,
+        "visible_row_id": "mbb-p4-4336"
+      }
+    ],
+    "selected_row_count": 6,
+    "unselected_row_count": 0,
+    "wrong_report_norm_id_count": 0
+  },
+  "state": "E0038_POSTSEAL_REVIEWED_EVALUATION_COMPLETE"
+}

@@ -269,6 +269,25 @@ This is the durable retrieval point for project context. It summarizes user auth
   best path has 58 matches and six unmatched rows and, only in post-result
   diagnosis, agrees with 6/6 reviewed IDs. It remains diagnostic: no row or
   value is selected and review does not become mapping authority.
+- E-0038 uses exact bounded search for the formerly beam-pruned intervals,
+  preserves the E-0037 diagnostic pair projection, carries two explicit
+  unapproved alias hypotheses and completes with zero pruning. Its sealed
+  mapping selects 58/64 rows and leaves six unselected. The mapping seal and
+  immutable post-seal S3 registration were validated before the fixed review
+  was opened.
+  At clean evaluation commit
+  `e825c51f4725062b00ecaee0d098d6e278fe4ade`, all six reviewed rows are exact
+  automatic selections: five `RESOLVED_ANCHOR` and one `RESOLVED_PATH`. The
+  mechanism gate is `PASS_FIXED_SIX_AUTOMATIC_SELECTION_EXACT`, but coverage is
+  only 6/58 selected rows and 6/64 source rows, 0/2 alias hypotheses and 0/6
+  unselected rows. Therefore automatic adoption, alias approval, schema
+  authority and production authority remain false; numeric and history evidence
+  were neither used nor authorized. Formal reviewed-evaluation SHA-256 is
+  `324d7aff03447ca9ae5538debb5b71735c475f7408b5c8aa8381ddee7872b12e`
+  (18,273 bytes); it links
+  `docs/experiments/E-0038-mbb-cdkt-exact-mapping-seal.json`,
+  `docs/experiments/E-0038-mbb-cdkt-exact-mapping-s3-registration.json` and
+  `docs/experiments/E-0038-mbb-cdkt-reviewed-evaluation.json`.
 - Three historical Codex-session S3 archive versions are integrity-restorable
   but security-quarantined because they captured a GitHub credential from the
   conversation stream. Session-backup V2 now scans paths and bytes, verifies an
@@ -279,26 +298,22 @@ This is the durable retrieval point for project context. It summarizes user auth
 
 ## Open constraints and next decisions
 
-- The immediate extraction blocker remains decisive ordered structural mapping,
-  not merely label CER. E-0037 added source-visible anchors, direct-parent/
-  section constraints, workbook order and fail-closed interval
-  counterfactuals without review, history or numeric hints, but its formal
-  margin is only 0.1 and all 64 rows abstain. Preserve `AMBIGUOUS_MAPPING`; do
-  not promote the best diagnostic path or its independently verified numeric
-  evidence. Exclude the rejected current Qwen configuration from proposal
-  fusion; a future Qwen retry is secondary and must first pass a format-pinned
-  short canary.
-- E-0038 is the next mechanism-only milestone. Replace beam search only for a
-  bounded interval whose exact state space is at most 5,005, enforce a hard
-  8,192-state safety cap, and require zero pruning for acceptance; otherwise
-  abstain. Keep the E-0037 thresholds, anchor/dependency closure and phase
-  firewall unchanged.
-- `TỔNG TÀI SẢN CÓ`→4375 and
-  `Lợi ích của cổ đông không kiểm soát`→5699 may be added only through a
-  hash-pinned, schema-governed alias source backed by review-independent
-  steward authority. If that authority is unavailable, both intervals remain
-  unresolved. Accounting, scope binding and export start only after decisive
-  mapping and may not repair it.
+- E-0038 closes the bounded-search exhaustiveness blocker, but not the adoption
+  gate. Its fixed-six review covers only 6/58 selected rows and 6/64 source
+  rows, while covering none of the six unselected rows and neither changed alias
+  hypothesis. Preserve the mapping, seal, S3 registration and reviewed
+  evaluation immutably; do not generalize the fixed-six pass into mapping
+  accuracy, automatic adoption, schema authority or production approval.
+  Exclude the rejected current Qwen configuration from proposal fusion; a
+  future Qwen retry is secondary and must first pass a format-pinned short
+  canary.
+- E-0039 is the next milestone. It must immutably supplement/adjudicate the
+  exact six unselected rows and separately obtain review-independent
+  schema-steward decisions for `TỔNG TÀI SẢN CÓ`→4375 and
+  `Lợi ích của cổ đông không kiểm soát`→5699. A combined sealed eight-row
+  adoption gate is acceptable only if it preserves those distinct authorities.
+  Numeric and history evidence remain unused and out of authority; accounting,
+  scope binding and export cannot repair or precede the adoption decision.
 - Preserve the current stable corpus denominator and rerun drift-aware registration whenever new files arrive.
 - Expand frozen native-geometry fixtures across institutions, years, scopes, scans, borderless layouts, broken pages, and multi-page rows before assigning production confidence.
 - Use the authorized S3 prefix for content-addressed off-machine artifacts and
@@ -394,3 +409,12 @@ This is the durable retrieval point for project context. It summarizes user auth
   and two alias/margin intervals; designated exact zero-pruning bounded search
   as the E-0038 mechanism-only milestone. Accounting, final physical
   provenance, Excel, holdout and production claims remain open.
+- 2026-08-07: Completed the formal E-0038 post-seal reviewed evaluation at clean
+  commit `e825c51f4725062b00ecaee0d098d6e278fe4ade`. The zero-pruning mapping
+  selects 58 rows and leaves six unselected; the fixed six are 6/6 exact
+  automatic selections (five anchors and one path), but cover 0/2 aliases and
+  0/6 unselected rows. Recorded
+  `PASS_FIXED_SIX_AUTOMATIC_SELECTION_EXACT` as bounded mechanism evidence only,
+  retained false adoption/alias/schema/production authority and advanced the
+  active milestone to the immutable E-0039 six-row adjudication plus separate
+  two-alias schema-steward gate, or an equivalent combined eight-row gate.
