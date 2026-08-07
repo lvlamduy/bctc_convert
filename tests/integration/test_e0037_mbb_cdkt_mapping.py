@@ -260,6 +260,8 @@ def test_mapping_only_runs_from_authenticated_bytes_without_postjoin_access(
     project_root,
     monkeypatch,
 ):
+    mapping_output = project_root / MAPPING_ONLY_RELATIVE_PATH
+    mapping_output_before = mapping_output.read_bytes() if mapping_output.is_file() else None
     source_payload = assemble_source_only_structure(project_root)
     validate_source_only_structure(source_payload)
     source_bytes = json.dumps(
@@ -315,7 +317,10 @@ def test_mapping_only_runs_from_authenticated_bytes_without_postjoin_access(
         not any(token in path for token in ("e-0030", "e-0033", "e-0034", "qwen", "review"))
         for path in opened_paths
     )
-    assert not (project_root / MAPPING_ONLY_RELATIVE_PATH).exists()
+    if mapping_output_before is None:
+        assert not mapping_output.exists()
+    else:
+        assert mapping_output.read_bytes() == mapping_output_before
 
 
 def test_postjoin_schema_preserves_scope_axes_units_numeric_statuses_and_scaling(project_root):
