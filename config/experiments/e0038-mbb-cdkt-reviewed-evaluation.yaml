@@ -1,0 +1,56 @@
+version: 1
+experiment_id: E-0038
+dataset_role: CALIBRATION
+state: READY_FOR_E0038_POSTSEAL_REVIEWED_EVALUATION
+
+frozen_inputs:
+  mapping_only:
+    path: output/calibration/e0038-mbb-cdkt-exact-mapping/mapping_only.json
+    sha256: 8b1074d2ca57efcb1c6da123615ace86438069b4d581b9afb4b6e4cfbf01a9e9
+    size_bytes: 646606
+  mapping_seal:
+    path: docs/experiments/E-0038-mbb-cdkt-exact-mapping-seal.json
+    sha256: bffcaf56d80af458187a646269862b8bf669237d865fa1561ab41b056db06137
+    size_bytes: 6421
+  postseal_s3_registration:
+    path: docs/experiments/E-0038-mbb-cdkt-exact-mapping-s3-registration.json
+    sha256: 6baf6a90842066e5253533072a800c5066e97248745efed8480cb67c410601e4
+    size_bytes: 9555
+  mapping_control:
+    path: config/experiments/e0038-mbb-cdkt-exact-mapping.yaml
+    sha256: 59db541208b6295aeff0cead9b0c9cb8624962738726b128432b1ca4cb074855
+    size_bytes: 8814
+  e0037_mapping_only:
+    path: output/calibration/e0037-mbb-cdkt-sealed-evidence-mapping/mapping_only.json
+    sha256: e18f6b20825f93b20023c0d89caca1737481008b244696594852ca9fa972f99e
+    size_bytes: 646393
+  prior_reviewed_evaluation:
+    path: docs/experiments/E-0036-mbb-cdkt-reviewed-reader-evaluation.json
+    sha256: 8ea952bc008d4bf4c274c25299cadb1c624424114be9ea3a38ba9b15d1b1c133
+    size_bytes: 213025
+
+implementation:
+  evaluator:
+    path: src/bctc_ai/evaluation/e0038_reviewed_evaluation.py
+    sha256: 99a3e363f78022c72aa3dd7cdaf4feb22bda061faf3946ef933fe6948b34f7e2
+    size_bytes: 58816
+  capture_script:
+    path: scripts/experiments/capture_e0038_mbb_cdkt_reviewed_evaluation.py
+    sha256: 98df640fedfe216e626ff757f157dc440d9b0a742f41909b27f158423a467157
+    size_bytes: 1863
+
+review_contract:
+  review_source: PRE_EXISTING_E0036_REVIEWED_EVALUATION_ONLY
+  exact_reviewed_row_count: 6
+  mapping_must_be_validated_before_review_open: true
+  mapping_rerun_allowed: false
+  mapping_mutation_allowed: false
+  alias_approval_allowed: false
+  automatic_mapping_adoption_allowed: false
+  numeric_fields_may_be_present_but_must_not_be_extracted_or_used: true
+  separate_numeric_artifact_allowed: false
+  history_inputs_allowed: false
+  holdout_or_production_claim_allowed: false
+
+output:
+  path: docs/experiments/E-0038-mbb-cdkt-reviewed-evaluation.json
