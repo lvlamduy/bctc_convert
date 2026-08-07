@@ -21,6 +21,11 @@ from bctc_ai.evaluation.e0039_review_packet_seal import (
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 SEAL_HEAD = "b" * 40
+FORMAL_SEAL_ARTIFACT = {
+    "path": "docs/experiments/E-0039-mbb-cdkt-review-packet-seal.json",
+    "sha256": "2e876af8e0b4128180dce9c1ed6750b587485112320d06cb219dd7fb20e857a5",
+    "size_bytes": 8_416,
+}
 FIXTURE_FILES = tuple(
     sorted(
         {
@@ -654,11 +659,23 @@ def test_control_pins_exact_ten_paths_and_all_implementations() -> None:
     assert control["output"] == {"path": seal.OUTPUT_RELATIVE_PATH.as_posix()}
 
 
-def test_captured_packet_is_immutable_and_formal_seal_is_absent() -> None:
+def test_captured_packet_and_formal_seal_are_immutable_after_publication() -> None:
     packet_bytes = (REPOSITORY_ROOT / seal.PACKET_RELATIVE_PATH).read_bytes()
     assert hashlib.sha256(packet_bytes).hexdigest() == seal.PACKET_ARTIFACT["sha256"]
     assert len(packet_bytes) == seal.PACKET_ARTIFACT["size_bytes"]
-    assert not (REPOSITORY_ROOT / seal.OUTPUT_RELATIVE_PATH).exists()
+
+    seal_path = REPOSITORY_ROOT / seal.OUTPUT_RELATIVE_PATH
+    assert seal.OUTPUT_RELATIVE_PATH.as_posix() == FORMAL_SEAL_ARTIFACT["path"]
+    seal_bytes = seal_path.read_bytes()
+    assert hashlib.sha256(seal_bytes).hexdigest() == FORMAL_SEAL_ARTIFACT["sha256"]
+    assert len(seal_bytes) == FORMAL_SEAL_ARTIFACT["size_bytes"]
+    assert seal_bytes == seal._encoded_seal_json(json.loads(seal_bytes))
+
+    with pytest.raises(E0039ReviewPacketSealError, match="refusing to overwrite"):
+        capture_e0039_review_packet_seal(REPOSITORY_ROOT)
+
+    assert (REPOSITORY_ROOT / seal.PACKET_RELATIVE_PATH).read_bytes() == packet_bytes
+    assert seal_path.read_bytes() == seal_bytes
 
 
 def test_real_capture_commit_ancestry_and_historical_packet_blobs() -> None:
