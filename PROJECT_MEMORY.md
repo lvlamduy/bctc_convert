@@ -230,6 +230,45 @@ This is the durable retrieval point for project context. It summarizes user auth
   rejected, while the model-family conclusion is `NOT_ESTABLISHED`. Formal
   artifact SHA-256 is
   `d0be37a35d43091f8bd9575893e713b603877f3ea517597a3c0f6a5481e0382d`.
+- E-0037 freezes source structure before schema/reader access, then freezes the
+  mapping before period/unit/numeric access. Source bytes are
+  `ef098a659f8b557ac3a801edccfc7c0848be9a512b47ba7c9278cd3873f70728`
+  (136,042 bytes); mapping-only bytes are
+  `e18f6b20825f93b20023c0d89caca1737481008b244696594852ca9fa972f99e`
+  (646,393 bytes); and mapping seal SHA-256 is
+  `665aa1b3ac96881df0a4cd7b2f7da2425c3635ad1e8ea024e299b668c79ed0e5`.
+  The 64-row/77-node result is `AMBIGUOUS_MAPPING` at margin 0.1 with automatic
+  selection false: 60 rows are ambiguous across paths, four have no admissible
+  pair and zero select a ReportNormId.
+- E-0037 postjoin SHA-256 is
+  `a44146ff98ac9b33dd7f04037e69ba258ef7361dc158ecbd51a6688d7fbb6f7b`
+  (1,045,610 bytes). It binds four snapshot axes for 2026-03-31/current and
+  2025-12-31/comparative, raw unit `triu đồng` matched to `triệu đồng`, canonical
+  VND×1,000,000, and report scope `UNKNOWN`. Among 128 cells, independent source
+  verification retains 113 values, five dashes, nine blanks and one reader
+  disagreement; output is 120 `AMBIGUOUS` and eight `UNRESOLVED`. Because no
+  mapping is accepted, all selected/displayed/canonical value fields are null;
+  the 113 verified raw/normalized observations remain only in
+  `visible_raw_value` and nested `numeric_evidence`. This is intentionally not
+  the final physical-provenance export and makes no accounting or Excel claim.
+- E-0037 access telemetry records seal validation before E-0030/E-0034,
+  transitive E-0033 binding without a direct open, no review/history access and
+  zero mapper invocations during postjoin. Its two source/mapping files are in
+  verified bounded S3 snapshot
+  `20260807T170440Z-e0037-source-and-mapping-seal-e18f6b20825f`; manifest
+  `b7b2b5bd4249d93fc8bca2210228ffd000eb36e5ebc0bb7167dde4e774478c8c`
+  and run record
+  `68b35baa1f3993021db5e550b87bd42af515076dd84e2e968248a27d02a22a34`
+  passed restore, sealed-hash and repeated no-overwrite hydration checks.
+- Post-result E-0037 diagnosis identifies only three root interval failures
+  behind the global dependency cascade. Interval 17 has a nominal 0.224488
+  margin but is non-exhaustive after 122 main-search and 328 counterfactual
+  states were beam-pruned. Interval 23 leaves page-3 row 38→4375 at margin 0.1;
+  interval 38 leaves page-4 row 22 between 5699 and 4306 at margin 0.145276.
+  All 39 provisional anchors individually pass counterfactual margin 0.15. The
+  best path has 58 matches and six unmatched rows and, only in post-result
+  diagnosis, agrees with 6/6 reviewed IDs. It remains diagnostic: no row or
+  value is selected and review does not become mapping authority.
 - Three historical Codex-session S3 archive versions are integrity-restorable
   but security-quarantined because they captured a GitHub credential from the
   conversation stream. Session-backup V2 now scans paths and bytes, verifies an
@@ -240,13 +279,26 @@ This is the durable retrieval point for project context. It summarizes user auth
 
 ## Open constraints and next decisions
 
-- The immediate extraction blocker is decisive ordered structural mapping, not
-  merely label CER: a correct reviewed ID in the best path is insufficient when
-  the runner-up margin is ambiguous. Preserve `AMBIGUOUS_MAPPING` and review
-  abstention. Exclude the rejected current Qwen configuration from proposal
+- The immediate extraction blocker remains decisive ordered structural mapping,
+  not merely label CER. E-0037 added source-visible anchors, direct-parent/
+  section constraints, workbook order and fail-closed interval
+  counterfactuals without review, history or numeric hints, but its formal
+  margin is only 0.1 and all 64 rows abstain. Preserve `AMBIGUOUS_MAPPING`; do
+  not promote the best diagnostic path or its independently verified numeric
+  evidence. Exclude the rejected current Qwen configuration from proposal
   fusion; a future Qwen retry is secondary and must first pass a format-pinned
-  short canary. E-0037 should add source-visible anchors and parent/section
-  constraints without review, history or numeric hints.
+  short canary.
+- E-0038 is the next mechanism-only milestone. Replace beam search only for a
+  bounded interval whose exact state space is at most 5,005, enforce a hard
+  8,192-state safety cap, and require zero pruning for acceptance; otherwise
+  abstain. Keep the E-0037 thresholds, anchor/dependency closure and phase
+  firewall unchanged.
+- `TỔNG TÀI SẢN CÓ`→4375 and
+  `Lợi ích của cổ đông không kiểm soát`→5699 may be added only through a
+  hash-pinned, schema-governed alias source backed by review-independent
+  steward authority. If that authority is unavailable, both intervals remain
+  unresolved. Accounting, scope binding and export start only after decisive
+  mapping and may not repair it.
 - Preserve the current stable corpus denominator and rerun drift-aware registration whenever new files arrive.
 - Expand frozen native-geometry fixtures across institutions, years, scopes, scans, borderless layouts, broken pages, and multi-page rows before assigning production confidence.
 - Use the authorized S3 prefix for content-addressed off-machine artifacts and
@@ -333,3 +385,12 @@ This is the durable retrieval point for project context. It summarizes user auth
   configuration, retained `NOT_ESTABLISHED` for the model family, and returned
   the primary development path to E-0037 structural mapping, accounting
   validation and provenance Excel.
+- 2026-08-07: Completed E-0037's source-only seal, mapping-only seal and
+  post-seal evidence assembly. The ordered mapper abstains on all 64 rows at
+  margin 0.1; postjoin preserves 128 independent physical-cell observations
+  without selecting a ReportNormId or value. Hash-locked the formal result and
+  registered its source/mapping bytes in a restore- and hydration-verified
+  bounded S3 snapshot. Localized the dependency cascade to one pruned interval
+  and two alias/margin intervals; designated exact zero-pruning bounded search
+  as the E-0038 mechanism-only milestone. Accounting, final physical
+  provenance, Excel, holdout and production claims remain open.

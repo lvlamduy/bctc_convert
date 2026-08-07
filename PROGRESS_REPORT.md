@@ -1,7 +1,13 @@
 # Progress report
 
-- Updated: 2026-08-07T15:11:21+00:00
+- Updated: 2026-08-07T17:15:55+00:00
 - Branch: `codex/rebuild-bootstrap`
+- Latest clean E-0037 checkpoints: mechanism `3dd2681`, source/mapping seal
+  `4e475d5`, and bounded S3 registry `f41e9ce`. Formal postjoin artifact
+  SHA-256 is
+  `a44146ff98ac9b33dd7f04037e69ba258ef7361dc158ecbd51a6688d7fbb6f7b`:
+  all 64 rows abstain from automatic mapping, all 128 output cells remain
+  ambiguous or unresolved, and zero ReportNormIds or values are selected.
 - Latest clean semantic-evaluation mechanism checkpoint:
   `e1d3f6bbd5c7c23f7c9bd48bf7292d975abdbcc7`. Formal post-seal E-0036 Qwen
   reviewed-evaluation artifact SHA-256 is
@@ -689,6 +695,26 @@
   artifact; no evidence was deleted or overwritten. The hash gate proves the
   historical V3 implementation is byte-identical while V4 reproduces the
   one-row split and two newly recovered dashes.
+- Completed the bounded E-0037 evidence assembly from clean, separately sealed
+  phases. Canonical source structure `ef098a…f70728` covers 64 rows; mapping
+  output `e18f6b…2f99e` was sealed as `665aa1…ed0e5` before E-0030/E-0034
+  access. The ordered mapper returns `AMBIGUOUS_MAPPING` at margin 0.1 with
+  automatic selection false: 60 rows are ambiguous across paths, four have no
+  admissible pair and zero select a ReportNormId. The final postjoin is
+  `a44146…6f7b`, with 77 schema dispositions, four period axes and 128 cells.
+- Postjoin binds the visible snapshot axes 2026-03-31/current and
+  2025-12-31/comparative plus raw `triu đồng`, matched `triệu đồng`, canonical
+  VND×1,000,000 and scope `UNKNOWN`. Source verification is 113 values, five
+  dashes, nine unresolved blanks and one unresolved reader disagreement; final
+  output is 120 `AMBIGUOUS` and eight `UNRESOLVED`, with zero selected values.
+  The seal was validated before E-0030/E-0034 access, E-0033 was bound only
+  transitively, review/history remained closed, and postjoin invoked the mapper
+  zero times.
+- Protected the E-0037 source/mapping bytes with bounded S3 snapshot
+  `20260807T170440Z-e0037-source-and-mapping-seal-e18f6b20825f`.
+  Manifest `b7b2b5…78c8c` and run record `68b35b…a34` passed restore, exact
+  sealed-hash comparison and a second no-overwrite hydration that reused both
+  files.
 
 ## Currently in progress
 
@@ -706,17 +732,31 @@
   propose Vietnamese text on immutable PP-OCRv6 line/row boxes; VietOCR remains a
   challenger and the independent numeric path remains authoritative for values,
   signs and dashes.
-- The active end-to-end task is E-0037 hierarchy- and anchor-aware ordered
-  SchemaGraph mapping. It will map the sealed E-0036 baseline semantic
-  proposals without numeric evidence, seal that decision, and only then join
-  the immutable E-0034 numeric grid for accounting validation and
-  provenance-bearing Excel.
-  Measurement will use Role A versus Role B row coverage, schema assignment,
-  full `(ReportNormId, period, raw value, normalized value, status)` tuples and
-  workbook-cell agreement; no character-only metric can complete this stage.
-- E-0027 page discovery, E-0028 locator V4, E-0030 table metadata and E-0033
-  corrected row reconstruction and E-0034 numeric verification are the active
-  upstream seals. E-0029 remains the before-contract and E-0031 is a
+- E-0037 hierarchy- and anchor-aware ordered SchemaGraph mapping and its sealed
+  postjoin are complete at bounded calibration scope. The result correctly
+  abstains: no full `(ReportNormId, period, value)` tuple exists because zero
+  rows are accepted. Independent numeric evidence still retains 113 verified
+  values and five dashes, with nine blanks and one disagreement, but all
+  selected/displayed/canonical value fields remain null. E-0037 is therefore
+  not the final physical-provenance export and cannot populate the template.
+- Post-result diagnosis localizes the global abstention to three root intervals:
+  interval 17 has margin 0.224488 but cannot certify exhaustiveness after
+  pruning 122 main-search and 328 counterfactual states; interval 23 leaves
+  page-3 row 38→4375 at margin 0.1; interval 38 leaves page-4 row 22 between
+  5699 and 4306 at margin 0.145276. All 39 provisional anchors individually
+  pass the 0.15 counterfactual gate. The diagnostic best path has 58 matches
+  and six unmatched rows and agrees with 6/6 reviewed IDs, but remains
+  non-authoritative and unselected.
+- The active primary milestone is E-0038 mechanism-only mapping. It will run
+  exact bounded interval search for state spaces no larger than 5,005 under a
+  hard 8,192-state cap, require zero pruning for acceptance and otherwise
+  abstain. Existing thresholds, dependency closure and phase firewall remain
+  unchanged. Accounting, scope binding and export follow only after a decisive
+  mapping; they are not the current primary task.
+- E-0027 page discovery, E-0028 locator V4, E-0030 table metadata, E-0033
+  corrected row reconstruction, E-0034 numeric verification, E-0036 baseline
+  semantic proposals and E-0037 mapping abstention are the active upstream
+  seals. E-0029 remains the before-contract and E-0031 is a
   superseded-denominator numeric result.
   Any semantic-reader stage may consume only the active page/row/axis contracts
   plus source pixels. Reader disagreements and unresolved blanks cannot silently
@@ -816,11 +856,12 @@
   complete, tests that require raw PDFs must explicitly hydrate required paths;
   control-plane checks must never claim local source-byte verification while
   those files are absent.
-- Independent row-wise mapping can select locally plausible but globally
-  incompatible duplicate labels, and can force extra PDF rows into a smaller
-  schema cluster. The next mapping change must therefore score one monotone
-  cluster path, distinguish PDF skips from absent schema rows, and expose the
-  runner-up path and score margin instead of hiding ambiguity.
+- E-0037 now scores fail-closed monotone anchored intervals, distinguishes PDF
+  skips from absent schema nodes and exposes ranked paths, counterfactuals and
+  runner-up margin. Its three root failures are one non-exhaustive pruned
+  interval and two exhaustive alias/margin intervals at 0.1 and 0.145276.
+  Decisive schema mapping therefore remains the blocker; the 58-match best
+  diagnostic path must not be promoted into an accepted ReportNormId or value.
 
 ## Current strategy
 
@@ -845,14 +886,21 @@
    components; it keeps `VALUE`, `DASH`, `BLANK` and `INVALID` distinct.
 4. Rank schema candidates lexicographically by statement/table context, parent,
    previous/next template rows, indentation/numbering, then normalized label.
-   Same-bank and cross-bank history are lower-priority weak evidence only.
+   Same-bank and cross-bank history are evaluation-only and never mapper
+   features. A schema alias may influence acceptance only when it is hash-pinned,
+   schema-governed and backed by review-independent steward authority; the two
+   current candidates are `TỔNG TÀI SẢN CÓ`→4375 and
+   `Lợi ích của cổ đông không kiểm soát`→5699.
 5. When independent row candidates are insufficient, align the whole local
    block against the ordered `SchemaGraph`. Use workbook `display_order` rather
    than numeric ReportNormId order; allow explicit PDF-row and schema-row skips;
    score label/accounting meaning, statement/section, parent/level, indentation,
    previous/next order and mapped neighbor anchors. Accept only a structurally
    valid best path with a clear runner-up margin; otherwise return
-   `AMBIGUOUS_MAPPING` with ranked evidence for review.
+   `AMBIGUOUS_MAPPING` with ranked evidence for review. E-0038 may replace beam
+   search only inside a bounded interval with at most 5,005 exact states under
+   an 8,192-state safety cap; acceptance requires zero pruning. All existing
+   score thresholds, anchor/dependency closure and access firewall stay fixed.
 6. Validate period bindings, raw/normalized numeric semantics, signs, horizontal
    and vertical arithmetic, parent-child totals, and template display order.
    The numeric layer accepts only exact value/sign agreement between the primary
@@ -889,30 +937,33 @@
 
 ## Planned next steps
 
-1. Preserve the sealed E-0036 rejection. Before any Qwen retry, verify and pin
-   the checkpoint/runtime GPTQ format interpretation and static zero-point
-   checks, then run only a one- or two-crop, eight-token canary with
-   same-token-run and finite/top-k-logit gates. Do not rerun all 64 crops unless
-   that canary passes.
-2. Make E-0037 the primary path: combine the sealed E-0036 baseline semantic
-   proposals with structural anchors, parent/section context and workbook order,
-   without review, history, values or numeric ReportNormId ordering as hints.
-   Retain PDF-row/schema-row skips and require the existing decisive margin or
-   abstain.
-3. After the E-0037 mapping-only result is sealed, join immutable E-0033
-   geometry, E-0030 period/unit bindings and E-0034 numeric/status evidence.
-   Preserve the one numeric disagreement and nine blanks as unresolved unless
-   new source-pixel evidence resolves them. Bind consolidated scope from visible
-   source evidence, run accounting validation, and produce the provenance-bearing
-   development Excel without fabricating unresolved values.
-4. Seal the combined mechanism before selecting a new untouched holdout.
-   VietOCR stays challenger-only; domain fine-tuning stays deferred unless the
-   frozen downstream evaluation proves a material recognition blocker.
-5. Build a human-gold evaluation split separated by bank and reporting period,
+1. Make E-0038 the next mechanism-only milestone: replace interval-17 beam
+   pruning with exact bounded search for at most 5,005 states under a hard
+   8,192-state cap. Acceptance requires zero pruning; cap overflow abstains.
+2. Preserve E-0037's sealed mapping abstention and keep all current thresholds,
+   anchor/dependency closure and phase firewalls unchanged. Do not promote its
+   58-match best path,
+   margin-0.1 diagnostic candidates or nested numeric evidence into accepted
+   ReportNormIds, displayed values or canonical values.
+3. Add `TỔNG TÀI SẢN CÓ`→4375 or
+   `Lợi ích của cổ đông không kiểm soát`→5699 only through a hash-pinned,
+   schema-governed alias source with review-independent steward authority. If
+   that authority is absent, preserve abstention.
+4. Only after decisive mapping, bind consolidated scope from visible source
+   evidence, run physical-row accounting diagnostics without repair, and build
+   the provenance-bearing development export. Retain the one numeric
+   disagreement and nine blanks and never use arithmetic to repair mapping.
+5. Complete and seal the final physical-cell provenance layer before selecting
+   a new untouched holdout. E-0037 itself is an assembly artifact, not that
+   final export.
+6. Preserve the sealed E-0036 rejection. Any Qwen retry remains secondary and
+   first requires a format-pinned one- or two-crop, eight-token canary with
+   same-token-run and finite/top-k-logit gates. VietOCR stays challenger-only.
+7. Build a human-gold evaluation split separated by bank and reporting period,
    including skew, warp, dark headers, blurred digits, wrapped rows, continuation
    pages, direct/indirect LCTT, separate/consolidated scope, and quarterly/YTD
    derivation cases.
-6. Define calibrated abstention thresholds only after the human-gold benchmark;
+8. Define calibrated abstention thresholds only after the human-gold benchmark;
    unresolved evidence must continue to produce review statuses rather than
    guessed output.
 
