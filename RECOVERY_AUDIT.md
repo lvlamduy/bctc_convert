@@ -31,11 +31,16 @@
   files are byte-identical to their historical hashes. The full V3 discovery
   JSON is exact. R-0001 explicitly remains a functional reproduction, not the
   original batch manifest or identity.
-- A dedicated `~/.codex/sessions/` S3 backup now uploads archive then manifest
-  with SHA-256, encryption and `If-None-Match`, downloads both, safely restores
-  and verifies every file, mode and timestamp. The post-checkpoint restore gate
-  passed. No systemd manager or crontab exists on this container, so no local
-  timer was installed.
+- The three dedicated `~/.codex/sessions/` S3 archive versions passed their
+  original hash/restore gates but are now security-quarantined: each captured a
+  GitHub credential that appeared inside session content. Integrity restoration
+  did not prove secret exclusion. Session-backup V2 now scans stable content and
+  paths, builds an exact-inventory archive, and locally restores/rescans it
+  before any AWS call; the downloaded copy is verified again. Clean V1 archives
+  require a current V2 rescan, while the contaminated versions fail closed.
+  The credential must be revoked, and deleting those immutable S3 versions
+  requires separate explicit approval. No scheduler was installed and no new
+  session backup is permitted while the source sessions fail the scan.
 - The 61 generated R-0001 files (21,754,667 bytes) are enrolled in bounded
   artifact snapshot
   `20260807T045030Z-r0001-e0027-reproduction-8a1cca495582`, child of the passing

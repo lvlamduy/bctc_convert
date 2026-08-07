@@ -148,7 +148,11 @@ PYTHONPATH=src .venv/bin/python scripts/backup/backup_codex_sessions.py
 
 The script stages a stable copy of every regular session file, records its
 relative path, SHA-256, byte size, mode and nanosecond modification time, and
-creates a dedicated archive under:
+scans both UTF-8 paths and file bytes for known credential formats. Version 2
+builds the archive only from that exact scanned inventory, then independently
+rescans and restores it locally **before** the first AWS preflight or PUT. A
+detector match fails closed without printing the matched value or path; there
+is no default redaction or bypass. It creates a dedicated archive under:
 
 ```text
 s3://test-s3-duylv/codex-sessions/<host>/<UTC timestamp>-<archive hash>/
@@ -159,8 +163,18 @@ expected bucket owner and `If-None-Match: *`. The manifest is uploaded last.
 The command then downloads both objects into a new temporary directory,
 verifies their hashes, safely extracts only the `sessions/` tree, reapplies
 recorded modes/timestamps, and verifies the complete restored inventory. A PUT
-response alone is not a successful backup; `"restore_verified": true` is the
-acceptance gate.
+response alone is not a successful backup; both the pre-upload local gate and
+`"restore_verified": true` after download are required. Clean legacy V1
+archives can be restored only after exact-inventory validation and a current V2
+rescan; their historical manifest scan claims are not trusted.
+
+Security status on 2026-08-07: the three historical V1 session-archive
+versions predate this content gate and contain a GitHub credential that was
+entered in a captured conversation. They are integrity-restorable but
+**security-quarantined**, not accepted backups. Do not create another session
+backup until that credential has been revoked and the source sessions pass the
+V2 scan. Removing the contaminated immutable S3 versions is a destructive
+operation and remains pending explicit user approval.
 
 Run this command after important project checkpoints, before environment or
 host changes, and before reboot/shutdown/migration. A scheduler may invoke the
@@ -193,9 +207,11 @@ itself remains verified, but it does not prove recoverability of every artifact
 referenced by the newer Git tip. This gap must be resolved with a transparent
 reproduction seal; the historical hash must not be fabricated.
 
-The first dedicated Codex-session backup was uploaded and fully restore-tested
-on 2026-08-07. No host scheduler is available in the current container, so the
-script remains an explicit checkpoint/migration command.
+The first dedicated Codex-session backups were uploaded and fully
+restore-tested on 2026-08-07, but the later credential audit quarantined all
+three historical versions as described above. No host scheduler is available
+in the current container, and the command remains disabled operationally until
+its source tree passes the V2 scan.
 
 ## Bounded post-offload artifact snapshots
 
