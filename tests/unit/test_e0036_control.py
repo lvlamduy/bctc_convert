@@ -31,6 +31,9 @@ def test_e0036_control_freezes_same_crops_and_delays_reference_access(project_ro
     assert payload["conditional_qwen_challenger"]["model_revision"] == (
         "8f0c09f227ae570e79617c6d9172b59df9c16081"
     )
+    assert payload["baseline_output_sealing"]["exact_reader_count"] == 2
+    assert payload["baseline_output_sealing"]["exact_sample_count_per_reader"] == 64
+    assert payload["baseline_output_sealing"]["reference_or_human_review_loaded_by_sealer"] is False
     assert payload["authority"]["semantic_readers_propose_label_text_only"] is True
     assert payload["authority"]["semantic_reader_may_assign_report_norm_id"] is False
 
@@ -38,6 +41,8 @@ def test_e0036_control_freezes_same_crops_and_delays_reference_access(project_ro
         payload["request"]["algorithm"],
         payload["request"]["capture_script"],
         payload["request"]["reader_contract"],
+        payload["baseline_output_sealing"]["algorithm"],
+        payload["baseline_output_sealing"]["capture_script"],
         *(
             record[key]
             for record in payload["baseline_readers"].values()

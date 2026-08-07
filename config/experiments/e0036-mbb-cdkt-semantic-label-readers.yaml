@@ -78,6 +78,21 @@ baseline_readers:
       sha256: 6df0eb1630ebcc55bbba88993b0a0bee44c5a27a25d154765e7739084273e7a6
       size_bytes: 1156
 
+baseline_output_sealing:
+  required_state: BASELINE_OUTPUTS_HASH_SEALED_BEFORE_REVIEW_ACCESS
+  output_path: docs/experiments/E-0036-mbb-cdkt-baseline-output-seal.json
+  algorithm:
+    path: src/bctc_ai/evaluation/logical_row_label_baseline_seal.py
+    sha256: 7180412f824fda117eb3965af1461ff18ba732a61ca50263491d0688dad83622
+    size_bytes: 16195
+  capture_script:
+    path: scripts/experiments/capture_e0036_baseline_output_seal.py
+    sha256: 49c2f93f4d5283dd04939abaef50ce2c23f47ef89992e29ca0cfd9061ceab964
+    size_bytes: 1293
+  reference_or_human_review_loaded_by_sealer: false
+  exact_reader_count: 2
+  exact_sample_count_per_reader: 64
+
 conditional_qwen_challenger:
   invocation_state: NOT_ALLOWED_UNTIL_BASELINES_SEALED_AND_EVALUATED
   trigger: >-
