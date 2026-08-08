@@ -4,14 +4,14 @@ Updated: 2026-08-08
 
 ## 1. Current schema/item coverage
 
-| Statement | Total schema items | Located/identified in PDF | ReportNormId mapped | Values/period extracted | Fully verified |
-| --------- | -----------------: | ------------------------: | ------------------: | ----------------------: | -------------: |
-| CDKT | 77 | 64 source rows observed | 61/77; 3 additional rows retained as source-only | 111/122 mapped period cells are numeric; 5 dash, 5 blank, 1 unresolved | 0/77 end-to-end |
-| KQKD | 24 | Statement page located; 0/24 item-level | 0/24 | 0/24 end-to-end | 0/24 |
-| LCTT | 107 | Statement pages located; 0/107 item-level | 0/107 | 0/107 end-to-end | 0/107 |
-| TM | 1,385 | Notes boundary located; 0/1,385 item-level | 0/1,385 | 0/1,385 end-to-end | 0/1,385 |
+| Statement | Schema total | Status reconciled | Observed | Mapped | Unresolved | Fully verified |
+| --------- | -----------: | ----------------: | -------: | -----: | ---------: | -------------: |
+| CDKT | 77 | 77/77 | 61/77 schema items; 64 PDF rows | 61/77 | 4/77 | 0/77 |
+| KQKD | 24 | 0/24 | 0/24 item-level | 0/24 | 0 enumerated; 24 unassessed | 0/24 |
+| LCTT | 107 | 0/107 | 0/107 item-level | 0/107 | 0 enumerated; 107 unassessed | 0/107 |
+| TM | 1,385 | 0/1,385 | 0/1,385 item-level | 0/1,385 | 0 enumerated; 1,385 unassessed | 0/1,385 |
 
-“Observed” means visible PDF evidence was reconstructed. “Mapped” means the current machine mechanism selected a schema ID. “Value extracted” means a mapped physical period cell has numeric evidence; dash/blank remain distinct states. “Fully verified” requires the whole item tuple and is not inferred from a machine mapping. The fixed reviewed subset is 6/6 exact for mapping only, so it is not counted as full-item verification.
+CDKT reconciles exactly as `77 = 61 MAPPED + 12 NOT_OBSERVED_IN_THIS_PDF + 3 AMBIGUOUS_MAPPING + 1 UNRESOLVED`; there are no classified extraction misses or not-applicable items yet. Three additional PDF rows remain source-only outside the 77-item denominator. Across the 122 mapped period cells, 111 are numeric, 5 dash, 5 blank and 1 numeric-reader disagreement. “Fully verified” requires the complete tuple and is not inferred from a machine mapping; the fixed reviewed subset is only 6/6 mapping IDs.
 
 ## 2. Current technology/logic pipeline
 
@@ -35,16 +35,16 @@ Current rules preserve visible dash, blank, disagreement and source-only states;
 ## 3. Role A / Role B status
 
 - **Role A:** hash-bound calibration references exist for the reviewed CTG Q2/2026, ACB Q2/2026 and MBB Q1/2026 documents; searchable/native TCB pages provide a separate machine-reference calibration set. The schema registry contains 1,593 ordered items, and the current MBB CDKT mapping-review interface contains six pre-existing reviewed rows.
-- **Role B:** the production-side path currently reaches MBB CDKT statement discovery, 64-row/128-cell reconstruction, semantic/numeric reading, 61-row mapping, diagnostic accounting checks and deterministic in-memory workbook/provenance generation. The final workbook pair is not yet formally captured and sealed.
+- **Role B:** the production-side path reaches MBB CDKT statement discovery, 64-row/128-cell reconstruction, semantic/numeric reading, 61-row mapping, diagnostic accounting checks and a formally hash-sealed template workbook/provenance pair. The pair is backed up as exactly two immutable S3 objects and passed two-pass no-overwrite hydrate verification.
 - **Latest measurable comparison:** the fixed six MBB CDKT reviewed rows are mapped 6/6 to the reviewed ReportNormId. This covers only 6/61 selected rows and is not a production-accuracy result.
 
 ## 4. Current development position
 
 - **Bank/report/period:** MBB, CDKT, current 31/03/2026 versus comparative 31/12/2025; visible unit bound to VND × 1,000,000; scope remains `UNKNOWN`.
-- **Latest sealed experiment:** E-0040 formal mapping, including one-file S3 durability and two-pass restore verification. E-0041 is the current formal Excel/provenance stage.
-- **Regression status:** E-0041 mechanism checkpoint `cdcdc57` passed 977 tests with 2 expected skips; its formal export/seal mechanism also passed independent race, authority and deterministic-replay audit.
-- **Biggest remaining blocker:** the deterministic two-file E-0041 workbook/provenance pair still needs its clean-commit formal capture, exact replay and separate hash seal. Broader bank/period-disjoint validation has not started.
-- **Exact next end-to-end step:** from a clean pushed commit, dry-run and capture the workbook plus provenance in a fresh process, replay them byte-for-byte, and publish the separate two-file seal.
+- **Latest sealed result:** E-0041 MBB CDKT workbook/provenance pair, replayed byte-for-byte and hash-sealed at commit `8d837ee`; the seal is pushed at `dc570c3` and the two output files passed S3 restore/reuse verification.
+- **Regression status:** 977 tests passed with 2 expected skips; independent pair/seal audit found no blocker.
+- **Biggest remaining blocker:** item coverage, not mechanism sealing—3 CDKT schema items remain ambiguous, 1 schema identity remains unresolved, 3 PDF rows are source-only, 1 numeric cell is unresolved, and KQKD/LCTT/TM have not yet been processed item-by-item.
+- **Exact next end-to-end step:** resolve the exposed CDKT issues while applying the reusable pipeline to all 24 KQKD schema items; then proceed to LCTT and quantitative TM.
 
 ## 5. Overall status
 
@@ -52,8 +52,8 @@ Current rules preserve visible dash, blank, disagreement and source-only states;
 Current end-to-end status:
 PDF → page → row/cell → OCR → mapping → validation → Excel
 
-Completed through: sealed MBB CDKT mapping and deterministic in-memory Excel build
-Currently working on: formal Excel/provenance capture and replay seal
-Not yet completed: sealed final Excel artifact; KQKD/LCTT/TM item pipelines; bank/period-disjoint validation
+Completed through: formal MBB CDKT template Excel + provenance + replay seal + restore verification
+Currently working on: CDKT unresolved items and 24-item KQKD coverage
+Not yet completed: KQKD/LCTT/TM item pipelines; broad tuple verification; bank/period-disjoint validation
 Production approved: NO
 ```
