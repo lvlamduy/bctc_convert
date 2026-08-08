@@ -271,9 +271,22 @@ def test_e0040_formal_artifacts_are_exact_canonical_and_linked(project_root: Pat
 
     assert mapping["capture_git_commit"] == CAPTURE_COMMIT
     assert mapping["capture_git_dirty"] is False
+    assert (mapping["experiment_id"], mapping["dataset_role"], mapping["format_version"]) == (
+        "E-0040",
+        "CALIBRATION",
+        1,
+    )
+    assert mapping["state"] == "E0040_GENERIC_CHALLENGER_MAPPING_ONLY_READY_FOR_HASH_SEAL"
     assert seal["mapping_capture_git_commit"] == CAPTURE_COMMIT
     assert seal["seal_git_commit"] == CAPTURE_COMMIT
     assert seal["seal_git_dirty"] is False
+    assert (seal["experiment_id"], seal["dataset_role"], seal["format_version"]) == (
+        "E-0040",
+        "CALIBRATION",
+        1,
+    )
+    assert seal["mapping_status"] == "CHALLENGER_COMPLETE_61_SELECTED_3_SOURCE_ONLY"
+    assert seal["state"] == "E0040_GENERIC_CHALLENGER_MAPPING_HASH_SEALED"
     assert mapping["input_hash_ledger"]["control"] == CONTROL
     assert mapping["implementation_hash_ledger"] == IMPLEMENTATION
 
@@ -373,6 +386,8 @@ def test_e0040_formal_metrics_and_result_receipts_recompute(project_root: Path):
     assert baseline_pairs == challenger["baseline_selected_pairs"]
     assert final_pairs == challenger["final_selected_pairs"]
     assert (len(baseline_pairs), len(final_pairs)) == (59, 61)
+    assert len(set(map(tuple, baseline_pairs))) == 59
+    assert len(set(map(tuple, final_pairs))) == 61
     new_pairs = set(map(tuple, final_pairs)) - set(map(tuple, baseline_pairs))
     assert new_pairs == set(map(tuple, challenger["newly_selected_pairs"]))
     assert len(new_pairs) == 2
