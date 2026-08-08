@@ -1,0 +1,71 @@
+version: 1
+policy: CONTINUATION_LCTT_WORD_BOX_V1
+geometry_authority: PP_OCRV6_WORD_BOXES
+statement_type: LCTT
+
+minimum_line_score: 0.0
+
+semantic_matching:
+  minimum_title_similarity: 0.72
+  minimum_header_similarity: 0.84
+  minimum_distinct_semantics_margin: 0.08
+  statement_title_anchors:
+    - bao cao luu chuyen tien te
+  scope_anchors:
+    CONSOLIDATED:
+      - hop nhat
+      - hp nhat
+    SEPARATE:
+      - rieng le
+      - rieng cua ngan hang
+  method_title_anchors:
+    DIRECT:
+      - phuong phap truc tiep
+      - phuong phap trc tip
+    INDIRECT:
+      - phuong phap gian tiep
+  method_form_anchors:
+    DIRECT:
+      - b04a tctd hn
+    INDIRECT:
+      - b04b tctd hn
+  continuation_anchors:
+    - tiep theo
+    - tip theo
+  unit_anchors:
+    - text: trieu dong
+      canonical: VND
+      multiplier: 1000000
+    - text: trieu vnd
+      canonical: VND
+      multiplier: 1000000
+
+header_geometry:
+  maximum_range_to_unit_center_distance_line_heights: 5.0
+  maximum_start_to_end_center_distance_line_heights: 4.0
+  minimum_axis_separation_line_heights: 5.0
+
+table_geometry:
+  numeric_axis_max_distance_ratio: 0.45
+  numeric_axis_right_overrun_line_heights: 0.75
+  row_anchor_cluster_line_heights: 0.35
+  label_direct_attach_line_heights: 0.40
+  wrapped_label_gap_line_heights: 1.00
+  note_attach_line_heights: 0.50
+  label_boundary_axis_gap_ratio: 0.40
+  body_tail_line_heights: 1.25
+
+dash_detector_config: word-box-reconstruction.yaml
+dash_detector_config_sha256: 5aefee12f3ab760bcd203aa647bc76a0232897f16b11fec221eed0244cbbe5da
+
+# Period/scope/method semantics are bound from visible headers before numeric
+# body tokens are assigned. Numeric geometry may refine an already-bound
+# axis right edge, but may not choose the current/comparative role.
+forbidden_semantic_inputs:
+  - numeric_cell_text_or_value_as_period_feature
+  - numeric_value_magnitude_as_method_feature
+  - template_labels_or_report_norm_ids
+  - historical_or_mongodb_values
+  - human_review_period_scope_or_method_answers
+  - horizontal_position_as_current_or_comparative_role
+  - cross_branch_schema_mapping
