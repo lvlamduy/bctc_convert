@@ -337,10 +337,19 @@ def _semantic_windows(
     *,
     header_only: bool,
 ) -> tuple[TextWindow, ...]:
+    geometry_source = config.get("geometry_evidence_source")
+    if geometry_source is None:
+        if config.get("geometry_authority") != "PP_OCRV6_WORD_BOXES":
+            raise StatementLocatorError(
+                "non-PP-OCR geometry requires an explicit evidence-source authority"
+            )
+        geometry_source = "PP_OCRV6_GEOMETRY"
+    if not isinstance(geometry_source, str) or not geometry_source.strip():
+        raise StatementLocatorError("geometry evidence-source authority is invalid")
     windows = list(
         _windows_for_page(
             geometry_page,
-            source="PP_OCRV6_GEOMETRY",
+            source=geometry_source,
             config=config,
             header_only=header_only,
             label_only=not header_only,

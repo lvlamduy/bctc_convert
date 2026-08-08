@@ -1,0 +1,80 @@
+version: 1
+policy: REGISTERED_NATIVE_TEXT_STATEMENT_DISCOVERY_V1
+claim_boundary: STATEMENT_PAGE_DISCOVERY_ONLY
+
+# This is a source-driven Role-B entrypoint. It may discover statement pages,
+# but it does not claim row extraction, schema mapping, numeric validation, or
+# workbook completion.
+source_registry: data/registered/source_registry.jsonl
+dataset_role_registry: data/registered/dataset_roles.jsonl
+allowed_dataset_roles:
+  - LOGIC_DEVELOPMENT
+  - CALIBRATION
+  - VALIDATION
+  - PRODUCTION_INPUT
+forbidden_dataset_roles:
+  - UNTOUCHED_HOLDOUT
+require_clean_git: true
+require_registered_pdf: true
+require_hash_verified_stable: true
+
+native_text_quality_config:
+  path: config/ocr/native-text-quality-v2.yaml
+  sha256: af0d735ea026abc7b189da46d36f103d1390687325324ecc1a325ba6ab51a660
+statement_discovery_config:
+  path: config/document_phase/statement-discovery-v4.yaml
+  sha256: 5562b775b7c25ebf6591bc4dda0e213ae75d96b97ba7738c8a0fd5f87d61976b
+  engine: MULTISIGNAL_V4_SCORING_REUSE
+  adapted_policy: NATIVE_TEXT_MULTI_SIGNAL_ORDERED_DOCUMENT_DISCOVERY_V1
+  base_geometry_authority: PP_OCRV6_WORD_BOXES
+  geometry_authority: PYMUPDF_NATIVE_TEXT_WORDS
+  geometry_evidence_source: PYMUPDF_NATIVE_TEXT_GEOMETRY
+  authority_override_scope: GEOMETRY_SOURCE_ONLY
+statement_discovery_config_chain:
+  - path: config/document_phase/statement-discovery-v3.yaml
+    sha256: f8188fdf53b8f3907ab89d5407bcea178fe927dfe02ccad291a79d1b5f1ba182
+  - path: config/document_phase/statement-locator-v2.yaml
+    sha256: 503f3fdb62dd5dcd1a460200750edfe18d7cf50039b62278666e572c6cccb730
+  - path: config/document_phase/statement-locator-v1.yaml
+    sha256: d25ff6da2a1ce48428b4ab1ac20a31b989a27849d93326ae839507dce2ff107e
+
+native_text_gate:
+  usable_status: USABLE_TEXT_LAYER
+  require_all_pages_usable: true
+  non_usable_page_action: FAIL_CLOSED_OCR_REQUIRED
+  require_usable_selected_statement_pages: true
+  require_usable_notes_boundary_page: true
+
+role_isolation:
+  runtime_input_allowlist:
+    - SOURCE_PDF
+    - SOURCE_REGISTRY
+    - DATASET_ROLE_REGISTRY
+    - THIS_POLICY
+    - NATIVE_TEXT_QUALITY_CONFIG
+    - STATEMENT_DISCOVERY_CONFIG
+  forbidden_path_fragments:
+    - /reference/
+    - /human_review/
+    - /human-review/
+    - /review/
+    - /history/
+    - /comparisons/
+    - /docs/experiments/
+    - /config/experiments/
+    - /output/holdout/
+  prior_answer_artifacts_allowed: false
+  historical_values_allowed: false
+  role_a_outputs_allowed: false
+
+output:
+  format: REGISTERED_NATIVE_TEXT_STATEMENT_DISCOVERY_RESULT_V1
+  exclusive_no_overwrite: true
+  absolute_project_paths_allowed: false
+  source_visible_text_preserved_verbatim: true
+  deterministic_json: true
+  role_directories:
+    LOGIC_DEVELOPMENT: output/development
+    CALIBRATION: output/calibration
+    VALIDATION: output/validation
+    PRODUCTION_INPUT: output/production

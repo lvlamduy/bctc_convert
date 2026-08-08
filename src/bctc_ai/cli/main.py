@@ -228,6 +228,31 @@ def _run_register(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_discover_statements(args: argparse.Namespace) -> int:
+    from bctc_ai.document_phase.native_statement_discovery import (
+        publish_registered_native_statement_discovery,
+    )
+
+    root = _project_root(args.project_root)
+
+    def resolve(raw: str) -> Path:
+        path = Path(raw)
+        return path.resolve() if path.is_absolute() else (root / path).resolve()
+
+    result = publish_registered_native_statement_discovery(
+        root,
+        resolve(args.pdf),
+        resolve(args.policy),
+        args.run_id,
+        resolve(args.output),
+    )
+    print(f"STATEMENT_DISCOVERY_STATUS={result.payload['status']}")
+    print(f"STATEMENT_DISCOVERY_ARTIFACT={result.path}")
+    print(f"STATEMENT_DISCOVERY_SHA256={result.sha256}")
+    print(f"STATEMENT_DISCOVERY_BYTES={result.size_bytes}")
+    return 0 if result.payload["status"] == "ACCEPTED_NATIVE_TEXT_STATEMENT_DISCOVERY" else 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="bctc-ai")
     parser.add_argument("--project-root", help="repository root; defaults to current directory")
@@ -287,6 +312,19 @@ def build_parser() -> argparse.ArgumentParser:
     preprocess.add_argument("--dpi", type=int, default=300)
     preprocess.add_argument("--pages", help="comma-separated pages/ranges, for example 1,3-5")
     preprocess.set_defaults(handler=_run_preprocess)
+
+    discover = subparsers.add_parser(
+        "discover-statements",
+        help="discover statement pages from a registered native-text PDF",
+    )
+    discover.add_argument("--pdf", required=True)
+    discover.add_argument("--output", required=True)
+    discover.add_argument("--run-id", default="registered-native-statement-discovery-v1")
+    discover.add_argument(
+        "--policy",
+        default="config/document_phase/native-statement-discovery-v1.yaml",
+    )
+    discover.set_defaults(handler=_run_discover_statements)
 
     backup = subparsers.add_parser("backup")
     backup.add_argument("--destination", required=True)
