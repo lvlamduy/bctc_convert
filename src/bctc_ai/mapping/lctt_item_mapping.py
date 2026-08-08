@@ -50,6 +50,7 @@ class LCTTItemMappingError(ValueError):
 
 class LCTTSchemaStatus(StrEnum):
     MAPPED_AUTOMATIC = "MAPPED_AUTOMATIC"
+    LABEL_CONFLICT_CANDIDATE_NOT_AUTOMATIC = "LABEL_CONFLICT_CANDIDATE_NOT_AUTOMATIC"
     CANDIDATE_MAPPING_NOT_AUTOMATIC = "CANDIDATE_MAPPING_NOT_AUTOMATIC"
     AMBIGUOUS_MAPPING = "AMBIGUOUS_MAPPING"
     NOT_OBSERVED_IN_THIS_PDF = "NOT_OBSERVED_IN_THIS_PDF"
@@ -58,6 +59,7 @@ class LCTTSchemaStatus(StrEnum):
 
 class LCTTSourceRowStatus(StrEnum):
     MAPPED_AUTOMATIC = "MAPPED_AUTOMATIC"
+    LABEL_CONFLICT_CANDIDATE_NOT_AUTOMATIC = "LABEL_CONFLICT_CANDIDATE_NOT_AUTOMATIC"
     CANDIDATE_MAPPING_NOT_AUTOMATIC = "CANDIDATE_MAPPING_NOT_AUTOMATIC"
     SOURCE_ONLY_PDF_ROW = "SOURCE_ONLY_PDF_ROW"
 
@@ -68,6 +70,15 @@ class LCTTCompositeRule:
     visible_label_anchor: str
     minimum_anchor_similarity: float
     candidate_report_norm_ids: tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class LCTTLabelConflictRule:
+    key: str
+    report_norm_id: int
+    source_conflict_anchor: str
+    schema_expected_anchor: str
+    minimum_anchor_similarity: float
 
 
 @dataclass(frozen=True)
@@ -86,6 +97,7 @@ class LCTTDirectMappingPolicy:
     minimum_composite_anchor_runner_up_margin: float
     not_observed_report_norm_ids: tuple[int, ...]
     composite_rules: tuple[LCTTCompositeRule, ...]
+    label_conflict_rules: tuple[LCTTLabelConflictRule, ...]
     policy_sha256: str
 
 
@@ -110,6 +122,7 @@ class LCTTSchemaDisposition:
     independent_label_similarity: float | None
     cross_reader_label_similarity: float | None
     supporting_reader_ids: tuple[str, ...]
+    label_conflict_key: str | None
     reason: str
 
 
@@ -125,6 +138,7 @@ class LCTTSourceDisposition:
     independent_label_similarity: float | None
     cross_reader_label_similarity: float | None
     supporting_reader_ids: tuple[str, ...]
+    label_conflict_key: str | None
     reason: str
 
 
@@ -141,6 +155,7 @@ class LCTTItemMappingResult:
     schema_status_reconciled_count: int
     mapped_schema_count: int
     candidate_linked_schema_count: int
+    label_conflict_schema_count: int
     ambiguous_schema_count: int
     not_observed_schema_count: int
     not_applicable_schema_count: int
@@ -148,6 +163,7 @@ class LCTTItemMappingResult:
     source_row_count: int
     mapped_source_row_count: int
     candidate_linked_source_row_count: int
+    label_conflict_source_row_count: int
     source_only_row_count: int
     schema_dispositions: tuple[LCTTSchemaDisposition, ...]
     source_dispositions: tuple[LCTTSourceDisposition, ...]
@@ -193,7 +209,12 @@ def load_lctt_direct_mapping_policy(path: Path) -> LCTTDirectMappingPolicy:
         raise LCTTItemMappingError("LCTT candidate reconciliation policy is absent")
     raw_not_observed = raw.get("not_observed_report_norm_ids")
     raw_composites = raw.get("composite_source_rows")
-    if not isinstance(raw_not_observed, list) or not isinstance(raw_composites, list):
+    raw_label_conflicts = raw.get("label_conflicts")
+    if (
+        not isinstance(raw_not_observed, list)
+        or not isinstance(raw_composites, list)
+        or not isinstance(raw_label_conflicts, list)
+    ):
         raise LCTTItemMappingError("LCTT candidate disposition policy is malformed")
     not_observed = tuple(raw_not_observed)
     if any(isinstance(item, bool) or not isinstance(item, int) for item in not_observed):
@@ -226,6 +247,37 @@ def load_lctt_direct_mapping_policy(path: Path) -> LCTTDirectMappingPolicy:
                 candidate_report_norm_ids=tuple(candidate_ids),
             )
         )
+    label_conflicts = []
+    for item in raw_label_conflicts:
+        if not isinstance(item, Mapping) or set(item) != {
+            "key",
+            "report_norm_id",
+            "source_conflict_anchor",
+            "schema_expected_anchor",
+            "minimum_anchor_similarity",
+        }:
+            raise LCTTItemMappingError("LCTT label-conflict rule is invalid")
+        report_norm_id = item.get("report_norm_id")
+        if (
+            not isinstance(item.get("key"), str)
+            or not item["key"]
+            or isinstance(report_norm_id, bool)
+            or not isinstance(report_norm_id, int)
+            or not isinstance(item.get("source_conflict_anchor"), str)
+            or not retrieval_key(item["source_conflict_anchor"])
+            or not isinstance(item.get("schema_expected_anchor"), str)
+            or not retrieval_key(item["schema_expected_anchor"])
+        ):
+            raise LCTTItemMappingError("LCTT label-conflict rule is invalid")
+        label_conflicts.append(
+            LCTTLabelConflictRule(
+                key=item["key"],
+                report_norm_id=report_norm_id,
+                source_conflict_anchor=retrieval_key(item["source_conflict_anchor"]),
+                schema_expected_anchor=retrieval_key(item["schema_expected_anchor"]),
+                minimum_anchor_similarity=_required_score(item, "minimum_anchor_similarity"),
+            )
+        )
     policy = LCTTDirectMappingPolicy(
         source_path=resolved,
         core=core,
@@ -251,6 +303,7 @@ def load_lctt_direct_mapping_policy(path: Path) -> LCTTDirectMappingPolicy:
         ),
         not_observed_report_norm_ids=not_observed,
         composite_rules=tuple(composites),
+        label_conflict_rules=tuple(label_conflicts),
         policy_sha256=hashlib.sha256(source_bytes).hexdigest(),
     )
     composite_ids = tuple(
@@ -271,6 +324,8 @@ def load_lctt_direct_mapping_policy(path: Path) -> LCTTDirectMappingPolicy:
         or len(composite_ids) != 5
         or len(set(composite_ids)) != 5
         or set(composite_ids).intersection(policy.not_observed_report_norm_ids)
+        or tuple(rule.report_norm_id for rule in policy.label_conflict_rules) != (4140,)
+        or any(rule.report_norm_id in composite_ids for rule in policy.label_conflict_rules)
         or policy.core.trailing_aggregate_ids != LCTT_TRAILING_AGGREGATE_IDS
     ):
         raise LCTTItemMappingError("LCTT candidate reconciliation identity drifted")
@@ -421,6 +476,36 @@ def _cross_reader_similarity(left: str, right: str) -> float:
     return ratio(retrieval_key(left), retrieval_key(right)) / 100
 
 
+def _anchor_similarity(label: str, anchor: str) -> float:
+    return partial_ratio(retrieval_key(label), anchor) / 100
+
+
+def _label_conflict(
+    row: LCTTSourceVisibleRow,
+    independent_row: LCTTSourceVisibleRow | None,
+    node: object,
+    policy: LCTTDirectMappingPolicy,
+) -> LCTTLabelConflictRule | None:
+    for rule in policy.label_conflict_rules:
+        if _field(node, "report_norm_id") != rule.report_norm_id:
+            continue
+        canonical_name = _field(node, "canonical_name")
+        if not isinstance(canonical_name, str):
+            raise LCTTItemMappingError("LCTT schema node has no canonical label")
+        source_scores = [_anchor_similarity(row.visible_label, rule.source_conflict_anchor)]
+        if independent_row is not None:
+            source_scores.append(
+                _anchor_similarity(independent_row.visible_label, rule.source_conflict_anchor)
+            )
+        if (
+            min(source_scores) >= rule.minimum_anchor_similarity
+            and _anchor_similarity(canonical_name, rule.schema_expected_anchor)
+            >= rule.minimum_anchor_similarity
+        ):
+            return rule
+    return None
+
+
 def _source_label_digest(rows: Sequence[LCTTSourceVisibleRow]) -> str:
     payload = [
         {
@@ -539,6 +624,7 @@ def reconcile_lctt_direct_items(
             float | None,
             float | None,
             bool,
+            LCTTLabelConflictRule | None,
         ],
     ] = {}
     candidate_by_row: dict[
@@ -550,6 +636,7 @@ def reconcile_lctt_direct_items(
             float | None,
             float | None,
             bool,
+            LCTTLabelConflictRule | None,
         ],
     ] = {}
     for row, node in zip(candidate_rows, candidate_nodes, strict=True):
@@ -569,8 +656,10 @@ def reconcile_lctt_direct_items(
             if independent_row is not None
             else None
         )
+        label_conflict = _label_conflict(row, independent_row, node, policy)
         automatic = bool(
-            independent_similarity is not None
+            label_conflict is None
+            and independent_similarity is not None
             and cross_reader_similarity is not None
             and min(similarity, independent_similarity) >= policy.core.minimum_strong_label_score
             and cross_reader_similarity >= policy.minimum_cross_reader_label_similarity
@@ -582,12 +671,16 @@ def reconcile_lctt_direct_items(
             independent_similarity,
             cross_reader_similarity,
             automatic,
+            label_conflict,
         )
         candidate_by_schema[node.report_norm_id] = evidence
         candidate_by_row[row.row_id] = (node.report_norm_id, *evidence[1:])
 
-    mapped_count = sum(evidence[-1] for evidence in candidate_by_schema.values())
+    mapped_count = sum(evidence[-2] for evidence in candidate_by_schema.values())
     candidate_count = len(candidate_by_schema) - mapped_count
+    label_conflict_count = sum(
+        evidence[-1] is not None for evidence in candidate_by_schema.values()
+    )
 
     composite_source: dict[str, tuple[LCTTCompositeRule, float]] = {}
     for rule in policy.composite_rules:
@@ -598,6 +691,7 @@ def reconcile_lctt_direct_items(
         independent_similarity: float | None = None
         cross_reader_similarity: float | None = None
         supporting_reader_ids: tuple[str, ...] = ()
+        label_conflict_key: str | None = None
         if item.cash_flow_branch == CashFlowMethod.INDIRECT.value:
             status = LCTTSchemaStatus.SCHEMA_ITEM_NOT_APPLICABLE
             candidate_rows_for_item: tuple[str, ...] = ()
@@ -625,9 +719,22 @@ def reconcile_lctt_direct_items(
                 independent_similarity,
                 cross_reader_similarity,
                 automatic,
+                label_conflict,
             ) = candidate_by_schema[item.schema_id]
             candidate_rows_for_item = (source_row.row_id,)
-            if automatic:
+            if label_conflict is not None:
+                status = LCTTSchemaStatus.LABEL_CONFLICT_CANDIDATE_NOT_AUTOMATIC
+                label_conflict_key = label_conflict.key
+                supporting_reader_ids = (
+                    source_row.source_reader_id,
+                    *((independent_row.source_reader_id,) if independent_row is not None else ()),
+                )
+                reason = (
+                    f"visible source labels match {label_conflict.source_conflict_anchor!r} "
+                    f"but schema {item.schema_id} requires "
+                    f"{label_conflict.schema_expected_anchor!r}; automatic mapping is withheld"
+                )
+            elif automatic:
                 status = LCTTSchemaStatus.MAPPED_AUTOMATIC
                 if independent_row is None:
                     raise LCTTItemMappingError("LCTT automatic mapping lost independent evidence")
@@ -664,6 +771,7 @@ def reconcile_lctt_direct_items(
                     else None
                 ),
                 supporting_reader_ids=supporting_reader_ids,
+                label_conflict_key=label_conflict_key,
                 reason=reason,
             )
         )
@@ -672,6 +780,7 @@ def reconcile_lctt_direct_items(
         independent_similarity = None
         cross_reader_similarity = None
         supporting_reader_ids = ()
+        label_conflict_key = None
         if row.row_id in composite_source:
             rule, similarity = composite_source[row.row_id]
             status = LCTTSourceRowStatus.SOURCE_ONLY_PDF_ROW
@@ -688,9 +797,21 @@ def reconcile_lctt_direct_items(
                 independent_similarity,
                 cross_reader_similarity,
                 automatic,
+                label_conflict,
             ) = candidate_by_row[row.row_id]
             candidate_ids = (report_norm_id,)
-            if automatic:
+            if label_conflict is not None:
+                status = LCTTSourceRowStatus.LABEL_CONFLICT_CANDIDATE_NOT_AUTOMATIC
+                label_conflict_key = label_conflict.key
+                supporting_reader_ids = (
+                    row.source_reader_id,
+                    *((independent_row.source_reader_id,) if independent_row is not None else ()),
+                )
+                reason = (
+                    f"visible label conflicts with schema wording for {report_norm_id}; "
+                    "the one-to-one structural candidate remains non-automatic"
+                )
+            elif automatic:
                 status = LCTTSourceRowStatus.MAPPED_AUTOMATIC
                 if independent_row is None:
                     raise LCTTItemMappingError(
@@ -723,6 +844,7 @@ def reconcile_lctt_direct_items(
                     else None
                 ),
                 supporting_reader_ids=supporting_reader_ids,
+                label_conflict_key=label_conflict_key,
                 reason=reason,
             )
         )
@@ -733,7 +855,7 @@ def reconcile_lctt_direct_items(
         report_scope=scope,
         cash_flow_method=method.value,
         status=(
-            "AUTOMATIC_MAPPING_WITH_UNRESOLVED_COMPOSITES"
+            "PARTIAL_AUTOMATIC_MAPPING_WITH_UNRESOLVED_ITEMS"
             if automatic_selection_allowed
             else "CANDIDATE_RECONCILIATION"
         ),
@@ -744,6 +866,7 @@ def reconcile_lctt_direct_items(
         schema_status_reconciled_count=LCTT_SCHEMA_ITEM_COUNT,
         mapped_schema_count=mapped_count,
         candidate_linked_schema_count=candidate_count,
+        label_conflict_schema_count=label_conflict_count,
         ambiguous_schema_count=5,
         not_observed_schema_count=4,
         not_applicable_schema_count=57,
@@ -751,6 +874,7 @@ def reconcile_lctt_direct_items(
         source_row_count=len(rows),
         mapped_source_row_count=mapped_count,
         candidate_linked_source_row_count=candidate_count,
+        label_conflict_source_row_count=label_conflict_count,
         source_only_row_count=2,
         schema_dispositions=tuple(schema_dispositions),
         source_dispositions=tuple(source_dispositions),
@@ -763,7 +887,8 @@ def reconcile_lctt_direct_items(
         mapping_inputs=_DUAL_MAPPING_INPUTS if independent_rows else _MAPPING_INPUTS,
         reason=(
             f"{mapped_count} one-to-one DIRECT mappings are independently corroborated; "
-            "the two visible composite rows remain source-only"
+            f"{label_conflict_count} label-conflict candidate and two visible composite rows "
+            "remain unresolved"
             if automatic_selection_allowed
             else "all schema/source statuses reconcile, but no candidate satisfies the "
             "independent semantic promotion gates"
@@ -781,7 +906,7 @@ def validate_lctt_item_mapping_result(result: LCTTItemMappingResult) -> LCTTItem
         result.statement_type != "LCTT"
         or result.status
         != (
-            "AUTOMATIC_MAPPING_WITH_UNRESOLVED_COMPOSITES"
+            "PARTIAL_AUTOMATIC_MAPPING_WITH_UNRESOLVED_ITEMS"
             if has_automatic_mapping
             else "CANDIDATE_RECONCILIATION"
         )
@@ -789,6 +914,10 @@ def validate_lctt_item_mapping_result(result: LCTTItemMappingResult) -> LCTTItem
         or result.independent_semantic_stream_count not in {1, 2}
         or (has_automatic_mapping and not has_independent_stream)
         or (has_automatic_mapping and result.mapped_schema_count != result.mapped_source_row_count)
+        or result.label_conflict_schema_count != 1
+        or result.label_conflict_source_row_count != 1
+        or result.label_conflict_schema_count > result.candidate_linked_schema_count
+        or result.label_conflict_source_row_count > result.candidate_linked_source_row_count
         or result.schema_item_count != LCTT_SCHEMA_ITEM_COUNT
         or result.schema_status_reconciled_count != LCTT_SCHEMA_ITEM_COUNT
         or result.fully_verified_schema_count != 0
@@ -822,7 +951,10 @@ def validate_lctt_item_mapping_result(result: LCTTItemMappingResult) -> LCTTItem
     expected_schema_counts = {
         LCTTSchemaStatus.MAPPED_AUTOMATIC.value: result.mapped_schema_count,
         LCTTSchemaStatus.CANDIDATE_MAPPING_NOT_AUTOMATIC.value: (
-            result.candidate_linked_schema_count
+            result.candidate_linked_schema_count - result.label_conflict_schema_count
+        ),
+        LCTTSchemaStatus.LABEL_CONFLICT_CANDIDATE_NOT_AUTOMATIC.value: (
+            result.label_conflict_schema_count
         ),
         LCTTSchemaStatus.AMBIGUOUS_MAPPING.value: result.ambiguous_schema_count,
         LCTTSchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value: result.not_observed_schema_count,
@@ -843,7 +975,12 @@ def validate_lctt_item_mapping_result(result: LCTTItemMappingResult) -> LCTTItem
             item.status == LCTTSourceRowStatus.CANDIDATE_MAPPING_NOT_AUTOMATIC.value
             for item in source
         )
-        != result.candidate_linked_source_row_count
+        != result.candidate_linked_source_row_count - result.label_conflict_source_row_count
+        or sum(
+            item.status == LCTTSourceRowStatus.LABEL_CONFLICT_CANDIDATE_NOT_AUTOMATIC.value
+            for item in source
+        )
+        != result.label_conflict_source_row_count
         or sum(item.status == LCTTSourceRowStatus.SOURCE_ONLY_PDF_ROW.value for item in source)
         != result.source_only_row_count
         or result.mapped_source_row_count
@@ -863,6 +1000,12 @@ def validate_lctt_item_mapping_result(result: LCTTItemMappingResult) -> LCTTItem
             or len(set(item.supporting_reader_ids)) != 2
         ):
             raise LCTTItemMappingError("LCTT automatic schema mapping lacks dual evidence")
+        if item.status == LCTTSchemaStatus.LABEL_CONFLICT_CANDIDATE_NOT_AUTOMATIC.value and (
+            item.label_conflict_key is None
+            or item.report_norm_id != 4140
+            or len(item.supporting_reader_ids) not in {1, 2}
+        ):
+            raise LCTTItemMappingError("LCTT schema label conflict lacks explicit evidence")
         if any(row_id not in source_by_id for row_id in item.candidate_source_row_ids):
             raise LCTTItemMappingError("LCTT schema candidate references an unknown source row")
         for row_id in item.candidate_source_row_ids:
@@ -878,6 +1021,12 @@ def validate_lctt_item_mapping_result(result: LCTTItemMappingResult) -> LCTTItem
             or len(set(item.supporting_reader_ids)) != 2
         ):
             raise LCTTItemMappingError("LCTT automatic source mapping lacks dual evidence")
+        if item.status == LCTTSourceRowStatus.LABEL_CONFLICT_CANDIDATE_NOT_AUTOMATIC.value and (
+            item.label_conflict_key is None
+            or item.candidate_report_norm_ids != (4140,)
+            or len(item.supporting_reader_ids) not in {1, 2}
+        ):
+            raise LCTTItemMappingError("LCTT source label conflict lacks explicit evidence")
         if any(
             report_norm_id not in schema_by_id for report_norm_id in item.candidate_report_norm_ids
         ):
@@ -888,6 +1037,7 @@ def validate_lctt_item_mapping_result(result: LCTTItemMappingResult) -> LCTTItem
 __all__ = [
     "LCTTCompositeRule",
     "LCTTDirectMappingPolicy",
+    "LCTTLabelConflictRule",
     "LCTTItemMappingError",
     "LCTTItemMappingResult",
     "LCTTSchemaDisposition",

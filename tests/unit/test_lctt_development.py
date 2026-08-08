@@ -141,8 +141,8 @@ def test_real_lctt_export_preserves_template_and_exposes_43_source_rows(
         mapping=mapping,
     )
 
-    assert result.mapped_cell_count == 82
-    assert result.mapped_value_count == 69
+    assert result.mapped_cell_count == 80
+    assert result.mapped_value_count == 67
     assert result.provenance_row_count == 43
     assert result.fully_verified is False
     assert hashlib.sha256(workbook_path.read_bytes()).hexdigest() == result.workbook_sha256
@@ -170,6 +170,10 @@ def test_real_lctt_export_preserves_template_and_exposes_43_source_rows(
         for report_norm_id in (4144, 4145, 4146, 4120, 4121):
             assert main.cell(by_id[report_norm_id], 5).value == "AMBIGUOUS_MAPPING"
             assert main.cell(by_id[report_norm_id], 10).value == "AMBIGUOUS_MAPPING"
+        assert main.cell(by_id[4140], 4).value is None
+        assert main.cell(by_id[4140], 9).value is None
+        assert main.cell(by_id[4140], 5).value == "LABEL_CONFLICT_CANDIDATE_NOT_AUTOMATIC"
+        assert main.cell(by_id[4140], 10).value == "LABEL_CONFLICT_CANDIDATE_NOT_AUTOMATIC"
         assert main.cell(by_id[4155], 5).value == "SCHEMA_ITEM_NOT_APPLICABLE"
         assert (
             sum(
@@ -177,7 +181,7 @@ def test_real_lctt_export_preserves_template_and_exposes_43_source_rows(
                 for row in range(2, 109)
                 for column in (4, 9)
             )
-            == 69
+            == 67
         )
 
         provenance = workbook["PROVENANCE"]
@@ -201,6 +205,15 @@ def test_real_lctt_export_preserves_template_and_exposes_43_source_rows(
         assert source_only[0]["CurrentStatus"] == source_only[0]["ComparativeStatus"] == "DASH"
         assert source_only[1]["CurrentValueVND"] == 490_000_000
         assert source_only[1]["ComparativeValueVND"] == -71_299_000_000
+        label_conflict = next(
+            record
+            for record in records
+            if record["SourceRowStatus"] == "LABEL_CONFLICT_CANDIDATE_NOT_AUTOMATIC"
+        )
+        assert label_conflict["RowId"] == "page-0007:row-0024"
+        assert label_conflict["CandidateReportNormIdsJson"] == "[4140]"
+        assert label_conflict["CurrentValueVND"] == -37_183_000_000
+        assert label_conflict["ComparativeValueVND"] == 334_598_000_000
         assert all(record["FullyVerified"] is False for record in records)
         assert not any(
             cell.data_type == "f" or (isinstance(cell.value, str) and cell.value.startswith("="))

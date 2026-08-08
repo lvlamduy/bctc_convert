@@ -85,6 +85,12 @@ candidate_reconciliation:
     - 4151
     - 4152
     - 4117
+  label_conflicts:
+    - key: LIABILITY_ROW_VISIBLE_ASSET_LABEL_CONFLICT
+      report_norm_id: 4140
+      source_conflict_anchor: cac tai san tai chinh khac
+      schema_expected_anchor: cac khoan no tai chinh khac
+      minimum_anchor_similarity: 0.90
   composite_source_rows:
     - key: INVESTMENT_PROPERTY_NET
       visible_label_anchor: tien thu chi bat dong san dau tu

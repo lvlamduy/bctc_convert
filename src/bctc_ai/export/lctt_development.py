@@ -31,9 +31,9 @@ from bctc_ai.tables.lctt_word_box import ParsedLCTTWordBoxDocument
 LCTT_DEVELOPMENT_SHEETS = ("LCTT", "PROVENANCE", "RUN_METADATA")
 LCTT_DEVELOPMENT_SCHEMA_COUNT = 107
 LCTT_DEVELOPMENT_SOURCE_ROW_COUNT = 43
-LCTT_DEVELOPMENT_MAPPED_SCHEMA_COUNT = 41
-LCTT_DEVELOPMENT_MAPPED_CELL_COUNT = 82
-LCTT_DEVELOPMENT_MAPPED_VALUE_COUNT = 69
+LCTT_DEVELOPMENT_MAPPED_SCHEMA_COUNT = 40
+LCTT_DEVELOPMENT_MAPPED_CELL_COUNT = 80
+LCTT_DEVELOPMENT_MAPPED_VALUE_COUNT = 67
 
 _FIXED_TIMESTAMP = datetime(2000, 1, 1)
 
@@ -115,19 +115,21 @@ def _validate_inputs(
         raise LCTTDevelopmentExportError("LCTT parser coverage is not exportable")
     if (
         mapping.statement_type != "LCTT"
-        or mapping.status != "AUTOMATIC_MAPPING_WITH_UNRESOLVED_COMPOSITES"
+        or mapping.status != "PARTIAL_AUTOMATIC_MAPPING_WITH_UNRESOLVED_ITEMS"
         or not mapping.automatic_selection_allowed
         or mapping.schema_item_count != LCTT_DEVELOPMENT_SCHEMA_COUNT
         or mapping.schema_status_reconciled_count != LCTT_DEVELOPMENT_SCHEMA_COUNT
         or mapping.mapped_schema_count != LCTT_DEVELOPMENT_MAPPED_SCHEMA_COUNT
-        or mapping.candidate_linked_schema_count != 0
+        or mapping.candidate_linked_schema_count != 1
+        or mapping.label_conflict_schema_count != 1
         or mapping.ambiguous_schema_count != 5
         or mapping.not_observed_schema_count != 4
         or mapping.not_applicable_schema_count != 57
         or mapping.fully_verified_schema_count != 0
         or mapping.source_row_count != LCTT_DEVELOPMENT_SOURCE_ROW_COUNT
         or mapping.mapped_source_row_count != LCTT_DEVELOPMENT_MAPPED_SCHEMA_COUNT
-        or mapping.candidate_linked_source_row_count != 0
+        or mapping.candidate_linked_source_row_count != 1
+        or mapping.label_conflict_source_row_count != 1
         or mapping.source_only_row_count != 2
     ):
         raise LCTTDevelopmentExportError("LCTT mapping coverage is not exportable")
@@ -171,6 +173,15 @@ def _validate_inputs(
                 or schema_item.candidate_source_row_ids != (row.row_id,)
             ):
                 raise LCTTDevelopmentExportError("LCTT source/schema mapping cross-link drifted")
+        elif source.status == LCTTSourceRowStatus.LABEL_CONFLICT_CANDIDATE_NOT_AUTOMATIC.value:
+            if source.candidate_report_norm_ids != (4140,):
+                raise LCTTDevelopmentExportError("LCTT label-conflict source identity drifted")
+            schema_item = schema_by_id[4140]
+            if (
+                schema_item.status != LCTTSchemaStatus.LABEL_CONFLICT_CANDIDATE_NOT_AUTOMATIC.value
+                or schema_item.candidate_source_row_ids != (row.row_id,)
+            ):
+                raise LCTTDevelopmentExportError("LCTT label-conflict cross-link drifted")
         elif source.status != LCTTSourceRowStatus.SOURCE_ONLY_PDF_ROW.value:
             raise LCTTDevelopmentExportError("unresolved LCTT source row reached export")
     return _ValidatedInputs(
@@ -413,6 +424,7 @@ def _write_metadata(
         "fully_verified": False,
         "mapping.ambiguous_count": mapping.ambiguous_schema_count,
         "mapping.automatic_selection_allowed": mapping.automatic_selection_allowed,
+        "mapping.label_conflict_count": mapping.label_conflict_schema_count,
         "mapping.mapped_count": mapping.mapped_schema_count,
         "mapping.not_applicable_count": mapping.not_applicable_schema_count,
         "mapping.not_observed_count": mapping.not_observed_schema_count,

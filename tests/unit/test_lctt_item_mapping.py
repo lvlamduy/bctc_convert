@@ -211,6 +211,7 @@ def test_direct_projection_and_policy_reconcile_exact_denominators(
     assert policy.currently_available_independent_semantic_streams == 1
     assert policy.minimum_independent_semantic_streams == 2
     assert policy.minimum_cross_reader_label_similarity == 0.85
+    assert tuple(rule.report_norm_id for rule in policy.label_conflict_rules) == (4140,)
     assert policy.not_observed_report_norm_ids == (4143, 4151, 4152, 4117)
 
 
@@ -226,6 +227,7 @@ def test_real_43_rows_reconcile_all_107_without_automatic_selection(
     assert result.schema_status_reconciled_count == 107
     assert result.mapped_schema_count == 0
     assert result.candidate_linked_schema_count == 41
+    assert result.label_conflict_schema_count == 1
     assert result.ambiguous_schema_count == 5
     assert result.not_observed_schema_count == 4
     assert result.not_applicable_schema_count == 57
@@ -233,6 +235,7 @@ def test_real_43_rows_reconcile_all_107_without_automatic_selection(
     assert result.source_row_count == 43
     assert result.mapped_source_row_count == 0
     assert result.candidate_linked_source_row_count == 41
+    assert result.label_conflict_source_row_count == 1
     assert result.source_only_row_count == 2
     assert result.independent_label_sha256 is None
     assert (
@@ -265,6 +268,12 @@ def test_real_43_rows_reconcile_all_107_without_automatic_selection(
         for item in result.source_dispositions
         if item.status == LCTTSourceRowStatus.SOURCE_ONLY_PDF_ROW.value
     } == {"page-0007:row-0031", "page-0007:row-0032"}
+    assert schema_by_status[LCTTSchemaStatus.LABEL_CONFLICT_CANDIDATE_NOT_AUTOMATIC.value] == {4140}
+    assert {
+        item.row_id
+        for item in result.source_dispositions
+        if item.status == LCTTSourceRowStatus.LABEL_CONFLICT_CANDIDATE_NOT_AUTOMATIC.value
+    } == {"page-0007:row-0024"}
     assert (
         min(
             item.label_similarity
@@ -275,26 +284,28 @@ def test_real_43_rows_reconcile_all_107_without_automatic_selection(
     )
 
 
-def test_real_deepseek_stream_promotes_all_41_one_to_one_links_but_not_composites(
+def test_real_deepseek_stream_promotes_40_and_withholds_visible_label_conflict(
     real_dual_reconciliation,
 ) -> None:
     _policy, result = real_dual_reconciliation
 
     assert validate_lctt_item_mapping_result(result) is result
-    assert result.status == "AUTOMATIC_MAPPING_WITH_UNRESOLVED_COMPOSITES"
+    assert result.status == "PARTIAL_AUTOMATIC_MAPPING_WITH_UNRESOLVED_ITEMS"
     assert result.automatic_selection_allowed
     assert result.independent_semantic_stream_count == 2
     assert result.schema_item_count == 107
     assert result.schema_status_reconciled_count == 107
-    assert result.mapped_schema_count == 41
-    assert result.candidate_linked_schema_count == 0
+    assert result.mapped_schema_count == 40
+    assert result.candidate_linked_schema_count == 1
+    assert result.label_conflict_schema_count == 1
     assert result.ambiguous_schema_count == 5
     assert result.not_observed_schema_count == 4
     assert result.not_applicable_schema_count == 57
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == 43
-    assert result.mapped_source_row_count == 41
-    assert result.candidate_linked_source_row_count == 0
+    assert result.mapped_source_row_count == 40
+    assert result.candidate_linked_source_row_count == 1
+    assert result.label_conflict_source_row_count == 1
     assert result.source_only_row_count == 2
     assert result.independent_label_sha256 is not None
 
@@ -308,7 +319,7 @@ def test_real_deepseek_stream_promotes_all_41_one_to_one_links_but_not_composite
         for item in result.source_dispositions
         if item.status == LCTTSourceRowStatus.MAPPED_AUTOMATIC.value
     )
-    assert len(mapped_schema) == len(mapped_source) == 41
+    assert len(mapped_schema) == len(mapped_source) == 40
     assert all(len(item.supporting_reader_ids) == 2 for item in mapped_schema)
     assert all(len(item.supporting_reader_ids) == 2 for item in mapped_source)
     assert min(item.label_similarity for item in mapped_source) >= 0.60
@@ -324,6 +335,21 @@ def test_real_deepseek_stream_promotes_all_41_one_to_one_links_but_not_composite
         for item in result.source_dispositions
         if item.status == LCTTSourceRowStatus.SOURCE_ONLY_PDF_ROW.value
     } == {"page-0007:row-0031", "page-0007:row-0032"}
+    conflict_schema = next(
+        item
+        for item in result.schema_dispositions
+        if item.status == LCTTSchemaStatus.LABEL_CONFLICT_CANDIDATE_NOT_AUTOMATIC.value
+    )
+    conflict_source = next(
+        item
+        for item in result.source_dispositions
+        if item.status == LCTTSourceRowStatus.LABEL_CONFLICT_CANDIDATE_NOT_AUTOMATIC.value
+    )
+    assert conflict_schema.report_norm_id == 4140
+    assert conflict_schema.candidate_source_row_ids == ("page-0007:row-0024",)
+    assert conflict_source.row_id == "page-0007:row-0024"
+    assert conflict_source.candidate_report_norm_ids == (4140,)
+    assert conflict_schema.label_conflict_key == conflict_source.label_conflict_key
 
 
 def test_non_direct_method_cannot_enter_direct_candidate_reconciliation(
