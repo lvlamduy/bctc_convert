@@ -1,0 +1,181 @@
+{
+  "access_contract": {
+    "answer_free_process_guarded_before_reads_and_publication": true,
+    "e0038_or_e0039_mapping_artifact_opened": false,
+    "history_or_mongodb_opened": false,
+    "holdout_opened": false,
+    "mapping_directory_exact_inventory_validated_before_replay_and_publication": true,
+    "mapping_only_envelope_and_canonical_bytes_validated_before_replay": true,
+    "mapping_only_stable_identity_read_count": 2,
+    "numeric_status_or_postjoin_artifact_opened": false,
+    "period_unit_or_source_scope_answer_artifact_opened": false,
+    "qwen_raw_rejected_or_token_output_opened": false,
+    "review_or_steward_answers_opened": false
+  },
+  "authority": {
+    "accounting_excel_holdout_or_production": false,
+    "deterministic_replay_byte_identity": true,
+    "exact_one_file_hash_identity": true,
+    "mapping_accuracy": false,
+    "numeric_period_unit_scope": false,
+    "review_or_steward_approval": false,
+    "schema_authority": false
+  },
+  "claim_boundary": "This artifact hash-seals exactly one E-0040 mapping-only file after deterministic byte-equal replay at the same clean mechanism commit. It adds no schema, mapping-accuracy, review, numeric, period, accounting, Excel, holdout, or production claim.",
+  "dataset_role": "CALIBRATION",
+  "experiment_id": "E-0040",
+  "format_version": 1,
+  "input_hash_ledger": {
+    "control": {
+      "path": "config/experiments/e0040-mbb-cdkt-formal-mapping.yaml",
+      "sha256": "79f25408c79ec0e28584f34340038325df3da2756d840f5ed0bd796ad557a0a0",
+      "size_bytes": 8987
+    },
+    "deterministic_replay_implementation": {
+      "capture_script": {
+        "path": "scripts/experiments/capture_e0040_mbb_cdkt_formal_mapping.py",
+        "sha256": "9344ffb7d131f4d4decadb15d314e35953592cbdcf8b6415ad7bd3fea855e16b",
+        "size_bytes": 2276
+      },
+      "challenger": {
+        "path": "src/bctc_ai/mapping/e0040_calibration_challenger.py",
+        "sha256": "c379ccf784868ec5b2f40714be00c402147b2b9a94e06b917a3e2cd6b926609b",
+        "size_bytes": 47333
+      },
+      "formal_integration": {
+        "path": "src/bctc_ai/evaluation/e0040_formal_mapping.py",
+        "sha256": "3b181a409ffb5e8a1299890f5e8044bcf35bbb3cb221da091e0edb65f19f7eb8",
+        "size_bytes": 105326
+      },
+      "mapper": {
+        "path": "src/bctc_ai/mapping/ordered_subgraph_v2.py",
+        "sha256": "cf737243cbcecf919a2cf2012aa269655341b5c8c6b8c4038c76ed510a68b40a",
+        "size_bytes": 81923
+      },
+      "seal_script": {
+        "path": "scripts/experiments/capture_e0040_mbb_cdkt_formal_mapping_seal.py",
+        "sha256": "e3ce1d7767011d0ea1d8fa464d475e5345abcb905e9ecefc130ebdc5865b353b",
+        "size_bytes": 1737
+      },
+      "text_normalization": {
+        "path": "src/bctc_ai/core/text.py",
+        "sha256": "2a97e6626fa6f747ff0f8e9de827b02f50dcd9a0c8e058937cd221acf1420af6",
+        "size_bytes": 5947
+      }
+    },
+    "deterministic_replay_inputs": {
+      "control": {
+        "path": "config/experiments/e0040-mbb-cdkt-formal-mapping.yaml",
+        "sha256": "79f25408c79ec0e28584f34340038325df3da2756d840f5ed0bd796ad557a0a0",
+        "size_bytes": 8987
+      },
+      "e0037_mapping_only": {
+        "path": "output/calibration/e0037-mbb-cdkt-sealed-evidence-mapping/mapping_only.json",
+        "sha256": "e18f6b20825f93b20023c0d89caca1737481008b244696594852ca9fa972f99e",
+        "size_bytes": 646393
+      },
+      "e0037_mapping_seal": {
+        "path": "docs/experiments/E-0037-mbb-cdkt-mapping-only-seal.json",
+        "sha256": "665aa1b3ac96881df0a4cd7b2f7da2425c3635ad1e8ea024e299b668c79ed0e5",
+        "size_bytes": 6016
+      },
+      "e0040_mapper_policy": {
+        "path": "config/mapping/e0040-ordered-subgraph-v2-exact.yaml",
+        "sha256": "2f18880339b8e2c04ec3ba900919f174f8af478515adfbfb0e43ff80ddd13268",
+        "size_bytes": 2082
+      },
+      "e0040_policy": {
+        "path": "config/mapping/e0040-cdkt-semantic-normalization.yaml",
+        "sha256": "eba3a1380f44f34958398edb13076dc3a87da95fc5ff347968a1a2c023e3995a",
+        "size_bytes": 2185
+      },
+      "s3_snapshot_registry": {
+        "path": "data/registered/s3_artifact_snapshot_registry.jsonl",
+        "sha256": "25da6b205a775d87eca8e4ffe55e3f762ee64e92cbb7190c2834708a7de0d78d",
+        "size_bytes": 6050
+      }
+    },
+    "deterministic_replay_runtime": {
+      "dependency_lock": {
+        "path": "uv.lock",
+        "sha256": "3edf1c8471e283e74b721140b417456afc713b7d859d33bb600939eb18b79a9a",
+        "size_bytes": 86842
+      },
+      "project_metadata": {
+        "path": "pyproject.toml",
+        "sha256": "59ad1366246975921df36b6d1f9bf2a91680a7b2c02d3777e772b0c3aa4ba045",
+        "size_bytes": 1094
+      }
+    },
+    "deterministic_replay_runtime_versions": {
+      "python": "3.11.10",
+      "pyyaml": "6.0.3",
+      "rapidfuzz": "3.14.5"
+    },
+    "mapping_only": {
+      "path": "output/calibration/e0040-mbb-cdkt-formal-mapping/mapping_only.json",
+      "sha256": "8def983007fc3aacf59351395426d5246ad3f28d605442f590de55eaf396cb0d",
+      "size_bytes": 1157172
+    }
+  },
+  "inventory": {
+    "file_count": 1,
+    "files": [
+      {
+        "path": "output/calibration/e0040-mbb-cdkt-formal-mapping/mapping_only.json",
+        "sha256": "8def983007fc3aacf59351395426d5246ad3f28d605442f590de55eaf396cb0d",
+        "size_bytes": 1157172
+      }
+    ]
+  },
+  "mapping_capture_git_commit": "18aca8942faf5d47e1ac5f049045d7a7a297b5fc",
+  "mapping_status": "CHALLENGER_COMPLETE_61_SELECTED_3_SOURCE_ONLY",
+  "metrics": {
+    "all_intervals_exhaustive": true,
+    "all_pruning_counts_zero": true,
+    "base_collision_pair_count": 6,
+    "baseline_interval_count": 43,
+    "baseline_selected_count": 59,
+    "final_interval_count": 44,
+    "final_row_status_counts": {
+      "NO_ADMISSIBLE_PAIR": 3,
+      "RESOLVED_ANCHOR": 43,
+      "RESOLVED_PATH": 18
+    },
+    "final_selected_count": 61,
+    "internal_role_repair_selected_count": 2,
+    "mapper_invocation_count": 2,
+    "new_collision_pair_count": 0,
+    "normalization_changed_schema_node_count": 21,
+    "normalization_derived_key_count": 33,
+    "result_collision_pair_count": 6,
+    "schema_node_count": 77,
+    "selected_anchor_count": 43,
+    "selected_path_count": 18,
+    "source_only_structural_count": 3,
+    "source_row_count": 64
+  },
+  "replay": {
+    "deterministic_replay_invocation_count": 1,
+    "exact_canonical_byte_equality": true,
+    "exact_object_equality": true,
+    "mapping_and_seal_clean_git_commit_equal": true,
+    "mapping_core_result_used_to_change_published_mapping": false,
+    "tracked_ledger_head_blob_binding_required": true
+  },
+  "result_projection_sha256": "5c3c4a09650beda8eca21e5a00fe459e052ae7cc8d735359bc41a58a391da9b0",
+  "result_receipts": {
+    "baseline_selected_pairs_sha256": "77167590e57381f8d724c713b4814e1fb2b64656643fad1f0d54dcc60f2eb416",
+    "challenger_result_sha256": "2e49d8623692fde9fd4a5a87f9c2e2159941b0f3ded7b7b16dddac2ab1e85fbd",
+    "challenger_result_size_bytes": 700869,
+    "collision_audit_sha256": "f00504266416e99c574ed3f93204735eeec36c39f4c416c54073dfada21ce97a",
+    "final_result_sha256": "15edfc7e349a48cec62fd5bad4bcfc506dcf2c8272055620135b2cfe6d91a29d",
+    "final_result_size_bytes": 347961,
+    "final_selected_pairs_sha256": "066c2c3352d65c067e7048ef55b46e6e990c3ad6a5aed94c2a1011eaba002c75",
+    "final_selected_pairs_size_bytes": 2014,
+    "normalization_sha256": "09175c45fa93b4172c1f2fe1742b93a49aab3498119a451c4126f1be30b36088"
+  },
+  "seal_git_commit": "18aca8942faf5d47e1ac5f049045d7a7a297b5fc",
+  "seal_git_dirty": false,
+  "state": "E0040_GENERIC_CHALLENGER_MAPPING_HASH_SEALED"
+}
