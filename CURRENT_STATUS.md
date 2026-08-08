@@ -34,16 +34,16 @@ CDKT uses the sealed semantic-normalization/role-repair path. KQKD uses a four-a
 ## 3. Role A / Role B status
 
 - **Role A:** hash-bound calibration references exist for CTG Q2/2026, ACB Q2/2026 and MBB Q1/2026; the ordered schema registry contains 1,593 items. The fixed reviewed MBB CDKT subset remains 6 rows.
-- **Role B:** MBB CDKT reaches a hash-sealed, S3-restored template workbook. MBB KQKD now reaches a deterministic development Excel: 22 rows/88 cells, four period axes, 21/24 mappings, 42 exported quarter values, 88 provenance cells and 32/32 accounting checks. LCTT reaches 43 rows/86 slots, 40/107 corroborated mappings and a complete 107-item reconciliation. TM page 30 reaches 22 rows/40 cells and 19 scoped mappings.
+- **Role B:** MBB CDKT reaches a hash-sealed, S3-restored template workbook. MBB KQKD reaches a deterministic development Excel: 22 rows/88 cells, 21/24 mappings, 42 exported quarter values and 32/32 accounting checks. MBB LCTT now also reaches deterministic development Excel: 43 rows/86 slots, 40/107 mappings, 80 mapped slots/67 exported values and 43 provenance rows; the conflicting 4140 row remains withheld. TM page 30 reaches 22 rows/40 cells and 19 scoped mappings.
 - **Latest measurable Role A/Role B result:** the fixed six reviewed CDKT rows map 6/6. KQKD has no human-reviewed mapping denominator yet, so 21/24 is machine-mapped coverage, not a production-accuracy score.
 
 ## 4. Current development position
 
 - **Bank/report/period:** MBB consolidated Q1/2026. CDKT compares 31/03/2026 with 31/12/2025; KQKD/LCTT compare duration 01/01–31/03/2026 with 01/01–31/03/2025. Visible unit is VND × 1,000,000.
 - **Latest sealed result:** E-0041 MBB CDKT workbook/provenance pair; no further E-version is planned for coverage work.
-- **Regression status:** latest full parser regression: 983 passed, 2 expected skips; focused KQKD and LCTT coverage checks are green.
-- **Biggest remaining blocker:** human/schema interpretation for source-only and composite rows, plus insufficient independent semantic evidence for LCTT/TM mappings—not mechanism sealing.
-- **Exact next end-to-end step:** write the LCTT development workbook from its 40 safe mappings, then expand TM parsing/mapping to page 31 and onward.
+- **Regression status:** cross-statement KQKD/LCTT/TM coverage regression 39/39 passed; Ruff check/format passed. Latest full parser regression: 983 passed, 2 expected skips.
+- **Biggest remaining blocker:** 1,364 TM schema items remain unassessed, alongside the item-level ambiguities exposed in `QUESTION_FOR_USER.md`; mechanism sealing is not the limiting work.
+- **Exact next end-to-end step:** expand quantitative TM parsing, value binding and ReportNormId mapping from page 31 onward, then project the growing safe subset into development Excel.
 
 ## 5. Overall status
 
@@ -51,8 +51,8 @@ CDKT uses the sealed semantic-normalization/role-repair path. KQKD uses a four-a
 Current end-to-end status:
 PDF → page → row/cell → OCR → mapping → validation → Excel
 
-Completed through: sealed CDKT Excel; KQKD development Excel; LCTT geometry, 107-item reconciliation and 40 mappings
-Currently working on: LCTT development Excel and the next TM quantitative-note pages
-Not yet completed: authoritative LCTT/TM mapping and Excel; broad tuple verification; multi-bank/period validation
+Completed through: sealed CDKT Excel; KQKD development Excel; LCTT 107-item reconciliation and development Excel
+Currently working on: TM quantitative-note pages 31–61, item-level mapping and value binding
+Not yet completed: full TM coverage/Excel; authoritative resolution of exposed ambiguities; broad tuple and multi-bank/period verification
 Production approved: NO
 ```
