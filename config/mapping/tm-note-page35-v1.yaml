@@ -1,0 +1,43 @@
+version: 1
+policy: TM_NOTE_PAGE35_SCOPED_MAPPING_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+page_number: 35
+page_tag: page-0035
+report_scope: CONSOLIDATED
+mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_PDF_PAGE_35_FIXED_ROWS_ONLY
+
+source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+source_render_sha256: 941d1d46d4d6f55451ef98d0bad4d46638f01cc8b0dac428b7253209933a6496
+source_ocr_sha256: e1afe9756a3a7bd870b2da2b13fa195f7ba669fd4e9f4d4ce30c41de1d3ceb31
+schema_total: 1385
+minimum_visible_label_similarity: 0.78
+
+rows:
+  - {table_key: PURCHASED_NET, ordinal: 1, visible_label_anchor: mua no bang vnd, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 801, candidate_report_norm_ids: []}
+  - {table_key: PURCHASED_NET, ordinal: 2, visible_label_anchor: du phong rui ro, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 803, candidate_report_norm_ids: []}
+  - {table_key: PURCHASED_NET, ordinal: 3, visible_label_anchor: null, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 800, candidate_report_norm_ids: []}
+
+  - {table_key: PURCHASED_DETAIL, ordinal: 1, visible_label_anchor: no goc da mua, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, candidate_report_norm_ids: []}
+  - {table_key: PURCHASED_DETAIL, ordinal: 2, visible_label_anchor: lai cua khoan no da mua, expected_row_kind: NUMERIC, expected_observations: [DASH, DASH], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, candidate_report_norm_ids: []}
+  - {table_key: PURCHASED_DETAIL, ordinal: 3, visible_label_anchor: null, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, candidate_report_norm_ids: []}
+
+  - {table_key: AFS_SECURITIES, ordinal: 1, visible_label_anchor: chung khoan dau tu san sang de ban, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: FIXED, report_norm_id: 805, candidate_report_norm_ids: []}
+  - {table_key: AFS_SECURITIES, ordinal: 2, visible_label_anchor: chung khoan no do chinh phu phat hanh, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 807, candidate_report_norm_ids: []}
+  - {table_key: AFS_SECURITIES, ordinal: 3, visible_label_anchor: chung khoan no do chinh phu bao lanh, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, candidate_report_norm_ids: [807]}
+  - {table_key: AFS_SECURITIES, ordinal: 4, visible_label_anchor: chung khoan no do cac tctd khac phat hanh, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 808, candidate_report_norm_ids: []}
+  - {table_key: AFS_SECURITIES, ordinal: 5, visible_label_anchor: chung khoan no do tckt trong nuoc phat hanh, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 809, candidate_report_norm_ids: []}
+  - {table_key: AFS_SECURITIES, ordinal: 6, visible_label_anchor: null, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 824, candidate_report_norm_ids: []}
+  - {table_key: AFS_SECURITIES, ordinal: 7, visible_label_anchor: du phong giam gia chung khoan san sang de ban, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 825, candidate_report_norm_ids: []}
+  - {table_key: AFS_SECURITIES, ordinal: 8, visible_label_anchor: null, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 804, candidate_report_norm_ids: []}
+
+not_observed_schema_ids: [802, 806, 810, 811, 812, 813, 814, 815, 816, 817, 818, 819, 820, 821, 822, 823, 826, 827, 828]
+
+forbidden_mapping_inputs:
+  - numeric_cell_text
+  - numeric_cell_value_as_item_selector
+  - numeric_value_magnitude
+  - historical_or_mongodb_values
+  - human_review_answers
+  - dash_as_zero
+  - accounting_equation_result_as_item_selector

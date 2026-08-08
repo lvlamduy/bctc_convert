@@ -5,7 +5,7 @@ Updated: 2026-08-08
 - **CDKT unresolved:** 7 active issues — all 7 are `NEEDS_USER_REVIEW`; Codex continues work elsewhere without waiting.
 - **KQKD unresolved:** 1 source-only row; 0 unresolved schema mappings.
 - **LCTT unresolved:** 6 schema items (5 composite candidates + 1 label conflict) and 2 source-only composite rows.
-- **TM unresolved:** 14 meaningful questions across audited pages 30–35; pages 36–61 are still being itemized.
+- **TM unresolved:** 26 meaningful questions across audited pages 30–40; pages 41–61 are still being itemized.
 
 CDKT schema reconciliation is exact: `77 = 61 MAPPED + 15 NOT_OBSERVED_IN_THIS_PDF + 1 UNRESOLVED`. The not-observed IDs are `4344, 4326, 4345, 4333, 4309, 4303, 4359, 4360, 4373, 4340, 4374, 4341, 4329, 4369, 4370`. Three source-only CDKT rows remain outside the denominator.
 
@@ -338,9 +338,165 @@ CDKT schema reconciliation is exact: `77 = 61 MAPPED + 15 NOT_OBSERVED_IN_THIS_P
 - **What Codex currently thinks:** retain these as aggregation provenance and map their represented children where exact IDs exist.
 - **Question for user:** Should any existing ReportNormId receive these four visible concepts?
 
+### Q030
+
+- **Statement:** TM
+- **Document:** MBB consolidated Q1/2026
+- **PDF page:** 36, note 9
+- **Visible row label:** `Dự phòng giảm giá`
+- **Visible values/periods:** (91.228) at both 31/03/2026 and 31/12/2025; triệu đồng.
+- **Current status:** `SOURCE_ONLY_PDF_ROW` / `POSSIBLE_SCHEMA_GAP`.
+- **Candidate ReportNormId(s):** none in branch 862–867; 849 belongs to a different note and is not reusable.
+- **Why unresolved:** the branch has gross 867 and net 862 but no provision child.
+- **What Codex currently thinks:** retain source-only; it exactly validates gross plus provision equals net.
+- **Question for user:** Is there an existing ID for this provision, should one be added, or is source-only intentional?
+
+### Q031
+
+- **Statement:** TM
+- **Document:** MBB consolidated Q1/2026
+- **PDF page:** 36, note 9.1
+- **Visible row label:** `Đầu tư vào tổ chức kinh tế, dự án dài hạn`; `Đầu tư vào các Quỹ đầu tư`
+- **Visible values/periods:** 492.584 / 493.184 and 66.550 / 66.440 triệu đồng at current/comparative snapshots.
+- **Current status:** `SOURCE_ONLY_DETAIL` / `POSSIBLE_SCHEMA_GAP`.
+- **Candidate ReportNormId(s):** none exact; 867 is their aggregate only.
+- **Why unresolved:** schema branch 862–867 has no matching child identities.
+- **What Codex currently thinks:** map gross aggregate 867 and retain both details as provenance.
+- **Question for user:** Should either detail receive an existing/new ReportNormId, or are both intentionally source-only?
+
+### Q032
+
+- **Statement:** TM
+- **Document:** MBB consolidated Q1/2026
+- **PDF page:** 37–38, note 10 tangible fixed assets
+- **Visible row label:** gross-cost `Tăng trong kỳ`, `Giảm trong kỳ`, and `Tăng/(Giảm) khác`
+- **Visible values/periods:** page 38 total increases 754.094 and decreases (354.092); page 37 totals 56.387, (6.224), and (480) triệu đồng.
+- **Current status:** `SOURCE_ONLY_AGGREGATE`; the last row is also `AMBIGUOUS_MAPPING`.
+- **Candidate ReportNormId(s):** increases 871–875; decreases 876–878/880–881; other 875/881.
+- **Why unresolved:** the PDF aggregates movement causes that the schema separates.
+- **What Codex currently thinks:** do not split; the negative sign weakly favors 881 for page 37 `other` but is insufficient authority.
+- **Question for user:** Keep these aggregates source-only, select a detail by context/sign, or add aggregate IDs?
+
+### Q033
+
+- **Statement:** TM
+- **Document:** MBB consolidated Q1/2026
+- **PDF page:** 37–38, tangible accumulated depreciation
+- **Visible row label:** `Tăng trong kỳ`, `Giảm trong kỳ`, and `Tăng/(Giảm) khác`
+- **Visible values/periods:** page 38 totals 551.766 / (201.454); page 37 totals 144.587 / (5.996) / dash; triệu đồng.
+- **Current status:** `SOURCE_ONLY_AGGREGATE`.
+- **Candidate ReportNormId(s):** increases 885–887; decreases 888–890/892–894; other 887/894.
+- **Why unresolved:** aggregate rows cannot prove which detailed schema movement produced them.
+- **What Codex currently thinks:** 885 is plausible for increase but unsafe to force.
+- **Question for user:** Retain aggregate/components unresolved, select detail IDs, or add aggregate IDs?
+
+### Q034
+
+- **Statement:** TM
+- **Document:** MBB consolidated Q1/2026
+- **PDF page:** 37–38
+- **Visible row label:** tangible gross-cost and accumulated-depreciation `Chênh lệch tỷ giá`
+- **Visible values/periods:** page 37 totals 565 / 162; page 38 totals 8.606 / 2.225 triệu đồng.
+- **Current status:** `SOURCE_ONLY_PDF_ROW` / `POSSIBLE_SCHEMA_GAP`.
+- **Candidate ReportNormId(s):** none exact under parents 869 and 883.
+- **Why unresolved:** the schema has no FX movement leaf under either parent.
+- **What Codex currently thinks:** these appear to be two missing movement identities.
+- **Question for user:** Add/expose FX IDs under each parent, or keep these rows source-only?
+
+### Q035
+
+- **Statement:** TM
+- **Document:** MBB consolidated Q1/2026
+- **PDF page:** 38
+- **Visible row label:** `Điều chỉnh theo Kiểm toán Nhà nước` under accumulated depreciation
+- **Visible values/periods:** total 1.221 triệu đồng; only the machinery/equipment class has value, other classes show dash.
+- **Current status:** `SOURCE_ONLY_PDF_ROW` / `POSSIBLE_SCHEMA_GAP`.
+- **Candidate ReportNormId(s):** 887 only weakly as `Tăng khác`.
+- **Why unresolved:** a named audit adjustment is not an exact match for the generic schema concept.
+- **What Codex currently thinks:** do not force 887.
+- **Question for user:** Map to 887, add a dedicated ID, or keep source-only?
+
+### Q036
+
+- **Statement:** TM
+- **Document:** MBB consolidated Q1/2026
+- **PDF page:** 37–38
+- **Visible row label:** tangible fixed-asset `Giá trị còn lại` at opening and closing
+- **Visible values/periods:** page 38 total 3.750.696 → 3.805.533; page 37 total 3.805.533 → 3.717.028 triệu đồng.
+- **Current status:** `SOURCE_ONLY_VALIDATION` / `POSSIBLE_SCHEMA_GAP`.
+- **Candidate ReportNormId(s):** none.
+- **Why unresolved:** the schema has cost/depreciation movements but no net-book-value opening/closing leaves.
+- **What Codex currently thinks:** retain as exact gross-minus-accumulated validation.
+- **Question for user:** Is validation-only intended, or should net-book-value IDs be added?
+
+### Q037
+
+- **Statement:** TM
+- **Document:** MBB consolidated Q1/2026
+- **PDF page:** 37–40
+- **Visible row label:** asset-class columns in tangible and intangible fixed-asset roll-forwards
+- **Visible values/periods:** 188 class-level auxiliary slots in addition to 53 total-column slots.
+- **Current status:** `SOURCE_ONLY_DIMENSION`.
+- **Candidate ReportNormId(s):** same movement IDs as total rows; schema has no asset-class measure axis.
+- **Why unresolved:** exporting every class into the same ID would duplicate targets.
+- **What Codex currently thinks:** export total only; retain class axes for provenance and equation checks.
+- **Question for user:** Is excluding asset-class subaxes from schema Excel intentional?
+
+### Q038
+
+- **Statement:** TM
+- **Document:** MBB consolidated Q1/2026
+- **PDF page:** 39–40, note 11 intangible gross cost
+- **Visible row label:** `Tăng trong kỳ`; `Tăng/(giảm) khác`
+- **Visible values/periods:** page 39 increase total 77.097; page 40 increase 823.072 and other (10.622) triệu đồng.
+- **Current status:** `SOURCE_ONLY_AGGREGATE` / `AMBIGUOUS_MAPPING`.
+- **Candidate ReportNormId(s):** increase 916–920; other 920/927; liquidation 925 is already exact.
+- **Why unresolved:** the generic aggregate does not identify a detailed movement; sign only weakly favors 927 for `other`.
+- **What Codex currently thinks:** retain increases as aggregate; select 927 only if a sign/context policy is approved.
+- **Question for user:** Keep source-only, select 927 by sign, or add aggregate IDs?
+
+### Q039
+
+- **Statement:** TM
+- **Document:** MBB consolidated Q1/2026
+- **PDF page:** 39–40, intangible accumulated amortization
+- **Visible row label:** `Tăng trong kỳ`, `Giảm trong kỳ`, and `Tăng/(giảm) khác`
+- **Visible values/periods:** page 39 increase 104.592; page 40 increase 601.304, decrease (21.406), other (3.348) triệu đồng.
+- **Current status:** `SOURCE_ONLY_AGGREGATE` / `AMBIGUOUS_MAPPING`.
+- **Candidate ReportNormId(s):** increase 931–933; decrease 934–940 (938 strongest); other 933/940.
+- **Why unresolved:** the labels are generic and may combine several detailed schema movements.
+- **What Codex currently thinks:** context/sign suggest 931/938/940 but are not sufficient authority.
+- **Question for user:** Approve those mappings, retain aggregate source-only, or add aggregate IDs?
+
+### Q040
+
+- **Statement:** TM
+- **Document:** MBB consolidated Q1/2026
+- **PDF page:** 39–40
+- **Visible row label:** intangible gross-cost and accumulated-amortization `Chênh lệch tỷ giá`
+- **Visible values/periods:** page 39 totals 159 / 44; page 40 totals 1.263 / 391 triệu đồng.
+- **Current status:** `SOURCE_ONLY_PDF_ROW` / `POSSIBLE_SCHEMA_GAP`.
+- **Candidate ReportNormId(s):** none under parents 914 and 929.
+- **Why unresolved:** the schema has no FX movement leaf for either roll-forward.
+- **What Codex currently thinks:** two movement identities appear missing.
+- **Question for user:** Add/expose FX IDs under each parent, or keep source-only?
+
+### Q041
+
+- **Statement:** TM
+- **Document:** MBB consolidated Q1/2026
+- **PDF page:** 39–40
+- **Visible row label:** intangible fixed-asset `Giá trị còn lại` at opening and closing
+- **Visible values/periods:** page 40 total 1.679.720 → 1.811.014; page 39 opens at 1.811.014 and closes at 1.783.634 triệu đồng.
+- **Current status:** `SOURCE_ONLY_VALIDATION` / `POSSIBLE_SCHEMA_GAP`.
+- **Candidate ReportNormId(s):** none.
+- **Why unresolved:** the schema lacks net-book-value opening/closing leaves.
+- **What Codex currently thinks:** retain as exact cost-minus-amortization and cross-page continuity validation.
+- **Question for user:** Keep validation-only, or add net-book-value IDs?
+
 ## CODEX_STILL_INVESTIGATING
 
-- **TM:** pages 30–35 have been itemized or audited. Codex is continuing pages 36–61 and will promote only evidence-backed rows from audit candidates into mapping/Excel.
+- **TM:** pages 30–40 have been itemized or audited. Codex is continuing pages 41–61 and will promote only evidence-backed rows from audit candidates into mapping/Excel.
 
 ## RESOLVED_BY_CODEX
 
