@@ -55,8 +55,9 @@ All four statement groups use the versioned universal schema. TM uses note-speci
 - **Latest sealed version:** E-0041 CDKT workbook/provenance pair. No new E-version is planned for ordinary coverage expansion.
 - **TM development artifacts:** `output/development/mbb-q1-2026-tm-consolidated-v2/mbb-q1-2026-consolidated-tm-development.xlsx` (SHA-256 `f41d4179ff1142537d624076eb1771c4454842ef740b42e6723ae910143ada20`) and paired provenance JSON (SHA-256 `ebf605b6b9d992b0465d6d7234ae3bf8877824be3147f023d455455a4fba1339`). Three builds using independent verified cache paths are byte-identical. The prior v1 artifact remains preserved and is not overwritten.
 - **Regression status:** the exact final-byte unit suite passes **1,285/1,285** in **4,154.04 seconds (1:09:14)**. Deterministic schema replay, the complete 27-owner partition, focused mapping/export tests, cross-directory export determinism, Ruff/scoped-format and diff checks also pass; historical frozen consumers remain bound to exact Git snapshots without rewriting sealed artifacts.
+- **Publication status:** implementation commit `064107af36ab5610d9e695414e18e59d63f8ce8b` is pushed to `codex/rebuild-bootstrap`. Bounded S3 checkpoint `20260808T195617499042Z-064107af36ab` passed full incremental restore; manifest SHA-256 is `bb3d7ba9e71c5e2223aad1c4527d84c383c5c017e383b4dcc8c1a1f0911051a2` and run-record SHA-256 is `0b94d251f6bb3ae196ebbbf9f0d4b07b18ed36a1e7db2cc2b9081a2779ebf847`.
 - **Biggest remaining blocker:** no current MBB item-level schema ambiguity remains. The next accuracy boundary is independent multi-bank/period evidence and continued source-driven schema growth, not forcing universal rows to appear at every bank.
-- **Exact next end-to-end step:** commit/push and create the bounded off-machine publication checkpoint, then process the next independent bank/report while allowing evidence-backed schema expansion.
+- **Exact next end-to-end step:** process the next independent bank/report while allowing evidence-backed schema expansion, then compare cross-bank aliases, hierarchy and extraction behavior.
 
 ## 5. Overall status
 
@@ -65,7 +66,7 @@ Current end-to-end status:
 PDF → page → row/cell → OCR → mapping → validation → Excel
 
 Completed through: source-complete MBB item reconstruction; universal schema 1,913; deterministic development Excel for CDKT/KQKD/LCTT; all 1,701 TM identities reconciled across every quantitative page
-Currently working on: commit/push and bounded off-machine checkpoint for the refreshed TM 1,701 and LCTT 109 artifacts
+Currently working on: selecting and processing the next independent bank/report for cross-bank universal-schema validation
 Not yet completed: broad independent multi-bank/period verification and continued universal-schema discovery from new reports
 Production approved: NO
 ```
