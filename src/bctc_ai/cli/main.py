@@ -278,6 +278,50 @@ def _run_extract_native_rows(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_export_native_rows(args: argparse.Namespace) -> int:
+    from bctc_ai.export.native_rows import export_registered_native_rows_excel
+
+    root = _project_root(args.project_root)
+
+    def resolve(raw: str) -> Path:
+        path = Path(raw)
+        return path.resolve() if path.is_absolute() else (root / path).resolve()
+
+    result = export_registered_native_rows_excel(
+        project_root=root,
+        rows_path=resolve(args.rows),
+        expected_sha256=args.rows_sha256,
+        workbook_path=resolve(args.workbook),
+        provenance_path=resolve(args.provenance),
+        policy_path=resolve(args.policy),
+        rows_policy_path=resolve(args.rows_policy),
+    )
+    summary = result.summary
+    print(f"NATIVE_ROWS_EXCEL_WORKBOOK={result.workbook_path.relative_to(root)}")
+    print(f"NATIVE_ROWS_EXCEL_WORKBOOK_SHA256={result.workbook_sha256}")
+    print(f"NATIVE_ROWS_EXCEL_WORKBOOK_BYTES={result.workbook_size_bytes}")
+    print(f"NATIVE_ROWS_EXCEL_PROVENANCE={result.provenance_path.relative_to(root)}")
+    print(f"NATIVE_ROWS_EXCEL_PROVENANCE_SHA256={result.provenance_sha256}")
+    print(f"NATIVE_ROWS_EXCEL_PROVENANCE_BYTES={result.provenance_size_bytes}")
+    print(
+        f"NATIVE_ROWS_EXCEL_FINANCIAL_TABLE_SPAN_ROWS={summary['financial_table_span_row_count']}"
+    )
+    print(
+        "NATIVE_ROWS_EXCEL_OUTSIDE_FINANCIAL_TABLE_SPAN_ROWS="
+        f"{summary['outside_financial_table_span_row_count']}"
+    )
+    print(f"NATIVE_ROWS_EXCEL_ALL_SOURCE_ROWS={summary['all_source_row_count']}")
+    print(
+        f"NATIVE_ROWS_EXCEL_FINANCIAL_TABLE_SPAN_CELLS={summary['financial_table_span_cell_count']}"
+    )
+    print(
+        "NATIVE_ROWS_EXCEL_OUTSIDE_FINANCIAL_TABLE_SPAN_CELLS="
+        f"{summary['outside_financial_table_span_cell_count']}"
+    )
+    print(f"NATIVE_ROWS_EXCEL_ALL_SOURCE_CELLS={summary['all_source_cell_count']}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="bctc-ai")
     parser.add_argument("--project-root", help="repository root; defaults to current directory")
@@ -365,6 +409,24 @@ def build_parser() -> argparse.ArgumentParser:
         default="config/rows/native-statement-rows-v1.yaml",
     )
     native_rows.set_defaults(handler=_run_extract_native_rows)
+
+    native_rows_export = subparsers.add_parser(
+        "export-native-rows",
+        help="export registered native statement rows as deterministic Excel and provenance",
+    )
+    native_rows_export.add_argument("--rows", required=True)
+    native_rows_export.add_argument("--rows-sha256", required=True)
+    native_rows_export.add_argument("--workbook", required=True)
+    native_rows_export.add_argument("--provenance", required=True)
+    native_rows_export.add_argument(
+        "--policy",
+        default="config/export/native-statement-rows-excel-v1.yaml",
+    )
+    native_rows_export.add_argument(
+        "--rows-policy",
+        default="config/rows/native-statement-rows-v1.yaml",
+    )
+    native_rows_export.set_defaults(handler=_run_export_native_rows)
 
     backup = subparsers.add_parser("backup")
     backup.add_argument("--destination", required=True)
