@@ -2,12 +2,12 @@
 
 Updated: 2026-08-08
 
-- **CDKT unresolved/review-worthy:** 11 tracked issues — 6 `NEEDS_USER_REVIEW`, 5 `CODEX_STILL_INVESTIGATING`.
-- **KQKD unresolved:** 0 enumerated; 24 schema items are not yet item-level assessed.
-- **LCTT unresolved:** 0 enumerated; 107 schema items are not yet item-level assessed.
-- **TM unresolved:** 0 enumerated; 1,385 schema items are not yet item-level assessed.
+- **CDKT unresolved:** 7 active issues — all 7 are `NEEDS_USER_REVIEW`; Codex continues work elsewhere without waiting.
+- **KQKD unresolved:** 1 source-only row; 0 unresolved schema mappings.
+- **LCTT unresolved:** 46 schema items (41 provisional candidates + 5 ambiguous) and 2 source-only composite rows.
+- **TM unresolved:** 3 meaningful questions in the first audited batch; the remaining notes are still being itemized.
 
-CDKT schema reconciliation is exact: `77 = 61 MAPPED + 12 NOT_OBSERVED_IN_THIS_PDF + 3 AMBIGUOUS_MAPPING + 1 UNRESOLVED`. The three source-only PDF rows below are outside that 77-item denominator. The 12 confidently not-observed IDs are `4344, 4326, 4345, 4333, 4309, 4303, 4359, 4360, 4373, 4340, 4374, 4341`.
+CDKT schema reconciliation is exact: `77 = 61 MAPPED + 15 NOT_OBSERVED_IN_THIS_PDF + 1 UNRESOLVED`. The not-observed IDs are `4344, 4326, 4345, 4333, 4309, 4303, 4359, 4360, 4373, 4340, 4374, 4341, 4329, 4369, 4370`. Three source-only CDKT rows remain outside the denominator.
 
 ## NEEDS_USER_REVIEW
 
@@ -17,12 +17,12 @@ CDKT schema reconciliation is exact: `77 = 61 MAPPED + 12 NOT_OBSERVED_IN_THIS_P
 - **Document:** MBB Q1/2026
 - **PDF page:** 4, row 23
 - **Visible row label:** `TỔNG VỐN CHỦ SỞ HỮU`
-- **Visible values/periods:** 149.745.325 at 31/03/2026; 142.022.525 at 31/12/2025; unit triệu đồng.
+- **Visible values/periods:** 149.745.325 at 31/03/2026; 142.022.525 at 31/12/2025; triệu đồng.
 - **Current status:** `SOURCE_ONLY_PDF_ROW`; strong `POSSIBLE_SCHEMA_GAP` outside the 77-item denominator.
-- **Candidate ReportNormId(s):** none; 4305 is already correctly used by the following grand-total row.
-- **Why unresolved:** the 77-item CDKT schema has no distinct total-equity item, although both accounting equations reproduce the visible values exactly.
-- **What Codex currently thinks:** do not force this row to 4305 or 4375; a dedicated schema identity is likely needed if this subtotal belongs in the output.
-- **Question for user:** Should this row receive a new/existing business ReportNormId, or intentionally remain source-only?
+- **Candidate ReportNormId(s):** none; 4305 is already used by the following grand-total row.
+- **Why unresolved:** the schema has no distinct total-equity item, while both accounting equations reproduce the row exactly.
+- **What Codex currently thinks:** do not force it to 4305 or 4375; a dedicated identity may be needed.
+- **Question for user:** Should this row receive a new/existing ReportNormId, or intentionally remain source-only?
 
 ### Q002
 
@@ -30,12 +30,12 @@ CDKT schema reconciliation is exact: `77 = 61 MAPPED + 12 NOT_OBSERVED_IN_THIS_P
 - **Document:** MBB Q1/2026
 - **PDF page:** 4, row 0
 - **Visible row label:** `NỢ PHẢI TRẢ`
-- **Visible values/periods:** blank at both 31/03/2026 and 31/12/2025; structural heading, not zero.
+- **Visible values/periods:** blank at both periods; structural heading, not zero.
 - **Current status:** `SOURCE_ONLY_PDF_ROW`.
 - **Candidate ReportNormId(s):** 4303 only as a weak diagnostic candidate.
-- **Why unresolved:** schema 4303 is the broader umbrella `NỢ PHẢ TRẢ VÀ VỐN CHỦ SỞ HỮU`, while the PDF splits liabilities and equity into separate headings.
-- **What Codex currently thinks:** retain this heading as source-only rather than collapsing it into 4303.
-- **Question for user:** Is 4303 meant to stay unpopulated for this split layout, or should this heading map to it?
+- **Why unresolved:** 4303 is the broader umbrella `NỢ PHẢI TRẢ VÀ VỐN CHỦ SỞ HỮU`; the PDF splits liabilities and equity.
+- **What Codex currently thinks:** retain source-only rather than distort 4303.
+- **Question for user:** Is 4303 intentionally unpopulated for this split layout, or should this heading map to it?
 
 ### Q003
 
@@ -43,11 +43,11 @@ CDKT schema reconciliation is exact: `77 = 61 MAPPED + 12 NOT_OBSERVED_IN_THIS_P
 - **Document:** MBB Q1/2026
 - **PDF page:** 4, row 13
 - **Visible row label:** `II. VỐN CHỦ SỞ HỮU`
-- **Visible values/periods:** blank at both periods; structural heading, not zero.
+- **Visible values/periods:** blank at both periods; structural heading.
 - **Current status:** `SOURCE_ONLY_PDF_ROW`.
-- **Candidate ReportNormId(s):** none admissible; 4303 is only a weak diagnostic match.
-- **Why unresolved:** no schema item represents this separate section heading.
-- **What Codex currently thinks:** retain source-only; do not map to a child value item.
+- **Candidate ReportNormId(s):** none admissible.
+- **Why unresolved:** no schema item represents this section heading.
+- **What Codex currently thinks:** retain source-only; never map it to a child value item.
 - **Question for user:** Is this heading intentionally absent from the schema, or should it have a schema identity?
 
 ### Q004
@@ -56,25 +56,25 @@ CDKT schema reconciliation is exact: `77 = 61 MAPPED + 12 NOT_OBSERVED_IN_THIS_P
 - **Document:** MBB Q1/2026
 - **PDF page:** 4, row 22
 - **Visible row label:** `Lợi ích của cổ đông không kiểm soát`
-- **Visible values/periods:** 6.161.107 at 31/03/2026; 5.886.495 at 31/12/2025; unit triệu đồng.
-- **Current status:** visible row is mapped to 5699; schema item 4306 remains `UNRESOLVED`.
-- **Candidate ReportNormId(s):** 5699 and 4306.
-- **Why unresolved:** the schema contains two near-synonymous identities at different hierarchy positions.
-- **What Codex currently thinks:** 5699 is structurally better because the row is inside `Vốn và các quỹ`; 4306 may be legacy/not-applicable.
-- **Question for user:** Which ID is authoritative, and should the other be deprecated, an alias, or a distinct item?
+- **Visible values/periods:** 6.161.107 / 5.886.495 triệu đồng.
+- **Current status:** visible row maps to 5699; schema item 4306 remains `UNRESOLVED`.
+- **Candidate ReportNormId(s):** 5699, 4306.
+- **Why unresolved:** the schema has two near-synonymous identities at different hierarchy positions.
+- **What Codex currently thinks:** 5699 is structurally better; 4306 may be legacy or not applicable.
+- **Question for user:** Which ID is authoritative, and should the other be deprecated, aliased, or kept distinct?
 
 ### Q005
 
 - **Statement:** CDKT
 - **Document:** MBB Q1/2026
 - **PDF page:** main CDKT pages 3–4 versus quantitative notes
-- **Visible row label:** twelve schema details have no separate row on pages 3–4.
-- **Visible values/periods:** none on the main statement.
-- **Current status:** `NOT_OBSERVED_IN_THIS_PDF` for the main-statement boundary.
-- **Candidate ReportNormId(s):** 4344, 4326, 4345, 4333, 4309, 4303, 4359, 4360, 4373, 4340, 4374, 4341.
-- **Why unresolved:** some details may occur only in notes; importing them into CDKT would change the extraction boundary.
-- **What Codex currently thinks:** keep main-statement CDKT and quantitative TM evidence separate unless the schema contract explicitly requires note backfill.
-- **Question for user:** Should CDKT values be populated only from the main statement, or may note-detail rows backfill these CDKT IDs?
+- **Visible row label:** fifteen schema details have no separate main-statement row.
+- **Visible values/periods:** none on pages 3–4.
+- **Current status:** `NOT_OBSERVED_IN_THIS_PDF` under the main-statement boundary.
+- **Candidate ReportNormId(s):** the 15 IDs listed in the reconciliation header.
+- **Why unresolved:** some details may occur only in notes; backfill would change the extraction boundary.
+- **What Codex currently thinks:** keep CDKT and quantitative TM evidence separate unless the schema contract says otherwise.
+- **Question for user:** May quantitative-note rows backfill CDKT IDs, or must CDKT use only the main statement?
 
 ### Q006
 
@@ -82,53 +82,53 @@ CDKT schema reconciliation is exact: `77 = 61 MAPPED + 12 NOT_OBSERVED_IN_THIS_P
 - **Document:** MBB Q1/2026
 - **PDF page:** 3, row 15
 - **Visible row label:** `Chứng khoán đầu tư sẵn sàng để bán`
-- **Visible values/periods:** 259.054.739 at 31/03/2026; 221.512.464 at 31/12/2025; unit triệu đồng.
-- **Current status:** mapped to 4350; values verified, but schema display name says `...sẵn sàng để hàng`.
+- **Visible values/periods:** 259.054.739 / 221.512.464 triệu đồng.
+- **Current status:** mapped to 4350; supplied schema name says `...sẵn sàng để hàng`.
 - **Candidate ReportNormId(s):** 4350.
-- **Why unresolved:** the supplied schema appears to contain a label typo; schema edits require explicit authority.
-- **What Codex currently thinks:** mapping is correct and only the display name is wrong.
+- **Why unresolved:** mapping is clear, but the supplied schema appears to have a label typo.
+- **What Codex currently thinks:** correct only the display name, not the identity.
 - **Question for user:** May the schema/template name for 4350 be corrected from `để hàng` to `để bán`?
 
-## CODEX_STILL_INVESTIGATING
+### Q012
 
-### Q007
+- **Statement:** KQKD
+- **Document:** MBB consolidated Q1/2026
+- **PDF page:** 6, logical row 12
+- **Visible row label:** `TỔNG THU NHẬP HOẠT ĐỘNG`
+- **Visible values/periods:** 17.430.206 / 15.322.697 triệu đồng for quarter current/comparative; the separately bound Q1 YTD pair repeats them.
+- **Current status:** `SOURCE_ONLY_PDF_ROW` outside the 24-item denominator.
+- **Candidate ReportNormId(s):** none.
+- **Why unresolved:** the total is visible and accounting-valid, but the KQKD schema contains only its components.
+- **What Codex currently thinks:** retain as provenance/validation unless a dedicated total identity is desired.
+- **Question for user:** Should this total remain source-only, or should the schema add/identify a ReportNormId for it?
 
-- **Statement:** CDKT
-- **Document:** MBB Q1/2026
-- **PDF page:** 3, rows 23 and 26
-- **Visible row label:** `Tài sản cố định hữu hình`; `Tài sản cố định vô hình`.
-- **Visible values/periods:** 3.717.028/3.805.533 and 1.783.634/1.811.014 triệu đồng.
-- **Current status:** schema item 4329 `Tài sản cố định thuê tài chính` is `AMBIGUOUS_MAPPING`.
-- **Candidate ReportNormId(s):** 4329 against source rows already mapped to 4328 and 4330.
-- **Why unresolved:** generic `Tài sản cố định` tokens create a candidate despite the visible subtype mismatch.
-- **What Codex currently thinks:** 4329 is `NOT_OBSERVED_IN_THIS_PDF`; subtype/parent gating should remove the false candidate.
-- **Question for user:** No action required yet; please flag only if a finance-lease row is visibly present on page 3.
+### Q013
 
-### Q008
+- **Statement:** LCTT
+- **Document:** MBB consolidated Q1/2026, direct method
+- **PDF page:** 7
+- **Visible row label:** `Tiền thu/(chi) bất động sản đầu tư`
+- **Visible values/periods:** dash / dash for 01/01–31/03/2026 and comparative 2025.
+- **Current status:** `SOURCE_ONLY_PDF_ROW`; schema IDs 4144/4145/4146 remain `AMBIGUOUS_MAPPING`.
+- **Candidate ReportNormId(s):** 4144, 4145, 4146.
+- **Why unresolved:** the PDF presents one net/composite row; the schema separates purchase, sale proceeds and sale outflow.
+- **What Codex currently thinks:** keep the composite row source-only and classify the three schema details as not observed unless the business contract defines a split.
+- **Question for user:** Should this combined row map to one ID, remain source-only, or be split across the three IDs?
 
-- **Statement:** CDKT
-- **Document:** MBB Q1/2026
-- **PDF page:** 3, rows 24–25 and 27–28
-- **Visible row label:** two `Nguyên giá tài sản cố định` rows under the visible tangible/intangible parents.
-- **Visible values/periods:** 9.473.484/9.423.236 and 5.762.160/5.684.904 triệu đồng.
-- **Current status:** schema item 4369 `Nguyên giá tài sản cố định thuê tài chính` is `AMBIGUOUS_MAPPING`.
-- **Candidate ReportNormId(s):** 4369.
-- **Why unresolved:** the child label lacks the subtype text; current candidate scoring underweights the physical parent subtype.
-- **What Codex currently thinks:** 4369 is not observed; enforce parent-path subtype consistency.
-- **Question for user:** No action required yet; Codex is fixing the structural gate.
+### Q014
 
-### Q009
+- **Statement:** LCTT
+- **Document:** MBB consolidated Q1/2026, direct method
+- **PDF page:** 7
+- **Visible row label:** `Tiền thu/(chi) đầu tư, góp vốn vào các đơn vị khác`
+- **Visible values/periods:** 490 / (71.299) triệu đồng for current/comparative duration.
+- **Current status:** `SOURCE_ONLY_PDF_ROW`; schema IDs 4120/4121 remain `AMBIGUOUS_MAPPING`.
+- **Candidate ReportNormId(s):** 4120, 4121.
+- **Why unresolved:** the PDF exposes one signed net row, while the schema separates cash paid and cash recovered.
+- **What Codex currently thinks:** forcing the signed row into either directional ID loses the other business meaning.
+- **Question for user:** Should the row map by sign to 4120/4121, remain source-only, or receive a net-flow schema identity?
 
-- **Statement:** CDKT
-- **Document:** MBB Q1/2026
-- **PDF page:** 3, rows 25 and 28
-- **Visible row label:** two `Hao mòn tài sản cố định` rows under tangible/intangible parents.
-- **Visible values/periods:** (5.756.456)/(5.617.703) and (3.978.526)/(3.873.890) triệu đồng.
-- **Current status:** schema item 4370 `Giá trị hao mòn lũy kế tài sản cố định thuê tài chính` is `AMBIGUOUS_MAPPING`.
-- **Candidate ReportNormId(s):** 4370.
-- **Why unresolved:** same parent-subtype leakage as Q008.
-- **What Codex currently thinks:** 4370 is not observed; require parent-path subtype consistency.
-- **Question for user:** No action required yet; Codex is fixing the structural gate.
+## NEEDS_USER_REVIEW — NUMERIC CONFIRMATION
 
 ### Q010
 
@@ -136,22 +136,60 @@ CDKT schema reconciliation is exact: `77 = 61 MAPPED + 12 NOT_OBSERVED_IN_THIS_P
 - **Document:** MBB Q1/2026
 - **PDF page:** 4, row 11
 - **Visible row label:** `Dự phòng các khoản nợ khác`
-- **Visible values/periods:** current crop visibly reads `2.320`; comparative is verified `2.188`; unit triệu đồng.
-- **Current status:** row maps to 4363, but current-period value is `UNRESOLVED_READER_DISAGREEMENT` (`2.320` versus challenger `.20`).
+- **Visible values/periods:** current crop visibly reads 2.320; comparative is 2.188; triệu đồng.
+- **Current status:** row maps to 4363; current-period value remains `UNRESOLVED_READER_DISAGREEMENT` in the sealed output.
 - **Candidate ReportNormId(s):** 4363.
-- **Why unresolved:** exact two-reader agreement fails even though the source crop visibly retains the leading digit.
-- **What Codex currently thinks:** value is 2.320; add a bounded independent reread rather than weakening the general agreement rule.
-- **Question for user:** No action required yet; Codex is testing a localized numeric fallback.
+- **Why unresolved:** the sealed second reader returned `.20`, so exact agreement failed.
+- **What Codex currently thinks:** 2.320 is correct. A targeted PP-OCR reread also produced 2.320, while the independent English numeric reader still drops the leading digit and the PDF page has no embedded text layer.
+- **Question for user:** Please confirm whether the current-period value on this visible row is `2.320`.
 
-### Q011
+### Q015
 
-- **Statement:** CDKT
-- **Document:** MBB Q1/2026
-- **PDF page:** statement title/page context
-- **Visible row label:** title evidence contains `HỢP NHẤT`.
-- **Visible values/periods:** 31/03/2026 current, 31/12/2025 comparative; unit triệu đồng.
-- **Current status:** report scope remains `UNKNOWN` in the sealed output.
-- **Candidate ReportNormId(s):** not applicable; candidate scopes are `CONSOLIDATED` and `SEPARATE`.
-- **Why unresolved:** the current scope binder did not admit the visible title evidence into the final contract.
-- **What Codex currently thinks:** scope should be `CONSOLIDATED`; fix and test the title-to-scope binding.
-- **Question for user:** No action required yet; Codex is resolving this from visible evidence.
+- **Statement:** TM
+- **Document:** MBB consolidated Q1/2026
+- **PDF page:** 30, quantitative note for balances with the State Bank
+- **Visible row label:** `Tiền gửi tại Ngân hàng Nhà nước Lào`
+- **Visible values/periods:** 797.376 at 31/03/2026; 667.675 at 31/12/2025; triệu đồng.
+- **Current status:** `SOURCE_ONLY_PDF_ROW` / `POSSIBLE_SCHEMA_GAP` in the first TM batch.
+- **Candidate ReportNormId(s):** none identified in the current TM schema branch.
+- **Why unresolved:** the schema exposes the aggregate State-Bank balance but no country-level child matching this visible row.
+- **What Codex currently thinks:** keep the country row as provenance and map only the aggregate unless a country-detail identity exists.
+- **Question for user:** Should this country row remain source-only, or is there an existing ReportNormId that should receive it?
+
+### Q016
+
+- **Statement:** TM
+- **Document:** MBB consolidated Q1/2026
+- **PDF page:** 30, quantitative note for balances with the State Bank
+- **Visible row label:** `Tiền gửi tại Ngân hàng Quốc gia Campuchia`
+- **Visible values/periods:** 1.426.377 at 31/03/2026; 1.590.858 at 31/12/2025; triệu đồng.
+- **Current status:** `SOURCE_ONLY_PDF_ROW` / `POSSIBLE_SCHEMA_GAP` in the first TM batch.
+- **Candidate ReportNormId(s):** none identified in the current TM schema branch.
+- **Why unresolved:** the schema exposes the aggregate State-Bank balance but no country-level child matching this visible row.
+- **What Codex currently thinks:** preserve it separately; its values participate correctly in the aggregate equation.
+- **Question for user:** Should this country row remain source-only, or is there an existing ReportNormId that should receive it?
+
+### Q017
+
+- **Statement:** TM
+- **Document:** MBB consolidated Q1/2026
+- **PDF page:** 30, quantitative note for placements/loans to other credit institutions
+- **Visible row label:** `Dự phòng rủi ro`
+- **Visible values/periods:** (10.785) at 31/03/2026; (9.096) at 31/12/2025; triệu đồng.
+- **Current status:** `AMBIGUOUS_MAPPING`.
+- **Candidate ReportNormId(s):** 590, 583.
+- **Why unresolved:** both schema labels describe provisions for balances with other credit institutions; the visible row is shorter than either schema label.
+- **What Codex currently thinks:** 590 is stronger by row placement and exact subtotal equations; 583 remains a plausible semantic alternative.
+- **Question for user:** Which ReportNormId is authoritative for this visible provision row: 590 or 583?
+
+## CODEX_STILL_INVESTIGATING
+
+- **LCTT:** Codex is obtaining an independent label stream for the 41 ordered candidates; they stay non-automatic until that evidence agrees. The five ambiguous IDs are already exposed in Q013–Q014.
+- **TM:** only the first quantitative-note page has been reconciled so far. Codex is continuing page-by-page itemization across pages 30–61; unassessed rows will be added here once they become concrete item-level ambiguities rather than a blanket denominator.
+
+## RESOLVED_BY_CODEX
+
+- **Q007 / 4329:** finance-lease fixed asset is `NOT_OBSERVED_IN_THIS_PDF`; visible rows belong to tangible/intangible parents.
+- **Q008 / 4369:** finance-lease original cost is `NOT_OBSERVED_IN_THIS_PDF`; parent-subtype gating removed the false candidate.
+- **Q009 / 4370:** finance-lease accumulated depreciation is `NOT_OBSERVED_IN_THIS_PDF`; parent-subtype gating removed the false candidate.
+- **Q011 / scope:** visible title evidence binds MBB Q1/2026 to `CONSOLIDATED`; the older sealed E-0041 receipt remains unchanged and still records its historical `UNKNOWN` value.
