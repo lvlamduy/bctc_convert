@@ -1,0 +1,91 @@
+version: 1
+policy: TM_NOTE_PAGE41_DUAL_DURATION_ROLLFORWARD_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+page_number: 41
+page_tag: page-0041
+scope: CONSOLIDATED
+scope_binding: CONTINUED_TM_NOTES_IN_IMMUTABLE_CONSOLIDATED_DOCUMENT
+
+source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+source_render_sha256: 6fadb4e5b2389872247686ccb7fe1829ec1f4ead25c14d87e3d9198c1b35db5b
+source_ocr_sha256: d3de94f929abe7580fe856e63eb7ac877d9c4380c6ed4eec00dc04e298bf145f
+
+minimum_line_score: 0.0
+minimum_anchor_similarity: 0.78
+page_footer_top_ratio: 0.90
+note_title_anchors: [bat dong san dau tu]
+unit:
+  anchors: [trieu dong]
+  canonical: VND
+  multiplier: 1000000
+
+axis_header_anchors:
+  - {role: BUILDINGS_AND_STRUCTURES, anchors: [nha cua vat kien truc]}
+  - {role: TERM_LAND_USE_RIGHTS, anchors: [quyen su dung dat co thoi han]}
+  - {role: TOTAL, anchors: [tong cong]}
+
+dash_detector_config: word-box-reconstruction-v3.yaml
+dash_detector_config_sha256: c1cf55a6187a1b2a6f54b74b1566619d046446bc3ad7e628473004103c5d0f7e
+
+panels:
+  - panel_key: Q1_2026
+    period_intro_anchors: [tinh hinh ve bat dong san dau tu cho ky ket thuc ngay 31 thang 03 nam 2026 nhu sau]
+    period_start: 2026-01-01
+    period_end: 2026-03-31
+    expected_axis_numeric_counts: [8, 7, 8]
+    sections:
+      - section_key: GROSS_COST
+        title_anchors: [nguyen gia]
+        rows:
+          - {row_key: GROSS_OPENING, label_anchors: [so du dau ky], expected_observations: [VALUE, VALUE, VALUE]}
+          - {row_key: GROSS_INCREASE, label_anchors: [tang trong ky], expected_observations: [DASH, DASH, DASH]}
+          - {row_key: GROSS_OTHER, label_anchors: [tang giam khac trong ky], expected_observations: [VALUE, DASH, VALUE]}
+          - {row_key: GROSS_CLOSING, label_anchors: [so du cuoi ky], expected_observations: [VALUE, VALUE, VALUE]}
+      - section_key: ACCUMULATED_DEPRECIATION
+        title_anchors: [gia tri hao mon]
+        rows:
+          - {row_key: DEPRECIATION_OPENING, label_anchors: [so du dau ky], expected_observations: [VALUE, VALUE, VALUE]}
+          - {row_key: DEPRECIATION_INCREASE, label_anchors: [tang trong ky], expected_observations: [VALUE, VALUE, VALUE]}
+          - {row_key: DEPRECIATION_CLOSING, label_anchors: [so du cuoi ky], expected_observations: [VALUE, VALUE, VALUE]}
+      - section_key: NET_BOOK_VALUE
+        title_anchors: [gia tri con lai]
+        rows:
+          - {row_key: NET_OPENING, label_anchors: [so du dau ky], expected_observations: [VALUE, VALUE, VALUE]}
+          - {row_key: NET_CLOSING, label_anchors: [so du cuoi ky], expected_observations: [VALUE, VALUE, VALUE]}
+
+  - panel_key: FY_2025
+    period_intro_anchors: [tinh hinh ve bat dong san dau tu cho ky ket thuc ngay 31 thang 12 nam 2025 nhu sau]
+    period_start: 2025-01-01
+    period_end: 2025-12-31
+    expected_axis_numeric_counts: [10, 8, 10]
+    sections:
+      - section_key: GROSS_COST
+        title_anchors: [nguyen gia]
+        rows:
+          - {row_key: GROSS_OPENING, label_anchors: [so du dau ky], expected_observations: [VALUE, VALUE, VALUE]}
+          - {row_key: GROSS_INCREASE, label_anchors: [tang trong ky], expected_observations: [VALUE, DASH, VALUE]}
+          - {row_key: GROSS_DECREASE, label_anchors: [giam trong ky], expected_observations: [VALUE, VALUE, VALUE]}
+          - {row_key: GROSS_CLOSING, label_anchors: [so du cuoi ky], expected_observations: [VALUE, VALUE, VALUE]}
+      - section_key: ACCUMULATED_DEPRECIATION
+        title_anchors: [gia tri hao mon]
+        rows:
+          - {row_key: DEPRECIATION_OPENING, label_anchors: [so du dau ky], expected_observations: [VALUE, VALUE, VALUE]}
+          - {row_key: DEPRECIATION_INCREASE, label_anchors: [tang trong ky], expected_observations: [VALUE, VALUE, VALUE]}
+          - {row_key: DEPRECIATION_OTHER, label_anchors: [tang giam khac trong ky], expected_observations: [VALUE, DASH, VALUE]}
+          - {row_key: DEPRECIATION_CLOSING, label_anchors: [so du cuoi ky], expected_observations: [VALUE, VALUE, VALUE]}
+      - section_key: NET_BOOK_VALUE
+        title_anchors: [gia tri con lai]
+        rows:
+          - {row_key: NET_OPENING, label_anchors: [so du dau ky], expected_observations: [VALUE, VALUE, VALUE]}
+          - {row_key: NET_CLOSING, label_anchors: [so du cuoi ky], expected_observations: [VALUE, VALUE, VALUE]}
+
+forbidden_semantic_inputs:
+  - missing_ocr_cell_as_dash_without_pixel_evidence
+  - template_labels_as_row_reconstruction_input
+  - approved_report_norm_id_assignment
+  - historical_or_mongodb_values
+  - human_review_answers
+  - dash_as_zero
+  - accounting_equations_as_value_imputation
+  - cross_panel_values_as_value_imputation

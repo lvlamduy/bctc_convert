@@ -1,0 +1,59 @@
+version: 1
+policy: TM_NOTE_PAGE50_SCOPED_MAPPING_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+page_number: 50
+page_tag: page-0050
+report_scope: CONSOLIDATED
+mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_PDF_PAGE_50_TAX_AND_CASH_ROWS_ONLY
+
+source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+source_render_sha256: e77b80f11ca9b153211a3b7ef8b23c35780cd120858c5b18cc00fcbb7b4fcfb9
+source_ocr_sha256: 8f114bc6f6e20941d0db761f039f516252541341de7b12f2af69efa6f61f586e
+schema_total: 1417
+
+# The authorized tax additions are located immediately after 1246 and before
+# the existing 1247–1254 cash-equivalent branch in workbook/PDF order.
+scoped_schema_ids: [5723, 5724, 5725, 5726, 5727, 5728, 5729, 5730, 5731, 5732, 5733, 5734, 5735, 5736, 5737, 1247, 1248, 1249, 1250, 1251, 1252, 1253, 1254]
+minimum_visible_label_similarity: 0.70
+
+rows:
+  - {table_key: TAX_EXPENSE, ordinal: 1, visible_label_anchor: chi phi thue, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, question_required: false}
+  - {table_key: TAX_EXPENSE, ordinal: 2, visible_label_anchor: chi phi thue thu nhap hien hanh, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 5723, question_required: false}
+  - {table_key: TAX_EXPENSE, ordinal: 3, visible_label_anchor: nam hien hanh, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 5724, question_required: false}
+  - {table_key: TAX_EXPENSE, ordinal: 4, visible_label_anchor: chi phi hoan nhap thue thu nhap hoan lai, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 5725, question_required: false}
+  - {table_key: TAX_EXPENSE, ordinal: 5, visible_label_anchor: chi phi thu nhap thue thu nhap hoan lai, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 5726, question_required: false}
+  - {table_key: TAX_EXPENSE, ordinal: 6, visible_label_anchor: chi phi thue thu nhap, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 5727, question_required: false}
+
+  - {table_key: TAX_RECONCILIATION, ordinal: 1, visible_label_anchor: thue thu nhap doanh nghiep, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, question_required: false}
+  - {table_key: TAX_RECONCILIATION, ordinal: 2, visible_label_anchor: tong loi nhuan theo ke toan truoc thue hop nhat, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 5728, question_required: false}
+  - {table_key: TAX_RECONCILIATION, ordinal: 3, visible_label_anchor: dieu chinh cho cac khoan, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, question_required: false}
+  - {table_key: TAX_RECONCILIATION, ordinal: 4, visible_label_anchor: thu nhap khong chiu thue bao gom co tuc loi nhuan tu cac don vi cac khoan dieu chinh hop nhat khong chiu thue va cac khoan khac, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 5729, question_required: false}
+  - {table_key: TAX_RECONCILIATION, ordinal: 5, visible_label_anchor: cac chi phi khong duoc khau tru cua rieng ngan hang, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 5730, question_required: false}
+  - {table_key: TAX_RECONCILIATION, ordinal: 6, visible_label_anchor: thu nhap chiu thue tndn uoc tinh tai viet nam, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 5731, question_required: false}
+  - {table_key: TAX_RECONCILIATION, ordinal: 7, visible_label_anchor: chi phi thue tndn hien hanh rieng ngan hang, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 5732, question_required: false}
+  - {table_key: TAX_RECONCILIATION, ordinal: 8, visible_label_anchor: dieu chinh trong nam cho thue thu nhap hien hanh cua cac nam truoc, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 5733, question_required: false}
+  - {table_key: TAX_RECONCILIATION, ordinal: 9, visible_label_anchor: chi phi thue tndn chi nhanh nuoc ngoai, expected_row_kind: NUMERIC, expected_observations: [DASH, VALUE], disposition: FIXED, report_norm_id: 5734, question_required: false}
+  - {table_key: TAX_RECONCILIATION, ordinal: 10, visible_label_anchor: chi phi thue tndn cua cac cong ty con, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 5735, question_required: false}
+  - {table_key: TAX_RECONCILIATION, ordinal: 11, visible_label_anchor: chi phi hoan nhap thue tndn hoan lai, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 5736, question_required: false}
+  - {table_key: TAX_RECONCILIATION, ordinal: 12, visible_label_anchor: chi phi thue tndn, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 5737, question_required: false}
+
+  - {table_key: CASH_EQUIVALENTS, ordinal: 1, visible_label_anchor: tien va cac khoan tuong duong tien, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, question_required: false}
+  - {table_key: CASH_EQUIVALENTS, ordinal: 2, visible_label_anchor: tien va cac khoan tuong duong tien tai quy, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1249, question_required: false}
+  - {table_key: CASH_EQUIVALENTS, ordinal: 3, visible_label_anchor: tien gui tai ngan hang nha nuoc, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1250, question_required: false}
+  - {table_key: CASH_EQUIVALENTS, ordinal: 4, visible_label_anchor: tien gui tai tctd ky han goc khong qua 3 thang, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1253, question_required: false}
+  - {table_key: CASH_EQUIVALENTS, ordinal: 5, visible_label_anchor: null, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1248, question_required: false}
+
+not_observed_schema_ids: [1247, 1251, 1252, 1254]
+
+forbidden_mapping_inputs:
+  - numeric_cell_text
+  - numeric_cell_value_as_item_selector
+  - numeric_value_magnitude
+  - historical_or_mongodb_values
+  - human_review_answers
+  - dash_as_zero
+  - accounting_equation_result_as_item_selector
+  - narrative_tax_rate_as_schema_value
+  - tax_row_as_preexisting_non_page50_schema_id
+  - schema_id_outside_page50_scope

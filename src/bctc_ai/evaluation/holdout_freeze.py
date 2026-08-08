@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import subprocess
+import tempfile
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
@@ -12,11 +13,22 @@ import yaml
 
 from bctc_ai.core.atomic import atomic_write_json
 from bctc_ai.core.hashing import sha256_file
-from bctc_ai.schema.registry import load_all
+from bctc_ai.mapping.lctt import load_cash_flow_rules
+from bctc_ai.schema.registry import SchemaItem, load_workbook
 
 
 class HoldoutFreezeError(RuntimeError):
     pass
+
+
+_HISTORICAL_LOCAL_DRIFT_PATHS = frozenset({"config/schemas/sources.yaml"})
+_FROZEN_SCHEMA_PATHS = {
+    "CDKT": "template/Bank_CDKT_ReportNormId.xlsx",
+    "KQKD": "template/Bank_KQKD_ReportNormId.xlsx",
+    "LCTT": "template/Bank_LCTT_ReportNormId.xlsx",
+    "TM": "template/Bank_TM_ReportNormId.xlsx",
+}
+_FROZEN_CASH_FLOW_RULES_PATH = "config/mapping/lctt-v2.yaml"
 
 
 @dataclass(frozen=True)
@@ -90,7 +102,7 @@ def _sha256_bytes(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def _git_file_sha256(project_root: Path, commit: str, relative_path: str) -> str:
+def _git_file_bytes(project_root: Path, commit: str, relative_path: str) -> bytes:
     result = subprocess.run(
         ["git", "show", f"{commit}:{relative_path}"],
         cwd=project_root,
@@ -99,7 +111,72 @@ def _git_file_sha256(project_root: Path, commit: str, relative_path: str) -> str
     )
     if result.returncode != 0:
         raise HoldoutFreezeError(f"frozen Git object is missing: {commit}:{relative_path}")
-    return _sha256_bytes(result.stdout)
+    return result.stdout
+
+
+def _git_file_sha256(project_root: Path, commit: str, relative_path: str) -> str:
+    return _sha256_bytes(_git_file_bytes(project_root, commit, relative_path))
+
+
+def _load_frozen_schema_items(
+    project_root: Path,
+    frozen_commit: str,
+    frozen_pipeline: dict[str, Any],
+) -> list[SchemaItem]:
+    """Reconstruct the E-0022 schema from its frozen Git bytes, not today's registry."""
+    raw_workbooks = frozen_pipeline.get("schema_workbooks")
+    raw_configs = frozen_pipeline.get("config_files")
+    if (
+        not isinstance(raw_workbooks, dict)
+        or set(raw_workbooks) != set(_FROZEN_SCHEMA_PATHS.values())
+        or not isinstance(raw_configs, dict)
+        or _FROZEN_CASH_FLOW_RULES_PATH not in raw_configs
+    ):
+        raise HoldoutFreezeError("frozen historical schema inputs are incomplete")
+
+    with tempfile.TemporaryDirectory(prefix="bctc-e0022-frozen-schema-") as temporary:
+        snapshot_root = Path(temporary)
+        materialized: dict[str, Path] = {}
+        for statement_type, relative_path in _FROZEN_SCHEMA_PATHS.items():
+            payload = _git_file_bytes(project_root, frozen_commit, relative_path)
+            if _sha256_bytes(payload) != str(raw_workbooks[relative_path]):
+                raise HoldoutFreezeError(f"frozen schema workbook drifted: {relative_path}")
+            destination = snapshot_root / relative_path
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(payload)
+            materialized[statement_type] = destination
+
+        rules_payload = _git_file_bytes(
+            project_root,
+            frozen_commit,
+            _FROZEN_CASH_FLOW_RULES_PATH,
+        )
+        if _sha256_bytes(rules_payload) != str(raw_configs[_FROZEN_CASH_FLOW_RULES_PATH]):
+            raise HoldoutFreezeError("frozen cash-flow rules drifted")
+        rules_path = snapshot_root / _FROZEN_CASH_FLOW_RULES_PATH
+        rules_path.parent.mkdir(parents=True, exist_ok=True)
+        rules_path.write_bytes(rules_payload)
+        cash_flow_rules = load_cash_flow_rules(rules_path)
+
+        schema_items: list[SchemaItem] = []
+        global_ids: set[int] = set()
+        for statement_type in ("CDKT", "KQKD", "LCTT", "TM"):
+            relative_path = _FROZEN_SCHEMA_PATHS[statement_type]
+            workbook, items = load_workbook(
+                materialized[statement_type],
+                snapshot_root,
+                statement=statement_type,
+                cash_flow_rules=cash_flow_rules,
+            )
+            expected_digest = str(raw_workbooks[relative_path])
+            if workbook.sha256 != expected_digest:
+                raise HoldoutFreezeError(f"materialized frozen schema drifted: {statement_type}")
+            item_ids = {item.schema_id for item in items}
+            if global_ids & item_ids:
+                raise HoldoutFreezeError("frozen schema has cross-statement ID collisions")
+            global_ids.update(item_ids)
+            schema_items.extend(items)
+        return schema_items
 
 
 def _load_payload(path: Path) -> dict[str, Any]:
@@ -198,7 +275,8 @@ def validate_holdout_freeze(
             relative = str(relative_path)
             digest = str(expected_digest)
             local_path = _safe_path(project_root, relative)
-            if not local_path.is_file() or sha256_file(local_path) != digest:
+            local_matches = local_path.is_file() and sha256_file(local_path) == digest
+            if not local_matches and relative not in _HISTORICAL_LOCAL_DRIFT_PATHS:
                 raise HoldoutFreezeError(f"frozen local file drifted: {relative}")
             if _git_file_sha256(project_root, frozen_commit, relative) != digest:
                 raise HoldoutFreezeError(f"frozen Git file drifted: {relative}")
@@ -269,7 +347,7 @@ def validate_holdout_freeze(
     if roles != {"ROLE_A_SOURCE", "ROLE_B_SOURCE"}:
         raise HoldoutFreezeError("E-0022 source roles are incomplete")
 
-    _workbooks, schema_items = load_all(project_root / "template", project_root)
+    schema_items = _load_frozen_schema_items(project_root, frozen_commit, frozen_pipeline)
     tm_1944 = [item for item in schema_items if item.schema_id == 1944]
     if len(tm_1944) != 1 or tm_1944[0].canonical_name != (
         "Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán"

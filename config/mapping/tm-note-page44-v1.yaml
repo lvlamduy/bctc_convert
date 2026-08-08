@@ -1,0 +1,55 @@
+version: 1
+policy: TM_NOTE_PAGE44_SCOPED_MAPPING_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+page_number: 44
+page_tag: page-0044
+report_scope: CONSOLIDATED
+mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_PDF_PAGE_44_FIXED_ROWS_AND_CELLS_ONLY
+
+source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+source_render_sha256: 81b5bfecd4c1b50895e0ac6e6e71707bc90a9646f21a4e92f8f7695c6c557152
+source_ocr_sha256: cff4951371851eb88a3f33a5531a46075c01f0159df752bc52920fe8bafa74f8
+schema_total: 1417
+minimum_visible_label_similarity: 0.78
+
+rows:
+  - {table_key: PAPER_ISSUANCE, ordinal: 1, visible_label_anchor: phat hanh giay to co gia, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: SOURCE_ONLY_CONTEXT, report_norm_id: null, fixed_cells: [], candidate_report_norm_ids: [], question_group_id: null}
+  - {table_key: PAPER_ISSUANCE, ordinal: 2, visible_label_anchor: trai phieu, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED_ROW, report_norm_id: 1109, fixed_cells: [], candidate_report_norm_ids: [], question_group_id: null}
+  - {table_key: PAPER_ISSUANCE, ordinal: 3, visible_label_anchor: duoi 5 nam, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, fixed_cells: [], candidate_report_norm_ids: [1110, 1111], question_group_id: Q050}
+  - {table_key: PAPER_ISSUANCE, ordinal: 4, visible_label_anchor: tren 5 nam, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED_ROW, report_norm_id: 1112, fixed_cells: [], candidate_report_norm_ids: [], question_group_id: null}
+  - {table_key: PAPER_ISSUANCE, ordinal: 5, visible_label_anchor: chung chi tien gui, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED_ROW, report_norm_id: 1101, fixed_cells: [], candidate_report_norm_ids: [], question_group_id: null}
+  - {table_key: PAPER_ISSUANCE, ordinal: 6, visible_label_anchor: tu 12 thang tro xuong, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, fixed_cells: [], candidate_report_norm_ids: [1102, 1103], question_group_id: Q050}
+  - {table_key: PAPER_ISSUANCE, ordinal: 7, visible_label_anchor: tren 12 thang, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, fixed_cells: [], candidate_report_norm_ids: [1103, 1104], question_group_id: Q050}
+  - {table_key: PAPER_ISSUANCE, ordinal: 8, visible_label_anchor: null, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED_ROW, report_norm_id: 1100, fixed_cells: [], candidate_report_norm_ids: [], question_group_id: null}
+
+  - {table_key: OTHER_PAYABLES, ordinal: 1, visible_label_anchor: cac khoan phai tra va cong no khac, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: SOURCE_ONLY_CONTEXT, report_norm_id: null, fixed_cells: [], candidate_report_norm_ids: [], question_group_id: null}
+  - {table_key: OTHER_PAYABLES, ordinal: 2, visible_label_anchor: cac khoan phai tra noi bo, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED_ROW, report_norm_id: 1119, fixed_cells: [], candidate_report_norm_ids: [], question_group_id: null}
+  - {table_key: OTHER_PAYABLES, ordinal: 3, visible_label_anchor: cac khoan phai tra ben ngoai, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED_ROW, report_norm_id: 1122, fixed_cells: [], candidate_report_norm_ids: [], question_group_id: null}
+  - {table_key: OTHER_PAYABLES, ordinal: 4, visible_label_anchor: null, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED_ROW, report_norm_id: 1118, fixed_cells: [], candidate_report_norm_ids: [], question_group_id: null}
+
+  - {table_key: EQUITY_MOVEMENT, ordinal: 1, visible_label_anchor: von va quy cua to chuc tin dung, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK, BLANK, BLANK], disposition: FIXED_STRUCTURAL, report_norm_id: 1128, fixed_cells: [], candidate_report_norm_ids: [], question_group_id: null}
+  - {table_key: EQUITY_MOVEMENT, ordinal: 2, visible_label_anchor: bao cao thay doi von va cac quy hop nhat, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK, BLANK, BLANK], disposition: SOURCE_ONLY_CONTEXT, report_norm_id: null, fixed_cells: [], candidate_report_norm_ids: [], question_group_id: null}
+  - {table_key: EQUITY_MOVEMENT, ordinal: 3, visible_label_anchor: von dieu le, expected_row_kind: NUMERIC, expected_observations: [VALUE, DASH, DASH, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, fixed_cells: [], candidate_report_norm_ids: [], question_group_id: Q051}
+  - {table_key: EQUITY_MOVEMENT, ordinal: 4, visible_label_anchor: thang du von co phan, expected_row_kind: NUMERIC, expected_observations: [VALUE, DASH, DASH, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, fixed_cells: [], candidate_report_norm_ids: [], question_group_id: Q051}
+  - {table_key: EQUITY_MOVEMENT, ordinal: 5, visible_label_anchor: von khac, expected_row_kind: NUMERIC, expected_observations: [VALUE, DASH, DASH, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, fixed_cells: [], candidate_report_norm_ids: [], question_group_id: Q051}
+  - {table_key: EQUITY_MOVEMENT, ordinal: 6, visible_label_anchor: quy du tru bo sung von dieu le, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, DASH, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, fixed_cells: [], candidate_report_norm_ids: [], question_group_id: Q051}
+  - {table_key: EQUITY_MOVEMENT, ordinal: 7, visible_label_anchor: quy du phong tai chinh, expected_row_kind: NUMERIC, expected_observations: [VALUE, DASH, VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, fixed_cells: [], candidate_report_norm_ids: [], question_group_id: Q051}
+  - {table_key: EQUITY_MOVEMENT, ordinal: 8, visible_label_anchor: quy khac, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, fixed_cells: [], candidate_report_norm_ids: [], question_group_id: Q051}
+  - {table_key: EQUITY_MOVEMENT, ordinal: 9, visible_label_anchor: chenh lech ty gia hoi doai, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, DASH, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, fixed_cells: [], candidate_report_norm_ids: [], question_group_id: Q051}
+  - {table_key: EQUITY_MOVEMENT, ordinal: 10, visible_label_anchor: loi nhuan chua phan phoi, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE, VALUE], disposition: PARTIAL_FIXED_CELLS, report_norm_id: null, fixed_cells: [{cell_index: 1, report_norm_id: 1131}], candidate_report_norm_ids: [], question_group_id: Q051}
+  - {table_key: EQUITY_MOVEMENT, ordinal: 11, visible_label_anchor: loi ich co dong khong kiem soat, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, fixed_cells: [], candidate_report_norm_ids: [], question_group_id: Q051}
+  - {table_key: EQUITY_MOVEMENT, ordinal: 12, visible_label_anchor: tong cong, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE, VALUE], disposition: PARTIAL_FIXED_CELLS, report_norm_id: null, fixed_cells: [{cell_index: 0, report_norm_id: 1129}, {cell_index: 3, report_norm_id: 1141}], candidate_report_norm_ids: [], question_group_id: Q051}
+
+ambiguous_schema_ids: [1102, 1103, 1104, 1110, 1111]
+unresolved_schema_ids: [1130, 1132, 1133, 1134, 1135, 1136, 1137, 1138, 1139, 1140]
+not_observed_schema_ids: [1105, 1106, 1107, 1108, 1113, 1114, 1115, 1116, 1117, 1120, 1121, 1123, 1124, 1125, 1126, 1127]
+
+forbidden_mapping_inputs:
+  - numeric_cell_text
+  - numeric_cell_value_as_item_selector
+  - numeric_value_magnitude
+  - historical_or_mongodb_values
+  - human_review_answers
+  - dash_as_zero
+  - accounting_equation_result_as_item_selector

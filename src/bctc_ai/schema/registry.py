@@ -14,6 +14,7 @@ from bctc_ai.mapping.lctt import (
     load_cash_flow_rules,
 )
 from bctc_ai.schema.append_only import verify_tm_1944_append
+from bctc_ai.schema.business_update import verify_business_schema_update
 from bctc_ai.schema.xlsx_reader import read_rows
 
 
@@ -164,6 +165,21 @@ def load_all(
     expected_root = template_root.resolve()
     if any(expected_root not in path.parents for path in configured_paths):
         raise ValueError(f"schema source is outside configured template root: {config_path}")
+    business_audits = payload.get("approved_business_update_audits", [])
+    if not isinstance(business_audits, list) or not all(
+        isinstance(relative, str) and relative for relative in business_audits
+    ):
+        raise ValueError(f"invalid approved business-update audit list: {config_path}")
+    verified_business_audits: list[tuple[str, dict[str, object]]] = []
+    for relative in business_audits:
+        audit_path = (project_root / relative).resolve()
+        try:
+            audit_path.relative_to(project_root)
+        except ValueError as exc:
+            raise ValueError(f"business-update audit escapes project root: {relative}") from exc
+        verified_business_audits.append(
+            (relative, verify_business_schema_update(project_root, audit_path))
+        )
     append_audits = payload.get("approved_append_audits", [])
     if not isinstance(append_audits, list) or not all(
         isinstance(relative, str) and relative for relative in append_audits
@@ -187,6 +203,39 @@ def load_all(
         ]
         if len(matched) != 1 or matched[0].canonical_name != appended["canonical_name"]:
             raise ValueError(f"approved schema append is not loaded exactly: {relative}")
-        if matched[0].display_order != appended["display_order_zero_based"]:
+        subsequent_insertions = sum(
+            1
+            for _, business_audit in verified_business_audits
+            for change in business_audit["schema_changes"]
+            if change["change"] == "ADD"
+            and change["statement_type"] == appended["statement_type"]
+            and change["display_order_zero_based"] <= appended["display_order_zero_based"]
+        )
+        expected_display_order = appended["display_order_zero_based"] + subsequent_insertions
+        if matched[0].display_order != expected_display_order:
             raise ValueError(f"approved schema append order drift: {relative}")
+    for relative, audit in verified_business_audits:
+        for change in audit["schema_changes"]:
+            if change["change"] == "ADD":
+                matched = [
+                    item
+                    for item in all_items
+                    if item.statement_type == change["statement_type"]
+                    and item.schema_id == change["schema_id"]
+                ]
+                if len(matched) != 1 or matched[0].canonical_name != change["canonical_name"]:
+                    raise ValueError(f"approved business schema item is not loaded: {relative}")
+                if matched[0].display_order != change["display_order_zero_based"]:
+                    raise ValueError(f"approved business schema order drift: {relative}")
+            elif change["change"] == "CORRECT_DISPLAY_NAME":
+                matched = [
+                    item
+                    for item in all_items
+                    if item.statement_type == change["statement_type"]
+                    and item.schema_id == change["schema_id"]
+                ]
+                if len(matched) != 1 or matched[0].canonical_name != change["after"]:
+                    raise ValueError(f"approved display-name correction is not loaded: {relative}")
+            else:
+                raise ValueError(f"unknown approved business schema change: {relative}")
     return workbooks, all_items

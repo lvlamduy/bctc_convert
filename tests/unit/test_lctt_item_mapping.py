@@ -7,6 +7,7 @@ import pytest
 
 from bctc_ai.mapping.lctt import CashFlowMethod
 from bctc_ai.mapping.lctt_item_mapping import (
+    LCTT_DIRECT_AGGREGATE_IDS,
     LCTT_POLICY_RELATIVE_PATH,
     LCTT_TRAILING_AGGREGATE_IDS,
     LCTTItemMappingError,
@@ -61,8 +62,8 @@ _VISIBLE_CANDIDATES = (
     (4105,),
     (4118,),
     (4119,),
-    (4144, 4145, 4146),
-    (4120, 4121),
+    (4144,),
+    (5714,),
     (4147,),
     (4111,),
     (4106,),
@@ -198,45 +199,61 @@ def test_direct_projection_and_policy_reconcile_exact_denominators(
     projection = build_lctt_direct_schema_projection(lctt_schema)
     policy = load_lctt_direct_mapping_policy(project_root / LCTT_POLICY_RELATIVE_PATH)
 
-    assert len(projection.nodes) == 50
-    assert [node.display_order for node in projection.nodes] == list(range(57, 107))
+    assert len(projection.nodes) == 51
+    assert [node.display_order for node in projection.nodes] == list(range(57, 108))
     assert (
         tuple(node.report_norm_id for node in projection.nodes if node.child_report_norm_ids)
-        == LCTT_TRAILING_AGGREGATE_IDS
+        == LCTT_DIRECT_AGGREGATE_IDS
     )
-    assert policy.schema_total == 107
-    assert policy.applicable_branch_total == 50
+    assert policy.core.trailing_aggregate_ids == LCTT_TRAILING_AGGREGATE_IDS
+    assert policy.schema_total == 108
+    assert policy.applicable_branch_total == 51
     assert policy.non_applicable_branch_total == 57
     assert policy.visible_source_row_total == 43
     assert policy.currently_available_independent_semantic_streams == 1
     assert policy.minimum_independent_semantic_streams == 2
     assert policy.minimum_cross_reader_label_similarity == 0.85
-    assert tuple(rule.report_norm_id for rule in policy.label_conflict_rules) == (4140,)
-    assert policy.not_observed_report_norm_ids == (4143, 4151, 4152, 4117)
+    assert {
+        (rule.source_row_id, rule.report_norm_id) for rule in policy.business_resolution_rules
+    } == {
+        ("page-0007:row-0024", 4140),
+        ("page-0007:row-0031", 4144),
+        ("page-0007:row-0032", 5714),
+    }
+    assert policy.not_observed_report_norm_ids == (
+        4143,
+        4145,
+        4146,
+        4120,
+        4121,
+        4151,
+        4152,
+        4117,
+    )
 
 
-def test_real_43_rows_reconcile_all_107_without_automatic_selection(
+def test_real_single_reader_maps_three_business_resolutions_and_withholds_other_40(
     real_reconciliation,
 ) -> None:
     _policy, result = real_reconciliation
 
     assert validate_lctt_item_mapping_result(result) is result
-    assert result.status == "CANDIDATE_RECONCILIATION"
-    assert not result.automatic_selection_allowed
-    assert result.schema_item_count == 107
-    assert result.schema_status_reconciled_count == 107
-    assert result.mapped_schema_count == 0
-    assert result.candidate_linked_schema_count == 41
-    assert result.label_conflict_schema_count == 1
-    assert result.ambiguous_schema_count == 5
-    assert result.not_observed_schema_count == 4
+    assert result.status == "PARTIAL_AUTOMATIC_MAPPING_WITH_UNRESOLVED_ITEMS"
+    assert result.automatic_selection_allowed
+    assert result.schema_item_count == 108
+    assert result.schema_status_reconciled_count == 108
+    assert result.mapped_schema_count == 3
+    assert result.candidate_linked_schema_count == 40
+    assert result.label_conflict_schema_count == 0
+    assert result.ambiguous_schema_count == 0
+    assert result.not_observed_schema_count == 8
     assert result.not_applicable_schema_count == 57
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == 43
-    assert result.mapped_source_row_count == 0
-    assert result.candidate_linked_source_row_count == 41
-    assert result.label_conflict_source_row_count == 1
-    assert result.source_only_row_count == 2
+    assert result.mapped_source_row_count == 3
+    assert result.candidate_linked_source_row_count == 40
+    assert result.label_conflict_source_row_count == 0
+    assert result.source_only_row_count == 0
     assert result.independent_label_sha256 is None
     assert (
         tuple(item.candidate_report_norm_ids for item in result.source_dispositions)
@@ -249,31 +266,28 @@ def test_real_43_rows_reconcile_all_107_without_automatic_selection(
         }
         for status in {item.value for item in LCTTSchemaStatus}
     }
-    assert schema_by_status[LCTTSchemaStatus.AMBIGUOUS_MAPPING.value] == {
-        4144,
+    assert schema_by_status[LCTTSchemaStatus.MAPPED_AUTOMATIC.value] == {4140, 4144, 5714}
+    assert schema_by_status[LCTTSchemaStatus.AMBIGUOUS_MAPPING.value] == set()
+    assert schema_by_status[LCTTSchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value] == {
+        4143,
         4145,
         4146,
         4120,
         4121,
-    }
-    assert schema_by_status[LCTTSchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value] == {
-        4143,
         4151,
         4152,
         4117,
     }
     assert len(schema_by_status[LCTTSchemaStatus.SCHEMA_ITEM_NOT_APPLICABLE.value]) == 57
     assert {
-        item.row_id
+        item.row_id: item.candidate_report_norm_ids
         for item in result.source_dispositions
-        if item.status == LCTTSourceRowStatus.SOURCE_ONLY_PDF_ROW.value
-    } == {"page-0007:row-0031", "page-0007:row-0032"}
-    assert schema_by_status[LCTTSchemaStatus.LABEL_CONFLICT_CANDIDATE_NOT_AUTOMATIC.value] == {4140}
-    assert {
-        item.row_id
-        for item in result.source_dispositions
-        if item.status == LCTTSourceRowStatus.LABEL_CONFLICT_CANDIDATE_NOT_AUTOMATIC.value
-    } == {"page-0007:row-0024"}
+        if item.business_resolution_key is not None
+    } == {
+        "page-0007:row-0024": (4140,),
+        "page-0007:row-0031": (4144,),
+        "page-0007:row-0032": (5714,),
+    }
     assert (
         min(
             item.label_similarity
@@ -284,29 +298,29 @@ def test_real_43_rows_reconcile_all_107_without_automatic_selection(
     )
 
 
-def test_real_deepseek_stream_promotes_40_and_withholds_visible_label_conflict(
+def test_real_deepseek_stream_plus_business_resolutions_maps_all_43_rows(
     real_dual_reconciliation,
 ) -> None:
     _policy, result = real_dual_reconciliation
 
     assert validate_lctt_item_mapping_result(result) is result
-    assert result.status == "PARTIAL_AUTOMATIC_MAPPING_WITH_UNRESOLVED_ITEMS"
+    assert result.status == "SOURCE_MAPPING_COMPLETE_NUMERIC_NOT_FULLY_VERIFIED"
     assert result.automatic_selection_allowed
     assert result.independent_semantic_stream_count == 2
-    assert result.schema_item_count == 107
-    assert result.schema_status_reconciled_count == 107
-    assert result.mapped_schema_count == 40
-    assert result.candidate_linked_schema_count == 1
-    assert result.label_conflict_schema_count == 1
-    assert result.ambiguous_schema_count == 5
-    assert result.not_observed_schema_count == 4
+    assert result.schema_item_count == 108
+    assert result.schema_status_reconciled_count == 108
+    assert result.mapped_schema_count == 43
+    assert result.candidate_linked_schema_count == 0
+    assert result.label_conflict_schema_count == 0
+    assert result.ambiguous_schema_count == 0
+    assert result.not_observed_schema_count == 8
     assert result.not_applicable_schema_count == 57
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == 43
-    assert result.mapped_source_row_count == 40
-    assert result.candidate_linked_source_row_count == 1
-    assert result.label_conflict_source_row_count == 1
-    assert result.source_only_row_count == 2
+    assert result.mapped_source_row_count == 43
+    assert result.candidate_linked_source_row_count == 0
+    assert result.label_conflict_source_row_count == 0
+    assert result.source_only_row_count == 0
     assert result.independent_label_sha256 is not None
 
     mapped_schema = tuple(
@@ -319,37 +333,25 @@ def test_real_deepseek_stream_promotes_40_and_withholds_visible_label_conflict(
         for item in result.source_dispositions
         if item.status == LCTTSourceRowStatus.MAPPED_AUTOMATIC.value
     )
-    assert len(mapped_schema) == len(mapped_source) == 40
-    assert all(len(item.supporting_reader_ids) == 2 for item in mapped_schema)
-    assert all(len(item.supporting_reader_ids) == 2 for item in mapped_source)
-    assert min(item.label_similarity for item in mapped_source) >= 0.60
-    assert min(item.independent_label_similarity for item in mapped_source) >= 0.60
-    assert min(item.cross_reader_label_similarity for item in mapped_source) >= 0.85
+    assert len(mapped_schema) == len(mapped_source) == 43
+    business_schema = [item for item in mapped_schema if item.business_resolution_key]
+    business_source = [item for item in mapped_source if item.business_resolution_key]
+    dual_schema = [item for item in mapped_schema if not item.business_resolution_key]
+    dual_source = [item for item in mapped_source if not item.business_resolution_key]
+    assert len(business_schema) == len(business_source) == 3
+    assert len(dual_schema) == len(dual_source) == 40
+    assert all(len(item.supporting_reader_ids) == 1 for item in business_schema)
+    assert all(len(item.supporting_reader_ids) == 1 for item in business_source)
+    assert all(len(item.supporting_reader_ids) == 2 for item in dual_schema)
+    assert all(len(item.supporting_reader_ids) == 2 for item in dual_source)
+    assert min(item.label_similarity for item in dual_source) >= 0.60
+    assert min(item.independent_label_similarity for item in dual_source) >= 0.60
+    assert min(item.cross_reader_label_similarity for item in dual_source) >= 0.85
     assert {
         item.report_norm_id
         for item in result.schema_dispositions
-        if item.status == LCTTSchemaStatus.AMBIGUOUS_MAPPING.value
-    } == {4144, 4145, 4146, 4120, 4121}
-    assert {
-        item.row_id
-        for item in result.source_dispositions
-        if item.status == LCTTSourceRowStatus.SOURCE_ONLY_PDF_ROW.value
-    } == {"page-0007:row-0031", "page-0007:row-0032"}
-    conflict_schema = next(
-        item
-        for item in result.schema_dispositions
-        if item.status == LCTTSchemaStatus.LABEL_CONFLICT_CANDIDATE_NOT_AUTOMATIC.value
-    )
-    conflict_source = next(
-        item
-        for item in result.source_dispositions
-        if item.status == LCTTSourceRowStatus.LABEL_CONFLICT_CANDIDATE_NOT_AUTOMATIC.value
-    )
-    assert conflict_schema.report_norm_id == 4140
-    assert conflict_schema.candidate_source_row_ids == ("page-0007:row-0024",)
-    assert conflict_source.row_id == "page-0007:row-0024"
-    assert conflict_source.candidate_report_norm_ids == (4140,)
-    assert conflict_schema.label_conflict_key == conflict_source.label_conflict_key
+        if item.status == LCTTSchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value
+    } == {4143, 4145, 4146, 4120, 4121, 4151, 4152, 4117}
 
 
 def test_non_direct_method_cannot_enter_direct_candidate_reconciliation(
@@ -364,6 +366,24 @@ def test_non_direct_method_cannot_enter_direct_candidate_reconciliation(
             report_scope=parsed_lctt.scope,
             cash_flow_method=CashFlowMethod.INDIRECT,
         )
+
+
+def test_business_resolution_policy_fails_closed_on_row_identity_drift(
+    project_root: Path, tmp_path: Path
+) -> None:
+    policy_path = project_root / LCTT_POLICY_RELATIVE_PATH
+    tampered = tmp_path / "lctt-policy-tampered.yaml"
+    tampered.write_text(
+        policy_path.read_text(encoding="utf-8").replace(
+            "source_row_id: page-0007:row-0031",
+            "source_row_id: page-0007:row-0030",
+            1,
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(LCTTItemMappingError, match="identity drifted"):
+        load_lctt_direct_mapping_policy(tampered)
 
 
 @dataclass(frozen=True)

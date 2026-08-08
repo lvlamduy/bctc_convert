@@ -1,23 +1,23 @@
 {
   "append_only": true,
-  "authority": "SUPPLIED_WORKBOOKS_PLUS_APPROVED_APPEND_ONLY_MIGRATIONS",
+  "authority": "SUPPLIED_WORKBOOKS_PLUS_APPROVED_AUDITED_SCHEMA_MIGRATIONS",
   "contains_tm_1944": true,
   "counts": {
-    "CDKT": 77,
-    "KQKD": 24,
-    "LCTT": 107,
-    "TM": 1385
+    "CDKT": 78,
+    "KQKD": 25,
+    "LCTT": 108,
+    "TM": 1417
   },
   "coverage_contract": {
     "contains_tm_1944": true,
     "path": "data/registered/schema_coverage_registry.json",
-    "sha256": "1a3110952bcca791435e2d7d791586963232f055b6ecfc489cffe3a2a2edd166",
+    "sha256": "51da2228e4a37e0ea7ce7725fe505128ae369469daa59b4bc379efe63943c17e",
     "status": "PASS_ALL_TEMPLATE_ITEMS_ENROLLED",
-    "target_count": 1593
+    "target_count": 1628
   },
   "format_version": 1,
   "graph": "reference/schemas/schema_graph.jsonl",
-  "graph_sha256": "f14912b1a6eeb9df6c57f86deca1381cf2bddee8d626cba2143d6d3367009e88",
+  "graph_sha256": "a558f34368b829f2b28d162fc6eecd676b6c5ac4f15950f1b4670e4d79672121",
   "hierarchy_reference": {
     "authority": "USER_SUPPLIED_VST_LEVEL",
     "item_count": 1535,
@@ -31,7 +31,9 @@
         "minimum_id": 4302,
         "non_id_labels": [],
         "path": "vst_level/vst_bank_balance_sheet.xlsx",
-        "schema_only_append_ids": [],
+        "schema_only_append_ids": [
+          5712
+        ],
         "sha256": "3d57157859f08dd21b029a0ad7488e64c7df7d4b1ad6cde424296d02836da065",
         "skipped_blank_rows": 47,
         "statement_type": "CDKT"
@@ -43,7 +45,9 @@
         "minimum_id": 4376,
         "non_id_labels": [],
         "path": "vst_level/vst_bank_income_sheet.xlsx",
-        "schema_only_append_ids": [],
+        "schema_only_append_ids": [
+          5713
+        ],
         "sha256": "eb2895882ad523344aee3b2ff83c34f0367d42c0245acc3f04c82cbc3eb78730",
         "skipped_blank_rows": 0,
         "statement_type": "KQKD"
@@ -57,7 +61,9 @@
           "LƯU CHUYỂN TIỀN TỆ TRỰC TIẾP"
         ],
         "path": "vst_level/vst_bank_cashflow_sheet.xlsx",
-        "schema_only_append_ids": [],
+        "schema_only_append_ids": [
+          5714
+        ],
         "sha256": "a52815dd606ca74ba7cbc713ec34494474a5d7ac567223da84b346300eb658fe",
         "skipped_blank_rows": 0,
         "statement_type": "LCTT"
@@ -70,7 +76,39 @@
         "non_id_labels": [],
         "path": "vst_level/vst_bank_detailed_notes_sheet.xlsx",
         "schema_only_append_ids": [
-          1944
+          1944,
+          5718,
+          5719,
+          5720,
+          5721,
+          5722,
+          5723,
+          5724,
+          5725,
+          5726,
+          5727,
+          5728,
+          5729,
+          5730,
+          5731,
+          5732,
+          5733,
+          5734,
+          5735,
+          5736,
+          5737,
+          5738,
+          5739,
+          5740,
+          5741,
+          5742,
+          5743,
+          5744,
+          5745,
+          5746,
+          5747,
+          5748,
+          5749
         ],
         "sha256": "6f322f7ba3b1b737643d21890b9bd51ea00224cea6ac65cfa41036d68ccd885b",
         "skipped_blank_rows": 0,
@@ -79,38 +117,38 @@
     ]
   },
   "lctt_semantics": "WORKBOOK_BLOCKS_VERIFIED_SEMANTIC_CONFLICT_REOPENED_2026_08_05",
-  "total_items": 1593,
+  "total_items": 1628,
   "workbooks": [
     {
-      "item_count": 77,
-      "maximum_id": 5699,
+      "item_count": 78,
+      "maximum_id": 5712,
       "minimum_id": 4302,
-      "path": "template/Bank_CDKT_ReportNormId.xlsx",
-      "sha256": "a07ff47f7c41011fe4ca5a66681106d476586ded9013b5874cbb9f67a6ad8486",
+      "path": "template/Bank_CDKT_ReportNormId.v2.xlsx",
+      "sha256": "2289c0ff2e988c36131f2b4e5675efc1d9ca40776c72439ef205aae43103951f",
       "statement_type": "CDKT"
     },
     {
-      "item_count": 24,
-      "maximum_id": 4399,
+      "item_count": 25,
+      "maximum_id": 5713,
       "minimum_id": 4376,
-      "path": "template/Bank_KQKD_ReportNormId.xlsx",
-      "sha256": "6033001b85a236fce4b29437d56cc02d7c6a21f95e82b43de043b1268eb74615",
+      "path": "template/Bank_KQKD_ReportNormId.v2.xlsx",
+      "sha256": "12908b0acb8970e37f382f79898b7d2124079e1e16bab17d8e03811a7004cd52",
       "statement_type": "KQKD"
     },
     {
-      "item_count": 107,
-      "maximum_id": 4211,
+      "item_count": 108,
+      "maximum_id": 5714,
       "minimum_id": 4104,
-      "path": "template/Bank_LCTT_ReportNormId.xlsx",
-      "sha256": "2c9d52737c492f115895eab9a571da2269fcfd3c3e77539ec581782e579d260a",
+      "path": "template/Bank_LCTT_ReportNormId.v2.xlsx",
+      "sha256": "aa0f4912b1e343e404bc2490f6fe628db6b7980a180c6d03e27633b993afeb41",
       "statement_type": "LCTT"
     },
     {
-      "item_count": 1385,
-      "maximum_id": 1944,
+      "item_count": 1417,
+      "maximum_id": 5749,
       "minimum_id": 560,
-      "path": "template/Bank_TM_ReportNormId.xlsx",
-      "sha256": "fa284e3af1f90c8a206308f63e6d35e77a9fbf1abcaf60abcb59877c47275140",
+      "path": "template/Bank_TM_ReportNormId.v2.xlsx",
+      "sha256": "bcffd9baa04a3e3aad1c80ce867e38b0145626969409213122ec3d1c0cd8451c",
       "statement_type": "TM"
     }
   ]

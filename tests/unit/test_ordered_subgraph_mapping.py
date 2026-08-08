@@ -333,7 +333,7 @@ def test_real_template_graph_preserves_hierarchy_and_non_numeric_workbook_order(
     graph = build_schema_graph(schema, "CDKT")
     by_id = graph.by_id()
 
-    assert len(graph.nodes) == 77
+    assert len(graph.nodes) == 78
     assert [node.schema_id for node in graph.nodes[64:67]] == [4337, 4373, 4338]
     assert by_id[4367].parent_id == 4328
     assert by_id[4369].parent_id == 4329

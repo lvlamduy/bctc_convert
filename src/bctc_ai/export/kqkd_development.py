@@ -22,6 +22,7 @@ from typing import Any
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
+from openpyxl.xml.functions import fromstring, tostring
 
 from bctc_ai.mapping.kqkd_item_mapping import (
     KQKDItemMappingResult,
@@ -38,12 +39,14 @@ KQKD_DEVELOPMENT_SHEETS = (
     "VALIDATION_DIAGNOSTICS",
     "RUN_METADATA",
 )
-KQKD_DEVELOPMENT_SCHEMA_COUNT = 24
+KQKD_DEVELOPMENT_SCHEMA_COUNT = 25
 KQKD_DEVELOPMENT_SOURCE_ROW_COUNT = 22
-KQKD_DEVELOPMENT_TARGET_VALUE_COUNT = 42
+KQKD_DEVELOPMENT_TARGET_VALUE_COUNT = 44
 KQKD_DEVELOPMENT_ACCOUNTING_CHECK_COUNT = 32
 
 _FIXED_TIMESTAMP = datetime(2000, 1, 1, tzinfo=UTC).replace(tzinfo=None)
+_CORE_PROPERTIES_MEMBER = "docProps/core.xml"
+_MODIFIED_PROPERTY_TAG = "{http://purl.org/dc/terms/}modified"
 _JSON_TYPES = (str, int, float, bool, list, tuple, dict, type(None))
 
 
@@ -170,12 +173,12 @@ def _validate_inputs(
         or mapping.status != "RESOLVED"
         or not mapping.automatic_selection_allowed
         or mapping.schema_item_count != KQKD_DEVELOPMENT_SCHEMA_COUNT
-        or mapping.mapped_schema_count != 21
+        or mapping.mapped_schema_count != 22
         or mapping.not_observed_schema_count != 3
         or mapping.ambiguous_schema_count != 0
         or mapping.source_row_count != KQKD_DEVELOPMENT_SOURCE_ROW_COUNT
-        or mapping.mapped_source_row_count != 21
-        or mapping.source_only_row_count != 1
+        or mapping.mapped_source_row_count != 22
+        or mapping.source_only_row_count != 0
         or mapping.ambiguous_source_row_count != 0
     ):
         raise KQKDDevelopmentExportError("KQKD mapping coverage is not exportable")
@@ -208,7 +211,7 @@ def _validate_inputs(
 
     source_by_id = {item.row_id: item for item in mapping.source_dispositions}
     schema_by_id = {item.report_norm_id: item for item in mapping.schema_dispositions}
-    if set(source_by_id) != set(rows_by_id) or len(schema_by_id) != 24:
+    if set(source_by_id) != set(rows_by_id) or len(schema_by_id) != KQKD_DEVELOPMENT_SCHEMA_COUNT:
         raise KQKDDevelopmentExportError("KQKD mapping/parser identity binding drifted")
     for row in parsed.rows:
         disposition = source_by_id[row.row_id]
@@ -306,7 +309,7 @@ def _load_template(template_bytes: bytes, mapping: KQKDItemMappingResult) -> tup
         workbook.close()
         raise KQKDDevelopmentExportError("KQKD workbook template sheet inventory drifted")
     sheet = workbook["Sheet1"]
-    if sheet.max_row != 25 or sheet.max_column != 3:
+    if sheet.max_row != KQKD_DEVELOPMENT_SCHEMA_COUNT + 1 or sheet.max_column != 3:
         workbook.close()
         raise KQKDDevelopmentExportError("KQKD workbook template denominator drifted")
     if tuple(sheet.cell(1, column).value for column in range(1, 4)) != (
@@ -319,7 +322,7 @@ def _load_template(template_bytes: bytes, mapping: KQKDItemMappingResult) -> tup
 
     schema_by_order = {item.display_order: item for item in mapping.schema_dispositions}
     ac_snapshot = []
-    for row_index in range(1, 26):
+    for row_index in range(1, KQKD_DEVELOPMENT_SCHEMA_COUNT + 2):
         cells = tuple(sheet.cell(row_index, column) for column in range(1, 4))
         ac_snapshot.append(tuple((cell.value, cell.data_type, cell.style_id) for cell in cells))
         if row_index == 1:
@@ -365,7 +368,7 @@ def _write_main_sheet(workbook: Any, context: _ValidatedInputs) -> int:
 
     by_role = {axis.current_or_comparative: axis for axis in context.target_axes}
     exported = 0
-    for row_index in range(2, 26):
+    for row_index in range(2, KQKD_DEVELOPMENT_SCHEMA_COUNT + 2):
         report_norm_id = sheet.cell(row_index, 2).value
         disposition = context.schema_by_id[report_norm_id]
         for role, value_column in (("CURRENT", 4), ("COMPARATIVE", 9)):
@@ -388,7 +391,7 @@ def _write_main_sheet(workbook: Any, context: _ValidatedInputs) -> int:
             exported += 1
     for column in range(4, 14):
         sheet.column_dimensions[get_column_letter(column)].width = 22
-    sheet.auto_filter.ref = "A1:M25"
+    sheet.auto_filter.ref = f"A1:M{KQKD_DEVELOPMENT_SCHEMA_COUNT + 1}"
     if exported != KQKD_DEVELOPMENT_TARGET_VALUE_COUNT:
         raise KQKDDevelopmentExportError("KQKD target value count drifted")
     return exported
@@ -510,14 +513,22 @@ def _write_diagnostics(
     for equation in numeric.accounting_equations:
         target_row = rows_by_ordinal[equation.target_row_ordinal]
         target_source = context.source_by_id[target_row.row_id]
-        operands = [
-            {
-                "row_ordinal": operand.row_ordinal,
-                "row_id": rows_by_ordinal[operand.row_ordinal].row_id,
-                "coefficient": operand.coefficient,
-            }
-            for operand in equation.operands
-        ]
+        operands = []
+        for operand in equation.operands:
+            operand_row = rows_by_ordinal[operand.row_ordinal]
+            operand_source = context.source_by_id[operand_row.row_id]
+            if operand_source.report_norm_id is None:
+                raise KQKDDevelopmentExportError(
+                    "KQKD accounting operand is not mapped to a ReportNormId"
+                )
+            operands.append(
+                {
+                    "row_ordinal": operand.row_ordinal,
+                    "row_id": operand_row.row_id,
+                    "report_norm_id": operand_source.report_norm_id,
+                    "coefficient": operand.coefficient,
+                }
+            )
         for axis, residual in zip(parsed.axes, equation.residuals_by_axis, strict=True):
             sheet.append(
                 (
@@ -606,6 +617,7 @@ def _deterministic_workbook_bytes(workbook: Any) -> bytes:
     workbook.properties.lastModifiedBy = "bctc-ai"
     workbook.properties.created = _FIXED_TIMESTAMP
     workbook.properties.modified = _FIXED_TIMESTAMP
+    deterministic_core = tostring(workbook.properties.to_tree())
     raw = BytesIO()
     workbook.save(raw)
     source = BytesIO(raw.getvalue())
@@ -614,13 +626,32 @@ def _deterministic_workbook_bytes(workbook: Any) -> bytes:
         zipfile.ZipFile(source, "r") as archive,
         zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as output,
     ):
-        for name in sorted(archive.namelist()):
+        names = archive.namelist()
+        if len(names) != len(set(names)) or names.count(_CORE_PROPERTIES_MEMBER) != 1:
+            raise KQKDDevelopmentExportError("generated workbook core properties are invalid")
+        generated_core = archive.read(_CORE_PROPERTIES_MEMBER)
+        try:
+            generated_root = fromstring(generated_core)
+            deterministic_root = fromstring(deterministic_core)
+        except Exception as exc:
+            raise KQKDDevelopmentExportError(
+                "generated workbook core properties are invalid"
+            ) from exc
+        generated_modified = generated_root.findall(_MODIFIED_PROPERTY_TAG)
+        deterministic_modified = deterministic_root.findall(_MODIFIED_PROPERTY_TAG)
+        if len(generated_modified) != 1 or len(deterministic_modified) != 1:
+            raise KQKDDevelopmentExportError("generated workbook core properties are invalid")
+        generated_modified[0].text = deterministic_modified[0].text
+        if tostring(generated_root) != deterministic_core:
+            raise KQKDDevelopmentExportError("generated workbook core properties drifted")
+        for name in sorted(names):
             info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
             info.compress_type = zipfile.ZIP_DEFLATED
             info.create_system = 3
             info.external_attr = 0o600 << 16
             info.flag_bits = 0x800
-            output.writestr(info, archive.read(name), compresslevel=9)
+            member = deterministic_core if name == _CORE_PROPERTIES_MEMBER else archive.read(name)
+            output.writestr(info, member, compresslevel=9)
     return target.getvalue()
 
 
@@ -647,13 +678,13 @@ def _verify_serialized_workbook(
                 )
                 for column in range(1, 4)
             )
-            for row_index in range(1, 26)
+            for row_index in range(1, KQKD_DEVELOPMENT_SCHEMA_COUNT + 2)
         )
         if actual_snapshot != ac_snapshot:
             raise KQKDDevelopmentExportError("template columns A:C were not preserved")
         exported = sum(
             main.cell(row_index, column).value is not None
-            for row_index in range(2, 26)
+            for row_index in range(2, KQKD_DEVELOPMENT_SCHEMA_COUNT + 2)
             for column in (4, 9)
         )
         if exported != target_value_count:

@@ -1,0 +1,79 @@
+version: 1
+policy: TM_NOTE_PAGES32_33_AMOUNT_AXIS_MAPPING_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+scope: CONSOLIDATED
+source_table_policy: config/tables/tm-note-pages32-33-v1.yaml
+mapping_authority_scope: VISIBLE_FIXED_LABELS_TO_AMOUNT_AXES_ONLY
+
+schema_total: 1417
+scope_schema_ids:
+  - {start: 727, end: 745}
+  - {start: 756, end: 758}
+  - {start: 766, end: 782}
+  - {ids: [5719, 5720, 5721, 5722, 5748, 5749]}
+scope_schema_total: 45
+schema_scope_sha256: d3b40c676f8e813793b3a3c4ee8d988679124f5fffca1e0bf32650a481554088
+fixed_mapped_ids: [727, 728, 729, 730, 731, 732, 733, 734, 735, 736, 737, 738, 740, 741, 742, 743, 766, 767, 769, 770, 771, 772, 773, 776, 778, 779, 780, 781, 782, 5719, 5720, 5721, 5722, 5748, 5749]
+ambiguous_ids: []
+not_observed_ids: [739, 744, 745, 756, 757, 758, 768, 774, 775, 777]
+
+source_rules:
+  - {page_tag: page-0032, row_key: LOAN_HEADER, disposition: FIXED_STRUCTURAL, report_norm_ids: [766], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0032, row_key: TCKT_TOTAL, disposition: SOURCE_ONLY_SUBTOTAL, report_norm_ids: [], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0032, row_key: STATE_COMPANY, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [767], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0032, row_key: STATE_OWNED_100, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [769], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0032, row_key: STATE_OWNED_OVER_50, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [770], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0032, row_key: TNHH_OTHER, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [771], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0032, row_key: STATE_JSC_OVER_50, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [772], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0032, row_key: JSC_OTHER, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [773], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0032, row_key: PARTNERSHIP, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [778], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0032, row_key: FOREIGN_INVESTED, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [779], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0032, row_key: COOPERATIVE, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [776], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0032, row_key: PERSONAL_TOTAL, disposition: SOURCE_ONLY_SUBTOTAL, report_norm_ids: [], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0032, row_key: HOUSEHOLD_PERSONAL, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [780], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0032, row_key: OTHER_TOTAL, disposition: SOURCE_ONLY_SUBTOTAL, report_norm_ids: [], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0032, row_key: ADMIN_ENTITY, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [781], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0032, row_key: OTHER_ECONOMIC, disposition: FIXED_CATCH_ALL_COMPONENT, report_norm_ids: [782], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0032, row_key: FOREIGN_BRANCH_TOTAL, disposition: FIXED_CATCH_ALL_COMPONENT, report_norm_ids: [782], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0032, row_key: FOREIGN_BUSINESS, disposition: SOURCE_ONLY_VALIDATION, report_norm_ids: [], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0032, row_key: FOREIGN_PERSONAL, disposition: SOURCE_ONLY_VALIDATION, report_norm_ids: [], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0032, row_key: BANK_SUBTOTAL, disposition: SOURCE_ONLY_SUBTOTAL, report_norm_ids: [], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0032, row_key: MARGIN_MBS, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [5748], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0032, row_key: GRAND_TOTAL, disposition: SOURCE_ONLY_VALIDATION, report_norm_ids: [], candidate_report_norm_ids: [], question_key: null}
+
+  - {page_tag: page-0033, row_key: LOAN_HEADER, disposition: FIXED_STRUCTURAL, report_norm_ids: [727], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0033, row_key: AGRICULTURE, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [728], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0033, row_key: MINING, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [729], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0033, row_key: MANUFACTURING, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [733], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0033, row_key: UTILITIES, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [730], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0033, row_key: WATER_WASTE, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [731], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0033, row_key: CONSTRUCTION, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [732], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0033, row_key: WHOLESALE_RETAIL, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [734], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0033, row_key: TRANSPORT_STORAGE, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [736], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0033, row_key: ACCOMMODATION_FOOD, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [738], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0033, row_key: INFORMATION_COMMUNICATION, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [740], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0033, row_key: FINANCIAL_INSURANCE, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [741], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0033, row_key: REAL_ESTATE, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [735], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0033, row_key: PROFESSIONAL_SCIENCE, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [742], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0033, row_key: ADMIN_SUPPORT, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [743], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0033, row_key: EDUCATION, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [737], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0033, row_key: HEALTH_SOCIAL, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [5719], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0033, row_key: ARTS_RECREATION, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [5720], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0033, row_key: OTHER_SERVICES, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [5721], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0033, row_key: HOUSEHOLD_EMPLOYMENT, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [5722], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0033, row_key: FOREIGN_BRANCH, disposition: SOURCE_ONLY_VALIDATION, report_norm_ids: [], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0033, row_key: BANK_SUBTOTAL, disposition: SOURCE_ONLY_SUBTOTAL, report_norm_ids: [], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0033, row_key: MARGIN_MBS, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [5749], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0033, row_key: GRAND_TOTAL, disposition: SOURCE_ONLY_VALIDATION, report_norm_ids: [], candidate_report_norm_ids: [], question_key: null}
+
+question_groups: []
+
+forbidden_mapping_inputs:
+  - numeric_cell_text
+  - numeric_cell_value_as_item_selector
+  - numeric_value_magnitude
+  - percentage_axis_as_report_norm_mapping
+  - historical_or_mongodb_values
+  - human_review_answers
+  - accounting_equation_result_as_item_selector

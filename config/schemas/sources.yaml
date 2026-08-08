@@ -1,11 +1,13 @@
-version: 2
+version: 3
 append_only: true
 cash_flow_rules: config/mapping/lctt-v2.yaml
 sources:
-  CDKT: template/Bank_CDKT_ReportNormId.xlsx
-  KQKD: template/Bank_KQKD_ReportNormId.xlsx
-  LCTT: template/Bank_LCTT_ReportNormId.xlsx
-  TM: template/Bank_TM_ReportNormId.xlsx
+  CDKT: template/Bank_CDKT_ReportNormId.v2.xlsx
+  KQKD: template/Bank_KQKD_ReportNormId.v2.xlsx
+  LCTT: template/Bank_LCTT_ReportNormId.v2.xlsx
+  TM: template/Bank_TM_ReportNormId.v2.xlsx
 pending_additions: proposed_schema_additions.jsonl
 approved_append_audits:
   - data/registered/schema_append_1944.json
+approved_business_update_audits:
+  - data/registered/schema_business_update_5712_5713_5714_5718.json

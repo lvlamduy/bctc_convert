@@ -1,0 +1,68 @@
+version: 1
+policy: TM_NOTE_PAGE43_SCOPED_MULTI_AXIS_MAPPING_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+page_number: 43
+page_tag: page-0043
+report_scope: CONSOLIDATED
+mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_PDF_PAGE_43_FIXED_ROWS_AND_CELLS_ONLY
+
+source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+source_render_sha256: 11f7a3d8011a2026ddb2e859aa11cabedb6ed9d90fc5b971affc8f39922256f4
+source_ocr_sha256: fba2b7270727d806170dc503f840071297a1ee2eceeb1ab5039c494379d72e10
+schema_total: 1417
+minimum_visible_label_similarity: 0.78
+
+rows:
+  # Note 17, deposits by currency/type. The note title is provenance-only;
+  # the visible grand-total row carries the root value for 1055.
+  - {table_key: DEPOSIT_TYPE, ordinal: 1, visible_label_anchor: tien gui cua khach hang, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: SOURCE_ONLY_VALIDATION, row_report_norm_ids: [], cell_report_norm_ids: [[], []], source_only_cell_indices: [], candidate_report_norm_ids: []}
+  - {table_key: DEPOSIT_TYPE, ordinal: 2, visible_label_anchor: thuyet minh theo loai tien gui, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: FIXED_ROW, row_report_norm_ids: [1056], cell_report_norm_ids: [[], []], source_only_cell_indices: [], candidate_report_norm_ids: []}
+  - {table_key: DEPOSIT_TYPE, ordinal: 3, visible_label_anchor: tien gui khong ky han, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED_ROW, row_report_norm_ids: [1057], cell_report_norm_ids: [[], []], source_only_cell_indices: [], candidate_report_norm_ids: []}
+  - {table_key: DEPOSIT_TYPE, ordinal: 4, visible_label_anchor: tien gui khong ky han bang vnd, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED_ROW, row_report_norm_ids: [1058], cell_report_norm_ids: [[], []], source_only_cell_indices: [], candidate_report_norm_ids: []}
+  - {table_key: DEPOSIT_TYPE, ordinal: 5, visible_label_anchor: tien gui khong ky han bang ngoai te, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED_ROW, row_report_norm_ids: [1059], cell_report_norm_ids: [[], []], source_only_cell_indices: [], candidate_report_norm_ids: []}
+  - {table_key: DEPOSIT_TYPE, ordinal: 6, visible_label_anchor: tien gui co ky han, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED_ROW, row_report_norm_ids: [1060], cell_report_norm_ids: [[], []], source_only_cell_indices: [], candidate_report_norm_ids: []}
+  - {table_key: DEPOSIT_TYPE, ordinal: 7, visible_label_anchor: tien gui co ky han bang vnd, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED_ROW, row_report_norm_ids: [1061], cell_report_norm_ids: [[], []], source_only_cell_indices: [], candidate_report_norm_ids: []}
+  - {table_key: DEPOSIT_TYPE, ordinal: 8, visible_label_anchor: tien gui co ky han bang ngoai te, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED_ROW, row_report_norm_ids: [1062], cell_report_norm_ids: [[], []], source_only_cell_indices: [], candidate_report_norm_ids: []}
+  - {table_key: DEPOSIT_TYPE, ordinal: 9, visible_label_anchor: tien gui von chuyen dung, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED_ROW, row_report_norm_ids: [1069], cell_report_norm_ids: [[], []], source_only_cell_indices: [], candidate_report_norm_ids: []}
+  - {table_key: DEPOSIT_TYPE, ordinal: 10, visible_label_anchor: tien ky quy, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED_ROW, row_report_norm_ids: [1066], cell_report_norm_ids: [[], []], source_only_cell_indices: [], candidate_report_norm_ids: []}
+  - {table_key: DEPOSIT_TYPE, ordinal: 11, visible_label_anchor: tien gui ky quy bang vnd, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED_ROW, row_report_norm_ids: [1067], cell_report_norm_ids: [[], []], source_only_cell_indices: [], candidate_report_norm_ids: []}
+  - {table_key: DEPOSIT_TYPE, ordinal: 12, visible_label_anchor: tien gui ky quy bang ngoai te, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED_ROW, row_report_norm_ids: [1068], cell_report_norm_ids: [[], []], source_only_cell_indices: [], candidate_report_norm_ids: []}
+  - {table_key: DEPOSIT_TYPE, ordinal: 13, visible_label_anchor: null, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED_ROW, row_report_norm_ids: [1055], cell_report_norm_ids: [[], []], source_only_cell_indices: [], candidate_report_norm_ids: []}
+
+  # The second analysis header is structural. TCKT has no exact schema identity;
+  # personal deposits remain ambiguous against broader 1089; the total is a duplicate.
+  - {table_key: DEPOSIT_CUSTOMER, ordinal: 1, visible_label_anchor: thuyet minh theo doi tuong khach hang loai hinh doanh nghiep, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: FIXED_ROW, row_report_norm_ids: [1075], cell_report_norm_ids: [[], []], source_only_cell_indices: [], candidate_report_norm_ids: []}
+  - {table_key: DEPOSIT_CUSTOMER, ordinal: 2, visible_label_anchor: tien gui cua tckt, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, row_report_norm_ids: [], cell_report_norm_ids: [[], []], source_only_cell_indices: [0, 1], candidate_report_norm_ids: []}
+  - {table_key: DEPOSIT_CUSTOMER, ordinal: 3, visible_label_anchor: tien gui cua ca nhan, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: AMBIGUOUS_MAPPING, row_report_norm_ids: [], cell_report_norm_ids: [[], []], source_only_cell_indices: [0, 1], candidate_report_norm_ids: [1089]}
+  - {table_key: DEPOSIT_CUSTOMER, ordinal: 4, visible_label_anchor: null, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: SOURCE_ONLY_VALIDATION, row_report_norm_ids: [], cell_report_norm_ids: [[], []], source_only_cell_indices: [0, 1], candidate_report_norm_ids: []}
+
+  # Note 18. A combined visible aggregate supplies both note-measure total and
+  # currency-derivative child. Net carrying-value cells stay source-only.
+  - {table_key: DERIVATIVES, ordinal: 1, visible_label_anchor: cac cong cu tai chinh phai sinh va cac tai san cong no tai chinh khac, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK, BLANK], disposition: FIXED_ROW, row_report_norm_ids: [631], cell_report_norm_ids: [[], [], []], source_only_cell_indices: [], candidate_report_norm_ids: []}
+  - {table_key: DERIVATIVES, ordinal: 2, visible_label_anchor: tai ngay 31 thang 3 nam 2026, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK, BLANK], disposition: SOURCE_ONLY_VALIDATION, row_report_norm_ids: [], cell_report_norm_ids: [[], [], []], source_only_cell_indices: [], candidate_report_norm_ids: []}
+  - {table_key: DERIVATIVES, ordinal: 3, visible_label_anchor: cong cu tc phai sinh tien te, expected_row_kind: NUMERIC, expected_observations: [DASH, VALUE, VALUE], disposition: FIXED_CELLS_WITH_SOURCE_ONLY_MEASURE, row_report_norm_ids: [], cell_report_norm_ids: [[660, 661], [688, 689], []], source_only_cell_indices: [2], candidate_report_norm_ids: []}
+  - {table_key: DERIVATIVES, ordinal: 4, visible_label_anchor: giao dich ky han tien te, expected_row_kind: NUMERIC, expected_observations: [DASH, VALUE, VALUE], disposition: FIXED_CELLS_WITH_SOURCE_ONLY_MEASURE, row_report_norm_ids: [], cell_report_norm_ids: [[662], [690], []], source_only_cell_indices: [2], candidate_report_norm_ids: []}
+  - {table_key: DERIVATIVES, ordinal: 5, visible_label_anchor: giao dich hoan doi tien te, expected_row_kind: NUMERIC, expected_observations: [DASH, VALUE, VALUE], disposition: FIXED_CELLS_WITH_SOURCE_ONLY_MEASURE, row_report_norm_ids: [], cell_report_norm_ids: [[663], [691], []], source_only_cell_indices: [2], candidate_report_norm_ids: []}
+  - {table_key: DERIVATIVES, ordinal: 6, visible_label_anchor: tai ngay 31 thang 12 nam 2025, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK, BLANK], disposition: SOURCE_ONLY_VALIDATION, row_report_norm_ids: [], cell_report_norm_ids: [[], [], []], source_only_cell_indices: [], candidate_report_norm_ids: []}
+  - {table_key: DERIVATIVES, ordinal: 7, visible_label_anchor: cong cu tc phai sinh tien te, expected_row_kind: NUMERIC, expected_observations: [DASH, VALUE, VALUE], disposition: FIXED_CELLS_WITH_SOURCE_ONLY_MEASURE, row_report_norm_ids: [], cell_report_norm_ids: [[674, 675], [702, 703], []], source_only_cell_indices: [2], candidate_report_norm_ids: []}
+  - {table_key: DERIVATIVES, ordinal: 8, visible_label_anchor: giao dich ky han tien te, expected_row_kind: NUMERIC, expected_observations: [DASH, VALUE, VALUE], disposition: FIXED_CELLS_WITH_SOURCE_ONLY_MEASURE, row_report_norm_ids: [], cell_report_norm_ids: [[676], [704], []], source_only_cell_indices: [2], candidate_report_norm_ids: []}
+  - {table_key: DERIVATIVES, ordinal: 9, visible_label_anchor: giao dich hoan doi tien te, expected_row_kind: NUMERIC, expected_observations: [DASH, VALUE, VALUE], disposition: FIXED_CELLS_WITH_SOURCE_ONLY_MEASURE, row_report_norm_ids: [], cell_report_norm_ids: [[677], [705], []], source_only_cell_indices: [2], candidate_report_norm_ids: []}
+
+  # Note 19. The labeled source row maps the child; the unlabeled visible total
+  # maps the note root. The note title itself is retained for provenance.
+  - {table_key: TRUST_FUNDING, ordinal: 1, visible_label_anchor: von tai tro uy thac dau tu cho vay tctd chiu rui ro, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: SOURCE_ONLY_VALIDATION, row_report_norm_ids: [], cell_report_norm_ids: [[], []], source_only_cell_indices: [], candidate_report_norm_ids: []}
+  - {table_key: TRUST_FUNDING, ordinal: 2, visible_label_anchor: von nhan cua to chuc ca nhan khac, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED_ROW, row_report_norm_ids: [1093], cell_report_norm_ids: [[], []], source_only_cell_indices: [], candidate_report_norm_ids: []}
+  - {table_key: TRUST_FUNDING, ordinal: 3, visible_label_anchor: null, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED_ROW, row_report_norm_ids: [1092], cell_report_norm_ids: [[], []], source_only_cell_indices: [], candidate_report_norm_ids: []}
+
+ambiguous_schema_ids: [1089]
+not_observed_schema_ids: [632, 633, 634, 635, 636, 637, 638, 639, 640, 641, 642, 643, 644, 645, 646, 647, 648, 649, 650, 651, 652, 653, 654, 655, 656, 657, 658, 659, 664, 665, 666, 667, 668, 669, 670, 671, 672, 673, 678, 679, 680, 681, 682, 683, 684, 685, 686, 687, 692, 693, 694, 695, 696, 697, 698, 699, 700, 701, 706, 707, 708, 709, 710, 711, 712, 713, 714, 715, 1063, 1064, 1065, 1070, 1071, 1072, 1073, 1074, 1076, 1077, 1078, 1079, 1080, 1081, 1082, 1083, 1084, 1085, 1086, 1087, 1088, 1090, 1091, 1094, 1095, 1096, 1097, 1098, 1099]
+
+forbidden_mapping_inputs:
+  - numeric_cell_text
+  - numeric_cell_value_as_item_selector
+  - numeric_value_magnitude
+  - historical_or_mongodb_values
+  - human_review_answers
+  - dash_as_zero
+  - accounting_equation_result_as_item_selector

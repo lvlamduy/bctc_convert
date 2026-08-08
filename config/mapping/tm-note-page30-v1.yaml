@@ -5,18 +5,21 @@ document: MBB_CONSOLIDATED_Q1_2026
 page_number: 30
 page_tag: page-0030
 report_scope: CONSOLIDATED
-mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_PDF_PAGE_30_FIXED_ROWS_ONLY
+mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_PDF_PAGE_30_FIXED_AND_DECLARED_AGGREGATE_ROWS_ONLY
 
 source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
 source_render_sha256: e8cea48c6d8f93771b4b5bd9026df7a8b3e592ff7e403e036ed33eda913a092b
 render_dpi: 300
 
-schema_total: 1385
+schema_total: 1417
 visible_source_row_total: 22
-fixed_mapping_total: 19
-ambiguous_source_row_total: 1
-ambiguous_schema_item_total: 2
-source_only_row_total: 2
+fixed_mapping_total: 21
+aggregate_component_source_row_total: 2
+ambiguous_source_row_total: 0
+ambiguous_schema_item_total: 0
+source_only_row_total: 0
+not_observed_schema_item_total: 2
+not_observed_schema_ids: [583, 590]
 structural_blank_row_total: 2
 minimum_independent_semantic_streams_for_automatic_fixed_selection: 2
 minimum_ppocr_anchor_similarity: 0.85
@@ -82,15 +85,15 @@ rows:
     visible_label_anchor: tien gui tai ngan hang nha nuoc lao
     expected_row_kind: NUMERIC
     expected_source_role: DETAIL
-    disposition: SOURCE_ONLY
-    candidate_report_norm_ids: []
+    disposition: AGGREGATE_COMPONENT
+    candidate_report_norm_ids: [574]
   - note_number: 2
     ordinal: 5
     visible_label_anchor: tien gui tai ngan hang quoc gia campuchia
     expected_row_kind: NUMERIC
     expected_source_role: DETAIL
-    disposition: SOURCE_ONLY
-    candidate_report_norm_ids: []
+    disposition: AGGREGATE_COMPONENT
+    candidate_report_norm_ids: [574]
   - note_number: 2
     ordinal: 6
     visible_label_anchor: tien gui tai nhnn
@@ -174,8 +177,8 @@ rows:
     visible_label_anchor: du phong rui ro
     expected_row_kind: NUMERIC
     expected_source_role: DETAIL
-    disposition: AMBIGUOUS
-    candidate_report_norm_ids: [583, 590]
+    disposition: FIXED
+    candidate_report_norm_ids: [5718]
   - note_number: 3
     ordinal: 12
     visible_label_anchor: tien gui va cho vay cac tctd khac

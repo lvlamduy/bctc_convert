@@ -5,6 +5,8 @@ sources:
   CDKT:
     path: vst_bank_balance_sheet.xlsx
     coverage: FULL_STATEMENT
+    schema_only_append_ids:
+      - 5712
     columns:
       label: ReportName
       schema_id: ReportNormID
@@ -13,6 +15,8 @@ sources:
   KQKD:
     path: vst_bank_income_sheet.xlsx
     coverage: FULL_STATEMENT
+    schema_only_append_ids:
+      - 5713
     columns:
       label: ReportName
       schema_id: ReportNormID
@@ -21,6 +25,8 @@ sources:
   LCTT:
     path: vst_bank_cashflow_sheet.xlsx
     coverage: BRANCH_DIRECT
+    schema_only_append_ids:
+      - 5714
     allow_labeled_rows_without_id: true
     columns:
       label: ReportName
@@ -32,6 +38,38 @@ sources:
     coverage: FULL_STATEMENT
     schema_only_append_ids:
       - 1944
+      - 5718
+      - 5719
+      - 5720
+      - 5721
+      - 5722
+      - 5723
+      - 5724
+      - 5725
+      - 5726
+      - 5727
+      - 5728
+      - 5729
+      - 5730
+      - 5731
+      - 5732
+      - 5733
+      - 5734
+      - 5735
+      - 5736
+      - 5737
+      - 5738
+      - 5739
+      - 5740
+      - 5741
+      - 5742
+      - 5743
+      - 5744
+      - 5745
+      - 5746
+      - 5747
+      - 5748
+      - 5749
     columns:
       label: ReportName
       schema_id: ReportNormID

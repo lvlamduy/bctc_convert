@@ -23,18 +23,18 @@ from bctc_ai.tables.tm_note_page35 import ParsedTMPage35
 from bctc_ai.tables.tm_note_word_box import TMNoteRowKind
 
 TM_PAGE35_POLICY_RELATIVE_PATH = Path("config/mapping/tm-note-page35-v1.yaml")
-TM_PAGE35_SCHEMA_TOTAL = 1_385
-TM_PAGE35_RECONCILED_SCHEMA_COUNT = 29
-TM_PAGE35_MAPPED_SCHEMA_COUNT = 10
+TM_PAGE35_SCHEMA_TOTAL = 1_417
+TM_PAGE35_RECONCILED_SCHEMA_COUNT = 32
+TM_PAGE35_MAPPED_SCHEMA_COUNT = 13
 TM_PAGE35_NOT_OBSERVED_COUNT = 19
-TM_PAGE35_UNASSESSED_COUNT = 1_356
+TM_PAGE35_UNASSESSED_COUNT = 1_385
 TM_PAGE35_SOURCE_ROW_COUNT = 14
-TM_PAGE35_MAPPED_SOURCE_COUNT = 10
-TM_PAGE35_SOURCE_ONLY_COUNT = 4
+TM_PAGE35_MAPPED_SOURCE_COUNT = 13
+TM_PAGE35_SOURCE_ONLY_COUNT = 1
 TM_PAGE35_FINANCIAL_SLOT_COUNT = 26
 TM_PAGE35_VALUE_COUNT = 24
 TM_PAGE35_DASH_COUNT = 2
-TM_PAGE35_MAPPED_VALUE_COUNT = 18
+TM_PAGE35_MAPPED_VALUE_COUNT = 22
 TM_PAGE35_ACCOUNTING_CHECK_COUNT = 8
 TM_PAGE35_ACCOUNTING_PASS_COUNT = 6
 TM_PAGE35_ACCOUNTING_NOT_TESTABLE_COUNT = 2
@@ -317,7 +317,7 @@ def load_tm_page35_mapping_policy(path: Path) -> TMPage35MappingPolicy:
     fixed_ids = tuple(
         row.report_norm_id for row in rows if row.disposition is TMPage35RuleDisposition.FIXED
     )
-    if len(fixed_ids) != 10 or len(set(fixed_ids)) != 10:
+    if len(fixed_ids) != TM_PAGE35_MAPPED_SCHEMA_COUNT or len(set(fixed_ids)) != len(fixed_ids):
         raise TMPage35MappingError("TM page-35 fixed ReportNormIds drifted")
     not_observed = _ids(payload.get("not_observed_schema_ids"), "not-observed IDs")
     if len(not_observed) != TM_PAGE35_NOT_OBSERVED_COUNT or set(fixed_ids) & set(not_observed):
@@ -603,7 +603,7 @@ def reconcile_tm_page35_items(
         page_number=35,
         page_tag=policy.page_tag,
         report_scope=policy.report_scope,
-        status="SCOPED_PAGE35_MAPPING_WITH_DASH_SAFE_VALIDATION_AND_OPEN_SOURCE_QUESTIONS",
+        status="SCOPED_PAGE35_MAPPING_WITH_DASH_SAFE_VALIDATION",
         mapping_authority_scope=policy.mapping_authority_scope,
         mapping_authority_granted=True,
         schema_item_count=len(tm_schema),
@@ -677,8 +677,8 @@ def validate_tm_page35_mapping_result(
         or result.source_row_count != TM_PAGE35_SOURCE_ROW_COUNT
         or result.mapped_source_row_count != TM_PAGE35_MAPPED_SOURCE_COUNT
         or result.source_only_row_count != TM_PAGE35_SOURCE_ONLY_COUNT
-        or result.source_question_row_count != 2
-        or result.ambiguous_source_row_count != 1
+        or result.source_question_row_count != 0
+        or result.ambiguous_source_row_count != 0
         or result.financial_slot_count != TM_PAGE35_FINANCIAL_SLOT_COUNT
         or result.extracted_value_count != TM_PAGE35_VALUE_COUNT
         or result.dash_count != TM_PAGE35_DASH_COUNT
@@ -703,7 +703,21 @@ def validate_tm_page35_mapping_result(
         for item in result.schema_dispositions
         if item.status == TMPage35SchemaStatus.MAPPED_AUTOMATIC_SCOPED.value
     }
-    if mapped_ids != {800, 801, 803, 804, 805, 807, 808, 809, 824, 825}:
+    if mapped_ids != {
+        800,
+        801,
+        803,
+        804,
+        805,
+        807,
+        808,
+        809,
+        824,
+        825,
+        5738,
+        5739,
+        5740,
+    }:
         raise TMPage35MappingError("TM page-35 mapped ReportNormIds drifted")
     dash_rows = [
         item for item in result.source_dispositions if item.observations == ("DASH", "DASH")

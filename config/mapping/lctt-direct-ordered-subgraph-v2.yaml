@@ -1,6 +1,6 @@
 version: 2
 mode: ANCHORED_INTERVAL_K_BEST_MONOTONE_DP_FAIL_CLOSED
-calibration_status: SOURCE_VISIBLE_SINGLE_READER_CANDIDATE_RECONCILIATION_NOT_AUTOMATIC_MAPPING
+calibration_status: SOURCE_VISIBLE_DUAL_READER_WITH_APPROVED_BUSINESS_SCHEMA_RESOLUTIONS
 ordering_authority: WORKBOOK_DISPLAY_ORDER_ONLY
 policy_bytes_authority: SINGLE_IMMUTABLE_BYTE_SNAPSHOT_FOR_PARSE_AND_SHA256
 numeric_report_norm_id_sort_allowed: false
@@ -65,13 +65,12 @@ acceptance_gates:
   require_pair_exclusion_counterfactual_stability: true
   require_zero_beam_pruning: true
 
-# Current MBB evidence has one source-visible PP-OCR label stream. The ordered
-# branch reconciliation below may expose one-to-one candidates, but it cannot
-# select them automatically until a second independent semantic stream agrees.
+# Three exact source rows have approved business/schema resolutions. The other
+# 40 one-to-one rows still require agreement from a second semantic reader.
 candidate_reconciliation:
   applicable_branch: DIRECT
-  schema_total: 107
-  applicable_branch_total: 50
+  schema_total: 108
+  applicable_branch_total: 51
   non_applicable_branch_total: 57
   visible_source_row_total: 43
   minimum_independent_semantic_streams_for_automatic_selection: 2
@@ -79,29 +78,31 @@ candidate_reconciliation:
   label_similarity_algorithm: MAX_FULL_OR_PARTIAL_RATIO_AFTER_RETRIEVAL_KEY
   minimum_monotone_candidate_label_score: 0.45
   minimum_cross_reader_label_similarity: 0.85
-  minimum_composite_anchor_runner_up_margin: 0.10
   not_observed_report_norm_ids:
     - 4143
+    - 4145
+    - 4146
+    - 4120
+    - 4121
     - 4151
     - 4152
     - 4117
-  label_conflicts:
-    - key: LIABILITY_ROW_VISIBLE_ASSET_LABEL_CONFLICT
+  business_resolved_source_rows:
+    - key: ACCEPTED_OTHER_FINANCIAL_LIABILITIES_WORDING_VARIANT
+      source_row_id: page-0007:row-0024
+      visible_label_anchor: tang giam cac cong cu tai chinh phai sinh va cac tai san tai chinh khac
+      minimum_anchor_similarity: 0.85
       report_norm_id: 4140
-      source_conflict_anchor: cac tai san tai chinh khac
-      schema_expected_anchor: cac khoan no tai chinh khac
-      minimum_anchor_similarity: 0.90
-  composite_source_rows:
-    - key: INVESTMENT_PROPERTY_NET
+      decision_basis: APPROVED_BUSINESS_SCHEMA_MAPPING
+    - key: INVESTMENT_PROPERTY_NET_TO_4144
+      source_row_id: page-0007:row-0031
       visible_label_anchor: tien thu chi bat dong san dau tu
-      minimum_anchor_similarity: 0.70
-      candidate_report_norm_ids:
-        - 4144
-        - 4145
-        - 4146
-    - key: INVESTMENT_CONTRIBUTION_NET
+      minimum_anchor_similarity: 0.85
+      report_norm_id: 4144
+      decision_basis: APPROVED_BUSINESS_SCHEMA_MAPPING
+    - key: INVESTMENT_CONTRIBUTION_NET_TO_5714
+      source_row_id: page-0007:row-0032
       visible_label_anchor: tien thu chi dau tu gop von vao cac don vi khac
-      minimum_anchor_similarity: 0.70
-      candidate_report_norm_ids:
-        - 4120
-        - 4121
+      minimum_anchor_similarity: 0.85
+      report_norm_id: 5714
+      decision_basis: APPROVED_BUSINESS_SCHEMA_MAPPING

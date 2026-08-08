@@ -62,12 +62,28 @@ def test_mbb_page6_pdf_text_layer_verifies_all_numbers_and_equations(project_roo
         "413e6769de42f41917c2bc5fed23b9b4a4eb64b69a56c7d9d4e5301ea7cac113"
     )
     assert result.accounting_payload_sha256 == (
-        "0d2d1da6505b6e45b6a204e4969c31008794d51093a6f0a5dfdc51a73f50fe71"
+        "4dc70f7eb6de6cd310291b5c8715c93042ae140e55ea042644e010e6e5d17205"
     )
     assert all(
         equation.residuals_by_axis == ("0", "0", "0", "0")
         for equation in result.accounting_equations
     )
+    operating_income = next(
+        equation
+        for equation in result.accounting_equations
+        if equation.equation_id == "TOTAL_OPERATING_INCOME"
+    )
+    assert operating_income.target_row_ordinal == 12
+    assert [operand.row_ordinal for operand in operating_income.operands] == [
+        3,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+    ]
+    assert operating_income.residuals_by_axis == ("0", "0", "0", "0")
 
     exceptional_groups = {
         (cell.row_ordinal, cell.axis_ordinal): tuple(token.text for token in cell.pdf_text_tokens)

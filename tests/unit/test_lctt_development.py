@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import datetime as datetime_module
 import hashlib
 from io import BytesIO
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from openpyxl import load_workbook
@@ -29,7 +31,7 @@ _OCR_ROOT = Path("output/calibration/recovery-e0027-mbb-q1-2026-role-c-20260807"
 _RENDER_ROOT = Path(
     "output/calibration/recovery-e0027-mbb-q1-2026-20260807/eebeda2ebc09b0d42032/renders"
 )
-_TEMPLATE = Path("template/Bank_LCTT_ReportNormId.xlsx")
+_TEMPLATE = Path("template/Bank_LCTT_ReportNormId.v2.xlsx")
 _DEEPSEEK_LABELS = (
     "| LƯU CHUYỂN TIỀN TỪ HOẠT ĐỘNG KINH DOANH",
     "| Thu lãi và các khoản thu tương tự nhận được",
@@ -141,8 +143,8 @@ def test_real_lctt_export_preserves_template_and_exposes_43_source_rows(
         mapping=mapping,
     )
 
-    assert result.mapped_cell_count == 80
-    assert result.mapped_value_count == 67
+    assert result.mapped_cell_count == 86
+    assert result.mapped_value_count == 71
     assert result.provenance_row_count == 43
     assert result.fully_verified is False
     assert hashlib.sha256(workbook_path.read_bytes()).hexdigest() == result.workbook_sha256
@@ -152,36 +154,41 @@ def test_real_lctt_export_preserves_template_and_exposes_43_source_rows(
     try:
         assert workbook.sheetnames == ["LCTT", "PROVENANCE", "RUN_METADATA"]
         main = workbook["LCTT"]
-        for row in range(1, 109):
+        for row in range(1, 110):
             for column in range(1, 4):
                 assert main.cell(row, column).value == template.active.cell(row, column).value
                 assert main.cell(row, column).style_id == template.active.cell(row, column).style_id
 
-        by_id = {main.cell(row, 2).value: row for row in range(2, 109)}
+        by_id = {main.cell(row, 2).value: row for row in range(2, 110)}
         assert main.cell(by_id[4123], 4).value == 26_904_675_000_000
         assert main.cell(by_id[4123], 9).value == 18_186_686_000_000
         assert main.cell(by_id[4123], 5).value == "VALUE"
         assert main.cell(by_id[4123], 10).value == "VALUE"
         assert main.cell(by_id[4104], 5).value == "BLANK"
         assert main.cell(by_id[4104], 10).value == "BLANK"
-        for report_norm_id in (4143, 4151, 4152, 4117):
+        for report_norm_id in (4143, 4145, 4146, 4120, 4121, 4151, 4152, 4117):
             assert main.cell(by_id[report_norm_id], 5).value == "NOT_OBSERVED_IN_THIS_PDF"
             assert main.cell(by_id[report_norm_id], 10).value == "NOT_OBSERVED_IN_THIS_PDF"
-        for report_norm_id in (4144, 4145, 4146, 4120, 4121):
-            assert main.cell(by_id[report_norm_id], 5).value == "AMBIGUOUS_MAPPING"
-            assert main.cell(by_id[report_norm_id], 10).value == "AMBIGUOUS_MAPPING"
-        assert main.cell(by_id[4140], 4).value is None
-        assert main.cell(by_id[4140], 9).value is None
-        assert main.cell(by_id[4140], 5).value == "LABEL_CONFLICT_CANDIDATE_NOT_AUTOMATIC"
-        assert main.cell(by_id[4140], 10).value == "LABEL_CONFLICT_CANDIDATE_NOT_AUTOMATIC"
+        assert main.cell(by_id[4140], 4).value == -37_183_000_000
+        assert main.cell(by_id[4140], 9).value == 334_598_000_000
+        assert main.cell(by_id[4140], 5).value == "VALUE"
+        assert main.cell(by_id[4140], 10).value == "VALUE"
+        assert main.cell(by_id[4144], 4).value is None
+        assert main.cell(by_id[4144], 9).value is None
+        assert main.cell(by_id[4144], 5).value == "DASH"
+        assert main.cell(by_id[4144], 10).value == "DASH"
+        assert main.cell(by_id[5714], 4).value == 490_000_000
+        assert main.cell(by_id[5714], 9).value == -71_299_000_000
+        assert main.cell(by_id[5714], 5).value == "VALUE"
+        assert main.cell(by_id[5714], 10).value == "VALUE"
         assert main.cell(by_id[4155], 5).value == "SCHEMA_ITEM_NOT_APPLICABLE"
         assert (
             sum(
                 main.cell(row, column).value is not None
-                for row in range(2, 109)
+                for row in range(2, 110)
                 for column in (4, 9)
             )
-            == 67
+            == 71
         )
 
         provenance = workbook["PROVENANCE"]
@@ -191,29 +198,26 @@ def test_real_lctt_export_preserves_template_and_exposes_43_source_rows(
             {name: provenance.cell(row, column).value for name, column in headers.items()}
             for row in range(2, provenance.max_row + 1)
         ]
-        source_only = [
-            record for record in records if record["SourceRowStatus"] == "SOURCE_ONLY_PDF_ROW"
-        ]
-        assert [record["RowId"] for record in source_only] == [
+        assert {record["SourceRowStatus"] for record in records} == {"MAPPED_AUTOMATIC"}
+        business = {
+            record["RowId"]: record
+            for record in records
+            if record["BusinessResolutionKey"] is not None
+        }
+        assert set(business) == {
+            "page-0007:row-0024",
             "page-0007:row-0031",
             "page-0007:row-0032",
-        ]
-        assert [record["CandidateReportNormIdsJson"] for record in source_only] == [
-            "[4144,4145,4146]",
-            "[4120,4121]",
-        ]
-        assert source_only[0]["CurrentStatus"] == source_only[0]["ComparativeStatus"] == "DASH"
-        assert source_only[1]["CurrentValueVND"] == 490_000_000
-        assert source_only[1]["ComparativeValueVND"] == -71_299_000_000
-        label_conflict = next(
-            record
-            for record in records
-            if record["SourceRowStatus"] == "LABEL_CONFLICT_CANDIDATE_NOT_AUTOMATIC"
-        )
-        assert label_conflict["RowId"] == "page-0007:row-0024"
-        assert label_conflict["CandidateReportNormIdsJson"] == "[4140]"
-        assert label_conflict["CurrentValueVND"] == -37_183_000_000
-        assert label_conflict["ComparativeValueVND"] == 334_598_000_000
+        }
+        assert business["page-0007:row-0024"]["CandidateReportNormIdsJson"] == "[4140]"
+        assert business["page-0007:row-0024"]["CurrentValueVND"] == -37_183_000_000
+        assert business["page-0007:row-0024"]["ComparativeValueVND"] == 334_598_000_000
+        assert business["page-0007:row-0031"]["CandidateReportNormIdsJson"] == "[4144]"
+        assert business["page-0007:row-0031"]["CurrentStatus"] == "DASH"
+        assert business["page-0007:row-0031"]["ComparativeStatus"] == "DASH"
+        assert business["page-0007:row-0032"]["CandidateReportNormIdsJson"] == "[5714]"
+        assert business["page-0007:row-0032"]["CurrentValueVND"] == 490_000_000
+        assert business["page-0007:row-0032"]["ComparativeValueVND"] == -71_299_000_000
         assert all(record["FullyVerified"] is False for record in records)
         assert not any(
             cell.data_type == "f" or (isinstance(cell.value, str) and cell.value.startswith("="))
@@ -230,7 +234,28 @@ def test_lctt_build_is_deterministic_and_export_refuses_overwrite(
     tmp_path: Path,
     project_root: Path,
     development_inputs,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    from openpyxl.writer import excel as excel_writer
+
+    save_clock = iter(
+        (
+            datetime_module.datetime(2030, 1, 2, 3, 4, 5),
+            datetime_module.datetime(2040, 6, 7, 8, 9, 10),
+        )
+    )
+
+    class FakeDateTime:
+        @classmethod
+        def now(cls, tz=None):
+            value = next(save_clock)
+            return value.replace(tzinfo=tz) if tz is not None else value
+
+    monkeypatch.setattr(
+        excel_writer,
+        "datetime",
+        SimpleNamespace(datetime=FakeDateTime, timezone=datetime_module.timezone),
+    )
     parsed, mapping = development_inputs
     kwargs = {
         "template_path": project_root / _TEMPLATE,
@@ -242,7 +267,11 @@ def test_lctt_build_is_deterministic_and_export_refuses_overwrite(
     assert first.workbook_bytes == second.workbook_bytes
     assert first.workbook_sha256 == hashlib.sha256(first.workbook_bytes).hexdigest()
     workbook = load_workbook(BytesIO(first.workbook_bytes), data_only=False)
-    workbook.close()
+    try:
+        assert workbook.properties.created == datetime_module.datetime(2000, 1, 1)
+        assert workbook.properties.modified == datetime_module.datetime(2000, 1, 1)
+    finally:
+        workbook.close()
 
     destination = tmp_path / "existing.xlsx"
     destination.write_bytes(b"KEEP")

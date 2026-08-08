@@ -61,7 +61,7 @@ def _write_schema_artifacts(
     atomic_write_json(coverage_path, coverage.to_registry())
     registry = {
         "format_version": 1,
-        "authority": "SUPPLIED_WORKBOOKS_PLUS_APPROVED_APPEND_ONLY_MIGRATIONS",
+        "authority": "SUPPLIED_WORKBOOKS_PLUS_APPROVED_AUDITED_SCHEMA_MIGRATIONS",
         "append_only": True,
         "workbooks": workbook_records,
         "counts": {
@@ -109,8 +109,7 @@ def _write_schema_proposal(
         for item in schema
         if item.statement_type == "TM"
         and item.schema_id == 1944
-        and item.canonical_name
-        == "Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán"
+        and item.canonical_name == "Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán"
     ]
     append_audit_path = project_root / "data/registered/schema_append_1944.json"
     append_audit = (
@@ -1345,9 +1344,7 @@ def run_bootstrap(project_root: Path, *, workers: int = 4) -> BootstrapResult:
             break
     workbooks, schema_count, graph_hash, hierarchy_reference = _write_schema_artifacts(project_root)
     schema_coverage = json.loads(
-        (project_root / "data/registered/schema_coverage_registry.json").read_text(
-            encoding="utf-8"
-        )
+        (project_root / "data/registered/schema_coverage_registry.json").read_text(encoding="utf-8")
     )
     _write_schema_proposal(project_root, historical_weak_reference)
     questions = bootstrap_questions()

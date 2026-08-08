@@ -1,0 +1,80 @@
+version: 1
+policy: TM_NOTE_PAGE42_FIXED_GRID_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+page_number: 42
+page_tag: page-0042
+scope: CONSOLIDATED
+scope_binding: CONTINUED_TM_NOTES_IN_IMMUTABLE_CONSOLIDATED_DOCUMENT
+
+source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+source_render_sha256: afb03eeaec7e0f96eee5c1cc02c44f31642e342c8a50f517a354cb617e45888a
+source_ocr_sha256: ec221ba8132e21c04910c71d9955944c063a8c7153280bb1ec1782f8669b642f
+
+minimum_line_score: 0.0
+minimum_anchor_similarity: 0.78
+minimum_unit_similarity: 0.82
+unit:
+  anchors: [trieu dong]
+  canonical: VND
+  multiplier: 1000000
+
+header_geometry:
+  maximum_date_to_unit_center_distance_line_heights: 2.0
+  minimum_axis_separation_line_heights: 5.0
+
+table_geometry:
+  numeric_axis_max_distance_ratio: 0.45
+  numeric_axis_right_overrun_line_heights: 0.75
+  row_anchor_cluster_line_heights: 0.35
+  label_direct_attach_line_heights: 1.0
+  structural_continuation_line_heights: 0.0
+  note_reference_left_gap_axis_widths: 1.40
+  page_footer_top_ratio: 0.90
+
+dash_detector_config: word-box-reconstruction-v3.yaml
+dash_detector_config_sha256: c1cf55a6187a1b2a6f54b74b1566619d046446bc3ad7e628473004103c5d0f7e
+
+tables:
+  - table_key: RECEIVABLE_SUMMARY
+    note_number: "13"
+    title_anchors: [cac khon phi thu]
+    structural_label_anchors: []
+    dash_label_anchors: []
+    expected_numeric_rows: 3
+    expected_label_only_rows: 0
+  - table_key: RECEIVABLE_DETAIL
+    note_number: "13"
+    title_anchors: [chi tiet cac khoan phai thu ben ngoai nhu sau]
+    structural_label_anchors: []
+    dash_label_anchors: []
+    expected_numeric_rows: 6
+    expected_label_only_rows: 0
+  - table_key: OTHER_ASSETS
+    note_number: "14"
+    title_anchors: [tai san co khac]
+    structural_label_anchors: []
+    dash_label_anchors: []
+    expected_numeric_rows: 3
+    expected_label_only_rows: 0
+  - table_key: GOVERNMENT_DEBT
+    note_number: "15"
+    title_anchors: [cac khoan no chinh phu va nhnn]
+    structural_label_anchors: []
+    dash_label_anchors: []
+    expected_numeric_rows: 2
+    expected_label_only_rows: 0
+  - table_key: INTERBANK_FUNDING
+    note_number: "16"
+    title_anchors: [tien gui va vay cac tctd khac]
+    structural_label_anchors: []
+    dash_label_anchors: []
+    expected_numeric_rows: 10
+    expected_label_only_rows: 0
+
+forbidden_semantic_inputs:
+  - template_labels_as_row_reconstruction_input
+  - approved_report_norm_id_assignment
+  - historical_or_mongodb_values
+  - human_review_answers
+  - accounting_equations_as_value_imputation

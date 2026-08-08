@@ -6,44 +6,51 @@ Updated: 2026-08-08
 
 | Statement | Schema total | Status reconciled | Observed | Mapped | Unresolved | Fully verified |
 | --------- | -----------: | ----------------: | -------: | -----: | ---------: | -------------: |
-| CDKT | 77 | 77/77 | 61/77 identified; 64 PDF rows | 61/77 | 1 schema item; 3 source-only rows; 1 numeric cell | 0/77 |
-| KQKD | 24 | 24/24 | 21/24 identified; 22 PDF rows; 88/88 cells | 21/24 | 0 schema ambiguity; 1 source-only row | 0/24 |
-| LCTT | 107 | 107/107 | 46/107 schema candidates; 43 PDF rows; 86 cell slots | 40/107 | 6 schema items; 2 source-only rows | 0/107 |
-| TM | 1,385 | 150/1,385 | 83 PDF rows on pages 30, 31, 35 and 36; 148 value/status slots | 64/1,385 | 2 ambiguous IDs; 18 source-only/validation rows; 1,235 unassessed | 0/1,385 |
+| CDKT | 78 | 78/78 | 64 PDF rows / 128 cells | 62/78 | 0 mapping items; 1 cross-statement scope question | 0/78 |
+| KQKD | 25 | 25/25 | 22 PDF rows / 88 cells | 22/25 | 0 | 0/25 |
+| LCTT | 108 | 108/108 | 43 PDF rows / 86 cells | 43/108 | 0 | 0/108 |
+| TM | 1,417 | 740/1,417 | 438 financial PDF rows / 1,099 value-status slots | 293/1,417 | 85 reconciled; 677 not yet assessed | 0/1,417 |
 
-CDKT reconciles exactly as `77 = 61 MAPPED + 15 NOT_OBSERVED_IN_THIS_PDF + 1 UNRESOLVED`; its three source-only PDF rows are outside the denominator. KQKD reconciles as `24 = 21 MAPPED + 3 NOT_OBSERVED_IN_THIS_PDF`, plus one source-only total row. Its 88/88 observed values agree with the independent PDF text layer and 32/32 accounting checks have zero residual. LCTT reconciles as `107 = 57 SCHEMA_ITEM_NOT_APPLICABLE + 40 MAPPED + 1 LABEL_CONFLICT_CANDIDATE_NOT_AUTOMATIC + 5 AMBIGUOUS_MAPPING + 4 NOT_OBSERVED_IN_THIS_PDF`; its two net/composite rows remain source-only. Implemented TM pages reconcile as `1,385 = 64 MAPPED + 2 AMBIGUOUS_MAPPING + 61 NOT_OBSERVED_IN_THIS_PDF + 23 SCHEMA_ITEM_NOT_APPLICABLE + 1,235 UNASSESSED`; 18 source-only/validation rows sit outside the denominator. “Fully verified” remains zero until the complete mapping/value/period/status/Excel tuple has independent authority.
+Exact reconciliations:
+
+- CDKT: `78 = 62 MAPPED + 16 NOT_OBSERVED_IN_THIS_PDF`.
+- KQKD: `25 = 22 MAPPED + 3 NOT_OBSERVED_IN_THIS_PDF`.
+- LCTT: `108 = 43 MAPPED + 8 NOT_OBSERVED_IN_THIS_PDF + 57 SCHEMA_ITEM_NOT_APPLICABLE`.
+- TM implemented pages 30–44 and 46–52: `1,417 = 293 MAPPED + 85 AMBIGUOUS/UNRESOLVED + 339 NOT_OBSERVED_IN_THIS_PDF + 23 NOT_APPLICABLE + 677 UNASSESSED`. Page 52 also exposes 12 clear schema-addition proposals; these are not counted as mapped until allocated into the versioned schema.
+
+“Observed” means physically identified PDF rows/cells. “Mapped” means assigned to a ReportNormId. “Fully verified” requires the complete item, value/status, period, unit, scope, mapping and Excel tuple to have independent authority; provisional or inferred results are not counted.
 
 ## 2. Current technology/logic pipeline
 
 ```text
 PDF
-→ deterministic page render + embedded-text evidence when available
-→ multi-signal statement/page discovery
-→ PP-OCRv6 word geometry
-→ statement-specific fixed-grid/wrapped-row reconstruction
-→ DeepSeek-OCR-2 label proposal + PP-OCR/VietOCR cross-reader evidence
-→ PP-OCR numeric parse + independent PDF-text / en_PP-OCRv5 numeric check
-→ visible-header period/unit/scope binding
-→ ordered SchemaGraph/subgraph dynamic programming
-→ accounting equations without value repair
+→ deterministic PyMuPDF page rendering / embedded-text evidence where present
+→ statement and page discovery
+→ PP-OCRv6 word boxes
+→ statement-specific fixed-grid, wrapped-row and continuation reconstruction
+→ DeepSeek-OCR-2 / VietOCR label corroboration where configured
+→ signed numeric parsing + independent PDF-text or render-pixel DASH evidence
+→ visible-header period, unit and consolidated/separate-scope binding
+→ ordered SchemaGraph/subgraph mapping
+→ accounting equations without repairing source values
 → deterministic supplied-template Excel + provenance
 ```
 
-CDKT uses the sealed semantic-normalization/role-repair path. KQKD uses a four-axis hierarchical header parser and history-free SchemaGraph mapping. LCTT uses a two-page direct-method parser plus ordered PP-OCR/DeepSeek corroboration; 40 one-to-one rows are auto-mapped and one visible/schema label conflict is withheld. TM pages 30, 31, 35 and 36 use repeated-note fixed-grid geometry plus PP-OCR/DeepSeek labels; missing OCR dashes require exact render-pixel glyph evidence and are never coerced to zero. Qwen is not in the active path.
+CDKT, KQKD and LCTT now use the versioned business schema. TM uses note-specific geometry because its tables vary materially by page; percentage, class/geography and other auxiliary axes stay in provenance unless the schema explicitly supports them. Qwen is not in the active path.
 
 ## 3. Role A / Role B status
 
-- **Role A:** hash-bound calibration references exist for CTG Q2/2026, ACB Q2/2026 and MBB Q1/2026; the ordered schema registry contains 1,593 items. The fixed reviewed MBB CDKT subset remains 6 rows.
-- **Role B:** MBB CDKT reaches a hash-sealed, S3-restored template workbook. MBB KQKD reaches deterministic development Excel with 21/24 mappings; MBB LCTT reaches deterministic development Excel with 40/107 mappings and the conflicting 4140 row withheld. Implemented TM pages reach 83 rows/148 slots and 64 scoped mappings; repeated totals are validation-only rather than duplicated in schema targets.
-- **Latest measurable Role A/Role B result:** the fixed six reviewed CDKT rows map 6/6. KQKD has no human-reviewed mapping denominator yet, so 21/24 is machine-mapped coverage, not a production-accuracy score.
+- **Role A:** hash-bound references exist for CTG Q2/2026, ACB Q2/2026 and MBB Q1/2026. The active registry has 1,628 unique schema items: CDKT 78, KQKD 25, LCTT 108 and TM 1,417.
+- **Role B:** MBB Q1/2026 reaches development Excel for CDKT, KQKD and LCTT. TM reaches item-level parsing/mapping for pages 30–44 and 46–51; page 52 is fully parsed, maps its two unique existing-schema items and records external-owner totals only as validation. A single consolidated TM workbook is not yet built.
+- **Latest measurable result:** CDKT exports 114 observed plus 2 derived values; KQKD has 88/88 numeric cells independently matched and 32/32 accounting checks passed; LCTT exports 71 values, 9 dashes and 6 blanks; TM has 293 mapped schema items across 438 financial source rows and 1,099 value/status slots. Page 52 adds 12 clear, hierarchy-aware schema proposals without creating user-review questions.
 
 ## 4. Current development position
 
-- **Bank/report/period:** MBB consolidated Q1/2026. CDKT compares 31/03/2026 with 31/12/2025; KQKD/LCTT compare duration 01/01–31/03/2026 with 01/01–31/03/2025. Visible unit is VND × 1,000,000.
-- **Latest sealed result:** E-0041 MBB CDKT workbook/provenance pair; no further E-version is planned for coverage work.
-- **Regression status:** cross-statement KQKD/LCTT/TM coverage regression 73/73 passed; Ruff check/format passed. Latest full parser regression: 983 passed, 2 expected skips.
-- **Biggest remaining blocker:** 1,235 TM schema items remain unassessed, alongside 38 concrete TM questions exposed in `QUESTION_FOR_USER.md`; mechanism sealing is not the limiting work.
-- **Exact next end-to-end step:** implement page 42 notes 13–16 (18 fixed candidates, all-value two-axis tables), then page 43 notes 17/19 and the fixed-asset roll-forward pairs.
+- **Bank/report/period:** MBB consolidated Q1/2026; snapshot statements compare 31/03/2026 with 31/12/2025, duration statements compare Q1/2026 with Q1/2025; reported unit is generally VND × 1,000,000.
+- **Latest sealed version:** E-0041 CDKT workbook/provenance pair. No new E-version is planned for ordinary coverage expansion.
+- **Regression status:** final unit regression passes `1,172/1,172`; deterministic schema replay, changed-file Ruff/format and diff checks also pass. Historical frozen consumers remain bound to exact Git snapshots without rewriting sealed artifacts.
+- **Biggest remaining blocker:** 677 TM schema items are still unassessed. `QUESTION_FOR_USER.md` now separates 21 genuine TM review questions from 17 clear schema additions that Codex will execute without waiting for an answer.
+- **Exact next end-to-end step:** add the 12 clear page-52 items and 44 clear page-53 items, implement item-level page 53, continue pages 54–61, then emit one TM development workbook.
 
 ## 5. Overall status
 
@@ -51,8 +58,8 @@ CDKT uses the sealed semantic-normalization/role-repair path. KQKD uses a four-a
 Current end-to-end status:
 PDF → page → row/cell → OCR → mapping → validation → Excel
 
-Completed through: sealed CDKT Excel; KQKD and LCTT development Excel; TM pages 30, 31, 35 and 36 item mapping
-Currently working on: TM page 42, then pages 43–45 and remaining notes through 61
-Not yet completed: full TM coverage/Excel; authoritative resolution of exposed ambiguities; broad tuple and multi-bank/period verification
+Completed through: CDKT, KQKD and LCTT development Excel; TM item parsing/mapping for pages 30–44 and 46–52
+Currently working on: automatic page 52–53 schema additions and page 53 item-level implementation
+Not yet completed: full TM coverage/Excel; 85 reconciled TM ambiguities; 677 unassessed TM items; multi-bank/period verification
 Production approved: NO
 ```

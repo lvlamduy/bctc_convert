@@ -208,7 +208,7 @@ MBB_Q1_2026_KQKD_EQUATIONS: tuple[KQKDAccountingEquationSpec, ...] = (
     KQKDAccountingEquationSpec("NET_INTEREST", 3, (_operand(1), _operand(2))),
     KQKDAccountingEquationSpec("NET_SERVICE", 6, (_operand(4), _operand(5))),
     KQKDAccountingEquationSpec(
-        "TOTAL_OPERATING_INCOME_SOURCE_ONLY",
+        "TOTAL_OPERATING_INCOME",
         12,
         tuple(_operand(ordinal) for ordinal in (3, 6, 7, 8, 9, 10, 11)),
     ),

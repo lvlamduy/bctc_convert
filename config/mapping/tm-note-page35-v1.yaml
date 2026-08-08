@@ -10,7 +10,7 @@ mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_PDF_PAGE_35_FIXED_ROWS_ONLY
 source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
 source_render_sha256: 941d1d46d4d6f55451ef98d0bad4d46638f01cc8b0dac428b7253209933a6496
 source_ocr_sha256: e1afe9756a3a7bd870b2da2b13fa195f7ba669fd4e9f4d4ce30c41de1d3ceb31
-schema_total: 1385
+schema_total: 1417
 minimum_visible_label_similarity: 0.78
 
 rows:
@@ -18,13 +18,13 @@ rows:
   - {table_key: PURCHASED_NET, ordinal: 2, visible_label_anchor: du phong rui ro, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 803, candidate_report_norm_ids: []}
   - {table_key: PURCHASED_NET, ordinal: 3, visible_label_anchor: null, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 800, candidate_report_norm_ids: []}
 
-  - {table_key: PURCHASED_DETAIL, ordinal: 1, visible_label_anchor: no goc da mua, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, candidate_report_norm_ids: []}
-  - {table_key: PURCHASED_DETAIL, ordinal: 2, visible_label_anchor: lai cua khoan no da mua, expected_row_kind: NUMERIC, expected_observations: [DASH, DASH], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, candidate_report_norm_ids: []}
+  - {table_key: PURCHASED_DETAIL, ordinal: 1, visible_label_anchor: no goc da mua, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 5738, candidate_report_norm_ids: []}
+  - {table_key: PURCHASED_DETAIL, ordinal: 2, visible_label_anchor: lai cua khoan no da mua, expected_row_kind: NUMERIC, expected_observations: [DASH, DASH], disposition: FIXED, report_norm_id: 5739, candidate_report_norm_ids: []}
   - {table_key: PURCHASED_DETAIL, ordinal: 3, visible_label_anchor: null, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, candidate_report_norm_ids: []}
 
   - {table_key: AFS_SECURITIES, ordinal: 1, visible_label_anchor: chung khoan dau tu san sang de ban, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: FIXED, report_norm_id: 805, candidate_report_norm_ids: []}
   - {table_key: AFS_SECURITIES, ordinal: 2, visible_label_anchor: chung khoan no do chinh phu phat hanh, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 807, candidate_report_norm_ids: []}
-  - {table_key: AFS_SECURITIES, ordinal: 3, visible_label_anchor: chung khoan no do chinh phu bao lanh, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, candidate_report_norm_ids: [807]}
+  - {table_key: AFS_SECURITIES, ordinal: 3, visible_label_anchor: chung khoan no do chinh phu bao lanh, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 5740, candidate_report_norm_ids: []}
   - {table_key: AFS_SECURITIES, ordinal: 4, visible_label_anchor: chung khoan no do cac tctd khac phat hanh, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 808, candidate_report_norm_ids: []}
   - {table_key: AFS_SECURITIES, ordinal: 5, visible_label_anchor: chung khoan no do tckt trong nuoc phat hanh, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 809, candidate_report_norm_ids: []}
   - {table_key: AFS_SECURITIES, ordinal: 6, visible_label_anchor: null, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 824, candidate_report_norm_ids: []}

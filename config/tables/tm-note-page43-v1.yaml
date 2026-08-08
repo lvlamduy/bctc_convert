@@ -1,0 +1,84 @@
+version: 1
+policy: TM_NOTE_PAGE43_MULTI_AXIS_FIXED_GRID_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+page_number: 43
+page_tag: page-0043
+scope: CONSOLIDATED
+scope_binding: CONTINUED_TM_NOTES_IN_IMMUTABLE_CONSOLIDATED_DOCUMENT
+
+source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+source_render_sha256: 11f7a3d8011a2026ddb2e859aa11cabedb6ed9d90fc5b971affc8f39922256f4
+source_ocr_sha256: fba2b7270727d806170dc503f840071297a1ee2eceeb1ab5039c494379d72e10
+
+minimum_line_score: 0.0
+minimum_anchor_similarity: 0.78
+minimum_unit_similarity: 0.82
+unit:
+  anchors: [trieu dong]
+  canonical: VND
+  multiplier: 1000000
+
+header_geometry:
+  maximum_date_to_unit_center_distance_line_heights: 2.0
+  minimum_axis_separation_line_heights: 5.0
+
+table_geometry:
+  numeric_axis_max_distance_ratio: 0.45
+  numeric_axis_right_overrun_line_heights: 0.75
+  row_anchor_cluster_line_heights: 0.35
+  label_direct_attach_line_heights: 1.0
+  note_reference_left_gap_axis_widths: 1.40
+  page_footer_top_ratio: 0.90
+
+dash_detector_config: word-box-reconstruction-v3.yaml
+dash_detector_config_sha256: c1cf55a6187a1b2a6f54b74b1566619d046446bc3ad7e628473004103c5d0f7e
+
+tables:
+  - table_key: DEPOSIT_TYPE
+    note_number: "17"
+    title_anchors: [thuyet minh theo loai tien gui]
+    note_title_anchors: [tien gui cua khach hang]
+    body_end_anchors: [thuyet minh theo doi tuong khach hang loai hinh doanh nghiep]
+    expected_numeric_rows: 11
+    expected_label_only_rows: 2
+  - table_key: DEPOSIT_CUSTOMER
+    note_number: "17"
+    title_anchors: [thuyet minh theo doi tuong khach hang loai hinh doanh nghiep]
+    note_title_anchors: []
+    body_end_anchors: [cac cong cu tai chinh phai sinh va cac tai san cong no tai chinh khac]
+    expected_numeric_rows: 3
+    expected_label_only_rows: 1
+  - table_key: DERIVATIVES
+    note_number: "18"
+    title_anchors: [cac cong cu tai chinh phai sinh va cac tai san cong no tai chinh khac]
+    note_title_anchors: []
+    body_end_anchors: [von tai tro uy thac dau tu cho vay tctd chiu rui ro]
+    expected_numeric_rows: 6
+    expected_label_only_rows: 3
+  - table_key: TRUST_FUNDING
+    note_number: "19"
+    title_anchors: [von tai tro uy thac dau tu cho vay tctd chiu rui ro]
+    note_title_anchors: []
+    body_end_anchors: []
+    expected_numeric_rows: 2
+    expected_label_only_rows: 1
+
+derivative_geometry:
+  measure_header_anchors:
+    - {column_role: ASSET_CARRYING, anchors: [tai san]}
+    - {column_role: LIABILITY_CARRYING, anchors: [cong no]}
+    - {column_role: NET_CARRYING, anchors: [gia tri rong]}
+  current_period_anchors: [tai ngay 31 thang 3 nam 2026]
+  comparative_period_anchors: [tai ngay 31 thang 12 nam 2025]
+  expected_current_period: 2026-03-31
+  expected_comparative_period: 2025-12-31
+
+forbidden_semantic_inputs:
+  - missing_ocr_cell_as_dash_without_pixel_evidence
+  - template_labels_as_row_reconstruction_input
+  - approved_report_norm_id_assignment
+  - historical_or_mongodb_values
+  - human_review_answers
+  - dash_as_zero
+  - accounting_equations_as_value_imputation

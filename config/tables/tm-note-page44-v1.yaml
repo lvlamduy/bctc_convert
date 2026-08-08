@@ -1,0 +1,92 @@
+version: 1
+policy: TM_NOTE_PAGE44_MIXED_GRID_DASH_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+page_number: 44
+page_tag: page-0044
+scope: CONSOLIDATED
+scope_binding: CONTINUED_TM_NOTES_IN_IMMUTABLE_CONSOLIDATED_DOCUMENT
+
+source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+source_render_sha256: 81b5bfecd4c1b50895e0ac6e6e71707bc90a9646f21a4e92f8f7695c6c557152
+source_ocr_sha256: cff4951371851eb88a3f33a5531a46075c01f0159df752bc52920fe8bafa74f8
+
+minimum_line_score: 0.0
+minimum_anchor_similarity: 0.78
+minimum_unit_similarity: 0.82
+unit:
+  anchors: [trieu dong]
+  canonical: VND
+  multiplier: 1000000
+
+header_geometry:
+  maximum_date_to_unit_center_distance_line_heights: 2.0
+  minimum_axis_separation_line_heights: 5.0
+
+table_geometry:
+  numeric_axis_max_distance_ratio: 0.45
+  numeric_axis_right_overrun_line_heights: 0.75
+  row_anchor_cluster_line_heights: 0.35
+  label_direct_attach_line_heights: 1.0
+  structural_continuation_line_heights: 0.0
+  note_reference_left_gap_axis_widths: 1.40
+  page_footer_top_ratio: 0.90
+
+dash_detector_config: word-box-reconstruction-v3.yaml
+dash_detector_config_sha256: c1cf55a6187a1b2a6f54b74b1566619d046446bc3ad7e628473004103c5d0f7e
+
+snapshot_tables:
+  - table_key: PAPER_ISSUANCE
+    note_number: "20"
+    title_anchors: [phat hanh giay to co gia]
+    structural_label_anchors: []
+    dash_label_anchors: []
+    expected_numeric_rows: 7
+    expected_label_only_rows: 0
+  - table_key: OTHER_PAYABLES
+    note_number: "21"
+    title_anchors: [cac khoan phai tra va cong no khac]
+    body_end_anchors: [von va quy cua to chuc tin dung]
+    structural_label_anchors: []
+    dash_label_anchors: []
+    expected_numeric_rows: 3
+    expected_label_only_rows: 0
+
+equity_table:
+  table_key: EQUITY_MOVEMENT
+  note_number: "22.1"
+  section_title_anchors: [von va quy cua to chuc tin dung]
+  report_title_anchors: [bao cao thay doi von va cac quy hop nhat]
+  unit_anchors: [don vi trieu dong]
+  axis_header_anchors:
+    - {role: BEGINNING_BALANCE, anchors: [du dau]}
+    - {role: INCREASE, anchors: [trich lap tang]}
+    - {role: DECREASE, anchors: [su dung giam]}
+    - {role: ENDING_BALANCE, anchors: [du cuoi]}
+  rows:
+    - {label_anchors: [von dieu le], expected_observations: [VALUE, DASH, DASH, VALUE]}
+    - {label_anchors: [thang du von co phan], expected_observations: [VALUE, DASH, DASH, VALUE]}
+    - {label_anchors: [von khac], expected_observations: [VALUE, DASH, DASH, VALUE]}
+    - {label_anchors: [quy du tru bo sung von dieu le], expected_observations: [VALUE, VALUE, DASH, VALUE]}
+    - {label_anchors: [quy du phong tai chinh], expected_observations: [VALUE, DASH, VALUE, VALUE]}
+    - {label_anchors: [quy khac], expected_observations: [VALUE, VALUE, VALUE, VALUE]}
+    - {label_anchors: [chenh lech ty gia hoi doai], expected_observations: [VALUE, VALUE, DASH, VALUE]}
+    - {label_anchors: [loi nhuan chua phan phoi], expected_observations: [VALUE, VALUE, VALUE, VALUE]}
+    - {label_anchors: [loi ich co dong khong kiem soat], expected_observations: [VALUE, VALUE, VALUE, VALUE]}
+    - {label_anchors: [tong cong], expected_observations: [VALUE, VALUE, VALUE, VALUE]}
+
+narrative_facts:
+  - {fact_id: BANK_BOND_INTEREST_RATE_RANGE, anchors: [trai phieu cua rieng ngan hang], value_count: 2}
+  - {fact_id: CERTIFICATE_INTEREST_RATE_RANGE, anchors: [chung chi tien gui duoc huong lai suat], value_count: 2}
+  - {fact_id: ISSUED_SHARE_COUNT, anchors: [so luong co phieu da phat hanh], value_count: 1}
+  - {fact_id: PAR_VALUE, anchors: [menh gia], value_count: 1}
+  - {fact_id: STATED_CHARTER_CAPITAL, anchors: [von dieu le cua ngan hang], value_count: 1}
+
+forbidden_semantic_inputs:
+  - missing_ocr_cell_as_dash_without_pixel_evidence
+  - template_labels_as_row_reconstruction_input
+  - approved_report_norm_id_assignment
+  - historical_or_mongodb_values
+  - human_review_answers
+  - dash_as_zero
+  - accounting_equations_as_value_imputation

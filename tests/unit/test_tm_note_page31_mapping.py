@@ -44,6 +44,9 @@ _MAPPED_IDS = {
     754,
     755,
     1944,
+    5745,
+    5746,
+    5747,
 }
 _NOT_OBSERVED_IDS = {616, 623, 624, 625, 628, 629, 630, 719, 720, 724, 726}
 _NOT_APPLICABLE_IDS = set(range(593, 616))
@@ -70,7 +73,7 @@ def _mapped(project_root: Path, tmp_path: Path):
     )
 
 
-def test_page31_reconciles_61_schema_statuses_and_maps_27_distinct_items(
+def test_page31_reconciles_64_schema_statuses_and_maps_30_distinct_items(
     project_root: Path, tmp_path: Path
 ) -> None:
     result = _mapped(project_root, tmp_path)
@@ -79,20 +82,21 @@ def test_page31_reconciles_61_schema_statuses_and_maps_27_distinct_items(
     assert result.status == "SCOPED_PAGE31_MAPPING_WITH_COMPLETE_ACCOUNTING_VALIDATION"
     assert result.mapping_authority_scope.endswith("PDF_PAGE_31_FIXED_ROWS_ONLY")
     assert result.mapping_authority_granted
-    assert result.schema_item_count == 1_385
-    assert result.status_reconciled_schema_count == 61
-    assert result.mapped_schema_count == 27
+    assert result.schema_item_count == 1_417
+    assert result.status_reconciled_schema_count == 64
+    assert result.mapped_schema_count == 30
     assert result.not_observed_schema_count == 11
     assert result.not_applicable_schema_count == 23
-    assert result.unassessed_schema_count == 1_324
+    assert result.unassessed_schema_count == 1_353
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == 33
-    assert result.mapped_source_row_count == 27
-    assert result.source_only_row_count == 6
+    assert result.mapped_source_row_count == 29
+    assert result.source_only_row_count == 4
     assert result.numeric_source_row_count == 28
     assert result.structural_blank_source_row_count == 5
     assert result.extracted_value_count == 56
-    assert result.mapped_value_count == 44
+    assert result.mapped_value_count == 48
+    assert result.mapped_value_assignment_count == 50
 
 
 def test_exact_mapped_not_observed_not_applicable_and_unassessed_sets(
@@ -109,20 +113,19 @@ def test_exact_mapped_not_observed_not_applicable_and_unassessed_sets(
     assert by_status[TMPage31SchemaStatus.MAPPED_AUTOMATIC_SCOPED.value] == _MAPPED_IDS
     assert by_status[TMPage31SchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value] == (_NOT_OBSERVED_IDS)
     assert by_status[TMPage31SchemaStatus.SCHEMA_ITEM_NOT_APPLICABLE.value] == (_NOT_APPLICABLE_IDS)
-    assert len(by_status[TMPage31SchemaStatus.UNASSESSED.value]) == 1_324
+    assert len(by_status[TMPage31SchemaStatus.UNASSESSED.value]) == 1_353
 
 
-def test_mbs_1944_has_one_primary_mapping_and_duplicate_occurrences_are_validation_only(
+def test_margin_rows_have_explicit_context_assignments_and_legacy_dual_provenance(
     project_root: Path, tmp_path: Path
 ) -> None:
     result = _mapped(project_root, tmp_path)
     primary = [item for item in result.source_dispositions if item.report_norm_id == 1944]
-    duplicates = [
-        item
+    contexts = {
+        item.report_norm_id: item
         for item in result.source_dispositions
-        if item.status == TMPage31SourceStatus.SOURCE_ONLY_VALIDATION.value
-        and "MBS" in item.visible_label
-    ]
+        if item.report_norm_id in {5746, 5747}
+    }
 
     assert len(primary) == 1
     assert primary[0].row_id == "page-0031:loan_type:row-0008"
@@ -130,11 +133,14 @@ def test_mbs_1944_has_one_primary_mapping_and_duplicate_occurrences_are_validati
     assert primary[0].canonical_name == (
         "Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán"
     )
-    assert {item.row_id for item in duplicates} == {
-        "page-0031:loan_quality:row-0003",
-        "page-0031:loan_maturity:row-0006",
-    }
-    assert all(item.report_norm_id is None for item in duplicates)
+    assert primary[0].report_norm_ids == (1944, 5745)
+    assert primary[0].assignment_roles == (
+        "LEGACY_GLOBAL_PRIMARY",
+        "CONTEXT_BRANCH_MEMBER",
+    )
+    assert contexts[5746].row_id == "page-0031:loan_quality:row-0003"
+    assert contexts[5747].row_id == "page-0031:loan_maturity:row-0006"
+    assert all(item.values == (15_520_372, 15_040_585) for item in contexts.values())
 
 
 def test_seven_equations_across_two_periods_pass_with_zero_residual(
@@ -151,7 +157,7 @@ def test_seven_equations_across_two_periods_pass_with_zero_residual(
     assert all(check.status == "PASS" and check.residual == 0 for check in result.accounting_checks)
 
 
-def test_six_source_only_rows_are_exact_subtotals_or_duplicate_validation_rows(
+def test_four_source_only_rows_are_exact_subtotals_or_repeated_grand_totals(
     project_root: Path, tmp_path: Path
 ) -> None:
     result = _mapped(project_root, tmp_path)
@@ -163,10 +169,8 @@ def test_six_source_only_rows_are_exact_subtotals_or_duplicate_validation_rows(
 
     assert source_only == {
         "page-0031:loan_type:row-0007",
-        "page-0031:loan_quality:row-0003",
         "page-0031:loan_quality:row-0008",
         "page-0031:loan_maturity:row-0005",
-        "page-0031:loan_maturity:row-0006",
         "page-0031:loan_maturity:row-0007",
     }
 

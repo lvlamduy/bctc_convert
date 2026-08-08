@@ -16,7 +16,7 @@ from bctc_ai.tables.tm_note_page35 import load_tm_page35_policy, parse_tm_page35
 
 _OCR_FIXTURE = Path("tests/golden/tm/mbb-q1-2026-page-0035-ppocrv6-word-box.json")
 _SOURCE_PDF = Path("vietstock_bctc/MBB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf")
-_MAPPED_IDS = {800, 801, 803, 804, 805, 807, 808, 809, 824, 825}
+_MAPPED_IDS = {800, 801, 803, 804, 805, 807, 808, 809, 824, 825, 5738, 5739, 5740}
 _NOT_OBSERVED_IDS = {
     802,
     806,
@@ -52,7 +52,7 @@ def _mapped(project_root: Path, tmp_path: Path):
     )
 
 
-def test_page35_reconciles_complete_800_828_branch_and_maps_ten_distinct_items(
+def test_page35_reconciles_complete_branch_and_maps_thirteen_distinct_items(
     project_root: Path, tmp_path: Path
 ) -> None:
     result = _mapped(project_root, tmp_path)
@@ -60,23 +60,23 @@ def test_page35_reconciles_complete_800_828_branch_and_maps_ten_distinct_items(
     assert validate_tm_page35_mapping_result(result) is result
     assert result.mapping_authority_scope.endswith("PDF_PAGE_35_FIXED_ROWS_ONLY")
     assert result.mapping_authority_granted
-    assert result.schema_item_count == 1_385
-    assert result.status_reconciled_schema_count == 29
-    assert result.mapped_schema_count == 10
+    assert result.schema_item_count == 1_417
+    assert result.status_reconciled_schema_count == 32
+    assert result.mapped_schema_count == 13
     assert result.not_observed_schema_count == 19
     assert result.not_applicable_schema_count == 0
     assert result.ambiguous_schema_count == 0
-    assert result.unassessed_schema_count == 1_356
+    assert result.unassessed_schema_count == 1_385
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == 14
-    assert result.mapped_source_row_count == 10
-    assert result.source_only_row_count == 4
-    assert result.source_question_row_count == 2
-    assert result.ambiguous_source_row_count == 1
+    assert result.mapped_source_row_count == 13
+    assert result.source_only_row_count == 1
+    assert result.source_question_row_count == 0
+    assert result.ambiguous_source_row_count == 0
     assert result.financial_slot_count == 26
     assert result.extracted_value_count == 24
     assert result.dash_count == 2
-    assert result.mapped_value_count == 18
+    assert result.mapped_value_count == 22
 
 
 def test_exact_mapped_not_observed_and_unassessed_schema_sets(
@@ -92,26 +92,27 @@ def test_exact_mapped_not_observed_and_unassessed_schema_sets(
 
     assert by_status[TMPage35SchemaStatus.MAPPED_AUTOMATIC_SCOPED.value] == _MAPPED_IDS
     assert by_status[TMPage35SchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value] == (_NOT_OBSERVED_IDS)
-    assert len(by_status[TMPage35SchemaStatus.UNASSESSED.value]) == 1_356
+    assert len(by_status[TMPage35SchemaStatus.UNASSESSED.value]) == 1_385
 
 
-def test_government_guaranteed_debt_and_interest_dash_remain_source_only_questions(
+def test_new_purchased_debt_and_government_guaranteed_rows_map_one_to_one(
     project_root: Path, tmp_path: Path
 ) -> None:
     result = _mapped(project_root, tmp_path)
-    questions = [item for item in result.source_dispositions if item.question_required]
+    by_id = {
+        item.report_norm_id: item
+        for item in result.source_dispositions
+        if item.report_norm_id in {5738, 5739, 5740}
+    }
 
-    assert [item.row_id for item in questions] == [
-        "page-0035:purchased_detail:row-0002",
-        "page-0035:afs_securities:row-0003",
-    ]
-    assert questions[0].observations == ("DASH", "DASH")
-    assert questions[0].values == (None, None)
-    assert questions[0].candidate_report_norm_ids == ()
-    assert questions[1].values == (22_128_777, 22_204_008)
-    assert questions[1].candidate_report_norm_ids == (807,)
-    assert questions[1].candidate_canonical_names == ("+ Do Chính phủ phát hành (NHNN, Kho bạc)",)
-    assert all(item.status == TMPage35SourceStatus.SOURCE_ONLY_QUESTION.value for item in questions)
+    assert not [item for item in result.source_dispositions if item.question_required]
+    assert by_id[5738].values == (2_287_269, 2_465_314)
+    assert by_id[5739].observations == ("DASH", "DASH")
+    assert by_id[5739].values == (None, None)
+    assert by_id[5740].values == (22_128_777, 22_204_008)
+    assert all(
+        item.status == TMPage35SourceStatus.MAPPED_AUTOMATIC_SCOPED.value for item in by_id.values()
+    )
 
 
 def test_dash_pixel_evidence_is_pinned_and_never_coerced_to_zero_in_validation(

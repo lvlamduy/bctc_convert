@@ -1,0 +1,46 @@
+version: 1
+policy: TM_NOTE_PAGE49_SCOPED_MIXED_AXIS_MAPPING_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+page_number: 49
+page_tag: page-0049
+report_scope: CONSOLIDATED
+mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_PDF_PAGE_49_FIXED_ROWS_ONLY
+
+source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+source_render_sha256: e806551562241d3abf6940e8734a1292faee25a6aea7db08122ee160b05ad281
+source_ocr_sha256: 629d0fc832c0aa6378b78d9b97dbe95ba487b38fa511ffa1f7412eceea6704bb
+schema_total: 1417
+scoped_schema_ids: [1221, 1222, 1223, 1224, 1225, 1226, 1227, 1228, 1269, 1270, 1271, 1272, 1273, 1274, 1275, 1276, 1277, 1278, 1279]
+minimum_visible_label_similarity: 0.72
+
+rows:
+  # Note 9. The first three PDF details are broader/combined relative to the
+  # supplied children. Preserve their observed values without splitting.
+  - {table_key: RISK_PROVISION_EXPENSE, ordinal: 1, visible_label_anchor: chi phi hoan nhap du phong rui ro, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, candidate_report_norm_ids: []}
+  - {table_key: RISK_PROVISION_EXPENSE, ordinal: 2, visible_label_anchor: chi phi hoan nhap du phong rui ro cho vay khach hang, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: AMBIGUOUS_MAPPING, report_norm_id: null, candidate_report_norm_ids: [1224, 1225]}
+  - {table_key: RISK_PROVISION_EXPENSE, ordinal: 3, visible_label_anchor: chi phi hoan nhap du phong rui ro cho vay tctd, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: AMBIGUOUS_MAPPING, report_norm_id: null, candidate_report_norm_ids: [1222, 1223]}
+  - {table_key: RISK_PROVISION_EXPENSE, ordinal: 4, visible_label_anchor: chi phi hoan nhap du phong mua no, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: AMBIGUOUS_MAPPING, report_norm_id: null, candidate_report_norm_ids: [1226]}
+  - {table_key: RISK_PROVISION_EXPENSE, ordinal: 5, visible_label_anchor: chi phi hoan nhap du phong cac khoan rui ro khac, expected_row_kind: NUMERIC, expected_observations: [DASH, VALUE], disposition: FIXED, report_norm_id: 1228, candidate_report_norm_ids: []}
+  - {table_key: RISK_PROVISION_EXPENSE, ordinal: 6, visible_label_anchor: chi phi hoan nhap du phong voi cac cam ket dua ra, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1227, candidate_report_norm_ids: []}
+  - {table_key: RISK_PROVISION_EXPENSE, ordinal: 7, visible_label_anchor: null, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1221, candidate_report_norm_ids: []}
+
+  # Note 10. The visible three tax classes and unlabeled terminal total map
+  # directly. The title is retained as structural provenance only.
+  - {table_key: STATE_BUDGET_OBLIGATIONS, ordinal: 1, visible_label_anchor: tinh hinh thuc hien nghia vu voi nsnn, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK, BLANK, BLANK], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, candidate_report_norm_ids: []}
+  - {table_key: STATE_BUDGET_OBLIGATIONS, ordinal: 2, visible_label_anchor: thue gtgt, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE, VALUE], disposition: FIXED, report_norm_id: 1270, candidate_report_norm_ids: []}
+  - {table_key: STATE_BUDGET_OBLIGATIONS, ordinal: 3, visible_label_anchor: thue tndn, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE, VALUE], disposition: FIXED, report_norm_id: 1271, candidate_report_norm_ids: []}
+  - {table_key: STATE_BUDGET_OBLIGATIONS, ordinal: 4, visible_label_anchor: cac loai thue khac, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE, VALUE], disposition: FIXED, report_norm_id: 1278, candidate_report_norm_ids: []}
+  - {table_key: STATE_BUDGET_OBLIGATIONS, ordinal: 5, visible_label_anchor: null, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE, VALUE], disposition: FIXED, report_norm_id: 1269, candidate_report_norm_ids: []}
+
+ambiguous_schema_ids: [1222, 1223, 1224, 1225, 1226]
+not_observed_schema_ids: [1272, 1273, 1274, 1275, 1276, 1277, 1279]
+
+forbidden_mapping_inputs:
+  - numeric_cell_text
+  - numeric_cell_value_as_item_selector
+  - numeric_value_magnitude
+  - historical_or_mongodb_values
+  - human_review_answers
+  - dash_as_zero
+  - accounting_equation_result_as_item_selector

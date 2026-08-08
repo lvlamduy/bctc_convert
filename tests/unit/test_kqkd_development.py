@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import datetime as datetime_module
 import hashlib
 import json
 from dataclasses import replace
 from io import BytesIO
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from openpyxl import load_workbook
@@ -29,7 +31,8 @@ from bctc_ai.tables.kqkd_word_box import (
 
 _WORD_BOX_FIXTURE = Path("tests/golden/kqkd/mbb-q1-2026-page-0006-ppocrv6-word-box.json")
 _SOURCE_PDF = Path("vietstock_bctc/MBB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf")
-_TEMPLATE = Path("template/Bank_KQKD_ReportNormId.xlsx")
+_TEMPLATE = Path("template/Bank_KQKD_ReportNormId.v2.xlsx")
+_BASELINE_TEMPLATE = Path("template/Bank_KQKD_ReportNormId.xlsx")
 _DEEPSEEK_LABELS = (
     "_____ Thu nhập lãi và các khoản thu nhập tương tự",
     "Chi phí lãi và các khoản chi phí tương tự",
@@ -94,7 +97,7 @@ def _headers(sheet) -> dict[str, int]:
     return {str(sheet.cell(1, column).value): column for column in range(1, sheet.max_column + 1)}
 
 
-def test_real_coverage_export_has_42_target_values_and_separate_evidence_scopes(
+def test_real_coverage_export_has_44_target_values_and_separate_evidence_scopes(
     tmp_path: Path,
     project_root: Path,
     development_inputs,
@@ -112,7 +115,7 @@ def test_real_coverage_export_has_42_target_values_and_separate_evidence_scopes(
         run_metadata={"bank": "MBB", "quarter": "2026-Q1"},
     )
 
-    assert result.target_value_count == 42
+    assert result.target_value_count == 44
     assert result.accounting_check_count == 32
     assert result.fully_verified is False
     assert hashlib.sha256(workbook_path.read_bytes()).hexdigest() == result.workbook_sha256
@@ -140,25 +143,19 @@ def test_real_coverage_export_has_42_target_values_and_separate_evidence_scopes(
     assert coverage["coverage"] == {
         "accounting_check_count": 32,
         "accounting_passed_check_count": 32,
-        "mapped_schema_count": 21,
-        "mapped_ytd_provenance_value_count": 42,
+        "mapped_schema_count": 22,
+        "mapped_ytd_provenance_value_count": 44,
         "not_observed_schema_count": 3,
         "numeric_verified_cell_count": 88,
         "provenance_cell_count": 88,
-        "reconciled_schema_count": 24,
-        "source_only_row_count": 1,
+        "reconciled_schema_count": 25,
+        "source_only_row_count": 0,
         "source_row_count": 22,
-        "target_value_count": 42,
+        "target_value_count": 44,
         "ytd_provenance_cell_count": 44,
     }
     assert coverage["not_observed_report_norm_ids"] == [4381, 4394, 4395]
-    assert coverage["source_only_rows"] == [
-        {
-            "row_id": "page-0006:row-0012",
-            "row_ordinal": 12,
-            "source_label": "TONG THU NHAP HOAT DÔNG",
-        }
-    ]
+    assert coverage["source_only_rows"] == []
     assert "coverage_sha256" not in coverage
 
     template = load_workbook(project_root / _TEMPLATE, data_only=False)
@@ -172,21 +169,23 @@ def test_real_coverage_export_has_42_target_values_and_separate_evidence_scopes(
         ]
         template_main = template.active
         main = workbook["KQKD"]
-        for row in range(1, 26):
+        for row in range(1, 27):
             for column in range(1, 4):
                 assert main.cell(row, column).value == template_main.cell(row, column).value
                 assert main.cell(row, column).style_id == template_main.cell(row, column).style_id
 
-        by_id = {main.cell(row, 2).value: row for row in range(2, 26)}
+        by_id = {main.cell(row, 2).value: row for row in range(2, 27)}
         assert main.cell(by_id[4399], 4).value == 28_982_071_000_000
         assert main.cell(by_id[4399], 9).value == 19_590_312_000_000
+        assert main.cell(by_id[5713], 4).value == 17_430_206_000_000
+        assert main.cell(by_id[5713], 9).value == 15_322_697_000_000
         assert (
             sum(
                 main.cell(row, column).value is not None
-                for row in range(2, 26)
+                for row in range(2, 27)
                 for column in (4, 9)
             )
-            == 42
+            == 44
         )
         for report_norm_id in (4394, 4395, 4381):
             row = by_id[report_norm_id]
@@ -206,10 +205,27 @@ def test_real_coverage_export_has_42_target_values_and_separate_evidence_scopes(
         ]
         assert len(records) == 88
         assert sum(record["AxisGroup"] == "YTD" for record in records) == 44
-        source_only = [record for record in records if record["RowId"] == "page-0006:row-0012"]
-        assert len(source_only) == 4
-        assert all(record["SourceRowStatus"] == "SOURCE_ONLY_PDF_ROW" for record in source_only)
-        assert all(record["ReportNormId"] is None for record in source_only)
+        assert all(record["SourceRowStatus"] == "MAPPED" for record in records)
+        assert all(record["ReportNormId"] is not None for record in records)
+        total_income = [record for record in records if record["RowId"] == "page-0006:row-0012"]
+        assert len(total_income) == 4
+        assert all(record["SourceRowStatus"] == "MAPPED" for record in total_income)
+        assert all(record["ReportNormId"] == 5713 for record in total_income)
+        total_income_by_axis = {
+            (record["AxisGroup"], record["CurrentOrComparative"]): record for record in total_income
+        }
+        assert {
+            key: (
+                record["PDFTextSignedIntegerReportedUnit"],
+                record["CanonicalValueVND"],
+            )
+            for key, record in total_income_by_axis.items()
+        } == {
+            ("QUARTER", "CURRENT"): ("17430206", 17_430_206_000_000),
+            ("QUARTER", "COMPARATIVE"): ("15322697", 15_322_697_000_000),
+            ("YTD", "CURRENT"): ("17430206", 17_430_206_000_000),
+            ("YTD", "COMPARATIVE"): ("15322697", 15_322_697_000_000),
+        }
 
         diagnostics = workbook["VALIDATION_DIAGNOSTICS"]
         diagnostic_headers = _headers(diagnostics)
@@ -217,6 +233,23 @@ def test_real_coverage_export_has_42_target_values_and_separate_evidence_scopes(
         assert all(
             diagnostics.cell(row, diagnostic_headers["Status"]).value == "PASS"
             for row in range(2, diagnostics.max_row + 1)
+        )
+        operating_income_checks = [
+            {
+                header: diagnostics.cell(row, column).value
+                for header, column in diagnostic_headers.items()
+            }
+            for row in range(2, diagnostics.max_row + 1)
+            if diagnostics.cell(row, diagnostic_headers["EquationId"]).value
+            == "TOTAL_OPERATING_INCOME"
+        ]
+        assert len(operating_income_checks) == 4
+        assert all(check["TargetReportNormId"] == 5713 for check in operating_income_checks)
+        assert all(check["ResidualReportedUnit"] == "0" for check in operating_income_checks)
+        assert all(
+            [operand["report_norm_id"] for operand in json.loads(check["OperandsJson"])]
+            == [4385, 4386, 4387, 4388, 4389, 4390, 4393]
+            for check in operating_income_checks
         )
         assert not any(
             cell.data_type == "f" or (isinstance(cell.value, str) and cell.value.startswith("="))
@@ -232,7 +265,28 @@ def test_real_coverage_export_has_42_target_values_and_separate_evidence_scopes(
 def test_build_is_byte_deterministic_and_coverage_has_no_self_hash(
     project_root: Path,
     development_inputs,
+    monkeypatch: pytest.MonkeyPatch,
 ):
+    from openpyxl.writer import excel as excel_writer
+
+    save_clock = iter(
+        (
+            datetime_module.datetime(2030, 1, 2, 3, 4, 5),
+            datetime_module.datetime(2040, 6, 7, 8, 9, 10),
+        )
+    )
+
+    class FakeDateTime:
+        @classmethod
+        def now(cls, tz=None):
+            value = next(save_clock)
+            return value.replace(tzinfo=tz) if tz is not None else value
+
+    monkeypatch.setattr(
+        excel_writer,
+        "datetime",
+        SimpleNamespace(datetime=FakeDateTime, timezone=datetime_module.timezone),
+    )
     parsed, mapping, numeric = development_inputs
     kwargs = {
         "template_path": project_root / _TEMPLATE,
@@ -253,7 +307,11 @@ def test_build_is_byte_deterministic_and_coverage_has_no_self_hash(
     assert coverage["workbook"]["sha256"] == first.workbook_sha256
     assert "coverage_sha256" not in first.coverage_bytes.decode("utf-8")
     workbook = load_workbook(BytesIO(first.workbook_bytes), data_only=False)
-    workbook.close()
+    try:
+        assert workbook.properties.created == datetime_module.datetime(2000, 1, 1)
+        assert workbook.properties.modified == datetime_module.datetime(2000, 1, 1)
+    finally:
+        workbook.close()
 
 
 def test_export_refuses_overwrite_and_cross_bound_numeric_result(
@@ -284,4 +342,13 @@ def test_export_refuses_overwrite_and_cross_bound_numeric_result(
             parsed=parsed,
             mapping=mapping,
             numeric=replace(numeric, source_ocr_sha256="0" * 64),
+        )
+
+    with pytest.raises(KQKDDevelopmentExportError, match="template denominator"):
+        build_kqkd_development_artifacts(
+            template_path=project_root / _BASELINE_TEMPLATE,
+            workbook_name="mbb-kqkd-development.xlsx",
+            parsed=parsed,
+            mapping=mapping,
+            numeric=numeric,
         )

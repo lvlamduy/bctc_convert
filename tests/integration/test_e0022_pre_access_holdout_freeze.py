@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import subprocess
 
 from bctc_ai.core.hashing import sha256_file
 
@@ -46,4 +48,26 @@ def test_e0022_pre_access_holdout_freeze_is_hash_locked(project_root):
     )
 
     for relative_path, digest in validation["frozen_files_sha256"].items():
-        assert sha256_file(project_root / relative_path) == digest
+        local_path = project_root / relative_path
+        if relative_path != "config/schemas/sources.yaml":
+            assert local_path.is_file()
+            assert sha256_file(local_path) == digest
+            continue
+        # The active registry moved to the approved business-schema v2 files.
+        # E-0022 never consumes that current registry: its validator rebuilds
+        # the historical 1,593-item schema from the exact frozen workbook
+        # blobs.  Keep this one exception explicit and bind it to the frozen
+        # Git object; no other frozen path may use the fallback.
+        assert local_path.is_file()
+        historical = subprocess.run(
+            [
+                "git",
+                "show",
+                f"{validation['frozen_git_commit']}:{relative_path}",
+            ],
+            cwd=project_root,
+            check=False,
+            capture_output=True,
+        )
+        assert historical.returncode == 0
+        assert hashlib.sha256(historical.stdout).hexdigest() == digest

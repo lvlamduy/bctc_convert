@@ -1,0 +1,73 @@
+version: 1
+policy: TM_NOTE_PAGES37_38_SCOPED_TOTAL_COLUMN_MAPPING_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+note_number: "10"
+report_scope: CONSOLIDATED
+mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_PDF_PAGES_37_38_TOTAL_COLUMN_FIXED_ROWS_ONLY
+
+source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+source_panels:
+  - {panel_key: Q1_2026, page_number: 37, page_tag: page-0037, source_render_sha256: fbf3839424685b9045b9b03862deddfd91bddb2b75c3f3c245e64984f1f7f530, source_ocr_sha256: 7f4102e6615284d5f7928a0cd4cde660781de9cdeb7e7830fd31b16c6ed33dd4}
+  - {panel_key: FY_2025, page_number: 38, page_tag: page-0038, source_render_sha256: 5dce9305b1ddb5b5bf146bc69dd117c17ee6cc4dd1310766ca32f19f7bc6e198, source_ocr_sha256: b89286ba9a58056adf8703cb4feda569e0d064c0ef6b7970d82301a81d673c30}
+
+schema_total: 1417
+scoped_schema_ids: [868, 869, 870, 871, 872, 873, 874, 875, 876, 877, 878, 879, 880, 881, 882, 883, 884, 885, 886, 887, 888, 889, 890, 891, 892, 893, 894, 895, 896, 897, 898, 899, 900, 901, 902, 903, 904, 905, 906, 907, 908, 909, 910, 911, 912]
+title_mapping: {panel_key: Q1_2026, report_norm_id: 868, visible_title_anchor: tai san co dinh huu hinh}
+minimum_visible_label_similarity: 0.75
+
+rows:
+  # Q1 2026 panel. Only the visible TOTAL cell is authoritative on numeric fixed rows.
+  - {panel_key: Q1_2026, section_key: GROSS_COST, section_ordinal: 1, visible_label_anchor: nguyen gia, expected_row_kind: LABEL_ONLY, expected_observations: [], disposition: FIXED_STRUCTURAL_ROW, report_norm_id: 869, mapped_axis_role: null, candidate_report_norm_ids: []}
+  - {panel_key: Q1_2026, section_key: GROSS_COST, section_ordinal: 2, visible_label_anchor: so du dau ky, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE], disposition: FIXED_TOTAL_CELL, report_norm_id: 870, mapped_axis_role: TOTAL, candidate_report_norm_ids: []}
+  - {panel_key: Q1_2026, section_key: GROSS_COST, section_ordinal: 3, visible_label_anchor: tang trong ky, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, mapped_axis_role: null, candidate_report_norm_ids: [871, 872, 873, 874, 875]}
+  - {panel_key: Q1_2026, section_key: GROSS_COST, section_ordinal: 4, visible_label_anchor: giam trong ky, expected_row_kind: NUMERIC, expected_observations: [DASH, VALUE, VALUE, DASH, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, mapped_axis_role: null, candidate_report_norm_ids: [876, 877, 878, 880, 881]}
+  - {panel_key: Q1_2026, section_key: GROSS_COST, section_ordinal: 5, visible_label_anchor: tang giam khac trong ky, expected_row_kind: NUMERIC, expected_observations: [DASH, VALUE, DASH, DASH, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, mapped_axis_role: null, candidate_report_norm_ids: [875, 881]}
+  - {panel_key: Q1_2026, section_key: GROSS_COST, section_ordinal: 6, visible_label_anchor: chenh lech ty gia, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, mapped_axis_role: null, candidate_report_norm_ids: []}
+  - {panel_key: Q1_2026, section_key: GROSS_COST, section_ordinal: 7, visible_label_anchor: so du cuoi ky, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE], disposition: FIXED_TOTAL_CELL, report_norm_id: 882, mapped_axis_role: TOTAL, candidate_report_norm_ids: []}
+
+  - {panel_key: Q1_2026, section_key: ACCUMULATED_DEPRECIATION, section_ordinal: 1, visible_label_anchor: hao mon luy ke, expected_row_kind: LABEL_ONLY, expected_observations: [], disposition: FIXED_STRUCTURAL_ROW, report_norm_id: 883, mapped_axis_role: null, candidate_report_norm_ids: []}
+  - {panel_key: Q1_2026, section_key: ACCUMULATED_DEPRECIATION, section_ordinal: 2, visible_label_anchor: so du dau ky, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE], disposition: FIXED_TOTAL_CELL, report_norm_id: 884, mapped_axis_role: TOTAL, candidate_report_norm_ids: []}
+  - {panel_key: Q1_2026, section_key: ACCUMULATED_DEPRECIATION, section_ordinal: 3, visible_label_anchor: tang trong ky, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, mapped_axis_role: null, candidate_report_norm_ids: [885, 886, 887]}
+  - {panel_key: Q1_2026, section_key: ACCUMULATED_DEPRECIATION, section_ordinal: 4, visible_label_anchor: giam trong ky, expected_row_kind: NUMERIC, expected_observations: [DASH, VALUE, VALUE, DASH, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, mapped_axis_role: null, candidate_report_norm_ids: [888, 889, 890, 892, 893, 894]}
+  - {panel_key: Q1_2026, section_key: ACCUMULATED_DEPRECIATION, section_ordinal: 5, visible_label_anchor: tang giam khac trong ky, expected_row_kind: NUMERIC, expected_observations: [DASH, VALUE, DASH, VALUE, DASH], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, mapped_axis_role: null, candidate_report_norm_ids: [887, 894]}
+  - {panel_key: Q1_2026, section_key: ACCUMULATED_DEPRECIATION, section_ordinal: 6, visible_label_anchor: chenh lech ty gia, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, mapped_axis_role: null, candidate_report_norm_ids: []}
+  - {panel_key: Q1_2026, section_key: ACCUMULATED_DEPRECIATION, section_ordinal: 7, visible_label_anchor: so du cuoi ky, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE], disposition: FIXED_TOTAL_CELL, report_norm_id: 895, mapped_axis_role: TOTAL, candidate_report_norm_ids: []}
+
+  - {panel_key: Q1_2026, section_key: NET_BOOK_VALUE, section_ordinal: 1, visible_label_anchor: gia tri con lai, expected_row_kind: LABEL_ONLY, expected_observations: [], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, mapped_axis_role: null, candidate_report_norm_ids: []}
+  - {panel_key: Q1_2026, section_key: NET_BOOK_VALUE, section_ordinal: 2, visible_label_anchor: so du dau ky, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, mapped_axis_role: null, candidate_report_norm_ids: []}
+  - {panel_key: Q1_2026, section_key: NET_BOOK_VALUE, section_ordinal: 3, visible_label_anchor: so du cuoi ky, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, mapped_axis_role: null, candidate_report_norm_ids: []}
+
+  # FY 2025 panel supplies comparative rollforward provenance and close/open continuity.
+  - {panel_key: FY_2025, section_key: GROSS_COST, section_ordinal: 1, visible_label_anchor: nguyen gia, expected_row_kind: LABEL_ONLY, expected_observations: [], disposition: FIXED_STRUCTURAL_ROW, report_norm_id: 869, mapped_axis_role: null, candidate_report_norm_ids: []}
+  - {panel_key: FY_2025, section_key: GROSS_COST, section_ordinal: 2, visible_label_anchor: so du dau ky, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE], disposition: FIXED_TOTAL_CELL, report_norm_id: 870, mapped_axis_role: TOTAL, candidate_report_norm_ids: []}
+  - {panel_key: FY_2025, section_key: GROSS_COST, section_ordinal: 3, visible_label_anchor: tang trong ky, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, mapped_axis_role: null, candidate_report_norm_ids: [871, 872, 873, 874, 875]}
+  - {panel_key: FY_2025, section_key: GROSS_COST, section_ordinal: 4, visible_label_anchor: giam trong ky, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, mapped_axis_role: null, candidate_report_norm_ids: [876, 877, 878, 880, 881]}
+  - {panel_key: FY_2025, section_key: GROSS_COST, section_ordinal: 5, visible_label_anchor: phan loai lai trong nam, expected_row_kind: NUMERIC, expected_observations: [DASH, VALUE, VALUE, VALUE, VALUE], disposition: FIXED_TOTAL_CELL, report_norm_id: 879, mapped_axis_role: TOTAL, candidate_report_norm_ids: []}
+  - {panel_key: FY_2025, section_key: GROSS_COST, section_ordinal: 6, visible_label_anchor: chenh lech ty gia, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, mapped_axis_role: null, candidate_report_norm_ids: []}
+  - {panel_key: FY_2025, section_key: GROSS_COST, section_ordinal: 7, visible_label_anchor: so du cuoi ky, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE], disposition: FIXED_TOTAL_CELL, report_norm_id: 882, mapped_axis_role: TOTAL, candidate_report_norm_ids: []}
+
+  - {panel_key: FY_2025, section_key: ACCUMULATED_DEPRECIATION, section_ordinal: 1, visible_label_anchor: hao mon luy ke, expected_row_kind: LABEL_ONLY, expected_observations: [], disposition: FIXED_STRUCTURAL_ROW, report_norm_id: 883, mapped_axis_role: null, candidate_report_norm_ids: []}
+  - {panel_key: FY_2025, section_key: ACCUMULATED_DEPRECIATION, section_ordinal: 2, visible_label_anchor: so du dau ky, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE], disposition: FIXED_TOTAL_CELL, report_norm_id: 884, mapped_axis_role: TOTAL, candidate_report_norm_ids: []}
+  - {panel_key: FY_2025, section_key: ACCUMULATED_DEPRECIATION, section_ordinal: 3, visible_label_anchor: tang trong ky, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, mapped_axis_role: null, candidate_report_norm_ids: [885, 886, 887]}
+  - {panel_key: FY_2025, section_key: ACCUMULATED_DEPRECIATION, section_ordinal: 4, visible_label_anchor: giam trong ky, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, mapped_axis_role: null, candidate_report_norm_ids: [888, 889, 890, 892, 893, 894]}
+  - {panel_key: FY_2025, section_key: ACCUMULATED_DEPRECIATION, section_ordinal: 5, visible_label_anchor: phan loai lai trong nam, expected_row_kind: NUMERIC, expected_observations: [DASH, VALUE, VALUE, VALUE, VALUE], disposition: FIXED_TOTAL_CELL, report_norm_id: 891, mapped_axis_role: TOTAL, candidate_report_norm_ids: []}
+  - {panel_key: FY_2025, section_key: ACCUMULATED_DEPRECIATION, section_ordinal: 6, visible_label_anchor: dieu chinh theo kiem toan nha nuoc, expected_row_kind: NUMERIC, expected_observations: [DASH, VALUE, DASH, DASH, VALUE], disposition: FIXED_TOTAL_CELL, report_norm_id: 887, mapped_axis_role: TOTAL, candidate_report_norm_ids: []}
+  - {panel_key: FY_2025, section_key: ACCUMULATED_DEPRECIATION, section_ordinal: 7, visible_label_anchor: chenh lech ty gia, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, mapped_axis_role: null, candidate_report_norm_ids: []}
+  - {panel_key: FY_2025, section_key: ACCUMULATED_DEPRECIATION, section_ordinal: 8, visible_label_anchor: so du cuoi ky, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE], disposition: FIXED_TOTAL_CELL, report_norm_id: 895, mapped_axis_role: TOTAL, candidate_report_norm_ids: []}
+
+  - {panel_key: FY_2025, section_key: NET_BOOK_VALUE, section_ordinal: 1, visible_label_anchor: gia tri con lai, expected_row_kind: LABEL_ONLY, expected_observations: [], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, mapped_axis_role: null, candidate_report_norm_ids: []}
+  - {panel_key: FY_2025, section_key: NET_BOOK_VALUE, section_ordinal: 2, visible_label_anchor: so du dau ky, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, mapped_axis_role: null, candidate_report_norm_ids: []}
+  - {panel_key: FY_2025, section_key: NET_BOOK_VALUE, section_ordinal: 3, visible_label_anchor: so du cuoi ky, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, mapped_axis_role: null, candidate_report_norm_ids: []}
+
+unresolved_schema_ids: [871, 872, 873, 874, 875, 876, 877, 878, 880, 881, 885, 886, 888, 889, 890, 892, 893, 894]
+not_observed_schema_ids: [896, 897, 898, 899, 900, 901, 902, 903, 904, 905, 906, 907, 908, 909, 910, 911, 912]
+
+forbidden_mapping_inputs:
+  - numeric_cell_text
+  - numeric_cell_value_as_item_selector
+  - numeric_value_magnitude
+  - historical_or_mongodb_values
+  - human_review_answers
+  - dash_as_zero
+  - accounting_equation_result_as_item_selector

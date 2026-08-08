@@ -26,8 +26,18 @@ from bctc_ai.mapping.ordered_subgraph_v2 import (
 from bctc_ai.schema.registry import SchemaItem
 
 KQKD_POLICY_RELATIVE_PATH = Path("config/mapping/kqkd-ordered-subgraph-v2.yaml")
-KQKD_SCHEMA_ITEM_COUNT = 24
-KQKD_TRAILING_AGGREGATE_IDS = (4385, 4386, 4390, 4376, 4377, 4382, 4378, 4380)
+KQKD_SCHEMA_ITEM_COUNT = 25
+KQKD_TRAILING_AGGREGATE_IDS = (
+    4385,
+    4386,
+    4390,
+    5713,
+    4376,
+    4377,
+    4382,
+    4378,
+    4380,
+)
 
 _MAX_SOURCE_ROWS = 256
 _MAX_READERS = 16
@@ -119,14 +129,14 @@ def load_kqkd_mapping_policy(path: Path) -> OrderedSubgraphV2Policy:
 
 
 def build_kqkd_schema_projection(schema: Sequence[SchemaItem]) -> SchemaProjectionV2:
-    """Build the 24-item history-free KQKD projection from workbook hierarchy."""
+    """Build the 25-item history-free KQKD projection from workbook hierarchy."""
 
     try:
         projection = build_schema_projection_v2(schema, "KQKD")
     except OrderedSubgraphV2Error as exc:
         raise KQKDItemMappingError("cannot build KQKD schema projection") from exc
     if len(projection.nodes) != KQKD_SCHEMA_ITEM_COUNT:
-        raise KQKDItemMappingError("KQKD projection must contain exactly 24 schema items")
+        raise KQKDItemMappingError("KQKD projection must contain exactly 25 schema items")
     if tuple(node.display_order for node in projection.nodes) != tuple(
         range(KQKD_SCHEMA_ITEM_COUNT)
     ):

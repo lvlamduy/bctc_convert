@@ -1,0 +1,57 @@
+version: 1
+policy: TM_NOTE_PAGE41_TOTAL_COLUMN_MAPPING_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+page_number: 41
+page_tag: page-0041
+report_scope: CONSOLIDATED
+mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_PDF_PAGE_41_TOTAL_COLUMN_FIXED_ROWS_ONLY
+
+source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+source_render_sha256: 6fadb4e5b2389872247686ccb7fe1829ec1f4ead25c14d87e3d9198c1b35db5b
+source_ocr_sha256: d3de94f929abe7580fe856e63eb7ac877d9c4380c6ed4eec00dc04e298bf145f
+schema_total: 1417
+minimum_visible_label_similarity: 0.78
+note_title_report_norm_id: 942
+
+rows:
+  - {panel_key: Q1_2026, section_key: GROSS_COST, row_key: GROSS_COST_SECTION, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK, BLANK], disposition: FIXED_STRUCTURAL, report_norm_id: 943, total_cell_index: null, candidate_report_norm_ids: [], question_group_ids: []}
+  - {panel_key: Q1_2026, section_key: GROSS_COST, row_key: GROSS_OPENING, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE], disposition: FIXED_TOTAL_CELL, report_norm_id: 944, total_cell_index: 2, candidate_report_norm_ids: [], question_group_ids: [Q037]}
+  - {panel_key: Q1_2026, section_key: GROSS_COST, row_key: GROSS_INCREASE, expected_row_kind: NUMERIC, expected_observations: [DASH, DASH, DASH], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, total_cell_index: null, candidate_report_norm_ids: [945, 946, 947, 948, 949, 950, 951], question_group_ids: [Q037, Q042]}
+  - {panel_key: Q1_2026, section_key: GROSS_COST, row_key: GROSS_OTHER, expected_row_kind: NUMERIC, expected_observations: [VALUE, DASH, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, total_cell_index: null, candidate_report_norm_ids: [950, 951, 954], question_group_ids: [Q037, Q042]}
+  - {panel_key: Q1_2026, section_key: GROSS_COST, row_key: GROSS_CLOSING, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE], disposition: FIXED_TOTAL_CELL, report_norm_id: 955, total_cell_index: 2, candidate_report_norm_ids: [], question_group_ids: [Q037]}
+  - {panel_key: Q1_2026, section_key: ACCUMULATED_DEPRECIATION, row_key: ACCUMULATED_DEPRECIATION_SECTION, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK, BLANK], disposition: FIXED_STRUCTURAL, report_norm_id: 956, total_cell_index: null, candidate_report_norm_ids: [], question_group_ids: []}
+  - {panel_key: Q1_2026, section_key: ACCUMULATED_DEPRECIATION, row_key: DEPRECIATION_OPENING, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE], disposition: FIXED_TOTAL_CELL, report_norm_id: 957, total_cell_index: 2, candidate_report_norm_ids: [], question_group_ids: [Q037]}
+  - {panel_key: Q1_2026, section_key: ACCUMULATED_DEPRECIATION, row_key: DEPRECIATION_INCREASE, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, total_cell_index: null, candidate_report_norm_ids: [958, 959, 960], question_group_ids: [Q037, Q043]}
+  - {panel_key: Q1_2026, section_key: ACCUMULATED_DEPRECIATION, row_key: DEPRECIATION_CLOSING, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE], disposition: FIXED_TOTAL_CELL, report_norm_id: 965, total_cell_index: 2, candidate_report_norm_ids: [], question_group_ids: [Q037]}
+  - {panel_key: Q1_2026, section_key: NET_BOOK_VALUE, row_key: NET_BOOK_VALUE_SECTION, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK, BLANK], disposition: SOURCE_ONLY_CONTEXT, report_norm_id: null, total_cell_index: null, candidate_report_norm_ids: [], question_group_ids: []}
+  - {panel_key: Q1_2026, section_key: NET_BOOK_VALUE, row_key: NET_OPENING, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, total_cell_index: null, candidate_report_norm_ids: [], question_group_ids: [Q037, Q044]}
+  - {panel_key: Q1_2026, section_key: NET_BOOK_VALUE, row_key: NET_CLOSING, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, total_cell_index: null, candidate_report_norm_ids: [], question_group_ids: [Q037, Q044]}
+
+  - {panel_key: FY_2025, section_key: GROSS_COST, row_key: GROSS_COST_SECTION, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK, BLANK], disposition: FIXED_STRUCTURAL, report_norm_id: 943, total_cell_index: null, candidate_report_norm_ids: [], question_group_ids: []}
+  - {panel_key: FY_2025, section_key: GROSS_COST, row_key: GROSS_OPENING, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE], disposition: FIXED_TOTAL_CELL, report_norm_id: 944, total_cell_index: 2, candidate_report_norm_ids: [], question_group_ids: [Q037]}
+  - {panel_key: FY_2025, section_key: GROSS_COST, row_key: GROSS_INCREASE, expected_row_kind: NUMERIC, expected_observations: [VALUE, DASH, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, total_cell_index: null, candidate_report_norm_ids: [945, 946, 947, 948, 949, 950, 951], question_group_ids: [Q037, Q042]}
+  - {panel_key: FY_2025, section_key: GROSS_COST, row_key: GROSS_DECREASE, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, total_cell_index: null, candidate_report_norm_ids: [952, 953, 954], question_group_ids: [Q037, Q042]}
+  - {panel_key: FY_2025, section_key: GROSS_COST, row_key: GROSS_CLOSING, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE], disposition: FIXED_TOTAL_CELL, report_norm_id: 955, total_cell_index: 2, candidate_report_norm_ids: [], question_group_ids: [Q037]}
+  - {panel_key: FY_2025, section_key: ACCUMULATED_DEPRECIATION, row_key: ACCUMULATED_DEPRECIATION_SECTION, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK, BLANK], disposition: FIXED_STRUCTURAL, report_norm_id: 956, total_cell_index: null, candidate_report_norm_ids: [], question_group_ids: []}
+  - {panel_key: FY_2025, section_key: ACCUMULATED_DEPRECIATION, row_key: DEPRECIATION_OPENING, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE], disposition: FIXED_TOTAL_CELL, report_norm_id: 957, total_cell_index: 2, candidate_report_norm_ids: [], question_group_ids: [Q037]}
+  - {panel_key: FY_2025, section_key: ACCUMULATED_DEPRECIATION, row_key: DEPRECIATION_INCREASE, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, total_cell_index: null, candidate_report_norm_ids: [958, 959, 960], question_group_ids: [Q037, Q043]}
+  - {panel_key: FY_2025, section_key: ACCUMULATED_DEPRECIATION, row_key: DEPRECIATION_OTHER, expected_row_kind: NUMERIC, expected_observations: [VALUE, DASH, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, total_cell_index: null, candidate_report_norm_ids: [960, 964], question_group_ids: [Q037, Q043]}
+  - {panel_key: FY_2025, section_key: ACCUMULATED_DEPRECIATION, row_key: DEPRECIATION_CLOSING, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE], disposition: FIXED_TOTAL_CELL, report_norm_id: 965, total_cell_index: 2, candidate_report_norm_ids: [], question_group_ids: [Q037]}
+  - {panel_key: FY_2025, section_key: NET_BOOK_VALUE, row_key: NET_BOOK_VALUE_SECTION, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK, BLANK], disposition: SOURCE_ONLY_CONTEXT, report_norm_id: null, total_cell_index: null, candidate_report_norm_ids: [], question_group_ids: []}
+  - {panel_key: FY_2025, section_key: NET_BOOK_VALUE, row_key: NET_OPENING, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, total_cell_index: null, candidate_report_norm_ids: [], question_group_ids: [Q037, Q044]}
+  - {panel_key: FY_2025, section_key: NET_BOOK_VALUE, row_key: NET_CLOSING, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, total_cell_index: null, candidate_report_norm_ids: [], question_group_ids: [Q037, Q044]}
+
+unresolved_schema_ids: [945, 946, 947, 948, 949, 950, 951, 952, 953, 954, 958, 959, 960, 964]
+not_observed_schema_ids: [961, 962, 963]
+
+forbidden_mapping_inputs:
+  - numeric_cell_text
+  - numeric_cell_value_as_item_selector
+  - numeric_value_magnitude
+  - class_axis_value_export_to_total_schema
+  - historical_or_mongodb_values
+  - human_review_answers
+  - dash_as_zero
+  - accounting_equation_result_as_item_selector
+  - cross_panel_value_as_item_selector

@@ -1,0 +1,74 @@
+version: 1
+policy: TM_NOTE_PAGE46_SCOPED_DURATION_MAPPING_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+page_number: 46
+page_tag: page-0046
+report_scope: CONSOLIDATED
+mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_PDF_PAGE_46_FIXED_ROWS_ONLY
+
+source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+source_render_sha256: 0eba425a417160736c707077dd9965265d5fe131e63cb2ad8cdef1018f71577d
+source_ocr_sha256: 36b3dd7e53f1cb4fb71af045796df646258c0e6fcb93677c0f360174dcdb2a19
+schema_total: 1417
+scoped_schema_id_start: 1142
+scoped_schema_id_end: 1174
+minimum_visible_label_similarity: 0.78
+
+rows:
+  # Section root and note 1. Visible section totals carry 1143 and 1151;
+  # the repeated headings remain provenance-only. No supplied TM identity
+  # exactly represents the terminal net-interest row.
+  - {table_key: NET_INTEREST, ordinal: 1, visible_label_anchor: thong tin bo sung cho cac khoan muc trinh bay trong bao cao ket qua hoat dong, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: FIXED, report_norm_id: 1142, candidate_report_norm_ids: []}
+  - {table_key: NET_INTEREST, ordinal: 2, visible_label_anchor: thu nhap lai thuan, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, candidate_report_norm_ids: []}
+  - {table_key: NET_INTEREST, ordinal: 3, visible_label_anchor: thu nhap lai va cac khoan thu nhap tuong tu, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, candidate_report_norm_ids: []}
+  - {table_key: NET_INTEREST, ordinal: 4, visible_label_anchor: thu nhap lai tien gui, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1144, candidate_report_norm_ids: []}
+  - {table_key: NET_INTEREST, ordinal: 5, visible_label_anchor: thu nhap lai cho vay, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1145, candidate_report_norm_ids: []}
+  - {table_key: NET_INTEREST, ordinal: 6, visible_label_anchor: thu lai tu dau tu chung khoan no, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1146, candidate_report_norm_ids: []}
+  - {table_key: NET_INTEREST, ordinal: 7, visible_label_anchor: thu phi tu nghiep vu bao lanh, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1148, candidate_report_norm_ids: []}
+  - {table_key: NET_INTEREST, ordinal: 8, visible_label_anchor: thu lai tu nghiep vu mua ban no, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1149, candidate_report_norm_ids: []}
+  - {table_key: NET_INTEREST, ordinal: 9, visible_label_anchor: thu cac hoat dong tin dung khac, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1150, candidate_report_norm_ids: []}
+  - {table_key: NET_INTEREST, ordinal: 10, visible_label_anchor: null, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1143, candidate_report_norm_ids: []}
+  - {table_key: NET_INTEREST, ordinal: 11, visible_label_anchor: chi phi lai va cac chi phi tuong tu, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, candidate_report_norm_ids: []}
+  - {table_key: NET_INTEREST, ordinal: 12, visible_label_anchor: chi lai tien gui, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1152, candidate_report_norm_ids: []}
+  - {table_key: NET_INTEREST, ordinal: 13, visible_label_anchor: chi lai tien vay, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1153, candidate_report_norm_ids: []}
+  - {table_key: NET_INTEREST, ordinal: 14, visible_label_anchor: chi lai phat hanh giay to co gia, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1154, candidate_report_norm_ids: []}
+  - {table_key: NET_INTEREST, ordinal: 15, visible_label_anchor: chi cac hoat dong tin dung khac, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1156, candidate_report_norm_ids: []}
+  - {table_key: NET_INTEREST, ordinal: 16, visible_label_anchor: null, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1151, candidate_report_norm_ids: []}
+  - {table_key: NET_INTEREST, ordinal: 17, visible_label_anchor: thu nhap tu lai thuan, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, candidate_report_norm_ids: []}
+
+  # Note 2. Combined payment/treasury rows remain unresolved. The visible
+  # brokerage-income detail maps to the generic securities-service identity.
+  - {table_key: NET_SERVICE, ordinal: 1, visible_label_anchor: lai thuan tu hoat dong dich vu, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, candidate_report_norm_ids: []}
+  - {table_key: NET_SERVICE, ordinal: 2, visible_label_anchor: thu nhap tu hoat dong dich vu, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, candidate_report_norm_ids: []}
+  - {table_key: NET_SERVICE, ordinal: 3, visible_label_anchor: thu tu dich vu thanh toan va ngan quy, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: AMBIGUOUS_MAPPING, report_norm_id: null, candidate_report_norm_ids: [1158, 1159]}
+  - {table_key: NET_SERVICE, ordinal: 4, visible_label_anchor: thu tu dich vu tu van, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, candidate_report_norm_ids: []}
+  - {table_key: NET_SERVICE, ordinal: 5, visible_label_anchor: thu tu kinh doanh va dich vu bao hiem, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1164, candidate_report_norm_ids: []}
+  - {table_key: NET_SERVICE, ordinal: 6, visible_label_anchor: thu tu dich vu dai ly nhan uy thac, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1163, candidate_report_norm_ids: []}
+  - {table_key: NET_SERVICE, ordinal: 7, visible_label_anchor: thu tu xu ly no tham dinh gia va khai thac tai san, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: AMBIGUOUS_MAPPING, report_norm_id: null, candidate_report_norm_ids: [1162]}
+  - {table_key: NET_SERVICE, ordinal: 8, visible_label_anchor: thu tu hoat dong moi gioi chung khoan, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1160, candidate_report_norm_ids: []}
+  - {table_key: NET_SERVICE, ordinal: 9, visible_label_anchor: thu cac dich vu khac, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1166, candidate_report_norm_ids: []}
+  - {table_key: NET_SERVICE, ordinal: 10, visible_label_anchor: null, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1157, candidate_report_norm_ids: []}
+  - {table_key: NET_SERVICE, ordinal: 11, visible_label_anchor: chi phi hoat dong dich vu, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, candidate_report_norm_ids: []}
+  - {table_key: NET_SERVICE, ordinal: 12, visible_label_anchor: chi ve dich vu thanh toan va ngan quy, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: AMBIGUOUS_MAPPING, report_norm_id: null, candidate_report_norm_ids: [1168, 1169]}
+  - {table_key: NET_SERVICE, ordinal: 13, visible_label_anchor: chi ve nghiep vu uy thac va dai ly, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1172, candidate_report_norm_ids: []}
+  - {table_key: NET_SERVICE, ordinal: 14, visible_label_anchor: chi ve dich vu tu van, expected_row_kind: NUMERIC, expected_observations: [DASH, DASH], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, candidate_report_norm_ids: []}
+  - {table_key: NET_SERVICE, ordinal: 15, visible_label_anchor: chi phi hoa hong moi gioi, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: AMBIGUOUS_MAPPING, report_norm_id: null, candidate_report_norm_ids: [1170]}
+  - {table_key: NET_SERVICE, ordinal: 16, visible_label_anchor: chi ve hoat dong kinh doanh bao hiem, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1171, candidate_report_norm_ids: []}
+  - {table_key: NET_SERVICE, ordinal: 17, visible_label_anchor: chi ve xu ly no tham dinh gia va khai thac tai san, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, candidate_report_norm_ids: []}
+  - {table_key: NET_SERVICE, ordinal: 18, visible_label_anchor: chi ve hoat dong moi gioi chung khoan, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: AMBIGUOUS_MAPPING, report_norm_id: null, candidate_report_norm_ids: [1170]}
+  - {table_key: NET_SERVICE, ordinal: 19, visible_label_anchor: chi cac dich vu khac, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1174, candidate_report_norm_ids: []}
+  - {table_key: NET_SERVICE, ordinal: 20, visible_label_anchor: null, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1167, candidate_report_norm_ids: []}
+  - {table_key: NET_SERVICE, ordinal: 21, visible_label_anchor: lai thuan tu hoat dong dich vu, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, candidate_report_norm_ids: []}
+
+ambiguous_schema_ids: [1158, 1159, 1162, 1168, 1169, 1170]
+not_observed_schema_ids: [1147, 1155, 1161, 1165, 1173]
+
+forbidden_mapping_inputs:
+  - numeric_cell_text
+  - numeric_cell_value_as_item_selector
+  - numeric_value_magnitude
+  - historical_or_mongodb_values
+  - human_review_answers
+  - dash_as_zero
+  - accounting_equation_result_as_item_selector

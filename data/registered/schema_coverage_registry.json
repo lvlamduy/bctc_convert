@@ -3,26 +3,26 @@
     "CDKT": {
       "first_schema_id": 4302,
       "last_schema_id": 4305,
-      "ordered_schema_ids_sha256": "e38e55da41b88277d9fdd27ddeef427a49954b4217130705391fd4baa8355e60",
-      "target_count": 77
+      "ordered_schema_ids_sha256": "13ecf15a0acd804d8672e34d4f2657bafccd61fdfa6b0352ca132a817816c406",
+      "target_count": 78
     },
     "KQKD": {
       "first_schema_id": 4399,
       "last_schema_id": 4381,
-      "ordered_schema_ids_sha256": "7e5313f54a6f3a7b3717765a48f1138a0784a15009e819cd2f173a07ac15b15a",
-      "target_count": 24
+      "ordered_schema_ids_sha256": "a6d85c3bf60740b2f485aa5ac802528fd2647850f64a5c65fa5e04f7850a2794",
+      "target_count": 25
     },
     "LCTT": {
       "first_schema_id": 4155,
       "last_schema_id": 4116,
-      "ordered_schema_ids_sha256": "3255c1c5dc513c6f23351113cd15426888f05bef21b92e98e8e7e1b2d591a183",
-      "target_count": 107
+      "ordered_schema_ids_sha256": "4c3d726d4518debec9dc809d53cce492366150f9017a02b58e196bc3b48e3472",
+      "target_count": 108
     },
     "TM": {
       "first_schema_id": 560,
       "last_schema_id": 1944,
-      "ordered_schema_ids_sha256": "189112f8933de29eddec6061809c67831c9521198b95386f69463c6411316397",
-      "target_count": 1385
+      "ordered_schema_ids_sha256": "ca81f131e893c621ad68e2b19bcbab35113eb4592fa52aea1ba003ad33b02da6",
+      "target_count": 1417
     }
   },
   "config": {
@@ -33,37 +33,37 @@
     "EVALUATION": {
       "contains_tm_1944": true,
       "last_schema_id": 1944,
-      "ordered_schema_ids_sha256": "5cc0e9ea70b23af236ce43b920838299dbc91e9c0ef19d31165f4ce49eea4f9f",
+      "ordered_schema_ids_sha256": "40e26875c8e5b6f48e6d0db6211833c26b6a07529aa0f33b8d94ca17e143761f",
       "selection": "ALL_TEMPLATE_ITEMS",
-      "target_count": 1593
+      "target_count": 1628
     },
     "EXCEL_OUTPUT": {
       "contains_tm_1944": true,
       "last_schema_id": 1944,
-      "ordered_schema_ids_sha256": "5cc0e9ea70b23af236ce43b920838299dbc91e9c0ef19d31165f4ce49eea4f9f",
+      "ordered_schema_ids_sha256": "40e26875c8e5b6f48e6d0db6211833c26b6a07529aa0f33b8d94ca17e143761f",
       "selection": "ALL_TEMPLATE_ITEMS",
-      "target_count": 1593
+      "target_count": 1628
     },
     "MANDATORY_SEARCH": {
       "contains_tm_1944": true,
       "last_schema_id": 1944,
-      "ordered_schema_ids_sha256": "5cc0e9ea70b23af236ce43b920838299dbc91e9c0ef19d31165f4ce49eea4f9f",
+      "ordered_schema_ids_sha256": "40e26875c8e5b6f48e6d0db6211833c26b6a07529aa0f33b8d94ca17e143761f",
       "selection": "ALL_TEMPLATE_ITEMS",
-      "target_count": 1593
+      "target_count": 1628
     },
     "ROLE_A": {
       "contains_tm_1944": true,
       "last_schema_id": 1944,
-      "ordered_schema_ids_sha256": "5cc0e9ea70b23af236ce43b920838299dbc91e9c0ef19d31165f4ce49eea4f9f",
+      "ordered_schema_ids_sha256": "40e26875c8e5b6f48e6d0db6211833c26b6a07529aa0f33b8d94ca17e143761f",
       "selection": "ALL_TEMPLATE_ITEMS",
-      "target_count": 1593
+      "target_count": 1628
     },
     "ROLE_B": {
       "contains_tm_1944": true,
       "last_schema_id": 1944,
-      "ordered_schema_ids_sha256": "5cc0e9ea70b23af236ce43b920838299dbc91e9c0ef19d31165f4ce49eea4f9f",
+      "ordered_schema_ids_sha256": "40e26875c8e5b6f48e6d0db6211833c26b6a07529aa0f33b8d94ca17e143761f",
       "selection": "ALL_TEMPLATE_ITEMS",
-      "target_count": 1593
+      "target_count": 1628
     }
   },
   "contains_tm_1944": true,
@@ -84,17 +84,17 @@
     ]
   },
   "order_authority": "WORKBOOK_DISPLAY_ORDER",
-  "ordered_schema_ids_sha256": "5cc0e9ea70b23af236ce43b920838299dbc91e9c0ef19d31165f4ce49eea4f9f",
-  "ordered_targets_sha256": "f79f1e36d9c505f51dd7bf9252c55cb1a86f2ebb0300141c852751d2f091b779",
+  "ordered_schema_ids_sha256": "40e26875c8e5b6f48e6d0db6211833c26b6a07529aa0f33b8d94ca17e143761f",
+  "ordered_targets_sha256": "2e77830214c2f4f10b5b7bf6a0e618510a7acb487f4da806b288fd8e07a5d56d",
   "selection": "ALL_TEMPLATE_ITEMS",
   "status": "PASS_ALL_TEMPLATE_ITEMS_ENROLLED",
-  "target_count": 1593,
+  "target_count": 1628,
   "tm_1944_target": {
     "canonical_name": "Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
-    "display_order": 1384,
+    "display_order": 1416,
     "schema_id": 1944,
-    "source_row": 1386,
-    "source_workbook": "template/Bank_TM_ReportNormId.xlsx",
+    "source_row": 1418,
+    "source_workbook": "template/Bank_TM_ReportNormId.v2.xlsx",
     "statement_type": "TM"
   }
 }

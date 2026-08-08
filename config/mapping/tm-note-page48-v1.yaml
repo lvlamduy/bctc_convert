@@ -1,0 +1,53 @@
+version: 1
+policy: TM_NOTE_PAGE48_SCOPED_MAPPING_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+page_number: 48
+page_tag: page-0048
+report_scope: CONSOLIDATED
+mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_PDF_PAGE_48_FIXED_FINANCIAL_ROWS_ONLY
+
+source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+source_render_sha256: f9d8489a6d4041bd68bcea2e1b165b10aaa6e3c0810d0e10a0c8e23d17af27b2
+source_ocr_sha256: 4f1ec95810a4c4563c2259579ddfff01a5332f540fc1fecc789718ce8396a020
+schema_total: 1417
+
+# ReportNormId 1218 is deliberately absent. Page 47 owns it as an ambiguous
+# candidate for its visible long-term-investment provision row.
+scoped_schema_ids: [1198, 1199, 1200, 1201, 1202, 1203, 1204, 1205, 1206, 1207, 1208, 1209, 1210, 1211, 1212, 1213, 1214, 1215, 1216, 1217, 1219, 1220]
+minimum_visible_label_similarity: 0.78
+
+rows:
+  - {table_key: CONTRIBUTION_INCOME, ordinal: 1, visible_label_anchor: thu nhap tu gop von mua co phan, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null}
+  - {table_key: CONTRIBUTION_INCOME, ordinal: 2, visible_label_anchor: thu nhap tu gop von mua co phan, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null}
+  - {table_key: CONTRIBUTION_INCOME, ordinal: 3, visible_label_anchor: null, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1198}
+
+  - {table_key: OPERATING_EXPENSE, ordinal: 1, visible_label_anchor: chi phi hoat dong, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null}
+  - {table_key: OPERATING_EXPENSE, ordinal: 2, visible_label_anchor: chi nop thue va cac khoan phi le phi, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1206}
+  - {table_key: OPERATING_EXPENSE, ordinal: 3, visible_label_anchor: chi cho nhan vien, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1207}
+  - {table_key: OPERATING_EXPENSE, ordinal: 4, visible_label_anchor: chi ve tai san, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1212}
+  - {table_key: OPERATING_EXPENSE, ordinal: 5, visible_label_anchor: trong do, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null}
+  - {table_key: OPERATING_EXPENSE, ordinal: 6, visible_label_anchor: chi phi khau hao va khau tru, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1213}
+  - {table_key: OPERATING_EXPENSE, ordinal: 7, visible_label_anchor: chi cho hoat dong quan ly cong vu, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1214}
+  - {table_key: OPERATING_EXPENSE, ordinal: 8, visible_label_anchor: chi nop phi bao hiem bao toan tien gui cua khach hang, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1217}
+  - {table_key: OPERATING_EXPENSE, ordinal: 9, visible_label_anchor: hoan nhap trich lap du phong khac, expected_row_kind: NUMERIC, expected_observations: [VALUE, DASH], disposition: FIXED, report_norm_id: 1220}
+  - {table_key: OPERATING_EXPENSE, ordinal: 10, visible_label_anchor: null, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1205}
+
+not_observed_schema_ids: [1199, 1200, 1201, 1202, 1203, 1204, 1208, 1209, 1210, 1211, 1215, 1216, 1219]
+
+external_owners:
+  - report_norm_id: 1218
+    owner: PAGE47_AMBIGUOUS_LONG_TERM_INVESTMENT_PROVISION
+    reason: Page 48 has no distinct long-term-investment provision row; do not double-count page 47 evidence.
+
+forbidden_mapping_inputs:
+  - numeric_cell_text
+  - numeric_cell_value_as_item_selector
+  - numeric_value_magnitude
+  - historical_or_mongodb_values
+  - human_review_answers
+  - dash_as_zero
+  - accounting_equation_result_as_item_selector
+  - auxiliary_variance_as_schema_value
+  - narrative_quantity_as_schema_value
+  - externally_owned_schema_id_as_page48_status

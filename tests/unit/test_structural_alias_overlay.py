@@ -4,6 +4,7 @@ import hashlib
 from dataclasses import replace
 from decimal import Decimal
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
@@ -21,7 +22,7 @@ from bctc_ai.mapping.structural_alias_overlay import (
     load_structural_alias_overlay_bytes,
 )
 from bctc_ai.schema.hierarchy import apply_hierarchy_reference, load_hierarchy_reference
-from bctc_ai.schema.registry import load_all
+from bctc_ai.schema.registry import load_all, load_workbook
 
 _CONFIG_RELATIVE = Path("config/mapping/e0038-cdkt-structural-alias-candidates.yaml")
 _BASE_DIGEST = "7025ca729c01a3f2030af38e9745a0ee8d72b1dad60c8d4e3b7cf749e5eb860c"
@@ -30,13 +31,36 @@ _RESULT_DIGEST = "d0934db910063bdb98db83f02bc2444fc1fe6e1dce7e1ebc7e09c7d36e4342
 
 @pytest.fixture(scope="module")
 def base_projection(project_root: Path):
-    _workbooks, schema = load_all(project_root / "template", project_root)
+    # E-0038 is hash-bound to the original 77-item CDKT workbook.  The active
+    # registry now correctly loads the approved 78-item business schema, so
+    # reconstruct the experiment's historical statement projection from its
+    # frozen workbook while using the still-authoritative 77-row hierarchy
+    # subset.  This mirrors the historical-target handling in human_review.py.
+    _workbooks, current_schema = load_all(project_root / "template", project_root)
     _registry, hierarchy = load_hierarchy_reference(
         project_root / "config/schemas/hierarchy_reference.yaml",
         project_root,
-        schema,
+        current_schema,
     )
-    apply_hierarchy_reference(schema, hierarchy)
+    frozen_workbook, schema = load_workbook(
+        project_root / "template/Bank_CDKT_ReportNormId.xlsx",
+        project_root,
+        statement="CDKT",
+        cash_flow_rules=cast(Any, None),
+    )
+    assert frozen_workbook.sha256 == (
+        "a07ff47f7c41011fe4ca5a66681106d476586ded9013b5874cbb9f67a6ad8486"
+    )
+    frozen_ids = {item.schema_id for item in schema}
+    frozen_hierarchy = [
+        item for item in hierarchy if item.statement_type == "CDKT" and item.schema_id in frozen_ids
+    ]
+    assert {item.schema_id for item in frozen_hierarchy} == frozen_ids
+    apply_hierarchy_reference(
+        schema,
+        frozen_hierarchy,
+        apply_business_formula_overlay=False,
+    )
     projection = build_schema_projection_v2(schema, "CDKT")
     assert projection.projection_sha256 == _BASE_DIGEST
     return projection

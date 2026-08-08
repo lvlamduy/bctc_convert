@@ -1,0 +1,47 @@
+version: 1
+policy: TM_NOTE_PAGE34_SCOPED_OVERALL_AXES_MAPPING_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+page_number: 34
+page_tag: page-0034
+note_number: "6"
+report_scope: CONSOLIDATED
+mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_PDF_PAGE_34_OVERALL_SPECIFIC_GENERAL_AXES_ONLY
+
+source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+source_render_sha256: b6f470789dcf3c342d8011c4f6faaeca159dc7df49afba07d076860ec03ed7fe
+source_ocr_sha256: 9027f65ff1b8df868fbf726205fb05506f71dd39361ba8c01dc73b42b1d5bebb
+schema_total: 1417
+scoped_schema_ids: [783, 784, 785, 786, 787, 788, 789, 790, 791, 792, 793, 794, 795, 796, 797, 798, 799]
+minimum_visible_label_similarity: 0.74
+
+structural_mappings:
+  - {evidence_role: NOTE_TITLE, axis_role: null, report_norm_id: 783, visible_label_anchor: doi voi su thay doi tang giam cua du phong rui ro tin dung}
+  - {evidence_role: AXIS_HEADER, axis_role: OVERALL_GENERAL, report_norm_id: 784, visible_label_anchor: du phong chung}
+  - {evidence_role: AXIS_HEADER, axis_role: OVERALL_SPECIFIC, report_norm_id: 792, visible_label_anchor: du phong cu the}
+
+rows:
+  - {panel_key: Q1_2026, ordinal: 1, row_role: OPENING, visible_label_anchor: so du dau ky, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE], disposition: FIXED_OVERALL_AXES, axis_report_norm_ids: {OVERALL_SPECIFIC: 793, OVERALL_GENERAL: 785}, axis_candidate_report_norm_ids: {}}
+  - {panel_key: Q1_2026, ordinal: 2, row_role: PROVISION, visible_label_anchor: du phong rui ro trich lap hoan nhap thuan trong ky, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE], disposition: FIXED_OVERALL_AXES, axis_report_norm_ids: {OVERALL_SPECIFIC: 794, OVERALL_GENERAL: 786}, axis_candidate_report_norm_ids: {}}
+  - {panel_key: Q1_2026, ordinal: 3, row_role: USE, visible_label_anchor: su dung quy, expected_observations: [VALUE, DASH, VALUE, DASH, DASH, DASH, VALUE, DASH, VALUE], disposition: FIXED_OVERALL_AXES, axis_report_norm_ids: {OVERALL_SPECIFIC: 795, OVERALL_GENERAL: 787}, axis_candidate_report_norm_ids: {}}
+  - {panel_key: Q1_2026, ordinal: 4, row_role: FX, visible_label_anchor: chenh lech ty gia, expected_observations: [DASH, DASH, DASH, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE], disposition: FIXED_OVERALL_AXES, axis_report_norm_ids: {OVERALL_SPECIFIC: 796, OVERALL_GENERAL: 788}, axis_candidate_report_norm_ids: {}}
+  - {panel_key: Q1_2026, ordinal: 5, row_role: CLOSING, visible_label_anchor: so du cuoi ky, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE], disposition: FIXED_OVERALL_AXES, axis_report_norm_ids: {OVERALL_SPECIFIC: 799, OVERALL_GENERAL: 791}, axis_candidate_report_norm_ids: {}}
+
+  - {panel_key: FY_2025, ordinal: 1, row_role: OPENING, visible_label_anchor: so du dau ky, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE], disposition: FIXED_OVERALL_AXES, axis_report_norm_ids: {OVERALL_SPECIFIC: 793, OVERALL_GENERAL: 785}, axis_candidate_report_norm_ids: {}}
+  - {panel_key: FY_2025, ordinal: 2, row_role: PROVISION, visible_label_anchor: du phong rui ro trich lap hoan nhap thuan trong ky, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE], disposition: FIXED_OVERALL_AXES, axis_report_norm_ids: {OVERALL_SPECIFIC: 794, OVERALL_GENERAL: 786}, axis_candidate_report_norm_ids: {}}
+  - {panel_key: FY_2025, ordinal: 3, row_role: USE, visible_label_anchor: su dung quy, expected_observations: [VALUE, DASH, VALUE, DASH, DASH, DASH, VALUE, DASH, VALUE], disposition: FIXED_OVERALL_AXES, axis_report_norm_ids: {OVERALL_SPECIFIC: 795, OVERALL_GENERAL: 787}, axis_candidate_report_norm_ids: {}}
+  - {panel_key: FY_2025, ordinal: 4, row_role: AUDIT_ADJUSTMENT, visible_label_anchor: dieu chinh theo kiem toan nha nuoc, expected_observations: [VALUE, VALUE, VALUE, DASH, DASH, DASH, VALUE, VALUE, VALUE], disposition: FIXED_OVERALL_AXES, axis_report_norm_ids: {OVERALL_SPECIFIC: 798, OVERALL_GENERAL: 790}, axis_candidate_report_norm_ids: {}}
+  - {panel_key: FY_2025, ordinal: 5, row_role: FX, visible_label_anchor: chenh lech ty gia, expected_observations: [DASH, DASH, DASH, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE], disposition: FIXED_OVERALL_AXES, axis_report_norm_ids: {OVERALL_SPECIFIC: 796, OVERALL_GENERAL: 788}, axis_candidate_report_norm_ids: {}}
+  - {panel_key: FY_2025, ordinal: 6, row_role: CLOSING, visible_label_anchor: so du cuoi ky, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE], disposition: FIXED_OVERALL_AXES, axis_report_norm_ids: {OVERALL_SPECIFIC: 799, OVERALL_GENERAL: 791}, axis_candidate_report_norm_ids: {}}
+
+ambiguous_schema_ids: []
+not_observed_schema_ids: [789, 797]
+
+forbidden_mapping_inputs:
+  - numeric_cell_text
+  - numeric_cell_value_as_item_selector
+  - numeric_value_magnitude
+  - historical_or_mongodb_values
+  - human_review_answers
+  - dash_as_zero
+  - accounting_equation_result_as_item_selector

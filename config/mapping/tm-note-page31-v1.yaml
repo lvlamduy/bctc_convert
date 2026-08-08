@@ -10,7 +10,7 @@ mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_PDF_PAGE_31_FIXED_ROWS_ONLY
 source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
 source_render_sha256: 194f13111ddce2fbcf5e1400a4925f4b0beb3774d572ad40ff9cea6453c114e7
 source_ocr_sha256: 36f9e80e02a30db520a4c4bb201671b97b6073303326e8ffd5c18059153ba0a1
-schema_total: 1385
+schema_total: 1417
 minimum_visible_label_similarity: 0.78
 
 rows:
@@ -35,14 +35,14 @@ rows:
   - {table_key: LOAN_TYPE, ordinal: 5, visible_label_anchor: cho vay bang von tai tro uy thac dau tu, expected_row_kind: NUMERIC, disposition: FIXED, report_norm_id: 725}
   - {table_key: LOAN_TYPE, ordinal: 6, visible_label_anchor: cho vay cac tckt ca nhan nuoc ngoai, expected_row_kind: NUMERIC, disposition: FIXED, report_norm_id: 721}
   - {table_key: LOAN_TYPE, ordinal: 7, visible_label_anchor: null, expected_row_kind: NUMERIC, disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null}
-  - {table_key: LOAN_TYPE, ordinal: 8, visible_label_anchor: cac khoan cho vay margin chung khoan va ung truoc khach hang tai mbs, expected_row_kind: NUMERIC, disposition: FIXED, report_norm_id: 1944}
+  - {table_key: LOAN_TYPE, ordinal: 8, visible_label_anchor: cac khoan cho vay margin chung khoan va ung truoc khach hang tai mbs, expected_row_kind: NUMERIC, disposition: FIXED, report_norm_id: 1944, additional_report_norm_ids: [5745], assignment_roles: [LEGACY_GLOBAL_PRIMARY, CONTEXT_BRANCH_MEMBER]}
   - {table_key: LOAN_TYPE, ordinal: 9, visible_label_anchor: null, expected_row_kind: NUMERIC, disposition: FIXED, report_norm_id: 716}
 
   # The remaining two analyses map their structural schema headers and detail
   # rows. Repeated grand totals and repeated MBS amounts are validation-only.
   - {table_key: LOAN_QUALITY, ordinal: 1, visible_label_anchor: du no cho vay, expected_row_kind: LABEL_ONLY, disposition: FIXED, report_norm_id: 746}
   - {table_key: LOAN_QUALITY, ordinal: 2, visible_label_anchor: no du tieu chuan, expected_row_kind: NUMERIC, disposition: FIXED, report_norm_id: 747}
-  - {table_key: LOAN_QUALITY, ordinal: 3, visible_label_anchor: trong do cac khoan cho vay tai mbs, expected_row_kind: NUMERIC, disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null}
+  - {table_key: LOAN_QUALITY, ordinal: 3, visible_label_anchor: trong do cac khoan cho vay tai mbs, expected_row_kind: NUMERIC, disposition: FIXED, report_norm_id: 5746}
   - {table_key: LOAN_QUALITY, ordinal: 4, visible_label_anchor: no can chu y, expected_row_kind: NUMERIC, disposition: FIXED, report_norm_id: 748}
   - {table_key: LOAN_QUALITY, ordinal: 5, visible_label_anchor: no duoi tieu chuan, expected_row_kind: NUMERIC, disposition: FIXED, report_norm_id: 749}
   - {table_key: LOAN_QUALITY, ordinal: 6, visible_label_anchor: no nghi ngo, expected_row_kind: NUMERIC, disposition: FIXED, report_norm_id: 750}
@@ -54,7 +54,7 @@ rows:
   - {table_key: LOAN_MATURITY, ordinal: 3, visible_label_anchor: no trung han, expected_row_kind: NUMERIC, disposition: FIXED, report_norm_id: 754}
   - {table_key: LOAN_MATURITY, ordinal: 4, visible_label_anchor: no dai han, expected_row_kind: NUMERIC, disposition: FIXED, report_norm_id: 755}
   - {table_key: LOAN_MATURITY, ordinal: 5, visible_label_anchor: null, expected_row_kind: NUMERIC, disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null}
-  - {table_key: LOAN_MATURITY, ordinal: 6, visible_label_anchor: cac khoan cho vay margin chung khoan va ung truoc khach hang tai mbs, expected_row_kind: NUMERIC, disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null}
+  - {table_key: LOAN_MATURITY, ordinal: 6, visible_label_anchor: cac khoan cho vay margin chung khoan va ung truoc khach hang tai mbs, expected_row_kind: NUMERIC, disposition: FIXED, report_norm_id: 5747}
   - {table_key: LOAN_MATURITY, ordinal: 7, visible_label_anchor: null, expected_row_kind: NUMERIC, disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null}
 
 not_observed_schema_ids: [616, 623, 624, 625, 628, 629, 630, 719, 720, 724, 726]

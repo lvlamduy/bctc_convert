@@ -1050,9 +1050,9 @@ def test_real_cdkt_projection_is_history_free_and_preserves_non_numeric_workbook
 
     projection = build_schema_projection_v2(schema, "CDKT")
 
-    assert len(projection.nodes) == 77
+    assert len(projection.nodes) == 78
     assert projection.projection_sha256 == (
-        "7025ca729c01a3f2030af38e9745a0ee8d72b1dad60c8d4e3b7cf749e5eb860c"
+        "55d8aace0d03a92b7a3bcf0988d8d08d3fc9c318cc7251114454d647a14af396"
     )
     assert [node.report_norm_id for node in projection.nodes[64:67]] == [4337, 4373, 4338]
     assert projection.alias_authority == "CANONICAL_AND_STRUCTURAL_ALIASES_ONLY"

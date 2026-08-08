@@ -1,0 +1,64 @@
+version: 1
+policy: TM_NOTE_PAGES39_40_TOTAL_COLUMN_MAPPING_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+scope: CONSOLIDATED
+source_table_policy: config/tables/tm-note-pages39-40-v1.yaml
+mapping_authority_scope: VISIBLE_NOTE_TITLE_SECTION_LABELS_AND_TOTAL_COLUMN_FIXED_ROWS_ONLY
+
+schema_total: 1417
+scope_schema_ids: {start: 913, end: 941, total: 29}
+title_report_norm_id: 913
+fixed_mapped_ids: [913, 914, 915, 925, 928, 929, 930, 941]
+unresolved_ids: [916, 917, 918, 919, 920, 927, 931, 932, 933, 934, 935, 936, 937, 938, 939, 940]
+not_observed_ids: [921, 922, 923, 924, 926]
+
+source_rules:
+  - {page_tag: page-0039, row_key: GROSS_HEADER, disposition: FIXED_STRUCTURAL, report_norm_ids: [914], mapped_cell_index: null, candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0039, row_key: GROSS_OPEN, disposition: FIXED_TOTAL_CELL, report_norm_ids: [915], mapped_cell_index: 3, candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0039, row_key: GROSS_INCREASE, disposition: UNRESOLVED_MAPPING, report_norm_ids: [], mapped_cell_index: null, candidate_report_norm_ids: [916, 917, 918, 919, 920], question_key: P39_AGGREGATE_INCREASES}
+  - {page_tag: page-0039, row_key: GROSS_FX, disposition: SOURCE_ONLY_SCHEMA_GAP, report_norm_ids: [], mapped_cell_index: null, candidate_report_norm_ids: [], question_key: FX_SCHEMA_GAP}
+  - {page_tag: page-0039, row_key: GROSS_CLOSE, disposition: FIXED_TOTAL_CELL, report_norm_ids: [928], mapped_cell_index: 3, candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0039, row_key: ACCUM_HEADER, disposition: FIXED_STRUCTURAL, report_norm_ids: [929], mapped_cell_index: null, candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0039, row_key: ACCUM_OPEN, disposition: FIXED_TOTAL_CELL, report_norm_ids: [930], mapped_cell_index: 3, candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0039, row_key: ACCUM_INCREASE, disposition: UNRESOLVED_MAPPING, report_norm_ids: [], mapped_cell_index: null, candidate_report_norm_ids: [931, 932, 933], question_key: P39_AGGREGATE_INCREASES}
+  - {page_tag: page-0039, row_key: ACCUM_FX, disposition: SOURCE_ONLY_SCHEMA_GAP, report_norm_ids: [], mapped_cell_index: null, candidate_report_norm_ids: [], question_key: FX_SCHEMA_GAP}
+  - {page_tag: page-0039, row_key: ACCUM_CLOSE, disposition: FIXED_TOTAL_CELL, report_norm_ids: [941], mapped_cell_index: 3, candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0039, row_key: NET_HEADER, disposition: SOURCE_ONLY_VALIDATION, report_norm_ids: [], mapped_cell_index: null, candidate_report_norm_ids: [], question_key: NET_SCHEMA_GAP}
+  - {page_tag: page-0039, row_key: NET_OPEN, disposition: SOURCE_ONLY_VALIDATION, report_norm_ids: [], mapped_cell_index: null, candidate_report_norm_ids: [], question_key: NET_SCHEMA_GAP}
+  - {page_tag: page-0039, row_key: NET_CLOSE, disposition: SOURCE_ONLY_VALIDATION, report_norm_ids: [], mapped_cell_index: null, candidate_report_norm_ids: [], question_key: NET_SCHEMA_GAP}
+
+  - {page_tag: page-0040, row_key: GROSS_HEADER, disposition: FIXED_STRUCTURAL, report_norm_ids: [914], mapped_cell_index: null, candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0040, row_key: GROSS_OPEN, disposition: FIXED_TOTAL_CELL, report_norm_ids: [915], mapped_cell_index: 3, candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0040, row_key: GROSS_INCREASE, disposition: UNRESOLVED_MAPPING, report_norm_ids: [], mapped_cell_index: null, candidate_report_norm_ids: [916, 917, 918, 919, 920], question_key: P40_GROSS_AGGREGATES}
+  - {page_tag: page-0040, row_key: GROSS_LIQUIDATION, disposition: FIXED_TOTAL_CELL, report_norm_ids: [925], mapped_cell_index: 3, candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0040, row_key: GROSS_OTHER, disposition: UNRESOLVED_MAPPING, report_norm_ids: [], mapped_cell_index: null, candidate_report_norm_ids: [920, 927], question_key: P40_GROSS_AGGREGATES}
+  - {page_tag: page-0040, row_key: GROSS_FX, disposition: SOURCE_ONLY_SCHEMA_GAP, report_norm_ids: [], mapped_cell_index: null, candidate_report_norm_ids: [], question_key: FX_SCHEMA_GAP}
+  - {page_tag: page-0040, row_key: GROSS_CLOSE, disposition: FIXED_TOTAL_CELL, report_norm_ids: [928], mapped_cell_index: 3, candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0040, row_key: ACCUM_HEADER, disposition: FIXED_STRUCTURAL, report_norm_ids: [929], mapped_cell_index: null, candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0040, row_key: ACCUM_OPEN, disposition: FIXED_TOTAL_CELL, report_norm_ids: [930], mapped_cell_index: 3, candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0040, row_key: ACCUM_INCREASE, disposition: UNRESOLVED_MAPPING, report_norm_ids: [], mapped_cell_index: null, candidate_report_norm_ids: [931, 932, 933], question_key: P40_ACCUM_AGGREGATES}
+  - {page_tag: page-0040, row_key: ACCUM_DECREASE, disposition: UNRESOLVED_MAPPING, report_norm_ids: [], mapped_cell_index: null, candidate_report_norm_ids: [934, 935, 936, 937, 938, 939, 940], question_key: P40_ACCUM_AGGREGATES}
+  - {page_tag: page-0040, row_key: ACCUM_OTHER, disposition: UNRESOLVED_MAPPING, report_norm_ids: [], mapped_cell_index: null, candidate_report_norm_ids: [933, 940], question_key: P40_ACCUM_AGGREGATES}
+  - {page_tag: page-0040, row_key: ACCUM_FX, disposition: SOURCE_ONLY_SCHEMA_GAP, report_norm_ids: [], mapped_cell_index: null, candidate_report_norm_ids: [], question_key: FX_SCHEMA_GAP}
+  - {page_tag: page-0040, row_key: ACCUM_CLOSE, disposition: FIXED_TOTAL_CELL, report_norm_ids: [941], mapped_cell_index: 3, candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0040, row_key: NET_HEADER, disposition: SOURCE_ONLY_VALIDATION, report_norm_ids: [], mapped_cell_index: null, candidate_report_norm_ids: [], question_key: NET_SCHEMA_GAP}
+  - {page_tag: page-0040, row_key: NET_OPEN, disposition: SOURCE_ONLY_VALIDATION, report_norm_ids: [], mapped_cell_index: null, candidate_report_norm_ids: [], question_key: NET_SCHEMA_GAP}
+  - {page_tag: page-0040, row_key: NET_CLOSE, disposition: SOURCE_ONLY_VALIDATION, report_norm_ids: [], mapped_cell_index: null, candidate_report_norm_ids: [], question_key: NET_SCHEMA_GAP}
+
+question_groups:
+  - {question_key: P39_AGGREGATE_INCREASES, page_tags: [page-0039]}
+  - {question_key: P40_GROSS_AGGREGATES, page_tags: [page-0040]}
+  - {question_key: P40_ACCUM_AGGREGATES, page_tags: [page-0040]}
+  - {question_key: FX_SCHEMA_GAP, page_tags: [page-0039, page-0040]}
+  - {question_key: NET_SCHEMA_GAP, page_tags: [page-0039, page-0040]}
+
+forbidden_mapping_inputs:
+  - numeric_cell_text
+  - numeric_cell_value_as_item_selector
+  - numeric_value_magnitude
+  - class_axis_value_as_report_norm_mapping
+  - historical_or_mongodb_values
+  - human_review_answers
+  - dash_as_zero
+  - accounting_equation_result_as_item_selector

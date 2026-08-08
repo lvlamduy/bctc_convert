@@ -10,6 +10,7 @@ import yaml
 
 from bctc_ai.core.hashing import sha256_file
 from bctc_ai.core.text import normalize_text, retrieval_key
+from bctc_ai.schema.business_update import apply_business_formula_hierarchy
 from bctc_ai.schema.registry import SchemaItem
 from bctc_ai.schema.xlsx_reader import read_rows
 
@@ -253,8 +254,15 @@ def load_hierarchy_reference(
     return registry, all_items
 
 
-def apply_hierarchy_reference(schema: list[SchemaItem], hierarchy: list[HierarchyItem]) -> None:
-    """Attach validated supporting edges without changing schema IDs or display order."""
+def apply_hierarchy_reference(
+    schema: list[SchemaItem],
+    hierarchy: list[HierarchyItem],
+    *,
+    apply_business_formula_overlay: bool = True,
+) -> None:
+    """Attach supporting edges, optionally retaining frozen pre-overlay semantics."""
+    if type(apply_business_formula_overlay) is not bool:
+        raise ValueError("business-formula overlay flag must be boolean")
     by_key = {(item.statement_type, item.schema_id): item for item in schema}
     child_groups: dict[tuple[str, int], list[int]] = defaultdict(list)
     for reference in hierarchy:
@@ -274,3 +282,5 @@ def apply_hierarchy_reference(schema: list[SchemaItem], hierarchy: list[Hierarch
             by_key[(statement_type, child_id)].siblings = [
                 sibling_id for sibling_id in children if sibling_id != child_id
             ]
+    if apply_business_formula_overlay:
+        apply_business_formula_hierarchy(schema)

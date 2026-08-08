@@ -1,0 +1,95 @@
+version: 1
+policy: TM_NOTE_PAGES32_33_LOAN_ANALYSIS_GRID_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+scope: CONSOLIDATED
+scope_binding: IMMUTABLE_CONSOLIDATED_NOTE_5_CONTINUATION
+
+source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+minimum_line_score: 0.0
+minimum_anchor_similarity: 0.74
+minimum_header_similarity: 0.82
+minimum_numeric_height_line_ratio: 0.50
+numeric_cluster_line_heights: 0.40
+label_group_final_attach_line_heights: 1.25
+maximum_label_lines: 4
+page_footer_top_ratio: 0.85
+
+axes:
+  - {axis_id: CURRENT_AMOUNT, measure_role: AMOUNT, period_role: CURRENT, period_end: 2026-03-31, unit_anchors: [trieu dong], canonical_unit: VND, unit_multiplier: 1000000}
+  - {axis_id: CURRENT_PERCENTAGE, measure_role: PERCENTAGE, period_role: CURRENT, period_end: 2026-03-31, unit_anchors: ['%'], canonical_unit: PERCENT, unit_multiplier: 1}
+  - {axis_id: COMPARATIVE_AMOUNT, measure_role: AMOUNT, period_role: COMPARATIVE, period_end: 2025-12-31, unit_anchors: [trieu dong], canonical_unit: VND, unit_multiplier: 1000000}
+  - {axis_id: COMPARATIVE_PERCENTAGE, measure_role: PERCENTAGE, period_role: COMPARATIVE, period_end: 2025-12-31, unit_anchors: ['%'], canonical_unit: PERCENT, unit_multiplier: 1}
+
+pages:
+  - page_number: 32
+    page_tag: page-0032
+    source_render_sha256: 186c2e9dfaca5aeb97e584cc01da8ba0f85be46caeac78aeee15b15859288c4f
+    source_ocr_sha256: 823f52c0473ff095886952c3438b5a1ca92703ae6dc7b906834ee85db772a21a
+    title_anchors: [phan tich du no cho vay theo doi tuong khach hang va theo loai hinh doanh nghiep]
+    expected_numeric_rows: 21
+    expected_label_only_rows: 1
+    rows:
+      - {row_key: LOAN_HEADER, row_kind: LABEL_ONLY, source_role: SECTION_HEADER, label_anchors: [du no cho vay khach hang cua ngan hang]}
+      - {row_key: TCKT_TOTAL, row_kind: NUMERIC, source_role: SOURCE_ONLY_SUBTOTAL, label_anchors: [cho vay cac tckt]}
+      - {row_key: STATE_COMPANY, row_kind: NUMERIC, source_role: FIXED_DETAIL, label_anchors: [cong ty nha nuoc]}
+      - {row_key: STATE_OWNED_100, row_kind: NUMERIC, source_role: FIXED_DETAIL, label_anchors: [cong ty tnhh mtv von nha nuoc 100]}
+      - {row_key: STATE_OWNED_OVER_50, row_kind: NUMERIC, source_role: AMBIGUOUS_DETAIL, label_anchors: [cong ty tnhh tren 1 thanh vien von nha nuoc lon hon 50]}
+      - {row_key: TNHH_OTHER, row_kind: NUMERIC, source_role: FIXED_DETAIL, label_anchors: [cong ty tnhh khac]}
+      - {row_key: STATE_JSC_OVER_50, row_kind: NUMERIC, source_role: FIXED_DETAIL, label_anchors: [cong ty co phan von nha nuoc 50 nha nuoc chiem co phan chi phoi]}
+      - {row_key: JSC_OTHER, row_kind: NUMERIC, source_role: FIXED_DETAIL, label_anchors: [cong ty co phan khac]}
+      - {row_key: PARTNERSHIP, row_kind: NUMERIC, source_role: FIXED_DETAIL, label_anchors: [cong ty hop danh]}
+      - {row_key: FOREIGN_INVESTED, row_kind: NUMERIC, source_role: FIXED_DETAIL, label_anchors: [doanh nghiep co von dau tu nuoc ngoai]}
+      - {row_key: COOPERATIVE, row_kind: NUMERIC, source_role: FIXED_DETAIL, label_anchors: [hop tac xa va lien hiep hop tac xa]}
+      - {row_key: PERSONAL_TOTAL, row_kind: NUMERIC, source_role: SOURCE_ONLY_SUBTOTAL, label_anchors: [cho vay ca nhan]}
+      - {row_key: HOUSEHOLD_PERSONAL, row_kind: NUMERIC, source_role: FIXED_DETAIL, label_anchors: [ho kinh doanh ca nhan]}
+      - {row_key: OTHER_TOTAL, row_kind: NUMERIC, source_role: SOURCE_ONLY_SUBTOTAL, label_anchors: [cho vay khac]}
+      - {row_key: ADMIN_ENTITY, row_kind: NUMERIC, source_role: FIXED_DETAIL, label_anchors: [don vi hanh chinh su nghiep doan the va hiep hoi]}
+      - {row_key: OTHER_ECONOMIC, row_kind: NUMERIC, source_role: FIXED_DETAIL, label_anchors: [thanh phan kinh te khac]}
+      - {row_key: FOREIGN_BRANCH_TOTAL, row_kind: NUMERIC, source_role: AMBIGUOUS_FOREIGN_BRANCH, label_anchors: [cho vay tai chi nhanh va ngan hang con nuoc ngoai]}
+      - {row_key: FOREIGN_BUSINESS, row_kind: NUMERIC, source_role: SOURCE_ONLY_FOREIGN_CHILD, label_anchors: [cho vay doanh nghiep]}
+      - {row_key: FOREIGN_PERSONAL, row_kind: NUMERIC, source_role: SOURCE_ONLY_FOREIGN_CHILD, label_anchors: [cho vay ca nhan]}
+      - {row_key: BANK_SUBTOTAL, row_kind: NUMERIC, source_role: SOURCE_ONLY_SUBTOTAL, label_anchors: []}
+      - {row_key: MARGIN_MBS, row_kind: NUMERIC, source_role: SOURCE_ONLY_MARGIN, label_anchors: [cac khoan cho vay margin chung khoan va ung truoc khach hang tai mbs]}
+      - {row_key: GRAND_TOTAL, row_kind: NUMERIC, source_role: SOURCE_ONLY_TOTAL, label_anchors: []}
+
+  - page_number: 33
+    page_tag: page-0033
+    source_render_sha256: 7bcf455abe019b15cc47974e1d5899b5478419239da1940bc665ec197f449920
+    source_ocr_sha256: 0f27707f8a38ef3552498df3fbdf469529259f3b23065ff03756985a94cee155
+    title_anchors: [phan tich du no cho vay theo nganh]
+    expected_numeric_rows: 23
+    expected_label_only_rows: 1
+    rows:
+      - {row_key: LOAN_HEADER, row_kind: LABEL_ONLY, source_role: SECTION_HEADER, label_anchors: [du no cho vay khach hang cua ngan hang]}
+      - {row_key: AGRICULTURE, row_kind: NUMERIC, source_role: FIXED_DETAIL, label_anchors: [nong lam nghiep thuy san]}
+      - {row_key: MINING, row_kind: NUMERIC, source_role: FIXED_DETAIL, label_anchors: [khai khoang]}
+      - {row_key: MANUFACTURING, row_kind: NUMERIC, source_role: FIXED_DETAIL, label_anchors: [cong nghiep che bien che tao]}
+      - {row_key: UTILITIES, row_kind: NUMERIC, source_role: FIXED_DETAIL, label_anchors: [san xuat phan phoi dien khi dot nuoc nong hoi nuoc va dieu hoa khong khi]}
+      - {row_key: WATER_WASTE, row_kind: NUMERIC, source_role: FIXED_DETAIL, label_anchors: [cung cap nuoc quan ly xu ly rac thai nuoc thai]}
+      - {row_key: CONSTRUCTION, row_kind: NUMERIC, source_role: FIXED_DETAIL, label_anchors: [xay dung]}
+      - {row_key: WHOLESALE_RETAIL, row_kind: NUMERIC, source_role: FIXED_DETAIL, label_anchors: [ban buon ban le sua chua o to xe may va xe co dong co khac]}
+      - {row_key: TRANSPORT_STORAGE, row_kind: NUMERIC, source_role: FIXED_DETAIL, label_anchors: [van tai kho bai]}
+      - {row_key: ACCOMMODATION_FOOD, row_kind: NUMERIC, source_role: FIXED_DETAIL, label_anchors: [dich vu luu tru an uong]}
+      - {row_key: INFORMATION_COMMUNICATION, row_kind: NUMERIC, source_role: FIXED_DETAIL, label_anchors: [thong tin truyen thong]}
+      - {row_key: FINANCIAL_INSURANCE, row_kind: NUMERIC, source_role: FIXED_DETAIL, label_anchors: [hoat dong tai chinh ngan hang bao hiem]}
+      - {row_key: REAL_ESTATE, row_kind: NUMERIC, source_role: FIXED_DETAIL, label_anchors: [hoat dong kinh doanh bat dong san]}
+      - {row_key: PROFESSIONAL_SCIENCE, row_kind: NUMERIC, source_role: FIXED_DETAIL, label_anchors: [hoat dong chuyen mon khoa hoc cong nghe]}
+      - {row_key: ADMIN_SUPPORT, row_kind: NUMERIC, source_role: FIXED_DETAIL, label_anchors: [hoat dong hanh chinh dich vu ho tro]}
+      - {row_key: EDUCATION, row_kind: NUMERIC, source_role: AMBIGUOUS_DETAIL, label_anchors: [giao duc dao tao]}
+      - {row_key: HEALTH_SOCIAL, row_kind: NUMERIC, source_role: AMBIGUOUS_DETAIL, label_anchors: [y te hoat dong tro giup xa hoi]}
+      - {row_key: ARTS_RECREATION, row_kind: NUMERIC, source_role: AMBIGUOUS_OTHER_INDUSTRY, label_anchors: [nghe thuat vui choi giai tri]}
+      - {row_key: OTHER_SERVICES, row_kind: NUMERIC, source_role: AMBIGUOUS_OTHER_INDUSTRY, label_anchors: [hoat dong dich vu khac]}
+      - {row_key: HOUSEHOLD_EMPLOYMENT, row_kind: NUMERIC, source_role: AMBIGUOUS_OTHER_INDUSTRY, label_anchors: [hoat dong lam thue cac cong viec trong cac ho gia dinh san xuat san pham vat chat va dich vu tu tieu dung cua ho gia dinh]}
+      - {row_key: FOREIGN_BRANCH, row_kind: NUMERIC, source_role: SOURCE_ONLY_FOREIGN_BRANCH, label_anchors: [cho vay tai chi nhanh va ngan hang con nuoc ngoai]}
+      - {row_key: BANK_SUBTOTAL, row_kind: NUMERIC, source_role: SOURCE_ONLY_SUBTOTAL, label_anchors: []}
+      - {row_key: MARGIN_MBS, row_kind: NUMERIC, source_role: SOURCE_ONLY_MARGIN, label_anchors: [cac khoan cho vay margin chung khoan va ung truoc khach hang tai mbs]}
+      - {row_key: GRAND_TOTAL, row_kind: NUMERIC, source_role: SOURCE_ONLY_TOTAL, label_anchors: []}
+
+forbidden_semantic_inputs:
+  - template_labels_as_row_reconstruction_input
+  - approved_report_norm_id_assignment
+  - historical_or_mongodb_values
+  - human_review_answers
+  - amount_percentage_equation_as_value_imputation
+  - percentage_axis_as_amount_axis

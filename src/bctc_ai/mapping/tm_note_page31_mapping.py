@@ -21,16 +21,18 @@ from bctc_ai.schema.registry import SchemaItem
 from bctc_ai.tables.tm_note_word_box import ParsedTMPage31, TMNoteRowKind
 
 TM_PAGE31_POLICY_RELATIVE_PATH = Path("config/mapping/tm-note-page31-v1.yaml")
-TM_PAGE31_SCHEMA_TOTAL = 1_385
+TM_PAGE31_SCHEMA_TOTAL = 1_417
 TM_PAGE31_SOURCE_ROW_COUNT = 33
-TM_PAGE31_MAPPED_SCHEMA_COUNT = 27
-TM_PAGE31_SOURCE_ONLY_COUNT = 6
+TM_PAGE31_MAPPED_SCHEMA_COUNT = 30
+TM_PAGE31_MAPPED_SOURCE_COUNT = 29
+TM_PAGE31_SOURCE_ONLY_COUNT = 4
 TM_PAGE31_NOT_OBSERVED_COUNT = 11
 TM_PAGE31_NOT_APPLICABLE_COUNT = 23
-TM_PAGE31_ASSESSED_SCHEMA_COUNT = 61
-TM_PAGE31_UNASSESSED_SCHEMA_COUNT = 1_324
+TM_PAGE31_ASSESSED_SCHEMA_COUNT = 64
+TM_PAGE31_UNASSESSED_SCHEMA_COUNT = 1_353
 TM_PAGE31_ACCOUNTING_CHECK_COUNT = 14
-TM_PAGE31_MAPPED_VALUE_COUNT = 44
+TM_PAGE31_MAPPED_VALUE_COUNT = 48
+TM_PAGE31_MAPPED_VALUE_ASSIGNMENT_COUNT = 50
 TM_PAGE31_EXTRACTED_VALUE_COUNT = 56
 TM_PAGE31_STRUCTURAL_BLANK_ROW_COUNT = 5
 
@@ -74,6 +76,8 @@ class TMPage31RowRule:
     expected_row_kind: str
     disposition: TMPage31RuleDisposition
     report_norm_id: int | None
+    additional_report_norm_ids: tuple[int, ...]
+    assignment_roles: tuple[str, ...]
 
     @property
     def identity(self) -> tuple[str, int]:
@@ -121,6 +125,9 @@ class TMPage31SourceDisposition:
     status: str
     report_norm_id: int | None
     canonical_name: str | None
+    report_norm_ids: tuple[int, ...]
+    canonical_names: tuple[str, ...]
+    assignment_roles: tuple[str, ...]
     visible_label_similarity: float | None
     observations: tuple[str, ...]
     values: tuple[Decimal | None, ...]
@@ -164,6 +171,7 @@ class TMPage31MappingResult:
     structural_blank_source_row_count: int
     extracted_value_count: int
     mapped_value_count: int
+    mapped_value_assignment_count: int
     accounting_check_count: int
     accounting_pass_count: int
     schema_dispositions: tuple[TMPage31SchemaDisposition, ...]
@@ -235,6 +243,16 @@ def load_tm_page31_mapping_policy(path: Path) -> TMPage31MappingPolicy:
         visible_label_anchor = record.get("visible_label_anchor")
         expected_row_kind = record.get("expected_row_kind")
         report_norm_id = record.get("report_norm_id")
+        additional_report_norm_ids = _schema_ids(
+            record.get("additional_report_norm_ids", []),
+            "additional ReportNormIds",
+        )
+        raw_assignment_roles = record.get("assignment_roles", [])
+        if not isinstance(raw_assignment_roles, list) or any(
+            not isinstance(value, str) or not value for value in raw_assignment_roles
+        ):
+            raise TMPage31MappingError("TM page-31 assignment roles are invalid")
+        assignment_roles = tuple(raw_assignment_roles)
         try:
             disposition = TMPage31RuleDisposition(str(record.get("disposition")))
         except ValueError as exc:
@@ -252,7 +270,15 @@ def load_tm_page31_mapping_policy(path: Path) -> TMPage31MappingPolicy:
         if disposition is TMPage31RuleDisposition.FIXED:
             if isinstance(report_norm_id, bool) or not isinstance(report_norm_id, int):
                 raise TMPage31MappingError("fixed TM page-31 row has no ReportNormId")
-        elif report_norm_id is not None:
+            if report_norm_id in additional_report_norm_ids:
+                raise TMPage31MappingError("TM page-31 row repeats a ReportNormId assignment")
+            if additional_report_norm_ids and len(assignment_roles) != (
+                1 + len(additional_report_norm_ids)
+            ):
+                raise TMPage31MappingError("TM page-31 multi-ID assignment roles drifted")
+            if not additional_report_norm_ids and assignment_roles:
+                raise TMPage31MappingError("TM page-31 scalar row has unexpected assignment roles")
+        elif report_norm_id is not None or additional_report_norm_ids or assignment_roles:
             raise TMPage31MappingError("source-only TM page-31 row cannot select a ReportNormId")
         rows.append(
             TMPage31RowRule(
@@ -266,15 +292,29 @@ def load_tm_page31_mapping_policy(path: Path) -> TMPage31MappingPolicy:
                 expected_row_kind=expected_row_kind,
                 disposition=disposition,
                 report_norm_id=report_norm_id,
+                additional_report_norm_ids=additional_report_norm_ids,
+                assignment_roles=assignment_roles,
             )
         )
     if len({row.identity for row in rows}) != len(rows):
         raise TMPage31MappingError("TM page-31 mapping row identities are duplicated")
     fixed_ids = tuple(
-        row.report_norm_id for row in rows if row.disposition is TMPage31RuleDisposition.FIXED
+        schema_id
+        for row in rows
+        if row.disposition is TMPage31RuleDisposition.FIXED
+        for schema_id in (row.report_norm_id, *row.additional_report_norm_ids)
     )
     if len(fixed_ids) != TM_PAGE31_MAPPED_SCHEMA_COUNT or len(set(fixed_ids)) != len(fixed_ids):
         raise TMPage31MappingError("TM page-31 fixed ReportNormId set drifted")
+    multi_id_rows = [row for row in rows if row.additional_report_norm_ids]
+    if (
+        len(multi_id_rows) != 1
+        or multi_id_rows[0].identity != ("LOAN_TYPE", 8)
+        or (multi_id_rows[0].report_norm_id, *multi_id_rows[0].additional_report_norm_ids)
+        != (1944, 5745)
+        or multi_id_rows[0].assignment_roles != ("LEGACY_GLOBAL_PRIMARY", "CONTEXT_BRANCH_MEMBER")
+    ):
+        raise TMPage31MappingError("TM page-31 dual-assignment contract drifted")
     not_observed = _schema_ids(payload.get("not_observed_schema_ids"), "not-observed IDs")
     not_applicable = _schema_ids(payload.get("not_applicable_schema_ids"), "not-applicable IDs")
     if len(not_observed) != TM_PAGE31_NOT_OBSERVED_COUNT or len(not_applicable) != 23:
@@ -405,9 +445,10 @@ def reconcile_tm_page31_items(
     schema_by_id = {item.schema_id: item for item in tm_schema}
     classified_ids = (
         {
-            rule.report_norm_id
+            schema_id
             for rule in policy.rows
             if rule.disposition is TMPage31RuleDisposition.FIXED
+            for schema_id in (rule.report_norm_id, *rule.additional_report_norm_ids)
         }
         | set(policy.not_observed_schema_ids)
         | set(policy.not_applicable_schema_ids)
@@ -436,14 +477,26 @@ def reconcile_tm_page31_items(
                 )
         if rule.disposition is TMPage31RuleDisposition.FIXED:
             assert rule.report_norm_id is not None
-            item = schema_by_id[rule.report_norm_id]
+            mapped_ids = (rule.report_norm_id, *rule.additional_report_norm_ids)
+            items = tuple(schema_by_id[schema_id] for schema_id in mapped_ids)
+            item = items[0]
             status = TMPage31SourceStatus.MAPPED_AUTOMATIC_SCOPED.value
             canonical_name = item.canonical_name
-            source_rows_by_schema.setdefault(rule.report_norm_id, []).append(row.row_id)
-            reason = "fixed source-page hierarchy/order and visible-label rule passed"
+            canonical_names = tuple(mapped.canonical_name for mapped in items)
+            assignment_roles = rule.assignment_roles or ("PRIMARY",)
+            for schema_id in mapped_ids:
+                source_rows_by_schema.setdefault(schema_id, []).append(row.row_id)
+            reason = (
+                "authorized legacy-global plus context-branch dual assignment with one source-cell provenance"
+                if len(mapped_ids) > 1
+                else "fixed source-page hierarchy/order and visible-label rule passed"
+            )
         else:
+            mapped_ids = ()
             status = TMPage31SourceStatus.SOURCE_ONLY_VALIDATION.value
             canonical_name = None
+            canonical_names = ()
+            assignment_roles = ()
             reason = (
                 "repeated total, subtotal, or duplicate MBS amount retained for validation only"
             )
@@ -459,6 +512,9 @@ def reconcile_tm_page31_items(
                 status=status,
                 report_norm_id=rule.report_norm_id,
                 canonical_name=canonical_name,
+                report_norm_ids=mapped_ids,
+                canonical_names=canonical_names,
+                assignment_roles=assignment_roles,
                 visible_label_similarity=similarity,
                 observations=tuple(cell.observation.value for cell in row.row.cells),
                 values=tuple(cell.value for cell in row.row.cells),
@@ -512,6 +568,12 @@ def reconcile_tm_page31_items(
         if item.status == TMPage31SourceStatus.MAPPED_AUTOMATIC_SCOPED.value
         for observation in item.observations
     )
+    mapped_value_assignment_count = sum(
+        observation in {ObservationKind.VALUE.value, ObservationKind.ZERO.value}
+        for item in source_dispositions
+        for _schema_id in item.report_norm_ids
+        for observation in item.observations
+    )
     result = TMPage31MappingResult(
         statement_type="TM",
         document=policy.document,
@@ -541,6 +603,7 @@ def reconcile_tm_page31_items(
         structural_blank_source_row_count=parsed.label_only_row_count,
         extracted_value_count=parsed.numeric_cell_count,
         mapped_value_count=mapped_value_count,
+        mapped_value_assignment_count=mapped_value_assignment_count,
         accounting_check_count=len(checks),
         accounting_pass_count=sum(check.status == "PASS" for check in checks),
         schema_dispositions=tuple(schema_dispositions),
@@ -574,12 +637,13 @@ def validate_tm_page31_mapping_result(
         or result.unassessed_schema_count != TM_PAGE31_UNASSESSED_SCHEMA_COUNT
         or result.fully_verified_schema_count != 0
         or result.source_row_count != TM_PAGE31_SOURCE_ROW_COUNT
-        or result.mapped_source_row_count != TM_PAGE31_MAPPED_SCHEMA_COUNT
+        or result.mapped_source_row_count != TM_PAGE31_MAPPED_SOURCE_COUNT
         or result.source_only_row_count != TM_PAGE31_SOURCE_ONLY_COUNT
         or result.numeric_source_row_count != 28
         or result.structural_blank_source_row_count != TM_PAGE31_STRUCTURAL_BLANK_ROW_COUNT
         or result.extracted_value_count != TM_PAGE31_EXTRACTED_VALUE_COUNT
         or result.mapped_value_count != TM_PAGE31_MAPPED_VALUE_COUNT
+        or result.mapped_value_assignment_count != TM_PAGE31_MAPPED_VALUE_ASSIGNMENT_COUNT
         or result.accounting_check_count != TM_PAGE31_ACCOUNTING_CHECK_COUNT
         or result.accounting_pass_count != TM_PAGE31_ACCOUNTING_CHECK_COUNT
         or not result.mapping_authority_granted
@@ -598,8 +662,24 @@ def validate_tm_page31_mapping_result(
         for item in result.schema_dispositions
         if item.status == TMPage31SchemaStatus.MAPPED_AUTOMATIC_SCOPED.value
     }
-    if len(mapped_ids) != TM_PAGE31_MAPPED_SCHEMA_COUNT or 1944 not in mapped_ids:
+    if (
+        len(mapped_ids) != TM_PAGE31_MAPPED_SCHEMA_COUNT
+        or not {
+            1944,
+            5745,
+            5746,
+            5747,
+        }
+        <= mapped_ids
+    ):
         raise TMPage31MappingError("TM page-31 mapped ReportNormId set drifted")
+    dual = [item for item in result.source_dispositions if len(item.report_norm_ids) > 1]
+    if (
+        len(dual) != 1
+        or dual[0].report_norm_ids != (1944, 5745)
+        or dual[0].assignment_roles != ("LEGACY_GLOBAL_PRIMARY", "CONTEXT_BRANCH_MEMBER")
+    ):
+        raise TMPage31MappingError("TM page-31 dual-assignment result drifted")
     if any(check.residual != 0 or check.status != "PASS" for check in result.accounting_checks):
         raise TMPage31MappingError("TM page-31 accounting residual is non-zero")
     return result

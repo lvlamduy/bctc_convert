@@ -1,0 +1,87 @@
+version: 1
+policy: TM_NOTE_PAGE34_PROVISION_MOVEMENT_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+page_number: 34
+page_tag: page-0034
+note_number: "6"
+scope: CONSOLIDATED
+scope_binding: IMMUTABLE_CONSOLIDATED_SOURCE_DOCUMENT
+
+source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+source_render_sha256: b6f470789dcf3c342d8011c4f6faaeca159dc7df49afba07d076860ec03ed7fe
+source_ocr_sha256: 9027f65ff1b8df868fbf726205fb05506f71dd39361ba8c01dc73b42b1d5bebb
+
+minimum_line_score: 0.0
+minimum_anchor_similarity: 0.74
+minimum_unit_similarity: 0.82
+note_title_anchors: [doi voi su thay doi tang giam cua du phong rui ro tin dung]
+
+unit:
+  anchors: [don vi trieu dong]
+  canonical: VND
+  multiplier: 1000000
+
+geometry:
+  minimum_axis_separation_line_heights: 4.0
+  numeric_axis_max_center_distance_ratio: 0.48
+  numeric_row_cluster_line_heights: 0.40
+  dash_ocr_max_width_line_heights: 0.45
+  dash_ocr_max_height_line_heights: 0.45
+  page_footer_top_ratio: 0.90
+
+dash_detector_config: word-box-reconstruction-v3.yaml
+dash_detector_config_sha256: c1cf55a6187a1b2a6f54b74b1566619d046446bc3ad7e628473004103c5d0f7e
+
+geography_headers:
+  - {geography_role: DOMESTIC, anchors: [tai viet nam]}
+  - {geography_role: FOREIGN, anchors: [tai nuoc ngoai]}
+  - {geography_role: OVERALL, anchors: [tong cong]}
+
+measure_headers:
+  - {measure_role: SPECIFIC, anchors: [cu the]}
+  - {measure_role: GENERAL, anchors: [chung]}
+  - {measure_role: COMBINED, anchors: [tong cong]}
+
+panels:
+  - panel_key: Q1_2026
+    period_role: CURRENT
+    introduction_anchors: [thay doi du phong rui ro cho vay khach hang cho ky ket thuc ngay 31 thang 3 nam 2026 bao gom cac khoan]
+    expected_period_start: 2026-01-01
+    expected_period_end: 2026-03-31
+    expected_opening_date: 2025-12-31
+    expected_numeric_rows: 5
+    expected_value_count: 37
+    expected_dash_count: 8
+    rows:
+      - {row_role: OPENING, label_anchors: [so du dau ky], period_role: OPENING_SNAPSHOT, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE]}
+      - {row_role: PROVISION, label_anchors: [du phong rui ro trich lap hoan nhap thuan trong ky], period_role: MOVEMENT_DURATION, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE]}
+      - {row_role: USE, label_anchors: [su dung quy], period_role: MOVEMENT_DURATION, expected_observations: [VALUE, DASH, VALUE, DASH, DASH, DASH, VALUE, DASH, VALUE]}
+      - {row_role: FX, label_anchors: [chenh lech ty gia], period_role: MOVEMENT_DURATION, expected_observations: [DASH, DASH, DASH, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE]}
+      - {row_role: CLOSING, label_anchors: [so du cuoi ky], period_role: CLOSING_SNAPSHOT, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE]}
+
+  - panel_key: FY_2025
+    period_role: COMPARATIVE
+    introduction_anchors: [thay doi du phong rui ro cho vay khach hang cho nam tai chinh 2025 bao gom cac khoan]
+    expected_period_start: 2025-01-01
+    expected_period_end: 2025-12-31
+    expected_opening_date: 2024-12-31
+    expected_numeric_rows: 6
+    expected_value_count: 43
+    expected_dash_count: 11
+    rows:
+      - {row_role: OPENING, label_anchors: [so du dau ky], period_role: OPENING_SNAPSHOT, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE]}
+      - {row_role: PROVISION, label_anchors: [du phong rui ro trich lap hoan nhap thuan trong ky], period_role: MOVEMENT_DURATION, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE]}
+      - {row_role: USE, label_anchors: [su dung quy], period_role: MOVEMENT_DURATION, expected_observations: [VALUE, DASH, VALUE, DASH, DASH, DASH, VALUE, DASH, VALUE]}
+      - {row_role: AUDIT_ADJUSTMENT, label_anchors: [dieu chinh theo kiem toan nha nuoc], period_role: MOVEMENT_DURATION, expected_observations: [VALUE, VALUE, VALUE, DASH, DASH, DASH, VALUE, VALUE, VALUE]}
+      - {row_role: FX, label_anchors: [chenh lech ty gia], period_role: MOVEMENT_DURATION, expected_observations: [DASH, DASH, DASH, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE]}
+      - {row_role: CLOSING, label_anchors: [so du cuoi ky], period_role: CLOSING_SNAPSHOT, expected_observations: [VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE, VALUE]}
+
+forbidden_semantic_inputs:
+  - missing_ocr_cell_as_dash_without_pixel_evidence
+  - template_labels_as_row_reconstruction_input
+  - approved_report_norm_id_assignment
+  - historical_or_mongodb_values
+  - human_review_answers
+  - dash_as_zero
+  - accounting_equations_as_value_imputation

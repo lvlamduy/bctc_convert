@@ -16,6 +16,7 @@ from typing import Any
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
+from openpyxl.xml.functions import fromstring, tostring
 
 from bctc_ai.core.contracts import ObservationKind
 from bctc_ai.core.text import normalize_text
@@ -29,13 +30,16 @@ from bctc_ai.mapping.lctt_item_mapping import (
 from bctc_ai.tables.lctt_word_box import ParsedLCTTWordBoxDocument
 
 LCTT_DEVELOPMENT_SHEETS = ("LCTT", "PROVENANCE", "RUN_METADATA")
-LCTT_DEVELOPMENT_SCHEMA_COUNT = 107
+LCTT_DEVELOPMENT_SCHEMA_COUNT = 108
 LCTT_DEVELOPMENT_SOURCE_ROW_COUNT = 43
-LCTT_DEVELOPMENT_MAPPED_SCHEMA_COUNT = 40
-LCTT_DEVELOPMENT_MAPPED_CELL_COUNT = 80
-LCTT_DEVELOPMENT_MAPPED_VALUE_COUNT = 67
+LCTT_DEVELOPMENT_MAPPED_SCHEMA_COUNT = 43
+LCTT_DEVELOPMENT_MAPPED_CELL_COUNT = 86
+LCTT_DEVELOPMENT_MAPPED_VALUE_COUNT = 71
+LCTT_DEVELOPMENT_TEMPLATE_MAX_ROW = 109
 
 _FIXED_TIMESTAMP = datetime(2000, 1, 1)
+_CORE_PROPERTIES_MEMBER = "docProps/core.xml"
+_MODIFIED_PROPERTY_TAG = "{http://purl.org/dc/terms/}modified"
 
 
 class LCTTDevelopmentExportError(ValueError):
@@ -115,22 +119,22 @@ def _validate_inputs(
         raise LCTTDevelopmentExportError("LCTT parser coverage is not exportable")
     if (
         mapping.statement_type != "LCTT"
-        or mapping.status != "PARTIAL_AUTOMATIC_MAPPING_WITH_UNRESOLVED_ITEMS"
+        or mapping.status != "SOURCE_MAPPING_COMPLETE_NUMERIC_NOT_FULLY_VERIFIED"
         or not mapping.automatic_selection_allowed
         or mapping.schema_item_count != LCTT_DEVELOPMENT_SCHEMA_COUNT
         or mapping.schema_status_reconciled_count != LCTT_DEVELOPMENT_SCHEMA_COUNT
         or mapping.mapped_schema_count != LCTT_DEVELOPMENT_MAPPED_SCHEMA_COUNT
-        or mapping.candidate_linked_schema_count != 1
-        or mapping.label_conflict_schema_count != 1
-        or mapping.ambiguous_schema_count != 5
-        or mapping.not_observed_schema_count != 4
+        or mapping.candidate_linked_schema_count != 0
+        or mapping.label_conflict_schema_count != 0
+        or mapping.ambiguous_schema_count != 0
+        or mapping.not_observed_schema_count != 8
         or mapping.not_applicable_schema_count != 57
         or mapping.fully_verified_schema_count != 0
         or mapping.source_row_count != LCTT_DEVELOPMENT_SOURCE_ROW_COUNT
         or mapping.mapped_source_row_count != LCTT_DEVELOPMENT_MAPPED_SCHEMA_COUNT
-        or mapping.candidate_linked_source_row_count != 1
-        or mapping.label_conflict_source_row_count != 1
-        or mapping.source_only_row_count != 2
+        or mapping.candidate_linked_source_row_count != 0
+        or mapping.label_conflict_source_row_count != 0
+        or mapping.source_only_row_count != 0
     ):
         raise LCTTDevelopmentExportError("LCTT mapping coverage is not exportable")
 
@@ -173,16 +177,7 @@ def _validate_inputs(
                 or schema_item.candidate_source_row_ids != (row.row_id,)
             ):
                 raise LCTTDevelopmentExportError("LCTT source/schema mapping cross-link drifted")
-        elif source.status == LCTTSourceRowStatus.LABEL_CONFLICT_CANDIDATE_NOT_AUTOMATIC.value:
-            if source.candidate_report_norm_ids != (4140,):
-                raise LCTTDevelopmentExportError("LCTT label-conflict source identity drifted")
-            schema_item = schema_by_id[4140]
-            if (
-                schema_item.status != LCTTSchemaStatus.LABEL_CONFLICT_CANDIDATE_NOT_AUTOMATIC.value
-                or schema_item.candidate_source_row_ids != (row.row_id,)
-            ):
-                raise LCTTDevelopmentExportError("LCTT label-conflict cross-link drifted")
-        elif source.status != LCTTSourceRowStatus.SOURCE_ONLY_PDF_ROW.value:
+        else:
             raise LCTTDevelopmentExportError("unresolved LCTT source row reached export")
     return _ValidatedInputs(
         axes_by_role=axes_by_role,
@@ -221,7 +216,7 @@ def _load_template(template_bytes: bytes, mapping: LCTTItemMappingResult) -> tup
     sheet = workbook.active
     if (
         workbook.sheetnames != ["Sheet1"]
-        or sheet.max_row != 108
+        or sheet.max_row != LCTT_DEVELOPMENT_TEMPLATE_MAX_ROW
         or sheet.max_column != 3
         or tuple(sheet.cell(1, column).value for column in range(1, 4))
         != (None, "ReportNormId", "ReportNormName")
@@ -230,7 +225,7 @@ def _load_template(template_bytes: bytes, mapping: LCTTItemMappingResult) -> tup
         raise LCTTDevelopmentExportError("LCTT workbook template identity drifted")
     schema_by_order = {item.display_order: item for item in mapping.schema_dispositions}
     snapshot = []
-    for row_index in range(1, 109):
+    for row_index in range(1, LCTT_DEVELOPMENT_TEMPLATE_MAX_ROW + 1):
         cells = tuple(sheet.cell(row_index, column) for column in range(1, 4))
         snapshot.append(tuple((cell.value, cell.data_type, cell.style_id) for cell in cells))
         if row_index == 1:
@@ -284,7 +279,7 @@ def _write_main_sheet(workbook: Any, context: _ValidatedInputs) -> tuple[int, in
 
     mapped_cells = 0
     mapped_values = 0
-    for row_index in range(2, 109):
+    for row_index in range(2, LCTT_DEVELOPMENT_TEMPLATE_MAX_ROW + 1):
         report_norm_id = sheet.cell(row_index, 2).value
         disposition = context.schema_by_id[report_norm_id]
         for role, value_column in (("CURRENT", 4), ("COMPARATIVE", 9)):
@@ -307,7 +302,7 @@ def _write_main_sheet(workbook: Any, context: _ValidatedInputs) -> tuple[int, in
             mapped_cells += 1
     for column in range(4, 14):
         sheet.column_dimensions[get_column_letter(column)].width = 22
-    sheet.auto_filter.ref = "A1:M108"
+    sheet.auto_filter.ref = f"A1:M{LCTT_DEVELOPMENT_TEMPLATE_MAX_ROW}"
     if (
         mapped_cells != LCTT_DEVELOPMENT_MAPPED_CELL_COUNT
         or mapped_values != LCTT_DEVELOPMENT_MAPPED_VALUE_COUNT
@@ -353,6 +348,7 @@ def _write_provenance(
         "CurrentValueLineIndicesJson",
         "ComparativeValueLineIndicesJson",
         "SupportingReaderIdsJson",
+        "BusinessResolutionKey",
         "MappingReason",
         "FullyVerified",
     )
@@ -397,12 +393,13 @@ def _write_provenance(
                 _json_cell(list(row.value_line_indices[current_index])),
                 _json_cell(list(row.value_line_indices[comparative_index])),
                 _json_cell(list(source.supporting_reader_ids)),
+                source.business_resolution_key,
                 source.reason,
                 False,
             )
         )
     _style_headers(sheet)
-    for column in (5, 24, 25, 26, 31):
+    for column in (5, 24, 25, 26, 31, 32):
         sheet.column_dimensions[get_column_letter(column)].width = 52
     if sheet.max_row != LCTT_DEVELOPMENT_SOURCE_ROW_COUNT + 1:
         raise LCTTDevelopmentExportError("LCTT provenance row denominator drifted")
@@ -454,6 +451,7 @@ def _deterministic_workbook_bytes(workbook: Any) -> bytes:
     workbook.properties.lastModifiedBy = "bctc-ai"
     workbook.properties.created = _FIXED_TIMESTAMP
     workbook.properties.modified = _FIXED_TIMESTAMP
+    deterministic_core = tostring(workbook.properties.to_tree())
     raw = BytesIO()
     workbook.save(raw)
     source = BytesIO(raw.getvalue())
@@ -462,13 +460,32 @@ def _deterministic_workbook_bytes(workbook: Any) -> bytes:
         zipfile.ZipFile(source, "r") as archive,
         zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as output,
     ):
-        for name in sorted(archive.namelist()):
+        names = archive.namelist()
+        if len(names) != len(set(names)) or names.count(_CORE_PROPERTIES_MEMBER) != 1:
+            raise LCTTDevelopmentExportError("generated workbook core properties are invalid")
+        generated_core = archive.read(_CORE_PROPERTIES_MEMBER)
+        try:
+            generated_root = fromstring(generated_core)
+            deterministic_root = fromstring(deterministic_core)
+        except Exception as exc:
+            raise LCTTDevelopmentExportError(
+                "generated workbook core properties are invalid"
+            ) from exc
+        generated_modified = generated_root.findall(_MODIFIED_PROPERTY_TAG)
+        deterministic_modified = deterministic_root.findall(_MODIFIED_PROPERTY_TAG)
+        if len(generated_modified) != 1 or len(deterministic_modified) != 1:
+            raise LCTTDevelopmentExportError("generated workbook core properties are invalid")
+        generated_modified[0].text = deterministic_modified[0].text
+        if tostring(generated_root) != deterministic_core:
+            raise LCTTDevelopmentExportError("generated workbook core properties drifted")
+        for name in sorted(names):
             info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
             info.compress_type = zipfile.ZIP_DEFLATED
             info.create_system = 3
             info.external_attr = 0o600 << 16
             info.flag_bits = 0x800
-            output.writestr(info, archive.read(name), compresslevel=9)
+            member = deterministic_core if name == _CORE_PROPERTIES_MEMBER else archive.read(name)
+            output.writestr(info, member, compresslevel=9)
     return target.getvalue()
 
 
@@ -495,13 +512,13 @@ def _verify_serialized_workbook(
                 )
                 for column in range(1, 4)
             )
-            for row_index in range(1, 109)
+            for row_index in range(1, LCTT_DEVELOPMENT_TEMPLATE_MAX_ROW + 1)
         )
         if actual_snapshot != template_snapshot:
             raise LCTTDevelopmentExportError("LCTT template columns A:C were not preserved")
         exported = sum(
             sheet.cell(row_index, column).value is not None
-            for row_index in range(2, 109)
+            for row_index in range(2, LCTT_DEVELOPMENT_TEMPLATE_MAX_ROW + 1)
             for column in (4, 9)
         )
         if exported != mapped_value_count or workbook["PROVENANCE"].max_row != 44:
@@ -605,6 +622,7 @@ __all__ = [
     "LCTT_DEVELOPMENT_SCHEMA_COUNT",
     "LCTT_DEVELOPMENT_SHEETS",
     "LCTT_DEVELOPMENT_SOURCE_ROW_COUNT",
+    "LCTT_DEVELOPMENT_TEMPLATE_MAX_ROW",
     "LCTTDevelopmentArtifact",
     "LCTTDevelopmentExportError",
     "LCTTDevelopmentExportResult",

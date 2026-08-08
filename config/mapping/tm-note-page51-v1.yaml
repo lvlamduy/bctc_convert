@@ -1,0 +1,48 @@
+version: 1
+policy: TM_NOTE_PAGE51_SCOPED_MAPPING_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+page_number: 51
+page_tag: page-0051
+report_scope: CONSOLIDATED
+mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_PDF_PAGE_51_FIXED_ROWS_AND_EXACT_STRUCTURAL_HEADING_ONLY
+
+source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+source_render_sha256: 1d72c1bc3c7f6e05287f2658f286f35eded2d5024d20e92856c35b558a9741b7
+source_ocr_sha256: 786028061957f467d579de3812c98061a9b5009c2a5de7a6ff79cd5ea4462298
+upstream_ocr_sha256: bc4cde1281abfc6238d29ae8b065f828f762ee708e7f3a05cc0c9728e143d7f0
+schema_total: 1417
+
+scoped_schema_ids: [1294, 1295, 1296, 1297, 1298, 1299, 1300, 1301, 1302, 1303, 1304, 5741, 5742, 5743, 5744]
+minimum_visible_label_similarity: 0.70
+
+rows:
+  - {ordinal: 1, visible_label_anchor: cac thong tin khac, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, question_required: false}
+  - {ordinal: 2, visible_label_anchor: cac cam ket ngoai bang, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, question_required: false}
+  - {ordinal: 3, visible_label_anchor: bao lanh vay von, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1296, question_required: false}
+  - {ordinal: 4, visible_label_anchor: cac cam ket giao dich hoi doai, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1301, question_required: false}
+  - {ordinal: 5, visible_label_anchor: cam ket mua ngoai te, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 5741, question_required: false}
+  - {ordinal: 6, visible_label_anchor: cam ket ban ngoai te, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 5742, question_required: false}
+  - {ordinal: 7, visible_label_anchor: cam ket mua giao dich hoan doi tien te, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 5743, question_required: false}
+  - {ordinal: 8, visible_label_anchor: cam ket ban giao dich hoan doi tien te, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 5744, question_required: false}
+  - {ordinal: 9, visible_label_anchor: cam ket trong nghiep vu lc, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1295, question_required: false}
+  - {ordinal: 10, visible_label_anchor: bao lanh khac, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1300, question_required: false}
+  - {ordinal: 11, visible_label_anchor: cam ket khac, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1304, question_required: false}
+
+structural_mappings:
+  - {semantic_role: CONTINGENT_LIABILITIES_HEADING, visible_label_anchor: nghia vu no tiem an va cac cam ket dua ra, report_norm_id: 1294}
+
+not_observed_schema_ids: [1297, 1298, 1299, 1302, 1303]
+
+forbidden_mapping_inputs:
+  - numeric_cell_text
+  - numeric_cell_value_as_item_selector
+  - numeric_value_magnitude
+  - historical_or_mongodb_values
+  - human_review_answers
+  - dash_as_zero
+  - accounting_equation_result_as_item_selector
+  - narrative_quantity_as_schema_value
+  - narrative_text_except_exact_structural_heading
+  - derived_1302_value_as_observed_source
+  - schema_id_outside_page51_scope

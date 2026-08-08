@@ -1,16 +1,64 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import subprocess
 import tomllib
+from pathlib import Path
 
 import yaml
 
 from bctc_ai.core.hashing import sha256_file
 
+_BASELINE_INFERENCE_COMMIT = "b08278d3452f59541de56e8187dc08e7345e16f8"
+_QWEN_INFERENCE_COMMIT = "7ccd452e873ffadab742a426f977fff03a4e1e62"
+_SEALED_INFERENCE_COMMITS = (_BASELINE_INFERENCE_COMMIT, _QWEN_INFERENCE_COMMIT)
+
+
+def _assert_current_or_frozen_artifact(
+    project_root: Path,
+    record: dict[str, object],
+) -> None:
+    """Validate a pin locally, falling back to the sealed E-0036 Git snapshot."""
+    artifact = project_root / str(record["path"])
+    expected_size = int(record["size_bytes"])
+    expected_sha256 = str(record["sha256"])
+    if (
+        artifact.is_file()
+        and artifact.stat().st_size == expected_size
+        and sha256_file(artifact) == expected_sha256
+    ):
+        return
+
+    for commit in _SEALED_INFERENCE_COMMITS:
+        historical = subprocess.run(
+            ["git", "show", f"{commit}:{record['path']}"],
+            cwd=project_root,
+            check=False,
+            capture_output=True,
+        )
+        if (
+            historical.returncode == 0
+            and len(historical.stdout) == expected_size
+            and hashlib.sha256(historical.stdout).hexdigest() == expected_sha256
+        ):
+            return
+    raise AssertionError(f"artifact pin is absent from sealed inference commits: {record['path']}")
+
 
 def test_e0036_control_freezes_same_crops_and_delays_reference_access(project_root):
     path = project_root / "config/experiments/e0036-mbb-cdkt-semantic-label-readers.yaml"
     payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+    baseline_seal = json.loads(
+        (project_root / "docs/experiments/E-0036-mbb-cdkt-baseline-output-seal.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert baseline_seal["inference_git_commit"] == _BASELINE_INFERENCE_COMMIT
+    qwen_seal = json.loads(
+        (project_root / "docs/experiments/E-0036-qwen-output-seal.json").read_text(encoding="utf-8")
+    )
+    assert qwen_seal["inference_git_commit"] == _QWEN_INFERENCE_COMMIT
 
     assert payload["experiment_id"] == "E-0036"
     assert payload["frozen_input"]["exact_sample_count"] == 64
@@ -145,9 +193,7 @@ def test_e0036_control_freezes_same_crops_and_delays_reference_access(project_ro
             )
         ),
     ):
-        artifact = project_root / record["path"]
-        assert artifact.stat().st_size == record["size_bytes"]
-        assert sha256_file(artifact) == record["sha256"]
+        _assert_current_or_frozen_artifact(project_root, record)
 
 
 def test_e0036_qwen_output_is_sealed_and_s3_restore_verified(project_root):

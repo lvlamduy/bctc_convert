@@ -6,7 +6,7 @@ from datetime import date
 from decimal import Decimal
 from enum import StrEnum
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import fitz
 import yaml
@@ -15,7 +15,7 @@ from bctc_ai.core.contracts import DatasetRole, ValueStatus
 from bctc_ai.core.hashing import sha256_file
 from bctc_ai.core.text import normalize_text
 from bctc_ai.schema.hierarchy import apply_hierarchy_reference, load_hierarchy_reference
-from bctc_ai.schema.registry import SchemaItem, load_all
+from bctc_ai.schema.registry import SchemaItem, load_all, load_workbook
 from bctc_ai.values.normalization import normalize_financial_cell
 
 _AUTHORITY = "HUMAN_REVIEW_AUTHORITATIVE_FOR_HASH_BOUND_PDF_PAGES"
@@ -384,17 +384,40 @@ def load_human_review_registry(
     if sha256_file(target_schema_path) != str(target["sha256"]):
         raise ValueError("human-review target schema hash drifted")
 
-    _, schema = load_all(project_root / "template", project_root)
+    _, current_schema = load_all(project_root / "template", project_root)
     _, hierarchy = load_hierarchy_reference(
         project_root / "config/schemas/hierarchy_reference.yaml",
         project_root,
-        schema,
+        current_schema,
     )
-    apply_hierarchy_reference(schema, hierarchy)
+    target_statement = str(target["statement_type"])
+    # The review policy is hash-bound to a historical workbook. Reconstruct its
+    # exact statement projection instead of silently validating the frozen
+    # decisions against the current business-schema replacement workbook.
+    frozen_workbook, frozen_schema = load_workbook(
+        target_schema_path,
+        project_root,
+        statement=target_statement,
+        cash_flow_rules=cast(Any, None),
+    )
+    if (
+        frozen_workbook.sha256 != str(target["sha256"])
+        or frozen_workbook.statement_type != target_statement
+    ):
+        raise ValueError("human-review frozen target schema identity drifted")
+    frozen_ids = {item.schema_id for item in frozen_schema}
+    frozen_hierarchy = [item for item in hierarchy if item.statement_type == target_statement]
+    if {item.schema_id for item in frozen_hierarchy} != frozen_ids:
+        raise ValueError("human-review frozen target hierarchy coverage drifted")
+    apply_hierarchy_reference(
+        frozen_schema,
+        frozen_hierarchy,
+        apply_business_formula_overlay=False,
+    )
     schema_by_id = {
-        item.schema_id: item for item in schema if item.statement_type == target["statement_type"]
+        item.schema_id: item for item in frozen_schema if item.statement_type == target_statement
     }
-    all_schema_ids = {item.schema_id for item in schema}
+    all_schema_ids = {item.schema_id for item in current_schema}
     payload: dict[str, Any] = yaml.safe_load(dataset_path.read_text(encoding="utf-8")) or {}
     raw_documents = payload.get("documents")
     if (

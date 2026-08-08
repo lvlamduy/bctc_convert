@@ -1,0 +1,85 @@
+version: 1
+policy: TM_NOTE_PAGE52_RELATED_PARTY_AND_GEOGRAPHIC_CONCENTRATION_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+page_number: 52
+page_tag: page-0052
+scope: CONSOLIDATED
+scope_binding: COMPLETE_NOTES_V_2_AND_V_3_IN_IMMUTABLE_CONSOLIDATED_DOCUMENT
+
+source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+source_render_sha256: f19fa64041c6df54f6b319ea9166902ee0c9325116fea6e52854a4fe1e09dc59
+source_ocr_sha256: 3c5563f8f91d673f2f5301da9efae79a906927608d8de68b5a471d33e0a164b7
+upstream_ocr_sha256: 1f9062e3822277325acf91ac1e21c4bcf28ee54f4f537e77e9e18b8e0774636c
+
+minimum_line_score: 0.0
+minimum_anchor_similarity: 0.76
+minimum_unit_similarity: 0.80
+unit:
+  anchors: [trieu dong]
+  canonical: VND
+  multiplier: 1000000
+
+related_party_table:
+  table_key: RELATED_PARTY_BALANCES
+  note_number: "2"
+  title_anchors: [giao dich voi cac ben lien quan]
+  first_body_anchors: [giao dich tien gui tai mb]
+  header_label_anchors: [loai giao dich]
+  expected_axes:
+    - {role: CURRENT, date: 2026-03-31}
+    - {role: COMPARATIVE, date: 2025-12-31}
+  expected_numeric_rows: 2
+  expected_label_only_rows: 1
+
+geographic_table:
+  table_key: GEOGRAPHIC_CONCENTRATION
+  note_number: "3"
+  title_line_anchors:
+    - [muc do tap trung theo khu vuc dia ly cua cac tai san cong no va cac khoan muc ngoai]
+    - [bang]
+  introduction_line_anchors:
+    - [tong du no cho vay khach hang tong tien gui cua khach hang cac cam ket thu tin dung kinh]
+    - [doanh va dau tu chung khoan theo khu vuc dia ly duoc trinh bay duoi bang tong hop sau]
+  axes:
+    - {axis_key: CUSTOMER_LOANS, header_line_anchors: [[tong du no cho], [vay khach hang]]}
+    - {axis_key: CUSTOMER_DEPOSITS, header_line_anchors: [[tong tien gui], [cua khach hang]]}
+    - {axis_key: LC_COMMITMENTS, header_line_anchors: [[cac cam ket thu tin], [dung]]}
+    - {axis_key: SECURITIES, header_line_anchors: [[kinh doanh va dau], [tu chung khoan]]}
+  row_anchors:
+    - {row_key: DOMESTIC, label_anchors: [trong nuoc]}
+    - {row_key: FOREIGN, label_anchors: [nuoc ngoai]}
+  snapshot_date: 2026-03-31
+  period_role: CURRENT
+  period_type: SNAPSHOT
+  unit_binding: INHERITED_FROM_EXPLICIT_PAGE_LOCAL_VND_MILLION_CONTEXT
+  expected_numeric_rows: 2
+  expected_label_only_rows: 1
+
+narratives:
+  - {semantic_role: RELATED_PARTY_DEFINITION, start_anchors: [trong qua trinh hot dng kinh doanh thong thung], end_before_anchors: [31 12 2025], expected_line_count: 23}
+  - {semantic_role: GOVERNANCE_COMPENSATION_POLICY, start_anchors: [ngan hang thuong mi c phn qun di thc hin chi tra thu lao], end_before_anchors: [mc d tp trung theo khu vc da ly], expected_line_count: 4}
+  - {semantic_role: GEOGRAPHIC_CONCENTRATION_INTRODUCTION, start_anchors: [tong duu n cho vay khach hang tng tien gi ca khach hang], end_before_anchors: [kinh doanh va dau], expected_line_count: 2}
+
+continuation:
+  page_52_closes_note_3: true
+  page_53_starts_note_number: "4"
+  page_53_start_anchors: [bao cao bo phan hop nhat]
+
+geometry:
+  maximum_date_to_unit_center_distance_line_heights: 2.0
+  minimum_axis_separation_line_heights: 5.0
+  numeric_cluster_line_heights: 0.45
+  label_attach_line_heights: 0.75
+  page_footer_top_ratio: 0.90
+
+forbidden_semantic_inputs:
+  - missing_ocr_cell_as_dash_without_pixel_evidence
+  - template_labels_as_row_reconstruction_input
+  - approved_report_norm_id_assignment
+  - historical_or_mongodb_values
+  - human_review_answers
+  - dash_as_zero
+  - accounting_equations_as_value_imputation
+  - narrative_quantity_as_schema_mapping_input
+  - inherited_unit_or_period_as_item_selector

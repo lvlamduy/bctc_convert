@@ -63,7 +63,7 @@ _VISIBLE_SCHEMA_IDS = (
     4389,
     4390,
     4393,
-    None,
+    5713,
     4391,
     4376,
     4392,
@@ -122,11 +122,22 @@ def test_kqkd_projection_and_policy_cover_all_children_before_rollups(
         node.report_norm_id for node in projection.nodes if node.child_report_norm_ids
     )
 
-    assert len(projection.nodes) == 24
+    assert len(projection.nodes) == 25
     assert aggregates == KQKD_TRAILING_AGGREGATE_IDS
     assert policy.trailing_aggregate_ids == aggregates
     assert policy.beam_width == 8192
     assert policy.minimum_interval_margin == 0.08
+    total_operating_income = projection.by_id()[5713]
+    assert total_operating_income.parent_report_norm_id == 4376
+    assert total_operating_income.child_report_norm_ids == (
+        4385,
+        4386,
+        4387,
+        4388,
+        4389,
+        4390,
+        4393,
+    )
     assert all(
         projection.by_id()[child_id].display_order < aggregate.display_order
         for aggregate in projection.nodes
@@ -134,7 +145,7 @@ def test_kqkd_projection_and_policy_cover_all_children_before_rollups(
     )
 
 
-def test_real_22_row_order_reconciles_21_mapped_three_not_observed_and_source_only(
+def test_real_22_row_order_reconciles_22_mapped_and_three_not_observed(
     real_mapping,
 ):
     parsed, result = real_mapping
@@ -144,13 +155,13 @@ def test_real_22_row_order_reconciles_21_mapped_three_not_observed_and_source_on
     assert len(parsed.rows) == 22
     assert result.status == MappingRunStatus.RESOLVED.value
     assert result.automatic_selection_allowed
-    assert result.schema_item_count == 24
-    assert result.mapped_schema_count == 21
+    assert result.schema_item_count == 25
+    assert result.mapped_schema_count == 22
     assert result.not_observed_schema_count == 3
     assert result.ambiguous_schema_count == 0
     assert result.source_row_count == 22
-    assert result.mapped_source_row_count == 21
-    assert result.source_only_row_count == 1
+    assert result.mapped_source_row_count == 22
+    assert result.source_only_row_count == 0
     assert result.ambiguous_source_row_count == 0
     assert {
         item.report_norm_id
@@ -160,11 +171,12 @@ def test_real_22_row_order_reconciles_21_mapped_three_not_observed_and_source_on
     assert all(
         schema_by_id[report_norm_id].status == KQKDSchemaStatus.MAPPED.value
         for report_norm_id in _VISIBLE_SCHEMA_IDS
-        if report_norm_id is not None
     )
-    source_only = parsed.rows[11]
-    assert source_by_id[source_only.row_id].status == KQKDSourceRowStatus.SOURCE_ONLY_PDF_ROW
-    assert source_by_id[source_only.row_id].report_norm_id is None
+    total_income = parsed.rows[11]
+    assert total_income.row.label == "TONG THU NHAP HOAT DÔNG"
+    assert source_by_id[total_income.row_id].status == KQKDSourceRowStatus.MAPPED
+    assert source_by_id[total_income.row_id].report_norm_id == 5713
+    assert schema_by_id[5713].source_row_id == total_income.row_id
     assert [item.report_norm_id for item in result.source_dispositions] == list(_VISIBLE_SCHEMA_IDS)
 
 
@@ -234,7 +246,7 @@ def test_disagreeing_independent_readers_fail_closed_as_ambiguous(
     assert result.status == MappingRunStatus.AMBIGUOUS_MAPPING.value
     assert not result.automatic_selection_allowed
     assert result.ambiguous_schema_count == 2
-    assert result.not_observed_schema_count == 22
+    assert result.not_observed_schema_count == 23
     assert result.ambiguous_source_row_count == 1
     assert result.source_dispositions[0].status == KQKDSourceRowStatus.AMBIGUOUS_MAPPING
 

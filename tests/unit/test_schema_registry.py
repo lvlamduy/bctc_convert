@@ -12,18 +12,44 @@ from bctc_ai.schema.registry import load_all
 def test_supplied_schema_is_imported_without_reordering(project_root):
     workbooks, items = load_all(project_root / "template", project_root)
     assert {workbook.statement_type: workbook.item_count for workbook in workbooks} == {
-        "CDKT": 77,
-        "KQKD": 24,
-        "LCTT": 107,
-        "TM": 1385,
+        "CDKT": 78,
+        "KQKD": 25,
+        "LCTT": 108,
+        "TM": 1417,
     }
-    assert len(items) == len({item.schema_id for item in items}) == 1593
+    assert len(items) == len({item.schema_id for item in items}) == 1628
+    by_id = {item.schema_id: item for item in items}
+    assert by_id[4350].canonical_name == "Chứng khoán đầu tư sẵn sàng để bán"
+    assert by_id[5712].canonical_name == "TỔNG VỐN CHỦ SỞ HỮU"
+    assert by_id[5712].previous_id == 4306
+    assert by_id[5712].next_id == 4305
+    assert by_id[5713].canonical_name == "TỔNG THU NHẬP HOẠT ĐỘNG"
+    assert by_id[5713].previous_id == 4393
+    assert by_id[5713].next_id == 4391
+    assert by_id[5714].canonical_name == ("Tiền thu/(chi) đầu tư, góp vốn vào các đơn vị khác")
+    assert by_id[5714].previous_id == 4146
+    assert by_id[5714].next_id == 4120
+    assert by_id[5718].canonical_name == (
+        "Tổng dự phòng rủi ro tiền gửi và cho vay các tổ chức tín dụng khác"
+    )
+    assert by_id[5718].previous_id == 591
+    assert by_id[5718].next_id == 592
+    assert by_id[5718].display_order == 32
+    assert by_id[770].canonical_name == ("Công ty TNHH MTV (hoặc trên MTV) vốn nhà nước trên 50%")
+    assert by_id[737].canonical_name == "Giáo dục & Đào tạo"
+    assert by_id[5719].canonical_name == "Y tế & hoạt động trợ giúp xã hội"
+    assert by_id[5720].canonical_name == "Ngành nghệ thuật vui chơi giải trí"
+    assert by_id[5721].canonical_name == "Ngành hoạt động dịch vụ khác"
+    assert by_id[5722].canonical_name == (
+        "Ngành hoạt động làm thuê các công việc trong các hộ gia đình, sản xuất "
+        "sản phẩm vật chất và dịch vụ tự tiêu dùng của hộ gia đình"
+    )
     tm = [item for item in items if item.statement_type == "TM"]
     assert tm[-2].schema_id == 1943
     assert tm[-2].next_id == 1944
     assert tm[-1].schema_id == 1944
     assert tm[-1].canonical_name == TM_1944_NAME
-    assert tm[-1].display_order == 1384
+    assert tm[-1].display_order == 1416
     assert tm[-1].previous_id == 1943
     assert tm[-1].next_id is None
 
