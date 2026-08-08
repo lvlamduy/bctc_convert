@@ -110,6 +110,70 @@ def test_fresh_subprocess_dry_run_is_the_exact_answer_free_challenger(
     assert payload["access_contract"]["e0038_or_e0039_mapping_artifact_opened"] is False
 
 
+def test_two_process_serialize_read_and_replay_are_object_and_byte_equal(
+    project_root: Path,
+    tmp_path: Path,
+):
+    artifact = tmp_path / "mapping.json"
+    producer = """
+import sys
+from pathlib import Path
+from bctc_ai.evaluation.e0040_formal_mapping import (
+    _decode_json_object,
+    _encoded_json,
+    dry_run_e0040_mapping_only,
+)
+root = Path(sys.argv[1]).resolve()
+target = Path(sys.argv[2])
+payload = dry_run_e0040_mapping_only(root)
+encoded = _encoded_json(payload)
+assert payload == _decode_json_object(encoded, "producer round-trip")
+target.write_bytes(encoded)
+"""
+    producer_environment = dict(os.environ)
+    producer_environment["PYTHONHASHSEED"] = "11"
+    subprocess.run(
+        [sys.executable, "-c", producer, str(project_root), str(artifact)],
+        cwd=project_root,
+        env=producer_environment,
+        check=True,
+        capture_output=True,
+    )
+
+    consumer = """
+import hashlib
+import json
+import sys
+from pathlib import Path
+from bctc_ai.evaluation.e0040_formal_mapping import (
+    _decode_json_object,
+    _encoded_json,
+    dry_run_e0040_mapping_only,
+)
+root = Path(sys.argv[1]).resolve()
+captured_bytes = Path(sys.argv[2]).read_bytes()
+captured = _decode_json_object(captured_bytes, "cross-process artifact")
+replay = dry_run_e0040_mapping_only(root)
+replay_bytes = _encoded_json(replay)
+assert captured == replay
+assert captured_bytes == replay_bytes
+print(json.dumps({"sha256": hashlib.sha256(replay_bytes).hexdigest(), "size": len(replay_bytes)}))
+"""
+    consumer_environment = dict(os.environ)
+    consumer_environment["PYTHONHASHSEED"] = "29"
+    completed = subprocess.run(
+        [sys.executable, "-c", consumer, str(project_root), str(artifact)],
+        cwd=project_root,
+        env=consumer_environment,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    receipt = json.loads(completed.stdout)
+    assert receipt["sha256"] == hashlib.sha256(artifact.read_bytes()).hexdigest()
+    assert receipt["size"] == artifact.stat().st_size
+
+
 def test_e0040_owned_mapper_policy_is_exact_and_formal_ledgers_have_no_forbidden_paths(
     project_root: Path,
 ):

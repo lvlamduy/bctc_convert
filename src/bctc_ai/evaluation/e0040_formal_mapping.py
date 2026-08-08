@@ -1777,18 +1777,25 @@ def build_e0040_mapping_only(
         },
         "claim_boundary": _MAPPING_ONLY_CLAIM,
     }
-    _assert_finite_tree(payload, "E-0040 formal mapping payload")
+    encoded_payload = _encoded_json(payload)
+    normalized_payload = _decode_json_object(
+        encoded_payload,
+        "E-0040 builder JSON round-trip",
+    )
+    if _encoded_json(normalized_payload) != encoded_payload:
+        raise E0040FormalMappingError("E-0040 builder JSON round-trip changed canonical bytes")
+    _assert_finite_tree(normalized_payload, "E-0040 formal mapping payload")
     _validate_mapping_before_replay(
-        payload,
+        normalized_payload,
         prerequisites,
         expected_git_commit=capture_git_commit,
-        encoded_bytes=_encoded_json(payload),
+        encoded_bytes=encoded_payload,
     )
     _recheck_all_inputs(root, prerequisites, authority, reader)
     _assert_answer_free_process()
     if _canonical_sha256(authority.mapping) != mapping_before:
         raise E0040FormalMappingError("E-0037 mapping input changed after E-0040 execution")
-    return payload
+    return normalized_payload
 
 
 def _sanitized_git_environment() -> dict[str, str]:

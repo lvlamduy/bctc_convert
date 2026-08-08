@@ -81,8 +81,8 @@ implementation:
     size_bytes: 47333
   formal_integration:
     path: src/bctc_ai/evaluation/e0040_formal_mapping.py
-    sha256: 6803fe4f40bcf36523898834430ef7e7ab1457266ff82e042e74bdc6c142dda9
-    size_bytes: 104979
+    sha256: 3b181a409ffb5e8a1299890f5e8044bcf35bbb3cb221da091e0edb65f19f7eb8
+    size_bytes: 105326
   capture_script:
     path: scripts/experiments/capture_e0040_mbb_cdkt_formal_mapping.py
     sha256: 9344ffb7d131f4d4decadb15d314e35953592cbdcf8b6415ad7bd3fea855e16b
