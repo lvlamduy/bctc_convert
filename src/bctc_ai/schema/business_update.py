@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from bctc_ai.schema.registry import SchemaItem
 
 
-BUSINESS_UPDATE_AUDIT = "data/registered/schema_business_update_5712_5713_5714_5718.json"
+BUSINESS_UPDATE_AUDIT = "data/registered/schema_business_update_5712_5713_5714_5718_5945.json"
 
 CDKT_BASELINE_WORKBOOK = "template/Bank_CDKT_ReportNormId.xlsx"
 KQKD_BASELINE_WORKBOOK = "template/Bank_KQKD_ReportNormId.xlsx"
@@ -44,7 +44,19 @@ KQKD_AFTER_ROW_COUNT = 26
 LCTT_BEFORE_ROW_COUNT = 108
 LCTT_AFTER_ROW_COUNT = 109
 TM_BEFORE_ROW_COUNT = 1386
-TM_AFTER_ROW_COUNT = 1418
+TM_AFTER_ROW_COUNT = 1614
+
+PREVIOUS_V2_SHA256 = {
+    "CDKT": ("2289c0ff2e988c36131f2b4e5675efc1d9ca40776c72439ef205aae43103951f",),
+    "KQKD": ("12908b0acb8970e37f382f79898b7d2124079e1e16bab17d8e03811a7004cd52",),
+    "LCTT": ("aa0f4912b1e343e404bc2490f6fe628db6b7980a180c6d03e27633b993afeb41",),
+    "TM": (
+        "bcffd9baa04a3e3aad1c80ce867e38b0145626969409213122ec3d1c0cd8451c",
+        "71020164042f5c238677b14b6964be0e5864d011a658e461fc2653a3d3644571",
+        "c94576df570e88ab86743dd29579c3bbe8578f566728ca60c8031c731bcc581e",
+        "3436883c1880220a91d829a748d7c37e0279e82a43c79f49b25acf7737af44f5",
+    ),
+}
 
 CDKT_TOTAL_EQUITY_ID = 5712
 CDKT_TOTAL_EQUITY_NAME = "TỔNG VỐN CHỦ SỞ HỮU"
@@ -114,50 +126,50 @@ TM_HOUSEHOLD_EMPLOYMENT_SUCCESSOR_ID = 744
 
 TM_PURCHASED_PRINCIPAL_ID = 5738
 TM_PURCHASED_PRINCIPAL_NAME = "Nợ gốc đã mua"
-TM_PURCHASED_PRINCIPAL_SOURCE_ROW = 256
-TM_PURCHASED_PRINCIPAL_DISPLAY_ORDER = 254
+TM_PURCHASED_PRINCIPAL_SOURCE_ROW = 257
+TM_PURCHASED_PRINCIPAL_DISPLAY_ORDER = 255
 TM_PURCHASED_PRINCIPAL_PREDECESSOR_ID = 803
 TM_PURCHASED_PRINCIPAL_SUCCESSOR_ID = 5739
 
 TM_PURCHASED_INTEREST_ID = 5739
 TM_PURCHASED_INTEREST_NAME = "Lãi của khoản nợ đã mua"
-TM_PURCHASED_INTEREST_SOURCE_ROW = 257
-TM_PURCHASED_INTEREST_DISPLAY_ORDER = 255
+TM_PURCHASED_INTEREST_SOURCE_ROW = 258
+TM_PURCHASED_INTEREST_DISPLAY_ORDER = 256
 TM_PURCHASED_INTEREST_PREDECESSOR_ID = 5738
 TM_PURCHASED_INTEREST_SUCCESSOR_ID = 804
 
 TM_GOVERNMENT_GUARANTEED_DEBT_ID = 5740
 TM_GOVERNMENT_GUARANTEED_DEBT_NAME = "Chứng khoán nợ do Chính phủ bảo lãnh"
-TM_GOVERNMENT_GUARANTEED_DEBT_SOURCE_ROW = 262
-TM_GOVERNMENT_GUARANTEED_DEBT_DISPLAY_ORDER = 260
+TM_GOVERNMENT_GUARANTEED_DEBT_SOURCE_ROW = 263
+TM_GOVERNMENT_GUARANTEED_DEBT_DISPLAY_ORDER = 261
 TM_GOVERNMENT_GUARANTEED_DEBT_PREDECESSOR_ID = 807
 TM_GOVERNMENT_GUARANTEED_DEBT_SUCCESSOR_ID = 808
 
 TM_FX_BUY_ID = 5741
 TM_FX_BUY_NAME = "Cam kết mua ngoại tệ"
-TM_FX_BUY_SOURCE_ROW = 772
-TM_FX_BUY_DISPLAY_ORDER = 770
+TM_FX_BUY_SOURCE_ROW = 779
+TM_FX_BUY_DISPLAY_ORDER = 777
 TM_FX_BUY_PREDECESSOR_ID = 1301
 TM_FX_BUY_SUCCESSOR_ID = 5742
 
 TM_FX_SELL_ID = 5742
 TM_FX_SELL_NAME = "Cam kết bán ngoại tệ"
-TM_FX_SELL_SOURCE_ROW = 773
-TM_FX_SELL_DISPLAY_ORDER = 771
+TM_FX_SELL_SOURCE_ROW = 780
+TM_FX_SELL_DISPLAY_ORDER = 778
 TM_FX_SELL_PREDECESSOR_ID = 5741
 TM_FX_SELL_SUCCESSOR_ID = 1302
 
 TM_SWAP_BUY_ID = 5743
 TM_SWAP_BUY_NAME = "Cam kết mua giao dịch hoán đổi tiền tệ"
-TM_SWAP_BUY_SOURCE_ROW = 775
-TM_SWAP_BUY_DISPLAY_ORDER = 773
+TM_SWAP_BUY_SOURCE_ROW = 782
+TM_SWAP_BUY_DISPLAY_ORDER = 780
 TM_SWAP_BUY_PREDECESSOR_ID = 1302
 TM_SWAP_BUY_SUCCESSOR_ID = 5744
 
 TM_SWAP_SELL_ID = 5744
 TM_SWAP_SELL_NAME = "Cam kết bán giao dịch hoán đổi tiền tệ"
-TM_SWAP_SELL_SOURCE_ROW = 776
-TM_SWAP_SELL_DISPLAY_ORDER = 774
+TM_SWAP_SELL_SOURCE_ROW = 783
+TM_SWAP_SELL_DISPLAY_ORDER = 781
 TM_SWAP_SELL_PREDECESSOR_ID = 5743
 TM_SWAP_SELL_SUCCESSOR_ID = 1303
 
@@ -182,8 +194,8 @@ TM_MARGIN_LOAN_MATURITY_PREDECESSOR_ID = 755
 TM_MARGIN_LOAN_MATURITY_SUCCESSOR_ID = 756
 
 TM_MARGIN_LOAN_BUSINESS_ID = 5748
-TM_MARGIN_LOAN_BUSINESS_SOURCE_ROW = 234
-TM_MARGIN_LOAN_BUSINESS_DISPLAY_ORDER = 232
+TM_MARGIN_LOAN_BUSINESS_SOURCE_ROW = 235
+TM_MARGIN_LOAN_BUSINESS_DISPLAY_ORDER = 233
 TM_MARGIN_LOAN_BUSINESS_PREDECESSOR_ID = 782
 TM_MARGIN_LOAN_BUSINESS_SUCCESSOR_ID = 783
 
@@ -193,8 +205,8 @@ TM_MARGIN_LOAN_INDUSTRY_DISPLAY_ORDER = 192
 TM_MARGIN_LOAN_INDUSTRY_PREDECESSOR_ID = 745
 TM_MARGIN_LOAN_INDUSTRY_SUCCESSOR_ID = 746
 
-TM_PAGE50_TAX_INSERT_SOURCE_ROW = 702
-TM_PAGE50_TAX_INSERT_DISPLAY_ORDER = 700
+TM_PAGE50_TAX_INSERT_SOURCE_ROW = 706
+TM_PAGE50_TAX_INSERT_DISPLAY_ORDER = 704
 TM_PAGE50_TAX_SCHEMA_ITEMS: tuple[tuple[int, str], ...] = (
     (5723, "Chi phí thuế thu nhập hiện hành"),
     (5724, "Năm hiện hành"),
@@ -222,6 +234,409 @@ TM_PAGE50_TAX_SCHEMA_ITEMS: tuple[tuple[int, str], ...] = (
 TM_PAGE50_TAX_SCHEMA_IDS = tuple(schema_id for schema_id, _name in TM_PAGE50_TAX_SCHEMA_ITEMS)
 TM_PAGE50_TAX_PREDECESSOR_ID = 1246
 TM_PAGE50_TAX_SUCCESSOR_ID = 1247
+
+# Page 52 additions use the proposal-key allocation order frozen by the page
+# mapper.  Source rows and display orders describe the final workbook after all
+# additions in this migration have been inserted.  The deposit-geography branch
+# follows the complete 1075 subtree (through 1091), preserving flattened-tree
+# order rather than splitting the pre-existing branch.
+TM_PAGE52_SCHEMA_ITEMS: tuple[tuple[int, str, int, int, int, int], ...] = (
+    (5750, "Giao dịch với các bên liên quan", 786, 784, 1259, 1),
+    (5751, "Giao dịch tiền gửi tại MB", 787, 785, 5750, 2),
+    (5752, "+ Trong nước", 211, 209, 759, 3),
+    (5753, "Phân tích theo khu vực địa lý", 548, 546, 1055, 2),
+    (5754, "+ Trong nước", 549, 547, 5753, 3),
+    (5755, "+ Nước ngoài", 550, 548, 5753, 3),
+    (5756, "Phân tích theo khu vực địa lý", 770, 768, 1295, 3),
+    (5757, "+ Trong nước", 771, 769, 5756, 4),
+    (5758, "+ Nước ngoài", 772, 770, 5756, 4),
+    (5759, "Kinh doanh và đầu tư chứng khoán", 788, 786, 1259, 1),
+    (5760, "+ Trong nước", 789, 787, 5759, 2),
+    (5761, "+ Nước ngoài", 790, 788, 5759, 2),
+)
+TM_PAGE52_SCHEMA_IDS = tuple(item[0] for item in TM_PAGE52_SCHEMA_ITEMS)
+
+TM_PAGE53_OVERALL_ROOT_ID = 5762
+TM_PAGE53_GEOGRAPHIC_ROOT_ID = 5763
+TM_PAGE53_AXIS_NAMES = (
+    "Miền Bắc",
+    "Miền Trung",
+    "Miền Nam",
+    "Khu vực khác",
+    "Loại trừ/Phân loại",
+    "Tổng cộng",
+)
+TM_PAGE53_METRIC_NAMES = (
+    "Tài sản",
+    "Nợ phải trả",
+    "Tài sản cố định",
+    "Doanh thu",
+    "Chi phí",
+    "Lợi nhuận trước thuế",
+)
+
+
+def _page53_schema_items() -> tuple[tuple[int, str, int, int, int, int], ...]:
+    records: list[tuple[int, str, int, int, int, int]] = [
+        (
+            TM_PAGE53_OVERALL_ROOT_ID,
+            "Báo cáo bộ phận hợp nhất",
+            791,
+            789,
+            1259,
+            1,
+        ),
+        (
+            TM_PAGE53_GEOGRAPHIC_ROOT_ID,
+            "Báo cáo bộ phận hợp nhất theo khu vực địa lý",
+            792,
+            790,
+            TM_PAGE53_OVERALL_ROOT_ID,
+            2,
+        ),
+    ]
+    next_schema_id = 5764
+    next_source_row = 793
+    for axis_name in TM_PAGE53_AXIS_NAMES:
+        axis_id = next_schema_id
+        records.append((axis_id, axis_name, next_source_row, next_source_row - 2, 5763, 3))
+        next_schema_id += 1
+        next_source_row += 1
+        for metric_name in TM_PAGE53_METRIC_NAMES:
+            records.append(
+                (
+                    next_schema_id,
+                    f"+ {metric_name}",
+                    next_source_row,
+                    next_source_row - 2,
+                    axis_id,
+                    4,
+                )
+            )
+            next_schema_id += 1
+            next_source_row += 1
+    if next_schema_id != 5806 or next_source_row != 835:
+        raise AssertionError("page-53 schema allocation drifted")
+    return tuple(records)
+
+
+TM_PAGE53_SCHEMA_ITEMS = _page53_schema_items()
+TM_PAGE53_SCHEMA_IDS = tuple(item[0] for item in TM_PAGE53_SCHEMA_ITEMS)
+
+TM_PAGE54_BUSINESS_ROOT_ID = 5806
+TM_PAGE54_DEBT_ASSET_AXIS_ID = 5828
+TM_PAGE54_DEBT_ASSET_ALIAS = "Khai thác nợ Quản lý tài sản"
+TM_PAGE54_AXIS_NAMES = (
+    "Tài chính Ngân hàng",
+    "Chứng khoán Quản lý quỹ",
+    "Bảo hiểm",
+    "Quản lý nợ và Khai thác tài sản",
+    "Loại trừ/Phân loại",
+    "Tổng cộng",
+)
+
+
+def _page54_schema_items() -> tuple[tuple[int, str, int, int, int, int], ...]:
+    records: list[tuple[int, str, int, int, int, int]] = [
+        (
+            TM_PAGE54_BUSINESS_ROOT_ID,
+            "Báo cáo bộ phận hợp nhất theo khu vực kinh doanh",
+            835,
+            833,
+            TM_PAGE53_OVERALL_ROOT_ID,
+            2,
+        )
+    ]
+    next_schema_id = 5807
+    next_source_row = 836
+    for axis_name in TM_PAGE54_AXIS_NAMES:
+        axis_id = next_schema_id
+        records.append(
+            (
+                axis_id,
+                axis_name,
+                next_source_row,
+                next_source_row - 2,
+                TM_PAGE54_BUSINESS_ROOT_ID,
+                3,
+            )
+        )
+        next_schema_id += 1
+        next_source_row += 1
+        for metric_name in TM_PAGE53_METRIC_NAMES:
+            records.append(
+                (
+                    next_schema_id,
+                    f"+ {metric_name}",
+                    next_source_row,
+                    next_source_row - 2,
+                    axis_id,
+                    4,
+                )
+            )
+            next_schema_id += 1
+            next_source_row += 1
+    if next_schema_id != 5849 or next_source_row != 878:
+        raise AssertionError("page-54 schema allocation drifted")
+    return tuple(records)
+
+
+TM_PAGE54_SCHEMA_ITEMS = _page54_schema_items()
+TM_PAGE54_SCHEMA_IDS = tuple(item[0] for item in TM_PAGE54_SCHEMA_ITEMS)
+
+# Physical PDF page 58 / printed page 50 exposes four currency-risk axes.  The
+# supplied schema separates fixed assets and investment property but lacks the
+# combined source row and the visible total-liabilities row on every observed
+# axis.  Rows are recorded at their final deterministic workbook positions.
+TM_PAGE58_SCHEMA_ITEMS: tuple[tuple[int, str, int, int, int, int], ...] = (
+    (5849, "Tài sản cố định và bất động sản đầu tư", 936, 934, 1353, 3),
+    (5850, "Tổng nợ phải trả", 941, 939, 1366, 4),
+    (5851, "Tài sản cố định và bất động sản đầu tư", 964, 962, 1379, 3),
+    (5852, "Tổng nợ phải trả", 969, 967, 1392, 4),
+    (5853, "Tài sản cố định và bất động sản đầu tư", 1018, 1016, 1431, 3),
+    (5854, "Tổng nợ phải trả", 1023, 1021, 1444, 4),
+    (5855, "Tài sản cố định và bất động sản đầu tư", 1046, 1044, 1457, 3),
+    (5856, "Tổng nợ phải trả", 1051, 1049, 1470, 4),
+)
+TM_PAGE58_SCHEMA_IDS = tuple(item[0] for item in TM_PAGE58_SCHEMA_ITEMS)
+
+TM_PAGE57_COMBINED_LOAN_NAME = "Cho vay khách hàng và mua nợ"
+TM_PAGE57_COMBINED_FIXED_NAME = "Tài sản cố định, bất động sản đầu tư"
+
+
+def _page57_schema_items() -> tuple[tuple[int, str, int, int, int, int], ...]:
+    records: list[tuple[int, str, int, int, int, int]] = [
+        (5857, TM_PAGE57_COMBINED_LOAN_NAME, 1072, 1070, 1484, 3),
+        (5858, TM_PAGE57_COMBINED_FIXED_NAME, 1076, 1074, 1484, 3),
+        (5859, TM_PAGE57_COMBINED_LOAN_NAME, 1099, 1097, 1509, 3),
+        (5860, TM_PAGE57_COMBINED_FIXED_NAME, 1103, 1101, 1509, 3),
+        (5861, TM_PAGE57_COMBINED_LOAN_NAME, 1176, 1174, 1584, 3),
+        (5862, TM_PAGE57_COMBINED_FIXED_NAME, 1180, 1178, 1584, 3),
+        (5863, TM_PAGE57_COMBINED_LOAN_NAME, 1203, 1201, 1609, 3),
+        (5864, TM_PAGE57_COMBINED_FIXED_NAME, 1207, 1205, 1609, 3),
+        (5865, TM_PAGE57_COMBINED_LOAN_NAME, 1230, 1228, 1634, 3),
+        (5866, TM_PAGE57_COMBINED_FIXED_NAME, 1234, 1232, 1634, 3),
+        (5867, TM_PAGE57_COMBINED_LOAN_NAME, 1257, 1255, 1659, 3),
+        (5868, TM_PAGE57_COMBINED_FIXED_NAME, 1261, 1259, 1659, 3),
+        (
+            5869,
+            "Rủi ro lãi suất - Trong hạn trên 01 năm",
+            1327,
+            1325,
+            1483,
+            2,
+        ),
+    ]
+    standard_children = (
+        (5870, "Tổng Tài sản", 5869, 3),
+        (5871, "Tiền mặt, vàng bạc đá quý", 5869, 3),
+        (5872, "Tiền gửi tại NHNN", 5869, 3),
+        (5873, "Tiền gửi và cho vay các TCTD khác", 5869, 3),
+        (5874, "Chứng khoán kinh doanh", 5869, 3),
+        (5875, "Công cụ tài chính phái sinh và các tài sản tài chính khác", 5869, 3),
+        (5876, TM_PAGE57_COMBINED_LOAN_NAME, 5869, 3),
+        (5877, "Cho vay khách hàng", 5869, 3),
+        (5878, "Chứng khoán đầu tư", 5869, 3),
+        (5879, "Góp vốn, đầu tư dài hạn", 5869, 3),
+        (5880, TM_PAGE57_COMBINED_FIXED_NAME, 5869, 3),
+        (5881, "Tài sản cố định", 5880, 4),
+        (5882, "Bất động sản đầu tư", 5880, 4),
+        (5883, "Tài sản Có khác", 5869, 3),
+        (5884, "Tổng Nợ phải trả", 5869, 3),
+        (5885, "Tiền gửi và vay từ NHNN và các TCTD khác", 5869, 3),
+        (5886, "Các khoản nợ chính phủ và NHNN", 5869, 3),
+        (5887, "Tiền gửi và cho vay các TCTD khác", 5869, 3),
+        (5888, "Tiền gửi của khách hàng", 5869, 3),
+        (5889, "Công cụ tài chính phái sinh và các khoản nợ tài chính khác", 5869, 3),
+        (5890, "Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro", 5869, 3),
+        (5891, "Phát hành giấy tờ có giá", 5869, 3),
+        (5892, "Các khoản nợ khác", 5869, 3),
+        (5893, "Chênh lệch nhạy cảm với lãi suất nội bảng", 5869, 3),
+        (5894, "Chênh lệch nhạy cảm với lãi suất ngoại bảng", 5869, 3),
+        (5895, "Chênh lệch nhạy cảm với lãi suất nội, ngoại bảng", 5869, 3),
+    )
+    for offset, (schema_id, name, parent_id, level) in enumerate(standard_children):
+        source_row = 1328 + offset
+        records.append((schema_id, name, source_row, source_row - 2, parent_id, level))
+    records.extend(
+        (
+            (5896, TM_PAGE57_COMBINED_LOAN_NAME, 1361, 1359, 1734, 3),
+            (5897, TM_PAGE57_COMBINED_FIXED_NAME, 1365, 1363, 1734, 3),
+        )
+    )
+    if len(records) != 41 or {item[0] for item in records} != set(range(5857, 5898)):
+        raise AssertionError("page-57 schema allocation drifted")
+    return tuple(records)
+
+
+TM_PAGE57_SCHEMA_ITEMS = _page57_schema_items()
+TM_PAGE57_SCHEMA_IDS = tuple(item[0] for item in TM_PAGE57_SCHEMA_ITEMS)
+
+TM_PAGE60_COMBINED_LOAN_NAME = "Cho vay khách hàng và mua nợ"
+TM_PAGE60_COMBINED_LOAN_SOURCE_ALIAS = "Cho vay khách hàng và mua nợ (*)"
+TM_PAGE60_COMBINED_FIXED_NAME = "Tài sản cố định, bất động sản đầu tư"
+
+
+def _page60_schema_items() -> tuple[tuple[int, str, int, int, int, int], ...]:
+    new_overdue_branch: tuple[tuple[int, str, int, int], ...] = (
+        (5898, "Rủi ro thanh khoản - Quá hạn", 1759, 2),
+        (5899, "Tổng Tài sản", 5898, 3),
+        (5900, "Tiền mặt, vàng bạc đá quý", 5898, 3),
+        (5901, "Tiền gửi tại NHNN", 5898, 3),
+        (5902, "Tiền gửi và cho vay các TCTD khác", 5898, 3),
+        (5903, "Chứng khoán kinh doanh", 5898, 3),
+        (5904, "Công cụ tài chính phái sinh và các tài sản tài chính khác", 5898, 3),
+        (5905, TM_PAGE60_COMBINED_LOAN_NAME, 5898, 3),
+        (5906, "Cho vay khách hàng", 5898, 3),
+        (5907, "Chứng khoán đầu tư", 5898, 3),
+        (5908, "Góp vốn, đầu tư dài hạn", 5898, 3),
+        (5909, TM_PAGE60_COMBINED_FIXED_NAME, 5898, 3),
+        (5910, "Tài sản cố định", 5909, 4),
+        (5911, "Bất động sản đầu tư", 5909, 4),
+        (5912, "Tài sản Có khác", 5898, 3),
+        (5913, "Tổng Nợ phải trả", 5898, 3),
+        (5914, "Tiền gửi và vay từ NHNN và các TCTD khác", 5898, 3),
+        (5915, "Các khoản nợ chính phủ và NHNN", 5898, 3),
+        (5916, "Tiền gửi và cho vay các TCTD khác", 5898, 3),
+        (5917, "Tiền gửi của khách hàng", 5898, 3),
+        (5918, "Công cụ tài chính phái sinh và các khoản nợ tài chính khác", 5898, 3),
+        (5919, "Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro", 5898, 3),
+        (5920, "Phát hành giấy tờ có giá", 5898, 3),
+        (5921, "Các khoản nợ khác", 5898, 3),
+        (5922, "Chênh lệch thanh khoản ròng", 5898, 3),
+    )
+    records = tuple(
+        (schema_id, name, 1382 + offset, 1380 + offset, parent_id, level)
+        for offset, (schema_id, name, parent_id, level) in enumerate(new_overdue_branch)
+    )
+    pair_records = (
+        (5923, TM_PAGE60_COMBINED_LOAN_NAME, 1460, 1458, 1806, 3),
+        (5924, TM_PAGE60_COMBINED_FIXED_NAME, 1464, 1462, 1806, 3),
+        (5925, TM_PAGE60_COMBINED_LOAN_NAME, 1485, 1483, 1829, 3),
+        (5926, TM_PAGE60_COMBINED_FIXED_NAME, 1489, 1487, 1829, 3),
+        (5927, TM_PAGE60_COMBINED_LOAN_NAME, 1510, 1508, 1852, 3),
+        (5928, TM_PAGE60_COMBINED_FIXED_NAME, 1514, 1512, 1852, 3),
+        (5929, TM_PAGE60_COMBINED_LOAN_NAME, 1535, 1533, 1875, 3),
+        (5930, TM_PAGE60_COMBINED_FIXED_NAME, 1539, 1537, 1875, 3),
+        (5931, TM_PAGE60_COMBINED_LOAN_NAME, 1560, 1558, 1898, 3),
+        (5932, TM_PAGE60_COMBINED_FIXED_NAME, 1564, 1562, 1898, 3),
+        (5933, TM_PAGE60_COMBINED_LOAN_NAME, 1585, 1583, 1921, 3),
+        (5934, TM_PAGE60_COMBINED_FIXED_NAME, 1589, 1587, 1921, 3),
+    )
+    result = (*records, *pair_records)
+    if len(result) != 37 or {item[0] for item in result} != set(range(5898, 5935)):
+        raise AssertionError("page-60 schema allocation drifted")
+    return result
+
+
+TM_PAGE60_SCHEMA_ITEMS = _page60_schema_items()
+TM_PAGE60_SCHEMA_IDS = tuple(item[0] for item in TM_PAGE60_SCHEMA_ITEMS)
+TM_PAGE60_COMBINED_LOAN_IDS = (5905, 5923, 5925, 5927, 5929, 5931, 5933)
+TM_PAGE60_COMBINED_FIXED_IDS = (5909, 5924, 5926, 5928, 5930, 5932, 5934)
+
+TM_PAGE61_ROOT_ID = 5935
+TM_PAGE61_ROOT_NAME = "Tỷ giá một số ngoại tệ tại thời điểm lập báo cáo"
+TM_PAGE61_ROOT_SOURCE_ALIAS = "6. Tỷ giá một số ngoại tệ tại thời điểm lập báo cáo"
+TM_PAGE61_CURRENCIES: tuple[tuple[int, str, str], ...] = (
+    (5936, "USD", "Đô la Mỹ"),
+    (5937, "EUR", "Euro"),
+    (5938, "GBP", "Bảng Anh"),
+    (5939, "JPY", "Yên Nhật"),
+    (5940, "CHF", "Franc Thụy Sĩ"),
+    (5941, "AUD", "Đô la Úc"),
+    (5942, "CAD", "Đô la Canada"),
+    (5943, "SGD", "Đô la Singapore"),
+    (5944, "THB", "Baht Thái"),
+    (5945, "SEK", "Krona Thụy Điển"),
+)
+TM_PAGE61_SCHEMA_ITEMS: tuple[tuple[int, str, int, int, int, int], ...] = (
+    (TM_PAGE61_ROOT_ID, TM_PAGE61_ROOT_NAME, 1603, 1601, 1259, 1),
+    *tuple(
+        (schema_id, name, 1604 + offset, 1602 + offset, TM_PAGE61_ROOT_ID, 2)
+        for offset, (schema_id, name, _alias) in enumerate(TM_PAGE61_CURRENCIES)
+    ),
+)
+TM_PAGE61_SCHEMA_IDS = tuple(item[0] for item in TM_PAGE61_SCHEMA_ITEMS)
+
+TM_PAGE52_61_SCHEMA_ITEMS = (
+    *TM_PAGE52_SCHEMA_ITEMS,
+    *TM_PAGE53_SCHEMA_ITEMS,
+    *TM_PAGE54_SCHEMA_ITEMS,
+    *TM_PAGE58_SCHEMA_ITEMS,
+    *TM_PAGE57_SCHEMA_ITEMS,
+    *TM_PAGE60_SCHEMA_ITEMS,
+    *TM_PAGE61_SCHEMA_ITEMS,
+)
+TM_PAGE52_61_SCHEMA_IDS = tuple(item[0] for item in TM_PAGE52_61_SCHEMA_ITEMS)
+
+
+def _chain_anchors(
+    schema_ids: tuple[int, ...], *, predecessor: int, successor: int
+) -> dict[int, tuple[int, int]]:
+    return {
+        schema_id: (
+            predecessor if offset == 0 else schema_ids[offset - 1],
+            successor if offset == len(schema_ids) - 1 else schema_ids[offset + 1],
+        )
+        for offset, schema_id in enumerate(schema_ids)
+    }
+
+
+TM_PAGE52_61_ANCHORS = {
+    **_chain_anchors((5752,), predecessor=759, successor=760),
+    **_chain_anchors((5753, 5754, 5755), predecessor=1091, successor=1092),
+    **_chain_anchors((5756, 5757, 5758), predecessor=1295, successor=1296),
+    **_chain_anchors(
+        (
+            5750,
+            5751,
+            5759,
+            5760,
+            5761,
+            *TM_PAGE53_SCHEMA_IDS,
+            *TM_PAGE54_SCHEMA_IDS,
+        ),
+        predecessor=1304,
+        successor=1305,
+    ),
+    5849: (1362, 1363),
+    5850: (1366, 1367),
+    5851: (1388, 1389),
+    5852: (1392, 1393),
+    5853: (1440, 1441),
+    5854: (1444, 1445),
+    5855: (1466, 1467),
+    5856: (1470, 1471),
+    5857: (1490, 1491),
+    5858: (1493, 1494),
+    5859: (1515, 1516),
+    5860: (1518, 1519),
+    5861: (1590, 1591),
+    5862: (1593, 1594),
+    5863: (1615, 1616),
+    5864: (1618, 1619),
+    5865: (1640, 1641),
+    5866: (1643, 1644),
+    5867: (1665, 1666),
+    5868: (1668, 1669),
+    **_chain_anchors(tuple(range(5869, 5896)), predecessor=1733, successor=1734),
+    5896: (1740, 1741),
+    5897: (1743, 1744),
+    **_chain_anchors(tuple(range(5898, 5923)), predecessor=1759, successor=1760),
+    5923: (1812, 1813),
+    5924: (1815, 1816),
+    5925: (1835, 1836),
+    5926: (1838, 1839),
+    5927: (1858, 1859),
+    5928: (1861, 1862),
+    5929: (1881, 1882),
+    5930: (1884, 1885),
+    5931: (1904, 1905),
+    5932: (1907, 1908),
+    5933: (1927, 1928),
+    5934: (1930, 1931),
+    **_chain_anchors(TM_PAGE61_SCHEMA_IDS, predecessor=1943, successor=1944),
+}
 
 TM_LOAN_INDUSTRY_PARENT_ID = 727
 TM_LOAN_BUSINESS_PARENT_ID = 766
@@ -260,6 +675,7 @@ NEW_SCHEMA_IDS = frozenset(
         TM_MARGIN_LOAN_MATURITY_ID,
         TM_MARGIN_LOAN_BUSINESS_ID,
         TM_MARGIN_LOAN_INDUSTRY_ID,
+        *TM_PAGE52_61_SCHEMA_IDS,
     }
 )
 
@@ -279,6 +695,68 @@ TM_PAGE50_TAX_FORMULAS = (
 )
 TM_FX_COMMITMENT_COMPONENTS = (TM_FX_BUY_ID, TM_FX_SELL_ID, 1302)
 TM_SWAP_COMMITMENT_COMPONENTS = (TM_SWAP_BUY_ID, TM_SWAP_SELL_ID)
+TM_PAGE52_FORMULAS = (
+    (5750, (5751,)),
+    (5753, (5754, 5755)),
+    (5756, (5757, 5758)),
+    (5759, (5760, 5761)),
+)
+TM_PAGE53_TOTAL_FORMULAS = tuple(
+    (
+        5800 + metric_offset,
+        tuple(5765 + axis_offset * 7 + metric_offset for axis_offset in range(5)),
+    )
+    for metric_offset in range(6)
+)
+TM_PAGE53_PBT_FORMULAS = tuple(
+    (
+        5770 + axis_offset * 7,
+        (5768 + axis_offset * 7, 5769 + axis_offset * 7),
+    )
+    for axis_offset in range(5)
+)
+TM_PAGE54_TOTAL_FORMULAS = tuple(
+    (
+        5843 + metric_offset,
+        tuple(5808 + axis_offset * 7 + metric_offset for axis_offset in range(5)),
+    )
+    for metric_offset in range(6)
+)
+TM_PAGE54_PBT_FORMULAS = tuple(
+    (
+        5813 + axis_offset * 7,
+        (5811 + axis_offset * 7, 5812 + axis_offset * 7),
+    )
+    for axis_offset in range(5)
+)
+TM_PAGE58_COMBINED_FIXED_FORMULAS = (
+    (5849, (1363, 1364)),
+    (5851, (1389, 1390)),
+    (5853, (1441, 1442)),
+    (5855, (1467, 1468)),
+)
+TM_PAGE58_TOTAL_LIABILITY_FORMULAS = (
+    (5850, (1367, 1370, 1371, 1372, 1373, 1374)),
+    (5852, (1393, 1396, 1397, 1398, 1399, 1400)),
+    (5854, (1445, 1448, 1449, 1450, 1451, 1452)),
+    (5856, (1471, 1474, 1475, 1476, 1477, 1478)),
+)
+TM_PAGE57_COMBINED_FIXED_FORMULAS = (
+    (5858, (1494, 1495)),
+    (5860, (1519, 1520)),
+    (5862, (1594, 1595)),
+    (5864, (1619, 1620)),
+    (5866, (1644, 1645)),
+    (5868, (1669, 1670)),
+    (5880, (5881, 5882)),
+    (5897, (1744, 1745)),
+)
+TM_PAGE57_SUM_FORMULAS = (
+    (5870, (5871, 5872, 5873, 5874, 5875, 5876, 5878, 5879, 5880, 5883)),
+    (5884, (5885, 5886, 5887, 5888, 5889, 5890, 5891, 5892)),
+    (5895, (5893, 5894)),
+)
+TM_PAGE57_SUBTRACT_FORMULAS = ((5893, (5870, 5884)),)
 
 BUSINESS_FORMULAS: tuple[dict[str, object], ...] = (
     {
@@ -338,6 +816,36 @@ BUSINESS_FORMULAS: tuple[dict[str, object], ...] = (
         "operator": "SUM",
         "component_schema_ids": list(TM_SWAP_COMMITMENT_COMPONENTS),
     },
+    *(
+        {
+            "statement_type": "TM",
+            "schema_id": schema_id,
+            "operator": "SUM",
+            "component_schema_ids": list(component_ids),
+        }
+        for schema_id, component_ids in (
+            *TM_PAGE52_FORMULAS,
+            *TM_PAGE53_TOTAL_FORMULAS,
+            *TM_PAGE54_TOTAL_FORMULAS,
+            *TM_PAGE58_COMBINED_FIXED_FORMULAS,
+            *TM_PAGE58_TOTAL_LIABILITY_FORMULAS,
+            *TM_PAGE57_COMBINED_FIXED_FORMULAS,
+            *TM_PAGE57_SUM_FORMULAS,
+        )
+    ),
+    *(
+        {
+            "statement_type": "TM",
+            "schema_id": schema_id,
+            "operator": "SUBTRACT",
+            "component_schema_ids": list(component_ids),
+        }
+        for schema_id, component_ids in (
+            *TM_PAGE53_PBT_FORMULAS,
+            *TM_PAGE54_PBT_FORMULAS,
+            *TM_PAGE57_SUBTRACT_FORMULAS,
+        )
+    ),
 )
 
 _SHEET_MEMBER = "xl/worksheets/sheet1.xml"
@@ -680,6 +1188,18 @@ def _build_updated_workbook(
                     shared_strings,
                     name=name,
                 )
+            page52_61_string_indices: dict[int, int] = {}
+            for (
+                schema_id,
+                name,
+                _source_row,
+                _order,
+                _parent_id,
+                _level,
+            ) in TM_PAGE52_61_SCHEMA_ITEMS:
+                shared_strings, page52_61_string_indices[schema_id] = (
+                    _append_or_reuse_shared_string(shared_strings, name=name)
+                )
             baseline_sheet = _retarget_shared_string_cell(
                 source.read(_SHEET_MEMBER),
                 source_row=TM_770_BASELINE_SOURCE_ROW,
@@ -765,76 +1285,93 @@ def _build_updated_workbook(
             sheet = _insert_sheet_row(
                 sheet,
                 before_row_count=TM_BEFORE_ROW_COUNT + 9,
-                insert_source_row=TM_MARGIN_LOAN_BUSINESS_SOURCE_ROW,
+                insert_source_row=TM_MARGIN_LOAN_BUSINESS_SOURCE_ROW - 1,
                 schema_id=TM_MARGIN_LOAN_BUSINESS_ID,
-                display_order=TM_MARGIN_LOAN_BUSINESS_DISPLAY_ORDER,
+                display_order=TM_MARGIN_LOAN_BUSINESS_DISPLAY_ORDER - 1,
                 shared_string_index=margin_loan_string_index,
             )
             sheet = _insert_sheet_row(
                 sheet,
                 before_row_count=TM_BEFORE_ROW_COUNT + 10,
-                insert_source_row=TM_PURCHASED_PRINCIPAL_SOURCE_ROW,
+                insert_source_row=TM_PURCHASED_PRINCIPAL_SOURCE_ROW - 1,
                 schema_id=TM_PURCHASED_PRINCIPAL_ID,
-                display_order=TM_PURCHASED_PRINCIPAL_DISPLAY_ORDER,
+                display_order=TM_PURCHASED_PRINCIPAL_DISPLAY_ORDER - 1,
                 shared_string_index=purchased_principal_string_index,
             )
             sheet = _insert_sheet_row(
                 sheet,
                 before_row_count=TM_BEFORE_ROW_COUNT + 11,
-                insert_source_row=TM_PURCHASED_INTEREST_SOURCE_ROW,
+                insert_source_row=TM_PURCHASED_INTEREST_SOURCE_ROW - 1,
                 schema_id=TM_PURCHASED_INTEREST_ID,
-                display_order=TM_PURCHASED_INTEREST_DISPLAY_ORDER,
+                display_order=TM_PURCHASED_INTEREST_DISPLAY_ORDER - 1,
                 shared_string_index=purchased_interest_string_index,
             )
             sheet = _insert_sheet_row(
                 sheet,
                 before_row_count=TM_BEFORE_ROW_COUNT + 12,
-                insert_source_row=TM_GOVERNMENT_GUARANTEED_DEBT_SOURCE_ROW,
+                insert_source_row=TM_GOVERNMENT_GUARANTEED_DEBT_SOURCE_ROW - 1,
                 schema_id=TM_GOVERNMENT_GUARANTEED_DEBT_ID,
-                display_order=TM_GOVERNMENT_GUARANTEED_DEBT_DISPLAY_ORDER,
+                display_order=TM_GOVERNMENT_GUARANTEED_DEBT_DISPLAY_ORDER - 1,
                 shared_string_index=guaranteed_debt_string_index,
             )
             for offset, (schema_id, _name) in enumerate(TM_PAGE50_TAX_SCHEMA_ITEMS):
                 sheet = _insert_sheet_row(
                     sheet,
                     before_row_count=TM_BEFORE_ROW_COUNT + 13 + offset,
-                    insert_source_row=TM_PAGE50_TAX_INSERT_SOURCE_ROW + offset,
+                    insert_source_row=TM_PAGE50_TAX_INSERT_SOURCE_ROW - 4 + offset,
                     schema_id=schema_id,
-                    display_order=TM_PAGE50_TAX_INSERT_DISPLAY_ORDER + offset,
+                    display_order=TM_PAGE50_TAX_INSERT_DISPLAY_ORDER - 4 + offset,
                     shared_string_index=tax_string_indices[schema_id],
                 )
             sheet = _insert_sheet_row(
                 sheet,
                 before_row_count=TM_BEFORE_ROW_COUNT + 28,
-                insert_source_row=TM_FX_BUY_SOURCE_ROW,
+                insert_source_row=TM_FX_BUY_SOURCE_ROW - 7,
                 schema_id=TM_FX_BUY_ID,
-                display_order=TM_FX_BUY_DISPLAY_ORDER,
+                display_order=TM_FX_BUY_DISPLAY_ORDER - 7,
                 shared_string_index=fx_buy_string_index,
             )
             sheet = _insert_sheet_row(
                 sheet,
                 before_row_count=TM_BEFORE_ROW_COUNT + 29,
-                insert_source_row=TM_FX_SELL_SOURCE_ROW,
+                insert_source_row=TM_FX_SELL_SOURCE_ROW - 7,
                 schema_id=TM_FX_SELL_ID,
-                display_order=TM_FX_SELL_DISPLAY_ORDER,
+                display_order=TM_FX_SELL_DISPLAY_ORDER - 7,
                 shared_string_index=fx_sell_string_index,
             )
             sheet = _insert_sheet_row(
                 sheet,
                 before_row_count=TM_BEFORE_ROW_COUNT + 30,
-                insert_source_row=TM_SWAP_BUY_SOURCE_ROW,
+                insert_source_row=TM_SWAP_BUY_SOURCE_ROW - 7,
                 schema_id=TM_SWAP_BUY_ID,
-                display_order=TM_SWAP_BUY_DISPLAY_ORDER,
+                display_order=TM_SWAP_BUY_DISPLAY_ORDER - 7,
                 shared_string_index=swap_buy_string_index,
             )
             sheet = _insert_sheet_row(
                 sheet,
                 before_row_count=TM_BEFORE_ROW_COUNT + 31,
-                insert_source_row=TM_SWAP_SELL_SOURCE_ROW,
+                insert_source_row=TM_SWAP_SELL_SOURCE_ROW - 7,
                 schema_id=TM_SWAP_SELL_ID,
-                display_order=TM_SWAP_SELL_DISPLAY_ORDER,
+                display_order=TM_SWAP_SELL_DISPLAY_ORDER - 7,
                 shared_string_index=swap_sell_string_index,
             )
+            before_new_business_rows = TM_AFTER_ROW_COUNT - len(TM_PAGE52_61_SCHEMA_ITEMS)
+            for offset, (
+                schema_id,
+                _name,
+                source_row,
+                display_order,
+                _parent_id,
+                _level,
+            ) in enumerate(sorted(TM_PAGE52_61_SCHEMA_ITEMS, key=lambda item: item[2])):
+                sheet = _insert_sheet_row(
+                    sheet,
+                    before_row_count=before_new_business_rows + offset,
+                    insert_source_row=source_row,
+                    schema_id=schema_id,
+                    display_order=display_order,
+                    shared_string_index=page52_61_string_indices[schema_id],
+                )
         else:
             raise BusinessSchemaUpdateError(
                 f"unsupported business update statement {statement_type}"
@@ -1084,6 +1621,12 @@ def _assert_candidate(
                 )
                 for offset, (schema_id, name) in enumerate(TM_PAGE50_TAX_SCHEMA_ITEMS)
             ),
+            *(
+                (schema_id, name, source_row, display_order)
+                for schema_id, name, source_row, display_order, _parent_id, _level in (
+                    TM_PAGE52_61_SCHEMA_ITEMS
+                )
+            ),
         )
         for schema_id, name, source_row, display_order in additions:
             if by_id[str(schema_id)] != {
@@ -1178,6 +1721,7 @@ def _assert_candidate(
                 )
                 for offset, schema_id in enumerate(TM_PAGE50_TAX_SCHEMA_IDS)
             },
+            **TM_PAGE52_61_ANCHORS,
         }
         for schema_id, anchors in expected_anchors.items():
             index = ids.index(str(schema_id))
@@ -1475,6 +2019,21 @@ def _expected_schema_changes() -> list[dict[str, object]]:
             }
             for offset, (schema_id, name) in enumerate(TM_PAGE50_TAX_SCHEMA_ITEMS)
         ),
+        *(
+            {
+                "change": "ADD",
+                "statement_type": "TM",
+                "schema_id": schema_id,
+                "canonical_name": name,
+                "source_row": source_row,
+                "display_order_zero_based": display_order,
+                "previous_schema_id": TM_PAGE52_61_ANCHORS[schema_id][0],
+                "next_schema_id": TM_PAGE52_61_ANCHORS[schema_id][1],
+            }
+            for schema_id, name, source_row, display_order, _parent_id, _level in (
+                TM_PAGE52_61_SCHEMA_ITEMS
+            )
+        ),
         {
             "change": "CORRECT_DISPLAY_NAME",
             "statement_type": "CDKT",
@@ -1504,7 +2063,7 @@ def verify_business_schema_update(project_root: Path, audit_path: Path) -> dict[
     audit = json.loads(audit_path.read_text(encoding="utf-8"))
     if (
         audit.get("format_version") != 1
-        or audit.get("migration_id") != "BUSINESS-SCHEMA-5712-5713-5714-5718-5749"
+        or audit.get("migration_id") != "BUSINESS-SCHEMA-5712-5713-5714-5718-5945"
         or audit.get("status") != "APPLIED_AND_VERIFIED"
     ):
         raise BusinessSchemaUpdateError("invalid business-schema update audit identity")
@@ -1526,7 +2085,7 @@ def verify_business_schema_update(project_root: Path, audit_path: Path) -> dict[
         raise BusinessSchemaUpdateError("business update lacks external-ID disjointness proof")
     if collision != {
         "baseline_global_schema_count": 1593,
-        "result_global_schema_count": 1628,
+        "result_global_schema_count": 1824,
         "new_ids": sorted(NEW_SCHEMA_IDS),
         "reviewed_external_ids": sorted(REVIEWED_EXTERNAL_IDS),
         "new_ids_disjoint_from_reviewed_external_ids": True,
@@ -1715,6 +2274,12 @@ def verify_business_schema_update(project_root: Path, audit_path: Path) -> dict[
             (schema_id, TM_PAGE50_TAX_INSERT_SOURCE_ROW + offset)
             for offset, schema_id in enumerate(TM_PAGE50_TAX_SCHEMA_IDS)
         ),
+        *(
+            (schema_id, source_row)
+            for schema_id, _name, source_row, _order, _parent_id, _level in (
+                TM_PAGE52_61_SCHEMA_ITEMS
+            )
+        ),
     ):
         if tm_by_id[str(schema_id)]["source_row"] != source_row:
             raise BusinessSchemaUpdateError(f"TM {schema_id} row position drifted")
@@ -1727,7 +2292,7 @@ def verify_business_schema_update(project_root: Path, audit_path: Path) -> dict[
         if sha256_file(project_root / relative) != expected_hash:
             raise BusinessSchemaUpdateError(f"unaffected workbook changed: {relative}")
 
-    seen = _assert_global_identity(project_root, expected_count=1628)
+    seen = _assert_global_identity(project_root, expected_count=1824)
     if seen.get(CDKT_TOTAL_EQUITY_ID) != "CDKT":
         raise BusinessSchemaUpdateError("CDKT 5712 is not globally unique and correctly scoped")
     if seen.get(KQKD_TOTAL_OPERATING_INCOME_ID) != "KQKD":
@@ -1754,6 +2319,7 @@ def verify_business_schema_update(project_root: Path, audit_path: Path) -> dict[
         TM_MARGIN_LOAN_MATURITY_ID,
         TM_MARGIN_LOAN_BUSINESS_ID,
         TM_MARGIN_LOAN_INDUSTRY_ID,
+        *TM_PAGE52_61_SCHEMA_IDS,
     ):
         if seen.get(schema_id) != "TM":
             raise BusinessSchemaUpdateError(
@@ -1840,12 +2406,16 @@ def apply_business_schema_update(
         candidate_payloads[statement] = after
         before_member_hashes[statement] = before_members
         after_member_hashes[statement] = after_members
-        if workbook_paths[statement].exists() and sha256_file(
-            workbook_paths[statement]
-        ) != sha256_bytes(after):
-            raise BusinessSchemaUpdateError(
-                f"existing {statement} v2 workbook differs from deterministic candidate"
-            )
+        if workbook_paths[statement].exists():
+            existing_sha256 = sha256_file(workbook_paths[statement])
+            if existing_sha256 not in {
+                sha256_bytes(after),
+                *PREVIOUS_V2_SHA256[statement],
+            }:
+                raise BusinessSchemaUpdateError(
+                    f"existing {statement} v2 workbook is neither the prior sealed result "
+                    "nor the deterministic candidate"
+                )
 
     candidate_paths: dict[str, Path] = {}
     try:
@@ -1865,7 +2435,7 @@ def apply_business_schema_update(
         candidate_seen = _assert_global_identity(
             project_root,
             overrides=candidate_paths,
-            expected_count=1628,
+            expected_count=1824,
         )
         if (
             candidate_seen.get(CDKT_TOTAL_EQUITY_ID) != "CDKT"
@@ -1892,6 +2462,7 @@ def apply_business_schema_update(
                     TM_MARGIN_LOAN_MATURITY_ID,
                     TM_MARGIN_LOAN_BUSINESS_ID,
                     TM_MARGIN_LOAN_INDUSTRY_ID,
+                    *TM_PAGE52_61_SCHEMA_IDS,
                 )
             )
         ):
@@ -1987,7 +2558,7 @@ def apply_business_schema_update(
 
     audit: dict[str, object] = {
         "format_version": 1,
-        "migration_id": "BUSINESS-SCHEMA-5712-5713-5714-5718-5749",
+        "migration_id": "BUSINESS-SCHEMA-5712-5713-5714-5718-5945",
         "status": "APPLIED_AND_VERIFIED",
         "applied_at": datetime.now(UTC).isoformat(),
         "authority": {
@@ -1996,7 +2567,7 @@ def apply_business_schema_update(
         },
         "collision_safety": {
             "baseline_global_schema_count": 1593,
-            "result_global_schema_count": 1628,
+            "result_global_schema_count": 1824,
             "new_ids": sorted(NEW_SCHEMA_IDS),
             "reviewed_external_ids": sorted(REVIEWED_EXTERNAL_IDS),
             "new_ids_disjoint_from_reviewed_external_ids": True,
@@ -2099,6 +2670,15 @@ def apply_business_formula_hierarchy(schema: Sequence[SchemaItem]) -> None:
                 TM_MARGIN_LOAN_MATURITY_ID,
                 TM_MARGIN_LOAN_BUSINESS_ID,
                 TM_MARGIN_LOAN_INDUSTRY_ID,
+                759,
+                *range(760, 766),
+                1055,
+                1259,
+                1295,
+                *TM_PAGE52_61_SCHEMA_IDS,
+                *range(1352, 1483),
+                *range(1483, 1759),
+                *range(1759, 1945),
             )
         }
     )
@@ -2124,6 +2704,31 @@ def apply_business_formula_hierarchy(schema: Sequence[SchemaItem]) -> None:
         ("TM", TM_MARGIN_LOAN_MATURITY_ID): None,
         ("TM", TM_MARGIN_LOAN_BUSINESS_ID): None,
         ("TM", TM_MARGIN_LOAN_INDUSTRY_ID): None,
+        **{("TM", schema_id): 759 for schema_id in range(760, 766)},
+        **{("TM", schema_id): None for schema_id in TM_PAGE52_61_SCHEMA_IDS},
+        **{
+            ("TM", schema_id): parent_id
+            for parent_id, schema_ids in (
+                (1353, (1363, 1364, 1366, 1367, 1368, 1369, 1375)),
+                (1379, (1389, 1390, 1392, 1393, 1394, 1395, 1401)),
+                (1431, (1441, 1442, 1444, 1445, 1446, 1447, 1453)),
+                (1457, (1467, 1468, 1470, 1471, 1472, 1473, 1479)),
+                (1484, (1491, 1494, 1495)),
+                (1509, (1516, 1519, 1520)),
+                (1584, (1591, 1594, 1595)),
+                (1609, (1616, 1619, 1620)),
+                (1634, (1641, 1644, 1645)),
+                (1659, (1666, 1669, 1670)),
+                (1734, (1741, 1744, 1745)),
+                (1806, (1816, 1817)),
+                (1829, (1839, 1840)),
+                (1852, (1862, 1863)),
+                (1875, (1885, 1886)),
+                (1898, (1908, 1909)),
+                (1921, (1931, 1932)),
+            )
+            for schema_id in schema_ids
+        },
     }
     for key, expected_parent in expected_initial_parents.items():
         if by_key[key].parent_id != expected_parent:
@@ -2248,6 +2853,124 @@ def apply_business_formula_hierarchy(schema: Sequence[SchemaItem]) -> None:
         item.hierarchy_level = level
         item.hierarchy_source = BUSINESS_UPDATE_AUDIT
 
+    for schema_id in range(760, 765):
+        item = by_key[("TM", schema_id)]
+        item.parent_id = 5752
+        item.hierarchy_level = 4
+        item.hierarchy_source = BUSINESS_UPDATE_AUDIT
+    for schema_id, _name, _source_row, _order, parent_id, level in TM_PAGE52_61_SCHEMA_ITEMS:
+        item = by_key[("TM", schema_id)]
+        item.parent_id = parent_id
+        item.hierarchy_level = level
+        item.hierarchy_source = BUSINESS_UPDATE_AUDIT
+
+    currency_hierarchy = (
+        (
+            5849,
+            (1363, 1364),
+            1366,
+            5850,
+            (1367, 1370, 1371, 1372, 1373, 1374),
+            1367,
+            (1368, 1369),
+            1375,
+        ),
+        (
+            5851,
+            (1389, 1390),
+            1392,
+            5852,
+            (1393, 1396, 1397, 1398, 1399, 1400),
+            1393,
+            (1394, 1395),
+            1401,
+        ),
+        (
+            5853,
+            (1441, 1442),
+            1444,
+            5854,
+            (1445, 1448, 1449, 1450, 1451, 1452),
+            1445,
+            (1446, 1447),
+            1453,
+        ),
+        (
+            5855,
+            (1467, 1468),
+            1470,
+            5856,
+            (1471, 1474, 1475, 1476, 1477, 1478),
+            1471,
+            (1472, 1473),
+            1479,
+        ),
+    )
+    for (
+        fixed_parent,
+        fixed_children,
+        liability_and_equity,
+        total_liability,
+        liability_children,
+        interbank_parent,
+        interbank_children,
+        equity,
+    ) in currency_hierarchy:
+        for schema_id in fixed_children:
+            item = by_key[("TM", schema_id)]
+            item.parent_id = fixed_parent
+            item.hierarchy_level = 4
+            item.hierarchy_source = BUSINESS_UPDATE_AUDIT
+        equity_item = by_key[("TM", equity)]
+        equity_item.parent_id = liability_and_equity
+        equity_item.hierarchy_level = 4
+        equity_item.hierarchy_source = BUSINESS_UPDATE_AUDIT
+        for schema_id in liability_children:
+            item = by_key[("TM", schema_id)]
+            item.parent_id = total_liability
+            item.hierarchy_level = 5
+            item.hierarchy_source = BUSINESS_UPDATE_AUDIT
+        for schema_id in interbank_children:
+            item = by_key[("TM", schema_id)]
+            item.parent_id = interbank_parent
+            item.hierarchy_level = 6
+            item.hierarchy_source = BUSINESS_UPDATE_AUDIT
+
+    for fixed_parent, fixed_children in (
+        (5858, (1494, 1495)),
+        (5860, (1519, 1520)),
+        (5862, (1594, 1595)),
+        (5864, (1619, 1620)),
+        (5866, (1644, 1645)),
+        (5868, (1669, 1670)),
+        (5897, (1744, 1745)),
+        (5924, (1816, 1817)),
+        (5926, (1839, 1840)),
+        (5928, (1862, 1863)),
+        (5930, (1885, 1886)),
+        (5932, (1908, 1909)),
+        (5934, (1931, 1932)),
+    ):
+        for schema_id in fixed_children:
+            item = by_key[("TM", schema_id)]
+            item.parent_id = fixed_parent
+            item.hierarchy_level = 4
+            item.hierarchy_source = BUSINESS_UPDATE_AUDIT
+    debt_asset_axis = by_key[("TM", TM_PAGE54_DEBT_ASSET_AXIS_ID)]
+    if TM_PAGE54_DEBT_ASSET_ALIAS not in debt_asset_axis.structural_aliases:
+        debt_asset_axis.structural_aliases.append(TM_PAGE54_DEBT_ASSET_ALIAS)
+    for schema_id in TM_PAGE60_COMBINED_LOAN_IDS:
+        item = by_key[("TM", schema_id)]
+        if TM_PAGE60_COMBINED_LOAN_SOURCE_ALIAS not in item.structural_aliases:
+            item.structural_aliases.append(TM_PAGE60_COMBINED_LOAN_SOURCE_ALIAS)
+    page61_root = by_key[("TM", TM_PAGE61_ROOT_ID)]
+    if TM_PAGE61_ROOT_SOURCE_ALIAS not in page61_root.structural_aliases:
+        page61_root.structural_aliases.append(TM_PAGE61_ROOT_SOURCE_ALIAS)
+    for schema_id, _name, alias in TM_PAGE61_CURRENCIES:
+        item = by_key[("TM", schema_id)]
+        if alias not in item.structural_aliases:
+            item.structural_aliases.append(alias)
+
     for item in schema:
         item.children = []
         item.siblings = []
@@ -2363,6 +3086,215 @@ def apply_business_formula_hierarchy(schema: Sequence[SchemaItem]) -> None:
         ("TM", 1294): (1295, 1296, 1297, 1298, 1299, 1300, 1301, 1303, 1304),
         ("TM", 1301): TM_FX_COMMITMENT_COMPONENTS,
         ("TM", 1302): TM_SWAP_COMMITMENT_COMPONENTS,
+        ("TM", 759): (5752, 765),
+        ("TM", 5752): tuple(range(760, 765)),
+        ("TM", 1055): (1056, 1075, 5753),
+        ("TM", 5753): (5754, 5755),
+        ("TM", 1295): (5756,),
+        ("TM", 5756): (5757, 5758),
+        ("TM", 5750): (5751,),
+        ("TM", 5759): (5760, 5761),
+        ("TM", 1259): (
+            1260,
+            1269,
+            1280,
+            1289,
+            1294,
+            5750,
+            5759,
+            5762,
+            1305,
+            1352,
+            1483,
+            1759,
+            5935,
+        ),
+        ("TM", 5762): (5763, 5806),
+        ("TM", 5763): (5764, 5771, 5778, 5785, 5792, 5799),
+        **{
+            ("TM", axis_id): tuple(range(axis_id + 1, axis_id + 7))
+            for axis_id in (5764, 5771, 5778, 5785, 5792, 5799)
+        },
+        ("TM", 5806): (5807, 5814, 5821, 5828, 5835, 5842),
+        **{
+            ("TM", axis_id): tuple(range(axis_id + 1, axis_id + 7))
+            for axis_id in (5807, 5814, 5821, 5828, 5835, 5842)
+        },
+        ("TM", 1353): (
+            1354,
+            1355,
+            1356,
+            1357,
+            1358,
+            1359,
+            1360,
+            1361,
+            1362,
+            5849,
+            1365,
+            1366,
+            1376,
+            1377,
+            1378,
+        ),
+        ("TM", 5849): (1363, 1364),
+        ("TM", 1366): (5850, 1375),
+        ("TM", 5850): (1367, 1370, 1371, 1372, 1373, 1374),
+        ("TM", 1367): (1368, 1369),
+        ("TM", 1379): (
+            1380,
+            1381,
+            1382,
+            1383,
+            1384,
+            1385,
+            1386,
+            1387,
+            1388,
+            5851,
+            1391,
+            1392,
+            1402,
+            1403,
+            1404,
+        ),
+        ("TM", 5851): (1389, 1390),
+        ("TM", 1392): (5852, 1401),
+        ("TM", 5852): (1393, 1396, 1397, 1398, 1399, 1400),
+        ("TM", 1393): (1394, 1395),
+        ("TM", 1431): (
+            1432,
+            1433,
+            1434,
+            1435,
+            1436,
+            1437,
+            1438,
+            1439,
+            1440,
+            5853,
+            1443,
+            1444,
+            1454,
+            1455,
+            1456,
+        ),
+        ("TM", 5853): (1441, 1442),
+        ("TM", 1444): (5854, 1453),
+        ("TM", 5854): (1445, 1448, 1449, 1450, 1451, 1452),
+        ("TM", 1445): (1446, 1447),
+        ("TM", 1457): (
+            1458,
+            1459,
+            1460,
+            1461,
+            1462,
+            1463,
+            1464,
+            1465,
+            1466,
+            5855,
+            1469,
+            1470,
+            1480,
+            1481,
+            1482,
+        ),
+        ("TM", 5855): (1467, 1468),
+        ("TM", 1470): (5856, 1479),
+        ("TM", 5856): (1471, 1474, 1475, 1476, 1477, 1478),
+        ("TM", 1471): (1472, 1473),
+        ("TM", 1483): (1484, 1509, 1584, 1609, 1634, 1659, 1684, 1709, 5869, 1734),
+        ("TM", 1484): (*range(1485, 1491), 5857, 1491, 1492, 1493, 5858, *range(1496, 1509)),
+        ("TM", 5858): (1494, 1495),
+        ("TM", 1509): (
+            *range(1510, 1516),
+            5859,
+            1516,
+            1517,
+            1518,
+            5860,
+            *range(1521, 1534),
+            1534,
+            1559,
+        ),
+        ("TM", 5860): (1519, 1520),
+        ("TM", 1584): (*range(1585, 1591), 5861, 1591, 1592, 1593, 5862, *range(1596, 1609)),
+        ("TM", 5862): (1594, 1595),
+        ("TM", 1609): (*range(1610, 1616), 5863, 1616, 1617, 1618, 5864, *range(1621, 1634)),
+        ("TM", 5864): (1619, 1620),
+        ("TM", 1634): (*range(1635, 1641), 5865, 1641, 1642, 1643, 5866, *range(1646, 1659)),
+        ("TM", 5866): (1644, 1645),
+        ("TM", 1659): (*range(1660, 1666), 5867, 1666, 1667, 1668, 5868, *range(1671, 1684)),
+        ("TM", 5868): (1669, 1670),
+        ("TM", 5869): (*range(5870, 5881), *range(5883, 5896)),
+        ("TM", 5880): (5881, 5882),
+        ("TM", 1734): (*range(1735, 1741), 5896, 1741, 1742, 1743, 5897, *range(1746, 1759)),
+        ("TM", 5897): (1744, 1745),
+        ("TM", 1759): (5898, 1760, 1783, 1806, 1829, 1852, 1875, 1898, 1921),
+        ("TM", 5898): (*range(5899, 5910), *range(5912, 5923)),
+        ("TM", 5909): (5910, 5911),
+        ("TM", 1806): (
+            *range(1807, 1813),
+            5923,
+            1813,
+            1814,
+            1815,
+            5924,
+            *range(1818, 1829),
+        ),
+        ("TM", 5924): (1816, 1817),
+        ("TM", 1829): (
+            *range(1830, 1836),
+            5925,
+            1836,
+            1837,
+            1838,
+            5926,
+            *range(1841, 1852),
+        ),
+        ("TM", 5926): (1839, 1840),
+        ("TM", 1852): (
+            *range(1853, 1859),
+            5927,
+            1859,
+            1860,
+            1861,
+            5928,
+            *range(1864, 1875),
+        ),
+        ("TM", 5928): (1862, 1863),
+        ("TM", 1875): (
+            *range(1876, 1882),
+            5929,
+            1882,
+            1883,
+            1884,
+            5930,
+            *range(1887, 1898),
+        ),
+        ("TM", 5930): (1885, 1886),
+        ("TM", 1898): (
+            *range(1899, 1905),
+            5931,
+            1905,
+            1906,
+            1907,
+            5932,
+            *range(1910, 1921),
+        ),
+        ("TM", 5932): (1908, 1909),
+        ("TM", 1921): (
+            *range(1922, 1928),
+            5933,
+            1928,
+            1929,
+            1930,
+            5934,
+            *range(1933, 1944),
+        ),
+        ("TM", 5934): (1931, 1932),
+        ("TM", 5935): tuple(range(5936, 5946)),
     }
     for key, expected_children in exact_edges.items():
         if tuple(by_key[key].children) != expected_children:
@@ -2370,3 +3302,12 @@ def apply_business_formula_hierarchy(schema: Sequence[SchemaItem]) -> None:
                 f"business-formula hierarchy children drift at {key}: "
                 f"expected={expected_children}, actual={tuple(by_key[key].children)}"
             )
+    for schema_id in (*TM_PAGE60_COMBINED_LOAN_IDS, *range(5936, 5946), 1944):
+        item = by_key[("TM", schema_id)]
+        if item.children:
+            raise BusinessSchemaUpdateError(
+                f"business-formula hierarchy leaf drift at TM/{schema_id}: {item.children}"
+            )
+    margin_final = by_key[("TM", 1944)]
+    if margin_final.parent_id is not None or margin_final.display_order != 1612:
+        raise BusinessSchemaUpdateError("TM 1944 parentless/workbook-last invariant drifted")

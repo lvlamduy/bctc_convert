@@ -23,7 +23,7 @@ def test_vst_hierarchy_is_complete_where_claimed_and_partial_for_direct_lctt(pro
     kqkd = next(workbook for workbook in registry.workbooks if workbook.statement_type == "KQKD")
     assert kqkd.schema_only_append_ids == (5713,)
     tm = next(workbook for workbook in registry.workbooks if workbook.statement_type == "TM")
-    assert tm.schema_only_append_ids == (1944, *range(5718, 5750))
+    assert tm.schema_only_append_ids == (1944, *range(5718, 5946))
     assert registry.status == "VALIDATED_SUPPORTING_REFERENCE_WITH_SCHEMA_ONLY_APPENDS"
     assert len(hierarchy) == 1535
 
@@ -105,5 +105,98 @@ def test_hierarchy_edges_and_structural_aliases_are_attached_without_reordering(
     assert by_id[1294].children == [1295, 1296, 1297, 1298, 1299, 1300, 1301, 1303, 1304]
     assert by_id[1301].children == [5741, 5742, 1302]
     assert by_id[1302].children == [5743, 5744]
+    assert by_id[759].children == [5752, 765]
+    assert by_id[5752].children == list(range(760, 765))
+    assert by_id[1055].children == [1056, 1075, 5753]
+    assert by_id[5753].children == [5754, 5755]
+    assert by_id[1295].children == [5756]
+    assert by_id[5756].children == [5757, 5758]
+    assert by_id[5750].children == [5751]
+    assert by_id[5759].children == [5760, 5761]
+    assert by_id[1259].children == [
+        1260,
+        1269,
+        1280,
+        1289,
+        1294,
+        5750,
+        5759,
+        5762,
+        1305,
+        1352,
+        1483,
+        1759,
+        5935,
+    ]
+    assert by_id[5762].children == [5763, 5806]
+    assert by_id[5763].children == [5764, 5771, 5778, 5785, 5792, 5799]
+    for axis_id in (5764, 5771, 5778, 5785, 5792, 5799):
+        assert by_id[axis_id].children == list(range(axis_id + 1, axis_id + 7))
+    assert by_id[5806].children == [5807, 5814, 5821, 5828, 5835, 5842]
+    for axis_id in (5807, 5814, 5821, 5828, 5835, 5842):
+        assert by_id[axis_id].children == list(range(axis_id + 1, axis_id + 7))
+    assert by_id[5828].structural_aliases == ["Khai thác nợ Quản lý tài sản"]
+    assert by_id[5849].children == [1363, 1364]
+    assert by_id[1363].parent_id == 5849
+    assert by_id[1366].children == [5850, 1375]
+    assert by_id[5850].children == [1367, 1370, 1371, 1372, 1373, 1374]
+    assert by_id[1367].children == [1368, 1369]
+    assert by_id[5857].children == []
+    assert by_id[1491].parent_id == 1484
+    assert by_id[5858].children == [1494, 1495]
+    assert by_id[1483].children == [
+        1484,
+        1509,
+        1584,
+        1609,
+        1634,
+        1659,
+        1684,
+        1709,
+        5869,
+        1734,
+    ]
+    assert by_id[5869].children == [*range(5870, 5881), *range(5883, 5896)]
+    assert by_id[5876].children == []
+    assert by_id[5877].parent_id == 5869
+    assert by_id[5880].children == [5881, 5882]
+    assert by_id[5896].children == []
+    assert by_id[1741].parent_id == 1734
+    assert by_id[5897].children == [1744, 1745]
+    assert by_id[1759].children == [5898, 1760, 1783, 1806, 1829, 1852, 1875, 1898, 1921]
+    assert by_id[5898].children == [
+        *range(5899, 5910),
+        *range(5912, 5923),
+    ]
+    assert by_id[5905].children == []
+    assert by_id[5905].structural_aliases == ["Cho vay khách hàng và mua nợ (*)"]
+    assert by_id[5909].children == [5910, 5911]
+    for loan_id in (5923, 5925, 5927, 5929, 5931, 5933):
+        assert by_id[loan_id].children == []
+        assert by_id[loan_id].structural_aliases == ["Cho vay khách hàng và mua nợ (*)"]
+    for combined_id, component_ids in {
+        5924: (1816, 1817),
+        5926: (1839, 1840),
+        5928: (1862, 1863),
+        5930: (1885, 1886),
+        5932: (1908, 1909),
+        5934: (1931, 1932),
+    }.items():
+        assert by_id[combined_id].children == list(component_ids)
+        assert all(by_id[item_id].parent_id == combined_id for item_id in component_ids)
+    assert by_id[5935].children == list(range(5936, 5946))
+    assert by_id[5935].structural_aliases == ["6. Tỷ giá một số ngoại tệ tại thời điểm lập báo cáo"]
+    assert [by_id[item_id].structural_aliases for item_id in range(5936, 5946)] == [
+        ["Đô la Mỹ"],
+        ["Euro"],
+        ["Bảng Anh"],
+        ["Yên Nhật"],
+        ["Franc Thụy Sĩ"],
+        ["Đô la Úc"],
+        ["Đô la Canada"],
+        ["Đô la Singapore"],
+        ["Baht Thái"],
+        ["Krona Thụy Điển"],
+    ]
     assert by_id[1944].parent_id is None
     assert by_id[1944].hierarchy_source is None

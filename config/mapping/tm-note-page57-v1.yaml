@@ -1,0 +1,138 @@
+version: 1
+policy: TM_NOTE_PAGE57_INTEREST_RATE_RISK_MAPPING_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+page_number: 57
+page_tag: page-0057
+report_scope: CONSOLIDATED
+mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_PAGE57_IDS_1483_1758_AND_5857_5897_ONLY
+
+source_table_policy: config/tables/tm-note-page57-v1.yaml
+source_table_policy_sha256: b4a9afa9fa5edecedd5cc989515dbcee3a3aa001396253d42f5caa0426c8b0f9
+source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+source_render_sha256: 48a2f2de934f982cae206f23b5c85176e794e9b06f9a03cb47531d8af9e7e26b
+source_ocr_sha256: 54ba3de69d2ce284c4b12222aad7ddca0c096bee3698079675af528826496dfa
+upstream_ocr_sha256: 133b3f223c0556d3039cde4b51a11c70b7fc90a7265a917758467db621f7ffa8
+schema_workbook_sha256: ea5b690e88c2986613e650663eaea3e05860053c5f56e6445d19e6f0a719a8e1
+
+schema_total: 1613
+scope_schema_ids:
+  - {start: 1483, end: 1758}
+  - {start: 5857, end: 5897}
+scope_schema_total: 317
+schema_scope_sha256: 8cfe1215f3c24ad67d3770964bd61a1193afec0a3153119f227deb7978619268
+root_report_norm_id: 1483
+
+axis_parent_ids:
+  OVERDUE: 1509
+  NOT_REPRICED: 1484
+  WITHIN_1M: 1584
+  FROM_1_TO_3M: 1609
+  FROM_3_TO_6M: 1634
+  FROM_6_TO_12M: 1659
+  OVER_1Y: 5869
+  TOTAL: 1734
+
+metric_target_ids:
+  CASH_AND_PRECIOUS_METALS: [1511, 1486, 1586, 1611, 1636, 1661, 5871, 1736]
+  SBV_DEPOSITS: [1512, 1487, 1587, 1612, 1637, 1662, 5872, 1737]
+  INTERBANK_ASSETS: [1513, 1488, 1588, 1613, 1638, 1663, 5873, 1738]
+  TRADING_SECURITIES: [1514, 1489, 1589, 1614, 1639, 1664, 5874, 1739]
+  DERIVATIVE_ASSETS: [1515, 1490, 1590, 1615, 1640, 1665, 5875, 1740]
+  CUSTOMER_LOANS_AND_PURCHASED_DEBT: [5859, 5857, 5861, 5863, 5865, 5867, 5876, 5896]
+  INVESTMENT_SECURITIES: [1517, 1492, 1592, 1617, 1642, 1667, 5878, 1742]
+  LONG_TERM_INVESTMENTS: [1518, 1493, 1593, 1618, 1643, 1668, 5879, 1743]
+  FIXED_ASSETS_AND_INVESTMENT_PROPERTY: [5860, 5858, 5862, 5864, 5866, 5868, 5880, 5897]
+  OTHER_ASSETS: [1521, 1496, 1596, 1621, 1646, 1671, 5883, 1746]
+  TOTAL_ASSETS: [1510, 1485, 1585, 1610, 1635, 1660, 5870, 1735]
+  GOVERNMENT_SBV_LIABILITIES: [1524, 1499, 1599, 1624, 1649, 1674, 5886, 1749]
+  INTERBANK_LIABILITIES: [1523, 1498, 1598, 1623, 1648, 1673, 5885, 1748]
+  CUSTOMER_DEPOSITS: [1526, 1501, 1601, 1626, 1651, 1676, 5888, 1751]
+  DERIVATIVE_LIABILITIES: [1527, 1502, 1602, 1627, 1652, 1677, 5889, 1752]
+  ENTRUSTED_FUNDS: [1528, 1503, 1603, 1628, 1653, 1678, 5890, 1753]
+  ISSUED_VALUABLE_PAPERS: [1529, 1504, 1604, 1629, 1654, 1679, 5891, 1754]
+  OTHER_LIABILITIES: [1530, 1505, 1605, 1630, 1655, 1680, 5892, 1755]
+  TOTAL_LIABILITIES: [1522, 1497, 1597, 1622, 1647, 1672, 5884, 1747]
+  ON_BALANCE_INTEREST_SENSITIVITY_GAP: [1531, 1506, 1606, 1631, 1656, 1681, 5893, 1756]
+
+not_observed_schema_ids:
+  ranges:
+    - {start: 1534, end: 1583}
+    - {start: 1684, end: 1733}
+  ids:
+    - 1491
+    - 1494
+    - 1495
+    - 1500
+    - 1507
+    - 1508
+    - 1516
+    - 1519
+    - 1520
+    - 1525
+    - 1532
+    - 1533
+    - 1591
+    - 1594
+    - 1595
+    - 1600
+    - 1607
+    - 1608
+    - 1616
+    - 1619
+    - 1620
+    - 1625
+    - 1632
+    - 1633
+    - 1641
+    - 1644
+    - 1645
+    - 1650
+    - 1657
+    - 1658
+    - 1666
+    - 1669
+    - 1670
+    - 1675
+    - 1682
+    - 1683
+    - 1741
+    - 1744
+    - 1745
+    - 1750
+    - 1757
+    - 1758
+    - 5877
+    - 5881
+    - 5882
+    - 5887
+    - 5894
+    - 5895
+
+hierarchy_contract:
+  combined_customer_loans_and_purchased_debt:
+    role: SIBLING_LEAF_AGGREGATE
+    children: []
+    formula: null
+    reparent_existing_customer_loans: false
+  combined_fixed_assets_and_investment_property:
+    role: PARENT_OF_TWO_EXISTING_COMPONENTS
+    reparent_existing_components: true
+
+validation_only_contract:
+  - {kind: ROW_TOTAL_VALIDATION_ONLY, checks: 20, pass: 2, not_testable_dash: 18}
+  - {kind: ASSET_COMPOSITION_VALIDATION_ONLY, checks: 8, pass: 0, not_testable_dash: 8}
+  - {kind: LIABILITY_COMPOSITION_VALIDATION_ONLY, checks: 8, pass: 1, not_testable_dash: 7}
+  - {kind: ON_BALANCE_GAP_VALIDATION_ONLY, checks: 8, pass: 7, not_testable_dash: 1}
+
+forbidden_mapping_inputs:
+  - numeric_cell_text_as_item_selector
+  - numeric_value_magnitude_as_item_selector
+  - historical_or_mongodb_values
+  - human_review_answers
+  - dash_as_zero
+  - accounting_equation_result_as_item_selector
+  - accounting_equation_result_as_extracted_value
+  - schema_id_outside_page57_scope
+  - page58_value_as_page57_item_selector
+  - page58_value_as_page57_imputation

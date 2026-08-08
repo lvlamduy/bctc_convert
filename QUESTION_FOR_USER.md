@@ -5,7 +5,7 @@ Updated: 2026-08-08
 - **CDKT unresolved:** 1 scope-policy question (`Q005`); item mapping and the confirmed Q010 value are reconciled.
 - **KQKD unresolved:** 0 current item-level questions.
 - **LCTT unresolved:** 0 current item-level questions.
-- **TM unresolved:** 38 meaningful items = 21 `NEEDS_USER_REVIEW` + 17 `CODEX_STILL_INVESTIGATING` across audited/implemented pages 30–52; pages 50–52 add no user question, and pages 53–61 are still being itemized.
+- **TM unresolved:** 38 meaningful items = 21 `NEEDS_USER_REVIEW` + 17 `CODEX_STILL_INVESTIGATING` across the fully itemized quantitative pages 30–61; pages 55–56 and 59 are narrative-only, and pages 57–61 add no new user question.
 
 CDKT schema reconciliation is exact after the approved schema update: `78 = 62 MAPPED + 16 NOT_OBSERVED_IN_THIS_PDF`. The not-observed IDs are `4344, 4326, 4345, 4333, 4309, 4303, 4359, 4360, 4373, 4340, 4374, 4341, 4329, 4369, 4370, 4306`. All 64 visible rows now have an explicit mapping or structural-repeat disposition.
 
@@ -684,7 +684,7 @@ CDKT schema reconciliation is exact after the approved schema update: `78 = 62 M
 
 ## CODEX_STILL_INVESTIGATING
 
-- **TM:** pages 30–52 have been itemized or implemented. Codex is continuing pages 53–61 and will promote only evidence-backed rows from audit candidates into mapping/Excel.
+- **TM:** every quantitative page through page 61 has been itemized and reconciled. Pages 55–56 and 59 are narrative-only; only evidence-backed rows are promoted into mapping/Excel.
 
 ### Q030
 
@@ -824,7 +824,7 @@ CDKT schema reconciliation is exact after the approved schema update: `78 = 62 M
 - **Visible row label:** EPS and share-count disclosure family
 - **Visible values/periods:** profit 7.515.513 / 6.567.740 triệu đồng; weighted shares 8.054.999.909; EPS 933/815 VND/share; sold/outstanding/common shares 8.054.999.909; repurchased/preferred dash; registered shares blank.
 - **Current status:** `AUTOMATIC_SCHEMA_ADDITION_QUEUED — no user answer required`; add the EPS/share-count/share-class disclosure family.
-- **Candidate ReportNormId(s):** none in the current 1.417-item TM schema; profit only cross-validates 1131.
+- **Candidate ReportNormId(s):** none in the current 1.613-item TM schema; profit only cross-validates 1131.
 - **Why unresolved:** the full disclosure family is absent and rows use different units; blank, dash and zero are distinct.
 - **What Codex currently thinks:** the disclosure family should be added with unit-aware values and distinct `BLANK`/`DASH` statuses; the profit row remains a cross-check of 1131.
 - **No user answer required:** Codex will add the EPS/share family and preserve `BLANK`, `DASH`, share-count and VND/share semantics distinctly.

@@ -1,0 +1,143 @@
+version: 1
+policy: TM_NOTE_PAGE60_LIQUIDITY_RISK_MAPPING_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+page_number: 60
+page_tag: page-0060
+report_scope: CONSOLIDATED
+mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_PAGE60_IDS_1759_1943_AND_5898_5934_ONLY
+
+source_table_policy: config/tables/tm-note-page60-v1.yaml
+source_table_policy_sha256: 77c1f15352f989d70d6bf61de5ade33cb348f8bb8a497dd30e400715a02bdb81
+source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+source_render_sha256: 3d59e84360bcf27266c702102d4acc2561cc8e9f50ba22fb6371d6423ade8026
+source_ocr_sha256: 59c7c24afc9b5f42ee147aa51d2442e8fb3d771e6f8b2527acb39ed66a66057a
+upstream_ocr_sha256: bbb9f5d727251c37cca5d9b331f09c214f288ed1cf7b049f6287e78694feb8ec
+schema_workbook_sha256: ea5b690e88c2986613e650663eaea3e05860053c5f56e6445d19e6f0a719a8e1
+schema_projection_sha256: 0f3b22d3d1bb65a243a14a69116df83e6a9e5457f2f616e561f0b2d99821736c
+
+schema_total: 1613
+scope_schema_ids:
+  - {start: 1759, end: 1943}
+  - {start: 5898, end: 5934}
+scope_schema_total: 222
+schema_scope_sha256: b8dd7ffc2baf4a7288ef8f195cb1051832a637ca295f90cc0ee4b294ac1b533f
+root_report_norm_id: 1759
+
+axis_parent_ids:
+  OVERDUE: 5898
+  WITHIN_1M: 1806
+  FROM_1_TO_3M: 1829
+  FROM_3_TO_12M: 1852
+  FROM_1_TO_5Y: 1875
+  OVER_5Y: 1898
+  TOTAL: 1921
+
+metric_target_ids:
+  CASH_AND_PRECIOUS_METALS: [5900, 1808, 1831, 1854, 1877, 1900, 1923]
+  SBV_DEPOSITS: [5901, 1809, 1832, 1855, 1878, 1901, 1924]
+  INTERBANK_ASSETS: [5902, 1810, 1833, 1856, 1879, 1902, 1925]
+  TRADING_SECURITIES: [5903, 1811, 1834, 1857, 1880, 1903, 1926]
+  DERIVATIVE_ASSETS: [5904, 1812, 1835, 1858, 1881, 1904, 1927]
+  CUSTOMER_LOANS_AND_PURCHASED_DEBT: [5905, 5923, 5925, 5927, 5929, 5931, 5933]
+  INVESTMENT_SECURITIES: [5907, 1814, 1837, 1860, 1883, 1906, 1929]
+  LONG_TERM_INVESTMENTS: [5908, 1815, 1838, 1861, 1884, 1907, 1930]
+  FIXED_ASSETS_AND_INVESTMENT_PROPERTY: [5909, 5924, 5926, 5928, 5930, 5932, 5934]
+  OTHER_ASSETS: [5912, 1818, 1841, 1864, 1887, 1910, 1933]
+  TOTAL_ASSETS: [5899, 1807, 1830, 1853, 1876, 1899, 1922]
+  GOVERNMENT_SBV_LIABILITIES: [5915, 1821, 1844, 1867, 1890, 1913, 1936]
+  INTERBANK_LIABILITIES: [5914, 1820, 1843, 1866, 1889, 1912, 1935]
+  CUSTOMER_DEPOSITS: [5917, 1823, 1846, 1869, 1892, 1915, 1938]
+  DERIVATIVE_LIABILITIES: [5918, 1824, 1847, 1870, 1893, 1916, 1939]
+  ENTRUSTED_FUNDS: [5919, 1825, 1848, 1871, 1894, 1917, 1940]
+  ISSUED_VALUABLE_PAPERS: [5920, 1826, 1849, 1872, 1895, 1918, 1941]
+  OTHER_LIABILITIES: [5921, 1827, 1850, 1873, 1896, 1919, 1942]
+  TOTAL_LIABILITIES: [5913, 1819, 1842, 1865, 1888, 1911, 1934]
+  NET_LIQUIDITY_GAP: [5922, 1828, 1851, 1874, 1897, 1920, 1943]
+
+not_observed_schema_ids:
+  ranges:
+    - {start: 1760, end: 1805}
+  ids:
+    - 1813
+    - 1816
+    - 1817
+    - 1822
+    - 1836
+    - 1839
+    - 1840
+    - 1845
+    - 1859
+    - 1862
+    - 1863
+    - 1868
+    - 1882
+    - 1885
+    - 1886
+    - 1891
+    - 1905
+    - 1908
+    - 1909
+    - 1914
+    - 1928
+    - 1931
+    - 1932
+    - 1937
+    - 5906
+    - 5910
+    - 5911
+    - 5916
+
+hierarchy_contract:
+  root_children: [5898, 1760, 1783, 1806, 1829, 1852, 1875, 1898, 1921]
+  combined_customer_loans_and_purchased_debt:
+    role: SIBLING_LEAF_AGGREGATE
+    children: []
+    formula: null
+    reparent_existing_customer_loans: false
+  combined_fixed_assets_and_investment_property:
+    role: PARENT_OF_TWO_EXISTING_COMPONENTS
+    formula: null
+    reparent_existing_components: true
+
+validation_only_contract:
+  - {kind: ROW_TOTAL_VALIDATION_ONLY, checks: 20, pass: 5, not_testable_dash: 15}
+  - {kind: ASSETS_MINUS_LIABILITIES_VALIDATION_ONLY, checks: 7, pass: 6, not_testable_dash: 1}
+  - {kind: EXTERNAL_PAGE57_TOTAL_VALIDATION_ONLY, checks: 19, pass: 19, not_testable_dash: 0}
+  - {kind: DUPLICATE_STATUS_EQUAL, checks: 1, pass: 1, not_testable_dash: 0}
+
+external_page57_totals_validation_only:
+  - {metric_key: CASH_AND_PRECIOUS_METALS, report_norm_id: 1736, observation: VALUE, value: 5741287, owner_scope: page-0057}
+  - {metric_key: SBV_DEPOSITS, report_norm_id: 1737, observation: VALUE, value: 15156039, owner_scope: page-0057}
+  - {metric_key: INTERBANK_ASSETS, report_norm_id: 1738, observation: VALUE, value: 165308747, owner_scope: page-0057}
+  - {metric_key: TRADING_SECURITIES, report_norm_id: 1739, observation: VALUE, value: 5093432, owner_scope: page-0057}
+  - {metric_key: DERIVATIVE_ASSETS, report_norm_id: 1740, observation: DASH, value: null, owner_scope: page-0057}
+  - {metric_key: CUSTOMER_LOANS_AND_PURCHASED_DEBT, report_norm_id: 5896, observation: VALUE, value: 1122849750, owner_scope: page-0057}
+  - {metric_key: INVESTMENT_SECURITIES, report_norm_id: 1742, observation: VALUE, value: 263391298, owner_scope: page-0057}
+  - {metric_key: LONG_TERM_INVESTMENTS, report_norm_id: 1743, observation: VALUE, value: 559134, owner_scope: page-0057}
+  - {metric_key: FIXED_ASSETS_AND_INVESTMENT_PROPERTY, report_norm_id: 5897, observation: VALUE, value: 5716976, owner_scope: page-0057}
+  - {metric_key: OTHER_ASSETS, report_norm_id: 1746, observation: VALUE, value: 42907043, owner_scope: page-0057}
+  - {metric_key: TOTAL_ASSETS, report_norm_id: 1735, observation: VALUE, value: 1626723706, owner_scope: page-0057}
+  - {metric_key: GOVERNMENT_SBV_LIABILITIES, report_norm_id: 1749, observation: VALUE, value: 28346499, owner_scope: page-0057}
+  - {metric_key: INTERBANK_LIABILITIES, report_norm_id: 1748, observation: VALUE, value: 256891475, owner_scope: page-0057}
+  - {metric_key: CUSTOMER_DEPOSITS, report_norm_id: 1751, observation: VALUE, value: 905918332, owner_scope: page-0057}
+  - {metric_key: DERIVATIVE_LIABILITIES, report_norm_id: 1752, observation: VALUE, value: 661326, owner_scope: page-0057}
+  - {metric_key: ENTRUSTED_FUNDS, report_norm_id: 1753, observation: VALUE, value: 3247015, owner_scope: page-0057}
+  - {metric_key: ISSUED_VALUABLE_PAPERS, report_norm_id: 1754, observation: VALUE, value: 208816453, owner_scope: page-0057}
+  - {metric_key: OTHER_LIABILITIES, report_norm_id: 1755, observation: VALUE, value: 57594019, owner_scope: page-0057}
+  - {metric_key: TOTAL_LIABILITIES, report_norm_id: 1747, observation: VALUE, value: 1461475119, owner_scope: page-0057}
+  - {metric_key: NET_LIQUIDITY_GAP, report_norm_id: 1756, observation: VALUE, value: 165248587, owner_scope: page-0057}
+
+forbidden_mapping_inputs:
+  - numeric_cell_text_as_item_selector
+  - numeric_value_magnitude_as_item_selector
+  - historical_or_mongodb_values
+  - human_review_answers
+  - dash_as_zero
+  - accounting_equation_result_as_item_selector
+  - accounting_equation_result_as_extracted_value
+  - schema_id_outside_page60_scope
+  - page57_value_as_page60_item_selector
+  - page57_value_as_page60_imputation
+  - page61_value_as_page60_item_selector
+  - page61_value_as_page60_imputation

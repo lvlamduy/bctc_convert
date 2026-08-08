@@ -60,13 +60,13 @@ def test_page35_reconciles_complete_branch_and_maps_thirteen_distinct_items(
     assert validate_tm_page35_mapping_result(result) is result
     assert result.mapping_authority_scope.endswith("PDF_PAGE_35_FIXED_ROWS_ONLY")
     assert result.mapping_authority_granted
-    assert result.schema_item_count == 1_417
+    assert result.schema_item_count == 1_613
     assert result.status_reconciled_schema_count == 32
     assert result.mapped_schema_count == 13
     assert result.not_observed_schema_count == 19
     assert result.not_applicable_schema_count == 0
     assert result.ambiguous_schema_count == 0
-    assert result.unassessed_schema_count == 1_385
+    assert result.unassessed_schema_count == 1_581
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == 14
     assert result.mapped_source_row_count == 13
@@ -92,7 +92,7 @@ def test_exact_mapped_not_observed_and_unassessed_schema_sets(
 
     assert by_status[TMPage35SchemaStatus.MAPPED_AUTOMATIC_SCOPED.value] == _MAPPED_IDS
     assert by_status[TMPage35SchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value] == (_NOT_OBSERVED_IDS)
-    assert len(by_status[TMPage35SchemaStatus.UNASSESSED.value]) == 1_385
+    assert len(by_status[TMPage35SchemaStatus.UNASSESSED.value]) == 1_581
 
 
 def test_new_purchased_debt_and_government_guaranteed_rows_map_one_to_one(

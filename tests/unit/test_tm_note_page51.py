@@ -100,6 +100,9 @@ def test_page51_preserves_all_nine_visible_rows_and_eighteen_values(
         "STATEMENT_SECTION_TITLE",
         "NOTE_TITLE",
     ]
+    assert rows[0].row_id == "page-0051:off_balance_commitments:row-0001"
+    assert rows[0].label_line_indices == (1,)
+    assert rows[0].row.source_row_ids == ("page-0051:line-0000", "page-0051:line-0001")
     assert [[cell.value for cell in row.row.cells] for row in rows[2:]] == [
         [1_681_823, 1_684_717],
         [723_980_330, 618_888_427],

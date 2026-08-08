@@ -1,0 +1,118 @@
+version: 1
+policy: TM_NOTE_PAGE58_CURRENCY_RISK_MAPPING_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+page_number: 58
+page_tag: page-0058
+report_scope: CONSOLIDATED
+mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_PAGE58_IDS_1352_1482_AND_5849_5856_ONLY
+
+source_table_policy: config/tables/tm-note-page58-v1.yaml
+source_table_policy_sha256: a29f656a603f15eb8e9b1670f8de6f9e6b597a3452495a312d814b4e44cb9bdd
+source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+source_render_sha256: bbcf019fd8b7c0a3ca461cf0ca7e1b77a617a062441d35d090e42ea5aa0348e2
+source_ocr_sha256: 76faf621905629fb1a4193844481af5cc36818f4729f7c5c2f89dd79098bbfb5
+upstream_ocr_sha256: 7169e93279d86778e7ef9ad33badd04ed60991a8417e0d5a05972bf7115fc204
+schema_workbook_sha256: ea5b690e88c2986613e650663eaea3e05860053c5f56e6445d19e6f0a719a8e1
+
+schema_total: 1613
+scope_schema_ids:
+  - {start: 1352, end: 1482}
+  - {start: 5849, end: 5856}
+scope_schema_total: 139
+schema_scope_sha256: 89eb6633308cf3b6ac5580d8de476a8435fec8cc279fe7d4831525cd209f7df5
+root_report_norm_id: 1352
+
+axis_parent_ids:
+  USD: 1379
+  EUR: 1353
+  OTHER_FOREIGN_CURRENCIES: 1431
+  TOTAL: 1457
+
+metric_target_ids:
+  CASH_AND_PRECIOUS_METALS: [1381, 1355, 1433, 1459]
+  SBV_DEPOSITS: [1382, 1356, 1434, 1460]
+  INTERBANK_ASSETS: [1383, 1357, 1435, 1461]
+  DERIVATIVE_ASSETS: [1385, 1359, 1437, 1463]
+  CUSTOMER_LOANS: [1386, 1360, 1438, 1464]
+  INVESTMENT_SECURITIES: [1387, 1361, 1439, 1465]
+  LONG_TERM_INVESTMENTS: [1388, 1362, 1440, 1466]
+  FIXED_ASSETS_AND_INVESTMENT_PROPERTY: [5851, 5849, 5853, 5855]
+  OTHER_ASSETS: [1391, 1365, 1443, 1469]
+  TOTAL_ASSETS: [1380, 1354, 1432, 1458]
+  INTERBANK_LIABILITIES: [1395, 1369, 1447, 1473]
+  CUSTOMER_DEPOSITS: [1396, 1370, 1448, 1474]
+  DERIVATIVE_LIABILITIES: [1397, 1371, 1449, 1475]
+  OTHER_LIABILITIES: [1400, 1374, 1452, 1478]
+  TOTAL_LIABILITIES: [5852, 5850, 5854, 5856]
+  ON_BALANCE_CURRENCY_POSITION: [1402, 1376, 1454, 1480]
+  OFF_BALANCE_CURRENCY_POSITION: [1403, 1377, 1455, 1481]
+  COMBINED_CURRENCY_POSITION: [1404, 1378, 1456, 1482]
+
+not_observed_schema_ids:
+  ranges:
+    - {start: 1405, end: 1430}
+  ids:
+    - 1358
+    - 1363
+    - 1364
+    - 1366
+    - 1367
+    - 1368
+    - 1372
+    - 1373
+    - 1375
+    - 1384
+    - 1389
+    - 1390
+    - 1392
+    - 1393
+    - 1394
+    - 1398
+    - 1399
+    - 1401
+    - 1436
+    - 1441
+    - 1442
+    - 1444
+    - 1445
+    - 1446
+    - 1450
+    - 1451
+    - 1453
+    - 1462
+    - 1467
+    - 1468
+    - 1470
+    - 1471
+    - 1472
+    - 1476
+    - 1477
+    - 1479
+
+hierarchy_contract:
+  combined_fixed_assets_and_investment_property:
+    role: PARENT_OF_TWO_EXISTING_COMPONENTS
+    reparent_existing_components: true
+  total_liabilities:
+    role: CHILD_OF_LIABILITIES_AND_EQUITY_HEADER
+    contains_existing_liability_subtree: true
+
+validation_only_contract:
+  - {kind: ROW_TOTAL_VALIDATION_ONLY, checks: 18, pass: 14, not_testable_dash: 4}
+  - {kind: ASSET_COMPOSITION_VALIDATION_ONLY, checks: 4, pass: 0, not_testable_dash: 4}
+  - {kind: LIABILITY_COMPOSITION_VALIDATION_ONLY, checks: 4, pass: 4, not_testable_dash: 0}
+  - {kind: ON_BALANCE_POSITION_VALIDATION_ONLY, checks: 4, pass: 4, not_testable_dash: 0}
+  - {kind: COMBINED_POSITION_VALIDATION_ONLY, checks: 4, pass: 4, not_testable_dash: 0}
+
+forbidden_mapping_inputs:
+  - numeric_cell_text_as_item_selector
+  - numeric_value_magnitude_as_item_selector
+  - historical_or_mongodb_values
+  - human_review_answers
+  - dash_as_zero
+  - accounting_equation_result_as_item_selector
+  - accounting_equation_result_as_extracted_value
+  - schema_id_outside_page58_scope
+  - page57_value_as_page58_item_selector
+  - page57_value_as_page58_imputation

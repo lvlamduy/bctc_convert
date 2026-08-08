@@ -1,4 +1,4 @@
-"""Hierarchy-safe existing-ID and schema-addition mapping for MBB TM page 52."""
+"""Hierarchy-safe promoted-schema mapping for MBB consolidated TM page 52."""
 
 from __future__ import annotations
 
@@ -22,24 +22,20 @@ from bctc_ai.schema.registry import SchemaItem
 from bctc_ai.tables.tm_note_page52 import ParsedTMPage52
 
 TM_PAGE52_POLICY_RELATIVE_PATH = Path("config/mapping/tm-note-page52-v1.yaml")
-TM_PAGE52_SCHEMA_TOTAL = 1_417
-TM_PAGE52_SCOPE_SCHEMA_COUNT = 7
-TM_PAGE52_SCHEMA_RECONCILED_COUNT = 7
-TM_PAGE52_MAPPED_SCHEMA_COUNT = 2
-TM_PAGE52_VALUE_BEARING_MAPPED_SCHEMA_COUNT = 1
+TM_PAGE52_SCHEMA_TOTAL = 1_613
+TM_PAGE52_SCOPE_SCHEMA_COUNT = 19
+TM_PAGE52_SCHEMA_RECONCILED_COUNT = 19
+TM_PAGE52_MAPPED_SCHEMA_COUNT = 14
+TM_PAGE52_VALUE_BEARING_MAPPED_SCHEMA_COUNT = 10
 TM_PAGE52_NOT_OBSERVED_SCHEMA_COUNT = 5
-TM_PAGE52_SCHEMA_UNASSESSED_COUNT = 1_410
+TM_PAGE52_SCHEMA_UNASSESSED_COUNT = 1_594
 TM_PAGE52_SOURCE_ROW_COUNT = 6
-TM_PAGE52_EXISTING_MAPPED_SOURCE_ROW_COUNT = 1
-TM_PAGE52_SCHEMA_ADDITION_SOURCE_ROW_COUNT = 5
+TM_PAGE52_MAPPED_SOURCE_ROW_COUNT = 5
 TM_PAGE52_SOURCE_ONLY_ROW_COUNT = 1
 TM_PAGE52_FINANCIAL_SLOT_COUNT = 12
 TM_PAGE52_VALUE_COUNT = 12
 TM_PAGE52_DASH_COUNT = 0
-TM_PAGE52_MAPPED_VALUE_COUNT = 1
-TM_PAGE52_PROPOSED_VALUE_COUNT = 11
-TM_PAGE52_SCHEMA_ADDITION_COUNT = 12
-TM_PAGE52_VALUE_BEARING_ADDITION_COUNT = 9
+TM_PAGE52_MAPPED_ASSIGNMENT_COUNT = 12
 TM_PAGE52_NARRATIVE_RECORD_COUNT = 3
 TM_PAGE52_NARRATIVE_QUANTITY_COUNT = 3
 TM_PAGE52_VALIDATION_CHECK_COUNT = 6
@@ -47,44 +43,22 @@ TM_PAGE52_VALIDATION_PASS_COUNT = 6
 TM_PAGE52_VALIDATION_NOT_TESTABLE_COUNT = 0
 
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
-_EXPECTED_PROPOSAL_KEYS = (
-    "RP_ROOT",
-    "RP_DEPOSIT_MB",
-    "LOANS_DOMESTIC",
-    "DEPOSITS_GEO",
-    "DEPOSITS_DOMESTIC",
-    "DEPOSITS_FOREIGN",
-    "LC_GEO",
-    "LC_DOMESTIC",
-    "LC_FOREIGN",
-    "SECURITIES_GEO",
-    "SECURITIES_DOMESTIC",
-    "SECURITIES_FOREIGN",
-)
-_VALUE_BEARING_PROPOSAL_KEYS = {
-    "RP_ROOT",
-    "RP_DEPOSIT_MB",
-    "LOANS_DOMESTIC",
-    "DEPOSITS_DOMESTIC",
-    "DEPOSITS_FOREIGN",
-    "LC_DOMESTIC",
-    "LC_FOREIGN",
-    "SECURITIES_DOMESTIC",
-    "SECURITIES_FOREIGN",
-}
-_FORMULA_PROPOSAL_KEYS = {
-    "RP_ROOT",
-    "DEPOSITS_GEO",
-    "LC_GEO",
-    "SECURITIES_GEO",
-}
-_EXISTING_MAPPED_IDS = {759, 765}
-_EXISTING_STRUCTURAL_IDS = {759}
-_EXISTING_VALUE_IDS = {765}
-_NOT_OBSERVED_IDS = {760, 761, 762, 763, 764}
-_SCOPED_IDS = _EXISTING_MAPPED_IDS | _NOT_OBSERVED_IDS
-_SCHEMA_SCOPE_SHA256 = "9f15019efb9e5ea800994faf5f4eda8bb40eeba0a48bca55edddd7502320b0f4"
+_EXISTING_BRANCH_IDS = set(range(759, 766))
+_PROMOTED_IDS = set(range(5750, 5762))
+_SCOPED_IDS = _EXISTING_BRANCH_IDS | _PROMOTED_IDS
+_NOT_OBSERVED_IDS = set(range(760, 765))
+_MAPPED_IDS = _SCOPED_IDS - _NOT_OBSERVED_IDS
+_VALUE_BEARING_MAPPED_IDS = {765, 5750, 5751, 5752, 5754, 5755, 5757, 5758, 5760, 5761}
+_STRUCTURAL_ONLY_MAPPED_IDS = _MAPPED_IDS - _VALUE_BEARING_MAPPED_IDS
 _EXTERNAL_OWNER_IDS = {716, 1055, 1295}
+_SCHEMA_SCOPE_SHA256 = "75b34cbba52c86f642a6fe03dd2af7bfd3ee18d918e2cd6e47ad1aa480343146"
+_EXPECTED_FORMULAS = {
+    5750: (5751,),
+    759: (5752, 765),
+    5753: (5754, 5755),
+    5756: (5757, 5758),
+    5759: (5760, 5761),
+}
 _REQUIRED_FORBIDDEN = {
     "numeric_cell_text",
     "numeric_value_magnitude",
@@ -104,9 +78,7 @@ class TMPage52MappingError(ValueError):
 
 
 class TMPage52RuleDisposition(StrEnum):
-    SCHEMA_ADDITION_PROPOSED_STRUCTURAL = "SCHEMA_ADDITION_PROPOSED_STRUCTURAL"
-    SCHEMA_ADDITION_PROPOSED_VALUE = "SCHEMA_ADDITION_PROPOSED_VALUE"
-    MIXED_EXISTING_AND_SCHEMA_ADDITION_VALUE = "MIXED_EXISTING_AND_SCHEMA_ADDITION_VALUE"
+    MAPPED_AUTOMATIC_SCOPED = "MAPPED_AUTOMATIC_SCOPED"
     SOURCE_ONLY_VALIDATION = "SOURCE_ONLY_VALIDATION"
 
 
@@ -117,9 +89,7 @@ class TMPage52SchemaStatus(StrEnum):
 
 
 class TMPage52SourceStatus(StrEnum):
-    SCHEMA_ADDITION_PROPOSED_STRUCTURAL = "SCHEMA_ADDITION_PROPOSED_STRUCTURAL"
-    SCHEMA_ADDITION_PROPOSED_VALUE = "SCHEMA_ADDITION_PROPOSED_VALUE"
-    MIXED_EXISTING_AND_SCHEMA_ADDITION_VALUE = "MIXED_EXISTING_AND_SCHEMA_ADDITION_VALUE"
+    MAPPED_AUTOMATIC_SCOPED = "MAPPED_AUTOMATIC_SCOPED"
     SOURCE_ONLY_VALIDATION = "SOURCE_ONLY_VALIDATION"
 
 
@@ -132,13 +102,12 @@ class TMPage52RowRule:
     expected_source_role: str
     expected_observations: tuple[str, ...]
     disposition: TMPage52RuleDisposition
-    report_norm_ids: tuple[int | None, ...]
-    proposal_keys: tuple[str | None, ...]
+    report_norm_ids: tuple[int, ...]
     question_required: bool
 
 
 @dataclass(frozen=True)
-class TMPage52ExistingStructuralRule:
+class TMPage52StructuralRule:
     structural_key: str
     source_kind: str
     axis_key: str
@@ -167,21 +136,7 @@ class TMPage52ExternalOwnerValidationRule:
     owner_report_norm_ids: tuple[int, ...]
     owner_scopes: tuple[str, ...]
     owner_values: tuple[Decimal, ...]
-    target_proposal_key: str | None
-
-
-@dataclass(frozen=True)
-class TMPage52SchemaAdditionRule:
-    proposal_key: str
-    canonical_name: str
-    parent_report_norm_id: int | None
-    parent_proposal_key: str | None
-    insert_before_report_norm_id: int | None
-    insert_after_report_norm_id: int | None
-    insert_after_proposal_key: str | None
-    reparent_existing_report_norm_ids: tuple[int, ...]
-    formula_kind: str
-    formula_terms: tuple[str, ...]
+    target_report_norm_id: int
 
 
 @dataclass(frozen=True)
@@ -202,9 +157,9 @@ class TMPage52MappingPolicy:
     schema_scope_sha256: str
     minimum_visible_label_similarity: float
     rows: tuple[TMPage52RowRule, ...]
-    existing_structural_mappings: tuple[TMPage52ExistingStructuralRule, ...]
+    structural_mappings: tuple[TMPage52StructuralRule, ...]
+    validation_formulas: tuple[tuple[int, tuple[int, ...]], ...]
     external_owner_validations: tuple[TMPage52ExternalOwnerValidationRule, ...]
-    schema_addition_proposals: tuple[TMPage52SchemaAdditionRule, ...]
     forbidden_mapping_inputs: tuple[str, ...]
     policy_sha256: str
 
@@ -228,8 +183,7 @@ class TMPage52SourceDisposition:
     row_kind: str
     source_role: str
     status: str
-    report_norm_ids: tuple[int | None, ...]
-    proposal_keys: tuple[str | None, ...]
+    report_norm_ids: tuple[int, ...]
     visible_label_similarity: float
     observations: tuple[str, ...]
     values: tuple[Decimal | None, ...]
@@ -243,29 +197,20 @@ class TMPage52SourceDisposition:
 
 
 @dataclass(frozen=True)
-class TMPage52SchemaAdditionProposal:
-    proposal_key: str
-    canonical_name: str
-    status: str
-    parent_report_norm_id: int | None
-    parent_proposal_key: str | None
-    insert_before_report_norm_id: int | None
-    insert_after_report_norm_id: int | None
-    insert_after_proposal_key: str | None
-    reparent_existing_report_norm_ids: tuple[int, ...]
-    formula_kind: str
-    formula_terms: tuple[str, ...]
-    formula_validation_only: bool
-    source_row_ids: tuple[str, ...]
-    observed_values: tuple[Decimal, ...]
-    period_starts: tuple[str, ...]
-    period_ends: tuple[str, ...]
-    period_roles: tuple[str, ...]
+class TMPage52MappedAssignment:
+    source_row_id: str
+    table_key: str
+    source_role: str
+    cell_index: int
+    report_norm_id: int
+    observation: str
+    value: Decimal
+    period_start: str
+    period_end: str
+    period_role: str
     unit: str
     unit_multiplier: int
-    report_norm_id: None
-    question_required: bool
-    reason: str
+    mapping_basis: str
 
 
 @dataclass(frozen=True)
@@ -276,8 +221,9 @@ class TMPage52ValidationCheck:
     expected_value: Decimal
     observed_value: Decimal | None
     residual: Decimal | None
-    target_report_norm_id: int | None
-    target_proposal_key: str | None
+    target_report_norm_id: int
+    external_owner_report_norm_ids: tuple[int, ...]
+    external_owner_scopes: tuple[str, ...]
     reason: str
 
 
@@ -301,19 +247,15 @@ class TMPage52MappingResult:
     unresolved_schema_count: int
     unassessed_schema_count: int
     fully_verified_schema_count: int
-    automatic_schema_addition_count: int
-    automatic_value_bearing_addition_count: int
     source_row_count: int
-    existing_mapped_source_row_count: int
-    schema_addition_source_row_count: int
+    mapped_source_row_count: int
     source_only_row_count: int
     source_question_row_count: int
     ambiguous_source_row_count: int
     financial_slot_count: int
     extracted_value_count: int
     dash_count: int
-    mapped_value_count: int
-    proposed_value_count: int
+    mapped_assignment_count: int
     narrative_record_count: int
     narrative_quantity_count: int
     validation_check_count: int
@@ -322,8 +264,9 @@ class TMPage52MappingResult:
     schema_dispositions: tuple[TMPage52SchemaDisposition, ...]
     source_dispositions: tuple[TMPage52SourceDisposition, ...]
     structural_dispositions: tuple[TMPage52StructuralDisposition, ...]
-    schema_addition_proposals: tuple[TMPage52SchemaAdditionProposal, ...]
+    mapped_assignments: tuple[TMPage52MappedAssignment, ...]
     validation_checks: tuple[TMPage52ValidationCheck, ...]
+    validation_formulas: tuple[tuple[int, tuple[int, ...]], ...]
     source_pdf_sha256: str
     source_render_sha256: str
     source_ocr_sha256: str
@@ -341,48 +284,35 @@ def _positive_int(payload: dict[str, Any], field: str) -> int:
     return value
 
 
-def _optional_int(value: Any, field: str) -> int | None:
-    if value is None:
-        return None
-    if isinstance(value, bool) or not isinstance(value, int):
-        raise TMPage52MappingError(f"TM page-52 {field} is invalid")
-    return value
-
-
-def _string_list(value: Any, field: str, *, allow_empty: bool = False) -> tuple[str, ...]:
+def _int_list(value: Any, field: str, *, allow_empty: bool = False) -> tuple[int, ...]:
     if (
         not isinstance(value, list)
         or (not value and not allow_empty)
+        or any(isinstance(item, bool) or not isinstance(item, int) for item in value)
+    ):
+        raise TMPage52MappingError(f"TM page-52 {field} is invalid")
+    return tuple(value)
+
+
+def _string_list(value: Any, field: str) -> tuple[str, ...]:
+    if (
+        not isinstance(value, list)
+        or not value
         or any(not isinstance(item, str) or not item for item in value)
     ):
         raise TMPage52MappingError(f"TM page-52 {field} is invalid")
     return tuple(value)
 
 
-def _optional_string_list(value: Any, field: str) -> tuple[str | None, ...]:
-    if not isinstance(value, list) or any(
-        item is not None and (not isinstance(item, str) or not item) for item in value
-    ):
-        raise TMPage52MappingError(f"TM page-52 {field} is invalid")
-    return tuple(value)
-
-
-def _optional_int_list(value: Any, field: str) -> tuple[int | None, ...]:
-    if not isinstance(value, list) or any(
-        item is not None and (isinstance(item, bool) or not isinstance(item, int)) for item in value
-    ):
-        raise TMPage52MappingError(f"TM page-52 {field} is invalid")
-    return tuple(value)
-
-
-def _int_list(value: Any, field: str) -> tuple[int, ...]:
-    if (
-        not isinstance(value, list)
-        or not value
-        or any(isinstance(item, bool) or not isinstance(item, int) for item in value)
-    ):
-        raise TMPage52MappingError(f"TM page-52 {field} is invalid")
-    return tuple(value)
+def _load_formulas(value: Any) -> tuple[tuple[int, tuple[int, ...]], ...]:
+    if not isinstance(value, dict):
+        raise TMPage52MappingError("TM page-52 validation formulas are invalid")
+    formulas = []
+    for target, terms in value.items():
+        if isinstance(target, bool) or not isinstance(target, int):
+            raise TMPage52MappingError("TM page-52 formula target is invalid")
+        formulas.append((target, _int_list(terms, "formula terms")))
+    return tuple(formulas)
 
 
 def load_tm_page52_mapping_policy(path: Path) -> TMPage52MappingPolicy:
@@ -392,30 +322,29 @@ def load_tm_page52_mapping_policy(path: Path) -> TMPage52MappingPolicy:
         raise TMPage52MappingError(f"cannot load TM page-52 mapping policy: {path}") from exc
     if not isinstance(payload, dict) or (
         payload.get("version") != 1
-        or payload.get("policy") != "TM_NOTE_PAGE52_EXISTING_AND_AUTOMATIC_ADD_MAPPING_V1"
+        or payload.get("policy") != "TM_NOTE_PAGE52_PROMOTED_SCHEMA_MAPPING_V1"
         or payload.get("statement_type") != "TM"
         or payload.get("page_number") != 52
         or payload.get("page_tag") != "page-0052"
         or payload.get("report_scope") != "CONSOLIDATED"
     ):
         raise TMPage52MappingError("TM page-52 mapping identity drifted")
-    hashes = tuple(
-        payload.get(field)
-        for field in (
-            "source_pdf_sha256",
-            "source_render_sha256",
-            "source_ocr_sha256",
-            "upstream_ocr_sha256",
-            "schema_workbook_sha256",
-        )
+    hash_fields = (
+        "source_pdf_sha256",
+        "source_render_sha256",
+        "source_ocr_sha256",
+        "upstream_ocr_sha256",
+        "schema_workbook_sha256",
     )
+    hashes = tuple(payload.get(field) for field in hash_fields)
     if any(not isinstance(value, str) or not _SHA256.fullmatch(value) for value in hashes):
         raise TMPage52MappingError("TM page-52 mapping hashes are invalid")
     schema_total = _positive_int(payload, "schema_total")
     if schema_total != TM_PAGE52_SCHEMA_TOTAL:
         raise TMPage52MappingError("TM page-52 schema denominator drifted")
     if (
-        payload.get("scope_schema_ids") != [{"start": 759, "end": 765}]
+        payload.get("scope_schema_ids")
+        != [{"start": 759, "end": 765}, {"start": 5750, "end": 5761}]
         or payload.get("scope_schema_total") != TM_PAGE52_SCOPE_SCHEMA_COUNT
         or payload.get("schema_scope_sha256") != _SCHEMA_SCOPE_SHA256
     ):
@@ -427,6 +356,7 @@ def load_tm_page52_mapping_policy(path: Path) -> TMPage52MappingPolicy:
         or not 0 <= threshold <= 1
     ):
         raise TMPage52MappingError("TM page-52 label threshold is invalid")
+
     raw_rows = payload.get("rows")
     if not isinstance(raw_rows, list) or len(raw_rows) != TM_PAGE52_SOURCE_ROW_COUNT:
         raise TMPage52MappingError("TM page-52 row rules are incomplete")
@@ -461,10 +391,11 @@ def load_tm_page52_mapping_policy(path: Path) -> TMPage52MappingPolicy:
                     record.get("expected_observations"), "expected observations"
                 ),
                 disposition=disposition,
-                report_norm_ids=_optional_int_list(
-                    record.get("report_norm_ids"), "report_norm_ids"
+                report_norm_ids=_int_list(
+                    record.get("report_norm_ids"),
+                    "report_norm_ids",
+                    allow_empty=True,
                 ),
-                proposal_keys=_optional_string_list(record.get("proposal_keys"), "proposal keys"),
                 question_required=False,
             )
         )
@@ -478,16 +409,25 @@ def load_tm_page52_mapping_policy(path: Path) -> TMPage52MappingPolicy:
     )
     if tuple((row.table_key, row.ordinal) for row in rows) != expected_row_keys:
         raise TMPage52MappingError("TM page-52 row order drifted")
+    if tuple(row.report_norm_ids for row in rows) != (
+        (5750,),
+        (5751, 5751),
+        (5750, 5750),
+        (),
+        (5752, 5754, 5757, 5760),
+        (765, 5755, 5758, 5761),
+    ):
+        raise TMPage52MappingError("TM page-52 promoted row targets drifted")
 
-    raw_structural = payload.get("existing_structural_mappings")
-    if not isinstance(raw_structural, list) or len(raw_structural) != 4:
-        raise TMPage52MappingError("TM page-52 existing structural mappings are incomplete")
+    raw_structural = payload.get("structural_mappings")
+    if not isinstance(raw_structural, list) or len(raw_structural) != 7:
+        raise TMPage52MappingError("TM page-52 structural mappings are incomplete")
     structural = []
     for record in raw_structural:
         if not isinstance(record, dict):
-            raise TMPage52MappingError("TM page-52 existing structural mapping is invalid")
+            raise TMPage52MappingError("TM page-52 structural mapping is invalid")
         structural.append(
-            TMPage52ExistingStructuralRule(
+            TMPage52StructuralRule(
                 structural_key=str(record.get("structural_key", "")),
                 source_kind=str(record.get("source_kind", "")),
                 axis_key=str(record.get("axis_key", "")),
@@ -496,20 +436,28 @@ def load_tm_page52_mapping_policy(path: Path) -> TMPage52MappingPolicy:
                 owner_scope=str(record.get("owner_scope", "")),
             )
         )
-    if tuple(item.structural_key for item in structural) != (
-        "LOANS_ROOT",
-        "LOANS_GEOGRAPHIC_ANALYSIS",
-        "DEPOSITS_ROOT",
-        "LC_ROOT",
-    ) or tuple(item.report_norm_id for item in structural) != (716, 759, 1055, 1295):
-        raise TMPage52MappingError("TM page-52 existing structural mapping order drifted")
-    if {(item.report_norm_id, item.disposition, item.owner_scope) for item in structural} != {
+    if tuple(item.report_norm_id for item in structural) != (
+        716,
+        759,
+        1055,
+        5753,
+        1295,
+        5756,
+        5759,
+    ) or {(item.report_norm_id, item.disposition, item.owner_scope) for item in structural} != {
         (716, "EXTERNAL_OWNER_VALIDATION", "page-0031"),
         (759, "MAPPED_AUTOMATIC_SCOPED", "page-0052"),
         (1055, "EXTERNAL_OWNER_VALIDATION", "page-0043"),
+        (5753, "MAPPED_AUTOMATIC_SCOPED", "page-0052"),
         (1295, "EXTERNAL_OWNER_VALIDATION", "page-0051"),
+        (5756, "MAPPED_AUTOMATIC_SCOPED", "page-0052"),
+        (5759, "MAPPED_AUTOMATIC_SCOPED", "page-0052"),
     }:
-        raise TMPage52MappingError("TM page-52 aggregate ownership drifted")
+        raise TMPage52MappingError("TM page-52 structural ownership drifted")
+
+    formulas = _load_formulas(payload.get("validation_formulas"))
+    if dict(formulas) != _EXPECTED_FORMULAS:
+        raise TMPage52MappingError("TM page-52 validation formulas drifted")
 
     raw_external = payload.get("external_owner_validations")
     if not isinstance(raw_external, list) or len(raw_external) != 4:
@@ -530,11 +478,7 @@ def load_tm_page52_mapping_policy(path: Path) -> TMPage52MappingPolicy:
                 owner_report_norm_ids=ids,
                 owner_scopes=scopes,
                 owner_values=tuple(Decimal(value) for value in values),
-                target_proposal_key=(
-                    str(record["target_proposal_key"])
-                    if record.get("target_proposal_key") is not None
-                    else None
-                ),
+                target_report_norm_id=_positive_int(record, "target_report_norm_id"),
             )
         )
     if tuple(item.axis_key for item in external) != (
@@ -542,116 +486,20 @@ def load_tm_page52_mapping_policy(path: Path) -> TMPage52MappingPolicy:
         "CUSTOMER_DEPOSITS",
         "LC_COMMITMENTS",
         "SECURITIES",
-    ) or tuple(item.owner_report_norm_ids for item in external) != (
-        (716,),
-        (1055,),
-        (1295,),
-        (626, 824, 848),
-    ):
-        raise TMPage52MappingError("TM page-52 external-owner validation order drifted")
+    ) or tuple(item.target_report_norm_id for item in external) != (759, 5753, 5756, 5759):
+        raise TMPage52MappingError("TM page-52 external validation order drifted")
 
-    raw_proposals = payload.get("schema_addition_proposals")
-    if not isinstance(raw_proposals, list) or len(raw_proposals) != 12:
-        raise TMPage52MappingError("TM page-52 schema additions are incomplete")
-    proposals = []
-    for record in raw_proposals:
-        if not isinstance(record, dict):
-            raise TMPage52MappingError("TM page-52 schema-addition rule is invalid")
-        key = record.get("proposal_key")
-        name = record.get("canonical_name")
-        formula_kind = record.get("formula_kind")
-        if (
-            not isinstance(key, str)
-            or not key
-            or not isinstance(name, str)
-            or not name
-            or formula_kind not in {"NONE", "SUM_CHILDREN"}
-        ):
-            raise TMPage52MappingError("TM page-52 schema-addition fields are invalid")
-        proposals.append(
-            TMPage52SchemaAdditionRule(
-                proposal_key=key,
-                canonical_name=name,
-                parent_report_norm_id=_optional_int(
-                    record.get("parent_report_norm_id"), "parent_report_norm_id"
-                ),
-                parent_proposal_key=(
-                    str(record["parent_proposal_key"])
-                    if record.get("parent_proposal_key") is not None
-                    else None
-                ),
-                insert_before_report_norm_id=_optional_int(
-                    record.get("insert_before_report_norm_id"),
-                    "insert_before_report_norm_id",
-                ),
-                insert_after_report_norm_id=_optional_int(
-                    record.get("insert_after_report_norm_id"),
-                    "insert_after_report_norm_id",
-                ),
-                insert_after_proposal_key=(
-                    str(record["insert_after_proposal_key"])
-                    if record.get("insert_after_proposal_key") is not None
-                    else None
-                ),
-                reparent_existing_report_norm_ids=tuple(
-                    _int_list(
-                        record.get("reparent_existing_report_norm_ids"),
-                        "reparent_existing_report_norm_ids",
-                    )
-                    if record.get("reparent_existing_report_norm_ids") is not None
-                    else ()
-                ),
-                formula_kind=str(formula_kind),
-                formula_terms=_string_list(
-                    record.get("formula_terms"), "formula terms", allow_empty=True
-                ),
-            )
-        )
-    if tuple(item.proposal_key for item in proposals) != _EXPECTED_PROPOSAL_KEYS:
-        raise TMPage52MappingError("TM page-52 schema-addition order drifted")
-    proposal_keys = set(_EXPECTED_PROPOSAL_KEYS)
-    for proposal in proposals:
-        parent_count = sum(
-            value is not None
-            for value in (proposal.parent_report_norm_id, proposal.parent_proposal_key)
-        )
-        if parent_count != 1:
-            raise TMPage52MappingError(
-                f"TM page-52 proposal parent is not unique: {proposal.proposal_key}"
-            )
-        if (
-            proposal.parent_proposal_key is not None
-            and proposal.parent_proposal_key not in proposal_keys
-        ):
-            raise TMPage52MappingError("TM page-52 proposal parent key is absent")
-        if (
-            proposal.insert_after_proposal_key is not None
-            and proposal.insert_after_proposal_key not in proposal_keys
-        ):
-            raise TMPage52MappingError("TM page-52 proposal order key is absent")
-        if not set(proposal.formula_terms) <= proposal_keys:
-            raise TMPage52MappingError("TM page-52 formula term is absent")
-        if (proposal.formula_kind == "SUM_CHILDREN") != bool(proposal.formula_terms):
-            raise TMPage52MappingError("TM page-52 formula declaration drifted")
-    if {item.proposal_key for item in proposals if item.formula_kind == "SUM_CHILDREN"} != (
-        _FORMULA_PROPOSAL_KEYS
-    ):
-        raise TMPage52MappingError("TM page-52 formula proposal partition drifted")
-    reparents = {
-        item.proposal_key: item.reparent_existing_report_norm_ids
-        for item in proposals
-        if item.reparent_existing_report_norm_ids
+    row_mapped_ids = {
+        schema_id
+        for row in rows
+        if row.disposition is TMPage52RuleDisposition.MAPPED_AUTOMATIC_SCOPED
+        for schema_id in row.report_norm_ids
     }
-    if reparents != {"LOANS_DOMESTIC": (760, 761, 762, 763, 764)}:
-        raise TMPage52MappingError("TM page-52 existing-child reparent intent drifted")
-    referenced = {key for row in rows for key in row.proposal_keys if key is not None}
-    if referenced != _VALUE_BEARING_PROPOSAL_KEYS:
-        raise TMPage52MappingError("TM page-52 row/proposal binding drifted")
-    referenced_ids = {
-        schema_id for row in rows for schema_id in row.report_norm_ids if schema_id is not None
+    structural_mapped_ids = {
+        item.report_norm_id for item in structural if item.disposition == "MAPPED_AUTOMATIC_SCOPED"
     }
-    if referenced_ids != _EXISTING_VALUE_IDS:
-        raise TMPage52MappingError("TM page-52 existing value binding drifted")
+    if row_mapped_ids | structural_mapped_ids != _MAPPED_IDS:
+        raise TMPage52MappingError("TM page-52 mapped target partition drifted")
     forbidden = payload.get("forbidden_mapping_inputs")
     if not isinstance(forbidden, list) or set(forbidden) != _REQUIRED_FORBIDDEN:
         raise TMPage52MappingError("TM page-52 forbidden mapping inputs drifted")
@@ -672,9 +520,9 @@ def load_tm_page52_mapping_policy(path: Path) -> TMPage52MappingPolicy:
         schema_scope_sha256=_SCHEMA_SCOPE_SHA256,
         minimum_visible_label_similarity=float(threshold),
         rows=tuple(rows),
-        existing_structural_mappings=tuple(structural),
+        structural_mappings=tuple(structural),
+        validation_formulas=formulas,
         external_owner_validations=tuple(external),
-        schema_addition_proposals=tuple(proposals),
         forbidden_mapping_inputs=tuple(str(value) for value in forbidden),
         policy_sha256=sha256_file(path),
     )
@@ -683,10 +531,10 @@ def load_tm_page52_mapping_policy(path: Path) -> TMPage52MappingPolicy:
 def _similarity(visible: str, anchor: str) -> float:
     if not anchor:
         return 1.0 if not retrieval_key(visible) else 0.0
-    left = retrieval_key(visible)
-    if anchor in left:
+    normalized = retrieval_key(visible)
+    if anchor in normalized:
         return 1.0
-    return ratio(left, anchor) / 100.0
+    return ratio(normalized, anchor) / 100.0
 
 
 def _schema_hash(items: tuple[SchemaItem, ...]) -> str:
@@ -707,11 +555,71 @@ def _schema_hash(items: tuple[SchemaItem, ...]) -> str:
 
 def _schema_scope_hash(schema_by_id: dict[int, SchemaItem]) -> str:
     payload = [
-        (schema_id, schema_by_id[schema_id].canonical_name) for schema_id in sorted(_SCOPED_IDS)
+        (
+            schema_id,
+            schema_by_id[schema_id].canonical_name,
+            schema_by_id[schema_id].parent_id,
+            tuple(schema_by_id[schema_id].children),
+        )
+        for schema_id in sorted(_SCOPED_IDS)
     ]
     return hashlib.sha256(
         json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     ).hexdigest()
+
+
+def _validate_schema_context(schema_by_id: dict[int, SchemaItem]) -> None:
+    if schema_by_id[1259].parent_id is not None:
+        raise TMPage52MappingError("TM page-52 root parent 1259 drifted")
+    if schema_by_id[1294].parent_id != 1259 or schema_by_id[1304].parent_id != 1294:
+        raise TMPage52MappingError("TM page-52 insertion anchor hierarchy drifted")
+    root_children = tuple(schema_by_id[1259].children)
+    if not all(schema_id in root_children for schema_id in (1294, 5750, 5759, 5762, 1305)):
+        raise TMPage52MappingError("TM page-52 promoted root siblings are absent")
+    root_positions = tuple(root_children.index(schema_id) for schema_id in (1294, 5750, 5759, 5762))
+    if root_positions != tuple(range(root_positions[0], root_positions[0] + 4)):
+        raise TMPage52MappingError("TM page-52 promoted root order drifted")
+    local_chain = (1304, 5750, 5751, 5759, 5760, 5761, 5762)
+    if any(
+        schema_by_id[current_id].display_order + 1 != schema_by_id[next_id].display_order
+        for current_id, next_id in zip(local_chain[:-1], local_chain[1:], strict=True)
+    ):
+        raise TMPage52MappingError("TM page-52 promoted display-order chain drifted")
+    if (
+        schema_by_id[716].parent_id != 560
+        or schema_by_id[759].parent_id != 716
+        or tuple(schema_by_id[759].children) != (5752, 765)
+        or schema_by_id[5752].parent_id != 759
+        or tuple(schema_by_id[5752].children) != tuple(range(760, 765))
+        or any(schema_by_id[schema_id].parent_id != 5752 for schema_id in range(760, 765))
+        or schema_by_id[765].parent_id != 759
+    ):
+        raise TMPage52MappingError("TM page-52 loan geographic hierarchy drifted")
+    if (
+        schema_by_id[1055].parent_id != 560
+        or tuple(schema_by_id[1055].children) != (1056, 1075, 5753)
+        or schema_by_id[5753].parent_id != 1055
+        or tuple(schema_by_id[5753].children) != (5754, 5755)
+        or any(schema_by_id[schema_id].parent_id != 5753 for schema_id in (5754, 5755))
+    ):
+        raise TMPage52MappingError("TM page-52 customer-deposit hierarchy drifted")
+    if (
+        schema_by_id[1295].parent_id != 1294
+        or tuple(schema_by_id[1295].children) != (5756,)
+        or schema_by_id[5756].parent_id != 1295
+        or tuple(schema_by_id[5756].children) != (5757, 5758)
+        or any(schema_by_id[schema_id].parent_id != 5756 for schema_id in (5757, 5758))
+    ):
+        raise TMPage52MappingError("TM page-52 L/C hierarchy drifted")
+    if (
+        schema_by_id[5750].parent_id != 1259
+        or tuple(schema_by_id[5750].children) != (5751,)
+        or schema_by_id[5751].parent_id != 5750
+        or schema_by_id[5759].parent_id != 1259
+        or tuple(schema_by_id[5759].children) != (5760, 5761)
+        or any(schema_by_id[schema_id].parent_id != 5759 for schema_id in (5760, 5761))
+    ):
+        raise TMPage52MappingError("TM page-52 promoted root hierarchy drifted")
 
 
 def _value(parsed: ParsedTMPage52, table: int, row: int, axis: int) -> Decimal:
@@ -736,10 +644,12 @@ def _validation(
                 expected_value=expected,
                 observed_value=observed,
                 residual=observed - expected,
-                target_report_norm_id=None,
-                target_proposal_key="RP_ROOT",
+                target_report_norm_id=5750,
+                external_owner_report_norm_ids=(),
+                external_owner_scopes=(),
                 reason=(
-                    "the single visible transaction row reconciles to the printed unlabeled total"
+                    "the directly mapped detail ID 5751 reconciles to the directly mapped printed "
+                    "total ID 5750 after mapping"
                 ),
             )
         )
@@ -754,58 +664,17 @@ def _validation(
                 expected_value=expected,
                 observed_value=observed,
                 residual=observed - expected,
-                target_report_norm_id=(
-                    owner_rule.owner_report_norm_ids[0]
-                    if len(owner_rule.owner_report_norm_ids) == 1
-                    else None
-                ),
-                target_proposal_key=owner_rule.target_proposal_key,
+                target_report_norm_id=owner_rule.target_report_norm_id,
+                external_owner_report_norm_ids=owner_rule.owner_report_norm_ids,
+                external_owner_scopes=owner_rule.owner_scopes,
                 reason=(
-                    "page-52 domestic plus foreign exactly cross-validates immutable primary-owner "
-                    f"values {owner_rule.owner_report_norm_ids} from {owner_rule.owner_scopes}; "
-                    "external values are validation-only and never select or populate page-52 items"
+                    "the two directly mapped page-52 geography children exactly cross-validate "
+                    f"immutable primary-owner values {owner_rule.owner_report_norm_ids} from "
+                    f"{owner_rule.owner_scopes}; external values are validation-only"
                 ),
             )
         )
     return tuple(checks)
-
-
-def _validate_insertion_context(schema_by_id: dict[int, SchemaItem]) -> None:
-    if schema_by_id[1259].parent_id is not None:
-        raise TMPage52MappingError("TM page-52 proposed root parent 1259 drifted")
-    if schema_by_id[1294].parent_id != 1259 or schema_by_id[1304].parent_id != 1294:
-        raise TMPage52MappingError("TM page-52 insertion anchor hierarchy drifted")
-    children = tuple(schema_by_id[1259].children)
-    if (
-        1294 not in children
-        or 1305 not in children
-        or children.index(1305) != children.index(1294) + 1
-    ):
-        raise TMPage52MappingError("TM page-52 insertion boundary before ID 1305 drifted")
-    if schema_by_id[1304].display_order + 1 != schema_by_id[1305].display_order:
-        raise TMPage52MappingError("TM page-52 insertion display-order boundary drifted")
-    if (
-        schema_by_id[716].parent_id != 560
-        or schema_by_id[759].parent_id != 716
-        or tuple(schema_by_id[759].children) != (760, 761, 762, 763, 764, 765)
-        or any(schema_by_id[schema_id].parent_id != 759 for schema_id in range(760, 766))
-    ):
-        raise TMPage52MappingError("TM page-52 loan geographic hierarchy drifted")
-    if schema_by_id[1055].parent_id != 560 or tuple(schema_by_id[1055].children) != (
-        1056,
-        1075,
-    ):
-        raise TMPage52MappingError("TM page-52 customer-deposit hierarchy drifted")
-    if schema_by_id[1295].parent_id != 1294 or schema_by_id[1295].children:
-        raise TMPage52MappingError("TM page-52 L/C hierarchy drifted")
-    if {schema_by_id[schema_id].canonical_name for schema_id in (716, 759, 765, 1055, 1295)} != {
-        "Cho vay khách hàng",
-        "Phân tích theo khu vực địa lý",
-        "+ Nước ngoài",
-        "Tiền gửi của khách hàng",
-        "Cam kết nghiệp vụ thư tín dụng (L/C)",
-    }:
-        raise TMPage52MappingError("TM page-52 existing canonical concepts drifted")
 
 
 def reconcile_tm_page52_items(
@@ -844,14 +713,14 @@ def reconcile_tm_page52_items(
         or _schema_scope_hash(schema_by_id) != policy.schema_scope_sha256
     ):
         raise TMPage52MappingError("TM page-52 owned schema branch drifted")
-    _validate_insertion_context(schema_by_id)
+    _validate_schema_context(schema_by_id)
     parsed_rows = tuple(row for table in parsed.tables for row in table.rows)
     if tuple((row.table_key, row.ordinal) for row in parsed_rows) != tuple(
         (rule.table_key, rule.ordinal) for rule in policy.rows
     ):
         raise TMPage52MappingError("TM page-52 parsed row order drifted from policy")
 
-    source_by_schema: dict[int, list[str]] = {schema_id: [] for schema_id in _EXISTING_MAPPED_IDS}
+    source_by_schema: dict[int, list[str]] = {schema_id: [] for schema_id in _MAPPED_IDS}
     axis_by_key = dict(
         zip(
             ("CUSTOMER_LOANS", "CUSTOMER_DEPOSITS", "LC_COMMITMENTS", "SECURITIES"),
@@ -860,7 +729,7 @@ def reconcile_tm_page52_items(
         )
     )
     structural_dispositions = []
-    for rule in policy.existing_structural_mappings:
+    for rule in policy.structural_mappings:
         axis = axis_by_key[rule.axis_key]
         source_ids = tuple(
             f"{parsed.page_tag}:line-{index:04d}" for index in axis.header_line_indices
@@ -884,7 +753,7 @@ def reconcile_tm_page52_items(
             )
         if rule.disposition == "MAPPED_AUTOMATIC_SCOPED":
             source_by_schema[rule.report_norm_id].extend(source_ids)
-            reason = "page 52 uniquely owns the exact customer-loan geographic-analysis structure"
+            reason = "page 52 uniquely owns this promoted geographic-analysis structure"
         else:
             reason = (
                 f"aggregate ID {rule.report_norm_id} remains owned by {rule.owner_scope}; "
@@ -904,11 +773,8 @@ def reconcile_tm_page52_items(
             )
         )
 
-    source_by_proposal: dict[str, list[str]] = {key: [] for key in _EXPECTED_PROPOSAL_KEYS}
-    values_by_proposal: dict[str, list[tuple[Decimal, str, str, str]]] = {
-        key: [] for key in _EXPECTED_PROPOSAL_KEYS
-    }
     source_dispositions = []
+    assignments = []
     for rule, row in zip(policy.rows, parsed_rows, strict=True):
         observations = tuple(cell.observation.value for cell in row.row.cells)
         if (
@@ -920,53 +786,54 @@ def reconcile_tm_page52_items(
         similarity = _similarity(row.row.label, rule.visible_label_anchor)
         if similarity < policy.minimum_visible_label_similarity:
             raise TMPage52MappingError(f"TM page-52 label anchor failed: {row.row_id}")
-        if rule.disposition is TMPage52RuleDisposition.SCHEMA_ADDITION_PROPOSED_STRUCTURAL:
-            if (
-                len(rule.proposal_keys) != 1
-                or rule.proposal_keys[0] is None
-                or rule.report_norm_ids
-                or row.row_kind.value != "LABEL_ONLY"
-            ):
-                raise TMPage52MappingError("TM page-52 structural proposal binding drifted")
-            source_by_proposal[rule.proposal_keys[0]].append(row.row_id)
-            status = TMPage52SourceStatus.SCHEMA_ADDITION_PROPOSED_STRUCTURAL.value
-        elif rule.disposition is TMPage52RuleDisposition.SOURCE_ONLY_VALIDATION:
-            if rule.report_norm_ids or rule.proposal_keys or row.row_kind.value != "LABEL_ONLY":
+        if rule.disposition is TMPage52RuleDisposition.SOURCE_ONLY_VALIDATION:
+            if rule.report_norm_ids or row.row_kind.value != "LABEL_ONLY":
                 raise TMPage52MappingError("TM page-52 source-only binding drifted")
             status = TMPage52SourceStatus.SOURCE_ONLY_VALIDATION.value
+        elif row.row_kind.value == "LABEL_ONLY":
+            if len(rule.report_norm_ids) != 1:
+                raise TMPage52MappingError("TM page-52 structural row target drifted")
+            source_by_schema[rule.report_norm_ids[0]].append(row.row_id)
+            status = TMPage52SourceStatus.MAPPED_AUTOMATIC_SCOPED.value
         else:
-            if not (len(rule.report_norm_ids) == len(rule.proposal_keys) == len(row.row.cells)):
-                raise TMPage52MappingError("TM page-52 value target width drifted")
-            for index, (schema_id, key, cell) in enumerate(
-                zip(rule.report_norm_ids, rule.proposal_keys, row.row.cells, strict=True)
+            if len(rule.report_norm_ids) != len(row.row.cells):
+                raise TMPage52MappingError("TM page-52 numeric target width drifted")
+            for index, (schema_id, cell) in enumerate(
+                zip(rule.report_norm_ids, row.row.cells, strict=True)
             ):
-                if cell.value is None:
-                    raise TMPage52MappingError("TM page-52 proposed value is absent")
-                if (schema_id is None) == (key is None):
-                    raise TMPage52MappingError("TM page-52 value target is not unique")
                 start = row.cell_period_starts[index]
                 end = row.cell_period_ends[index]
                 role = row.cell_period_roles[index]
-                if start is None or end is None or role is None:
-                    raise TMPage52MappingError("TM page-52 proposed period binding is absent")
-                if schema_id is not None:
-                    if schema_id not in _EXISTING_VALUE_IDS:
-                        raise TMPage52MappingError(
-                            "TM page-52 existing value target is out of scope"
-                        )
-                    source_by_schema[schema_id].append(row.row_id)
-                else:
-                    assert key is not None
-                    source_by_proposal[key].append(row.row_id)
-                    values_by_proposal[key].append(
-                        (cell.value, start.isoformat(), end.isoformat(), role)
+                if (
+                    schema_id not in _VALUE_BEARING_MAPPED_IDS
+                    or cell.observation not in {ObservationKind.VALUE, ObservationKind.ZERO}
+                    or cell.value is None
+                    or start is None
+                    or end is None
+                    or role is None
+                ):
+                    raise TMPage52MappingError("TM page-52 mapped cell binding drifted")
+                source_by_schema[schema_id].append(row.row_id)
+                assignments.append(
+                    TMPage52MappedAssignment(
+                        source_row_id=row.row_id,
+                        table_key=row.table_key,
+                        source_role=row.source_role,
+                        cell_index=index,
+                        report_norm_id=schema_id,
+                        observation=cell.observation.value,
+                        value=cell.value,
+                        period_start=start.isoformat(),
+                        period_end=end.isoformat(),
+                        period_role=role,
+                        unit=parsed.tables[0].axes[0].canonical_unit,
+                        unit_multiplier=parsed.tables[0].axes[0].unit_multiplier,
+                        mapping_basis=(
+                            "VISIBLE_PAGE52_ROW_X_FIXED_PERIOD_OR_GEOGRAPHIC_AXIS_TO_FROZEN_SCHEMA"
+                        ),
                     )
-            status = (
-                TMPage52SourceStatus.MIXED_EXISTING_AND_SCHEMA_ADDITION_VALUE.value
-                if rule.disposition
-                is TMPage52RuleDisposition.MIXED_EXISTING_AND_SCHEMA_ADDITION_VALUE
-                else TMPage52SourceStatus.SCHEMA_ADDITION_PROPOSED_VALUE.value
-            )
+                )
+            status = TMPage52SourceStatus.MAPPED_AUTOMATIC_SCOPED.value
         source_dispositions.append(
             TMPage52SourceDisposition(
                 row_id=row.row_id,
@@ -977,7 +844,6 @@ def reconcile_tm_page52_items(
                 source_role=row.source_role,
                 status=status,
                 report_norm_ids=rule.report_norm_ids,
-                proposal_keys=rule.proposal_keys,
                 visible_label_similarity=similarity,
                 observations=observations,
                 values=tuple(cell.value for cell in row.row.cells),
@@ -994,88 +860,39 @@ def reconcile_tm_page52_items(
                 unit_multiplier=parsed.tables[0].axes[0].unit_multiplier,
                 question_required=False,
                 reason=(
-                    "each page-52 cell has one hierarchy-safe existing-ID or automatic-ADD target; "
-                    "aggregate external owners and adjacent concepts are never reused"
+                    "each visible page-52 cell has one hierarchy-safe promoted-schema target; "
+                    "external aggregate owners never select or populate page-52 items"
                 ),
             )
         )
 
-    for key, axis in zip(
-        ("DEPOSITS_GEO", "LC_GEO", "SECURITIES_GEO"),
-        parsed.tables[1].axes[1:],
-        strict=True,
-    ):
-        source_by_proposal[key].extend(
-            f"{parsed.page_tag}:line-{index:04d}" for index in axis.header_line_indices
-        )
-
-    additions = []
-    for rule in policy.schema_addition_proposals:
-        records = values_by_proposal[rule.proposal_key]
-        source_ids = tuple(dict.fromkeys(source_by_proposal[rule.proposal_key]))
-        has_values = bool(records)
-        if has_values != (rule.proposal_key in _VALUE_BEARING_PROPOSAL_KEYS):
-            raise TMPage52MappingError("TM page-52 value-bearing proposal partition drifted")
-        additions.append(
-            TMPage52SchemaAdditionProposal(
-                proposal_key=rule.proposal_key,
-                canonical_name=rule.canonical_name,
-                status=(
-                    "AUTOMATIC_ADD_VALUE_BEARING"
-                    if has_values
-                    else "AUTOMATIC_ADD_STRUCTURAL_OR_FORMULA_ONLY"
-                ),
-                parent_report_norm_id=rule.parent_report_norm_id,
-                parent_proposal_key=rule.parent_proposal_key,
-                insert_before_report_norm_id=rule.insert_before_report_norm_id,
-                insert_after_report_norm_id=rule.insert_after_report_norm_id,
-                insert_after_proposal_key=rule.insert_after_proposal_key,
-                reparent_existing_report_norm_ids=rule.reparent_existing_report_norm_ids,
-                formula_kind=rule.formula_kind,
-                formula_terms=rule.formula_terms,
-                formula_validation_only=rule.formula_kind == "SUM_CHILDREN",
-                source_row_ids=source_ids,
-                observed_values=tuple(record[0] for record in records),
-                period_starts=tuple(record[1] for record in records),
-                period_ends=tuple(record[2] for record in records),
-                period_roles=tuple(record[3] for record in records),
-                unit=parsed.tables[0].axes[0].canonical_unit,
-                unit_multiplier=parsed.tables[0].axes[0].unit_multiplier,
-                report_norm_id=None,
-                question_required=False,
-                reason=(
-                    "automatic business/schema ADD proposal under the user policy for a clearly "
-                    "observed concept absent from the frozen schema; ID allocation is deferred"
-                ),
-            )
-        )
+    if any(not source_by_schema[schema_id] for schema_id in _MAPPED_IDS):
+        raise TMPage52MappingError("TM page-52 mapped item lacks source provenance")
     checks = _validation(parsed, policy)
     if (
         len(checks) != TM_PAGE52_VALIDATION_CHECK_COUNT
         or sum(check.status == "PASS" for check in checks) != TM_PAGE52_VALIDATION_PASS_COUNT
-        or sum(check.status == "NOT_TESTABLE_TARGET_NOT_OBSERVED" for check in checks)
-        != TM_PAGE52_VALIDATION_NOT_TESTABLE_COUNT
-        or any(check.status == "FAIL" for check in checks)
+        or any(check.status == "FAIL" or check.residual != 0 for check in checks)
     ):
         raise TMPage52MappingError("TM page-52 accounting validation failed")
+
     schema_dispositions = []
     for item in tm_schema:
         source_ids = tuple(dict.fromkeys(source_by_schema.get(item.schema_id, ())))
-        mapped = item.schema_id in _EXISTING_MAPPED_IDS and bool(source_ids)
-        if mapped:
+        if item.schema_id in _MAPPED_IDS:
             status = TMPage52SchemaStatus.MAPPED_AUTOMATIC_SCOPED.value
-            reason = "page 52 is the unique scoped owner of this hierarchy-safe existing concept"
+            reason = "page 52 is the unique owner of this promoted hierarchy-safe schema item"
         elif item.schema_id in _NOT_OBSERVED_IDS:
             status = TMPage52SchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value
             reason = (
-                "fully assessed child of the page-52 geographic branch with no distinct visible "
-                "source row in this disclosure"
+                "fully assessed regional child under domestic loans, but no distinct source row is "
+                "printed in this disclosure"
             )
         else:
             status = TMPage52SchemaStatus.UNASSESSED.value
             reason = (
-                "outside the page-52 owned branch; aggregate IDs with primary owners on other pages "
-                "remain validation-only and all other IDs remain unassessed"
+                "outside page-52 scope; primary-owner aggregates remain validation-only and all "
+                "other schema items remain unassessed"
             )
         schema_dispositions.append(
             TMPage52SchemaDisposition(
@@ -1087,40 +904,13 @@ def reconcile_tm_page52_items(
                 reason=reason,
             )
         )
-    existing_mapped_source_row_count = sum(
-        any(schema_id is not None for schema_id in item.report_norm_ids)
-        for item in source_dispositions
-    )
-    schema_addition_source_row_count = sum(
-        any(key is not None for key in item.proposal_keys) for item in source_dispositions
-    )
-    source_only_row_count = sum(
-        item.status == TMPage52SourceStatus.SOURCE_ONLY_VALIDATION.value
-        for item in source_dispositions
-    )
-    mapped_value_count = sum(
-        schema_id is not None
-        and observation in {ObservationKind.VALUE.value, ObservationKind.ZERO.value}
-        for item in source_dispositions
-        if item.row_kind == "NUMERIC"
-        for schema_id, observation in zip(item.report_norm_ids, item.observations, strict=True)
-    )
-    proposed_value_count = sum(
-        key is not None and observation in {ObservationKind.VALUE.value, ObservationKind.ZERO.value}
-        for item in source_dispositions
-        if item.row_kind == "NUMERIC"
-        for key, observation in zip(item.proposal_keys, item.observations, strict=True)
-    )
     result = TMPage52MappingResult(
         statement_type="TM",
         document=policy.document,
         page_number=52,
         page_tag=policy.page_tag,
         report_scope=policy.report_scope,
-        status=(
-            "SCOPED_PAGE52_EXISTING_MAPPINGS_AND_AUTOMATIC_SCHEMA_ADDITIONS_"
-            "VALIDATED_NO_OPEN_QUESTIONS"
-        ),
+        status="PAGE52_PROMOTED_IDS_MAPPED_NO_ADDITIONS_NO_OPEN_QUESTIONS",
         mapping_authority_scope=policy.mapping_authority_scope,
         mapping_authority_granted=True,
         schema_item_count=len(tm_schema),
@@ -1133,33 +923,32 @@ def reconcile_tm_page52_items(
         unresolved_schema_count=0,
         unassessed_schema_count=TM_PAGE52_SCHEMA_UNASSESSED_COUNT,
         fully_verified_schema_count=0,
-        automatic_schema_addition_count=len(additions),
-        automatic_value_bearing_addition_count=sum(
-            bool(item.observed_values) for item in additions
-        ),
         source_row_count=len(source_dispositions),
-        existing_mapped_source_row_count=existing_mapped_source_row_count,
-        schema_addition_source_row_count=schema_addition_source_row_count,
-        source_only_row_count=source_only_row_count,
+        mapped_source_row_count=sum(
+            item.status == TMPage52SourceStatus.MAPPED_AUTOMATIC_SCOPED.value
+            for item in source_dispositions
+        ),
+        source_only_row_count=sum(
+            item.status == TMPage52SourceStatus.SOURCE_ONLY_VALIDATION.value
+            for item in source_dispositions
+        ),
         source_question_row_count=0,
         ambiguous_source_row_count=0,
         financial_slot_count=parsed.financial_slot_count,
         extracted_value_count=parsed.observation_count(ObservationKind.VALUE),
         dash_count=parsed.observation_count(ObservationKind.DASH),
-        mapped_value_count=mapped_value_count,
-        proposed_value_count=proposed_value_count,
+        mapped_assignment_count=len(assignments),
         narrative_record_count=len(parsed.narratives),
         narrative_quantity_count=parsed.narrative_quantity_count,
         validation_check_count=len(checks),
         validation_pass_count=sum(check.status == "PASS" for check in checks),
-        validation_not_testable_count=sum(
-            check.status == "NOT_TESTABLE_TARGET_NOT_OBSERVED" for check in checks
-        ),
+        validation_not_testable_count=0,
         schema_dispositions=tuple(schema_dispositions),
         source_dispositions=tuple(source_dispositions),
         structural_dispositions=tuple(structural_dispositions),
-        schema_addition_proposals=tuple(additions),
+        mapped_assignments=tuple(assignments),
         validation_checks=checks,
+        validation_formulas=policy.validation_formulas,
         source_pdf_sha256=policy.source_pdf_sha256,
         source_render_sha256=policy.source_render_sha256,
         source_ocr_sha256=policy.source_ocr_sha256,
@@ -1172,10 +961,8 @@ def reconcile_tm_page52_items(
             "VISIBLE_PAGE52_NOTE_ROW_AND_MATRIX_COLUMN_ORDER",
             "VISIBLE_AND_CONTEXT_BOUND_PERIOD_UNIT_SCOPE",
             "FROZEN_TM_SCHEMA_ID_NAME_ORDER_AND_HIERARCHY",
-            "OWNED_PAGE52_SCHEMA_BRANCH_IDS_759_THROUGH_765",
+            "OWNED_PAGE52_SCHEMA_IDS_759_THROUGH_765_AND_5750_THROUGH_5761",
             "DISJOINT_PRIMARY_OWNER_SCOPES_FOR_IDS_716_1055_1295",
-            "AUTOMATIC_SCHEMA_ADD_POLICY_FOR_CLEARLY_MISSING_CONCEPTS",
-            "EXPLICIT_REPARENT_INTENT_FOR_EXISTING_IDS_760_THROUGH_764",
             "EXTERNAL_OWNER_VALUES_AS_VALIDATION_ONLY_NOT_SELECTION_OR_IMPUTATION",
             "ACCOUNTING_EQUATIONS_AS_POST_MAPPING_VALIDATION_ONLY",
             "NARRATIVE_PERCENTAGES_AS_PROVENANCE_ONLY",
@@ -1198,19 +985,15 @@ def validate_tm_page52_mapping_result(
         or result.unresolved_schema_count != 0
         or result.unassessed_schema_count != TM_PAGE52_SCHEMA_UNASSESSED_COUNT
         or result.fully_verified_schema_count != 0
-        or result.automatic_schema_addition_count != TM_PAGE52_SCHEMA_ADDITION_COUNT
-        or result.automatic_value_bearing_addition_count != TM_PAGE52_VALUE_BEARING_ADDITION_COUNT
         or result.source_row_count != TM_PAGE52_SOURCE_ROW_COUNT
-        or result.existing_mapped_source_row_count != TM_PAGE52_EXISTING_MAPPED_SOURCE_ROW_COUNT
-        or result.schema_addition_source_row_count != TM_PAGE52_SCHEMA_ADDITION_SOURCE_ROW_COUNT
+        or result.mapped_source_row_count != TM_PAGE52_MAPPED_SOURCE_ROW_COUNT
         or result.source_only_row_count != TM_PAGE52_SOURCE_ONLY_ROW_COUNT
         or result.source_question_row_count != 0
         or result.ambiguous_source_row_count != 0
         or result.financial_slot_count != TM_PAGE52_FINANCIAL_SLOT_COUNT
         or result.extracted_value_count != TM_PAGE52_VALUE_COUNT
         or result.dash_count != TM_PAGE52_DASH_COUNT
-        or result.mapped_value_count != TM_PAGE52_MAPPED_VALUE_COUNT
-        or result.proposed_value_count != TM_PAGE52_PROPOSED_VALUE_COUNT
+        or result.mapped_assignment_count != TM_PAGE52_MAPPED_ASSIGNMENT_COUNT
         or result.narrative_record_count != TM_PAGE52_NARRATIVE_RECORD_COUNT
         or result.narrative_quantity_count != TM_PAGE52_NARRATIVE_QUANTITY_COUNT
         or result.validation_check_count != TM_PAGE52_VALIDATION_CHECK_COUNT
@@ -1219,13 +1002,10 @@ def validate_tm_page52_mapping_result(
         or not result.mapping_authority_granted
     ):
         raise TMPage52MappingError("TM page-52 mapping result denominator drifted")
-    if (
-        result.status_reconciled_schema_count + result.unassessed_schema_count
-        != result.schema_item_count
+    if result.status_reconciled_schema_count + result.unassessed_schema_count != (
+        result.schema_item_count
     ):
         raise TMPage52MappingError("TM page-52 schema statuses do not reconcile")
-    if len(result.schema_dispositions) != TM_PAGE52_SCHEMA_TOTAL:
-        raise TMPage52MappingError("TM page-52 schema disposition denominator drifted")
     mapped = {
         item.report_norm_id
         for item in result.schema_dispositions
@@ -1242,89 +1022,70 @@ def validate_tm_page52_mapping_result(
         if item.status == TMPage52SchemaStatus.UNASSESSED.value
     }
     if (
-        mapped != _EXISTING_MAPPED_IDS
+        mapped != _MAPPED_IDS
         or not_observed != _NOT_OBSERVED_IDS
         or len(unassessed) != TM_PAGE52_SCHEMA_UNASSESSED_COUNT
-        or mapped & not_observed
-        or mapped & unassessed
-        or not_observed & unassessed
         or mapped | not_observed | unassessed
         != {item.report_norm_id for item in result.schema_dispositions}
         or any(
             not item.source_row_ids
             for item in result.schema_dispositions
-            if item.report_norm_id in _EXISTING_MAPPED_IDS
+            if item.report_norm_id in _MAPPED_IDS
         )
         or any(
             item.source_row_ids
             for item in result.schema_dispositions
-            if item.report_norm_id not in _EXISTING_MAPPED_IDS
+            if item.report_norm_id not in _MAPPED_IDS
         )
         or not _EXTERNAL_OWNER_IDS <= unassessed
     ):
-        raise TMPage52MappingError("TM page-52 existing-schema partition drifted")
+        raise TMPage52MappingError("TM page-52 schema partition drifted")
     structural = {
         item.report_norm_id: (item.status, item.owner_scope)
         for item in result.structural_dispositions
     }
     if structural != {
         716: ("EXTERNAL_OWNER_VALIDATION", "page-0031"),
-        759: (TMPage52SchemaStatus.MAPPED_AUTOMATIC_SCOPED.value, "page-0052"),
+        759: ("MAPPED_AUTOMATIC_SCOPED", "page-0052"),
         1055: ("EXTERNAL_OWNER_VALIDATION", "page-0043"),
+        5753: ("MAPPED_AUTOMATIC_SCOPED", "page-0052"),
         1295: ("EXTERNAL_OWNER_VALIDATION", "page-0051"),
+        5756: ("MAPPED_AUTOMATIC_SCOPED", "page-0052"),
+        5759: ("MAPPED_AUTOMATIC_SCOPED", "page-0052"),
     } or any(not item.source_ids for item in result.structural_dispositions):
         raise TMPage52MappingError("TM page-52 structural ownership result drifted")
-    existing_rows = tuple(
-        item
-        for item in result.source_dispositions
-        if any(schema_id is not None for schema_id in item.report_norm_ids)
-    )
-    source_only_rows = tuple(
-        item
-        for item in result.source_dispositions
-        if item.status == TMPage52SourceStatus.SOURCE_ONLY_VALIDATION.value
-    )
     if (
-        len(existing_rows) != 1
-        or existing_rows[0].table_key != "GEOGRAPHIC_CONCENTRATION"
-        or existing_rows[0].source_role != "FOREIGN"
-        or existing_rows[0].status
-        != TMPage52SourceStatus.MIXED_EXISTING_AND_SCHEMA_ADDITION_VALUE.value
-        or existing_rows[0].report_norm_ids != (765, None, None, None)
-        or existing_rows[0].values[0] != Decimal(8_815_772)
-        or existing_rows[0].period_roles != ("CURRENT", "CURRENT", "CURRENT", "CURRENT")
-        or len(source_only_rows) != 1
-        or source_only_rows[0].table_key != "GEOGRAPHIC_CONCENTRATION"
-        or source_only_rows[0].source_role != "NOTE_TITLE"
+        tuple(item.status for item in result.source_dispositions)
+        != (
+            "MAPPED_AUTOMATIC_SCOPED",
+            "MAPPED_AUTOMATIC_SCOPED",
+            "MAPPED_AUTOMATIC_SCOPED",
+            "SOURCE_ONLY_VALIDATION",
+            "MAPPED_AUTOMATIC_SCOPED",
+            "MAPPED_AUTOMATIC_SCOPED",
+        )
         or any(item.question_required for item in result.source_dispositions)
+        or tuple(item.report_norm_ids for item in result.source_dispositions)
+        != (
+            (5750,),
+            (5751, 5751),
+            (5750, 5750),
+            (),
+            (5752, 5754, 5757, 5760),
+            (765, 5755, 5758, 5761),
+        )
     ):
         raise TMPage52MappingError("TM page-52 source disposition result drifted")
-    if tuple(item.proposal_key for item in result.schema_addition_proposals) != (
-        _EXPECTED_PROPOSAL_KEYS
-    ):
-        raise TMPage52MappingError("TM page-52 schema-addition result order drifted")
-    if {
-        item.proposal_key for item in result.schema_addition_proposals if item.observed_values
-    } != _VALUE_BEARING_PROPOSAL_KEYS:
-        raise TMPage52MappingError("TM page-52 value-bearing addition result drifted")
-    if any(
-        item.report_norm_id is not None
-        or item.question_required
-        or (item.formula_kind == "SUM_CHILDREN") != item.formula_validation_only
-        or not item.source_row_ids
-        for item in result.schema_addition_proposals
-    ):
-        raise TMPage52MappingError("TM page-52 addition authority drifted")
-    loans_domestic = next(
-        item for item in result.schema_addition_proposals if item.proposal_key == "LOANS_DOMESTIC"
-    )
     if (
-        loans_domestic.parent_report_norm_id != 759
-        or loans_domestic.insert_before_report_norm_id != 760
-        or loans_domestic.reparent_existing_report_norm_ids != (760, 761, 762, 763, 764)
-        or 765 in loans_domestic.reparent_existing_report_norm_ids
+        len(result.mapped_assignments) != 12
+        or {item.report_norm_id for item in result.mapped_assignments} != _VALUE_BEARING_MAPPED_IDS
+        or any(
+            item.observation != ObservationKind.VALUE.value for item in result.mapped_assignments
+        )
+        or {(item.unit, item.unit_multiplier) for item in result.mapped_assignments}
+        != {("VND", 1_000_000)}
     ):
-        raise TMPage52MappingError("TM page-52 domestic-loan reparent result drifted")
+        raise TMPage52MappingError("TM page-52 assignment result drifted")
     if (
         tuple(check.check_id for check in result.validation_checks)
         != (
@@ -1345,15 +1106,14 @@ def validate_tm_page52_mapping_result(
             Decimal(268_484_730),
         )
         or tuple(check.target_report_norm_id for check in result.validation_checks)
-        != (None, None, 716, 1055, 1295, None)
-        or tuple(check.target_proposal_key for check in result.validation_checks)
-        != ("RP_ROOT", "RP_ROOT", None, None, None, "SECURITIES_GEO")
+        != (5750, 5750, 759, 5753, 5756, 5759)
         or any(
             check.status != "PASS"
             or check.observed_value != check.expected_value
-            or check.residual != Decimal(0)
+            or check.residual != 0
             for check in result.validation_checks
         )
+        or dict(result.validation_formulas) != _EXPECTED_FORMULAS
     ):
         raise TMPage52MappingError("TM page-52 validation result drifted")
     return result
@@ -1361,10 +1121,10 @@ def validate_tm_page52_mapping_result(
 
 __all__ = [
     "TM_PAGE52_POLICY_RELATIVE_PATH",
+    "TMPage52MappedAssignment",
     "TMPage52MappingError",
     "TMPage52MappingPolicy",
     "TMPage52MappingResult",
-    "TMPage52SchemaAdditionProposal",
     "TMPage52SchemaDisposition",
     "TMPage52SchemaStatus",
     "TMPage52SourceDisposition",

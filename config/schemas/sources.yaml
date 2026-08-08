@@ -10,4 +10,4 @@ pending_additions: proposed_schema_additions.jsonl
 approved_append_audits:
   - data/registered/schema_append_1944.json
 approved_business_update_audits:
-  - data/registered/schema_business_update_5712_5713_5714_5718.json
+  - data/registered/schema_business_update_5712_5713_5714_5718_5945.json

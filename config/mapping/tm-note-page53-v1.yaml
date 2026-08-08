@@ -1,0 +1,84 @@
+version: 1
+policy: TM_NOTE_PAGE53_GEOGRAPHIC_SEGMENT_MAPPING_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+page_number: 53
+page_tag: page-0053
+report_scope: CONSOLIDATED
+mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_PAGE53_IDS_5762_5805_ONLY
+
+source_table_policy: config/tables/tm-note-page53-v1.yaml
+source_table_policy_sha256: 9b68617793c1343791c590e1b243915aa1e178b0c5929d9ec6a561a63dfde7d4
+source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+source_render_sha256: 08ddbfa56c7696c6ade6e2481986f355d6e8a1808296ccc5f800357d57df9d23
+source_ocr_sha256: 7116c59b95d2698fc695d1b7bb1690620a0784b5426c8fdce9c459768c1a875f
+upstream_ocr_sha256: 02e0fe3284a12649d5cce9bd586abedca9afb8ccad33e18425cd555c0df0a551
+schema_workbook_sha256: ea5b690e88c2986613e650663eaea3e05860053c5f56e6445d19e6f0a719a8e1
+
+schema_total: 1613
+scope_schema_ids:
+  - {start: 5762, end: 5805}
+scope_schema_total: 44
+schema_scope_sha256: 8b3873b35f2d7b35fc74fbe67ebd9593c315148e91630313bef320b58a7d14ee
+
+structural_targets:
+  - {source_role: SEGMENT_REPORT_ROOT, report_norm_id: 5762}
+  - {source_role: GEOGRAPHIC_SEGMENT_TITLE, report_norm_id: 5763}
+
+axis_parent_ids:
+  NORTH: 5764
+  CENTRAL: 5771
+  SOUTH: 5778
+  OTHER: 5785
+  ELIMINATION: 5792
+  TOTAL: 5799
+
+metric_target_ids:
+  ASSETS: [5765, 5772, 5779, 5786, 5793, 5800]
+  LIABILITIES: [5766, 5773, 5780, 5787, 5794, 5801]
+  FIXED_ASSETS: [5767, 5774, 5781, 5788, 5795, 5802]
+  REVENUE: [5768, 5775, 5782, 5789, 5796, 5803]
+  EXPENSE: [5769, 5776, 5783, 5790, 5797, 5804]
+  PROFIT_BEFORE_TAX: [5770, 5777, 5784, 5791, 5798, 5805]
+
+total_formulas_validation_only:
+  5800: [5765, 5772, 5779, 5786, 5793]
+  5801: [5766, 5773, 5780, 5787, 5794]
+  5802: [5767, 5774, 5781, 5788, 5795]
+  5803: [5768, 5775, 5782, 5789, 5796]
+  5804: [5769, 5776, 5783, 5790, 5797]
+  5805: [5770, 5777, 5784, 5791, 5798]
+
+pbt_formulas_validation_only:
+  5770: [5768, 5769]
+  5777: [5775, 5776]
+  5784: [5782, 5783]
+  5791: [5789, 5790]
+  5798: [5796, 5797]
+  5805: [5803, 5804]
+
+external_page54_totals_validation_only:
+  - {period_role: CURRENT, metric_key: ASSETS, value: 1611222764, owner_scope: page-0054}
+  - {period_role: CURRENT, metric_key: LIABILITIES, value: 1461477439, owner_scope: page-0054}
+  - {period_role: CURRENT, metric_key: FIXED_ASSETS, value: 5500662, owner_scope: page-0054}
+  - {period_role: CURRENT, metric_key: REVENUE, value: 37600291, owner_scope: page-0054}
+  - {period_role: CURRENT, metric_key: EXPENSE, value: 27971905, owner_scope: page-0054}
+  - {period_role: CURRENT, metric_key: PROFIT_BEFORE_TAX, value: 9628386, owner_scope: page-0054}
+  - {period_role: COMPARATIVE, metric_key: ASSETS, value: 1615763927, owner_scope: page-0054}
+  - {period_role: COMPARATIVE, metric_key: LIABILITIES, value: 1473741402, owner_scope: page-0054}
+  - {period_role: COMPARATIVE, metric_key: FIXED_ASSETS, value: 5616547, owner_scope: page-0054}
+  - {period_role: COMPARATIVE, metric_key: REVENUE, value: 121589719, owner_scope: page-0054}
+  - {period_role: COMPARATIVE, metric_key: EXPENSE, value: 87321361, owner_scope: page-0054}
+  - {period_role: COMPARATIVE, metric_key: PROFIT_BEFORE_TAX, value: 34268358, owner_scope: page-0054}
+
+forbidden_mapping_inputs:
+  - numeric_cell_text_as_item_selector
+  - numeric_value_magnitude_as_item_selector
+  - historical_or_mongodb_values
+  - human_review_answers
+  - dash_as_zero
+  - accounting_equation_result_as_item_selector
+  - accounting_equation_result_as_extracted_value
+  - page54_value_as_page53_item_selector
+  - page54_value_as_page53_imputation
+  - schema_id_outside_page53_scope

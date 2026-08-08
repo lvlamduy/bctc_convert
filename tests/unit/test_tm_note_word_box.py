@@ -46,6 +46,11 @@ def test_mbb_page_30_reconstructs_three_tables_and_exact_coverage(project_root: 
     assert parsed.source_render_sha256 == _SOURCE_RENDER_SHA256
     assert parsed.source_pdf_sha256 == _SOURCE_PDF_SHA256
     assert parsed.scope == "CONSOLIDATED"
+    assert parsed.section_title_line_indices == (0, 1)
+    assert parsed.section_title == (
+        "III THÔNG TIN BO SUNG CHO CÁC KHOÀN MUC TRINH BÀY TRONG BÁO CÁO "
+        "TINH HINH TÀI CHÍNH HOP NHÁT"
+    )
     assert len(parsed.tables) == 3
     assert len(parsed.rows) == 22
     assert parsed.numeric_row_count == 20

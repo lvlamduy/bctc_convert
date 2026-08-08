@@ -1,0 +1,88 @@
+version: 1
+policy: TM_NOTE_PAGE58_CURRENCY_RISK_FIXED_GRID_DASH_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+page_number: 58
+page_tag: page-0058
+scope: CONSOLIDATED
+scope_binding: COMPLETE_CURRENCY_RISK_TABLE_IN_IMMUTABLE_CONSOLIDATED_DOCUMENT
+
+source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+source_render_sha256: bbcf019fd8b7c0a3ca461cf0ca7e1b77a617a062441d35d090e42ea5aa0348e2
+source_ocr_sha256: 76faf621905629fb1a4193844481af5cc36818f4729f7c5c2f89dd79098bbfb5
+upstream_ocr_sha256: 7169e93279d86778e7ef9ad33badd04ed60991a8417e0d5a05972bf7115fc204
+
+minimum_line_score: 0.80
+minimum_anchor_similarity: 0.70
+minimum_unit_similarity: 0.78
+
+unit:
+  anchors: [trieu dong, triu dong]
+  canonical: VND
+  multiplier: 1000000
+
+reporting_period:
+  period_role: CURRENT
+  period_type: SNAPSHOT
+  visible_date: 2026-03-31
+  period_start: 2026-03-31
+  period_end: 2026-03-31
+
+table:
+  table_key: CURRENCY_RISK
+  section_title_anchors: [rui ro tien te, rui ro tin t]
+  title_anchors: [phan loai tai san va cong no theo loai tien te, phan loi tai sn va cong n theo loi tien t]
+  expected_structural_rows: 2
+  expected_numeric_rows: 18
+
+axes:
+  - {axis_key: USD, canonical_label: USD được quy đổi, header_lines: [[usd duoc quy doi, usd duc quy di]], right_edge: 1855}
+  - {axis_key: EUR, canonical_label: EUR được quy đổi, header_lines: [[eur duoc quy doi, eur duc quy di]], right_edge: 2278}
+  - {axis_key: OTHER_FOREIGN_CURRENCIES, canonical_label: Các ngoại tệ khác được quy đổi, header_lines: [[cac ngoai te khac], [duoc quy doi, duc quy di]], right_edge: 2759}
+  - {axis_key: TOTAL, canonical_label: Tổng, header_lines: [[tong]], right_edge: 3236}
+
+rows:
+  - {source_role: ASSET_SECTION, metric_key: null, row_kind: LABEL_ONLY, label_lines: [[tai san]], dash_axes: []}
+  - {source_role: DETAIL, metric_key: CASH_AND_PRECIOUS_METALS, row_kind: NUMERIC, label_lines: [[tien mat vang bac da quy]], dash_axes: []}
+  - {source_role: DETAIL, metric_key: SBV_DEPOSITS, row_kind: NUMERIC, label_lines: [[tien gui tai nhnn]], dash_axes: []}
+  - {source_role: DETAIL, metric_key: INTERBANK_ASSETS, row_kind: NUMERIC, label_lines: [[tien gui tai va cho vay cac tctd khac]], dash_axes: []}
+  - {source_role: DETAIL, metric_key: DERIVATIVE_ASSETS, row_kind: NUMERIC, label_lines: [[cong cu tai chinh phai sinh va cac khoan no tai], [chinh khac]], dash_axes: [USD, EUR, OTHER_FOREIGN_CURRENCIES, TOTAL], dash_anchor_offset_line_heights: 0.08}
+  - {source_role: DETAIL, metric_key: CUSTOMER_LOANS, row_kind: NUMERIC, label_lines: [[cho vay khach hang]], dash_axes: []}
+  - {source_role: DETAIL, metric_key: INVESTMENT_SECURITIES, row_kind: NUMERIC, label_lines: [[chung khoan dau tu]], dash_axes: [USD, EUR]}
+  - {source_role: DETAIL, metric_key: LONG_TERM_INVESTMENTS, row_kind: NUMERIC, label_lines: [[gop von dau tu dai han]], dash_axes: [USD, OTHER_FOREIGN_CURRENCIES]}
+  - {source_role: DETAIL, metric_key: FIXED_ASSETS_AND_INVESTMENT_PROPERTY, row_kind: NUMERIC, label_lines: [[tai san co dinh va bat dong san dau tu]], dash_axes: [EUR]}
+  - {source_role: DETAIL, metric_key: OTHER_ASSETS, row_kind: NUMERIC, label_lines: [[cac tai san co khac]], dash_axes: []}
+  - {source_role: TOTAL, metric_key: TOTAL_ASSETS, row_kind: NUMERIC, label_lines: [[tong tai san]], dash_axes: []}
+  - {source_role: LIABILITY_SECTION, metric_key: null, row_kind: LABEL_ONLY, label_lines: [[no phai tra]], dash_axes: []}
+  - {source_role: DETAIL, metric_key: INTERBANK_LIABILITIES, row_kind: NUMERIC, label_lines: [[tien gui va vay cua cac tctd khac]], dash_axes: []}
+  - {source_role: DETAIL, metric_key: CUSTOMER_DEPOSITS, row_kind: NUMERIC, label_lines: [[tien gui cua khach hang]], dash_axes: []}
+  - {source_role: DETAIL, metric_key: DERIVATIVE_LIABILITIES, row_kind: NUMERIC, label_lines: [[cac cong cu tai chinh phai sinh va cac khoan no], [tai chinh khac]], dash_axes: []}
+  - {source_role: DETAIL, metric_key: OTHER_LIABILITIES, row_kind: NUMERIC, label_lines: [[cac khoan no khac]], dash_axes: []}
+  - {source_role: TOTAL, metric_key: TOTAL_LIABILITIES, row_kind: NUMERIC, label_lines: [[tong no phai tra]], dash_axes: []}
+  - {source_role: DERIVED_PRINTED_TOTAL, metric_key: ON_BALANCE_CURRENCY_POSITION, row_kind: NUMERIC, label_lines: [[trang thai tien te noi bang, trng thai tin t ni bng]], dash_axes: []}
+  - {source_role: DERIVED_PRINTED_TOTAL, metric_key: OFF_BALANCE_CURRENCY_POSITION, row_kind: NUMERIC, label_lines: [[trang thai tien te ngoai bang, trng thai tien t ngoi bang]], dash_axes: []}
+  - {source_role: DERIVED_PRINTED_TOTAL, metric_key: COMBINED_CURRENCY_POSITION, row_kind: NUMERIC, label_lines: [[trang thai tien te noi ngoai bang, trng thai tin t ni ngoi bng]], dash_axes: []}
+
+geometry:
+  numeric_cluster_line_heights: 0.45
+  wrapped_label_max_gap_line_heights: 1.65
+  tiny_glyph_max_height_line_heights: 0.65
+  page_footer_top_ratio: 0.96
+
+dash_detector_config: word-box-reconstruction-v3.yaml
+dash_detector_config_sha256: c1cf55a6187a1b2a6f54b74b1566619d046446bc3ad7e628473004103c5d0f7e
+
+continuation:
+  page_58_closes_currency_risk_table: true
+  page_59_starts_topic: LIQUIDITY_RISK
+
+forbidden_semantic_inputs:
+  - missing_ocr_cell_as_dash_without_pixel_evidence
+  - template_labels_as_row_reconstruction_input
+  - approved_report_norm_id_assignment
+  - historical_or_mongodb_values
+  - human_review_answers
+  - dash_as_zero
+  - accounting_equations_as_value_imputation
+  - tiny_ocr_glyph_as_numeric_without_full_height_geometry
+  - page57_values_as_page58_mapping_or_imputation

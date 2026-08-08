@@ -1,0 +1,3363 @@
+{
+  "applied_at": "2026-08-08T12:44:05.019879+00:00",
+  "authority": {
+    "approved_on": "2026-08-08",
+    "policy": "USER_AUTHORIZED_BUSINESS_SCHEMA_UPDATE"
+  },
+  "business_formulas": [
+    {
+      "component_schema_ids": [
+        4364,
+        4365,
+        4342,
+        4341,
+        4343,
+        5699
+      ],
+      "operator": "SUM",
+      "schema_id": 4325,
+      "statement_type": "CDKT"
+    },
+    {
+      "component_schema_ids": [
+        4325,
+        4306
+      ],
+      "operator": "SUM",
+      "schema_id": 5712,
+      "statement_type": "CDKT"
+    },
+    {
+      "component_schema_ids": [
+        4385,
+        4386,
+        4387,
+        4388,
+        4389,
+        4390,
+        4393
+      ],
+      "operator": "SUM",
+      "schema_id": 5713,
+      "statement_type": "KQKD"
+    },
+    {
+      "component_schema_ids": [
+        4120,
+        4121
+      ],
+      "operator": "SUM",
+      "schema_id": 5714,
+      "statement_type": "LCTT"
+    },
+    {
+      "component_schema_ids": [
+        583,
+        590
+      ],
+      "operator": "SUM",
+      "schema_id": 5718,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        784,
+        792
+      ],
+      "operator": "SUM",
+      "schema_id": 783,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5723,
+        5725
+      ],
+      "operator": "SUM",
+      "schema_id": 5727,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5728,
+        5729,
+        5730
+      ],
+      "operator": "SUM",
+      "schema_id": 5731,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5732,
+        5733,
+        5734,
+        5735,
+        5736
+      ],
+      "operator": "SUM",
+      "schema_id": 5737,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5741,
+        5742,
+        1302
+      ],
+      "operator": "SUM",
+      "schema_id": 1301,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5743,
+        5744
+      ],
+      "operator": "SUM",
+      "schema_id": 1302,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5751
+      ],
+      "operator": "SUM",
+      "schema_id": 5750,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5754,
+        5755
+      ],
+      "operator": "SUM",
+      "schema_id": 5753,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5757,
+        5758
+      ],
+      "operator": "SUM",
+      "schema_id": 5756,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5760,
+        5761
+      ],
+      "operator": "SUM",
+      "schema_id": 5759,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5765,
+        5772,
+        5779,
+        5786,
+        5793
+      ],
+      "operator": "SUM",
+      "schema_id": 5800,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5766,
+        5773,
+        5780,
+        5787,
+        5794
+      ],
+      "operator": "SUM",
+      "schema_id": 5801,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5767,
+        5774,
+        5781,
+        5788,
+        5795
+      ],
+      "operator": "SUM",
+      "schema_id": 5802,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5768,
+        5775,
+        5782,
+        5789,
+        5796
+      ],
+      "operator": "SUM",
+      "schema_id": 5803,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5769,
+        5776,
+        5783,
+        5790,
+        5797
+      ],
+      "operator": "SUM",
+      "schema_id": 5804,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5770,
+        5777,
+        5784,
+        5791,
+        5798
+      ],
+      "operator": "SUM",
+      "schema_id": 5805,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5808,
+        5815,
+        5822,
+        5829,
+        5836
+      ],
+      "operator": "SUM",
+      "schema_id": 5843,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5809,
+        5816,
+        5823,
+        5830,
+        5837
+      ],
+      "operator": "SUM",
+      "schema_id": 5844,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5810,
+        5817,
+        5824,
+        5831,
+        5838
+      ],
+      "operator": "SUM",
+      "schema_id": 5845,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5811,
+        5818,
+        5825,
+        5832,
+        5839
+      ],
+      "operator": "SUM",
+      "schema_id": 5846,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5812,
+        5819,
+        5826,
+        5833,
+        5840
+      ],
+      "operator": "SUM",
+      "schema_id": 5847,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5813,
+        5820,
+        5827,
+        5834,
+        5841
+      ],
+      "operator": "SUM",
+      "schema_id": 5848,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        1363,
+        1364
+      ],
+      "operator": "SUM",
+      "schema_id": 5849,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        1389,
+        1390
+      ],
+      "operator": "SUM",
+      "schema_id": 5851,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        1441,
+        1442
+      ],
+      "operator": "SUM",
+      "schema_id": 5853,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        1467,
+        1468
+      ],
+      "operator": "SUM",
+      "schema_id": 5855,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        1367,
+        1370,
+        1371,
+        1372,
+        1373,
+        1374
+      ],
+      "operator": "SUM",
+      "schema_id": 5850,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        1393,
+        1396,
+        1397,
+        1398,
+        1399,
+        1400
+      ],
+      "operator": "SUM",
+      "schema_id": 5852,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        1445,
+        1448,
+        1449,
+        1450,
+        1451,
+        1452
+      ],
+      "operator": "SUM",
+      "schema_id": 5854,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        1471,
+        1474,
+        1475,
+        1476,
+        1477,
+        1478
+      ],
+      "operator": "SUM",
+      "schema_id": 5856,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        1494,
+        1495
+      ],
+      "operator": "SUM",
+      "schema_id": 5858,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        1519,
+        1520
+      ],
+      "operator": "SUM",
+      "schema_id": 5860,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        1594,
+        1595
+      ],
+      "operator": "SUM",
+      "schema_id": 5862,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        1619,
+        1620
+      ],
+      "operator": "SUM",
+      "schema_id": 5864,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        1644,
+        1645
+      ],
+      "operator": "SUM",
+      "schema_id": 5866,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        1669,
+        1670
+      ],
+      "operator": "SUM",
+      "schema_id": 5868,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5881,
+        5882
+      ],
+      "operator": "SUM",
+      "schema_id": 5880,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        1744,
+        1745
+      ],
+      "operator": "SUM",
+      "schema_id": 5897,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5871,
+        5872,
+        5873,
+        5874,
+        5875,
+        5876,
+        5878,
+        5879,
+        5880,
+        5883
+      ],
+      "operator": "SUM",
+      "schema_id": 5870,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5885,
+        5886,
+        5887,
+        5888,
+        5889,
+        5890,
+        5891,
+        5892
+      ],
+      "operator": "SUM",
+      "schema_id": 5884,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5893,
+        5894
+      ],
+      "operator": "SUM",
+      "schema_id": 5895,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5768,
+        5769
+      ],
+      "operator": "SUBTRACT",
+      "schema_id": 5770,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5775,
+        5776
+      ],
+      "operator": "SUBTRACT",
+      "schema_id": 5777,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5782,
+        5783
+      ],
+      "operator": "SUBTRACT",
+      "schema_id": 5784,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5789,
+        5790
+      ],
+      "operator": "SUBTRACT",
+      "schema_id": 5791,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5796,
+        5797
+      ],
+      "operator": "SUBTRACT",
+      "schema_id": 5798,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5811,
+        5812
+      ],
+      "operator": "SUBTRACT",
+      "schema_id": 5813,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5818,
+        5819
+      ],
+      "operator": "SUBTRACT",
+      "schema_id": 5820,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5825,
+        5826
+      ],
+      "operator": "SUBTRACT",
+      "schema_id": 5827,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5832,
+        5833
+      ],
+      "operator": "SUBTRACT",
+      "schema_id": 5834,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5839,
+        5840
+      ],
+      "operator": "SUBTRACT",
+      "schema_id": 5841,
+      "statement_type": "TM"
+    },
+    {
+      "component_schema_ids": [
+        5870,
+        5884
+      ],
+      "operator": "SUBTRACT",
+      "schema_id": 5893,
+      "statement_type": "TM"
+    }
+  ],
+  "collision_safety": {
+    "baseline_global_schema_count": 1593,
+    "new_ids": [
+      5712,
+      5713,
+      5714,
+      5718,
+      5719,
+      5720,
+      5721,
+      5722,
+      5723,
+      5724,
+      5725,
+      5726,
+      5727,
+      5728,
+      5729,
+      5730,
+      5731,
+      5732,
+      5733,
+      5734,
+      5735,
+      5736,
+      5737,
+      5738,
+      5739,
+      5740,
+      5741,
+      5742,
+      5743,
+      5744,
+      5745,
+      5746,
+      5747,
+      5748,
+      5749,
+      5750,
+      5751,
+      5752,
+      5753,
+      5754,
+      5755,
+      5756,
+      5757,
+      5758,
+      5759,
+      5760,
+      5761,
+      5762,
+      5763,
+      5764,
+      5765,
+      5766,
+      5767,
+      5768,
+      5769,
+      5770,
+      5771,
+      5772,
+      5773,
+      5774,
+      5775,
+      5776,
+      5777,
+      5778,
+      5779,
+      5780,
+      5781,
+      5782,
+      5783,
+      5784,
+      5785,
+      5786,
+      5787,
+      5788,
+      5789,
+      5790,
+      5791,
+      5792,
+      5793,
+      5794,
+      5795,
+      5796,
+      5797,
+      5798,
+      5799,
+      5800,
+      5801,
+      5802,
+      5803,
+      5804,
+      5805,
+      5806,
+      5807,
+      5808,
+      5809,
+      5810,
+      5811,
+      5812,
+      5813,
+      5814,
+      5815,
+      5816,
+      5817,
+      5818,
+      5819,
+      5820,
+      5821,
+      5822,
+      5823,
+      5824,
+      5825,
+      5826,
+      5827,
+      5828,
+      5829,
+      5830,
+      5831,
+      5832,
+      5833,
+      5834,
+      5835,
+      5836,
+      5837,
+      5838,
+      5839,
+      5840,
+      5841,
+      5842,
+      5843,
+      5844,
+      5845,
+      5846,
+      5847,
+      5848,
+      5849,
+      5850,
+      5851,
+      5852,
+      5853,
+      5854,
+      5855,
+      5856,
+      5857,
+      5858,
+      5859,
+      5860,
+      5861,
+      5862,
+      5863,
+      5864,
+      5865,
+      5866,
+      5867,
+      5868,
+      5869,
+      5870,
+      5871,
+      5872,
+      5873,
+      5874,
+      5875,
+      5876,
+      5877,
+      5878,
+      5879,
+      5880,
+      5881,
+      5882,
+      5883,
+      5884,
+      5885,
+      5886,
+      5887,
+      5888,
+      5889,
+      5890,
+      5891,
+      5892,
+      5893,
+      5894,
+      5895,
+      5896,
+      5897,
+      5898,
+      5899,
+      5900,
+      5901,
+      5902,
+      5903,
+      5904,
+      5905,
+      5906,
+      5907,
+      5908,
+      5909,
+      5910,
+      5911,
+      5912,
+      5913,
+      5914,
+      5915,
+      5916,
+      5917,
+      5918,
+      5919,
+      5920,
+      5921,
+      5922,
+      5923,
+      5924,
+      5925,
+      5926,
+      5927,
+      5928,
+      5929,
+      5930,
+      5931,
+      5932,
+      5933,
+      5934,
+      5935,
+      5936,
+      5937,
+      5938,
+      5939,
+      5940,
+      5941,
+      5942,
+      5943,
+      5944,
+      5945
+    ],
+    "new_ids_disjoint_from_reviewed_external_ids": true,
+    "result_global_schema_count": 1824,
+    "result_ids_globally_unique": true,
+    "reviewed_external_ids": [
+      5701,
+      5702,
+      5703,
+      5704,
+      5705,
+      5706,
+      5707,
+      5708,
+      5709,
+      5710,
+      5711,
+      5715,
+      5716,
+      5717
+    ]
+  },
+  "format_version": 1,
+  "migration_id": "BUSINESS-SCHEMA-5712-5713-5714-5718-5945",
+  "schema_changes": [
+    {
+      "canonical_name": "TỔNG VỐN CHỦ SỞ HỮU",
+      "change": "ADD",
+      "display_order_zero_based": 76,
+      "next_schema_id": 4305,
+      "previous_schema_id": 4306,
+      "schema_id": 5712,
+      "source_row": 78,
+      "statement_type": "CDKT"
+    },
+    {
+      "canonical_name": "TỔNG THU NHẬP HOẠT ĐỘNG",
+      "change": "ADD",
+      "display_order_zero_based": 13,
+      "next_schema_id": 4391,
+      "previous_schema_id": 4393,
+      "schema_id": 5713,
+      "source_row": 15,
+      "statement_type": "KQKD"
+    },
+    {
+      "canonical_name": "Tiền thu/(chi) đầu tư, góp vốn vào các đơn vị khác",
+      "change": "ADD",
+      "display_order_zero_based": 91,
+      "next_schema_id": 4120,
+      "previous_schema_id": 4146,
+      "schema_id": 5714,
+      "source_row": 93,
+      "statement_type": "LCTT"
+    },
+    {
+      "canonical_name": "Tổng dự phòng rủi ro tiền gửi và cho vay các tổ chức tín dụng khác",
+      "change": "ADD",
+      "display_order_zero_based": 32,
+      "next_schema_id": 592,
+      "previous_schema_id": 591,
+      "schema_id": 5718,
+      "source_row": 34,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Y tế & hoạt động trợ giúp xã hội",
+      "change": "ADD",
+      "display_order_zero_based": 180,
+      "next_schema_id": 738,
+      "previous_schema_id": 737,
+      "schema_id": 5719,
+      "source_row": 182,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Ngành nghệ thuật vui chơi giải trí",
+      "change": "ADD",
+      "display_order_zero_based": 187,
+      "next_schema_id": 5721,
+      "previous_schema_id": 743,
+      "schema_id": 5720,
+      "source_row": 189,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Ngành hoạt động dịch vụ khác",
+      "change": "ADD",
+      "display_order_zero_based": 188,
+      "next_schema_id": 5722,
+      "previous_schema_id": 5720,
+      "schema_id": 5721,
+      "source_row": 190,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Ngành hoạt động làm thuê các công việc trong các hộ gia đình, sản xuất sản phẩm vật chất và dịch vụ tự tiêu dùng của hộ gia đình",
+      "change": "ADD",
+      "display_order_zero_based": 189,
+      "next_schema_id": 744,
+      "previous_schema_id": 5721,
+      "schema_id": 5722,
+      "source_row": 191,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Nợ gốc đã mua",
+      "change": "ADD",
+      "display_order_zero_based": 255,
+      "next_schema_id": 5739,
+      "previous_schema_id": 803,
+      "schema_id": 5738,
+      "source_row": 257,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Lãi của khoản nợ đã mua",
+      "change": "ADD",
+      "display_order_zero_based": 256,
+      "next_schema_id": 804,
+      "previous_schema_id": 5738,
+      "schema_id": 5739,
+      "source_row": 258,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Chứng khoán nợ do Chính phủ bảo lãnh",
+      "change": "ADD",
+      "display_order_zero_based": 261,
+      "next_schema_id": 808,
+      "previous_schema_id": 807,
+      "schema_id": 5740,
+      "source_row": 263,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Cam kết mua ngoại tệ",
+      "change": "ADD",
+      "display_order_zero_based": 777,
+      "next_schema_id": 5742,
+      "previous_schema_id": 1301,
+      "schema_id": 5741,
+      "source_row": 779,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Cam kết bán ngoại tệ",
+      "change": "ADD",
+      "display_order_zero_based": 778,
+      "next_schema_id": 1302,
+      "previous_schema_id": 5741,
+      "schema_id": 5742,
+      "source_row": 780,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Cam kết mua giao dịch hoán đổi tiền tệ",
+      "change": "ADD",
+      "display_order_zero_based": 780,
+      "next_schema_id": 5744,
+      "previous_schema_id": 1302,
+      "schema_id": 5743,
+      "source_row": 782,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Cam kết bán giao dịch hoán đổi tiền tệ",
+      "change": "ADD",
+      "display_order_zero_based": 781,
+      "next_schema_id": 1303,
+      "previous_schema_id": 5743,
+      "schema_id": 5744,
+      "source_row": 783,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
+      "change": "ADD",
+      "display_order_zero_based": 168,
+      "next_schema_id": 727,
+      "previous_schema_id": 726,
+      "schema_id": 5745,
+      "source_row": 170,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Trong đó: Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
+      "change": "ADD",
+      "display_order_zero_based": 195,
+      "next_schema_id": 748,
+      "previous_schema_id": 747,
+      "schema_id": 5746,
+      "source_row": 197,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
+      "change": "ADD",
+      "display_order_zero_based": 204,
+      "next_schema_id": 756,
+      "previous_schema_id": 755,
+      "schema_id": 5747,
+      "source_row": 206,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
+      "change": "ADD",
+      "display_order_zero_based": 233,
+      "next_schema_id": 783,
+      "previous_schema_id": 782,
+      "schema_id": 5748,
+      "source_row": 235,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
+      "change": "ADD",
+      "display_order_zero_based": 192,
+      "next_schema_id": 746,
+      "previous_schema_id": 745,
+      "schema_id": 5749,
+      "source_row": 194,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Chi phí thuế thu nhập hiện hành",
+      "change": "ADD",
+      "display_order_zero_based": 704,
+      "next_schema_id": 5724,
+      "previous_schema_id": 1246,
+      "schema_id": 5723,
+      "source_row": 706,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Năm hiện hành",
+      "change": "ADD",
+      "display_order_zero_based": 705,
+      "next_schema_id": 5725,
+      "previous_schema_id": 5723,
+      "schema_id": 5724,
+      "source_row": 707,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Chi phí/(hoàn nhập) thuế thu nhập hoãn lại",
+      "change": "ADD",
+      "display_order_zero_based": 706,
+      "next_schema_id": 5726,
+      "previous_schema_id": 5724,
+      "schema_id": 5725,
+      "source_row": 708,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Chi phí/(thu nhập) thuế thu nhập hoãn lại",
+      "change": "ADD",
+      "display_order_zero_based": 707,
+      "next_schema_id": 5727,
+      "previous_schema_id": 5725,
+      "schema_id": 5726,
+      "source_row": 709,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Chi phí thuế thu nhập",
+      "change": "ADD",
+      "display_order_zero_based": 708,
+      "next_schema_id": 5728,
+      "previous_schema_id": 5726,
+      "schema_id": 5727,
+      "source_row": 710,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tổng lợi nhuận theo kế toán trước thuế hợp nhất",
+      "change": "ADD",
+      "display_order_zero_based": 709,
+      "next_schema_id": 5729,
+      "previous_schema_id": 5727,
+      "schema_id": 5728,
+      "source_row": 711,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Thu nhập không chịu thuế (bao gồm cổ tức, lợi nhuận từ các đơn vị, các khoản điều chỉnh hợp nhất không chịu thuế) và các khoản khác",
+      "change": "ADD",
+      "display_order_zero_based": 710,
+      "next_schema_id": 5730,
+      "previous_schema_id": 5728,
+      "schema_id": 5729,
+      "source_row": 712,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Các chi phí không được khấu trừ của riêng Ngân hàng",
+      "change": "ADD",
+      "display_order_zero_based": 711,
+      "next_schema_id": 5731,
+      "previous_schema_id": 5729,
+      "schema_id": 5730,
+      "source_row": 713,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Thu nhập chịu thuế TNDN ước tính tại Việt Nam",
+      "change": "ADD",
+      "display_order_zero_based": 712,
+      "next_schema_id": 5732,
+      "previous_schema_id": 5730,
+      "schema_id": 5731,
+      "source_row": 714,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Chi phí thuế TNDN hiện hành riêng Ngân hàng (i)",
+      "change": "ADD",
+      "display_order_zero_based": 713,
+      "next_schema_id": 5733,
+      "previous_schema_id": 5731,
+      "schema_id": 5732,
+      "source_row": 715,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Điều chỉnh trong năm cho thuế thu nhập hiện hành của các năm trước (ii)",
+      "change": "ADD",
+      "display_order_zero_based": 714,
+      "next_schema_id": 5734,
+      "previous_schema_id": 5732,
+      "schema_id": 5733,
+      "source_row": 716,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Chi phí thuế TNDN chi nhánh nước ngoài (iii)",
+      "change": "ADD",
+      "display_order_zero_based": 715,
+      "next_schema_id": 5735,
+      "previous_schema_id": 5733,
+      "schema_id": 5734,
+      "source_row": 717,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Chi phí thuế TNDN của các công ty con (iv)",
+      "change": "ADD",
+      "display_order_zero_based": 716,
+      "next_schema_id": 5736,
+      "previous_schema_id": 5734,
+      "schema_id": 5735,
+      "source_row": 718,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Chi phí/(hoàn nhập) thuế TNDN hoãn lại (v)",
+      "change": "ADD",
+      "display_order_zero_based": 717,
+      "next_schema_id": 5737,
+      "previous_schema_id": 5735,
+      "schema_id": 5736,
+      "source_row": 719,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Chi phí thuế TNDN (i+ii+iii+iv+v)",
+      "change": "ADD",
+      "display_order_zero_based": 718,
+      "next_schema_id": 1247,
+      "previous_schema_id": 5736,
+      "schema_id": 5737,
+      "source_row": 720,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Giao dịch với các bên liên quan",
+      "change": "ADD",
+      "display_order_zero_based": 784,
+      "next_schema_id": 5751,
+      "previous_schema_id": 1304,
+      "schema_id": 5750,
+      "source_row": 786,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Giao dịch tiền gửi tại MB",
+      "change": "ADD",
+      "display_order_zero_based": 785,
+      "next_schema_id": 5759,
+      "previous_schema_id": 5750,
+      "schema_id": 5751,
+      "source_row": 787,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Trong nước",
+      "change": "ADD",
+      "display_order_zero_based": 209,
+      "next_schema_id": 760,
+      "previous_schema_id": 759,
+      "schema_id": 5752,
+      "source_row": 211,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Phân tích theo khu vực địa lý",
+      "change": "ADD",
+      "display_order_zero_based": 546,
+      "next_schema_id": 5754,
+      "previous_schema_id": 1091,
+      "schema_id": 5753,
+      "source_row": 548,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Trong nước",
+      "change": "ADD",
+      "display_order_zero_based": 547,
+      "next_schema_id": 5755,
+      "previous_schema_id": 5753,
+      "schema_id": 5754,
+      "source_row": 549,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Nước ngoài",
+      "change": "ADD",
+      "display_order_zero_based": 548,
+      "next_schema_id": 1092,
+      "previous_schema_id": 5754,
+      "schema_id": 5755,
+      "source_row": 550,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Phân tích theo khu vực địa lý",
+      "change": "ADD",
+      "display_order_zero_based": 768,
+      "next_schema_id": 5757,
+      "previous_schema_id": 1295,
+      "schema_id": 5756,
+      "source_row": 770,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Trong nước",
+      "change": "ADD",
+      "display_order_zero_based": 769,
+      "next_schema_id": 5758,
+      "previous_schema_id": 5756,
+      "schema_id": 5757,
+      "source_row": 771,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Nước ngoài",
+      "change": "ADD",
+      "display_order_zero_based": 770,
+      "next_schema_id": 1296,
+      "previous_schema_id": 5757,
+      "schema_id": 5758,
+      "source_row": 772,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Kinh doanh và đầu tư chứng khoán",
+      "change": "ADD",
+      "display_order_zero_based": 786,
+      "next_schema_id": 5760,
+      "previous_schema_id": 5751,
+      "schema_id": 5759,
+      "source_row": 788,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Trong nước",
+      "change": "ADD",
+      "display_order_zero_based": 787,
+      "next_schema_id": 5761,
+      "previous_schema_id": 5759,
+      "schema_id": 5760,
+      "source_row": 789,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Nước ngoài",
+      "change": "ADD",
+      "display_order_zero_based": 788,
+      "next_schema_id": 5762,
+      "previous_schema_id": 5760,
+      "schema_id": 5761,
+      "source_row": 790,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Báo cáo bộ phận hợp nhất",
+      "change": "ADD",
+      "display_order_zero_based": 789,
+      "next_schema_id": 5763,
+      "previous_schema_id": 5761,
+      "schema_id": 5762,
+      "source_row": 791,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Báo cáo bộ phận hợp nhất theo khu vực địa lý",
+      "change": "ADD",
+      "display_order_zero_based": 790,
+      "next_schema_id": 5764,
+      "previous_schema_id": 5762,
+      "schema_id": 5763,
+      "source_row": 792,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Miền Bắc",
+      "change": "ADD",
+      "display_order_zero_based": 791,
+      "next_schema_id": 5765,
+      "previous_schema_id": 5763,
+      "schema_id": 5764,
+      "source_row": 793,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Tài sản",
+      "change": "ADD",
+      "display_order_zero_based": 792,
+      "next_schema_id": 5766,
+      "previous_schema_id": 5764,
+      "schema_id": 5765,
+      "source_row": 794,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Nợ phải trả",
+      "change": "ADD",
+      "display_order_zero_based": 793,
+      "next_schema_id": 5767,
+      "previous_schema_id": 5765,
+      "schema_id": 5766,
+      "source_row": 795,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Tài sản cố định",
+      "change": "ADD",
+      "display_order_zero_based": 794,
+      "next_schema_id": 5768,
+      "previous_schema_id": 5766,
+      "schema_id": 5767,
+      "source_row": 796,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Doanh thu",
+      "change": "ADD",
+      "display_order_zero_based": 795,
+      "next_schema_id": 5769,
+      "previous_schema_id": 5767,
+      "schema_id": 5768,
+      "source_row": 797,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Chi phí",
+      "change": "ADD",
+      "display_order_zero_based": 796,
+      "next_schema_id": 5770,
+      "previous_schema_id": 5768,
+      "schema_id": 5769,
+      "source_row": 798,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Lợi nhuận trước thuế",
+      "change": "ADD",
+      "display_order_zero_based": 797,
+      "next_schema_id": 5771,
+      "previous_schema_id": 5769,
+      "schema_id": 5770,
+      "source_row": 799,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Miền Trung",
+      "change": "ADD",
+      "display_order_zero_based": 798,
+      "next_schema_id": 5772,
+      "previous_schema_id": 5770,
+      "schema_id": 5771,
+      "source_row": 800,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Tài sản",
+      "change": "ADD",
+      "display_order_zero_based": 799,
+      "next_schema_id": 5773,
+      "previous_schema_id": 5771,
+      "schema_id": 5772,
+      "source_row": 801,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Nợ phải trả",
+      "change": "ADD",
+      "display_order_zero_based": 800,
+      "next_schema_id": 5774,
+      "previous_schema_id": 5772,
+      "schema_id": 5773,
+      "source_row": 802,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Tài sản cố định",
+      "change": "ADD",
+      "display_order_zero_based": 801,
+      "next_schema_id": 5775,
+      "previous_schema_id": 5773,
+      "schema_id": 5774,
+      "source_row": 803,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Doanh thu",
+      "change": "ADD",
+      "display_order_zero_based": 802,
+      "next_schema_id": 5776,
+      "previous_schema_id": 5774,
+      "schema_id": 5775,
+      "source_row": 804,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Chi phí",
+      "change": "ADD",
+      "display_order_zero_based": 803,
+      "next_schema_id": 5777,
+      "previous_schema_id": 5775,
+      "schema_id": 5776,
+      "source_row": 805,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Lợi nhuận trước thuế",
+      "change": "ADD",
+      "display_order_zero_based": 804,
+      "next_schema_id": 5778,
+      "previous_schema_id": 5776,
+      "schema_id": 5777,
+      "source_row": 806,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Miền Nam",
+      "change": "ADD",
+      "display_order_zero_based": 805,
+      "next_schema_id": 5779,
+      "previous_schema_id": 5777,
+      "schema_id": 5778,
+      "source_row": 807,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Tài sản",
+      "change": "ADD",
+      "display_order_zero_based": 806,
+      "next_schema_id": 5780,
+      "previous_schema_id": 5778,
+      "schema_id": 5779,
+      "source_row": 808,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Nợ phải trả",
+      "change": "ADD",
+      "display_order_zero_based": 807,
+      "next_schema_id": 5781,
+      "previous_schema_id": 5779,
+      "schema_id": 5780,
+      "source_row": 809,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Tài sản cố định",
+      "change": "ADD",
+      "display_order_zero_based": 808,
+      "next_schema_id": 5782,
+      "previous_schema_id": 5780,
+      "schema_id": 5781,
+      "source_row": 810,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Doanh thu",
+      "change": "ADD",
+      "display_order_zero_based": 809,
+      "next_schema_id": 5783,
+      "previous_schema_id": 5781,
+      "schema_id": 5782,
+      "source_row": 811,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Chi phí",
+      "change": "ADD",
+      "display_order_zero_based": 810,
+      "next_schema_id": 5784,
+      "previous_schema_id": 5782,
+      "schema_id": 5783,
+      "source_row": 812,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Lợi nhuận trước thuế",
+      "change": "ADD",
+      "display_order_zero_based": 811,
+      "next_schema_id": 5785,
+      "previous_schema_id": 5783,
+      "schema_id": 5784,
+      "source_row": 813,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Khu vực khác",
+      "change": "ADD",
+      "display_order_zero_based": 812,
+      "next_schema_id": 5786,
+      "previous_schema_id": 5784,
+      "schema_id": 5785,
+      "source_row": 814,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Tài sản",
+      "change": "ADD",
+      "display_order_zero_based": 813,
+      "next_schema_id": 5787,
+      "previous_schema_id": 5785,
+      "schema_id": 5786,
+      "source_row": 815,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Nợ phải trả",
+      "change": "ADD",
+      "display_order_zero_based": 814,
+      "next_schema_id": 5788,
+      "previous_schema_id": 5786,
+      "schema_id": 5787,
+      "source_row": 816,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Tài sản cố định",
+      "change": "ADD",
+      "display_order_zero_based": 815,
+      "next_schema_id": 5789,
+      "previous_schema_id": 5787,
+      "schema_id": 5788,
+      "source_row": 817,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Doanh thu",
+      "change": "ADD",
+      "display_order_zero_based": 816,
+      "next_schema_id": 5790,
+      "previous_schema_id": 5788,
+      "schema_id": 5789,
+      "source_row": 818,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Chi phí",
+      "change": "ADD",
+      "display_order_zero_based": 817,
+      "next_schema_id": 5791,
+      "previous_schema_id": 5789,
+      "schema_id": 5790,
+      "source_row": 819,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Lợi nhuận trước thuế",
+      "change": "ADD",
+      "display_order_zero_based": 818,
+      "next_schema_id": 5792,
+      "previous_schema_id": 5790,
+      "schema_id": 5791,
+      "source_row": 820,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Loại trừ/Phân loại",
+      "change": "ADD",
+      "display_order_zero_based": 819,
+      "next_schema_id": 5793,
+      "previous_schema_id": 5791,
+      "schema_id": 5792,
+      "source_row": 821,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Tài sản",
+      "change": "ADD",
+      "display_order_zero_based": 820,
+      "next_schema_id": 5794,
+      "previous_schema_id": 5792,
+      "schema_id": 5793,
+      "source_row": 822,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Nợ phải trả",
+      "change": "ADD",
+      "display_order_zero_based": 821,
+      "next_schema_id": 5795,
+      "previous_schema_id": 5793,
+      "schema_id": 5794,
+      "source_row": 823,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Tài sản cố định",
+      "change": "ADD",
+      "display_order_zero_based": 822,
+      "next_schema_id": 5796,
+      "previous_schema_id": 5794,
+      "schema_id": 5795,
+      "source_row": 824,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Doanh thu",
+      "change": "ADD",
+      "display_order_zero_based": 823,
+      "next_schema_id": 5797,
+      "previous_schema_id": 5795,
+      "schema_id": 5796,
+      "source_row": 825,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Chi phí",
+      "change": "ADD",
+      "display_order_zero_based": 824,
+      "next_schema_id": 5798,
+      "previous_schema_id": 5796,
+      "schema_id": 5797,
+      "source_row": 826,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Lợi nhuận trước thuế",
+      "change": "ADD",
+      "display_order_zero_based": 825,
+      "next_schema_id": 5799,
+      "previous_schema_id": 5797,
+      "schema_id": 5798,
+      "source_row": 827,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tổng cộng",
+      "change": "ADD",
+      "display_order_zero_based": 826,
+      "next_schema_id": 5800,
+      "previous_schema_id": 5798,
+      "schema_id": 5799,
+      "source_row": 828,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Tài sản",
+      "change": "ADD",
+      "display_order_zero_based": 827,
+      "next_schema_id": 5801,
+      "previous_schema_id": 5799,
+      "schema_id": 5800,
+      "source_row": 829,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Nợ phải trả",
+      "change": "ADD",
+      "display_order_zero_based": 828,
+      "next_schema_id": 5802,
+      "previous_schema_id": 5800,
+      "schema_id": 5801,
+      "source_row": 830,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Tài sản cố định",
+      "change": "ADD",
+      "display_order_zero_based": 829,
+      "next_schema_id": 5803,
+      "previous_schema_id": 5801,
+      "schema_id": 5802,
+      "source_row": 831,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Doanh thu",
+      "change": "ADD",
+      "display_order_zero_based": 830,
+      "next_schema_id": 5804,
+      "previous_schema_id": 5802,
+      "schema_id": 5803,
+      "source_row": 832,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Chi phí",
+      "change": "ADD",
+      "display_order_zero_based": 831,
+      "next_schema_id": 5805,
+      "previous_schema_id": 5803,
+      "schema_id": 5804,
+      "source_row": 833,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Lợi nhuận trước thuế",
+      "change": "ADD",
+      "display_order_zero_based": 832,
+      "next_schema_id": 5806,
+      "previous_schema_id": 5804,
+      "schema_id": 5805,
+      "source_row": 834,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Báo cáo bộ phận hợp nhất theo khu vực kinh doanh",
+      "change": "ADD",
+      "display_order_zero_based": 833,
+      "next_schema_id": 5807,
+      "previous_schema_id": 5805,
+      "schema_id": 5806,
+      "source_row": 835,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tài chính Ngân hàng",
+      "change": "ADD",
+      "display_order_zero_based": 834,
+      "next_schema_id": 5808,
+      "previous_schema_id": 5806,
+      "schema_id": 5807,
+      "source_row": 836,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Tài sản",
+      "change": "ADD",
+      "display_order_zero_based": 835,
+      "next_schema_id": 5809,
+      "previous_schema_id": 5807,
+      "schema_id": 5808,
+      "source_row": 837,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Nợ phải trả",
+      "change": "ADD",
+      "display_order_zero_based": 836,
+      "next_schema_id": 5810,
+      "previous_schema_id": 5808,
+      "schema_id": 5809,
+      "source_row": 838,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Tài sản cố định",
+      "change": "ADD",
+      "display_order_zero_based": 837,
+      "next_schema_id": 5811,
+      "previous_schema_id": 5809,
+      "schema_id": 5810,
+      "source_row": 839,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Doanh thu",
+      "change": "ADD",
+      "display_order_zero_based": 838,
+      "next_schema_id": 5812,
+      "previous_schema_id": 5810,
+      "schema_id": 5811,
+      "source_row": 840,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Chi phí",
+      "change": "ADD",
+      "display_order_zero_based": 839,
+      "next_schema_id": 5813,
+      "previous_schema_id": 5811,
+      "schema_id": 5812,
+      "source_row": 841,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Lợi nhuận trước thuế",
+      "change": "ADD",
+      "display_order_zero_based": 840,
+      "next_schema_id": 5814,
+      "previous_schema_id": 5812,
+      "schema_id": 5813,
+      "source_row": 842,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Chứng khoán Quản lý quỹ",
+      "change": "ADD",
+      "display_order_zero_based": 841,
+      "next_schema_id": 5815,
+      "previous_schema_id": 5813,
+      "schema_id": 5814,
+      "source_row": 843,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Tài sản",
+      "change": "ADD",
+      "display_order_zero_based": 842,
+      "next_schema_id": 5816,
+      "previous_schema_id": 5814,
+      "schema_id": 5815,
+      "source_row": 844,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Nợ phải trả",
+      "change": "ADD",
+      "display_order_zero_based": 843,
+      "next_schema_id": 5817,
+      "previous_schema_id": 5815,
+      "schema_id": 5816,
+      "source_row": 845,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Tài sản cố định",
+      "change": "ADD",
+      "display_order_zero_based": 844,
+      "next_schema_id": 5818,
+      "previous_schema_id": 5816,
+      "schema_id": 5817,
+      "source_row": 846,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Doanh thu",
+      "change": "ADD",
+      "display_order_zero_based": 845,
+      "next_schema_id": 5819,
+      "previous_schema_id": 5817,
+      "schema_id": 5818,
+      "source_row": 847,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Chi phí",
+      "change": "ADD",
+      "display_order_zero_based": 846,
+      "next_schema_id": 5820,
+      "previous_schema_id": 5818,
+      "schema_id": 5819,
+      "source_row": 848,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Lợi nhuận trước thuế",
+      "change": "ADD",
+      "display_order_zero_based": 847,
+      "next_schema_id": 5821,
+      "previous_schema_id": 5819,
+      "schema_id": 5820,
+      "source_row": 849,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Bảo hiểm",
+      "change": "ADD",
+      "display_order_zero_based": 848,
+      "next_schema_id": 5822,
+      "previous_schema_id": 5820,
+      "schema_id": 5821,
+      "source_row": 850,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Tài sản",
+      "change": "ADD",
+      "display_order_zero_based": 849,
+      "next_schema_id": 5823,
+      "previous_schema_id": 5821,
+      "schema_id": 5822,
+      "source_row": 851,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Nợ phải trả",
+      "change": "ADD",
+      "display_order_zero_based": 850,
+      "next_schema_id": 5824,
+      "previous_schema_id": 5822,
+      "schema_id": 5823,
+      "source_row": 852,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Tài sản cố định",
+      "change": "ADD",
+      "display_order_zero_based": 851,
+      "next_schema_id": 5825,
+      "previous_schema_id": 5823,
+      "schema_id": 5824,
+      "source_row": 853,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Doanh thu",
+      "change": "ADD",
+      "display_order_zero_based": 852,
+      "next_schema_id": 5826,
+      "previous_schema_id": 5824,
+      "schema_id": 5825,
+      "source_row": 854,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Chi phí",
+      "change": "ADD",
+      "display_order_zero_based": 853,
+      "next_schema_id": 5827,
+      "previous_schema_id": 5825,
+      "schema_id": 5826,
+      "source_row": 855,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Lợi nhuận trước thuế",
+      "change": "ADD",
+      "display_order_zero_based": 854,
+      "next_schema_id": 5828,
+      "previous_schema_id": 5826,
+      "schema_id": 5827,
+      "source_row": 856,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Quản lý nợ và Khai thác tài sản",
+      "change": "ADD",
+      "display_order_zero_based": 855,
+      "next_schema_id": 5829,
+      "previous_schema_id": 5827,
+      "schema_id": 5828,
+      "source_row": 857,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Tài sản",
+      "change": "ADD",
+      "display_order_zero_based": 856,
+      "next_schema_id": 5830,
+      "previous_schema_id": 5828,
+      "schema_id": 5829,
+      "source_row": 858,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Nợ phải trả",
+      "change": "ADD",
+      "display_order_zero_based": 857,
+      "next_schema_id": 5831,
+      "previous_schema_id": 5829,
+      "schema_id": 5830,
+      "source_row": 859,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Tài sản cố định",
+      "change": "ADD",
+      "display_order_zero_based": 858,
+      "next_schema_id": 5832,
+      "previous_schema_id": 5830,
+      "schema_id": 5831,
+      "source_row": 860,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Doanh thu",
+      "change": "ADD",
+      "display_order_zero_based": 859,
+      "next_schema_id": 5833,
+      "previous_schema_id": 5831,
+      "schema_id": 5832,
+      "source_row": 861,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Chi phí",
+      "change": "ADD",
+      "display_order_zero_based": 860,
+      "next_schema_id": 5834,
+      "previous_schema_id": 5832,
+      "schema_id": 5833,
+      "source_row": 862,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Lợi nhuận trước thuế",
+      "change": "ADD",
+      "display_order_zero_based": 861,
+      "next_schema_id": 5835,
+      "previous_schema_id": 5833,
+      "schema_id": 5834,
+      "source_row": 863,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Loại trừ/Phân loại",
+      "change": "ADD",
+      "display_order_zero_based": 862,
+      "next_schema_id": 5836,
+      "previous_schema_id": 5834,
+      "schema_id": 5835,
+      "source_row": 864,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Tài sản",
+      "change": "ADD",
+      "display_order_zero_based": 863,
+      "next_schema_id": 5837,
+      "previous_schema_id": 5835,
+      "schema_id": 5836,
+      "source_row": 865,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Nợ phải trả",
+      "change": "ADD",
+      "display_order_zero_based": 864,
+      "next_schema_id": 5838,
+      "previous_schema_id": 5836,
+      "schema_id": 5837,
+      "source_row": 866,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Tài sản cố định",
+      "change": "ADD",
+      "display_order_zero_based": 865,
+      "next_schema_id": 5839,
+      "previous_schema_id": 5837,
+      "schema_id": 5838,
+      "source_row": 867,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Doanh thu",
+      "change": "ADD",
+      "display_order_zero_based": 866,
+      "next_schema_id": 5840,
+      "previous_schema_id": 5838,
+      "schema_id": 5839,
+      "source_row": 868,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Chi phí",
+      "change": "ADD",
+      "display_order_zero_based": 867,
+      "next_schema_id": 5841,
+      "previous_schema_id": 5839,
+      "schema_id": 5840,
+      "source_row": 869,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Lợi nhuận trước thuế",
+      "change": "ADD",
+      "display_order_zero_based": 868,
+      "next_schema_id": 5842,
+      "previous_schema_id": 5840,
+      "schema_id": 5841,
+      "source_row": 870,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tổng cộng",
+      "change": "ADD",
+      "display_order_zero_based": 869,
+      "next_schema_id": 5843,
+      "previous_schema_id": 5841,
+      "schema_id": 5842,
+      "source_row": 871,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Tài sản",
+      "change": "ADD",
+      "display_order_zero_based": 870,
+      "next_schema_id": 5844,
+      "previous_schema_id": 5842,
+      "schema_id": 5843,
+      "source_row": 872,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Nợ phải trả",
+      "change": "ADD",
+      "display_order_zero_based": 871,
+      "next_schema_id": 5845,
+      "previous_schema_id": 5843,
+      "schema_id": 5844,
+      "source_row": 873,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Tài sản cố định",
+      "change": "ADD",
+      "display_order_zero_based": 872,
+      "next_schema_id": 5846,
+      "previous_schema_id": 5844,
+      "schema_id": 5845,
+      "source_row": 874,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Doanh thu",
+      "change": "ADD",
+      "display_order_zero_based": 873,
+      "next_schema_id": 5847,
+      "previous_schema_id": 5845,
+      "schema_id": 5846,
+      "source_row": 875,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Chi phí",
+      "change": "ADD",
+      "display_order_zero_based": 874,
+      "next_schema_id": 5848,
+      "previous_schema_id": 5846,
+      "schema_id": 5847,
+      "source_row": 876,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "+ Lợi nhuận trước thuế",
+      "change": "ADD",
+      "display_order_zero_based": 875,
+      "next_schema_id": 1305,
+      "previous_schema_id": 5847,
+      "schema_id": 5848,
+      "source_row": 877,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tài sản cố định và bất động sản đầu tư",
+      "change": "ADD",
+      "display_order_zero_based": 934,
+      "next_schema_id": 1363,
+      "previous_schema_id": 1362,
+      "schema_id": 5849,
+      "source_row": 936,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tổng nợ phải trả",
+      "change": "ADD",
+      "display_order_zero_based": 939,
+      "next_schema_id": 1367,
+      "previous_schema_id": 1366,
+      "schema_id": 5850,
+      "source_row": 941,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tài sản cố định và bất động sản đầu tư",
+      "change": "ADD",
+      "display_order_zero_based": 962,
+      "next_schema_id": 1389,
+      "previous_schema_id": 1388,
+      "schema_id": 5851,
+      "source_row": 964,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tổng nợ phải trả",
+      "change": "ADD",
+      "display_order_zero_based": 967,
+      "next_schema_id": 1393,
+      "previous_schema_id": 1392,
+      "schema_id": 5852,
+      "source_row": 969,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tài sản cố định và bất động sản đầu tư",
+      "change": "ADD",
+      "display_order_zero_based": 1016,
+      "next_schema_id": 1441,
+      "previous_schema_id": 1440,
+      "schema_id": 5853,
+      "source_row": 1018,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tổng nợ phải trả",
+      "change": "ADD",
+      "display_order_zero_based": 1021,
+      "next_schema_id": 1445,
+      "previous_schema_id": 1444,
+      "schema_id": 5854,
+      "source_row": 1023,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tài sản cố định và bất động sản đầu tư",
+      "change": "ADD",
+      "display_order_zero_based": 1044,
+      "next_schema_id": 1467,
+      "previous_schema_id": 1466,
+      "schema_id": 5855,
+      "source_row": 1046,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tổng nợ phải trả",
+      "change": "ADD",
+      "display_order_zero_based": 1049,
+      "next_schema_id": 1471,
+      "previous_schema_id": 1470,
+      "schema_id": 5856,
+      "source_row": 1051,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Cho vay khách hàng và mua nợ",
+      "change": "ADD",
+      "display_order_zero_based": 1070,
+      "next_schema_id": 1491,
+      "previous_schema_id": 1490,
+      "schema_id": 5857,
+      "source_row": 1072,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tài sản cố định, bất động sản đầu tư",
+      "change": "ADD",
+      "display_order_zero_based": 1074,
+      "next_schema_id": 1494,
+      "previous_schema_id": 1493,
+      "schema_id": 5858,
+      "source_row": 1076,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Cho vay khách hàng và mua nợ",
+      "change": "ADD",
+      "display_order_zero_based": 1097,
+      "next_schema_id": 1516,
+      "previous_schema_id": 1515,
+      "schema_id": 5859,
+      "source_row": 1099,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tài sản cố định, bất động sản đầu tư",
+      "change": "ADD",
+      "display_order_zero_based": 1101,
+      "next_schema_id": 1519,
+      "previous_schema_id": 1518,
+      "schema_id": 5860,
+      "source_row": 1103,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Cho vay khách hàng và mua nợ",
+      "change": "ADD",
+      "display_order_zero_based": 1174,
+      "next_schema_id": 1591,
+      "previous_schema_id": 1590,
+      "schema_id": 5861,
+      "source_row": 1176,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tài sản cố định, bất động sản đầu tư",
+      "change": "ADD",
+      "display_order_zero_based": 1178,
+      "next_schema_id": 1594,
+      "previous_schema_id": 1593,
+      "schema_id": 5862,
+      "source_row": 1180,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Cho vay khách hàng và mua nợ",
+      "change": "ADD",
+      "display_order_zero_based": 1201,
+      "next_schema_id": 1616,
+      "previous_schema_id": 1615,
+      "schema_id": 5863,
+      "source_row": 1203,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tài sản cố định, bất động sản đầu tư",
+      "change": "ADD",
+      "display_order_zero_based": 1205,
+      "next_schema_id": 1619,
+      "previous_schema_id": 1618,
+      "schema_id": 5864,
+      "source_row": 1207,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Cho vay khách hàng và mua nợ",
+      "change": "ADD",
+      "display_order_zero_based": 1228,
+      "next_schema_id": 1641,
+      "previous_schema_id": 1640,
+      "schema_id": 5865,
+      "source_row": 1230,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tài sản cố định, bất động sản đầu tư",
+      "change": "ADD",
+      "display_order_zero_based": 1232,
+      "next_schema_id": 1644,
+      "previous_schema_id": 1643,
+      "schema_id": 5866,
+      "source_row": 1234,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Cho vay khách hàng và mua nợ",
+      "change": "ADD",
+      "display_order_zero_based": 1255,
+      "next_schema_id": 1666,
+      "previous_schema_id": 1665,
+      "schema_id": 5867,
+      "source_row": 1257,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tài sản cố định, bất động sản đầu tư",
+      "change": "ADD",
+      "display_order_zero_based": 1259,
+      "next_schema_id": 1669,
+      "previous_schema_id": 1668,
+      "schema_id": 5868,
+      "source_row": 1261,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Rủi ro lãi suất - Trong hạn trên 01 năm",
+      "change": "ADD",
+      "display_order_zero_based": 1325,
+      "next_schema_id": 5870,
+      "previous_schema_id": 1733,
+      "schema_id": 5869,
+      "source_row": 1327,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tổng Tài sản",
+      "change": "ADD",
+      "display_order_zero_based": 1326,
+      "next_schema_id": 5871,
+      "previous_schema_id": 5869,
+      "schema_id": 5870,
+      "source_row": 1328,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tiền mặt, vàng bạc đá quý",
+      "change": "ADD",
+      "display_order_zero_based": 1327,
+      "next_schema_id": 5872,
+      "previous_schema_id": 5870,
+      "schema_id": 5871,
+      "source_row": 1329,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tiền gửi tại NHNN",
+      "change": "ADD",
+      "display_order_zero_based": 1328,
+      "next_schema_id": 5873,
+      "previous_schema_id": 5871,
+      "schema_id": 5872,
+      "source_row": 1330,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tiền gửi và cho vay các TCTD khác",
+      "change": "ADD",
+      "display_order_zero_based": 1329,
+      "next_schema_id": 5874,
+      "previous_schema_id": 5872,
+      "schema_id": 5873,
+      "source_row": 1331,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Chứng khoán kinh doanh",
+      "change": "ADD",
+      "display_order_zero_based": 1330,
+      "next_schema_id": 5875,
+      "previous_schema_id": 5873,
+      "schema_id": 5874,
+      "source_row": 1332,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Công cụ tài chính phái sinh và các tài sản tài chính khác",
+      "change": "ADD",
+      "display_order_zero_based": 1331,
+      "next_schema_id": 5876,
+      "previous_schema_id": 5874,
+      "schema_id": 5875,
+      "source_row": 1333,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Cho vay khách hàng và mua nợ",
+      "change": "ADD",
+      "display_order_zero_based": 1332,
+      "next_schema_id": 5877,
+      "previous_schema_id": 5875,
+      "schema_id": 5876,
+      "source_row": 1334,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Cho vay khách hàng",
+      "change": "ADD",
+      "display_order_zero_based": 1333,
+      "next_schema_id": 5878,
+      "previous_schema_id": 5876,
+      "schema_id": 5877,
+      "source_row": 1335,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Chứng khoán đầu tư",
+      "change": "ADD",
+      "display_order_zero_based": 1334,
+      "next_schema_id": 5879,
+      "previous_schema_id": 5877,
+      "schema_id": 5878,
+      "source_row": 1336,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Góp vốn, đầu tư dài hạn",
+      "change": "ADD",
+      "display_order_zero_based": 1335,
+      "next_schema_id": 5880,
+      "previous_schema_id": 5878,
+      "schema_id": 5879,
+      "source_row": 1337,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tài sản cố định, bất động sản đầu tư",
+      "change": "ADD",
+      "display_order_zero_based": 1336,
+      "next_schema_id": 5881,
+      "previous_schema_id": 5879,
+      "schema_id": 5880,
+      "source_row": 1338,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tài sản cố định",
+      "change": "ADD",
+      "display_order_zero_based": 1337,
+      "next_schema_id": 5882,
+      "previous_schema_id": 5880,
+      "schema_id": 5881,
+      "source_row": 1339,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Bất động sản đầu tư",
+      "change": "ADD",
+      "display_order_zero_based": 1338,
+      "next_schema_id": 5883,
+      "previous_schema_id": 5881,
+      "schema_id": 5882,
+      "source_row": 1340,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tài sản Có khác",
+      "change": "ADD",
+      "display_order_zero_based": 1339,
+      "next_schema_id": 5884,
+      "previous_schema_id": 5882,
+      "schema_id": 5883,
+      "source_row": 1341,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tổng Nợ phải trả",
+      "change": "ADD",
+      "display_order_zero_based": 1340,
+      "next_schema_id": 5885,
+      "previous_schema_id": 5883,
+      "schema_id": 5884,
+      "source_row": 1342,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tiền gửi và vay từ NHNN và các TCTD khác",
+      "change": "ADD",
+      "display_order_zero_based": 1341,
+      "next_schema_id": 5886,
+      "previous_schema_id": 5884,
+      "schema_id": 5885,
+      "source_row": 1343,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Các khoản nợ chính phủ và NHNN",
+      "change": "ADD",
+      "display_order_zero_based": 1342,
+      "next_schema_id": 5887,
+      "previous_schema_id": 5885,
+      "schema_id": 5886,
+      "source_row": 1344,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tiền gửi và cho vay các TCTD khác",
+      "change": "ADD",
+      "display_order_zero_based": 1343,
+      "next_schema_id": 5888,
+      "previous_schema_id": 5886,
+      "schema_id": 5887,
+      "source_row": 1345,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tiền gửi của khách hàng",
+      "change": "ADD",
+      "display_order_zero_based": 1344,
+      "next_schema_id": 5889,
+      "previous_schema_id": 5887,
+      "schema_id": 5888,
+      "source_row": 1346,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Công cụ tài chính phái sinh và các khoản nợ tài chính khác",
+      "change": "ADD",
+      "display_order_zero_based": 1345,
+      "next_schema_id": 5890,
+      "previous_schema_id": 5888,
+      "schema_id": 5889,
+      "source_row": 1347,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro",
+      "change": "ADD",
+      "display_order_zero_based": 1346,
+      "next_schema_id": 5891,
+      "previous_schema_id": 5889,
+      "schema_id": 5890,
+      "source_row": 1348,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Phát hành giấy tờ có giá",
+      "change": "ADD",
+      "display_order_zero_based": 1347,
+      "next_schema_id": 5892,
+      "previous_schema_id": 5890,
+      "schema_id": 5891,
+      "source_row": 1349,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Các khoản nợ khác",
+      "change": "ADD",
+      "display_order_zero_based": 1348,
+      "next_schema_id": 5893,
+      "previous_schema_id": 5891,
+      "schema_id": 5892,
+      "source_row": 1350,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Chênh lệch nhạy cảm với lãi suất nội bảng",
+      "change": "ADD",
+      "display_order_zero_based": 1349,
+      "next_schema_id": 5894,
+      "previous_schema_id": 5892,
+      "schema_id": 5893,
+      "source_row": 1351,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Chênh lệch nhạy cảm với lãi suất ngoại bảng",
+      "change": "ADD",
+      "display_order_zero_based": 1350,
+      "next_schema_id": 5895,
+      "previous_schema_id": 5893,
+      "schema_id": 5894,
+      "source_row": 1352,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Chênh lệch nhạy cảm với lãi suất nội, ngoại bảng",
+      "change": "ADD",
+      "display_order_zero_based": 1351,
+      "next_schema_id": 1734,
+      "previous_schema_id": 5894,
+      "schema_id": 5895,
+      "source_row": 1353,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Cho vay khách hàng và mua nợ",
+      "change": "ADD",
+      "display_order_zero_based": 1359,
+      "next_schema_id": 1741,
+      "previous_schema_id": 1740,
+      "schema_id": 5896,
+      "source_row": 1361,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tài sản cố định, bất động sản đầu tư",
+      "change": "ADD",
+      "display_order_zero_based": 1363,
+      "next_schema_id": 1744,
+      "previous_schema_id": 1743,
+      "schema_id": 5897,
+      "source_row": 1365,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Rủi ro thanh khoản - Quá hạn",
+      "change": "ADD",
+      "display_order_zero_based": 1380,
+      "next_schema_id": 5899,
+      "previous_schema_id": 1759,
+      "schema_id": 5898,
+      "source_row": 1382,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tổng Tài sản",
+      "change": "ADD",
+      "display_order_zero_based": 1381,
+      "next_schema_id": 5900,
+      "previous_schema_id": 5898,
+      "schema_id": 5899,
+      "source_row": 1383,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tiền mặt, vàng bạc đá quý",
+      "change": "ADD",
+      "display_order_zero_based": 1382,
+      "next_schema_id": 5901,
+      "previous_schema_id": 5899,
+      "schema_id": 5900,
+      "source_row": 1384,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tiền gửi tại NHNN",
+      "change": "ADD",
+      "display_order_zero_based": 1383,
+      "next_schema_id": 5902,
+      "previous_schema_id": 5900,
+      "schema_id": 5901,
+      "source_row": 1385,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tiền gửi và cho vay các TCTD khác",
+      "change": "ADD",
+      "display_order_zero_based": 1384,
+      "next_schema_id": 5903,
+      "previous_schema_id": 5901,
+      "schema_id": 5902,
+      "source_row": 1386,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Chứng khoán kinh doanh",
+      "change": "ADD",
+      "display_order_zero_based": 1385,
+      "next_schema_id": 5904,
+      "previous_schema_id": 5902,
+      "schema_id": 5903,
+      "source_row": 1387,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Công cụ tài chính phái sinh và các tài sản tài chính khác",
+      "change": "ADD",
+      "display_order_zero_based": 1386,
+      "next_schema_id": 5905,
+      "previous_schema_id": 5903,
+      "schema_id": 5904,
+      "source_row": 1388,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Cho vay khách hàng và mua nợ",
+      "change": "ADD",
+      "display_order_zero_based": 1387,
+      "next_schema_id": 5906,
+      "previous_schema_id": 5904,
+      "schema_id": 5905,
+      "source_row": 1389,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Cho vay khách hàng",
+      "change": "ADD",
+      "display_order_zero_based": 1388,
+      "next_schema_id": 5907,
+      "previous_schema_id": 5905,
+      "schema_id": 5906,
+      "source_row": 1390,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Chứng khoán đầu tư",
+      "change": "ADD",
+      "display_order_zero_based": 1389,
+      "next_schema_id": 5908,
+      "previous_schema_id": 5906,
+      "schema_id": 5907,
+      "source_row": 1391,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Góp vốn, đầu tư dài hạn",
+      "change": "ADD",
+      "display_order_zero_based": 1390,
+      "next_schema_id": 5909,
+      "previous_schema_id": 5907,
+      "schema_id": 5908,
+      "source_row": 1392,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tài sản cố định, bất động sản đầu tư",
+      "change": "ADD",
+      "display_order_zero_based": 1391,
+      "next_schema_id": 5910,
+      "previous_schema_id": 5908,
+      "schema_id": 5909,
+      "source_row": 1393,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tài sản cố định",
+      "change": "ADD",
+      "display_order_zero_based": 1392,
+      "next_schema_id": 5911,
+      "previous_schema_id": 5909,
+      "schema_id": 5910,
+      "source_row": 1394,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Bất động sản đầu tư",
+      "change": "ADD",
+      "display_order_zero_based": 1393,
+      "next_schema_id": 5912,
+      "previous_schema_id": 5910,
+      "schema_id": 5911,
+      "source_row": 1395,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tài sản Có khác",
+      "change": "ADD",
+      "display_order_zero_based": 1394,
+      "next_schema_id": 5913,
+      "previous_schema_id": 5911,
+      "schema_id": 5912,
+      "source_row": 1396,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tổng Nợ phải trả",
+      "change": "ADD",
+      "display_order_zero_based": 1395,
+      "next_schema_id": 5914,
+      "previous_schema_id": 5912,
+      "schema_id": 5913,
+      "source_row": 1397,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tiền gửi và vay từ NHNN và các TCTD khác",
+      "change": "ADD",
+      "display_order_zero_based": 1396,
+      "next_schema_id": 5915,
+      "previous_schema_id": 5913,
+      "schema_id": 5914,
+      "source_row": 1398,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Các khoản nợ chính phủ và NHNN",
+      "change": "ADD",
+      "display_order_zero_based": 1397,
+      "next_schema_id": 5916,
+      "previous_schema_id": 5914,
+      "schema_id": 5915,
+      "source_row": 1399,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tiền gửi và cho vay các TCTD khác",
+      "change": "ADD",
+      "display_order_zero_based": 1398,
+      "next_schema_id": 5917,
+      "previous_schema_id": 5915,
+      "schema_id": 5916,
+      "source_row": 1400,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tiền gửi của khách hàng",
+      "change": "ADD",
+      "display_order_zero_based": 1399,
+      "next_schema_id": 5918,
+      "previous_schema_id": 5916,
+      "schema_id": 5917,
+      "source_row": 1401,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Công cụ tài chính phái sinh và các khoản nợ tài chính khác",
+      "change": "ADD",
+      "display_order_zero_based": 1400,
+      "next_schema_id": 5919,
+      "previous_schema_id": 5917,
+      "schema_id": 5918,
+      "source_row": 1402,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro",
+      "change": "ADD",
+      "display_order_zero_based": 1401,
+      "next_schema_id": 5920,
+      "previous_schema_id": 5918,
+      "schema_id": 5919,
+      "source_row": 1403,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Phát hành giấy tờ có giá",
+      "change": "ADD",
+      "display_order_zero_based": 1402,
+      "next_schema_id": 5921,
+      "previous_schema_id": 5919,
+      "schema_id": 5920,
+      "source_row": 1404,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Các khoản nợ khác",
+      "change": "ADD",
+      "display_order_zero_based": 1403,
+      "next_schema_id": 5922,
+      "previous_schema_id": 5920,
+      "schema_id": 5921,
+      "source_row": 1405,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Chênh lệch thanh khoản ròng",
+      "change": "ADD",
+      "display_order_zero_based": 1404,
+      "next_schema_id": 1760,
+      "previous_schema_id": 5921,
+      "schema_id": 5922,
+      "source_row": 1406,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Cho vay khách hàng và mua nợ",
+      "change": "ADD",
+      "display_order_zero_based": 1458,
+      "next_schema_id": 1813,
+      "previous_schema_id": 1812,
+      "schema_id": 5923,
+      "source_row": 1460,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tài sản cố định, bất động sản đầu tư",
+      "change": "ADD",
+      "display_order_zero_based": 1462,
+      "next_schema_id": 1816,
+      "previous_schema_id": 1815,
+      "schema_id": 5924,
+      "source_row": 1464,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Cho vay khách hàng và mua nợ",
+      "change": "ADD",
+      "display_order_zero_based": 1483,
+      "next_schema_id": 1836,
+      "previous_schema_id": 1835,
+      "schema_id": 5925,
+      "source_row": 1485,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tài sản cố định, bất động sản đầu tư",
+      "change": "ADD",
+      "display_order_zero_based": 1487,
+      "next_schema_id": 1839,
+      "previous_schema_id": 1838,
+      "schema_id": 5926,
+      "source_row": 1489,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Cho vay khách hàng và mua nợ",
+      "change": "ADD",
+      "display_order_zero_based": 1508,
+      "next_schema_id": 1859,
+      "previous_schema_id": 1858,
+      "schema_id": 5927,
+      "source_row": 1510,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tài sản cố định, bất động sản đầu tư",
+      "change": "ADD",
+      "display_order_zero_based": 1512,
+      "next_schema_id": 1862,
+      "previous_schema_id": 1861,
+      "schema_id": 5928,
+      "source_row": 1514,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Cho vay khách hàng và mua nợ",
+      "change": "ADD",
+      "display_order_zero_based": 1533,
+      "next_schema_id": 1882,
+      "previous_schema_id": 1881,
+      "schema_id": 5929,
+      "source_row": 1535,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tài sản cố định, bất động sản đầu tư",
+      "change": "ADD",
+      "display_order_zero_based": 1537,
+      "next_schema_id": 1885,
+      "previous_schema_id": 1884,
+      "schema_id": 5930,
+      "source_row": 1539,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Cho vay khách hàng và mua nợ",
+      "change": "ADD",
+      "display_order_zero_based": 1558,
+      "next_schema_id": 1905,
+      "previous_schema_id": 1904,
+      "schema_id": 5931,
+      "source_row": 1560,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tài sản cố định, bất động sản đầu tư",
+      "change": "ADD",
+      "display_order_zero_based": 1562,
+      "next_schema_id": 1908,
+      "previous_schema_id": 1907,
+      "schema_id": 5932,
+      "source_row": 1564,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Cho vay khách hàng và mua nợ",
+      "change": "ADD",
+      "display_order_zero_based": 1583,
+      "next_schema_id": 1928,
+      "previous_schema_id": 1927,
+      "schema_id": 5933,
+      "source_row": 1585,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tài sản cố định, bất động sản đầu tư",
+      "change": "ADD",
+      "display_order_zero_based": 1587,
+      "next_schema_id": 1931,
+      "previous_schema_id": 1930,
+      "schema_id": 5934,
+      "source_row": 1589,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "Tỷ giá một số ngoại tệ tại thời điểm lập báo cáo",
+      "change": "ADD",
+      "display_order_zero_based": 1601,
+      "next_schema_id": 5936,
+      "previous_schema_id": 1943,
+      "schema_id": 5935,
+      "source_row": 1603,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "USD",
+      "change": "ADD",
+      "display_order_zero_based": 1602,
+      "next_schema_id": 5937,
+      "previous_schema_id": 5935,
+      "schema_id": 5936,
+      "source_row": 1604,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "EUR",
+      "change": "ADD",
+      "display_order_zero_based": 1603,
+      "next_schema_id": 5938,
+      "previous_schema_id": 5936,
+      "schema_id": 5937,
+      "source_row": 1605,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "GBP",
+      "change": "ADD",
+      "display_order_zero_based": 1604,
+      "next_schema_id": 5939,
+      "previous_schema_id": 5937,
+      "schema_id": 5938,
+      "source_row": 1606,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "JPY",
+      "change": "ADD",
+      "display_order_zero_based": 1605,
+      "next_schema_id": 5940,
+      "previous_schema_id": 5938,
+      "schema_id": 5939,
+      "source_row": 1607,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "CHF",
+      "change": "ADD",
+      "display_order_zero_based": 1606,
+      "next_schema_id": 5941,
+      "previous_schema_id": 5939,
+      "schema_id": 5940,
+      "source_row": 1608,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "AUD",
+      "change": "ADD",
+      "display_order_zero_based": 1607,
+      "next_schema_id": 5942,
+      "previous_schema_id": 5940,
+      "schema_id": 5941,
+      "source_row": 1609,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "CAD",
+      "change": "ADD",
+      "display_order_zero_based": 1608,
+      "next_schema_id": 5943,
+      "previous_schema_id": 5941,
+      "schema_id": 5942,
+      "source_row": 1610,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "SGD",
+      "change": "ADD",
+      "display_order_zero_based": 1609,
+      "next_schema_id": 5944,
+      "previous_schema_id": 5942,
+      "schema_id": 5943,
+      "source_row": 1611,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "THB",
+      "change": "ADD",
+      "display_order_zero_based": 1610,
+      "next_schema_id": 5945,
+      "previous_schema_id": 5943,
+      "schema_id": 5944,
+      "source_row": 1612,
+      "statement_type": "TM"
+    },
+    {
+      "canonical_name": "SEK",
+      "change": "ADD",
+      "display_order_zero_based": 1611,
+      "next_schema_id": 1944,
+      "previous_schema_id": 5944,
+      "schema_id": 5945,
+      "source_row": 1613,
+      "statement_type": "TM"
+    },
+    {
+      "after": "Chứng khoán đầu tư sẵn sàng để bán",
+      "before": "Chứng khoán đầu tư sẵn sàng để hàng",
+      "change": "CORRECT_DISPLAY_NAME",
+      "schema_id": 4350,
+      "statement_type": "CDKT"
+    },
+    {
+      "after": "Công ty TNHH MTV (hoặc trên MTV) vốn nhà nước trên 50%",
+      "before": "+ Công ty TNHH MTV vốn nhà nước trên 50%",
+      "change": "CORRECT_DISPLAY_NAME",
+      "schema_id": 770,
+      "statement_type": "TM"
+    },
+    {
+      "after": "Giáo dục & Đào tạo",
+      "before": " + Giáo dục và đào tạo, y tế",
+      "change": "CORRECT_DISPLAY_NAME",
+      "schema_id": 737,
+      "statement_type": "TM"
+    }
+  ],
+  "status": "APPLIED_AND_VERIFIED",
+  "supporting_hierarchy_workbooks_mutated": false,
+  "supporting_hierarchy_workbooks_sha256": {
+    "vst_level/vst_bank_balance_sheet.xlsx": "3d57157859f08dd21b029a0ad7488e64c7df7d4b1ad6cde424296d02836da065",
+    "vst_level/vst_bank_cashflow_sheet.xlsx": "a52815dd606ca74ba7cbc713ec34494474a5d7ac567223da84b346300eb658fe",
+    "vst_level/vst_bank_detailed_notes_sheet.xlsx": "6f322f7ba3b1b737643d21890b9bd51ea00224cea6ac65cfa41036d68ccd885b",
+    "vst_level/vst_bank_income_sheet.xlsx": "eb2895882ad523344aee3b2ff83c34f0367d42c0245acc3f04c82cbc3eb78730"
+  },
+  "unaffected_workbooks_sha256": {},
+  "workbooks": {
+    "CDKT": {
+      "after_row_count_including_header": 79,
+      "after_sha256": "2289c0ff2e988c36131f2b4e5675efc1d9ca40776c72439ef205aae43103951f",
+      "baseline_path": "template/Bank_CDKT_ReportNormId.xlsx",
+      "before_row_count_including_header": 78,
+      "before_sha256": "a07ff47f7c41011fe4ca5a66681106d476586ded9013b5874cbb9f67a6ad8486",
+      "path": "template/Bank_CDKT_ReportNormId.v2.xlsx",
+      "preservation": {
+        "allowed_existing_name_corrections": [
+          {
+            "after": "Chứng khoán đầu tư sẵn sàng để bán",
+            "before": "Chứng khoán đầu tư sẵn sàng để hàng",
+            "schema_id": 4350
+          }
+        ],
+        "changed_zip_members_after_sha256": {
+          "xl/sharedStrings.xml": "f0fa5811beaaf887b6b79703e40e8918d1c641b31b35221866265c797adc8038",
+          "xl/worksheets/sheet1.xml": "9da9506ca4766bcc8b2e43928f93c16fd99402342413d940151257cc404f6088"
+        },
+        "changed_zip_members_before_sha256": {
+          "xl/sharedStrings.xml": "0321344000b43b6434b31908d32f10c720cbc505251884a15f2eda1574e263aa",
+          "xl/worksheets/sheet1.xml": "139525f8f9e4f3630b48e2921a5a73f0dbf9adf509132964c979ffbe9e397300"
+        },
+        "existing_ids_and_relative_order_preserved": true,
+        "existing_item_id_name_order_sha256": "efdf170f416e267d8c74969d29e03cb45e71a0bdc77074bd626afe66afc127e8",
+        "only_changed_zip_members": [
+          "xl/sharedStrings.xml",
+          "xl/worksheets/sheet1.xml"
+        ],
+        "unchanged_zip_members_sha256": {
+          "[Content_Types].xml": "bfa02ea1994b73dca866ea3b6596340fe00063d19eab5957c7d8e6a5fa10599a",
+          "_rels/.rels": "73e5a29f48d5ab979eeda062493bc7e679265c1344ef936978b8becec5549497",
+          "docProps/app.xml": "22b3e2a4f41a0a0b6c93cd0da7b28b84a2375b815f787624e81acaaf32a5d191",
+          "docProps/core.xml": "a05a91721caee26c13b8366bff05d6b5c59779265ee808456fbecd206bd7d999",
+          "xl/_rels/workbook.xml.rels": "353383fbe90f202be596bdf0a86439c704d7024f4f8c19ebc9d06b42a341dba1",
+          "xl/styles.xml": "a00c618d2cb9add820989f00aeed63900c917428fb39b5444817de95e6c0660f",
+          "xl/theme/theme1.xml": "86ec2470fa58614325ef1b0480fcbf0eeb4f27a208e5c762df49166a71947988",
+          "xl/workbook.xml": "3abeccb965bdc626f28d0b9c34305120e491e876e197a126f2ba1ceee64b5b1d"
+        },
+        "zip_member_set_preserved": true
+      }
+    },
+    "KQKD": {
+      "after_row_count_including_header": 26,
+      "after_sha256": "12908b0acb8970e37f382f79898b7d2124079e1e16bab17d8e03811a7004cd52",
+      "baseline_path": "template/Bank_KQKD_ReportNormId.xlsx",
+      "before_row_count_including_header": 25,
+      "before_sha256": "6033001b85a236fce4b29437d56cc02d7c6a21f95e82b43de043b1268eb74615",
+      "path": "template/Bank_KQKD_ReportNormId.v2.xlsx",
+      "preservation": {
+        "allowed_existing_name_corrections": [],
+        "changed_zip_members_after_sha256": {
+          "xl/sharedStrings.xml": "366b4a40f1d6e9630b680b43f6c2fe23e36795873356211b88ba42599b3af419",
+          "xl/worksheets/sheet1.xml": "41d4335471be028dcd64610ee18bd33c2efacd9feebadf0c125ddf284f53adea"
+        },
+        "changed_zip_members_before_sha256": {
+          "xl/sharedStrings.xml": "8ba24fe518f1d26c4c4f3608f168ef5fe531bdc9c13078a026e712674e335567",
+          "xl/worksheets/sheet1.xml": "56af5b683621626bd2012dc3e231ed2553bc0e16026639c04db4d4de8305569b"
+        },
+        "existing_ids_and_relative_order_preserved": true,
+        "existing_item_id_name_order_sha256": "359a41e6951a77f05e6693b50a99d81f5628d09c13462a8a1f4def8ec0d8c57e",
+        "only_changed_zip_members": [
+          "xl/sharedStrings.xml",
+          "xl/worksheets/sheet1.xml"
+        ],
+        "unchanged_zip_members_sha256": {
+          "[Content_Types].xml": "bfa02ea1994b73dca866ea3b6596340fe00063d19eab5957c7d8e6a5fa10599a",
+          "_rels/.rels": "73e5a29f48d5ab979eeda062493bc7e679265c1344ef936978b8becec5549497",
+          "docProps/app.xml": "22b3e2a4f41a0a0b6c93cd0da7b28b84a2375b815f787624e81acaaf32a5d191",
+          "docProps/core.xml": "6eb9fa8dbb42be7c9ae14ce8f01526169a7b986ae4522caf19dca83cf9bfaa33",
+          "xl/_rels/workbook.xml.rels": "353383fbe90f202be596bdf0a86439c704d7024f4f8c19ebc9d06b42a341dba1",
+          "xl/styles.xml": "a00c618d2cb9add820989f00aeed63900c917428fb39b5444817de95e6c0660f",
+          "xl/theme/theme1.xml": "86ec2470fa58614325ef1b0480fcbf0eeb4f27a208e5c762df49166a71947988",
+          "xl/workbook.xml": "3abeccb965bdc626f28d0b9c34305120e491e876e197a126f2ba1ceee64b5b1d"
+        },
+        "zip_member_set_preserved": true
+      }
+    },
+    "LCTT": {
+      "after_row_count_including_header": 109,
+      "after_sha256": "aa0f4912b1e343e404bc2490f6fe628db6b7980a180c6d03e27633b993afeb41",
+      "baseline_path": "template/Bank_LCTT_ReportNormId.xlsx",
+      "before_row_count_including_header": 108,
+      "before_sha256": "2c9d52737c492f115895eab9a571da2269fcfd3c3e77539ec581782e579d260a",
+      "path": "template/Bank_LCTT_ReportNormId.v2.xlsx",
+      "preservation": {
+        "allowed_existing_name_corrections": [],
+        "changed_zip_members_after_sha256": {
+          "xl/sharedStrings.xml": "e9a858ff0bac5a782005f34b7b3d48ccef1cd5793f11171a62e60a115c68fd63",
+          "xl/worksheets/sheet1.xml": "74a68e1cf07646ef064235e853ddb1fd5c63f4ebad7bb7f03a9ac72c292169ca"
+        },
+        "changed_zip_members_before_sha256": {
+          "xl/sharedStrings.xml": "98085a41222b542a985174adc5833a16e30e9f2d1430963ca2d46ccafa8f32e5",
+          "xl/worksheets/sheet1.xml": "8dad0039cc84dab27d1bddfdf858244d44262c3af36ba364d681f0f48c5ad37c"
+        },
+        "existing_ids_and_relative_order_preserved": true,
+        "existing_item_id_name_order_sha256": "3a0e0f3a6828d433c11ca61bc952944c464c7ecbd9bd8ac886f351faab5ed4a7",
+        "only_changed_zip_members": [
+          "xl/sharedStrings.xml",
+          "xl/worksheets/sheet1.xml"
+        ],
+        "unchanged_zip_members_sha256": {
+          "[Content_Types].xml": "8bd5c340a941f494cad6ae316a85c800b4bc364dec5d35d89855447cc42ae650",
+          "_rels/.rels": "2d683d1d28ca96d0fd91f67f132be8888844c03246b92edc19b7359f291121bc",
+          "docProps/app.xml": "3ee7711741c5959bde95ee0baf8144eded6de2b1a24492a8ade67500c49edb7d",
+          "docProps/core.xml": "0882f0193bd42e87ace543d8bd8daa47cd8365c4ffbc04dbca455ee0699d9e36",
+          "xl/_rels/workbook.xml.rels": "bb0d6306861ea8def22cfda0eb5d5992ed9abdfb8359e7143229df41693b0e9b",
+          "xl/styles.xml": "d158b8450945452e1fc5c86aec133fc57b65d58a29473274747e2ec20086377d",
+          "xl/theme/theme1.xml": "156137ac2d7fae74e0286df47c4d1c75e65d5ef1455ff74c4d46176aef06fe56",
+          "xl/workbook.xml": "6f38eebddd27bc7d7c6f1e49418248c9c99bc5e4de2f6799adf2fdf0aa128e86"
+        },
+        "zip_member_set_preserved": true
+      }
+    },
+    "TM": {
+      "after_row_count_including_header": 1614,
+      "after_sha256": "ea5b690e88c2986613e650663eaea3e05860053c5f56e6445d19e6f0a719a8e1",
+      "baseline_path": "template/Bank_TM_ReportNormId.xlsx",
+      "before_row_count_including_header": 1386,
+      "before_sha256": "fa284e3af1f90c8a206308f63e6d35e77a9fbf1abcaf60abcb59877c47275140",
+      "path": "template/Bank_TM_ReportNormId.v2.xlsx",
+      "preservation": {
+        "allowed_existing_name_corrections": [
+          {
+            "after": "Công ty TNHH MTV (hoặc trên MTV) vốn nhà nước trên 50%",
+            "before": "+ Công ty TNHH MTV vốn nhà nước trên 50%",
+            "schema_id": 770
+          },
+          {
+            "after": "Giáo dục & Đào tạo",
+            "before": " + Giáo dục và đào tạo, y tế",
+            "schema_id": 737
+          }
+        ],
+        "changed_zip_members_after_sha256": {
+          "xl/sharedStrings.xml": "dc98e8400617e129edad89b4e40bdea6564ab82fa83623714ffeeea376afd91f",
+          "xl/worksheets/sheet1.xml": "99336aeb6536089d1b0a36148718aa5a0f728ff631c5fa9e6600d9125088ecff"
+        },
+        "changed_zip_members_before_sha256": {
+          "xl/sharedStrings.xml": "87463962aba1d6ee92ac962947a92d7e5ece85da17106de00b3e5535a77dabdf",
+          "xl/worksheets/sheet1.xml": "26666b119f388d351bcc8f6ab62e28375c6c76b4ec09698eedf43bbf680e77c5"
+        },
+        "existing_ids_and_relative_order_preserved": true,
+        "existing_item_id_name_order_sha256": "c1a781ffc89a95fb1109a42742a2ce4a1fc8d292b57c34b7e9e9f2707f1820d2",
+        "only_changed_zip_members": [
+          "xl/sharedStrings.xml",
+          "xl/worksheets/sheet1.xml"
+        ],
+        "unchanged_zip_members_sha256": {
+          "[Content_Types].xml": "bfa02ea1994b73dca866ea3b6596340fe00063d19eab5957c7d8e6a5fa10599a",
+          "_rels/.rels": "73e5a29f48d5ab979eeda062493bc7e679265c1344ef936978b8becec5549497",
+          "docProps/app.xml": "22b3e2a4f41a0a0b6c93cd0da7b28b84a2375b815f787624e81acaaf32a5d191",
+          "docProps/core.xml": "a746a065207ccadb6c96c5c55b00626efd0f22bce0e5a718b98e6019344776c1",
+          "xl/_rels/workbook.xml.rels": "353383fbe90f202be596bdf0a86439c704d7024f4f8c19ebc9d06b42a341dba1",
+          "xl/styles.xml": "404b6d41048ce8f19817fa9d87851f9624acaf4a882b05af5611efdace624cf2",
+          "xl/theme/theme1.xml": "86ec2470fa58614325ef1b0480fcbf0eeb4f27a208e5c762df49166a71947988",
+          "xl/workbook.xml": "6ee2b1e1a926baacd6a06aec53a46e9a43081cfaf109aa7500b4f9dba9dedf9a"
+        },
+        "zip_member_set_preserved": true
+      }
+    }
+  }
+}

@@ -10,7 +10,7 @@ from bctc_ai.schema.coverage import (
 
 def test_every_consumer_contains_tm_1944_in_workbook_order(project_root):
     contract = load_schema_coverage(project_root)
-    assert len(contract.targets) == 1628
+    assert len(contract.targets) == 1824
     assert contract.targets[-1].schema_id == 1944
     assert (
         contract.targets[-1].canonical_name
@@ -18,7 +18,7 @@ def test_every_consumer_contains_tm_1944_in_workbook_order(project_root):
     )
     for consumer in SCHEMA_CONSUMERS:
         identifiers = contract.ids_for(consumer)
-        assert len(identifiers) == 1628
+        assert len(identifiers) == 1824
         assert identifiers[-1] == 1944
         assert 1944 in identifiers
 
@@ -52,5 +52,5 @@ def test_mandatory_search_requires_1944_from_both_independent_roles(project_root
     )
     complete = evaluate_mandatory_search(contract, "sha256:document", evidence)
     assert complete.status == "PASS"
-    assert complete.completed_count_by_role == {"ROLE_A": 1628, "ROLE_B": 1628}
+    assert complete.completed_count_by_role == {"ROLE_A": 1824, "ROLE_B": 1824}
     assert complete.tm_1944_completed_by_role == {"ROLE_A": True, "ROLE_B": True}

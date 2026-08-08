@@ -1,0 +1,55 @@
+version: 1
+policy: TM_NOTE_PAGE61_EXCHANGE_RATE_MAPPING_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+page_number: 61
+page_tag: page-0061
+report_scope: CONSOLIDATED
+mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_PAGE61_IDS_5935_5945_ONLY
+
+source_table_policy: config/tables/tm-note-page61-v1.yaml
+source_table_policy_sha256: d5a61d1948b6bb074cfa1fbf3f563abcf0a9fabf59f2ecdbc9eee9b231c5c50b
+source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+source_render_sha256: 35163ef52851f7026891b450b7deaac1d6dbf7e0a16a26d0cd03a708d8366117
+source_ocr_sha256: 4cc47afa46962ffef7ee45d0be9d45f59f18a41c63ab72966e362b3a1f262636
+upstream_ocr_sha256: 20a1e92685aaef93ae0dd34ee06cc1347f0af29ddc66df9d10cd604099574cc9
+schema_workbook_sha256: ea5b690e88c2986613e650663eaea3e05860053c5f56e6445d19e6f0a719a8e1
+schema_projection_sha256: 0f3b22d3d1bb65a243a14a69116df83e6a9e5457f2f616e561f0b2d99821736c
+
+schema_total: 1613
+scope_schema_ids:
+  - {start: 5935, end: 5945}
+scope_schema_total: 11
+schema_scope_sha256: d6fb2363d36150766efdf4e5495f3e9a5bc6014bd38431c0c55d691e7ac016eb
+root_report_norm_id: 5935
+
+currency_target_ids:
+  USD: 5936
+  EUR: 5937
+  GBP: 5938
+  JPY: 5939
+  CHF: 5940
+  AUD: 5941
+  CAD: 5942
+  SGD: 5943
+  THB: 5944
+  SEK: 5945
+
+hierarchy_contract:
+  parent_report_norm_id: 1259
+  root_children: [5936, 5937, 5938, 5939, 5940, 5941, 5942, 5943, 5944, 5945]
+  leaf_children: []
+
+forbidden_mapping_inputs:
+  - numeric_cell_text_as_item_selector
+  - numeric_value_magnitude_as_item_selector
+  - historical_or_mongodb_values
+  - human_review_answers
+  - vnd_million_multiplier
+  - decimal_comma_loss_or_integer_rounding
+  - period_axis_swapping
+  - schema_id_outside_page61_scope
+  - page60_value_as_page61_item_selector
+  - page60_value_as_page61_imputation
+  - accounting_equation_result_as_item_selector
+  - accounting_equation_result_as_extracted_value

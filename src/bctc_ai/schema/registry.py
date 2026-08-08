@@ -203,13 +203,15 @@ def load_all(
         ]
         if len(matched) != 1 or matched[0].canonical_name != appended["canonical_name"]:
             raise ValueError(f"approved schema append is not loaded exactly: {relative}")
+        # The approved append was the baseline workbook's final row. Every later
+        # business-schema ADD is explicitly inserted before that preserved final
+        # row, including complete new branches whose final display ordinals can
+        # exceed the append's original ordinal after earlier insertions shift it.
         subsequent_insertions = sum(
             1
             for _, business_audit in verified_business_audits
             for change in business_audit["schema_changes"]
-            if change["change"] == "ADD"
-            and change["statement_type"] == appended["statement_type"]
-            and change["display_order_zero_based"] <= appended["display_order_zero_based"]
+            if change["change"] == "ADD" and change["statement_type"] == appended["statement_type"]
         )
         expected_display_order = appended["display_order_zero_based"] + subsequent_insertions
         if matched[0].display_order != expected_display_order:

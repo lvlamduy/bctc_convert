@@ -1,0 +1,68 @@
+version: 1
+policy: TM_NOTE_PAGE61_EXCHANGE_RATE_FIXED_GRID_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+page_number: 61
+page_tag: page-0061
+scope: CONSOLIDATED
+scope_binding: COMPLETE_EXCHANGE_RATE_NOTE_IN_IMMUTABLE_CONSOLIDATED_DOCUMENT
+
+source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+source_render_sha256: 35163ef52851f7026891b450b7deaac1d6dbf7e0a16a26d0cd03a708d8366117
+source_ocr_sha256: 4cc47afa46962ffef7ee45d0be9d45f59f18a41c63ab72966e362b3a1f262636
+upstream_ocr_sha256: 20a1e92685aaef93ae0dd34ee06cc1347f0af29ddc66df9d10cd604099574cc9
+
+minimum_line_score: 0.80
+minimum_anchor_similarity: 0.75
+minimum_unit_similarity: 0.85
+
+unit:
+  anchors: [dong]
+  canonical: VND
+  multiplier: 1
+  denominator: ONE_UNIT_OF_ROW_CURRENCY
+
+table:
+  table_key: EXCHANGE_RATE
+  note_number: "6"
+  title_anchors:
+    - ty gia mot so ngoai te tai thoi diem lap bao cao
+    - t gia mt s ngoi t ti thi dim lp bao cao
+  expected_numeric_rows: 10
+
+periods:
+  - {period_role: CURRENT, visible_date: 2026-03-31, header_anchors: [31/03/2026], right_edge: 1431}
+  - {period_role: PRIOR, visible_date: 2025-12-31, header_anchors: [31/12/2025], right_edge: 1979}
+
+currencies:
+  - {currency_code: USD, canonical_label: Đô la Mỹ, label_anchors: [usd]}
+  - {currency_code: EUR, canonical_label: Euro, label_anchors: [eur]}
+  - {currency_code: GBP, canonical_label: Bảng Anh, label_anchors: [gbp]}
+  - {currency_code: JPY, canonical_label: Yên Nhật, label_anchors: [jpy]}
+  - {currency_code: CHF, canonical_label: Franc Thụy Sĩ, label_anchors: [chf]}
+  - {currency_code: AUD, canonical_label: Đô la Úc, label_anchors: [aud]}
+  - {currency_code: CAD, canonical_label: Đô la Canada, label_anchors: [cad]}
+  - {currency_code: SGD, canonical_label: Đô la Singapore, label_anchors: [sgd]}
+  - {currency_code: THB, canonical_label: Baht Thái, label_anchors: [thb]}
+  - {currency_code: SEK, canonical_label: Krona Thụy Điển, label_anchors: [sek]}
+
+geometry:
+  numeric_cluster_line_heights: 0.45
+  row_attach_line_heights: 0.45
+  axis_max_distance_line_heights: 1.50
+  page_footer_top_ratio: 0.90
+
+continuation:
+  page_61_closes_note_6: true
+  page_61_is_document_final_page: true
+
+forbidden_semantic_inputs:
+  - template_labels_as_row_reconstruction_input
+  - approved_report_norm_id_assignment
+  - historical_or_mongodb_values
+  - human_review_answers
+  - vnd_million_multiplier
+  - decimal_comma_loss_or_integer_rounding
+  - period_axis_swapping
+  - page60_values_as_page61_mapping_or_imputation
+  - signatures_stamps_or_approval_text_as_financial_rows

@@ -1,0 +1,85 @@
+version: 1
+policy: TM_NOTE_PAGE54_BUSINESS_SEGMENT_MAPPING_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+page_number: 54
+page_tag: page-0054
+report_scope: CONSOLIDATED
+mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_PAGE54_IDS_5806_5848_ONLY
+
+source_table_policy: config/tables/tm-note-page54-v1.yaml
+source_table_policy_sha256: dbd1e63d87346681e0ed40e9d66d98551f0a8630039a12e1795a0420472f29b1
+source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+source_render_sha256: 271d8a818154a13942a0ee22b089985ea5f304e541b374d4150c32a1fad0d902
+source_ocr_sha256: a965e909d7f170a2a3bceab4921c2682ed3433b4502b0b021081e569b6f35c71
+upstream_ocr_sha256: a0aa1f9c72a93dda30ab95ef4411b8edc37c84b125f788a9f351f4700e9f9073
+schema_workbook_sha256: ea5b690e88c2986613e650663eaea3e05860053c5f56e6445d19e6f0a719a8e1
+
+schema_total: 1613
+scope_schema_ids:
+  - {start: 5806, end: 5848}
+scope_schema_total: 43
+schema_scope_sha256: 7e55749ee9e559c833b9be429328728b8ed71e27bb16265a790d3787d7b3860d
+
+external_owner_root:
+  report_norm_id: 5762
+  owner_scope: page-0053
+structural_target: {source_role: BUSINESS_SEGMENT_TITLE, report_norm_id: 5806}
+
+axis_parent_ids:
+  FINANCE_BANKING: 5807
+  SECURITIES_FUND_MANAGEMENT: 5814
+  INSURANCE: 5821
+  DEBT_AND_ASSET_MANAGEMENT: 5828
+  ELIMINATION: 5835
+  TOTAL: 5842
+
+metric_target_ids:
+  ASSETS: [5808, 5815, 5822, 5829, 5836, 5843]
+  LIABILITIES: [5809, 5816, 5823, 5830, 5837, 5844]
+  FIXED_ASSETS: [5810, 5817, 5824, 5831, 5838, 5845]
+  REVENUE: [5811, 5818, 5825, 5832, 5839, 5846]
+  EXPENSE: [5812, 5819, 5826, 5833, 5840, 5847]
+  PROFIT_BEFORE_TAX: [5813, 5820, 5827, 5834, 5841, 5848]
+
+total_formulas_validation_only:
+  5843: [5808, 5815, 5822, 5829, 5836]
+  5844: [5809, 5816, 5823, 5830, 5837]
+  5845: [5810, 5817, 5824, 5831, 5838]
+  5846: [5811, 5818, 5825, 5832, 5839]
+  5847: [5812, 5819, 5826, 5833, 5840]
+  5848: [5813, 5820, 5827, 5834, 5841]
+
+pbt_formulas_validation_only:
+  5813: [5811, 5812]
+  5820: [5818, 5819]
+  5827: [5825, 5826]
+  5834: [5832, 5833]
+  5841: [5839, 5840]
+
+external_page53_totals_validation_only:
+  - {period_role: CURRENT, metric_key: ASSETS, report_norm_id: 5800, value: 1611222764, owner_scope: page-0053}
+  - {period_role: CURRENT, metric_key: LIABILITIES, report_norm_id: 5801, value: 1461477439, owner_scope: page-0053}
+  - {period_role: CURRENT, metric_key: FIXED_ASSETS, report_norm_id: 5802, value: 5500662, owner_scope: page-0053}
+  - {period_role: CURRENT, metric_key: REVENUE, report_norm_id: 5803, value: 37600291, owner_scope: page-0053}
+  - {period_role: CURRENT, metric_key: EXPENSE, report_norm_id: 5804, value: 27971905, owner_scope: page-0053}
+  - {period_role: CURRENT, metric_key: PROFIT_BEFORE_TAX, report_norm_id: 5805, value: 9628386, owner_scope: page-0053}
+  - {period_role: COMPARATIVE, metric_key: ASSETS, report_norm_id: 5800, value: 1615763927, owner_scope: page-0053}
+  - {period_role: COMPARATIVE, metric_key: LIABILITIES, report_norm_id: 5801, value: 1473741402, owner_scope: page-0053}
+  - {period_role: COMPARATIVE, metric_key: FIXED_ASSETS, report_norm_id: 5802, value: 5616547, owner_scope: page-0053}
+  - {period_role: COMPARATIVE, metric_key: REVENUE, report_norm_id: 5803, value: 121589719, owner_scope: page-0053}
+  - {period_role: COMPARATIVE, metric_key: EXPENSE, report_norm_id: 5804, value: 87321361, owner_scope: page-0053}
+  - {period_role: COMPARATIVE, metric_key: PROFIT_BEFORE_TAX, report_norm_id: 5805, value: 34268358, owner_scope: page-0053}
+
+forbidden_mapping_inputs:
+  - numeric_cell_text_as_item_selector
+  - numeric_value_magnitude_as_item_selector
+  - historical_or_mongodb_values
+  - human_review_answers
+  - dash_as_zero
+  - accounting_equation_result_as_item_selector
+  - accounting_equation_result_as_extracted_value
+  - page53_value_as_page54_item_selector
+  - page53_value_as_page54_imputation
+  - external_owner_root_as_page54_owned_item
+  - schema_id_outside_page54_scope

@@ -21,8 +21,8 @@
     "TM": {
       "first_schema_id": 560,
       "last_schema_id": 1944,
-      "ordered_schema_ids_sha256": "ca81f131e893c621ad68e2b19bcbab35113eb4592fa52aea1ba003ad33b02da6",
-      "target_count": 1417
+      "ordered_schema_ids_sha256": "6e43853950993ec553e5494206bdbe7231752f59bf0b7691749d0d10620fbd79",
+      "target_count": 1613
     }
   },
   "config": {
@@ -33,37 +33,37 @@
     "EVALUATION": {
       "contains_tm_1944": true,
       "last_schema_id": 1944,
-      "ordered_schema_ids_sha256": "40e26875c8e5b6f48e6d0db6211833c26b6a07529aa0f33b8d94ca17e143761f",
+      "ordered_schema_ids_sha256": "aaeef064a84086cf8baefd60a978a1fdce20b5fb4f2e2f11acf17965e17c10fb",
       "selection": "ALL_TEMPLATE_ITEMS",
-      "target_count": 1628
+      "target_count": 1824
     },
     "EXCEL_OUTPUT": {
       "contains_tm_1944": true,
       "last_schema_id": 1944,
-      "ordered_schema_ids_sha256": "40e26875c8e5b6f48e6d0db6211833c26b6a07529aa0f33b8d94ca17e143761f",
+      "ordered_schema_ids_sha256": "aaeef064a84086cf8baefd60a978a1fdce20b5fb4f2e2f11acf17965e17c10fb",
       "selection": "ALL_TEMPLATE_ITEMS",
-      "target_count": 1628
+      "target_count": 1824
     },
     "MANDATORY_SEARCH": {
       "contains_tm_1944": true,
       "last_schema_id": 1944,
-      "ordered_schema_ids_sha256": "40e26875c8e5b6f48e6d0db6211833c26b6a07529aa0f33b8d94ca17e143761f",
+      "ordered_schema_ids_sha256": "aaeef064a84086cf8baefd60a978a1fdce20b5fb4f2e2f11acf17965e17c10fb",
       "selection": "ALL_TEMPLATE_ITEMS",
-      "target_count": 1628
+      "target_count": 1824
     },
     "ROLE_A": {
       "contains_tm_1944": true,
       "last_schema_id": 1944,
-      "ordered_schema_ids_sha256": "40e26875c8e5b6f48e6d0db6211833c26b6a07529aa0f33b8d94ca17e143761f",
+      "ordered_schema_ids_sha256": "aaeef064a84086cf8baefd60a978a1fdce20b5fb4f2e2f11acf17965e17c10fb",
       "selection": "ALL_TEMPLATE_ITEMS",
-      "target_count": 1628
+      "target_count": 1824
     },
     "ROLE_B": {
       "contains_tm_1944": true,
       "last_schema_id": 1944,
-      "ordered_schema_ids_sha256": "40e26875c8e5b6f48e6d0db6211833c26b6a07529aa0f33b8d94ca17e143761f",
+      "ordered_schema_ids_sha256": "aaeef064a84086cf8baefd60a978a1fdce20b5fb4f2e2f11acf17965e17c10fb",
       "selection": "ALL_TEMPLATE_ITEMS",
-      "target_count": 1628
+      "target_count": 1824
     }
   },
   "contains_tm_1944": true,
@@ -84,16 +84,16 @@
     ]
   },
   "order_authority": "WORKBOOK_DISPLAY_ORDER",
-  "ordered_schema_ids_sha256": "40e26875c8e5b6f48e6d0db6211833c26b6a07529aa0f33b8d94ca17e143761f",
-  "ordered_targets_sha256": "2e77830214c2f4f10b5b7bf6a0e618510a7acb487f4da806b288fd8e07a5d56d",
+  "ordered_schema_ids_sha256": "aaeef064a84086cf8baefd60a978a1fdce20b5fb4f2e2f11acf17965e17c10fb",
+  "ordered_targets_sha256": "08364e952cf2842ae86cece50ee54db8e8ce2f1ad1fcc68f9ce4bc5e90f23f5d",
   "selection": "ALL_TEMPLATE_ITEMS",
   "status": "PASS_ALL_TEMPLATE_ITEMS_ENROLLED",
-  "target_count": 1628,
+  "target_count": 1824,
   "tm_1944_target": {
     "canonical_name": "Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
-    "display_order": 1416,
+    "display_order": 1612,
     "schema_id": 1944,
-    "source_row": 1418,
+    "source_row": 1614,
     "source_workbook": "template/Bank_TM_ReportNormId.v2.xlsx",
     "statement_type": "TM"
   }

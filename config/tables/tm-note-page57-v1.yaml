@@ -1,0 +1,94 @@
+version: 1
+policy: TM_NOTE_PAGE57_INTEREST_RATE_RISK_FIXED_GRID_DASH_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+page_number: 57
+page_tag: page-0057
+scope: CONSOLIDATED
+scope_binding: COMPLETE_INTEREST_RATE_RISK_TABLE_IN_IMMUTABLE_CONSOLIDATED_DOCUMENT
+
+source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+source_render_sha256: 48a2f2de934f982cae206f23b5c85176e794e9b06f9a03cb47531d8af9e7e26b
+source_ocr_sha256: 54ba3de69d2ce284c4b12222aad7ddca0c096bee3698079675af528826496dfa
+upstream_ocr_sha256: 133b3f223c0556d3039cde4b51a11c70b7fc90a7265a917758467db621f7ffa8
+
+minimum_line_score: 0.80
+minimum_anchor_similarity: 0.70
+minimum_unit_similarity: 0.78
+
+unit:
+  anchors: [trieu dong, triu dong]
+  canonical: VND
+  multiplier: 1000000
+
+reporting_period:
+  period_role: CURRENT
+  period_type: SNAPSHOT
+  visible_date: 2026-03-31
+  period_start: 2026-03-31
+  period_end: 2026-03-31
+
+table:
+  table_key: INTEREST_RATE_RISK
+  title_anchors: [phan loai tai san va cong no vao ngay, phan loi tai sn va cong n vao ngay]
+  super_header_anchors: [lai suat duoc dinh gia lai trong vong]
+  expected_structural_rows: 2
+  expected_numeric_rows: 20
+
+axes:
+  - {axis_key: OVERDUE, canonical_label: Quá hạn, header_lines: [[qua han]], right_edge: 1265}
+  - {axis_key: NOT_REPRICED, canonical_label: Không bị định giá lại/không nhạy cảm lãi suất, header_lines: [[khong bi dinh], [gia lai lai suat]], right_edge: 1540}
+  - {axis_key: WITHIN_1M, canonical_label: Đến 1 tháng, header_lines: [[den 1 thang]], right_edge: 1804}
+  - {axis_key: FROM_1_TO_3M, canonical_label: Từ 1 - 3 tháng, header_lines: [[tu 1 3 thang]], right_edge: 2090}
+  - {axis_key: FROM_3_TO_6M, canonical_label: Từ 3 - 6 tháng, header_lines: [[tu 3 6 thang]], right_edge: 2368}
+  - {axis_key: FROM_6_TO_12M, canonical_label: Từ 6 - 12 tháng, header_lines: [[tu 6 12 thang]], right_edge: 2657}
+  - {axis_key: OVER_1Y, canonical_label: Trên 1 năm, header_lines: [[tren 1 nam]], right_edge: 2954}
+  - {axis_key: TOTAL, canonical_label: Tổng, header_lines: [[tong]], right_edge: 3242}
+
+rows:
+  - {source_role: ASSET_SECTION, metric_key: null, row_kind: LABEL_ONLY, label_lines: [[tai san]], dash_axes: []}
+  - {source_role: DETAIL, metric_key: CASH_AND_PRECIOUS_METALS, row_kind: NUMERIC, label_lines: [[tien mat vang bac da quy]], dash_axes: [OVERDUE, WITHIN_1M, FROM_1_TO_3M, FROM_3_TO_6M, FROM_6_TO_12M, OVER_1Y]}
+  - {source_role: DETAIL, metric_key: SBV_DEPOSITS, row_kind: NUMERIC, label_lines: [[tien gui tai nhnn]], dash_axes: [OVERDUE, WITHIN_1M, FROM_1_TO_3M, FROM_3_TO_6M, FROM_6_TO_12M, OVER_1Y]}
+  - {source_role: DETAIL, metric_key: INTERBANK_ASSETS, row_kind: NUMERIC, label_lines: [[tien gui tai va cho vay cac tctd], [khac]], dash_axes: [OVERDUE, NOT_REPRICED]}
+  - {source_role: DETAIL, metric_key: TRADING_SECURITIES, row_kind: NUMERIC, label_lines: [[chung khoan kinh doanh]], dash_axes: [OVERDUE, FROM_1_TO_3M, FROM_3_TO_6M, FROM_6_TO_12M, OVER_1Y]}
+  - {source_role: DETAIL, metric_key: DERIVATIVE_ASSETS, row_kind: NUMERIC, label_lines: [[cong cu tai chinh phai sinh va cac], [tai san tai chinh khac]], dash_axes: [OVERDUE, NOT_REPRICED, WITHIN_1M, FROM_1_TO_3M, FROM_3_TO_6M, FROM_6_TO_12M, OVER_1Y, TOTAL], dash_anchor_offset_line_heights: 0.06}
+  - {source_role: DETAIL, metric_key: CUSTOMER_LOANS_AND_PURCHASED_DEBT, row_kind: NUMERIC, label_lines: [[cho vay khach hang va mua no]], dash_axes: [NOT_REPRICED]}
+  - {source_role: DETAIL, metric_key: INVESTMENT_SECURITIES, row_kind: NUMERIC, label_lines: [[chung khoan dau tu]], dash_axes: [NOT_REPRICED]}
+  - {source_role: DETAIL, metric_key: LONG_TERM_INVESTMENTS, row_kind: NUMERIC, label_lines: [[gop von dau tu dai han]], dash_axes: [OVERDUE, WITHIN_1M, FROM_1_TO_3M, FROM_3_TO_6M, FROM_6_TO_12M, OVER_1Y]}
+  - {source_role: DETAIL, metric_key: FIXED_ASSETS_AND_INVESTMENT_PROPERTY, row_kind: NUMERIC, label_lines: [[tai san co dinh bat dong san dau tu]], dash_axes: [OVERDUE, WITHIN_1M, FROM_1_TO_3M, FROM_3_TO_6M, FROM_6_TO_12M, OVER_1Y]}
+  - {source_role: DETAIL, metric_key: OTHER_ASSETS, row_kind: NUMERIC, label_lines: [[tai san co khac]], dash_axes: [WITHIN_1M, FROM_1_TO_3M, FROM_3_TO_6M, FROM_6_TO_12M, OVER_1Y]}
+  - {source_role: TOTAL, metric_key: TOTAL_ASSETS, row_kind: NUMERIC, label_lines: [[tong tai san]], dash_axes: []}
+  - {source_role: LIABILITY_SECTION, metric_key: null, row_kind: LABEL_ONLY, label_lines: [[no phai tra]], dash_axes: []}
+  - {source_role: DETAIL, metric_key: GOVERNMENT_SBV_LIABILITIES, row_kind: NUMERIC, label_lines: [[no phai tra nhnn va chinh phu]], dash_axes: [OVERDUE, NOT_REPRICED, FROM_3_TO_6M, FROM_6_TO_12M, OVER_1Y]}
+  - {source_role: DETAIL, metric_key: INTERBANK_LIABILITIES, row_kind: NUMERIC, label_lines: [[tien gui va vay cac tctd khac]], dash_axes: [OVERDUE, NOT_REPRICED]}
+  - {source_role: DETAIL, metric_key: CUSTOMER_DEPOSITS, row_kind: NUMERIC, label_lines: [[tien gui cua khach hang]], dash_axes: [OVERDUE, NOT_REPRICED]}
+  - {source_role: DETAIL, metric_key: DERIVATIVE_LIABILITIES, row_kind: NUMERIC, label_lines: [[cac cong cu tai chinh phai sinh va], [cac khoan no tai chinh khac]], dash_axes: [OVERDUE, NOT_REPRICED]}
+  - {source_role: DETAIL, metric_key: ENTRUSTED_FUNDS, row_kind: NUMERIC, label_lines: [[von tai tro uy thac dau tu cho vay], [tctd chiu rui ro]], dash_axes: [OVERDUE, NOT_REPRICED]}
+  - {source_role: DETAIL, metric_key: ISSUED_VALUABLE_PAPERS, row_kind: NUMERIC, label_lines: [[phat hanh giay to co gia]], dash_axes: [OVERDUE, NOT_REPRICED]}
+  - {source_role: DETAIL, metric_key: OTHER_LIABILITIES, row_kind: NUMERIC, label_lines: [[cac khoan no khac]], dash_axes: [OVERDUE, WITHIN_1M, FROM_1_TO_3M, FROM_3_TO_6M, FROM_6_TO_12M, OVER_1Y]}
+  - {source_role: TOTAL, metric_key: TOTAL_LIABILITIES, row_kind: NUMERIC, label_lines: [[tong no phai tra]], dash_axes: [OVERDUE]}
+  - {source_role: DERIVED_PRINTED_TOTAL, metric_key: ON_BALANCE_INTEREST_SENSITIVITY_GAP, row_kind: NUMERIC, label_lines: [[muc chenh nhay cam voi lai suat noi], [bang]], dash_axes: []}
+
+geometry:
+  numeric_cluster_line_heights: 0.45
+  wrapped_label_max_gap_line_heights: 1.65
+  tiny_glyph_max_height_line_heights: 0.65
+  page_footer_top_ratio: 0.90
+
+dash_detector_config: word-box-reconstruction-v3.yaml
+dash_detector_config_sha256: c1cf55a6187a1b2a6f54b74b1566619d046446bc3ad7e628473004103c5d0f7e
+
+continuation:
+  page_57_closes_interest_rate_table: true
+  page_58_starts_topic: CURRENCY_RISK
+
+forbidden_semantic_inputs:
+  - missing_ocr_cell_as_dash_without_pixel_evidence
+  - template_labels_as_row_reconstruction_input
+  - approved_report_norm_id_assignment
+  - historical_or_mongodb_values
+  - human_review_answers
+  - dash_as_zero
+  - accounting_equations_as_value_imputation
+  - tiny_ocr_glyph_as_numeric_without_full_height_geometry
+  - page58_values_as_page57_mapping_or_imputation

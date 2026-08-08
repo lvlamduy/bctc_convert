@@ -1,57 +1,54 @@
 version: 1
-policy: TM_NOTE_PAGE52_EXISTING_AND_AUTOMATIC_ADD_MAPPING_V1
+policy: TM_NOTE_PAGE52_PROMOTED_SCHEMA_MAPPING_V1
 statement_type: TM
 document: MBB_CONSOLIDATED_Q1_2026
 page_number: 52
 page_tag: page-0052
 report_scope: CONSOLIDATED
-mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_PDF_PAGE_52_HIERARCHY_SAFE_EXISTING_IDS_AND_AUTOMATIC_ADDITIONS
+mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_PDF_PAGE_52_IDS_759_765_AND_5750_5761_ONLY
 
 source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
 source_render_sha256: f19fa64041c6df54f6b319ea9166902ee0c9325116fea6e52854a4fe1e09dc59
 source_ocr_sha256: 3c5563f8f91d673f2f5301da9efae79a906927608d8de68b5a471d33e0a164b7
 upstream_ocr_sha256: 1f9062e3822277325acf91ac1e21c4bcf28ee54f4f537e77e9e18b8e0774636c
-schema_workbook_sha256: bcffd9baa04a3e3aad1c80ce867e38b0145626969409213122ec3d1c0cd8451c
-schema_total: 1417
+schema_workbook_sha256: ea5b690e88c2986613e650663eaea3e05860053c5f56e6445d19e6f0a719a8e1
+schema_total: 1613
 scope_schema_ids:
   - {start: 759, end: 765}
-scope_schema_total: 7
-schema_scope_sha256: 9f15019efb9e5ea800994faf5f4eda8bb40eeba0a48bca55edddd7502320b0f4
+  - {start: 5750, end: 5761}
+scope_schema_total: 19
+schema_scope_sha256: 75b34cbba52c86f642a6fe03dd2af7bfd3ee18d918e2cd6e47ad1aa480343146
 minimum_visible_label_similarity: 0.70
 
 rows:
-  - {table_key: RELATED_PARTY_BALANCES, ordinal: 1, visible_label_anchor: giao dich voi cac ben lien quan, expected_row_kind: LABEL_ONLY, expected_source_role: NOTE_TITLE, expected_observations: [BLANK, BLANK], disposition: SCHEMA_ADDITION_PROPOSED_STRUCTURAL, report_norm_ids: [], proposal_keys: [RP_ROOT], question_required: false}
-  - {table_key: RELATED_PARTY_BALANCES, ordinal: 2, visible_label_anchor: giao dich tien gui tai mb, expected_row_kind: NUMERIC, expected_source_role: DETAIL, expected_observations: [VALUE, VALUE], disposition: SCHEMA_ADDITION_PROPOSED_VALUE, report_norm_ids: [null, null], proposal_keys: [RP_DEPOSIT_MB, RP_DEPOSIT_MB], question_required: false}
-  - {table_key: RELATED_PARTY_BALANCES, ordinal: 3, visible_label_anchor: "", expected_row_kind: NUMERIC, expected_source_role: PRINTED_TOTAL_UNLABELED, expected_observations: [VALUE, VALUE], disposition: SCHEMA_ADDITION_PROPOSED_VALUE, report_norm_ids: [null, null], proposal_keys: [RP_ROOT, RP_ROOT], question_required: false}
-  - {table_key: GEOGRAPHIC_CONCENTRATION, ordinal: 1, visible_label_anchor: mc d tp trung theo khu vc da ly, expected_row_kind: LABEL_ONLY, expected_source_role: NOTE_TITLE, expected_observations: [BLANK, BLANK, BLANK, BLANK], disposition: SOURCE_ONLY_VALIDATION, report_norm_ids: [], proposal_keys: [], question_required: false}
-  - {table_key: GEOGRAPHIC_CONCENTRATION, ordinal: 2, visible_label_anchor: trong nuoc, expected_row_kind: NUMERIC, expected_source_role: DOMESTIC, expected_observations: [VALUE, VALUE, VALUE, VALUE], disposition: SCHEMA_ADDITION_PROPOSED_VALUE, report_norm_ids: [null, null, null, null], proposal_keys: [LOANS_DOMESTIC, DEPOSITS_DOMESTIC, LC_DOMESTIC, SECURITIES_DOMESTIC], question_required: false}
-  - {table_key: GEOGRAPHIC_CONCENTRATION, ordinal: 3, visible_label_anchor: nuoc ngoai, expected_row_kind: NUMERIC, expected_source_role: FOREIGN, expected_observations: [VALUE, VALUE, VALUE, VALUE], disposition: MIXED_EXISTING_AND_SCHEMA_ADDITION_VALUE, report_norm_ids: [765, null, null, null], proposal_keys: [null, DEPOSITS_FOREIGN, LC_FOREIGN, SECURITIES_FOREIGN], question_required: false}
+  - {table_key: RELATED_PARTY_BALANCES, ordinal: 1, visible_label_anchor: giao dich voi cac ben lien quan, expected_row_kind: LABEL_ONLY, expected_source_role: NOTE_TITLE, expected_observations: [BLANK, BLANK], disposition: MAPPED_AUTOMATIC_SCOPED, report_norm_ids: [5750], question_required: false}
+  - {table_key: RELATED_PARTY_BALANCES, ordinal: 2, visible_label_anchor: giao dich tien gui tai mb, expected_row_kind: NUMERIC, expected_source_role: DETAIL, expected_observations: [VALUE, VALUE], disposition: MAPPED_AUTOMATIC_SCOPED, report_norm_ids: [5751, 5751], question_required: false}
+  - {table_key: RELATED_PARTY_BALANCES, ordinal: 3, visible_label_anchor: "", expected_row_kind: NUMERIC, expected_source_role: PRINTED_TOTAL_UNLABELED, expected_observations: [VALUE, VALUE], disposition: MAPPED_AUTOMATIC_SCOPED, report_norm_ids: [5750, 5750], question_required: false}
+  - {table_key: GEOGRAPHIC_CONCENTRATION, ordinal: 1, visible_label_anchor: mc d tp trung theo khu vc da ly, expected_row_kind: LABEL_ONLY, expected_source_role: NOTE_TITLE, expected_observations: [BLANK, BLANK, BLANK, BLANK], disposition: SOURCE_ONLY_VALIDATION, report_norm_ids: [], question_required: false}
+  - {table_key: GEOGRAPHIC_CONCENTRATION, ordinal: 2, visible_label_anchor: trong nuoc, expected_row_kind: NUMERIC, expected_source_role: DOMESTIC, expected_observations: [VALUE, VALUE, VALUE, VALUE], disposition: MAPPED_AUTOMATIC_SCOPED, report_norm_ids: [5752, 5754, 5757, 5760], question_required: false}
+  - {table_key: GEOGRAPHIC_CONCENTRATION, ordinal: 3, visible_label_anchor: nuoc ngoai, expected_row_kind: NUMERIC, expected_source_role: FOREIGN, expected_observations: [VALUE, VALUE, VALUE, VALUE], disposition: MAPPED_AUTOMATIC_SCOPED, report_norm_ids: [765, 5755, 5758, 5761], question_required: false}
 
-existing_structural_mappings:
+structural_mappings:
   - {structural_key: LOANS_ROOT, source_kind: AXIS_HEADER, axis_key: CUSTOMER_LOANS, report_norm_id: 716, disposition: EXTERNAL_OWNER_VALIDATION, owner_scope: page-0031}
   - {structural_key: LOANS_GEOGRAPHIC_ANALYSIS, source_kind: GEOGRAPHIC_CONTEXT, axis_key: CUSTOMER_LOANS, report_norm_id: 759, disposition: MAPPED_AUTOMATIC_SCOPED, owner_scope: page-0052}
   - {structural_key: DEPOSITS_ROOT, source_kind: AXIS_HEADER, axis_key: CUSTOMER_DEPOSITS, report_norm_id: 1055, disposition: EXTERNAL_OWNER_VALIDATION, owner_scope: page-0043}
+  - {structural_key: DEPOSITS_GEOGRAPHIC_ANALYSIS, source_kind: AXIS_HEADER, axis_key: CUSTOMER_DEPOSITS, report_norm_id: 5753, disposition: MAPPED_AUTOMATIC_SCOPED, owner_scope: page-0052}
   - {structural_key: LC_ROOT, source_kind: AXIS_HEADER, axis_key: LC_COMMITMENTS, report_norm_id: 1295, disposition: EXTERNAL_OWNER_VALIDATION, owner_scope: page-0051}
+  - {structural_key: LC_GEOGRAPHIC_ANALYSIS, source_kind: AXIS_HEADER, axis_key: LC_COMMITMENTS, report_norm_id: 5756, disposition: MAPPED_AUTOMATIC_SCOPED, owner_scope: page-0052}
+  - {structural_key: SECURITIES_GEOGRAPHIC_ANALYSIS, source_kind: AXIS_HEADER, axis_key: SECURITIES, report_norm_id: 5759, disposition: MAPPED_AUTOMATIC_SCOPED, owner_scope: page-0052}
+
+validation_formulas:
+  5750: [5751]
+  759: [5752, 765]
+  5753: [5754, 5755]
+  5756: [5757, 5758]
+  5759: [5760, 5761]
 
 external_owner_validations:
-  - {validation_key: CUSTOMER_LOANS_TOTAL, axis_key: CUSTOMER_LOANS, owner_report_norm_ids: [716], owner_scopes: [page-0031], owner_values: [1120562481], target_proposal_key: null}
-  - {validation_key: CUSTOMER_DEPOSITS_TOTAL, axis_key: CUSTOMER_DEPOSITS, owner_report_norm_ids: [1055], owner_scopes: [page-0043], owner_values: [905918332], target_proposal_key: null}
-  - {validation_key: LC_COMMITMENTS_TOTAL, axis_key: LC_COMMITMENTS, owner_report_norm_ids: [1295], owner_scopes: [page-0051], owner_values: [71763365], target_proposal_key: null}
-  - {validation_key: SECURITIES_TOTAL, axis_key: SECURITIES, owner_report_norm_ids: [626, 824, 848], owner_scopes: [page-0031, page-0035, page-0036], owner_values: [5093432, 259054739, 4336559], target_proposal_key: SECURITIES_GEO}
-
-schema_addition_proposals:
-  - {proposal_key: RP_ROOT, canonical_name: Giao dịch với các bên liên quan, parent_report_norm_id: 1259, parent_proposal_key: null, insert_before_report_norm_id: null, insert_after_report_norm_id: 1304, insert_after_proposal_key: null, formula_kind: SUM_CHILDREN, formula_terms: [RP_DEPOSIT_MB]}
-  - {proposal_key: RP_DEPOSIT_MB, canonical_name: Giao dịch tiền gửi tại MB, parent_report_norm_id: null, parent_proposal_key: RP_ROOT, insert_before_report_norm_id: null, insert_after_report_norm_id: null, insert_after_proposal_key: null, formula_kind: NONE, formula_terms: []}
-  - {proposal_key: LOANS_DOMESTIC, canonical_name: + Trong nước, parent_report_norm_id: 759, parent_proposal_key: null, insert_before_report_norm_id: 760, insert_after_report_norm_id: null, insert_after_proposal_key: null, reparent_existing_report_norm_ids: [760, 761, 762, 763, 764], formula_kind: NONE, formula_terms: []}
-  - {proposal_key: DEPOSITS_GEO, canonical_name: Phân tích theo khu vực địa lý, parent_report_norm_id: 1055, parent_proposal_key: null, insert_before_report_norm_id: null, insert_after_report_norm_id: 1075, insert_after_proposal_key: null, formula_kind: SUM_CHILDREN, formula_terms: [DEPOSITS_DOMESTIC, DEPOSITS_FOREIGN]}
-  - {proposal_key: DEPOSITS_DOMESTIC, canonical_name: + Trong nước, parent_report_norm_id: null, parent_proposal_key: DEPOSITS_GEO, insert_before_report_norm_id: null, insert_after_report_norm_id: null, insert_after_proposal_key: null, formula_kind: NONE, formula_terms: []}
-  - {proposal_key: DEPOSITS_FOREIGN, canonical_name: + Nước ngoài, parent_report_norm_id: null, parent_proposal_key: DEPOSITS_GEO, insert_before_report_norm_id: null, insert_after_report_norm_id: null, insert_after_proposal_key: DEPOSITS_DOMESTIC, formula_kind: NONE, formula_terms: []}
-  - {proposal_key: LC_GEO, canonical_name: Phân tích theo khu vực địa lý, parent_report_norm_id: 1295, parent_proposal_key: null, insert_before_report_norm_id: null, insert_after_report_norm_id: null, insert_after_proposal_key: null, formula_kind: SUM_CHILDREN, formula_terms: [LC_DOMESTIC, LC_FOREIGN]}
-  - {proposal_key: LC_DOMESTIC, canonical_name: + Trong nước, parent_report_norm_id: null, parent_proposal_key: LC_GEO, insert_before_report_norm_id: null, insert_after_report_norm_id: null, insert_after_proposal_key: null, formula_kind: NONE, formula_terms: []}
-  - {proposal_key: LC_FOREIGN, canonical_name: + Nước ngoài, parent_report_norm_id: null, parent_proposal_key: LC_GEO, insert_before_report_norm_id: null, insert_after_report_norm_id: null, insert_after_proposal_key: LC_DOMESTIC, formula_kind: NONE, formula_terms: []}
-  - {proposal_key: SECURITIES_GEO, canonical_name: Kinh doanh và đầu tư chứng khoán, parent_report_norm_id: 1259, parent_proposal_key: null, insert_before_report_norm_id: null, insert_after_report_norm_id: null, insert_after_proposal_key: RP_ROOT, formula_kind: SUM_CHILDREN, formula_terms: [SECURITIES_DOMESTIC, SECURITIES_FOREIGN]}
-  - {proposal_key: SECURITIES_DOMESTIC, canonical_name: + Trong nước, parent_report_norm_id: null, parent_proposal_key: SECURITIES_GEO, insert_before_report_norm_id: null, insert_after_report_norm_id: null, insert_after_proposal_key: null, formula_kind: NONE, formula_terms: []}
-  - {proposal_key: SECURITIES_FOREIGN, canonical_name: + Nước ngoài, parent_report_norm_id: null, parent_proposal_key: SECURITIES_GEO, insert_before_report_norm_id: null, insert_after_report_norm_id: null, insert_after_proposal_key: SECURITIES_DOMESTIC, formula_kind: NONE, formula_terms: []}
+  - {validation_key: CUSTOMER_LOANS_TOTAL, axis_key: CUSTOMER_LOANS, owner_report_norm_ids: [716], owner_scopes: [page-0031], owner_values: [1120562481], target_report_norm_id: 759}
+  - {validation_key: CUSTOMER_DEPOSITS_TOTAL, axis_key: CUSTOMER_DEPOSITS, owner_report_norm_ids: [1055], owner_scopes: [page-0043], owner_values: [905918332], target_report_norm_id: 5753}
+  - {validation_key: LC_COMMITMENTS_TOTAL, axis_key: LC_COMMITMENTS, owner_report_norm_ids: [1295], owner_scopes: [page-0051], owner_values: [71763365], target_report_norm_id: 5756}
+  - {validation_key: SECURITIES_TOTAL, axis_key: SECURITIES, owner_report_norm_ids: [626, 824, 848], owner_scopes: [page-0031, page-0035, page-0036], owner_values: [5093432, 259054739, 4336559], target_report_norm_id: 5759}
 
 forbidden_mapping_inputs:
   - numeric_cell_text
