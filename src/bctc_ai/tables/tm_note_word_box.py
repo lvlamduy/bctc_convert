@@ -251,6 +251,113 @@ class ParsedTMNoteWordBoxPage:
         )
 
 
+@dataclass(frozen=True)
+class TMPage31TableSpec:
+    table_key: str
+    note_number: str
+    title_anchors: tuple[str, ...]
+    structural_label_anchors: tuple[str, ...]
+    expected_numeric_rows: int
+    expected_label_only_rows: int
+
+
+@dataclass(frozen=True)
+class TMPage31Policy:
+    source_path: Path
+    document: str
+    page_number: int
+    page_tag: str
+    scope: str
+    scope_binding: str
+    source_pdf_sha256: str
+    source_render_sha256: str
+    source_ocr_sha256: str
+    minimum_line_score: float
+    minimum_anchor_similarity: float
+    minimum_unit_similarity: float
+    unit_anchors: tuple[str, ...]
+    canonical_unit: str
+    unit_multiplier: int
+    maximum_date_to_unit_center_distance_line_heights: float
+    minimum_axis_separation_line_heights: float
+    numeric_axis_max_distance_ratio: float
+    numeric_axis_right_overrun_line_heights: float
+    row_anchor_cluster_line_heights: float
+    label_direct_attach_line_heights: float
+    page_footer_top_ratio: float
+    tables: tuple[TMPage31TableSpec, ...]
+    forbidden_semantic_inputs: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class TMPage31LogicalRow:
+    row_id: str
+    table_key: str
+    note_number: str
+    ordinal: int
+    row: ReaderRow
+    row_kind: TMNoteRowKind
+    source_role: str
+    y_anchor: float
+    label_bbox: BoundingBox | None
+    value_bboxes: tuple[BoundingBox | None, ...]
+    label_line_indices: tuple[int, ...]
+    value_line_indices: tuple[tuple[int, ...], ...]
+    mapping_approved: bool
+
+    @property
+    def numeric_cell_count(self) -> int:
+        return sum(
+            cell.observation in {ObservationKind.VALUE, ObservationKind.ZERO, ObservationKind.DASH}
+            for cell in self.row.cells
+        )
+
+
+@dataclass(frozen=True)
+class TMPage31Table:
+    ordinal: int
+    table_key: str
+    note_number: str
+    title: str
+    title_line_indices: tuple[int, ...]
+    axes: tuple[TMNoteAxisBinding, ...]
+    rows: tuple[TMPage31LogicalRow, ...]
+    bbox: BoundingBox
+
+
+@dataclass(frozen=True)
+class ParsedTMPage31:
+    input_path: str
+    source_sha256: str
+    source_render_sha256: str
+    source_pdf_sha256: str
+    page_tag: str
+    scope: str
+    scope_binding: str
+    axes: tuple[TMNoteAxisBinding, ...]
+    tables: tuple[TMPage31Table, ...]
+    rows: tuple[TMPage31LogicalRow, ...]
+    line_height: float
+    source_ocr_bbox: BoundingBox
+    table_bbox: BoundingBox
+    unassigned_numeric_line_indices: tuple[int, ...]
+    excluded_footer_numeric_line_indices: tuple[int, ...]
+    mapping_authority: bool
+    evidence: tuple[str, ...]
+
+    @property
+    def numeric_row_count(self) -> int:
+        return sum(row.row_kind is TMNoteRowKind.NUMERIC for row in self.rows)
+
+    @property
+    def label_only_row_count(self) -> int:
+        return sum(row.row_kind is TMNoteRowKind.LABEL_ONLY for row in self.rows)
+
+    @property
+    def numeric_cell_count(self) -> int:
+        return sum(row.numeric_cell_count for row in self.rows)
+
+
 _DATE = re.compile(r"^(?P<day>\d{2})/(?P<month>\d{2})/(?P<year>20\d{2})$")
 _NOTE_NUMBER = re.compile(r"^(?P<number>\d+)[.]$")
 _NUMERIC = re.compile(r"^[\d\s.,()\-–—+]+$")
@@ -263,6 +370,14 @@ _REQUIRED_FORBIDDEN = {
     "human_review_answers",
     "accounting_equations_as_value_imputation",
 }
+_PAGE31_REQUIRED_FORBIDDEN = {
+    "template_labels_as_row_reconstruction_input",
+    "approved_report_norm_id_assignment",
+    "historical_or_mongodb_values",
+    "human_review_answers",
+    "accounting_equations_as_value_imputation",
+}
+_SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
 def _positive_float(payload: dict[str, Any], name: str) -> float:
@@ -425,6 +540,135 @@ def load_tm_note_word_box_policy(path: Path) -> TMNoteWordBoxPolicy:
         label_direct_attach_line_heights=_positive_float(table, "label_direct_attach_line_heights"),
         label_boundary_axis_gap_ratio=_positive_float(table, "label_boundary_axis_gap_ratio"),
         page_footer_top_ratio=footer_ratio,
+        forbidden_semantic_inputs=tuple(str(item) for item in forbidden),
+    )
+
+
+def load_tm_page31_policy(path: Path) -> TMPage31Policy:
+    try:
+        payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError) as exc:
+        raise TMNoteWordBoxError(f"cannot load TM page-31 policy: {path}") from exc
+    if not isinstance(payload, dict) or (
+        payload.get("version") != 1
+        or payload.get("policy") != "TM_NOTE_PAGE31_FIXED_GRID_V1"
+        or payload.get("statement_type") != "TM"
+        or payload.get("page_number") != 31
+        or payload.get("page_tag") != "page-0031"
+        or payload.get("scope") != "CONSOLIDATED"
+        or payload.get("scope_binding") != "PREDECESSOR_TM_SECTION_ON_PAGE_30"
+    ):
+        raise TMNoteWordBoxError("TM page-31 policy identity drifted")
+    hashes = (
+        payload.get("source_pdf_sha256"),
+        payload.get("source_render_sha256"),
+        payload.get("source_ocr_sha256"),
+    )
+    if any(not isinstance(value, str) or not _SHA256.fullmatch(value) for value in hashes):
+        raise TMNoteWordBoxError("TM page-31 source hashes are invalid")
+    minimum_line_score = payload.get("minimum_line_score")
+    minimum_anchor_similarity = payload.get("minimum_anchor_similarity")
+    minimum_unit_similarity = payload.get("minimum_unit_similarity")
+    if any(
+        isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 <= float(value) <= 1
+        for value in (minimum_line_score, minimum_anchor_similarity, minimum_unit_similarity)
+    ):
+        raise TMNoteWordBoxError("TM page-31 similarity thresholds are invalid")
+    unit = payload.get("unit")
+    header = payload.get("header_geometry")
+    table_geometry = payload.get("table_geometry")
+    if not all(isinstance(value, dict) for value in (unit, header, table_geometry)):
+        raise TMNoteWordBoxError("TM page-31 geometry configuration is incomplete")
+    canonical_unit = unit.get("canonical")
+    unit_multiplier = unit.get("multiplier")
+    if (
+        not isinstance(canonical_unit, str)
+        or not canonical_unit
+        or isinstance(unit_multiplier, bool)
+        or not isinstance(unit_multiplier, int)
+        or unit_multiplier <= 0
+    ):
+        raise TMNoteWordBoxError("TM page-31 unit binding is invalid")
+    raw_tables = payload.get("tables")
+    if not isinstance(raw_tables, list) or len(raw_tables) != 4:
+        raise TMNoteWordBoxError("TM page-31 must define four visible tables")
+    tables = []
+    for record in raw_tables:
+        if not isinstance(record, dict):
+            raise TMNoteWordBoxError("TM page-31 table record is invalid")
+        table_key = record.get("table_key")
+        note_number = record.get("note_number")
+        numeric_rows = record.get("expected_numeric_rows")
+        label_rows = record.get("expected_label_only_rows")
+        if (
+            not isinstance(table_key, str)
+            or not table_key
+            or not isinstance(note_number, str)
+            or not note_number.isdigit()
+            or isinstance(numeric_rows, bool)
+            or not isinstance(numeric_rows, int)
+            or numeric_rows <= 0
+            or isinstance(label_rows, bool)
+            or not isinstance(label_rows, int)
+            or label_rows < 0
+        ):
+            raise TMNoteWordBoxError("TM page-31 table identity or denominator is invalid")
+        tables.append(
+            TMPage31TableSpec(
+                table_key=table_key,
+                note_number=note_number,
+                title_anchors=_anchors(record.get("title_anchors"), f"{table_key} title"),
+                structural_label_anchors=_anchors(
+                    record.get("structural_label_anchors"), f"{table_key} structural label"
+                ),
+                expected_numeric_rows=numeric_rows,
+                expected_label_only_rows=label_rows,
+            )
+        )
+    if len({table.table_key for table in tables}) != len(tables):
+        raise TMNoteWordBoxError("TM page-31 table keys are duplicated")
+    forbidden = payload.get("forbidden_semantic_inputs")
+    if not isinstance(forbidden, list) or set(forbidden) != _PAGE31_REQUIRED_FORBIDDEN:
+        raise TMNoteWordBoxError("TM page-31 forbidden semantic inputs drifted")
+    footer_ratio = _positive_float(table_geometry, "page_footer_top_ratio")
+    if footer_ratio >= 1:
+        raise TMNoteWordBoxError("TM page-31 footer ratio must be below one")
+    return TMPage31Policy(
+        source_path=path,
+        document=str(payload.get("document", "")),
+        page_number=31,
+        page_tag="page-0031",
+        scope="CONSOLIDATED",
+        scope_binding="PREDECESSOR_TM_SECTION_ON_PAGE_30",
+        source_pdf_sha256=hashes[0],
+        source_render_sha256=hashes[1],
+        source_ocr_sha256=hashes[2],
+        minimum_line_score=float(minimum_line_score),
+        minimum_anchor_similarity=float(minimum_anchor_similarity),
+        minimum_unit_similarity=float(minimum_unit_similarity),
+        unit_anchors=_anchors(unit.get("anchors"), "page-31 unit"),
+        canonical_unit=canonical_unit,
+        unit_multiplier=unit_multiplier,
+        maximum_date_to_unit_center_distance_line_heights=_positive_float(
+            header, "maximum_date_to_unit_center_distance_line_heights"
+        ),
+        minimum_axis_separation_line_heights=_positive_float(
+            header, "minimum_axis_separation_line_heights"
+        ),
+        numeric_axis_max_distance_ratio=_positive_float(
+            table_geometry, "numeric_axis_max_distance_ratio"
+        ),
+        numeric_axis_right_overrun_line_heights=_positive_float(
+            table_geometry, "numeric_axis_right_overrun_line_heights"
+        ),
+        row_anchor_cluster_line_heights=_positive_float(
+            table_geometry, "row_anchor_cluster_line_heights"
+        ),
+        label_direct_attach_line_heights=_positive_float(
+            table_geometry, "label_direct_attach_line_heights"
+        ),
+        page_footer_top_ratio=footer_ratio,
+        tables=tuple(tables),
         forbidden_semantic_inputs=tuple(str(item) for item in forbidden),
     )
 
@@ -1050,8 +1294,409 @@ def parse_tm_note_word_box_page(
     )
 
 
+def _find_page31_titles(
+    lines: tuple[_Line, ...], policy: TMPage31Policy
+) -> tuple[tuple[TMPage31TableSpec, _Line], ...]:
+    result = []
+    used: set[int] = set()
+    for spec in policy.tables:
+        candidates = sorted(
+            (
+                (_best_anchor_similarity(line.text, spec.title_anchors), line)
+                for line in lines
+                if line.index not in used
+            ),
+            key=lambda item: (-item[0], item[1].y_center, item[1].index),
+        )
+        if not candidates or candidates[0][0] < policy.minimum_anchor_similarity:
+            raise TMNoteWordBoxError(f"TM page-31 table title is unresolved: {spec.table_key}")
+        title = candidates[0][1]
+        used.add(title.index)
+        result.append((spec, title))
+    if [title.y_center for _spec, title in result] != sorted(
+        title.y_center for _spec, title in result
+    ):
+        raise TMNoteWordBoxError("TM page-31 table-title order drifted")
+    visible_note_numbers = {
+        match.group("number")
+        for line in lines
+        if (match := _NOTE_NUMBER.fullmatch(line.text)) is not None
+    }
+    if not {"4", "5"} <= visible_note_numbers:
+        raise TMNoteWordBoxError("TM page-31 visible note anchors 4 and 5 are incomplete")
+    return tuple(result)
+
+
+def _bind_page31_axes(
+    lines: tuple[_Line, ...],
+    title: _Line,
+    next_title: _Line | None,
+    body_end: float,
+    policy: TMPage31Policy,
+    line_height: float,
+) -> tuple[TMNoteAxisBinding, ...]:
+    upper = next_title.bbox.y0 if next_title is not None else body_end
+    candidates = tuple(line for line in lines if title.y_center < line.y_center < upper)
+    dates = tuple(line for line in candidates if _DATE.fullmatch(line.text))
+    units = tuple(
+        line
+        for line in candidates
+        if not any(character.isdigit() for character in retrieval_key(line.text))
+        and _best_anchor_similarity(line.text, policy.unit_anchors)
+        >= policy.minimum_unit_similarity
+    )
+    if len(dates) != 2 or len(units) != 2:
+        raise TMNoteWordBoxError("each TM page-31 table must expose two dates and two units")
+    pairs = _minimum_bijection(tuple(sorted(dates, key=lambda item: item.x_right)), units)
+    if any(
+        abs(date_line.x_center - unit_line.x_center)
+        > line_height * policy.maximum_date_to_unit_center_distance_line_heights
+        for date_line, unit_line in pairs
+    ):
+        raise TMNoteWordBoxError("TM page-31 date/unit geometry is not locally bounded")
+    ordered_pairs = tuple(sorted(pairs, key=lambda item: item[1].x_right))
+    gaps = [
+        right[1].x_right - left[1].x_right
+        for left, right in zip(ordered_pairs, ordered_pairs[1:], strict=False)
+    ]
+    if min(gaps, default=0) < line_height * policy.minimum_axis_separation_line_heights:
+        raise TMNoteWordBoxError("TM page-31 value axes are not distinctly separated")
+    parsed_dates = [parse_vietnamese_date(date_line.text) for date_line, _unit in ordered_pairs]
+    if any(value is None for value in parsed_dates) or len(set(parsed_dates)) != 2:
+        raise TMNoteWordBoxError("TM page-31 visible snapshot dates are invalid or duplicated")
+    latest = max(value for value in parsed_dates if value is not None)
+    result = []
+    for ordinal, ((date_line, unit_line), parsed_date) in enumerate(
+        zip(ordered_pairs, parsed_dates, strict=True), start=1
+    ):
+        assert parsed_date is not None
+        result.append(
+            TMNoteAxisBinding(
+                ordinal=ordinal,
+                axis_id=f"value-{ordinal}",
+                axis_right_edge=unit_line.x_right,
+                raw_date_text=date_line.text,
+                date_line_index=date_line.index,
+                raw_unit_text=unit_line.text,
+                unit_line_index=unit_line.index,
+                current_or_comparative="CURRENT" if parsed_date == latest else "COMPARATIVE",
+                canonical_unit=policy.canonical_unit,
+                unit_multiplier=policy.unit_multiplier,
+                period_start=parsed_date,
+                period_end=parsed_date,
+                period_type="SNAPSHOT",
+                header_bbox=_union([date_line, unit_line]),
+                unit_bbox=unit_line.bbox,
+                evidence=(
+                    "snapshot date parsed from the visible table-local date header",
+                    "current/comparative role derived from visible date chronology",
+                    "VND million multiplier matched from the visible table-local unit",
+                ),
+            )
+        )
+    return tuple(result)
+
+
+def _reconstruct_page31_table(
+    lines: tuple[_Line, ...],
+    spec: TMPage31TableSpec,
+    title: _Line,
+    axes: tuple[TMNoteAxisBinding, ...],
+    body_end: float,
+    policy: TMPage31Policy,
+    line_height: float,
+    *,
+    page_tag: str,
+    table_ordinal: int,
+) -> tuple[TMPage31Table, tuple[int, ...]]:
+    body_start = max(axis.unit_bbox.y1 for axis in axes)
+    body = [line for line in lines if body_start < line.y_center < body_end]
+    axis_edges = [axis.axis_right_edge for axis in axes]
+    typical_gap = abs(axis_edges[1] - axis_edges[0])
+    maximum_distance = typical_gap * policy.numeric_axis_max_distance_ratio
+    per_axis: list[list[_Line]] = [[] for _axis in axes]
+    unassigned = []
+    for line in (item for item in body if _numeric_only(item.text)):
+        distances = [abs(line.x_right - edge) for edge in axis_edges]
+        closest = min(range(len(distances)), key=distances.__getitem__)
+        if (
+            distances[closest] <= maximum_distance
+            and line.x_right
+            <= axis_edges[closest] + line_height * policy.numeric_axis_right_overrun_line_heights
+        ):
+            per_axis[closest].append(line)
+        else:
+            unassigned.append(line)
+    assigned = [line for axis_lines in per_axis for line in axis_lines]
+    groups = _clusters(assigned, line_height * policy.row_anchor_cluster_line_heights)
+    if not groups or any(len(group) != len(axes) for group in groups):
+        raise TMNoteWordBoxError(f"TM page-31 {spec.table_key} has incomplete numeric rows")
+    centers = [statistics.fmean(line.y_center for line in group) for group in groups]
+    used = {line.index for line in assigned + unassigned}
+    label_boundary = axes[0].axis_right_edge - typical_gap * 0.35
+    label_candidates = [
+        line
+        for line in body
+        if line.index not in used and line.x_right < label_boundary and not _numeric_only(line.text)
+    ]
+    structural = [
+        line
+        for line in label_candidates
+        if _best_anchor_similarity(line.text, spec.structural_label_anchors)
+        >= policy.minimum_anchor_similarity
+    ]
+    assignments: dict[int, int] = {}
+    for label in label_candidates:
+        if label in structural:
+            continue
+        distances = [abs(label.y_center - center) for center in centers]
+        closest = min(range(len(distances)), key=distances.__getitem__)
+        if distances[closest] <= line_height * policy.label_direct_attach_line_heights:
+            assignments[label.index] = closest
+
+    proposals: list[tuple[float, TMPage31LogicalRow]] = []
+    for group_index, (group, center) in enumerate(zip(groups, centers, strict=True)):
+        labels = sorted(
+            (line for line in label_candidates if assignments.get(line.index) == group_index),
+            key=lambda item: (item.y_center, item.bbox.x0),
+        )
+        value_lines = [
+            sorted((line for line in axis_lines if line in group), key=lambda item: item.bbox.x0)
+            for axis_lines in per_axis
+        ]
+        cells = tuple(
+            parse_financial_number(" ".join(line.text for line in axis_lines))
+            for axis_lines in value_lines
+        )
+        if any(
+            cell.observation not in {ObservationKind.VALUE, ObservationKind.ZERO} for cell in cells
+        ):
+            raise TMNoteWordBoxError(f"TM page-31 {spec.table_key} has an invalid numeric cell")
+        label = normalize_text(" ".join(line.text for line in labels))
+        source_lines = labels + [line for axis_lines in value_lines for line in axis_lines]
+        proposals.append(
+            (
+                center,
+                TMPage31LogicalRow(
+                    row_id="",
+                    table_key=spec.table_key,
+                    note_number=spec.note_number,
+                    ordinal=0,
+                    row=ReaderRow(
+                        source_row_ids=_source_ids(page_tag, source_lines),
+                        label=label,
+                        note_reference=spec.note_number,
+                        cells=cells,
+                    ),
+                    row_kind=TMNoteRowKind.NUMERIC,
+                    source_role="DETAIL" if labels else "UNLABELED_TOTAL",
+                    y_anchor=center,
+                    label_bbox=_union(labels) if labels else None,
+                    value_bboxes=tuple(_union(axis_lines) for axis_lines in value_lines),
+                    label_line_indices=tuple(line.index for line in labels),
+                    value_line_indices=tuple(
+                        tuple(line.index for line in axis_lines) for axis_lines in value_lines
+                    ),
+                    mapping_approved=False,
+                ),
+            )
+        )
+    for label in structural:
+        proposals.append(
+            (
+                label.y_center,
+                TMPage31LogicalRow(
+                    row_id="",
+                    table_key=spec.table_key,
+                    note_number=spec.note_number,
+                    ordinal=0,
+                    row=ReaderRow(
+                        source_row_ids=_source_ids(page_tag, [label]),
+                        label=label.text,
+                        note_reference=spec.note_number,
+                        cells=tuple(parse_financial_number(None) for _axis in axes),
+                    ),
+                    row_kind=TMNoteRowKind.LABEL_ONLY,
+                    source_role="GROUP_LABEL",
+                    y_anchor=label.y_center,
+                    label_bbox=label.bbox,
+                    value_bboxes=tuple(None for _axis in axes),
+                    label_line_indices=(label.index,),
+                    value_line_indices=tuple(() for _axis in axes),
+                    mapping_approved=False,
+                ),
+            )
+        )
+    rows = []
+    for ordinal, (_center, row) in enumerate(sorted(proposals, key=lambda item: item[0]), start=1):
+        rows.append(
+            TMPage31LogicalRow(
+                row_id=f"{page_tag}:{spec.table_key.lower()}:row-{ordinal:04d}",
+                table_key=row.table_key,
+                note_number=row.note_number,
+                ordinal=ordinal,
+                row=row.row,
+                row_kind=row.row_kind,
+                source_role=row.source_role,
+                y_anchor=row.y_anchor,
+                label_bbox=row.label_bbox,
+                value_bboxes=row.value_bboxes,
+                label_line_indices=row.label_line_indices,
+                value_line_indices=row.value_line_indices,
+                mapping_approved=False,
+            )
+        )
+    numeric_count = sum(row.row_kind is TMNoteRowKind.NUMERIC for row in rows)
+    label_count = sum(row.row_kind is TMNoteRowKind.LABEL_ONLY for row in rows)
+    if (numeric_count, label_count) != (
+        spec.expected_numeric_rows,
+        spec.expected_label_only_rows,
+    ):
+        raise TMNoteWordBoxError(
+            f"TM page-31 {spec.table_key} row denominator drifted: "
+            f"{numeric_count} numeric + {label_count} label-only"
+        )
+    table_lines = [title]
+    table_lines.extend(
+        line
+        for axis in axes
+        for line in lines
+        if line.index in {axis.date_line_index, axis.unit_line_index}
+    )
+    used_indices = {
+        int(source_id.rsplit("-", 1)[-1]) for row in rows for source_id in row.row.source_row_ids
+    }
+    table_lines.extend(line for line in lines if line.index in used_indices)
+    return (
+        TMPage31Table(
+            ordinal=table_ordinal,
+            table_key=spec.table_key,
+            note_number=spec.note_number,
+            title=title.text,
+            title_line_indices=(title.index,),
+            axes=axes,
+            rows=tuple(rows),
+            bbox=_union(table_lines),
+        ),
+        tuple(sorted(line.index for line in unassigned)),
+    )
+
+
+def parse_tm_page31(
+    result_path: Path,
+    policy: TMPage31Policy,
+    *,
+    page_tag: str = "page-0031",
+) -> ParsedTMPage31:
+    """Reconstruct the four visible page-31 TM tables without mapping authority."""
+
+    if page_tag != policy.page_tag:
+        raise TMNoteWordBoxError("TM page-31 page tag drifted")
+    source_sha256 = sha256_file(result_path)
+    if source_sha256 != policy.source_ocr_sha256:
+        raise TMNoteWordBoxError("TM page-31 OCR artifact hash drifted")
+    input_path, lines, _metadata = _load_lines(result_path, policy.minimum_line_score)
+    line_height = float(statistics.median(line.height for line in lines))
+    if line_height <= 0:
+        raise TMNoteWordBoxError("TM page-31 word-box line height is invalid")
+    source_bbox = _union(lines)
+    title_records = _find_page31_titles(lines, policy)
+    footer_top = source_bbox.y1 * policy.page_footer_top_ratio
+    tables = []
+    unassigned = []
+    for index, (spec, title) in enumerate(title_records):
+        next_title = title_records[index + 1][1] if index + 1 < len(title_records) else None
+        body_end = next_title.bbox.y0 if next_title is not None else footer_top
+        axes = _bind_page31_axes(
+            lines,
+            title,
+            next_title,
+            body_end,
+            policy,
+            line_height,
+        )
+        table, table_unassigned = _reconstruct_page31_table(
+            lines,
+            spec,
+            title,
+            axes,
+            body_end,
+            policy,
+            line_height,
+            page_tag=page_tag,
+            table_ordinal=index + 1,
+        )
+        tables.append(table)
+        unassigned.extend(table_unassigned)
+    canonical_axes = tables[0].axes
+    semantic_axes = tuple(
+        (
+            axis.current_or_comparative,
+            axis.period_start,
+            axis.period_end,
+            axis.period_type,
+            axis.canonical_unit,
+            axis.unit_multiplier,
+        )
+        for axis in canonical_axes
+    )
+    if any(
+        tuple(
+            (
+                axis.current_or_comparative,
+                axis.period_start,
+                axis.period_end,
+                axis.period_type,
+                axis.canonical_unit,
+                axis.unit_multiplier,
+            )
+            for axis in table.axes
+        )
+        != semantic_axes
+        for table in tables[1:]
+    ):
+        raise TMNoteWordBoxError("TM page-31 repeated headers disagree semantically")
+    rows = tuple(row for table in tables for row in table.rows)
+    footer = tuple(
+        sorted(
+            line.index for line in lines if line.y_center >= footer_top and _numeric_only(line.text)
+        )
+    )
+    return ParsedTMPage31(
+        input_path=input_path,
+        source_sha256=source_sha256,
+        source_render_sha256=policy.source_render_sha256,
+        source_pdf_sha256=policy.source_pdf_sha256,
+        page_tag=page_tag,
+        scope=policy.scope,
+        scope_binding=policy.scope_binding,
+        axes=canonical_axes,
+        tables=tuple(tables),
+        rows=rows,
+        line_height=line_height,
+        source_ocr_bbox=source_bbox,
+        table_bbox=BoundingBox(
+            min(table.bbox.x0 for table in tables),
+            min(table.bbox.y0 for table in tables),
+            max(table.bbox.x1 for table in tables),
+            max(table.bbox.y1 for table in tables),
+        ),
+        unassigned_numeric_line_indices=tuple(sorted(unassigned)),
+        excluded_footer_numeric_line_indices=footer,
+        mapping_authority=False,
+        evidence=(
+            "four local tables located from visible page-31 titles in source order",
+            "two SNAPSHOT axes bound independently from every local date/unit header",
+            "scope inherited from the immediately preceding TM quantitative section page",
+            "33 logical rows and 56 numeric cells reconstructed from PP-OCRv6 geometry",
+            "this parser grants no ReportNormId authority",
+        ),
+    )
+
+
 __all__ = [
     "ParsedTMNoteWordBoxPage",
+    "ParsedTMPage31",
     "TMAmbiguousLabelSpec",
     "TMNoteAxisBinding",
     "TMNoteLogicalRow",
@@ -1060,7 +1705,13 @@ __all__ = [
     "TMNoteTable",
     "TMNoteWordBoxError",
     "TMNoteWordBoxPolicy",
+    "TMPage31LogicalRow",
+    "TMPage31Policy",
+    "TMPage31Table",
+    "TMPage31TableSpec",
     "TMSchemaDisposition",
     "load_tm_note_word_box_policy",
+    "load_tm_page31_policy",
+    "parse_tm_page31",
     "parse_tm_note_word_box_page",
 ]

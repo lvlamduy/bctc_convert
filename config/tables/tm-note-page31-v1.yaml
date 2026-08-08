@@ -1,0 +1,67 @@
+version: 1
+policy: TM_NOTE_PAGE31_FIXED_GRID_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+page_number: 31
+page_tag: page-0031
+scope: CONSOLIDATED
+scope_binding: PREDECESSOR_TM_SECTION_ON_PAGE_30
+
+source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+source_render_sha256: 194f13111ddce2fbcf5e1400a4925f4b0beb3774d572ad40ff9cea6453c114e7
+source_ocr_sha256: 36f9e80e02a30db520a4c4bb201671b97b6073303326e8ffd5c18059153ba0a1
+
+minimum_line_score: 0.0
+minimum_anchor_similarity: 0.78
+minimum_unit_similarity: 0.82
+unit:
+  anchors: [trieu dong]
+  canonical: VND
+  multiplier: 1000000
+
+header_geometry:
+  maximum_date_to_unit_center_distance_line_heights: 2.0
+  minimum_axis_separation_line_heights: 5.0
+
+table_geometry:
+  numeric_axis_max_distance_ratio: 0.45
+  numeric_axis_right_overrun_line_heights: 0.75
+  row_anchor_cluster_line_heights: 0.35
+  label_direct_attach_line_heights: 1.0
+  page_footer_top_ratio: 0.98
+
+tables:
+  - table_key: SECURITIES
+    note_number: "4"
+    title_anchors: [chung khoan kinh doanh]
+    structural_label_anchors: [chung khoan no, chung khoan von]
+    expected_numeric_rows: 7
+    expected_label_only_rows: 2
+  - table_key: LOAN_TYPE
+    note_number: "5"
+    title_anchors: [cho vay khach hang]
+    structural_label_anchors: [du no cho vay]
+    expected_numeric_rows: 8
+    expected_label_only_rows: 1
+  - table_key: LOAN_QUALITY
+    note_number: "5"
+    title_anchors: [phan tich chat luong no cho vay]
+    structural_label_anchors: [du no cho vay]
+    expected_numeric_rows: 7
+    expected_label_only_rows: 1
+  - table_key: LOAN_MATURITY
+    note_number: "5"
+    title_anchors: [phan tich du no theo thoi gian]
+    structural_label_anchors: [du no cho vay]
+    expected_numeric_rows: 6
+    expected_label_only_rows: 1
+
+# Scope comes from the immediately preceding quantitative-TM section page in the
+# same immutable source. This parser reconstructs observations only and grants no
+# ReportNormId authority.
+forbidden_semantic_inputs:
+  - template_labels_as_row_reconstruction_input
+  - approved_report_norm_id_assignment
+  - historical_or_mongodb_values
+  - human_review_answers
+  - accounting_equations_as_value_imputation
