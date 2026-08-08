@@ -246,3 +246,52 @@ The child manifest retains normal `files` records and can be supplied directly
 to `s3-hydrate` for exact no-overwrite restoration of any enrolled logical
 path. Restore the parent full snapshot/control plane separately when rebuilding
 the entire project.
+
+## Incremental project checkpoint after corpus offload
+
+Use `S3_INCREMENTAL_PROJECT_CHECKPOINT_V1` when the Git/control plane and a
+bounded set of development outputs must be recoverable together, but the
+registered PDF corpus is intentionally offloaded. This is an operational
+checkpoint, not an experiment or a replacement for the immutable full parent.
+
+Run only against a clean committed worktree:
+
+```bash
+PYTHONPATH=src .venv/bin/python \
+  scripts/backup/backup_incremental_project_checkpoint.py \
+  --path output \
+  --parent-manifest-key \
+    'bctc-ai/snapshots/20260806T050030130746Z-4a469fab2334/manifest-74be9ea09905f0c7842d5a0b46bfe44f3fc5f32cc2c15b5040efcc4e99e8981b.json' \
+  --parent-manifest-sha256 \
+    '74be9ea09905f0c7842d5a0b46bfe44f3fc5f32cc2c15b5040efcc4e99e8981b' \
+  --parent-run-record-key \
+    'bctc-ai/runs/20260806T050030130746Z-4a469fab2334/run-24eb066b51443066dfd14538ef7aeb21e9b700cc6ce995c49e56ff23b6701b04.json' \
+  --parent-run-record-sha256 \
+    '24eb066b51443066dfd14538ef7aeb21e9b700cc6ce995c49e56ff23b6701b04'
+```
+
+The policy binds the checkpoint to a production-`PASS`, full-content-restored
+parent and includes exactly:
+
+- a newly created control-plane archive and its locally restore-tested
+  manifest;
+- a newly created and verified `git bundle --all`; and
+- explicitly selected regular files below `output/`.
+
+It never inventories or hydrates the PDF corpus. Codex sessions, credential
+stores, `.env`, SSH/AWS/Codex authentication paths, virtual environments,
+MongoDB runtime files, model weights and caches are excluded. Selected output
+paths and bytes pass the same fail-closed known-credential-format scan used by
+session-backup V2; symlinks and special files are rejected.
+
+All assets use the standard SHA-256 content keys, S3 SHA-256 checksum, AES-256,
+expected bucket owner and `If-None-Match: *`. Data objects are published first
+and the checkpoint manifest is published last under
+`bctc-ai/project-checkpoints/`. The tool then independently downloads and
+HEAD-verifies every unique incremental object, reconstructs every logical path,
+restore-tests the control archive, verifies the Git bundle, and semantically
+opens representative restored JSON, XLSX and PNG outputs when present. Only
+then does it publish a `PASS` run record under
+`bctc-ai/project-checkpoint-runs/`; that record is HEAD-verified and downloaded
+back by SHA-256 before success is returned. A manifest without a passing bound
+run record is not an accepted checkpoint.
