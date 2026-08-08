@@ -1,0 +1,64 @@
+version: 1
+policy: REGISTERED_NATIVE_STATEMENT_ROWS_EXCEL_V1
+claim_boundary: UNMAPPED_SOURCE_ROWS_AND_CELLS_ONLY_NO_SCHEMA_PROJECTION
+
+accepted_input:
+  format_version: REGISTERED_NATIVE_STATEMENT_ROWS_RESULT_V1
+  policy: REGISTERED_NATIVE_STATEMENT_ROWS_V1
+  claim_boundary: UNMAPPED_SOURCE_ROWS_AND_CELLS_ONLY
+  status: ACCEPTED_NATIVE_STATEMENT_ROWS
+  trusted_sha256_required: true
+
+allowed_dataset_roles:
+  - LOGIC_DEVELOPMENT
+  - CALIBRATION
+  - VALIDATION
+  - PRODUCTION_INPUT
+forbidden_dataset_roles:
+  - UNTOUCHED_HOLDOUT
+
+role_directories:
+  LOGIC_DEVELOPMENT: output/development
+  CALIBRATION: output/calibration
+  VALIDATION: output/validation
+  PRODUCTION_INPUT: output/production
+
+workbook:
+  sheets: [PAGES, ROWS, CELLS, HEADERS, RUN_METADATA]
+  creator: bctc-ai/native-statement-rows-excel-v1
+  deterministic_xlsx: true
+  formulas_allowed: false
+  schema_projection_allowed: false
+  template_inputs_allowed: false
+  dash_coercion_to_zero_allowed: false
+  preserve_outside_financial_table_span_rows: true
+  bind_cell_axis_context: true
+
+publication:
+  paired_workbook_and_provenance: true
+  workbook_written_before_provenance_completion_marker: true
+  exclusive_no_overwrite: true
+  sibling_outputs_required: true
+  absolute_project_paths_allowed: false
+  canonical_provenance_json: true
+
+role_isolation:
+  runtime_input_allowlist:
+    - REGISTERED_NATIVE_STATEMENT_ROWS_JSON
+    - SOURCE_PDF
+    - SOURCE_REGISTRY
+    - DATASET_ROLE_REGISTRY
+    - ACCEPTED_STATEMENT_DISCOVERY
+    - NATIVE_STATEMENT_ROWS_POLICY
+    - NATIVE_TEXT_QUALITY_CONFIG
+    - GEOMETRY_CONFIG
+    - PRODUCER_GIT_COMMIT
+    - THIS_EXPORT_POLICY
+    - EXPORT_IMPLEMENTATION
+  strict_source_contract_revalidated: true
+  prior_answer_artifacts_allowed: false
+  historical_values_allowed: false
+  role_a_outputs_allowed: false
+  schema_inputs_allowed: false
+  template_inputs_allowed: false
+  cross_role_inputs_allowed: false
