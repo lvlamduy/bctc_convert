@@ -5,7 +5,7 @@ Updated: 2026-08-08
 - **CDKT unresolved:** 7 active issues — all 7 are `NEEDS_USER_REVIEW`; Codex continues work elsewhere without waiting.
 - **KQKD unresolved:** 1 source-only row; 0 unresolved schema mappings.
 - **LCTT unresolved:** 6 schema items (5 composite candidates + 1 label conflict) and 2 source-only composite rows.
-- **TM unresolved:** 26 meaningful questions across audited pages 30–40; pages 41–61 are still being itemized.
+- **TM unresolved:** 38 meaningful questions across audited pages 30–45; pages 46–61 are still being itemized.
 
 CDKT schema reconciliation is exact: `77 = 61 MAPPED + 15 NOT_OBSERVED_IN_THIS_PDF + 1 UNRESOLVED`. The not-observed IDs are `4344, 4326, 4345, 4333, 4309, 4303, 4359, 4360, 4373, 4340, 4374, 4341, 4329, 4369, 4370`. Three source-only CDKT rows remain outside the denominator.
 
@@ -433,9 +433,9 @@ CDKT schema reconciliation is exact: `77 = 61 MAPPED + 15 NOT_OBSERVED_IN_THIS_P
 
 - **Statement:** TM
 - **Document:** MBB consolidated Q1/2026
-- **PDF page:** 37–40
+- **PDF page:** 37–41
 - **Visible row label:** asset-class columns in tangible and intangible fixed-asset roll-forwards
-- **Visible values/periods:** 188 class-level auxiliary slots in addition to 53 total-column slots.
+- **Visible values/periods:** 226 class-level auxiliary slots outside the total-column schema.
 - **Current status:** `SOURCE_ONLY_DIMENSION`.
 - **Candidate ReportNormId(s):** same movement IDs as total rows; schema has no asset-class measure axis.
 - **Why unresolved:** exporting every class into the same ID would duplicate targets.
@@ -494,9 +494,165 @@ CDKT schema reconciliation is exact: `77 = 61 MAPPED + 15 NOT_OBSERVED_IN_THIS_P
 - **What Codex currently thinks:** retain as exact cost-minus-amortization and cross-page continuity validation.
 - **Question for user:** Keep validation-only, or add net-book-value IDs?
 
+### Q042
+
+- **Statement:** TM
+- **Document:** MBB consolidated Q1/2026
+- **PDF page:** 41, note 12 investment property
+- **Visible row label:** gross-cost `Tăng`, `Giảm`, and `Tăng/(Giảm) khác`
+- **Visible values/periods:** current other total (4.971); FY2025 increase 4.971 and decrease (10.260) triệu đồng; other displayed cells include dash.
+- **Current status:** `SOURCE_ONLY_AGGREGATE` / `AMBIGUOUS_MAPPING`.
+- **Candidate ReportNormId(s):** 945–954; the negative current `other` weakly favors 954.
+- **Why unresolved:** the PDF aggregates movement causes that the schema separates.
+- **What Codex currently thinks:** do not split or force a detail ID.
+- **Question for user:** Keep source-only/components not observed, approve sign-based 954, or add aggregate IDs?
+
+### Q043
+
+- **Statement:** TM
+- **Document:** MBB consolidated Q1/2026
+- **PDF page:** 41, accumulated depreciation
+- **Visible row label:** `Tăng trong kỳ`; `Tăng/(Giảm) khác`
+- **Visible values/periods:** current increase 1.528; FY2025 increase 6.145 and other (132) triệu đồng.
+- **Current status:** `SOURCE_ONLY_AGGREGATE` / `AMBIGUOUS_MAPPING`.
+- **Candidate ReportNormId(s):** increase 958–960; other 960/964.
+- **Why unresolved:** generic aggregate labels do not identify detailed movement leaves.
+- **What Codex currently thinks:** 958/964 are plausible but insufficiently evidenced.
+- **Question for user:** Approve those IDs, retain aggregates source-only, or add aggregate IDs?
+
+### Q044
+
+- **Statement:** TM
+- **Document:** MBB consolidated Q1/2026
+- **PDF page:** 41
+- **Visible row label:** investment-property `Giá trị còn lại` at opening and closing
+- **Visible values/periods:** current panel 222.813 → 216.314; FY2025 234.115 → 222.813 triệu đồng.
+- **Current status:** `SOURCE_ONLY_VALIDATION` / `POSSIBLE_SCHEMA_GAP`.
+- **Candidate ReportNormId(s):** none.
+- **Why unresolved:** schema lacks net-book-value opening/closing leaves.
+- **What Codex currently thinks:** retain as exact gross-minus-depreciation validation.
+- **Question for user:** Add net-book-value IDs or intentionally keep validation-only?
+
+### Q045
+
+- **Statement:** TM
+- **Document:** MBB consolidated Q1/2026
+- **PDF page:** 42, note 13
+- **Visible row label:** `Chi phí xây dựng cơ bản, mua sắm TSCĐ`
+- **Visible values/periods:** 1.295.059 at 31/03/2026; 1.039.654 at 31/12/2025; triệu đồng.
+- **Current status:** `AMBIGUOUS_COMPOSITE`.
+- **Candidate ReportNormId(s):** 968, 969.
+- **Why unresolved:** one PDF row combines two distinct schema concepts and cannot be split from visible evidence.
+- **What Codex currently thinks:** retain as a source-only aggregate.
+- **Question for user:** Map to one ID, add an aggregate ID, or retain source-only?
+
+### Q046
+
+- **Statement:** TM
+- **Document:** MBB consolidated Q1/2026
+- **PDF page:** 42, note 13
+- **Visible row label:** `Phải thu liên quan đến dịch vụ thanh toán`; `Phải thu miễn truy đòi theo bộ chứng từ`
+- **Visible values/periods:** 861.287 / 1.525.624 and 11.281.653 / 8.046.079 triệu đồng.
+- **Current status:** `SOURCE_ONLY_PDF_ROWS` / `POSSIBLE_SCHEMA_GAP`.
+- **Candidate ReportNormId(s):** none exact; 981 is occupied by explicit `Các khoản phải thu khác`.
+- **Why unresolved:** current schema has no matching child identities.
+- **What Codex currently thinks:** preserve separately and never double-map to 981.
+- **Question for user:** Do these rows need existing/new IDs, or are they intentionally source-only?
+
+### Q047
+
+- **Statement:** TM
+- **Document:** MBB consolidated Q1/2026
+- **PDF page:** 42, note 14
+- **Visible row label:** `Tài sản Có khác`
+- **Visible values/periods:** total 6.622.398 / 7.894.091 triệu đồng.
+- **Current status:** `AMBIGUOUS_DUPLICATE_NAME`.
+- **Candidate ReportNormId(s):** 966, 987.
+- **Why unresolved:** the schema has broad 966 and nested duplicate 987; visible children 989 and 997 sum exactly to the total.
+- **What Codex currently thinks:** child context strongly favors 987.
+- **Question for user:** Confirm the total maps to 987 and 966 remains not observed?
+
+### Q048
+
+- **Statement:** TM
+- **Document:** MBB consolidated Q1/2026
+- **PDF page:** 43, note 17
+- **Visible row label:** `Tiền gửi của TCKT`; `Tiền gửi của cá nhân`
+- **Visible values/periods:** 365.071.880 / 402.397.512 and 540.846.452 / 518.970.620 triệu đồng.
+- **Current status:** `SOURCE_ONLY_PDF_ROW` / `AMBIGUOUS_MAPPING`.
+- **Candidate ReportNormId(s):** none for TCKT aggregate; 1089 for personal deposits.
+- **Why unresolved:** schema lacks the TCKT aggregate, while 1089 is broader (`Hộ kinh doanh, cá nhân`).
+- **What Codex currently thinks:** keep TCKT provenance-only and map personal to 1089 only with confirmation.
+- **Question for user:** Confirm 1089 and whether the TCKT aggregate needs an ID?
+
+### Q049
+
+- **Statement:** TM
+- **Document:** MBB consolidated Q1/2026
+- **PDF page:** 43, note 18 derivatives
+- **Visible row label:** net carrying-value columns for total, forward and swap contracts
+- **Visible values/periods:** current (661.326)/(150.745)/(510.581); prior (698.507)/(19.293)/(679.214) triệu đồng.
+- **Current status:** `SOURCE_ONLY_MEASURE` / `POSSIBLE_SCHEMA_GAP`.
+- **Candidate ReportNormId(s):** none; branch 631–715 has contract/asset/liability identities only.
+- **Why unresolved:** schema lacks the visible net measure.
+- **What Codex currently thinks:** preserve as validation/provenance.
+- **Question for user:** Keep source-only or add net-value IDs?
+
+### Q050
+
+- **Statement:** TM
+- **Document:** MBB consolidated Q1/2026
+- **PDF page:** 44, note 20
+- **Visible row label:** bond and certificate-of-deposit maturity buckets
+- **Visible values/periods:** bond `<5y` 24.009.801 / 23.039.165; CD `≤12m` 85.267.048 / 76.253.073; CD `>12m` 79.970.220 / 64.577.077 triệu đồng.
+- **Current status:** `SOURCE_ONLY_PDF_ROWS` / `AMBIGUOUS_BUCKETS`.
+- **Candidate ReportNormId(s):** 1110/1111; 1102; 1103/1104.
+- **Why unresolved:** published and schema maturity boundaries overlap differently; `≤12m` conflicts with schema `<12m` plus `12m–<5y`.
+- **What Codex currently thinks:** no automatic split or forced bucket.
+- **Question for user:** Approve a source-only boundary policy or provide the authoritative crosswalk/allocation?
+
+### Q051
+
+- **Statement:** TM
+- **Document:** MBB consolidated Q1/2026
+- **PDF page:** 44, note 22.1 equity movement grid
+- **Visible row label:** component balances and movements from opening 142.022.525 to closing 149.745.325 triệu đồng.
+- **Visible values/periods:** profit +7.515.513, reserves/funds/FX/NCI movements, and total changes +7.810.203 −87.403.
+- **Current status:** `SOURCE_ONLY_COMPONENT_GRID` / `AMBIGUOUS_MOVEMENTS`.
+- **Candidate ReportNormId(s):** exact 1128/1129/1131/1141; unresolved 1130 and 1132–1140.
+- **Why unresolved:** PDF is an equity-component × movement grid; schema is a generic movement list.
+- **What Codex currently thinks:** map exact opening/profit/closing only and preserve the rest of the grid.
+- **Question for user:** Retain source-only, or define mappings for component balances and movement aggregates?
+
+### Q052
+
+- **Statement:** TM
+- **Document:** MBB consolidated Q1/2026
+- **PDF page:** 44, quantitative narrative disclosures
+- **Visible row label:** own-bond/CD rates; issued shares; par value; stated capital
+- **Visible values/periods:** 5,00–8,80%/year; 4,40–11,18%; 8.054.999.909 shares; 10.000 VND/share; 80.549.999 triệu đồng.
+- **Current status:** `SOURCE_ONLY_QUANTITATIVE_FACTS`.
+- **Candidate ReportNormId(s):** none native; capital cross-validates the table within rounding.
+- **Why unresolved:** schema lacks quantitative fields for these narratives.
+- **What Codex currently thinks:** retain as provenance/validation.
+- **Question for user:** Keep source-only or add quantitative IDs?
+
+### Q053
+
+- **Statement:** TM
+- **Document:** MBB consolidated Q1/2026
+- **PDF page:** 45, notes 22.2–22.3
+- **Visible row label:** EPS and share-count disclosure family
+- **Visible values/periods:** profit 7.515.513 / 6.567.740 triệu đồng; weighted shares 8.054.999.909; EPS 933/815 VND/share; sold/outstanding/common shares 8.054.999.909; repurchased/preferred dash; registered shares blank.
+- **Current status:** `POSSIBLE_SCHEMA_GAP`.
+- **Candidate ReportNormId(s):** none in the current 1.385-item schema; profit only cross-validates 1131.
+- **Why unresolved:** the full disclosure family is absent and rows use different units; blank, dash and zero are distinct.
+- **What Codex currently thinks:** preserve it source-only unless the template is extended.
+- **Question for user:** Add EPS/share-class IDs or keep source-only, and are the registered-share blanks intentional?
+
 ## CODEX_STILL_INVESTIGATING
 
-- **TM:** pages 30–40 have been itemized or audited. Codex is continuing pages 41–61 and will promote only evidence-backed rows from audit candidates into mapping/Excel.
+- **TM:** pages 30–45 have been itemized or audited. Codex is continuing pages 46–61 and will promote only evidence-backed rows from audit candidates into mapping/Excel.
 
 ## RESOLVED_BY_CODEX
 

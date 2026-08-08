@@ -81,6 +81,7 @@ class TMPage35Policy:
     numeric_axis_right_overrun_line_heights: float
     row_anchor_cluster_line_heights: float
     label_direct_attach_line_heights: float
+    structural_continuation_line_heights: float
     note_reference_left_gap_axis_widths: float
     page_footer_top_ratio: float
     dash_config: dict[str, float | int]
@@ -289,6 +290,13 @@ def load_tm_page35_policy(path: Path) -> TMPage35Policy:
     if not isinstance(forbidden, list) or set(forbidden) != _REQUIRED_FORBIDDEN:
         raise TMNoteWordBoxError("TM page-35 forbidden semantic inputs drifted")
     footer_ratio = _positive(geometry, "page_footer_top_ratio")
+    structural_continuation = geometry.get("structural_continuation_line_heights", 0.0)
+    if (
+        isinstance(structural_continuation, bool)
+        or not isinstance(structural_continuation, (int, float))
+        or structural_continuation < 0
+    ):
+        raise TMNoteWordBoxError("TM structural-continuation bound is invalid")
     if footer_ratio >= 1:
         raise TMNoteWordBoxError("TM page-35 footer ratio must be below one")
     return TMPage35Policy(
@@ -319,6 +327,7 @@ def load_tm_page35_policy(path: Path) -> TMPage35Policy:
         ),
         row_anchor_cluster_line_heights=_positive(geometry, "row_anchor_cluster_line_heights"),
         label_direct_attach_line_heights=_positive(geometry, "label_direct_attach_line_heights"),
+        structural_continuation_line_heights=float(structural_continuation),
         note_reference_left_gap_axis_widths=_positive(
             geometry, "note_reference_left_gap_axis_widths"
         ),
@@ -430,12 +439,28 @@ def _reconstruct_table(
         and line.bbox.x0 < note_reference_left
         and not _numeric_only(line.text)
     ]
-    structural = [
+    structural_seeds = [
         line
         for line in label_candidates
         if _best_anchor_similarity(line.text, spec.structural_label_anchors)
         >= policy.minimum_anchor_similarity
     ]
+    structural_continuations = [
+        line
+        for line in label_candidates
+        if line not in structural_seeds
+        and any(
+            0
+            < line.y_center - seed.y_center
+            <= line_height * policy.structural_continuation_line_heights
+            and abs(line.bbox.x0 - seed.bbox.x0) <= line_height
+            for seed in structural_seeds
+        )
+    ]
+    structural = sorted(
+        [*structural_seeds, *structural_continuations],
+        key=lambda line: (line.y_center, line.bbox.x0),
+    )
     dash_lines = [
         line
         for line in label_candidates
@@ -541,27 +566,28 @@ def _reconstruct_table(
                 ),
             )
         )
-    for label in structural:
+    if structural:
+        structural_center = statistics.fmean(line.y_center for line in structural)
         proposals.append(
             (
-                label.y_center,
+                structural_center,
                 TMPage35LogicalRow(
                     row_id="",
                     table_key=spec.table_key,
                     note_number=spec.note_number,
                     ordinal=0,
                     row=ReaderRow(
-                        source_row_ids=_source_ids(page_tag, [label]),
-                        label=label.text,
+                        source_row_ids=_source_ids(page_tag, structural),
+                        label=normalize_text(" ".join(line.text for line in structural)),
                         note_reference=spec.note_number,
                         cells=tuple(parse_financial_number(None) for _axis in axes),
                     ),
                     row_kind=TMNoteRowKind.LABEL_ONLY,
                     source_role="GROUP_LABEL",
-                    y_anchor=label.y_center,
-                    label_bbox=label.bbox,
+                    y_anchor=structural_center,
+                    label_bbox=_union(structural),
                     value_bboxes=tuple(None for _axis in axes),
-                    label_line_indices=(label.index,),
+                    label_line_indices=tuple(line.index for line in structural),
                     value_line_indices=tuple(() for _axis in axes),
                     visual_cell_evidence=tuple(None for _axis in axes),
                     mapping_approved=False,
