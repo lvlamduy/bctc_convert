@@ -1,0 +1,194 @@
+version: 1
+experiment_id: E-0040
+dataset_role: CALIBRATION
+design: SEALED_E0037_ANSWER_FREE_GENERIC_CHALLENGER_THEN_DETERMINISTIC_HASH_SEAL
+state: READY_FOR_MAPPING_ONLY_THEN_HASH_SEAL
+
+phase_outputs:
+  mapping_only:
+    path: output/calibration/e0040-mbb-cdkt-formal-mapping/mapping_only.json
+    required_state: E0040_GENERIC_CHALLENGER_MAPPING_ONLY_READY_FOR_HASH_SEAL
+    encoding: UTF8_JSON_SORTED_KEYS_INDENT2_NEWLINE_NO_NAN_V1
+  mapping_seal:
+    path: docs/experiments/E-0040-mbb-cdkt-formal-mapping-seal.json
+    required_state: E0040_GENERIC_CHALLENGER_MAPPING_HASH_SEALED
+    encoding: UTF8_JSON_SORTED_KEYS_INDENT2_NEWLINE_NO_NAN_V1
+    inventory_file_count: 1
+    inventory_paths:
+      - output/calibration/e0040-mbb-cdkt-formal-mapping/mapping_only.json
+
+input_authority:
+  e0037_mapping_seal:
+    path: docs/experiments/E-0037-mbb-cdkt-mapping-only-seal.json
+    sha256: 665aa1b3ac96881df0a4cd7b2f7da2425c3635ad1e8ea024e299b668c79ed0e5
+    size_bytes: 6016
+  s3_snapshot_registry:
+    path: data/registered/s3_artifact_snapshot_registry.jsonl
+    sha256: 25da6b205a775d87eca8e4ffe55e3f762ee64e92cbb7190c2834708a7de0d78d
+    size_bytes: 6050
+  e0037_mapping_only:
+    path: output/calibration/e0037-mbb-cdkt-sealed-evidence-mapping/mapping_only.json
+    sha256: e18f6b20825f93b20023c0d89caca1737481008b244696594852ca9fa972f99e
+    size_bytes: 646393
+  e0040_policy:
+    path: config/mapping/e0040-cdkt-semantic-normalization.yaml
+    sha256: eba3a1380f44f34958398edb13076dc3a87da95fc5ff347968a1a2c023e3995a
+    size_bytes: 2185
+  e0040_mapper_policy:
+    path: config/mapping/e0040-ordered-subgraph-v2-exact.yaml
+    sha256: 2f18880339b8e2c04ec3ba900919f174f8af478515adfbfb0e43ff80ddd13268
+    size_bytes: 2082
+  s3_snapshot:
+    artifact_snapshot_id: 20260807T170440Z-e0037-source-and-mapping-seal-e18f6b20825f
+    dataset_role: CALIBRATION
+    file_count: 2
+    format_version: 1
+    git_commit: 4e475d503ee02328241140faba3399387d18f2dd
+    hydrate_probe:
+      logical_paths:
+        - output/calibration/e0037-mbb-cdkt-sealed-evidence-mapping/source_structure.json
+        - output/calibration/e0037-mbb-cdkt-sealed-evidence-mapping/mapping_only.json
+      restored_file_count: 2
+      reused_file_count_on_second_hydrate: 2
+      sealed_hashes_match: true
+      status: PASS
+    label: e0037-source-and-mapping-seal
+    manifest:
+      key: bctc-ai/artifact-snapshots/20260807T170440Z-e0037-source-and-mapping-seal-e18f6b20825f/manifest-b7b2b5bd4249d93fc8bca2210228ffd000eb36e5ebc0bb7167dde4e774478c8c.json
+      sha256: b7b2b5bd4249d93fc8bca2210228ffd000eb36e5ebc0bb7167dde4e774478c8c
+    parent_full_snapshot:
+      manifest_sha256: 74be9ea09905f0c7842d5a0b46bfe44f3fc5f32cc2c15b5040efcc4e99e8981b
+      snapshot_id: 20260806T050030130746Z-4a469fab2334
+    policy: S3_BOUNDED_ARTIFACT_SNAPSHOT_V1
+    restore_verified: true
+    run_record:
+      key: bctc-ai/artifact-runs/20260807T170440Z-e0037-source-and-mapping-seal-e18f6b20825f/run-68b35baa1f3993021db5e550b87bd42af515076dd84e2e968248a27d02a22a34.json
+      sha256: 68b35baa1f3993021db5e550b87bd42af515076dd84e2e968248a27d02a22a34
+    total_bytes: 782435
+
+implementation:
+  text_normalization:
+    path: src/bctc_ai/core/text.py
+    sha256: 2a97e6626fa6f747ff0f8e9de827b02f50dcd9a0c8e058937cd221acf1420af6
+    size_bytes: 5947
+  mapper:
+    path: src/bctc_ai/mapping/ordered_subgraph_v2.py
+    sha256: cf737243cbcecf919a2cf2012aa269655341b5c8c6b8c4038c76ed510a68b40a
+    size_bytes: 81923
+  challenger:
+    path: src/bctc_ai/mapping/e0040_calibration_challenger.py
+    sha256: c379ccf784868ec5b2f40714be00c402147b2b9a94e06b917a3e2cd6b926609b
+    size_bytes: 47333
+  formal_integration:
+    path: src/bctc_ai/evaluation/e0040_formal_mapping.py
+    sha256: 6803fe4f40bcf36523898834430ef7e7ab1457266ff82e042e74bdc6c142dda9
+    size_bytes: 104979
+  capture_script:
+    path: scripts/experiments/capture_e0040_mbb_cdkt_formal_mapping.py
+    sha256: 9344ffb7d131f4d4decadb15d314e35953592cbdcf8b6415ad7bd3fea855e16b
+    size_bytes: 2276
+  seal_script:
+    path: scripts/experiments/capture_e0040_mbb_cdkt_formal_mapping_seal.py
+    sha256: e3ce1d7767011d0ea1d8fa464d475e5345abcb905e9ecefc130ebdc5865b353b
+    size_bytes: 1737
+
+runtime_authority:
+  artifacts:
+    project_metadata:
+      path: pyproject.toml
+      sha256: 59ad1366246975921df36b6d1f9bf2a91680a7b2c02d3777e772b0c3aa4ba045
+      size_bytes: 1094
+    dependency_lock:
+      path: uv.lock
+      sha256: 3edf1c8471e283e74b721140b417456afc713b7d859d33bb600939eb18b79a9a
+      size_bytes: 86842
+  versions:
+    python: 3.11.10
+    rapidfuzz: 3.14.5
+    pyyaml: 6.0.3
+
+mapping_contract:
+  source_row_count: 64
+  source_row_ids_sha256: b4fe87949522195ded7beae958cb5235aa36805db102b0f49675e29d855863d0
+  base_schema_node_count: 77
+  schema_report_norm_ids_sha256: c8467e5ae646924500548cacab46b7e1e8440106c110997da31eed349014edbb
+  base_projection_sha256: 7025ca729c01a3f2030af38e9745a0ee8d72b1dad60c8d4e3b7cf749e5eb860c
+  scrubbed_answer_free_evidence_sha256: 5499f97323288ffff1ca9bf767aac3a24ec3a71ec0cfd69e6512a74f7cd3b1be
+  scrubbed_answer_free_evidence_size_bytes: 51212
+  source_evidence_receipt_sha256: c7961f59ea0cb8850af3926579954abdc100731f183526337be442215759ff70
+  s3_registry_line_sha256: b6034efbdb279bb793f1f641b29fd5b1efc26e348e272ee2802097f46c6b77d0
+  s3_registry_line_size_bytes: 1317
+  result_projection_sha256: 5c3c4a09650beda8eca21e5a00fe459e052ae7cc8d735359bc41a58a391da9b0
+  challenger_result_sha256: 2e49d8623692fde9fd4a5a87f9c2e2159941b0f3ded7b7b16dddac2ab1e85fbd
+  challenger_result_size_bytes: 700869
+  baseline_selected_count: 59
+  baseline_selected_pairs_sha256: 77167590e57381f8d724c713b4814e1fb2b64656643fad1f0d54dcc60f2eb416
+  final_selected_count: 61
+  final_selected_pairs_sha256: 066c2c3352d65c067e7048ef55b46e6e990c3ad6a5aed94c2a1011eaba002c75
+  final_selected_pairs_size_bytes: 2014
+  internal_role_repair_selected_count: 2
+  source_only_structural_count: 3
+  selected_anchor_count: 43
+  selected_path_count: 18
+  baseline_interval_count: 43
+  final_interval_count: 44
+  final_status_counts:
+    NO_ADMISSIBLE_PAIR: 3
+    RESOLVED_ANCHOR: 43
+    RESOLVED_PATH: 18
+  normalization_changed_schema_node_count: 21
+  normalization_derived_key_count: 33
+  base_collision_pair_count: 6
+  result_collision_pair_count: 6
+  new_collision_pair_count: 0
+  mapper_invocation_count: 2
+  minimum_counterfactual_margin: 0.15
+  all_intervals_exhaustive: true
+  all_pruning_counts_zero: true
+  final_result_sha256: 15edfc7e349a48cec62fd5bad4bcfc506dcf2c8272055620135b2cfe6d91a29d
+  final_result_size_bytes: 347961
+  normalization_sha256: 09175c45fa93b4172c1f2fe1742b93a49aab3498119a451c4126f1be30b36088
+  collision_audit_sha256: f00504266416e99c574ed3f93204735eeec36c39f4c416c54073dfada21ce97a
+  id_scoped_alias_invocation_count: 0
+  bank_page_or_row_rule_invocation_count: 0
+
+validation_order:
+  - CONTROL_IMPLEMENTATION_POLICY_RUNTIME
+  - E0037_MAPPING_SEAL
+  - S3_UNIQUE_RESTORE_RECORD
+  - E0037_MAPPING_ONLY_BYTES
+  - SCRUBBED_SOURCE_AND_BASE_PROJECTION
+  - E0040_CHALLENGER
+
+forbidden_inputs:
+  - E0038_E0039_MAPPING_OUTPUTS_OR_ALIASES
+  - REVIEW_OR_STEWARD_ANSWERS
+  - NUMERIC_STATUS_OR_POSTJOIN_ARTIFACTS
+  - PERIOD_UNIT_OR_SOURCE_SCOPE_ANSWER_FEATURES
+  - HISTORY_MONGODB_OR_LEDGER_FEATURES
+  - HOLDOUT_FEATURES_OR_LABELS
+  - QWEN_RAW_REJECTED_OUTPUT_OR_TOKEN_STREAM
+
+publication:
+  canonical_paths_only: true
+  exclusive_no_overwrite: true
+  clean_git_before_and_immediately_before_publication: true
+  tracked_ledgers_bound_to_head_blobs: true
+  stable_nofollow_input_reads_and_identity_rechecks: true
+  fresh_canonical_chain_revalidated_after_link: true
+  mapping_directory_exact_one_file_inventory: true
+  deterministic_sealer_byte_replay: true
+  safe_identity_bound_rollback: true
+
+limitations:
+  - CALIBRATION_ONLY_SINGLE_BANK_SINGLE_PERIOD_DOCUMENT
+  - MACHINE_MAPPING_HYPOTHESES_NOT_SCHEMA_OR_REVIEW_AUTHORITY
+  - NO_NUMERIC_PERIOD_UNIT_SCOPE_ACCOUNTING_OR_EXCEL_AUTHORITY
+  - NO_BANK_OR_PERIOD_DISJOINT_HUMAN_LABELED_VALIDATION
+  - GENERIC_NORMALIZATION_COLLISION_PROOF_IS_BOUNDED_TO_77_NODE_CDKT_PROJECTION
+  - COMBINED_PARENT_ROLE_REPAIR_IS_A_BOUNDED_MACHINE_HYPOTHESIS
+  - NOT_HOLDOUT_OR_PRODUCTION_APPROVED
+
+claim_boundaries:
+  mapping_only: "E-0040 is a calibration-only, answer-free CDKT mapping challenger over the exact sealed E-0037 source-structure and semantic-proposal evidence and its exact 77-node base projection. Generic semantic normalization and a bounded combined-parent role hypothesis produce machine mappings with exhaustive zero-pruning diagnostics. This does not establish schema authority, mapping accuracy, review approval, numeric or period truth, accounting validity, Excel correctness, holdout performance, or production readiness."
+  mapping_seal: "This artifact hash-seals exactly one E-0040 mapping-only file after deterministic byte-equal replay at the same clean mechanism commit. It adds no schema, mapping-accuracy, review, numeric, period, accounting, Excel, holdout, or production claim."
