@@ -479,3 +479,38 @@ def test_discover_statements_cli_defaults_to_canonical_policy():
     assert args.policy == str(native.POLICY_RELATIVE_PATH)
     assert args.run_id == "registered-native-statement-discovery-v1"
     assert args.handler.__name__ == "_run_discover_statements"
+
+
+def test_discover_statements_cli_prints_project_relative_artifact_path(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+):
+    root = tmp_path.resolve()
+    artifact = root / "output/development/run/result.json"
+
+    def fake_publish(*args: Any, **kwargs: Any) -> native.NativeStatementDiscoveryPublication:
+        return native.NativeStatementDiscoveryPublication(
+            path=artifact,
+            sha256="b" * 64,
+            size_bytes=123,
+            payload={"status": "ACCEPTED_NATIVE_TEXT_STATEMENT_DISCOVERY"},
+        )
+
+    monkeypatch.setattr(native, "publish_registered_native_statement_discovery", fake_publish)
+    args = build_parser().parse_args(
+        [
+            "--project-root",
+            str(root),
+            "discover-statements",
+            "--pdf",
+            "data/report.pdf",
+            "--output",
+            "output/development/run/result.json",
+        ]
+    )
+
+    assert args.handler(args) == 0
+    output = capsys.readouterr().out
+    assert "STATEMENT_DISCOVERY_ARTIFACT=output/development/run/result.json" in output
+    assert str(root) not in output

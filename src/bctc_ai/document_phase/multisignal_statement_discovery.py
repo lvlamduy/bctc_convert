@@ -723,6 +723,55 @@ def _header_identity(
     return selected, conflict, form_types, title_scores, title_sources
 
 
+def _local_acceptance_thresholds(
+    page_type: StatementPageType,
+    form_types: tuple[StatementPageType, ...],
+    continuation_marker: bool,
+    title_scores: dict[str, float],
+    config: dict[str, Any],
+    *,
+    notes_boundary_transition: bool = False,
+) -> tuple[int, float]:
+    acceptance = config["acceptance"]
+    minimum_groups = int(
+        acceptance[
+            "notes_min_independent_groups"
+            if page_type is StatementPageType.TM
+            else "main_min_independent_groups"
+        ]
+    )
+    minimum_score = float(acceptance["min_local_score"])
+    override = config.get("notes_boundary_acceptance_override")
+    if (
+        override is None
+        or page_type is not StatementPageType.TM
+        or not notes_boundary_transition
+    ):
+        return minimum_groups, minimum_score
+    if (
+        not isinstance(override, dict)
+        or override.get("policy") != "EXACT_FORM_TITLE_THREE_GROUP_NOTES_BOUNDARY"
+        or override.get("geometry_authority") != "PYMUPDF_NATIVE_TEXT_WORDS"
+        or config.get("geometry_authority") != "PYMUPDF_NATIVE_TEXT_WORDS"
+        or config.get("geometry_evidence_source") != "PYMUPDF_NATIVE_TEXT_GEOMETRY"
+        or config.get("policy") != "NATIVE_TEXT_MULTI_SIGNAL_ORDERED_DOCUMENT_DISCOVERY_V1"
+        or override.get("require_form_type") != "TM"
+        or override.get("require_continuation_marker") is not False
+        or override.get("require_notes_anchors") is not True
+        or override.get("require_notes_structure") is not True
+    ):
+        raise StatementLocatorError("notes-boundary acceptance override is invalid")
+    if (
+        page_type in form_types
+        and not continuation_marker
+        and title_scores[page_type.value] >= float(override["minimum_title_similarity"])
+    ):
+        return int(override["minimum_independent_groups"]), float(
+            override["minimum_local_score"]
+        )
+    return minimum_groups, minimum_score
+
+
 def _signal_record(
     geometry_page: OCRPage,
     semantic_page: OCRPage | None,
@@ -844,12 +893,19 @@ def _signal_record(
         if audit_suppression or toc_suppression:
             score -= float(weights["audit_or_toc_penalty"])
 
+        minimum_groups, local_minimum_score = _local_acceptance_thresholds(
+            page_type,
+            forms,
+            continuation_marker,
+            title_scores,
+            config,
+        )
         if page_type is StatementPageType.TM:
             gate = (
                 header_pass
                 and accounting_pass
                 and notes_structure
-                and len(groups) >= int(acceptance["notes_min_independent_groups"])
+                and len(groups) >= minimum_groups
             )
         else:
             row_gate = accounting_pass or (
@@ -859,14 +915,14 @@ def _signal_record(
                 header_pass
                 and row_gate
                 and numeric.passes
-                and len(groups) >= int(acceptance["main_min_independent_groups"])
+                and len(groups) >= minimum_groups
             )
         locally_accepted = (
             gate
             and not header_conflict
             and not audit_suppression
             and not toc_suppression
-            and score >= float(acceptance["min_local_score"])
+            and score >= local_minimum_score
         )
         scope = (
             StatementScope.OFF_BALANCE_SHEET

@@ -247,7 +247,7 @@ def _run_discover_statements(args: argparse.Namespace) -> int:
         resolve(args.output),
     )
     print(f"STATEMENT_DISCOVERY_STATUS={result.payload['status']}")
-    print(f"STATEMENT_DISCOVERY_ARTIFACT={result.path}")
+    print(f"STATEMENT_DISCOVERY_ARTIFACT={result.path.relative_to(root)}")
     print(f"STATEMENT_DISCOVERY_SHA256={result.sha256}")
     print(f"STATEMENT_DISCOVERY_BYTES={result.size_bytes}")
     return 0 if result.payload["status"] == "ACCEPTED_NATIVE_TEXT_STATEMENT_DISCOVERY" else 1

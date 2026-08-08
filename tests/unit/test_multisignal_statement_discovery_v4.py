@@ -175,6 +175,84 @@ def test_v4_recovers_notes_boundary_but_v3_abstains(project_root):
     assert tm["added_hits"][0]["anchor"] == "thành lập và hoạt động"
 
 
+def test_native_exact_form_title_accepts_first_notes_page_without_period_or_continuation(
+    project_root,
+):
+    notes = _notes_page(4, "Giấy phép thành lập và hoạt động của Ngân hàng")
+    notes = replace(
+        notes,
+        lines=tuple(line for line in notes.lines if "cho kỳ kết thúc" not in line.text)
+        + (
+            _line("Cơ sở lập báo cáo tài chính", 140, 500, 500, 530),
+            _line("Các chính sách kế toán", 140, 550, 500, 580),
+        ),
+    )
+    pages = _block(notes)
+    base = discover_statement_pages_v4(pages, _v4_config(project_root))
+    assert base["status"] == "UNRESOLVED"
+
+    native = _v4_config(project_root)
+    native["policy"] = "NATIVE_TEXT_MULTI_SIGNAL_ORDERED_DOCUMENT_DISCOVERY_V1"
+    native["geometry_authority"] = "PYMUPDF_NATIVE_TEXT_WORDS"
+    native["geometry_evidence_source"] = "PYMUPDF_NATIVE_TEXT_GEOMETRY"
+    native["notes_boundary_acceptance_override"] = {
+        "policy": "EXACT_FORM_TITLE_THREE_GROUP_NOTES_BOUNDARY",
+        "geometry_authority": "PYMUPDF_NATIVE_TEXT_WORDS",
+        "require_form_type": "TM",
+        "require_continuation_marker": False,
+        "minimum_title_similarity": 0.95,
+        "minimum_independent_groups": 3,
+        "minimum_local_score": 6.0,
+        "require_notes_anchors": True,
+        "require_notes_structure": True,
+    }
+    accepted = discover_statement_pages_v4(pages, native)
+
+    assert accepted["status"] == "ACCEPTED_MULTI_SIGNAL_STATEMENT_BLOCK"
+    assert accepted["block"]["notes_boundary_page"] == 4
+    page_4 = next(item for item in accepted["page_signals"] if item["page"] == 4)
+    tm = next(item for item in page_4["candidates"] if item["page_type"] == "TM")
+    assert tm["locally_accepted"] is True
+    assert tm["independent_signal_groups"] == (
+        "HEADER_IDENTITY",
+        "NOTES_ANCHORS",
+        "NOTES_STRUCTURE",
+    )
+
+    later_notes = replace(notes, page=5)
+    with_second_qualifying_notes_page = discover_statement_pages_v4(
+        _block(notes) + (later_notes,), native
+    )
+    page_5 = next(
+        item for item in with_second_qualifying_notes_page["page_signals"] if item["page"] == 5
+    )
+    later_tm = next(item for item in page_5["candidates"] if item["page_type"] == "TM")
+    assert later_tm["locally_accepted"] is False
+
+    without_form = replace(
+        notes,
+        lines=tuple(line for line in notes.lines if _FORM["TM"] not in line.text),
+    )
+    assert discover_statement_pages_v4(_block(without_form), native)["status"] == "UNRESOLVED"
+
+    weak_title = replace(
+        notes,
+        lines=tuple(
+            replace(line, text="THUYẾT MINH") if line.text == _TITLE["TM"] else line
+            for line in notes.lines
+        ),
+    )
+    assert discover_statement_pages_v4(_block(weak_title), native)["status"] == "UNRESOLVED"
+
+    pp_mutation = _v4_config(project_root)
+    pp_mutation["notes_boundary_acceptance_override"] = {
+        **native["notes_boundary_acceptance_override"],
+        "geometry_authority": "PP_OCRV6_WORD_BOXES",
+    }
+    with pytest.raises(StatementLocatorError, match="override is invalid"):
+        discover_statement_pages_v4(pages, pp_mutation)
+
+
 def test_one_phrase_still_cannot_classify_notes_page(project_root):
     notes = _notes_page(4, "Nội dung khác không chứa neo kế toán thứ hai")
     notes = replace(

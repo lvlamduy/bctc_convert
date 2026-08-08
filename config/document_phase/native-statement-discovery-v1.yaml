@@ -45,6 +45,23 @@ native_text_gate:
   require_usable_selected_statement_pages: true
   require_usable_notes_boundary_page: true
 
+# Native text gives exact form/title strings rather than OCR proposals. A first
+# TM page immediately following an accepted LCTT page may legitimately omit a
+# reporting-period line and the word "tiếp theo". In that bounded transition,
+# exact normalized B05/TCTD form-family evidence + near-exact TM title + two
+# notes anchors + notes structure are sufficient without weakening main
+# statements or later notes pages.
+native_notes_boundary_acceptance:
+  policy: EXACT_FORM_TITLE_THREE_GROUP_NOTES_BOUNDARY
+  geometry_authority: PYMUPDF_NATIVE_TEXT_WORDS
+  require_form_type: TM
+  require_continuation_marker: false
+  minimum_title_similarity: 0.95
+  minimum_independent_groups: 3
+  minimum_local_score: 6.0
+  require_notes_anchors: true
+  require_notes_structure: true
+
 role_isolation:
   runtime_input_allowlist:
     - SOURCE_PDF

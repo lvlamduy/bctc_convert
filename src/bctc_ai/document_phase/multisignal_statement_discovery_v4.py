@@ -209,6 +209,8 @@ def _candidate_with_extended_hits(
     candidate: v3.PageTypeCandidate,
     hits: tuple[v3.AnchorHit, ...],
     config: dict[str, Any],
+    *,
+    notes_boundary_transition: bool,
 ) -> v3.PageTypeCandidate:
     minimum_hits = int(config["accounting_rows"]["min_distinct_hits"])
     accounting_pass = len(hits) >= minimum_hits
@@ -221,13 +223,20 @@ def _candidate_with_extended_hits(
         score += float(config["signal_weights"]["accounting_rows"])
 
     header_pass = record.header_candidate_type is candidate.page_type and not record.header_conflict
-    acceptance = config["acceptance"]
+    minimum_groups, minimum_score = v3._local_acceptance_thresholds(
+        candidate.page_type,
+        record.form_types,
+        record.continuation_marker,
+        record.title_scores,
+        config,
+        notes_boundary_transition=notes_boundary_transition,
+    )
     if candidate.page_type is StatementPageType.TM:
         gate = (
             header_pass
             and accounting_pass
             and record.notes_structure
-            and len(groups) >= int(acceptance["notes_min_independent_groups"])
+            and len(groups) >= minimum_groups
         )
     else:
         row_gate = accounting_pass or (
@@ -238,14 +247,14 @@ def _candidate_with_extended_hits(
             header_pass
             and row_gate
             and record.numeric_geometry.passes
-            and len(groups) >= int(acceptance["main_min_independent_groups"])
+            and len(groups) >= minimum_groups
         )
     locally_accepted = (
         gate
         and not record.header_conflict
         and not record.audit_suppression
         and not record.toc_suppression
-        and score >= float(acceptance["min_local_score"])
+        and score >= minimum_score
     )
     return replace(
         candidate,
@@ -267,7 +276,19 @@ def _extend_accounting_evidence(
     minimum = float(accounting["min_similarity"])
     updated_records = []
     diagnostics = []
-    for geometry_page, record in zip(geometry_pages, records, strict=True):
+    for record_index, (geometry_page, record) in enumerate(
+        zip(geometry_pages, records, strict=True)
+    ):
+        previous_record = records[record_index - 1] if record_index else None
+        notes_boundary_transition = bool(
+            previous_record is not None
+            and record.page == previous_record.page + 1
+            and any(
+                candidate.page_type is StatementPageType.LCTT
+                and candidate.locally_accepted
+                for candidate in previous_record.candidates
+            )
+        )
         label_windows = v3._semantic_windows(
             geometry_page,
             semantic_by_page.get(geometry_page.page),
@@ -286,7 +307,15 @@ def _extend_accounting_evidence(
             hits = _extend_preserving_v3_hits(candidate.accounting_hits, proposals)
             baseline_anchors = {item.anchor for item in candidate.accounting_hits}
             added = [item for item in hits if item.anchor not in baseline_anchors]
-            candidates.append(_candidate_with_extended_hits(record, candidate, hits, config))
+            candidates.append(
+                _candidate_with_extended_hits(
+                    record,
+                    candidate,
+                    hits,
+                    config,
+                    notes_boundary_transition=notes_boundary_transition,
+                )
+            )
             if added:
                 page_diagnostics.append(
                     {

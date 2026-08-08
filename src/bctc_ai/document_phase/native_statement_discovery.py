@@ -210,6 +210,19 @@ def load_native_statement_discovery_policy(
     }
     if native_gate != expected_gate:
         raise NativeStatementDiscoveryError("native-text gate policy drifted")
+    notes_boundary = payload.get("native_notes_boundary_acceptance")
+    if notes_boundary != {
+        "policy": "EXACT_FORM_TITLE_THREE_GROUP_NOTES_BOUNDARY",
+        "geometry_authority": _NATIVE_GEOMETRY_AUTHORITY,
+        "require_form_type": "TM",
+        "require_continuation_marker": False,
+        "minimum_title_similarity": 0.95,
+        "minimum_independent_groups": 3,
+        "minimum_local_score": 6.0,
+        "require_notes_anchors": True,
+        "require_notes_structure": True,
+    }:
+        raise NativeStatementDiscoveryError("native notes-boundary acceptance policy drifted")
     isolation = payload.get("role_isolation")
     if not isinstance(isolation, dict):
         raise NativeStatementDiscoveryError("native discovery isolation policy is absent")
@@ -424,6 +437,9 @@ def _adapted_discovery_config(
     adapted["geometry_authority"] = identity["geometry_authority"]
     adapted["geometry_evidence_source"] = identity["geometry_evidence_source"]
     adapted["geometry_authority_override_scope"] = identity["authority_override_scope"]
+    adapted["notes_boundary_acceptance_override"] = copy.deepcopy(
+        policy["native_notes_boundary_acceptance"]
+    )
     return adapted, config_path
 
 
