@@ -1,0 +1,1296 @@
+{
+  "access_contract": {
+    "all_replay_inputs_rechecked_and_terminal_clean_git_gate_passed": true,
+    "canonical_provenance_envelope_and_workbook_link_validated_before_workbook_open": true,
+    "exact_two_file_inventory_validated_before_replay_and_seal_publication": true,
+    "history_or_mongodb_opened": false,
+    "holdout_artifact_opened": false,
+    "qwen_raw_or_token_output_opened": false,
+    "review_or_steward_answers_opened": false,
+    "superseded_mapping_or_review_artifact_opened": false
+  },
+  "authority": {
+    "accounting_correctness": false,
+    "deterministic_projection_workbook_provenance_replay": true,
+    "exact_two_file_hash_identity": true,
+    "holdout_or_production": false,
+    "human_gold": false,
+    "mapping_accuracy": false,
+    "review_or_steward_approval": false,
+    "schema_authority": false
+  },
+  "claim_boundary": "This artifact hash-seals exactly the two-file E-0041 calibration export pair after exact deterministic projection, workbook, and provenance replay at the same clean commit. It adds no schema, mapping-accuracy, review, accounting, human-gold, holdout, or production authority.",
+  "dataset_role": "CALIBRATION",
+  "experiment_id": "E-0041",
+  "format_version": 1,
+  "input_hash_ledger": {
+    "control": {
+      "path": "config/experiments/e0041-mbb-cdkt-formal-export.yaml",
+      "sha256": "0e98dbbdec48a618104016e7b707702deeca49bb04a9febe5940117605d83d74",
+      "size_bytes": 12006
+    },
+    "deterministic_replay_implementation": {
+      "arithmetic_validation": {
+        "path": "src/bctc_ai/validation/arithmetic.py",
+        "sha256": "3841fa0c40064554134f0efcaef6b4746b1b5eb56ec4c935bcfd20fc8a666c17",
+        "size_bytes": 2937
+      },
+      "capture_export_script": {
+        "path": "scripts/experiments/capture_e0041_mbb_cdkt_formal_export.py",
+        "sha256": "f6b994792c0e4796d148fe5e2586d2c82d41bb1d9869ab6b6a7ea3b2a92bd67c",
+        "size_bytes": 1741
+      },
+      "capture_seal_script": {
+        "path": "scripts/experiments/capture_e0041_mbb_cdkt_formal_export_seal.py",
+        "sha256": "0d85a3215bf99ddd3a53b47adf5bfbec2cdcf6976ac3ea2e9640070b6594806c",
+        "size_bytes": 1385
+      },
+      "e0040_challenger_carrier": {
+        "path": "src/bctc_ai/mapping/e0040_calibration_challenger.py",
+        "sha256": "c379ccf784868ec5b2f40714be00c402147b2b9a94e06b917a3e2cd6b926609b",
+        "size_bytes": 47333
+      },
+      "formal_export_integration": {
+        "path": "src/bctc_ai/evaluation/e0041_formal_export.py",
+        "sha256": "0db981313cbe51090f637ba14ccf99e11d1815d30d32cc1f529ee118dd453b19",
+        "size_bytes": 116009
+      },
+      "geometry_reconstruction_builder": {
+        "path": "src/bctc_ai/evaluation/numeric_cell_crops.py",
+        "sha256": "fe2aa1d33d422888f2efa0399503743f978b1af1605e4f99ac2a872ba249cb29",
+        "size_bytes": 19014
+      },
+      "post_mapping_export_core": {
+        "path": "src/bctc_ai/evaluation/e0041_post_mapping_export.py",
+        "sha256": "c40dd4f31d80fd18e330984c7f6c43c1f45d8b96a05d1a19d2476c440a7e14f5",
+        "size_bytes": 116528
+      }
+    },
+    "deterministic_replay_inputs": {
+      "cdkt_template": {
+        "path": "template/Bank_CDKT_ReportNormId.xlsx",
+        "sha256": "a07ff47f7c41011fe4ca5a66681106d476586ded9013b5874cbb9f67a6ad8486",
+        "size_bytes": 10945
+      },
+      "control": {
+        "path": "config/experiments/e0041-mbb-cdkt-formal-export.yaml",
+        "sha256": "0e98dbbdec48a618104016e7b707702deeca49bb04a9febe5940117605d83d74",
+        "size_bytes": 12006
+      },
+      "e0037_postjoin": {
+        "path": "docs/experiments/E-0037-mbb-cdkt-sealed-evidence-mapping.json",
+        "sha256": "a44146ff98ac9b33dd7f04037e69ba258ef7361dc158ecbd51a6688d7fbb6f7b",
+        "size_bytes": 1045610
+      },
+      "e0040_mapping": {
+        "path": "output/calibration/e0040-mbb-cdkt-formal-mapping/mapping_only.json",
+        "sha256": "8def983007fc3aacf59351395426d5246ad3f28d605442f590de55eaf396cb0d",
+        "size_bytes": 1157172
+      },
+      "e0040_mapping_seal": {
+        "path": "docs/experiments/E-0040-mbb-cdkt-formal-mapping-seal.json",
+        "sha256": "68306f7f540faa77d6e2e383927eae23fc3724cfdc8c53cded978a86f3a00b29",
+        "size_bytes": 7611
+      },
+      "e0040_s3_registration": {
+        "path": "docs/experiments/E-0040-mbb-cdkt-formal-mapping-s3-registration.json",
+        "sha256": "f38d9a1bbed4ec48e2156d441e5c76c6e6d82b0771208de3eef92d96173dd4b5",
+        "size_bytes": 13360
+      },
+      "geometry_crop_policy": {
+        "path": "config/tables/numeric-cell-crops-v2.yaml",
+        "sha256": "f1dcbe668b70a9d71f08483f46aad01fc7cd719db96f8bd202d32554c5a7907b",
+        "size_bytes": 1099
+      },
+      "geometry_row_contract": {
+        "path": "docs/experiments/E-0033-mbb-cdkt-note-row-split-immutable.json",
+        "sha256": "d9c0ecf44f6a0f652e6c991d3ab95b7ab0e821068366764e39a3f0de7f0711fb",
+        "size_bytes": 190290
+      },
+      "reconstructed_geometry_registry": {
+        "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crop_registry.json",
+        "sha256": "65fa9b7c0de1f0db26ae57a46dae2bb64c2475e3a87e5194461f208fc786cbef",
+        "size_bytes": 217837
+      },
+      "shared_s3_registry_frozen_baseline": {
+        "path": "data/registered/s3_artifact_snapshot_registry.jsonl",
+        "sha256": "25da6b205a775d87eca8e4ffe55e3f762ee64e92cbb7190c2834708a7de0d78d",
+        "size_bytes": 6050
+      }
+    },
+    "deterministic_replay_runtime": {
+      "dependency_lock": {
+        "path": "uv.lock",
+        "sha256": "3edf1c8471e283e74b721140b417456afc713b7d859d33bb600939eb18b79a9a",
+        "size_bytes": 86842
+      },
+      "project_metadata": {
+        "path": "pyproject.toml",
+        "sha256": "59ad1366246975921df36b6d1f9bf2a91680a7b2c02d3777e772b0c3aa4ba045",
+        "size_bytes": 1094
+      }
+    },
+    "deterministic_replay_runtime_versions": {
+      "et_xmlfile": "2.0.0",
+      "openpyxl": "3.1.5",
+      "python": "3.11.10",
+      "pyyaml": "6.0.3",
+      "zlib": "1.3.1"
+    },
+    "geometry_asset_inventory": {
+      "canonical_sha256": "7a50f4737c8381bc73a04ad4fce9abd200b64b917e9282a0197bf56d9a044cc0",
+      "canonical_size_bytes": 31130,
+      "file_count": 134,
+      "files": [
+        {
+          "path": "config/tables/numeric-cell-crops-v2.yaml",
+          "roles": [
+            "crop_policy"
+          ],
+          "sha256": "f1dcbe668b70a9d71f08483f46aad01fc7cd719db96f8bd202d32554c5a7907b",
+          "size_bytes": 1099
+        },
+        {
+          "path": "docs/experiments/E-0033-mbb-cdkt-note-row-split-immutable.json",
+          "roles": [
+            "row_contract"
+          ],
+          "sha256": "d9c0ecf44f6a0f652e6c991d3ab95b7ab0e821068366764e39a3f0de7f0711fb",
+          "size_bytes": 190290
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-000-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "de2d67707d76903ff8363623c1db717d7c44d108e55a34bb7f5f9ff8b28014c1",
+          "size_bytes": 871
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-000-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "d5ae27a338c539ca8189e8b5df095928f9cfe56f8869dbd3eb6e8aade3b03d0d",
+          "size_bytes": 1138
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-001-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "a0c1532d5bdb8c540543d0a1c6b6a83473bf53b3e7f24a2d667b605ff9f484ed",
+          "size_bytes": 7690
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-001-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "6aa07064b4c18d299a54647a4d58335c4cd1d42f4e182143067fce15e2ab3396",
+          "size_bytes": 9153
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-002-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "f097dfaf9afc4c4536b6961092dbe8f157d3cedb842596fa66fc6af8f6b432ff",
+          "size_bytes": 8760
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-002-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "3ea86bfa76525739be8f8c7f61d280f5b0f6402b74e28f2f46e7fe4c1fa3d251",
+          "size_bytes": 9965
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-003-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "63317bab8bfcbdafcbad02ae65f29643ae1dd8517cd955c626a7b93a5aa0c9eb",
+          "size_bytes": 9271
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-003-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "93478fb8f849cba44e3d3514b659570b63a1a3870289a3e9ba0fb08319bbc790",
+          "size_bytes": 9929
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-004-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "18f6edbedd8b4a033dfd15b19fc55eea42113dcae34b87283b2da1f45acd40fb",
+          "size_bytes": 7878
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-004-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "8c7fc7f4a03d51951d33fdf8b22e0d67e852812e8fa875edbf77a4da5c5ca451",
+          "size_bytes": 8434
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-005-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "a50b62f3fb995385f65b662aa1a1cdf2fb7c0981959089e46fc893ec6000db64",
+          "size_bytes": 8124
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-005-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "d2e0bd60faa50f61bde4083761518d82050dbc6eafb59e94593c2d0b3d5b0b16",
+          "size_bytes": 8721
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-006-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "10656ab75a3a45d254b79b94e9b28b7541c8e06359f3a6ae594433644695357c",
+          "size_bytes": 7647
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-006-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "4539d3585c65074f5cc722b850a9677ec5d231a33e2f233e7919f6f36a0ddff0",
+          "size_bytes": 8534
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-007-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "3e2af75ac9ea83dd2b7ead6c906f1ade4c7a129dc536eed14613e1e79d034ada",
+          "size_bytes": 1026
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-007-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "4d857a84e40955adc932f202d16e393bc1f4cf8750d0fae703e18e165e1fd638",
+          "size_bytes": 1376
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-008-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "0301ddd022f0df9f8d408e683bdadb73dbb784653d4607f61d7638c9e974d068",
+          "size_bytes": 9672
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-008-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "4bb59233ad6368104b79827c89e599889bc2411dc40307e833254962ac05da87",
+          "size_bytes": 12709
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-009-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "e9242c376b2601557ac4b60726acdf11904c1ea0a2324d68a6e372f60c602a97",
+          "size_bytes": 11025
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-009-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "ffdccf3b5502d97a86a2bccb1ddb7bc633c36508fb6ff84ab921931a0c6f11b1",
+          "size_bytes": 11650
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-010-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "4dd6805de1df146da77a1687667985ca80af23278688d6fcdd3241a52a41103c",
+          "size_bytes": 12596
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-010-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "c026892a45419f2e7c5c7190e84881e56598e493d220052b909a6642c8d41028",
+          "size_bytes": 11358
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-011-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "16b9fd5eab403100a6f712c143caf2e9a92ffdbc74e09bac6fd8f8af4fe7cf82",
+          "size_bytes": 9092
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-011-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "7bcd959383a38a561cfa2209e20c11ecb076217d8da532b8c30b3ef39dede9f1",
+          "size_bytes": 8313
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-012-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "0d9199a2c6bd8258b4e7d993a5c0786e0cef6a9aa4b7a72ea1b5dc46de8cccfe",
+          "size_bytes": 9596
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-012-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "abf9cd25718eb71b7252a7aa9d3870aca27cca8db32f87677819a720712e8071",
+          "size_bytes": 8444
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-013-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "c1b07288399f460f34f04e63777b189fcaecebf2f7d48e0d7d390b5f445a9670",
+          "size_bytes": 10976
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-013-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "d334768d7633b94c99004d26c5531f383a59cfe0aa18e0f588e371b408b87955",
+          "size_bytes": 7839
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-014-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "c770fdc34a67e0b3b0035711904cd5412415b1c1d8ef4ddfd5f33a1098d8433b",
+          "size_bytes": 11649
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-014-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "c79224c51d98b148c7bd5fd368c8fd0b152fe62e480cdf30969494cfae14b925",
+          "size_bytes": 10401
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-015-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "74262e7258286f0e1e6784c8837c299c752bf151b1608a15b2912cafbe6b76b6",
+          "size_bytes": 11687
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-015-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "6c998583d628b6ed015eb24c7d826d764d4b3236d4ae27b28c4411032cc6b2cf",
+          "size_bytes": 11256
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-016-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "01dd04b684c73edf064287d5214d9bcf93765fbf2ab5ad2f42a32518de3faf07",
+          "size_bytes": 10298
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-016-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "14248b0b3b578efd56d6a61e5f9461f99a6ebf93e3543144adebfcfdd3b6a39b",
+          "size_bytes": 13286
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-017-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "7d11d8752d073508d2c4be2a2b1585e4917de970a9b1c99da91d2f9c353f8399",
+          "size_bytes": 12028
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-017-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "235afd9f4b58bdd28993cdec894449f1022d90c2bb7ea575a42b20d28a2a4068",
+          "size_bytes": 18543
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-018-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "3d155bdbc79fa39dc3b5dbd269d8c9caf15bb00f8430c15704b75f086f700279",
+          "size_bytes": 9457
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-018-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "0f523a766b36f60f924323e6db5de40faef1a72a6a258c726df3af9f64162c04",
+          "size_bytes": 16352
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-019-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "918b369819b361c9ce1879e042e411522dbe85162f6d4e4bf3449646c11d9171",
+          "size_bytes": 2344
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-019-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "4c2b267f66bff79ba02e5f0c51ba8da345fbd8f70197a73688b9b956a5744bf5",
+          "size_bytes": 10055
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-020-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "f52a7ab63eeae9b683c79eb30f47da52c88f811ce2e72ad9dbc46926e9f14e23",
+          "size_bytes": 9478
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-020-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "27aeb337890822ce4c68663246ca5b15a967cc9013e55cc33be9ab7fe746ea51",
+          "size_bytes": 15672
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-021-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "98cd91e68fb2490770db942d99d25a90128f589c895f8b315153b42638d5a6d6",
+          "size_bytes": 11799
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-021-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "c989ef42feb9c864c22f9cec97a9c400ab8418a80a037d2cf0d4d503f3bdbead",
+          "size_bytes": 10921
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-022-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "a601913884fc17f913faf2fbc9b976b8225849d48c6380a3b2ab230b243baa5e",
+          "size_bytes": 11399
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-022-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "03ad0eb9877467e9aa1d39d26e000245c20c02f01c62d37f5a83b87ca4e88097",
+          "size_bytes": 9306
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-023-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "59368d7c5f02fef47c4b2d6d0cf710c2dc566dc755a278a5baff05d5238bf70c",
+          "size_bytes": 12659
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-023-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "5826d6cde393d2a72c0c6abf2f554046366ce971feb56f09c339f7901ddb9732",
+          "size_bytes": 13588
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-024-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "55768b381933f763619f28cee8aa210bbdf91fa4ce9bd9cf0224cb5972db6454",
+          "size_bytes": 10730
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-024-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "4026febb56ca0725502fee1207ae8088709e072d32cf47e9f75f2983a61aee6b",
+          "size_bytes": 15400
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-025-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "2b69eb9e3793a0e3b02261c4579df17dfc5aed15c040c3eb7d2c134eb25a5e05",
+          "size_bytes": 13391
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-025-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "21d78a68dc2b9492a9304d7f5effa9a958b7b40fc066d2b3cb11e62284b69899",
+          "size_bytes": 13240
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-026-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "8dd5a665ad86cb5f4c6c79ee787ca4b940883924c3cedb9b09d9f5dd799f06ad",
+          "size_bytes": 9240
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-026-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "53f44162224065e62db9a76600355055be70fed6d3609acbb24de931ad42d5b2",
+          "size_bytes": 10132
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-027-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "2ccaac5443861e95189b63c90c2feefc8904a4bffb667e58887b83ba3dc13e22",
+          "size_bytes": 10887
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-027-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "0f072bfda74ee8c7509ed98faf80223b7174ce5d262f86d4af12ce0bdc91ffca",
+          "size_bytes": 14845
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-028-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "39982e8ae584ee2cb50e5a7d7c0a1de80e176a66085c7e29cb4ad51731711dc7",
+          "size_bytes": 14806
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-028-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "8053a7244562ff6bd5417549870a607a0cb72d163e3f50690a225b6267d6598c",
+          "size_bytes": 14242
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-029-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "b4ed3c7d6c28248ff67d8f33373c68ca611e5db6e54d45d89a6f914274218b4b",
+          "size_bytes": 9382
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-029-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "3923b364a0634e53632834f962691f2f125f2893b4fc97fdd5d39fe269e750a1",
+          "size_bytes": 10282
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-030-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "66e12ccce8a9807a874e4cdaf603a68336d7f5a7a7417265d987b1f343a30488",
+          "size_bytes": 10889
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-030-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "1dead7a7130dffe26d574d8688d85eeca7bead13f3385f193e8922da31ca9d81",
+          "size_bytes": 10663
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-031-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "e3853ca11d5ce4a368e9adb03cc22b89165262f23201f2d5410b9d9b78cbaecc",
+          "size_bytes": 9936
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-031-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "70c4f6c825b63353c049a288b55fe64339fe9f887653175deb5d2768e8a64d29",
+          "size_bytes": 11796
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-032-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "11c3c26754a680b43e54e4994ce9650e56c2a3c36584a87a654ed0b098f6fa21",
+          "size_bytes": 14362
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-032-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "0a064fddf6c723a2132f788f0d7fef553b884be82d6b694071da58ed381b7089",
+          "size_bytes": 12826
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-033-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "649202a181815063cb1d362caccf3d18278f2ed2e913bdeebe0e8b08701ffedf",
+          "size_bytes": 12864
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-033-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "5e972ff3e3a50b0ba1004f5c5f6b04c015df6e97b45c90add066a42cc7bff983",
+          "size_bytes": 12699
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-034-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "aabd8a1eb206c4784cff741705dea789225ed7756d0700f3085ead3ac8283cef",
+          "size_bytes": 13956
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-034-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "b88fbfab729312b693a980b500526ce2702f1b2db21b3e06d7887f79b784aef4",
+          "size_bytes": 12775
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-035-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "3ba2fc525ec59a6f02d97d6d237f0071aebf46eaaf2f6e33f5bd0629d750b7b2",
+          "size_bytes": 9818
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-035-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "b763133c88312ff41f36be88eda4423a85aef685db233a9731ea0046388a773f",
+          "size_bytes": 10185
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-036-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "29a96dcb3a6efc7a1d00b4aa7880644929a0935298a08a07ac61a79a4f47199f",
+          "size_bytes": 12549
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-036-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "bcda87831b10dc48d3e0f8f16e9789958056084a6c5d2f4765cd48c15e1a0fa4",
+          "size_bytes": 10142
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-037-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "9080ea7bdffe8bc0c8a174aa001aa943b93588b9f8ebf658bc08584003e56a02",
+          "size_bytes": 12629
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-037-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "bb1efd9dca2c839952b6faeecc7892b0bcc8d89086c257f6a4d435e6b479d537",
+          "size_bytes": 12320
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-038-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "50484df354184e1b7e502fdd918be19c50ae75a1841ee1d49c96d0944d9eecd1",
+          "size_bytes": 14669
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0003-row-038-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "91097025076be4942aa03235c28f724bc5445096cce6879669c8cf4a66821509",
+          "size_bytes": 14572
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-000-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "f0928c21d533b6cb819304df3a3fb56e4cc6a672d1f73b51d5f5b5723999506a",
+          "size_bytes": 1308
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-000-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "b7a9586662b2b7b1c9adb3b3e365b01551afef5c8ff72127d8bdc038539ce29c",
+          "size_bytes": 1098
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-001-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "6a6d98465a1f9f724ec3255cf934550fe6d681dec090f63e4ebf8e6c167dc752",
+          "size_bytes": 13101
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-001-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "173ab061848920d7941b7f5ccfa819018612e604665f37f4a3818cdc6a2d3aa3",
+          "size_bytes": 11254
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-002-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "b8d8b52aa6376f801465015c7d3111a5fc808adb8d66f3d902c46411c55852bc",
+          "size_bytes": 13866
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-002-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "2fca32db95027ab3a094348a81a7453b75928a015b20145a2d4012aad5b2c9b0",
+          "size_bytes": 12264
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-003-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "248f27946f4439175116880c978e2bf5e1eecb4cc6d14b0551d0ba3f4adba6f0",
+          "size_bytes": 13566
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-003-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "60dfd6af3e0d8945c4a038e46a4da8d7011909ac7ea22e94fd335d04d39b8bdf",
+          "size_bytes": 12525
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-004-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "3c42e9de215b73a9196ca7151fe104bdbf5d4cb9fc607fa6c00f570fa2f395dc",
+          "size_bytes": 10815
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-004-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "0ea05054d188322196ec3983ef331f5b7eac25a57c1091d9eb1f4bfada763d3a",
+          "size_bytes": 9730
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-005-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "1e02fceeae9cf1e698de0709739bb1e468ca8338ef7dd416e21114e418536427",
+          "size_bytes": 9641
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-005-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "a5c3c828804f108c83f7818d29071defcec506fdb0c7ce908095eb7a7dab7c17",
+          "size_bytes": 11412
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-006-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "ab26e6f2c461cf0e5f43cf0626058dfa674ec4eb228e952fc20e28e0d043073e",
+          "size_bytes": 13627
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-006-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "8e486b720edaa26079909b333e7ecb2c928a88f4f19a2eef70c70829244f7525",
+          "size_bytes": 12220
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-007-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "eaed6fa8f38c1ec562cb4c2a6b97dfdd726f0166038c8995a45fa7f49d86dfde",
+          "size_bytes": 13101
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-007-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "281622f189ac572cd01d8164d768b88142506257273ef0bed3a2de10e69a87f6",
+          "size_bytes": 12064
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-008-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "09fa66bec2dba28e829beba75ffff35e4e94ec1f54c68993eb7008c742dd4dfd",
+          "size_bytes": 12477
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-008-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "eb56ce06882350bf702e6e80b5c59096cb7d7c7c2194419313b06cad87cf1e26",
+          "size_bytes": 11726
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-009-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "c8b14b9ee6c2b8695e7a5776718c2772baa4f728a0cce154a4d54c4691c45164",
+          "size_bytes": 2138
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-009-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "89dbecff198c2097fc6f1a0ead81c6cd1c622169b12178accc37a768636d856c",
+          "size_bytes": 2139
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-010-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "13d8ce38a6e4587eb6edc4dd8b9c798f46c54776b9a6ca80c60daaf896365f9a",
+          "size_bytes": 12390
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-010-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "86b8747b93a46e08f34aa1f6d13adf799d29098fabf9a36302a784d686f06996",
+          "size_bytes": 9647
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-011-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "baef0f2e044539480cd52faf286a8099dcccd2fd4bf72791d08e6f69e6002491",
+          "size_bytes": 8822
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-011-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "5ecbe639d9110627aebbea4df765ba2c1dc7af9abaa7a6deb8a658870a36e563",
+          "size_bytes": 7604
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-012-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "5f4c4fc9a6c00d4a2bb598146124756be6d7be0488430cf65d1765a6f8edfd2e",
+          "size_bytes": 13922
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-012-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "1ddccc024de5ee0f9b03978e5ddf0d3bb30240a7b81e349ec452f4845c4d283f",
+          "size_bytes": 13140
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-013-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "94b0c5cc8b755f7368eade1fbdd0c4b27d68b85ec0887aa699787d7216bd0e2e",
+          "size_bytes": 1584
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-013-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "c445f2114f7a5d42453c966d6a690ed7dd377cc9d1854a5dc962e9e52eec766d",
+          "size_bytes": 1597
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-014-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "46e5562ad5f78cb0a53c141c22d4c5b9dc724d4407881fab0291ad0832e2b358",
+          "size_bytes": 1475
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-014-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "a25427b9d689ff07000695ffda6a04f585a0b8d6ff49e40460cef9ceeb9d12d2",
+          "size_bytes": 1140
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-015-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "8f3dd4bff167655cd3b7412f5eec7423b2ce9d69472abdac44785ca530d23f7b",
+          "size_bytes": 9353
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-015-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "886d23087f0441b9945e3cc1614cb159bc88998415909168d9e9b50612d51f20",
+          "size_bytes": 10187
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-016-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "d609fff0fcabf177d1b4d67aae1adede0d5aa11121cdabaceee38938f72d648a",
+          "size_bytes": 13076
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-016-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "71481c275bc15d46d400a89aeb160d6f4187ca7996fbbe700f8d1f151192fbab",
+          "size_bytes": 13200
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-017-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "e54d7d3b4cab1d897134621b032ac72265e915ee2b57b34a7208826939fcca89",
+          "size_bytes": 11400
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-017-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "cc77eced699021c7dc45e8b2467b6c8f33b9efddf2324f256de0da1dd8349e79",
+          "size_bytes": 10613
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-018-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "84c78a5af0d845a037595d0d05c5e65703ef9a5b90526a6f927a0a4136effcd1",
+          "size_bytes": 7433
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-018-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "6a3b3cfe8cb068d03bd2bcfe68c004d96e66df5c26cbf1bd0aed44b4cba175e6",
+          "size_bytes": 7989
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-019-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "488719740ab3f2dcaab69b7e87c25ec8ee0cbf3a52ab26380dcd8ef4842afba2",
+          "size_bytes": 9115
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-019-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "0c779102d91c80356db71d99dd0f17a2e49effaf2003e0754e3c4adee779aeb5",
+          "size_bytes": 10600
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-020-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "efb8619c1dfc6c7a3c042cb10bc6ca9d6ec8dff900639b419daef675ba87499a",
+          "size_bytes": 7516
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-020-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "655891b7a054d706be68e66ec65ec8c0cf065fd7a820f828f7dbb4d2193e6ebe",
+          "size_bytes": 7446
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-021-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "859466cfe83d453063798dd69ddc1e87b5b9fb633078cef4a8c381bf7c7abcc4",
+          "size_bytes": 9643
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-021-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "4235970e814ab170c538cbf5b88ebfe3a7f693f284c8a2c0fb892e0c803c5d3a",
+          "size_bytes": 9577
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-022-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "d656d176c518c10e7c27f020cc18563e1ccfb5ce29208677feda3a9b83b36232",
+          "size_bytes": 8307
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-022-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "19c772c3765e6504247cc440de841b76c07b42e40482bf9c74e4d9b06ae7c3b2",
+          "size_bytes": 11616
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-023-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "7d47f256ae77bd349e742555b513562962ff3e198e59ec34dc5d1a0cf7c82079",
+          "size_bytes": 13609
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-023-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "aa37d014e8be0c585d4b567ff85e90eb974740c25010d4b392bf49c4fb873d8c",
+          "size_bytes": 12739
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-024-axis-1.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "bb736694cc9c4ecf9c8cca1bc0b1fba396300f029205484d0700065b841013c0",
+          "size_bytes": 15575
+        },
+        {
+          "path": "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crops/page-0004-row-024-axis-2.png",
+          "roles": [
+            "cell_crop"
+          ],
+          "sha256": "1c7560de9f0bacddcf16243044d32859c6cf90c48cc16b3ffbbd0ce6080c3062",
+          "size_bytes": 16080
+        },
+        {
+          "path": "output/calibration/recovery-e0027-mbb-q1-2026-20260807/eebeda2ebc09b0d42032/renders/page-0003.png",
+          "roles": [
+            "cell_source_render",
+            "page_3_render"
+          ],
+          "sha256": "40544c98908d2ca59d5e78a840594cbbea1622d33ac6a72b187c413670bef599",
+          "size_bytes": 1709301
+        },
+        {
+          "path": "output/calibration/recovery-e0027-mbb-q1-2026-20260807/eebeda2ebc09b0d42032/renders/page-0004.png",
+          "roles": [
+            "cell_source_render",
+            "page_4_render"
+          ],
+          "sha256": "0c872315d09faebaba24c3b4badcc355d235841b0e1e57d4dda443e76f7b16b7",
+          "size_bytes": 1033463
+        },
+        {
+          "path": "output/calibration/recovery-e0027-mbb-q1-2026-role-c-20260807/ppocrv6-page-0003/ocr_result.json",
+          "roles": [
+            "cell_source_ocr",
+            "page_3_ocr"
+          ],
+          "sha256": "dceca77d8867eef696e8c1f54e2d92dcc72056da0ee9cff651ef6e3ba5974ab1",
+          "size_bytes": 145601
+        },
+        {
+          "path": "output/calibration/recovery-e0027-mbb-q1-2026-role-c-20260807/ppocrv6-page-0004/ocr_result.json",
+          "roles": [
+            "cell_source_ocr",
+            "page_4_ocr"
+          ],
+          "sha256": "510e6c57d47210369043e4028bca2fb55d2e1f127a23a536edd6733ad8cf9d25",
+          "size_bytes": 93440
+        }
+      ],
+      "total_size_bytes": 4489853
+    },
+    "provenance": {
+      "path": "output/calibration/e0041-mbb-cdkt-post-mapping-development-excel/provenance.json",
+      "sha256": "3a8cde8a022bf653b04a0e7070e36411d9639fbf4a005bad1110310b6a04cc14",
+      "size_bytes": 53136
+    },
+    "workbook": {
+      "path": "output/calibration/e0041-mbb-cdkt-post-mapping-development-excel/mbb-cdkt-development.xlsx",
+      "sha256": "60c5f6d01ba0a11276da6b6fc7f85d4d4f4893b6ee70d0ca54bd14764a922caf",
+      "size_bytes": 43746
+    }
+  },
+  "inventory": {
+    "file_count": 2,
+    "files": [
+      {
+        "path": "output/calibration/e0041-mbb-cdkt-post-mapping-development-excel/mbb-cdkt-development.xlsx",
+        "sha256": "60c5f6d01ba0a11276da6b6fc7f85d4d4f4893b6ee70d0ca54bd14764a922caf",
+        "size_bytes": 43746
+      },
+      {
+        "path": "output/calibration/e0041-mbb-cdkt-post-mapping-development-excel/provenance.json",
+        "sha256": "3a8cde8a022bf653b04a0e7070e36411d9639fbf4a005bad1110310b6a04cc14",
+        "size_bytes": 53136
+      }
+    ]
+  },
+  "limitations": [
+    "CALIBRATION_ONLY_SINGLE_BANK_SINGLE_PERIOD_DOCUMENT",
+    "MACHINE_MAPPING_IS_NOT_SCHEMA_MAPPING_ACCURACY_OR_REVIEW_AUTHORITY",
+    "ARITHMETIC_IS_DIAGNOSTIC_ONLY_AND_CANNOT_REPAIR_MAPPING_STATUS_OR_VALUE",
+    "RECONSTRUCTED_GEOMETRY_IS_BOUNDED_TO_THE_PINNED_128_CELL_REGISTRY",
+    "SHARED_S3_REGISTRY_IS_DURABILITY_BASELINE_ONLY",
+    "NO_HUMAN_GOLD_OR_BANK_OR_PERIOD_DISJOINT_VALIDATION",
+    "NOT_HOLDOUT_OR_PRODUCTION_APPROVED",
+    "PAIR_PUBLICATION_NOT_CRASH_ATOMIC_PARTIAL_PAIR_REQUIRES_MANUAL_DISPOSITION"
+  ],
+  "metrics": {
+    "exported_numeric_cell_count": 111,
+    "final_selected_mapping_count": 61,
+    "physical_cell_count": 128,
+    "physical_cell_status_counts": {
+      "BLANK": 5,
+      "DASH": 5,
+      "UNRESOLVED": 7,
+      "VALUE": 111
+    },
+    "schema_row_count": 77,
+    "selected_target_cell_count": 122,
+    "source_only_mapping_count": 3,
+    "source_row_count": 64,
+    "strict_validation_finding_counts": {
+      "FAIL": 0,
+      "NOT_TESTABLE": 6,
+      "PASS": 30
+    }
+  },
+  "pair_capture_git_commit": "8d837ee137eade53c29a7086830ab3221b2b25cd",
+  "projection_receipt": {
+    "sha256": "4ba86ea84b102932b5ae2952f2998c205907d58095793535eacfd100c501db8d",
+    "size_bytes": 442178
+  },
+  "replay": {
+    "formal_replay_invocation_count": 1,
+    "provenance_exact_canonical_byte_equality": true,
+    "published_pair_rewritten": false,
+    "rebuilt_projection_matches_provenance_sha256_and_size_receipt": true,
+    "same_clean_git_commit": true,
+    "workbook_exact_byte_equality": true
+  },
+  "seal_git_commit": "8d837ee137eade53c29a7086830ab3221b2b25cd",
+  "seal_git_dirty": false,
+  "state": "FORMAL_POST_MAPPING_EXPORT_PAIR_HASH_SEALED"
+}
