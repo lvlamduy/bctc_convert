@@ -81,6 +81,53 @@ def test_cdkt_business_update_reconciles_78_items_and_preserves_source_statuses(
         "source_row_count": 64,
     }
     assert coverage["decisions"]["Q010"]["canonical_value_vnd"] == 2_320_000_000
+    assert coverage["decisions"]["Q005"] == {
+        "status": "TARGET_STATEMENT_BOUNDARY_CLARIFIED_NO_VALUE_BACKFILL",
+        "target_status": "NOT_OBSERVED_ON_TARGET_STATEMENT_PAGES",
+    }
+    assert coverage["not_observed_on_target_statement_pages_report_norm_ids"] == [
+        4303,
+        4309,
+        4326,
+        4329,
+        4333,
+        4340,
+        4341,
+        4344,
+        4345,
+        4359,
+        4360,
+        4369,
+        4370,
+        4373,
+        4374,
+    ]
+    assert coverage["cross_statement_note_links"] == [
+        {
+            "cdkt_report_norm_id": 4344,
+            "note_pdf_page": 30,
+            "note_report_norm_id": 576,
+            "note_statement": "TM",
+            "relation": "RELATED_NOTE_DETAIL_NOT_PROVEN_IDENTICAL",
+            "value_backfill_allowed": False,
+        },
+        {
+            "cdkt_report_norm_id": 4326,
+            "note_pdf_page": 30,
+            "note_report_norm_id": 585,
+            "note_statement": "TM",
+            "relation": "RELATED_NOTE_DISCLOSURE_NO_BACKFILL",
+            "value_backfill_allowed": False,
+        },
+        {
+            "cdkt_report_norm_id": 4345,
+            "note_pdf_page": 30,
+            "note_report_norm_id": 5718,
+            "note_statement": "TM",
+            "relation": "BROADER_COMBINED_PROVISION_NOT_EQUIVALENT",
+            "value_backfill_allowed": False,
+        },
+    ]
     assert coverage["formula_checks"] == {
         "4305_equals_4304_plus_5712": {"passed": True},
         "4325_components": {"passed": True, "status": "DERIVED_FROM_COMPONENTS"},
@@ -112,6 +159,9 @@ def test_cdkt_business_update_reconciles_78_items_and_preserves_source_statuses(
         assert main.cell(by_id[4363], 4).value == 2_320_000_000
         assert main.cell(by_id[4363], 6).value == "VALUE"
         assert main.cell(by_id[4306], 6).value == "NOT_OBSERVED_IN_THIS_PDF"
+        assert main.cell(by_id[4344], 6).value == ("NOT_OBSERVED_ON_TARGET_STATEMENT_PAGES")
+        assert main.cell(by_id[4326], 6).value == ("NOT_OBSERVED_ON_TARGET_STATEMENT_PAGES")
+        assert main.cell(by_id[4345], 6).value == ("NOT_OBSERVED_ON_TARGET_STATEMENT_PAGES")
         assert main.cell(by_id[4325], 4).value == 149_745_325_000_000
         assert main.cell(by_id[4325], 6).value == "DERIVED_FROM_COMPONENTS"
         assert main.cell(by_id[5712], 4).value == 149_745_325_000_000

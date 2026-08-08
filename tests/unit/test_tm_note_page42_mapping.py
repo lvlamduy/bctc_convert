@@ -36,8 +36,11 @@ _MAPPED_IDS = {
     1048,
     1049,
     1052,
+    5975,
+    5976,
+    6007,
 }
-_AMBIGUOUS_IDS = {968, 969}
+_AMBIGUOUS_IDS: set[int] = set()
 _NOT_OBSERVED_IDS = set(range(966, 1_055)) - _MAPPED_IDS - _AMBIGUOUS_IDS
 
 
@@ -64,7 +67,7 @@ def _mapped(project_root: Path, tmp_path: Path):
     )
 
 
-def test_page42_reconciles_complete_966_1054_branch_and_maps_nineteen_items(
+def test_page42_reconciles_complete_branch_and_maps_twenty_two_items(
     project_root: Path, tmp_path: Path
 ) -> None:
     result = _mapped(project_root, tmp_path)
@@ -72,22 +75,22 @@ def test_page42_reconciles_complete_966_1054_branch_and_maps_nineteen_items(
     assert validate_tm_page42_mapping_result(result) is result
     assert result.mapping_authority_scope.endswith("PDF_PAGE_42_FIXED_ROWS_ONLY")
     assert result.mapping_authority_granted
-    assert result.schema_item_count == 1_613
-    assert result.status_reconciled_schema_count == 89
-    assert result.mapped_schema_count == 19
-    assert result.ambiguous_schema_count == 2
-    assert result.not_observed_schema_count == 68
+    assert result.schema_item_count == 1_701
+    assert result.status_reconciled_schema_count == 92
+    assert result.mapped_schema_count == 22
+    assert result.ambiguous_schema_count == 0
+    assert result.not_observed_schema_count == 70
     assert result.not_applicable_schema_count == 0
-    assert result.unassessed_schema_count == 1_524
+    assert result.unassessed_schema_count == 1_609
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == 24
-    assert result.mapped_source_row_count == 19
-    assert result.source_only_row_count == 5
-    assert result.source_question_row_count == 3
-    assert result.ambiguous_source_row_count == 1
+    assert result.mapped_source_row_count == 22
+    assert result.source_only_row_count == 2
+    assert result.source_question_row_count == 0
+    assert result.ambiguous_source_row_count == 0
     assert result.financial_slot_count == result.extracted_value_count == 48
     assert result.dash_count == 0
-    assert result.mapped_value_count == 38
+    assert result.mapped_value_count == 44
 
 
 def test_exact_mapped_ambiguous_not_observed_and_unassessed_schema_sets(
@@ -104,8 +107,10 @@ def test_exact_mapped_ambiguous_not_observed_and_unassessed_schema_sets(
     assert by_status[TMPage42SchemaStatus.MAPPED_AUTOMATIC_SCOPED.value] == _MAPPED_IDS
     assert by_status[TMPage42SchemaStatus.AMBIGUOUS_MAPPING.value] == _AMBIGUOUS_IDS
     assert by_status[TMPage42SchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value] == (_NOT_OBSERVED_IDS)
-    assert len(by_status[TMPage42SchemaStatus.UNASSESSED.value]) == 1_524
-    assert _MAPPED_IDS | _AMBIGUOUS_IDS | _NOT_OBSERVED_IDS == set(range(966, 1_055))
+    assert len(by_status[TMPage42SchemaStatus.UNASSESSED.value]) == 1_609
+    assert _MAPPED_IDS | _AMBIGUOUS_IDS | _NOT_OBSERVED_IDS == (
+        set(range(966, 1_055)) | {5975, 5976, 6007}
+    )
 
 
 def test_987_is_primary_note14_total_while_broader_966_is_not_observed(
@@ -121,44 +126,55 @@ def test_987_is_primary_note14_total_while_broader_966_is_not_observed(
     assert schema_966.status == TMPage42SchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value
 
 
-def test_combined_capex_is_the_only_candidate_ambiguity_and_binds_both_schema_ids(
+def test_combined_capex_maps_new_exact_item_and_old_candidates_are_not_observed(
     project_root: Path, tmp_path: Path
 ) -> None:
     result = _mapped(project_root, tmp_path)
-    questions = [item for item in result.source_dispositions if item.question_required]
-    capex = questions[0]
-
-    assert capex.row_id == "page-0042:receivable_detail:row-0001"
-    assert capex.values == (1_295_059, 1_039_654)
-    assert capex.candidate_report_norm_ids == (968, 969)
-    assert capex.candidate_canonical_names == (
-        "Chi phí xây dựng cơ bản dở dang",
-        "Mua sắm sửa chữa lớn TSCĐ",
-    )
-    ambiguous_schema = [
+    capex = next(
         item
-        for item in result.schema_dispositions
-        if item.status == TMPage42SchemaStatus.AMBIGUOUS_MAPPING.value
-    ]
-    assert all(item.source_row_ids == (capex.row_id,) for item in ambiguous_schema)
+        for item in result.source_dispositions
+        if item.row_id == "page-0042:receivable_detail:row-0001"
+    )
+
+    assert capex.report_norm_id == 6007
+    assert capex.values == (1_295_059, 1_039_654)
+    assert capex.status == TMPage42SourceStatus.MAPPED_AUTOMATIC_SCOPED.value
+    assert not capex.question_required
+    assert not capex.candidate_report_norm_ids
+    by_id = {item.report_norm_id: item for item in result.schema_dispositions}
+    assert by_id[6007].source_row_ids == (capex.row_id,)
+    assert by_id[968].status == TMPage42SchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value
+    assert by_id[969].status == TMPage42SchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value
 
 
-def test_two_specialized_receivables_remain_candidate_free_possible_schema_gaps(
+def test_two_specialized_receivables_map_to_new_exact_schema_items(
     project_root: Path, tmp_path: Path
 ) -> None:
     result = _mapped(project_root, tmp_path)
-    questions = [item for item in result.source_dispositions if item.question_required]
+    additions = [item for item in result.source_dispositions if item.report_norm_id in {5975, 5976}]
 
-    assert [item.row_id for item in questions[1:]] == [
-        "page-0042:receivable_detail:row-0003",
-        "page-0042:receivable_detail:row-0004",
+    assert [
+        (item.report_norm_id, item.row_id, item.values, item.period_ends) for item in additions
+    ] == [
+        (
+            5975,
+            "page-0042:receivable_detail:row-0003",
+            (861_287, 1_525_624),
+            ("2026-03-31", "2025-12-31"),
+        ),
+        (
+            5976,
+            "page-0042:receivable_detail:row-0004",
+            (11_281_653, 8_046_079),
+            ("2026-03-31", "2025-12-31"),
+        ),
     ]
-    assert [item.values for item in questions[1:]] == [
-        (861_287, 1_525_624),
-        (11_281_653, 8_046_079),
-    ]
-    assert all(item.candidate_report_norm_ids == () for item in questions[1:])
-    assert all("no exact scoped schema item" in item.reason for item in questions[1:])
+    assert all(
+        item.status == TMPage42SourceStatus.MAPPED_AUTOMATIC_SCOPED.value
+        and not item.question_required
+        and not item.candidate_report_norm_ids
+        for item in additions
+    )
     mapped_981 = [item for item in result.source_dispositions if item.report_norm_id == 981]
     assert [item.row_id for item in mapped_981] == ["page-0042:receivable_detail:row-0005"]
 

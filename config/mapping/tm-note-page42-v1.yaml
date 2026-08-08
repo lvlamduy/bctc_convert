@@ -10,7 +10,7 @@ mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_PDF_PAGE_42_FIXED_ROWS_ONLY
 source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
 source_render_sha256: afb03eeaec7e0f96eee5c1cc02c44f31642e342c8a50f517a354cb617e45888a
 source_ocr_sha256: ec221ba8132e21c04910c71d9955944c063a8c7153280bb1ec1782f8669b642f
-schema_total: 1613
+schema_total: 1701
 minimum_visible_label_similarity: 0.78
 
 rows:
@@ -18,10 +18,10 @@ rows:
   - {table_key: RECEIVABLE_SUMMARY, ordinal: 2, visible_label_anchor: cac khoan phai thu ben ngoai, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 971, candidate_report_norm_ids: []}
   - {table_key: RECEIVABLE_SUMMARY, ordinal: 3, visible_label_anchor: null, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 967, candidate_report_norm_ids: []}
 
-  - {table_key: RECEIVABLE_DETAIL, ordinal: 1, visible_label_anchor: chi phi xay dung co ban mua sam tscd, expected_observations: [VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, candidate_report_norm_ids: [968, 969]}
+  - {table_key: RECEIVABLE_DETAIL, ordinal: 1, visible_label_anchor: chi phi xay dung co ban mua sam tscd, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 6007, candidate_report_norm_ids: []}
   - {table_key: RECEIVABLE_DETAIL, ordinal: 2, visible_label_anchor: ky quy the chap cam co, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 973, candidate_report_norm_ids: []}
-  - {table_key: RECEIVABLE_DETAIL, ordinal: 3, visible_label_anchor: phai thu lien quan den dich vu thanh toan, expected_observations: [VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, candidate_report_norm_ids: []}
-  - {table_key: RECEIVABLE_DETAIL, ordinal: 4, visible_label_anchor: phai thu mien truy doi theo bo chung tu, expected_observations: [VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, candidate_report_norm_ids: []}
+  - {table_key: RECEIVABLE_DETAIL, ordinal: 3, visible_label_anchor: phai thu lien quan den dich vu thanh toan, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 5975, candidate_report_norm_ids: []}
+  - {table_key: RECEIVABLE_DETAIL, ordinal: 4, visible_label_anchor: phai thu mien truy doi theo bo chung tu, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 5976, candidate_report_norm_ids: []}
   - {table_key: RECEIVABLE_DETAIL, ordinal: 5, visible_label_anchor: cac khoan phai thu khac, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 981, candidate_report_norm_ids: []}
   - {table_key: RECEIVABLE_DETAIL, ordinal: 6, visible_label_anchor: null, expected_observations: [VALUE, VALUE], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, candidate_report_norm_ids: []}
 
@@ -43,8 +43,8 @@ rows:
   - {table_key: INTERBANK_FUNDING, ordinal: 9, visible_label_anchor: bang ngoai te, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1052, candidate_report_norm_ids: []}
   - {table_key: INTERBANK_FUNDING, ordinal: 10, visible_label_anchor: null, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1040, candidate_report_norm_ids: []}
 
-ambiguous_schema_ids: [968, 969]
-not_observed_schema_ids: [966, 972, 974, 975, 976, 977, 978, 979, 980, 982, 983, 984, 985, 986, 988, 990, 991, 992, 993, 994, 995, 996, 998, 999, 1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1011, 1012, 1013, 1014, 1015, 1016, 1017, 1018, 1019, 1020, 1021, 1022, 1023, 1025, 1026, 1027, 1028, 1029, 1030, 1031, 1032, 1033, 1034, 1035, 1036, 1037, 1038, 1039, 1041, 1050, 1051, 1053, 1054]
+ambiguous_schema_ids: []
+not_observed_schema_ids: [966, 968, 969, 972, 974, 975, 976, 977, 978, 979, 980, 982, 983, 984, 985, 986, 988, 990, 991, 992, 993, 994, 995, 996, 998, 999, 1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1011, 1012, 1013, 1014, 1015, 1016, 1017, 1018, 1019, 1020, 1021, 1022, 1023, 1025, 1026, 1027, 1028, 1029, 1030, 1031, 1032, 1033, 1034, 1035, 1036, 1037, 1038, 1039, 1041, 1050, 1051, 1053, 1054]
 
 forbidden_mapping_inputs:
   - numeric_cell_text

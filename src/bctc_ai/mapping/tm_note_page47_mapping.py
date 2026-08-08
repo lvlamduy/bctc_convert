@@ -22,27 +22,33 @@ from bctc_ai.schema.registry import SchemaItem
 from bctc_ai.tables.tm_note_page47 import ParsedTMPage47
 
 TM_PAGE47_POLICY_RELATIVE_PATH = Path("config/mapping/tm-note-page47-v1.yaml")
-TM_PAGE47_SCHEMA_TOTAL = 1_613
-TM_PAGE47_RECONCILED_SCHEMA_COUNT = 42
-TM_PAGE47_MAPPED_SCHEMA_COUNT = 15
-TM_PAGE47_AMBIGUOUS_SCHEMA_COUNT = 8
-TM_PAGE47_NOT_OBSERVED_COUNT = 19
-TM_PAGE47_UNASSESSED_COUNT = 1_571
+TM_PAGE47_SCHEMA_TOTAL = 1_701
+TM_PAGE47_RECONCILED_SCHEMA_COUNT = 48
+TM_PAGE47_MAPPED_SCHEMA_COUNT = 21
+TM_PAGE47_AMBIGUOUS_SCHEMA_COUNT = 0
+TM_PAGE47_NOT_OBSERVED_COUNT = 27
+TM_PAGE47_UNASSESSED_COUNT = 1_653
 TM_PAGE47_SOURCE_ROW_COUNT = 28
-TM_PAGE47_MAPPED_SOURCE_COUNT = 15
-TM_PAGE47_AMBIGUOUS_SOURCE_COUNT = 4
-TM_PAGE47_SOURCE_ONLY_COUNT = 9
-TM_PAGE47_QUESTION_SOURCE_COUNT = 6
+TM_PAGE47_MAPPED_SOURCE_COUNT = 21
+TM_PAGE47_AMBIGUOUS_SOURCE_COUNT = 0
+TM_PAGE47_SOURCE_ONLY_COUNT = 7
+TM_PAGE47_QUESTION_SOURCE_COUNT = 0
 TM_PAGE47_FINANCIAL_SLOT_COUNT = 42
 TM_PAGE47_VALUE_COUNT = 41
 TM_PAGE47_DASH_COUNT = 1
-TM_PAGE47_MAPPED_VALUE_COUNT = 30
+TM_PAGE47_MAPPED_VALUE_COUNT = 41
 TM_PAGE47_ACCOUNTING_CHECK_COUNT = 14
 TM_PAGE47_ACCOUNTING_PASS_COUNT = 13
 TM_PAGE47_ACCOUNTING_NOT_TESTABLE_COUNT = 1
 
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
-_SCOPED_IDS = {*range(1175, 1198), 1218, *range(1229, 1247)}
+_SCOPED_IDS = {
+    *range(1175, 1198),
+    5990,
+    1218,
+    *range(1229, 1247),
+    *range(6026, 6031),
+}
 _MAPPED_IDS = {
     1175,
     1176,
@@ -59,14 +65,22 @@ _MAPPED_IDS = {
     1196,
     1232,
     1234,
+    5990,
+    *range(6026, 6031),
 }
-_AMBIGUOUS_IDS = {1177, 1178, 1183, 1184, 1197, 1218, 1239, 1246}
+_AMBIGUOUS_IDS: set[int] = set()
 _NOT_OBSERVED_IDS = {
+    1177,
+    1178,
     1180,
     1181,
+    1183,
+    1184,
     1186,
     1187,
     1192,
+    1197,
+    1218,
     1229,
     1230,
     1231,
@@ -75,12 +89,14 @@ _NOT_OBSERVED_IDS = {
     1236,
     1237,
     1238,
+    1239,
     1240,
     1241,
     1242,
     1243,
     1244,
     1245,
+    1246,
 }
 _REQUIRED_FORBIDDEN = {
     "numeric_cell_text",
@@ -90,6 +106,7 @@ _REQUIRED_FORBIDDEN = {
     "human_review_answers",
     "dash_as_zero",
     "accounting_equation_result_as_item_selector",
+    "accounting_equation_result_as_extracted_value",
 }
 
 
@@ -359,7 +376,7 @@ def load_tm_page47_mapping_policy(path: Path) -> TMPage47MappingPolicy:
     )
     if identities != expected_identities:
         raise TMPage47MappingError("TM page-47 mapping row order drifted")
-    ambiguous = _ids(payload.get("ambiguous_schema_ids"), "ambiguous schema IDs")
+    ambiguous = _ids(payload.get("ambiguous_schema_ids"), "ambiguous schema IDs", allow_empty=True)
     not_observed = _ids(payload.get("not_observed_schema_ids"), "not-observed schema IDs")
     fixed_ids = {rule.report_norm_id for rule in rows if rule.report_norm_id is not None}
     candidate_ids = {candidate for rule in rows for candidate in rule.candidate_report_norm_ids}
@@ -657,7 +674,7 @@ def reconcile_tm_page47_items(
         page_number=47,
         page_tag=policy.page_tag,
         report_scope=policy.report_scope,
-        status="SCOPED_PAGE47_DURATION_MAPPING_WITH_OPEN_SCHEMA_AMBIGUITIES",
+        status="SCOPED_PAGE47_UNIVERSAL_DURATION_MAPPING",
         mapping_authority_scope=policy.mapping_authority_scope,
         mapping_authority_granted=True,
         schema_item_count=len(tm_schema),
@@ -773,16 +790,14 @@ def validate_tm_page47_mapping_result(
     ]
     if (
         len(dash_rows) != 1
-        or dash_rows[0].status != TMPage47SourceStatus.AMBIGUOUS_MAPPING.value
-        or dash_rows[0].report_norm_id is not None
-        or dash_rows[0].candidate_report_norm_ids != (1197, 1218)
+        or dash_rows[0].status != TMPage47SourceStatus.MAPPED_AUTOMATIC_SCOPED.value
+        or dash_rows[0].report_norm_id != 6028
+        or dash_rows[0].candidate_report_norm_ids
         or dash_rows[0].visual_cell_evidence[0] is None
         or dash_rows[0].visual_cell_evidence[1] is not None
         or dash_rows[0].values != (None, Decimal(20_861))
     ):
-        raise TMPage47MappingError(
-            "TM page-47 ambiguous mixed DASH/VALUE status lost pixel evidence"
-        )
+        raise TMPage47MappingError("TM page-47 mapped mixed DASH/VALUE status lost pixel evidence")
     return result
 
 

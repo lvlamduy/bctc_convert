@@ -87,7 +87,7 @@ def _mapped(project_root: Path):
     )
 
 
-def test_real_page30_reconciles_1613_schema_and_all_22_source_rows(
+def test_real_page30_reconciles_1701_schema_and_all_22_source_rows(
     project_root: Path,
 ) -> None:
     result = _mapped(project_root)
@@ -106,14 +106,14 @@ def test_real_page30_reconciles_1613_schema_and_all_22_source_rows(
     assert result.minimum_independent_semantic_streams == 2
     assert result.independent_reader_status == "COMPLETE"
     assert result.independent_reader_blocker is None
-    assert result.schema_item_count == 1_613
+    assert result.schema_item_count == 1_701
     assert result.assessed_schema_count == 23
     assert result.mapped_schema_count == 21
     assert result.candidate_linked_schema_count == 0
     assert TM_PAGE30_AMBIGUOUS_IDS == ()
     assert result.not_observed_schema_count == 2
     assert result.ambiguous_schema_count == 0
-    assert result.unassessed_schema_count == 1_590
+    assert result.unassessed_schema_count == 1_678
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == result.mapped_source_row_count == 22
     assert result.candidate_linked_source_row_count == 0
@@ -123,7 +123,7 @@ def test_real_page30_reconciles_1613_schema_and_all_22_source_rows(
     assert result.mapped_value_count == 38
     assert result.accounting_check_count == result.accounting_pass_count == 14
     assert result.schema_projection_sha256 == (
-        "93c9cf84655d6320a8a630e88a409ebcb81263d2cfefb430689fc479f394e175"
+        "f930116b38d80bf7dc86ddde3e8b79233e4de99d428a4c2e89f3d2ca429baea4"
     )
     assert result.independent_evidence_sha256 == (
         "6182e4634a80371ba560019b85ae67d706608ff48872f689e2645a5b03487c06"
@@ -163,7 +163,7 @@ def test_exact_ordered_row_targets_names_and_structural_blanks(project_root: Pat
     )
 
 
-def test_schema_dispositions_are_21_mapped_2_not_observed_1363_unassessed(
+def test_schema_dispositions_are_21_mapped_2_not_observed_1635_unassessed(
     project_root: Path,
 ) -> None:
     result = _mapped(project_root)
@@ -182,7 +182,7 @@ def test_schema_dispositions_are_21_mapped_2_not_observed_1363_unassessed(
         TM_PAGE30_NOT_OBSERVED_IDS
     )
     assert by_status[TMSchemaMappingStatus.AMBIGUOUS_MAPPING.value] == set()
-    assert len(by_status[TMSchemaMappingStatus.UNASSESSED.value]) == 1_590
+    assert len(by_status[TMSchemaMappingStatus.UNASSESSED.value]) == 1_678
     schema_by_id = {item.report_norm_id: item for item in result.schema_dispositions}
     assert schema_by_id[574].source_row_ids == (
         "page-0030:note-2:row-0004",

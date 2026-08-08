@@ -1,6 +1,12 @@
 from __future__ import annotations
 
-from bctc_ai.schema.hierarchy import apply_hierarchy_reference, load_hierarchy_reference
+import pytest
+
+from bctc_ai.schema.hierarchy import (
+    _reject_schema_graph_cycles,
+    apply_hierarchy_reference,
+    load_hierarchy_reference,
+)
 from bctc_ai.schema.registry import load_all
 
 
@@ -16,14 +22,14 @@ def test_vst_hierarchy_is_complete_where_claimed_and_partial_for_direct_lctt(pro
     lctt = next(workbook for workbook in registry.workbooks if workbook.statement_type == "LCTT")
     assert lctt.coverage == "BRANCH_DIRECT"
     assert lctt.non_id_labels == ("LƯU CHUYỂN TIỀN TỆ TRỰC TIẾP",)
-    assert lctt.schema_only_append_ids == (5714,)
+    assert lctt.schema_only_append_ids == (5714, 6034)
     cdkt = next(workbook for workbook in registry.workbooks if workbook.statement_type == "CDKT")
     assert cdkt.skipped_blank_rows == 47
     assert cdkt.schema_only_append_ids == (5712,)
     kqkd = next(workbook for workbook in registry.workbooks if workbook.statement_type == "KQKD")
     assert kqkd.schema_only_append_ids == (5713,)
     tm = next(workbook for workbook in registry.workbooks if workbook.statement_type == "TM")
-    assert tm.schema_only_append_ids == (1944, *range(5718, 5946))
+    assert tm.schema_only_append_ids == (1944, *range(5718, 6034))
     assert registry.status == "VALIDATED_SUPPORTING_REFERENCE_WITH_SCHEMA_ONLY_APPENDS"
     assert len(hierarchy) == 1535
 
@@ -60,7 +66,10 @@ def test_hierarchy_edges_and_structural_aliases_are_attached_without_reordering(
     assert by_id[5714].children == [4120, 4121]
     assert by_id[4120].parent_id == 5714
     assert by_id[4121].parent_id == 5714
-    assert by_id[4111].children == [4118, 4119, 4143, 4144, 4145, 4146, 5714, 4147]
+    assert by_id[6034].parent_id == 4111
+    assert by_id[6034].children == [4144, 4145, 4146]
+    assert all(by_id[schema_id].parent_id == 6034 for schema_id in (4144, 4145, 4146))
+    assert by_id[4111].children == [4118, 4119, 4143, 6034, 5714, 4147]
     assert by_id[5718].parent_id == 575
     assert by_id[5718].children == []
     assert by_id[575].children == [576, 585, 5718]
@@ -200,3 +209,17 @@ def test_hierarchy_edges_and_structural_aliases_are_attached_without_reordering(
     ]
     assert by_id[1944].parent_id is None
     assert by_id[1944].hierarchy_source is None
+
+
+def test_final_universal_overlay_rejects_cycles(project_root):
+    _, schema = load_all(project_root / "template", project_root)
+    _, hierarchy = load_hierarchy_reference(
+        project_root / "config/schemas/hierarchy_reference.yaml",
+        project_root,
+        schema,
+    )
+    apply_hierarchy_reference(schema, hierarchy)
+    by_id = {item.schema_id: item for item in schema}
+    by_id[6029].parent_id = 6030
+    with pytest.raises(ValueError, match="schema hierarchy cycle"):
+        _reject_schema_graph_cycles(schema)

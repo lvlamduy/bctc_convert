@@ -30,12 +30,14 @@ from bctc_ai.mapping.lctt_item_mapping import (
 from bctc_ai.tables.lctt_word_box import ParsedLCTTWordBoxDocument
 
 LCTT_DEVELOPMENT_SHEETS = ("LCTT", "PROVENANCE", "RUN_METADATA")
-LCTT_DEVELOPMENT_SCHEMA_COUNT = 108
+LCTT_DEVELOPMENT_SCHEMA_COUNT = 109
 LCTT_DEVELOPMENT_SOURCE_ROW_COUNT = 43
 LCTT_DEVELOPMENT_MAPPED_SCHEMA_COUNT = 43
 LCTT_DEVELOPMENT_MAPPED_CELL_COUNT = 86
 LCTT_DEVELOPMENT_MAPPED_VALUE_COUNT = 71
-LCTT_DEVELOPMENT_TEMPLATE_MAX_ROW = 109
+LCTT_DEVELOPMENT_TEMPLATE_MAX_ROW = 110
+LCTT_INVESTMENT_PROPERTY_NET_ID = 6034
+LCTT_INVESTMENT_PROPERTY_COMPONENT_IDS = (4144, 4145, 4146)
 
 _FIXED_TIMESTAMP = datetime(2000, 1, 1)
 _CORE_PROPERTIES_MEMBER = "docProps/core.xml"
@@ -127,7 +129,7 @@ def _validate_inputs(
         or mapping.candidate_linked_schema_count != 0
         or mapping.label_conflict_schema_count != 0
         or mapping.ambiguous_schema_count != 0
-        or mapping.not_observed_schema_count != 8
+        or mapping.not_observed_schema_count != 9
         or mapping.not_applicable_schema_count != 57
         or mapping.fully_verified_schema_count != 0
         or mapping.source_row_count != LCTT_DEVELOPMENT_SOURCE_ROW_COUNT
@@ -426,6 +428,11 @@ def _write_metadata(
         "mapping.not_applicable_count": mapping.not_applicable_schema_count,
         "mapping.not_observed_count": mapping.not_observed_schema_count,
         "mapping.status": mapping.status,
+        "mapping.investment_property_net_id": LCTT_INVESTMENT_PROPERTY_NET_ID,
+        "mapping.investment_property_component_ids": _json_cell(
+            list(LCTT_INVESTMENT_PROPERTY_COMPONENT_IDS)
+        ),
+        "mapping.investment_property_formula_policy": "VALIDATION_ONLY_NO_DERIVATION_OR_IMPUTATION",
         "numeric.independently_verified": False,
         "numeric.reader": "PP_OCRV6_WORD_BOX_SINGLE_READER",
         "parser.blank_cell_count": parsed.blank_cell_count,
@@ -623,6 +630,8 @@ __all__ = [
     "LCTT_DEVELOPMENT_SHEETS",
     "LCTT_DEVELOPMENT_SOURCE_ROW_COUNT",
     "LCTT_DEVELOPMENT_TEMPLATE_MAX_ROW",
+    "LCTT_INVESTMENT_PROPERTY_COMPONENT_IDS",
+    "LCTT_INVESTMENT_PROPERTY_NET_ID",
     "LCTTDevelopmentArtifact",
     "LCTTDevelopmentExportError",
     "LCTTDevelopmentExportResult",

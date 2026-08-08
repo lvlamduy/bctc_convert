@@ -23,19 +23,19 @@ from bctc_ai.tables.tm_note_page42 import ParsedTMPage42
 from bctc_ai.tables.tm_note_word_box import TMNoteRowKind
 
 TM_PAGE42_POLICY_RELATIVE_PATH = Path("config/mapping/tm-note-page42-v1.yaml")
-TM_PAGE42_SCHEMA_TOTAL = 1_613
-TM_PAGE42_RECONCILED_SCHEMA_COUNT = 89
-TM_PAGE42_MAPPED_SCHEMA_COUNT = 19
-TM_PAGE42_AMBIGUOUS_SCHEMA_COUNT = 2
-TM_PAGE42_NOT_OBSERVED_COUNT = 68
-TM_PAGE42_UNASSESSED_COUNT = 1_524
+TM_PAGE42_SCHEMA_TOTAL = 1_701
+TM_PAGE42_RECONCILED_SCHEMA_COUNT = 92
+TM_PAGE42_MAPPED_SCHEMA_COUNT = 22
+TM_PAGE42_AMBIGUOUS_SCHEMA_COUNT = 0
+TM_PAGE42_NOT_OBSERVED_COUNT = 70
+TM_PAGE42_UNASSESSED_COUNT = 1_609
 TM_PAGE42_SOURCE_ROW_COUNT = 24
-TM_PAGE42_MAPPED_SOURCE_COUNT = 19
-TM_PAGE42_SOURCE_ONLY_COUNT = 5
+TM_PAGE42_MAPPED_SOURCE_COUNT = 22
+TM_PAGE42_SOURCE_ONLY_COUNT = 2
 TM_PAGE42_FINANCIAL_SLOT_COUNT = 48
 TM_PAGE42_VALUE_COUNT = 48
 TM_PAGE42_DASH_COUNT = 0
-TM_PAGE42_MAPPED_VALUE_COUNT = 38
+TM_PAGE42_MAPPED_VALUE_COUNT = 44
 TM_PAGE42_ACCOUNTING_CHECK_COUNT = 14
 TM_PAGE42_ACCOUNTING_PASS_COUNT = 14
 TM_PAGE42_DUPLICATE_CHECK_COUNT = 4
@@ -49,7 +49,7 @@ _REQUIRED_FORBIDDEN = {
     "human_review_answers",
     "accounting_equation_result_as_item_selector",
 }
-_SCOPED_IDS = set(range(966, 1_055))
+_SCOPED_IDS = set(range(966, 1_055)) | {5975, 5976, 6007}
 _MAPPED_IDS = {
     967,
     970,
@@ -70,8 +70,11 @@ _MAPPED_IDS = {
     1048,
     1049,
     1052,
+    5975,
+    5976,
+    6007,
 }
-_AMBIGUOUS_IDS = {968, 969}
+_AMBIGUOUS_IDS: set[int] = set()
 
 
 class TMPage42MappingError(ValueError):
@@ -349,9 +352,9 @@ def load_tm_page42_mapping_policy(path: Path) -> TMPage42MappingPolicy:
         for row in rows
         if row.disposition is TMPage42RuleDisposition.SOURCE_ONLY_QUESTION
     ]
-    if question_candidates != [(968, 969), (), ()]:
+    if question_candidates:
         raise TMPage42MappingError("TM page-42 source-question candidates drifted")
-    ambiguous = _ids(payload.get("ambiguous_schema_ids"), "ambiguous IDs")
+    ambiguous = _ids(payload.get("ambiguous_schema_ids"), "ambiguous IDs", allow_empty=True)
     not_observed = _ids(payload.get("not_observed_schema_ids"), "not-observed IDs")
     if (
         set(ambiguous) != _AMBIGUOUS_IDS
@@ -656,7 +659,7 @@ def reconcile_tm_page42_items(
         page_number=42,
         page_tag=policy.page_tag,
         report_scope=policy.report_scope,
-        status="SCOPED_PAGE42_MAPPING_WITH_OPEN_SOURCE_QUESTIONS",
+        status="SCOPED_PAGE42_MAPPING_WITH_UNIVERSAL_RECEIVABLE_ITEM",
         mapping_authority_scope=policy.mapping_authority_scope,
         mapping_authority_granted=True,
         schema_item_count=len(tm_schema),
@@ -736,8 +739,8 @@ def validate_tm_page42_mapping_result(
         or result.source_row_count != TM_PAGE42_SOURCE_ROW_COUNT
         or result.mapped_source_row_count != TM_PAGE42_MAPPED_SOURCE_COUNT
         or result.source_only_row_count != TM_PAGE42_SOURCE_ONLY_COUNT
-        or result.source_question_row_count != 3
-        or result.ambiguous_source_row_count != 1
+        or result.source_question_row_count != 0
+        or result.ambiguous_source_row_count != 0
         or result.financial_slot_count != TM_PAGE42_FINANCIAL_SLOT_COUNT
         or result.extracted_value_count != TM_PAGE42_VALUE_COUNT
         or result.dash_count != TM_PAGE42_DASH_COUNT

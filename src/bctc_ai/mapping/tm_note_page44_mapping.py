@@ -23,39 +23,60 @@ from bctc_ai.tables.tm_note_page44 import ParsedTMPage44
 from bctc_ai.tables.tm_note_word_box import TMNoteRowKind
 
 TM_PAGE44_POLICY_RELATIVE_PATH = Path("config/mapping/tm-note-page44-v1.yaml")
-TM_PAGE44_SCHEMA_TOTAL = 1_613
-TM_PAGE44_RECONCILED_SCHEMA_COUNT = 42
-TM_PAGE44_MAPPED_SCHEMA_COUNT = 11
-TM_PAGE44_AMBIGUOUS_SCHEMA_COUNT = 5
-TM_PAGE44_UNRESOLVED_SCHEMA_COUNT = 10
-TM_PAGE44_NOT_OBSERVED_COUNT = 16
-TM_PAGE44_UNASSESSED_COUNT = 1_571
+TM_PAGE44_SCHEMA_TOTAL = 1_701
+TM_PAGE44_RECONCILED_SCHEMA_COUNT = 62
+TM_PAGE44_MAPPED_SCHEMA_COUNT = 31
+TM_PAGE44_AMBIGUOUS_SCHEMA_COUNT = 0
+TM_PAGE44_UNRESOLVED_SCHEMA_COUNT = 0
+TM_PAGE44_NOT_OBSERVED_COUNT = 31
+TM_PAGE44_UNASSESSED_COUNT = 1_639
 TM_PAGE44_SOURCE_ROW_COUNT = 24
-TM_PAGE44_MAPPED_SOURCE_COUNT = 10
+TM_PAGE44_MAPPED_SOURCE_COUNT = 21
 TM_PAGE44_PARTIAL_SOURCE_COUNT = 2
-TM_PAGE44_SOURCE_ONLY_COUNT = 14
-TM_PAGE44_SOURCE_QUESTION_COUNT = 13
+TM_PAGE44_SOURCE_ONLY_COUNT = 3
+TM_PAGE44_SOURCE_QUESTION_COUNT = 0
 TM_PAGE44_CONTEXT_SOURCE_COUNT = 3
 TM_PAGE44_FINANCIAL_SLOT_COUNT = 60
 TM_PAGE44_VALUE_COUNT = 51
 TM_PAGE44_DASH_COUNT = 9
-TM_PAGE44_MAPPED_VALUE_COUNT = 17
+TM_PAGE44_MAPPED_VALUE_COUNT = 59
 TM_PAGE44_NARRATIVE_FACT_COUNT = 5
 TM_PAGE44_NARRATIVE_VALUE_COUNT = 7
+TM_PAGE44_NARRATIVE_MAPPED_ASSIGNMENT_COUNT = 7
 TM_PAGE44_ACCOUNTING_CHECK_COUNT = 22
 TM_PAGE44_ACCOUNTING_PASS_COUNT = 14
 TM_PAGE44_ACCOUNTING_NOT_TESTABLE_COUNT = 8
 
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
-_SCOPED_IDS = set(range(1100, 1142))
-_MAPPED_IDS = {1100, 1101, 1109, 1112, 1118, 1119, 1122, 1128, 1129, 1131, 1141}
-_AMBIGUOUS_IDS = {1102, 1103, 1104, 1110, 1111}
-_UNRESOLVED_IDS = {1130, *range(1132, 1141)}
+_NARRATIVE_MAPPED_IDS = set(range(5978, 5985))
+_SCOPED_IDS = set(range(1100, 1142)) | _NARRATIVE_MAPPED_IDS | set(range(6008, 6021))
+_MAPPED_IDS = {
+    1100,
+    1101,
+    1109,
+    1112,
+    1118,
+    1119,
+    1122,
+    1128,
+    1129,
+    1131,
+    1141,
+    *_NARRATIVE_MAPPED_IDS,
+    *range(6008, 6021),
+}
+_AMBIGUOUS_IDS: set[int] = set()
+_UNRESOLVED_IDS: set[int] = set()
 _NOT_OBSERVED_IDS = {
+    1102,
+    1103,
+    1104,
     1105,
     1106,
     1107,
     1108,
+    1110,
+    1111,
     1113,
     1114,
     1115,
@@ -68,7 +89,72 @@ _NOT_OBSERVED_IDS = {
     1125,
     1126,
     1127,
+    1130,
+    *range(1132, 1141),
 }
+_NARRATIVE_MAPPING_CONTRACT = (
+    (
+        "CERTIFICATE_INTEREST_RATE_RANGE",
+        0,
+        5978,
+        "PERCENT_PER_YEAR",
+        "PERCENT_PER_YEAR",
+        1,
+        "SNAPSHOT",
+        "2026-03-31",
+    ),
+    (
+        "CERTIFICATE_INTEREST_RATE_RANGE",
+        1,
+        5979,
+        "PERCENT_PER_YEAR",
+        "PERCENT_PER_YEAR",
+        1,
+        "SNAPSHOT",
+        "2026-03-31",
+    ),
+    (
+        "BANK_BOND_INTEREST_RATE_RANGE",
+        0,
+        5980,
+        "PERCENT_PER_YEAR",
+        "PERCENT_PER_YEAR",
+        1,
+        "SNAPSHOT",
+        "2026-03-31",
+    ),
+    (
+        "BANK_BOND_INTEREST_RATE_RANGE",
+        1,
+        5981,
+        "PERCENT_PER_YEAR",
+        "PERCENT_PER_YEAR",
+        1,
+        "SNAPSHOT",
+        "2026-03-31",
+    ),
+    ("ISSUED_SHARE_COUNT", 0, 5982, "SHARE", "SHARE", 1, "SNAPSHOT", "2026-03-31"),
+    (
+        "PAR_VALUE",
+        0,
+        5983,
+        "VND_PER_SHARE",
+        "VND_PER_SHARE",
+        1,
+        "SNAPSHOT",
+        "2026-03-31",
+    ),
+    (
+        "STATED_CHARTER_CAPITAL",
+        0,
+        5984,
+        "VND_MILLION",
+        "VND",
+        1_000_000,
+        "SNAPSHOT",
+        "2026-03-31",
+    ),
+)
 _REQUIRED_FORBIDDEN = {
     "numeric_cell_text",
     "numeric_cell_value_as_item_selector",
@@ -77,6 +163,10 @@ _REQUIRED_FORBIDDEN = {
     "human_review_answers",
     "dash_as_zero",
     "accounting_equation_result_as_item_selector",
+    "accounting_equation_result_as_extracted_value",
+    "narrative_value_as_item_selector",
+    "capital_equation_result_as_item_selector",
+    "capital_equation_result_as_extracted_value",
 }
 
 
@@ -133,6 +223,22 @@ class TMPage44RowRule:
 
 
 @dataclass(frozen=True)
+class TMPage44NarrativeMappingRule:
+    fact_id: str
+    value_index: int
+    report_norm_id: int
+    expected_source_unit: str
+    canonical_unit: str
+    unit_multiplier: int
+    period_type: str
+    period_end: str
+
+    @property
+    def identity(self) -> tuple[str, int]:
+        return self.fact_id, self.value_index
+
+
+@dataclass(frozen=True)
 class TMPage44MappingPolicy:
     source_path: Path
     document: str
@@ -146,6 +252,7 @@ class TMPage44MappingPolicy:
     schema_total: int
     minimum_visible_label_similarity: float
     rows: tuple[TMPage44RowRule, ...]
+    narrative_fact_mappings: tuple[TMPage44NarrativeMappingRule, ...]
     ambiguous_schema_ids: tuple[int, ...]
     unresolved_schema_ids: tuple[int, ...]
     not_observed_schema_ids: tuple[int, ...]
@@ -161,6 +268,27 @@ class TMPage44CellAssignment:
     canonical_name: str
     observation: str | None
     value: Decimal | None
+
+
+@dataclass(frozen=True)
+class TMPage44NarrativeAssignment:
+    fact_id: str
+    value_index: int
+    source_row_ids: tuple[str, ...]
+    source_line_indices: tuple[int, ...]
+    raw_text: str
+    report_norm_id: int
+    canonical_name: str
+    observation: str
+    value: Decimal
+    source_unit: str
+    canonical_unit: str
+    unit_multiplier: int
+    period_start: str
+    period_end: str
+    period_role: str
+    period_type: str
+    mapping_basis: str
 
 
 @dataclass(frozen=True)
@@ -256,6 +384,7 @@ class TMPage44MappingResult:
     mapped_value_count: int
     narrative_fact_count: int
     narrative_value_count: int
+    narrative_mapped_assignment_count: int
     accounting_check_count: int
     accounting_pass_count: int
     accounting_not_testable_count: int
@@ -263,6 +392,7 @@ class TMPage44MappingResult:
     question_group_ids: tuple[str, ...]
     schema_dispositions: tuple[TMPage44SchemaDisposition, ...]
     source_dispositions: tuple[TMPage44SourceDisposition, ...]
+    narrative_assignments: tuple[TMPage44NarrativeAssignment, ...]
     accounting_checks: tuple[TMPage44AccountingCheck, ...]
     narrative_diagnostic: TMPage44NarrativeDiagnostic
     source_pdf_sha256: str
@@ -391,7 +521,7 @@ def load_tm_page44_mapping_policy(path: Path) -> TMPage44MappingPolicy:
             ):
                 raise TMPage44MappingError("fixed TM page-44 row rule is malformed")
         elif disposition is TMPage44RuleDisposition.PARTIAL_FIXED_CELLS:
-            if report_norm_id is not None or not fixed_cells or candidates or question != "Q051":
+            if report_norm_id is not None or not fixed_cells or candidates or question is not None:
                 raise TMPage44MappingError("partial TM page-44 row rule is malformed")
         elif report_norm_id is not None or fixed_cells:
             raise TMPage44MappingError("source-only TM page-44 row cannot select a fixed mapping")
@@ -411,23 +541,93 @@ def load_tm_page44_mapping_policy(path: Path) -> TMPage44MappingPolicy:
         )
     if len({row.identity for row in rows}) != len(rows):
         raise TMPage44MappingError("TM page-44 rule identities are duplicated")
+    raw_narrative_mappings = payload.get("narrative_fact_mappings")
+    if (
+        not isinstance(raw_narrative_mappings, list)
+        or len(raw_narrative_mappings) != TM_PAGE44_NARRATIVE_MAPPED_ASSIGNMENT_COUNT
+    ):
+        raise TMPage44MappingError("TM page-44 narrative mapping denominator drifted")
+    narrative_mappings = []
+    for record in raw_narrative_mappings:
+        if not isinstance(record, dict):
+            raise TMPage44MappingError("TM page-44 narrative mapping is invalid")
+        fact_id = record.get("fact_id")
+        value_index = record.get("value_index")
+        report_norm_id = record.get("report_norm_id")
+        expected_source_unit = record.get("expected_source_unit")
+        canonical_unit = record.get("canonical_unit")
+        unit_multiplier = record.get("unit_multiplier")
+        period_type = record.get("period_type")
+        period_end = str(record.get("period_end"))
+        if (
+            not isinstance(fact_id, str)
+            or not fact_id
+            or isinstance(value_index, bool)
+            or not isinstance(value_index, int)
+            or value_index < 0
+            or isinstance(report_norm_id, bool)
+            or not isinstance(report_norm_id, int)
+            or not isinstance(expected_source_unit, str)
+            or not expected_source_unit
+            or not isinstance(canonical_unit, str)
+            or not canonical_unit
+            or isinstance(unit_multiplier, bool)
+            or not isinstance(unit_multiplier, int)
+            or unit_multiplier <= 0
+            or period_type != "SNAPSHOT"
+            or period_end != "2026-03-31"
+        ):
+            raise TMPage44MappingError("TM page-44 narrative mapping fields are invalid")
+        narrative_mappings.append(
+            TMPage44NarrativeMappingRule(
+                fact_id=fact_id,
+                value_index=value_index,
+                report_norm_id=report_norm_id,
+                expected_source_unit=expected_source_unit,
+                canonical_unit=canonical_unit,
+                unit_multiplier=unit_multiplier,
+                period_type=period_type,
+                period_end=period_end,
+            )
+        )
+    narrative_contract = tuple(
+        (
+            rule.fact_id,
+            rule.value_index,
+            rule.report_norm_id,
+            rule.expected_source_unit,
+            rule.canonical_unit,
+            rule.unit_multiplier,
+            rule.period_type,
+            rule.period_end,
+        )
+        for rule in narrative_mappings
+    )
+    if narrative_contract != _NARRATIVE_MAPPING_CONTRACT:
+        raise TMPage44MappingError("TM page-44 narrative mapping contract drifted")
     fixed_ids = {rule.report_norm_id for rule in rows if rule.report_norm_id is not None} | {
         cell.report_norm_id for rule in rows for cell in rule.fixed_cells
     }
-    if fixed_ids != _MAPPED_IDS or sum(len(rule.fixed_cells) for rule in rows) != 3:
+    narrative_ids = {rule.report_norm_id for rule in narrative_mappings}
+    if (
+        fixed_ids | narrative_ids != _MAPPED_IDS
+        or narrative_ids != _NARRATIVE_MAPPED_IDS
+        or sum(len(rule.fixed_cells) for rule in rows) != 9
+    ):
         raise TMPage44MappingError("TM page-44 fixed ReportNormIds drifted")
-    ambiguous = _ids(payload.get("ambiguous_schema_ids"), "ambiguous IDs")
-    unresolved = _ids(payload.get("unresolved_schema_ids"), "unresolved IDs")
+    ambiguous = _ids(payload.get("ambiguous_schema_ids"), "ambiguous IDs", allow_empty=True)
+    unresolved = _ids(payload.get("unresolved_schema_ids"), "unresolved IDs", allow_empty=True)
     not_observed = _ids(payload.get("not_observed_schema_ids"), "not-observed IDs")
     if (
         set(ambiguous) != _AMBIGUOUS_IDS
         or set(unresolved) != _UNRESOLVED_IDS
         or set(not_observed) != _NOT_OBSERVED_IDS
-        or fixed_ids | set(ambiguous) | set(unresolved) | set(not_observed) != _SCOPED_IDS
+        or fixed_ids | narrative_ids | set(ambiguous) | set(unresolved) | set(not_observed)
+        != _SCOPED_IDS
     ):
         raise TMPage44MappingError("TM page-44 scoped schema statuses drifted")
     candidate_ids = {candidate for rule in rows for candidate in rule.candidate_report_norm_ids}
-    if candidate_ids != _AMBIGUOUS_IDS:
+    if candidate_ids:
         raise TMPage44MappingError("TM page-44 maturity candidates drifted")
     forbidden = payload.get("forbidden_mapping_inputs")
     if not isinstance(forbidden, list) or set(forbidden) != _REQUIRED_FORBIDDEN:
@@ -449,6 +649,7 @@ def load_tm_page44_mapping_policy(path: Path) -> TMPage44MappingPolicy:
         schema_total=_positive_int(payload, "schema_total"),
         minimum_visible_label_similarity=float(threshold),
         rows=tuple(rows),
+        narrative_fact_mappings=tuple(narrative_mappings),
         ambiguous_schema_ids=ambiguous,
         unresolved_schema_ids=unresolved,
         not_observed_schema_ids=not_observed,
@@ -612,8 +813,62 @@ def _narrative_diagnostic(parsed: ParsedTMPage44) -> TMPage44NarrativeDiagnostic
         exact_residual_vnd_million=residual,
         rounded_implied_capital_vnd_million=rounded,
         status=status,
-        reason="three visible narrative facts retained source-only; diagnostic does not map schema",
+        reason=(
+            "visible share count, par value, and stated capital are mapped independently; "
+            "the equation is validation only and does not select or impute a value"
+        ),
     )
+
+
+def _narrative_assignments(
+    parsed: ParsedTMPage44,
+    policy: TMPage44MappingPolicy,
+    schema_by_id: dict[int, SchemaItem],
+) -> tuple[TMPage44NarrativeAssignment, ...]:
+    facts = {fact.fact_id: fact for fact in parsed.narrative_facts}
+    expected_fact_ids = {rule.fact_id for rule in policy.narrative_fact_mappings}
+    if set(facts) != expected_fact_ids:
+        raise TMPage44MappingError("TM page-44 narrative fact partition drifted")
+    assignments = []
+    for rule in policy.narrative_fact_mappings:
+        fact = facts[rule.fact_id]
+        if (
+            fact.status != "SOURCE_ONLY_PROVENANCE"
+            or rule.value_index >= len(fact.values)
+            or rule.value_index >= len(fact.units)
+            or fact.units[rule.value_index] != rule.expected_source_unit
+            or fact.period_end.isoformat() != rule.period_end
+            or not fact.source_row_ids
+            or not fact.source_line_indices
+        ):
+            raise TMPage44MappingError(
+                f"TM page-44 narrative source contract drifted: {rule.fact_id}"
+            )
+        item = schema_by_id[rule.report_norm_id]
+        assignments.append(
+            TMPage44NarrativeAssignment(
+                fact_id=rule.fact_id,
+                value_index=rule.value_index,
+                source_row_ids=fact.source_row_ids,
+                source_line_indices=fact.source_line_indices,
+                raw_text=fact.raw_text,
+                report_norm_id=item.schema_id,
+                canonical_name=item.canonical_name,
+                observation=ObservationKind.VALUE.value,
+                value=fact.values[rule.value_index],
+                source_unit=fact.units[rule.value_index],
+                canonical_unit=rule.canonical_unit,
+                unit_multiplier=rule.unit_multiplier,
+                period_start=rule.period_end,
+                period_end=rule.period_end,
+                period_role="REPORT_DATE",
+                period_type=rule.period_type,
+                mapping_basis=(
+                    "VISIBLE_PAGE44_FIXED_NARRATIVE_FACT_ID_X_VALUE_ORDER_TO_FROZEN_SCHEMA"
+                ),
+            )
+        )
+    return tuple(assignments)
 
 
 def _source_reason(rule: TMPage44RowRule) -> str:
@@ -635,7 +890,7 @@ def reconcile_tm_page44_items(
     policy: TMPage44MappingPolicy,
     source_pdf_path: Path,
 ) -> TMPage44MappingResult:
-    """Reconcile scoped IDs 1100-1141 using only visible row/cell semantics."""
+    """Reconcile the page-44 row/cell and narrative scope from visible semantics."""
 
     if (
         parsed.page_tag != policy.page_tag
@@ -661,6 +916,7 @@ def reconcile_tm_page44_items(
         {rule.report_norm_id for rule in policy.rows if rule.report_norm_id is not None}
         | {cell.report_norm_id for rule in policy.rows for cell in rule.fixed_cells}
         | {candidate for rule in policy.rows for candidate in rule.candidate_report_norm_ids}
+        | {rule.report_norm_id for rule in policy.narrative_fact_mappings}
         | set(policy.ambiguous_schema_ids)
         | set(policy.unresolved_schema_ids)
         | set(policy.not_observed_schema_ids)
@@ -714,8 +970,18 @@ def reconcile_tm_page44_items(
                 for cell_index, (cell, axis) in enumerate(
                     zip(row.row.cells, table.axes, strict=True)
                 ):
-                    if cell.observation not in {ObservationKind.VALUE, ObservationKind.ZERO}:
-                        raise TMPage44MappingError("fixed page-44 row contains a non-value cell")
+                    if cell.observation not in {
+                        ObservationKind.VALUE,
+                        ObservationKind.ZERO,
+                        ObservationKind.DASH,
+                    }:
+                        raise TMPage44MappingError(
+                            "fixed page-44 row contains an unsupported observation"
+                        )
+                    if cell.observation is ObservationKind.DASH and (
+                        cell.value is not None or row.visual_cell_evidence[cell_index] is None
+                    ):
+                        raise TMPage44MappingError("mapped page-44 DASH lost pixel provenance")
                     assignments.append(
                         TMPage44CellAssignment(
                             cell_index=cell_index,
@@ -791,6 +1057,12 @@ def reconcile_tm_page44_items(
                 reason=reason,
             )
         )
+    narrative_assignments = _narrative_assignments(parsed, policy, schema_by_id)
+    for assignment in narrative_assignments:
+        source_refs_by_schema.setdefault(assignment.report_norm_id, []).extend(
+            f"{source_row_id}:narrative-value-{assignment.value_index + 1:04d}"
+            for source_row_id in assignment.source_row_ids
+        )
     checks = _accounting_checks(parsed)
     if (
         len(checks) != TM_PAGE44_ACCOUNTING_CHECK_COUNT
@@ -814,7 +1086,7 @@ def reconcile_tm_page44_items(
         if item.schema_id in source_refs_by_schema:
             status = TMPage44SchemaStatus.MAPPED_AUTOMATIC_SCOPED.value
             source_refs = tuple(source_refs_by_schema[item.schema_id])
-            reason = "one source-scoped page-44 row or cell passed fixed mapping authority"
+            reason = "one source-scoped page-44 row, cell, or narrative fact passed fixed mapping authority"
         elif item.schema_id in ambiguous:
             status = TMPage44SchemaStatus.AMBIGUOUS_MAPPING.value
             source_refs = tuple(ambiguous_refs[item.schema_id])
@@ -847,7 +1119,7 @@ def reconcile_tm_page44_items(
         assignment.value is not None
         for source in source_dispositions
         for assignment in source.mapped_assignments
-    )
+    ) + len(narrative_assignments)
     mapped_source_statuses = {
         TMPage44SourceStatus.MAPPED_AUTOMATIC_SCOPED.value,
         TMPage44SourceStatus.MAPPED_STRUCTURAL_SCOPED.value,
@@ -859,7 +1131,7 @@ def reconcile_tm_page44_items(
         page_number=44,
         page_tag=policy.page_tag,
         report_scope=policy.report_scope,
-        status="SCOPED_PAGE44_ROW_CELL_MAPPING_WITH_OPEN_BUCKET_AND_GRID_QUESTIONS",
+        status="SCOPED_PAGE44_UNIVERSAL_ROW_CELL_AND_NARRATIVE_MAPPING",
         mapping_authority_scope=policy.mapping_authority_scope,
         mapping_authority_granted=True,
         schema_item_count=len(tm_schema),
@@ -901,15 +1173,17 @@ def reconcile_tm_page44_items(
         mapped_value_count=mapped_values,
         narrative_fact_count=len(parsed.narrative_facts),
         narrative_value_count=parsed.narrative_value_count,
+        narrative_mapped_assignment_count=len(narrative_assignments),
         accounting_check_count=len(checks),
         accounting_pass_count=sum(check.status == "PASS" for check in checks),
         accounting_not_testable_count=sum(
             check.status == "NOT_TESTABLE_DASH_IS_NOT_ZERO" for check in checks
         ),
         accounting_fail_count=sum(check.status == "FAIL" for check in checks),
-        question_group_ids=("Q050", "Q051", "Q052"),
+        question_group_ids=(),
         schema_dispositions=tuple(schema_dispositions),
         source_dispositions=tuple(source_dispositions),
+        narrative_assignments=narrative_assignments,
         accounting_checks=checks,
         narrative_diagnostic=diagnostic,
         source_pdf_sha256=policy.source_pdf_sha256,
@@ -925,7 +1199,7 @@ def reconcile_tm_page44_items(
             "CONSTRAINED_PIXEL_DASH_EVIDENCE_FOR_STATUS_ONLY",
             "TM_SCHEMA_ID_NAME_ORDER",
             "ACCOUNTING_EQUATIONS_AS_POST_MAPPING_VALIDATION_ONLY",
-            "NARRATIVE_FACTS_AS_SOURCE_ONLY_PROVENANCE",
+            "VISIBLE_NARRATIVE_FACT_ID_VALUE_ORDER_PERIOD_AND_NATIVE_UNIT",
         ),
     )
     return validate_tm_page44_mapping_result(result)
@@ -958,11 +1232,12 @@ def validate_tm_page44_mapping_result(
         or result.mapped_value_count != TM_PAGE44_MAPPED_VALUE_COUNT
         or result.narrative_fact_count != TM_PAGE44_NARRATIVE_FACT_COUNT
         or result.narrative_value_count != TM_PAGE44_NARRATIVE_VALUE_COUNT
+        or result.narrative_mapped_assignment_count != TM_PAGE44_NARRATIVE_MAPPED_ASSIGNMENT_COUNT
         or result.accounting_check_count != TM_PAGE44_ACCOUNTING_CHECK_COUNT
         or result.accounting_pass_count != TM_PAGE44_ACCOUNTING_PASS_COUNT
         or result.accounting_not_testable_count != TM_PAGE44_ACCOUNTING_NOT_TESTABLE_COUNT
         or result.accounting_fail_count != 0
-        or result.question_group_ids != ("Q050", "Q051", "Q052")
+        or result.question_group_ids
         or not result.mapping_authority_granted
     ):
         raise TMPage44MappingError("TM page-44 mapping result denominator drifted")
@@ -988,6 +1263,28 @@ def validate_tm_page44_mapping_result(
         or by_status[TMPage44SchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value] != _NOT_OBSERVED_IDS
     ):
         raise TMPage44MappingError("TM page-44 exact schema status sets drifted")
+    narrative_contract = tuple(
+        (
+            assignment.fact_id,
+            assignment.value_index,
+            assignment.report_norm_id,
+            assignment.source_unit,
+            assignment.canonical_unit,
+            assignment.unit_multiplier,
+            assignment.period_type,
+            assignment.period_end,
+        )
+        for assignment in result.narrative_assignments
+    )
+    if narrative_contract != _NARRATIVE_MAPPING_CONTRACT or any(
+        assignment.observation != ObservationKind.VALUE.value
+        or assignment.period_start != assignment.period_end
+        or assignment.period_role != "REPORT_DATE"
+        or not assignment.source_row_ids
+        or not assignment.source_line_indices
+        for assignment in result.narrative_assignments
+    ):
+        raise TMPage44MappingError("TM page-44 narrative assignments drifted")
     dash_cells = [
         evidence
         for source in result.source_dispositions
@@ -1007,7 +1304,9 @@ __all__ = [
     "TMPage44MappingError",
     "TMPage44MappingPolicy",
     "TMPage44MappingResult",
+    "TMPage44NarrativeAssignment",
     "TMPage44NarrativeDiagnostic",
+    "TMPage44NarrativeMappingRule",
     "TMPage44SchemaDisposition",
     "TMPage44SchemaStatus",
     "TMPage44SourceDisposition",

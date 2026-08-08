@@ -16,7 +16,7 @@ from bctc_ai.tables.tm_note_page36 import load_tm_page36_policy, parse_tm_page36
 
 _OCR_FIXTURE = Path("tests/golden/tm/mbb-q1-2026-page-0036-ppocrv6-word-box.json")
 _SOURCE_PDF = Path("vietstock_bctc/MBB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf")
-_MAPPED_IDS = {829, 831, 832, 833, 848, 849, 862, 867}
+_MAPPED_IDS = {829, 831, 832, 833, 848, 849, 862, 867, 5959, 5960, 5961}
 _NOT_OBSERVED_IDS = {830, *range(834, 848), *range(850, 862), *range(863, 867)}
 
 
@@ -43,7 +43,7 @@ def _mapped(project_root: Path, tmp_path: Path):
     )
 
 
-def test_page36_reconciles_complete_829_867_branch_and_maps_eight_distinct_items(
+def test_page36_reconciles_complete_branch_and_maps_eleven_distinct_items(
     project_root: Path, tmp_path: Path
 ) -> None:
     result = _mapped(project_root, tmp_path)
@@ -51,23 +51,23 @@ def test_page36_reconciles_complete_829_867_branch_and_maps_eight_distinct_items
     assert validate_tm_page36_mapping_result(result) is result
     assert result.mapping_authority_scope.endswith("PDF_PAGE_36_FIXED_ROWS_ONLY")
     assert result.mapping_authority_granted
-    assert result.schema_item_count == 1_613
-    assert result.status_reconciled_schema_count == 39
-    assert result.mapped_schema_count == 8
+    assert result.schema_item_count == 1_701
+    assert result.status_reconciled_schema_count == 42
+    assert result.mapped_schema_count == 11
     assert result.not_observed_schema_count == 31
     assert result.not_applicable_schema_count == 0
     assert result.ambiguous_schema_count == 0
-    assert result.unassessed_schema_count == 1_574
+    assert result.unassessed_schema_count == 1_659
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == 14
-    assert result.mapped_source_row_count == 8
-    assert result.source_only_row_count == 6
-    assert result.source_question_row_count == 3
-    assert result.ambiguous_source_row_count == 2
+    assert result.mapped_source_row_count == 11
+    assert result.source_only_row_count == 3
+    assert result.source_question_row_count == 0
+    assert result.ambiguous_source_row_count == 0
     assert result.financial_slot_count == 26
     assert result.extracted_value_count == 26
     assert result.dash_count == 0
-    assert result.mapped_value_count == 16
+    assert result.mapped_value_count == 22
 
 
 def test_exact_mapped_not_observed_and_unassessed_schema_sets(
@@ -83,8 +83,8 @@ def test_exact_mapped_not_observed_and_unassessed_schema_sets(
 
     assert by_status[TMPage36SchemaStatus.MAPPED_AUTOMATIC_SCOPED.value] == _MAPPED_IDS
     assert by_status[TMPage36SchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value] == (_NOT_OBSERVED_IDS)
-    assert len(by_status[TMPage36SchemaStatus.UNASSESSED.value]) == 1_574
-    assert _MAPPED_IDS | _NOT_OBSERVED_IDS == set(range(829, 868))
+    assert len(by_status[TMPage36SchemaStatus.UNASSESSED.value]) == 1_659
+    assert _MAPPED_IDS | _NOT_OBSERVED_IDS == set(range(829, 868)) | {5959, 5960, 5961}
 
 
 def test_only_numeric_net_maps_829_and_duplicate_867_rows_are_not_exported(
@@ -112,25 +112,42 @@ def test_only_numeric_net_maps_829_and_duplicate_867_rows_are_not_exported(
     ]
 
 
-def test_provision_and_two_long_term_details_remain_exact_source_questions(
+def test_provision_and_two_long_term_details_map_with_exact_period_values(
     project_root: Path, tmp_path: Path
 ) -> None:
     result = _mapped(project_root, tmp_path)
-    questions = [item for item in result.source_dispositions if item.question_required]
+    additions = [
+        item for item in result.source_dispositions if item.report_norm_id in {5959, 5960, 5961}
+    ]
 
-    assert [item.row_id for item in questions] == [
-        "page-0036:long_term_net:row-0003",
-        "page-0036:long_term_detail:row-0001",
-        "page-0036:long_term_detail:row-0002",
+    assert [
+        (item.report_norm_id, item.row_id, item.values, item.period_ends) for item in additions
+    ] == [
+        (
+            5959,
+            "page-0036:long_term_net:row-0003",
+            (-91_228, -91_228),
+            ("2026-03-31", "2025-12-31"),
+        ),
+        (
+            5960,
+            "page-0036:long_term_detail:row-0001",
+            (492_584, 493_184),
+            ("2026-03-31", "2025-12-31"),
+        ),
+        (
+            5961,
+            "page-0036:long_term_detail:row-0002",
+            (66_550, 66_440),
+            ("2026-03-31", "2025-12-31"),
+        ),
     ]
-    assert [item.values for item in questions] == [
-        (-91_228, -91_228),
-        (492_584, 493_184),
-        (66_550, 66_440),
-    ]
-    assert [item.candidate_report_norm_ids for item in questions] == [(), (867,), (867,)]
-    assert questions[1].candidate_canonical_names == ("Đầu tư dài hạn khác",)
-    assert all(item.status == TMPage36SourceStatus.SOURCE_ONLY_QUESTION.value for item in questions)
+    assert all(
+        item.status == TMPage36SourceStatus.MAPPED_AUTOMATIC_SCOPED.value
+        and not item.question_required
+        and not item.candidate_report_norm_ids
+        for item in additions
+    )
 
 
 def test_eight_accounting_and_four_duplicate_checks_pass_exactly(

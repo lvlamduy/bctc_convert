@@ -22,30 +22,43 @@ from bctc_ai.schema.registry import SchemaItem
 from bctc_ai.tables.tm_note_page49 import ParsedTMPage49
 
 TM_PAGE49_POLICY_RELATIVE_PATH = Path("config/mapping/tm-note-page49-v1.yaml")
-TM_PAGE49_SCHEMA_TOTAL = 1_613
-TM_PAGE49_RECONCILED_SCHEMA_COUNT = 19
-TM_PAGE49_MAPPED_SCHEMA_COUNT = 7
-TM_PAGE49_AMBIGUOUS_SCHEMA_COUNT = 5
-TM_PAGE49_NOT_OBSERVED_COUNT = 7
-TM_PAGE49_UNASSESSED_COUNT = 1_594
+TM_PAGE49_SCHEMA_TOTAL = 1_701
+TM_PAGE49_RECONCILED_SCHEMA_COUNT = 22
+TM_PAGE49_MAPPED_SCHEMA_COUNT = 10
+TM_PAGE49_AMBIGUOUS_SCHEMA_COUNT = 0
+TM_PAGE49_NOT_OBSERVED_COUNT = 12
+TM_PAGE49_UNASSESSED_COUNT = 1_679
 TM_PAGE49_SOURCE_ROW_COUNT = 12
-TM_PAGE49_MAPPED_SOURCE_COUNT = 7
-TM_PAGE49_AMBIGUOUS_SOURCE_COUNT = 3
+TM_PAGE49_MAPPED_SOURCE_COUNT = 10
+TM_PAGE49_AMBIGUOUS_SOURCE_COUNT = 0
 TM_PAGE49_SOURCE_ONLY_COUNT = 2
-TM_PAGE49_QUESTION_SOURCE_COUNT = 3
+TM_PAGE49_QUESTION_SOURCE_COUNT = 0
 TM_PAGE49_FINANCIAL_SLOT_COUNT = 28
 TM_PAGE49_VALUE_COUNT = 27
 TM_PAGE49_DASH_COUNT = 1
-TM_PAGE49_MAPPED_VALUE_COUNT = 21
+TM_PAGE49_MAPPED_VALUE_COUNT = 27
 TM_PAGE49_ACCOUNTING_CHECK_COUNT = 6
 TM_PAGE49_ACCOUNTING_PASS_COUNT = 5
 TM_PAGE49_ACCOUNTING_NOT_TESTABLE_COUNT = 1
 
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
-_SCOPED_IDS = {*range(1221, 1229), *range(1269, 1280)}
-_MAPPED_IDS = {1221, 1227, 1228, 1269, 1270, 1271, 1278}
-_AMBIGUOUS_IDS = {1222, 1223, 1224, 1225, 1226}
-_NOT_OBSERVED_IDS = {1272, 1273, 1274, 1275, 1276, 1277, 1279}
+_SCOPED_IDS = {*range(1221, 1229), *range(1269, 1280), *range(6031, 6034)}
+_MAPPED_IDS = {1221, 1227, 1228, 1269, 1270, 1271, 1278, *range(6031, 6034)}
+_AMBIGUOUS_IDS: set[int] = set()
+_NOT_OBSERVED_IDS = {
+    1222,
+    1223,
+    1224,
+    1225,
+    1226,
+    1272,
+    1273,
+    1274,
+    1275,
+    1276,
+    1277,
+    1279,
+}
 _REQUIRED_FORBIDDEN = {
     "numeric_cell_text",
     "numeric_cell_value_as_item_selector",
@@ -330,7 +343,7 @@ def load_tm_page49_mapping_policy(path: Path) -> TMPage49MappingPolicy:
         if row.disposition is TMPage49RuleDisposition.AMBIGUOUS_MAPPING
         for candidate in row.candidate_report_norm_ids
     }
-    ambiguous = _ids(payload.get("ambiguous_schema_ids"), "ambiguous schema IDs")
+    ambiguous = _ids(payload.get("ambiguous_schema_ids"), "ambiguous schema IDs", allow_empty=True)
     not_observed = _ids(payload.get("not_observed_schema_ids"), "not-observed schema IDs")
     if (
         fixed_ids != _MAPPED_IDS
@@ -641,7 +654,7 @@ def reconcile_tm_page49_items(
         page_number=49,
         page_tag=policy.page_tag,
         report_scope=policy.report_scope,
-        status="PARTIAL_SCOPED_MAPPING_REQUIRES_REVIEW",
+        status="UNIVERSAL_SCOPED_MAPPING_COMPLETE",
         mapping_authority_scope=policy.mapping_authority_scope,
         mapping_authority_granted=True,
         schema_item_count=len(tm_schema),

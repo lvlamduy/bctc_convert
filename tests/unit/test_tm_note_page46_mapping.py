@@ -36,12 +36,34 @@ _MAPPED_IDS = {
     1164,
     1166,
     1167,
+    1170,
     1171,
     1172,
     1174,
+    5985,
+    5986,
+    5987,
+    5988,
+    5989,
+    6021,
+    6022,
+    6023,
+    6024,
+    6025,
 }
-_AMBIGUOUS_IDS = {1158, 1159, 1162, 1168, 1169, 1170}
-_NOT_OBSERVED_IDS = {1147, 1155, 1161, 1165, 1173}
+_AMBIGUOUS_IDS: set[int] = set()
+_NOT_OBSERVED_IDS = {
+    1147,
+    1155,
+    1158,
+    1159,
+    1161,
+    1162,
+    1165,
+    1168,
+    1169,
+    1173,
+}
 
 
 def _mapped(project_root: Path, tmp_path: Path):
@@ -67,7 +89,7 @@ def _mapped(project_root: Path, tmp_path: Path):
     )
 
 
-def test_page46_reconciles_exact_1142_1174_scope_and_maps_twenty_two_items(
+def test_page46_reconciles_universal_scope_and_maps_printed_children_plus_derived_parent(
     project_root: Path, tmp_path: Path
 ) -> None:
     result = _mapped(project_root, tmp_path)
@@ -75,23 +97,24 @@ def test_page46_reconciles_exact_1142_1174_scope_and_maps_twenty_two_items(
     assert validate_tm_page46_mapping_result(result) is result
     assert result.mapping_authority_scope.endswith("PDF_PAGE_46_FIXED_ROWS_ONLY")
     assert result.mapping_authority_granted
-    assert result.schema_item_count == 1_613
-    assert result.status_reconciled_schema_count == 33
-    assert result.mapped_schema_count == 22
-    assert result.ambiguous_schema_count == 6
-    assert result.not_observed_schema_count == 5
+    assert result.schema_item_count == 1_701
+    assert result.status_reconciled_schema_count == 43
+    assert result.mapped_schema_count == 33
+    assert result.ambiguous_schema_count == 0
+    assert result.not_observed_schema_count == 10
     assert result.not_applicable_schema_count == 0
-    assert result.unassessed_schema_count == 1_580
+    assert result.unassessed_schema_count == 1_658
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == 38
-    assert result.mapped_source_row_count == 22
-    assert result.ambiguous_source_row_count == 5
-    assert result.source_only_row_count == 11
-    assert result.source_question_row_count == 10
+    assert result.mapped_source_row_count == 32
+    assert result.ambiguous_source_row_count == 0
+    assert result.source_only_row_count == 6
+    assert result.source_question_row_count == 0
     assert result.financial_slot_count == 62
     assert result.extracted_value_count == 60
     assert result.dash_count == 2
-    assert result.mapped_value_count == 42
+    assert result.mapped_value_count == 60
+    assert result.derived_assignment_count == 2
 
 
 def test_exact_mapped_ambiguous_not_observed_and_unassessed_schema_sets(
@@ -108,41 +131,148 @@ def test_exact_mapped_ambiguous_not_observed_and_unassessed_schema_sets(
     assert by_status[TMPage46SchemaStatus.MAPPED_AUTOMATIC_SCOPED.value] == _MAPPED_IDS
     assert by_status[TMPage46SchemaStatus.AMBIGUOUS_MAPPING.value] == _AMBIGUOUS_IDS
     assert by_status[TMPage46SchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value] == _NOT_OBSERVED_IDS
-    assert len(by_status[TMPage46SchemaStatus.UNASSESSED.value]) == 1_580
+    assert len(by_status[TMPage46SchemaStatus.UNASSESSED.value]) == 1_658
     assert 5718 in by_status[TMPage46SchemaStatus.UNASSESSED.value]
 
 
-def test_ten_open_source_rows_retain_values_periods_candidates_and_dash(
+def test_five_schema_gaps_now_map_directly_with_values_periods_and_no_candidates(
     project_root: Path, tmp_path: Path
 ) -> None:
     result = _mapped(project_root, tmp_path)
-    questions = [item for item in result.source_dispositions if item.question_required]
-
-    assert [item.row_id for item in questions] == [
-        "page-0046:net_interest:row-0017",
-        "page-0046:net_service:row-0003",
-        "page-0046:net_service:row-0004",
-        "page-0046:net_service:row-0007",
-        "page-0046:net_service:row-0012",
-        "page-0046:net_service:row-0014",
-        "page-0046:net_service:row-0015",
-        "page-0046:net_service:row-0017",
-        "page-0046:net_service:row-0018",
-        "page-0046:net_service:row-0021",
+    resolved = [
+        item
+        for item in result.source_dispositions
+        if item.row_id
+        in {
+            "page-0046:net_service:row-0003",
+            "page-0046:net_service:row-0007",
+            "page-0046:net_service:row-0012",
+            "page-0046:net_service:row-0015",
+            "page-0046:net_service:row-0018",
+        }
     ]
-    assert questions[1].candidate_report_norm_ids == (1158, 1159)
-    assert questions[4].candidate_report_norm_ids == (1168, 1169)
-    assert questions[6].candidate_report_norm_ids == (1170,)
-    assert questions[8].candidate_report_norm_ids == (1170,)
-    assert questions[5].observations == ("DASH", "DASH")
-    assert questions[5].values == (None, None)
-    assert all(evidence is not None for evidence in questions[5].visual_cell_evidence)
-    assert questions[0].values == (14_913_117, 11_692_184)
-    assert questions[-1].values == (1_708_744, 1_235_416)
-    assert all(item.period_roles == ("CURRENT", "COMPARATIVE") for item in questions)
-    assert (
-        sum(item.status == TMPage46SourceStatus.AMBIGUOUS_MAPPING.value for item in questions) == 5
+
+    assert [(item.report_norm_id, item.values) for item in resolved] == [
+        (6021, (1_460_480, 755_554)),
+        (6022, (38_898, 126_730)),
+        (6023, (-675_848, -551_556)),
+        (6024, (-539_743, -232_408)),
+        (6025, (-59_748, -32_105)),
+    ]
+    assert all(item.period_roles == ("CURRENT", "COMPARATIVE") for item in resolved)
+    assert all(
+        item.status == TMPage46SourceStatus.MAPPED_AUTOMATIC_SCOPED.value
+        and not item.question_required
+        and not item.candidate_report_norm_ids
+        for item in resolved
     )
+
+
+def test_1170_is_explicitly_derived_without_overwriting_printed_child_values(
+    project_root: Path, tmp_path: Path
+) -> None:
+    result = _mapped(project_root, tmp_path)
+
+    assert [
+        (
+            item.report_norm_id,
+            item.component_report_norm_ids,
+            item.component_values,
+            item.value,
+            item.period_role,
+            item.mapping_basis,
+        )
+        for item in result.derived_assignments
+    ] == [
+        (
+            1170,
+            (6024, 6025),
+            (-539_743, -59_748),
+            -599_491,
+            "CURRENT",
+            "DERIVED_SUM_OF_EXPLICIT_PRINTED_CHILDREN_6024_6025",
+        ),
+        (
+            1170,
+            (6024, 6025),
+            (-232_408, -32_105),
+            -264_513,
+            "COMPARATIVE",
+            "DERIVED_SUM_OF_EXPLICIT_PRINTED_CHILDREN_6024_6025",
+        ),
+    ]
+    children = {
+        item.report_norm_id: item.values
+        for item in result.source_dispositions
+        if item.report_norm_id in {6024, 6025}
+    }
+    assert children == {
+        6024: (-539_743, -232_408),
+        6025: (-59_748, -32_105),
+    }
+    parent = next(item for item in result.schema_dispositions if item.report_norm_id == 1170)
+    assert parent.status == TMPage46SchemaStatus.MAPPED_AUTOMATIC_SCOPED.value
+    assert parent.source_row_ids == (
+        "page-0046:net_service:row-0015",
+        "page-0046:net_service:row-0018",
+    )
+
+
+def test_five_promoted_rows_preserve_printed_values_dash_periods_units_and_formula_validation(
+    project_root: Path, tmp_path: Path
+) -> None:
+    result = _mapped(project_root, tmp_path)
+    promoted = {
+        item.report_norm_id: item
+        for item in result.source_dispositions
+        if item.report_norm_id in set(range(5985, 5990))
+    }
+
+    assert set(promoted) == set(range(5985, 5990))
+    assert {
+        report_norm_id: (item.row_id, item.observations, item.values)
+        for report_norm_id, item in promoted.items()
+    } == {
+        5985: (
+            "page-0046:net_interest:row-0017",
+            ("VALUE", "VALUE"),
+            (14_913_117, 11_692_184),
+        ),
+        5986: (
+            "page-0046:net_service:row-0004",
+            ("VALUE", "VALUE"),
+            (148_427, 98_268),
+        ),
+        5987: ("page-0046:net_service:row-0014", ("DASH", "DASH"), (None, None)),
+        5988: (
+            "page-0046:net_service:row-0017",
+            ("VALUE", "VALUE"),
+            (-38_259, -59_707),
+        ),
+        5989: (
+            "page-0046:net_service:row-0021",
+            ("VALUE", "VALUE"),
+            (1_708_744, 1_235_416),
+        ),
+    }
+    assert all(
+        item.status == TMPage46SourceStatus.MAPPED_AUTOMATIC_SCOPED.value
+        and item.period_starts == ("2026-01-01", "2025-01-01")
+        and item.period_ends == ("2026-03-31", "2025-03-31")
+        and item.period_roles == ("CURRENT", "COMPARATIVE")
+        and item.unit == "VND"
+        and item.unit_multiplier == 1_000_000
+        and not item.question_required
+        for item in promoted.values()
+    )
+    assert all(evidence is not None for evidence in promoted[5987].visual_cell_evidence)
+    formula_checks = [
+        check
+        for check in result.accounting_checks
+        if check.check_id in {"NET_INTEREST_NET", "NET_SERVICE_NET"}
+    ]
+    assert len(formula_checks) == 4
+    assert all(check.status == "PASS" and check.residual == 0 for check in formula_checks)
 
 
 def test_brokerage_income_maps_to_generic_securities_service_with_exact_period_values(
@@ -204,4 +334,9 @@ def test_mapping_policy_forbids_values_history_review_dash_zero_and_equation_sel
         "human_review_answers",
         "dash_as_zero",
         "accounting_equation_result_as_item_selector",
+        "accounting_equation_result_as_extracted_value",
+    }
+    assert set(policy.additional_scoped_schema_ids) == {
+        *range(5985, 5990),
+        *range(6021, 6026),
     }

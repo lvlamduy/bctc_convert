@@ -69,8 +69,8 @@ acceptance_gates:
 # 40 one-to-one rows still require agreement from a second semantic reader.
 candidate_reconciliation:
   applicable_branch: DIRECT
-  schema_total: 108
-  applicable_branch_total: 51
+  schema_total: 109
+  applicable_branch_total: 52
   non_applicable_branch_total: 57
   visible_source_row_total: 43
   minimum_independent_semantic_streams_for_automatic_selection: 2
@@ -80,6 +80,7 @@ candidate_reconciliation:
   minimum_cross_reader_label_similarity: 0.85
   not_observed_report_norm_ids:
     - 4143
+    - 4144
     - 4145
     - 4146
     - 4120
@@ -88,17 +89,17 @@ candidate_reconciliation:
     - 4152
     - 4117
   business_resolved_source_rows:
-    - key: ACCEPTED_OTHER_FINANCIAL_LIABILITIES_WORDING_VARIANT
+    - key: USER_Q018_CONTEXTUAL_WORDING_TO_4140
       source_row_id: page-0007:row-0024
       visible_label_anchor: tang giam cac cong cu tai chinh phai sinh va cac tai san tai chinh khac
       minimum_anchor_similarity: 0.85
       report_norm_id: 4140
-      decision_basis: APPROVED_BUSINESS_SCHEMA_MAPPING
-    - key: INVESTMENT_PROPERTY_NET_TO_4144
+      decision_basis: USER_AUTHORIZED_CONTEXTUAL_WORDING_MAPPING
+    - key: INVESTMENT_PROPERTY_NET_TO_6034
       source_row_id: page-0007:row-0031
       visible_label_anchor: tien thu chi bat dong san dau tu
       minimum_anchor_similarity: 0.85
-      report_norm_id: 4144
+      report_norm_id: 6034
       decision_basis: APPROVED_BUSINESS_SCHEMA_MAPPING
     - key: INVESTMENT_CONTRIBUTION_NET_TO_5714
       source_row_id: page-0007:row-0032

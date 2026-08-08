@@ -10,28 +10,26 @@ mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_PDF_PAGE_47_FIXED_ROWS_ONLY
 source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
 source_render_sha256: 42201a9afdec2297c43adfe0c8e504b3fdab911bab19bc4362bb8b048658e211
 source_ocr_sha256: 6dd245762d418b0ab85e28f6fdf50423a8411436afe0a3391a822c18e71f790d
-schema_total: 1613
-scoped_schema_ids: [1175, 1176, 1177, 1178, 1179, 1180, 1181, 1182, 1183, 1184, 1185, 1186, 1187, 1188, 1189, 1190, 1191, 1192, 1193, 1194, 1195, 1196, 1197, 1218, 1229, 1230, 1231, 1232, 1233, 1234, 1235, 1236, 1237, 1238, 1239, 1240, 1241, 1242, 1243, 1244, 1245, 1246]
+schema_total: 1701
+scoped_schema_ids: [1175, 1176, 1177, 1178, 1179, 1180, 1181, 1182, 1183, 1184, 1185, 1186, 1187, 1188, 1189, 1190, 1191, 1192, 1193, 1194, 1195, 1196, 1197, 5990, 1218, 1229, 1230, 1231, 1232, 1233, 1234, 1235, 1236, 1237, 1238, 1239, 1240, 1241, 1242, 1243, 1244, 1245, 1246, 6026, 6027, 6028, 6029, 6030]
 minimum_visible_label_similarity: 0.78
 
 rows:
-  # Note 3: combined spot-FX-and-gold detail cannot be split across the
-  # separate supplied identities without business input.
+  # Note 3: combined spot-FX-and-gold rows map to their exact universal items.
   - {table_key: NET_FX, ordinal: 1, visible_label_anchor: lai thuan tu hoat dong kinh doanh ngoai hoi, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, candidate_report_norm_ids: []}
   - {table_key: NET_FX, ordinal: 2, visible_label_anchor: thu nhap tu hoat dong kinh doanh ngoai hoi, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, candidate_report_norm_ids: []}
-  - {table_key: NET_FX, ordinal: 3, visible_label_anchor: thu tu kinh doanh ngoai te giao ngay va vang, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: AMBIGUOUS_MAPPING, report_norm_id: null, candidate_report_norm_ids: [1177, 1178]}
+  - {table_key: NET_FX, ordinal: 3, visible_label_anchor: thu tu kinh doanh ngoai te giao ngay va vang, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 6026, candidate_report_norm_ids: []}
   - {table_key: NET_FX, ordinal: 4, visible_label_anchor: thu tu cac cong cu tai chinh phai sinh tien te, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1179, candidate_report_norm_ids: []}
   - {table_key: NET_FX, ordinal: 5, visible_label_anchor: null, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1176, candidate_report_norm_ids: []}
   - {table_key: NET_FX, ordinal: 6, visible_label_anchor: chi phi hoat dong kinh doanh ngoai hoi, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, candidate_report_norm_ids: []}
-  - {table_key: NET_FX, ordinal: 7, visible_label_anchor: chi ve kinh doanh ngoai te giao ngay va vang, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: AMBIGUOUS_MAPPING, report_norm_id: null, candidate_report_norm_ids: [1183, 1184]}
+  - {table_key: NET_FX, ordinal: 7, visible_label_anchor: chi ve kinh doanh ngoai te giao ngay va vang, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 6027, candidate_report_norm_ids: []}
   - {table_key: NET_FX, ordinal: 8, visible_label_anchor: chi ve cac cong cu tai chinh phai sinh tien te, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1185, candidate_report_norm_ids: []}
   - {table_key: NET_FX, ordinal: 9, visible_label_anchor: null, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1182, candidate_report_norm_ids: []}
   - {table_key: NET_FX, ordinal: 10, visible_label_anchor: lai thuan tu hoat dong kinh doanh ngoai hoi, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1175, candidate_report_norm_ids: []}
 
-  # Note 4: both component subtotals map exactly. The combined terminal total
-  # has no supplied identity. The long-term-investment provision row could be
-  # the local "Khac" child 1197 or the semantically closer expense item 1218;
-  # section context and label specificity conflict, so it remains ambiguous.
+  # Note 4: both component subtotals and the printed combined terminal total
+  # map exactly. The terminal values are formula-validated only. The printed
+  # long-term-investment provision row maps to its exact universal identity.
   - {table_key: NET_SECURITIES, ordinal: 1, visible_label_anchor: lai thuan tu chung khoan kinh doanh chung khoan dau tu, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, candidate_report_norm_ids: []}
   - {table_key: NET_SECURITIES, ordinal: 2, visible_label_anchor: lai lo thuan tu mua ban chung khoan kinh doanh, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, candidate_report_norm_ids: []}
   - {table_key: NET_SECURITIES, ordinal: 3, visible_label_anchor: thu nhap tu mua ban chung khoan kinh doanh, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1189, candidate_report_norm_ids: []}
@@ -42,21 +40,21 @@ rows:
   - {table_key: NET_SECURITIES, ordinal: 8, visible_label_anchor: thu nhap tu mua ban chung khoan dau tu, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1194, candidate_report_norm_ids: []}
   - {table_key: NET_SECURITIES, ordinal: 9, visible_label_anchor: chi ve chung khoan dau tu, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1195, candidate_report_norm_ids: []}
   - {table_key: NET_SECURITIES, ordinal: 10, visible_label_anchor: trich lap hoan nhap du phong rui ro chung khoan dau tu, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1196, candidate_report_norm_ids: []}
-  - {table_key: NET_SECURITIES, ordinal: 11, visible_label_anchor: trich lap hoan nhap du phong giam gia gop von dau tu dai han, expected_row_kind: NUMERIC, expected_observations: [DASH, VALUE], disposition: AMBIGUOUS_MAPPING, report_norm_id: null, candidate_report_norm_ids: [1197, 1218]}
+  - {table_key: NET_SECURITIES, ordinal: 11, visible_label_anchor: trich lap hoan nhap du phong giam gia gop von dau tu dai han, expected_row_kind: NUMERIC, expected_observations: [DASH, VALUE], disposition: FIXED, report_norm_id: 6028, candidate_report_norm_ids: []}
   - {table_key: NET_SECURITIES, ordinal: 12, visible_label_anchor: null, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1193, candidate_report_norm_ids: []}
-  - {table_key: NET_SECURITIES, ordinal: 13, visible_label_anchor: lai thuan tu chung khoan kinh doanh chung khoan dau tu, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, candidate_report_norm_ids: []}
+  - {table_key: NET_SECURITIES, ordinal: 13, visible_label_anchor: lai thuan tu chung khoan kinh doanh chung khoan dau tu, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 5990, candidate_report_norm_ids: []}
 
-  # Note 5: the source shows a net note, while the supplied schema separates
-  # income and expense. Debt already handled maps to the recovery identity;
-  # the narrower bad-debt-disposition identity is not observed on this page.
+  # Note 5: the printed net result and other-income/(expense) detail retain
+  # distinct universal identities. Debt already handled maps to the recovery
+  # identity; the narrower bad-debt-disposition identity is not observed.
   - {table_key: NET_OTHER, ordinal: 1, visible_label_anchor: lai thuan tu hoat dong kinh doanh khac, expected_row_kind: LABEL_ONLY, expected_observations: [BLANK, BLANK], disposition: SOURCE_ONLY_VALIDATION, report_norm_id: null, candidate_report_norm_ids: []}
   - {table_key: NET_OTHER, ordinal: 2, visible_label_anchor: thu tu cac khoan no da xu ly, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1234, candidate_report_norm_ids: []}
   - {table_key: NET_OTHER, ordinal: 3, visible_label_anchor: lai tu cac cong cu tai chinh phai sinh khac, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 1232, candidate_report_norm_ids: []}
-  - {table_key: NET_OTHER, ordinal: 4, visible_label_anchor: thu nhap chi phi khac, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: AMBIGUOUS_MAPPING, report_norm_id: null, candidate_report_norm_ids: [1239, 1246]}
-  - {table_key: NET_OTHER, ordinal: 5, visible_label_anchor: null, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: SOURCE_ONLY_QUESTION, report_norm_id: null, candidate_report_norm_ids: []}
+  - {table_key: NET_OTHER, ordinal: 4, visible_label_anchor: thu nhap chi phi khac, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 6030, candidate_report_norm_ids: []}
+  - {table_key: NET_OTHER, ordinal: 5, visible_label_anchor: null, expected_row_kind: NUMERIC, expected_observations: [VALUE, VALUE], disposition: FIXED, report_norm_id: 6029, candidate_report_norm_ids: []}
 
-ambiguous_schema_ids: [1177, 1178, 1183, 1184, 1197, 1218, 1239, 1246]
-not_observed_schema_ids: [1180, 1181, 1186, 1187, 1192, 1229, 1230, 1231, 1233, 1235, 1236, 1237, 1238, 1240, 1241, 1242, 1243, 1244, 1245]
+ambiguous_schema_ids: []
+not_observed_schema_ids: [1177, 1178, 1180, 1181, 1183, 1184, 1186, 1187, 1192, 1197, 1218, 1229, 1230, 1231, 1233, 1235, 1236, 1237, 1238, 1239, 1240, 1241, 1242, 1243, 1244, 1245, 1246]
 
 forbidden_mapping_inputs:
   - numeric_cell_text
@@ -66,3 +64,4 @@ forbidden_mapping_inputs:
   - human_review_answers
   - dash_as_zero
   - accounting_equation_result_as_item_selector
+  - accounting_equation_result_as_extracted_value

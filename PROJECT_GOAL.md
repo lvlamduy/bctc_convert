@@ -4,7 +4,7 @@
 
 Input: one or more scanned, born-digital, or mixed Vietnamese bank financial-report PDFs.
 
-Output: a complete Excel workbook that preserves the supplied schema/template and records the correct value, period, unit, sign, statement, scope, section, and cell-level provenance for every accepted value.
+Output: a complete Excel workbook derived from the evolving `UNIVERSAL_BANK_BCTC_SCHEMA` and recording the correct value, period, unit, sign, statement, scope, section, and cell-level provenance for every accepted observation. The supplied 1,593-item template is the stable `BASE_SCHEMA`, not a closed universe.
 
 The current statement scope is CDKT, KQKD, the applicable LCTT branch, and quantitative TM. CSTC is excluded unless the user changes scope.
 
@@ -21,7 +21,7 @@ A production run is complete only when all of the following are evidenced:
 7. Uncertain or conflicting results fail closed to review or unresolved.
 8. Role A machine reference and Role B production are isolated during frozen evaluation.
 9. Applicable coverage and full-tuple accuracy are measured per statement and TM group against an explicit denominator.
-10. The output workbook preserves old IDs and order and includes PROVENANCE, REVIEW, UNRESOLVED, QUESTIONS, SCHEMA_ADDITIONS, and RUN_METADATA.
+10. The output workbook preserves every accepted ReportNormId and accounting meaning, uses explicit universal `DisplayOrder`/`ParentId`, represents evidence-backed additions, and includes PROVENANCE, REVIEW, UNRESOLVED, QUESTIONS, SCHEMA_ADDITIONS, and RUN_METADATA.
 11. A versioned off-machine backup, MongoDB dump where applicable, and restore test all pass.
 
 ## Non-goals

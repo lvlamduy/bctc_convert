@@ -22,27 +22,29 @@ from bctc_ai.schema.registry import SchemaItem
 from bctc_ai.tables.tm_note_page46 import ParsedTMPage46
 
 TM_PAGE46_POLICY_RELATIVE_PATH = Path("config/mapping/tm-note-page46-v1.yaml")
-TM_PAGE46_SCHEMA_TOTAL = 1_613
-TM_PAGE46_RECONCILED_SCHEMA_COUNT = 33
-TM_PAGE46_MAPPED_SCHEMA_COUNT = 22
-TM_PAGE46_AMBIGUOUS_SCHEMA_COUNT = 6
-TM_PAGE46_NOT_OBSERVED_COUNT = 5
-TM_PAGE46_UNASSESSED_COUNT = 1_580
+TM_PAGE46_SCHEMA_TOTAL = 1_701
+TM_PAGE46_RECONCILED_SCHEMA_COUNT = 43
+TM_PAGE46_MAPPED_SCHEMA_COUNT = 33
+TM_PAGE46_AMBIGUOUS_SCHEMA_COUNT = 0
+TM_PAGE46_NOT_OBSERVED_COUNT = 10
+TM_PAGE46_UNASSESSED_COUNT = 1_658
 TM_PAGE46_SOURCE_ROW_COUNT = 38
-TM_PAGE46_MAPPED_SOURCE_COUNT = 22
-TM_PAGE46_AMBIGUOUS_SOURCE_COUNT = 5
-TM_PAGE46_SOURCE_ONLY_COUNT = 11
-TM_PAGE46_QUESTION_SOURCE_COUNT = 10
+TM_PAGE46_MAPPED_SOURCE_COUNT = 32
+TM_PAGE46_AMBIGUOUS_SOURCE_COUNT = 0
+TM_PAGE46_SOURCE_ONLY_COUNT = 6
+TM_PAGE46_QUESTION_SOURCE_COUNT = 0
 TM_PAGE46_FINANCIAL_SLOT_COUNT = 62
 TM_PAGE46_VALUE_COUNT = 60
 TM_PAGE46_DASH_COUNT = 2
-TM_PAGE46_MAPPED_VALUE_COUNT = 42
+TM_PAGE46_MAPPED_VALUE_COUNT = 60
+TM_PAGE46_DERIVED_ASSIGNMENT_COUNT = 2
 TM_PAGE46_ACCOUNTING_CHECK_COUNT = 12
 TM_PAGE46_ACCOUNTING_PASS_COUNT = 10
 TM_PAGE46_ACCOUNTING_NOT_TESTABLE_COUNT = 2
 
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
-_SCOPED_IDS = set(range(1142, 1175))
+_ADDITIONAL_SCOPED_IDS = {5985, 5986, 5987, 5988, 5989, *range(6021, 6026)}
+_SCOPED_IDS = set(range(1142, 1175)) | _ADDITIONAL_SCOPED_IDS
 _MAPPED_IDS = {
     1142,
     1143,
@@ -63,12 +65,19 @@ _MAPPED_IDS = {
     1164,
     1166,
     1167,
+    1170,
     1171,
     1172,
     1174,
+    5985,
+    5986,
+    5987,
+    5988,
+    5989,
+    *range(6021, 6026),
 }
-_AMBIGUOUS_IDS = {1158, 1159, 1162, 1168, 1169, 1170}
-_NOT_OBSERVED_IDS = {1147, 1155, 1161, 1165, 1173}
+_AMBIGUOUS_IDS: set[int] = set()
+_NOT_OBSERVED_IDS = {1147, 1155, 1158, 1159, 1161, 1162, 1165, 1168, 1169, 1173}
 _REQUIRED_FORBIDDEN = {
     "numeric_cell_text",
     "numeric_cell_value_as_item_selector",
@@ -77,6 +86,7 @@ _REQUIRED_FORBIDDEN = {
     "human_review_answers",
     "dash_as_zero",
     "accounting_equation_result_as_item_selector",
+    "accounting_equation_result_as_extracted_value",
 }
 
 
@@ -135,6 +145,7 @@ class TMPage46MappingPolicy:
     schema_total: int
     scoped_schema_id_start: int
     scoped_schema_id_end: int
+    additional_scoped_schema_ids: tuple[int, ...]
     minimum_visible_label_similarity: float
     rows: tuple[TMPage46RowRule, ...]
     ambiguous_schema_ids: tuple[int, ...]
@@ -191,6 +202,24 @@ class TMPage46AccountingCheck:
 
 
 @dataclass(frozen=True)
+class TMPage46DerivedAssignment:
+    report_norm_id: int
+    canonical_name: str
+    component_report_norm_ids: tuple[int, ...]
+    component_row_ids: tuple[str, ...]
+    component_values: tuple[Decimal, ...]
+    observation: str
+    value: Decimal
+    period_start: str
+    period_end: str
+    period_role: str
+    period_type: str
+    unit: str
+    unit_multiplier: int
+    mapping_basis: str
+
+
+@dataclass(frozen=True)
 class TMPage46MappingResult:
     statement_type: str
     document: str
@@ -217,11 +246,13 @@ class TMPage46MappingResult:
     extracted_value_count: int
     dash_count: int
     mapped_value_count: int
+    derived_assignment_count: int
     accounting_check_count: int
     accounting_pass_count: int
     accounting_not_testable_count: int
     schema_dispositions: tuple[TMPage46SchemaDisposition, ...]
     source_dispositions: tuple[TMPage46SourceDisposition, ...]
+    derived_assignments: tuple[TMPage46DerivedAssignment, ...]
     accounting_checks: tuple[TMPage46AccountingCheck, ...]
     source_pdf_sha256: str
     source_render_sha256: str
@@ -346,16 +377,16 @@ def load_tm_page46_mapping_policy(path: Path) -> TMPage46MappingPolicy:
     )
     if identities != expected_identities:
         raise TMPage46MappingError("TM page-46 mapping row order drifted")
-    ambiguous = _ids(payload.get("ambiguous_schema_ids"), "ambiguous schema IDs")
+    ambiguous = _ids(payload.get("ambiguous_schema_ids"), "ambiguous schema IDs", allow_empty=True)
     not_observed = _ids(payload.get("not_observed_schema_ids"), "not-observed schema IDs")
     fixed_ids = {rule.report_norm_id for rule in rows if rule.report_norm_id is not None}
     candidate_ids = {candidate for rule in rows for candidate in rule.candidate_report_norm_ids}
     if (
-        fixed_ids != _MAPPED_IDS
+        fixed_ids | {1170} != _MAPPED_IDS
         or set(ambiguous) != _AMBIGUOUS_IDS
         or candidate_ids != _AMBIGUOUS_IDS
         or set(not_observed) != _NOT_OBSERVED_IDS
-        or fixed_ids | set(ambiguous) | set(not_observed) != _SCOPED_IDS
+        or fixed_ids | {1170} | set(ambiguous) | set(not_observed) != _SCOPED_IDS
     ):
         raise TMPage46MappingError("TM page-46 scoped schema partition drifted")
     forbidden = payload.get("forbidden_mapping_inputs")
@@ -365,6 +396,11 @@ def load_tm_page46_mapping_policy(path: Path) -> TMPage46MappingPolicy:
     end = _positive_int(payload, "scoped_schema_id_end")
     if (start, end) != (1142, 1174):
         raise TMPage46MappingError("TM page-46 scoped schema bounds drifted")
+    additional_scoped_ids = _ids(
+        payload.get("additional_scoped_schema_ids"), "additional scoped schema IDs"
+    )
+    if set(additional_scoped_ids) != _ADDITIONAL_SCOPED_IDS:
+        raise TMPage46MappingError("TM page-46 additional scoped schema IDs drifted")
     return TMPage46MappingPolicy(
         source_path=path,
         document=str(payload.get("document", "")),
@@ -378,6 +414,7 @@ def load_tm_page46_mapping_policy(path: Path) -> TMPage46MappingPolicy:
         schema_total=_positive_int(payload, "schema_total"),
         scoped_schema_id_start=start,
         scoped_schema_id_end=end,
+        additional_scoped_schema_ids=additional_scoped_ids,
         minimum_visible_label_similarity=float(threshold),
         rows=tuple(rows),
         ambiguous_schema_ids=ambiguous,
@@ -579,6 +616,42 @@ def reconcile_tm_page46_items(
                 reason=reason,
             )
         )
+
+    brokerage_components = (
+        parsed_by_identity[("NET_SERVICE", 15)],
+        parsed_by_identity[("NET_SERVICE", 18)],
+    )
+    if tuple(
+        next(
+            rule for rule in policy.rows if rule.identity == ("NET_SERVICE", ordinal)
+        ).report_norm_id
+        for ordinal in (15, 18)
+    ) != (6024, 6025):
+        raise TMPage46MappingError("TM page-46 brokerage component bindings drifted")
+    derived_assignments = []
+    for axis_index, axis in enumerate(parsed.axes):
+        component_values = tuple(
+            _value(parsed, "NET_SERVICE", ordinal, axis_index) for ordinal in (15, 18)
+        )
+        derived_assignments.append(
+            TMPage46DerivedAssignment(
+                report_norm_id=1170,
+                canonical_name=schema_by_id[1170].canonical_name,
+                component_report_norm_ids=(6024, 6025),
+                component_row_ids=tuple(row.row_id for row in brokerage_components),
+                component_values=component_values,
+                observation=ObservationKind.VALUE.value,
+                value=sum(component_values, Decimal(0)),
+                period_start=axis.period_start.isoformat(),
+                period_end=axis.period_end.isoformat(),
+                period_role=axis.current_or_comparative,
+                period_type=axis.period_type,
+                unit=axis.canonical_unit,
+                unit_multiplier=axis.unit_multiplier,
+                mapping_basis="DERIVED_SUM_OF_EXPLICIT_PRINTED_CHILDREN_6024_6025",
+            )
+        )
+    source_rows_by_schema[1170] = [row.row_id for row in brokerage_components]
     accounting = _validation(parsed)
     if (
         len(accounting) != TM_PAGE46_ACCOUNTING_CHECK_COUNT
@@ -592,7 +665,14 @@ def reconcile_tm_page46_items(
     not_observed = set(policy.not_observed_schema_ids)
     schema_dispositions = []
     for item in tm_schema:
-        if item.schema_id in source_rows_by_schema:
+        if item.schema_id == 1170:
+            status = TMPage46SchemaStatus.MAPPED_AUTOMATIC_SCOPED.value
+            source_ids = tuple(source_rows_by_schema[item.schema_id])
+            reason = (
+                "derived aggregate with explicit provenance from separately preserved "
+                "printed children 6024 and 6025"
+            )
+        elif item.schema_id in source_rows_by_schema:
             status = TMPage46SchemaStatus.MAPPED_AUTOMATIC_SCOPED.value
             source_ids = tuple(source_rows_by_schema[item.schema_id])
             reason = "one fixed page-46 source row passed source-scoped mapping"
@@ -628,7 +708,7 @@ def reconcile_tm_page46_items(
         page_number=46,
         page_tag=policy.page_tag,
         report_scope=policy.report_scope,
-        status="SCOPED_PAGE46_DURATION_MAPPING_WITH_OPEN_SCHEMA_AMBIGUITIES",
+        status="SCOPED_PAGE46_UNIVERSAL_DURATION_MAPPING_WITH_EXPLICIT_DERIVATION",
         mapping_authority_scope=policy.mapping_authority_scope,
         mapping_authority_granted=True,
         schema_item_count=len(tm_schema),
@@ -666,6 +746,7 @@ def reconcile_tm_page46_items(
             if item.status == TMPage46SourceStatus.MAPPED_AUTOMATIC_SCOPED.value
             for observation in item.observations
         ),
+        derived_assignment_count=len(derived_assignments),
         accounting_check_count=len(accounting),
         accounting_pass_count=sum(check.status == "PASS" for check in accounting),
         accounting_not_testable_count=sum(
@@ -673,6 +754,7 @@ def reconcile_tm_page46_items(
         ),
         schema_dispositions=tuple(schema_dispositions),
         source_dispositions=tuple(source_dispositions),
+        derived_assignments=tuple(derived_assignments),
         accounting_checks=accounting,
         source_pdf_sha256=policy.source_pdf_sha256,
         source_render_sha256=policy.source_render_sha256,
@@ -687,6 +769,7 @@ def reconcile_tm_page46_items(
             "CONSTRAINED_PIXEL_DASH_EVIDENCE_FOR_STATUS_ONLY",
             "TM_SCHEMA_ID_NAME_ORDER",
             "ACCOUNTING_EQUATIONS_AS_POST_MAPPING_VALIDATION_ONLY",
+            "EXPLICIT_1170_SUM_OF_PRINTED_6024_6025_CHILDREN_WITH_PROVENANCE",
         ),
     )
     return validate_tm_page46_mapping_result(result)
@@ -713,6 +796,7 @@ def validate_tm_page46_mapping_result(
         or result.extracted_value_count != TM_PAGE46_VALUE_COUNT
         or result.dash_count != TM_PAGE46_DASH_COUNT
         or result.mapped_value_count != TM_PAGE46_MAPPED_VALUE_COUNT
+        or result.derived_assignment_count != TM_PAGE46_DERIVED_ASSIGNMENT_COUNT
         or result.accounting_check_count != TM_PAGE46_ACCOUNTING_CHECK_COUNT
         or result.accounting_pass_count != TM_PAGE46_ACCOUNTING_PASS_COUNT
         or result.accounting_not_testable_count != TM_PAGE46_ACCOUNTING_NOT_TESTABLE_COUNT
@@ -744,17 +828,48 @@ def validate_tm_page46_mapping_result(
     ]
     if (
         len(dash_rows) != 1
-        or dash_rows[0].status != TMPage46SourceStatus.SOURCE_ONLY_QUESTION.value
+        or dash_rows[0].status != TMPage46SourceStatus.MAPPED_AUTOMATIC_SCOPED.value
+        or dash_rows[0].report_norm_id != 5987
         or any(evidence is None for evidence in dash_rows[0].visual_cell_evidence)
         or any(value is not None for value in dash_rows[0].values)
     ):
-        raise TMPage46MappingError("TM page-46 DASH status lost source-only pixel evidence")
+        raise TMPage46MappingError("TM page-46 mapped DASH status lost pixel evidence")
+    if [
+        (
+            item.report_norm_id,
+            item.component_report_norm_ids,
+            item.component_values,
+            item.value,
+            item.period_role,
+            item.mapping_basis,
+        )
+        for item in result.derived_assignments
+    ] != [
+        (
+            1170,
+            (6024, 6025),
+            (Decimal("-539743"), Decimal("-59748")),
+            Decimal("-599491"),
+            "CURRENT",
+            "DERIVED_SUM_OF_EXPLICIT_PRINTED_CHILDREN_6024_6025",
+        ),
+        (
+            1170,
+            (6024, 6025),
+            (Decimal("-232408"), Decimal("-32105")),
+            Decimal("-264513"),
+            "COMPARATIVE",
+            "DERIVED_SUM_OF_EXPLICIT_PRINTED_CHILDREN_6024_6025",
+        ),
+    ] or any(not item.component_row_ids for item in result.derived_assignments):
+        raise TMPage46MappingError("TM page-46 explicit ID1170 derivation drifted")
     return result
 
 
 __all__ = [
     "TM_PAGE46_POLICY_RELATIVE_PATH",
     "TMPage46AccountingCheck",
+    "TMPage46DerivedAssignment",
     "TMPage46MappingError",
     "TMPage46MappingPolicy",
     "TMPage46MappingResult",

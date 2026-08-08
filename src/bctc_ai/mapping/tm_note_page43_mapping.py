@@ -23,23 +23,23 @@ from bctc_ai.tables.tm_note_page43 import ParsedTMPage43
 from bctc_ai.tables.tm_note_word_box import TMNoteRowKind
 
 TM_PAGE43_POLICY_RELATIVE_PATH = Path("config/mapping/tm-note-page43-v1.yaml")
-TM_PAGE43_SCHEMA_TOTAL = 1_613
-TM_PAGE43_RECONCILED_SCHEMA_COUNT = 130
-TM_PAGE43_MAPPED_SCHEMA_COUNT = 32
-TM_PAGE43_AMBIGUOUS_SCHEMA_COUNT = 1
+TM_PAGE43_SCHEMA_TOTAL = 1_701
+TM_PAGE43_RECONCILED_SCHEMA_COUNT = 131
+TM_PAGE43_MAPPED_SCHEMA_COUNT = 34
+TM_PAGE43_AMBIGUOUS_SCHEMA_COUNT = 0
 TM_PAGE43_NOT_OBSERVED_COUNT = 97
-TM_PAGE43_UNASSESSED_COUNT = 1_483
+TM_PAGE43_UNASSESSED_COUNT = 1_570
 TM_PAGE43_SOURCE_ROW_COUNT = 29
-TM_PAGE43_MAPPED_SOURCE_COUNT = 22
-TM_PAGE43_SOURCE_ONLY_COUNT = 6
+TM_PAGE43_MAPPED_SOURCE_COUNT = 24
+TM_PAGE43_SOURCE_ONLY_COUNT = 5
 TM_PAGE43_PARTIAL_SOURCE_COUNT = 6
 TM_PAGE43_FINANCIAL_SLOT_COUNT = 50
 TM_PAGE43_VALUE_COUNT = 44
 TM_PAGE43_DASH_COUNT = 6
-TM_PAGE43_MAPPED_SOURCE_SLOT_COUNT = 38
-TM_PAGE43_MAPPED_VALUE_ASSIGNMENT_COUNT = 34
+TM_PAGE43_MAPPED_SOURCE_SLOT_COUNT = 42
+TM_PAGE43_MAPPED_VALUE_ASSIGNMENT_COUNT = 38
 TM_PAGE43_MAPPED_DASH_ASSIGNMENT_COUNT = 8
-TM_PAGE43_MAPPED_STATUS_ASSIGNMENT_COUNT = 42
+TM_PAGE43_MAPPED_STATUS_ASSIGNMENT_COUNT = 46
 TM_PAGE43_ACCOUNTING_CHECK_COUNT = 16
 TM_PAGE43_ACCOUNTING_PASS_COUNT = 14
 TM_PAGE43_ACCOUNTING_NOT_TESTABLE_COUNT = 2
@@ -55,7 +55,7 @@ _REQUIRED_FORBIDDEN = {
     "dash_as_zero",
     "accounting_equation_result_as_item_selector",
 }
-_SCOPED_IDS = set(range(631, 716)) | set(range(1055, 1100))
+_SCOPED_IDS = set(range(631, 716)) | set(range(1055, 1100)) | {5977}
 _MAPPED_IDS = {
     631,
     660,
@@ -87,10 +87,12 @@ _MAPPED_IDS = {
     1068,
     1069,
     1075,
+    1089,
     1092,
     1093,
+    5977,
 }
-_AMBIGUOUS_IDS = {1089}
+_AMBIGUOUS_IDS: set[int] = set()
 _MULTI_ID_CELL_PAIRS = {
     (660, 661),
     (674, 675),
@@ -468,7 +470,7 @@ def load_tm_page43_mapping_policy(path: Path) -> TMPage43MappingPolicy:
     if len({row.identity for row in rows}) != len(rows):
         raise TMPage43MappingError("TM page-43 rule identities are duplicated")
     fixed_ids = {item for row in rows for item in row.mapped_report_norm_ids}
-    ambiguous = _ids(payload.get("ambiguous_schema_ids"), "ambiguous schema IDs")
+    ambiguous = _ids(payload.get("ambiguous_schema_ids"), "ambiguous schema IDs", allow_empty=True)
     not_observed = _ids(payload.get("not_observed_schema_ids"), "not-observed IDs")
     if fixed_ids != _MAPPED_IDS:
         raise TMPage43MappingError("TM page-43 fixed ReportNormIds drifted")
@@ -1090,8 +1092,8 @@ def validate_tm_page43_mapping_result(
         or result.mapped_source_row_count != TM_PAGE43_MAPPED_SOURCE_COUNT
         or result.source_only_row_count != TM_PAGE43_SOURCE_ONLY_COUNT
         or result.partially_mapped_source_row_count != TM_PAGE43_PARTIAL_SOURCE_COUNT
-        or result.source_question_row_count != 8
-        or result.ambiguous_source_row_count != 1
+        or result.source_question_row_count != 6
+        or result.ambiguous_source_row_count != 0
         or result.financial_slot_count != TM_PAGE43_FINANCIAL_SLOT_COUNT
         or result.extracted_value_count != TM_PAGE43_VALUE_COUNT
         or result.dash_count != TM_PAGE43_DASH_COUNT

@@ -24,32 +24,43 @@ from bctc_ai.tables.tm_note_pages39_40 import (
 from bctc_ai.tables.tm_note_word_box import TMNoteRowKind
 
 TM_NOTE_PAGES3940_POLICY_RELATIVE_PATH = Path("config/mapping/tm-note-pages39-40-v1.yaml")
-TM_NOTE_PAGES3940_SCHEMA_TOTAL = 1_613
-TM_NOTE_PAGES3940_RECONCILED_COUNT = 29
-TM_NOTE_PAGES3940_MAPPED_SCHEMA_COUNT = 8
-TM_NOTE_PAGES3940_UNRESOLVED_SCHEMA_COUNT = 16
-TM_NOTE_PAGES3940_NOT_OBSERVED_COUNT = 5
-TM_NOTE_PAGES3940_UNASSESSED_COUNT = 1_584
+TM_NOTE_PAGES3940_SCHEMA_TOTAL = 1_701
+TM_NOTE_PAGES3940_RECONCILED_COUNT = 39
+TM_NOTE_PAGES3940_MAPPED_SCHEMA_COUNT = 18
+TM_NOTE_PAGES3940_UNRESOLVED_SCHEMA_COUNT = 0
+TM_NOTE_PAGES3940_NOT_OBSERVED_COUNT = 21
+TM_NOTE_PAGES3940_UNASSESSED_COUNT = 1_662
 TM_NOTE_PAGES3940_SOURCE_ROW_COUNT = 30
-TM_NOTE_PAGES3940_MAPPED_SOURCE_COUNT = 13
-TM_NOTE_PAGES3940_UNRESOLVED_SOURCE_COUNT = 7
-TM_NOTE_PAGES3940_SOURCE_ONLY_COUNT = 10
-TM_NOTE_PAGES3940_PARTIAL_SOURCE_COUNT = 9
+TM_NOTE_PAGES3940_MAPPED_SOURCE_COUNT = 30
+TM_NOTE_PAGES3940_UNRESOLVED_SOURCE_COUNT = 0
+TM_NOTE_PAGES3940_SOURCE_ONLY_COUNT = 0
+TM_NOTE_PAGES3940_PARTIAL_SOURCE_COUNT = 24
 TM_NOTE_PAGES3940_SLOT_COUNT = 96
 TM_NOTE_PAGES3940_VALUE_COUNT = 79
 TM_NOTE_PAGES3940_DASH_COUNT = 17
-TM_NOTE_PAGES3940_MAPPED_SLOT_COUNT = 9
-TM_NOTE_PAGES3940_UNRESOLVED_SLOT_COUNT = 28
-TM_NOTE_PAGES3940_SOURCE_ONLY_SLOT_COUNT = 59
+TM_NOTE_PAGES3940_MAPPED_SLOT_COUNT = 24
+TM_NOTE_PAGES3940_UNRESOLVED_SLOT_COUNT = 0
+TM_NOTE_PAGES3940_SOURCE_ONLY_SLOT_COUNT = 72
 TM_NOTE_PAGES3940_ACCOUNTING_CHECK_COUNT = 56
 TM_NOTE_PAGES3940_ACCOUNTING_PASS_COUNT = 39
 TM_NOTE_PAGES3940_ACCOUNTING_NOT_TESTABLE_COUNT = 17
 TM_NOTE_PAGES3940_DUPLICATE_CHECK_COUNT = 12
 
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
-_SCOPED_IDS = set(range(913, 942))
-_MAPPED_IDS = {913, 914, 915, 925, 928, 929, 930, 941}
-_UNRESOLVED_IDS = {
+_SCOPED_IDS = set(range(913, 942)) | set(range(5967, 5972)) | set(range(5997, 6002))
+_MAPPED_IDS = {
+    913,
+    914,
+    915,
+    925,
+    928,
+    929,
+    930,
+    941,
+    *range(5967, 5972),
+    *range(5997, 6002),
+}
+_FORMER_COMPONENT_IDS = {
     916,
     917,
     918,
@@ -67,7 +78,8 @@ _UNRESOLVED_IDS = {
     939,
     940,
 }
-_NOT_OBSERVED_IDS = {921, 922, 923, 924, 926}
+_UNRESOLVED_IDS: set[int] = set()
+_NOT_OBSERVED_IDS = _FORMER_COMPONENT_IDS | {921, 922, 923, 924, 926}
 _FIXED_SCHEMA_NAMES = {
     913: "tang giam tai san co dinh vo hinh",
     914: "nguyen gia",
@@ -77,6 +89,11 @@ _FIXED_SCHEMA_NAMES = {
     929: "gia tri hao mon luy ke",
     930: "so du dau ky",
     941: "so du cuoi ky",
+    5967: "chenh lech ty gia",
+    5968: "chenh lech ty gia",
+    5969: "gia tri con lai",
+    5970: "so du dau ky",
+    5971: "so du cuoi ky",
 }
 _EXPECTED_ASSIGNMENT_KEYS = {
     ("page-0039", 915),
@@ -88,14 +105,23 @@ _EXPECTED_ASSIGNMENT_KEYS = {
     ("page-0040", 928),
     ("page-0040", 930),
     ("page-0040", 941),
+    ("page-0039", 5967),
+    ("page-0039", 5968),
+    ("page-0039", 5970),
+    ("page-0039", 5971),
+    ("page-0040", 5967),
+    ("page-0040", 5968),
+    ("page-0040", 5970),
+    ("page-0040", 5971),
+    ("page-0039", 5997),
+    ("page-0039", 5999),
+    ("page-0040", 5997),
+    ("page-0040", 5998),
+    ("page-0040", 5999),
+    ("page-0040", 6000),
+    ("page-0040", 6001),
 }
-_QUESTION_KEYS = {
-    "P39_AGGREGATE_INCREASES",
-    "P40_GROSS_AGGREGATES",
-    "P40_ACCUM_AGGREGATES",
-    "FX_SCHEMA_GAP",
-    "NET_SCHEMA_GAP",
-}
+_QUESTION_KEYS: set[str] = set()
 _REQUIRED_FORBIDDEN = {
     "numeric_cell_text",
     "numeric_cell_value_as_item_selector",
@@ -118,6 +144,12 @@ class TMNotePages3940RuleDisposition(StrEnum):
     UNRESOLVED_MAPPING = "UNRESOLVED_MAPPING"
     SOURCE_ONLY_SCHEMA_GAP = "SOURCE_ONLY_SCHEMA_GAP"
     SOURCE_ONLY_VALIDATION = "SOURCE_ONLY_VALIDATION"
+
+
+class TMNotePages3940AssignmentPeriod(StrEnum):
+    PANEL_DURATION = "PANEL_DURATION"
+    OPENING_SNAPSHOT = "OPENING_SNAPSHOT"
+    CLOSING_SNAPSHOT = "CLOSING_SNAPSHOT"
 
 
 class TMNotePages3940SchemaStatus(StrEnum):
@@ -151,6 +183,7 @@ class TMNotePages3940SourceRule:
     mapped_cell_index: int | None
     candidate_report_norm_ids: tuple[int, ...]
     question_key: str | None
+    assignment_period: TMNotePages3940AssignmentPeriod
 
 
 @dataclass(frozen=True)
@@ -348,12 +381,16 @@ def load_tm_note_pages39_40_mapping_policy(path: Path) -> TMNotePages3940Mapping
         "total": 29,
     }:
         raise TMNotePages3940MappingError("TM pages39-40 schema scope drifted")
+    additional_scope = _ids(
+        payload.get("additional_scope_schema_ids"), "additional scope IDs", allow_empty=False
+    )
     fixed = _ids(payload.get("fixed_mapped_ids"), "fixed IDs", allow_empty=False)
-    unresolved = _ids(payload.get("unresolved_ids"), "unresolved IDs", allow_empty=False)
+    unresolved = _ids(payload.get("unresolved_ids"), "unresolved IDs", allow_empty=True)
     not_observed = _ids(payload.get("not_observed_ids"), "not-observed IDs", allow_empty=False)
     title_id = payload.get("title_report_norm_id")
     if (
         payload.get("schema_total") != TM_NOTE_PAGES3940_SCHEMA_TOTAL
+        or set(additional_scope) != set(range(5967, 5972)) | set(range(5997, 6002))
         or title_id != 913
         or set(fixed) != _MAPPED_IDS
         or set(unresolved) != _UNRESOLVED_IDS
@@ -378,12 +415,25 @@ def load_tm_note_pages39_40_mapping_policy(path: Path) -> TMNotePages3940Mapping
         question_key = record.get("question_key")
         report_norm_ids = _ids(record.get("report_norm_ids"), "rule fixed IDs")
         candidate_ids = _ids(record.get("candidate_report_norm_ids"), "rule candidate IDs")
+        expected_assignment_period = {
+            (5970,): TMNotePages3940AssignmentPeriod.OPENING_SNAPSHOT,
+            (5971,): TMNotePages3940AssignmentPeriod.CLOSING_SNAPSHOT,
+        }.get(report_norm_ids, TMNotePages3940AssignmentPeriod.PANEL_DURATION)
+        try:
+            assignment_period = TMNotePages3940AssignmentPeriod(
+                str(record.get("assignment_period", "PANEL_DURATION"))
+            )
+        except ValueError as exc:
+            raise TMNotePages3940MappingError(
+                "TM pages39-40 rule assignment period is invalid"
+            ) from exc
         if (
             page_tag not in {"page-0039", "page-0040"}
             or not isinstance(row_key, str)
             or not row_key
             or (mapped_cell_index is not None and mapped_cell_index != 3)
             or (question_key is not None and question_key not in _QUESTION_KEYS)
+            or assignment_period is not expected_assignment_period
         ):
             raise TMNotePages3940MappingError("TM pages39-40 rule identity is invalid")
         if disposition is TMNotePages3940RuleDisposition.FIXED_STRUCTURAL:
@@ -410,6 +460,7 @@ def load_tm_note_pages39_40_mapping_policy(path: Path) -> TMNotePages3940Mapping
                 mapped_cell_index=mapped_cell_index,
                 candidate_report_norm_ids=candidate_ids,
                 question_key=question_key,
+                assignment_period=assignment_period,
             )
         )
     identities = {(rule.page_tag, rule.row_key) for rule in rules}
@@ -494,6 +545,27 @@ def _bbox_tuple(row: TMIntangibleLogicalRow, cell_index: int) -> tuple[float, fl
     if bbox is None:
         raise TMNotePages3940MappingError("TM pages39-40 mapped cell lacks source bbox")
     return (bbox.x0, bbox.y0, bbox.x1, bbox.y1)
+
+
+def _assignment_period(
+    row: TMIntangibleLogicalRow,
+    rule: TMNotePages3940SourceRule,
+) -> tuple[str, str, str]:
+    if rule.assignment_period is TMNotePages3940AssignmentPeriod.OPENING_SNAPSHOT:
+        if row.row_key != "NET_OPEN":
+            raise TMNotePages3940MappingError(
+                "TM pages39-40 opening snapshot is not bound to the visible opening row"
+            )
+        snapshot = row.period_start.isoformat()
+        return snapshot, snapshot, "SNAPSHOT"
+    if rule.assignment_period is TMNotePages3940AssignmentPeriod.CLOSING_SNAPSHOT:
+        if row.row_key != "NET_CLOSE":
+            raise TMNotePages3940MappingError(
+                "TM pages39-40 closing snapshot is not bound to the visible closing row"
+            )
+        snapshot = row.period_end.isoformat()
+        return snapshot, snapshot, "SNAPSHOT"
+    return row.period_start.isoformat(), row.period_end.isoformat(), row.period_type
 
 
 def _cell_text(row: TMIntangibleLogicalRow) -> str:
@@ -781,6 +853,7 @@ def reconcile_tm_note_pages39_40_items(
                     or cell.value is None
                 ):
                     raise TMNotePages3940MappingError("TM pages39-40 mapped total is not finite")
+                period_start, period_end, period_type = _assignment_period(row, rule)
                 assignments.append(
                     TMNotePages3940MappedAssignment(
                         report_norm_id=report_norm_id,
@@ -793,9 +866,9 @@ def reconcile_tm_note_pages39_40_items(
                         observation=cell.observation.value,
                         value=cell.value,
                         period_role=row.period_role,
-                        period_start=row.period_start.isoformat(),
-                        period_end=row.period_end.isoformat(),
-                        period_type=row.period_type,
+                        period_start=period_start,
+                        period_end=period_end,
+                        period_type=period_type,
                         unit="VND",
                         unit_multiplier=1_000_000,
                         scope=parsed.scope,
@@ -971,8 +1044,8 @@ def validate_tm_note_pages39_40_mapping_result(
         or result.unresolved_source_row_count != TM_NOTE_PAGES3940_UNRESOLVED_SOURCE_COUNT
         or result.source_only_row_count != TM_NOTE_PAGES3940_SOURCE_ONLY_COUNT
         or result.partially_mapped_source_row_count != TM_NOTE_PAGES3940_PARTIAL_SOURCE_COUNT
-        or result.question_source_row_count != 17
-        or result.question_group_count != 5
+        or result.question_source_row_count != 0
+        or result.question_group_count != 0
         or result.financial_slot_count != TM_NOTE_PAGES3940_SLOT_COUNT
         or result.extracted_value_count != TM_NOTE_PAGES3940_VALUE_COUNT
         or result.dash_count != TM_NOTE_PAGES3940_DASH_COUNT

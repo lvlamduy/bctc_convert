@@ -46,23 +46,23 @@ def test_page49_reconciles_exact_business_and_source_denominators(
 ) -> None:
     result = _mapped(project_root, tmp_path)
 
-    assert result.schema_item_count == 1_613
-    assert result.status_reconciled_schema_count == 19
-    assert result.mapped_schema_count == 7
-    assert result.ambiguous_schema_count == 5
-    assert result.not_observed_schema_count == 7
+    assert result.schema_item_count == 1_701
+    assert result.status_reconciled_schema_count == 22
+    assert result.mapped_schema_count == 10
+    assert result.ambiguous_schema_count == 0
+    assert result.not_observed_schema_count == 12
     assert result.not_applicable_schema_count == 0
-    assert result.unassessed_schema_count == 1_594
+    assert result.unassessed_schema_count == 1_679
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == 12
-    assert result.mapped_source_row_count == 7
-    assert result.ambiguous_source_row_count == 3
+    assert result.mapped_source_row_count == 10
+    assert result.ambiguous_source_row_count == 0
     assert result.source_only_row_count == 2
-    assert result.source_question_row_count == 3
+    assert result.source_question_row_count == 0
     assert result.financial_slot_count == 28
     assert result.extracted_value_count == 27
     assert result.dash_count == 1
-    assert result.mapped_value_count == 21
+    assert result.mapped_value_count == 27
 
 
 def test_page49_exact_mapped_ambiguous_not_observed_and_unassessed_sets(
@@ -84,15 +84,17 @@ def test_page49_exact_mapped_ambiguous_not_observed_and_unassessed_sets(
         1270,
         1271,
         1278,
+        6031,
+        6032,
+        6033,
     }
-    assert by_status[TMPage49SchemaStatus.AMBIGUOUS_MAPPING.value] == {
+    assert by_status[TMPage49SchemaStatus.AMBIGUOUS_MAPPING.value] == set()
+    assert by_status[TMPage49SchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value] == {
         1222,
         1223,
         1224,
         1225,
         1226,
-    }
-    assert by_status[TMPage49SchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value] == {
         1272,
         1273,
         1274,
@@ -101,34 +103,31 @@ def test_page49_exact_mapped_ambiguous_not_observed_and_unassessed_sets(
         1277,
         1279,
     }
-    assert len(by_status[TMPage49SchemaStatus.UNASSESSED.value]) == 1_594
+    assert len(by_status[TMPage49SchemaStatus.UNASSESSED.value]) == 1_679
     assert 1220 in by_status[TMPage49SchemaStatus.UNASSESSED.value]
     assert 1280 in by_status[TMPage49SchemaStatus.UNASSESSED.value]
 
 
-def test_page49_three_open_rows_keep_exact_values_periods_and_candidates(
+def test_page49_three_schema_gap_rows_map_exact_values_periods_and_no_candidates(
     project_root: Path, tmp_path: Path
 ) -> None:
     result = _mapped(project_root, tmp_path)
-    questions = [item for item in result.source_dispositions if item.question_required]
+    resolved = [
+        item for item in result.source_dispositions if item.report_norm_id in {6031, 6032, 6033}
+    ]
 
-    assert [item.row_id for item in questions] == [
-        "page-0049:risk_provision_expense:row-0002",
-        "page-0049:risk_provision_expense:row-0003",
-        "page-0049:risk_provision_expense:row-0004",
+    assert [(item.report_norm_id, item.row_id, item.values) for item in resolved] == [
+        (6031, "page-0049:risk_provision_expense:row-0002", (3_451_261, 2_973_316)),
+        (6032, "page-0049:risk_provision_expense:row-0003", (1_648, 76)),
+        (6033, "page-0049:risk_provision_expense:row-0004", (1_775, 24_681)),
     ]
-    assert [item.candidate_report_norm_ids for item in questions] == [
-        (1224, 1225),
-        (1222, 1223),
-        (1226,),
-    ]
-    assert [item.values for item in questions] == [
-        (3_451_261, 2_973_316),
-        (1_648, 76),
-        (1_775, 24_681),
-    ]
-    assert all(item.period_roles == ("CURRENT", "COMPARATIVE") for item in questions)
-    assert all(item.status == TMPage49SourceStatus.AMBIGUOUS_MAPPING.value for item in questions)
+    assert all(item.period_roles == ("CURRENT", "COMPARATIVE") for item in resolved)
+    assert all(
+        item.status == TMPage49SourceStatus.MAPPED_AUTOMATIC_SCOPED.value
+        and not item.question_required
+        and not item.candidate_report_norm_ids
+        for item in resolved
+    )
 
 
 def test_page49_fixed_tax_rows_preserve_all_four_axes_and_root_total(
@@ -186,6 +185,9 @@ def test_page49_mapping_forbids_values_history_review_dash_zero_and_equation_sel
     assert set(policy.scoped_schema_ids) == {
         *range(1221, 1229),
         *range(1269, 1280),
+        6031,
+        6032,
+        6033,
     }
     assert set(policy.forbidden_mapping_inputs) == {
         "numeric_cell_text",

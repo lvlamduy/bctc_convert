@@ -62,7 +62,7 @@ _VISIBLE_CANDIDATES = (
     (4105,),
     (4118,),
     (4119,),
-    (4144,),
+    (6034,),
     (5714,),
     (4147,),
     (4111,),
@@ -199,15 +199,15 @@ def test_direct_projection_and_policy_reconcile_exact_denominators(
     projection = build_lctt_direct_schema_projection(lctt_schema)
     policy = load_lctt_direct_mapping_policy(project_root / LCTT_POLICY_RELATIVE_PATH)
 
-    assert len(projection.nodes) == 51
-    assert [node.display_order for node in projection.nodes] == list(range(57, 108))
+    assert len(projection.nodes) == 52
+    assert [node.display_order for node in projection.nodes] == list(range(57, 109))
     assert (
         tuple(node.report_norm_id for node in projection.nodes if node.child_report_norm_ids)
         == LCTT_DIRECT_AGGREGATE_IDS
     )
     assert policy.core.trailing_aggregate_ids == LCTT_TRAILING_AGGREGATE_IDS
-    assert policy.schema_total == 108
-    assert policy.applicable_branch_total == 51
+    assert policy.schema_total == 109
+    assert policy.applicable_branch_total == 52
     assert policy.non_applicable_branch_total == 57
     assert policy.visible_source_row_total == 43
     assert policy.currently_available_independent_semantic_streams == 1
@@ -217,11 +217,15 @@ def test_direct_projection_and_policy_reconcile_exact_denominators(
         (rule.source_row_id, rule.report_norm_id) for rule in policy.business_resolution_rules
     } == {
         ("page-0007:row-0024", 4140),
-        ("page-0007:row-0031", 4144),
+        ("page-0007:row-0031", 6034),
         ("page-0007:row-0032", 5714),
     }
+    q018 = next(rule for rule in policy.business_resolution_rules if rule.report_norm_id == 4140)
+    assert q018.key == "USER_Q018_CONTEXTUAL_WORDING_TO_4140"
+    assert q018.decision_basis == "USER_AUTHORIZED_CONTEXTUAL_WORDING_MAPPING"
     assert policy.not_observed_report_norm_ids == (
         4143,
+        4144,
         4145,
         4146,
         4120,
@@ -240,13 +244,13 @@ def test_real_single_reader_maps_three_business_resolutions_and_withholds_other_
     assert validate_lctt_item_mapping_result(result) is result
     assert result.status == "PARTIAL_AUTOMATIC_MAPPING_WITH_UNRESOLVED_ITEMS"
     assert result.automatic_selection_allowed
-    assert result.schema_item_count == 108
-    assert result.schema_status_reconciled_count == 108
+    assert result.schema_item_count == 109
+    assert result.schema_status_reconciled_count == 109
     assert result.mapped_schema_count == 3
     assert result.candidate_linked_schema_count == 40
     assert result.label_conflict_schema_count == 0
     assert result.ambiguous_schema_count == 0
-    assert result.not_observed_schema_count == 8
+    assert result.not_observed_schema_count == 9
     assert result.not_applicable_schema_count == 57
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == 43
@@ -266,10 +270,11 @@ def test_real_single_reader_maps_three_business_resolutions_and_withholds_other_
         }
         for status in {item.value for item in LCTTSchemaStatus}
     }
-    assert schema_by_status[LCTTSchemaStatus.MAPPED_AUTOMATIC.value] == {4140, 4144, 5714}
+    assert schema_by_status[LCTTSchemaStatus.MAPPED_AUTOMATIC.value] == {4140, 6034, 5714}
     assert schema_by_status[LCTTSchemaStatus.AMBIGUOUS_MAPPING.value] == set()
     assert schema_by_status[LCTTSchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value] == {
         4143,
+        4144,
         4145,
         4146,
         4120,
@@ -285,9 +290,12 @@ def test_real_single_reader_maps_three_business_resolutions_and_withholds_other_
         if item.business_resolution_key is not None
     } == {
         "page-0007:row-0024": (4140,),
-        "page-0007:row-0031": (4144,),
+        "page-0007:row-0031": (6034,),
         "page-0007:row-0032": (5714,),
     }
+    q018_source = next(item for item in result.source_dispositions if item.row_id.endswith("0024"))
+    assert q018_source.business_resolution_key == "USER_Q018_CONTEXTUAL_WORDING_TO_4140"
+    assert "USER_AUTHORIZED_CONTEXTUAL_WORDING_MAPPING" in q018_source.reason
     assert (
         min(
             item.label_similarity
@@ -307,13 +315,13 @@ def test_real_deepseek_stream_plus_business_resolutions_maps_all_43_rows(
     assert result.status == "SOURCE_MAPPING_COMPLETE_NUMERIC_NOT_FULLY_VERIFIED"
     assert result.automatic_selection_allowed
     assert result.independent_semantic_stream_count == 2
-    assert result.schema_item_count == 108
-    assert result.schema_status_reconciled_count == 108
+    assert result.schema_item_count == 109
+    assert result.schema_status_reconciled_count == 109
     assert result.mapped_schema_count == 43
     assert result.candidate_linked_schema_count == 0
     assert result.label_conflict_schema_count == 0
     assert result.ambiguous_schema_count == 0
-    assert result.not_observed_schema_count == 8
+    assert result.not_observed_schema_count == 9
     assert result.not_applicable_schema_count == 57
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == 43
@@ -351,7 +359,7 @@ def test_real_deepseek_stream_plus_business_resolutions_maps_all_43_rows(
         item.report_norm_id
         for item in result.schema_dispositions
         if item.status == LCTTSchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value
-    } == {4143, 4145, 4146, 4120, 4121, 4151, 4152, 4117}
+    } == {4143, 4144, 4145, 4146, 4120, 4121, 4151, 4152, 4117}
 
 
 def test_non_direct_method_cannot_enter_direct_candidate_reconciliation(
@@ -377,6 +385,24 @@ def test_business_resolution_policy_fails_closed_on_row_identity_drift(
         policy_path.read_text(encoding="utf-8").replace(
             "source_row_id: page-0007:row-0031",
             "source_row_id: page-0007:row-0030",
+            1,
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(LCTTItemMappingError, match="identity drifted"):
+        load_lctt_direct_mapping_policy(tampered)
+
+
+def test_q018_contextual_wording_authority_cannot_be_downgraded(
+    project_root: Path, tmp_path: Path
+) -> None:
+    policy_path = project_root / LCTT_POLICY_RELATIVE_PATH
+    tampered = tmp_path / "lctt-policy-q018-authority-tampered.yaml"
+    tampered.write_text(
+        policy_path.read_text(encoding="utf-8").replace(
+            "decision_basis: USER_AUTHORIZED_CONTEXTUAL_WORDING_MAPPING",
+            "decision_basis: APPROVED_BUSINESS_SCHEMA_MAPPING",
             1,
         ),
         encoding="utf-8",

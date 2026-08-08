@@ -51,10 +51,12 @@ _MAPPED_IDS = {
     1068,
     1069,
     1075,
+    1089,
     1092,
     1093,
+    5977,
 }
-_SCOPED_IDS = set(range(631, 716)) | set(range(1055, 1100))
+_SCOPED_IDS = set(range(631, 716)) | set(range(1055, 1100)) | {5977}
 
 
 def _mapped(project_root: Path, tmp_path: Path):
@@ -88,18 +90,18 @@ def test_page43_reconciles_complete_two_branch_scope_and_exact_source_denominato
     assert validate_tm_page43_mapping_result(result) is result
     assert result.mapping_authority_scope.endswith("FIXED_ROWS_AND_CELLS_ONLY")
     assert result.mapping_authority_granted
-    assert result.schema_item_count == 1_613
-    assert result.status_reconciled_schema_count == 130
-    assert result.mapped_schema_count == 32
-    assert result.ambiguous_schema_count == 1
+    assert result.schema_item_count == 1_701
+    assert result.status_reconciled_schema_count == 131
+    assert result.mapped_schema_count == 34
+    assert result.ambiguous_schema_count == 0
     assert result.not_observed_schema_count == 97
     assert result.not_applicable_schema_count == 0
-    assert result.unassessed_schema_count == 1_483
+    assert result.unassessed_schema_count == 1_570
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == 29
-    assert result.mapped_source_row_count == 22
-    assert result.ambiguous_source_row_count == 1
-    assert result.source_only_row_count == 6
+    assert result.mapped_source_row_count == 24
+    assert result.ambiguous_source_row_count == 0
+    assert result.source_only_row_count == 5
     assert result.partially_mapped_source_row_count == 6
     assert (
         result.mapped_source_row_count
@@ -110,10 +112,10 @@ def test_page43_reconciles_complete_two_branch_scope_and_exact_source_denominato
     assert result.financial_slot_count == 50
     assert result.extracted_value_count == 44
     assert result.dash_count == 6
-    assert result.mapped_source_slot_count == 38
-    assert result.mapped_value_assignment_count == 34
+    assert result.mapped_source_slot_count == 42
+    assert result.mapped_value_assignment_count == 38
     assert result.mapped_dash_assignment_count == 8
-    assert result.mapped_status_assignment_count == 42
+    assert result.mapped_status_assignment_count == 46
 
 
 def test_exact_mapped_ambiguous_not_observed_and_unassessed_schema_sets(
@@ -128,14 +130,13 @@ def test_exact_mapped_ambiguous_not_observed_and_unassessed_schema_sets(
     }
 
     assert by_status[TMPage43SchemaStatus.MAPPED_AUTOMATIC_SCOPED.value] == _MAPPED_IDS
-    assert by_status[TMPage43SchemaStatus.AMBIGUOUS_MAPPING.value] == {1089}
+    assert by_status[TMPage43SchemaStatus.AMBIGUOUS_MAPPING.value] == set()
     assert by_status[TMPage43SchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value] == (
-        _SCOPED_IDS - _MAPPED_IDS - {1089}
+        _SCOPED_IDS - _MAPPED_IDS
     )
-    assert len(by_status[TMPage43SchemaStatus.UNASSESSED.value]) == 1_483
+    assert len(by_status[TMPage43SchemaStatus.UNASSESSED.value]) == 1_570
     assert (
-        _MAPPED_IDS | {1089} | by_status[TMPage43SchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value]
-        == _SCOPED_IDS
+        _MAPPED_IDS | by_status[TMPage43SchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value] == _SCOPED_IDS
     )
 
 
@@ -190,7 +191,7 @@ def test_four_authorized_aggregate_child_reuses_keep_one_exact_source_cell_prove
             assert assignments[0].visual_cell_evidence == assignments[1].visual_cell_evidence
 
 
-def test_net_measure_tckt_and_personal_rows_abstain_without_hiding_evidence(
+def test_net_measure_abstains_while_tckt_and_personal_rows_map_exactly(
     project_root: Path, tmp_path: Path
 ) -> None:
     result = _mapped(project_root, tmp_path)
@@ -226,14 +227,29 @@ def test_net_measure_tckt_and_personal_rows_abstain_without_hiding_evidence(
         for item in result.source_dispositions
         if item.row_id == "page-0043:deposit_customer:row-0003"
     )
-    assert tckt.status == TMPage43SourceStatus.SOURCE_ONLY_QUESTION.value
+    assert tckt.status == TMPage43SourceStatus.MAPPED_AUTOMATIC_SCOPED.value
     assert tckt.values == (365_071_880, 402_397_512)
+    assert tckt.row_report_norm_ids == (5977,)
     assert tckt.candidate_report_norm_ids == ()
-    assert personal.status == TMPage43SourceStatus.AMBIGUOUS_MAPPING.value
+    assert not tckt.question_required
+    assert personal.status == TMPage43SourceStatus.MAPPED_AUTOMATIC_SCOPED.value
     assert personal.values == (540_846_452, 518_970_620)
-    assert personal.candidate_report_norm_ids == (1089,)
-    assert personal.candidate_canonical_names == ("- Hộ kinh doanh, cá nhân",)
-    assert result.source_question_row_count == 8
+    assert personal.row_report_norm_ids == (1089,)
+    assert personal.candidate_report_norm_ids == ()
+    assert not personal.question_required
+    assert result.source_question_row_count == 6
+    customer_assignments = [
+        item for item in result.mapped_assignments if item.report_norm_id in {1089, 5977}
+    ]
+    assert [
+        (item.report_norm_id, item.value, item.period_end, item.period_role)
+        for item in customer_assignments
+    ] == [
+        (5977, 365_071_880, "2026-03-31", "CURRENT"),
+        (5977, 402_397_512, "2025-12-31", "COMPARATIVE"),
+        (1089, 540_846_452, "2026-03-31", "CURRENT"),
+        (1089, 518_970_620, "2025-12-31", "COMPARATIVE"),
+    ]
 
 
 def test_accounting_and_duplicate_validation_combines_to_24_pass_and_two_dash_abstentions(

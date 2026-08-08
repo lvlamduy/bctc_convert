@@ -53,11 +53,13 @@ for all five consumers:
 - `EVALUATION`
 - `MANDATORY_SEARCH`
 
-The contract currently contains 1,593 IDs and each consumer ends with 1944.
+At this `BASE_SCHEMA` checkpoint the contract contained 1,593 IDs and each
+consumer ended with 1944. Later universal-schema additions preserve those
+identities while extending the denominator and presentation order.
 For each document, Role A and Role B must independently record exactly one
 terminal search outcome for every target ID. A searched-but-absent 1944 is
-`NOT_OBSERVED`; it is never zero unless a visible dash or verified empty numeric
-cell exists on a mapped PDF row.
+`NOT_OBSERVED`; it is never zero. A visible dash is `DASH`, a verified empty
+cell is `BLANK`, and only a printed numeric zero is `OBSERVED_ZERO`.
 
 ## Verification and rebuild
 

@@ -284,3 +284,27 @@ def apply_hierarchy_reference(
             ]
     if apply_business_formula_overlay:
         apply_business_formula_hierarchy(schema)
+    _reject_schema_graph_cycles(schema)
+
+
+def _reject_schema_graph_cycles(schema: list[SchemaItem]) -> None:
+    """Fail closed on missing parents and cycles after every hierarchy overlay."""
+
+    by_key = {(item.statement_type, item.schema_id): item for item in schema}
+    for start in schema:
+        visited: set[tuple[str, int]] = set()
+        current = start
+        while current.parent_id is not None:
+            key = (current.statement_type, current.schema_id)
+            if key in visited:
+                raise ValueError(
+                    f"schema hierarchy cycle containing {current.statement_type}/{current.schema_id}"
+                )
+            visited.add(key)
+            parent_key = (current.statement_type, current.parent_id)
+            try:
+                current = by_key[parent_key]
+            except KeyError as exc:
+                raise ValueError(
+                    f"schema hierarchy parent is absent: {parent_key[0]}/{parent_key[1]}"
+                ) from exc

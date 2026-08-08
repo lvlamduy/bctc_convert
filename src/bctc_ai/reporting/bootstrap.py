@@ -16,7 +16,7 @@ from bctc_ai.questions.bootstrap import bootstrap_questions, write_questions
 from bctc_ai.reference.historical import verify_historical_weak_reference
 from bctc_ai.schema.coverage import load_schema_coverage
 from bctc_ai.schema.hierarchy import apply_hierarchy_reference, load_hierarchy_reference
-from bctc_ai.schema.registry import load_all
+from bctc_ai.schema.registry import load_all, load_schema_contract
 from bctc_ai.storage.backup import create_backup
 
 
@@ -56,12 +56,41 @@ def _write_schema_artifacts(
     graph_hash = stable_records_hash(
         json.dumps(record, ensure_ascii=False, sort_keys=True) for record in graph_records
     )
+    schema_contract = load_schema_contract(project_root)
+    universal_ordered_ids_sha256 = stable_records_hash(str(item.schema_id) for item in items)
+    universal_canonical_projection_sha256 = stable_records_hash(
+        json.dumps(
+            {
+                "statement_type": item.statement_type,
+                "report_norm_id": item.schema_id,
+                "canonical_name": item.canonical_name,
+                "display_order": item.display_order,
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+        for item in items
+    )
+    universal_schema = dict(schema_contract["universal_schema"])
+    universal_schema.update(
+        {
+            "ordered_canonical_projection_sha256": universal_canonical_projection_sha256,
+            "ordered_report_norm_ids_sha256": universal_ordered_ids_sha256,
+            "schema_graph_sha256": graph_hash,
+            "universal_schema_sha256": graph_hash,
+            "workbooks": workbook_records,
+        }
+    )
     coverage = load_schema_coverage(project_root, schema_items=items)
     coverage_path = project_root / "data/registered/schema_coverage_registry.json"
     atomic_write_json(coverage_path, coverage.to_registry())
     registry = {
         "format_version": 1,
         "authority": "SUPPLIED_WORKBOOKS_PLUS_APPROVED_AUDITED_SCHEMA_MIGRATIONS",
+        "schema_name": schema_contract["schema_name"],
+        "schema_strategy": schema_contract["schema_strategy"],
+        "base_schema": schema_contract["base_schema"],
+        "universal_schema": universal_schema,
         "append_only": True,
         "workbooks": workbook_records,
         "counts": {

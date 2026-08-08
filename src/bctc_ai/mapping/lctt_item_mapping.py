@@ -26,25 +26,30 @@ from bctc_ai.mapping.ordered_subgraph_v2 import (
 from bctc_ai.schema.registry import SchemaItem
 
 LCTT_POLICY_RELATIVE_PATH = Path("config/mapping/lctt-direct-ordered-subgraph-v2.yaml")
-LCTT_SCHEMA_ITEM_COUNT = 108
-LCTT_DIRECT_SCHEMA_ITEM_COUNT = 51
+LCTT_SCHEMA_ITEM_COUNT = 109
+LCTT_DIRECT_SCHEMA_ITEM_COUNT = 52
 LCTT_INDIRECT_SCHEMA_ITEM_COUNT = 57
 LCTT_VISIBLE_SOURCE_ROW_COUNT = 43
 LCTT_TRAILING_AGGREGATE_IDS = (4109, 4110, 4111, 4112, 4114, 4116)
-LCTT_DIRECT_AGGREGATE_IDS = (4109, 4110, 5714, 4111, 4112, 4114, 4116)
+LCTT_DIRECT_AGGREGATE_IDS = (4109, 4110, 6034, 5714, 4111, 4112, 4114, 4116)
 
-_BUSINESS_RESOLUTION_IDS = {4140, 4144, 5714}
+_BUSINESS_RESOLUTION_IDS = {4140, 6034, 5714}
 _BUSINESS_RESOLUTION_ROWS = {
     "page-0007:row-0024": 4140,
-    "page-0007:row-0031": 4144,
+    "page-0007:row-0031": 6034,
     "page-0007:row-0032": 5714,
 }
 _BUSINESS_RESOLUTION_KEYS = {
-    4140: "ACCEPTED_OTHER_FINANCIAL_LIABILITIES_WORDING_VARIANT",
-    4144: "INVESTMENT_PROPERTY_NET_TO_4144",
+    4140: "USER_Q018_CONTEXTUAL_WORDING_TO_4140",
+    6034: "INVESTMENT_PROPERTY_NET_TO_6034",
     5714: "INVESTMENT_CONTRIBUTION_NET_TO_5714",
 }
-_NOT_OBSERVED_IDS = {4143, 4145, 4146, 4120, 4121, 4151, 4152, 4117}
+_BUSINESS_RESOLUTION_DECISION_BASES = {
+    4140: "USER_AUTHORIZED_CONTEXTUAL_WORDING_MAPPING",
+    6034: "APPROVED_BUSINESS_SCHEMA_MAPPING",
+    5714: "APPROVED_BUSINESS_SCHEMA_MAPPING",
+}
+_NOT_OBSERVED_IDS = {4143, 4144, 4145, 4146, 4120, 4121, 4151, 4152, 4117}
 
 _MAX_LABEL_LENGTH = 4096
 _SHA256 = re.compile(r"[0-9a-f]{64}")
@@ -243,7 +248,8 @@ def load_lctt_direct_mapping_policy(path: Path) -> LCTTDirectMappingPolicy:
             or not retrieval_key(item["visible_label_anchor"])
             or isinstance(report_norm_id, bool)
             or not isinstance(report_norm_id, int)
-            or item.get("decision_basis") != "APPROVED_BUSINESS_SCHEMA_MAPPING"
+            or not isinstance(item.get("decision_basis"), str)
+            or not item["decision_basis"]
         ):
             raise LCTTItemMappingError("LCTT business-resolution rule is invalid")
         business_resolutions.append(
@@ -285,6 +291,9 @@ def load_lctt_direct_mapping_policy(path: Path) -> LCTTDirectMappingPolicy:
         rule.source_row_id: rule.report_norm_id for rule in policy.business_resolution_rules
     }
     business_keys = {rule.report_norm_id: rule.key for rule in policy.business_resolution_rules}
+    business_decision_bases = {
+        rule.report_norm_id: rule.decision_basis for rule in policy.business_resolution_rules
+    }
     if (
         policy.applicable_branch != CashFlowMethod.DIRECT.value
         or policy.schema_total != LCTT_SCHEMA_ITEM_COUNT
@@ -298,6 +307,7 @@ def load_lctt_direct_mapping_policy(path: Path) -> LCTTDirectMappingPolicy:
         or business_ids != _BUSINESS_RESOLUTION_IDS
         or business_rows != _BUSINESS_RESOLUTION_ROWS
         or business_keys != _BUSINESS_RESOLUTION_KEYS
+        or business_decision_bases != _BUSINESS_RESOLUTION_DECISION_BASES
         or len(policy.business_resolution_rules) != len(_BUSINESS_RESOLUTION_IDS)
         or business_ids.intersection(policy.not_observed_report_norm_ids)
         or policy.core.trailing_aggregate_ids != LCTT_TRAILING_AGGREGATE_IDS
@@ -307,7 +317,7 @@ def load_lctt_direct_mapping_policy(path: Path) -> LCTTDirectMappingPolicy:
 
 
 def build_lctt_direct_schema_projection(schema: Sequence[SchemaItem]) -> SchemaProjectionV2:
-    """Build the applicable 51-item direct branch without reading history or values."""
+    """Build the applicable 52-item direct branch without reading history or values."""
 
     direct = tuple(
         item
@@ -319,8 +329,8 @@ def build_lctt_direct_schema_projection(schema: Sequence[SchemaItem]) -> SchemaP
     except OrderedSubgraphV2Error as exc:
         raise LCTTItemMappingError("cannot build LCTT direct schema projection") from exc
     if len(projection.nodes) != LCTT_DIRECT_SCHEMA_ITEM_COUNT:
-        raise LCTTItemMappingError("LCTT direct projection must contain exactly 51 items")
-    if tuple(node.display_order for node in projection.nodes) != tuple(range(57, 108)):
+        raise LCTTItemMappingError("LCTT direct projection must contain exactly 52 items")
+    if tuple(node.display_order for node in projection.nodes) != tuple(range(57, 109)):
         raise LCTTItemMappingError("LCTT direct workbook order drifted")
     aggregates = tuple(
         node.report_norm_id for node in projection.nodes if node.child_report_norm_ids
@@ -503,7 +513,7 @@ def reconcile_lctt_direct_items(
     independent_semantic_rows: Sequence[object] | None = None,
     independent_source_reader_id: str | None = None,
 ) -> LCTTItemMappingResult:
-    """Reconcile all 108 items using dual readers plus approved business resolutions."""
+    """Reconcile all 109 items using dual readers plus approved business resolutions."""
 
     method = CashFlowMethod(str(cash_flow_method))
     if method is not CashFlowMethod.DIRECT:
@@ -533,7 +543,7 @@ def reconcile_lctt_direct_items(
         )
     )
     if len(all_lctt) != LCTT_SCHEMA_ITEM_COUNT:
-        raise LCTTItemMappingError("LCTT schema denominator must be exactly 108")
+        raise LCTTItemMappingError("LCTT schema denominator must be exactly 109")
     direct_by_id = projection.by_id()
     if any(
         report_norm_id not in direct_by_id for report_norm_id in policy.not_observed_report_norm_ids
@@ -640,7 +650,7 @@ def reconcile_lctt_direct_items(
             supporting_reader_ids = (source_row.source_reader_id,)
             business_resolution_key = rule.key
             reason = (
-                f"approved business-schema resolution {rule.key} binds the exact visible "
+                f"{rule.decision_basis} resolution {rule.key} binds the exact visible "
                 f"source row to ReportNormId {item.schema_id}"
             )
         else:
@@ -709,7 +719,7 @@ def reconcile_lctt_direct_items(
             supporting_reader_ids = (row.source_reader_id,)
             business_resolution_key = rule.key
             reason = (
-                f"approved business-schema resolution {rule.key} binds this exact visible "
+                f"{rule.decision_basis} resolution {rule.key} binds this exact visible "
                 f"row to ReportNormId {report_norm_id}"
             )
         else:
@@ -781,7 +791,7 @@ def reconcile_lctt_direct_items(
         candidate_linked_schema_count=candidate_count,
         label_conflict_schema_count=0,
         ambiguous_schema_count=0,
-        not_observed_schema_count=8,
+        not_observed_schema_count=len(_NOT_OBSERVED_IDS),
         not_applicable_schema_count=57,
         fully_verified_schema_count=0,
         source_row_count=len(rows),

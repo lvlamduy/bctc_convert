@@ -61,6 +61,12 @@ _NOT_OBSERVED_IDS = frozenset(
         4374,
     }
 )
+_NOT_OBSERVED_ON_TARGET_STATEMENT_PAGES_IDS = _NOT_OBSERVED_IDS - {4306}
+_CROSS_STATEMENT_NOTE_LINKS = (
+    (4344, 576, "RELATED_NOTE_DETAIL_NOT_PROVEN_IDENTICAL"),
+    (4326, 585, "RELATED_NOTE_DISCLOSURE_NO_BACKFILL"),
+    (4345, 5718, "BROADER_COMBINED_PROVISION_NOT_EQUIVALENT"),
+)
 _EQUITY_COMPONENT_IDS = (4364, 4365, 4342, 4341, 4343, 5699)
 
 
@@ -257,10 +263,15 @@ def _update_main_sheet(template: Any, workbook: Any) -> tuple[tuple, dict[int, i
 
     for report_norm_id in _NOT_OBSERVED_IDS:
         row = rows[report_norm_id]
+        status = (
+            "NOT_OBSERVED_ON_TARGET_STATEMENT_PAGES"
+            if report_norm_id in _NOT_OBSERVED_ON_TARGET_STATEMENT_PAGES_IDS
+            else "NOT_OBSERVED_IN_THIS_PDF"
+        )
         sheet.cell(row, 4, None)
         sheet.cell(row, 5, None)
-        sheet.cell(row, 6, "NOT_OBSERVED_IN_THIS_PDF")
-        sheet.cell(row, 7, "NOT_OBSERVED_IN_THIS_PDF")
+        sheet.cell(row, 6, status)
+        sheet.cell(row, 7, status)
         _set_period_metadata(sheet, row)
 
     row = rows[4363]
@@ -317,7 +328,8 @@ def _update_main_sheet(template: Any, workbook: Any) -> tuple[tuple, dict[int, i
         "BLANK": 3,
         "DASH": 5,
         "DERIVED_FROM_COMPONENTS": 2,
-        "NOT_OBSERVED_IN_THIS_PDF": 32,
+        "NOT_OBSERVED_IN_THIS_PDF": 2,
+        "NOT_OBSERVED_ON_TARGET_STATEMENT_PAGES": 30,
         "VALUE": 114,
     }
     actual = {status: statuses.count(status) for status in set(statuses)}
@@ -460,12 +472,18 @@ def _replace_metadata(workbook: Any) -> None:
         ("schema.reconciled", CDKT_SCHEMA_COUNT),
         ("schema.mapped", CDKT_MAPPED_SCHEMA_COUNT),
         ("schema.not_observed", CDKT_NOT_OBSERVED_SCHEMA_COUNT),
+        (
+            "schema.not_observed_on_target_statement_pages",
+            len(_NOT_OBSERVED_ON_TARGET_STATEMENT_PAGES_IDS),
+        ),
         ("source.rows", CDKT_SOURCE_ROW_COUNT),
         ("source.physical_cells", CDKT_PHYSICAL_CELL_COUNT),
         ("target.observed_values", CDKT_OBSERVED_VALUE_COUNT),
         ("target.derived_values", CDKT_DERIVED_VALUE_COUNT),
         ("target.exported_values", CDKT_EXPORTED_VALUE_COUNT),
         ("scope", "CONSOLIDATED"),
+        ("target.statement_pages", "3-4"),
+        ("cross_statement_note_linkage.value_backfill_allowed", False),
         ("fully_verified", False),
         ("production_approved", False),
     )
@@ -564,6 +582,10 @@ def build_cdkt_development_artifacts(
             "Q002": {"report_norm_id": 4304, "status": "STRUCTURAL_REPEAT"},
             "Q003": {"report_norm_id": 5712, "status": "STRUCTURAL_REPEAT"},
             "Q004": {"report_norm_id": 5699, "status": "RESOLVED_BY_USER"},
+            "Q005": {
+                "status": "TARGET_STATEMENT_BOUNDARY_CLARIFIED_NO_VALUE_BACKFILL",
+                "target_status": "NOT_OBSERVED_ON_TARGET_STATEMENT_PAGES",
+            },
             "Q006": {"report_norm_id": 4350, "status": "SCHEMA_LABEL_CORRECTED"},
             "Q010": {
                 "canonical_value_vnd": _USER_CONFIRMED_4363_CURRENT_VND,
@@ -571,6 +593,17 @@ def build_cdkt_development_artifacts(
                 "status": "RESOLVED_BY_USER",
             },
         },
+        "cross_statement_note_links": [
+            {
+                "cdkt_report_norm_id": cdkt_id,
+                "note_pdf_page": 30,
+                "note_report_norm_id": note_id,
+                "note_statement": "TM",
+                "relation": relation,
+                "value_backfill_allowed": False,
+            }
+            for cdkt_id, note_id, relation in _CROSS_STATEMENT_NOTE_LINKS
+        ],
         "formula_checks": {
             "4325_components": {"passed": True, "status": "DERIVED_FROM_COMPONENTS"},
             "5712_equals_4325_plus_4306": {
@@ -580,6 +613,9 @@ def build_cdkt_development_artifacts(
             "4305_equals_4304_plus_5712": {"passed": True},
         },
         "not_observed_report_norm_ids": sorted(_NOT_OBSERVED_IDS),
+        "not_observed_on_target_statement_pages_report_norm_ids": sorted(
+            _NOT_OBSERVED_ON_TARGET_STATEMENT_PAGES_IDS
+        ),
         "workbook": {
             "filename": workbook_name,
             "sha256": workbook_sha256,

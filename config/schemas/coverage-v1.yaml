@@ -1,4 +1,4 @@
-version: 1
+version: 2
 selection: ALL_TEMPLATE_ITEMS
 order_authority: WORKBOOK_DISPLAY_ORDER
 consumers:
@@ -15,7 +15,14 @@ mandatory_search:
   terminal_outcomes:
     - OBSERVED_VALUE
     - OBSERVED_ZERO
+    - DASH
+    - BLANK
     - NOT_OBSERVED
+    - NOT_APPLICABLE
+    - AMBIGUOUS
+    - UNRESOLVED
+    # Legacy producer vocabulary remains accepted during migration. The
+    # evaluation registry reports it separately rather than collapsing it.
     - OUT_OF_SCOPE_FOR_TARGET_TEMPLATE
     - AMBIGUOUS_MAPPING
     - REFERENCE_NOT_YET_BUILT

@@ -2,12 +2,12 @@
 
 Updated: 2026-08-08
 
-- **CDKT unresolved:** 1 scope-policy question (`Q005`); item mapping and the confirmed Q010 value are reconciled.
+- **CDKT unresolved:** 0. `Q005` is resolved as a statement-page observation boundary with explicit, non-overwriting note linkages.
 - **KQKD unresolved:** 0 current item-level questions.
 - **LCTT unresolved:** 0 current item-level questions.
-- **TM unresolved:** 38 meaningful items = 21 `NEEDS_USER_REVIEW` + 17 `CODEX_STILL_INVESTIGATING` across the fully itemized quantitative pages 30–61; pages 55–56 and 59 are narrative-only, and pages 57–61 add no new user question.
+- **TM unresolved:** 0. The prior 21 questions were closed-schema artifacts and are now resolved by source-evidenced universal-schema identities or explicit provenance-only dimension treatment. Pages 55–56 and 59 are narrative-only.
 
-CDKT schema reconciliation is exact after the approved schema update: `78 = 62 MAPPED + 16 NOT_OBSERVED_IN_THIS_PDF`. The not-observed IDs are `4344, 4326, 4345, 4333, 4309, 4303, 4359, 4360, 4373, 4340, 4374, 4341, 4329, 4369, 4370, 4306`. All 64 visible rows now have an explicit mapping or structural-repeat disposition.
+CDKT schema reconciliation is exact after the approved schema update: `78 = 62 MAPPED + 16 NOT_OBSERVED_ON_TARGET_STATEMENT_PAGES`. The not-observed IDs are `4344, 4326, 4345, 4333, 4309, 4303, 4359, 4360, 4373, 4340, 4374, 4341, 4329, 4369, 4370, 4306`. All 64 visible main-statement rows have an explicit mapping or structural-repeat disposition; note disclosures are retained through non-overwriting cross-statement links.
 
 ## RESOLVED_BY_USER
 
@@ -71,7 +71,7 @@ CDKT schema reconciliation is exact after the approved schema update: `78 = 62 M
 - **What Codex currently thinks:** the user-confirmed 5699 assignment and separate 4306 disposition preserve both identities.
 - **Answer incorporated:** map the visible row to 5699.
 
-## NEEDS_USER_REVIEW
+## RESOLVED_BY_CODEX — CDKT observation boundary
 
 ### Q005
 
@@ -87,13 +87,12 @@ CDKT schema reconciliation is exact after the approved schema update: `78 = 62 M
   `4341 Chênh lệch đánh giá lại tài sản`; `4329 Tài sản cố định thuê tài chính`;
   `4369 Nguyên giá tài sản cố định thuê tài chính`; `4370 Giá trị hao mòn lũy kế tài sản cố định thuê tài chính`.
 - **Visible values/periods:** none on pages 3–4.
-- **Current status:** `NOT_OBSERVED_IN_THIS_PDF` under the main-statement boundary.
+- **Current status:** `NOT_OBSERVED_ON_TARGET_STATEMENT_PAGES`; quantitative-note evidence is retained as explicit linkage metadata and never silently backfills the main-statement observation.
 - **Candidate ReportNormId(s):** 4344, 4326, 4345, 4333, 4309, 4303, 4359, 4360, 4373, 4340, 4374, 4341, 4329, 4369, 4370.
-- **Why unresolved:** some details may occur only in quantitative notes; using note values in the CDKT output would change the current main-statement-only extraction boundary.
-- **What Codex currently thinks:** keep CDKT and quantitative TM evidence separate unless the schema contract says otherwise.
-- **Question for user:** For example, if TM notes separately disclose `4344 Tiền, vàng gửi tại các TCTD khác` and `4326 Cho vay các TCTD khác`, should those note values populate the corresponding CDKT template rows even though pages 3–4 show only an aggregate? More generally, may quantitative-note rows backfill these 15 CDKT IDs, or must CDKT output use only rows visible on the main statement?
+- **Previous blocker:** some details occur only in quantitative notes, so treating the whole PDF as one undifferentiated observation surface would confuse note disclosure with a main-statement row.
+- **Final implementation:** CDKT output reports only observations on the target statement pages. Note-page links `4344→TM 576`, `4326→TM 585`, and `4345→broader TM 5718` are linkage-only; no value is injected, imputed, or derived. This preserves both cross-statement evidence and exact observation ownership.
 
-## RESOLVED_BY_USER — continued
+## RESOLVED — user decisions and universal-schema follow-up
 
 ### Q006
 
@@ -127,18 +126,17 @@ CDKT schema reconciliation is exact after the approved schema update: `78 = 62 M
 
 ### Q013
 
-**Resolution:** `RESOLVED_BY_USER` — map the visible combined row to ReportNormId `4144`; preserve both visible dashes as `DASH`, not zero.
+**Resolution:** `RESOLVED_BY_CODEX` under the universal-schema policy — add aggregate ReportNormId `6034`; preserve both visible dashes as `DASH`, not zero.
 
 - **Statement:** LCTT
 - **Document:** MBB consolidated Q1/2026, direct method
 - **PDF page:** 7
 - **Visible row label:** `Tiền thu/(chi) bất động sản đầu tư`
 - **Visible values/periods:** dash / dash for 01/01–31/03/2026 and comparative 2025.
-- **Current status:** `MAPPED` to 4144 with `DASH / DASH`; 4145 and 4146 are `NOT_OBSERVED_IN_THIS_PDF`.
-- **Candidate ReportNormId(s):** 4144 (resolved).
-- **Why previously unresolved:** the PDF presents one combined row while the schema contains several related movements.
-- **What Codex currently thinks:** the user-confirmed 4144 treatment must preserve both dashes and never infer zero.
-- **Answer incorporated:** map the combined row to 4144.
+- **Current status:** `MAPPED` to 6034 with `DASH / DASH`; component IDs 4144, 4145 and 4146 are `NOT_OBSERVED_IN_THIS_PDF` as separate rows.
+- **Candidate ReportNormId(s):** 6034 (resolved aggregate); 4144–4146 remain its component children.
+- **Why the earlier treatment changed:** 4144 is specifically the purchase component, while the visible PDF row is a distinct net receipt/payment aggregate. Reusing 4144 would narrow the source meaning.
+- **Final implementation:** 6034 is inserted under 4111 immediately before its three components; the source row maps to 6034 and both dashes remain nonnumeric observation statuses.
 
 ### Q014
 
@@ -407,284 +405,91 @@ CDKT schema reconciliation is exact after the approved schema update: `78 = 62 M
 - **What Codex currently thinks:** `Cho vay các TCKT` validates its enterprise-type children; `Cho vay khác` validates 781 plus the exact catch-all component; foreign-business plus foreign-personal validates the foreign-branch component assigned to 782.
 - **Resolution evidence:** every subtotal equation passes on both snapshot axes, 765 is not used, and no ReportNormId is emitted twice.
 
-## NEEDS_USER_REVIEW — TM
+## RESOLVED_BY_CODEX — TM universal-schema migration
 
-### Q032
+The following items were previously framed as forced mappings into a closed schema. Source re-audit established that they are either genuine accounting identities absent from the prior schema or non-row dimensions that belong in provenance. They no longer require user answers.
 
-- **Statement:** TM
-- **Document:** MBB consolidated Q1/2026
-- **PDF page:** 37–38, note 10 tangible fixed assets
-- **Visible row label:** gross-cost `Tăng trong kỳ`, `Giảm trong kỳ`, and `Tăng/(Giảm) khác`
-- **Visible values/periods:** page 38 total increases 754.094 and decreases (354.092); page 37 totals 56.387, (6.224), and (480) triệu đồng.
-- **Current status:** `SOURCE_ONLY_AGGREGATE`; the last row is also `AMBIGUOUS_MAPPING`.
-- **Candidate ReportNormId(s):** increases 871–875; decreases 876–878/880–881; other 875/881.
-- **Why unresolved:** the PDF aggregates movement causes that the schema separates.
-- **What Codex currently thinks:** do not split; the negative sign weakly favors 881 for page 37 `other` but is insufficient authority.
-- **Question for user:** Keep these aggregates source-only, select a detail by context/sign, or add aggregate IDs?
+### Q032–Q033
 
-### Q033
-
-- **Statement:** TM
-- **Document:** MBB consolidated Q1/2026
-- **PDF page:** 37–38, tangible accumulated depreciation
-- **Visible row label:** `Tăng trong kỳ`, `Giảm trong kỳ`, and `Tăng/(Giảm) khác`
-- **Visible values/periods:** page 38 totals 551.766 / (201.454); page 37 totals 144.587 / (5.996) / dash; triệu đồng.
-- **Current status:** `SOURCE_ONLY_AGGREGATE`.
-- **Candidate ReportNormId(s):** increases 885–887; decreases 888–890/892–894; other 887/894.
-- **Why unresolved:** aggregate rows cannot prove which detailed schema movement produced them.
-- **What Codex currently thinks:** 885 is plausible for increase but unsafe to force.
-- **Question for user:** Retain aggregate/components unresolved, select detail IDs, or add aggregate IDs?
+- **Statement / pages:** TM, MBB consolidated Q1/2026, pages 37–38.
+- **Visible concepts:** tangible-fixed-asset gross-cost and accumulated-depreciation increase, decrease, and other aggregates.
+- **Final status:** `RESOLVED_BY_CODEX` — added source aggregate IDs 5991–5996 under their true gross-cost/depreciation parents. Detailed cause IDs remain children and are not selected by sign.
 
 ### Q037
 
-- **Statement:** TM
-- **Document:** MBB consolidated Q1/2026
-- **PDF page:** 37–41
-- **Visible row label:** asset-class columns in tangible and intangible fixed-asset roll-forwards
-- **Visible values/periods:** 226 class-level auxiliary slots outside the total-column schema.
-- **Current status:** `SOURCE_ONLY_DIMENSION`.
-- **Candidate ReportNormId(s):** same movement IDs as total rows; schema has no asset-class measure axis.
-- **Why unresolved:** exporting every class into the same ID would duplicate targets.
-- **What Codex currently thinks:** export total only; retain class axes for provenance and equation checks.
-- **Question for user:** Is excluding asset-class subaxes from schema Excel intentional?
+- **Statement / pages:** TM, pages 37–41.
+- **Visible concept:** asset-class columns across roll-forward rows.
+- **Final status:** `RESOLVED_BY_CODEX — PROVENANCE_DIMENSION`; class axes and their 226 cells remain first-class observation/validation provenance. They are not duplicated as accounting-row IDs because they are columns, not distinct row identities.
 
-### Q038
+### Q038–Q039
 
-- **Statement:** TM
-- **Document:** MBB consolidated Q1/2026
-- **PDF page:** 39–40, note 11 intangible gross cost
-- **Visible row label:** `Tăng trong kỳ`; `Tăng/(giảm) khác`
-- **Visible values/periods:** page 39 increase total 77.097; page 40 increase 823.072 and other (10.622) triệu đồng.
-- **Current status:** `SOURCE_ONLY_AGGREGATE` / `AMBIGUOUS_MAPPING`.
-- **Candidate ReportNormId(s):** increase 916–920; other 920/927; liquidation 925 is already exact.
-- **Why unresolved:** the generic aggregate does not identify a detailed movement; sign only weakly favors 927 for `other`.
-- **What Codex currently thinks:** retain increases as aggregate; select 927 only if a sign/context policy is approved.
-- **Question for user:** Keep source-only, select 927 by sign, or add aggregate IDs?
+- **Statement / pages:** TM, pages 39–40.
+- **Visible concepts:** intangible-asset gross-cost and accumulated-amortization increase/decrease/other aggregates.
+- **Final status:** `RESOLVED_BY_CODEX` — added IDs 5997–6001 under their true parents. No detailed movement is inferred from a generic aggregate.
 
-### Q039
+### Q042–Q043
 
-- **Statement:** TM
-- **Document:** MBB consolidated Q1/2026
-- **PDF page:** 39–40, intangible accumulated amortization
-- **Visible row label:** `Tăng trong kỳ`, `Giảm trong kỳ`, and `Tăng/(giảm) khác`
-- **Visible values/periods:** page 39 increase 104.592; page 40 increase 601.304, decrease (21.406), other (3.348) triệu đồng.
-- **Current status:** `SOURCE_ONLY_AGGREGATE` / `AMBIGUOUS_MAPPING`.
-- **Candidate ReportNormId(s):** increase 931–933; decrease 934–940 (938 strongest); other 933/940.
-- **Why unresolved:** the labels are generic and may combine several detailed schema movements.
-- **What Codex currently thinks:** context/sign suggest 931/938/940 but are not sufficient authority.
-- **Question for user:** Approve those mappings, retain aggregate source-only, or add aggregate IDs?
-
-### Q042
-
-- **Statement:** TM
-- **Document:** MBB consolidated Q1/2026
-- **PDF page:** 41, note 12 investment property
-- **Visible row label:** gross-cost `Tăng`, `Giảm`, and `Tăng/(Giảm) khác`
-- **Visible values/periods:** current other total (4.971); FY2025 increase 4.971 and decrease (10.260) triệu đồng; other displayed cells include dash.
-- **Current status:** `SOURCE_ONLY_AGGREGATE` / `AMBIGUOUS_MAPPING`.
-- **Candidate ReportNormId(s):** 945–954; the negative current `other` weakly favors 954.
-- **Why unresolved:** the PDF aggregates movement causes that the schema separates.
-- **What Codex currently thinks:** do not split or force a detail ID.
-- **Question for user:** Keep source-only/components not observed, approve sign-based 954, or add aggregate IDs?
-
-### Q043
-
-- **Statement:** TM
-- **Document:** MBB consolidated Q1/2026
-- **PDF page:** 41, accumulated depreciation
-- **Visible row label:** `Tăng trong kỳ`; `Tăng/(Giảm) khác`
-- **Visible values/periods:** current increase 1.528; FY2025 increase 6.145 and other (132) triệu đồng.
-- **Current status:** `SOURCE_ONLY_AGGREGATE` / `AMBIGUOUS_MAPPING`.
-- **Candidate ReportNormId(s):** increase 958–960; other 960/964.
-- **Why unresolved:** generic aggregate labels do not identify detailed movement leaves.
-- **What Codex currently thinks:** 958/964 are plausible but insufficiently evidenced.
-- **Question for user:** Approve those IDs, retain aggregates source-only, or add aggregate IDs?
+- **Statement / page:** TM, page 41.
+- **Visible concepts:** investment-property gross-cost and accumulated-depreciation increase/decrease/other aggregates.
+- **Final status:** `RESOLVED_BY_CODEX` — added IDs 6002–6006; visible aggregate rows are preserved without sign-based force-mapping.
 
 ### Q045
 
-- **Statement:** TM
-- **Document:** MBB consolidated Q1/2026
-- **PDF page:** 42, note 13
-- **Visible row label:** `Chi phí xây dựng cơ bản, mua sắm TSCĐ`
-- **Visible values/periods:** 1.295.059 at 31/03/2026; 1.039.654 at 31/12/2025; triệu đồng.
-- **Current status:** `AMBIGUOUS_COMPOSITE`.
-- **Candidate ReportNormId(s):** 968, 969.
-- **Why unresolved:** one PDF row combines two distinct schema concepts and cannot be split from visible evidence.
-- **What Codex currently thinks:** retain as a source-only aggregate.
-- **Question for user:** Map to one ID, add an aggregate ID, or retain source-only?
+- **Statement / page:** TM, page 42.
+- **Visible concept:** `Chi phí xây dựng cơ bản, mua sắm TSCĐ`, 1.295.059 / 1.039.654 triệu đồng.
+- **Final status:** `RESOLVED_BY_CODEX` — added combined source identity 6007 under parent 967 instead of forcing the row into either 968 or 969.
 
 ### Q050
 
-- **Statement:** TM
-- **Document:** MBB consolidated Q1/2026
-- **PDF page:** 44, note 20
-- **Visible row label:** bond and certificate-of-deposit maturity buckets
-- **Visible values/periods:** bond `<5y` 24.009.801 / 23.039.165; CD `≤12m` 85.267.048 / 76.253.073; CD `>12m` 79.970.220 / 64.577.077 triệu đồng.
-- **Current status:** `SOURCE_ONLY_PDF_ROWS` / `AMBIGUOUS_BUCKETS`.
-- **Candidate ReportNormId(s):** 1110/1111; 1102/1103; 1103/1104.
-- **Why unresolved:** published and schema maturity boundaries overlap differently; `≤12m` conflicts with schema `<12m` plus `12m–<5y`.
-- **What Codex currently thinks:** no automatic split or forced bucket.
-- **Question for user:** Approve a source-only boundary policy or provide the authoritative crosswalk/allocation?
+- **Statement / page:** TM, page 44.
+- **Visible concepts:** CD `Từ 12 tháng trở xuống`, CD `Trên 12 tháng`, and bond `Dưới 5 năm`.
+- **Final status:** `RESOLVED_BY_CODEX` — added exact source-boundary IDs 6008–6010. Existing buckets with different boundaries are not reused or numerically allocated.
 
 ### Q051
 
-- **Statement:** TM
-- **Document:** MBB consolidated Q1/2026
-- **PDF page:** 44, note 22.1 equity movement grid
-- **Visible row label:** component balances and movements from opening 142.022.525 to closing 149.745.325 triệu đồng.
-- **Visible values/periods:** profit +7.515.513, reserves/funds/FX/NCI movements, and total changes +7.810.203 −87.403.
-- **Current status:** `SOURCE_ONLY_COMPONENT_GRID` / `AMBIGUOUS_MOVEMENTS`.
-- **Candidate ReportNormId(s):** exact 1128/1129/1131/1141; unresolved 1130 and 1132–1140.
-- **Why unresolved:** PDF is an equity-component × movement grid; schema is a generic movement list.
-- **What Codex currently thinks:** map exact opening/profit/closing only and preserve the rest of the grid.
-- **Question for user:** Retain source-only, or define mappings for component balances and movement aggregates?
+- **Statement / page:** TM, page 44.
+- **Visible concept:** equity component × movement grid.
+- **Final status:** `RESOLVED_BY_CODEX` — added component identities 6011–6018 and printed movement parents 6019 `Trích lập/Tăng` and 6020 `Sử dụng/Giảm`; the latter own existing movement details 1130–1140 in source order. Matrix axes remain provenance where they are not row identities.
 
-### Q055
+### Q055, Q057 and Q059
 
-- **Statement:** TM
-- **Document:** MBB consolidated Q1/2026
-- **PDF page:** 46, net-service note
-- **Visible row label:** `Thu từ dịch vụ thanh toán và ngân quỹ`
-- **Visible values/periods:** 1.460.480 for Q1/2026; 755.554 for Q1/2025; triệu đồng.
-- **Current status:** `AMBIGUOUS_MAPPING`.
-- **Candidate ReportNormId(s):** 1158, 1159.
-- **Why unresolved:** one source subtotal combines payment/cash and treasury/guarantee concepts that the schema separates.
-- **What Codex currently thinks:** the visible values cannot be split safely.
-- **Question for user:** Map this combined row to one ID, add an aggregate ID, or retain it source-only?
-
-### Q057
-
-- **Statement:** TM
-- **Document:** MBB consolidated Q1/2026
-- **PDF page:** 46, net-service note
-- **Visible row label:** `Thu từ xử lý nợ, thẩm định giá và khai thác tài sản`
-- **Visible values/periods:** 38.898 for Q1/2026; 126.730 for Q1/2025; triệu đồng.
-- **Current status:** `AMBIGUOUS_MAPPING`.
-- **Candidate ReportNormId(s):** 1162.
-- **Why unresolved:** 1162 covers warehouse management/asset valuation, only part of the combined visible concept.
-- **What Codex currently thinks:** semantic overlap is insufficient for automatic mapping.
-- **Question for user:** Should this combined row map to 1162?
-
-### Q059
-
-- **Statement:** TM
-- **Document:** MBB consolidated Q1/2026
-- **PDF page:** 46, net-service note
-- **Visible row label:** `Chi về dịch vụ thanh toán và ngân quỹ`
-- **Visible values/periods:** (675.848) for Q1/2026; (551.556) for Q1/2025; triệu đồng.
-- **Current status:** `AMBIGUOUS_MAPPING`.
-- **Candidate ReportNormId(s):** 1168, 1169.
-- **Why unresolved:** the PDF combines payment and treasury services while the schema separates them.
-- **What Codex currently thinks:** no evidence supports a numeric split.
-- **Question for user:** Map to one ID, add an aggregate ID, or retain source-only?
+- **Statement / page:** TM, page 46.
+- **Visible concepts:** combined payment/treasury income, debt-processing/valuation/asset-exploitation income, and combined payment/treasury expense.
+- **Final status:** `RESOLVED_BY_CODEX` — added exact combined identities 6021, 6022 and 6023. No numeric split across narrower existing IDs is invented.
 
 ### Q061
 
-- **Statement:** TM
-- **Document:** MBB consolidated Q1/2026
-- **PDF page:** 46, net-service note
-- **Visible row label:** `Chi phí hoa hồng môi giới`; `Chi về hoạt động môi giới chứng khoán`
-- **Visible values/periods:** (539.743) and (59.748) for Q1/2026; (232.408) and (32.105) for Q1/2025; triệu đồng.
-- **Current status:** `AMBIGUOUS_AGGREGATE`.
-- **Candidate ReportNormId(s):** 1170 for both source rows.
-- **Why unresolved:** two visible rows may jointly implement the one broader schema target, but no subtotal is printed.
-- **What Codex currently thinks:** the likely aggregate is (599.491) / (264.513), while both source rows must remain in provenance.
-- **Question for user:** Should both rows be summed into 1170, or should only one row map there?
+- **Statement / page:** TM, page 46.
+- **Visible concepts:** `Chi phí hoa hồng môi giới` and `Chi về hoạt động môi giới chứng khoán`.
+- **Final status:** `RESOLVED_BY_CODEX` — added direct child identities 6024 and 6025. Existing broader ID 1170 is retained as an explicitly derived aggregate with both children, derivation method, period, unit, and provenance; it never replaces the printed child observations.
 
-### Q064
+### Q064–Q065
 
-- **Statement:** TM
-- **Document:** MBB consolidated Q1/2026
-- **PDF page:** 47, foreign-exchange/gold note
-- **Visible row label:** `Thu từ kinh doanh ngoại tệ giao ngay và vàng`
-- **Visible values/periods:** 662.413 for Q1/2026; 983.504 for Q1/2025; triệu đồng.
-- **Current status:** `AMBIGUOUS_MAPPING` (combined source row).
-- **Candidate ReportNormId(s):** 1177, 1178.
-- **Why unresolved:** one visible row combines spot foreign-exchange and gold income that the schema separates.
-- **What Codex currently thinks:** the values cannot be split from the PDF.
-- **Question for user:** Add/use a combined target, map to one ID, or retain the row source-only?
-
-### Q065
-
-- **Statement:** TM
-- **Document:** MBB consolidated Q1/2026
-- **PDF page:** 47, foreign-exchange/gold note
-- **Visible row label:** `Chi về kinh doanh ngoại tệ giao ngay và vàng`
-- **Visible values/periods:** (486.848) for Q1/2026; (221.138) for Q1/2025; triệu đồng.
-- **Current status:** `AMBIGUOUS_MAPPING` (combined source row).
-- **Candidate ReportNormId(s):** 1183, 1184.
-- **Why unresolved:** one visible row combines spot foreign-exchange and gold expense that the schema separates.
-- **What Codex currently thinks:** the values cannot be split from the PDF.
-- **Question for user:** Add/use a combined target, map to one ID, or retain the row source-only?
+- **Statement / page:** TM, page 47.
+- **Visible concepts:** combined spot-FX-and-gold income and expense.
+- **Final status:** `RESOLVED_BY_CODEX` — added exact combined identities 6026 and 6027 rather than selecting one narrower legacy component.
 
 ### Q066
 
-- **Statement:** TM
-- **Document:** MBB consolidated Q1/2026
-- **PDF page:** 47, securities note
-- **Visible row label:** `(Trích lập)/hoàn nhập dự phòng giảm giá góp vốn, đầu tư dài hạn`
-- **Visible values/periods:** DASH for Q1/2026; 20.861 for Q1/2025; triệu đồng.
-- **Current status:** `AMBIGUOUS_MAPPING`; DASH remains status, not zero.
-- **Candidate ReportNormId(s):** 1197, 1218.
-- **Why unresolved:** label semantics favor 1218, while the row's securities-section position favors 1197 `Khác`.
-- **What Codex currently thinks:** 1218 is the stronger label match, but cross-section reuse needs business confirmation.
-- **Question for user:** Should this row map to 1218, 1197, or remain source-only?
+- **Statement / page:** TM, page 47.
+- **Visible concept:** `(Trích lập)/Hoàn nhập dự phòng giảm giá góp vốn, đầu tư dài hạn`, `DASH / 20.861` triệu đồng.
+- **Final status:** `RESOLVED_BY_CODEX` — added identity 6028 in the visible securities-note context; `DASH` remains nonnumeric and is never converted to zero.
 
 ### Q069
 
-- **Statement:** TM
-- **Document:** MBB consolidated Q1/2026
-- **PDF page:** 47, other-income/expense note
-- **Visible row label:** `Thu nhập/(Chi phí) khác`
-- **Visible values/periods:** 252.019 for Q1/2026; 113.256 for Q1/2025; triệu đồng.
-- **Current status:** `AMBIGUOUS_MAPPING` (signed net row).
-- **Candidate ReportNormId(s):** 1239, 1246.
-- **Why unresolved:** the PDF exposes one signed net row while the schema separates other income and other expense.
-- **What Codex currently thinks:** a sign-based choice would lose the combined business meaning.
-- **Question for user:** Add/use a net target, map by sign, or retain source-only?
+- **Statement / page:** TM, page 47.
+- **Visible concept:** `Thu nhập/(Chi phí) khác`, 252.019 / 113.256 triệu đồng.
+- **Final status:** `RESOLVED_BY_CODEX` — added signed-net child 6030 under new visible parent 6029 `Lãi thuần từ hoạt động kinh doanh khác`; no sign-based choice between separate income/expense IDs is made.
 
-### Q071
+### Q071–Q073
 
-- **Statement:** TM
-- **Document:** MBB consolidated Q1/2026
-- **PDF page:** 49, credit-risk provision note
-- **Visible row label:** `Chi phí/(Hoàn nhập) dự phòng rủi ro cho vay khách hàng`
-- **Visible values/periods:** 3.451.261 for Q1/2026; 2.973.316 for Q1/2025; triệu đồng.
-- **Current status:** `AMBIGUOUS_MAPPING` (combined source row).
-- **Candidate ReportNormId(s):** 1224, 1225.
-- **Why unresolved:** the PDF combines general and specific customer-loan provisions that the schema separates.
-- **What Codex currently thinks:** no visible evidence supports a split.
-- **Question for user:** Add/use an aggregate target, map to another existing ID, or keep this row source-only?
+- **Statement / page:** TM, page 49.
+- **Visible concepts:** combined customer-loan provision, interbank-loan provision, and purchased-debt provision expense/reversal rows.
+- **Final status:** `RESOLVED_BY_CODEX` — added exact aggregate identities 6031–6033 under 1221. General/specific leaves and VAMC-specific 1226 are not substituted for broader printed rows.
 
-### Q072
+## RESOLVED_BY_CODEX — automatic schema additions completed
 
-- **Statement:** TM
-- **Document:** MBB consolidated Q1/2026
-- **PDF page:** 49, credit-risk provision note
-- **Visible row label:** `Chi phí/(Hoàn nhập) dự phòng rủi ro cho vay TCTD`
-- **Visible values/periods:** 1.648 for Q1/2026; 76 for Q1/2025; triệu đồng.
-- **Current status:** `AMBIGUOUS_MAPPING` (combined source row).
-- **Candidate ReportNormId(s):** 1222, 1223.
-- **Why unresolved:** the PDF combines general and specific interbank provision movements that the schema separates.
-- **What Codex currently thinks:** preserve the combined evidence rather than invent a split.
-- **Question for user:** Add/use an aggregate target, map to another existing ID, or keep this row source-only?
-
-### Q073
-
-- **Statement:** TM
-- **Document:** MBB consolidated Q1/2026
-- **PDF page:** 49, credit-risk provision note
-- **Visible row label:** `Chi phí/(Hoàn nhập) dự phòng mua nợ`
-- **Visible values/periods:** 1.775 for Q1/2026; 24.681 for Q1/2025; triệu đồng.
-- **Current status:** `AMBIGUOUS_MAPPING` / `POSSIBLE_SCHEMA_GAP`.
-- **Candidate ReportNormId(s):** 1226 `Trích lập dự phòng trái phiếu đặc biệt VAMC`.
-- **Why unresolved:** the visible purchased-debt concept is broader than the VAMC-specific schema item.
-- **What Codex currently thinks:** do not narrow the row to VAMC without business confirmation.
-- **Question for user:** Map this row to 1226, add a generic purchased-debt provision item, or keep it source-only?
-
-## CODEX_STILL_INVESTIGATING
-
-- **TM:** every quantitative page through page 61 has been itemized and reconciled. Pages 55–56 and 59 are narrative-only; only evidence-backed rows are promoted into mapping/Excel.
+- **TM:** every quantitative page through page 61 has been itemized and reconciled. These 17 evidence-backed schema gaps are now added, hierarchy-bound and mapped; no user answer is required. Pages 55–56 and 59 are narrative-only.
 
 ### Q030
 
@@ -693,11 +498,10 @@ CDKT schema reconciliation is exact after the approved schema update: `78 = 62 M
 - **PDF page:** 36, note 9
 - **Visible row label:** `Dự phòng giảm giá`
 - **Visible values/periods:** (91.228) at both 31/03/2026 and 31/12/2025; triệu đồng.
-- **Current status:** `AUTOMATIC_SCHEMA_ADDITION_QUEUED — no user answer required`; add a dedicated provision identity in branch 862–867.
+- **Current status:** `RESOLVED_BY_CODEX` — added and mapped ReportNormId 5959 `Dự phòng giảm giá` in branch 862–867.
 - **Candidate ReportNormId(s):** none in branch 862–867; 849 belongs to a different note and is not reusable.
-- **Why unresolved:** the branch has gross 867 and net 862 but no provision child.
-- **What Codex currently thinks:** the provision row is a clear missing schema identity; its parent/order will follow the visible 862–867 branch, and gross plus provision must continue to equal net.
-- **No user answer required:** Codex will add and map the dedicated provision identity, then retain the exact gross-plus-provision-equals-net check.
+- **Previous blocker:** the branch had gross 867 and net 862 but no provision child.
+- **Final implementation:** 5959 is source-mapped at both snapshots; `862 = 867 + 5959` is retained as validation only and passes exactly.
 
 ### Q031
 
@@ -706,11 +510,10 @@ CDKT schema reconciliation is exact after the approved schema update: `78 = 62 M
 - **PDF page:** 36, note 9.1
 - **Visible row label:** `Đầu tư vào tổ chức kinh tế, dự án dài hạn`; `Đầu tư vào các Quỹ đầu tư`
 - **Visible values/periods:** 492.584 / 493.184 and 66.550 / 66.440 triệu đồng at current/comparative snapshots.
-- **Current status:** `AUTOMATIC_SCHEMA_ADDITION_QUEUED — no user answer required`; add two dedicated detail identities under aggregate 867.
+- **Current status:** `RESOLVED_BY_CODEX` — added and mapped ReportNormIds 5960 and 5961 under aggregate 867.
 - **Candidate ReportNormId(s):** none exact; 867 is their aggregate only.
-- **Why unresolved:** schema branch 862–867 has no matching child identities.
-- **What Codex currently thinks:** both labels are clear source details of 867 and should be represented separately while 867 remains their aggregate.
-- **No user answer required:** Codex will add both detail identities under 867 and validate their aggregate.
+- **Previous blocker:** schema branch 862–867 had no matching child identities.
+- **Final implementation:** both visible details are mapped separately and `867 = 5960 + 5961` is retained as validation only.
 
 ### Q034
 
@@ -719,11 +522,10 @@ CDKT schema reconciliation is exact after the approved schema update: `78 = 62 M
 - **PDF page:** 37–38
 - **Visible row label:** tangible gross-cost and accumulated-depreciation `Chênh lệch tỷ giá`
 - **Visible values/periods:** page 37 totals 565 / 162; page 38 totals 8.606 / 2.225 triệu đồng.
-- **Current status:** `AUTOMATIC_SCHEMA_ADDITION_QUEUED — no user answer required`; add separate FX movement leaves under parents 869 and 883.
+- **Current status:** `RESOLVED_BY_CODEX` — added and mapped FX movement leaves 5962 under 869 and 5963 under 883.
 - **Candidate ReportNormId(s):** none exact under parents 869 and 883.
-- **Why unresolved:** the schema has no FX movement leaf under either parent.
-- **What Codex currently thinks:** the exact FX labels and source hierarchy determine two new leaves; no accounting interpretation from the user is needed.
-- **No user answer required:** Codex will add one FX movement leaf under 869 and one under 883, preserving both periods.
+- **Previous blocker:** the schema had no FX movement leaf under either parent.
+- **Final implementation:** both total-axis source values are mapped for Q1/2026 and FY2025; roll-forward equations remain validation only.
 
 ### Q036
 
@@ -732,11 +534,10 @@ CDKT schema reconciliation is exact after the approved schema update: `78 = 62 M
 - **PDF page:** 37–38
 - **Visible row label:** tangible fixed-asset `Giá trị còn lại` at opening and closing
 - **Visible values/periods:** page 38 total 3.750.696 → 3.805.533; page 37 total 3.805.533 → 3.717.028 triệu đồng.
-- **Current status:** `AUTOMATIC_SCHEMA_ADDITION_QUEUED — no user answer required`; add total-axis tangible net-book-value opening/closing identities.
+- **Current status:** `RESOLVED_BY_CODEX` — added structural root 5964 and mapped opening/closing identities 5965/5966.
 - **Candidate ReportNormId(s):** none.
-- **Why unresolved:** the schema has cost/depreciation movements but no net-book-value opening/closing leaves.
-- **What Codex currently thinks:** opening and closing net book value are clear total-axis identities; gross minus accumulated depreciation remains an independent validation.
-- **No user answer required:** Codex will add tangible net-book-value opening/closing identities and retain all reconciliation checks.
+- **Previous blocker:** the schema had cost/depreciation movements but no net-book-value opening/closing leaves.
+- **Final implementation:** only printed TOTAL-axis values are mapped; gross minus accumulated depreciation and cross-panel continuity remain validation only.
 
 ### Q040
 
@@ -745,11 +546,10 @@ CDKT schema reconciliation is exact after the approved schema update: `78 = 62 M
 - **PDF page:** 39–40
 - **Visible row label:** intangible gross-cost and accumulated-amortization `Chênh lệch tỷ giá`
 - **Visible values/periods:** page 39 totals 159 / 44; page 40 totals 1.263 / 391 triệu đồng.
-- **Current status:** `AUTOMATIC_SCHEMA_ADDITION_QUEUED — no user answer required`; add separate FX movement leaves under parents 914 and 929.
+- **Current status:** `RESOLVED_BY_CODEX` — added and mapped FX movement leaves 5967 under 914 and 5968 under 929.
 - **Candidate ReportNormId(s):** none under parents 914 and 929.
-- **Why unresolved:** the schema has no FX movement leaf for either roll-forward.
-- **What Codex currently thinks:** the exact FX labels and source hierarchy determine two new leaves; no accounting interpretation from the user is needed.
-- **No user answer required:** Codex will add one FX movement leaf under 914 and one under 929, preserving both periods.
+- **Previous blocker:** the schema had no FX movement leaf for either roll-forward.
+- **Final implementation:** both total-axis source values are mapped for Q1/2026 and FY2025; roll-forward equations remain validation only.
 
 ### Q041
 
@@ -758,11 +558,10 @@ CDKT schema reconciliation is exact after the approved schema update: `78 = 62 M
 - **PDF page:** 39–40
 - **Visible row label:** intangible fixed-asset `Giá trị còn lại` at opening and closing
 - **Visible values/periods:** page 40 total 1.679.720 → 1.811.014; page 39 opens at 1.811.014 and closes at 1.783.634 triệu đồng.
-- **Current status:** `AUTOMATIC_SCHEMA_ADDITION_QUEUED — no user answer required`; add total-axis intangible net-book-value opening/closing identities.
+- **Current status:** `RESOLVED_BY_CODEX` — added structural root 5969 and mapped opening/closing identities 5970/5971.
 - **Candidate ReportNormId(s):** none.
-- **Why unresolved:** the schema lacks net-book-value opening/closing leaves.
-- **What Codex currently thinks:** opening and closing net book value are clear total-axis identities; cost minus amortization and cross-page continuity remain independent validations.
-- **No user answer required:** Codex will add intangible net-book-value opening/closing identities and retain all reconciliation checks.
+- **Previous blocker:** the schema lacked net-book-value opening/closing leaves.
+- **Final implementation:** only printed TOTAL-axis values are mapped; cost minus amortization and cross-page continuity remain validation only.
 
 ### Q044
 
@@ -771,11 +570,10 @@ CDKT schema reconciliation is exact after the approved schema update: `78 = 62 M
 - **PDF page:** 41
 - **Visible row label:** investment-property `Giá trị còn lại` at opening and closing
 - **Visible values/periods:** current panel 222.813 → 216.314; FY2025 234.115 → 222.813 triệu đồng.
-- **Current status:** `AUTOMATIC_SCHEMA_ADDITION_QUEUED — no user answer required`; add investment-property net-book-value opening/closing identities.
+- **Current status:** `RESOLVED_BY_CODEX` — added structural root 5972 and mapped opening/closing identities 5973/5974.
 - **Candidate ReportNormId(s):** none.
-- **Why unresolved:** schema lacks net-book-value opening/closing leaves.
-- **What Codex currently thinks:** opening and closing net book value are clear identities; gross minus depreciation remains an independent validation.
-- **No user answer required:** Codex will add investment-property net-book-value opening/closing identities and retain all reconciliation checks.
+- **Previous blocker:** the schema lacked net-book-value opening/closing leaves.
+- **Final implementation:** only printed TOTAL-axis values are mapped; gross minus depreciation and cross-panel continuity remain validation only.
 
 ### Q046
 
@@ -784,11 +582,10 @@ CDKT schema reconciliation is exact after the approved schema update: `78 = 62 M
 - **PDF page:** 42, note 13
 - **Visible row label:** `Phải thu liên quan đến dịch vụ thanh toán`; `Phải thu miễn truy đòi theo bộ chứng từ`
 - **Visible values/periods:** 861.287 / 1.525.624 and 11.281.653 / 8.046.079 triệu đồng.
-- **Current status:** `AUTOMATIC_SCHEMA_ADDITION_QUEUED — no user answer required`; add two dedicated receivable leaves under the source-indicated receivables parent.
+- **Current status:** `RESOLVED_BY_CODEX` — added and mapped receivable leaves 5975 and 5976 under parent 967.
 - **Candidate ReportNormId(s):** none exact; 981 is occupied by explicit `Các khoản phải thu khác`.
-- **Why unresolved:** current schema has no matching child identities.
-- **What Codex currently thinks:** dedicated leaves are safer than overloading 981; final parent placement will follow visible indentation and hierarchy validation.
-- **No user answer required:** Codex will add two dedicated receivable leaves in source hierarchy order and will not reuse 981.
+- **Previous blocker:** the schema had no matching child identities.
+- **Final implementation:** both visible rows are mapped in source order before catch-all 981; 981 remains reserved for explicit `Các khoản phải thu khác`.
 
 ### Q048
 
@@ -797,11 +594,10 @@ CDKT schema reconciliation is exact after the approved schema update: `78 = 62 M
 - **PDF page:** 43, note 17
 - **Visible row label:** `Tiền gửi của TCKT`; `Tiền gửi của cá nhân`
 - **Visible values/periods:** 365.071.880 / 402.397.512 and 540.846.452 / 518.970.620 triệu đồng.
-- **Current status:** `AUTOMATIC_SCHEMA_ADDITION_QUEUED — no user answer required`; add the exact TCKT aggregate and map personal deposits to generic cross-bank ID 1089.
+- **Current status:** `RESOLVED_BY_CODEX` — added and mapped TCKT identity 5977; mapped personal deposits to cross-bank ID 1089.
 - **Candidate ReportNormId(s):** none for TCKT aggregate; 1089 for personal deposits.
-- **Why unresolved:** schema lacks the TCKT aggregate, while 1089 is broader (`Hộ kinh doanh, cá nhân`).
-- **What Codex currently thinks:** the exact TCKT aggregate needs its own identity under 1075, while `Tiền gửi của cá nhân` is a safe subtype mapping to generic cross-bank ID 1089.
-- **No user answer required:** Codex will add `Tiền gửi của TCKT` under 1075 and map `Tiền gửi của cá nhân` to 1089.
+- **Previous blocker:** the schema lacked the TCKT aggregate, while 1089 is broader (`Hộ kinh doanh, cá nhân`).
+- **Final implementation:** both printed rows are mapped and `1055 = 5977 + 1089` passes exactly for both snapshots as validation only.
 
 ### Q052
 
@@ -810,11 +606,10 @@ CDKT schema reconciliation is exact after the approved schema update: `78 = 62 M
 - **PDF page:** 44, quantitative narrative disclosures
 - **Visible row label:** own-bond/CD rates; issued shares; par value; stated capital
 - **Visible values/periods:** 5,00–8,80%/year; 4,40–11,18%; 8.054.999.909 shares; 10.000 VND/share; 80.549.999 triệu đồng.
-- **Current status:** `AUTOMATIC_SCHEMA_ADDITION_QUEUED — no user answer required`; add unit-aware quantitative identities for the disclosed rates, shares, par value and stated capital.
+- **Current status:** `RESOLVED_BY_CODEX` — added and mapped unit-aware ReportNormIds 5978–5984.
 - **Candidate ReportNormId(s):** none native; capital cross-validates the table within rounding.
-- **Why unresolved:** schema lacks quantitative fields for these narratives.
-- **What Codex currently thinks:** these are explicit quantitative disclosures, so the schema should retain them with native rate/share/VND units instead of hiding them as provenance-only.
-- **No user answer required:** Codex will add the quantitative identities with their native units and range semantics.
+- **Previous blocker:** the schema lacked quantitative fields for these narratives.
+- **Final implementation:** four rate endpoints retain `PERCENT_PER_YEAR`, share count retains `SHARE`, par retains `VND_PER_SHARE`, and stated capital retains source `VND_MILLION`; the capital equation is validation only.
 
 ### Q053
 
@@ -823,11 +618,10 @@ CDKT schema reconciliation is exact after the approved schema update: `78 = 62 M
 - **PDF page:** 45, notes 22.2–22.3
 - **Visible row label:** EPS and share-count disclosure family
 - **Visible values/periods:** profit 7.515.513 / 6.567.740 triệu đồng; weighted shares 8.054.999.909; EPS 933/815 VND/share; sold/outstanding/common shares 8.054.999.909; repurchased/preferred dash; registered shares blank.
-- **Current status:** `AUTOMATIC_SCHEMA_ADDITION_QUEUED — no user answer required`; add the EPS/share-count/share-class disclosure family.
-- **Candidate ReportNormId(s):** none in the current 1.613-item TM schema; profit only cross-validates 1131.
-- **Why unresolved:** the full disclosure family is absent and rows use different units; blank, dash and zero are distinct.
-- **What Codex currently thinks:** the disclosure family should be added with unit-aware values and distinct `BLANK`/`DASH` statuses; the profit row remains a cross-check of 1131.
-- **No user answer required:** Codex will add the EPS/share family and preserve `BLANK`, `DASH`, share-count and VND/share semantics distinctly.
+- **Current status:** `RESOLVED_BY_CODEX` — added and mapped the EPS/share family as ReportNormIds 5946–5958.
+- **Candidate ReportNormId(s):** resolved to 5946–5958; the profit row remains external validation of page-44 owner 1131.
+- **Previous blocker:** the full disclosure family was absent and rows use different units; blank, dash and zero are distinct.
+- **Final implementation:** 22 mapped observations preserve 12 `VALUE`, 8 pixel-backed `DASH`, and 2 `BLANK` cells; EPS uses `VND_PER_SHARE`, share counts use `SHARE`, and both EPS checks pass without duplicate ownership of 1131.
 
 ### Q054
 
@@ -836,11 +630,10 @@ CDKT schema reconciliation is exact after the approved schema update: `78 = 62 M
 - **PDF page:** 46, net-interest note
 - **Visible row label:** `Thu nhập từ lãi thuần`
 - **Visible values/periods:** 14.913.117 for Q1/2026; 11.692.184 for Q1/2025; triệu đồng.
-- **Current status:** `AUTOMATIC_SCHEMA_ADDITION_QUEUED — no user answer required`; add a named net-interest total identity.
+- **Current status:** `RESOLVED_BY_CODEX` — added and mapped net-interest identity 5985.
 - **Candidate ReportNormId(s):** none; it equals visible income 1143 plus expense 1151.
-- **Why unresolved:** the TM schema has gross income/expense identities but no distinct visible net-interest target.
-- **What Codex currently thinks:** the named net-interest row merits a distinct aggregate identity with formula `1143 + 1151`.
-- **No user answer required:** Codex will add the net-interest identity and require `1143 + 1151` to reproduce both visible values.
+- **Previous blocker:** the TM schema had gross income/expense identities but no distinct visible net-interest target.
+- **Final implementation:** both printed values map to 5985 and `5985 = 1143 + 1151` passes exactly as validation only.
 
 ### Q056
 
@@ -849,11 +642,10 @@ CDKT schema reconciliation is exact after the approved schema update: `78 = 62 M
 - **PDF page:** 46, net-service note
 - **Visible row label:** `Thu từ dịch vụ tư vấn`
 - **Visible values/periods:** 148.427 for Q1/2026; 98.268 for Q1/2025; triệu đồng.
-- **Current status:** `AUTOMATIC_SCHEMA_ADDITION_QUEUED — no user answer required`; add a dedicated consulting-service income identity under 1157.
+- **Current status:** `RESOLVED_BY_CODEX` — added and mapped consulting-income identity 5986 under 1157.
 - **Candidate ReportNormId(s):** none exact; 1166 is broader other-service income.
-- **Why unresolved:** the current schema has no explicit consulting-service income identity.
-- **What Codex currently thinks:** consulting-service income is a clear missing leaf and should not be silently folded into 1166.
-- **No user answer required:** Codex will add a dedicated consulting-service income child under 1157.
+- **Previous blocker:** the schema had no explicit consulting-service income identity.
+- **Final implementation:** both printed values map directly to 5986; catch-all 1166 is not overloaded.
 
 ### Q060
 
@@ -862,11 +654,10 @@ CDKT schema reconciliation is exact after the approved schema update: `78 = 62 M
 - **PDF page:** 46, net-service note
 - **Visible row label:** `Chi về dịch vụ tư vấn`
 - **Visible values/periods:** DASH / DASH for Q1/2026 and Q1/2025; pixel-backed, not zero.
-- **Current status:** `AUTOMATIC_SCHEMA_ADDITION_QUEUED — no user answer required`; add a dedicated consulting-service expense identity under 1167.
+- **Current status:** `RESOLVED_BY_CODEX` — added and mapped consulting-expense identity 5987 under 1167.
 - **Candidate ReportNormId(s):** none exact.
-- **Why unresolved:** the schema lacks a consulting-service expense identity.
-- **What Codex currently thinks:** consulting-service expense is a clear missing leaf; both printed dashes remain `DASH`, never zero.
-- **No user answer required:** Codex will add a dedicated consulting-service expense child under 1167 and preserve `DASH / DASH`.
+- **Previous blocker:** the schema lacked a consulting-service expense identity.
+- **Final implementation:** both cells map to 5987 as pixel-backed `DASH`; neither is converted to zero.
 
 ### Q062
 
@@ -875,11 +666,10 @@ CDKT schema reconciliation is exact after the approved schema update: `78 = 62 M
 - **PDF page:** 46, net-service note
 - **Visible row label:** `Chi về xử lý nợ, thẩm định giá và khai thác tài sản`
 - **Visible values/periods:** (38.259) for Q1/2026; (59.707) for Q1/2025; triệu đồng.
-- **Current status:** `AUTOMATIC_SCHEMA_ADDITION_QUEUED — no user answer required`; add a dedicated combined debt-processing/valuation/asset-exploitation expense identity under 1167.
+- **Current status:** `RESOLVED_BY_CODEX` — added and mapped combined expense identity 5988 under 1167.
 - **Candidate ReportNormId(s):** none exact; 1174 is broader other-service expense.
-- **Why unresolved:** the schema has no exact combined expense identity.
-- **What Codex currently thinks:** the exact combined visible expense needs a dedicated leaf and should not be silently folded into broader 1174.
-- **No user answer required:** Codex will add the exact combined expense child under 1167 rather than overloading 1174.
+- **Previous blocker:** the schema had no exact combined expense identity.
+- **Final implementation:** both printed values map directly to 5988; broader catch-all 1174 is not overloaded.
 
 ### Q063
 
@@ -888,11 +678,10 @@ CDKT schema reconciliation is exact after the approved schema update: `78 = 62 M
 - **PDF page:** 46, net-service note
 - **Visible row label:** `Lãi thuần từ hoạt động dịch vụ`
 - **Visible values/periods:** 1.708.744 for Q1/2026; 1.235.416 for Q1/2025; triệu đồng.
-- **Current status:** `AUTOMATIC_SCHEMA_ADDITION_QUEUED — no user answer required`; add a named net-service total identity.
+- **Current status:** `RESOLVED_BY_CODEX` — added and mapped net-service identity 5989.
 - **Candidate ReportNormId(s):** none; it equals visible service income 1157 plus expense 1167.
-- **Why unresolved:** the TM schema has gross income/expense identities but no distinct visible net-service target.
-- **What Codex currently thinks:** the named net-service row merits a distinct aggregate identity with formula `1157 + 1167`.
-- **No user answer required:** Codex will add the net-service identity and require `1157 + 1167` to reproduce both visible values.
+- **Previous blocker:** the TM schema had gross income/expense identities but no distinct visible net-service target.
+- **Final implementation:** both printed values map to 5989 and `5989 = 1157 + 1167` passes exactly as validation only.
 
 ### Q067
 
@@ -901,11 +690,10 @@ CDKT schema reconciliation is exact after the approved schema update: `78 = 62 M
 - **PDF page:** 47, securities note
 - **Visible row label:** `Lãi thuần từ chứng khoán kinh doanh, chứng khoán đầu tư`
 - **Visible values/periods:** (250.457) for Q1/2026; 678.047 for Q1/2025; triệu đồng.
-- **Current status:** `AUTOMATIC_SCHEMA_ADDITION_QUEUED — no user answer required`; add a combined trading/investment-securities net-result identity.
+- **Current status:** `RESOLVED_BY_CODEX` — added and mapped combined net-result identity 5990.
 - **Candidate ReportNormId(s):** none; 1188 and 1193 are the two component net results.
-- **Why unresolved:** the schema has each activity's net result but no combined visible total.
-- **What Codex currently thinks:** the named combined net result merits a distinct aggregate identity with formula `1188 + 1193`.
-- **No user answer required:** Codex will add the combined securities net-result identity and require `1188 + 1193` to reproduce both visible values.
+- **Previous blocker:** the schema had each activity's net result but no combined visible total.
+- **Final implementation:** both printed values map to 5990 and `5990 = 1188 + 1193` passes exactly as validation only.
 
 ## RESOLVED_BY_CODEX
 
@@ -988,7 +776,7 @@ CDKT schema reconciliation is exact after the approved schema update: `78 = 62 M
 - **Q008 / 4369:** finance-lease original cost is `NOT_OBSERVED_IN_THIS_PDF`; parent-subtype gating removed the false candidate.
 - **Q009 / 4370:** finance-lease accumulated depreciation is `NOT_OBSERVED_IN_THIS_PDF`; parent-subtype gating removed the false candidate.
 - **Q011 / scope:** visible title evidence binds MBB Q1/2026 to `CONSOLIDATED`; the older sealed E-0041 receipt remains unchanged and still records its historical `UNKNOWN` value.
-- **LCTT one-to-one rows:** 40 rows were resolved algorithmically by exact row order plus independent PP-OCR and DeepSeek semantic agreement. User decisions Q013/Q014/Q018 then close the remaining three visible rows; the resulting business schema has 43 mapped rows, 8 not-observed items and 57 direct-method-inapplicable items.
+- **LCTT one-to-one rows:** 40 rows were resolved algorithmically by exact row order plus independent PP-OCR and DeepSeek semantic agreement. User decisions Q013/Q014/Q018 then close the remaining three visible rows; the resulting business schema has 43 mapped rows, 9 not-observed items and 57 direct-method-inapplicable items.
 - **TM page 31 MBS row:** ReportNormId 1944 is an approved appended schema item matching `cho vay margin chứng khoán và ứng trước`; one primary occurrence maps there and repeats remain validation-only.
 - **TM page 31 duplicate totals:** gross securities maps to 626, provision to 627, net to root 592 and consolidated loan total to 716; repeated subtotals/totals are retained only for zero-residual checks, not double-mapped.
 - **Q047 / TM page 42:** `Tài sản Có khác` maps to ReportNormId 987. Schema hierarchy places 987 directly over the two visible children 989 and 997, whose values sum exactly to the displayed total in both periods; broader umbrella 966 is `NOT_OBSERVED_IN_THIS_PDF`.

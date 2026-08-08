@@ -17,14 +17,33 @@ from bctc_ai.tables.tm_note_page44 import load_tm_page44_policy, parse_tm_page44
 
 _OCR_FIXTURE = Path("tests/golden/tm/mbb-q1-2026-page-0044-ppocrv6-word-box.json")
 _SOURCE_PDF = Path("vietstock_bctc/MBB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf")
-_MAPPED_IDS = {1100, 1101, 1109, 1112, 1118, 1119, 1122, 1128, 1129, 1131, 1141}
-_AMBIGUOUS_IDS = {1102, 1103, 1104, 1110, 1111}
-_UNRESOLVED_IDS = {1130, *range(1132, 1141)}
+_MAPPED_IDS = {
+    1100,
+    1101,
+    1109,
+    1112,
+    1118,
+    1119,
+    1122,
+    1128,
+    1129,
+    1131,
+    1141,
+    *range(5978, 5985),
+    *range(6008, 6021),
+}
+_AMBIGUOUS_IDS: set[int] = set()
+_UNRESOLVED_IDS: set[int] = set()
 _NOT_OBSERVED_IDS = {
+    1102,
+    1103,
+    1104,
     1105,
     1106,
     1107,
     1108,
+    1110,
+    1111,
     1113,
     1114,
     1115,
@@ -37,6 +56,8 @@ _NOT_OBSERVED_IDS = {
     1125,
     1126,
     1127,
+    1130,
+    *range(1132, 1141),
 }
 
 
@@ -63,35 +84,36 @@ def _mapped(project_root: Path, tmp_path: Path):
     )
 
 
-def test_page44_reconciles_complete_1100_1141_branch_with_exact_statuses(
+def test_page44_reconciles_universal_branch_and_all_source_rows_with_exact_statuses(
     project_root: Path, tmp_path: Path
 ) -> None:
     result = _mapped(project_root, tmp_path)
 
     assert validate_tm_page44_mapping_result(result) is result
-    assert result.mapping_authority_scope.endswith("FIXED_ROWS_AND_CELLS_ONLY")
+    assert result.mapping_authority_scope.endswith("FIXED_ROWS_CELLS_AND_NARRATIVE_FACTS_ONLY")
     assert result.mapping_authority_granted
-    assert result.schema_item_count == 1_613
-    assert result.status_reconciled_schema_count == 42
-    assert result.mapped_schema_count == 11
-    assert result.ambiguous_schema_count == 5
-    assert result.unresolved_schema_count == 10
-    assert result.not_observed_schema_count == 16
+    assert result.schema_item_count == 1_701
+    assert result.status_reconciled_schema_count == 62
+    assert result.mapped_schema_count == 31
+    assert result.ambiguous_schema_count == 0
+    assert result.unresolved_schema_count == 0
+    assert result.not_observed_schema_count == 31
     assert result.not_applicable_schema_count == 0
-    assert result.unassessed_schema_count == 1_571
+    assert result.unassessed_schema_count == 1_639
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == 24
-    assert result.mapped_source_row_count == 10
+    assert result.mapped_source_row_count == 21
     assert result.partial_source_row_count == 2
-    assert result.source_only_row_count == 14
-    assert result.source_question_row_count == 13
+    assert result.source_only_row_count == 3
+    assert result.source_question_row_count == 0
     assert result.context_source_row_count == 3
     assert result.financial_slot_count == 60
     assert result.extracted_value_count == 51
     assert result.dash_count == 9
-    assert result.mapped_value_count == 17
+    assert result.mapped_value_count == 59
     assert result.narrative_fact_count == 5
     assert result.narrative_value_count == 7
+    assert result.narrative_mapped_assignment_count == 7
 
 
 def test_exact_mapped_ambiguous_unresolved_not_observed_and_unassessed_sets(
@@ -109,67 +131,95 @@ def test_exact_mapped_ambiguous_unresolved_not_observed_and_unassessed_sets(
     assert by_status[TMPage44SchemaStatus.AMBIGUOUS_MAPPING.value] == _AMBIGUOUS_IDS
     assert by_status[TMPage44SchemaStatus.UNRESOLVED.value] == _UNRESOLVED_IDS
     assert by_status[TMPage44SchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value] == (_NOT_OBSERVED_IDS)
-    assert len(by_status[TMPage44SchemaStatus.UNASSESSED.value]) == 1_571
-    assert _MAPPED_IDS | _AMBIGUOUS_IDS | _UNRESOLVED_IDS | _NOT_OBSERVED_IDS == set(
-        range(1100, 1142)
+    assert len(by_status[TMPage44SchemaStatus.UNASSESSED.value]) == 1_639
+    assert _MAPPED_IDS | _AMBIGUOUS_IDS | _UNRESOLVED_IDS | _NOT_OBSERVED_IDS == (
+        set(range(1100, 1142)) | set(range(5978, 5985)) | set(range(6008, 6021))
     )
 
 
-def test_q050_maturity_rows_remain_source_only_with_exact_candidates(
+def test_maturity_rows_map_exact_new_items_and_retire_old_candidates(
     project_root: Path, tmp_path: Path
 ) -> None:
     result = _mapped(project_root, tmp_path)
-    q050 = [item for item in result.source_dispositions if item.question_group_id == "Q050"]
-
-    assert [item.row_id for item in q050] == [
-        "page-0044:paper_issuance:row-0003",
-        "page-0044:paper_issuance:row-0006",
-        "page-0044:paper_issuance:row-0007",
+    maturity = [
+        item
+        for item in result.source_dispositions
+        if item.row_id
+        in {
+            "page-0044:paper_issuance:row-0003",
+            "page-0044:paper_issuance:row-0006",
+            "page-0044:paper_issuance:row-0007",
+        }
     ]
-    assert [item.candidate_report_norm_ids for item in q050] == [
-        (1110, 1111),
-        (1102, 1103),
-        (1103, 1104),
-    ]
-    assert all(item.status == TMPage44SourceStatus.SOURCE_ONLY_QUESTION.value for item in q050)
-
-
-def test_equity_grid_only_maps_three_exact_cells_plus_structural_root(
-    project_root: Path, tmp_path: Path
-) -> None:
-    result = _mapped(project_root, tmp_path)
-    equity = [item for item in result.source_dispositions if item.table_key == "EQUITY_MOVEMENT"]
-    partial = [
-        item for item in equity if item.status == TMPage44SourceStatus.PARTIAL_CELL_MAPPING.value
-    ]
-    structural = equity[0]
 
     assert [
         (
             item.row_id,
-            [
-                (x.cell_index, x.axis_role, x.report_norm_id, x.value)
-                for x in item.mapped_assignments
-            ],
+            item.mapped_assignments[0].report_norm_id,
+            item.values,
         )
-        for item in partial
+        for item in maturity
     ] == [
-        (
-            "page-0044:equity_movement:row-0010",
-            [(1, "INCREASE", 1131, 7_515_513)],
-        ),
-        (
-            "page-0044:equity_movement:row-0012",
-            [
-                (0, "BEGINNING_BALANCE", 1129, 142_022_525),
-                (3, "ENDING_BALANCE", 1141, 149_745_325),
-            ],
-        ),
+        ("page-0044:paper_issuance:row-0003", 6010, (24_009_801, 23_039_165)),
+        ("page-0044:paper_issuance:row-0006", 6008, (85_267_048, 76_253_073)),
+        ("page-0044:paper_issuance:row-0007", 6009, (79_970_220, 64_577_077)),
     ]
+    assert all(
+        item.status == TMPage44SourceStatus.MAPPED_AUTOMATIC_SCOPED.value
+        and not item.question_required
+        and not item.candidate_report_norm_ids
+        for item in maturity
+    )
+    by_id = {item.report_norm_id: item for item in result.schema_dispositions}
+    assert all(
+        by_id[schema_id].status == TMPage44SchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value
+        for schema_id in {1102, 1103, 1104, 1110, 1111}
+    )
+
+
+def test_equity_grid_preserves_all_four_printed_axes_and_existing_alias_binding(
+    project_root: Path, tmp_path: Path
+) -> None:
+    result = _mapped(project_root, tmp_path)
+    equity = [item for item in result.source_dispositions if item.table_key == "EQUITY_MOVEMENT"]
+    structural = equity[0]
+
     assert [(x.cell_index, x.report_norm_id) for x in structural.mapped_assignments] == [
         (None, 1128)
     ]
-    assert all(item.question_group_id == "Q051" for item in equity[2:])
+    row_assignments = {
+        item.ordinal: [
+            (x.cell_index, x.axis_role, x.report_norm_id, x.observation, x.value)
+            for x in item.mapped_assignments
+        ]
+        for item in equity[2:]
+    }
+    for ordinal, schema_id in {
+        3: 5984,
+        4: 6011,
+        5: 6012,
+        6: 6013,
+        7: 6014,
+        8: 6015,
+        9: 6016,
+        11: 6018,
+    }.items():
+        assert [assignment[0] for assignment in row_assignments[ordinal]] == [0, 1, 2, 3]
+        assert {assignment[2] for assignment in row_assignments[ordinal]} == {schema_id}
+    assert row_assignments[10] == [
+        (0, "BEGINNING_BALANCE", 6017, "VALUE", 32_577_391),
+        (1, "INCREASE", 6017, "VALUE", 7_515_513),
+        (2, "DECREASE", 6017, "VALUE", -31_846),
+        (3, "ENDING_BALANCE", 6017, "VALUE", 40_061_058),
+        (1, "INCREASE", 1131, "VALUE", 7_515_513),
+    ]
+    assert row_assignments[12] == [
+        (0, "BEGINNING_BALANCE", 1129, "VALUE", 142_022_525),
+        (1, "INCREASE", 6019, "VALUE", 7_810_203),
+        (2, "DECREASE", 6020, "VALUE", -87_403),
+        (3, "ENDING_BALANCE", 1141, "VALUE", 149_745_325),
+    ]
+    assert all(item.question_group_id is None and not item.question_required for item in equity)
 
 
 def test_fourteen_checks_pass_and_eight_dash_equations_are_not_testable(
@@ -194,13 +244,125 @@ def test_fourteen_checks_pass_and_eight_dash_equations_are_not_testable(
     )
 
 
-def test_q052_share_times_par_diagnostic_passes_rounding_without_schema_mapping(
+def test_q052_narrative_facts_map_exact_native_values_and_capital_equation_only_validates(
     project_root: Path, tmp_path: Path
 ) -> None:
     result = _mapped(project_root, tmp_path)
     diagnostic = result.narrative_diagnostic
 
-    assert result.question_group_ids == ("Q050", "Q051", "Q052")
+    assert result.question_group_ids == ()
+    assert [
+        (
+            item.fact_id,
+            item.value_index,
+            item.report_norm_id,
+            item.value,
+            item.source_unit,
+            item.canonical_unit,
+            item.unit_multiplier,
+            item.period_start,
+            item.period_end,
+            item.period_role,
+            item.period_type,
+        )
+        for item in result.narrative_assignments
+    ] == [
+        (
+            "CERTIFICATE_INTEREST_RATE_RANGE",
+            0,
+            5978,
+            Decimal("4.40"),
+            "PERCENT_PER_YEAR",
+            "PERCENT_PER_YEAR",
+            1,
+            "2026-03-31",
+            "2026-03-31",
+            "REPORT_DATE",
+            "SNAPSHOT",
+        ),
+        (
+            "CERTIFICATE_INTEREST_RATE_RANGE",
+            1,
+            5979,
+            Decimal("11.18"),
+            "PERCENT_PER_YEAR",
+            "PERCENT_PER_YEAR",
+            1,
+            "2026-03-31",
+            "2026-03-31",
+            "REPORT_DATE",
+            "SNAPSHOT",
+        ),
+        (
+            "BANK_BOND_INTEREST_RATE_RANGE",
+            0,
+            5980,
+            Decimal("5.00"),
+            "PERCENT_PER_YEAR",
+            "PERCENT_PER_YEAR",
+            1,
+            "2026-03-31",
+            "2026-03-31",
+            "REPORT_DATE",
+            "SNAPSHOT",
+        ),
+        (
+            "BANK_BOND_INTEREST_RATE_RANGE",
+            1,
+            5981,
+            Decimal("8.80"),
+            "PERCENT_PER_YEAR",
+            "PERCENT_PER_YEAR",
+            1,
+            "2026-03-31",
+            "2026-03-31",
+            "REPORT_DATE",
+            "SNAPSHOT",
+        ),
+        (
+            "ISSUED_SHARE_COUNT",
+            0,
+            5982,
+            Decimal(8_054_999_909),
+            "SHARE",
+            "SHARE",
+            1,
+            "2026-03-31",
+            "2026-03-31",
+            "REPORT_DATE",
+            "SNAPSHOT",
+        ),
+        (
+            "PAR_VALUE",
+            0,
+            5983,
+            Decimal(10_000),
+            "VND_PER_SHARE",
+            "VND_PER_SHARE",
+            1,
+            "2026-03-31",
+            "2026-03-31",
+            "REPORT_DATE",
+            "SNAPSHOT",
+        ),
+        (
+            "STATED_CHARTER_CAPITAL",
+            0,
+            5984,
+            Decimal(80_549_999),
+            "VND_MILLION",
+            "VND",
+            1_000_000,
+            "2026-03-31",
+            "2026-03-31",
+            "REPORT_DATE",
+            "SNAPSHOT",
+        ),
+    ]
+    assert all(item.observation == "VALUE" for item in result.narrative_assignments)
+    assert all(
+        item.source_row_ids and item.source_line_indices for item in result.narrative_assignments
+    )
     assert diagnostic.question_group_id == "Q052"
     assert diagnostic.share_count == 8_054_999_909
     assert diagnostic.par_value_vnd == 10_000
@@ -209,6 +371,7 @@ def test_q052_share_times_par_diagnostic_passes_rounding_without_schema_mapping(
     assert diagnostic.exact_residual_vnd_million == Decimal("-0.09")
     assert diagnostic.rounded_implied_capital_vnd_million == 80_549_999
     assert diagnostic.status == "PASS_ROUNDED_TO_NEAREST_MILLION"
+    assert "validation only" in diagnostic.reason
 
 
 def test_mapping_policy_forbids_values_history_review_dash_zero_and_equation_selection(
@@ -224,4 +387,11 @@ def test_mapping_policy_forbids_values_history_review_dash_zero_and_equation_sel
         "human_review_answers",
         "dash_as_zero",
         "accounting_equation_result_as_item_selector",
+        "accounting_equation_result_as_extracted_value",
+        "narrative_value_as_item_selector",
+        "capital_equation_result_as_item_selector",
+        "capital_equation_result_as_extracted_value",
     }
+    assert [rule.report_norm_id for rule in policy.narrative_fact_mappings] == list(
+        range(5978, 5985)
+    )

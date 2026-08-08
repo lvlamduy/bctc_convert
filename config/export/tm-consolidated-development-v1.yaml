@@ -1,0 +1,136 @@
+version: 1
+policy: MBB_TM_CONSOLIDATED_DEVELOPMENT_EXPORT_V1
+statement_type: TM
+bank: MBB
+report_scope: CONSOLIDATED
+dataset_role: DEVELOPMENT
+
+schema:
+  item_count: 1701
+  workbook_path: template/Bank_TM_ReportNormId.v2.xlsx
+  workbook_sha256: 82215c17f6d0aba33c01b03d6af76cc80ad53e0b129bf101f7e0b266cc9ea28f
+  projection_sha256: 9057a6513d1fb9532e0034022d2dd3b6ad2eb2789fb36b112cbf41fb8c632a2d
+
+schema_identity:
+  schema_name: UNIVERSAL_BANK_BCTC_SCHEMA
+  schema_revision: UNIVERSAL_BANK_BCTC_SCHEMA@6034
+  base_schema:
+    name: BASE_SCHEMA
+    item_count: 1593
+    statement_counts: {CDKT: 77, KQKD: 24, LCTT: 107, TM: 1385}
+    ordered_canonical_projection_sha256: e63b77ebf99907843bea419cef32bc64cd709129813f89309f3b42fc818a1b10
+    ordered_report_norm_ids_sha256: 5cc0e9ea70b23af236ce43b920838299dbc91e9c0ef19d31165f4ce49eea4f9f
+  universal_schema:
+    item_count: 1913
+    statement_counts: {CDKT: 78, KQKD: 25, LCTT: 109, TM: 1701}
+    high_watermark: 6034
+    ordered_canonical_projection_sha256: ad21aafd269c39265c8b0047c567064d79b2e76b178d91d2b31c9adde622ab03
+    ordered_report_norm_ids_sha256: 024c472e302d63f6d7f504bdfc29bb88cea6221d74412c9f99fabaf9af11bdb0
+    schema_graph_sha256: b1529c4bc953743cedeb75fa8b02aa40f168ada240694922cf6b65b71af240d5
+    universal_schema_sha256: b1529c4bc953743cedeb75fa8b02aa40f168ada240694922cf6b65b71af240d5
+  accepted_post_base_tm_additions:
+    first_report_norm_id: 5718
+    last_report_norm_id: 6033
+    item_count: 316
+  latest_schema_batch:
+    first_report_norm_id: 5991
+    last_report_norm_id: 6033
+    item_count: 43
+
+output_sheets:
+  - TM
+  - OBSERVATIONS
+  - PROVENANCE
+  - VALIDATION
+  - RUN_METADATA
+
+owners:
+  - owner_key: page-0030
+    result_type: bctc_ai.mapping.tm_note_mapping.TMPage30MappingResult
+    adapter: page30
+  - owner_key: page-0031
+    result_type: bctc_ai.mapping.tm_note_page31_mapping.TMPage31MappingResult
+    adapter: source_dispositions
+    default_period_type: SNAPSHOT
+    default_period_roles: [CURRENT, COMPARATIVE]
+  - owner_key: pages-0032-0033
+    result_type: bctc_ai.mapping.tm_note_pages32_33_mapping.TMNotePages3233MappingResult
+    adapter: mapped_assignments
+  - owner_key: page-0034
+    result_type: bctc_ai.mapping.tm_note_page34_mapping.TMPage34MappingResult
+    adapter: mapped_assignments
+  - owner_key: page-0035
+    result_type: bctc_ai.mapping.tm_note_page35_mapping.TMPage35MappingResult
+    adapter: source_dispositions
+    default_period_type: SNAPSHOT
+    default_period_roles: [CURRENT, COMPARATIVE]
+  - owner_key: page-0036
+    result_type: bctc_ai.mapping.tm_note_page36_mapping.TMPage36MappingResult
+    adapter: source_dispositions
+    default_period_type: SNAPSHOT
+    default_period_roles: [CURRENT, COMPARATIVE]
+  - owner_key: pages-0037-0038
+    result_type: bctc_ai.mapping.tm_note_pages37_38_mapping.TMFixedAssetMappingResult
+    adapter: mapped_assignments
+  - owner_key: pages-0039-0040
+    result_type: bctc_ai.mapping.tm_note_pages39_40_mapping.TMNotePages3940MappingResult
+    adapter: mapped_assignments
+  - owner_key: page-0041
+    result_type: bctc_ai.mapping.tm_note_page41_mapping.TMPage41MappingResult
+    adapter: nested_assignments
+  - owner_key: page-0042
+    result_type: bctc_ai.mapping.tm_note_page42_mapping.TMPage42MappingResult
+    adapter: source_dispositions
+    default_period_type: SNAPSHOT
+    default_period_roles: [CURRENT, COMPARATIVE]
+  - owner_key: page-0043
+    result_type: bctc_ai.mapping.tm_note_page43_mapping.TMPage43MappingResult
+    adapter: mapped_assignments
+  - owner_key: page-0044
+    result_type: bctc_ai.mapping.tm_note_page44_mapping.TMPage44MappingResult
+    adapter: nested_assignments
+  - owner_key: page-0045
+    result_type: bctc_ai.mapping.tm_note_page45_mapping.TMPage45MappingResult
+    adapter: mapped_assignments
+  - owner_key: page-0046
+    result_type: bctc_ai.mapping.tm_note_page46_mapping.TMPage46MappingResult
+    adapter: source_dispositions
+  - owner_key: page-0047
+    result_type: bctc_ai.mapping.tm_note_page47_mapping.TMPage47MappingResult
+    adapter: source_dispositions
+  - owner_key: page-0048
+    result_type: bctc_ai.mapping.tm_note_page48_mapping.TMPage48MappingResult
+    adapter: source_dispositions
+  - owner_key: page-0049
+    result_type: bctc_ai.mapping.tm_note_page49_mapping.TMPage49MappingResult
+    adapter: source_dispositions
+  - owner_key: page-0050
+    result_type: bctc_ai.mapping.tm_note_page50_mapping.TMPage50MappingResult
+    adapter: source_dispositions
+  - owner_key: page-0051
+    result_type: bctc_ai.mapping.tm_note_page51_mapping.TMPage51MappingResult
+    adapter: source_dispositions
+  - owner_key: page-0052
+    result_type: bctc_ai.mapping.tm_note_page52_mapping.TMPage52MappingResult
+    adapter: mapped_assignments
+  - owner_key: page-0053
+    result_type: bctc_ai.mapping.tm_note_page53_mapping.TMPage53MappingResult
+    adapter: mapped_assignments
+  - owner_key: page-0054
+    result_type: bctc_ai.mapping.tm_note_page54_mapping.TMPage54MappingResult
+    adapter: mapped_assignments
+  - owner_key: page-0057
+    result_type: bctc_ai.mapping.tm_note_page57_mapping.TMPage57MappingResult
+    adapter: mapped_assignments
+  - owner_key: page-0058
+    result_type: bctc_ai.mapping.tm_note_page58_mapping.TMPage58MappingResult
+    adapter: mapped_assignments
+  - owner_key: page-0060
+    result_type: bctc_ai.mapping.tm_note_page60_mapping.TMPage60MappingResult
+    adapter: mapped_assignments
+  - owner_key: page-0061
+    result_type: bctc_ai.mapping.tm_note_page61_mapping.TMPage61MappingResult
+    adapter: mapped_assignments
+  - owner_key: residual
+    result_type: bctc_ai.mapping.tm_note_residual_mapping.TMResidualMappingResult
+    adapter: no_observations

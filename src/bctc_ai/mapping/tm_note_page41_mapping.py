@@ -24,22 +24,22 @@ from bctc_ai.tables.tm_note_page41 import ParsedTMPage41
 from bctc_ai.tables.tm_note_word_box import TMNoteRowKind
 
 TM_PAGE41_POLICY_RELATIVE_PATH = Path("config/mapping/tm-note-page41-v1.yaml")
-TM_PAGE41_SCHEMA_TOTAL = 1_613
-TM_PAGE41_RECONCILED_SCHEMA_COUNT = 24
-TM_PAGE41_MAPPED_SCHEMA_COUNT = 7
-TM_PAGE41_UNRESOLVED_SCHEMA_COUNT = 14
-TM_PAGE41_NOT_OBSERVED_COUNT = 3
-TM_PAGE41_UNASSESSED_COUNT = 1_589
+TM_PAGE41_SCHEMA_TOTAL = 1_701
+TM_PAGE41_RECONCILED_SCHEMA_COUNT = 32
+TM_PAGE41_MAPPED_SCHEMA_COUNT = 15
+TM_PAGE41_UNRESOLVED_SCHEMA_COUNT = 0
+TM_PAGE41_NOT_OBSERVED_COUNT = 17
+TM_PAGE41_UNASSESSED_COUNT = 1_669
 TM_PAGE41_SOURCE_ROW_COUNT = 25
-TM_PAGE41_MAPPED_SOURCE_COUNT = 12
-TM_PAGE41_PARTIAL_SOURCE_COUNT = 8
-TM_PAGE41_SOURCE_ONLY_COUNT = 13
-TM_PAGE41_SOURCE_QUESTION_COUNT = 19
-TM_PAGE41_CONTEXT_SOURCE_COUNT = 2
+TM_PAGE41_MAPPED_SOURCE_COUNT = 25
+TM_PAGE41_PARTIAL_SOURCE_COUNT = 19
+TM_PAGE41_SOURCE_ONLY_COUNT = 0
+TM_PAGE41_SOURCE_QUESTION_COUNT = 0
+TM_PAGE41_CONTEXT_SOURCE_COUNT = 0
 TM_PAGE41_FINANCIAL_SLOT_COUNT = 57
 TM_PAGE41_VALUE_COUNT = 51
 TM_PAGE41_DASH_COUNT = 6
-TM_PAGE41_MAPPED_VALUE_COUNT = 8
+TM_PAGE41_MAPPED_VALUE_COUNT = 18
 TM_PAGE41_CLASS_AXIS_SLOT_COUNT = 38
 TM_PAGE41_CLASS_AXIS_VALUE_COUNT = 33
 TM_PAGE41_ACCOUNTING_CHECK_COUNT = 52
@@ -47,12 +47,41 @@ TM_PAGE41_ACCOUNTING_PASS_COUNT = 43
 TM_PAGE41_ACCOUNTING_NOT_TESTABLE_COUNT = 9
 
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
-_SCOPED_IDS = set(range(942, 966))
-_MAPPED_IDS = {942, 943, 944, 955, 956, 957, 965}
-_UNRESOLVED_IDS = {*range(945, 955), 958, 959, 960, 964}
-_NOT_OBSERVED_IDS = {961, 962, 963}
-_QUESTION_IDS = ("Q037", "Q042", "Q043", "Q044")
-_EXPECTED_FIXED_COUNTS = Counter({943: 2, 944: 2, 955: 2, 956: 2, 957: 2, 965: 2})
+_SCOPED_IDS = set(range(942, 966)) | {5972, 5973, 5974} | set(range(6002, 6007))
+_MAPPED_IDS = {
+    942,
+    943,
+    944,
+    955,
+    956,
+    957,
+    965,
+    5972,
+    5973,
+    5974,
+    *range(6002, 6007),
+}
+_UNRESOLVED_IDS: set[int] = set()
+_NOT_OBSERVED_IDS = {*range(945, 955), 958, 959, 960, 961, 962, 963, 964}
+_QUESTION_IDS: tuple[str, ...] = ()
+_EXPECTED_FIXED_COUNTS = Counter(
+    {
+        943: 2,
+        944: 2,
+        955: 2,
+        956: 2,
+        957: 2,
+        965: 2,
+        5972: 2,
+        5973: 2,
+        5974: 2,
+        6002: 2,
+        6003: 1,
+        6004: 1,
+        6005: 2,
+        6006: 1,
+    }
+)
 _VISIBLE_LABEL_ANCHORS = {
     "GROSS_COST_SECTION": "nguyen gia",
     "GROSS_OPENING": "so du dau ky",
@@ -93,6 +122,12 @@ class TMPage41RuleDisposition(StrEnum):
     SOURCE_ONLY_QUESTION = "SOURCE_ONLY_QUESTION"
 
 
+class TMPage41AssignmentPeriod(StrEnum):
+    PANEL_DURATION = "PANEL_DURATION"
+    OPENING_SNAPSHOT = "OPENING_SNAPSHOT"
+    CLOSING_SNAPSHOT = "CLOSING_SNAPSHOT"
+
+
 class TMPage41SchemaStatus(StrEnum):
     MAPPED_AUTOMATIC_SCOPED = "MAPPED_AUTOMATIC_SCOPED"
     UNRESOLVED = "UNRESOLVED"
@@ -119,6 +154,7 @@ class TMPage41RowRule:
     total_cell_index: int | None
     candidate_report_norm_ids: tuple[int, ...]
     question_group_ids: tuple[str, ...]
+    assignment_period: TMPage41AssignmentPeriod
 
     @property
     def identity(self) -> tuple[str, str, str]:
@@ -156,6 +192,7 @@ class TMPage41CellAssignment:
     value: Decimal | None
     period_start: str | None
     period_end: str | None
+    period_type: str | None
 
 
 @dataclass(frozen=True)
@@ -332,6 +369,16 @@ def load_tm_page41_mapping_policy(path: Path) -> TMPage41MappingPolicy:
             record.get("candidate_report_norm_ids"), "candidate IDs", allow_empty=True
         )
         questions = record.get("question_group_ids")
+        expected_assignment_period = {
+            5973: TMPage41AssignmentPeriod.OPENING_SNAPSHOT,
+            5974: TMPage41AssignmentPeriod.CLOSING_SNAPSHOT,
+        }.get(report_norm_id, TMPage41AssignmentPeriod.PANEL_DURATION)
+        try:
+            assignment_period = TMPage41AssignmentPeriod(
+                str(record.get("assignment_period", "PANEL_DURATION"))
+            )
+        except ValueError as exc:
+            raise TMPage41MappingError("TM page-41 assignment period is invalid") from exc
         if (
             panel_key not in {"Q1_2026", "FY_2025"}
             or not isinstance(section_key, str)
@@ -344,7 +391,8 @@ def load_tm_page41_mapping_policy(path: Path) -> TMPage41MappingPolicy:
             or any(value not in valid_observations for value in observations)
             or not isinstance(questions, list)
             or len(set(questions)) != len(questions)
-            or any(value not in _QUESTION_IDS for value in questions)
+            or questions
+            or assignment_period is not expected_assignment_period
         ):
             raise TMPage41MappingError("TM page-41 mapping row identity is invalid")
         if disposition is TMPage41RuleDisposition.FIXED_STRUCTURAL:
@@ -362,7 +410,7 @@ def load_tm_page41_mapping_policy(path: Path) -> TMPage41MappingPolicy:
                 or not isinstance(report_norm_id, int)
                 or total_cell_index != 2
                 or candidates
-                or tuple(questions) != ("Q037",)
+                or questions
                 or row_kind != TMNoteRowKind.NUMERIC.value
             )
         else:
@@ -389,6 +437,7 @@ def load_tm_page41_mapping_policy(path: Path) -> TMPage41MappingPolicy:
                 total_cell_index=total_cell_index,
                 candidate_report_norm_ids=candidates,
                 question_group_ids=tuple(questions),
+                assignment_period=assignment_period,
             )
         )
     if len({row.identity for row in rows}) != len(rows):
@@ -396,7 +445,7 @@ def load_tm_page41_mapping_policy(path: Path) -> TMPage41MappingPolicy:
     fixed_counts = Counter(rule.report_norm_id for rule in rows if rule.report_norm_id is not None)
     if fixed_counts != _EXPECTED_FIXED_COUNTS:
         raise TMPage41MappingError("TM page-41 fixed row mappings drifted")
-    unresolved = _ids(payload.get("unresolved_schema_ids"), "unresolved IDs")
+    unresolved = _ids(payload.get("unresolved_schema_ids"), "unresolved IDs", allow_empty=True)
     not_observed = _ids(payload.get("not_observed_schema_ids"), "not-observed IDs")
     candidate_ids = {candidate for row in rows for candidate in row.candidate_report_norm_ids}
     if (
@@ -464,6 +513,24 @@ def _dash_evidence_hash(parsed: ParsedTMPage41) -> str:
 
 def _row(parsed: ParsedTMPage41, panel_key: str, row_key: str) -> Any:
     return next(row for row in parsed.rows if row.panel_key == panel_key and row.row_key == row_key)
+
+
+def _assignment_period(panel: Any, rule: TMPage41RowRule) -> tuple[str, str, str]:
+    if rule.assignment_period is TMPage41AssignmentPeriod.OPENING_SNAPSHOT:
+        if rule.row_key != "NET_OPENING":
+            raise TMPage41MappingError(
+                "TM page-41 opening snapshot is not bound to the visible opening row"
+            )
+        snapshot = panel.period_start.isoformat()
+        return snapshot, snapshot, "SNAPSHOT"
+    if rule.assignment_period is TMPage41AssignmentPeriod.CLOSING_SNAPSHOT:
+        if rule.row_key != "NET_CLOSING":
+            raise TMPage41MappingError(
+                "TM page-41 closing snapshot is not bound to the visible closing row"
+            )
+        snapshot = panel.period_end.isoformat()
+        return snapshot, snapshot, "SNAPSHOT"
+    return panel.period_start.isoformat(), panel.period_end.isoformat(), "DURATION_PANEL"
 
 
 def _check(
@@ -618,7 +685,10 @@ def _source_reason(rule: TMPage41RowRule) -> str:
     if rule.disposition is TMPage41RuleDisposition.FIXED_STRUCTURAL:
         return "visible section heading fixes the scoped parent identity in both panels"
     if rule.disposition is TMPage41RuleDisposition.FIXED_TOTAL_CELL:
-        return "only the visible TOTAL cell maps; both asset-class cells remain source-only"
+        return (
+            "only the visible TOTAL cell maps; both asset-class cells remain source-only; "
+            "net equations are validation-only"
+        )
     if rule.disposition is TMPage41RuleDisposition.SOURCE_ONLY_CONTEXT:
         return "net-book-value heading has no native schema item and remains provenance"
     if "Q042" in rule.question_group_ids:
@@ -678,6 +748,7 @@ def reconcile_tm_page41_items(
     for rule in policy.rows:
         row = parsed_by_identity[rule.identity]
         panel = next(panel for panel in parsed.panels if panel.panel_key == row.panel_key)
+        period_start, period_end, period_type = _assignment_period(panel, rule)
         observations = tuple(cell.observation.value for cell in row.row.cells)
         if (
             row.row_kind.value != rule.expected_row_kind
@@ -699,8 +770,9 @@ def reconcile_tm_page41_items(
                     canonical_name=item.canonical_name,
                     observation=None,
                     value=None,
-                    period_start=panel.period_start.isoformat(),
-                    period_end=panel.period_end.isoformat(),
+                    period_start=period_start,
+                    period_end=period_end,
+                    period_type=period_type,
                 )
             )
             source_refs_by_schema.setdefault(item.schema_id, []).append(row.row_id)
@@ -712,8 +784,15 @@ def reconcile_tm_page41_items(
             if axis.semantic_role != "TOTAL" or cell.observation not in {
                 ObservationKind.VALUE,
                 ObservationKind.ZERO,
+                ObservationKind.DASH,
             }:
-                raise TMPage41MappingError("TM page-41 fixed mapping is not a finite TOTAL cell")
+                raise TMPage41MappingError(
+                    "TM page-41 fixed mapping is not a visible VALUE/ZERO/DASH TOTAL cell"
+                )
+            if cell.observation is ObservationKind.DASH and (
+                cell.value is not None or row.visual_cell_evidence[rule.total_cell_index] is None
+            ):
+                raise TMPage41MappingError("TM page-41 mapped DASH lost pixel provenance")
             item = schema_by_id[rule.report_norm_id]
             assignments.append(
                 TMPage41CellAssignment(
@@ -723,8 +802,9 @@ def reconcile_tm_page41_items(
                     canonical_name=item.canonical_name,
                     observation=cell.observation.value,
                     value=cell.value,
-                    period_start=panel.period_start.isoformat(),
-                    period_end=panel.period_end.isoformat(),
+                    period_start=period_start,
+                    period_end=period_end,
+                    period_type=period_type,
                 )
             )
             source_refs_by_schema.setdefault(item.schema_id, []).append(
@@ -756,9 +836,9 @@ def reconcile_tm_page41_items(
                 observations=observations,
                 values=tuple(cell.value for cell in row.row.cells),
                 axis_roles=tuple(axis.semantic_role for axis in panel.axes),
-                period_start=panel.period_start.isoformat(),
-                period_end=panel.period_end.isoformat(),
-                period_type="DURATION_PANEL",
+                period_start=period_start,
+                period_end=period_end,
+                period_type=period_type,
                 unit=panel.axes[0].canonical_unit,
                 unit_multiplier=panel.axes[0].unit_multiplier,
                 visual_cell_evidence=row.visual_cell_evidence,
@@ -826,7 +906,7 @@ def reconcile_tm_page41_items(
         page_number=41,
         page_tag=policy.page_tag,
         report_scope=policy.report_scope,
-        status="SCOPED_PAGE41_TOTAL_COLUMN_MAPPING_WITH_OPEN_AGGREGATE_QUESTIONS",
+        status="SCOPED_PAGE41_TOTAL_COLUMN_MAPPING_WITH_UNIVERSAL_AGGREGATE_ITEMS",
         mapping_authority_scope=policy.mapping_authority_scope,
         mapping_authority_granted=True,
         schema_item_count=len(tm_schema),
@@ -886,6 +966,7 @@ def reconcile_tm_page41_items(
             value=None,
             period_start=None,
             period_end=None,
+            period_type=None,
         ),
         schema_dispositions=tuple(schema_dispositions),
         source_dispositions=tuple(source_dispositions),

@@ -47,10 +47,21 @@ class MandatorySearchEvaluation:
     document_id: str
     status: str
     target_count: int
+    universal_target_count: int
+    target_count_by_statement: dict[str, int]
     missing_by_role: dict[str, tuple[int, ...]]
     duplicate_by_role: dict[str, tuple[int, ...]]
     unexpected_by_role: dict[str, tuple[int, ...]]
     completed_count_by_role: dict[str, int]
+    outcome_count_by_role: dict[str, dict[str, int]]
+    outcome_count_by_role_and_statement: dict[str, dict[str, dict[str, int]]]
+    applicable_count_by_role: dict[str, int]
+    observed_count_by_role: dict[str, int]
+    mapped_numeric_count_by_role: dict[str, int]
+    not_observed_count_by_role: dict[str, int]
+    not_applicable_count_by_role: dict[str, int]
+    ambiguous_count_by_role: dict[str, int]
+    unresolved_count_by_role: dict[str, int]
     tm_1944_completed_by_role: dict[str, bool]
 
     def to_dict(self) -> dict[str, object]:
@@ -180,8 +191,10 @@ def load_schema_coverage(
     ):
         raise SchemaCoverageError("mandatory-search completion rule was weakened")
     outcomes = mandatory.get("terminal_outcomes")
-    if not isinstance(outcomes, list) or not outcomes or not all(
-        isinstance(outcome, str) and outcome for outcome in outcomes
+    if (
+        not isinstance(outcomes, list)
+        or not outcomes
+        or not all(isinstance(outcome, str) and outcome for outcome in outcomes)
     ):
         raise SchemaCoverageError("mandatory-search terminal outcomes are invalid")
 
@@ -223,6 +236,12 @@ def evaluate_mandatory_search(
         raise SchemaCoverageError("mandatory-search evaluation requires a document ID")
     expected = contract.ids_for("MANDATORY_SEARCH")
     expected_set = set(expected)
+    statement_by_id = {target.schema_id: target.statement_type for target in contract.targets}
+    target_count_by_statement: dict[str, int] = {}
+    for target in contract.targets:
+        target_count_by_statement[target.statement_type] = (
+            target_count_by_statement.get(target.statement_type, 0) + 1
+        )
     by_role: dict[str, list[SchemaSearchEvidence]] = {
         role: [] for role in contract.mandatory_search_roles
     }
@@ -241,33 +260,89 @@ def evaluate_mandatory_search(
     duplicate_by_role: dict[str, tuple[int, ...]] = {}
     unexpected_by_role: dict[str, tuple[int, ...]] = {}
     completed_count_by_role: dict[str, int] = {}
+    outcome_count_by_role: dict[str, dict[str, int]] = {}
+    outcome_count_by_role_and_statement: dict[str, dict[str, dict[str, int]]] = {}
+    applicable_count_by_role: dict[str, int] = {}
+    observed_count_by_role: dict[str, int] = {}
+    mapped_numeric_count_by_role: dict[str, int] = {}
+    not_observed_count_by_role: dict[str, int] = {}
+    not_applicable_count_by_role: dict[str, int] = {}
+    ambiguous_count_by_role: dict[str, int] = {}
+    unresolved_count_by_role: dict[str, int] = {}
     tm_1944_completed_by_role: dict[str, bool] = {}
     for role, records in by_role.items():
         counts: dict[int, int] = {}
+        records_by_id: dict[int, list[SchemaSearchEvidence]] = {}
         for record in records:
             counts[record.schema_id] = counts.get(record.schema_id, 0) + 1
+            records_by_id.setdefault(record.schema_id, []).append(record)
         missing_by_role[role] = tuple(item for item in expected if item not in counts)
-        duplicate_by_role[role] = tuple(
-            item for item in expected if counts.get(item, 0) > 1
-        )
+        duplicate_by_role[role] = tuple(item for item in expected if counts.get(item, 0) > 1)
         unexpected_by_role[role] = tuple(
             sorted(item for item in counts if item not in expected_set)
         )
         completed_count_by_role[role] = sum(counts.get(item, 0) == 1 for item in expected)
         tm_1944_completed_by_role[role] = counts.get(1944, 0) == 1
+        terminal_records = [
+            records_by_id[schema_id][0]
+            for schema_id in expected
+            if len(records_by_id.get(schema_id, ())) == 1
+        ]
+        role_outcomes = {outcome: 0 for outcome in contract.terminal_outcomes}
+        role_statement_outcomes = {
+            statement: {outcome: 0 for outcome in contract.terminal_outcomes}
+            for statement in target_count_by_statement
+        }
+        for record in terminal_records:
+            role_outcomes[record.terminal_outcome] += 1
+            role_statement_outcomes[statement_by_id[record.schema_id]][record.terminal_outcome] += 1
+        outcome_count_by_role[role] = role_outcomes
+        outcome_count_by_role_and_statement[role] = role_statement_outcomes
+
+        observed_statuses = {"OBSERVED_VALUE", "OBSERVED_ZERO", "DASH", "BLANK"}
+        numeric_statuses = {"OBSERVED_VALUE", "OBSERVED_ZERO"}
+        not_applicable_statuses = {"NOT_APPLICABLE", "OUT_OF_SCOPE_FOR_TARGET_TEMPLATE"}
+        ambiguous_statuses = {"AMBIGUOUS", "AMBIGUOUS_MAPPING"}
+        unresolved_statuses = {"UNRESOLVED", "REFERENCE_NOT_YET_BUILT"}
+        observed_count_by_role[role] = sum(
+            role_outcomes.get(outcome, 0) for outcome in observed_statuses
+        )
+        mapped_numeric_count_by_role[role] = sum(
+            role_outcomes.get(outcome, 0) for outcome in numeric_statuses
+        )
+        not_observed_count_by_role[role] = role_outcomes.get("NOT_OBSERVED", 0)
+        not_applicable_count_by_role[role] = sum(
+            role_outcomes.get(outcome, 0) for outcome in not_applicable_statuses
+        )
+        ambiguous_count_by_role[role] = sum(
+            role_outcomes.get(outcome, 0) for outcome in ambiguous_statuses
+        )
+        unresolved_count_by_role[role] = sum(
+            role_outcomes.get(outcome, 0) for outcome in unresolved_statuses
+        )
+        applicable_count_by_role[role] = len(terminal_records) - not_applicable_count_by_role[role]
     passed = not any(
-        missing_by_role[role]
-        or duplicate_by_role[role]
-        or unexpected_by_role[role]
+        missing_by_role[role] or duplicate_by_role[role] or unexpected_by_role[role]
         for role in contract.mandatory_search_roles
     )
     return MandatorySearchEvaluation(
         document_id=document_id,
         status="PASS" if passed else "INCOMPLETE",
         target_count=len(expected),
+        universal_target_count=len(expected),
+        target_count_by_statement=target_count_by_statement,
         missing_by_role=missing_by_role,
         duplicate_by_role=duplicate_by_role,
         unexpected_by_role=unexpected_by_role,
         completed_count_by_role=completed_count_by_role,
+        outcome_count_by_role=outcome_count_by_role,
+        outcome_count_by_role_and_statement=outcome_count_by_role_and_statement,
+        applicable_count_by_role=applicable_count_by_role,
+        observed_count_by_role=observed_count_by_role,
+        mapped_numeric_count_by_role=mapped_numeric_count_by_role,
+        not_observed_count_by_role=not_observed_count_by_role,
+        not_applicable_count_by_role=not_applicable_count_by_role,
+        ambiguous_count_by_role=ambiguous_count_by_role,
+        unresolved_count_by_role=unresolved_count_by_role,
         tm_1944_completed_by_role=tm_1944_completed_by_role,
     )

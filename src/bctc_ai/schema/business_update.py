@@ -21,7 +21,11 @@ if TYPE_CHECKING:
     from bctc_ai.schema.registry import SchemaItem
 
 
-BUSINESS_UPDATE_AUDIT = "data/registered/schema_business_update_5712_5713_5714_5718_5945.json"
+BUSINESS_UPDATE_AUDIT = "data/registered/schema_business_update_5712_5713_5714_5718_6034.json"
+PRIOR_BUSINESS_UPDATE_AUDIT = "data/registered/schema_business_update_5712_5713_5714_5718_5990.json"
+PRIOR_BUSINESS_UPDATE_AUDIT_SHA256 = (
+    "4c5e2ca70685e3504871485f6f3a83867ed2314526e01d99851c7dac990250e0"
+)
 
 CDKT_BASELINE_WORKBOOK = "template/Bank_CDKT_ReportNormId.xlsx"
 KQKD_BASELINE_WORKBOOK = "template/Bank_KQKD_ReportNormId.xlsx"
@@ -42,9 +46,28 @@ KQKD_BEFORE_ROW_COUNT = 25
 CDKT_AFTER_ROW_COUNT = 79
 KQKD_AFTER_ROW_COUNT = 26
 LCTT_BEFORE_ROW_COUNT = 108
-LCTT_AFTER_ROW_COUNT = 109
+LCTT_AFTER_ROW_COUNT = 110
 TM_BEFORE_ROW_COUNT = 1386
-TM_AFTER_ROW_COUNT = 1614
+TM_AFTER_ROW_COUNT = 1702
+
+BASE_SCHEMA_ITEM_COUNT = 1593
+PRIOR_UNIVERSAL_SCHEMA_ITEM_COUNT = 1869
+UNIVERSAL_SCHEMA_ITEM_COUNT = 1913
+PRIOR_UNIVERSAL_HIGH_WATERMARK = 5990
+UNIVERSAL_HIGH_WATERMARK = 6034
+
+PRIOR_UNIVERSAL_WORKBOOK_SHA256 = {
+    "CDKT": "2289c0ff2e988c36131f2b4e5675efc1d9ca40776c72439ef205aae43103951f",
+    "KQKD": "12908b0acb8970e37f382f79898b7d2124079e1e16bab17d8e03811a7004cd52",
+    "LCTT": "aa0f4912b1e343e404bc2490f6fe628db6b7980a180c6d03e27633b993afeb41",
+    "TM": "b77ad754bb0162beec9c600dd0b91ca8750075bb96c3263b0d8640bdf02d37b0",
+}
+PRIOR_UNIVERSAL_IDENTITY_ORDER_SHA256 = {
+    "CDKT": "656f2a87a4d7310ff395214ca336f59d5e72bdeaa97367116d55c2ec7fff31d7",
+    "KQKD": "fd979f9f84225435192a8eb158ed01160a2b2d04e957f672e73e77f8af489cd0",
+    "LCTT": "aa39956f0e5d9bfe4337747cbce2724ec46e7f3bd2e226e7bbe33913eb8d1a5d",
+    "TM": "cad593ab263d198f4176a47b11b03b608903b044ca0348f0115c90f42472aa60",
+}
 
 PREVIOUS_V2_SHA256 = {
     "CDKT": ("2289c0ff2e988c36131f2b4e5675efc1d9ca40776c72439ef205aae43103951f",),
@@ -55,6 +78,8 @@ PREVIOUS_V2_SHA256 = {
         "71020164042f5c238677b14b6964be0e5864d011a658e461fc2653a3d3644571",
         "c94576df570e88ab86743dd29579c3bbe8578f566728ca60c8031c731bcc581e",
         "3436883c1880220a91d829a748d7c37e0279e82a43c79f49b25acf7737af44f5",
+        "ea5b690e88c2986613e650663eaea3e05860053c5f56e6445d19e6f0a719a8e1",
+        "b77ad754bb0162beec9c600dd0b91ca8750075bb96c3263b0d8640bdf02d37b0",
     ),
 }
 
@@ -74,10 +99,17 @@ KQKD_TOTAL_OPERATING_INCOME_SUCCESSOR_ID = 4391
 
 LCTT_INVESTMENT_CONTRIBUTION_NET_ID = 5714
 LCTT_INVESTMENT_CONTRIBUTION_NET_NAME = "Tiền thu/(chi) đầu tư, góp vốn vào các đơn vị khác"
-LCTT_INVESTMENT_CONTRIBUTION_NET_SOURCE_ROW = 93
-LCTT_INVESTMENT_CONTRIBUTION_NET_DISPLAY_ORDER = 91
+LCTT_INVESTMENT_CONTRIBUTION_NET_SOURCE_ROW = 94
+LCTT_INVESTMENT_CONTRIBUTION_NET_DISPLAY_ORDER = 92
 LCTT_INVESTMENT_CONTRIBUTION_NET_PREDECESSOR_ID = 4146
 LCTT_INVESTMENT_CONTRIBUTION_NET_SUCCESSOR_ID = 4120
+
+LCTT_INVESTMENT_PROPERTY_NET_ID = 6034
+LCTT_INVESTMENT_PROPERTY_NET_NAME = "Tiền thu/(chi) bất động sản đầu tư"
+LCTT_INVESTMENT_PROPERTY_NET_SOURCE_ROW = 90
+LCTT_INVESTMENT_PROPERTY_NET_DISPLAY_ORDER = 88
+LCTT_INVESTMENT_PROPERTY_NET_PREDECESSOR_ID = 4143
+LCTT_INVESTMENT_PROPERTY_NET_SUCCESSOR_ID = 4144
 
 TM_TOTAL_INTERBANK_PROVISION_ID = 5718
 TM_TOTAL_INTERBANK_PROVISION_NAME = (
@@ -558,6 +590,408 @@ TM_PAGE61_SCHEMA_ITEMS: tuple[tuple[int, str, int, int, int, int], ...] = (
 )
 TM_PAGE61_SCHEMA_IDS = tuple(item[0] for item in TM_PAGE61_SCHEMA_ITEMS)
 
+# Coverage-first additions authorized from the itemized MBB TM questions Q030,
+# Q031, Q034, Q036, Q040, Q041, Q044, Q046, Q048, Q052-Q054, Q056, Q060,
+# Q062-Q063 and Q067.  IDs are append-only identities; workbook placement is
+# governed separately by fail-closed predecessor/successor chains so adding a
+# row never depends on fragile physical-row arithmetic.
+TM_COVERAGE_SCHEMA_ITEMS: tuple[tuple[int, str, int, int], ...] = (
+    (5946, "Lãi trên mỗi cổ phiếu", 1128, 2),
+    (5947, "Bình quân gia quyền của số cổ phiếu phổ thông đang lưu hành", 5946, 3),
+    (5948, "Lãi cơ bản trên mỗi cổ phiếu", 5946, 3),
+    (5949, "Cổ phiếu", 1128, 2),
+    (5950, "Số lượng cổ phiếu đăng ký phát hành", 5949, 3),
+    (5951, "Số lượng cổ phiếu đã bán ra công chúng", 5949, 3),
+    (5952, "- Cổ phiếu phổ thông", 5951, 4),
+    (5953, "Số lượng cổ phiếu được mua lại", 5949, 3),
+    (5954, "- Cổ phiếu phổ thông", 5953, 4),
+    (5955, "- Cổ phiếu ưu đãi", 5953, 4),
+    (5956, "Số lượng cổ phiếu đang lưu hành", 5949, 3),
+    (5957, "- Cổ phiếu phổ thông", 5956, 4),
+    (5958, "- Cổ phiếu ưu đãi", 5956, 4),
+    (5959, "Dự phòng giảm giá", 862, 2),
+    (5960, "Đầu tư vào tổ chức kinh tế, dự án dài hạn", 867, 3),
+    (5961, "Đầu tư vào các Quỹ đầu tư", 867, 3),
+    (5962, "+ Chênh lệch tỷ giá", 869, 3),
+    (5963, "+ Chênh lệch tỷ giá", 883, 3),
+    (5964, "Giá trị còn lại", 868, 2),
+    (5965, "Số dư đầu kỳ", 5964, 3),
+    (5966, "Số dư cuối kỳ", 5964, 3),
+    (5967, "+ Chênh lệch tỷ giá", 914, 3),
+    (5968, "+ Chênh lệch tỷ giá", 929, 3),
+    (5969, "Giá trị còn lại", 913, 2),
+    (5970, "Số dư đầu kỳ", 5969, 3),
+    (5971, "Số dư cuối kỳ", 5969, 3),
+    (5972, "Giá trị còn lại", 942, 2),
+    (5973, "Số dư đầu kỳ", 5972, 3),
+    (5974, "Số dư cuối kỳ", 5972, 3),
+    (5975, "Phải thu liên quan đến dịch vụ thanh toán", 967, 3),
+    (5976, "Phải thu miễn truy đòi theo bộ chứng từ", 967, 3),
+    (5977, "Tiền gửi của TCKT", 1075, 3),
+    (5978, "+ Lãi suất tối thiểu", 1101, 3),
+    (5979, "+ Lãi suất tối đa", 1101, 3),
+    (5980, "+ Lãi suất tối thiểu", 1109, 3),
+    (5981, "+ Lãi suất tối đa", 1109, 3),
+    (5982, "Số lượng cổ phiếu đã phát hành", 1128, 2),
+    (5983, "Mệnh giá cổ phiếu", 1128, 2),
+    (5984, "Vốn điều lệ của Ngân hàng", 1128, 2),
+    (5985, "Thu nhập từ lãi thuần", 1142, 1),
+    (5986, "Thu từ dịch vụ tư vấn", 1157, 2),
+    (5987, "Chi về dịch vụ tư vấn", 1167, 2),
+    (5988, "Chi về xử lý nợ, thẩm định giá và khai thác tài sản", 1167, 2),
+    (5989, "Lãi thuần từ hoạt động dịch vụ", 1142, 1),
+    (5990, "Lãi thuần từ chứng khoán kinh doanh, chứng khoán đầu tư", 1142, 1),
+)
+TM_COVERAGE_SCHEMA_IDS = tuple(item[0] for item in TM_COVERAGE_SCHEMA_ITEMS)
+TM_COVERAGE_DISPLAY_CHAINS: tuple[tuple[tuple[int, ...], int, int], ...] = (
+    ((5960, 5961, 5959), 867, 868),
+    ((5962,), 881, 882),
+    ((5963,), 894, 895),
+    ((5964, 5965, 5966), 895, 896),
+    ((5967,), 927, 928),
+    ((5968,), 940, 941),
+    ((5969, 5970, 5971), 941, 942),
+    ((5972, 5973, 5974), 965, 966),
+    ((5975, 5976), 980, 981),
+    ((5977,), 1075, 1076),
+    ((5978, 5979), 1101, 1102),
+    ((5980, 5981), 1109, 1110),
+    ((5982, 5983, 5984), 1128, 1129),
+    ((5946, 5947, 5948, 5949, 5950, 5951, 5952, 5953, 5954, 5955, 5956, 5957, 5958), 1141, 1142),
+    ((5985,), 1156, 1157),
+    ((5986,), 1165, 1166),
+    ((5987, 5988), 1173, 1174),
+    ((5989,), 1174, 1175),
+    ((5990,), 1197, 1198),
+)
+
+if TM_COVERAGE_SCHEMA_IDS != tuple(range(5946, 5991)) or {
+    schema_id
+    for schema_ids, _predecessor, _successor in TM_COVERAGE_DISPLAY_CHAINS
+    for schema_id in schema_ids
+} != set(TM_COVERAGE_SCHEMA_IDS):
+    raise AssertionError("TM coverage schema allocation drifted")
+
+# Evidence-driven universal-schema additions discovered in the MBB consolidated
+# Q1/2026 notes.  These are accounting identities, not bank coverage
+# requirements: another bank may legitimately mark any of them NOT_OBSERVED or
+# NOT_APPLICABLE.  Numeric ID allocation is append-only; the anchor chains below
+# independently control accounting presentation order.
+TM_UNIVERSAL_SCHEMA_ITEMS: tuple[tuple[int, str, int, int], ...] = (
+    (5991, "Tổng tăng nguyên giá TSCĐ hữu hình trong kỳ", 869, 3),
+    (5992, "Tổng giảm nguyên giá TSCĐ hữu hình trong kỳ", 869, 3),
+    (5993, "Tăng/(Giảm) khác nguyên giá TSCĐ hữu hình trong kỳ", 869, 3),
+    (5994, "Tổng tăng hao mòn TSCĐ hữu hình trong kỳ", 883, 3),
+    (5995, "Tổng giảm hao mòn TSCĐ hữu hình trong kỳ", 883, 3),
+    (5996, "Tăng/(Giảm) khác hao mòn TSCĐ hữu hình trong kỳ", 883, 3),
+    (5997, "Tổng tăng nguyên giá TSCĐ vô hình trong kỳ", 914, 3),
+    (5998, "Tăng/(Giảm) khác nguyên giá TSCĐ vô hình trong kỳ", 914, 3),
+    (5999, "Tổng tăng hao mòn TSCĐ vô hình trong kỳ", 929, 3),
+    (6000, "Tổng giảm hao mòn TSCĐ vô hình trong kỳ", 929, 3),
+    (6001, "Tăng/(Giảm) khác hao mòn TSCĐ vô hình trong kỳ", 929, 3),
+    (6002, "Tổng tăng nguyên giá bất động sản đầu tư trong kỳ", 943, 3),
+    (6003, "Tổng giảm nguyên giá bất động sản đầu tư trong kỳ", 943, 3),
+    (6004, "Tăng/(Giảm) khác nguyên giá bất động sản đầu tư trong kỳ", 943, 3),
+    (6005, "Tổng tăng hao mòn bất động sản đầu tư trong kỳ", 956, 3),
+    (6006, "Tăng/(Giảm) khác hao mòn bất động sản đầu tư trong kỳ", 956, 3),
+    (6007, "Chi phí xây dựng cơ bản, mua sắm TSCĐ", 967, 3),
+    (6008, "Từ 12 tháng trở xuống", 1101, 3),
+    (6009, "Trên 12 tháng", 1101, 3),
+    (6010, "Dưới 5 năm", 1109, 3),
+    (6011, "Thặng dư vốn cổ phần", 1128, 2),
+    (6012, "Vốn khác", 1128, 2),
+    (6013, "Quỹ dự trữ bổ sung vốn điều lệ", 1128, 2),
+    (6014, "Quỹ dự phòng tài chính", 1128, 2),
+    (6015, "Quỹ khác", 1128, 2),
+    (6016, "Chênh lệch tỷ giá hối đoái", 1128, 2),
+    (6017, "Lợi nhuận chưa phân phối", 1128, 2),
+    (6018, "Lợi ích cổ đông không kiểm soát", 1128, 2),
+    (6019, "Trích lập/Tăng", 1128, 2),
+    (6020, "Sử dụng/Giảm", 1128, 2),
+    (6021, "Thu từ dịch vụ thanh toán và ngân quỹ", 1157, 2),
+    (6022, "Thu từ xử lý nợ, thẩm định giá và khai thác tài sản", 1157, 2),
+    (6023, "Chi về dịch vụ thanh toán và ngân quỹ", 1167, 2),
+    (6024, "Chi phí hoa hồng môi giới", 1170, 3),
+    (6025, "Chi về hoạt động môi giới chứng khoán", 1170, 3),
+    (6026, "Thu từ kinh doanh ngoại tệ giao ngay và vàng", 1175, 2),
+    (6027, "Chi về kinh doanh ngoại tệ giao ngay và vàng", 1175, 2),
+    (
+        6028,
+        "(Trích lập)/Hoàn nhập dự phòng giảm giá góp vốn, đầu tư dài hạn",
+        1193,
+        2,
+    ),
+    (6029, "Lãi thuần từ hoạt động kinh doanh khác", 1142, 1),
+    (6030, "Thu nhập/(Chi phí) khác", 6029, 2),
+    (6031, "Chi phí/(Hoàn nhập) dự phòng rủi ro cho vay khách hàng", 1221, 2),
+    (6032, "Chi phí/(Hoàn nhập) dự phòng rủi ro cho vay TCTD", 1221, 2),
+    (6033, "Chi phí/(Hoàn nhập) dự phòng mua nợ", 1221, 2),
+)
+TM_UNIVERSAL_SCHEMA_IDS = tuple(item[0] for item in TM_UNIVERSAL_SCHEMA_ITEMS)
+TM_UNIVERSAL_DISPLAY_CHAINS: tuple[tuple[tuple[int, ...], int, int], ...] = (
+    ((5991,), 870, 871),
+    ((5992,), 875, 876),
+    ((5993,), 881, 5962),
+    ((5994,), 884, 885),
+    ((5995,), 887, 888),
+    ((5996,), 894, 5963),
+    ((5997,), 915, 916),
+    ((5998,), 927, 5967),
+    ((5999,), 930, 931),
+    ((6000,), 933, 934),
+    ((6001,), 940, 5968),
+    ((6002,), 944, 945),
+    ((6003,), 951, 952),
+    ((6004,), 954, 955),
+    ((6005,), 957, 958),
+    ((6006,), 964, 965),
+    ((6007,), 967, 968),
+    ((6008, 6009), 5979, 1102),
+    ((6010,), 5981, 1110),
+    ((6011, 6012, 6013, 6014, 6015, 6016, 6017, 6018), 5984, 1129),
+    ((6019,), 1129, 1130),
+    ((6020,), 1136, 1137),
+    ((6021,), 1157, 1158),
+    ((6022,), 1162, 1163),
+    ((6023,), 1167, 1168),
+    ((6024, 6025), 1170, 1171),
+    ((6026,), 1176, 1177),
+    ((6027,), 1182, 1183),
+    ((6028,), 1196, 1197),
+    ((6029, 6030), 1228, 1229),
+    ((6031,), 1223, 1224),
+    ((6032,), 1221, 1222),
+    ((6033,), 1225, 1226),
+)
+if TM_UNIVERSAL_SCHEMA_IDS != tuple(range(5991, 6034)):
+    raise AssertionError("TM universal-schema allocation drifted")
+
+FIRST_OBSERVED_PDF_SHA256 = "eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83"
+TM_UNIVERSAL_EVIDENCE: dict[int, dict[str, object]] = {
+    5991: {
+        "pdf_pages": [37, 38],
+        "source_row_refs": ["GROSS_COST:3"],
+        "visible_label": "Tăng trong kỳ",
+        "observed_values": [56387, 754094],
+    },
+    5992: {
+        "pdf_pages": [37, 38],
+        "source_row_refs": ["GROSS_COST:4"],
+        "visible_label": "Giảm trong kỳ",
+        "observed_values": [-6224, -354092],
+    },
+    5993: {
+        "pdf_pages": [37],
+        "source_row_refs": ["GROSS_COST:5"],
+        "visible_label": "Tăng/(Giảm) khác trong kỳ",
+        "observed_values": [-480],
+    },
+    5994: {
+        "pdf_pages": [37, 38],
+        "source_row_refs": ["ACCUMULATED_DEPRECIATION:3"],
+        "visible_label": "Tăng trong kỳ",
+        "observed_values": [144587, 551766],
+    },
+    5995: {
+        "pdf_pages": [37, 38],
+        "source_row_refs": ["ACCUMULATED_DEPRECIATION:4"],
+        "visible_label": "Giảm trong kỳ",
+        "observed_values": [-5996, -201454],
+    },
+    5996: {
+        "pdf_pages": [37],
+        "source_row_refs": ["ACCUMULATED_DEPRECIATION:5"],
+        "visible_label": "Tăng/(Giảm) khác trong kỳ",
+        "observed_values": ["DASH"],
+    },
+    5997: {
+        "pdf_pages": [39, 40],
+        "source_row_refs": ["GROSS_COST:3"],
+        "visible_label": "Tăng trong kỳ",
+        "observed_values": [77097, 823072],
+    },
+    5998: {
+        "pdf_pages": [40],
+        "source_row_refs": ["GROSS_COST:other"],
+        "visible_label": "Tăng/(Giảm) khác",
+        "observed_values": [-10622],
+    },
+    5999: {
+        "pdf_pages": [39, 40],
+        "source_row_refs": ["ACCUMULATED_AMORTIZATION:3"],
+        "visible_label": "Tăng trong kỳ",
+        "observed_values": [104592, 601304],
+    },
+    6000: {
+        "pdf_pages": [40],
+        "source_row_refs": ["ACCUMULATED_AMORTIZATION:decrease"],
+        "visible_label": "Giảm trong kỳ",
+        "observed_values": [-21406],
+    },
+    6001: {
+        "pdf_pages": [40],
+        "source_row_refs": ["ACCUMULATED_AMORTIZATION:other"],
+        "visible_label": "Tăng/(Giảm) khác",
+        "observed_values": [-3348],
+    },
+    6002: {
+        "pdf_pages": [41],
+        "source_row_refs": ["GROSS_COST:increase"],
+        "visible_label": "Tăng",
+        "observed_values": ["DASH", 4971],
+    },
+    6003: {
+        "pdf_pages": [41],
+        "source_row_refs": ["GROSS_COST:decrease"],
+        "visible_label": "Giảm",
+        "observed_values": [-10260],
+    },
+    6004: {
+        "pdf_pages": [41],
+        "source_row_refs": ["GROSS_COST:other"],
+        "visible_label": "Tăng/(Giảm) khác",
+        "observed_values": [-4971],
+    },
+    6005: {
+        "pdf_pages": [41],
+        "source_row_refs": ["ACCUMULATED_DEPRECIATION:increase"],
+        "visible_label": "Tăng trong kỳ",
+        "observed_values": [1528, 6145],
+    },
+    6006: {
+        "pdf_pages": [41],
+        "source_row_refs": ["ACCUMULATED_DEPRECIATION:other"],
+        "visible_label": "Tăng/(Giảm) khác",
+        "observed_values": [-132],
+    },
+    6007: {
+        "pdf_pages": [42],
+        "source_row_refs": ["row-0001"],
+        "visible_label": "Chi phí xây dựng cơ bản, mua sắm TSCĐ",
+        "observed_values": [1295059, 1039654],
+    },
+    6008: {
+        "pdf_pages": [44],
+        "source_row_refs": ["CD:row-0006"],
+        "visible_label": "Từ 12 tháng trở xuống",
+        "observed_values": [85267048, 76253073],
+    },
+    6009: {
+        "pdf_pages": [44],
+        "source_row_refs": ["CD:row-0007"],
+        "visible_label": "Trên 12 tháng",
+        "observed_values": [79970220, 64577077],
+    },
+    6010: {
+        "pdf_pages": [44],
+        "source_row_refs": ["BOND:row-0003"],
+        "visible_label": "Dưới 5 năm",
+        "observed_values": [24009801, 23039165],
+    },
+    **{
+        schema_id: {
+            "pdf_pages": [44],
+            "source_row_refs": [f"EQUITY_GRID:{name}"],
+            "visible_label": name,
+        }
+        for schema_id, name, _parent_id, _level in TM_UNIVERSAL_SCHEMA_ITEMS
+        if 6011 <= schema_id <= 6018
+    },
+    6019: {
+        "pdf_pages": [44],
+        "source_row_refs": ["EQUITY_GRID:movement-increase"],
+        "visible_label": "Trích lập/Tăng",
+        "observed_values": [7810203],
+    },
+    6020: {
+        "pdf_pages": [44],
+        "source_row_refs": ["EQUITY_GRID:movement-decrease"],
+        "visible_label": "Sử dụng/Giảm",
+        "observed_values": [-87403],
+    },
+    6021: {
+        "pdf_pages": [46],
+        "source_row_refs": ["NET_SERVICE:row-0003"],
+        "visible_label": "Thu từ dịch vụ thanh toán và ngân quỹ",
+        "observed_values": [1460480, 755554],
+    },
+    6022: {
+        "pdf_pages": [46],
+        "source_row_refs": ["NET_SERVICE:row-0007"],
+        "visible_label": "Thu từ xử lý nợ, thẩm định giá và khai thác tài sản",
+        "observed_values": [38898, 126730],
+    },
+    6023: {
+        "pdf_pages": [46],
+        "source_row_refs": ["NET_SERVICE:row-0012"],
+        "visible_label": "Chi về dịch vụ thanh toán và ngân quỹ",
+        "observed_values": [-675848, -551556],
+    },
+    6024: {
+        "pdf_pages": [46],
+        "source_row_refs": ["NET_SERVICE:row-0015"],
+        "visible_label": "Chi phí hoa hồng môi giới",
+        "observed_values": [-539743, -232408],
+    },
+    6025: {
+        "pdf_pages": [46],
+        "source_row_refs": ["NET_SERVICE:row-0018"],
+        "visible_label": "Chi về hoạt động môi giới chứng khoán",
+        "observed_values": [-59748, -32105],
+    },
+    6026: {
+        "pdf_pages": [47],
+        "source_row_refs": ["FX_GOLD:row-0003"],
+        "visible_label": "Thu từ kinh doanh ngoại tệ giao ngay và vàng",
+        "observed_values": [662413, 983504],
+    },
+    6027: {
+        "pdf_pages": [47],
+        "source_row_refs": ["FX_GOLD:row-0007"],
+        "visible_label": "Chi về kinh doanh ngoại tệ giao ngay và vàng",
+        "observed_values": [-486848, -221138],
+    },
+    6028: {
+        "pdf_pages": [47],
+        "source_row_refs": ["SECURITIES:row-0011"],
+        "visible_label": "(Trích lập)/Hoàn nhập dự phòng giảm giá góp vốn, đầu tư dài hạn",
+        "observed_values": ["DASH", 20861],
+    },
+    6029: {
+        "pdf_pages": [47],
+        "source_row_refs": ["OTHER_ACTIVITY:row-0005"],
+        "visible_label": "Lãi thuần từ hoạt động kinh doanh khác",
+        "observed_values": [1090478, 1179210],
+    },
+    6030: {
+        "pdf_pages": [47],
+        "source_row_refs": ["OTHER_ACTIVITY:row-0004"],
+        "visible_label": "Thu nhập/(Chi phí) khác",
+        "observed_values": [252019, 113256],
+    },
+    6031: {
+        "pdf_pages": [49],
+        "source_row_refs": ["CREDIT_PROVISION:row-0002"],
+        "visible_label": "Chi phí/(Hoàn nhập) dự phòng rủi ro cho vay khách hàng",
+        "observed_values": [3451261, 2973316],
+    },
+    6032: {
+        "pdf_pages": [49],
+        "source_row_refs": ["CREDIT_PROVISION:row-0003"],
+        "visible_label": "Chi phí/(Hoàn nhập) dự phòng rủi ro cho vay TCTD",
+        "observed_values": [1648, 76],
+    },
+    6033: {
+        "pdf_pages": [49],
+        "source_row_refs": ["CREDIT_PROVISION:row-0004"],
+        "visible_label": "Chi phí/(Hoàn nhập) dự phòng mua nợ",
+        "observed_values": [1775, 24681],
+    },
+}
+
+if set(TM_UNIVERSAL_EVIDENCE) != set(TM_UNIVERSAL_SCHEMA_IDS):
+    raise AssertionError("TM universal-schema evidence ledger drifted")
+
 TM_PAGE52_61_SCHEMA_ITEMS = (
     *TM_PAGE52_SCHEMA_ITEMS,
     *TM_PAGE53_SCHEMA_ITEMS,
@@ -637,6 +1071,36 @@ TM_PAGE52_61_ANCHORS = {
     5934: (1930, 1931),
     **_chain_anchors(TM_PAGE61_SCHEMA_IDS, predecessor=1943, successor=1944),
 }
+TM_COVERAGE_ANCHORS = {
+    schema_id: anchors
+    for schema_ids, predecessor, successor in TM_COVERAGE_DISPLAY_CHAINS
+    for schema_id, anchors in _chain_anchors(
+        schema_ids, predecessor=predecessor, successor=successor
+    ).items()
+}
+TM_UNIVERSAL_ANCHORS = {
+    schema_id: anchors
+    for schema_ids, predecessor, successor in TM_UNIVERSAL_DISPLAY_CHAINS
+    for schema_id, anchors in _chain_anchors(
+        schema_ids, predecessor=predecessor, successor=successor
+    ).items()
+}
+if set(TM_UNIVERSAL_ANCHORS) != set(TM_UNIVERSAL_SCHEMA_IDS):
+    raise AssertionError("TM universal-schema anchor allocation drifted")
+# Later universal insertions legitimately become the immediate display neighbor
+# of these earlier append-only identities.  Identity and relative order remain
+# unchanged; only their final cumulative-audit anchors advance.
+TM_COVERAGE_ANCHORS.update(
+    {
+        5962: (5993, 882),
+        5963: (5996, 895),
+        5967: (5998, 928),
+        5968: (6001, 941),
+        5979: (5978, 6008),
+        5981: (5980, 6010),
+        5984: (5983, 6011),
+    }
+)
 
 TM_LOAN_INDUSTRY_PARENT_ID = 727
 TM_LOAN_BUSINESS_PARENT_ID = 766
@@ -676,6 +1140,9 @@ NEW_SCHEMA_IDS = frozenset(
         TM_MARGIN_LOAN_BUSINESS_ID,
         TM_MARGIN_LOAN_INDUSTRY_ID,
         *TM_PAGE52_61_SCHEMA_IDS,
+        *TM_COVERAGE_SCHEMA_IDS,
+        *TM_UNIVERSAL_SCHEMA_IDS,
+        LCTT_INVESTMENT_PROPERTY_NET_ID,
     }
 )
 
@@ -683,6 +1150,7 @@ CDKT_4325_COMPONENTS = (4364, 4365, 4342, 4341, 4343, 5699)
 CDKT_TOTAL_EQUITY_COMPONENTS = (4325, 4306)
 KQKD_TOTAL_OPERATING_INCOME_COMPONENTS = (4385, 4386, 4387, 4388, 4389, 4390, 4393)
 LCTT_INVESTMENT_CONTRIBUTION_NET_COMPONENTS = (4120, 4121)
+LCTT_INVESTMENT_PROPERTY_NET_COMPONENTS = (4144, 4145, 4146)
 TM_TOTAL_INTERBANK_PROVISION_COMPONENTS = (583, 590)
 TM_PROVISION_MOVEMENT_COMPONENTS = (
     TM_GENERAL_PROVISION_MOVEMENT_ID,
@@ -757,6 +1225,37 @@ TM_PAGE57_SUM_FORMULAS = (
     (5895, (5893, 5894)),
 )
 TM_PAGE57_SUBTRACT_FORMULAS = ((5893, (5870, 5884)),)
+TM_COVERAGE_SUM_FORMULAS = (
+    (862, (867, 5959)),
+    (867, (5960, 5961)),
+    (1055, (5977, 1089)),
+    (5985, (1143, 1151)),
+    (5989, (1157, 1167)),
+    (5990, (1188, 1193)),
+)
+TM_COVERAGE_SUBTRACT_FORMULAS = (
+    (5965, (870, 884)),
+    (5966, (882, 895)),
+    (5970, (915, 930)),
+    (5971, (928, 941)),
+    (5973, (944, 957)),
+    (5974, (955, 965)),
+)
+TM_UNIVERSAL_SUM_FORMULAS = (
+    (5991, tuple(range(871, 876))),
+    (5992, tuple(range(876, 882))),
+    (5994, tuple(range(885, 888))),
+    (5995, tuple(range(888, 895))),
+    (5997, tuple(range(916, 921))),
+    (5999, tuple(range(931, 934))),
+    (6000, tuple(range(934, 941))),
+    (6002, tuple(range(945, 952))),
+    (6003, tuple(range(952, 955))),
+    (6005, tuple(range(958, 961))),
+    (6019, tuple(range(1130, 1137))),
+    (6020, tuple(range(1137, 1141))),
+    (1170, (6024, 6025)),
+)
 
 BUSINESS_FORMULAS: tuple[dict[str, object], ...] = (
     {
@@ -782,6 +1281,12 @@ BUSINESS_FORMULAS: tuple[dict[str, object], ...] = (
         "schema_id": LCTT_INVESTMENT_CONTRIBUTION_NET_ID,
         "operator": "SUM",
         "component_schema_ids": list(LCTT_INVESTMENT_CONTRIBUTION_NET_COMPONENTS),
+    },
+    {
+        "statement_type": "LCTT",
+        "schema_id": LCTT_INVESTMENT_PROPERTY_NET_ID,
+        "operator": "SUM",
+        "component_schema_ids": list(LCTT_INVESTMENT_PROPERTY_NET_COMPONENTS),
     },
     {
         "statement_type": "TM",
@@ -831,6 +1336,8 @@ BUSINESS_FORMULAS: tuple[dict[str, object], ...] = (
             *TM_PAGE58_TOTAL_LIABILITY_FORMULAS,
             *TM_PAGE57_COMBINED_FIXED_FORMULAS,
             *TM_PAGE57_SUM_FORMULAS,
+            *TM_COVERAGE_SUM_FORMULAS,
+            *TM_UNIVERSAL_SUM_FORMULAS,
         )
     ),
     *(
@@ -844,8 +1351,28 @@ BUSINESS_FORMULAS: tuple[dict[str, object], ...] = (
             *TM_PAGE53_PBT_FORMULAS,
             *TM_PAGE54_PBT_FORMULAS,
             *TM_PAGE57_SUBTRACT_FORMULAS,
+            *TM_COVERAGE_SUBTRACT_FORMULAS,
         )
     ),
+    {
+        "statement_type": "TM",
+        "schema_id": 5948,
+        "operator": "MULTIPLY_DIVIDE_ROUND_HALF_UP",
+        "component_schema_ids": [1131, 5947],
+        "multiply_component_schema_id": 1131,
+        "multiplier": 1_000_000,
+        "divide_component_schema_id": 5947,
+        "round_to_decimal_places": 0,
+    },
+    {
+        "statement_type": "TM",
+        "schema_id": 5984,
+        "operator": "MULTIPLY_DIVIDE_ROUND_HALF_UP",
+        "component_schema_ids": [5982, 5983],
+        "multiply_component_schema_ids": [5982, 5983],
+        "divisor": 1_000_000,
+        "round_to_decimal_places": 0,
+    },
 )
 
 _SHEET_MEMBER = "xl/worksheets/sheet1.xml"
@@ -1051,6 +1578,121 @@ def _insert_sheet_row(
     return b"".join(parts)
 
 
+def _sheet_schema_id_order(payload: bytes, *, row_count: int) -> tuple[int, ...]:
+    """Read the numeric schema-ID order and fail if row/ordinal geometry drifted."""
+
+    matches = list(_ROW_PATTERN.finditer(payload))
+    row_numbers = [int(match.group("row")) for match in matches]
+    if row_numbers != list(range(1, row_count + 1)):
+        raise BusinessSchemaUpdateError("worksheet row coordinates are not contiguous")
+    schema_ids: list[int] = []
+    for source_row, match in enumerate(matches[1:], start=2):
+        row_payload = match.group(0)
+        ordinal_match = re.search(
+            rb'<c r="A' + str(source_row).encode("ascii") + rb'"[^>]*><v>(\d+)</v></c>',
+            row_payload,
+        )
+        schema_id_match = re.search(
+            rb'<c r="B' + str(source_row).encode("ascii") + rb'"[^>]*><v>(\d+)</v></c>',
+            row_payload,
+        )
+        if (
+            ordinal_match is None
+            or int(ordinal_match.group(1)) != source_row - 2
+            or schema_id_match is None
+        ):
+            raise BusinessSchemaUpdateError(
+                f"worksheet schema identity/ordinal drifted at row {source_row}"
+            )
+        schema_ids.append(int(schema_id_match.group(1)))
+    if len(schema_ids) != len(set(schema_ids)):
+        raise BusinessSchemaUpdateError("worksheet contains duplicate schema IDs")
+    return tuple(schema_ids)
+
+
+def _insert_tm_coverage_rows(
+    payload: bytes,
+    *,
+    before_row_count: int,
+    shared_string_indices: dict[int, int],
+) -> bytes:
+    """Insert all coverage additions by adjacent ID anchors, never row arithmetic."""
+
+    patched = payload
+    row_count = before_row_count
+    for schema_ids, predecessor, successor in TM_COVERAGE_DISPLAY_CHAINS:
+        active_predecessor = predecessor
+        for schema_id in schema_ids:
+            order = _sheet_schema_id_order(patched, row_count=row_count)
+            if active_predecessor not in order or successor not in order:
+                raise BusinessSchemaUpdateError(
+                    f"TM {schema_id} insertion anchor is absent: {active_predecessor}/{successor}"
+                )
+            predecessor_index = order.index(active_predecessor)
+            successor_index = order.index(successor)
+            if successor_index != predecessor_index + 1:
+                raise BusinessSchemaUpdateError(
+                    f"TM {schema_id} insertion anchors are not adjacent: "
+                    f"{active_predecessor}/{successor}"
+                )
+            insert_source_row = successor_index + 2
+            patched = _insert_sheet_row(
+                patched,
+                before_row_count=row_count,
+                insert_source_row=insert_source_row,
+                schema_id=schema_id,
+                display_order=insert_source_row - 2,
+                shared_string_index=shared_string_indices[schema_id],
+            )
+            row_count += 1
+            active_predecessor = schema_id
+    if row_count != TM_AFTER_ROW_COUNT - len(TM_UNIVERSAL_SCHEMA_ITEMS):
+        raise BusinessSchemaUpdateError("TM coverage insertion row count drifted")
+    return patched
+
+
+def _insert_tm_universal_rows(
+    payload: bytes,
+    *,
+    before_row_count: int,
+    shared_string_indices: dict[int, int],
+) -> bytes:
+    """Insert evidence-backed universal items using accounting-order anchors."""
+
+    patched = payload
+    row_count = before_row_count
+    for schema_ids, predecessor, successor in TM_UNIVERSAL_DISPLAY_CHAINS:
+        active_predecessor = predecessor
+        for schema_id in schema_ids:
+            order = _sheet_schema_id_order(patched, row_count=row_count)
+            if active_predecessor not in order or successor not in order:
+                raise BusinessSchemaUpdateError(
+                    f"TM {schema_id} universal insertion anchor is absent: "
+                    f"{active_predecessor}/{successor}"
+                )
+            predecessor_index = order.index(active_predecessor)
+            successor_index = order.index(successor)
+            if successor_index != predecessor_index + 1:
+                raise BusinessSchemaUpdateError(
+                    f"TM {schema_id} universal insertion anchors are not adjacent: "
+                    f"{active_predecessor}/{successor}"
+                )
+            insert_source_row = successor_index + 2
+            patched = _insert_sheet_row(
+                patched,
+                before_row_count=row_count,
+                insert_source_row=insert_source_row,
+                schema_id=schema_id,
+                display_order=insert_source_row - 2,
+                shared_string_index=shared_string_indices[schema_id],
+            )
+            row_count += 1
+            active_predecessor = schema_id
+    if row_count != TM_AFTER_ROW_COUNT:
+        raise BusinessSchemaUpdateError("TM universal insertion row count drifted")
+    return patched
+
+
 def _retarget_shared_string_cell(
     payload: bytes,
     *,
@@ -1109,13 +1751,25 @@ def _build_updated_workbook(
                 source.read(_SHARED_STRINGS_MEMBER),
                 append_name=LCTT_INVESTMENT_CONTRIBUTION_NET_NAME,
             )
+            shared_strings, property_net_string_index = _append_or_reuse_shared_string(
+                shared_strings,
+                name=LCTT_INVESTMENT_PROPERTY_NET_NAME,
+            )
             sheet = _insert_sheet_row(
                 source.read(_SHEET_MEMBER),
                 before_row_count=LCTT_BEFORE_ROW_COUNT,
-                insert_source_row=LCTT_INVESTMENT_CONTRIBUTION_NET_SOURCE_ROW,
+                insert_source_row=LCTT_INVESTMENT_CONTRIBUTION_NET_SOURCE_ROW - 1,
                 schema_id=LCTT_INVESTMENT_CONTRIBUTION_NET_ID,
-                display_order=LCTT_INVESTMENT_CONTRIBUTION_NET_DISPLAY_ORDER,
+                display_order=LCTT_INVESTMENT_CONTRIBUTION_NET_DISPLAY_ORDER - 1,
                 shared_string_index=shared_string_index,
+            )
+            sheet = _insert_sheet_row(
+                sheet,
+                before_row_count=LCTT_BEFORE_ROW_COUNT + 1,
+                insert_source_row=LCTT_INVESTMENT_PROPERTY_NET_SOURCE_ROW,
+                schema_id=LCTT_INVESTMENT_PROPERTY_NET_ID,
+                display_order=LCTT_INVESTMENT_PROPERTY_NET_DISPLAY_ORDER,
+                shared_string_index=property_net_string_index,
             )
         elif statement_type == "TM":
             shared_strings, shared_string_index = _patch_shared_strings(
@@ -1198,6 +1852,16 @@ def _build_updated_workbook(
                 _level,
             ) in TM_PAGE52_61_SCHEMA_ITEMS:
                 shared_strings, page52_61_string_indices[schema_id] = (
+                    _append_or_reuse_shared_string(shared_strings, name=name)
+                )
+            coverage_string_indices: dict[int, int] = {}
+            for schema_id, name, _parent_id, _level in TM_COVERAGE_SCHEMA_ITEMS:
+                shared_strings, coverage_string_indices[schema_id] = _append_or_reuse_shared_string(
+                    shared_strings, name=name
+                )
+            universal_string_indices: dict[int, int] = {}
+            for schema_id, name, _parent_id, _level in TM_UNIVERSAL_SCHEMA_ITEMS:
+                shared_strings, universal_string_indices[schema_id] = (
                     _append_or_reuse_shared_string(shared_strings, name=name)
                 )
             baseline_sheet = _retarget_shared_string_cell(
@@ -1355,7 +2019,12 @@ def _build_updated_workbook(
                 display_order=TM_SWAP_SELL_DISPLAY_ORDER - 7,
                 shared_string_index=swap_sell_string_index,
             )
-            before_new_business_rows = TM_AFTER_ROW_COUNT - len(TM_PAGE52_61_SCHEMA_ITEMS)
+            before_new_business_rows = (
+                TM_AFTER_ROW_COUNT
+                - len(TM_PAGE52_61_SCHEMA_ITEMS)
+                - len(TM_COVERAGE_SCHEMA_ITEMS)
+                - len(TM_UNIVERSAL_SCHEMA_ITEMS)
+            )
             for offset, (
                 schema_id,
                 _name,
@@ -1372,6 +2041,20 @@ def _build_updated_workbook(
                     display_order=display_order,
                     shared_string_index=page52_61_string_indices[schema_id],
                 )
+            sheet = _insert_tm_coverage_rows(
+                sheet,
+                before_row_count=(
+                    TM_AFTER_ROW_COUNT
+                    - len(TM_COVERAGE_SCHEMA_ITEMS)
+                    - len(TM_UNIVERSAL_SCHEMA_ITEMS)
+                ),
+                shared_string_indices=coverage_string_indices,
+            )
+            sheet = _insert_tm_universal_rows(
+                sheet,
+                before_row_count=TM_AFTER_ROW_COUNT - len(TM_UNIVERSAL_SCHEMA_ITEMS),
+                shared_string_indices=universal_string_indices,
+            )
         else:
             raise BusinessSchemaUpdateError(
                 f"unsupported business update statement {statement_type}"
@@ -1493,11 +2176,31 @@ def _assert_candidate(
             str(LCTT_INVESTMENT_CONTRIBUTION_NET_SUCCESSOR_ID),
         ):
             raise BusinessSchemaUpdateError("LCTT investment-contribution anchors drifted")
+        property_net = by_id[str(LCTT_INVESTMENT_PROPERTY_NET_ID)]
+        if property_net != {
+            "source_row": LCTT_INVESTMENT_PROPERTY_NET_SOURCE_ROW,
+            "ordinal": str(LCTT_INVESTMENT_PROPERTY_NET_DISPLAY_ORDER),
+            "report_norm_id": str(LCTT_INVESTMENT_PROPERTY_NET_ID),
+            "report_norm_name": LCTT_INVESTMENT_PROPERTY_NET_NAME,
+        }:
+            raise BusinessSchemaUpdateError(
+                "LCTT investment-property aggregate identity/position drifted"
+            )
+        property_index = ids.index(str(LCTT_INVESTMENT_PROPERTY_NET_ID))
+        if (ids[property_index - 1], ids[property_index + 1]) != (
+            str(LCTT_INVESTMENT_PROPERTY_NET_PREDECESSOR_ID),
+            str(LCTT_INVESTMENT_PROPERTY_NET_SUCCESSOR_ID),
+        ):
+            raise BusinessSchemaUpdateError("LCTT investment-property anchors drifted")
         old_pairs = _item_pairs(before)
         new_pairs = [
             record
             for record in _item_pairs(after)
-            if record["report_norm_id"] != str(LCTT_INVESTMENT_CONTRIBUTION_NET_ID)
+            if record["report_norm_id"]
+            not in {
+                str(LCTT_INVESTMENT_CONTRIBUTION_NET_ID),
+                str(LCTT_INVESTMENT_PROPERTY_NET_ID),
+            }
         ]
         if new_pairs != old_pairs:
             raise BusinessSchemaUpdateError("LCTT candidate changed an existing identity/order")
@@ -1621,21 +2324,35 @@ def _assert_candidate(
                 )
                 for offset, (schema_id, name) in enumerate(TM_PAGE50_TAX_SCHEMA_ITEMS)
             ),
+        )
+        for schema_id, name, _source_row, _display_order in additions:
+            record = by_id[str(schema_id)]
+            if record["report_norm_name"] != name or record["ordinal"] != str(
+                int(record["source_row"]) - 2
+            ):
+                raise BusinessSchemaUpdateError(f"TM {schema_id} dynamic identity/position drifted")
+        dynamic_additions = (
             *(
-                (schema_id, name, source_row, display_order)
-                for schema_id, name, source_row, display_order, _parent_id, _level in (
+                (schema_id, name)
+                for schema_id, name, _source_row, _order, _parent_id, _level in (
                     TM_PAGE52_61_SCHEMA_ITEMS
                 )
             ),
+            *(
+                (schema_id, name)
+                for schema_id, name, _parent_id, _level in TM_COVERAGE_SCHEMA_ITEMS
+            ),
+            *(
+                (schema_id, name)
+                for schema_id, name, _parent_id, _level in TM_UNIVERSAL_SCHEMA_ITEMS
+            ),
         )
-        for schema_id, name, source_row, display_order in additions:
-            if by_id[str(schema_id)] != {
-                "source_row": source_row,
-                "ordinal": str(display_order),
-                "report_norm_id": str(schema_id),
-                "report_norm_name": name,
-            }:
-                raise BusinessSchemaUpdateError(f"TM {schema_id} identity/position drifted")
+        for schema_id, name in dynamic_additions:
+            record = by_id[str(schema_id)]
+            if record["report_norm_name"] != name or record["ordinal"] != str(
+                int(record["source_row"]) - 2
+            ):
+                raise BusinessSchemaUpdateError(f"TM {schema_id} dynamic identity/position drifted")
         ids = [record["report_norm_id"] for record in after]
         expected_anchors = {
             TM_TOTAL_INTERBANK_PROVISION_ID: (
@@ -1722,6 +2439,8 @@ def _assert_candidate(
                 for offset, schema_id in enumerate(TM_PAGE50_TAX_SCHEMA_IDS)
             },
             **TM_PAGE52_61_ANCHORS,
+            **TM_COVERAGE_ANCHORS,
+            **TM_UNIVERSAL_ANCHORS,
         }
         for schema_id, anchors in expected_anchors.items():
             index = ids.index(str(schema_id))
@@ -1796,8 +2515,58 @@ def _expected_formulas() -> list[dict[str, object]]:
     return [dict(record) for record in BUSINESS_FORMULAS]
 
 
+def _expected_schema_strategy(
+    *,
+    after_workbook_sha256: dict[str, str],
+) -> dict[str, object]:
+    return {
+        "schema_name": "UNIVERSAL_BANK_BCTC_SCHEMA",
+        "evolution_policy": "SOURCE_EVIDENCE_DRIVEN_APPEND_ONLY",
+        "base_schema": {
+            "name": "BASE_SCHEMA",
+            "item_count": BASE_SCHEMA_ITEM_COUNT,
+            "counts": {"CDKT": 77, "KQKD": 24, "LCTT": 107, "TM": 1385},
+            "workbook_sha256": {
+                "CDKT": CDKT_BEFORE_SHA256,
+                "KQKD": KQKD_BEFORE_SHA256,
+                "LCTT": LCTT_BEFORE_SHA256,
+                "TM": TM_BEFORE_SHA256,
+            },
+            "ordered_canonical_projection_sha256": (
+                "e63b77ebf99907843bea419cef32bc64cd709129813f89309f3b42fc818a1b10"
+            ),
+            "ordered_report_norm_ids_sha256": (
+                "5cc0e9ea70b23af236ce43b920838299dbc91e9c0ef19d31165f4ce49eea4f9f"
+            ),
+        },
+        "previous_universal_schema": {
+            "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@5990",
+            "item_count": PRIOR_UNIVERSAL_SCHEMA_ITEM_COUNT,
+            "counts": {"CDKT": 78, "KQKD": 25, "LCTT": 108, "TM": 1658},
+            "high_watermark": PRIOR_UNIVERSAL_HIGH_WATERMARK,
+            "workbook_sha256": PRIOR_UNIVERSAL_WORKBOOK_SHA256,
+            "identity_order_sha256": PRIOR_UNIVERSAL_IDENTITY_ORDER_SHA256,
+            "audit_path": PRIOR_BUSINESS_UPDATE_AUDIT,
+            "audit_sha256": PRIOR_BUSINESS_UPDATE_AUDIT_SHA256,
+        },
+        "universal_schema": {
+            "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6034",
+            "item_count": UNIVERSAL_SCHEMA_ITEM_COUNT,
+            "counts": {"CDKT": 78, "KQKD": 25, "LCTT": 109, "TM": 1701},
+            "high_watermark": UNIVERSAL_HIGH_WATERMARK,
+            "workbook_sha256": after_workbook_sha256,
+        },
+        "migration_delta": {
+            "new_report_norm_ids": [*range(5991, 6035)],
+            "item_count": 44,
+            "existing_report_norm_ids_renumbered": False,
+            "report_norm_id_defines_display_order": False,
+        },
+    }
+
+
 def _expected_schema_changes() -> list[dict[str, object]]:
-    return [
+    changes = [
         {
             "change": "ADD",
             "statement_type": "CDKT",
@@ -1827,6 +2596,36 @@ def _expected_schema_changes() -> list[dict[str, object]]:
             "display_order_zero_based": LCTT_INVESTMENT_CONTRIBUTION_NET_DISPLAY_ORDER,
             "previous_schema_id": LCTT_INVESTMENT_CONTRIBUTION_NET_PREDECESSOR_ID,
             "next_schema_id": LCTT_INVESTMENT_CONTRIBUTION_NET_SUCCESSOR_ID,
+        },
+        {
+            "change": "ADD",
+            "statement_type": "LCTT",
+            "schema_id": LCTT_INVESTMENT_PROPERTY_NET_ID,
+            "canonical_name": LCTT_INVESTMENT_PROPERTY_NET_NAME,
+            "source_row": LCTT_INVESTMENT_PROPERTY_NET_SOURCE_ROW,
+            "display_order_zero_based": LCTT_INVESTMENT_PROPERTY_NET_DISPLAY_ORDER,
+            "previous_schema_id": LCTT_INVESTMENT_PROPERTY_NET_PREDECESSOR_ID,
+            "next_schema_id": LCTT_INVESTMENT_PROPERTY_NET_SUCCESSOR_ID,
+            "parent_schema_id": 4111,
+            "hierarchy_level": 2,
+            "section": "DIRECT_CASH_FLOW_INVESTING_ACTIVITIES",
+            "schema_status": "ACCEPTED_UNIVERSAL",
+            "evidence": {
+                "bank": "MBB",
+                "period": "Q1/2026",
+                "scope": "CONSOLIDATED",
+                "source_document_sha256": FIRST_OBSERVED_PDF_SHA256,
+                "pdf_pages": [7],
+                "source_row_refs": ["page-0007:row-0031"],
+                "visible_label": LCTT_INVESTMENT_PROPERTY_NET_NAME,
+                "observed_values": ["DASH", "DASH"],
+                "unit": "VND_MILLION",
+                "decision": "TRUE_SCHEMA_GAP_ACCEPTED",
+                "reason_existing_items_insufficient": (
+                    "The PDF reports a net investment-property cash-flow row; existing "
+                    "4144/4145/4146 are its distinct components."
+                ),
+            },
         },
         {
             "change": "ADD",
@@ -2025,14 +2824,57 @@ def _expected_schema_changes() -> list[dict[str, object]]:
                 "statement_type": "TM",
                 "schema_id": schema_id,
                 "canonical_name": name,
-                "source_row": source_row,
-                "display_order_zero_based": display_order,
+                "parent_schema_id": parent_id,
+                "hierarchy_level": level,
                 "previous_schema_id": TM_PAGE52_61_ANCHORS[schema_id][0],
                 "next_schema_id": TM_PAGE52_61_ANCHORS[schema_id][1],
             }
-            for schema_id, name, source_row, display_order, _parent_id, _level in (
+            for schema_id, name, _source_row, _display_order, parent_id, level in (
                 TM_PAGE52_61_SCHEMA_ITEMS
             )
+        ),
+        *(
+            {
+                "change": "ADD",
+                "statement_type": "TM",
+                "schema_id": schema_id,
+                "canonical_name": name,
+                "parent_schema_id": parent_id,
+                "hierarchy_level": level,
+                "previous_schema_id": TM_COVERAGE_ANCHORS[schema_id][0],
+                "next_schema_id": TM_COVERAGE_ANCHORS[schema_id][1],
+            }
+            for schema_id, name, parent_id, level in TM_COVERAGE_SCHEMA_ITEMS
+        ),
+        *(
+            {
+                "change": "ADD",
+                "statement_type": "TM",
+                "schema_id": schema_id,
+                "canonical_name": name,
+                "parent_schema_id": parent_id,
+                "hierarchy_level": level,
+                "section": (
+                    "BALANCE_SHEET_NOTES" if schema_id <= 6020 else "INCOME_STATEMENT_NOTES"
+                ),
+                "schema_status": "ACCEPTED_UNIVERSAL",
+                "previous_schema_id": TM_UNIVERSAL_ANCHORS[schema_id][0],
+                "next_schema_id": TM_UNIVERSAL_ANCHORS[schema_id][1],
+                "evidence": {
+                    "bank": "MBB",
+                    "period": "Q1/2026",
+                    "scope": "CONSOLIDATED",
+                    "source_document_sha256": FIRST_OBSERVED_PDF_SHA256,
+                    "unit": "VND_MILLION",
+                    "decision": "TRUE_SCHEMA_GAP_ACCEPTED",
+                    "reason_existing_items_insufficient": (
+                        "No existing canonical item preserves this visible accounting "
+                        "concept and its source hierarchy without force-mapping or loss."
+                    ),
+                    **TM_UNIVERSAL_EVIDENCE[schema_id],
+                },
+            }
+            for schema_id, name, parent_id, level in TM_UNIVERSAL_SCHEMA_ITEMS
         ),
         {
             "change": "CORRECT_DISPLAY_NAME",
@@ -2056,6 +2898,43 @@ def _expected_schema_changes() -> list[dict[str, object]]:
             "after": TM_EDUCATION_NAME,
         },
     ]
+    for record in changes:
+        if record.get("statement_type") == "TM" and record.get("change") == "ADD":
+            record.pop("source_row", None)
+            record.pop("display_order_zero_based", None)
+    return changes
+
+
+def _expected_hierarchy_changes() -> list[dict[str, object]]:
+    groups: tuple[tuple[str, tuple[int, ...], int, int, int, int], ...] = (
+        ("LCTT", LCTT_INVESTMENT_PROPERTY_NET_COMPONENTS, 4111, 6034, 2, 3),
+        ("TM", tuple(range(871, 876)), 869, 5991, 3, 4),
+        ("TM", tuple(range(876, 882)), 869, 5992, 3, 4),
+        ("TM", tuple(range(885, 888)), 883, 5994, 3, 4),
+        ("TM", tuple(range(888, 895)), 883, 5995, 3, 4),
+        ("TM", tuple(range(916, 921)), 914, 5997, 3, 4),
+        ("TM", tuple(range(931, 934)), 929, 5999, 3, 4),
+        ("TM", tuple(range(934, 941)), 929, 6000, 3, 4),
+        ("TM", tuple(range(945, 952)), 943, 6002, 3, 4),
+        ("TM", tuple(range(952, 955)), 943, 6003, 3, 4),
+        ("TM", tuple(range(958, 961)), 956, 6005, 3, 4),
+        ("TM", tuple(range(1130, 1137)), 1128, 6019, 2, 3),
+        ("TM", tuple(range(1137, 1141)), 1128, 6020, 2, 3),
+    )
+    return [
+        {
+            "change": "REPARENT_WITH_SOURCE_EVIDENCE",
+            "statement_type": statement,
+            "schema_id": schema_id,
+            "before_parent_schema_id": before_parent,
+            "after_parent_schema_id": after_parent,
+            "before_hierarchy_level": before_level,
+            "after_hierarchy_level": after_level,
+            "reason": "VISIBLE_PARENT_OR_SUBTOTAL_PRESERVES_ACCOUNTING_HIERARCHY",
+        }
+        for statement, schema_ids, before_parent, after_parent, before_level, after_level in groups
+        for schema_id in schema_ids
+    ]
 
 
 def verify_business_schema_update(project_root: Path, audit_path: Path) -> dict[str, object]:
@@ -2063,7 +2942,7 @@ def verify_business_schema_update(project_root: Path, audit_path: Path) -> dict[
     audit = json.loads(audit_path.read_text(encoding="utf-8"))
     if (
         audit.get("format_version") != 1
-        or audit.get("migration_id") != "BUSINESS-SCHEMA-5712-5713-5714-5718-5945"
+        or audit.get("migration_id") != "BUSINESS-SCHEMA-5712-5713-5714-5718-6034"
         or audit.get("status") != "APPLIED_AND_VERIFIED"
     ):
         raise BusinessSchemaUpdateError("invalid business-schema update audit identity")
@@ -2071,9 +2950,11 @@ def verify_business_schema_update(project_root: Path, audit_path: Path) -> dict[
         raise BusinessSchemaUpdateError("business formula audit drifted")
     if audit.get("schema_changes") != _expected_schema_changes():
         raise BusinessSchemaUpdateError("business schema-change audit drifted")
+    if audit.get("hierarchy_changes") != _expected_hierarchy_changes():
+        raise BusinessSchemaUpdateError("business hierarchy-change audit drifted")
     if audit.get("authority") != {
         "approved_on": "2026-08-08",
-        "policy": "USER_AUTHORIZED_BUSINESS_SCHEMA_UPDATE",
+        "policy": "USER_AUTHORIZED_EVOLVING_UNIVERSAL_BANK_BCTC_SCHEMA",
     }:
         raise BusinessSchemaUpdateError("business schema authority drifted")
     collision = audit.get("collision_safety")
@@ -2084,14 +2965,31 @@ def verify_business_schema_update(project_root: Path, audit_path: Path) -> dict[
     if collision.get("new_ids_disjoint_from_reviewed_external_ids") is not True:
         raise BusinessSchemaUpdateError("business update lacks external-ID disjointness proof")
     if collision != {
-        "baseline_global_schema_count": 1593,
-        "result_global_schema_count": 1824,
+        "baseline_global_schema_count": BASE_SCHEMA_ITEM_COUNT,
+        "result_global_schema_count": UNIVERSAL_SCHEMA_ITEM_COUNT,
         "new_ids": sorted(NEW_SCHEMA_IDS),
         "reviewed_external_ids": sorted(REVIEWED_EXTERNAL_IDS),
         "new_ids_disjoint_from_reviewed_external_ids": True,
         "result_ids_globally_unique": True,
     }:
         raise BusinessSchemaUpdateError("business update collision proof drifted")
+
+    raw_workbooks = audit.get("workbooks")
+    if not isinstance(raw_workbooks, dict):
+        raise BusinessSchemaUpdateError("business update workbook audit is absent")
+    after_workbook_sha256 = {
+        statement: str(record.get("after_sha256"))
+        for statement, record in raw_workbooks.items()
+        if isinstance(record, dict)
+    }
+    if audit.get("schema_strategy") != _expected_schema_strategy(
+        after_workbook_sha256=after_workbook_sha256
+    ):
+        raise BusinessSchemaUpdateError("universal schema strategy audit drifted")
+    if sha256_file(project_root / PRIOR_BUSINESS_UPDATE_AUDIT) != (
+        PRIOR_BUSINESS_UPDATE_AUDIT_SHA256
+    ):
+        raise BusinessSchemaUpdateError("prior universal-schema audit changed")
 
     expected_workbooks = {
         "CDKT": (
@@ -2119,7 +3017,6 @@ def verify_business_schema_update(project_root: Path, audit_path: Path) -> dict[
             TM_AFTER_ROW_COUNT,
         ),
     }
-    raw_workbooks = audit.get("workbooks")
     if not isinstance(raw_workbooks, dict) or set(raw_workbooks) != set(expected_workbooks):
         raise BusinessSchemaUpdateError("business update workbook audit set drifted")
     for statement, (
@@ -2164,6 +3061,30 @@ def verify_business_schema_update(project_root: Path, audit_path: Path) -> dict[
             raise BusinessSchemaUpdateError(f"{statement} audited row count drifted")
         _assert_contiguous_ordinals(records, statement=statement)
         _assert_candidate(project_root / baseline_relative, path, statement=statement)
+        delta_ids = (
+            {LCTT_INVESTMENT_PROPERTY_NET_ID}
+            if statement == "LCTT"
+            else (set(TM_UNIVERSAL_SCHEMA_IDS) if statement == "TM" else set())
+        )
+        prior_pairs = [
+            pair
+            for pair in _item_pairs(records)
+            if int(str(pair["report_norm_id"])) not in delta_ids
+        ]
+        if _records_hash(prior_pairs) != PRIOR_UNIVERSAL_IDENTITY_ORDER_SHA256[statement]:
+            raise BusinessSchemaUpdateError(
+                f"{statement} prior universal identity/order was not preserved"
+            )
+        if record.get("prior_universal_preservation") != {
+            "before_sha256": PRIOR_UNIVERSAL_WORKBOOK_SHA256[statement],
+            "existing_item_id_name_order_sha256": (
+                PRIOR_UNIVERSAL_IDENTITY_ORDER_SHA256[statement]
+            ),
+            "existing_ids_and_relative_order_preserved": True,
+        }:
+            raise BusinessSchemaUpdateError(
+                f"{statement} prior universal preservation audit drifted"
+            )
         preservation = record.get("preservation")
         if not isinstance(preservation, dict):
             raise BusinessSchemaUpdateError(f"{statement} preservation audit is absent")
@@ -2241,6 +3162,11 @@ def verify_business_schema_update(project_root: Path, audit_path: Path) -> dict[
         != LCTT_INVESTMENT_CONTRIBUTION_NET_SOURCE_ROW
     ):
         raise BusinessSchemaUpdateError("LCTT 5714 row position drifted")
+    if (
+        lctt_by_id[str(LCTT_INVESTMENT_PROPERTY_NET_ID)]["source_row"]
+        != LCTT_INVESTMENT_PROPERTY_NET_SOURCE_ROW
+    ):
+        raise BusinessSchemaUpdateError("LCTT 6034 row position drifted")
     if tm_by_id["770"]["report_norm_name"] != TM_770_CORRECTED_NAME:
         raise BusinessSchemaUpdateError("TM 770 correction drifted")
     if tm_by_id[str(TM_EDUCATION_ID)]["report_norm_name"] != TM_EDUCATION_NAME:
@@ -2250,40 +3176,6 @@ def verify_business_schema_update(project_root: Path, audit_path: Path) -> dict[
         != TM_TOTAL_INTERBANK_PROVISION_SOURCE_ROW
     ):
         raise BusinessSchemaUpdateError("TM 5718 row position drifted")
-    for schema_id, source_row in (
-        (TM_HEALTH_SOCIAL_ID, TM_HEALTH_SOCIAL_SOURCE_ROW),
-        (TM_ARTS_RECREATION_ID, TM_ARTS_RECREATION_SOURCE_ROW),
-        (TM_OTHER_SERVICES_ID, TM_OTHER_SERVICES_SOURCE_ROW),
-        (TM_HOUSEHOLD_EMPLOYMENT_ID, TM_HOUSEHOLD_EMPLOYMENT_SOURCE_ROW),
-        (TM_PURCHASED_PRINCIPAL_ID, TM_PURCHASED_PRINCIPAL_SOURCE_ROW),
-        (TM_PURCHASED_INTEREST_ID, TM_PURCHASED_INTEREST_SOURCE_ROW),
-        (
-            TM_GOVERNMENT_GUARANTEED_DEBT_ID,
-            TM_GOVERNMENT_GUARANTEED_DEBT_SOURCE_ROW,
-        ),
-        (TM_FX_BUY_ID, TM_FX_BUY_SOURCE_ROW),
-        (TM_FX_SELL_ID, TM_FX_SELL_SOURCE_ROW),
-        (TM_SWAP_BUY_ID, TM_SWAP_BUY_SOURCE_ROW),
-        (TM_SWAP_SELL_ID, TM_SWAP_SELL_SOURCE_ROW),
-        (TM_MARGIN_LOAN_TYPE_ID, TM_MARGIN_LOAN_TYPE_SOURCE_ROW),
-        (TM_MARGIN_LOAN_QUALITY_ID, TM_MARGIN_LOAN_QUALITY_SOURCE_ROW),
-        (TM_MARGIN_LOAN_MATURITY_ID, TM_MARGIN_LOAN_MATURITY_SOURCE_ROW),
-        (TM_MARGIN_LOAN_BUSINESS_ID, TM_MARGIN_LOAN_BUSINESS_SOURCE_ROW),
-        (TM_MARGIN_LOAN_INDUSTRY_ID, TM_MARGIN_LOAN_INDUSTRY_SOURCE_ROW),
-        *(
-            (schema_id, TM_PAGE50_TAX_INSERT_SOURCE_ROW + offset)
-            for offset, schema_id in enumerate(TM_PAGE50_TAX_SCHEMA_IDS)
-        ),
-        *(
-            (schema_id, source_row)
-            for schema_id, _name, source_row, _order, _parent_id, _level in (
-                TM_PAGE52_61_SCHEMA_ITEMS
-            )
-        ),
-    ):
-        if tm_by_id[str(schema_id)]["source_row"] != source_row:
-            raise BusinessSchemaUpdateError(f"TM {schema_id} row position drifted")
-
     unaffected = audit.get("unaffected_workbooks_sha256")
     expected_unaffected: dict[str, str] = {}
     if unaffected != expected_unaffected:
@@ -2292,13 +3184,15 @@ def verify_business_schema_update(project_root: Path, audit_path: Path) -> dict[
         if sha256_file(project_root / relative) != expected_hash:
             raise BusinessSchemaUpdateError(f"unaffected workbook changed: {relative}")
 
-    seen = _assert_global_identity(project_root, expected_count=1824)
+    seen = _assert_global_identity(project_root, expected_count=UNIVERSAL_SCHEMA_ITEM_COUNT)
     if seen.get(CDKT_TOTAL_EQUITY_ID) != "CDKT":
         raise BusinessSchemaUpdateError("CDKT 5712 is not globally unique and correctly scoped")
     if seen.get(KQKD_TOTAL_OPERATING_INCOME_ID) != "KQKD":
         raise BusinessSchemaUpdateError("KQKD 5713 is not globally unique and correctly scoped")
     if seen.get(LCTT_INVESTMENT_CONTRIBUTION_NET_ID) != "LCTT":
         raise BusinessSchemaUpdateError("LCTT 5714 is not globally unique and correctly scoped")
+    if seen.get(LCTT_INVESTMENT_PROPERTY_NET_ID) != "LCTT":
+        raise BusinessSchemaUpdateError("LCTT 6034 is not globally unique and correctly scoped")
     if seen.get(TM_TOTAL_INTERBANK_PROVISION_ID) != "TM":
         raise BusinessSchemaUpdateError("TM 5718 is not globally unique and correctly scoped")
     for schema_id in (
@@ -2320,6 +3214,8 @@ def verify_business_schema_update(project_root: Path, audit_path: Path) -> dict[
         TM_MARGIN_LOAN_BUSINESS_ID,
         TM_MARGIN_LOAN_INDUSTRY_ID,
         *TM_PAGE52_61_SCHEMA_IDS,
+        *TM_COVERAGE_SCHEMA_IDS,
+        *TM_UNIVERSAL_SCHEMA_IDS,
     ):
         if seen.get(schema_id) != "TM":
             raise BusinessSchemaUpdateError(
@@ -2389,7 +3285,7 @@ def apply_business_schema_update(
         kqkd_path=baseline_paths["KQKD"],
         lctt_path=baseline_paths["LCTT"],
         tm_path=baseline_paths["TM"],
-        expected_count=1593,
+        expected_count=BASE_SCHEMA_ITEM_COUNT,
     )
     if NEW_SCHEMA_IDS & set(before_seen):
         raise BusinessSchemaUpdateError("one or more authorized new IDs already exist")
@@ -2435,12 +3331,13 @@ def apply_business_schema_update(
         candidate_seen = _assert_global_identity(
             project_root,
             overrides=candidate_paths,
-            expected_count=1824,
+            expected_count=UNIVERSAL_SCHEMA_ITEM_COUNT,
         )
         if (
             candidate_seen.get(CDKT_TOTAL_EQUITY_ID) != "CDKT"
             or candidate_seen.get(KQKD_TOTAL_OPERATING_INCOME_ID) != "KQKD"
             or candidate_seen.get(LCTT_INVESTMENT_CONTRIBUTION_NET_ID) != "LCTT"
+            or candidate_seen.get(LCTT_INVESTMENT_PROPERTY_NET_ID) != "LCTT"
             or candidate_seen.get(TM_TOTAL_INTERBANK_PROVISION_ID) != "TM"
             or any(
                 candidate_seen.get(schema_id) != "TM"
@@ -2463,6 +3360,8 @@ def apply_business_schema_update(
                     TM_MARGIN_LOAN_BUSINESS_ID,
                     TM_MARGIN_LOAN_INDUSTRY_ID,
                     *TM_PAGE52_61_SCHEMA_IDS,
+                    *TM_COVERAGE_SCHEMA_IDS,
+                    *TM_UNIVERSAL_SCHEMA_IDS,
                 )
             )
         ):
@@ -2515,6 +3414,13 @@ def apply_business_schema_update(
                 "LCTT": LCTT_AFTER_ROW_COUNT,
                 "TM": TM_AFTER_ROW_COUNT,
             }[statement],
+            "prior_universal_preservation": {
+                "before_sha256": PRIOR_UNIVERSAL_WORKBOOK_SHA256[statement],
+                "existing_item_id_name_order_sha256": (
+                    PRIOR_UNIVERSAL_IDENTITY_ORDER_SHA256[statement]
+                ),
+                "existing_ids_and_relative_order_preserved": True,
+            },
             "preservation": {
                 "existing_item_id_name_order_sha256": _records_hash(_item_pairs(before_records)),
                 "existing_ids_and_relative_order_preserved": True,
@@ -2558,24 +3464,31 @@ def apply_business_schema_update(
 
     audit: dict[str, object] = {
         "format_version": 1,
-        "migration_id": "BUSINESS-SCHEMA-5712-5713-5714-5718-5945",
+        "migration_id": "BUSINESS-SCHEMA-5712-5713-5714-5718-6034",
         "status": "APPLIED_AND_VERIFIED",
         "applied_at": datetime.now(UTC).isoformat(),
         "authority": {
             "approved_on": "2026-08-08",
-            "policy": "USER_AUTHORIZED_BUSINESS_SCHEMA_UPDATE",
+            "policy": "USER_AUTHORIZED_EVOLVING_UNIVERSAL_BANK_BCTC_SCHEMA",
         },
         "collision_safety": {
-            "baseline_global_schema_count": 1593,
-            "result_global_schema_count": 1824,
+            "baseline_global_schema_count": BASE_SCHEMA_ITEM_COUNT,
+            "result_global_schema_count": UNIVERSAL_SCHEMA_ITEM_COUNT,
             "new_ids": sorted(NEW_SCHEMA_IDS),
             "reviewed_external_ids": sorted(REVIEWED_EXTERNAL_IDS),
             "new_ids_disjoint_from_reviewed_external_ids": True,
             "result_ids_globally_unique": True,
         },
         "schema_changes": _expected_schema_changes(),
+        "hierarchy_changes": _expected_hierarchy_changes(),
         "business_formulas": _expected_formulas(),
         "workbooks": workbook_audit,
+        "schema_strategy": _expected_schema_strategy(
+            after_workbook_sha256={
+                statement: sha256_bytes(payload)
+                for statement, payload in candidate_payloads.items()
+            }
+        ),
         "unaffected_workbooks_sha256": {},
         "supporting_hierarchy_workbooks_mutated": False,
         "supporting_hierarchy_workbooks_sha256": supporting_hashes,
@@ -2633,7 +3546,20 @@ def apply_business_formula_hierarchy(schema: Sequence[SchemaItem]) -> None:
         }
         | {
             ("LCTT", schema_id)
-            for schema_id in (4111, 4118, 4119, 4143, 4144, 4145, 4146, 4147, 4120, 4121, 5714)
+            for schema_id in (
+                4111,
+                4118,
+                4119,
+                4143,
+                4144,
+                4145,
+                4146,
+                4147,
+                4120,
+                4121,
+                5714,
+                LCTT_INVESTMENT_PROPERTY_NET_ID,
+            )
         }
         | {("TM", schema_id) for schema_id in (575, *TM_TOTAL_INTERBANK_PROVISION_COMPONENTS, 5718)}
         | {
@@ -2676,6 +3602,44 @@ def apply_business_formula_hierarchy(schema: Sequence[SchemaItem]) -> None:
                 1259,
                 1295,
                 *TM_PAGE52_61_SCHEMA_IDS,
+                *TM_COVERAGE_SCHEMA_IDS,
+                *TM_UNIVERSAL_SCHEMA_IDS,
+                862,
+                867,
+                868,
+                869,
+                881,
+                882,
+                883,
+                894,
+                895,
+                913,
+                914,
+                927,
+                928,
+                929,
+                940,
+                941,
+                942,
+                943,
+                944,
+                955,
+                956,
+                957,
+                965,
+                967,
+                980,
+                981,
+                1075,
+                1089,
+                *range(1100, 1118),
+                1128,
+                1131,
+                1151,
+                1157,
+                1167,
+                1188,
+                1193,
                 *range(1352, 1483),
                 *range(1483, 1759),
                 *range(1759, 1945),
@@ -2694,6 +3658,8 @@ def apply_business_formula_hierarchy(schema: Sequence[SchemaItem]) -> None:
         ("KQKD", 4391): 4376,
         ("LCTT", 4120): 4111,
         ("LCTT", 4121): 4111,
+        **{("LCTT", schema_id): 4111 for schema_id in LCTT_INVESTMENT_PROPERTY_NET_COMPONENTS},
+        ("LCTT", LCTT_INVESTMENT_PROPERTY_NET_ID): None,
         ("TM", TM_EDUCATION_ID): TM_LOAN_INDUSTRY_PARENT_ID,
         ("TM", TM_LOAN_BUSINESS_OTHER_ID): TM_LOAN_BUSINESS_PARENT_ID,
         **{("TM", schema_id): TM_PROVISION_MOVEMENT_ID for schema_id in range(784, 800)},
@@ -2706,6 +3672,22 @@ def apply_business_formula_hierarchy(schema: Sequence[SchemaItem]) -> None:
         ("TM", TM_MARGIN_LOAN_INDUSTRY_ID): None,
         **{("TM", schema_id): 759 for schema_id in range(760, 766)},
         **{("TM", schema_id): None for schema_id in TM_PAGE52_61_SCHEMA_IDS},
+        **{("TM", schema_id): None for schema_id in TM_COVERAGE_SCHEMA_IDS},
+        **{("TM", schema_id): None for schema_id in TM_UNIVERSAL_SCHEMA_IDS},
+        **{
+            ("TM", schema_id): parent_id
+            for parent_id, schema_ids in (
+                (869, tuple(range(871, 882))),
+                (883, tuple(range(885, 895))),
+                (914, tuple(range(916, 921))),
+                (929, tuple(range(931, 941))),
+                (943, tuple(range(945, 955))),
+                (956, tuple(range(958, 961))),
+                (1128, tuple(range(1130, 1141))),
+            )
+            for schema_id in schema_ids
+        },
+        **{("TM", schema_id): 1100 for schema_id in range(1101, 1118)},
         **{
             ("TM", schema_id): parent_id
             for parent_id, schema_ids in (
@@ -2755,6 +3737,17 @@ def apply_business_formula_hierarchy(schema: Sequence[SchemaItem]) -> None:
     by_key[("LCTT", LCTT_INVESTMENT_CONTRIBUTION_NET_ID)].parent_id = 4111
     by_key[("LCTT", LCTT_INVESTMENT_CONTRIBUTION_NET_ID)].hierarchy_level = 3
     by_key[("LCTT", LCTT_INVESTMENT_CONTRIBUTION_NET_ID)].hierarchy_source = BUSINESS_UPDATE_AUDIT
+
+    for schema_id in LCTT_INVESTMENT_PROPERTY_NET_COMPONENTS:
+        item = by_key[("LCTT", schema_id)]
+        item.parent_id = LCTT_INVESTMENT_PROPERTY_NET_ID
+        item.hierarchy_level = 3
+        item.hierarchy_source = BUSINESS_UPDATE_AUDIT
+    property_net = by_key[("LCTT", LCTT_INVESTMENT_PROPERTY_NET_ID)]
+    property_net.parent_id = 4111
+    property_net.hierarchy_level = 2
+    property_net.notes_section = "DIRECT_CASH_FLOW_INVESTING_ACTIVITIES"
+    property_net.hierarchy_source = BUSINESS_UPDATE_AUDIT
 
     by_key[("TM", TM_TOTAL_INTERBANK_PROVISION_ID)].parent_id = 575
     by_key[("TM", TM_TOTAL_INTERBANK_PROVISION_ID)].hierarchy_level = 2
@@ -2863,6 +3856,40 @@ def apply_business_formula_hierarchy(schema: Sequence[SchemaItem]) -> None:
         item.parent_id = parent_id
         item.hierarchy_level = level
         item.hierarchy_source = BUSINESS_UPDATE_AUDIT
+    for schema_id, _name, parent_id, level in TM_COVERAGE_SCHEMA_ITEMS:
+        item = by_key[("TM", schema_id)]
+        item.parent_id = parent_id
+        item.hierarchy_level = level
+        item.hierarchy_source = BUSINESS_UPDATE_AUDIT
+    for schema_id, _name, parent_id, level in TM_UNIVERSAL_SCHEMA_ITEMS:
+        item = by_key[("TM", schema_id)]
+        item.parent_id = parent_id
+        item.hierarchy_level = level
+        item.notes_section = (
+            "BALANCE_SHEET_NOTES" if schema_id <= 6020 else "INCOME_STATEMENT_NOTES"
+        )
+        item.hierarchy_source = BUSINESS_UPDATE_AUDIT
+
+    universal_reparent_groups = (
+        (5991, tuple(range(871, 876)), 4),
+        (5992, tuple(range(876, 882)), 4),
+        (5994, tuple(range(885, 888)), 4),
+        (5995, tuple(range(888, 895)), 4),
+        (5997, tuple(range(916, 921)), 4),
+        (5999, tuple(range(931, 934)), 4),
+        (6000, tuple(range(934, 941)), 4),
+        (6002, tuple(range(945, 952)), 4),
+        (6003, tuple(range(952, 955)), 4),
+        (6005, tuple(range(958, 961)), 4),
+        (6019, tuple(range(1130, 1137)), 3),
+        (6020, tuple(range(1137, 1141)), 3),
+    )
+    for parent_id, schema_ids, level in universal_reparent_groups:
+        for schema_id in schema_ids:
+            item = by_key[("TM", schema_id)]
+            item.parent_id = parent_id
+            item.hierarchy_level = level
+            item.hierarchy_source = BUSINESS_UPDATE_AUDIT
 
     currency_hierarchy = (
         (
@@ -2994,11 +4021,67 @@ def apply_business_formula_hierarchy(schema: Sequence[SchemaItem]) -> None:
         ("LCTT", LCTT_INVESTMENT_CONTRIBUTION_NET_ID): (
             LCTT_INVESTMENT_CONTRIBUTION_NET_COMPONENTS
         ),
-        ("LCTT", 4111): (4118, 4119, 4143, 4144, 4145, 4146, 5714, 4147),
+        ("LCTT", LCTT_INVESTMENT_PROPERTY_NET_ID): (LCTT_INVESTMENT_PROPERTY_NET_COMPONENTS),
+        ("LCTT", 4111): (
+            4118,
+            4119,
+            4143,
+            LCTT_INVESTMENT_PROPERTY_NET_ID,
+            5714,
+            4147,
+        ),
         ("TM", 575): (576, 585, 5718),
         ("TM", 576): (577, 578, 579, 580, 581, 582, 583, 584),
         ("TM", 585): (586, 587, 588, 589, 590, 591),
         ("TM", 5718): (),
+        ("TM", 862): (863, 864, 865, 866, 867, 5959),
+        ("TM", 867): (5960, 5961),
+        ("TM", 868): (869, 883, 5964),
+        ("TM", 869): (870, 5991, 5992, 5993, 5962, 882),
+        ("TM", 5991): tuple(range(871, 876)),
+        ("TM", 5992): tuple(range(876, 882)),
+        ("TM", 883): (884, 5994, 5995, 5996, 5963, 895),
+        ("TM", 5994): tuple(range(885, 888)),
+        ("TM", 5995): tuple(range(888, 895)),
+        ("TM", 5964): (5965, 5966),
+        ("TM", 913): (914, 929, 5969),
+        ("TM", 914): (915, 5997, *range(921, 928), 5998, 5967, 928),
+        ("TM", 5997): tuple(range(916, 921)),
+        ("TM", 929): (930, 5999, 6000, 6001, 5968, 941),
+        ("TM", 5999): tuple(range(931, 934)),
+        ("TM", 6000): tuple(range(934, 941)),
+        ("TM", 5969): (5970, 5971),
+        ("TM", 942): (943, 956, 5972),
+        ("TM", 943): (944, 6002, 6003, 6004, 955),
+        ("TM", 6002): tuple(range(945, 952)),
+        ("TM", 6003): tuple(range(952, 955)),
+        ("TM", 956): (957, 6005, 961, 962, 963, 964, 6006, 965),
+        ("TM", 6005): tuple(range(958, 961)),
+        ("TM", 5972): (5973, 5974),
+        ("TM", 967): (6007, *range(968, 981), 5975, 5976, 981),
+        ("TM", 1075): (5977, *range(1076, 1092)),
+        ("TM", 1100): tuple(range(1101, 1118)),
+        ("TM", 1101): (5978, 5979, 6008, 6009),
+        ("TM", 1109): (5980, 5981, 6010),
+        ("TM", 1128): (
+            5982,
+            5983,
+            5984,
+            *range(6011, 6019),
+            1129,
+            6019,
+            6020,
+            1141,
+            5946,
+            5949,
+        ),
+        ("TM", 6019): tuple(range(1130, 1137)),
+        ("TM", 6020): tuple(range(1137, 1141)),
+        ("TM", 5946): (5947, 5948),
+        ("TM", 5949): (5950, 5951, 5953, 5956),
+        ("TM", 5951): (5952,),
+        ("TM", 5953): (5954, 5955),
+        ("TM", 5956): (5957, 5958),
         ("TM", TM_LOAN_INDUSTRY_PARENT_ID): (
             728,
             729,
@@ -3037,20 +4120,31 @@ def apply_business_formula_hierarchy(schema: Sequence[SchemaItem]) -> None:
         ("TM", 1142): (
             1143,
             1151,
+            5985,
             1157,
             1167,
+            5989,
             1175,
             1188,
             1193,
+            5990,
             1198,
             1205,
             1221,
+            6029,
             1229,
             1240,
             5727,
             5731,
             5737,
         ),
+        ("TM", 1157): (6021, *range(1158, 1163), 6022, *range(1163, 1166), 5986, 1166),
+        ("TM", 1167): (6023, *range(1168, 1174), 5987, 5988, 1174),
+        ("TM", 1170): (6024, 6025),
+        ("TM", 1175): (1176, 6026, *range(1177, 1183), 6027, *range(1183, 1188)),
+        ("TM", 1193): (1194, 1195, 1196, 6028, 1197),
+        ("TM", 1221): (6032, 1222, 1223, 6031, 1224, 1225, 6033, 1226, 1227, 1228),
+        ("TM", 6029): (6030,),
         ("TM", 5723): (5724,),
         ("TM", 5725): (5726,),
         ("TM", 5727): (5723, 5725),
@@ -3309,5 +4403,5 @@ def apply_business_formula_hierarchy(schema: Sequence[SchemaItem]) -> None:
                 f"business-formula hierarchy leaf drift at TM/{schema_id}: {item.children}"
             )
     margin_final = by_key[("TM", 1944)]
-    if margin_final.parent_id is not None or margin_final.display_order != 1612:
+    if margin_final.parent_id is not None or margin_final.display_order != TM_AFTER_ROW_COUNT - 2:
         raise BusinessSchemaUpdateError("TM 1944 parentless/workbook-last invariant drifted")

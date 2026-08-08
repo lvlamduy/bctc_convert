@@ -1,0 +1,75 @@
+version: 1
+policy: TM_NOTE_PAGE45_EPS_SHARE_MAPPING_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+page_number: 45
+page_tag: page-0045
+report_scope: CONSOLIDATED
+mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_PAGE45_IDS_5946_5958_ONLY
+
+source_table_policy: config/tables/tm-note-page45-v1.yaml
+source_table_policy_sha256: 9d07680fd8bcc9fca8815505ab96a33fc21c31b0b582023193ac4b90327a2bc4
+source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+source_render_sha256: a627fbf5e24cad4b44c536a77b6c6219d9e9b73f5edb2610ccb4812258caf118
+source_ocr_sha256: 8179a3e487d77018b17cec1019b6080f0c7a86e8bc621b94ff2324b6438b091e
+upstream_ocr_sha256: dbb9e1ac37d3cd27f949aa93d2622cb02c8fff80b8ec3a55ffde009c6159e36c
+schema_workbook_sha256: 82215c17f6d0aba33c01b03d6af76cc80ad53e0b129bf101f7e0b266cc9ea28f
+schema_projection_sha256: 9057a6513d1fb9532e0034022d2dd3b6ad2eb2789fb36b112cbf41fb8c632a2d
+
+schema_total: 1701
+scope_schema_ids:
+  - {start: 5946, end: 5958}
+scope_schema_total: 13
+schema_scope_sha256: bf58345bade92031e9dd9e123ea5309e93e3f22f0d9c625fb3fd17c39ddb8d48
+
+structural_target_ids:
+  EARNINGS_PER_SHARE: 5946
+  SHARE_COUNTS: 5949
+
+row_target_ids:
+  WEIGHTED_AVERAGE_ORDINARY_SHARES: 5947
+  BASIC_EARNINGS_PER_SHARE: 5948
+  REGISTERED_FOR_ISSUANCE: 5950
+  SOLD_TO_PUBLIC: 5951
+  SOLD_TO_PUBLIC_ORDINARY: 5952
+  REPURCHASED: 5953
+  REPURCHASED_ORDINARY: 5954
+  REPURCHASED_PREFERRED: 5955
+  OUTSTANDING: 5956
+  OUTSTANDING_ORDINARY: 5957
+  OUTSTANDING_PREFERRED: 5958
+
+external_validation_row:
+  semantic_role: PROFIT_ATTRIBUTABLE_TO_BANK_SHAREHOLDERS
+  report_norm_id: 1131
+  owner_scope: page-0044
+  canonical_unit: VND
+  unit_multiplier: 1000000
+  period_type: DURATION
+
+hierarchy_contract:
+  common_parent_report_norm_id: 1128
+  roots:
+    5946: [5947, 5948]
+    5949: [5950, 5951, 5953, 5956]
+  nested_parents:
+    5951: [5952]
+    5953: [5954, 5955]
+    5956: [5957, 5958]
+  leaf_report_norm_ids: [5947, 5948, 5950, 5952, 5954, 5955, 5957, 5958]
+
+forbidden_mapping_inputs:
+  - numeric_cell_text_as_item_selector
+  - numeric_value_magnitude_as_item_selector
+  - historical_or_mongodb_values
+  - human_review_answers
+  - dash_as_zero
+  - blank_as_zero
+  - zero_as_blank_or_dash
+  - header_trieu_dong_as_share_or_eps_unit
+  - schema_id_outside_page45_scope
+  - external_owner_1131_as_page45_owned_item
+  - profit_row_as_duplicate_mapped_assignment
+  - period_axis_swapping
+  - accounting_equation_result_as_item_selector
+  - accounting_equation_result_as_extracted_value

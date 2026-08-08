@@ -26,23 +26,25 @@ from bctc_ai.tables.tm_note_pages37_38 import (
 from bctc_ai.tables.tm_note_word_box import TMNoteRowKind
 
 TM_FIXED_ASSET_MAPPING_POLICY_RELATIVE_PATH = Path("config/mapping/tm-note-pages37-38-v1.yaml")
-TM_FIXED_ASSET_SCHEMA_TOTAL = 1_613
-TM_FIXED_ASSET_RECONCILED_SCHEMA_COUNT = 45
-TM_FIXED_ASSET_MAPPED_SCHEMA_COUNT = 10
-TM_FIXED_ASSET_UNRESOLVED_SCHEMA_COUNT = 18
-TM_FIXED_ASSET_NOT_OBSERVED_SCHEMA_COUNT = 17
-TM_FIXED_ASSET_UNASSESSED_SCHEMA_COUNT = 1_568
+TM_FIXED_ASSET_SCHEMA_TOTAL = 1_701
+TM_FIXED_ASSET_RECONCILED_SCHEMA_COUNT = 56
+TM_FIXED_ASSET_MAPPED_SCHEMA_COUNT = 21
+TM_FIXED_ASSET_UNRESOLVED_SCHEMA_COUNT = 0
+TM_FIXED_ASSET_NOT_OBSERVED_SCHEMA_COUNT = 35
+TM_FIXED_ASSET_UNASSESSED_SCHEMA_COUNT = 1_645
 TM_FIXED_ASSET_SOURCE_ROW_COUNT = 35
-TM_FIXED_ASSET_MAPPED_SOURCE_ROW_COUNT = 15
-TM_FIXED_ASSET_SOURCE_ONLY_ROW_COUNT = 20
-TM_FIXED_ASSET_SOURCE_QUESTION_ROW_COUNT = 14
-TM_FIXED_ASSET_SOURCE_VALIDATION_ROW_COUNT = 6
-TM_FIXED_ASSET_PARTIALLY_MAPPED_SOURCE_ROW_COUNT = 11
+TM_FIXED_ASSET_MAPPED_SOURCE_ROW_COUNT = 35
+TM_FIXED_ASSET_SOURCE_ONLY_ROW_COUNT = 0
+TM_FIXED_ASSET_SOURCE_QUESTION_ROW_COUNT = 0
+TM_FIXED_ASSET_SOURCE_VALIDATION_ROW_COUNT = 0
+TM_FIXED_ASSET_PARTIALLY_MAPPED_SOURCE_ROW_COUNT = 29
 TM_FIXED_ASSET_FINANCIAL_SLOT_COUNT = 145
 TM_FIXED_ASSET_VALUE_COUNT = 130
 TM_FIXED_ASSET_DASH_COUNT = 15
-TM_FIXED_ASSET_MAPPED_SLOT_COUNT = 11
-TM_FIXED_ASSET_SOURCE_ONLY_SLOT_COUNT = 134
+TM_FIXED_ASSET_MAPPED_SLOT_COUNT = 29
+TM_FIXED_ASSET_MAPPED_VALUE_COUNT = 28
+TM_FIXED_ASSET_MAPPED_DASH_COUNT = 1
+TM_FIXED_ASSET_SOURCE_ONLY_SLOT_COUNT = 116
 TM_FIXED_ASSET_ASSET_CLASS_SLOT_COUNT = 116
 TM_FIXED_ASSET_ACCOUNTING_CHECK_COUNT = 69
 TM_FIXED_ASSET_ACCOUNTING_PASS_COUNT = 51
@@ -50,9 +52,22 @@ TM_FIXED_ASSET_ACCOUNTING_NOT_TESTABLE_COUNT = 18
 TM_FIXED_ASSET_DUPLICATE_CHECK_COUNT = 15
 
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
-_SCOPED_IDS = set(range(868, 913))
-_MAPPED_IDS = {868, 869, 870, 879, 882, 883, 884, 887, 891, 895}
-_UNRESOLVED_IDS = {
+_SCOPED_IDS = set(range(868, 913)) | set(range(5962, 5967)) | set(range(5991, 5997))
+_MAPPED_IDS = {
+    868,
+    869,
+    870,
+    879,
+    882,
+    883,
+    884,
+    887,
+    891,
+    895,
+    *range(5962, 5967),
+    *range(5991, 5997),
+}
+_FORMER_COMPONENT_IDS = {
     871,
     872,
     873,
@@ -72,7 +87,8 @@ _UNRESOLVED_IDS = {
     893,
     894,
 }
-_NOT_OBSERVED_IDS = set(range(896, 913))
+_UNRESOLVED_IDS: set[int] = set()
+_NOT_OBSERVED_IDS = _FORMER_COMPONENT_IDS | set(range(896, 913))
 _REQUIRED_FORBIDDEN = {
     "numeric_cell_text",
     "numeric_cell_value_as_item_selector",
@@ -85,26 +101,40 @@ _REQUIRED_FORBIDDEN = {
 _FIXED_LOCATIONS = {
     ("Q1_2026", "GROSS_COST", 1): ("FIXED_STRUCTURAL_ROW", 869),
     ("Q1_2026", "GROSS_COST", 2): ("FIXED_TOTAL_CELL", 870),
+    ("Q1_2026", "GROSS_COST", 3): ("FIXED_TOTAL_CELL", 5991),
+    ("Q1_2026", "GROSS_COST", 4): ("FIXED_TOTAL_CELL", 5992),
+    ("Q1_2026", "GROSS_COST", 5): ("FIXED_TOTAL_CELL", 5993),
+    ("Q1_2026", "GROSS_COST", 6): ("FIXED_TOTAL_CELL", 5962),
     ("Q1_2026", "GROSS_COST", 7): ("FIXED_TOTAL_CELL", 882),
     ("Q1_2026", "ACCUMULATED_DEPRECIATION", 1): ("FIXED_STRUCTURAL_ROW", 883),
     ("Q1_2026", "ACCUMULATED_DEPRECIATION", 2): ("FIXED_TOTAL_CELL", 884),
+    ("Q1_2026", "ACCUMULATED_DEPRECIATION", 3): ("FIXED_TOTAL_CELL", 5994),
+    ("Q1_2026", "ACCUMULATED_DEPRECIATION", 4): ("FIXED_TOTAL_CELL", 5995),
+    ("Q1_2026", "ACCUMULATED_DEPRECIATION", 5): ("FIXED_TOTAL_CELL", 5996),
+    ("Q1_2026", "ACCUMULATED_DEPRECIATION", 6): ("FIXED_TOTAL_CELL", 5963),
     ("Q1_2026", "ACCUMULATED_DEPRECIATION", 7): ("FIXED_TOTAL_CELL", 895),
+    ("Q1_2026", "NET_BOOK_VALUE", 1): ("FIXED_STRUCTURAL_ROW", 5964),
+    ("Q1_2026", "NET_BOOK_VALUE", 2): ("FIXED_TOTAL_CELL", 5965),
+    ("Q1_2026", "NET_BOOK_VALUE", 3): ("FIXED_TOTAL_CELL", 5966),
     ("FY_2025", "GROSS_COST", 1): ("FIXED_STRUCTURAL_ROW", 869),
     ("FY_2025", "GROSS_COST", 2): ("FIXED_TOTAL_CELL", 870),
+    ("FY_2025", "GROSS_COST", 3): ("FIXED_TOTAL_CELL", 5991),
+    ("FY_2025", "GROSS_COST", 4): ("FIXED_TOTAL_CELL", 5992),
     ("FY_2025", "GROSS_COST", 5): ("FIXED_TOTAL_CELL", 879),
+    ("FY_2025", "GROSS_COST", 6): ("FIXED_TOTAL_CELL", 5962),
     ("FY_2025", "GROSS_COST", 7): ("FIXED_TOTAL_CELL", 882),
     ("FY_2025", "ACCUMULATED_DEPRECIATION", 1): ("FIXED_STRUCTURAL_ROW", 883),
     ("FY_2025", "ACCUMULATED_DEPRECIATION", 2): ("FIXED_TOTAL_CELL", 884),
+    ("FY_2025", "ACCUMULATED_DEPRECIATION", 3): ("FIXED_TOTAL_CELL", 5994),
+    ("FY_2025", "ACCUMULATED_DEPRECIATION", 4): ("FIXED_TOTAL_CELL", 5995),
     ("FY_2025", "ACCUMULATED_DEPRECIATION", 5): ("FIXED_TOTAL_CELL", 891),
     ("FY_2025", "ACCUMULATED_DEPRECIATION", 6): ("FIXED_TOTAL_CELL", 887),
+    ("FY_2025", "ACCUMULATED_DEPRECIATION", 7): ("FIXED_TOTAL_CELL", 5963),
     ("FY_2025", "ACCUMULATED_DEPRECIATION", 8): ("FIXED_TOTAL_CELL", 895),
+    ("FY_2025", "NET_BOOK_VALUE", 1): ("FIXED_STRUCTURAL_ROW", 5964),
+    ("FY_2025", "NET_BOOK_VALUE", 2): ("FIXED_TOTAL_CELL", 5965),
+    ("FY_2025", "NET_BOOK_VALUE", 3): ("FIXED_TOTAL_CELL", 5966),
 }
-
-# The visible Q1/FY aggregate movement rows can still contain the generic
-# ``Tăng khác`` component even though the distinct FY audit-adjustment row now
-# supplies a direct TOTAL-axis observation for 887. Preserve that row-level
-# candidacy without misclassifying the schema identity itself as unresolved.
-_MAPPED_IDS_WITH_OPEN_AGGREGATE_CANDIDACY = {887}
 
 
 class TMFixedAssetMappingError(ValueError):
@@ -437,7 +467,9 @@ def load_tm_fixed_asset_pages37_38_mapping_policy(path: Path) -> TMFixedAssetMap
     ):
         raise TMFixedAssetMappingError("TM pages37-38 label threshold is invalid")
     scoped_ids = _ids(payload.get("scoped_schema_ids"), "scoped schema IDs")
-    unresolved = _ids(payload.get("unresolved_schema_ids"), "unresolved schema IDs")
+    unresolved = _ids(
+        payload.get("unresolved_schema_ids"), "unresolved schema IDs", allow_empty=True
+    )
     not_observed = _ids(payload.get("not_observed_schema_ids"), "not-observed schema IDs")
     title = payload.get("title_mapping")
     if not isinstance(title, dict):
@@ -539,7 +571,7 @@ def load_tm_fixed_asset_pages37_38_mapping_policy(path: Path) -> TMFixedAssetMap
         set(scoped_ids) != _SCOPED_IDS
         or fixed_ids != _MAPPED_IDS
         or set(unresolved) != _UNRESOLVED_IDS
-        or candidate_union != _UNRESOLVED_IDS | _MAPPED_IDS_WITH_OPEN_AGGREGATE_CANDIDACY
+        or candidate_union != _UNRESOLVED_IDS
         or set(not_observed) != _NOT_OBSERVED_IDS
         or fixed_ids | set(unresolved) | set(not_observed) != _SCOPED_IDS
     ):
@@ -862,9 +894,7 @@ def reconcile_tm_fixed_asset_pages37_38_items(
 
     source_rows_by_schema: dict[int, list[str]] = {868: [title_source_id]}
     unresolved_rows_by_schema: dict[int, list[str]] = {
-        report_norm_id: []
-        for report_norm_id in set(policy.unresolved_schema_ids)
-        | _MAPPED_IDS_WITH_OPEN_AGGREGATE_CANDIDACY
+        report_norm_id: [] for report_norm_id in policy.unresolved_schema_ids
     }
     source_dispositions = []
     mapped_assignments = []
@@ -1086,7 +1116,7 @@ def reconcile_tm_fixed_asset_pages37_38_items(
         note_number=policy.note_number,
         page_numbers=(37, 38),
         report_scope=policy.report_scope,
-        status="SCOPED_NOTE10_TOTAL_COLUMN_MAPPING_WITH_VISIBLE_AGGREGATE_QUESTIONS",
+        status="SCOPED_NOTE10_TOTAL_COLUMN_MAPPING_WITH_UNIVERSAL_AGGREGATE_ITEMS",
         mapping_authority_scope=policy.mapping_authority_scope,
         mapping_authority_granted=True,
         schema_item_count=len(tm_schema),
@@ -1201,8 +1231,8 @@ def validate_tm_fixed_asset_pages37_38_mapping_result(
         or result.extracted_value_count != TM_FIXED_ASSET_VALUE_COUNT
         or result.dash_count != TM_FIXED_ASSET_DASH_COUNT
         or result.mapped_source_slot_count != TM_FIXED_ASSET_MAPPED_SLOT_COUNT
-        or result.mapped_value_assignment_count != TM_FIXED_ASSET_MAPPED_SLOT_COUNT
-        or result.mapped_dash_assignment_count != 0
+        or result.mapped_value_assignment_count != TM_FIXED_ASSET_MAPPED_VALUE_COUNT
+        or result.mapped_dash_assignment_count != TM_FIXED_ASSET_MAPPED_DASH_COUNT
         or result.source_only_slot_count != TM_FIXED_ASSET_SOURCE_ONLY_SLOT_COUNT
         or result.asset_class_source_only_slot_count != TM_FIXED_ASSET_ASSET_CLASS_SLOT_COUNT
         or result.accounting_check_count != TM_FIXED_ASSET_ACCOUNTING_CHECK_COUNT
@@ -1241,7 +1271,12 @@ def validate_tm_fixed_asset_pages37_38_mapping_result(
         result.title_mapping.report_norm_id != 868
         or any(assignment.axis_role != "TOTAL" for assignment in result.mapped_assignments)
         or any(
-            assignment.visual_cell_evidence is not None for assignment in result.mapped_assignments
+            (
+                assignment.visual_cell_evidence is None
+                if assignment.observation == ObservationKind.DASH.value
+                else assignment.visual_cell_evidence is not None
+            )
+            for assignment in result.mapped_assignments
         )
         or len(
             {(assignment.row_id, assignment.cell_index) for assignment in result.mapped_assignments}

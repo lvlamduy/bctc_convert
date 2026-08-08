@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from functools import lru_cache
+
 from bctc_ai.core.hashing import sha256_file
 from bctc_ai.schema.business_update import (
     BUSINESS_UPDATE_AUDIT,
@@ -14,6 +16,8 @@ from bctc_ai.schema.business_update import (
     LCTT_BEFORE_SHA256,
     LCTT_INVESTMENT_CONTRIBUTION_NET_COMPONENTS,
     LCTT_INVESTMENT_CONTRIBUTION_NET_ID,
+    LCTT_INVESTMENT_PROPERTY_NET_COMPONENTS,
+    LCTT_INVESTMENT_PROPERTY_NET_ID,
     LCTT_WORKBOOK,
     REVIEWED_EXTERNAL_IDS,
     TM_ARTS_RECREATION_ID,
@@ -31,6 +35,7 @@ from bctc_ai.schema.business_update import (
     TM_SPECIFIC_PROVISION_MOVEMENT_ID,
     TM_TOTAL_INTERBANK_PROVISION_COMPONENTS,
     TM_TOTAL_INTERBANK_PROVISION_ID,
+    TM_UNIVERSAL_SCHEMA_IDS,
     TM_WORKBOOK,
     verify_business_schema_update,
 )
@@ -39,7 +44,7 @@ from bctc_ai.schema.registry import load_all
 
 
 def test_business_schema_migration_is_hash_bound_and_preserves_sealed_baselines(project_root):
-    audit = verify_business_schema_update(project_root, project_root / BUSINESS_UPDATE_AUDIT)
+    audit = _verified_audit(project_root)
     assert sha256_file(project_root / "template/Bank_CDKT_ReportNormId.xlsx") == (
         CDKT_BEFORE_SHA256
     )
@@ -55,6 +60,34 @@ def test_business_schema_migration_is_hash_bound_and_preserves_sealed_baselines(
     assert sha256_file(project_root / LCTT_WORKBOOK) == audit["workbooks"]["LCTT"]["after_sha256"]
     assert sha256_file(project_root / TM_WORKBOOK) == audit["workbooks"]["TM"]["after_sha256"]
     assert set(audit["collision_safety"]["new_ids"]).isdisjoint(REVIEWED_EXTERNAL_IDS)
+    assert audit["schema_strategy"]["base_schema"]["item_count"] == 1593
+    assert audit["schema_strategy"]["universal_schema"] == {
+        "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6034",
+        "item_count": 1913,
+        "counts": {"CDKT": 78, "KQKD": 25, "LCTT": 109, "TM": 1701},
+        "high_watermark": 6034,
+        "workbook_sha256": {
+            statement: record["after_sha256"] for statement, record in audit["workbooks"].items()
+        },
+    }
+    assert audit["schema_strategy"]["migration_delta"]["new_report_norm_ids"] == list(
+        range(5991, 6035)
+    )
+    accepted_changes = {
+        record["schema_id"]: record
+        for record in audit["schema_changes"]
+        if record.get("schema_status") == "ACCEPTED_UNIVERSAL"
+    }
+    assert set(accepted_changes) == set(range(5991, 6035))
+    assert all(
+        accepted_changes[schema_id]["section"] == "BALANCE_SHEET_NOTES"
+        for schema_id in range(5991, 6021)
+    )
+    assert all(
+        accepted_changes[schema_id]["section"] == "INCOME_STATEMENT_NOTES"
+        for schema_id in range(6021, 6034)
+    )
+    assert accepted_changes[6034]["section"] == "DIRECT_CASH_FLOW_INVESTING_ACTIVITIES"
 
 
 def test_business_formula_overlay_has_exact_authorized_edges(project_root):
@@ -73,6 +106,9 @@ def test_business_formula_overlay_has_exact_authorized_edges(project_root):
     assert tuple(by_id[LCTT_INVESTMENT_CONTRIBUTION_NET_ID].children) == (
         LCTT_INVESTMENT_CONTRIBUTION_NET_COMPONENTS
     )
+    assert tuple(by_id[LCTT_INVESTMENT_PROPERTY_NET_ID].children) == (
+        LCTT_INVESTMENT_PROPERTY_NET_COMPONENTS
+    )
     assert audit_formula_components(project_root, TM_TOTAL_INTERBANK_PROVISION_ID) == (
         TM_TOTAL_INTERBANK_PROVISION_COMPONENTS
     )
@@ -82,12 +118,14 @@ def test_business_formula_overlay_has_exact_authorized_edges(project_root):
         4118,
         4119,
         4143,
-        4144,
-        4145,
-        4146,
+        LCTT_INVESTMENT_PROPERTY_NET_ID,
         LCTT_INVESTMENT_CONTRIBUTION_NET_ID,
         4147,
     ]
+    assert all(
+        by_id[schema_id].parent_id == LCTT_INVESTMENT_PROPERTY_NET_ID
+        for schema_id in LCTT_INVESTMENT_PROPERTY_NET_COMPONENTS
+    )
     assert by_id[TM_TOTAL_INTERBANK_PROVISION_ID].parent_id == 575
     assert by_id[TM_TOTAL_INTERBANK_PROVISION_ID].children == []
     assert by_id[575].children == [576, 585, TM_TOTAL_INTERBANK_PROVISION_ID]
@@ -237,14 +275,102 @@ def test_business_formula_overlay_has_exact_authorized_edges(project_root):
     assert by_id[1931].parent_id == 5934
     assert by_id[1259].children[-2:] == [1759, 5935]
     assert by_id[5935].children == list(range(5936, 5946))
-    audit = verify_business_schema_update(project_root, project_root / BUSINESS_UPDATE_AUDIT)
-    formula_ids = {record["schema_id"] for record in audit["business_formulas"]}
+    assert by_id[862].children == [863, 864, 865, 866, 867, 5959]
+    assert by_id[867].children == [5960, 5961]
+    assert by_id[868].children == [869, 883, 5964]
+    assert by_id[869].children == [870, 5991, 5992, 5993, 5962, 882]
+    assert by_id[5991].children == list(range(871, 876))
+    assert by_id[5992].children == list(range(876, 882))
+    assert by_id[883].children == [884, 5994, 5995, 5996, 5963, 895]
+    assert by_id[5994].children == list(range(885, 888))
+    assert by_id[5995].children == list(range(888, 895))
+    assert by_id[5964].children == [5965, 5966]
+    assert by_id[913].children == [914, 929, 5969]
+    assert by_id[914].children == [915, 5997, *range(921, 928), 5998, 5967, 928]
+    assert by_id[5997].children == list(range(916, 921))
+    assert by_id[929].children == [930, 5999, 6000, 6001, 5968, 941]
+    assert by_id[5999].children == list(range(931, 934))
+    assert by_id[6000].children == list(range(934, 941))
+    assert by_id[5969].children == [5970, 5971]
+    assert by_id[942].children == [943, 956, 5972]
+    assert by_id[943].children == [944, 6002, 6003, 6004, 955]
+    assert by_id[6002].children == list(range(945, 952))
+    assert by_id[6003].children == list(range(952, 955))
+    assert by_id[956].children == [957, 6005, 961, 962, 963, 964, 6006, 965]
+    assert by_id[6005].children == list(range(958, 961))
+    assert by_id[5972].children == [5973, 5974]
+    assert by_id[967].children[0] == 6007
+    assert by_id[967].children[-4:] == [980, 5975, 5976, 981]
+    assert by_id[1075].children[0] == 5977
+    assert by_id[1101].children == [5978, 5979, 6008, 6009]
+    assert by_id[1109].children == [5980, 5981, 6010]
+    assert by_id[1128].children[:11] == [5982, 5983, 5984, *range(6011, 6019)]
+    assert by_id[1128].children[11:15] == [1129, 6019, 6020, 1141]
+    assert by_id[1128].children[-2:] == [5946, 5949]
+    assert by_id[6019].children == list(range(1130, 1137))
+    assert by_id[6020].children == list(range(1137, 1141))
+    assert by_id[5946].children == [5947, 5948]
+    assert by_id[5949].children == [5950, 5951, 5953, 5956]
+    assert by_id[1142].children[:7] == [1143, 1151, 5985, 1157, 1167, 5989, 1175]
+    assert 5990 in by_id[1142].children
+    assert 6029 in by_id[1142].children
+    assert by_id[1157].children[0] == 6021
+    assert by_id[1170].children == [6024, 6025]
+    assert by_id[6029].children == [6030]
+    assert by_id[1221].children == [
+        6032,
+        1222,
+        1223,
+        6031,
+        1224,
+        1225,
+        6033,
+        1226,
+        1227,
+        1228,
+    ]
+    assert audit_formula_components(project_root, 862) == (867, 5959)
+    assert audit_formula_components(project_root, 5965) == (870, 884)
+    assert audit_formula_components(project_root, 5970) == (915, 930)
+    assert audit_formula_components(project_root, 5973) == (944, 957)
+    assert audit_formula_components(project_root, 5985) == (1143, 1151)
+    assert audit_formula_components(project_root, 5989) == (1157, 1167)
+    assert audit_formula_components(project_root, 5990) == (1188, 1193)
+    assert audit_formula_components(project_root, LCTT_INVESTMENT_PROPERTY_NET_ID) == (
+        LCTT_INVESTMENT_PROPERTY_NET_COMPONENTS
+    )
+    for schema_id, components in (
+        (5991, tuple(range(871, 876))),
+        (5992, tuple(range(876, 882))),
+        (5994, tuple(range(885, 888))),
+        (5995, tuple(range(888, 895))),
+        (5997, tuple(range(916, 921))),
+        (5999, tuple(range(931, 934))),
+        (6000, tuple(range(934, 941))),
+        (6002, tuple(range(945, 952))),
+        (6003, tuple(range(952, 955))),
+        (6005, tuple(range(958, 961))),
+        (6019, tuple(range(1130, 1137))),
+        (6020, tuple(range(1137, 1141))),
+        (1170, (6024, 6025)),
+    ):
+        assert audit_formula_components(project_root, schema_id) == components
+    formula_ids = {
+        record["schema_id"] for record in _verified_audit(project_root)["business_formulas"]
+    }
     assert formula_ids.isdisjoint(range(5898, 5946))
     assert by_id[1944].parent_id is None
+    assert by_id[1944].display_order == 1700
+    assert set(TM_UNIVERSAL_SCHEMA_IDS) == set(range(5991, 6034))
+
+
+@lru_cache(maxsize=1)
+def _verified_audit(project_root):
+    return verify_business_schema_update(project_root, project_root / BUSINESS_UPDATE_AUDIT)
 
 
 def audit_formula_components(project_root, schema_id: int) -> tuple[int, ...]:
-    audit = verify_business_schema_update(project_root, project_root / BUSINESS_UPDATE_AUDIT)
+    audit = _verified_audit(project_root)
     formula = next(
         record for record in audit["business_formulas"] if record["schema_id"] == schema_id
     )

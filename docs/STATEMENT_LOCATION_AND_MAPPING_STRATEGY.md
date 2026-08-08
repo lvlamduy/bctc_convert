@@ -13,9 +13,11 @@ institution-specific coordinates are forbidden as production routing rules.
    model, runtime, code, dimensions, and SHA-256 chain pass verification.
 3. OCR/model outputs are proposals. Independent readers may corroborate one
    another, but agreement is not truth and correlated models must be disclosed.
-4. The supplied schema workbooks define allowed IDs and workbook order. The
-   `vst_level` workbooks provide supporting hierarchy evidence. Neither may
-   override a visibly different PDF value.
+4. The supplied schema workbooks define `BASE_SCHEMA`. The active
+   `UNIVERSAL_BANK_BCTC_SCHEMA` preserves those identities and evolves through
+   audited, evidence-backed additions. Its explicit workbook order and the
+   `vst_level` hierarchy are supporting structure; neither may override a
+   visibly different PDF row or value.
 5. Mongo/DuckDB history is a weak post-mapping reference only. It cannot create
    candidates, choose an ID, fill a value, or promote confidence.
 6. Arithmetic validates visible operands and triggers a reread/review. It never
@@ -252,10 +254,13 @@ This permits later-added large IDs to occupy their correct logical location.
 The mapping-sequence gate also prohibits assigning one schema ID to two visible
 rows.
 
-Before adding any `ReportNormId`, check collisions against the supplied schema,
-all hierarchy workbooks, Mongo template metadata, and known historical keys.
-An unused ID clears only the collision gate; it does not establish the correct
-name, parent, statement, or authority to append.
+Before adding any `ReportNormId`, check collisions against the base and current
+universal schema, all hierarchy workbooks, Mongo template metadata, and known
+historical keys. Mongo/history participates only in collision safety, never in
+the source-row accounting decision. An unused ID clears only the collision
+gate; it does not establish the correct name, parent, statement, order, or
+authority to append. The full evolution contract is
+[`contracts/universal_bank_bctc_schema.md`](contracts/universal_bank_bctc_schema.md).
 
 ## Stage 5 — period and arithmetic gates
 
@@ -263,12 +268,13 @@ Every accepted cell retains statement, scope, unit, period start/end, column,
 sign evidence, observation state (`VALUE`, `ZERO`, `BLANK`, `DASH`, etc.),
 source box, render/source hashes, and reader provenance.
 
-Value presence is separate from evidence confidence. A visible dash or a
-verified empty numeric cell normalizes to zero with `OBSERVED_ZERO` while raw
-evidence is preserved. An absent schema row is `NOT_OBSERVED` and has no cell
-value. A visible off-balance row is
-`OUT_OF_SCOPE_FOR_TARGET_TEMPLATE`, not a mapping error. Missing machine
-reference is `REFERENCE_NOT_YET_BUILT`, not evidence against the PDF result.
+Value presence is separate from evidence confidence. A visible dash is `DASH`,
+a verified empty numeric cell is `BLANK`, and only a printed numeric zero is
+`OBSERVED_ZERO`; none is inferred from another. An absent universal-schema row
+is `NOT_OBSERVED` and has no cell value. A visible off-balance row is
+`NOT_APPLICABLE` to CDKT while remaining source provenance, not a mapping
+error. Missing machine reference is `REFERENCE_NOT_YET_BUILT`, not evidence
+against the PDF result.
 
 For quarter-only output from cumulative/YTD reports, subtraction is permitted
 only when both visible PDF operands have the same resolved schema ID, scope,

@@ -23,18 +23,18 @@ from bctc_ai.tables.tm_note_page36 import ParsedTMPage36
 from bctc_ai.tables.tm_note_word_box import TMNoteRowKind
 
 TM_PAGE36_POLICY_RELATIVE_PATH = Path("config/mapping/tm-note-page36-v1.yaml")
-TM_PAGE36_SCHEMA_TOTAL = 1_613
-TM_PAGE36_RECONCILED_SCHEMA_COUNT = 39
-TM_PAGE36_MAPPED_SCHEMA_COUNT = 8
+TM_PAGE36_SCHEMA_TOTAL = 1_701
+TM_PAGE36_RECONCILED_SCHEMA_COUNT = 42
+TM_PAGE36_MAPPED_SCHEMA_COUNT = 11
 TM_PAGE36_NOT_OBSERVED_COUNT = 31
-TM_PAGE36_UNASSESSED_COUNT = 1_574
+TM_PAGE36_UNASSESSED_COUNT = 1_659
 TM_PAGE36_SOURCE_ROW_COUNT = 14
-TM_PAGE36_MAPPED_SOURCE_COUNT = 8
-TM_PAGE36_SOURCE_ONLY_COUNT = 6
+TM_PAGE36_MAPPED_SOURCE_COUNT = 11
+TM_PAGE36_SOURCE_ONLY_COUNT = 3
 TM_PAGE36_FINANCIAL_SLOT_COUNT = 26
 TM_PAGE36_VALUE_COUNT = 26
 TM_PAGE36_DASH_COUNT = 0
-TM_PAGE36_MAPPED_VALUE_COUNT = 16
+TM_PAGE36_MAPPED_VALUE_COUNT = 22
 TM_PAGE36_ACCOUNTING_CHECK_COUNT = 8
 TM_PAGE36_ACCOUNTING_PASS_COUNT = 8
 TM_PAGE36_DUPLICATE_CHECK_COUNT = 4
@@ -48,8 +48,8 @@ _REQUIRED_FORBIDDEN = {
     "human_review_answers",
     "accounting_equation_result_as_item_selector",
 }
-_SCOPED_IDS = set(range(829, 868))
-_MAPPED_IDS = {829, 831, 832, 833, 848, 849, 862, 867}
+_SCOPED_IDS = set(range(829, 868)) | {5959, 5960, 5961}
+_MAPPED_IDS = {829, 831, 832, 833, 848, 849, 862, 867, 5959, 5960, 5961}
 
 
 class TMPage36MappingError(ValueError):
@@ -605,7 +605,7 @@ def reconcile_tm_page36_items(
         page_number=36,
         page_tag=policy.page_tag,
         report_scope=policy.report_scope,
-        status="SCOPED_PAGE36_MAPPING_WITH_OPEN_SOURCE_QUESTIONS",
+        status="SCOPED_PAGE36_MAPPING_WITH_COMPLETE_ITEM_COVERAGE",
         mapping_authority_scope=policy.mapping_authority_scope,
         mapping_authority_granted=True,
         schema_item_count=len(tm_schema),
@@ -676,8 +676,8 @@ def validate_tm_page36_mapping_result(
         or result.source_row_count != TM_PAGE36_SOURCE_ROW_COUNT
         or result.mapped_source_row_count != TM_PAGE36_MAPPED_SOURCE_COUNT
         or result.source_only_row_count != TM_PAGE36_SOURCE_ONLY_COUNT
-        or result.source_question_row_count != 3
-        or result.ambiguous_source_row_count != 2
+        or result.source_question_row_count != 0
+        or result.ambiguous_source_row_count != 0
         or result.financial_slot_count != TM_PAGE36_FINANCIAL_SLOT_COUNT
         or result.extracted_value_count != TM_PAGE36_VALUE_COUNT
         or result.dash_count != TM_PAGE36_DASH_COUNT

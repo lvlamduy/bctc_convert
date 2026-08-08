@@ -26,8 +26,21 @@ _FIXTURES = {
     37: Path("tests/golden/tm/mbb-q1-2026-page-0037-ppocrv6-word-box.json"),
     38: Path("tests/golden/tm/mbb-q1-2026-page-0038-ppocrv6-word-box.json"),
 }
-_MAPPED_IDS = {868, 869, 870, 879, 882, 883, 884, 887, 891, 895}
-_UNRESOLVED_IDS = {
+_MAPPED_IDS = {
+    868,
+    869,
+    870,
+    879,
+    882,
+    883,
+    884,
+    887,
+    891,
+    895,
+    *range(5962, 5967),
+    *range(5991, 5997),
+}
+_FORMER_COMPONENT_IDS = {
     871,
     872,
     873,
@@ -47,7 +60,8 @@ _UNRESOLVED_IDS = {
     893,
     894,
 }
-_NOT_OBSERVED_IDS = set(range(896, 913))
+_UNRESOLVED_IDS: set[int] = set()
+_NOT_OBSERVED_IDS = _FORMER_COMPONENT_IDS | set(range(896, 913))
 
 
 def _mapped(project_root: Path, tmp_path: Path):
@@ -83,25 +97,26 @@ def test_pages37_38_reconcile_complete_note10_scope_and_source_denominators(
     assert validate_tm_fixed_asset_pages37_38_mapping_result(result) is result
     assert result.mapping_authority_scope.endswith("TOTAL_COLUMN_FIXED_ROWS_ONLY")
     assert result.mapping_authority_granted
-    assert result.schema_item_count == 1_613
-    assert result.status_reconciled_schema_count == 45
-    assert result.mapped_schema_count == 10
-    assert result.unresolved_schema_count == 18
-    assert result.not_observed_schema_count == 17
-    assert result.unassessed_schema_count == 1_568
+    assert result.schema_item_count == 1_701
+    assert result.status_reconciled_schema_count == 56
+    assert result.mapped_schema_count == 21
+    assert result.unresolved_schema_count == 0
+    assert result.not_observed_schema_count == 35
+    assert result.unassessed_schema_count == 1_645
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == 35
-    assert result.mapped_source_row_count == 15
-    assert result.source_only_row_count == 20
-    assert result.source_question_row_count == 14
-    assert result.source_validation_row_count == 6
-    assert result.partially_mapped_source_row_count == 11
+    assert result.mapped_source_row_count == 35
+    assert result.source_only_row_count == 0
+    assert result.source_question_row_count == 0
+    assert result.source_validation_row_count == 0
+    assert result.partially_mapped_source_row_count == 29
     assert result.financial_slot_count == 145
     assert result.extracted_value_count == 130
     assert result.dash_count == 15
-    assert result.mapped_source_slot_count == result.mapped_value_assignment_count == 11
-    assert result.mapped_dash_assignment_count == 0
-    assert result.source_only_slot_count == 134
+    assert result.mapped_source_slot_count == 29
+    assert result.mapped_value_assignment_count == 28
+    assert result.mapped_dash_assignment_count == 1
+    assert result.source_only_slot_count == 116
     assert result.asset_class_source_only_slot_count == 116
 
 
@@ -119,14 +134,16 @@ def test_exact_mapped_unresolved_not_observed_and_unassessed_schema_sets(
     assert by_status[TMFixedAssetSchemaStatus.MAPPED_AUTOMATIC_SCOPED.value] == _MAPPED_IDS
     assert by_status[TMFixedAssetSchemaStatus.UNRESOLVED.value] == _UNRESOLVED_IDS
     assert by_status[TMFixedAssetSchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value] == _NOT_OBSERVED_IDS
-    assert len(by_status[TMFixedAssetSchemaStatus.UNASSESSED.value]) == 1_568
-    assert _MAPPED_IDS | _UNRESOLVED_IDS | _NOT_OBSERVED_IDS == set(range(868, 913))
+    assert len(by_status[TMFixedAssetSchemaStatus.UNASSESSED.value]) == 1_645
+    assert _MAPPED_IDS | _UNRESOLVED_IDS | _NOT_OBSERVED_IDS == (
+        set(range(868, 913)) | set(range(5962, 5967)) | set(range(5991, 5997))
+    )
     unresolved = [
         item
         for item in result.schema_dispositions
         if item.status == TMFixedAssetSchemaStatus.UNRESOLVED.value
     ]
-    assert all(item.source_row_ids for item in unresolved)
+    assert unresolved == []
 
 
 def test_only_total_cells_map_with_exact_value_period_unit_and_raw_provenance(
@@ -137,32 +154,54 @@ def test_only_total_cells_map_with_exact_value_period_unit_and_raw_provenance(
     assert result.title_mapping.report_norm_id == 868
     assert result.title_mapping.source_line_ids == ("page-0037:line-0001",)
     assert result.title_mapping.title_bbox is not None
-    assert len(result.mapped_assignments) == 11
+    assert len(result.mapped_assignments) == 29
     assert all(
         item.axis_role == "TOTAL"
         and item.cell_index == 4
         and item.mapping_role == "TOTAL_COLUMN_DIRECT_VISIBLE_ROW"
         and item.unit == "VND"
         and item.unit_multiplier == 1_000_000
-        and item.source_line_ids
+        and (item.source_line_ids or item.visual_cell_evidence is not None)
         and item.value_bbox is not None
-        and item.visual_cell_evidence is None
+        and (
+            item.visual_cell_evidence is not None
+            if item.observation == "DASH"
+            else item.visual_cell_evidence is None
+        )
         for item in result.mapped_assignments
     )
     assert [
         (item.report_norm_id, item.panel_key, item.value) for item in result.mapped_assignments
     ] == [
         (870, "Q1_2026", 9_423_236),
+        (5991, "Q1_2026", 56_387),
+        (5992, "Q1_2026", -6_224),
+        (5993, "Q1_2026", -480),
+        (5962, "Q1_2026", 565),
         (882, "Q1_2026", 9_473_484),
         (884, "Q1_2026", 5_617_703),
+        (5994, "Q1_2026", 144_587),
+        (5995, "Q1_2026", -5_996),
+        (5996, "Q1_2026", None),
+        (5963, "Q1_2026", 162),
         (895, "Q1_2026", 5_756_456),
+        (5965, "Q1_2026", 3_805_533),
+        (5966, "Q1_2026", 3_717_028),
         (870, "FY_2025", 9_014_672),
+        (5991, "FY_2025", 754_094),
+        (5992, "FY_2025", -354_092),
         (879, "FY_2025", -44),
+        (5962, "FY_2025", 8_606),
         (882, "FY_2025", 9_423_236),
         (884, "FY_2025", 5_263_976),
+        (5994, "FY_2025", 551_766),
+        (5995, "FY_2025", -201_454),
         (891, "FY_2025", -31),
         (887, "FY_2025", 1_221),
+        (5963, "FY_2025", 2_225),
         (895, "FY_2025", 5_617_703),
+        (5965, "FY_2025", 3_750_696),
+        (5966, "FY_2025", 3_805_533),
     ]
     q1_open = next(
         item
@@ -200,7 +239,7 @@ def test_only_total_cells_map_with_exact_value_period_unit_and_raw_provenance(
     )
 
 
-def test_asset_class_cells_and_aggregate_questions_remain_source_only(
+def test_asset_class_cells_remain_source_only_while_printed_totals_map(
     project_root: Path, tmp_path: Path
 ) -> None:
     result = _mapped(project_root, tmp_path)
@@ -216,24 +255,13 @@ def test_asset_class_cells_and_aggregate_questions_remain_source_only(
 
     assert len(class_cells) == 116
     assert all(cell.axis_role != "TOTAL" and not cell.report_norm_ids for cell in class_cells)
-    assert len(question_totals) == 14
-    assert all(cell.axis_role == "TOTAL" and cell.question_required for cell in question_totals)
+    assert question_totals == []
     questions = [item for item in result.source_dispositions if item.question_required]
-    assert len(questions) == 14
+    assert questions == []
     assert all(
-        item.status == TMFixedAssetSourceStatus.SOURCE_ONLY_QUESTION.value for item in questions
+        item.status == TMFixedAssetSourceStatus.MAPPED_AUTOMATIC_SCOPED.value
+        for item in result.source_dispositions
     )
-    assert {
-        candidate for item in questions for candidate in item.candidate_report_norm_ids
-    } == _UNRESOLVED_IDS | {887}
-    no_exact_schema = [item for item in questions if not item.candidate_report_norm_ids]
-    assert len(no_exact_schema) == 4
-    assert sorted(item.row_role for item in no_exact_schema) == [
-        "FX",
-        "FX",
-        "FX",
-        "FX",
-    ]
 
 
 def test_dash_safe_accounting_and_cross_panel_validation_have_no_failures(

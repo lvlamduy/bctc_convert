@@ -154,29 +154,39 @@ def test_real_lctt_export_preserves_template_and_exposes_43_source_rows(
     try:
         assert workbook.sheetnames == ["LCTT", "PROVENANCE", "RUN_METADATA"]
         main = workbook["LCTT"]
-        for row in range(1, 110):
+        for row in range(1, 111):
             for column in range(1, 4):
                 assert main.cell(row, column).value == template.active.cell(row, column).value
                 assert main.cell(row, column).style_id == template.active.cell(row, column).style_id
 
-        by_id = {main.cell(row, 2).value: row for row in range(2, 110)}
+        by_id = {main.cell(row, 2).value: row for row in range(2, 111)}
         assert main.cell(by_id[4123], 4).value == 26_904_675_000_000
         assert main.cell(by_id[4123], 9).value == 18_186_686_000_000
         assert main.cell(by_id[4123], 5).value == "VALUE"
         assert main.cell(by_id[4123], 10).value == "VALUE"
         assert main.cell(by_id[4104], 5).value == "BLANK"
         assert main.cell(by_id[4104], 10).value == "BLANK"
-        for report_norm_id in (4143, 4145, 4146, 4120, 4121, 4151, 4152, 4117):
+        for report_norm_id in (
+            4143,
+            4144,
+            4145,
+            4146,
+            4120,
+            4121,
+            4151,
+            4152,
+            4117,
+        ):
             assert main.cell(by_id[report_norm_id], 5).value == "NOT_OBSERVED_IN_THIS_PDF"
             assert main.cell(by_id[report_norm_id], 10).value == "NOT_OBSERVED_IN_THIS_PDF"
         assert main.cell(by_id[4140], 4).value == -37_183_000_000
         assert main.cell(by_id[4140], 9).value == 334_598_000_000
         assert main.cell(by_id[4140], 5).value == "VALUE"
         assert main.cell(by_id[4140], 10).value == "VALUE"
-        assert main.cell(by_id[4144], 4).value is None
-        assert main.cell(by_id[4144], 9).value is None
-        assert main.cell(by_id[4144], 5).value == "DASH"
-        assert main.cell(by_id[4144], 10).value == "DASH"
+        assert main.cell(by_id[6034], 4).value is None
+        assert main.cell(by_id[6034], 9).value is None
+        assert main.cell(by_id[6034], 5).value == "DASH"
+        assert main.cell(by_id[6034], 10).value == "DASH"
         assert main.cell(by_id[5714], 4).value == 490_000_000
         assert main.cell(by_id[5714], 9).value == -71_299_000_000
         assert main.cell(by_id[5714], 5).value == "VALUE"
@@ -185,7 +195,7 @@ def test_real_lctt_export_preserves_template_and_exposes_43_source_rows(
         assert (
             sum(
                 main.cell(row, column).value is not None
-                for row in range(2, 110)
+                for row in range(2, 111)
                 for column in (4, 9)
             )
             == 71
@@ -212,13 +222,29 @@ def test_real_lctt_export_preserves_template_and_exposes_43_source_rows(
         assert business["page-0007:row-0024"]["CandidateReportNormIdsJson"] == "[4140]"
         assert business["page-0007:row-0024"]["CurrentValueVND"] == -37_183_000_000
         assert business["page-0007:row-0024"]["ComparativeValueVND"] == 334_598_000_000
-        assert business["page-0007:row-0031"]["CandidateReportNormIdsJson"] == "[4144]"
+        assert business["page-0007:row-0024"]["BusinessResolutionKey"] == (
+            "USER_Q018_CONTEXTUAL_WORDING_TO_4140"
+        )
+        assert (
+            "USER_AUTHORIZED_CONTEXTUAL_WORDING_MAPPING"
+            in business["page-0007:row-0024"]["MappingReason"]
+        )
+        assert business["page-0007:row-0031"]["CandidateReportNormIdsJson"] == "[6034]"
         assert business["page-0007:row-0031"]["CurrentStatus"] == "DASH"
         assert business["page-0007:row-0031"]["ComparativeStatus"] == "DASH"
         assert business["page-0007:row-0032"]["CandidateReportNormIdsJson"] == "[5714]"
         assert business["page-0007:row-0032"]["CurrentValueVND"] == 490_000_000
         assert business["page-0007:row-0032"]["ComparativeValueVND"] == -71_299_000_000
         assert all(record["FullyVerified"] is False for record in records)
+        metadata = {
+            workbook["RUN_METADATA"].cell(row, 1).value: workbook["RUN_METADATA"].cell(row, 2).value
+            for row in range(2, workbook["RUN_METADATA"].max_row + 1)
+        }
+        assert metadata["mapping.investment_property_net_id"] == 6034
+        assert metadata["mapping.investment_property_component_ids"] == "[4144,4145,4146]"
+        assert metadata["mapping.investment_property_formula_policy"] == (
+            "VALIDATION_ONLY_NO_DERIVATION_OR_IMPUTATION"
+        )
         assert not any(
             cell.data_type == "f" or (isinstance(cell.value, str) and cell.value.startswith("="))
             for sheet in workbook.worksheets

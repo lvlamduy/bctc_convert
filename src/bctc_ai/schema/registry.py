@@ -17,6 +17,96 @@ from bctc_ai.schema.append_only import verify_tm_1944_append
 from bctc_ai.schema.business_update import verify_business_schema_update
 from bctc_ai.schema.xlsx_reader import read_rows
 
+_SCHEMA_NAME = "UNIVERSAL_BANK_BCTC_SCHEMA"
+_SCHEMA_STRATEGY = "SOURCE_EVIDENCE_DRIVEN_APPEND_ONLY_SUPERSET"
+_BASE_PROJECTION_SHA256 = "e63b77ebf99907843bea419cef32bc64cd709129813f89309f3b42fc818a1b10"
+_BASE_ORDERED_IDS_SHA256 = "5cc0e9ea70b23af236ce43b920838299dbc91e9c0ef19d31165f4ce49eea4f9f"
+_BASE_WORKBOOKS = {
+    "CDKT": (
+        "template/Bank_CDKT_ReportNormId.xlsx",
+        77,
+        "a07ff47f7c41011fe4ca5a66681106d476586ded9013b5874cbb9f67a6ad8486",
+    ),
+    "KQKD": (
+        "template/Bank_KQKD_ReportNormId.xlsx",
+        24,
+        "6033001b85a236fce4b29437d56cc02d7c6a21f95e82b43de043b1268eb74615",
+    ),
+    "LCTT": (
+        "template/Bank_LCTT_ReportNormId.xlsx",
+        107,
+        "2c9d52737c492f115895eab9a571da2269fcfd3c3e77539ec581782e579d260a",
+    ),
+    "TM": (
+        "template/Bank_TM_ReportNormId.xlsx",
+        1385,
+        "fa284e3af1f90c8a206308f63e6d35e77a9fbf1abcaf60abcb59877c47275140",
+    ),
+}
+_UNIVERSAL_COUNTS = {"CDKT": 78, "KQKD": 25, "LCTT": 109, "TM": 1701}
+
+
+def _base_ids(project_root: Path) -> set[int]:
+    identifiers: set[int] = set()
+    for statement, (relative, expected_count, expected_sha256) in _BASE_WORKBOOKS.items():
+        path = project_root / relative
+        if sha256_file(path) != expected_sha256:
+            raise ValueError(f"{statement} BASE_SCHEMA workbook hash drifted: {path}")
+        statement_ids = {
+            int(raw_id)
+            for row in read_rows(path)
+            if (raw_id := row.get("B", "").strip()) and raw_id != "ReportNormId"
+        }
+        if len(statement_ids) != expected_count:
+            raise ValueError(f"{statement} BASE_SCHEMA item count drifted: {path}")
+        if identifiers & statement_ids:
+            raise ValueError(f"{statement} BASE_SCHEMA contains globally reused ReportNormIds")
+        identifiers.update(statement_ids)
+    if len(identifiers) != 1593:
+        raise ValueError("BASE_SCHEMA global item count drifted")
+    return identifiers
+
+
+def _validate_schema_contract(payload: dict[str, Any], project_root: Path) -> dict[str, object]:
+    expected_base_workbooks = {
+        statement: {"path": relative, "item_count": count, "sha256": digest}
+        for statement, (relative, count, digest) in _BASE_WORKBOOKS.items()
+    }
+    expected_base = {
+        "name": "BASE_SCHEMA",
+        "item_count": 1593,
+        "counts": {"CDKT": 77, "KQKD": 24, "LCTT": 107, "TM": 1385},
+        "ordered_canonical_projection_sha256": _BASE_PROJECTION_SHA256,
+        "ordered_report_norm_ids_sha256": _BASE_ORDERED_IDS_SHA256,
+        "workbooks": expected_base_workbooks,
+    }
+    expected_universal = {
+        "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6034",
+        "item_count": 1913,
+        "counts": _UNIVERSAL_COUNTS,
+        "high_watermark": 6034,
+    }
+    if (
+        payload.get("schema_name") != _SCHEMA_NAME
+        or payload.get("schema_strategy") != _SCHEMA_STRATEGY
+        or payload.get("base_schema") != expected_base
+        or payload.get("universal_schema") != expected_universal
+    ):
+        raise ValueError("schema source universal/base contract drifted")
+    _base_ids(project_root)
+    return {
+        "schema_name": _SCHEMA_NAME,
+        "schema_strategy": _SCHEMA_STRATEGY,
+        "base_schema": expected_base,
+        "universal_schema": expected_universal,
+    }
+
+
+def load_schema_contract(project_root: Path) -> dict[str, object]:
+    config_path = project_root / "config/schemas/sources.yaml"
+    payload: dict[str, Any] = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+    return _validate_schema_contract(payload, project_root.resolve())
+
 
 @dataclass
 class SchemaItem:
@@ -126,6 +216,7 @@ def load_all(
     sources = payload.get("sources")
     if not isinstance(payload.get("version"), int) or not isinstance(sources, dict):
         raise ValueError(f"invalid schema source configuration: {config_path}")
+    schema_contract = _validate_schema_contract(payload, project_root)
     if payload.get("append_only") is not True:
         raise ValueError(f"schema sources must remain append-only: {config_path}")
     raw_cash_flow_rules = payload.get("cash_flow_rules")
@@ -227,8 +318,14 @@ def load_all(
                 ]
                 if len(matched) != 1 or matched[0].canonical_name != change["canonical_name"]:
                     raise ValueError(f"approved business schema item is not loaded: {relative}")
-                if matched[0].display_order != change["display_order_zero_based"]:
-                    raise ValueError(f"approved business schema order drift: {relative}")
+                expected_display_order = change.get("display_order_zero_based")
+                if expected_display_order is not None:
+                    if matched[0].display_order != expected_display_order:
+                        raise ValueError(f"approved business schema order drift: {relative}")
+                elif matched[0].previous_id != change.get("previous_schema_id") or matched[
+                    0
+                ].next_id != change.get("next_schema_id"):
+                    raise ValueError(f"approved business schema anchors drift: {relative}")
             elif change["change"] == "CORRECT_DISPLAY_NAME":
                 matched = [
                     item
@@ -240,4 +337,29 @@ def load_all(
                     raise ValueError(f"approved display-name correction is not loaded: {relative}")
             else:
                 raise ValueError(f"unknown approved business schema change: {relative}")
+    base_identifiers = _base_ids(project_root)
+    audited_additions = {
+        int(change["schema_id"])
+        for _, audit in verified_business_audits
+        for change in audit["schema_changes"]
+        if change["change"] == "ADD"
+    }
+    current_identifiers = {item.schema_id for item in all_items}
+    if base_identifiers & audited_additions:
+        raise ValueError("audited universal additions collide with BASE_SCHEMA")
+    if current_identifiers != base_identifiers | audited_additions:
+        raise ValueError("current universal schema is not BASE_SCHEMA plus audited additions")
+    universal = schema_contract["universal_schema"]
+    if not isinstance(universal, dict):
+        raise ValueError("invalid universal schema contract")
+    counts = {
+        statement: sum(item.statement_type == statement for item in all_items)
+        for statement in sources
+    }
+    if (
+        len(all_items) != universal["item_count"]
+        or counts != universal["counts"]
+        or max(current_identifiers) != universal["high_watermark"]
+    ):
+        raise ValueError("loaded universal schema revision/count/high-watermark drifted")
     return workbooks, all_items
