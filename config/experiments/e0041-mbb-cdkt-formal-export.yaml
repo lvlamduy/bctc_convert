@@ -1,0 +1,276 @@
+version: 1
+experiment_id: E-0041
+dataset_role: CALIBRATION
+design: AUTHENTICATED_E0040_POSTJOIN_GEOMETRY_TEMPLATE_FORMAL_PAIR_THEN_REPLAY_SEAL
+state: READY_FOR_FORMAL_POST_MAPPING_EXPORT_PAIR_THEN_HASH_SEAL
+
+phase_outputs:
+  export_pair:
+    directory: output/calibration/e0041-mbb-cdkt-post-mapping-development-excel
+    workbook: mbb-cdkt-development.xlsx
+    provenance_json: provenance.json
+    provenance_state: FORMAL_POST_MAPPING_EXPORT_PAIR_READY_FOR_HASH_SEAL
+    pair_hash_sealed: false
+    exact_inventory_file_count: 2
+  export_seal:
+    path: docs/experiments/E-0041-mbb-cdkt-post-mapping-development-excel-seal.json
+    required_state: FORMAL_POST_MAPPING_EXPORT_PAIR_HASH_SEALED
+    exact_inventory_file_count: 2
+
+input_authority:
+  e0040_mapping_seal:
+    path: docs/experiments/E-0040-mbb-cdkt-formal-mapping-seal.json
+    sha256: 68306f7f540faa77d6e2e383927eae23fc3724cfdc8c53cded978a86f3a00b29
+    size_bytes: 7611
+  e0040_s3_registration:
+    path: docs/experiments/E-0040-mbb-cdkt-formal-mapping-s3-registration.json
+    sha256: f38d9a1bbed4ec48e2156d441e5c76c6e6d82b0771208de3eef92d96173dd4b5
+    size_bytes: 13360
+  shared_s3_registry_frozen_baseline:
+    path: data/registered/s3_artifact_snapshot_registry.jsonl
+    sha256: 25da6b205a775d87eca8e4ffe55e3f762ee64e92cbb7190c2834708a7de0d78d
+    size_bytes: 6050
+    authority: FROZEN_DURABILITY_BASELINE_ONLY_NOT_MAPPING_AUTHORITY
+  e0040_mapping:
+    path: output/calibration/e0040-mbb-cdkt-formal-mapping/mapping_only.json
+    sha256: 8def983007fc3aacf59351395426d5246ad3f28d605442f590de55eaf396cb0d
+    size_bytes: 1157172
+  e0037_postjoin:
+    path: docs/experiments/E-0037-mbb-cdkt-sealed-evidence-mapping.json
+    sha256: a44146ff98ac9b33dd7f04037e69ba258ef7361dc158ecbd51a6688d7fbb6f7b
+    size_bytes: 1045610
+    authority: PERIOD_UNIT_SCOPE_AND_NESTED_NUMERIC_EVIDENCE_ONLY
+  reconstructed_geometry_registry:
+    path: output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crop_registry.json
+    sha256: 65fa9b7c0de1f0db26ae57a46dae2bb64c2475e3a87e5194461f208fc786cbef
+    size_bytes: 217837
+    authority: RECONSTRUCTED_GEOMETRY_WITH_CELL_SHA_PARITY
+  geometry_crop_policy:
+    path: config/tables/numeric-cell-crops-v2.yaml
+    sha256: f1dcbe668b70a9d71f08483f46aad01fc7cd719db96f8bd202d32554c5a7907b
+    size_bytes: 1099
+  geometry_row_contract:
+    path: docs/experiments/E-0033-mbb-cdkt-note-row-split-immutable.json
+    sha256: d9c0ecf44f6a0f652e6c991d3ab95b7ab0e821068366764e39a3f0de7f0711fb
+    size_bytes: 190290
+  cdkt_template:
+    path: template/Bank_CDKT_ReportNormId.xlsx
+    sha256: a07ff47f7c41011fe4ca5a66681106d476586ded9013b5874cbb9f67a6ad8486
+    size_bytes: 10945
+
+implementation:
+  post_mapping_export_core:
+    path: src/bctc_ai/evaluation/e0041_post_mapping_export.py
+    sha256: c40dd4f31d80fd18e330984c7f6c43c1f45d8b96a05d1a19d2476c440a7e14f5
+    size_bytes: 116528
+  e0040_challenger_carrier:
+    path: src/bctc_ai/mapping/e0040_calibration_challenger.py
+    sha256: c379ccf784868ec5b2f40714be00c402147b2b9a94e06b917a3e2cd6b926609b
+    size_bytes: 47333
+  arithmetic_validation:
+    path: src/bctc_ai/validation/arithmetic.py
+    sha256: 3841fa0c40064554134f0efcaef6b4746b1b5eb56ec4c935bcfd20fc8a666c17
+    size_bytes: 2937
+  geometry_reconstruction_builder:
+    path: src/bctc_ai/evaluation/numeric_cell_crops.py
+    sha256: fe2aa1d33d422888f2efa0399503743f978b1af1605e4f99ac2a872ba249cb29
+    size_bytes: 19014
+  formal_export_integration:
+    path: src/bctc_ai/evaluation/e0041_formal_export.py
+    sha256: 0db981313cbe51090f637ba14ccf99e11d1815d30d32cc1f529ee118dd453b19
+    size_bytes: 116009
+  capture_export_script:
+    path: scripts/experiments/capture_e0041_mbb_cdkt_formal_export.py
+    sha256: f6b994792c0e4796d148fe5e2586d2c82d41bb1d9869ab6b6a7ea3b2a92bd67c
+    size_bytes: 1741
+  capture_seal_script:
+    path: scripts/experiments/capture_e0041_mbb_cdkt_formal_export_seal.py
+    sha256: 0d85a3215bf99ddd3a53b47adf5bfbec2cdcf6976ac3ea2e9640070b6594806c
+    size_bytes: 1385
+
+runtime_authority:
+  artifacts:
+    project_metadata:
+      path: pyproject.toml
+      sha256: 59ad1366246975921df36b6d1f9bf2a91680a7b2c02d3777e772b0c3aa4ba045
+      size_bytes: 1094
+    dependency_lock:
+      path: uv.lock
+      sha256: 3edf1c8471e283e74b721140b417456afc713b7d859d33bb600939eb18b79a9a
+      size_bytes: 86842
+  versions:
+    python: 3.11.10
+    openpyxl: 3.1.5
+    pyyaml: 6.0.3
+    et_xmlfile: 2.0.0
+    zlib: 1.3.1
+
+validation_order:
+  - CONTROL_IMPLEMENTATION_RUNTIME_AND_CLEAN_GIT
+  - E0040_MAPPING_SEAL
+  - E0040_S3_REGISTRATION
+  - SHARED_S3_REGISTRY_FROZEN_BASELINE
+  - E0040_MAPPING
+  - AUTHENTICATED_E0040_RESULT_CARRIER
+  - E0037_POSTJOIN
+  - RECONSTRUCTED_GEOMETRY_REGISTRY
+  - EXACT_134_GEOMETRY_ASSET_INVENTORY_AND_ROOT_NORMALIZATION
+  - CDKT_TEMPLATE
+  - POST_MAPPING_PROJECTION_WORKBOOK_AND_PROVENANCE
+
+formal_oracle:
+  source_row_count: 64
+  physical_cell_count: 128
+  schema_row_count: 77
+  final_selected_mapping_count: 61
+  source_only_mapping_count: 3
+  physical_cell_status_counts:
+    VALUE: 111
+    DASH: 5
+    BLANK: 5
+    UNRESOLVED: 7
+  selected_target_cell_count: 122
+  exported_numeric_cell_count: 111
+  strict_validation_finding_counts:
+    PASS: 30
+    NOT_TESTABLE: 6
+    FAIL: 0
+  geometry_normalized_registry_sha256: e834efd4f6e70c03e607d834a17adc69e0fa0868658767637c5db3cf8c06be6a
+  geometry_normalized_registry_size_bytes: 161120
+  geometry_asset_count: 134
+  geometry_asset_total_size_bytes: 4489853
+  geometry_asset_inventory_sha256: 7a50f4737c8381bc73a04ad4fce9abd200b64b917e9282a0197bf56d9a044cc0
+  geometry_asset_inventory_size_bytes: 31130
+  projection_sha256: 4ba86ea84b102932b5ae2952f2998c205907d58095793535eacfd100c501db8d
+  projection_size_bytes: 442178
+  workbook_sha256: 60c5f6d01ba0a11276da6b6fc7f85d4d4f4893b6ee70d0ca54bd14764a922caf
+  workbook_size_bytes: 43746
+  template_identity_value_style_sha256: 38c74d1af3be5a70e4dd27d18030e4950f96469a194c6d06f9843a1467831408
+  preserved_template_range: A1:C78
+  formula_count: 0
+  post_mapping_core_sha256: c40dd4f31d80fd18e330984c7f6c43c1f45d8b96a05d1a19d2476c440a7e14f5
+
+accounting_validation:
+  mode: DIAGNOSTIC_ONLY_NO_REPAIR
+  strict_operand_statuses: [VALUE, ZERO]
+  dash_as_zero_allowed: false
+  blank_as_zero_allowed: false
+  failed_check_may_change_mapping_status_or_value: false
+  strict_physical_visible_row_equations:
+    authority: NEWLY_FROZEN_CALIBRATION_MECHANISM_ASSERTION
+    mapping_independent_physical_row_ids: true
+    expected_family_count: 18
+    expected_finding_count: 36
+    equations:
+      - family_id: P3_R004
+        lhs_row_id: page-0003-row-004-label
+        rhs_row_ids: [page-0003-row-005-label, page-0003-row-006-label]
+        tolerance_vnd: 0
+      - family_id: P3_R008
+        lhs_row_id: page-0003-row-008-label
+        rhs_row_ids: [page-0003-row-009-label, page-0003-row-010-label]
+        tolerance_vnd: 0
+      - family_id: P3_R011
+        lhs_row_id: page-0003-row-011-label
+        rhs_row_ids: [page-0003-row-012-label, page-0003-row-013-label]
+        tolerance_vnd: 0
+      - family_id: P3_R014
+        lhs_row_id: page-0003-row-014-label
+        rhs_row_ids: [page-0003-row-015-label, page-0003-row-016-label, page-0003-row-017-label]
+        tolerance_vnd: 0
+      - family_id: P3_R018
+        lhs_row_id: page-0003-row-018-label
+        rhs_row_ids: [page-0003-row-019-label, page-0003-row-020-label, page-0003-row-021-label]
+        tolerance_vnd: 0
+      - family_id: P3_R022_VISIBLE_CHILDREN_ONLY
+        lhs_row_id: page-0003-row-022-label
+        rhs_row_ids: [page-0003-row-023-label, page-0003-row-026-label]
+        tolerance_vnd: 0
+      - family_id: P3_R023
+        lhs_row_id: page-0003-row-023-label
+        rhs_row_ids: [page-0003-row-024-label, page-0003-row-025-label]
+        tolerance_vnd: 0
+      - family_id: P3_R026
+        lhs_row_id: page-0003-row-026-label
+        rhs_row_ids: [page-0003-row-027-label, page-0003-row-028-label]
+        tolerance_vnd: 0
+      - family_id: P3_R029
+        lhs_row_id: page-0003-row-029-label
+        rhs_row_ids: [page-0003-row-030-label, page-0003-row-031-label]
+        tolerance_vnd: 0
+      - family_id: P3_R032
+        lhs_row_id: page-0003-row-032-label
+        rhs_row_ids: [page-0003-row-033-label, page-0003-row-034-label, page-0003-row-035-label, page-0003-row-036-label, page-0003-row-037-label]
+        tolerance_vnd: 0
+      - family_id: P3_R038_TOTAL
+        lhs_row_id: page-0003-row-038-label
+        rhs_row_ids: [page-0003-row-001-label, page-0003-row-002-label, page-0003-row-003-label, page-0003-row-004-label, page-0003-row-007-label, page-0003-row-008-label, page-0003-row-011-label, page-0003-row-014-label, page-0003-row-018-label, page-0003-row-022-label, page-0003-row-029-label, page-0003-row-032-label]
+        tolerance_vnd: 0
+      - family_id: P4_R007
+        lhs_row_id: page-0004-row-007-label
+        rhs_row_ids: [page-0004-row-008-label, page-0004-row-009-label, page-0004-row-010-label, page-0004-row-011-label]
+        tolerance_vnd: 0
+      - family_id: P4_R012
+        lhs_row_id: page-0004-row-012-label
+        rhs_row_ids: [page-0004-row-001-label, page-0004-row-002-label, page-0004-row-003-label, page-0004-row-004-label, page-0004-row-005-label, page-0004-row-006-label, page-0004-row-007-label]
+        tolerance_vnd: 0
+      - family_id: P4_R015
+        lhs_row_id: page-0004-row-015-label
+        rhs_row_ids: [page-0004-row-016-label, page-0004-row-017-label, page-0004-row-018-label]
+        tolerance_vnd: 0
+      - family_id: P4_R023_VISIBLE_CHILDREN_ONLY
+        lhs_row_id: page-0004-row-023-label
+        rhs_row_ids: [page-0004-row-015-label, page-0004-row-019-label, page-0004-row-020-label, page-0004-row-021-label, page-0004-row-022-label]
+        tolerance_vnd: 0
+      - family_id: P4_R024
+        lhs_row_id: page-0004-row-024-label
+        rhs_row_ids: [page-0004-row-012-label, page-0004-row-023-label]
+        tolerance_vnd: 0
+      - family_id: CROSS_P3_R038_EQUALS_P4_R024
+        lhs_row_id: page-0003-row-038-label
+        rhs_row_ids: [page-0004-row-024-label]
+        tolerance_vnd: 0
+      - family_id: CROSS_P3_R038_EQUALS_P4_R012_PLUS_P4_R023
+        lhs_row_id: page-0003-row-038-label
+        rhs_row_ids: [page-0004-row-012-label, page-0004-row-023-label]
+        tolerance_vnd: 0
+  secondary_schema_hierarchy:
+    enabled: false
+    separate_denominator: true
+
+publication:
+  canonical_paths_only: true
+  exact_output_inventory: true
+  exclusive_no_overwrite: true
+  hardened_core_pair_publication_primitives_with_formal_exact_empty_gate: true
+  atomic_pair_publication: false
+  clean_git_and_head_blob_recheck_immediately_before_publication: true
+  no_validation_after_publisher_returns: true
+  deterministic_double_build_byte_equality: true
+  seal_replays_pair_at_same_clean_commit: true
+  seal_publication_is_final_action: true
+
+forbidden_inputs:
+  - SUPERSEDED_MAPPING_OR_REVIEW_ARTIFACTS
+  - REVIEW_OR_STEWARD_ANSWERS
+  - HISTORY_OR_MONGODB_VALUES
+  - QWEN_RAW_REJECTED_OUTPUT_OR_TOKEN_STREAM
+  - HOLDOUT_FEATURES_LABELS_OR_RESULTS
+
+limitations:
+  - CALIBRATION_ONLY_SINGLE_BANK_SINGLE_PERIOD_DOCUMENT
+  - MACHINE_MAPPING_IS_NOT_SCHEMA_MAPPING_ACCURACY_OR_REVIEW_AUTHORITY
+  - ARITHMETIC_IS_DIAGNOSTIC_ONLY_AND_CANNOT_REPAIR_MAPPING_STATUS_OR_VALUE
+  - RECONSTRUCTED_GEOMETRY_IS_BOUNDED_TO_THE_PINNED_128_CELL_REGISTRY
+  - SHARED_S3_REGISTRY_IS_DURABILITY_BASELINE_ONLY
+  - NO_HUMAN_GOLD_OR_BANK_OR_PERIOD_DISJOINT_VALIDATION
+  - NOT_HOLDOUT_OR_PRODUCTION_APPROVED
+  - PAIR_PUBLICATION_NOT_CRASH_ATOMIC_PARTIAL_PAIR_REQUIRES_MANUAL_DISPOSITION
+
+claim_boundary: >-
+  E-0041 formally captures one calibration-only post-mapping workbook and its
+  provenance after authenticating the exact E-0040 mapping chain, joining the
+  E-0037 period/unit/numeric evidence only by row_id, and verifying the exact
+  geometry and template inputs. It does not establish schema authority, mapping
+  accuracy, review approval, accounting correctness, human gold, holdout
+  performance, or production readiness.
