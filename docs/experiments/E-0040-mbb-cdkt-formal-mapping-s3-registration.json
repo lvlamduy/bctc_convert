@@ -1,0 +1,304 @@
+{
+  "access_contract": {
+    "history_artifacts_opened": false,
+    "holdout_artifacts_opened": false,
+    "numeric_artifacts_opened": false,
+    "review_artifacts_opened": false,
+    "seal_identity_validated_before_registration": true,
+    "shared_registry_modified": false
+  },
+  "authority": {
+    "accounting_or_excel": false,
+    "automatic_mapping_adoption": false,
+    "exact_mapping_hash_identity": true,
+    "exact_restore_hash_identity": true,
+    "holdout_or_production": false,
+    "mapping_accuracy": false,
+    "numeric_period_unit_scope": false,
+    "review_or_steward_approval": false,
+    "s3_durability_registration": true,
+    "schema_authority": false
+  },
+  "claim_boundary": "This immutable post-seal artifact registers only S3 durability and exact hash-and-restore identity for the already hash-sealed, answer-free E-0040 calibration mapping. It does not add or imply schema authority, mapping accuracy, review or steward approval, automatic mapping adoption, numeric, period, unit, scope, accounting, Excel, holdout, or production authority.",
+  "dataset_role": "CALIBRATION",
+  "experiment_id": "E-0040",
+  "formal_result_summary": {
+    "all_intervals_exhaustive": true,
+    "all_pruning_counts_zero": true,
+    "base_collision_pair_count": 6,
+    "baseline_interval_count": 43,
+    "baseline_selected_count": 59,
+    "challenger_result_sha256": "2e49d8623692fde9fd4a5a87f9c2e2159941b0f3ded7b7b16dddac2ab1e85fbd",
+    "final_interval_count": 44,
+    "final_result_sha256": "15edfc7e349a48cec62fd5bad4bcfc506dcf2c8272055620135b2cfe6d91a29d",
+    "final_row_status_counts": {
+      "NO_ADMISSIBLE_PAIR": 3,
+      "RESOLVED_ANCHOR": 43,
+      "RESOLVED_PATH": 18
+    },
+    "final_selected_count": 61,
+    "final_selected_pairs_sha256": "066c2c3352d65c067e7048ef55b46e6e990c3ad6a5aed94c2a1011eaba002c75",
+    "internal_role_repair_selected_count": 2,
+    "mapper_invocation_count": 2,
+    "mapping_state": "E0040_GENERIC_CHALLENGER_MAPPING_ONLY_READY_FOR_HASH_SEAL",
+    "mapping_status": "CHALLENGER_COMPLETE_61_SELECTED_3_SOURCE_ONLY",
+    "new_collision_pair_count": 0,
+    "normalization_changed_schema_node_count": 21,
+    "normalization_derived_key_count": 33,
+    "result_collision_pair_count": 6,
+    "result_projection_sha256": "5c3c4a09650beda8eca21e5a00fe459e052ae7cc8d735359bc41a58a391da9b0",
+    "schema_node_count": 77,
+    "selected_anchor_count": 43,
+    "selected_path_count": 18,
+    "source_only_structural_count": 3,
+    "source_row_count": 64
+  },
+  "format_version": 1,
+  "local_artifacts": {
+    "mapping_only": {
+      "path": "output/calibration/e0040-mbb-cdkt-formal-mapping/mapping_only.json",
+      "sha256": "8def983007fc3aacf59351395426d5246ad3f28d605442f590de55eaf396cb0d",
+      "size_bytes": 1157172
+    },
+    "mapping_seal": {
+      "path": "docs/experiments/E-0040-mbb-cdkt-formal-mapping-seal.json",
+      "sha256": "68306f7f540faa77d6e2e383927eae23fc3724cfdc8c53cded978a86f3a00b29",
+      "size_bytes": 7611
+    }
+  },
+  "policy": "IMMUTABLE_POST_SEAL_S3_REGISTRATION_V1",
+  "remote_verification": {
+    "bucket_preflight": {
+      "authenticated_principal": "arn:aws:iam::037827769459:user/vps_username",
+      "aws_cli": "aws-cli/2.36.18 Python/3.14.6 Linux/6.6.0-hiveos exe/x86_64.ubuntu.22",
+      "bucket_identity": {
+        "bucket": "test-s3-duylv",
+        "expected_owner": "037827769459",
+        "expected_owner_verified": true,
+        "prefix": "bctc-ai",
+        "region": "us-east-1"
+      },
+      "content_addressing": "SHA256",
+      "default_encryption": [
+        "AES256"
+      ],
+      "public_access_block": {
+        "block_public_acls": true,
+        "block_public_policy": true,
+        "ignore_public_acls": true,
+        "restrict_public_buckets": true
+      },
+      "request_safety": {
+        "delete_operations_enabled": false,
+        "overwrite_operations_enabled": false,
+        "put_precondition": "If-None-Match: *"
+      },
+      "server_side_checksum": "SHA256",
+      "status": "PASS",
+      "versioning_status": "Enabled"
+    },
+    "head_objects": {
+      "content_object": {
+        "byte_equal_to_local": true,
+        "checksum_sha256": "je+YMAf8Oqz1k1E5VCbVJGrT8o1gVEL1kN5V6vOWyw0=",
+        "checksum_type": "FULL_OBJECT",
+        "content_length": 1157172,
+        "etag": "\"805bd391e68177526bd556b592c91f5d\"",
+        "exact_version_get_sha256_matches": true,
+        "exact_version_get_size_matches": true,
+        "is_latest": true,
+        "key": "bctc-ai/objects/sha256/8d/8def983007fc3aacf59351395426d5246ad3f28d605442f590de55eaf396cb0d",
+        "last_modified": "2026-08-08T01:10:59+00:00",
+        "metadata_format": "raw-v1",
+        "metadata_sha256": "8def983007fc3aacf59351395426d5246ad3f28d605442f590de55eaf396cb0d",
+        "only_version": true,
+        "server_side_encryption": "AES256",
+        "status": "PASS",
+        "version_id": "9LL0Geymo8YSTtl2k2rOdVx43QRE4DXZ"
+      },
+      "manifest": {
+        "checksum_sha256": "rbjqjGo159+MB1a4/GRtVWU0Sk2jFRO8FmkO3cUIA3s=",
+        "checksum_type": "FULL_OBJECT",
+        "content_length": 3110,
+        "etag": "\"b240bbe98f71683b4f4cd82b542698bd\"",
+        "exact_version_get_sha256_matches": true,
+        "exact_version_get_size_matches": true,
+        "key": "bctc-ai/artifact-snapshots/20260808T011052Z-e0040-formal-mapping-seal-8def983007fc/manifest-adb8ea8c6a35e7df8c0756b8fc646d5565344a4da31513bc16690eddc508037b.json",
+        "last_modified": "2026-08-08T01:11:04+00:00",
+        "metadata_format": "raw-v1",
+        "metadata_sha256": "adb8ea8c6a35e7df8c0756b8fc646d5565344a4da31513bc16690eddc508037b",
+        "server_side_encryption": "AES256",
+        "status": "PASS",
+        "version_id": "3eiqX6Ai3IyxMTshHSjBFQL0WFiLuU_U"
+      },
+      "run_record": {
+        "checksum_sha256": "jll93JKIoJYHa8UAbi1VAiamTpeIOq+r0SOe64RlQks=",
+        "checksum_type": "FULL_OBJECT",
+        "content_length": 1405,
+        "etag": "\"246c9aae86165b4aa0a3130af8366e4a\"",
+        "exact_version_get_sha256_matches": true,
+        "exact_version_get_size_matches": true,
+        "key": "bctc-ai/artifact-runs/20260808T011052Z-e0040-formal-mapping-seal-8def983007fc/run-8e597ddc9288a096076bc5006e2d550226a64e97883aafabd1239eeb8465424b.json",
+        "last_modified": "2026-08-08T01:11:12+00:00",
+        "metadata_format": "raw-v1",
+        "metadata_sha256": "8e597ddc9288a096076bc5006e2d550226a64e97883aafabd1239eeb8465424b",
+        "server_side_encryption": "AES256",
+        "status": "PASS",
+        "version_id": "1HJ_ReAdnojLxqixC_IuIIRMg4qpS7SI"
+      }
+    },
+    "prefix_inventory": {
+      "manifest_object_count": 1,
+      "run_record_object_count": 1
+    },
+    "status": "PASS"
+  },
+  "s3_snapshot": {
+    "configuration": {
+      "manifest_path": "s3-v1.toml",
+      "path": "config/backup/s3-v1.toml",
+      "sha256": "65a844b0f63b7ad57dfb1533db90b833900c0ad08c3500788a323f2f0dfd6e1c",
+      "size_bytes": 1569
+    },
+    "content_object": {
+      "asset_class": "generated_output",
+      "disposition": "UPLOADED",
+      "key": "bctc-ai/objects/sha256/8d/8def983007fc3aacf59351395426d5246ad3f28d605442f590de55eaf396cb0d",
+      "logical_path": "output/calibration/e0040-mbb-cdkt-formal-mapping/mapping_only.json",
+      "sha256": "8def983007fc3aacf59351395426d5246ad3f28d605442f590de55eaf396cb0d",
+      "size_bytes": 1157172,
+      "version_id": "9LL0Geymo8YSTtl2k2rOdVx43QRE4DXZ"
+    },
+    "created_at_utc": "2026-08-08T01:10:52.608634+00:00",
+    "internal_restore": {
+      "restore_verified": true,
+      "status": "PASS"
+    },
+    "inventory": {
+      "diagnostic_included": false,
+      "logical_bytes": 1157172,
+      "logical_file_count": 1,
+      "registration_receipt_included": false,
+      "seal_included": false,
+      "shared_registry_included": false,
+      "unique_bytes": 1157172,
+      "unique_object_count": 1
+    },
+    "isolated_hydrate": {
+      "first_hydrate": {
+        "byte_equal_to_local": true,
+        "restored_bytes": 1157172,
+        "restored_file_count": 1,
+        "reused_file_count": 0,
+        "sha256_matches": true,
+        "size_bytes_matches": true
+      },
+      "logical_path": "output/calibration/e0040-mbb-cdkt-formal-mapping/mapping_only.json",
+      "second_hydrate": {
+        "byte_equal_to_local": true,
+        "destination_bytes_unchanged": true,
+        "destination_device_unchanged": true,
+        "destination_inode_unchanged": true,
+        "destination_mtime_unchanged": true,
+        "destination_size_unchanged": true,
+        "matching_file_reused_without_overwrite": true,
+        "restored_bytes": 0,
+        "restored_file_count": 0,
+        "reused_file_count": 1,
+        "sha256_matches": true,
+        "size_bytes_matches": true
+      },
+      "status": "PASS"
+    },
+    "label": "e0040-formal-mapping-seal",
+    "manifest": {
+      "format_version": 1,
+      "key": "bctc-ai/artifact-snapshots/20260808T011052Z-e0040-formal-mapping-seal-8def983007fc/manifest-adb8ea8c6a35e7df8c0756b8fc646d5565344a4da31513bc16690eddc508037b.json",
+      "policy": "S3_BOUNDED_ARTIFACT_SNAPSHOT_V1",
+      "restore_gate": {
+        "all_incremental_objects_download_required": true,
+        "parent_full_content_restore_required": true,
+        "state": "PENDING_INDEPENDENT_DOWNLOAD_TEST"
+      },
+      "selection": [
+        "output/calibration/e0040-mbb-cdkt-formal-mapping/mapping_only.json"
+      ],
+      "sha256": "adb8ea8c6a35e7df8c0756b8fc646d5565344a4da31513bc16690eddc508037b",
+      "size_bytes": 3110,
+      "version_id": "3eiqX6Ai3IyxMTshHSjBFQL0WFiLuU_U"
+    },
+    "parent_full_snapshot": {
+      "full_content_stream_verified": true,
+      "manifest": {
+        "checksum_sha256": "dL6eoJkF8MeELVoLRr/kTz/F8yzCwVtQQO/MTpnomBs=",
+        "key": "bctc-ai/snapshots/20260806T050030130746Z-4a469fab2334/manifest-74be9ea09905f0c7842d5a0b46bfe44f3fc5f32cc2c15b5040efcc4e99e8981b.json",
+        "metadata_format": "raw-v1",
+        "metadata_sha256": "74be9ea09905f0c7842d5a0b46bfe44f3fc5f32cc2c15b5040efcc4e99e8981b",
+        "server_side_encryption": "AES256",
+        "sha256": "74be9ea09905f0c7842d5a0b46bfe44f3fc5f32cc2c15b5040efcc4e99e8981b",
+        "size_bytes": 3044426,
+        "version_id": "8pu1ufCeFQ4RDdkwXxyjBZY.ljSECvCE"
+      },
+      "production_status": "PASS",
+      "restore_status": "PASS",
+      "run_record": {
+        "checksum_sha256": "JOsGa1FEMGbf0UU473rrIem3AMxs6ZXEnlb/I7ZwGwQ=",
+        "key": "bctc-ai/runs/20260806T050030130746Z-4a469fab2334/run-24eb066b51443066dfd14538ef7aeb21e9b700cc6ce995c49e56ff23b6701b04.json",
+        "metadata_format": "raw-v1",
+        "metadata_sha256": "24eb066b51443066dfd14538ef7aeb21e9b700cc6ce995c49e56ff23b6701b04",
+        "server_side_encryption": "AES256",
+        "sha256": "24eb066b51443066dfd14538ef7aeb21e9b700cc6ce995c49e56ff23b6701b04",
+        "size_bytes": 1192,
+        "version_id": "dLD5zPHg7rHOERptvYt37WxKSCbPlSvl"
+      },
+      "snapshot_id": "20260806T050030130746Z-4a469fab2334"
+    },
+    "policy": "S3_BOUNDED_ARTIFACT_SNAPSHOT_V1",
+    "run_record": {
+      "all_incremental_objects_restore_verified": true,
+      "completed_at_utc": "2026-08-08T01:11:08.687981+00:00",
+      "key": "bctc-ai/artifact-runs/20260808T011052Z-e0040-formal-mapping-seal-8def983007fc/run-8e597ddc9288a096076bc5006e2d550226a64e97883aafabd1239eeb8465424b.json",
+      "manifest": {
+        "key": "bctc-ai/artifact-snapshots/20260808T011052Z-e0040-formal-mapping-seal-8def983007fc/manifest-adb8ea8c6a35e7df8c0756b8fc646d5565344a4da31513bc16690eddc508037b.json",
+        "sha256": "adb8ea8c6a35e7df8c0756b8fc646d5565344a4da31513bc16690eddc508037b"
+      },
+      "sha256": "8e597ddc9288a096076bc5006e2d550226a64e97883aafabd1239eeb8465424b",
+      "size_bytes": 1405,
+      "status": "PASS",
+      "upload_counts": {
+        "logical_file_count": 1,
+        "reused_object_count": 0,
+        "unique_object_count": 1,
+        "uploaded_object_count": 1
+      },
+      "version_id": "1HJ_ReAdnojLxqixC_IuIIRMg4qpS7SI"
+    },
+    "snapshot_id": "20260808T011052Z-e0040-formal-mapping-seal-8def983007fc",
+    "source_git_branch": "codex/rebuild-bootstrap",
+    "source_git_commit": "0049997c37df3d75941caf258f03c665b8784df6",
+    "source_git_remote": "https://github.com/lvlamduy/bctc_convert.git"
+  },
+  "seal_linkage": {
+    "mapping_canonical_bytes_validated": true,
+    "mapping_capture_git_commit": "18aca8942faf5d47e1ac5f049045d7a7a297b5fc",
+    "mapping_inventory_identity_matches": true,
+    "mapping_ledger_identity_matches": true,
+    "mapping_metrics_match_seal": true,
+    "mapping_result_receipts_match_seal": true,
+    "mapping_seal_git_commit": "18aca8942faf5d47e1ac5f049045d7a7a297b5fc",
+    "post_snapshot_test_only_commit": "f54e39f0af6e68bef2662d5dc4f9fa74b7bd296d",
+    "result_projection_matches_mapping": true,
+    "result_projection_sha256": "5c3c4a09650beda8eca21e5a00fe459e052ae7cc8d735359bc41a58a391da9b0",
+    "s3_source_git_commit_matches_seal_artifact_commit": true,
+    "seal_artifact_git_commit": "0049997c37df3d75941caf258f03c665b8784df6"
+  },
+  "shared_registry": {
+    "appended": false,
+    "not_registered_there": true,
+    "path": "data/registered/s3_artifact_snapshot_registry.jsonl",
+    "sha256": "25da6b205a775d87eca8e4ffe55e3f762ee64e92cbb7190c2834708a7de0d78d",
+    "size_bytes": 6050,
+    "unchanged": true
+  },
+  "state": "E0040_FORMAL_MAPPING_IMMUTABLY_REGISTERED_IN_S3_POST_SEAL"
+}
