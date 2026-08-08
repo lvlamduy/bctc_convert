@@ -4,9 +4,10 @@ import copy
 import datetime as datetime_module
 import hashlib
 import json
+import os
 import zipfile
 from collections import Counter
-from dataclasses import replace
+from dataclasses import FrozenInstanceError, replace
 from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
@@ -17,12 +18,15 @@ from openpyxl import load_workbook
 
 from bctc_ai.evaluation import e0041_post_mapping_export as export_module
 from bctc_ai.evaluation.e0041_post_mapping_export import (
+    AuthenticatedE0040ResultCarrier,
     E0041PostMappingExportError,
     _load_template,
+    _normalize_authenticated_geometry_registry,
     _publish_pair,
     _stable_read,
     _validate_mapping_challenger,
     assemble_post_mapping_projection,
+    authenticate_e0040_result_carrier,
     build_development_workbook,
 )
 from bctc_ai.mapping.e0040_calibration_challenger import (
@@ -40,6 +44,12 @@ _E0038_MAPPING = Path("output/calibration/e0038-mbb-cdkt-exact-mapping/mapping_o
 _E0040_POLICY = Path("config/mapping/e0040-cdkt-semantic-normalization.yaml")
 _MAPPER_POLICY = Path("config/mapping/ordered-subgraph-v2-exact-e0038.yaml")
 _TEMPLATE = Path("template/Bank_CDKT_ReportNormId.xlsx")
+_E0040_MAPPING = Path("output/calibration/e0040-mbb-cdkt-formal-mapping/mapping_only.json")
+_E0040_SEAL = Path("docs/experiments/E-0040-mbb-cdkt-formal-mapping-seal.json")
+_E0040_REGISTRATION = Path("docs/experiments/E-0040-mbb-cdkt-formal-mapping-s3-registration.json")
+_GEOMETRY = Path(
+    "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crop_registry.json"
+)
 
 
 @pytest.fixture(scope="module")
@@ -50,6 +60,20 @@ def e0040_result(project_root: Path):
         projection_from_sealed_mapping_payload(sealed),
         policy=load_e0040_policy(project_root / _E0040_POLICY),
         mapper_policy=load_ordered_subgraph_v2_policy(project_root / _MAPPER_POLICY),
+    )
+
+
+@pytest.fixture(scope="module")
+def authenticated_e0040_carrier(project_root: Path):
+    # Preserve the formal trust order: authenticate seal and registration bytes
+    # before opening the mapping payload that contains the result.
+    seal_bytes = (project_root / _E0040_SEAL).read_bytes()
+    registration_bytes = (project_root / _E0040_REGISTRATION).read_bytes()
+    mapping_bytes = (project_root / _E0040_MAPPING).read_bytes()
+    return authenticate_e0040_result_carrier(
+        mapping_bytes=mapping_bytes,
+        seal_bytes=seal_bytes,
+        registration_bytes=registration_bytes,
     )
 
 
@@ -276,6 +300,223 @@ def test_e0040_direct_result_adapter_rejects_detached_and_forged_envelopes(e0040
             expected_row_ids=expected_rows,
             expected_schema_ids=expected_schema,
         )
+
+
+def test_authenticated_e0040_json_carrier_is_consumed_without_mapper_replay(
+    authenticated_e0040_carrier: AuthenticatedE0040ResultCarrier,
+    assembly_factory,
+):
+    carrier = authenticated_e0040_carrier
+    result = json.loads(carrier.mapping_bytes)["challenger_result"]
+    expected_rows = {item["row_id"] for item in result["final_result"]["row_mappings"]}
+    expected_schema = {
+        item["report_norm_id"] for item in result["final_result"]["schema_dispositions"]
+    }
+    rows, _dispositions, aliases, authority = _validate_mapping_challenger(
+        carrier,
+        expected_row_ids=expected_rows,
+        expected_schema_ids=expected_schema,
+    )
+
+    assert all(
+        type(payload) is bytes
+        for payload in (carrier.mapping_bytes, carrier.seal_bytes, carrier.registration_bytes)
+    )
+    assert not hasattr(carrier, "__dict__")
+    assert not hasattr(carrier.mapping_artifact, "__dict__")
+    with pytest.raises(FrozenInstanceError):
+        carrier.capture_git_commit = "0" * 40
+    assert carrier.challenger_result_sha256 == (
+        "2e49d8623692fde9fd4a5a87f9c2e2159941b0f3ded7b7b16dddac2ab1e85fbd"
+    )
+    assert Counter(item["status"] for item in rows.values()) == {
+        "RESOLVED_ANCHOR": 43,
+        "RESOLVED_PATH": 18,
+        "SOURCE_ONLY_STRUCTURAL_ROW": 3,
+    }
+    assert aliases == set()
+    assert authority["capture_git_commit"] == "18aca8942faf5d47e1ac5f049045d7a7a297b5fc"
+    assert authority["authenticated_formal_artifacts"] == {
+        "mapping": {
+            "path": "output/calibration/e0040-mbb-cdkt-formal-mapping/mapping_only.json",
+            "sha256": "8def983007fc3aacf59351395426d5246ad3f28d605442f590de55eaf396cb0d",
+            "size_bytes": 1_157_172,
+        },
+        "seal": {
+            "path": "docs/experiments/E-0040-mbb-cdkt-formal-mapping-seal.json",
+            "sha256": "68306f7f540faa77d6e2e383927eae23fc3724cfdc8c53cded978a86f3a00b29",
+            "size_bytes": 7_611,
+        },
+        "registration": {
+            "path": "docs/experiments/E-0040-mbb-cdkt-formal-mapping-s3-registration.json",
+            "sha256": "f38d9a1bbed4ec48e2156d441e5c76c6e6d82b0771208de3eef92d96173dd4b5",
+            "size_bytes": 13_360,
+        },
+    }
+
+    projection, geometry_unchanged = assembly_factory(carrier)
+    assert geometry_unchanged is True
+    assert projection["access_contract"]["mapping_challenger_invocation_count"] == 0
+    assert projection["mapping_authority"]["challenger_result_sha256"] == (
+        carrier.challenger_result_sha256
+    )
+
+    with pytest.raises(E0041PostMappingExportError, match="direct-call authority"):
+        _validate_mapping_challenger(
+            result,
+            expected_row_ids=expected_rows,
+            expected_schema_ids=expected_schema,
+        )
+
+
+def test_authenticated_e0040_carrier_rejects_byte_and_receipt_mutations(
+    project_root: Path,
+    authenticated_e0040_carrier: AuthenticatedE0040ResultCarrier,
+):
+    carrier = authenticated_e0040_carrier
+    result = json.loads(carrier.mapping_bytes)["challenger_result"]
+    expected_rows = {item["row_id"] for item in result["final_result"]["row_mappings"]}
+    expected_schema = {
+        item["report_norm_id"] for item in result["final_result"]["schema_dispositions"]
+    }
+    mutations = (
+        replace(
+            carrier,
+            mapping_artifact=replace(
+                carrier.mapping_artifact,
+                size_bytes=carrier.mapping_artifact.size_bytes - 1,
+            ),
+        ),
+        replace(
+            carrier,
+            seal_artifact=replace(carrier.seal_artifact, sha256="0" * 64),
+        ),
+        replace(
+            carrier,
+            registration_artifact=replace(
+                carrier.registration_artifact,
+                path="docs/experiments/forged-registration.json",
+            ),
+        ),
+        replace(carrier, challenger_result_sha256="0" * 64),
+        replace(carrier, capture_git_commit="0" * 40),
+    )
+    for mutation in mutations:
+        with pytest.raises(E0041PostMappingExportError, match="carrier|challenger"):
+            _validate_mapping_challenger(
+                mutation,
+                expected_row_ids=expected_rows,
+                expected_schema_ids=expected_schema,
+            )
+
+    unauthenticated = AuthenticatedE0040ResultCarrier(
+        mapping_bytes=carrier.mapping_bytes,
+        seal_bytes=b"{}",
+        registration_bytes=carrier.registration_bytes,
+        mapping_artifact=carrier.mapping_artifact,
+        seal_artifact=carrier.seal_artifact,
+        registration_artifact=carrier.registration_artifact,
+        challenger_result_sha256=carrier.challenger_result_sha256,
+        capture_git_commit=carrier.capture_git_commit,
+    )
+    with pytest.raises(E0041PostMappingExportError, match="seal byte identity drifted"):
+        _validate_mapping_challenger(
+            unauthenticated,
+            expected_row_ids=expected_rows,
+            expected_schema_ids=expected_schema,
+        )
+
+    artifact_bytes = {
+        "mapping_bytes": (project_root / _E0040_MAPPING).read_bytes(),
+        "seal_bytes": (project_root / _E0040_SEAL).read_bytes(),
+        "registration_bytes": (project_root / _E0040_REGISTRATION).read_bytes(),
+    }
+    for name, payload in artifact_bytes.items():
+        forged = {**artifact_bytes, name: payload[:-1] + bytes([payload[-1] ^ 1])}
+        with pytest.raises(E0041PostMappingExportError, match="byte identity drifted"):
+            authenticate_e0040_result_carrier(**forged)
+
+    class BytesSubclass(bytes):
+        pass
+
+    with pytest.raises(E0041PostMappingExportError, match="must be exact bytes"):
+        authenticate_e0040_result_carrier(
+            mapping_bytes=BytesSubclass(artifact_bytes["mapping_bytes"]),
+            seal_bytes=artifact_bytes["seal_bytes"],
+            registration_bytes=artifact_bytes["registration_bytes"],
+        )
+
+
+def test_authenticated_geometry_registry_paths_are_relocatable_and_digest_pinned(
+    project_root: Path,
+    tmp_path: Path,
+):
+    registry = json.loads((project_root / _GEOMETRY).read_text(encoding="utf-8"))
+    original = copy.deepcopy(registry)
+    normalized = _normalize_authenticated_geometry_registry(registry)
+    normalized_bytes = json.dumps(
+        normalized,
+        ensure_ascii=False,
+        allow_nan=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+
+    assert registry == original
+    assert len(normalized_bytes) == 161_120
+    assert hashlib.sha256(normalized_bytes).hexdigest() == (
+        "e834efd4f6e70c03e607d834a17adc69e0fa0868658767637c5db3cf8c06be6a"
+    )
+    assert _normalize_authenticated_geometry_registry(normalized) == normalized
+
+    rooted_fields = {"path", "ocr_path", "render_path", "source_ocr_path", "source_render_path"}
+    rooted_values: list[str] = []
+
+    def collect(value, field_name: str | None = None):
+        if isinstance(value, dict):
+            for key, item in value.items():
+                collect(item, key)
+        elif isinstance(value, list):
+            for item in value:
+                collect(item, field_name)
+        elif field_name in rooted_fields:
+            rooted_values.append(value)
+
+    collect(normalized)
+    assert len(rooted_values) == 262
+    assert len(set(rooted_values)) == 6
+    assert all(
+        not Path(value).is_absolute() and ".." not in Path(value).parts for value in rooted_values
+    )
+    relocated_root = tmp_path / "relocated-checkout"
+    assert relocated_root / normalized["cells"][0]["source_render_path"] == (
+        relocated_root / "output/calibration/recovery-e0027-mbb-q1-2026-20260807/"
+        "eebeda2ebc09b0d42032/renders/page-0003.png"
+    )
+
+    assets = {
+        normalized["crop_policy"]["path"],
+        normalized["row_contract"]["path"],
+        *(page[field] for page in normalized["pages"] for field in ("ocr_path", "render_path")),
+        *((_GEOMETRY.parent / cell["crop_path"]).as_posix() for cell in normalized["cells"]),
+    }
+    assert len(assets) == 134
+    assert sum((project_root / path).stat().st_size for path in assets) == 4_489_853
+
+
+def test_authenticated_geometry_registry_rejects_foreign_roots_and_traversal(
+    project_root: Path,
+):
+    registry = json.loads((project_root / _GEOMETRY).read_text(encoding="utf-8"))
+    foreign = copy.deepcopy(registry)
+    foreign["cells"][0]["source_render_path"] = "/foreign/bctc-ai/source.png"
+    with pytest.raises(E0041PostMappingExportError, match="foreign absolute prefix"):
+        _normalize_authenticated_geometry_registry(foreign)
+
+    traversal = copy.deepcopy(registry)
+    traversal["pages"][0]["ocr_path"] = "/workspace/bctc-ai/../foreign/ocr.json"
+    with pytest.raises(E0041PostMappingExportError, match="unsafe"):
+        _normalize_authenticated_geometry_registry(traversal)
 
 
 def test_projection_retains_128_physical_cells_and_matches_strict_oracle(
@@ -614,6 +855,193 @@ def test_pair_publication_rolls_back_both_files_after_output_directory_swap(
     assert list(detached.iterdir()) == []
     assert not list(tmp_path.rglob("*.xlsx"))
     assert not list(tmp_path.rglob("*.json"))
+
+
+def test_pair_publication_rolls_back_same_inode_size_mutation_after_parent_swap(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    output = tmp_path / "output"
+    detached = tmp_path / "detached-output"
+    original_write = export_module._write_exclusive_at
+
+    def racing_write(parent_descriptor: int, filename: str, payload: bytes):
+        identity = original_write(parent_descriptor, filename, payload)
+        if filename == "development.xlsx":
+            descriptor = os.open("provenance.json", os.O_WRONLY, dir_fd=parent_descriptor)
+            try:
+                os.ftruncate(descriptor, 3)
+                os.fsync(descriptor)
+            finally:
+                os.close(descriptor)
+            output.rename(detached)
+            output.mkdir()
+        return identity
+
+    monkeypatch.setattr(export_module, "_write_exclusive_at", racing_write)
+    with pytest.raises(E0041PostMappingExportError, match="detached from canonical path"):
+        _publish_pair(
+            tmp_path,
+            output,
+            "development.xlsx",
+            "provenance.json",
+            b"workbook",
+            b"provenance-original",
+        )
+
+    assert list(output.iterdir()) == []
+    assert list(detached.iterdir()) == []
+
+
+def test_pair_publication_rejects_same_inode_forgery_after_final_stat(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    output = tmp_path / "output"
+    original_stat = export_module.os.stat
+    stat_counts: Counter[str] = Counter()
+    original_provenance = b"provenance"
+    forged_provenance = b"FORGED!!!?"
+    assert len(forged_provenance) == len(original_provenance)
+
+    def racing_stat(path, *args, **kwargs):
+        result = original_stat(path, *args, **kwargs)
+        name = os.fsdecode(path) if isinstance(path, (str, bytes)) else None
+        if name in {"development.xlsx", "provenance.json"}:
+            stat_counts[name] += 1
+            if name == "provenance.json" and stat_counts[name] == 4:
+                (output / name).write_bytes(forged_provenance)
+        return result
+
+    monkeypatch.setattr(export_module.os, "stat", racing_stat)
+    with pytest.raises(
+        E0041PostMappingExportError,
+        match="output identity drifted|canonical byte revalidation",
+    ):
+        _publish_pair(
+            tmp_path,
+            output,
+            "development.xlsx",
+            "provenance.json",
+            b"workbook",
+            original_provenance,
+        )
+
+    assert stat_counts["provenance.json"] >= 5
+    assert list(output.iterdir()) == []
+
+
+def test_exclusive_write_self_rolls_back_post_write_linked_stat_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    output = tmp_path / "output"
+    original_stat = export_module.os.stat
+    raced = False
+
+    def racing_stat(path, *args, **kwargs):
+        nonlocal raced
+        name = os.fsdecode(path) if isinstance(path, (str, bytes)) else None
+        if name == "development.xlsx" and kwargs.get("dir_fd") is not None and not raced:
+            raced = True
+            descriptor = os.open(name, os.O_WRONLY, dir_fd=kwargs["dir_fd"])
+            try:
+                os.ftruncate(descriptor, 1)
+                os.fsync(descriptor)
+            finally:
+                os.close(descriptor)
+        return original_stat(path, *args, **kwargs)
+
+    monkeypatch.setattr(export_module.os, "stat", racing_stat)
+    with pytest.raises(E0041PostMappingExportError, match="identity changed after write"):
+        _publish_pair(
+            tmp_path,
+            output,
+            "development.xlsx",
+            "provenance.json",
+            b"workbook",
+            b"provenance",
+        )
+
+    assert raced is True
+    assert list(output.iterdir()) == []
+
+
+def test_pair_rollback_continues_after_foreign_replacement(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    output = tmp_path / "output"
+    original_write = export_module._write_exclusive_at
+    replacement = b"foreign-workbook"
+
+    def replacing_write(parent_descriptor: int, filename: str, payload: bytes):
+        identity = original_write(parent_descriptor, filename, payload)
+        if filename == "development.xlsx":
+            os.unlink(filename, dir_fd=parent_descriptor)
+            descriptor = os.open(
+                filename,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+                0o644,
+                dir_fd=parent_descriptor,
+            )
+            try:
+                os.write(descriptor, replacement)
+                os.fsync(descriptor)
+            finally:
+                os.close(descriptor)
+        return identity
+
+    monkeypatch.setattr(export_module, "_write_exclusive_at", replacing_write)
+    with pytest.raises(E0041PostMappingExportError, match="pair rollback was incomplete"):
+        _publish_pair(
+            tmp_path,
+            output,
+            "development.xlsx",
+            "provenance.json",
+            b"workbook",
+            b"provenance",
+        )
+
+    assert (output / "development.xlsx").read_bytes() == replacement
+    assert not (output / "provenance.json").exists()
+
+
+def test_final_pair_batch_detects_first_member_mutation_during_second_read(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    output = tmp_path / "output"
+    original_read = export_module.os.read
+    seen_workbook_descriptors: set[int] = set()
+    workbook_read_count = 0
+    original_provenance = b"provenance"
+    forged_provenance = b"FORGED!!!?"
+    assert len(forged_provenance) == len(original_provenance)
+
+    def racing_read(descriptor: int, size: int):
+        nonlocal workbook_read_count
+        target = Path(os.readlink(f"/proc/self/fd/{descriptor}")).name
+        if target == "development.xlsx" and descriptor not in seen_workbook_descriptors:
+            seen_workbook_descriptors.add(descriptor)
+            workbook_read_count += 1
+            if workbook_read_count == 2:
+                (output / "provenance.json").write_bytes(forged_provenance)
+        return original_read(descriptor, size)
+
+    monkeypatch.setattr(export_module.os, "read", racing_read)
+    with pytest.raises(E0041PostMappingExportError, match="final output batch"):
+        _publish_pair(
+            tmp_path,
+            output,
+            "development.xlsx",
+            "provenance.json",
+            b"workbook",
+            original_provenance,
+        )
+
+    assert workbook_read_count == 2
+    assert list(output.iterdir()) == []
 
 
 def test_second_pair_write_failure_rolls_back_detached_provenance(

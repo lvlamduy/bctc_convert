@@ -11,6 +11,7 @@ import subprocess
 import zipfile
 from collections import Counter
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
@@ -62,6 +63,38 @@ _E0040_POLICY_SHA256 = "eba3a1380f44f34958398edb13076dc3a87da95fc5ff347968a1a2c0
 _E0040_MAPPER_POLICY_SHA256 = "2f18880339b8e2c04ec3ba900919f174f8af478515adfbfb0e43ff80ddd13268"
 _E0040_BASE_PROJECTION_SHA256 = "7025ca729c01a3f2030af38e9745a0ee8d72b1dad60c8d4e3b7cf749e5eb860c"
 _E0040_RESULT_PROJECTION_SHA256 = "5c3c4a09650beda8eca21e5a00fe459e052ae7cc8d735359bc41a58a391da9b0"
+_E0040_MAPPING_ARTIFACT = {
+    "path": "output/calibration/e0040-mbb-cdkt-formal-mapping/mapping_only.json",
+    "sha256": "8def983007fc3aacf59351395426d5246ad3f28d605442f590de55eaf396cb0d",
+    "size_bytes": 1_157_172,
+}
+_E0040_MAPPING_SEAL_ARTIFACT = {
+    "path": "docs/experiments/E-0040-mbb-cdkt-formal-mapping-seal.json",
+    "sha256": "68306f7f540faa77d6e2e383927eae23fc3724cfdc8c53cded978a86f3a00b29",
+    "size_bytes": 7_611,
+}
+_E0040_S3_REGISTRATION_ARTIFACT = {
+    "path": "docs/experiments/E-0040-mbb-cdkt-formal-mapping-s3-registration.json",
+    "sha256": "f38d9a1bbed4ec48e2156d441e5c76c6e6d82b0771208de3eef92d96173dd4b5",
+    "size_bytes": 13_360,
+}
+_E0040_CHALLENGER_RESULT_SHA256 = "2e49d8623692fde9fd4a5a87f9c2e2159941b0f3ded7b7b16dddac2ab1e85fbd"
+_E0040_CHALLENGER_RESULT_SIZE_BYTES = 700_869
+_E0040_CAPTURE_GIT_COMMIT = "18aca8942faf5d47e1ac5f049045d7a7a297b5fc"
+_E0041_GEOMETRY_REGISTRY_ARTIFACT = {
+    "path": (
+        "output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crop_registry.json"
+    ),
+    "sha256": "65fa9b7c0de1f0db26ae57a46dae2bb64c2475e3a87e5194461f208fc786cbef",
+    "size_bytes": 217_837,
+}
+_E0041_NORMALIZED_GEOMETRY_REGISTRY_SHA256 = (
+    "e834efd4f6e70c03e607d834a17adc69e0fa0868658767637c5db3cf8c06be6a"
+)
+_LEGACY_GEOMETRY_PROJECT_ROOT = PurePosixPath("/workspace/bctc-ai")
+_GEOMETRY_ROOTED_PATH_FIELDS = frozenset(
+    {"path", "ocr_path", "render_path", "source_ocr_path", "source_render_path"}
+)
 _E0041_PHYSICAL_EQUATIONS_SHA256 = (
     "a611078b4734d1e57026d58db5aced4a0b342114ba57aefdff29868032b3b42b"
 )
@@ -80,6 +113,34 @@ _DETERMINISTIC_CORE_PROPERTIES_XML = (
 _DETERMINISTIC_CORE_PROPERTIES_SHA256 = (
     "a025959e8b178cfc6c6aae8f2d49d86fa305d3e36e165c8cbbc16923068668e4"
 )
+
+
+@dataclass(frozen=True, slots=True)
+class E0040ArtifactRecord:
+    path: str
+    sha256: str
+    size_bytes: int
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "path": self.path,
+            "sha256": self.sha256,
+            "size_bytes": self.size_bytes,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class AuthenticatedE0040ResultCarrier:
+    """Immutable E-0040 result minted from the three exact formal artifacts."""
+
+    mapping_bytes: bytes
+    seal_bytes: bytes
+    registration_bytes: bytes
+    mapping_artifact: E0040ArtifactRecord
+    seal_artifact: E0040ArtifactRecord
+    registration_artifact: E0040ArtifactRecord
+    challenger_result_sha256: str
+    capture_git_commit: str
 
 
 def _fail(message: str, error: BaseException | None = None) -> E0041PostMappingExportError:
@@ -182,6 +243,151 @@ def _artifact_identity(value: object, name: str) -> dict[str, Any]:
     return _artifact_record(
         {key: record.get(key) for key in ("path", "sha256", "size_bytes")},
         name,
+    )
+
+
+def _load_exact_e0040_artifact(
+    payload: bytes,
+    expected: Mapping[str, Any],
+    name: str,
+) -> dict[str, Any]:
+    if type(payload) is not bytes:
+        raise _fail(f"{name} must be exact bytes")
+    if len(payload) != expected["size_bytes"] or _sha256_bytes(payload) != expected["sha256"]:
+        raise _fail(f"{name} byte identity drifted")
+    return _load_json_bytes(payload, name)
+
+
+def _frozen_artifact_record(value: Mapping[str, Any]) -> E0040ArtifactRecord:
+    return E0040ArtifactRecord(
+        path=cast(str, value["path"]),
+        sha256=cast(str, value["sha256"]),
+        size_bytes=cast(int, value["size_bytes"]),
+    )
+
+
+def _authenticate_e0040_artifact_chain(
+    *,
+    mapping_bytes: bytes,
+    seal_bytes: bytes,
+    registration_bytes: bytes,
+) -> bytes:
+    """Authenticate the exact formal chain and return canonical result bytes."""
+
+    # Validate the already-read seal and durability registration before decoding
+    # mapping content. A future formal reader must preserve that same file-open
+    # order when it supplies these bytes.
+    seal = _load_exact_e0040_artifact(
+        seal_bytes,
+        _E0040_MAPPING_SEAL_ARTIFACT,
+        "E-0040 formal mapping seal",
+    )
+    registration = _load_exact_e0040_artifact(
+        registration_bytes,
+        _E0040_S3_REGISTRATION_ARTIFACT,
+        "E-0040 formal S3 registration",
+    )
+    mapping = _load_exact_e0040_artifact(
+        mapping_bytes,
+        _E0040_MAPPING_ARTIFACT,
+        "E-0040 formal mapping",
+    )
+
+    challenger_result = mapping.get("challenger_result")
+    if type(challenger_result) is not dict:
+        raise _fail("E-0040 formal mapping lacks a JSON-native challenger result")
+    challenger_result = cast(dict[str, Any], challenger_result)
+    challenger_bytes = _canonical_bytes(challenger_result)
+    challenger_digest = _sha256_bytes(challenger_bytes)
+    mapping_receipts = _mapping(mapping.get("result_receipts"), "E-0040 result receipts")
+    if (
+        challenger_digest != _E0040_CHALLENGER_RESULT_SHA256
+        or len(challenger_bytes) != _E0040_CHALLENGER_RESULT_SIZE_BYTES
+        or mapping_receipts.get("challenger_result_sha256") != challenger_digest
+        or mapping_receipts.get("challenger_result_size_bytes") != len(challenger_bytes)
+    ):
+        raise _fail("E-0040 formal challenger result identity drifted")
+
+    seal_ledger = _mapping(seal.get("input_hash_ledger"), "E-0040 seal input ledger")
+    seal_inventory = _mapping(seal.get("inventory"), "E-0040 seal inventory")
+    inventory_files = _sequence(seal_inventory.get("files"), "E-0040 seal inventory files")
+    seal_receipts = _mapping(seal.get("result_receipts"), "E-0040 seal result receipts")
+    if (
+        _artifact_record(seal_ledger.get("mapping_only"), "E-0040 seal mapping")
+        != _E0040_MAPPING_ARTIFACT
+        or seal_inventory.get("file_count") != 1
+        or len(inventory_files) != 1
+        or _artifact_record(inventory_files[0], "E-0040 seal inventory mapping")
+        != _E0040_MAPPING_ARTIFACT
+        or seal_receipts != mapping_receipts
+        or mapping.get("capture_git_commit") != _E0040_CAPTURE_GIT_COMMIT
+        or seal.get("mapping_capture_git_commit") != _E0040_CAPTURE_GIT_COMMIT
+        or seal.get("seal_git_commit") != _E0040_CAPTURE_GIT_COMMIT
+    ):
+        raise _fail("E-0040 mapping/seal linkage drifted")
+
+    local_artifacts = _mapping(
+        registration.get("local_artifacts"),
+        "E-0040 registration local artifacts",
+    )
+    summary = _mapping(
+        registration.get("formal_result_summary"),
+        "E-0040 registration formal result summary",
+    )
+    seal_linkage = _mapping(
+        registration.get("seal_linkage"),
+        "E-0040 registration seal linkage",
+    )
+    required_linkage_flags = (
+        "mapping_canonical_bytes_validated",
+        "mapping_inventory_identity_matches",
+        "mapping_ledger_identity_matches",
+        "mapping_metrics_match_seal",
+        "mapping_result_receipts_match_seal",
+        "result_projection_matches_mapping",
+        "s3_source_git_commit_matches_seal_artifact_commit",
+    )
+    if (
+        set(local_artifacts) != {"mapping_only", "mapping_seal"}
+        or _artifact_record(local_artifacts.get("mapping_only"), "registered E-0040 mapping")
+        != _E0040_MAPPING_ARTIFACT
+        or _artifact_record(local_artifacts.get("mapping_seal"), "registered E-0040 seal")
+        != _E0040_MAPPING_SEAL_ARTIFACT
+        or summary.get("challenger_result_sha256") != challenger_digest
+        or summary.get("final_result_sha256") != mapping_receipts.get("final_result_sha256")
+        or summary.get("final_selected_pairs_sha256")
+        != mapping_receipts.get("final_selected_pairs_sha256")
+        or summary.get("result_projection_sha256") != _E0040_RESULT_PROJECTION_SHA256
+        or seal_linkage.get("mapping_capture_git_commit") != _E0040_CAPTURE_GIT_COMMIT
+        or any(seal_linkage.get(name) is not True for name in required_linkage_flags)
+    ):
+        raise _fail("E-0040 registration linkage drifted")
+
+    return challenger_bytes
+
+
+def authenticate_e0040_result_carrier(
+    *,
+    mapping_bytes: bytes,
+    seal_bytes: bytes,
+    registration_bytes: bytes,
+) -> AuthenticatedE0040ResultCarrier:
+    """Mint a carrier only after authenticating the exact formal E-0040 chain."""
+
+    challenger_bytes = _authenticate_e0040_artifact_chain(
+        mapping_bytes=mapping_bytes,
+        seal_bytes=seal_bytes,
+        registration_bytes=registration_bytes,
+    )
+    return AuthenticatedE0040ResultCarrier(
+        mapping_bytes=mapping_bytes,
+        seal_bytes=seal_bytes,
+        registration_bytes=registration_bytes,
+        mapping_artifact=_frozen_artifact_record(_E0040_MAPPING_ARTIFACT),
+        seal_artifact=_frozen_artifact_record(_E0040_MAPPING_SEAL_ARTIFACT),
+        registration_artifact=_frozen_artifact_record(_E0040_S3_REGISTRATION_ARTIFACT),
+        challenger_result_sha256=_sha256_bytes(challenger_bytes),
+        capture_git_commit=_E0040_CAPTURE_GIT_COMMIT,
     )
 
 
@@ -710,8 +916,55 @@ def _row_target_pairs(value: object, name: str) -> tuple[tuple[str, int], ...]:
     return tuple(result)
 
 
+def _e0040_challenger_json(
+    challenger: E0040ChallengerResult | AuthenticatedE0040ResultCarrier,
+) -> tuple[dict[str, Any], dict[str, dict[str, Any]] | None]:
+    if type(challenger) is E0040ChallengerResult:
+        live = cast(E0040ChallengerResult, challenger)
+        return _load_json_bytes(_canonical_bytes(live.to_dict()), "E-0040 challenger"), None
+    if type(challenger) is not AuthenticatedE0040ResultCarrier:
+        raise _fail("E-0040 mapping authority must be a direct result or authenticated carrier")
+    carrier = cast(AuthenticatedE0040ResultCarrier, challenger)
+    challenger_bytes = _authenticate_e0040_artifact_chain(
+        mapping_bytes=carrier.mapping_bytes,
+        seal_bytes=carrier.seal_bytes,
+        registration_bytes=carrier.registration_bytes,
+    )
+    if any(
+        type(record) is not E0040ArtifactRecord
+        for record in (
+            carrier.mapping_artifact,
+            carrier.seal_artifact,
+            carrier.registration_artifact,
+        )
+    ):
+        raise _fail("E-0040 authenticated result carrier has mutable artifact records")
+    artifacts = {
+        "mapping": carrier.mapping_artifact.to_dict(),
+        "seal": carrier.seal_artifact.to_dict(),
+        "registration": carrier.registration_artifact.to_dict(),
+    }
+    if (
+        artifacts["mapping"] != _E0040_MAPPING_ARTIFACT
+        or artifacts["seal"] != _E0040_MAPPING_SEAL_ARTIFACT
+        or artifacts["registration"] != _E0040_S3_REGISTRATION_ARTIFACT
+        or carrier.challenger_result_sha256 != _E0040_CHALLENGER_RESULT_SHA256
+        or carrier.capture_git_commit != _E0040_CAPTURE_GIT_COMMIT
+    ):
+        raise _fail("E-0040 authenticated result carrier identity drifted")
+    normalized = _load_json_bytes(challenger_bytes, "authenticated E-0040 challenger")
+    canonical = _canonical_bytes(normalized)
+    if (
+        canonical != challenger_bytes
+        or len(canonical) != _E0040_CHALLENGER_RESULT_SIZE_BYTES
+        or _sha256_bytes(canonical) != carrier.challenger_result_sha256
+    ):
+        raise _fail("E-0040 authenticated challenger result identity drifted")
+    return normalized, artifacts
+
+
 def _validate_e0040_mapping_challenger(
-    challenger: E0040ChallengerResult,
+    challenger: E0040ChallengerResult | AuthenticatedE0040ResultCarrier,
     *,
     expected_row_ids: set[str],
     expected_schema_ids: set[int],
@@ -721,11 +974,10 @@ def _validate_e0040_mapping_challenger(
     set[int],
     dict[str, Any],
 ]:
-    # Accept the direct, frozen result type only. A deserialized/detached raw
-    # mapper result has no proof that the approved E0040 challenger produced it.
-    if type(challenger) is not E0040ChallengerResult:
-        raise _fail("E-0040 mapping authority must be a direct challenger result")
-    normalized = _load_json_bytes(_canonical_bytes(challenger.to_dict()), "E-0040 challenger")
+    # A live frozen result proves direct invocation. The JSON-native alternative
+    # is accepted only after the exact mapping/seal/registration byte chain has
+    # minted its carrier; a detached raw mapping remains outside this boundary.
+    normalized, authenticated_artifacts = _e0040_challenger_json(challenger)
     required = {
         "policy_sha256",
         "mapper_policy_sha256",
@@ -961,6 +1213,12 @@ def _validate_e0040_mapping_challenger(
         "id_scoped_alias_report_norm_ids": [],
         "challenger_result_sha256": _canonical_sha256(normalized),
     }
+    if authenticated_artifacts is not None:
+        authority["authenticated_formal_artifacts"] = copy.deepcopy(authenticated_artifacts)
+        authority["capture_git_commit"] = cast(
+            AuthenticatedE0040ResultCarrier,
+            challenger,
+        ).capture_git_commit
     return normalized_rows, dispositions, set(), authority
 
 
@@ -975,7 +1233,7 @@ def _validate_mapping_challenger(
     set[int],
     dict[str, Any],
 ]:
-    if type(payload) is E0040ChallengerResult:
+    if type(payload) in {E0040ChallengerResult, AuthenticatedE0040ResultCarrier}:
         return _validate_e0040_mapping_challenger(
             payload,
             expected_row_ids=expected_row_ids,
@@ -1098,6 +1356,46 @@ def _safe_registry_crop_path(registry_path: Path, value: object, project_root: P
     except ValueError as exc:
         raise _fail("geometry crop escapes project root", exc) from exc
     return path
+
+
+def _normalize_authenticated_geometry_registry(
+    registry: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Copy the pinned registry while removing its legacy checkout root.
+
+    Only path fields in E-0041's authenticated geometry/source authority are
+    rewritten. Diagnostic ``source_image_path`` values are outside that
+    authority and deliberately remain byte-for-byte unchanged.
+    """
+
+    def normalize(value: object, field_name: str | None = None) -> Any:
+        if isinstance(value, dict):
+            return {key: normalize(item, key) for key, item in value.items()}
+        if isinstance(value, list):
+            return [normalize(item, field_name) for item in value]
+        if field_name not in _GEOMETRY_ROOTED_PATH_FIELDS:
+            return copy.deepcopy(value)
+        if not isinstance(value, str) or not value or "\\" in value:
+            raise _fail(f"authenticated geometry {field_name} is not a POSIX path")
+        path = PurePosixPath(value)
+        if path.is_absolute():
+            try:
+                path = path.relative_to(_LEGACY_GEOMETRY_PROJECT_ROOT)
+            except ValueError as exc:
+                raise _fail(
+                    f"authenticated geometry {field_name} has a foreign absolute prefix",
+                    exc,
+                ) from exc
+        if not path.parts or path == PurePosixPath(".") or ".." in path.parts:
+            raise _fail(f"authenticated geometry {field_name} is unsafe")
+        return path.as_posix()
+
+    if not isinstance(registry, dict):
+        raise _fail("authenticated geometry registry must be a JSON object")
+    normalized = cast(dict[str, Any], normalize(registry))
+    if _canonical_sha256(normalized) != _E0041_NORMALIZED_GEOMETRY_REGISTRY_SHA256:
+        raise _fail("normalized authenticated geometry registry identity drifted")
+    return normalized
 
 
 def _validate_geometry_registry(
@@ -1640,7 +1938,7 @@ def _attach_validation_refs(
 def assemble_post_mapping_projection(
     *,
     postjoin_payload: Mapping[str, Any],
-    mapping_payload: Mapping[str, Any] | E0040ChallengerResult,
+    mapping_payload: (Mapping[str, Any] | E0040ChallengerResult | AuthenticatedE0040ResultCarrier),
     geometry_registry: Mapping[str, Any],
     geometry_registry_path: Path,
     template_rows: Sequence[Mapping[str, Any]],
@@ -1667,16 +1965,22 @@ def assemble_post_mapping_projection(
         expected_row_ids=set(rows_by_id),
         expected_schema_ids=template_ids,
     )
+    registry_record = input_records["geometry_registry"]
+    registry_identity = _artifact_identity(registry_record, "geometry registry input record")
+    registry_for_validation = (
+        _normalize_authenticated_geometry_registry(geometry_registry)
+        if registry_identity == _E0041_GEOMETRY_REGISTRY_ARTIFACT
+        else geometry_registry
+    )
     geometry_by_id = _validate_geometry_registry(
         project_root,
         geometry_registry_path,
-        geometry_registry,
+        registry_for_validation,
         cells_by_id=cells_by_id,
         expected_authority="RECONSTRUCTED_GEOMETRY_WITH_CELL_SHA_PARITY",
     )
     postjoin_record = input_records["e0037_postjoin"]
     mapping_record = input_records["mapping_challenger"]
-    registry_record = input_records["geometry_registry"]
     physical_cells = [
         _normalize_cell(
             cells_by_id[cell_id],
@@ -2197,32 +2501,63 @@ def _write_exclusive_at(
         if exc.errno == errno.EEXIST:
             raise _fail(f"refusing to overwrite E-0041 output: {filename}", exc) from exc
         raise _fail(f"cannot exclusively create E-0041 output {filename}", exc) from exc
-    created_identity = os.fstat(descriptor)
+    created_identity: os.stat_result | None = None
+    descriptor_open = True
     try:
-        try:
-            view = memoryview(payload)
-            while view:
-                written = os.write(descriptor, view)
-                if written <= 0:
-                    raise _fail(f"short write to E-0041 output {filename}")
-                view = view[written:]
-            os.fsync(descriptor)
-            descriptor_identity = os.fstat(descriptor)
-        except BaseException as write_error:
-            current = os.stat(filename, dir_fd=parent_descriptor, follow_symlinks=False)
-            if not _same_regular_inode(created_identity, current):
-                raise _fail(f"refusing unsafe partial-write rollback: {filename}") from write_error
-            os.unlink(filename, dir_fd=parent_descriptor)
-            os.fsync(parent_descriptor)
-            raise
-    finally:
+        created_identity = os.fstat(descriptor)
+        view = memoryview(payload)
+        while view:
+            written = os.write(descriptor, view)
+            if written <= 0:
+                raise _fail(f"short write to E-0041 output {filename}")
+            view = view[written:]
+        os.fsync(descriptor)
+        descriptor_identity = os.fstat(descriptor)
         os.close(descriptor)
-    linked_identity = os.stat(filename, dir_fd=parent_descriptor, follow_symlinks=False)
-    if not _same_regular_file(
-        descriptor_identity, linked_identity
-    ) or linked_identity.st_size != len(payload):
-        raise _fail(f"E-0041 output identity changed after write: {filename}")
-    return linked_identity
+        descriptor_open = False
+        linked_identity = os.stat(filename, dir_fd=parent_descriptor, follow_symlinks=False)
+        if not _same_regular_file(
+            descriptor_identity, linked_identity
+        ) or linked_identity.st_size != len(payload):
+            raise _fail(f"E-0041 output identity changed after write: {filename}")
+        return linked_identity
+    except BaseException as operation_error:
+        cleanup_errors: list[BaseException] = []
+        if descriptor_open:
+            try:
+                os.close(descriptor)
+            except BaseException as close_error:
+                cleanup_errors.append(close_error)
+            descriptor_open = False
+        if created_identity is None:
+            cleanup_errors.append(
+                _fail(f"cannot identify partial E-0041 output for rollback: {filename}")
+            )
+        else:
+            try:
+                current = os.stat(filename, dir_fd=parent_descriptor, follow_symlinks=False)
+            except FileNotFoundError:
+                pass
+            except BaseException as stat_error:
+                cleanup_errors.append(stat_error)
+            else:
+                if not _same_regular_inode(created_identity, current):
+                    cleanup_errors.append(
+                        _fail(f"refusing unsafe partial-write rollback: {filename}")
+                    )
+                else:
+                    try:
+                        os.unlink(filename, dir_fd=parent_descriptor)
+                        os.fsync(parent_descriptor)
+                    except BaseException as unlink_error:
+                        cleanup_errors.append(unlink_error)
+        if cleanup_errors:
+            details = "; ".join(str(error) for error in cleanup_errors)
+            raise _fail(
+                f"E-0041 output creation failed with incomplete self-rollback: "
+                f"{filename}: {details}"
+            ) from operation_error
+        raise
 
 
 def _rollback_created_at(
@@ -2234,7 +2569,7 @@ def _rollback_created_at(
         current = os.stat(filename, dir_fd=parent_descriptor, follow_symlinks=False)
     except FileNotFoundError:
         return
-    if not _same_regular_file(current, identity):
+    if not _same_regular_inode(current, identity):
         raise _fail(f"refusing unsafe rollback of changed E-0041 output: {filename}")
     os.unlink(filename, dir_fd=parent_descriptor)
     os.fsync(parent_descriptor)
@@ -2277,6 +2612,73 @@ def _read_exact_at(
         raise _fail(f"E-0041 output failed canonical byte revalidation: {filename}")
 
 
+def _read_exact_batch_at(
+    parent_descriptor: int,
+    expected: Sequence[tuple[str, os.stat_result, bytes]],
+) -> None:
+    """Observe all pair members as one final cross-file validation batch."""
+
+    flags = os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW | getattr(os, "O_NONBLOCK", 0)
+    descriptors: list[int] = []
+    try:
+        for filename, _identity, _payload in expected:
+            try:
+                descriptors.append(os.open(filename, flags, dir_fd=parent_descriptor))
+            except OSError as exc:
+                raise _fail(f"cannot reopen E-0041 output {filename}", exc) from exc
+        before = [os.fstat(descriptor) for descriptor in descriptors]
+        if any(
+            not _same_regular_file(observed, identity)
+            for observed, (_filename, identity, _payload) in zip(before, expected, strict=True)
+        ):
+            raise _fail("E-0041 final output batch identity drifted before reading")
+
+        observed_payloads: list[bytes] = []
+        growth: list[bytes] = []
+        for descriptor, observed in zip(descriptors, before, strict=True):
+            chunks: list[bytes] = []
+            remaining = observed.st_size
+            while remaining:
+                block = os.read(descriptor, min(remaining, 1024 * 1024))
+                if not block:
+                    raise _fail("short canonical read of E-0041 final output batch")
+                chunks.append(block)
+                remaining -= len(block)
+            observed_payloads.append(b"".join(chunks))
+            growth.append(os.read(descriptor, 1))
+
+        after_read = [os.fstat(descriptor) for descriptor in descriptors]
+        linked = [
+            os.stat(filename, dir_fd=parent_descriptor, follow_symlinks=False)
+            for filename, _identity, _payload in expected
+        ]
+        final = [os.fstat(descriptor) for descriptor in descriptors]
+        if any(growth) or any(
+            observed_payload != payload
+            or not _same_regular_file(identity, first)
+            or not _same_regular_file(first, after)
+            or not _same_regular_file(after, linked_identity)
+            or not _same_regular_file(linked_identity, last)
+            for observed_payload, first, after, linked_identity, last, (
+                _filename,
+                identity,
+                payload,
+            ) in zip(
+                observed_payloads,
+                before,
+                after_read,
+                linked,
+                final,
+                expected,
+                strict=True,
+            )
+        ):
+            raise _fail("E-0041 final output batch failed canonical byte revalidation")
+    finally:
+        for descriptor in reversed(descriptors):
+            os.close(descriptor)
+
+
 def _publish_pair(
     project_root: Path,
     output_directory: Path,
@@ -2296,7 +2698,7 @@ def _publish_pair(
     provenance_path = output_directory / provenance_name
     root, root_identity = _open_trusted_root(project_root, "E-0041 pair publication")
     output_descriptor: int | None = None
-    created: list[tuple[str, os.stat_result]] = []
+    created: list[tuple[str, os.stat_result, bytes]] = []
     try:
         output_descriptor, held_chain = _open_directory_chain(
             root,
@@ -2312,13 +2714,13 @@ def _publish_pair(
             provenance_name,
             provenance_bytes,
         )
-        created.append((provenance_name, provenance_identity))
+        created.append((provenance_name, provenance_identity, provenance_bytes))
         workbook_identity = _write_exclusive_at(
             output_descriptor,
             workbook_name,
             workbook_bytes,
         )
-        created.append((workbook_name, workbook_identity))
+        created.append((workbook_name, workbook_identity, workbook_bytes))
         os.fsync(output_descriptor)
         expected_inventory = tuple(sorted((*initial_inventory, provenance_name, workbook_name)))
         if tuple(sorted(os.listdir(output_descriptor))) != expected_inventory:
@@ -2382,21 +2784,24 @@ def _publish_pair(
                 or tuple(sorted(os.listdir(final_output))) != expected_inventory
             ):
                 raise _fail("E-0041 final output directory detached from canonical path")
-            for filename, identity in created:
-                final_identity = os.stat(
-                    filename,
-                    dir_fd=final_output,
-                    follow_symlinks=False,
-                )
-                if not _same_regular_file(identity, final_identity):
-                    raise _fail("E-0041 final output pair identity drifted")
+            # Open and observe both members before deciding success. Per-file
+            # sequential revalidation leaves the first member unauthenticated if
+            # it changes while the second member is being read.
+            _read_exact_batch_at(final_output, created)
         finally:
             os.close(final_output)
             os.close(final_root)
-    except BaseException:
+    except BaseException as publication_error:
+        rollback_errors: list[BaseException] = []
         if output_descriptor is not None:
-            for filename, identity in reversed(created):
-                _rollback_created_at(output_descriptor, filename, identity)
+            for filename, identity, _payload in reversed(created):
+                try:
+                    _rollback_created_at(output_descriptor, filename, identity)
+                except BaseException as rollback_error:
+                    rollback_errors.append(rollback_error)
+        if rollback_errors:
+            details = "; ".join(str(error) for error in rollback_errors)
+            raise _fail(f"E-0041 pair rollback was incomplete: {details}") from publication_error
         raise
     finally:
         if output_descriptor is not None:
