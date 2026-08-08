@@ -1,0 +1,195 @@
+version: 1
+policy: TM_NOTE_PAGE30_SCOPED_MAPPING_V1
+statement_type: TM
+document: MBB_CONSOLIDATED_Q1_2026
+page_number: 30
+page_tag: page-0030
+report_scope: CONSOLIDATED
+mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_PDF_PAGE_30_FIXED_ROWS_ONLY
+
+source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
+source_render_sha256: e8cea48c6d8f93771b4b5bd9026df7a8b3e592ff7e403e036ed33eda913a092b
+render_dpi: 300
+
+schema_total: 1385
+visible_source_row_total: 22
+fixed_mapping_total: 19
+ambiguous_source_row_total: 1
+ambiguous_schema_item_total: 2
+source_only_row_total: 2
+structural_blank_row_total: 2
+minimum_independent_semantic_streams_for_automatic_fixed_selection: 2
+minimum_ppocr_anchor_similarity: 0.85
+minimum_independent_anchor_similarity: 0.85
+minimum_cross_reader_label_similarity: 0.84
+minimum_label_crop_ink_fraction: 0.05
+
+# Mapping is keyed by visible note hierarchy and local row order. Values, periods,
+# and numeric geometry are deliberately unavailable to this policy.
+rows:
+  - note_number: 1
+    ordinal: 1
+    visible_label_anchor: tien mat bang vnd
+    expected_row_kind: NUMERIC
+    expected_source_role: DETAIL
+    disposition: FIXED
+    candidate_report_norm_ids: [562]
+  - note_number: 1
+    ordinal: 2
+    visible_label_anchor: tien mat bang ngoai te
+    expected_row_kind: NUMERIC
+    expected_source_role: DETAIL
+    disposition: FIXED
+    candidate_report_norm_ids: [563]
+  - note_number: 1
+    ordinal: 3
+    visible_label_anchor: vang tien te
+    expected_row_kind: NUMERIC
+    expected_source_role: DETAIL
+    disposition: FIXED
+    candidate_report_norm_ids: [565]
+  - note_number: 1
+    ordinal: 4
+    visible_label_anchor: tien mat vang bac da quy
+    expected_row_kind: NUMERIC
+    expected_source_role: TABLE_TOTAL
+    disposition: FIXED
+    candidate_report_norm_ids: [561]
+
+  - note_number: 2
+    ordinal: 1
+    visible_label_anchor: tien gui tai ngan hang nha nuoc viet nam
+    expected_row_kind: NUMERIC
+    expected_source_role: DETAIL
+    disposition: FIXED
+    candidate_report_norm_ids: [570]
+  - note_number: 2
+    ordinal: 2
+    visible_label_anchor: bang vnd
+    expected_row_kind: NUMERIC
+    expected_source_role: DETAIL
+    disposition: FIXED
+    candidate_report_norm_ids: [571]
+  - note_number: 2
+    ordinal: 3
+    visible_label_anchor: bang ngoai te
+    expected_row_kind: NUMERIC
+    expected_source_role: DETAIL
+    disposition: FIXED
+    candidate_report_norm_ids: [572]
+  - note_number: 2
+    ordinal: 4
+    visible_label_anchor: tien gui tai ngan hang nha nuoc lao
+    expected_row_kind: NUMERIC
+    expected_source_role: DETAIL
+    disposition: SOURCE_ONLY
+    candidate_report_norm_ids: []
+  - note_number: 2
+    ordinal: 5
+    visible_label_anchor: tien gui tai ngan hang quoc gia campuchia
+    expected_row_kind: NUMERIC
+    expected_source_role: DETAIL
+    disposition: SOURCE_ONLY
+    candidate_report_norm_ids: []
+  - note_number: 2
+    ordinal: 6
+    visible_label_anchor: tien gui tai nhnn
+    expected_row_kind: NUMERIC
+    expected_source_role: TABLE_TOTAL
+    disposition: FIXED
+    candidate_report_norm_ids: [569]
+
+  - note_number: 3
+    ordinal: 1
+    visible_label_anchor: tien gui tai cac tctd khac
+    expected_row_kind: NUMERIC
+    expected_source_role: DETAIL
+    disposition: FIXED
+    candidate_report_norm_ids: [576]
+  - note_number: 3
+    ordinal: 2
+    visible_label_anchor: tien gui khong ky han
+    expected_row_kind: LABEL_ONLY
+    expected_source_role: GROUP_LABEL
+    disposition: FIXED
+    candidate_report_norm_ids: [577]
+  - note_number: 3
+    ordinal: 3
+    visible_label_anchor: bang vnd
+    expected_row_kind: NUMERIC
+    expected_source_role: DETAIL
+    disposition: FIXED
+    candidate_report_norm_ids: [578]
+  - note_number: 3
+    ordinal: 4
+    visible_label_anchor: bang ngoai te
+    expected_row_kind: NUMERIC
+    expected_source_role: DETAIL
+    disposition: FIXED
+    candidate_report_norm_ids: [579]
+  - note_number: 3
+    ordinal: 5
+    visible_label_anchor: tien gui co ky han
+    expected_row_kind: LABEL_ONLY
+    expected_source_role: GROUP_LABEL
+    disposition: FIXED
+    candidate_report_norm_ids: [580]
+  - note_number: 3
+    ordinal: 6
+    visible_label_anchor: bang vnd
+    expected_row_kind: NUMERIC
+    expected_source_role: DETAIL
+    disposition: FIXED
+    candidate_report_norm_ids: [581]
+  - note_number: 3
+    ordinal: 7
+    visible_label_anchor: bang ngoai te
+    expected_row_kind: NUMERIC
+    expected_source_role: DETAIL
+    disposition: FIXED
+    candidate_report_norm_ids: [582]
+  - note_number: 3
+    ordinal: 8
+    visible_label_anchor: cho vay cac tctd khac
+    expected_row_kind: NUMERIC
+    expected_source_role: DETAIL
+    disposition: FIXED
+    candidate_report_norm_ids: [585]
+  - note_number: 3
+    ordinal: 9
+    visible_label_anchor: bang vnd
+    expected_row_kind: NUMERIC
+    expected_source_role: DETAIL
+    disposition: FIXED
+    candidate_report_norm_ids: [586]
+  - note_number: 3
+    ordinal: 10
+    visible_label_anchor: bang ngoai te
+    expected_row_kind: NUMERIC
+    expected_source_role: DETAIL
+    disposition: FIXED
+    candidate_report_norm_ids: [588]
+  - note_number: 3
+    ordinal: 11
+    visible_label_anchor: du phong rui ro
+    expected_row_kind: NUMERIC
+    expected_source_role: DETAIL
+    disposition: AMBIGUOUS
+    candidate_report_norm_ids: [583, 590]
+  - note_number: 3
+    ordinal: 12
+    visible_label_anchor: tien gui va cho vay cac tctd khac
+    expected_row_kind: NUMERIC
+    expected_source_role: TABLE_TOTAL
+    disposition: FIXED
+    candidate_report_norm_ids: [575]
+
+forbidden_mapping_inputs:
+  - numeric_cell_text
+  - numeric_cell_value
+  - numeric_value_magnitude
+  - accounting_equation_result
+  - period_or_unit_as_item_selector
+  - historical_or_mongodb_values
+  - human_review_answers
+  - parser_candidate_report_norm_ids

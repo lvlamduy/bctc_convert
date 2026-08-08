@@ -1,0 +1,493 @@
+{
+  "base_config_path": "config/models/deepseek-ocr2-v1.toml",
+  "base_config_sha256": "5b3bc57a2f8c56d0a3ee133f0649cb177105b731b96376fa869e8971c1bd924d",
+  "config_path": "config/models/deepseek-ocr2-line-rtx4090-v3.toml",
+  "config_sha256": "aebbc2fb4c9d6da22d83b71ca79567fca2c904a48c686ced8121438d42f31d6d",
+  "crop_policy": {
+    "aspect_preservation": "OFFICIAL_IMAGEOPS_PAD",
+    "initial_padding_pixels": {
+      "x": 28,
+      "y": 14
+    },
+    "targeted_reread_trigger": "PP_DEEPSEEK_RETRIEVAL_KEY_RATIO_BELOW_0_84",
+    "targeted_tight_padding_pixels": {
+      "x": 4,
+      "y": 8
+    }
+  },
+  "document": "MBB_CONSOLIDATED_Q1_2026",
+  "evidence_role": "INDEPENDENT_VIETNAMESE_LOGICAL_ROW_LABEL_PROPOSAL_ONLY",
+  "format_version": 1,
+  "model_weights_sha256": "d8ff67a424ba6f4dd077885eb9d6a05d2537e76fe5491f0e2a9b712f8c8870fa",
+  "network_permitted": false,
+  "numeric_values_available_to_reader": false,
+  "page_number": 30,
+  "page_tag": "page-0030",
+  "prompt": "<image>\\nFree OCR.",
+  "reader": "DEEPSEEK_OCR_2",
+  "reader_status": "COMPLETE",
+  "reference_text_available_to_reader": false,
+  "runtime_packages": {
+    "Pillow": "12.3.0",
+    "addict": "2.4.0",
+    "easydict": "1.13",
+    "einops": "0.8.2",
+    "huggingface-hub": "0.26.3",
+    "matplotlib": "3.10.8",
+    "numpy": "2.3.5",
+    "safetensors": "0.8.0",
+    "tokenizers": "0.20.3",
+    "torch": "2.12.0+cu130",
+    "torchvision": "0.27.0+cu130",
+    "transformers": "4.46.3"
+  },
+  "sample_count": 22,
+  "samples": [
+    {
+      "attempts": [
+        {
+          "attempt_kind": "INITIAL_PADDED_LABEL",
+          "crop_bbox": [
+            486,
+            749,
+            912,
+            828
+          ],
+          "crop_sha256": "7ce055764f25f2a492103fea53ce62ab66a5eac8dc05f6ea46329e63251a788c",
+          "proposal_text": "Tiến măt bằng VND",
+          "status": "PARSED_SEMANTIC_PROPOSAL_ONLY"
+        }
+      ],
+      "row_id": "page-0030:note-1:row-0001",
+      "selected_attempt_index": 0
+    },
+    {
+      "attempts": [
+        {
+          "attempt_kind": "INITIAL_PADDED_LABEL",
+          "crop_bbox": [
+            486,
+            799,
+            970,
+            878
+          ],
+          "crop_sha256": "7ec3f299040bb02790102729d427d962a33573b3fb97b29def44ab3f41f32d63",
+          "proposal_text": "Tên mặt bằng ngoại tệ",
+          "status": "PARSED_SEMANTIC_PROPOSAL_ONLY"
+        }
+      ],
+      "row_id": "page-0030:note-1:row-0002",
+      "selected_attempt_index": 0
+    },
+    {
+      "attempts": [
+        {
+          "attempt_kind": "INITIAL_PADDED_LABEL",
+          "crop_bbox": [
+            485,
+            847,
+            772,
+            930
+          ],
+          "crop_sha256": "08bae226bf53c38daca6b986fb5098f55dc877e2bde3d8613ebc1aa48c0f4d83",
+          "proposal_text": "Vàng tiền tệ",
+          "status": "PARSED_SEMANTIC_PROPOSAL_ONLY"
+        }
+      ],
+      "row_id": "page-0030:note-1:row-0003",
+      "selected_attempt_index": 0
+    },
+    {
+      "attempts": [
+        {
+          "attempt_kind": "INITIAL_PADDED_LABEL",
+          "crop_bbox": [
+            433,
+            498,
+            1025,
+            582
+          ],
+          "crop_sha256": "8ce47e25b42c20ebe584cf2a6114d91d9011e42f16c0158c580ceb256d44b96d",
+          "proposal_text": "Tiền mặt, vàng bạc, đá quý",
+          "status": "PARSED_SEMANTIC_PROPOSAL_ONLY"
+        }
+      ],
+      "row_id": "page-0030:note-1:row-0004",
+      "selected_attempt_index": 0
+    },
+    {
+      "attempts": [
+        {
+          "attempt_kind": "INITIAL_PADDED_LABEL",
+          "crop_bbox": [
+            482,
+            1292,
+            1358,
+            1377
+          ],
+          "crop_sha256": "feb8c718587e073c650dfbb3693ba647ee9284259b3eac9a3d99ea2144d8370f",
+          "proposal_text": "Tiền gửi tại Ngân hàng Nhà nước Việt Nam",
+          "status": "PARSED_SEMANTIC_PROPOSAL_ONLY"
+        }
+      ],
+      "row_id": "page-0030:note-2:row-0001",
+      "selected_attempt_index": 0
+    },
+    {
+      "attempts": [
+        {
+          "attempt_kind": "INITIAL_PADDED_LABEL",
+          "crop_bbox": [
+            553,
+            1344,
+            815,
+            1424
+          ],
+          "crop_sha256": "787edfa1f4c579793cdfc90c335681ea8652db35785dbb15ff76358c064aa080",
+          "proposal_text": "Bảng VND",
+          "status": "PARSED_SEMANTIC_PROPOSAL_ONLY"
+        }
+      ],
+      "row_id": "page-0030:note-2:row-0002",
+      "selected_attempt_index": 0
+    },
+    {
+      "attempts": [
+        {
+          "attempt_kind": "INITIAL_PADDED_LABEL",
+          "crop_bbox": [
+            552,
+            1391,
+            875,
+            1474
+          ],
+          "crop_sha256": "0e431112a25fc883f4b7a553b28f2c12df9080c767b0f16716a086f9753704f4",
+          "proposal_text": "Đặng Văn Bằng ngoại tệ",
+          "status": "PARSED_SEMANTIC_PROPOSAL_ONLY"
+        },
+        {
+          "attempt_kind": "TARGETED_TIGHT_LABEL",
+          "crop_bbox": [
+            576,
+            1397,
+            851,
+            1468
+          ],
+          "crop_sha256": "1e827a21c795fc5161d98e73a01c49189f5e18d0596aa544c10846529d51a25e",
+          "proposal_text": "Bằng ngoại tệ",
+          "status": "PARSED_SEMANTIC_PROPOSAL_ONLY"
+        }
+      ],
+      "row_id": "page-0030:note-2:row-0003",
+      "selected_attempt_index": 1
+    },
+    {
+      "attempts": [
+        {
+          "attempt_kind": "INITIAL_PADDED_LABEL",
+          "crop_bbox": [
+            482,
+            1439,
+            1256,
+            1523
+          ],
+          "crop_sha256": "e36d2863ce75662ac8df36f4094d5364ea0239ea00dd8b157253a3462dfd0841",
+          "proposal_text": "Tiền gửi tại Ngân hàng Nhà nước Lào",
+          "status": "PARSED_SEMANTIC_PROPOSAL_ONLY"
+        }
+      ],
+      "row_id": "page-0030:note-2:row-0004",
+      "selected_attempt_index": 0
+    },
+    {
+      "attempts": [
+        {
+          "attempt_kind": "INITIAL_PADDED_LABEL",
+          "crop_bbox": [
+            483,
+            1491,
+            1377,
+            1574
+          ],
+          "crop_sha256": "22499d9e027aecff42b836e977f7614f17c796088c375861927fcbeae5532a66",
+          "proposal_text": "Tiền gửi tại Ngân hàng Quốc gia Campuchia",
+          "status": "PARSED_SEMANTIC_PROPOSAL_ONLY"
+        }
+      ],
+      "row_id": "page-0030:note-2:row-0005",
+      "selected_attempt_index": 0
+    },
+    {
+      "attempts": [
+        {
+          "attempt_kind": "INITIAL_PADDED_LABEL",
+          "crop_bbox": [
+            436,
+            1045,
+            851,
+            1125
+          ],
+          "crop_sha256": "7015b53d17fa1ef9c7e02216112f07ff630cbab6d02805e50feeefbd7e2e544f",
+          "proposal_text": "Tiền gửi tại NHNN",
+          "status": "PARSED_SEMANTIC_PROPOSAL_ONLY"
+        }
+      ],
+      "row_id": "page-0030:note-2:row-0006",
+      "selected_attempt_index": 0
+    },
+    {
+      "attempts": [
+        {
+          "attempt_kind": "INITIAL_PADDED_LABEL",
+          "crop_bbox": [
+            484,
+            1921,
+            1080,
+            2003
+          ],
+          "crop_sha256": "91a6f4367985d4820e15e44de0e280e763487cd0be41a57f8eb50676cfba140e",
+          "proposal_text": "Tiền gửi tại các TCTD khác",
+          "status": "PARSED_SEMANTIC_PROPOSAL_ONLY"
+        }
+      ],
+      "row_id": "page-0030:note-3:row-0001",
+      "selected_attempt_index": 0
+    },
+    {
+      "attempts": [
+        {
+          "attempt_kind": "INITIAL_PADDED_LABEL",
+          "crop_bbox": [
+            482,
+            2069,
+            958,
+            2155
+          ],
+          "crop_sha256": "a28d440a5bb7be4060b251bf537c2ab38aa23f7769dd29c503eb62bc54661f56",
+          "proposal_text": "Tiền gửi không kỳ hạn",
+          "status": "PARSED_SEMANTIC_PROPOSAL_ONLY"
+        }
+      ],
+      "row_id": "page-0030:note-3:row-0002",
+      "selected_attempt_index": 0
+    },
+    {
+      "attempts": [
+        {
+          "attempt_kind": "INITIAL_PADDED_LABEL",
+          "crop_bbox": [
+            557,
+            2118,
+            820,
+            2198
+          ],
+          "crop_sha256": "19bfb5d86ba93d6b52ac61bd0b7e24bbdc91dda4cba19647e95d04dec06b36fd",
+          "proposal_text": "Bang VND",
+          "status": "PARSED_SEMANTIC_PROPOSAL_ONLY"
+        }
+      ],
+      "row_id": "page-0030:note-3:row-0003",
+      "selected_attempt_index": 0
+    },
+    {
+      "attempts": [
+        {
+          "attempt_kind": "INITIAL_PADDED_LABEL",
+          "crop_bbox": [
+            556,
+            2166,
+            878,
+            2248
+          ],
+          "crop_sha256": "f3718507c8c346fd6654bfc9d8d2820420e7a64e37c2bb069bc790394c42c666",
+          "proposal_text": "Đặng Văn Bằng ngoại tệ",
+          "status": "PARSED_SEMANTIC_PROPOSAL_ONLY"
+        },
+        {
+          "attempt_kind": "TARGETED_TIGHT_LABEL",
+          "crop_bbox": [
+            580,
+            2172,
+            854,
+            2242
+          ],
+          "crop_sha256": "e3bb6046ff77ff64d3c8b687cbe67dfa7c89d36a700d7c09aab9eace4479dd51",
+          "proposal_text": "Bằng ngoại tệ",
+          "status": "PARSED_SEMANTIC_PROPOSAL_ONLY"
+        }
+      ],
+      "row_id": "page-0030:note-3:row-0004",
+      "selected_attempt_index": 1
+    },
+    {
+      "attempts": [
+        {
+          "attempt_kind": "INITIAL_PADDED_LABEL",
+          "crop_bbox": [
+            484,
+            2239,
+            888,
+            2319
+          ],
+          "crop_sha256": "fcbb726b35bd1a8f68a3d19b14272b9d6296cdb6a544ebdfe9fc1a391b657cab",
+          "proposal_text": "Tiền gửi cổ kỳ hạn",
+          "status": "PARSED_SEMANTIC_PROPOSAL_ONLY"
+        }
+      ],
+      "row_id": "page-0030:note-3:row-0005",
+      "selected_attempt_index": 0
+    },
+    {
+      "attempts": [
+        {
+          "attempt_kind": "INITIAL_PADDED_LABEL",
+          "crop_bbox": [
+            556,
+            2285,
+            819,
+            2366
+          ],
+          "crop_sha256": "6a2c1d9742e97dea2dc3b0cd47a7f0aa2b7c9f4f4509f744eca5c8d773defc14",
+          "proposal_text": "Bằng VND",
+          "status": "PARSED_SEMANTIC_PROPOSAL_ONLY"
+        }
+      ],
+      "row_id": "page-0030:note-3:row-0006",
+      "selected_attempt_index": 0
+    },
+    {
+      "attempts": [
+        {
+          "attempt_kind": "INITIAL_PADDED_LABEL",
+          "crop_bbox": [
+            555,
+            2332,
+            878,
+            2418
+          ],
+          "crop_sha256": "4d6d738883ea8a365bcfd7d708163cfe03a52a66d147d53748d5699344ecc591",
+          "proposal_text": "Đặng Văn Bằng ngoại tệ",
+          "status": "PARSED_SEMANTIC_PROPOSAL_ONLY"
+        },
+        {
+          "attempt_kind": "TARGETED_TIGHT_LABEL",
+          "crop_bbox": [
+            579,
+            2338,
+            854,
+            2412
+          ],
+          "crop_sha256": "cdc2c6bf81cb011b7d21c484243a8624e3e22144dfbf2a8d05c9f45b814eb7cd",
+          "proposal_text": "Bảng ngoại tệ",
+          "status": "PARSED_SEMANTIC_PROPOSAL_ONLY"
+        }
+      ],
+      "row_id": "page-0030:note-3:row-0007",
+      "selected_attempt_index": 1
+    },
+    {
+      "attempts": [
+        {
+          "attempt_kind": "INITIAL_PADDED_LABEL",
+          "crop_bbox": [
+            484,
+            2454,
+            1014,
+            2532
+          ],
+          "crop_sha256": "c4b55fd291f3336a545721c935d5f132dd8241a854dfad0a21baf8a12fa537d4",
+          "proposal_text": "Cho vay các TCTD khác",
+          "status": "PARSED_SEMANTIC_PROPOSAL_ONLY"
+        }
+      ],
+      "row_id": "page-0030:note-3:row-0008",
+      "selected_attempt_index": 0
+    },
+    {
+      "attempts": [
+        {
+          "attempt_kind": "INITIAL_PADDED_LABEL",
+          "crop_bbox": [
+            557,
+            2500,
+            820,
+            2581
+          ],
+          "crop_sha256": "675e83bd4f065cda86070edb9f9aa8032e44dba2006c6dd66950705d9aadd4d7",
+          "proposal_text": "Bảng VND",
+          "status": "PARSED_SEMANTIC_PROPOSAL_ONLY"
+        }
+      ],
+      "row_id": "page-0030:note-3:row-0009",
+      "selected_attempt_index": 0
+    },
+    {
+      "attempts": [
+        {
+          "attempt_kind": "INITIAL_PADDED_LABEL",
+          "crop_bbox": [
+            556,
+            2550,
+            878,
+            2634
+          ],
+          "crop_sha256": "e6cafd65c62cc43244dce560ef55cb1250c9fc9b5f2ea77e90c1a198ae2c9551",
+          "proposal_text": "Đồng thời Bằng ngoại tệ",
+          "status": "PARSED_SEMANTIC_PROPOSAL_ONLY"
+        },
+        {
+          "attempt_kind": "TARGETED_TIGHT_LABEL",
+          "crop_bbox": [
+            580,
+            2556,
+            854,
+            2628
+          ],
+          "crop_sha256": "274e3137fe99cee3a05b5b085b10f0ac14fddb5129e9acf102ba79e7b46dd920",
+          "proposal_text": "Băng ngoại tệ",
+          "status": "PARSED_SEMANTIC_PROPOSAL_ONLY"
+        }
+      ],
+      "row_id": "page-0030:note-3:row-0010",
+      "selected_attempt_index": 1
+    },
+    {
+      "attempts": [
+        {
+          "attempt_kind": "INITIAL_PADDED_LABEL",
+          "crop_bbox": [
+            484,
+            2654,
+            837,
+            2735
+          ],
+          "crop_sha256": "e144338c6b03c34f706adb68b243ac7ea51f51d64fe569a55aa8ea6617d0127c",
+          "proposal_text": "Dụ phòng rủi ro",
+          "status": "PARSED_SEMANTIC_PROPOSAL_ONLY"
+        }
+      ],
+      "row_id": "page-0030:note-3:row-0011",
+      "selected_attempt_index": 0
+    },
+    {
+      "attempts": [
+        {
+          "attempt_kind": "INITIAL_PADDED_LABEL",
+          "crop_bbox": [
+            431,
+            1670,
+            1199,
+            1754
+          ],
+          "crop_sha256": "b751bdfa3c1177a45d314e8441cf762b8e3c27f3370549b7b5b93e3ba44d9027",
+          "proposal_text": "Tiền gửi và cho vay các TCTD khác",
+          "status": "PARSED_SEMANTIC_PROPOSAL_ONLY"
+        }
+      ],
+      "row_id": "page-0030:note-3:row-0012",
+      "selected_attempt_index": 0
+    }
+  ],
+  "schema_available_to_reader": false,
+  "source_render_sha256": "e8cea48c6d8f93771b4b5bd9026df7a8b3e592ff7e403e036ed33eda913a092b"
+}
