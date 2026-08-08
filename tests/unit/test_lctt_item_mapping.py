@@ -75,6 +75,54 @@ _VISIBLE_CANDIDATES = (
     (4115,),
     (4116,),
 )
+_DEEPSEEK_LABELS = (
+    "| LƯU CHUYỂN TIỀN TỪ HOẠT ĐỘNG KINH DOANH",
+    "| Thu lãi và các khoản thu tương tự nhận được",
+    "| Chi lài và các khoản chi tương tự đã trả",
+    "Thu nhập từ hoạt động dịch vụ nhận được",
+    "Chênh lệch số tiền thực thu/(chỉ) từ hoạt động kinh doanh (ngoại tệ, vàng bạc, chứng khoán)",
+    "| Thu nhập/(Chi phí) khác",
+    "Tiền thu các khoản nợ đã được xử lý, xoá, bù đắp bằng nguồn rủi ro",
+    "Tiền chi trả cho nhân viên và hoạt động quản lý, công vụ",
+    "Tiền thuế thu nhập doanh nghiệp thực nộp trong kỳ",
+    "Lưu chuyển tiền thuần từ hoạt động kinh doanh trước những thay đổi về tài sản và vốn lưu động",
+    "Những thay đổi về tài sản hoạt động",
+    "(Tăng)/Giảm các khoản tiền gửi và cho vay các TCTD khác",
+    "(Tăng)/Giảm các khoản về kinh doanh chứng khoán",
+    "(Tăng)/Giảm các công cụ tài chính phái sinh và các tài sản tài chính khác",
+    "(Tăng)/Giảm các khoản cho vay khách hàng và mua nợ",
+    "Giảm nguồn dự phòng để xử lý rủi ro, xử lý, bù đắp tổn thất các khoản (tín dụng, "
+    "chứng khoán, đầu tư, phải thu khác)",
+    "(Tăng)/Giảm khác về tài sản hoạt động",
+    "Những thay đổi về công nghệ hoạt động",
+    "| [Tăng/(Giảm)] các khoản nợ Chính phủ và NHNN",
+    "Tăng/(Giảm) các khoản tiền gửi, tiền vay các TCTD khác",
+    "Tăng/(giảm) tiền gửi của khách hàng",
+    "Tăng/(Giảm) phát hành giấy tờ có giá",
+    "TẠNG/(Giám) vốn tài trợ, uỷ thác đầu tư, cho vay mà TCTD chịu rủi ro",
+    "Tăng/(Giảm) các công cụ tài chính phái sinh và các tài sản tài chính khác",
+    "Tăng/(Giảm) khác về công nợ hoạt động",
+    "| Chi tiết các quỹ của TCTD",
+    "| Lưu chuyển tiền thuần từ hoạt động kinh doanh",
+    "LƯU CHUYỂN TIỀN TỪ HOẠT ĐỘNG ĐẦU TƯ",
+    "Mua sắm tài sản cố định",
+    "Tiền thu từ thanh lý, nhượng bán tài sản cố định",
+    "| Tiền thu/(chi) bất động sản đầu tư",
+    "| Tiền thu/(chi) đầu tư, góp vốn vào các đơn vị khác",
+    "Tên thủ công của lợi nhuận được chia từ các khoản đầu tư, góp vốn dài hạn",
+    "//Lưu chuyển tiền thuần sử dụng trong hoạt động đầu tư",
+    "LƯU CHUYỂN TIỀN TỪ HOẠT ĐỘNG TÀI CHÍNH",
+    "|Tăng vốn cổ phần từ góp vốn và/hoặc phát hành cổ phiếu",
+    "Tiền thu từ phát hành giấy tờ có giá dài hạn đủ điều kiện tính vào vốn tự có và "
+    "các khoản vốn vay dài hạn khác",
+    "Tiền chi thanh toán giấy tờ có giá dài hạn có đủ điều kiện tính vào vốn tự có và "
+    "các khoản vốn vay dài hạn khác",
+    "Cố tức trả cho cổ đông",
+    "| Lưu chuyển tiền thuần từ hoạt động tài chính",
+    "| Lưu chuyển tiền thuần trong kỳ",
+    "| Tiền và các khoản tương đương tiền tại thời điểm đầu kỳ",
+    "# Tiền và các khoản tương đương tiền tại thời điểm cuối kỳ",
+)
 
 
 @pytest.fixture(scope="module")
@@ -120,6 +168,30 @@ def real_reconciliation(project_root: Path, lctt_schema, parsed_lctt):
     return policy, result
 
 
+@pytest.fixture(scope="module")
+def real_dual_reconciliation(project_root: Path, lctt_schema, parsed_lctt):
+    assert len(_DEEPSEEK_LABELS) == 43
+    semantic_rows = tuple(
+        {
+            "row_id": row.row_id,
+            "page_tag": row.page_tag,
+            "proposal_text": label,
+        }
+        for row, label in zip(parsed_lctt.rows, _DEEPSEEK_LABELS, strict=True)
+    )
+    policy = load_lctt_direct_mapping_policy(project_root / LCTT_POLICY_RELATIVE_PATH)
+    result = reconcile_lctt_direct_items(
+        parsed_lctt.rows,
+        schema=lctt_schema,
+        policy=policy,
+        report_scope=parsed_lctt.scope,
+        cash_flow_method=parsed_lctt.method,
+        independent_semantic_rows=semantic_rows,
+        independent_source_reader_id="deepseek-ocr2-logical-row",
+    )
+    return policy, result
+
+
 def test_direct_projection_and_policy_reconcile_exact_denominators(
     project_root: Path, lctt_schema
 ) -> None:
@@ -138,6 +210,7 @@ def test_direct_projection_and_policy_reconcile_exact_denominators(
     assert policy.visible_source_row_total == 43
     assert policy.currently_available_independent_semantic_streams == 1
     assert policy.minimum_independent_semantic_streams == 2
+    assert policy.minimum_cross_reader_label_similarity == 0.85
     assert policy.not_observed_report_norm_ids == (4143, 4151, 4152, 4117)
 
 
@@ -158,8 +231,10 @@ def test_real_43_rows_reconcile_all_107_without_automatic_selection(
     assert result.not_applicable_schema_count == 57
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == 43
+    assert result.mapped_source_row_count == 0
     assert result.candidate_linked_source_row_count == 41
     assert result.source_only_row_count == 2
+    assert result.independent_label_sha256 is None
     assert (
         tuple(item.candidate_report_norm_ids for item in result.source_dispositions)
         == _VISIBLE_CANDIDATES
@@ -198,6 +273,57 @@ def test_real_43_rows_reconcile_all_107_without_automatic_selection(
         )
         >= 0.45
     )
+
+
+def test_real_deepseek_stream_promotes_all_41_one_to_one_links_but_not_composites(
+    real_dual_reconciliation,
+) -> None:
+    _policy, result = real_dual_reconciliation
+
+    assert validate_lctt_item_mapping_result(result) is result
+    assert result.status == "AUTOMATIC_MAPPING_WITH_UNRESOLVED_COMPOSITES"
+    assert result.automatic_selection_allowed
+    assert result.independent_semantic_stream_count == 2
+    assert result.schema_item_count == 107
+    assert result.schema_status_reconciled_count == 107
+    assert result.mapped_schema_count == 41
+    assert result.candidate_linked_schema_count == 0
+    assert result.ambiguous_schema_count == 5
+    assert result.not_observed_schema_count == 4
+    assert result.not_applicable_schema_count == 57
+    assert result.fully_verified_schema_count == 0
+    assert result.source_row_count == 43
+    assert result.mapped_source_row_count == 41
+    assert result.candidate_linked_source_row_count == 0
+    assert result.source_only_row_count == 2
+    assert result.independent_label_sha256 is not None
+
+    mapped_schema = tuple(
+        item
+        for item in result.schema_dispositions
+        if item.status == LCTTSchemaStatus.MAPPED_AUTOMATIC.value
+    )
+    mapped_source = tuple(
+        item
+        for item in result.source_dispositions
+        if item.status == LCTTSourceRowStatus.MAPPED_AUTOMATIC.value
+    )
+    assert len(mapped_schema) == len(mapped_source) == 41
+    assert all(len(item.supporting_reader_ids) == 2 for item in mapped_schema)
+    assert all(len(item.supporting_reader_ids) == 2 for item in mapped_source)
+    assert min(item.label_similarity for item in mapped_source) >= 0.60
+    assert min(item.independent_label_similarity for item in mapped_source) >= 0.60
+    assert min(item.cross_reader_label_similarity for item in mapped_source) >= 0.85
+    assert {
+        item.report_norm_id
+        for item in result.schema_dispositions
+        if item.status == LCTTSchemaStatus.AMBIGUOUS_MAPPING.value
+    } == {4144, 4145, 4146, 4120, 4121}
+    assert {
+        item.row_id
+        for item in result.source_dispositions
+        if item.status == LCTTSourceRowStatus.SOURCE_ONLY_PDF_ROW.value
+    } == {"page-0007:row-0031", "page-0007:row-0032"}
 
 
 def test_non_direct_method_cannot_enter_direct_candidate_reconciliation(

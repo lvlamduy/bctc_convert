@@ -76,7 +76,9 @@ candidate_reconciliation:
   visible_source_row_total: 43
   minimum_independent_semantic_streams_for_automatic_selection: 2
   currently_available_independent_semantic_streams: 1
+  label_similarity_algorithm: MAX_FULL_OR_PARTIAL_RATIO_AFTER_RETRIEVAL_KEY
   minimum_monotone_candidate_label_score: 0.45
+  minimum_cross_reader_label_similarity: 0.85
   minimum_composite_anchor_runner_up_margin: 0.10
   not_observed_report_norm_ids:
     - 4143
