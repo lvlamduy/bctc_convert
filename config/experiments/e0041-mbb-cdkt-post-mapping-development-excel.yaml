@@ -1,0 +1,256 @@
+version: 1
+experiment_id: E-0041
+dataset_role: CALIBRATION
+state: MECHANISM_READY_FORMAL_CAPTURE_BLOCKED_PENDING_E0040_SEAL
+design: EXACT_ROW_ID_POST_MAPPING_JOIN_THEN_TEMPLATE_CLONE_WITH_SEPARATE_PROVENANCE
+
+formal_capture_gate:
+  status: BLOCKED_PENDING_AUTHENTICATED_E0040_ARTIFACT_AND_SEAL
+  required_mapping_authority: E0040_GENERIC_CALIBRATION_CHALLENGER
+  authenticated_e0040_artifact_bound: false
+  authenticated_e0040_seal_bound: false
+  e0038_may_be_used_as_formal_mapping_authority: false
+
+fixed_cardinality:
+  source_row_count: 64
+  physical_cell_count: 128
+  cells_per_source_row: 2
+  schema_row_count: 77
+  current_or_comparative: [CURRENT, COMPARATIVE]
+
+inputs:
+  e0037_postjoin:
+    path: docs/experiments/E-0037-mbb-cdkt-sealed-evidence-mapping.json
+    sha256: a44146ff98ac9b33dd7f04037e69ba258ef7361dc158ecbd51a6688d7fbb6f7b
+    size_bytes: 1045610
+    authority: PERIOD_UNIT_SCOPE_AND_NESTED_NUMERIC_EVIDENCE_ONLY
+    forbidden_fields:
+      - rows[].mapping
+      - cells[].mapping_status
+      - cells[].candidate_report_norm_ids
+      - cells[].selected_report_norm_id
+      - cells[].output_status
+      - cells[].selected_raw_value
+      - cells[].selected_normalized_value
+      - cells[].displayed_unit_value
+      - cells[].canonical_unit_value
+  e0038_mapping_challenger_regression_baseline:
+    path: output/calibration/e0038-mbb-cdkt-exact-mapping/mapping_only.json
+    sha256: 8b1074d2ca57efcb1c6da123615ace86438069b4d581b9afb4b6e4cfbf01a9e9
+    size_bytes: 646606
+    authority: REGRESSION_BASELINE_ONLY_NOT_FORMAL_E0041_AUTHORITY
+    row_mapping_json_pointer: /exact_mapping_bundle/exact_search/mapping_result_without_internal_alias_authority/row_mappings
+    schema_disposition_json_pointer: /exact_mapping_bundle/exact_search/mapping_result_without_internal_alias_authority/schema_dispositions
+  e0038_control_regression_baseline:
+    path: config/experiments/e0038-mbb-cdkt-exact-mapping.yaml
+    sha256: 59db541208b6295aeff0cead9b0c9cb8624962738726b128432b1ca4cb074855
+    size_bytes: 8814
+  cdkt_template:
+    path: template/Bank_CDKT_ReportNormId.xlsx
+    sha256: a07ff47f7c41011fe4ca5a66681106d476586ded9013b5874cbb9f67a6ad8486
+    size_bytes: 10945
+  reconstructed_geometry_registry:
+    path: output/calibration/e0041-mbb-cdkt-reconstructed-geometry/65fa9b7c0de1/crop_registry.json
+    sha256: 65fa9b7c0de1f0db26ae57a46dae2bb64c2475e3a87e5194461f208fc786cbef
+    size_bytes: 217837
+    authority: RECONSTRUCTED_GEOMETRY_WITH_CELL_SHA_PARITY
+    original_unavailable_registry_receipt:
+      path: output/calibration/e0034-mbb-cdkt-numeric-cells-v2/crop_registry.json
+      sha256: dc3800f8370bdd9a60ef9081c4051fa7ee7d0966cb56361a025e4114c90e788f
+      size_bytes: 216017
+      availability: ORIGINAL_BYTES_NOT_IN_REGISTERED_SNAPSHOT_OR_CONTENT_STORE
+    reconstruction_inputs:
+      builder:
+        path: src/bctc_ai/evaluation/numeric_cell_crops.py
+        sha256: fe2aa1d33d422888f2efa0399503743f978b1af1605e4f99ac2a872ba249cb29
+        size_bytes: 19014
+      policy:
+        path: config/tables/numeric-cell-crops-v2.yaml
+        sha256: f1dcbe668b70a9d71f08483f46aad01fc7cd719db96f8bd202d32554c5a7907b
+        size_bytes: 1099
+      e0033_row_contract:
+        path: docs/experiments/E-0033-mbb-cdkt-note-row-split-immutable.json
+        sha256: d9c0ecf44f6a0f652e6c991d3ab95b7ab0e821068366764e39a3f0de7f0711fb
+        size_bytes: 190290
+    required_parity:
+      exact_cell_id_set: true
+      exact_cell_count: 128
+      every_crop_sha256_equals_e0037_nested_numeric_evidence: true
+      every_cell_has_nonempty_source_row_ids: true
+      every_cell_has_source_space_crop_bbox: true
+
+mapping_join:
+  key: row_id
+  exact_row_id_set_equality_required: true
+  duplicate_row_id_rejected: true
+  duplicate_selected_report_norm_id_rejected: true
+  duplicate_report_norm_id_period_target_rejected: true
+  accepted_selected_statuses: [RESOLVED_ANCHOR, RESOLVED_PATH]
+  unselected_statuses: [BEST_PATH_SKIPPED, NO_ADMISSIBLE_PAIR, AMBIGUOUS_ACROSS_PATHS]
+  future_source_only_statuses: [SOURCE_ONLY_STRUCTURAL_ROW, OUT_OF_SCOPE_FOR_TARGET_TEMPLATE]
+  supported_in_memory_authority: E0040_GENERIC_CALIBRATION_CHALLENGER_FULL_RECEIPT_ENVELOPE
+  e0037_mapping_or_selected_output_fields_may_be_read: false
+  numeric_period_history_or_review_may_choose_mapping: false
+  unapproved_changed_alias_report_norm_ids: FAIL_CLOSED_AS_AMBIGUOUS
+  e0038_regression_baseline_unapproved_changed_alias_report_norm_ids: [4375, 5699]
+
+cell_status_contract:
+  statuses: [VALUE, ZERO, DASH, BLANK, NOT_OBSERVED, AMBIGUOUS, UNRESOLVED]
+  strict_numeric_arithmetic_operands: [VALUE, ZERO]
+  dash_numeric_value: null
+  blank_numeric_value: null
+  not_observed_numeric_value: null
+  ambiguous_numeric_value: null
+  unresolved_numeric_value: null
+  unmatched_schema_node_without_explicit_absence_authority: UNRESOLVED
+  unmatched_schema_node_with_skipped_candidates: AMBIGUOUS
+  explicit_not_observed_authority_required: true
+
+workbook:
+  source_sheet: Sheet1
+  preserved_template_range: A1:C78
+  template_identity_columns: [A, B, C]
+  output_columns:
+    D: CurrentValueVND
+    E: ComparativeValueVND
+    F: CurrentStatus
+    G: ComparativeStatus
+    H: CurrentPeriodEnd
+    I: ComparativePeriodEnd
+    J: CanonicalUnit
+    K: Scope
+  appended_sheets: [PROVENANCE, VALIDATION_DIAGNOSTICS, RUN_METADATA]
+  canonical_value_unit: VND
+  original_sheet_order_prefix_required: true
+  exact_template_identity_value_style_digest_required: true
+  deterministic_core_properties:
+    creator: bctc-ai/E-0041
+    last_modified_by: bctc-ai/E-0041
+    created_utc: "2000-01-01T00:00:00Z"
+    modified_utc: "2000-01-01T00:00:00Z"
+    version: "1"
+    revision: "1"
+    optional_free_text_fields_cleared: true
+    canonical_core_xml_sha256: a025959e8b178cfc6c6aae8f2d49d86fa305d3e36e165c8cbbc16923068668e4
+
+accounting_validation:
+  mode: DIAGNOSTIC_ONLY_NO_REPAIR
+  strict_operand_statuses: [VALUE, ZERO]
+  dash_as_zero_allowed: false
+  blank_as_zero_allowed: false
+  failed_check_may_change_mapping_status_or_value: false
+  strict_physical_visible_row_equations:
+    authority: NEWLY_FROZEN_CALIBRATION_MECHANISM_ASSERTION
+    mapping_independent_physical_row_ids: true
+    expected_family_count: 18
+    expected_finding_count: 36
+    equations:
+    - family_id: P3_R004
+      lhs_row_id: page-0003-row-004-label
+      rhs_row_ids: [page-0003-row-005-label, page-0003-row-006-label]
+      tolerance_vnd: 0
+    - family_id: P3_R008
+      lhs_row_id: page-0003-row-008-label
+      rhs_row_ids: [page-0003-row-009-label, page-0003-row-010-label]
+      tolerance_vnd: 0
+    - family_id: P3_R011
+      lhs_row_id: page-0003-row-011-label
+      rhs_row_ids: [page-0003-row-012-label, page-0003-row-013-label]
+      tolerance_vnd: 0
+    - family_id: P3_R014
+      lhs_row_id: page-0003-row-014-label
+      rhs_row_ids: [page-0003-row-015-label, page-0003-row-016-label, page-0003-row-017-label]
+      tolerance_vnd: 0
+    - family_id: P3_R018
+      lhs_row_id: page-0003-row-018-label
+      rhs_row_ids: [page-0003-row-019-label, page-0003-row-020-label, page-0003-row-021-label]
+      tolerance_vnd: 0
+    - family_id: P3_R022_VISIBLE_CHILDREN_ONLY
+      lhs_row_id: page-0003-row-022-label
+      rhs_row_ids: [page-0003-row-023-label, page-0003-row-026-label]
+      tolerance_vnd: 0
+    - family_id: P3_R023
+      lhs_row_id: page-0003-row-023-label
+      rhs_row_ids: [page-0003-row-024-label, page-0003-row-025-label]
+      tolerance_vnd: 0
+    - family_id: P3_R026
+      lhs_row_id: page-0003-row-026-label
+      rhs_row_ids: [page-0003-row-027-label, page-0003-row-028-label]
+      tolerance_vnd: 0
+    - family_id: P3_R029
+      lhs_row_id: page-0003-row-029-label
+      rhs_row_ids: [page-0003-row-030-label, page-0003-row-031-label]
+      tolerance_vnd: 0
+    - family_id: P3_R032
+      lhs_row_id: page-0003-row-032-label
+      rhs_row_ids: [page-0003-row-033-label, page-0003-row-034-label, page-0003-row-035-label, page-0003-row-036-label, page-0003-row-037-label]
+      tolerance_vnd: 0
+    - family_id: P3_R038_TOTAL
+      lhs_row_id: page-0003-row-038-label
+      rhs_row_ids: [page-0003-row-001-label, page-0003-row-002-label, page-0003-row-003-label, page-0003-row-004-label, page-0003-row-007-label, page-0003-row-008-label, page-0003-row-011-label, page-0003-row-014-label, page-0003-row-018-label, page-0003-row-022-label, page-0003-row-029-label, page-0003-row-032-label]
+      tolerance_vnd: 0
+    - family_id: P4_R007
+      lhs_row_id: page-0004-row-007-label
+      rhs_row_ids: [page-0004-row-008-label, page-0004-row-009-label, page-0004-row-010-label, page-0004-row-011-label]
+      tolerance_vnd: 0
+    - family_id: P4_R012
+      lhs_row_id: page-0004-row-012-label
+      rhs_row_ids: [page-0004-row-001-label, page-0004-row-002-label, page-0004-row-003-label, page-0004-row-004-label, page-0004-row-005-label, page-0004-row-006-label, page-0004-row-007-label]
+      tolerance_vnd: 0
+    - family_id: P4_R015
+      lhs_row_id: page-0004-row-015-label
+      rhs_row_ids: [page-0004-row-016-label, page-0004-row-017-label, page-0004-row-018-label]
+      tolerance_vnd: 0
+    - family_id: P4_R023_VISIBLE_CHILDREN_ONLY
+      lhs_row_id: page-0004-row-023-label
+      rhs_row_ids: [page-0004-row-015-label, page-0004-row-019-label, page-0004-row-020-label, page-0004-row-021-label, page-0004-row-022-label]
+      tolerance_vnd: 0
+    - family_id: P4_R024
+      lhs_row_id: page-0004-row-024-label
+      rhs_row_ids: [page-0004-row-012-label, page-0004-row-023-label]
+      tolerance_vnd: 0
+    - family_id: CROSS_P3_R038_EQUALS_P4_R024
+      lhs_row_id: page-0003-row-038-label
+      rhs_row_ids: [page-0004-row-024-label]
+      tolerance_vnd: 0
+    - family_id: CROSS_P3_R038_EQUALS_P4_R012_PLUS_P4_R023
+      lhs_row_id: page-0003-row-038-label
+      rhs_row_ids: [page-0004-row-012-label, page-0004-row-023-label]
+      tolerance_vnd: 0
+  secondary_schema_hierarchy:
+    enabled: false
+    separate_denominator: true
+
+outputs:
+  directory: output/calibration/e0041-mbb-cdkt-post-mapping-development-excel
+  workbook: mbb-cdkt-development.xlsx
+  provenance_json: provenance.json
+  publication: FD_RELATIVE_EXCLUSIVE_NO_OVERWRITE_PAIR_WITH_HELD_DIRFD_ROLLBACK_AND_FRESH_CANONICAL_CHAIN_REVALIDATION
+  publication_path_safety:
+    trusted_project_root_dirfd: O_DIRECTORY_NOFOLLOW
+    output_chain_traversal: COMPONENT_BY_COMPONENT_DIRFD_RELATIVE_NOFOLLOW
+    writes_and_rollback: HELD_OUTPUT_DIRFD_RELATIVE
+    success_gate: FRESH_CANONICAL_CHAIN_PARENT_AND_FILE_INODE_REVALIDATION
+  formal_publication_allowed_before_e0040_seal: false
+  overwrite_allowed: false
+
+forbidden_inputs:
+  - human_review_artifacts
+  - E0038_reviewed_evaluation
+  - E0039_review_packet_or_answers
+  - historical_or_mongodb_values
+  - Qwen_rejected_raw_output
+  - numeric_values_used_as_mapping_features
+  - ReportNormId_numeric_sort_order
+
+claim_boundary: >-
+  E-0041 is a calibration-only post-mapping mechanism. It joins a separately
+  frozen mapping challenger to the E-0037 period/unit/numeric postjoin only by
+  exact row_id after mapping has finished, retains all 128 physical cells, and
+  clones the supplied CDKT workbook without changing its A:C identity range.
+  Unapproved alias-dependent and unselected rows remain non-exportable. Its
+  arithmetic findings are diagnostics and cannot repair mapping, status, or
+  values. Formal capture is blocked until an authenticated E-0040 artifact and
+  seal are bound; E-0038 is retained only as a regression baseline. It is not
+  human gold, holdout evidence, production approval, or a claim that the current
+  unresolved rows are absent from the source.

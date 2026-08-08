@@ -1,0 +1,69 @@
+version: 1
+mode: TWO_PASS_GENERIC_SEMANTIC_NORMALIZATION_AND_COMBINED_PARENT
+calibration_status: CALIBRATION_CHALLENGER_NOT_PRODUCTION_APPROVED
+statement_type: CDKT
+bank_scope: ALL_BANKS
+
+base_projection:
+  node_count: 77
+  sha256: 7025ca729c01a3f2030af38e9745a0ee8d72b1dad60c8d4e3b7cf749e5eb860c
+  required_alias_authority: CANONICAL_AND_STRUCTURAL_ALIASES_ONLY
+
+base_mapper:
+  mode: ANCHORED_INTERVAL_K_BEST_MONOTONE_DP_FAIL_CLOSED
+  policy_sha256: 2f18880339b8e2c04ec3ba900919f174f8af478515adfbfb0e43ff80ddd13268
+  invocation_count: 2
+
+authority:
+  dataset_role: CALIBRATION
+  id_scoped_alias_rules_allowed: false
+  bank_page_or_row_rules_allowed: false
+  historical_features_allowed: false
+  numeric_period_or_unit_features_allowed: false
+  review_or_steward_answers_allowed: false
+  holdout_features_allowed: false
+  production_allowed: false
+
+normalization:
+  base_key: RETRIEVAL_KEY_V1
+  apply_symmetrically_to_source_and_schema: true
+  acronym_rules:
+    - full_form: ngân hàng nhà nước
+      acronym: nhnn
+    - full_form: tổ chức tín dụng
+      acronym: tctd
+  phrase_rewrites:
+    - source: tổng cộng
+      target: tổng
+    - source: tài sản có
+      target: tài sản
+  removable_particles:
+    - của
+  collapse_adjacent_duplicate_acronyms: true
+
+collision_gate:
+  universe: SAME_STATEMENT_ALL_CANONICAL_AND_STRUCTURAL_KEYS
+  compare_base_keys_plus_generic_derived_keys: true
+  reject_any_new_cross_id_exact_key_collision: true
+
+combined_parent_gate:
+  observed_role: DETAIL
+  effective_role: GROUP
+  required_child_set_complete: UNKNOWN
+  require_no_physical_parent: true
+  required_baseline_status: BEST_PATH_SKIPPED
+  require_group_inside_same_baseline_interval: true
+  require_all_schema_children_inside_interval: true
+  minimum_independent_reader_count: 2
+  minimum_group_label_score: 0.80
+  minimum_child_signature_coverage: 0.75
+  minimum_covered_child_count: 2
+  minimum_distinct_discriminating_token_count: 3
+  require_unique_passing_group: true
+
+source_only_guard:
+  never_relax_observed_roles:
+    - SECTION
+    - TOTAL
+  disposition: SOURCE_ONLY_STRUCTURAL_ROW_HYPOTHESIS_UNMATCHED
+  automatic_report_norm_id_assignment_allowed: false
