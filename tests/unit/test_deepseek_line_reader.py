@@ -76,6 +76,18 @@ def test_v2_config_preserves_aspect_and_bounds_generation_before_inference(proje
     assert config["inference"]["maximum_output_characters"] == 512
 
 
+def test_generic_line_reader_accepts_pinned_rtx4090_logical_row_config(project_root):
+    config, _, _ = load_deepseek_line_config(
+        project_root,
+        project_root / "config/models/deepseek-ocr2-line-rtx4090-v3.toml",
+    )
+
+    assert config["version"] == 3
+    assert config["evidence_role"] == "VIETNAMESE_LOGICAL_ROW_LABEL_PROPOSAL_ONLY"
+    assert config["runtime_compatibility"]["minimum_compute_capability"] == [8, 9]
+    assert config["runtime_compatibility"]["historical_blackwell_runtime_claimed"] is False
+
+
 def test_request_is_reference_blind_and_allowlisted():
     assert validate_reference_blind_line_request(_request()) == _request()["samples"]
 

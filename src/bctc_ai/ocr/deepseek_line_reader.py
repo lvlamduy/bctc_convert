@@ -91,14 +91,19 @@ def load_deepseek_line_config(
     expected_status = {
         1: "CALIBRATION_ONLY_REFERENCE_BLIND_BOUNDED_SEMANTIC_READER",
         2: "CALIBRATION_ONLY_REFERENCE_BLIND_ASPECT_PRESERVING_BOUNDED_SEMANTIC_READER",
+        3: "CALIBRATION_ONLY_RTX4090_REFERENCE_BLIND_ASPECT_PRESERVING_LOGICAL_ROW_LABEL_READER",
     }.get(version)
+    expected_evidence_role = (
+        "VIETNAMESE_LOGICAL_ROW_LABEL_PROPOSAL_ONLY"
+        if version == 3
+        else "VIETNAMESE_TITLE_LABEL_READING_ORDER_PROPOSAL_ONLY"
+    )
     if (
         expected_status is None
         or config.get("status") != expected_status
         or config.get("reader") != "DEEPSEEK_OCR_2"
         or config.get("geometry_authority") != "PP_OCRV6_WORD_BOXES"
-        or config.get("evidence_role")
-        != "VIETNAMESE_TITLE_LABEL_READING_ORDER_PROPOSAL_ONLY"
+        or config.get("evidence_role") != expected_evidence_role
     ):
         raise DeepSeekLineReaderError("DeepSeek line config identity or role drifted")
     base_identity = config.get("base_model")
@@ -113,12 +118,11 @@ def load_deepseek_line_config(
     inference = config.get("inference")
     if not isinstance(inference, dict) or (
         inference.get("prompt") != "<image>\nFree OCR."
-        or inference.get("crop_mode") is not (version == 2)
+        or inference.get("crop_mode") is not (version in {2, 3})
         or inference.get("attention_implementation") != "eager"
         or inference.get("network_permitted") is not False
         or inference.get("reference_text_available_to_decoder") is not False
-        or inference.get("target_policy")
-        != "FROZEN_PP_OCRV6_LINE_TITLE_OR_LOGICAL_ROW_CROPS_ONLY"
+        or inference.get("target_policy") != "FROZEN_PP_OCRV6_LINE_TITLE_OR_LOGICAL_ROW_CROPS_ONLY"
         or not isinstance(inference.get("maximum_nonempty_output_lines"), int)
         or int(inference["maximum_nonempty_output_lines"]) < 1
     ):
@@ -130,7 +134,7 @@ def load_deepseek_line_config(
         for key in ("base_size", "image_size")
     ):
         raise DeepSeekLineReaderError("DeepSeek line image sizing is invalid")
-    if version == 2 and (
+    if version in {2, 3} and (
         inference.get("aspect_preservation") != "OFFICIAL_IMAGEOPS_PAD"
         or inference.get("upstream_requested_maximum_new_tokens") != 8192
         or isinstance(inference.get("maximum_new_tokens"), bool)
@@ -144,6 +148,17 @@ def load_deepseek_line_config(
     safety = config.get("safety")
     if not isinstance(safety, dict) or not safety or any(bool(value) for value in safety.values()):
         raise DeepSeekLineReaderError("DeepSeek line config grants forbidden authority")
+    if version == 3:
+        compatibility = config.get("runtime_compatibility")
+        if (
+            not isinstance(compatibility, dict)
+            or compatibility.get("gpu_family") != "NVIDIA_GEFORCE_RTX_4090_ADA"
+            or compatibility.get("minimum_compute_capability") != [8, 9]
+            or compatibility.get("cuda_runtime") != "13.0"
+            or compatibility.get("bf16_required") is not True
+            or compatibility.get("historical_blackwell_runtime_claimed") is not False
+        ):
+            raise DeepSeekLineReaderError("DeepSeek RTX 4090 compatibility policy drifted")
     base_inference = base.get("inference")
     base_safety = base.get("safety")
     if not isinstance(base_inference, dict) or (
@@ -167,8 +182,7 @@ def validate_reference_blind_line_request(payload: dict[str, Any]) -> list[dict[
         or payload.get("experiment_id") != "E-0024"
         or payload.get("state") != "READY_FOR_REFERENCE_BLIND_LINE_INFERENCE"
         or payload.get("dataset_role") != "LOGIC_DEVELOPMENT_AND_CALIBRATION"
-        or payload.get("evidence_role")
-        != "INDEPENDENT_VIETNAMESE_SEMANTIC_PROPOSAL_ONLY"
+        or payload.get("evidence_role") != "INDEPENDENT_VIETNAMESE_SEMANTIC_PROPOSAL_ONLY"
         or payload.get("git_dirty") is not False
         or payload.get("reference_text_available_to_reader") is not False
     ):
@@ -373,9 +387,7 @@ def run_deepseek_line_reader(
         raise DeepSeekLineReaderError("formal DeepSeek line inference requires clean Git code")
     config, base, config_file = load_deepseek_line_config(project_root, config_path)
     request_file = _project_path(project_root, request_path.as_posix(), "line-reader request")
-    destination = _project_path(
-        project_root, output_directory.as_posix(), "DeepSeek line output"
-    )
+    destination = _project_path(project_root, output_directory.as_posix(), "DeepSeek line output")
     if destination.exists():
         raise DeepSeekLineReaderError(f"refusing to overwrite DeepSeek line output: {destination}")
     try:
@@ -386,9 +398,7 @@ def run_deepseek_line_reader(
         raise DeepSeekLineReaderError("reference-blind line request must be an object")
     samples = validate_reference_blind_line_request(request)
     crop_manifest = request["crop_manifest"]
-    crop_manifest_path = _project_path(
-        project_root, str(crop_manifest["path"]), "crop manifest"
-    )
+    crop_manifest_path = _project_path(project_root, str(crop_manifest["path"]), "crop manifest")
     if (
         not crop_manifest_path.is_file()
         or sha256_file(crop_manifest_path) != crop_manifest["sha256"]
@@ -410,9 +420,7 @@ def run_deepseek_line_reader(
             raise DeepSeekLineReaderError("line crop dimensions are invalid")
         verified_samples.append(sample | {"resolved_crop": crop, "width": width, "height": height})
 
-    model_directory = (
-        model_cache_root.resolve() / "official_models" / str(base["cache_directory"])
-    )
+    model_directory = model_cache_root.resolve() / "official_models" / str(base["cache_directory"])
     model_artifacts = _verify_model(model_directory, base)
     package_versions = _verify_packages(base)
     os.environ["HF_HUB_OFFLINE"] = "1"
@@ -428,7 +436,9 @@ def run_deepseek_line_reader(
 
     if not torch.cuda.is_available() or not torch.cuda.is_bf16_supported():
         raise DeepSeekLineReaderError("DeepSeek line reader requires BF16 CUDA")
-    compatibility = base["runtime_compatibility"]
+    compatibility = (
+        config["runtime_compatibility"] if config["version"] == 3 else base["runtime_compatibility"]
+    )
     capability = list(torch.cuda.get_device_capability(0))
     if capability < list(compatibility["minimum_compute_capability"]):
         raise DeepSeekLineReaderError("GPU compute capability is below DeepSeek minimum")
@@ -441,15 +451,19 @@ def run_deepseek_line_reader(
     tokenizer = AutoTokenizer.from_pretrained(
         model_directory.as_posix(), trust_remote_code=True, local_files_only=True
     )
-    model = AutoModel.from_pretrained(
-        model_directory.as_posix(),
-        trust_remote_code=True,
-        local_files_only=True,
-        use_safetensors=True,
-        _attn_implementation="eager",
-        torch_dtype=torch.bfloat16,
-    ).eval().cuda()
-    if config["version"] == 2:
+    model = (
+        AutoModel.from_pretrained(
+            model_directory.as_posix(),
+            trust_remote_code=True,
+            local_files_only=True,
+            use_safetensors=True,
+            _attn_implementation="eager",
+            torch_dtype=torch.bfloat16,
+        )
+        .eval()
+        .cuda()
+    )
+    if config["version"] in {2, 3}:
         install_generation_token_cap(
             model,
             upstream_requested_maximum_new_tokens=int(
@@ -460,9 +474,7 @@ def run_deepseek_line_reader(
     torch.cuda.synchronize()
     load_seconds = time.perf_counter() - load_started
 
-    temporary_internal = Path(
-        tempfile.mkdtemp(prefix="bctc-deepseek-line-", dir="/dev/shm")
-    )
+    temporary_internal = Path(tempfile.mkdtemp(prefix="bctc-deepseek-line-", dir="/dev/shm"))
     records = []
     try:
         for sample in verified_samples:
@@ -488,9 +500,7 @@ def run_deepseek_line_reader(
                 raw_output,
                 maximum_nonempty_lines=int(inference["maximum_nonempty_output_lines"]),
                 maximum_output_characters=(
-                    int(inference["maximum_output_characters"])
-                    if config["version"] == 2
-                    else None
+                    int(inference["maximum_output_characters"]) if config["version"] == 2 else None
                 ),
             )
             if internal_output.exists():
