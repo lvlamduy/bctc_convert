@@ -1,0 +1,95 @@
+version: 1
+policy: REGISTERED_NATIVE_STATEMENT_ROWS_V1
+claim_boundary: UNMAPPED_SOURCE_ROWS_AND_CELLS_ONLY
+
+# This Role-B stage may recover source-visible rows, cells, axes, periods, and
+# units from pages accepted by registered native statement discovery. It makes
+# no canonical-item, ReportNormId, hierarchy, accounting, or Excel decisions.
+source_registry: data/registered/source_registry.jsonl
+dataset_role_registry: data/registered/dataset_roles.jsonl
+allowed_dataset_roles:
+  - LOGIC_DEVELOPMENT
+  - CALIBRATION
+  - VALIDATION
+  - PRODUCTION_INPUT
+forbidden_dataset_roles:
+  - UNTOUCHED_HOLDOUT
+require_clean_git: true
+require_registered_pdf: true
+require_hash_verified_stable: true
+
+accepted_statement_discovery:
+  format_version: REGISTERED_NATIVE_TEXT_STATEMENT_DISCOVERY_RESULT_V1
+  policy: REGISTERED_NATIVE_TEXT_STATEMENT_DISCOVERY_V1
+  claim_boundary: STATEMENT_PAGE_DISCOVERY_ONLY
+  status: ACCEPTED_NATIVE_TEXT_STATEMENT_DISCOVERY
+  inner_policy: NATIVE_TEXT_MULTI_SIGNAL_ORDERED_DOCUMENT_DISCOVERY_V1
+  inner_status: ACCEPTED_MULTI_SIGNAL_STATEMENT_BLOCK
+  geometry_authority: PYMUPDF_NATIVE_TEXT_WORDS
+  evidence_source: PYMUPDF_NATIVE_TEXT_GEOMETRY
+
+native_text_quality_config:
+  path: config/ocr/native-text-quality-v2.yaml
+  sha256: af0d735ea026abc7b189da46d36f103d1390687325324ecc1a325ba6ab51a660
+geometry_config:
+  path: config/tables/geometry-v2.yaml
+  sha256: df6ef38d66f8d985c4d207670c391c7156b1ea1358202604a634ead884743db3
+
+page_selection:
+  main_statement_types: [CDKT, KQKD, LCTT]
+  main_scope: MAIN_STATEMENT
+  require_mapping_eligible: true
+  include_recognized_cdkt_off_balance: true
+  off_balance_statement_type: CDKT
+  off_balance_scope: OFF_BALANCE_SHEET
+  require_local_or_bounded_inference: true
+  allow_bounded_inferred_page_contracts: true
+  notes_pages_allowed: false
+
+row_reconstruction:
+  extractor: NATIVE_TEXT_QUALITY_V2_SELECTED_PAGES_ONLY
+  geometry: GEOMETRY_V2_NATIVE_WORD_BOXES
+  row_assembler: PDF_STATEMENT_ROWS
+  table_span: FINANCIAL_TABLE_SPAN
+  header_binding: AXIS_LOCAL_VISIBLE_HEADER_BINDING
+  preserve_section_headers: true
+  preserve_unlabeled_numeric_rows: true
+  preserve_rows_outside_financial_span_for_audit: true
+
+role_isolation:
+  runtime_input_allowlist:
+    - SOURCE_PDF
+    - SOURCE_REGISTRY
+    - DATASET_ROLE_REGISTRY
+    - ACCEPTED_STATEMENT_DISCOVERY
+    - THIS_POLICY
+    - NATIVE_TEXT_QUALITY_CONFIG
+    - GEOMETRY_CONFIG
+  forbidden_path_fragments:
+    - /reference/
+    - /human_review/
+    - /human-review/
+    - /review/
+    - /history/
+    - /comparisons/
+    - /docs/experiments/
+    - /config/experiments/
+    - /output/holdout/
+  prior_answer_artifacts_allowed: false
+  historical_values_allowed: false
+  role_a_outputs_allowed: false
+  schema_inputs_allowed: false
+  template_inputs_allowed: false
+
+output:
+  format: REGISTERED_NATIVE_STATEMENT_ROWS_RESULT_V1
+  status: ACCEPTED_NATIVE_STATEMENT_ROWS
+  exclusive_no_overwrite: true
+  absolute_project_paths_allowed: false
+  source_visible_text_preserved_verbatim: true
+  deterministic_json: true
+  role_directories:
+    LOGIC_DEVELOPMENT: output/development
+    CALIBRATION: output/calibration
+    VALIDATION: output/validation
+    PRODUCTION_INPUT: output/production

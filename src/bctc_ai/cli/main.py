@@ -253,6 +253,31 @@ def _run_discover_statements(args: argparse.Namespace) -> int:
     return 0 if result.payload["status"] == "ACCEPTED_NATIVE_TEXT_STATEMENT_DISCOVERY" else 1
 
 
+def _run_extract_native_rows(args: argparse.Namespace) -> int:
+    from bctc_ai.rows.native_statement import publish_registered_native_statement_rows
+
+    root = _project_root(args.project_root)
+
+    def resolve(raw: str) -> Path:
+        path = Path(raw)
+        return path.resolve() if path.is_absolute() else (root / path).resolve()
+
+    result = publish_registered_native_statement_rows(
+        root,
+        resolve(args.pdf),
+        resolve(args.discovery),
+        args.discovery_sha256,
+        resolve(args.policy),
+        args.run_id,
+        resolve(args.output),
+    )
+    print(f"NATIVE_STATEMENT_ROWS_STATUS={result.payload['status']}")
+    print(f"NATIVE_STATEMENT_ROWS_ARTIFACT={result.path.relative_to(root)}")
+    print(f"NATIVE_STATEMENT_ROWS_SHA256={result.sha256}")
+    print(f"NATIVE_STATEMENT_ROWS_BYTES={result.size_bytes}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="bctc-ai")
     parser.add_argument("--project-root", help="repository root; defaults to current directory")
@@ -325,6 +350,21 @@ def build_parser() -> argparse.ArgumentParser:
         default="config/document_phase/native-statement-discovery-v1.yaml",
     )
     discover.set_defaults(handler=_run_discover_statements)
+
+    native_rows = subparsers.add_parser(
+        "extract-native-rows",
+        help="extract unmapped statement rows from accepted native statement discovery",
+    )
+    native_rows.add_argument("--pdf", required=True)
+    native_rows.add_argument("--discovery", required=True)
+    native_rows.add_argument("--discovery-sha256", required=True)
+    native_rows.add_argument("--output", required=True)
+    native_rows.add_argument("--run-id", default="registered-native-statement-rows-v1")
+    native_rows.add_argument(
+        "--policy",
+        default="config/rows/native-statement-rows-v1.yaml",
+    )
+    native_rows.set_defaults(handler=_run_extract_native_rows)
 
     backup = subparsers.add_parser("backup")
     backup.add_argument("--destination", required=True)
