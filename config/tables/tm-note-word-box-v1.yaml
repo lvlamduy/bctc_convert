@@ -1,0 +1,74 @@
+version: 1
+policy: REPEATED_TM_NOTE_WORD_BOX_V1
+geometry_authority: PP_OCRV6_WORD_BOXES
+statement_type: TM
+mapping_authority: false
+
+minimum_line_score: 0.0
+
+semantic_matching:
+  minimum_section_title_similarity: 0.82
+  minimum_note_title_similarity: 0.76
+  minimum_header_similarity: 0.82
+  minimum_label_classification_similarity: 0.90
+  section_title_anchors:
+    - thong tin bo sung cho cac khoan muc trinh bay trong bao cao tinh hinh tai chinh hop nhat
+  scope_anchors:
+    CONSOLIDATED:
+      - hop nhat
+    SEPARATE:
+      - rieng le
+      - rieng cua ngan hang
+  unit_anchors:
+    - text: trieu dong
+      canonical: VND
+      multiplier: 1000000
+  notes:
+    - note_number: 1
+      title_anchors:
+        - tien mat vang bac da quy
+      root_candidate_report_norm_ids: [561]
+    - note_number: 2
+      title_anchors:
+        - tien gui tai nhnn
+        - tien gui tai ngan hang nha nuoc
+      root_candidate_report_norm_ids: [569]
+    - note_number: 3
+      title_anchors:
+        - tien gui va cho vay cac tctd khac
+      root_candidate_report_norm_ids: [575]
+  structural_label_anchors:
+    - trong do
+  source_only_label_anchors:
+    - tien gui tai ngan hang nha nuoc lao
+    - tien gui tai ngan hang quoc gia campuchia
+  ambiguous_labels:
+    - label_anchors:
+        - du phong rui ro
+        - d phong ri ro
+      candidate_report_norm_ids: [583, 590]
+
+header_geometry:
+  maximum_date_to_unit_center_distance_line_heights: 2.0
+  minimum_axis_separation_line_heights: 5.0
+
+table_geometry:
+  note_anchor_max_x_ratio: 0.20
+  note_title_vertical_tolerance_line_heights: 1.0
+  numeric_axis_max_distance_ratio: 0.45
+  numeric_axis_right_overrun_line_heights: 0.75
+  row_anchor_cluster_line_heights: 0.35
+  label_direct_attach_line_heights: 0.65
+  label_boundary_axis_gap_ratio: 0.35
+  page_footer_top_ratio: 0.92
+
+# This layer reconstructs visible TM note tables and exposes mapping candidates.
+# It cannot approve ReportNormIds or infer values from schema/accounting context.
+forbidden_semantic_inputs:
+  - numeric_value_as_period_or_scope_feature
+  - horizontal_position_as_current_or_comparative_role
+  - template_labels_as_row_reconstruction_input
+  - approved_report_norm_id_assignment
+  - historical_or_mongodb_values
+  - human_review_answers
+  - accounting_equations_as_value_imputation
