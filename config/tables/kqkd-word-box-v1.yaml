@@ -1,0 +1,72 @@
+version: 1
+policy: HIERARCHICAL_KQKD_WORD_BOX_V1
+geometry_authority: PP_OCRV6_WORD_BOXES
+statement_type: KQKD
+
+minimum_line_score: 0.0
+
+semantic_matching:
+  minimum_title_similarity: 0.86
+  minimum_header_similarity: 0.86
+  minimum_distinct_semantics_margin: 0.08
+  statement_title_anchors:
+    - bao cao ket qua hoat dong
+  scope_anchors:
+    CONSOLIDATED:
+      - hop nhat
+    SEPARATE:
+      - rieng le
+      - rieng cua ngan hang
+  group_anchors:
+    QUARTER:
+      - so phat sinh quy
+      - phat sinh trong quy
+    YTD:
+      - luy ke tu dau nam den cuoi quy
+      - luy ke dau nam den cuoi quy
+  role_anchors:
+    CURRENT:
+      - nam nay
+      - ky nay
+    COMPARATIVE:
+      - nam truoc
+      - ky truoc
+  unit_anchors:
+    - text: trieu dong
+      canonical: VND
+      multiplier: 1000000
+    - text: trieu vnd
+      canonical: VND
+      multiplier: 1000000
+    - text: nghin dong
+      canonical: VND
+      multiplier: 1000
+    - text: nghin vnd
+      canonical: VND
+      multiplier: 1000
+
+header_geometry:
+  maximum_role_to_unit_center_distance_line_heights: 5.0
+  maximum_group_to_axis_center_distance_line_heights: 10.5
+  minimum_axis_separation_line_heights: 4.0
+
+table_geometry:
+  axis_right_edge_max_distance_ratio: 0.65
+  axis_right_overrun_line_heights: 0.50
+  row_anchor_cluster_line_heights: 0.55
+  label_direct_attach_line_heights: 1.10
+  label_below_anchor_tolerance_line_heights: 0.35
+  wrapped_label_center_gap_line_heights: 1.25
+  note_attach_line_heights: 1.25
+  label_boundary_axis_gap_ratio: 0.45
+
+# Header semantics are derived only from visible title/group/role/unit word boxes.
+# Numeric text is consumed only after all four axes have been bound.
+forbidden_header_inputs:
+  - numeric_cell_text_or_value_as_period_feature
+  - numeric_value_equality_between_quarter_and_ytd
+  - numeric_value_magnitude
+  - template_labels_or_report_norm_ids
+  - historical_or_mongodb_values
+  - human_review_period_or_scope_answers
+  - horizontal_position_as_current_or_comparative_role
