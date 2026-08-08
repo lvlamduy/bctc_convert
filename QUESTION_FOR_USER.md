@@ -4,7 +4,7 @@ Updated: 2026-08-08
 
 - **CDKT unresolved:** 7 active issues — all 7 are `NEEDS_USER_REVIEW`; Codex continues work elsewhere without waiting.
 - **KQKD unresolved:** 1 source-only row; 0 unresolved schema mappings.
-- **LCTT unresolved:** 46 schema items (41 provisional candidates + 5 ambiguous) and 2 source-only composite rows.
+- **LCTT unresolved:** 6 schema items (5 composite candidates + 1 label conflict) and 2 source-only composite rows.
 - **TM unresolved:** 3 meaningful questions in the first audited batch; the remaining notes are still being itemized.
 
 CDKT schema reconciliation is exact: `77 = 61 MAPPED + 15 NOT_OBSERVED_IN_THIS_PDF + 1 UNRESOLVED`. The not-observed IDs are `4344, 4326, 4345, 4333, 4309, 4303, 4359, 4360, 4373, 4340, 4374, 4341, 4329, 4369, 4370`. Three source-only CDKT rows remain outside the denominator.
@@ -128,6 +128,19 @@ CDKT schema reconciliation is exact: `77 = 61 MAPPED + 15 NOT_OBSERVED_IN_THIS_P
 - **What Codex currently thinks:** forcing the signed row into either directional ID loses the other business meaning.
 - **Question for user:** Should the row map by sign to 4120/4121, remain source-only, or receive a net-flow schema identity?
 
+### Q018
+
+- **Statement:** LCTT
+- **Document:** MBB consolidated Q1/2026, direct method
+- **PDF page:** 7, row 24
+- **Visible row label:** `Tăng/(Giảm) các công cụ tài chính phái sinh và các tài sản tài chính khác`
+- **Visible values/periods:** (37.183) / 334.598 triệu đồng for current/comparative duration.
+- **Current status:** `LABEL_CONFLICT_CANDIDATE_NOT_AUTOMATIC`; values remain provenance-only.
+- **Candidate ReportNormId(s):** 4140; 4131 is the earlier asset-side row and is already occupied.
+- **Why unresolved:** both PP-OCR and DeepSeek read `tài sản tài chính khác`, while schema 4140 says `các khoản nợ tài chính khác`; the row sits inside the liability-change section.
+- **What Codex currently thinks:** section/order favors 4140, but the visible/schema wording conflict is too material for automatic export.
+- **Question for user:** Is the PDF wording an issuer typo/variant that should map to 4140, or should this row receive a different schema treatment?
+
 ## NEEDS_USER_REVIEW — NUMERIC CONFIRMATION
 
 ### Q010
@@ -184,7 +197,6 @@ CDKT schema reconciliation is exact: `77 = 61 MAPPED + 15 NOT_OBSERVED_IN_THIS_P
 
 ## CODEX_STILL_INVESTIGATING
 
-- **LCTT:** Codex is obtaining an independent label stream for the 41 ordered candidates; they stay non-automatic until that evidence agrees. The five ambiguous IDs are already exposed in Q013–Q014.
 - **TM:** only the first quantitative-note page has been reconciled so far. Codex is continuing page-by-page itemization across pages 30–61; unassessed rows will be added here once they become concrete item-level ambiguities rather than a blanket denominator.
 
 ## RESOLVED_BY_CODEX
@@ -193,3 +205,4 @@ CDKT schema reconciliation is exact: `77 = 61 MAPPED + 15 NOT_OBSERVED_IN_THIS_P
 - **Q008 / 4369:** finance-lease original cost is `NOT_OBSERVED_IN_THIS_PDF`; parent-subtype gating removed the false candidate.
 - **Q009 / 4370:** finance-lease accumulated depreciation is `NOT_OBSERVED_IN_THIS_PDF`; parent-subtype gating removed the false candidate.
 - **Q011 / scope:** visible title evidence binds MBB Q1/2026 to `CONSOLIDATED`; the older sealed E-0041 receipt remains unchanged and still records its historical `UNKNOWN` value.
+- **LCTT 40 one-to-one rows:** resolved algorithmically by exact row order plus independent PP-OCR and DeepSeek semantic agreement; they are now `MAPPED`. The two composite rows, five composite candidate IDs and one label conflict remain unresolved in Q013–Q014 and Q018.
