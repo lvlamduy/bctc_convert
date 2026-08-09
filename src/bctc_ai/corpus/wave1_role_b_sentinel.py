@@ -196,6 +196,10 @@ def _load_policy(project_root: Path) -> dict[str, Any]:
             "global_execution_lease_filename": "sentinel-execution.lease",
             "orphan_worker_reconciliation": ("BLOCK_NEW_SUPERVISOR_UNTIL_INHERITED_LEASE_RELEASE"),
             "environment_scope": "PER_SHARD_PRIVATE_RUNTIME_ROOT",
+            "provider_input_materialization": "PER_SHARD_PRIVATE_IMMUTABLE_PNG_COPY_V1",
+            "provider_input_filename": "REQUEST_SHA256_DOT_PNG",
+            "provider_input_mode": "0444",
+            "provider_input_hardlink_to_evidence_allowed": False,
             "protocol": "EXCLUSIVE_CANONICAL_JSON_RESPONSE_FILES_V1",
             "network_policy": "PYTHON_AUDIT_SOCKET_CONNECT_DENIED",
             "environment": {
@@ -606,6 +610,12 @@ def build_authenticated_control(
         "global_execution_lease_filename": policy["worker"]["global_execution_lease_filename"],
         "orphan_worker_reconciliation": policy["worker"]["orphan_worker_reconciliation"],
         "environment_scope": policy["worker"]["environment_scope"],
+        "provider_input_materialization": policy["worker"]["provider_input_materialization"],
+        "provider_input_filename": policy["worker"]["provider_input_filename"],
+        "provider_input_mode": policy["worker"]["provider_input_mode"],
+        "provider_input_hardlink_to_evidence_allowed": policy["worker"][
+            "provider_input_hardlink_to_evidence_allowed"
+        ],
         "arbitrary_inherited_environment_allowed": False,
     }
     control = {
@@ -990,7 +1000,11 @@ def _put_object(
         return _object_ref(project_root / OUTPUT_RELATIVE_ROOT, object_path, digest, len(payload))
 
 
-def _read_object(project_root: Path, reference: dict[str, Any], suffix: str) -> bytes:
+def _read_object_with_identity(
+    project_root: Path,
+    reference: dict[str, Any],
+    suffix: str,
+) -> tuple[bytes, os.stat_result]:
     if not isinstance(reference, dict) or set(reference) != {"path", "sha256", "size_bytes"}:
         raise WaveOneRoleBSentinelError("object reference fields drifted")
     digest = reference.get("sha256")
@@ -1017,7 +1031,11 @@ def _read_object(project_root: Path, reference: dict[str, Any], suffix: str) -> 
             or identity.st_nlink != 1
         ):
             raise WaveOneRoleBSentinelError("content-addressed evidence object drifted")
-        return payload
+        return payload, identity
+
+
+def _read_object(project_root: Path, reference: dict[str, Any], suffix: str) -> bytes:
+    return _read_object_with_identity(project_root, reference, suffix)[0]
 
 
 def _json_object(payload: bytes, label: str) -> dict[str, Any]:
@@ -1824,7 +1842,12 @@ def _create_runtime_root(project_root: Path, execution_nonce: str) -> Path:
         if not stat.S_ISDIR(identity.st_mode) or stat.S_IMODE(identity.st_mode) != 0o700:
             raise WaveOneRoleBSentinelError("runtime root mode or type drifted")
     root = project_root / runtime_parent / name
-    relative_directories = [Path("shard-0/responses"), Path("shard-1/responses")]
+    relative_directories = [
+        Path("shard-0/inputs"),
+        Path("shard-0/responses"),
+        Path("shard-1/inputs"),
+        Path("shard-1/responses"),
+    ]
     for shard_id in (0, 1):
         environment_root = Path(f"shard-{shard_id}/environment")
         relative_directories.extend(
@@ -1846,6 +1869,125 @@ def _create_runtime_root(project_root: Path, execution_nonce: str) -> Path:
         ):
             pass
     return root
+
+
+def _materialize_private_shard_inputs(
+    project_root: Path,
+    runtime_relative: Path,
+    shard_id: int,
+    requests: list[dict[str, Any]],
+    renders: dict[str, dict[str, Any]],
+    policy: dict[str, Any],
+) -> dict[str, dict[str, Any]]:
+    """Copy exact evidence PNG bytes to suffix-bearing private provider inputs."""
+
+    if shard_id not in {0, 1}:
+        raise WaveOneRoleBSentinelError("private provider input shard is invalid")
+    worker_policy = policy.get("worker")
+    if not isinstance(worker_policy, dict) or any(
+        worker_policy.get(key) != value
+        for key, value in (
+            (
+                "provider_input_materialization",
+                "PER_SHARD_PRIVATE_IMMUTABLE_PNG_COPY_V1",
+            ),
+            ("provider_input_filename", "REQUEST_SHA256_DOT_PNG"),
+            ("provider_input_mode", "0444"),
+            ("provider_input_hardlink_to_evidence_allowed", False),
+        )
+    ):
+        raise WaveOneRoleBSentinelError("private provider input policy drifted")
+    expected_runtime_prefix = OUTPUT_RELATIVE_ROOT / "runtime"
+    try:
+        runtime_name = runtime_relative.relative_to(expected_runtime_prefix).as_posix()
+    except ValueError as error:
+        raise WaveOneRoleBSentinelError("private provider runtime root escaped") from error
+    if re.fullmatch(r"execution-[0-9a-f]{64}", runtime_name) is None:
+        raise WaveOneRoleBSentinelError("private provider runtime identity is malformed")
+    with _held_directory(project_root, runtime_relative, create=False) as (
+        _runtime,
+        runtime_fd,
+    ):
+        runtime_identity = os.fstat(runtime_fd)
+        if stat.S_IMODE(runtime_identity.st_mode) != 0o700:
+            raise WaveOneRoleBSentinelError("private provider runtime root mode drifted")
+
+    inputs_relative = runtime_relative / f"shard-{shard_id}" / "inputs"
+    private_inputs: dict[str, dict[str, Any]] = {}
+    for request in sorted(requests, key=lambda item: item["sentinel_ordinal"]):
+        request_sha = request.get("request_sha256")
+        if not _is_sha256(request_sha) or request_sha in private_inputs:
+            raise WaveOneRoleBSentinelError("private provider request identity drifted")
+        render = renders.get(request_sha)
+        if not isinstance(render, dict) or set(render) != {
+            "payload",
+            "ref",
+            "pixel_width",
+            "pixel_height",
+            "dpi",
+            "coordinate_authority",
+        }:
+            raise WaveOneRoleBSentinelError("private provider render contract drifted")
+        source_payload, source_before = _read_object_with_identity(
+            project_root,
+            render["ref"],
+            ".png",
+        )
+        if source_payload != render["payload"]:
+            raise WaveOneRoleBSentinelError("private provider source render bytes drifted")
+        filename = f"{request_sha}.png"
+        private_path = _publish_exclusive(
+            project_root,
+            inputs_relative,
+            filename,
+            source_payload,
+        )
+        with _held_directory(project_root, inputs_relative, create=False) as (
+            _inputs,
+            inputs_fd,
+        ):
+            private_payload, private_identity = _hash_open_at(inputs_fd, filename)
+        source_after_payload, source_after = _read_object_with_identity(
+            project_root,
+            render["ref"],
+            ".png",
+        )
+        source_identity_before = (
+            source_before.st_dev,
+            source_before.st_ino,
+            source_before.st_size,
+            source_before.st_mtime_ns,
+            source_before.st_nlink,
+            stat.S_IMODE(source_before.st_mode),
+        )
+        source_identity_after = (
+            source_after.st_dev,
+            source_after.st_ino,
+            source_after.st_size,
+            source_after.st_mtime_ns,
+            source_after.st_nlink,
+            stat.S_IMODE(source_after.st_mode),
+        )
+        if (
+            source_after_payload != source_payload
+            or source_identity_after != source_identity_before
+            or source_before.st_nlink != 1
+            or stat.S_IMODE(source_before.st_mode) != 0o444
+            or private_payload != source_payload
+            or private_identity.st_nlink != 1
+            or stat.S_IMODE(private_identity.st_mode) != 0o444
+            or (private_identity.st_dev, private_identity.st_ino)
+            == (source_before.st_dev, source_before.st_ino)
+        ):
+            raise WaveOneRoleBSentinelError("private provider input copy identity drifted")
+        private_inputs[request_sha] = {
+            "path": private_path.as_posix(),
+            "sha256": render["ref"]["sha256"],
+            "size_bytes": render["ref"]["size_bytes"],
+        }
+    if set(private_inputs) != {request["request_sha256"] for request in requests}:
+        raise WaveOneRoleBSentinelError("private provider input accounting drifted")
+    return private_inputs
 
 
 def _worker_environment(
@@ -1959,6 +2101,7 @@ def _build_worker_task(
     shard_id: int,
     requests: list[dict[str, Any]],
     renders: dict[str, dict[str, Any]],
+    private_inputs: dict[str, dict[str, Any]],
     execution_nonce: str,
     environment: dict[str, str],
     execution_lease_fd: int,
@@ -1975,14 +2118,32 @@ def _build_worker_task(
         raise WaveOneRoleBSentinelError("inherited execution lease identity drifted")
     page_tasks = []
     for request in sorted(requests, key=lambda item: item["sentinel_ordinal"]):
-        render = renders[request["request_sha256"]]
-        image_path = project_root / OUTPUT_RELATIVE_ROOT / render["ref"]["path"]
+        request_sha = request["request_sha256"]
+        render = renders[request_sha]
+        private_input = private_inputs.get(request_sha)
+        expected_private_path = (
+            project_root
+            / OUTPUT_RELATIVE_ROOT
+            / "runtime"
+            / f"execution-{execution_nonce}"
+            / f"shard-{shard_id}"
+            / "inputs"
+            / f"{request_sha}.png"
+        )
+        if (
+            not isinstance(private_input, dict)
+            or set(private_input) != {"path", "sha256", "size_bytes"}
+            or private_input["sha256"] != render["ref"]["sha256"]
+            or private_input["size_bytes"] != render["ref"]["size_bytes"]
+            or private_input["path"] != expected_private_path.as_posix()
+        ):
+            raise WaveOneRoleBSentinelError("private provider input task binding drifted")
         page_tasks.append(
             {
-                "request_sha256": request["request_sha256"],
+                "request_sha256": request_sha,
                 "render_sha256": render["ref"]["sha256"],
                 "render_size_bytes": render["ref"]["size_bytes"],
-                "image_path": image_path.as_posix(),
+                "image_path": private_input["path"],
                 "pixel_width": render["pixel_width"],
                 "pixel_height": render["pixel_height"],
                 "response_filename": f"{request['request_sha256']}.response.json",
@@ -2146,6 +2307,14 @@ def _run_pinned_workers(
             response_directories[shard_id] = response_contexts.enter_context(
                 _held_directory(project_root, shard_relative / "responses", create=False)
             )
+            private_inputs = _materialize_private_shard_inputs(
+                project_root,
+                runtime_relative,
+                shard_id,
+                requests,
+                renders,
+                policy,
+            )
             task = _build_worker_task(
                 project_root,
                 model_cache,
@@ -2153,6 +2322,7 @@ def _run_pinned_workers(
                 shard_id,
                 requests,
                 renders,
+                private_inputs,
                 execution_nonce,
                 environment,
                 execution_lease_fd,

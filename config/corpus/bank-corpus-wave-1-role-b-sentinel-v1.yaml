@@ -31,6 +31,10 @@ worker:
   global_execution_lease_filename: sentinel-execution.lease
   orphan_worker_reconciliation: BLOCK_NEW_SUPERVISOR_UNTIL_INHERITED_LEASE_RELEASE
   environment_scope: PER_SHARD_PRIVATE_RUNTIME_ROOT
+  provider_input_materialization: PER_SHARD_PRIVATE_IMMUTABLE_PNG_COPY_V1
+  provider_input_filename: REQUEST_SHA256_DOT_PNG
+  provider_input_mode: '0444'
+  provider_input_hardlink_to_evidence_allowed: false
   protocol: EXCLUSIVE_CANONICAL_JSON_RESPONSE_FILES_V1
   network_policy: PYTHON_AUDIT_SOCKET_CONNECT_DENIED
   environment:

@@ -29,10 +29,12 @@ from bctc_ai.corpus.wave1_role_b_sentinel import (
     _checkpoint_payload,
     _consume_worker_response,
     _control_index,
+    _create_runtime_root,
     _document_locks,
     _execution_lease,
     _load_document_checkpoint,
     _load_policy,
+    _materialize_private_shard_inputs,
     _publish_exclusive,
     _publish_missing_render_objects,
     _put_object,
@@ -153,6 +155,13 @@ def test_policy_is_exact_and_binds_scrubbed_worker_environment(project_root: Pat
     assert policy["sealed_plan"]["sha256"] == SEALED_PLAN_SHA256
     assert policy["worker"]["process_count_initial_run"] == 2
     assert policy["worker"]["environment"]["PYTHONNOUSERSITE"] == "1"
+    assert (
+        policy["worker"]["provider_input_materialization"]
+        == "PER_SHARD_PRIVATE_IMMUTABLE_PNG_COPY_V1"
+    )
+    assert policy["worker"]["provider_input_filename"] == "REQUEST_SHA256_DOT_PNG"
+    assert policy["worker"]["provider_input_mode"] == "0444"
+    assert policy["worker"]["provider_input_hardlink_to_evidence_allowed"] is False
     assert "HOME" in policy["worker"]["isolated_runtime_directories"]
     assert "PYTHONPATH" not in policy["worker"]["environment"]
     assert (project_root / POLICY_RELATIVE_PATH).is_file()
@@ -409,12 +418,13 @@ def test_worker_requires_exact_inherited_execution_lease(
             worker._validate_execution_lease({**lease, "inode": identity.st_ino + 1})
 
 
-def test_worker_predicts_literal_held_fd_and_rehashes_same_inode(
+def test_worker_predicts_suffix_bearing_lexical_png_and_rehashes_same_inode(
     project_root: Path,
     tmp_path: Path,
 ) -> None:
     worker = _load_worker(project_root)
-    image = tmp_path / "render.png"
+    request_sha256 = "a" * 64
+    image = tmp_path / f"{request_sha256}.png"
     image.write_bytes(b"held-render")
     image.chmod(0o444)
     observed = {}
@@ -432,7 +442,7 @@ def test_worker_predicts_literal_held_fd_and_rehashes_same_inode(
     class Session:
         _pipeline = Pipeline()
 
-    descriptor = worker._open_image_fd(
+    descriptor, image_identity = worker._open_image_fd(
         image,
         hashlib.sha256(b"held-render").hexdigest(),
         len(b"held-render"),
@@ -441,18 +451,199 @@ def test_worker_predicts_literal_held_fd_and_rehashes_same_inode(
         payload, _elapsed = worker._predict_from_held_render(
             Session(),
             descriptor,
+            image,
             pixel_width=200,
             pixel_height=200,
         )
         worker._revalidate_held_render(
             descriptor,
+            image,
+            image_identity,
             expected_sha256=hashlib.sha256(b"held-render").hexdigest(),
             expected_size=len(b"held-render"),
         )
     finally:
         os.close(descriptor)
-    assert observed == {"path": f"/proc/self/fd/{descriptor}", "bytes": b"held-render"}
+    assert observed == {"path": image.as_posix(), "bytes": b"held-render"}
     assert payload["rec_texts"] == ["Ngân hàng nguồn"]
+
+
+def test_worker_rejects_persistent_private_png_name_swap_and_byte_drift(
+    project_root: Path,
+    tmp_path: Path,
+) -> None:
+    worker = _load_worker(project_root)
+    expected = b"held-render"
+    digest = hashlib.sha256(expected).hexdigest()
+
+    swapped = tmp_path / f"{'b' * 64}.png"
+    swapped.write_bytes(expected)
+    swapped.chmod(0o444)
+    descriptor, identity = worker._open_image_fd(swapped, digest, len(expected))
+    try:
+        original = tmp_path / "original-private-input.png"
+        swapped.rename(original)
+        swapped.write_bytes(expected)
+        swapped.chmod(0o444)
+        with pytest.raises(worker.SentinelWorkerError, match="identity drifted"):
+            worker._revalidate_held_render(
+                descriptor,
+                swapped,
+                identity,
+                expected_sha256=digest,
+                expected_size=len(expected),
+            )
+    finally:
+        os.close(descriptor)
+
+    drifted = tmp_path / f"{'c' * 64}.png"
+    drifted.write_bytes(expected)
+    drifted.chmod(0o444)
+    descriptor, identity = worker._open_image_fd(drifted, digest, len(expected))
+    try:
+        drifted.chmod(0o644)
+        drifted.write_bytes(b"byte-drift!")
+        drifted.chmod(0o444)
+        with pytest.raises(worker.SentinelWorkerError, match="identity drifted"):
+            worker._revalidate_held_render(
+                descriptor,
+                drifted,
+                identity,
+                expected_sha256=digest,
+                expected_size=len(expected),
+            )
+    finally:
+        os.close(descriptor)
+
+
+def test_parent_materializes_distinct_immutable_private_png_without_linking_evidence(
+    project_root: Path,
+    tmp_path: Path,
+) -> None:
+    render = _synthetic_render(tmp_path)
+    request_sha256 = "d" * 64
+    request = {"sentinel_ordinal": 1, "request_sha256": request_sha256}
+    source = tmp_path / OUTPUT_RELATIVE_ROOT / render["ref"]["path"]
+    source_before = source.stat(follow_symlinks=False)
+    runtime_root = _create_runtime_root(tmp_path, "e" * 64)
+    private = _materialize_private_shard_inputs(
+        tmp_path,
+        runtime_root.relative_to(tmp_path),
+        0,
+        [request],
+        {request_sha256: render},
+        _load_policy(project_root),
+    )[request_sha256]
+    private_path = Path(private["path"])
+    private_identity = private_path.stat(follow_symlinks=False)
+    source_after = source.stat(follow_symlinks=False)
+
+    assert private_path.name == f"{request_sha256}.png"
+    assert private_path.read_bytes() == render["payload"]
+    assert private == {
+        "path": private_path.as_posix(),
+        "sha256": render["ref"]["sha256"],
+        "size_bytes": render["ref"]["size_bytes"],
+    }
+    assert stat.S_IMODE(private_identity.st_mode) == 0o444
+    assert private_identity.st_nlink == 1
+    assert (private_identity.st_dev, private_identity.st_ino) != (
+        source_before.st_dev,
+        source_before.st_ino,
+    )
+    assert source_after.st_nlink == 1
+    assert stat.S_IMODE(source_after.st_mode) == 0o444
+    assert (source_after.st_dev, source_after.st_ino, source_after.st_size) == (
+        source_before.st_dev,
+        source_before.st_ino,
+        source_before.st_size,
+    )
+
+
+def test_supervisor_and_worker_reject_private_png_outside_exact_shard_runtime(
+    project_root: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import bctc_ai.corpus.wave1_role_b_sentinel as sentinel
+
+    worker = _load_worker(project_root)
+    execution_nonce = "f" * 64
+    request_sha256 = "1" * 64
+    render = _synthetic_render(tmp_path)
+    runtime_root = _create_runtime_root(tmp_path, execution_nonce)
+    private = _materialize_private_shard_inputs(
+        tmp_path,
+        runtime_root.relative_to(tmp_path),
+        0,
+        [{"sentinel_ordinal": 1, "request_sha256": request_sha256}],
+        {request_sha256: render},
+        _load_policy(project_root),
+    )
+    monkeypatch.setattr(sentinel, "_worker_model_contract", lambda *_args: ({}, []))
+    sealed = {"ppocrv6_runtime_model_ledger": {"sha256": "2" * 64}}
+    request = {"sentinel_ordinal": 1, "request_sha256": request_sha256}
+    with _execution_lease(tmp_path) as lease_fd:
+        task = sentinel._build_worker_task(
+            tmp_path,
+            tmp_path / "models",
+            sealed,
+            0,
+            [request],
+            {request_sha256: render},
+            private,
+            execution_nonce,
+            {},
+            lease_fd,
+        )
+        assert task["requests"][0]["image_path"] == private[request_sha256]["path"]
+        other_shard = deepcopy(private)
+        other_shard[request_sha256]["path"] = (
+            runtime_root / "shard-1" / "inputs" / f"{request_sha256}.png"
+        ).as_posix()
+        with pytest.raises(WaveOneRoleBSentinelError, match="task binding"):
+            sentinel._build_worker_task(
+                tmp_path,
+                tmp_path / "models",
+                sealed,
+                0,
+                [request],
+                {request_sha256: render},
+                other_shard,
+                execution_nonce,
+                {},
+                lease_fd,
+            )
+
+    monkeypatch.setattr(worker, "SENTINEL_RUNTIME_ROOT", tmp_path / "runtime")
+    expected_task = tmp_path / "runtime" / f"execution-{execution_nonce}" / "shard-0" / "task.json"
+    expected_image = expected_task.parent / "inputs" / f"{request_sha256}.png"
+    assert (
+        worker._validate_private_input_path(
+            expected_task,
+            execution_nonce,
+            0,
+            request_sha256,
+            expected_image.as_posix(),
+        )
+        == expected_image
+    )
+    with pytest.raises(worker.SentinelWorkerError, match="runtime binding"):
+        worker._validate_private_input_path(
+            expected_task,
+            execution_nonce,
+            0,
+            request_sha256,
+            (tmp_path / "elsewhere" / f"{request_sha256}.png").as_posix(),
+        )
+    with pytest.raises(worker.SentinelWorkerError, match="runtime binding"):
+        worker._validate_private_input_path(
+            expected_task,
+            execution_nonce,
+            1,
+            request_sha256,
+            expected_image.as_posix(),
+        )
 
 
 def test_checkpoint_payload_rejects_foreign_request(project_root: Path) -> None:
@@ -705,9 +896,17 @@ def test_non_evidence_initial_supervisor_launches_exact_two_twelve_page_processe
     }
     policy = {
         "execution": {"minimum_free_space_bytes": 0},
-        "worker": {"interpreter": "python.bin", "script": "worker.py"},
+        "worker": {
+            "interpreter": "python.bin",
+            "script": "worker.py",
+            "provider_input_materialization": "PER_SHARD_PRIVATE_IMMUTABLE_PNG_COPY_V1",
+            "provider_input_filename": "REQUEST_SHA256_DOT_PNG",
+            "provider_input_mode": "0444",
+            "provider_input_hardlink_to_evidence_allowed": False,
+        },
     }
-    renders = {request["request_sha256"]: {} for request in requests}
+    shared_render = _synthetic_render(tmp_path)
+    renders = {request["request_sha256"]: shared_render for request in requests}
     records_by_document = {request["document_id"]: [] for request in requests}
     checkpoints = {request["document_id"]: None for request in requests}
     tasks: dict[int, list[dict[str, object]]] = {}
@@ -727,11 +926,18 @@ def test_non_evidence_initial_supervisor_launches_exact_two_twelve_page_processe
         shard_id,
         shard_requests,
         _renders,
+        private_inputs,
         _nonce,
         _environment,
         _execution_lease_fd,
     ):
-        tasks[shard_id] = shard_requests
+        tasks[shard_id] = [
+            {
+                **request,
+                "image_path": private_inputs[request["request_sha256"]]["path"],
+            }
+            for request in shard_requests
+        ]
         return {"non_evidence": True, "shard_id": shard_id}
 
     monkeypatch.setattr(sentinel, "_build_worker_task", fake_task)
@@ -790,6 +996,18 @@ def test_non_evidence_initial_supervisor_launches_exact_two_twelve_page_processe
         )
     assert launches == [0, 1]
     assert [len(tasks[index]) for index in (0, 1)] == [12, 12]
+    assert all(
+        Path(request["image_path"]).name == f"{request['request_sha256']}.png"
+        for shard_tasks in tasks.values()
+        for request in shard_tasks
+    )
+    assert all(
+        Path(request["image_path"]).parent.name == "inputs"
+        for shard_tasks in tasks.values()
+        for request in shard_tasks
+    )
+    source = tmp_path / OUTPUT_RELATIVE_ROOT / shared_render["ref"]["path"]
+    assert source.stat().st_nlink == 1
     assert result["worker_process_count"] == 2
     assert result["inference_request_count"] == 24
     assert not (tmp_path / OUTPUT_RELATIVE_ROOT / "sentinel-aggregate.json").exists()

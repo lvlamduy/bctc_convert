@@ -12,6 +12,9 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+SENTINEL_RUNTIME_ROOT = (
+    PROJECT_ROOT / "output/development/bank-corpus-wave-1-role-b-page-reader-v1/sentinel-v1/runtime"
+)
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from bctc_ai.ocr.ppocrv6_page_session import (  # noqa: E402
@@ -93,31 +96,60 @@ def _read_absolute_file(path: Path) -> bytes:
             os.close(parent)
 
 
-def _open_image_fd(path: Path, expected_sha256: str, expected_size: int) -> int:
+def _image_identity(identity: os.stat_result) -> tuple[int, int, int, int, int]:
+    return (
+        identity.st_dev,
+        identity.st_ino,
+        identity.st_size,
+        identity.st_mtime_ns,
+        identity.st_ctime_ns,
+    )
+
+
+def _hash_fd(descriptor: int) -> str:
+    os.lseek(descriptor, 0, os.SEEK_SET)
+    hasher = hashlib.sha256()
+    while chunk := os.read(descriptor, 1024 * 1024):
+        hasher.update(chunk)
+    os.lseek(descriptor, 0, os.SEEK_SET)
+    return hasher.hexdigest()
+
+
+def _open_image_fd(
+    path: Path,
+    expected_sha256: str,
+    expected_size: int,
+) -> tuple[int, tuple[int, int, int, int, int]]:
+    if not path.is_absolute() or path.suffix != ".png":
+        raise SentinelWorkerError("worker render path is not an absolute PNG name")
     descriptors, directory_fd = _open_absolute_directory(path.parent)
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
     try:
         descriptor = os.open(path.name, flags, dir_fd=directory_fd)
-        identity = os.fstat(descriptor)
-        named = os.stat(path.name, dir_fd=directory_fd, follow_symlinks=False)
+        before = os.fstat(descriptor)
+        named_before = os.stat(path.name, dir_fd=directory_fd, follow_symlinks=False)
         if (
-            not stat.S_ISREG(identity.st_mode)
-            or stat.S_IMODE(identity.st_mode) != 0o444
-            or identity.st_nlink != 1
-            or (identity.st_dev, identity.st_ino, identity.st_size)
-            != (named.st_dev, named.st_ino, named.st_size)
-            or identity.st_size != expected_size
+            not stat.S_ISREG(before.st_mode)
+            or stat.S_IMODE(before.st_mode) != 0o444
+            or before.st_nlink != 1
+            or (before.st_dev, before.st_ino, before.st_size)
+            != (named_before.st_dev, named_before.st_ino, named_before.st_size)
+            or before.st_size != expected_size
         ):
             os.close(descriptor)
             raise SentinelWorkerError("worker render file identity drifted")
-        hasher = hashlib.sha256()
-        while chunk := os.read(descriptor, 1024 * 1024):
-            hasher.update(chunk)
-        os.lseek(descriptor, 0, os.SEEK_SET)
-        if hasher.hexdigest() != expected_sha256:
+        observed_sha256 = _hash_fd(descriptor)
+        after = os.fstat(descriptor)
+        named_after = os.stat(path.name, dir_fd=directory_fd, follow_symlinks=False)
+        if (
+            observed_sha256 != expected_sha256
+            or _image_identity(after) != _image_identity(before)
+            or (named_after.st_dev, named_after.st_ino, named_after.st_size)
+            != (after.st_dev, after.st_ino, after.st_size)
+        ):
             os.close(descriptor)
             raise SentinelWorkerError("worker render hash drifted")
-        return descriptor
+        return descriptor, _image_identity(after)
     finally:
         for parent in reversed(descriptors):
             os.close(parent)
@@ -316,18 +348,21 @@ def _validate_execution_lease(lease: dict[str, Any]) -> None:
 def _predict_from_held_render(
     session: PPOCRV6PageSession,
     image_fd: int,
+    image_path: Path,
     *,
     pixel_width: int,
     pixel_height: int,
 ) -> tuple[dict[str, Any], float]:
-    """Call the loaded provider with a literal held FD path; never resolve it."""
+    """Call the provider with a held, suffix-bearing private lexical PNG path."""
 
     pipeline = session._pipeline  # noqa: SLF001 - sealed B adapter to immutable A session
-    if pipeline is None:
+    if pipeline is None or image_fd < 0:
         raise SentinelWorkerError("PP-OCR session is not loaded")
+    if not image_path.is_absolute() or image_path.suffix != ".png":
+        raise SentinelWorkerError("PP-OCR provider input is not an absolute PNG path")
     started = time.perf_counter()
     results = pipeline.predict(
-        f"/proc/self/fd/{image_fd}",
+        image_path.as_posix(),
         use_doc_orientation_classify=False,
         use_doc_unwarping=False,
         use_textline_orientation=False,
@@ -349,26 +384,81 @@ def _predict_from_held_render(
 
 def _revalidate_held_render(
     image_fd: int,
+    image_path: Path,
+    original_identity: tuple[int, int, int, int, int],
     *,
     expected_sha256: str,
     expected_size: int,
 ) -> None:
-    before = os.fstat(image_fd)
-    os.lseek(image_fd, 0, os.SEEK_SET)
-    hasher = hashlib.sha256()
-    while block := os.read(image_fd, 1024 * 1024):
-        hasher.update(block)
-    after = os.fstat(image_fd)
-    if (
-        not stat.S_ISREG(after.st_mode)
-        or stat.S_IMODE(after.st_mode) != 0o444
-        or after.st_nlink != 1
-        or before.st_dev != after.st_dev
-        or before.st_ino != after.st_ino
-        or after.st_size != expected_size
-        or hasher.hexdigest() != expected_sha256
-    ):
-        raise SentinelWorkerError("held render identity drifted during inference")
+    if not image_path.is_absolute() or image_path.suffix != ".png":
+        raise SentinelWorkerError("held render lexical path drifted during inference")
+    held_before = os.fstat(image_fd)
+    descriptors, directory_fd = _open_absolute_directory(image_path.parent)
+    named_fd = -1
+    try:
+        named_fd = os.open(
+            image_path.name,
+            os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0),
+            dir_fd=directory_fd,
+        )
+        named_before = os.stat(
+            image_path.name,
+            dir_fd=directory_fd,
+            follow_symlinks=False,
+        )
+        reopened_before = os.fstat(named_fd)
+        held_sha256 = _hash_fd(image_fd)
+        named_sha256 = _hash_fd(named_fd)
+        held_after = os.fstat(image_fd)
+        reopened_after = os.fstat(named_fd)
+        named_after = os.stat(
+            image_path.name,
+            dir_fd=directory_fd,
+            follow_symlinks=False,
+        )
+        if (
+            _image_identity(held_before) != original_identity
+            or _image_identity(held_after) != original_identity
+            or _image_identity(reopened_before) != original_identity
+            or _image_identity(reopened_after) != original_identity
+            or _image_identity(named_before) != original_identity
+            or _image_identity(named_after) != original_identity
+            or not stat.S_ISREG(held_after.st_mode)
+            or stat.S_IMODE(held_after.st_mode) != 0o444
+            or held_after.st_nlink != 1
+            or stat.S_IMODE(reopened_after.st_mode) != 0o444
+            or reopened_after.st_nlink != 1
+            or held_after.st_size != expected_size
+            or held_sha256 != expected_sha256
+            or named_sha256 != expected_sha256
+        ):
+            raise SentinelWorkerError("held render identity drifted during inference")
+    finally:
+        if named_fd >= 0:
+            os.close(named_fd)
+        for parent in reversed(descriptors):
+            os.close(parent)
+
+
+def _expected_shard_runtime_root(execution_nonce: str, shard_id: int) -> Path:
+    if not _is_sha256(execution_nonce) or isinstance(shard_id, bool) or shard_id not in {0, 1}:
+        raise SentinelWorkerError("worker runtime identity is malformed")
+    return SENTINEL_RUNTIME_ROOT / f"execution-{execution_nonce}" / f"shard-{shard_id}"
+
+
+def _validate_private_input_path(
+    task_path: Path,
+    execution_nonce: str,
+    shard_id: int,
+    request_sha256: str,
+    image_path: str,
+) -> Path:
+    expected_shard = _expected_shard_runtime_root(execution_nonce, shard_id)
+    expected_task = expected_shard / "task.json"
+    expected_image = expected_shard / "inputs" / f"{request_sha256}.png"
+    if task_path.as_posix() != expected_task.as_posix() or image_path != expected_image.as_posix():
+        raise SentinelWorkerError("private provider input runtime binding drifted")
+    return expected_image
 
 
 def _load_task(path: Path) -> dict[str, Any]:
@@ -434,11 +524,18 @@ def _load_task(path: Path) -> dict[str, Any]:
             "response_filename",
         }:
             raise SentinelWorkerError("worker page task fields drifted")
+        image_path = request.get("image_path")
+        request_sha256 = request.get("request_sha256")
         if (
-            not _is_sha256(request["request_sha256"])
+            not _is_sha256(request_sha256)
             or not _is_sha256(request["render_sha256"])
-            or request["request_sha256"] in seen
-            or request["response_filename"] != f"{request['request_sha256']}.response.json"
+            or request_sha256 in seen
+            or request["response_filename"] != f"{request_sha256}.response.json"
+            or not isinstance(image_path, str)
+            or not Path(image_path).is_absolute()
+            or PurePosixPath(image_path).as_posix() != image_path
+            or ".." in PurePosixPath(image_path).parts
+            or Path(image_path).name != f"{request_sha256}.png"
             or isinstance(request["render_size_bytes"], bool)
             or not isinstance(request["render_size_bytes"], int)
             or request["render_size_bytes"] <= 0
@@ -450,7 +547,14 @@ def _load_task(path: Path) -> dict[str, Any]:
             )
         ):
             raise SentinelWorkerError("worker page task identity drifted")
-        seen.add(request["request_sha256"])
+        _validate_private_input_path(
+            path,
+            task["execution_nonce"],
+            task["shard_id"],
+            request_sha256,
+            image_path,
+        )
+        seen.add(request_sha256)
     return task
 
 
@@ -464,6 +568,15 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     arguments = parse_args()
     task = _load_task(arguments.task)
+    expected_response_directory = (
+        _expected_shard_runtime_root(
+            task["execution_nonce"],
+            task["shard_id"],
+        )
+        / "responses"
+    )
+    if arguments.response_directory.as_posix() != expected_response_directory.as_posix():
+        raise SentinelWorkerError("worker response runtime binding drifted")
     _validate_execution_lease(task["execution_lease"])
     os.set_inheritable(task["execution_lease"]["fd"], False)
     response_descriptors, response_fd = _open_absolute_directory(arguments.response_directory)
@@ -479,8 +592,9 @@ def main() -> int:
             cpu_threads=6,
         ) as session:
             for request in task["requests"]:
-                image_fd = _open_image_fd(
-                    Path(request["image_path"]),
+                image_path = Path(request["image_path"])
+                image_fd, image_identity = _open_image_fd(
+                    image_path,
                     request["render_sha256"],
                     request["render_size_bytes"],
                 )
@@ -488,11 +602,14 @@ def main() -> int:
                     payload, elapsed = _predict_from_held_render(
                         session,
                         image_fd,
+                        image_path,
                         pixel_width=request["pixel_width"],
                         pixel_height=request["pixel_height"],
                     )
                     _revalidate_held_render(
                         image_fd,
+                        image_path,
+                        image_identity,
                         expected_sha256=request["render_sha256"],
                         expected_size=request["render_size_bytes"],
                     )
