@@ -1,8 +1,56 @@
-# Current status — PDF BCTC to mapped template Excel
+# Current status — scalable bank-PDF BCTC digitization
 
 Updated: 2026-08-09
 
-## 1. Universal schema and per-document coverage
+## 1. Breadth-first corpus strategy and generalization KPI
+
+The project has switched from bank-by-bank depth-first completion to breadth-first corpus learning. The objective is one scalable system for `PDF → visible source structure → accounting identity or evidenced schema extension → validation → structured data/Excel`. The supplied schema is formally `BASE_SCHEMA`: a valuable initial ontology, not a closed answer set. Source PDFs are surveyed before schema comparison, and genuine source items are never forced into an existing ID merely because the current schema lacks them.
+
+MBB and VPB outputs are frozen as development/regression evidence. Exhaustive VPB TM identity-by-identity completion is explicitly **paused** at the current safe checkpoint. Its 30 unresolved inter-table contexts and remaining mappings stay in the regression corpus, but they no longer define the project queue.
+
+The first breadth-first inventory is now reproducible:
+
+- Registered corpus: **27 banks**, **2,567 registered PDF paths**, **2,435 unique PDF contents**, **17,761,344,114 bytes**. The 132 extra paths are duplicate-content registrations. These paths include language/revision companions and supporting disclosures, so they are not claimed as 2,567 independent filings.
+- Metadata inventory: `output/development/bank-corpus-survey-v1/corpus-inventory.json` (SHA-256 `fff64ca4d25de646cd2f4661d99fc9623e6edc8c7c6b0cd321c0d2f9af9cebd8`, 2,181,864 bytes).
+- Wave 1: exactly one source-first representative per bank, selected before inspecting PDF source type. The locked filename-derived, non-authoritative composition is 23 comparable Vietnamese consolidated Q2/2026 documents, one Vietnamese separate Q2/2026 fallback, two Vietnamese Q2/2026 filings whose filename does not encode scope, and the preserved VPB development input after all preferred metadata tie. No `UNTOUCHED_HOLDOUT`, schema, mapping answer, historical value, or PDF-ease signal participates in selection.
+- Page/source-route profile: `output/development/bank-corpus-survey-v1/wave-1-source-profile.json` (SHA-256 `28fb3485b9424e2052ae981942476e681d8fbdcbf1131467a1d65778a20cb19b`, 857,274 bytes). It accounts **1,449/1,449 pages** and recommends 11 scan routes, 14 mixed/page-hybrid routes, one searchable-over-image route requiring ghost-text validation, and one native/searchable route. These are extraction-route candidates, not accounting identities or completed structural surveys.
+
+| Corpus/generalization KPI | Current evidence |
+| ------------------------- | ---------------- |
+| Banks registered | 27 |
+| Banks selected / source-route profiled | 27 / 27 |
+| Banks structurally surveyed under the new pass | 0 / 27; this is the next active phase |
+| Documents selected / source-route profiled | 27 / 27 |
+| Period coverage in the locked filename metadata | 26 Q2/2026; 1 filename-unknown preserved VPB input (known from its existing source receipt as Q1/2026) |
+| Reporting periods source-verified by the new structural pass | 0; the 26 Q2/2026 + 1 unknown split above is filename metadata only |
+| Scope hints | 24 consolidated; 1 separate; 2 unknown; filename-derived and non-authoritative |
+| Source route candidates | 11 scan; 14 mixed/hybrid; 1 searchable-over-image; 1 native/searchable |
+| Wave-1 PDF pages profiled | 1,449; 1,356 have a raster covering at least 50% of the page |
+| Extractable text-layer evidence | 156 substantive pages; 111 have substantive nonzero-alpha text and 46 have substantive zero-alpha text; the latter sets overlap on one page and visibility/render validation is still `NOT_RUN` |
+| Statement blocks / visible rows / visible cells source-accounted by the new survey | 0 / 0 / 0; source-route profiling is not mislabeled as structural extraction |
+| Universal schema items | 1,935 |
+| New identities / aliases this wave | 0 / 0; schema comparison has not begun for Wave 1 |
+| Unresolved schema gaps | Not yet measured for Wave 1 |
+| Structural archetypes discovered / handled generically | 0 / 0 formally registered in Wave 1; discovery is pending the structural pass |
+| Wave-1 documents reaching source-complete extraction / canonical mapping / mapped Excel | 0 / 0 / 0; MBB and VPB below are carry-in regression evidence, not new Wave-1 coverage |
+| Unresolved source rows / mapping rows | Not yet measured for Wave 1; never represented as zero |
+| Role A references | 3 existing hash-bound references: CTG Q2/2026, ACB Q2/2026, MBB Q1/2026; corpus-level human-review/holdout coverage is not yet sufficient |
+| Human-reviewed document benchmarks | Not yet measured; no corpus-level review registry exists, and Role A or user schema decisions are not relabeled as human-reviewed document gold |
+| Independent holdout coverage | 1 registered ACB Q1/2026 paired holdout suite / 2 immutable `UNTOUCHED_HOLDOUT` source paths; same-filing linkage is filename-derived, both paths are excluded from Wave 1, and the Role-A diagnosis is machine reference rather than human gold |
+
+Initial corpus-level risk/pending-failure queue (no extraction-failure frequencies have been measured yet; row/table counts will replace these route counts after structural survey):
+
+| Failure class | Current affected documents | Risk / next generic mechanism |
+| ------------- | -------------------------: | ----------------------------- |
+| Raster-dominant scan extraction | 11 | High financial-cell risk; use page-level OCR/detection plus source accounting |
+| Mixed native/image routing | 14 | Prevent cover-page text or partial text layers from selecting the wrong reader |
+| Searchable-over-image / ghost text | 1 primary case (HDB), with additional zero-alpha evidence retained elsewhere | Validate render visibility before trusting hidden text |
+| Statement/table/archetype discovery across new layouts | 27 pending | Build source-driven fingerprints, then cluster common and new structures |
+| Duplicate TM labels and unresolved boundary ownership | Carry-in VPB regression | Solve by note/table/subtree context after cross-bank archetypes are known; do not global-match labels |
+
+**Current highest-impact generic blocker:** reliable statement/table/row/cell source accounting for the 26 raster-dominant or hybrid Wave-1 documents. **Next generic improvement:** apply page-level native/scan/mixed routing, detect financial-statement blocks source-first, emit document structure fingerprints, and aggregate failure classes across all 27 banks before changing mapping logic.
+
+## 2. Universal schema and per-document coverage
 
 The original supplied 1,593-item reference is frozen as `BASE_SCHEMA` (`77 CDKT + 24 KQKD + 107 LCTT + 1,385 TM`). The active source-evidenced superset is `UNIVERSAL_BANK_BCTC_SCHEMA@6056`: `1,935 = 99 CDKT + 25 KQKD + 110 LCTT + 1,701 TM`. It contains the base identities plus exactly 342 audited, append-only additions; ReportNormId never defines display order. The ordered universal projection is `7c11a91b…e95b9` and the content-addressed graph/schema hash is `2262c4c0…e770`.
 
@@ -22,7 +70,7 @@ Exact reconciliations:
 - LCTT: `110 = 43 MAPPED + 10 NOT_OBSERVED_IN_THIS_PDF + 57 SCHEMA_ITEM_NOT_APPLICABLE`.
 - TM quantitative pages 30–54 and 57–61: `1,701 = 889 MAPPED + 789 NOT_OBSERVED_IN_THIS_PDF + 23 NOT_APPLICABLE + 0 AMBIGUOUS/UNRESOLVED/UNASSESSED`. Pages 55–56 and 59 are narrative-only. The complete TM schema has one explicit, pairwise-disjoint disposition per ID; visible class/measure axes remain provenance rather than false row identities.
 
-The next-bank development baseline is now source-captured independently of schema matching:
+The preserved VPB regression baseline is source-captured independently of schema matching:
 
 | VPB Q1/2026 source block | Pages | Visible rows | Visible cells | Current extraction status |
 | ------------------------ | ----: | -----------: | ------------: | ------------------------- |
@@ -42,21 +90,22 @@ The universal TM graph also has a source-independent context projection for all 
 
 “Observed” means physically identified PDF rows/cells. “Mapped” means assigned to an existing or newly accepted canonical ReportNormId. `DASH`, `BLANK`, `OBSERVED_ZERO`, `NOT_OBSERVED`, and `NOT_APPLICABLE` remain distinct. “Fully verified” still requires independent authority for the complete item/value/status/period/unit/scope/Excel tuple; no item is promoted to that stronger claim here.
 
-## 2. Current technology/logic pipeline
+## 3. Current technology/logic pipeline
 
 ```text
 PDF
-→ deterministic PyMuPDF page rendering / embedded-text evidence where present
-→ statement and page discovery
-→ PP-OCRv6 word boxes
-→ statement-specific fixed-grid, wrapped-row and continuation reconstruction
+→ page/document native / scan / mixed evidence routing
+→ authoritative visible native text where available, otherwise OCR/detection
+→ source-first statement/page/table discovery
+→ logical row/cell, wrapped-label and continuation reconstruction
 → DeepSeek-OCR-2 / VietOCR label corroboration where configured
 → signed numeric parsing + independent PDF-text or render-pixel DASH evidence
 → visible-header period, unit and consolidated/separate-scope binding
-→ search the evolving universal SchemaGraph
+→ local accounting hierarchy + reusable structural archetype
+→ only then compare against the evolving universal SchemaGraph
 → reuse an equivalent canonical identity OR add an evidenced missing identity
 → accounting equations without repairing source values
-→ deterministic supplied-template Excel + provenance
+→ deterministic structured canonical data + suitable Excel + provenance
 ```
 
 All four statement groups use the versioned universal schema. TM uses note-specific geometry because its tables vary materially by page; percentage, class/geography and other auxiliary axes stay in provenance unless they are genuine accounting-row identities. Qwen is not in the active path.
@@ -65,17 +114,22 @@ The VPB TM source stage adds a generic local-region layer rather than widening t
 
 The next receipt-bound stages flatten every inherited native-TM source object, then map only families supported by globally unique exact direct-child anchors and an independently complete local table topology. Arithmetic is a post-lineage corroboration/veto, never a selector. The dedicated six-sheet exporter replays the mapping and observation producer snapshots, authenticates their transitive native-document/PDF/discovery lineage, uses the embedded producer schema snapshot, and emits no formulas, imputation or forced assignments.
 
-## 3. Role A / Role B status
+The active development loop is now corpus-driven: survey many documents, fingerprint source structure, cluster archetypes and failure classes, improve the highest-impact generic mechanism, replay the affected corpus, and measure generalization. Bank names remain evidence/debug metadata and are not parser-routing conditions.
+
+## 4. Role A / Role B status
 
 - **Role A:** hash-bound references exist for CTG Q2/2026, ACB Q2/2026 and MBB Q1/2026. Role A must preserve every genuine visible row and may emit `POSSIBLE_SCHEMA_GAP`; it is not limited to BASE_SCHEMA. The active universal registry has 1,935 unique items.
 - **Role B:** MBB Q1/2026 reaches development Excel for all four statements. TM parsing/mapping covers every quantitative note page through the end of the 61-page PDF; cross-page totals remain validation-only and never create duplicate ownership. The consolidated TM workbook and its paired provenance JSON are deterministic and preserve exact value, zero, dash and blank semantics.
-- **Next-bank Role B development:** VPB consolidated Q1/2026 is an immutable `LOGIC_DEVELOPMENT` input, not holdout/validation evidence. Full-document native-text discovery independently selected CDKT pages 5–7, KQKD page 8, LCTT pages 9–10 and the first TM boundary at page 11. The generic main-statement row adapter reconstructed all 134 rows and 252 cells. The separate source-only TM region stage covers the complete PDF denominator and the 694-row/2,163-observation quantitative-note core without schema, template, historical-value, Role A or prior-answer inputs. Its receipt-bound observation artifact accounts all 11,032 source objects, and the first bounded canonical family is exported to Excel with eight observations; the 30 unresolved inter-table contexts remain explicit.
-- **Latest measurable result:** the established MBB baseline exports 132 observed plus 2 derived CDKT values from 75 rows/150 physical statuses; KQKD has 88/88 numeric cells independently matched and 32/32 accounting checks passed; LCTT exports 71 values, 9 dashes and 6 blanks. MBB TM has 889 mapped schema identities across 553 logical source rows and 1,659 parser-declared visible value/status slots. Separately, the new VPB native-TM workbook represents all `1,701` schema dispositions and `11,032` source-object dispositions: `4 OBSERVED_VALUE + 4 NOT_OBSERVED + 1,693 UNRESOLVED`, with eight canonical observation rows, 11,037 physical `SOURCE_OBJECTS` sheet rows, four validation rows, zero formulas and zero imputed values.
+- **Active breadth-first Role B development:** all 27 registered banks now have one locked Wave-1 document and a page-level source-route profile. The next pass detects source-visible statement blocks, tables, axes, rows and cells without consulting expected schema rows. Incomplete mappings are allowed; lost source evidence is not.
+- **Preserved VPB regression evidence:** VPB consolidated Q1/2026 remains an immutable `LOGIC_DEVELOPMENT` input, not holdout/validation evidence. Full-document native-text discovery independently selected CDKT pages 5–7, KQKD page 8, LCTT pages 9–10 and the first TM boundary at page 11. The generic main-statement adapter reconstructed all 134 rows and 252 cells. The source-only TM stage accounts the 694-row/2,163-observation quantitative core and all 11,032 source objects; the first bounded canonical family reaches Excel with eight observations. The 30 unresolved inter-table contexts remain explicit, and further identity-by-identity VPB completion is paused until cross-bank archetypes justify generic improvements.
+- **Latest corpus result:** Wave 1 profiles 27 documents and 1,449 pages without source-type cherry-picking: 11 scan, 14 mixed/hybrid, one searchable-over-image and one native/searchable route candidate. This is a page-routing-profile milestone, not a completed document-structure fingerprint or canonical coverage.
+- **Carry-in measurable results:** the established MBB baseline exports 132 observed plus 2 derived CDKT values from 75 rows/150 physical statuses; KQKD has 88/88 numeric cells independently matched and 32/32 accounting checks passed; LCTT exports 71 values, 9 dashes and 6 blanks. MBB TM has 889 mapped schema identities across 553 logical source rows and 1,659 parser-declared visible value/status slots. The VPB native-TM workbook represents all `1,701` schema dispositions and `11,032` source-object dispositions: `4 OBSERVED_VALUE + 4 NOT_OBSERVED + 1,693 UNRESOLVED`, with eight canonical observation rows, 11,037 physical `SOURCE_OBJECTS` sheet rows, four validation rows, zero formulas and zero imputed values.
 
-## 4. Current development position
+## 5. Current development position
 
 - **Completed mapped baseline:** MBB consolidated Q1/2026; snapshot statements compare 31/03/2026 with 31/12/2025, duration statements compare Q1/2026 with Q1/2025; reported unit is generally VND × 1,000,000.
-- **Active next-bank development input:** VPB consolidated Q1/2026, source SHA-256 `614be887…dcde`, immutable role `LOGIC_DEVELOPMENT`. Discovery artifact SHA-256 is `ddeaabd0…aaa9`; registered row artifact SHA-256 is `fa1c5d1c…521f` (572,962 bytes).
+- **Active corpus-survey input:** the exact 27-document Wave-1 selection is bound by selection receipt SHA-256 `832cea1bee22f0bb08c422490dd2afe4e23bc91c56cdee6db382b1bfdc744d28` (7,665 bytes; 248,588,591 selected PDF bytes). The inventory/source-profile implementation is pushed at commit `81bec8431f3db00d4f92b2bb452367d17b954d9b`; both published JSON artifacts rebuild byte-for-byte.
+- **Preserved VPB input:** consolidated Q1/2026, source SHA-256 `614be887…dcde`, immutable role `LOGIC_DEVELOPMENT`. Discovery artifact SHA-256 is `ddeaabd0…aaa9`; registered row artifact SHA-256 is `fa1c5d1c…521f` (572,962 bytes).
 - **VPB source-row Excel:** `output/development/vpb-q1-2026-native-rows-v1/vpb-q1-2026-native-rows.xlsx` (SHA-256 `a304040c32238d22d485fe97723d147fb935817a2ed2e5ad6d74eb19c78ddb04`, 81,988 bytes) and paired provenance JSON (SHA-256 `d9cdc9653ec357903b27dc0fa2ef3eceb56a8b02fe4480d7a9035e064c27775e`, 7,301 bytes). Both rebuild byte-identically; the workbook contains `PAGES`, `ROWS`, `CELLS`, `HEADERS` and `RUN_METADATA`, with zero formulas and no schema projection.
 - **VPB main-statement canonical mapping (historical `@6054` artifact):** `output/development/vpb-q1-2026-native-canonical-v1/canonical-mapping.json` (SHA-256 `94d24bdc307101f0024a18e72cd94100fecb937e525dfbca37baa622d7475597`, 5,050,201 bytes). Its post-publication strict replay accounts for `134/134 = 127 EXISTING_ITEM + 3 NEW_ITEM_PROPOSAL + 3 STRUCTURAL + 1 UNRESOLVED`. Those dispositions truthfully describe the frozen producer snapshot; current `@6056` logic resolves Q074–Q078, but this old artifact was not relabeled or republished.
 - **VPB main-statement mapped Excel (historical `@6054` artifact):** `output/development/vpb-q1-2026-native-canonical-v1/vpb-q1-2026-canonical-mapped.xlsx` (SHA-256 `ae1430a5550d7166cbbd1fd213f3e15d3b9d7d35abafb070d2e09fd545c5503c`, 764,014 bytes) and paired provenance JSON (SHA-256 `a3b39fec85d6d57154d9c180f88fb8f7b694e8819e7db638e26119baa418e412`, 10,470 bytes). The strict completed-pair loader reloaded both trusted hashes, revalidated the producer mapping/row artifacts and rebuilt the pair byte-for-byte. Its six sheets are `SOURCE_ROWS`, `CELLS`, `SCHEMA_COVERAGE`, `NEW_ITEM_PROPOSALS`, `VALIDATION` and `RUN_METADATA`; the full 1,933-item producer schema is represented with zero formulas, imputation or automatic ID allocation. It remains preserved as historical evidence, not a current `@6056` publication.
@@ -85,19 +139,20 @@ The next receipt-bound stages flatten every inherited native-TM source object, t
 - **VPB native-TM mapped Excel:** `output/development/vpb-q1-2026-native-tm-canonical-excel-v1/native-tm-canonical.xlsx` (SHA-256 `3cf28353be6777caa5ce6643622e18747f75cb51757a4f817edf629d0e5ca87c`, 5,476,052 bytes) and paired `provenance.json` (SHA-256 `ab929a4122e5f2192fce0ba45b4781dfcdaadddd05246791740f7344c62b063a`, 20,687 bytes). Its six sheets are `CANONICAL_OBSERVATIONS`, `SCHEMA_DISPOSITIONS`, `SOURCE_DISPOSITIONS`, `SOURCE_OBJECTS`, `VALIDATION` and `RUN_METADATA`. The receipt-bound exporter represents 8 canonical observations, 1,701 schema dispositions, 11,032 logical source objects across 11,037 sheet rows, and 4 validation records, with zero formulas and zero imputed values; strict loading replays the mapping and observation producers and authenticates the native-document/PDF/discovery lineage.
 - **Latest sealed version:** E-0041 CDKT workbook/provenance pair. No new E-version is planned for ordinary coverage expansion.
 - **TM development artifacts:** `output/development/mbb-q1-2026-tm-consolidated-v2/mbb-q1-2026-consolidated-tm-development.xlsx` (SHA-256 `f41d4179ff1142537d624076eb1771c4454842ef740b42e6723ae910143ada20`) and paired provenance JSON (SHA-256 `ebf605b6b9d992b0465d6d7234ae3bf8877824be3147f023d455455a4fba1339`). Three builds using independent verified cache paths are byte-identical. The prior v1 artifact remains preserved and is not overwritten.
-- **Regression status:** the latest recorded pre-6054 full milestone suite passes **1,285/1,285** in **4,154.04 seconds (1:09:14)**. On final 6054 bytes, the independently rerun schema/page-5/consumer suite passes **32/32** and the native row/mapper/exporter/CLI suite passes **68/68**; these figures remain historical milestones. For the current native-TM chain, the canonical mapper suite passes **92/92**, its related suite passes **81/81**, and the native-region suite passes **89/89** against the real 91-page VPB source. The receipt-bound Excel exporter passes **43/43**, and its independent related canonical-XLSX/native-document/observations/mapper run passes **152/152**; the published pair also passes an independent producer-commit strict load and direct workbook/receipt audit. Deterministic schema migration checks, clean producer-commit replays, strict post-publication loads, byte-identical rebuilds, Ruff/scoped-format, compile and diff checks pass. Historical frozen consumers remain bound to their exact Git snapshots and are not rewritten merely to absorb later schema, CLI or algorithm hashes.
-- **Publication status:** the Q074–Q078 schema update `88367a2`, native-TM observation implementation `e94286f`, canonical mapper `53ac436`, and receipt-bound Excel exporter `e3f356a` are pushed on `codex/rebuild-bootstrap`; the earlier source-inventory producer `7927bac` also remains in their ancestry. The native-TM document, observations, canonical mapping and Excel/provenance pair above were produced from clean commits and accepted by their strict post-publication loaders. The historical `@6054` main-statement pair remains preserved and was not republished.
-- **Biggest remaining blocker:** the full VPB native-TM document still has 30 inter-table contexts with unresolved ownership, and the conservative mapper has established only one independently complete bounded family. Of the 1,701 TM identities, 1,693 therefore remain `UNRESOLVED`; of the 11,032 source objects, 11,000 remain mapping-unresolved. Global label matching is unsafe because the schema has only 640 unique normalized labels, 154 colliding keys cover 1,215 items, and one key occurs 49 times. Q074–Q078 are resolved and no current user-review question remains.
-- **Exact next end-to-end step:** resolve or explicitly bound the remaining inter-table context ownership, then extend canonicalization one independently complete note/table/subtree at a time with exact typed-alias/hierarchy evidence and local completeness checks. Coverage may declare `NOT_OBSERVED` only inside such a bounded subtree, or after a genuinely complete full-document inventory; the current `PARTIAL` wrapper cannot justify global absence.
+- **Regression status:** the breadth-first inventory/profile suite passes **8/8** on the hydrated 27-document set, including exact 1,449-page accounting, source-route partition and ghost/inline-image sentinels; both JSON artifacts rebuild byte-for-byte. The latest recorded pre-6054 full milestone suite passes **1,285/1,285** in **4,154.04 seconds (1:09:14)**. On final 6054 bytes, the independently rerun schema/page-5/consumer suite passes **32/32** and the native row/mapper/exporter/CLI suite passes **68/68**; these figures remain historical milestones. For the current native-TM chain, the canonical mapper suite passes **92/92**, its related suite passes **81/81**, and the native-region suite passes **89/89** against the real 91-page VPB source. The receipt-bound Excel exporter passes **43/43**, and its independent related canonical-XLSX/native-document/observations/mapper run passes **152/152**; the published pair also passes an independent producer-commit strict load and direct workbook/receipt audit. Deterministic schema migration checks, clean producer-commit replays, strict post-publication loads, byte-identical rebuilds, Ruff/scoped-format, compile and diff checks pass. Historical frozen consumers remain bound to their exact Git snapshots and are not rewritten merely to absorb later schema, CLI or algorithm hashes.
+- **Publication status:** breadth-first corpus inventory/profile implementation `81bec84`, Q074–Q078 schema update `88367a2`, native-TM observation implementation `e94286f`, canonical mapper `53ac436`, and receipt-bound Excel exporter `e3f356a` are pushed on `codex/rebuild-bootstrap`; the earlier source-inventory producer `7927bac` also remains in their ancestry. The two corpus JSONs and the native-TM document, observations, canonical mapping and Excel/provenance pair above were produced from clean commits and accepted by byte-exact rebuild or their strict post-publication loaders. The historical `@6054` main-statement pair remains preserved and was not republished.
+- **Highest-impact generic blocker:** 26/27 Wave-1 PDFs require scan, hybrid, or searchable-over-image handling, while no new Wave-1 statement block/table/row/cell has yet been source-accounted. The priority is reliable source reconstruction across these layout families, not the remaining identity count of one bank.
+- **Exact next corpus step:** run source-driven statement detection and structural fingerprinting across all 27 Wave-1 documents; emit statement sequence, scope/period/unit evidence, LCTT method, table/axis/topology signatures and source row/cell counts; then cluster table archetypes and failure classes. Only afterward should generic extraction/mapping changes be prioritized and replayed across affected banks. The VPB 30-context issue remains a regression case rather than the active queue head.
 
-## 5. Overall status
+## 6. Overall status
 
 ```text
 Current end-to-end status:
 PDF → page → row/cell → OCR → mapping → validation → Excel
 
-Completed through: source-complete MBB item reconstruction including page-5 off-balance data; universal schema 1,935 at @6056 with Q074–Q078 resolved; deterministic mapped MBB Excel; full-document VPB statement discovery; current logic for 134/134 main-statement dispositions; source-only VPB TM full-page classification and bounded 694-row/2,163-observation quantitative regions; exhaustive 11,032-object observation accounting; one independently complete mapped TM family; deterministic receipt-bound native-TM Excel/provenance
-Currently working on: resolving the 30 inter-table context ownership gaps and extending bounded VPB TM canonicalization beyond the first accepted family
-Not yet completed: document-wide VPB TM context completion; canonical resolution of the remaining 1,693 TM identities and 11,000 source objects; broad independent multi-bank/period verification and continued universal-schema growth
+Completed through: preserved source-complete MBB development baseline; universal schema 1,935 at @6056 with Q074–Q078 resolved; preserved VPB main-statement and bounded native-TM source/mapping/Excel evidence; exact registered inventory of 27 banks / 2,567 PDF paths; locked 27-document Wave 1; reproducible page-level source-route profiles for all 1,449 Wave-1 pages
+Currently working on: source-first structural survey across all 27 banks—statement blocks, table regions, axes, logical rows/cells, hierarchy signatures, document fingerprints, archetype clustering and corpus-level failure classes
+Paused regression work: exhaustive VPB TM identity-by-identity completion; the 30 unresolved contexts and partial canonical coverage remain preserved for later corpus-driven replay
+Not yet completed: Wave-1 source-accounted statement/table/row/cell inventories; cross-bank archetype registry; corpus failure/schema-gap/alias registries; generic replay metrics; broad bank/period/scope holdout verification; scalable unseen-filing canonicalization
 Production approved: NO
 ```
