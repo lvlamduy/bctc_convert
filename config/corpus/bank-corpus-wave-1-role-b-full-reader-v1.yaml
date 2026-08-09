@@ -1,0 +1,184 @@
+version: 1
+policy: BANK_CORPUS_WAVE_1_ROLE_B_FULL_PAGE_READER_V1
+claim_boundary: EXACT_SEALED_WAVE_1_SOURCE_VISIBLE_PAGE_TEXT_AND_GEOMETRY_ONLY
+
+sealed_plan:
+  path: output/development/bank-corpus-wave-1-role-b-page-reader-v1/wave-1-role-b-page-read-plan.json
+  sha256: d056323fde832ec2865ef5ac28a3fb045537ef6ecf3c505a7b5b0bbb68ad29c3
+  size_bytes: 3587505
+  producer_git_commit: da848666ef6a9492be990063d13348780467e4bd
+  execution_plan_sha256: 8598c3132d5f9bbaadcac0545b79c6b38bf0d49b519ed4d2eb71f2b2bec21cab
+  route_plan_sha256: 82b4b387754060419da37a1616336bf32d6a9248945cfc3974b936dbeace609d
+  input_ledger_sha256: 7a83f8ff7fa007832578f586b01715a7023e21bc9bf9840f6d4cd301c4df927e
+  implementation_ledger_sha256: 694b44b5dfd56324473c85693b634710b910c95bf101d158aadac0a5076a4ec2
+  ppocrv6_runtime_model_ledger_sha256: 58049a9bd187b2991716b6c2eac9d33679bb3785027a28dddd20a210e3ea234a
+  render_runtime_ledger_sha256: 7850768660fa7aead1d83592e83cde09c8b52e480c5d33b73c40e7f3b837eb80
+  causal_native_runtime_ledger_sha256: 57a50855a2669f07b0f9606a59de70f574615cdc490f7130f7bf2e2abce744e0
+  sentinel_sha256: d9e1d359e19117af957c395604c11430fea5d1da25b5eecaf6a8e11c687e0a89
+  selection_receipt_sha256: 832cea1bee22f0bb08c422490dd2afe4e23bc91c56cdee6db382b1bfdc744d28
+
+successful_sentinel:
+  root: output/development/bank-corpus-wave-1-role-b-page-reader-v1/sentinel-v1
+  aggregate_filename: sentinel-aggregate.json
+  aggregate_sha256: 75ef770f1d04bed75b83bfd6580d824b61769866e29786aba0bde32de2a62460
+  aggregate_size_bytes: 33861
+  aggregate_identity_sha256: a50a2ca136fea3211bd78ca4af9f7149b2a1ddf8776508d9683555d6051b8eea
+  control_filename: sentinel-execution-control.json
+  control_sha256: a6884e0d46741ce98af2129528f210ccd3d077f614281826eaf6f8ea0f63b2f2
+  control_size_bytes: 47134
+  control_identity_sha256: 6bdc9e2285cf3af62c03a343b7f4e2ba5dc62a4ed4ee78c9d1fea3797ee2e472
+  executor_git_commit: 6dc8a5af601901343bec7abb1ef96fb51517ede1
+  executor_implementation_ledger_sha256: 4d704753e514f1ae6c9ca68628ccb462359089ada03385129629e69a882d442f
+  normalization_policy_sha256: cc7c35d71011541a207c4a6e0ff581142d218cc7392f1d7e7d33d4828a50891c
+  adopted_request_count: 24
+  copied_object_count: 72
+  required_status: COMPLETE_AUTHENTICATED_WAVE_1_24_PAGE_OCR_SENTINEL
+
+sharding:
+  shard_count: 2
+  algorithm: LPT_DOCUMENT_REQUEST_COUNT_THEN_DOCUMENT_ID_V1
+  document_sort: REQUEST_COUNT_DESC_DOCUMENT_ID_ASC
+  assignment: MIN_REQUEST_LOAD_THEN_SHARD_ID_ASC
+  document_split_allowed: false
+  sentinel_requests_excluded_before_assignment: true
+  bank_identity_used: false
+  filename_used: false
+
+word_box_normalization:
+  rule_id: PP_OCRV6_TEXT_WORD_BOX_PAGE_BOUNDARY_CLIP_MAX_1PX_V1
+  scope: TEXT_WORD_BOXES_ONLY
+  maximum_per_edge_overshoot_pixels: 1
+  page_bounds: CLOSED_ZERO_TO_RENDER_PIXEL_DIMENSIONS
+  raw_word_box_positive_area_required: true
+  clipped_word_box_positive_area_required: true
+  corrected_box_contained_in_validated_line_rec_box_required: true
+  unchanged_word_box_validation: MILESTONE_A_STRICT_VALIDATION_UNCHANGED
+  all_other_geometry_validation: MILESTONE_A_STRICT_VALIDATION_UNCHANGED
+  correction_order: LINE_INDEX_ASC_THEN_WORD_INDEX_ASC
+  raw_provider_payload_preserved: true
+
+worker:
+  interpreter: .gpu-venv/bin/python
+  script: scripts/models/run_ppocrv6_wave1_full_worker.py
+  process_count_per_batch_wave: 2
+  max_process_count: 2
+  cpu_threads_per_process: 6
+  one_model_session_per_worker_batch: true
+  max_new_requests_per_shard_per_batch: 128
+  model_session_restarted_between_batches: true
+  max_no_progress_seconds: 900
+  worker_shutdown_grace_seconds: 10
+  supervisor_crash_policy: INHERITED_GLOBAL_FLOCK_EXECUTION_LEASE_V1
+  global_execution_lease_filename: full-reader-execution.lease
+  orphan_worker_reconciliation: BLOCK_NEW_SUPERVISOR_UNTIL_INHERITED_LEASE_RELEASE
+  environment_scope: PER_SHARD_PRIVATE_RUNTIME_ROOT
+  provider_input_materialization: PER_SHARD_PRIVATE_IMMUTABLE_PNG_COPY_V1
+  provider_input_filename: REQUEST_SHA256_DOT_PNG
+  provider_input_mode: '0444'
+  provider_input_hardlink_to_evidence_allowed: false
+  protocol: EXCLUSIVE_CANONICAL_JSON_RESPONSE_FILES_V1
+  network_policy: PYTHON_AUDIT_SOCKET_CONNECT_DENIED
+  environment:
+    PADDLE_PDX_CACHE_HOME: .paddlex-cache
+    PADDLE_PDX_MODEL_SOURCE: huggingface
+    PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK: 'True'
+    FLAGS_allocator_strategy: auto_growth
+    OMP_NUM_THREADS: '6'
+    PYTHONHASHSEED: '0'
+    PYTHONNOUSERSITE: '1'
+  isolated_runtime_directories:
+    HOME: home
+    XDG_CACHE_HOME: xdg-cache
+    XDG_CONFIG_HOME: xdg-config
+    XDG_DATA_HOME: xdg-data
+    TMPDIR: tmp
+  supervisor_environment:
+    LANG: C.UTF-8
+    LC_ALL: C.UTF-8
+    PYTHONUTF8: '1'
+    PYTHONCOERCECLOCALE: '0'
+    PYTHONDONTWRITEBYTECODE: '1'
+    PYTHONSAFEPATH: '1'
+    PATH: .gpu-venv/bin:/usr/bin:/bin
+
+native_reader:
+  route: CAUSAL_NATIVE_TEXT
+  provider: PYMUPDF_CAUSAL_NATIVE_TEXT_VISIBILITY_V1
+  evidence_adapter_path: src/bctc_ai/ocr/causal_native_text_evidence_v1.py
+  evidence_adapter_sha256: 7092fc9c2e441cf857aa3754037ce431483d9373fb3e89e46b6a1217bd984e71
+  pymupdf_distribution_version: 1.28.0
+  runtime_ledger_sha256: 57a50855a2669f07b0f9606a59de70f574615cdc490f7130f7bf2e2abce744e0
+  policy_path: config/ocr/causal-native-text-v1.yaml
+  policy_sha256: 4c6df806a7ded7d7a6c5241f1c523c7b9cbbf24829332293d8aa783a3044d647
+  policy_size_bytes: 876
+  quality_policy_path: config/ocr/native-text-quality-v2.yaml
+  quality_policy_sha256: af0d735ea026abc7b189da46d36f103d1390687325324ecc1a325ba6ab51a660
+  quality_policy_size_bytes: 596
+  source_bytes_held_and_authenticated: true
+  page_level_execution: true
+  terminal_statuses:
+    - CAUSAL_NATIVE_TEXT_READ_COMPLETE
+    - UNRESOLVED_CAUSAL_NATIVE_VISIBILITY
+    - UNRESOLVED_NATIVE_TEXT_QUALITY
+  ocr_fallback_allowed: false
+  unresolved_is_terminal_source_accounting: true
+
+execution:
+  parent_renders_ocr_pages: true
+  render_contract_source: SEALED_PLAN_REQUEST
+  request_scope: EXACT_ALL_1449_SEALED_WAVE_1_PAGE_REQUESTS
+  per_document_locking: FLOCK_EXCLUSIVE_NOFOLLOW
+  checkpoint: ONE_IMMUTABLE_CONSTANT_SIZE_CANONICAL_CHECKPOINT_PER_PAGE
+  document_index: DETERMINISTIC_FINAL_INDEX_AFTER_ALL_DOCUMENT_REQUESTS
+  orphan_adoption: FULL_REQUEST_IDENTITY_ONLY
+  sentinel_object_adoption: BYTE_COPY_NEW_INODE_NO_HARDLINK_V1
+  sentinel_source_inode_mode_mtime_unchanged_required: true
+  completed_resume_inference_count: 0
+  minimum_free_space_bytes: 53687091200
+  timestamps_in_deterministic_evidence_allowed: false
+  timing_log: SEPARATE_NON_IDENTITY_OBSERVATIONAL_JSONL
+  overwrite_allowed: false
+
+safety:
+  production_authentication_bypass_allowed: false
+  injectable_production_worker_allowed: false
+  injectable_production_provider_allowed: false
+  test_output_can_publish_production_status: false
+  bank_registry_metadata_allowed_in_execution_decisions: false
+  filename_metadata_allowed_in_execution_decisions: false
+  role_a_inputs_allowed: false
+  schema_inputs_allowed: false
+  mapping_inputs_allowed: false
+  historical_values_allowed: false
+  source_visible_text_preserved_verbatim: true
+  semantic_interpretation_allowed: false
+  absence_declarations_allowed: false
+
+expected:
+  document_count: 27
+  request_count: 1449
+  ocr_request_count: 1356
+  native_request_count: 93
+  sentinel_adopted_ocr_request_count: 24
+  remaining_ocr_request_count: 1332
+  shard_count: 2
+  remaining_ocr_requests_per_shard: [665, 667]
+  remaining_ocr_documents_per_shard: [13, 13]
+  statement_classification_count: 0
+  table_classification_count: 0
+  row_reconstruction_count: 0
+  cell_interpretation_count: 0
+  absence_declaration_count: 0
+
+output:
+  root: output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v1
+  control_filename: full-reader-execution-control.json
+  object_directory: objects
+  checkpoint_directory: checkpoints
+  document_index_directory: documents
+  lock_directory: locks
+  runtime_directory: runtime
+  upstream_directory: upstream
+  aggregate_filename: full-reader-aggregate.json
+  canonical_json: true
+  exclusive_no_overwrite: true
