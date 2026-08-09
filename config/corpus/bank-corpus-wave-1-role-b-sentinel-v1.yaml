@@ -1,0 +1,102 @@
+version: 1
+policy: BANK_CORPUS_WAVE_1_ROLE_B_SENTINEL_EXECUTOR_V1
+claim_boundary: EXACT_24_PAGE_OCR_SENTINEL_SOURCE_TEXT_AND_GEOMETRY_ONLY
+
+sealed_plan:
+  path: output/development/bank-corpus-wave-1-role-b-page-reader-v1/wave-1-role-b-page-read-plan.json
+  sha256: d056323fde832ec2865ef5ac28a3fb045537ef6ecf3c505a7b5b0bbb68ad29c3
+  size_bytes: 3587505
+  producer_git_commit: da848666ef6a9492be990063d13348780467e4bd
+  execution_plan_sha256: 8598c3132d5f9bbaadcac0545b79c6b38bf0d49b519ed4d2eb71f2b2bec21cab
+  sentinel_sha256: d9e1d359e19117af957c395604c11430fea5d1da25b5eecaf6a8e11c687e0a89
+  selection_receipt_sha256: 832cea1bee22f0bb08c422490dd2afe4e23bc91c56cdee6db382b1bfdc744d28
+
+sharding:
+  shard_count: 2
+  algorithm: LPT_DOCUMENT_REQUEST_COUNT_THEN_DOCUMENT_ID_V1
+  document_sort: REQUEST_COUNT_DESC_DOCUMENT_ID_ASC
+  assignment: MIN_REQUEST_LOAD_THEN_SHARD_ID_ASC
+  document_split_allowed: false
+  bank_identity_used: false
+  filename_used: false
+
+worker:
+  interpreter: .gpu-venv/bin/python
+  script: scripts/models/run_ppocrv6_sentinel_worker.py
+  process_count_initial_run: 2
+  max_process_count: 2
+  cpu_threads_per_process: 6
+  one_long_lived_session_per_active_shard: true
+  supervisor_crash_policy: INHERITED_GLOBAL_FLOCK_EXECUTION_LEASE_V1
+  global_execution_lease_filename: sentinel-execution.lease
+  orphan_worker_reconciliation: BLOCK_NEW_SUPERVISOR_UNTIL_INHERITED_LEASE_RELEASE
+  environment_scope: PER_SHARD_PRIVATE_RUNTIME_ROOT
+  protocol: EXCLUSIVE_CANONICAL_JSON_RESPONSE_FILES_V1
+  network_policy: PYTHON_AUDIT_SOCKET_CONNECT_DENIED
+  environment:
+    PADDLE_PDX_CACHE_HOME: .paddlex-cache
+    PADDLE_PDX_MODEL_SOURCE: huggingface
+    PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK: 'True'
+    FLAGS_allocator_strategy: auto_growth
+    OMP_NUM_THREADS: '6'
+    PYTHONHASHSEED: '0'
+    PYTHONNOUSERSITE: '1'
+  isolated_runtime_directories:
+    HOME: home
+    XDG_CACHE_HOME: xdg-cache
+    XDG_CONFIG_HOME: xdg-config
+    XDG_DATA_HOME: xdg-data
+    TMPDIR: tmp
+  supervisor_environment:
+    LANG: C.UTF-8
+    LC_ALL: C.UTF-8
+    PYTHONUTF8: '1'
+    PYTHONCOERCECLOCALE: '0'
+    PYTHONDONTWRITEBYTECODE: '1'
+    PYTHONSAFEPATH: '1'
+    PATH: .gpu-venv/bin:/usr/bin:/bin
+
+execution:
+  parent_renders_pages: true
+  render_contract_source: SEALED_PLAN_REQUEST
+  request_scope: EXACT_SEALED_SENTINEL_ONLY
+  per_document_locking: FLOCK_EXCLUSIVE_NOFOLLOW
+  checkpoint: IMMUTABLE_CANONICAL_GENERATION_AFTER_EVERY_PAGE
+  orphan_adoption: FULL_REQUEST_IDENTITY_ONLY
+  completed_resume_inference_count: 0
+  minimum_free_space_bytes: 53687091200
+  timestamps_in_deterministic_evidence_allowed: false
+  timing_log: SEPARATE_NON_IDENTITY_OBSERVATIONAL_JSONL
+  overwrite_allowed: false
+
+safety:
+  production_authentication_bypass_allowed: false
+  injectable_production_worker_allowed: false
+  test_output_can_publish_production_status: false
+  bank_registry_metadata_allowed_in_execution_decisions: false
+  filename_metadata_allowed_in_execution_decisions: false
+  role_a_inputs_allowed: false
+  schema_inputs_allowed: false
+  mapping_inputs_allowed: false
+  historical_values_allowed: false
+  source_visible_text_preserved_verbatim: true
+  semantic_interpretation_allowed: false
+  absence_declarations_allowed: false
+
+expected:
+  document_count: 14
+  request_count: 24
+  shard_count: 2
+  requests_per_shard: [12, 12]
+  documents_per_shard: [7, 7]
+
+output:
+  root: output/development/bank-corpus-wave-1-role-b-page-reader-v1/sentinel-v1
+  control_filename: sentinel-execution-control.json
+  object_directory: objects
+  checkpoint_directory: checkpoints
+  lock_directory: locks
+  runtime_directory: runtime
+  aggregate_filename: sentinel-aggregate.json
+  canonical_json: true
+  exclusive_no_overwrite: true
