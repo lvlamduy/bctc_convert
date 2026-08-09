@@ -1,0 +1,26 @@
+version: 1
+policy: CAUSAL_NATIVE_TEXT_VISIBILITY_V1
+claim_boundary: SOURCE_VISIBLE_NATIVE_TEXT_GEOMETRY_ONLY
+
+visibility:
+  near_white_channel_minimum: 250
+  raster_scale: 2.0
+  minimum_visible_contrast: 12
+  minimum_causal_contribution_ratio: 0.25
+  minimum_glyph_core_alpha: 128
+  relative_glyph_core_alpha: 0.75
+  minimum_glyph_core_survival_ratio: 0.75
+  blank_slot_inset_ratio: 0.12
+  exclude_fully_transparent_text_paints: true
+  require_causal_visibility_for_nonopaque_text: true
+
+safety:
+  source_visible_text_only: true
+  ambiguous_occlusion_status: UNRESOLVED_CAUSAL_NATIVE_VISIBILITY
+  corrupt_or_empty_text_status: UNRESOLVED_NATIVE_TEXT_QUALITY
+  ocr_fallback_allowed: false
+  table_or_statement_semantics_allowed: false
+  schema_inputs_allowed: false
+  role_a_inputs_allowed: false
+  historical_values_allowed: false
+  bank_or_page_specific_rules_allowed: false

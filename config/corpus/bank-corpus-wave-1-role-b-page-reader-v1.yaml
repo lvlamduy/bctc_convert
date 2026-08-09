@@ -1,0 +1,131 @@
+version: 1
+policy: BANK_CORPUS_WAVE_1_ROLE_B_PAGE_READER_V1
+claim_boundary: SOURCE_VISIBLE_PAGE_TEXT_AND_GEOMETRY_EVIDENCE_ONLY
+
+upstream:
+  mode: EXACT_PUBLISHED_ARTIFACT_BYTES_READ_ONLY
+  selection_receipt_binding: DERIVE_AND_RECONCILE_AT_RUNTIME
+  inventory:
+    path: output/development/bank-corpus-survey-v1/corpus-inventory.json
+    sha256: fff64ca4d25de646cd2f4661d99fc9623e6edc8c7c6b0cd321c0d2f9af9cebd8
+    size_bytes: 2181864
+  pre_ocr_structure:
+    path: output/development/bank-corpus-survey-v1/wave-1-pre-ocr-structure-features.json
+    sha256: 9e4f8fe893e0f8967759eecf2647f4b9f921e97668c220e1237a6ce81059507c
+    size_bytes: 3730164
+
+routing:
+  dominant_raster_route: DOMINANT_RASTER_OCR
+  causal_native_route: CAUSAL_NATIVE_TEXT
+  unresolved_route: UNRESOLVED_PAGE_ROUTE
+  dominant_raster_predicate: HAS_DOMINANT_DISPLAYED_RASTER
+  causal_native_predicate: SUBSTANTIVE_NONZERO_ALPHA_TEXT_AND_NONDOMINANT_RASTER
+  bank_identity_used: false
+  filename_used: false
+  role_a_used: false
+  schema_used: false
+
+render:
+  source: FULL_COMPOSITED_DISPLAYED_PDF_PAGE
+  colorspace: RGB
+  alpha: false
+  annotations: INCLUDED
+  default_dpi: 200
+  preserved_source_dpi_band: '300'
+  preserved_band_render_dpi: 300
+  implicit_orientation_classification: false
+  implicit_unwarping: false
+  implicit_textline_orientation: false
+  canonical_coordinate_system: UNROTATED_PDF_MILLI_POINTS_TOP_LEFT
+  matrix_convention: COLUMN_VECTOR_3X3_RATIONAL
+
+sentinel:
+  status: STRUCTURAL_CAPACITY_SENTINEL_ONLY
+  route: DOMINANT_RASTER_OCR
+  stratum_fields:
+    - dominant_image_effective_dpi_band
+    - effective_orientation
+    - source_route_quadrant
+    - pdf_rotation_degrees
+  rank_material: SELECTION_RECEIPT_PIPE_SOURCE_SHA256_PIPE_PHYSICAL_PAGE
+  primary_per_nonempty_stratum: 1
+  largest_strata_extra_count: 4
+  extra_ordinal_within_stratum: 2
+  bank_identity_used: false
+
+readers:
+  ppocrv6:
+    configuration_path: config/models/pp-ocrv6-word-box.yaml
+    runtime_manifest_path: config/models/gpu-runtime.toml
+    runtime_freeze_path: config/models/gpu-requirements.freeze.txt
+    model_keys: [pp_ocrv6_medium_det, pp_ocrv6_medium_rec]
+    device: cpu
+    precision: fp32
+    mkldnn: false
+    cpu_threads_per_session: 6
+    max_document_workers: 2
+    network_policy: PYTHON_AUDIT_SOCKET_CONNECT_DENIED
+  causal_native:
+    policy_path: config/ocr/causal-native-text-v1.yaml
+    quality_policy_path: config/ocr/native-text-quality-v2.yaml
+    ocr_fallback_allowed: false
+
+execution:
+  maximum_document_workers: 2
+  minimum_free_space_bytes: 53687091200
+  per_document_locking: FLOCK_EXCLUSIVE
+  checkpoint: ATOMIC_AFTER_EVERY_PAGE
+  orphan_adoption: FULL_REQUEST_IDENTITY_ONLY
+  overwrite_allowed: false
+
+safety:
+  allowed_project_inputs:
+    - config/corpus/bank-corpus-wave-1-role-b-page-reader-v1.yaml
+    - output/development/bank-corpus-survey-v1/corpus-inventory.json
+    - output/development/bank-corpus-survey-v1/wave-1-pre-ocr-structure-features.json
+    - config/models/pp-ocrv6-word-box.yaml
+    - config/models/gpu-runtime.toml
+    - config/models/gpu-requirements.freeze.txt
+    - config/ocr/causal-native-text-v1.yaml
+    - config/ocr/native-text-quality-v2.yaml
+  selected_source_pdf_allowlist: DERIVED_EXACTLY_FROM_RECEIPT_BOUND_INVENTORY
+  forbidden_path_fragments:
+    - dataset_roles
+    - role-a
+    - role_a
+    - schema
+    - mapping
+    - historical
+    - question_for_user
+    - experiment
+  dataset_role_inputs_allowed: false
+  role_a_inputs_allowed: false
+  schema_inputs_allowed: false
+  prior_mapping_outputs_allowed: false
+  historical_values_allowed: false
+  statement_classification_allowed: false
+  table_classification_allowed: false
+  row_reconstruction_allowed: false
+  cell_semantics_allowed: false
+  absence_declarations_allowed: false
+  bank_specific_parser_rules_allowed: false
+
+expected_accounting:
+  selected_document_count: 27
+  total_physical_page_count: 1449
+  route_page_counts:
+    DOMINANT_RASTER_OCR: 1356
+    CAUSAL_NATIVE_TEXT: 93
+    UNRESOLVED_PAGE_ROUTE: 0
+  ocr_render_dpi_page_counts: {'200': 1250, '300': 106}
+  ocr_structural_stratum_count: 20
+  structural_sentinel_page_count: 24
+
+output:
+  format: BANK_CORPUS_WAVE_1_ROLE_B_PAGE_READS_V1
+  object_store_directory: output/development/bank-corpus-wave-1-role-b-page-reader-v1/objects
+  checkpoint_directory: output/development/bank-corpus-wave-1-role-b-page-reader-v1/checkpoints
+  plan_filename: wave-1-role-b-page-read-plan.json
+  manifest_filename: wave-1-role-b-page-reads.json
+  canonical_json: true
+  exclusive_no_overwrite: true
