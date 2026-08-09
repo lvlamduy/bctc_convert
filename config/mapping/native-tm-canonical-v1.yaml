@@ -1,0 +1,177 @@
+version: 1
+policy: REGISTERED_NATIVE_TM_CANONICAL_MAPPING_V1
+claim_boundary: BOUNDED_SOURCE_EVIDENCE_TM_CANONICAL_MAPPING_ONLY
+require_clean_git: true
+
+accepted_native_tm_observations:
+  format_version: REGISTERED_NATIVE_TM_OBSERVATIONS_RESULT_V1
+  policy: REGISTERED_NATIVE_TM_OBSERVATIONS_V1
+  claim_boundary: SOURCE_ONLY_NATIVE_TM_OBSERVATION_FLATTENING
+  status: COMPLETE_NATIVE_TM_SOURCE_OBJECT_ACCOUNTING
+  required_dataset_role: LOGIC_DEVELOPMENT
+  trusted_sha256_required: true
+  strict_producer_commit_replay_required: true
+  exact_source_accounting_required: true
+  required_collections:
+    - page_inventory
+    - contexts
+    - rows
+    - dimensions
+    - observations
+    - source_evidence
+    - source_references
+    - source_dispositions
+
+schema_authority:
+  schema_name: UNIVERSAL_BANK_BCTC_SCHEMA
+  revision: UNIVERSAL_BANK_BCTC_SCHEMA@6056
+  statement_type: TM
+  item_count: 1701
+  order_authority: WORKBOOK_DISPLAY_ORDER
+  schema_registry:
+    path: data/registered/schema_registry.json
+    sha256: 5ee4cc00689a22c252a3f5e194195683231624838034dd916fafe20daeb0d64c
+  schema_graph:
+    path: reference/schemas/schema_graph.jsonl
+    sha256: 2262c4c053d397754c65d4da66d3c05ca8fb053ed29ccee11981a7eb0982e770
+  tm_projection_sha256: e85deb68a14f6041e57a5d3ad48a209818c8b09bb2a921637e98ead172f3da53
+  tm_context_policy:
+    path: config/schemas/tm-context-v1.yaml
+    sha256: 9c7989fa742101ca6f63bd01be2a484b001efcfe493615d429433273741da98f
+  tm_context_projection_sha256: f2874a66403834ec29a65dcb71b56abc26c55b822d921e4c5351e746f288ef6f
+  coverage_registry:
+    path: data/registered/schema_coverage_registry.json
+    sha256: 16f1c52415f4a5eb6abd2650e081f74c0f6a2e9fa13552c2b4c535db7e03a9db
+
+typed_alias_authority:
+  accepted_authority_types:
+    - USER_SUPPLIED_HIERARCHY_LABEL
+    - AUDITED_SCHEMA_ALIAS
+  untyped_structural_aliases_mapping_eligible: false
+  historical_aliases_allowed: false
+  fuzzy_matching_allowed: false
+  strip_structural_enumerators: false
+  accounting_abbreviation_expansion_allowed: false
+  schema_source_config:
+    path: config/schemas/sources.yaml
+    sha256: b00679e6c2ed9b1311a09424dcff81e8d016dd54fa09d884b011ad66b2d3e1f9
+  hierarchy_config:
+    path: config/schemas/hierarchy_reference.yaml
+    sha256: 3815316ea91ceaac640d42767324dfbcffd3aa326638c2c5c27d4c599298b4c3
+  hierarchy_registry:
+    path: data/registered/hierarchy_registry.json
+    sha256: f31277502d9e568e738e621ac9c749d18c2ec47dd3076f4ae51afb260a1ac99c
+  tm_hierarchy_workbook:
+    path: vst_level/vst_bank_detailed_notes_sheet.xlsx
+    sha256: 6f322f7ba3b1b737643d21890b9bd51ea00224cea6ac65cfa41036d68ccd885b
+  business_update_audits:
+    - path: data/registered/schema_business_update_5712_5713_5714_5718_6056.json
+      sha256: 7a3ead7aa1e0c3b998c5d597d8014379592488927525270998cfd9cc2ff7385b
+  tm_projection_record_count: 2
+  tm_projection_sha256: cea637baa097229d871656954f88902d4357915c44c9033f67372e70b9991ea1
+
+routing:
+  statement_type: TM
+  normalization: RETRIEVAL_KEY_EXACT
+  candidate_authorities:
+    - CANONICAL_RETRIEVAL_KEY_EXACT
+    - ACCEPTED_TYPED_ALIAS_RETRIEVAL_KEY_EXACT
+  global_candidate_uniqueness_required: true
+  minimum_distinct_direct_child_anchors: 3
+  require_distinct_target_per_anchor: true
+  require_unanimous_direct_parent: true
+  require_parent_equals_note_family_root: true
+  require_resolved_mapping_eligible_targets: true
+  require_resolved_mapping_eligible_parent: true
+  require_depth_one_family_subtree: true
+  source_object_owned_by_at_most_one_root: true
+  root_occurrence_policy: UNIQUE_SOURCE_CONTEXT_PER_INFERRED_ROOT
+  distinct_roots_evaluated_independently: true
+  zero_accepted_roots_allowed: true
+  table_title_used_for_routing: false
+  equation_used_for_target_selection: false
+
+local_completion:
+  require_quantitative_context: true
+  require_every_context_row_accounted: true
+  require_region_grid_rows_only: true
+  require_exactly_one_unlabeled_terminal_row: true
+  require_terminal_after_all_anchors: true
+  require_resolved_compatible_dimensions: true
+  require_exactly_one_observation_per_row_dimension: true
+  accepted_observation_statuses:
+    - OBSERVED_VALUE
+    - OBSERVED_ZERO
+  unresolved_or_invalid_positions_block: true
+  row_local_scalars_block: true
+  attached_unassigned_or_detached_evidence_blocks: true
+  cell_free_after_terminal_inter_table_context_blocks: false
+  following_heading_used_for_routing: false
+  full_document_completion_implied: false
+  equation_tolerance_source_units: 0
+
+coverage:
+  statement_type: TM
+  schema_item_count: 1701
+  completion_rule: EXACTLY_ONE_TERMINAL_OUTCOME_PER_SCHEMA_ID_PER_DOCUMENT
+  terminal_outcomes:
+    - OBSERVED_VALUE
+    - OBSERVED_ZERO
+    - DASH
+    - BLANK
+    - NOT_OBSERVED
+    - NOT_APPLICABLE
+    - AMBIGUOUS
+    - UNRESOLVED
+  outside_bounded_subtree_outcome: UNRESOLVED
+  outside_bounded_subtree_reason: UNASSESSED_OUTSIDE_BOUNDED_TABLE_SUBTREE
+  absent_direct_child_outcome: NOT_OBSERVED
+  absent_direct_child_reason: ABSENT_FROM_LOCALLY_COMPLETE_BOUNDED_TABLE_SUBTREE
+
+role_isolation:
+  direct_runtime_input_kinds:
+    - NATIVE_TM_OBSERVATIONS_ARTIFACT
+    - THIS_POLICY
+    - UNIVERSAL_SCHEMA_REGISTRY
+    - UNIVERSAL_SCHEMA_GRAPH
+    - TM_CONTEXT_POLICY
+    - SCHEMA_COVERAGE_REGISTRY
+    - SCHEMA_SOURCE_CONFIG
+    - HIERARCHY_CONFIG
+    - HIERARCHY_REGISTRY
+    - TM_HIERARCHY_WORKBOOK
+    - SCHEMA_BUSINESS_UPDATE_AUDIT
+  prior_answer_artifacts_allowed: false
+  historical_values_allowed: false
+  role_a_outputs_allowed: false
+  human_review_outputs_allowed: false
+  bank_identity_used_for_routing: false
+  filename_identity_used_for_routing: false
+  page_number_used_for_routing: false
+  note_number_used_for_routing: false
+  table_title_used_for_routing: false
+  expected_source_counts_used_for_routing: false
+  forbidden_path_fragments:
+    - /role-a/
+    - /role_a/
+    - /human_review/
+    - /human-review/
+    - /review/
+    - /history/
+    - /holdout/
+    - /comparisons/
+    - /docs/experiments/
+    - /config/experiments/
+    - /output/holdout/
+
+output:
+  format: REGISTERED_NATIVE_TM_CANONICAL_MAPPING_RESULT_V1
+  status: COMPLETE_NATIVE_TM_CANONICAL_DISPOSITION_ACCOUNTING
+  canonical_json: true
+  output_directory: output/development
+  exclusive_no_overwrite: true
+  rollback_after_failed_strict_replay: true
+  absolute_project_paths_allowed: false
+  exact_source_object_dispositions_required: true
+  exact_tm_schema_dispositions_required: true
+  strict_producer_commit_replay_required: true
