@@ -26,12 +26,23 @@ from bctc_ai.mapping.ordered_subgraph_v2 import (
 from bctc_ai.schema.registry import SchemaItem
 
 LCTT_POLICY_RELATIVE_PATH = Path("config/mapping/lctt-direct-ordered-subgraph-v2.yaml")
-LCTT_SCHEMA_ITEM_COUNT = 109
-LCTT_DIRECT_SCHEMA_ITEM_COUNT = 52
+LCTT_SCHEMA_ITEM_COUNT = 110
+LCTT_DIRECT_SCHEMA_ITEM_COUNT = 53
 LCTT_INDIRECT_SCHEMA_ITEM_COUNT = 57
 LCTT_VISIBLE_SOURCE_ROW_COUNT = 43
 LCTT_TRAILING_AGGREGATE_IDS = (4109, 4110, 4111, 4112, 4114, 4116)
-LCTT_DIRECT_AGGREGATE_IDS = (4109, 4110, 6034, 5714, 4111, 4112, 4114, 4116)
+LCTT_DIRECT_AGGREGATE_IDS = (
+    4109,
+    4107,
+    4108,
+    4110,
+    6034,
+    5714,
+    4111,
+    4112,
+    4114,
+    4116,
+)
 
 _BUSINESS_RESOLUTION_IDS = {4140, 6034, 5714}
 _BUSINESS_RESOLUTION_ROWS = {
@@ -49,7 +60,7 @@ _BUSINESS_RESOLUTION_DECISION_BASES = {
     6034: "APPROVED_BUSINESS_SCHEMA_MAPPING",
     5714: "APPROVED_BUSINESS_SCHEMA_MAPPING",
 }
-_NOT_OBSERVED_IDS = {4143, 4144, 4145, 4146, 4120, 4121, 4151, 4152, 4117}
+_NOT_OBSERVED_IDS = {4143, 4144, 4145, 4146, 4120, 4121, 4151, 4152, 4117, 6054}
 
 _MAX_LABEL_LENGTH = 4096
 _SHA256 = re.compile(r"[0-9a-f]{64}")
@@ -317,7 +328,7 @@ def load_lctt_direct_mapping_policy(path: Path) -> LCTTDirectMappingPolicy:
 
 
 def build_lctt_direct_schema_projection(schema: Sequence[SchemaItem]) -> SchemaProjectionV2:
-    """Build the applicable 52-item direct branch without reading history or values."""
+    """Build the applicable 53-item direct branch without reading history or values."""
 
     direct = tuple(
         item
@@ -329,8 +340,8 @@ def build_lctt_direct_schema_projection(schema: Sequence[SchemaItem]) -> SchemaP
     except OrderedSubgraphV2Error as exc:
         raise LCTTItemMappingError("cannot build LCTT direct schema projection") from exc
     if len(projection.nodes) != LCTT_DIRECT_SCHEMA_ITEM_COUNT:
-        raise LCTTItemMappingError("LCTT direct projection must contain exactly 52 items")
-    if tuple(node.display_order for node in projection.nodes) != tuple(range(57, 109)):
+        raise LCTTItemMappingError("LCTT direct projection must contain exactly 53 items")
+    if tuple(node.display_order for node in projection.nodes) != tuple(range(57, 110)):
         raise LCTTItemMappingError("LCTT direct workbook order drifted")
     aggregates = tuple(
         node.report_norm_id for node in projection.nodes if node.child_report_norm_ids
@@ -513,7 +524,7 @@ def reconcile_lctt_direct_items(
     independent_semantic_rows: Sequence[object] | None = None,
     independent_source_reader_id: str | None = None,
 ) -> LCTTItemMappingResult:
-    """Reconcile all 109 items using dual readers plus approved business resolutions."""
+    """Reconcile all 110 items using dual readers plus approved business resolutions."""
 
     method = CashFlowMethod(str(cash_flow_method))
     if method is not CashFlowMethod.DIRECT:
@@ -543,7 +554,7 @@ def reconcile_lctt_direct_items(
         )
     )
     if len(all_lctt) != LCTT_SCHEMA_ITEM_COUNT:
-        raise LCTTItemMappingError("LCTT schema denominator must be exactly 109")
+        raise LCTTItemMappingError("LCTT schema denominator must be exactly 110")
     direct_by_id = projection.by_id()
     if any(
         report_norm_id not in direct_by_id for report_norm_id in policy.not_observed_report_norm_ids

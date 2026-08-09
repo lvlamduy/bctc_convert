@@ -22,10 +22,10 @@ def test_vst_hierarchy_is_complete_where_claimed_and_partial_for_direct_lctt(pro
     lctt = next(workbook for workbook in registry.workbooks if workbook.statement_type == "LCTT")
     assert lctt.coverage == "BRANCH_DIRECT"
     assert lctt.non_id_labels == ("LƯU CHUYỂN TIỀN TỆ TRỰC TIẾP",)
-    assert lctt.schema_only_append_ids == (5714, 6034)
+    assert lctt.schema_only_append_ids == (5714, 6034, 6054)
     cdkt = next(workbook for workbook in registry.workbooks if workbook.statement_type == "CDKT")
     assert cdkt.skipped_blank_rows == 47
-    assert cdkt.schema_only_append_ids == (5712,)
+    assert cdkt.schema_only_append_ids == (5712, *range(6035, 6054))
     kqkd = next(workbook for workbook in registry.workbooks if workbook.statement_type == "KQKD")
     assert kqkd.schema_only_append_ids == (5713,)
     tm = next(workbook for workbook in registry.workbooks if workbook.statement_type == "TM")
@@ -59,6 +59,15 @@ def test_hierarchy_edges_and_structural_aliases_are_attached_without_reordering(
     assert by_id[5712].children == [4325, 4306]
     assert by_id[5712].parent_id == 4305
     assert by_id[4305].children == [4304, 5712]
+    assert by_id[4313].children == [4346, 6035, 4347]
+    assert by_id[4316].children == [4350, 4351, 6036, 4352]
+    assert by_id[4318].children == [6037]
+    assert by_id[6038].parent_id is None
+    assert by_id[6038].children == [6039, 6050]
+    assert by_id[6039].children == [6040, 6041, 6046, 6047, 6048]
+    assert by_id[6041].children == [6042, 6043, 6044, 6045]
+    assert by_id[6048].children == [6049]
+    assert by_id[6050].children == [6051, 6052, 6053]
     assert by_id[5713].children == [4385, 4386, 4387, 4388, 4389, 4390, 4393]
     assert by_id[5713].parent_id == 4376
     assert by_id[4376].children == [5713, 4391]
@@ -70,6 +79,14 @@ def test_hierarchy_edges_and_structural_aliases_are_attached_without_reordering(
     assert by_id[6034].children == [4144, 4145, 4146]
     assert all(by_id[schema_id].parent_id == 6034 for schema_id in (4144, 4145, 4146))
     assert by_id[4111].children == [4118, 4119, 4143, 6034, 5714, 4147]
+    assert by_id[4110].children == [4109, 4107, 4108, 4142]
+    assert by_id[4107].children == [4129, 4130, 4131, 4132, 6054, 4133, 4134]
+    assert by_id[4108].children == list(range(4135, 4142))
+    assert by_id[6054].parent_id == 4107
+    assert "Lợi nhuận từ hoạt động kinh doanh trước thay đổi vốn lưu động" in (
+        by_id[4109].structural_aliases
+    )
+    assert "Thuế Thu nhập doanh nghiệp phải nộp" in by_id[4382].structural_aliases
     assert by_id[5718].parent_id == 575
     assert by_id[5718].children == []
     assert by_id[575].children == [576, 585, 5718]

@@ -38,7 +38,7 @@ This file is the durable checklist for every design, experiment, review, and pro
 ## 3. Statement and scope boundaries
 
 - Map only CDKT, KQKD, the applicable LCTT branch, and quantitative TM. Do not map CSTC unless scope changes.
-- Do not map off-balance-sheet indicators such as “Bảo lãnh vay vốn”, “Cam kết giao dịch hối đoái”, or “Tài sản và chứng từ khác” into CDKT.
+- Preserve off-balance-sheet indicators such as “Bảo lãnh vay vốn”, “Cam kết giao dịch hối đoái”, or “Tài sản và chứng từ khác” as legitimate source-visible accounting items when the PDF reports them. They belong to an explicit `OFF_BALANCE_SHEET` section/root and must never be flattened into, or allowed to affect totals of, the main CDKT balance-sheet block.
 - Narrative accounting-policy pages must not be treated as quantitative Notes.
 - Separate and consolidated scope must be identified from visible document evidence.
 

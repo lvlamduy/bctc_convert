@@ -69,8 +69,8 @@ acceptance_gates:
 # 40 one-to-one rows still require agreement from a second semantic reader.
 candidate_reconciliation:
   applicable_branch: DIRECT
-  schema_total: 109
-  applicable_branch_total: 52
+  schema_total: 110
+  applicable_branch_total: 53
   non_applicable_branch_total: 57
   visible_source_row_total: 43
   minimum_independent_semantic_streams_for_automatic_selection: 2
@@ -88,6 +88,7 @@ candidate_reconciliation:
     - 4151
     - 4152
     - 4117
+    - 6054
   business_resolved_source_rows:
     - key: USER_Q018_CONTEXTUAL_WORDING_TO_4140
       source_row_id: page-0007:row-0024

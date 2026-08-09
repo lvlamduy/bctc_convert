@@ -199,15 +199,15 @@ def test_direct_projection_and_policy_reconcile_exact_denominators(
     projection = build_lctt_direct_schema_projection(lctt_schema)
     policy = load_lctt_direct_mapping_policy(project_root / LCTT_POLICY_RELATIVE_PATH)
 
-    assert len(projection.nodes) == 52
-    assert [node.display_order for node in projection.nodes] == list(range(57, 109))
+    assert len(projection.nodes) == 53
+    assert [node.display_order for node in projection.nodes] == list(range(57, 110))
     assert (
         tuple(node.report_norm_id for node in projection.nodes if node.child_report_norm_ids)
         == LCTT_DIRECT_AGGREGATE_IDS
     )
     assert policy.core.trailing_aggregate_ids == LCTT_TRAILING_AGGREGATE_IDS
-    assert policy.schema_total == 109
-    assert policy.applicable_branch_total == 52
+    assert policy.schema_total == 110
+    assert policy.applicable_branch_total == 53
     assert policy.non_applicable_branch_total == 57
     assert policy.visible_source_row_total == 43
     assert policy.currently_available_independent_semantic_streams == 1
@@ -233,6 +233,7 @@ def test_direct_projection_and_policy_reconcile_exact_denominators(
         4151,
         4152,
         4117,
+        6054,
     )
 
 
@@ -244,13 +245,13 @@ def test_real_single_reader_maps_three_business_resolutions_and_withholds_other_
     assert validate_lctt_item_mapping_result(result) is result
     assert result.status == "PARTIAL_AUTOMATIC_MAPPING_WITH_UNRESOLVED_ITEMS"
     assert result.automatic_selection_allowed
-    assert result.schema_item_count == 109
-    assert result.schema_status_reconciled_count == 109
+    assert result.schema_item_count == 110
+    assert result.schema_status_reconciled_count == 110
     assert result.mapped_schema_count == 3
     assert result.candidate_linked_schema_count == 40
     assert result.label_conflict_schema_count == 0
     assert result.ambiguous_schema_count == 0
-    assert result.not_observed_schema_count == 9
+    assert result.not_observed_schema_count == 10
     assert result.not_applicable_schema_count == 57
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == 43
@@ -282,6 +283,7 @@ def test_real_single_reader_maps_three_business_resolutions_and_withholds_other_
         4151,
         4152,
         4117,
+        6054,
     }
     assert len(schema_by_status[LCTTSchemaStatus.SCHEMA_ITEM_NOT_APPLICABLE.value]) == 57
     assert {
@@ -315,13 +317,13 @@ def test_real_deepseek_stream_plus_business_resolutions_maps_all_43_rows(
     assert result.status == "SOURCE_MAPPING_COMPLETE_NUMERIC_NOT_FULLY_VERIFIED"
     assert result.automatic_selection_allowed
     assert result.independent_semantic_stream_count == 2
-    assert result.schema_item_count == 109
-    assert result.schema_status_reconciled_count == 109
+    assert result.schema_item_count == 110
+    assert result.schema_status_reconciled_count == 110
     assert result.mapped_schema_count == 43
     assert result.candidate_linked_schema_count == 0
     assert result.label_conflict_schema_count == 0
     assert result.ambiguous_schema_count == 0
-    assert result.not_observed_schema_count == 9
+    assert result.not_observed_schema_count == 10
     assert result.not_applicable_schema_count == 57
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == 43
@@ -359,7 +361,7 @@ def test_real_deepseek_stream_plus_business_resolutions_maps_all_43_rows(
         item.report_norm_id
         for item in result.schema_dispositions
         if item.status == LCTTSchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value
-    } == {4143, 4144, 4145, 4146, 4120, 4121, 4151, 4152, 4117}
+    } == {4143, 4144, 4145, 4146, 4120, 4121, 4151, 4152, 4117, 6054}
 
 
 def test_non_direct_method_cannot_enter_direct_candidate_reconciliation(

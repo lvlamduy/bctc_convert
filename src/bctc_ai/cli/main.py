@@ -322,6 +322,89 @@ def _run_export_native_rows(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_map_native_rows(args: argparse.Namespace) -> int:
+    from bctc_ai.mapping.native_canonical import (
+        publish_registered_native_canonical_mapping,
+    )
+
+    root = _project_root(args.project_root)
+
+    def resolve(raw: str) -> Path:
+        path = Path(raw)
+        return path.resolve() if path.is_absolute() else (root / path).resolve()
+
+    result = publish_registered_native_canonical_mapping(
+        project_root=root,
+        rows_path=resolve(args.rows),
+        rows_sha256=args.rows_sha256,
+        policy_path=resolve(args.policy),
+        rows_policy_path=resolve(args.rows_policy),
+        run_id=args.run_id,
+        output_path=resolve(args.output),
+    )
+    summary = result.payload["summary"]
+    print(f"NATIVE_CANONICAL_MAPPING_STATUS={result.payload['status']}")
+    print(f"NATIVE_CANONICAL_MAPPING_ARTIFACT={result.path.relative_to(root)}")
+    print(f"NATIVE_CANONICAL_MAPPING_SHA256={result.sha256}")
+    print(f"NATIVE_CANONICAL_MAPPING_BYTES={result.size_bytes}")
+    print(
+        f"NATIVE_CANONICAL_MAPPING_EXISTING_ITEMS={summary['mapped_to_existing_canonical_items']}"
+    )
+    print(f"NATIVE_CANONICAL_MAPPING_NEW_ITEM_PROPOSALS={summary['new_schema_item_proposals']}")
+    print(f"NATIVE_CANONICAL_MAPPING_AMBIGUOUS={summary['ambiguous']}")
+    print(f"NATIVE_CANONICAL_MAPPING_UNRESOLVED={summary['unresolved']}")
+    print(f"NATIVE_CANONICAL_MAPPING_STRUCTURAL={summary['structural']}")
+    print(
+        "NATIVE_CANONICAL_MAPPING_ACCOUNTED="
+        f"{summary['source_items_successfully_accounted_for']}/"
+        f"{summary['source_item_accounting_denominator']}"
+    )
+    return 0
+
+
+def _run_export_native_canonical(args: argparse.Namespace) -> int:
+    from bctc_ai.export.native_canonical_excel import (
+        export_registered_native_canonical_excel,
+    )
+
+    root = _project_root(args.project_root)
+
+    def resolve(raw: str) -> Path:
+        path = Path(raw)
+        return path.resolve() if path.is_absolute() else (root / path).resolve()
+
+    result = export_registered_native_canonical_excel(
+        project_root=root,
+        mapping_path=resolve(args.mapping),
+        mapping_expected_sha256=args.mapping_sha256,
+        rows_path=resolve(args.rows),
+        rows_expected_sha256=args.rows_sha256,
+        workbook_path=resolve(args.workbook),
+        provenance_path=resolve(args.provenance),
+        export_policy_path=resolve(args.policy),
+        mapping_policy_path=resolve(args.mapping_policy),
+        rows_policy_path=resolve(args.rows_policy),
+    )
+    summary = result.summary
+    counts = summary["source_disposition_counts"]
+    print("NATIVE_CANONICAL_EXCEL_STATUS=ACCEPTED_NATIVE_CANONICAL_EXCEL_EXPORT")
+    print(f"NATIVE_CANONICAL_EXCEL_WORKBOOK={result.workbook_path.relative_to(root)}")
+    print(f"NATIVE_CANONICAL_EXCEL_WORKBOOK_SHA256={result.workbook_sha256}")
+    print(f"NATIVE_CANONICAL_EXCEL_WORKBOOK_BYTES={result.workbook_size_bytes}")
+    print(f"NATIVE_CANONICAL_EXCEL_PROVENANCE={result.provenance_path.relative_to(root)}")
+    print(f"NATIVE_CANONICAL_EXCEL_PROVENANCE_SHA256={result.provenance_sha256}")
+    print(f"NATIVE_CANONICAL_EXCEL_PROVENANCE_BYTES={result.provenance_size_bytes}")
+    print(f"NATIVE_CANONICAL_EXCEL_SOURCE_ROWS={summary['source_row_count']}")
+    print(f"NATIVE_CANONICAL_EXCEL_SOURCE_CELLS={summary['source_cell_count']}")
+    print(f"NATIVE_CANONICAL_EXCEL_EXISTING_ITEMS={counts['EXISTING_ITEM']}")
+    print(f"NATIVE_CANONICAL_EXCEL_NEW_ITEM_PROPOSALS={summary['new_item_proposal_count']}")
+    print(f"NATIVE_CANONICAL_EXCEL_AMBIGUOUS={counts['AMBIGUOUS']}")
+    print(f"NATIVE_CANONICAL_EXCEL_UNRESOLVED={counts['UNRESOLVED']}")
+    print(f"NATIVE_CANONICAL_EXCEL_STRUCTURAL={counts['STRUCTURAL']}")
+    print(f"NATIVE_CANONICAL_EXCEL_SCHEMA_ITEMS={summary['producer_schema_item_count']}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="bctc-ai")
     parser.add_argument("--project-root", help="repository root; defaults to current directory")
@@ -427,6 +510,48 @@ def build_parser() -> argparse.ArgumentParser:
         default="config/rows/native-statement-rows-v1.yaml",
     )
     native_rows_export.set_defaults(handler=_run_export_native_rows)
+
+    native_mapping = subparsers.add_parser(
+        "map-native-rows",
+        help="map registered native rows to the evolving universal schema",
+    )
+    native_mapping.add_argument("--rows", required=True)
+    native_mapping.add_argument("--rows-sha256", required=True)
+    native_mapping.add_argument("--output", required=True)
+    native_mapping.add_argument("--run-id", default="registered-native-canonical-mapping-v1")
+    native_mapping.add_argument(
+        "--policy",
+        default="config/mapping/native-canonical-v1.yaml",
+    )
+    native_mapping.add_argument(
+        "--rows-policy",
+        default="config/rows/native-statement-rows-v1.yaml",
+    )
+    native_mapping.set_defaults(handler=_run_map_native_rows)
+
+    native_canonical_export = subparsers.add_parser(
+        "export-native-canonical",
+        help="export a trusted native canonical mapping/row pair as deterministic Excel",
+    )
+    native_canonical_export.add_argument("--mapping", required=True)
+    native_canonical_export.add_argument("--mapping-sha256", required=True)
+    native_canonical_export.add_argument("--rows", required=True)
+    native_canonical_export.add_argument("--rows-sha256", required=True)
+    native_canonical_export.add_argument("--workbook", required=True)
+    native_canonical_export.add_argument("--provenance", required=True)
+    native_canonical_export.add_argument(
+        "--policy",
+        default="config/export/native-canonical-excel-v1.yaml",
+    )
+    native_canonical_export.add_argument(
+        "--mapping-policy",
+        default="config/mapping/native-canonical-v1.yaml",
+    )
+    native_canonical_export.add_argument(
+        "--rows-policy",
+        default="config/rows/native-statement-rows-v1.yaml",
+    )
+    native_canonical_export.set_defaults(handler=_run_export_native_canonical)
 
     backup = subparsers.add_parser("backup")
     backup.add_argument("--destination", required=True)

@@ -1,13 +1,57 @@
 # Questions for user — current financial-statement ambiguities
 
-Updated: 2026-08-08
+Updated: 2026-08-09
 
-- **CDKT unresolved:** 0. `Q005` is resolved as a statement-page observation boundary with explicit, non-overwriting note linkages.
+- **CDKT unresolved:** 3 active source-driven schema/presentation decisions (`Q074`–`Q076`). `Q005` remains resolved as a statement-page observation boundary with explicit, non-overwriting note linkages.
 - **KQKD unresolved:** 0 current item-level questions.
-- **LCTT unresolved:** 0 current item-level questions.
+- **LCTT unresolved:** 1 active VPB schema decision shared with CDKT (`Q074`).
 - **TM unresolved:** 0. The prior 21 questions were closed-schema artifacts and are now resolved by source-evidenced universal-schema identities or explicit provenance-only dimension treatment. Pages 55–56 and 59 are narrative-only.
 
-CDKT schema reconciliation is exact after the approved schema update: `78 = 62 MAPPED + 16 NOT_OBSERVED_ON_TARGET_STATEMENT_PAGES`. The not-observed IDs are `4344, 4326, 4345, 4333, 4309, 4303, 4359, 4360, 4373, 4340, 4374, 4341, 4329, 4369, 4370, 4306`. All 64 visible main-statement rows have an explicit mapping or structural-repeat disposition; note disclosures are retained through non-overwriting cross-statement links.
+MBB CDKT schema reconciliation is exact after the approved universal update and the dedicated off-balance pass: `97 = 73 MAPPED + 24 NOT_OBSERVED + 0 UNRESOLVED`. The original 16 absent identities remain, while the source-visible broader provision rows now own `6035`/`6036` and the narrower `4347`/`4352` are separately not observed. Page 5 maps structural/value identities `6038`–`6048`; `6037` and `6049`–`6053` are not observed. All 75 visible MBB rows and 150 physical value-status cells are accounted; note disclosures remain non-overwriting cross-statement links.
+
+## NEEDS_USER_REVIEW — VPB universal-schema decisions
+
+### Q074
+
+- **Bank:** VPB
+- **Period:** consolidated Q1/2026; current 31/03/2026 versus 31/12/2025 for CDKT, Q1/2026 versus Q1/2025 for LCTT.
+- **Statement:** CDKT and direct LCTT.
+- **PDF page:** 6 (CDKT rows 4 and 6) and 9 (LCTT row 20).
+- **Visible row:** `Tiền gửi và vay các tổ chức tài chính ("TCTC"), TCTD khác`; `Vay các TCTC, TCTD khác`; `Tăng/(Giảm) tiền gửi, tiền vay từ các tổ chức tài chính, tổ chức tín dụng khác`.
+- **Parent/neighbor context:** the CDKT parent equals its two visible deposit/borrowing children exactly in both snapshots; the LCTT row is the matching liability movement between the Government/NHNN and customer-deposit rows. Note 19.2 explicitly includes IFC funding, so `TCTC` is source meaning rather than OCR noise.
+- **Visible values:** CDKT parent `311.527.853 / 295.199.519`; borrowing child `161.866.840 / 154.420.742`; LCTT movement `16.328.334 / (15.265.229)`; unit VND × 1,000,000.
+- **Existing candidate ReportNormId(s):** 4319, 4360 and 4136, whose canonical meanings currently say only `TCTD khác`.
+- **Proposed interpretation:** the VPB rows are genuine broader TCTC+TCTD concepts, not wording aliases of the narrower TCTD-only identities.
+- **Proposed action:** create three new universal identities in the corresponding CDKT and direct-LCTT positions, while retaining 4319, 4360 and 4136 unchanged for banks that report only TCTD.
+- **Question for user:** do you agree that explicit TCTC+TCTD disclosures must remain distinct from the existing TCTD-only identities?
+
+### Q075
+
+- **Bank:** VPB
+- **Period:** consolidated Q1/2026; 31/03/2026 versus 31/12/2025.
+- **Statement:** CDKT / `OFF_BALANCE_SHEET`.
+- **PDF page:** 7, final numeric row.
+- **Visible row:** `[unlabeled printed total]`.
+- **Parent/neighbor context:** it follows the two groups `Nghĩa vụ nợ tiềm ẩn` and `Các khoản mục ngoại bảng khác` and equals their sum exactly in both periods.
+- **Visible values:** `1.304.756.779 / 1.367.060.929`; unit VND × 1,000,000.
+- **Existing candidate ReportNormId(s):** none. TM note identities are not reusable because they belong to another statement.
+- **Proposed interpretation:** printed grand total of all off-balance groups, but the source row itself has no visible label.
+- **Proposed action:** keep it as `UNRESOLVED_LABEL / SOURCE_ONLY_VALIDATION` unless a source-supported canonical label is approved; do not infer a name from arithmetic alone.
+- **Question for user:** should this remain validation-only, or should the universal schema create a named total such as `TỔNG CHỈ TIÊU NGOÀI BÁO CÁO TÌNH HÌNH TÀI CHÍNH`?
+
+### Q076
+
+- **Bank:** CTG.
+- **Period:** consolidated Q2/2026; 30/06/2026 versus 31/12/2025.
+- **Statement:** CDKT / `OFF_BALANCE_SHEET`.
+- **PDF page:** 5.
+- **Visible row:** `Cam kết giao dịch hoán đổi`.
+- **Parent/neighbor context:** it is printed inside the foreign-exchange commitment group, after the separate `Cam kết mua ngoại tệ` and `Cam kết bán ngoại tệ` rows. Its value is the remaining swap component of the visible foreign-exchange total in both periods. The new universal branch currently has separate receive/pay swap legs `6044` and `6045`, but no combined swap subtotal.
+- **Visible values:** `937.179.489 / 849.738.846`; unit VND × 1,000,000.
+- **Existing candidate ReportNormId(s):** parent `6041`; component legs `6044`, `6045`. Neither leg alone is equivalent to the printed combined row.
+- **Proposed interpretation:** this is a genuine reported subtotal for the two swap legs, not an alias of either leg and not the broader foreign-exchange total.
+- **Proposed action:** create a new stable ReportNormId under `6041`, insert it after `6043`, and make `6044`/`6045` its children. For CTG, map the printed combined value to the new subtotal while retaining the unprinted legs as `NOT_OBSERVED`.
+- **Question for user:** do you agree with adding the combined swap subtotal and reparenting the receive/pay swap legs beneath it?
 
 ## RESOLVED_BY_USER
 

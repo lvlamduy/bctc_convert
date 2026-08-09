@@ -14,12 +14,12 @@ from bctc_ai.schema.registry import load_all, load_schema_contract
 def test_supplied_schema_is_imported_without_reordering(project_root):
     workbooks, items = load_all(project_root / "template", project_root)
     assert {workbook.statement_type: workbook.item_count for workbook in workbooks} == {
-        "CDKT": 78,
+        "CDKT": 97,
         "KQKD": 25,
-        "LCTT": 109,
+        "LCTT": 110,
         "TM": 1701,
     }
-    assert len(items) == len({item.schema_id for item in items}) == 1913
+    assert len(items) == len({item.schema_id for item in items}) == 1933
     by_id = {item.schema_id: item for item in items}
     assert by_id[4350].canonical_name == "Chứng khoán đầu tư sẵn sàng để bán"
     assert by_id[5712].canonical_name == "TỔNG VỐN CHỦ SỞ HỮU"
@@ -32,9 +32,31 @@ def test_supplied_schema_is_imported_without_reordering(project_root):
     assert by_id[5714].previous_id == 4146
     assert by_id[5714].next_id == 4120
     assert by_id[6034].canonical_name == "Tiền thu/(chi) bất động sản đầu tư"
-    assert by_id[6034].display_order == 88
+    assert by_id[6034].display_order == 89
     assert by_id[6034].previous_id == 4143
     assert by_id[6034].next_id == 4144
+    assert all(by_id[schema_id].scope == ["CONSOLIDATED"] for schema_id in range(6038, 6054))
+    assert by_id[6035].canonical_name == "Dự phòng rủi ro chứng khoán kinh doanh"
+    assert by_id[6035].display_order == 9
+    assert by_id[6035].previous_id == 4346
+    assert by_id[6035].next_id == 4347
+    assert by_id[6036].previous_id == 4351
+    assert by_id[6036].next_id == 4352
+    assert by_id[6037].previous_id == 4318
+    assert by_id[6037].next_id == 4319
+    assert by_id[6038].display_order == 81
+    assert by_id[6038].previous_id == 4305
+    assert by_id[6038].next_id == 6039
+    assert by_id[6053].display_order == 96
+    assert by_id[6053].next_id is None
+    assert by_id[6054].display_order == 72
+    assert by_id[6054].previous_id == 4132
+    assert by_id[6054].next_id == 4133
+    assert by_id[4382].canonical_name == "Tổng chi phí thuế thu nhập doanh nghiệp"
+    assert by_id[4109].canonical_name == (
+        "Lưu chuyển tiền thuần từ hoạt động kinh doanh trước những thay đổi về tài sản "
+        "và nợ phải trả hoạt động"
+    )
     assert by_id[5718].canonical_name == (
         "Tổng dự phòng rủi ro tiền gửi và cho vay các tổ chức tín dụng khác"
     )
@@ -144,19 +166,19 @@ def test_universal_schema_contract_is_base_plus_audited_additions(project_root):
         "5cc0e9ea70b23af236ce43b920838299dbc91e9c0ef19d31165f4ce49eea4f9f"
     )
     assert contract["universal_schema"] == {
-        "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6034",
-        "item_count": 1913,
-        "counts": {"CDKT": 78, "KQKD": 25, "LCTT": 109, "TM": 1701},
-        "high_watermark": 6034,
+        "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6054",
+        "item_count": 1933,
+        "counts": {"CDKT": 97, "KQKD": 25, "LCTT": 110, "TM": 1701},
+        "high_watermark": 6054,
     }
     registry = json.loads(
         (project_root / "data/registered/schema_registry.json").read_text(encoding="utf-8")
     )
     assert registry["schema_name"] == "UNIVERSAL_BANK_BCTC_SCHEMA"
     assert registry["base_schema"] == contract["base_schema"]
-    assert registry["universal_schema"]["revision"] == "UNIVERSAL_BANK_BCTC_SCHEMA@6034"
-    assert registry["universal_schema"]["high_watermark"] == 6034
-    assert registry["universal_schema"]["item_count"] == 1913
+    assert registry["universal_schema"]["revision"] == "UNIVERSAL_BANK_BCTC_SCHEMA@6054"
+    assert registry["universal_schema"]["high_watermark"] == 6054
+    assert registry["universal_schema"]["item_count"] == 1933
     assert registry["universal_schema"]["universal_schema_sha256"] == registry["graph_sha256"]
 
 

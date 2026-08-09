@@ -22,15 +22,33 @@ from typing import Any
 from openpyxl import load_workbook
 from openpyxl.xml.functions import fromstring, tostring
 
-CDKT_SCHEMA_COUNT = 78
-CDKT_MAPPED_SCHEMA_COUNT = 62
-CDKT_NOT_OBSERVED_SCHEMA_COUNT = 16
-CDKT_SOURCE_ROW_COUNT = 64
-CDKT_PHYSICAL_CELL_COUNT = 128
-CDKT_OBSERVED_VALUE_COUNT = 114
+from bctc_ai.core.contracts import ObservationKind
+from bctc_ai.tables.cdkt_off_balance_page5 import (
+    CDKT_OFF_BALANCE_PAGE5_POLICY_RELATIVE_PATH,
+    ParsedCDKTOffBalancePage5,
+    load_cdkt_off_balance_page5_policy,
+    parse_cdkt_off_balance_page5,
+)
+
+CDKT_SCHEMA_COUNT = 97
+CDKT_MAPPED_SCHEMA_COUNT = 73
+CDKT_NOT_OBSERVED_SCHEMA_COUNT = 24
+CDKT_UNRESOLVED_SCHEMA_COUNT = 0
+CDKT_SOURCE_ROW_COUNT = 75
+CDKT_PHYSICAL_CELL_COUNT = 150
+CDKT_OBSERVED_VALUE_COUNT = 132
 CDKT_DERIVED_VALUE_COUNT = 2
-CDKT_EXPORTED_VALUE_COUNT = 116
+CDKT_EXPORTED_VALUE_COUNT = 134
 CDKT_TOTAL_EQUITY_ID = 5712
+CDKT_VPB_SCHEMA_IDS = frozenset(range(6035, 6054))
+CDKT_VPB_OFF_BALANCE_SCHEMA_IDS = frozenset(range(6038, 6054))
+CDKT_MBB_MAPPED_OFF_BALANCE_SCHEMA_IDS = frozenset(range(6038, 6049))
+CDKT_MBB_NOT_OBSERVED_OFF_BALANCE_SCHEMA_IDS = frozenset(range(6049, 6054))
+CDKT_TEMPLATE_MAX_ROW = CDKT_SCHEMA_COUNT + 1
+CDKT_SCHEMA_EVOLUTION_OWNERSHIP = {
+    6035: (4347, "page-0003-row-006-label", (-34_663_000_000, -39_393_000_000)),
+    6036: (4352, "page-0003-row-017-label", (-561_362_000_000, -232_739_000_000)),
+}
 
 _CURRENT_PERIOD_END = "2026-03-31"
 _COMPARATIVE_PERIOD_END = "2025-12-31"
@@ -53,15 +71,23 @@ _NOT_OBSERVED_IDS = frozenset(
         4341,
         4344,
         4345,
+        4347,
         4359,
+        4352,
         4360,
         4369,
         4370,
         4373,
         4374,
+        6037,
+        *CDKT_MBB_NOT_OBSERVED_OFF_BALANCE_SCHEMA_IDS,
     }
 )
-_NOT_OBSERVED_ON_TARGET_STATEMENT_PAGES_IDS = _NOT_OBSERVED_IDS - {4306}
+_NOT_OBSERVED_ON_TARGET_STATEMENT_PAGES_IDS = _NOT_OBSERVED_IDS - {
+    4306,
+    6037,
+    *CDKT_MBB_NOT_OBSERVED_OFF_BALANCE_SCHEMA_IDS,
+}
 _CROSS_STATEMENT_NOTE_LINKS = (
     (4344, 576, "RELATED_NOTE_DETAIL_NOT_PROVEN_IDENTICAL"),
     (4326, 585, "RELATED_NOTE_DISCLOSURE_NO_BACKFILL"),
@@ -167,7 +193,7 @@ def _load_inputs(template_bytes: bytes, sealed_workbook_bytes: bytes) -> tuple[A
         sealed = load_workbook(BytesIO(sealed_workbook_bytes), data_only=False, keep_links=False)
     except Exception as exc:
         raise CDKTDevelopmentExportError("cannot decode CDKT workbook inputs") from exc
-    if template.sheetnames != ["Sheet1"] or template.active.max_row != 79:
+    if template.sheetnames != ["Sheet1"] or template.active.max_row != CDKT_TEMPLATE_MAX_ROW:
         template.close()
         sealed.close()
         raise CDKTDevelopmentExportError("CDKT v2 template denominator drifted")
@@ -177,15 +203,20 @@ def _load_inputs(template_bytes: bytes, sealed_workbook_bytes: bytes) -> tuple[A
         template.close()
         sealed.close()
         raise CDKTDevelopmentExportError("CDKT v2 template header drifted")
-    template_ids = [template.active.cell(row, 2).value for row in range(2, 80)]
+    template_ids = [
+        template.active.cell(row, 2).value for row in range(2, CDKT_TEMPLATE_MAX_ROW + 1)
+    ]
+    template_by_id = {
+        template.active.cell(row, 2).value: template.active.cell(row, 3).value
+        for row in range(2, CDKT_TEMPLATE_MAX_ROW + 1)
+    }
     if (
         len(template_ids) != CDKT_SCHEMA_COUNT
         or len(set(template_ids)) != CDKT_SCHEMA_COUNT
         or template_ids.count(CDKT_TOTAL_EQUITY_ID) != 1
-        or template.active.cell(78, 2).value != CDKT_TOTAL_EQUITY_ID
-        or template.active.cell(78, 3).value != "TỔNG VỐN CHỦ SỞ HỮU"
-        or template.active.cell(20, 2).value != 4350
-        or template.active.cell(20, 3).value != "Chứng khoán đầu tư sẵn sàng để bán"
+        or template_by_id.get(CDKT_TOTAL_EQUITY_ID) != "TỔNG VỐN CHỦ SỞ HỮU"
+        or template_by_id.get(4350) != "Chứng khoán đầu tư sẵn sàng để bán"
+        or set(CDKT_VPB_SCHEMA_IDS) - set(template_ids)
     ):
         template.close()
         sealed.close()
@@ -205,7 +236,10 @@ def _load_inputs(template_bytes: bytes, sealed_workbook_bytes: bytes) -> tuple[A
         sealed.close()
         raise CDKTDevelopmentExportError("sealed CDKT main-sheet denominator drifted")
     sealed_ids = [main.cell(row, 2).value for row in range(2, 79)]
-    if len(set(sealed_ids)) != 77 or set(sealed_ids) != set(template_ids) - {5712}:
+    if len(set(sealed_ids)) != 77 or set(sealed_ids) != set(template_ids) - {
+        CDKT_TOTAL_EQUITY_ID,
+        *CDKT_VPB_SCHEMA_IDS,
+    }:
         template.close()
         sealed.close()
         raise CDKTDevelopmentExportError("sealed/template CDKT identity linkage drifted")
@@ -219,7 +253,7 @@ def _load_inputs(template_bytes: bytes, sealed_workbook_bytes: bytes) -> tuple[A
 def _copy_template_columns(template: Any, target: Any) -> tuple:
     source = template.active
     snapshot = []
-    for row in range(1, 80):
+    for row in range(1, CDKT_TEMPLATE_MAX_ROW + 1):
         row_snapshot = []
         for column in range(1, 4):
             original = source.cell(row, column)
@@ -251,14 +285,42 @@ def _set_period_metadata(sheet: Any, row: int) -> None:
     sheet.cell(row, 11, "CONSOLIDATED")
 
 
-def _update_main_sheet(template: Any, workbook: Any) -> tuple[tuple, dict[int, int]]:
+def _update_main_sheet(
+    template: Any,
+    workbook: Any,
+    off_balance: ParsedCDKTOffBalancePage5,
+) -> tuple[tuple, dict[int, int]]:
     sheet = workbook["Sheet1"]
-    sheet.insert_rows(78, 1)
-    for column in range(4, 12):
-        sheet.cell(78, column)._style = copy(sheet.cell(79, column)._style)
+    sealed_rows = {
+        sheet.cell(row, 2).value: tuple(
+            (sheet.cell(row, column).value, copy(sheet.cell(row, column)._style))
+            for column in range(4, 12)
+        )
+        for row in range(2, sheet.max_row + 1)
+    }
+    default_styles = tuple(
+        copy(sheet.cell(sheet.max_row, column)._style) for column in range(4, 12)
+    )
+    template_ids = [
+        template.active.cell(row, 2).value for row in range(2, CDKT_TEMPLATE_MAX_ROW + 1)
+    ]
+    for row, report_norm_id in enumerate(template_ids, start=2):
+        source_report_norm_id = CDKT_SCHEMA_EVOLUTION_OWNERSHIP.get(
+            report_norm_id, (report_norm_id, "", ())
+        )[0]
+        source_cells = sealed_rows.get(source_report_norm_id)
+        for column in range(4, 12):
+            cell = sheet.cell(row, column)
+            if source_cells is None:
+                cell.value = None
+                cell._style = copy(default_styles[column - 4])
+            else:
+                value, style = source_cells[column - 4]
+                cell.value = value
+                cell._style = copy(style)
     snapshot = _copy_template_columns(template, sheet)
     sheet.title = "CDKT"
-    sheet.auto_filter.ref = "A1:K79"
+    sheet.auto_filter.ref = f"A1:K{CDKT_TEMPLATE_MAX_ROW}"
     rows = _row_by_id(sheet)
 
     for report_norm_id in _NOT_OBSERVED_IDS:
@@ -268,10 +330,52 @@ def _update_main_sheet(template: Any, workbook: Any) -> tuple[tuple, dict[int, i
             if report_norm_id in _NOT_OBSERVED_ON_TARGET_STATEMENT_PAGES_IDS
             else "NOT_OBSERVED_IN_THIS_PDF"
         )
-        sheet.cell(row, 4, None)
-        sheet.cell(row, 5, None)
+        sheet.cell(row, 4).value = None
+        sheet.cell(row, 5).value = None
         sheet.cell(row, 6, status)
         sheet.cell(row, 7, status)
+        _set_period_metadata(sheet, row)
+
+    if (
+        off_balance.scope != "CONSOLIDATED"
+        or off_balance.unit != "VND"
+        or off_balance.unit_multiplier != 1_000_000
+        or {row.report_norm_id for row in off_balance.rows}
+        != CDKT_MBB_MAPPED_OFF_BALANCE_SCHEMA_IDS
+    ):
+        raise CDKTDevelopmentExportError("CDKT page-5 off-balance source binding drifted")
+    for source_row in off_balance.rows:
+        row = rows[source_row.report_norm_id]
+        for cell, (value_column, status_column) in zip(
+            source_row.cells, ((4, 6), (5, 7)), strict=True
+        ):
+            if cell.period_end.isoformat() not in {_CURRENT_PERIOD_END, _COMPARATIVE_PERIOD_END}:
+                raise CDKTDevelopmentExportError("CDKT page-5 period binding drifted")
+            if cell.observation is ObservationKind.BLANK:
+                sheet.cell(row, value_column).value = None
+                sheet.cell(row, status_column, "BLANK")
+            elif cell.observation in {ObservationKind.VALUE, ObservationKind.ZERO}:
+                if cell.canonical_value is None:
+                    raise CDKTDevelopmentExportError("CDKT page-5 value binding is absent")
+                sheet.cell(row, value_column, cell.canonical_value)
+                sheet.cell(row, status_column, cell.observation.value)
+                sheet.cell(row, value_column).number_format = "#,##0;[Red](#,##0);-"
+            else:
+                raise CDKTDevelopmentExportError("CDKT page-5 observation is unsupported")
+        _set_period_metadata(sheet, row)
+
+    for target_id, (
+        _source_id,
+        _source_row_id,
+        expected_values,
+    ) in CDKT_SCHEMA_EVOLUTION_OWNERSHIP.items():
+        row = rows[target_id]
+        if tuple(sheet.cell(row, column).value for column in (4, 5)) != expected_values or tuple(
+            sheet.cell(row, column).value for column in (6, 7)
+        ) != ("VALUE", "VALUE"):
+            raise CDKTDevelopmentExportError(
+                f"CDKT schema-evolution ownership values drifted for {target_id}"
+            )
         _set_period_metadata(sheet, row)
 
     row = rows[4363]
@@ -323,14 +427,18 @@ def _update_main_sheet(template: Any, workbook: Any) -> tuple[tuple, dict[int, i
     ) != grand_total:
         raise CDKTDevelopmentExportError("CDKT liabilities-plus-equity equation failed")
 
-    statuses = [sheet.cell(row, column).value for row in range(2, 80) for column in (6, 7)]
+    statuses = [
+        sheet.cell(row, column).value
+        for row in range(2, CDKT_TEMPLATE_MAX_ROW + 1)
+        for column in (6, 7)
+    ]
     expected = {
-        "BLANK": 3,
+        "BLANK": 7,
         "DASH": 5,
         "DERIVED_FROM_COMPONENTS": 2,
-        "NOT_OBSERVED_IN_THIS_PDF": 2,
-        "NOT_OBSERVED_ON_TARGET_STATEMENT_PAGES": 30,
-        "VALUE": 114,
+        "NOT_OBSERVED_IN_THIS_PDF": 14,
+        "NOT_OBSERVED_ON_TARGET_STATEMENT_PAGES": 34,
+        "VALUE": 132,
     }
     actual = {status: statuses.count(status) for status in set(statuses)}
     if actual != expected:
@@ -338,12 +446,86 @@ def _update_main_sheet(template: Any, workbook: Any) -> tuple[tuple, dict[int, i
     return snapshot, rows
 
 
-def _update_provenance(workbook: Any) -> None:
+def _bbox_json(bbox: Any) -> str:
+    return json.dumps(
+        [bbox.x0, bbox.y0, bbox.x1, bbox.y1],
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+
+
+def _append_off_balance_provenance(
+    sheet: Any,
+    headers: dict[str, int],
+    off_balance: ParsedCDKTOffBalancePage5,
+) -> None:
+    validation_refs = list(off_balance.accounting_checks_passed)
+    for source_row in off_balance.rows:
+        for cell in source_row.cells:
+            evidence_bbox = cell.value_bbox or source_row.label_bbox
+            source_lines = [f"page-0005:line-{source_row.label_line_index:04d}"]
+            if cell.value_line_index is not None:
+                source_lines.append(f"page-0005:line-{cell.value_line_index:04d}")
+            status = cell.observation.value
+            record = {
+                "CellId": f"{source_row.row_id}-axis-{cell.axis_ordinal + 1}",
+                "RowId": source_row.row_id,
+                "Page": off_balance.page_number,
+                "RowOrdinal": source_row.ordinal,
+                "AxisOrdinal": cell.axis_ordinal,
+                "PeriodRole": cell.period_role,
+                "PeriodEnd": cell.period_end.isoformat(),
+                "Scope": off_balance.scope,
+                "SourceRowIds": json.dumps(source_lines, separators=(",", ":")),
+                "SourceLabel": source_row.visible_label,
+                "SourceObservation": status,
+                "SourceNumericStatus": status,
+                "VisibleRawValue": cell.raw_text or None,
+                "EvidenceDisplayedValue": cell.displayed_value,
+                "EvidenceCanonicalValue": cell.canonical_value,
+                "ExportedCanonicalValue": cell.canonical_value,
+                "Status": status,
+                "MappingStatus": (
+                    "SOURCE_VISIBLE_STRUCTURAL_SCHEMA_MAPPING"
+                    if cell.observation is ObservationKind.BLANK
+                    else "SOURCE_VISIBLE_EXACT_SCHEMA_MAPPING"
+                ),
+                "ReportNormId": source_row.report_norm_id,
+                "ProposedReportNormId": source_row.report_norm_id,
+                "CandidateReportNormIds": f"[{source_row.report_norm_id}]",
+                "CropPath": off_balance.source_render_path,
+                "CropBbox": _bbox_json(evidence_bbox),
+                "CropSha256": off_balance.source_render_sha256,
+                "SourceRenderSha256": off_balance.source_render_sha256,
+                "SourceOcrSha256": off_balance.source_ocr_sha256,
+                "Unit": off_balance.unit,
+                "UnitMultiplier": off_balance.unit_multiplier,
+                "NumericVerificationStatus": (
+                    "SOURCE_VISIBLE_STRUCTURAL_BLANK"
+                    if cell.observation is ObservationKind.BLANK
+                    else "SOURCE_OCR_STRICT_GROUPING_VERIFIED"
+                ),
+                "ValidationRefs": json.dumps(
+                    ["PAGE5_SOURCE_VISIBLE_BINDING", *validation_refs],
+                    separators=(",", ":"),
+                ),
+            }
+            row = sheet.max_row + 1
+            for name, column in headers.items():
+                sheet.cell(row, column, record.get(name))
+
+
+def _update_provenance(workbook: Any, off_balance: ParsedCDKTOffBalancePage5) -> None:
     sheet = workbook["PROVENANCE"]
     headers = {sheet.cell(1, column).value: column for column in range(1, sheet.max_column + 1)}
     required = {
+        "CellId",
         "RowId",
+        "Page",
+        "RowOrdinal",
         "AxisOrdinal",
+        "PeriodRole",
+        "PeriodEnd",
         "Scope",
         "EvidenceDisplayedValue",
         "EvidenceCanonicalValue",
@@ -354,6 +536,7 @@ def _update_provenance(workbook: Any) -> None:
         "ProposedReportNormId",
         "CandidateReportNormIds",
         "NumericVerificationStatus",
+        "ValidationRefs",
     }
     if not required <= set(headers) or sheet.max_row != 129:
         raise CDKTDevelopmentExportError("sealed CDKT provenance schema drifted")
@@ -361,7 +544,34 @@ def _update_provenance(workbook: Any) -> None:
         sheet.cell(row, headers["Scope"], "CONSOLIDATED")
         row_id = sheet.cell(row, headers["RowId"]).value
         axis = sheet.cell(row, headers["AxisOrdinal"]).value
-        if row_id == "page-0004-row-000-label":
+        ownership = next(
+            (
+                (source_id, target_id, expected_values)
+                for target_id, (source_id, source_row_id, expected_values) in (
+                    CDKT_SCHEMA_EVOLUTION_OWNERSHIP.items()
+                )
+                if source_row_id == row_id
+            ),
+            None,
+        )
+        if ownership is not None:
+            source_id, target_id, expected_values = ownership
+            if (
+                axis not in (0, 1)
+                or sheet.cell(row, headers["ReportNormId"]).value != source_id
+                or sheet.cell(row, headers["ExportedCanonicalValue"]).value != expected_values[axis]
+                or sheet.cell(row, headers["Status"]).value != "VALUE"
+            ):
+                raise CDKTDevelopmentExportError(
+                    f"sealed CDKT schema-evolution provenance drifted for {target_id}"
+                )
+            updates = {
+                "MappingStatus": "SCHEMA_EVOLUTION_REASSIGNED_FROM_NARROWER_ITEM",
+                "ReportNormId": target_id,
+                "ProposedReportNormId": target_id,
+                "CandidateReportNormIds": f"[{target_id}]",
+            }
+        elif row_id == "page-0004-row-000-label":
             updates = {
                 "Status": "BLANK",
                 "MappingStatus": "STRUCTURAL_REPEAT_OF_MAPPED_ITEM",
@@ -403,14 +613,15 @@ def _update_provenance(workbook: Any) -> None:
         for name, value in updates.items():
             sheet.cell(row, headers[name], value)
 
+    _append_off_balance_provenance(sheet, headers, off_balance)
     statuses = [sheet.cell(row, headers["Status"]).value for row in range(2, sheet.max_row + 1)]
-    expected = {"BLANK": 9, "DASH": 5, "VALUE": 114}
+    expected = {"BLANK": 13, "DASH": 5, "VALUE": 132}
     actual = {status: statuses.count(status) for status in set(statuses)}
     if actual != expected:
         raise CDKTDevelopmentExportError(f"CDKT physical status counts drifted: {actual}")
 
 
-def _append_business_diagnostics(workbook: Any) -> None:
+def _append_business_diagnostics(workbook: Any, off_balance: ParsedCDKTOffBalancePage5) -> None:
     sheet = workbook["VALIDATION_DIAGNOSTICS"]
     if sheet.max_row != 37:
         raise CDKTDevelopmentExportError("sealed CDKT diagnostic denominator drifted")
@@ -458,9 +669,33 @@ def _append_business_diagnostics(workbook: Any) -> None:
     )
     for values in rows:
         sheet.append(values)
+    by_id = {row.report_norm_id: row for row in off_balance.rows}
+    for axis, period_role in enumerate(("CURRENT", "COMPARATIVE")):
+        target = by_id[6041].cells[axis].canonical_value
+        components = [
+            by_id[report_norm_id].cells[axis].canonical_value
+            for report_norm_id in range(6042, 6046)
+        ]
+        if target is None or any(value is None for value in components):
+            raise CDKTDevelopmentExportError("CDKT page-5 diagnostic values are absent")
+        component_sum = sum(value for value in components if value is not None)
+        sheet.append(
+            (
+                f"OFF_BALANCE_6041_{period_role}",
+                "SOURCE_VISIBLE_ACCOUNTING_CHECK",
+                period_role,
+                "PAGE5_OCR_AND_PIXEL_EVIDENCE",
+                "6041 = 6042 + 6043 + 6044 + 6045",
+                "PASS" if target == component_sum else "FAIL",
+                str(target),
+                str(component_sum),
+            )
+        )
+        if target != component_sum:
+            raise CDKTDevelopmentExportError("CDKT page-5 diagnostic equation failed")
 
 
-def _replace_metadata(workbook: Any) -> None:
+def _replace_metadata(workbook: Any, off_balance: ParsedCDKTOffBalancePage5) -> None:
     sheet = workbook["RUN_METADATA"]
     sheet.delete_rows(1, sheet.max_row)
     rows = (
@@ -482,7 +717,11 @@ def _replace_metadata(workbook: Any) -> None:
         ("target.derived_values", CDKT_DERIVED_VALUE_COUNT),
         ("target.exported_values", CDKT_EXPORTED_VALUE_COUNT),
         ("scope", "CONSOLIDATED"),
-        ("target.statement_pages", "3-4"),
+        ("target.statement_pages", "3-5"),
+        ("source.page5.pdf_sha256", off_balance.source_pdf_sha256),
+        ("source.page5.ocr_sha256", off_balance.source_ocr_sha256),
+        ("source.page5.render_sha256", off_balance.source_render_sha256),
+        ("source.page5.policy_sha256", off_balance.policy_sha256),
         ("cross_statement_note_linkage.value_backfill_allowed", False),
         ("fully_verified", False),
         ("production_approved", False),
@@ -514,22 +753,34 @@ def _verify_serialized(workbook_bytes: bytes, template_snapshot: tuple) -> None:
                 )
                 for column in range(1, 4)
             )
-            for row in range(1, 80)
+            for row in range(1, CDKT_TEMPLATE_MAX_ROW + 1)
         )
         if actual_snapshot != template_snapshot:
             raise CDKTDevelopmentExportError("CDKT template A:C columns were not preserved")
         if (
             sum(
                 sheet.cell(row, column).value is not None
-                for row in range(2, 80)
+                for row in range(2, CDKT_TEMPLATE_MAX_ROW + 1)
                 for column in (4, 5)
             )
             != CDKT_EXPORTED_VALUE_COUNT
-            or workbook["PROVENANCE"].max_row != 129
+            or workbook["PROVENANCE"].max_row != 151
         ):
             raise CDKTDevelopmentExportError("serialized CDKT coverage drifted")
     finally:
         workbook.close()
+
+
+def _resolve_project_root(*input_paths: Path) -> Path:
+    roots = {
+        parent
+        for input_path in input_paths
+        for parent in (Path(input_path).resolve().parent, *Path(input_path).resolve().parents)
+        if (parent / CDKT_OFF_BALANCE_PAGE5_POLICY_RELATIVE_PATH).is_file()
+    }
+    if len(roots) != 1:
+        raise CDKTDevelopmentExportError("cannot resolve unique CDKT project root")
+    return roots.pop()
 
 
 def build_cdkt_development_artifacts(
@@ -542,6 +793,13 @@ def build_cdkt_development_artifacts(
 
     if Path(workbook_name).name != workbook_name or not workbook_name.lower().endswith(".xlsx"):
         raise CDKTDevelopmentExportError("workbook name must be a local .xlsx filename")
+    project_root = _resolve_project_root(template_path, sealed_workbook_path)
+    off_balance = parse_cdkt_off_balance_page5(
+        load_cdkt_off_balance_page5_policy(
+            project_root / CDKT_OFF_BALANCE_PAGE5_POLICY_RELATIVE_PATH,
+            project_root,
+        )
+    )
     try:
         template_bytes = Path(template_path).read_bytes()
         sealed_bytes = Path(sealed_workbook_path).read_bytes()
@@ -549,10 +807,10 @@ def build_cdkt_development_artifacts(
         raise CDKTDevelopmentExportError("cannot read CDKT development inputs") from exc
     template, workbook = _load_inputs(template_bytes, sealed_bytes)
     try:
-        template_snapshot, _rows = _update_main_sheet(template, workbook)
-        _update_provenance(workbook)
-        _append_business_diagnostics(workbook)
-        _replace_metadata(workbook)
+        template_snapshot, _rows = _update_main_sheet(template, workbook, off_balance)
+        _update_provenance(workbook, off_balance)
+        _append_business_diagnostics(workbook, off_balance)
+        _replace_metadata(workbook, off_balance)
         workbook_bytes = _deterministic_workbook_bytes(workbook)
     finally:
         template.close()
@@ -562,9 +820,17 @@ def build_cdkt_development_artifacts(
     coverage = {
         "artifact_type": "CDKT_BUSINESS_SCHEMA_DEVELOPMENT_COVERAGE",
         "authority": {
+            "components": {
+                "off_balance_page_5": (
+                    "HASH_BOUND_SOURCE_PDF_RENDER_OCR_PLUS_AUDITED_SCHEMA_ALIASES"
+                ),
+                "statement_pages_3_4": (
+                    "USER_CONFIRMED_MAPPING_AND_VISIBLE_VALUE_PLUS_ACCOUNTING_DERIVATION"
+                ),
+            },
             "fully_verified": False,
             "production_approved": False,
-            "scope": "USER_CONFIRMED_MAPPING_AND_VISIBLE_VALUE_PLUS_ACCOUNTING_DERIVATION",
+            "scope": "MIXED_USER_CONFIRMED_AND_AUDITED_SOURCE_EVIDENCE",
         },
         "coverage": {
             "derived_value_count": CDKT_DERIVED_VALUE_COUNT,
@@ -573,9 +839,10 @@ def build_cdkt_development_artifacts(
             "not_observed_schema_count": CDKT_NOT_OBSERVED_SCHEMA_COUNT,
             "observed_value_count": CDKT_OBSERVED_VALUE_COUNT,
             "physical_cell_count": CDKT_PHYSICAL_CELL_COUNT,
-            "physical_status_counts": {"BLANK": 9, "DASH": 5, "VALUE": 114},
+            "physical_status_counts": {"BLANK": 13, "DASH": 5, "VALUE": 132},
             "reconciled_schema_count": CDKT_SCHEMA_COUNT,
             "source_row_count": CDKT_SOURCE_ROW_COUNT,
+            "unresolved_schema_count": CDKT_UNRESOLVED_SCHEMA_COUNT,
         },
         "decisions": {
             "Q001": {"report_norm_id": 5712, "status": "RESOLVED_BY_USER"},
@@ -592,6 +859,19 @@ def build_cdkt_development_artifacts(
                 "report_norm_id": 4363,
                 "status": "RESOLVED_BY_USER",
             },
+            "MBB_PROVISION_SCHEMA_EVOLUTION": {
+                "status": "SOURCE_VISIBLE_BROADER_ITEMS_REASSIGNED",
+                "reassignments": [
+                    {
+                        "from_report_norm_id": source_id,
+                        "source_row_id": source_row_id,
+                        "to_report_norm_id": target_id,
+                    }
+                    for target_id, (source_id, source_row_id, _values) in sorted(
+                        CDKT_SCHEMA_EVOLUTION_OWNERSHIP.items()
+                    )
+                ],
+            },
         },
         "cross_statement_note_links": [
             {
@@ -604,6 +884,20 @@ def build_cdkt_development_artifacts(
             }
             for cdkt_id, note_id, relation in _CROSS_STATEMENT_NOTE_LINKS
         ],
+        "off_balance_page5": {
+            "accounting_checks_passed": list(off_balance.accounting_checks_passed),
+            "mapped_report_norm_ids": sorted(CDKT_MBB_MAPPED_OFF_BALANCE_SCHEMA_IDS),
+            "physical_cell_count": off_balance.physical_cell_count,
+            "policy_path": off_balance.policy_path,
+            "policy_sha256": off_balance.policy_sha256,
+            "source_ocr_path": off_balance.source_ocr_path,
+            "source_ocr_sha256": off_balance.source_ocr_sha256,
+            "source_pdf_path": off_balance.source_pdf_path,
+            "source_pdf_sha256": off_balance.source_pdf_sha256,
+            "source_render_path": off_balance.source_render_path,
+            "source_render_sha256": off_balance.source_render_sha256,
+            "source_row_count": off_balance.source_row_count,
+        },
         "formula_checks": {
             "4325_components": {"passed": True, "status": "DERIVED_FROM_COMPONENTS"},
             "5712_equals_4325_plus_4306": {
@@ -634,6 +928,15 @@ def build_cdkt_development_artifacts(
     )
 
 
+def _fsync_directory(directory: Path) -> None:
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_CLOEXEC", 0)
+    descriptor = os.open(directory, flags)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
 def _write_exclusive(path: Path, data: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     if os.path.lexists(path):
@@ -641,14 +944,19 @@ def _write_exclusive(path: Path, data: bytes) -> None:
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
     if hasattr(os, "O_NOFOLLOW"):
         flags |= os.O_NOFOLLOW
+    created = False
     try:
         descriptor = os.open(path, flags, 0o644)
+        created = True
         with os.fdopen(descriptor, "wb") as stream:
             stream.write(data)
             stream.flush()
             os.fsync(stream.fileno())
+        _fsync_directory(path.parent)
     except Exception:
-        path.unlink(missing_ok=True)
+        if created:
+            path.unlink(missing_ok=True)
+            _fsync_directory(path.parent)
         raise
 
 
@@ -677,6 +985,7 @@ def export_cdkt_development(
         _write_exclusive(coverage_path, artifacts.coverage_bytes)
     except Exception:
         workbook_path.unlink(missing_ok=True)
+        _fsync_directory(workbook_path.parent)
         raise
     return CDKTDevelopmentExportResult(
         workbook_path=workbook_path.as_posix(),
@@ -695,6 +1004,8 @@ __all__ = [
     "CDKTDevelopmentArtifacts",
     "CDKTDevelopmentExportError",
     "CDKTDevelopmentExportResult",
+    "CDKT_TEMPLATE_MAX_ROW",
+    "CDKT_VPB_SCHEMA_IDS",
     "build_cdkt_development_artifacts",
     "export_cdkt_development",
 ]

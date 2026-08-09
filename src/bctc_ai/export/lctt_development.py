@@ -30,12 +30,12 @@ from bctc_ai.mapping.lctt_item_mapping import (
 from bctc_ai.tables.lctt_word_box import ParsedLCTTWordBoxDocument
 
 LCTT_DEVELOPMENT_SHEETS = ("LCTT", "PROVENANCE", "RUN_METADATA")
-LCTT_DEVELOPMENT_SCHEMA_COUNT = 109
+LCTT_DEVELOPMENT_SCHEMA_COUNT = 110
 LCTT_DEVELOPMENT_SOURCE_ROW_COUNT = 43
 LCTT_DEVELOPMENT_MAPPED_SCHEMA_COUNT = 43
 LCTT_DEVELOPMENT_MAPPED_CELL_COUNT = 86
 LCTT_DEVELOPMENT_MAPPED_VALUE_COUNT = 71
-LCTT_DEVELOPMENT_TEMPLATE_MAX_ROW = 110
+LCTT_DEVELOPMENT_TEMPLATE_MAX_ROW = 111
 LCTT_INVESTMENT_PROPERTY_NET_ID = 6034
 LCTT_INVESTMENT_PROPERTY_COMPONENT_IDS = (4144, 4145, 4146)
 
@@ -129,7 +129,7 @@ def _validate_inputs(
         or mapping.candidate_linked_schema_count != 0
         or mapping.label_conflict_schema_count != 0
         or mapping.ambiguous_schema_count != 0
-        or mapping.not_observed_schema_count != 9
+        or mapping.not_observed_schema_count != 10
         or mapping.not_applicable_schema_count != 57
         or mapping.fully_verified_schema_count != 0
         or mapping.source_row_count != LCTT_DEVELOPMENT_SOURCE_ROW_COUNT

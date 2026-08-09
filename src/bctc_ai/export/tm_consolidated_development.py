@@ -49,9 +49,9 @@ TM_CONSOLIDATED_SCHEMA_PROJECTION_SHA256 = (
     "9057a6513d1fb9532e0034022d2dd3b6ad2eb2789fb36b112cbf41fb8c632a2d"
 )
 TM_UNIVERSAL_SCHEMA_NAME = "UNIVERSAL_BANK_BCTC_SCHEMA"
-TM_UNIVERSAL_SCHEMA_REVISION = "UNIVERSAL_BANK_BCTC_SCHEMA@6034"
+TM_UNIVERSAL_SCHEMA_REVISION = "UNIVERSAL_BANK_BCTC_SCHEMA@6054"
 TM_BASE_SCHEMA_COUNT = 1_593
-TM_UNIVERSAL_SCHEMA_COUNT = 1_913
+TM_UNIVERSAL_SCHEMA_COUNT = 1_933
 TM_DOCUMENT_NEW_REPORT_NORM_IDS = tuple(range(5_718, 6_034))
 TM_LATEST_SCHEMA_BATCH_REPORT_NORM_IDS = tuple(range(5_991, 6_034))
 _PRODUCTION_SCHEMA_IDENTITY: dict[str, object] = {
@@ -70,17 +70,17 @@ _PRODUCTION_SCHEMA_IDENTITY: dict[str, object] = {
     },
     "universal_schema": {
         "item_count": TM_UNIVERSAL_SCHEMA_COUNT,
-        "statement_counts": {"CDKT": 78, "KQKD": 25, "LCTT": 109, "TM": 1_701},
-        "high_watermark": 6_034,
+        "statement_counts": {"CDKT": 97, "KQKD": 25, "LCTT": 110, "TM": 1_701},
+        "high_watermark": 6_054,
         "ordered_canonical_projection_sha256": (
-            "ad21aafd269c39265c8b0047c567064d79b2e76b178d91d2b31c9adde622ab03"
+            "691cfc99ae6595f702130de2235f33b8905766066730d0b0761754b1a836d7bb"
         ),
         "ordered_report_norm_ids_sha256": (
-            "024c472e302d63f6d7f504bdfc29bb88cea6221d74412c9f99fabaf9af11bdb0"
+            "3de50ac252beb4b8dca8b0553cc0d42400da0c380dd832ce33b142b361e8e798"
         ),
-        "schema_graph_sha256": ("b1529c4bc953743cedeb75fa8b02aa40f168ada240694922cf6b65b71af240d5"),
+        "schema_graph_sha256": ("ecab30031f4164e1271f1d51f0285b2d8e4eedc64dd7ae9f9a46e87d641fc8d5"),
         "universal_schema_sha256": (
-            "b1529c4bc953743cedeb75fa8b02aa40f168ada240694922cf6b65b71af240d5"
+            "ecab30031f4164e1271f1d51f0285b2d8e4eedc64dd7ae9f9a46e87d641fc8d5"
         ),
     },
     "accepted_post_base_tm_additions": {

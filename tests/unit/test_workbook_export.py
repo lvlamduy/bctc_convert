@@ -46,7 +46,7 @@ def test_workbook_preserves_schema_order_and_support_sheets(tmp_path, project_ro
     verify_export(output, workbooks, items)
     assert result.exported_value_count == 1
     assert result.review_count == 1
-    assert result.schema_counts == {"CDKT": 78, "KQKD": 25, "LCTT": 109, "TM": 1701}
+    assert result.schema_counts == {"CDKT": 97, "KQKD": 25, "LCTT": 110, "TM": 1701}
 
     workbook = load_workbook(output, read_only=True, data_only=True)
     tm = workbook["TM"]

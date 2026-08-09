@@ -12,7 +12,26 @@
       "non_id_labels": [],
       "path": "vst_level/vst_bank_balance_sheet.xlsx",
       "schema_only_append_ids": [
-        5712
+        5712,
+        6035,
+        6036,
+        6037,
+        6038,
+        6039,
+        6040,
+        6041,
+        6042,
+        6043,
+        6044,
+        6045,
+        6046,
+        6047,
+        6048,
+        6049,
+        6050,
+        6051,
+        6052,
+        6053
       ],
       "sha256": "3d57157859f08dd21b029a0ad7488e64c7df7d4b1ad6cde424296d02836da065",
       "skipped_blank_rows": 47,
@@ -43,7 +62,8 @@
       "path": "vst_level/vst_bank_cashflow_sheet.xlsx",
       "schema_only_append_ids": [
         5714,
-        6034
+        6034,
+        6054
       ],
       "sha256": "a52815dd606ca74ba7cbc713ec34494474a5d7ac567223da84b346300eb658fe",
       "skipped_blank_rows": 0,

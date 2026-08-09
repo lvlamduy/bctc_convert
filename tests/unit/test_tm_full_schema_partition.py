@@ -47,7 +47,7 @@ from bctc_ai.schema.registry import load_all
 
 _SOURCE_PDF = Path("vietstock_bctc/MBB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf")
 _SCHEMA_WORKBOOK = Path("template/Bank_TM_ReportNormId.v2.xlsx")
-_BUSINESS_AUDIT = Path("data/registered/schema_business_update_5712_5713_5714_5718_6034.json")
+_BUSINESS_AUDIT = Path("data/registered/schema_business_update_5712_5713_5714_5718_6054.json")
 
 _PAGE36_43_SCHEMA_CONTRACTS = {
     5959: ("Dự phòng giảm giá", 862, 5961, 868, ()),

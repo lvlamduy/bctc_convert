@@ -1,0 +1,158 @@
+version: 1
+policy: REGISTERED_NATIVE_CANONICAL_MAPPING_V1
+claim_boundary: SOURCE_ROW_CANONICAL_DISPOSITIONS_AND_SCHEMA_GAP_PROPOSALS
+
+accepted_input:
+  format_version: REGISTERED_NATIVE_STATEMENT_ROWS_RESULT_V1
+  policy: REGISTERED_NATIVE_STATEMENT_ROWS_V1
+  claim_boundary: UNMAPPED_SOURCE_ROWS_AND_CELLS_ONLY
+  status: ACCEPTED_NATIVE_STATEMENT_ROWS
+  trusted_sha256_required: true
+  denominator: ALL_RECONSTRUCTED_SOURCE_ROWS
+
+schema_authority:
+  schema_name: UNIVERSAL_BANK_BCTC_SCHEMA
+  schema_strategy: SOURCE_EVIDENCE_DRIVEN_APPEND_ONLY_SUPERSET
+  source_config:
+    path: config/schemas/sources.yaml
+    sha256: a15fd5bcb7acaabfe7cce15d20500dece37075a83daa2920623c6adc4670bd2c
+  hierarchy_config:
+    path: config/schemas/hierarchy_reference.yaml
+    sha256: 8b2eb70c0ca8e7692f8f75af4d813dcc408bd43306bbf2f953e9973e6937021d
+  schema_registry:
+    path: data/registered/schema_registry.json
+    sha256: ad66bb2aab2979d8e093e8f3cda4107ed683ed6e91f51516e2f66528ba874eec
+  hierarchy_registry:
+    path: data/registered/hierarchy_registry.json
+    sha256: b2483374e22e9d3bf306ec1b1d1585f09b1e1a705a66aeffd43e6624fbe1da30
+  coverage_config:
+    path: config/schemas/coverage-v1.yaml
+    sha256: 708c9f36945791e33ffceceae097193070c9ad7797cf0b3629a9fddf05d136bc
+  coverage_registry:
+    path: data/registered/schema_coverage_registry.json
+    sha256: f4074d571ebd20603deec11f79b64c2e05a9e84715e6bbdfd79c61c484b9bf16
+  revision: UNIVERSAL_BANK_BCTC_SCHEMA@6054
+  item_count: 1933
+  counts: {CDKT: 97, KQKD: 25, LCTT: 110, TM: 1701}
+  high_watermark: 6054
+  graph_sha256: ecab30031f4164e1271f1d51f0285b2d8e4eedc64dd7ae9f9a46e87d641fc8d5
+  ordered_canonical_projection_sha256: 691cfc99ae6595f702130de2235f33b8905766066730d0b0761754b1a836d7bb
+  statement_projection_sha256:
+    CDKT: 06f9695c19ff2ce168278cae8c9a084de1afdf4bdfe342f73d12e978ec329424
+    KQKD: d314b7937c0e5fae67f599291e58024673fcb0364ba51feb7ef85c3ff9453d25
+    LCTT: 5918ee0f8ec9d7a6e7eb3a0eac07d2a25b9303f86f1f3552d2ab2b0567014c0e
+    TM: e85deb68a14f6041e57a5d3ad48a209818c8b09bb2a921637e98ead172f3da53
+
+mapping:
+  statement_types: [CDKT, KQKD, LCTT, TM]
+  automatic_match_authority:
+    - CANONICAL_RETRIEVAL_KEY_EXACT
+    - ACCEPTED_STRUCTURAL_ALIAS_RETRIEVAL_KEY_EXACT
+    - ACCEPTED_ACCOUNTING_ABBREVIATION_NORMALIZATION
+    - REPEATED_PARENT_DETAIL_WITH_COMPLETE_HIERARCHY_AND_EQUATION
+  accepted_alias_authority_types:
+    - USER_SUPPLIED_HIERARCHY_LABEL
+    - AUDITED_SCHEMA_ALIAS
+  untyped_structural_aliases_mapping_eligible: false
+  accepted_accounting_abbreviations:
+    tscđ: tài sản cố định
+    nhnn: ngân hàng nhà nước
+    tctd: tổ chức tín dụng
+    tndn: thu nhập doanh nghiệp
+    hđkd: hoạt động kinh doanh
+    gtcg: giấy tờ có giá
+  historical_aliases_allowed: false
+  same_run_alias_proposals_mapping_eligible: false
+  numeric_report_norm_id_order_allowed: false
+  order_authority: WORKBOOK_DISPLAY_ORDER
+  path_algorithm: MAXIMUM_CARDINALITY_MONOTONE_SKIP_CAPABLE_EXACT_MATCH
+  require_one_disposition_per_source_row: true
+  require_one_to_one_existing_item_mapping: true
+  require_hierarchy_consistency_when_both_source_parent_and_schema_parent_are_observed: true
+  off_balance_sheet_rows_are_accounting_items: true
+  section_header_is_not_automatically_structural: true
+  unmatched_label_only_parent_with_distinct_accounting_children: NEW_ITEM_PROPOSAL
+  repeated_or_childless_label_only_heading: STRUCTURAL
+  outside_financial_table_span_row: UNRESOLVED
+  unlabeled_numeric_row: UNRESOLVED
+  unmatched_labeled_value_row: NEW_ITEM_PROPOSAL
+  fuzzy_similarity_can_map: false
+  alias_proposal_threshold: 0.96
+  alias_proposal_minimum_margin: 0.10
+  alias_proposal_maximum_token_symmetric_difference: 1
+  alias_proposal_types:
+    - SOURCE_WORDING
+    - BANK_WORDING
+    - REGULATORY_WORDING
+    - ABBREVIATION
+    - PUNCTUATION
+    - OCR_VARIANT
+  ocr_variant_mapping_eligible: false
+  equations_can_select_mapping: false
+  equations_may_only_corroborate_or_veto_complete_structure: true
+  equation_rounding_tolerance_source_units: 1
+  non_additive_child_prefixes: ["trong đó", "of which"]
+  new_items_allocate_report_norm_id: false
+  minimum_document_schema_coverage: 0
+
+cash_flow:
+  classifier: CONFIGURED_ORDERED_LABEL_ANCHORS
+  cross_branch_mapping: FORBIDDEN
+  opposite_branch_not_applicable_only_when_method_proven: true
+
+coverage:
+  role: ROLE_B
+  universal_schema_is_superset: true
+  statement_scope_exhaustiveness_requires_accepted_complete_chain: true
+  not_observed_requires_independently_complete_statement_scope_block: true
+  structural_scope_root_without_row: BLANK_WITH_SCOPE_EVIDENCE
+  unknown_or_unassigned_statement_scope_outcome: UNRESOLVED
+  unprocessed_statement_outcome: UNRESOLVED
+  absent_item_in_exhaustively_observed_block: NOT_OBSERVED
+  terminal_outcomes:
+    - OBSERVED_VALUE
+    - OBSERVED_ZERO
+    - DASH
+    - BLANK
+    - NOT_OBSERVED
+    - NOT_APPLICABLE
+    - AMBIGUOUS
+    - UNRESOLVED
+
+allowed_dataset_roles:
+  - LOGIC_DEVELOPMENT
+  - CALIBRATION
+  - VALIDATION
+  - PRODUCTION_INPUT
+forbidden_dataset_roles:
+  - UNTOUCHED_HOLDOUT
+role_directories:
+  LOGIC_DEVELOPMENT: output/development
+  CALIBRATION: output/calibration
+  VALIDATION: output/validation
+  PRODUCTION_INPUT: output/production
+
+role_isolation:
+  prior_answer_artifacts_allowed: false
+  historical_values_allowed: false
+  historical_aliases_allowed: false
+  role_a_outputs_allowed: false
+  human_review_outputs_allowed: false
+  source_bank_identity_used_for_mapping: false
+  filename_identity_used_for_mapping: false
+  page_number_rules_used_for_mapping: false
+  source_row_count_rules_used_for_mapping: false
+
+output:
+  format: REGISTERED_NATIVE_CANONICAL_MAPPING_RESULT_V1
+  status: ACCEPTED_NATIVE_CANONICAL_MAPPING
+  dispositions:
+    - EXISTING_ITEM
+    - NEW_ITEM_PROPOSAL
+    - AMBIGUOUS
+    - UNRESOLVED
+    - STRUCTURAL
+  canonical_json: true
+  exclusive_no_overwrite: true
+  absolute_project_paths_allowed: false
+  source_cells_preserved_by_hash_bound_join: true

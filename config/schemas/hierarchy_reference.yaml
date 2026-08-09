@@ -7,6 +7,25 @@ sources:
     coverage: FULL_STATEMENT
     schema_only_append_ids:
       - 5712
+      - 6035
+      - 6036
+      - 6037
+      - 6038
+      - 6039
+      - 6040
+      - 6041
+      - 6042
+      - 6043
+      - 6044
+      - 6045
+      - 6046
+      - 6047
+      - 6048
+      - 6049
+      - 6050
+      - 6051
+      - 6052
+      - 6053
     columns:
       label: ReportName
       schema_id: ReportNormID
@@ -28,6 +47,7 @@ sources:
     schema_only_append_ids:
       - 5714
       - 6034
+      - 6054
     allow_labeled_rows_without_id: true
     columns:
       label: ReportName

@@ -8,6 +8,7 @@ from bctc_ai.schema.business_update import (
     CDKT_BEFORE_SHA256,
     CDKT_TOTAL_EQUITY_COMPONENTS,
     CDKT_TOTAL_EQUITY_ID,
+    CDKT_VPB_SCHEMA_IDS,
     CDKT_WORKBOOK,
     KQKD_BEFORE_SHA256,
     KQKD_TOTAL_OPERATING_INCOME_COMPONENTS,
@@ -18,6 +19,7 @@ from bctc_ai.schema.business_update import (
     LCTT_INVESTMENT_CONTRIBUTION_NET_ID,
     LCTT_INVESTMENT_PROPERTY_NET_COMPONENTS,
     LCTT_INVESTMENT_PROPERTY_NET_ID,
+    LCTT_VPB_COMBINED_LOAN_ID,
     LCTT_WORKBOOK,
     REVIEWED_EXTERNAL_IDS,
     TM_ARTS_RECREATION_ID,
@@ -62,23 +64,23 @@ def test_business_schema_migration_is_hash_bound_and_preserves_sealed_baselines(
     assert set(audit["collision_safety"]["new_ids"]).isdisjoint(REVIEWED_EXTERNAL_IDS)
     assert audit["schema_strategy"]["base_schema"]["item_count"] == 1593
     assert audit["schema_strategy"]["universal_schema"] == {
-        "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6034",
-        "item_count": 1913,
-        "counts": {"CDKT": 78, "KQKD": 25, "LCTT": 109, "TM": 1701},
-        "high_watermark": 6034,
+        "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6054",
+        "item_count": 1933,
+        "counts": {"CDKT": 97, "KQKD": 25, "LCTT": 110, "TM": 1701},
+        "high_watermark": 6054,
         "workbook_sha256": {
             statement: record["after_sha256"] for statement, record in audit["workbooks"].items()
         },
     }
     assert audit["schema_strategy"]["migration_delta"]["new_report_norm_ids"] == list(
-        range(5991, 6035)
+        range(6035, 6055)
     )
     accepted_changes = {
         record["schema_id"]: record
         for record in audit["schema_changes"]
         if record.get("schema_status") == "ACCEPTED_UNIVERSAL"
     }
-    assert set(accepted_changes) == set(range(5991, 6035))
+    assert set(accepted_changes) == set(range(5991, 6055))
     assert all(
         accepted_changes[schema_id]["section"] == "BALANCE_SHEET_NOTES"
         for schema_id in range(5991, 6021)
@@ -88,6 +90,17 @@ def test_business_schema_migration_is_hash_bound_and_preserves_sealed_baselines(
         for schema_id in range(6021, 6034)
     )
     assert accepted_changes[6034]["section"] == "DIRECT_CASH_FLOW_INVESTING_ACTIVITIES"
+    assert accepted_changes[6035]["section"] == "BALANCE_SHEET_ASSETS"
+    assert accepted_changes[6036]["section"] == "BALANCE_SHEET_ASSETS"
+    assert accepted_changes[6037]["section"] == "BALANCE_SHEET_LIABILITIES"
+    assert all(
+        accepted_changes[schema_id]["section"] == "OFF_BALANCE_SHEET"
+        for schema_id in range(6038, 6054)
+    )
+    assert accepted_changes[6054]["section"] == "DIRECT_CASH_FLOW_OPERATING_ASSET_CHANGES"
+    alias_changes = audit["structural_alias_changes"]
+    assert len(alias_changes) == 51
+    assert sum(change["added_to_structural_aliases"] is True for change in alias_changes) == 48
 
 
 def test_business_formula_overlay_has_exact_authorized_edges(project_root):
@@ -113,6 +126,15 @@ def test_business_formula_overlay_has_exact_authorized_edges(project_root):
         TM_TOTAL_INTERBANK_PROVISION_COMPONENTS
     )
     assert by_id[4305].children == [4304, CDKT_TOTAL_EQUITY_ID]
+    assert by_id[4313].children == [4346, 6035, 4347]
+    assert by_id[4316].children == [4350, 4351, 6036, 4352]
+    assert by_id[4318].children == [6037]
+    assert by_id[6038].parent_id is None
+    assert by_id[6038].children == [6039, 6050]
+    assert by_id[6039].children == [6040, 6041, 6046, 6047, 6048]
+    assert by_id[6041].children == [6042, 6043, 6044, 6045]
+    assert by_id[6048].children == [6049]
+    assert by_id[6050].children == [6051, 6052, 6053]
     assert by_id[4376].children == [KQKD_TOTAL_OPERATING_INCOME_ID, 4391]
     assert by_id[4111].children == [
         4118,
@@ -126,6 +148,21 @@ def test_business_formula_overlay_has_exact_authorized_edges(project_root):
         by_id[schema_id].parent_id == LCTT_INVESTMENT_PROPERTY_NET_ID
         for schema_id in LCTT_INVESTMENT_PROPERTY_NET_COMPONENTS
     )
+    assert by_id[4110].children == [4109, 4107, 4108, 4142]
+    assert by_id[4107].children == [4129, 4130, 4131, 4132, 6054, 4133, 4134]
+    assert by_id[4108].children == list(range(4135, 4142))
+    assert by_id[LCTT_VPB_COMBINED_LOAN_ID].parent_id == 4107
+    assert (
+        "Tăng các khoản cho vay khách hàng và mua nợ"
+        in by_id[LCTT_VPB_COMBINED_LOAN_ID].structural_aliases
+    )
+    assert "Cam kết mua giao dịch hoán đổi ngoại tệ" in by_id[6044].structural_aliases
+    assert "Cam kết bán giao dịch hoán đổi ngoại tệ" in by_id[6045].structural_aliases
+    assert (
+        "CÁC CHỈ TIÊU NGOÀI BÁO CÁO TÌNH HÌNH TÀI CHÍNH HỢP NHẤT" in by_id[6038].structural_aliases
+    )
+    assert set(CDKT_VPB_SCHEMA_IDS) == set(range(6035, 6054))
+    assert all(by_id[schema_id].scope == ["CONSOLIDATED"] for schema_id in range(6038, 6054))
     assert by_id[TM_TOTAL_INTERBANK_PROVISION_ID].parent_id == 575
     assert by_id[TM_TOTAL_INTERBANK_PROVISION_ID].children == []
     assert by_id[575].children == [576, 585, TM_TOTAL_INTERBANK_PROVISION_ID]

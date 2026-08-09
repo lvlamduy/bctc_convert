@@ -43,7 +43,7 @@ _BASE_WORKBOOKS = {
         "fa284e3af1f90c8a206308f63e6d35e77a9fbf1abcaf60abcb59877c47275140",
     ),
 }
-_UNIVERSAL_COUNTS = {"CDKT": 78, "KQKD": 25, "LCTT": 109, "TM": 1701}
+_UNIVERSAL_COUNTS = {"CDKT": 97, "KQKD": 25, "LCTT": 110, "TM": 1701}
 
 
 def _base_ids(project_root: Path) -> set[int]:
@@ -81,10 +81,10 @@ def _validate_schema_contract(payload: dict[str, Any], project_root: Path) -> di
         "workbooks": expected_base_workbooks,
     }
     expected_universal = {
-        "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6034",
-        "item_count": 1913,
+        "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6054",
+        "item_count": 1933,
         "counts": _UNIVERSAL_COUNTS,
-        "high_watermark": 6034,
+        "high_watermark": 6054,
     }
     if (
         payload.get("schema_name") != _SCHEMA_NAME
@@ -318,6 +318,18 @@ def load_all(
                 ]
                 if len(matched) != 1 or matched[0].canonical_name != change["canonical_name"]:
                     raise ValueError(f"approved business schema item is not loaded: {relative}")
+                applicable_scope = change.get("applicable_scope")
+                if applicable_scope is not None:
+                    if (
+                        not isinstance(applicable_scope, list)
+                        or not applicable_scope
+                        or not all(
+                            scope in {"SEPARATE", "CONSOLIDATED"} for scope in applicable_scope
+                        )
+                        or len(applicable_scope) != len(set(applicable_scope))
+                    ):
+                        raise ValueError(f"approved business schema scope is invalid: {relative}")
+                    matched[0].scope = list(applicable_scope)
                 expected_display_order = change.get("display_order_zero_based")
                 if expected_display_order is not None:
                     if matched[0].display_order != expected_display_order:

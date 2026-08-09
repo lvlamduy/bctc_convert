@@ -1,0 +1,78 @@
+version: 1
+policy: REGISTERED_NATIVE_CANONICAL_EXCEL_V1
+claim_boundary: SOURCE_FAITHFUL_CANONICAL_DISPOSITIONS_AND_SCHEMA_COVERAGE_EXCEL
+
+accepted_inputs:
+  mapping:
+    format_version: REGISTERED_NATIVE_CANONICAL_MAPPING_RESULT_V1
+    policy: REGISTERED_NATIVE_CANONICAL_MAPPING_V1
+    claim_boundary: SOURCE_ROW_CANONICAL_DISPOSITIONS_AND_SCHEMA_GAP_PROPOSALS
+    status: ACCEPTED_NATIVE_CANONICAL_MAPPING
+  native_rows:
+    format_version: REGISTERED_NATIVE_STATEMENT_ROWS_RESULT_V1
+    policy: REGISTERED_NATIVE_STATEMENT_ROWS_V1
+    claim_boundary: UNMAPPED_SOURCE_ROWS_AND_CELLS_ONLY
+    status: ACCEPTED_NATIVE_STATEMENT_ROWS
+  trusted_sha256_required: true
+  exact_mapping_to_native_rows_pair_required: true
+
+allowed_dataset_roles:
+  - LOGIC_DEVELOPMENT
+  - CALIBRATION
+  - VALIDATION
+  - PRODUCTION_INPUT
+forbidden_dataset_roles:
+  - UNTOUCHED_HOLDOUT
+
+role_directories:
+  LOGIC_DEVELOPMENT: output/development
+  CALIBRATION: output/calibration
+  VALIDATION: output/validation
+  PRODUCTION_INPUT: output/production
+
+workbook:
+  sheets:
+    - SOURCE_ROWS
+    - CELLS
+    - SCHEMA_COVERAGE
+    - NEW_ITEM_PROPOSALS
+    - VALIDATION
+    - RUN_METADATA
+  creator: bctc-ai/native-canonical-excel-v1
+  deterministic_xlsx: true
+  formulas_allowed: false
+  imputation_allowed: false
+  force_mapping_allowed: false
+  report_norm_id_allocation_allowed: false
+  source_cell_values_as_json_text: true
+  embedded_producer_schema_snapshot_is_authority: true
+  current_mutable_schema_inputs_allowed: false
+  preserve_full_record_json: true
+
+publication:
+  paired_workbook_and_provenance: true
+  workbook_written_before_provenance_completion_marker: true
+  exclusive_no_overwrite: true
+  sibling_outputs_required: true
+  absolute_project_paths_allowed: false
+  canonical_provenance_json: true
+
+role_isolation:
+  runtime_input_allowlist:
+    - REGISTERED_NATIVE_CANONICAL_MAPPING_JSON
+    - REGISTERED_NATIVE_STATEMENT_ROWS_JSON
+    - PRODUCER_VERSIONED_SNAPSHOTS_EMBEDDED_IN_MAPPING
+    - SOURCE_PDF
+    - SOURCE_REGISTRY
+    - DATASET_ROLE_REGISTRY
+    - MAPPING_STRICT_LOADER
+    - NATIVE_ROWS_STRICT_LOADER
+    - THIS_EXPORT_POLICY
+    - EXPORT_IMPLEMENTATION
+  strict_mapping_contract_revalidated: true
+  strict_native_rows_contract_revalidated: true
+  current_mutable_schema_loaded: false
+  template_inputs_loaded: false
+  historical_values_loaded: false
+  role_a_outputs_loaded: false
+  human_review_outputs_loaded: false

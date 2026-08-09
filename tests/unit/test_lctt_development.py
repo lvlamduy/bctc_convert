@@ -154,12 +154,12 @@ def test_real_lctt_export_preserves_template_and_exposes_43_source_rows(
     try:
         assert workbook.sheetnames == ["LCTT", "PROVENANCE", "RUN_METADATA"]
         main = workbook["LCTT"]
-        for row in range(1, 111):
+        for row in range(1, 112):
             for column in range(1, 4):
                 assert main.cell(row, column).value == template.active.cell(row, column).value
                 assert main.cell(row, column).style_id == template.active.cell(row, column).style_id
 
-        by_id = {main.cell(row, 2).value: row for row in range(2, 111)}
+        by_id = {main.cell(row, 2).value: row for row in range(2, 112)}
         assert main.cell(by_id[4123], 4).value == 26_904_675_000_000
         assert main.cell(by_id[4123], 9).value == 18_186_686_000_000
         assert main.cell(by_id[4123], 5).value == "VALUE"
@@ -176,6 +176,7 @@ def test_real_lctt_export_preserves_template_and_exposes_43_source_rows(
             4151,
             4152,
             4117,
+            6054,
         ):
             assert main.cell(by_id[report_norm_id], 5).value == "NOT_OBSERVED_IN_THIS_PDF"
             assert main.cell(by_id[report_norm_id], 10).value == "NOT_OBSERVED_IN_THIS_PDF"
@@ -195,7 +196,7 @@ def test_real_lctt_export_preserves_template_and_exposes_43_source_rows(
         assert (
             sum(
                 main.cell(row, column).value is not None
-                for row in range(2, 111)
+                for row in range(2, 112)
                 for column in (4, 9)
             )
             == 71
