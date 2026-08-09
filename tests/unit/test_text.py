@@ -78,4 +78,8 @@ def test_unicode_normalization_and_retrieval_are_separate():
 def test_unit_parser():
     assert parse_unit("Đơn vị tính: triệu VND").multiplier == 1_000_000
     assert parse_unit("Đơn vị: nghìn đồng").multiplier == 1_000
+    assert parse_unit("Đơn vị: tỷ đồng").multiplier == 1_000_000_000
+    assert parse_unit("Đồng").multiplier == 1
+    assert parse_unit("Biến động của tài sản").canonical is None
+    assert parse_unit("Giá trị hợp đồng").canonical is None
     assert parse_unit("USD").canonical is None

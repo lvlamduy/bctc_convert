@@ -18,9 +18,7 @@ _DATE_PATTERN = re.compile(
     re.IGNORECASE,
 )
 _FINANCIAL_TOKEN = r"(?:\(\s*\d[\d.,]*\s*\)|-?\d[\d.,]*-?|--?)"
-_MULTIPLE_FINANCIAL_TOKENS = re.compile(
-    rf"^{_FINANCIAL_TOKEN}(?:\s+{_FINANCIAL_TOKEN})+$"
-)
+_MULTIPLE_FINANCIAL_TOKENS = re.compile(rf"^{_FINANCIAL_TOKEN}(?:\s+{_FINANCIAL_TOKEN})+$")
 _SPACED_THOUSANDS = re.compile(r"^\d{1,3}(?:\s+\d{3})+$")
 
 
@@ -165,10 +163,19 @@ class ParsedUnit:
 
 def parse_unit(text: str) -> ParsedUnit:
     normalized = retrieval_key(text)
+    if "ty vnd" in normalized or "vnd billion" in normalized or "ty dong" in normalized:
+        return ParsedUnit(text, "VND", 1_000_000_000)
     if "trieu vnd" in normalized or "vnd million" in normalized or "trieu dong" in normalized:
         return ParsedUnit(text, "VND", 1_000_000)
     if "nghin vnd" in normalized or "ngan vnd" in normalized or "nghin dong" in normalized:
         return ParsedUnit(text, "VND", 1_000)
-    if re.search(r"\b(vnd|dong)\b", normalized):
+    # Keep the final unscaled-currency test atom-scoped.  Both accent folding
+    # (``động`` -> ``dong``) and the genuine word ``đồng`` in ``hợp đồng``
+    # must never make arbitrary narrative text look like a VND unit.
+    explicit_unscaled = retrieval_key(normalize_text(text).casefold())
+    if re.fullmatch(
+        r"(?:don vi(?: tinh)? )?(?:vnd|dong|dong viet nam|viet nam dong)",
+        explicit_unscaled,
+    ):
         return ParsedUnit(text, "VND", 1)
     return ParsedUnit(text, None, None)

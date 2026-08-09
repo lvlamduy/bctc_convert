@@ -1,0 +1,116 @@
+version: 1
+policy: REGISTERED_NATIVE_TM_FULL_DOCUMENT_ARTIFACT_V1
+claim_boundary: SOURCE_VISIBLE_NATIVE_TM_INVENTORY_ONLY
+source_registry: data/registered/source_registry.jsonl
+dataset_role_registry: data/registered/dataset_roles.jsonl
+required_dataset_role: LOGIC_DEVELOPMENT
+require_clean_git: true
+
+accepted_statement_discovery:
+  format_version: REGISTERED_NATIVE_TEXT_STATEMENT_DISCOVERY_RESULT_V1
+  policy: REGISTERED_NATIVE_TEXT_STATEMENT_DISCOVERY_V1
+  claim_boundary: STATEMENT_PAGE_DISCOVERY_ONLY
+  status: ACCEPTED_NATIVE_TEXT_STATEMENT_DISCOVERY
+  required_dataset_role: LOGIC_DEVELOPMENT
+  producer_policy_path: config/document_phase/native-statement-discovery-v1.yaml
+  runtime_input_policy: EXACT_DECLARED_PROJECT_INPUT_LEDGER
+  require_exact_runtime_read_ledger: true
+  runtime_input_kind_counts:
+    DATASET_ROLE_REGISTRY: 1
+    NATIVE_TEXT_QUALITY_CONFIG: 1
+    SOURCE_PDF: 1
+    SOURCE_REGISTRY: 1
+    STATEMENT_DISCOVERY_CONFIG: 4
+    THIS_POLICY: 1
+  trusted_sha256_required: true
+  notes_boundary_authority: ACCEPTED_DISCOVERY_BLOCK_NOTES_BOUNDARY
+  require_full_pdf_page_denominator: true
+  require_source_identity_equality: true
+
+configuration:
+  native_tm_region_policy:
+    path: config/tables/native-tm-regions-v1.yaml
+    sha256: be1b87ca7b4bec00d1fe3ce1238e339fb3827a35b2d82a426dfaf22daaf3689c
+  geometry_config:
+    path: config/tables/geometry-v2.yaml
+    sha256: df6ef38d66f8d985c4d207670c391c7156b1ea1358202604a634ead884743db3
+  native_text_quality_config:
+    path: config/ocr/native-text-quality-v2.yaml
+    sha256: af0d735ea026abc7b189da46d36f103d1390687325324ecc1a325ba6ab51a660
+
+classification:
+  classes:
+    - QUANTITATIVE_TM
+    - QUALITATIVE_TM_CONTEXT
+    - NON_TM
+    - UNASSESSED
+  pre_notes_boundary: NON_TM
+  quantitative_requires_discovered_region: true
+  region_without_tm_authority: UNASSESSED
+  unmatched_post_boundary: UNASSESSED
+  top_band_height_ratio: 0.30
+  tm_header_retrieval_phrases:
+    - thuyet minh bao cao tai chinh
+    - notes to the financial statements
+  continuation_retrieval_phrases:
+    - tiep theo
+    - continued
+  continuation_requires_immediately_preceding_tm_page: true
+  generic_note_heading_retrieval_regex: '^(?:(?:thuyet minh|note)(?: so)? )?[0-9]{1,4}(?: |$).*[a-z]'
+  generic_note_heading_minimum_alpha_tokens: 2
+
+completeness:
+  page_denominator: ALL_PDF_PAGES
+  every_page_requires_explicit_classification: true
+  every_usable_page_requires_region_assessment: true
+  unresolved_inter_table_ownership_blocks_completion: true
+  table_on_unassessed_page_blocks_completion: true
+  full_document_complete_rule: EVERY_PAGE_CLASSIFIED_AND_ALL_TABLE_OWNERSHIP_BOUNDED
+  partial_artifact_publication_allowed: true
+
+role_isolation:
+  runtime_input_allowlist:
+    - SOURCE_PDF
+    - SOURCE_REGISTRY
+    - DATASET_ROLE_REGISTRY
+    - ACCEPTED_STATEMENT_DISCOVERY
+    - THIS_POLICY
+    - NATIVE_TM_REGION_POLICY
+    - GEOMETRY_CONFIG
+    - NATIVE_TEXT_QUALITY_CONFIG
+  prior_answer_artifacts_allowed: false
+  historical_values_allowed: false
+  role_a_outputs_allowed: false
+  reference_outputs_allowed: false
+  schema_inputs_allowed: false
+  bank_identity_used_for_routing: false
+  filename_identity_used_for_routing: false
+  page_number_rules_used_for_routing: false
+  note_number_rules_used_for_routing: false
+  expected_count_rules_used_for_routing: false
+  forbidden_path_fragments:
+    - /reference/
+    - /role-a/
+    - /role_a/
+    - /schema/
+    - /schemas/
+    - /human_review/
+    - /human-review/
+    - /review/
+    - /history/
+    - /holdout/
+    - /comparisons/
+    - /docs/experiments/
+    - /config/experiments/
+    - /output/holdout/
+
+output:
+  format: REGISTERED_NATIVE_TM_FULL_DOCUMENT_ARTIFACT_RESULT_V1
+  complete_status: COMPLETE_NATIVE_TM_FULL_DOCUMENT_ARTIFACT
+  partial_status: PARTIAL_NATIVE_TM_FULL_DOCUMENT_ARTIFACT
+  canonical_json: true
+  exclusive_no_overwrite: true
+  rollback_after_failed_strict_replay: true
+  absolute_project_paths_allowed: false
+  output_directory: output/development
+  preserve_all_native_region_evidence: true

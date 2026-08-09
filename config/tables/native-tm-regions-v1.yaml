@@ -1,0 +1,51 @@
+version: 1
+policy: NATIVE_TM_LOCAL_TABLE_REGIONS_V1
+claim_boundary: SOURCE_VISIBLE_QUANTITATIVE_TABLE_GEOMETRY_AND_HEADER_SEMANTICS
+
+# This policy deliberately contains no bank, file, page, note, expected-count,
+# schema-label, or ReportNormId rule.  It only identifies locally evidenced
+# native-text table regions.  Accounting identity is a later stage.
+unit_headers:
+  exact_retrieval_keys:
+    - trieu dong
+    - nghin dong
+    - ty dong
+    - vnd
+  maximum_group_vertical_gap_height_factor: 0.45
+  data_start_gap_height_factor: 0.35
+  next_header_gap_height_factor: 0.15
+  header_lookback_height_factor: 7.0
+
+acceptance:
+  minimum_aligned_observations_per_single_header: 2
+  axis_alignment_tolerance_multiplier: 2.0
+  require_every_distinct_unit_axis_observed: true
+  require_source_visible_unit_header: true
+  permit_value_magnitude_as_period_or_identity_evidence: false
+
+geometry:
+  label_boundary_margin_ratio: 0.025
+  maximum_adjacent_axis_gap_ratio: 0.16
+  minimum_stable_numeric_cluster_samples: 2
+  preserve_rows_outside_financial_span: true
+  preserve_unassigned_runs: true
+
+visibility:
+  near_white_channel_minimum: 250
+  raster_scale: 2.0
+  minimum_visible_contrast: 12
+  minimum_causal_contribution_ratio: 0.25
+  minimum_glyph_core_alpha: 128
+  relative_glyph_core_alpha: 0.75
+  minimum_glyph_core_survival_ratio: 0.75
+  blank_slot_inset_ratio: 0.12
+  exclude_fully_transparent_text_paints: true
+  require_causal_visibility_for_nonopaque_text: true
+
+safety:
+  historical_values_allowed: false
+  role_a_outputs_allowed: false
+  schema_inputs_allowed: false
+  template_inputs_allowed: false
+  bank_or_page_specific_rules_allowed: false
+  expected_row_or_cell_counts_allowed: false

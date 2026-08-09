@@ -1,0 +1,140 @@
+version: 1
+policy: UNIVERSAL_BANK_BCTC_TM_SCHEMA_CONTEXT_V1
+statement_type: TM
+order_authority: WORKBOOK_DISPLAY_ORDER
+
+# These are accounting-section identities from the universal TM hierarchy.
+# Source bank, note number, page number, and source row count are deliberately
+# absent: none of them is universal mapping authority.
+section_roots:
+  - report_norm_id: 560
+    section: BALANCE_SHEET_NOTES
+    canonical_name: I. THÔNG TIN BỔ SUNG CHO CÁC KHOẢN MỤC TRÌNH BÀY TRONG BẢNG CÂN ĐỐI KẾ TOÁN
+  - report_norm_id: 1142
+    section: INCOME_STATEMENT_NOTES
+    canonical_name: II. THÔNG TIN BỔ SUNG CHO CÁC KHOẢN MỤC TRÌNH BÀY TRONG BẢNG KẾT QUẢ KINH DOANH
+  - report_norm_id: 1247
+    section: CASH_FLOW_NOTES
+    canonical_name: III. THÔNG TIN BỔ SUNG CHO MỘT SỐ KHOẢN MỤC TRÌNH BÀY TRONG LƯU CHUYỂN TIỀN TỆ
+  - report_norm_id: 1259
+    section: OTHER_QUANTITATIVE_NOTES
+    canonical_name: IV. MỘT SỐ THÔNG TIN KHÁC
+
+resolved_context:
+  status: RESOLVED
+  mapping_eligible: true
+
+# These rows are connected to the correct accounting family, but their declared
+# workbook level is one shallower than their full ancestor path. Keep their
+# stable identities and context, but exclude them from automatic mapping until
+# the universal hierarchy is corrected with audited evidence.
+level_mismatch_items:
+  - report_norm_id: 785
+    canonical_name: Số dư đầu kỳ này
+    expected_parent_report_norm_id: 784
+    expected_declared_hierarchy_level: 2
+    expected_derived_hierarchy_level: 3
+    status: UNRESOLVED_LEVEL_MISMATCH
+    mapping_eligible: false
+  - report_norm_id: 786
+    canonical_name: + Dự phòng rủi ro trích lập trong kỳ/(Hoàn nhập dự phòng trong kỳ)
+    expected_parent_report_norm_id: 784
+    expected_declared_hierarchy_level: 2
+    expected_derived_hierarchy_level: 3
+    status: UNRESOLVED_LEVEL_MISMATCH
+    mapping_eligible: false
+  - report_norm_id: 787
+    canonical_name: + Sử dụng dự phòng rủi ro tín dụng trong kỳ
+    expected_parent_report_norm_id: 784
+    expected_declared_hierarchy_level: 2
+    expected_derived_hierarchy_level: 3
+    status: UNRESOLVED_LEVEL_MISMATCH
+    mapping_eligible: false
+  - report_norm_id: 788
+    canonical_name: + Chênh lệch tỷ giá ngoại tệ
+    expected_parent_report_norm_id: 784
+    expected_declared_hierarchy_level: 2
+    expected_derived_hierarchy_level: 3
+    status: UNRESOLVED_LEVEL_MISMATCH
+    mapping_eligible: false
+  - report_norm_id: 789
+    canonical_name: + Giảm dự phòng rủi ro tín dụng trong năm
+    expected_parent_report_norm_id: 784
+    expected_declared_hierarchy_level: 2
+    expected_derived_hierarchy_level: 3
+    status: UNRESOLVED_LEVEL_MISMATCH
+    mapping_eligible: false
+  - report_norm_id: 790
+    canonical_name: + Điều chỉnh khác
+    expected_parent_report_norm_id: 784
+    expected_declared_hierarchy_level: 2
+    expected_derived_hierarchy_level: 3
+    status: UNRESOLVED_LEVEL_MISMATCH
+    mapping_eligible: false
+  - report_norm_id: 791
+    canonical_name: Số dư cuối kỳ này
+    expected_parent_report_norm_id: 784
+    expected_declared_hierarchy_level: 2
+    expected_derived_hierarchy_level: 3
+    status: UNRESOLVED_LEVEL_MISMATCH
+    mapping_eligible: false
+  - report_norm_id: 793
+    canonical_name: Số dư đầu kỳ này
+    expected_parent_report_norm_id: 792
+    expected_declared_hierarchy_level: 2
+    expected_derived_hierarchy_level: 3
+    status: UNRESOLVED_LEVEL_MISMATCH
+    mapping_eligible: false
+  - report_norm_id: 794
+    canonical_name: + Dự phòng rủi ro trích lập trong kỳ/(Hoàn nhập dự phòng trong kỳ)
+    expected_parent_report_norm_id: 792
+    expected_declared_hierarchy_level: 2
+    expected_derived_hierarchy_level: 3
+    status: UNRESOLVED_LEVEL_MISMATCH
+    mapping_eligible: false
+  - report_norm_id: 795
+    canonical_name: + Sử dụng dự phòng rủi ro tín dụng trong kỳ
+    expected_parent_report_norm_id: 792
+    expected_declared_hierarchy_level: 2
+    expected_derived_hierarchy_level: 3
+    status: UNRESOLVED_LEVEL_MISMATCH
+    mapping_eligible: false
+  - report_norm_id: 796
+    canonical_name: + Chênh lệch tỷ giá ngoại tệ
+    expected_parent_report_norm_id: 792
+    expected_declared_hierarchy_level: 2
+    expected_derived_hierarchy_level: 3
+    status: UNRESOLVED_LEVEL_MISMATCH
+    mapping_eligible: false
+  - report_norm_id: 797
+    canonical_name: + Giảm dự phòng rủi ro tín dụng trong năm
+    expected_parent_report_norm_id: 792
+    expected_declared_hierarchy_level: 2
+    expected_derived_hierarchy_level: 3
+    status: UNRESOLVED_LEVEL_MISMATCH
+    mapping_eligible: false
+  - report_norm_id: 798
+    canonical_name: + Điều chỉnh khác
+    expected_parent_report_norm_id: 792
+    expected_declared_hierarchy_level: 2
+    expected_derived_hierarchy_level: 3
+    status: UNRESOLVED_LEVEL_MISMATCH
+    mapping_eligible: false
+  - report_norm_id: 799
+    canonical_name: Số dư cuối kỳ này
+    expected_parent_report_norm_id: 792
+    expected_declared_hierarchy_level: 2
+    expected_derived_hierarchy_level: 3
+    status: UNRESOLVED_LEVEL_MISMATCH
+    mapping_eligible: false
+
+# ID 1944 is a stable append-only identity, but it currently has neither a
+# parent nor a hierarchy level. Preserve the identity and exclude it from
+# automatic mapping until evidence resolves that context.
+orphan_items:
+  - report_norm_id: 1944
+    canonical_name: Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán
+    expected_parent_report_norm_id: null
+    expected_hierarchy_level: null
+    status: UNRESOLVED_ORPHAN
+    mapping_eligible: false
