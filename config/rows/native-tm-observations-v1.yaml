@@ -1,0 +1,102 @@
+version: 1
+policy: REGISTERED_NATIVE_TM_OBSERVATIONS_V1
+claim_boundary: SOURCE_ONLY_NATIVE_TM_OBSERVATION_FLATTENING
+require_clean_git: true
+
+accepted_native_tm_document:
+  format_version: REGISTERED_NATIVE_TM_FULL_DOCUMENT_ARTIFACT_RESULT_V1
+  policy: REGISTERED_NATIVE_TM_FULL_DOCUMENT_ARTIFACT_V1
+  claim_boundary: SOURCE_VISIBLE_NATIVE_TM_INVENTORY_ONLY
+  accepted_statuses:
+    - COMPLETE_NATIVE_TM_FULL_DOCUMENT_ARTIFACT
+    - PARTIAL_NATIVE_TM_FULL_DOCUMENT_ARTIFACT
+  required_dataset_role: LOGIC_DEVELOPMENT
+  trusted_sha256_required: true
+  strict_producer_commit_replay_required: true
+
+flattening:
+  grains:
+    - PAGE
+    - CONTEXT
+    - ROW
+    - DIMENSION
+    - OBSERVATION
+  preserve_every_region: true
+  preserve_every_page: true
+  preserve_page_classification_and_visible_word_inventory: true
+  outside_quantitative_tm_disposition: OUTSIDE_QUANTITATIVE_TM
+  preserve_every_region_row: true
+  preserve_outside_financial_span_rows: true
+  preserve_row_local_scalars: true
+  preserve_every_grid_slot: true
+  preserve_unresolved_empty_slots: true
+  preserve_header_components_in_source_geometry_order: true
+  preserve_header_binding_conflicts: true
+  preserve_inter_table_contexts: true
+  preserve_unassigned_page_runs: true
+  preserve_excluded_spans: true
+  preserve_detached_margin_runs: true
+  preserve_region_unassigned_runs: true
+  preserve_unit_group_diagnostics: true
+  require_exactly_one_source_disposition: true
+  row_dependent_bindings_materialized: false
+  unresolved_bindings_coerced: false
+
+report_scope:
+  authority: SOURCE_VISIBLE_TM_HEADER_RUNS_ONLY
+  normalization: RETRIEVAL_KEY
+  consolidated_retrieval_lexemes:
+    - hop nhat
+  separate_retrieval_lexemes:
+    - rieng
+    - rieng le
+  require_every_header_classified: true
+  require_unanimous_non_conflicting_headers: true
+  unresolved_scope: UNKNOWN
+
+role_isolation:
+  direct_runtime_input_allowlist:
+    - NATIVE_TM_DOCUMENT_ARTIFACT
+    - THIS_POLICY
+  prior_answer_artifacts_allowed: false
+  historical_values_allowed: false
+  role_a_outputs_allowed: false
+  reference_outputs_allowed: false
+  schema_inputs_allowed: false
+  aliases_allowed: false
+  mapping_inputs_allowed: false
+  bank_identity_used_for_routing: false
+  filename_identity_used_for_routing: false
+  page_number_rules_used_for_routing: false
+  note_number_rules_used_for_routing: false
+  expected_count_rules_used_for_routing: false
+  forbidden_path_fragments:
+    - /reference/
+    - /role-a/
+    - /role_a/
+    - /schema/
+    - /schemas/
+    - /alias/
+    - /aliases/
+    - /mapping/
+    - /mappings/
+    - /human_review/
+    - /human-review/
+    - /review/
+    - /history/
+    - /holdout/
+    - /comparisons/
+    - /docs/experiments/
+    - /config/experiments/
+    - /output/holdout/
+
+output:
+  format: REGISTERED_NATIVE_TM_OBSERVATIONS_RESULT_V1
+  status: COMPLETE_NATIVE_TM_SOURCE_OBJECT_ACCOUNTING
+  canonical_json: true
+  exclusive_no_overwrite: true
+  rollback_after_failed_strict_replay: true
+  absolute_project_paths_allowed: false
+  output_directory: output/development
+  source_object_accounting_required: true
+  full_document_context_completion_required: false
