@@ -1,0 +1,70 @@
+version: 1
+policy: BANK_CORPUS_BREADTH_FIRST_SURVEY_V1
+claim_boundary: REGISTERED_PDF_METADATA_AND_SOURCE_FIRST_SURVEY_SELECTION_ONLY
+
+inputs:
+  bank_registry: data/registered/bank_registry.json
+  source_registry: data/registered/source_registry.jsonl
+  dataset_role_registry: data/registered/dataset_roles.jsonl
+
+inventory:
+  sector: BANK
+  require_every_registered_bank_represented: true
+  require_stable_registered_pdf_identity: true
+  filename_metadata_is_authoritative: false
+  source_type_requires_pdf_inspection: true
+
+wave_1:
+  selection_status: SELECTED_PENDING_SOURCE_SURVEY
+  documents_per_bank: 1
+  preferred_year: 2026
+  preferred_period: Q2
+  preferred_language: VI
+  scope_preference:
+    - CONSOLIDATED
+    - SEPARATE
+    - UNKNOWN
+  assurance_preference:
+    - REVIEWED
+    - AUDITED
+    - UNKNOWN
+  exclude_dataset_roles:
+    - UNTOUCHED_HOLDOUT
+  require_full_financial_statement_candidate: true
+  source_type_used_for_selection: false
+  registered_development_role_used_only_as_tie_breaker: true
+  bank_identity_used_for_parser_routing: false
+  fallback: RANK_YEAR_THEN_PERIOD_LANGUAGE_SCOPE_ASSURANCE_ROLE_AND_PATH
+
+source_profile:
+  engine: PYMUPDF_PAGE_EVIDENCE_V1
+  substantive_text_layer_min_non_whitespace_chars: 40
+  text_layer_visibility_proxy: RAWDICT_SPAN_ALPHA_NONZERO
+  image_presence_source: PAGE_GET_IMAGE_INFO_PAINTED
+  dominant_raster_min_page_coverage: 0.5
+  ocr_allowed: false
+  schema_allowed: false
+  structural_survey_claimed: false
+  route_vocabulary:
+    - SCAN_ROUTE
+    - MIXED_PAGE_HYBRID_ROUTE
+    - SEARCHABLE_OVER_IMAGE_REQUIRES_GHOST_TEXT_VALIDATION
+    - NATIVE_SEARCHABLE_ROUTE
+    - UNRESOLVED_SOURCE_ROUTE
+
+safety:
+  schema_inputs_allowed: false
+  prior_mapping_outputs_allowed: false
+  historical_values_allowed: false
+  bank_specific_parser_rules_allowed: false
+  expected_document_count_rules_allowed: false
+  preserve_unclassified_metadata: true
+
+output:
+  format: BANK_CORPUS_SURVEY_INVENTORY_RESULT_V1
+  source_profile_format: BANK_CORPUS_WAVE_1_SOURCE_PROFILE_V1
+  canonical_json: true
+  exclusive_no_overwrite: true
+  output_directory: output/development/bank-corpus-survey-v1
+  inventory_filename: corpus-inventory.json
+  source_profile_filename: wave-1-source-profile.json
