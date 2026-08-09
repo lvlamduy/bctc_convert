@@ -1,0 +1,123 @@
+version: 1
+policy: BANK_CORPUS_WAVE_1_ROLE_A_LEVEL_1_BOUNDARIES_POLICY_V1
+status: ROLE_A_LEVEL_1_MACHINE_REFERENCE
+claim_boundary: STRUCTURAL_BOUNDARIES_ONLY
+
+authority:
+  reference_role: ROLE_A
+  evidence_authority: VISIBLE_RENDERED_PIXELS
+  page_basis: ONE_BASED_PHYSICAL_PDF_PAGE
+  human_gold: false
+  role_b_output: false
+  row_reference: false
+  value_reference: false
+  canonical_reference: false
+
+upstream_binding:
+  mode: EXACT_PUBLISHED_ARTIFACT_BYTES_READ_ONLY
+  selection_receipt_sha256: 832cea1bee22f0bb08c422490dd2afe4e23bc91c56cdee6db382b1bfdc744d28
+  inventory:
+    path: output/development/bank-corpus-survey-v1/corpus-inventory.json
+    sha256: fff64ca4d25de646cd2f4661d99fc9623e6edc8c7c6b0cd321c0d2f9af9cebd8
+    size_bytes: 2181864
+    format_version: BANK_CORPUS_SURVEY_INVENTORY_RESULT_V1
+    status: COMPLETE_REGISTERED_BANK_PDF_METADATA_INVENTORY
+    claim_boundary: REGISTERED_PDF_METADATA_AND_SOURCE_FIRST_SURVEY_SELECTION_ONLY
+  source_profile:
+    path: output/development/bank-corpus-survey-v1/wave-1-source-profile.json
+    sha256: 28fb3485b9424e2052ae981942476e681d8fbdcbf1131467a1d65778a20cb19b
+    size_bytes: 857274
+    format_version: BANK_CORPUS_WAVE_1_SOURCE_PROFILE_V1
+    status: COMPLETE_WAVE_1_SOURCE_ROUTE_PROFILE_STRUCTURE_SURVEY_PENDING
+    claim_boundary: SELECTED_WAVE_1_PDF_PAGE_EVIDENCE_AND_SOURCE_ROUTE_RECOMMENDATIONS_ONLY
+
+reference_source:
+  path: data/registered/bank-corpus-wave-1-role-a-level-1-boundaries-v1.yaml
+  sha256: 0d27b7248d70ae63533eed8551b08d7d6af6498296f699c0c3fc4f4c16d36451
+  size_bytes: 47542
+  format_version: BANK_CORPUS_WAVE_1_ROLE_A_LEVEL_1_BOUNDARY_SOURCE_V1
+  status: ROLE_A_LEVEL_1_MACHINE_REFERENCE
+  claim_boundary: STRUCTURAL_BOUNDARIES_ONLY
+
+identity_join:
+  key: bank
+  expected_bank_count: 27
+  inventory_is_sole_source_for:
+    - document_id
+    - relative_path
+    - sha256
+    - size_bytes
+  source_profile_is_sole_source_for:
+    - page_count
+  require_exact_inventory_profile_identity_match: true
+  source_records_must_not_contain_document_identity_fields: true
+
+page_partition:
+  require_exact_physical_page_coverage: true
+  first_page: 1
+  gaps_allowed: false
+  primary_page_segment_overlap_allowed: false
+  blank_and_supporting_pages_must_be_explicit: true
+  statement_block_overlap_allowed_only_for_embedded_off_balance: true
+  embedded_off_balance_rules:
+    block_type: OFF_BALANCE
+    placement: EMBEDDED_BOTTOM_REGION
+    must_be_single_page: true
+    must_name_parent_cdkt_block: true
+    must_match_parent_copy_id: true
+    must_be_contained_by_parent_cdkt_range: true
+    must_match_parent_page_segment_embedded_page: true
+  standalone_off_balance_rules:
+    placement: STANDALONE_PAGE
+    must_own_matching_primary_page_segment: true
+  tm_subdivision_rules:
+    if_present_must_partition_tm_exactly: true
+    overlap_allowed: false
+  duplicate_presentation_rules:
+    preserve_each_visible_formal_copy: true
+    page_ownership_remains_single: true
+    canonical_double_count_claim_allowed: false
+
+safety:
+  schema_inputs_allowed: false
+  canonical_mapping_allowed: false
+  financial_value_read_claimed: false
+  visible_row_accounting_claimed: false
+  source_complete_claim_allowed: false
+  canonical_complete_claim_allowed: false
+  human_reviewed_gold_claim_allowed: false
+  role_b_inference_claim_allowed: false
+  bank_specific_parser_routing_allowed: false
+  source_pdf_byte_revalidation_required_for_publication: true
+  source_pdf_page_count_revalidation_required_for_publication: true
+  fail_closed_on_unknown_field: true
+  fail_closed_on_partition_or_overlap_error: true
+
+expected_accounting:
+  document_count: 27
+  physical_page_count: 1449
+  statement_block_count: 139
+  embedded_off_balance_block_count: 4
+  duplicate_presentation_document_count: 1
+  scope_status_counts:
+    OBSERVED_CONSOLIDATED: 24
+    OBSERVED_SEPARATE: 1
+    UNRESOLVED_SOURCE_UNQUALIFIED: 2
+  lctt_method_status_counts:
+    DIRECT_EXPLICIT_TITLE: 14
+    DIRECT_INFERRED_VISIBLE_ROWS: 10
+    UNRESOLVED_NOT_PRINTED: 3
+
+output:
+  format_version: BANK_CORPUS_WAVE_1_ROLE_A_LEVEL_1_BOUNDARIES_V1
+  status: ROLE_A_LEVEL_1_MACHINE_REFERENCE
+  claim_boundary: STRUCTURAL_BOUNDARIES_ONLY
+  canonical_json: true
+  exclusive_no_overwrite: true
+  publication_requires_committed_clean_inputs: true
+  required_committed_paths:
+    - config/corpus/bank-corpus-wave-1-role-a-level-1-boundaries-v1.yaml
+    - data/registered/bank-corpus-wave-1-role-a-level-1-boundaries-v1.yaml
+    - src/bctc_ai/corpus/wave1_role_a_level1_boundaries.py
+    - tests/unit/test_wave1_role_a_level1_boundaries.py
+  output_path: output/development/bank-corpus-survey-v1/wave-1-role-a-level-1-statement-boundaries.json

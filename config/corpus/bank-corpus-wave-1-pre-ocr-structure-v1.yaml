@@ -1,0 +1,141 @@
+version: 1
+policy: BANK_CORPUS_WAVE_1_PRE_OCR_STRUCTURE_FEATURES_POLICY_V1
+claim_boundary: SELECTED_WAVE_1_PRE_OCR_PAGE_GEOMETRY_ROUTING_AND_FEATURE_CANDIDATES_ONLY
+
+upstream_binding:
+  mode: EXACT_PUBLISHED_ARTIFACT_BYTES_READ_ONLY
+  artifacts_rebuilt_by_this_run: false
+  selection_receipt_sha256: 832cea1bee22f0bb08c422490dd2afe4e23bc91c56cdee6db382b1bfdc744d28
+  inventory:
+    path: output/development/bank-corpus-survey-v1/corpus-inventory.json
+    sha256: fff64ca4d25de646cd2f4661d99fc9623e6edc8c7c6b0cd321c0d2f9af9cebd8
+    size_bytes: 2181864
+    format_version: BANK_CORPUS_SURVEY_INVENTORY_RESULT_V1
+    status: COMPLETE_REGISTERED_BANK_PDF_METADATA_INVENTORY
+    claim_boundary: REGISTERED_PDF_METADATA_AND_SOURCE_FIRST_SURVEY_SELECTION_ONLY
+  source_profile:
+    path: output/development/bank-corpus-survey-v1/wave-1-source-profile.json
+    sha256: 28fb3485b9424e2052ae981942476e681d8fbdcbf1131467a1d65778a20cb19b
+    size_bytes: 857274
+    format_version: BANK_CORPUS_WAVE_1_SOURCE_PROFILE_V1
+    status: COMPLETE_WAVE_1_SOURCE_ROUTE_PROFILE_STRUCTURE_SURVEY_PENDING
+    claim_boundary: SELECTED_WAVE_1_PDF_PAGE_EVIDENCE_AND_SOURCE_ROUTE_RECOMMENDATIONS_ONLY
+
+feature_extraction:
+  engine: PYMUPDF_PRE_OCR_STRUCTURE_FEATURES_V1
+  run_sequences:
+    boundary: PER_DOCUMENT
+    transition_definition: ADJACENT_PAGE_FEATURE_VALUE_CHANGE_WITHIN_DOCUMENT
+  geometry:
+    coordinate_unit: INTEGER_MILLI_POINT
+    orientation_source: EFFECTIVE_PAGE_RECT
+    orientation_square_tolerance_mpt: 0
+    pdf_rotation_recorded_separately: true
+    family_reference_unit: INTEGER_MILLI_POINT
+    family_distance_method: EUCLIDEAN_RELATIVE_SHORT_LONG_AXIS_PPM
+    family_max_normalized_distance_ppm: 60000
+    family_references:
+      A4_GEOMETRY_LIKE: [595276, 841890]
+      LETTER_GEOMETRY_LIKE: [612000, 792000]
+  raster:
+    image_presence_source: PAGE_GET_IMAGE_INFO_PAINTED
+    dominant_image_selection: MAXIMUM_CLIPPED_PAINTED_PAGE_COVERAGE
+    dominant_image_tie_break: PAINT_ORDER_FIRST
+    coverage_unit: INTEGER_PARTS_PER_MILLION
+    dominant_raster_min_page_coverage_ppm: 500000
+    effective_dpi_display_extent_source: UNCLIPPED_GET_IMAGE_INFO_BBOX
+    effective_dpi_raw_unit: INTEGER_MILLI_DPI
+    effective_dpi_band_method: HALF_UP_MEAN_X_Y
+    effective_dpi_band_step: 25
+  text_layer:
+    source: RAWDICT
+    non_whitespace_definition: PYTHON_STR_ISSPACE_FALSE
+    substantive_min_non_whitespace_chars: 40
+    visibility_proxy: RAWDICT_SPAN_ALPHA_NONZERO
+    exact_nonzero_alpha_form_code_pattern: '(?<![A-Z0-9])B0[1-9][A-Z]?\s*/\s*TCTD(?:\s*-\s*HN)?(?![A-Z0-9])'
+    form_code_case_insensitive: true
+    form_code_candidate_normalization: REMOVE_WHITESPACE_AND_UPPERCASE
+    form_code_candidate_counting_basis: UNIQUE_NORMALIZED_TOKENS_PER_PAGE_SUMMED_ACROSS_PAGES
+    fuzzy_form_code_matching_allowed: false
+  vector_geometry:
+    source: PAGE_GET_DRAWINGS
+    orthogonal_line_tolerance_mpt: 500
+    table_acceptance_allowed: false
+  fingerprint:
+    scope: STRUCTURE_AND_SOURCE_EVIDENCE_COUNTS_ONLY
+    no_verbatim_text_or_values_retained: true
+    canonical_accounting_identity: false
+    canonical_mapping_authority: false
+    page_number_excluded_from_page_fingerprint: true
+    identity_fields_excluded:
+      - BANK
+      - SOURCE_PATH
+      - DOCUMENT_ID
+    semantic_content_not_retained:
+      - SOURCE_LABEL_TEXT
+      - FORM_CODE_TEXT
+      - FINANCIAL_VALUE_TEXT
+      - CANONICAL_SCHEMA
+    form_code_candidate_count_included: false
+
+safety:
+  source_pdf_hash_and_size_revalidation_required: true
+  ocr_allowed: false
+  render_visibility_validation_allowed: false
+  statement_acceptance_allowed: false
+  table_acceptance_allowed: false
+  axis_acceptance_allowed: false
+  financial_value_semantic_extraction_allowed: false
+  verbatim_financial_value_retention_allowed: false
+  schema_inputs_allowed: false
+  canonical_mapping_allowed: false
+  role_a_inputs_allowed: false
+  historical_values_allowed: false
+  bank_specific_parser_rules_allowed: false
+  absence_declarations_allowed: false
+
+expected_accounting:
+  selected_document_count: 27
+  total_pdf_page_count: 1449
+  orientation_page_counts: {PORTRAIT: 1362, LANDSCAPE: 87, SQUARE: 0}
+  rotation_page_counts: {'0': 1175, '90': 3, '180': 0, '270': 271}
+  orientation_transition_count: 117
+  rotation_transition_count: 31
+  source_route_quadrant_transition_count: 21
+  portrait_only_document_count: 12
+  mixed_orientation_document_count: 15
+  geometry_family_page_counts: {A4_GEOMETRY_LIKE: 1358, LETTER_GEOMETRY_LIKE: 91, OTHER_GEOMETRY: 0}
+  geometry_family_document_counts: {A4_GEOMETRY_LIKE: 26, LETTER_GEOMETRY_LIKE: 1, OTHER_GEOMETRY: 0}
+  cropbox_difference_page_count: 0
+  displayed_image_page_count: 1363
+  dominant_raster_page_count: 1356
+  effective_dpi_band_page_counts: {'75': 93, '100': 44, '125': 1, '150': 451, '200': 661, '300': 106}
+  any_extractable_text_layer_page_count: 156
+  substantive_extractable_text_page_count: 156
+  substantive_nonzero_alpha_text_page_count: 111
+  substantive_zero_alpha_text_page_count: 46
+  nonzero_alpha_text_layer_form_code_candidate_page_count: 89
+  nonzero_alpha_text_layer_form_code_candidate_document_count: 2
+  nonzero_alpha_text_layer_form_code_unique_normalized_token_occurrence_count: 89
+  no_extracted_text_or_displayed_image_page_count: 0
+  source_route_candidate_counts:
+    SCAN_ROUTE: 11
+    MIXED_PAGE_HYBRID_ROUTE: 14
+    SEARCHABLE_OVER_IMAGE_REQUIRES_GHOST_TEXT_VALIDATION: 1
+    NATIVE_SEARCHABLE_ROUTE: 1
+    UNRESOLVED_SOURCE_ROUTE: 0
+  source_route_quadrant_page_counts:
+    TEXT_LAYER_AND_DOMINANT_RASTER: 63
+    TEXT_LAYER_AND_NONDOMINANT_RASTER: 93
+    NO_TEXT_LAYER_AND_DOMINANT_RASTER: 1293
+    NO_TEXT_LAYER_AND_NONDOMINANT_RASTER: 0
+  vector_drawing_page_count: 110
+  vector_drawing_path_count: 1922
+
+output:
+  format: BANK_CORPUS_WAVE_1_PRE_OCR_STRUCTURE_FEATURES_V1
+  status: COMPLETE_PRE_OCR_FEATURE_ACCOUNTING_STRUCTURE_SURVEY_PENDING
+  canonical_json: true
+  exclusive_no_overwrite: true
+  output_directory: output/development/bank-corpus-survey-v1
+  filename: wave-1-pre-ocr-structure-features.json

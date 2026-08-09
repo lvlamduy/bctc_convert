@@ -1,0 +1,1036 @@
+version: 1
+format_version: BANK_CORPUS_WAVE_1_ROLE_A_LEVEL_1_BOUNDARY_SOURCE_V1
+status: ROLE_A_LEVEL_1_MACHINE_REFERENCE
+claim_boundary: STRUCTURAL_BOUNDARIES_ONLY
+evidence_authority: VISIBLE_RENDERED_PIXELS
+page_basis: ONE_BASED_PHYSICAL_PDF_PAGE
+reference_role: ROLE_A
+human_gold: false
+role_b_output: false
+row_reference: false
+value_reference: false
+canonical_reference: false
+
+tuple_contract:
+  page_segment:
+    - kind
+    - start_page
+    - end_page
+    - copy_id
+    - embedded_off_balance_pages
+  statement_block:
+    - block_id
+    - block_type
+    - start_page
+    - end_page
+    - copy_id
+    - placement
+    - parent_block_id
+    - visible_unit_override
+  tm_subdivision:
+    - kind
+    - start_page
+    - end_page
+
+records:
+  - bank: ABB
+    scope:
+      status: OBSERVED_SEPARATE
+      evidence: Visible statement titles and B02a/B03a/B04a/B05a forms identify the separate presentation.
+    unit:
+      normalized: MILLION_VND
+      visible_labels: [triệu đồng]
+      evidence: Unit is visible in the primary-statement headers.
+    reporting_period:
+      classification: Q2_2026
+      balance_axis_pattern: CURRENT_VS_COMPARATIVE
+      income_axis_pattern: CURRENT_QUARTER_AND_CUMULATIVE_VS_COMPARATIVE
+      cash_axis_pattern: CURRENT_REPORTING_PERIOD_VS_COMPARATIVE_PERIOD
+      evidence: Literal Q2 current/comparative presentation is visible; labels remain source presentation rather than canonical identity.
+    lctt_method:
+      status: DIRECT_EXPLICIT_TITLE
+      evidence: The visible LCTT title explicitly states the direct method.
+    form_codes: [B02a/TCTD, B03a/TCTD, B04a/TCTD, B05a/TCTD]
+    page_segments:
+      - [COVER, 1, 1, NONE, []]
+      - [TABLE_OF_CONTENTS, 2, 2, NONE, []]
+      - [CDKT_MAIN, 3, 4, PRIMARY, []]
+      - [OFF_BALANCE, 5, 5, PRIMARY, []]
+      - [KQKD, 6, 6, PRIMARY, []]
+      - [LCTT, 7, 8, PRIMARY, []]
+      - [TM, 9, 27, PRIMARY, []]
+    statement_blocks:
+      - [CDKT_PRIMARY, CDKT_MAIN, 3, 4, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [OFF_BALANCE_PRIMARY, OFF_BALANCE, 5, 5, PRIMARY, STANDALONE_PAGE, null, null]
+      - [KQKD_PRIMARY, KQKD, 6, 6, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [LCTT_PRIMARY, LCTT, 7, 8, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [TM_PRIMARY, TM, 9, 27, PRIMARY, PAGE_SEQUENCE, null, null]
+    tm_subdivisions: []
+    duplicate_presentation: {status: NONE_OBSERVED, canonical_double_count_claim: NOT_MADE}
+    notes: []
+
+  - bank: ACB
+    scope:
+      status: OBSERVED_CONSOLIDATED
+      evidence: Visible cover, primary-statement, and TM titles identify a consolidated interim presentation.
+    unit:
+      normalized: MILLION_VND
+      visible_labels: [million dong]
+      evidence: Million-dong unit classification is visible in the statement headers.
+    reporting_period:
+      classification: Q2_2026
+      balance_axis_pattern: CURRENT_VS_COMPARATIVE
+      income_axis_pattern: CURRENT_QUARTER_AND_CUMULATIVE_VS_COMPARATIVE
+      cash_axis_pattern: CURRENT_REPORTING_PERIOD_VS_COMPARATIVE_PERIOD
+      evidence: Q2 current and comparative axes are visibly presented.
+    lctt_method:
+      status: DIRECT_EXPLICIT_TITLE
+      evidence: The visible LCTT title explicitly states the direct method.
+    form_codes: []
+    page_segments:
+      - [COVER, 1, 1, NONE, []]
+      - [TABLE_OF_CONTENTS, 2, 2, NONE, []]
+      - [CDKT_MAIN, 3, 4, PRIMARY, []]
+      - [OFF_BALANCE, 5, 5, PRIMARY, []]
+      - [KQKD, 6, 6, PRIMARY, []]
+      - [LCTT, 7, 8, PRIMARY, []]
+      - [TM, 9, 33, PRIMARY, []]
+    statement_blocks:
+      - [CDKT_PRIMARY, CDKT_MAIN, 3, 4, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [OFF_BALANCE_PRIMARY, OFF_BALANCE, 5, 5, PRIMARY, STANDALONE_PAGE, null, null]
+      - [KQKD_PRIMARY, KQKD, 6, 6, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [LCTT_PRIMARY, LCTT, 7, 8, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [TM_PRIMARY, TM, 9, 33, PRIMARY, PAGE_SEQUENCE, null, null]
+    tm_subdivisions: []
+    duplicate_presentation: {status: NONE_OBSERVED, canonical_double_count_claim: NOT_MADE}
+    notes: []
+
+  - bank: BAB
+    scope:
+      status: OBSERVED_CONSOLIDATED
+      evidence: Visible cover, primary-statement, and TM titles identify a consolidated interim presentation.
+    unit:
+      normalized: MILLION_VND
+      visible_labels: [million dong]
+      evidence: Million-dong unit classification is visible in the statement headers.
+    reporting_period:
+      classification: Q2_2026
+      balance_axis_pattern: CURRENT_VS_COMPARATIVE
+      income_axis_pattern: CURRENT_QUARTER_AND_CUMULATIVE_VS_COMPARATIVE
+      cash_axis_pattern: CURRENT_REPORTING_PERIOD_VS_COMPARATIVE_PERIOD
+      evidence: Q2 current and comparative axes are visibly presented.
+    lctt_method:
+      status: UNRESOLVED_NOT_PRINTED
+      evidence: No LCTT method label was visibly printed and this Level-1 reference does not infer one.
+    form_codes: []
+    page_segments:
+      - [COVER, 1, 1, NONE, []]
+      - [TABLE_OF_CONTENTS, 2, 2, NONE, []]
+      - [CDKT_MAIN, 3, 4, PRIMARY, []]
+      - [OFF_BALANCE, 5, 5, PRIMARY, []]
+      - [KQKD, 6, 7, PRIMARY, []]
+      - [LCTT, 8, 9, PRIMARY, []]
+      - [TM, 10, 45, PRIMARY, []]
+    statement_blocks:
+      - [CDKT_PRIMARY, CDKT_MAIN, 3, 4, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [OFF_BALANCE_PRIMARY, OFF_BALANCE, 5, 5, PRIMARY, STANDALONE_PAGE, null, null]
+      - [KQKD_PRIMARY, KQKD, 6, 7, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [LCTT_PRIMARY, LCTT, 8, 9, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [TM_PRIMARY, TM, 10, 45, PRIMARY, PAGE_SEQUENCE, null, null]
+    tm_subdivisions: []
+    duplicate_presentation: {status: NONE_OBSERVED, canonical_double_count_claim: NOT_MADE}
+    notes: []
+
+  - bank: BID
+    scope:
+      status: OBSERVED_CONSOLIDATED
+      evidence: Visible cover, primary-statement, and TM titles identify a consolidated interim presentation.
+    unit:
+      normalized: MILLION_VND
+      visible_labels: [Triệu VND]
+      evidence: Unit is visible in the primary-statement headers.
+    reporting_period:
+      classification: Q2_2026
+      balance_axis_pattern: CURRENT_VS_COMPARATIVE
+      income_axis_pattern: CURRENT_QUARTER_AND_CUMULATIVE_VS_COMPARATIVE
+      cash_axis_pattern: CURRENT_REPORTING_PERIOD_VS_COMPARATIVE_PERIOD
+      evidence: Q2 current and comparative axes are visibly presented.
+    lctt_method:
+      status: DIRECT_EXPLICIT_TITLE
+      evidence: The visible LCTT title explicitly states the direct method.
+    form_codes: []
+    page_segments:
+      - [SUPPORTING_FRONT, 1, 2, NONE, []]
+      - [COVER, 3, 3, NONE, []]
+      - [CDKT_MAIN, 4, 5, PRIMARY, []]
+      - [OFF_BALANCE, 6, 6, PRIMARY, []]
+      - [KQKD, 7, 7, PRIMARY, []]
+      - [LCTT, 8, 10, PRIMARY, []]
+      - [TM, 11, 35, PRIMARY, []]
+      - [SUPPORTING_TRAILING, 36, 37, NONE, []]
+    statement_blocks:
+      - [CDKT_PRIMARY, CDKT_MAIN, 4, 5, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [OFF_BALANCE_PRIMARY, OFF_BALANCE, 6, 6, PRIMARY, STANDALONE_PAGE, null, null]
+      - [KQKD_PRIMARY, KQKD, 7, 7, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [LCTT_PRIMARY, LCTT, 8, 10, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [TM_PRIMARY, TM, 11, 35, PRIMARY, PAGE_SEQUENCE, null, null]
+    tm_subdivisions: []
+    duplicate_presentation: {status: NONE_OBSERVED, canonical_double_count_claim: NOT_MADE}
+    notes: [Pages 36-37 are trailing disclosure support and are outside TM.]
+
+  - bank: BVB
+    scope:
+      status: OBSERVED_CONSOLIDATED
+      evidence: Visible primary-statement and TM titles identify a consolidated presentation.
+    unit:
+      normalized: MILLION_VND
+      visible_labels: [triệu đồng VN]
+      evidence: Unit is visible in the primary-statement headers.
+    reporting_period:
+      classification: Q2_2026
+      balance_axis_pattern: CURRENT_VS_COMPARATIVE
+      income_axis_pattern: CURRENT_QUARTER_AND_CUMULATIVE_VS_COMPARATIVE
+      cash_axis_pattern: CURRENT_REPORTING_PERIOD_VS_COMPARATIVE_PERIOD
+      evidence: Q2 current and comparative axes are visibly presented.
+    lctt_method:
+      status: DIRECT_EXPLICIT_TITLE
+      evidence: The visible LCTT title explicitly states the direct method.
+    form_codes: []
+    page_segments:
+      - [SUPPORTING_FRONT, 1, 2, NONE, []]
+      - [COVER, 3, 3, NONE, []]
+      - [TABLE_OF_CONTENTS, 4, 4, NONE, []]
+      - [CDKT_MAIN, 5, 6, PRIMARY, []]
+      - [OFF_BALANCE, 7, 7, PRIMARY, []]
+      - [KQKD, 8, 8, PRIMARY, []]
+      - [LCTT, 9, 10, PRIMARY, []]
+      - [TM, 11, 50, PRIMARY, []]
+    statement_blocks:
+      - [CDKT_PRIMARY, CDKT_MAIN, 5, 6, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [OFF_BALANCE_PRIMARY, OFF_BALANCE, 7, 7, PRIMARY, STANDALONE_PAGE, null, null]
+      - [KQKD_PRIMARY, KQKD, 8, 8, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [LCTT_PRIMARY, LCTT, 9, 10, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [TM_PRIMARY, TM, 11, 50, PRIMARY, PAGE_SEQUENCE, null, null]
+    tm_subdivisions: []
+    duplicate_presentation: {status: NONE_OBSERVED, canonical_double_count_claim: NOT_MADE}
+    notes: []
+
+  - bank: CTG
+    scope:
+      status: OBSERVED_CONSOLIDATED
+      evidence: Visible cover, primary-statement, and TM titles identify a consolidated presentation.
+    unit:
+      normalized: MILLION_VND
+      visible_labels: [million dong]
+      evidence: Million-dong unit classification is visible in the statement headers.
+    reporting_period:
+      classification: Q2_2026
+      balance_axis_pattern: CURRENT_VS_COMPARATIVE
+      income_axis_pattern: CURRENT_QUARTER_AND_CUMULATIVE_VS_COMPARATIVE
+      cash_axis_pattern: CURRENT_REPORTING_PERIOD_VS_COMPARATIVE_PERIOD
+      evidence: Q2 current and comparative axes are visibly presented.
+    lctt_method:
+      status: DIRECT_EXPLICIT_TITLE
+      evidence: The visible LCTT title explicitly states the direct method.
+    form_codes: []
+    page_segments:
+      - [COVER, 1, 1, NONE, []]
+      - [TABLE_OF_CONTENTS, 2, 2, NONE, []]
+      - [CDKT_MAIN, 3, 4, PRIMARY, []]
+      - [OFF_BALANCE, 5, 5, PRIMARY, []]
+      - [KQKD, 6, 7, PRIMARY, []]
+      - [LCTT, 8, 10, PRIMARY, []]
+      - [TM, 11, 61, PRIMARY, []]
+    statement_blocks:
+      - [CDKT_PRIMARY, CDKT_MAIN, 3, 4, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [OFF_BALANCE_PRIMARY, OFF_BALANCE, 5, 5, PRIMARY, STANDALONE_PAGE, null, null]
+      - [KQKD_PRIMARY, KQKD, 6, 7, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [LCTT_PRIMARY, LCTT, 8, 10, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [TM_PRIMARY, TM, 11, 61, PRIMARY, PAGE_SEQUENCE, null, null]
+    tm_subdivisions:
+      - [GENERAL_INFORMATION, 11, 17]
+      - [FINANCIAL_STATEMENT_NOTES, 18, 61]
+    duplicate_presentation: {status: NONE_OBSERVED, canonical_double_count_claim: NOT_MADE}
+    notes:
+      - PDF page 11 visibly bears a TM title; pages 11-17 are retained as the GENERAL_INFORMATION subdivision inside TM.
+
+  - bank: EIB
+    scope:
+      status: OBSERVED_CONSOLIDATED
+      evidence: The selected visible statement block is consolidated.
+    unit:
+      normalized: MILLION_VND
+      visible_labels: [triệu đồng VN]
+      evidence: Unit is visible in the primary-statement headers.
+    reporting_period:
+      classification: Q2_2026
+      balance_axis_pattern: CURRENT_VS_COMPARATIVE
+      income_axis_pattern: CURRENT_QUARTER_AND_CUMULATIVE_VS_COMPARATIVE
+      cash_axis_pattern: CURRENT_REPORTING_PERIOD_VS_COMPARATIVE_PERIOD
+      evidence: Q2 current and comparative axes are visibly presented.
+    lctt_method:
+      status: UNRESOLVED_NOT_PRINTED
+      evidence: No LCTT method label was visibly printed and this Level-1 reference does not infer one.
+    form_codes: []
+    page_segments:
+      - [SUPPORTING_FRONT, 1, 2, NONE, []]
+      - [CDKT_MAIN, 3, 4, PRIMARY, []]
+      - [OFF_BALANCE, 5, 5, PRIMARY, []]
+      - [KQKD, 6, 6, PRIMARY, []]
+      - [LCTT, 7, 8, PRIMARY, []]
+      - [TM, 9, 41, PRIMARY, []]
+    statement_blocks:
+      - [CDKT_PRIMARY, CDKT_MAIN, 3, 4, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [OFF_BALANCE_PRIMARY, OFF_BALANCE, 5, 5, PRIMARY, STANDALONE_PAGE, null, null]
+      - [KQKD_PRIMARY, KQKD, 6, 6, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [LCTT_PRIMARY, LCTT, 7, 8, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [TM_PRIMARY, TM, 9, 41, PRIMARY, PAGE_SEQUENCE, null, null]
+    tm_subdivisions: []
+    duplicate_presentation: {status: NONE_OBSERVED, canonical_double_count_claim: NOT_MADE}
+    notes: [The visible presentation is labelled Dạng đầy đủ; no separate report cover or TOC was observed.]
+
+  - bank: HDB
+    scope:
+      status: OBSERVED_CONSOLIDATED
+      evidence: Visible cover, primary-statement, and TM titles identify a consolidated presentation.
+    unit:
+      normalized: MILLION_VND
+      visible_labels: [Triệu VND]
+      evidence: Unit is visible in the primary-statement headers.
+    reporting_period:
+      classification: Q2_2026
+      balance_axis_pattern: CURRENT_VS_COMPARATIVE
+      income_axis_pattern: CURRENT_QUARTER_AND_CUMULATIVE_VS_COMPARATIVE
+      cash_axis_pattern: CURRENT_REPORTING_PERIOD_VS_COMPARATIVE_PERIOD
+      evidence: Q2 current and comparative axes are visibly presented.
+    lctt_method:
+      status: DIRECT_EXPLICIT_TITLE
+      evidence: The visible rendered LCTT title explicitly states the direct method.
+    form_codes: []
+    page_segments:
+      - [COVER, 1, 1, NONE, []]
+      - [TABLE_OF_CONTENTS, 2, 2, NONE, []]
+      - [CDKT_MAIN, 3, 4, PRIMARY, []]
+      - [OFF_BALANCE, 5, 5, PRIMARY, []]
+      - [KQKD, 6, 7, PRIMARY, []]
+      - [LCTT, 8, 10, PRIMARY, []]
+      - [TM, 11, 44, PRIMARY, []]
+    statement_blocks:
+      - [CDKT_PRIMARY, CDKT_MAIN, 3, 4, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [OFF_BALANCE_PRIMARY, OFF_BALANCE, 5, 5, PRIMARY, STANDALONE_PAGE, null, null]
+      - [KQKD_PRIMARY, KQKD, 6, 7, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [LCTT_PRIMARY, LCTT, 8, 10, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [TM_PRIMARY, TM, 11, 44, PRIMARY, PAGE_SEQUENCE, null, null]
+    tm_subdivisions: []
+    duplicate_presentation: {status: NONE_OBSERVED, canonical_double_count_claim: NOT_MADE}
+    notes: [Hidden or ghost text was discarded; boundary and method evidence comes from rendered pixels.]
+
+  - bank: KLB
+    scope:
+      status: OBSERVED_CONSOLIDATED
+      evidence: Visible cover, primary-statement, and TM titles identify a consolidated presentation.
+    unit:
+      normalized: MILLION_VND
+      visible_labels: [million dong]
+      evidence: Million-dong unit classification is visible in the statement headers.
+    reporting_period:
+      classification: Q2_2026
+      balance_axis_pattern: CURRENT_VS_COMPARATIVE
+      income_axis_pattern: CURRENT_QUARTER_AND_CUMULATIVE_VS_COMPARATIVE
+      cash_axis_pattern: CURRENT_REPORTING_PERIOD_VS_COMPARATIVE_PERIOD
+      evidence: Q2 current and comparative axes are visibly presented.
+    lctt_method:
+      status: UNRESOLVED_NOT_PRINTED
+      evidence: No LCTT method label was visibly printed and this Level-1 reference does not infer one.
+    form_codes: []
+    page_segments:
+      - [SUPPORTING_FRONT, 1, 2, NONE, []]
+      - [COVER, 3, 3, NONE, []]
+      - [TABLE_OF_CONTENTS, 4, 4, NONE, []]
+      - [CDKT_MAIN, 5, 6, PRIMARY, []]
+      - [OFF_BALANCE, 7, 7, PRIMARY, []]
+      - [KQKD, 8, 8, PRIMARY, []]
+      - [LCTT, 9, 10, PRIMARY, []]
+      - [TM, 11, 42, PRIMARY, []]
+    statement_blocks:
+      - [CDKT_PRIMARY, CDKT_MAIN, 5, 6, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [OFF_BALANCE_PRIMARY, OFF_BALANCE, 7, 7, PRIMARY, STANDALONE_PAGE, null, null]
+      - [KQKD_PRIMARY, KQKD, 8, 8, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [LCTT_PRIMARY, LCTT, 9, 10, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [TM_PRIMARY, TM, 11, 42, PRIMARY, PAGE_SEQUENCE, null, null]
+    tm_subdivisions: []
+    duplicate_presentation: {status: NONE_OBSERVED, canonical_double_count_claim: NOT_MADE}
+    notes: []
+
+  - bank: LPB
+    scope:
+      status: UNRESOLVED_SOURCE_UNQUALIFIED
+      evidence: Visible titles and B02a/B05a forms do not state HỢP NHẤT, RIÊNG LẺ, or -HN; separate scope is not inferred.
+    unit:
+      normalized: MILLION_VND
+      visible_labels: [Triệu VND]
+      evidence: Unit is visible in the primary-statement headers.
+    reporting_period:
+      classification: Q2_2026
+      balance_axis_pattern: CURRENT_2026_06_30_VS_2025_12_31
+      income_axis_pattern: CURRENT_QUARTER_AND_CUMULATIVE_VS_COMPARATIVE
+      cash_axis_pattern: 2026_01_01_TO_2026_06_30_VS_2025_01_01_TO_2025_06_30
+      evidence: Dates and Q2/YTD axes are visible in the rendered statement headers.
+    lctt_method:
+      status: DIRECT_EXPLICIT_TITLE
+      evidence: The visible LCTT title explicitly states Phương pháp trực tiếp.
+    form_codes: [B02a/TCTD, B05a/TCTD]
+    page_segments:
+      - [COVER, 1, 1, NONE, []]
+      - [GOVERNANCE_GENERAL_INFORMATION, 2, 2, NONE, []]
+      - [CDKT_MAIN, 3, 4, PRIMARY, []]
+      - [OFF_BALANCE, 5, 5, PRIMARY, []]
+      - [KQKD, 6, 7, PRIMARY, []]
+      - [LCTT, 8, 9, PRIMARY, []]
+      - [TM, 10, 93, PRIMARY, []]
+    statement_blocks:
+      - [CDKT_PRIMARY, CDKT_MAIN, 3, 4, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [OFF_BALANCE_PRIMARY, OFF_BALANCE, 5, 5, PRIMARY, STANDALONE_PAGE, null, null]
+      - [KQKD_PRIMARY, KQKD, 6, 7, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [LCTT_PRIMARY, LCTT, 8, 9, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [TM_PRIMARY, TM, 10, 93, PRIMARY, PAGE_SEQUENCE, null, null]
+    tm_subdivisions: []
+    duplicate_presentation: {status: NONE_OBSERVED, canonical_double_count_claim: NOT_MADE}
+    notes: []
+
+  - bank: MBB
+    scope:
+      status: OBSERVED_CONSOLIDATED
+      evidence: Primary-statement and TM titles visibly state HỢP NHẤT and forms carry -HN.
+    unit:
+      normalized: MILLION_VND
+      visible_labels: [triệu đồng]
+      evidence: Unit is visible in the primary-statement headers.
+    reporting_period:
+      classification: Q2_2026
+      balance_axis_pattern: CURRENT_2026_06_30_VS_2025_12_31
+      income_axis_pattern: CURRENT_QUARTER_AND_CUMULATIVE_VS_COMPARATIVE
+      cash_axis_pattern: 2026_01_01_TO_2026_06_30_VS_2025_01_01_TO_2025_06_30
+      evidence: Dates and Q2/YTD axes are visible in the rendered statement headers.
+    lctt_method:
+      status: DIRECT_EXPLICIT_TITLE
+      evidence: The visible LCTT title explicitly states phương pháp trực tiếp.
+    form_codes: []
+    page_segments:
+      - [SUPPORTING_FRONT, 1, 2, NONE, []]
+      - [CDKT_MAIN, 3, 4, PRIMARY, []]
+      - [OFF_BALANCE, 5, 5, PRIMARY, []]
+      - [KQKD, 6, 6, PRIMARY, []]
+      - [LCTT, 7, 8, PRIMARY, []]
+      - [TM, 9, 61, PRIMARY, []]
+    statement_blocks:
+      - [CDKT_PRIMARY, CDKT_MAIN, 3, 4, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [OFF_BALANCE_PRIMARY, OFF_BALANCE, 5, 5, PRIMARY, STANDALONE_PAGE, null, null]
+      - [KQKD_PRIMARY, KQKD, 6, 6, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [LCTT_PRIMARY, LCTT, 7, 8, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [TM_PRIMARY, TM, 9, 61, PRIMARY, PAGE_SEQUENCE, null, null]
+    tm_subdivisions: []
+    duplicate_presentation: {status: NONE_OBSERVED, canonical_double_count_claim: NOT_MADE}
+    notes: [No separate report cover was observed before the primary statements.]
+
+  - bank: MSB
+    scope:
+      status: OBSERVED_CONSOLIDATED
+      evidence: Cover, primary-statement, and TM titles visibly state HỢP NHẤT/HỢP NHẤT GIỮA NIÊN ĐỘ and forms carry -HN.
+    unit:
+      normalized: MILLION_VND
+      visible_labels: [triệu đồng]
+      evidence: Unit is visible in the primary-statement headers.
+    reporting_period:
+      classification: Q2_2026
+      balance_axis_pattern: CURRENT_2026_06_30_VS_2025_12_31
+      income_axis_pattern: CURRENT_QUARTER_AND_CUMULATIVE_VS_COMPARATIVE
+      cash_axis_pattern: 2026_01_01_TO_2026_06_30_VS_2025_01_01_TO_2025_06_30
+      evidence: Dates and Q2/YTD axes are visible in the rendered statement headers.
+    lctt_method:
+      status: DIRECT_INFERRED_VISIBLE_ROWS
+      evidence: Direct cash-receipt/payment rows are visible, including interest received and interest paid; the title does not print a method label.
+    form_codes: []
+    page_segments:
+      - [SUPPORTING_FRONT, 1, 2, NONE, []]
+      - [COVER, 3, 3, NONE, []]
+      - [GOVERNANCE_GENERAL_INFORMATION, 4, 5, NONE, []]
+      - [CDKT_MAIN, 6, 7, PRIMARY, []]
+      - [OFF_BALANCE, 8, 8, PRIMARY, []]
+      - [KQKD, 9, 9, PRIMARY, []]
+      - [LCTT, 10, 11, PRIMARY, []]
+      - [TM, 12, 57, PRIMARY, []]
+    statement_blocks:
+      - [CDKT_PRIMARY, CDKT_MAIN, 6, 7, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [OFF_BALANCE_PRIMARY, OFF_BALANCE, 8, 8, PRIMARY, STANDALONE_PAGE, null, null]
+      - [KQKD_PRIMARY, KQKD, 9, 9, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [LCTT_PRIMARY, LCTT, 10, 11, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [TM_PRIMARY, TM, 12, 57, PRIMARY, PAGE_SEQUENCE, null, null]
+    tm_subdivisions: []
+    duplicate_presentation: {status: NONE_OBSERVED, canonical_double_count_claim: NOT_MADE}
+    notes: []
+
+  - bank: NAB
+    scope:
+      status: OBSERVED_CONSOLIDATED
+      evidence: Cover, primary-statement, and TM titles visibly state HỢP NHẤT and forms carry -HN.
+    unit:
+      normalized: MILLION_VND
+      visible_labels: [Triệu đồng]
+      evidence: Unit is visible in the primary-statement headers.
+    reporting_period:
+      classification: Q2_2026
+      balance_axis_pattern: CURRENT_2026_06_30_VS_2025_12_31
+      income_axis_pattern: CURRENT_QUARTER_AND_CUMULATIVE_VS_COMPARATIVE
+      cash_axis_pattern: 2026_01_01_TO_2026_06_30_VS_2025_01_01_TO_2025_06_30
+      evidence: Dates and Q2/YTD axes are visible in the rendered statement headers.
+    lctt_method:
+      status: DIRECT_INFERRED_VISIBLE_ROWS
+      evidence: Direct cash-receipt/payment rows are visible; the title does not print a method label.
+    form_codes: []
+    page_segments:
+      - [SUPPORTING_FRONT, 1, 2, NONE, []]
+      - [COVER, 3, 3, NONE, []]
+      - [TABLE_OF_CONTENTS, 4, 4, NONE, []]
+      - [CDKT_MAIN, 5, 6, PRIMARY, []]
+      - [OFF_BALANCE, 7, 7, PRIMARY, []]
+      - [KQKD, 8, 8, PRIMARY, []]
+      - [LCTT, 9, 10, PRIMARY, []]
+      - [TM, 11, 42, PRIMARY, []]
+    statement_blocks:
+      - [CDKT_PRIMARY, CDKT_MAIN, 5, 6, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [OFF_BALANCE_PRIMARY, OFF_BALANCE, 7, 7, PRIMARY, STANDALONE_PAGE, null, null]
+      - [KQKD_PRIMARY, KQKD, 8, 8, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [LCTT_PRIMARY, LCTT, 9, 10, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [TM_PRIMARY, TM, 11, 42, PRIMARY, PAGE_SEQUENCE, null, null]
+    tm_subdivisions: []
+    duplicate_presentation: {status: NONE_OBSERVED, canonical_double_count_claim: NOT_MADE}
+    notes: []
+
+  - bank: NVB
+    scope:
+      status: OBSERVED_CONSOLIDATED
+      evidence: Primary-statement and TM titles visibly state HỢP NHẤT and forms carry -HN.
+    unit:
+      normalized: MILLION_VND
+      visible_labels: [Triệu đồng]
+      evidence: Unit is visible in the primary-statement headers.
+    reporting_period:
+      classification: Q2_2026
+      balance_axis_pattern: CURRENT_2026_06_30_VS_2025_12_31
+      income_axis_pattern: CURRENT_QUARTER_AND_CUMULATIVE_VS_COMPARATIVE
+      cash_axis_pattern: 2026_01_01_TO_2026_06_30_VS_2025_01_01_TO_2025_06_30
+      evidence: Dates and Q2/YTD axes are visible in the rendered statement headers.
+    lctt_method:
+      status: DIRECT_INFERRED_VISIBLE_ROWS
+      evidence: Direct cash-receipt/payment rows are visible; the title does not print a method label.
+    form_codes: []
+    page_segments:
+      - [COVER, 1, 1, NONE, []]
+      - [TABLE_OF_CONTENTS, 2, 2, NONE, []]
+      - [CDKT_MAIN, 3, 4, PRIMARY, []]
+      - [OFF_BALANCE, 5, 5, PRIMARY, []]
+      - [KQKD, 6, 6, PRIMARY, []]
+      - [LCTT, 7, 8, PRIMARY, []]
+      - [TM, 9, 53, PRIMARY, []]
+    statement_blocks:
+      - [CDKT_PRIMARY, CDKT_MAIN, 3, 4, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [OFF_BALANCE_PRIMARY, OFF_BALANCE, 5, 5, PRIMARY, STANDALONE_PAGE, null, null]
+      - [KQKD_PRIMARY, KQKD, 6, 6, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [LCTT_PRIMARY, LCTT, 7, 8, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [TM_PRIMARY, TM, 9, 53, PRIMARY, PAGE_SEQUENCE, null, null]
+    tm_subdivisions: []
+    duplicate_presentation: {status: NONE_OBSERVED, canonical_double_count_claim: NOT_MADE}
+    notes: []
+
+  - bank: OCB
+    scope:
+      status: OBSERVED_CONSOLIDATED
+      evidence: Cover, primary-statement, and selected-TM titles visibly state HỢP NHẤT and forms carry -HN.
+    unit:
+      normalized: VND
+      visible_labels: [VND]
+      evidence: Full-VND unit is visible in the primary-statement headers; trailing support page 42 separately uses triệu đồng.
+    reporting_period:
+      classification: Q2_2026
+      balance_axis_pattern: CURRENT_2026_06_30_VS_2025_12_31
+      income_axis_pattern: CURRENT_QUARTER_AND_CUMULATIVE_VS_COMPARATIVE
+      cash_axis_pattern: 2026_01_01_TO_2026_06_30_VS_2025_01_01_TO_2025_06_30
+      evidence: Dates and Q2/YTD axes are visible in the rendered statement headers.
+    lctt_method:
+      status: DIRECT_INFERRED_VISIBLE_ROWS
+      evidence: Direct cash-receipt/payment rows are visible; the title does not print a method label.
+    form_codes: []
+    page_segments:
+      - [SUPPORTING_FRONT, 1, 2, NONE, []]
+      - [COVER, 3, 3, NONE, []]
+      - [CDKT_MAIN, 4, 5, PRIMARY, []]
+      - [OFF_BALANCE, 6, 6, PRIMARY, []]
+      - [KQKD, 7, 7, PRIMARY, []]
+      - [LCTT, 8, 9, PRIMARY, []]
+      - [TM, 10, 41, PRIMARY, []]
+      - [SUPPORTING_TRAILING, 42, 42, NONE, []]
+    statement_blocks:
+      - [CDKT_PRIMARY, CDKT_MAIN, 4, 5, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [OFF_BALANCE_PRIMARY, OFF_BALANCE, 6, 6, PRIMARY, STANDALONE_PAGE, null, null]
+      - [KQKD_PRIMARY, KQKD, 7, 7, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [LCTT_PRIMARY, LCTT, 8, 9, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [TM_PRIMARY, TM, 10, 41, PRIMARY, PAGE_SEQUENCE, null, null]
+    tm_subdivisions: []
+    duplicate_presentation: {status: NONE_OBSERVED, canonical_double_count_claim: NOT_MADE}
+    notes:
+      - TM is visibly labelled selected notes.
+      - Page 41 is the signed final TM page; page 42 is a separate profit-variance explanation letter.
+
+  - bank: PGB
+    scope:
+      status: UNRESOLVED_SOURCE_UNQUALIFIED
+      evidence: Visible B02/B03/B04/B05 titles and forms do not state HỢP NHẤT, RIÊNG LẺ, or -HN; separate scope is not inferred.
+    unit:
+      normalized: MILLION_VND
+      visible_labels: [Triệu Đồng Việt Nam]
+      evidence: Unit is visible in the primary-statement headers.
+    reporting_period:
+      classification: Q2_2026
+      balance_axis_pattern: CURRENT_2026_06_30_VS_2025_12_31
+      income_axis_pattern: CURRENT_QUARTER_AND_CUMULATIVE_VS_COMPARATIVE
+      cash_axis_pattern: 2026_01_01_TO_2026_06_30_VS_2025_01_01_TO_2025_06_30
+      evidence: Dates and Q2/YTD axes are visible in the rendered statement headers.
+    lctt_method:
+      status: DIRECT_INFERRED_VISIBLE_ROWS
+      evidence: Direct cash-receipt/payment rows are visible; the title does not print a method label.
+    form_codes: [B02/TCTD, B03/TCTD, B04/TCTD, B05/TCTD]
+    page_segments:
+      - [SUPPORTING_FRONT, 1, 1, NONE, []]
+      - [TABLE_OF_CONTENTS, 2, 2, NONE, []]
+      - [CDKT_MAIN, 3, 4, PRIMARY, [4]]
+      - [KQKD, 5, 5, PRIMARY, []]
+      - [LCTT, 6, 7, PRIMARY, []]
+      - [TM, 8, 49, PRIMARY, []]
+    statement_blocks:
+      - [CDKT_PRIMARY, CDKT_MAIN, 3, 4, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [OFF_BALANCE_PRIMARY, OFF_BALANCE, 4, 4, PRIMARY, EMBEDDED_BOTTOM_REGION, CDKT_PRIMARY, null]
+      - [KQKD_PRIMARY, KQKD, 5, 5, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [LCTT_PRIMARY, LCTT, 6, 7, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [TM_PRIMARY, TM, 8, 49, PRIMARY, PAGE_SEQUENCE, null, null]
+    tm_subdivisions: []
+    duplicate_presentation: {status: NONE_OBSERVED, canonical_double_count_claim: NOT_MADE}
+    notes: [Off-balance indicators are visibly embedded in the lower region of PDF page 4.]
+
+  - bank: SGB
+    scope:
+      status: OBSERVED_CONSOLIDATED
+      evidence: Cover, primary-statement, and selected-TM titles visibly state HỢP NHẤT/HỢP NHẤT GIỮA NIÊN ĐỘ and forms carry -HN.
+    unit:
+      normalized: MILLION_VND
+      visible_labels: [Triệu Đồng Việt Nam]
+      evidence: Unit is visible in the primary-statement headers.
+    reporting_period:
+      classification: Q2_2026
+      balance_axis_pattern: CURRENT_2026_06_30_VS_2025_12_31
+      income_axis_pattern: CURRENT_QUARTER_AND_CUMULATIVE_VS_COMPARATIVE
+      cash_axis_pattern: 2026_01_01_TO_2026_06_30_VS_2025_01_01_TO_2025_06_30
+      evidence: Dates and Q2/YTD axes are visible in the rendered statement headers.
+    lctt_method:
+      status: DIRECT_EXPLICIT_TITLE
+      evidence: The visible LCTT title explicitly states Theo phương pháp trực tiếp.
+    form_codes: []
+    page_segments:
+      - [COVER, 1, 1, NONE, []]
+      - [CDKT_MAIN, 2, 4, PRIMARY, []]
+      - [OFF_BALANCE, 5, 5, PRIMARY, []]
+      - [KQKD, 6, 6, PRIMARY, []]
+      - [LCTT, 7, 9, PRIMARY, []]
+      - [TM, 10, 52, PRIMARY, []]
+    statement_blocks:
+      - [CDKT_PRIMARY, CDKT_MAIN, 2, 4, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [OFF_BALANCE_PRIMARY, OFF_BALANCE, 5, 5, PRIMARY, STANDALONE_PAGE, null, null]
+      - [KQKD_PRIMARY, KQKD, 6, 6, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [LCTT_PRIMARY, LCTT, 7, 9, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [TM_PRIMARY, TM, 10, 52, PRIMARY, PAGE_SEQUENCE, null, null]
+    tm_subdivisions: []
+    duplicate_presentation: {status: NONE_OBSERVED, canonical_double_count_claim: NOT_MADE}
+    notes: [TM is visibly labelled selected notes.]
+
+  - bank: SHB
+    scope:
+      status: OBSERVED_CONSOLIDATED
+      evidence: Cover, primary-statement, and TM titles visibly state HỢP NHẤT.
+    unit:
+      normalized: MILLION_VND
+      visible_labels: [Triệu đồng]
+      evidence: Unit is visible in the primary-statement headers.
+    reporting_period:
+      classification: Q2_2026
+      balance_axis_pattern: VISIBLE_END_OF_PERIOD_VS_START_OF_PERIOD
+      income_axis_pattern: CURRENT_QUARTER_AND_CUMULATIVE_VS_COMPARATIVE
+      cash_axis_pattern: CUMULATIVE_TO_END_OF_Q2_2026_VS_2025
+      evidence: Balance headers visibly read Số cuối kỳ/Số đầu kỳ; this reference does not relabel the comparative date.
+    lctt_method:
+      status: DIRECT_INFERRED_VISIBLE_ROWS
+      evidence: Direct cash-receipt/payment rows are visible, including interest received and paid; the title does not print a method label.
+    form_codes: []
+    page_segments:
+      - [COVER, 1, 1, NONE, []]
+      - [TABLE_OF_CONTENTS, 2, 2, NONE, []]
+      - [GOVERNANCE_GENERAL_INFORMATION, 3, 3, NONE, []]
+      - [CDKT_MAIN, 4, 5, PRIMARY, []]
+      - [OFF_BALANCE, 6, 6, PRIMARY, []]
+      - [KQKD, 7, 7, PRIMARY, []]
+      - [LCTT, 8, 9, PRIMARY, []]
+      - [TM, 10, 42, PRIMARY, []]
+    statement_blocks:
+      - [CDKT_PRIMARY, CDKT_MAIN, 4, 5, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [OFF_BALANCE_PRIMARY, OFF_BALANCE, 6, 6, PRIMARY, STANDALONE_PAGE, null, null]
+      - [KQKD_PRIMARY, KQKD, 7, 7, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [LCTT_PRIMARY, LCTT, 8, 9, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [TM_PRIMARY, TM, 10, 42, PRIMARY, PAGE_SEQUENCE, null, null]
+    tm_subdivisions: []
+    duplicate_presentation: {status: NONE_OBSERVED, canonical_double_count_claim: NOT_MADE}
+    notes: [PDF page 10 already visibly bears a TM continuation header; page 42 is the signed final TM page.]
+
+  - bank: SSB
+    scope:
+      status: OBSERVED_CONSOLIDATED
+      evidence: Visible cover, primary-statement, and TM titles identify a consolidated interim presentation.
+    unit:
+      normalized: MILLION_VND
+      visible_labels: [Triệu đồng]
+      evidence: Unit is visible in the primary-statement headers.
+    reporting_period:
+      classification: Q2_2026
+      balance_axis_pattern: CURRENT_VS_COMPARATIVE
+      income_axis_pattern: CURRENT_QUARTER_AND_CUMULATIVE_VS_COMPARATIVE
+      cash_axis_pattern: CURRENT_REPORTING_PERIOD_VS_COMPARATIVE_PERIOD
+      evidence: Q2 current and comparative axes are visibly presented.
+    lctt_method:
+      status: DIRECT_EXPLICIT_TITLE
+      evidence: The visible LCTT title explicitly states the direct method.
+    form_codes: []
+    page_segments:
+      - [COVER, 1, 1, NONE, []]
+      - [TABLE_OF_CONTENTS, 2, 2, NONE, []]
+      - [GOVERNANCE_GENERAL_INFORMATION, 3, 3, NONE, []]
+      - [CDKT_MAIN, 4, 5, PRIMARY, []]
+      - [OFF_BALANCE, 6, 6, PRIMARY, []]
+      - [KQKD, 7, 7, PRIMARY, []]
+      - [LCTT, 8, 9, PRIMARY, []]
+      - [TM, 10, 68, PRIMARY, []]
+    statement_blocks:
+      - [CDKT_PRIMARY, CDKT_MAIN, 4, 5, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [OFF_BALANCE_PRIMARY, OFF_BALANCE, 6, 6, PRIMARY, STANDALONE_PAGE, null, null]
+      - [KQKD_PRIMARY, KQKD, 7, 7, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [LCTT_PRIMARY, LCTT, 8, 9, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [TM_PRIMARY, TM, 10, 68, PRIMARY, PAGE_SEQUENCE, null, null]
+    tm_subdivisions: []
+    duplicate_presentation: {status: NONE_OBSERVED, canonical_double_count_claim: NOT_MADE}
+    notes: []
+
+  - bank: STB
+    scope:
+      status: OBSERVED_CONSOLIDATED
+      evidence: Visible cover, primary-statement, and TM titles identify a consolidated presentation.
+    unit:
+      normalized: MILLION_VND
+      visible_labels: [triệu đồng, Triệu VND]
+      evidence: Both million-dong label variants are visibly used in the document.
+    reporting_period:
+      classification: Q2_2026
+      balance_axis_pattern: CURRENT_VS_COMPARATIVE
+      income_axis_pattern: CURRENT_QUARTER_AND_CUMULATIVE_VS_COMPARATIVE
+      cash_axis_pattern: CURRENT_REPORTING_PERIOD_VS_COMPARATIVE_PERIOD
+      evidence: Q2 current and comparative axes are visibly presented.
+    lctt_method:
+      status: DIRECT_EXPLICIT_TITLE
+      evidence: The visible LCTT title explicitly states the direct method.
+    form_codes: []
+    page_segments:
+      - [COVER, 1, 1, NONE, []]
+      - [CDKT_MAIN, 2, 3, PRIMARY, [3]]
+      - [KQKD, 4, 4, PRIMARY, []]
+      - [BLANK_INTERSTITIAL, 5, 5, NONE, []]
+      - [LCTT, 6, 7, PRIMARY, []]
+      - [TM, 8, 45, PRIMARY, []]
+      - [BLANK_TRAILING, 46, 46, NONE, []]
+    statement_blocks:
+      - [CDKT_PRIMARY, CDKT_MAIN, 2, 3, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [OFF_BALANCE_PRIMARY, OFF_BALANCE, 3, 3, PRIMARY, EMBEDDED_BOTTOM_REGION, CDKT_PRIMARY, null]
+      - [KQKD_PRIMARY, KQKD, 4, 4, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [LCTT_PRIMARY, LCTT, 6, 7, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [TM_PRIMARY, TM, 8, 45, PRIMARY, PAGE_SEQUENCE, null, null]
+    tm_subdivisions: []
+    duplicate_presentation: {status: NONE_OBSERVED, canonical_double_count_claim: NOT_MADE}
+    notes:
+      - Off-balance indicators are visibly embedded in the lower region of PDF page 3.
+      - PDF page 5 is a blank/interstitial page and PDF page 46 is blank/trailing.
+
+  - bank: TCB
+    scope:
+      status: OBSERVED_CONSOLIDATED
+      evidence: Visible cover, primary-statement, and TM titles identify a consolidated presentation.
+    unit:
+      normalized: MILLION_VND
+      visible_labels: [million dong]
+      evidence: Million-dong unit classification is visible in the statement headers.
+    reporting_period:
+      classification: Q2_2026
+      balance_axis_pattern: CURRENT_VS_COMPARATIVE
+      income_axis_pattern: CURRENT_QUARTER_AND_CUMULATIVE_VS_COMPARATIVE
+      cash_axis_pattern: CURRENT_REPORTING_PERIOD_VS_COMPARATIVE_PERIOD
+      evidence: Q2 current and comparative axes are visibly presented.
+    lctt_method:
+      status: DIRECT_INFERRED_VISIBLE_ROWS
+      evidence: Direct cash-receipt/payment row structure is visible; the title does not print a method label.
+    form_codes: []
+    page_segments:
+      - [COVER, 1, 1, NONE, []]
+      - [TABLE_OF_CONTENTS, 2, 2, NONE, []]
+      - [GOVERNANCE_GENERAL_INFORMATION, 3, 4, NONE, []]
+      - [CDKT_MAIN, 5, 6, PRIMARY, []]
+      - [OFF_BALANCE, 7, 7, PRIMARY, []]
+      - [KQKD, 8, 8, PRIMARY, []]
+      - [LCTT, 9, 10, PRIMARY, []]
+      - [TM, 11, 84, PRIMARY, []]
+    statement_blocks:
+      - [CDKT_PRIMARY, CDKT_MAIN, 5, 6, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [OFF_BALANCE_PRIMARY, OFF_BALANCE, 7, 7, PRIMARY, STANDALONE_PAGE, null, null]
+      - [KQKD_PRIMARY, KQKD, 8, 8, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [LCTT_PRIMARY, LCTT, 9, 10, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [TM_PRIMARY, TM, 11, 84, PRIMARY, PAGE_SEQUENCE, null, null]
+    tm_subdivisions: []
+    duplicate_presentation: {status: NONE_OBSERVED, canonical_double_count_claim: NOT_MADE}
+    notes: []
+
+  - bank: TPB
+    scope:
+      status: OBSERVED_CONSOLIDATED
+      evidence: Visible cover, primary-statement, and TM titles identify a consolidated presentation.
+    unit:
+      normalized: MILLION_VND
+      visible_labels: [Triệu VND]
+      evidence: Unit is visible in the primary-statement headers.
+    reporting_period:
+      classification: Q2_2026
+      balance_axis_pattern: CURRENT_VS_COMPARATIVE
+      income_axis_pattern: CURRENT_QUARTER_AND_CUMULATIVE_VS_COMPARATIVE
+      cash_axis_pattern: CURRENT_REPORTING_PERIOD_VS_COMPARATIVE_PERIOD
+      evidence: Q2 current and comparative axes are visibly presented.
+    lctt_method:
+      status: DIRECT_INFERRED_VISIBLE_ROWS
+      evidence: Direct cash-receipt/payment row structure is visible; the title does not print a method label.
+    form_codes: []
+    page_segments:
+      - [SUPPORTING_FRONT, 1, 4, NONE, []]
+      - [COVER, 5, 5, NONE, []]
+      - [GOVERNANCE_GENERAL_INFORMATION, 6, 6, NONE, []]
+      - [CDKT_MAIN, 7, 8, PRIMARY, []]
+      - [OFF_BALANCE, 9, 9, PRIMARY, []]
+      - [KQKD, 10, 10, PRIMARY, []]
+      - [LCTT, 11, 12, PRIMARY, []]
+      - [TM, 13, 67, PRIMARY, []]
+    statement_blocks:
+      - [CDKT_PRIMARY, CDKT_MAIN, 7, 8, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [OFF_BALANCE_PRIMARY, OFF_BALANCE, 9, 9, PRIMARY, STANDALONE_PAGE, null, null]
+      - [KQKD_PRIMARY, KQKD, 10, 10, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [LCTT_PRIMARY, LCTT, 11, 12, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [TM_PRIMARY, TM, 13, 67, PRIMARY, PAGE_SEQUENCE, null, null]
+    tm_subdivisions: []
+    duplicate_presentation: {status: NONE_OBSERVED, canonical_double_count_claim: NOT_MADE}
+    notes: []
+
+  - bank: VAB
+    scope:
+      status: OBSERVED_CONSOLIDATED
+      evidence: Both visible formal statement copies and TM identify a consolidated Q2 presentation.
+    unit:
+      normalized: MULTI_SCALE_VND
+      visible_labels: [VND, triệu đồng, triệu VND]
+      evidence: Copy A uses full VND; copy B uses million-dong labels, with the visible LCTT B label rendered as triệu VND.
+    reporting_period:
+      classification: Q2_2026
+      balance_axis_pattern: CURRENT_VS_COMPARATIVE
+      income_axis_pattern: CURRENT_QUARTER_AND_CUMULATIVE_VS_COMPARATIVE
+      cash_axis_pattern: CURRENT_REPORTING_PERIOD_VS_COMPARATIVE_PERIOD
+      evidence: Q2 current and comparative axes are visibly presented in both formal copies.
+    lctt_method:
+      status: DIRECT_EXPLICIT_TITLE
+      evidence: Both visible LCTT copies explicitly state the direct method.
+    form_codes: []
+    page_segments:
+      - [SUPPORTING_FRONT, 1, 2, NONE, []]
+      - [CDKT_MAIN, 3, 4, A, [4]]
+      - [CDKT_MAIN, 5, 6, B, [6]]
+      - [KQKD, 7, 7, A, []]
+      - [KQKD, 8, 8, B, []]
+      - [LCTT, 9, 10, A, []]
+      - [LCTT, 11, 12, B, []]
+      - [TM, 13, 49, PRIMARY, []]
+    statement_blocks:
+      - [CDKT_A, CDKT_MAIN, 3, 4, A, PAGE_SEQUENCE, null, VND]
+      - [OFF_BALANCE_A, OFF_BALANCE, 4, 4, A, EMBEDDED_BOTTOM_REGION, CDKT_A, VND]
+      - [CDKT_B, CDKT_MAIN, 5, 6, B, PAGE_SEQUENCE, null, triệu đồng]
+      - [OFF_BALANCE_B, OFF_BALANCE, 6, 6, B, EMBEDDED_BOTTOM_REGION, CDKT_B, triệu đồng]
+      - [KQKD_A, KQKD, 7, 7, A, PAGE_SEQUENCE, null, VND]
+      - [KQKD_B, KQKD, 8, 8, B, PAGE_SEQUENCE, null, triệu đồng]
+      - [LCTT_A, LCTT, 9, 10, A, PAGE_SEQUENCE, null, VND]
+      - [LCTT_B, LCTT, 11, 12, B, PAGE_SEQUENCE, null, triệu VND]
+      - [TM_PRIMARY, TM, 13, 49, PRIMARY, PAGE_SEQUENCE, null, null]
+    tm_subdivisions: []
+    duplicate_presentation:
+      status: MULTIPLE_FORMAL_SCALE_VARIANTS_OBSERVED
+      canonical_double_count_claim: NOT_MADE
+      copy_groups:
+        - {copy_id: A, block_ids: [CDKT_A, OFF_BALANCE_A, KQKD_A, LCTT_A], scale: VND}
+        - {copy_id: B, block_ids: [CDKT_B, OFF_BALANCE_B, KQKD_B, LCTT_B], scale: MILLION_VND}
+    notes:
+      - Both visible source copies are preserved; this structural reference neither deduplicates values nor authorizes canonical double counting.
+      - Off-balance indicators are embedded in the lower regions of PDF pages 4 and 6.
+
+  - bank: VBB
+    scope:
+      status: OBSERVED_CONSOLIDATED
+      evidence: Visible cover, primary-statement, and TM titles identify a consolidated interim presentation.
+    unit:
+      normalized: MILLION_VND
+      visible_labels: [million dong]
+      evidence: Million-dong unit classification is visible in the statement headers.
+    reporting_period:
+      classification: Q2_2026
+      balance_axis_pattern: CURRENT_VS_COMPARATIVE
+      income_axis_pattern: CURRENT_QUARTER_AND_CUMULATIVE_VS_COMPARATIVE
+      cash_axis_pattern: CURRENT_REPORTING_PERIOD_VS_COMPARATIVE_PERIOD
+      evidence: Q2 current and comparative axes are visibly presented.
+    lctt_method:
+      status: DIRECT_EXPLICIT_TITLE
+      evidence: The visible LCTT title explicitly states the direct method.
+    form_codes: []
+    page_segments:
+      - [SUPPORTING_FRONT, 1, 2, NONE, []]
+      - [COVER, 3, 3, NONE, []]
+      - [TABLE_OF_CONTENTS, 4, 4, NONE, []]
+      - [CDKT_MAIN, 5, 6, PRIMARY, []]
+      - [OFF_BALANCE, 7, 7, PRIMARY, []]
+      - [KQKD, 8, 8, PRIMARY, []]
+      - [LCTT, 9, 10, PRIMARY, []]
+      - [TM, 11, 47, PRIMARY, []]
+    statement_blocks:
+      - [CDKT_PRIMARY, CDKT_MAIN, 5, 6, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [OFF_BALANCE_PRIMARY, OFF_BALANCE, 7, 7, PRIMARY, STANDALONE_PAGE, null, null]
+      - [KQKD_PRIMARY, KQKD, 8, 8, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [LCTT_PRIMARY, LCTT, 9, 10, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [TM_PRIMARY, TM, 11, 47, PRIMARY, PAGE_SEQUENCE, null, null]
+    tm_subdivisions: []
+    duplicate_presentation: {status: NONE_OBSERVED, canonical_double_count_claim: NOT_MADE}
+    notes: []
+
+  - bank: VCB
+    scope:
+      status: OBSERVED_CONSOLIDATED
+      evidence: Visible cover, primary-statement, and TM titles identify a consolidated interim presentation.
+    unit:
+      normalized: MILLION_VND
+      visible_labels: [Triệu VND]
+      evidence: Unit is visible in the primary-statement headers.
+    reporting_period:
+      classification: Q2_2026
+      balance_axis_pattern: CURRENT_VS_COMPARATIVE
+      income_axis_pattern: CURRENT_QUARTER_AND_CUMULATIVE_VS_COMPARATIVE
+      cash_axis_pattern: CURRENT_REPORTING_PERIOD_VS_COMPARATIVE_PERIOD
+      evidence: Q2 current and comparative axes are visibly presented.
+    lctt_method:
+      status: DIRECT_EXPLICIT_TITLE
+      evidence: The visible LCTT title explicitly states the direct method.
+    form_codes: []
+    page_segments:
+      - [SUPPORTING_FRONT, 1, 3, NONE, []]
+      - [COVER, 4, 4, NONE, []]
+      - [GOVERNANCE_GENERAL_INFORMATION, 5, 6, NONE, []]
+      - [CDKT_MAIN, 7, 8, PRIMARY, []]
+      - [OFF_BALANCE, 9, 9, PRIMARY, []]
+      - [KQKD, 10, 11, PRIMARY, []]
+      - [LCTT, 12, 13, PRIMARY, []]
+      - [TM, 14, 55, PRIMARY, []]
+    statement_blocks:
+      - [CDKT_PRIMARY, CDKT_MAIN, 7, 8, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [OFF_BALANCE_PRIMARY, OFF_BALANCE, 9, 9, PRIMARY, STANDALONE_PAGE, null, null]
+      - [KQKD_PRIMARY, KQKD, 10, 11, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [LCTT_PRIMARY, LCTT, 12, 13, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [TM_PRIMARY, TM, 14, 55, PRIMARY, PAGE_SEQUENCE, null, null]
+    tm_subdivisions: []
+    duplicate_presentation: {status: NONE_OBSERVED, canonical_double_count_claim: NOT_MADE}
+    notes: []
+
+  - bank: VIB
+    scope:
+      status: OBSERVED_CONSOLIDATED
+      evidence: Visible cover, primary-statement, and TM titles identify a consolidated interim presentation.
+    unit:
+      normalized: MILLION_VND
+      visible_labels: [million dong]
+      evidence: Million-dong unit classification is visible in the statement headers.
+    reporting_period:
+      classification: Q2_2026
+      balance_axis_pattern: CURRENT_VS_COMPARATIVE
+      income_axis_pattern: CURRENT_QUARTER_AND_CUMULATIVE_VS_COMPARATIVE
+      cash_axis_pattern: CURRENT_REPORTING_PERIOD_VS_COMPARATIVE_PERIOD
+      evidence: Q2 current and comparative axes are visibly presented.
+    lctt_method:
+      status: DIRECT_INFERRED_VISIBLE_ROWS
+      evidence: Direct cash-receipt/payment row structure is visible; the title does not print a method label.
+    form_codes: []
+    page_segments:
+      - [COVER, 1, 1, NONE, []]
+      - [TABLE_OF_CONTENTS, 2, 2, NONE, []]
+      - [GOVERNANCE_GENERAL_INFORMATION, 3, 4, NONE, []]
+      - [CDKT_MAIN, 5, 6, PRIMARY, []]
+      - [OFF_BALANCE, 7, 7, PRIMARY, []]
+      - [KQKD, 8, 8, PRIMARY, []]
+      - [LCTT, 9, 10, PRIMARY, []]
+      - [TM, 11, 71, PRIMARY, []]
+    statement_blocks:
+      - [CDKT_PRIMARY, CDKT_MAIN, 5, 6, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [OFF_BALANCE_PRIMARY, OFF_BALANCE, 7, 7, PRIMARY, STANDALONE_PAGE, null, null]
+      - [KQKD_PRIMARY, KQKD, 8, 8, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [LCTT_PRIMARY, LCTT, 9, 10, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [TM_PRIMARY, TM, 11, 71, PRIMARY, PAGE_SEQUENCE, null, null]
+    tm_subdivisions: []
+    duplicate_presentation: {status: NONE_OBSERVED, canonical_double_count_claim: NOT_MADE}
+    notes: []
+
+  - bank: VPB
+    scope:
+      status: OBSERVED_CONSOLIDATED
+      evidence: Visible cover, primary-statement, and TM titles identify a consolidated presentation.
+    unit:
+      normalized: MILLION_VND
+      visible_labels: [million dong]
+      evidence: Million-dong unit classification is visible in the statement headers.
+    reporting_period:
+      classification: Q1_2026
+      balance_axis_pattern: CURRENT_VS_COMPARATIVE
+      income_axis_pattern: CURRENT_QUARTER_AND_CUMULATIVE_VS_COMPARATIVE
+      cash_axis_pattern: CURRENT_REPORTING_PERIOD_VS_COMPARATIVE_PERIOD
+      evidence: The selected source visibly reports Q1/2026; current and comparative axes are retained structurally.
+    lctt_method:
+      status: DIRECT_INFERRED_VISIBLE_ROWS
+      evidence: Direct cash-receipt/payment row structure is visible; the title does not print a method label.
+    form_codes: []
+    page_segments:
+      - [COVER, 1, 1, NONE, []]
+      - [TABLE_OF_CONTENTS, 2, 2, NONE, []]
+      - [GOVERNANCE_GENERAL_INFORMATION, 3, 4, NONE, []]
+      - [CDKT_MAIN, 5, 6, PRIMARY, []]
+      - [OFF_BALANCE, 7, 7, PRIMARY, []]
+      - [KQKD, 8, 8, PRIMARY, []]
+      - [LCTT, 9, 10, PRIMARY, []]
+      - [TM, 11, 91, PRIMARY, []]
+    statement_blocks:
+      - [CDKT_PRIMARY, CDKT_MAIN, 5, 6, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [OFF_BALANCE_PRIMARY, OFF_BALANCE, 7, 7, PRIMARY, STANDALONE_PAGE, null, null]
+      - [KQKD_PRIMARY, KQKD, 8, 8, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [LCTT_PRIMARY, LCTT, 9, 10, PRIMARY, PAGE_SEQUENCE, null, null]
+      - [TM_PRIMARY, TM, 11, 91, PRIMARY, PAGE_SEQUENCE, null, null]
+    tm_subdivisions: []
+    duplicate_presentation: {status: NONE_OBSERVED, canonical_double_count_claim: NOT_MADE}
+    notes:
+      - VPB remains regression/fingerprint evidence only; this milestone does not resume deep TM canonicalization.
