@@ -21,10 +21,14 @@ import yaml
 
 from bctc_ai.core.hashing import sha256_bytes
 from bctc_ai.corpus import wave1_role_b_page_reader as page_plan
-from bctc_ai.ocr.ppocrv6_page_session import (
-    model_neutral_page_result,
-    validate_ppocrv6_payload,
+from bctc_ai.corpus.wave1_role_b_word_box_normalization import (
+    WORD_BOX_NORMALIZATION_POLICY,
+    model_neutral_result_from_normalized_payload,
+    normalization_policy_sha256,
+    normalize_ppocrv6_word_boxes,
+    validate_normalization_authority,
 )
+from bctc_ai.ocr.ppocrv6_page_session import validate_ppocrv6_payload
 from bctc_ai.rendering.page_reader import render_composited_displayed_page
 
 
@@ -56,6 +60,7 @@ MILESTONE_B_IMPLEMENTATION_RELATIVE_PATHS = (
     Path("src/bctc_ai/corpus/wave1_pre_ocr_structure.py"),
     Path("src/bctc_ai/corpus/wave1_role_b_page_reader.py"),
     Path("src/bctc_ai/corpus/wave1_role_b_sentinel.py"),
+    Path("src/bctc_ai/corpus/wave1_role_b_word_box_normalization.py"),
     Path("src/bctc_ai/ocr/__init__.py"),
     Path("src/bctc_ai/ocr/ppocrv6_page_session.py"),
     Path("src/bctc_ai/rendering/__init__.py"),
@@ -82,6 +87,24 @@ def _canonical_bytes(value: Any) -> bytes:
 
 def _canonical_sha256(value: Any) -> str:
     return sha256_bytes(_canonical_bytes(value))
+
+
+def _same_typed_canonical_json(left: Any, right: Any) -> bool:
+    if type(left) is not type(right):
+        return False
+    if isinstance(left, dict):
+        return set(left) == set(right) and all(
+            _same_typed_canonical_json(left[key], right[key]) for key in left
+        )
+    if isinstance(left, list):
+        return len(left) == len(right) and all(
+            _same_typed_canonical_json(left_item, right_item)
+            for left_item, right_item in zip(left, right, strict=True)
+        )
+    try:
+        return left == right and _canonical_bytes(left) == _canonical_bytes(right)
+    except (TypeError, ValueError):
+        return False
 
 
 def _is_sha256(value: Any) -> bool:
@@ -157,13 +180,17 @@ def _load_policy(project_root: Path) -> dict[str, Any]:
             *expected,
             "sealed_plan",
             "sharding",
+            "word_box_normalization",
             "worker",
             "execution",
             "safety",
             "expected",
             "output",
         }
-        or any(policy.get(key) != value for key, value in expected.items())
+        or any(
+            not _same_typed_canonical_json(policy.get(key), value)
+            for key, value in expected.items()
+        )
     ):
         raise WaveOneRoleBSentinelError("sentinel policy identity or root fields drifted")
     exact_sections = {
@@ -185,6 +212,7 @@ def _load_policy(project_root: Path) -> dict[str, Any]:
             "bank_identity_used": False,
             "filename_used": False,
         },
+        "word_box_normalization": WORD_BOX_NORMALIZATION_POLICY,
         "worker": {
             "interpreter": ".gpu-venv/bin/python",
             "script": "scripts/models/run_ppocrv6_sentinel_worker.py",
@@ -274,8 +302,17 @@ def _load_policy(project_root: Path) -> dict[str, Any]:
             "exclusive_no_overwrite": True,
         },
     }
-    if any(policy.get(section) != value for section, value in exact_sections.items()):
+    if any(
+        not _same_typed_canonical_json(policy.get(section), value)
+        for section, value in exact_sections.items()
+    ):
         raise WaveOneRoleBSentinelError("sentinel policy fields drifted")
+    try:
+        normalization_policy_sha256(policy["word_box_normalization"])
+    except RuntimeError as error:
+        raise WaveOneRoleBSentinelError(
+            "sentinel word-box normalization policy fields or types drifted"
+        ) from error
     return policy
 
 
@@ -595,6 +632,13 @@ def build_authenticated_control(
     )
     records = _sentinel_request_records(sealed)
     shards = _assign_two_shards(records)
+    normalization_contract = {
+        "policy": policy["word_box_normalization"],
+        "policy_sha256": normalization_policy_sha256(policy["word_box_normalization"]),
+        "normalization_producer_implementation_ledger_sha256": executor["implementation_ledger"][
+            "sha256"
+        ],
+    }
     worker_contract = {
         "interpreter": policy["worker"]["interpreter"],
         "script": policy["worker"]["script"],
@@ -619,7 +663,7 @@ def build_authenticated_control(
         "arbitrary_inherited_environment_allowed": False,
     }
     control = {
-        "format_version": "BANK_CORPUS_WAVE_1_ROLE_B_OCR_SENTINEL_CONTROL_V1",
+        "format_version": "BANK_CORPUS_WAVE_1_ROLE_B_OCR_SENTINEL_CONTROL_V2",
         "status": "READY_FOR_AUTHENTICATED_24_PAGE_OCR_SENTINEL_EXECUTION",
         "claim_boundary": policy["claim_boundary"],
         "sealed_plan": {
@@ -632,6 +676,7 @@ def build_authenticated_control(
         },
         "executor_git": executor["git"],
         "executor_implementation_ledger": executor["implementation_ledger"],
+        "word_box_normalization": normalization_contract,
         "worker_contract": worker_contract,
         "sharding": {
             "algorithm": policy["sharding"]["algorithm"],
@@ -1056,8 +1101,39 @@ def _control_index(control: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return index
 
 
+def _normalization_authority(control: dict[str, Any]) -> dict[str, Any]:
+    contract = control.get("word_box_normalization")
+    implementation = control.get("executor_implementation_ledger")
+    if (
+        not isinstance(contract, dict)
+        or set(contract)
+        != {
+            "policy",
+            "policy_sha256",
+            "normalization_producer_implementation_ledger_sha256",
+        }
+        or not isinstance(implementation, dict)
+        or contract.get("normalization_producer_implementation_ledger_sha256")
+        != implementation.get("sha256")
+    ):
+        raise WaveOneRoleBSentinelError(
+            "word-box normalization control or producer ledger binding drifted"
+        )
+    authority = {
+        **contract,
+        "control_identity_sha256": control.get("control_identity_sha256"),
+    }
+    try:
+        return validate_normalization_authority(authority)
+    except RuntimeError as error:
+        raise WaveOneRoleBSentinelError(
+            "word-box normalization authority failed validation"
+        ) from error
+
+
 def _validate_result_record(
     project_root: Path,
+    control: dict[str, Any],
     record: dict[str, Any],
     expected: dict[str, Any],
     render: dict[str, Any],
@@ -1071,6 +1147,8 @@ def _validate_result_record(
         "result_ref",
         "line_count",
         "word_token_count",
+        "word_box_correction_count",
+        "word_box_corrected_edge_count",
     }
     if not isinstance(record, dict) or set(record) != required:
         raise WaveOneRoleBSentinelError("checkpoint result record fields drifted")
@@ -1081,6 +1159,12 @@ def _validate_result_record(
         or isinstance(record["word_token_count"], bool)
         or not isinstance(record["word_token_count"], int)
         or record["word_token_count"] < 0
+        or isinstance(record["word_box_correction_count"], bool)
+        or not isinstance(record["word_box_correction_count"], int)
+        or record["word_box_correction_count"] < 0
+        or isinstance(record["word_box_corrected_edge_count"], bool)
+        or not isinstance(record["word_box_corrected_edge_count"], int)
+        or record["word_box_corrected_edge_count"] < 0
         or isinstance(record["sentinel_ordinal"], bool)
         or not isinstance(record["sentinel_ordinal"], int)
         or record["sentinel_ordinal"] < 1
@@ -1098,6 +1182,19 @@ def _validate_result_record(
         _read_object(project_root, record["result_ref"], ".json"),
         "model-neutral result evidence",
     )
+    expected_safety = {
+        "statement_classified": False,
+        "table_classified": False,
+        "rows_reconstructed": False,
+        "cells_interpreted": False,
+        "absence_claimed": False,
+        "bank_registry_metadata_used": False,
+        "filename_metadata_used": False,
+        "role_a_used": False,
+        "schema_used": False,
+        "mapping_used": False,
+        "historical_values_used": False,
+    }
     if (
         set(backend)
         != {
@@ -1107,17 +1204,23 @@ def _validate_result_record(
             "request",
             "provider_identity_sha256",
             "render_ref",
-            "payload",
+            "raw_provider_payload",
+            "word_box_normalization_ledger",
         }
-        or backend.get("format_version") != "BANK_CORPUS_WAVE_1_PPOCRV6_BACKEND_PAYLOAD_V1"
+        or backend.get("format_version") != "BANK_CORPUS_WAVE_1_PPOCRV6_BACKEND_PAYLOAD_V2"
         or backend.get("claim_boundary")
-        != "RAW_PINNED_PROVIDER_PAYLOAD_FOR_ONE_EXACT_PAGE_REQUEST_ONLY"
+        != (
+            "RAW_PINNED_PROVIDER_PAYLOAD_AND_BOUND_WORD_BOX_NORMALIZATION_LEDGER_"
+            "FOR_ONE_EXACT_PAGE_REQUEST_ONLY"
+        )
         or backend.get("request_sha256") != expected["request_sha256"]
         or _canonical_bytes(backend.get("request")) != _canonical_bytes(expected["request"])
-        or backend.get("render_ref") != record["render_ref"]
+        or _canonical_bytes(backend.get("render_ref")) != _canonical_bytes(record["render_ref"])
         or backend.get("provider_identity_sha256")
         != expected["request"]["provider_identity_sha256"]
-        or result.get("format_version") != "BANK_CORPUS_WAVE_1_ROLE_B_PAGE_READ_RESULT_V1"
+        or not isinstance(backend.get("word_box_normalization_ledger"), dict)
+        or not isinstance(result.get("word_box_normalization_ledger"), dict)
+        or result.get("format_version") != "BANK_CORPUS_WAVE_1_ROLE_B_PAGE_READ_RESULT_V2"
         or result.get("claim_boundary") != "SOURCE_VISIBLE_PAGE_TEXT_AND_GEOMETRY_EVIDENCE_ONLY"
         or result.get("request_sha256") != expected["request_sha256"]
         or _canonical_bytes(result.get("request")) != _canonical_bytes(expected["request"])
@@ -1129,45 +1232,52 @@ def _validate_result_record(
         or not isinstance(result.get("physical_page"), int)
         or result.get("physical_page") != expected["physical_page"]
         or result.get("route") != "DOMINANT_RASTER_OCR"
-        or result.get("input_render_ref") != record["render_ref"]
-        or result.get("backend_payload_ref") != record["backend_payload_ref"]
+        or _canonical_bytes(result.get("input_render_ref"))
+        != _canonical_bytes(record["render_ref"])
+        or _canonical_bytes(result.get("backend_payload_ref"))
+        != _canonical_bytes(record["backend_payload_ref"])
         or result.get("provider_identity_sha256") != expected["request"]["provider_identity_sha256"]
         or result.get("render_runtime_identity_sha256")
         != expected["request"]["render_runtime_identity_sha256"]
         or result.get("status") != "OCR_WORD_BOX_READ_COMPLETE"
         or result.get("metrics", {}).get("line_count") != record["line_count"]
         or result.get("metrics", {}).get("word_token_count") != record["word_token_count"]
+        or result.get("word_box_normalization_ledger", {}).get("correction_count")
+        != record["word_box_correction_count"]
+        or result.get("word_box_normalization_ledger", {}).get("corrected_edge_count")
+        != record["word_box_corrected_edge_count"]
         or result.get("source_blank_claimed") is not False
-        or result.get("safety")
-        != {
-            "statement_classified": False,
-            "table_classified": False,
-            "rows_reconstructed": False,
-            "cells_interpreted": False,
-            "absence_claimed": False,
-            "bank_registry_metadata_used": False,
-            "filename_metadata_used": False,
-            "role_a_used": False,
-            "schema_used": False,
-            "mapping_used": False,
-            "historical_values_used": False,
-        }
+        or _canonical_bytes(result.get("safety")) != _canonical_bytes(expected_safety)
     ):
         raise WaveOneRoleBSentinelError("model-neutral result embedded identity drifted")
     if (
         sha256_bytes(render_payload) != record["render_ref"]["sha256"]
         or render_payload != render["payload"]
-        or record["render_ref"] != render["ref"]
+        or _canonical_bytes(record["render_ref"]) != _canonical_bytes(render["ref"])
     ):
         raise WaveOneRoleBSentinelError("checkpoint render bytes drifted")
     dimensions = result.get("coordinate_authority", {}).get("pixel_dimensions")
     if not isinstance(dimensions, list) or len(dimensions) != 2:
         raise WaveOneRoleBSentinelError("result coordinate authority is incomplete")
-    payload = backend.get("payload")
-    if not isinstance(payload, dict):
+    raw_payload = backend.get("raw_provider_payload")
+    if not isinstance(raw_payload, dict):
         raise WaveOneRoleBSentinelError("backend PP-OCR payload is absent")
+    normalized_payload, normalization_ledger = normalize_ppocrv6_word_boxes(
+        raw_payload,
+        pixel_width=render["pixel_width"],
+        pixel_height=render["pixel_height"],
+        authority=_normalization_authority(control),
+    )
+    if _canonical_bytes(backend.get("word_box_normalization_ledger")) != _canonical_bytes(
+        normalization_ledger
+    ) or _canonical_bytes(result.get("word_box_normalization_ledger")) != _canonical_bytes(
+        normalization_ledger
+    ):
+        raise WaveOneRoleBSentinelError(
+            "stored word-box normalization ledger differs from deterministic replay"
+        )
     geometry = validate_ppocrv6_payload(
-        payload,
+        normalized_payload,
         pixel_width=dimensions[0],
         pixel_height=dimensions[1],
     )
@@ -1176,8 +1286,8 @@ def _validate_result_record(
         "word_token_count": record["word_token_count"],
     }:
         raise WaveOneRoleBSentinelError("backend and result geometry counts differ")
-    recomputed = model_neutral_page_result(
-        payload,
+    recomputed = model_neutral_result_from_normalized_payload(
+        normalized_payload,
         coordinate_authority=render["coordinate_authority"],
     )
     exact_projection = {
@@ -1188,31 +1298,28 @@ def _validate_result_record(
         "metrics": result.get("metrics"),
         "source_blank_claimed": result.get("source_blank_claimed"),
     }
-    if (
-        set(result)
-        != {
-            "format_version",
-            "status",
-            "claim_boundary",
-            "request_sha256",
-            "request",
-            "source_sha256",
-            "source_size_bytes",
-            "physical_page",
-            "route",
-            "provider_identity_sha256",
-            "render_runtime_identity_sha256",
-            "input_render_ref",
-            "backend_payload_ref",
-            "coordinate_authority",
-            "lines",
-            "words",
-            "metrics",
-            "source_blank_claimed",
-            "safety",
-        }
-        or exact_projection != recomputed
-    ):
+    if set(result) != {
+        "format_version",
+        "status",
+        "claim_boundary",
+        "request_sha256",
+        "request",
+        "source_sha256",
+        "source_size_bytes",
+        "physical_page",
+        "route",
+        "provider_identity_sha256",
+        "render_runtime_identity_sha256",
+        "input_render_ref",
+        "backend_payload_ref",
+        "word_box_normalization_ledger",
+        "coordinate_authority",
+        "lines",
+        "words",
+        "metrics",
+        "source_blank_claimed",
+        "safety",
+    } or _canonical_bytes(exact_projection) != _canonical_bytes(recomputed):
         raise WaveOneRoleBSentinelError(
             "model-neutral result differs from deterministic backend projection"
         )
@@ -1236,7 +1343,7 @@ def _checkpoint_payload(
     ):
         raise WaveOneRoleBSentinelError("checkpoint contains a foreign or duplicate request")
     return {
-        "format_version": "BANK_CORPUS_WAVE_1_ROLE_B_SENTINEL_DOCUMENT_CHECKPOINT_V1",
+        "format_version": "BANK_CORPUS_WAVE_1_ROLE_B_SENTINEL_DOCUMENT_CHECKPOINT_V2",
         "status": (
             "COMPLETE_DOCUMENT_SENTINEL_REQUESTS"
             if set(completed_hashes) == set(expected_hashes)
@@ -1346,7 +1453,10 @@ def _load_document_checkpoint(
                 checkpoint.get("completed", []),
                 previous,
             )
-            if checkpoint != expected_checkpoint or checkpoint.get("generation") != generation:
+            if (
+                _canonical_bytes(checkpoint) != _canonical_bytes(expected_checkpoint)
+                or checkpoint.get("generation") != generation
+            ):
                 raise WaveOneRoleBSentinelError("checkpoint generation identity drifted")
             completed = checkpoint["completed"]
             if (
@@ -1361,7 +1471,7 @@ def _load_document_checkpoint(
                 render = renders.get(record["request_sha256"])
                 if render is None:
                     raise WaveOneRoleBSentinelError("checkpoint has no source rerender authority")
-                _validate_result_record(project_root, record, expected, render)
+                _validate_result_record(project_root, control, record, expected, render)
             previous = digest
             previous_completed = completed
         return previous_completed, previous
@@ -1424,7 +1534,7 @@ def _scan_result_orphans(
         }
         payload = _read_object(project_root, reference, ".json")
         value = _json_object(payload, "content-addressed JSON object")
-        if value.get("format_version") != "BANK_CORPUS_WAVE_1_ROLE_B_PAGE_READ_RESULT_V1":
+        if value.get("format_version") != "BANK_CORPUS_WAVE_1_ROLE_B_PAGE_READ_RESULT_V2":
             continue
         request_sha = value.get("request_sha256")
         if request_sha in expected:
@@ -1445,11 +1555,23 @@ def _scan_result_orphans(
             "result_ref": result_ref,
             "line_count": result.get("metrics", {}).get("line_count"),
             "word_token_count": result.get("metrics", {}).get("word_token_count"),
+            "word_box_correction_count": result.get("word_box_normalization_ledger", {}).get(
+                "correction_count"
+            ),
+            "word_box_corrected_edge_count": result.get("word_box_normalization_ledger", {}).get(
+                "corrected_edge_count"
+            ),
         }
         render = renders.get(request_sha)
         if render is None:
             raise WaveOneRoleBSentinelError("orphan has no source rerender authority")
-        _validate_result_record(project_root, record, expected[request_sha], render)
+        _validate_result_record(
+            project_root,
+            control,
+            record,
+            expected[request_sha],
+            render,
+        )
         adopted.append(record)
     return sorted(adopted, key=lambda item: item["sentinel_ordinal"])
 
@@ -1473,12 +1595,13 @@ def _consume_worker_response(
         "render_sha256",
         "provider_identity_sha256",
         "payload",
+        "word_box_normalization_ledger",
         "observational",
     }:
         raise WaveOneRoleBSentinelError("worker response fields drifted")
     observational = response["observational"]
     if (
-        response["format_version"] != "BANK_CORPUS_WAVE_1_PPOCRV6_WORKER_RESPONSE_V1"
+        response["format_version"] != "BANK_CORPUS_WAVE_1_PPOCRV6_WORKER_RESPONSE_V2"
         or response["execution_nonce"] != execution_nonce
         or isinstance(response["shard_id"], bool)
         or not isinstance(response["shard_id"], int)
@@ -1500,28 +1623,44 @@ def _consume_worker_response(
     payload = response["payload"]
     if not isinstance(payload, dict):
         raise WaveOneRoleBSentinelError("worker response lacks a PP-OCR payload")
-    counts = validate_ppocrv6_payload(
+    normalized_payload, normalization_ledger = normalize_ppocrv6_word_boxes(
         payload,
+        pixel_width=render["pixel_width"],
+        pixel_height=render["pixel_height"],
+        authority=_normalization_authority(control),
+    )
+    if _canonical_bytes(response["word_box_normalization_ledger"]) != _canonical_bytes(
+        normalization_ledger
+    ):
+        raise WaveOneRoleBSentinelError(
+            "worker word-box normalization ledger differs from parent replay"
+        )
+    counts = validate_ppocrv6_payload(
+        normalized_payload,
         pixel_width=render["pixel_width"],
         pixel_height=render["pixel_height"],
     )
     backend = {
-        "format_version": "BANK_CORPUS_WAVE_1_PPOCRV6_BACKEND_PAYLOAD_V1",
-        "claim_boundary": "RAW_PINNED_PROVIDER_PAYLOAD_FOR_ONE_EXACT_PAGE_REQUEST_ONLY",
+        "format_version": "BANK_CORPUS_WAVE_1_PPOCRV6_BACKEND_PAYLOAD_V2",
+        "claim_boundary": (
+            "RAW_PINNED_PROVIDER_PAYLOAD_AND_BOUND_WORD_BOX_NORMALIZATION_LEDGER_"
+            "FOR_ONE_EXACT_PAGE_REQUEST_ONLY"
+        ),
         "request_sha256": expected["request_sha256"],
         "request": expected["request"],
         "provider_identity_sha256": expected["request"]["provider_identity_sha256"],
         "render_ref": render["ref"],
-        "payload": payload,
+        "raw_provider_payload": payload,
+        "word_box_normalization_ledger": normalization_ledger,
     }
     backend_bytes = _canonical_bytes(backend)
     backend_ref = _put_object(project_root, backend_bytes, suffix=".json")
-    neutral = model_neutral_page_result(
-        payload,
+    neutral = model_neutral_result_from_normalized_payload(
+        normalized_payload,
         coordinate_authority=render["coordinate_authority"],
     )
     result = {
-        "format_version": "BANK_CORPUS_WAVE_1_ROLE_B_PAGE_READ_RESULT_V1",
+        "format_version": "BANK_CORPUS_WAVE_1_ROLE_B_PAGE_READ_RESULT_V2",
         "status": neutral["status"],
         "claim_boundary": "SOURCE_VISIBLE_PAGE_TEXT_AND_GEOMETRY_EVIDENCE_ONLY",
         "request_sha256": expected["request_sha256"],
@@ -1534,6 +1673,7 @@ def _consume_worker_response(
         "render_runtime_identity_sha256": expected["request"]["render_runtime_identity_sha256"],
         "input_render_ref": render["ref"],
         "backend_payload_ref": backend_ref,
+        "word_box_normalization_ledger": normalization_ledger,
         "coordinate_authority": neutral["coordinate_authority"],
         "lines": neutral["lines"],
         "words": neutral["words"],
@@ -1563,8 +1703,10 @@ def _consume_worker_response(
         "result_ref": result_ref,
         "line_count": counts["line_count"],
         "word_token_count": counts["word_token_count"],
+        "word_box_correction_count": normalization_ledger["correction_count"],
+        "word_box_corrected_edge_count": normalization_ledger["corrected_edge_count"],
     }
-    _validate_result_record(project_root, record, expected, render)
+    _validate_result_record(project_root, control, record, expected, render)
     return record, observational
 
 
@@ -2098,6 +2240,7 @@ def _build_worker_task(
     project_root: Path,
     model_cache: Path,
     sealed: dict[str, Any],
+    control: dict[str, Any],
     shard_id: int,
     requests: list[dict[str, Any]],
     renders: dict[str, dict[str, Any]],
@@ -2150,11 +2293,12 @@ def _build_worker_task(
             }
         )
     return {
-        "format_version": "BANK_CORPUS_WAVE_1_PPOCRV6_WORKER_TASK_V1",
+        "format_version": "BANK_CORPUS_WAVE_1_PPOCRV6_WORKER_TASK_V2",
         "protocol": "EXCLUSIVE_CANONICAL_JSON_RESPONSE_FILES_V1",
         "execution_nonce": execution_nonce,
         "shard_id": shard_id,
         "provider_identity_sha256": provider,
+        "word_box_normalization_authority": _normalization_authority(control),
         "cpu_threads": 6,
         "expected_environment": environment,
         "execution_lease": {
@@ -2319,6 +2463,7 @@ def _run_pinned_workers(
                 project_root,
                 model_cache,
                 sealed,
+                control,
                 shard_id,
                 requests,
                 renders,
@@ -2673,7 +2818,7 @@ def verify_authenticated_sentinel(
     ):
         raise WaveOneRoleBSentinelError("aggregate result accounting drifted")
     aggregate = {
-        "format_version": "BANK_CORPUS_WAVE_1_ROLE_B_OCR_SENTINEL_AGGREGATE_V1",
+        "format_version": "BANK_CORPUS_WAVE_1_ROLE_B_OCR_SENTINEL_AGGREGATE_V2",
         "status": _PRODUCTION_STATUS,
         "claim_boundary": policy["claim_boundary"],
         "sealed_plan": control["sealed_plan"],
@@ -2687,6 +2832,7 @@ def verify_authenticated_sentinel(
         },
         "executor_git": executor["git"],
         "executor_implementation_ledger": executor["implementation_ledger"],
+        "word_box_normalization": control["word_box_normalization"],
         "provider_identity_sha256": sealed["ppocrv6_runtime_model_ledger"]["sha256"],
         "render_runtime_identity_sha256": sealed["render_runtime_ledger"]["sha256"],
         "execution_contract": {
@@ -2714,6 +2860,21 @@ def verify_authenticated_sentinel(
             "line_count": sum(record["line_count"] for record in result_records),
             "word_token_count": sum(record["word_token_count"] for record in result_records),
             "unresolved_count": 0,
+        },
+        "word_box_normalization_accounting": {
+            "corrected_page_count": sum(
+                record["word_box_correction_count"] > 0 for record in result_records
+            ),
+            "no_change_page_count": sum(
+                record["word_box_correction_count"] == 0 for record in result_records
+            ),
+            "corrected_word_box_count": sum(
+                record["word_box_correction_count"] for record in result_records
+            ),
+            "corrected_edge_count": sum(
+                record["word_box_corrected_edge_count"] for record in result_records
+            ),
+            "counts_are_extraction_success_metrics": False,
         },
         "safety": {
             "bank_registry_metadata_used": False,

@@ -20,6 +20,19 @@ sharding:
   bank_identity_used: false
   filename_used: false
 
+word_box_normalization:
+  rule_id: PP_OCRV6_TEXT_WORD_BOX_PAGE_BOUNDARY_CLIP_MAX_1PX_V1
+  scope: TEXT_WORD_BOXES_ONLY
+  maximum_per_edge_overshoot_pixels: 1
+  page_bounds: CLOSED_ZERO_TO_RENDER_PIXEL_DIMENSIONS
+  raw_word_box_positive_area_required: true
+  clipped_word_box_positive_area_required: true
+  corrected_box_contained_in_validated_line_rec_box_required: true
+  unchanged_word_box_validation: MILESTONE_A_STRICT_VALIDATION_UNCHANGED
+  all_other_geometry_validation: MILESTONE_A_STRICT_VALIDATION_UNCHANGED
+  correction_order: LINE_INDEX_ASC_THEN_WORD_INDEX_ASC
+  raw_provider_payload_preserved: true
+
 worker:
   interpreter: .gpu-venv/bin/python
   script: scripts/models/run_ppocrv6_sentinel_worker.py

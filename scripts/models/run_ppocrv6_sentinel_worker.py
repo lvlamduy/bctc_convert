@@ -17,11 +17,11 @@ SENTINEL_RUNTIME_ROOT = (
 )
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from bctc_ai.ocr.ppocrv6_page_session import (  # noqa: E402
-    PPOCRV6PageSession,
-    _plain_json,
-    validate_ppocrv6_payload,
+from bctc_ai.corpus.wave1_role_b_word_box_normalization import (  # noqa: E402
+    normalize_ppocrv6_word_boxes,
+    validate_normalization_authority,
 )
+from bctc_ai.ocr.ppocrv6_page_session import PPOCRV6PageSession, _plain_json  # noqa: E402
 
 
 class SentinelWorkerError(RuntimeError):
@@ -352,7 +352,8 @@ def _predict_from_held_render(
     *,
     pixel_width: int,
     pixel_height: int,
-) -> tuple[dict[str, Any], float]:
+    normalization_authority: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any], float]:
     """Call the provider with a held, suffix-bearing private lexical PNG path."""
 
     pipeline = session._pipeline  # noqa: SLF001 - sealed B adapter to immutable A session
@@ -374,12 +375,13 @@ def _predict_from_held_render(
     payload = _plain_json(results[0].json["res"])
     if not isinstance(payload, dict):
         raise SentinelWorkerError("PP-OCR provider response is not an object")
-    validate_ppocrv6_payload(
+    _normalized, normalization_ledger = normalize_ppocrv6_word_boxes(
         payload,
         pixel_width=pixel_width,
         pixel_height=pixel_height,
+        authority=normalization_authority,
     )
-    return payload, elapsed
+    return payload, normalization_ledger, elapsed
 
 
 def _revalidate_held_render(
@@ -475,6 +477,7 @@ def _load_task(path: Path) -> dict[str, Any]:
         "execution_nonce",
         "shard_id",
         "provider_identity_sha256",
+        "word_box_normalization_authority",
         "cpu_threads",
         "expected_environment",
         "execution_lease",
@@ -484,7 +487,7 @@ def _load_task(path: Path) -> dict[str, Any]:
     }:
         raise SentinelWorkerError("worker task fields drifted")
     if (
-        task["format_version"] != "BANK_CORPUS_WAVE_1_PPOCRV6_WORKER_TASK_V1"
+        task["format_version"] != "BANK_CORPUS_WAVE_1_PPOCRV6_WORKER_TASK_V2"
         or task["protocol"] != "EXCLUSIVE_CANONICAL_JSON_RESPONSE_FILES_V1"
         or isinstance(task["shard_id"], bool)
         or not isinstance(task["shard_id"], int)
@@ -501,6 +504,10 @@ def _load_task(path: Path) -> dict[str, Any]:
         or not task["requests"]
     ):
         raise SentinelWorkerError("worker task contract or scrubbed environment drifted")
+    try:
+        validate_normalization_authority(task["word_box_normalization_authority"])
+    except RuntimeError as error:
+        raise SentinelWorkerError("worker normalization authority drifted") from error
     configuration = task["configuration"]
     if not isinstance(configuration, dict) or set(configuration) != {
         "path",
@@ -599,12 +606,13 @@ def main() -> int:
                     request["render_size_bytes"],
                 )
                 try:
-                    payload, elapsed = _predict_from_held_render(
+                    payload, normalization_ledger, elapsed = _predict_from_held_render(
                         session,
                         image_fd,
                         image_path,
                         pixel_width=request["pixel_width"],
                         pixel_height=request["pixel_height"],
+                        normalization_authority=task["word_box_normalization_authority"],
                     )
                     _revalidate_held_render(
                         image_fd,
@@ -624,13 +632,14 @@ def main() -> int:
                     _validate_model_inventory(model)
                 _validate_execution_lease(task["execution_lease"])
                 response = {
-                    "format_version": "BANK_CORPUS_WAVE_1_PPOCRV6_WORKER_RESPONSE_V1",
+                    "format_version": "BANK_CORPUS_WAVE_1_PPOCRV6_WORKER_RESPONSE_V2",
                     "execution_nonce": task["execution_nonce"],
                     "shard_id": task["shard_id"],
                     "request_sha256": request["request_sha256"],
                     "render_sha256": request["render_sha256"],
                     "provider_identity_sha256": task["provider_identity_sha256"],
                     "payload": payload,
+                    "word_box_normalization_ledger": normalization_ledger,
                     "observational": {
                         "model_load_wall_seconds": session.model_load_wall_seconds,
                         "inference_wall_seconds": elapsed,

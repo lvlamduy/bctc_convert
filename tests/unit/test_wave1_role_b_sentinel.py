@@ -35,6 +35,7 @@ from bctc_ai.corpus.wave1_role_b_sentinel import (
     _load_document_checkpoint,
     _load_policy,
     _materialize_private_shard_inputs,
+    _normalization_authority,
     _publish_exclusive,
     _publish_missing_render_objects,
     _put_object,
@@ -44,6 +45,11 @@ from bctc_ai.corpus.wave1_role_b_sentinel import (
     _run_pinned_workers,
     _scan_result_orphans,
     _sentinel_request_records,
+)
+from bctc_ai.corpus.wave1_role_b_word_box_normalization import (
+    WORD_BOX_NORMALIZATION_POLICY,
+    normalization_policy_sha256,
+    normalize_ppocrv6_word_boxes,
 )
 from bctc_ai.rendering.page_reader import render_composited_displayed_page
 
@@ -56,10 +62,22 @@ def _sealed(project_root: Path) -> dict[str, object]:
     return json.loads(payload)
 
 
+def _normalization_control() -> dict[str, object]:
+    return {
+        "control_identity_sha256": "c" * 64,
+        "executor_implementation_ledger": {"records": [], "sha256": "d" * 64},
+        "word_box_normalization": {
+            "policy": deepcopy(WORD_BOX_NORMALIZATION_POLICY),
+            "policy_sha256": normalization_policy_sha256(WORD_BOX_NORMALIZATION_POLICY),
+            "normalization_producer_implementation_ledger_sha256": "d" * 64,
+        },
+    }
+
+
 def _control_from_sealed(sealed: dict[str, object]) -> dict[str, object]:
     records = _sentinel_request_records(sealed)
     return {
-        "control_identity_sha256": "c" * 64,
+        **_normalization_control(),
         "sharding": {"shards": _assign_two_shards(records)},
     }
 
@@ -101,14 +119,21 @@ def _synthetic_result_fixture(
 ) -> dict[str, object]:
     """NON_EVIDENCE synthetic protocol fixture under a pytest temporary root only."""
 
+    _normalized, normalization_ledger = normalize_ppocrv6_word_boxes(
+        _valid_payload(),
+        pixel_width=render["pixel_width"],
+        pixel_height=render["pixel_height"],
+        authority=_normalization_authority(control),
+    )
     response = {
-        "format_version": "BANK_CORPUS_WAVE_1_PPOCRV6_WORKER_RESPONSE_V1",
+        "format_version": "BANK_CORPUS_WAVE_1_PPOCRV6_WORKER_RESPONSE_V2",
         "execution_nonce": "e" * 64,
         "shard_id": 0,
         "request_sha256": expected["request_sha256"],
         "render_sha256": render["ref"]["sha256"],
         "provider_identity_sha256": expected["request"]["provider_identity_sha256"],
         "payload": _valid_payload(),
+        "word_box_normalization_ledger": normalization_ledger,
         "observational": {
             "model_load_wall_seconds": 1.25,
             "inference_wall_seconds": 0.5,
@@ -162,9 +187,58 @@ def test_policy_is_exact_and_binds_scrubbed_worker_environment(project_root: Pat
     assert policy["worker"]["provider_input_filename"] == "REQUEST_SHA256_DOT_PNG"
     assert policy["worker"]["provider_input_mode"] == "0444"
     assert policy["worker"]["provider_input_hardlink_to_evidence_allowed"] is False
+    assert policy["word_box_normalization"] == WORD_BOX_NORMALIZATION_POLICY
     assert "HOME" in policy["worker"]["isolated_runtime_directories"]
     assert "PYTHONPATH" not in policy["worker"]["environment"]
     assert (project_root / POLICY_RELATIVE_PATH).is_file()
+
+
+def test_normalization_authority_rejects_valid_hash_producer_ledger_mismatch() -> None:
+    control = _normalization_control()
+    control["word_box_normalization"]["normalization_producer_implementation_ledger_sha256"] = (
+        "e" * 64
+    )
+
+    with pytest.raises(WaveOneRoleBSentinelError, match="producer ledger binding"):
+        _normalization_authority(control)
+
+
+@pytest.mark.parametrize(
+    ("source", "replacement"),
+    [
+        (
+            "maximum_per_edge_overshoot_pixels: 1",
+            "maximum_per_edge_overshoot_pixels: true",
+        ),
+        (
+            "maximum_per_edge_overshoot_pixels: 1",
+            "maximum_per_edge_overshoot_pixels: 1.0",
+        ),
+        ("raw_provider_payload_preserved: true", "raw_provider_payload_preserved: 1"),
+        ("process_count_initial_run: 2", "process_count_initial_run: 2.0"),
+        (
+            "production_authentication_bypass_allowed: false",
+            "production_authentication_bypass_allowed: 0",
+        ),
+    ],
+)
+def test_policy_loader_rejects_typed_policy_drift(
+    project_root: Path,
+    tmp_path: Path,
+    source: str,
+    replacement: str,
+) -> None:
+    target = tmp_path / POLICY_RELATIVE_PATH
+    target.parent.mkdir(parents=True)
+    target.write_text(
+        (project_root / POLICY_RELATIVE_PATH)
+        .read_text(encoding="utf-8")
+        .replace(source, replacement),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(WaveOneRoleBSentinelError, match="policy.*drifted"):
+        _load_policy(tmp_path)
 
 
 def test_b_implementation_ledger_covers_exact_internal_import_closure(
@@ -232,6 +306,33 @@ def test_full_request_orphan_adoption_and_checkpoint_resume_are_exact(
     expected = _control_index(control)[next(iter(_control_index(control)))]
     render = _synthetic_render(tmp_path)
     record = _synthetic_result_fixture(tmp_path, control, expected, render)
+    no_change_result = json.loads(_read_object(tmp_path, record["result_ref"], ".json"))
+    assert no_change_result["word_box_normalization_ledger"]["status"] == "NO_CHANGE"
+    assert all(
+        set(word)
+        == {
+            "raw_text",
+            "score",
+            "score_kind",
+            "normalized_pixel_bbox",
+            "canonical_bbox_mpt",
+            "canonical_polygon_mpt",
+        }
+        for word in [
+            *no_change_result["words"],
+            *(word for line in no_change_result["lines"] for word in line["words"]),
+        ]
+    )
+    _put_object(
+        tmp_path,
+        _canonical_bytes(
+            {
+                "format_version": "BANK_CORPUS_WAVE_1_ROLE_B_PAGE_READ_RESULT_V1",
+                "request_sha256": expected["request_sha256"],
+            }
+        ),
+        suffix=".json",
+    )
     renders = {expected["request_sha256"]: render}
     adopted = _scan_result_orphans(
         tmp_path,
@@ -273,6 +374,85 @@ def test_full_request_orphan_adoption_and_checkpoint_resume_are_exact(
     assert checkpoint_file.stat().st_nlink == 1
 
 
+def test_corrected_worker_response_preserves_raw_backend_and_projects_normalized_result(
+    project_root: Path,
+    tmp_path: Path,
+) -> None:
+    control = _control_from_sealed(_sealed(project_root))
+    expected = next(iter(_control_index(control).values()))
+    render = _synthetic_render(tmp_path)
+    width = render["pixel_width"]
+    payload = {
+        "return_word_box": True,
+        "rec_texts": ["edge"],
+        "rec_scores": [0.99],
+        "rec_polys": [[[width - 20, 10], [width, 10], [width, 30], [width - 20, 30]]],
+        "rec_boxes": [[width - 20, 10, width, 30]],
+        "text_word_boxes": [[[width - 10, 10, width + 1, 30]]],
+        "text_word": [["edge"]],
+    }
+    normalized, ledger = normalize_ppocrv6_word_boxes(
+        payload,
+        pixel_width=width,
+        pixel_height=render["pixel_height"],
+        authority=_normalization_authority(control),
+    )
+    response = {
+        "format_version": "BANK_CORPUS_WAVE_1_PPOCRV6_WORKER_RESPONSE_V2",
+        "execution_nonce": "e" * 64,
+        "shard_id": 0,
+        "request_sha256": expected["request_sha256"],
+        "render_sha256": render["ref"]["sha256"],
+        "provider_identity_sha256": expected["request"]["provider_identity_sha256"],
+        "payload": payload,
+        "word_box_normalization_ledger": ledger,
+        "observational": {
+            "model_load_wall_seconds": 1.25,
+            "inference_wall_seconds": 0.5,
+        },
+    }
+
+    typed_worker_ledger = deepcopy(response)
+    typed_worker_ledger["word_box_normalization_ledger"]["correction_count"] = 1.0
+    with pytest.raises(WaveOneRoleBSentinelError, match="parent replay"):
+        _consume_worker_response(
+            tmp_path,
+            control,
+            expected,
+            render,
+            _canonical_bytes(typed_worker_ledger),
+            execution_nonce="e" * 64,
+            shard_id=0,
+        )
+
+    record, _observation = _consume_worker_response(
+        tmp_path,
+        control,
+        expected,
+        render,
+        _canonical_bytes(response),
+        execution_nonce="e" * 64,
+        shard_id=0,
+    )
+    backend = json.loads(_read_object(tmp_path, record["backend_payload_ref"], ".json"))
+    result = json.loads(_read_object(tmp_path, record["result_ref"], ".json"))
+
+    assert backend["raw_provider_payload"] == payload
+    assert backend["raw_provider_payload"]["text_word_boxes"][0][0][2] == width + 1
+    assert backend["word_box_normalization_ledger"] == ledger
+    assert result["word_box_normalization_ledger"] == ledger
+    assert (
+        result["lines"][0]["words"][0]["normalized_pixel_bbox"]
+        == normalized["text_word_boxes"][0][0]
+    )
+    assert result["words"][0]["normalized_pixel_bbox"] == [width - 10, 10, width, 30]
+    assert all(
+        "raw_pixel_bbox" not in word for word in [*result["words"], *result["lines"][0]["words"]]
+    )
+    assert record["word_box_correction_count"] == 1
+    assert record["word_box_corrected_edge_count"] == 1
+
+
 def test_checkpoint_resume_quarantines_only_exact_interrupted_temp(
     project_root: Path,
     tmp_path: Path,
@@ -301,6 +481,43 @@ def test_checkpoint_resume_quarantines_only_exact_interrupted_temp(
         )
 
 
+@pytest.mark.parametrize("typed_field", ["generation", "accounting"])
+def test_checkpoint_replay_rejects_int_to_float_typed_drift(
+    project_root: Path,
+    tmp_path: Path,
+    typed_field: str,
+) -> None:
+    control = _control_from_sealed(_sealed(project_root))
+    expected = next(iter(_control_index(control).values()))
+    render = _synthetic_render(tmp_path)
+    record = _synthetic_result_fixture(tmp_path, control, expected, render)
+    checkpoint = _checkpoint_payload(
+        control,
+        expected["document_id"],
+        [record],
+        None,
+    )
+    if typed_field == "generation":
+        checkpoint["generation"] = 1.0
+    else:
+        checkpoint["accounting"]["completed_request_count"] = 1.0
+    payload = _canonical_bytes(checkpoint)
+    digest = hashlib.sha256(payload).hexdigest()
+    directory = tmp_path / OUTPUT_RELATIVE_ROOT / "checkpoints" / expected["source_sha256"]
+    directory.mkdir(parents=True)
+    path = directory / f"0001-{digest}.json"
+    path.write_bytes(payload)
+    path.chmod(0o444)
+
+    with pytest.raises(WaveOneRoleBSentinelError, match="checkpoint generation identity"):
+        _load_document_checkpoint(
+            tmp_path,
+            control,
+            expected["document_id"],
+            {expected["request_sha256"]: render},
+        )
+
+
 def test_result_replay_rejects_same_count_text_and_backend_metadata_tamper(
     project_root: Path,
     tmp_path: Path,
@@ -315,21 +532,186 @@ def test_result_replay_rejects_same_count_text_and_backend_metadata_tamper(
         _read_object(tmp_path, record["result_ref"], ".json"),
         "fixture result",
     )
-    result["lines"][0]["raw_text"] = "fabricated-same-count"
-    tampered_result_ref = _put_object(tmp_path, _canonical_bytes(result), suffix=".json")
+    text_tampered_result = deepcopy(result)
+    text_tampered_result["lines"][0]["raw_text"] = "fabricated-same-count"
+    tampered_result_ref = _put_object(
+        tmp_path,
+        _canonical_bytes(text_tampered_result),
+        suffix=".json",
+    )
     tampered = {**record, "result_ref": tampered_result_ref}
     with pytest.raises(WaveOneRoleBSentinelError, match="projection"):
-        _validate_result_record(tmp_path, tampered, expected, render)
+        _validate_result_record(tmp_path, control, tampered, expected, render)
 
-    backend = _json_object(
+    mislabeled_result = deepcopy(result)
+    for word in [
+        *mislabeled_result["words"],
+        *(word for line in mislabeled_result["lines"] for word in line["words"]),
+    ]:
+        word["raw_pixel_bbox"] = word.pop("normalized_pixel_bbox")
+    mislabeled_result_ref = _put_object(
+        tmp_path,
+        _canonical_bytes(mislabeled_result),
+        suffix=".json",
+    )
+    with pytest.raises(WaveOneRoleBSentinelError, match="projection"):
+        _validate_result_record(
+            tmp_path,
+            control,
+            {**record, "result_ref": mislabeled_result_ref},
+            expected,
+            render,
+        )
+
+    float_bbox_result = deepcopy(result)
+    for word in [
+        *float_bbox_result["words"],
+        *(word for line in float_bbox_result["lines"] for word in line["words"]),
+    ]:
+        word["normalized_pixel_bbox"][0] = float(word["normalized_pixel_bbox"][0])
+    float_bbox_result_ref = _put_object(
+        tmp_path,
+        _canonical_bytes(float_bbox_result),
+        suffix=".json",
+    )
+    with pytest.raises(WaveOneRoleBSentinelError, match="projection"):
+        _validate_result_record(
+            tmp_path,
+            control,
+            {**record, "result_ref": float_bbox_result_ref},
+            expected,
+            render,
+        )
+
+    original_backend = _json_object(
         _read_object(tmp_path, record["backend_payload_ref"], ".json"),
         "fixture backend",
     )
+    backend = deepcopy(original_backend)
     backend["bank"] = "forbidden-metadata"
     tampered_backend_ref = _put_object(tmp_path, _canonical_bytes(backend), suffix=".json")
     tampered = {**record, "backend_payload_ref": tampered_backend_ref}
     with pytest.raises(WaveOneRoleBSentinelError, match="identity|embedded"):
-        _validate_result_record(tmp_path, tampered, expected, render)
+        _validate_result_record(tmp_path, control, tampered, expected, render)
+
+    ledger_tampered_result = deepcopy(result)
+    ledger_tampered_result["word_box_normalization_ledger"]["normalized_payload_sha256"] = "0" * 64
+    ledger_tampered_result_ref = _put_object(
+        tmp_path,
+        _canonical_bytes(ledger_tampered_result),
+        suffix=".json",
+    )
+    with pytest.raises(WaveOneRoleBSentinelError, match="normalization ledger"):
+        _validate_result_record(
+            tmp_path,
+            control,
+            {**record, "result_ref": ledger_tampered_result_ref},
+            expected,
+            render,
+        )
+
+    typed_ref_backend = deepcopy(original_backend)
+    typed_ref_backend["render_ref"]["size_bytes"] = float(
+        typed_ref_backend["render_ref"]["size_bytes"]
+    )
+    typed_ref_backend_ref = _put_object(
+        tmp_path,
+        _canonical_bytes(typed_ref_backend),
+        suffix=".json",
+    )
+    typed_ref_linked_result = deepcopy(result)
+    typed_ref_linked_result["backend_payload_ref"] = typed_ref_backend_ref
+    typed_ref_linked_result_ref = _put_object(
+        tmp_path,
+        _canonical_bytes(typed_ref_linked_result),
+        suffix=".json",
+    )
+    with pytest.raises(WaveOneRoleBSentinelError, match="embedded identity"):
+        _validate_result_record(
+            tmp_path,
+            control,
+            {
+                **record,
+                "backend_payload_ref": typed_ref_backend_ref,
+                "result_ref": typed_ref_linked_result_ref,
+            },
+            expected,
+            render,
+        )
+
+    for field in ("input_render_ref", "backend_payload_ref"):
+        typed_ref_result = deepcopy(result)
+        typed_ref_result[field]["size_bytes"] = float(typed_ref_result[field]["size_bytes"])
+        typed_ref_result_ref = _put_object(
+            tmp_path,
+            _canonical_bytes(typed_ref_result),
+            suffix=".json",
+        )
+        with pytest.raises(WaveOneRoleBSentinelError, match="embedded identity"):
+            _validate_result_record(
+                tmp_path,
+                control,
+                {**record, "result_ref": typed_ref_result_ref},
+                expected,
+                render,
+            )
+
+    typed_safety_result = deepcopy(result)
+    typed_safety_result["safety"]["absence_claimed"] = 0
+    typed_safety_result_ref = _put_object(
+        tmp_path,
+        _canonical_bytes(typed_safety_result),
+        suffix=".json",
+    )
+    with pytest.raises(WaveOneRoleBSentinelError, match="embedded identity"):
+        _validate_result_record(
+            tmp_path,
+            control,
+            {**record, "result_ref": typed_safety_result_ref},
+            expected,
+            render,
+        )
+
+    typed_ledger_result = deepcopy(result)
+    typed_ledger_result["word_box_normalization_ledger"]["correction_count"] = float(
+        typed_ledger_result["word_box_normalization_ledger"]["correction_count"]
+    )
+    typed_ledger_result_ref = _put_object(
+        tmp_path,
+        _canonical_bytes(typed_ledger_result),
+        suffix=".json",
+    )
+    with pytest.raises(WaveOneRoleBSentinelError, match="normalization ledger"):
+        _validate_result_record(
+            tmp_path,
+            control,
+            {**record, "result_ref": typed_ledger_result_ref},
+            expected,
+            render,
+        )
+
+    ledger_tampered_backend = deepcopy(original_backend)
+    ledger_tampered_backend["word_box_normalization_ledger"]["raw_payload_sha256"] = "0" * 64
+    ledger_tampered_backend_ref = _put_object(
+        tmp_path,
+        _canonical_bytes(ledger_tampered_backend),
+        suffix=".json",
+    )
+    linked_result = deepcopy(result)
+    linked_result["backend_payload_ref"] = ledger_tampered_backend_ref
+    linked_result_ref = _put_object(tmp_path, _canonical_bytes(linked_result), suffix=".json")
+    with pytest.raises(WaveOneRoleBSentinelError, match="normalization ledger"):
+        _validate_result_record(
+            tmp_path,
+            control,
+            {
+                **record,
+                "backend_payload_ref": ledger_tampered_backend_ref,
+                "result_ref": linked_result_ref,
+            },
+            expected,
+            render,
+        )
 
 
 def test_complete_resume_path_starts_zero_workers(project_root: Path) -> None:
@@ -448,12 +830,13 @@ def test_worker_predicts_suffix_bearing_lexical_png_and_rehashes_same_inode(
         len(b"held-render"),
     )
     try:
-        payload, _elapsed = worker._predict_from_held_render(
+        payload, normalization_ledger, _elapsed = worker._predict_from_held_render(
             Session(),
             descriptor,
             image,
             pixel_width=200,
             pixel_height=200,
+            normalization_authority=_normalization_authority(_normalization_control()),
         )
         worker._revalidate_held_render(
             descriptor,
@@ -466,6 +849,7 @@ def test_worker_predicts_suffix_bearing_lexical_png_and_rehashes_same_inode(
         os.close(descriptor)
     assert observed == {"path": image.as_posix(), "bytes": b"held-render"}
     assert payload["rec_texts"] == ["Ngân hàng nguồn"]
+    assert normalization_ledger["status"] == "NO_CHANGE"
 
 
 def test_worker_rejects_persistent_private_png_name_swap_and_byte_drift(
@@ -588,6 +972,7 @@ def test_supervisor_and_worker_reject_private_png_outside_exact_shard_runtime(
             tmp_path,
             tmp_path / "models",
             sealed,
+            _normalization_control(),
             0,
             [request],
             {request_sha256: render},
@@ -606,6 +991,7 @@ def test_supervisor_and_worker_reject_private_png_outside_exact_shard_runtime(
                 tmp_path,
                 tmp_path / "models",
                 sealed,
+                _normalization_control(),
                 0,
                 [request],
                 {request_sha256: render},
@@ -923,6 +1309,7 @@ def test_non_evidence_initial_supervisor_launches_exact_two_twelve_page_processe
         _project_root,
         _model_cache,
         _sealed,
+        _control,
         shard_id,
         shard_requests,
         _renders,
@@ -1080,6 +1467,9 @@ def test_synthetic_complete_aggregate_is_deterministic_and_artifact_hash_is_exac
             "executor_implementation_ledger": {"records": [], "sha256": "3" * 64},
         }
     )
+    control["word_box_normalization"]["normalization_producer_implementation_ledger_sha256"] = (
+        "3" * 64
+    )
     index = _control_index(control)
     records_by_document: dict[str, list[dict[str, object]]] = {}
     for expected in index.values():
@@ -1090,6 +1480,8 @@ def test_synthetic_complete_aggregate_is_deterministic_and_artifact_hash_is_exac
                 "status": "OCR_WORD_BOX_READ_COMPLETE",
                 "line_count": expected["sentinel_ordinal"],
                 "word_token_count": expected["sentinel_ordinal"] + 1,
+                "word_box_correction_count": int(expected["sentinel_ordinal"] == 2),
+                "word_box_corrected_edge_count": int(expected["sentinel_ordinal"] == 2),
             }
         )
     sealed = {
@@ -1134,6 +1526,13 @@ def test_synthetic_complete_aggregate_is_deterministic_and_artifact_hash_is_exac
     first = sentinel.verify_authenticated_sentinel(tmp_path, model_cache=tmp_path / "models")
     second = sentinel.verify_authenticated_sentinel(tmp_path, model_cache=tmp_path / "models")
     assert _canonical_bytes(first) == _canonical_bytes(second)
+    assert first["word_box_normalization_accounting"] == {
+        "corrected_page_count": 1,
+        "no_change_page_count": 23,
+        "corrected_word_box_count": 1,
+        "corrected_edge_count": 1,
+        "counts_are_extraction_success_metrics": False,
+    }
     assert first["aggregate_identity_sha256"] == sentinel._canonical_sha256(
         {key: value for key, value in first.items() if key != "aggregate_identity_sha256"}
     )
