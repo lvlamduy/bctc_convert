@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import copy
 import shutil
 from pathlib import Path
+
+import pytest
+import yaml
 
 from bctc_ai.core.contracts import ObservationKind
 from bctc_ai.tables.cdkt_off_balance_page5 import (
     CDKT_OFF_BALANCE_PAGE5_POLICY_RELATIVE_PATH,
+    CDKTOffBalancePage5Error,
     load_cdkt_off_balance_page5_policy,
     parse_cdkt_off_balance_page5,
 )
@@ -78,6 +83,11 @@ def test_page5_reconstructs_exact_source_rows_cells_and_accounting(project_root:
         "6041=SUM(6042,6043,6044,6045)/CURRENT",
         "6041=SUM(6042,6043,6044,6045)/COMPARATIVE",
     )
+    check = result.accounting_checks[0]
+    assert check.component_report_norm_ids == (6042, 6043, 6044, 6045)
+    assert check.schema_component_report_norm_ids == (6042, 6043, 6056)
+    assert check.compressed_unobserved_subtotal.report_norm_id == 6056
+    assert check.compressed_unobserved_subtotal.leaf_report_norm_ids == (6044, 6045)
 
 
 def test_page5_ocr_render_binding_is_portable_across_project_roots(
@@ -94,3 +104,41 @@ def test_page5_ocr_render_binding_is_portable_across_project_roots(
     assert result.source_render_path == _EVIDENCE_PATHS[2].as_posix()
     assert result.source_row_count == 11
     assert result.value_cell_count == 18
+
+
+def test_page5_rejects_drift_in_compressed_unobserved_subtotal_authority(
+    project_root: Path, tmp_path: Path
+) -> None:
+    relocated = tmp_path / "relocated-project"
+    for relative in (CDKT_OFF_BALANCE_PAGE5_POLICY_RELATIVE_PATH, *_EVIDENCE_PATHS):
+        target = relocated / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(project_root / relative, target)
+    policy_path = relocated / CDKT_OFF_BALANCE_PAGE5_POLICY_RELATIVE_PATH
+    original = yaml.safe_load(policy_path.read_text(encoding="utf-8"))
+    mutations = []
+    wrong_schema_components = copy.deepcopy(original)
+    wrong_schema_components["accounting_checks"][0]["schema_component_report_norm_ids"] = [
+        6042,
+        6043,
+        6044,
+        6045,
+    ]
+    mutations.append(wrong_schema_components)
+    wrong_subtotal = copy.deepcopy(original)
+    wrong_subtotal["accounting_checks"][0]["compressed_unobserved_subtotal"]["report_norm_id"] = (
+        6044
+    )
+    mutations.append(wrong_subtotal)
+    wrong_leaves = copy.deepcopy(original)
+    wrong_leaves["accounting_checks"][0]["compressed_unobserved_subtotal"][
+        "leaf_report_norm_ids"
+    ] = [6045, 6044]
+    mutations.append(wrong_leaves)
+    for mutation in mutations:
+        policy_path.write_text(
+            yaml.safe_dump(mutation, allow_unicode=True, sort_keys=False),
+            encoding="utf-8",
+        )
+        with pytest.raises(CDKTOffBalancePage5Error, match="inventory drifted"):
+            load_cdkt_off_balance_page5_policy(policy_path, relocated)

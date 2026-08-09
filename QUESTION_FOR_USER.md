@@ -2,16 +2,24 @@
 
 Updated: 2026-08-09
 
-- **CDKT unresolved:** 3 active source-driven schema/presentation decisions (`Q074`–`Q076`). `Q005` remains resolved as a statement-page observation boundary with explicit, non-overwriting note linkages.
+- **CDKT unresolved:** 0 current item-level questions. `Q074`–`Q078` are resolved by the user; `Q005` remains resolved as a statement-page observation boundary with explicit, non-overwriting note linkages.
 - **KQKD unresolved:** 0 current item-level questions.
-- **LCTT unresolved:** 1 active VPB schema decision shared with CDKT (`Q074`).
+- **LCTT unresolved:** 0 current item-level questions.
 - **TM unresolved:** 0. The prior 21 questions were closed-schema artifacts and are now resolved by source-evidenced universal-schema identities or explicit provenance-only dimension treatment. Pages 55–56 and 59 are narrative-only.
 
-MBB CDKT schema reconciliation is exact after the approved universal update and the dedicated off-balance pass: `97 = 73 MAPPED + 24 NOT_OBSERVED + 0 UNRESOLVED`. The original 16 absent identities remain, while the source-visible broader provision rows now own `6035`/`6036` and the narrower `4347`/`4352` are separately not observed. Page 5 maps structural/value identities `6038`–`6048`; `6037` and `6049`–`6053` are not observed. All 75 visible MBB rows and 150 physical value-status cells are accounted; note disclosures remain non-overwriting cross-statement links.
+MBB CDKT schema reconciliation is exact after the approved universal update and the dedicated off-balance pass: `99 = 73 MAPPED + 26 NOT_OBSERVED + 0 UNRESOLVED`. The original 16 absent identities remain, while the source-visible broader provision rows now own `6035`/`6036` and the narrower `4347`/`4352` are separately not observed. Page 5 maps structural/value identities `6038`–`6048`; `6037`, `6049`–`6053`, and the new source-absent subtotals `6055`/`6056` are not observed. All 75 visible MBB rows and 150 physical value-status cells are accounted; note disclosures remain non-overwriting cross-statement links.
 
-## NEEDS_USER_REVIEW — VPB universal-schema decisions
+## NEEDS_USER_REVIEW — current follow-up questions
+
+No material questions are currently open.
+
+Future material questions must be added in this top `NEEDS_USER_REVIEW` section.
+
+## RESOLVED_BY_USER — Q074–Q078 universal-schema decisions
 
 ### Q074
+
+**Resolution:** `RESOLVED_BY_USER` — rename existing CDKT ReportNormId `4360` to exactly `Vay các TCTC, TCTD khác`, preserving ID `4360` and retaining `Vay các TCTD khác` as a backward-compatible alias. The related IDs `4319` and `4136` were subsequently resolved in Q077 and Q078 below.
 
 - **Bank:** VPB
 - **Period:** consolidated Q1/2026; current 31/03/2026 versus 31/12/2025 for CDKT, Q1/2026 versus Q1/2025 for LCTT.
@@ -20,12 +28,13 @@ MBB CDKT schema reconciliation is exact after the approved universal update and 
 - **Visible row:** `Tiền gửi và vay các tổ chức tài chính ("TCTC"), TCTD khác`; `Vay các TCTC, TCTD khác`; `Tăng/(Giảm) tiền gửi, tiền vay từ các tổ chức tài chính, tổ chức tín dụng khác`.
 - **Parent/neighbor context:** the CDKT parent equals its two visible deposit/borrowing children exactly in both snapshots; the LCTT row is the matching liability movement between the Government/NHNN and customer-deposit rows. Note 19.2 explicitly includes IFC funding, so `TCTC` is source meaning rather than OCR noise.
 - **Visible values:** CDKT parent `311.527.853 / 295.199.519`; borrowing child `161.866.840 / 154.420.742`; LCTT movement `16.328.334 / (15.265.229)`; unit VND × 1,000,000.
-- **Existing candidate ReportNormId(s):** 4319, 4360 and 4136, whose canonical meanings currently say only `TCTD khác`.
-- **Proposed interpretation:** the VPB rows are genuine broader TCTC+TCTD concepts, not wording aliases of the narrower TCTD-only identities.
-- **Proposed action:** create three new universal identities in the corresponding CDKT and direct-LCTT positions, while retaining 4319, 4360 and 4136 unchanged for banks that report only TCTD.
-- **Question for user:** do you agree that explicit TCTC+TCTD disclosures must remain distinct from the existing TCTD-only identities?
+- **Existing candidate ReportNormId(s):** 4319, 4360 and 4136, whose pre-decision canonical meanings said only `TCTD khác`.
+- **Decision history/context:** the earlier proposal treated the broader TCTC+TCTD wording as potentially requiring separate identities. The user instead decided that `4360` is one broader canonical identity and its prior TCTD-only label remains a backward-compatible alias; Q077/Q078 then applied the same inclusive naming decision to the related existing identities.
+- **User decision incorporated:** broaden existing ID `4360` without renumbering; the later Q077/Q078 decisions separately authorize the related `4319`/`4136` renames.
 
 ### Q075
+
+**Resolution:** `RESOLVED_BY_USER` — allocate stable ReportNormId `6055 Tổng chỉ tiêu ngoại bảng` as the aggregate parent under structural root `6038`, with formula `6055 = 6039 + 6050`; map the terminal unlabeled source total only when unique complete topology and an exact per-axis equation independently corroborate it.
 
 - **Bank:** VPB
 - **Period:** consolidated Q1/2026; 31/03/2026 versus 31/12/2025.
@@ -36,10 +45,11 @@ MBB CDKT schema reconciliation is exact after the approved universal update and 
 - **Visible values:** `1.304.756.779 / 1.367.060.929`; unit VND × 1,000,000.
 - **Existing candidate ReportNormId(s):** none. TM note identities are not reusable because they belong to another statement.
 - **Proposed interpretation:** printed grand total of all off-balance groups, but the source row itself has no visible label.
-- **Proposed action:** keep it as `UNRESOLVED_LABEL / SOURCE_ONLY_VALIDATION` unless a source-supported canonical label is approved; do not infer a name from arithmetic alone.
-- **Question for user:** should this remain validation-only, or should the universal schema create a named total such as `TỔNG CHỈ TIÊU NGOÀI BÁO CÁO TÌNH HÌNH TÀI CHÍNH`?
+- **User decision incorporated:** use the exact canonical name `Tổng chỉ tiêu ngoại bảng`; arithmetic is a strict corroboration/veto, not a bank/page-specific selector.
 
 ### Q076
+
+**Resolution:** `RESOLVED_BY_USER` — allocate stable ReportNormId `6056 Cam kết giao dịch hoán đổi` beneath `6041`, insert it immediately after `6043`, and reparent `6044`/`6045` beneath it.
 
 - **Bank:** CTG.
 - **Period:** consolidated Q2/2026; 30/06/2026 versus 31/12/2025.
@@ -50,8 +60,21 @@ MBB CDKT schema reconciliation is exact after the approved universal update and 
 - **Visible values:** `937.179.489 / 849.738.846`; unit VND × 1,000,000.
 - **Existing candidate ReportNormId(s):** parent `6041`; component legs `6044`, `6045`. Neither leg alone is equivalent to the printed combined row.
 - **Proposed interpretation:** this is a genuine reported subtotal for the two swap legs, not an alias of either leg and not the broader foreign-exchange total.
-- **Proposed action:** create a new stable ReportNormId under `6041`, insert it after `6043`, and make `6044`/`6045` its children. For CTG, map the printed combined value to the new subtotal while retaining the unprinted legs as `NOT_OBSERVED`.
-- **Question for user:** do you agree with adding the combined swap subtotal and reparenting the receive/pay swap legs beneath it?
+- **User decision incorporated:** map CTG's printed combined value to `6056`; retain the two unprinted legs as separate child identities with explicit non-observation outcomes.
+
+### Q077
+
+**Resolution:** `RESOLVED_BY_USER` — rename existing CDKT ReportNormId `4319` to exactly `Tiền gửi và vay các TCTC, TCTD khác`, preserving ID `4319` and retaining `Tiền gửi và vay các TCTD khác` plus its existing enumerated structural wording as typed backward-compatible aliases.
+
+- **Source context:** VPB prints the parent liability row with both TCTC and TCTD, while some banks report only the narrower TCTD wording.
+- **User decision incorporated:** use one inclusive canonical identity for `4319`; do not allocate a new ID or remove the established narrower aliases.
+
+### Q078
+
+**Resolution:** `RESOLVED_BY_USER` — rename existing direct-LCTT ReportNormId `4136` to exactly `Tăng, giảm các khoản tiền gửi và vay các TCTC, TCTD`, preserving ID `4136` and retaining the former canonical `Tăng, giảm các khoản tiền gửi và vay các TCTD`, the source-authorized legacy wording `Tăng/(Giảm) tiền gửi, tiền vay các TCTD khác`, and the existing enumerated structural wording as typed aliases.
+
+- **Source context:** VPB prints the direct-cash-flow movement with both financial institutions and credit institutions.
+- **User decision incorporated:** use one inclusive canonical identity for `4136`; preserve all existing/source-authorized TCTD-only wording for backward-compatible exact matching.
 
 ## RESOLVED_BY_USER
 
@@ -126,7 +149,7 @@ MBB CDKT schema reconciliation is exact after the approved universal update and 
   `4344 Tiền, vàng gửi tại các TCTD khác`; `4326 Cho vay các TCTD khác`;
   `4345 Dự phòng rủi ro cho vay các TCTD khác`; `4333 Đầu tư vào công ty con`;
   `4309 Lợi thế thương mại`; `4303 NỢ PHẢI TRẢ VÀ VỐN CHỦ SỞ HỮU`;
-  `4359 Tiền gửi của các TCTD khác`; `4360 Vay các TCTD khác`;
+  `4359 Tiền gửi của các TCTD khác`; `4360 Vay các TCTC, TCTD khác`;
   `4373 Vốn đầu tư XDCB`; `4340 Cổ phiếu quỹ`; `4374 Cổ phiếu ưu đãi`;
   `4341 Chênh lệch đánh giá lại tài sản`; `4329 Tài sản cố định thuê tài chính`;
   `4369 Nguyên giá tài sản cố định thuê tài chính`; `4370 Giá trị hao mòn lũy kế tài sản cố định thuê tài chính`.

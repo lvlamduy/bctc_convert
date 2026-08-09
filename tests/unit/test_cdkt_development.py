@@ -33,7 +33,7 @@ def _headers(sheet) -> dict[str, int]:
     return {str(sheet.cell(1, column).value): column for column in range(1, sheet.max_column + 1)}
 
 
-def test_cdkt_business_update_reconciles_97_items_and_preserves_source_statuses(
+def test_cdkt_business_update_reconciles_99_items_and_preserves_source_statuses(
     project_root: Path,
     monkeypatch: pytest.MonkeyPatch,
 ):
@@ -84,11 +84,11 @@ def test_cdkt_business_update_reconciles_97_items_and_preserves_source_statuses(
         "derived_value_count": 2,
         "exported_value_count": 134,
         "mapped_schema_count": 73,
-        "not_observed_schema_count": 24,
+        "not_observed_schema_count": 26,
         "observed_value_count": 132,
         "physical_cell_count": 150,
         "physical_status_counts": {"BLANK": 13, "DASH": 5, "VALUE": 132},
-        "reconciled_schema_count": 97,
+        "reconciled_schema_count": 99,
         "source_row_count": 75,
         "unresolved_schema_count": 0,
     }
@@ -136,10 +136,23 @@ def test_cdkt_business_update_reconciles_97_items_and_preserves_source_statuses(
             "6041=SUM(6042,6043,6044,6045)/CURRENT",
             "6041=SUM(6042,6043,6044,6045)/COMPARATIVE",
         ],
+        "schema_accounting_checks": [
+            {
+                "target_report_norm_id": 6041,
+                "physical_component_report_norm_ids": [6042, 6043, 6044, 6045],
+                "schema_component_report_norm_ids": [6042, 6043, 6056],
+                "compressed_unobserved_subtotal": {
+                    "report_norm_id": 6056,
+                    "leaf_report_norm_ids": [6044, 6045],
+                    "imputed": False,
+                },
+                "operator": "SUM",
+            }
+        ],
         "mapped_report_norm_ids": list(range(6038, 6049)),
         "physical_cell_count": 22,
         "policy_path": "config/tables/cdkt-off-balance-page5-v1.yaml",
-        "policy_sha256": "3c0075df66647a3854b68c16dea703397ac37b3f5c5ce2d0d73cb2c736c671af",
+        "policy_sha256": "ccca7f15666f2c5ad80ce73e925a558b82681953c6cf09370ff1744373bdc220",
         "source_ocr_path": (
             "output/calibration/recovery-e0027-mbb-q1-2026-role-c-20260807/"
             "ppocrv6-page-0005/ocr_result.json"
@@ -203,12 +216,12 @@ def test_cdkt_business_update_reconciles_97_items_and_preserves_source_statuses(
             "RUN_METADATA",
         ]
         main = workbook["CDKT"]
-        for row in range(1, 99):
+        for row in range(1, 101):
             for column in range(1, 4):
                 assert main.cell(row, column).value == template.active.cell(row, column).value
                 assert main.cell(row, column).style_id == template.active.cell(row, column).style_id
-        by_id = {main.cell(row, 2).value: row for row in range(2, 99)}
-        assert len(by_id) == 97
+        by_id = {main.cell(row, 2).value: row for row in range(2, 101)}
+        assert len(by_id) == 99
         assert main.cell(by_id[4350], 3).value == "Chứng khoán đầu tư sẵn sàng để bán"
         assert main.cell(by_id[4363], 4).value == 2_320_000_000
         assert main.cell(by_id[4363], 6).value == "VALUE"
@@ -270,6 +283,11 @@ def test_cdkt_business_update_reconciles_97_items_and_preserves_source_statuses(
         for report_norm_id in range(6049, 6054):
             assert main.cell(by_id[report_norm_id], 6).value == "NOT_OBSERVED_IN_THIS_PDF"
             assert main.cell(by_id[report_norm_id], 7).value == "NOT_OBSERVED_IN_THIS_PDF"
+        for report_norm_id in (6055, 6056):
+            assert main.cell(by_id[report_norm_id], 4).value is None
+            assert main.cell(by_id[report_norm_id], 5).value is None
+            assert main.cell(by_id[report_norm_id], 6).value == "NOT_OBSERVED_IN_THIS_PDF"
+            assert main.cell(by_id[report_norm_id], 7).value == "NOT_OBSERVED_IN_THIS_PDF"
         assert main.cell(by_id[4325], 4).value == 149_745_325_000_000
         assert main.cell(by_id[4325], 6).value == "DERIVED_FROM_COMPONENTS"
         assert main.cell(by_id[5712], 4).value == 149_745_325_000_000
@@ -281,7 +299,7 @@ def test_cdkt_business_update_reconciles_97_items_and_preserves_source_statuses(
         assert (
             sum(
                 main.cell(row, column).value is not None
-                for row in range(2, 99)
+                for row in range(2, 101)
                 for column in (4, 5)
             )
             == 134

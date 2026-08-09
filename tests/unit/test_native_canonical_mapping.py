@@ -40,6 +40,7 @@ def real_inputs(project_root: Path) -> dict:
         project_root, policy
     )
     rules = schema_identity.pop("_cash_flow_rules")
+    audited_formulas = schema_identity.pop("_audited_formulas")
     return {
         "rows": rows,
         "items": items,
@@ -47,6 +48,7 @@ def real_inputs(project_root: Path) -> dict:
         "coverage": coverage,
         "rules": rules,
         "accepted_aliases": accepted_aliases,
+        "audited_formulas": audited_formulas,
         "policy": policy,
         "schema_identity": schema_identity,
     }
@@ -61,7 +63,48 @@ def _resolve(real_inputs: dict, rows: dict) -> dict:
         coverage=real_inputs["coverage"],
         cash_flow_rules=real_inputs["rules"],
         accepted_aliases=real_inputs["accepted_aliases"],
+        audited_formulas=real_inputs["audited_formulas"],
         policy=real_inputs["policy"],
+    )
+
+
+def _mock_current_bytes_as_producer_commit(
+    monkeypatch: pytest.MonkeyPatch,
+    project_root: Path,
+    snapshots: dict,
+) -> None:
+    policy_path = native.POLICY_RELATIVE_PATH.as_posix()
+    source_config_path = snapshots["policy"]["payload"]["schema_authority"]["source_config"]["path"]
+
+    def committed_identity(_root: Path, _commit: str, raw_path: str) -> dict:
+        path = project_root / raw_path
+        if raw_path == policy_path:
+            digest = snapshots["policy"]["source_sha256"]
+        elif raw_path == source_config_path:
+            digest = snapshots["policy"]["payload"]["schema_authority"]["source_config"]["sha256"]
+        else:
+            formula = next(
+                record
+                for record in snapshots["audited_formulas"]["records"]
+                if record["authority_evidence"]["audit_path"] == raw_path
+            )
+            digest = formula["authority_evidence"]["audit_sha256"]
+        return {"path": raw_path, "sha256": digest, "size_bytes": path.stat().st_size}
+
+    def committed_yaml(_root: Path, _commit: str, raw_path: str) -> dict:
+        if raw_path == policy_path:
+            return copy.deepcopy(snapshots["policy"]["payload"])
+        assert raw_path == source_config_path
+        return native.yaml.safe_load((project_root / raw_path).read_text(encoding="utf-8"))
+
+    monkeypatch.setattr(native, "_file_identity_at_commit", committed_identity)
+    monkeypatch.setattr(native, "_yaml_payload_at_commit", committed_yaml)
+    monkeypatch.setattr(
+        native,
+        "_json_payload_at_commit",
+        lambda _root, _commit, raw_path: json.loads(
+            (project_root / raw_path).read_text(encoding="utf-8")
+        ),
     )
 
 
@@ -116,7 +159,9 @@ def _expected_existing_items() -> dict[tuple[int, int], int]:
         {
             (6, 2): 4318,
             (6, 3): 6037,
+            (6, 4): 4319,
             (6, 5): 4359,
+            (6, 6): 4360,
             (6, 7): 4320,
             (6, 8): 4321,
             (6, 9): 4322,
@@ -137,6 +182,7 @@ def _expected_existing_items() -> dict[tuple[int, int], int]:
         }
     )
     expected.update({(7, row): 6038 + row for row in range(1, 16)})
+    expected[(7, 16)] = 6055
     for row, report_norm_id in enumerate(
         (
             4399,
@@ -189,7 +235,7 @@ def _expected_existing_items() -> dict[tuple[int, int], int]:
             4134,
             4108,
             4135,
-            None,
+            4136,
             4137,
             4138,
             4139,
@@ -210,14 +256,14 @@ def test_real_vpb_rows_have_exhaustive_source_driven_dispositions(real_resolutio
     result = real_resolution
     summary = result["summary"]
     assert summary["visible_source_items"] == 134
-    assert summary["mapped_to_existing_canonical_items"] == 127
-    assert summary["new_schema_item_proposals"] == 3
+    assert summary["mapped_to_existing_canonical_items"] == 131
+    assert summary["new_schema_item_proposals"] == 0
     assert summary["ambiguous"] == 0
-    assert summary["unresolved"] == 1
+    assert summary["unresolved"] == 0
     assert summary["structural"] == 3
     assert summary["source_items_successfully_accounted_for"] == 134
     assert summary["universal_schema_counts"] == {
-        "CDKT": 97,
+        "CDKT": 99,
         "KQKD": 25,
         "LCTT": 110,
         "TM": 1701,
@@ -231,17 +277,15 @@ def test_real_vpb_rows_have_exhaustive_source_driven_dispositions(real_resolutio
         for key, item in dispositions.items()
         if item["disposition"] == "EXISTING_ITEM"
     } == _expected_existing_items()
-    assert {
+    assert not {
         key for key, item in dispositions.items() if item["disposition"] == "NEW_ITEM_PROPOSAL"
-    } == {(6, 4), (6, 6), (9, 20)}
+    }
     assert {key for key, item in dispositions.items() if item["disposition"] == "STRUCTURAL"} == {
         (6, 1),
         (6, 16),
         (6, 17),
     }
-    assert {key for key, item in dispositions.items() if item["disposition"] == "UNRESOLVED"} == {
-        (7, 16)
-    }
+    assert not {key for key, item in dispositions.items() if item["disposition"] == "UNRESOLVED"}
     repeated_detail = dispositions[(5, 11)]
     assert repeated_detail["selected_report_norm_id"] == 4348
     assert repeated_detail["match_basis"] == (
@@ -249,52 +293,246 @@ def test_real_vpb_rows_have_exhaustive_source_driven_dispositions(real_resolutio
     )
 
 
-def test_real_vpb_proposals_have_parent_order_and_non_authorizing_evidence(
+def test_real_vpb_user_resolved_aliases_and_terminal_total_have_audited_receipts(
     real_resolution: dict,
 ):
     result = real_resolution
-    proposals = {
-        (item["source_evidence"]["page"], item["source_evidence"]["row_id"].rsplit("-", 1)[1]): item
-        for item in result["new_item_proposals"]
-    }
-    broad_parent = proposals[(6, "0004")]
-    assert broad_parent["parent"]["report_norm_id"] == 4304
-    assert broad_parent["hierarchy_level"] == 3
-    assert broad_parent["display_order_anchors"] == {
-        "insert_after_report_norm_id": 6037,
-        "insert_before_report_norm_id": 4359,
-    }
-    assert broad_parent["equation_evidence"]["status"].startswith("PASS")
-
-    borrowing = proposals[(6, "0006")]
-    assert borrowing["parent"]["kind"] == "NEW_ITEM_PROPOSAL"
-    assert borrowing["parent"]["proposal_key"] == broad_parent["proposal_key"]
-    assert borrowing["hierarchy_level"] == 4
-    movement = proposals[(9, "0020")]
-    assert movement["parent"]["report_norm_id"] == 4108
-    assert movement["hierarchy_level"] == 2
-    assert all(item["report_norm_id"] is None for item in proposals.values())
+    assert result["new_item_proposals"] == []
     assert result["alias_proposals"] == []
-
-    unresolved_total = next(
-        item for item in result["source_dispositions"] if item["disposition"] == "UNRESOLVED"
+    dispositions = {
+        (item["page"], item["page_row_order"]): item for item in result["source_dispositions"]
+    }
+    assert dispositions[(6, 4)]["selected_report_norm_id"] == 4319
+    assert dispositions[(6, 6)]["selected_report_norm_id"] == 4360
+    assert dispositions[(9, 20)]["selected_report_norm_id"] == 4136
+    terminal_total = dispositions[(7, 16)]
+    assert terminal_total["selected_report_norm_id"] == 6055
+    assert terminal_total["match_basis"] == native._AUDITED_TERMINAL_AGGREGATE_MATCH_BASIS
+    receipt = terminal_total["aggregate_match_receipt"]
+    assert receipt["selection_status"] == "ACCEPTED_EXACT_EVERY_AXIS"
+    assert receipt["equation_used_for_target_selection"] is False
+    assert receipt["equation_used_as_acceptance_gate"] is True
+    assert receipt["exact_tolerance_source_units"] == 0
+    assert receipt["topology"]["physical_table_id"] == (
+        "native-614be8877c21ef18-cdkt-off-balance-sheet-page-0007"
     )
-    evidence = [
-        result["equations"][index] for index in unresolved_total["equation_evidence_indexes"]
-    ]
+    assert receipt["topology"]["direct_child_report_norm_ids"] == [6039, 6050]
+    evidence = [result["equations"][index] for index in terminal_total["equation_evidence_indexes"]]
     assert len(evidence) == 1
-    assert evidence[0]["equation_type"] == (
-        "UNLABELED_TOTAL_EQUALS_UNOBSERVED_SCHEMA_ROOT_CHILDREN"
-    )
-    assert evidence[0]["unobserved_root_report_norm_id"] == 6038
+    assert evidence[0]["equation_type"] == "AUDITED_FORMULA_TERMINAL_AGGREGATE_EXACT_SUM"
+    assert evidence[0]["target_report_norm_id"] == 6055
     assert evidence[0]["status"] == "PASS"
+
+
+def test_terminal_aggregate_exact_equation_is_a_veto_only_and_preserves_children(
+    real_inputs: dict,
+) -> None:
+    payload = copy.deepcopy(real_inputs["rows"])
+    terminal = _row(payload, 7, 16)
+    terminal["cells"][0]["value"] = str(int(terminal["cells"][0]["value"]) + 1)
+    result = _resolve(real_inputs, payload)
+    dispositions = {
+        (item["page"], item["page_row_order"]): item for item in result["source_dispositions"]
+    }
+    rejected = dispositions[(7, 16)]
+    assert rejected["disposition"] == "UNRESOLVED"
+    assert rejected["aggregate_match_receipt"]["selection_status"] == (
+        "VETOED_NOT_EXACT_EVERY_AXIS"
+    )
+    assert rejected["aggregate_match_receipt"]["equation_status"] == (
+        "PASS_WITHIN_ONE_SOURCE_UNIT_ROUNDING"
+    )
+    assert rejected["aggregate_match_receipt"]["equation_axes"][0]["residual"] == "1"
+    assert dispositions[(7, 1)]["selected_report_norm_id"] == 6039
+    assert dispositions[(7, 12)]["selected_report_norm_id"] == 6050
+    assert not any(
+        conflict["conflict_type"] == "COMPLETE_STRUCTURE_EQUATION_CONFLICT"
+        and rejected["row_id"] in conflict["affected_row_ids"]
+        for conflict in result["conflicts"]
+    )
+
+
+def test_terminal_aggregate_is_revoked_when_a_frozen_dependency_is_demoted(
+    real_inputs: dict,
+) -> None:
+    payload = copy.deepcopy(real_inputs["rows"])
+    branch_total = _row(payload, 7, 3)
+    branch_total["cells"][0]["value"] = str(int(branch_total["cells"][0]["value"]) + 2)
+    result = _resolve(real_inputs, payload)
+    dispositions = {
+        (item["page"], item["page_row_order"]): item for item in result["source_dispositions"]
+    }
+    assert dispositions[(7, 3)]["disposition"] == "AMBIGUOUS"
+    terminal_record = dispositions[(7, 16)]
+    assert terminal_record["disposition"] == "UNRESOLVED"
+    assert terminal_record["aggregate_match_receipt"]["selection_status"] == (
+        "VETOED_DEPENDENCY_MAPPING_DEMOTED"
+    )
+    assert terminal_record["aggregate_match_receipt"]["dependency_validation_status"] == (
+        "FAIL_FROZEN_VALUE_INDEPENDENT_DESCENDANT_NOT_RETAINED"
+    )
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    ["LABELED", "INCOMPLETE_CHILD", "AXIS_MISMATCH", "DESCENDANT_AXIS_MISMATCH"],
+)
+def test_terminal_aggregate_requires_unlabeled_complete_same_axis_topology(
+    real_inputs: dict,
+    mutation: str,
+) -> None:
+    payload = copy.deepcopy(real_inputs["rows"])
+    terminal = _row(payload, 7, 16)
+    if mutation == "LABELED":
+        terminal["raw_label"] = "Tổng cộng không được ủy quyền"
+        terminal["normalized_label"] = terminal["raw_label"]
+    elif mutation == "INCOMPLETE_CHILD":
+        component = _row(payload, 7, 12)
+        component["raw_label"] = "Khoản mục không khớp"
+        component["normalized_label"] = component["raw_label"]
+    elif mutation == "AXIS_MISMATCH":
+        terminal["cells"][0]["axis_id"] = "different-axis"
+    else:
+        _row(payload, 7, 4)["cells"][0]["axis_id"] = "different-descendant-axis"
+    result = _resolve(real_inputs, payload)
+    record = next(
+        item
+        for item in result["source_dispositions"]
+        if item["page"] == 7 and item["page_row_order"] == 16
+    )
+    assert record["selected_report_norm_id"] is None
+    assert record["match_basis"] is None
+
+
+def test_terminal_aggregate_contiguity_uses_unfiltered_global_block_order(
+    real_inputs: dict,
+) -> None:
+    payload = copy.deepcopy(real_inputs["rows"])
+    page = _page(payload, 7)
+    terminal = _row(payload, 7, 16)
+    terminal["row_id"] = terminal["row_id"].rsplit(":row-", 1)[0] + ":row-0017"
+    terminal["provenance"]["row_id"] = terminal["row_id"]
+    for cell in terminal["cells"]:
+        cell["provenance"]["row_id"] = terminal["row_id"]
+    foreign = copy.deepcopy(terminal)
+    foreign["row_id"] = foreign["row_id"].rsplit(":row-", 1)[0] + ":row-0016"
+    foreign["raw_label"] = "Dòng vật lý xen giữa"
+    foreign["normalized_label"] = foreign["raw_label"]
+    foreign["provenance"]["row_id"] = foreign["row_id"]
+    foreign["provenance"]["table_id"] = "foreign-physical-table"
+    for cell in foreign["cells"]:
+        cell["provenance"]["row_id"] = foreign["row_id"]
+        cell["provenance"]["table_id"] = "foreign-physical-table"
+    page["rows"].append(foreign)
+    page["reconstructed_row_count"] += 1
+    result = _resolve(real_inputs, payload)
+    terminal_record = next(
+        item for item in result["source_dispositions"] if item["row_id"] == terminal["row_id"]
+    )
+    assert terminal_record["selected_report_norm_id"] is None
+    assert terminal_record["aggregate_match_receipt"] is None
+
+
+def test_terminal_aggregate_is_independent_of_unrelated_equation_inference(
+    real_inputs: dict,
+) -> None:
+    payload = copy.deepcopy(real_inputs["rows"])
+    repeated_parent = _row(payload, 5, 10)
+    repeated_parent["cells"][0]["value"] = str(int(repeated_parent["cells"][0]["value"]) + 7)
+    result = _resolve(real_inputs, payload)
+    terminal = next(
+        item
+        for item in result["source_dispositions"]
+        if item["page"] == 7 and item["page_row_order"] == 16
+    )
+    assert terminal["selected_report_norm_id"] == 6055
+    assert terminal["match_basis"] == native._AUDITED_TERMINAL_AGGREGATE_MATCH_BASIS
+
+
+def test_terminal_aggregate_rejects_value_derived_descendants_and_multiple_roots(
+    real_inputs: dict,
+    real_resolution: dict,
+) -> None:
+    rows = native._source_rows(real_inputs["rows"])
+    dispositions = {
+        record["row_id"]: record
+        for record in real_resolution["source_dispositions"]
+        if record["disposition"] == "EXISTING_ITEM" and record["selected_report_norm_id"] != 6055
+    }
+    selected = {
+        row_id: native._Candidate(
+            report_norm_id=record["selected_report_norm_id"],
+            match_basis=record["match_basis"],
+            matched_label=record["matched_schema_label"],
+            alias_authority_type=record["alias_authority_type"],
+            alias_authority_evidence_sha256=record["alias_authority_evidence_sha256"],
+        )
+        for row_id, record in dispositions.items()
+    }
+    descendant = next(row for row in rows if row.row["page"] == 7 and row.page_order == 2)
+    selected[descendant.row_id] = native.replace(
+        selected[descendant.row_id],
+        match_basis="REPEATED_PARENT_DETAIL_WITH_COMPLETE_HIERARCHY_AND_EQUATION",
+    )
+    schema_by_id = {item.schema_id: item for item in real_inputs["items"]}
+    formula = next(
+        formula for formula in real_inputs["audited_formulas"] if formula.schema_id == 6055
+    )
+    promotions, receipts, _equations, ambiguities = native._promote_audited_terminal_aggregate(
+        rows,
+        selected,
+        schema_by_id,
+        [formula],
+        native._observed_blocks(real_inputs["rows"]),
+    )
+    assert promotions == {}
+    assert receipts == {}
+    assert ambiguities == {}
+
+    selected[descendant.row_id] = native.replace(
+        selected[descendant.row_id], match_basis="CANONICAL_RETRIEVAL_KEY_EXACT"
+    )
+    duplicate_id = 7000
+    duplicate = native.replace(
+        schema_by_id[6055],
+        schema_id=duplicate_id,
+        canonical_name="Synthetic duplicate aggregate",
+        normalized_name="synthetic duplicate aggregate",
+        display_order=99,
+    )
+    schema_with_duplicate = {**schema_by_id, duplicate_id: duplicate}
+    duplicate_formula = native.replace(formula, schema_id=duplicate_id)
+    promotions, receipts, _equations, ambiguities = native._promote_audited_terminal_aggregate(
+        rows,
+        selected,
+        schema_with_duplicate,
+        [formula, duplicate_formula],
+        native._observed_blocks(real_inputs["rows"]),
+    )
+    terminal_row_id = _row(real_inputs["rows"], 7, 16)["row_id"]
+    assert promotions == {}
+    assert set(ambiguities[terminal_row_id]) == {6055, duplicate_id}
+    assert receipts[terminal_row_id]["selection_status"] == (
+        "AMBIGUOUS_MULTIPLE_PRE_VALUE_TOPOLOGY_CANDIDATES"
+    )
+    assert receipts[terminal_row_id]["equation_used_for_target_selection"] is False
+
+    one_component = native.replace(formula, component_schema_ids=(6039,))
+    promotions, receipts, _equations, ambiguities = native._promote_audited_terminal_aggregate(
+        rows,
+        selected,
+        schema_by_id,
+        [one_component],
+        native._observed_blocks(real_inputs["rows"]),
+    )
+    assert promotions == receipts == ambiguities == {}
 
 
 def test_real_vpb_role_b_schema_coverage_is_universal_and_scope_honest(
     real_resolution: dict,
 ):
     result = real_resolution
-    assert len(result["schema_dispositions"]) == 1933
+    assert len(result["schema_dispositions"]) == 1935
     assert result["mandatory_search"]["status"] == "PASS"
     assert result["mandatory_search"]["evaluation_scope"] == ("ROLE_B_ONLY_NO_ROLE_A_OUTPUT_LOADED")
     by_id = {item["report_norm_id"]: item for item in result["schema_dispositions"]}
@@ -307,6 +545,9 @@ def test_real_vpb_role_b_schema_coverage_is_universal_and_scope_honest(
         in by_id[6038]["source_scope_evidence"]["independent_signal_groups_by_page"]["7"]
     )
     assert by_id[6039]["terminal_outcome"] == "OBSERVED_VALUE"
+    assert by_id[6055]["terminal_outcome"] == "OBSERVED_VALUE"
+    assert by_id[6056]["terminal_outcome"] == "UNRESOLVED"
+    assert by_id[6056]["observation_basis"] == "UNKNOWN_DOCUMENT_REPORTING_SCOPE"
     assert by_id[4155]["terminal_outcome"] == "NOT_APPLICABLE"
     assert by_id[560]["terminal_outcome"] == "UNRESOLVED"
     assert result["lctt_method"]["method"] == "DIRECT"
@@ -608,6 +849,131 @@ def test_lctt_branch_and_cdkt_scope_filters_fail_closed(real_inputs: dict):
     }
 
 
+def test_q078_shared_legacy_label_is_branch_gated_before_monotone_selection(
+    real_inputs: dict,
+) -> None:
+    schema_by_id = {item.schema_id: item for item in real_inputs["items"]}
+
+    def source_row(order: int, label: str) -> native._SourceRow:
+        return native._SourceRow(
+            row={
+                "row_id": f"synthetic-lctt:row-{order:04d}",
+                "page": 1,
+                "raw_label": label,
+                "normalized_label": label,
+                "indentation": 0.0,
+                "cells": [],
+            },
+            page_record={},
+            order=order,
+            page_order=order,
+            statement_type="LCTT",
+            scope="MAIN_STATEMENT",
+            within_financial_table_span=True,
+        )
+
+    shared = "Tăng, giảm các khoản tiền gửi và vay các TCTD"
+    direct = native.CashFlowEvidence(
+        native.CashFlowMethod.DIRECT,
+        None,
+        (1, 2),
+        "synthetic proven direct",
+        True,
+    )
+    indirect = native.CashFlowEvidence(
+        native.CashFlowMethod.INDIRECT,
+        (1, 2),
+        None,
+        "synthetic proven indirect",
+        True,
+    )
+    for method, expected_id in ((direct, 4136), (indirect, 4179)):
+        row = source_row(1, shared)
+        resolution = native._resolve_monotone_exact_path(
+            [row],
+            real_inputs["projections"]["LCTT"],
+            schema_by_id,
+            lctt_method=method,
+            accepted_aliases=real_inputs["accepted_aliases"],
+        )
+        assert resolution.selected[row.row_id].report_norm_id == expected_id
+    legacy_direct = source_row(1, "Tăng/(Giảm) tiền gửi, tiền vay các TCTD khác")
+    legacy_resolution = native._resolve_monotone_exact_path(
+        [legacy_direct],
+        real_inputs["projections"]["LCTT"],
+        schema_by_id,
+        lctt_method=direct,
+        accepted_aliases=real_inputs["accepted_aliases"],
+    )
+    assert legacy_resolution.selected[legacy_direct.row_id].report_norm_id == 4136
+
+    unknown = native.CashFlowEvidence(
+        native.CashFlowMethod.UNKNOWN,
+        None,
+        None,
+        "synthetic conflicting method",
+        False,
+    )
+    rows = [
+        source_row(1, schema_by_id[6054].canonical_name),
+        source_row(2, shared),
+        source_row(3, schema_by_id[4138].canonical_name),
+    ]
+    resolution = native._resolve_monotone_exact_path(
+        rows,
+        real_inputs["projections"]["LCTT"],
+        schema_by_id,
+        lctt_method=unknown,
+        accepted_aliases=real_inputs["accepted_aliases"],
+    )
+    assert resolution.selected[rows[0].row_id].report_norm_id == 6054
+    assert resolution.selected[rows[2].row_id].report_norm_id == 4138
+    assert rows[1].row_id not in resolution.selected
+    assert set(resolution.ambiguous[rows[1].row_id]) == {4136, 4179}
+
+
+@pytest.mark.parametrize(
+    ("label", "expected_id"),
+    [
+        ("Vay các TCTD khác", 4360),
+        ("Tiền gửi và vay các TCTD khác", 4319),
+    ],
+)
+def test_q074_q077_old_narrow_labels_remain_typed_exact_aliases(
+    real_inputs: dict,
+    label: str,
+    expected_id: int,
+) -> None:
+    schema_by_id = {item.schema_id: item for item in real_inputs["items"]}
+    row = native._SourceRow(
+        row={
+            "row_id": "synthetic-cdkt:row-0001",
+            "page": 1,
+            "raw_label": label,
+            "normalized_label": label,
+            "indentation": 0.0,
+            "cells": [],
+        },
+        page_record={},
+        order=1,
+        page_order=1,
+        statement_type="CDKT",
+        scope="MAIN_STATEMENT",
+        within_financial_table_span=True,
+    )
+    resolution = native._resolve_monotone_exact_path(
+        [row],
+        real_inputs["projections"]["CDKT"],
+        schema_by_id,
+        lctt_method=None,
+        accepted_aliases=real_inputs["accepted_aliases"],
+    )
+    candidate = resolution.selected[row.row_id]
+    assert candidate.report_norm_id == expected_id
+    assert candidate.match_basis == "ACCEPTED_STRUCTURAL_ALIAS_RETRIEVAL_KEY_EXACT"
+    assert candidate.alias_authority_type == "AUDITED_SCHEMA_ALIAS"
+
+
 def test_hierarchy_and_equation_conflicts_are_local_not_document_fatal(
     real_inputs: dict, real_resolution: dict
 ):
@@ -670,29 +1036,17 @@ def test_producer_snapshots_survive_future_current_schema_change(
         policy=real_inputs["policy"],
         schema_items=real_inputs["items"],
         accepted_aliases=real_inputs["accepted_aliases"],
+        audited_formulas=real_inputs["audited_formulas"],
         coverage=real_inputs["coverage"],
         cash_flow_rules=real_inputs["rules"],
     )
-    monkeypatch.setattr(
-        native,
-        "_file_identity_at_commit",
-        lambda *_args: {
-            "path": native.POLICY_RELATIVE_PATH.as_posix(),
-            "sha256": snapshots["policy"]["source_sha256"],
-            "size_bytes": policy_path.stat().st_size,
-        },
-    )
-    monkeypatch.setattr(
-        native,
-        "_yaml_payload_at_commit",
-        lambda *_args: copy.deepcopy(snapshots["policy"]["payload"]),
-    )
+    _mock_current_bytes_as_producer_commit(monkeypatch, project_root, snapshots)
     monkeypatch.setattr(
         native,
         "_load_schema_bundle",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("current schema read")),
     )
-    loaded_policy, loaded_items, loaded_aliases, loaded_coverage, _ = (
+    loaded_policy, loaded_items, loaded_aliases, loaded_formulas, loaded_coverage, _ = (
         native._load_producer_snapshots(
             snapshots,
             project_root=project_root,
@@ -704,11 +1058,94 @@ def test_producer_snapshots_survive_future_current_schema_change(
         real_inputs["schema_identity"],
         loaded_items,
         loaded_aliases,
+        loaded_formulas,
         loaded_coverage,
     )
-    assert len(loaded_items) == 1933
-    assert len(loaded_aliases) == 193
-    assert len(loaded_coverage.targets) == 1933
+    assert len(loaded_items) == 1935
+    assert len(loaded_aliases) == 197
+    assert len(loaded_formulas) == 69
+    assert len(loaded_coverage.targets) == 1935
+
+
+def test_producer_formula_snapshot_is_commit_bound_and_approved(
+    project_root: Path,
+    real_inputs: dict,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    snapshots = native._producer_snapshots(
+        project_root=project_root,
+        policy_path=project_root / native.POLICY_RELATIVE_PATH,
+        policy=real_inputs["policy"],
+        schema_items=real_inputs["items"],
+        accepted_aliases=real_inputs["accepted_aliases"],
+        audited_formulas=real_inputs["audited_formulas"],
+        coverage=real_inputs["coverage"],
+        cash_flow_rules=real_inputs["rules"],
+    )
+    mutated = copy.deepcopy(snapshots)
+    record = mutated["audited_formulas"]["records"][0]
+    record["component_schema_ids"] = [record["component_schema_ids"][0]]
+    expected_formula_record = {
+        "statement_type": record["statement_type"],
+        "schema_id": record["schema_id"],
+        "operator": record["operator"],
+        "component_schema_ids": record["component_schema_ids"],
+    }
+    record["authority_evidence"]["record_sha256"] = native._record_hash(expected_formula_record)
+    record["authority_evidence_sha256"] = native._record_hash(record["authority_evidence"])
+    mutated["audited_formulas"]["records_sha256"] = native._record_hash(
+        mutated["audited_formulas"]["records"]
+    )
+    _mock_current_bytes_as_producer_commit(monkeypatch, project_root, mutated)
+    with pytest.raises(native.NativeCanonicalMappingError, match="formula authority drifted"):
+        native._load_producer_snapshots(
+            mutated,
+            project_root=project_root,
+            producer_commit="a" * 40,
+        )
+
+    unapproved = copy.deepcopy(snapshots)
+    source_path = unapproved["policy"]["payload"]["schema_authority"]["source_config"]["path"]
+    unapproved["policy"]["payload"]["schema_authority"]["source_config"]["sha256"] = "f" * 64
+    unapproved["policy"]["canonical_payload_sha256"] = native._record_hash(
+        unapproved["policy"]["payload"]
+    )
+    source_payload = native.yaml.safe_load((project_root / source_path).read_text(encoding="utf-8"))
+    source_payload["approved_business_update_audits"] = []
+
+    def identity(_root: Path, _commit: str, raw_path: str) -> dict:
+        if raw_path == native.POLICY_RELATIVE_PATH.as_posix():
+            digest = unapproved["policy"]["source_sha256"]
+        elif raw_path == source_path:
+            digest = "f" * 64
+        else:
+            digest = next(
+                formula["authority_evidence"]["audit_sha256"]
+                for formula in unapproved["audited_formulas"]["records"]
+                if formula["authority_evidence"]["audit_path"] == raw_path
+            )
+        return {
+            "path": raw_path,
+            "sha256": digest,
+            "size_bytes": (project_root / raw_path).stat().st_size,
+        }
+
+    monkeypatch.setattr(native, "_file_identity_at_commit", identity)
+    monkeypatch.setattr(
+        native,
+        "_yaml_payload_at_commit",
+        lambda _root, _commit, raw_path: (
+            copy.deepcopy(unapproved["policy"]["payload"])
+            if raw_path == native.POLICY_RELATIVE_PATH.as_posix()
+            else copy.deepcopy(source_payload)
+        ),
+    )
+    with pytest.raises(native.NativeCanonicalMappingError, match="formula authority drifted"):
+        native._load_producer_snapshots(
+            unapproved,
+            project_root=project_root,
+            producer_commit="a" * 40,
+        )
 
 
 def test_strict_loader_replays_producer_snapshot_without_current_schema(
@@ -726,6 +1163,7 @@ def test_strict_loader_replays_producer_snapshot_without_current_schema(
         policy=real_inputs["policy"],
         schema_items=real_inputs["items"],
         accepted_aliases=real_inputs["accepted_aliases"],
+        audited_formulas=real_inputs["audited_formulas"],
         coverage=real_inputs["coverage"],
         cash_flow_rules=real_inputs["rules"],
     )
@@ -766,6 +1204,7 @@ def test_strict_loader_replays_producer_snapshot_without_current_schema(
             "ordering": "WORKBOOK_DISPLAY_ORDER",
             "hierarchy": "CURRENT_VALIDATED_SCHEMA_GRAPH",
             "source_rows_and_cells": "TRUSTED_REGISTERED_NATIVE_ROWS_SHA256_JOIN",
+            "business_formulas": "HASH_BOUND_APPROVED_BUSINESS_UPDATE_AUDIT_RECORDS",
             "historical_values": None,
             "role_a": None,
             "human_review": None,
@@ -800,20 +1239,7 @@ def test_strict_loader_replays_producer_snapshot_without_current_schema(
         "_expected_runtime_ledger_at_commit",
         lambda **_kwargs: copy.deepcopy(runtime),
     )
-    monkeypatch.setattr(
-        native,
-        "_file_identity_at_commit",
-        lambda *_args: {
-            "path": native.POLICY_RELATIVE_PATH.as_posix(),
-            "sha256": snapshots["policy"]["source_sha256"],
-            "size_bytes": policy_path.stat().st_size,
-        },
-    )
-    monkeypatch.setattr(
-        native,
-        "_yaml_payload_at_commit",
-        lambda *_args: copy.deepcopy(snapshots["policy"]["payload"]),
-    )
+    _mock_current_bytes_as_producer_commit(monkeypatch, project_root, snapshots)
     monkeypatch.setattr(
         native,
         "_load_schema_bundle",
@@ -824,7 +1250,26 @@ def test_strict_loader_replays_producer_snapshot_without_current_schema(
         project_root=project_root,
         expected_sha256=native.sha256_bytes(encoded),
     )
-    assert loaded["summary"]["mapped_to_existing_canonical_items"] == 127
+    assert loaded["summary"]["mapped_to_existing_canonical_items"] == 131
+
+    tampered_receipt = copy.deepcopy(payload)
+    aggregate = next(
+        record
+        for record in tampered_receipt["source_dispositions"]
+        if record["selected_report_norm_id"] == 6055
+    )
+    aggregate["aggregate_match_receipt"]["topology"]["physical_table_id"] = (
+        "tampered-physical-table"
+    )
+    receipt_encoded = native._canonical_json_bytes(tampered_receipt)
+    receipt_artifact = tmp_path / "mapping-receipt-tampered.json"
+    receipt_artifact.write_bytes(receipt_encoded)
+    with pytest.raises(native.NativeCanonicalMappingError, match="topology/formula join"):
+        native.load_registered_native_canonical_mapping(
+            receipt_artifact,
+            project_root=project_root,
+            expected_sha256=native.sha256_bytes(receipt_encoded),
+        )
 
     tampered_code = copy.deepcopy(payload)
     tampered_code["code"]["implementation"] = [
@@ -839,6 +1284,28 @@ def test_strict_loader_replays_producer_snapshot_without_current_schema(
             project_root=project_root,
             expected_sha256=native.sha256_bytes(tampered_encoded),
         )
+
+
+def test_legacy_6054_registered_artifact_strictly_replays_byte_identically(
+    project_root: Path,
+) -> None:
+    artifact = (
+        project_root / "output/development/vpb-q1-2026-native-canonical-v1/canonical-mapping.json"
+    )
+    expected_sha256 = "94d24bdc307101f0024a18e72cd94100fecb937e525dfbca37baa622d7475597"
+    assert sha256_file(artifact) == expected_sha256
+    loaded = native.load_registered_native_canonical_mapping(
+        artifact,
+        project_root=project_root,
+        expected_sha256=expected_sha256,
+    )
+    assert loaded["schema"]["revision"] == "UNIVERSAL_BANK_BCTC_SCHEMA@6054"
+    assert "audited_formulas" not in loaded["producer_snapshots"]
+    assert all(
+        "aggregate_match_receipt" not in disposition
+        for disposition in loaded["source_dispositions"]
+    )
+    assert loaded["summary"]["mapped_to_existing_canonical_items"] == 127
 
 
 def test_embedded_runtime_ledger_requires_exact_inventory_and_hashes(

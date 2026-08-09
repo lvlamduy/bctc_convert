@@ -97,5 +97,11 @@ rows:
 
 accounting_checks:
   - target_report_norm_id: 6041
+    # MBB compresses the unprinted 6056 subtotal and exposes its two leaves.
+    # This is validation-only: a missing subtotal must never be imputed.
     component_report_norm_ids: [6042, 6043, 6044, 6045]
+    schema_component_report_norm_ids: [6042, 6043, 6056]
+    compressed_unobserved_subtotal:
+      report_norm_id: 6056
+      leaf_report_norm_ids: [6044, 6045]
     operator: SUM

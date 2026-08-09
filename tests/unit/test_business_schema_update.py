@@ -1,11 +1,20 @@
 from __future__ import annotations
 
+import copy
 from functools import lru_cache
 
+import pytest
+
 from bctc_ai.core.hashing import sha256_file
+from bctc_ai.schema import business_update as business
 from bctc_ai.schema.business_update import (
     BUSINESS_UPDATE_AUDIT,
     CDKT_BEFORE_SHA256,
+    CDKT_CURRENT_SCHEMA_IDS,
+    CDKT_OFF_BALANCE_TOTAL_COMPONENTS,
+    CDKT_OFF_BALANCE_TOTAL_ID,
+    CDKT_SWAP_COMMITMENT_TOTAL_COMPONENTS,
+    CDKT_SWAP_COMMITMENT_TOTAL_ID,
     CDKT_TOTAL_EQUITY_COMPONENTS,
     CDKT_TOTAL_EQUITY_ID,
     CDKT_VPB_SCHEMA_IDS,
@@ -39,6 +48,7 @@ from bctc_ai.schema.business_update import (
     TM_TOTAL_INTERBANK_PROVISION_ID,
     TM_UNIVERSAL_SCHEMA_IDS,
     TM_WORKBOOK,
+    BusinessSchemaUpdateError,
     verify_business_schema_update,
 )
 from bctc_ai.schema.hierarchy import apply_hierarchy_reference, load_hierarchy_reference
@@ -64,23 +74,21 @@ def test_business_schema_migration_is_hash_bound_and_preserves_sealed_baselines(
     assert set(audit["collision_safety"]["new_ids"]).isdisjoint(REVIEWED_EXTERNAL_IDS)
     assert audit["schema_strategy"]["base_schema"]["item_count"] == 1593
     assert audit["schema_strategy"]["universal_schema"] == {
-        "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6054",
-        "item_count": 1933,
-        "counts": {"CDKT": 97, "KQKD": 25, "LCTT": 110, "TM": 1701},
-        "high_watermark": 6054,
+        "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6056",
+        "item_count": 1935,
+        "counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1701},
+        "high_watermark": 6056,
         "workbook_sha256": {
             statement: record["after_sha256"] for statement, record in audit["workbooks"].items()
         },
     }
-    assert audit["schema_strategy"]["migration_delta"]["new_report_norm_ids"] == list(
-        range(6035, 6055)
-    )
+    assert audit["schema_strategy"]["migration_delta"]["new_report_norm_ids"] == [6055, 6056]
     accepted_changes = {
         record["schema_id"]: record
         for record in audit["schema_changes"]
         if record.get("schema_status") == "ACCEPTED_UNIVERSAL"
     }
-    assert set(accepted_changes) == set(range(5991, 6055))
+    assert set(accepted_changes) == set(range(5991, 6057))
     assert all(
         accepted_changes[schema_id]["section"] == "BALANCE_SHEET_NOTES"
         for schema_id in range(5991, 6021)
@@ -98,9 +106,64 @@ def test_business_schema_migration_is_hash_bound_and_preserves_sealed_baselines(
         for schema_id in range(6038, 6054)
     )
     assert accepted_changes[6054]["section"] == "DIRECT_CASH_FLOW_OPERATING_ASSET_CHANGES"
+    assert accepted_changes[6055]["section"] == "OFF_BALANCE_SHEET"
+    assert accepted_changes[6056]["section"] == "OFF_BALANCE_SHEET"
+    ctg_swap = accepted_changes[6056]["evidence"]
+    assert ctg_swap["user_decision"] == "Q076"
+    assert ctg_swap["source_row_ref"] == "ctg-p5-5705"
+    assert ctg_swap["source_document_sha256"] == (
+        "f7453816648cac21536621e09d4e52a40e8ce9fcdbaf824981b3b997a8197318"
+    )
+    assert ctg_swap["reviewed_evidence_sha256"] == (
+        "32c86c0bf7642d3bd7596225331fc6f10906970476e1a9ba982b2f478d0f8e74"
+    )
+    assert ctg_swap["observed_values"] == ["937.179.489", "849.738.846"]
+    assert ctg_swap["exact_parent_equation"] == {
+        "target_schema_id": 6041,
+        "component_schema_ids": [6042, 6043, 6056],
+        "current": "953123645=7973593+7970563+937179489",
+        "comparative": "860422276=5341651+5341779+849738846",
+    }
+    bridge = ctg_swap["reviewed_evidence_bridge"]
+    assert bridge["reviewed_item_id"] == 5705
+    assert bridge["visible_row_id"] == "ctg-p5-5705"
+    assert bridge["period_axes"] == {
+        "CURRENT": "2026-06-30",
+        "COMPARATIVE": "2025-12-31",
+    }
+    assert bridge["current_schema_target_id"] == 6056
+    assert bridge["current_schema_target_authority"] == "Q076"
+    assert bridge["sealed_historical_template_membership"] == ("OUTSIDE_CURRENT_TARGET_TEMPLATE")
+    assert bridge["sealed_historical_mapping_action"] == "DO_NOT_MAP_TO_TARGET_CDKT"
+    assert bridge["sealed_history_mutated"] is False
     alias_changes = audit["structural_alias_changes"]
-    assert len(alias_changes) == 51
-    assert sum(change["added_to_structural_aliases"] is True for change in alias_changes) == 48
+    assert len(alias_changes) == 57
+    assert sum(change["added_to_structural_aliases"] is True for change in alias_changes) == 54
+    corrected_names = {
+        record["schema_id"]: record
+        for record in audit["schema_changes"]
+        if record.get("change") == "CORRECT_DISPLAY_NAME"
+    }
+    assert corrected_names[4360]["after"] == "Vay các TCTC, TCTD khác"
+    assert corrected_names[4319]["after"] == "Tiền gửi và vay các TCTC, TCTD khác"
+    assert corrected_names[4136]["after"] == ("Tăng, giảm các khoản tiền gửi và vay các TCTC, TCTD")
+
+
+def test_q078_declared_cross_branch_alias_collision_fails_closed(
+    project_root, monkeypatch: pytest.MonkeyPatch
+):
+    _, loaded = load_all(project_root / "template", project_root)
+    schema = copy.deepcopy(loaded)
+    by_key = {(item.statement_type, item.schema_id): item for item in schema}
+    collision_change = next(
+        change
+        for change in business._expected_structural_alias_changes()
+        if change.get("collision_handling") == "OPPOSITE_CASH_FLOW_BRANCH_TYPED_ALIAS"
+    )
+    monkeypatch.setattr(business, "_expected_structural_alias_changes", lambda: [collision_change])
+    by_key[("LCTT", 4179)].canonical_name = "Synthetic owner drift"
+    with pytest.raises(BusinessSchemaUpdateError, match="structural alias collision"):
+        business._apply_structural_alias_changes(schema, by_key)
 
 
 def test_business_formula_overlay_has_exact_authorized_edges(project_root):
@@ -130,9 +193,13 @@ def test_business_formula_overlay_has_exact_authorized_edges(project_root):
     assert by_id[4316].children == [4350, 4351, 6036, 4352]
     assert by_id[4318].children == [6037]
     assert by_id[6038].parent_id is None
-    assert by_id[6038].children == [6039, 6050]
+    assert by_id[6038].children == [CDKT_OFF_BALANCE_TOTAL_ID]
+    assert by_id[CDKT_OFF_BALANCE_TOTAL_ID].children == list(CDKT_OFF_BALANCE_TOTAL_COMPONENTS)
     assert by_id[6039].children == [6040, 6041, 6046, 6047, 6048]
-    assert by_id[6041].children == [6042, 6043, 6044, 6045]
+    assert by_id[6041].children == [6042, 6043, CDKT_SWAP_COMMITMENT_TOTAL_ID]
+    assert by_id[CDKT_SWAP_COMMITMENT_TOTAL_ID].children == list(
+        CDKT_SWAP_COMMITMENT_TOTAL_COMPONENTS
+    )
     assert by_id[6048].children == [6049]
     assert by_id[6050].children == [6051, 6052, 6053]
     assert by_id[4376].children == [KQKD_TOTAL_OPERATING_INCOME_ID, 4391]
@@ -162,7 +229,33 @@ def test_business_formula_overlay_has_exact_authorized_edges(project_root):
         "CÁC CHỈ TIÊU NGOÀI BÁO CÁO TÌNH HÌNH TÀI CHÍNH HỢP NHẤT" in by_id[6038].structural_aliases
     )
     assert set(CDKT_VPB_SCHEMA_IDS) == set(range(6035, 6054))
-    assert all(by_id[schema_id].scope == ["CONSOLIDATED"] for schema_id in range(6038, 6054))
+    assert set(CDKT_CURRENT_SCHEMA_IDS) == {6055, 6056}
+    assert {*CDKT_VPB_SCHEMA_IDS, *CDKT_CURRENT_SCHEMA_IDS} == {
+        *range(6035, 6054),
+        6055,
+        6056,
+    }
+    assert all(
+        by_id[schema_id].scope == ["CONSOLIDATED"] for schema_id in (*range(6038, 6054), 6055, 6056)
+    )
+    assert by_id[4360].canonical_name == "Vay các TCTC, TCTD khác"
+    assert by_id[4319].canonical_name == "Tiền gửi và vay các TCTC, TCTD khác"
+    assert by_id[4136].canonical_name == ("Tăng, giảm các khoản tiền gửi và vay các TCTC, TCTD")
+    assert set(by_id[4360].structural_aliases) == {
+        "2. Vay các TCTD khác",
+        "Vay các TCTD khác",
+    }
+    assert set(by_id[4319].structural_aliases) == {
+        "II. Tiền gửi và vay các TCTD khác",
+        "Tiền gửi và vay các TCTD khác",
+        'Tiền gửi và vay các tổ chức tài chính ("TCTC"), TCTD khác',
+    }
+    assert set(by_id[4136].structural_aliases) == {
+        "16. Tăng/(Giảm) các khoản tiền gửi, tiền vay các tổ chức tín dụng",
+        "Tăng, giảm các khoản tiền gửi và vay các TCTD",
+        "Tăng/(Giảm) tiền gửi, tiền vay các TCTD khác",
+        ("Tăng/(Giảm) tiền gửi, tiền vay từ các tổ chức tài chính, tổ chức tín dụng khác"),
+    }
     assert by_id[TM_TOTAL_INTERBANK_PROVISION_ID].parent_id == 575
     assert by_id[TM_TOTAL_INTERBANK_PROVISION_ID].children == []
     assert by_id[575].children == [576, 585, TM_TOTAL_INTERBANK_PROVISION_ID]

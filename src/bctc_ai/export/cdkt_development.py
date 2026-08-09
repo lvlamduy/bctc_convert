@@ -30,9 +30,9 @@ from bctc_ai.tables.cdkt_off_balance_page5 import (
     parse_cdkt_off_balance_page5,
 )
 
-CDKT_SCHEMA_COUNT = 97
+CDKT_SCHEMA_COUNT = 99
 CDKT_MAPPED_SCHEMA_COUNT = 73
-CDKT_NOT_OBSERVED_SCHEMA_COUNT = 24
+CDKT_NOT_OBSERVED_SCHEMA_COUNT = 26
 CDKT_UNRESOLVED_SCHEMA_COUNT = 0
 CDKT_SOURCE_ROW_COUNT = 75
 CDKT_PHYSICAL_CELL_COUNT = 150
@@ -40,10 +40,10 @@ CDKT_OBSERVED_VALUE_COUNT = 132
 CDKT_DERIVED_VALUE_COUNT = 2
 CDKT_EXPORTED_VALUE_COUNT = 134
 CDKT_TOTAL_EQUITY_ID = 5712
-CDKT_VPB_SCHEMA_IDS = frozenset(range(6035, 6054))
-CDKT_VPB_OFF_BALANCE_SCHEMA_IDS = frozenset(range(6038, 6054))
+CDKT_VPB_SCHEMA_IDS = frozenset((*range(6035, 6054), 6055, 6056))
+CDKT_VPB_OFF_BALANCE_SCHEMA_IDS = frozenset((*range(6038, 6054), 6055, 6056))
 CDKT_MBB_MAPPED_OFF_BALANCE_SCHEMA_IDS = frozenset(range(6038, 6049))
-CDKT_MBB_NOT_OBSERVED_OFF_BALANCE_SCHEMA_IDS = frozenset(range(6049, 6054))
+CDKT_MBB_NOT_OBSERVED_OFF_BALANCE_SCHEMA_IDS = frozenset((*range(6049, 6054), 6055, 6056))
 CDKT_TEMPLATE_MAX_ROW = CDKT_SCHEMA_COUNT + 1
 CDKT_SCHEMA_EVOLUTION_OWNERSHIP = {
     6035: (4347, "page-0003-row-006-label", (-34_663_000_000, -39_393_000_000)),
@@ -436,7 +436,7 @@ def _update_main_sheet(
         "BLANK": 7,
         "DASH": 5,
         "DERIVED_FROM_COMPONENTS": 2,
-        "NOT_OBSERVED_IN_THIS_PDF": 14,
+        "NOT_OBSERVED_IN_THIS_PDF": 18,
         "NOT_OBSERVED_ON_TARGET_STATEMENT_PAGES": 34,
         "VALUE": 132,
     }
@@ -886,6 +886,24 @@ def build_cdkt_development_artifacts(
         ],
         "off_balance_page5": {
             "accounting_checks_passed": list(off_balance.accounting_checks_passed),
+            "schema_accounting_checks": [
+                {
+                    "target_report_norm_id": check.target_report_norm_id,
+                    "physical_component_report_norm_ids": list(check.component_report_norm_ids),
+                    "schema_component_report_norm_ids": list(
+                        check.schema_component_report_norm_ids
+                    ),
+                    "compressed_unobserved_subtotal": {
+                        "report_norm_id": check.compressed_unobserved_subtotal.report_norm_id,
+                        "leaf_report_norm_ids": list(
+                            check.compressed_unobserved_subtotal.leaf_report_norm_ids
+                        ),
+                        "imputed": False,
+                    },
+                    "operator": check.operator,
+                }
+                for check in off_balance.accounting_checks
+            ],
             "mapped_report_norm_ids": sorted(CDKT_MBB_MAPPED_OFF_BALANCE_SCHEMA_IDS),
             "physical_cell_count": off_balance.physical_cell_count,
             "policy_path": off_balance.policy_path,

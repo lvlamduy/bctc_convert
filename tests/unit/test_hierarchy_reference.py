@@ -25,7 +25,7 @@ def test_vst_hierarchy_is_complete_where_claimed_and_partial_for_direct_lctt(pro
     assert lctt.schema_only_append_ids == (5714, 6034, 6054)
     cdkt = next(workbook for workbook in registry.workbooks if workbook.statement_type == "CDKT")
     assert cdkt.skipped_blank_rows == 47
-    assert cdkt.schema_only_append_ids == (5712, *range(6035, 6054))
+    assert cdkt.schema_only_append_ids == (5712, *range(6035, 6054), 6055, 6056)
     kqkd = next(workbook for workbook in registry.workbooks if workbook.statement_type == "KQKD")
     assert kqkd.schema_only_append_ids == (5713,)
     tm = next(workbook for workbook in registry.workbooks if workbook.statement_type == "TM")
@@ -63,9 +63,13 @@ def test_hierarchy_edges_and_structural_aliases_are_attached_without_reordering(
     assert by_id[4316].children == [4350, 4351, 6036, 4352]
     assert by_id[4318].children == [6037]
     assert by_id[6038].parent_id is None
-    assert by_id[6038].children == [6039, 6050]
+    assert by_id[6038].children == [6055]
+    assert by_id[6055].parent_id == 6038
+    assert by_id[6055].children == [6039, 6050]
     assert by_id[6039].children == [6040, 6041, 6046, 6047, 6048]
-    assert by_id[6041].children == [6042, 6043, 6044, 6045]
+    assert by_id[6041].children == [6042, 6043, 6056]
+    assert by_id[6056].parent_id == 6041
+    assert by_id[6056].children == [6044, 6045]
     assert by_id[6048].children == [6049]
     assert by_id[6050].children == [6051, 6052, 6053]
     assert by_id[5713].children == [4385, 4386, 4387, 4388, 4389, 4390, 4393]

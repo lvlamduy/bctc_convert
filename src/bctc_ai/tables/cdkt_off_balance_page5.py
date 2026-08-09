@@ -46,9 +46,17 @@ class CDKTOffBalanceRowRule:
 
 
 @dataclass(frozen=True)
+class CDKTCompressedUnobservedSubtotal:
+    report_norm_id: int
+    leaf_report_norm_ids: tuple[int, ...]
+
+
+@dataclass(frozen=True)
 class CDKTOffBalanceAccountingCheck:
     target_report_norm_id: int
     component_report_norm_ids: tuple[int, ...]
+    schema_component_report_norm_ids: tuple[int, ...]
+    compressed_unobserved_subtotal: CDKTCompressedUnobservedSubtotal
     operator: str
 
 
@@ -121,6 +129,7 @@ class ParsedCDKTOffBalancePage5:
     policy_sha256: str
     axes: tuple[CDKTOffBalanceAxis, ...]
     rows: tuple[CDKTOffBalanceRow, ...]
+    accounting_checks: tuple[CDKTOffBalanceAccountingCheck, ...]
     accounting_checks_passed: tuple[str, ...]
 
     @property
@@ -286,20 +295,47 @@ def load_cdkt_off_balance_page5_policy(path: Path, project_root: Path) -> CDKTOf
     for record in checks_raw:
         check = _required_mapping(record, "accounting check")
         components = check.get("component_report_norm_ids")
+        schema_components = check.get("schema_component_report_norm_ids")
+        compressed = _required_mapping(
+            check.get("compressed_unobserved_subtotal"),
+            "compressed unobserved subtotal",
+        )
+        compressed_leaves = compressed.get("leaf_report_norm_ids")
         if (
             check.get("operator") != "SUM"
             or not isinstance(components, list)
+            or not isinstance(schema_components, list)
+            or not isinstance(compressed_leaves, list)
             or any(isinstance(value, bool) or not isinstance(value, int) for value in components)
+            or any(
+                isinstance(value, bool) or not isinstance(value, int) for value in schema_components
+            )
+            or any(
+                isinstance(value, bool) or not isinstance(value, int) for value in compressed_leaves
+            )
         ):
             raise CDKTOffBalancePage5Error("page-5 accounting check is invalid")
         checks.append(
             CDKTOffBalanceAccountingCheck(
                 target_report_norm_id=_required_int(check, "target_report_norm_id", positive=True),
                 component_report_norm_ids=tuple(components),
+                schema_component_report_norm_ids=tuple(schema_components),
+                compressed_unobserved_subtotal=CDKTCompressedUnobservedSubtotal(
+                    report_norm_id=_required_int(compressed, "report_norm_id", positive=True),
+                    leaf_report_norm_ids=tuple(compressed_leaves),
+                ),
                 operator="SUM",
             )
         )
-    if checks != [CDKTOffBalanceAccountingCheck(6041, (6042, 6043, 6044, 6045), "SUM")]:
+    if checks != [
+        CDKTOffBalanceAccountingCheck(
+            6041,
+            (6042, 6043, 6044, 6045),
+            (6042, 6043, 6056),
+            CDKTCompressedUnobservedSubtotal(6056, (6044, 6045)),
+            "SUM",
+        )
+    ]:
         raise CDKTOffBalancePage5Error("page-5 accounting check inventory drifted")
     return CDKTOffBalancePage5Policy(
         source_path=path,
@@ -516,6 +552,7 @@ def parse_cdkt_off_balance_page5(
         policy_sha256=policy.policy_sha256,
         axes=policy.axes,
         rows=tuple(rows),
+        accounting_checks=policy.accounting_checks,
         accounting_checks_passed=tuple(passed_checks),
     )
     if (
@@ -531,6 +568,8 @@ def parse_cdkt_off_balance_page5(
 __all__ = [
     "CDKT_OFF_BALANCE_PAGE5_POLICY_RELATIVE_PATH",
     "CDKTOffBalanceCell",
+    "CDKTCompressedUnobservedSubtotal",
+    "CDKTOffBalanceAccountingCheck",
     "CDKTOffBalancePage5Error",
     "CDKTOffBalancePage5Policy",
     "CDKTOffBalanceRow",

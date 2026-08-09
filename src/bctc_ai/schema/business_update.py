@@ -21,10 +21,10 @@ if TYPE_CHECKING:
     from bctc_ai.schema.registry import SchemaItem
 
 
-BUSINESS_UPDATE_AUDIT = "data/registered/schema_business_update_5712_5713_5714_5718_6054.json"
-PRIOR_BUSINESS_UPDATE_AUDIT = "data/registered/schema_business_update_5712_5713_5714_5718_6034.json"
+BUSINESS_UPDATE_AUDIT = "data/registered/schema_business_update_5712_5713_5714_5718_6056.json"
+PRIOR_BUSINESS_UPDATE_AUDIT = "data/registered/schema_business_update_5712_5713_5714_5718_6054.json"
 PRIOR_BUSINESS_UPDATE_AUDIT_SHA256 = (
-    "28491a2e4bccef813c85fc9e0069beea19fea5df5ec234f9e39a8bb52b5c44ec"
+    "43d4402622adf41776debda39ba8db45e741420e61c57ff4b3f814bfb88020c3"
 )
 
 CDKT_BASELINE_WORKBOOK = "template/Bank_CDKT_ReportNormId.xlsx"
@@ -43,7 +43,7 @@ TM_BEFORE_SHA256 = "fa284e3af1f90c8a206308f63e6d35e77a9fbf1abcaf60abcb59877c4727
 
 CDKT_BEFORE_ROW_COUNT = 78
 KQKD_BEFORE_ROW_COUNT = 25
-CDKT_AFTER_ROW_COUNT = 98
+CDKT_AFTER_ROW_COUNT = 100
 KQKD_AFTER_ROW_COUNT = 26
 LCTT_BEFORE_ROW_COUNT = 108
 LCTT_AFTER_ROW_COUNT = 111
@@ -51,30 +51,37 @@ TM_BEFORE_ROW_COUNT = 1386
 TM_AFTER_ROW_COUNT = 1702
 
 BASE_SCHEMA_ITEM_COUNT = 1593
-PRIOR_UNIVERSAL_SCHEMA_ITEM_COUNT = 1913
-UNIVERSAL_SCHEMA_ITEM_COUNT = 1933
-PRIOR_UNIVERSAL_HIGH_WATERMARK = 6034
-UNIVERSAL_HIGH_WATERMARK = 6054
+PRIOR_UNIVERSAL_SCHEMA_ITEM_COUNT = 1933
+UNIVERSAL_SCHEMA_ITEM_COUNT = 1935
+PRIOR_UNIVERSAL_HIGH_WATERMARK = 6054
+UNIVERSAL_HIGH_WATERMARK = 6056
 
 PRIOR_UNIVERSAL_WORKBOOK_SHA256 = {
-    "CDKT": "2289c0ff2e988c36131f2b4e5675efc1d9ca40776c72439ef205aae43103951f",
-    "KQKD": "12908b0acb8970e37f382f79898b7d2124079e1e16bab17d8e03811a7004cd52",
-    "LCTT": "0b61441567efff7b361d59dc31ac662e52f9f815c2c2e463236b5fc6b4af3257",
+    "CDKT": "8db357163a74826091552e3481698fcb2ed16a2eb45d60d2d3f96c1a18617f3a",
+    "KQKD": "f860ff4267054e1dea330f91de498bd2a835fd77f824a5dc444abb412a6346c8",
+    "LCTT": "d1c277468eea7b8db754ee771d615278da3e307004e5d91f2c90418e21ab4493",
     "TM": "82215c17f6d0aba33c01b03d6af76cc80ad53e0b129bf101f7e0b266cc9ea28f",
 }
 PRIOR_UNIVERSAL_IDENTITY_ORDER_SHA256 = {
-    "CDKT": "656f2a87a4d7310ff395214ca336f59d5e72bdeaa97367116d55c2ec7fff31d7",
-    "KQKD": "fd979f9f84225435192a8eb158ed01160a2b2d04e957f672e73e77f8af489cd0",
-    "LCTT": "0b65f5db8d70ffba280203d2e0260e96eb975c0459c17ceaac5d0400968ede17",
+    "CDKT": "80916e82300f4644f6f55c7036edc3ab19d3d3e636b1f2391361c72363627c78",
+    "KQKD": "d96e239b125c07253fd7646c18db31b4c1ac4ee3ef662fbd787c151906f82693",
+    "LCTT": "32a995a3d11af834e86dda84bcea639303197eebd148fa73be495b7ac89e345f",
     "TM": "46a31cab2ba33a15a666ed2ca3e974adbcf4298e1c0e17b04213e5d21979ec32",
 }
 
 PREVIOUS_V2_SHA256 = {
-    "CDKT": ("2289c0ff2e988c36131f2b4e5675efc1d9ca40776c72439ef205aae43103951f",),
-    "KQKD": ("12908b0acb8970e37f382f79898b7d2124079e1e16bab17d8e03811a7004cd52",),
+    "CDKT": (
+        "2289c0ff2e988c36131f2b4e5675efc1d9ca40776c72439ef205aae43103951f",
+        "8db357163a74826091552e3481698fcb2ed16a2eb45d60d2d3f96c1a18617f3a",
+    ),
+    "KQKD": (
+        "12908b0acb8970e37f382f79898b7d2124079e1e16bab17d8e03811a7004cd52",
+        "f860ff4267054e1dea330f91de498bd2a835fd77f824a5dc444abb412a6346c8",
+    ),
     "LCTT": (
         "aa0f4912b1e343e404bc2490f6fe628db6b7980a180c6d03e27633b993afeb41",
         "0b61441567efff7b361d59dc31ac662e52f9f815c2c2e463236b5fc6b4af3257",
+        "d1c277468eea7b8db754ee771d615278da3e307004e5d91f2c90418e21ab4493",
     ),
     "TM": (
         "bcffd9baa04a3e3aad1c80ce867e38b0145626969409213122ec3d1c0cd8451c",
@@ -126,6 +133,22 @@ VPB_PDF_PATH = "vietstock_bctc/VPB/2026/3-bctc-hop-nhat-ban-tra-cuu.pdf"
 VPB_NATIVE_ROWS_SHA256 = "fa1c5d1cbc0237b2fc7c65791857b21e6f6884d2acbe9fc2a17d0da5e661521f"
 VPB_NATIVE_ROWS_PATH = "output/development/vpb-q1-2026-native-rows-v1/statement-rows.json"
 
+CTG_PDF_SHA256 = "f7453816648cac21536621e09d4e52a40e8ce9fcdbaf824981b3b997a8197318"
+CTG_PDF_PATH = "vietstock_bctc/CTG/2026/BCTC Hợp nhất quý 2 năm 2026.pdf"
+CTG_REVIEW_PATH = "reference/human_review/reviewed-mapping-corrections-2026-08-06.yaml"
+CTG_REVIEW_SHA256 = "32c86c0bf7642d3bd7596225331fc6f10906970476e1a9ba982b2f478d0f8e74"
+
+CDKT_OFF_BALANCE_TOTAL_ID = 6055
+CDKT_OFF_BALANCE_TOTAL_NAME = "Tổng chỉ tiêu ngoại bảng"
+CDKT_OFF_BALANCE_TOTAL_COMPONENTS = (6039, 6050)
+CDKT_SWAP_COMMITMENT_TOTAL_ID = 6056
+CDKT_SWAP_COMMITMENT_TOTAL_NAME = "Cam kết giao dịch hoán đổi"
+CDKT_SWAP_COMMITMENT_TOTAL_COMPONENTS = (6044, 6045)
+CDKT_CURRENT_SCHEMA_IDS = (
+    CDKT_OFF_BALANCE_TOTAL_ID,
+    CDKT_SWAP_COMMITMENT_TOTAL_ID,
+)
+
 CDKT_VPB_SCHEMA_ITEMS: tuple[
     tuple[int, str, int | None, int, str, int, str, tuple[str, str]], ...
 ] = (
@@ -172,8 +195,8 @@ CDKT_VPB_SCHEMA_ITEMS: tuple[
     (
         6039,
         "Nghĩa vụ nợ tiềm ẩn",
-        6038,
-        1,
+        CDKT_OFF_BALANCE_TOTAL_ID,
+        2,
         "OFF_BALANCE_SHEET",
         7,
         "page-0007:row-0001",
@@ -183,7 +206,7 @@ CDKT_VPB_SCHEMA_ITEMS: tuple[
         6040,
         "Bảo lãnh vay vốn",
         6039,
-        2,
+        3,
         "OFF_BALANCE_SHEET",
         7,
         "page-0007:row-0002",
@@ -193,7 +216,7 @@ CDKT_VPB_SCHEMA_ITEMS: tuple[
         6041,
         "Cam kết giao dịch hối đoái",
         6039,
-        2,
+        3,
         "OFF_BALANCE_SHEET",
         7,
         "page-0007:row-0003",
@@ -203,7 +226,7 @@ CDKT_VPB_SCHEMA_ITEMS: tuple[
         6042,
         "- Cam kết mua ngoại tệ",
         6041,
-        3,
+        4,
         "OFF_BALANCE_SHEET",
         7,
         "page-0007:row-0004",
@@ -213,7 +236,7 @@ CDKT_VPB_SCHEMA_ITEMS: tuple[
         6043,
         "- Cam kết bán ngoại tệ",
         6041,
-        3,
+        4,
         "OFF_BALANCE_SHEET",
         7,
         "page-0007:row-0005",
@@ -222,8 +245,8 @@ CDKT_VPB_SCHEMA_ITEMS: tuple[
     (
         6044,
         "- Cam kết nhận - giao dịch hoán đổi tiền tệ",
-        6041,
-        3,
+        CDKT_SWAP_COMMITMENT_TOTAL_ID,
+        5,
         "OFF_BALANCE_SHEET",
         7,
         "page-0007:row-0006",
@@ -232,8 +255,8 @@ CDKT_VPB_SCHEMA_ITEMS: tuple[
     (
         6045,
         "- Cam kết trả - giao dịch hoán đổi tiền tệ",
-        6041,
-        3,
+        CDKT_SWAP_COMMITMENT_TOTAL_ID,
+        5,
         "OFF_BALANCE_SHEET",
         7,
         "page-0007:row-0007",
@@ -243,7 +266,7 @@ CDKT_VPB_SCHEMA_ITEMS: tuple[
         6046,
         "Cam kết trong nghiệp vụ L/C",
         6039,
-        2,
+        3,
         "OFF_BALANCE_SHEET",
         7,
         "page-0007:row-0008",
@@ -253,7 +276,7 @@ CDKT_VPB_SCHEMA_ITEMS: tuple[
         6047,
         "Bảo lãnh khác",
         6039,
-        2,
+        3,
         "OFF_BALANCE_SHEET",
         7,
         "page-0007:row-0009",
@@ -263,7 +286,7 @@ CDKT_VPB_SCHEMA_ITEMS: tuple[
         6048,
         "Các cam kết khác",
         6039,
-        2,
+        3,
         "OFF_BALANCE_SHEET",
         7,
         "page-0007:row-0010",
@@ -273,7 +296,7 @@ CDKT_VPB_SCHEMA_ITEMS: tuple[
         6049,
         "Trong đó: hạn mức tín dụng chưa sử dụng có thể hủy ngang",
         6048,
-        3,
+        4,
         "OFF_BALANCE_SHEET",
         7,
         "page-0007:row-0011",
@@ -282,8 +305,8 @@ CDKT_VPB_SCHEMA_ITEMS: tuple[
     (
         6050,
         "Các khoản mục ngoại bảng khác",
-        6038,
-        1,
+        CDKT_OFF_BALANCE_TOTAL_ID,
+        2,
         "OFF_BALANCE_SHEET",
         7,
         "page-0007:row-0012",
@@ -293,7 +316,7 @@ CDKT_VPB_SCHEMA_ITEMS: tuple[
         6051,
         "Lãi cho vay và phí phải thu chưa thu được",
         6050,
-        2,
+        3,
         "OFF_BALANCE_SHEET",
         7,
         "page-0007:row-0013",
@@ -303,7 +326,7 @@ CDKT_VPB_SCHEMA_ITEMS: tuple[
         6052,
         "Nợ khó đòi đã xử lý",
         6050,
-        2,
+        3,
         "OFF_BALANCE_SHEET",
         7,
         "page-0007:row-0014",
@@ -313,7 +336,7 @@ CDKT_VPB_SCHEMA_ITEMS: tuple[
         6053,
         "Tài sản và chứng từ khác",
         6050,
-        2,
+        3,
         "OFF_BALANCE_SHEET",
         7,
         "page-0007:row-0015",
@@ -321,25 +344,56 @@ CDKT_VPB_SCHEMA_ITEMS: tuple[
     ),
 )
 CDKT_VPB_SCHEMA_IDS = tuple(record[0] for record in CDKT_VPB_SCHEMA_ITEMS)
-CDKT_VPB_DISPLAY_ORDERS = {
+CDKT_OFF_BALANCE_DISPLAY_SEQUENCE = (
+    6038,
+    6039,
+    6040,
+    6041,
+    6042,
+    6043,
+    CDKT_SWAP_COMMITMENT_TOTAL_ID,
+    6044,
+    6045,
+    6046,
+    6047,
+    6048,
+    6049,
+    6050,
+    6051,
+    6052,
+    6053,
+    CDKT_OFF_BALANCE_TOTAL_ID,
+)
+CDKT_CUMULATIVE_DISPLAY_ORDERS = {
     6035: 9,
     6036: 21,
     6037: 51,
-    **{schema_id: 81 + schema_id - 6038 for schema_id in range(6038, 6054)},
+    **{schema_id: 81 + index for index, schema_id in enumerate(CDKT_OFF_BALANCE_DISPLAY_SEQUENCE)},
 }
-CDKT_VPB_DISPLAY_ANCHORS = {
+CDKT_CUMULATIVE_DISPLAY_ANCHORS = {
     6035: (4346, 4347),
     6036: (4351, 4352),
     6037: (4318, 4319),
     6038: (4305, 6039),
     **{
         schema_id: (
-            CDKT_VPB_SCHEMA_IDS[index - 1],
-            CDKT_VPB_SCHEMA_IDS[index + 1] if index + 1 < len(CDKT_VPB_SCHEMA_IDS) else None,
+            CDKT_OFF_BALANCE_DISPLAY_SEQUENCE[index - 1],
+            (
+                CDKT_OFF_BALANCE_DISPLAY_SEQUENCE[index + 1]
+                if index + 1 < len(CDKT_OFF_BALANCE_DISPLAY_SEQUENCE)
+                else None
+            ),
         )
-        for index, schema_id in enumerate(CDKT_VPB_SCHEMA_IDS)
-        if schema_id >= 6039
+        for index, schema_id in enumerate(CDKT_OFF_BALANCE_DISPLAY_SEQUENCE)
+        if index > 0
     },
+}
+# Compatibility names retained for callers that need the earlier VPB-only set.
+CDKT_VPB_DISPLAY_ORDERS = {
+    schema_id: CDKT_CUMULATIVE_DISPLAY_ORDERS[schema_id] for schema_id in CDKT_VPB_SCHEMA_IDS
+}
+CDKT_VPB_DISPLAY_ANCHORS = {
+    schema_id: CDKT_CUMULATIVE_DISPLAY_ANCHORS[schema_id] for schema_id in CDKT_VPB_SCHEMA_IDS
 }
 
 LCTT_VPB_COMBINED_LOAN_ID = 6054
@@ -1360,6 +1414,13 @@ TM_SPECIFIC_PROVISION_MOVEMENT_ID = 792
 
 CDKT_4350_OLD_NAME = "Chứng khoán đầu tư sẵn sàng để hàng"
 CDKT_4350_CORRECTED_NAME = "Chứng khoán đầu tư sẵn sàng để bán"
+CDKT_4319_OLD_NAME = "Tiền gửi và vay các TCTD khác"
+CDKT_4319_CORRECTED_NAME = "Tiền gửi và vay các TCTC, TCTD khác"
+CDKT_4360_OLD_NAME = "Vay các TCTD khác"
+CDKT_4360_CORRECTED_NAME = "Vay các TCTC, TCTD khác"
+LCTT_4136_OLD_NAME = "Tăng, giảm các khoản tiền gửi và vay các TCTD"
+LCTT_4136_CORRECTED_NAME = "Tăng, giảm các khoản tiền gửi và vay các TCTC, TCTD"
+LCTT_4136_LEGACY_SOURCE_ALIAS = "Tăng/(Giảm) tiền gửi, tiền vay các TCTD khác"
 TM_770_OLD_NAME = "+ Công ty TNHH MTV vốn nhà nước trên 50%"
 TM_770_CORRECTED_NAME = "Công ty TNHH MTV (hoặc trên MTV) vốn nhà nước trên 50%"
 TM_770_BASELINE_SOURCE_ROW = 212
@@ -1387,6 +1448,13 @@ VPB_STRUCTURAL_ALIAS_CANDIDATES: tuple[tuple[str, int, int, int, str], ...] = (
         6,
         2,
         'Các khoản nợ Chính phủ và Ngân hàng Nhà nước Việt Nam ("NHNN")',
+    ),
+    (
+        "CDKT",
+        4319,
+        6,
+        4,
+        'Tiền gửi và vay các tổ chức tài chính ("TCTC"), TCTD khác',
     ),
     ("CDKT", 4336, 6, 13, "Thuế thu nhập doanh nghiệp hoãn lại phải trả"),
     ("CDKT", 4364, 6, 18, "Vốn"),
@@ -1446,6 +1514,13 @@ VPB_STRUCTURAL_ALIAS_CANDIDATES: tuple[tuple[str, int, int, int, str], ...] = (
         19,
         "Tăng các khoản nợ Chính phủ và Ngân hàng Nhà nước Việt Nam",
     ),
+    (
+        "LCTT",
+        4136,
+        9,
+        20,
+        "Tăng/(Giảm) tiền gửi, tiền vay từ các tổ chức tài chính, tổ chức tín dụng khác",
+    ),
     ("LCTT", 4137, 9, 21, "Tăng tiền gửi của khách hàng"),
     (
         "LCTT",
@@ -1476,8 +1551,12 @@ VPB_STRUCTURAL_ALIAS_CANDIDATES: tuple[tuple[str, int, int, int, str], ...] = (
 VPB_ALIAS_CANONICAL_AFTER_CORRECTION = frozenset({("KQKD", 4382), ("LCTT", 4109)})
 VPB_ALIAS_CANONICAL_COLLISIONS = {("CDKT", 4348): 4315}
 DISPLAY_NAME_COMPATIBILITY_ALIASES = (
+    ("CDKT", 4319, CDKT_4319_OLD_NAME),
+    ("CDKT", 4360, CDKT_4360_OLD_NAME),
     ("KQKD", 4382, KQKD_4382_OLD_NAME),
     ("LCTT", 4109, LCTT_4109_OLD_NAME),
+    ("LCTT", 4136, LCTT_4136_OLD_NAME),
+    ("LCTT", 4136, LCTT_4136_LEGACY_SOURCE_ALIAS),
 )
 NEW_ITEM_SOURCE_ALIASES = (
     ("LCTT", LCTT_VPB_COMBINED_LOAN_ID, 9, 15, "Tăng các khoản cho vay khách hàng và mua nợ"),
@@ -1536,9 +1615,10 @@ NEW_SCHEMA_IDS = frozenset(
         LCTT_INVESTMENT_PROPERTY_NET_ID,
         *CDKT_VPB_SCHEMA_IDS,
         LCTT_VPB_COMBINED_LOAN_ID,
+        *CDKT_CURRENT_SCHEMA_IDS,
     }
 )
-CURRENT_MIGRATION_SCHEMA_IDS = frozenset(range(6035, 6055))
+CURRENT_MIGRATION_SCHEMA_IDS = frozenset(CDKT_CURRENT_SCHEMA_IDS)
 
 CDKT_4325_COMPONENTS = (4364, 4365, 4342, 4341, 4343, 5699)
 CDKT_TOTAL_EQUITY_COMPONENTS = (4325, 4306)
@@ -1546,6 +1626,7 @@ KQKD_TOTAL_OPERATING_INCOME_COMPONENTS = (4385, 4386, 4387, 4388, 4389, 4390, 43
 LCTT_INVESTMENT_CONTRIBUTION_NET_COMPONENTS = (4120, 4121)
 LCTT_INVESTMENT_PROPERTY_NET_COMPONENTS = (4144, 4145, 4146)
 TM_TOTAL_INTERBANK_PROVISION_COMPONENTS = (583, 590)
+CDKT_FX_COMMITMENT_COMPONENTS = (6042, 6043, CDKT_SWAP_COMMITMENT_TOTAL_ID)
 TM_PROVISION_MOVEMENT_COMPONENTS = (
     TM_GENERAL_PROVISION_MOVEMENT_ID,
     TM_SPECIFIC_PROVISION_MOVEMENT_ID,
@@ -1652,6 +1733,24 @@ TM_UNIVERSAL_SUM_FORMULAS = (
 )
 
 BUSINESS_FORMULAS: tuple[dict[str, object], ...] = (
+    {
+        "statement_type": "CDKT",
+        "schema_id": CDKT_OFF_BALANCE_TOTAL_ID,
+        "operator": "SUM",
+        "component_schema_ids": list(CDKT_OFF_BALANCE_TOTAL_COMPONENTS),
+    },
+    {
+        "statement_type": "CDKT",
+        "schema_id": 6041,
+        "operator": "SUM",
+        "component_schema_ids": list(CDKT_FX_COMMITMENT_COMPONENTS),
+    },
+    {
+        "statement_type": "CDKT",
+        "schema_id": CDKT_SWAP_COMMITMENT_TOTAL_ID,
+        "operator": "SUM",
+        "component_schema_ids": list(CDKT_SWAP_COMMITMENT_TOTAL_COMPONENTS),
+    },
     {
         "statement_type": "CDKT",
         "schema_id": 4325,
@@ -2192,13 +2291,33 @@ def _build_updated_workbook(
                     shared_strings,
                     name=name,
                 )
+            for schema_id, name in (
+                (CDKT_OFF_BALANCE_TOTAL_ID, CDKT_OFF_BALANCE_TOTAL_NAME),
+                (CDKT_SWAP_COMMITMENT_TOTAL_ID, CDKT_SWAP_COMMITMENT_TOTAL_NAME),
+            ):
+                shared_strings, vpb_string_indices[schema_id] = _append_or_reuse_shared_string(
+                    shared_strings,
+                    name=name,
+                )
+            shared_strings, borrowing_string_index = _append_or_reuse_shared_string(
+                shared_strings,
+                name=CDKT_4360_CORRECTED_NAME,
+            )
+            shared_strings, deposit_borrowing_string_index = _append_or_reuse_shared_string(
+                shared_strings,
+                name=CDKT_4319_CORRECTED_NAME,
+            )
             row_count = CDKT_BEFORE_ROW_COUNT + 1
             for schema_id, predecessor_id, successor_id in (
                 (6035, 4346, 4347),
                 (6036, 4351, 4352),
                 (6037, 4318, 4319),
                 (6038, 4305, None),
-                *((schema_id, schema_id - 1, None) for schema_id in range(6039, 6054)),
+                *(
+                    (schema_id, CDKT_OFF_BALANCE_DISPLAY_SEQUENCE[index - 1], None)
+                    for index, schema_id in enumerate(CDKT_OFF_BALANCE_DISPLAY_SEQUENCE)
+                    if index > 0
+                ),
             ):
                 sheet = _insert_ordered_schema_row(
                     sheet,
@@ -2209,6 +2328,24 @@ def _build_updated_workbook(
                     shared_string_index=vpb_string_indices[schema_id],
                 )
                 row_count += 1
+            sheet = _retarget_shared_string_cell(
+                sheet,
+                source_row=_source_row_for_schema_id(
+                    sheet,
+                    row_count=CDKT_AFTER_ROW_COUNT,
+                    schema_id=4360,
+                ),
+                shared_string_index=borrowing_string_index,
+            )
+            sheet = _retarget_shared_string_cell(
+                sheet,
+                source_row=_source_row_for_schema_id(
+                    sheet,
+                    row_count=CDKT_AFTER_ROW_COUNT,
+                    schema_id=4319,
+                ),
+                shared_string_index=deposit_borrowing_string_index,
+            )
         elif statement_type == "KQKD":
             shared_strings, shared_string_index = _patch_shared_strings(
                 source.read(_SHARED_STRINGS_MEMBER),
@@ -2284,6 +2421,19 @@ def _build_updated_workbook(
                     schema_id=4109,
                 ),
                 shared_string_index=correction_string_index,
+            )
+            shared_strings, deposit_borrowing_string_index = _append_or_reuse_shared_string(
+                shared_strings,
+                name=LCTT_4136_CORRECTED_NAME,
+            )
+            sheet = _retarget_shared_string_cell(
+                sheet,
+                source_row=_source_row_for_schema_id(
+                    sheet,
+                    row_count=LCTT_AFTER_ROW_COUNT,
+                    schema_id=4136,
+                ),
+                shared_string_index=deposit_borrowing_string_index,
             )
         elif statement_type == "TM":
             shared_strings, shared_string_index = _patch_shared_strings(
@@ -2616,6 +2766,10 @@ def _assert_candidate(
         by_id = {record["report_norm_id"]: record for record in after}
         if by_id["4350"]["report_norm_name"] != CDKT_4350_CORRECTED_NAME:
             raise BusinessSchemaUpdateError("CDKT 4350 display correction is absent")
+        if by_id["4319"]["report_norm_name"] != CDKT_4319_CORRECTED_NAME:
+            raise BusinessSchemaUpdateError("CDKT 4319 display correction is absent")
+        if by_id["4360"]["report_norm_name"] != CDKT_4360_CORRECTED_NAME:
+            raise BusinessSchemaUpdateError("CDKT 4360 display correction is absent")
         inserted = by_id[str(CDKT_TOTAL_EQUITY_ID)]
         if inserted != {
             "source_row": CDKT_TOTAL_EQUITY_FINAL_SOURCE_ROW,
@@ -2632,19 +2786,20 @@ def _assert_candidate(
         ):
             raise BusinessSchemaUpdateError("CDKT total-equity anchors drifted")
         expected_vpb_positions = {
-            6035: (9, 4346, 4347),
-            6036: (21, 4351, 4352),
-            6037: (51, 4318, 4319),
-            **{
-                schema_id: (
-                    81 + schema_id - 6038,
-                    4305 if schema_id == 6038 else schema_id - 1,
-                    None if schema_id == 6053 else schema_id + 1,
-                )
-                for schema_id in range(6038, 6054)
-            },
+            schema_id: (
+                CDKT_CUMULATIVE_DISPLAY_ORDERS[schema_id],
+                CDKT_CUMULATIVE_DISPLAY_ANCHORS[schema_id][0],
+                CDKT_CUMULATIVE_DISPLAY_ANCHORS[schema_id][1],
+            )
+            for schema_id in (*CDKT_VPB_SCHEMA_IDS, *CDKT_CURRENT_SCHEMA_IDS)
         }
         names = {schema_id: name for schema_id, name, *_rest in CDKT_VPB_SCHEMA_ITEMS}
+        names.update(
+            {
+                CDKT_OFF_BALANCE_TOTAL_ID: CDKT_OFF_BALANCE_TOTAL_NAME,
+                CDKT_SWAP_COMMITMENT_TOTAL_ID: CDKT_SWAP_COMMITMENT_TOTAL_NAME,
+            }
+        )
         for schema_id, (
             display_order,
             predecessor_id,
@@ -2671,11 +2826,19 @@ def _assert_candidate(
             record
             for record in _item_pairs(after)
             if record["report_norm_id"]
-            not in {str(CDKT_TOTAL_EQUITY_ID), *(str(item) for item in CDKT_VPB_SCHEMA_IDS)}
+            not in {
+                str(CDKT_TOTAL_EQUITY_ID),
+                *(str(item) for item in CDKT_VPB_SCHEMA_IDS),
+                *(str(item) for item in CDKT_CURRENT_SCHEMA_IDS),
+            }
         ]
         for record in new_pairs:
             if record["report_norm_id"] == "4350":
                 record["report_norm_name"] = CDKT_4350_OLD_NAME
+            elif record["report_norm_id"] == "4319":
+                record["report_norm_name"] = CDKT_4319_OLD_NAME
+            elif record["report_norm_id"] == "4360":
+                record["report_norm_name"] = CDKT_4360_OLD_NAME
         if new_pairs != old_pairs:
             raise BusinessSchemaUpdateError("CDKT candidate changed an unauthorized identity/order")
     elif statement == "KQKD":
@@ -2749,6 +2912,8 @@ def _assert_candidate(
             raise BusinessSchemaUpdateError("LCTT investment-property anchors drifted")
         if by_id["4109"]["report_norm_name"] != LCTT_4109_CORRECTED_NAME:
             raise BusinessSchemaUpdateError("LCTT 4109 display correction is absent")
+        if by_id["4136"]["report_norm_name"] != LCTT_4136_CORRECTED_NAME:
+            raise BusinessSchemaUpdateError("LCTT 4136 display correction is absent")
         combined_loan = by_id[str(LCTT_VPB_COMBINED_LOAN_ID)]
         if combined_loan != {
             "source_row": LCTT_VPB_COMBINED_LOAN_SOURCE_ROW,
@@ -2777,6 +2942,8 @@ def _assert_candidate(
         for record in new_pairs:
             if record["report_norm_id"] == "4109":
                 record["report_norm_name"] = LCTT_4109_OLD_NAME
+            elif record["report_norm_id"] == "4136":
+                record["report_norm_name"] = LCTT_4136_OLD_NAME
         if new_pairs != old_pairs:
             raise BusinessSchemaUpdateError("LCTT candidate changed an existing identity/order")
     elif statement == "TM":
@@ -3094,10 +3261,20 @@ def _allowed_existing_name_corrections(statement: str) -> list[dict[str, object]
     return {
         "CDKT": [
             {
+                "schema_id": 4319,
+                "before": CDKT_4319_OLD_NAME,
+                "after": CDKT_4319_CORRECTED_NAME,
+            },
+            {
                 "schema_id": 4350,
                 "before": CDKT_4350_OLD_NAME,
                 "after": CDKT_4350_CORRECTED_NAME,
-            }
+            },
+            {
+                "schema_id": 4360,
+                "before": CDKT_4360_OLD_NAME,
+                "after": CDKT_4360_CORRECTED_NAME,
+            },
         ],
         "KQKD": [
             {
@@ -3111,7 +3288,12 @@ def _allowed_existing_name_corrections(statement: str) -> list[dict[str, object]
                 "schema_id": 4109,
                 "before": LCTT_4109_OLD_NAME,
                 "after": LCTT_4109_CORRECTED_NAME,
-            }
+            },
+            {
+                "schema_id": 4136,
+                "before": LCTT_4136_OLD_NAME,
+                "after": LCTT_4136_CORRECTED_NAME,
+            },
         ],
         "TM": [
             {
@@ -3153,9 +3335,9 @@ def _expected_schema_strategy(
             ),
         },
         "previous_universal_schema": {
-            "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6034",
+            "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6054",
             "item_count": PRIOR_UNIVERSAL_SCHEMA_ITEM_COUNT,
-            "counts": {"CDKT": 78, "KQKD": 25, "LCTT": 109, "TM": 1701},
+            "counts": {"CDKT": 97, "KQKD": 25, "LCTT": 110, "TM": 1701},
             "high_watermark": PRIOR_UNIVERSAL_HIGH_WATERMARK,
             "workbook_sha256": PRIOR_UNIVERSAL_WORKBOOK_SHA256,
             "identity_order_sha256": PRIOR_UNIVERSAL_IDENTITY_ORDER_SHA256,
@@ -3163,15 +3345,15 @@ def _expected_schema_strategy(
             "audit_sha256": PRIOR_BUSINESS_UPDATE_AUDIT_SHA256,
         },
         "universal_schema": {
-            "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6054",
+            "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6056",
             "item_count": UNIVERSAL_SCHEMA_ITEM_COUNT,
-            "counts": {"CDKT": 97, "KQKD": 25, "LCTT": 110, "TM": 1701},
+            "counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1701},
             "high_watermark": UNIVERSAL_HIGH_WATERMARK,
             "workbook_sha256": after_workbook_sha256,
         },
         "migration_delta": {
-            "new_report_norm_ids": [*range(6035, 6055)],
-            "item_count": 20,
+            "new_report_norm_ids": list(CDKT_CURRENT_SCHEMA_IDS),
+            "item_count": len(CDKT_CURRENT_SCHEMA_IDS),
             "existing_report_norm_ids_renumbered": False,
             "report_norm_id_defines_display_order": False,
         },
@@ -3218,6 +3400,14 @@ def _expected_structural_alias_changes() -> list[dict[str, object]]:
         }
         for statement, schema_id, alias in DISPLAY_NAME_COMPATIBILITY_ALIASES
     ]
+    for change in changes:
+        if (
+            change["statement_type"],
+            change["schema_id"],
+            change["alias"],
+        ) == ("LCTT", 4136, LCTT_4136_OLD_NAME):
+            change["collision_handling"] = "OPPOSITE_CASH_FLOW_BRANCH_TYPED_ALIAS"
+            change["collision_schema_ids"] = [4179]
     for statement, schema_id, page, row, alias in VPB_STRUCTURAL_ALIAS_CANDIDATES:
         key = (statement, schema_id)
         if key in VPB_ALIAS_CANONICAL_AFTER_CORRECTION:
@@ -3673,6 +3863,93 @@ def _expected_schema_changes() -> list[dict[str, object]]:
         ),
         {
             "change": "ADD",
+            "statement_type": "CDKT",
+            "schema_id": CDKT_OFF_BALANCE_TOTAL_ID,
+            "canonical_name": CDKT_OFF_BALANCE_TOTAL_NAME,
+            "source_row": CDKT_CUMULATIVE_DISPLAY_ORDERS[CDKT_OFF_BALANCE_TOTAL_ID] + 2,
+            "display_order_zero_based": CDKT_CUMULATIVE_DISPLAY_ORDERS[CDKT_OFF_BALANCE_TOTAL_ID],
+            "previous_schema_id": CDKT_CUMULATIVE_DISPLAY_ANCHORS[CDKT_OFF_BALANCE_TOTAL_ID][0],
+            "next_schema_id": CDKT_CUMULATIVE_DISPLAY_ANCHORS[CDKT_OFF_BALANCE_TOTAL_ID][1],
+            "parent_schema_id": 6038,
+            "hierarchy_level": 1,
+            "section": "OFF_BALANCE_SHEET",
+            "applicable_scope": ["CONSOLIDATED"],
+            "schema_status": "ACCEPTED_UNIVERSAL",
+            "evidence": {
+                **_vpb_evidence(
+                    page=7,
+                    source_row_ref="page-0007:row-0016",
+                    visible_label="[UNLABELED_TERMINAL_TOTAL]",
+                    observed_values=("1.304.756.779", "1.367.060.929"),
+                ),
+                "decision": "USER_NAMED_EXACT_AGGREGATE_ACCEPTED",
+                "user_decision": "Q075",
+                "exact_component_schema_ids": list(CDKT_OFF_BALANCE_TOTAL_COMPONENTS),
+                "mapping_guard": (
+                    "UNIQUE_TERMINAL_UNLABELED_COMPLETE_DIRECT_CHILD_TOPOLOGY_"
+                    "WITH_EXACT_PER_AXIS_SUM"
+                ),
+            },
+        },
+        {
+            "change": "ADD",
+            "statement_type": "CDKT",
+            "schema_id": CDKT_SWAP_COMMITMENT_TOTAL_ID,
+            "canonical_name": CDKT_SWAP_COMMITMENT_TOTAL_NAME,
+            "source_row": CDKT_CUMULATIVE_DISPLAY_ORDERS[CDKT_SWAP_COMMITMENT_TOTAL_ID] + 2,
+            "display_order_zero_based": CDKT_CUMULATIVE_DISPLAY_ORDERS[
+                CDKT_SWAP_COMMITMENT_TOTAL_ID
+            ],
+            "previous_schema_id": CDKT_CUMULATIVE_DISPLAY_ANCHORS[CDKT_SWAP_COMMITMENT_TOTAL_ID][0],
+            "next_schema_id": CDKT_CUMULATIVE_DISPLAY_ANCHORS[CDKT_SWAP_COMMITMENT_TOTAL_ID][1],
+            "parent_schema_id": 6041,
+            "hierarchy_level": 4,
+            "section": "OFF_BALANCE_SHEET",
+            "applicable_scope": ["CONSOLIDATED"],
+            "schema_status": "ACCEPTED_UNIVERSAL",
+            "evidence": {
+                "bank": "CTG",
+                "period": "Q2/2026",
+                "scope": "CONSOLIDATED",
+                "source_document_path": CTG_PDF_PATH,
+                "source_document_sha256": CTG_PDF_SHA256,
+                "pdf_page": 5,
+                "zero_based_pdf_page": 4,
+                "printed_page": 3,
+                "source_row_ref": "ctg-p5-5705",
+                "visible_label": CDKT_SWAP_COMMITMENT_TOTAL_NAME,
+                "observed_values": ["937.179.489", "849.738.846"],
+                "unit": "VND_MILLION",
+                "reviewed_evidence_path": CTG_REVIEW_PATH,
+                "reviewed_evidence_sha256": CTG_REVIEW_SHA256,
+                "reviewed_evidence_bridge": {
+                    "review_id": "HR-2026-08-06-CTG-ACB-MBB",
+                    "document_key": "ctg-q2-2026-consolidated",
+                    "visible_row_id": "ctg-p5-5705",
+                    "reviewed_item_id": 5705,
+                    "period_map_id": "ctg-off-balance-2026q2",
+                    "period_axes": {
+                        "CURRENT": "2026-06-30",
+                        "COMPARATIVE": "2025-12-31",
+                    },
+                    "sealed_historical_template_membership": ("OUTSIDE_CURRENT_TARGET_TEMPLATE"),
+                    "sealed_historical_mapping_action": "DO_NOT_MAP_TO_TARGET_CDKT",
+                    "sealed_history_mutated": False,
+                    "current_schema_target_authority": "Q076",
+                    "current_schema_target_id": CDKT_SWAP_COMMITMENT_TOTAL_ID,
+                },
+                "decision": "USER_CONFIRMED_COMBINED_SWAP_SUBTOTAL",
+                "user_decision": "Q076",
+                "exact_parent_equation": {
+                    "target_schema_id": 6041,
+                    "component_schema_ids": list(CDKT_FX_COMMITMENT_COMPONENTS),
+                    "current": "953123645=7973593+7970563+937179489",
+                    "comparative": "860422276=5341651+5341779+849738846",
+                },
+            },
+        },
+        {
+            "change": "ADD",
             "statement_type": "LCTT",
             "schema_id": LCTT_VPB_COMBINED_LOAN_ID,
             "canonical_name": LCTT_VPB_COMBINED_LOAN_NAME,
@@ -3697,6 +3974,33 @@ def _expected_schema_changes() -> list[dict[str, object]]:
             "schema_id": 4350,
             "before": CDKT_4350_OLD_NAME,
             "after": CDKT_4350_CORRECTED_NAME,
+        },
+        {
+            "change": "CORRECT_DISPLAY_NAME",
+            "statement_type": "CDKT",
+            "schema_id": 4319,
+            "before": CDKT_4319_OLD_NAME,
+            "after": CDKT_4319_CORRECTED_NAME,
+            "user_decision": "Q077",
+            "backward_compatible_alias_preserved": True,
+        },
+        {
+            "change": "CORRECT_DISPLAY_NAME",
+            "statement_type": "CDKT",
+            "schema_id": 4360,
+            "before": CDKT_4360_OLD_NAME,
+            "after": CDKT_4360_CORRECTED_NAME,
+            "user_decision": "Q074",
+            "backward_compatible_alias_preserved": True,
+        },
+        {
+            "change": "CORRECT_DISPLAY_NAME",
+            "statement_type": "LCTT",
+            "schema_id": 4136,
+            "before": LCTT_4136_OLD_NAME,
+            "after": LCTT_4136_CORRECTED_NAME,
+            "user_decision": "Q078",
+            "backward_compatible_alias_preserved": True,
         },
         {
             "change": "CORRECT_DISPLAY_NAME",
@@ -3776,6 +4080,72 @@ def _expected_hierarchy_changes() -> list[dict[str, object]]:
         }
         for schema_id, _name, parent_id, level, section, *_rest in CDKT_VPB_SCHEMA_ITEMS
     )
+    changes.extend(
+        (
+            {
+                "change": "ADD_HIERARCHY_NODE_WITH_USER_AUTHORITY",
+                "statement_type": "CDKT",
+                "schema_id": CDKT_OFF_BALANCE_TOTAL_ID,
+                "parent_schema_id": 6038,
+                "hierarchy_level": 1,
+                "section": "OFF_BALANCE_SHEET",
+                "component_schema_ids": list(CDKT_OFF_BALANCE_TOTAL_COMPONENTS),
+                "user_decision": "Q075",
+            },
+            {
+                "change": "ADD_HIERARCHY_NODE_WITH_USER_AUTHORITY",
+                "statement_type": "CDKT",
+                "schema_id": CDKT_SWAP_COMMITMENT_TOTAL_ID,
+                "parent_schema_id": 6041,
+                "hierarchy_level": 4,
+                "section": "OFF_BALANCE_SHEET",
+                "component_schema_ids": list(CDKT_SWAP_COMMITMENT_TOTAL_COMPONENTS),
+                "user_decision": "Q076",
+            },
+        )
+    )
+    changes.extend(
+        {
+            "change": "REPARENT_WITH_USER_AUTHORITY",
+            "statement_type": "CDKT",
+            "schema_id": schema_id,
+            "before_parent_schema_id": before_parent,
+            "after_parent_schema_id": after_parent,
+            "before_hierarchy_level": before_level,
+            "after_hierarchy_level": after_level,
+            "user_decision": decision,
+        }
+        for schema_id, before_parent, after_parent, before_level, after_level, decision in (
+            (6039, 6038, CDKT_OFF_BALANCE_TOTAL_ID, 1, 2, "Q075"),
+            (6050, 6038, CDKT_OFF_BALANCE_TOTAL_ID, 1, 2, "Q075"),
+            (6044, 6041, CDKT_SWAP_COMMITMENT_TOTAL_ID, 3, 5, "Q076"),
+            (6045, 6041, CDKT_SWAP_COMMITMENT_TOTAL_ID, 3, 5, "Q076"),
+        )
+    )
+    changes.extend(
+        {
+            "change": "RELEVEL_AFTER_USER_AUTHORIZED_ANCESTOR_INSERTION",
+            "statement_type": "CDKT",
+            "schema_id": schema_id,
+            "parent_schema_id": parent_id,
+            "before_hierarchy_level": before_level,
+            "after_hierarchy_level": after_level,
+            "user_decision": decision,
+        }
+        for schema_id, parent_id, before_level, after_level, decision in (
+            (6040, 6039, 2, 3, "Q075"),
+            (6041, 6039, 2, 3, "Q075"),
+            (6042, 6041, 3, 4, "Q075"),
+            (6043, 6041, 3, 4, "Q075"),
+            (6046, 6039, 2, 3, "Q075"),
+            (6047, 6039, 2, 3, "Q075"),
+            (6048, 6039, 2, 3, "Q075"),
+            (6049, 6048, 3, 4, "Q075"),
+            (6051, 6050, 2, 3, "Q075"),
+            (6052, 6050, 2, 3, "Q075"),
+            (6053, 6050, 2, 3, "Q075"),
+        )
+    )
     changes.append(
         {
             "change": "ADD_HIERARCHY_NODE_WITH_SOURCE_EVIDENCE",
@@ -3813,7 +4183,7 @@ def verify_business_schema_update(project_root: Path, audit_path: Path) -> dict[
     audit = json.loads(audit_path.read_text(encoding="utf-8"))
     if (
         audit.get("format_version") != 1
-        or audit.get("migration_id") != "BUSINESS-SCHEMA-5712-5713-5714-5718-6054"
+        or audit.get("migration_id") != "BUSINESS-SCHEMA-5712-5713-5714-5718-6056"
         or audit.get("status") != "APPLIED_AND_VERIFIED"
     ):
         raise BusinessSchemaUpdateError("invalid business-schema update audit identity")
@@ -3826,8 +4196,9 @@ def verify_business_schema_update(project_root: Path, audit_path: Path) -> dict[
     if audit.get("structural_alias_changes") != _expected_structural_alias_changes():
         raise BusinessSchemaUpdateError("business structural-alias audit drifted")
     if audit.get("authority") != {
-        "approved_on": "2026-08-08",
+        "approved_on": "2026-08-09",
         "policy": "USER_AUTHORIZED_EVOLVING_UNIVERSAL_BANK_BCTC_SCHEMA",
+        "decision_ids": ["Q074", "Q075", "Q076", "Q077", "Q078"],
     }:
         raise BusinessSchemaUpdateError("business schema authority drifted")
     collision = audit.get("collision_safety")
@@ -3935,9 +4306,9 @@ def verify_business_schema_update(project_root: Path, audit_path: Path) -> dict[
         _assert_contiguous_ordinals(records, statement=statement)
         _assert_candidate(project_root / baseline_relative, path, statement=statement)
         delta_ids = {
-            "CDKT": set(CDKT_VPB_SCHEMA_IDS),
+            "CDKT": set(CDKT_CURRENT_SCHEMA_IDS),
             "KQKD": set(),
-            "LCTT": {LCTT_VPB_COMBINED_LOAN_ID},
+            "LCTT": set(),
             "TM": set(),
         }[statement]
         prior_pairs = [
@@ -3946,8 +4317,9 @@ def verify_business_schema_update(project_root: Path, audit_path: Path) -> dict[
             if int(str(pair["report_norm_id"])) not in delta_ids
         ]
         prior_name_by_id = {
-            ("KQKD", "4382"): KQKD_4382_OLD_NAME,
-            ("LCTT", "4109"): LCTT_4109_OLD_NAME,
+            ("CDKT", "4319"): CDKT_4319_OLD_NAME,
+            ("CDKT", "4360"): CDKT_4360_OLD_NAME,
+            ("LCTT", "4136"): LCTT_4136_OLD_NAME,
         }
         for pair in prior_pairs:
             prior_name = prior_name_by_id.get((statement, str(pair["report_norm_id"])))
@@ -4007,6 +4379,22 @@ def verify_business_schema_update(project_root: Path, audit_path: Path) -> dict[
     tm_by_id = {record["report_norm_id"]: record for record in tm_records}
     if cdkt_by_id["4350"]["report_norm_name"] != CDKT_4350_CORRECTED_NAME:
         raise BusinessSchemaUpdateError("CDKT 4350 correction drifted")
+    if cdkt_by_id["4319"]["report_norm_name"] != CDKT_4319_CORRECTED_NAME:
+        raise BusinessSchemaUpdateError("CDKT 4319 correction drifted")
+    if cdkt_by_id["4360"]["report_norm_name"] != CDKT_4360_CORRECTED_NAME:
+        raise BusinessSchemaUpdateError("CDKT 4360 correction drifted")
+    if lctt_by_id["4136"]["report_norm_name"] != LCTT_4136_CORRECTED_NAME:
+        raise BusinessSchemaUpdateError("LCTT 4136 correction drifted")
+    for schema_id, name in (
+        (CDKT_OFF_BALANCE_TOTAL_ID, CDKT_OFF_BALANCE_TOTAL_NAME),
+        (CDKT_SWAP_COMMITMENT_TOTAL_ID, CDKT_SWAP_COMMITMENT_TOTAL_NAME),
+    ):
+        record = cdkt_by_id[str(schema_id)]
+        if (
+            record["report_norm_name"] != name
+            or record["source_row"] != CDKT_CUMULATIVE_DISPLAY_ORDERS[schema_id] + 2
+        ):
+            raise BusinessSchemaUpdateError(f"CDKT {schema_id} identity/position drifted")
     if cdkt_by_id[str(CDKT_TOTAL_EQUITY_ID)]["source_row"] != CDKT_TOTAL_EQUITY_FINAL_SOURCE_ROW:
         raise BusinessSchemaUpdateError("CDKT 5712 row position drifted")
     if (
@@ -4062,6 +4450,11 @@ def verify_business_schema_update(project_root: Path, audit_path: Path) -> dict[
     if seen.get(TM_TOTAL_INTERBANK_PROVISION_ID) != "TM":
         raise BusinessSchemaUpdateError("TM 5718 is not globally unique and correctly scoped")
     for schema_id in CDKT_VPB_SCHEMA_IDS:
+        if seen.get(schema_id) != "CDKT":
+            raise BusinessSchemaUpdateError(
+                f"CDKT {schema_id} is not globally unique and correctly scoped"
+            )
+    for schema_id in CDKT_CURRENT_SCHEMA_IDS:
         if seen.get(schema_id) != "CDKT":
             raise BusinessSchemaUpdateError(
                 f"CDKT {schema_id} is not globally unique and correctly scoped"
@@ -4314,12 +4707,13 @@ def apply_business_schema_update(
 
     audit: dict[str, object] = {
         "format_version": 1,
-        "migration_id": "BUSINESS-SCHEMA-5712-5713-5714-5718-6054",
+        "migration_id": "BUSINESS-SCHEMA-5712-5713-5714-5718-6056",
         "status": "APPLIED_AND_VERIFIED",
-        "applied_at": "2026-08-08T00:00:00+00:00",
+        "applied_at": "2026-08-09T00:00:00+00:00",
         "authority": {
-            "approved_on": "2026-08-08",
+            "approved_on": "2026-08-09",
             "policy": "USER_AUTHORIZED_EVOLVING_UNIVERSAL_BANK_BCTC_SCHEMA",
+            "decision_ids": ["Q074", "Q075", "Q076", "Q077", "Q078"],
         },
         "collision_safety": {
             "baseline_global_schema_count": BASE_SCHEMA_ITEM_COUNT,
@@ -4397,7 +4791,22 @@ def _apply_structural_alias_changes(
                 raise BusinessSchemaUpdateError(
                     f"audited structural alias already registered at {statement}/{schema_id}"
                 )
-            if other_owners:
+            allowed_branch_collision = (
+                change.get("collision_handling") == "OPPOSITE_CASH_FLOW_BRANCH_TYPED_ALIAS"
+                and bool(other_owners)
+                and change.get("collision_schema_ids") == other_owners
+                and statement == "LCTT"
+                and target.cash_flow_branch in {"DIRECT", "INDIRECT"}
+                and all(
+                    by_key[(statement, owner)].cash_flow_branch in {"DIRECT", "INDIRECT"}
+                    and by_key[(statement, owner)].cash_flow_branch != target.cash_flow_branch
+                    for owner in other_owners
+                )
+            )
+            declared_branch_collision = (
+                change.get("collision_handling") == "OPPOSITE_CASH_FLOW_BRANCH_TYPED_ALIAS"
+            )
+            if (declared_branch_collision or other_owners) and not allowed_branch_collision:
                 raise BusinessSchemaUpdateError(
                     f"audited structural alias collision at {statement}/{schema_id}: {other_owners}"
                 )
@@ -4449,6 +4858,7 @@ def apply_business_formula_hierarchy(schema: Sequence[SchemaItem]) -> None:
                 *CDKT_4325_COMPONENTS,
                 5712,
                 *CDKT_VPB_SCHEMA_IDS,
+                *CDKT_CURRENT_SCHEMA_IDS,
                 4313,
                 4316,
                 4318,
@@ -4605,6 +5015,7 @@ def apply_business_formula_hierarchy(schema: Sequence[SchemaItem]) -> None:
         ("LCTT", 4108): None,
         **{("LCTT", schema_id): 4110 for schema_id in range(4129, 4142)},
         **{("CDKT", schema_id): None for schema_id in CDKT_VPB_SCHEMA_IDS},
+        **{("CDKT", schema_id): None for schema_id in CDKT_CURRENT_SCHEMA_IDS},
         ("TM", TM_EDUCATION_ID): TM_LOAN_INDUSTRY_PARENT_ID,
         ("TM", TM_LOAN_BUSINESS_OTHER_ID): TM_LOAN_BUSINESS_PARENT_ID,
         **{("TM", schema_id): TM_PROVISION_MOVEMENT_ID for schema_id in range(784, 800)},
@@ -4678,6 +5089,17 @@ def apply_business_formula_hierarchy(schema: Sequence[SchemaItem]) -> None:
         item.notes_section = section
         if schema_id >= 6038:
             item.scope = ["CONSOLIDATED"]
+        item.hierarchy_source = BUSINESS_UPDATE_AUDIT
+
+    for schema_id, parent_id, level in (
+        (CDKT_OFF_BALANCE_TOTAL_ID, 6038, 1),
+        (CDKT_SWAP_COMMITMENT_TOTAL_ID, 6041, 4),
+    ):
+        item = by_key[("CDKT", schema_id)]
+        item.parent_id = parent_id
+        item.hierarchy_level = level
+        item.notes_section = "OFF_BALANCE_SHEET"
+        item.scope = ["CONSOLIDATED"]
         item.hierarchy_source = BUSINESS_UPDATE_AUDIT
 
     for schema_id in KQKD_TOTAL_OPERATING_INCOME_COMPONENTS:
@@ -4996,9 +5418,11 @@ def apply_business_formula_hierarchy(schema: Sequence[SchemaItem]) -> None:
         ("CDKT", 4313): (4346, 6035, 4347),
         ("CDKT", 4316): (4350, 4351, 6036, 4352),
         ("CDKT", 4318): (6037,),
-        ("CDKT", 6038): (6039, 6050),
+        ("CDKT", 6038): (CDKT_OFF_BALANCE_TOTAL_ID,),
+        ("CDKT", CDKT_OFF_BALANCE_TOTAL_ID): CDKT_OFF_BALANCE_TOTAL_COMPONENTS,
         ("CDKT", 6039): (6040, 6041, 6046, 6047, 6048),
-        ("CDKT", 6041): (6042, 6043, 6044, 6045),
+        ("CDKT", 6041): CDKT_FX_COMMITMENT_COMPONENTS,
+        ("CDKT", CDKT_SWAP_COMMITMENT_TOTAL_ID): CDKT_SWAP_COMMITMENT_TOTAL_COMPONENTS,
         ("CDKT", 6048): (6049,),
         ("CDKT", 6050): (6051, 6052, 6053),
         ("KQKD", KQKD_TOTAL_OPERATING_INCOME_ID): KQKD_TOTAL_OPERATING_INCOME_COMPONENTS,

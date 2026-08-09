@@ -15,32 +15,32 @@ schema_authority:
   schema_strategy: SOURCE_EVIDENCE_DRIVEN_APPEND_ONLY_SUPERSET
   source_config:
     path: config/schemas/sources.yaml
-    sha256: a15fd5bcb7acaabfe7cce15d20500dece37075a83daa2920623c6adc4670bd2c
+    sha256: b00679e6c2ed9b1311a09424dcff81e8d016dd54fa09d884b011ad66b2d3e1f9
   hierarchy_config:
     path: config/schemas/hierarchy_reference.yaml
-    sha256: 8b2eb70c0ca8e7692f8f75af4d813dcc408bd43306bbf2f953e9973e6937021d
+    sha256: 3815316ea91ceaac640d42767324dfbcffd3aa326638c2c5c27d4c599298b4c3
   schema_registry:
     path: data/registered/schema_registry.json
-    sha256: ad66bb2aab2979d8e093e8f3cda4107ed683ed6e91f51516e2f66528ba874eec
+    sha256: 5ee4cc00689a22c252a3f5e194195683231624838034dd916fafe20daeb0d64c
   hierarchy_registry:
     path: data/registered/hierarchy_registry.json
-    sha256: b2483374e22e9d3bf306ec1b1d1585f09b1e1a705a66aeffd43e6624fbe1da30
+    sha256: f31277502d9e568e738e621ac9c749d18c2ec47dd3076f4ae51afb260a1ac99c
   coverage_config:
     path: config/schemas/coverage-v1.yaml
     sha256: 708c9f36945791e33ffceceae097193070c9ad7797cf0b3629a9fddf05d136bc
   coverage_registry:
     path: data/registered/schema_coverage_registry.json
-    sha256: f4074d571ebd20603deec11f79b64c2e05a9e84715e6bbdfd79c61c484b9bf16
-  revision: UNIVERSAL_BANK_BCTC_SCHEMA@6054
-  item_count: 1933
-  counts: {CDKT: 97, KQKD: 25, LCTT: 110, TM: 1701}
-  high_watermark: 6054
-  graph_sha256: ecab30031f4164e1271f1d51f0285b2d8e4eedc64dd7ae9f9a46e87d641fc8d5
-  ordered_canonical_projection_sha256: 691cfc99ae6595f702130de2235f33b8905766066730d0b0761754b1a836d7bb
+    sha256: 16f1c52415f4a5eb6abd2650e081f74c0f6a2e9fa13552c2b4c535db7e03a9db
+  revision: UNIVERSAL_BANK_BCTC_SCHEMA@6056
+  item_count: 1935
+  counts: {CDKT: 99, KQKD: 25, LCTT: 110, TM: 1701}
+  high_watermark: 6056
+  graph_sha256: 2262c4c053d397754c65d4da66d3c05ca8fb053ed29ccee11981a7eb0982e770
+  ordered_canonical_projection_sha256: 7c11a91bd10210f600d0883fe5593355b6ddd70ab206e0b4455f59d3dbbe95b9
   statement_projection_sha256:
-    CDKT: 06f9695c19ff2ce168278cae8c9a084de1afdf4bdfe342f73d12e978ec329424
+    CDKT: 17f3231fa85af91aa59815ac741e908ed89a11e0565c875686e0e704a7249ed9
     KQKD: d314b7937c0e5fae67f599291e58024673fcb0364ba51feb7ef85c3ff9453d25
-    LCTT: 5918ee0f8ec9d7a6e7eb3a0eac07d2a25b9303f86f1f3552d2ab2b0567014c0e
+    LCTT: c4f984b6c0e9b9cdc3300f1ef702ebb455a54a41bacc9382f7bd25aa75384d5b
     TM: e85deb68a14f6041e57a5d3ad48a209818c8b09bb2a921637e98ead172f3da53
 
 mapping:
@@ -50,6 +50,7 @@ mapping:
     - ACCEPTED_STRUCTURAL_ALIAS_RETRIEVAL_KEY_EXACT
     - ACCEPTED_ACCOUNTING_ABBREVIATION_NORMALIZATION
     - REPEATED_PARENT_DETAIL_WITH_COMPLETE_HIERARCHY_AND_EQUATION
+    - AUDITED_FORMULA_UNIQUE_TERMINAL_AGGREGATE_COMPLETE_TOPOLOGY_EXACT_SUM
   accepted_alias_authority_types:
     - USER_SUPPLIED_HIERARCHY_LABEL
     - AUDITED_SCHEMA_ALIAS
@@ -69,12 +70,21 @@ mapping:
   require_one_disposition_per_source_row: true
   require_one_to_one_existing_item_mapping: true
   require_hierarchy_consistency_when_both_source_parent_and_schema_parent_are_observed: true
+  compressed_hierarchy_edge_allowed_only_through_unobserved_schema_intermediates: true
   off_balance_sheet_rows_are_accounting_items: true
   section_header_is_not_automatically_structural: true
   unmatched_label_only_parent_with_distinct_accounting_children: NEW_ITEM_PROPOSAL
   repeated_or_childless_label_only_heading: STRUCTURAL
   outside_financial_table_span_row: UNRESOLVED
-  unlabeled_numeric_row: UNRESOLVED
+  unlabeled_numeric_row: UNRESOLVED_UNLESS_AUDITED_FORMULA_UNIQUE_TERMINAL_AGGREGATE
+  audited_formula_terminal_aggregate:
+    formula_authority: HASH_BOUND_APPROVED_BUSINESS_UPDATE_AUDIT_RECORD
+    operator: SUM
+    target_topology: NON_ROOT_PARENT_WITH_EXACT_ORDERED_DIRECT_CHILDREN
+    source_topology: UNIQUE_UNLABELED_TERMINAL_AFTER_CONTIGUOUS_COMPLETE_DESCENDANT_INTERVAL
+    scope_rule: SAME_STATEMENT_PRESENTATION_SCOPE_PHYSICAL_TABLE_AND_AXES
+    selection_stage: BOUNDED_POST_MONOTONE_PATH_PROMOTION
+    arithmetic_rule: EXACT_EVERY_AXIS_CORROBORATION_OR_VETO_ONLY
   unmatched_labeled_value_row: NEW_ITEM_PROPOSAL
   fuzzy_similarity_can_map: false
   alias_proposal_threshold: 0.96

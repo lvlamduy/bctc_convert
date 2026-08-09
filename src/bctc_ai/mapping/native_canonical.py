@@ -117,10 +117,32 @@ _ACCOUNTING_ABBREVIATIONS = {
     "hdkd": "hoat dong kinh doanh",
     "gtcg": "giay to co gia",
 }
+_AUDITED_TERMINAL_AGGREGATE_MATCH_BASIS = (
+    "AUDITED_FORMULA_UNIQUE_TERMINAL_AGGREGATE_COMPLETE_TOPOLOGY_EXACT_SUM"
+)
 
 
 class NativeCanonicalMappingError(RuntimeError):
     """Raised when a native-row mapping input or invariant is unsafe."""
+
+
+def _audited_terminal_aggregate_enabled(policy: Mapping[str, Any]) -> bool:
+    mapping = policy.get("mapping")
+    return bool(
+        isinstance(mapping, Mapping)
+        and _AUDITED_TERMINAL_AGGREGATE_MATCH_BASIS in mapping.get("automatic_match_authority", ())
+    )
+
+
+def _compressed_hierarchy_enabled(policy: Mapping[str, Any]) -> bool:
+    mapping = policy.get("mapping")
+    return bool(
+        isinstance(mapping, Mapping)
+        and mapping.get(
+            "compressed_hierarchy_edge_allowed_only_through_unobserved_schema_intermediates"
+        )
+        is True
+    )
 
 
 @dataclass(frozen=True)
@@ -166,6 +188,33 @@ class _AcceptedAlias:
     alias: str
     authority_type: str
     authority_evidence: dict[str, Any]
+
+    @property
+    def authority_evidence_sha256(self) -> str:
+        return _record_hash(self.authority_evidence)
+
+
+@dataclass(frozen=True)
+class _AuditedFormula:
+    statement_type: str
+    schema_id: int
+    operator: str
+    component_schema_ids: tuple[int, ...]
+    audit_path: str
+    audit_sha256: str
+    audit_status: str
+    record_index: int
+    record_sha256: str
+
+    @property
+    def authority_evidence(self) -> dict[str, Any]:
+        return {
+            "audit_path": self.audit_path,
+            "audit_sha256": self.audit_sha256,
+            "audit_status": self.audit_status,
+            "record_index": self.record_index,
+            "record_sha256": self.record_sha256,
+        }
 
     @property
     def authority_evidence_sha256(self) -> str:
@@ -220,12 +269,13 @@ def _relative_path(project_root: Path, path: Path, label: str) -> str:
 def _identity(path: Path, project_root: Path, kind: str) -> dict[str, Any]:
     if not path.is_file():
         raise NativeCanonicalMappingError(f"required {kind} input is absent")
-    return {
+    result = {
         "kind": kind,
         "path": _relative_path(project_root, path, kind),
         "sha256": sha256_file(path),
         "size_bytes": path.stat().st_size,
     }
+    return result
 
 
 def _validate_pinned_identity(
@@ -335,6 +385,7 @@ def load_native_canonical_mapping_policy(path: Path, project_root: Path) -> dict
             "ACCEPTED_STRUCTURAL_ALIAS_RETRIEVAL_KEY_EXACT",
             "ACCEPTED_ACCOUNTING_ABBREVIATION_NORMALIZATION",
             "REPEATED_PARENT_DETAIL_WITH_COMPLETE_HIERARCHY_AND_EQUATION",
+            _AUDITED_TERMINAL_AGGREGATE_MATCH_BASIS,
         ],
         "accepted_alias_authority_types": [
             "USER_SUPPLIED_HIERARCHY_LABEL",
@@ -357,12 +408,24 @@ def load_native_canonical_mapping_policy(path: Path, project_root: Path) -> dict
         "require_one_disposition_per_source_row": True,
         "require_one_to_one_existing_item_mapping": True,
         "require_hierarchy_consistency_when_both_source_parent_and_schema_parent_are_observed": True,
+        "compressed_hierarchy_edge_allowed_only_through_unobserved_schema_intermediates": True,
         "off_balance_sheet_rows_are_accounting_items": True,
         "section_header_is_not_automatically_structural": True,
         "unmatched_label_only_parent_with_distinct_accounting_children": "NEW_ITEM_PROPOSAL",
         "repeated_or_childless_label_only_heading": "STRUCTURAL",
         "outside_financial_table_span_row": "UNRESOLVED",
-        "unlabeled_numeric_row": "UNRESOLVED",
+        "unlabeled_numeric_row": ("UNRESOLVED_UNLESS_AUDITED_FORMULA_UNIQUE_TERMINAL_AGGREGATE"),
+        "audited_formula_terminal_aggregate": {
+            "formula_authority": "HASH_BOUND_APPROVED_BUSINESS_UPDATE_AUDIT_RECORD",
+            "operator": "SUM",
+            "target_topology": "NON_ROOT_PARENT_WITH_EXACT_ORDERED_DIRECT_CHILDREN",
+            "source_topology": (
+                "UNIQUE_UNLABELED_TERMINAL_AFTER_CONTIGUOUS_COMPLETE_DESCENDANT_INTERVAL"
+            ),
+            "scope_rule": "SAME_STATEMENT_PRESENTATION_SCOPE_PHYSICAL_TABLE_AND_AXES",
+            "selection_stage": "BOUNDED_POST_MONOTONE_PATH_PROMOTION",
+            "arithmetic_rule": "EXACT_EVERY_AXIS_CORROBORATION_OR_VETO_ONLY",
+        },
         "unmatched_labeled_value_row": "NEW_ITEM_PROPOSAL",
         "fuzzy_similarity_can_map": False,
         "alias_proposal_threshold": 0.96,
@@ -474,10 +537,11 @@ def _git(project_root: Path, *arguments: str) -> str:
 
 
 def _current_git_state(project_root: Path) -> dict[str, Any]:
-    return {
+    result = {
         "commit": _git(project_root, "rev-parse", "HEAD"),
         "dirty": bool(_git(project_root, "status", "--porcelain", "--untracked-files=all")),
     }
+    return result
 
 
 def _validate_git_state(state: Any) -> dict[str, Any]:
@@ -533,6 +597,26 @@ def _yaml_payload_at_commit(project_root: Path, commit: str, raw_path: str) -> d
         raise NativeCanonicalMappingError("producer policy snapshot cannot be decoded") from exc
     if not isinstance(payload, dict):
         raise NativeCanonicalMappingError("producer policy snapshot is not an object")
+    return payload
+
+
+def _json_payload_at_commit(project_root: Path, commit: str, raw_path: str) -> dict[str, Any]:
+    if _GIT_COMMIT.fullmatch(commit) is None:
+        raise NativeCanonicalMappingError("producer commit is invalid")
+    result = subprocess.run(
+        ["git", "show", f"{commit}:{raw_path}"],
+        cwd=project_root,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise NativeCanonicalMappingError(f"producer commit lacks versioned JSON input: {raw_path}")
+    try:
+        payload = json.loads(result.stdout)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise NativeCanonicalMappingError("producer JSON snapshot cannot be decoded") from exc
+    if not isinstance(payload, dict):
+        raise NativeCanonicalMappingError("producer JSON snapshot is not an object")
     return payload
 
 
@@ -767,6 +851,12 @@ def _accepted_alias_projection(
     ]
 
 
+def _structural_alias_key(value: str) -> str:
+    structural = _STRUCTURAL_ENUMERATOR.sub("", normalize_text(value))
+    structural = _TRAILING_FORMULA.sub("", structural)
+    return retrieval_key(structural)
+
+
 def _load_accepted_alias_authority(
     project_root: Path,
     source_config: Mapping[str, Any],
@@ -872,7 +962,7 @@ def _load_accepted_alias_authority(
         key = (
             alias.statement_type,
             alias.report_norm_id,
-            retrieval_key(alias.alias),
+            _structural_alias_key(alias.alias),
         )
         previous = selected.get(key)
         if previous is None or priority[alias.authority_type] < priority[previous.authority_type]:
@@ -891,6 +981,100 @@ def _load_accepted_alias_authority(
         if alias.authority_type not in priority or not alias.authority_evidence_sha256:
             raise NativeCanonicalMappingError("accepted alias authority is incomplete")
     return ordered
+
+
+def _audited_formula_projection(
+    formulas: Sequence[_AuditedFormula],
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "statement_type": formula.statement_type,
+            "schema_id": formula.schema_id,
+            "operator": formula.operator,
+            "component_schema_ids": list(formula.component_schema_ids),
+            "authority_evidence": copy.deepcopy(formula.authority_evidence),
+            "authority_evidence_sha256": formula.authority_evidence_sha256,
+        }
+        for formula in formulas
+    ]
+
+
+def _load_audited_formula_authority(
+    project_root: Path,
+    source_config: Mapping[str, Any],
+    schema_items: Sequence[SchemaItem],
+) -> tuple[_AuditedFormula, ...]:
+    """Load hash-bound formula records from accepted schema-migration audits."""
+
+    schema_by_key = {(item.statement_type, item.schema_id): item for item in schema_items}
+    raw_audits = source_config.get("approved_business_update_audits", [])
+    if not isinstance(raw_audits, list) or any(not isinstance(path, str) for path in raw_audits):
+        raise NativeCanonicalMappingError(
+            "approved business-update formula audit list is malformed"
+        )
+    formulas: list[_AuditedFormula] = []
+    seen: set[tuple[str, int]] = set()
+    for raw_path in raw_audits:
+        audit_path = _resolve_under_root(
+            project_root, raw_path, "approved business-update formula audit"
+        )
+        audit = _read_json(audit_path, "approved business-update formula audit")
+        if audit.get("status") != "APPLIED_AND_VERIFIED":
+            raise NativeCanonicalMappingError("business-update formula audit is not accepted")
+        audit_identity = _identity(audit_path, project_root, "SCHEMA_BUSINESS_UPDATE_AUDIT")
+        records = audit.get("business_formulas")
+        if not isinstance(records, list):
+            raise NativeCanonicalMappingError("business-update audit has no formula authority")
+        for record_index, record in enumerate(records):
+            if not isinstance(record, dict):
+                raise NativeCanonicalMappingError("audited business formula is malformed")
+            if record.get("operator") != "SUM":
+                continue
+            if (
+                set(record) != {"statement_type", "schema_id", "operator", "component_schema_ids"}
+                or record.get("statement_type") not in _STATEMENT_TYPES
+                or type(record.get("schema_id")) is not int
+                or record.get("operator") != "SUM"
+                or not isinstance(record.get("component_schema_ids"), list)
+                or not record["component_schema_ids"]
+                or any(type(value) is not int for value in record["component_schema_ids"])
+                or len(record["component_schema_ids"]) != len(set(record["component_schema_ids"]))
+            ):
+                raise NativeCanonicalMappingError("audited business formula is malformed")
+            statement = str(record["statement_type"])
+            schema_id = int(record["schema_id"])
+            components = tuple(int(value) for value in record["component_schema_ids"])
+            if (statement, schema_id) not in schema_by_key or any(
+                (statement, component_id) not in schema_by_key for component_id in components
+            ):
+                raise NativeCanonicalMappingError("audited formula points outside universal schema")
+            key = (statement, schema_id)
+            if key in seen:
+                raise NativeCanonicalMappingError("audited formula authority repeats a target")
+            seen.add(key)
+            formulas.append(
+                _AuditedFormula(
+                    statement_type=statement,
+                    schema_id=schema_id,
+                    operator=str(record["operator"]),
+                    component_schema_ids=components,
+                    audit_path=str(audit_identity["path"]),
+                    audit_sha256=str(audit_identity["sha256"]),
+                    audit_status=str(audit["status"]),
+                    record_index=record_index,
+                    record_sha256=_record_hash(record),
+                )
+            )
+    return tuple(
+        sorted(
+            formulas,
+            key=lambda formula: (
+                _STATEMENT_TYPES.index(formula.statement_type),
+                schema_by_key[(formula.statement_type, formula.schema_id)].display_order,
+                formula.schema_id,
+            ),
+        )
+    )
 
 
 def _schema_snapshot_items(items: Sequence[SchemaItem]) -> list[dict[str, Any]]:
@@ -963,6 +1147,7 @@ def _producer_snapshots(
     policy: Mapping[str, Any],
     schema_items: Sequence[SchemaItem],
     accepted_aliases: Sequence[_AcceptedAlias],
+    audited_formulas: Sequence[_AuditedFormula] = (),
     coverage: SchemaCoverageContract,
     cash_flow_rules: CashFlowRules,
 ) -> dict[str, Any]:
@@ -976,10 +1161,11 @@ def _producer_snapshots(
             _accepted_alias_projection(accepted_aliases), accepted_aliases, strict=True
         )
     ]
+    formula_snapshot = _audited_formula_projection(audited_formulas)
     coverage_snapshot = _coverage_snapshot(coverage)
     cash_snapshot = _cash_flow_rules_snapshot(cash_flow_rules, project_root)
     policy_snapshot = copy.deepcopy(dict(policy))
-    return {
+    result = {
         "policy": {
             "path": _relative_path(project_root, policy_path, "mapping policy"),
             "source_sha256": sha256_file(policy_path),
@@ -1003,6 +1189,12 @@ def _producer_snapshots(
             "payload": cash_snapshot,
         },
     }
+    if _audited_terminal_aggregate_enabled(policy):
+        result["audited_formulas"] = {
+            "records_sha256": _record_hash(formula_snapshot),
+            "records": formula_snapshot,
+        }
+    return result
 
 
 def _load_producer_snapshots(
@@ -1014,16 +1206,11 @@ def _load_producer_snapshots(
     dict[str, Any],
     list[SchemaItem],
     tuple[_AcceptedAlias, ...],
+    tuple[_AuditedFormula, ...],
     SchemaCoverageContract,
     CashFlowRules,
 ]:
-    if not isinstance(snapshots, dict) or set(snapshots) != {
-        "policy",
-        "schema",
-        "accepted_aliases",
-        "coverage",
-        "cash_flow_rules",
-    }:
+    if not isinstance(snapshots, dict):
         raise NativeCanonicalMappingError("producer-versioned snapshots are malformed")
     policy_record = snapshots["policy"]
     if not isinstance(policy_record, dict) or set(policy_record) != {
@@ -1043,6 +1230,18 @@ def _load_producer_snapshots(
         != "ALL_RECONSTRUCTED_SOURCE_ROWS"
     ):
         raise NativeCanonicalMappingError("producer policy snapshot drifted")
+    formula_enabled = _audited_terminal_aggregate_enabled(policy_payload)
+    expected_snapshot_keys = {
+        "policy",
+        "schema",
+        "accepted_aliases",
+        "coverage",
+        "cash_flow_rules",
+    }
+    if formula_enabled:
+        expected_snapshot_keys.add("audited_formulas")
+    if set(snapshots) != expected_snapshot_keys:
+        raise NativeCanonicalMappingError("producer-versioned snapshots are malformed")
     committed_policy = _file_identity_at_commit(
         project_root, producer_commit, str(policy_record["path"])
     )
@@ -1052,6 +1251,40 @@ def _load_producer_snapshots(
         != policy_payload
     ):
         raise NativeCanonicalMappingError("producer policy differs from producer commit")
+    approved_formula_audit_paths: frozenset[str] = frozenset()
+    if formula_enabled:
+        schema_authority = policy_payload.get("schema_authority")
+        source_config_record = (
+            schema_authority.get("source_config") if isinstance(schema_authority, Mapping) else None
+        )
+        if (
+            not isinstance(source_config_record, Mapping)
+            or not isinstance(source_config_record.get("path"), str)
+            or not isinstance(source_config_record.get("sha256"), str)
+        ):
+            raise NativeCanonicalMappingError(
+                "producer formula authority lacks schema source configuration"
+            )
+        source_config_path = _canonical_project_relative_path(
+            source_config_record["path"], "producer schema source config"
+        )
+        committed_source_identity = _file_identity_at_commit(
+            project_root, producer_commit, source_config_path
+        )
+        committed_source_config = _yaml_payload_at_commit(
+            project_root, producer_commit, source_config_path
+        )
+        raw_approved = committed_source_config.get("approved_business_update_audits")
+        if (
+            committed_source_identity.get("sha256") != source_config_record["sha256"]
+            or not isinstance(raw_approved, list)
+            or any(not isinstance(path, str) for path in raw_approved)
+        ):
+            raise NativeCanonicalMappingError("producer approved formula-audit inventory drifted")
+        approved_formula_audit_paths = frozenset(
+            _canonical_project_relative_path(path, "approved producer formula audit")
+            for path in raw_approved
+        )
 
     schema_record = snapshots["schema"]
     raw_items = schema_record.get("items") if isinstance(schema_record, dict) else None
@@ -1106,6 +1339,94 @@ def _load_producer_snapshots(
         ):
             raise NativeCanonicalMappingError("producer alias authority drifted")
         accepted_aliases.append(alias)
+
+    formula_record = snapshots.get(
+        "audited_formulas", {"records_sha256": _record_hash([]), "records": []}
+    )
+    raw_formulas = formula_record.get("records") if isinstance(formula_record, dict) else None
+    if not isinstance(raw_formulas, list) or formula_record.get("records_sha256") != _record_hash(
+        raw_formulas
+    ):
+        raise NativeCanonicalMappingError("producer audited-formula snapshot drifted")
+    audited_formulas: list[_AuditedFormula] = []
+    formula_targets: set[tuple[str, int]] = set()
+    committed_formula_audits: dict[str, tuple[dict[str, Any], dict[str, Any]]] = {}
+    for record in raw_formulas:
+        evidence = record.get("authority_evidence") if isinstance(record, dict) else None
+        components = record.get("component_schema_ids") if isinstance(record, dict) else None
+        if (
+            not isinstance(record, dict)
+            or record.get("statement_type") not in _STATEMENT_TYPES
+            or type(record.get("schema_id")) is not int
+            or record.get("operator") != "SUM"
+            or not isinstance(components, list)
+            or not components
+            or any(type(value) is not int for value in components)
+            or len(components) != len(set(components))
+            or not isinstance(evidence, dict)
+            or set(evidence)
+            != {
+                "audit_path",
+                "audit_sha256",
+                "audit_status",
+                "record_index",
+                "record_sha256",
+            }
+        ):
+            raise NativeCanonicalMappingError("producer audited-formula record is malformed")
+        formula = _AuditedFormula(
+            statement_type=str(record["statement_type"]),
+            schema_id=int(record["schema_id"]),
+            operator=str(record["operator"]),
+            component_schema_ids=tuple(int(value) for value in components),
+            audit_path=str(evidence["audit_path"]),
+            audit_sha256=str(evidence["audit_sha256"]),
+            audit_status=str(evidence["audit_status"]),
+            record_index=int(evidence["record_index"]),
+            record_sha256=str(evidence["record_sha256"]),
+        )
+        try:
+            audit_path = _canonical_project_relative_path(
+                formula.audit_path, "producer formula audit"
+            )
+        except NativeCanonicalMappingError:
+            raise
+        if audit_path not in committed_formula_audits:
+            committed_identity = _file_identity_at_commit(project_root, producer_commit, audit_path)
+            committed_audit = _json_payload_at_commit(project_root, producer_commit, audit_path)
+            committed_formula_audits[audit_path] = (committed_identity, committed_audit)
+        committed_identity, committed_audit = committed_formula_audits[audit_path]
+        committed_records = committed_audit.get("business_formulas")
+        expected_record = {
+            "statement_type": formula.statement_type,
+            "schema_id": formula.schema_id,
+            "operator": formula.operator,
+            "component_schema_ids": list(formula.component_schema_ids),
+        }
+        key = (formula.statement_type, formula.schema_id)
+        if (
+            key in formula_targets
+            or key not in schema_by_key
+            or any(
+                (formula.statement_type, component_id) not in schema_by_key
+                for component_id in formula.component_schema_ids
+            )
+            or formula.audit_status != "APPLIED_AND_VERIFIED"
+            or _SHA256.fullmatch(formula.audit_sha256) is None
+            or _SHA256.fullmatch(formula.record_sha256) is None
+            or formula.record_index < 0
+            or audit_path not in approved_formula_audit_paths
+            or formula.authority_evidence_sha256 != record.get("authority_evidence_sha256")
+            or committed_identity.get("sha256") != formula.audit_sha256
+            or committed_audit.get("status") != formula.audit_status
+            or not isinstance(committed_records, list)
+            or formula.record_index >= len(committed_records)
+            or committed_records[formula.record_index] != expected_record
+            or _record_hash(expected_record) != formula.record_sha256
+        ):
+            raise NativeCanonicalMappingError("producer audited-formula authority drifted")
+        formula_targets.add(key)
+        audited_formulas.append(formula)
 
     coverage_record = snapshots["coverage"]
     raw_coverage = coverage_record.get("payload") if isinstance(coverage_record, dict) else None
@@ -1165,7 +1486,14 @@ def _load_producer_snapshots(
         )
     except (KeyError, TypeError, ValueError) as exc:
         raise NativeCanonicalMappingError("producer cash-flow snapshot is invalid") from exc
-    return policy_payload, schema_items, tuple(accepted_aliases), coverage, cash_flow_rules
+    return (
+        policy_payload,
+        schema_items,
+        tuple(accepted_aliases),
+        tuple(audited_formulas),
+        coverage,
+        cash_flow_rules,
+    )
 
 
 def _validate_snapshot_schema_identity(
@@ -1173,6 +1501,7 @@ def _validate_snapshot_schema_identity(
     schema_identity: Any,
     schema_items: Sequence[SchemaItem],
     accepted_aliases: Sequence[_AcceptedAlias],
+    audited_formulas: Sequence[_AuditedFormula],
     coverage: SchemaCoverageContract,
 ) -> None:
     if not isinstance(schema_identity, dict):
@@ -1251,6 +1580,28 @@ def _validate_snapshot_schema_identity(
         or schema_identity.get("historical_aliases_loaded") is not False
     ):
         raise NativeCanonicalMappingError("producer accepted-alias identity drifted")
+    if _audited_terminal_aggregate_enabled(policy):
+        formula_projection = _audited_formula_projection(audited_formulas)
+        if (
+            schema_identity.get("audited_formula_count") != len(audited_formulas)
+            or schema_identity.get("audited_formula_authority_sha256")
+            != stable_records_hash(
+                json.dumps(record, ensure_ascii=False, sort_keys=True)
+                for record in formula_projection
+            )
+            or schema_identity.get("audited_formula_authority")
+            != "HASH_BOUND_APPROVED_BUSINESS_UPDATE_AUDIT_RECORDS"
+        ):
+            raise NativeCanonicalMappingError("producer audited-formula identity drifted")
+    elif any(
+        key in schema_identity
+        for key in (
+            "audited_formula_count",
+            "audited_formula_authority_sha256",
+            "audited_formula_authority",
+        )
+    ):
+        raise NativeCanonicalMappingError("legacy producer unexpectedly cites formula authority")
     expected_coverage = {
         "target_count": len(coverage.targets),
         "ordered_targets_sha256": coverage.ordered_targets_sha256,
@@ -1496,6 +1847,11 @@ def _load_schema_bundle(
             hierarchy_registry,
             hierarchy_items,
         )
+        audited_formulas = _load_audited_formula_authority(
+            project_root,
+            source_config,
+            items,
+        )
         projections = {
             statement: build_schema_projection_v2(items, statement)
             for statement in _STATEMENT_TYPES
@@ -1624,10 +1980,17 @@ def _load_schema_bundle(
             {alias.authority_type for alias in accepted_aliases}
         ),
         "historical_aliases_loaded": False,
+        "audited_formula_authority": ("HASH_BOUND_APPROVED_BUSINESS_UPDATE_AUDIT_RECORDS"),
+        "audited_formula_count": len(audited_formulas),
+        "audited_formula_authority_sha256": stable_records_hash(
+            json.dumps(record, ensure_ascii=False, sort_keys=True)
+            for record in _audited_formula_projection(audited_formulas)
+        ),
     }
     # The evidence is classified after source rows are available. Returning the
     # rules through this private carrier avoids loading a second rule surface.
     identity["_cash_flow_rules"] = cash_flow_rules
+    identity["_audited_formulas"] = audited_formulas
     return items, projections, coverage, accepted_aliases, identity
 
 
@@ -1817,9 +2180,7 @@ def _accepted_alias_index(
 ) -> dict[tuple[str, int, str], _AcceptedAlias]:
     result: dict[tuple[str, int, str], _AcceptedAlias] = {}
     for alias in accepted_aliases:
-        structural = _STRUCTURAL_ENUMERATOR.sub("", normalize_text(alias.alias))
-        structural = _TRAILING_FORMULA.sub("", structural)
-        key = (alias.statement_type, alias.report_norm_id, retrieval_key(structural))
+        key = (alias.statement_type, alias.report_norm_id, _structural_alias_key(alias.alias))
         if key in result:
             raise NativeCanonicalMappingError("accepted alias snapshot repeats an item key")
         result[key] = alias
@@ -1916,6 +2277,7 @@ def _resolve_monotone_exact_path(
     *,
     lctt_method: CashFlowEvidence | None,
     accepted_aliases: Sequence[_AcceptedAlias],
+    allow_value_derived_repeated_parent_detail: bool = True,
 ) -> _PathResolution:
     nodes, index = _candidate_index(
         projection,
@@ -1965,7 +2327,7 @@ def _resolve_monotone_exact_path(
     # identities. Admit the detail child only when the visible indentation,
     # complete sibling inventory, and source arithmetic jointly corroborate the
     # direct schema hierarchy. Arithmetic never invents a target on its own.
-    for row in rows:
+    for row in rows if allow_value_derived_repeated_parent_detail else ():
         parent_row_id = source_parents[row.row_id]
         if parent_row_id is None or retrieval_key(row.label) != retrieval_key(
             rows_by_id[parent_row_id].label
@@ -2020,8 +2382,38 @@ def _resolve_monotone_exact_path(
             )
         )
     all_candidates = {row.row_id: tuple(mutable_candidates[row.row_id]) for row in rows}
+    # A shared DIRECT/INDIRECT cash-flow label is not safe mapping authority
+    # until the statement method is semantically proven.  Exclude every such
+    # row from the path optimization so surrounding monotone anchors cannot
+    # silently choose one branch; retain the complete candidates for the
+    # explicit AMBIGUOUS disposition and receipt.
+    cash_flow_branch_proven = bool(
+        projection.statement_type == "LCTT"
+        and lctt_method is not None
+        and lctt_method.semantic_high_confidence_allowed
+        and lctt_method.method in {CashFlowMethod.DIRECT, CashFlowMethod.INDIRECT}
+    )
+    forced_cross_branch_ambiguity = {
+        row_id
+        for row_id, candidates in all_candidates.items()
+        if projection.statement_type == "LCTT"
+        and not cash_flow_branch_proven
+        and len(
+            {
+                schema_by_id[candidate.report_norm_id].cash_flow_branch
+                for candidate in candidates
+                if schema_by_id[candidate.report_norm_id].cash_flow_branch
+                in {CashFlowMethod.DIRECT.value, CashFlowMethod.INDIRECT.value}
+            }
+        )
+        > 1
+    }
     candidate_ids = {
-        row_id: {candidate.report_norm_id for candidate in candidates}
+        row_id: (
+            set()
+            if row_id in forced_cross_branch_ambiguity
+            else {candidate.report_norm_id for candidate in candidates}
+        )
         for row_id, candidates in all_candidates.items()
     }
     prefix = _lcs_table(rows, nodes, candidate_ids)
@@ -2031,6 +2423,11 @@ def _resolve_monotone_exact_path(
     selected: dict[str, _Candidate] = {}
     ambiguous: dict[str, tuple[int, ...]] = {}
     for row_index, row in enumerate(rows):
+        if row.row_id in forced_cross_branch_ambiguity:
+            ambiguous[row.row_id] = tuple(
+                candidate.report_norm_id for candidate in all_candidates[row.row_id]
+            )
+            continue
         possible: list[_Candidate] = []
         for candidate in all_candidates[row.row_id]:
             position = node_position[candidate.report_norm_id]
@@ -2115,16 +2512,47 @@ def _observed_hierarchy_conflicts(
     rows: Sequence[_SourceRow],
     selected: Mapping[str, _Candidate],
     schema_by_id: Mapping[int, SchemaItem],
+    ambiguous: Mapping[str, Sequence[int]] | None = None,
+    *,
+    allow_compressed_unobserved_intermediates: bool = False,
 ) -> tuple[dict[str, str | None], list[dict[str, Any]]]:
     parents = _infer_source_parent_ids(rows)
     conflicts: list[dict[str, Any]] = []
+    observed_schema_ids = {candidate.report_norm_id for candidate in selected.values()}
+    ambiguous_schema_ids = {
+        schema_id for candidates in (ambiguous or {}).values() for schema_id in candidates
+    }
+
+    def unobserved_intermediate_path(target_id: int, ancestor_id: int) -> tuple[int, ...] | None:
+        intermediates: list[int] = []
+        seen = {target_id}
+        current = schema_by_id[target_id]
+        while current.parent_id is not None:
+            parent_id = current.parent_id
+            if parent_id in seen or parent_id not in schema_by_id:
+                raise NativeCanonicalMappingError("schema hierarchy is cyclic or dangling")
+            if parent_id == ancestor_id:
+                return tuple(reversed(intermediates))
+            intermediates.append(parent_id)
+            seen.add(parent_id)
+            current = schema_by_id[parent_id]
+        return None
+
     for row in rows:
         source_parent_id = parents[row.row_id]
         if row.row_id not in selected or source_parent_id not in selected:
             continue
         target_id = selected[row.row_id].report_norm_id
         target_parent = selected[source_parent_id].report_norm_id
-        if schema_by_id[target_id].parent_id != target_parent:
+        if schema_by_id[target_id].parent_id == target_parent:
+            continue
+        intermediates = unobserved_intermediate_path(target_id, target_parent)
+        compressed_edge_allowed = (
+            allow_compressed_unobserved_intermediates
+            and bool(intermediates)
+            and not (set(intermediates) & (observed_schema_ids | ambiguous_schema_ids))
+        )
+        if not compressed_edge_allowed:
             conflicts.append(
                 {
                     "conflict_type": "OBSERVED_HIERARCHY_CONFLICT",
@@ -2133,6 +2561,9 @@ def _observed_hierarchy_conflicts(
                     "candidate_report_norm_ids": [target_id],
                     "candidate_schema_parent_report_norm_id": schema_by_id[target_id].parent_id,
                     "observed_parent_report_norm_id": target_parent,
+                    "schema_intermediate_report_norm_ids": (
+                        [] if intermediates is None else list(intermediates)
+                    ),
                     "resolution": "DEMOTE_AFFECTED_CHILD_TO_AMBIGUOUS",
                 }
             )
@@ -2351,6 +2782,9 @@ def _equation_evidence(
     dispositions_by_row: Mapping[str, str],
     schema_by_id: Mapping[int, SchemaItem],
     source_parents: Mapping[str, str | None],
+    *,
+    allow_compressed_unobserved_intermediates: bool = False,
+    suppressed_unlabeled_total_row_ids: frozenset[str] = frozenset(),
 ) -> tuple[list[dict[str, Any]], dict[str, list[int]]]:
     equations: list[dict[str, Any]] = []
     equation_indexes_by_row: dict[str, list[int]] = defaultdict(list)
@@ -2358,6 +2792,23 @@ def _equation_evidence(
     selected_row_by_schema = {
         candidate.report_norm_id: rows_by_id[row_id] for row_id, candidate in selected.items()
     }
+
+    def observed_frontier(schema_id: int, trail: frozenset[int]) -> tuple[int, ...] | None:
+        if schema_id in trail:
+            raise NativeCanonicalMappingError("schema hierarchy is cyclic")
+        if schema_id in selected_row_by_schema:
+            return (schema_id,)
+        children = tuple(schema_by_id[schema_id].children)
+        if not children:
+            return None
+        frontier: list[int] = []
+        for child_id in children:
+            branch = observed_frontier(child_id, trail | {schema_id})
+            if branch is None:
+                return None
+            frontier.extend(branch)
+        return tuple(frontier)
+
     for row_id, candidate in selected.items():
         node = schema_by_id[candidate.report_norm_id]
         children = _direct_source_children(rows_by_id[row_id], rows, source_parents)
@@ -2367,18 +2818,38 @@ def _equation_evidence(
             for child in mapped_children
         ):
             continue
-        child_ids = {selected[child.row_id].report_norm_id for child in mapped_children}
-        complete = bool(node.children) and child_ids == set(node.children)
+        child_ids = tuple(selected[child.row_id].report_norm_id for child in mapped_children)
+        frontier: list[int] = []
+        complete = bool(node.children)
+        if allow_compressed_unobserved_intermediates:
+            for child_id in node.children:
+                branch = observed_frontier(child_id, frozenset({node.schema_id}))
+                if branch is None:
+                    complete = False
+                    break
+                frontier.extend(branch)
+        else:
+            frontier.extend(node.children)
+        complete = complete and child_ids == tuple(frontier)
         if not complete:
             continue
+        direct = child_ids == tuple(node.children)
         equation = _sum_equation(
             rows_by_id[row_id],
             mapped_children,
-            equation_type="MAPPED_PARENT_EQUALS_ALL_MAPPED_SCHEMA_CHILDREN",
+            equation_type=(
+                "MAPPED_PARENT_EQUALS_ALL_MAPPED_SCHEMA_CHILDREN"
+                if direct
+                else "MAPPED_PARENT_EQUALS_COMPLETE_OBSERVED_SCHEMA_FRONTIER"
+            ),
             complete_structure=True,
         )
         if equation is None:
             continue
+        if not direct:
+            equation["compressed_unobserved_schema_nodes"] = sorted(
+                set(node.children) - set(child_ids)
+            )
         equations.append(equation)
         index = len(equations) - 1
         equation_indexes_by_row[row_id].append(index)
@@ -2389,7 +2860,11 @@ def _equation_evidence(
     # equal the mapped children of one unobserved schema root, retain that fact
     # as validation evidence while leaving the row UNRESOLVED.
     for row in rows:
-        if row.label or dispositions_by_row.get(row.row_id) != "UNRESOLVED":
+        if (
+            row.label
+            or row.row_id in suppressed_unlabeled_total_row_ids
+            or dispositions_by_row.get(row.row_id) != "UNRESOLVED"
+        ):
             continue
         same_page = [candidate for candidate in rows if candidate.row["page"] == row.row["page"]]
         groups: dict[int, list[_SourceRow]] = defaultdict(list)
@@ -2764,6 +3239,300 @@ def _complete_block(
     return candidates[0]
 
 
+def _promote_audited_terminal_aggregate(
+    rows: Sequence[_SourceRow],
+    selected: Mapping[str, _Candidate],
+    schema_by_id: Mapping[int, SchemaItem],
+    audited_formulas: Sequence[_AuditedFormula],
+    blocks: Mapping[tuple[str, str], Sequence[_ObservedBlock]],
+    blocked_schema_ids: frozenset[int] = frozenset(),
+) -> tuple[
+    dict[str, _Candidate],
+    dict[str, dict[str, Any]],
+    dict[str, dict[str, Any]],
+    dict[str, tuple[int, ...]],
+]:
+    """Select one terminal unlabeled aggregate from topology, then veto on non-exact arithmetic."""
+
+    value_independent_component_bases = {
+        "CANONICAL_RETRIEVAL_KEY_EXACT",
+        "ACCEPTED_STRUCTURAL_ALIAS_RETRIEVAL_KEY_EXACT",
+        "ACCEPTED_ACCOUNTING_ABBREVIATION_NORMALIZATION",
+    }
+
+    selected_row_by_schema = {
+        candidate.report_norm_id: row
+        for row in rows
+        if (candidate := selected.get(row.row_id)) is not None
+    }
+    selected_schema_ids = set(selected_row_by_schema)
+
+    def descendants(schema_id: int, trail: frozenset[int] = frozenset()) -> tuple[int, ...]:
+        if schema_id in trail:
+            raise NativeCanonicalMappingError("schema hierarchy is cyclic")
+        result: list[int] = []
+        for child_id in schema_by_id[schema_id].children:
+            result.append(child_id)
+            result.extend(descendants(child_id, trail | {schema_id}))
+        return tuple(result)
+
+    def numeric_axis_signature(row: _SourceRow) -> tuple[str, ...] | None:
+        cells = row.row.get("cells")
+        if not isinstance(cells, list) or not cells:
+            return None
+        axes: list[str] = []
+        for cell in cells:
+            if (
+                not isinstance(cell, dict)
+                or cell.get("source_status") not in {"OBSERVED_VALUE", "OBSERVED_ZERO"}
+                or not isinstance(cell.get("axis_id"), str)
+                or not cell["axis_id"]
+            ):
+                return None
+            axes.append(str(cell["axis_id"]))
+        return tuple(axes) if len(axes) == len(set(axes)) else None
+
+    def physical_table_id(row: _SourceRow) -> str | None:
+        provenance = row.row.get("provenance")
+        cells = row.row.get("cells")
+        if not isinstance(provenance, dict) or not isinstance(cells, list):
+            return None
+        table_id = provenance.get("table_id")
+        if not isinstance(table_id, str) or not table_id:
+            return None
+        for cell in cells:
+            cell_provenance = cell.get("provenance") if isinstance(cell, dict) else None
+            if (
+                not isinstance(cell_provenance, dict)
+                or cell_provenance.get("table_id") != table_id
+                or cell_provenance.get("row_id") != row.row_id
+            ):
+                return None
+        return table_id
+
+    topology_candidates: list[
+        tuple[
+            _AuditedFormula, SchemaItem, _SourceRow, tuple[_SourceRow, ...], tuple[_SourceRow, ...]
+        ]
+    ] = []
+    for formula in audited_formulas:
+        if formula.operator != "SUM":
+            continue
+        target = schema_by_id.get(formula.schema_id)
+        if (
+            target is None
+            or target.statement_type != formula.statement_type
+            or target.parent_id is None
+            or target.hierarchy_level is None
+            or target.hierarchy_level <= 0
+            or len(formula.component_schema_ids) < 2
+            or tuple(target.children) != formula.component_schema_ids
+            or target.schema_id in selected_schema_ids
+            or target.schema_id in blocked_schema_ids
+            or bool(set(formula.component_schema_ids) & blocked_schema_ids)
+        ):
+            continue
+        component_rows = tuple(
+            selected_row_by_schema[component_id]
+            for component_id in formula.component_schema_ids
+            if component_id in selected_row_by_schema
+        )
+        if len(component_rows) != len(formula.component_schema_ids):
+            continue
+        if any(
+            selected[row.row_id].match_basis not in value_independent_component_bases
+            for row in component_rows
+        ):
+            continue
+        scopes = {row.scope for row in component_rows}
+        pages = {int(row.row["page"]) for row in component_rows}
+        table_ids = {physical_table_id(row) for row in component_rows}
+        if len(scopes) != 1 or len(pages) != 1 or None in table_ids or len(table_ids) != 1:
+            continue
+        scope = next(iter(scopes))
+        page = next(iter(pages))
+        table_id = next(iter(table_ids))
+        block = _complete_block(blocks, formula.statement_type, scope)
+        if block is None or page != block.pages[-1]:
+            continue
+        descendant_ids = set(descendants(target.schema_id))
+        descendant_rows = tuple(
+            row
+            for row in rows
+            if row.row_id in selected and selected[row.row_id].report_norm_id in descendant_ids
+        )
+        if not descendant_rows or any(
+            row.statement_type != formula.statement_type
+            or row.scope != scope
+            or int(row.row["page"]) != page
+            or physical_table_id(row) != table_id
+            or selected[row.row_id].match_basis not in value_independent_component_bases
+            for row in descendant_rows
+        ):
+            continue
+        if target.display_order <= max(
+            schema_by_id[selected[row.row_id].report_norm_id].display_order
+            for row in descendant_rows
+        ):
+            continue
+        block_rows = tuple(
+            row
+            for row in rows
+            if row.statement_type == formula.statement_type
+            and row.scope == scope
+            and int(row.row["page"]) in block.pages
+        )
+        if not block_rows:
+            continue
+        terminal = block_rows[-1]
+        if (
+            terminal.label
+            or numeric_axis_signature(terminal) is None
+            or physical_table_id(terminal) != table_id
+        ):
+            continue
+        terminal_position = len(block_rows) - 1
+        interval = block_rows[terminal_position - len(descendant_rows) : terminal_position]
+        if (
+            terminal_position < len(descendant_rows)
+            or tuple(row.row_id for row in interval) != tuple(row.row_id for row in descendant_rows)
+            or any(physical_table_id(row) != table_id for row in interval)
+            or any(row.order >= terminal.order for row in descendant_rows)
+        ):
+            continue
+        terminal_axes = numeric_axis_signature(terminal)
+        if terminal_axes is None or any(
+            numeric_axis_signature(row) != terminal_axes for row in descendant_rows
+        ):
+            continue
+        topology_candidates.append((formula, target, terminal, component_rows, descendant_rows))
+
+    # Uniqueness is decided per terminal source row solely from schema topology,
+    # audited formula authority, source ordering/scope, and axis shape. Values are
+    # inspected only after that candidate set has been frozen.
+    grouped: dict[str, list[tuple[Any, ...]]] = defaultdict(list)
+    for candidate_record in topology_candidates:
+        grouped[candidate_record[2].row_id].append(candidate_record)
+
+    promotions: dict[str, _Candidate] = {}
+    receipts: dict[str, dict[str, Any]] = {}
+    equations: dict[str, dict[str, Any]] = {}
+    ambiguities: dict[str, tuple[int, ...]] = {}
+    for terminal_row_id, candidate_records in grouped.items():
+        candidate_records.sort(key=lambda record: record[1].display_order)
+        pre_value_records = [
+            {
+                "target_report_norm_id": target.schema_id,
+                "statement_type": formula.statement_type,
+                "presentation_scope": terminal.scope,
+                "physical_table_id": physical_table_id(terminal),
+                "block_evidence_sha256": _record_hash(
+                    blocks[(formula.statement_type, terminal.scope)][0].evidence
+                ),
+                "axis_signature": list(numeric_axis_signature(terminal) or ()),
+                "target_parent_report_norm_id": target.parent_id,
+                "target_hierarchy_level": target.hierarchy_level,
+                "target_display_order": target.display_order,
+                "direct_child_report_norm_ids": list(formula.component_schema_ids),
+                "direct_child_source_row_ids": [row.row_id for row in _component_rows],
+                "formula_authority_evidence_sha256": formula.authority_evidence_sha256,
+                "terminal_source_row_id": terminal.row_id,
+                "contiguous_descendant_source_row_ids": [row.row_id for row in descendant_rows],
+            }
+            for formula, target, terminal, _component_rows, descendant_rows in candidate_records
+        ]
+        candidate_set_sha256 = _record_hash(pre_value_records)
+        candidate_ids = tuple(record[1].schema_id for record in candidate_records)
+        if len(candidate_records) != 1:
+            ambiguities[terminal_row_id] = candidate_ids
+            receipts[terminal_row_id] = {
+                "match_basis": None,
+                "selection_status": "AMBIGUOUS_MULTIPLE_PRE_VALUE_TOPOLOGY_CANDIDATES",
+                "pre_value_topology_candidate_report_norm_ids": list(candidate_ids),
+                "pre_value_topology_candidate_set_sha256": candidate_set_sha256,
+                "formula_authorities": [
+                    {
+                        **copy.deepcopy(formula.authority_evidence),
+                        "authority_evidence_sha256": formula.authority_evidence_sha256,
+                    }
+                    for formula, *_rest in candidate_records
+                ],
+                "equation_used_for_target_selection": False,
+                "equation_used_as_acceptance_gate": False,
+                "exact_tolerance_source_units": 0,
+                "equation_evidence_index": None,
+            }
+            continue
+
+        formula, target, terminal, component_rows, descendant_rows = candidate_records[0]
+        equation = _sum_equation(
+            terminal,
+            component_rows,
+            equation_type="AUDITED_FORMULA_TERMINAL_AGGREGATE_EXACT_SUM",
+            complete_structure=True,
+        )
+        if equation is not None:
+            equation.update(
+                {
+                    "target_report_norm_id": target.schema_id,
+                    "audited_formula_operator": formula.operator,
+                    "audited_formula_component_report_norm_ids": list(formula.component_schema_ids),
+                    "formula_authority": copy.deepcopy(formula.authority_evidence),
+                    "formula_authority_evidence_sha256": (formula.authority_evidence_sha256),
+                }
+            )
+            equations[terminal_row_id] = equation
+        accepted = equation is not None and equation.get("status") == "PASS"
+        receipts[terminal_row_id] = {
+            "match_basis": (_AUDITED_TERMINAL_AGGREGATE_MATCH_BASIS if accepted else None),
+            "selection_status": (
+                "ACCEPTED_EXACT_EVERY_AXIS" if accepted else "VETOED_NOT_EXACT_EVERY_AXIS"
+            ),
+            "pre_value_topology_candidate_report_norm_ids": [target.schema_id],
+            "pre_value_topology_candidate_set_sha256": candidate_set_sha256,
+            "topology": {
+                "statement": formula.statement_type,
+                "presentation_scope": terminal.scope,
+                "page": int(terminal.row["page"]),
+                "physical_table_id": physical_table_id(terminal),
+                "block_evidence_sha256": _record_hash(
+                    blocks[(formula.statement_type, terminal.scope)][0].evidence
+                ),
+                "axis_signature": list(numeric_axis_signature(terminal) or ()),
+                "target_parent_report_norm_id": target.parent_id,
+                "target_hierarchy_level": target.hierarchy_level,
+                "target_display_order": target.display_order,
+                "direct_child_report_norm_ids": list(formula.component_schema_ids),
+                "direct_child_source_row_ids": [row.row_id for row in component_rows],
+                "contiguous_descendant_source_row_ids": [row.row_id for row in descendant_rows],
+                "terminal_source_row_id": terminal.row_id,
+                "terminal_unlabeled": True,
+                "complete_exhaustive_block": True,
+                "unique_topology_candidate_count": 1,
+            },
+            "formula_authority": copy.deepcopy(formula.authority_evidence),
+            "formula_authority_evidence_sha256": formula.authority_evidence_sha256,
+            "equation_used_for_target_selection": False,
+            "equation_used_as_acceptance_gate": True,
+            "dependency_validation_status": (
+                "PASS_FROZEN_VALUE_INDEPENDENT_DESCENDANTS_RETAINED"
+                if accepted
+                else "NOT_RUN_EQUATION_VETOED"
+            ),
+            "exact_tolerance_source_units": 0,
+            "equation_status": None if equation is None else equation["status"],
+            "equation_axes": [] if equation is None else copy.deepcopy(equation["axes"]),
+            "equation_evidence_index": None,
+        }
+        if accepted:
+            promotions[terminal_row_id] = _Candidate(
+                report_norm_id=target.schema_id,
+                match_basis=_AUDITED_TERMINAL_AGGREGATE_MATCH_BASIS,
+                matched_label=target.canonical_name,
+            )
+    return promotions, receipts, equations, ambiguities
+
+
 def _schema_presentation_scopes(
     rows: Sequence[_SourceRow],
     schema_items: Sequence[SchemaItem],
@@ -2845,7 +3614,13 @@ def _structural_scope_roots(
                 ancestor = -1
                 break
             ancestor = common
-        if ancestor > 0 and ancestor not in mapped_row_by_id:
+        while ancestor > 0 and schema_by_id[ancestor].parent_id is not None:
+            ancestor = int(schema_by_id[ancestor].parent_id)
+        if (
+            ancestor > 0
+            and schema_by_id[ancestor].hierarchy_level in {None, 0}
+            and ancestor not in mapped_row_by_id
+        ):
             result[ancestor] = block
     return result
 
@@ -2979,6 +3754,7 @@ def resolve_native_canonical_mapping(
     coverage: SchemaCoverageContract,
     cash_flow_rules: Any,
     accepted_aliases: Sequence[_AcceptedAlias],
+    audited_formulas: Sequence[_AuditedFormula] = (),
     policy: Mapping[str, Any],
 ) -> dict[str, Any]:
     """Resolve every reconstructed source row without mutating schema authority."""
@@ -3008,6 +3784,8 @@ def resolve_native_canonical_mapping(
     selected: dict[str, _Candidate] = {}
     ambiguous: dict[str, tuple[int, ...]] = {}
     all_candidates: dict[str, tuple[_Candidate, ...]] = {}
+    aggregate_base_selected: dict[str, _Candidate] = {}
+    aggregate_base_ambiguous: dict[str, tuple[int, ...]] = {}
     path_summaries: dict[str, Any] = {}
     conflicts: list[dict[str, Any]] = []
     conflict_indexes_by_row: dict[str, list[int]] = defaultdict(list)
@@ -3028,6 +3806,17 @@ def resolve_native_canonical_mapping(
             lctt_method=lctt_method if statement == "LCTT" else None,
             accepted_aliases=accepted_aliases,
         )
+        if _audited_terminal_aggregate_enabled(policy):
+            base_resolution = _resolve_monotone_exact_path(
+                statement_rows,
+                projections[statement],
+                schema_by_id,
+                lctt_method=lctt_method if statement == "LCTT" else None,
+                accepted_aliases=accepted_aliases,
+                allow_value_derived_repeated_parent_detail=False,
+            )
+            aggregate_base_selected.update(base_resolution.selected)
+            aggregate_base_ambiguous.update(base_resolution.ambiguous)
         selected.update(resolution.selected)
         ambiguous.update(resolution.ambiguous)
         all_candidates.update(resolution.all_candidates)
@@ -3038,7 +3827,11 @@ def resolve_native_canonical_mapping(
             "projection_sha256": projections[statement].projection_sha256,
         }
         _, hierarchy_conflicts = _observed_hierarchy_conflicts(
-            statement_rows, resolution.selected, schema_by_id
+            statement_rows,
+            resolution.selected,
+            schema_by_id,
+            resolution.ambiguous,
+            allow_compressed_unobserved_intermediates=_compressed_hierarchy_enabled(policy),
         )
         for conflict in hierarchy_conflicts:
             row_id = str(conflict["affected_row_ids"][0])
@@ -3053,6 +3846,77 @@ def resolve_native_canonical_mapping(
     rows_by_id = {row.row_id: row for row in rows}
     source_parents = _infer_source_parent_ids(mapping_rows)
     source_parents.update({row.row_id: None for row in rows if not row.within_financial_table_span})
+    aggregate_receipts: dict[str, dict[str, Any]] = {}
+    aggregate_equations: dict[str, dict[str, Any]] = {}
+    promotions: dict[str, _Candidate] = {}
+    value_independent_selected: dict[str, _Candidate] = {}
+    if _audited_terminal_aggregate_enabled(policy):
+        for summary in path_summaries.values():
+            summary["post_path_audited_terminal_aggregate_promotion_count"] = 0
+        value_independent_selected = {
+            row_id: candidate
+            for row_id, candidate in aggregate_base_selected.items()
+            if selected.get(row_id) == candidate
+        }
+        promotions, aggregate_receipts, aggregate_equations, aggregate_ambiguities = (
+            _promote_audited_terminal_aggregate(
+                mapping_rows,
+                value_independent_selected,
+                schema_by_id,
+                audited_formulas,
+                _observed_blocks(row_payload),
+                frozenset(
+                    schema_id
+                    for candidate_ids in (
+                        *ambiguous.values(),
+                        *aggregate_base_ambiguous.values(),
+                    )
+                    for schema_id in candidate_ids
+                ),
+            )
+        )
+        for row_id, candidate_ids in aggregate_ambiguities.items():
+            ambiguous[row_id] = candidate_ids
+        for row_id, receipt in aggregate_receipts.items():
+            if row_id in promotions or row_id in aggregate_ambiguities:
+                continue
+            all_candidates[row_id] = tuple(
+                _Candidate(
+                    report_norm_id=schema_id,
+                    match_basis="AUDITED_FORMULA_TERMINAL_AGGREGATE_TOPOLOGY_CANDIDATE",
+                    matched_label=schema_by_id[schema_id].canonical_name,
+                )
+                for schema_id in receipt["pre_value_topology_candidate_report_norm_ids"]
+            )
+        for row_id, candidate in promotions.items():
+            if row_id in selected or candidate.report_norm_id in {
+                value.report_norm_id for value in selected.values()
+            }:
+                raise NativeCanonicalMappingError(
+                    "post-path aggregate promotion violates one-to-one mapping"
+                )
+            selected[row_id] = candidate
+            all_candidates[row_id] = (candidate,)
+            path_summaries[rows_by_id[row_id].statement_type][
+                "post_path_audited_terminal_aggregate_promotion_count"
+            ] += 1
+        if len({candidate.report_norm_id for candidate in selected.values()}) != len(selected):
+            raise NativeCanonicalMappingError(
+                "post-path aggregate promotion violates one-to-one mapping"
+            )
+        for statement in _STATEMENT_TYPES:
+            ordered = [
+                (
+                    row.order,
+                    schema_by_id[selected[row.row_id].report_norm_id].display_order,
+                )
+                for row in mapping_rows
+                if row.statement_type == statement and row.row_id in selected
+            ]
+            if any(right[1] <= left[1] for left, right in zip(ordered, ordered[1:], strict=False)):
+                raise NativeCanonicalMappingError(
+                    "post-path aggregate promotion violates strict monotonicity"
+                )
     dispositions_by_row: dict[str, str] = {}
     alias_proposals: list[dict[str, Any]] = []
     fuzzy_by_row: dict[str, list[dict[str, Any]]] = {}
@@ -3094,9 +3958,22 @@ def resolve_native_canonical_mapping(
         dispositions_by_row,
         schema_by_id,
         source_parents,
+        allow_compressed_unobserved_intermediates=_compressed_hierarchy_enabled(policy),
+        suppressed_unlabeled_total_row_ids=frozenset(aggregate_receipts),
     )
+    for row_id, equation in aggregate_equations.items():
+        equations.append(equation)
+        equation_index = len(equations) - 1
+        equation_indexes.setdefault(row_id, []).append(equation_index)
+        aggregate_receipts[row_id]["equation_evidence_index"] = equation_index
+        for component_row_id in equation["component_row_ids"]:
+            equation_indexes.setdefault(str(component_row_id), []).append(equation_index)
     for equation_index, equation in enumerate(equations):
-        if equation.get("status") != "CONFLICT" or equation.get("complete_structure") is not True:
+        if (
+            equation.get("equation_type") == "AUDITED_FORMULA_TERMINAL_AGGREGATE_EXACT_SUM"
+            or equation.get("status") != "CONFLICT"
+            or equation.get("complete_structure") is not True
+        ):
             continue
         affected = [
             str(equation["total_row_id"]),
@@ -3125,6 +4002,35 @@ def resolve_native_canonical_mapping(
         conflict_index = len(conflicts) - 1
         for row_id in affected:
             conflict_indexes_by_row[row_id].append(conflict_index)
+    for row_id, promoted_candidate in promotions.items():
+        receipt = aggregate_receipts[row_id]
+        topology = receipt["topology"]
+        dependency_row_ids = tuple(
+            dict.fromkeys(
+                [
+                    *topology["direct_child_source_row_ids"],
+                    *topology["contiguous_descendant_source_row_ids"],
+                ]
+            )
+        )
+        dependencies_retained = all(
+            dependency_row_id in selected
+            and selected[dependency_row_id] == value_independent_selected.get(dependency_row_id)
+            for dependency_row_id in dependency_row_ids
+        )
+        if dependencies_retained and selected.get(row_id) == promoted_candidate:
+            continue
+        receipt["match_basis"] = None
+        receipt["selection_status"] = "VETOED_DEPENDENCY_MAPPING_DEMOTED"
+        receipt["dependency_validation_status"] = (
+            "FAIL_FROZEN_VALUE_INDEPENDENT_DESCENDANT_NOT_RETAINED"
+        )
+        if selected.get(row_id) == promoted_candidate:
+            selected.pop(row_id)
+            dispositions_by_row[row_id] = "UNRESOLVED"
+        path_summaries[rows_by_id[row_id].statement_type][
+            "post_path_audited_terminal_aggregate_promotion_count"
+        ] -= 1
     new_item_proposals: list[dict[str, Any]] = []
     proposal_by_row: dict[str, dict[str, Any]] = {}
     proposal_by_key: dict[str, dict[str, Any]] = {}
@@ -3232,10 +4138,21 @@ def resolve_native_canonical_mapping(
                 "schema_hierarchy_level": None if target is None else target.hierarchy_level,
                 "schema_display_order": None if target is None else target.display_order,
                 "equation_evidence_indexes": equation_indexes.get(row.row_id, []),
+                **(
+                    {"aggregate_match_receipt": aggregate_receipts.get(row.row_id)}
+                    if _audited_terminal_aggregate_enabled(policy)
+                    else {}
+                ),
                 "conflict_evidence_indexes": conflict_indexes_by_row.get(row.row_id, []),
                 "source_cell_join": _row_join(row, rows_sha256),
                 "reason": {
-                    "EXISTING_ITEM": "accepted history-free schema label plus unique monotone path",
+                    "EXISTING_ITEM": (
+                        "audited formula plus unique terminal aggregate topology, with exact "
+                        "per-axis arithmetic corroboration"
+                        if match is not None
+                        and match.match_basis == _AUDITED_TERMINAL_AGGREGATE_MATCH_BASIS
+                        else "accepted history-free schema label plus unique monotone path"
+                    ),
                     "NEW_ITEM_PROPOSAL": (
                         "visible accounting row/group has no authorized exact item"
                     ),
@@ -3406,12 +4323,14 @@ def build_registered_native_canonical_mapping(
         project_root, policy
     )
     cash_flow_rules = schema_identity.pop("_cash_flow_rules")
+    audited_formulas = schema_identity.pop("_audited_formulas")
     producer_snapshots = _producer_snapshots(
         project_root=project_root,
         policy_path=policy_path,
         policy=policy,
         schema_items=items,
         accepted_aliases=accepted_aliases,
+        audited_formulas=audited_formulas,
         coverage=coverage,
         cash_flow_rules=cash_flow_rules,
     )
@@ -3423,6 +4342,7 @@ def build_registered_native_canonical_mapping(
         coverage=coverage,
         cash_flow_rules=cash_flow_rules,
         accepted_aliases=accepted_aliases,
+        audited_formulas=audited_formulas,
         policy=policy,
     )
     final_runtime_inputs = _runtime_ledger(
@@ -3467,6 +4387,11 @@ def build_registered_native_canonical_mapping(
             "aliases": "CURRENT_TYPED_ACCEPTED_ALIAS_AUTHORITY_ONLY",
             "ordering": "WORKBOOK_DISPLAY_ORDER",
             "hierarchy": "CURRENT_VALIDATED_SCHEMA_GRAPH",
+            **(
+                {"business_formulas": ("HASH_BOUND_APPROVED_BUSINESS_UPDATE_AUDIT_RECORDS")}
+                if _audited_terminal_aggregate_enabled(policy)
+                else {}
+            ),
             "source_rows_and_cells": "TRUSTED_REGISTERED_NATIVE_ROWS_SHA256_JOIN",
             "historical_values": None,
             "role_a": None,
@@ -3503,6 +4428,7 @@ def _validate_loaded_mapping(
     rows_sha256: str,
     schema_items: Sequence[SchemaItem],
     accepted_aliases: Sequence[_AcceptedAlias],
+    audited_formulas: Sequence[_AuditedFormula],
     coverage: SchemaCoverageContract,
     cash_flow_rules: Any,
     policy: Mapping[str, Any],
@@ -3546,7 +4472,7 @@ def _validate_loaded_mapping(
         raise NativeCanonicalMappingError("native canonical artifact identity is invalid")
     if payload.get("source") != row_payload.get("source"):
         raise NativeCanonicalMappingError("native canonical source envelope drifted")
-    if payload.get("authority") != {
+    expected_authority = {
         "canonical_labels": "CURRENT_UNIVERSAL_SCHEMA_WORKBOOKS",
         "aliases": "CURRENT_TYPED_ACCEPTED_ALIAS_AUTHORITY_ONLY",
         "ordering": "WORKBOOK_DISPLAY_ORDER",
@@ -3555,7 +4481,12 @@ def _validate_loaded_mapping(
         "historical_values": None,
         "role_a": None,
         "human_review": None,
-    }:
+    }
+    if _audited_terminal_aggregate_enabled(policy):
+        expected_authority["business_formulas"] = (
+            "HASH_BOUND_APPROVED_BUSINESS_UPDATE_AUDIT_RECORDS"
+        )
+    if payload.get("authority") != expected_authority:
         raise NativeCanonicalMappingError("native canonical authority receipt drifted")
     if payload.get("isolation") != {
         "prior_answer_artifacts_loaded": False,
@@ -3589,36 +4520,36 @@ def _validate_loaded_mapping(
             row.statement_type == statement and row.within_financial_table_span
             for row in source_rows
         )
+        expected_summary_keys = {
+            "source_row_count",
+            "maximum_cardinality",
+            "projection_item_count",
+            "projection_sha256",
+        }
+        if expected_source_count > 0:
+            expected_summary_keys.add("localized_hierarchy_conflict_count")
+        if _audited_terminal_aggregate_enabled(policy):
+            expected_summary_keys.add("post_path_audited_terminal_aggregate_promotion_count")
         if (
             not isinstance(summary, dict)
+            or set(summary) != expected_summary_keys
             or summary.get("source_row_count") != expected_source_count
             or summary.get("projection_item_count") != len(projections[statement].nodes)
             or summary.get("projection_sha256") != projections[statement].projection_sha256
             or type(summary.get("maximum_cardinality")) is not int
             or not 0 <= summary["maximum_cardinality"] <= expected_source_count
             or (
-                expected_source_count == 0
-                and set(summary)
-                != {
-                    "source_row_count",
-                    "maximum_cardinality",
-                    "projection_item_count",
-                    "projection_sha256",
-                }
-            )
-            or (
                 expected_source_count > 0
                 and (
-                    set(summary)
-                    != {
-                        "source_row_count",
-                        "maximum_cardinality",
-                        "projection_item_count",
-                        "projection_sha256",
-                        "localized_hierarchy_conflict_count",
-                    }
-                    or type(summary["localized_hierarchy_conflict_count"]) is not int
+                    type(summary["localized_hierarchy_conflict_count"]) is not int
                     or summary["localized_hierarchy_conflict_count"] < 0
+                )
+            )
+            or (
+                _audited_terminal_aggregate_enabled(policy)
+                and (
+                    type(summary["post_path_audited_terminal_aggregate_promotion_count"]) is not int
+                    or summary["post_path_audited_terminal_aggregate_promotion_count"] < 0
                 )
             )
         ):
@@ -3661,9 +4592,20 @@ def _validate_loaded_mapping(
     conflicts = payload.get("conflicts")
     if not isinstance(conflicts, list) or any(not isinstance(item, dict) for item in conflicts):
         raise NativeCanonicalMappingError("native canonical conflict evidence is malformed")
+    allowed_match_bases = {
+        "CANONICAL_RETRIEVAL_KEY_EXACT",
+        "ACCEPTED_STRUCTURAL_ALIAS_RETRIEVAL_KEY_EXACT",
+        "ACCEPTED_ACCOUNTING_ABBREVIATION_NORMALIZATION",
+        "REPEATED_PARENT_DETAIL_WITH_COMPLETE_HIERARCHY_AND_EQUATION",
+    }
+    if _audited_terminal_aggregate_enabled(policy):
+        allowed_match_bases.add(_AUDITED_TERMINAL_AGGREGATE_MATCH_BASIS)
+    audited_formula_by_id = {formula.schema_id: formula for formula in audited_formulas}
     for expected_order, record in enumerate(dispositions, start=1):
         if not isinstance(record, dict) or record.get("source_order") != expected_order:
             raise NativeCanonicalMappingError("native canonical disposition order drifted")
+        if _audited_terminal_aggregate_enabled(policy) != ("aggregate_match_receipt" in record):
+            raise NativeCanonicalMappingError("native canonical aggregate receipt version drifted")
         row_id = record.get("row_id")
         if row_id not in source_by_id or record.get("disposition") not in _DISPOSITIONS:
             raise NativeCanonicalMappingError("native canonical disposition identity is invalid")
@@ -3723,6 +4665,76 @@ def _validate_loaded_mapping(
             )
         ):
             raise NativeCanonicalMappingError("native canonical conflict join drifted")
+        aggregate_receipt = record.get("aggregate_match_receipt")
+        if aggregate_receipt is not None:
+            receipt_candidates = (
+                aggregate_receipt.get("pre_value_topology_candidate_report_norm_ids")
+                if isinstance(aggregate_receipt, dict)
+                else None
+            )
+            if (
+                not isinstance(aggregate_receipt, dict)
+                or not isinstance(receipt_candidates, list)
+                or not receipt_candidates
+                or len(receipt_candidates) != len(set(receipt_candidates))
+                or any(schema_id not in audited_formula_by_id for schema_id in receipt_candidates)
+                or _SHA256.fullmatch(
+                    str(aggregate_receipt.get("pre_value_topology_candidate_set_sha256", ""))
+                )
+                is None
+                or aggregate_receipt.get("equation_used_for_target_selection") is not False
+                or aggregate_receipt.get("exact_tolerance_source_units") != 0
+            ):
+                raise NativeCanonicalMappingError(
+                    "native canonical aggregate topology receipt drifted"
+                )
+            receipt_equation_index = aggregate_receipt.get("equation_evidence_index")
+            if receipt_equation_index is not None:
+                if receipt_equation_index not in indexes:
+                    raise NativeCanonicalMappingError(
+                        "native canonical aggregate equation receipt is unjoined"
+                    )
+                receipt_equation = equations[receipt_equation_index]
+                if (
+                    len(receipt_candidates) != 1
+                    or receipt_equation.get("equation_type")
+                    != "AUDITED_FORMULA_TERMINAL_AGGREGATE_EXACT_SUM"
+                    or receipt_equation.get("total_row_id") != row_id
+                    or receipt_equation.get("target_report_norm_id") != receipt_candidates[0]
+                    or receipt_equation.get("audited_formula_component_report_norm_ids")
+                    != list(audited_formula_by_id[receipt_candidates[0]].component_schema_ids)
+                    or receipt_equation.get("formula_authority_evidence_sha256")
+                    != audited_formula_by_id[receipt_candidates[0]].authority_evidence_sha256
+                    or aggregate_receipt.get("equation_status") != receipt_equation.get("status")
+                    or aggregate_receipt.get("equation_axes") != receipt_equation.get("axes")
+                ):
+                    raise NativeCanonicalMappingError(
+                        "native canonical aggregate formula/equation receipt drifted"
+                    )
+            if len(receipt_candidates) == 1 and "topology" in aggregate_receipt:
+                formula = audited_formula_by_id[receipt_candidates[0]]
+                topology = aggregate_receipt.get("topology")
+                source_provenance = source_row.row.get("provenance")
+                source_cells = source_row.row.get("cells")
+                if (
+                    not isinstance(topology, dict)
+                    or topology.get("statement") != source_row.statement_type
+                    or topology.get("presentation_scope") != source_row.scope
+                    or topology.get("page") != source_row.row["page"]
+                    or not isinstance(source_provenance, dict)
+                    or topology.get("physical_table_id") != source_provenance.get("table_id")
+                    or _SHA256.fullmatch(str(topology.get("block_evidence_sha256", ""))) is None
+                    or not isinstance(source_cells, list)
+                    or topology.get("axis_signature")
+                    != [cell.get("axis_id") for cell in source_cells]
+                    or topology.get("direct_child_report_norm_ids")
+                    != list(formula.component_schema_ids)
+                    or aggregate_receipt.get("formula_authority_evidence_sha256")
+                    != formula.authority_evidence_sha256
+                ):
+                    raise NativeCanonicalMappingError(
+                        "native canonical aggregate topology/formula join drifted"
+                    )
         selected_id = record.get("selected_report_norm_id")
         if record["disposition"] == "EXISTING_ITEM":
             if (
@@ -3739,15 +4751,30 @@ def _validate_loaded_mapping(
                 or record.get("schema_parent_report_norm_id") != item.parent_id
                 or record.get("schema_hierarchy_level") != item.hierarchy_level
                 or record.get("schema_display_order") != item.display_order
-                or record.get("match_basis")
-                not in {
-                    "CANONICAL_RETRIEVAL_KEY_EXACT",
-                    "ACCEPTED_STRUCTURAL_ALIAS_RETRIEVAL_KEY_EXACT",
-                    "ACCEPTED_ACCOUNTING_ABBREVIATION_NORMALIZATION",
-                    "REPEATED_PARENT_DETAIL_WITH_COMPLETE_HIERARCHY_AND_EQUATION",
-                }
+                or record.get("match_basis") not in allowed_match_bases
             ):
                 raise NativeCanonicalMappingError("native canonical selected target drifted")
+            aggregate_receipt = record.get("aggregate_match_receipt")
+            if record.get("match_basis") == _AUDITED_TERMINAL_AGGREGATE_MATCH_BASIS:
+                if (
+                    not isinstance(aggregate_receipt, dict)
+                    or aggregate_receipt.get("match_basis")
+                    != _AUDITED_TERMINAL_AGGREGATE_MATCH_BASIS
+                    or aggregate_receipt.get("selection_status") != "ACCEPTED_EXACT_EVERY_AXIS"
+                    or aggregate_receipt.get("pre_value_topology_candidate_report_norm_ids")
+                    != [selected_id]
+                    or aggregate_receipt.get("equation_used_for_target_selection") is not False
+                    or aggregate_receipt.get("equation_used_as_acceptance_gate") is not True
+                    or aggregate_receipt.get("exact_tolerance_source_units") != 0
+                    or aggregate_receipt.get("equation_evidence_index") not in indexes
+                ):
+                    raise NativeCanonicalMappingError(
+                        "native canonical aggregate match receipt drifted"
+                    )
+            elif aggregate_receipt is not None:
+                raise NativeCanonicalMappingError(
+                    "ordinary existing mapping cites aggregate authority"
+                )
             _validate_mapping_alias_authority(record, source_row, item, accepted_alias_by_key)
         elif selected_id is not None:
             raise NativeCanonicalMappingError("non-existing disposition grants ReportNormId")
@@ -3899,6 +4926,7 @@ def _validate_loaded_mapping(
         coverage=coverage,
         cash_flow_rules=cash_flow_rules,
         accepted_aliases=accepted_aliases,
+        audited_formulas=audited_formulas,
         policy=policy,
     )
     canonical_replay = json.loads(_canonical_json_bytes(replay))
@@ -3946,7 +4974,14 @@ def load_registered_native_canonical_mapping(
         or code["implementation"] != _implementation_ledger_at_commit(project_root, code["commit"])
     ):
         raise NativeCanonicalMappingError("native canonical producer code identity drifted")
-    policy, items, accepted_aliases, coverage, cash_flow_rules = _load_producer_snapshots(
+    (
+        policy,
+        items,
+        accepted_aliases,
+        audited_formulas,
+        coverage,
+        cash_flow_rules,
+    ) = _load_producer_snapshots(
         payload.get("producer_snapshots"),
         project_root=project_root,
         producer_commit=code["commit"],
@@ -3956,6 +4991,7 @@ def load_registered_native_canonical_mapping(
         payload.get("schema"),
         items,
         accepted_aliases,
+        audited_formulas,
         coverage,
     )
     native_rows = payload.get("native_rows")
@@ -4005,6 +5041,7 @@ def load_registered_native_canonical_mapping(
         rows_sha256=rows_sha256,
         schema_items=items,
         accepted_aliases=accepted_aliases,
+        audited_formulas=audited_formulas,
         coverage=coverage,
         cash_flow_rules=cash_flow_rules,
         policy=policy,
