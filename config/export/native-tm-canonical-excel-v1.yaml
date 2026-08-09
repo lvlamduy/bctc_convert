@@ -1,0 +1,72 @@
+version: 1
+policy: REGISTERED_NATIVE_TM_CANONICAL_EXCEL_V1
+claim_boundary: RECEIPT_BOUND_NATIVE_TM_CANONICAL_OBSERVATIONS_AND_COMPLETE_ACCOUNTING_EXCEL
+
+accepted_input:
+  mapping:
+    format_version: REGISTERED_NATIVE_TM_CANONICAL_MAPPING_RESULT_V1
+    policy: REGISTERED_NATIVE_TM_CANONICAL_MAPPING_V1
+    claim_boundary: BOUNDED_SOURCE_EVIDENCE_TM_CANONICAL_MAPPING_ONLY
+    status: COMPLETE_NATIVE_TM_CANONICAL_DISPOSITION_ACCOUNTING
+  native_tm_observations:
+    format_version: REGISTERED_NATIVE_TM_OBSERVATIONS_RESULT_V1
+    policy: REGISTERED_NATIVE_TM_OBSERVATIONS_V1
+    claim_boundary: SOURCE_ONLY_NATIVE_TM_OBSERVATION_FLATTENING
+    status: COMPLETE_NATIVE_TM_SOURCE_OBJECT_ACCOUNTING
+  dataset_role: LOGIC_DEVELOPMENT
+  trusted_mapping_sha256_required: true
+  observations_are_receipt_bound_not_public_input: true
+  strict_mapping_producer_commit_replay_required: true
+  strict_observations_producer_commit_replay_required: true
+
+denominators:
+  tm_schema_dispositions: 1701
+  source_object_dispositions: EXACT_POSITIVE_MAPPING_DECLARED_DENOMINATOR
+  exactly_one_schema_disposition_per_report_norm_id: true
+  exactly_one_mapping_disposition_per_source_object: true
+
+workbook:
+  sheets:
+    - CANONICAL_OBSERVATIONS
+    - SCHEMA_DISPOSITIONS
+    - SOURCE_DISPOSITIONS
+    - SOURCE_OBJECTS
+    - VALIDATION
+    - RUN_METADATA
+  creator: bctc-ai/native-tm-canonical-excel-v1
+  deterministic_xlsx: true
+  formulas_allowed: false
+  imputation_allowed: false
+  force_mapping_allowed: false
+  current_mutable_schema_inputs_allowed: false
+  embedded_producer_schema_snapshot_is_authority: true
+  preserve_full_record_json: true
+  explicit_terminal_outcome_columns: true
+  explicit_unresolved_and_not_observed_rows: true
+
+publication:
+  output_directory: output/development
+  paired_workbook_and_provenance: true
+  workbook_written_before_provenance_completion_marker: true
+  exclusive_no_overwrite: true
+  sibling_outputs_required: true
+  absolute_project_paths_in_receipts_allowed: false
+  canonical_provenance_json: true
+  rollback_after_failed_strict_replay: true
+
+isolation:
+  public_inputs:
+    - REGISTERED_NATIVE_TM_CANONICAL_MAPPING_PATH
+    - TRUSTED_MAPPING_SHA256
+  internally_authenticated_transitive_inputs:
+    - REGISTERED_NATIVE_TM_OBSERVATIONS_ARTIFACT
+    - REGISTERED_NATIVE_TM_DOCUMENT_ARTIFACT
+    - SOURCE_PDF
+    - ACCEPTED_STATEMENT_DISCOVERY
+  fd_held_nofollow_stability_guards_required: true
+  producer_snapshots_replayed_without_current_schema: true
+  current_mutable_schema_loaded: false
+  template_inputs_loaded: false
+  historical_values_loaded: false
+  role_a_outputs_loaded: false
+  human_review_outputs_loaded: false
