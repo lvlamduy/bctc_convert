@@ -1,0 +1,34 @@
+version: 2
+policy: CAUSAL_NATIVE_TEXT_VISUAL_ORDER_EVIDENCE_V2
+claim_boundary: SOURCE_VISIBLE_NATIVE_TEXT_GEOMETRY_AND_SOURCE_ORDER_ONLY
+
+ordering:
+  source_word_order: PYMUPDF_GET_TEXT_WORDS_SORT_TRUE
+  line_projection: CONTIGUOUS_FIRST_OCCURRENCE_LINE_RUNS
+  require_unique_word_identity: true
+  require_strict_word_number_order_within_run: true
+  require_flattened_lines_equal_source_words: true
+  noncontiguous_line_status: UNRESOLVED_CAUSAL_NATIVE_LINE_CONTIGUITY
+  noncontiguous_line_failure_type: NoncontiguousNativeLineIdentity
+  quarantine_projection: HASH_AND_COUNT_ONLY
+
+geometry:
+  canonical_coordinate_system: UNROTATED_PDF_MILLI_POINTS_TOP_LEFT
+  canonical_page_bounds: UNROTATED_CROPBOX_LOCAL_BOUNDS
+  require_word_boxes_inside_cropbox: true
+  require_line_boxes_inside_cropbox: true
+  require_quarantined_span_boxes_inside_cropbox: true
+
+safety:
+  preserve_raw_wrapper_payload_in_backend_only: true
+  excluded_text_hash_only: true
+  ordering_quarantine_hash_and_count_only: true
+  ocr_fallback_allowed: false
+  network_allowed: false
+  source_blank_claim_allowed: false
+  absence_claim_allowed: false
+  table_or_statement_semantics_allowed: false
+  schema_inputs_allowed: false
+  role_a_inputs_allowed: false
+  historical_values_allowed: false
+  bank_or_page_specific_rules_allowed: false
