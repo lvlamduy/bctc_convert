@@ -314,6 +314,36 @@ def test_page_validator_rejects_cross_route_status_even_with_refreshed_identity(
         inventory_v1._validate_page(page, expected_ordinal=1)
 
 
+def test_page_validator_counts_empty_axis_once_in_quarantine_authority_partition(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    _patch_pipeline(monkeypatch)
+    inventory = inventory_v1.build_wave1_source_inventory_v1(tmp_path)
+    page = deepcopy(inventory["pages"][0])
+    metrics = page["metrics"]
+    metrics.update(
+        {
+            "atom_count": 4,
+            "upstream_line_axis_count": 2,
+            "excluded_empty_line_axis_count": 1,
+            "quarantined_atom_count": 1,
+            "source_accounted_atom_count": 4,
+            "disposition_counts": {
+                "OWNED_BY_SOURCE_OBJECT": 2,
+                "RETAINED_UNOWNED": 1,
+                "UPSTREAM_QUARANTINED": 1,
+                "UPSTREAM_TERMINAL_UNRESOLVED": 0,
+            },
+        }
+    )
+    page["page_inventory_identity_sha256"] = canonical_json_sha256_v1(
+        {key: value for key, value in page.items() if key != "page_inventory_identity_sha256"}
+    )
+
+    assert inventory_v1._validate_page(page, expected_ordinal=1) == page
+
+
 def test_page_validator_rejects_terminal_primary_candidate_promotion(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,

@@ -568,11 +568,14 @@ def _validate_page(value: Any, *, expected_ordinal: int) -> dict[str, Any]:
         != metrics["primary_line_count"] + metrics["excluded_empty_line_axis_count"]
         or metrics["upstream_word_axis_count"]
         != metrics["primary_word_count"] + metrics["excluded_empty_word_axis_count"]
+        or metrics["quarantined_atom_count"]
+        < metrics["excluded_empty_line_axis_count"] + metrics["excluded_empty_word_axis_count"]
+        # Empty upstream axes are represented by quarantined atoms.  They are
+        # therefore already included in ``quarantined_atom_count`` and must
+        # not be added a second time to the authority partition below.
         or metrics["atom_count"]
         != metrics["primary_line_count"]
         + metrics["primary_word_count"]
-        + metrics["excluded_empty_line_axis_count"]
-        + metrics["excluded_empty_word_axis_count"]
         + metrics["supplemental_line_count"]
         + metrics["quarantined_atom_count"]
     ):
