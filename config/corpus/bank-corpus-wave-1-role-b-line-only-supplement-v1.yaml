@@ -1,0 +1,131 @@
+format_version: BANK_CORPUS_WAVE_1_ROLE_B_LINE_ONLY_SUPPLEMENT_POLICY_V1
+status: LOCKED_ADD_ONLY_POST_V2_LINE_ONLY_SUPPLEMENT_POLICY
+
+upstream:
+  output_root: output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v2
+  aggregate_filename: full-reader-aggregate.json
+  aggregate_format: BANK_CORPUS_WAVE_1_ROLE_B_PAGE_READS_V1
+  allowed_aggregate_statuses:
+    - COMPLETE_AUTHENTICATED_WAVE_1_PAGE_READS
+    - COMPLETE_WAVE_1_PAGE_REQUEST_ACCOUNTING_WITH_UNRESOLVED_READS
+  control_filename: full-reader-execution-control.json
+  control_identity_sha256: 5f4f00d40900be2765b6f873b268cd09c28026245157d2bdb0b293eb24a64be1
+  control_artifact_sha256: 198bc717b4cffda605bf598b83cd1c7ca391f4969e5d5ae26a0e8687cd07d440
+  control_artifact_size_bytes: 4608592
+  sealed_plan_sha256: d056323fde832ec2865ef5ac28a3fb045537ef6ecf3c505a7b5b0bbb68ad29c3
+  sealed_plan_size_bytes: 3587505
+  request_count: 1449
+  ocr_request_count: 1356
+  native_request_count: 93
+  required_finalized: true
+  require_full_v2_read_only_verifier_pass: true
+  require_canonical_aggregate_byte_equality: true
+  require_immutable_regular_files_mode: "0444"
+  require_single_link: true
+
+terminal_denominator:
+  route: DOMINANT_RASTER_OCR
+  page_record_format: BANK_CORPUS_WAVE_1_ROLE_B_FULL_PAGE_RECORD_V1
+  upstream_result_format: BANK_CORPUS_WAVE_1_ROLE_B_PAGE_READ_RESULT_V3
+  upstream_backend_format: BANK_CORPUS_WAVE_1_PPOCRV6_BACKEND_PAYLOAD_V3
+  upstream_status: UNRESOLVED_OCR_WORD_BOX_GEOMETRY
+  failure_reason: BOUNDED_WORD_BOX_NORMALIZATION_INVARIANT_FAILED
+  require_exact_final_aggregate_denominator: true
+  require_one_supplemental_disposition_per_terminal_page: true
+  allow_empty_line_axis_as_rejected_disposition: true
+  reject_non_word_axis_drift_operationally: true
+  reject_unexpectedly_normalizable_payload_operationally: true
+
+projection:
+  page_format: BANK_CORPUS_WAVE_1_ROLE_B_LINE_ONLY_PAGE_EVIDENCE_V1
+  accepted_disposition: LINE_ONLY_EVIDENCE_AVAILABLE_FROM_TERMINAL_WORD_BOX_GEOMETRY
+  no_line_disposition: NO_LINE_ONLY_EVIDENCE_AVAILABLE_NO_NONEMPTY_VALID_LINE_TEXT
+  claim_boundary: AUTHENTICATED_PPOCRV6_LINE_TEXT_SCORE_AND_LINE_GEOMETRY_ONLY_FROM_TERMINAL_WORD_BOX_GEOMETRY_PAGE
+  line_format: BANK_CORPUS_WAVE_1_ROLE_B_LINE_OBSERVATION_V1
+  accepted_line_fields:
+    - line_index
+    - text
+    - score
+    - pixel_rec_box
+    - pixel_rec_polygon
+    - canonical_rec_box_mpt
+    - canonical_rec_polygon_mpt
+  canonical_coordinate_system: UNROTATED_PDF_MILLI_POINTS_TOP_LEFT
+  preserve_source_line_order: true
+  line_eligibility_rule: EXACT_STRING_LENGTH_GREATER_THAN_ZERO_NO_TRIM
+  mixed_page_filtering: EMIT_ONLY_ELIGIBLE_LINES_PRESERVE_ORIGINAL_LINE_INDEX
+  empty_line_axes_validated_but_not_emitted: true
+  excluded_empty_line_axis_metric: excluded_empty_line_axis_count
+  line_accounting_identity: VALIDATED_EQUALS_ACCEPTED_PLUS_EXCLUDED_EMPTY
+  tokenize_line_text: false
+  accepted_word_count: 0
+  words_must_be_empty: true
+
+quarantine:
+  format_version: BANK_CORPUS_WAVE_1_ROLE_B_WORD_SUBDIVISION_QUARANTINE_V1
+  status: QUARANTINED_UNRESOLVED_WORD_BOX_GEOMETRY
+  hash_algorithm: SHA256_CANONICAL_JSON
+  expose_ordered_subdivision_count_per_line: true
+  expose_total_subdivision_count: true
+  expose_word_axis_hash_only: true
+  expose_word_text: false
+  expose_word_geometry: false
+  raw_backend_remains_authority: true
+
+execution:
+  output_root: output/development/bank-corpus-wave-1-role-b-line-only-supplement-v1/full-v1
+  control_filename: line-only-execution-control.json
+  aggregate_filename: line-only-supplement-aggregate.json
+  object_store: objects/sha256
+  checkpoint_directory: checkpoints
+  lease_filename: line-only-execution.lock
+  minimum_free_space_bytes: 1073741824
+  no_ocr: true
+  no_network: true
+  no_external_provider: true
+  checkpoint: ONE_IMMUTABLE_REQUEST_CHECKPOINT_WITH_ORDERED_HASH_CHAIN
+  resume: EXACT_REPLAY_WITH_ZERO_NEW_PROJECTIONS
+  timings_in_identity: false
+
+aggregate:
+  format_version: BANK_CORPUS_WAVE_1_ROLE_B_LINE_ONLY_SUPPLEMENT_V1
+  complete_status: COMPLETE_AUTHENTICATED_LINE_ONLY_SUPPLEMENT_FOR_TERMINAL_WORD_BOX_GEOMETRY
+  require_terminal_denominator_reconciliation: true
+  require_accepted_plus_rejected_equals_terminal: true
+  require_missing_duplicate_foreign_zero: true
+  require_upstream_status_unchanged: true
+
+safety:
+  upstream_terminal_status_preserved: true
+  page_read_complete_claimed: false
+  ocr_complete_claimed: false
+  word_geometry_accepted: false
+  word_tokens_exposed: false
+  blank_claimed: false
+  absence_claimed: false
+  statement_classification_attempted: false
+  table_classification_attempted: false
+  row_reconstruction_attempted: false
+  cell_interpretation_attempted: false
+  axis_interpretation_attempted: false
+  schema_used: false
+  mapping_used: false
+  role_a_used: false
+  historical_values_used: false
+  bank_registry_metadata_used: false
+  filename_metadata_used: false
+  source_path_metadata_used: false
+  new_ocr_inference_used: false
+  network_used: false
+  native_ocr_fallback_used: false
+
+forbidden_inputs:
+  - ROLE_A_ARTIFACTS
+  - CANONICAL_SCHEMA
+  - BASE_SCHEMA
+  - BANK_REGISTRY_METADATA
+  - BANK_IDENTITY
+  - SOURCE_FILENAME
+  - SOURCE_PATH_ROUTING
+  - HISTORICAL_VALUES
+  - PRIOR_MAPPING_OUTPUTS
