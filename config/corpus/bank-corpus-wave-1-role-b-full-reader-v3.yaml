@@ -1,0 +1,165 @@
+version: 3
+policy: BANK_CORPUS_WAVE_1_ROLE_B_FULL_PAGE_READER_V3
+claim_boundary: EXACT_SEALED_WAVE_1_SOURCE_VISIBLE_PAGE_TEXT_AND_GEOMETRY_ONLY
+
+sealed_plan:
+  path: output/development/bank-corpus-wave-1-role-b-page-reader-v1/wave-1-role-b-page-read-plan.json
+  sha256: d056323fde832ec2865ef5ac28a3fb045537ef6ecf3c505a7b5b0bbb68ad29c3
+  size_bytes: 3587505
+  producer_git_commit: da848666ef6a9492be990063d13348780467e4bd
+  execution_plan_sha256: 8598c3132d5f9bbaadcac0545b79c6b38bf0d49b519ed4d2eb71f2b2bec21cab
+  route_plan_sha256: 82b4b387754060419da37a1616336bf32d6a9248945cfc3974b936dbeace609d
+  input_ledger_sha256: 7a83f8ff7fa007832578f586b01715a7023e21bc9bf9840f6d4cd301c4df927e
+  implementation_ledger_sha256: 694b44b5dfd56324473c85693b634710b910c95bf101d158aadac0a5076a4ec2
+  ppocrv6_runtime_model_ledger_sha256: 58049a9bd187b2991716b6c2eac9d33679bb3785027a28dddd20a210e3ea234a
+  render_runtime_ledger_sha256: 7850768660fa7aead1d83592e83cde09c8b52e480c5d33b73c40e7f3b837eb80
+  causal_native_runtime_ledger_sha256: 57a50855a2669f07b0f9606a59de70f574615cdc490f7130f7bf2e2abce744e0
+  sentinel_sha256: d9e1d359e19117af957c395604c11430fea5d1da25b5eecaf6a8e11c687e0a89
+  selection_receipt_sha256: 832cea1bee22f0bb08c422490dd2afe4e23bc91c56cdee6db382b1bfdc744d28
+
+failed_v2_authority:
+  archive_root: output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v2-failed-after-1359-checkpoints-c0b126f-9e55fa6d
+  receipt_path: output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v2-failed-after-1359-checkpoints-c0b126f-9e55fa6d-incident.json
+  receipt_sha256: c55b9c443584cc603000f05b1a98c7abc6c45828a914a694f6db8395eb336748
+  receipt_size_bytes: 3859012
+  incident_identity_sha256: ab14bf5c7df9a0a416944bc7853465c88a65255354f0c3841e9fa3b5bf2368fb
+  receipt_status: IMMUTABLY_PRESERVED_FAILED_AFTER_COMPLETE_OCR_AND_THREE_NATIVE_CHECKPOINTS
+  archive_portable_manifest_sha256: 9e55fa6d22fab24f14dc51ba0f54f143519fc4be32ecb64f46cdf1e413b6f2b8
+  archive_live_manifest_sha256: 7867c60d4971806cbd29d493cca7b53ad26d1243be2a90c406c6e6fa143fa6bb
+  archive_record_count: 8658
+  archive_file_count: 8170
+  archive_directory_count: 488
+  archive_logical_bytes: 3726130042
+  control_filename: full-reader-execution-control.json
+  control_sha256: 198bc717b4cffda605bf598b83cd1c7ca391f4969e5d5ae26a0e8687cd07d440
+  control_size_bytes: 4608592
+  control_identity_sha256: 5f4f00d40900be2765b6f873b268cd09c28026245157d2bdb0b293eb24a64be1
+  producer_git_commit: c0b126fbc7bb312683dc0caaae79e42bc3378a22
+  producer_implementation_ledger_sha256: f240b430c34ec878a5d0ab3333d2af7f4b607316332a002a898f07978b409778
+  producer_implementation_ledger_record_count: 31
+  checkpoint_count: 1359
+  checkpoint_canonical_sha256_set_sha256: 61bdd2e42d8d3453a1ef959ec29cfbc4fee266943fc4cc5de74526db5b61f3fe
+  content_addressed_object_count: 4074
+  missing_request_count: 90
+  missing_request_set_sha256: 4fb91da5d72b3963d4eee70a36c6cc786a332dc406db9a929bd34334f79cda92
+  aggregate_must_be_absent: true
+  document_indexes_must_be_absent: true
+  publication_temporaries_must_be_absent: true
+  active_processes_and_held_locks_must_be_zero: true
+
+ocr_adoption:
+  route: DOMINANT_RASTER_OCR
+  selected_request_count: 1356
+  excluded_native_checkpoint_count: 3
+  copied_evidence_object_count: 4068
+  copied_objects_per_request: 3
+  copy_semantics: BYTE_COPY_NEW_INODE_NO_HARDLINK_V1
+  source_bytes_mode_mtime_inode_unchanged_required: true
+  source_checkpoint_is_authority_only: true
+  source_page_record_relabel_allowed: false
+  v3_control_bound_record_required: true
+  v3_control_bound_checkpoint_required: true
+  original_status_preserved: true
+  original_origin_preserved: true
+  complete_status_count: 1299
+  geometry_terminal_status_count: 57
+  line_axis_count: 96369
+  nonempty_line_axis_count: 96304
+  exact_empty_line_axis_count: 65
+  word_token_count: 1313842
+  nonempty_word_token_count: 1313842
+  corrected_page_count: 20
+  corrected_box_count: 22
+  corrected_edge_count: 22
+  quarantine_count: 0
+
+native_reader:
+  route: CAUSAL_NATIVE_TEXT
+  provider: PYMUPDF_CAUSAL_NATIVE_TEXT_VISIBILITY_V1
+  provider_runtime_ledger_sha256: 57a50855a2669f07b0f9606a59de70f574615cdc490f7130f7bf2e2abce744e0
+  evidence_adapter_path: src/bctc_ai/ocr/causal_native_text_evidence_v2.py
+  evidence_adapter_sha256: cc7a8fdf8c8e1332848b5c2583b8b2d4e0fa02e7a60567f2ac464c2ac35e5023
+  evidence_adapter_size_bytes: 71590
+  causal_policy_path: config/ocr/causal-native-text-v1.yaml
+  causal_policy_sha256: 4c6df806a7ded7d7a6c5241f1c523c7b9cbbf24829332293d8aa783a3044d647
+  causal_policy_size_bytes: 876
+  quality_policy_path: config/ocr/native-text-quality-v2.yaml
+  quality_policy_sha256: af0d735ea026abc7b189da46d36f103d1390687325324ecc1a325ba6ab51a660
+  quality_policy_size_bytes: 596
+  native_ordering_policy_identity:
+    path: config/ocr/causal-native-text-evidence-v2.yaml
+    sha256: ec249629e83944f03d25b30d5df29ddfbcd9bc250b06d3ed9cc6d60e2533c309
+    size_bytes: 1305
+  execution: FRESH_ALL_93_REQUESTS_WITH_NATIVE_EVIDENCE_ADAPTER_V2
+  request_count: 93
+  archived_native_checkpoint_adoption_allowed: false
+  archived_native_object_adoption_allowed: false
+  page_level_execution: true
+  source_bytes_held_and_authenticated: true
+  ocr_fallback_allowed: false
+  network_allowed: false
+  unresolved_is_terminal_source_accounting: true
+  terminal_line_contiguity_disposition_required: true
+  terminal_statuses:
+    - CAUSAL_NATIVE_TEXT_READ_COMPLETE
+    - UNRESOLVED_CAUSAL_NATIVE_VISIBILITY
+    - UNRESOLVED_NATIVE_TEXT_QUALITY
+    - UNRESOLVED_CAUSAL_NATIVE_LINE_CONTIGUITY
+
+execution:
+  ocr_worker_allowed: false
+  ocr_inference_allowed: false
+  network_allowed: false
+  request_scope: EXACT_ALL_1449_SEALED_WAVE_1_PAGE_REQUESTS
+  per_document_locking: FLOCK_EXCLUSIVE_NOFOLLOW
+  checkpoint: ONE_IMMUTABLE_CONSTANT_SIZE_CANONICAL_CHECKPOINT_PER_PAGE
+  checkpoint_order: OCR_REQUEST_ORDINAL_ASC_THEN_NATIVE_REQUEST_ORDINAL_ASC_PER_DOCUMENT
+  document_index: DETERMINISTIC_FINAL_INDEX_AFTER_ALL_DOCUMENT_REQUESTS
+  orphan_adoption: FULL_V3_CONTROL_BOUND_REQUEST_IDENTITY_ONLY
+  completed_resume_native_read_count: 0
+  minimum_free_space_bytes: 53687091200
+  required_process_umask: "0022"
+  timestamps_in_deterministic_evidence_allowed: false
+  timing_observation_enabled: false
+  overwrite_allowed: false
+
+safety:
+  production_authentication_bypass_allowed: false
+  injectable_production_provider_allowed: false
+  test_output_can_publish_production_status: false
+  bank_registry_metadata_allowed_in_execution_decisions: false
+  filename_metadata_allowed_in_execution_decisions: false
+  role_a_inputs_allowed: false
+  schema_inputs_allowed: false
+  mapping_inputs_allowed: false
+  historical_values_allowed: false
+  source_visible_text_preserved_verbatim: true
+  semantic_interpretation_allowed: false
+  absence_declarations_allowed: false
+  failed_v2_archive_mutation_allowed: false
+
+expected:
+  document_count: 27
+  request_count: 1449
+  ocr_request_count: 1356
+  native_request_count: 93
+  adopted_ocr_request_count: 1356
+  fresh_native_request_count: 93
+  copied_ocr_object_count: 4068
+  final_object_count: 4254
+  statement_classification_count: 0
+  table_classification_count: 0
+  row_reconstruction_count: 0
+  cell_interpretation_count: 0
+  absence_declaration_count: 0
+
+output:
+  root: output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3
+  control_filename: full-reader-execution-control.json
+  object_directory: objects
+  checkpoint_directory: checkpoints
+  document_index_directory: documents
+  lock_directory: locks
+  aggregate_filename: full-reader-aggregate.json
+  canonical_json: true
+  exclusive_no_overwrite: true
