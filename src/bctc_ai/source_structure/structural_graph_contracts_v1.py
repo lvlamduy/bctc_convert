@@ -637,7 +637,9 @@ def validate_page_prestructural_graph_v1(
             proposal_envelope = _box_union(proposal_boxes)
             atom_envelope = _box_union([atom["canonical_bbox_mpt"] for atom in candidate_atoms])
             expected_candidate_box = (
-                proposal_envelope if node["kind"] == GraphNodeKindV1.TABLE.value else atom_envelope
+                _box_union([proposal_envelope, atom_envelope])
+                if node["kind"] == GraphNodeKindV1.TABLE.value
+                else atom_envelope
             )
             if node["canonical_bbox_mpt"] != expected_candidate_box:
                 raise _error("structural candidate source-derived box drifted")

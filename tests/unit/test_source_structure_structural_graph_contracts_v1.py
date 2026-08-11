@@ -8,7 +8,12 @@ import pytest
 from test_source_structure_evidence_projection_v2 import _synthetic_ocr_pair
 
 from bctc_ai.source_structure import structural_graph_contracts_v1 as graph_v1
-from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
+from bctc_ai.source_structure.contracts_v1 import (
+    ATOM_DISPOSITION_FORMAT_VERSION,
+    canonical_json_sha256_v1,
+    make_page_proposal_set_v1,
+    make_source_object_id_v1,
+)
 from bctc_ai.source_structure.contracts_v2 import make_page_proposal_set_v2
 from bctc_ai.source_structure.evidence_projection_v2 import project_authenticated_page_v2
 from bctc_ai.source_structure.page_geometry_proposals_v1 import (
@@ -165,6 +170,12 @@ def _candidate_parts(projection: dict, proposal: dict) -> tuple[list[dict], list
         max(box[2] for box in candidate_atom_boxes),
         max(box[3] for box in candidate_atom_boxes),
     ]
+    table_box = [
+        min(proposal_box[0], candidate_atom_box[0]),
+        min(proposal_box[1], candidate_atom_box[1]),
+        max(proposal_box[2], candidate_atom_box[2]),
+        max(proposal_box[3], candidate_atom_box[3]),
+    ]
     cell_atom_id = next(
         (atom_id for atom_id in candidate_atom_ids if atom_by_id[atom_id]["kind"] == "WORD"),
         candidate_atom_ids[0],
@@ -174,7 +185,7 @@ def _candidate_parts(projection: dict, proposal: dict) -> tuple[list[dict], list
         for item in proposal_items
         if cell_atom_id in item["primary_atom_ids"] + item["supporting_atom_ids"]
     )
-    unresolved_boxes = [proposal_box] + [
+    unresolved_boxes = [table_box] + [
         atom_by_id[atom_id]["canonical_bbox_mpt"]
         for atom_id in unresolved_atom_ids
         if atom_by_id[atom_id]["canonical_bbox_mpt"] is not None
@@ -212,7 +223,7 @@ def _candidate_parts(projection: dict, proposal: dict) -> tuple[list[dict], list
             graph_v1.GraphNodeKindV1.TABLE,
             graph_v1.GraphNodeStatusV1.PRESTRUCTURAL_CANDIDATE,
             None,
-            bbox=proposal_box,
+            bbox=table_box,
             atom_ids=tuple(candidate_atom_ids),
             proposal_ids=proposal_ids,
             source_local_page_id=projection["source_local_page_id"],
@@ -904,6 +915,69 @@ def test_real_v2_source_block_projection_replays_without_mocked_authority(
         )
         == graph
     )
+
+
+def test_real_v2_table_box_includes_supporting_atom_outside_proposal(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.undo()
+    page_record, page_result = _synthetic_ocr_pair()
+    projection = project_authenticated_page_v2(
+        page_record=page_record,
+        page_result=page_result,
+    )
+    neutral = projection["neutral_page_v1"]
+    line, word = neutral["atoms"]
+    identity = {
+        "source_local_page_id": neutral["source_local_page_id"],
+        "request_sha256": neutral["source_locator"]["request_sha256"],
+        "kind": "SOURCE_BLOCK_CANDIDATE",
+        "canonical_bbox_mpt": word["canonical_bbox_mpt"],
+        "primary_atom_ids": [word["source_local_id"]],
+        "supporting_atom_ids": [line["source_local_id"]],
+        "evidence_codes": ["BBOX_CONTAINS_PRIMARY_ATOMS", "LOCAL_GEOMETRY"],
+    }
+    proposal_id = make_source_object_id_v1("source_object", identity)
+    proposal_v1 = make_page_proposal_set_v1(
+        neutral,
+        proposals=[
+            {
+                "source_local_id": proposal_id,
+                "kind": identity["kind"],
+                "canonical_bbox_mpt": identity["canonical_bbox_mpt"],
+                "primary_atom_ids": identity["primary_atom_ids"],
+                "supporting_atom_ids": identity["supporting_atom_ids"],
+                "evidence_codes": identity["evidence_codes"],
+            }
+        ],
+        dispositions=[
+            {
+                "format_version": ATOM_DISPOSITION_FORMAT_VERSION,
+                "source_atom_id": line["source_local_id"],
+                "primary_disposition": "RETAINED_UNOWNED",
+                "source_object_id": None,
+                "reason_code": "NO_SOURCE_OBJECT_OWNERSHIP_PROPOSED",
+            },
+            {
+                "format_version": ATOM_DISPOSITION_FORMAT_VERSION,
+                "source_atom_id": word["source_local_id"],
+                "primary_disposition": "OWNED_BY_SOURCE_OBJECT",
+                "source_object_id": proposal_id,
+                "reason_code": "PRIMARY_LOCAL_GEOMETRY_OWNERSHIP",
+            },
+        ],
+    )
+    proposal = make_page_proposal_set_v2(projection, proposal_set_v1=proposal_v1)
+    nodes, edges, dispositions = _candidate_parts(projection, proposal)
+    graph = graph_v1.make_page_prestructural_graph_v1(
+        projection,
+        proposal,
+        nodes=nodes,
+        edges=edges,
+        atom_dispositions=dispositions,
+    )
+    table = next(node for node in graph["nodes"] if node["kind"] == "TABLE")
+    assert table["canonical_bbox_mpt"] == line["canonical_bbox_mpt"]
 
 
 def test_noncontext_node_binding_is_derived_not_caller_asserted() -> None:
