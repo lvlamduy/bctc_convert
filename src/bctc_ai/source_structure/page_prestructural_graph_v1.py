@@ -57,6 +57,7 @@ class _Run:
 
 @dataclass
 class _Row:
+    runs: list[_Run]
     atom_ids: list[str]
     bbox: list[int]
     words: list[tuple[str, list[int]]]
@@ -169,18 +170,45 @@ def _visual_rows(runs: Sequence[_Run]) -> list[_Row]:
     for run in runs:
         if rows and _same_vertical_band(rows[-1].bbox, run.bbox):
             row = rows[-1]
+            row.runs.append(run)
             row.atom_ids.extend(run.atom_ids)
             row.bbox = _union([row.bbox, run.bbox])
             row.words.extend(run.words)
         else:
             rows.append(
                 _Row(
+                    runs=[run],
                     atom_ids=list(run.atom_ids),
                     bbox=list(run.bbox),
                     words=list(run.words),
                 )
             )
     return rows
+
+
+def _axis_segmented_word_runs(
+    row: _Row,
+    dense_axis_atom_ids: set[str],
+) -> list[list[tuple[str, list[int]]]]:
+    """Group source-run words without crossing authenticated or axis boundaries."""
+
+    cell_runs: list[list[tuple[str, list[int]]]] = []
+    for source_run in row.runs:
+        current: list[tuple[str, list[int]]] = []
+        for word in source_run.words:
+            previous = current[-1] if current else None
+            starts_new_cell = (
+                previous is None
+                or word[0] in dense_axis_atom_ids
+                or word[1][0] < previous[1][0]
+                or not _same_vertical_band(previous[1], word[1])
+            )
+            if starts_new_cell:
+                current = [word]
+                cell_runs.append(current)
+            else:
+                current.append(word)
+    return cell_runs
 
 
 def _dense_word_axes(rows: Sequence[_Row]) -> list[list[tuple[str, list[int]]]]:
@@ -284,6 +312,8 @@ def _table_parts(
     next_ordinal += 1
 
     row_parts = _visual_rows(_ordered_runs(atoms, set(proposal_atom_ids)))
+    dense_word_axes = _dense_word_axes(row_parts)
+    dense_axis_atom_ids = {atom_id for members in dense_word_axes for atom_id, _bbox in members}
     rows: list[dict[str, Any]] = []
     cells: list[list[dict[str, Any]]] = []
     cell_by_atom: dict[str, dict[str, Any]] = {}
@@ -300,24 +330,27 @@ def _table_parts(
         next_ordinal += 1
         rows.append(row)
         row_cells: list[dict[str, Any]] = []
-        for atom_id, bbox in row_part.words:
+        for inline_run in _axis_segmented_word_runs(row_part, dense_axis_atom_ids):
+            run_atom_ids = [atom_id for atom_id, _bbox in inline_run]
             cell = _node(
                 ordinal=next_ordinal,
                 kind=GraphNodeKindV1.CELL_OR_VALUE_POSITION,
                 status=GraphNodeStatusV1.PRESTRUCTURAL_CANDIDATE,
                 source_local_page_id=source_local_page_id,
-                bbox=bbox,
-                atom_ids=(atom_id,),
+                bbox=_union([bbox for _atom_id, bbox in inline_run]),
+                atom_ids=run_atom_ids,
                 proposal_ids=(proposal_id,),
             )
             next_ordinal += 1
             row_cells.append(cell)
-            cell_by_atom[atom_id] = cell
+            for atom_id in run_atom_ids:
+                cell_by_atom[atom_id] = cell
         cells.append(row_cells)
 
     axes: list[dict[str, Any]] = []
     cell_axis_pairs: list[tuple[dict[str, Any], dict[str, Any]]] = []
-    for members in _dense_word_axes(row_parts):
+    seen_cell_axis_pairs: set[tuple[str, str]] = set()
+    for members in dense_word_axes:
         member_ids = [atom_id for atom_id, _bbox_value in members]
         axis = _node(
             ordinal=next_ordinal,
@@ -330,9 +363,15 @@ def _table_parts(
         )
         next_ordinal += 1
         axes.append(axis)
-        cell_axis_pairs.extend(
-            (cell_by_atom[atom_id], axis) for atom_id in member_ids if atom_id in cell_by_atom
-        )
+        for atom_id in member_ids:
+            cell = cell_by_atom.get(atom_id)
+            if cell is None:
+                continue
+            pair = (cell["node_id"], axis["node_id"])
+            if pair in seen_cell_axis_pairs:
+                continue
+            seen_cell_axis_pairs.add(pair)
+            cell_axis_pairs.append((cell, axis))
     return (
         _TableParts(
             proposal_id=proposal_id,

@@ -38,15 +38,43 @@ from bctc_ai.source_structure.structural_graph_contracts_v1 import (
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
+def _scaled_line(
+    y0: int,
+    words: list[tuple[int, int, str]],
+    *,
+    scale: int,
+) -> dict:
+    line = _line(y0, words)
+    if scale == 1:
+        return line
+    for field in ("raw_pixel_bbox", "canonical_bbox_mpt"):
+        line[field] = [coordinate * scale for coordinate in line[field]]
+    for field in ("raw_pixel_polygon", "canonical_polygon_mpt"):
+        line[field] = [[coordinate * scale for coordinate in point] for point in line[field]]
+    for word in line["words"]:
+        for field in ("normalized_pixel_bbox", "canonical_bbox_mpt"):
+            word[field] = [coordinate * scale for coordinate in word[field]]
+        word["canonical_polygon_mpt"] = [
+            [coordinate * scale for coordinate in point] for point in word["canonical_polygon_mpt"]
+        ]
+    return line
+
+
 def _page_authority(
     rows: list[tuple[int, list[tuple[int, int]]]],
     *,
     vocabulary: list[str] | None = None,
+    scale: int = 1,
 ) -> tuple[dict, dict]:
     record, result = _synthetic_ocr_pair()
     tokens = iter(vocabulary or [f"token-{index}" for index in range(200)])
     result["lines"] = [
-        _line(y0, [(x0, x1, next(tokens)) for x0, x1 in boxes]) for y0, boxes in rows
+        _scaled_line(
+            y0,
+            [(x0, x1, next(tokens)) for x0, x1 in boxes],
+            scale=scale,
+        )
+        for y0, boxes in rows
     ]
     _refresh_ocr_axis_accounting(record, result)
     result["metrics"]["mean_line_score"] = fmean(line["score"] for line in result["lines"])
@@ -84,6 +112,15 @@ def _aligned_rows(*, second_block: bool = False) -> list[tuple[int, list[tuple[i
             ]
         )
     return rows
+
+
+def _inline_word_rows() -> list[tuple[int, list[tuple[int, int]]]]:
+    return [
+        (120, [(100, 150), (160, 210), (450, 500), (510, 560)]),
+        (200, [(100, 150), (170, 220), (450, 500), (520, 570)]),
+        (280, [(100, 150), (180, 230), (450, 500), (530, 580)]),
+        (360, [(100, 150), (190, 240), (450, 500), (540, 590)]),
+    ]
 
 
 def _node_counts(graph: dict) -> dict[str, int]:
@@ -157,14 +194,14 @@ def test_aligned_geometry_builds_only_prestructural_table_row_cell_axis_candidat
 
 
 def test_builder_is_canonical_and_text_identity_cannot_change_geometry_decisions() -> None:
-    rows = _aligned_rows()
+    rows = _inline_word_rows()
     numeric, numeric_proposals = _page_authority(
         rows,
-        vocabulary=[str(index) for index in range(12)],
+        vocabulary=[str(index) for index in range(16)],
     )
     prose, prose_proposals = _page_authority(
         rows,
-        vocabulary=[f"word-{index}" for index in range(12)],
+        vocabulary=[f"word-{index}" for index in range(16)],
     )
     first = build_page_prestructural_graph_v1(numeric, numeric_proposals)
     repeated = build_page_prestructural_graph_v1(numeric, numeric_proposals)
@@ -172,6 +209,145 @@ def test_builder_is_canonical_and_text_identity_cannot_change_geometry_decisions
 
     assert canonical_json_bytes_v1(first) == canonical_json_bytes_v1(repeated)
     assert _structure_signature(first) == _structure_signature(second)
+
+
+def test_same_run_non_axis_words_merge_and_axis_edges_are_deduplicated() -> None:
+    projection, proposal = _page_authority(_inline_word_rows())
+    graph = build_page_prestructural_graph_v1(projection, proposal)
+    cells = [node for node in graph["nodes"] if node["kind"] == "CELL_OR_VALUE_POSITION"]
+    atom_by_id = {atom["source_local_id"]: atom for atom in projection["neutral_page_v1"]["atoms"]}
+
+    assert len(cells) == 8
+    assert all(len(cell["source_atom_ids"]) == 2 for cell in cells)
+    word_ids = [
+        atom["source_local_id"]
+        for atom in projection["neutral_page_v1"]["atoms"]
+        if atom["kind"] == "WORD"
+    ]
+    expected_memberships = [
+        frozenset(word_ids[index : index + 2]) for index in range(0, len(word_ids), 2)
+    ]
+    assert [frozenset(cell["source_atom_ids"]) for cell in cells] == expected_memberships
+    for cell in cells:
+        boxes = [atom_by_id[atom_id]["canonical_bbox_mpt"] for atom_id in cell["source_atom_ids"]]
+        assert cell["canonical_bbox_mpt"] == [
+            min(box[0] for box in boxes),
+            min(box[1] for box in boxes),
+            max(box[2] for box in boxes),
+            max(box[3] for box in boxes),
+        ]
+    aligned = [edge for edge in graph["edges"] if edge["kind"] == "PRESTRUCTURAL_ALIGNED_TO_AXIS"]
+    assert len(aligned) == 8
+    assert len({(edge["from_node_id"], edge["to_node_id"]) for edge in aligned}) == 8
+
+
+def test_large_same_run_non_axis_gap_does_not_create_a_cell_boundary() -> None:
+    rows = [
+        (120, [(100, 150), (600, 650), (1000, 1050)]),
+        (200, [(100, 150), (650, 700), (1000, 1050)]),
+        (280, [(100, 150), (700, 750), (1000, 1050)]),
+        (360, [(100, 150), (750, 800), (1000, 1050)]),
+    ]
+    projection, proposal = _page_authority(rows)
+    graph = build_page_prestructural_graph_v1(projection, proposal)
+    cells = [node for node in graph["nodes"] if node["kind"] == "CELL_OR_VALUE_POSITION"]
+
+    assert len(cells) == 8
+    assert [len(cell["source_atom_ids"]) for cell in cells] == [2, 1] * 4
+
+
+def test_each_dense_axis_anchor_starts_a_new_inline_cell() -> None:
+    rows = [
+        (120, [(100, 150), (250, 300), (450, 500)]),
+        (200, [(100, 150), (250, 300), (450, 500)]),
+        (280, [(100, 150), (250, 300), (450, 500)]),
+        (360, [(100, 150), (250, 300), (450, 500)]),
+    ]
+    projection, proposal = _page_authority(rows)
+    graph = build_page_prestructural_graph_v1(projection, proposal)
+    cells = [node for node in graph["nodes"] if node["kind"] == "CELL_OR_VALUE_POSITION"]
+
+    assert len(cells) == 12
+    assert all(len(cell["source_atom_ids"]) == 1 for cell in cells)
+
+
+def test_inline_cell_grouping_is_invariant_under_integer_geometry_scaling() -> None:
+    rows = _inline_word_rows()
+    original, original_proposals = _page_authority(rows)
+    scaled, scaled_proposals = _page_authority(rows, scale=2)
+    original_graph = build_page_prestructural_graph_v1(original, original_proposals)
+    scaled_graph = build_page_prestructural_graph_v1(scaled, scaled_proposals)
+
+    def cell_atom_counts(graph: dict) -> list[int]:
+        return [
+            len(node["source_atom_ids"])
+            for node in graph["nodes"]
+            if node["kind"] == "CELL_OR_VALUE_POSITION"
+        ]
+
+    assert cell_atom_counts(original_graph) == cell_atom_counts(scaled_graph) == [2] * 8
+    assert original_graph["metrics"] == scaled_graph["metrics"]
+
+
+def test_inline_cells_never_cross_authenticated_source_runs() -> None:
+    rows: list[tuple[int, list[tuple[int, int]]]] = []
+    for row_index, y0 in enumerate((120, 200, 280, 360)):
+        rows.extend(
+            [
+                (y0, [(100, 150), (450, 500)]),
+                (y0, [(520 + row_index * 15, 570 + row_index * 15)]),
+            ]
+        )
+    projection, proposal = _page_authority(rows)
+    graph = build_page_prestructural_graph_v1(projection, proposal)
+    cells = [node for node in graph["nodes"] if node["kind"] == "CELL_OR_VALUE_POSITION"]
+
+    assert len(cells) == 12
+    assert all(len(cell["source_atom_ids"]) == 1 for cell in cells)
+
+
+def test_overlapping_nonmonotonic_word_order_starts_a_new_cell_without_reordering() -> None:
+    rows = [
+        (120, [(100, 150), (450, 550), (350, 470)]),
+        (200, [(100, 150), (450, 550), (380, 500)]),
+        (280, [(100, 150), (450, 550), (410, 530)]),
+        (360, [(100, 150), (450, 550), (440, 560)]),
+    ]
+    projection, proposal = _page_authority(rows)
+    graph = build_page_prestructural_graph_v1(projection, proposal)
+    cells = [node for node in graph["nodes"] if node["kind"] == "CELL_OR_VALUE_POSITION"]
+    atom_order = {
+        atom["source_local_id"]: index
+        for index, atom in enumerate(projection["neutral_page_v1"]["atoms"])
+    }
+
+    assert len(cells) == 12
+    assert all(len(cell["source_atom_ids"]) == 1 for cell in cells)
+    assert [atom_order[cell["source_atom_ids"][0]] for cell in cells] == sorted(
+        atom_order[cell["source_atom_ids"][0]] for cell in cells
+    )
+
+
+def test_vertically_incompatible_words_split_inside_one_source_run() -> None:
+    source_run = builder_v1._Run(  # noqa: SLF001
+        atom_ids=["first", "second"],
+        bbox=[100, 100, 300, 400],
+        words=[
+            ("first", [100, 100, 180, 180]),
+            ("second", [190, 300, 300, 400]),
+        ],
+    )
+    row = builder_v1._Row(  # noqa: SLF001
+        runs=[source_run],
+        atom_ids=list(source_run.atom_ids),
+        bbox=list(source_run.bbox),
+        words=list(source_run.words),
+    )
+
+    assert builder_v1._axis_segmented_word_runs(row, set()) == [  # noqa: SLF001
+        [("first", [100, 100, 180, 180])],
+        [("second", [190, 300, 300, 400])],
+    ]
 
 
 def test_narrative_source_block_remains_one_explicit_unresolved_region() -> None:
