@@ -1322,7 +1322,9 @@ def _validate_gate_receipt(
             _PAGE_COMPONENTS,
             "page-boundary envelope",
         )
-        expected_joint_mask = [*table_checks.values(), *page_checks.values()]
+        expected_joint_mask = [table_checks[field] for field in _TABLE_COMPONENTS] + [
+            page_checks[field] for field in _PAGE_COMPONENTS
+        ]
         if (
             relation["table_shape_envelope_joint_pass"] is not all(table_checks.values())
             or relation["page_boundary_envelope_joint_pass"] is not all(page_checks.values())

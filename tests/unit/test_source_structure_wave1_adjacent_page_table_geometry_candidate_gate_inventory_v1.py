@@ -26,6 +26,7 @@ from bctc_ai.source_structure import (
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_json_bytes_v1,
     canonical_json_sha256_v1,
+    decode_canonical_json_bytes_v1,
 )
 from bctc_ai.source_structure.finalized_v3_survey_stream_v1 import (
     FinalizedV3SurveyAuthority,
@@ -348,6 +349,90 @@ def test_public_builder_is_one_pass_compact_reconstructable_and_truthful_about_p
     assert inventory["safety"]["accepted_relation_claimed"] is False
     assert inventory["safety"]["continuation_claimed"] is False
     assert inventory["safety"]["downstream_exact_raw_artifact_sha256_pin_required"] is True
+
+
+@pytest.mark.parametrize(
+    (
+        "previous_y_values",
+        "following_y_values",
+        "following_boxes",
+        "expected_table_mask",
+        "expected_page_mask",
+    ),
+    [
+        pytest.param(
+            (900, 980, 1_060, 1_140),
+            (20, 100, 180, 260),
+            ((300, 380), (450, 530)),
+            [False, False, False],
+            [False, True],
+            id="pair-50-like-previous-bottom-outside",
+        ),
+        pytest.param(
+            (1_240, 1_320, 1_400, 1_480),
+            (200, 280, 360, 440),
+            ((100, 180), (350, 430), (600, 680)),
+            [True, True, True],
+            [True, False],
+            id="inverse-following-top-outside",
+        ),
+    ],
+)
+def test_compact_canonical_roundtrip_preserves_asymmetric_page_mask_order(
+    previous_y_values: tuple[int, ...],
+    following_y_values: tuple[int, ...],
+    following_boxes: tuple[tuple[int, int], ...],
+    expected_table_mask: list[bool],
+    expected_page_mask: list[bool],
+) -> None:
+    previous_boxes = ((100, 180), (350, 430), (600, 680))
+    previous = _ocr_page_graph(
+        1,
+        [(y, list(previous_boxes)) for y in previous_y_values],
+    )
+    following = _ocr_page_graph(
+        2,
+        [(y, list(following_boxes)) for y in following_y_values],
+    )
+    gate = gate_v1.build_adjacent_page_table_geometry_candidate_gate_v1(
+        *previous,
+        *following,
+    )
+
+    assert len(gate["relation_dispositions"]) == 1
+    relation = gate["relation_dispositions"][0]
+    expected_joint_mask = [*expected_table_mask, *expected_page_mask]
+    assert list(relation["page_boundary_envelope_checks"]) == [
+        "following_top_within_cap",
+        "previous_bottom_within_cap",
+    ]
+    assert relation["page_boundary_envelope_checks"] == {
+        "following_top_within_cap": expected_page_mask[1],
+        "previous_bottom_within_cap": expected_page_mask[0],
+    }
+    assert relation["table_shape_envelope_mask"] == expected_table_mask
+    assert relation["page_boundary_envelope_mask"] == expected_page_mask
+    assert relation["table_page_joint_envelope_mask"] == expected_joint_mask
+
+    receipt = inventory_v1._compact_gate_receipt(gate)
+    round_tripped = decode_canonical_json_bytes_v1(canonical_json_bytes_v1(receipt))
+    validated = inventory_v1._validate_gate_receipt(
+        round_tripped,
+        common=inventory_v1._EXPECTED_GATE_COMMON,
+        expected_page_pair_id=gate["upstream_binding"]["page_pair_id"],
+    )
+    reconstructed = inventory_v1._reconstruct_full_gate(
+        inventory_v1._EXPECTED_GATE_COMMON,
+        validated,
+    )
+
+    assert validated["relation_dispositions"][0]["page_boundary_envelope_mask"] == (
+        expected_page_mask
+    )
+    assert validated["relation_dispositions"][0]["table_page_joint_envelope_mask"] == (
+        expected_joint_mask
+    )
+    assert canonical_json_bytes_v1(reconstructed) == canonical_json_bytes_v1(gate)
 
 
 def test_standalone_validator_is_deterministic_and_does_not_replay_inputs(
