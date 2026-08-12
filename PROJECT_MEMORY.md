@@ -4,6 +4,16 @@ This is the durable retrieval point for project context. It summarizes user auth
 
 ## Authoritative user clarifications
 
+### 2026-08-12 — research-first structural discovery and cross-bank families
+
+- Reader V3 is frozen. Structural work now follows `observe -> hypothesize -> falsify cheaply -> generalize -> productionize -> verify broadly`; production contracts and full replays do not precede structural understanding.
+- Visual investigation must report bank/document/page and positive/negative-control/failure/normal denominators. It combines rendered pixels with available text, boxes, geometry, neighboring pages, axes/headers and row order, and maps every useful human cue to machine-observable evidence.
+- Every failure investigation requires matched currently-correct and visually similar non-match controls. A mechanism must fix failures while preserving controls and bounding false merges.
+- Every multi-hour or near-full-corpus replay requires a written hypothesis, falsifier, explanation of why Tier 1 and Tier 2 are insufficient, and the new information the replay will produce.
+- Wave 1 learns recurring accounting/structural families across banks, including their local parent/ancestor/child/sibling/neighbor/axis/continuation/topology graph. It distinguishes core invariants from optional variants and counterexamples; it does not return to bank-by-bank depth-first rules.
+- Cross-bank family evidence precedes cross-period, scope, report-form and assurance variation unless a measured information-gain case justifies otherwise. New schema identities should normally wait for family-level context rather than isolated labels.
+- Current execution and family-level evidence are tracked in `CURRENT_STATUS.md`; do not create a separate strategy document during active research.
+
 ### 2026-08-05 — mapping context
 
 - Item order is critical because many labels repeat.

@@ -1,4 +1,6 @@
-# Brief — critical path từ V3 sang corpus survey
+# Historical brief — critical path used to close V3
+
+> This brief records the V3-close decision state from 2026-08-10. It no longer controls the active structural-development queue. The current operating contract is research-first: cross-bank family learning, direct visual/source investigation, matched controls, Tier-1/Tier-2 falsification, and productionization only after measured structural benefit. Current evidence and execution state are tracked in `CURRENT_STATUS.md`; no separate strategy document is maintained during active research.
 
 Updated: 2026-08-10T23:26:43+07:00
 
