@@ -4,6 +4,7 @@ from copy import deepcopy
 
 import pytest
 
+from bctc_ai.evaluation.financial_cells_v2 import parse_financial_number_strict_grouping
 from bctc_ai.evaluation.numeric_cell_verification import (
     NumericCellVerificationError,
     verify_numeric_cell_proposals,
@@ -19,6 +20,7 @@ def _cell(
     *,
     visual=None,
 ):
+    parsed = parse_financial_number_strict_grouping(raw)
     return {
         "cell_id": cell_id,
         "page": 3,
@@ -29,7 +31,7 @@ def _cell(
         "crop_sha256": f"sha-{cell_id}",
         "primary_observation": observation,
         "primary_raw_text": raw,
-        "primary_normalized_text": raw,
+        "primary_normalized_text": parsed.normalized_text,
         "primary_value": value,
         "primary_sign_evidence": sign,
         "visual_punctuation_evidence": visual,
@@ -59,9 +61,7 @@ def _registry(cells):
 
 def test_exact_value_sign_and_dash_agreement_only():
     positive = _cell("page-0003-row-001-axis-1", "VALUE", "1.234", "1234", None)
-    negative = _cell(
-        "page-0003-row-002-axis-1", "VALUE", "(69.380)", "-69380", "parentheses"
-    )
+    negative = _cell("page-0003-row-002-axis-1", "VALUE", "(69.380)", "-69380", "parentheses")
     dash = _cell(
         "page-0003-row-003-axis-1",
         "DASH",
@@ -106,15 +106,11 @@ def test_exact_value_sign_and_dash_agreement_only():
         ("(69.380)", "-69380", "parentheses", "69.380"),
     ],
 )
-def test_numeric_or_sign_disagreement_abstains(
-    primary_raw, primary_value, sign, reader_raw
-):
-    cell = _cell(
-        "page-0003-row-001-axis-1", "VALUE", primary_raw, primary_value, sign
-    )
-    result = verify_numeric_cell_proposals(
-        _registry([cell]), [_prediction(cell, reader_raw)]
-    )["cells"][0]
+def test_numeric_or_sign_disagreement_abstains(primary_raw, primary_value, sign, reader_raw):
+    cell = _cell("page-0003-row-001-axis-1", "VALUE", primary_raw, primary_value, sign)
+    result = verify_numeric_cell_proposals(_registry([cell]), [_prediction(cell, reader_raw)])[
+        "cells"
+    ][0]
 
     assert result["verification_status"] == "UNRESOLVED_READER_DISAGREEMENT"
     assert result["selected_raw_value"] is None
@@ -126,9 +122,7 @@ def test_numeric_or_sign_disagreement_abstains(
 
 def test_blank_is_never_promoted_by_reader():
     blank = _cell("page-0003-row-001-axis-1", "BLANK", "", None, None)
-    result = verify_numeric_cell_proposals(
-        _registry([blank]), [_prediction(blank, "123")]
-    )
+    result = verify_numeric_cell_proposals(_registry([blank]), [_prediction(blank, "123")])
     cell = result["cells"][0]
 
     assert cell["verification_status"] == "UNRESOLVED_BLANK_PENDING_ROW_SEMANTICS"
@@ -139,9 +133,7 @@ def test_blank_is_never_promoted_by_reader():
 
 def test_dash_requires_reader_and_independent_pixel_evidence():
     dash = _cell("page-0003-row-001-axis-1", "DASH", "-", None, "dash")
-    result = verify_numeric_cell_proposals(
-        _registry([dash]), [_prediction(dash, "-")]
-    )["cells"][0]
+    result = verify_numeric_cell_proposals(_registry([dash]), [_prediction(dash, "-")])["cells"][0]
 
     assert result["verification_status"] == "UNRESOLVED_READER_DISAGREEMENT"
     assert result["normalized_numeric_value"] is None
@@ -187,3 +179,63 @@ def test_verifier_accepts_e0033_v2_registry_without_changing_policy():
 
     assert result["policy"] == "EXACT_VALUE_SIGN_AND_PIXEL_DASH_AGREEMENT_V1"
     assert result["cells"][0]["verification_status"] == "VERIFIED_OBSERVED_VALUE"
+
+
+def test_raw_dict_verifier_rejects_semantic_graph_v3_registry():
+    cell = _cell("page-0001-row-001-axis-1", "VALUE", "1.234", "1234", None)
+    registry = _registry([cell])
+    registry.update(
+        {
+            "format_version": 3,
+            "policy": "SEMANTIC_GRAPH_V2_VALUE_POSITION_CROPS_V1",
+            "geometry_authority": "AUTHENTICATED_V3_LINE_GEOMETRY",
+            "reference_isolation": {
+                "accounting_or_family_roles_available_to_reader": False,
+                "expected_or_primary_numeric_text_or_value_available_to_reader": False,
+                "human_review_available_to_reader": False,
+                "label_owner_or_branch_text_available_to_reader": False,
+                "period_unit_or_scope_available_to_reader": False,
+                "schema_label_or_report_norm_id_available_to_reader": False,
+            },
+        }
+    )
+
+    with pytest.raises(
+        NumericCellVerificationError, match="requires replay-authenticated verification"
+    ):
+        verify_numeric_cell_proposals(registry, [_prediction(cell, "1.234")])
+
+
+def test_verifier_rejects_semantic_graph_v3_reference_isolation_drift():
+    cell = _cell("page-0001-row-001-axis-1", "VALUE", "1.234", "1234", None)
+    registry = _registry([cell])
+    registry.update(
+        {
+            "format_version": 3,
+            "policy": "SEMANTIC_GRAPH_V2_VALUE_POSITION_CROPS_V1",
+            "geometry_authority": "AUTHENTICATED_V3_LINE_GEOMETRY",
+            "reference_isolation": {},
+        }
+    )
+
+    with pytest.raises(NumericCellVerificationError, match="replay-authenticated"):
+        verify_numeric_cell_proposals(registry, [_prediction(cell, "1.234")])
+
+
+def test_verifier_reparses_primary_numeric_text_before_agreement():
+    cell = _cell("page-0001-row-001-axis-1", "VALUE", "1.234", "9999", None)
+    registry = _registry([cell])
+
+    with pytest.raises(NumericCellVerificationError, match="text/value/sign drifted"):
+        verify_numeric_cell_proposals(registry, [_prediction(cell, "9.999")])
+
+
+def test_exact_zero_agreement_preserves_observed_zero_state():
+    cell = _cell("page-0001-row-001-axis-1", "ZERO", "0", "0", None)
+    registry = _registry([cell])
+
+    result = verify_numeric_cell_proposals(registry, [_prediction(cell, "0")])["cells"][0]
+
+    assert result["verification_status"] == "VERIFIED_OBSERVED_VALUE"
+    assert result["normalized_numeric_value"] == "0"
+    assert result["final_value_status"] == "OBSERVED_ZERO"

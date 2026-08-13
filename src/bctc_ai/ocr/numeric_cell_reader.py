@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib.metadata
 import json
 import os
@@ -15,6 +16,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+import cv2
+import numpy as np
+
 from bctc_ai.core.hashing import sha256_file
 
 
@@ -24,6 +28,44 @@ class NumericCellReaderError(RuntimeError):
 
 _CELL_ID = re.compile(r"page-\d{4}-row-\d{3}-axis-\d+")
 _NUMERIC_CHARACTERS = re.compile(r"^[0-9.,()\-–—−\s]*$")
+
+
+def _stable_bytes(path: Path, label: str) -> bytes:
+    if path.is_symlink() or not path.is_file():
+        raise NumericCellReaderError(f"{label} is absent or not a regular file")
+    try:
+        before = path.stat()
+        first = path.read_bytes()
+        second = path.read_bytes()
+        after = path.stat()
+    except OSError as exc:
+        raise NumericCellReaderError(f"cannot read {label}: {path}") from exc
+    if (
+        first != second
+        or before.st_size != len(first)
+        or after.st_size != len(first)
+        or before.st_mtime_ns != after.st_mtime_ns
+    ):
+        raise NumericCellReaderError(f"{label} changed while read")
+    return first
+
+
+def _json_object(payload: bytes, label: str) -> dict[str, Any]:
+    def closed_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in result:
+                raise NumericCellReaderError(f"{label} contains duplicate JSON key")
+            result[key] = value
+        return result
+
+    try:
+        value = json.loads(payload, object_pairs_hook=closed_pairs)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise NumericCellReaderError(f"{label} is not valid UTF-8 JSON") from exc
+    if type(value) is not dict:
+        raise NumericCellReaderError(f"{label} must be a JSON object")
+    return value
 
 
 def _git(project_root: Path, *args: str) -> str:
@@ -44,8 +86,8 @@ def load_numeric_reader_config(project_root: Path, path: Path) -> tuple[dict[str
     project_root = project_root.resolve()
     resolved = _project_path(project_root, path, "numeric reader config")
     try:
-        config = tomllib.loads(resolved.read_text(encoding="utf-8"))
-    except (OSError, tomllib.TOMLDecodeError) as exc:
+        config = tomllib.loads(_stable_bytes(resolved, "numeric reader config").decode("utf-8"))
+    except (UnicodeDecodeError, tomllib.TOMLDecodeError) as exc:
         raise NumericCellReaderError(f"cannot load numeric reader config: {resolved}") from exc
     expected_forbidden = {
         "GEOMETRY",
@@ -91,17 +133,17 @@ def verify_numeric_reader_model(model_directory: Path, config: dict[str, Any]) -
     records = []
     for expected in model["files"]:
         path = model_directory / expected["path"]
+        payload = _stable_bytes(path, f"numeric reader model file {expected['path']}")
         if (
-            not path.is_file()
-            or path.stat().st_size != int(expected["size_bytes"])
-            or sha256_file(path) != expected["sha256"]
+            len(payload) != int(expected["size_bytes"])
+            or hashlib.sha256(payload).hexdigest() != expected["sha256"]
         ):
             raise NumericCellReaderError(f"numeric reader model file drifted: {path}")
         records.append(
             {
                 "path": expected["path"],
-                "size_bytes": path.stat().st_size,
-                "sha256": sha256_file(path),
+                "size_bytes": len(payload),
+                "sha256": hashlib.sha256(payload).hexdigest(),
             }
         )
     return {
@@ -114,18 +156,22 @@ def verify_numeric_reader_model(model_directory: Path, config: dict[str, Any]) -
     }
 
 
-def load_reference_blind_numeric_request(
+def _load_reference_blind_numeric_request_snapshot(
     project_root: Path, registry_path: Path
-) -> tuple[dict[str, Any], list[dict[str, str]], Path]:
+) -> tuple[dict[str, Any], list[dict[str, Any]], Path]:
     project_root = project_root.resolve()
     resolved = _project_path(project_root, registry_path, "numeric crop registry")
-    try:
-        registry = json.loads(resolved.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise NumericCellReaderError(f"cannot load numeric crop registry: {resolved}") from exc
+    registry = _json_object(
+        _stable_bytes(resolved, "numeric crop registry"), "numeric crop registry"
+    )
     allowed_registries = {
         (1, "FIXED_GRID_NUMERIC_CELL_CROPS_V1", "E0029_PP_OCRV6_FIXED_GRID"),
         (2, "FIXED_GRID_NUMERIC_CELL_CROPS_V2", "E0033_PP_OCRV6_FIXED_GRID"),
+        (
+            3,
+            "SEMANTIC_GRAPH_V2_VALUE_POSITION_CROPS_V1",
+            "AUTHENTICATED_V3_LINE_GEOMETRY",
+        ),
     }
     if (
         not isinstance(registry, dict)
@@ -136,6 +182,18 @@ def load_reference_blind_numeric_request(
         )
         not in allowed_registries
         or registry.get("recognizer_input_fields") != ["crop_path"]
+        or (
+            registry.get("format_version") == 3
+            and registry.get("reference_isolation")
+            != {
+                "accounting_or_family_roles_available_to_reader": False,
+                "expected_or_primary_numeric_text_or_value_available_to_reader": False,
+                "human_review_available_to_reader": False,
+                "label_owner_or_branch_text_available_to_reader": False,
+                "period_unit_or_scope_available_to_reader": False,
+                "schema_label_or_report_norm_id_available_to_reader": False,
+            }
+        )
         or not isinstance(registry.get("cells"), list)
         or registry.get("metrics", {}).get("cell_count") != len(registry["cells"])
     ):
@@ -157,21 +215,52 @@ def load_reference_blind_numeric_request(
         ):
             raise NumericCellReaderError("numeric crop cell identity or payload is unsafe")
         seen.add(cell_id)
-        crop_path = (resolved.parent / str(payload["crop_path"])).resolve()
-        if not crop_path.is_relative_to(resolved.parent) or (
-            not crop_path.is_file()
-            or crop_path.stat().st_size != int(cell.get("crop_size_bytes", -1))
-            or sha256_file(crop_path) != cell.get("crop_sha256")
+        unresolved_crop_path = resolved.parent / str(payload["crop_path"])
+        if unresolved_crop_path.is_symlink():
+            raise NumericCellReaderError(f"numeric crop path is unsafe: {cell_id}")
+        crop_path = unresolved_crop_path.resolve()
+        if not crop_path.is_relative_to(resolved.parent) or not crop_path.is_file():
+            raise NumericCellReaderError(f"numeric crop path is unsafe: {cell_id}")
+        crop_bytes = _stable_bytes(crop_path, f"numeric crop {cell_id}")
+        crop_sha256 = hashlib.sha256(crop_bytes).hexdigest()
+        if len(crop_bytes) != int(cell.get("crop_size_bytes", -1)) or crop_sha256 != cell.get(
+            "crop_sha256"
         ):
             raise NumericCellReaderError(f"numeric crop drifted: {cell_id}")
+        image = cv2.imdecode(np.frombuffer(crop_bytes, dtype=np.uint8), cv2.IMREAD_COLOR)
+        if image is None or image.ndim != 3:
+            raise NumericCellReaderError(f"numeric crop is not a decodable color image: {cell_id}")
         samples.append(
             {
                 "cell_id": cell_id,
                 "crop_path": crop_path.as_posix(),
-                "crop_sha256": sha256_file(crop_path),
+                "crop_sha256": crop_sha256,
+                "input_image": image,
             }
         )
     return registry, samples, resolved
+
+
+def _reader_safe_samples(snapshots: list[dict[str, Any]]) -> list[dict[str, str]]:
+    return [
+        {
+            "cell_id": sample["cell_id"],
+            "crop_path": sample["crop_path"],
+            "crop_sha256": sample["crop_sha256"],
+        }
+        for sample in snapshots
+    ]
+
+
+def load_reference_blind_numeric_request(
+    project_root: Path, registry_path: Path
+) -> tuple[dict[str, Any], list[dict[str, str]], Path]:
+    """Validate the request while exposing only reader-safe sample metadata."""
+
+    registry, snapshots, resolved = _load_reference_blind_numeric_request_snapshot(
+        project_root, registry_path
+    )
+    return registry, _reader_safe_samples(snapshots), resolved
 
 
 def classify_numeric_prediction(raw_text: str) -> str:
@@ -216,9 +305,16 @@ def run_numeric_cell_reader(
     if output.exists():
         raise NumericCellReaderError(f"refusing to overwrite numeric reader output: {output}")
     config, resolved_config = load_numeric_reader_config(project_root, config_path)
-    registry, samples, resolved_registry = load_reference_blind_numeric_request(
+    registry, samples, resolved_registry = _load_reference_blind_numeric_request_snapshot(
         project_root, registry_path
     )
+    reader_samples = _reader_safe_samples(samples)
+    config_sha256 = hashlib.sha256(
+        _stable_bytes(resolved_config, "numeric reader config final snapshot")
+    ).hexdigest()
+    registry_sha256 = hashlib.sha256(
+        _stable_bytes(resolved_registry, "numeric crop registry final snapshot")
+    ).hexdigest()
     model_directory = (
         model_cache.resolve() / "official_models" / str(config["model"]["cache_directory"])
     )
@@ -238,18 +334,31 @@ def run_numeric_cell_reader(
         enable_mkldnn=False,
         cpu_threads=cpu_threads,
     )
+    verified_model_after_load = verify_numeric_reader_model(model_directory, config)
+    if verified_model_after_load != model_record:
+        raise NumericCellReaderError("numeric reader model changed during model load")
+    if (
+        hashlib.sha256(
+            _stable_bytes(resolved_config, "numeric reader config before inference")
+        ).hexdigest()
+        != config_sha256
+        or hashlib.sha256(
+            _stable_bytes(resolved_registry, "numeric crop registry before inference")
+        ).hexdigest()
+        != registry_sha256
+    ):
+        raise NumericCellReaderError("numeric reader inputs changed before inference")
     predictions = model.predict(
-        input=[sample["crop_path"] for sample in samples],
+        input=[sample["input_image"] for sample in samples],
         batch_size=batch_size,
     )
     records = []
-    for sample, result in zip(samples, predictions, strict=True):
+    for sample, result in zip(reader_samples, predictions, strict=True):
         payload = result.json.get("res")
         if not isinstance(payload, dict):
             raise NumericCellReaderError("numeric reader returned no result payload")
-        returned_path = Path(str(payload.get("input_path", ""))).resolve()
-        if returned_path != Path(sample["crop_path"]):
-            raise NumericCellReaderError("numeric reader changed crop ordering or identity")
+        if payload.get("input_path") is not None:
+            raise NumericCellReaderError("in-memory numeric reader returned a path identity")
         raw_text = payload.get("rec_text")
         score = payload.get("rec_score")
         if (
@@ -260,7 +369,9 @@ def run_numeric_cell_reader(
             raise NumericCellReaderError("numeric reader output types are invalid")
         records.append(
             {
-                **sample,
+                "cell_id": sample["cell_id"],
+                "crop_path": sample["crop_path"],
+                "crop_sha256": sample["crop_sha256"],
                 "raw_prediction": raw_text,
                 "reader_score": float(score),
                 "proposal_status": classify_numeric_prediction(raw_text),
@@ -268,6 +379,8 @@ def run_numeric_cell_reader(
         )
     if len(records) != len(samples):
         raise NumericCellReaderError("numeric reader changed the fixed crop denominator")
+    if verify_numeric_reader_model(model_directory, config) != model_record:
+        raise NumericCellReaderError("numeric reader model changed during inference")
     elapsed = time.perf_counter() - started
     counts = Counter(record["proposal_status"] for record in records)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -287,7 +400,7 @@ def run_numeric_cell_reader(
             "code": {"commit": git_commit, "dirty": git_dirty},
             "configuration": {
                 "path": resolved_config.relative_to(project_root).as_posix(),
-                "sha256": sha256_file(resolved_config),
+                "sha256": config_sha256,
                 "network_policy": "PROCESS_SOCKET_CONNECT_DENIED",
                 "batch_size": batch_size,
                 "cpu_threads": cpu_threads,
@@ -296,7 +409,7 @@ def run_numeric_cell_reader(
             },
             "crop_registry": {
                 "path": resolved_registry.relative_to(project_root).as_posix(),
-                "sha256": sha256_file(resolved_registry),
+                "sha256": registry_sha256,
                 "cell_count": len(samples),
                 "recognizer_input_fields": registry["recognizer_input_fields"],
             },

@@ -40,12 +40,24 @@ def _decimal_text(value: Decimal | None) -> str | None:
 
 
 def _validate_inputs(
-    registry: dict[str, Any], predictions: list[dict[str, Any]]
+    registry: dict[str, Any],
+    predictions: list[dict[str, Any]],
+    *,
+    allow_semantic_graph_v3: bool = False,
 ) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]]]:
     cells = registry.get("cells")
+    if registry.get("format_version") == 3 and not allow_semantic_graph_v3:
+        raise NumericCellVerificationError(
+            "semantic-graph v3 numeric evidence requires replay-authenticated verification"
+        )
     allowed_registries = {
         (1, "FIXED_GRID_NUMERIC_CELL_CROPS_V1", "E0029_PP_OCRV6_FIXED_GRID"),
         (2, "FIXED_GRID_NUMERIC_CELL_CROPS_V2", "E0033_PP_OCRV6_FIXED_GRID"),
+        (
+            3,
+            "SEMANTIC_GRAPH_V2_VALUE_POSITION_CROPS_V1",
+            "AUTHENTICATED_V3_LINE_GEOMETRY",
+        ),
     }
     if (
         (
@@ -116,7 +128,22 @@ def verify_numeric_cell_proposals(
     recorded by the fixed-grid parser.
     """
 
-    cells, predictions_by_id = _validate_inputs(registry, predictions)
+    return _verify_numeric_cell_proposals(registry, predictions, allow_semantic_graph_v3=False)
+
+
+def _verify_numeric_cell_proposals(
+    registry: dict[str, Any],
+    predictions: list[dict[str, Any]],
+    *,
+    allow_semantic_graph_v3: bool,
+) -> dict[str, Any]:
+    if registry.get("format_version") == 3 and not allow_semantic_graph_v3:
+        raise NumericCellVerificationError(
+            "semantic-graph v3 numeric evidence requires replay-authenticated verification"
+        )
+    cells, predictions_by_id = _validate_inputs(
+        registry, predictions, allow_semantic_graph_v3=allow_semantic_graph_v3
+    )
     records: list[dict[str, Any]] = []
     status_counts: Counter[str] = Counter()
     proposal_counts: Counter[str] = Counter()
@@ -126,6 +153,19 @@ def verify_numeric_cell_proposals(
         if primary_observation not in _PRIMARY_OBSERVATIONS:
             raise NumericCellVerificationError(f"unsupported primary observation: {cell_id}")
         primary_value = _decimal(cell.get("primary_value"), name=f"{cell_id} primary value")
+        primary_raw = cell.get("primary_raw_text")
+        if not isinstance(primary_raw, str):
+            raise NumericCellVerificationError(f"primary raw text is absent: {cell_id}")
+        reparsed_primary = parse_financial_number_strict_grouping(primary_raw)
+        if (
+            reparsed_primary.observation.value != primary_observation
+            or reparsed_primary.value != primary_value
+            or reparsed_primary.sign_evidence != cell.get("primary_sign_evidence")
+            or reparsed_primary.normalized_text != cell.get("primary_normalized_text")
+        ):
+            raise NumericCellVerificationError(
+                f"primary numeric text/value/sign drifted: {cell_id}"
+            )
         if primary_observation in {"VALUE", "ZERO"} and primary_value is None:
             raise NumericCellVerificationError(f"observed numeric cell lacks value: {cell_id}")
         if primary_observation in {"BLANK", "DASH"} and primary_value is not None:
@@ -158,7 +198,9 @@ def verify_numeric_cell_proposals(
                 decision = "ACCEPT_EXACT_VALUE_AND_SIGN_AGREEMENT"
                 selected_raw = str(cell.get("primary_raw_text", ""))
                 selected_value = _decimal_text(primary_value)
-                final_value_status = "OBSERVED_VALUE"
+                final_value_status = (
+                    "OBSERVED_ZERO" if primary_observation == "ZERO" else "OBSERVED_VALUE"
+                )
             else:
                 verification_status = "UNRESOLVED_READER_DISAGREEMENT"
                 decision = "ABSTAIN_AND_RETAIN_BOTH_READER_PROPOSALS"
@@ -197,9 +239,7 @@ def verify_numeric_cell_proposals(
                     "observation": primary_observation,
                     "value": _decimal_text(primary_value),
                     "sign_evidence": cell.get("primary_sign_evidence"),
-                    "visual_punctuation_evidence": cell.get(
-                        "visual_punctuation_evidence"
-                    ),
+                    "visual_punctuation_evidence": cell.get("visual_punctuation_evidence"),
                 },
                 "challenger": challenger,
                 "verification_status": verification_status,
@@ -210,13 +250,12 @@ def verify_numeric_cell_proposals(
             }
         )
 
-    observed_count = sum(
-        status_counts[name]
-        for name in ("VERIFIED_OBSERVED_VALUE", "VERIFIED_OBSERVED_DASH")
-    ) + status_counts["UNRESOLVED_READER_DISAGREEMENT"]
+    observed_count = (
+        sum(status_counts[name] for name in ("VERIFIED_OBSERVED_VALUE", "VERIFIED_OBSERVED_DASH"))
+        + status_counts["UNRESOLVED_READER_DISAGREEMENT"]
+    )
     verified_count = (
-        status_counts["VERIFIED_OBSERVED_VALUE"]
-        + status_counts["VERIFIED_OBSERVED_DASH"]
+        status_counts["VERIFIED_OBSERVED_VALUE"] + status_counts["VERIFIED_OBSERVED_DASH"]
     )
     metrics = {
         "cell_count": len(records),
@@ -230,9 +269,7 @@ def verify_numeric_cell_proposals(
         "observed_exact_agreement_rate": (
             round(verified_count / observed_count, 6) if observed_count else 0.0
         ),
-        "unresolved_observed_cell_count": status_counts[
-            "UNRESOLVED_READER_DISAGREEMENT"
-        ],
+        "unresolved_observed_cell_count": status_counts["UNRESOLVED_READER_DISAGREEMENT"],
         "blank_cell_count": status_counts["UNRESOLVED_BLANK_PENDING_ROW_SEMANTICS"],
         "blank_to_zero_or_value_promotion_count": 0,
         "automatic_reader_overwrite_count": 0,
