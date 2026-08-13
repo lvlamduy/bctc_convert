@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-08-13T15:07:00+07:00 (UTC+7 fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
+Updated: 2026-08-13T21:28:36+07:00 (UTC+7 fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
 The detailed historical receipts below remain evidence, but that directive supersedes
@@ -48,15 +48,15 @@ Từ đầu đến snapshot này, project đã đi qua bốn pha chính:
 | Cross-page denominator | 1,422/1,422 adjacent pairs được account; 899 fragment relations và 122,573 axis-distance measurements |
 | Role-A diagnostic | 139 Level-1 machine-reference blocks; không phải human accuracy và không feed ngược vào discovery |
 | Schema/export capability | BASE_SCHEMA 1,593; UNIVERSAL_SCHEMA 1,935; MBB/VPB bounded development Excel tồn tại và có provenance |
-| Wave-1 accepted structure | **STATEMENT=0, TABLE=0, LOGICAL_ROW=0, VALUE_POSITION=0, AXIS=0, HIERARCHY=0** |
-| Wave-1 canonical/Excel | **canonical mapping=0 documents; mapped Excel=0 documents** |
+| Wave-1 accepted structure | Broad/exhaustive Wave-1 authority remains **0**. One bounded SHB page-24 loan-maturity slice is now accepted only within the supplied family-collision scope: **TABLE=1, LOGICAL_ROW=4, VALUE_POSITION=8, AXIS=2, HIERARCHY=12** |
+| Wave-1 canonical/Excel | **canonical mapping=0 documents; mapped Excel=0 documents**. A candidate-only SHB review workbook is work in progress and is not counted as durable output or canonical Excel |
 
 ### Những gì family research đã học được
 
 | Family / relation | Evidence và maturity hiện tại | Quyết định bàn giao |
 |---|---|---|
 | `LOAN_QUALITY_CLASSIFICATION` | 37 pages/15 banks discovery; 16 pages/8-bank independent panel; prospective H2b trên 31 regions/8 wholly fresh banks cho 6 TP, 23 TN, 0 FP và 2 safe abstentions. Stable fingerprint là customer-loan owner + ordered five grades + comparative monetary axes + same-population total; unit inheritance là gap còn lại | **READY_FOR_BOUNDED_ACCEPTANCE** cho strict subset có local hoặc typed-safe unit; inherited-unit cases giữ unresolved |
-| `LOAN_MATURITY_BUCKETS` | Hai cross-bank panels: 14 pages/7 banks và 15 pages/8 banks. Owner+comparative-axis H2 phân biệt tổng cộng 12 positives với 17 controls, không FP/FN trên selected panels | **CROSS_BANK_SUPPORTED / development acceptance candidate**; hard-control lock chưa đủ durable để claim prospective authority |
+| `LOAN_MATURITY_BUCKETS` | Hai cross-bank panels: 14 pages/7 banks và 15 pages/8 banks. Owner+comparative-axis H2 phân biệt tổng cộng 12 positives với 17 controls, không FP/FN trên selected panels. SHB p24 hiện là vertical slice source-bound đầu tiên tạo exact accepted graph và đóng 8/8 numeric cells | **BOUNDED_ACCEPTANCE_OBTAINED / CROSS_BANK_SUPPORTED**; authority chỉ áp dụng cho exact SHB slice, chưa phải multi-bank hoặc prospective production authority |
 | `CUSTOMER_LOAN_BORROWER_OR_ECONOMIC_SECTOR_BREAKDOWN` | Whole-file screen 453 pages/8 banks; locked selected panel 9 positives +21 controls, H2/H3 đạt 9 TP/21 TN/0 FP/FN; monetary, percentage và net-loan closures đều corroborate | **CROSS_BANK_SUPPORTED**, chưa prospective-validated vì không còn provably unopened positive bank trong Wave 1 |
 | `PROVISION_MOVEMENT_ROLLFORWARD` | PM2 giữ 6/6 positives +3/3 hard controls, gồm native/rotated/cross-page evidence; opening/movements/closing topology đã rõ | **CROSS_BANK_SUPPORTED**, nhưng continuation và non-loan portability chưa đủ để acceptance rộng |
 | `LIQUIDITY_RISK_MATURITY_GAP` | 24 pages/15 banks; orientation+typed-neighbor graph cho 9 TP/14 TN/0 FP/1 FN. Repricing matrix là hard control gần giống topology | **HYPOTHESIS/CROSS_BANK_SUPPORTED**, thiếu true split-row continuation và còn một material reader-terminal miss |
@@ -70,7 +70,8 @@ Các family trên lặp lại cùng một tập primitives: `OWNER_RESOLUTION`,
 `COMPARATIVE_PERIOD_AXIS`, `UNIT_SCOPE_EDGE`, `SAME_POPULATION_CLOSURE`,
 `TOTAL_SUBTOTAL`, `NEIGHBOR_RELATION`, `TABLE_CONTINUATION`, `ROW_FRONTIER`
 và `STRUCTURAL_RESET`. Snapshot lịch sử này đã dẫn đến bounded Generic Local
-Accounting Graph v1 ở checkpoint dưới; accepted Wave-1 graph authority vẫn bằng 0.
+Accounting Graph v1 ở checkpoint dưới; broad/multi-bank accepted Wave-1 graph
+authority vẫn bằng 0, với exact SHB p24 bounded exception được ghi riêng bên dưới.
 `structural_graph_contracts_v1` vẫn là candidate-only và legacy continuation
 scoring không phù hợp với các counterexamples mới.
 
@@ -81,10 +82,11 @@ phân biệt reader failure với structural failure, falsify text-only/geometry
 rules và phát hiện các local-graph invariants xuyên ngân hàng. Nó cũng chứng minh
 mapping/Excel không phải phần hoàn toàn chưa tồn tại.
 
-Chiến lược cũ **chưa hoàn thành bottleneck chính**: lượng candidate rất lớn chưa
-được chuyển thành accepted TABLE/ROW/CELL/AXIS/HIERARCHY; bounded Generic Local
-Accounting Graph hiện đã có nhưng chưa nhận được real accepted input; chưa có
-Wave-1 canonical mapping/Excel; chưa có broad
+Chiến lược cũ **chưa hoàn thành bottleneck chính ở quy mô rộng**: lượng candidate
+rất lớn chưa được chuyển thành accepted TABLE/ROW/CELL/AXIS/HIERARCHY trên broad
+Wave-1. Tuy nhiên, bounded Generic Local Accounting Graph hiện đã nhận và replay
+được một real accepted input ở SHB p24; bước này chưa tạo accepted schema mapping,
+canonical mapping hay Excel. Project vẫn chưa có broad
 period/scope/source holdout hoặc unseen-filing accuracy. Các artifact/test/hash là
 protection evidence, không thay thế các KPI này.
 
@@ -97,16 +99,85 @@ trên các sealed batches, và mở thêm family panels chỉ để tăng sample
 
 Critical path hiện tại là:
 
-1. kiểm tra trực tiếp real PDF evidence của các family mạnh nhất và matched controls;
-2. rút `Generic Local Accounting Graph v1` từ shared primitives, không route bank/page;
-3. dùng loan quality strict subset làm bounded acceptance đầu tiên, với loan maturity
-   là family thứ hai để buộc engine phải generic;
-4. phát hành riêng accepted TABLE/LOGICAL_ROW/AXIS/HIERARCHY counts, giữ ambiguous
-   unit/continuation cases unresolved;
-5. chỉ sau đó chạy bounded multi-bank vertical slice tới canonical mapping,
-   accounting validation và Excel; Tier 3 chỉ khi Tier 1/Tier 2 có measurable benefit.
+1. giữ nguyên specialized source-bound reader stack đã khóa; không mở thêm model
+   survey khi chưa có một failure class định danh và promotion gate mới;
+2. hoàn tất và audit candidate-only review workbook cho exact SHB p24 slice, không
+   gọi nó là canonical export hoặc accepted schema mapping;
+3. replay cùng graph/context/numeric contracts trên các bank/case loan-maturity đã
+   khóa, giữ mọi drift về unit, period, row ownership hoặc total ở trạng thái unresolved;
+4. phát hành riêng bounded và broad accepted TABLE/LOGICAL_ROW/VALUE_POSITION/AXIS/
+   HIERARCHY counts; không cộng SHB singleton vào broad Wave-1 authority;
+5. chỉ promote schema mapping/canonical Excel sau independent review và bounded
+   multi-bank evidence; sau đó mới mở rộng sang loan quality và các family tiếp theo.
 
-### Current execution checkpoint — Generic Local Accounting Graph v1
+### Latest execution checkpoint — source-bound SHB vertical slice
+
+Durable tracked evidence is committed and pushed through
+`37ea265f1023428f1e025559c6d184a3afbb4e74`, with the remote branch at the same
+commit; the current worktree separately contains the workbook WIP named below. The
+current production-role decision is intentionally small:
+
+- VietOCR 0.3.13 VGG Transformer is the only Vietnamese semantic-text reader; the
+  frozen 387-LINE comparison gives 42/52 exact transcripts, 32/41 exact core roles
+  and 2.030% CER versus Seq2Seq's 38/52, 27/41 and 3.205%. No ONNX is used.
+  Accentless Vietnamese is shortlist/retrieval evidence only and cannot accept a
+  label or accounting role by itself.
+- PP-OCRv6/V3 retains source geometry, locator, dates and initial numeric/sign/dash
+  evidence; its Vietnamese transcript cannot establish semantic identity. Exact
+  numeric cells are challenged independently by the pinned CPU/fp32
+  `PaddlePaddle/en_PP-OCRv5_mobile_rec` reader.
+- PP-DocLayoutV3 and PaddleOCR-VL-1.6 are excluded from the production router after
+  sealed local cell-coordinate/ownership drift, row collapse, shifted-value and
+  truncation failures. IBM TableFormer remains deferred.
+- TATR-v1.1-All remains a bounded structure-only shadow challenger. On the frozen
+  seven-crop/five-bank panel (five positives + two hard controls), only 1/5 positive
+  tables has exact topology at IoU 0.50 and none at IoU 0.75; automatic promotion is
+  false. The exact frozen score artifact SHA-256 is
+  `3b14b36dee8a07b0918019e3c7c091f651e2e9b6870669c80258529521ea4d85`.
+
+The exact SHB consolidated Q2/2026 filing, physical page 24, now closes one bounded
+`LOAN_MATURITY_BUCKETS` graph:
+
+- Semantic graph
+  `slagv2:graph:47ec2635a8b57ee0773f26612d97dc7ce1a700993b169c25d7286f9b74be28d7`
+  has 36 nodes / 81 edges, zero orphan or invalid nodes, and accepts one TABLE,
+  four LOGICAL_ROW (`SHORT_TERM`, `MEDIUM_TERM`, `LONG_TERM`, `TOTAL`), eight
+  VALUE_POSITION, two AXIS and 12 HIERARCHY relations within the supplied family-
+  collision scope. Both axes pass internal additive closure; this does not assert
+  same-population, schema mapping, canonicalization or export authority.
+- Page-local statement context
+  `sscxtv1:context:a2d480f3bece8e0a29e0a935dbd4be00e4168159a6ec7d3d2946ab17d0b0ab8e`
+  binds the exact visible heading `THUYẾT MINH BÁO CÁO TÀI CHÍNH HỢP NHẤT (TIẾP THEO)`
+  as `TM / CONSOLIDATED / continuation=true`. It is page-local only; document-level
+  statement completion and export readiness remain false.
+- Schema candidate set
+  `slascv1:candidate:c297f71128bef07be383e684a9ff7ea33b11bf96e4fff154b2e05b39e72ef223`
+  emits singleton candidates 716/752 for owner/branch and 753/754/755 for the three
+  value rows. The unlabeled TOTAL is source-only with no candidate ReportNormId;
+  ReportNormId 5747 is explicitly unassessed, not absent. Status is
+  `CANDIDATE_SET_READY`; schema mapping, canonicalization and export remain false.
+- E-0042 independently verifies all 8/8 observed numeric cells with exact source-
+  versus-challenger value/sign agreement, including literal totals 659,610,969 and
+  614,861,980. The replay-stable verification is
+  `sgnpvv1:verification:92b2d1d0ad293fb5ee2953128db9fb93c1c7f588eefff1bc00cfdeae16b61f1d`
+  at SHA-256
+  `929c1c81b0e08e14b5908087d866dc7bacc67c19cc62eb832353c5efb6c1801e`
+  (18,835 bytes). It authenticates selected historical proposal bytes plus exact
+  source replay, not hardware/model execution, geometry, period, unit, scope,
+  statement, ReportNormId, schema or export authority.
+
+At this snapshot, the SHB review-workbook implementation, CLI and test files are
+untracked work in progress. They are deliberately excluded from all durable counts;
+no workbook/provenance pair is claimed until generation, deterministic replay,
+formula/claim-boundary checks, independent audit, commit and push are complete.
+
+Remaining blockers are therefore explicit: one bank/page is not multi-bank
+generalization; candidate ReportNormIds are not accepted mappings; TOTAL has no
+candidate mapping; statement context is not document-complete; and no canonical
+Wave-1 workbook exists. The next measurable milestone is a reviewed SHB-only pair,
+followed by exact multi-bank replay of the same contracts without bank/page routing.
+
+### Preceding execution checkpoint — Generic Local Accounting Graph v1
 
 The first generic core is now mechanically closed on two deliberately different but structurally
 related families: `LOAN_QUALITY_CLASSIFICATION` and `LOAN_MATURITY_BUCKETS`. It is
@@ -126,7 +197,8 @@ and 0 core invocations**. This is not a 29-case graph failure: the compact broad
 groups bind real V2 atoms but are not an authenticated semantic/structural proposal
 contract. Across the 11 nominal positives, exact OCR text satisfies all core row
 aliases in 0/11 and a core branch alias in 1/11. Expected labels were not used to
-repair OCR or manufacture source structure, so accepted Wave-1 counts remain zero.
+repair OCR or manufacture source structure, so this 29-case sweep's accepted counts
+remain zero. The later exact SHB p24 slice is separately recorded above.
 
 The newly isolated bounded source-to-core seam is therefore a generic, source-bound typed
 proposal set: exact projection/spec/config identities, ordered source spans, typed
@@ -147,7 +219,8 @@ visits, with retained fanout 100 in total, maximum 41 and zero work/fanout overf
 Post-freeze diagnostics found a target-family topology candidate in 4/11 expected
 positives and 0/16 controls, but none can authorize a LAG observation. The validator
 deterministically replays exact V2 + registry/config; it does not invoke LAG, accept
-structure, or map schema. Accepted/mapped counts therefore remain zero.
+structure, or map schema. Accepted/mapped counts for that proposal sweep therefore
+remain zero; it is not the later SHB acceptance path.
 
 The multi-family proposal path was also hardened specifically for filings containing
 tens or hundreds of TM clusters. A registry is compiled once; each page is scanned
@@ -160,7 +233,8 @@ independent scale audit (not yet a durable repository benchmark receipt) reports
 `PASS/TRUST`: with a 1,000-family registry and 100 complete local blocks the engine
 produced 100 exact topology candidates with linear accounting rather than a
 family-by-line product. This is scalability evidence for proposal/topology candidate
-generation only; it does not alter the zero accepted/mapped Wave-1 counts.
+generation only; at that checkpoint it did not alter accepted/mapped Wave-1 counts.
+The later bounded SHB exception does not change this scale-audit claim.
 
 A bounded Vietnamese label-recognition canary has now localized the current OCR
 problem without reopening Reader V3. The source-only crop set was frozen before
@@ -242,7 +316,7 @@ The first breadth-first inventory is now reproducible:
 | ------------------------- | ---------------- |
 | Banks registered | 27 |
 | Banks selected / source-route profiled | 27 / 27 |
-| Banks structurally surveyed under the new pass | Role A Level 1: 27 / 27 statement-boundary references. Role B: 27 / 27 page-level statement-family hypotheses/dispositions and prestructural graph candidates, with complete ordered block hypotheses in 13 documents and 14 documents explicitly unresolved. Accepted Role-B statement/table/row/cell/axis/hierarchy extraction remains 0 / 27. Separately, the reader sentinel samples 24 pages from 14 documents representing 14 banks; this is not a structural survey fraction |
+| Banks structurally surveyed under the new pass | Role A Level 1: 27 / 27 statement-boundary references. Role B: 27 / 27 page-level statement-family hypotheses/dispositions and prestructural graph candidates, with complete ordered block hypotheses in 13 documents and 14 documents explicitly unresolved. Broad document-level accepted Role-B statement/table/row/cell/axis/hierarchy coverage remains 0 / 27; the later exact SHB p24 bounded exception is not broad document coverage. Separately, the reader sentinel samples 24 pages from 14 documents representing 14 banks; this is not a structural survey fraction |
 | Documents selected / source-route profiled | 27 / 27 |
 | Period coverage in the locked filename metadata | 26 Q2/2026; 1 filename-unknown preserved VPB input (known from its existing source receipt as Q1/2026) |
 | Reporting periods source-verified by the new structural pass | Role A Level 1: 26 Q2/2026 + preserved VPB Q1/2026; Role B has not yet inferred periods |
@@ -251,7 +325,7 @@ The first breadth-first inventory is now reproducible:
 | Wave-1 PDF pages profiled | 1,449; 1,356 have a raster covering at least 50% of the page |
 | Extractable text-layer evidence | 156 substantive pages; 111 have substantive nonzero-alpha text and 46 have substantive zero-alpha text; the latter sets overlap on one page and visibility/render validation is still `NOT_RUN` |
 | Role-B authenticated page-read evidence | Finalized V3: 1,449 / 1,449 source-accounted requests = 1,390 complete + 59 explicit terminal; 1,356 OCR and 93 native requests are all disposed. The source-first inventory accounts 1,454,160 / 1,454,160 neutral atoms with 5,192 geometry candidates and 251 nonsemantic topology fingerprints. The sealed statement-hypothesis inventory accounts 1,449 / 1,449 page hypotheses/dispositions and 24 ranked sequence alternatives. The prestructural inventory then accounts 1,449 page graphs and all 1,454,160 atom dispositions, but makes no accepted structure claim |
-| Statement blocks / visible rows / visible cells in the new survey | Role A Level 1: 139 machine-reference blocks / rows not inventoried / cells not inventoried. Role B: 24 ranked statement-sequence hypotheses across 13 documents and 14 documents unresolved; the all-page graph inventory has 0 statement nodes plus 970 table, 28,247 row, 295,334 cell/value-position and 9,517 axis/dimension **prestructural candidates** on 859 pages. Accepted statement/table/row/cell/axis coverage remains **0 / 27** |
+| Statement blocks / visible rows / visible cells in the new survey | Role A Level 1: 139 machine-reference blocks / rows not inventoried / cells not inventoried. Role B: 24 ranked statement-sequence hypotheses across 13 documents and 14 documents unresolved; the all-page graph inventory has 0 statement nodes plus 970 table, 28,247 row, 295,334 cell/value-position and 9,517 axis/dimension **prestructural candidates** on 859 pages. Broad document-level accepted statement/table/row/cell/axis coverage remains **0 / 27**; exact SHB p24 bounded counts are reported separately above |
 | Role-B versus Role-A Level-1 diagnostic agreement | Comparable Role-A denominator: 111 main-family references; 28 off-balance references are measured separately. Top-ranked Role-B alternatives: 40/52 exact and 52/52 overlapping candidate comparisons, covering 40/111 exact and 52/111 overlapping unique machine references. All alternatives: 73/96 exact and 96/96 overlapping comparisons, with the same 40/111 and 52/111 unique-reference coverage. These are machine-reference agreement diagnostics, not accuracy or semantic acceptance |
 | Universal schema items | 1,935 |
 | New identities / aliases this wave | 0 / 0; schema comparison has not begun for Wave 1 |
@@ -279,12 +353,12 @@ Initial corpus-level risk/pending-failure queue (the measured items below are pr
 | Pages in Role-A TM-reference segments hypothesized `OTHER` by Role B | 347 | This is the largest page-family disagreement against the Level-1 machine reference; inspect shared continuation/table-axis evidence across affected documents rather than adding bank/title exceptions |
 | Top-ranked CDKT boundary disagreement | 12 / 13 candidate documents | CDKT overlaps but is not exact while KQKD/LCTT/TM-start are exact in those same candidate documents; inspect adjacent off-balance/continuation structure with source-local evidence. The current off-balance signal hits only 20/28 references and is diagnostic, not accepted recall |
 | Searchable-over-image / ghost text | 1 primary case (HDB), with additional zero-alpha evidence retained elsewhere | Validate render visibility before trusting hidden text |
-| Role-B accepted structure/archetype discovery across new layouts | 27 pending | Page-level statement hypotheses are now exhaustive, but accepted statement/table/row/cell/axis/hierarchy coverage remains zero. Evaluate the sealed blind hypotheses separately, then use source-local table/axis evidence and cluster common/new structures |
+| Role-B accepted structure/archetype discovery across new layouts | 27 pending | Page-level statement hypotheses are now exhaustive, but broad all-page-inventory statement/table/row/cell/axis/hierarchy coverage remains zero; the later exact SHB p24 bounded exception is not a corpus-level archetype count. Evaluate the sealed blind hypotheses separately, then use source-local table/axis evidence and cluster common/new structures |
 | Duplicate TM labels and unresolved boundary ownership | Carry-in VPB regression | Solve by note/table/subtree context after cross-bank archetypes are known; do not global-match labels |
 
 The Level-1 reference records 14 explicitly titled direct LCTT presentations, 10 direct methods inferred from visible row structure, and 3 documents whose method remains unresolved. It also preserves four embedded off-balance blocks and VAB's two formal main-statement copies at different unit scales; both source copies remain evidence, but no canonical double-count is authorized.
 
-**Current highest-impact generic blocker:** page reading, source accounting, blind Level-1 hypotheses, separate machine-reference diagnostics, the all-page prestructural denominator, exhaustive adjacent-page measurement and the repaired pair-50 boundary are no longer blockers. Role B still has 0 accepted statement blocks/tables/rows/cells/axes, but direct cross-bank visual taxonomy now covers several accounting families, selected Tier-1 panels, independent family validation, a statement-boundary holdout and a bounded cross-bank orientation bridge panel. **Current phase:** expand only the surviving local-graph/accounting-family hypotheses onto fresh matched controls while continuing direct rendered-PDF/source inspection; preserve completed scores and actively seek falsifiers. The 1,422-pair publisher and corpus-level seed prevalence metrics remain deferred; no structural production mechanism is authorized by these bounded panels.
+**Historical broad-corpus blocker at this checkpoint:** page reading, source accounting, blind Level-1 hypotheses, separate machine-reference diagnostics, the all-page prestructural denominator, exhaustive adjacent-page measurement and the repaired pair-50 boundary were no longer blockers. The sealed all-page Role-B inventory still had 0 accepted statement blocks/tables/rows/cells/axes; this historical broad-coverage statement does not negate the later exact SHB p24 bounded exception above. Direct cross-bank visual taxonomy covered several accounting families, selected Tier-1 panels, independent family validation, a statement-boundary holdout and a bounded cross-bank orientation bridge panel. The 1,422-pair publisher and corpus-level seed prevalence metrics remain deferred; no structural production mechanism is authorized by these bounded panels.
 
 ## 2. Universal schema and per-document coverage
 
@@ -376,7 +450,7 @@ The active development loop is now corpus-driven: survey many documents, fingerp
 - **Wave-1 source-first Role-B inventory:** `output/development/bank-corpus-survey-v1/wave-1-role-b-source-first-inventory-v1.json` is byte-frozen at SHA-256 `c20c9b42ff6f96baf6eff6607e12b27681146d8d968e4e86f0e792bde1429162` / 1,920,845 bytes / logical identity `63c5988b80cc9893cc20f1b7476d9124880c838d8e4bc6a9d5f4df195550ad84`. It accounts 27 documents, 1,449 pages, 1,454,160 neutral atoms, 5,192 geometry candidates and 251 nonsemantic topology fingerprints with no semantic-structure claim.
 - **Wave-1 blind Role-B document-statement hypotheses:** `output/development/bank-corpus-survey-v1/wave-1-role-b-document-statement-hypotheses-v1.json` is byte-frozen at SHA-256 `9e4c849ec17d01cc683df223bc44c29f0949bf4d8b46c557144537056bcc15b8` / 1,908,210 bytes / logical identity `b6b6c2153fd39af2a85ecb9de144b9b8ac6df9d5fdbaf0fa2c9db791dbaaaba7`. Its producer is clean commit `28f3231caf72b0c0fb59752663036731ff4cb19b`, with a 35-record ledger SHA-256 `7271ff55c844036be3ffca87024de640f1fb28bb8bfc6cf2926106c626e7f320`. It seals all 1,449 page hypotheses/dispositions, 24 ranked block alternatives across 13 documents and 14 explicitly unresolved documents without reading, admitting or using Role A. It is a candidate-only artifact and does not claim accepted statement, table, row, cell, axis, scope, mapping, schema or absence truth.
 - **Wave-1 Role-B/Role-A Level-1 agreement diagnostic:** `output/development/bank-corpus-survey-v1/wave-1-role-b-vs-role-a-level-1-agreement-v1.json` is byte-frozen at SHA-256 `6e55cd8c95530e5cb053c75b861ba1831c289af4ea054f0fae4b4a0168fe7e23` / 1,394,012 bytes / logical identity `86abb0b9ccb03977946a96c149104a21eba602da443553d31e7a2a2390269afe`. Its clean producer is `52c58aa85ee3f769c377860b2cebe8b06294d5d6`, with a 37-record ledger SHA-256 `0328b67ba93cd82600c9234d7eed41047388580d8a620f2aca6eb59e1a25431e`. Exact replay joins only authenticated source/page authority and preserves all ranked alternatives, page hypotheses/dispositions, Role-A blocks and diagnostic comparisons. Its `COMPLETE_MACHINE_REFERENCE_AGREEMENT_DIAGNOSTICS` status means accounting is complete; it is explicitly not human-gold accuracy or semantic acceptance.
-- **Wave-1 Role-B all-page prestructural graph inventory:** `output/development/bank-corpus-survey-v1/wave-1-role-b-prestructural-graph-inventory-v1.json` is byte-frozen at SHA-256 `aa18293824cdf15523fa96972555354a2c478bfe29980def2b6838cf11f346f4` / 136,272,263 bytes / logical identity `310995ab1c9edee51720236e21053d7fdcdd2fad3bc73a4e25e5e3a16aec88f0`, mode `0444`, nlink 1. Its clean producer is `4d2de2cbdc832022f1685d8ce79e17e09a1fce7a`, with a 33-record ledger SHA-256 `dccef4cda61e3d0baf4f682949fb1d16f18da0d69ddad4e85adfbd10697a9df3`. Canonical replay and independent validation account 27 documents, 1,449 page graphs and all 1,454,160 source atoms. It records 970 table, 28,247 row, 295,334 cell/value-position and 9,517 axis/dimension candidates across 859 pages plus 1,300 distinct payload-free candidate topologies. All are prestructural candidates only; `STATEMENT_BLOCK=0`, every semantic claim flag is false, and accepted structure/archetype coverage remains zero.
+- **Wave-1 Role-B all-page prestructural graph inventory:** `output/development/bank-corpus-survey-v1/wave-1-role-b-prestructural-graph-inventory-v1.json` is byte-frozen at SHA-256 `aa18293824cdf15523fa96972555354a2c478bfe29980def2b6838cf11f346f4` / 136,272,263 bytes / logical identity `310995ab1c9edee51720236e21053d7fdcdd2fad3bc73a4e25e5e3a16aec88f0`, mode `0444`, nlink 1. Its clean producer is `4d2de2cbdc832022f1685d8ce79e17e09a1fce7a`, with a 33-record ledger SHA-256 `dccef4cda61e3d0baf4f682949fb1d16f18da0d69ddad4e85adfbd10697a9df3`. Canonical replay and independent validation account 27 documents, 1,449 page graphs and all 1,454,160 source atoms. It records 970 table, 28,247 row, 295,334 cell/value-position and 9,517 axis/dimension candidates across 859 pages plus 1,300 distinct payload-free candidate topologies. All are prestructural candidates only; in this sealed broad inventory `STATEMENT_BLOCK=0`, every semantic claim flag is false, and accepted structure/archetype coverage is zero. The later exact SHB p24 bounded exception uses a separate authenticated semantic path.
 - **Historical line-only supplement implementation:** add-only commit `886869662cd9111af2aeff19774e59192c997a9c` passed independent 251/251 regression plus static/security audit but remains intentionally unexecuted because supplement V1 pins a finalized `full-v2` aggregate that does not exist. The later visual/source survey has now met the reader stop rule independently: 31 material quantitative terminal pages across nine banks and an exact 1,299-page complete-control no-op justify only the newly evidenced add-only child-line quarantine primitive and typed ledger. That bounded implementation slice supersedes `8868696` as the active research route; it does not overwrite/relabel V3, create a new reader version or authorize production.
 - **Preserved failed sentinel attempts:** the first attempt is archived as `sentinel-v1-failed-before-first-result-22bdfe3-c1a6e935` with 46 files and no OCR result; its provider rejected suffixless `/proc/self/fd/25`. The second is archived as `sentinel-v1-failed-after-three-results-4ae8494-493eb142` with 83 files, exactly 3 completed results/checkpoints and no aggregate; it exposed the one-pixel PaddleX word-subdivision overshoot. Neither failure is relabeled as a sentinel outcome. Both trees are byte-preserved and independently restored from credential-scanned S3 incremental checkpoints `20260809T185151049558Z-4ae849402e75` and `20260809T193042715568Z-6dc8a5af6019`.
 - **Wave-1 Role-A Level-1 boundaries:** `output/development/bank-corpus-survey-v1/wave-1-role-a-level-1-statement-boundaries.json` (SHA-256 `2be9843943114602ab6a1e901dbb475ca80642068cfe31b1ba7e0a6d550c3577`, 98,577 bytes). The exact source-verified result is 27 documents, 1,449 partitioned physical pages, 139 statement blocks, 1,363 unique statement pages, 1,367 block-page incidences and four embedded off-balance blocks. CTG's visible TM subdivision is physical pages 11–17 general information and 18–61 financial-statement notes. VAB's two formal scale variants remain separate source blocks with no canonical double-count claim.
