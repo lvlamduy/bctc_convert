@@ -1,0 +1,361 @@
+{
+  "authority": {
+    "authenticated_adapter_receipt_authority": false,
+    "bank_filename_or_physical_page_available_to_reader": false,
+    "completed_vietocr_run_authority": false,
+    "geometry_or_numeric_authority": false,
+    "post_freeze_evaluation_provenance_only": true,
+    "receipt_v3_implementation_authority": false,
+    "semantic_accounting_or_schema_authority": false
+  },
+  "bank_order": [
+    "ACB",
+    "MBB",
+    "VPB",
+    "HDB",
+    "VCB",
+    "CTG",
+    "BID",
+    "VIB"
+  ],
+  "experiment_id": "E-0044",
+  "family_id": "LOAN_MATURITY_BUCKETS",
+  "format_version": "LOAN_MATURITY_8BANK_VIETOCR_PANEL_PREREQUISITE_V1",
+  "panel_role": "POST_FREEZE_EVALUATION_PROVENANCE_ONLY",
+  "selection_claim": "FIXED_EVALUATION_PANEL_FROM_SOURCE_ONLY_INVENTORY_NOT_A_GENERIC_DISCOVERY_OR_ROUTING_RULE",
+  "slot_count": 8,
+  "slots": [
+    {
+      "bank_code": "ACB",
+      "freezer_prerequisite": {
+        "adapter_receipt_ref": null,
+        "authenticated_line_count": 85,
+        "blocker_codes": [],
+        "hydration_adapter": null,
+        "render_ref": {
+          "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/f8/f873f85c3496d56042a79731e51b5c56bb3d912c4ab95c18bd7ee54aafa00a81.png",
+          "sha256": "f873f85c3496d56042a79731e51b5c56bb3d912c4ab95c18bd7ee54aafa00a81",
+          "size_bytes": 881433
+        },
+        "result_ref": {
+          "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/3d/3d767ca44f550011478aec93c913e20b984d34d02636ac027a7166588f93b0f9.json",
+          "sha256": "3d767ca44f550011478aec93c913e20b984d34d02636ac027a7166588f93b0f9",
+          "size_bytes": 272559
+        },
+        "state": "READY_FOR_OPAQUE_ALL_LINE_FREEZE"
+      },
+      "inventory_evidence": {
+        "authenticated_line_count": 85,
+        "render_ref": {
+          "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/f8/f873f85c3496d56042a79731e51b5c56bb3d912c4ab95c18bd7ee54aafa00a81.png",
+          "sha256": "f873f85c3496d56042a79731e51b5c56bb3d912c4ab95c18bd7ee54aafa00a81",
+          "size_bytes": 881433
+        },
+        "result_format_version": "BANK_CORPUS_WAVE_1_ROLE_B_PAGE_READ_RESULT_V2",
+        "result_ref": {
+          "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/3d/3d767ca44f550011478aec93c913e20b984d34d02636ac027a7166588f93b0f9.json",
+          "sha256": "3d767ca44f550011478aec93c913e20b984d34d02636ac027a7166588f93b0f9",
+          "size_bytes": 272559
+        },
+        "route": "DOMINANT_RASTER_OCR",
+        "status": "OCR_WORD_BOX_READ_COMPLETE",
+        "unresolved": false
+      },
+      "physical_page": 18,
+      "source_pdf_sha256": "db55bb607d254aeef6daafd873a8199d621ac0740849e68d09ab0db772d11c86"
+    },
+    {
+      "bank_code": "MBB",
+      "freezer_prerequisite": {
+        "adapter_receipt_ref": null,
+        "authenticated_line_count": 109,
+        "blocker_codes": [],
+        "hydration_adapter": null,
+        "render_ref": {
+          "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/f2/f253a2af180ad5e0a2e4c82600a89f43889a94f503b95ce623e68f10a6a53ba2.png",
+          "sha256": "f253a2af180ad5e0a2e4c82600a89f43889a94f503b95ce623e68f10a6a53ba2",
+          "size_bytes": 285224
+        },
+        "result_ref": {
+          "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/e5/e570d96970aea800da7c49a81bf167f2cccfea431ca4d402a6757d68b87dc668.json",
+          "sha256": "e570d96970aea800da7c49a81bf167f2cccfea431ca4d402a6757d68b87dc668",
+          "size_bytes": 342165
+        },
+        "state": "READY_FOR_OPAQUE_ALL_LINE_FREEZE"
+      },
+      "inventory_evidence": {
+        "authenticated_line_count": 109,
+        "render_ref": {
+          "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/f2/f253a2af180ad5e0a2e4c82600a89f43889a94f503b95ce623e68f10a6a53ba2.png",
+          "sha256": "f253a2af180ad5e0a2e4c82600a89f43889a94f503b95ce623e68f10a6a53ba2",
+          "size_bytes": 285224
+        },
+        "result_format_version": "BANK_CORPUS_WAVE_1_ROLE_B_PAGE_READ_RESULT_V2",
+        "result_ref": {
+          "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/e5/e570d96970aea800da7c49a81bf167f2cccfea431ca4d402a6757d68b87dc668.json",
+          "sha256": "e570d96970aea800da7c49a81bf167f2cccfea431ca4d402a6757d68b87dc668",
+          "size_bytes": 342165
+        },
+        "route": "DOMINANT_RASTER_OCR",
+        "status": "OCR_WORD_BOX_READ_COMPLETE",
+        "unresolved": false
+      },
+      "physical_page": 31,
+      "source_pdf_sha256": "a86757a4499953264ca22dd57ae2e3257057631107742e1d04ad1ecd0e2c23d1"
+    },
+    {
+      "bank_code": "VPB",
+      "freezer_prerequisite": {
+        "adapter_receipt_ref": null,
+        "authenticated_line_count": null,
+        "blocker_codes": [
+          "FREEZER_V2_REJECTS_NATIVE_RESULT_FORMAT",
+          "NATIVE_PAGE_HAS_NO_AUTHENTICATED_PIXEL_RENDER_BINDING"
+        ],
+        "hydration_adapter": {
+          "adapter_id": "GENERIC_NATIVE_LINE_PIXEL_BINDING_ADAPTER_V1",
+          "bank_identity_or_filename_routing_allowed": false,
+          "required_output": "AUTHENTICATED_V2_RESULT_RENDER_BINDING_WITH_POSITIVE_COMPLETE_LINE_AXIS",
+          "selection_basis": "SOURCE_ROUTE_AND_MISSING_RENDER_BINDING_ONLY"
+        },
+        "render_ref": null,
+        "result_ref": null,
+        "state": "BLOCKED_HYDRATION"
+      },
+      "inventory_evidence": {
+        "authenticated_line_count": 110,
+        "render_ref": null,
+        "result_format_version": "BANK_CORPUS_WAVE_1_ROLE_B_CAUSAL_NATIVE_PAGE_READ_RESULT_V2",
+        "result_ref": {
+          "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/eb/eb22ccd4e2e212c888b6c7ca8eccecee3d5ccbd0035ef67ef7051aed5a5821d8.json",
+          "sha256": "eb22ccd4e2e212c888b6c7ca8eccecee3d5ccbd0035ef67ef7051aed5a5821d8",
+          "size_bytes": 132520
+        },
+        "route": "CAUSAL_NATIVE_TEXT",
+        "status": "CAUSAL_NATIVE_TEXT_READ_COMPLETE",
+        "unresolved": false
+      },
+      "physical_page": 42,
+      "source_pdf_sha256": "614be8877c21ef189da90266c5b059eb0b7d47024444156241725820bb11dcde"
+    },
+    {
+      "bank_code": "HDB",
+      "freezer_prerequisite": {
+        "adapter_receipt_ref": null,
+        "authenticated_line_count": 101,
+        "blocker_codes": [],
+        "hydration_adapter": null,
+        "render_ref": {
+          "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/a9/a90ca4dfbd71893233554eb78e3e866526e19edba6eddd1a9ba9e51398847009.png",
+          "sha256": "a90ca4dfbd71893233554eb78e3e866526e19edba6eddd1a9ba9e51398847009",
+          "size_bytes": 923063
+        },
+        "result_ref": {
+          "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/f4/f4d6f5826b33d929fcaaf2ba2aa88bdf8728538c9a95b12a013c58f7cd681ce2.json",
+          "sha256": "f4d6f5826b33d929fcaaf2ba2aa88bdf8728538c9a95b12a013c58f7cd681ce2",
+          "size_bytes": 375934
+        },
+        "state": "READY_FOR_OPAQUE_ALL_LINE_FREEZE"
+      },
+      "inventory_evidence": {
+        "authenticated_line_count": 101,
+        "render_ref": {
+          "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/a9/a90ca4dfbd71893233554eb78e3e866526e19edba6eddd1a9ba9e51398847009.png",
+          "sha256": "a90ca4dfbd71893233554eb78e3e866526e19edba6eddd1a9ba9e51398847009",
+          "size_bytes": 923063
+        },
+        "result_format_version": "BANK_CORPUS_WAVE_1_ROLE_B_PAGE_READ_RESULT_V2",
+        "result_ref": {
+          "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/f4/f4d6f5826b33d929fcaaf2ba2aa88bdf8728538c9a95b12a013c58f7cd681ce2.json",
+          "sha256": "f4d6f5826b33d929fcaaf2ba2aa88bdf8728538c9a95b12a013c58f7cd681ce2",
+          "size_bytes": 375934
+        },
+        "route": "DOMINANT_RASTER_OCR",
+        "status": "OCR_WORD_BOX_READ_COMPLETE",
+        "unresolved": false
+      },
+      "physical_page": 26,
+      "source_pdf_sha256": "dae87ce9d04a135515dc0211591b21f44d3421eaeccd8258122bfeef3fe5877f"
+    },
+    {
+      "bank_code": "VCB",
+      "freezer_prerequisite": {
+        "adapter_receipt_ref": null,
+        "authenticated_line_count": null,
+        "blocker_codes": [
+          "FREEZER_V2_REJECTS_V3_RESULT_FORMAT",
+          "TERMINAL_ZERO_AUTHENTICATED_LINE_AXIS"
+        ],
+        "hydration_adapter": {
+          "adapter_id": "GENERIC_RASTER_LINE_GEOMETRY_REHYDRATOR_V1",
+          "bank_identity_or_filename_routing_allowed": false,
+          "required_output": "AUTHENTICATED_V2_RESULT_RENDER_BINDING_WITH_POSITIVE_COMPLETE_LINE_AXIS",
+          "selection_basis": "SOURCE_ROUTE_AND_ZERO_LINE_TERMINAL_STATE_ONLY"
+        },
+        "render_ref": null,
+        "result_ref": null,
+        "state": "BLOCKED_HYDRATION"
+      },
+      "inventory_evidence": {
+        "authenticated_line_count": 0,
+        "render_ref": {
+          "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/46/46a6eb710fdfbfe3aff4fbe33e8295b2876eeff421b8eefd0ebcc4aa7830aedd.png",
+          "sha256": "46a6eb710fdfbfe3aff4fbe33e8295b2876eeff421b8eefd0ebcc4aa7830aedd",
+          "size_bytes": 1025602
+        },
+        "result_format_version": "BANK_CORPUS_WAVE_1_ROLE_B_PAGE_READ_RESULT_V3",
+        "result_ref": {
+          "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/61/610520a41c1a1474b3e060b37537fead86ca43b7035e6063dd25d2cb040780a9.json",
+          "sha256": "610520a41c1a1474b3e060b37537fead86ca43b7035e6063dd25d2cb040780a9",
+          "size_bytes": 5197
+        },
+        "route": "DOMINANT_RASTER_OCR",
+        "status": "UNRESOLVED_OCR_WORD_BOX_GEOMETRY",
+        "unresolved": true
+      },
+      "physical_page": 31,
+      "source_pdf_sha256": "fb0bc8ebbad76c175e61f7c2a7b78ae67608623a8d715d5470a08dbac00ff223"
+    },
+    {
+      "bank_code": "CTG",
+      "freezer_prerequisite": {
+        "adapter_receipt_ref": null,
+        "authenticated_line_count": 88,
+        "blocker_codes": [],
+        "hydration_adapter": null,
+        "render_ref": {
+          "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/b8/b85de39b03a481ee0eb7303b552a72b037401d3d564850a24c64326e679a2b04.png",
+          "sha256": "b85de39b03a481ee0eb7303b552a72b037401d3d564850a24c64326e679a2b04",
+          "size_bytes": 171140
+        },
+        "result_ref": {
+          "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/d6/d69830fb760a4d45423a6e276c456d6e5dac048b6f7ea5a17904679042c5b7f8.json",
+          "sha256": "d69830fb760a4d45423a6e276c456d6e5dac048b6f7ea5a17904679042c5b7f8",
+          "size_bytes": 369660
+        },
+        "state": "READY_FOR_OPAQUE_ALL_LINE_FREEZE"
+      },
+      "inventory_evidence": {
+        "authenticated_line_count": 88,
+        "render_ref": {
+          "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/b8/b85de39b03a481ee0eb7303b552a72b037401d3d564850a24c64326e679a2b04.png",
+          "sha256": "b85de39b03a481ee0eb7303b552a72b037401d3d564850a24c64326e679a2b04",
+          "size_bytes": 171140
+        },
+        "result_format_version": "BANK_CORPUS_WAVE_1_ROLE_B_PAGE_READ_RESULT_V2",
+        "result_ref": {
+          "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/d6/d69830fb760a4d45423a6e276c456d6e5dac048b6f7ea5a17904679042c5b7f8.json",
+          "sha256": "d69830fb760a4d45423a6e276c456d6e5dac048b6f7ea5a17904679042c5b7f8",
+          "size_bytes": 369660
+        },
+        "route": "DOMINANT_RASTER_OCR",
+        "status": "OCR_WORD_BOX_READ_COMPLETE",
+        "unresolved": false
+      },
+      "physical_page": 39,
+      "source_pdf_sha256": "f7453816648cac21536621e09d4e52a40e8ce9fcdbaf824981b3b997a8197318"
+    },
+    {
+      "bank_code": "BID",
+      "freezer_prerequisite": {
+        "adapter_receipt_ref": null,
+        "authenticated_line_count": 87,
+        "blocker_codes": [],
+        "hydration_adapter": null,
+        "render_ref": {
+          "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/c8/c8486972b896b760b4e7fac01d2ba69ba55127fedd680f88495dc94eae8a7331.png",
+          "sha256": "c8486972b896b760b4e7fac01d2ba69ba55127fedd680f88495dc94eae8a7331",
+          "size_bytes": 1286825
+        },
+        "result_ref": {
+          "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/40/40743637735ec8e1e8f6a080f60ad230218ca4f9fefed699518179a705db3d0f.json",
+          "sha256": "40743637735ec8e1e8f6a080f60ad230218ca4f9fefed699518179a705db3d0f",
+          "size_bytes": 427284
+        },
+        "state": "READY_FOR_OPAQUE_ALL_LINE_FREEZE"
+      },
+      "inventory_evidence": {
+        "authenticated_line_count": 87,
+        "render_ref": {
+          "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/c8/c8486972b896b760b4e7fac01d2ba69ba55127fedd680f88495dc94eae8a7331.png",
+          "sha256": "c8486972b896b760b4e7fac01d2ba69ba55127fedd680f88495dc94eae8a7331",
+          "size_bytes": 1286825
+        },
+        "result_format_version": "BANK_CORPUS_WAVE_1_ROLE_B_PAGE_READ_RESULT_V2",
+        "result_ref": {
+          "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/40/40743637735ec8e1e8f6a080f60ad230218ca4f9fefed699518179a705db3d0f.json",
+          "sha256": "40743637735ec8e1e8f6a080f60ad230218ca4f9fefed699518179a705db3d0f",
+          "size_bytes": 427284
+        },
+        "route": "DOMINANT_RASTER_OCR",
+        "status": "OCR_WORD_BOX_READ_COMPLETE",
+        "unresolved": false
+      },
+      "physical_page": 22,
+      "source_pdf_sha256": "73d9ead38e4e60b2241ae7d41a6e5382f8f2e5cc59f2e7a70ca0bedb95792003"
+    },
+    {
+      "bank_code": "VIB",
+      "freezer_prerequisite": {
+        "adapter_receipt_ref": null,
+        "authenticated_line_count": 164,
+        "blocker_codes": [],
+        "hydration_adapter": null,
+        "render_ref": {
+          "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/38/38ea68385a43a4d211f81cc68a7d62657fda43a0b136d67e9403d9d348fa584d.png",
+          "sha256": "38ea68385a43a4d211f81cc68a7d62657fda43a0b136d67e9403d9d348fa584d",
+          "size_bytes": 116028
+        },
+        "result_ref": {
+          "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/bd/bd641f0e9d9710081bd7c5a7acf711bbd9c9db91b0125b88dafc44181fb7b854.json",
+          "sha256": "bd641f0e9d9710081bd7c5a7acf711bbd9c9db91b0125b88dafc44181fb7b854",
+          "size_bytes": 564164
+        },
+        "state": "READY_FOR_OPAQUE_ALL_LINE_FREEZE"
+      },
+      "inventory_evidence": {
+        "authenticated_line_count": 164,
+        "render_ref": {
+          "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/38/38ea68385a43a4d211f81cc68a7d62657fda43a0b136d67e9403d9d348fa584d.png",
+          "sha256": "38ea68385a43a4d211f81cc68a7d62657fda43a0b136d67e9403d9d348fa584d",
+          "size_bytes": 116028
+        },
+        "result_format_version": "BANK_CORPUS_WAVE_1_ROLE_B_PAGE_READ_RESULT_V2",
+        "result_ref": {
+          "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/bd/bd641f0e9d9710081bd7c5a7acf711bbd9c9db91b0125b88dafc44181fb7b854.json",
+          "sha256": "bd641f0e9d9710081bd7c5a7acf711bbd9c9db91b0125b88dafc44181fb7b854",
+          "size_bytes": 564164
+        },
+        "route": "DOMINANT_RASTER_OCR",
+        "status": "OCR_WORD_BOX_READ_COMPLETE",
+        "unresolved": false
+      },
+      "physical_page": 33,
+      "source_pdf_sha256": "416a104007cb0ed20ca43f9771a698f789b812866f7937617ec42be85e0c852c"
+    }
+  ],
+  "state": "BLOCKED_PENDING_COMPLETE_8_SLOT_HYDRATION",
+  "uniform_run_requirement": {
+    "all_eight_slots_required": true,
+    "architecture": "vgg19_bn_transformer",
+    "fp32_inference_required": true,
+    "fresh_run_state": "PROSPECTIVE_BLOCKED_NO_RUN_OR_RECEIPT_AUTHORITY",
+    "legacy_or_per_bank_ocr_authority": false,
+    "legacy_outputs_prohibited_as_authority_for_bank_codes": [
+      "MBB",
+      "CTG"
+    ],
+    "model_name": "VietOCR VGG Transformer",
+    "model_config_sha256_required": true,
+    "model_weights_sha256_required": true,
+    "onnx_allowed": false,
+    "package_version": "0.3.13",
+    "pytorch_runtime_identity_required": true,
+    "receipt_contract": "GENERIC_VIETOCR_ALL_LINE_SEMANTIC_RECEIPT_V3_REQUIRED",
+    "receipt_contract_implemented_by_this_artifact": false,
+    "receipt_v2_incompatibility": "V2_IS_IMMUTABLY_PINNED_TO_A_PRIOR_SELECTED_RUN_GIT_COMMIT_AND_MUST_NOT_BE_RELABELLED",
+    "receipt_v2_reuse_allowed": false,
+    "single_fresh_reader_request_result_run_required": true,
+    "transformer_outputs_are_semantic_proposals_only": true
+  }
+}
