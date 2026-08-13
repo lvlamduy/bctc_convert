@@ -57,7 +57,7 @@ The exact `PP-DocLayoutV3 + PaddleOCR-VL-1.6` pipeline is already pinned and mea
 
 These results exclude both Paddle models from the production router. A generated table can look plausible while omitting rows, merging cells or moving a valid number into the wrong accounting row; rebinding after generation cannot reliably recover the lost ownership.
 
-TATR is already code/config integrated and its official 115,437,156-byte checkpoint is pinned by SHA-256 `9df416575a3a36ebd0129342d4f597f14d6e5170268f3d52d28584ab4466a501`. Its published benchmark is not an acceptance result for this project. A new source-blind, multi-bank table-crop panel must be frozen before formal inference.
+TATR is code/config integrated and its official 115,437,156-byte checkpoint is pinned by SHA-256 `9df416575a3a36ebd0129342d4f597f14d6e5170268f3d52d28584ab4466a501`. Its published benchmark is not an acceptance result for this project. The subsequent frozen, source-blind multi-bank calibration found only 1/5 positive tables with exact topology at IoU 0.50 and 0/5 at IoU 0.75, so TATR remains a shadow challenger and has not been promoted. See `multibank-tatr-structure-calibration-result-v1.md`.
 
 ## Evaluation and promotion gate
 
