@@ -1,0 +1,140 @@
+KẾT QUẢ DEEPSEEK-OCR-2 CỤM “CHẤT LƯỢNG NỢ” — 3 NGÂN HÀNG
+Ngày xuất: 2026-08-13
+Mã hóa: UTF-8, không BOM
+
+MỤC ĐÍCH
+File này dành cho việc kiểm tra trực tiếp khả năng đọc chữ tiếng Việt của
+DeepSeek-OCR-2 trên cùng ba case BVB, CTG và MBB quý 2/2026. Mỗi nội dung sau
+sample ID là nguyên văn trường raw_output do model trả về: không sửa dấu, không
+normalize, không thay bằng nhãn kỳ vọng và không chọn VietOCR làm đáp án.
+Các lỗi nhìn thấy như “Ngữ điều”, “Người tiêu chuẩn”, “No”, “Nọ”, “Dụ nope”
+được cố ý giữ nguyên để người kiểm tra thấy đúng đầu ra thực tế của model.
+
+CÔNG CỤ VÀ CẤU HÌNH
+- Model: deepseek-ai/DeepSeek-OCR-2
+- Revision: aaa02f3811945a91062062994c5c4a3f4c0af2b0
+- Weights SHA-256:
+  d8ff67a424ba6f4dd077885eb9d6a05d2537e76fe5491f0e2a9b712f8c8870fa
+- Config: config/models/deepseek-ocr2-line-rtx4090-v3.toml
+- Config SHA-256:
+  aebbc2fb4c9d6da22d83b71ca79567fca2c904a48c686ced8121438d42f31d6d
+- Prompt nguyên văn: <image> + xuống dòng + Free OCR.
+- GPU: NVIDIA GeForce RTX 4090; BF16; aspect-preserving crop mode.
+- Mỗi crop chỉ chứa pixels của một dòng nhãn nguồn. Các crop UNION là chẩn đoán
+  riêng cho hai dòng trình bày liền kề; không thay thế raw output từng dòng.
+- Không đưa text PP-OCRv6, nhãn kỳ vọng, bank, filename, physical page, Role A
+  hoặc schema vào decoder.
+
+======================================================================
+1. BVB — NGÂN HÀNG TMCP BẢN VIỆT — TRANG VẬT LÝ 25
+======================================================================
+
+Tài liệu: BCTC Hợp nhất quý 2 năm 2026.pdf
+Source projection:
+ssv2:page:60c2d28daa89f9f37eebe303770b62bb31ea26da2d2cfb5571d779783eb71ddd
+
+DEEPSEEK-OCR-2 — RAW OUTPUT TỪNG DÒNG
+
+page-0001-line-006  Phân tích chất lượng nợ cho vay:
+page-0001-line-011  Nhóm 1 - Ngữ điều tiêu chuẩn
+page-0001-line-014  Nhóm 2 - Nợ cần chú ý
+page-0001-line-017  Nhóm 3 - Người tiêu chuẩn
+page-0001-line-020  Nhóm 4 - Ngữ nghi ngờ
+page-0001-line-023  Nhóm 5 - Nợ có khả năng mất vốn
+page-0001-line-026  Các khoản nợ chờ xử lý đã có tài sản xiết nợ, gán nợ và nợ
+page-0001-line-029  tồn đọng có tải sản bảo đảm
+
+DEEPSEEK-OCR-2 — RAW OUTPUT CROP GHÉP LIỀN KỀ (CHẨN ĐOÁN)
+
+page-0001-union-026-029
+raw_output = "Các khoản nợ chờ xử lý đã có tài sản xiết nợ, gán nợ và nợ  \ntồn đọng có tài sản bảo đảm"
+
+======================================================================
+2. CTG — VIETINBANK — TRANG VẬT LÝ 39
+======================================================================
+
+Tài liệu: BCTC Hợp nhất quý 2 năm 2026.pdf
+Source projection:
+ssv2:page:60e3ba60b5b1d71993cc07fa130620e8703ec8a2cd63c93e0468730c14f194e2
+
+DEEPSEEK-OCR-2 — RAW OUTPUT TỪNG DÒNG
+
+page-0003-line-004  3.1 Phân tích chất lượng nợ cho vay
+page-0003-line-009  No đủ tiêu chuẩn
+page-0003-line-012  No can chu y :
+page-0003-line-015  No, dưới tiêu chuẩn
+page-0003-line-018  No nghi ngờ.
+page-0003-line-021  Nọ có khả năng mất vốn
+
+======================================================================
+3. MBB — NGÂN HÀNG TMCP QUÂN ĐỘI — TRANG VẬT LÝ 31
+======================================================================
+
+Tài liệu: BCTC Hợp nhất quý 2 năm 2026.pdf
+Source projection:
+ssv2:page:7e38abc2d54306b31c390914133eca241f090b49cfa48042fc778fecc69db0b0
+
+DEEPSEEK-OCR-2 — RAW OUTPUT TỪNG DÒNG
+
+page-0001-line-029  Cho vay khách hàng
+page-0001-line-059  Phân tích chất lượng nợ cho vay:
+page-0001-line-064  Dụ nope cho vay.
+page-0001-line-065  No đủ tiêu chuẩn
+page-0001-line-068  + Trong đó các khoản cho vay tại MBS
+page-0001-line-071  No cần chú ý
+page-0001-line-074  Nợ dưới tiêu chuẩn
+page-0001-line-077  No nghi ngờ
+page-0001-line-080  Nợ có khả năng mất vốn
+
+DEEPSEEK-OCR-2 — RAW OUTPUT CROP GHÉP LIỀN KỀ (CHẨN ĐOÁN)
+
+page-0001-union-064-065
+raw_output = "Dụ nope cho vay  \nNo đủ tiêu chuẩn"
+
+page-0001-union-065-068
+raw_output = "Nợ đủ tiêu chuẩn  \n+ Trong đó các khoản cho vay tại MBS"
+
+page-0001-union-068-071
+raw_output = "+ Trong đó các khoản cho vay tại MBS  \nNợ cần chú ý."
+
+page-0001-union-074-077
+raw_output = "Nọ dưới tiêu chuẩn  \nNọ nghỉ ngơ"
+
+page-0001-union-077-080
+raw_output = "Nợ nghỉ ngơ  \nNợ có khả năng mất vốn"
+
+======================================================================
+ĐỊNH DANH ARTIFACT
+======================================================================
+
+BVB + CTG
+- Crop manifest SHA-256:
+  659083441f0e942a0f9d791d8d27b77ca27df215c86f33c03b44b2d36cc4635f
+- Reader request SHA-256:
+  66b20c0776f5739f65525abbd4584a62de0aca626ba75d0dc8c171b922fad904
+- OCR result SHA-256:
+  770b290b35e2d93b9766948bf4cb36c432532d1b066e133868e0e92c6db21a7c
+- Run manifest SHA-256:
+  df2336a0a47132b16b1f6b3ad09920c86fd08400ec9fedd0f83e6a40a99b8637
+- Inference commit:
+  a6d7a67bd1b2e7eaa4944d67d44efa3b5990cdc0
+
+MBB Q2/2026 TRANG 31
+- Crop manifest SHA-256:
+  1fd97751916e6c8da8ee7ad9f5224107b1dec6c1f5ea3fdd8e35815d7d6e5b29
+- Reader request SHA-256:
+  99ff7f43adee022dbe881306c110672d83017723419033fd1b8f091db999a410
+- OCR result SHA-256:
+  8aef9386f6c2ee6e95e8a153b24db136610155be3d2df37c0b25365e6b40fa83
+- Run manifest SHA-256:
+  976cafd7c922e21fedb4aa9094d467e135bb3af4ff7ae2b39eadee341533e65a
+- Inference commit:
+  4174a2b5487b649d157dc5b5f3f3a41de4599d74
+
+LƯU Ý PHẠM VI
+- Đây là raw semantic OCR để kiểm tra chữ tiếng Việt, không phải ground truth.
+- DeepSeek-OCR-2 không có authority đối với geometry, số, kỳ, đơn vị, scope,
+  accounting identity, schema hoặc acceptance.
+- Số liệu vẫn phải được đọc và kiểm chứng riêng; file này không chứa số liệu.
+- Không dùng kết quả MBB quý 1 cũ. Phần MBB trên đây được chạy trực tiếp từ
+  pixels của đúng tài liệu quý 2/2026, trang vật lý 31.
