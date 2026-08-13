@@ -81,6 +81,24 @@ receipt. In the 11 nominal positive cases, exact OCR text supplies a complete se
 of core-recognized row labels in 0/11 and a core-recognized branch in only 1/11.
 No expected label was used to repair source text or create an accepted graph.
 
+### Bounded recognizer canary — candidate evidence only
+
+A text-blind, source-bound crop policy was frozen before DeepSeek/VietOCR inference
+on four real pages. The same 106 LINE/strict-union crop identities were supplied to
+both challengers for three positive family presentations and two matched controls.
+Strict configured-core label completeness was `V3 PP-OCR source-text baseline 0/3`,
+`DeepSeek-OCR-2 1/3`, and `VietOCR 2/3`; a separately frozen contextual presentation
+diagnostic was `0/3`, `2/3`, and `3/3`. Both challenger readers kept control false
+merges at `0/2`. Acceptance-ready text topology remains `0/3`, and accepted
+TABLE/ROW/AXIS/HIERARCHY counts remain zero, because the canary does not establish
+owner/population, total, axes, unit/period/scope or row-value geometry. VietOCR's
+exact 106-crop result/run hashes are
+`0f421e9a16d521ec5ed7267ecd94aa0e1372638908f75b0320481461a3d025a7` and
+`37d402d3ff6eed99c8c276b97664263f79c87ff05f4a9ec0a92001aba872448e`;
+the fixed post-join evaluation is
+`2e085d7f3f56e966cc548a263e4280eec11f5654bdb93887ac5cff90252fe734`.
+These are `DEVELOPMENT_REPLAY` proposal metrics, not accuracy or accepted coverage.
+
 Overlapping diagnostic gap archetypes are: ordered-row/core-semantic evidence 29,
 owner proposal 7, branch proposal 5, dated-axis proposal 1, value proposal 1, and
 total/adjacency proposal 1. The generic source-bound typed proposal contract is now

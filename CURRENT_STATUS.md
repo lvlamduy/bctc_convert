@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-08-13T15:05:00+07:00 (UTC+7 fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
+Updated: 2026-08-13T15:07:00+07:00 (UTC+7 fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
 The detailed historical receipts below remain evidence, but that directive supersedes
@@ -161,6 +161,32 @@ independent scale audit (not yet a durable repository benchmark receipt) reports
 produced 100 exact topology candidates with linear accounting rather than a
 family-by-line product. This is scalability evidence for proposal/topology candidate
 generation only; it does not alter the zero accepted/mapped Wave-1 counts.
+
+A bounded Vietnamese label-recognition canary has now localized the current OCR
+problem without reopening Reader V3. The source-only crop set was frozen before
+DeepSeek/VietOCR inference, and the same 106 geometry-selected LINE/strict-union
+crop identities were supplied to both challengers. They come from four real pages:
+three positive family presentations and two matched controls (one page contains
+both quality and maturity positives). The V3 PP-OCR source-text baseline supplied
+exact core labels for 0/3 positive presentations; DeepSeek-OCR-2 raised that to
+1/3; the pinned
+VietOCR VGG-Transformer raised it to 2/3. Under a separately frozen contextual
+presentation diagnostic, DeepSeek reached 2/3 and VietOCR 3/3. Both readers
+preserved 0/2 control false merges, but **acceptance-ready text topology remains 0/3**:
+owner/population, explicit or geometric total, axes, unit/period/scope and row-value
+geometry are not yet jointly bound; accepted TABLE/ROW/AXIS/HIERARCHY counts remain
+zero. VietOCR processed 106/106 crops in 14.538 seconds on the RTX 4090; result
+SHA-256 is
+`0f421e9a16d521ec5ed7267ecd94aa0e1372638908f75b0320481461a3d025a7`,
+run-manifest SHA-256 is
+`37d402d3ff6eed99c8c276b97664263f79c87ff05f4a9ec0a92001aba872448e`,
+and post-join evaluation SHA-256 is
+`2e085d7f3f56e966cc548a263e4280eec11f5654bdb93887ac5cff90252fe734`.
+This supports VietOCR as a source-bound semantic proposal challenger, not source
+truth or structural authority. As a separate engineering decision informed by the
+DeepDoc/VietOCR design, the fork's full layout/TSR stack is not adopted: V3 already
+supplies evidence geometry and Wave 1 already has abundant candidates; re-detecting
+pages would not close the measured semantic/acceptance seam.
 
 The detailed sections from `## 0` onward are a historical evidence ledger. The
 checkpoint above, [`FAMILY_COVERAGE_BOARD.md`](FAMILY_COVERAGE_BOARD.md), and the
