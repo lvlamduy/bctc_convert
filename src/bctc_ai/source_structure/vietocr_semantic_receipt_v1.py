@@ -16,6 +16,8 @@ import hashlib
 import json
 import math
 import re
+import tomllib
+import weakref
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -47,6 +49,40 @@ PAGE_CLAIM_BOUNDARY = (
 
 class VietOCRSemanticReceiptV1Error(ValueError):
     """The E-0024 artifact chain or exact page binding drifted."""
+
+
+class AuthenticatedVietOCRSemanticReceiptV1:
+    """Opaque authority produced only by exact E-0024 artifact replay.
+
+    A plain receipt dictionary is deliberately insufficient for page binding:
+    its syntax is public and therefore cannot authenticate OCR predictions.
+    """
+
+    __slots__ = ("__payload", "__weakref__")
+
+    def __init__(self, payload: dict[str, Any], token: object) -> None:
+        if token is not _AUTHENTICATION_TOKEN:
+            raise _error("authenticated VietOCR receipts can only be created by artifact replay")
+        self.__payload = canonical_clone_v1(payload)
+
+    def __getitem__(self, key: str) -> Any:
+        return canonical_clone_v1(self.__payload[key])
+
+    def __eq__(self, other: object) -> bool:
+        return type(other) is AuthenticatedVietOCRSemanticReceiptV1 and same_typed_json_v1(
+            self.__payload, other.__payload
+        )
+
+    def _clone_for_internal_replay(self, token: object) -> dict[str, Any]:
+        if token is not _AUTHENTICATION_TOKEN:
+            raise _error("authenticated VietOCR receipt payload is opaque")
+        return canonical_clone_v1(self.__payload)
+
+
+_AUTHENTICATION_TOKEN = object()
+_AUTHENTICATED_RECEIPTS: dict[
+    int, tuple[weakref.ReferenceType[AuthenticatedVietOCRSemanticReceiptV1], str]
+] = {}
 
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -428,6 +464,17 @@ def _project_relative(project_root: Path, path: Path) -> str:
     return path.resolve().relative_to(project_root.resolve()).as_posix()
 
 
+def _runtime_resolve(runtime_root: Path, path: Any, label: str) -> Path:
+    relative = _safe_relative(path, f"{label} path")
+    root = runtime_root.resolve()
+    value = (root / relative).resolve()
+    try:
+        value.relative_to(root)
+    except ValueError as exc:
+        raise _error(f"{label} escapes runtime root") from exc
+    return value
+
+
 def _stable_bytes(path: Path, label: str) -> bytes:
     try:
         before = path.stat()
@@ -518,6 +565,34 @@ def _verify_ref_file(
     ):
         raise _error(f"{label} is missing or hash/size drifted")
     return path
+
+
+def _selected_line_indices(lines: list[dict[str, Any]], *, width: int, height: int) -> list[int]:
+    selected: list[int] = []
+    for index, line in enumerate(lines):
+        x0, y0, x1, y1 = _bbox(line["raw_pixel_bbox"], f"line {index} bbox")
+        if (
+            4 * x0 <= width
+            and 20 * x1 <= 13 * width
+            and 8 <= y1 - y0
+            and 100 * (y1 - y0) <= 6 * height
+            and 100 * y0 >= 3 * height
+            and 100 * y1 <= 97 * height
+        ):
+            selected.append(index)
+    return selected
+
+
+def _strict_union_pairs(
+    selected: list[int], lines: list[dict[str, Any]], *, width: int
+) -> list[tuple[int, int]]:
+    boxes = [line["raw_pixel_bbox"] for line in lines]
+    return [
+        (prior, following)
+        for prior, following in zip(selected, selected[1:], strict=False)
+        if -2 <= boxes[following][1] - boxes[prior][3] <= 0
+        and 50 * abs(boxes[following][0] - boxes[prior][0]) <= width
+    ]
 
 
 def _validate_crop_manifest(
@@ -643,6 +718,42 @@ def _validate_crop_manifest(
     grouping_counts: dict[str, dict[str, int]] = {
         page_id: {"LINE": 0, "STRICT_ADJACENT_UNION": 0} for page_id in page_by_id
     }
+    observed_line_indices: dict[str, list[int]] = {page_id: [] for page_id in page_by_id}
+    observed_union_pairs: dict[str, list[tuple[int, int]]] = {page_id: [] for page_id in page_by_id}
+    for page in pages:
+        page_id = page["page_id"]
+        expected_lines = _selected_line_indices(
+            page_results[page_id]["lines"],
+            width=page["render_width"],
+            height=page["render_height"],
+        )
+        declared_lines = [
+            raw.get("source_line_indices", [None])[0]
+            for raw in raw_samples
+            if type(raw) is dict
+            and raw.get("page_id") == page_id
+            and raw.get("grouping") == "LINE"
+            and type(raw.get("source_line_indices")) is list
+            and len(raw["source_line_indices"]) == 1
+        ]
+        if declared_lines != expected_lines:
+            raise _error(f"{page_id} eligible LINE selection is incomplete or ineligible")
+        expected_unions = _strict_union_pairs(
+            expected_lines,
+            page_results[page_id]["lines"],
+            width=page["render_width"],
+        )
+        declared_unions = [
+            tuple(raw["source_line_indices"])
+            for raw in raw_samples
+            if type(raw) is dict
+            and raw.get("page_id") == page_id
+            and raw.get("grouping") == "STRICT_ADJACENT_UNION"
+            and type(raw.get("source_line_indices")) is list
+            and len(raw["source_line_indices"]) == 2
+        ]
+        if declared_unions != expected_unions:
+            raise _error(f"{page_id} strict-union selection is incomplete or invalid")
     padding = selection["source_padding_left_top_right_bottom"]
     border = selection["white_border_left_top_right_bottom"]
     for sample_index, raw_sample in enumerate(raw_samples):
@@ -678,6 +789,17 @@ def _validate_crop_manifest(
             raise _error(f"{sample_id} source line indices drifted")
         if grouping == "STRICT_ADJACENT_UNION" and indices[1] <= indices[0]:
             raise _error(f"{sample_id} union source order drifted")
+        expected_sample_id = (
+            f"{page_id}-line-{indices[0]:03d}"
+            if grouping == "LINE"
+            else f"{page_id}-union-{indices[0]:03d}-{indices[1]:03d}"
+        )
+        if sample_id != expected_sample_id:
+            raise _error(f"{sample_id} does not encode its exact frozen line selection")
+        if grouping == "LINE":
+            observed_line_indices[page_id].append(indices[0])
+        else:
+            observed_union_pairs[page_id].append((indices[0], indices[1]))
         line_boxes = [result["lines"][index]["raw_pixel_bbox"] for index in indices]
         source_bbox = [
             min(box[0] for box in line_boxes),
@@ -728,12 +850,27 @@ def _validate_crop_manifest(
         samples.append(sample)
 
     for page in pages:
-        counts = grouping_counts[page["page_id"]]
+        page_id = page["page_id"]
+        counts = grouping_counts[page_id]
         if (
             page["selected_single_line_count"] != counts["LINE"]
             or page["selected_strict_union_count"] != counts["STRICT_ADJACENT_UNION"]
         ):
-            raise _error(f"{page['page_id']} selected sample denominators drifted")
+            raise _error(f"{page_id} selected sample denominators drifted")
+        expected_lines = _selected_line_indices(
+            page_results[page_id]["lines"],
+            width=page["render_width"],
+            height=page["render_height"],
+        )
+        if observed_line_indices[page_id] != expected_lines:
+            raise _error(f"{page_id} eligible LINE selection is incomplete or ineligible")
+        expected_unions = _strict_union_pairs(
+            expected_lines,
+            page_results[page_id]["lines"],
+            width=page["render_width"],
+        )
+        if observed_union_pairs[page_id] != expected_unions:
+            raise _error(f"{page_id} strict-union selection is incomplete or invalid")
     return pages, samples
 
 
@@ -885,14 +1022,19 @@ def _validate_run_manifest(
         project_root, _safe_relative(configuration["path"], "configuration path"), "configuration"
     )
     _sha(configuration["sha256"], "configuration hash")
+    config_payload = _stable_bytes(config_path, "VietOCR pinned configuration")
     if (
-        sha256_file(config_path) != configuration["sha256"]
+        hashlib.sha256(config_payload).hexdigest() != configuration["sha256"]
         or configuration["network_policy"] != "PROCESS_SOCKET_CONNECT_AND_DNS_DENIED"
         or configuration["cnn_pretrained_download"] is not False
         or configuration["beam_search"] is not False
         or configuration["reference_text_available_to_decoder"] is not False
     ):
         raise _error("VietOCR configuration file or inference firewall drifted")
+    try:
+        config = tomllib.loads(config_payload.decode("utf-8"))
+    except (UnicodeDecodeError, tomllib.TOMLDecodeError) as exc:
+        raise _error("VietOCR pinned configuration is not valid UTF-8 TOML") from exc
 
     runtime = _exact_dict(run["runtime"], _RUN_RUNTIME_FIELDS, "run runtime")
     if any(
@@ -918,13 +1060,115 @@ def _validate_run_manifest(
     runtime_artifacts = _exact_dict(
         runtime["artifacts"], _RUN_RUNTIME_ARTIFACTS, "runtime artifacts"
     )
+    external_root = Path(runtime["external_root"])
+    if not external_root.is_absolute():
+        raise _error("run external runtime root is not absolute")
+    external_root = external_root.resolve()
+    site_packages_path = _runtime_resolve(
+        external_root, runtime["site_packages"], "runtime site-packages"
+    )
+    if not site_packages_path.is_dir():
+        raise _error("runtime site-packages directory is absent")
     for name, raw in runtime_artifacts.items():
         artifact = _exact_dict(raw, _RUN_RUNTIME_ARTIFACT_FIELDS, f"runtime artifact {name}")
-        _safe_relative(artifact["path"], f"runtime artifact {name} path")
         _sha(artifact["sha256"], f"runtime artifact {name} hash")
         _integer(artifact["size_bytes"], f"runtime artifact {name} size", positive=True)
         if type(artifact["url"]) is not str or not artifact["url"].startswith("https://"):
             raise _error(f"runtime artifact {name} URL drifted")
+        artifact_path = _runtime_resolve(
+            external_root, artifact["path"], f"runtime artifact {name}"
+        )
+        artifact_payload = _stable_bytes(artifact_path, f"runtime artifact {name}")
+        if (
+            len(artifact_payload) != artifact["size_bytes"]
+            or hashlib.sha256(artifact_payload).hexdigest() != artifact["sha256"]
+        ):
+            raise _error(f"runtime artifact {name} is absent or hash/size drifted")
+
+    expected_config_keys = {
+        "version",
+        "status",
+        "model_name",
+        "package_version",
+        "architecture",
+        "license",
+        "metadata_license_note",
+        "inference",
+        "runtime",
+        "runtime_compatibility",
+        "artifacts",
+        "safety",
+    }
+    if type(config) is not dict or set(config) != expected_config_keys:
+        raise _error("VietOCR pinned configuration identity drifted")
+    inference = config.get("inference")
+    compatibility = config.get("runtime_compatibility")
+    configured_runtime = config.get("runtime")
+    configured_artifacts = config.get("artifacts")
+    configured_safety = config.get("safety")
+    expected_inference = {
+        "device": "cuda:0",
+        "beam_search": False,
+        "cnn_pretrained_download": False,
+        "network_permitted": False,
+        "reference_text_available_to_decoder": False,
+        "random_seed": 20260807,
+        "max_sequence_length": 128,
+        "input_color_mode": "RGB",
+        "upstream_image_height": 32,
+        "upstream_image_min_width": 32,
+        "upstream_image_max_width": 512,
+    }
+    expected_config_safety = {
+        "numeric_authority": False,
+        "period_authority": False,
+        "unit_authority": False,
+        "sign_authority": False,
+        "geometry_authority": False,
+        "mapping_authority": False,
+        "automatic_truth_promotion": False,
+        "automatic_post_correction": False,
+        "history_access": False,
+        "human_review_access": False,
+        "template_access": False,
+    }
+    if (
+        config.get("version") != 2
+        or config.get("status") != "CALIBRATION_ONLY_RTX4090_VIETNAMESE_LOGICAL_ROW_LABEL_PROPOSAL"
+        or config.get("model_name") != "VietOCR VGG Transformer"
+        or config.get("package_version") != "0.3.13"
+        or config.get("architecture") != "vgg19_bn_transformer"
+        or not same_typed_json_v1(inference, expected_inference)
+        or not same_typed_json_v1(configured_safety, expected_config_safety)
+    ):
+        raise _error("VietOCR pinned configuration safety/identity drifted")
+    expected_compatibility = {
+        "gpu_family": "NVIDIA_GEFORCE_RTX_4090_ADA",
+        "minimum_compute_capability": [8, 9],
+        "cuda_runtime": runtime["torch_cuda_build"],
+        "bf16_required": False,
+        "historical_blackwell_runtime_claimed": False,
+    }
+    expected_configured_runtime = {
+        "site_packages": runtime["site_packages"],
+        "python_major_minor": "3.11",
+        "packages": runtime["packages"],
+    }
+    if (
+        not same_typed_json_v1(compatibility, expected_compatibility)
+        or runtime["device"] != "NVIDIA GeForce RTX 4090"
+        or runtime["compute_capability"] != "8.9"
+        or not same_typed_json_v1(configured_runtime, expected_configured_runtime)
+    ):
+        raise _error("VietOCR pinned runtime identity drifted")
+    if (
+        type(configured_artifacts) is not dict
+        or set(configured_artifacts) != _RUN_RUNTIME_ARTIFACTS
+    ):
+        raise _error("VietOCR pinned artifact registry drifted")
+    for name in _RUN_RUNTIME_ARTIFACTS:
+        if not same_typed_json_v1(configured_artifacts[name], runtime_artifacts[name]):
+            raise _error(f"VietOCR pinned runtime artifact {name} identity drifted")
 
     metrics = _exact_dict(run["metrics"], _RUN_METRIC_FIELDS, "run metrics")
     if metrics["sample_count"] != sample_count:
@@ -1057,7 +1301,7 @@ def validate_vietocr_semantic_receipt_v1(
     reader_request_path: Path,
     ocr_result_path: Path,
     run_manifest_path: Path,
-) -> dict[str, Any]:
+) -> AuthenticatedVietOCRSemanticReceiptV1:
     """Authenticate one complete global E-0024 artifact chain and build its receipt."""
 
     project_root = project_root.resolve()
@@ -1151,7 +1395,39 @@ def validate_vietocr_semantic_receipt_v1(
         },
         "safety": canonical_clone_v1(_RECEIPT_SAFETY),
     }
-    return validate_vietocr_semantic_receipt_payload_v1(receipt)
+    authenticated = AuthenticatedVietOCRSemanticReceiptV1(
+        validate_vietocr_semantic_receipt_payload_v1(receipt),
+        _AUTHENTICATION_TOKEN,
+    )
+    receipt_id = id(authenticated)
+
+    def discard(reference: weakref.ReferenceType[AuthenticatedVietOCRSemanticReceiptV1]) -> None:
+        current = _AUTHENTICATED_RECEIPTS.get(receipt_id)
+        if current is not None and current[0] is reference:
+            _AUTHENTICATED_RECEIPTS.pop(receipt_id, None)
+
+    reference = weakref.ref(authenticated, discard)
+    _AUTHENTICATED_RECEIPTS[receipt_id] = (
+        reference,
+        canonical_json_sha256_v1(receipt),
+    )
+    return authenticated
+
+
+def _authenticated_payload(
+    receipt: Any,
+) -> dict[str, Any]:
+    if type(receipt) is not AuthenticatedVietOCRSemanticReceiptV1:
+        raise _error("page binding requires a replay-authenticated VietOCR receipt")
+    payload = receipt._clone_for_internal_replay(_AUTHENTICATION_TOKEN)
+    authority = _AUTHENTICATED_RECEIPTS.get(id(receipt))
+    if (
+        authority is None
+        or authority[0]() is not receipt
+        or canonical_json_sha256_v1(payload) != authority[1]
+    ):
+        raise _error("VietOCR receipt lost its replay-authenticated authority")
+    return validate_vietocr_semantic_receipt_payload_v1(payload)
 
 
 def replay_vietocr_semantic_receipt_v1(
@@ -1161,10 +1437,10 @@ def replay_vietocr_semantic_receipt_v1(
     ocr_result_path: Path,
     run_manifest_path: Path,
     receipt: Any,
-) -> dict[str, Any]:
+) -> AuthenticatedVietOCRSemanticReceiptV1:
     """Rebuild a receipt from its source artifacts and require typed equality."""
 
-    expected = validate_vietocr_semantic_receipt_payload_v1(receipt)
+    expected = _authenticated_payload(receipt)
     rebuilt = validate_vietocr_semantic_receipt_v1(
         project_root,
         crop_manifest_path,
@@ -1172,7 +1448,7 @@ def replay_vietocr_semantic_receipt_v1(
         ocr_result_path,
         run_manifest_path,
     )
-    if not same_typed_json_v1(rebuilt, expected):
+    if not same_typed_json_v1(_authenticated_payload(rebuilt), expected):
         raise _error("VietOCR semantic receipt does not replay exactly")
     return rebuilt
 
@@ -1279,7 +1555,7 @@ def validate_vietocr_semantic_page_binding_v1(
         source = validate_source_evidence_projection_v2(source_projection_v2)
     except SourceStructureContractV2Error as exc:
         raise _error("source projection V2 is invalid") from exc
-    global_receipt = validate_vietocr_semantic_receipt_payload_v1(receipt)
+    global_receipt = _authenticated_payload(receipt)
     binding = _exact_dict(value, _PAGE_BINDING_FIELDS, "VietOCR page binding")
     if (
         binding["format_version"] != PAGE_FORMAT_VERSION
@@ -1316,9 +1592,9 @@ def bind_vietocr_semantic_page_v1(
         source = validate_source_evidence_projection_v2(source_projection_v2)
     except SourceStructureContractV2Error as exc:
         raise _error("source projection V2 is invalid") from exc
-    global_receipt = validate_vietocr_semantic_receipt_payload_v1(receipt)
+    global_receipt = _authenticated_payload(receipt)
     binding = _build_page_binding(source, global_receipt)
-    return validate_vietocr_semantic_page_binding_v1(binding, source, global_receipt)
+    return validate_vietocr_semantic_page_binding_v1(binding, source, receipt)
 
 
 __all__ = [
@@ -1327,6 +1603,7 @@ __all__ = [
     "PAGE_CLAIM_BOUNDARY",
     "PAGE_FORMAT_VERSION",
     "VietOCRSemanticReceiptV1Error",
+    "AuthenticatedVietOCRSemanticReceiptV1",
     "bind_vietocr_semantic_page_v1",
     "replay_vietocr_semantic_receipt_v1",
     "validate_vietocr_semantic_page_binding_v1",

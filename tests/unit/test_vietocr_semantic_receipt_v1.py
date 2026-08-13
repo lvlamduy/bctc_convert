@@ -6,15 +6,12 @@ import pytest
 from test_source_structure_evidence_projection_v2 import _synthetic_ocr_pair
 
 from bctc_ai.core.text import normalize_text
-from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
 from bctc_ai.source_structure.evidence_projection_v2 import project_authenticated_page_v2
 from bctc_ai.source_structure.vietocr_semantic_receipt_v1 import (
     CLAIM_BOUNDARY,
     FORMAT_VERSION,
-    PAGE_FORMAT_VERSION,
     VietOCRSemanticReceiptV1Error,
     bind_vietocr_semantic_page_v1,
-    validate_vietocr_semantic_page_binding_v1,
     validate_vietocr_semantic_receipt_payload_v1,
 )
 
@@ -109,28 +106,17 @@ def _projection_and_receipt() -> tuple[dict, dict]:
     return projection, receipt
 
 
-def test_page_binding_preserves_source_and_prediction_as_separate_evidence() -> None:
+def test_page_binding_rejects_syntax_only_receipt_without_replay_authority() -> None:
     projection, receipt = _projection_and_receipt()
 
-    binding = bind_vietocr_semantic_page_v1(projection, receipt)
+    with pytest.raises(VietOCRSemanticReceiptV1Error, match="replay-authenticated"):
+        bind_vietocr_semantic_page_v1(projection, receipt)
 
-    assert binding["format_version"] == PAGE_FORMAT_VERSION
-    assert binding["source_projection_sha256"] == canonical_json_sha256_v1(projection)
-    assert binding["metrics"] == {
-        "sample_count": 1,
-        "single_line_sample_count": 1,
-        "diagnostic_union_sample_count": 0,
-        "bound_source_line_occurrence_count": 1,
-        "unique_source_line_count": 1,
-    }
-    sample = binding["samples"][0]
-    assert sample["raw_prediction"] == "Nợ   đủ tiêu chuẩn"
-    assert sample["normalized_prediction"] == "Nợ đủ tiêu chuẩn"
-    assert sample["source_atoms"][0]["raw_text"] == "0"
-    assert sample["source_atoms"][0]["line_index"] == 0
-    assert binding["safety"]["source_atom_text_replaced"] is False
-    assert binding["safety"]["semantic_acceptance"] is False
-    assert validate_vietocr_semantic_page_binding_v1(binding, projection, receipt) == binding
+    forged = deepcopy(receipt)
+    forged["samples"][0]["raw_prediction"] = "Nợ giả mạo"
+    forged["samples"][0]["normalized_prediction"] = "Nợ giả mạo"
+    with pytest.raises(VietOCRSemanticReceiptV1Error, match="replay-authenticated"):
+        bind_vietocr_semantic_page_v1(projection, forged)
 
 
 def test_closed_receipt_rejects_authority_normalization_and_diagnostic_drift() -> None:
@@ -153,28 +139,9 @@ def test_closed_receipt_rejects_authority_normalization_and_diagnostic_drift() -
         validate_vietocr_semantic_receipt_payload_v1(promoted)
 
 
-def test_page_binding_rejects_receipt_bbox_that_is_not_the_exact_line_bbox() -> None:
+def test_page_binding_rejects_even_validated_but_unauthenticated_payload() -> None:
     projection, receipt = _projection_and_receipt()
-    receipt["samples"][0]["source_bbox_raw_pixels"][0] += 1
+    validated = validate_vietocr_semantic_receipt_payload_v1(receipt)
 
-    with pytest.raises(VietOCRSemanticReceiptV1Error, match="differs from exact V2 LINE"):
-        bind_vietocr_semantic_page_v1(projection, receipt)
-
-
-def test_page_binding_replay_rejects_prediction_or_atom_tampering() -> None:
-    projection, receipt = _projection_and_receipt()
-    binding = bind_vietocr_semantic_page_v1(projection, receipt)
-
-    changed_prediction = deepcopy(binding)
-    changed_prediction["samples"][0]["raw_prediction"] = "forged"
-    with pytest.raises(VietOCRSemanticReceiptV1Error, match="does not replay"):
-        validate_vietocr_semantic_page_binding_v1(
-            changed_prediction,
-            projection,
-            receipt,
-        )
-
-    changed_atom = deepcopy(binding)
-    changed_atom["samples"][0]["source_atoms"][0]["raw_text"] = "forged"
-    with pytest.raises(VietOCRSemanticReceiptV1Error, match="does not replay"):
-        validate_vietocr_semantic_page_binding_v1(changed_atom, projection, receipt)
+    with pytest.raises(VietOCRSemanticReceiptV1Error, match="replay-authenticated"):
+        bind_vietocr_semantic_page_v1(projection, validated)
