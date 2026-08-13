@@ -1,7 +1,7 @@
 {
   "artifacts": {
     "predictions": {
-      "path": "output/development/shb-maturity-numeric-v1/reader-run/predictions.json",
+      "path": "output/development/shb-maturity-numeric-v1/reader-run-v2/predictions.json",
       "sha256": "268f1c174b3f08b3941653bd93213fd94e2695859f81d90dca4bbe2a1e92064f",
       "size_bytes": 3187
     },
@@ -11,14 +11,14 @@
       "size_bytes": 10631
     },
     "run_manifest": {
-      "path": "output/development/shb-maturity-numeric-v1/reader-run/run_manifest.json",
-      "sha256": "1926445f278b8d690c6255d7a8361ebc94cc03a94f15f01f7d19cb0b1eb34e8b",
-      "size_bytes": 2962
+      "path": "output/development/shb-maturity-numeric-v1/reader-run-v2/run_manifest.json",
+      "sha256": "8cab6ca145ec5f7886606159693ccfa6a5b950fc6dc69a04b99b320b96a387e0",
+      "size_bytes": 2982
     }
   },
   "cell_count": 8,
   "claim_boundary": "SELECTS_EXACT_PERSISTED_NUMERIC_PROPOSAL_ARTIFACT_BYTES_ONLY_NO_NUMERIC_TRUTH_GEOMETRY_PERIOD_UNIT_SCOPE_STATEMENT_SCHEMA_OR_EXPORT_AUTHORITY",
   "format_version": 1,
-  "run_commit": "dd882057e94b0616a58a7a095c97844dd08fe896",
+  "run_commit": "7464ceddd322616225e1eac4fb4163ceaab0b87e",
   "state": "FROZEN_NUMERIC_PROPOSAL_SELECTION_AUTHORITY"
 }
