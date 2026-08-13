@@ -40,6 +40,10 @@ _REQUEST_KEYS = {
     "samples",
 }
 _REQUEST_SAMPLE_KEYS = {"sample_id", "category", "crop_path", "crop_sha256"}
+_REQUEST_IDENTITIES = {
+    (1, "E-0024"),
+    (2, "VIETOCR_MULTI_BANK_FAMILY_OCR_BENCHMARK_V1"),
+}
 _RTX4090_RUNTIME = {
     "site_packages": "site-packages",
     "python_major_minor": "3.11",
@@ -51,6 +55,20 @@ _RTX4090_RUNTIME = {
         "numpy": "2.3.5",
         "einops": "0.8.2",
         "pyyaml": "6.0.2",
+    },
+}
+_MODEL_ARCHITECTURES = {
+    "vgg19_bn_transformer": {
+        "model_name": "VietOCR VGG Transformer",
+        "backbone": "vgg19_bn",
+        "seq_modeling": "transformer",
+        "config_versions": {1, 2},
+    },
+    "vgg19_bn_seq2seq": {
+        "model_name": "VietOCR VGG Seq2Seq",
+        "backbone": "vgg19_bn",
+        "seq_modeling": "seq2seq",
+        "config_versions": {2},
     },
 }
 
@@ -105,6 +123,15 @@ def _load_config(path: Path) -> dict[str, Any]:
     }.get(version)
     if expected_status is None or value.get("status") != expected_status:
         raise VietOCRLineReaderError("VietOCR config identity or status drifted")
+    architecture = value.get("architecture")
+    architecture_contract = _MODEL_ARCHITECTURES.get(str(architecture))
+    if (
+        architecture_contract is None
+        or value.get("model_name") != architecture_contract["model_name"]
+        or value.get("package_version") != "0.3.13"
+        or version not in architecture_contract["config_versions"]
+    ):
+        raise VietOCRLineReaderError("VietOCR model architecture identity drifted")
     inference = value.get("inference")
     if not isinstance(inference, dict) or (
         inference.get("network_permitted") is not False
@@ -120,10 +147,7 @@ def _load_config(path: Path) -> dict[str, Any]:
     if version == 2:
         compatibility = value.get("runtime_compatibility")
         if (
-            value.get("model_name") != "VietOCR VGG Transformer"
-            or value.get("package_version") != "0.3.13"
-            or value.get("architecture") != "vgg19_bn_transformer"
-            or not isinstance(compatibility, dict)
+            not isinstance(compatibility, dict)
             or compatibility.get("gpu_family") != "NVIDIA_GEFORCE_RTX_4090_ADA"
             or compatibility.get("minimum_compute_capability") != [8, 9]
             or compatibility.get("cuda_runtime") != "13.0"
@@ -164,8 +188,7 @@ def validate_reference_blind_request(payload: dict[str, Any]) -> list[dict[str, 
     if set(payload) != _REQUEST_KEYS:
         raise VietOCRLineReaderError("line-reader request has non-allowlisted top-level fields")
     if (
-        payload.get("format_version") != 1
-        or payload.get("experiment_id") != "E-0024"
+        (payload.get("format_version"), payload.get("experiment_id")) not in _REQUEST_IDENTITIES
         or payload.get("state") != "READY_FOR_REFERENCE_BLIND_LINE_INFERENCE"
         or payload.get("dataset_role") != "LOGIC_DEVELOPMENT_AND_CALIBRATION"
         or payload.get("evidence_role") != "INDEPENDENT_VIETNAMESE_SEMANTIC_PROPOSAL_ONLY"
@@ -190,6 +213,17 @@ def validate_reference_blind_request(payload: dict[str, Any]) -> list[dict[str, 
         seen.add(sample["sample_id"])
         samples.append(sample)
     return samples
+
+
+def _completed_request_identity(payload: dict[str, Any]) -> dict[str, Any]:
+    identity = (payload.get("format_version"), payload.get("experiment_id"))
+    if identity not in _REQUEST_IDENTITIES:
+        raise VietOCRLineReaderError("cannot complete an unregistered line-reader request")
+    return {
+        "format_version": identity[0],
+        "experiment_id": identity[1],
+        "state": "REFERENCE_BLIND_LINE_INFERENCE_COMPLETE",
+    }
 
 
 def _verify_artifacts(runtime_root: Path, config: dict[str, Any]) -> dict[str, dict[str, Any]]:
@@ -267,7 +301,11 @@ def _model_configuration(
     required = {"vocab", "device", "seq_modeling", "transformer", "dataset", "backbone", "cnn"}
     if not required.issubset(merged):
         raise VietOCRLineReaderError("VietOCR merged model configuration is incomplete")
-    if merged["seq_modeling"] != "transformer" or merged["backbone"] != "vgg19_bn":
+    architecture_contract = _MODEL_ARCHITECTURES[str(config["architecture"])]
+    if (
+        merged["seq_modeling"] != architecture_contract["seq_modeling"]
+        or merged["backbone"] != architecture_contract["backbone"]
+    ):
         raise VietOCRLineReaderError("VietOCR architecture differs from the declared challenger")
     return merged
 
@@ -424,10 +462,9 @@ def run_vietocr_line_reader(
 
     torch.cuda.synchronize()
     total_seconds = time.perf_counter() - started
+    completed_identity = _completed_request_identity(request_payload)
     result_payload = {
-        "format_version": 1,
-        "experiment_id": "E-0024",
-        "state": "REFERENCE_BLIND_LINE_INFERENCE_COMPLETE",
+        **completed_identity,
         "dataset_role": request_payload["dataset_role"],
         "evidence_role": request_payload["evidence_role"],
         "reference_text_available_to_reader": False,
@@ -435,9 +472,7 @@ def run_vietocr_line_reader(
         "samples": results,
     }
     manifest: dict[str, Any] = {
-        "format_version": 1,
-        "experiment_id": "E-0024",
-        "state": "REFERENCE_BLIND_LINE_INFERENCE_COMPLETE",
+        **completed_identity,
         "started_at": started_at.isoformat(),
         "completed_at": datetime.now(UTC).isoformat(),
         "git_commit": _git(project_root, "rev-parse", "HEAD"),

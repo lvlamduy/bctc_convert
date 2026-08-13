@@ -34,3 +34,24 @@ def test_local_vietocr_artifacts_match_manifest_when_present(project_root: Path)
         path = runtime_root / record["path"]
         assert path.stat().st_size == record["size_bytes"]
         assert sha256_file(path) == record["sha256"]
+
+
+def test_vietocr_seq2seq_runtime_manifest_has_exact_official_artifacts(project_root: Path):
+    path = project_root / "config/models/vietocr-0.3.13-vgg-seq2seq-rtx4090.toml"
+    config = tomllib.loads(path.read_text(encoding="utf-8"))
+
+    assert config["model_name"] == "VietOCR VGG Seq2Seq"
+    assert config["architecture"] == "vgg19_bn_seq2seq"
+    assert config["artifacts"]["model_config"] == {
+        "path": "artifacts/vgg-seq2seq.yml",
+        "url": "https://vocr.vn/data/vietocr/config/vgg-seq2seq.yml",
+        "size_bytes": 673,
+        "sha256": "0160ba8d442ae96f4c6095b92ac3521c59b83ce6eda9fd5459e8628a5586c3e8",
+    }
+    assert config["artifacts"]["weights"] == {
+        "path": "artifacts/vgg_seq2seq.pth",
+        "url": "https://vocr.vn/data/vietocr/vgg_seq2seq.pth",
+        "size_bytes": 89575371,
+        "sha256": "0921503a41375a0584268e23ef3d414ea478a8fe8777865c7745d38f2d0bc5db",
+    }
+    assert config["safety"] and not any(config["safety"].values())

@@ -1,0 +1,77 @@
+version = 2
+status = "CALIBRATION_ONLY_RTX4090_VIETNAMESE_LOGICAL_ROW_LABEL_PROPOSAL"
+model_name = "VietOCR VGG Seq2Seq"
+package_version = "0.3.13"
+architecture = "vgg19_bn_seq2seq"
+license = "Apache-2.0 as shipped in wheel LICENSE"
+metadata_license_note = "PyPI classifier says MIT while wheel LICENSE and project description say Apache-2.0"
+
+[inference]
+device = "cuda:0"
+beam_search = false
+cnn_pretrained_download = false
+network_permitted = false
+reference_text_available_to_decoder = false
+random_seed = 20260807
+max_sequence_length = 128
+input_color_mode = "RGB"
+upstream_image_height = 32
+upstream_image_min_width = 32
+upstream_image_max_width = 512
+
+[runtime]
+site_packages = "site-packages"
+python_major_minor = "3.11"
+
+[runtime.packages]
+vietocr = "0.3.13"
+torch = "2.12.0+cu130"
+torchvision = "0.27.0+cu130"
+pillow = "12.3.0"
+numpy = "2.3.5"
+einops = "0.8.2"
+pyyaml = "6.0.2"
+
+[runtime_compatibility]
+gpu_family = "NVIDIA_GEFORCE_RTX_4090_ADA"
+minimum_compute_capability = [8, 9]
+cuda_runtime = "13.0"
+bf16_required = false
+historical_blackwell_runtime_claimed = false
+
+[artifacts.wheel]
+path = "artifacts/vietocr-0.3.13-py3-none-any.whl"
+url = "https://files.pythonhosted.org/packages/83/8a/84762197abf9b4c0a8ca0ebceda2c79adb5773a64578fd6d0776f93142ab/vietocr-0.3.13-py3-none-any.whl"
+size_bytes = 34641
+sha256 = "07b3777e5176b0d733cb056b68bd817371605f4b3514795fbf91ad4e181b8ccf"
+
+[artifacts.base_config]
+path = "artifacts/base.yml"
+url = "https://vocr.vn/data/vietocr/config/base.yml"
+size_bytes = 1809
+sha256 = "9c8283fadb950f06f5d3400475f80d5355700ff315c9c48b7875e6ea66647d1c"
+
+[artifacts.model_config]
+path = "artifacts/vgg-seq2seq.yml"
+url = "https://vocr.vn/data/vietocr/config/vgg-seq2seq.yml"
+size_bytes = 673
+sha256 = "0160ba8d442ae96f4c6095b92ac3521c59b83ce6eda9fd5459e8628a5586c3e8"
+
+[artifacts.weights]
+path = "artifacts/vgg_seq2seq.pth"
+url = "https://vocr.vn/data/vietocr/vgg_seq2seq.pth"
+size_bytes = 89575371
+sha256 = "0921503a41375a0584268e23ef3d414ea478a8fe8777865c7745d38f2d0bc5db"
+
+[safety]
+numeric_authority = false
+period_authority = false
+unit_authority = false
+sign_authority = false
+geometry_authority = false
+mapping_authority = false
+automatic_truth_promotion = false
+automatic_post_correction = false
+history_access = false
+human_review_access = false
+template_access = false
