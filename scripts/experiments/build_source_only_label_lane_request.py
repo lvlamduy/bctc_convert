@@ -76,11 +76,7 @@ def _load_object(path: Path, label: str) -> dict[str, Any]:
 
 
 def _bbox(raw: Any, *, width: int, height: int) -> tuple[int, int, int, int]:
-    if (
-        not isinstance(raw, list)
-        or len(raw) != 4
-        or any(type(value) is not int for value in raw)
-    ):
+    if not isinstance(raw, list) or len(raw) != 4 or any(type(value) is not int for value in raw):
         raise SourceOnlyLabelLaneRequestError("V3 line bbox is invalid")
     x0, y0, x1, y1 = raw
     if not (0 <= x0 < x1 <= width and 0 <= y0 < y1 <= height):
@@ -109,17 +105,11 @@ def _envelope(boxes: list[tuple[int, int, int, int]]) -> tuple[int, int, int, in
     )
 
 
-def _padded(
-    box: tuple[int, int, int, int], width: int, height: int
-) -> tuple[int, int, int, int]:
-    return max(0, box[0] - 8), max(0, box[1] - 4), min(width, box[2] + 8), min(
-        height, box[3] + 4
-    )
+def _padded(box: tuple[int, int, int, int], width: int, height: int) -> tuple[int, int, int, int]:
+    return max(0, box[0] - 8), max(0, box[1] - 4), min(width, box[2] + 8), min(height, box[3] + 4)
 
 
-def build_request(
-    *, render_path: Path, result_path: Path, output_root: Path
-) -> dict[str, Any]:
+def build_request(*, render_path: Path, result_path: Path, output_root: Path) -> dict[str, Any]:
     if _git("status", "--porcelain"):
         raise SourceOnlyLabelLaneRequestError("formal crop freeze requires a clean Git worktree")
     render = _resolve(render_path, "render")
@@ -155,8 +145,7 @@ def build_request(
             and 50 * abs(boxes[following][0] - boxes[prior][0]) <= width
         ]
         sample_specs = [
-            (f"page-0001-line-{index:03d}", "LINE", [index])
-            for index in selected_indices
+            (f"page-0001-line-{index:03d}", "LINE", [index]) for index in selected_indices
         ] + [
             (
                 f"page-0001-union-{prior:03d}-{following:03d}",
@@ -167,9 +156,7 @@ def build_request(
         ]
 
         destination.parent.mkdir(parents=True, exist_ok=True)
-        temporary = Path(
-            tempfile.mkdtemp(prefix=f".{destination.name}.", dir=destination.parent)
-        )
+        temporary = Path(tempfile.mkdtemp(prefix=f".{destination.name}.", dir=destination.parent))
         try:
             frozen = temporary / "frozen"
             crop_root = frozen / "crops"
