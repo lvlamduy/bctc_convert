@@ -1,0 +1,24 @@
+{
+  "artifacts": {
+    "predictions": {
+      "path": "output/development/shb-maturity-numeric-v1/reader-run/predictions.json",
+      "sha256": "268f1c174b3f08b3941653bd93213fd94e2695859f81d90dca4bbe2a1e92064f",
+      "size_bytes": 3187
+    },
+    "registry": {
+      "path": "output/development/shb-maturity-numeric-v1/frozen/crop_registry.json",
+      "sha256": "694567a18d2c182aa813552bb84b37a41b447f7adde57205ba9fcc43f5f49d00",
+      "size_bytes": 10631
+    },
+    "run_manifest": {
+      "path": "output/development/shb-maturity-numeric-v1/reader-run/run_manifest.json",
+      "sha256": "1926445f278b8d690c6255d7a8361ebc94cc03a94f15f01f7d19cb0b1eb34e8b",
+      "size_bytes": 2962
+    }
+  },
+  "cell_count": 8,
+  "claim_boundary": "SELECTS_EXACT_PERSISTED_NUMERIC_PROPOSAL_ARTIFACT_BYTES_ONLY_NO_NUMERIC_TRUTH_GEOMETRY_PERIOD_UNIT_SCOPE_STATEMENT_SCHEMA_OR_EXPORT_AUTHORITY",
+  "format_version": 1,
+  "run_commit": "dd882057e94b0616a58a7a095c97844dd08fe896",
+  "state": "FROZEN_NUMERIC_PROPOSAL_SELECTION_AUTHORITY"
+}
