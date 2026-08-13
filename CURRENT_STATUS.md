@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-08-13T21:28:36+07:00 (UTC+7 fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
+Updated: 2026-08-13T21:51:22+07:00 (UTC+7 fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
 The detailed historical receipts below remain evidence, but that directive supersedes
@@ -49,7 +49,7 @@ Từ đầu đến snapshot này, project đã đi qua bốn pha chính:
 | Role-A diagnostic | 139 Level-1 machine-reference blocks; không phải human accuracy và không feed ngược vào discovery |
 | Schema/export capability | BASE_SCHEMA 1,593; UNIVERSAL_SCHEMA 1,935; MBB/VPB bounded development Excel tồn tại và có provenance |
 | Wave-1 accepted structure | Broad/exhaustive Wave-1 authority remains **0**. One bounded SHB page-24 loan-maturity slice is now accepted only within the supplied family-collision scope: **TABLE=1, LOGICAL_ROW=4, VALUE_POSITION=8, AXIS=2, HIERARCHY=12** |
-| Wave-1 canonical/Excel | **canonical mapping=0 documents; mapped Excel=0 documents**. A candidate-only SHB review workbook is work in progress and is not counted as durable output or canonical Excel |
+| Wave-1 canonical/Excel | **canonical mapping=0 documents; mapped Excel=0 documents**. One durable candidate-only SHB review pair exists, but is review-only and is not counted as canonical mapping or mapped Excel |
 
 ### Những gì family research đã học được
 
@@ -101,8 +101,8 @@ Critical path hiện tại là:
 
 1. giữ nguyên specialized source-bound reader stack đã khóa; không mở thêm model
    survey khi chưa có một failure class định danh và promotion gate mới;
-2. hoàn tất và audit candidate-only review workbook cho exact SHB p24 slice, không
-   gọi nó là canonical export hoặc accepted schema mapping;
+2. giữ nguyên E-0043 candidate-only review pair đã seal cho exact SHB p24 slice;
+   không gọi nó là canonical export hoặc accepted schema mapping;
 3. replay cùng graph/context/numeric contracts trên các bank/case loan-maturity đã
    khóa, giữ mọi drift về unit, period, row ownership hoặc total ở trạng thái unresolved;
 4. phát hành riêng bounded và broad accepted TABLE/LOGICAL_ROW/VALUE_POSITION/AXIS/
@@ -113,9 +113,8 @@ Critical path hiện tại là:
 ### Latest execution checkpoint — source-bound SHB vertical slice
 
 Durable tracked evidence is committed and pushed through
-`37ea265f1023428f1e025559c6d184a3afbb4e74`, with the remote branch at the same
-commit; the current worktree separately contains the workbook WIP named below. The
-current production-role decision is intentionally small:
+`0316d34852cac25d868bb74c9ca3c66ec9663dc4`, with the remote branch at the same
+commit. The current production-role decision is intentionally small:
 
 - VietOCR 0.3.13 VGG Transformer is the only Vietnamese semantic-text reader; the
   frozen 387-LINE comparison gives 42/52 exact transcripts, 32/41 exact core roles
@@ -166,16 +165,39 @@ The exact SHB consolidated Q2/2026 filing, physical page 24, now closes one boun
   source replay, not hardware/model execution, geometry, period, unit, scope,
   statement, ReportNormId, schema or export authority.
 
-At this snapshot, the SHB review-workbook implementation, CLI and test files are
-untracked work in progress. They are deliberately excluded from all durable counts;
-no workbook/provenance pair is claimed until generation, deterministic replay,
-formula/claim-boundary checks, independent audit, commit and push are complete.
+E-0043 now durably seals the exact two-file SHB page-24 review-only pair after
+byte-equal deterministic replay, formula/claim-boundary checks, independent audit,
+commit/push and an independently hydrated S3 restore PASS:
+
+- `output/development/e0042-shb-maturity-review-workbook-v1/shb-maturity-review-only.xlsx`
+  is 13,671 bytes at SHA-256
+  `9b4dd0cffd3d088f52dfd9f71548910f3ae05383f056ad2ee68e441899243d9c`.
+- `output/development/e0042-shb-maturity-review-workbook-v1/provenance.json` is
+  44,308 bytes at SHA-256
+  `4d5df001433c4779be995930307bf03acad08b0a765266152b0f4792995c50e1`.
+- The tracked E-0043 seal is
+  `docs/experiments/E-0043-shb-maturity-review-workbook-seal.json`, 7,388 bytes at
+  SHA-256 `024334913a450e78b9127c43953431382f8a039d620efab8b1796e45cddafec7`.
+  Its S3 snapshot is
+  `20260813T144429Z-e0042-shb-maturity-review-workbook-pair-4d5df001433c`;
+  manifest SHA-256 is
+  `16fea9099bcce9bbdcce1294148ba88c72b80566424aa789506dd904307716f8`
+  and bound PASS run SHA-256 is
+  `5f9a6ea538c71808c5587bc0dacc997a29b902deb75574cbef14d1543654ab8e`.
+  The snapshot accounts exactly 2 files / 57,979 bytes / 2 unique objects and its
+  independent hydrate re-established both exact hashes and sizes.
+
+The pair contains four review rows, eight provenance-bearing observed cells, zero
+formulas and candidate ReportNormIds 753/754/755 only; the source-only TOTAL keeps a
+null candidate ID. E-0043 adds deterministic review-pair/hash/S3 durability authority
+only. It adds no accepted mapping, schema, canonicalization, value-materialization,
+accounting-truth, human-review, holdout, production or export authority.
 
 Remaining blockers are therefore explicit: one bank/page is not multi-bank
 generalization; candidate ReportNormIds are not accepted mappings; TOTAL has no
 candidate mapping; statement context is not document-complete; and no canonical
-Wave-1 workbook exists. The next measurable milestone is a reviewed SHB-only pair,
-followed by exact multi-bank replay of the same contracts without bank/page routing.
+Wave-1 workbook exists. The next measurable milestone is exact multi-bank replay of
+the same graph/context/numeric/review contracts without bank/page routing.
 
 ### Preceding execution checkpoint — Generic Local Accounting Graph v1
 
@@ -462,7 +484,7 @@ The active development loop is now corpus-driven: survey many documents, fingerp
 - **VPB native-TM observations:** `output/development/vpb-q1-2026-native-tm-observations-v1/native-tm-observations.json` (SHA-256 `0ca14b8c1851e6910a482f8bbc9530119f0789d3c7c90d4945d8220850f2bb95`, 24,339,561 bytes). Strict loading and producer replay account for 91 pages, 97 contexts, 934 rows, 265 dimensions, 2,523 observations and exactly 11,032 source dispositions. `COMPLETE_NATIVE_TM_SOURCE_OBJECT_ACCOUNTING` is an exhaustive flattening/accounting claim over the accepted upstream inventory, not a full-document context-completion claim.
 - **VPB native-TM canonical mapping:** `output/development/vpb-q1-2026-native-tm-canonical-v1/native-tm-canonical-mapping.json` (SHA-256 `52c641042fac8ec6a827d0e09b86fdd00fc4e7709f906626a0733af2a3fdf307`, 11,763,806 bytes). Its clean producer is `53ac4367ff1b2cff24f23df1bdf7e804ed60bdfa`. The strict result has 8 canonical observations, all 1,701 schema dispositions and all 11,032 source dispositions. Schema outcomes are `4 OBSERVED_VALUE + 4 NOT_OBSERVED + 1,693 UNRESOLVED`; source dispositions are `12 MAPPED_EXISTING_ITEM + 18 ASSESSED_BOUNDED_SUBTREE + 2 ASSESSED_SUPPORTING_DIMENSION + 11,000 UNRESOLVED`. `COMPLETE_NATIVE_TM_CANONICAL_DISPOSITION_ACCOUNTING` means every denominator member has a disposition, not that every member is mapped.
 - **VPB native-TM mapped Excel:** `output/development/vpb-q1-2026-native-tm-canonical-excel-v1/native-tm-canonical.xlsx` (SHA-256 `3cf28353be6777caa5ce6643622e18747f75cb51757a4f817edf629d0e5ca87c`, 5,476,052 bytes) and paired `provenance.json` (SHA-256 `ab929a4122e5f2192fce0ba45b4781dfcdaadddd05246791740f7344c62b063a`, 20,687 bytes). Its six sheets are `CANONICAL_OBSERVATIONS`, `SCHEMA_DISPOSITIONS`, `SOURCE_DISPOSITIONS`, `SOURCE_OBJECTS`, `VALIDATION` and `RUN_METADATA`. The receipt-bound exporter represents 8 canonical observations, 1,701 schema dispositions, 11,032 logical source objects across 11,037 sheet rows, and 4 validation records, with zero formulas and zero imputed values; strict loading replays the mapping and observation producers and authenticates the native-document/PDF/discovery lineage.
-- **Latest sealed version:** E-0041 CDKT workbook/provenance pair. No new E-version is planned for ordinary coverage expansion.
+- **Latest sealed version:** E-0043 SHB page-24 review-only workbook/provenance pair, durably restored from its exact two-object S3 snapshot. It remains candidate-only and grants no canonical mapping or export authority.
 - **Research-first strategy switch and clean Tier-3 stop:** structural development now follows `observe rendered PDFs -> classify recurring failures -> form competing hypotheses -> falsify on Tier 1 -> test cross-bank on Tier 2 -> productionize winners -> run Tier 3`. The repaired compact-inventory publisher retry was therefore interrupted deliberately on clean source commit `9495fe115240186fcd99a850428604defba1a638` after partial consumption of **331/1,449 pages** and 4,142.645612802 seconds because it was a multi-hour Tier-3 accounting/publication run with no prior visual taxonomy or Tier-2 structural-benefit evidence. The finalized stream stopped fail-closed with `only partially consumed (331/1449)`; no publisher tuple, corpus result, final target or matching temp was created. Post-stop Git remained clean with `HEAD == upstream`, and both frozen inventories retained their exact SHA-256, size, `0444` mode and nlink-1 receipts. This is an intentional information-gain stop, not a continuation/table-accuracy result and not evidence that the repaired gate failed. The initial taxonomy/survey condition is now satisfied, but production remains blocked on mechanism-specific cross-bank benefit and bounded false positives. Reader V3 remains frozen; no new V4/V3.1 or schema expansion was created in this research phase.
 - **Research operating contract:** the research-first rules now make visual evidence, matched controls and cross-bank family learning explicit. A visual study reports banks/documents/pages plus positive, negative/control, failure and normal counts; combines pixels with available text/boxes/geometry/neighbors/header-axis/row-order evidence; maps human cues to machine-observable signals; and raises cases into family/local-graph abstractions rather than bank/page rules. Each family separates core invariants, optional variants and counterexamples. Every multi-hour/Tier-3 run requires a written hypothesis, falsifier, reasons Tier 1 and Tier 2 are insufficient, and the new information full replay will produce. Wave 1 prioritizes family recurrence across banks before cross-period variation and defers isolated-row schema decisions pending family-level evidence where possible. The lightweight family registry and family KPIs are research knowledge, not production authority.
 - **First direct visual/source research baseline:** the initial panels cover real rendered pixels together with existing V3 OCR/native text, word/line boxes, current graph candidates and neighboring pages; no Role A, schema, new OCR/model inference or production replay was used in hypothesis construction. A selected table-region Tier-1 panel spans **39 pages / 8 banks**: after separating three mixed narrative pages that contain genuine bounded grids, it has 19 readable table-region positives, 18 pure controls and two reader-terminal abstentions. The current TABLE-node signal is rejected as table truth (`TP=15, FP=10, TN=8, FN=4`); a local orientation-aware row-band/value-axis topology challenger separates that selected panel at `TP=19, FP=0, TN=18, FN=0`. Its later bounded cross-bank bridge result is reported separately below and rejects numeric lanes as complete table/boundary authority. A TM continuation panel spans **24 pages / 7 banks / 17 adjacent pairs** with nine open-note/table positives and eight boundary controls. It shows that literal `(tiếp theo)` is neither sufficient nor equivalent to same-table continuation: continuation must be modeled at document, note, table and row levels using parent-note, axis/unit/period and row-frontier evidence.
