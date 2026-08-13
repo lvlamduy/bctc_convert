@@ -9,6 +9,7 @@ import pytest
 from PIL import Image
 
 from bctc_ai.core.hashing import sha256_file
+from bctc_ai.ocr.vietocr_line_reader import validate_reference_blind_request
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 EXPECTED_REAL_PANEL = [
@@ -210,6 +211,7 @@ def test_freezes_every_line_with_opaque_page_ids_and_existing_reader_allowlist(
     assert request["format_version"] == 2
     assert request["experiment_id"] == "VIETOCR_MULTI_BANK_FAMILY_OCR_BENCHMARK_V1"
     assert request["sample_count"] == 3
+    assert len(validate_reference_blind_request(request)) == 3
     assert all(
         set(sample) == {"category", "crop_path", "crop_sha256", "sample_id"}
         for sample in request["samples"]
