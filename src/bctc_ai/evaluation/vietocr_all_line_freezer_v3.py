@@ -48,8 +48,10 @@ __all__ = [
     "FREEZE_PROJECTION_FORMAT_VERSION",
     "READER_REQUEST_FORMAT_VERSION",
     "VietOCRAllLineFreezerV3Error",
+    "assert_authenticated_vietocr_all_line_freeze_project_root_v3",
     "freeze_authenticated_vietocr_all_line_batch_v3",
     "project_authenticated_vietocr_all_line_freeze_v3",
+    "read_authenticated_vietocr_all_line_snapshot_v3",
     "read_authenticated_vietocr_all_line_batch_v3",
     "read_authenticated_vietocr_all_line_crop_v3",
     "replay_authenticated_vietocr_all_line_freeze_v3",
@@ -1384,6 +1386,18 @@ def _validated_state(
     return state, stored_projection, manifest
 
 
+def assert_authenticated_vietocr_all_line_freeze_project_root_v3(
+    project_root: Path,
+    capability: AuthenticatedVietOCRAllLineFreezeV3,
+) -> None:
+    """Require a live freeze capability to belong to this exact Git root."""
+
+    root = _resolve_root(project_root)
+    state, _projection, _manifest = _validated_state(capability)
+    if state.root != root:
+        raise _error("authenticated freeze capability belongs to another project root")
+
+
 def freeze_authenticated_vietocr_all_line_batch_v3(
     project_root: Path,
     output_root: Path,
@@ -1592,3 +1606,28 @@ def read_authenticated_vietocr_all_line_batch_v3(
     if len(samples) != EXPECTED_SAMPLE_COUNT:
         raise _error("authenticated crop batch denominator drifted")
     return tuple(samples)
+
+
+def read_authenticated_vietocr_all_line_snapshot_v3(
+    capability: AuthenticatedVietOCRAllLineFreezeV3,
+) -> tuple[dict[str, Any], tuple[dict[str, Any], ...]]:
+    """Return one atomic projection-and-byte snapshot for the formal reader."""
+
+    state, projection, manifest = _validated_state(capability)
+    samples: list[dict[str, Any]] = []
+    for sample, payload, digest in zip(
+        manifest["samples"], state.crop_payloads, state.crop_digests, strict=True
+    ):
+        if type(payload) is not bytes or hashlib.sha256(payload).hexdigest() != digest:
+            raise _error("authenticated reader snapshot crop bytes drifted")
+        samples.append(
+            {
+                "crop_png_bytes": bytes(payload),
+                "crop_sha256": sample["crop_sha256"],
+                "page_id": sample["page_id"],
+                "sample_id": sample["sample_id"],
+            }
+        )
+    if len(samples) != EXPECTED_SAMPLE_COUNT:
+        raise _error("authenticated reader snapshot denominator drifted")
+    return canonical_clone_v1(projection), tuple(samples)
