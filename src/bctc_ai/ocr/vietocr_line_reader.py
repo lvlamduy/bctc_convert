@@ -40,6 +40,19 @@ _REQUEST_KEYS = {
     "samples",
 }
 _REQUEST_SAMPLE_KEYS = {"sample_id", "category", "crop_path", "crop_sha256"}
+_RTX4090_RUNTIME = {
+    "site_packages": "site-packages",
+    "python_major_minor": "3.11",
+    "packages": {
+        "vietocr": "0.3.13",
+        "torch": "2.12.0+cu130",
+        "torchvision": "0.27.0+cu130",
+        "pillow": "12.3.0",
+        "numpy": "2.3.5",
+        "einops": "0.8.2",
+        "pyyaml": "6.0.2",
+    },
+}
 
 
 def _git(project_root: Path, *args: str) -> str:
@@ -85,10 +98,12 @@ def _load_config(path: Path) -> dict[str, Any]:
         value = tomllib.loads(path.read_text(encoding="utf-8"))
     except (FileNotFoundError, tomllib.TOMLDecodeError) as exc:
         raise VietOCRLineReaderError(f"cannot read VietOCR config: {path}") from exc
-    if (
-        value.get("version") != 1
-        or value.get("status") != "CALIBRATION_ONLY_VIETNAMESE_SEMANTIC_LINE_PROPOSAL"
-    ):
+    version = value.get("version")
+    expected_status = {
+        1: "CALIBRATION_ONLY_VIETNAMESE_SEMANTIC_LINE_PROPOSAL",
+        2: "CALIBRATION_ONLY_RTX4090_VIETNAMESE_LOGICAL_ROW_LABEL_PROPOSAL",
+    }.get(version)
+    if expected_status is None or value.get("status") != expected_status:
         raise VietOCRLineReaderError("VietOCR config identity or status drifted")
     inference = value.get("inference")
     if not isinstance(inference, dict) or (
@@ -102,7 +117,47 @@ def _load_config(path: Path) -> dict[str, Any]:
     safety = value.get("safety")
     if not isinstance(safety, dict) or not safety or any(bool(item) for item in safety.values()):
         raise VietOCRLineReaderError("VietOCR config grants forbidden pipeline authority")
+    if version == 2:
+        compatibility = value.get("runtime_compatibility")
+        if (
+            value.get("model_name") != "VietOCR VGG Transformer"
+            or value.get("package_version") != "0.3.13"
+            or value.get("architecture") != "vgg19_bn_transformer"
+            or not isinstance(compatibility, dict)
+            or compatibility.get("gpu_family") != "NVIDIA_GEFORCE_RTX_4090_ADA"
+            or compatibility.get("minimum_compute_capability") != [8, 9]
+            or compatibility.get("cuda_runtime") != "13.0"
+            or compatibility.get("bf16_required") is not False
+            or compatibility.get("historical_blackwell_runtime_claimed") is not False
+        ):
+            raise VietOCRLineReaderError("VietOCR RTX 4090 compatibility policy drifted")
+        if value.get("runtime") != _RTX4090_RUNTIME:
+            raise VietOCRLineReaderError("VietOCR RTX 4090 runtime policy drifted")
     return value
+
+
+def _validate_cuda_capability(config: dict[str, Any], capability: tuple[int, int] | None) -> None:
+    if config["version"] == 2:
+        minimum = tuple(config["runtime_compatibility"]["minimum_compute_capability"])
+        if capability is None or capability < minimum:
+            raise VietOCRLineReaderError("VietOCR requires RTX 4090-compatible CUDA")
+        return
+    if capability != (12, 0):
+        raise VietOCRLineReaderError("VietOCR requires the verified Blackwell CUDA device")
+
+
+def _validate_runtime_identity(
+    config: dict[str, Any],
+    *,
+    python_major_minor: str,
+    cuda_runtime: str | None,
+) -> None:
+    if config["version"] != 2:
+        return
+    if python_major_minor != config["runtime"]["python_major_minor"]:
+        raise VietOCRLineReaderError("VietOCR Python runtime identity drifted")
+    if cuda_runtime != config["runtime_compatibility"]["cuda_runtime"]:
+        raise VietOCRLineReaderError("VietOCR CUDA runtime identity drifted")
 
 
 def validate_reference_blind_request(payload: dict[str, Any]) -> list[dict[str, str]]:
@@ -113,8 +168,7 @@ def validate_reference_blind_request(payload: dict[str, Any]) -> list[dict[str, 
         or payload.get("experiment_id") != "E-0024"
         or payload.get("state") != "READY_FOR_REFERENCE_BLIND_LINE_INFERENCE"
         or payload.get("dataset_role") != "LOGIC_DEVELOPMENT_AND_CALIBRATION"
-        or payload.get("evidence_role")
-        != "INDEPENDENT_VIETNAMESE_SEMANTIC_PROPOSAL_ONLY"
+        or payload.get("evidence_role") != "INDEPENDENT_VIETNAMESE_SEMANTIC_PROPOSAL_ONLY"
         or payload.get("git_dirty") is not False
         or payload.get("reference_text_available_to_reader") is not False
     ):
@@ -300,15 +354,19 @@ def run_vietocr_line_reader(
 
     expected_packages = config["runtime"]["packages"]
     actual_packages = {
-        distribution: importlib.metadata.version(distribution)
-        for distribution in expected_packages
+        distribution: importlib.metadata.version(distribution) for distribution in expected_packages
     }
     if actual_packages != expected_packages:
         raise VietOCRLineReaderError(
             f"VietOCR runtime package drift: {actual_packages} != {expected_packages}"
         )
-    if not torch.cuda.is_available() or torch.cuda.get_device_capability(0) != (12, 0):
-        raise VietOCRLineReaderError("VietOCR requires the verified Blackwell CUDA device")
+    _validate_runtime_identity(
+        config,
+        python_major_minor=f"{sys.version_info.major}.{sys.version_info.minor}",
+        cuda_runtime=torch.version.cuda,
+    )
+    capability = torch.cuda.get_device_capability(0) if torch.cuda.is_available() else None
+    _validate_cuda_capability(config, capability)
     torch.manual_seed(int(config["inference"]["random_seed"]))
     torch.cuda.manual_seed_all(int(config["inference"]["random_seed"]))
     torch.backends.cuda.matmul.allow_tf32 = False
