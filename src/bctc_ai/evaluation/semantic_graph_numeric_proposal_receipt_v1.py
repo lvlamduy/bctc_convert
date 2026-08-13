@@ -438,7 +438,7 @@ def _verify_git_execution_ledger(
     return {
         "entrypoints": records,
         "selection_authority_commit": selection_commit,
-        "verified_at_clean_commit": head,
+        "clean_descendant_replay_validated_but_not_persisted": True,
         "source_tree": {
             "git_object_id": run_tree,
             "path": _SOURCE_TREE_PATH.as_posix(),
@@ -992,10 +992,10 @@ def _validate_result(value: Any) -> dict[str, Any]:
     _exact_dict(
         historical["code"],
         {
+            "clean_descendant_replay_validated_but_not_persisted",
             "entrypoints",
             "selection_authority_commit",
             "source_tree",
-            "verified_at_clean_commit",
         },
         "historical code lineage",
     )

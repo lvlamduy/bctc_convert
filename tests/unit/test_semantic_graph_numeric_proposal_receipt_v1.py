@@ -188,10 +188,10 @@ def authenticated(monkeypatch, tmp_path):
         subject,
         "_verify_git_execution_ledger",
         lambda *_args: {
+            "clean_descendant_replay_validated_but_not_persisted": True,
             "entrypoints": [],
             "selection_authority_commit": artifacts["selection_commit"],
             "source_tree": {"git_object_id": "c" * 40, "path": "src/bctc_ai"},
-            "verified_at_clean_commit": "d" * 40,
         },
     )
     monkeypatch.setattr(subject, "_validate_config_and_model", lambda *_args: ({}, {}))
@@ -414,7 +414,8 @@ def test_git_ledger_allows_clean_descendant_with_unchanged_trust_closure(tmp_pat
         tmp_path, run_commit, selection_commit, selection_path, selection_raw
     )
     assert ledger["selection_authority_commit"] == selection_commit
-    assert ledger["verified_at_clean_commit"] == _git(tmp_path, "rev-parse", "HEAD")
+    assert ledger["clean_descendant_replay_validated_but_not_persisted"] is True
+    assert _git(tmp_path, "rev-parse", "HEAD") not in json.dumps(ledger, sort_keys=True)
 
     with pytest.raises(ValueError, match="selection authority bytes differ"):
         subject._verify_git_execution_ledger(
