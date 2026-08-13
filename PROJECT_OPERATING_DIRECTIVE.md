@@ -931,3 +931,256 @@ Mọi quyết định kỹ thuật từ thời điểm này phải được đá
 Nếu không, hãy xem lại priority.
 
 Tiếp tục execution ngay theo critical path này; không dừng để viết thêm một strategy document khác.
+
+## 35. Family-sweep rule — breadth across accounting families
+
+Đây là execution rule bổ sung; nó không thay thế các directive phía trên.
+
+Sau khi `Generic Local Accounting Graph v1` chứng minh được khả năng dùng chung
+trên ít nhất `LOAN_QUALITY_CLASSIFICATION` và `LOAN_MATURITY_BUCKETS`, không tiếp
+tục đào sâu một family chỉ để đạt gần 100% coverage.
+
+Mục tiêu tiếp theo là **quét lần lượt các accounting/structural family xuyên
+nhiều ngân hàng**.
+
+Vòng lặp mặc định:
+
+```text
+select one recurring accounting family
+→ inspect real PDF/source evidence across multiple banks
+→ compare positives + matched controls + variants
+→ reuse existing Local Accounting Graph primitives
+→ add/modify a generic primitive only if genuinely missing
+→ accept the strict subset supported by evidence
+→ preserve ambiguous/rare variants as UNRESOLVED
+→ map accepted structure to schema
+→ validate values/relationships
+→ record family coverage
+→ MOVE TO NEXT FAMILY
+```
+
+Không biến mỗi family thành một research project độc lập.
+
+### 35.1. Progressive reuse is mandatory
+
+Mỗi family mới phải bắt đầu bằng câu hỏi:
+
+> Những primitive hiện có đã giải quyết được bao nhiêu phần của family này?
+
+Ưu tiên reuse:
+
+```text
+OWNER_RESOLUTION
+PARENT_CHILD_EDGE
+ORDERED_SIBLING_SET
+AXIS_ROLE
+COMPARATIVE_PERIOD_AXIS
+UNIT_SCOPE_EDGE
+TOTAL_SUBTOTAL
+SAME_POPULATION_CLOSURE
+NEIGHBOR_RELATION
+TABLE_CONTINUATION
+ROW_FRONTIER
+STRUCTURAL_RESET
+```
+
+Không tạo parser riêng theo family nếu cùng structural mechanism đã tồn tại.
+
+Càng nhiều family được học, lượng code/logic mới cho mỗi family phải có xu hướng
+giảm. Nếu family thứ 10 vẫn cần một pipeline hoàn toàn riêng như family thứ nhất,
+dừng và kiểm tra abstraction.
+
+### 35.2. Do not wait for 100% family completion
+
+Cho phép:
+
+```text
+ACCEPTED_CORE
+ACCEPTED_OPTIONAL_VARIANT
+UNRESOLVED_VARIANT
+UNRESOLVED
+```
+
+Ví dụ nếu:
+
+```text
+22 banks accepted
+3 banks accepted with optional variants
+2 banks unresolved
+```
+
+thì không giữ toàn family lại chỉ để giải 2 bank cuối.
+
+Preserve unresolved evidence and move on. Sau khi breadth sweep đủ rộng, cluster
+residual failures xuyên nhiều family và giải bằng generic mechanisms.
+
+### 35.3. Structure first, schema immediately after strict acceptance
+
+Không map schema trước khi structure rõ. Nhưng cũng không chờ toàn bộ TM hoàn
+thành mới map.
+
+Với mỗi accepted family:
+
+```text
+accepted TABLE
+→ accepted logical ROW
+→ accepted AXIS / UNIT / PERIOD / SCOPE
+→ accepted hierarchy
+→ canonical schema mapping
+→ accounting validation
+→ extracted values
+```
+
+Sau đó chuyển family tiếp theo. Schema coverage phải tăng song song với accepted
+structural coverage.
+
+### 35.4. Maintain a Family Coverage Board
+
+Theo dõi tối thiểu:
+
+```text
+Family
+Banks inspected
+Banks with source occurrence
+Accepted banks
+Unresolved banks
+
+Accepted TABLE
+Accepted LOGICAL_ROW
+Accepted VALUE_POSITION
+Accepted AXIS
+Accepted HIERARCHY
+
+Schema mapped rows
+New-ID proposals
+Aliases
+Unresolved schema gaps
+Validated value axes
+```
+
+Ví dụ:
+
+```text
+LOAN_QUALITY             27   25 present   22 accepted   3 unresolved
+LOAN_MATURITY            27   24 present   21 accepted   3 unresolved
+CUSTOMER_DEPOSIT_TYPE    ...
+SECURITIES               ...
+PROVISION_MOVEMENT       ...
+```
+
+Project progress should increasingly be measured by this board, not by test
+count, candidate count or experiment count.
+
+### 35.5. Prioritize broad financial-statement coverage
+
+After the first two acceptance families, continue across recurring BCTC clusters
+such as:
+
+```text
+cash / central-bank deposits
+interbank deposits and loans
+trading / AFS / HTM securities
+customer loans
+loan quality
+loan maturity
+borrower / economic sector
+loan provision
+customer deposits
+deposit type / term / depositor class
+issued papers
+borrowings
+fixed assets
+other assets / liabilities
+equity movements
+interest income / expense
+fees
+FX
+securities income
+other operating income/expense
+liquidity risk
+repricing risk
+currency risk
+other recurring TM families
+```
+
+Danh sách này chỉ mang tính minh họa, không phải processing order hard-coded.
+
+Chọn family tiếp theo bằng:
+
+```text
+prevalence across banks
+× accounting importance
+× source evidence availability
+× reuse of existing primitives
+× expected coverage gain
+```
+
+### 35.6. Stop excessive family-specific research
+
+Stop and move on when:
+
+- core topology is stable across several banks;
+- matched controls establish the accounting role;
+- a strict accepted subset is possible;
+- remaining failures are rare variants rather than a missing generic core mechanism.
+
+Do **not** launch repeated prospective protocols/full-document batches solely to
+perfect one family unless the unresolved mechanism is expected to improve many
+other families.
+
+Net-interest is an example of a useful failure archetype, but do not repeat that
+depth of experimentation for every TM family.
+
+### 35.7. Residuals are solved after breadth
+
+After a meaningful breadth sweep:
+
+```text
+collect all UNRESOLVED_VARIANT / UNRESOLVED cases
+→ cluster by structural failure
+→ identify shared missing primitives
+→ implement generic fixes
+→ replay only affected families
+```
+
+This is preferable to fully solving each family before moving forward.
+
+### 35.8. Desired velocity
+
+The expected pattern is:
+
+```text
+early families:
+more observation + primitive creation
+
+middle families:
+mostly primitive reuse + family configuration
+
+later families:
+fast recognition / acceptance / mapping
+```
+
+Development speed per recurring family should improve over time.
+
+### 35.9. Immediate instruction
+
+Complete the current bounded `Generic Local Accounting Graph v1` acceptance work
+on Loan Quality and Loan Maturity. Then start a **family sweep**.
+
+Do not open another deep family-specific research branch by default. For every
+next family:
+
+```text
+observe
+→ reuse primitives
+→ accept strict subset
+→ map
+→ record unresolved
+→ next family
+```
+
+The near-term goal is not one perfect family. The near-term goal is:
+
+> rapidly increasing accepted structural + canonical coverage across the major
+> recurring BCTC families of many banks, using one increasingly reusable generic
+> engine.
