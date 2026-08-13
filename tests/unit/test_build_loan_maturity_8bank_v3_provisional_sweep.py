@@ -41,6 +41,39 @@ def _binding() -> dict:
     return {"binding_id": "binding", "samples": []}
 
 
+def _panel_selection(panel_state: str) -> dict:
+    panel = {
+        "bank_order": list(sweep_v1.BANK_ORDER),
+        "experiment_id": sweep_v1.panel_v1.EXPERIMENT_ID,
+        "family_id": sweep_v1.panel_v1.FAMILY_ID,
+        "state": panel_state,
+        "slots": [
+            {
+                "bank_code": bank,
+                "physical_page": sweep_v1.panel_v1.EXPECTED_LOCATORS[bank][0],
+                "source_pdf_sha256": sweep_v1.panel_v1.EXPECTED_LOCATORS[bank][1],
+            }
+            for bank in sweep_v1.BANK_ORDER
+        ],
+    }
+    return sweep_v1.panel_v1._selection_projection_v1(
+        panel,
+        {"manifest_sha256": "a" * 64, "manifest_size_bytes": 1},
+    )
+
+
+def test_e0044_selection_remains_blocked_while_separate_ready_capability_advances() -> None:
+    blocked = _panel_selection(sweep_v1.panel_v1.BLOCKED_PANEL)
+
+    assert sweep_v1._validate_exact_blocked_panel_selection(blocked) == blocked
+    ready_mislabel = _panel_selection(sweep_v1.panel_v1.READY_PANEL)
+    with pytest.raises(
+        sweep_v1.E0046ProvisionalSweepError,
+        match="selection slots/state drifted",
+    ):
+        sweep_v1._validate_exact_blocked_panel_selection(ready_mislabel)
+
+
 @pytest.mark.parametrize(
     "reasons",
     (

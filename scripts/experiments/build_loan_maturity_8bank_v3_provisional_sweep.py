@@ -19,6 +19,7 @@ from typing import Any
 import vietocr_semantic_page_binding_v3 as binding_v3
 
 from bctc_ai.evaluation import loan_maturity_8bank_panel_prerequisite_v1 as panel_v1
+from bctc_ai.evaluation import loan_maturity_8bank_ready_panel_v1 as ready_v1
 from bctc_ai.evaluation import vietocr_all_line_freezer_v3 as freezer_v3
 from bctc_ai.evaluation.authenticated_line_pixel_hydration_v1 import (
     AuthenticatedLinePixelHydrationReceiptV1,
@@ -33,6 +34,8 @@ from bctc_ai.evaluation.loan_maturity_8bank_panel_prerequisite_v1 import (
 from bctc_ai.evaluation.loan_maturity_8bank_ready_panel_v1 import (
     AuthenticatedLoanMaturity8BankReadyPanelV1,
     compose_authenticated_loan_maturity_8bank_ready_panel_v1,
+    project_authenticated_loan_maturity_8bank_anonymous_batch_v1,
+    project_authenticated_loan_maturity_8bank_ready_panel_audit_receipt_v1,
 )
 from bctc_ai.evaluation.vietocr_all_line_freezer_v3 import (
     ARTIFACT_ROOT,
@@ -206,6 +209,8 @@ class _LiveRoots:
     receipt: AuthenticatedVietOCRSemanticReceiptV3
     hydrations: tuple[AuthenticatedLinePixelHydrationReceiptV1, ...]
     panel_selection: dict[str, Any]
+    ready_anonymous_batch: dict[str, Any]
+    ready_panel_audit_receipt: dict[str, Any]
     freeze_projection: dict[str, Any]
     receipt_projection: dict[str, Any]
 
@@ -244,6 +249,10 @@ def _live_roots(project_root: Path) -> _LiveRoots:
         receipt=receipt,
         hydrations=hydrations,
         panel_selection=project_authenticated_loan_maturity_8bank_panel_selection_v1(prerequisite),
+        ready_anonymous_batch=(project_authenticated_loan_maturity_8bank_anonymous_batch_v1(ready)),
+        ready_panel_audit_receipt=(
+            project_authenticated_loan_maturity_8bank_ready_panel_audit_receipt_v1(ready)
+        ),
         freeze_projection=project_authenticated_vietocr_all_line_freeze_v3(freeze),
         receipt_projection=project_authenticated_vietocr_semantic_receipt_v3(receipt),
     )
@@ -470,6 +479,8 @@ def _build_payload(project_root: Path) -> dict[str, Any]:
         "input_authority": {
             "finalized_v3_survey": _finalized_authority_projection(),
             "panel_selection": roots.panel_selection,
+            "ready_anonymous_batch": roots.ready_anonymous_batch,
+            "ready_panel_audit_receipt": roots.ready_panel_audit_receipt,
             "freeze_projection": roots.freeze_projection,
             "semantic_receipt_projection": roots.receipt_projection,
         },
@@ -541,6 +552,18 @@ def _validate_receipt_projection(value: Any) -> dict[str, Any]:
     return canonical_clone_v1(receipt)
 
 
+def _validate_exact_blocked_panel_selection(value: Any) -> dict[str, Any]:
+    selection = panel_v1._validate_selection_projection_shape_v1(value)
+    slots = selection["slots"]
+    if selection["panel_state"] != panel_v1.BLOCKED_PANEL or len(slots) != 8:
+        raise _error("E-0046 panel selection slots/state drifted")
+    for slot in slots:
+        expected_page, expected_sha = panel_v1.EXPECTED_LOCATORS[slot["bank_code"]]
+        if slot["physical_page"] != expected_page or slot["source_pdf_sha256"] != expected_sha:
+            raise _error("E-0046 fixed eight-source locator set drifted")
+    return selection
+
+
 def _validate_sweep_shape(value: Any) -> dict[str, Any]:
     """Validate closed shape before live construction replay."""
 
@@ -582,20 +605,33 @@ def _validate_sweep_shape(value: Any) -> dict[str, Any]:
     if type(authority) is not dict or set(authority) != {
         "finalized_v3_survey",
         "panel_selection",
+        "ready_anonymous_batch",
+        "ready_panel_audit_receipt",
         "freeze_projection",
         "semantic_receipt_projection",
     }:
         raise _error("E-0046 input authority fields drifted")
     if not same_typed_json_v1(authority["finalized_v3_survey"], _finalized_authority_projection()):
         raise _error("E-0046 finalized V3 survey authority drifted")
-    selection = panel_v1._validate_selection_projection_shape_v1(authority["panel_selection"])
+    selection = _validate_exact_blocked_panel_selection(authority["panel_selection"])
     slots = selection["slots"]
-    if selection["panel_state"] != panel_v1.READY_PANEL or len(slots) != 8:
-        raise _error("E-0046 panel selection slots drifted")
-    for slot in slots:
-        expected_page, expected_sha = panel_v1.EXPECTED_LOCATORS[slot["bank_code"]]
-        if slot["physical_page"] != expected_page or slot["source_pdf_sha256"] != expected_sha:
-            raise _error("E-0046 fixed eight-source locator set drifted")
+    ready_audit = ready_v1._validate_audit_receipt(authority["ready_panel_audit_receipt"])
+    ready_batch = ready_v1._validate_anonymous_shape(authority["ready_anonymous_batch"])
+    batch_material = canonical_clone_v1(ready_batch)
+    batch_id = batch_material.pop("batch_id")
+    expected_batch_id = "lm8brpv1:batch:" + canonical_json_sha256_v1(
+        {
+            "anonymous_projection": batch_material,
+            "audit_id": ready_audit["audit_id"],
+        }
+    )
+    if (
+        not same_typed_json_v1(ready_audit["panel_selection_projection"], selection)
+        or ready_audit["line_count_vector"] != ready_batch["line_count_vector"]
+        or ready_audit["sample_count"] != ready_batch["sample_count"]
+        or batch_id != expected_batch_id
+    ):
+        raise _error("E-0046 blocked-selection to READY-panel lineage drifted")
     freeze = freezer_v3._validate_projection(authority["freeze_projection"], ARTIFACT_ROOT)
     receipt = _validate_receipt_projection(authority["semantic_receipt_projection"])
     if (
@@ -652,6 +688,15 @@ def _validate_sweep_shape(value: Any) -> dict[str, Any]:
         candidate = schema_v1._validate_payload(trial["schema_candidate"])
         disposition = trial["provisional_disposition"]
         ready_batch_ids.add(binding["ready_batch_id"])
+        audit_slot = ready_audit["slots"][ordinal - 1]
+        source_axis = [
+            {
+                "canonical_bbox_mpt": sample["source_atom"]["canonical_bbox_mpt"],
+                "pixel_bbox": sample["source_bbox_raw_pixels"],
+                "source_atom_id": sample["source_atom"]["source_atom_id"],
+            }
+            for sample in binding["samples"]
+        ]
         if (
             type(observation) is not dict
             or observation.get("family_id") != LOAN_MATURITY_BUCKETS_SPEC_V1.family_id
@@ -668,9 +713,21 @@ def _validate_sweep_shape(value: Any) -> dict[str, Any]:
             or binding["source_projection_sha256"] != canonical_json_sha256_v1(source)
             or binding["page_ordinal"] != ordinal
             or binding["binding_mode"] != expected_mode
+            or binding["ready_batch_id"] != ready_batch["batch_id"]
             or binding["freeze_id"] != freeze["freeze_id"]
             or binding["semantic_receipt_id"] != receipt["receipt_id"]
             or binding["metrics"]["ready_line_count"] != expected_line_count
+            or audit_slot["bank_code"] != bank
+            or audit_slot["source_pdf_sha256"] != slot["source_pdf_sha256"]
+            or audit_slot["physical_page"] != slot["physical_page"]
+            or audit_slot["line_count"] != expected_line_count
+            or audit_slot["render_sha256"] != binding["page_source_binding"]["ready_render_sha256"]
+            or audit_slot["line_axis_sha256"]
+            != canonical_json_sha256_v1(
+                [sample["source_bbox_raw_pixels"] for sample in binding["samples"]]
+            )
+            or binding["page_source_binding"]["bound_line_axis_sha256"]
+            != canonical_json_sha256_v1(source_axis)
             or type(disposition) is not dict
             or set(disposition) != _PROVISIONAL_DISPOSITION_FIELDS
             or disposition["binding_mode"] != binding["binding_mode"]
