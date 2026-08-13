@@ -1,0 +1,114 @@
+{
+  "dataset_role": "CALIBRATION",
+  "design_checkpoint_git_commit": "5fd750ff986e38d81dabec21615751f845a0d832",
+  "format_version": "MULTIBANK_TABLE_STRUCTURE_SOURCE_PANEL_V1",
+  "padding_pixels": 4,
+  "samples": [
+    {
+      "expected_source_line_count": 53,
+      "line_index_range_inclusive": [37, 51],
+      "render_ref": {
+        "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/43/43067bf4cb05b4ea8c7b526111bc170a3ef969f7aa79fd59a4f036201947772e.png",
+        "sha256": "43067bf4cb05b4ea8c7b526111bc170a3ef969f7aa79fd59a4f036201947772e",
+        "size_bytes": 932776
+      },
+      "result_ref": {
+        "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/f6/f66ec66cf70b85c07c877881daf7d207dec7b754efbcafc1c88507962b77a82b.json",
+        "sha256": "f66ec66cf70b85c07c877881daf7d207dec7b754efbcafc1c88507962b77a82b",
+        "size_bytes": 264475
+      },
+      "sample_id": "table-0001"
+    },
+    {
+      "expected_source_line_count": 62,
+      "line_index_range_inclusive": [23, 43],
+      "render_ref": {
+        "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/ce/ce1ffec996bb927bf2ce4b8a00b30202f189b05008de1914c2227508a2f05294.png",
+        "sha256": "ce1ffec996bb927bf2ce4b8a00b30202f189b05008de1914c2227508a2f05294",
+        "size_bytes": 58209
+      },
+      "result_ref": {
+        "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/67/67da86feb9886f8e5809065463595032ff5396b2dbdf118870830f4aa8720a5d.json",
+        "sha256": "67da86feb9886f8e5809065463595032ff5396b2dbdf118870830f4aa8720a5d",
+        "size_bytes": 219093
+      },
+      "sample_id": "table-0002"
+    },
+    {
+      "expected_source_line_count": 62,
+      "line_index_range_inclusive": [46, 60],
+      "render_ref": {
+        "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/ce/ce1ffec996bb927bf2ce4b8a00b30202f189b05008de1914c2227508a2f05294.png",
+        "sha256": "ce1ffec996bb927bf2ce4b8a00b30202f189b05008de1914c2227508a2f05294",
+        "size_bytes": 58209
+      },
+      "result_ref": {
+        "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/67/67da86feb9886f8e5809065463595032ff5396b2dbdf118870830f4aa8720a5d.json",
+        "sha256": "67da86feb9886f8e5809065463595032ff5396b2dbdf118870830f4aa8720a5d",
+        "size_bytes": 219093
+      },
+      "sample_id": "table-0003"
+    },
+    {
+      "expected_source_line_count": 48,
+      "line_index_range_inclusive": [33, 45],
+      "render_ref": {
+        "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/f2/f2f9da5138c26763a144b9f0907b6456604a91623a97806074a10a26ce2fdf3f.png",
+        "sha256": "f2f9da5138c26763a144b9f0907b6456604a91623a97806074a10a26ce2fdf3f",
+        "size_bytes": 1147722
+      },
+      "result_ref": {
+        "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/e1/e110fa22e5fdc6d023bc1a447c63d9ddd3e8dacc6fcfd4844a235ae4066332f7.json",
+        "sha256": "e110fa22e5fdc6d023bc1a447c63d9ddd3e8dacc6fcfd4844a235ae4066332f7",
+        "size_bytes": 191215
+      },
+      "sample_id": "table-0004"
+    },
+    {
+      "expected_source_line_count": 125,
+      "line_index_range_inclusive": [9, 121],
+      "render_ref": {
+        "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/64/64165a44555ff64543880632dc2106b498517f3382550a25541a07914133aad5.png",
+        "sha256": "64165a44555ff64543880632dc2106b498517f3382550a25541a07914133aad5",
+        "size_bytes": 1804451
+      },
+      "result_ref": {
+        "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/ee/ee9428ce59f9eab94e5f4dda22e987efd22a6a08b8df4bec025f95d0908df131.json",
+        "sha256": "ee9428ce59f9eab94e5f4dda22e987efd22a6a08b8df4bec025f95d0908df131",
+        "size_bytes": 398673
+      },
+      "sample_id": "table-0005"
+    },
+    {
+      "expected_source_line_count": 72,
+      "line_index_range_inclusive": [7, 31],
+      "render_ref": {
+        "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/51/518e5cdfaef0e838a00f225087f62a7d9e8df331011fb8e2d7afc94b2518621a.png",
+        "sha256": "518e5cdfaef0e838a00f225087f62a7d9e8df331011fb8e2d7afc94b2518621a",
+        "size_bytes": 1559842
+      },
+      "result_ref": {
+        "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/5f/5f4ba1ab7dc523570579fdee2354a2ffb53ceae8c0a706186dfe3c2fcc6ff41d.json",
+        "sha256": "5f4ba1ab7dc523570579fdee2354a2ffb53ceae8c0a706186dfe3c2fcc6ff41d",
+        "size_bytes": 370396
+      },
+      "sample_id": "table-0006"
+    },
+    {
+      "expected_source_line_count": 88,
+      "line_index_range_inclusive": [5, 25],
+      "render_ref": {
+        "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/b8/b85de39b03a481ee0eb7303b552a72b037401d3d564850a24c64326e679a2b04.png",
+        "sha256": "b85de39b03a481ee0eb7303b552a72b037401d3d564850a24c64326e679a2b04",
+        "size_bytes": 171140
+      },
+      "result_ref": {
+        "path": "output/development/bank-corpus-wave-1-role-b-page-reader-v1/full-v3/objects/sha256/d6/d69830fb760a4d45423a6e276c456d6e5dac048b6f7ea5a17904679042c5b7f8.json",
+        "sha256": "d69830fb760a4d45423a6e276c456d6e5dac048b6f7ea5a17904679042c5b7f8",
+        "size_bytes": 369660
+      },
+      "sample_id": "table-0007"
+    }
+  ],
+  "state": "FROZEN_SOURCE_SELECTION_BEFORE_STRUCTURE_MODEL_ACCESS"
+}
