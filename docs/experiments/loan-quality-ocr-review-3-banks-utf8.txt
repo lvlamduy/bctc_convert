@@ -1,0 +1,182 @@
+KẾT QUẢ OCR CỤM “CHẤT LƯỢNG NỢ” — 3 NGÂN HÀNG
+Ngày xuất: 2026-08-13
+Mã hóa: UTF-8, không BOM
+
+MỤC ĐÍCH
+File này dành cho việc kiểm tra trực tiếp lỗi OCR tiếng Việt. Nội dung trong các
+khối “OCR NGUỒN” và “VIETOCR” là nguyên văn đầu ra của công cụ, không sửa dấu,
+không normalize và không thay bằng nhãn kỳ vọng.
+
+CÔNG CỤ
+1. OCR nguồn chính: PP-OCRv6 trong Reader V3 của project.
+   - Route: DOMINANT_RASTER_OCR.
+   - Các dòng dưới đây có score kind PP_OCRV6_LINE_RECOGNITION_SCORE.
+   - Đây là source text hiện đang được Source Evidence Projection V2 giữ nguyên.
+
+2. OCR challenger: VietOCR 0.3.13, VGG Transformer (vgg19_bn_transformer).
+   - GPU: NVIDIA GeForce RTX 4090, compute capability 8.9.
+   - Torch: 2.12.0+cu130; CUDA build: 13.0.
+   - Beam search: false; reference text không được đưa vào decoder.
+   - VietOCR chỉ được chạy trên các crop nhãn; ngày, đơn vị và số liệu không được
+     đưa vào VietOCR để tránh trao authority số/kỳ/đơn vị cho semantic reader.
+   - BVB và CTG có kết quả VietOCR trong canary hiện tại; MBB chưa chạy VietOCR.
+
+======================================================================
+1. BVB — NGÂN HÀNG TMCP BẢN VIỆT — TRANG VẬT LÝ 25
+======================================================================
+
+Tài liệu: BCTC Hợp nhất quý 2 năm 2026.pdf
+Kỳ bảng: 30/06/2026 và 31/12/2025
+
+Source projection:
+ssv2:page:60c2d28daa89f9f37eebe303770b62bb31ea26da2d2cfb5571d779783eb71ddd
+
+OCR NGUỒN — PP-OCRv6 / Reader V3 — NGUYÊN VĂN
+
+L006  Phân tích cht lưng n cho vay:
+L007  30/06/2026
+L008  31/12/2025
+L009  Triu VND
+L010  Triu VND
+L011  Nhóm 1 - N đù tiêu chun
+L012  79.595.127
+L013  74.459.799
+L014  Nhóm 2 - N cn chú ý
+L015  1.038.266
+L016  816.953
+L017  Nhóm 3 - N dui tiêu chun
+L018  432.339
+L019  280.810
+L020  Nhóm 4 - N nghi ngò
+L021  523.665
+L022  395.028
+L023  Nhóm 5 - N có khà năng mt vn
+L024  1.730.121
+L025  1.665.312
+L026  Các khon n ch x lý đã có tài sn xit n, gán n và n
+L027  65.559
+L028  70.319
+L029  tồn đng có tài sn bo đm
+L030  83.385.077
+L031  77.688.221
+
+VIETOCR 0.3.13 / VGG TRANSFORMER — NGUYÊN VĂN RAW PREDICTION
+
+page-0001-line-006  Phân tích chất lượng nợ cho vay:
+page-0001-line-011  Nhóm 1 - Nợ đủ tiêu chuẩn
+page-0001-line-014  Nhóm 2 - Nợ cần chú ý
+page-0001-line-017  Nhóm 3 - Nợ dưới tiêu chuẩn
+page-0001-line-020  Nhóm 4 - Nợ nghi ngờ
+page-0001-line-023  Nhóm 5 - Nợ có khả năng mất vốn
+page-0001-line-026  Các khoản nợ chờ xử lý đã có tài sản xiết nợ, gán nợ và nợ
+page-0001-line-029  tồn đọng có tài sản bảo đảm
+
+Ghi chú phạm vi: hai dòng cuối là một nhãn trình bày bị wrap qua hai dòng nguồn.
+Không ghép hoặc sửa chúng trong phần nguyên văn ở trên.
+
+======================================================================
+2. CTG — VIETINBANK — TRANG VẬT LÝ 39
+======================================================================
+
+Tài liệu: BCTC Hợp nhất quý 2 năm 2026.pdf
+Kỳ bảng: 30/06/2026 và 31/12/2025
+
+Source projection:
+ssv2:page:60e3ba60b5b1d71993cc07fa130620e8703ec8a2cd63c93e0468730c14f194e2
+
+OCR NGUỒN — PP-OCRv6 / Reader V3 — NGUYÊN VĂN
+
+L004  3.1 Phân tich chát lung n cho vay
+L005  30/06/2026
+L006  31/12/2025
+L007  triêu đồng
+L008  triêu đồng
+L009  N đ tiêu chun
+L010  2.048.064.777
+L011  1.953.010.761
+L012  N cn chú 
+L013  19.563.795
+L014  17.345.911
+L015  N dưi tiêu chun
+L016  5.005.050
+L017  1.490.975
+L018  N nghi ngò
+L019  4.463.609
+L020  578.479
+L021  N có kh năng mt vn
+L022  15.610.527
+L023  19.846.742
+L024  2.092.707.758
+L025  1.992.272.868
+
+VIETOCR 0.3.13 / VGG TRANSFORMER — NGUYÊN VĂN RAW PREDICTION
+
+page-0003-line-004  3.1 Phân tích chất lượng nợ cho vay
+page-0003-line-009  Nợ đủ tiêu chuẩn
+page-0003-line-012  Nợ cần chú ý
+page-0003-line-015  Nợ dưới tiêu chuẩn
+page-0003-line-018  Nợ nghi ngờ
+page-0003-line-021  Nợ có khả năng mất vốn
+
+======================================================================
+3. MBB — NGÂN HÀNG TMCP QUÂN ĐỘI — TRANG VẬT LÝ 31
+======================================================================
+
+Tài liệu: BCTC Hợp nhất quý 2 năm 2026.pdf
+Kỳ bảng: 30/06/2026 và 31/12/2025
+
+Source projection:
+ssv2:page:7e38abc2d54306b31c390914133eca241f090b49cfa48042fc778fecc69db0b0
+
+OCR NGUỒN — PP-OCRv6 / Reader V3 — NGUYÊN VĂN
+
+L059  Phân tích cht lung n cho vay:
+L060  30/06/2026
+L061  31/12/2025
+L062  Triu đồng
+L063  Triu đồng
+L064  Dư n cho vay
+L065  N đ tiêu chun
+L066  1.197.767.532
+L067  1.059.781.834
+L068  + Trong đó các khon cho vay ti MBS
+L069  16.828.054
+L070  15.040.585
+L071  N cn chú 
+L072  11.989.743
+L073  10.210.040
+L074  N dưi tiêu chun
+L075  4.622.128
+L076  3.276.216
+L077  N nghi ngò
+L078  4.428.065
+L079  4.330.016
+L080  N có khă năng mt vn
+L081  8.747.009
+L082  6.421.264
+L083  1.227.554.477
+L084  1.084.019.370
+
+VIETOCR
+
+CHƯA CHẠY VIETOCR CHO MBB TRANG 31.
+Không có transcript VietOCR nào được suy diễn hoặc tự điền vào file này.
+
+======================================================================
+ĐỊNH DANH ARTIFACT VIETOCR ĐÃ DÙNG CHO BVB VÀ CTG
+======================================================================
+
+OCR result SHA-256:
+0f421e9a16d521ec5ed7267ecd94aa0e1372638908f75b0320481461a3d025a7
+
+Run manifest SHA-256:
+37d402d3ff6eed99c8c276b97664263f79c87ff05f4a9ec0a92001aba872448e
+
+Model weights SHA-256:
+380512193a8b6cbf6fad80deacdc9b6939d10d473d199892fc6408d13775ea59
+
+LƯU Ý KHI KIỂM TRA
+- PP-OCRv6 là bằng chứng OCR nguồn hiện tại; lỗi dấu/ký tự của nó được giữ nguyên.
+- VietOCR là đề xuất đọc nhãn độc lập, không phải source truth tự động.
+- Các con số trong bảng đều đến từ PP-OCRv6/V3, không phải VietOCR.
+- File không chứa nhãn kỳ vọng hay kết quả sửa thủ công.
