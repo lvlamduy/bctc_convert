@@ -266,7 +266,8 @@ def _build_panel(root: Path) -> dict[str, Any]:
                     "repo_id": "microsoft/table-transformer-structure-recognition-v1.1-all",
                     "revision": "7587a7ef111d9dcbf8ac695f1376ab7014340a0c",
                     "license": "MIT",
-                    "loaded_parameter_count": 28_847_819,
+                    "loaded_parameter_count": 28_828_619,
+                    "loaded_state_element_count": 28_847_819,
                     "artifacts": [
                         {
                             "key": "config_json",
@@ -1195,6 +1196,19 @@ def test_rejects_rehashed_run_when_pinned_safety_or_processor_drifts(tmp_path: P
     )
     with pytest.raises(TatrStructureCalibrationError, match="processor, or runner identity"):
         _score(tmp_path / "processor", panel)
+
+    panel = _build_panel(tmp_path / "parameter-count")
+    run = json.loads(panel["run_path"].read_text(encoding="utf-8"))
+    run["runtime"]["model"]["loaded_parameter_count"] = 28_847_819
+    run["runtime"]["model"]["loaded_state_element_count"] = 28_828_619
+    _write_json(panel["run_path"], run)
+    panel["run"] = TatrRunPin(
+        sample_id="table-0001",
+        result=panel["run"].result,
+        run_manifest=_pin(panel["run_path"]),
+    )
+    with pytest.raises(TatrStructureCalibrationError, match="checkpoint identity"):
+        _score(tmp_path / "parameter-count", panel)
 
 
 def test_rejects_clean_descendant_run_commit_with_modified_runner_then_restored_worktree(

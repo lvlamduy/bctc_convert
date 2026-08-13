@@ -51,7 +51,8 @@ TATR_HELPER_SHA256 = "165940c21afcf8a3d588772f503e20a6237f9e8664b43ec4b98db92221
 TATR_RUNTIME_MANIFEST_PATH = "config/models/gpu-runtime.toml"
 TATR_RUNTIME_MANIFEST_SHA256 = "9141e0a4177f66f152bdb9eecbbfdbdd3add566dbabb81b43207a018c1ba18d8"
 TATR_QUERY_COUNT = 125
-TATR_PARAMETER_COUNT = 28_847_819
+TATR_LOADED_PARAMETER_COUNT = 28_828_619
+TATR_LOADED_STATE_ELEMENT_COUNT = 28_847_819
 TATR_ARTIFACT_IDENTITIES = {
     "config_json": {
         "path": "config.json",
@@ -800,7 +801,8 @@ def _verify_tatr_execution_identity(
         or runtime_model.get("repo_id") != TATR_REPO_ID
         or runtime_model.get("revision") != TATR_REVISION
         or runtime_model.get("license") != "MIT"
-        or runtime_model.get("loaded_parameter_count") != TATR_PARAMETER_COUNT
+        or runtime_model.get("loaded_parameter_count") != TATR_LOADED_PARAMETER_COUNT
+        or runtime_model.get("loaded_state_element_count") != TATR_LOADED_STATE_ELEMENT_COUNT
     ):
         raise _error(f"{sample_id} TATR checkpoint identity is invalid")
     raw_artifacts = runtime_model.get("artifacts")
