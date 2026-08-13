@@ -1,5 +1,9 @@
 # Project goal
 
+The standing execution and prioritization authority is
+[`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md). Read and
+apply it on every execution turn; it supersedes older queues when they conflict.
+
 ## One end state
 
 Input: one or more scanned, born-digital, or mixed Vietnamese bank financial-report PDFs.

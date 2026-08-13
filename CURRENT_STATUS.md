@@ -1,6 +1,109 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-08-13T09:40:00+07:00 (UTC+7 fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
+Updated: 2026-08-13T10:16:00+07:00 (UTC+7 fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
+
+Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
+The detailed historical receipts below remain evidence, but that directive supersedes
+older queue priorities where they conflict.
+
+## Executive handoff — chiến lược cũ đã làm gì và đang ở đâu
+
+### Chiến lược đã thực hiện
+
+Từ đầu đến snapshot này, project đã đi qua bốn pha chính:
+
+1. **Khôi phục và đóng denominator source evidence.** Project chuyển từ các baseline
+   MBB/VPB đơn lẻ sang một Wave 1 breadth-first gồm 27 ngân hàng, chọn một filing đầy
+   đủ mỗi ngân hàng, rồi xây/freeze Reader V3 cho toàn bộ 1,449 trang. V1 và V2 được
+   giữ nguyên như incident evidence; V3 sửa lỗi generic về native visual order, hoàn
+   tất mọi request và được checkpoint/restore-test. Chiến thuật của pha này ưu tiên
+   no-drop accounting, provenance và fail-closed recovery trước structural inference.
+2. **Phủ candidate denominator trước khi có semantic acceptance.** Trên V3, project
+   tạo source-first inventory, blind statement hypotheses, page graphs và toàn bộ
+   candidate TABLE/ROW/CELL/AXIS; sau đó đo mọi cặp trang kề nhau. Cách làm này cho
+   một denominator đầy đủ để nghiên cứu và chỉ ra nơi current graph miss/overmerge,
+   nhưng cố ý không gọi candidate là accepted structure.
+3. **Chuyển từ corpus replay sang research-first theo family.** Một retry multi-hour
+   đã được dừng sạch ở 331/1,449 trang vì không có information gain đủ rõ. Từ đó,
+   workflow chuyển sang mở pixel PDF thật cùng OCR/native text, boxes, current graph
+   và neighboring pages; xây positive + matched-control panels; so sánh label-only,
+   owner/axis, sibling/topology, continuation và accounting-closure hypotheses xuyên
+   ngân hàng. Role A chỉ được dùng sau freeze như diagnostic machine reference.
+4. **Thử bounded end-to-end và prospective falsification.** MBB E-0041 và các VPB
+   workbooks chứng minh rằng mapping/validation/Excel/provenance có thể chạy trên
+   bounded development inputs đã accepted, nhưng không chứng minh Wave-1 scalability.
+   Các batch net-interest 244/286/final-181 sau đó được dùng để kiểm tra blind
+   discovery/localization/schema contracts; chúng chủ yếu falsify cơ chế hiện tại,
+   không được coi là production progress.
+
+### Tiến độ định lượng đã đạt
+
+| Lớp | Trạng thái đã đạt |
+|---|---|
+| Source corpus | 27 Wave-1 documents / 1,449 pages được khóa và xác thực |
+| Reader V3 | 1,449/1,449 requests có disposition: 1,390 complete + 59 terminal; V3 frozen |
+| Source evidence | 1,454,160 atoms được account; OCR/native text, word/line boxes, geometry và page identity có provenance |
+| Blind statement discovery | 24 ranked sequence hypotheses trên 13 documents; 14 documents chưa có complete hypothesis |
+| Prestructural candidates | 970 TABLE + 28,247 ROW + 295,334 CELL/VALUE_POSITION + 9,517 AXIS/DIMENSION trên 859 pages |
+| Cross-page denominator | 1,422/1,422 adjacent pairs được account; 899 fragment relations và 122,573 axis-distance measurements |
+| Role-A diagnostic | 139 Level-1 machine-reference blocks; không phải human accuracy và không feed ngược vào discovery |
+| Schema/export capability | BASE_SCHEMA 1,593; UNIVERSAL_SCHEMA 1,935; MBB/VPB bounded development Excel tồn tại và có provenance |
+| Wave-1 accepted structure | **STATEMENT=0, TABLE=0, LOGICAL_ROW=0, VALUE_POSITION=0, AXIS=0, HIERARCHY=0** |
+| Wave-1 canonical/Excel | **canonical mapping=0 documents; mapped Excel=0 documents** |
+
+### Những gì family research đã học được
+
+| Family / relation | Evidence và maturity hiện tại | Quyết định bàn giao |
+|---|---|---|
+| `LOAN_QUALITY_CLASSIFICATION` | 37 pages/15 banks discovery; 16 pages/8-bank independent panel; prospective H2b trên 31 regions/8 wholly fresh banks cho 6 TP, 23 TN, 0 FP và 2 safe abstentions. Stable fingerprint là customer-loan owner + ordered five grades + comparative monetary axes + same-population total; unit inheritance là gap còn lại | **READY_FOR_BOUNDED_ACCEPTANCE** cho strict subset có local hoặc typed-safe unit; inherited-unit cases giữ unresolved |
+| `LOAN_MATURITY_BUCKETS` | Hai cross-bank panels: 14 pages/7 banks và 15 pages/8 banks. Owner+comparative-axis H2 phân biệt tổng cộng 12 positives với 17 controls, không FP/FN trên selected panels | **CROSS_BANK_SUPPORTED / development acceptance candidate**; hard-control lock chưa đủ durable để claim prospective authority |
+| `CUSTOMER_LOAN_BORROWER_OR_ECONOMIC_SECTOR_BREAKDOWN` | Whole-file screen 453 pages/8 banks; locked selected panel 9 positives +21 controls, H2/H3 đạt 9 TP/21 TN/0 FP/FN; monetary, percentage và net-loan closures đều corroborate | **CROSS_BANK_SUPPORTED**, chưa prospective-validated vì không còn provably unopened positive bank trong Wave 1 |
+| `PROVISION_MOVEMENT_ROLLFORWARD` | PM2 giữ 6/6 positives +3/3 hard controls, gồm native/rotated/cross-page evidence; opening/movements/closing topology đã rõ | **CROSS_BANK_SUPPORTED**, nhưng continuation và non-loan portability chưa đủ để acceptance rộng |
+| `LIQUIDITY_RISK_MATURITY_GAP` | 24 pages/15 banks; orientation+typed-neighbor graph cho 9 TP/14 TN/0 FP/1 FN. Repricing matrix là hard control gần giống topology | **HYPOTHESIS/CROSS_BANK_SUPPORTED**, thiếu true split-row continuation và còn một material reader-terminal miss |
+| `UNIT_SCOPE` | U3b trên 18 regions/6 banks cho 14 TP/3 TN/0 FP/1 FN, nhưng owner-edge subtype còn sai/under-locked và repeated-page-header chỉ replicate ở một bank | **HYPOTHESIS**, chưa Tier-2/acceptance; value correctness và provenance-owner correctness phải tách KPI |
+| Statement/page/table continuation | Visual panels chứng minh `(tiếp theo)`, same note và geometry đều không đủ; cần typed document/note/table/row continuation + reset evidence. H3 boundary có 26/27 combined nhưng lỗi holdout generic chưa replicate đủ banks | **HYPOTHESIS**, chưa production candidate |
+| Deposit / securities | Cross-bank local topology đã được mô tả với positives và controls, nhưng visual scores là retrospective/conceptual và selection-role-informed | **DEVELOPMENT DISCOVERY**, không phải executable/fresh validation |
+| Net interest | Exact member-page recurrence có thật, nhưng final-181 H2C vẫn graph TP=0/FP=2/FN=4, component FN=72; dense boundary và component submission thất bại | **REJECTED FOR PRODUCTION/BROAD REPLAY**; giữ làm failure archetype evidence |
+
+Các family trên lặp lại cùng một tập primitives: `OWNER_RESOLUTION`,
+`PARENT_CHILD_EDGE`, `ORDERED_SIBLING_SET`, `AXIS_ROLE`,
+`COMPARATIVE_PERIOD_AXIS`, `UNIT_SCOPE_EDGE`, `SAME_POPULATION_CLOSURE`,
+`TOTAL_SUBTOTAL`, `NEIGHBOR_RELATION`, `TABLE_CONTINUATION`, `ROW_FRONTIER`
+và `STRUCTURAL_RESET`. Tuy nhiên repo chưa có Generic Local Accounting Graph
+production engine hoặc accepted-graph authority; `structural_graph_contracts_v1`
+vẫn là candidate-only và legacy continuation scoring không phù hợp với các
+counterexamples mới.
+
+### Kết luận trung thực về chiến lược cũ
+
+Chiến lược cũ **thành công** ở việc đóng source denominator, giữ provenance,
+phân biệt reader failure với structural failure, falsify text-only/geometry-only
+rules và phát hiện các local-graph invariants xuyên ngân hàng. Nó cũng chứng minh
+mapping/Excel không phải phần hoàn toàn chưa tồn tại.
+
+Chiến lược cũ **chưa hoàn thành bottleneck chính**: lượng candidate rất lớn chưa
+được chuyển thành accepted TABLE/ROW/CELL/AXIS/HIERARCHY; chưa có Generic Local
+Accounting Graph dùng chung; chưa có Wave-1 canonical mapping/Excel; chưa có broad
+period/scope/source holdout hoặc unseen-filing accuracy. Các artifact/test/hash là
+protection evidence, không thay thế các KPI này.
+
+### Queue bàn giao theo authority mới
+
+Đã bỏ khỏi critical path: Reader V4/V3.1, deferred all-1,422 publisher, full replay
+mặc định, schema/export adapter trước accepted structure, tiếp tục tune net-interest
+trên các sealed batches, và mở thêm family panels chỉ để tăng sample khi abstraction
+đã ổn định. V3 và toàn bộ sealed results được giữ nguyên.
+
+Critical path hiện tại là:
+
+1. kiểm tra trực tiếp real PDF evidence của các family mạnh nhất và matched controls;
+2. rút `Generic Local Accounting Graph v1` từ shared primitives, không route bank/page;
+3. dùng loan quality strict subset làm bounded acceptance đầu tiên, với loan maturity
+   là family thứ hai để buộc engine phải generic;
+4. phát hành riêng accepted TABLE/LOGICAL_ROW/AXIS/HIERARCHY counts, giữ ambiguous
+   unit/continuation cases unresolved;
+5. chỉ sau đó chạy bounded multi-bank vertical slice tới canonical mapping,
+   accounting validation và Excel; Tier 3 chỉ khi Tier 1/Tier 2 có measurable benefit.
 
 ## 0. New-VPS recovery audit
 
