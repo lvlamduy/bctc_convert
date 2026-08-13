@@ -1,0 +1,466 @@
+{
+  "access_contract": {
+    "authenticated_source_pdf_and_render_inspected": true,
+    "final_status_supplied_by_reviewer": false,
+    "frozen_request_opened": true,
+    "history_or_mongodb_opened": false,
+    "holdout_answer_opened": false,
+    "human_review_answer_opened": false,
+    "role_a_opened": false
+  },
+  "check_results": [
+    {
+      "check_id": "SOURCE_BYTES_AND_PAGE",
+      "claim_id": null,
+      "evidence_refs": [
+        "3a66122194e4dd2e0ca18d584beeacb81279cf71e276eface59d17e72813dcfd",
+        "43067bf4cb05b4ea8c7b526111bc170a3ef969f7aa79fd59a4f036201947772e"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: SOURCE_BYTES_AND_PAGE.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "AUTHENTICATED_PIXEL_BINDING",
+      "claim_id": null,
+      "evidence_refs": [
+        "cimvrqv1:request:db05d26076a0ea1845d1da914d902415074be8334f3934eab3576e726ce1324e"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: AUTHENTICATED_PIXEL_BINDING.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "ROLE_A_FIREWALL",
+      "claim_id": null,
+      "evidence_refs": [
+        "cimvrqv1:request:db05d26076a0ea1845d1da914d902415074be8334f3934eab3576e726ce1324e"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: ROLE_A_FIREWALL.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "STATEMENT_TYPE_SCOPE",
+      "claim_id": null,
+      "evidence_refs": [
+        "cimvrqv1:request:db05d26076a0ea1845d1da914d902415074be8334f3934eab3576e726ce1324e"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: STATEMENT_TYPE_SCOPE.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "OWNER_BRANCH_LOCALITY",
+      "claim_id": null,
+      "evidence_refs": [
+        "cimvrqv1:request:db05d26076a0ea1845d1da914d902415074be8334f3934eab3576e726ce1324e"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: OWNER_BRANCH_LOCALITY.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "AXIS_PERIOD_IDENTITY_AND_ORDER",
+      "claim_id": null,
+      "evidence_refs": [
+        "cimvrqv1:request:db05d26076a0ea1845d1da914d902415074be8334f3934eab3576e726ce1324e"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: AXIS_PERIOD_IDENTITY_AND_ORDER.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "PER_AXIS_UNIT_SCOPE",
+      "claim_id": null,
+      "evidence_refs": [
+        "cimvrqv1:request:db05d26076a0ea1845d1da914d902415074be8334f3934eab3576e726ce1324e"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: PER_AXIS_UNIT_SCOPE.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "OPTIONAL_ROW_POPULATION_BOUNDARY",
+      "claim_id": null,
+      "evidence_refs": [
+        "cimvrqv1:request:db05d26076a0ea1845d1da914d902415074be8334f3934eab3576e726ce1324e"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: OPTIONAL_ROW_POPULATION_BOUNDARY.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "ARITHMETIC_CLOSURE",
+      "claim_id": null,
+      "evidence_refs": [
+        "cimvrqv1:request:db05d26076a0ea1845d1da914d902415074be8334f3934eab3576e726ce1324e"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: ARITHMETIC_CLOSURE.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "PROVENANCE_COMPLETENESS",
+      "claim_id": null,
+      "evidence_refs": [
+        "cimvrqv1:request:db05d26076a0ea1845d1da914d902415074be8334f3934eab3576e726ce1324e"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: PROVENANCE_COMPLETENESS.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "ROW_LABEL_TYPED_ROLE",
+      "claim_id": "cimvrqv1:claim:14995730f6a6b2107e2708052467900a6b73fb7ea2de632a051d7a600e9094a4",
+      "evidence_refs": [
+        "cimvrqv1:claim:14995730f6a6b2107e2708052467900a6b73fb7ea2de632a051d7a600e9094a4"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: ROW_LABEL_TYPED_ROLE.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "ROW_VALUE_GEOMETRY",
+      "claim_id": "cimvrqv1:claim:14995730f6a6b2107e2708052467900a6b73fb7ea2de632a051d7a600e9094a4",
+      "evidence_refs": [
+        "cimvrqv1:claim:14995730f6a6b2107e2708052467900a6b73fb7ea2de632a051d7a600e9094a4"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: ROW_VALUE_GEOMETRY.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "NUMERIC_DIGIT_AND_SIGN_AGREEMENT",
+      "claim_id": "cimvrqv1:claim:14995730f6a6b2107e2708052467900a6b73fb7ea2de632a051d7a600e9094a4",
+      "evidence_refs": [
+        "cimvrqv1:claim:14995730f6a6b2107e2708052467900a6b73fb7ea2de632a051d7a600e9094a4"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: NUMERIC_DIGIT_AND_SIGN_AGREEMENT.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "SCHEMA_NAMESPACE_PARENT_ANCESTOR",
+      "claim_id": "cimvrqv1:claim:14995730f6a6b2107e2708052467900a6b73fb7ea2de632a051d7a600e9094a4",
+      "evidence_refs": [
+        "cimvrqv1:claim:14995730f6a6b2107e2708052467900a6b73fb7ea2de632a051d7a600e9094a4"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: SCHEMA_NAMESPACE_PARENT_ANCESTOR.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "SCHEMA_SINGLETON_AND_MAPPING_ELIGIBILITY",
+      "claim_id": "cimvrqv1:claim:14995730f6a6b2107e2708052467900a6b73fb7ea2de632a051d7a600e9094a4",
+      "evidence_refs": [
+        "cimvrqv1:claim:14995730f6a6b2107e2708052467900a6b73fb7ea2de632a051d7a600e9094a4"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: SCHEMA_SINGLETON_AND_MAPPING_ELIGIBILITY.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "SIBLING_DISPLAY_ORDER",
+      "claim_id": "cimvrqv1:claim:14995730f6a6b2107e2708052467900a6b73fb7ea2de632a051d7a600e9094a4",
+      "evidence_refs": [
+        "cimvrqv1:claim:14995730f6a6b2107e2708052467900a6b73fb7ea2de632a051d7a600e9094a4"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: SIBLING_DISPLAY_ORDER.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "NO_DUPLICATE_ROLE_OR_ID",
+      "claim_id": "cimvrqv1:claim:14995730f6a6b2107e2708052467900a6b73fb7ea2de632a051d7a600e9094a4",
+      "evidence_refs": [
+        "cimvrqv1:claim:14995730f6a6b2107e2708052467900a6b73fb7ea2de632a051d7a600e9094a4"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: NO_DUPLICATE_ROLE_OR_ID.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "ROW_LABEL_TYPED_ROLE",
+      "claim_id": "cimvrqv1:claim:379cba5d408c04bc41a9f501a41a7af48741d9e604283d900cb0cb619b68d710",
+      "evidence_refs": [
+        "cimvrqv1:claim:379cba5d408c04bc41a9f501a41a7af48741d9e604283d900cb0cb619b68d710"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: ROW_LABEL_TYPED_ROLE.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "ROW_VALUE_GEOMETRY",
+      "claim_id": "cimvrqv1:claim:379cba5d408c04bc41a9f501a41a7af48741d9e604283d900cb0cb619b68d710",
+      "evidence_refs": [
+        "cimvrqv1:claim:379cba5d408c04bc41a9f501a41a7af48741d9e604283d900cb0cb619b68d710"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: ROW_VALUE_GEOMETRY.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "NUMERIC_DIGIT_AND_SIGN_AGREEMENT",
+      "claim_id": "cimvrqv1:claim:379cba5d408c04bc41a9f501a41a7af48741d9e604283d900cb0cb619b68d710",
+      "evidence_refs": [
+        "cimvrqv1:claim:379cba5d408c04bc41a9f501a41a7af48741d9e604283d900cb0cb619b68d710"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: NUMERIC_DIGIT_AND_SIGN_AGREEMENT.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "SCHEMA_NAMESPACE_PARENT_ANCESTOR",
+      "claim_id": "cimvrqv1:claim:379cba5d408c04bc41a9f501a41a7af48741d9e604283d900cb0cb619b68d710",
+      "evidence_refs": [
+        "cimvrqv1:claim:379cba5d408c04bc41a9f501a41a7af48741d9e604283d900cb0cb619b68d710"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: SCHEMA_NAMESPACE_PARENT_ANCESTOR.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "SCHEMA_SINGLETON_AND_MAPPING_ELIGIBILITY",
+      "claim_id": "cimvrqv1:claim:379cba5d408c04bc41a9f501a41a7af48741d9e604283d900cb0cb619b68d710",
+      "evidence_refs": [
+        "cimvrqv1:claim:379cba5d408c04bc41a9f501a41a7af48741d9e604283d900cb0cb619b68d710"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: SCHEMA_SINGLETON_AND_MAPPING_ELIGIBILITY.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "SIBLING_DISPLAY_ORDER",
+      "claim_id": "cimvrqv1:claim:379cba5d408c04bc41a9f501a41a7af48741d9e604283d900cb0cb619b68d710",
+      "evidence_refs": [
+        "cimvrqv1:claim:379cba5d408c04bc41a9f501a41a7af48741d9e604283d900cb0cb619b68d710"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: SIBLING_DISPLAY_ORDER.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "NO_DUPLICATE_ROLE_OR_ID",
+      "claim_id": "cimvrqv1:claim:379cba5d408c04bc41a9f501a41a7af48741d9e604283d900cb0cb619b68d710",
+      "evidence_refs": [
+        "cimvrqv1:claim:379cba5d408c04bc41a9f501a41a7af48741d9e604283d900cb0cb619b68d710"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: NO_DUPLICATE_ROLE_OR_ID.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "ROW_LABEL_TYPED_ROLE",
+      "claim_id": "cimvrqv1:claim:5711b117cf9ad0d04fdb5a07149c894e641e077406556f998a64eb6557d5a613",
+      "evidence_refs": [
+        "cimvrqv1:claim:5711b117cf9ad0d04fdb5a07149c894e641e077406556f998a64eb6557d5a613"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: ROW_LABEL_TYPED_ROLE.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "ROW_VALUE_GEOMETRY",
+      "claim_id": "cimvrqv1:claim:5711b117cf9ad0d04fdb5a07149c894e641e077406556f998a64eb6557d5a613",
+      "evidence_refs": [
+        "cimvrqv1:claim:5711b117cf9ad0d04fdb5a07149c894e641e077406556f998a64eb6557d5a613"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: ROW_VALUE_GEOMETRY.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "NUMERIC_DIGIT_AND_SIGN_AGREEMENT",
+      "claim_id": "cimvrqv1:claim:5711b117cf9ad0d04fdb5a07149c894e641e077406556f998a64eb6557d5a613",
+      "evidence_refs": [
+        "cimvrqv1:claim:5711b117cf9ad0d04fdb5a07149c894e641e077406556f998a64eb6557d5a613"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: NUMERIC_DIGIT_AND_SIGN_AGREEMENT.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "SCHEMA_NAMESPACE_PARENT_ANCESTOR",
+      "claim_id": "cimvrqv1:claim:5711b117cf9ad0d04fdb5a07149c894e641e077406556f998a64eb6557d5a613",
+      "evidence_refs": [
+        "cimvrqv1:claim:5711b117cf9ad0d04fdb5a07149c894e641e077406556f998a64eb6557d5a613"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: SCHEMA_NAMESPACE_PARENT_ANCESTOR.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "SCHEMA_SINGLETON_AND_MAPPING_ELIGIBILITY",
+      "claim_id": "cimvrqv1:claim:5711b117cf9ad0d04fdb5a07149c894e641e077406556f998a64eb6557d5a613",
+      "evidence_refs": [
+        "cimvrqv1:claim:5711b117cf9ad0d04fdb5a07149c894e641e077406556f998a64eb6557d5a613"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: SCHEMA_SINGLETON_AND_MAPPING_ELIGIBILITY.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "SIBLING_DISPLAY_ORDER",
+      "claim_id": "cimvrqv1:claim:5711b117cf9ad0d04fdb5a07149c894e641e077406556f998a64eb6557d5a613",
+      "evidence_refs": [
+        "cimvrqv1:claim:5711b117cf9ad0d04fdb5a07149c894e641e077406556f998a64eb6557d5a613"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: SIBLING_DISPLAY_ORDER.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "NO_DUPLICATE_ROLE_OR_ID",
+      "claim_id": "cimvrqv1:claim:5711b117cf9ad0d04fdb5a07149c894e641e077406556f998a64eb6557d5a613",
+      "evidence_refs": [
+        "cimvrqv1:claim:5711b117cf9ad0d04fdb5a07149c894e641e077406556f998a64eb6557d5a613"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: NO_DUPLICATE_ROLE_OR_ID.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "ROW_VALUE_GEOMETRY",
+      "claim_id": "cimvrqv1:claim:cd759821cc3284860265e65af705d22471f760881cf37f6687c2daad05ac8271",
+      "evidence_refs": [
+        "cimvrqv1:claim:cd759821cc3284860265e65af705d22471f760881cf37f6687c2daad05ac8271"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: ROW_VALUE_GEOMETRY.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "NUMERIC_DIGIT_AND_SIGN_AGREEMENT",
+      "claim_id": "cimvrqv1:claim:cd759821cc3284860265e65af705d22471f760881cf37f6687c2daad05ac8271",
+      "evidence_refs": [
+        "cimvrqv1:claim:cd759821cc3284860265e65af705d22471f760881cf37f6687c2daad05ac8271"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: NUMERIC_DIGIT_AND_SIGN_AGREEMENT.",
+      "status": "PASS"
+    },
+    {
+      "check_id": "TOTAL_SCOPE",
+      "claim_id": "cimvrqv1:claim:cd759821cc3284860265e65af705d22471f760881cf37f6687c2daad05ac8271",
+      "evidence_refs": [
+        "cimvrqv1:claim:cd759821cc3284860265e65af705d22471f760881cf37f6687c2daad05ac8271"
+      ],
+      "falsifier_code": null,
+      "rationale": "Independent SHB page-24 source/pixel check passed: TOTAL_SCOPE.",
+      "status": "PASS"
+    }
+  ],
+  "claim_boundary": "INDEPENDENT_CODEX_PIXEL_AND_SOURCE_REVIEW_ASSERTIONS_BOUND_TO_ONE_FROZEN_REQUEST_ONLY_NO_CALLER_SET_FINAL_STATUS_NO_WHOLE_DOCUMENT_ABSENCE_CANONICALIZATION_EXPORT_OR_PRODUCTION_AUTHORITY",
+  "format_version": "CODEX_MAPPED_ITEM_SOURCE_REVIEW_V1",
+  "near_neighbour_dispositions": [
+    {
+      "disposition": "NOT_OBSERVED_IN_BOUND_SOURCE_TABLE",
+      "evidence_refs": [
+        "cimvrqv1:request:db05d26076a0ea1845d1da914d902415074be8334f3934eab3576e726ce1324e"
+      ],
+      "report_norm_id": 5747,
+      "status": "UNRESOLVED",
+      "whole_document_absence_claim": false
+    },
+    {
+      "disposition": "SCHEMA_CONTEXT_UNRESOLVED_ORPHAN_MAPPING_INELIGIBLE",
+      "evidence_refs": [
+        "cimvrqv1:request:db05d26076a0ea1845d1da914d902415074be8334f3934eab3576e726ce1324e"
+      ],
+      "report_norm_id": 1944,
+      "status": "UNRESOLVED",
+      "whole_document_absence_claim": false
+    }
+  ],
+  "pixel_readback": {
+    "axes": [
+      "30/06/2026",
+      "31/12/2025"
+    ],
+    "branch": "Phân tích dư nợ theo thời hạn gốc của khoản vay",
+    "closure_equations": [
+      {
+        "addends": [
+          "225268906",
+          "162845429",
+          "271496634"
+        ],
+        "axis_index": 0,
+        "status": "CORROBORATED",
+        "total": "659610969"
+      },
+      {
+        "addends": [
+          "215455247",
+          "156575830",
+          "242830903"
+        ],
+        "axis_index": 1,
+        "status": "CORROBORATED",
+        "total": "614861980"
+      }
+    ],
+    "owner": "CHO VAY KHÁCH HÀNG",
+    "physical_page": 24,
+    "row_order": [
+      "SHORT_TERM",
+      "MEDIUM_TERM",
+      "LONG_TERM",
+      "TOTAL"
+    ],
+    "rows": [
+      {
+        "claim_id": "cimvrqv1:claim:14995730f6a6b2107e2708052467900a6b73fb7ea2de632a051d7a600e9094a4",
+        "label": "Nợ ngắn hạn",
+        "typed_role": "SHORT_TERM",
+        "values": [
+          "225.268.906",
+          "215.455.247"
+        ]
+      },
+      {
+        "claim_id": "cimvrqv1:claim:379cba5d408c04bc41a9f501a41a7af48741d9e604283d900cb0cb619b68d710",
+        "label": "Nợ trung hạn",
+        "typed_role": "MEDIUM_TERM",
+        "values": [
+          "162.845.429",
+          "156.575.830"
+        ]
+      },
+      {
+        "claim_id": "cimvrqv1:claim:5711b117cf9ad0d04fdb5a07149c894e641e077406556f998a64eb6557d5a613",
+        "label": "Nợ dài hạn",
+        "typed_role": "LONG_TERM",
+        "values": [
+          "271.496.634",
+          "242.830.903"
+        ]
+      },
+      {
+        "claim_id": "cimvrqv1:claim:cd759821cc3284860265e65af705d22471f760881cf37f6687c2daad05ac8271",
+        "label": null,
+        "typed_role": "TOTAL",
+        "values": [
+          "659.610.969",
+          "614.861.980"
+        ]
+      }
+    ],
+    "source_pdf_sha256": "3a66122194e4dd2e0ca18d584beeacb81279cf71e276eface59d17e72813dcfd",
+    "statement_heading": "THUYẾT MINH BÁO CÁO TÀI CHÍNH HỢP NHẤT (TIẾP THEO)",
+    "target_page_render_sha256": "43067bf4cb05b4ea8c7b526111bc170a3ef969f7aa79fd59a4f036201947772e",
+    "units": [
+      "Triệu đồng",
+      "Triệu đồng"
+    ]
+  },
+  "request_id": "cimvrqv1:request:db05d26076a0ea1845d1da914d902415074be8334f3934eab3576e726ce1324e",
+  "request_sha256": "40457a3d644e3e5bc1a862786ea901993d0a82ac1a7f2377e629323d4135a993",
+  "review_id": "codexmirv1:review:8e1f41013a9d950f70f57abb9f2166585eca75659de1735dc0dd0cb7684f43b1",
+  "reviewer": {
+    "kind": "CODEX_INDEPENDENT_SOURCE_REVIEW",
+    "review_run_id": "codex-shb-page24-independent-review-20260813"
+  },
+  "state": "INDEPENDENT_CODEX_SOURCE_REVIEW_COMPLETE"
+}
