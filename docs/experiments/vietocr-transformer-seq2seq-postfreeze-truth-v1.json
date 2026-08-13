@@ -1,0 +1,677 @@
+{
+  "format_version": "VIETOCR_TRANSFORMER_SEQ2SEQ_POSTFREEZE_TRUTH_V1",
+  "state": "FROZEN_AFTER_BOTH_ARCHITECTURE_OUTPUTS",
+  "dataset_role": "DEVELOPMENT_REPLAY",
+  "claim_boundary": "Human UTF-8 transcript and family-role truth joined only after both opaque 387-LINE outputs and manifests were frozen; semantic OCR comparison only.",
+  "input_bindings": {
+    "crop_manifest_sha256": "61c31e8ab6f7c3c1572ada66f0d55de690393bfb2cdfc90749200c5543c4b820",
+    "reader_request_sha256": "f69829bfae6e61d5794ff67a582b57abe2e75a2f917098e6529ecd579819d334",
+    "transformer_result_sha256": "4277307a95738975bb720f3d5cff19b4e432e741a5052002efffcac5343197d1",
+    "transformer_run_manifest_sha256": "6e7d3a9038ba2af6c449eff4f5bfe88df6380c02b9d378f49df21b7876ab5db7",
+    "seq2seq_result_sha256": "5c21ed137774262f770a8b2b28287efb88e952e6e2e640776066cc1e5031170f",
+    "seq2seq_run_manifest_sha256": "8c6c32a2845998d28bff47ff637105f2dc5b78dc79b7fc24b1445b4e702f60fa"
+  },
+  "pages": [
+    {
+      "bank": "SHB",
+      "source_result_sha256": "f66ec66cf70b85c07c877881daf7d207dec7b754efbcafc1c88507962b77a82b"
+    },
+    {
+      "bank": "NVB",
+      "source_result_sha256": "67da86feb9886f8e5809065463595032ff5396b2dbdf118870830f4aa8720a5d"
+    },
+    {
+      "bank": "NVB",
+      "source_result_sha256": "5d4d6463594591be053cdae6eae8aa1c0bcf3b1b8b8194acb399bfc4af6714f7"
+    },
+    {
+      "bank": "BVB",
+      "source_result_sha256": "e110fa22e5fdc6d023bc1a447c63d9ddd3e8dacc6fcfd4844a235ae4066332f7"
+    },
+    {
+      "bank": "BAB",
+      "source_result_sha256": "ee9428ce59f9eab94e5f4dda22e987efd22a6a08b8df4bec025f95d0908df131"
+    }
+  ],
+  "family_matchers": [
+    {
+      "family_id": "LOAN_QUALITY_CLASSIFICATION",
+      "owner_aliases": [
+        "CHO VAY KHÁCH HÀNG",
+        "Dư nợ cho vay khách hàng"
+      ],
+      "branch_aliases": [
+        "Chất lượng nợ cho vay",
+        "Phân loại nợ cho vay",
+        "Phân tích chất lượng nợ",
+        "Phân tích chất lượng nợ cho vay",
+        "Phân tích dư nợ theo chất lượng"
+      ],
+      "ordered_children": [
+        {
+          "role": "STANDARD",
+          "aliases": ["Nợ đủ tiêu chuẩn"]
+        },
+        {
+          "role": "SPECIAL_MENTION",
+          "aliases": ["Nợ cần chú ý"]
+        },
+        {
+          "role": "SUBSTANDARD",
+          "aliases": ["Nợ dưới tiêu chuẩn"]
+        },
+        {
+          "role": "DOUBTFUL",
+          "aliases": ["Nợ nghi ngờ"]
+        },
+        {
+          "role": "LOSS",
+          "aliases": ["Nợ có khả năng mất vốn"]
+        }
+      ],
+      "unit": {
+        "canonical": "VND",
+        "multiplier": 1000000
+      }
+    },
+    {
+      "family_id": "LOAN_MATURITY_BUCKETS",
+      "owner_aliases": [
+        "CHO VAY KHÁCH HÀNG",
+        "Dư nợ cho vay khách hàng"
+      ],
+      "branch_aliases": [
+        "Phân tích theo thời hạn",
+        "Phân tích theo kỳ hạn",
+        "Phân tích dư nợ theo thời gian",
+        "Phân tích dư nợ theo thời hạn",
+        "Thời hạn cho vay",
+        "Kỳ hạn cho vay",
+        "Phân tích dư nợ theo thời hạn gốc của khoản vay",
+        "Phân tích dư nợ theo thời gian cho vay gốc"
+      ],
+      "ordered_children": [
+        {
+          "role": "SHORT_TERM",
+          "aliases": ["Nợ ngắn hạn"]
+        },
+        {
+          "role": "MEDIUM_TERM",
+          "aliases": ["Nợ trung hạn"]
+        },
+        {
+          "role": "LONG_TERM",
+          "aliases": ["Nợ dài hạn"]
+        }
+      ],
+      "unit": {
+        "canonical": "VND",
+        "multiplier": 1000000
+      }
+    }
+  ],
+  "samples": [
+    {
+      "truth_id": "SHB24_MATURITY_OWNER",
+      "source_result_sha256": "f66ec66cf70b85c07c877881daf7d207dec7b754efbcafc1c88507962b77a82b",
+      "source_line_index": 34,
+      "expected_text": "CHO VAY KHÁCH HÀNG",
+      "category": "OWNER",
+      "semantic_role": "OWNER",
+      "case_ids": ["SHB24_LOAN_MATURITY"]
+    },
+    {
+      "truth_id": "SHB24_MATURITY_BRANCH",
+      "source_result_sha256": "f66ec66cf70b85c07c877881daf7d207dec7b754efbcafc1c88507962b77a82b",
+      "source_line_index": 36,
+      "expected_text": "Phân tích dư nợ theo thời hạn gốc của khoản vay",
+      "category": "BRANCH",
+      "semantic_role": "BRANCH",
+      "case_ids": ["SHB24_LOAN_MATURITY"]
+    },
+    {
+      "truth_id": "SHB24_MATURITY_UNIT_CURRENT",
+      "source_result_sha256": "f66ec66cf70b85c07c877881daf7d207dec7b754efbcafc1c88507962b77a82b",
+      "source_line_index": 39,
+      "expected_text": "Triệu đồng",
+      "category": "UNIT",
+      "semantic_role": "UNIT",
+      "case_ids": ["SHB24_LOAN_MATURITY"]
+    },
+    {
+      "truth_id": "SHB24_MATURITY_UNIT_COMPARATIVE",
+      "source_result_sha256": "f66ec66cf70b85c07c877881daf7d207dec7b754efbcafc1c88507962b77a82b",
+      "source_line_index": 40,
+      "expected_text": "Triệu đồng",
+      "category": "UNIT",
+      "semantic_role": "UNIT",
+      "case_ids": ["SHB24_LOAN_MATURITY"]
+    },
+    {
+      "truth_id": "SHB24_MATURITY_SHORT",
+      "source_result_sha256": "f66ec66cf70b85c07c877881daf7d207dec7b754efbcafc1c88507962b77a82b",
+      "source_line_index": 41,
+      "expected_text": "Nợ ngắn hạn",
+      "category": "CHILD",
+      "semantic_role": "SHORT_TERM",
+      "case_ids": ["SHB24_LOAN_MATURITY"]
+    },
+    {
+      "truth_id": "SHB24_MATURITY_MEDIUM",
+      "source_result_sha256": "f66ec66cf70b85c07c877881daf7d207dec7b754efbcafc1c88507962b77a82b",
+      "source_line_index": 44,
+      "expected_text": "Nợ trung hạn",
+      "category": "CHILD",
+      "semantic_role": "MEDIUM_TERM",
+      "case_ids": ["SHB24_LOAN_MATURITY"]
+    },
+    {
+      "truth_id": "SHB24_MATURITY_LONG",
+      "source_result_sha256": "f66ec66cf70b85c07c877881daf7d207dec7b754efbcafc1c88507962b77a82b",
+      "source_line_index": 47,
+      "expected_text": "Nợ dài hạn",
+      "category": "CHILD",
+      "semantic_role": "LONG_TERM",
+      "case_ids": ["SHB24_LOAN_MATURITY"]
+    },
+    {
+      "truth_id": "NVB32_CUSTOMER_LOAN_OWNER",
+      "source_result_sha256": "67da86feb9886f8e5809065463595032ff5396b2dbdf118870830f4aa8720a5d",
+      "source_line_index": 5,
+      "expected_text": "CHO VAY KHÁCH HÀNG",
+      "category": "OWNER",
+      "semantic_role": "OWNER",
+      "case_ids": ["NVB32_LOAN_QUALITY", "NVB32_LOAN_MATURITY"]
+    },
+    {
+      "truth_id": "NVB32_QUALITY_BRANCH",
+      "source_result_sha256": "67da86feb9886f8e5809065463595032ff5396b2dbdf118870830f4aa8720a5d",
+      "source_line_index": 22,
+      "expected_text": "Phân tích dư nợ theo chất lượng",
+      "category": "BRANCH",
+      "semantic_role": "BRANCH",
+      "case_ids": ["NVB32_LOAN_QUALITY"]
+    },
+    {
+      "truth_id": "NVB32_QUALITY_UNIT_CURRENT",
+      "source_result_sha256": "67da86feb9886f8e5809065463595032ff5396b2dbdf118870830f4aa8720a5d",
+      "source_line_index": 25,
+      "expected_text": "Triệu đồng",
+      "category": "UNIT",
+      "semantic_role": "UNIT",
+      "case_ids": ["NVB32_LOAN_QUALITY"]
+    },
+    {
+      "truth_id": "NVB32_QUALITY_UNIT_COMPARATIVE",
+      "source_result_sha256": "67da86feb9886f8e5809065463595032ff5396b2dbdf118870830f4aa8720a5d",
+      "source_line_index": 26,
+      "expected_text": "Triệu đồng",
+      "category": "UNIT",
+      "semantic_role": "UNIT",
+      "case_ids": ["NVB32_LOAN_QUALITY"]
+    },
+    {
+      "truth_id": "NVB32_QUALITY_STANDARD",
+      "source_result_sha256": "67da86feb9886f8e5809065463595032ff5396b2dbdf118870830f4aa8720a5d",
+      "source_line_index": 27,
+      "expected_text": "Nợ đủ tiêu chuẩn",
+      "category": "CHILD",
+      "semantic_role": "STANDARD",
+      "case_ids": ["NVB32_LOAN_QUALITY"]
+    },
+    {
+      "truth_id": "NVB32_QUALITY_SPECIAL_MENTION",
+      "source_result_sha256": "67da86feb9886f8e5809065463595032ff5396b2dbdf118870830f4aa8720a5d",
+      "source_line_index": 30,
+      "expected_text": "Nợ cần chú ý",
+      "category": "CHILD",
+      "semantic_role": "SPECIAL_MENTION",
+      "case_ids": ["NVB32_LOAN_QUALITY"]
+    },
+    {
+      "truth_id": "NVB32_QUALITY_SUBSTANDARD",
+      "source_result_sha256": "67da86feb9886f8e5809065463595032ff5396b2dbdf118870830f4aa8720a5d",
+      "source_line_index": 33,
+      "expected_text": "Nợ dưới tiêu chuẩn",
+      "category": "CHILD",
+      "semantic_role": "SUBSTANDARD",
+      "case_ids": ["NVB32_LOAN_QUALITY"]
+    },
+    {
+      "truth_id": "NVB32_QUALITY_DOUBTFUL",
+      "source_result_sha256": "67da86feb9886f8e5809065463595032ff5396b2dbdf118870830f4aa8720a5d",
+      "source_line_index": 36,
+      "expected_text": "Nợ nghi ngờ",
+      "category": "CHILD",
+      "semantic_role": "DOUBTFUL",
+      "case_ids": ["NVB32_LOAN_QUALITY"]
+    },
+    {
+      "truth_id": "NVB32_QUALITY_LOSS",
+      "source_result_sha256": "67da86feb9886f8e5809065463595032ff5396b2dbdf118870830f4aa8720a5d",
+      "source_line_index": 39,
+      "expected_text": "Nợ có khả năng mất vốn",
+      "category": "CHILD",
+      "semantic_role": "LOSS",
+      "case_ids": ["NVB32_LOAN_QUALITY"]
+    },
+    {
+      "truth_id": "NVB32_MATURITY_BRANCH",
+      "source_result_sha256": "67da86feb9886f8e5809065463595032ff5396b2dbdf118870830f4aa8720a5d",
+      "source_line_index": 45,
+      "expected_text": "Phân tích dư nợ theo thời gian cho vay gốc",
+      "category": "BRANCH",
+      "semantic_role": "BRANCH",
+      "case_ids": ["NVB32_LOAN_MATURITY"]
+    },
+    {
+      "truth_id": "NVB32_MATURITY_UNIT_CURRENT",
+      "source_result_sha256": "67da86feb9886f8e5809065463595032ff5396b2dbdf118870830f4aa8720a5d",
+      "source_line_index": 48,
+      "expected_text": "Triệu đồng",
+      "category": "UNIT",
+      "semantic_role": "UNIT",
+      "case_ids": ["NVB32_LOAN_MATURITY"]
+    },
+    {
+      "truth_id": "NVB32_MATURITY_UNIT_COMPARATIVE",
+      "source_result_sha256": "67da86feb9886f8e5809065463595032ff5396b2dbdf118870830f4aa8720a5d",
+      "source_line_index": 49,
+      "expected_text": "Triệu đồng",
+      "category": "UNIT",
+      "semantic_role": "UNIT",
+      "case_ids": ["NVB32_LOAN_MATURITY"]
+    },
+    {
+      "truth_id": "NVB32_MATURITY_SHORT",
+      "source_result_sha256": "67da86feb9886f8e5809065463595032ff5396b2dbdf118870830f4aa8720a5d",
+      "source_line_index": 50,
+      "expected_text": "Nợ ngắn hạn",
+      "category": "CHILD",
+      "semantic_role": "SHORT_TERM",
+      "case_ids": ["NVB32_LOAN_MATURITY"]
+    },
+    {
+      "truth_id": "NVB32_MATURITY_MEDIUM",
+      "source_result_sha256": "67da86feb9886f8e5809065463595032ff5396b2dbdf118870830f4aa8720a5d",
+      "source_line_index": 53,
+      "expected_text": "Nợ trung hạn",
+      "category": "CHILD",
+      "semantic_role": "MEDIUM_TERM",
+      "case_ids": ["NVB32_LOAN_MATURITY"]
+    },
+    {
+      "truth_id": "NVB32_MATURITY_LONG",
+      "source_result_sha256": "67da86feb9886f8e5809065463595032ff5396b2dbdf118870830f4aa8720a5d",
+      "source_line_index": 56,
+      "expected_text": "Nợ dài hạn",
+      "category": "CHILD",
+      "semantic_role": "LONG_TERM",
+      "case_ids": ["NVB32_LOAN_MATURITY"]
+    },
+    {
+      "truth_id": "NVB31_INTERBANK_OWNER",
+      "source_result_sha256": "5d4d6463594591be053cdae6eae8aa1c0bcf3b1b8b8194acb399bfc4af6714f7",
+      "source_line_index": 5,
+      "expected_text": "TIỀN GỬI VÀ CHO VAY CÁC TCTD KHÁC",
+      "category": "CONTROL_OWNER",
+      "semantic_role": "CONTROL_OWNER",
+      "case_ids": ["NVB31_INTERBANK_QUALITY_CONTROL"]
+    },
+    {
+      "truth_id": "NVB31_INTERBANK_BRANCH",
+      "source_result_sha256": "5d4d6463594591be053cdae6eae8aa1c0bcf3b1b8b8194acb399bfc4af6714f7",
+      "source_line_index": 35,
+      "expected_text": "Phân tích chất lượng dư nợ cho vay, tiền gửi các tổ chức tín dụng khác:",
+      "category": "CONTROL_BRANCH",
+      "semantic_role": "CONTROL_BRANCH",
+      "case_ids": ["NVB31_INTERBANK_QUALITY_CONTROL"]
+    },
+    {
+      "truth_id": "NVB31_INTERBANK_UNIT_CURRENT",
+      "source_result_sha256": "5d4d6463594591be053cdae6eae8aa1c0bcf3b1b8b8194acb399bfc4af6714f7",
+      "source_line_index": 38,
+      "expected_text": "Triệu đồng",
+      "category": "UNIT",
+      "semantic_role": "UNIT",
+      "case_ids": ["NVB31_INTERBANK_QUALITY_CONTROL"]
+    },
+    {
+      "truth_id": "NVB31_INTERBANK_UNIT_COMPARATIVE",
+      "source_result_sha256": "5d4d6463594591be053cdae6eae8aa1c0bcf3b1b8b8194acb399bfc4af6714f7",
+      "source_line_index": 39,
+      "expected_text": "Triệu đồng",
+      "category": "UNIT",
+      "semantic_role": "UNIT",
+      "case_ids": ["NVB31_INTERBANK_QUALITY_CONTROL"]
+    },
+    {
+      "truth_id": "NVB31_INTERBANK_STANDARD",
+      "source_result_sha256": "5d4d6463594591be053cdae6eae8aa1c0bcf3b1b8b8194acb399bfc4af6714f7",
+      "source_line_index": 40,
+      "expected_text": "Nợ đủ tiêu chuẩn",
+      "category": "CONTROL_CHILD",
+      "semantic_role": "STANDARD",
+      "case_ids": ["NVB31_INTERBANK_QUALITY_CONTROL"]
+    },
+    {
+      "truth_id": "BVB27_PURCHASED_DEBT_OWNER",
+      "source_result_sha256": "e110fa22e5fdc6d023bc1a447c63d9ddd3e8dacc6fcfd4844a235ae4066332f7",
+      "source_line_index": 6,
+      "expected_text": "6. Hoạt động mua nợ",
+      "category": "CONTROL_OWNER",
+      "semantic_role": "CONTROL_OWNER",
+      "case_ids": ["BVB27_PURCHASED_DEBT_QUALITY_CONTROL"]
+    },
+    {
+      "truth_id": "BVB27_PURCHASED_DEBT_BRANCH",
+      "source_result_sha256": "e110fa22e5fdc6d023bc1a447c63d9ddd3e8dacc6fcfd4844a235ae4066332f7",
+      "source_line_index": 32,
+      "expected_text": "- Phân tích chất lượng dư nợ của hoạt động mua nợ:",
+      "category": "CONTROL_BRANCH",
+      "semantic_role": "CONTROL_BRANCH",
+      "case_ids": ["BVB27_PURCHASED_DEBT_QUALITY_CONTROL"]
+    },
+    {
+      "truth_id": "BVB27_PURCHASED_DEBT_UNIT_CURRENT",
+      "source_result_sha256": "e110fa22e5fdc6d023bc1a447c63d9ddd3e8dacc6fcfd4844a235ae4066332f7",
+      "source_line_index": 35,
+      "expected_text": "Triệu VND",
+      "category": "UNIT",
+      "semantic_role": "UNIT",
+      "case_ids": ["BVB27_PURCHASED_DEBT_QUALITY_CONTROL"]
+    },
+    {
+      "truth_id": "BVB27_PURCHASED_DEBT_UNIT_COMPARATIVE",
+      "source_result_sha256": "e110fa22e5fdc6d023bc1a447c63d9ddd3e8dacc6fcfd4844a235ae4066332f7",
+      "source_line_index": 36,
+      "expected_text": "Triệu VND",
+      "category": "UNIT",
+      "semantic_role": "UNIT",
+      "case_ids": ["BVB27_PURCHASED_DEBT_QUALITY_CONTROL"]
+    },
+    {
+      "truth_id": "BVB27_PURCHASED_DEBT_STANDARD",
+      "source_result_sha256": "e110fa22e5fdc6d023bc1a447c63d9ddd3e8dacc6fcfd4844a235ae4066332f7",
+      "source_line_index": 37,
+      "expected_text": "Nợ đủ tiêu chuẩn",
+      "category": "CONTROL_CHILD",
+      "semantic_role": "STANDARD",
+      "case_ids": ["BVB27_PURCHASED_DEBT_QUALITY_CONTROL"]
+    },
+    {
+      "truth_id": "BVB27_PURCHASED_DEBT_SUBSTANDARD",
+      "source_result_sha256": "e110fa22e5fdc6d023bc1a447c63d9ddd3e8dacc6fcfd4844a235ae4066332f7",
+      "source_line_index": 40,
+      "expected_text": "Nợ dưới tiêu chuẩn",
+      "category": "CONTROL_CHILD",
+      "semantic_role": "SUBSTANDARD",
+      "case_ids": ["BVB27_PURCHASED_DEBT_QUALITY_CONTROL"]
+    },
+    {
+      "truth_id": "BVB27_PURCHASED_DEBT_LOSS",
+      "source_result_sha256": "e110fa22e5fdc6d023bc1a447c63d9ddd3e8dacc6fcfd4844a235ae4066332f7",
+      "source_line_index": 42,
+      "expected_text": "Nợ có khả năng mất vốn",
+      "category": "CONTROL_CHILD",
+      "semantic_role": "LOSS",
+      "case_ids": ["BVB27_PURCHASED_DEBT_QUALITY_CONTROL"]
+    },
+    {
+      "truth_id": "BAB44_MARKET_PARENT",
+      "source_result_sha256": "ee9428ce59f9eab94e5f4dda22e987efd22a6a08b8df4bec025f95d0908df131",
+      "source_line_index": 5,
+      "expected_text": "RỦI RO THỊ TRƯỜNG (tiếp theo)",
+      "category": "CONTROL_PARENT",
+      "semantic_role": "CONTROL_PARENT",
+      "case_ids": ["BAB44_LIQUIDITY_MATURITY_AXIS_CONTROL"]
+    },
+    {
+      "truth_id": "BAB44_LIQUIDITY_OWNER",
+      "source_result_sha256": "ee9428ce59f9eab94e5f4dda22e987efd22a6a08b8df4bec025f95d0908df131",
+      "source_line_index": 7,
+      "expected_text": "Rủi ro thanh khoản (tiếp theo)",
+      "category": "CONTROL_OWNER",
+      "semantic_role": "CONTROL_OWNER",
+      "case_ids": ["BAB44_LIQUIDITY_MATURITY_AXIS_CONTROL"]
+    },
+    {
+      "truth_id": "BAB44_LIQUIDITY_UNIT",
+      "source_result_sha256": "ee9428ce59f9eab94e5f4dda22e987efd22a6a08b8df4bec025f95d0908df131",
+      "source_line_index": 8,
+      "expected_text": "Đơn vị: triệu đồng",
+      "category": "UNIT",
+      "semantic_role": "UNIT",
+      "case_ids": ["BAB44_LIQUIDITY_MATURITY_AXIS_CONTROL"]
+    },
+    {
+      "truth_id": "BAB44_AXIS_OVERDUE",
+      "source_result_sha256": "ee9428ce59f9eab94e5f4dda22e987efd22a6a08b8df4bec025f95d0908df131",
+      "source_line_index": 9,
+      "expected_text": "Quá hạn",
+      "category": "CONTROL_AXIS",
+      "semantic_role": "CONTROL_AXIS",
+      "case_ids": ["BAB44_LIQUIDITY_MATURITY_AXIS_CONTROL"]
+    },
+    {
+      "truth_id": "BAB44_AXIS_WITHIN_TERM",
+      "source_result_sha256": "ee9428ce59f9eab94e5f4dda22e987efd22a6a08b8df4bec025f95d0908df131",
+      "source_line_index": 10,
+      "expected_text": "Trong hạn",
+      "category": "CONTROL_AXIS",
+      "semantic_role": "CONTROL_AXIS",
+      "case_ids": ["BAB44_LIQUIDITY_MATURITY_AXIS_CONTROL"]
+    },
+    {
+      "truth_id": "BAB44_AXIS_OVERDUE_OVER_3_MONTHS",
+      "source_result_sha256": "ee9428ce59f9eab94e5f4dda22e987efd22a6a08b8df4bec025f95d0908df131",
+      "source_line_index": 11,
+      "expected_text": "Trên 3 tháng",
+      "category": "CONTROL_AXIS",
+      "semantic_role": "CONTROL_AXIS",
+      "case_ids": ["BAB44_LIQUIDITY_MATURITY_AXIS_CONTROL"]
+    },
+    {
+      "truth_id": "BAB44_AXIS_OVERDUE_TO_3_MONTHS",
+      "source_result_sha256": "ee9428ce59f9eab94e5f4dda22e987efd22a6a08b8df4bec025f95d0908df131",
+      "source_line_index": 12,
+      "expected_text": "Đến 3 tháng",
+      "category": "CONTROL_AXIS",
+      "semantic_role": "CONTROL_AXIS",
+      "case_ids": ["BAB44_LIQUIDITY_MATURITY_AXIS_CONTROL"]
+    },
+    {
+      "truth_id": "BAB44_AXIS_TO_1_MONTH",
+      "source_result_sha256": "ee9428ce59f9eab94e5f4dda22e987efd22a6a08b8df4bec025f95d0908df131",
+      "source_line_index": 13,
+      "expected_text": "Đến 1 tháng",
+      "category": "CONTROL_AXIS",
+      "semantic_role": "CONTROL_AXIS",
+      "case_ids": ["BAB44_LIQUIDITY_MATURITY_AXIS_CONTROL"]
+    },
+    {
+      "truth_id": "BAB44_AXIS_1_TO_3_AND_3_TO_12_MONTHS",
+      "source_result_sha256": "ee9428ce59f9eab94e5f4dda22e987efd22a6a08b8df4bec025f95d0908df131",
+      "source_line_index": 14,
+      "expected_text": "Từ 1 - 3 tháng Từ 3 - 12 tháng",
+      "category": "CONTROL_AXIS",
+      "semantic_role": "CONTROL_AXIS",
+      "case_ids": ["BAB44_LIQUIDITY_MATURITY_AXIS_CONTROL"]
+    },
+    {
+      "truth_id": "BAB44_AXIS_1_TO_5_YEARS",
+      "source_result_sha256": "ee9428ce59f9eab94e5f4dda22e987efd22a6a08b8df4bec025f95d0908df131",
+      "source_line_index": 15,
+      "expected_text": "Từ 1 - 5 năm",
+      "category": "CONTROL_AXIS",
+      "semantic_role": "CONTROL_AXIS",
+      "case_ids": ["BAB44_LIQUIDITY_MATURITY_AXIS_CONTROL"]
+    },
+    {
+      "truth_id": "BAB44_AXIS_OVER_5_YEARS",
+      "source_result_sha256": "ee9428ce59f9eab94e5f4dda22e987efd22a6a08b8df4bec025f95d0908df131",
+      "source_line_index": 16,
+      "expected_text": "Trên 5 năm",
+      "category": "CONTROL_AXIS",
+      "semantic_role": "CONTROL_AXIS",
+      "case_ids": ["BAB44_LIQUIDITY_MATURITY_AXIS_CONTROL"]
+    },
+    {
+      "truth_id": "BAB44_AXIS_TOTAL",
+      "source_result_sha256": "ee9428ce59f9eab94e5f4dda22e987efd22a6a08b8df4bec025f95d0908df131",
+      "source_line_index": 17,
+      "expected_text": "Tổng cộng",
+      "category": "CONTROL_AXIS",
+      "semantic_role": "CONTROL_AXIS",
+      "case_ids": ["BAB44_LIQUIDITY_MATURITY_AXIS_CONTROL"]
+    },
+    {
+      "truth_id": "BAB44_ASSET_SECTION",
+      "source_result_sha256": "ee9428ce59f9eab94e5f4dda22e987efd22a6a08b8df4bec025f95d0908df131",
+      "source_line_index": 18,
+      "expected_text": "Tài sản",
+      "category": "CONTROL_SECTION",
+      "semantic_role": "CONTROL_SECTION",
+      "case_ids": ["BAB44_LIQUIDITY_MATURITY_AXIS_CONTROL"]
+    },
+    {
+      "truth_id": "BAB44_CUSTOMER_LOAN_POPULATION_ROW",
+      "source_result_sha256": "ee9428ce59f9eab94e5f4dda22e987efd22a6a08b8df4bec025f95d0908df131",
+      "source_line_index": 37,
+      "expected_text": "Cho vay khách hàng và mua nợ (*)",
+      "category": "CONTROL_ROW",
+      "semantic_role": "CONTROL_ROW",
+      "case_ids": ["BAB44_LIQUIDITY_MATURITY_AXIS_CONTROL"]
+    },
+    {
+      "truth_id": "BAB44_TOTAL_ASSETS",
+      "source_result_sha256": "ee9428ce59f9eab94e5f4dda22e987efd22a6a08b8df4bec025f95d0908df131",
+      "source_line_index": 66,
+      "expected_text": "Tổng tài sản",
+      "category": "CONTROL_TOTAL",
+      "semantic_role": "CONTROL_TOTAL",
+      "case_ids": ["BAB44_LIQUIDITY_MATURITY_AXIS_CONTROL"]
+    },
+    {
+      "truth_id": "BAB44_LIABILITY_SECTION",
+      "source_result_sha256": "ee9428ce59f9eab94e5f4dda22e987efd22a6a08b8df4bec025f95d0908df131",
+      "source_line_index": 75,
+      "expected_text": "Nợ phải trả",
+      "category": "CONTROL_SECTION",
+      "semantic_role": "CONTROL_SECTION",
+      "case_ids": ["BAB44_LIQUIDITY_MATURITY_AXIS_CONTROL"]
+    },
+    {
+      "truth_id": "BAB44_TOTAL_LIABILITIES",
+      "source_result_sha256": "ee9428ce59f9eab94e5f4dda22e987efd22a6a08b8df4bec025f95d0908df131",
+      "source_line_index": 106,
+      "expected_text": "Tổng nợ phải trả",
+      "category": "CONTROL_TOTAL",
+      "semantic_role": "CONTROL_TOTAL",
+      "case_ids": ["BAB44_LIQUIDITY_MATURITY_AXIS_CONTROL"]
+    },
+    {
+      "truth_id": "BAB44_NET_LIQUIDITY_GAP",
+      "source_result_sha256": "ee9428ce59f9eab94e5f4dda22e987efd22a6a08b8df4bec025f95d0908df131",
+      "source_line_index": 118,
+      "expected_text": "Mức chênh thanh khoản ròng",
+      "category": "CONTROL_TOTAL",
+      "semantic_role": "CONTROL_TOTAL",
+      "case_ids": ["BAB44_LIQUIDITY_MATURITY_AXIS_CONTROL"]
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "SHB24_LOAN_MATURITY",
+      "bank": "SHB",
+      "case_role": "POSITIVE",
+      "family_id": "LOAN_MATURITY_BUCKETS",
+      "source_result_sha256": "f66ec66cf70b85c07c877881daf7d207dec7b754efbcafc1c88507962b77a82b",
+      "source_line_start": 34,
+      "source_line_end": 51,
+      "required_truth_ids": [
+        "SHB24_MATURITY_OWNER",
+        "SHB24_MATURITY_BRANCH",
+        "SHB24_MATURITY_UNIT_CURRENT",
+        "SHB24_MATURITY_UNIT_COMPARATIVE",
+        "SHB24_MATURITY_SHORT",
+        "SHB24_MATURITY_MEDIUM",
+        "SHB24_MATURITY_LONG"
+      ],
+      "required_unit_count": 2
+    },
+    {
+      "case_id": "NVB32_LOAN_QUALITY",
+      "bank": "NVB",
+      "case_role": "POSITIVE",
+      "family_id": "LOAN_QUALITY_CLASSIFICATION",
+      "source_result_sha256": "67da86feb9886f8e5809065463595032ff5396b2dbdf118870830f4aa8720a5d",
+      "source_line_start": 5,
+      "source_line_end": 43,
+      "required_truth_ids": [
+        "NVB32_CUSTOMER_LOAN_OWNER",
+        "NVB32_QUALITY_BRANCH",
+        "NVB32_QUALITY_UNIT_CURRENT",
+        "NVB32_QUALITY_UNIT_COMPARATIVE",
+        "NVB32_QUALITY_STANDARD",
+        "NVB32_QUALITY_SPECIAL_MENTION",
+        "NVB32_QUALITY_SUBSTANDARD",
+        "NVB32_QUALITY_DOUBTFUL",
+        "NVB32_QUALITY_LOSS"
+      ],
+      "required_unit_count": 2
+    },
+    {
+      "case_id": "NVB32_LOAN_MATURITY",
+      "bank": "NVB",
+      "case_role": "POSITIVE",
+      "family_id": "LOAN_MATURITY_BUCKETS",
+      "source_result_sha256": "67da86feb9886f8e5809065463595032ff5396b2dbdf118870830f4aa8720a5d",
+      "source_line_start": 5,
+      "source_line_end": 60,
+      "required_truth_ids": [
+        "NVB32_CUSTOMER_LOAN_OWNER",
+        "NVB32_MATURITY_BRANCH",
+        "NVB32_MATURITY_UNIT_CURRENT",
+        "NVB32_MATURITY_UNIT_COMPARATIVE",
+        "NVB32_MATURITY_SHORT",
+        "NVB32_MATURITY_MEDIUM",
+        "NVB32_MATURITY_LONG"
+      ],
+      "required_unit_count": 2
+    },
+    {
+      "case_id": "NVB31_INTERBANK_QUALITY_CONTROL",
+      "bank": "NVB",
+      "case_role": "HARD_CONTROL",
+      "family_id": "LOAN_QUALITY_CLASSIFICATION",
+      "source_result_sha256": "5d4d6463594591be053cdae6eae8aa1c0bcf3b1b8b8194acb399bfc4af6714f7",
+      "source_line_start": 5,
+      "source_line_end": 44,
+      "required_truth_ids": [],
+      "required_unit_count": 2
+    },
+    {
+      "case_id": "BVB27_PURCHASED_DEBT_QUALITY_CONTROL",
+      "bank": "BVB",
+      "case_role": "HARD_CONTROL",
+      "family_id": "LOAN_QUALITY_CLASSIFICATION",
+      "source_result_sha256": "e110fa22e5fdc6d023bc1a447c63d9ddd3e8dacc6fcfd4844a235ae4066332f7",
+      "source_line_start": 6,
+      "source_line_end": 45,
+      "required_truth_ids": [],
+      "required_unit_count": 2
+    },
+    {
+      "case_id": "BAB44_LIQUIDITY_MATURITY_AXIS_CONTROL",
+      "bank": "BAB",
+      "case_role": "HARD_CONTROL",
+      "family_id": "LOAN_MATURITY_BUCKETS",
+      "source_result_sha256": "ee9428ce59f9eab94e5f4dda22e987efd22a6a08b8df4bec025f95d0908df131",
+      "source_line_start": 5,
+      "source_line_end": 118,
+      "required_truth_ids": [],
+      "required_unit_count": 1
+    }
+  ]
+}
