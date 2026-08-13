@@ -1,0 +1,175 @@
+{
+  "access_contract": {
+    "canonical_export_path_invoked": false,
+    "deterministic_pair_rebuilt_in_new_output_directory": true,
+    "exact_two_file_inventory_validated_before_publication": true,
+    "history_or_mongodb_opened": false,
+    "holdout_artifact_opened": false,
+    "human_review_answer_opened": false,
+    "published_pair_opened_only_for_bounded_identity_and_contract_validation": true,
+    "schema_mapping_acceptance_invoked": false
+  },
+  "authority": {
+    "accepted_schema_mapping": false,
+    "accounting_truth": false,
+    "canonicalization": false,
+    "deterministic_review_pair_byte_identity": true,
+    "exact_two_file_hash_identity": true,
+    "export": false,
+    "holdout_or_production": false,
+    "human_gold_or_review_approval": false,
+    "schema_authority": false,
+    "value_materialization": false
+  },
+  "capture_git": {
+    "commit": "2f5329867be722e8f33db0a61ec34dee6a7bb26f",
+    "dirty": false,
+    "required_replay_relationship": "EXACT_COMMIT_OR_CLEAN_DESCENDANT_WITH_UNCHANGED_BOUND_INPUTS_AND_IMPLEMENTATION"
+  },
+  "claim_boundary": "This development artifact hash-seals exactly the current two-file SHB page-24 review-only workbook pair after byte-equal deterministic replay from the bound E-0042 verification, schema-candidate, statement-context, and semantic-graph lineage. It adds no accepted ReportNormId mapping, schema, canonicalization, value-materialization, accounting-truth, human-review, holdout, production, or export authority.",
+  "dataset_role": "DEVELOPMENT_REVIEW_ONLY",
+  "experiment_id": "E-0043",
+  "format_version": 1,
+  "input_identities": {
+    "e0042_numeric_verification": {
+      "path": "docs/experiments/E-0042-shb-maturity-numeric-verification.json",
+      "sha256": "929c1c81b0e08e14b5908087d866dc7bacc67c19cc62eb832353c5efb6c1801e",
+      "size_bytes": 18835,
+      "verification_id": "sgnpvv1:verification:92b2d1d0ad293fb5ee2953128db9fb93c1c7f588eefff1bc00cfdeae16b61f1d"
+    },
+    "schema_candidate": {
+      "candidate_set_id": "slascv1:candidate:c297f71128bef07be383e684a9ff7ea33b11bf96e4fff154b2e05b39e72ef223",
+      "canonical_json_sha256": "c567007cee02036d77ed4a0bf5dbf797f503694b66713ad2edac06b2b73f4214"
+    },
+    "semantic_graph": {
+      "graph_id": "slagv2:graph:47ec2635a8b57ee0773f26612d97dc7ce1a700993b169c25d7286f9b74be28d7",
+      "sha256": "afbb553b45b3b776f36cea0696d04ead3031ac576cdb35450e11edd6e77854e6"
+    },
+    "semantic_page_binding_sha256": "e89153d4d78d337e438b90157ea330e8a84890f58847615ed34e304eff2a3a52",
+    "source_projection": {
+      "local_page_id": "ssv2:page:736b745df05b5c1f0ef81a5e985e38a44ef9b92612e9574c1b87ebb3e3b21ca1",
+      "sha256": "1036a24b4fbf8dde6f6b20341cee6d640f7c12cc22d83f67a798af2152e06ff7"
+    },
+    "statement_context": {
+      "canonical_json_sha256": "212df1f51a830a35c2633e02b007580102450f4dbb3bb847584fb8a5a56f285b",
+      "context_id": "sscxtv1:context:a2d480f3bece8e0a29e0a935dbd4be00e4168159a6ec7d3d2946ab17d0b0ab8e"
+    }
+  },
+  "inventory": {
+    "file_count": 2,
+    "files": [
+      {
+        "path": "output/development/e0042-shb-maturity-review-workbook-v1/provenance.json",
+        "role": "REVIEW_ONLY_MACHINE_PROVENANCE",
+        "sha256": "4d5df001433c4779be995930307bf03acad08b0a765266152b0f4792995c50e1",
+        "size_bytes": 44308
+      },
+      {
+        "path": "output/development/e0042-shb-maturity-review-workbook-v1/shb-maturity-review-only.xlsx",
+        "role": "REVIEW_ONLY_WORKBOOK",
+        "sha256": "9b4dd0cffd3d088f52dfd9f71548910f3ae05383f056ad2ee68e441899243d9c",
+        "size_bytes": 13671
+      }
+    ]
+  },
+  "review_projection_contract": {
+    "artifact_role": "REVIEW_ONLY_NON_CANONICAL_NON_EXPORT_AUTHORITY",
+    "candidate_report_norm_ids": [
+      753,
+      754,
+      755
+    ],
+    "cell_ids": [
+      "page-0001-row-000-axis-1",
+      "page-0001-row-000-axis-2",
+      "page-0001-row-001-axis-1",
+      "page-0001-row-001-axis-2",
+      "page-0001-row-002-axis-1",
+      "page-0001-row-002-axis-2",
+      "page-0001-row-003-axis-1",
+      "page-0001-row-003-axis-2"
+    ],
+    "formula_count": 0,
+    "projection_id": "shbmrwv1:projection:3e4bd5f00370c9ce86dee626467e58a41951721904326f91b1db5b3f4b17f129",
+    "projection_sha256": "3612f3480561d03183caa54e23d11645faba110c46438474e6a5119319930777",
+    "provenance_cell_count": 8,
+    "provenance_id": "shbmrwpv1:provenance:3e0876482ed5be902ed9a263175154fa141e68f946609fb32d2753104ec7d4a5",
+    "review_row_count": 4,
+    "sheet_names": [
+      "REVIEW_ONLY",
+      "CELL_PROVENANCE",
+      "METADATA_CLAIMS"
+    ],
+    "source_only_total_candidate_report_norm_id": null,
+    "verified_observed_cell_count": 8
+  },
+  "safety": {
+    "accepted_schema_mapping_authority": false,
+    "accounting_truth_authority": false,
+    "canonicalization_authority": false,
+    "export_authority": false,
+    "production_authority": false,
+    "review_only": true,
+    "schema_ids_are_candidates_only": true,
+    "source_and_independent_values_preserved_as_text": true,
+    "total_candidate_report_norm_id_is_null": true,
+    "value_materialization_authority": false
+  },
+  "replay": {
+    "generated_pair_exact_byte_equality": true,
+    "provenance_exact_byte_equality": true,
+    "replay_git_commit": "2f5329867be722e8f33db0a61ec34dee6a7bb26f",
+    "replay_git_dirty": false,
+    "workbook_exact_byte_equality": true
+  },
+  "s3_registration": {
+    "bucket": "test-s3-duylv",
+    "independent_hydrate": {
+      "exact_file_hashes_and_sizes": true,
+      "status": "PASS"
+    },
+    "inventory": {
+      "logical_bytes": 57979,
+      "logical_file_count": 2,
+      "unique_bytes": 57979,
+      "unique_object_count": 2
+    },
+    "manifest": {
+      "key": "bctc-ai/artifact-snapshots/20260813T144429Z-e0042-shb-maturity-review-workbook-pair-4d5df001433c/manifest-16fea9099bcce9bbdcce1294148ba88c72b80566424aa789506dd904307716f8.json",
+      "sha256": "16fea9099bcce9bbdcce1294148ba88c72b80566424aa789506dd904307716f8",
+      "size_bytes": 3940
+    },
+    "objects": [
+      {
+        "key": "bctc-ai/objects/sha256/4d/4d5df001433c4779be995930307bf03acad08b0a765266152b0f4792995c50e1",
+        "sha256": "4d5df001433c4779be995930307bf03acad08b0a765266152b0f4792995c50e1",
+        "size_bytes": 44308,
+        "upload_disposition": "UPLOADED"
+      },
+      {
+        "key": "bctc-ai/objects/sha256/9b/9b4dd0cffd3d088f52dfd9f71548910f3ae05383f056ad2ee68e441899243d9c",
+        "sha256": "9b4dd0cffd3d088f52dfd9f71548910f3ae05383f056ad2ee68e441899243d9c",
+        "size_bytes": 13671,
+        "upload_disposition": "UPLOADED"
+      }
+    ],
+    "policy_id": "S3_BOUNDED_ARTIFACT_SNAPSHOT_V1",
+    "restore": {
+      "all_incremental_objects_restore_verified": true,
+      "status": "PASS"
+    },
+    "run_record": {
+      "key": "bctc-ai/artifact-runs/20260813T144429Z-e0042-shb-maturity-review-workbook-pair-4d5df001433c/run-5f9a6ea538c71808c5587bc0dacc997a29b902deb75574cbef14d1543654ab8e.json",
+      "sha256": "5f9a6ea538c71808c5587bc0dacc997a29b902deb75574cbef14d1543654ab8e",
+      "size_bytes": 1433
+    },
+    "snapshot_id": "20260813T144429Z-e0042-shb-maturity-review-workbook-pair-4d5df001433c",
+    "source_git_commit": "2f5329867be722e8f33db0a61ec34dee6a7bb26f",
+    "upload": {
+      "reused_object_count": 0,
+      "unique_object_count": 2,
+      "uploaded_object_count": 2
+    }
+  },
+  "state": "E0043_SHB_MATURITY_REVIEW_ONLY_PAIR_HASH_SEALED"
+}
