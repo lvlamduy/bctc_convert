@@ -1,0 +1,849 @@
+{
+  "bank_order": [
+    "ACB",
+    "MBB",
+    "VPB",
+    "HDB",
+    "VCB",
+    "CTG",
+    "BID",
+    "VIB"
+  ],
+  "claim_boundary": "EXACT_HASH_SEALED_E0046_ROW_VALUE_LANE_GEOMETRY_MECHANISM_TEST_ONLY_NO_SOURCE_SEMANTIC_NUMERIC_ACCOUNTING_MAPPING_CANONICALIZATION_EXPORT_OR_VERIFIED_BY_CODEX_AUTHORITY",
+  "experiment_id": "E-0047",
+  "family_id": "LOAN_MATURITY_BUCKETS",
+  "format_version": "E0047_ORDERED_ROW_VALUE_LANE_MECHANISM_EVALUATION_V1",
+  "input_authority": {
+    "e0046_capture": {
+      "path": "/tmp/e0046.json",
+      "sha256": "dce21ce131b55e6693fb081b4ee97f0a3fb651d0feaea8792cb6f51118118881",
+      "size_bytes": 6880612,
+      "sweep_id": "e0046:provisional-sweep:d94b8e059570ff71362fb18a34609ae052a499b0aa5bc6f79b59eb5b9d6b564c"
+    },
+    "e0046_seal": {
+      "path": "docs/experiments/E-0046-loan-maturity-8bank-vietocr-v3-provisional-private-core-sweep-seal.json",
+      "sha256": "00f72d7598b35155d06ca28e60d442cef6e97420f78dc6ad7fe734e2b201acc4",
+      "size_bytes": 10244
+    },
+    "implementation_refs": [
+      {
+        "path": "scripts/experiments/evaluate_e0047_ordered_row_value_lane_assignment.py",
+        "sha256": "35e78362b4557b366dcf6545ec4f951886317c43218f1d4ade3f762c74bb1706",
+        "size_bytes": 40600
+      },
+      {
+        "path": "scripts/experiments/ordered_row_value_lane_assignment_v1.py",
+        "sha256": "db5b0d8f9f43a679ae4d21c1a679afbe762aadd6b0315c545473c7a3e0274641",
+        "size_bytes": 19329
+      },
+      {
+        "path": "src/bctc_ai/source_structure/semantic_local_accounting_observation_v2.py",
+        "sha256": "4c7dfe6ed725b700853c4a4a1c37842b70bdc56ae8d0cb96e64440d12f379965",
+        "size_bytes": 26432
+      },
+      {
+        "path": "src/bctc_ai/source_structure/semantic_local_accounting_graph_v2.py",
+        "sha256": "282fba906bfa36754477509b3508fec0ad10c89111707af0f652e5dfa1fb5865",
+        "size_bytes": 49871
+      },
+      {
+        "path": "src/bctc_ai/mapping/semantic_local_accounting_schema_candidate_v1.py",
+        "sha256": "e955d147225a0fb7b735904497b932131ea3c62d963fa1d0b3746ca7450b13b2",
+        "size_bytes": 18406
+      }
+    ]
+  },
+  "metrics": {
+    "accepted_structure_count": 1,
+    "assignment_resolved_count": 2,
+    "assignment_unresolved_count": 1,
+    "bank_count": 8,
+    "independent_mapping_evaluated_count": 0,
+    "independent_numeric_evaluated_count": 0,
+    "mechanism_target_count": 3,
+    "schema_candidate_ready_count": 1,
+    "untyped_companion_blocked_count": 1,
+    "verified_mapping_count": 0
+  },
+  "result_id": "e0047:lane-evaluation:b726342533a7bb76e820563633406abc4c09a40e67e6b8cd546c01535ef9ee5d",
+  "safety": {
+    "accounting_acceptance_authority": false,
+    "bank_identity_used_for_mechanism_routing": false,
+    "canonicalization_authority": false,
+    "e0046_mutated_or_superseded": false,
+    "extra_numeric_companion_lanes_silently_discarded": false,
+    "independent_mapping_verification_performed": false,
+    "independent_numeric_verification_performed": false,
+    "lane_assignment_uses_numeric_text_or_values": false,
+    "mapping_authority": false,
+    "persisted_result_self_authenticating": false,
+    "ppocr_numeric_syntax_used_to_select_geometry_frontier": true,
+    "private_core_mechanism_evaluation": true,
+    "schema_candidates_are_mappings": false,
+    "verified_by_codex_claimed": false
+  },
+  "state": "MECHANISM_EVALUATED_NUMERIC_AND_MAPPING_NOT_EVALUATED",
+  "trials": [
+    {
+      "assignment": null,
+      "bank_provenance": "ACB",
+      "binding_mode": "ORDINARY_V2_PRIMARY_LINES",
+      "independent_mapping_status": "NOT_EVALUATED",
+      "independent_numeric_status": "NOT_EVALUATED",
+      "mechanism_status": "NOT_APPLICABLE_NO_EXISTING_ROW_VALUE_AXIS_BLOCKER",
+      "observation": {
+        "payload_sha256": "9daf39e5ca06b543c7529c64792cf5485c2197a8b3b3d561fb1138a6b7d7dea4",
+        "status": "UNRESOLVED",
+        "unresolved_reasons": [
+          "OWNER_NOT_RESOLVED_FROM_TRANSFORMER"
+        ]
+      },
+      "page_ordinal": 1,
+      "prior_observation": {
+        "payload_sha256": "9daf39e5ca06b543c7529c64792cf5485c2197a8b3b3d561fb1138a6b7d7dea4",
+        "status": "UNRESOLVED",
+        "unresolved_reasons": [
+          "OWNER_NOT_RESOLVED_FROM_TRANSFORMER"
+        ]
+      },
+      "schema_candidate": {
+        "candidate_report_norm_ids": [],
+        "candidate_set_id": "slascv1:candidate:19f5a5b67aef9dab54e9d870eddd5e2789abcdd21decf0300e2c7e1fb4f7ff90",
+        "metrics": {
+          "candidate_role_count": 0,
+          "singleton_schema_candidate_count": 0,
+          "source_only_validation_role_count": 0,
+          "unassessed_schema_child_count": 0
+        },
+        "payload_sha256": "625c59c8c67a93ac87dd0f25a411f0e41e4248b251399eea043408f682d6afe3",
+        "source_only_roles": [],
+        "status": "UNRESOLVED_GRAPH_NOT_ACCEPTED",
+        "structural_context_candidate_report_norm_ids": [],
+        "unassessed_report_norm_ids": [],
+        "unresolved_reasons": [],
+        "value_row_candidate_report_norm_ids": []
+      },
+      "semantic_graph": {
+        "graph_id": "slagv2:graph:7ab92f582431458b6727049567bd5658f75a1bb04de0a4fc704ae08617eeb9bb",
+        "metrics": {
+          "accepted_counts": {
+            "AXIS": 0,
+            "HIERARCHY": 0,
+            "LOGICAL_ROW": 0,
+            "TABLE": 0,
+            "VALUE_POSITION": 0
+          },
+          "accepted_region_count": 0,
+          "disconnected_node_count": 0,
+          "edge_count": 0,
+          "evidence_node_count": 0,
+          "invalid_edge_count": 0,
+          "node_count": 0,
+          "orphan_evidence_count": 0,
+          "orphan_node_count": 0
+        },
+        "payload_sha256": "489c1ca60a0dd571046455abe7776e2a9a03c3a7c5801a07636386625db04b14",
+        "status": "UNRESOLVED",
+        "unresolved_reasons": [
+          "OWNER_NOT_RESOLVED_FROM_TRANSFORMER"
+        ]
+      },
+      "trial_id": "trial-0001"
+    },
+    {
+      "assignment": {
+        "assignment_id": "orvla1:assignment:dbb3c8b55ff1e435220d5718499262a380f7bb1f1220141f409468aedd3e9c85",
+        "claim_boundary": "ORDERED_ROW_LABEL_TO_FIXED_LANE_GEOMETRY_ASSIGNMENT_ONLY_OUT_OF_LANE_NUMERIC_COMPANIONS_FAIL_CLOSED_NO_SEMANTIC_NUMERIC_ACCOUNTING_GRAPH_SCHEMA_MAPPING_CANONICALIZATION_OR_EXPORT_AUTHORITY",
+        "format_version": "BANK_CORPUS_ORDERED_ROW_VALUE_LANE_ASSIGNMENT_V1",
+        "input_sha256": "daa536231c343d47604579543158f842e068ece36f781a4d5a69029e82134af0",
+        "lane_centers_x2": [
+          2378,
+          2893
+        ],
+        "metrics": {
+          "assigned_value_count": 6,
+          "companion_numeric_count": 0,
+          "lane_count": 2,
+          "resolved_row_count": 3,
+          "row_count": 3,
+          "unresolved_row_count": 0
+        },
+        "rows": [
+          {
+            "companion_numeric_source_line_indices": [],
+            "role": "SHORT_TERM",
+            "row_source_line_index": 91,
+            "status": "RESOLVED_ROW_VALUE_LANES",
+            "unresolved_reasons": [],
+            "value_source_line_indices": [
+              92,
+              93
+            ]
+          },
+          {
+            "companion_numeric_source_line_indices": [],
+            "role": "MEDIUM_TERM",
+            "row_source_line_index": 94,
+            "status": "RESOLVED_ROW_VALUE_LANES",
+            "unresolved_reasons": [],
+            "value_source_line_indices": [
+              95,
+              96
+            ]
+          },
+          {
+            "companion_numeric_source_line_indices": [],
+            "role": "LONG_TERM",
+            "row_source_line_index": 97,
+            "status": "RESOLVED_ROW_VALUE_LANES",
+            "unresolved_reasons": [],
+            "value_source_line_indices": [
+              98,
+              99
+            ]
+          }
+        ],
+        "safety": {
+          "accounting_authority": false,
+          "bank_filename_page_identity_used": false,
+          "extra_numeric_lanes_silently_discarded": false,
+          "geometry_and_source_line_order_only": true,
+          "mapping_authority": false,
+          "numeric_text_or_value_used": false,
+          "output_is_accepted_graph": false,
+          "schema_authority": false,
+          "semantic_text_used": false
+        },
+        "status": "RESOLVED_ORDERED_ROW_VALUE_LANES",
+        "unresolved_reasons": []
+      },
+      "bank_provenance": "MBB",
+      "binding_mode": "ORDINARY_V2_PRIMARY_LINES",
+      "independent_mapping_status": "NOT_EVALUATED",
+      "independent_numeric_status": "NOT_EVALUATED",
+      "mechanism_status": "ASSIGNMENT_RESOLVED_FRONTIER_REBUILT",
+      "observation": {
+        "payload_sha256": "339d294edb3fb24335c439937d54fe13451ee0b998d9695d9e6cfdeaa480e1aa",
+        "status": "READY_FOR_GRAPH_V2",
+        "unresolved_reasons": []
+      },
+      "page_ordinal": 2,
+      "prior_observation": {
+        "payload_sha256": "9a79864eddcb39e2fb0b716ebb8d8f33fd8e804a0c0a8ac818c11e1ecefd5fa9",
+        "status": "UNRESOLVED",
+        "unresolved_reasons": [
+          "ROW_VALUE_AXIS_ASSIGNMENT_NOT_RESOLVED"
+        ]
+      },
+      "schema_candidate": {
+        "candidate_report_norm_ids": [
+          716,
+          752,
+          753,
+          754,
+          755
+        ],
+        "candidate_set_id": "slascv1:candidate:2544ffdd12338be6b968cdc68137a42b85fd612c73ddc264e5593fa029d1669a",
+        "metrics": {
+          "candidate_role_count": 6,
+          "singleton_schema_candidate_count": 5,
+          "source_only_validation_role_count": 1,
+          "unassessed_schema_child_count": 1
+        },
+        "payload_sha256": "a40e4a75f8fe7842a37a59f7a8f913167541c5822c164e24e15edd3571e20a81",
+        "source_only_roles": [
+          "TOTAL"
+        ],
+        "status": "CANDIDATE_SET_READY",
+        "structural_context_candidate_report_norm_ids": [
+          716,
+          752
+        ],
+        "unassessed_report_norm_ids": [
+          5747
+        ],
+        "unresolved_reasons": [],
+        "value_row_candidate_report_norm_ids": [
+          753,
+          754,
+          755
+        ]
+      },
+      "semantic_graph": {
+        "graph_id": "slagv2:graph:1db14046efc734aeeb36d04a77bd1a9f8e8fc4541fa9998e95279ae72ee5dda9",
+        "metrics": {
+          "accepted_counts": {
+            "AXIS": 2,
+            "HIERARCHY": 12,
+            "LOGICAL_ROW": 4,
+            "TABLE": 1,
+            "VALUE_POSITION": 8
+          },
+          "accepted_region_count": 1,
+          "disconnected_node_count": 0,
+          "edge_count": 81,
+          "evidence_node_count": 17,
+          "invalid_edge_count": 0,
+          "node_count": 36,
+          "orphan_evidence_count": 0,
+          "orphan_node_count": 0
+        },
+        "payload_sha256": "e8f29a362161cc43e5491ead8227627427bbadce5b66479e0b5c64628ba30cd9",
+        "status": "ACCEPTED_WITHIN_SUPPLIED_FAMILY_COLLISION_SCOPE",
+        "unresolved_reasons": []
+      },
+      "trial_id": "trial-0002"
+    },
+    {
+      "assignment": null,
+      "bank_provenance": "VPB",
+      "binding_mode": "HYDRATED_NATIVE_PRIMARY_LINES",
+      "independent_mapping_status": "NOT_EVALUATED",
+      "independent_numeric_status": "NOT_EVALUATED",
+      "mechanism_status": "NOT_APPLICABLE_NO_EXISTING_ROW_VALUE_AXIS_BLOCKER",
+      "observation": {
+        "payload_sha256": "4068b1fe2ce3a532a93541aee136298260477bb2872b9be2c31b3f665d7a49c0",
+        "status": "UNRESOLVED",
+        "unresolved_reasons": [
+          "NATIVE_SOURCE_NUMERIC_AUTHORITY_NOT_ADMITTED"
+        ]
+      },
+      "page_ordinal": 3,
+      "prior_observation": {
+        "payload_sha256": "4068b1fe2ce3a532a93541aee136298260477bb2872b9be2c31b3f665d7a49c0",
+        "status": "UNRESOLVED",
+        "unresolved_reasons": [
+          "NATIVE_SOURCE_NUMERIC_AUTHORITY_NOT_ADMITTED"
+        ]
+      },
+      "schema_candidate": {
+        "candidate_report_norm_ids": [],
+        "candidate_set_id": "slascv1:candidate:8f37785a7723335d850e29360a4e7eb3710910e2dc4489237c2fa46ada4a26c6",
+        "metrics": {
+          "candidate_role_count": 0,
+          "singleton_schema_candidate_count": 0,
+          "source_only_validation_role_count": 0,
+          "unassessed_schema_child_count": 0
+        },
+        "payload_sha256": "d87c6ef5091b81f6185b80d0896b1b65c66792e394aaedefe17871fb50f6aac0",
+        "source_only_roles": [],
+        "status": "UNRESOLVED_GRAPH_NOT_ACCEPTED",
+        "structural_context_candidate_report_norm_ids": [],
+        "unassessed_report_norm_ids": [],
+        "unresolved_reasons": [],
+        "value_row_candidate_report_norm_ids": []
+      },
+      "semantic_graph": {
+        "graph_id": "slagv2:graph:34be6f8939096c990bb14120ab2bf240636740bf66d1c52f671c1eb568ba1bf0",
+        "metrics": {
+          "accepted_counts": {
+            "AXIS": 0,
+            "HIERARCHY": 0,
+            "LOGICAL_ROW": 0,
+            "TABLE": 0,
+            "VALUE_POSITION": 0
+          },
+          "accepted_region_count": 0,
+          "disconnected_node_count": 0,
+          "edge_count": 0,
+          "evidence_node_count": 0,
+          "invalid_edge_count": 0,
+          "node_count": 0,
+          "orphan_evidence_count": 0,
+          "orphan_node_count": 0
+        },
+        "payload_sha256": "3ea070d025169326ae642c33b5c57e791079b83a57ba445176ef5322260f0048",
+        "status": "UNRESOLVED",
+        "unresolved_reasons": [
+          "NATIVE_SOURCE_NUMERIC_AUTHORITY_NOT_ADMITTED"
+        ]
+      },
+      "trial_id": "trial-0003"
+    },
+    {
+      "assignment": null,
+      "bank_provenance": "HDB",
+      "binding_mode": "ORDINARY_V2_PRIMARY_LINES",
+      "independent_mapping_status": "NOT_EVALUATED",
+      "independent_numeric_status": "NOT_EVALUATED",
+      "mechanism_status": "NOT_APPLICABLE_NO_EXISTING_ROW_VALUE_AXIS_BLOCKER",
+      "observation": {
+        "payload_sha256": "6d97f0dcfc9aa324fdbd64ceea0c156bb1239e228b8d8cb4fea3b8c728700ae1",
+        "status": "UNRESOLVED",
+        "unresolved_reasons": [
+          "BRANCH_NOT_RESOLVED_FROM_TRANSFORMER",
+          "OWNER_NOT_RESOLVED_FROM_TRANSFORMER"
+        ]
+      },
+      "page_ordinal": 4,
+      "prior_observation": {
+        "payload_sha256": "6d97f0dcfc9aa324fdbd64ceea0c156bb1239e228b8d8cb4fea3b8c728700ae1",
+        "status": "UNRESOLVED",
+        "unresolved_reasons": [
+          "BRANCH_NOT_RESOLVED_FROM_TRANSFORMER",
+          "OWNER_NOT_RESOLVED_FROM_TRANSFORMER"
+        ]
+      },
+      "schema_candidate": {
+        "candidate_report_norm_ids": [],
+        "candidate_set_id": "slascv1:candidate:3d04e22482860fe66d41bc61f5cf791ef746e1c8fbba95d9248b1dff2067f4f2",
+        "metrics": {
+          "candidate_role_count": 0,
+          "singleton_schema_candidate_count": 0,
+          "source_only_validation_role_count": 0,
+          "unassessed_schema_child_count": 0
+        },
+        "payload_sha256": "64ae6fd6c4ceaf147e545fc43e715a8ce6f5fd2ecef8f4b1a4586eb6b78d1f14",
+        "source_only_roles": [],
+        "status": "UNRESOLVED_GRAPH_NOT_ACCEPTED",
+        "structural_context_candidate_report_norm_ids": [],
+        "unassessed_report_norm_ids": [],
+        "unresolved_reasons": [],
+        "value_row_candidate_report_norm_ids": []
+      },
+      "semantic_graph": {
+        "graph_id": "slagv2:graph:3bfc6ed88f452694e5a76c2f83fa09b6ba03709821637eb0a3f887ccace5e664",
+        "metrics": {
+          "accepted_counts": {
+            "AXIS": 0,
+            "HIERARCHY": 0,
+            "LOGICAL_ROW": 0,
+            "TABLE": 0,
+            "VALUE_POSITION": 0
+          },
+          "accepted_region_count": 0,
+          "disconnected_node_count": 0,
+          "edge_count": 0,
+          "evidence_node_count": 0,
+          "invalid_edge_count": 0,
+          "node_count": 0,
+          "orphan_evidence_count": 0,
+          "orphan_node_count": 0
+        },
+        "payload_sha256": "d987da0b6977cf007c67b8b3a61e8ffc4164f60d6de7a63f4ea004b7b1536131",
+        "status": "UNRESOLVED",
+        "unresolved_reasons": [
+          "BRANCH_NOT_RESOLVED_FROM_TRANSFORMER",
+          "OWNER_NOT_RESOLVED_FROM_TRANSFORMER"
+        ]
+      },
+      "trial_id": "trial-0004"
+    },
+    {
+      "assignment": null,
+      "bank_provenance": "VCB",
+      "binding_mode": "HYDRATED_TERMINAL_LINE_SUPPLEMENT",
+      "independent_mapping_status": "NOT_EVALUATED",
+      "independent_numeric_status": "NOT_EVALUATED",
+      "mechanism_status": "NOT_APPLICABLE_NO_EXISTING_ROW_VALUE_AXIS_BLOCKER",
+      "observation": {
+        "payload_sha256": "aba398ee40d55d34d12355cb05e65bedc38d6979edd644351e8eff1b3cb6c428",
+        "status": "UNRESOLVED",
+        "unresolved_reasons": [
+          "NUMERIC_SOURCE_LINE_AXIS_UNAVAILABLE",
+          "SOURCE_PROJECTION_TERMINAL",
+          "TERMINAL_SUPPLEMENT_NOT_AUTHENTICATED_PRIMARY"
+        ]
+      },
+      "page_ordinal": 5,
+      "prior_observation": {
+        "payload_sha256": "aba398ee40d55d34d12355cb05e65bedc38d6979edd644351e8eff1b3cb6c428",
+        "status": "UNRESOLVED",
+        "unresolved_reasons": [
+          "NUMERIC_SOURCE_LINE_AXIS_UNAVAILABLE",
+          "SOURCE_PROJECTION_TERMINAL",
+          "TERMINAL_SUPPLEMENT_NOT_AUTHENTICATED_PRIMARY"
+        ]
+      },
+      "schema_candidate": {
+        "candidate_report_norm_ids": [],
+        "candidate_set_id": "slascv1:candidate:81bba590a483f3a30950b4f9e4606eee705826f1f3aeb80de40f6df68b7ca60f",
+        "metrics": {
+          "candidate_role_count": 0,
+          "singleton_schema_candidate_count": 0,
+          "source_only_validation_role_count": 0,
+          "unassessed_schema_child_count": 0
+        },
+        "payload_sha256": "e5532b5d522ac653d506409d0ced74f8444fe24d7b0ba0d92b8b1ea9395c32d4",
+        "source_only_roles": [],
+        "status": "UNRESOLVED_GRAPH_NOT_ACCEPTED",
+        "structural_context_candidate_report_norm_ids": [],
+        "unassessed_report_norm_ids": [],
+        "unresolved_reasons": [],
+        "value_row_candidate_report_norm_ids": []
+      },
+      "semantic_graph": {
+        "graph_id": "slagv2:graph:63ebfd979b3275d47a81c8e239db670751e12b520483778d88acf985fcbdd17d",
+        "metrics": {
+          "accepted_counts": {
+            "AXIS": 0,
+            "HIERARCHY": 0,
+            "LOGICAL_ROW": 0,
+            "TABLE": 0,
+            "VALUE_POSITION": 0
+          },
+          "accepted_region_count": 0,
+          "disconnected_node_count": 0,
+          "edge_count": 0,
+          "evidence_node_count": 0,
+          "invalid_edge_count": 0,
+          "node_count": 0,
+          "orphan_evidence_count": 0,
+          "orphan_node_count": 0
+        },
+        "payload_sha256": "e63749d3c96861c0f2bab3142be00acbabc2a8f165e1fd26795edab43df55ff7",
+        "status": "UNRESOLVED",
+        "unresolved_reasons": [
+          "NUMERIC_SOURCE_LINE_AXIS_UNAVAILABLE",
+          "SOURCE_PROJECTION_TERMINAL",
+          "TERMINAL_SUPPLEMENT_NOT_AUTHENTICATED_PRIMARY"
+        ]
+      },
+      "trial_id": "trial-0005"
+    },
+    {
+      "assignment": null,
+      "bank_provenance": "CTG",
+      "binding_mode": "ORDINARY_V2_PRIMARY_LINES",
+      "independent_mapping_status": "NOT_EVALUATED",
+      "independent_numeric_status": "NOT_EVALUATED",
+      "mechanism_status": "NOT_APPLICABLE_NO_EXISTING_ROW_VALUE_AXIS_BLOCKER",
+      "observation": {
+        "payload_sha256": "20b1487eeb7d63478fc759c4b8b9a8866b3f491c1cf3c83ae1c26e453fd79d82",
+        "status": "UNRESOLVED",
+        "unresolved_reasons": [
+          "ORDERED_CHILDREN_NOT_RESOLVED_FROM_TRANSFORMER",
+          "OWNER_NOT_RESOLVED_FROM_TRANSFORMER"
+        ]
+      },
+      "page_ordinal": 6,
+      "prior_observation": {
+        "payload_sha256": "20b1487eeb7d63478fc759c4b8b9a8866b3f491c1cf3c83ae1c26e453fd79d82",
+        "status": "UNRESOLVED",
+        "unresolved_reasons": [
+          "ORDERED_CHILDREN_NOT_RESOLVED_FROM_TRANSFORMER",
+          "OWNER_NOT_RESOLVED_FROM_TRANSFORMER"
+        ]
+      },
+      "schema_candidate": {
+        "candidate_report_norm_ids": [],
+        "candidate_set_id": "slascv1:candidate:65c5a7b556a73150cd7a8a83ed0f1ebaba9a8917493541b6985ed2d6dcfd9807",
+        "metrics": {
+          "candidate_role_count": 0,
+          "singleton_schema_candidate_count": 0,
+          "source_only_validation_role_count": 0,
+          "unassessed_schema_child_count": 0
+        },
+        "payload_sha256": "c8dcbd2fbc529d04c0cb90ad7dc78214f0d9d335a7b28bf3d8b98e2077d3b789",
+        "source_only_roles": [],
+        "status": "UNRESOLVED_GRAPH_NOT_ACCEPTED",
+        "structural_context_candidate_report_norm_ids": [],
+        "unassessed_report_norm_ids": [],
+        "unresolved_reasons": [],
+        "value_row_candidate_report_norm_ids": []
+      },
+      "semantic_graph": {
+        "graph_id": "slagv2:graph:3dc1cde2e1ce3fc0c414a327af3c70c46c6352b36cd8185eae1da7135cf543b0",
+        "metrics": {
+          "accepted_counts": {
+            "AXIS": 0,
+            "HIERARCHY": 0,
+            "LOGICAL_ROW": 0,
+            "TABLE": 0,
+            "VALUE_POSITION": 0
+          },
+          "accepted_region_count": 0,
+          "disconnected_node_count": 0,
+          "edge_count": 0,
+          "evidence_node_count": 0,
+          "invalid_edge_count": 0,
+          "node_count": 0,
+          "orphan_evidence_count": 0,
+          "orphan_node_count": 0
+        },
+        "payload_sha256": "2b8cf6cd185868021e5dc2f572e86bec304e7e41d1c3548f3418adb8695d399b",
+        "status": "UNRESOLVED",
+        "unresolved_reasons": [
+          "ORDERED_CHILDREN_NOT_RESOLVED_FROM_TRANSFORMER",
+          "OWNER_NOT_RESOLVED_FROM_TRANSFORMER"
+        ]
+      },
+      "trial_id": "trial-0006"
+    },
+    {
+      "assignment": {
+        "assignment_id": "orvla1:assignment:305019fbbe41f86a6dd638a2bca286d4fe8f52f1c2214c0f6af162551c6f0a77",
+        "claim_boundary": "ORDERED_ROW_LABEL_TO_FIXED_LANE_GEOMETRY_ASSIGNMENT_ONLY_OUT_OF_LANE_NUMERIC_COMPANIONS_FAIL_CLOSED_NO_SEMANTIC_NUMERIC_ACCOUNTING_GRAPH_SCHEMA_MAPPING_CANONICALIZATION_OR_EXPORT_AUTHORITY",
+        "format_version": "BANK_CORPUS_ORDERED_ROW_VALUE_LANE_ASSIGNMENT_V1",
+        "input_sha256": "fd1aed3ac69ffdfde90aaa33b795110d3971e2106aa494ba784d11dc3f379af6",
+        "lane_centers_x2": [
+          2094,
+          2722
+        ],
+        "metrics": {
+          "assigned_value_count": 6,
+          "companion_numeric_count": 0,
+          "lane_count": 2,
+          "resolved_row_count": 3,
+          "row_count": 3,
+          "unresolved_row_count": 0
+        },
+        "rows": [
+          {
+            "companion_numeric_source_line_indices": [],
+            "role": "SHORT_TERM",
+            "row_source_line_index": 48,
+            "status": "RESOLVED_ROW_VALUE_LANES",
+            "unresolved_reasons": [],
+            "value_source_line_indices": [
+              49,
+              50
+            ]
+          },
+          {
+            "companion_numeric_source_line_indices": [],
+            "role": "MEDIUM_TERM",
+            "row_source_line_index": 51,
+            "status": "RESOLVED_ROW_VALUE_LANES",
+            "unresolved_reasons": [],
+            "value_source_line_indices": [
+              52,
+              53
+            ]
+          },
+          {
+            "companion_numeric_source_line_indices": [],
+            "role": "LONG_TERM",
+            "row_source_line_index": 54,
+            "status": "RESOLVED_ROW_VALUE_LANES",
+            "unresolved_reasons": [],
+            "value_source_line_indices": [
+              55,
+              56
+            ]
+          }
+        ],
+        "safety": {
+          "accounting_authority": false,
+          "bank_filename_page_identity_used": false,
+          "extra_numeric_lanes_silently_discarded": false,
+          "geometry_and_source_line_order_only": true,
+          "mapping_authority": false,
+          "numeric_text_or_value_used": false,
+          "output_is_accepted_graph": false,
+          "schema_authority": false,
+          "semantic_text_used": false
+        },
+        "status": "RESOLVED_ORDERED_ROW_VALUE_LANES",
+        "unresolved_reasons": []
+      },
+      "bank_provenance": "BID",
+      "binding_mode": "ORDINARY_V2_PRIMARY_LINES",
+      "independent_mapping_status": "NOT_EVALUATED",
+      "independent_numeric_status": "NOT_EVALUATED",
+      "mechanism_status": "ASSIGNMENT_RESOLVED_FRONTIER_REBUILT",
+      "observation": {
+        "payload_sha256": "23eeec45731511cf4fd47315e75cee679183861f216ff678bcd90daa2af06c03",
+        "status": "UNRESOLVED",
+        "unresolved_reasons": [
+          "PER_AXIS_UNIT_SCOPE_NOT_RESOLVED"
+        ]
+      },
+      "page_ordinal": 7,
+      "prior_observation": {
+        "payload_sha256": "3a06de3da4f11d21589ea4bade7433928b5f98da7c2e8ca3d6bce5dc60b65d25",
+        "status": "UNRESOLVED",
+        "unresolved_reasons": [
+          "PER_AXIS_UNIT_SCOPE_NOT_RESOLVED",
+          "ROW_VALUE_AXIS_ASSIGNMENT_NOT_RESOLVED"
+        ]
+      },
+      "schema_candidate": {
+        "candidate_report_norm_ids": [],
+        "candidate_set_id": "slascv1:candidate:64e918354a00aefd9c5103b9bbcdee6a6b2861f5c6961e267824d92d89d88485",
+        "metrics": {
+          "candidate_role_count": 0,
+          "singleton_schema_candidate_count": 0,
+          "source_only_validation_role_count": 0,
+          "unassessed_schema_child_count": 0
+        },
+        "payload_sha256": "85256585db7f7caaacf7ee830ff7d39ff34121924e124bd4e72f22532d2df04f",
+        "source_only_roles": [],
+        "status": "UNRESOLVED_GRAPH_NOT_ACCEPTED",
+        "structural_context_candidate_report_norm_ids": [],
+        "unassessed_report_norm_ids": [],
+        "unresolved_reasons": [],
+        "value_row_candidate_report_norm_ids": []
+      },
+      "semantic_graph": {
+        "graph_id": "slagv2:graph:c5ec3d0e4ba50e76901b0590d1c4905b5694b8a152d0f0a6f1eac871e29a70fd",
+        "metrics": {
+          "accepted_counts": {
+            "AXIS": 0,
+            "HIERARCHY": 0,
+            "LOGICAL_ROW": 0,
+            "TABLE": 0,
+            "VALUE_POSITION": 0
+          },
+          "accepted_region_count": 0,
+          "disconnected_node_count": 0,
+          "edge_count": 0,
+          "evidence_node_count": 0,
+          "invalid_edge_count": 0,
+          "node_count": 0,
+          "orphan_evidence_count": 0,
+          "orphan_node_count": 0
+        },
+        "payload_sha256": "d2e8839b507aeb3e2b4e2eaadd4b9167fba00f9bdf2d403c39324d33bb223ff8",
+        "status": "UNRESOLVED",
+        "unresolved_reasons": [
+          "PER_AXIS_UNIT_SCOPE_NOT_RESOLVED"
+        ]
+      },
+      "trial_id": "trial-0007"
+    },
+    {
+      "assignment": {
+        "assignment_id": "orvla1:assignment:225542c2a08d9c5058a0314b264c45809c9736a5a3afaf08bcba0f667d6b3f98",
+        "claim_boundary": "ORDERED_ROW_LABEL_TO_FIXED_LANE_GEOMETRY_ASSIGNMENT_ONLY_OUT_OF_LANE_NUMERIC_COMPANIONS_FAIL_CLOSED_NO_SEMANTIC_NUMERIC_ACCOUNTING_GRAPH_SCHEMA_MAPPING_CANONICALIZATION_OR_EXPORT_AUTHORITY",
+        "format_version": "BANK_CORPUS_ORDERED_ROW_VALUE_LANE_ASSIGNMENT_V1",
+        "input_sha256": "1fd5aa418a67d22baf2efcf8f417d6f49ed25115956b4d32bc2314bf0ec23a62",
+        "lane_centers_x2": [
+          2001,
+          2612
+        ],
+        "metrics": {
+          "assigned_value_count": 0,
+          "companion_numeric_count": 6,
+          "lane_count": 2,
+          "resolved_row_count": 0,
+          "row_count": 3,
+          "unresolved_row_count": 3
+        },
+        "rows": [
+          {
+            "companion_numeric_source_line_indices": [
+              33,
+              35
+            ],
+            "role": "SHORT_TERM",
+            "row_source_line_index": 31,
+            "status": "UNRESOLVED_ROW_VALUE_LANES",
+            "unresolved_reasons": [
+              "UNTYPED_NUMERIC_COMPANION_LANES"
+            ],
+            "value_source_line_indices": []
+          },
+          {
+            "companion_numeric_source_line_indices": [
+              38,
+              40
+            ],
+            "role": "MEDIUM_TERM",
+            "row_source_line_index": 36,
+            "status": "UNRESOLVED_ROW_VALUE_LANES",
+            "unresolved_reasons": [
+              "UNTYPED_NUMERIC_COMPANION_LANES"
+            ],
+            "value_source_line_indices": []
+          },
+          {
+            "companion_numeric_source_line_indices": [
+              43,
+              45
+            ],
+            "role": "LONG_TERM",
+            "row_source_line_index": 41,
+            "status": "UNRESOLVED_ROW_VALUE_LANES",
+            "unresolved_reasons": [
+              "UNTYPED_NUMERIC_COMPANION_LANES"
+            ],
+            "value_source_line_indices": []
+          }
+        ],
+        "safety": {
+          "accounting_authority": false,
+          "bank_filename_page_identity_used": false,
+          "extra_numeric_lanes_silently_discarded": false,
+          "geometry_and_source_line_order_only": true,
+          "mapping_authority": false,
+          "numeric_text_or_value_used": false,
+          "output_is_accepted_graph": false,
+          "schema_authority": false,
+          "semantic_text_used": false
+        },
+        "status": "UNRESOLVED_ORDERED_ROW_VALUE_LANES",
+        "unresolved_reasons": [
+          "LONG_TERM:UNTYPED_NUMERIC_COMPANION_LANES",
+          "MEDIUM_TERM:UNTYPED_NUMERIC_COMPANION_LANES",
+          "SHORT_TERM:UNTYPED_NUMERIC_COMPANION_LANES"
+        ]
+      },
+      "bank_provenance": "VIB",
+      "binding_mode": "ORDINARY_V2_PRIMARY_LINES",
+      "independent_mapping_status": "NOT_EVALUATED",
+      "independent_numeric_status": "NOT_EVALUATED",
+      "mechanism_status": "ASSIGNMENT_UNRESOLVED_FAIL_CLOSED",
+      "observation": {
+        "payload_sha256": "a6a564becaef61e62931bfc61fe490ccf70f183719cd5ebdf76857f6ecd07842",
+        "status": "UNRESOLVED",
+        "unresolved_reasons": [
+          "ORDERED_ROW_VALUE_LANE_ASSIGNMENT_NOT_RESOLVED",
+          "UNTYPED_NUMERIC_COMPANION_LANES_NOT_RESOLVED"
+        ]
+      },
+      "page_ordinal": 8,
+      "prior_observation": {
+        "payload_sha256": "3a9c1b0bce1d4ec01b22625ea9bcca268674ef2146d77f01576544eb3b893e42",
+        "status": "UNRESOLVED",
+        "unresolved_reasons": [
+          "ROW_VALUE_AXIS_ASSIGNMENT_NOT_RESOLVED"
+        ]
+      },
+      "schema_candidate": {
+        "candidate_report_norm_ids": [],
+        "candidate_set_id": "slascv1:candidate:b476214895783a47b8ef20c5f668856031e0a2829e67dfa9d7d1be4df4a706c9",
+        "metrics": {
+          "candidate_role_count": 0,
+          "singleton_schema_candidate_count": 0,
+          "source_only_validation_role_count": 0,
+          "unassessed_schema_child_count": 0
+        },
+        "payload_sha256": "dccf7602e4990da5b8e8e69270b88e901feed4a000df3dcad3ea99768edc3538",
+        "source_only_roles": [],
+        "status": "UNRESOLVED_GRAPH_NOT_ACCEPTED",
+        "structural_context_candidate_report_norm_ids": [],
+        "unassessed_report_norm_ids": [],
+        "unresolved_reasons": [],
+        "value_row_candidate_report_norm_ids": []
+      },
+      "semantic_graph": {
+        "graph_id": "slagv2:graph:569b15498bed29533e76f61c0cfee2771f962e0f739b6c236e727d1587db47ae",
+        "metrics": {
+          "accepted_counts": {
+            "AXIS": 0,
+            "HIERARCHY": 0,
+            "LOGICAL_ROW": 0,
+            "TABLE": 0,
+            "VALUE_POSITION": 0
+          },
+          "accepted_region_count": 0,
+          "disconnected_node_count": 0,
+          "edge_count": 0,
+          "evidence_node_count": 0,
+          "invalid_edge_count": 0,
+          "node_count": 0,
+          "orphan_evidence_count": 0,
+          "orphan_node_count": 0
+        },
+        "payload_sha256": "6509f5958364959a0e86e0ad80b0c23f843ba2acc01677cb17338f52b3290980",
+        "status": "UNRESOLVED",
+        "unresolved_reasons": [
+          "ORDERED_ROW_VALUE_LANE_ASSIGNMENT_NOT_RESOLVED",
+          "UNTYPED_NUMERIC_COMPANION_LANES_NOT_RESOLVED"
+        ]
+      },
+      "trial_id": "trial-0008"
+    }
+  ]
+}
