@@ -63,6 +63,7 @@ CLAIM_BOUNDARY = (
     "NO_SCHEMA_MAPPING_CANONICALIZATION_EXPORT_OR_PRODUCTION_AUTHORITY"
 )
 _ROLES = ("STANDARD", "SPECIAL_MENTION", "SUBSTANDARD", "DOUBTFUL", "LOSS")
+_MAX_ROLE_ANCHOR_LINE_SPAN = 3
 _ROLE_ALIASES = {
     "STANDARD": (
         "Nợ đủ tiêu chuẩn",
@@ -385,28 +386,36 @@ def _role_groups(
         search = cursor
         for role in _ROLES:
             found: dict[str, Any] | None = None
+            found_end: int | None = None
             stop = min(len(lines), search + 28, branch_index + 180)
             for index in range(search, stop):
-                kind = match_vietnamese_anchor_alias_v1(
-                    lines[index]["vietocr_text"], _ROLE_ALIASES[role]
-                )
-                if kind is not None:
+                for width in range(1, min(_MAX_ROLE_ANCHOR_LINE_SPAN, stop - index) + 1):
+                    surface = " ".join(
+                        line["vietocr_text"].strip() for line in lines[index : index + width]
+                    ).strip()
+                    kind = match_vietnamese_anchor_alias_v1(surface, _ROLE_ALIASES[role])
+                    if kind is None:
+                        continue
                     found = {
                         "match_kind": kind,
                         "role": role,
                         "source_line_index": index,
-                        "surface": lines[index]["vietocr_text"],
+                        "surface": surface,
                     }
+                    found_end = index + width - 1
+                    break
+                if found is not None:
                     break
             if found is None:
                 group = []
                 break
             group.append(found)
-            search = found["source_line_index"] + 1
+            assert found_end is not None
+            search = found_end + 1
         if not group:
             break
         groups.append(group)
-        cursor = group[-1]["source_line_index"] + 1
+        cursor = search
     return groups
 
 
@@ -516,7 +525,7 @@ def _ordinary_graph(
                 "label": {
                     "match_kind": match_record["match_kind"],
                     "source_line_index": role_index,
-                    "surface": lines[role_index]["vietocr_text"],
+                    "surface": match_record["surface"],
                 },
                 "role": role,
                 "values": vector,

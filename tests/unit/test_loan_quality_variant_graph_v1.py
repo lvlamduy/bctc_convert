@@ -177,6 +177,36 @@ def test_horizontal_relative_period_variant_closes_without_bank_routing() -> Non
     assert result["safety"]["mapping_authority"] is False
 
 
+def test_wrapped_owner_branch_intermediate_and_grade_labels_share_one_graph() -> None:
+    replacements = {
+        "5. Cho vay khách hàng": ["5. Cho vay", "khách hàng"],
+        "Phân tích chất lượng nợ cho vay": ["Phân tích chất lượng", "nợ cho vay"],
+        "Dư nợ cho vay": ["Dư nợ", "cho vay"],
+        "Nợ đủ tiêu chuẩn": ["Nợ đủ", "tiêu chuẩn"],
+        "Nợ cần chú ý": ["Nợ cần", "chú ý"],
+        "Nợ dưới tiêu chuẩn": ["Nợ dưới", "tiêu chuẩn"],
+        "Nợ nghi ngờ": ["Nợ nghi", "ngờ"],
+        "Nợ có khả năng mất vốn": ["Nợ có khả năng", "mất vốn"],
+    }
+    wrapped: list[tuple[str, int]] = []
+    for surface, x in _ordinary():
+        wrapped.extend((fragment, x) for fragment in replacements.get(surface, [surface]))
+
+    result = quality.build_loan_quality_variant_graph_document_v1([_page(wrapped)])
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    graph = result["graphs"][0]
+    assert graph["owner_context"]["surface"] == "5. Cho vay khách hàng"
+    assert graph["branch"]["surface"] == "Phân tích chất lượng nợ cho vay"
+    assert [row["label"]["surface"] for row in graph["rows"]] == [
+        "Nợ đủ tiêu chuẩn",
+        "Nợ cần chú ý",
+        "Nợ dưới tiêu chuẩn",
+        "Nợ nghi ngờ",
+        "Nợ có khả năng mất vốn",
+    ]
+
+
 def test_owner_and_document_unit_can_be_inherited_only_from_preceding_evidence() -> None:
     target = [
         item for item in _ordinary() if item[0] not in {"5. Cho vay khách hàng", "Triệu đồng"}
@@ -326,6 +356,30 @@ def test_stacked_period_multi_asset_variant_selects_column_by_geometry() -> None
     assert graph["total_column"]["column_index"] == 4
     assert len(graph["blocks"]) == 2
     assert graph["arithmetic_status"] == ("CORROBORATED_STACKED_ROW_AND_COLUMN_POPULATIONS")
+
+
+def test_stacked_period_role_labels_may_wrap_without_a_separate_parser() -> None:
+    replacements = {
+        "Nợ đủ tiêu chuẩn": ["Nợ đủ", "tiêu chuẩn"],
+        "Nợ cần chú ý": ["Nợ cần", "chú ý"],
+        "Nợ dưới tiêu chuẩn": ["Nợ dưới", "tiêu chuẩn"],
+        "Nợ nghi ngờ": ["Nợ nghi", "ngờ"],
+        "Nợ có khả năng mất vốn": ["Nợ có khả năng", "mất vốn"],
+    }
+    wrapped: list[tuple[str, int]] = []
+    for surface, x in _stacked():
+        wrapped.extend((fragment, x) for fragment in replacements.get(surface, [surface]))
+
+    result = quality.build_loan_quality_variant_graph_document_v1([_page(wrapped)])
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    graph = result["graphs"][0]
+    assert graph["layout_mode"] == "STACKED_PERIOD_BLOCKS_MULTI_ASSET_COLUMNS"
+    assert all(
+        row["label"]["surface"] in replacements
+        for block in graph["blocks"]
+        for row in block["rows"]
+    )
 
 
 def test_stacked_companion_column_mismatch_vetoes_target_selection() -> None:

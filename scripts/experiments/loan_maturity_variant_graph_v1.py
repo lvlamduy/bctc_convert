@@ -145,30 +145,6 @@ def _normalize(value: str) -> str:
     return " ".join(re.sub(r"[^a-z0-9%]+", " ", text).split())
 
 
-def _edit_distance_at_most_one(left: str, right: str) -> bool:
-    if left == right:
-        return True
-    if abs(len(left) - len(right)) > 1:
-        return False
-    if len(left) > len(right):
-        left, right = right, left
-    if len(left) == len(right):
-        return sum(a != b for a, b in zip(left, right, strict=True)) <= 1
-    left_index = 0
-    right_index = 0
-    differences = 0
-    while left_index < len(left) and right_index < len(right):
-        if left[left_index] == right[right_index]:
-            left_index += 1
-            right_index += 1
-        else:
-            differences += 1
-            right_index += 1
-            if differences > 1:
-                return False
-    return True
-
-
 def _semantic_candidates(line: Mapping[str, Any]) -> list[tuple[str, str]]:
     # Qwen is deliberately excluded.  Its value remains in the bound record so
     # a diagnostic trial can be audited without silently changing the matcher.
@@ -180,23 +156,6 @@ def _semantic_match(line: Mapping[str, Any], predicate: Any) -> tuple[str, str] 
         if predicate(text):
             return source, text
     return None
-
-
-def _owner_heading(text: str) -> bool:
-    normalized = _normalize(text)
-    normalized = re.sub(r"^(?:[0-9]+\s+)+", "", normalized)
-    aliases = (
-        "cho vay khach hang",
-        "du no cho vay khach hang",
-        "cac khoan cho vay khach hang",
-    )
-    return any(
-        normalized == alias or _edit_distance_at_most_one(normalized, alias) for alias in aliases
-    )
-
-
-def _intermediate_header(text: str) -> bool:
-    return _normalize(text) in {"du no cho vay", "du no cho vay khach hang"}
 
 
 def _margin_text(text: str) -> bool:
@@ -387,6 +346,24 @@ def _document_candidates(pages: Sequence[Mapping[str, Any]]) -> list[dict[str, A
                     **region["branch_match"],
                     "semantic_source": "VIETOCR_TRANSFORMER",
                 },
+                "optional_intermediate_matches": [
+                    {
+                        **match,
+                        "semantic_source": "VIETOCR_TRANSFORMER",
+                    }
+                    for match in region["optional_intermediate_matches"]
+                ],
+                "owner_context": (
+                    {
+                        "mode": region["owner_context"]["mode"],
+                        "page_sequence": region["owner_context"]["page_sequence"],
+                        "semantic_source": "VIETOCR_TRANSFORMER",
+                        "source_line_index": region["owner_context"]["source_line_index"],
+                        "surface": region["owner_context"]["surface"],
+                    }
+                    if region["owner_context"] is not None
+                    else None
+                ),
                 "page_sequence": region["page_sequence"],
                 "role_match_records": [
                     {
@@ -630,48 +607,7 @@ def _build_result(
     branch_index = candidate["branch_source_line_index"]
     role_indices = candidate["role_source_line_indices"]
 
-    local_owners = [
-        (line["source_line_index"], match)
-        for line in lines[:branch_index]
-        if (match := _semantic_match(line, _owner_heading)) is not None
-    ]
-    if local_owners:
-        owner_index, owner_match = local_owners[-1]
-        owner = {
-            "mode": "SAME_PAGE_NEAREST_PRECEDING",
-            "page_sequence": target,
-            "semantic_source": owner_match[0],
-            "source_line_index": owner_index,
-            "surface": owner_match[1],
-        }
-    else:
-        previous = next(
-            (page for page in pages if page["page_sequence"] == target - 1),
-            None,
-        )
-        previous_owners = (
-            [
-                (index, match)
-                for index, line in enumerate(previous["lines"])
-                if (match := _semantic_match(line, _owner_heading)) is not None
-            ]
-            if previous is not None
-            else []
-        )
-        previous_owner_index, previous_owner_match = (
-            previous_owners[-1] if previous_owners else (None, None)
-        )
-        owner = (
-            {
-                "mode": "IMMEDIATE_PREVIOUS_PAGE",
-                "page_sequence": target - 1,
-                "semantic_source": previous_owner_match[0],
-                "source_line_index": previous_owner_index,
-                "surface": previous_owner_match[1],
-            }
-            if previous_owners
-            else None
-        )
+    owner = canonical_clone_v1(candidate["owner_context"])
     if owner is None:
         reasons.append("CUSTOMER_LOAN_OWNER_NOT_RESOLVED")
 
@@ -751,7 +687,7 @@ def _build_result(
                 "role": role,
                 "semantic_source": match_record["semantic_source"],
                 "source_line_index": role_index,
-                "vietocr_text": lines[role_index]["vietocr_text"],
+                "vietocr_text": match_record["surface"],
                 "values": vector,
             }
         )
@@ -881,19 +817,18 @@ def _build_result(
             "source_line_index": branch_index,
             "surface": candidate["branch_match"]["surface"],
             "variant": candidate["branch_match"]["variant"],
-            "vietocr_text": lines[branch_index]["vietocr_text"],
+            "vietocr_text": candidate["branch_match"]["surface"],
         },
-        "intermediate_header": next(
-            (
-                {
-                    "semantic_source": match[0],
-                    "source_line_index": line["source_line_index"],
-                    "surface": match[1],
-                }
-                for line in header
-                if (match := _semantic_match(line, _intermediate_header)) is not None
-            ),
-            None,
+        "intermediate_header": (
+            {
+                "semantic_source": candidate["optional_intermediate_matches"][0]["semantic_source"],
+                "source_line_index": candidate["optional_intermediate_matches"][0][
+                    "source_line_index"
+                ],
+                "surface": candidate["optional_intermediate_matches"][0]["surface"],
+            }
+            if candidate["optional_intermediate_matches"]
+            else None
         ),
         "schema_candidate_frontier_ready": schema_candidate_frontier_ready,
         "optional_margin": optional_margin,

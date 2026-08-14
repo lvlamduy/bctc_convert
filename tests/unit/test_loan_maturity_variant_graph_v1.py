@@ -182,6 +182,51 @@ def test_simple_two_lane_core_total_is_one_accepted_variant_graph():
     assert result["safety"]["mapping_authority"] is False
 
 
+def test_wrapped_structural_anchors_use_the_same_maturity_graph():
+    semantic = _semantic_page(
+        [
+            ("5. Cho vay", 0),
+            ("khách hàng", 0),
+            ("Phân tích dư nợ theo", 0),
+            ("thời gian", 0),
+            ("30/06/2026", 100),
+            ("31/12/2025", 300),
+            ("Triệu đồng", 100),
+            ("Triệu đồng", 300),
+            ("Dư nợ", 0),
+            ("cho vay", 0),
+            ("Nợ ngắn", 0),
+            ("hạn", 0),
+            ("10", 100),
+            ("11", 300),
+            ("Nợ trung", 0),
+            ("hạn", 0),
+            ("20", 100),
+            ("21", 300),
+            ("Nợ dài", 0),
+            ("hạn", 0),
+            ("30", 100),
+            ("31", 300),
+            ("60", 100),
+            ("63", 300),
+        ]
+    )
+
+    result = matcher.build_loan_maturity_variant_graph_v1(_document_pages(semantic), semantic)
+
+    assert result["status"] == "ACCEPTED_VARIANT_GRAPH"
+    graph = result["result"]["graph"]
+    assert graph["owner"]["surface"] == "5. Cho vay khách hàng"
+    assert graph["branch"]["surface"] == "Phân tích dư nợ theo thời gian"
+    assert graph["branch"]["vietocr_text"] == "Phân tích dư nợ theo thời gian"
+    assert graph["intermediate_header"]["surface"] == "Dư nợ cho vay"
+    assert [row["vietocr_text"] for row in graph["rows"]] == [
+        "Nợ ngắn hạn",
+        "Nợ trung hạn",
+        "Nợ dài hạn",
+    ]
+
+
 @pytest.mark.parametrize(
     ("surface", "variant"),
     [
