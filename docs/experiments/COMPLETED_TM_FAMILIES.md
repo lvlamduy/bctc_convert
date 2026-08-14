@@ -102,25 +102,24 @@ Quy ước:
 Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
 Q1/2026, không relabel thành Q2/2026.
 
-## 8. Chứng khoán
+## 8. Chứng khoán kinh doanh
 
-- **Đã xác minh:** Chưa có khoản mục schema nào được xác minh; đã tìm được
-  vùng nguồn cho 8/8 bank.
-- **Không có:** VIB không có `Chứng khoán kinh doanh` trong phạm vi nguồn đã
-  kiểm tra, nhưng có `Chứng khoán đầu tư sẵn sàng để bán` tại p36. Vì vậy VIB
-  không được coi là không có family chứng khoán nói chung.
+- **Đã xác minh:** ACB p16, MBB p31, VPB p40, HDB p24, VCB p30, CTG p37 và
+  BID p20. Đã map 58 dòng chứng khoán nợ/vốn, nhánh tổ chức hoặc niêm
+  yết/chưa niêm yết, khoản khác, tổng gộp và dự phòng; 20 phương trình
+  cha–con, gross–dự phòng–net đóng chính xác. MBB dùng biến thể niêm
+  yết/chưa niêm yết; sáu bank còn lại dùng biến thể theo tổ chức phát hành.
+- **Không có vùng `Chứng khoán kinh doanh` hoàn chỉnh trong phạm vi PDF:**
+  VIB. Đây không phải tuyên bố VIB không có family chứng khoán nói chung vì
+  VIB có `Chứng khoán đầu tư sẵn sàng để bán` tại p36.
 - **Còn thiếu:**
 
 | Bank | Trang | Khoản mục nguồn | Lý do chưa map |
 | --- | ---: | --- | --- |
-| ACB | 16 | Chứng khoán kinh doanh | Chưa có graph chung cho loại chứng khoán, gross, dự phòng và net. |
-| MBB | 31 | Chứng khoán kinh doanh | Có cấu trúc niêm yết/chưa niêm yết và dự phòng; chưa map nhánh thay thế. |
-| VPB | 40 | Chứng khoán kinh doanh | Có snapshot và roll-forward dự phòng trên cùng vùng; chưa tách quan hệ không cộng trùng. |
-| HDB | 24 | Chứng khoán kinh doanh | Có nhiều loại chứng khoán và dự phòng chung/cụ thể; chưa khóa graph tổng quát. |
-| VCB | 30 | Chứng khoán kinh doanh | Có các nhánh issuer và dự phòng giảm giá; chưa map hierarchy. |
-| CTG | 37 | Chứng khoán kinh doanh | Có các nhánh loại chứng khoán, khoản khác và dự phòng; chưa map hierarchy. |
-| BID | 20 | Chứng khoán kinh doanh | Có các nhánh loại chứng khoán và dự phòng rủi ro; chưa map hierarchy. |
-| VIB | 36 | Chứng khoán đầu tư sẵn sàng để bán | Là biến thể AFS thay vì trading; cần graph securities cho các branch thay thế trước khi map. |
+| VIB | 36 | Chứng khoán đầu tư sẵn sàng để bán | Là subfamily AFS riêng, không được ép vào trading; sẽ xử lý ở lượt securities tiếp theo. |
+
+Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
+Q1/2026, không relabel thành Q2/2026.
 
 ## Bảng tổng hợp
 
@@ -137,4 +136,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Doanh nghiệp/đối tượng KH | — | ✓\* p32 | ✓ p43 | ✓ p26 | — | — | — | ✓ p34 | 1 group parent check-only |
 | Dự phòng cho vay | ✓ p18 | ✓ p34 | ✓\* p45 | ✓ p28 | ✓ p31 | ✓ p39 | ✓ p23 | ✓ p34 | 0 dòng; VPB còn thiếu nguồn Q2 |
 | Tiền gửi khách hàng | ✓ p21 | ✓ p43 | ✓\* p55 | ✓ p31 | ✓ p35 | ✓ p42 | ✓ p25 | ✓\* p41–42 | 2 dòng TNHH cùng một khoảng trống schema; VPB là nguồn Q1 |
-| Chứng khoán | △ p16 | △ p31 | △ p40 | △ p24 | △ p30 | △ p37 | △ p20 | △ AFS p36 | 8 vùng chưa map |
+| Chứng khoán kinh doanh | ✓ p16 | ✓ p31 | ✓\* p40 | ✓ p24 | ✓ p30 | ✓ p37 | ✓ p20 | △ AFS p36 | 1 subfamily AFS; VPB là nguồn Q1 |

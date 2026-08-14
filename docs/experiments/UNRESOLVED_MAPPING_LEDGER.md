@@ -17,7 +17,7 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **27 entries**.  Current open queue: **3**.  Closed history:
+Ledger total: **28 entries**.  Current open queue: **4**.  Closed history:
 **21** row/graph resolutions and **3** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
@@ -29,6 +29,7 @@ Bank/report/page fields below are evidence locators only, never matching rules.
 | CD-001 | Tiền gửi của khách hàng / loại hình doanh nghiệp | VPB | 55 | Công ty TNHH 2 thành viên trở lên có phần vốn góp của Nhà nước trên 50% | Giá trị hiện tại `64.165`; schema 1079 chỉ mô tả Công ty TNHH **một** thành viên có vốn Nhà nước trên 50%, nên chưa thể dùng thay thế. |
 | CD-002 | Tiền gửi của khách hàng / loại hình doanh nghiệp | VIB | 42 | Công ty TNHH 2 thành viên trở lên có phần vốn góp của Nhà nước trên 50% | Giá trị hiện tại `174`; cùng khoảng trống schema với CD-001. |
 | PM-001 | Dự phòng rủi ro cho vay khách hàng | VPB | 45 | Dự phòng chung, dự phòng cụ thể, dự phòng cho vay giao dịch ký quỹ và ứng trước | Đã map và kiểm tra đủ kỳ 01/01–31/03/2026 của PDF được cung cấp; chưa có PDF VPB Q2/2026 nên không được relabel kết quả Q1 thành Q2. |
+| SEC-001 | Chứng khoán / đầu tư sẵn sàng để bán | VIB | 36 | Chứng khoán đầu tư sẵn sàng để bán | Không có vùng trading hoàn chỉnh; vùng AFS là subfamily khác và chưa chạy lượt map AFS. Không tuyên bố family chứng khoán vắng mặt. |
 
 The shared family locator follows a strict minimal-anchor search.  It enumerates
 every parent+child pair first, then every child+child pair, over both complete and
@@ -49,6 +50,23 @@ page or note identifier participates in this decision.
 | LE-001–LE-011 | `RESOLVED` by exact family replay, non-additive graph equivalence, or pixel replay |
 | CD-001–CD-002 | `OPEN_SCHEMA_GAP`; không ép Công ty TNHH 2+ thành viên vào schema chỉ dành cho một thành viên |
 | PM-001 | `OPEN_SOURCE_PERIOD_GAP`; không còn dòng nguồn chưa map trong PDF Q1 đã bind |
+| SEC-001 | `OPEN_DISTINCT_SECURITIES_SUBFAMILY`; trading đã hoàn tất 7 bank, AFS VIB giữ riêng cho lượt kế tiếp |
+
+## Trading securities (`TRADING_SECURITIES`)
+
+Current exact-replay result:
+`docs/experiments/E-0059-trading-securities-8bank-codex-verified-mapping-v1.json`
+
+- One bank-blind graph scans all 453 pages. It finds one unique trading region
+  for ACB, MBB, VPB, HDB, VCB, CTG and BID, while rejecting accounting-policy
+  prose, provision roll-forwards and investment securities as sibling families.
+- 58 source rows are `VERIFIED_BY_CODEX`; 20 parent/child and
+  gross/provision/net equations close exactly. First/last cluster items, PDF row
+  order, period/unit columns and parent-total placement remain explicit.
+- MBB uses the listed/unlisted branch. The other six mapped banks use the issuer
+  branch. Unlabeled gross rows are admitted only when topology and the full
+  accounting equation both agree.
+- VIB p36 AFS remains SEC-001. VPB retains its Q1/2026 source-period caveat.
 
 ## Customer deposit (`CUSTOMER_DEPOSIT_CLASSIFICATION`)
 
