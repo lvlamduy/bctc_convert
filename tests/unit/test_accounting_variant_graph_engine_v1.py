@@ -208,6 +208,50 @@ def test_wrapped_owner_branch_intermediate_and_children_form_one_region_only():
     ]
 
 
+def test_near_family_heading_cannot_absorb_the_following_branch_heading():
+    result = build_accounting_variant_region_scan_v1(
+        [
+            _page(
+                1,
+                [
+                    "CHO VAY KHÁCH HÀNG",
+                    "Phân tích chất lượng dư nợ cho vay khách hàng được trình bày",
+                    "tại Thuyết minh 44.1.",
+                    "9.1 Phân tích dư nợ theo thời gian cho vay gốc",
+                    "30/06/2026",
+                    "31/12/2025",
+                    "Triệu đồng",
+                    "Triệu đồng",
+                    "Nợ ngắn hạn",
+                    "10",
+                    "11",
+                    "Nợ trung hạn",
+                    "20",
+                    "21",
+                    "Nợ dài hạn",
+                    "30",
+                    "31",
+                    "60",
+                    "63",
+                ],
+            )
+        ],
+        _spec(),
+    )
+
+    assert result["metrics"] == {
+        "complete_context_region_count": 1,
+        "near_region_count": 1,
+        "ordered_anchor_region_count": 1,
+    }
+    assert result["regions"][0]["branch_source_line_index"] == 3
+    assert result["regions"][0]["branch_match"]["surface"] == (
+        "9.1 Phân tích dư nợ theo thời gian cho vay gốc"
+    )
+    assert result["near_regions"][0]["branch_source_line_index"] == 1
+    assert result["near_regions"][0]["unresolved_reasons"] == ["BRANCH_VARIANT_NOT_RESOLVED"]
+
+
 def test_spec_bank_field_and_coordinated_scan_rehash_fail_closed_on_replay():
     pages = [_page(1, ["Cho vay khách hàng", *_complete_surface()])]
     bad_spec = _spec() | {"bank": "MBB"}

@@ -393,6 +393,15 @@ def _branch_window(
     core_matched = False
     near_surface = lines[start]["vietocr_text"]
     for width in range(1, min(_MAX_BRANCH_ANCHOR_LINE_SPAN, len(lines) - start) + 1):
+        # A later line which can itself start a family branch is a hard title
+        # boundary.  Without this guard, a near-family sentence such as
+        # ``Phân tích chất lượng dư nợ ...`` can absorb the following numbered
+        # ``Phân tích dư nợ theo thời gian ...`` heading.  The joined surface
+        # would then borrow the maturity variant from its sibling and create a
+        # duplicate complete graph.  Wrapped headings still work because their
+        # continuation line does not restart the branch core.
+        if width > 1 and _starts_with_branch_core(lines[start + width - 1]["vietocr_text"], spec):
+            break
         surface = _joined_surface(lines, start, start + width)
         branch, core = _branch_match(surface, spec)
         if core:
