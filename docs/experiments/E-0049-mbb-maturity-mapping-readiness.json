@@ -1,0 +1,283 @@
+{
+  "automated_checks": {
+    "candidate_set_id": "slascv1:candidate:2544ffdd12338be6b968cdc68137a42b85fd612c73ddc264e5593fa029d1669a",
+    "candidate_value_report_norm_ids": [
+      753,
+      754,
+      755
+    ],
+    "numeric_verification_id": "e0048:numeric-verification:94ab8960ea20a77735a0179bcef779581a5cd31bddee1c7b29f02c502c04d74b",
+    "schema_candidate_status": "CANDIDATE_SET_READY",
+    "semantic_graph_id": "slagv2:graph:1db14046efc734aeeb36d04a77bd1a9f8e8fc4541fa9998e95279ae72ee5dda9",
+    "semantic_graph_status": "ACCEPTED_WITHIN_SUPPLIED_FAMILY_COLLISION_SCOPE",
+    "source_only_roles": [
+      "TOTAL"
+    ],
+    "two_axis_closure": [
+      {
+        "addends": [
+          603040884,
+          159277634,
+          448407905
+        ],
+        "axis_ordinal": 0,
+        "observed_total": 1210726423,
+        "residual": 0,
+        "status": "CORROBORATED"
+      },
+      {
+        "addends": [
+          587136924,
+          127883727,
+          353958134
+        ],
+        "axis_ordinal": 1,
+        "observed_total": 1068978785,
+        "residual": 0,
+        "status": "CORROBORATED"
+      }
+    ]
+  },
+  "candidate_items": [
+    {
+      "automatic_checks": {
+        "exact_digit_and_sign_agreement": "PASS",
+        "source_crop_identity": "PASS",
+        "source_graph_value_role": "PASS",
+        "two_axis_core_closure": "PASS"
+      },
+      "disposition": "SCHEMA_CANDIDATE_MAPPING_UNRESOLVED",
+      "numeric_values": [
+        "603040884",
+        "587136924"
+      ],
+      "report_norm_id": 753,
+      "source_line_indices": [
+        92,
+        93
+      ],
+      "typed_role": "SHORT_TERM"
+    },
+    {
+      "automatic_checks": {
+        "exact_digit_and_sign_agreement": "PASS",
+        "source_crop_identity": "PASS",
+        "source_graph_value_role": "PASS",
+        "two_axis_core_closure": "PASS"
+      },
+      "disposition": "SCHEMA_CANDIDATE_MAPPING_UNRESOLVED",
+      "numeric_values": [
+        "159277634",
+        "127883727"
+      ],
+      "report_norm_id": 754,
+      "source_line_indices": [
+        95,
+        96
+      ],
+      "typed_role": "MEDIUM_TERM"
+    },
+    {
+      "automatic_checks": {
+        "exact_digit_and_sign_agreement": "PASS",
+        "source_crop_identity": "PASS",
+        "source_graph_value_role": "PASS",
+        "two_axis_core_closure": "PASS"
+      },
+      "disposition": "SCHEMA_CANDIDATE_MAPPING_UNRESOLVED",
+      "numeric_values": [
+        "448407905",
+        "353958134"
+      ],
+      "report_norm_id": 755,
+      "source_line_indices": [
+        98,
+        99
+      ],
+      "typed_role": "LONG_TERM"
+    },
+    {
+      "automatic_checks": {
+        "exact_digit_and_sign_agreement": "PASS",
+        "source_crop_identity": "PASS",
+        "source_graph_value_role": "PASS",
+        "two_axis_core_closure": "PASS"
+      },
+      "disposition": "SOURCE_ONLY_VALIDATION_MAPPING_INELIGIBLE",
+      "numeric_values": [
+        "1210726423",
+        "1068978785"
+      ],
+      "report_norm_id": null,
+      "source_line_indices": [
+        100,
+        101
+      ],
+      "typed_role": "TOTAL"
+    }
+  ],
+  "claim_boundary": "EXACT_E0047_STRUCTURE_AND_E0048_NUMERIC_READINESS_JOIN_ONLY_NO_STATEMENT_CONTEXT_INHERITANCE_PIXEL_TRANSCRIPTION_SCHEMA_MAPPING_VERIFIED_BY_CODEX_CANONICALIZATION_EXPORT_OR_DOCUMENT_ABSENCE_AUTHORITY",
+  "exceptional_review_queue": [
+    {
+      "automatic_disposition": "UNRESOLVED",
+      "code": "DOCUMENT_STATEMENT_CONTEXT_INHERITANCE_NOT_AUTHENTICATED",
+      "evidence": {
+        "page_local_context_diagnostic": {
+          "claim_boundary": "SOURCE_BOUND_EXACT_VIETOCR_VISIBLE_PAGE_HEADING_TO_LOCAL_STATEMENT_SCOPE_CONTEXT_ONLY_NO_DOCUMENT_COMPLETION_SCHEMA_MAPPING_NUMERIC_CANONICALIZATION_OR_EXPORT_AUTHORITY",
+          "context_id": "sscxtv1:context:f0cc2022505dc0653f63017a351ca58e4bce516b9c052e8756fb5802c5c225a2",
+          "continuation": null,
+          "format_version": "BANK_CORPUS_SEMANTIC_STATEMENT_CONTEXT_V1",
+          "heading_evidence": null,
+          "readiness": {
+            "document_statement_page_completion_claimed": false,
+            "export_eligible": false,
+            "page_statement_context_resolved": false,
+            "schema_mapping_ready": false
+          },
+          "report_scope": null,
+          "safety": {
+            "accentless_key_used_for_acceptance": false,
+            "canonicalization_authority": false,
+            "document_statement_page_completion_claimed": false,
+            "exact_full_heading_surface_required": true,
+            "export_authority": false,
+            "filename_bank_page_metadata_used_for_statement_or_scope": false,
+            "numeric_authority": false,
+            "page_local_context_only": true,
+            "ppocr_text_used_for_statement_or_scope": false,
+            "role_a_used_for_statement_or_scope": false,
+            "schema_mapping_authority": false,
+            "schema_used_for_statement_or_scope": false
+          },
+          "semantic_page_binding_sha256": "e4aef8466027e0b033c7b1e1a14a085816865ade645a0f085ed61c5ba71b492f",
+          "source_local_page_id": "ssv2:page:7e38abc2d54306b31c390914133eca241f090b49cfa48042fc778fecc69db0b0",
+          "source_projection_sha256": "f8a2bcc8f3bf4c2193526bdb6fb927ecfb741982d2aed7cf3a9395fe67d8715c",
+          "statement_type": null,
+          "status": "UNRESOLVED_VISIBLE_PAGE_STATEMENT_CONTEXT",
+          "unresolved_reasons": [
+            "NO_EXACT_SUPPORTED_VISIBLE_PAGE_HEADING"
+          ]
+        },
+        "required_anchor": "PRIOR_VISIBLE_DOCUMENT_STATEMENT_HEADING"
+      },
+      "review_scope": "TABLE"
+    },
+    {
+      "automatic_disposition": "UNRESOLVED",
+      "code": "MEDIUM_TERM_SEMANTIC_PIXEL_TRANSCRIPTION_RECONCILIATION_REQUIRED",
+      "evidence": {
+        "crop_sha256": "20bcaf0accf70eabd8e91c6ff952cefed2c05b4325ec201131e88842ea701af3",
+        "independent_pixel_transcription_status": "NOT_EVALUATED",
+        "semantic_proposal_text": "Nợ trùng hạn",
+        "source_line_index": 94,
+        "source_primary_text": "N trung hn"
+      },
+      "review_scope": "ITEM_MEDIUM_TERM"
+    },
+    {
+      "automatic_disposition": "UNRESOLVED",
+      "code": "VISIBLE_OPTIONAL_MARGIN_CHILD_NOT_ADJUDICATED",
+      "evidence": {
+        "excluded_from_strict_core": true,
+        "lines": [
+          {
+            "crop_sha256": "d603b41c65bcd3ad185fd62fc0c9b8e3dd8918501a64ae8099a95a936d381b91",
+            "semantic_proposal_text": "Các khoản cho vay margin chứng khoán và ứng trước",
+            "source_line_index": 102,
+            "source_primary_text": "Các khon cho vay margin chng khoán và ng truưc"
+          },
+          {
+            "crop_sha256": "3ef7bfb95b9a0a3a877c4338320ce8032ee6044c687de7ad6df87dc4c7184c19",
+            "semantic_proposal_text": "khách hàng tại MBs",
+            "source_line_index": 103,
+            "source_primary_text": "khách hàng ti MBS"
+          },
+          {
+            "crop_sha256": "4950a8fb26f9841ddbd8ddc3ad1d6b3e694abc3efc6ae4eac6a0f0b6177a5b3b",
+            "semantic_proposal_text": "16.828.054",
+            "source_line_index": 104,
+            "source_primary_text": "16.828.054"
+          },
+          {
+            "crop_sha256": "4fc5e5d6916aaaddd7bdf9c63b75bbe581591b23a0bb2c64e5dda9a86b89970a",
+            "semantic_proposal_text": "15.040.585",
+            "source_line_index": 105,
+            "source_primary_text": "15.040.585"
+          },
+          {
+            "crop_sha256": "111fc40335d586f48acb1b8a4c3d58a9d87e87a8a128ed3b454365a051360430",
+            "semantic_proposal_text": "1.227.554.477",
+            "source_line_index": 106,
+            "source_primary_text": "1.227.554.477"
+          },
+          {
+            "crop_sha256": "dfce6876f9fcecfcf06aa442840401750ccb3453541ed89620581f422be1f56e",
+            "semantic_proposal_text": "1.084.019.370",
+            "source_line_index": 107,
+            "source_primary_text": "1.084.019.370"
+          }
+        ],
+        "schema_near_neighbour_report_norm_id": 5747
+      },
+      "review_scope": "NEAR_NEIGHBOUR_AND_POPULATION_BOUNDARY"
+    }
+  ],
+  "experiment_id": "E-0049",
+  "format_version": "E0049_MBB_MATURITY_MAPPING_READINESS_AUDIT_V1",
+  "inputs": {
+    "e0047": {
+      "path": "docs/experiments/E-0047-loan-maturity-ordered-row-value-lane-mechanism-evaluation.json",
+      "result_id": "e0047:lane-evaluation:b726342533a7bb76e820563633406abc4c09a40e67e6b8cd546c01535ef9ee5d",
+      "sha256": "7ccf3c4bfb7b76cd7915d8f460ccb6c9bc14097053fc37af54ea1d7dfab56d7c",
+      "size_bytes": 31685
+    },
+    "e0048": {
+      "path": "docs/experiments/E-0048-mbb-maturity-numeric-verification.json",
+      "sha256": "91b9a614692279e36667ecf9740265c93a39452a27a3d00018bf5fe6bab2378f",
+      "size_bytes": 17097,
+      "verification_id": "e0048:numeric-verification:94ab8960ea20a77735a0179bcef779581a5cd31bddee1c7b29f02c502c04d74b"
+    },
+    "schema_candidate": {
+      "candidate_set_id": "slascv1:candidate:2544ffdd12338be6b968cdc68137a42b85fd612c73ddc264e5593fa029d1669a",
+      "sha256": "a40e4a75f8fe7842a37a59f7a8f913167541c5822c164e24e15edd3571e20a81"
+    },
+    "semantic_page_binding_sha256": "e4aef8466027e0b033c7b1e1a14a085816865ade645a0f085ed61c5ba71b492f",
+    "source_projection_sha256": "f8a2bcc8f3bf4c2193526bdb6fb927ecfb741982d2aed7cf3a9395fe67d8715c",
+    "statement_context_page_local_diagnostic_id": "sscxtv1:context:f0cc2022505dc0653f63017a351ca58e4bce516b9c052e8756fb5802c5c225a2"
+  },
+  "metrics": {
+    "candidate_value_row_count": 3,
+    "exceptional_review_item_count": 3,
+    "mapping_verified_row_count": 0,
+    "numeric_verified_cell_count": 8,
+    "source_only_validation_row_count": 1,
+    "unresolved_mapping_row_count": 3
+  },
+  "near_neighbours": [
+    {
+      "disposition": "VISIBLE_OUTSIDE_STRICT_THREE_ROW_CORE_NOT_ADJUDICATED",
+      "report_norm_id": 5747,
+      "status": "UNRESOLVED",
+      "whole_document_absence_claim": false
+    },
+    {
+      "disposition": "SCHEMA_CONTEXT_UNRESOLVED_ORPHAN_MAPPING_INELIGIBLE",
+      "report_norm_id": 1944,
+      "status": "UNRESOLVED",
+      "whole_document_absence_claim": false
+    }
+  ],
+  "readiness_id": "e0049:mapping-readiness:fc09efc69195dce189b2e24982324d4b0ba2d4daa2757a4efd898ebbd3d0930b",
+  "safety": {
+    "automatic_numeric_checks_completed": true,
+    "candidate_ids_are_mappings": false,
+    "document_absence_claimed": false,
+    "exceptional_review_queue_only": true,
+    "mapping_authority": false,
+    "persisted_result_self_authenticating": false,
+    "source_only_total_has_report_norm_id": false,
+    "verified_by_codex_claimed": false
+  },
+  "state": "AUTOMATED_STRUCTURE_AND_NUMERIC_CHECKS_COMPLETE_EXCEPTIONAL_REVIEW_PENDING",
+  "status": "UNRESOLVED_MAPPING_EXCEPTIONAL_SOURCE_REVIEW_REQUIRED"
+}
