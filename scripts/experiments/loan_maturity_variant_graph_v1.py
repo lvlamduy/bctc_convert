@@ -164,10 +164,13 @@ def _margin_text(text: str) -> bool:
 
 
 def _new_numbered_section(text: str) -> bool:
-    """Recognize a following numbered disclosure heading, not a table cell."""
+    """Recognize the next disclosure/family heading, not a table cell."""
 
     normalized = _normalize(text)
-    return not _number_like(text) and re.match(r"^[0-9]{1,3}\s+[a-z]", normalized) is not None
+    return not _number_like(text) and (
+        normalized.startswith("phan tich ")
+        or re.match(r"^[0-9]{1,3}\s+[a-z]", normalized) is not None
+    )
 
 
 def _number_like(text: str) -> bool:

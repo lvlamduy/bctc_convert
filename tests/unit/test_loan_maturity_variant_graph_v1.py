@@ -324,6 +324,23 @@ def test_next_numbered_disclosure_cannot_be_misread_as_optional_margin():
     assert graph["total"]["variant"] == "CORE_TOTAL_ONLY"
 
 
+def test_unnumbered_next_family_cannot_leak_a_margin_like_row_into_maturity():
+    surfaces = _simple_surfaces() + [
+        ("Phân tích dư nợ theo đối tượng khách hàng", 0),
+        ("Cho vay giao dịch ký quỹ", 0),
+        ("5", 100),
+        ("7", 300),
+    ]
+    semantic = _semantic_page(surfaces)
+
+    result = matcher.build_loan_maturity_variant_graph_v1(_document_pages(semantic), semantic)
+
+    assert result["status"] == "ACCEPTED_VARIANT_GRAPH"
+    graph = result["result"]["graph"]
+    assert graph["optional_margin"] is None
+    assert graph["total"]["variant"] == "CORE_TOTAL_ONLY"
+
+
 def test_vpb_split_dates_margin_and_grand_total_without_core_subtotal():
     surfaces = [
         ("Cho vay khách hàng", 0),
