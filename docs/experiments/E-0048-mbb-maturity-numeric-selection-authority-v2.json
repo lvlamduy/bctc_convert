@@ -1,0 +1,24 @@
+{
+  "artifacts": {
+    "predictions": {
+      "path": "output/development/mbb-maturity-numeric-v1/reader-run-v2/predictions.json",
+      "sha256": "bf9add09448cf57445a691030f400403294b60a1b34892e33cc06329c3450cdc",
+      "size_bytes": 3189
+    },
+    "registry": {
+      "path": "output/development/mbb-maturity-numeric-v1/frozen/crop_registry.json",
+      "sha256": "db0534f1c30516b292db59cb960518c7bac556963ad17deb8f4677beeffd073a",
+      "size_bytes": 8610
+    },
+    "run_manifest": {
+      "path": "output/development/mbb-maturity-numeric-v1/reader-run-v2/run_manifest.json",
+      "sha256": "626639e098070dcdec280aa824d5ef47b8c7340365d31fc3370290648d930a6b",
+      "size_bytes": 2981
+    }
+  },
+  "cell_count": 8,
+  "claim_boundary": "SELECTS_EXACT_PERSISTED_NUMERIC_PROPOSAL_ARTIFACT_BYTES_ONLY_NO_NUMERIC_TRUTH_GEOMETRY_PERIOD_UNIT_SCOPE_STATEMENT_SCHEMA_OR_EXPORT_AUTHORITY",
+  "format_version": 1,
+  "run_commit": "603981f96c6aa28868f5d8ee89ac75ef010215a8",
+  "state": "FROZEN_NUMERIC_PROPOSAL_SELECTION_AUTHORITY"
+}
