@@ -1,11 +1,162 @@
 from __future__ import annotations
 
+import ast
 import copy
+import hashlib
+import inspect
+import io
+import json
 from pathlib import Path
 
 import pytest
+from PIL import Image
 
 from scripts.experiments import build_loan_maturity_full_document_vietocr_request_v1 as builder
+
+
+def _terminal_fixture(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    transcript_values: list[object] | None = None,
+) -> dict[str, object]:
+    monkeypatch.setattr(builder, "PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(builder, "V3_ROOT", Path("sealed-v3"))
+    buffer = io.BytesIO()
+    Image.new("RGB", (100, 80), "white").save(buffer, format="PNG")
+    render_raw = buffer.getvalue()
+    render_relative = Path("objects/sha256/render.png")
+    render_path = tmp_path / builder.V3_ROOT / render_relative
+    render_path.parent.mkdir(parents=True)
+    render_path.write_bytes(render_raw)
+    render_ref = {
+        "path": render_relative.as_posix(),
+        "sha256": hashlib.sha256(render_raw).hexdigest(),
+        "size_bytes": len(render_raw),
+    }
+    result_ref = {
+        "path": "objects/sha256/result.json",
+        "sha256": "1" * 64,
+        "size_bytes": 101,
+    }
+    backend_ref = {
+        "path": "objects/sha256/backend.json",
+        "sha256": "2" * 64,
+        "size_bytes": 202,
+    }
+    source_sha256 = "3" * 64
+    request = {
+        "provider_identity_sha256": "4" * 64,
+        "render_runtime_identity_sha256": "5" * 64,
+    }
+    request_sha256 = "6" * 64
+    raw_provider_payload = {
+        "rec_boxes": [[2, 3, 20, 12], [30, 20, 70, 36]],
+        "rec_polys": [
+            [[2, 3], [20, 3], [20, 12], [2, 12]],
+            [[30, 20], [70, 20], [70, 36], [30, 36]],
+        ],
+        # These deliberately adversarial legacy values are opaque to the adapter.
+        "rec_texts": transcript_values if transcript_values is not None else ["", "POISON"],
+        "text_word": {"must": "remain quarantined"},
+        "text_word_boxes": None,
+    }
+    failure = {
+        "control_identity_sha256": "7" * 64,
+        "format_version": "BANK_CORPUS_WAVE_1_PPOCRV6_NORMALIZATION_FAILURE_V1",
+        "normalization_producer_implementation_ledger_sha256": "8" * 64,
+        "pixel_dimensions": [100, 80],
+        "policy_sha256": "9" * 64,
+        "raw_payload_sha256": builder.canonical_json_sha256_v1(raw_provider_payload),
+        "reason": builder._TERMINAL_FAILURE_REASON,
+        "status": builder._TERMINAL_STATUS,
+    }
+    page_record = {
+        "backend_payload_ref": backend_ref,
+        "document_id": f"sha256:{source_sha256}",
+        "format_version": "BANK_CORPUS_WAVE_1_ROLE_B_FULL_PAGE_RECORD_V2",
+        "line_axis_count": 0,
+        "physical_page": 7,
+        "render_ref": render_ref,
+        "request": request,
+        "request_sha256": request_sha256,
+        "result_ref": result_ref,
+        "route": builder._RASTER_ROUTE,
+        "source_sha256": source_sha256,
+        "source_size_bytes": 303,
+        "status": builder._TERMINAL_STATUS,
+        "unresolved": True,
+        "word_token_count": 0,
+    }
+    result = {
+        "backend_payload_ref": backend_ref,
+        "claim_boundary": "SOURCE_VISIBLE_PAGE_RAW_OCR_EVIDENCE_WITH_UNRESOLVED_GEOMETRY",
+        "coordinate_authority": {"pixel_dimensions": [100, 80]},
+        "format_version": "BANK_CORPUS_WAVE_1_ROLE_B_PAGE_READ_RESULT_V3",
+        "input_render_ref": render_ref,
+        "lines": [],
+        "metrics": {"line_count": 0, "word_token_count": 0},
+        "normalization_failure": copy.deepcopy(failure),
+        "ocr_fallback_used": False,
+        "physical_page": 7,
+        "provider_identity_sha256": request["provider_identity_sha256"],
+        "render_runtime_identity_sha256": request["render_runtime_identity_sha256"],
+        "request": request,
+        "request_sha256": request_sha256,
+        "route": builder._RASTER_ROUTE,
+        "safety": {key: False for key in builder._TERMINAL_RESULT_SAFETY_FIELDS},
+        "source_blank_claimed": False,
+        "source_sha256": source_sha256,
+        "source_size_bytes": 303,
+        "status": builder._TERMINAL_STATUS,
+        "words": [],
+    }
+    backend = {
+        "claim_boundary": (
+            "RAW_PINNED_PROVIDER_PAYLOAD_WITH_TERMINAL_BOUNDED_WORD_BOX_GEOMETRY_FAILURE"
+        ),
+        "format_version": "BANK_CORPUS_WAVE_1_PPOCRV6_BACKEND_PAYLOAD_V3",
+        "normalization_failure": failure,
+        "provider_identity_sha256": request["provider_identity_sha256"],
+        "raw_provider_payload": raw_provider_payload,
+        "render_ref": render_ref,
+        "request": request,
+        "request_sha256": request_sha256,
+        "word_box_normalization_ledger": None,
+    }
+    return {
+        "backend": backend,
+        "backend_ref": backend_ref,
+        "page_record": page_record,
+        "physical_page": 7,
+        "result": result,
+        "result_ref": result_ref,
+        "source_sha256": source_sha256,
+    }
+
+
+def _refresh_terminal_failure(payload: dict[str, object]) -> None:
+    backend = payload["backend"]
+    result = payload["result"]
+    assert isinstance(backend, dict)
+    assert isinstance(result, dict)
+    raw = backend["raw_provider_payload"]
+    failure = backend["normalization_failure"]
+    assert isinstance(failure, dict)
+    failure["raw_payload_sha256"] = builder.canonical_json_sha256_v1(raw)
+    result["normalization_failure"] = copy.deepcopy(failure)
+
+
+def _run_terminal_fixture(payload: dict[str, object]):
+    return builder._terminal_geometry_supplement_page(
+        source_sha256=payload["source_sha256"],
+        physical_page=payload["physical_page"],
+        page_record=payload["page_record"],
+        result=payload["result"],
+        result_ref=payload["result_ref"],
+        backend=payload["backend"],
+        backend_ref=payload["backend_ref"],
+    )
 
 
 def _request() -> dict[str, object]:
@@ -149,8 +300,10 @@ def test_builder_never_reads_legacy_recognition_fields() -> None:
     for forbidden in (
         'get("rec_texts")',
         '["rec_texts"]',
-        'get("rec_boxes")',
-        '["rec_boxes"]',
+        'get("text_word")',
+        '["text_word"]',
+        'get("text_word_boxes")',
+        '["text_word_boxes"]',
         'line.get("text")',
         'line["text"]',
         'line.get("source_text")',
@@ -159,6 +312,250 @@ def test_builder_never_reads_legacy_recognition_fields() -> None:
         assert forbidden not in source
     assert "replay_authenticated_line_pixel_hydration_v1" in source
     assert "_native_pixel_box" not in source
+
+    terminal_source = inspect.getsource(builder._terminal_geometry_supplement_page)
+    assert 'get("rec_boxes")' in terminal_source
+    assert 'get("rec_polys")' in terminal_source
+    assert "replay_authenticated_line_pixel_hydration_v1" not in terminal_source
+    forbidden_terminal_axes = {"rec_texts", "text_word", "text_word_boxes"}
+    for node in ast.walk(ast.parse(terminal_source)):
+        if isinstance(node, ast.Subscript) and isinstance(node.slice, ast.Constant):
+            assert node.slice.value not in forbidden_terminal_axes
+        if isinstance(node, ast.Call) and node.args and isinstance(node.args[0], ast.Constant):
+            assert node.args[0].value not in forbidden_terminal_axes
+
+
+def test_terminal_supplement_preserves_every_geometry_and_quarantines_text(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    payload = _terminal_fixture(tmp_path, monkeypatch)
+
+    _render, boxes, render_binding, projection, receipt = _run_terminal_fixture(payload)
+
+    assert boxes == [[2, 3, 20, 12], [30, 20, 70, 36]]
+    assert render_binding["path"] == "sealed-v3/objects/sha256/render.png"
+    assert projection["mode"] == "TERMINAL_EXPERIMENT_LOCAL_PROVIDER_LINE_GEOMETRY_ONLY_V1"
+    assert projection["provider_geometry_denominator"] == 2
+    assert (
+        projection["sha256"] == hashlib.sha256(builder.canonical_json_bytes_v1(receipt)).hexdigest()
+    )
+    assert receipt["source_binding"] == {
+        "backend_ref": {
+            "path": "sealed-v3/objects/sha256/backend.json",
+            "sha256": "2" * 64,
+            "size_bytes": 202,
+        },
+        "physical_page": 7,
+        "render_ref": render_binding,
+        "result_ref": {
+            "path": "sealed-v3/objects/sha256/result.json",
+            "sha256": "1" * 64,
+            "size_bytes": 101,
+        },
+        "source_pdf_sha256": "3" * 64,
+        "v3_page_record_sha256": builder.canonical_json_sha256_v1(payload["page_record"]),
+    }
+    assert receipt["terminal_state"] == {
+        "public_line_axis_count": 0,
+        "route": builder._RASTER_ROUTE,
+        "status": builder._TERMINAL_STATUS,
+        "status_preserved": True,
+        "unresolved": True,
+    }
+    assert receipt["quarantine"] == {
+        "provider_recognition_text_exposed": False,
+        "provider_recognition_text_used_for_selection": False,
+        "word_geometry_exposed": False,
+        "word_text_exposed": False,
+    }
+    serialized_receipt = json.dumps(receipt, sort_keys=True)
+    assert "POISON" not in serialized_receipt
+    assert "remain quarantined" not in serialized_receipt
+
+
+def test_terminal_supplement_geometry_is_independent_of_legacy_transcript_values(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    first = _terminal_fixture(
+        tmp_path / "first",
+        monkeypatch,
+        transcript_values=["", "arbitrary legacy bytes"],
+    )
+    first_output = _run_terminal_fixture(first)
+    second = _terminal_fixture(
+        tmp_path / "second",
+        monkeypatch,
+        transcript_values=[{"unexpected": "shape"}],
+    )
+    second_output = _run_terminal_fixture(second)
+
+    assert first_output[1] == second_output[1]
+    assert first_output[3]["provider_geometry_denominator"] == 2
+    assert second_output[3]["provider_geometry_denominator"] == 2
+    assert first_output[3]["geometry_axis_sha256"] == second_output[3]["geometry_axis_sha256"]
+    assert (
+        first_output[4]["upstream_raw_provider_payload_sha256"]
+        != second_output[4]["upstream_raw_provider_payload_sha256"]
+    )
+
+
+def test_terminal_supplement_preserves_provider_order(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    original = _terminal_fixture(tmp_path / "original", monkeypatch)
+    original_output = _run_terminal_fixture(original)
+    reordered = _terminal_fixture(tmp_path / "reordered", monkeypatch)
+    backend = reordered["backend"]
+    assert isinstance(backend, dict)
+    raw = backend["raw_provider_payload"]
+    assert isinstance(raw, dict)
+    raw["rec_boxes"].reverse()
+    raw["rec_polys"].reverse()
+    _refresh_terminal_failure(reordered)
+
+    reordered_output = _run_terminal_fixture(reordered)
+
+    assert reordered_output[1] == list(reversed(original_output[1]))
+    assert reordered_output[3]["geometry_axis_sha256"] != original_output[3]["geometry_axis_sha256"]
+
+
+def test_terminal_supplement_rejects_raw_payload_hash_tampering(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    payload = _terminal_fixture(tmp_path, monkeypatch)
+    backend = payload["backend"]
+    assert isinstance(backend, dict)
+    raw = backend["raw_provider_payload"]
+    assert isinstance(raw, dict)
+    raw["opaque_tamper"] = True
+
+    with pytest.raises(
+        builder.FullDocumentVietOCRRequestV1Error,
+        match="backend/result/failure binding",
+    ):
+        _run_terminal_fixture(payload)
+
+
+@pytest.mark.parametrize(
+    ("tamper", "message"),
+    [
+        (
+            lambda raw: raw["rec_polys"].pop(),
+            "geometry denominator",
+        ),
+        (
+            lambda raw: raw["rec_boxes"][0].__setitem__(2, 101),
+            "bbox lies outside render",
+        ),
+        (
+            lambda raw: raw["rec_polys"].__setitem__(0, [[2, 3], [3, 3], [4, 3], [5, 3]]),
+            "degenerate",
+        ),
+        (
+            lambda raw: raw["rec_polys"][0].__setitem__(0, [0, 0]),
+            "outside its provider line bbox",
+        ),
+        (
+            lambda raw: raw["rec_polys"][0][0].__setitem__(0, 2.0),
+            "exact integer quadrilateral",
+        ),
+    ],
+)
+def test_terminal_supplement_rejects_geometry_axis_tampering(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    tamper,
+    message: str,
+) -> None:
+    payload = _terminal_fixture(tmp_path, monkeypatch)
+    backend = payload["backend"]
+    assert isinstance(backend, dict)
+    raw = backend["raw_provider_payload"]
+    assert isinstance(raw, dict)
+    tamper(raw)
+    _refresh_terminal_failure(payload)
+
+    with pytest.raises(builder.FullDocumentVietOCRRequestV1Error, match=message):
+        _run_terminal_fixture(payload)
+
+
+@pytest.mark.parametrize(
+    "tamper",
+    [
+        lambda payload: payload["page_record"].__setitem__("unresolved", False),
+        lambda payload: payload["page_record"].__setitem__("line_axis_count", 1),
+        lambda payload: payload["result"].__setitem__("status", builder._RASTER_STATUS),
+        lambda payload: payload.__setitem__(
+            "backend_ref", {**payload["backend_ref"], "sha256": "a" * 64}
+        ),
+    ],
+)
+def test_terminal_supplement_rejects_state_and_reference_tampering(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    tamper,
+) -> None:
+    payload = _terminal_fixture(tmp_path, monkeypatch)
+    tamper(payload)
+
+    with pytest.raises(builder.FullDocumentVietOCRRequestV1Error):
+        _run_terminal_fixture(payload)
+
+
+def test_exact_vcb_terminal_geometry_denominator_and_order() -> None:
+    vcb_sha256 = "fb0bc8ebbad76c175e61f7c2a7b78ae67608623a8d715d5470a08dbac00ff223"
+    document, _document_raw = builder._json(
+        builder.PROJECT_ROOT / builder.V3_ROOT / "documents" / f"{vcb_sha256}.json",
+        "VCB V3 document fixture",
+    )
+    expected_counts = {1: 57, 16: 49, 31: 91, 38: 77, 41: 67}
+    expected_geometry_hashes = {
+        1: "e9b041194dfd031d2985d1b0194a198c303ec81ce30408765f3b045095fe6d2e",
+        16: "b896c784d0026100bbd93eef83de2bdb4b8dbe5d45196fb9413181923d39a412",
+        31: "174c83c145c74e77ef073b6d808ce1adcc9134c5e3e27a17e51815a184096c66",
+        38: "ee0ec808f32a99679b481d74133353fb735effc0637807a79f9f882ebe58208a",
+        41: "187aecacb4a06503a161f448a13715d9d477ca29665af55104fc4e900eba0da6",
+    }
+    actual_counts: dict[int, int] = {}
+    geometry_hashes: dict[int, str] = {}
+    for page_record in document["page_records"]:
+        if page_record.get("status") != builder._TERMINAL_STATUS:
+            continue
+        physical_page = page_record["physical_page"]
+        _result_path, result_raw, result_ref = builder._verified_ref(
+            builder.PROJECT_ROOT / builder.V3_ROOT,
+            page_record["result_ref"],
+            f"VCB terminal result {physical_page}",
+        )
+        _backend_path, backend_raw, backend_ref = builder._verified_ref(
+            builder.PROJECT_ROOT / builder.V3_ROOT,
+            page_record["backend_payload_ref"],
+            f"VCB terminal backend {physical_page}",
+        )
+        result = builder._decode_json(result_raw, f"VCB terminal result {physical_page}")
+        backend = builder._decode_json(backend_raw, f"VCB terminal backend {physical_page}")
+
+        _render, boxes, _render_binding, projection, receipt = (
+            builder._terminal_geometry_supplement_page(
+                source_sha256=vcb_sha256,
+                physical_page=physical_page,
+                page_record=page_record,
+                result=result,
+                result_ref=result_ref,
+                backend=backend,
+                backend_ref=backend_ref,
+            )
+        )
+
+        actual_counts[physical_page] = len(boxes)
+        geometry_hashes[physical_page] = projection["geometry_axis_sha256"]
+        assert receipt["terminal_state"]["status_preserved"] is True
+        assert receipt["terminal_state"]["unresolved"] is True
+        assert not any(receipt["quarantine"].values())
+
+    assert actual_counts == expected_counts
+    assert sum(actual_counts.values()) == 341
+    assert geometry_hashes == expected_geometry_hashes
 
 
 def test_builder_refuses_existing_fixed_output_before_reading_inputs(

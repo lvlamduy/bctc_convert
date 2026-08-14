@@ -43,6 +43,7 @@ from bctc_ai.evaluation.authenticated_line_pixel_hydration_v1 import (
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_json_bytes_v1,
     canonical_json_sha256_v1,
+    same_typed_json_v1,
 )
 from bctc_ai.source_structure.evidence_projection_v2 import (
     SourceEvidenceProjectionV2Error,
@@ -69,6 +70,7 @@ _NATIVE_ROUTE = "CAUSAL_NATIVE_TEXT"
 _NATIVE_STATUS = "CAUSAL_NATIVE_TEXT_READ_COMPLETE"
 _RASTER_ROUTE = "DOMINANT_RASTER_OCR"
 _RASTER_STATUS = "OCR_WORD_BOX_READ_COMPLETE"
+_TERMINAL_FAILURE_REASON = "BOUNDED_WORD_BOX_NORMALIZATION_INVARIANT_FAILED"
 _EXPECTED_BANK_ORDER = ("ACB", "MBB", "VPB", "HDB", "VCB", "CTG", "BID", "VIB")
 _SAMPLE_ID_RE = re.compile(r"^sample-[0-9]{8}$")
 _REQUEST_FIELDS = {
@@ -157,6 +159,63 @@ _RESULT_SAMPLE_FIELDS = {
     "raw_prediction",
     "sample_id",
     "wall_seconds",
+}
+_TERMINAL_BACKEND_FIELDS = {
+    "claim_boundary",
+    "format_version",
+    "normalization_failure",
+    "provider_identity_sha256",
+    "raw_provider_payload",
+    "render_ref",
+    "request",
+    "request_sha256",
+    "word_box_normalization_ledger",
+}
+_TERMINAL_RESULT_FIELDS = {
+    "backend_payload_ref",
+    "claim_boundary",
+    "coordinate_authority",
+    "format_version",
+    "input_render_ref",
+    "lines",
+    "metrics",
+    "normalization_failure",
+    "ocr_fallback_used",
+    "physical_page",
+    "provider_identity_sha256",
+    "render_runtime_identity_sha256",
+    "request",
+    "request_sha256",
+    "route",
+    "safety",
+    "source_blank_claimed",
+    "source_sha256",
+    "source_size_bytes",
+    "status",
+    "words",
+}
+_TERMINAL_FAILURE_FIELDS = {
+    "control_identity_sha256",
+    "format_version",
+    "normalization_producer_implementation_ledger_sha256",
+    "pixel_dimensions",
+    "policy_sha256",
+    "raw_payload_sha256",
+    "reason",
+    "status",
+}
+_TERMINAL_RESULT_SAFETY_FIELDS = {
+    "absence_claimed",
+    "bank_registry_metadata_used",
+    "cells_interpreted",
+    "filename_metadata_used",
+    "historical_values_used",
+    "mapping_used",
+    "role_a_used",
+    "rows_reconstructed",
+    "schema_used",
+    "statement_classified",
+    "table_classified",
 }
 
 
@@ -446,41 +505,31 @@ def _raster_page(
     )
 
 
-def _hydrated_page(
+def _native_hydrated_page(
     *,
     source_sha256: str,
     physical_page: int,
     page_record: dict[str, Any],
     result: dict[str, Any],
 ) -> tuple[bytes, list[list[int]], dict[str, Any], dict[str, Any], dict[str, Any]]:
-    """Replay the sealed generic native/terminal geometry adapter.
+    """Replay the sealed generic native geometry adapter.
 
-    This is intentionally the only path for native pages and terminal PP-OCR
-    pages.  In particular, this builder never reads provider recognition or
-    word-box fields directly.
+    Native canonical coordinates require deterministic PDF rendering and the
+    sealed adapter's exact outward pixel projection.  Terminal provider pixels
+    are already bound to an upstream render and use the experiment-local path
+    below instead.
     """
 
     route = page_record.get("route")
     status = page_record.get("status")
     unresolved = page_record.get("unresolved")
-    if route == _NATIVE_ROUTE:
-        if (
-            status != _NATIVE_STATUS
-            or unresolved is not False
-            or result.get("status") != _NATIVE_STATUS
-        ):
-            raise _error("native page state drifted")
-        geometry_mode = "NATIVE_CANONICAL_TO_DETERMINISTIC_PIXEL_ADAPTER_V1"
-    elif route == _RASTER_ROUTE and status == _TERMINAL_STATUS:
-        if (
-            unresolved is not True
-            or result.get("status") != _TERMINAL_STATUS
-            or result.get("lines") != []
-        ):
-            raise _error("terminal page state drifted")
-        geometry_mode = "TERMINAL_GENERIC_LINE_ONLY_SUPPLEMENT_WORDS_QUARANTINED_V1"
-    else:
-        raise _error("hydration was requested for an unsupported source state")
+    if (
+        route != _NATIVE_ROUTE
+        or status != _NATIVE_STATUS
+        or unresolved is not False
+        or result.get("status") != _NATIVE_STATUS
+    ):
+        raise _error("native page state drifted")
 
     envelope, capability = replay_authenticated_line_pixel_hydration_v1(
         PROJECT_ROOT,
@@ -531,9 +580,248 @@ def _hydrated_page(
         {
             "envelope_id": envelope["envelope_id"],
             "format_version": envelope["format_version"],
-            "mode": geometry_mode,
+            "mode": "NATIVE_CANONICAL_TO_DETERMINISTIC_PIXEL_ADAPTER_V1",
             "sha256": hashlib.sha256(projection_raw).hexdigest(),
             "size_bytes": len(projection_raw),
+        },
+        receipt,
+    )
+
+
+def _terminal_polygon(
+    value: Any,
+    *,
+    box: list[int],
+    width: int,
+    height: int,
+    label: str,
+) -> list[list[int]]:
+    if (
+        type(value) is not list
+        or len(value) != 4
+        or any(
+            type(point) is not list
+            or len(point) != 2
+            or any(type(coordinate) is not int for coordinate in point)
+            for point in value
+        )
+    ):
+        raise _error(f"{label} is not an exact integer quadrilateral")
+    polygon = cast(list[list[int]], value)
+    if any(not (0 <= point[0] <= width and 0 <= point[1] <= height) for point in polygon):
+        raise _error(f"{label} lies outside render")
+    if any(
+        not (box[0] <= point[0] <= box[2] and box[1] <= point[1] <= box[3]) for point in polygon
+    ):
+        raise _error(f"{label} lies outside its provider line bbox")
+    area_twice = abs(
+        sum(
+            polygon[index][0] * polygon[(index + 1) % 4][1]
+            - polygon[(index + 1) % 4][0] * polygon[index][1]
+            for index in range(4)
+        )
+    )
+    if area_twice == 0:
+        raise _error(f"{label} is degenerate")
+    return [list(point) for point in polygon]
+
+
+def _terminal_geometry_supplement_page(
+    *,
+    source_sha256: str,
+    physical_page: int,
+    page_record: dict[str, Any],
+    result: dict[str, Any],
+    result_ref: dict[str, Any],
+    backend: dict[str, Any],
+    backend_ref: dict[str, Any],
+) -> tuple[bytes, list[list[int]], dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """Project every ordered provider line geometry without transcript access.
+
+    This bounded supplement exists only because the public terminal hydration
+    adapter imposes recognition-axis eligibility.  Here the denominator is the
+    provider line-box axis itself; the matching polygon axis is authenticated
+    and retained by hash, while recognition and word subdivisions remain
+    quarantined and cannot affect selection.
+    """
+
+    if (
+        page_record.get("format_version") != "BANK_CORPUS_WAVE_1_ROLE_B_FULL_PAGE_RECORD_V2"
+        or page_record.get("source_sha256") != source_sha256
+        or page_record.get("document_id") != f"sha256:{source_sha256}"
+        or page_record.get("physical_page") != physical_page
+        or page_record.get("route") != _RASTER_ROUTE
+        or page_record.get("status") != _TERMINAL_STATUS
+        or page_record.get("unresolved") is not True
+        or page_record.get("line_axis_count") != 0
+        or page_record.get("word_token_count") != 0
+        or not same_typed_json_v1(page_record.get("result_ref"), result_ref)
+        or not same_typed_json_v1(page_record.get("backend_payload_ref"), backend_ref)
+    ):
+        raise _error("terminal page record state or source binding drifted")
+    if type(result) is not dict or set(result) != _TERMINAL_RESULT_FIELDS:
+        raise _error("terminal result fields drifted")
+    request = page_record.get("request")
+    safety = result.get("safety")
+    if (
+        type(request) is not dict
+        or result.get("format_version") != "BANK_CORPUS_WAVE_1_ROLE_B_PAGE_READ_RESULT_V3"
+        or result.get("claim_boundary")
+        != "SOURCE_VISIBLE_PAGE_RAW_OCR_EVIDENCE_WITH_UNRESOLVED_GEOMETRY"
+        or result.get("request_sha256") != page_record.get("request_sha256")
+        or not same_typed_json_v1(result.get("request"), request)
+        or result.get("source_sha256") != source_sha256
+        or result.get("source_size_bytes") != page_record.get("source_size_bytes")
+        or result.get("physical_page") != physical_page
+        or result.get("route") != _RASTER_ROUTE
+        or result.get("status") != _TERMINAL_STATUS
+        or result.get("provider_identity_sha256") != request.get("provider_identity_sha256")
+        or result.get("render_runtime_identity_sha256")
+        != request.get("render_runtime_identity_sha256")
+        or not same_typed_json_v1(result.get("input_render_ref"), page_record.get("render_ref"))
+        or not same_typed_json_v1(result.get("backend_payload_ref"), backend_ref)
+        or result.get("lines") != []
+        or result.get("words") != []
+        or not same_typed_json_v1(result.get("metrics"), {"line_count": 0, "word_token_count": 0})
+        or result.get("ocr_fallback_used") is not False
+        or result.get("source_blank_claimed") is not False
+        or type(safety) is not dict
+        or set(safety) != _TERMINAL_RESULT_SAFETY_FIELDS
+        or any(value is not False for value in safety.values())
+    ):
+        raise _error("terminal result state or source binding drifted")
+    if type(backend) is not dict or set(backend) != _TERMINAL_BACKEND_FIELDS:
+        raise _error("terminal backend fields drifted")
+    failure = backend.get("normalization_failure")
+    raw = backend.get("raw_provider_payload")
+    if (
+        type(failure) is not dict
+        or set(failure) != _TERMINAL_FAILURE_FIELDS
+        or type(raw) is not dict
+        or backend.get("format_version") != "BANK_CORPUS_WAVE_1_PPOCRV6_BACKEND_PAYLOAD_V3"
+        or backend.get("claim_boundary")
+        != "RAW_PINNED_PROVIDER_PAYLOAD_WITH_TERMINAL_BOUNDED_WORD_BOX_GEOMETRY_FAILURE"
+        or backend.get("request_sha256") != page_record.get("request_sha256")
+        or not same_typed_json_v1(backend.get("request"), request)
+        or backend.get("provider_identity_sha256") != request.get("provider_identity_sha256")
+        or not same_typed_json_v1(backend.get("render_ref"), page_record.get("render_ref"))
+        or backend.get("word_box_normalization_ledger") is not None
+        or not same_typed_json_v1(failure, result.get("normalization_failure"))
+        or failure.get("format_version") != "BANK_CORPUS_WAVE_1_PPOCRV6_NORMALIZATION_FAILURE_V1"
+        or failure.get("status") != _TERMINAL_STATUS
+        or failure.get("reason") != _TERMINAL_FAILURE_REASON
+        or any(
+            type(failure.get(field)) is not str or _SHA256_RE.fullmatch(failure[field]) is None
+            for field in (
+                "control_identity_sha256",
+                "normalization_producer_implementation_ledger_sha256",
+                "policy_sha256",
+                "raw_payload_sha256",
+            )
+        )
+        or failure.get("raw_payload_sha256") != canonical_json_sha256_v1(raw)
+    ):
+        raise _error("terminal backend/result/failure binding drifted")
+
+    _render_path, render_raw, render_ref = _verified_ref(
+        PROJECT_ROOT / V3_ROOT,
+        page_record.get("render_ref"),
+        f"terminal render {physical_page}",
+    )
+    with Image.open(io.BytesIO(render_raw)) as image:
+        width, height = image.size
+        image.verify()
+    coordinate_authority = result.get("coordinate_authority")
+    if (
+        type(coordinate_authority) is not dict
+        or not same_typed_json_v1(coordinate_authority.get("pixel_dimensions"), [width, height])
+        or not same_typed_json_v1(failure.get("pixel_dimensions"), [width, height])
+    ):
+        raise _error("terminal render/coordinate dimensions drifted")
+
+    provider_boxes = raw.get("rec_boxes")
+    provider_polygons = raw.get("rec_polys")
+    if (
+        type(provider_boxes) is not list
+        or type(provider_polygons) is not list
+        or not provider_boxes
+        or len(provider_boxes) != len(provider_polygons)
+    ):
+        raise _error("terminal provider line geometry denominator drifted")
+    boxes: list[list[int]] = []
+    ordered_geometry: list[dict[str, Any]] = []
+    for index, (box_value, polygon_value) in enumerate(
+        zip(provider_boxes, provider_polygons, strict=True)
+    ):
+        box = _bbox(box_value, width, height, f"terminal provider line {index}")
+        polygon = _terminal_polygon(
+            polygon_value,
+            box=box,
+            width=width,
+            height=height,
+            label=f"terminal provider line {index} polygon",
+        )
+        boxes.append(box)
+        ordered_geometry.append({"rec_box": box, "rec_polygon": polygon})
+
+    render_binding = _project_ref_to_repository(PROJECT_ROOT / V3_ROOT, render_ref)
+    projected_result_ref = _project_ref_to_repository(PROJECT_ROOT / V3_ROOT, result_ref)
+    projected_backend_ref = _project_ref_to_repository(PROJECT_ROOT / V3_ROOT, backend_ref)
+    geometry_axis_sha256 = canonical_json_sha256_v1(ordered_geometry)
+    receipt_body = {
+        "claim_boundary": (
+            "EXPERIMENT_LOCAL_AUTHENTICATED_PROVIDER_LINE_GEOMETRY_ONLY_"
+            "NO_TEXT_WORD_NUMERIC_OR_MAPPING_AUTHORITY"
+        ),
+        "format_version": (
+            "LOAN_MATURITY_FULL_DOCUMENT_TERMINAL_LINE_GEOMETRY_SUPPLEMENT_RECEIPT_V1"
+        ),
+        "geometry_binding": {
+            "geometry_axis_sha256": geometry_axis_sha256,
+            "provider_geometry_denominator": len(ordered_geometry),
+        },
+        "quarantine": {
+            "provider_recognition_text_exposed": False,
+            "provider_recognition_text_used_for_selection": False,
+            "word_geometry_exposed": False,
+            "word_text_exposed": False,
+        },
+        "source_binding": {
+            "backend_ref": projected_backend_ref,
+            "physical_page": physical_page,
+            "render_ref": render_binding,
+            "result_ref": projected_result_ref,
+            "source_pdf_sha256": source_sha256,
+            "v3_page_record_sha256": _canonical_object_sha256(page_record),
+        },
+        "terminal_state": {
+            "public_line_axis_count": 0,
+            "route": _RASTER_ROUTE,
+            "status": _TERMINAL_STATUS,
+            "status_preserved": True,
+            "unresolved": True,
+        },
+        "upstream_raw_provider_payload_sha256": failure["raw_payload_sha256"],
+    }
+    receipt = {
+        **receipt_body,
+        "receipt_id": (
+            f"terminal-geometry-supplement-v1:receipt:{canonical_json_sha256_v1(receipt_body)}"
+        ),
+    }
+    receipt_raw = canonical_json_bytes_v1(receipt)
+    return (
+        render_raw,
+        boxes,
+        render_binding,
+        {
+            "format_version": ("LOAN_MATURITY_FULL_DOCUMENT_TERMINAL_LINE_GEOMETRY_PROJECTION_V1"),
+            "geometry_axis_sha256": geometry_axis_sha256,
+            "mode": "TERMINAL_EXPERIMENT_LOCAL_PROVIDER_LINE_GEOMETRY_ONLY_V1",
+            "provider_geometry_denominator": len(ordered_geometry),
+            "receipt_id": receipt["receipt_id"],
+            "sha256": hashlib.sha256(receipt_raw).hexdigest(),
+            "size_bytes": len(receipt_raw),
         },
         receipt,
     )
@@ -707,7 +995,7 @@ def build_full_document_request_v1() -> dict[str, Any]:
                     page_record.get("result_ref"),
                     f"page result {document_ordinal}:{physical_page}",
                 )
-                _backend_path, _backend_raw, backend_ref = _verified_ref(
+                _backend_path, backend_raw, backend_ref = _verified_ref(
                     PROJECT_ROOT / V3_ROOT,
                     page_record.get("backend_payload_ref"),
                     f"page backend {document_ordinal}:{physical_page}",
@@ -715,15 +1003,20 @@ def build_full_document_request_v1() -> dict[str, Any]:
                 result = _decode_json(result_raw, f"page result {document_ordinal}:{physical_page}")
                 route = page_record.get("route")
                 status = page_record.get("status")
+                backend = (
+                    _decode_json(backend_raw, f"page backend {document_ordinal}:{physical_page}")
+                    if status == _TERMINAL_STATUS
+                    else None
+                )
                 hydration_receipt: dict[str, Any] | None = None
-                if route == _NATIVE_ROUTE or status == _TERMINAL_STATUS:
+                if route == _NATIVE_ROUTE:
                     (
                         render_raw,
                         boxes,
                         render_binding,
                         source_projection,
                         hydration_receipt,
-                    ) = _hydrated_page(
+                    ) = _native_hydrated_page(
                         source_sha256=source_sha,
                         physical_page=physical_page,
                         page_record=page_record,
@@ -731,7 +1024,26 @@ def build_full_document_request_v1() -> dict[str, Any]:
                     )
                     geometry_mode = source_projection["mode"]
                     primary_line_count = page_record.get("line_axis_count")
-                    supplement_line_count = len(boxes) if status == _TERMINAL_STATUS else 0
+                    supplement_line_count = 0
+                elif status == _TERMINAL_STATUS:
+                    (
+                        render_raw,
+                        boxes,
+                        render_binding,
+                        source_projection,
+                        hydration_receipt,
+                    ) = _terminal_geometry_supplement_page(
+                        source_sha256=source_sha,
+                        physical_page=physical_page,
+                        page_record=page_record,
+                        result=result,
+                        result_ref=result_ref,
+                        backend=cast(dict[str, Any], backend),
+                        backend_ref=backend_ref,
+                    )
+                    geometry_mode = source_projection["mode"]
+                    primary_line_count = page_record.get("line_axis_count")
+                    supplement_line_count = len(boxes)
                 else:
                     render_raw, boxes, render_binding, source_projection = _raster_page(
                         page_record, result
@@ -1105,9 +1417,16 @@ def verify_full_document_freeze_v1(*, replay_geometry: bool = False) -> dict[str
             page = cast(dict[str, Any], page_value)
             page_record = page_records[page_offset - 1]
             plan_page = plan_document["pages"][page_offset - 1]
+            if type(page_record) is not dict:
+                raise _error("V3 replay page record is not one object")
+            expected_result_ref = _project_ref_to_repository(
+                PROJECT_ROOT / V3_ROOT, page_record["result_ref"]
+            )
+            expected_backend_ref = _project_ref_to_repository(
+                PROJECT_ROOT / V3_ROOT, page_record["backend_payload_ref"]
+            )
             if (
-                type(page_record) is not dict
-                or page.get("physical_page") != page_offset
+                page.get("physical_page") != page_offset
                 or page.get("sample_offset_start") != cursor
                 or type(page.get("line_count")) is not int
                 or page["line_count"] < 0
@@ -1116,6 +1435,8 @@ def verify_full_document_freeze_v1(*, replay_geometry: bool = False) -> dict[str
                 or page.get("plan_page_projection_sha256") != _canonical_object_sha256(plan_page)
                 or page.get("route") != page_record.get("route")
                 or page.get("status") != page_record.get("status")
+                or not same_typed_json_v1(page.get("result_ref"), expected_result_ref)
+                or not same_typed_json_v1(page.get("backend_ref"), expected_backend_ref)
                 or page.get("terminal_status_preserved")
                 is not (page_record.get("status") == _TERMINAL_STATUS)
             ):
@@ -1123,10 +1444,15 @@ def verify_full_document_freeze_v1(*, replay_geometry: bool = False) -> dict[str
             result_raw = _verify_repository_content_ref(
                 page.get("result_ref"), f"page result {document_offset}:{page_offset}"
             )
-            _verify_repository_content_ref(
+            backend_raw = _verify_repository_content_ref(
                 page.get("backend_ref"), f"page backend {document_offset}:{page_offset}"
             )
             result = _decode_json(result_raw, f"page result {document_offset}:{page_offset}")
+            backend = (
+                _decode_json(backend_raw, f"page backend {document_offset}:{page_offset}")
+                if page_record.get("status") == _TERMINAL_STATUS
+                else None
+            )
             if result.get("status") != page.get("status"):
                 raise _error("private manifest/result status drifted")
             page_samples = samples[cursor : cursor + page["line_count"]]
@@ -1175,14 +1501,14 @@ def verify_full_document_freeze_v1(*, replay_geometry: bool = False) -> dict[str
                 expected_crop_names.append(Path(crop_ref["path"]).name)
 
             if replay_geometry:
-                if page["route"] == _NATIVE_ROUTE or page["status"] == _TERMINAL_STATUS:
+                if page["route"] == _NATIVE_ROUTE:
                     (
                         render_raw,
                         boxes,
                         render_binding,
                         source_projection,
                         hydration_receipt,
-                    ) = _hydrated_page(
+                    ) = _native_hydrated_page(
                         source_sha256=source_sha,
                         physical_page=page_offset,
                         page_record=page_record,
@@ -1190,6 +1516,24 @@ def verify_full_document_freeze_v1(*, replay_geometry: bool = False) -> dict[str
                     )
                     if hydration_receipt != page.get("hydration_receipt"):
                         raise _error("hydration receipt changed during full replay")
+                elif page["status"] == _TERMINAL_STATUS:
+                    (
+                        render_raw,
+                        boxes,
+                        render_binding,
+                        source_projection,
+                        hydration_receipt,
+                    ) = _terminal_geometry_supplement_page(
+                        source_sha256=source_sha,
+                        physical_page=page_offset,
+                        page_record=page_record,
+                        result=result,
+                        result_ref=page_record["result_ref"],
+                        backend=cast(dict[str, Any], backend),
+                        backend_ref=page_record["backend_payload_ref"],
+                    )
+                    if hydration_receipt != page.get("hydration_receipt"):
+                        raise _error("terminal geometry receipt changed during full replay")
                 else:
                     render_raw, boxes, render_binding, source_projection = _raster_page(
                         page_record, result
