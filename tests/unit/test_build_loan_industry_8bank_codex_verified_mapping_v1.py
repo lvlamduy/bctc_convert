@@ -56,7 +56,7 @@ def test_live_result_is_exact_bounded_and_preserves_all_unresolved_rows(
 ) -> None:
     module, result = live
     assert result["result_id"] == (
-        "li8bcv2:result:94571f22af35070a47e43cd6d0a86e97e3eb8b5c7ee1270330256ac0f3562a1b"
+        "li8bcv2:result:3ac4ba987593baf8e0a03c3a1f2414dacf1008df38fc890519d72d2c9160cbdb"
     )
     assert result["metrics"] == {
         "document_count": 8,

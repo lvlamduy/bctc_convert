@@ -83,21 +83,24 @@ Quy ước:
 
 ## 7. Tiền gửi của khách hàng — phân loại theo loại/kỳ hạn/đối tượng
 
-- **Đã xác minh:** Chưa có khoản mục schema nào được xác minh; đã tìm đúng
-  vùng nguồn và kiểm tra tổng cấp cao cho 8/8 bank.
+- **Đã xác minh:** ACB p21, MBB p43, VPB p55, HDB p31, VCB p35, CTG p42,
+  BID p25 và VIB p41–42. Đã map 118 dòng loại tiền gửi, VND/ngoại tệ và
+  các dòng đối tượng khách hàng đủ chắc; 43 phương trình parent–child, tổng cột
+  và tổng bảng đều đóng đúng. ACB dùng biến thể hai khối kỳ theo chiều dọc ×
+  ba cột VND/ngoại tệ/tổng; cột tổng chỉ kiểm tra. MBB map `Tiền gửi của TCKT`
+  vào 1084 và `Tiền gửi của cá nhân` vào 1089; `Tiền gửi vốn chuyên dùng`
+  không tách tiền tệ được đưa vào VND theo quyết định của chủ dự án. VIB nối
+  bảng đối tượng ở trang 42 và giữ nhánh tiết kiệm là subset không cộng trùng.
 - **Không có:** Không có bank nào.
 - **Còn thiếu:**
 
 | Bank | Trang | Khoản mục nguồn | Lý do chưa map |
 | --- | ---: | --- | --- |
-| ACB | 21 | Tiền gửi của khách hàng | Kỳ trình bày theo chiều dọc, có nhiều lane tiền tệ và nhánh tiết kiệm lồng nhau. |
-| MBB | 43 | Thuyết minh theo loại tiền gửi | Có các nhánh VND/ngoại tệ và phân nhóm đối tượng; chưa khóa graph lồng nhau. |
-| VPB | 55 | Tiền gửi của khách hàng | Cùng trang có cả loại tiền gửi và đối tượng/loại hình doanh nghiệp; cần tách hai nhánh không cộng trùng. |
-| HDB | 31 | Tiền gửi của khách hàng | Có parent không kỳ hạn/có kỳ hạn và các child VND/ngoại tệ; chưa map hierarchy. |
-| VCB | 35 | Tiền gửi của khách hàng | Có các nhánh VND, vàng/ngoại tệ và nhiều cấp subtotal; chưa map hierarchy. |
-| CTG | 42 | Tiền, vàng gửi không kỳ hạn/có kỳ hạn | Có tiền/vàng, VND/ngoại tệ và các subtotal lồng nhau; chưa map. |
-| BID | 25 | Tiền, vàng gửi không kỳ hạn/có kỳ hạn | Thiếu đơn vị cục bộ và có hierarchy nhiều cấp; cần authority đơn vị kế thừa. |
-| VIB | 41 | Thuyết minh theo loại hình tiền gửi | Có nhánh tiết kiệm và VND/ngoại tệ lồng nhau; chưa map. |
+| VPB | 55 | Công ty TNHH 2 thành viên trở lên có phần vốn góp của Nhà nước trên 50% | Schema 1079 hiện chỉ mô tả Công ty TNHH một thành viên; không ép hai khái niệm khác nhau. |
+| VIB | 42 | Công ty TNHH 2 thành viên trở lên có phần vốn góp của Nhà nước trên 50% | Cùng khoảng trống schema như VPB; giữ UNRESOLVED. |
+
+Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
+Q1/2026, không relabel thành Q2/2026.
 
 ## 8. Chứng khoán
 
@@ -133,5 +136,5 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Ngành nghề kinh doanh | — | ✓ p33 | ✓ p44 | ✓ p27 | — | — | ✓ p22 | ✓ p33 | 0 trong 5 vùng; 3 bank không có |
 | Doanh nghiệp/đối tượng KH | — | ✓\* p32 | ✓ p43 | ✓ p26 | — | — | — | ✓ p34 | 1 group parent check-only |
 | Dự phòng cho vay | ✓ p18 | ✓ p34 | ✓\* p45 | ✓ p28 | ✓ p31 | ✓ p39 | ✓ p23 | ✓ p34 | 0 dòng; VPB còn thiếu nguồn Q2 |
-| Tiền gửi khách hàng | △ p21 | △ p43 | △ p55 | △ p31 | △ p35 | △ p42 | △ p25 | △ p41 | 8 vùng chưa map |
+| Tiền gửi khách hàng | ✓ p21 | ✓ p43 | ✓\* p55 | ✓ p31 | ✓ p35 | ✓ p42 | ✓ p25 | ✓\* p41–42 | 2 dòng TNHH cùng một khoảng trống schema; VPB là nguồn Q1 |
 | Chứng khoán | △ p16 | △ p31 | △ p40 | △ p24 | △ p30 | △ p37 | △ p20 | △ AFS p36 | 8 vùng chưa map |

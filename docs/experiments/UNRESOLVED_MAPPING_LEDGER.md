@@ -17,7 +17,7 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **25 entries**.  Current open queue: **1**.  Closed history:
+Ledger total: **27 entries**.  Current open queue: **3**.  Closed history:
 **21** row/graph resolutions and **3** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
@@ -26,6 +26,8 @@ Bank/report/page fields below are evidence locators only, never matching rules.
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
 | --- | --- | --- | ---: | --- | --- |
+| CD-001 | Tiền gửi của khách hàng / loại hình doanh nghiệp | VPB | 55 | Công ty TNHH 2 thành viên trở lên có phần vốn góp của Nhà nước trên 50% | Giá trị hiện tại `64.165`; schema 1079 chỉ mô tả Công ty TNHH **một** thành viên có vốn Nhà nước trên 50%, nên chưa thể dùng thay thế. |
+| CD-002 | Tiền gửi của khách hàng / loại hình doanh nghiệp | VIB | 42 | Công ty TNHH 2 thành viên trở lên có phần vốn góp của Nhà nước trên 50% | Giá trị hiện tại `174`; cùng khoảng trống schema với CD-001. |
 | PM-001 | Dự phòng rủi ro cho vay khách hàng | VPB | 45 | Dự phòng chung, dự phòng cụ thể, dự phòng cho vay giao dịch ký quỹ và ứng trước | Đã map và kiểm tra đủ kỳ 01/01–31/03/2026 của PDF được cung cấp; chưa có PDF VPB Q2/2026 nên không được relabel kết quả Q1 thành Q2. |
 
 The shared family locator follows a strict minimal-anchor search.  It enumerates
@@ -45,7 +47,25 @@ page or note identifier participates in this decision.
 | LI-001, LI-008, LI-009 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT` |
 | LI-002–LI-007, LI-010–LI-011 | `RESOLVED_VERIFIED_BY_CODEX` |
 | LE-001–LE-011 | `RESOLVED` by exact family replay, non-additive graph equivalence, or pixel replay |
+| CD-001–CD-002 | `OPEN_SCHEMA_GAP`; không ép Công ty TNHH 2+ thành viên vào schema chỉ dành cho một thành viên |
 | PM-001 | `OPEN_SOURCE_PERIOD_GAP`; không còn dòng nguồn chưa map trong PDF Q1 đã bind |
+
+## Customer deposit (`CUSTOMER_DEPOSIT_CLASSIFICATION`)
+
+Current exact-replay result:
+`docs/experiments/E-0058-customer-deposit-8bank-codex-verified-mapping-v1.json`
+
+- Một graph bank-blind quét đủ 453 trang và tìm đúng một vùng hoàn chỉnh trong
+  mỗi PDF. Biên đầu/cuối, thứ tự hàng nguồn, bố cục ngang/dọc, kỳ và trục tiền tệ
+  đều được giữ lại.
+- 118 dòng được `VERIFIED_BY_CODEX`; 43 phương trình cha = con, tổng cột và tổng
+  bảng đóng chính xác. Cột tổng và cột phần trăm chỉ là đối chứng khi không phải
+  một khoản mục độc lập.
+- VIB p42 dòng `Công ty Nhà nước`: VietOCR Transformer đọc thiếu chữ số đầu
+  (`3.034.518`), còn pixel PDF và numeric challenger PP-OCRv6 cùng cho
+  `13.034.518`; kết quả dùng `13.034.518` và lưu nguyên disagreement.
+- CD-001/CD-002 là hai dòng nguồn duy nhất còn chưa map. VPB vẫn giữ đúng kỳ
+  nguồn Q1/2026.
 
 ## Provision movement (`PROVISION_MOVEMENT_ROLLFORWARD`)
 
@@ -84,7 +104,7 @@ Current exact-replay result:
 `docs/experiments/E-0054-loan-type-8bank-codex-verified-mapping-v2.json`
 
 Result ID:
-`lt8bcv2:result:509d9e7caa0b47a025072aee65b4d574b1c3bf78e697068ce9f92119f43caf9a`
+`lt8bcv2:result:f5765671514ac40550fe349633b2d95b693537d65e18e91101434904d3d652dd`
 
 ### LT-001 — ACB — government-directed lending
 
@@ -121,7 +141,7 @@ Current exact-replay result:
 `docs/experiments/E-0055-loan-industry-8bank-codex-verified-mapping-v2.json`
 
 Current result ID:
-`li8bcv2:result:94571f22af35070a47e43cd6d0a86e97e3eb8b5c7ee1270330256ac0f3562a1b`
+`li8bcv2:result:3ac4ba987593baf8e0a03c3a1f2414dacf1008df38fc890519d72d2c9160cbdb`
 
 Exact-replay builder:
 `scripts/experiments/build_loan_industry_8bank_codex_verified_mapping_v1.py`
@@ -250,7 +270,7 @@ Current exact-replay result:
 `docs/experiments/E-0056-loan-enterprise-8bank-codex-verified-mapping-v1.json`
 
 Result ID:
-`le8bcv1:result:5a7e1bd781857fbd494b533770c8aca1206796c5a65f3b20ca71e391732154d4`
+`le8bcv1:result:b6b858689f966259c4b2c8b4ea91bcc7c6bec906ce3cd060df9ebcb3eb5f27a9`
 
 The enterprise/legal-form matcher found one unique complete region in MBB p32,
 VPB p43, HDB p26, and VIB p34.  The other four PDFs do not expose that legal-form
@@ -271,7 +291,7 @@ unresolved.  Six non-additive source group/total equations remain explicit.
 - Verified children include ReportNormIds `718`, `722`, `719`, `723`, `725`,
   `721`, and `724`; government-directed lending is separately mapped to `6057`.
 - Resolving result: E-0054 V2
-  `lt8bcv2:result:509d9e7caa0b47a025072aee65b4d574b1c3bf78e697068ce9f92119f43caf9a`.
+  `lt8bcv2:result:f5765671514ac40550fe349633b2d95b693537d65e18e91101434904d3d652dd`.
 - Review status: `RESOLVED_VERIFIED_BY_CODEX_HEADERLESS_OWNER_DIRECT_VARIANT`.
 
 ### LE-002 — MBB — source-only “Cho vay các TCKT” group parent

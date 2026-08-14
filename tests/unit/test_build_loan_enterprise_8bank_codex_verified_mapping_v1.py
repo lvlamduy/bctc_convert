@@ -53,7 +53,7 @@ def test_live_result_maps_all_safe_rows_and_retains_every_unresolved_boundary(
 ) -> None:
     module, result = live
     assert result["result_id"] == (
-        "le8bcv1:result:5a7e1bd781857fbd494b533770c8aca1206796c5a65f3b20ca71e391732154d4"
+        "le8bcv1:result:b6b858689f966259c4b2c8b4ea91bcc7c6bec906ce3cd060df9ebcb3eb5f27a9"
     )
     assert result["metrics"] == {
         "document_count": 8,
