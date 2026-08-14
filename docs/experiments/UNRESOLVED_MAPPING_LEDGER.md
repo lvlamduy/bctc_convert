@@ -17,11 +17,16 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **24 entries**.  Current open queue: **5** loan-enterprise/customer-
-type entries.  Closed history: **16** row/graph resolutions and **3** confirmed
-bound-report family absences.  Later families append here rather than creating disconnected
-candidate lists. Bank/report/page fields below are evidence locators only, never
-matching rules.
+Ledger total: **24 entries**.  Current open queue: **0**.  Closed history:
+**21** row/graph resolutions and **3** confirmed bound-report family absences.
+Later families append here rather than creating disconnected candidate lists.
+Bank/report/page fields below are evidence locators only, never matching rules.
+
+## Open review queue (always first)
+
+No entry is currently `OPEN`.  Every future `OPEN` or `NEEDS_PIXEL_REVIEW`
+entry is inserted here, above the resolved family history, so the active queue
+never has to be recovered from older closed entries.
 
 The shared family locator follows a strict minimal-anchor search.  It enumerates
 every parent+child pair first, then every child+child pair, over both complete and
@@ -39,8 +44,22 @@ page or note identifier participates in this decision.
 | LT-001–LT-002 | `RESOLVED_VERIFIED_BY_CODEX` |
 | LI-001, LI-008, LI-009 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT` |
 | LI-002–LI-007, LI-010–LI-011 | `RESOLVED_VERIFIED_BY_CODEX` |
-| LE-001, LE-005, LE-008–LE-010 | `OPEN` / `UNRESOLVED` |
-| LE-002–LE-004, LE-006–LE-007, LE-011 | `RESOLVED` by source-graph or pixel replay |
+| LE-001–LE-011 | `RESOLVED` by exact family replay, non-additive graph equivalence, or pixel replay |
+
+## OCR and numeric evidence policy
+
+- Vietnamese semantic anchors come from the fresh VietOCR Transformer cache;
+  accentless normalization and bounded edit-distance matching only locate a
+  candidate graph.  They never decide the mapping by themselves.
+- PP-OCRv6 is an authenticated geometry/provider and may contribute an
+  independent numeric proposal.  It is **not**, by itself, final numeric truth.
+- Gemma is permitted only as a bounded rescue/challenger on a fixed difficult
+  crop.  A Gemma answer cannot silently replace a digit, sign, decimal separator,
+  DASH, blank, or missing cell and cannot become automatic numeric authority.
+- An accepted number must remain bound to the exact crop and typed lane, survive
+  independent digit/sign/DASH review, and satisfy the applicable row/total/
+  roll-forward accounting equations.  Disagreement without decisive pixel and
+  accounting evidence remains `UNRESOLVED`.
 
 ## Loan type (`LOAN_TYPE_CLASSIFICATION`)
 
@@ -217,22 +236,29 @@ Current exact-replay result:
 `docs/experiments/E-0056-loan-enterprise-8bank-codex-verified-mapping-v1.json`
 
 Result ID:
-`le8bcv1:result:e7543dbf436af23ce15a7229a2296671bd935b2be063350d7ce67bc01b3b9cf2`
+`le8bcv1:result:5a7e1bd781857fbd494b533770c8aca1206796c5a65f3b20ca71e391732154d4`
 
-The generic matcher found one unique complete region in MBB p32, VPB p43,
-HDB p26, and VIB p34. It found no complete region in the other four PDFs. The
-four positive regions are now independently pixel/schema/accounting replayed:
-43 schema rows are `VERIFIED_BY_CODEX`; one source population branch remains
-`UNRESOLVED`; six source-only group/total equations are verified without being
-misrepresented as schema children.
+The enterprise/legal-form matcher found one unique complete region in MBB p32,
+VPB p43, HDB p26, and VIB p34.  The other four PDFs do not expose that legal-form
+branch, but each contains a distinct headerless **loan-type** region directly
+under `Cho vay khách hàng`; those regions are already found and verified by the
+owner-direct E-0054 graph.  They are not forced into the wrong schema parent
+766.  In E-0056, 44 source rows are `VERIFIED_BY_CODEX`, including the exact
+foreign-branch population concept 6058; no schema-semantic row remains
+unresolved.  Six non-additive source group/total equations remain explicit.
 
-### LE-001 — ACB — no complete enterprise/customer-type region
+### LE-001 — ACB — headerless owner-direct loan-type region
 
 - Report: `vietstock_bctc/ACB/2026/BCTC Hợp nhất quý 2 năm 2026.pdf`
-- Scan scope: all 33 physical pages, fresh VietOCR line axis
-- Review status: `OPEN`
-- Machine reason: `NO_COMPLETE_REGION_IN_EXACT_FULL_DOCUMENT_FRESH_VIETOCR_SCAN`
-- Whole-document family absence claimed: **no**
+- Exact region: physical page 17, directly below `4. CHO VAY KHÁCH HÀNG:`.
+- No branch title `Phân tích theo loại hình cho vay` is required.  The generic
+  owner-direct graph binds the two period axes, unit scope, seven visible child
+  roles and the closing total.
+- Verified children include ReportNormIds `718`, `722`, `719`, `723`, `725`,
+  `721`, and `724`; government-directed lending is separately mapped to `6057`.
+- Resolving result: E-0054 V2
+  `lt8bcv2:result:509d9e7caa0b47a025072aee65b4d574b1c3bf78e697068ce9f92119f43caf9a`.
+- Review status: `RESOLVED_VERIFIED_BY_CODEX_HEADERLESS_OWNER_DIRECT_VARIANT`.
 
 ### LE-002 — MBB — source-only “Cho vay các TCKT” group parent
 
@@ -240,8 +266,9 @@ misrepresented as schema children.
 - Physical page / family: 32 / enterprise or customer-type analysis
 - Pixel text / accentless: `Cho vay các TCKT` / `cho vay cac tckt`
 - Visible values: `721.497.618 | 58,79% | 621.056.253 | 57,28%`
-- Candidate schema: none as a child of ReportNormId `766`
-- Review status: `RESOLVED_SOURCE_ONLY_GRAPH_NODE_NOT_MAPPED`
+- Candidate schema: no new leaf is needed.  The visible legal-form descendants
+  remain the higher-resolution representation.
+- Review status: `RESOLVED_SOURCE_ONLY_GRAPH_NODE_RETAINED_FOR_CHECK`
 - Machine reason: `SOURCE_ONLY_GROUP_PARENT_WOULD_DOUBLE_COUNT_LEGAL_FORM_CHILDREN`
 - Reason: its visible legal-form descendants already partition and sum to this
   parent. Mapping both parent and descendants would double count.
@@ -253,27 +280,23 @@ misrepresented as schema children.
 - Report / physical page: MBB consolidated Q2 2026 / 32
 - Pixel text / accentless: `Cho vay cá nhân` / `cho vay ca nhan`
 - Visible values: `478.995.719 | 39,01% | 437.686.958 | 40,38%`
-- Nearest schema candidate: ReportNormId `780` (`Hộ kinh doanh, cá nhân`)
-- Review status: `RESOLVED_SOURCE_ONLY_GRAPH_NODE_NOT_MAPPED`
-- Machine reason: `SOURCE_GROUP_PARENT_COEXTENSIVE_WITH_VISIBLE_CHILD_NOT_MAPPED_TWICE`
-- Reason: the immediately following child has the same values and is the exact
-  schema label. The parent remains graph-only unless schema policy explicitly
-  prefers it over the child.
-- Resolution: the exact child is mapped; the coextensive parent remains graph-only,
-  preventing double counting.
+- Accepted schema equivalence: ReportNormId `780` (`Hộ kinh doanh, cá nhân`).
+- Review status: `RESOLVED_NON_ADDITIVE_SCHEMA_EQUIVALENCE`
+- Resolution: `Cho vay cá nhân` and its immediately following 780 child have
+  identical four-lane values.  E-0056 records the parent→780 equivalence but
+  exports the numeric amount once only; parent and child must never be summed.
 
 ### LE-004 — MBB — source-only “Cho vay khác” group parent
 
 - Report / physical page: MBB consolidated Q2 2026 / 32
 - Pixel text / accentless: `Cho vay khác` / `cho vay khac`
 - Visible values: `937.382 | 0,08% | 904.945 | 0,09%`
-- Candidate schema: none for the grouped parent
-- Review status: `RESOLVED_SOURCE_ONLY_GRAPH_NODE_NOT_MAPPED`
-- Machine reason: `SOURCE_ONLY_GROUP_PARENT_SPLIT_INTO_ADMIN_PUBLIC_AND_OTHER_CHILDREN`
-- Reason: its two visible children close exactly to the parent and have distinct
-  schema concepts; the parent must not be mapped as another child.
-- Resolution: both children are mapped independently; the source parent is kept
-  only as a replayed accounting node.
+- Accepted aggregate equivalence: ReportNormId `782` (`Khác`).
+- Review status: `RESOLVED_NON_ADDITIVE_SCHEMA_EQUIVALENCE`
+- Resolution: the source parent is explicitly associated with 782 as the
+  aggregate/catch-all view, while its two visible children remain available as
+  the detailed view.  E-0056 marks the relation non-additive, so an export must
+  choose the aggregate or its descendants and cannot count both.
 
 ### LE-005 — MBB — foreign-branch population and its two children
 
@@ -282,13 +305,13 @@ misrepresented as schema children.
 - Parent values: `9.295.704 | 0,75% | 9.330.629 | 0,86%`
 - Pixel children: `Cho vay Doanh nghiệp` = `2.121.916 / 2.176.885`;
   `Cho vay cá nhân` = `7.173.788 / 7.153.744`
-- Candidate schema: none as a child of ReportNormId `766`; ReportNormId `6058`
-  belongs to the distinct industry family under parent `727` and is not reused here.
-- Review status: `UNRESOLVED`
-- Machine reason: `GEOGRAPHIC_POPULATION_BRANCH_NOT_ONE_ENTERPRISE_LEGAL_FORM_CHILD`
-- Reason: this is a geographic reporting population with its own enterprise and
-  individual split, not a legal-form row. It is retained to close the core
-  subtotal but is not mapped.
+- Accepted schema: ReportNormId `6058`, whose canonical label is already exactly
+  `Cho vay tại Chi nhánh và ngân hàng con nước ngoài`.
+- Review status: `RESOLVED_VERIFIED_BY_CODEX`
+- Resolution: the project reuses the existing exact concept rather than creating
+  a duplicate ID merely because MBB repeats it in another source presentation.
+  E-0056 maps the row once, preserves its two source children and parent-child
+  equation, and marks the group relation non-additive.
 
 ### LE-006 — VPB — “Khác” monetary cells not attached by semantic geometry
 
@@ -321,30 +344,30 @@ misrepresented as schema children.
   numeric interpretation is `0`; the comparative `27` is preserved. The row maps
   to ReportNormId `774`.
 
-### LE-008 — VCB — no complete enterprise/customer-type region
+### LE-008 — VCB — headerless owner-direct loan-type region
 
 - Report: `vietstock_bctc/VCB/2026/BCTC Hợp nhất quý 2 năm 2026.pdf`
-- Scan scope: all 55 physical pages, fresh VietOCR line axis including the five
-  terminal geometry-only pages
-- Review status: `OPEN`
-- Machine reason: `NO_COMPLETE_REGION_IN_EXACT_FULL_DOCUMENT_FRESH_VIETOCR_SCAN`
-- Whole-document family absence claimed: **no**
+- Exact region: physical page 30, owner-direct rows below `Cho vay khách hàng`.
+- E-0054 verifies ReportNormIds `718`, `722`, `719`, `723`, and `721` without
+  requiring a printed branch title.
+- Review status: `RESOLVED_VERIFIED_BY_CODEX_HEADERLESS_OWNER_DIRECT_VARIANT`.
 
-### LE-009 — CTG — no complete enterprise/customer-type region
+### LE-009 — CTG — headerless owner-direct loan-type region
 
 - Report: `vietstock_bctc/CTG/2026/BCTC Hợp nhất quý 2 năm 2026.pdf`
-- Scan scope: all 61 physical pages, fresh VietOCR line axis
-- Review status: `OPEN`
-- Machine reason: `NO_COMPLETE_REGION_IN_EXACT_FULL_DOCUMENT_FRESH_VIETOCR_SCAN`
-- Whole-document family absence claimed: **no**
+- Exact region: physical page 38, owner-direct rows below `Cho vay khách hàng`.
+- E-0054 verifies ReportNormIds `718`, `722`, `719`, `723`, `725`, `721`, and
+  `726`; the visible DASH in `Cho vay khác` remains typed DASH with numeric
+  interpretation zero.
+- Review status: `RESOLVED_VERIFIED_BY_CODEX_HEADERLESS_OWNER_DIRECT_VARIANT`.
 
-### LE-010 — BID — no complete enterprise/customer-type region
+### LE-010 — BID — headerless owner-direct loan-type region
 
 - Report: `vietstock_bctc/BID/2026/BCTC Hợp nhất quý 2 năm 2026.pdf`
-- Scan scope: all 37 physical pages, fresh VietOCR line axis
-- Review status: `OPEN`
-- Machine reason: `NO_COMPLETE_REGION_IN_EXACT_FULL_DOCUMENT_FRESH_VIETOCR_SCAN`
-- Whole-document family absence claimed: **no**
+- Exact region: physical page 22, owner-direct rows below `Cho vay khách hàng`.
+- E-0054 verifies ReportNormIds `718`, `721`, `722`, `719`, and `723` plus the
+  exact two-axis total.
+- Review status: `RESOLVED_VERIFIED_BY_CODEX_HEADERLESS_OWNER_DIRECT_VARIANT`.
 
 ### LE-011 — VIB — VietOCR dropped one digit in “Công ty cổ phần khác”
 
@@ -352,6 +375,8 @@ misrepresented as schema children.
 - Physical page / family: 34 / enterprise or customer-type analysis
 - Label / accentless: `Công ty cổ phần khác` / `cong ty co phan khac`
 - Raw VietOCR current value: `97.043.85`
+- Independent PP-OCRv6 proposal: `97.043.851` with recognition score
+  `0.9999531507492065`; this is corroborating numeric evidence, not sole truth.
 - Independent pixel transcription: `97.043.851`
 - Other visible lanes: `24,44% | 77.496.641 | 20,29%`
 - Candidate schema: ReportNormId `773`

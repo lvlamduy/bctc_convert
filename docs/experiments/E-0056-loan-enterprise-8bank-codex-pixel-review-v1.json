@@ -92,9 +92,7 @@
         "FOREIGN_BRANCH_LOANS_SOURCE_ONLY",
         "MARGIN_AND_SECURITIES_ADVANCE"
       ],
-      "schema_unresolved_roles": [
-        "FOREIGN_BRANCH_LOANS_SOURCE_ONLY"
-      ],
+      "schema_unresolved_roles": [],
       "statement_context_evidence": {
         "mode": "DOCUMENT_PRECEDING_VISIBLE_HEADING",
         "physical_page": 9,
@@ -208,6 +206,7 @@
         {
           "kind": "PARENT_EQUALS_GRAPH_CHILD_ROLES",
           "source_label": "Cho vay các TCKT",
+          "schema_equivalence_report_norm_id": null,
           "child_roles": [
             "STATE_ENTERPRISE",
             "STATE_OWNED_SINGLE_MEMBER_LLC",
@@ -232,6 +231,7 @@
         {
           "kind": "PARENT_EQUALS_GRAPH_CHILD_ROLES",
           "source_label": "Cho vay cá nhân",
+          "schema_equivalence_report_norm_id": 780,
           "child_roles": [
             "HOUSEHOLD_INDIVIDUAL"
           ],
@@ -248,6 +248,7 @@
         {
           "kind": "PARENT_EQUALS_GRAPH_CHILD_ROLES",
           "source_label": "Cho vay khác",
+          "schema_equivalence_report_norm_id": 782,
           "child_roles": [
             "ADMIN_PUBLIC_ASSOCIATION",
             "OTHER"
@@ -265,6 +266,7 @@
         {
           "kind": "PARENT_EQUALS_SOURCE_ONLY_CHILDREN",
           "source_label": "Cho vay tại Chi nhánh và ngân hàng con nước ngoài",
+          "schema_equivalence_report_norm_id": 6058,
           "child_roles": [],
           "child_source_labels": [
             "Cho vay Doanh nghiệp",
@@ -295,6 +297,7 @@
         {
           "kind": "CORE_SUBTOTAL_EQUALS_POPULATION_BRANCHES",
           "source_label": "UNLABELED_CORE_SUBTOTAL",
+          "schema_equivalence_report_norm_id": null,
           "child_roles": [],
           "child_source_labels": [
             "Cho vay các TCKT",
@@ -314,6 +317,7 @@
         {
           "kind": "GRAND_TOTAL_EQUALS_CORE_PLUS_MARGIN",
           "source_label": "UNLABELED_GRAND_TOTAL",
+          "schema_equivalence_report_norm_id": null,
           "child_roles": [
             "MARGIN_AND_SECURITIES_ADVANCE"
           ],

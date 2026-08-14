@@ -58,8 +58,8 @@ _BRANCH_ALIASES = (
 
 # This is the union of source-visible roles across the fixed PDFs.  The aliases
 # are presentation variants of accounting roles, not bank routes.  One role is
-# intentionally source-only: it is a top-level population parent needed to
-# close grouped presentations but is not one child of schema parent 766.
+# a population row.  It is not one legal-form child of schema parent 766, but
+# the universal schema already contains the exact cross-family concept 6058.
 _ROLE_ALIASES: dict[str, tuple[str, ...]] = {
     "STATE_ENTERPRISE": (
         "Công ty Nhà nước",
@@ -112,9 +112,7 @@ _ROLE_ALIASES: dict[str, tuple[str, ...]] = {
     "FOREIGN_BRANCH_LOANS_SOURCE_ONLY": ("Cho vay tại Chi nhánh và ngân hàng con nước ngoài",),
 }
 
-_SCHEMA_ELIGIBLE_ROLES = tuple(
-    role for role in _ROLE_ALIASES if role != "FOREIGN_BRANCH_LOANS_SOURCE_ONLY"
-)
+_SCHEMA_ELIGIBLE_ROLES = tuple(_ROLE_ALIASES)
 # A recognized family parent plus one distinctive child is the smallest useful
 # locator.  The shared engine exhausts every parent+child and child+child pair
 # across the complete PDF before considering triples.  This changes only
@@ -151,7 +149,7 @@ _SAFETY = {
     "public_exact_replay_required": True,
     "qwen_or_gemma_used_for_semantic_anchors": False,
     "sibling_child_order_fixed": False,
-    "source_only_population_parent_mapped_to_schema": False,
+    "source_population_role_may_map_to_dedicated_cross_family_schema_item": True,
     "text_similarity_alone_can_accept": False,
     "whole_pdf_uniqueness_required": True,
 }

@@ -59,7 +59,7 @@ CLAIM_BOUNDARY = (
     "ONLY_NO_BROAD_ABSENCE_CANONICALIZATION_EXPORT_OR_PRODUCTION_AUTHORITY"
 )
 REVIEW_PATH = Path("docs/experiments/E-0056-loan-enterprise-8bank-codex-pixel-review-v1.json")
-REVIEW_SHA256 = "974eaf3ff7baadfa53116586d4f99ee79a1ca03ccc4c548ccfd76385805083db"
+REVIEW_SHA256 = "ecfd6cdc7df2734caa8fbb1fbd5fb146f3c01fdf40663f1fb109cc7cc070ff4d"
 SEMANTIC_INDEX_PATH = Path(
     "output/development/loan-maturity-full-document-vietocr-v1/verified-index/semantic_index.json"
 )
@@ -94,12 +94,21 @@ _ROLE_BINDINGS: dict[str, tuple[int, str]] = {
         5748,
         "Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
     ),
-}
-_UNRESOLVED_ROLES = {
+    # This is not a legal-form child of 766.  The exact source concept already
+    # exists once in the universal schema as 6058; reusing it avoids creating
+    # two ReportNormIds for the same visible population merely because it is
+    # repeated in another source table.
     "FOREIGN_BRANCH_LOANS_SOURCE_ONLY": (
-        None,
-        "UNRESOLVED_GEOGRAPHIC_POPULATION_BRANCH_NOT_ONE_ENTERPRISE_LEGAL_FORM_CHILD",
-    )
+        6058,
+        "+ Cho vay tại Chi nhánh và ngân hàng con nước ngoài",
+    ),
+}
+_UNRESOLVED_ROLES: dict[str, tuple[int | None, str]] = {}
+_ROLE_SCHEMA_PARENTS = {"FOREIGN_BRANCH_LOANS_SOURCE_ONLY": 727}
+_SOURCE_GROUP_SCHEMA_EQUIVALENCE = {
+    "Cho vay cá nhân": 780,
+    "Cho vay khác": 782,
+    "Cho vay tại Chi nhánh và ngân hàng con nước ngoài": 6058,
 }
 _NEGATIVE_FAMILIES = (
     (717, "Phân tích theo loại hình cho vay"),
@@ -150,7 +159,8 @@ _AUTHORITY = {
     "mapping_authority_is_bounded_to_reviewed_source_rows": True,
     "persisted_result_self_authenticating": False,
     "public_exact_replay_required": True,
-    "source_only_group_nodes_mapped": False,
+    "source_group_nodes_exported_additively": False,
+    "source_population_role_6058_mapped_once_without_double_count": True,
     "text_similarity_alone_used_for_mapping": False,
     "unmatched_or_non_equivalent_roles_preserved_unresolved": True,
 }
@@ -439,6 +449,7 @@ def _source_group_equations(
         "child_roles",
         "child_source_labels",
         "kind",
+        "schema_equivalence_report_norm_id",
         "source_label",
         "source_only_child_values",
         "status",
@@ -464,6 +475,9 @@ def _source_group_equations(
         if label in seen_labels:
             raise _error("source-group equation label is duplicated")
         seen_labels.add(label)
+        expected_schema_id = _SOURCE_GROUP_SCHEMA_EQUIVALENCE.get(label)
+        if item["schema_equivalence_report_norm_id"] != expected_schema_id:
+            raise _error("source-group schema equivalence drifted")
         child_roles = _string_list(item["child_roles"], "source-group child roles")
         child_labels = _string_list(item["child_source_labels"], "source-group child source labels")
         if len(child_roles) != len(set(child_roles)) or any(
@@ -640,11 +654,14 @@ def _schema(
     roles: dict[str, dict[str, Any]] = {}
     for role, (schema_id, expected_name) in _ROLE_BINDINGS.items():
         item = schema_by_id.get(schema_id)
+        expected_parent_id = _ROLE_SCHEMA_PARENTS.get(role, 766)
+        expected_parent = schema_by_id.get(expected_parent_id)
         if (
             item is None
             or item.canonical_name != expected_name
-            or item.parent_id != 766
-            or schema_id not in parent.children
+            or expected_parent is None
+            or item.parent_id != expected_parent_id
+            or schema_id not in expected_parent.children
             or type(item.display_order) is not int
         ):
             raise _error(f"live TM enterprise schema binding drifted for {role}")
@@ -652,7 +669,7 @@ def _schema(
             "canonical_name": item.canonical_name,
             "display_order": item.display_order,
             "report_norm_id": schema_id,
-            "schema_parent_report_norm_id": 766,
+            "schema_parent_report_norm_id": expected_parent_id,
         }
     display_orders = [item["display_order"] for item in roles.values()]
     if len(display_orders) != len(set(display_orders)):
@@ -1072,7 +1089,12 @@ def _verify_source_group_equations(
                 "child_roles": canonical_clone_v1(equation["child_roles"]),
                 "child_source_labels": canonical_clone_v1(equation["child_source_labels"]),
                 "kind": kind,
-                "mapping_status": "SOURCE_ONLY_GRAPH_NODE_NOT_MAPPED",
+                "mapping_status": (
+                    "SOURCE_ONLY_GRAPH_NODE_RETAINED_FOR_CHECK"
+                    if equation["schema_equivalence_report_norm_id"] is None
+                    else "VERIFIED_NON_ADDITIVE_SCHEMA_EQUIVALENCE"
+                ),
+                "schema_equivalence_report_norm_id": equation["schema_equivalence_report_norm_id"],
                 "source_label": label,
                 "status": "VERIFIED_BY_VISIBLE_ACCOUNTING_EQUATION",
                 "visible_values": canonical_clone_v1(equation["visible_values"]),
@@ -1556,7 +1578,9 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 type(mapping) is not dict
                 or set(mapping) != fields
                 or mapping["status"] != "VERIFIED_BY_CODEX"
-                or mapping["schema_parent_report_norm_id"] != 766
+                or mapping["role"] not in _ROLE_BINDINGS
+                or mapping["schema_parent_report_norm_id"]
+                != _ROLE_SCHEMA_PARENTS.get(mapping["role"], 766)
                 or type(mapping["report_norm_id"]) is not int
                 or mapping["report_norm_id"] in seen_ids
                 or type(mapping["display_order"]) is not int
@@ -1602,11 +1626,17 @@ def _validate_result(value: Any) -> dict[str, Any]:
                     "child_source_labels",
                     "kind",
                     "mapping_status",
+                    "schema_equivalence_report_norm_id",
                     "source_label",
                     "status",
                     "visible_values",
                 }
-                or equation["mapping_status"] != "SOURCE_ONLY_GRAPH_NODE_NOT_MAPPED"
+                or equation["mapping_status"]
+                != (
+                    "SOURCE_ONLY_GRAPH_NODE_RETAINED_FOR_CHECK"
+                    if equation["schema_equivalence_report_norm_id"] is None
+                    else "VERIFIED_NON_ADDITIVE_SCHEMA_EQUIVALENCE"
+                )
                 or equation["status"] != "VERIFIED_BY_VISIBLE_ACCOUNTING_EQUATION"
             ):
                 raise _error("verified source-group equation shape drifted")

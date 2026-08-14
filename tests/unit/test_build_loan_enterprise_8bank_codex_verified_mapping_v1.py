@@ -53,21 +53,21 @@ def test_live_result_maps_all_safe_rows_and_retains_every_unresolved_boundary(
 ) -> None:
     module, result = live
     assert result["result_id"] == (
-        "le8bcv1:result:e7543dbf436af23ce15a7229a2296671bd935b2be063350d7ce67bc01b3b9cf2"
+        "le8bcv1:result:5a7e1bd781857fbd494b533770c8aca1206796c5a65f3b20ca71e391732154d4"
     )
     assert result["metrics"] == {
         "document_count": 8,
         "document_no_complete_region_count": 4,
         "document_unique_structure_count": 4,
-        "mapped_item_verified_by_codex_count": 43,
-        "mapped_money_value_cell_count": 86,
-        "mapped_percentage_corroboration_cell_count": 70,
+        "mapped_item_verified_by_codex_count": 44,
+        "mapped_money_value_cell_count": 88,
+        "mapped_percentage_corroboration_cell_count": 72,
         "negative_family_control_count": 32,
         "source_group_equation_verified_count": 6,
         "source_only_total_verified_count": 4,
         "transformer_disagreement_preserved_count": 28,
         "typed_dash_cell_verified_count": 1,
-        "unresolved_schema_semantic_row_count": 1,
+        "unresolved_schema_semantic_row_count": 0,
     }
     assert [trial["document_provenance"] for trial in result["trials"]] == list(
         module.EXPECTED_DOCUMENT_ORDER
@@ -82,7 +82,7 @@ def test_live_result_maps_all_safe_rows_and_retains_every_unresolved_boundary(
         for trial in result["trials"]
     ] == [
         ("ACB", None, 0, 0),
-        ("MBB", 32, 13, 1),
+        ("MBB", 32, 14, 0),
         ("VPB", 43, 14, 0),
         ("HDB", 26, 8, 0),
         ("VCB", None, 0, 0),
@@ -93,7 +93,7 @@ def test_live_result_maps_all_safe_rows_and_retains_every_unresolved_boundary(
     assert all(trial["whole_document_family_absence_claim"] is False for trial in result["trials"])
 
 
-def test_schema_ids_are_live_parent_children_and_source_only_population_is_not_mapped(
+def test_schema_ids_are_live_parent_children_and_foreign_population_reuses_exact_schema_item(
     live: tuple[ModuleType, dict[str, Any]],
 ) -> None:
     _, result = live
@@ -117,22 +117,37 @@ def test_schema_ids_are_live_parent_children_and_source_only_population_is_not_m
         ("ADMIN_PUBLIC_ASSOCIATION", 781),
         ("OTHER", 782),
         ("MARGIN_AND_SECURITIES_ADVANCE", 5748),
+        ("FOREIGN_BRANCH_LOANS_SOURCE_ONLY", 6058),
     }
     mbb = result["trials"][1]
-    assert mbb["unresolved_rows"] == [
-        {
-            **mbb["unresolved_rows"][0],
-            "candidate_report_norm_id": None,
-            "role": "FOREIGN_BRANCH_LOANS_SOURCE_ONLY",
-            "status": (
-                "UNRESOLVED_GEOGRAPHIC_POPULATION_BRANCH_NOT_ONE_ENTERPRISE_LEGAL_FORM_CHILD"
-            ),
-            "whole_document_absence_claim": False,
-        }
-    ]
+    assert mbb["unresolved_rows"] == []
+    foreign = next(
+        item
+        for item in mbb["verified_mappings"]
+        if item["role"] == "FOREIGN_BRANCH_LOANS_SOURCE_ONLY"
+    )
+    assert foreign["report_norm_id"] == 6058
+    assert foreign["schema_parent_report_norm_id"] == 727
+    by_label = {item["source_label"]: item for item in mbb["source_group_equations"]}
+    assert by_label["Cho vay các TCKT"]["mapping_status"] == (
+        "SOURCE_ONLY_GRAPH_NODE_RETAINED_FOR_CHECK"
+    )
+    assert by_label["Cho vay các TCKT"]["schema_equivalence_report_norm_id"] is None
+    assert by_label["Cho vay cá nhân"]["schema_equivalence_report_norm_id"] == 780
+    assert by_label["Cho vay khác"]["schema_equivalence_report_norm_id"] == 782
+    assert (
+        by_label["Cho vay tại Chi nhánh và ngân hàng con nước ngoài"][
+            "schema_equivalence_report_norm_id"
+        ]
+        == 6058
+    )
     assert all(
-        equation["mapping_status"] == "SOURCE_ONLY_GRAPH_NODE_NOT_MAPPED"
-        for equation in mbb["source_group_equations"]
+        by_label[label]["mapping_status"] == "VERIFIED_NON_ADDITIVE_SCHEMA_EQUIVALENCE"
+        for label in (
+            "Cho vay cá nhân",
+            "Cho vay khác",
+            "Cho vay tại Chi nhánh và ngân hàng con nước ngoài",
+        )
     )
 
 
@@ -194,7 +209,12 @@ def test_pixel_digit_and_dash_corrections_preserve_raw_semantic_disagreement(
     "mutator",
     (
         lambda value: value["documents"][1].__setitem__("physical_page", True),
-        lambda value: value["documents"][1].__setitem__("schema_unresolved_roles", []),
+        lambda value: value["documents"][1].__setitem__(
+            "schema_unresolved_roles", ["FOREIGN_BRANCH_LOANS_SOURCE_ONLY"]
+        ),
+        lambda value: value["documents"][1]["source_group_equations"][1].__setitem__(
+            "schema_equivalence_report_norm_id", 782
+        ),
         lambda value: value["documents"][3]["pixel_accounting"]["typed_dash_cells"][0].__setitem__(
             "status", "OBSERVED_ZERO"
         ),
@@ -295,11 +315,16 @@ def test_coordinated_digit_status_and_metric_rehash_fail_closed(
     ):
         module.validate_loan_enterprise_8bank_codex_verified_mapping_replay_v1(digit)
 
-    promoted = copy.deepcopy(exact)
-    promoted["trials"][1]["unresolved_rows"][0]["status"] = "VERIFIED_BY_CODEX"
-    _rehash(module, promoted)
+    relabelled = copy.deepcopy(exact)
+    foreign = next(
+        item
+        for item in relabelled["trials"][1]["verified_mappings"]
+        if item["role"] == "FOREIGN_BRANCH_LOANS_SOURCE_ONLY"
+    )
+    foreign["report_norm_id"] = 999_999
+    _rehash(module, relabelled)
     with pytest.raises(module.LoanEnterprise8BankCodexVerifiedMappingV1Error):
-        module.validate_loan_enterprise_8bank_codex_verified_mapping_replay_v1(promoted)
+        module.validate_loan_enterprise_8bank_codex_verified_mapping_replay_v1(relabelled)
 
     typed = copy.deepcopy(exact)
     typed["metrics"]["document_count"] = 8.0
