@@ -17,7 +17,7 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **33 entries**.  Current open queue: **9**.  Closed history:
+Ledger total: **35 entries**.  Current open queue: **11**.  Closed history:
 **21** row/graph resolutions and **3** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
@@ -26,6 +26,8 @@ Bank/report/page fields below are evidence locators only, never matching rules.
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
 | --- | --- | --- | ---: | --- | --- |
+| CBD-001 | Tiền gửi tại NHNN | MBB | 30 | Tiền gửi tại Ngân hàng Nhà nước Lào | Dòng nằm đúng trong cụm và tham gia phương trình tổng, nhưng live TM schema chưa có child tiền gửi NHTW theo địa lý tương đương; không ép vào 574 `Tiền gửi khác`. |
+| CBD-002 | Tiền gửi tại NHNN | MBB | 30 | Tiền gửi tại Ngân hàng Quốc gia Campuchia | Cùng khoảng trống schema với CBD-001; giữ `UNRESOLVED_SCHEMA_ITEM_ABSENT` và vẫn dùng làm thành phần kiểm tra tổng. |
 | CD-001 | Tiền gửi của khách hàng / loại hình doanh nghiệp | VPB | 55 | Công ty TNHH 2 thành viên trở lên có phần vốn góp của Nhà nước trên 50% | Giá trị hiện tại `64.165`; schema 1079 chỉ mô tả Công ty TNHH **một** thành viên có vốn Nhà nước trên 50%, nên chưa thể dùng thay thế. |
 | CD-002 | Tiền gửi của khách hàng / loại hình doanh nghiệp | VIB | 42 | Công ty TNHH 2 thành viên trở lên có phần vốn góp của Nhà nước trên 50% | Giá trị hiện tại `174`; cùng khoảng trống schema với CD-001. |
 | PM-001 | Dự phòng rủi ro cho vay khách hàng | VPB | 45 | Dự phòng chung, dự phòng cụ thể, dự phòng cho vay giao dịch ký quỹ và ứng trước | Đã map và kiểm tra đủ kỳ 01/01–31/03/2026 của PDF được cung cấp; chưa có PDF VPB Q2/2026 nên không được relabel kết quả Q1 thành Q2. |
@@ -49,6 +51,7 @@ page or note identifier participates in this decision.
 
 | IDs | Current disposition |
 | --- | --- |
+| CBD-001–CBD-002 | `OPEN_SCHEMA_GAP`; retained in graph/accounting, not coerced to `Tiền gửi khác` |
 | LT-001–LT-002 | `RESOLVED_VERIFIED_BY_CODEX` |
 | LI-001, LI-008, LI-009 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT` |
 | LI-002–LI-007, LI-010–LI-011 | `RESOLVED_VERIFIED_BY_CODEX` |
@@ -57,6 +60,23 @@ page or note identifier participates in this decision.
 | PM-001 | `OPEN_SOURCE_PERIOD_GAP`; không còn dòng nguồn chưa map trong PDF Q1 đã bind |
 | SEC-001 | `OPEN_DISTINCT_SECURITIES_SUBFAMILY`; trading đã hoàn tất 7 bank, AFS VIB giữ riêng cho lượt kế tiếp |
 | CPM-001–CPM-005 | `OPEN_NO_COMPLETE_DETAILED_NOTE_REGION`; chỉ có dòng tổng hoặc negative-control family, không ép thành bảng chi tiết và không tự tuyên bố absence |
+
+## Deposits at central banks (`CENTRAL_BANK_DEPOSITS`)
+
+Current exact-replay result:
+`docs/experiments/E-0061-central-bank-deposits-8bank-codex-verified-mapping-v1.json`
+
+- One bank-blind graph scans all 453 pages and binds the first family owner,
+  central-bank parent, required currency children and first trailing two-period
+  total. It records horizontal row/period layout and stops before reserve-ratio
+  tables or the next TM family.
+- MBB p30, VPB p38 and VIB p31 are the only unique complete detailed clusters.
+  Ten source rows are `VERIFIED_BY_CODEX`, and four current-period equations
+  close exactly. VPB retains its Q1/2026 source-period caveat.
+- MBB's Laos and Cambodia rows remain CBD-001/CBD-002. They stay in the graph
+  and total equation but have no exact live TM schema item. ACB/HDB/VCB/CTG/BID
+  have no complete detailed region under this contract; no broad family-absence
+  claim is made.
 
 ## Cash and precious metals (`CASH_PRECIOUS_METALS`)
 

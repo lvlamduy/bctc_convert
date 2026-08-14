@@ -144,6 +144,28 @@ Q1/2026, không relabel thành Q2/2026.
 Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
 Q1/2026, không relabel thành Q2/2026.
 
+## 10. Tiền gửi tại NHNN
+
+- **Đã xác minh:** MBB p30, VPB p38 và VIB p31. Cả ba cụm được giới hạn từ
+  owner đầu cụm qua nhánh `Tiền gửi tại NHNN`, hai hàng `Bằng VND` / `Bằng
+  ngoại tệ` đến dòng tổng đầu tiên. Chỉ hai cột kỳ tiền tệ được dùng; bảng tỷ
+  lệ dự trữ sau dòng tổng không thuộc cụm này. Đã map 10 dòng và kiểm tra bốn
+  phương trình cộng trừ.
+- **Không có vùng thuyết minh chi tiết hoàn chỉnh:** ACB, HDB, VCB, CTG, BID.
+  Năm PDF vẫn có dòng tổng trên báo cáo tình hình tài chính hoặc các bảng
+  thanh khoản/rủi ro gần giống; không ép chúng thành bảng phân rã tiền tệ.
+- **Còn thiếu:** MBB có hai dòng địa lý riêng chưa có khoản mục schema tương
+  đương. Hai dòng vẫn được giữ trong graph và tham gia phương trình tổng, nhưng
+  không bị ép vào `Tiền gửi khác`.
+
+| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | ---: | --- | --- |
+| MBB | 30 | Tiền gửi tại Ngân hàng Nhà nước Lào | Schema hiện chưa có child tiền gửi NHTW theo địa lý tương đương. |
+| MBB | 30 | Tiền gửi tại Ngân hàng Quốc gia Campuchia | Cùng khoảng trống schema; không đồng nhất âm thầm với `Tiền gửi khác`. |
+
+Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
+Q1/2026, không relabel thành Q2/2026.
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -161,3 +183,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Dự phòng cho vay | ✓ p18 | ✓ p34 | ✓\* p45 | ✓ p28 | ✓ p31 | ✓ p39 | ✓ p23 | ✓ p34 | 0 dòng; VPB còn thiếu nguồn Q2 |
 | Tiền gửi khách hàng | ✓ p21 | ✓ p43 | ✓\* p55 | ✓ p31 | ✓ p35 | ✓ p42 | ✓ p25 | ✓\* p41–42 | 2 dòng TNHH cùng một khoảng trống schema; VPB là nguồn Q1 |
 | Chứng khoán kinh doanh | ✓ p16 | ✓ p31 | ✓\* p40 | ✓ p24 | ✓ p30 | ✓ p37 | ✓ p20 | △ AFS p36 | 1 subfamily AFS; VPB là nguồn Q1 |
+| Tiền gửi tại NHNN | — tổng p3 | ✓\* p30 | ✓\* p38 | — tổng p3 | — tổng p7 | — tổng p3 | — tổng p4 | ✓ p31 | 2 dòng địa lý MBB; 5 bank không có bảng chi tiết; VPB là nguồn Q1 |
