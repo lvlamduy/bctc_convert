@@ -63,10 +63,10 @@ E0047_PATH = Path(
 )
 REGISTRY_DIRECTORY = Path("output/development/mbb-maturity-numeric-v1/frozen")
 REGISTRY_PATH = REGISTRY_DIRECTORY / "crop_registry.json"
-RUN_DIRECTORY = Path("output/development/mbb-maturity-numeric-v1/reader-run-v1")
+RUN_DIRECTORY = Path("output/development/mbb-maturity-numeric-v1/reader-run-v2")
 PREDICTIONS_PATH = RUN_DIRECTORY / "predictions.json"
 RUN_MANIFEST_PATH = RUN_DIRECTORY / "run_manifest.json"
-SELECTION_PATH = Path("docs/experiments/E-0048-mbb-maturity-numeric-selection-authority.json")
+SELECTION_PATH = Path("docs/experiments/E-0048-mbb-maturity-numeric-selection-authority-v2.json")
 VERIFICATION_PATH = Path("docs/experiments/E-0048-mbb-maturity-numeric-verification.json")
 MODEL_CACHE = Path("/workspace/bctc-ai-models/verified_numeric_v1")
 _MBB_BANK = "MBB"
@@ -464,7 +464,6 @@ def _selection_git_lineage(
         implementation.append(_artifact_pin(path, current))
     return {
         "clean_consumer_head_validated_but_not_persisted": True,
-        "consumer_head": head,
         "implementation_refs": implementation,
         "run_commit": run_commit,
         "selection_commit": selection_commit,
