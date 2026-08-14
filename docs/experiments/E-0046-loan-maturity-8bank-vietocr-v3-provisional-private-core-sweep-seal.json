@@ -1,0 +1,266 @@
+{
+  "artifact_identity": {
+    "canonical_encoding": "UTF8_JSON_SORTED_KEYS_COMPACT_NO_NAN_WITH_TRAILING_LF_V1",
+    "ephemeral_capture_path": "/tmp/e0046.json",
+    "payload_sha256": "dce21ce131b55e6693fb081b4ee97f0a3fb651d0feaea8792cb6f51118118881",
+    "payload_size_bytes": 6880612,
+    "payload_tracked_in_git": false,
+    "seal_only_is_tracked": true,
+    "sweep_id": "e0046:provisional-sweep:d94b8e059570ff71362fb18a34609ae052a499b0aa5bc6f79b59eb5b9d6b564c"
+  },
+  "audit": {
+    "audited_git_head": "2efd18e8504e883bd4ea54c1370a2def7d904b28",
+    "correctness_or_release_blocker": false,
+    "payload_canonical_json_with_trailing_lf": true,
+    "payload_identity_recomputed_from_ephemeral_capture": true,
+    "verdict": "STRICT_FINAL_PASS"
+  },
+  "bank_order": [
+    "ACB",
+    "MBB",
+    "VPB",
+    "HDB",
+    "VCB",
+    "CTG",
+    "BID",
+    "VIB"
+  ],
+  "claim_boundary": "EXACT_E0044_EIGHT_PAGE_SOURCE_AND_SELECTED_VIETOCR_V3_STRUCTURAL_SWEEP_SCHEMA_CANDIDATES_ONLY_NO_INDEPENDENT_NUMERIC_VERIFICATION_NO_SCHEMA_MAPPING_NO_ACCOUNTING_ACCEPTANCE_CANONICALIZATION_VALUE_MATERIALIZATION_OR_EXPORT_AUTHORITY",
+  "code_identity": {
+    "formal_inference_commit": "647d39757af9149efdfc5c97f644e6565359126e",
+    "formal_selection_commit": "7a906617c72094870eb171de98657499aa4d4b2a",
+    "formal_source_tree_oid": "03fbbb7c94939e74186b8e1ce45789d131e0e16e",
+    "formal_vietocr_freeze_commit": "cb5140eceb345cf86b819f50fb8ef4a060825e8c",
+    "records": [
+      {
+        "capture_commit": "ce08c2f858bbe8760061faf58c75a01468d24e1a",
+        "path": "scripts/experiments/vietocr_semantic_page_binding_v3.py",
+        "sha256": "c26bec307c5f79c66c974924df5490d7af537549b04c4d05b9d54cd53e7ca883"
+      },
+      {
+        "capture_commit": "ce08c2f858bbe8760061faf58c75a01468d24e1a",
+        "path": "tests/unit/test_vietocr_semantic_page_binding_v3.py",
+        "sha256": "15ba9de61bdb4af0b28d5e35149d68ff47fda9b4f9d8960ee321758c5d321e4e"
+      },
+      {
+        "capture_commit": "2efd18e8504e883bd4ea54c1370a2def7d904b28",
+        "path": "scripts/experiments/build_loan_maturity_8bank_v3_provisional_sweep.py",
+        "sha256": "fae44ec7089f29d39ccd84d6e06e8814ea2d8f411f34747f85621f63ab7c1435"
+      },
+      {
+        "capture_commit": "2efd18e8504e883bd4ea54c1370a2def7d904b28",
+        "path": "tests/unit/test_build_loan_maturity_8bank_v3_provisional_sweep.py",
+        "sha256": "3ca5bbb742e6c6e08460080bd2625fa03f3e7ba2c372fde15f02a4099ebc37b8"
+      }
+    ]
+  },
+  "experiment_id": "E-0046",
+  "family_id": "LOAN_MATURITY_BUCKETS",
+  "format_version": "E0046_LOAN_MATURITY_8BANK_V3_PROVISIONAL_PRIVATE_CORE_SWEEP_SEAL_V1",
+  "input_identities": {
+    "formal_freeze": {
+      "freeze_id": "voalfv3:freeze:b36afc9068440653a89a64be1e70638abccd18bf4847137ce377aff5e1f573a8",
+      "line_count_vector": [
+        85,
+        109,
+        110,
+        101,
+        91,
+        88,
+        87,
+        164
+      ],
+      "page_count": 8,
+      "sample_count": 835
+    },
+    "formal_run_selection": {
+      "path": "docs/experiments/loan-maturity-8bank-vietocr-all-line-run-selection-v3.json",
+      "selection_id": "voalsv3:selection:27820bab5e64a5e3ca7b41d3a7b16c96cf57dfc0d98a99b13860a5c8cae32733",
+      "sha256": "4a544ddb34313f73f37140384bcc5ee96de9ff91110c568979afd88b6f2d3614",
+      "size_bytes": 1994
+    },
+    "formal_semantic_receipt": {
+      "receipt_id": "voalsrv3:receipt:29cab6519fe2f91a116ee87203717767b400fe4c84ee58d23a7c1c47be15f196",
+      "state": "REPLAY_AUTHENTICATED_SEMANTIC_PROPOSALS_READY"
+    },
+    "panel_selection_projection": {
+      "panel_state": "BLOCKED_PENDING_COMPLETE_8_SLOT_HYDRATION",
+      "projection_id": "lm8bpsv1:projection:7a7652f56caea920f9e14f755317771fcb450abcc4cd10550d369c951aacb8da"
+    },
+    "ready_anonymous_batch": {
+      "batch_id": "lm8brpv1:batch:90270f4f8edf4fc6bc4fcdaacaa55239c9835d420c3c80bf99016237481846f6",
+      "state": "READY_FOR_SINGLE_OPAQUE_8_PAGE_FREEZE"
+    },
+    "ready_panel_audit_receipt": {
+      "audit_id": "lm8brpv1:audit:f6ecc9effc4b3452784964c3acf0701383d0d7facc9275a3559c83bf7dfbc2e1"
+    }
+  },
+  "metrics": {
+    "accepted_structure_count": 0,
+    "bank_count": 8,
+    "bound_page_count": 8,
+    "independent_mapping_evaluated_count": 0,
+    "independent_numeric_evaluated_count": 0,
+    "native_numeric_authority_blocked_count": 1,
+    "observation_ready_count": 0,
+    "ordinary_structural_evaluation_count": 6,
+    "schema_candidate_ready_count": 0,
+    "terminal_source_blocked_count": 1,
+    "verified_mapping_count": 0
+  },
+  "performance_debt": {
+    "correctness_blocker": false,
+    "logical_reads_exceeded_200_gb": true,
+    "observed_artifact_mtime_utc": "2026-08-14T00:06:14.554215984Z",
+    "observed_started_at_utc": "2026-08-13T22:35:02Z",
+    "observed_wall_time_seconds_approximate": 5472,
+    "required_follow_up": "CACHE_OR_REUSE_AUTHENTICATED_LIVE_ROOT_RESULTS_WITHIN_A_RUN_BEFORE_SCALING_TO_LATER_FAMILIES",
+    "source": "REPEATED_LIVE_ROOT_REPLAY_DURING_PRIVATE_CORE_DERIVATION",
+    "status": "NON_BLOCKING_SCALABILITY_DEBT"
+  },
+  "safety": {
+    "accepted_structure_authority": false,
+    "accounting_truth_authority": false,
+    "canonicalization_authority": false,
+    "export_authority": false,
+    "independent_mapping_verification_performed": false,
+    "independent_numeric_verification_performed": false,
+    "mapping_authority": false,
+    "numeric_authority": false,
+    "payload_self_authenticates": false,
+    "private_core_derivation": true,
+    "production_authority": false,
+    "public_validation_requires_live_rebuild": true,
+    "schema_mapping_performed": false,
+    "value_materialization_authority": false,
+    "verified_by_codex_claimed": false
+  },
+  "state": "E0046_PROVISIONAL_PRIVATE_CORE_SWEEP_HASH_SEALED_NO_MAPPING_OR_VERIFICATION_AUTHORITY",
+  "trials": [
+    {
+      "bank_code": "ACB",
+      "binding_mode": "ORDINARY_V2_PRIMARY_LINES",
+      "independent_mapping_status": "NOT_EVALUATED",
+      "independent_numeric_status": "NOT_EVALUATED",
+      "observation_status": "UNRESOLVED",
+      "page_ordinal": 1,
+      "physical_page": 18,
+      "schema_candidate_status": "UNRESOLVED_GRAPH_NOT_ACCEPTED",
+      "semantic_graph_status": "UNRESOLVED",
+      "unresolved_reasons": [
+        "OWNER_NOT_RESOLVED_FROM_TRANSFORMER"
+      ],
+      "verified_by_codex": false
+    },
+    {
+      "bank_code": "MBB",
+      "binding_mode": "ORDINARY_V2_PRIMARY_LINES",
+      "independent_mapping_status": "NOT_EVALUATED",
+      "independent_numeric_status": "NOT_EVALUATED",
+      "observation_status": "UNRESOLVED",
+      "page_ordinal": 2,
+      "physical_page": 31,
+      "schema_candidate_status": "UNRESOLVED_GRAPH_NOT_ACCEPTED",
+      "semantic_graph_status": "UNRESOLVED",
+      "unresolved_reasons": [
+        "ROW_VALUE_AXIS_ASSIGNMENT_NOT_RESOLVED"
+      ],
+      "verified_by_codex": false
+    },
+    {
+      "bank_code": "VPB",
+      "binding_mode": "HYDRATED_NATIVE_PRIMARY_LINES",
+      "independent_mapping_status": "NOT_EVALUATED",
+      "independent_numeric_status": "NOT_EVALUATED",
+      "observation_status": "UNRESOLVED",
+      "page_ordinal": 3,
+      "physical_page": 42,
+      "schema_candidate_status": "UNRESOLVED_GRAPH_NOT_ACCEPTED",
+      "semantic_graph_status": "UNRESOLVED",
+      "unresolved_reasons": [
+        "NATIVE_SOURCE_NUMERIC_AUTHORITY_NOT_ADMITTED"
+      ],
+      "verified_by_codex": false
+    },
+    {
+      "bank_code": "HDB",
+      "binding_mode": "ORDINARY_V2_PRIMARY_LINES",
+      "independent_mapping_status": "NOT_EVALUATED",
+      "independent_numeric_status": "NOT_EVALUATED",
+      "observation_status": "UNRESOLVED",
+      "page_ordinal": 4,
+      "physical_page": 26,
+      "schema_candidate_status": "UNRESOLVED_GRAPH_NOT_ACCEPTED",
+      "semantic_graph_status": "UNRESOLVED",
+      "unresolved_reasons": [
+        "BRANCH_NOT_RESOLVED_FROM_TRANSFORMER",
+        "OWNER_NOT_RESOLVED_FROM_TRANSFORMER"
+      ],
+      "verified_by_codex": false
+    },
+    {
+      "bank_code": "VCB",
+      "binding_mode": "HYDRATED_TERMINAL_LINE_SUPPLEMENT",
+      "independent_mapping_status": "NOT_EVALUATED",
+      "independent_numeric_status": "NOT_EVALUATED",
+      "observation_status": "UNRESOLVED",
+      "page_ordinal": 5,
+      "physical_page": 31,
+      "schema_candidate_status": "UNRESOLVED_GRAPH_NOT_ACCEPTED",
+      "semantic_graph_status": "UNRESOLVED",
+      "unresolved_reasons": [
+        "NUMERIC_SOURCE_LINE_AXIS_UNAVAILABLE",
+        "SOURCE_PROJECTION_TERMINAL",
+        "TERMINAL_SUPPLEMENT_NOT_AUTHENTICATED_PRIMARY"
+      ],
+      "verified_by_codex": false
+    },
+    {
+      "bank_code": "CTG",
+      "binding_mode": "ORDINARY_V2_PRIMARY_LINES",
+      "independent_mapping_status": "NOT_EVALUATED",
+      "independent_numeric_status": "NOT_EVALUATED",
+      "observation_status": "UNRESOLVED",
+      "page_ordinal": 6,
+      "physical_page": 39,
+      "schema_candidate_status": "UNRESOLVED_GRAPH_NOT_ACCEPTED",
+      "semantic_graph_status": "UNRESOLVED",
+      "unresolved_reasons": [
+        "ORDERED_CHILDREN_NOT_RESOLVED_FROM_TRANSFORMER",
+        "OWNER_NOT_RESOLVED_FROM_TRANSFORMER"
+      ],
+      "verified_by_codex": false
+    },
+    {
+      "bank_code": "BID",
+      "binding_mode": "ORDINARY_V2_PRIMARY_LINES",
+      "independent_mapping_status": "NOT_EVALUATED",
+      "independent_numeric_status": "NOT_EVALUATED",
+      "observation_status": "UNRESOLVED",
+      "page_ordinal": 7,
+      "physical_page": 22,
+      "schema_candidate_status": "UNRESOLVED_GRAPH_NOT_ACCEPTED",
+      "semantic_graph_status": "UNRESOLVED",
+      "unresolved_reasons": [
+        "PER_AXIS_UNIT_SCOPE_NOT_RESOLVED",
+        "ROW_VALUE_AXIS_ASSIGNMENT_NOT_RESOLVED"
+      ],
+      "verified_by_codex": false
+    },
+    {
+      "bank_code": "VIB",
+      "binding_mode": "ORDINARY_V2_PRIMARY_LINES",
+      "independent_mapping_status": "NOT_EVALUATED",
+      "independent_numeric_status": "NOT_EVALUATED",
+      "observation_status": "UNRESOLVED",
+      "page_ordinal": 8,
+      "physical_page": 33,
+      "schema_candidate_status": "UNRESOLVED_GRAPH_NOT_ACCEPTED",
+      "semantic_graph_status": "UNRESOLVED",
+      "unresolved_reasons": [
+        "ROW_VALUE_AXIS_ASSIGNMENT_NOT_RESOLVED"
+      ],
+      "verified_by_codex": false
+    }
+  ]
+}
