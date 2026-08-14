@@ -57,6 +57,8 @@ _SAFETY = {
 _NUMBER = re.compile(r"^[()]*[+-]?[0-9][0-9., ]*%?[()]*$")
 _ROLE = re.compile(r"^[A-Z][A-Z0-9_]*$")
 _VARIANT = re.compile(r"^[A-Z][A-Z0-9_]*$")
+_MAX_BRANCH_ANCHOR_LINE_SPAN = 3
+_MAX_LABEL_ANCHOR_LINE_SPAN = 3
 
 
 class AccountingVariantGraphEngineV1Error(ValueError):
@@ -347,17 +349,97 @@ def _branch_match(text: str, spec: Mapping[str, Any]) -> tuple[dict[str, Any] | 
     return None, True
 
 
+def _joined_surface(lines: Sequence[Mapping[str, Any]], start: int, stop: int) -> str:
+    return " ".join(line["vietocr_text"].strip() for line in lines[start:stop]).strip()
+
+
+def _starts_with_branch_core(text: str, spec: Mapping[str, Any]) -> bool:
+    """Require a branch window to begin at the branch, not one line before it.
+
+    Branch matching deliberately finds ordered phrases inside a complete title,
+    because harmless words can occur between structural anchors.  When several
+    OCR lines are joined, however, that permissiveness must not let an owner or
+    unrelated preceding line absorb the real title and create a duplicate
+    candidate.  The first non-number token therefore has to be the beginning of
+    the first core phrase (with the same one-character OCR tolerance).
+    """
+
+    tokens = normalize_vietnamese_anchor_v1(text).split()
+    while tokens and tokens[0].isdigit():
+        tokens.pop(0)
+    if not tokens:
+        return False
+    first_core = spec["branch_core_tokens"][0]
+    prefix_length = min(len(tokens), len(first_core))
+    if prefix_length == 0:
+        return False
+    edits = 0
+    for observed, expected in zip(tokens[:prefix_length], first_core[:prefix_length], strict=True):
+        if observed == expected:
+            continue
+        if not _edit_distance_at_most_one(observed, expected):
+            return False
+        edits += 1
+        if edits > 1:
+            return False
+    return True
+
+
+def _branch_window(
+    lines: Sequence[Mapping[str, Any]], start: int, spec: Mapping[str, Any]
+) -> tuple[dict[str, Any] | None, bool, str]:
+    if not _starts_with_branch_core(lines[start]["vietocr_text"], spec):
+        return None, False, lines[start]["vietocr_text"]
+    core_matched = False
+    near_surface = lines[start]["vietocr_text"]
+    for width in range(1, min(_MAX_BRANCH_ANCHOR_LINE_SPAN, len(lines) - start) + 1):
+        surface = _joined_surface(lines, start, start + width)
+        branch, core = _branch_match(surface, spec)
+        if core:
+            core_matched = True
+            near_surface = surface
+        if branch is not None:
+            return branch, True, surface
+    return None, core_matched, near_surface
+
+
+def _alias_windows(
+    lines: Sequence[Mapping[str, Any]],
+    start: int,
+    stop: int,
+    aliases: Sequence[str],
+) -> list[tuple[int, int, str, str]]:
+    matches: list[tuple[int, int, str, str]] = []
+    for line_index in range(start, stop):
+        for width in range(
+            1,
+            min(_MAX_LABEL_ANCHOR_LINE_SPAN, stop - line_index) + 1,
+        ):
+            surface = _joined_surface(lines, line_index, line_index + width)
+            kind = _alias_match(surface, aliases)
+            if kind is not None:
+                matches.append((line_index, line_index + width - 1, kind, surface))
+                break
+    return matches
+
+
 def _owner_context(
     pages: Sequence[Mapping[str, Any]], page_offset: int, branch_index: int, aliases: Sequence[str]
 ) -> dict[str, Any] | None:
     page = pages[page_offset]
-    local = [
-        (line["source_line_index"], kind, line["vietocr_text"])
-        for line in page["lines"][:branch_index]
-        if (kind := _owner_alias_match(line["vietocr_text"], aliases)) is not None
-    ]
+    local: list[tuple[int, int, str, str]] = []
+    for line_index in range(branch_index):
+        for width in range(
+            1,
+            min(_MAX_LABEL_ANCHOR_LINE_SPAN, branch_index - line_index) + 1,
+        ):
+            surface = _joined_surface(page["lines"], line_index, line_index + width)
+            kind = _owner_alias_match(surface, aliases)
+            if kind is not None:
+                local.append((line_index, line_index + width - 1, kind, surface))
+                break
     if local:
-        line_index, kind, surface = local[-1]
+        line_index, _end_index, kind, surface = max(local, key=lambda item: (item[1], item[0]))
         return {
             "match_kind": kind,
             "mode": "SAME_PAGE_NEAREST_PRECEDING",
@@ -369,14 +451,20 @@ def _owner_context(
     if page_offset == 0 or pages[page_offset - 1]["page_sequence"] != page["page_sequence"] - 1:
         return None
     previous = pages[page_offset - 1]
-    matches = [
-        (line["source_line_index"], kind, line["vietocr_text"])
-        for line in previous["lines"]
-        if (kind := _owner_alias_match(line["vietocr_text"], aliases)) is not None
-    ]
+    matches: list[tuple[int, int, str, str]] = []
+    for line_index in range(len(previous["lines"])):
+        for width in range(
+            1,
+            min(_MAX_LABEL_ANCHOR_LINE_SPAN, len(previous["lines"]) - line_index) + 1,
+        ):
+            surface = _joined_surface(previous["lines"], line_index, line_index + width)
+            kind = _owner_alias_match(surface, aliases)
+            if kind is not None:
+                matches.append((line_index, line_index + width - 1, kind, surface))
+                break
     if not matches:
         return None
-    line_index, kind, surface = matches[-1]
+    line_index, _end_index, kind, surface = max(matches, key=lambda item: (item[1], item[0]))
     return {
         "match_kind": kind,
         "mode": "IMMEDIATE_PREVIOUS_PAGE",
@@ -401,27 +489,21 @@ def _ordered_children(
             branch_index + limits["max_branch_to_last_child_line_span"] + 1,
             cursor + limits["max_child_gap"] + 1,
         )
-        matches = [
-            (index, kind)
-            for index, line in enumerate(lines[cursor + 1 : search_stop], cursor + 1)
-            if (kind := _alias_match(line["vietocr_text"], child["aliases"])) is not None
-        ]
+        matches = _alias_windows(lines, cursor + 1, search_stop, child["aliases"])
         if not matches:
             reasons.append(f"MISSING_ORDERED_CHILD_{child['role']}")
             break
-        position, kind = matches[0]
+        position, end_position, kind, surface = matches[0]
         positions.append(position)
         records.append(
             {
                 "match_kind": kind,
-                "normalized_surface": normalize_vietnamese_anchor_v1(
-                    lines[position]["vietocr_text"]
-                ),
+                "normalized_surface": normalize_vietnamese_anchor_v1(surface),
                 "role": child["role"],
-                "surface": lines[position]["vietocr_text"],
+                "surface": surface,
             }
         )
-        cursor = position
+        cursor = end_position
     if len(positions) != len(spec["ordered_children"]):
         return positions, records, reasons
     if (
@@ -451,18 +533,16 @@ def _scan(pages: Sequence[Mapping[str, Any]], spec: Mapping[str, Any]) -> dict[s
     near_regions: list[dict[str, Any]] = []
     for page_offset, page in enumerate(pages):
         lines = page["lines"]
-        for branch_index, line in enumerate(lines):
-            branch, core_matched = _branch_match(line["vietocr_text"], spec)
+        for branch_index in range(len(lines)):
+            branch, core_matched, branch_surface = _branch_window(lines, branch_index, spec)
             if not core_matched:
                 continue
             if branch is None:
                 near_regions.append(
                     {
                         "branch_source_line_index": branch_index,
-                        "branch_surface": line["vietocr_text"],
-                        "normalized_branch_surface": normalize_vietnamese_anchor_v1(
-                            line["vietocr_text"]
-                        ),
+                        "branch_surface": branch_surface,
+                        "normalized_branch_surface": normalize_vietnamese_anchor_v1(branch_surface),
                         "page_sequence": page["page_sequence"],
                         "unresolved_reasons": ["BRANCH_VARIANT_NOT_RESOLVED"],
                     }
@@ -476,10 +556,8 @@ def _scan(pages: Sequence[Mapping[str, Any]], spec: Mapping[str, Any]) -> dict[s
                 near_regions.append(
                     {
                         "branch_source_line_index": branch_index,
-                        "branch_surface": line["vietocr_text"],
-                        "normalized_branch_surface": normalize_vietnamese_anchor_v1(
-                            line["vietocr_text"]
-                        ),
+                        "branch_surface": branch_surface,
+                        "normalized_branch_surface": normalize_vietnamese_anchor_v1(branch_surface),
                         "page_sequence": page["page_sequence"],
                         "unresolved_reasons": sorted(set(reasons)),
                     }
@@ -493,17 +571,16 @@ def _scan(pages: Sequence[Mapping[str, Any]], spec: Mapping[str, Any]) -> dict[s
             intermediate = [
                 {
                     "match_kind": kind,
-                    "normalized_surface": normalize_vietnamese_anchor_v1(candidate["vietocr_text"]),
-                    "source_line_index": candidate["source_line_index"],
-                    "surface": candidate["vietocr_text"],
+                    "normalized_surface": normalize_vietnamese_anchor_v1(surface),
+                    "source_line_index": start,
+                    "surface": surface,
                 }
-                for candidate in lines[branch_index + 1 : first_child]
-                if (
-                    kind := _alias_match(
-                        candidate["vietocr_text"], spec["optional_intermediate_aliases"]
-                    )
+                for start, _end, kind, surface in _alias_windows(
+                    lines,
+                    branch_index + 1,
+                    first_child,
+                    spec["optional_intermediate_aliases"],
                 )
-                is not None
             ]
             regions.append(
                 {

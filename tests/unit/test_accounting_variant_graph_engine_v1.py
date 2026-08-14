@@ -158,6 +158,56 @@ def test_family_without_optional_intermediate_aliases_uses_the_same_engine():
     assert result["regions"][0]["optional_intermediate_matches"] == []
 
 
+def test_wrapped_owner_branch_intermediate_and_children_form_one_region_only():
+    result = build_accounting_variant_region_scan_v1(
+        [
+            _page(
+                1,
+                [
+                    "5. Cho vay",
+                    "khách hàng",
+                    "Phân tích dư nợ theo",
+                    "thời gian",
+                    "Dư nợ",
+                    "cho vay",
+                    "Nợ ngắn",
+                    "hạn",
+                    "10",
+                    "11",
+                    "Nợ trung",
+                    "hạn",
+                    "20",
+                    "21",
+                    "Nợ dài",
+                    "hạn",
+                    "30",
+                    "31",
+                ],
+            )
+        ],
+        _spec(),
+    )
+
+    assert result["metrics"] == {
+        "complete_context_region_count": 1,
+        "near_region_count": 0,
+        "ordered_anchor_region_count": 1,
+    }
+    region = result["regions"][0]
+    assert region["branch_source_line_index"] == 2
+    assert region["branch_match"]["surface"] == "Phân tích dư nợ theo thời gian"
+    assert region["owner_context"]["surface"] == "5. Cho vay khách hàng"
+    assert region["child_source_line_indices"] == [6, 10, 14]
+    assert [item["surface"] for item in region["child_match_records"]] == [
+        "Nợ ngắn hạn",
+        "Nợ trung hạn",
+        "Nợ dài hạn",
+    ]
+    assert [item["surface"] for item in region["optional_intermediate_matches"]] == [
+        "Dư nợ cho vay"
+    ]
+
+
 def test_spec_bank_field_and_coordinated_scan_rehash_fail_closed_on_replay():
     pages = [_page(1, ["Cho vay khách hàng", *_complete_surface()])]
     bad_spec = _spec() | {"bank": "MBB"}
