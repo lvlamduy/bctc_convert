@@ -588,6 +588,53 @@ def test_transformer_only_terminal_page_can_resolve_structure_but_not_numeric_tr
     )
 
 
+def test_total_lane_presence_is_required_even_without_numeric_authority():
+    surfaces = _simple_surfaces()[:-2]
+    semantic = _semantic_page(
+        surfaces,
+        primary_numeric_authority=False,
+        null_source=True,
+    )
+
+    result = matcher.build_loan_maturity_variant_graph_v1(_document_pages(semantic), semantic)
+
+    assert result["status"] == "UNRESOLVED"
+    assert "CORE_TOTAL_VALUE_LANES_NOT_RESOLVED" in result["unresolved_reasons"]
+
+
+def test_margin_variant_requires_a_grand_total_even_without_numeric_authority():
+    surfaces = [
+        ("Cho vay khách hàng", 0),
+        ("Phân tích dư nợ theo thời gian cho vay ban đầu", 0),
+        ("30/06/2026", 100),
+        ("31/12/2025", 300),
+        ("Triệu đồng", 100),
+        ("Triệu đồng", 300),
+        ("Nợ ngắn hạn", 0),
+        ("10", 100),
+        ("11", 300),
+        ("Nợ trung hạn", 0),
+        ("20", 100),
+        ("21", 300),
+        ("Nợ dài hạn", 0),
+        ("30", 100),
+        ("31", 300),
+        ("Cho vay ký quỹ", 0),
+        ("5", 100),
+        ("7", 300),
+    ]
+    semantic = _semantic_page(
+        surfaces,
+        primary_numeric_authority=False,
+        null_source=True,
+    )
+
+    result = matcher.build_loan_maturity_variant_graph_v1(_document_pages(semantic), semantic)
+
+    assert result["status"] == "UNRESOLVED"
+    assert "GRAND_TOTAL_VALUE_LANES_NOT_RESOLVED" in result["unresolved_reasons"]
+
+
 def test_arithmetic_population_mismatch_and_replay_tamper_fail_closed():
     surfaces = _simple_surfaces()
     surfaces[-1] = ("64", 300)

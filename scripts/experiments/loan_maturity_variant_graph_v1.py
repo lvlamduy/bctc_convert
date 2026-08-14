@@ -718,10 +718,16 @@ def _build_result(
     grand_vector: list[dict[str, Any]] | None = None
     if margin_offset is None:
         core_vector = _vector(after, lane_types, semantic_page["primary_numeric_authority"])
+        if core_vector is None:
+            reasons.append("CORE_TOTAL_VALUE_LANES_NOT_RESOLVED")
         total_variant = "CORE_TOTAL_ONLY"
     else:
         before_margin = after[:margin_offset]
         core_vector = _vector(before_margin, lane_types, semantic_page["primary_numeric_authority"])
+        if core_vector is None and any(
+            _number_like(line["vietocr_text"]) for line in before_margin
+        ):
+            reasons.append("PARTIAL_CORE_SUBTOTAL_VALUE_LANES")
         margin_label_end = margin_offset + 1
         while margin_label_end < len(after) and not _number_like(
             after[margin_label_end]["vietocr_text"]
@@ -739,6 +745,10 @@ def _build_result(
             lane_types,
             semantic_page["primary_numeric_authority"],
         )
+        if margin_vector is None:
+            reasons.append("OPTIONAL_MARGIN_VALUE_LANES_NOT_RESOLVED")
+        if grand_vector is None:
+            reasons.append("GRAND_TOTAL_VALUE_LANES_NOT_RESOLVED")
         optional_margin = {
             "label_source_line_indices": [
                 line["source_line_index"] for line in after[margin_offset:margin_label_end]
