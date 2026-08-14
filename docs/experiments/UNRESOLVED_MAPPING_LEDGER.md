@@ -8,11 +8,18 @@ only that the current exact full-document fresh-VietOCR structure scan did not
 find a complete region; it is **not** a claim that the family is absent from the
 PDF.  A candidate ReportNormId is a comparison target, not an accepted mapping.
 
-Current queue: **13 entries** — 2 loan-type source rows, 8 loan-industry source
-rows, and 3 loan-industry reports with no complete region under the current
-contract. Later families append here rather than creating disconnected candidate
-lists. Bank/report/page fields below are evidence locators only, never matching
-rules.
+This is the single cross-family review file.  Every new unresolved entry records,
+when applicable: family, bank, report and reporting period, exact PDF/page/region
+locator, raw VietOCR Transformer text, accentless normalized text, independent
+pixel transcription when they disagree, visible values and axes, nearest schema
+candidate, accounting/structure checks that passed or failed, the unresolved
+reason, and the next evidence needed.  Bank/report/page fields are evidence
+locators only and are never parser or mapping conditions.
+
+Current queue: **24 entries** — 2 loan-type entries, 11 loan-industry entries,
+and 11 loan-enterprise/customer-type entries. Later families append here rather
+than creating disconnected candidate lists. Bank/report/page fields below are
+evidence locators only, never matching rules.
 
 ## Loan type (`LOAN_TYPE_CLASSIFICATION`)
 
@@ -158,9 +165,157 @@ Exact-replay builder:
 - Status: `UNRESOLVED_SOURCE_TRANSPORT_ROW_NOT_EQUIVALENT_TO_COMBINED_TRANSPORT_AND_INFORMATION_SCHEMA_ROW`
 - Reason: same aggregation mismatch as LI-002.
 
+## Loan enterprise/customer type (`LOAN_ENTERPRISE_OR_CUSTOMER_TYPE_CLASSIFICATION`)
+
+Fresh full-document scan:
+`lefdsv1:scan:17a22fbc9dae25a31863395f4760fdfe0341a5a1eec9dc570696e93365963bb4`
+
+The generic matcher found one unique complete region in MBB p32, VPB p43,
+HDB p26, and VIB p34. It found no complete region in the other four PDFs. The
+four positive regions are structural proposals only; pixel/schema/numeric
+verification is still downstream.
+
+### LE-001 — ACB — no complete enterprise/customer-type region
+
+- Report: `vietstock_bctc/ACB/2026/BCTC Hợp nhất quý 2 năm 2026.pdf`
+- Scan scope: all 33 physical pages, fresh VietOCR line axis
+- Review status: `OPEN`
+- Machine reason: `NO_COMPLETE_REGION_IN_EXACT_FULL_DOCUMENT_FRESH_VIETOCR_SCAN`
+- Whole-document family absence claimed: **no**
+
+### LE-002 — MBB — source-only “Cho vay các TCKT” group parent
+
+- Report: `vietstock_bctc/MBB/2026/BCTC Hợp nhất quý 2 năm 2026.pdf`
+- Physical page / family: 32 / enterprise or customer-type analysis
+- Pixel text / accentless: `Cho vay các TCKT` / `cho vay cac tckt`
+- Visible values: `721.497.618 | 58,79% | 621.056.253 | 57,28%`
+- Candidate schema: none as a child of ReportNormId `766`
+- Review status: `NEEDS_SCHEMA_DECISION`
+- Machine reason: `SOURCE_ONLY_GROUP_PARENT_WOULD_DOUBLE_COUNT_LEGAL_FORM_CHILDREN`
+- Reason: its visible legal-form descendants already partition and sum to this
+  parent. Mapping both parent and descendants would double count.
+
+### LE-003 — MBB — source-only “Cho vay cá nhân” group parent
+
+- Report / physical page: MBB consolidated Q2 2026 / 32
+- Pixel text / accentless: `Cho vay cá nhân` / `cho vay ca nhan`
+- Visible values: `478.995.719 | 39,01% | 437.686.958 | 40,38%`
+- Nearest schema candidate: ReportNormId `780` (`Hộ kinh doanh, cá nhân`)
+- Review status: `NEEDS_SCHEMA_DECISION`
+- Machine reason: `SOURCE_GROUP_PARENT_COEXTENSIVE_WITH_VISIBLE_CHILD_NOT_MAPPED_TWICE`
+- Reason: the immediately following child has the same values and is the exact
+  schema label. The parent remains graph-only unless schema policy explicitly
+  prefers it over the child.
+
+### LE-004 — MBB — source-only “Cho vay khác” group parent
+
+- Report / physical page: MBB consolidated Q2 2026 / 32
+- Pixel text / accentless: `Cho vay khác` / `cho vay khac`
+- Visible values: `937.382 | 0,08% | 904.945 | 0,09%`
+- Candidate schema: none for the grouped parent
+- Review status: `NEEDS_SCHEMA_DECISION`
+- Machine reason: `SOURCE_ONLY_GROUP_PARENT_SPLIT_INTO_ADMIN_PUBLIC_AND_OTHER_CHILDREN`
+- Reason: its two visible children close exactly to the parent and have distinct
+  schema concepts; the parent must not be mapped as another child.
+
+### LE-005 — MBB — foreign-branch population and its two children
+
+- Report / physical page: MBB consolidated Q2 2026 / 32
+- Pixel parent: `Cho vay tại Chi nhánh và ngân hàng con nước ngoài`
+- Parent values: `9.295.704 | 0,75% | 9.330.629 | 0,86%`
+- Pixel children: `Cho vay Doanh nghiệp` = `2.121.916 / 2.176.885`;
+  `Cho vay cá nhân` = `7.173.788 / 7.153.744`
+- Candidate schema: none as a child of ReportNormId `766`
+- Review status: `NEEDS_SCHEMA_DECISION`
+- Machine reason: `GEOGRAPHIC_POPULATION_BRANCH_NOT_ONE_ENTERPRISE_LEGAL_FORM_CHILD`
+- Reason: this is a geographic reporting population with its own enterprise and
+  individual split, not a legal-form row. It is retained to close the core
+  subtotal but is not mapped.
+
+### LE-006 — VPB — “Khác” monetary cells not attached by semantic geometry
+
+- Report: `vietstock_bctc/VPB/2026/3-bctc-hop-nhat-ban-tra-cuu.pdf`
+- Physical page / family: 43 / enterprise or customer-type analysis
+- Pixel text / accentless: `Khác` / `khac`
+- Raw VietOCR values: `2 | 0,00 | 2 | 0,00`
+- Graph values: `missing | 0,00 | missing | 0,00`
+- Candidate schema: ReportNormId `782`
+- Review status: `NEEDS_ACCOUNTING_RECONCILIATION`
+- Machine reason: `VISIBLE_MONETARY_CELLS_OUTSIDE_CURRENT_ROW_GEOMETRY_BAND`
+- Reason: pixels clearly show both monetary values, but the current generic row
+  association did not bind them. No zero/missing imputation is allowed.
+
+### LE-007 — HDB — “Doanh nghiệp tư nhân” dash/current and 27/comparative
+
+- Report: `vietstock_bctc/HDB/2026/BCTC Hợp nhất quý 2 năm 2026.pdf`
+- Physical page / family: 26 / enterprise or customer-type analysis
+- Pixel text / accentless: `Doanh nghiệp tư nhân` / `doanh nghiep tu nhan`
+- Pixel values: `- | 27` (`DASH`, not zero or missing)
+- Fresh semantic graph values: `missing | 27`
+- Candidate schema: ReportNormId `774`
+- Review status: `NEEDS_PIXEL_REVIEW`
+- Machine reason: `DASH_PIXEL_NOT_PRESENT_IN_FRESH_SEMANTIC_LINE_AXIS`
+- Reason: the row identity is structurally clear, but the numeric verifier must
+  preserve a typed dash rather than treating the absent OCR token as zero.
+
+### LE-008 — VCB — no complete enterprise/customer-type region
+
+- Report: `vietstock_bctc/VCB/2026/BCTC Hợp nhất quý 2 năm 2026.pdf`
+- Scan scope: all 55 physical pages, fresh VietOCR line axis including the five
+  terminal geometry-only pages
+- Review status: `OPEN`
+- Machine reason: `NO_COMPLETE_REGION_IN_EXACT_FULL_DOCUMENT_FRESH_VIETOCR_SCAN`
+- Whole-document family absence claimed: **no**
+
+### LE-009 — CTG — no complete enterprise/customer-type region
+
+- Report: `vietstock_bctc/CTG/2026/BCTC Hợp nhất quý 2 năm 2026.pdf`
+- Scan scope: all 61 physical pages, fresh VietOCR line axis
+- Review status: `OPEN`
+- Machine reason: `NO_COMPLETE_REGION_IN_EXACT_FULL_DOCUMENT_FRESH_VIETOCR_SCAN`
+- Whole-document family absence claimed: **no**
+
+### LE-010 — BID — no complete enterprise/customer-type region
+
+- Report: `vietstock_bctc/BID/2026/BCTC Hợp nhất quý 2 năm 2026.pdf`
+- Scan scope: all 37 physical pages, fresh VietOCR line axis
+- Review status: `OPEN`
+- Machine reason: `NO_COMPLETE_REGION_IN_EXACT_FULL_DOCUMENT_FRESH_VIETOCR_SCAN`
+- Whole-document family absence claimed: **no**
+
+### LE-011 — VIB — VietOCR dropped one digit in “Công ty cổ phần khác”
+
+- Report: `vietstock_bctc/VIB/2026/BCTC Hợp nhất quý 2 năm 2026.pdf`
+- Physical page / family: 34 / enterprise or customer-type analysis
+- Label / accentless: `Công ty cổ phần khác` / `cong ty co phan khac`
+- Raw VietOCR current value: `97.043.85`
+- Independent pixel transcription: `97.043.851`
+- Other visible lanes: `24,44% | 77.496.641 | 20,29%`
+- Candidate schema: ReportNormId `773`
+- Review status: `NEEDS_PIXEL_REVIEW`
+- Machine reason: `FRESH_VIETOCR_DIGIT_OMISSION_BREAKS_CURRENT_PERIOD_ACCOUNTING_CLOSURE`
+- Reason: the pixel value closes the printed total `397.083.447`; the raw OCR
+  value does not. The correction must come from independent pixel-bound numeric
+  verification, never silent string repair.
+
 ## Append policy
 
 Every later family appends entries here when a source row or complete region is
 not safely mapped.  Entries are removed only after an independently replayed
 mapping supersedes them; the resolving result ID and commit must then be added
-to the entry first.
+to the entry first.  The following cases must be retained explicitly rather than
+silently dropped:
+
+- a visible source row with no exact schema concept;
+- a plausible schema candidate whose scope is narrower, broader, or otherwise
+  different from the source row;
+- a VietOCR/pixel disagreement that can affect identity or numeric closure;
+- a source-only parent, subtotal, optional branch, or continuation that is
+  needed for graph/accounting closure but is not itself mapped;
+- multiple structurally plausible regions in the same PDF;
+- a whole-PDF scan with no complete region under the current contract.
+
+For each future entry, use status `OPEN`, `NEEDS_PIXEL_REVIEW`,
+`NEEDS_SCHEMA_DECISION`, `NEEDS_ACCOUNTING_RECONCILIATION`, or `RESOLVED`, in
+addition to the exact machine reason.  `RESOLVED` entries remain in the file as
+an audit trail and include the independent verification result ID and commit.
