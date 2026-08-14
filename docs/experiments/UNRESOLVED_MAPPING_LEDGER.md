@@ -17,7 +17,7 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **28 entries**.  Current open queue: **4**.  Closed history:
+Ledger total: **33 entries**.  Current open queue: **9**.  Closed history:
 **21** row/graph resolutions and **3** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
@@ -30,6 +30,11 @@ Bank/report/page fields below are evidence locators only, never matching rules.
 | CD-002 | Tiền gửi của khách hàng / loại hình doanh nghiệp | VIB | 42 | Công ty TNHH 2 thành viên trở lên có phần vốn góp của Nhà nước trên 50% | Giá trị hiện tại `174`; cùng khoảng trống schema với CD-001. |
 | PM-001 | Dự phòng rủi ro cho vay khách hàng | VPB | 45 | Dự phòng chung, dự phòng cụ thể, dự phòng cho vay giao dịch ký quỹ và ứng trước | Đã map và kiểm tra đủ kỳ 01/01–31/03/2026 của PDF được cung cấp; chưa có PDF VPB Q2/2026 nên không được relabel kết quả Q1 thành Q2. |
 | SEC-001 | Chứng khoán / đầu tư sẵn sàng để bán | VIB | 36 | Chứng khoán đầu tư sẵn sàng để bán | Không có vùng trading hoàn chỉnh; vùng AFS là subfamily khác và chưa chạy lượt map AFS. Không tuyên bố family chứng khoán vắng mặt. |
+| CPM-001 | Tiền, kim loại quý và đá quý | ACB | 3 | Tiền mặt, vàng bạc, đá quý | Whole-PDF scan chỉ thấy dòng tổng và một dòng cash-flow; không có bảng chi tiết `VND / ngoại tệ / vàng / tổng` để map các hàng con. Không tuyên bố family vắng mặt. |
+| CPM-002 | Tiền, kim loại quý và đá quý | HDB | 3 | Tiền mặt, vàng | Whole-PDF scan chỉ thấy dòng tổng; các lần lặp tại p39–43 thuộc bảng ngoại tệ/rủi ro/công cụ tài chính, không phải note chi tiết. |
+| CPM-003 | Tiền, kim loại quý và đá quý | VCB | 7 | Tiền mặt, vàng bạc, đá quý | Không có vùng chi tiết đủ owner + hai child tiền tệ + kỳ + đơn vị + trailing total; các lần lặp sau là cash-flow/risk controls. |
+| CPM-004 | Tiền, kim loại quý và đá quý | CTG | 3 | Tiền mặt, vàng bạc, đá quý | Chỉ có dòng tổng và các bảng phân loại/rủi ro gần giống; không có bảng chi tiết VND/ngoại tệ/vàng. |
+| CPM-005 | Tiền, kim loại quý và đá quý | BID | 4 | Tiền mặt, vàng bạc, đá quý | Chỉ có dòng tổng trên báo cáo tình hình tài chính; không có note chi tiết trong 37 trang đã quét. |
 
 The shared family locator follows a strict minimal-anchor search.  It enumerates
 every parent+child pair first, then every child+child pair, over both complete and
@@ -51,6 +56,23 @@ page or note identifier participates in this decision.
 | CD-001–CD-002 | `OPEN_SCHEMA_GAP`; không ép Công ty TNHH 2+ thành viên vào schema chỉ dành cho một thành viên |
 | PM-001 | `OPEN_SOURCE_PERIOD_GAP`; không còn dòng nguồn chưa map trong PDF Q1 đã bind |
 | SEC-001 | `OPEN_DISTINCT_SECURITIES_SUBFAMILY`; trading đã hoàn tất 7 bank, AFS VIB giữ riêng cho lượt kế tiếp |
+| CPM-001–CPM-005 | `OPEN_NO_COMPLETE_DETAILED_NOTE_REGION`; chỉ có dòng tổng hoặc negative-control family, không ép thành bảng chi tiết và không tự tuyên bố absence |
+
+## Cash and precious metals (`CASH_PRECIOUS_METALS`)
+
+Current exact-replay result:
+`docs/experiments/E-0060-cash-precious-metals-8bank-codex-verified-mapping-v1.json`
+
+- One bank-blind graph scans all 453 pages and requires a short owner, VND and
+  foreign-currency cash children, visible period/unit axes and a trailing total.
+  It finds exactly one complete region for MBB p30, VPB p38 and VIB p31.
+- 12 source rows are `VERIFIED_BY_CODEX`: ReportNormId 562, 563, 565 and the
+  exact family total 561 for each complete region. Three current-period
+  `VND + foreign + monetary gold = total` equations close exactly.
+- ACB/HDB/VCB/CTG/BID retain CPM-001–CPM-005. Balance-sheet totals, cash-flow
+  disclosures, financial-instrument classifications and risk tables are
+  explicit negative controls, not manufactured detailed-note mappings.
+- VPB retains its Q1/2026 source-period caveat.
 
 ## Trading securities (`TRADING_SECURITIES`)
 

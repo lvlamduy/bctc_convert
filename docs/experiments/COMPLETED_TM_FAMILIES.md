@@ -10,7 +10,30 @@ Quy ước:
 - Dòng tổng hoặc subtotal chỉ dùng để kiểm tra cộng trừ không được tính là khoản
   mục còn thiếu map.
 
-## 1. Phân tích dư nợ theo thời gian/thời hạn gốc
+## 1. Tiền, kim loại quý và đá quý
+
+- **Đã xác minh:** MBB p30, VPB p38 và VIB p31. Mỗi vùng map bốn dòng
+  `Tiền mặt bằng VND`, `Tiền mặt bằng ngoại tệ`, `Vàng/Vàng tiền tệ` và tổng
+  family; cả ba phương trình hiện kỳ `VND + ngoại tệ + vàng = tổng` đóng đúng.
+- **Không có vùng thuyết minh chi tiết hoàn chỉnh:** ACB, HDB, VCB, CTG, BID.
+  Các PDF này vẫn có dòng tổng trên báo cáo tình hình tài chính hoặc nhắc lại
+  trong lưu chuyển tiền tệ/rủi ro/công cụ tài chính; các dòng đó không được ép
+  thành bảng phân rã VND–ngoại tệ–vàng.
+- **Còn thiếu:** năm bank trên chưa có nguồn chi tiết để map các hàng con 562,
+  563 và 565. Đây không phải tuyên bố family tiền/vàng vắng mặt khỏi báo cáo.
+
+| Bank | Trang bằng chứng gần nhất | Khoản mục nguồn | Lý do chưa map |
+| --- | ---: | --- | --- |
+| ACB | 3 | Tiền mặt, vàng bạc, đá quý | Chỉ có dòng tổng; không có bảng chi tiết VND/ngoại tệ/vàng. |
+| HDB | 3 | Tiền mặt, vàng | Chỉ có dòng tổng; các vùng p39–43 là bảng rủi ro/công cụ tài chính khác family. |
+| VCB | 7 | Tiền mặt, vàng bạc, đá quý | Chỉ có dòng tổng; các lần lặp sau thuộc lưu chuyển tiền/rủi ro. |
+| CTG | 3 | Tiền mặt, vàng bạc, đá quý | Chỉ có dòng tổng; không có cụm chi tiết đủ trục kỳ/đơn vị/tổng. |
+| BID | 4 | Tiền mặt, vàng bạc, đá quý | Chỉ có dòng tổng trên báo cáo tình hình tài chính. |
+
+Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
+Q1/2026, không relabel thành Q2/2026.
+
+## 2. Phân tích dư nợ theo thời gian/thời hạn gốc
 
 - **Đã xác minh:** ACB p18, MBB p31, VPB p42, HDB p26, VCB p31, CTG p39,
   BID p22, VIB p33. Ba hàng `Nợ ngắn hạn`, `Nợ trung hạn`, `Nợ dài hạn`
@@ -20,7 +43,7 @@ Quy ước:
 - **Còn thiếu:** Không còn khoản mục mục tiêu chưa map. Các dòng tổng vẫn là
   dòng kiểm tra nguồn, không map thành khoản mục chi tiết.
 
-## 2. Phân tích chất lượng cho vay
+## 3. Phân tích chất lượng cho vay
 
 - **Đã xác minh:** ACB p18, MBB p31, VPB p42, HDB p26, VCB p30, CTG p39,
   BID p22, VIB p60. Năm nhóm chất lượng nợ đã được map cho cả 8 bank.
@@ -32,7 +55,7 @@ Quy ước:
 | ACB | 18 | Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán | Là population cộng thêm ngoài năm nhóm chất lượng; giữ source-only để tránh cộng trùng. |
 | VPB | 42 | Cho vay giao dịch ký quỹ và ứng trước cho khách hàng | Là population cộng thêm ngoài năm nhóm chất lượng; giữ source-only để tránh cộng trùng. |
 
-## 3. Phân tích theo loại hình cho vay
+## 4. Phân tích theo loại hình cho vay
 
 - **Đã xác minh:** ACB p17, MBB p31, VPB p42, HDB p26, VCB p30, CTG p38,
   BID p22, VIB p33. Tổng cộng 46 khoản mục nguồn đã được map; gồm ACB
@@ -41,7 +64,7 @@ Quy ước:
   tiêu đề family riêng nhưng các hàng con nằm trực tiếp dưới `Cho vay khách hàng`.
 - **Còn thiếu:** Không còn khoản mục nguồn chưa map trong các vùng đã xác minh.
 
-## 4. Phân tích cho vay theo ngành nghề kinh doanh
+## 5. Phân tích cho vay theo ngành nghề kinh doanh
 
 - **Đã xác minh:** MBB p33, VPB p44, HDB p27, BID p22, VIB p33; tổng cộng
   80 khoản mục nguồn đã được map.
@@ -51,7 +74,7 @@ Quy ước:
   nước ngoài → 6058, khoản vay mua nhà ở cá nhân → khoản mục schema riêng,
   `Dịch vụ` của BID → khoản mục schema riêng, và các ngành nhỏ phù hợp → 745.
 
-## 5. Phân tích theo loại hình doanh nghiệp/đối tượng khách hàng
+## 6. Phân tích theo loại hình doanh nghiệp/đối tượng khách hàng
 
 - **Đã xác minh:** MBB p32, VPB p43, HDB p26, VIB p34; 44 khoản mục nguồn
   đã được map. `Cho vay cá nhân` tương đương không cộng thêm với 780,
@@ -66,7 +89,7 @@ Quy ước:
 | --- | ---: | --- | --- |
 | MBB | 32 | Cho vay các TCKT | Giữ làm group parent để kiểm tra tổng các hàng con; chưa xuất thêm một mapping cộng dồn nhằm tránh double count. |
 
-## 6. Dự phòng rủi ro cho vay khách hàng
+## 7. Dự phòng rủi ro cho vay khách hàng
 
 - **Đã xác minh:** ACB p18, MBB p34, VPB p45, HDB p28, VCB p31, CTG p39,
   BID p23, VIB p34. Đã map `Dự phòng chung`, `Dự phòng cụ thể` và các dòng
@@ -81,7 +104,7 @@ Quy ước:
 | --- | ---: | --- | --- |
 | VPB | 45 | Dự phòng chung, cụ thể và cho vay margin/ứng trước | Đã map từ kỳ 01/01–31/03/2026; nguồn Q2/2026 chưa có trong PDF được cung cấp. |
 
-## 7. Tiền gửi của khách hàng — phân loại theo loại/kỳ hạn/đối tượng
+## 8. Tiền gửi của khách hàng — phân loại theo loại/kỳ hạn/đối tượng
 
 - **Đã xác minh:** ACB p21, MBB p43, VPB p55, HDB p31, VCB p35, CTG p42,
   BID p25 và VIB p41–42. Đã map 118 dòng loại tiền gửi, VND/ngoại tệ và
@@ -102,7 +125,7 @@ Quy ước:
 Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
 Q1/2026, không relabel thành Q2/2026.
 
-## 8. Chứng khoán kinh doanh
+## 9. Chứng khoán kinh doanh
 
 - **Đã xác minh:** ACB p16, MBB p31, VPB p40, HDB p24, VCB p30, CTG p37 và
   BID p20. Đã map 58 dòng chứng khoán nợ/vốn, nhánh tổ chức hoặc niêm
@@ -129,6 +152,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 
 | Cụm | ACB | MBB | VPB | HDB | VCB | CTG | BID | VIB | Còn chưa map |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Tiền, kim loại quý, đá quý | — tổng p3 | ✓ p30 | ✓\* p38 | — tổng p3 | — tổng p7 | — tổng p3 | — tổng p4 | ✓ p31 | 5 bank không có bảng chi tiết; VPB là nguồn Q1 |
 | Dư nợ theo thời gian | ✓ p18 | ✓ p31 | ✓ p42 | ✓ p26 | ✓ p31 | ✓ p39 | ✓ p22 | ✓ p33 | 0 khoản mục mục tiêu |
 | Chất lượng cho vay | ✓\* p18 | ✓ p31 | ✓\* p42 | ✓ p26 | ✓ p30 | ✓ p39 | ✓ p22 | ✓ p60 | 2 population ngoài lõi |
 | Loại hình cho vay | ✓ p17 | ✓ p31 | ✓ p42 | ✓ p26 | ✓ p30 | ✓ p38 | ✓ p22 | ✓ p33 | 0 |
