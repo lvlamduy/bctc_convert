@@ -108,6 +108,7 @@ _ENGINE_SPEC = {
         },
         {
             "anchor_phrase": "loại chất lượng tài sản có rủi ro tín dụng",
+            "allow_inline_prefix": True,
             "variant_id": "CREDIT_RISK_ASSET_QUALITY_WORDING",
         },
     ],
@@ -127,10 +128,12 @@ _ENGINE_SPEC = {
         "Cho vay khách hàng",
         "Dư nợ cho vay khách hàng",
         "Các khoản cho vay khách hàng",
+        "Rủi ro tín dụng",
     ],
 }
 _SAFETY = {
     "bank_filename_note_or_page_used_for_inference": False,
+    "blank_companion_cells_imputed_as_zero": False,
     "complete_pdf_region_enumeration_required": True,
     "fresh_vietocr_transformer_text_required": True,
     "legacy_ocr_used_for_semantic_anchors": False,
@@ -282,6 +285,15 @@ def _immediate_numeric_run(
         cursor += 1
     run: list[Mapping[str, Any]] = []
     while cursor < stop and is_number_like_v1(lines[cursor]["vietocr_text"]):
+        if run:
+            if center_x2_v1(lines[cursor]) <= center_x2_v1(run[-1]):
+                break
+            previous_box = run[-1]["bbox"]
+            current_box = lines[cursor]["bbox"]
+            previous_height = previous_box[3] - previous_box[1]
+            current_height = current_box[3] - current_box[1]
+            if current_box[1] - previous_box[3] > max(48, 3 * max(previous_height, current_height)):
+                break
         run.append(lines[cursor])
         cursor += 1
     return run, cursor
@@ -469,6 +481,40 @@ def _header_anchor(
     }
 
 
+def _sparse_money_vector(
+    run: Sequence[Mapping[str, Any]],
+    column_centers: Sequence[int],
+    *,
+    primary_numeric_authority: bool,
+) -> list[dict[str, Any]] | None:
+    """Bind present cells to geometric columns without inventing blank zeros."""
+
+    if len(column_centers) < 2 or list(column_centers) != sorted(set(column_centers)):
+        return None
+    minimum_gap = min(
+        right - left for left, right in zip(column_centers, column_centers[1:], strict=False)
+    )
+    maximum_distance = max(8, minimum_gap // 3)
+    by_column: dict[int, dict[str, Any]] = {}
+    for line in run:
+        center = center_x2_v1(line)
+        distances = [abs(center - expected) for expected in column_centers]
+        column_index = min(range(len(distances)), key=distances.__getitem__)
+        if distances[column_index] > maximum_distance or column_index in by_column:
+            return None
+        singleton = extract_typed_value_vector_v1(
+            [line],
+            ["MONEY"],
+            primary_numeric_authority=primary_numeric_authority,
+        )
+        if singleton is None:
+            return None
+        item = singleton[0]
+        item["lane_index"] = column_index
+        by_column[column_index] = item
+    return [by_column[index] for index in sorted(by_column)]
+
+
 def _ordinary_graph(
     pages: Sequence[Mapping[str, Any]],
     page: Mapping[str, Any],
@@ -594,7 +640,7 @@ def _ordinary_graph(
     additive_row: dict[str, Any] | None = None
     grand_total: list[dict[str, Any]] = []
     if first_label is None:
-        numeric = [line for line in tail if is_number_like_v1(line["vietocr_text"])]
+        numeric, _ = _immediate_numeric_run(tail, 0, len(tail))
         if len(numeric) == lane_count:
             core_total = (
                 extract_typed_value_vector_v1(
@@ -769,6 +815,8 @@ def _stacked_graph(
     reasons: list[str] = [
         reason for reason in region["unresolved_reasons"] if reason != "OWNER_CONTEXT_NOT_RESOLVED"
     ]
+    if region["owner_context"] is None:
+        reasons.append("LOAN_QUALITY_OWNER_NOT_RESOLVED")
     if len(groups) != 2:
         reasons.append("EXACT_TWO_STACKED_PERIOD_BLOCKS_NOT_RESOLVED")
     usable = groups[:2]
@@ -794,6 +842,24 @@ def _stacked_graph(
     column_count = len(first_run)
     if column_count < 3:
         reasons.append("MULTI_ASSET_COLUMN_AXIS_NOT_RESOLVED")
+    column_centers = sorted(center_x2_v1(line) for line in first_run)
+
+    target_column_index: int | None = None
+    total_column_index: int | None = None
+    if column_count and first_run and customer_header is not None:
+        distances = [abs(center - customer_header["x_center_x2"]) for center in column_centers]
+        target_column_index = min(range(len(distances)), key=distances.__getitem__)
+        if distances.count(distances[target_column_index]) != 1:
+            target_column_index = None
+            reasons.append("CUSTOMER_LOAN_TARGET_COLUMN_GEOMETRY_AMBIGUOUS")
+        if total_header is not None:
+            total_distances = [
+                abs(center - total_header["x_center_x2"]) for center in column_centers
+            ]
+            total_column_index = min(range(len(total_distances)), key=total_distances.__getitem__)
+            if total_distances.count(total_distances[total_column_index]) != 1:
+                total_column_index = None
+                reasons.append("TOTAL_COLUMN_GEOMETRY_AMBIGUOUS")
     unit_lines = [
         line for line in lines[:first_role] if unit_kind_v1(line["vietocr_text"]) == "MONEY"
     ]
@@ -829,15 +895,23 @@ def _stacked_graph(
                 cursor = run[column_count - 1]["source_line_index"] + 1
                 run = run[:column_count]
             vector = (
-                extract_typed_value_vector_v1(
+                _sparse_money_vector(
                     run,
-                    ["MONEY"] * column_count,
+                    column_centers,
                     primary_numeric_authority=page["primary_numeric_authority"],
                 )
                 if column_count
                 else None
             )
-            if vector is None:
+            present_columns = (
+                {item["lane_index"] for item in vector} if vector is not None else set()
+            )
+            if (
+                vector is None
+                or target_column_index is None
+                or total_column_index is None
+                or not {target_column_index, total_column_index}.issubset(present_columns)
+            ):
                 reasons.append(f"STACKED_BLOCK_{group_offset}_{match['role']}_VALUES_UNRESOLVED")
                 vector = []
             rows.append({"label": match, "role": match["role"], "values": vector})
@@ -862,26 +936,16 @@ def _stacked_graph(
             total = []
         blocks.append({"block_ordinal": group_offset, "rows": rows, "total": total})
 
-    target_column_index: int | None = None
-    total_column_index: int | None = None
-    if column_count and first_run and customer_header is not None:
-        centers = [center_x2_v1(line) for line in sorted(first_run, key=center_x2_v1)]
-        distances = [abs(center - customer_header["x_center_x2"]) for center in centers]
-        target_column_index = min(range(len(distances)), key=distances.__getitem__)
-        if distances.count(distances[target_column_index]) != 1:
-            target_column_index = None
-            reasons.append("CUSTOMER_LOAN_TARGET_COLUMN_GEOMETRY_AMBIGUOUS")
-        if total_header is not None:
-            total_distances = [abs(center - total_header["x_center_x2"]) for center in centers]
-            total_column_index = min(range(len(total_distances)), key=total_distances.__getitem__)
-            if total_distances.count(total_distances[total_column_index]) != 1:
-                total_column_index = None
-                reasons.append("TOTAL_COLUMN_GEOMETRY_AMBIGUOUS")
-
     arithmetic = "NOT_EVALUATED_NO_PRIMARY_NUMERIC_AUTHORITY"
     if page["primary_numeric_authority"] and blocks:
         block_checks: list[bool] = []
         for block in blocks:
+            if any(
+                [item["lane_index"] for item in row["values"]] != list(range(column_count))
+                for row in block["rows"]
+            ):
+                block_checks.append(False)
+                continue
             row_vectors = [money_values_v1(row["values"]) for row in block["rows"]]
             total_vector = money_values_v1(block["total"])
             if any(value is None for value in row_vectors) or total_vector is None:

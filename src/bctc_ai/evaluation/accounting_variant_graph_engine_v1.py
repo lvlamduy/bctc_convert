@@ -180,8 +180,14 @@ def _family_spec(value: Any) -> dict[str, Any]:
     variants: list[dict[str, Any]] = []
     variant_bindings: set[tuple[str, tuple[str, ...]]] = set()
     for raw in raw_variants:
-        if type(raw) is not dict or set(raw) != {"anchor_phrase", "variant_id"}:
+        if type(raw) is not dict or set(raw) not in (
+            {"anchor_phrase", "variant_id"},
+            {"allow_inline_prefix", "anchor_phrase", "variant_id"},
+        ):
             raise _error("branch variant fields drifted")
+        allow_inline_prefix = raw.get("allow_inline_prefix", False)
+        if type(allow_inline_prefix) is not bool:
+            raise _error("branch variant inline-prefix policy must be one exact bool")
         variant_id = _nonempty_string(raw["variant_id"], "branch variant ID")
         phrase = normalize_vietnamese_anchor_v1(
             _nonempty_string(raw["anchor_phrase"], "branch variant phrase")
@@ -190,7 +196,13 @@ def _family_spec(value: Any) -> dict[str, Any]:
         if _VARIANT.fullmatch(variant_id) is None or binding in variant_bindings or not phrase:
             raise _error("branch variant identity/phrase drifted")
         variant_bindings.add(binding)
-        variants.append({"anchor_tokens": phrase, "variant_id": variant_id})
+        variants.append(
+            {
+                "allow_inline_prefix": allow_inline_prefix,
+                "anchor_tokens": phrase,
+                "variant_id": variant_id,
+            }
+        )
 
     raw_children = value["ordered_children"]
     if type(raw_children) is not list or len(raw_children) < 2:
@@ -302,6 +314,7 @@ def match_vietnamese_anchor_alias_v1(value: str, aliases: Sequence[str]) -> str 
 def _owner_alias_match(text: str, aliases: Sequence[str]) -> str | None:
     normalized = normalize_vietnamese_anchor_v1(text)
     normalized = re.sub(r"^(?:[0-9]+\s+)+", "", normalized)
+    normalized = re.sub(r"\s+tiep theo$", "", normalized)
     if normalized in aliases:
         return "EXACT_ACCENTLESS_ALIAS"
     if any(_edit_distance_at_most_one(normalized, alias) for alias in aliases):
@@ -321,12 +334,12 @@ def _branch_core_cursor(tokens: Sequence[str], spec: Mapping[str, Any]) -> tuple
     return cursor, edits
 
 
-def _branch_match(text: str, spec: Mapping[str, Any]) -> tuple[dict[str, Any] | None, bool]:
+def _branch_match(text: str, spec: Mapping[str, Any]) -> tuple[dict[str, Any] | None, bool, bool]:
     normalized_surface = normalize_vietnamese_anchor_v1(text)
     tokens = normalized_surface.split()
     core = _branch_core_cursor(tokens, spec)
     if core is None:
-        return None, False
+        return None, False, False
     cursor, core_edits = core
     for variant in spec["branch_variants"]:
         matched = _find_phrase(tokens, variant["anchor_tokens"], cursor)
@@ -345,8 +358,9 @@ def _branch_match(text: str, spec: Mapping[str, Any]) -> tuple[dict[str, Any] | 
                 "variant": variant["variant_id"],
             },
             True,
+            variant["allow_inline_prefix"],
         )
-    return None, True
+    return None, True, False
 
 
 def _joined_surface(lines: Sequence[Mapping[str, Any]], start: int, stop: int) -> str:
@@ -388,8 +402,13 @@ def _starts_with_branch_core(text: str, spec: Mapping[str, Any]) -> bool:
 def _branch_window(
     lines: Sequence[Mapping[str, Any]], start: int, spec: Mapping[str, Any]
 ) -> tuple[dict[str, Any] | None, bool, str]:
-    if not _starts_with_branch_core(lines[start]["vietocr_text"], spec):
-        return None, False, lines[start]["vietocr_text"]
+    starts_with_core = _starts_with_branch_core(lines[start]["vietocr_text"], spec)
+    if not starts_with_core:
+        first_line_tokens = normalize_vietnamese_anchor_v1(lines[start]["vietocr_text"]).split()
+        if _branch_core_cursor(first_line_tokens, spec) is None or not any(
+            variant["allow_inline_prefix"] for variant in spec["branch_variants"]
+        ):
+            return None, False, lines[start]["vietocr_text"]
     core_matched = False
     near_surface = lines[start]["vietocr_text"]
     for width in range(1, min(_MAX_BRANCH_ANCHOR_LINE_SPAN, len(lines) - start) + 1):
@@ -403,11 +422,11 @@ def _branch_window(
         if width > 1 and _starts_with_branch_core(lines[start + width - 1]["vietocr_text"], spec):
             break
         surface = _joined_surface(lines, start, start + width)
-        branch, core = _branch_match(surface, spec)
-        if core:
+        branch, core, allow_inline_prefix = _branch_match(surface, spec)
+        if core and starts_with_core:
             core_matched = True
             near_surface = surface
-        if branch is not None:
+        if branch is not None and (starts_with_core or allow_inline_prefix):
             return branch, True, surface
     return None, core_matched, near_surface
 

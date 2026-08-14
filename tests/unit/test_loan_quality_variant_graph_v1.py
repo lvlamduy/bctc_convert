@@ -110,6 +110,7 @@ def _ordinary(
 
 def _stacked() -> list[tuple[str, int]]:
     result: list[tuple[str, int]] = [
+        ("Rủi ro tín dụng (tiếp theo)", 0),
         ("Phân loại chất lượng tài sản có rủi ro tín dụng", 0),
         ("30/06/2026", 100),
         ("31/12/2025", 300),
@@ -309,6 +310,20 @@ def test_dotted_money_total_is_not_confused_with_the_following_note_number() -> 
     assert result["graphs"][0]["arithmetic_status"] == ("CORROBORATED_GRADE_POPULATION")
 
 
+def test_unlabeled_total_excludes_a_distant_numeric_page_footer() -> None:
+    surfaces = _ordinary()[:-1]
+    surfaces.append(("26", 700))
+    page = _page(surfaces)
+    page["lines"][-1]["bbox"][1] += 500
+    page["lines"][-1]["bbox"][3] += 500
+
+    result = quality.build_loan_quality_variant_graph_document_v1([page])
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    graph = result["graphs"][0]
+    assert [item["surface"] for item in graph["totals"]["core"]] == ["120", "106"]
+
+
 def test_four_lane_money_percentage_axis_is_preserved_and_closed() -> None:
     surfaces: list[tuple[str, int]] = [
         ("5. Cho vay khách hàng", 0),
@@ -356,6 +371,61 @@ def test_stacked_period_multi_asset_variant_selects_column_by_geometry() -> None
     assert graph["total_column"]["column_index"] == 4
     assert len(graph["blocks"]) == 2
     assert graph["arithmetic_status"] == ("CORROBORATED_STACKED_ROW_AND_COLUMN_POPULATIONS")
+
+
+def test_inline_narrative_branch_and_sparse_companion_cells_share_the_stacked_graph() -> None:
+    surfaces = _stacked()
+    surfaces[1] = (
+        "2.10% (31/12/2025: 2,16%). Chi tiết phân loại chất lượng tài sản có rủi ro "
+        "tín dụng tại Ngân hàng như sau",
+        0,
+    )
+    sparse: list[tuple[str, int]] = []
+    current_role: str | None = None
+    remaining_role_values = 0
+    role_labels = {
+        "Nợ đủ tiêu chuẩn",
+        "Nợ cần chú ý",
+        "Nợ dưới tiêu chuẩn",
+        "Nợ nghi ngờ",
+        "Nợ có khả năng mất vốn",
+    }
+    for surface, x in surfaces:
+        if surface in role_labels:
+            current_role = surface
+            remaining_role_values = 5
+            sparse.append((surface, x))
+            continue
+        if (
+            current_role is not None
+            and remaining_role_values > 0
+            and surface.replace(".", "").isdigit()
+        ):
+            if current_role == "Nợ đủ tiêu chuẩn" or x in {300, 900}:
+                sparse.append((surface, x))
+            remaining_role_values -= 1
+            if remaining_role_values == 0:
+                current_role = None
+            continue
+        current_role = None
+        sparse.append((surface, x))
+
+    result = quality.build_loan_quality_variant_graph_document_v1(
+        [_page(sparse, primary_numeric_authority=False)]
+    )
+
+    assert result["status"] == "CANDIDATES_NUMERIC_OR_CONTEXT_UNRESOLVED"
+    assert result["uniqueness"] == {"full_match_count": 1, "status": "UNIQUE_FULL_MATCH"}
+    graph = result["graphs"][0]
+    assert graph["branch"]["variant"] == "CREDIT_RISK_ASSET_QUALITY_WORDING"
+    assert graph["owner_context"]["surface"] == "Rủi ro tín dụng (tiếp theo)"
+    assert graph["customer_loan_column"]["column_index"] == 1
+    assert graph["total_column"]["column_index"] == 4
+    assert [item["lane_index"] for item in graph["blocks"][0]["rows"][1]["values"]] == [
+        1,
+        4,
+    ]
+    assert result["safety"]["blank_companion_cells_imputed_as_zero"] is False
 
 
 def test_stacked_period_role_labels_may_wrap_without_a_separate_parser() -> None:

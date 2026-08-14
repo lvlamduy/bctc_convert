@@ -1,0 +1,365 @@
+{
+  "format_version": "LOAN_QUALITY_8BANK_CODEX_PIXEL_REVIEW_V1",
+  "state": "CODEX_PIXEL_REVIEW_COMPLETE",
+  "claim_boundary": "FIXED_EIGHT_DOCUMENT_LOAN_QUALITY_SOURCE_PIXEL_LABEL_VALUE_AXIS_SCOPE_AND_ACCOUNTING_REVIEW_ONLY_NO_FINAL_STATUS_OR_BROAD_CORPUS_AUTHORITY",
+  "semantic_index_sha256": "f84fd9ca56fe06af230e011ecad85b0a576e27e1eca32ee141e654a6776b78b4",
+  "semantic_axis_sha256": "e99873cd16a7234702d0ee6e5fa9eb37637a1a75621228381e3dbcd7c5cfdcca",
+  "reviewer": {
+    "kind": "CODEX_INDEPENDENT_PDF_PIXEL_AND_ACCOUNTING_REVIEW",
+    "review_run_id": "codex-loan-quality-8bank-pixel-review-2026-08-14"
+  },
+  "review_checks": {
+    "all_eight_complete_pdfs_scanned_and_unique_full_region_confirmed": true,
+    "branch_owner_children_order_and_geometry_visually_confirmed": true,
+    "period_unit_and_consolidated_scope_visually_confirmed": true,
+    "five_grade_accounting_equations_independently_recomputed": true,
+    "optional_additive_and_nonadditive_population_boundaries_confirmed": true,
+    "source_pdf_and_bound_render_opened": true,
+    "stacked_sparse_customer_loan_column_and_totals_confirmed": true,
+    "wrong_owner_securities_and_other_asset_families_checked_as_negative_controls": true
+  },
+  "safety": {
+    "bank_filename_note_or_page_used_as_mapping_rule": false,
+    "blank_sparse_cells_imputed_as_zero": false,
+    "broad_corpus_authority": false,
+    "canonicalization_or_export_authority": false,
+    "reviewer_final_status_supplied": false,
+    "semantic_similarity_alone_used_for_mapping": false,
+    "transformer_numeric_proposal_used_as_pixel_truth": false,
+    "legacy_ocr_text_used_for_semantic_matching": false
+  },
+  "banks": [
+    {
+      "bank_code": "ACB",
+      "physical_page": 18,
+      "target_render_sha256": "f873f85c3496d56042a79731e51b5c56bb3d912c4ab95c18bd7ee54aafa00a81",
+      "statement_context_evidence": {
+        "mode": "PAGE_LOCAL_VISIBLE_HEADING",
+        "physical_page": 18,
+        "render_sha256": "f873f85c3496d56042a79731e51b5c56bb3d912c4ab95c18bd7ee54aafa00a81",
+        "pixel_transcription": "THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT",
+        "report_scope": "CONSOLIDATED"
+      },
+      "owner_evidence": {
+        "physical_page": 17,
+        "render_sha256": "f0f9cc2c892a09240f139b28dea4e9268ac909031721cfa4bb87524c5cf77979",
+        "pixel_transcription": "4. CHO VAY KHÁCH HÀNG:"
+      },
+      "branch_pixel_transcription": "Phân tích chất lượng nợ cho vay",
+      "selected_population": {
+        "mode": "HORIZONTAL_TYPED_PERIOD_LANES",
+        "mapping_owner_pixel": "Cho vay khách hàng",
+        "customer_loan_column_index": null,
+        "total_column_index": null
+      },
+      "period_pixel_transcriptions": ["30/06/2026", "31/12/2025"],
+      "unit_pixel_transcriptions": ["Triệu đồng", "Triệu đồng"],
+      "rows": [
+        {"role": "STANDARD", "pixel_label": "Nợ đủ tiêu chuẩn", "values": ["712.635.450", "660.272.034"]},
+        {"role": "SPECIAL_MENTION", "pixel_label": "Nợ cần chú ý", "values": ["4.821.891", "2.493.226"]},
+        {"role": "SUBSTANDARD", "pixel_label": "Nợ dưới tiêu chuẩn", "values": ["1.350.279", "764.791"]},
+        {"role": "DOUBTFUL", "pixel_label": "Nợ nghi ngờ", "values": ["1.339.763", "770.229"]},
+        {"role": "LOSS", "pixel_label": "Nợ có khả năng mất vốn", "values": ["4.967.367", "5.136.367"]}
+      ],
+      "source_only_total": ["745.759.303", "686.777.352"],
+      "optional_additive_population": {
+        "pixel_label": "Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
+        "values": ["20.644.553", "17.340.705"]
+      },
+      "nonadditive_standard_child": null,
+      "transformer_disagreements": []
+    },
+    {
+      "bank_code": "MBB",
+      "physical_page": 31,
+      "target_render_sha256": "f253a2af180ad5e0a2e4c82600a89f43889a94f503b95ce623e68f10a6a53ba2",
+      "statement_context_evidence": {
+        "mode": "DOCUMENT_PRECEDING_VISIBLE_HEADING",
+        "physical_page": 9,
+        "render_sha256": "cc740491d62ede251f605b009ee1dc844d3ecca60e1a7a15184478d7acf45952",
+        "pixel_transcription": "THUYẾT MINH BÁO CÁO TÀI CHÍNH HỢP NHẤT",
+        "report_scope": "CONSOLIDATED"
+      },
+      "owner_evidence": {
+        "physical_page": 31,
+        "render_sha256": "f253a2af180ad5e0a2e4c82600a89f43889a94f503b95ce623e68f10a6a53ba2",
+        "pixel_transcription": "5. Cho vay khách hàng"
+      },
+      "branch_pixel_transcription": "Phân tích chất lượng nợ cho vay",
+      "selected_population": {
+        "mode": "HORIZONTAL_TYPED_PERIOD_LANES",
+        "mapping_owner_pixel": "Cho vay khách hàng",
+        "customer_loan_column_index": null,
+        "total_column_index": null
+      },
+      "period_pixel_transcriptions": ["30/06/2026", "31/12/2025"],
+      "unit_pixel_transcriptions": ["Triệu đồng", "Triệu đồng"],
+      "rows": [
+        {"role": "STANDARD", "pixel_label": "Nợ đủ tiêu chuẩn", "values": ["1.197.767.532", "1.059.781.834"]},
+        {"role": "SPECIAL_MENTION", "pixel_label": "Nợ cần chú ý", "values": ["11.989.743", "10.210.040"]},
+        {"role": "SUBSTANDARD", "pixel_label": "Nợ dưới tiêu chuẩn", "values": ["4.622.128", "3.276.216"]},
+        {"role": "DOUBTFUL", "pixel_label": "Nợ nghi ngờ", "values": ["4.428.065", "4.330.016"]},
+        {"role": "LOSS", "pixel_label": "Nợ có khả năng mất vốn", "values": ["8.747.009", "6.421.264"]}
+      ],
+      "source_only_total": ["1.227.554.477", "1.084.019.370"],
+      "optional_additive_population": null,
+      "nonadditive_standard_child": {
+        "pixel_label": "Trong đó các khoản cho vay tại MBS",
+        "values": ["16.828.054", "15.040.585"]
+      },
+      "transformer_disagreements": [
+        {
+          "field": "STANDARD_LABEL",
+          "semantic_proposal": "Nơ dủ tiêu chuản",
+          "pixel_transcription": "Nợ đủ tiêu chuẩn",
+          "disposition": "ACCENTLESS_FULL_ORDERED_TOPOLOGY_RECONCILIATION"
+        }
+      ]
+    },
+    {
+      "bank_code": "VPB",
+      "physical_page": 42,
+      "target_render_sha256": "cc6c66ad90a801380b011b4ca77543fa5b27feed417ceea72f7835a5e3d6e665",
+      "statement_context_evidence": {
+        "mode": "PAGE_LOCAL_VISIBLE_HEADING",
+        "physical_page": 42,
+        "render_sha256": "cc6c66ad90a801380b011b4ca77543fa5b27feed417ceea72f7835a5e3d6e665",
+        "pixel_transcription": "THUYẾT MINH BÁO CÁO TÀI CHÍNH HỢP NHẤT GIỮA NIÊN ĐỘ (tiếp theo)",
+        "report_scope": "CONSOLIDATED"
+      },
+      "owner_evidence": {
+        "physical_page": 42,
+        "render_sha256": "cc6c66ad90a801380b011b4ca77543fa5b27feed417ceea72f7835a5e3d6e665",
+        "pixel_transcription": "10. CHO VAY KHÁCH HÀNG"
+      },
+      "branch_pixel_transcription": "Phân tích chất lượng nợ cho vay",
+      "selected_population": {
+        "mode": "HORIZONTAL_TYPED_PERIOD_LANES",
+        "mapping_owner_pixel": "Cho vay khách hàng",
+        "customer_loan_column_index": null,
+        "total_column_index": null
+      },
+      "period_pixel_transcriptions": ["31/03/2026", "31/12/2025"],
+      "unit_pixel_transcriptions": ["Triệu đồng", "Triệu đồng"],
+      "rows": [
+        {"role": "STANDARD", "pixel_label": "Nợ đủ tiêu chuẩn", "values": ["935.034.209", "847.393.264"]},
+        {"role": "SPECIAL_MENTION", "pixel_label": "Nợ cần chú ý", "values": ["32.321.087", "30.950.442"]},
+        {"role": "SUBSTANDARD", "pixel_label": "Nợ dưới tiêu chuẩn", "values": ["12.462.162", "11.429.858"]},
+        {"role": "DOUBTFUL", "pixel_label": "Nợ nghi ngờ", "values": ["13.890.573", "10.879.958"]},
+        {"role": "LOSS", "pixel_label": "Nợ có khả năng mất vốn", "values": ["10.931.140", "9.154.889"]}
+      ],
+      "source_only_total": ["1.040.917.216", "943.901.630"],
+      "optional_additive_population": {
+        "pixel_label": "Cho vay giao dịch ký quỹ và ứng trước cho khách hàng",
+        "values": ["36.278.045", "34.093.219"]
+      },
+      "nonadditive_standard_child": null,
+      "transformer_disagreements": []
+    },
+    {
+      "bank_code": "HDB",
+      "physical_page": 26,
+      "target_render_sha256": "a90ca4dfbd71893233554eb78e3e866526e19edba6eddd1a9ba9e51398847009",
+      "statement_context_evidence": {
+        "mode": "DOCUMENT_PRECEDING_VISIBLE_HEADING",
+        "physical_page": 11,
+        "render_sha256": "d2eefe13da7b51390cf9b16a0e0ad1b5f177af62907c857907143121c0d2eb8c",
+        "pixel_transcription": "THUYẾT MINH BÁO CÁO TÀI CHÍNH HỢP NHẤT",
+        "report_scope": "CONSOLIDATED"
+      },
+      "owner_evidence": {
+        "physical_page": 26,
+        "render_sha256": "a90ca4dfbd71893233554eb78e3e866526e19edba6eddd1a9ba9e51398847009",
+        "pixel_transcription": "Cho vay khách hàng"
+      },
+      "branch_pixel_transcription": "Phân tích dư nợ cho vay theo chất lượng nợ",
+      "selected_population": {
+        "mode": "HORIZONTAL_TYPED_PERIOD_LANES",
+        "mapping_owner_pixel": "Cho vay khách hàng",
+        "customer_loan_column_index": null,
+        "total_column_index": null
+      },
+      "period_pixel_transcriptions": ["Số cuối kỳ", "Số đầu kỳ"],
+      "unit_pixel_transcriptions": ["Triệu VND", "Triệu VND"],
+      "rows": [
+        {"role": "STANDARD", "pixel_label": "Nợ đủ tiêu chuẩn", "values": ["609.639.554", "514.257.606"]},
+        {"role": "SPECIAL_MENTION", "pixel_label": "Nợ cần chú ý", "values": ["30.968.593", "18.792.886"]},
+        {"role": "SUBSTANDARD", "pixel_label": "Nợ dưới tiêu chuẩn", "values": ["5.552.555", "4.017.065"]},
+        {"role": "DOUBTFUL", "pixel_label": "Nợ nghi ngờ", "values": ["5.120.113", "5.500.307"]},
+        {"role": "LOSS", "pixel_label": "Nợ có khả năng mất vốn", "values": ["7.719.440", "3.802.915"]}
+      ],
+      "source_only_total": ["659.000.255", "546.370.779"],
+      "optional_additive_population": null,
+      "nonadditive_standard_child": null,
+      "transformer_disagreements": []
+    },
+    {
+      "bank_code": "VCB",
+      "physical_page": 30,
+      "target_render_sha256": "f0221dbfa1c989edcf2be45f3d358dfc1796c84c7c14cbbea52f1178d9db38fb",
+      "statement_context_evidence": {
+        "mode": "PAGE_LOCAL_VISIBLE_HEADING",
+        "physical_page": 30,
+        "render_sha256": "f0221dbfa1c989edcf2be45f3d358dfc1796c84c7c14cbbea52f1178d9db38fb",
+        "pixel_transcription": "Thuyết minh báo cáo tài chính hợp nhất giữa niên độ cho giai đoạn từ ngày 1/1/2026 đến ngày 30/6/2026 (tiếp theo)",
+        "report_scope": "CONSOLIDATED"
+      },
+      "owner_evidence": {
+        "physical_page": 30,
+        "render_sha256": "f0221dbfa1c989edcf2be45f3d358dfc1796c84c7c14cbbea52f1178d9db38fb",
+        "pixel_transcription": "5. Cho vay khách hàng"
+      },
+      "branch_pixel_transcription": "Phân tích chất lượng nợ cho vay",
+      "selected_population": {
+        "mode": "HORIZONTAL_TYPED_PERIOD_LANES",
+        "mapping_owner_pixel": "Cho vay khách hàng",
+        "customer_loan_column_index": null,
+        "total_column_index": null
+      },
+      "period_pixel_transcriptions": ["30/6/2026", "31/12/2025"],
+      "unit_pixel_transcriptions": ["Triệu VND", "Triệu VND"],
+      "rows": [
+        {"role": "STANDARD", "pixel_label": "Nợ đủ tiêu chuẩn", "values": ["1.742.980.001", "1.661.151.484"]},
+        {"role": "SPECIAL_MENTION", "pixel_label": "Nợ cần chú ý", "values": ["4.451.543", "2.704.636"]},
+        {"role": "SUBSTANDARD", "pixel_label": "Nợ dưới tiêu chuẩn", "values": ["1.185.589", "760.561"]},
+        {"role": "DOUBTFUL", "pixel_label": "Nợ nghi ngờ", "values": ["1.226.793", "222.632"]},
+        {"role": "LOSS", "pixel_label": "Nợ có khả năng mất vốn", "values": ["8.324.139", "8.686.362"]}
+      ],
+      "source_only_total": ["1.758.168.065", "1.673.525.675"],
+      "optional_additive_population": null,
+      "nonadditive_standard_child": null,
+      "transformer_disagreements": [
+        {
+          "field": "LOSS_LABEL",
+          "semantic_proposal": "Nợ cổ khả năng mất vốn",
+          "pixel_transcription": "Nợ có khả năng mất vốn",
+          "disposition": "ACCENTLESS_FULL_ORDERED_TOPOLOGY_RECONCILIATION"
+        }
+      ]
+    },
+    {
+      "bank_code": "CTG",
+      "physical_page": 39,
+      "target_render_sha256": "b85de39b03a481ee0eb7303b552a72b037401d3d564850a24c64326e679a2b04",
+      "statement_context_evidence": {
+        "mode": "PAGE_LOCAL_VISIBLE_HEADING",
+        "physical_page": 39,
+        "render_sha256": "b85de39b03a481ee0eb7303b552a72b037401d3d564850a24c64326e679a2b04",
+        "pixel_transcription": "THUYẾT MINH CÁC BÁO CÁO TÀI CHÍNH HỢP NHẤT",
+        "report_scope": "CONSOLIDATED"
+      },
+      "owner_evidence": {
+        "physical_page": 38,
+        "render_sha256": "d671cabcaab2af0090c304ab1c7c42d61f64103ca590e83e3c0817a77b0e2029",
+        "pixel_transcription": "3. CHO VAY KHÁCH HÀNG"
+      },
+      "branch_pixel_transcription": "3.1 Phân tích chất lượng nợ cho vay",
+      "selected_population": {
+        "mode": "HORIZONTAL_TYPED_PERIOD_LANES",
+        "mapping_owner_pixel": "Cho vay khách hàng",
+        "customer_loan_column_index": null,
+        "total_column_index": null
+      },
+      "period_pixel_transcriptions": ["30/06/2026", "31/12/2025"],
+      "unit_pixel_transcriptions": ["triệu đồng", "triệu đồng"],
+      "rows": [
+        {"role": "STANDARD", "pixel_label": "Nợ đủ tiêu chuẩn", "values": ["2.048.064.777", "1.953.010.761"]},
+        {"role": "SPECIAL_MENTION", "pixel_label": "Nợ cần chú ý", "values": ["19.563.795", "17.345.911"]},
+        {"role": "SUBSTANDARD", "pixel_label": "Nợ dưới tiêu chuẩn", "values": ["5.005.050", "1.490.975"]},
+        {"role": "DOUBTFUL", "pixel_label": "Nợ nghi ngờ", "values": ["4.463.609", "578.479"]},
+        {"role": "LOSS", "pixel_label": "Nợ có khả năng mất vốn", "values": ["15.610.527", "19.846.742"]}
+      ],
+      "source_only_total": ["2.092.707.758", "1.992.272.868"],
+      "optional_additive_population": null,
+      "nonadditive_standard_child": null,
+      "transformer_disagreements": []
+    },
+    {
+      "bank_code": "BID",
+      "physical_page": 22,
+      "target_render_sha256": "c8486972b896b760b4e7fac01d2ba69ba55127fedd680f88495dc94eae8a7331",
+      "statement_context_evidence": {
+        "mode": "PAGE_LOCAL_VISIBLE_HEADING",
+        "physical_page": 22,
+        "render_sha256": "c8486972b896b760b4e7fac01d2ba69ba55127fedd680f88495dc94eae8a7331",
+        "pixel_transcription": "Báo cáo tài chính hợp nhất giữa niên độ Quý II Năm 2026",
+        "report_scope": "CONSOLIDATED"
+      },
+      "owner_evidence": {
+        "physical_page": 22,
+        "render_sha256": "c8486972b896b760b4e7fac01d2ba69ba55127fedd680f88495dc94eae8a7331",
+        "pixel_transcription": "3. CHO VAY KHÁCH HÀNG"
+      },
+      "branch_pixel_transcription": "Phân tích chất lượng nợ cho vay",
+      "selected_population": {
+        "mode": "HORIZONTAL_TYPED_PERIOD_LANES",
+        "mapping_owner_pixel": "Cho vay khách hàng",
+        "customer_loan_column_index": null,
+        "total_column_index": null
+      },
+      "period_pixel_transcriptions": ["30/06/2026", "31/12/2025"],
+      "unit_pixel_transcriptions": ["Triệu VND", "Triệu VND"],
+      "rows": [
+        {"role": "STANDARD", "pixel_label": "Nợ đủ tiêu chuẩn", "values": ["2.425.506.836", "2.306.515.484"]},
+        {"role": "SPECIAL_MENTION", "pixel_label": "Nợ cần chú ý", "values": ["30.581.448", "31.462.771"]},
+        {"role": "SUBSTANDARD", "pixel_label": "Nợ dưới tiêu chuẩn", "values": ["12.003.167", "4.473.881"]},
+        {"role": "DOUBTFUL", "pixel_label": "Nợ nghi ngờ", "values": ["7.293.693", "4.677.985"]},
+        {"role": "LOSS", "pixel_label": "Nợ có khả năng mất vốn", "values": ["26.421.899", "25.824.953"]}
+      ],
+      "source_only_total": ["2.501.807.043", "2.372.955.074"],
+      "optional_additive_population": null,
+      "nonadditive_standard_child": null,
+      "transformer_disagreements": []
+    },
+    {
+      "bank_code": "VIB",
+      "physical_page": 60,
+      "target_render_sha256": "61effb29acb79ac55afb2f9a78742db6300d6a2e53505ebfd27cc5ae54b5951b",
+      "statement_context_evidence": {
+        "mode": "PAGE_LOCAL_VISIBLE_HEADING",
+        "physical_page": 60,
+        "render_sha256": "61effb29acb79ac55afb2f9a78742db6300d6a2e53505ebfd27cc5ae54b5951b",
+        "pixel_transcription": "THUYẾT MINH BÁO CÁO TÀI CHÍNH HỢP NHẤT GIỮA NIÊN ĐỘ (tiếp theo)",
+        "report_scope": "CONSOLIDATED"
+      },
+      "owner_evidence": {
+        "physical_page": 60,
+        "render_sha256": "61effb29acb79ac55afb2f9a78742db6300d6a2e53505ebfd27cc5ae54b5951b",
+        "pixel_transcription": "44.1 Rủi ro tín dụng (tiếp theo)"
+      },
+      "branch_pixel_transcription": "Chi tiết phân loại chất lượng tài sản có rủi ro tín dụng tại Ngân hàng như sau",
+      "selected_population": {
+        "mode": "STACKED_PERIOD_BLOCKS_MULTI_ASSET_COLUMNS",
+        "mapping_owner_pixel": "Cho vay khách hàng",
+        "customer_loan_column_index": 0,
+        "total_column_index": 4
+      },
+      "period_pixel_transcriptions": ["Tại ngày 30 tháng 06 năm 2026", "Tại ngày 31 tháng 12 năm 2025"],
+      "unit_pixel_transcriptions": ["triệu đồng", "triệu đồng"],
+      "rows": [
+        {"role": "STANDARD", "pixel_label": "Nợ đủ tiêu chuẩn", "values": ["375.282.104", "361.491.090"]},
+        {"role": "SPECIAL_MENTION", "pixel_label": "Nợ cần chú ý", "values": ["10.184.436", "9.146.241"]},
+        {"role": "SUBSTANDARD", "pixel_label": "Nợ dưới tiêu chuẩn", "values": ["2.726.693", "2.149.202"]},
+        {"role": "DOUBTFUL", "pixel_label": "Nợ nghi ngờ", "values": ["3.148.157", "2.824.185"]},
+        {"role": "LOSS", "pixel_label": "Nợ có khả năng mất vốn", "values": ["5.742.057", "6.361.298"]}
+      ],
+      "source_only_total": ["397.083.447", "381.972.016"],
+      "optional_additive_population": null,
+      "nonadditive_standard_child": null,
+      "transformer_disagreements": [
+        {
+          "field": "SECTION_OWNER",
+          "semantic_proposal": "Rùi ro tín dụng (tiếp theo)",
+          "pixel_transcription": "Rủi ro tín dụng (tiếp theo)",
+          "disposition": "ACCENTLESS_CONTEXT_RECONCILIATION"
+        },
+        {
+          "field": "INLINE_BRANCH",
+          "semantic_proposal": "2.10% (31/12/2025. 2,16%). Chi tiết phân loại chất lượng tài sản có rủi ro tín dụng tại Ngân hàng",
+          "pixel_transcription": "Chi tiết phân loại chất lượng tài sản có rủi ro tín dụng tại Ngân hàng như sau",
+          "disposition": "STRUCTURAL_ANCHOR_SUBSTRING_PLUS_CUSTOMER_COLUMN_AND_ACCOUNTING_TOPOLOGY"
+        }
+      ]
+    }
+  ]
+}

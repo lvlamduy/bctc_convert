@@ -164,7 +164,22 @@ def extract_period_axis_v1(
             )
             continue
         if matched := _DAY_MONTH.search(normalized):
-            partial.append((line, int(matched.group(1)), int(matched.group(2))))
+            day = int(matched.group(1))
+            month = int(matched.group(2))
+            if year_match := _YEAR.search(normalized):
+                surface = _date_surface(day, month, int(year_match.group(1)))
+                if surface is not None:
+                    full.append(
+                        {
+                            "evidence_source_line_indices": [
+                                _source_line_index(line, "Vietnamese full period header")
+                            ],
+                            "period": surface,
+                            "x_center_x2": center_x2_v1(line),
+                        }
+                    )
+                continue
+            partial.append((line, day, month))
             continue
         if matched := _YEAR.search(normalized):
             years.append((line, int(matched.group(1))))

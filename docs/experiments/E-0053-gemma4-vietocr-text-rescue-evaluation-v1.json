@@ -1,0 +1,219 @@
+{
+  "format_version": "GEMMA4_VIETOCR_TEXT_RESCUE_EVALUATION_V1",
+  "state": "COMPLETE",
+  "claim_boundary": "FIXED_SEVEN_DIFFICULT_VIETNAMESE_TEXT_CROPS_RESCUE_DIAGNOSTIC_ONLY_NO_NUMERIC_MAPPING_SCHEMA_OR_ACCOUNTING_AUTHORITY",
+  "evaluation_id": "gemma4rescuev1:evaluation:f6403c89826309ebdc0e9542ce01ed3d58d88ed443af3a9ebe6dce13025821cc",
+  "primary_reader": {
+    "model": "VIETOCR_0.3.13_VGG19_BN_TRANSFORMER",
+    "semantic_index_path": "output/development/loan-maturity-full-document-vietocr-v1/verified-index/semantic_index.json",
+    "semantic_index_sha256": "f84fd9ca56fe06af230e011ecad85b0a576e27e1eca32ee141e654a6776b78b4",
+    "semantic_axis_sha256": "e99873cd16a7234702d0ee6e5fa9eb37637a1a75621228381e3dbcd7c5cfdcca"
+  },
+  "rescue_reader": {
+    "model_repository": "google/gemma-4-26B-A4B-it-qat-q4_0-gguf",
+    "model_revision": "d1c082be9cf3c8a514acf63b8761f4b41935842e",
+    "model_file": {
+      "path": "/workspace/bctc-ai-runtime/gemma-4-26b-a4b-it-q4_0/gemma-4-26B_q4_0-it.gguf",
+      "sha256": "3eca3b8f6d7baf218a7dd6bba5fb59a56ee25fe2d567b6f5f589b4f697eca51d",
+      "size_bytes": 14439363584
+    },
+    "multimodal_projector_file": {
+      "path": "/workspace/bctc-ai-runtime/gemma-4-26b-a4b-it-q4_0/gemma-4-26B-it-mmproj.gguf",
+      "sha256": "a359953a076b877db30c31dbbb4c6d93b4a6e017ee5db5784247e4d4c0dd4f3b",
+      "size_bytes": 1194828160
+    },
+    "runtime": {
+      "implementation": "llama.cpp",
+      "build": "b10425",
+      "commit": "3d9388535",
+      "llama_cli_sha256": "78506c150cac1a1f7fc90755801510edec7ca09af0204b17b34af834f7c801aa",
+      "llama_cli_size_bytes": 1414128,
+      "device": "CPU",
+      "gpu_layers": 0,
+      "threads": 12
+    },
+    "primary_inference_policy": {
+      "temperature": 0,
+      "context_tokens": 4096,
+      "maximum_generated_tokens": 96,
+      "image_max_tokens": 1120,
+      "reasoning": false,
+      "prompt": "OCR chính xác duy nhất dòng chữ tiếng Việt trong ảnh. Chỉ trả về nguyên văn một dòng, giữ nguyên dấu và ký tự; không giải thích."
+    }
+  },
+  "trials": [
+    {
+      "sample_id": "sample-00001220",
+      "role": "LOAN_MATURITY_MEDIUM_LABEL",
+      "crop_ref": {
+        "path": "output/development/loan-maturity-full-document-vietocr-v1/frozen/crops/sample-00001220.png",
+        "sha256": "5a8553dbb1327fd561460193314c5e42525b685b5c6e2f94c585011ab9f08559",
+        "size_bytes": 11679
+      },
+      "vietocr_text": "Cho vay trùng hạn",
+      "gemma4_text": "Cho vay trúng hạn",
+      "independent_pixel_text": "Cho vay trung hạn",
+      "vietocr_exact_pixel_match": false,
+      "gemma4_exact_pixel_match": false,
+      "vietocr_accentless_pixel_match": true,
+      "gemma4_accentless_pixel_match": true,
+      "disposition": "BOTH_READERS_DIFFER_BY_DIACRITICS_ONLY_ACCENTLESS_ANCHOR_REMAINS_NONDECISIVE"
+    },
+    {
+      "sample_id": "sample-00004402",
+      "role": "LOAN_QUALITY_STANDARD_LABEL",
+      "crop_ref": {
+        "path": "output/development/loan-maturity-full-document-vietocr-v1/frozen/crops/sample-00004402.png",
+        "sha256": "52701e01c197c6246a9f994008604c55ad769e201a95d2561e3bdeccdf5365da",
+        "size_bytes": 3075
+      },
+      "vietocr_text": "Nơ dủ tiêu chuản",
+      "gemma4_text": "Nợ đủ tiêu chuẩn",
+      "independent_pixel_text": "Nợ đủ tiêu chuẩn",
+      "vietocr_exact_pixel_match": false,
+      "gemma4_exact_pixel_match": true,
+      "vietocr_accentless_pixel_match": true,
+      "gemma4_accentless_pixel_match": true,
+      "disposition": "GEMMA4_EXACTLY_CORROBORATES_PIXEL_TEXT"
+    },
+    {
+      "sample_id": "sample-00004431",
+      "role": "LOAN_MATURITY_MEDIUM_LABEL",
+      "crop_ref": {
+        "path": "output/development/loan-maturity-full-document-vietocr-v1/frozen/crops/sample-00004431.png",
+        "sha256": "20bcaf0accf70eabd8e91c6ff952cefed2c05b4325ec201131e88842ea701af3",
+        "size_bytes": 2626
+      },
+      "vietocr_text": "Nợ trùng hạn",
+      "gemma4_text": "Nợ trung hạn",
+      "independent_pixel_text": "Nợ trung hạn",
+      "vietocr_exact_pixel_match": false,
+      "gemma4_exact_pixel_match": true,
+      "vietocr_accentless_pixel_match": true,
+      "gemma4_accentless_pixel_match": true,
+      "disposition": "GEMMA4_EXACTLY_CORROBORATES_PIXEL_TEXT"
+    },
+    {
+      "sample_id": "sample-00019523",
+      "role": "LOAN_QUALITY_LOSS_LABEL",
+      "crop_ref": {
+        "path": "output/development/loan-maturity-full-document-vietocr-v1/frozen/crops/sample-00019523.png",
+        "sha256": "76dc48f9a106ff8b1b53ffe1604fd7bd2874314aa347cb5f612a6d64646e32c5",
+        "size_bytes": 15064
+      },
+      "vietocr_text": "Nợ cổ khả năng mất vốn",
+      "gemma4_text": "Nợ có khả năng mất vốn",
+      "independent_pixel_text": "Nợ có khả năng mất vốn",
+      "vietocr_exact_pixel_match": false,
+      "gemma4_exact_pixel_match": true,
+      "vietocr_accentless_pixel_match": true,
+      "gemma4_accentless_pixel_match": true,
+      "disposition": "GEMMA4_EXACTLY_CORROBORATES_PIXEL_TEXT"
+    },
+    {
+      "sample_id": "sample-00023982",
+      "role": "LOAN_MATURITY_SHORT_LABEL",
+      "crop_ref": {
+        "path": "output/development/loan-maturity-full-document-vietocr-v1/frozen/crops/sample-00023982.png",
+        "sha256": "d046a4f3cde61349b9621457e57b57a814b5da39a26fa9648642b7de09d51c14",
+        "size_bytes": 1339
+      },
+      "vietocr_text": "Nợi ngắn hạn",
+      "gemma4_text": "Nợ ngắn hạn",
+      "independent_pixel_text": "Nợ ngắn hạn",
+      "vietocr_exact_pixel_match": false,
+      "gemma4_exact_pixel_match": true,
+      "vietocr_accentless_pixel_match": false,
+      "gemma4_accentless_pixel_match": true,
+      "disposition": "GEMMA4_REMOVES_ONE_BASE_CHARACTER_INSERTION_AND_EXACTLY_CORROBORATES_PIXEL_TEXT"
+    },
+    {
+      "sample_id": "sample-00033185",
+      "role": "LOAN_QUALITY_SECTION_OWNER",
+      "crop_ref": {
+        "path": "output/development/loan-maturity-full-document-vietocr-v1/frozen/crops/sample-00033185.png",
+        "sha256": "1f8af959b07a2170aac8a0e46fb8fa670c988744cc4d5e217983af3a673ee107",
+        "size_bytes": 1273
+      },
+      "vietocr_text": "Rùi ro tín dụng (tiếp theo)",
+      "gemma4_text": "Rủi ro tín dụng (tiếp theo)",
+      "independent_pixel_text": "Rủi ro tín dụng (tiếp theo)",
+      "vietocr_exact_pixel_match": false,
+      "gemma4_exact_pixel_match": true,
+      "vietocr_accentless_pixel_match": true,
+      "gemma4_accentless_pixel_match": true,
+      "disposition": "GEMMA4_EXACTLY_CORROBORATES_PIXEL_TEXT"
+    },
+    {
+      "sample_id": "sample-00033187",
+      "role": "LOAN_QUALITY_INLINE_BRANCH",
+      "crop_ref": {
+        "path": "output/development/loan-maturity-full-document-vietocr-v1/frozen/crops/sample-00033187.png",
+        "sha256": "3697416239150f05892f6c2ed6fa60361d4b87e3c19b2ba4a571c5fb6f451eb8",
+        "size_bytes": 4147
+      },
+      "vietocr_text": "2.10% (31/12/2025. 2,16%). Chi tiết phân loại chất lượng tài sản có rủi ro tín dụng tại Ngân hàng",
+      "gemma4_text": "2,10% (31/12/2025: 2,16%). Chi tiết phân loại chất lượng tài sản có rủi ro tín dụng tại Ngân hàng",
+      "independent_pixel_text": "2,10% (31/12/2025: 2,16%). Chi tiết phân loại chất lượng tài sản có rủi ro tín dụng tại Ngân hàng",
+      "vietocr_exact_pixel_match": false,
+      "gemma4_exact_pixel_match": true,
+      "vietocr_accentless_pixel_match": true,
+      "gemma4_accentless_pixel_match": true,
+      "disposition": "GEMMA4_EXACTLY_CORROBORATES_PIXEL_TEXT"
+    }
+  ],
+  "stability_replays": [
+    {
+      "sample_id": "sample-00004402",
+      "image_max_tokens": 560,
+      "prompt_variant": "Đọc chính xác dòng chữ tiếng Việt trong ảnh. Chỉ xuất nguyên văn một dòng, không sửa nghĩa, không giải thích.",
+      "gemma4_text": "Nợ đủ tiêu chuẩn",
+      "matches_primary_output": true
+    },
+    {
+      "sample_id": "sample-00004431",
+      "image_max_tokens": 560,
+      "prompt_variant": "Đọc chính xác dòng chữ tiếng Việt trong ảnh. Chỉ xuất nguyên văn một dòng, không sửa nghĩa, không giải thích.",
+      "gemma4_text": "Nợ trung hạn",
+      "matches_primary_output": true
+    },
+    {
+      "sample_id": "sample-00001220",
+      "image_max_tokens": 560,
+      "prompt_variant": "Đọc chính xác dòng chữ tiếng Việt trong ảnh. Chỉ xuất nguyên văn một dòng, không sửa nghĩa, không giải thích.",
+      "gemma4_text": "Cho vay trúng hạn",
+      "matches_primary_output": true
+    }
+  ],
+  "metrics": {
+    "trial_count": 7,
+    "vietocr_exact_pixel_match_count": 0,
+    "gemma4_exact_pixel_match_count": 6,
+    "vietocr_accentless_pixel_match_count": 6,
+    "gemma4_accentless_pixel_match_count": 7,
+    "one_base_character_insertion_rescued_count": 1,
+    "stability_replay_count": 3,
+    "stability_replay_matching_count": 3
+  },
+  "decision": {
+    "primary_text_reader": "VIETOCR_0.3.13_VGG19_BN_TRANSFORMER",
+    "rescue_text_reader": "GEMMA4_26B_A4B_IT_QAT_Q4_0",
+    "invoke_rescue_only_for_clear_vietocr_pixel_or_structural_conflict": true,
+    "accentless_text_is_anchor_evidence_only": true,
+    "bounded_edit_distance_is_anchor_evidence_only": true,
+    "text_alone_can_decide_family_or_mapping": false,
+    "gemma_output_can_silently_replace_vietocr_output": false,
+    "rescue_requires_owner_parent_children_siblings_order_geometry_axes_units_scope_and_accounting_corroboration": true
+  },
+  "authority": {
+    "ocr_text_anchor_diagnostic": true,
+    "numeric_authority": false,
+    "geometry_authority": false,
+    "schema_authority": false,
+    "mapping_authority": false,
+    "accounting_authority": false,
+    "canonicalization_authority": false,
+    "export_authority": false,
+    "broad_corpus_accuracy_claim": false
+  }
+}

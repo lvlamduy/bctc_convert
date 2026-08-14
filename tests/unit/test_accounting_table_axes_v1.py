@@ -42,6 +42,18 @@ def test_period_axis_supports_exact_split_and_relative_variants() -> None:
     assert [item["period"] for item in exact] == ["30/06/2026", "31/12/2025"]
     assert [item["evidence_source_line_indices"] for item in exact] == [[6], [7]]
 
+    vietnamese_full, vietnamese_full_kind = extract_period_axis_v1(
+        [
+            _line(13, "Tại ngày 31 tháng 12 năm 2025", 100),
+            _line(12, "Tại ngày 30 tháng 06 năm 2026", 100),
+        ]
+    )
+    assert vietnamese_full_kind == "LOCAL_EXACT_DATES"
+    assert [item["period"] for item in vietnamese_full] == [
+        "31/12/2025",
+        "30/06/2026",
+    ]
+
     split, split_kind = extract_period_axis_v1(
         [
             _line(11, "Năm 2025", 320),
