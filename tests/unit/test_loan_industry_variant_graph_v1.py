@@ -117,6 +117,43 @@ def _two_money_industry() -> list[tuple[str, int, int]]:
     return result
 
 
+def _minimal_unique_child_subset(
+    *, child_count: int = 2, parent_before_children: bool = True, reversed_children: bool = False
+) -> list[tuple[str, int, int]]:
+    rows = [
+        ("Xây dựng", 30, 40),
+        ("Vận tải kho bãi", 70, 60),
+    ][:child_count]
+    if reversed_children:
+        rows.reverse()
+    surfaces: list[tuple[str, int, int]] = []
+    if parent_before_children:
+        surfaces.append(("CHO VAY KHÁCH HÀNG", 0, 0))
+    surfaces.extend(
+        [
+            ("Phân tích dư nợ cho vay theo ngành", 0, 35),
+            ("30/06/2026", 500, 75),
+            ("31/12/2025", 800, 75),
+            ("Triệu đồng", 500, 105),
+            ("Triệu đồng", 800, 105),
+        ]
+    )
+    for offset, (label, current, previous) in enumerate(rows):
+        y = 150 + offset * 48
+        surfaces.extend([(label, 0, y), (str(current), 500, y), (str(previous), 800, y)])
+    total_y = 150 + len(rows) * 48
+    surfaces.extend(
+        [
+            (str(sum(item[1] for item in rows)), 500, total_y),
+            (str(sum(item[2] for item in rows)), 800, total_y),
+            ("Phân tích dư nợ theo loại hình doanh nghiệp", 0, total_y + 45),
+        ]
+    )
+    if not parent_before_children:
+        surfaces.append(("CHO VAY KHÁCH HÀNG", 0, total_y + 90))
+    return surfaces
+
+
 def test_variable_order_and_four_typed_lanes_form_one_bank_blind_graph() -> None:
     result = loan_industry.build_loan_industry_variant_graph_document_v1(
         [_page(_four_lane_industry(reordered=True))]
@@ -141,6 +178,150 @@ def test_variable_order_and_four_typed_lanes_form_one_bank_blind_graph() -> None
         for check in graph["accounting_checks"]
     )
     assert result["safety"]["bank_filename_note_or_page_used_for_inference"] is False
+
+
+@pytest.mark.parametrize("reversed_children", [False, True])
+def test_parent_plus_two_children_is_enough_when_full_pdf_region_is_unique(
+    reversed_children: bool,
+) -> None:
+    result = loan_industry.build_loan_industry_variant_graph_document_v1(
+        [_page(_minimal_unique_child_subset(reversed_children=reversed_children))]
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert set(row["role"] for row in result["graphs"][0]["rows"]) == {
+        "CONSTRUCTION",
+        "TRANSPORT_STORAGE",
+    }
+    resolution = result["graphs"][0]["anchor_resolution"]
+    assert resolution["selected_anchor_keys"] == [
+        "PARENT:LOAN_INDUSTRY_CLASSIFICATION",
+        "CHILD:TRANSPORT_STORAGE",
+    ]
+    assert resolution["selected_size"] == 2
+    assert result["safety"]["minimum_child_anchor_count_with_recognized_parent"] == 1
+    assert result["safety"]["minimum_total_anchor_combination_size"] == 2
+    assert result["safety"]["pair_combinations_exhausted_before_triples"] is True
+    assert result["safety"]["sibling_child_order_fixed"] is False
+    assert result["safety"]["parent_precedes_descendants_required"] is True
+
+
+def test_parent_plus_one_child_is_enough_when_the_full_pdf_region_is_unique() -> None:
+    result = loan_industry.build_loan_industry_variant_graph_document_v1(
+        [_page(_minimal_unique_child_subset(child_count=1))]
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert [row["role"] for row in result["graphs"][0]["rows"]] == ["CONSTRUCTION"]
+    assert result["graphs"][0]["anchor_resolution"] == {
+        "anchor_search_scope": "ALL_COMPLETE_AND_NEAR_BRANCH_REGIONS_IN_FULL_DOCUMENT",
+        "child_priority_basis": "SEMANTIC_MONEY_MAGNITUDE_DISCOVERY_ONLY",
+        "matching_region_count": 1,
+        "pair_combinations_exhausted_before_triples": True,
+        "selected_anchor_keys": [
+            "PARENT:LOAN_INDUSTRY_CLASSIFICATION",
+            "CHILD:CONSTRUCTION",
+        ],
+        "selected_size": 2,
+        "status": "UNIQUE_MINIMAL_ANCHOR_COMBINATION",
+    }
+
+
+def test_parent_without_any_child_anchor_is_not_a_family_region() -> None:
+    result = loan_industry.build_loan_industry_variant_graph_document_v1(
+        [_page(_minimal_unique_child_subset(child_count=0))]
+    )
+
+    assert result["graphs"] == []
+    assert result["near_regions"][0]["unresolved_reasons"] == ["NO_LOAN_INDUSTRY_CHILD_ANCHOR"]
+
+
+def _anchor_graph(roles: tuple[str, ...], values: tuple[int, ...]) -> dict[str, object]:
+    return {
+        "rows": [
+            {
+                "role": role,
+                "values": [
+                    {
+                        "lane_type": "MONEY",
+                        "semantic_surface": str(value),
+                    }
+                ],
+            }
+            for role, value in zip(roles, values, strict=True)
+        ]
+    }
+
+
+def test_child_pair_is_used_only_after_all_parent_child_pairs_are_non_unique() -> None:
+    graphs = [
+        _anchor_graph(("AGRICULTURE_FORESTRY_FISHERY", "CONSTRUCTION"), (90, 80)),
+        _anchor_graph(("AGRICULTURE_FORESTRY_FISHERY", "TRANSPORT_STORAGE"), (90, 70)),
+        _anchor_graph(("CONSTRUCTION", "TRANSPORT_STORAGE"), (80, 70)),
+    ]
+
+    loan_industry._attach_minimal_anchor_resolution(graphs)
+
+    assert graphs[0]["anchor_resolution"]["selected_anchor_keys"] == [
+        "CHILD:AGRICULTURE_FORESTRY_FISHERY",
+        "CHILD:CONSTRUCTION",
+    ]
+    assert graphs[0]["anchor_resolution"]["selected_size"] == 2
+
+
+def test_pair_uniqueness_counts_near_regions_across_the_complete_pdf() -> None:
+    graphs = [
+        _anchor_graph(
+            ("AGRICULTURE_FORESTRY_FISHERY", "CONSTRUCTION"),
+            (90, 80),
+        )
+    ]
+    near_regions = [
+        {
+            "matched_roles": ["AGRICULTURE_FORESTRY_FISHERY"],
+        }
+    ]
+
+    loan_industry._attach_minimal_anchor_resolution(graphs, near_regions)
+
+    assert graphs[0]["anchor_resolution"]["selected_anchor_keys"] == [
+        "PARENT:LOAN_INDUSTRY_CLASSIFICATION",
+        "CHILD:CONSTRUCTION",
+    ]
+    assert graphs[0]["anchor_resolution"]["matching_region_count"] == 1
+
+
+def test_triple_is_used_only_when_every_two_anchor_combination_is_non_unique() -> None:
+    a = "AGRICULTURE_FORESTRY_FISHERY"
+    b = "CONSTRUCTION"
+    c = "TRANSPORT_STORAGE"
+    d = "MANUFACTURING"
+    graphs = [
+        _anchor_graph((a, b, c), (100, 90, 80)),
+        _anchor_graph((a, b, d), (100, 90, 70)),
+        _anchor_graph((a, c, d), (100, 80, 70)),
+        _anchor_graph((b, c, d), (90, 80, 70)),
+    ]
+
+    loan_industry._attach_minimal_anchor_resolution(graphs)
+
+    assert graphs[0]["anchor_resolution"]["selected_anchor_keys"] == [
+        f"CHILD:{a}",
+        f"CHILD:{b}",
+        f"CHILD:{c}",
+    ]
+    assert graphs[0]["anchor_resolution"]["selected_size"] == 3
+
+
+def test_customer_loan_parent_must_precede_the_child_region() -> None:
+    result = loan_industry.build_loan_industry_variant_graph_document_v1(
+        [_page(_minimal_unique_child_subset(parent_before_children=False))]
+    )
+
+    assert result["graphs"] == []
+    assert result["near_regions"][0]["unresolved_reasons"] == [
+        "CUSTOMER_LOAN_OWNER_CONTEXT_NOT_RESOLVED"
+    ]
 
 
 def test_previous_page_customer_loan_owner_and_relative_periods_are_generic() -> None:

@@ -1,4 +1,4 @@
-version: 5
+version: 6
 schema_name: UNIVERSAL_BANK_BCTC_SCHEMA
 schema_strategy: SOURCE_EVIDENCE_DRIVEN_APPEND_ONLY_SUPERSET
 append_only: true
@@ -14,10 +14,10 @@ base_schema:
     LCTT: {path: template/Bank_LCTT_ReportNormId.xlsx, item_count: 107, sha256: 2c9d52737c492f115895eab9a571da2269fcfd3c3e77539ec581782e579d260a}
     TM: {path: template/Bank_TM_ReportNormId.xlsx, item_count: 1385, sha256: fa284e3af1f90c8a206308f63e6d35e77a9fbf1abcaf60abcb59877c47275140}
 universal_schema:
-  revision: UNIVERSAL_BANK_BCTC_SCHEMA@6056
-  item_count: 1935
-  counts: {CDKT: 99, KQKD: 25, LCTT: 110, TM: 1701}
-  high_watermark: 6056
+  revision: UNIVERSAL_BANK_BCTC_SCHEMA@6060
+  item_count: 1939
+  counts: {CDKT: 99, KQKD: 25, LCTT: 110, TM: 1705}
+  high_watermark: 6060
 cash_flow_rules: config/mapping/lctt-v2.yaml
 sources:
   CDKT: template/Bank_CDKT_ReportNormId.v2.xlsx
@@ -28,4 +28,4 @@ pending_additions: proposed_schema_additions.jsonl
 approved_append_audits:
   - data/registered/schema_append_1944.json
 approved_business_update_audits:
-  - data/registered/schema_business_update_5712_5713_5714_5718_6056.json
+  - data/registered/schema_business_update_5712_5713_5714_5718_6060.json

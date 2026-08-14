@@ -72,13 +72,13 @@ def page61_result(project_root: Path, page61_inputs):
 def test_page61_reconciles_exact_schema_source_and_cell_denominators(page61_result) -> None:
     result = page61_result
 
-    assert result.schema_item_count == 1_701
+    assert result.schema_item_count == 1_705
     assert result.status_reconciled_schema_count == 11
     assert result.mapped_schema_count == 11
     assert result.structural_mapped_schema_count == 1
     assert result.value_bearing_mapped_schema_count == 10
     assert result.not_observed_schema_count == 0
-    assert result.unassessed_schema_count == 1_690
+    assert result.unassessed_schema_count == 1_694
     assert result.not_applicable_schema_count == 0
     assert result.ambiguous_schema_count == 0
     assert result.unresolved_schema_count == 0
@@ -90,10 +90,10 @@ def test_page61_reconciles_exact_schema_source_and_cell_denominators(page61_resu
     assert result.dash_count == 0
     assert result.validation_check_count == 0
     assert result.schema_workbook_sha256 == (
-        "82215c17f6d0aba33c01b03d6af76cc80ad53e0b129bf101f7e0b266cc9ea28f"
+        "e6d61bbf51f2163d53fb854846a7a5768ca9440c140ca866991c1558471a5a03"
     )
     assert result.schema_projection_sha256 == (
-        "9057a6513d1fb9532e0034022d2dd3b6ad2eb2789fb36b112cbf41fb8c632a2d"
+        "6db5a64040c925399df95163b0ee85f9cba187c570fff812889556ab4ab9aa1f"
     )
 
 
@@ -112,7 +112,7 @@ def test_page61_owns_exact_exchange_rate_scope_and_is_disjoint(page61_result) ->
     assert mapped == TM_PAGE61_MAPPED_SCHEMA_IDS == TM_PAGE61_SCOPE_IDS
     assert TM_PAGE61_NOT_OBSERVED_SCHEMA_IDS == frozenset()
     assert len(mapped) == 11
-    assert len(unassessed) == 1_690
+    assert len(unassessed) == 1_694
     assert TM_PAGE61_SCOPE_IDS.isdisjoint(set(range(1759, 1944)) | set(range(5898, 5935)))
     assert all(
         item.source_ids

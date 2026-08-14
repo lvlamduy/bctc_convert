@@ -74,21 +74,26 @@ def test_business_schema_migration_is_hash_bound_and_preserves_sealed_baselines(
     assert set(audit["collision_safety"]["new_ids"]).isdisjoint(REVIEWED_EXTERNAL_IDS)
     assert audit["schema_strategy"]["base_schema"]["item_count"] == 1593
     assert audit["schema_strategy"]["universal_schema"] == {
-        "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6056",
-        "item_count": 1935,
-        "counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1701},
-        "high_watermark": 6056,
+        "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6060",
+        "item_count": 1939,
+        "counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1705},
+        "high_watermark": 6060,
         "workbook_sha256": {
             statement: record["after_sha256"] for statement, record in audit["workbooks"].items()
         },
     }
-    assert audit["schema_strategy"]["migration_delta"]["new_report_norm_ids"] == [6055, 6056]
+    assert audit["schema_strategy"]["migration_delta"]["new_report_norm_ids"] == [
+        6057,
+        6058,
+        6059,
+        6060,
+    ]
     accepted_changes = {
         record["schema_id"]: record
         for record in audit["schema_changes"]
         if record.get("schema_status") == "ACCEPTED_UNIVERSAL"
     }
-    assert set(accepted_changes) == set(range(5991, 6057))
+    assert set(accepted_changes) == set(range(5991, 6061))
     assert all(
         accepted_changes[schema_id]["section"] == "BALANCE_SHEET_NOTES"
         for schema_id in range(5991, 6021)
@@ -108,6 +113,18 @@ def test_business_schema_migration_is_hash_bound_and_preserves_sealed_baselines(
     assert accepted_changes[6054]["section"] == "DIRECT_CASH_FLOW_OPERATING_ASSET_CHANGES"
     assert accepted_changes[6055]["section"] == "OFF_BALANCE_SHEET"
     assert accepted_changes[6056]["section"] == "OFF_BALANCE_SHEET"
+    assert all(
+        accepted_changes[schema_id]["section"] == "BALANCE_SHEET_NOTES"
+        for schema_id in (6057, 6058, 6059, 6060)
+    )
+    assert accepted_changes[6057]["evidence"]["observed_values"] == ["DASH", "DASH"]
+    assert accepted_changes[6058]["evidence"]["visible_label"] == (
+        "Cho vay tại Chi nhánh và ngân hàng con nước ngoài"
+    )
+    assert accepted_changes[6059]["evidence"]["visible_label"].startswith(
+        "Cho vay cá nhân để mua nhà ở"
+    )
+    assert accepted_changes[6060]["evidence"]["visible_label"] == "Dịch vụ"
     ctg_swap = accepted_changes[6056]["evidence"]
     assert ctg_swap["user_decision"] == "Q076"
     assert ctg_swap["source_row_ref"] == "ctg-p5-5705"
@@ -275,6 +292,7 @@ def test_business_formula_overlay_has_exact_authorized_edges(project_root):
         TM_HEALTH_SOCIAL_ID,
         738,
         739,
+        6060,
         740,
         741,
         742,
@@ -282,8 +300,10 @@ def test_business_formula_overlay_has_exact_authorized_edges(project_root):
         TM_ARTS_RECREATION_ID,
         TM_OTHER_SERVICES_ID,
         TM_HOUSEHOLD_EMPLOYMENT_ID,
+        6059,
         744,
         745,
+        6058,
         5749,
     ]
     assert all(
@@ -295,9 +315,12 @@ def test_business_formula_overlay_has_exact_authorized_edges(project_root):
             TM_OTHER_SERVICES_ID,
             TM_HOUSEHOLD_EMPLOYMENT_ID,
             5749,
+            6058,
+            6059,
+            6060,
         )
     )
-    assert by_id[717].children == [*range(718, 727), 5745]
+    assert by_id[717].children == [718, 719, 720, 6057, 721, 722, 723, 724, 725, 726, 5745]
     assert by_id[747].children == [5746]
     assert by_id[752].children == [753, 754, 755, 5747]
     assert by_id[TM_LOAN_BUSINESS_PARENT_ID].children == [*range(767, 783), 5748]
@@ -490,8 +513,14 @@ def test_business_formula_overlay_has_exact_authorized_edges(project_root):
     }
     assert formula_ids.isdisjoint(range(5898, 5946))
     assert by_id[1944].parent_id is None
-    assert by_id[1944].display_order == 1700
-    assert set(TM_UNIVERSAL_SCHEMA_IDS) == set(range(5991, 6034))
+    assert by_id[1944].display_order == 1704
+    assert set(TM_UNIVERSAL_SCHEMA_IDS) == {
+        *range(5991, 6034),
+        6057,
+        6058,
+        6059,
+        6060,
+    }
 
 
 @lru_cache(maxsize=1)

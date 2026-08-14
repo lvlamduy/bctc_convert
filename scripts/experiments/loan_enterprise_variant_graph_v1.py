@@ -115,7 +115,13 @@ _ROLE_ALIASES: dict[str, tuple[str, ...]] = {
 _SCHEMA_ELIGIBLE_ROLES = tuple(
     role for role in _ROLE_ALIASES if role != "FOREIGN_BRANCH_LOANS_SOURCE_ONLY"
 )
-_MIN_SCHEMA_ROLE_COUNT = 5
+# A recognized family parent plus one distinctive child is the smallest useful
+# locator.  The shared engine exhausts every parent+child and child+child pair
+# across the complete PDF before considering triples.  This changes only
+# discovery: the accepted graph still retains every visible row, axis, unit,
+# total, geometry and accounting check.
+_MIN_SCHEMA_ROLE_COUNT = 1
+_PARENT_ANCHOR_KEY = "PARENT:LOAN_ENTERPRISE_OR_CUSTOMER_TYPE_CLASSIFICATION"
 _BOUNDARY_PREFIXES = (
     "phan tich chat luong",
     "phan tich du no cho vay theo chat luong",
@@ -134,14 +140,20 @@ _SAFETY = {
     "grouped_and_flat_presentations_share_one_role_graph": True,
     "legacy_ocr_used_for_semantic_anchors": False,
     "mapping_authority": False,
+    "minimum_child_anchor_count_with_recognized_parent": _MIN_SCHEMA_ROLE_COUNT,
+    "minimum_total_anchor_combination_size": 2,
     "numeric_authority": False,
     "optional_rows_required_to_keep_fixed_order": False,
+    "parent_precedes_descendants_required": True,
+    "pair_combinations_exhausted_before_triples": True,
     "percentage_companion_lanes_preserved": True,
     "persisted_result_self_authenticating": False,
     "public_exact_replay_required": True,
     "qwen_or_gemma_used_for_semantic_anchors": False,
+    "sibling_child_order_fixed": False,
     "source_only_population_parent_mapped_to_schema": False,
     "text_similarity_alone_can_accept": False,
+    "whole_pdf_uniqueness_required": True,
 }
 _RESULT_FIELDS = {
     "claim_boundary",
@@ -184,6 +196,7 @@ def _variable_population_engine() -> ModuleType:
     module._ROLE_ALIASES = _ROLE_ALIASES
     module._SCHEMA_ELIGIBLE_ROLES = _SCHEMA_ELIGIBLE_ROLES
     module._MIN_SCHEMA_ROLE_COUNT = _MIN_SCHEMA_ROLE_COUNT
+    module._PARENT_ANCHOR_KEY = _PARENT_ANCHOR_KEY
     module._MAX_LABEL_WIDTH = 5
     module._MAX_OWNER_TABLE_LINE_SPAN = 180
     module._BOUNDARY_PREFIXES = _BOUNDARY_PREFIXES
@@ -197,6 +210,7 @@ def _enterprise_graphs(
     try:
         normalized_pages = engine._pages(pages)
         graphs, near = engine._scan(normalized_pages)
+        engine._attach_minimal_anchor_resolution(graphs, near)
     except Exception as exc:
         raise _error(f"variable-population graph engine rejected input: {exc}") from exc
     for graph in graphs:
@@ -268,6 +282,17 @@ def _validate_result(value: Any) -> dict[str, Any]:
             or type(graph.get("rows")) is not list
             or len([row for row in graph["rows"] if row.get("role") in _SCHEMA_ELIGIBLE_ROLES])
             < _MIN_SCHEMA_ROLE_COUNT
+            or type(graph.get("anchor_resolution")) is not dict
+            or set(graph["anchor_resolution"])
+            != {
+                "anchor_search_scope",
+                "child_priority_basis",
+                "matching_region_count",
+                "pair_combinations_exhausted_before_triples",
+                "selected_anchor_keys",
+                "selected_size",
+                "status",
+            }
             or type(graph.get("total")) is not list
             or not graph["total"]
             or type(graph.get("context_complete")) is not bool
@@ -277,6 +302,31 @@ def _validate_result(value: Any) -> dict[str, Any]:
         roles = [row.get("role") for row in graph["rows"]]
         if len(roles) != len(set(roles)) or any(role not in _ROLE_ALIASES for role in roles):
             raise _error("loan-enterprise graph role axis drifted")
+        resolution = graph["anchor_resolution"]
+        if (
+            resolution["anchor_search_scope"]
+            != "ALL_COMPLETE_AND_NEAR_BRANCH_REGIONS_IN_FULL_DOCUMENT"
+            or resolution["child_priority_basis"] != "SEMANTIC_MONEY_MAGNITUDE_DISCOVERY_ONLY"
+            or resolution["pair_combinations_exhausted_before_triples"] is not True
+            or type(resolution["matching_region_count"]) is not int
+            or resolution["matching_region_count"] <= 0
+            or type(resolution["selected_anchor_keys"]) is not list
+            or any(type(item) is not str or not item for item in resolution["selected_anchor_keys"])
+            or (
+                resolution["selected_size"] is not None
+                and (
+                    type(resolution["selected_size"]) is not int
+                    or resolution["selected_size"] not in {2, 3}
+                    or resolution["selected_size"] != len(resolution["selected_anchor_keys"])
+                )
+            )
+            or resolution["status"]
+            not in {
+                "UNIQUE_MINIMAL_ANCHOR_COMBINATION",
+                "UNRESOLVED_NO_UNIQUE_ANCHOR_COMBINATION",
+            }
+        ):
+            raise _error("loan-enterprise minimal anchor resolution drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
     if identity != "levgv1:result:" + canonical_json_sha256_v1(material):

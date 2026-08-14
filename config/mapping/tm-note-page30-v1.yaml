@@ -11,7 +11,7 @@ source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1
 source_render_sha256: e8cea48c6d8f93771b4b5bd9026df7a8b3e592ff7e403e036ed33eda913a092b
 render_dpi: 300
 
-schema_total: 1701
+schema_total: 1705
 visible_source_row_total: 22
 fixed_mapping_total: 21
 aggregate_component_source_row_total: 2

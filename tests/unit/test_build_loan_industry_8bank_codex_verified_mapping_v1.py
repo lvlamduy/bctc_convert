@@ -17,6 +17,9 @@ MODULE_PATH = (
 REVIEW_PATH = (
     PROJECT_ROOT / "docs/experiments/E-0055-loan-industry-8bank-codex-pixel-review-v1.json"
 )
+RESULT_PATH = (
+    PROJECT_ROOT / "docs/experiments/E-0055-loan-industry-8bank-codex-verified-mapping-v2.json"
+)
 
 
 def _module() -> ModuleType:
@@ -39,7 +42,7 @@ def _json(path: Path) -> dict[str, Any]:
 def _rehash(module: ModuleType, value: dict[str, Any]) -> None:
     material = copy.deepcopy(value)
     material.pop("result_id")
-    value["result_id"] = "li8bcv1:result:" + module.canonical_json_sha256_v1(material)
+    value["result_id"] = "li8bcv2:result:" + module.canonical_json_sha256_v1(material)
 
 
 @pytest.fixture(scope="module")
@@ -53,20 +56,20 @@ def test_live_result_is_exact_bounded_and_preserves_all_unresolved_rows(
 ) -> None:
     module, result = live
     assert result["result_id"] == (
-        "li8bcv1:result:a7435794e8639f9aa53ada040d13abddf966b91ab839a9aa1391bf2cdba52c58"
+        "li8bcv2:result:94571f22af35070a47e43cd6d0a86e97e3eb8b5c7ee1270330256ac0f3562a1b"
     )
     assert result["metrics"] == {
         "document_count": 8,
         "document_no_complete_region_count": 3,
         "document_unique_structure_count": 5,
         "intermediate_source_only_total_verified_count": 1,
-        "mapped_item_verified_by_codex_count": 72,
-        "mapped_money_value_cell_count": 144,
-        "mapped_percentage_corroboration_cell_count": 112,
+        "mapped_item_verified_by_codex_count": 80,
+        "mapped_money_value_cell_count": 160,
+        "mapped_percentage_corroboration_cell_count": 124,
         "negative_family_control_count": 32,
         "source_only_total_verified_count": 5,
         "transformer_disagreement_preserved_count": 16,
-        "unresolved_schema_semantic_row_count": 8,
+        "unresolved_schema_semantic_row_count": 0,
     }
     assert [trial["document_provenance"] for trial in result["trials"]] == list(
         module.EXPECTED_DOCUMENT_ORDER
@@ -81,81 +84,49 @@ def test_live_result_is_exact_bounded_and_preserves_all_unresolved_rows(
         for trial in result["trials"]
     ] == [
         ("ACB", None, 0, 0),
-        ("MBB", 33, 19, 2),
-        ("VPB", 44, 19, 3),
-        ("HDB", 27, 10, 1),
+        ("MBB", 33, 21, 0),
+        ("VPB", 44, 22, 0),
+        ("HDB", 27, 11, 0),
         ("VCB", None, 0, 0),
         ("CTG", None, 0, 0),
-        ("BID", 22, 6, 1),
-        ("VIB", 33, 18, 1),
+        ("BID", 22, 7, 0),
+        ("VIB", 33, 19, 0),
     ]
     assert all(trial["whole_document_family_absence_claim"] is False for trial in result["trials"])
 
 
-def test_unresolved_rows_are_semantic_scope_conflicts_not_fuzzy_failures(
+def test_project_owner_adjudicated_rows_bind_exact_live_schema_ids(
     live: tuple[ModuleType, dict[str, Any]],
 ) -> None:
     _, result = live
-    unresolved = {
+    adjudicated = {
         (
             trial["document_provenance"],
             row["role"],
-            row["candidate_report_norm_id"],
-            row["status"],
+            row["report_norm_id"],
         )
         for trial in result["trials"]
-        for row in trial["unresolved_rows"]
-    }
-    assert unresolved == {
-        (
-            "MBB",
+        for row in trial["verified_mappings"]
+        if row["role"]
+        in {
             "TRANSPORT_STORAGE",
-            736,
-            "UNRESOLVED_SOURCE_TRANSPORT_ROW_NOT_EQUIVALENT_TO_COMBINED_TRANSPORT_AND_INFORMATION_SCHEMA_ROW",
-        ),
-        (
-            "MBB",
-            "FOREIGN_BRANCH_LOANS",
-            None,
-            "UNRESOLVED_GEOGRAPHIC_BRANCH_POPULATION_NOT_ONE_INDUSTRY_SCHEMA_CHILD",
-        ),
-        (
-            "VPB",
-            "TRANSPORT_STORAGE",
-            736,
-            "UNRESOLVED_SOURCE_TRANSPORT_ROW_NOT_EQUIVALENT_TO_COMBINED_TRANSPORT_AND_INFORMATION_SCHEMA_ROW",
-        ),
-        (
-            "VPB",
             "PUBLIC_ADMIN_DEFENCE_SOCIAL_SECURITY",
-            744,
-            "UNRESOLVED_PUBLIC_ADMINISTRATION_NOT_EQUIVALENT_TO_INTERNATIONAL_ORGANIZATIONS",
-        ),
-        (
-            "VPB",
             "PERSONAL_HOUSING_LOANS",
-            None,
-            "UNRESOLVED_NO_EXACT_INDUSTRY_CHILD_FOR_PERSONAL_HOUSING_LOAN_POPULATION",
-        ),
-        (
-            "HDB",
-            "TRANSPORT_STORAGE",
-            736,
-            "UNRESOLVED_SOURCE_TRANSPORT_ROW_NOT_EQUIVALENT_TO_COMBINED_TRANSPORT_AND_INFORMATION_SCHEMA_ROW",
-        ),
-        (
-            "BID",
+            "FOREIGN_BRANCH_LOANS",
             "BROAD_SERVICES",
-            739,
-            "UNRESOLVED_BROAD_SERVICES_NOT_EQUIVALENT_TO_PERSONAL_AND_COMMUNITY_SERVICES",
-        ),
-        (
-            "VIB",
-            "TRANSPORT_STORAGE",
-            736,
-            "UNRESOLVED_SOURCE_TRANSPORT_ROW_NOT_EQUIVALENT_TO_COMBINED_TRANSPORT_AND_INFORMATION_SCHEMA_ROW",
-        ),
+        }
     }
+    assert adjudicated == {
+        ("MBB", "TRANSPORT_STORAGE", 736),
+        ("MBB", "FOREIGN_BRANCH_LOANS", 6058),
+        ("VPB", "TRANSPORT_STORAGE", 736),
+        ("VPB", "PUBLIC_ADMIN_DEFENCE_SOCIAL_SECURITY", 745),
+        ("VPB", "PERSONAL_HOUSING_LOANS", 6059),
+        ("HDB", "TRANSPORT_STORAGE", 736),
+        ("BID", "BROAD_SERVICES", 6060),
+        ("VIB", "TRANSPORT_STORAGE", 736),
+    }
+    assert all(trial["unresolved_rows"] == [] for trial in result["trials"])
 
 
 def test_visible_pixel_digits_override_bad_transformer_proposals_only_in_review(
@@ -207,11 +178,16 @@ def test_coordinated_digit_and_status_rehash_fail_public_replay(
     with pytest.raises(module.LoanIndustry8BankCodexVerifiedMappingV1Error, match="replay exactly"):
         module.validate_loan_industry_8bank_codex_verified_mapping_replay_v1(digit)
 
-    promoted = copy.deepcopy(exact)
-    promoted["trials"][1]["unresolved_rows"][0]["status"] = "VERIFIED_BY_CODEX"
-    _rehash(module, promoted)
+    relabel = copy.deepcopy(exact)
+    transport = next(
+        row
+        for row in relabel["trials"][1]["verified_mappings"]
+        if row["role"] == "TRANSPORT_STORAGE"
+    )
+    transport["report_norm_id"] = 739
+    _rehash(module, relabel)
     with pytest.raises(module.LoanIndustry8BankCodexVerifiedMappingV1Error):
-        module.validate_loan_industry_8bank_codex_verified_mapping_replay_v1(promoted)
+        module.validate_loan_industry_8bank_codex_verified_mapping_replay_v1(relabel)
 
 
 def test_result_rejects_typed_metric_laundering_even_after_rehash(
@@ -223,3 +199,14 @@ def test_result_rejects_typed_metric_laundering_even_after_rehash(
     _rehash(module, tampered)
     with pytest.raises(module.LoanIndustry8BankCodexVerifiedMappingV1Error):
         module._validate_result(tampered)
+
+
+def test_persisted_v2_result_exactly_matches_live_replay(
+    live: tuple[ModuleType, dict[str, Any]],
+) -> None:
+    module, exact = live
+    persisted = _json(RESULT_PATH)
+    assert persisted == exact
+    assert (
+        module.validate_loan_industry_8bank_codex_verified_mapping_replay_v1(persisted) == persisted
+    )

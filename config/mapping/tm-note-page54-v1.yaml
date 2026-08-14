@@ -13,9 +13,9 @@ source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1
 source_render_sha256: 271d8a818154a13942a0ee22b089985ea5f304e541b374d4150c32a1fad0d902
 source_ocr_sha256: a965e909d7f170a2a3bceab4921c2682ed3433b4502b0b021081e569b6f35c71
 upstream_ocr_sha256: a0aa1f9c72a93dda30ab95ef4411b8edc37c84b125f788a9f351f4700e9f9073
-schema_workbook_sha256: 82215c17f6d0aba33c01b03d6af76cc80ad53e0b129bf101f7e0b266cc9ea28f
+schema_workbook_sha256: e6d61bbf51f2163d53fb854846a7a5768ca9440c140ca866991c1558471a5a03
 
-schema_total: 1701
+schema_total: 1705
 scope_schema_ids:
   - {start: 5806, end: 5848}
 scope_schema_total: 43

@@ -62,12 +62,12 @@ def test_page54_reconciles_exact_schema_source_and_cell_denominators(
 ) -> None:
     result = _mapped(project_root, tmp_path)
 
-    assert result.schema_item_count == 1_701
+    assert result.schema_item_count == 1_705
     assert result.status_reconciled_schema_count == 43
     assert result.mapped_schema_count == 43
     assert result.structural_mapped_schema_count == 7
     assert result.value_bearing_mapped_schema_count == 36
-    assert result.unassessed_schema_count == 1_658
+    assert result.unassessed_schema_count == 1_662
     assert result.not_observed_schema_count == 0
     assert result.not_applicable_schema_count == 0
     assert result.ambiguous_schema_count == 0
@@ -81,10 +81,10 @@ def test_page54_reconciles_exact_schema_source_and_cell_denominators(
     assert result.extracted_value_count == 68
     assert result.dash_count == 4
     assert result.schema_workbook_sha256 == (
-        "82215c17f6d0aba33c01b03d6af76cc80ad53e0b129bf101f7e0b266cc9ea28f"
+        "e6d61bbf51f2163d53fb854846a7a5768ca9440c140ca866991c1558471a5a03"
     )
     assert result.schema_projection_sha256 == (
-        "9057a6513d1fb9532e0034022d2dd3b6ad2eb2789fb36b112cbf41fb8c632a2d"
+        "6db5a64040c925399df95163b0ee85f9cba187c570fff812889556ab4ab9aa1f"
     )
 
 
@@ -104,7 +104,7 @@ def test_page54_owns_exact_5806_5848_branch_and_keeps_5762_external(
     }
 
     assert set(mapped) == set(range(5806, 5849))
-    assert len(unassessed) == 1_658
+    assert len(unassessed) == 1_662
     assert all(item.source_ids for item in mapped.values())
     assert all(not item.source_ids for item in unassessed.values())
     assert result.source_dispositions[0].source_role == "BUSINESS_SEGMENT_TITLE"

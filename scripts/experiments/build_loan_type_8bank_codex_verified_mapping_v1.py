@@ -50,11 +50,12 @@ __all__ = [
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-FORMAT_VERSION = "LOAN_TYPE_8BANK_CODEX_VERIFIED_MAPPING_V1"
+FORMAT_VERSION = "LOAN_TYPE_8BANK_CODEX_VERIFIED_MAPPING_V2"
 CLAIM_BOUNDARY = (
     "FIXED_EIGHT_DOCUMENT_UNIQUE_COMPLETE_PDF_FRESH_VIETOCR_LOAN_TYPE_STRUCTURE_"
-    "PLUS_INDEPENDENT_CODEX_VISIBLE_PIXEL_ACCOUNTING_AND_LIVE_TM_SCHEMA_ONLY_NO_"
-    "BROAD_CORPUS_CANONICALIZATION_EXPORT_OR_PRODUCTION_AUTHORITY"
+    "PLUS_INDEPENDENT_CODEX_VISIBLE_PIXEL_ACCOUNTING_PROJECT_OWNER_SCHEMA_"
+    "ADJUDICATION_AND_LIVE_TM_SCHEMA_ONLY_NO_BROAD_CORPUS_CANONICALIZATION_"
+    "EXPORT_OR_PRODUCTION_AUTHORITY"
 )
 REVIEW_PATH = Path("docs/experiments/E-0054-loan-type-8bank-codex-pixel-review-v1.json")
 REVIEW_SHA256 = "90f448990c31c4ad597593ee863a1b96ab50ebee549a6cd4614d997766fbf72d"
@@ -115,6 +116,16 @@ _ROLE_BINDINGS: dict[str, tuple[int, str, tuple[str, ...]]] = {
         ("Cho vay bằng vốn tài trợ, ủy thác đầu tư",),
     ),
     "OTHER_LOANS": (726, "+ Cho vay khác", ("Cho vay khác",)),
+    "UNMAPPED_OTHER_CREDIT": (
+        726,
+        "+ Cho vay khác",
+        ("Cấp tín dụng khác", "Cho vay khác"),
+    ),
+    "GOVERNMENT_DIRECTED_OR_FUNDED": (
+        6057,
+        "+ Cho vay theo chỉ định của Chính phủ",
+        ("Cho vay theo chỉ định của Chính phủ",),
+    ),
     "MARGIN_AND_SECURITIES_ADVANCE": (
         5745,
         "Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
@@ -126,7 +137,7 @@ _ROLE_BINDINGS: dict[str, tuple[int, str, tuple[str, ...]]] = {
         ),
     ),
 }
-_UNRESOLVED_ROLES = {
+_REVIEW_UNRESOLVED_ROLES = {
     "GOVERNMENT_DIRECTED_OR_FUNDED": (
         720,
         "UNRESOLVED_SOURCE_LABEL_NOT_EQUIVALENT_TO_SCHEMA_FUNDED_SOURCE",
@@ -141,6 +152,7 @@ _UNRESOLVED_ROLES = {
         ("Cấp tín dụng khác",),
     ),
 }
+_UNRESOLVED_ROLES: dict[str, tuple[int | None, str, tuple[str, ...]]] = {}
 _OWNER_ALIASES = ("Cho vay khách hàng", "Các khoản cho vay khách hàng")
 _EXPECTED_REVIEW_CHECKS = [
     "VISIBLE_CONSOLIDATED_REPORT_SCOPE",
@@ -170,6 +182,8 @@ _AUTHORITY = {
     "broad_corpus_authority": False,
     "canonicalization_or_export_authority": False,
     "dash_cells_preserved_distinct_from_zero": True,
+    "project_owner_schema_adjudication_applied": True,
+    "visible_dash_normalized_to_numeric_zero_for_schema": True,
     "final_statuses_mechanically_derived": True,
     "fresh_full_document_vietocr_used_for_semantic_anchors": True,
     "independent_pdf_pixel_transcription_used_for_numeric_truth": True,
@@ -332,7 +346,10 @@ def _review(value: Any) -> dict[str, Any]:
         "transformer_disagreements",
         "unit_pixel_transcriptions",
     }
-    allowed_roles = set(_ROLE_BINDINGS) | set(_UNRESOLVED_ROLES)
+    # E-0054 is an immutable pre-adjudication pixel record.  Its two schema
+    # dispositions remain historical evidence; the live V2 result below binds
+    # those exact rows to the project-owner-approved @6060 schema revision.
+    allowed_roles = set(_ROLE_BINDINGS) | set(_REVIEW_UNRESOLVED_ROLES)
     for ordinal, (bank, expected_bank) in enumerate(
         zip(value["banks"], EXPECTED_DOCUMENT_ORDER, strict=True), 1
     ):
@@ -381,7 +398,7 @@ def _review(value: Any) -> dict[str, Any]:
             seen.add(role)
             _text(row["pixel_label"], "review row label")
             expected_disposition = (
-                "MAP" if role in _ROLE_BINDINGS else "UNRESOLVED_SCHEMA_SEMANTICS"
+                "UNRESOLVED_SCHEMA_SEMANTICS" if role in _REVIEW_UNRESOLVED_ROLES else "MAP"
             )
             if row["mapping_disposition"] != expected_disposition:
                 raise _error("review mapping disposition drifted")
@@ -576,7 +593,7 @@ def _schema(schema_by_id: Mapping[int, Any]) -> dict[str, Any]:
         raise _error("live TM schema is missing loan-type hierarchy or negative controls")
     owner = schema_by_id[716]
     parent = schema_by_id[717]
-    expected_children = [718, 719, 720, 721, 722, 723, 724, 725, 726, 5745]
+    expected_children = [718, 719, 720, 6057, 721, 722, 723, 724, 725, 726, 5745]
     if (
         owner.canonical_name != "Cho vay khách hàng"
         or list(owner.children) != [717, 727, 746, 752, 756, 759, 766]
@@ -590,13 +607,14 @@ def _schema(schema_by_id: Mapping[int, Any]) -> dict[str, Any]:
         718: 159,
         719: 160,
         720: 161,
-        721: 162,
-        722: 163,
-        723: 164,
-        724: 165,
-        725: 166,
-        726: 167,
-        5745: 168,
+        6057: 162,
+        721: 163,
+        722: 164,
+        723: 165,
+        724: 166,
+        725: 167,
+        726: 168,
+        5745: 169,
     }
     roles: dict[str, dict[str, Any]] = {}
     for role, (schema_id, canonical_name, _aliases) in _ROLE_BINDINGS.items():
@@ -669,6 +687,7 @@ def _graph_cell(
         "independent_pixel_transcription": review_cell["pixel_transcription"],
         "lane_index": graph_cell["lane_index"],
         "lane_type": lane_type,
+        "normalized_numeric_value": (parsed if lane_type == "MONEY" else format(parsed, "f")),
         "semantic_proposal": graph_cell.get("semantic_surface"),
         "source_cell_status": review_cell["status"],
         "source_line_index": graph_cell.get("source_line_index"),
@@ -1007,7 +1026,7 @@ def build_loan_type_8bank_codex_verified_mapping_v1(
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "lt8bcv1:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": "lt8bcv2:result:" + canonical_json_sha256_v1(material)}
     )
 
 
@@ -1027,7 +1046,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
         raise _error("verified loan-type result identity/authority drifted")
     clone = canonical_clone_v1(value)
     result_id = clone.pop("result_id")
-    if result_id != "lt8bcv1:result:" + canonical_json_sha256_v1(clone):
+    if result_id != "lt8bcv2:result:" + canonical_json_sha256_v1(clone):
         raise _error("verified loan-type result identity drifted")
     trial_fields = {
         "bank_provenance",
@@ -1103,6 +1122,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
                     "independent_pixel_transcription",
                     "lane_index",
                     "lane_type",
+                    "normalized_numeric_value",
                     "period_pixel_transcription",
                     "semantic_proposal",
                     "source_cell_status",
@@ -1111,12 +1131,28 @@ def _validate_result(value: Any) -> dict[str, Any]:
                     raise _error("verified loan-type mapped cell fields drifted")
                 if type(cell["axis_index"]) is not int or cell["axis_index"] not in {0, 1}:
                     raise _error("verified loan-type mapped cell axis drifted")
+                if cell["lane_type"] == "MONEY":
+                    if type(cell["normalized_numeric_value"]) is not int:
+                        raise _error("verified MONEY normalization type drifted")
+                elif cell["lane_type"] == "PERCENT":
+                    if type(cell["normalized_numeric_value"]) is not str:
+                        raise _error("verified PERCENT normalization type drifted")
+                    try:
+                        normalized_percent = Decimal(cell["normalized_numeric_value"])
+                    except InvalidOperation as exc:
+                        raise _error("verified PERCENT normalization drifted") from exc
+                    if not normalized_percent.is_finite():
+                        raise _error("verified PERCENT normalization is non-finite")
+                else:
+                    raise _error("verified typed lane drifted")
                 if cell["source_cell_status"] == "DASH":
                     if (
                         cell["semantic_proposal"] is not None
                         or cell["source_line_index"] is not None
+                        or cell["normalized_numeric_value"]
+                        != (0 if cell["lane_type"] == "MONEY" else "0")
                     ):
-                        raise _error("verified DASH cell was laundered into a numeric proposal")
+                        raise _error("verified DASH source/zero normalization drifted")
                     dash += 1
                 elif cell["source_cell_status"] == "VALUE":
                     if (
@@ -1124,6 +1160,14 @@ def _validate_result(value: Any) -> dict[str, Any]:
                         or type(cell["source_line_index"]) is not int
                     ):
                         raise _error("verified VALUE cell semantic binding drifted")
+                    parsed = _numeric_value(
+                        cell["independent_pixel_transcription"], cell["lane_type"]
+                    )
+                    expected_normalized = (
+                        parsed if cell["lane_type"] == "MONEY" else format(parsed, "f")
+                    )
+                    if cell["normalized_numeric_value"] != expected_normalized:
+                        raise _error("verified visible numeric normalization drifted")
                     if cell["lane_type"] == "MONEY":
                         money += 1
                 else:
@@ -1145,11 +1189,8 @@ def _validate_result(value: Any) -> dict[str, Any]:
                     "whole_document_absence_claim",
                 }
                 or item["whole_document_absence_claim"] is not False
-                or item["status"]
-                not in {
-                    "UNRESOLVED_BROADER_CREDIT_SCOPE_NOT_EQUIVALENT_TO_OTHER_LOANS",
-                    "UNRESOLVED_SOURCE_LABEL_NOT_EQUIVALENT_TO_SCHEMA_FUNDED_SOURCE",
-                }
+                or item["role"] not in _UNRESOLVED_ROLES
+                or item["status"] != _UNRESOLVED_ROLES[item["role"]][1]
             ):
                 raise _error("verified loan-type unresolved row shape/status drifted")
             unresolved += 1

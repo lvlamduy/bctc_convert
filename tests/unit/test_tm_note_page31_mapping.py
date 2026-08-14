@@ -48,7 +48,7 @@ _MAPPED_IDS = {
     5746,
     5747,
 }
-_NOT_OBSERVED_IDS = {616, 623, 624, 625, 628, 629, 630, 719, 720, 724, 726}
+_NOT_OBSERVED_IDS = {616, 623, 624, 625, 628, 629, 630, 719, 720, 724, 726, 6057}
 _NOT_APPLICABLE_IDS = set(range(593, 616))
 
 
@@ -73,7 +73,7 @@ def _mapped(project_root: Path, tmp_path: Path):
     )
 
 
-def test_page31_reconciles_64_schema_statuses_and_maps_30_distinct_items(
+def test_page31_reconciles_65_schema_statuses_and_maps_30_distinct_items(
     project_root: Path, tmp_path: Path
 ) -> None:
     result = _mapped(project_root, tmp_path)
@@ -82,12 +82,12 @@ def test_page31_reconciles_64_schema_statuses_and_maps_30_distinct_items(
     assert result.status == "SCOPED_PAGE31_MAPPING_WITH_COMPLETE_ACCOUNTING_VALIDATION"
     assert result.mapping_authority_scope.endswith("PDF_PAGE_31_FIXED_ROWS_ONLY")
     assert result.mapping_authority_granted
-    assert result.schema_item_count == 1_701
-    assert result.status_reconciled_schema_count == 64
+    assert result.schema_item_count == 1_705
+    assert result.status_reconciled_schema_count == 65
     assert result.mapped_schema_count == 30
-    assert result.not_observed_schema_count == 11
+    assert result.not_observed_schema_count == 12
     assert result.not_applicable_schema_count == 23
-    assert result.unassessed_schema_count == 1_637
+    assert result.unassessed_schema_count == 1_640
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == 33
     assert result.mapped_source_row_count == 29
@@ -113,7 +113,7 @@ def test_exact_mapped_not_observed_not_applicable_and_unassessed_sets(
     assert by_status[TMPage31SchemaStatus.MAPPED_AUTOMATIC_SCOPED.value] == _MAPPED_IDS
     assert by_status[TMPage31SchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value] == (_NOT_OBSERVED_IDS)
     assert by_status[TMPage31SchemaStatus.SCHEMA_ITEM_NOT_APPLICABLE.value] == (_NOT_APPLICABLE_IDS)
-    assert len(by_status[TMPage31SchemaStatus.UNASSESSED.value]) == 1_637
+    assert len(by_status[TMPage31SchemaStatus.UNASSESSED.value]) == 1_640
 
 
 def test_margin_rows_have_explicit_context_assignments_and_legacy_dual_provenance(

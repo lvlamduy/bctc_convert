@@ -341,10 +341,10 @@ def _headers(sheet) -> dict[str, int]:
     return {str(sheet.cell(1, column).value): column for column in range(1, sheet.max_column + 1)}
 
 
-def test_production_policy_pins_1701_and_all_27_required_owners(project_root: Path) -> None:
+def test_production_policy_pins_1705_and_all_27_required_owners(project_root: Path) -> None:
     policy = load_tm_consolidated_export_policy(project_root / TM_CONSOLIDATED_POLICY_RELATIVE_PATH)
 
-    assert policy.schema_item_count == TM_CONSOLIDATED_SCHEMA_COUNT == 1_701
+    assert policy.schema_item_count == TM_CONSOLIDATED_SCHEMA_COUNT == 1_705
     assert policy.schema_workbook_sha256 == TM_CONSOLIDATED_TEMPLATE_SHA256
     assert policy.schema_projection_sha256 == TM_CONSOLIDATED_SCHEMA_PROJECTION_SHA256
     assert policy.output_sheets == TM_CONSOLIDATED_SHEETS
@@ -862,12 +862,12 @@ def test_actual_page45_production_result_exports_exact_value_dash_blank_surface(
         report_scope="CONSOLIDATED",
         mapping_authority_scope="TEST_COMPLEMENT_OF_ACTUAL_PAGE45",
         mapping_authority_granted=True,
-        schema_item_count=1_701,
-        status_reconciled_schema_count=1_688,
+        schema_item_count=1_705,
+        status_reconciled_schema_count=1_692,
         mapped_schema_count=0,
         ambiguous_schema_count=0,
         unresolved_schema_count=0,
-        not_observed_schema_count=1_688,
+        not_observed_schema_count=1_692,
         not_applicable_schema_count=0,
         unassessed_schema_count=13,
         schema_dispositions=residual_dispositions,
@@ -882,7 +882,7 @@ def test_actual_page45_production_result_exports_exact_value_dash_blank_surface(
         bank="MBB",
         report_scope="CONSOLIDATED",
         dataset_role="DEVELOPMENT",
-        schema_item_count=1_701,
+        schema_item_count=1_705,
         schema_workbook_path=Path("template/Bank_TM_ReportNormId.v2.xlsx"),
         schema_workbook_sha256=TM_CONSOLIDATED_TEMPLATE_SHA256,
         schema_projection_sha256=TM_CONSOLIDATED_SCHEMA_PROJECTION_SHA256,
@@ -906,7 +906,7 @@ def test_actual_page45_production_result_exports_exact_value_dash_blank_surface(
         policy=policy,
     )
 
-    assert artifact.schema_item_count == 1_701
+    assert artifact.schema_item_count == 1_705
     assert artifact.observation_count == artifact.provenance_count == 22
     payload = json.loads(artifact.provenance_bytes)
     assert payload["summary"]["value_status_counts"] == {

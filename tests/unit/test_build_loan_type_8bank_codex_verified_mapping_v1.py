@@ -16,7 +16,7 @@ MODULE_PATH = (
 )
 REVIEW_PATH = PROJECT_ROOT / "docs/experiments/E-0054-loan-type-8bank-codex-pixel-review-v1.json"
 RESULT_PATH = (
-    PROJECT_ROOT / "docs/experiments/E-0054-loan-type-8bank-codex-verified-mapping-v1.json"
+    PROJECT_ROOT / "docs/experiments/E-0054-loan-type-8bank-codex-verified-mapping-v2.json"
 )
 
 
@@ -38,7 +38,7 @@ def _json(path: Path) -> dict[str, Any]:
 def _rehash(module: ModuleType, value: dict[str, Any]) -> None:
     material = copy.deepcopy(value)
     material.pop("result_id")
-    value["result_id"] = "lt8bcv1:result:" + module.canonical_json_sha256_v1(material)
+    value["result_id"] = "lt8bcv2:result:" + module.canonical_json_sha256_v1(material)
 
 
 def test_fixed_review_and_result_are_closed_exact_and_bounded() -> None:
@@ -51,40 +51,35 @@ def test_fixed_review_and_result_are_closed_exact_and_bounded() -> None:
         "document_count": 8,
         "document_unique_structure_count": 8,
         "intermediate_source_only_total_verified_count": 1,
-        "mapped_dash_cell_count": 8,
-        "mapped_item_verified_by_codex_count": 44,
-        "mapped_money_value_cell_count": 80,
-        "mapped_percentage_corroboration_cell_count": 12,
+        "mapped_dash_cell_count": 10,
+        "mapped_item_verified_by_codex_count": 46,
+        "mapped_money_value_cell_count": 82,
+        "mapped_percentage_corroboration_cell_count": 14,
         "negative_family_control_count": 32,
         "source_only_total_verified_count": 8,
         "transformer_disagreement_preserved_count": 6,
-        "unresolved_schema_semantic_row_count": 2,
+        "unresolved_schema_semantic_row_count": 0,
     }
     assert [len(trial["verified_mappings"]) for trial in result["trials"]] == [
+        8,
+        6,
         7,
-        6,
-        6,
         5,
         5,
         7,
         5,
         3,
     ]
-    assert {
-        (item["role"], item["candidate_report_norm_id"], item["status"])
+    assert all(trial["unresolved_rows"] == [] for trial in result["trials"])
+    adjudicated = {
+        (mapping["role"], mapping["report_norm_id"])
         for trial in result["trials"]
-        for item in trial["unresolved_rows"]
-    } == {
-        (
-            "GOVERNMENT_DIRECTED_OR_FUNDED",
-            720,
-            "UNRESOLVED_SOURCE_LABEL_NOT_EQUIVALENT_TO_SCHEMA_FUNDED_SOURCE",
-        ),
-        (
-            "UNMAPPED_OTHER_CREDIT",
-            726,
-            "UNRESOLVED_BROADER_CREDIT_SCOPE_NOT_EQUIVALENT_TO_OTHER_LOANS",
-        ),
+        for mapping in trial["verified_mappings"]
+        if mapping["role"] in {"GOVERNMENT_DIRECTED_OR_FUNDED", "UNMAPPED_OTHER_CREDIT"}
+    }
+    assert adjudicated == {
+        ("GOVERNMENT_DIRECTED_OR_FUNDED", 6057),
+        ("UNMAPPED_OTHER_CREDIT", 726),
     }
     dash_cells = [
         value
@@ -93,9 +88,11 @@ def test_fixed_review_and_result_are_closed_exact_and_bounded() -> None:
         for value in mapping["money_values"]
         if value["source_cell_status"] == "DASH"
     ]
-    assert len(dash_cells) == 8
+    assert len(dash_cells) == 10
     assert all(
-        value["semantic_proposal"] is None and value["source_line_index"] is None
+        value["semantic_proposal"] is None
+        and value["source_line_index"] is None
+        and value["normalized_numeric_value"] == 0
         for value in dash_cells
     )
 
@@ -117,7 +114,7 @@ def test_review_rejects_type_laundering_promotion_and_unsafe_authority(mutator: 
         module._review(review)
 
 
-def test_visible_dash_requires_an_absent_semantic_cell_and_stays_distinct_from_zero() -> None:
+def test_visible_dash_retains_source_status_and_normalizes_to_schema_zero() -> None:
     module = _module()
     graph_cell = {
         "lane_index": 0,
@@ -132,6 +129,7 @@ def test_visible_dash_requires_an_absent_semantic_cell_and_stays_distinct_from_z
     assert arithmetic_value == 0
     assert output["source_cell_status"] == "DASH"
     assert output["semantic_proposal"] is None
+    assert output["normalized_numeric_value"] == 0
 
     with pytest.raises(module.LoanType8BankCodexVerifiedMappingV1Error, match="visible value"):
         module._graph_cell(
@@ -157,11 +155,19 @@ def test_coordinated_digit_tamper_and_candidate_relabel_fail_public_replay(
         "independent_pixel_transcription"
     ] = "742.220.651"
     _rehash(module, digit)
-    with pytest.raises(module.LoanType8BankCodexVerifiedMappingV1Error, match="replay exactly"):
+    with pytest.raises(
+        module.LoanType8BankCodexVerifiedMappingV1Error,
+        match="normalization drifted|replay exactly",
+    ):
         module.validate_loan_type_8bank_codex_verified_mapping_replay_v1(digit)
 
     relabel = copy.deepcopy(exact)
-    relabel["trials"][0]["unresolved_rows"][0]["candidate_report_norm_id"] = 718
+    government = next(
+        mapping
+        for mapping in relabel["trials"][0]["verified_mappings"]
+        if mapping["role"] == "GOVERNMENT_DIRECTED_OR_FUNDED"
+    )
+    government["report_norm_id"] = 720
     _rehash(module, relabel)
     with pytest.raises(module.LoanType8BankCodexVerifiedMappingV1Error, match="replay exactly"):
         module.validate_loan_type_8bank_codex_verified_mapping_replay_v1(relabel)

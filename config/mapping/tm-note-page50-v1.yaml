@@ -10,7 +10,7 @@ mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_PDF_PAGE_50_TAX_AND_CASH_ROWS_
 source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
 source_render_sha256: e77b80f11ca9b153211a3b7ef8b23c35780cd120858c5b18cc00fcbb7b4fcfb9
 source_ocr_sha256: 8f114bc6f6e20941d0db761f039f516252541341de7b12f2af69efa6f61f586e
-schema_total: 1701
+schema_total: 1705
 
 # The authorized tax additions are located immediately after 1246 and before
 # the existing 1247–1254 cash-equivalent branch in workbook/PDF order.

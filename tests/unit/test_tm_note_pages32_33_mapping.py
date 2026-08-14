@@ -64,6 +64,7 @@ _MAPPED_IDS = {
     5722,
     5748,
     5749,
+    6058,
 }
 _AMBIGUOUS_IDS: set[int] = set()
 _NOT_OBSERVED_IDS = {
@@ -77,6 +78,8 @@ _NOT_OBSERVED_IDS = {
     774,
     775,
     777,
+    6059,
+    6060,
 }
 
 
@@ -105,17 +108,17 @@ def _mapped(project_root: Path, tmp_path: Path):
     )
 
 
-def test_exact_45_item_schema_reconciliation(project_root: Path, tmp_path: Path) -> None:
+def test_exact_48_item_schema_reconciliation(project_root: Path, tmp_path: Path) -> None:
     result = _mapped(project_root, tmp_path)
 
     assert validate_tm_note_pages32_33_mapping_result(result) is result
-    assert result.schema_item_count == 1_701
-    assert result.status_reconciled_schema_count == 45
-    assert result.mapped_schema_count == 35
+    assert result.schema_item_count == 1_705
+    assert result.status_reconciled_schema_count == 48
+    assert result.mapped_schema_count == 36
     assert result.ambiguous_schema_count == 0
-    assert result.not_observed_schema_count == 10
+    assert result.not_observed_schema_count == 12
     assert result.not_applicable_schema_count == 0
-    assert result.unassessed_schema_count == 1_656
+    assert result.unassessed_schema_count == 1_657
     assert result.fully_verified_schema_count == 0
     by_status = {
         status: {
@@ -137,17 +140,17 @@ def test_source_and_slot_statuses_reconcile_without_percentage_mapping(
     result = _mapped(project_root, tmp_path)
 
     assert result.source_row_count == 46
-    assert result.mapped_source_row_count == 36
+    assert result.mapped_source_row_count == 37
     assert result.ambiguous_source_row_count == 0
-    assert result.source_only_row_count == 10
-    assert result.partially_mapped_source_row_count == 34
+    assert result.source_only_row_count == 9
+    assert result.partially_mapped_source_row_count == 35
     assert result.financial_slot_count == 176
     assert result.extracted_value_count == 174
     assert result.zero_count == 2
-    assert result.mapped_source_slot_count == 68
+    assert result.mapped_source_slot_count == 70
     assert result.ambiguous_source_slot_count == 0
-    assert result.source_only_slot_count == 108
-    assert result.mapped_assignment_count == 66
+    assert result.source_only_slot_count == 106
+    assert result.mapped_assignment_count == 68
     assert all(
         cell.measure_role == "AMOUNT" and cell.cell_index in {0, 2}
         for cell in result.cell_dispositions
@@ -163,7 +166,7 @@ def test_source_and_slot_statuses_reconcile_without_percentage_mapping(
             cell.status == TMNotePages3233CellStatus.SOURCE_ONLY_PERCENTAGE.value
             for cell in result.cell_dispositions
         )
-        == 68
+        == 70
     )
 
 
@@ -195,7 +198,7 @@ def test_fixed_assignments_have_exact_values_periods_units_scope_and_no_duplicat
     assert values[("page-0032", 5748, "COMPARATIVE")] == Decimal("15040585")
     assert values[("page-0033", 5749, "CURRENT")] == Decimal("15520372")
     assert values[("page-0033", 5749, "COMPARATIVE")] == Decimal("15040585")
-    assert len(values) == 66
+    assert len(values) == 68
     assert all(
         item.measure_role == "AMOUNT"
         and item.cell_index in {0, 2}
@@ -233,8 +236,9 @@ def test_resolved_user_mappings_and_catch_all_are_export_safe(
         TMNotePages3233SourceStatus.SOURCE_ONLY_SUBTOTAL.value
     )
     assert by_identity[("page-0033", "FOREIGN_BRANCH")].status == (
-        TMNotePages3233SourceStatus.SOURCE_ONLY_VALIDATION.value
+        TMNotePages3233SourceStatus.MAPPED_AUTOMATIC_SCOPED.value
     )
+    assert by_identity[("page-0033", "FOREIGN_BRANCH")].mapped_report_norm_ids == (6058,)
     assert by_identity[("page-0032", "MARGIN_MBS")].mapped_report_norm_ids == (5748,)
     assert by_identity[("page-0033", "MARGIN_MBS")].mapped_report_norm_ids == (5749,)
     forbidden_rows = {

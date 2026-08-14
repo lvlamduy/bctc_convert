@@ -40,18 +40,18 @@
     "CDKT": 99,
     "KQKD": 25,
     "LCTT": 110,
-    "TM": 1701
+    "TM": 1705
   },
   "coverage_contract": {
     "contains_tm_1944": true,
     "path": "data/registered/schema_coverage_registry.json",
-    "sha256": "16f1c52415f4a5eb6abd2650e081f74c0f6a2e9fa13552c2b4c535db7e03a9db",
+    "sha256": "60701b5e9aa8f4cfa48995a6b1cd6227ace402ac0da38e86055deb2978dce464",
     "status": "PASS_ALL_TEMPLATE_ITEMS_ENROLLED",
-    "target_count": 1935
+    "target_count": 1939
   },
   "format_version": 1,
   "graph": "reference/schemas/schema_graph.jsonl",
-  "graph_sha256": "2262c4c053d397754c65d4da66d3c05ca8fb053ed29ccee11981a7eb0982e770",
+  "graph_sha256": "1725d1090bbca78f2f2db87cb3e4b1052fbb28f744dcd58cd51c266d35ad0229",
   "hierarchy_reference": {
     "authority": "USER_SUPPLIED_VST_LEVEL",
     "item_count": 1535,
@@ -449,7 +449,11 @@
           6030,
           6031,
           6032,
-          6033
+          6033,
+          6057,
+          6058,
+          6059,
+          6060
         ],
         "sha256": "6f322f7ba3b1b737643d21890b9bd51ea00224cea6ac65cfa41036d68ccd885b",
         "skipped_blank_rows": 0,
@@ -460,21 +464,21 @@
   "lctt_semantics": "WORKBOOK_BLOCKS_VERIFIED_SEMANTIC_CONFLICT_REOPENED_2026_08_05",
   "schema_name": "UNIVERSAL_BANK_BCTC_SCHEMA",
   "schema_strategy": "SOURCE_EVIDENCE_DRIVEN_APPEND_ONLY_SUPERSET",
-  "total_items": 1935,
+  "total_items": 1939,
   "universal_schema": {
     "counts": {
       "CDKT": 99,
       "KQKD": 25,
       "LCTT": 110,
-      "TM": 1701
+      "TM": 1705
     },
-    "high_watermark": 6056,
-    "item_count": 1935,
-    "ordered_canonical_projection_sha256": "7c11a91bd10210f600d0883fe5593355b6ddd70ab206e0b4455f59d3dbbe95b9",
-    "ordered_report_norm_ids_sha256": "6443881a391b52fddf4773881004eebc80260c81f085a46723770917d96e05ba",
-    "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6056",
-    "schema_graph_sha256": "2262c4c053d397754c65d4da66d3c05ca8fb053ed29ccee11981a7eb0982e770",
-    "universal_schema_sha256": "2262c4c053d397754c65d4da66d3c05ca8fb053ed29ccee11981a7eb0982e770",
+    "high_watermark": 6060,
+    "item_count": 1939,
+    "ordered_canonical_projection_sha256": "cbe71f9542d1cae82085463c67453b18357ceca933640aaa9cb8ba58fdea7844",
+    "ordered_report_norm_ids_sha256": "b23c8f4213ba8c93762dd67e2dcfc9a9636affb2cbe11368cd6fdf03967661b2",
+    "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6060",
+    "schema_graph_sha256": "1725d1090bbca78f2f2db87cb3e4b1052fbb28f744dcd58cd51c266d35ad0229",
+    "universal_schema_sha256": "1725d1090bbca78f2f2db87cb3e4b1052fbb28f744dcd58cd51c266d35ad0229",
     "workbooks": [
       {
         "item_count": 99,
@@ -501,11 +505,11 @@
         "statement_type": "LCTT"
       },
       {
-        "item_count": 1701,
-        "maximum_id": 6033,
+        "item_count": 1705,
+        "maximum_id": 6060,
         "minimum_id": 560,
         "path": "template/Bank_TM_ReportNormId.v2.xlsx",
-        "sha256": "82215c17f6d0aba33c01b03d6af76cc80ad53e0b129bf101f7e0b266cc9ea28f",
+        "sha256": "e6d61bbf51f2163d53fb854846a7a5768ca9440c140ca866991c1558471a5a03",
         "statement_type": "TM"
       }
     ]
@@ -536,11 +540,11 @@
       "statement_type": "LCTT"
     },
     {
-      "item_count": 1701,
-      "maximum_id": 6033,
+      "item_count": 1705,
+      "maximum_id": 6060,
       "minimum_id": 560,
       "path": "template/Bank_TM_ReportNormId.v2.xlsx",
-      "sha256": "82215c17f6d0aba33c01b03d6af76cc80ad53e0b129bf101f7e0b266cc9ea28f",
+      "sha256": "e6d61bbf51f2163d53fb854846a7a5768ca9440c140ca866991c1558471a5a03",
       "statement_type": "TM"
     }
   ]

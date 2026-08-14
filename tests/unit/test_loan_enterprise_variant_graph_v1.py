@@ -186,6 +186,10 @@ def test_flat_reordered_four_lane_table_forms_one_generic_graph() -> None:
     graph = result["graphs"][0]
     assert graph["branch"]["schema_concept"] == "PHAN_TICH_THEO_LOAI_HINH_DOANH_NGHIEP"
     assert graph["lane_types"] == ["MONEY", "PERCENT", "MONEY", "PERCENT"]
+    assert graph["anchor_resolution"]["selected_size"] == 2
+    assert graph["anchor_resolution"]["selected_anchor_keys"][0] == (
+        "PARENT:LOAN_ENTERPRISE_OR_CUSTOMER_TYPE_CLASSIFICATION"
+    )
     assert [row["role"] for row in graph["rows"]] == [
         "HOUSEHOLD_INDIVIDUAL",
         "OTHER_LLC",
@@ -198,6 +202,41 @@ def test_flat_reordered_four_lane_table_forms_one_generic_graph() -> None:
         check["status"] == "CORROBORATED_SEMANTIC_PROPOSAL_ONLY"
         for check in graph["accounting_checks"]
     )
+
+
+def test_parent_plus_one_child_can_uniquely_locate_the_full_region() -> None:
+    surfaces = _headers()
+    surfaces.extend(
+        [
+            ("Hộ kinh doanh, cá nhân", 0, 150),
+            ("100", 500, 150),
+            ("100", 700, 150),
+            ("100", 900, 150),
+            ("100", 1100, 150),
+            ("100", 500, 198),
+            ("100", 700, 198),
+            ("100", 900, 198),
+            ("100", 1100, 198),
+        ]
+    )
+
+    result = loan_enterprise.build_loan_enterprise_variant_graph_document_v1([_page(surfaces)])
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    graph = result["graphs"][0]
+    assert [row["role"] for row in graph["rows"]] == ["HOUSEHOLD_INDIVIDUAL"]
+    assert graph["anchor_resolution"] == {
+        "anchor_search_scope": "ALL_COMPLETE_AND_NEAR_BRANCH_REGIONS_IN_FULL_DOCUMENT",
+        "child_priority_basis": "SEMANTIC_MONEY_MAGNITUDE_DISCOVERY_ONLY",
+        "matching_region_count": 1,
+        "pair_combinations_exhausted_before_triples": True,
+        "selected_anchor_keys": [
+            "PARENT:LOAN_ENTERPRISE_OR_CUSTOMER_TYPE_CLASSIFICATION",
+            "CHILD:HOUSEHOLD_INDIVIDUAL",
+        ],
+        "selected_size": 2,
+        "status": "UNIQUE_MINIMAL_ANCHOR_COMBINATION",
+    }
 
 
 def test_grouped_parents_subtotal_margin_and_grand_total_share_one_graph() -> None:

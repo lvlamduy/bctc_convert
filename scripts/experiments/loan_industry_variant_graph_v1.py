@@ -17,6 +17,7 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping, Sequence
 from decimal import Decimal
+from itertools import combinations
 from typing import Any
 
 from bctc_ai.evaluation.accounting_table_axes_v1 import (
@@ -141,7 +142,14 @@ _ROLE_ALIASES: dict[str, tuple[str, ...]] = {
     "OTHER_INDUSTRIES": ("Khác", "Ngành khác"),
 }
 _SCHEMA_ELIGIBLE_ROLES = tuple(_ROLE_ALIASES)
-_MIN_SCHEMA_ROLE_COUNT = 5
+# Detection starts with the smallest useful combination: one recognized family
+# parent plus one distinctive child.  Candidate regions then exhaust every
+# two-anchor combination (parent+child, then child+child) before trying triples.
+# Sibling order is not fixed.  Text only locates a region; geometry, axes,
+# total/accounting closure, source pixels and live schema remain independent
+# downstream gates.
+_MIN_SCHEMA_ROLE_COUNT = 1
+_PARENT_ANCHOR_KEY = "PARENT:LOAN_INDUSTRY_CLASSIFICATION"
 _MAX_OWNER_TABLE_LINE_SPAN = 180
 _MAX_LABEL_WIDTH = 4
 _BOUNDARY_PREFIXES = (
@@ -162,13 +170,19 @@ _SAFETY = {
     "fresh_vietocr_transformer_text_required": True,
     "legacy_ocr_used_for_semantic_anchors": False,
     "mapping_authority": False,
+    "minimum_child_anchor_count_with_recognized_parent": _MIN_SCHEMA_ROLE_COUNT,
+    "minimum_total_anchor_combination_size": 2,
     "numeric_authority": False,
     "optional_rows_required_to_keep_fixed_order": False,
+    "parent_precedes_descendants_required": True,
+    "pair_combinations_exhausted_before_triples": True,
     "percentage_companion_lanes_preserved": True,
     "persisted_result_self_authenticating": False,
     "public_exact_replay_required": True,
     "qwen_or_gemma_used_for_semantic_anchors": False,
+    "sibling_child_order_fixed": False,
     "text_similarity_alone_can_accept": False,
+    "whole_pdf_uniqueness_required": True,
 }
 _RESULT_FIELDS = {
     "claim_boundary",
@@ -758,7 +772,7 @@ def _region(
         "unresolved_reasons": [],
     }
     if len(schema_roles) < _MIN_SCHEMA_ROLE_COUNT:
-        near["unresolved_reasons"] = ["INSUFFICIENT_DISTINCT_LOAN_INDUSTRY_ROLES"]
+        near["unresolved_reasons"] = ["NO_LOAN_INDUSTRY_CHILD_ANCHOR"]
         return None, near
     roles = [item["role"] for item in labels]
     if len(roles) != len(set(roles)):
@@ -810,6 +824,87 @@ def _region(
         "unresolved_reasons": sorted(set(reasons)),
     }
     return graph, near
+
+
+def _row_discovery_magnitude(row: Mapping[str, Any]) -> int:
+    """Rank stable anchor candidates; this never grants numeric authority."""
+
+    values = []
+    for item in row["values"]:
+        if item["lane_type"] != "MONEY" or item["semantic_surface"] is None:
+            continue
+        parsed = money_integer_v1(item["semantic_surface"])
+        if parsed is not None:
+            values.append(abs(parsed))
+    return max(values, default=0)
+
+
+def _anchor_candidates(graph: Mapping[str, Any]) -> list[tuple[str, ...]]:
+    ranked_children = [
+        f"CHILD:{row['role']}"
+        for row in sorted(
+            graph["rows"],
+            key=lambda item: (-_row_discovery_magnitude(item), item["role"]),
+        )
+    ]
+    candidates: list[tuple[str, ...]] = []
+    # Parent+child is the preferred two-item locator.  Child+child pairs are
+    # tried next, ordered by the same large-row discovery priority.
+    candidates.extend((_PARENT_ANCHOR_KEY, child) for child in ranked_children)
+    candidates.extend(tuple(items) for items in combinations(ranked_children, 2))
+    # Only after every pair has failed do we expand to triples.
+    candidates.extend((_PARENT_ANCHOR_KEY, *items) for items in combinations(ranked_children, 2))
+    candidates.extend(tuple(items) for items in combinations(ranked_children, 3))
+    return candidates
+
+
+def _attach_minimal_anchor_resolution(
+    graphs: list[dict[str, Any]],
+    near_regions: Sequence[Mapping[str, Any]] = (),
+) -> None:
+    graph_anchor_sets = [
+        {_PARENT_ANCHOR_KEY, *(f"CHILD:{row['role']}" for row in graph["rows"])} for graph in graphs
+    ]
+    near_anchor_sets = [
+        {
+            _PARENT_ANCHOR_KEY,
+            *(
+                f"CHILD:{role}"
+                for role in region.get("matched_roles", [])
+                if role in _SCHEMA_ELIGIBLE_ROLES
+            ),
+        }
+        for region in near_regions
+        if type(region) is dict
+        and type(region.get("matched_roles")) is list
+        and any(role in _SCHEMA_ELIGIBLE_ROLES for role in region["matched_roles"])
+    ]
+    search_anchor_sets = [*graph_anchor_sets, *near_anchor_sets]
+    for graph, anchors in zip(graphs, graph_anchor_sets, strict=True):
+        selected: tuple[str, ...] | None = None
+        matching_count = len(search_anchor_sets)
+        for candidate in _anchor_candidates(graph):
+            if not set(candidate) <= anchors:
+                continue
+            candidate_matching_count = sum(set(candidate) <= other for other in search_anchor_sets)
+            matching_count = min(matching_count, candidate_matching_count)
+            if candidate_matching_count == 1:
+                selected = candidate
+                matching_count = 1
+                break
+        graph["anchor_resolution"] = {
+            "anchor_search_scope": "ALL_COMPLETE_AND_NEAR_BRANCH_REGIONS_IN_FULL_DOCUMENT",
+            "child_priority_basis": "SEMANTIC_MONEY_MAGNITUDE_DISCOVERY_ONLY",
+            "matching_region_count": 1 if selected is not None else matching_count,
+            "pair_combinations_exhausted_before_triples": True,
+            "selected_anchor_keys": list(selected or ()),
+            "selected_size": None if selected is None else len(selected),
+            "status": (
+                "UNIQUE_MINIMAL_ANCHOR_COMBINATION"
+                if selected is not None
+                else "UNRESOLVED_NO_UNIQUE_ANCHOR_COMBINATION"
+            ),
+        }
 
 
 def _scan(pages: Sequence[Mapping[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -909,6 +1004,17 @@ def _validate_result(value: Any) -> dict[str, Any]:
             != {"mode", "page_sequence", "source_line_indices", "surface"}
             or type(graph.get("rows")) is not list
             or len(graph["rows"]) < _MIN_SCHEMA_ROLE_COUNT
+            or type(graph.get("anchor_resolution")) is not dict
+            or set(graph["anchor_resolution"])
+            != {
+                "child_priority_basis",
+                "anchor_search_scope",
+                "matching_region_count",
+                "pair_combinations_exhausted_before_triples",
+                "selected_anchor_keys",
+                "selected_size",
+                "status",
+            }
             or type(graph.get("total")) is not list
             or not graph["total"]
             or type(graph.get("context_complete")) is not bool
@@ -918,6 +1024,31 @@ def _validate_result(value: Any) -> dict[str, Any]:
         roles = [row.get("role") for row in graph["rows"]]
         if len(roles) != len(set(roles)) or any(role not in _ROLE_ALIASES for role in roles):
             raise _error("loan-industry graph role axis drifted")
+        resolution = graph["anchor_resolution"]
+        if (
+            resolution["anchor_search_scope"]
+            != "ALL_COMPLETE_AND_NEAR_BRANCH_REGIONS_IN_FULL_DOCUMENT"
+            or resolution["child_priority_basis"] != "SEMANTIC_MONEY_MAGNITUDE_DISCOVERY_ONLY"
+            or resolution["pair_combinations_exhausted_before_triples"] is not True
+            or type(resolution["matching_region_count"]) is not int
+            or resolution["matching_region_count"] <= 0
+            or type(resolution["selected_anchor_keys"]) is not list
+            or any(type(item) is not str or not item for item in resolution["selected_anchor_keys"])
+            or (
+                resolution["selected_size"] is not None
+                and (
+                    type(resolution["selected_size"]) is not int
+                    or resolution["selected_size"] not in {2, 3}
+                    or resolution["selected_size"] != len(resolution["selected_anchor_keys"])
+                )
+            )
+            or resolution["status"]
+            not in {
+                "UNIQUE_MINIMAL_ANCHOR_COMBINATION",
+                "UNRESOLVED_NO_UNIQUE_ANCHOR_COMBINATION",
+            }
+        ):
+            raise _error("loan-industry minimal anchor resolution drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
     if identity != "livgv1:result:" + canonical_json_sha256_v1(material):
@@ -932,6 +1063,7 @@ def build_loan_industry_variant_graph_document_v1(
 
     normalized_pages = _pages(pages)
     graphs, near = _scan(normalized_pages)
+    _attach_minimal_anchor_resolution(graphs, near)
     full_match_count = len(graphs)
     material = {
         "claim_boundary": CLAIM_BOUNDARY,

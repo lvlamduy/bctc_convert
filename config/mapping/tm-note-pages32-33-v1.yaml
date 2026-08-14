@@ -6,17 +6,17 @@ scope: CONSOLIDATED
 source_table_policy: config/tables/tm-note-pages32-33-v1.yaml
 mapping_authority_scope: VISIBLE_FIXED_LABELS_TO_AMOUNT_AXES_ONLY
 
-schema_total: 1701
+schema_total: 1705
 scope_schema_ids:
   - {start: 727, end: 745}
   - {start: 756, end: 758}
   - {start: 766, end: 782}
-  - {ids: [5719, 5720, 5721, 5722, 5748, 5749]}
-scope_schema_total: 45
-schema_scope_sha256: d3b40c676f8e813793b3a3c4ee8d988679124f5fffca1e0bf32650a481554088
-fixed_mapped_ids: [727, 728, 729, 730, 731, 732, 733, 734, 735, 736, 737, 738, 740, 741, 742, 743, 766, 767, 769, 770, 771, 772, 773, 776, 778, 779, 780, 781, 782, 5719, 5720, 5721, 5722, 5748, 5749]
+  - {ids: [5719, 5720, 5721, 5722, 5748, 5749, 6058, 6059, 6060]}
+scope_schema_total: 48
+schema_scope_sha256: ca7bb0e111ba1e832a133c11458f47fc2f536b47b2523320ea430ccde6de317d
+fixed_mapped_ids: [727, 728, 729, 730, 731, 732, 733, 734, 735, 736, 737, 738, 740, 741, 742, 743, 766, 767, 769, 770, 771, 772, 773, 776, 778, 779, 780, 781, 782, 5719, 5720, 5721, 5722, 5748, 5749, 6058]
 ambiguous_ids: []
-not_observed_ids: [739, 744, 745, 756, 757, 758, 768, 774, 775, 777]
+not_observed_ids: [739, 744, 745, 756, 757, 758, 768, 774, 775, 777, 6059, 6060]
 
 source_rules:
   - {page_tag: page-0032, row_key: LOAN_HEADER, disposition: FIXED_STRUCTURAL, report_norm_ids: [766], candidate_report_norm_ids: [], question_key: null}
@@ -62,7 +62,7 @@ source_rules:
   - {page_tag: page-0033, row_key: ARTS_RECREATION, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [5720], candidate_report_norm_ids: [], question_key: null}
   - {page_tag: page-0033, row_key: OTHER_SERVICES, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [5721], candidate_report_norm_ids: [], question_key: null}
   - {page_tag: page-0033, row_key: HOUSEHOLD_EMPLOYMENT, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [5722], candidate_report_norm_ids: [], question_key: null}
-  - {page_tag: page-0033, row_key: FOREIGN_BRANCH, disposition: SOURCE_ONLY_VALIDATION, report_norm_ids: [], candidate_report_norm_ids: [], question_key: null}
+  - {page_tag: page-0033, row_key: FOREIGN_BRANCH, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [6058], candidate_report_norm_ids: [], question_key: null}
   - {page_tag: page-0033, row_key: BANK_SUBTOTAL, disposition: SOURCE_ONLY_SUBTOTAL, report_norm_ids: [], candidate_report_norm_ids: [], question_key: null}
   - {page_tag: page-0033, row_key: MARGIN_MBS, disposition: FIXED_AMOUNT_AXES, report_norm_ids: [5749], candidate_report_norm_ids: [], question_key: null}
   - {page_tag: page-0033, row_key: GRAND_TOTAL, disposition: SOURCE_ONLY_VALIDATION, report_norm_ids: [], candidate_report_norm_ids: [], question_key: null}

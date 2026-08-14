@@ -24,24 +24,24 @@ accepted_native_tm_observations:
 
 schema_authority:
   schema_name: UNIVERSAL_BANK_BCTC_SCHEMA
-  revision: UNIVERSAL_BANK_BCTC_SCHEMA@6056
+  revision: UNIVERSAL_BANK_BCTC_SCHEMA@6060
   statement_type: TM
-  item_count: 1701
+  item_count: 1705
   order_authority: WORKBOOK_DISPLAY_ORDER
   schema_registry:
     path: data/registered/schema_registry.json
-    sha256: 5ee4cc00689a22c252a3f5e194195683231624838034dd916fafe20daeb0d64c
+    sha256: 937b0466e0cf7e9daf999ab9defef5a2da15e95a703d32ad6ff8d3284273629a
   schema_graph:
     path: reference/schemas/schema_graph.jsonl
-    sha256: 2262c4c053d397754c65d4da66d3c05ca8fb053ed29ccee11981a7eb0982e770
-  tm_projection_sha256: e85deb68a14f6041e57a5d3ad48a209818c8b09bb2a921637e98ead172f3da53
+    sha256: 1725d1090bbca78f2f2db87cb3e4b1052fbb28f744dcd58cd51c266d35ad0229
+  tm_projection_sha256: 9bc425492ed5cc0ce0d2d3836b5c4f8e45bd5b016ecc50a35d0cf2f78cc86904
   tm_context_policy:
     path: config/schemas/tm-context-v1.yaml
     sha256: 9c7989fa742101ca6f63bd01be2a484b001efcfe493615d429433273741da98f
-  tm_context_projection_sha256: f2874a66403834ec29a65dcb71b56abc26c55b822d921e4c5351e746f288ef6f
+  tm_context_projection_sha256: b86ae676743d0575d397c6890456956c7f6e23391f6844f4ce06117b9d214e1d
   coverage_registry:
     path: data/registered/schema_coverage_registry.json
-    sha256: 16f1c52415f4a5eb6abd2650e081f74c0f6a2e9fa13552c2b4c535db7e03a9db
+    sha256: 60701b5e9aa8f4cfa48995a6b1cd6227ace402ac0da38e86055deb2978dce464
 
 typed_alias_authority:
   accepted_authority_types:
@@ -54,19 +54,19 @@ typed_alias_authority:
   accounting_abbreviation_expansion_allowed: false
   schema_source_config:
     path: config/schemas/sources.yaml
-    sha256: b00679e6c2ed9b1311a09424dcff81e8d016dd54fa09d884b011ad66b2d3e1f9
+    sha256: 67b4a9c6c97c4f418f903c6bb71fce40a4b285d716221b07d26d50ddd2c81523
   hierarchy_config:
     path: config/schemas/hierarchy_reference.yaml
-    sha256: 3815316ea91ceaac640d42767324dfbcffd3aa326638c2c5c27d4c599298b4c3
+    sha256: 1a872bc84fca47bb3b8dcc8083226da3bcaf2e7c30ce37bb5a456cfd9b93fc9f
   hierarchy_registry:
     path: data/registered/hierarchy_registry.json
-    sha256: f31277502d9e568e738e621ac9c749d18c2ec47dd3076f4ae51afb260a1ac99c
+    sha256: ca1f4a3f04e0ba7a48935f0d5a1ea0654f048e89785fdab486fb55445f200c7f
   tm_hierarchy_workbook:
     path: vst_level/vst_bank_detailed_notes_sheet.xlsx
     sha256: 6f322f7ba3b1b737643d21890b9bd51ea00224cea6ac65cfa41036d68ccd885b
   business_update_audits:
-    - path: data/registered/schema_business_update_5712_5713_5714_5718_6056.json
-      sha256: 7a3ead7aa1e0c3b998c5d597d8014379592488927525270998cfd9cc2ff7385b
+    - path: data/registered/schema_business_update_5712_5713_5714_5718_6060.json
+      sha256: 238ec78050917f10cab512e402685876fc3a52da95a6b504a108a9d9ac5d5229
   tm_projection_record_count: 2
   tm_projection_sha256: cea637baa097229d871656954f88902d4357915c44c9033f67372e70b9991ea1
 
@@ -112,7 +112,7 @@ local_completion:
 
 coverage:
   statement_type: TM
-  schema_item_count: 1701
+  schema_item_count: 1705
   completion_rule: EXACTLY_ONE_TERMINAL_OUTCOME_PER_SCHEMA_ID_PER_DOCUMENT
   terminal_outcomes:
     - OBSERVED_VALUE

@@ -47,14 +47,15 @@ __all__ = [
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-FORMAT_VERSION = "LOAN_INDUSTRY_8BANK_CODEX_VERIFIED_MAPPING_V1"
+FORMAT_VERSION = "LOAN_INDUSTRY_8BANK_CODEX_VERIFIED_MAPPING_V2"
 CLAIM_BOUNDARY = (
     "FIXED_EIGHT_DOCUMENT_COMPLETE_PDF_FRESH_VIETOCR_VARIABLE_LOAN_INDUSTRY_STRUCTURE_"
-    "PLUS_INDEPENDENT_CODEX_VISIBLE_PIXEL_ACCOUNTING_AND_LIVE_TM_SCHEMA_ONLY_NO_BROAD_"
-    "CORPUS_ABSENCE_CANONICALIZATION_EXPORT_OR_PRODUCTION_AUTHORITY"
+    "PLUS_INDEPENDENT_CODEX_VISIBLE_PIXEL_ACCOUNTING_PROJECT_OWNER_SCHEMA_ADJUDICATION_"
+    "AND_LIVE_TM_SCHEMA_ONLY_NO_BROAD_CORPUS_ABSENCE_CANONICALIZATION_EXPORT_OR_"
+    "PRODUCTION_AUTHORITY"
 )
 REVIEW_PATH = Path("docs/experiments/E-0055-loan-industry-8bank-codex-pixel-review-v1.json")
-REVIEW_SHA256 = "50b703f5594712a1b1b650d6a8a0a154f3f071ff644066f7fd9aa34c3e025da2"
+REVIEW_SHA256 = "a9bf502c0797fc848a2a34a7edf4fe4d1b22cbb8457718ddb00fb5fab365a11d"
 SEMANTIC_INDEX_PATH = Path(
     "output/development/loan-maturity-full-document-vietocr-v1/verified-index/semantic_index.json"
 )
@@ -93,8 +94,19 @@ _ROLE_BINDINGS: dict[str, tuple[int, str]] = {
         5749,
         "Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
     ),
+    "TRANSPORT_STORAGE": (736, "+ Vận tải kho bãi và thông tin liên lạc"),
+    "PUBLIC_ADMIN_DEFENCE_SOCIAL_SECURITY": (745, "+ Các ngành nghề khác"),
+    "PERSONAL_HOUSING_LOANS": (
+        6059,
+        "+ Cho vay cá nhân để mua nhà ở, nhận quyền sử dụng đất để xây nhà ở",
+    ),
+    "FOREIGN_BRANCH_LOANS": (
+        6058,
+        "+ Cho vay tại Chi nhánh và ngân hàng con nước ngoài",
+    ),
+    "BROAD_SERVICES": (6060, "+ Dịch vụ"),
 }
-_UNRESOLVED_ROLES: dict[str, tuple[int | None, str]] = {
+_REVIEW_UNRESOLVED_ROLES: dict[str, tuple[int | None, str]] = {
     "TRANSPORT_STORAGE": (
         736,
         "UNRESOLVED_SOURCE_TRANSPORT_ROW_NOT_EQUIVALENT_TO_COMBINED_TRANSPORT_AND_INFORMATION_SCHEMA_ROW",
@@ -116,6 +128,7 @@ _UNRESOLVED_ROLES: dict[str, tuple[int | None, str]] = {
         "UNRESOLVED_BROAD_SERVICES_NOT_EQUIVALENT_TO_PERSONAL_AND_COMMUNITY_SERVICES",
     ),
 }
+_UNRESOLVED_ROLES: dict[str, tuple[int | None, str]] = {}
 _NEGATIVE_FAMILIES = (
     (717, "Phân tích theo loại hình cho vay"),
     (746, "Phân tích chất lượng nợ cho vay"),
@@ -161,9 +174,10 @@ _AUTHORITY = {
     "live_tm_schema_hierarchy_and_negative_families_checked": True,
     "mapping_authority_is_bounded_to_reviewed_source_rows": True,
     "persisted_result_self_authenticating": False,
+    "project_owner_schema_adjudication_applied": True,
     "public_exact_replay_required": True,
     "text_similarity_alone_used_for_mapping": False,
-    "unmatched_or_non_equivalent_roles_preserved_unresolved": True,
+    "unmatched_or_non_equivalent_roles_preserved_unresolved": False,
 }
 _RESULT_FIELDS = {
     "authority",
@@ -353,7 +367,10 @@ def _review(value: Any) -> dict[str, Any]:
         "unit_pixel_transcriptions",
         "whole_document_family_absence_claim",
     }
-    allowed_roles = set(_ROLE_BINDINGS) | set(_UNRESOLVED_ROLES)
+    # The E-0055 pixel review predates the project-owner schema adjudication.
+    # Preserve its exact unresolved ledger while deriving the V2 mapping from
+    # the live @6060 schema below.
+    allowed_roles = set(_ROLE_BINDINGS) | set(_REVIEW_UNRESOLVED_ROLES)
     for document, expected_code in zip(value["documents"], EXPECTED_DOCUMENT_ORDER, strict=True):
         if (
             type(document) is not dict
@@ -406,7 +423,7 @@ def _review(value: Any) -> dict[str, Any]:
             or len(roles) < 5
             or len(roles) != len(set(roles))
             or any(role not in allowed_roles for role in roles)
-            or set(unresolved) != {role for role in roles if role in _UNRESOLVED_ROLES}
+            or set(unresolved) != {role for role in roles if role in _REVIEW_UNRESOLVED_ROLES}
         ):
             raise _error("review period/unit/role denominator drifted")
         context = document["statement_context_evidence"]
@@ -980,7 +997,7 @@ def build_loan_industry_8bank_codex_verified_mapping_v1(
                     "values": total_cells,
                 },
                 "statement_context": canonical_clone_v1(context),
-                "status": "PARTIAL_SCHEMA_MAPPING_VERIFIED_BY_CODEX",
+                "status": "SCHEMA_MAPPING_VERIFIED_BY_CODEX",
                 "target_render_sha256": review_document["target_render_sha256"],
                 "transformer_disagreements": canonical_clone_v1(
                     review_document["transformer_disagreements"]
@@ -998,7 +1015,7 @@ def build_loan_industry_8bank_codex_verified_mapping_v1(
             for trial in trials
         ),
         "document_unique_structure_count": sum(
-            trial["status"] == "PARTIAL_SCHEMA_MAPPING_VERIFIED_BY_CODEX" for trial in trials
+            trial["status"] == "SCHEMA_MAPPING_VERIFIED_BY_CODEX" for trial in trials
         ),
         "intermediate_source_only_total_verified_count": sum(
             len(trial.get("intermediate_totals", [])) for trial in trials
@@ -1047,7 +1064,7 @@ def build_loan_industry_8bank_codex_verified_mapping_v1(
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "li8bcv1:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": "li8bcv2:result:" + canonical_json_sha256_v1(material)}
     )
 
 
@@ -1067,7 +1084,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
         raise _error("verified loan-industry result identity/authority drifted")
     clone = canonical_clone_v1(value)
     result_id = clone.pop("result_id")
-    if result_id != "li8bcv1:result:" + canonical_json_sha256_v1(clone):
+    if result_id != "li8bcv2:result:" + canonical_json_sha256_v1(clone):
         raise _error("verified loan-industry result identity drifted")
     positive_fields = {
         "document_ordinal",
@@ -1132,7 +1149,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 raise _error("bounded no-match result trial drifted")
             continue
         if (
-            trial["status"] != "PARTIAL_SCHEMA_MAPPING_VERIFIED_BY_CODEX"
+            trial["status"] != "SCHEMA_MAPPING_VERIFIED_BY_CODEX"
             or set(trial) != positive_fields
             or type(trial["physical_page"]) is not int
             or trial["physical_page"] <= 0

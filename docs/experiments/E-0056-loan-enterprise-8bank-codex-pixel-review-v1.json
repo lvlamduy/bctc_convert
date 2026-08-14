@@ -1,0 +1,798 @@
+{
+  "format_version": "LOAN_ENTERPRISE_8BANK_CODEX_PIXEL_REVIEW_V1",
+  "state": "CODEX_PIXEL_REVIEW_COMPLETE",
+  "claim_boundary": "Independent visible-PDF review of every unique fresh-VietOCR customer-loan enterprise/customer-type region, grouped source-only nodes, typed dash evidence, accounting equations, and bounded no-full-match controls; no broad absence, export, or production authority.",
+  "semantic_index_sha256": "f84fd9ca56fe06af230e011ecad85b0a576e27e1eca32ee141e654a6776b78b4",
+  "semantic_axis_sha256": "e99873cd16a7234702d0ee6e5fa9eb37637a1a75621228381e3dbcd7c5cfdcca",
+  "reviewer": {
+    "kind": "CODEX_INDEPENDENT_PDF_PIXEL_REVIEW",
+    "review_run_id": "E-0056-2026-08-14-visible-pdf-review-v1"
+  },
+  "review_checks": [
+    "COMPLETE_PDF_REGION_ENUMERATION",
+    "VISIBLE_CONSOLIDATED_REPORT_SCOPE",
+    "CUSTOMER_LOAN_OWNER",
+    "ENTERPRISE_OR_CUSTOMER_TYPE_BRANCH",
+    "FLAT_OR_GROUPED_VISIBLE_ROW_GRAPH",
+    "PERIOD_AXIS",
+    "UNIT_SCOPE",
+    "ROW_LABEL_AND_ROLE",
+    "VALUE_GEOMETRY",
+    "EXACT_DIGITS_SIGN_DASH_AND_MISSING_CELL",
+    "SOURCE_GROUP_PARENT_CHILD_EQUATIONS",
+    "OPTIONAL_MARGIN_AND_CORE_GRAND_TOTAL_BOUNDARY",
+    "FINAL_TOTAL_ACCOUNTING_CLOSURE",
+    "PERCENTAGE_DISPLAY_ROUNDING_WHEN_PRESENT",
+    "SCHEMA_PARENT_CHILD_AND_DISPLAY_ORDER",
+    "NEGATIVE_DEPOSIT_FAMILY_CONTROL"
+  ],
+  "safety": {
+    "all_visible_cells_independently_reviewed": true,
+    "all_visible_row_labels_independently_reviewed": true,
+    "bank_or_page_used_as_matching_rule": false,
+    "dash_blank_missing_and_zero_kept_distinct": true,
+    "fresh_vietocr_used_as_pixel_truth": false,
+    "mapping_decided_by_text_similarity_alone": false,
+    "numeric_truth_source": "VISIBLE_PDF_PIXELS",
+    "old_ocr_used_as_semantic_text": false,
+    "review_can_assert_document_wide_family_absence": false,
+    "source_only_group_nodes_mapped_to_schema": false,
+    "unchanged_semantic_surfaces_attested_equal_to_pixels_except_recorded_disagreements": true
+  },
+  "documents": [
+    {
+      "document_provenance": "ACB",
+      "disposition": "NO_COMPLETE_REGION_IN_EXACT_FULL_DOCUMENT_FRESH_VIETOCR_SCAN",
+      "physical_page": null,
+      "target_render_sha256": null,
+      "matcher_graph_sha256": null,
+      "owner_pixel_transcription": null,
+      "branch_pixel_transcription": null,
+      "period_pixel_transcriptions": [],
+      "unit_pixel_transcriptions": [],
+      "reviewed_role_order": [],
+      "schema_unresolved_roles": [],
+      "statement_context_evidence": null,
+      "transformer_disagreements": [],
+      "source_group_equations": [],
+      "pixel_accounting": null,
+      "whole_document_family_absence_claim": false
+    },
+    {
+      "document_provenance": "MBB",
+      "disposition": "UNIQUE_COMPLETE_REGION_VISIBLE_PIXEL_REVIEWED",
+      "physical_page": 32,
+      "target_render_sha256": "9308f85dfd5cb55ff6ef53f27adc8e873f9e858e77cb1f73087b60fab5592638",
+      "matcher_graph_sha256": "aa6a520e03eaa8a7b77a78b005c7e7ba525a7484e459ac117ecfb6046189d6dc",
+      "owner_pixel_transcription": "Dư nợ cho vay khách hàng của Ngân hàng",
+      "branch_pixel_transcription": "Phân tích dư nợ cho vay theo đối tượng khách hàng và theo loại hình doanh nghiệp",
+      "period_pixel_transcriptions": [
+        "30/06/2026",
+        "31/12/2025"
+      ],
+      "unit_pixel_transcriptions": [
+        "Triệu đồng",
+        "%",
+        "Triệu đồng",
+        "%"
+      ],
+      "reviewed_role_order": [
+        "STATE_ENTERPRISE",
+        "STATE_OWNED_SINGLE_MEMBER_LLC",
+        "STATE_CONTROLLED_MULTI_MEMBER_LLC",
+        "OTHER_LLC",
+        "STATE_CONTROLLED_JOINT_STOCK",
+        "OTHER_JOINT_STOCK",
+        "PARTNERSHIP",
+        "FOREIGN_INVESTED_ENTERPRISE",
+        "COOPERATIVE",
+        "HOUSEHOLD_INDIVIDUAL",
+        "ADMIN_PUBLIC_ASSOCIATION",
+        "OTHER",
+        "FOREIGN_BRANCH_LOANS_SOURCE_ONLY",
+        "MARGIN_AND_SECURITIES_ADVANCE"
+      ],
+      "schema_unresolved_roles": [
+        "FOREIGN_BRANCH_LOANS_SOURCE_ONLY"
+      ],
+      "statement_context_evidence": {
+        "mode": "DOCUMENT_PRECEDING_VISIBLE_HEADING",
+        "physical_page": 9,
+        "render_sha256": "cc740491d62ede251f605b009ee1dc844d3ecca60e1a7a15184478d7acf45952",
+        "pixel_transcription": "THUYẾT MINH BÁO CÁO TÀI CHÍNH HỢP NHẤT",
+        "report_scope": "CONSOLIDATED"
+      },
+      "transformer_disagreements": [
+        {
+          "field": "ROW_LABEL",
+          "role": "STATE_CONTROLLED_JOINT_STOCK",
+          "lane_index": null,
+          "source_line_index": 35,
+          "semantic_proposal": "Công ty Cổ phận Vốn Nhà nước - 50% (Nhà nước chiếm cổ phần chi phối)",
+          "pixel_transcription": "Công ty Cổ phần Vốn Nhà nước > 50% (Nhà nước chiếm cổ phần chi phối)",
+          "pixel_binding": null,
+          "disposition": "PIXEL_TEXT_RETAINED_FOR_SCHEMA_REVIEW"
+        },
+        {
+          "field": "ROW_LABEL",
+          "role": "OTHER_JOINT_STOCK",
+          "lane_index": null,
+          "source_line_index": 41,
+          "semantic_proposal": "Công ty có phần khác",
+          "pixel_transcription": "Công ty cổ phần khác",
+          "pixel_binding": null,
+          "disposition": "PIXEL_TEXT_RETAINED_FOR_SCHEMA_REVIEW"
+        },
+        {
+          "field": "ROW_LABEL",
+          "role": "ADMIN_PUBLIC_ASSOCIATION",
+          "lane_index": null,
+          "source_line_index": 76,
+          "semantic_proposal": "Đơn vị nành chính sự nghiệp, Đoàn thể và hiệp hội",
+          "pixel_transcription": "Đơn vị hành chính sự nghiệp, Đoàn thể và Hiệp hội",
+          "pixel_binding": null,
+          "disposition": "PIXEL_TEXT_RETAINED_FOR_SCHEMA_REVIEW"
+        },
+        {
+          "field": "ROW_LABEL",
+          "role": "MARGIN_AND_SECURITIES_ADVANCE",
+          "lane_index": null,
+          "source_line_index": 107,
+          "semantic_proposal": "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MB5",
+          "pixel_transcription": "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS",
+          "pixel_binding": null,
+          "disposition": "PIXEL_TEXT_RETAINED_FOR_SCHEMA_REVIEW"
+        },
+        {
+          "field": "ROW_VALUE",
+          "role": "OTHER_LLC",
+          "lane_index": 3,
+          "source_line_index": 34,
+          "semantic_proposal": "17.15",
+          "pixel_transcription": "17,15",
+          "pixel_binding": null,
+          "disposition": "PIXEL_DECIMAL_SEPARATOR_RETAINED"
+        },
+        {
+          "field": "ROW_VALUE",
+          "role": "FOREIGN_INVESTED_ENTERPRISE",
+          "lane_index": 1,
+          "source_line_index": 53,
+          "semantic_proposal": "4.13",
+          "pixel_transcription": "4,13",
+          "pixel_binding": null,
+          "disposition": "PIXEL_DECIMAL_SEPARATOR_RETAINED"
+        },
+        {
+          "field": "ROW_VALUE",
+          "role": "COOPERATIVE",
+          "lane_index": 3,
+          "source_line_index": 60,
+          "semantic_proposal": "0.02",
+          "pixel_transcription": "0,02",
+          "pixel_binding": null,
+          "disposition": "PIXEL_DECIMAL_SEPARATOR_RETAINED"
+        },
+        {
+          "field": "ROW_VALUE",
+          "role": "ADMIN_PUBLIC_ASSOCIATION",
+          "lane_index": 1,
+          "source_line_index": 79,
+          "semantic_proposal": "0.03",
+          "pixel_transcription": "0,03",
+          "pixel_binding": null,
+          "disposition": "PIXEL_DECIMAL_SEPARATOR_RETAINED"
+        },
+        {
+          "field": "ROW_VALUE",
+          "role": "MARGIN_AND_SECURITIES_ADVANCE",
+          "lane_index": 1,
+          "source_line_index": 109,
+          "semantic_proposal": "1.37",
+          "pixel_transcription": "1,37",
+          "pixel_binding": null,
+          "disposition": "PIXEL_DECIMAL_SEPARATOR_RETAINED"
+        },
+        {
+          "field": "ROW_VALUE",
+          "role": "MARGIN_AND_SECURITIES_ADVANCE",
+          "lane_index": 3,
+          "source_line_index": 111,
+          "semantic_proposal": "1.39",
+          "pixel_transcription": "1,39",
+          "pixel_binding": null,
+          "disposition": "PIXEL_DECIMAL_SEPARATOR_RETAINED"
+        }
+      ],
+      "source_group_equations": [
+        {
+          "kind": "PARENT_EQUALS_GRAPH_CHILD_ROLES",
+          "source_label": "Cho vay các TCKT",
+          "child_roles": [
+            "STATE_ENTERPRISE",
+            "STATE_OWNED_SINGLE_MEMBER_LLC",
+            "STATE_CONTROLLED_MULTI_MEMBER_LLC",
+            "OTHER_LLC",
+            "STATE_CONTROLLED_JOINT_STOCK",
+            "OTHER_JOINT_STOCK",
+            "PARTNERSHIP",
+            "FOREIGN_INVESTED_ENTERPRISE",
+            "COOPERATIVE"
+          ],
+          "child_source_labels": [],
+          "source_only_child_values": [],
+          "visible_values": [
+            "721497618",
+            "58.79",
+            "621056253",
+            "57.28"
+          ],
+          "status": "CORROBORATED_VISIBLE_PARENT_CHILD_EQUATION"
+        },
+        {
+          "kind": "PARENT_EQUALS_GRAPH_CHILD_ROLES",
+          "source_label": "Cho vay cá nhân",
+          "child_roles": [
+            "HOUSEHOLD_INDIVIDUAL"
+          ],
+          "child_source_labels": [],
+          "source_only_child_values": [],
+          "visible_values": [
+            "478995719",
+            "39.01",
+            "437686958",
+            "40.38"
+          ],
+          "status": "CORROBORATED_VISIBLE_PARENT_CHILD_EQUATION"
+        },
+        {
+          "kind": "PARENT_EQUALS_GRAPH_CHILD_ROLES",
+          "source_label": "Cho vay khác",
+          "child_roles": [
+            "ADMIN_PUBLIC_ASSOCIATION",
+            "OTHER"
+          ],
+          "child_source_labels": [],
+          "source_only_child_values": [],
+          "visible_values": [
+            "937382",
+            "0.08",
+            "904945",
+            "0.09"
+          ],
+          "status": "CORROBORATED_VISIBLE_PARENT_CHILD_EQUATION"
+        },
+        {
+          "kind": "PARENT_EQUALS_SOURCE_ONLY_CHILDREN",
+          "source_label": "Cho vay tại Chi nhánh và ngân hàng con nước ngoài",
+          "child_roles": [],
+          "child_source_labels": [
+            "Cho vay Doanh nghiệp",
+            "Cho vay cá nhân"
+          ],
+          "source_only_child_values": [
+            [
+              "2121916",
+              "0.17",
+              "2176885",
+              "0.20"
+            ],
+            [
+              "7173788",
+              "0.58",
+              "7153744",
+              "0.66"
+            ]
+          ],
+          "visible_values": [
+            "9295704",
+            "0.75",
+            "9330629",
+            "0.86"
+          ],
+          "status": "CORROBORATED_VISIBLE_PARENT_CHILD_EQUATION"
+        },
+        {
+          "kind": "CORE_SUBTOTAL_EQUALS_POPULATION_BRANCHES",
+          "source_label": "UNLABELED_CORE_SUBTOTAL",
+          "child_roles": [],
+          "child_source_labels": [
+            "Cho vay các TCKT",
+            "Cho vay cá nhân",
+            "Cho vay khác",
+            "Cho vay tại Chi nhánh và ngân hàng con nước ngoài"
+          ],
+          "source_only_child_values": [],
+          "visible_values": [
+            "1210726423",
+            "98.63",
+            "1068978785",
+            "98.61"
+          ],
+          "status": "CORROBORATED_VISIBLE_PARENT_CHILD_EQUATION"
+        },
+        {
+          "kind": "GRAND_TOTAL_EQUALS_CORE_PLUS_MARGIN",
+          "source_label": "UNLABELED_GRAND_TOTAL",
+          "child_roles": [
+            "MARGIN_AND_SECURITIES_ADVANCE"
+          ],
+          "child_source_labels": [
+            "UNLABELED_CORE_SUBTOTAL"
+          ],
+          "source_only_child_values": [],
+          "visible_values": [
+            "1227554477",
+            "100.00",
+            "1084019370",
+            "100.00"
+          ],
+          "status": "CORROBORATED_VISIBLE_PARENT_CHILD_EQUATION"
+        }
+      ],
+      "pixel_accounting": {
+        "row_count": 14,
+        "money_lane_sums": [
+          "1227554477",
+          "1084019370"
+        ],
+        "printed_money_totals": [
+          "1227554477",
+          "1084019370"
+        ],
+        "percentage_lane_sums": [
+          "100.00",
+          "100.00"
+        ],
+        "printed_percentage_totals": [
+          "100.00",
+          "100.00"
+        ],
+        "maximum_percentage_rounding_residual": "0.00",
+        "typed_dash_cells": [],
+        "intermediate_core_money_totals": [
+          [
+            "1210726423",
+            "1068978785"
+          ]
+        ]
+      },
+      "whole_document_family_absence_claim": false
+    },
+    {
+      "document_provenance": "VPB",
+      "disposition": "UNIQUE_COMPLETE_REGION_VISIBLE_PIXEL_REVIEWED",
+      "physical_page": 43,
+      "target_render_sha256": "e7bca4f966ca89dad1852574944a555f244d7cd53c0ef50d7a823786acfb5f0e",
+      "matcher_graph_sha256": "ee5ce61f97a46fe27950a711334b89eff1a70fb88d65f007df5ce2b89d73d9cd",
+      "owner_pixel_transcription": "CHO VAY KHÁCH HÀNG (tiếp theo)",
+      "branch_pixel_transcription": "Phân tích dư nợ cho vay theo đối tượng khách hàng và theo loại hình doanh nghiệp",
+      "period_pixel_transcriptions": [
+        "31/03/2026",
+        "31/12/2025"
+      ],
+      "unit_pixel_transcriptions": [
+        "Triệu đồng",
+        "%",
+        "Triệu đồng",
+        "%"
+      ],
+      "reviewed_role_order": [
+        "STATE_ENTERPRISE",
+        "STATE_OWNED_SINGLE_MEMBER_LLC",
+        "STATE_CONTROLLED_MULTI_MEMBER_LLC",
+        "OTHER_LLC",
+        "STATE_CONTROLLED_JOINT_STOCK",
+        "OTHER_JOINT_STOCK",
+        "PARTNERSHIP",
+        "PRIVATE_ENTERPRISE",
+        "FOREIGN_INVESTED_ENTERPRISE",
+        "COOPERATIVE",
+        "HOUSEHOLD_INDIVIDUAL",
+        "ADMIN_PUBLIC_ASSOCIATION",
+        "OTHER",
+        "MARGIN_AND_SECURITIES_ADVANCE"
+      ],
+      "schema_unresolved_roles": [],
+      "statement_context_evidence": {
+        "mode": "PAGE_LOCAL_VISIBLE_HEADING",
+        "physical_page": 43,
+        "render_sha256": "e7bca4f966ca89dad1852574944a555f244d7cd53c0ef50d7a823786acfb5f0e",
+        "pixel_transcription": "THUYẾT MINH BÁO CÁO TÀI CHÍNH HỢP NHẤT GIỮA NIÊN ĐỘ (tiếp theo)",
+        "report_scope": "CONSOLIDATED"
+      },
+      "transformer_disagreements": [
+        {
+          "field": "ROW_LABEL",
+          "role": "STATE_CONTROLLED_JOINT_STOCK",
+          "lane_index": null,
+          "source_line_index": 39,
+          "semantic_proposal": "Công ty cổ phần có vốn góp của Nhà nước trên 50% vốn điều lệ hoặc tổng số cổ phần có quyền biểu quyết: hoặc nhà nước giữ quyền chi phối trong Điều lệ của công ty",
+          "pixel_transcription": "Công ty cổ phần có vốn góp của Nhà nước trên 50% vốn điều lệ hoặc tổng số cổ phần có quyền biểu quyết; hoặc Nhà nước giữ quyền chi phối trong Điều lệ của công ty",
+          "pixel_binding": null,
+          "disposition": "PIXEL_TEXT_RETAINED_FOR_SCHEMA_REVIEW"
+        },
+        {
+          "field": "ROW_VALUE",
+          "role": "OTHER_LLC",
+          "lane_index": 1,
+          "source_line_index": 36,
+          "semantic_proposal": "32.38",
+          "pixel_transcription": "32,38",
+          "pixel_binding": null,
+          "disposition": "PIXEL_DECIMAL_SEPARATOR_RETAINED"
+        },
+        {
+          "field": "ROW_VALUE",
+          "role": "OTHER_LLC",
+          "lane_index": 3,
+          "source_line_index": 38,
+          "semantic_proposal": "30.73",
+          "pixel_transcription": "30,73",
+          "pixel_binding": null,
+          "disposition": "PIXEL_DECIMAL_SEPARATOR_RETAINED"
+        },
+        {
+          "field": "ROW_VALUE",
+          "role": "STATE_CONTROLLED_JOINT_STOCK",
+          "lane_index": 1,
+          "source_line_index": 44,
+          "semantic_proposal": "0.02",
+          "pixel_transcription": "0,02",
+          "pixel_binding": null,
+          "disposition": "PIXEL_DECIMAL_SEPARATOR_RETAINED"
+        },
+        {
+          "field": "ROW_VALUE",
+          "role": "HOUSEHOLD_INDIVIDUAL",
+          "lane_index": 3,
+          "source_line_index": 76,
+          "semantic_proposal": "40.48",
+          "pixel_transcription": "40,48",
+          "pixel_binding": null,
+          "disposition": "PIXEL_DECIMAL_SEPARATOR_RETAINED"
+        },
+        {
+          "field": "ROW_VALUE",
+          "role": "OTHER",
+          "lane_index": 0,
+          "source_line_index": 84,
+          "semantic_proposal": "2",
+          "pixel_transcription": "2",
+          "pixel_binding": null,
+          "disposition": "PIXEL_VALUE_BINDS_SEMANTIC_LINE_OUTSIDE_CURRENT_ROW_BAND"
+        },
+        {
+          "field": "ROW_VALUE",
+          "role": "OTHER",
+          "lane_index": 2,
+          "source_line_index": 86,
+          "semantic_proposal": "2",
+          "pixel_transcription": "2",
+          "pixel_binding": null,
+          "disposition": "PIXEL_VALUE_BINDS_SEMANTIC_LINE_OUTSIDE_CURRENT_ROW_BAND"
+        },
+        {
+          "field": "ROW_VALUE",
+          "role": "MARGIN_AND_SECURITIES_ADVANCE",
+          "lane_index": 1,
+          "source_line_index": 91,
+          "semantic_proposal": "3.49",
+          "pixel_transcription": "3,49",
+          "pixel_binding": null,
+          "disposition": "PIXEL_DECIMAL_SEPARATOR_RETAINED"
+        },
+        {
+          "field": "ROW_VALUE",
+          "role": "MARGIN_AND_SECURITIES_ADVANCE",
+          "lane_index": 3,
+          "source_line_index": 93,
+          "semantic_proposal": "3.61",
+          "pixel_transcription": "3,61",
+          "pixel_binding": null,
+          "disposition": "PIXEL_DECIMAL_SEPARATOR_RETAINED"
+        }
+      ],
+      "source_group_equations": [],
+      "pixel_accounting": {
+        "row_count": 14,
+        "money_lane_sums": [
+          "1040917216",
+          "943901630"
+        ],
+        "printed_money_totals": [
+          "1040917216",
+          "943901630"
+        ],
+        "percentage_lane_sums": [
+          "100.00",
+          "100.00"
+        ],
+        "printed_percentage_totals": [
+          "100.00",
+          "100.00"
+        ],
+        "maximum_percentage_rounding_residual": "0.00",
+        "typed_dash_cells": [],
+        "intermediate_core_money_totals": []
+      },
+      "whole_document_family_absence_claim": false
+    },
+    {
+      "document_provenance": "HDB",
+      "disposition": "UNIQUE_COMPLETE_REGION_VISIBLE_PIXEL_REVIEWED",
+      "physical_page": 26,
+      "target_render_sha256": "a90ca4dfbd71893233554eb78e3e866526e19edba6eddd1a9ba9e51398847009",
+      "matcher_graph_sha256": "3b81bc38cd8ae0f1a0c379f5ea8f895c95c37b5bbec79f0c248f07e585b83fb4",
+      "owner_pixel_transcription": "Cho vay khách hàng",
+      "branch_pixel_transcription": "Phân tích dư nợ cho vay theo đối tượng khách hàng",
+      "period_pixel_transcriptions": [
+        "Số cuối kỳ",
+        "Số đầu kỳ"
+      ],
+      "unit_pixel_transcriptions": [
+        "Triệu VND",
+        "Triệu VND"
+      ],
+      "reviewed_role_order": [
+        "OTHER_LLC",
+        "HOUSEHOLD_INDIVIDUAL",
+        "OTHER_JOINT_STOCK",
+        "FOREIGN_INVESTED_ENTERPRISE",
+        "STATE_ENTERPRISE",
+        "COOPERATIVE",
+        "PRIVATE_ENTERPRISE",
+        "OTHER"
+      ],
+      "schema_unresolved_roles": [],
+      "statement_context_evidence": {
+        "mode": "DOCUMENT_PRECEDING_VISIBLE_HEADING",
+        "physical_page": 11,
+        "render_sha256": "d2eefe13da7b51390cf9b16a0e0ad1b5f177af62907c857907143121c0d2eb8c",
+        "pixel_transcription": "THUYẾT MINH BÁO CÁO TÀI CHÍNH HỢP NHẤT",
+        "report_scope": "CONSOLIDATED"
+      },
+      "transformer_disagreements": [
+        {
+          "field": "ROW_VALUE",
+          "role": "PRIVATE_ENTERPRISE",
+          "lane_index": 0,
+          "source_line_index": null,
+          "semantic_proposal": null,
+          "pixel_transcription": "-",
+          "pixel_binding": {
+            "bbox_raw_pixels": [
+              1234,
+              1755,
+              1253,
+              1773
+            ],
+            "rgb_sha256": "599a2c07ee5e4072e51f66057edebb4557f8662ed98c51c0f4ef31b5727b9570"
+          },
+          "disposition": "VISIBLE_PIXEL_DASH_WITHOUT_SEMANTIC_LINE_GEOMETRY"
+        }
+      ],
+      "source_group_equations": [],
+      "pixel_accounting": {
+        "row_count": 8,
+        "money_lane_sums": [
+          "659000255",
+          "546370779"
+        ],
+        "printed_money_totals": [
+          "659000255",
+          "546370779"
+        ],
+        "percentage_lane_sums": [],
+        "printed_percentage_totals": [],
+        "maximum_percentage_rounding_residual": "0.00",
+        "typed_dash_cells": [
+          {
+            "role": "PRIVATE_ENTERPRISE",
+            "lane_index": 0,
+            "status": "DASH"
+          }
+        ],
+        "intermediate_core_money_totals": []
+      },
+      "whole_document_family_absence_claim": false
+    },
+    {
+      "document_provenance": "VCB",
+      "disposition": "NO_COMPLETE_REGION_IN_EXACT_FULL_DOCUMENT_FRESH_VIETOCR_SCAN",
+      "physical_page": null,
+      "target_render_sha256": null,
+      "matcher_graph_sha256": null,
+      "owner_pixel_transcription": null,
+      "branch_pixel_transcription": null,
+      "period_pixel_transcriptions": [],
+      "unit_pixel_transcriptions": [],
+      "reviewed_role_order": [],
+      "schema_unresolved_roles": [],
+      "statement_context_evidence": null,
+      "transformer_disagreements": [],
+      "source_group_equations": [],
+      "pixel_accounting": null,
+      "whole_document_family_absence_claim": false
+    },
+    {
+      "document_provenance": "CTG",
+      "disposition": "NO_COMPLETE_REGION_IN_EXACT_FULL_DOCUMENT_FRESH_VIETOCR_SCAN",
+      "physical_page": null,
+      "target_render_sha256": null,
+      "matcher_graph_sha256": null,
+      "owner_pixel_transcription": null,
+      "branch_pixel_transcription": null,
+      "period_pixel_transcriptions": [],
+      "unit_pixel_transcriptions": [],
+      "reviewed_role_order": [],
+      "schema_unresolved_roles": [],
+      "statement_context_evidence": null,
+      "transformer_disagreements": [],
+      "source_group_equations": [],
+      "pixel_accounting": null,
+      "whole_document_family_absence_claim": false
+    },
+    {
+      "document_provenance": "BID",
+      "disposition": "NO_COMPLETE_REGION_IN_EXACT_FULL_DOCUMENT_FRESH_VIETOCR_SCAN",
+      "physical_page": null,
+      "target_render_sha256": null,
+      "matcher_graph_sha256": null,
+      "owner_pixel_transcription": null,
+      "branch_pixel_transcription": null,
+      "period_pixel_transcriptions": [],
+      "unit_pixel_transcriptions": [],
+      "reviewed_role_order": [],
+      "schema_unresolved_roles": [],
+      "statement_context_evidence": null,
+      "transformer_disagreements": [],
+      "source_group_equations": [],
+      "pixel_accounting": null,
+      "whole_document_family_absence_claim": false
+    },
+    {
+      "document_provenance": "VIB",
+      "disposition": "UNIQUE_COMPLETE_REGION_VISIBLE_PIXEL_REVIEWED",
+      "physical_page": 34,
+      "target_render_sha256": "8543533c65542b041d6d5f1732b7d0c93d90de41e0df1b8c398a882652aa79ae",
+      "matcher_graph_sha256": "78c0494a725f3884ba2759db239922558affc4295a64e710d07a8d396d7c8159",
+      "owner_pixel_transcription": "CHO VAY KHÁCH HÀNG (tiếp theo)",
+      "branch_pixel_transcription": "Phân tích dư nợ theo đối tượng khách hàng, loại hình doanh nghiệp",
+      "period_pixel_transcriptions": [
+        "30/06/2026",
+        "31/12/2025"
+      ],
+      "unit_pixel_transcriptions": [
+        "triệu đồng",
+        "%",
+        "triệu đồng",
+        "%"
+      ],
+      "reviewed_role_order": [
+        "STATE_ENTERPRISE",
+        "STATE_OWNED_SINGLE_MEMBER_LLC",
+        "OTHER_LLC",
+        "STATE_CONTROLLED_JOINT_STOCK",
+        "OTHER_JOINT_STOCK",
+        "FOREIGN_INVESTED_ENTERPRISE",
+        "HOUSEHOLD_INDIVIDUAL",
+        "OTHER"
+      ],
+      "schema_unresolved_roles": [],
+      "statement_context_evidence": {
+        "mode": "PAGE_LOCAL_VISIBLE_HEADING",
+        "physical_page": 34,
+        "render_sha256": "8543533c65542b041d6d5f1732b7d0c93d90de41e0df1b8c398a882652aa79ae",
+        "pixel_transcription": "THUYẾT MINH BÁO CÁO TÀI CHÍNH HỢP NHẤT GIỮA NIÊN ĐỘ (tiếp theo)",
+        "report_scope": "CONSOLIDATED"
+      },
+      "transformer_disagreements": [
+        {
+          "field": "ROW_VALUE",
+          "role": "STATE_ENTERPRISE",
+          "lane_index": 1,
+          "source_line_index": 16,
+          "semantic_proposal": "0.42",
+          "pixel_transcription": "0,42",
+          "pixel_binding": null,
+          "disposition": "PIXEL_DECIMAL_SEPARATOR_RETAINED"
+        },
+        {
+          "field": "ROW_VALUE",
+          "role": "STATE_ENTERPRISE",
+          "lane_index": 3,
+          "source_line_index": 18,
+          "semantic_proposal": "0.43",
+          "pixel_transcription": "0,43",
+          "pixel_binding": null,
+          "disposition": "PIXEL_DECIMAL_SEPARATOR_RETAINED"
+        },
+        {
+          "field": "ROW_VALUE",
+          "role": "OTHER_LLC",
+          "lane_index": 1,
+          "source_line_index": 28,
+          "semantic_proposal": "7.33",
+          "pixel_transcription": "7,33",
+          "pixel_binding": null,
+          "disposition": "PIXEL_DECIMAL_SEPARATOR_RETAINED"
+        },
+        {
+          "field": "ROW_VALUE",
+          "role": "STATE_CONTROLLED_JOINT_STOCK",
+          "lane_index": 1,
+          "source_line_index": 37,
+          "semantic_proposal": "0.44",
+          "pixel_transcription": "0,44",
+          "pixel_binding": null,
+          "disposition": "PIXEL_DECIMAL_SEPARATOR_RETAINED"
+        },
+        {
+          "field": "ROW_VALUE",
+          "role": "STATE_CONTROLLED_JOINT_STOCK",
+          "lane_index": 3,
+          "source_line_index": 39,
+          "semantic_proposal": "0.52",
+          "pixel_transcription": "0,52",
+          "pixel_binding": null,
+          "disposition": "PIXEL_DECIMAL_SEPARATOR_RETAINED"
+        },
+        {
+          "field": "ROW_VALUE",
+          "role": "OTHER_JOINT_STOCK",
+          "lane_index": 0,
+          "source_line_index": 41,
+          "semantic_proposal": "97.043.85",
+          "pixel_transcription": "97.043.851",
+          "pixel_binding": null,
+          "disposition": "PIXEL_DIGITS_REPLACE_OCR_PROPOSAL_FOR_INDEPENDENT_REVIEW_ONLY"
+        },
+        {
+          "field": "ROW_VALUE",
+          "role": "HOUSEHOLD_INDIVIDUAL",
+          "lane_index": 1,
+          "source_line_index": 52,
+          "semantic_proposal": "65.80",
+          "pixel_transcription": "65,80",
+          "pixel_binding": null,
+          "disposition": "PIXEL_DECIMAL_SEPARATOR_RETAINED"
+        },
+        {
+          "field": "ROW_VALUE",
+          "role": "OTHER",
+          "lane_index": 1,
+          "source_line_index": 57,
+          "semantic_proposal": "0.00",
+          "pixel_transcription": "0,00",
+          "pixel_binding": null,
+          "disposition": "PIXEL_DECIMAL_SEPARATOR_RETAINED"
+        }
+      ],
+      "source_group_equations": [],
+      "pixel_accounting": {
+        "row_count": 8,
+        "money_lane_sums": [
+          "397083447",
+          "381972016"
+        ],
+        "printed_money_totals": [
+          "397083447",
+          "381972016"
+        ],
+        "percentage_lane_sums": [
+          "100.00",
+          "100.00"
+        ],
+        "printed_percentage_totals": [
+          "100.00",
+          "100.00"
+        ],
+        "maximum_percentage_rounding_residual": "0.00",
+        "typed_dash_cells": [],
+        "intermediate_core_money_totals": []
+      },
+      "whole_document_family_absence_claim": false
+    }
+  ]
+}
