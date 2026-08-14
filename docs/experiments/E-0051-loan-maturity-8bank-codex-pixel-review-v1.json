@@ -1,0 +1,305 @@
+{
+  "format_version": "LOAN_MATURITY_8BANK_CODEX_PIXEL_REVIEW_V1",
+  "state": "CODEX_PIXEL_REVIEW_COMPLETE",
+  "claim_boundary": "INDEPENDENT_SOURCE_PDF_PIXEL_TRANSCRIPTION_ACCOUNTING_CLOSURE_AND_SCHEMA_HIERARCHY_REVIEW_FOR_THE_UNIQUE_EIGHT_DOCUMENT_LOAN_MATURITY_GRAPHS_ONLY_NO_BROAD_CORPUS_CANONICALIZATION_EXPORT_OR_PRODUCTION_AUTHORITY",
+  "semantic_index_sha256": "f84fd9ca56fe06af230e011ecad85b0a576e27e1eca32ee141e654a6776b78b4",
+  "semantic_axis_sha256": "e99873cd16a7234702d0ee6e5fa9eb37637a1a75621228381e3dbcd7c5cfdcca",
+  "reviewer": {
+    "kind": "CODEX_INDEPENDENT_PDF_PIXEL_AND_ACCOUNTING_REVIEW",
+    "review_run_id": "codex-20260814-full-document-loan-maturity-8bank-v1"
+  },
+  "banks": [
+    {
+      "bank_code": "ACB",
+      "physical_page": 18,
+      "target_render_sha256": "f873f85c3496d56042a79731e51b5c56bb3d912c4ab95c18bd7ee54aafa00a81",
+      "statement_context_evidence": {
+        "mode": "PAGE_LOCAL_VISIBLE_HEADING",
+        "physical_page": 18,
+        "render_sha256": "f873f85c3496d56042a79731e51b5c56bb3d912c4ab95c18bd7ee54aafa00a81",
+        "pixel_transcription": "THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT",
+        "report_scope": "CONSOLIDATED"
+      },
+      "owner_evidence": {
+        "physical_page": 17,
+        "render_sha256": "f0f9cc2c892a09240f139b28dea4e9268ac909031721cfa4bb87524c5cf77979",
+        "pixel_transcription": "4. CHO VAY KHÁCH HÀNG:"
+      },
+      "branch_pixel_transcription": "Phân tích dư nợ theo thời gian",
+      "period_pixel_transcriptions": ["30.6.2026", "31.12.2025"],
+      "unit_lane_types": ["MONEY", "MONEY"],
+      "rows": [
+        {"role": "SHORT_TERM", "pixel_label": "Cho vay ngắn hạn", "values": ["465.850.819", "444.709.964"]},
+        {"role": "MEDIUM_TERM", "pixel_label": "Cho vay trung hạn", "values": ["23.334.200", "21.569.837"]},
+        {"role": "LONG_TERM", "pixel_label": "Cho vay dài hạn", "values": ["256.574.284", "220.497.551"]}
+      ],
+      "core_total": ["745.759.303", "686.777.352"],
+      "optional_margin": null,
+      "grand_total": [],
+      "transformer_disagreements": [
+        {
+          "field": "MEDIUM_TERM_LABEL",
+          "semantic_proposal": "Cho vay trùng hạn",
+          "pixel_transcription": "Cho vay trung hạn",
+          "disposition": "ACCENT_ONLY_NORMALIZES_IDENTICALLY"
+        }
+      ]
+    },
+    {
+      "bank_code": "MBB",
+      "physical_page": 31,
+      "target_render_sha256": "f253a2af180ad5e0a2e4c82600a89f43889a94f503b95ce623e68f10a6a53ba2",
+      "statement_context_evidence": {
+        "mode": "DOCUMENT_PRECEDING_VISIBLE_HEADING",
+        "physical_page": 9,
+        "render_sha256": "cc740491d62ede251f605b009ee1dc844d3ecca60e1a7a15184478d7acf45952",
+        "pixel_transcription": "THUYẾT MINH BÁO CÁO TÀI CHÍNH HỢP NHẤT",
+        "report_scope": "CONSOLIDATED"
+      },
+      "owner_evidence": {
+        "physical_page": 31,
+        "render_sha256": "f253a2af180ad5e0a2e4c82600a89f43889a94f503b95ce623e68f10a6a53ba2",
+        "pixel_transcription": "5. Cho vay khách hàng"
+      },
+      "branch_pixel_transcription": "Phân tích dư nợ theo thời gian:",
+      "period_pixel_transcriptions": ["30/06/2026", "31/12/2025"],
+      "unit_lane_types": ["MONEY", "MONEY"],
+      "rows": [
+        {"role": "SHORT_TERM", "pixel_label": "Nợ ngắn hạn", "values": ["603.040.884", "587.136.924"]},
+        {"role": "MEDIUM_TERM", "pixel_label": "Nợ trung hạn", "values": ["159.277.634", "127.883.727"]},
+        {"role": "LONG_TERM", "pixel_label": "Nợ dài hạn", "values": ["448.407.905", "353.958.134"]}
+      ],
+      "core_total": ["1.210.726.423", "1.068.978.785"],
+      "optional_margin": {
+        "pixel_label": "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS",
+        "values": ["16.828.054", "15.040.585"]
+      },
+      "grand_total": ["1.227.554.477", "1.084.019.370"],
+      "transformer_disagreements": [
+        {
+          "field": "MEDIUM_TERM_LABEL",
+          "semantic_proposal": "Nợ trùng hạn",
+          "pixel_transcription": "Nợ trung hạn",
+          "disposition": "ACCENT_ONLY_NORMALIZES_IDENTICALLY"
+        }
+      ]
+    },
+    {
+      "bank_code": "VPB",
+      "physical_page": 42,
+      "target_render_sha256": "cc6c66ad90a801380b011b4ca77543fa5b27feed417ceea72f7835a5e3d6e665",
+      "statement_context_evidence": {
+        "mode": "PAGE_LOCAL_VISIBLE_HEADING",
+        "physical_page": 42,
+        "render_sha256": "cc6c66ad90a801380b011b4ca77543fa5b27feed417ceea72f7835a5e3d6e665",
+        "pixel_transcription": "THUYẾT MINH BÁO CÁO TÀI CHÍNH HỢP NHẤT GIỮA NIÊN ĐỘ (tiếp theo)",
+        "report_scope": "CONSOLIDATED"
+      },
+      "owner_evidence": {
+        "physical_page": 42,
+        "render_sha256": "cc6c66ad90a801380b011b4ca77543fa5b27feed417ceea72f7835a5e3d6e665",
+        "pixel_transcription": "10. CHO VAY KHÁCH HÀNG"
+      },
+      "branch_pixel_transcription": "10.2 Phân tích dư nợ theo thời gian cho vay ban đầu",
+      "period_pixel_transcriptions": ["Ngày 31 tháng 3 năm 2026", "Ngày 31 tháng 12 năm 2025"],
+      "unit_lane_types": ["MONEY", "MONEY"],
+      "rows": [
+        {"role": "SHORT_TERM", "pixel_label": "Nợ ngắn hạn", "values": ["377.904.572", "341.736.692"]},
+        {"role": "MEDIUM_TERM", "pixel_label": "Nợ trung hạn", "values": ["344.829.202", "329.817.543"]},
+        {"role": "LONG_TERM", "pixel_label": "Nợ dài hạn", "values": ["281.905.397", "238.254.176"]}
+      ],
+      "core_total": [],
+      "optional_margin": {
+        "pixel_label": "Cho vay giao dịch ký quỹ và ứng trước cho khách hàng",
+        "values": ["36.278.045", "34.093.219"]
+      },
+      "grand_total": ["1.040.917.216", "943.901.630"],
+      "transformer_disagreements": []
+    },
+    {
+      "bank_code": "HDB",
+      "physical_page": 26,
+      "target_render_sha256": "a90ca4dfbd71893233554eb78e3e866526e19edba6eddd1a9ba9e51398847009",
+      "statement_context_evidence": {
+        "mode": "DOCUMENT_PRECEDING_VISIBLE_HEADING",
+        "physical_page": 11,
+        "render_sha256": "d2eefe13da7b51390cf9b16a0e0ad1b5f177af62907c857907143121c0d2eb8c",
+        "pixel_transcription": "THUYẾT MINH BÁO CÁO TÀI CHÍNH HỢP NHẤT",
+        "report_scope": "CONSOLIDATED"
+      },
+      "owner_evidence": {
+        "physical_page": 26,
+        "render_sha256": "a90ca4dfbd71893233554eb78e3e866526e19edba6eddd1a9ba9e51398847009",
+        "pixel_transcription": "Cho vay khách hàng"
+      },
+      "branch_pixel_transcription": "Phân tích dư nợ cho vay theo thời hạn gốc của khoản vay",
+      "period_pixel_transcriptions": ["Số cuối kỳ", "Số đầu kỳ"],
+      "unit_lane_types": ["MONEY", "MONEY"],
+      "rows": [
+        {"role": "SHORT_TERM", "pixel_label": "Nợ ngắn hạn", "values": ["317.944.873", "270.919.421"]},
+        {"role": "MEDIUM_TERM", "pixel_label": "Nợ trung hạn", "values": ["196.787.440", "175.459.659"]},
+        {"role": "LONG_TERM", "pixel_label": "Nợ dài hạn", "values": ["144.267.942", "99.991.699"]}
+      ],
+      "core_total": ["659.000.255", "546.370.779"],
+      "optional_margin": null,
+      "grand_total": [],
+      "transformer_disagreements": []
+    },
+    {
+      "bank_code": "VCB",
+      "physical_page": 31,
+      "target_render_sha256": "46a6eb710fdfbfe3aff4fbe33e8295b2876eeff421b8eefd0ebcc4aa7830aedd",
+      "statement_context_evidence": {
+        "mode": "PAGE_LOCAL_VISIBLE_HEADING",
+        "physical_page": 31,
+        "render_sha256": "46a6eb710fdfbfe3aff4fbe33e8295b2876eeff421b8eefd0ebcc4aa7830aedd",
+        "pixel_transcription": "Thuyết minh báo cáo tài chính hợp nhất giữa niên độ cho giai đoạn từ ngày 1/1/2026 đến ngày 30/6/2026 (tiếp theo)",
+        "report_scope": "CONSOLIDATED"
+      },
+      "owner_evidence": {
+        "physical_page": 30,
+        "render_sha256": "f0221dbfa1c989edcf2be45f3d358dfc1796c84c7c14cbbea52f1178d9db38fb",
+        "pixel_transcription": "5. Cho vay khách hàng"
+      },
+      "branch_pixel_transcription": "Phân tích dư nợ cho vay theo thời hạn vay:",
+      "period_pixel_transcriptions": ["30/6/2026", "31/12/2025"],
+      "unit_lane_types": ["MONEY", "MONEY"],
+      "rows": [
+        {"role": "SHORT_TERM", "pixel_label": "Nợ ngắn hạn", "values": ["983.813.086", "981.706.312"]},
+        {"role": "MEDIUM_TERM", "pixel_label": "Nợ trung hạn", "values": ["100.309.640", "81.371.777"]},
+        {"role": "LONG_TERM", "pixel_label": "Nợ dài hạn", "values": ["674.045.339", "610.447.586"]}
+      ],
+      "core_total": ["1.758.168.065", "1.673.525.675"],
+      "optional_margin": null,
+      "grand_total": [],
+      "transformer_disagreements": [
+        {
+          "field": "MEDIUM_TERM_COMPARATIVE_VALUE",
+          "semantic_proposal": "81.371.771",
+          "pixel_transcription": "81.371.777",
+          "disposition": "DIGIT_CONFLICT_PIXEL_AND_ACCOUNTING_CLOSE_ON_PIXEL"
+        }
+      ]
+    },
+    {
+      "bank_code": "CTG",
+      "physical_page": 39,
+      "target_render_sha256": "b85de39b03a481ee0eb7303b552a72b037401d3d564850a24c64326e679a2b04",
+      "statement_context_evidence": {
+        "mode": "PAGE_LOCAL_VISIBLE_HEADING",
+        "physical_page": 39,
+        "render_sha256": "b85de39b03a481ee0eb7303b552a72b037401d3d564850a24c64326e679a2b04",
+        "pixel_transcription": "THUYẾT MINH CÁC BÁO CÁO TÀI CHÍNH HỢP NHẤT",
+        "report_scope": "CONSOLIDATED"
+      },
+      "owner_evidence": {
+        "physical_page": 38,
+        "render_sha256": "d671cabcaab2af0090c304ab1c7c42d61f64103ca590e83e3c0817a77b0e2029",
+        "pixel_transcription": "3. CHO VAY KHÁCH HÀNG"
+      },
+      "branch_pixel_transcription": "3.2 Phân tích dư nợ theo thời gian cho vay gốc",
+      "period_pixel_transcriptions": ["30/06/2026", "31/12/2025"],
+      "unit_lane_types": ["MONEY", "MONEY"],
+      "rows": [
+        {"role": "SHORT_TERM", "pixel_label": "Nợ ngắn hạn", "values": ["1.308.635.183", "1.232.479.318"]},
+        {"role": "MEDIUM_TERM", "pixel_label": "Nợ trung hạn", "values": ["128.065.974", "129.395.349"]},
+        {"role": "LONG_TERM", "pixel_label": "Nợ dài hạn", "values": ["656.006.601", "630.398.201"]}
+      ],
+      "core_total": ["2.092.707.758", "1.992.272.868"],
+      "optional_margin": null,
+      "grand_total": [],
+      "transformer_disagreements": [
+        {
+          "field": "SHORT_TERM_LABEL",
+          "semantic_proposal": "Nợi ngắn hạn",
+          "pixel_transcription": "Nợ ngắn hạn",
+          "disposition": "ONE_BASE_CHARACTER_INSERTION_COMPLETE_TOPOLOGY"
+        }
+      ]
+    },
+    {
+      "bank_code": "BID",
+      "physical_page": 22,
+      "target_render_sha256": "c8486972b896b760b4e7fac01d2ba69ba55127fedd680f88495dc94eae8a7331",
+      "statement_context_evidence": {
+        "mode": "PAGE_LOCAL_VISIBLE_HEADING",
+        "physical_page": 22,
+        "render_sha256": "c8486972b896b760b4e7fac01d2ba69ba55127fedd680f88495dc94eae8a7331",
+        "pixel_transcription": "Báo cáo tài chính hợp nhất giữa niên độ Quý II Năm 2026",
+        "report_scope": "CONSOLIDATED"
+      },
+      "owner_evidence": {
+        "physical_page": 22,
+        "render_sha256": "c8486972b896b760b4e7fac01d2ba69ba55127fedd680f88495dc94eae8a7331",
+        "pixel_transcription": "3. CHO VAY KHÁCH HÀNG"
+      },
+      "branch_pixel_transcription": "Phân tích dư nợ theo thời gian:",
+      "period_pixel_transcriptions": ["30/06/2026", "31/12/2025"],
+      "unit_lane_types": ["MONEY", "MONEY"],
+      "rows": [
+        {"role": "SHORT_TERM", "pixel_label": "Nợ ngắn hạn", "values": ["1,516,451,065", "1,441,586,157"]},
+        {"role": "MEDIUM_TERM", "pixel_label": "Nợ trung hạn", "values": ["168,606,264", "164,058,293"]},
+        {"role": "LONG_TERM", "pixel_label": "Nợ dài hạn", "values": ["816,749,714", "767,310,624"]}
+      ],
+      "core_total": ["2,501,807,043", "2,372,955,074"],
+      "optional_margin": null,
+      "grand_total": [],
+      "transformer_disagreements": []
+    },
+    {
+      "bank_code": "VIB",
+      "physical_page": 33,
+      "target_render_sha256": "38ea68385a43a4d211f81cc68a7d62657fda43a0b136d67e9403d9d348fa584d",
+      "statement_context_evidence": {
+        "mode": "PAGE_LOCAL_VISIBLE_HEADING",
+        "physical_page": 33,
+        "render_sha256": "38ea68385a43a4d211f81cc68a7d62657fda43a0b136d67e9403d9d348fa584d",
+        "pixel_transcription": "THUYẾT MINH BÁO CÁO TÀI CHÍNH HỢP NHẤT GIỮA NIÊN ĐỘ (tiếp theo)",
+        "report_scope": "CONSOLIDATED"
+      },
+      "owner_evidence": {
+        "physical_page": 33,
+        "render_sha256": "38ea68385a43a4d211f81cc68a7d62657fda43a0b136d67e9403d9d348fa584d",
+        "pixel_transcription": "9. CHO VAY KHÁCH HÀNG"
+      },
+      "branch_pixel_transcription": "9.1 Phân tích dư nợ theo thời gian cho vay gốc",
+      "period_pixel_transcriptions": ["30/06/2026", "31/12/2025"],
+      "unit_lane_types": ["MONEY", "PERCENT", "MONEY", "PERCENT"],
+      "rows": [
+        {"role": "SHORT_TERM", "pixel_label": "Nợ ngắn hạn", "values": ["160.883.061", "40,52", "158.864.423", "41,59"]},
+        {"role": "MEDIUM_TERM", "pixel_label": "Nợ trung hạn", "values": ["57.737.222", "14,54", "43.794.654", "11,47"]},
+        {"role": "LONG_TERM", "pixel_label": "Nợ dài hạn", "values": ["178.463.164", "44,94", "179.312.939", "46,94"]}
+      ],
+      "core_total": ["397.083.447", "100,00", "381.972.016", "100,00"],
+      "optional_margin": null,
+      "grand_total": [],
+      "transformer_disagreements": [
+        {
+          "field": "COMPARATIVE_TOTAL_PERCENT",
+          "semantic_proposal": "100.00",
+          "pixel_transcription": "100,00",
+          "disposition": "DECIMAL_SEPARATOR_ONLY"
+        }
+      ]
+    }
+  ],
+  "review_checks": {
+    "source_pdf_and_bound_render_opened": true,
+    "statement_scope_heading_visually_confirmed": true,
+    "owner_parent_visually_confirmed": true,
+    "branch_and_ordered_children_visually_confirmed": true,
+    "period_and_unit_axes_visually_confirmed": true,
+    "totals_and_optional_population_boundaries_visually_confirmed": true,
+    "accounting_equations_independently_recomputed": true,
+    "schema_parent_child_order_and_orphan_neighbour_independently_checked": true
+  },
+  "safety": {
+    "reviewer_final_status_supplied": false,
+    "semantic_similarity_alone_used_for_mapping": false,
+    "transformer_numeric_proposal_used_as_pixel_truth": false,
+    "digit_conflict_silently_corrected": false,
+    "bank_filename_note_or_page_used_as_mapping_rule": false,
+    "broad_corpus_authority": false,
+    "canonicalization_or_export_authority": false
+  }
+}

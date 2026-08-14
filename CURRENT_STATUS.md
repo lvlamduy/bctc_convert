@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-08-14T09:18:17+07:00 (UTC+7 fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
+Updated: 2026-08-14T13:27:51+07:00 (UTC+7 fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
 The detailed historical receipts below remain evidence, but that directive supersedes
@@ -48,24 +48,24 @@ Từ đầu đến snapshot này, project đã đi qua bốn pha chính:
 | Cross-page denominator | 1,422/1,422 adjacent pairs được account; 899 fragment relations và 122,573 axis-distance measurements |
 | Role-A diagnostic | 139 Level-1 machine-reference blocks; không phải human accuracy và không feed ngược vào discovery |
 | Schema/export capability | BASE_SCHEMA 1,593; UNIVERSAL_SCHEMA 1,935; MBB/VPB bounded development Excel tồn tại và có provenance |
-| Fresh fixed-8-bank VietOCR V3 panel | Exact ordered panel `ACB,MBB,VPB,HDB,VCB,CTG,BID,VIB`: **8 pages / 835 LINE crops** với vector `85,109,110,101,91,88,87,164`; một fixed selected fresh output từ VietOCR 0.3.13 VGG Transformer PyTorch-eager FP32, ONNX/AMP/TF32/compile/resume/prior-output đều false; legacy MBB/CTG canaries không có authority; selection không attest lịch sử absence của retry/attempt |
-| Current 8-bank `LOAN_MATURITY_BUCKETS` sweep | Sealed E-0046 remains **8/8 unresolved / 0 accepted**. Post-seal E-0047 resolves the generic ordered row→lane seam for MBB+BID and fails closed on VIB's six percentage companions; MBB alone reaches an accepted graph/schema-candidate frontier. E-0048 now independently verifies **8/8 MBB numeric cells** and both core-subtotal axes; E-0049 keeps all three schema rows unresolved behind exactly three exceptional source-review items. **Mapping=0, `VERIFIED_BY_CODEX`=0** |
-| Wave-1 accepted structure | Broad/exhaustive Wave-1 authority remains **0**. Bounded exceptions are SHB p24 and the E-0047 MBB p31 strict structural core, each only within the supplied family-collision scope; neither is broad authority, canonical mapping or export |
-| Independent item verification / canonical Excel | Exact SHB p24 rows 753/754/755 are `VERIFIED_BY_CODEX` for the bound source observation; its TOTAL is separately verified source-only with `ReportNormId=null`. **canonical mapping=0 documents; mapped Excel=0 documents**; this bounded verdict grants no canonicalization/export authority and is not rolled into the 8-bank E-0046 metrics |
+| Fresh full-document 8-bank VietOCR cache | Fresh VietOCR 0.3.13 VGG Transformer covers **8 PDFs / 453 pages / 34,341 ordered line crops** with page vector `33,61,91,44,55,61,37,71`; full geometry replay, result verification and semantic-index finalization PASS. Exactly 37 empty/null-probability outputs remain present; no legacy OCR transcript supplies semantic text |
+| Current 8-bank `LOAN_MATURITY_BUCKETS` sweep | E-0051 scans every page with one bank-blind family graph and finds exactly **1 complete region per PDF / 8/8 unique**. Independent pixel, context, period/unit, schema and accounting replay mechanically verifies **24 core rows + 2 optional margin rows = 26 `VERIFIED_BY_CODEX`**; 8 totals are source-only, 14 near-neighbours remain unresolved. E-0046 remains an immutable historical fail-closed baseline |
+| Wave-1 accepted structure | Broad/exhaustive Wave-1 authority remains **0**. The fixed 8-document maturity family is now a bounded accepted/verified source-row result, alongside SHB p24; neither grants broad-corpus, canonicalization or export authority |
+| Independent item verification / canonical Excel | Fixed 8-bank maturity rows 753/754/755 are `VERIFIED_BY_CODEX` on all eight bound source graphs; ReportNormId 5747 is additionally verified only for MBB and VPB. All eight TOTAL rows remain source-only with `ReportNormId=null`; 1944 remains mapping-ineligible. **canonical mapping=0 documents; mapped Excel=0 documents** |
 
 ### Những gì family research đã học được
 
 | Family / relation | Evidence và maturity hiện tại | Quyết định bàn giao |
 |---|---|---|
-| `LOAN_QUALITY_CLASSIFICATION` | Research panels trước đây giữ fingerprint owner + five grades + comparative monetary axes + total. Inventory mới khóa đúng 8 bank tại ACB18/MBB31/VPB42/HDB26/VCB30/CTG39/BID22/VIB60; VCB30 và VIB60 chưa có fresh V3, các case còn lại vẫn có owner/unit/row-axis/variant blockers | **INVENTORIED / UNRESOLVED** trong sweep hiện tại; accepted=0, mapping=0, không ép complete family |
-| `LOAN_MATURITY_BUCKETS` | E-0046 fresh V3 vẫn bất biến ở 8/8 unresolved. E-0047 dùng source-line order + fixed monetary lanes, không bank/page routing: MBB accepted strict core; BID chỉ còn unit-scope blocker; VIB giữ unresolved vì sáu percentage companions; CTG vẫn owner+ordered-child unresolved trên chính fresh V3. E-0048 đóng 8/8 numeric MBB bằng reader độc lập, E-0049 chỉ đưa ba bất thường context/dual-text/margin vào review queue | **STRUCTURE + NUMERIC PASS FOR MBB / MAPPING UNRESOLVED**; không sửa E-0046, không cộng schema candidate vào mapped rows |
+| `LOAN_QUALITY_CLASSIFICATION` | Candidate locators ACB18/MBB31/VPB42/HDB26/VCB30/CTG39/BID22/VIB60 now all have fresh full-document Transformer text. The generic five-grade/total family still needs whole-PDF uniqueness, axis and accounting falsification | **NEXT ACTIVE FAMILY / UNRESOLVED**; use the new cache, not legacy MBB/CTG OCR |
+| `LOAN_MATURITY_BUCKETS` | One generic graph admits optional intermediate headings, margin siblings, unlabeled/core/grand totals, split/relative periods, inherited units and 2/4-lane money/% layouts. Whole-PDF scan returns 8 unique positives and 14 near-family negatives; pixel/accounting/schema replay closes all eight | **26 BOUNDED ROW MAPPINGS `VERIFIED_BY_CODEX`**; 8 source-only totals, 14 unresolved near-neighbours, canonical/export authority still false |
 | `CUSTOMER_LOAN_BORROWER_OR_ECONOMIC_SECTOR_BREAKDOWN` | Inventory hiện tại thấy source occurrence 5/8: MBB, VPB, HDB, BID, VIB; ACB/VCB/CTG không thấy family trong bound loan note và không bị ép map. Mixed money/% lanes, strict subsets và source-only rows chưa được graph/schema hiện tại hỗ trợ | **INVENTORIED / UNRESOLVED**; reuse BID22/VIB33 fresh V3, các trang còn lại vào future generic batch |
-| `PROVISION_MOVEMENT_ROLLFORWARD` | Source occurrence 8/8 và roll-forward arithmetic quan sát đóng 8/8; fresh V3 reuse được ACB18/CTG39, VCB31 terminal giữ unresolved. Smallest next panel cần MBB34, VPB45 hydration, HDB28, BID23, VIB34 | **INVENTORIED / UNRESOLVED**; cần declarative roll-forward/multi-lane/continuation seam, chưa có `VERIFIED_BY_CODEX` |
+| `PROVISION_MOVEMENT_ROLLFORWARD` | Source occurrence 8/8 và roll-forward arithmetic quan sát đóng 8/8; all candidate pages now have fresh full-document Transformer text, while VCB terminal source authority remains an explicit geometry/numeric constraint | **INVENTORIED / UNRESOLVED**; cần declarative roll-forward/multi-lane/continuation seam, chưa có `VERIFIED_BY_CODEX` |
 | `LIQUIDITY_RISK_MATURITY_GAP` | 24 pages/15 banks; orientation+typed-neighbor graph cho 9 TP/14 TN/0 FP/1 FN. Repricing matrix là hard control gần giống topology | **HYPOTHESIS/CROSS_BANK_SUPPORTED**, thiếu true split-row continuation và còn một material reader-terminal miss |
 | `UNIT_SCOPE` | U3b trên 18 regions/6 banks cho 14 TP/3 TN/0 FP/1 FN, nhưng owner-edge subtype còn sai/under-locked và repeated-page-header chỉ replicate ở một bank | **HYPOTHESIS**, chưa Tier-2/acceptance; value correctness và provenance-owner correctness phải tách KPI |
 | Statement/page/table continuation | Visual panels chứng minh `(tiếp theo)`, same note và geometry đều không đủ; cần typed document/note/table/row continuation + reset evidence. H3 boundary có 26/27 combined nhưng lỗi holdout generic chưa replicate đủ banks | **HYPOTHESIS**, chưa production candidate |
-| `CUSTOMER_DEPOSIT` | Source occurrence 8/8 tại ACB21/MBB43/VPB55/HDB31/VCB35/CTG42/BID25/VIB41; top-level totals quan sát đóng cả hai axes. Fresh formal VietOCR coverage hiện 0/8 vì freeze hiện tại chỉ chứa maturity pages; nested subtype/currency lanes, relative periods và inherited units chưa được generic graph khóa | **INVENTORIED / UNRESOLVED**; smallest type-only fresh panel 8 pages/818 lines, thử strict subset MBB/VIB trước rồi chuyển family, không dùng legacy canary |
-| `SECURITIES` | Source occurrence 8/8. Homogeneous trading strict core là ACB16/MBB31/VPB40/HDB24/VCB30/CTG37/BID20; VIB trading là `NOT_OBSERVED_IN_BOUND_SOURCE_SCOPE`, không phải document-absence claim, và VIB36 vào AFS panel kế tiếp. Fresh exact-page V3 chỉ reuse được MBB31; VPB40 cần native hydration, five trading pages khác cần fresh semantics | **INVENTORIED / UNRESOLVED**; chạy 7-page trading strict subset rồi 8-bank AFS, dùng declarative nested/alternative branches và không dùng maturity-hardcoded schema/verifier |
+| `CUSTOMER_DEPOSIT` | Source occurrence 8/8 tại ACB21/MBB43/VPB55/HDB31/VCB35/CTG42/BID25/VIB41; all pages now have fresh full-document Transformer text and top-level totals visually close on both axes. Nested subtype/currency lanes, relative periods and inherited units remain to be generalized | **INVENTORIED / UNRESOLVED**; run whole-PDF family scan from the shared cache, not a new OCR panel |
+| `SECURITIES` | Source occurrence 8/8. Trading strict core is ACB16/MBB31/VPB40/HDB24/VCB30/CTG37/BID20; VIB trading is bounded `NOT_OBSERVED` and VIB36 enters AFS. Every candidate page now has fresh Transformer text, including native VPB geometry hydration | **INVENTORIED / UNRESOLVED**; run trading then AFS with declarative nested/alternative branches, not a maturity or bank-specific parser |
 | Net interest | Exact member-page recurrence có thật, nhưng final-181 H2C vẫn graph TP=0/FP=2/FN=4, component FN=72; dense boundary và component submission thất bại | **REJECTED FOR PRODUCTION/BROAD REPLAY**; giữ làm failure archetype evidence |
 
 Các family trên lặp lại cùng một tập primitives: `OWNER_RESOLUTION`,
@@ -102,14 +102,13 @@ trên các sealed batches, và mở thêm family panels chỉ để tăng sample
 
 Critical path hiện tại là:
 
-1. giữ nguyên formal fresh VietOCR V3 run và source tree đã khóa; tuyệt đối không dùng
-   legacy MBB/CTG canary, ONNX hoặc bank/page-specific recognition routing làm authority;
-2. giữ E-0046 `LOAN_MATURITY_BUCKETS` bất biến như checkpoint fail-closed 8/8
-   unresolved; dùng E-0047 riêng để chứng minh generic row→lane seam trên đúng ba
-   blocker, không relabel kết quả cũ hoặc tune family tới 100%;
-3. các inventory `LOAN_QUALITY`, `BORROWER/SECTOR`, `PROVISION`, `CUSTOMER_DEPOSIT`
-   và `SECURITIES` đã khóa; tiếp theo freeze smallest cross-family pages, chạy strict
-   subset, giữ variant unresolved rồi chuyển các TM family phổ biến;
+1. giữ cache fresh VietOCR Transformer 8 PDF / 453 trang / 34,341 dòng và exact replay;
+   tuyệt đối không dùng legacy MBB/CTG canary hoặc bank/page recognition routing;
+2. giữ E-0046 bất biến như historical fail-closed baseline; E-0051 là bounded live
+   successor đã tự scan/falsify/review và mechanically verify 26 maturity mappings;
+3. chuyển ngay sang `LOAN_QUALITY`, rồi `LOAN_TYPE`, `BORROWER/SECTOR`, `PROVISION`,
+   `CUSTOMER_DEPOSIT` và `SECURITIES` bằng cùng whole-PDF shared-cache loop; giữ các
+   biến thể khó unresolved thay vì chờ 100% family;
 4. chỉ thêm generic seam khi cùng blocker lặp lại xuyên bank/family; không tạo logic
    riêng theo bank, filename, page hoặc note;
 5. với từng khoản mục có candidate mapping, bắt buộc independent PDF/source review
@@ -119,7 +118,40 @@ Critical path hiện tại là:
    canonicalization và Excel metrics; không cộng candidate hoặc SHB singleton vào
    broad Wave-1/canonical authority.
 
-### Latest execution checkpoint — fresh VietOCR V3 fixed-8-bank maturity sweep
+### Latest execution checkpoint — full-document VietOCR + E-0051 maturity verification
+
+The independent full-document lane has finished one fresh VietOCR 0.3.13 VGG
+Transformer result over all eight bound PDFs: **453 pages / 34,341 ordered line
+crops**, with document page vector `33,61,91,44,55,61,37,71` and line vector
+`2489,4592,6942,3359,4356,4047,3046,5510`. Full geometry replay, output
+verification and semantic-index finalization all pass. The semantic index is
+`f84fd9ca56fe06af230e011ecad85b0a576e27e1eca32ee141e654a6776b78b4`; 37 empty
+predictions/null probabilities remain in exact order rather than being filtered.
+
+E-0051 applies one bank-blind maturity graph to every page of every PDF. It admits
+optional intermediate headings, optional margin siblings, core/grand or unlabeled
+totals, split/relative period labels, inherited units and two- or four-lane
+money/percentage layouts. It finds exactly one complete region per document and
+14 near-family regions, with no document containing a second complete match. The
+fixed independent review opens the bound PDF/render pixels, checks consolidated
+context, owner/branch/children/order/period/unit, transcribes values and recomputes
+every accounting equation. The public verifier then exact-rebuilds the whole scan
+and live TM hierarchy before deriving statuses.
+
+The tracked review and result are
+`docs/experiments/E-0051-loan-maturity-8bank-codex-pixel-review-v1.json` (SHA-256
+`30a7b40953e3578b0758bd93f83dbde238c80e01f20d06a64b4470e36f68113c`) and
+`docs/experiments/E-0051-loan-maturity-8bank-codex-verified-mapping-v1.json`
+(SHA-256 `9f37ae95dad0eda4fb55eaae564d2b49b0887270ad4d4b98a4d8bbe0be14455e`, result ID
+`lm8bcv1:result:370602c25500420eea2afa4709dafce1e3dd6f820101f8536c5f70dee50c8f47`).
+Exact metrics are **8 unique structures, 24 verified core rows, 2 verified optional
+margin rows, 8 source-only totals, 5 preserved Transformer disagreements and 14
+unresolved near-neighbours**. The VCB semantic digit `81.371.771` is retained beside
+the independently read pixel value `81.371.777`; only the latter closes the printed
+total, and no silent OCR repair occurs. ReportNormId 1944 stays an ineligible orphan;
+canonicalization/export and broad-corpus authority remain false.
+
+### Historical execution checkpoint — fresh VietOCR V3 fixed-8-bank maturity sweep
 
 Formal semantic inference is frozen and selected through commits `647d397`,
 `cb5140e` and `7a90661`: the fixed selected output of a reference-blind VietOCR
@@ -607,7 +639,7 @@ The active development loop is now corpus-driven: survey many documents, fingerp
 
 - **Role A:** all 27 Wave-1 documents now have a sealed Level-1 machine reference for visible statement boundaries, statement sequence, source-visible scope/unit/period evidence and bounded LCTT-method status. It covers all 1,449 physical pages and 139 statement blocks but intentionally contains no row/value/canonical reference and is not human gold. Deeper hash-bound references also exist for CTG Q2/2026, ACB Q2/2026 and MBB Q1/2026. Role A must preserve every genuine visible row and may emit `POSSIBLE_SCHEMA_GAP`; it is not limited to BASE_SCHEMA.
 - **Role B:** MBB Q1/2026 reaches development Excel for all four statements. TM parsing/mapping covers every quantitative note page through the end of the 61-page PDF; cross-page totals remain validation-only and never create duplicate ownership. The consolidated TM workbook and its paired provenance JSON are deterministic and preserve exact value, zero, dash and blank semantics.
-- **Active breadth-first Role B development:** the fixed panel `ACB,MBB,VPB,HDB,VCB,CTG,BID,VIB` now has one fixed selected fresh VietOCR V3 output over exactly 8 pages/835 lines and an exact source/READY/receipt binding; this does not attest historical retry absence. E-0046 completed the first executable family sweep for `LOAN_MATURITY_BUCKETS`: all eight page trials replay and remain its immutable unresolved baseline. E-0047 evaluates one generic source-order/fixed-lane seam without changing E-0046: MBB reaches one bounded accepted graph/schema-candidate frontier, BID remains blocked on unit scope and VIB's six percentage companions veto a silent monetary subset. E-0048 independently verifies MBB's 8/8 strict-core numeric cells and both subtotal axes; E-0049 keeps mapping at zero and narrows manual/Codex work to three exceptional context/dual-text/margin cases. The queue has therefore advanced without bank-specific parser tuning and finished source inventories for `LOAN_QUALITY`, `BORROWER/SECTOR`, `PROVISION`, `CUSTOMER_DEPOSIT` and `SECURITIES`. The full 27-bank/1,449-page V3 denominator and candidate inventories remain preserved; terminal cases and incomplete mappings stay explicit, and lost or silently coerced evidence is not allowed.
+- **Active breadth-first Role B development:** the fixed panel `ACB,MBB,VPB,HDB,VCB,CTG,BID,VIB` now has a verified full-document VietOCR Transformer cache over 453 pages/34,341 lines. E-0051 scans the whole eight-document denominator with one declarative maturity graph, finds one complete region per PDF, and independently verifies 24 core plus two optional-margin source mappings; eight totals remain source-only and 14 near-neighbours remain unresolved. The earlier E-0046–E-0049 artifacts stay immutable historical fail-closed/mechanism checkpoints. The queue now advances to `LOAN_QUALITY` using the shared cache, then `BORROWER/SECTOR`, `PROVISION`, `CUSTOMER_DEPOSIT` and `SECURITIES`; no bank-specific parser, legacy OCR authority, silent evidence coercion, canonicalization or export authority is introduced.
 - **Preserved VPB regression evidence:** VPB consolidated Q1/2026 remains an immutable `LOGIC_DEVELOPMENT` input, not holdout/validation evidence. Full-document native-text discovery independently selected CDKT pages 5–7, KQKD page 8, LCTT pages 9–10 and the first TM boundary at page 11. The generic main-statement adapter reconstructed all 134 rows and 252 cells. The source-only TM stage accounts the 694-row/2,163-observation quantitative core and all 11,032 source objects; the first bounded canonical family reaches Excel with eight observations. The 30 unresolved inter-table contexts remain explicit, and further identity-by-identity VPB completion is paused until cross-bank archetypes justify generic improvements.
 - **Latest corpus result:** Wave 1 profiles 27 documents and 1,449 pages without source-type cherry-picking: 11 scan, 14 mixed/hybrid, one searchable-over-image and one native/searchable route candidate. Finalized V3 outcomes are exactly `1,299 OCR complete + 57 OCR geometry-terminal + 91 native complete + 2 native visibility-terminal`; the aggregate is published and all 1,449 requests are accounted. The compact source-first inventory accounts 1,454,160 atom dispositions, 5,192 geometry candidates and 251 nonsemantic topology fingerprints under exact producer/authority lineage. The sealed blind statement inventory adds 24 ranked ordered-sequence hypotheses across 13 documents and preserves all 14 no-complete-hypothesis documents, 1,294 unresolved pages and 59 terminal pages. The separate agreement diagnostic covers all 27 documents and localizes the principal disagreements without feeding Role A back into discovery: top-ranked alternatives cover 40/111 exact and 52/111 overlapping unique comparable references; 347 pages in Role-A TM-reference segments are hypothesized `OTHER` by Role B, and 12/13 top-ranked CDKT ranges overlap without exact boundaries. The latest prestructural inventory seals all 1,449 graph identities and 1,300 payload-free candidate topologies, with 970 table, 28,247 row, 295,334 cell/value-position and 9,517 axis/dimension candidates on 859 pages across all 27 documents. The completed adjacent-page assay adds exact candidate-only accounting for all 1,422 within-document pairs: pair dispositions `676 measured + 143 no-following + 135 no-previous + 359 no-table + 109 terminal`, 899 Cartesian fragment measurements and 122,573 Cartesian axis-distance measurements. Fragment and axis retention remain explicit. These diagnostics establish neither continuation/table ownership nor accepted structural or canonical coverage.
 - **Carry-in measurable results:** the established MBB baseline exports 132 observed plus 2 derived CDKT values from 75 rows/150 physical statuses; KQKD has 88/88 numeric cells independently matched and 32/32 accounting checks passed; LCTT exports 71 values, 9 dashes and 6 blanks. MBB TM has 889 mapped schema identities across 553 logical source rows and 1,659 parser-declared visible value/status slots. The VPB native-TM workbook represents all `1,701` schema dispositions and `11,032` source-object dispositions: `4 OBSERVED_VALUE + 4 NOT_OBSERVED + 1,693 UNRESOLVED`, with eight canonical observation rows, 11,037 physical `SOURCE_OBJECTS` sheet rows, four validation rows, zero formulas and zero imputed values.
