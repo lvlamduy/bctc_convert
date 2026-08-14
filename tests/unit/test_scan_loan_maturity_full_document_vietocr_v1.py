@@ -125,7 +125,41 @@ def _index() -> dict[str, object]:
     }
 
 
-def test_eight_documents_use_one_common_matcher_and_remain_structure_only():
+def _axis(index: dict[str, object]) -> dict[str, object]:
+    authority = index["authority"]
+    if authority["old_ppocr_or_native_transcript_used_as_semantic_text"] is not False:
+        raise scanner.LoanMaturityFullDocumentScanV1Error("old OCR authority drifted")
+    return {
+        "documents": [
+            {
+                "document_ordinal": document["document_ordinal"],
+                "document_provenance": document["bank_code"],
+                "pages": [
+                    {
+                        "lines": [
+                            {
+                                "bbox": line["source_bbox_raw_pixels"],
+                                "source_line_index": line["source_line_index"],
+                                "source_text": None,
+                                "vietocr_text": line["vietocr_text"],
+                            }
+                            for line in page["lines"]
+                        ],
+                        "page_sequence": page["physical_page"],
+                        "primary_numeric_authority": False,
+                    }
+                    for page in document["pages"]
+                ],
+                "source_pdf": document["source_pdf"],
+            }
+            for document in index["documents"]
+        ],
+        "semantic_axis_sha256": index["metrics"]["semantic_axis_sha256"],
+    }
+
+
+def test_eight_documents_use_one_common_matcher_and_remain_structure_only(monkeypatch):
+    monkeypatch.setattr(scanner, "project_full_document_vietocr_accounting_axis_v1", _axis)
     value = scanner.build_loan_maturity_full_document_scan_v1(_index())
 
     assert value["state"] == "FULL_DOCUMENT_STRUCTURE_SCAN_COMPLETE"
@@ -158,7 +192,8 @@ def test_eight_documents_use_one_common_matcher_and_remain_structure_only():
     )
 
 
-def test_second_complete_region_is_preserved_as_ambiguity_not_silently_selected():
+def test_second_complete_region_is_preserved_as_ambiguity_not_silently_selected(monkeypatch):
+    monkeypatch.setattr(scanner, "project_full_document_vietocr_accounting_axis_v1", _axis)
     index = _index()
     duplicate = copy.deepcopy(index["documents"][0]["pages"][0])
     duplicate["physical_page"] = 2
@@ -181,7 +216,8 @@ def test_second_complete_region_is_preserved_as_ambiguity_not_silently_selected(
     assert value["metrics"]["total_document_candidate_count"] == 9
 
 
-def test_old_ocr_authority_and_coordinated_result_rehash_fail_closed():
+def test_old_ocr_authority_and_coordinated_result_rehash_fail_closed(monkeypatch):
+    monkeypatch.setattr(scanner, "project_full_document_vietocr_accounting_axis_v1", _axis)
     index = _index()
     index["authority"]["old_ppocr_or_native_transcript_used_as_semantic_text"] = True
     with pytest.raises(scanner.LoanMaturityFullDocumentScanV1Error):

@@ -21,6 +21,11 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any
 
+from bctc_ai.evaluation.full_document_vietocr_accounting_axis_v1 import (
+    EXPECTED_DOCUMENT_ORDER,
+    FullDocumentVietOCRAccountingAxisV1Error,
+    project_full_document_vietocr_accounting_axis_v1,
+)
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
     canonical_json_sha256_v1,
@@ -33,9 +38,7 @@ CLAIM_BOUNDARY = (
     "FRESH_VIETOCR_TRANSFORMER_WHOLE_DOCUMENT_UNIQUE_VARIANT_STRUCTURE_SCAN_ONLY_"
     "NO_SOURCE_NUMERIC_SCHEMA_MAPPING_CANONICALIZATION_EXPORT_OR_PRODUCTION_AUTHORITY"
 )
-EXPECTED_BANK_ORDER = ("ACB", "MBB", "VPB", "HDB", "VCB", "CTG", "BID", "VIB")
-_INDEX_FORMAT = "WAVE1_8DOCUMENT_VIETOCR_TRANSFORMER_SEMANTIC_INDEX_V1"
-_INDEX_STATE = "VERIFIED_COMPLETE_ORDERED_VIETOCR_TRANSFORMER_PROPOSALS"
+EXPECTED_BANK_ORDER = EXPECTED_DOCUMENT_ORDER
 _RESULT_FIELDS = {
     "authority",
     "claim_boundary",
@@ -85,167 +88,6 @@ def _matcher() -> ModuleType:
     )
 
 
-def _positive_int(value: Any, label: str) -> int:
-    if type(value) is not int or value <= 0:
-        raise _error(f"{label} must be one positive integer")
-    return value
-
-
-def _bbox(value: Any, label: str) -> list[int]:
-    if (
-        type(value) is not list
-        or len(value) != 4
-        or any(type(item) is not int for item in value)
-        or value[0] < 0
-        or value[1] < 0
-        or value[0] >= value[2]
-        or value[1] >= value[3]
-    ):
-        raise _error(f"{label} bbox drifted")
-    return list(value)
-
-
-def _validate_semantic_index(value: Any) -> dict[str, Any]:
-    if type(value) is not dict or set(value) != {
-        "authority",
-        "documents",
-        "format_version",
-        "input_refs",
-        "metrics",
-        "reader",
-        "state",
-    }:
-        raise _error("full-document semantic index fields drifted")
-    authority = value["authority"]
-    if (
-        value["format_version"] != _INDEX_FORMAT
-        or value["state"] != _INDEX_STATE
-        or type(authority) is not dict
-        or authority.get("ordered_semantic_proposal_authority") is not True
-        or authority.get("old_ppocr_or_native_transcript_used_as_semantic_text") is not False
-        or authority.get("numeric_authority") is not False
-        or authority.get("mapping_authority") is not False
-        or authority.get("semantic_text_source") != "FRESH_VIETOCR_VGG_TRANSFORMER_0_3_13"
-    ):
-        raise _error("full-document semantic index authority drifted")
-    documents = value["documents"]
-    if type(documents) is not list or len(documents) != len(EXPECTED_BANK_ORDER):
-        raise _error("full-document semantic index document denominator drifted")
-
-    line_vector: list[int] = []
-    page_vector: list[int] = []
-    total_lines = 0
-    normalized_documents: list[dict[str, Any]] = []
-    for document_ordinal, (raw_document, expected_bank) in enumerate(
-        zip(documents, EXPECTED_BANK_ORDER, strict=True), 1
-    ):
-        if type(raw_document) is not dict or set(raw_document) != {
-            "bank_code",
-            "document_ordinal",
-            "page_count",
-            "pages",
-            "source_pdf",
-        }:
-            raise _error("full-document semantic index document fields drifted")
-        pages = raw_document["pages"]
-        page_count = _positive_int(raw_document["page_count"], "document page count")
-        if (
-            raw_document["bank_code"] != expected_bank
-            or raw_document["document_ordinal"] != document_ordinal
-            or type(pages) is not list
-            or len(pages) != page_count
-        ):
-            raise _error("full-document semantic index document identity drifted")
-        normalized_pages: list[dict[str, Any]] = []
-        document_lines = 0
-        for physical_page, raw_page in enumerate(pages, 1):
-            if type(raw_page) is not dict or set(raw_page) != {
-                "geometry_mode",
-                "line_count",
-                "lines",
-                "physical_page",
-                "route",
-                "source_projection",
-                "terminal_status_preserved",
-                "upstream_status",
-            }:
-                raise _error("full-document semantic index page fields drifted")
-            lines = raw_page["lines"]
-            if (
-                raw_page["physical_page"] != physical_page
-                or type(raw_page["terminal_status_preserved"]) is not bool
-                or type(lines) is not list
-                or type(raw_page["line_count"]) is not int
-                or raw_page["line_count"] != len(lines)
-            ):
-                raise _error("full-document semantic index page denominator drifted")
-            normalized_lines: list[dict[str, Any]] = []
-            for line_index, raw_line in enumerate(lines):
-                if type(raw_line) is not dict or set(raw_line) != {
-                    "crop_ref",
-                    "line_axis_role",
-                    "mean_decoded_character_probability",
-                    "padded_source_bbox_raw_pixels",
-                    "processed_height",
-                    "processed_width",
-                    "sample_id",
-                    "source_bbox_raw_pixels",
-                    "source_line_index",
-                    "vietocr_text",
-                }:
-                    raise _error("full-document semantic index line fields drifted")
-                if (
-                    raw_line["source_line_index"] != line_index
-                    or type(raw_line["vietocr_text"]) is not str
-                    or type(raw_line["mean_decoded_character_probability"]) not in {int, float}
-                ):
-                    raise _error("full-document semantic index line identity/text drifted")
-                normalized_lines.append(
-                    {
-                        "bbox": _bbox(
-                            raw_line["source_bbox_raw_pixels"],
-                            f"document {document_ordinal} page {physical_page} line {line_index}",
-                        ),
-                        "source_line_index": line_index,
-                        "vietocr_text": raw_line["vietocr_text"],
-                    }
-                )
-            document_lines += len(normalized_lines)
-            normalized_pages.append(
-                {
-                    "lines": normalized_lines,
-                    "page_sequence": physical_page,
-                }
-            )
-        total_lines += document_lines
-        line_vector.append(document_lines)
-        page_vector.append(page_count)
-        normalized_documents.append(
-            {
-                "bank_code": expected_bank,
-                "document_ordinal": document_ordinal,
-                "pages": normalized_pages,
-                "source_pdf": canonical_clone_v1(raw_document["source_pdf"]),
-            }
-        )
-
-    metrics = value["metrics"]
-    if (
-        type(metrics) is not dict
-        or metrics.get("document_count") != len(EXPECTED_BANK_ORDER)
-        or metrics.get("page_count_vector") != page_vector
-        or metrics.get("line_count_vector") != line_vector
-        or metrics.get("page_count") != sum(page_vector)
-        or metrics.get("sample_count") != total_lines
-        or type(metrics.get("semantic_axis_sha256")) is not str
-    ):
-        raise _error("full-document semantic index metrics drifted")
-    return {
-        "documents": normalized_documents,
-        "semantic_axis_sha256": metrics["semantic_axis_sha256"],
-    }
-
-
 def _source_sha256(value: Any) -> str:
     if type(value) is not dict or type(value.get("sha256")) is not str:
         raise _error("source PDF content reference drifted")
@@ -268,10 +110,13 @@ def _sha256(value: Any, label: str) -> str:
 def build_loan_maturity_full_document_scan_v1(semantic_index: Any) -> dict[str, Any]:
     """Build one deterministic eight-document structure-only scan."""
 
-    index = _validate_semantic_index(semantic_index)
+    try:
+        axis = project_full_document_vietocr_accounting_axis_v1(semantic_index)
+    except FullDocumentVietOCRAccountingAxisV1Error as error:
+        raise _error(str(error)) from error
     matcher = _matcher()
     trials: list[dict[str, Any]] = []
-    for document in index["documents"]:
+    for document in axis["documents"]:
         document_pages: list[dict[str, Any]] = []
         semantic_pages: list[dict[str, Any]] = []
         for page in document["pages"]:
@@ -308,7 +153,7 @@ def build_loan_maturity_full_document_scan_v1(semantic_index: Any) -> dict[str, 
         match = matcher.scan_loan_maturity_variant_graph_document_v1(document_pages, semantic_pages)
         trials.append(
             {
-                "bank_provenance": document["bank_code"],
+                "bank_provenance": document["document_provenance"],
                 "document_ordinal": document["document_ordinal"],
                 "matcher_result": match,
                 "region_scan": region_scan,
@@ -351,7 +196,7 @@ def build_loan_maturity_full_document_scan_v1(semantic_index: Any) -> dict[str, 
         "authority": canonical_clone_v1(_AUTHORITY),
         "claim_boundary": CLAIM_BOUNDARY,
         "format_version": FORMAT_VERSION,
-        "input_semantic_axis_sha256": _sha256(index["semantic_axis_sha256"], "semantic text axis"),
+        "input_semantic_axis_sha256": _sha256(axis["semantic_axis_sha256"], "semantic text axis"),
         "metrics": metrics,
         "state": "FULL_DOCUMENT_STRUCTURE_SCAN_COMPLETE",
         "trials": trials,
