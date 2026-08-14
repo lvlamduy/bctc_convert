@@ -17,7 +17,7 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **35 entries**.  Current open queue: **11**.  Closed history:
+Ledger total: **37 entries**.  Current open queue: **13**.  Closed history:
 **21** row/graph resolutions and **3** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
@@ -26,6 +26,8 @@ Bank/report/page fields below are evidence locators only, never matching rules.
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
 | --- | --- | --- | ---: | --- | --- |
+| IDL-001 | Tiền gửi/vay các TCTD khác | HDB | 3 | Tiền gửi tại và cho vay các TCTD khác | Whole-PDF scan chỉ thấy dòng tổng; các lần lặp sau thuộc bảng ngoại tệ, rủi ro hoặc công cụ tài chính. Không có cụm chi tiết đủ cha tiền gửi/vay, con tiền tệ, kỳ và subtotal; không tuyên bố family vắng mặt. |
+| IDL-002 | Tiền gửi/vay các TCTD khác | VCB | 7 | Tiền gửi tại và cho vay các tổ chức tín dụng khác | Whole-PDF scan chỉ thấy dòng tổng; các lần lặp sau thuộc chính sách, giá trị hợp lý hoặc rủi ro. Không ép các bảng gần giống thành note phân rã tiền gửi/vay. |
 | CBD-001 | Tiền gửi tại NHNN | MBB | 30 | Tiền gửi tại Ngân hàng Nhà nước Lào | Dòng nằm đúng trong cụm và tham gia phương trình tổng, nhưng live TM schema chưa có child tiền gửi NHTW theo địa lý tương đương; không ép vào 574 `Tiền gửi khác`. |
 | CBD-002 | Tiền gửi tại NHNN | MBB | 30 | Tiền gửi tại Ngân hàng Quốc gia Campuchia | Cùng khoảng trống schema với CBD-001; giữ `UNRESOLVED_SCHEMA_ITEM_ABSENT` và vẫn dùng làm thành phần kiểm tra tổng. |
 | CD-001 | Tiền gửi của khách hàng / loại hình doanh nghiệp | VPB | 55 | Công ty TNHH 2 thành viên trở lên có phần vốn góp của Nhà nước trên 50% | Giá trị hiện tại `64.165`; schema 1079 chỉ mô tả Công ty TNHH **một** thành viên có vốn Nhà nước trên 50%, nên chưa thể dùng thay thế. |
@@ -51,6 +53,7 @@ page or note identifier participates in this decision.
 
 | IDs | Current disposition |
 | --- | --- |
+| IDL-001–IDL-002 | `OPEN_NO_COMPLETE_DETAILED_NOTE_REGION`; chỉ có tổng hoặc negative-control family, không ép thành bảng chi tiết và không tự tuyên bố absence |
 | CBD-001–CBD-002 | `OPEN_SCHEMA_GAP`; retained in graph/accounting, not coerced to `Tiền gửi khác` |
 | LT-001–LT-002 | `RESOLVED_VERIFIED_BY_CODEX` |
 | LI-001, LI-008, LI-009 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT` |
@@ -60,6 +63,24 @@ page or note identifier participates in this decision.
 | PM-001 | `OPEN_SOURCE_PERIOD_GAP`; không còn dòng nguồn chưa map trong PDF Q1 đã bind |
 | SEC-001 | `OPEN_DISTINCT_SECURITIES_SUBFAMILY`; trading đã hoàn tất 7 bank, AFS VIB giữ riêng cho lượt kế tiếp |
 | CPM-001–CPM-005 | `OPEN_NO_COMPLETE_DETAILED_NOTE_REGION`; chỉ có dòng tổng hoặc negative-control family, không ép thành bảng chi tiết và không tự tuyên bố absence |
+
+## Deposits at and loans to other credit institutions (`INTERBANK_DEPOSITS_AND_LOANS`)
+
+Current exact-replay result:
+`docs/experiments/E-0062-interbank-deposits-loans-8bank-codex-verified-mapping-v1.json`
+
+- One bank-blind graph scans all 453 pages, binds the first family owner through
+  demand/term deposits, currency children, interbank loans and the last printed
+  subtotal or family total. It admits `cho vay`/`vay`, optional deposit-parent
+  labels, gold+foreign-currency wording, non-additive discount details and an
+  explicit document-level unit declaration.
+- ACB p16, MBB p30, VPB p39, CTG p41, BID p25 and VIB p32 are unique complete
+  clusters. 63 source rows are `VERIFIED_BY_CODEX`; 23 accounting equations
+  close exactly. Three ACB visible dashes remain typed `DASH` before the
+  project-owner-approved zero normalization. VPB retains its Q1/2026 caveat.
+- HDB/VCB retain IDL-001/IDL-002. Their totals and foreign-exchange/fair-value
+  controls do not establish a detailed family region, and no broad family
+  absence is claimed.
 
 ## Deposits at central banks (`CENTRAL_BANK_DEPOSITS`)
 

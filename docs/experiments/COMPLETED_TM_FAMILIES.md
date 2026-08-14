@@ -166,6 +166,30 @@ Q1/2026, không relabel thành Q2/2026.
 Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
 Q1/2026, không relabel thành Q2/2026.
 
+## 11. Tiền, vàng gửi tại và cho vay/vay các TCTD khác
+
+- **Đã xác minh:** ACB p16, MBB p30, VPB p39, CTG p41, BID p25 và VIB p32.
+  Đã map 63 dòng tiền gửi không/có kỳ hạn, VND, ngoại tệ, cho vay/vay, dự
+  phòng và chiết khấu/tái chiết khấu; 23 phương trình cha–con, subtotal và tổng
+  family đóng đúng. BID dùng biến thể có `vàng và ngoại tệ` và đơn vị triệu VND
+  được kế thừa từ công bố đơn vị ở cấp tài liệu. CTG/BID dùng từ `vay` thay cho
+  `cho vay`. Dòng chiết khấu/tái chiết khấu chỉ là chi tiết không cộng thêm.
+- **Không có vùng thuyết minh chi tiết hoàn chỉnh:** HDB, VCB. Hai PDF có dòng
+  tổng hoặc bảng ngoại tệ/giá trị hợp lý gần giống, nhưng không có cụm phân rã
+  tiền gửi–vay đủ cha/con, kỳ và subtotal. Đây không phải tuyên bố family vắng
+  mặt khỏi toàn bộ báo cáo.
+- **Còn thiếu:** HDB và VCB chưa có nguồn chi tiết để map các hàng con. Ba ô dấu
+  `-` hiện kỳ của ACB được giữ trạng thái `DASH`, khóa bằng pixel và chuẩn hóa
+  thành 0 theo quy ước của chủ dự án.
+
+| Bank | Trang bằng chứng gần nhất | Khoản mục nguồn | Lý do chưa map |
+| --- | ---: | --- | --- |
+| HDB | 3 | Tiền gửi tại và cho vay các TCTD khác | Chỉ có dòng tổng; các vùng chi tiết gần nhất là bảng ngoại tệ/rủi ro khác family. |
+| VCB | 7 | Tiền gửi tại và cho vay các tổ chức tín dụng khác | Chỉ có dòng tổng; các lần lặp sau thuộc chính sách, giá trị hợp lý hoặc rủi ro. |
+
+Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
+Q1/2026, không relabel thành Q2/2026.
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -184,3 +208,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Tiền gửi khách hàng | ✓ p21 | ✓ p43 | ✓\* p55 | ✓ p31 | ✓ p35 | ✓ p42 | ✓ p25 | ✓\* p41–42 | 2 dòng TNHH cùng một khoảng trống schema; VPB là nguồn Q1 |
 | Chứng khoán kinh doanh | ✓ p16 | ✓ p31 | ✓\* p40 | ✓ p24 | ✓ p30 | ✓ p37 | ✓ p20 | △ AFS p36 | 1 subfamily AFS; VPB là nguồn Q1 |
 | Tiền gửi tại NHNN | — tổng p3 | ✓\* p30 | ✓\* p38 | — tổng p3 | — tổng p7 | — tổng p3 | — tổng p4 | ✓ p31 | 2 dòng địa lý MBB; 5 bank không có bảng chi tiết; VPB là nguồn Q1 |
+| Tiền gửi/vay TCTD khác | ✓ p16 | ✓ p30 | ✓\* p39 | — tổng p3 | — tổng p7 | ✓ p41 | ✓ p25 | ✓ p32 | 2 bank không có bảng chi tiết; VPB là nguồn Q1 |
