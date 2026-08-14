@@ -304,7 +304,8 @@ def _branch_core_cursor(tokens: Sequence[str], spec: Mapping[str, Any]) -> tuple
 
 
 def _branch_match(text: str, spec: Mapping[str, Any]) -> tuple[dict[str, Any] | None, bool]:
-    tokens = normalize_vietnamese_anchor_v1(text).split()
+    normalized_surface = normalize_vietnamese_anchor_v1(text)
+    tokens = normalized_surface.split()
     core = _branch_core_cursor(tokens, spec)
     if core is None:
         return None, False
@@ -321,6 +322,7 @@ def _branch_match(text: str, spec: Mapping[str, Any]) -> tuple[dict[str, Any] | 
                     if total_edits == 0
                     else "ONE_EDIT_STRUCTURAL_ANCHORS_IN_COMPLETE_TOPOLOGY"
                 ),
+                "normalized_surface": normalized_surface,
                 "surface": text,
                 "variant": variant["variant_id"],
             },
@@ -343,6 +345,7 @@ def _owner_context(
         return {
             "match_kind": kind,
             "mode": "SAME_PAGE_NEAREST_PRECEDING",
+            "normalized_surface": normalize_vietnamese_anchor_v1(surface),
             "page_sequence": page["page_sequence"],
             "source_line_index": line_index,
             "surface": surface,
@@ -361,6 +364,7 @@ def _owner_context(
     return {
         "match_kind": kind,
         "mode": "IMMEDIATE_PREVIOUS_PAGE",
+        "normalized_surface": normalize_vietnamese_anchor_v1(surface),
         "page_sequence": previous["page_sequence"],
         "source_line_index": line_index,
         "surface": surface,
@@ -394,6 +398,9 @@ def _ordered_children(
         records.append(
             {
                 "match_kind": kind,
+                "normalized_surface": normalize_vietnamese_anchor_v1(
+                    lines[position]["vietocr_text"]
+                ),
                 "role": child["role"],
                 "surface": lines[position]["vietocr_text"],
             }
@@ -437,6 +444,9 @@ def _scan(pages: Sequence[Mapping[str, Any]], spec: Mapping[str, Any]) -> dict[s
                     {
                         "branch_source_line_index": branch_index,
                         "branch_surface": line["vietocr_text"],
+                        "normalized_branch_surface": normalize_vietnamese_anchor_v1(
+                            line["vietocr_text"]
+                        ),
                         "page_sequence": page["page_sequence"],
                         "unresolved_reasons": ["BRANCH_VARIANT_NOT_RESOLVED"],
                     }
@@ -451,6 +461,9 @@ def _scan(pages: Sequence[Mapping[str, Any]], spec: Mapping[str, Any]) -> dict[s
                     {
                         "branch_source_line_index": branch_index,
                         "branch_surface": line["vietocr_text"],
+                        "normalized_branch_surface": normalize_vietnamese_anchor_v1(
+                            line["vietocr_text"]
+                        ),
                         "page_sequence": page["page_sequence"],
                         "unresolved_reasons": sorted(set(reasons)),
                     }
@@ -464,6 +477,7 @@ def _scan(pages: Sequence[Mapping[str, Any]], spec: Mapping[str, Any]) -> dict[s
             intermediate = [
                 {
                     "match_kind": kind,
+                    "normalized_surface": normalize_vietnamese_anchor_v1(candidate["vietocr_text"]),
                     "source_line_index": candidate["source_line_index"],
                     "surface": candidate["vietocr_text"],
                 }
@@ -521,10 +535,11 @@ def _reasons(value: Any, label: str, *, required: bool) -> list[str]:
 def _validate_branch_record(value: Any) -> None:
     if (
         type(value) is not dict
-        or set(value) != {"match_kind", "surface", "variant"}
+        or set(value) != {"match_kind", "normalized_surface", "surface", "variant"}
         or value["match_kind"] not in _BRANCH_MATCH_KINDS
         or type(value["surface"]) is not str
         or not value["surface"].strip()
+        or value["normalized_surface"] != normalize_vietnamese_anchor_v1(value["surface"])
         or type(value["variant"]) is not str
         or _VARIANT.fullmatch(value["variant"]) is None
     ):
@@ -534,11 +549,20 @@ def _validate_branch_record(value: Any) -> None:
 def _validate_owner_record(value: Any) -> None:
     if (
         type(value) is not dict
-        or set(value) != {"match_kind", "mode", "page_sequence", "source_line_index", "surface"}
+        or set(value)
+        != {
+            "match_kind",
+            "mode",
+            "normalized_surface",
+            "page_sequence",
+            "source_line_index",
+            "surface",
+        }
         or value["match_kind"] not in _ALIAS_MATCH_KINDS
         or value["mode"] not in {"SAME_PAGE_NEAREST_PRECEDING", "IMMEDIATE_PREVIOUS_PAGE"}
         or type(value["surface"]) is not str
         or not value["surface"].strip()
+        or value["normalized_surface"] != normalize_vietnamese_anchor_v1(value["surface"])
     ):
         raise _error("accounting variant owner context record drifted")
     _positive_int(value["page_sequence"], "owner page sequence")
@@ -584,12 +608,13 @@ def _validate_region(value: Any) -> None:
     for record in records:
         if (
             type(record) is not dict
-            or set(record) != {"match_kind", "role", "surface"}
+            or set(record) != {"match_kind", "normalized_surface", "role", "surface"}
             or record["match_kind"] not in _ALIAS_MATCH_KINDS
             or type(record["role"]) is not str
             or _ROLE.fullmatch(record["role"]) is None
             or type(record["surface"]) is not str
             or not record["surface"].strip()
+            or record["normalized_surface"] != normalize_vietnamese_anchor_v1(record["surface"])
         ):
             raise _error("accounting variant ordered child record drifted")
         roles.append(record["role"])
@@ -603,10 +628,11 @@ def _validate_region(value: Any) -> None:
     for record in optional:
         if (
             type(record) is not dict
-            or set(record) != {"match_kind", "source_line_index", "surface"}
+            or set(record) != {"match_kind", "normalized_surface", "source_line_index", "surface"}
             or record["match_kind"] not in _ALIAS_MATCH_KINDS
             or type(record["surface"]) is not str
             or not record["surface"].strip()
+            or record["normalized_surface"] != normalize_vietnamese_anchor_v1(record["surface"])
         ):
             raise _error("accounting variant optional intermediate record drifted")
         optional_indices.append(
@@ -631,6 +657,7 @@ def _validate_near_region(value: Any) -> None:
     if type(value) is not dict or set(value) != {
         "branch_source_line_index",
         "branch_surface",
+        "normalized_branch_surface",
         "page_sequence",
         "unresolved_reasons",
     }:
@@ -639,6 +666,10 @@ def _validate_near_region(value: Any) -> None:
     _positive_int(value["page_sequence"], "near-region page sequence")
     if type(value["branch_surface"]) is not str or not value["branch_surface"].strip():
         raise _error("accounting variant near-region surface drifted")
+    if value["normalized_branch_surface"] != normalize_vietnamese_anchor_v1(
+        value["branch_surface"]
+    ):
+        raise _error("accounting variant near-region normalization drifted")
     _reasons(value["unresolved_reasons"], "near-region", required=True)
 
 

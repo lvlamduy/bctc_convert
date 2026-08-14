@@ -99,7 +99,9 @@ def test_generic_engine_enumerates_complete_and_near_regions_without_bank_routin
     }
     region = result["regions"][0]
     assert region["page_sequence"] == 2
+    assert region["branch_match"]["normalized_surface"] == "phan tich du no theo thoi gian"
     assert region["owner_context"]["mode"] == "IMMEDIATE_PREVIOUS_PAGE"
+    assert region["owner_context"]["normalized_surface"] == "5 cho vay khach hang"
     assert [item["role"] for item in region["child_match_records"]] == [
         "SHORT_TERM",
         "MEDIUM_TERM",
