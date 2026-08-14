@@ -74,26 +74,27 @@ def test_business_schema_migration_is_hash_bound_and_preserves_sealed_baselines(
     assert set(audit["collision_safety"]["new_ids"]).isdisjoint(REVIEWED_EXTERNAL_IDS)
     assert audit["schema_strategy"]["base_schema"]["item_count"] == 1593
     assert audit["schema_strategy"]["universal_schema"] == {
-        "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6060",
-        "item_count": 1939,
-        "counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1705},
-        "high_watermark": 6060,
+        "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6065",
+        "item_count": 1944,
+        "counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1710},
+        "high_watermark": 6065,
         "workbook_sha256": {
             statement: record["after_sha256"] for statement, record in audit["workbooks"].items()
         },
     }
     assert audit["schema_strategy"]["migration_delta"]["new_report_norm_ids"] == [
-        6057,
-        6058,
-        6059,
-        6060,
+        6061,
+        6062,
+        6063,
+        6064,
+        6065,
     ]
     accepted_changes = {
         record["schema_id"]: record
         for record in audit["schema_changes"]
         if record.get("schema_status") == "ACCEPTED_UNIVERSAL"
     }
-    assert set(accepted_changes) == set(range(5991, 6061))
+    assert set(accepted_changes) == set(range(5991, 6066))
     assert all(
         accepted_changes[schema_id]["section"] == "BALANCE_SHEET_NOTES"
         for schema_id in range(5991, 6021)
@@ -115,7 +116,7 @@ def test_business_schema_migration_is_hash_bound_and_preserves_sealed_baselines(
     assert accepted_changes[6056]["section"] == "OFF_BALANCE_SHEET"
     assert all(
         accepted_changes[schema_id]["section"] == "BALANCE_SHEET_NOTES"
-        for schema_id in (6057, 6058, 6059, 6060)
+        for schema_id in (*range(6057, 6061), *range(6061, 6066))
     )
     assert accepted_changes[6057]["evidence"]["observed_values"] == ["DASH", "DASH"]
     assert accepted_changes[6058]["evidence"]["visible_label"] == (
@@ -125,6 +126,13 @@ def test_business_schema_migration_is_hash_bound_and_preserves_sealed_baselines(
         "Cho vay cá nhân để mua nhà ở"
     )
     assert accepted_changes[6060]["evidence"]["visible_label"] == "Dịch vụ"
+    assert accepted_changes[6061]["evidence"]["visible_label"] == (
+        "Dự phòng cho vay giao dịch ký quỹ và ứng trước"
+    )
+    assert accepted_changes[6062]["evidence"]["observed_values"] == ["161.614"]
+    assert accepted_changes[6063]["evidence"]["observed_values"] == ["-"]
+    assert accepted_changes[6064]["evidence"]["observed_values"] == ["-"]
+    assert accepted_changes[6065]["evidence"]["observed_values"] == ["161.614"]
     ctg_swap = accepted_changes[6056]["evidence"]
     assert ctg_swap["user_decision"] == "Q076"
     assert ctg_swap["source_row_ref"] == "ctg-p5-5705"
@@ -328,6 +336,7 @@ def test_business_formula_overlay_has_exact_authorized_edges(project_root):
     assert tuple(by_id[TM_PROVISION_MOVEMENT_ID].children) == TM_PROVISION_MOVEMENT_COMPONENTS
     assert by_id[TM_GENERAL_PROVISION_MOVEMENT_ID].children == list(range(785, 792))
     assert by_id[TM_SPECIFIC_PROVISION_MOVEMENT_ID].children == list(range(793, 800))
+    assert by_id[6061].children == list(range(6062, 6066))
     assert audit_formula_components(project_root, TM_PROVISION_MOVEMENT_ID) == (
         TM_PROVISION_MOVEMENT_COMPONENTS
     )
@@ -513,13 +522,13 @@ def test_business_formula_overlay_has_exact_authorized_edges(project_root):
     }
     assert formula_ids.isdisjoint(range(5898, 5946))
     assert by_id[1944].parent_id is None
-    assert by_id[1944].display_order == 1704
+    assert by_id[1944].display_order == 1709
     assert set(TM_UNIVERSAL_SCHEMA_IDS) == {
         *range(5991, 6034),
         6057,
         6058,
         6059,
-        6060,
+        *range(6060, 6066),
     }
 
 

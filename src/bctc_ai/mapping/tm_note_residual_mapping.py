@@ -19,10 +19,10 @@ from bctc_ai.core.text import retrieval_key
 from bctc_ai.schema.registry import SchemaItem
 
 TM_RESIDUAL_POLICY_RELATIVE_PATH = Path("config/mapping/tm-note-residual-v1.yaml")
-TM_RESIDUAL_SCHEMA_TOTAL = 1_705
-TM_RESIDUAL_SCOPE_SCHEMA_COUNT = 85
+TM_RESIDUAL_SCHEMA_TOTAL = 1_710
+TM_RESIDUAL_SCOPE_SCHEMA_COUNT = 90
 TM_RESIDUAL_MAPPED_SCHEMA_COUNT = 2
-TM_RESIDUAL_NOT_OBSERVED_SCHEMA_COUNT = 83
+TM_RESIDUAL_NOT_OBSERVED_SCHEMA_COUNT = 88
 TM_RESIDUAL_UNASSESSED_SCHEMA_COUNT = 1_620
 TM_RESIDUAL_STRUCTURAL_EVIDENCE_COUNT = 2
 TM_RESIDUAL_FINANCIAL_SLOT_COUNT = 0
@@ -48,13 +48,14 @@ TM_RESIDUAL_NOT_OBSERVED_IDS = frozenset(
         *range(1260, 1269),
         *range(1280, 1294),
         *range(1305, 1352),
+        *range(6061, 6066),
     }
 )
 TM_RESIDUAL_SCOPE_IDS = TM_RESIDUAL_MAPPED_IDS | TM_RESIDUAL_NOT_OBSERVED_IDS
 
 TM_FINAL_MAPPED_SCHEMA_COUNT = 890
 TM_FINAL_UNRESOLVED_SCHEMA_COUNT = 0
-TM_FINAL_NOT_OBSERVED_SCHEMA_COUNT = 792
+TM_FINAL_NOT_OBSERVED_SCHEMA_COUNT = 797
 TM_FINAL_NOT_APPLICABLE_SCHEMA_COUNT = 23
 
 _EXPECTED_CANONICAL_NAMES = {
@@ -359,7 +360,7 @@ def load_tm_residual_mapping_policy(path: Path) -> TMResidualMappingPolicy:
         }
         or any(item.line_indices != (0, 1) for item in policy.structural_evidence)
         or any(item.source_role != "STATEMENT_SECTION_TITLE" for item in policy.structural_evidence)
-        or policy.mapping_authority_scope != "MBB_CONSOLIDATED_Q1_2026_EXACT_RESIDUAL_85_ONLY"
+        or policy.mapping_authority_scope != "MBB_CONSOLIDATED_Q1_2026_EXACT_RESIDUAL_90_ONLY"
         or policy.report_scope != "CONSOLIDATED"
     ):
         raise TMResidualMappingError("TM residual exact scope contract drifted")
@@ -476,7 +477,7 @@ def reconcile_tm_residual_items(
         or {item.report_norm_id for item in policy.structural_evidence} != TM_RESIDUAL_MAPPED_IDS
         or any(item.source_role != "STATEMENT_SECTION_TITLE" for item in policy.structural_evidence)
         or set(policy.forbidden_mapping_inputs) != _REQUIRED_FORBIDDEN
-        or policy.mapping_authority_scope != "MBB_CONSOLIDATED_Q1_2026_EXACT_RESIDUAL_85_ONLY"
+        or policy.mapping_authority_scope != "MBB_CONSOLIDATED_Q1_2026_EXACT_RESIDUAL_90_ONLY"
     ):
         raise TMResidualMappingError("TM residual in-memory policy contract drifted")
     tm_schema = tuple(
@@ -545,7 +546,7 @@ def reconcile_tm_residual_items(
         statement_type="TM",
         document=policy.document,
         report_scope=policy.report_scope,
-        status="EXACT_RESIDUAL_85_RECONCILED_WITH_TWO_STRUCTURAL_HEADINGS",
+        status="EXACT_RESIDUAL_90_RECONCILED_WITH_TWO_STRUCTURAL_HEADINGS",
         mapping_authority_scope=policy.mapping_authority_scope,
         mapping_authority_granted=True,
         schema_item_count=len(tm_schema),

@@ -63,12 +63,12 @@ def test_page52_reconciles_promoted_schema_source_and_assignment_denominators(
 ) -> None:
     result = _mapped(project_root, tmp_path)
 
-    assert result.schema_item_count == 1_705
+    assert result.schema_item_count == 1_710
     assert result.status_reconciled_schema_count == 19
     assert result.mapped_schema_count == 14
     assert result.value_bearing_mapped_schema_count == 10
     assert result.not_observed_schema_count == 5
-    assert result.unassessed_schema_count == 1_686
+    assert result.unassessed_schema_count == 1_691
     assert result.source_row_count == 6
     assert result.mapped_source_row_count == 5
     assert result.source_only_row_count == 1
@@ -107,7 +107,7 @@ def test_page52_owns_exact_promoted_scope_and_preserves_external_owner_roles(
 
     assert set(mapped) == {759, 765, *range(5750, 5762)}
     assert not_observed == {760, 761, 762, 763, 764}
-    assert len(unassessed) == 1_686
+    assert len(unassessed) == 1_691
     assert {716, 1055, 1295} <= unassessed
     assert all(item.source_row_ids for item in mapped.values())
     assert {

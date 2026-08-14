@@ -21,22 +21,7 @@ _ORPHAN_STATUS = "UNRESOLVED_ORPHAN"
 _LEVEL_MISMATCH_STATUS = "UNRESOLVED_LEVEL_MISMATCH"
 _SECTION_ROOT_IDS = (560, 1142, 1247, 1259)
 _ORPHAN_IDS = (1944,)
-_LEVEL_MISMATCH_SHAPES = (
-    (785, 784, 2, 3),
-    (786, 784, 2, 3),
-    (787, 784, 2, 3),
-    (788, 784, 2, 3),
-    (789, 784, 2, 3),
-    (790, 784, 2, 3),
-    (791, 784, 2, 3),
-    (793, 792, 2, 3),
-    (794, 792, 2, 3),
-    (795, 792, 2, 3),
-    (796, 792, 2, 3),
-    (797, 792, 2, 3),
-    (798, 792, 2, 3),
-    (799, 792, 2, 3),
-)
+_LEVEL_MISMATCH_SHAPES: tuple[tuple[int, int, int, int], ...] = ()
 _ACCOUNTING_SECTIONS = (
     "BALANCE_SHEET_NOTES",
     "INCOME_STATEMENT_NOTES",

@@ -87,7 +87,7 @@ def _mapped(project_root: Path):
     )
 
 
-def test_real_page30_reconciles_1705_schema_and_all_22_source_rows(
+def test_real_page30_reconciles_1710_schema_and_all_22_source_rows(
     project_root: Path,
 ) -> None:
     result = _mapped(project_root)
@@ -106,14 +106,14 @@ def test_real_page30_reconciles_1705_schema_and_all_22_source_rows(
     assert result.minimum_independent_semantic_streams == 2
     assert result.independent_reader_status == "COMPLETE"
     assert result.independent_reader_blocker is None
-    assert result.schema_item_count == 1_705
+    assert result.schema_item_count == 1_710
     assert result.assessed_schema_count == 23
     assert result.mapped_schema_count == 21
     assert result.candidate_linked_schema_count == 0
     assert TM_PAGE30_AMBIGUOUS_IDS == ()
     assert result.not_observed_schema_count == 2
     assert result.ambiguous_schema_count == 0
-    assert result.unassessed_schema_count == 1_682
+    assert result.unassessed_schema_count == 1_687
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == result.mapped_source_row_count == 22
     assert result.candidate_linked_source_row_count == 0
@@ -123,7 +123,7 @@ def test_real_page30_reconciles_1705_schema_and_all_22_source_rows(
     assert result.mapped_value_count == 38
     assert result.accounting_check_count == result.accounting_pass_count == 14
     assert result.schema_projection_sha256 == (
-        "724153bf3bcc025560e96cf8fbb1a6310a9e1923e23671b67afb58b7e07e6fbe"
+        "b9bd1d743b57ba6e5490a051c309ecff987e320178324c4fc6e2abc6f896ee9c"
     )
     assert result.independent_evidence_sha256 == (
         "6182e4634a80371ba560019b85ae67d706608ff48872f689e2645a5b03487c06"
@@ -182,7 +182,7 @@ def test_schema_dispositions_are_21_mapped_2_not_observed_1682_unassessed(
         TM_PAGE30_NOT_OBSERVED_IDS
     )
     assert by_status[TMSchemaMappingStatus.AMBIGUOUS_MAPPING.value] == set()
-    assert len(by_status[TMSchemaMappingStatus.UNASSESSED.value]) == 1_682
+    assert len(by_status[TMSchemaMappingStatus.UNASSESSED.value]) == 1_687
     schema_by_id = {item.report_norm_id: item for item in result.schema_dispositions}
     assert schema_by_id[574].source_row_ids == (
         "page-0030:note-2:row-0004",

@@ -17,16 +17,16 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **24 entries**.  Current open queue: **0**.  Closed history:
+Ledger total: **25 entries**.  Current open queue: **1**.  Closed history:
 **21** row/graph resolutions and **3** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
 ## Open review queue (always first)
 
-No entry is currently `OPEN`.  Every future `OPEN` or `NEEDS_PIXEL_REVIEW`
-entry is inserted here, above the resolved family history, so the active queue
-never has to be recovered from older closed entries.
+| ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
+| --- | --- | --- | ---: | --- | --- |
+| PM-001 | Dự phòng rủi ro cho vay khách hàng | VPB | 45 | Dự phòng chung, dự phòng cụ thể, dự phòng cho vay giao dịch ký quỹ và ứng trước | Đã map và kiểm tra đủ kỳ 01/01–31/03/2026 của PDF được cung cấp; chưa có PDF VPB Q2/2026 nên không được relabel kết quả Q1 thành Q2. |
 
 The shared family locator follows a strict minimal-anchor search.  It enumerates
 every parent+child pair first, then every child+child pair, over both complete and
@@ -45,6 +45,20 @@ page or note identifier participates in this decision.
 | LI-001, LI-008, LI-009 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT` |
 | LI-002–LI-007, LI-010–LI-011 | `RESOLVED_VERIFIED_BY_CODEX` |
 | LE-001–LE-011 | `RESOLVED` by exact family replay, non-additive graph equivalence, or pixel replay |
+| PM-001 | `OPEN_SOURCE_PERIOD_GAP`; không còn dòng nguồn chưa map trong PDF Q1 đã bind |
+
+## Provision movement (`PROVISION_MOVEMENT_ROLLFORWARD`)
+
+Current exact-replay result:
+`docs/experiments/E-0057-provision-movement-8bank-codex-verified-mapping-v1.json`
+
+- ACB p18, MBB p34, HDB p28, VCB p31, CTG p39, BID p23 và VIB p34:
+  `VERIFIED_BY_CODEX` cho kỳ hiện tại Q2/2026.
+- VPB p45: `VERIFIED_BY_CODEX_WITH_SUPPLIED_SOURCE_PERIOD_CAVEAT` cho kỳ
+  01/01–31/03/2026. Ba lane chung/cụ thể/margin-ứng trước và toàn bộ movement
+  hiện hữu đều đã map; chỉ nguồn Q2/2026 còn thiếu.
+- MBB chỉ dùng cột `Tổng cộng`; các cột Việt Nam/nước ngoài là đối chứng.
+  Kỳ so sánh của mọi bank không được dùng làm mapping authority.
 
 ## OCR and numeric evidence policy
 

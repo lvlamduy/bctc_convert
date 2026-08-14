@@ -14,6 +14,7 @@ from bctc_ai.schema.tm_context import (
     TM_CONTEXT_POLICY_RELATIVE_PATH,
     TmContextError,
     TmContextPolicy,
+    TmLevelMismatchPolicy,
     build_tm_schema_context,
     load_tm_context_policy,
     tm_context_projection,
@@ -58,7 +59,6 @@ def _item(
 
 def _synthetic_schema(policy: TmContextPolicy) -> list[SchemaItem]:
     roots = {root.report_norm_id: root.canonical_name for root in policy.section_roots}
-    mismatches = {mismatch.report_norm_id: mismatch for mismatch in policy.level_mismatch_items}
     orphan = policy.orphan_items[0]
     items = [
         _item(560, roots[560], 0, children=(561, 783)),
@@ -74,15 +74,14 @@ def _synthetic_schema(policy: TmContextPolicy) -> list[SchemaItem]:
             hierarchy_level=2,
         ),
     ]
-    for mismatch_id in range(785, 792):
-        mismatch = mismatches[mismatch_id]
+    for movement_id in range(785, 792):
         items.append(
             _item(
-                mismatch_id,
-                mismatch.canonical_name,
+                movement_id,
+                f"Dòng biến động {movement_id}",
                 len(items),
                 parent_id=784,
-                hierarchy_level=2,
+                hierarchy_level=3,
             )
         )
     items.append(
@@ -95,15 +94,14 @@ def _synthetic_schema(policy: TmContextPolicy) -> list[SchemaItem]:
             hierarchy_level=2,
         )
     )
-    for mismatch_id in range(793, 800):
-        mismatch = mismatches[mismatch_id]
+    for movement_id in range(793, 800):
         items.append(
             _item(
-                mismatch_id,
-                mismatch.canonical_name,
+                movement_id,
+                f"Dòng biến động {movement_id}",
                 len(items),
                 parent_id=792,
-                hierarchy_level=2,
+                hierarchy_level=3,
             )
         )
     items.extend(
@@ -137,24 +135,23 @@ def test_live_tm_context_is_complete_ordered_and_hash_stable(project_root, live_
     policy, contexts = live_tm_context
     assert policy.source_sha256 == sha256_file(project_root / TM_CONTEXT_POLICY_RELATIVE_PATH)
     assert policy.source_sha256 == (
-        "9c7989fa742101ca6f63bd01be2a484b001efcfe493615d429433273741da98f"
+        "50b0e7fcd5fbb54b45f6643d1d9c577de6013fdd04b748c620c755c54ee55e0a"
     )
-    assert len(contexts) == 1705
-    assert [context.display_order for context in contexts] == list(range(1705))
-    assert len({context.report_norm_id for context in contexts}) == 1705
+    assert len(contexts) == 1710
+    assert [context.display_order for context in contexts] == list(range(1710))
+    assert len({context.report_norm_id for context in contexts}) == 1710
     assert Counter(context.section for context in contexts) == {
-        "BALANCE_SHEET_NOTES": 672,
+        "BALANCE_SHEET_NOTES": 677,
         "INCOME_STATEMENT_NOTES": 139,
         "CASH_FLOW_NOTES": 12,
         "OTHER_QUANTITATIVE_NOTES": 881,
         None: 1,
     }
     assert Counter(context.context_status for context in contexts) == {
-        "RESOLVED": 1690,
-        "UNRESOLVED_LEVEL_MISMATCH": 14,
+        "RESOLVED": 1709,
         "UNRESOLVED_ORPHAN": 1,
     }
-    assert Counter(context.mapping_eligible for context in contexts) == {True: 1690, False: 15}
+    assert Counter(context.mapping_eligible for context in contexts) == {True: 1709, False: 1}
 
     by_id = {context.report_norm_id: context for context in contexts}
     assert by_id[560].ancestor_path == (560,)
@@ -166,21 +163,17 @@ def test_live_tm_context_is_complete_ordered_and_hash_stable(project_root, live_
     assert by_id[562].ancestor_path == (560, 561, 562)
     assert by_id[562].note_family_root_id == 561
     assert by_id[562].derived_hierarchy_level == 2
-    mismatch_ids = {*range(785, 792), *range(793, 800)}
-    assert {
-        context.report_norm_id
-        for context in contexts
-        if context.context_status == "UNRESOLVED_LEVEL_MISMATCH"
-    } == mismatch_ids
-    for mismatch_id in mismatch_ids:
-        mismatch = by_id[mismatch_id]
-        assert mismatch.section == "BALANCE_SHEET_NOTES"
-        assert mismatch.section_root_id == 560
-        assert mismatch.note_family_root_id == 783
-        assert mismatch.parent_report_norm_id in {784, 792}
-        assert mismatch.hierarchy_level == 2
-        assert mismatch.derived_hierarchy_level == 3
-        assert mismatch.mapping_eligible is False
+    movement_ids = {*range(785, 792), *range(793, 800)}
+    for movement_id in movement_ids:
+        movement = by_id[movement_id]
+        assert movement.section == "BALANCE_SHEET_NOTES"
+        assert movement.section_root_id == 560
+        assert movement.note_family_root_id == 783
+        assert movement.parent_report_norm_id in {784, 792}
+        assert movement.hierarchy_level == 3
+        assert movement.derived_hierarchy_level == 3
+        assert movement.context_status == "RESOLVED"
+        assert movement.mapping_eligible is True
     assert all(
         context.hierarchy_level == context.derived_hierarchy_level
         for context in contexts
@@ -195,11 +188,11 @@ def test_live_tm_context_is_complete_ordered_and_hash_stable(project_root, live_
     assert by_id[1944].derived_hierarchy_level is None
 
     projection = tm_context_projection(contexts)
-    assert len(projection) == 1705
+    assert len(projection) == 1710
     assert projection[0]["report_norm_id"] == 560
     assert projection[-1]["report_norm_id"] == 1944
     assert tm_context_projection_sha256(contexts) == (
-        "b86ae676743d0575d397c6890456956c7f6e23391f6844f4ce06117b9d214e1d"
+        "e737e371158efbba023bc3b0e2fe20d6f7996df21dcb51e6accd6293e16257d7"
     )
 
 
@@ -300,22 +293,22 @@ def test_tm_context_rejects_unquarantined_declared_level_mismatch(project_root):
         build_tm_schema_context(items, policy)
 
 
-@pytest.mark.parametrize(
-    ("field", "replacement"),
-    [
-        ("canonical_name", "Nhãn đã bị thay đổi"),
-        ("expected_parent_report_norm_id", 783),
-        ("expected_declared_hierarchy_level", 3),
-        ("expected_derived_hierarchy_level", 4),
-    ],
-)
-def test_level_mismatch_quarantine_identity_is_pinned(project_root, field, replacement):
+def test_retired_level_mismatch_quarantine_cannot_be_reintroduced(project_root):
     policy = load_tm_context_policy(project_root / TM_CONTEXT_POLICY_RELATIVE_PATH)
-    first = replace(policy.level_mismatch_items[0], **{field: replacement})
     mutated_policy = replace(
         policy,
-        level_mismatch_items=(first, *policy.level_mismatch_items[1:]),
+        level_mismatch_items=(
+            TmLevelMismatchPolicy(
+                report_norm_id=785,
+                canonical_name="Số dư đầu kỳ này",
+                expected_parent_report_norm_id=784,
+                expected_declared_hierarchy_level=2,
+                expected_derived_hierarchy_level=3,
+                status="UNRESOLVED_LEVEL_MISMATCH",
+                mapping_eligible=False,
+            ),
+        ),
     )
 
-    with pytest.raises(TmContextError, match="not mapping-safe|identity drifted"):
+    with pytest.raises(TmContextError, match="not mapping-safe"):
         build_tm_schema_context(_synthetic_schema(policy), mutated_policy)

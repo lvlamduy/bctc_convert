@@ -58,15 +58,15 @@ def residual_result(project_root: Path, residual_inputs):
     )
 
 
-def test_exact_residual_85_reconciles_without_numeric_or_source_row_mutation(
+def test_exact_residual_90_reconciles_without_numeric_or_source_row_mutation(
     residual_result,
 ) -> None:
     result = residual_result
 
-    assert result.schema_item_count == 1_705
-    assert result.status_reconciled_schema_count == 85
+    assert result.schema_item_count == 1_710
+    assert result.status_reconciled_schema_count == 90
     assert result.mapped_schema_count == 2
-    assert result.not_observed_schema_count == 83
+    assert result.not_observed_schema_count == 88
     assert result.ambiguous_schema_count == 0
     assert result.unresolved_schema_count == 0
     assert result.not_applicable_schema_count == 0

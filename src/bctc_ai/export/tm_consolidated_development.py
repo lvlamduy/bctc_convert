@@ -43,20 +43,20 @@ TM_CONSOLIDATED_SHEETS = (
     "VALIDATION",
     "RUN_METADATA",
 )
-TM_CONSOLIDATED_SCHEMA_COUNT = 1_705
-TM_CONSOLIDATED_TEMPLATE_SHA256 = "e6d61bbf51f2163d53fb854846a7a5768ca9440c140ca866991c1558471a5a03"
+TM_CONSOLIDATED_SCHEMA_COUNT = 1_710
+TM_CONSOLIDATED_TEMPLATE_SHA256 = "8912e6cbd279f33d507f1bef2235e46328ddcca97ed382d9ddd3fe453cee08d8"
 TM_CONSOLIDATED_SCHEMA_PROJECTION_SHA256 = (
-    "6db5a64040c925399df95163b0ee85f9cba187c570fff812889556ab4ab9aa1f"
+    "787eb5bda3947450c726c11a680dbc8780a61d3f7e311fd5edd26e5e89853a6d"
 )
 TM_UNIVERSAL_SCHEMA_NAME = "UNIVERSAL_BANK_BCTC_SCHEMA"
-TM_UNIVERSAL_SCHEMA_REVISION = "UNIVERSAL_BANK_BCTC_SCHEMA@6060"
+TM_UNIVERSAL_SCHEMA_REVISION = "UNIVERSAL_BANK_BCTC_SCHEMA@6065"
 TM_BASE_SCHEMA_COUNT = 1_593
-TM_UNIVERSAL_SCHEMA_COUNT = 1_939
+TM_UNIVERSAL_SCHEMA_COUNT = 1_944
 TM_DOCUMENT_NEW_REPORT_NORM_IDS = (
     *range(5_718, 6_034),
-    *range(6_057, 6_061),
+    *range(6_057, 6_066),
 )
-TM_LATEST_SCHEMA_BATCH_REPORT_NORM_IDS = tuple(range(6_057, 6_061))
+TM_LATEST_SCHEMA_BATCH_REPORT_NORM_IDS = tuple(range(6_061, 6_066))
 _PRODUCTION_SCHEMA_IDENTITY: dict[str, object] = {
     "schema_name": TM_UNIVERSAL_SCHEMA_NAME,
     "schema_revision": TM_UNIVERSAL_SCHEMA_REVISION,
@@ -73,27 +73,27 @@ _PRODUCTION_SCHEMA_IDENTITY: dict[str, object] = {
     },
     "universal_schema": {
         "item_count": TM_UNIVERSAL_SCHEMA_COUNT,
-        "statement_counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1_705},
-        "high_watermark": 6_060,
+        "statement_counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1_710},
+        "high_watermark": 6_065,
         "ordered_canonical_projection_sha256": (
-            "cbe71f9542d1cae82085463c67453b18357ceca933640aaa9cb8ba58fdea7844"
+            "61d1145c15b084ab248251e1ea00f8727a313c0aed20d4b4bb3137c1c43bf458"
         ),
         "ordered_report_norm_ids_sha256": (
-            "b23c8f4213ba8c93762dd67e2dcfc9a9636affb2cbe11368cd6fdf03967661b2"
+            "4c318e61f31e2634b27fcfa9da992edecf262e2182b5dbd8dbedeaccb3737e2b"
         ),
-        "schema_graph_sha256": ("1725d1090bbca78f2f2db87cb3e4b1052fbb28f744dcd58cd51c266d35ad0229"),
+        "schema_graph_sha256": ("5c90e38c91a2a83f6162430083147491899dd3141d3466102c71d394fb31a880"),
         "universal_schema_sha256": (
-            "1725d1090bbca78f2f2db87cb3e4b1052fbb28f744dcd58cd51c266d35ad0229"
+            "5c90e38c91a2a83f6162430083147491899dd3141d3466102c71d394fb31a880"
         ),
     },
     "accepted_post_base_tm_additions": {
         "first_report_norm_id": 5_718,
-        "last_report_norm_id": 6_060,
+        "last_report_norm_id": 6_065,
         "item_count": len(TM_DOCUMENT_NEW_REPORT_NORM_IDS),
     },
     "latest_schema_batch": {
-        "first_report_norm_id": 6_057,
-        "last_report_norm_id": 6_060,
+        "first_report_norm_id": 6_061,
+        "last_report_norm_id": 6_065,
         "item_count": len(TM_LATEST_SCHEMA_BATCH_REPORT_NORM_IDS),
     },
 }
@@ -2711,7 +2711,7 @@ def build_tm_consolidated_development_artifacts(
         observations=observations,
     )
     if policy.schema_identity is not None:
-        if status_counts != {"MAPPED": 890, "NA": 23, "NOT_OBSERVED": 792}:
+        if status_counts != {"MAPPED": 890, "NA": 23, "NOT_OBSERVED": 797}:
             raise TMConsolidatedDevelopmentExportError(
                 "TM universal-schema production partition drifted"
             )

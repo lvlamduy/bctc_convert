@@ -68,21 +68,18 @@ Quy ước:
 
 ## 6. Dự phòng rủi ro cho vay khách hàng
 
-- **Đã xác minh:** Chưa có khoản mục schema nào được xác minh; mới hoàn tất
-  nhận diện vùng nguồn và kiểm tra sơ bộ roll-forward cho 8/8 bank.
+- **Đã xác minh:** ACB p18, MBB p34, VPB p45, HDB p28, VCB p31, CTG p39,
+  BID p23, VIB p34. Đã map `Dự phòng chung`, `Dự phòng cụ thể` và các dòng
+  đầu kỳ, trích lập/hoàn nhập, sử dụng, chênh lệch/điều chỉnh (nếu có), cuối
+  kỳ. VPB còn map riêng nhánh dự phòng cho vay margin/ứng trước.
 - **Không có:** Không có bank nào.
-- **Còn thiếu:**
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong kỳ hiện tại của báo
+  cáo được cung cấp. Riêng PDF VPB là báo cáo tại 31/03/2026 nên kết quả VPB
+  được xác minh cho Q1/2026; chưa có nguồn VPB Q2/2026 để thay thế.
 
-| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| Bank | Trang | Khoản mục nguồn | Ghi chú |
 | --- | ---: | --- | --- |
-| ACB | 18 | Dự phòng rủi ro cho vay khách hàng | Chưa có graph roll-forward tổng quát cho dự phòng chung/cụ thể và các dòng biến động. |
-| MBB | 34 | Thay đổi dự phòng rủi ro cho vay khách hàng | Có nhiều lane dự phòng và phạm vi Việt Nam/nước ngoài; chưa khóa graph tổng quát. |
-| VPB | 45 | Thay đổi dự phòng rủi ro cho vay khách hàng | Có dự phòng chung, cụ thể và margin/ứng trước; chưa khóa quan hệ snapshot–roll-forward tổng quát. |
-| HDB | 28 | Biến động số dư dự phòng rủi ro cho vay khách hàng | Có thêm nhánh thư tín dụng trả chậm và nhiều lane dự phòng; chưa map. |
-| VCB | 31 | Biến động dự phòng chung/cụ thể cho các khoản cho vay khách hàng | Trang nguồn terminal; geometry có nhưng authority số/dòng nguồn còn phải khóa trước khi map. |
-| CTG | 39 | Thay đổi (tăng/giảm) của dự phòng rủi ro tín dụng | Cần graph chung cho số đầu kỳ, trích lập, sử dụng và số cuối kỳ trên nhiều lane. |
-| BID | 23 | Dự phòng rủi ro cho vay khách hàng | Có các dòng giảm do xử lý nợ, giảm/tăng khác và ô trống/dấu; chưa khóa kiểu movement. |
-| VIB | 34 | Biến động dự phòng rủi ro cho vay khách hàng | Cần khóa continuation/kỳ so sánh và quan hệ các lane trước khi map. |
+| VPB | 45 | Dự phòng chung, cụ thể và cho vay margin/ứng trước | Đã map từ kỳ 01/01–31/03/2026; nguồn Q2/2026 chưa có trong PDF được cung cấp. |
 
 ## 7. Tiền gửi của khách hàng — phân loại theo loại/kỳ hạn/đối tượng
 
@@ -135,6 +132,6 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Loại hình cho vay | ✓ p17 | ✓ p31 | ✓ p42 | ✓ p26 | ✓ p30 | ✓ p38 | ✓ p22 | ✓ p33 | 0 |
 | Ngành nghề kinh doanh | — | ✓ p33 | ✓ p44 | ✓ p27 | — | — | ✓ p22 | ✓ p33 | 0 trong 5 vùng; 3 bank không có |
 | Doanh nghiệp/đối tượng KH | — | ✓\* p32 | ✓ p43 | ✓ p26 | — | — | — | ✓ p34 | 1 group parent check-only |
-| Dự phòng cho vay | △ p18 | △ p34 | △ p45 | △ p28 | △ p31 | △ p39 | △ p23 | △ p34 | 8 vùng chưa map |
+| Dự phòng cho vay | ✓ p18 | ✓ p34 | ✓\* p45 | ✓ p28 | ✓ p31 | ✓ p39 | ✓ p23 | ✓ p34 | 0 dòng; VPB còn thiếu nguồn Q2 |
 | Tiền gửi khách hàng | △ p21 | △ p43 | △ p55 | △ p31 | △ p35 | △ p42 | △ p25 | △ p41 | 8 vùng chưa map |
 | Chứng khoán | △ p16 | △ p31 | △ p40 | △ p24 | △ p30 | △ p37 | △ p20 | △ AFS p36 | 8 vùng chưa map |

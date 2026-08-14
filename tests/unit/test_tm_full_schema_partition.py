@@ -47,7 +47,7 @@ from bctc_ai.schema.registry import load_all
 
 _SOURCE_PDF = Path("vietstock_bctc/MBB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf")
 _SCHEMA_WORKBOOK = Path("template/Bank_TM_ReportNormId.v2.xlsx")
-_BUSINESS_AUDIT = Path("data/registered/schema_business_update_5712_5713_5714_5718_6060.json")
+_BUSINESS_AUDIT = Path("data/registered/schema_business_update_5712_5713_5714_5718_6065.json")
 
 _PAGE36_43_SCHEMA_CONTRACTS = {
     5959: ("Dự phòng giảm giá", 862, 5961, 868, ()),
@@ -315,15 +315,15 @@ def test_all_26_page_owners_plus_residual_are_pairwise_disjoint_and_exhaustive(
         [*page_partitions, residual.owned_partition],
     )
 
-    assert aggregate.schema_item_count == 1_705
+    assert aggregate.schema_item_count == 1_710
     assert aggregate.owner_scope_count == 27
     assert aggregate.mapped_schema_count == 890
     assert aggregate.unresolved_schema_count == 0
-    assert aggregate.not_observed_schema_count == 792
+    assert aggregate.not_observed_schema_count == 797
     assert aggregate.not_applicable_schema_count == 23
     assert aggregate.unassessed_schema_count == 0
     assert aggregate.ownership_sha256 == (
-        "f065b0c938c149936b2b620329170d4b3f62f5769b62ab0b68d5d8880df5b5c6"
+        "9c5f3a4960097ff5e7cb4997bd62d00143df985f333f7d0fcb4eef4fcabe07a5"
     )
 
 

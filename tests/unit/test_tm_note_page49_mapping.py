@@ -46,13 +46,13 @@ def test_page49_reconciles_exact_business_and_source_denominators(
 ) -> None:
     result = _mapped(project_root, tmp_path)
 
-    assert result.schema_item_count == 1_705
+    assert result.schema_item_count == 1_710
     assert result.status_reconciled_schema_count == 22
     assert result.mapped_schema_count == 10
     assert result.ambiguous_schema_count == 0
     assert result.not_observed_schema_count == 12
     assert result.not_applicable_schema_count == 0
-    assert result.unassessed_schema_count == 1_683
+    assert result.unassessed_schema_count == 1_688
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == 12
     assert result.mapped_source_row_count == 10
@@ -103,7 +103,7 @@ def test_page49_exact_mapped_ambiguous_not_observed_and_unassessed_sets(
         1277,
         1279,
     }
-    assert len(by_status[TMPage49SchemaStatus.UNASSESSED.value]) == 1_683
+    assert len(by_status[TMPage49SchemaStatus.UNASSESSED.value]) == 1_688
     assert 1220 in by_status[TMPage49SchemaStatus.UNASSESSED.value]
     assert 1280 in by_status[TMPage49SchemaStatus.UNASSESSED.value]
 
