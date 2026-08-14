@@ -190,6 +190,29 @@ Q1/2026, không relabel thành Q2/2026.
 Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
 Q1/2026, không relabel thành Q2/2026.
 
+## 12. Công cụ tài chính phái sinh và tài sản/công nợ tài chính khác
+
+- **Đã xác minh:** ACB p17, MBB p43, VPB p41, HDB p25, CTG p38, BID p21
+  và VIB p32. Đã map 86 giao điểm hàng × trục có đúng khoản mục schema:
+  giá trị hợp đồng, giá trị ghi sổ tài sản và giá trị ghi sổ công nợ cho kỳ
+  hiện tại/so sánh; 30 phương trình cha–con hoặc tài sản trừ công nợ đóng
+  chính xác. Các cột dòng tiền vào/ra và giá trị thuần chỉ dùng kiểm tra vì
+  schema không có trục tương đương. Mười một dấu `-` nhìn thấy ở HDB được giữ
+  nguyên trạng thái `DASH` trước khi chuẩn hóa thành 0; ô trống không bị đổi
+  thành 0.
+- **Không có:** Không tuyên bố bank nào vắng toàn bộ family phái sinh.
+- **Còn thiếu:** VCB có các dòng tổng/chính sách/giá trị hợp lý hoặc kiểm soát
+  rủi ro liên quan nhưng whole-PDF scan không tìm thấy một bảng giao dịch phái
+  sinh chi tiết đủ hàng con, hai kỳ và trục số để map 632–715.
+
+| Bank | Trang bằng chứng gần nhất | Khoản mục nguồn | Lý do chưa map |
+| --- | ---: | --- | --- |
+| VCB | 7 và các bảng công cụ tài chính/rủi ro phía sau | Công cụ tài chính phái sinh và tài sản/công nợ tài chính khác | Chỉ có tổng hoặc bề mặt chính sách/giá trị hợp lý/rủi ro; không có vùng giao dịch chi tiết hoàn chỉnh. |
+
+Ghi chú OCR số: BID `6,270,0ss` được đọc lại từ pixel/Paddle là `6,270,055`;
+VIB `2.126.217` được đọc lại là `12.126.217`. VietOCR Transformer chỉ giữ vai
+trò anchor/geometry và không được dùng để tự sửa số. PDF VPB là Q1/2026.
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -209,3 +232,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Chứng khoán kinh doanh | ✓ p16 | ✓ p31 | ✓\* p40 | ✓ p24 | ✓ p30 | ✓ p37 | ✓ p20 | △ AFS p36 | 1 subfamily AFS; VPB là nguồn Q1 |
 | Tiền gửi tại NHNN | — tổng p3 | ✓\* p30 | ✓\* p38 | — tổng p3 | — tổng p7 | — tổng p3 | — tổng p4 | ✓ p31 | 2 dòng địa lý MBB; 5 bank không có bảng chi tiết; VPB là nguồn Q1 |
 | Tiền gửi/vay TCTD khác | ✓ p16 | ✓ p30 | ✓\* p39 | — tổng p3 | — tổng p7 | ✓ p41 | ✓ p25 | ✓ p32 | 2 bank không có bảng chi tiết; VPB là nguồn Q1 |
+| Công cụ tài chính phái sinh | ✓ p17 | ✓ p43 | ✓\* p41 | ✓ p25 | △ tổng/chính sách | ✓ p38 | ✓ p21 | ✓ p32 | VCB thiếu bảng giao dịch chi tiết; VPB là nguồn Q1 |

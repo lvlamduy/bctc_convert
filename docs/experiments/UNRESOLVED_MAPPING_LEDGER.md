@@ -17,7 +17,7 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **37 entries**.  Current open queue: **13**.  Closed history:
+Ledger total: **38 entries**.  Current open queue: **14**.  Closed history:
 **21** row/graph resolutions and **3** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
@@ -26,6 +26,7 @@ Bank/report/page fields below are evidence locators only, never matching rules.
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
 | --- | --- | --- | ---: | --- | --- |
+| DFI-001 | Công cụ tài chính phái sinh và tài sản/công nợ tài chính khác | VCB | 7 và các bảng công cụ tài chính/rủi ro phía sau | Công cụ tài chính phái sinh và tài sản/công nợ tài chính khác | Whole-PDF scan thấy các dòng tổng, chính sách, giá trị hợp lý hoặc bề mặt rủi ro nhưng không có một bảng giao dịch chi tiết đủ ít nhất hai hàng giao dịch con, hai kỳ và các trục hợp đồng/tài sản/công nợ. Không ép bề mặt gần giống vào schema 632–715 và không tuyên bố family vắng khỏi báo cáo. |
 | IDL-001 | Tiền gửi/vay các TCTD khác | HDB | 3 | Tiền gửi tại và cho vay các TCTD khác | Whole-PDF scan chỉ thấy dòng tổng; các lần lặp sau thuộc bảng ngoại tệ, rủi ro hoặc công cụ tài chính. Không có cụm chi tiết đủ cha tiền gửi/vay, con tiền tệ, kỳ và subtotal; không tuyên bố family vắng mặt. |
 | IDL-002 | Tiền gửi/vay các TCTD khác | VCB | 7 | Tiền gửi tại và cho vay các tổ chức tín dụng khác | Whole-PDF scan chỉ thấy dòng tổng; các lần lặp sau thuộc chính sách, giá trị hợp lý hoặc rủi ro. Không ép các bảng gần giống thành note phân rã tiền gửi/vay. |
 | CBD-001 | Tiền gửi tại NHNN | MBB | 30 | Tiền gửi tại Ngân hàng Nhà nước Lào | Dòng nằm đúng trong cụm và tham gia phương trình tổng, nhưng live TM schema chưa có child tiền gửi NHTW theo địa lý tương đương; không ép vào 574 `Tiền gửi khác`. |
