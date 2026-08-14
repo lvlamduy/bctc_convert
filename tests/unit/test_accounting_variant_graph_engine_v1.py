@@ -7,6 +7,7 @@ import pytest
 from bctc_ai.evaluation.accounting_variant_graph_engine_v1 import (
     AccountingVariantGraphEngineV1Error,
     build_accounting_variant_region_scan_v1,
+    match_vietnamese_anchor_alias_v1,
     normalize_vietnamese_anchor_v1,
     validate_accounting_variant_region_scan_replay_v1,
 )
@@ -118,6 +119,10 @@ def test_generic_engine_enumerates_complete_and_near_regions_without_bank_routin
 
 def test_accent_normalization_and_one_character_error_stay_bounded_by_topology():
     assert normalize_vietnamese_anchor_v1("Nợ trùng hạn") == "no trung han"
+    assert (
+        match_vietnamese_anchor_alias_v1("Nợi ngắn hạn", ["Nợ ngắn hạn"])
+        == "ONE_EDIT_ALIAS_IN_COMPLETE_ORDERED_TOPOLOGY"
+    )
     page = _complete_surface(branch="Phân tíh dư nợ theo thời gian")
     page[9] = "Nợ trungg hạn"
     result = build_accounting_variant_region_scan_v1(

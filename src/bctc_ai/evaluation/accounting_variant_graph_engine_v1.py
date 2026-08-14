@@ -29,6 +29,7 @@ __all__ = [
     "FORMAT_VERSION",
     "AccountingVariantGraphEngineV1Error",
     "build_accounting_variant_region_scan_v1",
+    "match_vietnamese_anchor_alias_v1",
     "normalize_vietnamese_anchor_v1",
     "validate_accounting_variant_region_scan_replay_v1",
 ]
@@ -279,6 +280,21 @@ def _alias_match(text: str, aliases: Sequence[str]) -> str | None:
     if any(_edit_distance_at_most_one(normalized, alias) for alias in aliases):
         return "ONE_EDIT_ALIAS_IN_COMPLETE_ORDERED_TOPOLOGY"
     return None
+
+
+def match_vietnamese_anchor_alias_v1(value: str, aliases: Sequence[str]) -> str | None:
+    """Match one fresh OCR surface against declarative family aliases.
+
+    The public helper exposes the engine's exact accentless/one-base-character
+    policy so family wrappers do not reimplement fuzzy text logic.  It grants
+    anchor evidence only; callers must still require complete topology and
+    accounting checks.
+    """
+
+    if isinstance(aliases, (str, bytes, bytearray)) or not isinstance(aliases, Sequence):
+        raise _error("anchor aliases must be one non-string sequence")
+    normalized = _normalized_aliases(list(aliases), "anchor aliases")
+    return _alias_match(value, normalized)
 
 
 def _owner_alias_match(text: str, aliases: Sequence[str]) -> str | None:

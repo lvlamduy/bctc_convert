@@ -1,0 +1,170 @@
+from __future__ import annotations
+
+from decimal import Decimal
+
+import pytest
+
+from bctc_ai.evaluation.accounting_table_axes_v1 import (
+    AccountingTableAxesV1Error,
+    center_x2_v1,
+    extract_period_axis_v1,
+    extract_typed_value_vector_v1,
+    is_number_like_v1,
+    money_integer_v1,
+    money_values_v1,
+    percentage_values_v1,
+    unit_kind_v1,
+)
+
+
+def _line(
+    index: int,
+    text: str,
+    x1: int,
+    *,
+    source_text: str | None = None,
+) -> dict[str, object]:
+    result: dict[str, object] = {
+        "bbox": [x1, 10, x1 + 80, 30],
+        "source_line_index": index,
+        "vietocr_text": text,
+    }
+    if source_text is not None:
+        result["source_text"] = source_text
+    return result
+
+
+def test_period_axis_supports_exact_split_and_relative_variants() -> None:
+    exact, exact_kind = extract_period_axis_v1(
+        [_line(7, "31/12/2025", 300), _line(6, "30/06/2026", 100)]
+    )
+    assert exact_kind == "LOCAL_EXACT_DATES"
+    assert [item["period"] for item in exact] == ["30/06/2026", "31/12/2025"]
+    assert [item["evidence_source_line_indices"] for item in exact] == [[6], [7]]
+
+    split, split_kind = extract_period_axis_v1(
+        [
+            _line(11, "Năm 2025", 320),
+            _line(8, "Ngày 30 tháng 06", 100),
+            _line(10, "Ngày 31 tháng 12", 300),
+            _line(9, "Năm 2026", 120),
+        ]
+    )
+    assert split_kind == "LOCAL_SPLIT_DATES"
+    assert [item["period"] for item in split] == ["30/06/2026", "31/12/2025"]
+    assert [item["evidence_source_line_indices"] for item in split] == [
+        [8, 9],
+        [10, 11],
+    ]
+
+    relative, relative_kind = extract_period_axis_v1(
+        [_line(4, "Số đầu kỳ", 300), _line(3, "Số cuối kỳ", 100)]
+    )
+    assert relative_kind == "LOCAL_RELATIVE_PERIOD_ROLES"
+    assert [item["period"] for item in relative] == [
+        "CURRENT_PERIOD_END",
+        "COMPARATIVE_PERIOD_START",
+    ]
+
+
+def test_period_axis_fails_closed_on_invalid_or_ambiguous_headers() -> None:
+    assert extract_period_axis_v1([_line(1, "31/13/2025", 100), _line(2, "30/06/2026", 300)]) == (
+        [],
+        "UNRESOLVED",
+    )
+    assert extract_period_axis_v1(
+        [
+            _line(1, "30/06/2026", 100),
+            _line(2, "31/12/2025", 300),
+            _line(3, "31/12/2024", 500),
+        ]
+    ) == ([], "UNRESOLVED")
+
+
+def test_units_and_numeric_surfaces_are_generic_and_typed() -> None:
+    assert unit_kind_v1("Đơn vị: Triệu đồng") == "MONEY"
+    assert unit_kind_v1("Triệu VND") == "MONEY"
+    assert unit_kind_v1("Tỷ lệ %") == "PERCENT"
+    assert unit_kind_v1("Tỷ đồng") is None
+
+    assert is_number_like_v1("(1.210.726.423)") is True
+    assert is_number_like_v1("49,50%") is True
+    assert is_number_like_v1("-") is False
+    assert money_integer_v1("1.210.726.423") == 1_210_726_423
+    assert money_integer_v1("(35.170)") == -35_170
+    assert money_integer_v1("-112,995") == -112_995
+    assert money_integer_v1("49,50%") is None
+
+
+def test_value_vector_uses_geometry_and_preserves_money_percent_lanes() -> None:
+    vector = extract_typed_value_vector_v1(
+        [
+            _line(40, "100.00", 700, source_text="100,00"),
+            _line(38, "448.407.905", 500, source_text="448.407.905"),
+            _line(37, "49.50", 300, source_text="49,50"),
+            _line(36, "603.040.884", 100, source_text="603.040.884"),
+        ],
+        ["MONEY", "PERCENT", "MONEY", "PERCENT"],
+        primary_numeric_authority=True,
+    )
+    assert vector is not None
+    assert [item["source_line_index"] for item in vector] == [36, 37, 38, 40]
+    assert money_values_v1(vector) == [603_040_884, 448_407_905]
+    assert percentage_values_v1(vector) == [Decimal("49.50"), Decimal("100.00")]
+
+    semantic_only = extract_typed_value_vector_v1(
+        [_line(1, "81.371.771", 100, source_text="81.371.777")],
+        ["MONEY"],
+        primary_numeric_authority=False,
+    )
+    assert semantic_only is not None
+    assert semantic_only[0]["surface"] == "81.371.771"
+    assert semantic_only[0]["source_authoritative"] is False
+    assert money_values_v1(semantic_only) is None
+
+
+def test_value_vector_rejects_hidden_extra_or_missing_lanes() -> None:
+    rows = [_line(1, "100", 100), _line(2, "50", 300)]
+    assert extract_typed_value_vector_v1(rows, ["MONEY"], primary_numeric_authority=True) is None
+    assert (
+        extract_typed_value_vector_v1(
+            rows,
+            ["MONEY", "PERCENT", "MONEY"],
+            primary_numeric_authority=True,
+        )
+        is None
+    )
+
+
+@pytest.mark.parametrize(
+    ("operation", "message"),
+    [
+        (lambda: center_x2_v1(_line(1, "x", 10) | {"bbox": [True, 0, 2, 2]}), "bbox"),
+        (
+            lambda: extract_period_axis_v1(
+                [_line(1, "30/06/2026", 10) | {"source_line_index": True}]
+            ),
+            "source line index",
+        ),
+        (lambda: is_number_like_v1(1), "exact string"),
+        (
+            lambda: extract_typed_value_vector_v1(
+                [_line(1, "100", 10)],
+                "MONEY",
+                primary_numeric_authority=True,
+            ),
+            "lane declaration",
+        ),
+        (
+            lambda: extract_typed_value_vector_v1(
+                [_line(1, "100", 10)],
+                ["MONEY"],
+                primary_numeric_authority=1,
+            ),
+            "authority flag",
+        ),
+    ],
+)
+def test_axes_helpers_reject_type_smuggling(operation: object, message: str) -> None:
+    with pytest.raises(AccountingTableAxesV1Error, match=message):
+        operation()
