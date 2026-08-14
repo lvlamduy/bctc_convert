@@ -159,6 +159,20 @@ def test_projection_exactly_replays_against_the_source_semantic_index(
     )
 
 
+def test_unavailable_character_probability_preserves_the_ordered_text_line(
+    source_index: dict[str, object],
+) -> None:
+    line = source_index["documents"][0]["pages"][0]["lines"][0]
+    original = line["mean_decoded_character_probability"]
+    line["mean_decoded_character_probability"] = None
+    try:
+        projected = project_full_document_vietocr_accounting_axis_v1(source_index)
+        assert projected["documents"][0]["pages"][0]["lines"][0]["vietocr_text"] == ""
+        assert projected["metrics"]["sample_count"] == 34_341
+    finally:
+        line["mean_decoded_character_probability"] = original
+
+
 def test_coordinated_projection_rehash_cannot_replace_fresh_text(
     projection: dict[str, object], source_index: dict[str, object]
 ) -> None:

@@ -253,9 +253,14 @@ def _source_index(value: Any) -> dict[str, Any]:
                     or type(raw_line["line_axis_role"]) is not str
                     or not raw_line["line_axis_role"]
                     or type(raw_line["vietocr_text"]) is not str
-                    or type(probability) not in {int, float}
-                    or not math.isfinite(probability)
-                    or not 0 <= probability <= 1
+                    or (
+                        probability is not None
+                        and (
+                            type(probability) not in {int, float}
+                            or not math.isfinite(probability)
+                            or not 0 <= probability <= 1
+                        )
+                    )
                 ):
                     raise _error("full-document VietOCR line identity/text/probability drifted")
                 _positive_int(raw_line["processed_height"], "processed crop height")
