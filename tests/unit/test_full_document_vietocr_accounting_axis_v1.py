@@ -145,9 +145,12 @@ def test_fixed_full_document_axis_preserves_exact_denominator_and_empty_text(
         "source_line_index": 0,
         "source_text": None,
         "vietocr_text": "",
+        "vietocr_text_accentless": "",
     }
+    assert documents[0]["pages"][0]["lines"][1]["vietocr_text_accentless"] == "fresh line 2"
     assert set(first_line).isdisjoint({"bank_code", "physical_page", "source_pdf"})
     assert projection["authority"]["numeric_authority"] is False
+    assert projection["authority"]["accentless_text_is_anchor_evidence_only"] is True
 
 
 def test_projection_exactly_replays_against_the_source_semantic_index(

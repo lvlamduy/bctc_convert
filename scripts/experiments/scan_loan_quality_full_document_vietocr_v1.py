@@ -177,7 +177,23 @@ def build_loan_quality_full_document_scan_v1(semantic_index: Any) -> dict[str, A
     matcher = _matcher()
     trials: list[dict[str, Any]] = []
     for document in axis["documents"]:
-        match = matcher.build_loan_quality_variant_graph_document_v1(document["pages"])
+        matcher_pages = [
+            {
+                "lines": [
+                    {
+                        "bbox": line["bbox"],
+                        "source_line_index": line["source_line_index"],
+                        "source_text": line["source_text"],
+                        "vietocr_text": line["vietocr_text"],
+                    }
+                    for line in page["lines"]
+                ],
+                "page_sequence": page["page_sequence"],
+                "primary_numeric_authority": page["primary_numeric_authority"],
+            }
+            for page in document["pages"]
+        ]
+        match = matcher.build_loan_quality_variant_graph_document_v1(matcher_pages)
         trials.append(
             {
                 "document_ordinal": document["document_ordinal"],

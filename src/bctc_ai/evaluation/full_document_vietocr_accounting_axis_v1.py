@@ -13,6 +13,9 @@ import math
 import re
 from typing import Any
 
+from bctc_ai.evaluation.accounting_variant_graph_engine_v1 import (
+    normalize_vietnamese_anchor_v1,
+)
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
     canonical_json_sha256_v1,
@@ -40,6 +43,7 @@ CLAIM_BOUNDARY = (
     "PROJECTION_ONLY_NO_SOURCE_TRANSCRIPT_NUMERIC_SCHEMA_MAPPING_OR_EXPORT_AUTHORITY"
 )
 _AUTHORITY = {
+    "accentless_text_is_anchor_evidence_only": True,
     "all_empty_predictions_preserved": True,
     "bank_identity_exposed_inside_family_match_lines": False,
     "geometry_authority": False,
@@ -281,6 +285,9 @@ def _source_index(value: Any) -> dict[str, Any]:
                         "source_line_index": line_index,
                         "source_text": None,
                         "vietocr_text": raw_line["vietocr_text"],
+                        "vietocr_text_accentless": normalize_vietnamese_anchor_v1(
+                            raw_line["vietocr_text"]
+                        ),
                     }
                 )
             document_line_count += line_count
