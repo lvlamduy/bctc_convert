@@ -1,0 +1,267 @@
+{
+  "format_version": "LOAN_INDUSTRY_8BANK_CODEX_PIXEL_REVIEW_V1",
+  "state": "CODEX_PIXEL_REVIEW_COMPLETE",
+  "claim_boundary": "Independent visible-PDF review of every complete fresh-VietOCR customer-loan industry region and its bounded no-full-match controls; this record supplies row/cell pixel reconciliation but no broad corpus, export, or production authority.",
+  "semantic_index_sha256": "f84fd9ca56fe06af230e011ecad85b0a576e27e1eca32ee141e654a6776b78b4",
+  "semantic_axis_sha256": "e99873cd16a7234702d0ee6e5fa9eb37637a1a75621228381e3dbcd7c5cfdcca",
+  "reviewer": {
+    "kind": "CODEX_INDEPENDENT_PDF_PIXEL_REVIEW",
+    "review_run_id": "E-0055-2026-08-14-visible-pdf-review-v1"
+  },
+  "review_checks": [
+    "COMPLETE_PDF_REGION_ENUMERATION",
+    "VISIBLE_CONSOLIDATED_REPORT_SCOPE",
+    "CUSTOMER_LOAN_OWNER",
+    "INDUSTRY_BRANCH",
+    "VARIABLE_COMPLETE_VISIBLE_ROW_BLOCK",
+    "PERIOD_AXIS",
+    "UNIT_SCOPE",
+    "ROW_LABEL_AND_ROLE",
+    "VALUE_GEOMETRY",
+    "EXACT_DIGITS_SIGN_AND_MISSING_CELL",
+    "OPTIONAL_SUBTOTAL_AND_MARGIN_BOUNDARY",
+    "FINAL_TOTAL_ACCOUNTING_CLOSURE",
+    "PERCENTAGE_DISPLAY_ROUNDING_WHEN_PRESENT",
+    "SCHEMA_PARENT_CHILD_AND_DISPLAY_ORDER",
+    "NEGATIVE_SIBLING_FAMILY_CONTROL"
+  ],
+  "safety": {
+    "all_visible_cells_independently_reviewed": true,
+    "all_visible_row_labels_independently_reviewed": true,
+    "bank_or_page_used_as_matching_rule": false,
+    "decimal_separator_normalization_changed_digits": false,
+    "fresh_vietocr_used_as_pixel_truth": false,
+    "mapping_decided_by_text_similarity_alone": false,
+    "numeric_truth_source": "VISIBLE_PDF_PIXELS",
+    "old_ocr_used_as_semantic_text": false,
+    "review_can_assert_document_wide_family_absence": false,
+    "unchanged_semantic_cell_surfaces_attested_equal_to_pixels": true
+  },
+  "documents": [
+    {
+      "document_provenance": "ACB",
+      "disposition": "NO_COMPLETE_REGION_IN_EXACT_FULL_DOCUMENT_FRESH_VIETOCR_SCAN",
+      "physical_page": null,
+      "target_render_sha256": null,
+      "matcher_graph_sha256": null,
+      "owner_pixel_transcription": null,
+      "branch_pixel_transcription": null,
+      "period_pixel_transcriptions": [],
+      "unit_pixel_transcriptions": [],
+      "reviewed_role_order": [],
+      "schema_unresolved_roles": [],
+      "statement_context_evidence": null,
+      "transformer_disagreements": [],
+      "pixel_accounting": null,
+      "whole_document_family_absence_claim": false
+    },
+    {
+      "document_provenance": "MBB",
+      "disposition": "UNIQUE_COMPLETE_REGION_VISIBLE_PIXEL_REVIEWED",
+      "physical_page": 33,
+      "target_render_sha256": "18acb558f24ff35bd812b8fd35b9a35b7a868ca74d5654060404ff0bc5f5d785",
+      "matcher_graph_sha256": "e572ccc45bc861baeb78f321bbdb2e6fac08c4f353b01880630917f59bfc80bd",
+      "owner_pixel_transcription": "Dư nợ cho vay khách hàng của Ngân hàng",
+      "branch_pixel_transcription": "Phân tích dư nợ cho vay theo ngành",
+      "period_pixel_transcriptions": ["30/06/2026", "31/12/2025"],
+      "unit_pixel_transcriptions": ["Triệu đồng", "%", "Triệu đồng", "%"],
+      "reviewed_role_order": ["AGRICULTURE_FORESTRY_FISHERY", "MINING", "MANUFACTURING", "UTILITIES", "WATER_WASTE", "CONSTRUCTION", "TRADE_REPAIR", "TRANSPORT_STORAGE", "ACCOMMODATION_FOOD", "INFORMATION_COMMUNICATION", "FINANCE_BANKING_INSURANCE", "REAL_ESTATE", "PROFESSIONAL_SCIENCE_TECHNOLOGY", "ADMIN_SUPPORT", "EDUCATION", "HEALTH_SOCIAL_WORK", "ARTS_ENTERTAINMENT", "OTHER_SERVICES", "HOUSEHOLD_EMPLOYMENT_SELF_USE", "FOREIGN_BRANCH_LOANS", "MARGIN_AND_SECURITIES_ADVANCE"],
+      "schema_unresolved_roles": ["TRANSPORT_STORAGE", "FOREIGN_BRANCH_LOANS"],
+      "statement_context_evidence": {
+        "mode": "DOCUMENT_PRECEDING_VISIBLE_HEADING",
+        "physical_page": 9,
+        "render_sha256": "cc740491d62ede251f605b009ee1dc844d3ecca60e1a7a15184478d7acf45952",
+        "pixel_transcription": "THUYẾT MINH BÁO CÁO TÀI CHÍNH HỢP NHẤT",
+        "report_scope": "CONSOLIDATED"
+      },
+      "transformer_disagreements": [
+        {"field": "ROW_LABEL", "role": "UTILITIES", "lane_index": null, "source_line_index": 24, "semantic_proposal": "sxapp điện, khi đốt, nước nóng, hơi nước và Điều hòa không khí", "pixel_transcription": "SXPP điện, khí đốt, nước nóng, hơi nước và điều hòa không khí", "disposition": "PIXEL_TEXT_RETAINED_FOR_SCHEMA_REVIEW"},
+        {"field": "ROW_LABEL", "role": "WATER_WASTE", "lane_index": null, "source_line_index": 30, "semantic_proposal": "Cung cấp nước, QL8XL rác thải, nước thải", "pixel_transcription": "Cung cấp nước, QL&XL rác thải, nước thải", "disposition": "PIXEL_TEXT_RETAINED_FOR_SCHEMA_REVIEW"},
+        {"field": "ROW_LABEL", "role": "ACCOMMODATION_FOOD", "lane_index": null, "source_line_index": 52, "semantic_proposal": "Dịch vụ lưu trú 8 ăn uống", "pixel_transcription": "Dịch vụ lưu trú & ăn uống", "disposition": "PIXEL_TEXT_RETAINED_FOR_SCHEMA_REVIEW"},
+        {"field": "ROW_LABEL", "role": "PROFESSIONAL_SCIENCE_TECHNOLOGY", "lane_index": null, "source_line_index": 73, "semantic_proposal": "Hoạt động chuyên môn, khoa học 8 công nghệ", "pixel_transcription": "Hoạt động chuyên môn, khoa học & công nghệ", "disposition": "PIXEL_TEXT_RETAINED_FOR_SCHEMA_REVIEW"},
+        {"field": "ROW_LABEL", "role": "ADMIN_SUPPORT", "lane_index": null, "source_line_index": 79, "semantic_proposal": "Hoại động hành chính & Dịch vụ hỗ trợ", "pixel_transcription": "Hoạt động hành chính & Dịch vụ hỗ trợ", "disposition": "PIXEL_TEXT_RETAINED_FOR_SCHEMA_REVIEW"},
+        {"field": "ROW_LABEL", "role": "EDUCATION", "lane_index": null, "source_line_index": 85, "semantic_proposal": "Giáo dục 8 Đào tạo", "pixel_transcription": "Giáo dục & Đào tạo", "disposition": "PIXEL_TEXT_RETAINED_FOR_SCHEMA_REVIEW"},
+        {"field": "ROW_LABEL", "role": "HEALTH_SOCIAL_WORK", "lane_index": null, "source_line_index": 90, "semantic_proposal": "Y tế 8 hoạt động trợ giúp xã hội", "pixel_transcription": "Y tế & hoạt động trợ giúp xã hội", "disposition": "PIXEL_TEXT_RETAINED_FOR_SCHEMA_REVIEW"},
+        {"field": "ROW_LABEL", "role": "ARTS_ENTERTAINMENT", "lane_index": null, "source_line_index": 95, "semantic_proposal": "Nghệ thuật, vui choi, giải tri", "pixel_transcription": "Nghệ thuật, vui chơi, giải trí", "disposition": "PIXEL_TEXT_RETAINED_FOR_SCHEMA_REVIEW"}
+      ],
+      "pixel_accounting": {
+        "row_count": 21,
+        "money_lane_sums": ["1227554477", "1084019370"],
+        "printed_money_totals": ["1227554477", "1084019370"],
+        "percentage_lane_sums": ["100.00", "100.00"],
+        "printed_percentage_totals": ["100.00", "100.00"],
+        "maximum_percentage_rounding_residual": "0.00",
+        "intermediate_money_totals": [["1210726423", "1068978785"]]
+      },
+      "whole_document_family_absence_claim": false
+    },
+    {
+      "document_provenance": "VPB",
+      "disposition": "UNIQUE_COMPLETE_REGION_VISIBLE_PIXEL_REVIEWED",
+      "physical_page": 44,
+      "target_render_sha256": "5f278d14ebf6e8ee02a91fe9217c1414fe3cd94377b6a1ec0f5eeb8449280783",
+      "matcher_graph_sha256": "dd865f07dacf320b292a2de84f38030864d0f96ca36978eaddf3cfa32a5827ca",
+      "owner_pixel_transcription": "CHO VAY KHÁCH HÀNG (tiếp theo)",
+      "branch_pixel_transcription": "Phân tích dư nợ cho vay theo ngành",
+      "period_pixel_transcriptions": ["31/03/2026", "31/12/2025"],
+      "unit_pixel_transcriptions": ["Triệu đồng", "%", "Triệu đồng", "%"],
+      "reviewed_role_order": ["AGRICULTURE_FORESTRY_FISHERY", "MINING", "MANUFACTURING", "UTILITIES", "WATER_WASTE", "CONSTRUCTION", "TRADE_REPAIR", "TRANSPORT_STORAGE", "ACCOMMODATION_FOOD", "INFORMATION_COMMUNICATION", "FINANCE_BANKING_INSURANCE", "REAL_ESTATE", "PROFESSIONAL_SCIENCE_TECHNOLOGY", "ADMIN_SUPPORT", "PUBLIC_ADMIN_DEFENCE_SOCIAL_SECURITY", "EDUCATION", "HEALTH_SOCIAL_WORK", "ARTS_ENTERTAINMENT", "OTHER_SERVICES", "HOUSEHOLD_EMPLOYMENT_SELF_USE", "PERSONAL_HOUSING_LOANS", "MARGIN_AND_SECURITIES_ADVANCE"],
+      "schema_unresolved_roles": ["TRANSPORT_STORAGE", "PUBLIC_ADMIN_DEFENCE_SOCIAL_SECURITY", "PERSONAL_HOUSING_LOANS"],
+      "statement_context_evidence": {
+        "mode": "PAGE_LOCAL_VISIBLE_HEADING",
+        "physical_page": 44,
+        "render_sha256": "5f278d14ebf6e8ee02a91fe9217c1414fe3cd94377b6a1ec0f5eeb8449280783",
+        "pixel_transcription": "THUYẾT MINH BÁO CÁO TÀI CHÍNH HỢP NHẤT GIỮA NIÊN ĐỘ (tiếp theo)",
+        "report_scope": "CONSOLIDATED"
+      },
+      "transformer_disagreements": [
+        {"field": "ROW_LABEL", "role": "HOUSEHOLD_EMPLOYMENT_SELF_USE", "lane_index": null, "source_line_index": 118, "semantic_proposal": "Hoạt động làm thuê các công việc trong hộ gia đình, sản xuất sản phầm vật chất và dịch vụ tiêu dùng của hộ gia đình", "pixel_transcription": "Hoạt động làm thuê các công việc trong hộ gia đình, sản xuất sản phẩm vật chất và dịch vụ tiêu dùng của hộ gia đình", "disposition": "PIXEL_TEXT_RETAINED_FOR_SCHEMA_REVIEW"},
+        {"field": "ROW_LABEL", "role": "PERSONAL_HOUSING_LOANS", "lane_index": null, "source_line_index": 124, "semantic_proposal": "Cho vay cá nhân để mua nhà ở, nhận quyền sử dụng đất đề xây nhà ở", "pixel_transcription": "Cho vay cá nhân để mua nhà ở, nhận quyền sử dụng đất để xây nhà ở", "disposition": "PIXEL_TEXT_RETAINED_FOR_SCHEMA_REVIEW"}
+      ],
+      "pixel_accounting": {
+        "row_count": 22,
+        "money_lane_sums": ["1040917216", "943901630"],
+        "printed_money_totals": ["1040917216", "943901630"],
+        "percentage_lane_sums": ["100.01", "100.01"],
+        "printed_percentage_totals": ["100.00", "100.00"],
+        "maximum_percentage_rounding_residual": "0.01",
+        "intermediate_money_totals": []
+      },
+      "whole_document_family_absence_claim": false
+    },
+    {
+      "document_provenance": "HDB",
+      "disposition": "UNIQUE_COMPLETE_REGION_VISIBLE_PIXEL_REVIEWED",
+      "physical_page": 27,
+      "target_render_sha256": "27f5371fc8af52d958fd1244b782a86c702b0ef692b16aec31f51f06b275e3d3",
+      "matcher_graph_sha256": "918b27794dad78f1d47b0b734fa44a0d507581c6c0b798caccdd24381246affb",
+      "owner_pixel_transcription": "Cho vay khách hàng",
+      "branch_pixel_transcription": "Phân tích dư nợ cho vay theo ngành nghề đăng ký kinh doanh",
+      "period_pixel_transcriptions": ["Số cuối kỳ", "Số đầu kỳ"],
+      "unit_pixel_transcriptions": ["Triệu VND", "Triệu VND"],
+      "reviewed_role_order": ["HOUSEHOLD_EMPLOYMENT_SELF_USE", "REAL_ESTATE", "TRADE_REPAIR", "CONSTRUCTION", "FINANCE_BANKING_INSURANCE", "MANUFACTURING", "ACCOMMODATION_FOOD", "TRANSPORT_STORAGE", "UTILITIES", "AGRICULTURE_FORESTRY_FISHERY", "OTHER_INDUSTRIES"],
+      "schema_unresolved_roles": ["TRANSPORT_STORAGE"],
+      "statement_context_evidence": {
+        "mode": "DOCUMENT_PRECEDING_VISIBLE_HEADING",
+        "physical_page": 11,
+        "render_sha256": "d2eefe13da7b51390cf9b16a0e0ad1b5f177af62907c857907143121c0d2eb8c",
+        "pixel_transcription": "THUYẾT MINH BÁO CÁO TÀI CHÍNH HỢP NHẤT",
+        "report_scope": "CONSOLIDATED"
+      },
+      "transformer_disagreements": [],
+      "pixel_accounting": {
+        "row_count": 11,
+        "money_lane_sums": ["659000255", "546370779"],
+        "printed_money_totals": ["659000255", "546370779"],
+        "percentage_lane_sums": [],
+        "printed_percentage_totals": [],
+        "maximum_percentage_rounding_residual": "0.00",
+        "intermediate_money_totals": []
+      },
+      "whole_document_family_absence_claim": false
+    },
+    {
+      "document_provenance": "VCB",
+      "disposition": "NO_COMPLETE_REGION_IN_EXACT_FULL_DOCUMENT_FRESH_VIETOCR_SCAN",
+      "physical_page": null,
+      "target_render_sha256": null,
+      "matcher_graph_sha256": null,
+      "owner_pixel_transcription": null,
+      "branch_pixel_transcription": null,
+      "period_pixel_transcriptions": [],
+      "unit_pixel_transcriptions": [],
+      "reviewed_role_order": [],
+      "schema_unresolved_roles": [],
+      "statement_context_evidence": null,
+      "transformer_disagreements": [],
+      "pixel_accounting": null,
+      "whole_document_family_absence_claim": false
+    },
+    {
+      "document_provenance": "CTG",
+      "disposition": "NO_COMPLETE_REGION_IN_EXACT_FULL_DOCUMENT_FRESH_VIETOCR_SCAN",
+      "physical_page": null,
+      "target_render_sha256": null,
+      "matcher_graph_sha256": null,
+      "owner_pixel_transcription": null,
+      "branch_pixel_transcription": null,
+      "period_pixel_transcriptions": [],
+      "unit_pixel_transcriptions": [],
+      "reviewed_role_order": [],
+      "schema_unresolved_roles": [],
+      "statement_context_evidence": null,
+      "transformer_disagreements": [],
+      "pixel_accounting": null,
+      "whole_document_family_absence_claim": false
+    },
+    {
+      "document_provenance": "BID",
+      "disposition": "UNIQUE_COMPLETE_REGION_VISIBLE_PIXEL_REVIEWED",
+      "physical_page": 22,
+      "target_render_sha256": "c8486972b896b760b4e7fac01d2ba69ba55127fedd680f88495dc94eae8a7331",
+      "matcher_graph_sha256": "3bc7060c890813db2dc01ceb97640a8885c9e5d23ae18ccb06bf0da17d2d8a36",
+      "owner_pixel_transcription": "3. CHO VAY KHÁCH HÀNG",
+      "branch_pixel_transcription": "Phân tích dư nợ cho vay theo ngành",
+      "period_pixel_transcriptions": ["30/06/2026", "31/12/2025"],
+      "unit_pixel_transcriptions": ["Đơn vị: Triệu VND", "Đơn vị: Triệu VND"],
+      "reviewed_role_order": ["AGRICULTURE_FORESTRY_FISHERY", "MANUFACTURING", "UTILITIES", "CONSTRUCTION", "TRADE_REPAIR", "BROAD_SERVICES", "OTHER_INDUSTRIES"],
+      "schema_unresolved_roles": ["BROAD_SERVICES"],
+      "statement_context_evidence": {
+        "mode": "PAGE_LOCAL_VISIBLE_HEADING",
+        "physical_page": 22,
+        "render_sha256": "c8486972b896b760b4e7fac01d2ba69ba55127fedd680f88495dc94eae8a7331",
+        "pixel_transcription": "Báo cáo tài chính hợp nhất giữa niên độ Quý II Năm 2026",
+        "report_scope": "CONSOLIDATED"
+      },
+      "transformer_disagreements": [],
+      "pixel_accounting": {
+        "row_count": 7,
+        "money_lane_sums": ["2501807043", "2372955074"],
+        "printed_money_totals": ["2501807043", "2372955074"],
+        "percentage_lane_sums": [],
+        "printed_percentage_totals": [],
+        "maximum_percentage_rounding_residual": "0.00",
+        "intermediate_money_totals": []
+      },
+      "whole_document_family_absence_claim": false
+    },
+    {
+      "document_provenance": "VIB",
+      "disposition": "UNIQUE_COMPLETE_REGION_VISIBLE_PIXEL_REVIEWED",
+      "physical_page": 33,
+      "target_render_sha256": "38ea68385a43a4d211f81cc68a7d62657fda43a0b136d67e9403d9d348fa584d",
+      "matcher_graph_sha256": "904fa94c81d98a5dfa4f2d7fcac01b28dd224b09db2e016eb5c9acccb8048a1e",
+      "owner_pixel_transcription": "9. CHO VAY KHÁCH HÀNG",
+      "branch_pixel_transcription": "Phân tích dư nợ theo ngành nghề kinh doanh",
+      "period_pixel_transcriptions": ["30/06/2026", "31/12/2025"],
+      "unit_pixel_transcriptions": ["triệu đồng", "%", "triệu đồng", "%"],
+      "reviewed_role_order": ["AGRICULTURE_FORESTRY_FISHERY", "MINING", "MANUFACTURING", "UTILITIES", "WATER_WASTE", "CONSTRUCTION", "TRADE_REPAIR", "TRANSPORT_STORAGE", "ACCOMMODATION_FOOD", "INFORMATION_COMMUNICATION", "FINANCE_BANKING_INSURANCE", "REAL_ESTATE", "PROFESSIONAL_SCIENCE_TECHNOLOGY", "ADMIN_SUPPORT", "EDUCATION", "HEALTH_SOCIAL_WORK", "ARTS_ENTERTAINMENT", "OTHER_SERVICES", "HOUSEHOLD_EMPLOYMENT_SELF_USE"],
+      "schema_unresolved_roles": ["TRANSPORT_STORAGE"],
+      "statement_context_evidence": {
+        "mode": "PAGE_LOCAL_VISIBLE_HEADING",
+        "physical_page": 33,
+        "render_sha256": "38ea68385a43a4d211f81cc68a7d62657fda43a0b136d67e9403d9d348fa584d",
+        "pixel_transcription": "THUYẾT MINH BÁO CÁO TÀI CHÍNH HỢP NHẤT GIỮA NIÊN ĐỘ (tiếp theo)",
+        "report_scope": "CONSOLIDATED"
+      },
+      "transformer_disagreements": [
+        {"field": "ROW_LABEL", "role": "AGRICULTURE_FORESTRY_FISHERY", "lane_index": null, "source_line_index": 58, "semantic_proposal": "Nông nghiệp. lâm nghiệp và thủy sản", "pixel_transcription": "Nông nghiệp, lâm nghiệp và thủy sản", "disposition": "PIXEL_TEXT_RETAINED_FOR_SCHEMA_REVIEW"},
+        {"field": "ROW_LABEL", "role": "TRADE_REPAIR", "lane_index": null, "source_line_index": 90, "semantic_proposal": "Bán buôn và bán lẻ; sửa chữa mỏ tô, ô tô, xe máy và xe có động cơ khác", "pixel_transcription": "Bán buôn và bán lẻ; sửa chữa mô tô, ô tô, xe máy và xe có động cơ khác", "disposition": "PIXEL_TEXT_RETAINED_FOR_SCHEMA_REVIEW"},
+        {"field": "ROW_LABEL", "role": "FINANCE_BANKING_INSURANCE", "lane_index": null, "source_line_index": 111, "semantic_proposal": "Hoạt động tài chính, ngân hàng và bảo hiếm", "pixel_transcription": "Hoạt động tài chính, ngân hàng và bảo hiểm", "disposition": "PIXEL_TEXT_RETAINED_FOR_SCHEMA_REVIEW"},
+        {"field": "ROW_LABEL", "role": "REAL_ESTATE", "lane_index": null, "source_line_index": 116, "semantic_proposal": "Hoạt động kinh doanh bắt động sản", "pixel_transcription": "Hoạt động kinh doanh bất động sản", "disposition": "PIXEL_TEXT_RETAINED_FOR_SCHEMA_REVIEW"},
+        {"field": "ROW_VALUE", "role": "MANUFACTURING", "lane_index": 2, "source_line_index": 71, "semantic_proposal": "9.457.078", "pixel_transcription": "19.457.078", "disposition": "PIXEL_DIGITS_REPLACE_OCR_PROPOSAL_FOR_INDEPENDENT_REVIEW_ONLY"},
+        {"field": "ROW_VALUE", "role": "CONSTRUCTION", "lane_index": 3, "source_line_index": 89, "semantic_proposal": ",72", "pixel_transcription": "1,72", "disposition": "PIXEL_DIGITS_REPLACE_OCR_PROPOSAL_FOR_INDEPENDENT_REVIEW_ONLY"}
+      ],
+      "pixel_accounting": {
+        "row_count": 19,
+        "money_lane_sums": ["397083447", "381972016"],
+        "printed_money_totals": ["397083447", "381972016"],
+        "percentage_lane_sums": ["100.00", "100.00"],
+        "printed_percentage_totals": ["100.00", "100.00"],
+        "maximum_percentage_rounding_residual": "0.00",
+        "intermediate_money_totals": []
+      },
+      "whole_document_family_absence_claim": false
+    }
+  ]
+}

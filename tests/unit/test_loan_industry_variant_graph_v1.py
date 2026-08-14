@@ -1,0 +1,222 @@
+from __future__ import annotations
+
+import copy
+import importlib.util
+import sys
+from pathlib import Path
+
+import pytest
+
+_ROOT = Path(__file__).resolve().parents[2]
+_MODULE_PATH = _ROOT / "scripts/experiments/loan_industry_variant_graph_v1.py"
+_SPEC = importlib.util.spec_from_file_location("loan_industry_variant_graph_v1", _MODULE_PATH)
+assert _SPEC is not None and _SPEC.loader is not None
+loan_industry = importlib.util.module_from_spec(_SPEC)
+sys.modules[_SPEC.name] = loan_industry
+_SPEC.loader.exec_module(loan_industry)
+
+
+def _page(
+    surfaces: list[tuple[str, int, int]],
+    *,
+    page_sequence: int = 1,
+    primary_numeric_authority: bool = False,
+) -> dict[str, object]:
+    return {
+        "lines": [
+            {
+                "bbox": [x, y, x + 140, y + 24],
+                "source_line_index": index,
+                "source_text": text if primary_numeric_authority else None,
+                "vietocr_text": text,
+            }
+            for index, (text, x, y) in enumerate(surfaces)
+        ],
+        "page_sequence": page_sequence,
+        "primary_numeric_authority": primary_numeric_authority,
+    }
+
+
+def _four_lane_industry(*, reordered: bool = False) -> list[tuple[str, int, int]]:
+    rows = [
+        ("Nông nghiệp. lâm nghiệp và thủy sản", 10, "10", 20, "20"),
+        ("Công nghiệp chế biến, chế tạo", 20, "20", 15, "15"),
+        (
+            "Sản xuất và phân phối điện, khí đốt và nước nóng, hơi nước và điều hòa không khí",
+            5,
+            "5",
+            5,
+            "5",
+        ),
+        ("Xây dựng", 15, "15", 10, "10"),
+        (
+            "Bán buôn và bán lẻ; sửa chữa mỏ tô, ô tô, xe máy và xe có động cơ khác",
+            25,
+            "25",
+            30,
+            "30",
+        ),
+        ("Hoạt động kinh doanh bất động sản", 25, "25", 20, "20"),
+    ]
+    if reordered:
+        rows = [rows[5], rows[0], rows[3], rows[2], rows[4], rows[1]]
+    result: list[tuple[str, int, int]] = [
+        ("CHO VAY KHÁCH HÀNG", 0, 0),
+        ("Phân tích dư nợ cho vay theo ngành nghề kinh doanh", 0, 35),
+        ("30/06/2026", 500, 75),
+        ("31/12/2025", 900, 75),
+        ("Triệu đồng", 500, 105),
+        ("%", 700, 105),
+        ("Triệu đồng", 900, 105),
+        ("%", 1100, 105),
+    ]
+    for offset, (label, current, current_percent, previous, previous_percent) in enumerate(rows):
+        y = 150 + offset * 48
+        result.extend(
+            [
+                (label, 0, y),
+                (str(current), 500, y),
+                (current_percent, 700, y),
+                (str(previous), 900, y),
+                (previous_percent, 1100, y),
+            ]
+        )
+    total_y = 150 + len(rows) * 48
+    result.extend(
+        [
+            ("100", 500, total_y),
+            ("100", 700, total_y),
+            ("100", 900, total_y),
+            ("100", 1100, total_y),
+            ("Phân tích dư nợ theo loại hình doanh nghiệp", 0, total_y + 45),
+        ]
+    )
+    return result
+
+
+def _two_money_industry() -> list[tuple[str, int, int]]:
+    rows = [
+        ("Nông nghiệp, lâm nghiệp và thuỷ sản", 10, 9),
+        ("Công nghiệp chế biến, chế tạo", 20, 18),
+        ("Xây dựng", 30, 27),
+        ("Vận tải kho bãi", 15, 14),
+        ("Hoạt động tài chính và bảo hiểm", 5, 4),
+        ("Khác", 20, 18),
+    ]
+    result: list[tuple[str, int, int]] = [
+        ("Phân tích dư nợ cho vay theo ngành nghề đăng ký kinh doanh", 0, 0),
+        ("Số cuối kỳ", 500, 40),
+        ("Số đầu kỳ", 800, 40),
+        ("Triệu VND", 500, 70),
+        ("Triệu VND", 800, 70),
+    ]
+    for offset, (label, current, previous) in enumerate(rows):
+        y = 115 + offset * 45
+        result.extend([(label, 0, y), (str(current), 500, y), (str(previous), 800, y)])
+    result.extend([("100", 500, 385), ("90", 800, 385)])
+    return result
+
+
+def test_variable_order_and_four_typed_lanes_form_one_bank_blind_graph() -> None:
+    result = loan_industry.build_loan_industry_variant_graph_document_v1(
+        [_page(_four_lane_industry(reordered=True))]
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["uniqueness"] == {"full_match_count": 1, "status": "UNIQUE_FULL_MATCH"}
+    graph = result["graphs"][0]
+    assert graph["branch"]["schema_concept"] == "PHAN_TICH_THEO_NGANH_NGHE_KINH_DOANH"
+    assert graph["customer_loan_context"]["mode"] == "SAME_PAGE_CUSTOMER_LOAN_OWNER"
+    assert graph["lane_types"] == ["MONEY", "PERCENT", "MONEY", "PERCENT"]
+    assert [row["role"] for row in graph["rows"]] == [
+        "REAL_ESTATE",
+        "AGRICULTURE_FORESTRY_FISHERY",
+        "CONSTRUCTION",
+        "UTILITIES",
+        "TRADE_REPAIR",
+        "MANUFACTURING",
+    ]
+    assert all(
+        check["status"] == "CORROBORATED_SEMANTIC_PROPOSAL_ONLY"
+        for check in graph["accounting_checks"]
+    )
+    assert result["safety"]["bank_filename_note_or_page_used_for_inference"] is False
+
+
+def test_previous_page_customer_loan_owner_and_relative_periods_are_generic() -> None:
+    pages = [
+        _page([("5. CHO VAY KHÁCH HÀNG", 0, 0)], page_sequence=1),
+        _page(_two_money_industry(), page_sequence=2),
+    ]
+    result = loan_industry.build_loan_industry_variant_graph_document_v1(pages)
+
+    graph = result["graphs"][0]
+    assert graph["customer_loan_context"]["mode"] == ("IMMEDIATE_PREVIOUS_PAGE_CUSTOMER_LOAN_OWNER")
+    assert graph["period_mode"] == "LOCAL_RELATIVE_PERIOD_ROLES"
+    assert graph["lane_types"] == ["MONEY", "MONEY"]
+    assert [item["semantic_surface"] for item in graph["total"]] == ["100", "90"]
+
+
+def test_owner_is_mandatory_even_when_branch_and_arithmetic_look_complete() -> None:
+    surfaces = _four_lane_industry()
+    surfaces[0] = ("TIỀN GỬI KHÁCH HÀNG", 0, 0)
+    result = loan_industry.build_loan_industry_variant_graph_document_v1([_page(surfaces)])
+
+    assert result["status"] == "UNRESOLVED_NO_COMPLETE_REGION"
+    assert result["graphs"] == []
+    assert result["near_regions"][0]["unresolved_reasons"] == [
+        "CUSTOMER_LOAN_OWNER_CONTEXT_NOT_RESOLVED"
+    ]
+
+
+@pytest.mark.parametrize(
+    "wrong_branch",
+    [
+        "Phân tích dư nợ theo loại hình doanh nghiệp",
+        "Phân tích tiền gửi khách hàng theo ngành nghề kinh doanh",
+        "Phân tích tài sản và nợ phải trả theo bộ phận kinh doanh",
+    ],
+)
+def test_neighbour_families_are_negative_controls(wrong_branch: str) -> None:
+    surfaces = _four_lane_industry()
+    surfaces[1] = (wrong_branch, 0, 35)
+    result = loan_industry.build_loan_industry_variant_graph_document_v1([_page(surfaces)])
+
+    assert result["status"] == "UNRESOLVED_NO_COMPLETE_REGION"
+    assert result["graphs"] == []
+
+
+def test_two_complete_regions_fail_document_uniqueness() -> None:
+    result = loan_industry.build_loan_industry_variant_graph_document_v1(
+        [
+            _page(_four_lane_industry(), page_sequence=1),
+            _page(_four_lane_industry(reordered=True), page_sequence=2),
+        ]
+    )
+
+    assert result["status"] == "UNRESOLVED_MULTIPLE_COMPLETE_REGIONS"
+    assert result["uniqueness"] == {
+        "full_match_count": 2,
+        "status": "AMBIGUOUS_MULTIPLE_FULL_MATCHES",
+    }
+
+
+def test_raw_bank_or_page_routing_fields_are_rejected() -> None:
+    page = _page(_four_lane_industry())
+    page["bank_code"] = "MBB"
+
+    with pytest.raises(loan_industry.LoanIndustryVariantGraphV1Error, match="fields drifted"):
+        loan_industry.build_loan_industry_variant_graph_document_v1([page])
+
+
+def test_public_replay_rejects_coordinated_graph_rehash() -> None:
+    pages = [_page(_four_lane_industry())]
+    result = loan_industry.build_loan_industry_variant_graph_document_v1(pages)
+    forged = copy.deepcopy(result)
+    forged["graphs"][0]["rows"][0]["label"]["surface"] = "forged"
+    material = copy.deepcopy(forged)
+    material.pop("result_id")
+    forged["result_id"] = "livgv1:result:" + loan_industry.canonical_json_sha256_v1(material)
+
+    with pytest.raises(loan_industry.LoanIndustryVariantGraphV1Error, match="replay exactly"):
+        loan_industry.validate_loan_industry_variant_graph_replay_v1(forged, pages)
