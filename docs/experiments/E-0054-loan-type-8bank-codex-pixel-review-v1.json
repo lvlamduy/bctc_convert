@@ -1,0 +1,200 @@
+{
+  "format_version": "LOAN_TYPE_8BANK_CODEX_PIXEL_REVIEW_V1",
+  "state": "CODEX_PIXEL_REVIEW_COMPLETE",
+  "claim_boundary": "INDEPENDENT_VISIBLE_PDF_PIXEL_TRANSCRIPTION_OF_THE_EIGHT_UNIQUE_CUSTOMER_LOAN_TYPE_TABLES_ONLY_NO_BROAD_CORPUS_CANONICALIZATION_OR_EXPORT_AUTHORITY",
+  "semantic_index_sha256": "f84fd9ca56fe06af230e011ecad85b0a576e27e1eca32ee141e654a6776b78b4",
+  "semantic_axis_sha256": "e99873cd16a7234702d0ee6e5fa9eb37637a1a75621228381e3dbcd7c5cfdcca",
+  "reviewer": {
+    "kind": "CODEX_INDEPENDENT_PDF_PIXEL_REVIEW",
+    "review_run_id": "E-0054-20260814-8BANK-LOAN-TYPE-V1"
+  },
+  "review_checks": [
+    "VISIBLE_CONSOLIDATED_REPORT_SCOPE",
+    "CUSTOMER_LOAN_OWNER",
+    "COMPLETE_TYPE_ROW_BLOCK",
+    "PERIOD_AXIS",
+    "UNIT_SCOPE",
+    "ROW_LABEL_AND_ROLE",
+    "VALUE_GEOMETRY",
+    "EXACT_DIGITS_SIGN_AND_DASH",
+    "OPTIONAL_SUBTOTAL_AND_MARGIN_BOUNDARY",
+    "FINAL_TOTAL_ACCOUNTING_CLOSURE",
+    "PERCENTAGE_COMPANION_CLOSURE_WHEN_PRESENT",
+    "SCHEMA_PARENT_CHILD_AND_DISPLAY_ORDER"
+  ],
+  "safety": {
+    "bank_or_page_used_as_matching_rule": false,
+    "dash_cells_transcribed_as_zero": false,
+    "fresh_vietocr_used_as_pixel_truth": false,
+    "mapping_decided_by_text_similarity_alone": false,
+    "numeric_truth_source": "VISIBLE_PDF_PIXELS",
+    "old_ocr_used_as_semantic_text": false,
+    "review_can_assert_document_wide_absence": false
+  },
+  "banks": [
+    {
+      "bank_code": "ACB",
+      "physical_page": 17,
+      "target_render_sha256": "f0f9cc2c892a09240f139b28dea4e9268ac909031721cfa4bb87524c5cf77979",
+      "statement_context_evidence": {
+        "mode": "PAGE_LOCAL_VISIBLE_HEADING",
+        "physical_page": 17,
+        "render_sha256": "f0f9cc2c892a09240f139b28dea4e9268ac909031721cfa4bb87524c5cf77979",
+        "pixel_transcription": "THUYẾT MINH BÁO CÁO TÀI CHÍNH CHỌN LỌC HỢP NHẤT",
+        "report_scope": "CONSOLIDATED"
+      },
+      "owner_pixel_transcription": "4. CHO VAY KHÁCH HÀNG:",
+      "period_pixel_transcriptions": ["30.6.2026", "31.12.2025"],
+      "unit_pixel_transcriptions": ["Triệu đồng", "Triệu đồng"],
+      "rows": [
+        {"role": "DOMESTIC_ORGANIZATIONS_INDIVIDUALS", "pixel_label": "Cho vay các tổ chức kinh tế, cá nhân trong nước", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "742.220.650"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "683.735.648"}]},
+        {"role": "DISCOUNT_INSTRUMENTS", "pixel_label": "Cho vay chiết khấu công cụ chuyển nhượng và các giấy tờ có giá", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "397.868"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "325.828"}]},
+        {"role": "FINANCIAL_LEASE", "pixel_label": "Cho thuê tài chính", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "3.104.447"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "2.685.219"}]},
+        {"role": "PAYMENTS_ON_BEHALF", "pixel_label": "Các khoản trả thay khách hàng", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "36.338"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "30.657"}]},
+        {"role": "ENTRUSTED_OR_SPONSORED_CAPITAL", "pixel_label": "Cho vay bằng vốn tài trợ, ủy thác đầu tư", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "DASH", "pixel_transcription": "-"}, {"lane_type": "MONEY", "status": "DASH", "pixel_transcription": "-"}]},
+        {"role": "FOREIGN_ORGANIZATIONS_INDIVIDUALS", "pixel_label": "Cho vay đối với các tổ chức, cá nhân nước ngoài", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "DASH", "pixel_transcription": "-"}, {"lane_type": "MONEY", "status": "DASH", "pixel_transcription": "-"}]},
+        {"role": "GOVERNMENT_DIRECTED_OR_FUNDED", "pixel_label": "Cho vay theo chỉ định của Chính phủ", "mapping_disposition": "UNRESOLVED_SCHEMA_SEMANTICS", "cells": [{"lane_type": "MONEY", "status": "DASH", "pixel_transcription": "-"}, {"lane_type": "MONEY", "status": "DASH", "pixel_transcription": "-"}]},
+        {"role": "FROZEN_OR_PENDING_LOANS", "pixel_label": "Nợ cho vay được khoanh và nợ chờ xử lý", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "DASH", "pixel_transcription": "-"}, {"lane_type": "MONEY", "status": "DASH", "pixel_transcription": "-"}]}
+      ],
+      "intermediate_totals": [],
+      "source_only_total": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "745.759.303"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "686.777.352"}],
+      "transformer_disagreements": [{"field": "DISCOUNT_LABEL", "semantic_proposal": "Cho vay chiết khẩu công cụ chuyển nhượng và các giấy tờ có giá", "pixel_transcription": "Cho vay chiết khấu công cụ chuyển nhượng và các giấy tờ có giá", "disposition": "ONE_BASE_CHARACTER_ERROR_RECONCILED_BY_COMPLETE_OWNER_ROW_TOTAL_TOPOLOGY"}]
+    },
+    {
+      "bank_code": "MBB",
+      "physical_page": 31,
+      "target_render_sha256": "f253a2af180ad5e0a2e4c82600a89f43889a94f503b95ce623e68f10a6a53ba2",
+      "statement_context_evidence": {"mode": "DOCUMENT_PRECEDING_VISIBLE_HEADING", "physical_page": 9, "render_sha256": "cc740491d62ede251f605b009ee1dc844d3ecca60e1a7a15184478d7acf45952", "pixel_transcription": "THUYẾT MINH BÁO CÁO TÀI CHÍNH HỢP NHẤT", "report_scope": "CONSOLIDATED"},
+      "owner_pixel_transcription": "5. Cho vay khách hàng",
+      "period_pixel_transcriptions": ["30/06/2026", "31/12/2025"],
+      "unit_pixel_transcriptions": ["Triệu đồng", "Triệu đồng"],
+      "rows": [
+        {"role": "DOMESTIC_ORGANIZATIONS_INDIVIDUALS", "pixel_label": "Cho vay các TCKT, cá nhân trong nước", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "1.194.034.028"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "1.054.801.750"}]},
+        {"role": "DISCOUNT_INSTRUMENTS", "pixel_label": "Cho vay chiết khấu công cụ chuyển nhượng và các giấy tờ có giá", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "2.871.572"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "3.007.877"}]},
+        {"role": "PAYMENTS_ON_BEHALF", "pixel_label": "Các khoản trả thay khách hàng", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "372.108"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "115.795"}]},
+        {"role": "ENTRUSTED_OR_SPONSORED_CAPITAL", "pixel_label": "Cho vay bằng vốn tài trợ, ủy thác đầu tư", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "17.884"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "21.314"}]},
+        {"role": "FOREIGN_ORGANIZATIONS_INDIVIDUALS", "pixel_label": "Cho vay các TCKT, cá nhân nước ngoài", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "13.430.831"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "11.032.049"}]},
+        {"role": "MARGIN_AND_SECURITIES_ADVANCE", "pixel_label": "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "16.828.054"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "15.040.585"}]}
+      ],
+      "intermediate_totals": [[{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "1.210.726.423"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "1.068.978.785"}]],
+      "source_only_total": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "1.227.554.477"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "1.084.019.370"}],
+      "transformer_disagreements": []
+    },
+    {
+      "bank_code": "VPB",
+      "physical_page": 42,
+      "target_render_sha256": "cc6c66ad90a801380b011b4ca77543fa5b27feed417ceea72f7835a5e3d6e665",
+      "statement_context_evidence": {"mode": "PAGE_LOCAL_VISIBLE_HEADING", "physical_page": 42, "render_sha256": "cc6c66ad90a801380b011b4ca77543fa5b27feed417ceea72f7835a5e3d6e665", "pixel_transcription": "THUYẾT MINH BÁO CÁO TÀI CHÍNH HỢP NHẤT GIỮA NIÊN ĐỘ (tiếp theo)", "report_scope": "CONSOLIDATED"},
+      "owner_pixel_transcription": "10. CHO VAY KHÁCH HÀNG",
+      "period_pixel_transcriptions": ["31/03/2026", "31/12/2025"],
+      "unit_pixel_transcriptions": ["Triệu đồng", "%", "Triệu đồng", "%"],
+      "rows": [
+        {"role": "DOMESTIC_ORGANIZATIONS_INDIVIDUALS", "pixel_label": "Cho vay các tổ chức kinh tế và cá nhân trong nước", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "931.543.259"}, {"lane_type": "PERCENT", "status": "VALUE", "pixel_transcription": "89,48"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "835.269.757"}, {"lane_type": "PERCENT", "status": "VALUE", "pixel_transcription": "88,50"}]},
+        {"role": "DISCOUNT_INSTRUMENTS", "pixel_label": "Cho vay chiết khấu công cụ chuyển nhượng và các giấy tờ có giá", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "577.853"}, {"lane_type": "PERCENT", "status": "VALUE", "pixel_transcription": "0,06"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "642.502"}, {"lane_type": "PERCENT", "status": "VALUE", "pixel_transcription": "0,07"}]},
+        {"role": "PAYMENTS_ON_BEHALF", "pixel_label": "Các khoản trả thay khách hàng", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "93.456"}, {"lane_type": "PERCENT", "status": "VALUE", "pixel_transcription": "0,01"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "44.136"}, {"lane_type": "PERCENT", "status": "VALUE", "pixel_transcription": "0,00"}]},
+        {"role": "ENTRUSTED_OR_SPONSORED_CAPITAL", "pixel_label": "Cho vay bằng vốn tài trợ, ủy thác đầu tư", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "9.577"}, {"lane_type": "PERCENT", "status": "VALUE", "pixel_transcription": "0,00"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "3.504"}, {"lane_type": "PERCENT", "status": "VALUE", "pixel_transcription": "0,00"}]},
+        {"role": "FOREIGN_ORGANIZATIONS_INDIVIDUALS", "pixel_label": "Cho vay đối với các tổ chức, cá nhân nước ngoài", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "54.879"}, {"lane_type": "PERCENT", "status": "VALUE", "pixel_transcription": "0,01"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "1.316"}, {"lane_type": "PERCENT", "status": "VALUE", "pixel_transcription": "0,00"}]},
+        {"role": "UNMAPPED_OTHER_CREDIT", "pixel_label": "Cấp tín dụng khác", "mapping_disposition": "UNRESOLVED_SCHEMA_SEMANTICS", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "72.360.147"}, {"lane_type": "PERCENT", "status": "VALUE", "pixel_transcription": "6,95"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "73.847.196"}, {"lane_type": "PERCENT", "status": "VALUE", "pixel_transcription": "7,82"}]},
+        {"role": "MARGIN_AND_SECURITIES_ADVANCE", "pixel_label": "Cho vay giao dịch ký quỹ, ứng trước cho khách hàng", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "36.278.045"}, {"lane_type": "PERCENT", "status": "VALUE", "pixel_transcription": "3,49"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "34.093.219"}, {"lane_type": "PERCENT", "status": "VALUE", "pixel_transcription": "3,61"}]}
+      ],
+      "intermediate_totals": [],
+      "source_only_total": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "1.040.917.216"}, {"lane_type": "PERCENT", "status": "VALUE", "pixel_transcription": "100"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "943.901.630"}, {"lane_type": "PERCENT", "status": "VALUE", "pixel_transcription": "100"}],
+      "transformer_disagreements": [{"field": "CURRENT_DOMESTIC_PERCENT", "semantic_proposal": "89.48", "pixel_transcription": "89,48", "disposition": "DECIMAL_SEPARATOR_RECONCILED_BY_TYPED_PERCENT_LANE"}, {"field": "CURRENT_MARGIN_PERCENT", "semantic_proposal": "3.49", "pixel_transcription": "3,49", "disposition": "DECIMAL_SEPARATOR_RECONCILED_BY_TYPED_PERCENT_LANE"}]
+    },
+    {
+      "bank_code": "HDB",
+      "physical_page": 26,
+      "target_render_sha256": "a90ca4dfbd71893233554eb78e3e866526e19edba6eddd1a9ba9e51398847009",
+      "statement_context_evidence": {"mode": "DOCUMENT_PRECEDING_VISIBLE_HEADING", "physical_page": 11, "render_sha256": "d2eefe13da7b51390cf9b16a0e0ad1b5f177af62907c857907143121c0d2eb8c", "pixel_transcription": "THUYẾT MINH BÁO CÁO TÀI CHÍNH HỢP NHẤT", "report_scope": "CONSOLIDATED"},
+      "owner_pixel_transcription": "3.1. Cho vay khách hàng",
+      "period_pixel_transcriptions": ["Số cuối kỳ", "Số đầu kỳ"],
+      "unit_pixel_transcriptions": ["Triệu VND", "Triệu VND"],
+      "rows": [
+        {"role": "DOMESTIC_ORGANIZATIONS_INDIVIDUALS", "pixel_label": "Cho vay các tổ chức kinh tế, cá nhân trong nước", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "655.922.737"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "543.236.391"}]},
+        {"role": "ENTRUSTED_OR_SPONSORED_CAPITAL", "pixel_label": "Cho vay bằng vốn tài trợ, ủy thác đầu tư", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "2.646.978"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "2.710.815"}]},
+        {"role": "DISCOUNT_INSTRUMENTS", "pixel_label": "Cho vay chiết khấu công cụ chuyển nhượng và các giấy tờ có giá", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "183.364"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "180.717"}]},
+        {"role": "PAYMENTS_ON_BEHALF", "pixel_label": "Các khoản trả thay khách hàng", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "4.491"}, {"lane_type": "MONEY", "status": "DASH", "pixel_transcription": "-"}]},
+        {"role": "FOREIGN_ORGANIZATIONS_INDIVIDUALS", "pixel_label": "Cho vay đối với các tổ chức, cá nhân nước ngoài", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "242.685"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "242.856"}]}
+      ],
+      "intermediate_totals": [],
+      "source_only_total": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "659.000.255"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "546.370.779"}],
+      "transformer_disagreements": []
+    },
+    {
+      "bank_code": "VCB",
+      "physical_page": 30,
+      "target_render_sha256": "f0221dbfa1c989edcf2be45f3d358dfc1796c84c7c14cbbea52f1178d9db38fb",
+      "statement_context_evidence": {"mode": "PAGE_LOCAL_VISIBLE_HEADING", "physical_page": 30, "render_sha256": "f0221dbfa1c989edcf2be45f3d358dfc1796c84c7c14cbbea52f1178d9db38fb", "pixel_transcription": "Thuyết minh báo cáo tài chính hợp nhất giữa niên độ cho giai đoạn từ ngày 1/1/2026 đến ngày 30/6/2026 (tiếp theo)", "report_scope": "CONSOLIDATED"},
+      "owner_pixel_transcription": "5. Cho vay khách hàng",
+      "period_pixel_transcriptions": ["30/6/2026", "31/12/2025"],
+      "unit_pixel_transcriptions": ["Triệu VND", "Triệu VND"],
+      "rows": [
+        {"role": "DOMESTIC_ORGANIZATIONS_INDIVIDUALS", "pixel_label": "Cho vay các TCKT, cá nhân trong nước", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "1.744.230.799"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "1.661.183.258"}]},
+        {"role": "DISCOUNT_INSTRUMENTS", "pixel_label": "Cho vay chiết khấu công cụ chuyển nhượng và các giấy tờ có giá", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "3.443.848"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "2.906.099"}]},
+        {"role": "FINANCIAL_LEASE", "pixel_label": "Cho thuê tài chính", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "9.093.383"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "8.014.204"}]},
+        {"role": "PAYMENTS_ON_BEHALF", "pixel_label": "Các khoản trả thay khách hàng", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "167.617"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "167.617"}]},
+        {"role": "FOREIGN_ORGANIZATIONS_INDIVIDUALS", "pixel_label": "Cho vay đối với các tổ chức, cá nhân nước ngoài", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "1.232.418"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "1.254.497"}]}
+      ],
+      "intermediate_totals": [],
+      "source_only_total": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "1.758.168.065"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "1.673.525.675"}],
+      "transformer_disagreements": [{"field": "CURRENT_DOMESTIC_VALUE", "semantic_proposal": "1.744.230,799", "pixel_transcription": "1.744.230.799", "disposition": "GROUPING_SEPARATOR_RECONCILED_BY_PIXEL_DIGITS_AND_ACCOUNTING_CLOSURE"}, {"field": "DOMESTIC_LABEL", "semantic_proposal": "Cho vay các TCK, cá nhân trong nước", "pixel_transcription": "Cho vay các TCKT, cá nhân trong nước", "disposition": "ONE_MISSING_BASE_CHARACTER_RECONCILED_BY_COMPLETE_OWNER_ROW_TOTAL_TOPOLOGY"}, {"field": "FOREIGN_LABEL", "semantic_proposal": "Cho vay đối với các tổ chức, cả nhân nước ngoài", "pixel_transcription": "Cho vay đối với các tổ chức, cá nhân nước ngoài", "disposition": "DIACRITIC_ERROR_RECONCILED_BY_ACCENTLESS_COMPLETE_TOPOLOGY"}]
+    },
+    {
+      "bank_code": "CTG",
+      "physical_page": 38,
+      "target_render_sha256": "d671cabcaab2af0090c304ab1c7c42d61f64103ca590e83e3c0817a77b0e2029",
+      "statement_context_evidence": {"mode": "PAGE_LOCAL_VISIBLE_HEADING", "physical_page": 38, "render_sha256": "d671cabcaab2af0090c304ab1c7c42d61f64103ca590e83e3c0817a77b0e2029", "pixel_transcription": "THUYẾT MINH CÁC BÁO CÁO TÀI CHÍNH HỢP NHẤT", "report_scope": "CONSOLIDATED"},
+      "owner_pixel_transcription": "3. CHO VAY KHÁCH HÀNG",
+      "period_pixel_transcriptions": ["30/06/2026", "31/12/2025"],
+      "unit_pixel_transcriptions": ["triệu đồng", "triệu đồng"],
+      "rows": [
+        {"role": "DOMESTIC_ORGANIZATIONS_INDIVIDUALS", "pixel_label": "Cho vay các tổ chức kinh tế, cá nhân trong nước(*)", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "2.048.566.743"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "1.954.510.778"}]},
+        {"role": "DISCOUNT_INSTRUMENTS", "pixel_label": "Cho vay chiết khấu công cụ chuyển nhượng và các giấy tờ có giá", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "489.788"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "625.084"}]},
+        {"role": "FINANCIAL_LEASE", "pixel_label": "Cho thuê tài chính", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "5.438.746"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "5.003.655"}]},
+        {"role": "PAYMENTS_ON_BEHALF", "pixel_label": "Các khoản trả thay khách hàng", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "109.913"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "136.766"}]},
+        {"role": "ENTRUSTED_OR_SPONSORED_CAPITAL", "pixel_label": "Cho vay bằng vốn tài trợ, ủy thác đầu tư", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "1.571.068"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "1.664.438"}]},
+        {"role": "FOREIGN_ORGANIZATIONS_INDIVIDUALS", "pixel_label": "Cho vay đối với các tổ chức, cá nhân nước ngoài", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "36.531.500"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "30.304.309"}]},
+        {"role": "OTHER_LOANS", "pixel_label": "Cho vay khác(**)", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "DASH", "pixel_transcription": "-"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "27.838"}]}
+      ],
+      "intermediate_totals": [],
+      "source_only_total": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "2.092.707.758"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "1.992.272.868"}],
+      "transformer_disagreements": []
+    },
+    {
+      "bank_code": "BID",
+      "physical_page": 22,
+      "target_render_sha256": "c8486972b896b760b4e7fac01d2ba69ba55127fedd680f88495dc94eae8a7331",
+      "statement_context_evidence": {"mode": "PAGE_LOCAL_VISIBLE_HEADING", "physical_page": 22, "render_sha256": "c8486972b896b760b4e7fac01d2ba69ba55127fedd680f88495dc94eae8a7331", "pixel_transcription": "Báo cáo tài chính hợp nhất giữa niên độ Quý II Năm 2026", "report_scope": "CONSOLIDATED"},
+      "owner_pixel_transcription": "3. CHO VAY KHÁCH HÀNG",
+      "period_pixel_transcriptions": ["30/06/2026", "31/12/2025"],
+      "unit_pixel_transcriptions": ["INHERITED_DOCUMENT_MILLION_VND", "INHERITED_DOCUMENT_MILLION_VND"],
+      "rows": [
+        {"role": "DOMESTIC_ORGANIZATIONS_INDIVIDUALS", "pixel_label": "Cho vay các tổ chức kinh tế, cá nhân trong nước", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "2,457,759,308"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "2,329,351,018"}]},
+        {"role": "FOREIGN_ORGANIZATIONS_INDIVIDUALS", "pixel_label": "Cho vay đối với các tổ chức, cá nhân nước ngoài", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "35,608,882"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "35,830,155"}]},
+        {"role": "DISCOUNT_INSTRUMENTS", "pixel_label": "Cho vay chiết khấu thương phiếu và các giấy tờ có giá", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "9,545"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "13,143"}]},
+        {"role": "FINANCIAL_LEASE", "pixel_label": "Cho thuê tài chính", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "7,368,278"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "6,688,903"}]},
+        {"role": "PAYMENTS_ON_BEHALF", "pixel_label": "Các khoản trả thay khách hàng", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "1,061,030"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "1,071,855"}]}
+      ],
+      "intermediate_totals": [],
+      "source_only_total": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "2,501,807,043"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "2,372,955,074"}],
+      "transformer_disagreements": []
+    },
+    {
+      "bank_code": "VIB",
+      "physical_page": 33,
+      "target_render_sha256": "38ea68385a43a4d211f81cc68a7d62657fda43a0b136d67e9403d9d348fa584d",
+      "statement_context_evidence": {"mode": "PAGE_LOCAL_VISIBLE_HEADING", "physical_page": 33, "render_sha256": "38ea68385a43a4d211f81cc68a7d62657fda43a0b136d67e9403d9d348fa584d", "pixel_transcription": "THUYẾT MINH BÁO CÁO TÀI CHÍNH HỢP NHẤT GIỮA NIÊN ĐỘ (tiếp theo)", "report_scope": "CONSOLIDATED"},
+      "owner_pixel_transcription": "9. CHO VAY KHÁCH HÀNG",
+      "period_pixel_transcriptions": ["30/06/2026", "31/12/2025"],
+      "unit_pixel_transcriptions": ["triệu đồng", "triệu đồng"],
+      "rows": [
+        {"role": "DOMESTIC_ORGANIZATIONS_INDIVIDUALS", "pixel_label": "Cho vay các tổ chức kinh tế, cá nhân", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "396.945.604"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "381.876.535"}]},
+        {"role": "DISCOUNT_INSTRUMENTS", "pixel_label": "Cho vay chiết khấu công cụ chuyển nhượng và các giấy tờ có giá", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "135.167"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "92.434"}]},
+        {"role": "ENTRUSTED_OR_SPONSORED_CAPITAL", "pixel_label": "Cho vay bằng vốn tài trợ, ủy thác đầu tư", "mapping_disposition": "MAP", "cells": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "2.676"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "3.047"}]}
+      ],
+      "intermediate_totals": [],
+      "source_only_total": [{"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "397.083.447"}, {"lane_type": "MONEY", "status": "VALUE", "pixel_transcription": "381.972.016"}],
+      "transformer_disagreements": []
+    }
+  ]
+}
