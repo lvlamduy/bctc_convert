@@ -31,6 +31,9 @@ from collections.abc import Mapping, Sequence
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
+from bctc_ai.evaluation.accounting_variant_graph_engine_v1 import (
+    build_accounting_variant_region_scan_v1,
+)
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
     canonical_json_sha256_v1,
@@ -40,6 +43,7 @@ from bctc_ai.source_structure.contracts_v1 import (
 __all__ = [
     "FORMAT_VERSION",
     "LoanMaturityVariantGraphV1Error",
+    "build_loan_maturity_region_scan_v1",
     "build_loan_maturity_variant_graph_v1",
     "scan_loan_maturity_variant_graph_document_v1",
     "validate_loan_maturity_variant_graph_replay_v1",
@@ -62,6 +66,37 @@ _ROLE_ALIASES = {
     "SHORT_TERM": ("no ngan han", "cho vay ngan han"),
     "MEDIUM_TERM": ("no trung han", "cho vay trung han"),
     "LONG_TERM": ("no dai han", "cho vay dai han"),
+}
+_FAMILY_ENGINE_SPEC = {
+    "branch_core_phrases": ["phân tích", "dư nợ"],
+    "branch_variants": [
+        {"anchor_phrase": "thời gian cho vay ban đầu", "variant_id": "INITIAL_TERM_WORDING"},
+        {"anchor_phrase": "thời gian cho vay gốc", "variant_id": "ORIGINAL_TERM_WORDING"},
+        {"anchor_phrase": "thời hạn gốc", "variant_id": "ORIGINAL_TERM_WORDING"},
+        {"anchor_phrase": "thời gian đáo hạn", "variant_id": "MATURITY_TIME_WORDING"},
+        {"anchor_phrase": "thời hạn vay", "variant_id": "TERM_WORDING"},
+        {"anchor_phrase": "thời gian", "variant_id": "TIME_WORDING"},
+        {"anchor_phrase": "thời hạn", "variant_id": "TERM_WORDING"},
+        {"anchor_phrase": "kỳ hạn", "variant_id": "TENOR_WORDING"},
+    ],
+    "family_id": "LOAN_MATURITY_BUCKETS",
+    "format_version": "ACCOUNTING_VARIANT_FAMILY_SPEC_V1",
+    "limits": {
+        "max_branch_to_last_child_line_span": _MAX_BRANCH_TO_LONG_LINE_SPAN,
+        "max_child_gap": _MAX_ROLE_GAP,
+        "min_numeric_followers_per_child": 2,
+    },
+    "optional_intermediate_aliases": ["Dư nợ cho vay", "Dư nợ cho vay khách hàng"],
+    "ordered_children": [
+        {"aliases": list(_ROLE_ALIASES["SHORT_TERM"]), "role": "SHORT_TERM"},
+        {"aliases": list(_ROLE_ALIASES["MEDIUM_TERM"]), "role": "MEDIUM_TERM"},
+        {"aliases": list(_ROLE_ALIASES["LONG_TERM"]), "role": "LONG_TERM"},
+    ],
+    "owner_aliases": [
+        "Cho vay khách hàng",
+        "Dư nợ cho vay khách hàng",
+        "Các khoản cho vay khách hàng",
+    ],
 }
 _SAFETY = {
     "bank_filename_note_or_page_used_for_inference": False,
@@ -134,47 +169,6 @@ def _edit_distance_at_most_one(left: str, right: str) -> bool:
     return True
 
 
-def _phrase_with_at_most_one_edit(
-    tokens: Sequence[str], phrase: Sequence[str], start: int
-) -> tuple[int, int] | None:
-    """Find one consecutive accentless phrase and report its end/edit count.
-
-    This is deliberately narrower than generic fuzzy matching: every expected
-    token must still be present in order, and at most one base character may be
-    inserted, deleted, or substituted across the complete phrase.  Optional
-    wording is handled by searching for the next structural anchor, not by
-    increasing the edit budget.
-    """
-
-    stop = len(tokens) - len(phrase) + 1
-    for offset in range(start, max(start, stop)):
-        observed = tokens[offset : offset + len(phrase)]
-        if len(observed) != len(phrase):
-            continue
-        edits = 0
-        for actual, expected in zip(observed, phrase, strict=True):
-            if actual == expected:
-                continue
-            if not _edit_distance_at_most_one(actual, expected):
-                break
-            edits += 1
-            if edits > 1:
-                break
-        else:
-            return offset + len(phrase), edits
-    return None
-
-
-def _role_match(text: str, role: str) -> str | None:
-    normalized = _normalize(text)
-    aliases = _ROLE_ALIASES[role]
-    if any(normalized == alias for alias in aliases):
-        return "EXACT_ACCENTLESS_ALIAS"
-    if any(_edit_distance_at_most_one(normalized, alias) for alias in aliases):
-        return "ONE_EDIT_ALIAS_IN_COMPLETE_ORDERED_TOPOLOGY"
-    return None
-
-
 def _semantic_candidates(line: Mapping[str, Any]) -> list[tuple[str, str]]:
     # Qwen is deliberately excluded.  Its value remains in the bound record so
     # a diagnostic trial can be audited without silently changing the matcher.
@@ -185,71 +179,6 @@ def _semantic_match(line: Mapping[str, Any], predicate: Any) -> tuple[str, str] 
     for source, text in _semantic_candidates(line):
         if predicate(text):
             return source, text
-    return None
-
-
-def _role_line_match(line: Mapping[str, Any], role: str) -> dict[str, str] | None:
-    approximate: list[dict[str, str]] = []
-    for source, text in _semantic_candidates(line):
-        kind = _role_match(text, role)
-        if kind == "EXACT_ACCENTLESS_ALIAS":
-            return {"kind": kind, "semantic_source": source, "surface": text}
-        if kind is not None:
-            approximate.append({"kind": kind, "semantic_source": source, "surface": text})
-    return approximate[0] if approximate else None
-
-
-def _branch_variant(text: str) -> tuple[str, str] | None:
-    tokens = _normalize(text).split()
-    analysis = _phrase_with_at_most_one_edit(tokens, ("phan", "tich"), 0)
-    if analysis is None:
-        return None
-    cursor, edit_count = analysis
-    debt = _phrase_with_at_most_one_edit(tokens, ("du", "no"), cursor)
-    if debt is None:
-        return None
-    cursor, edits = debt
-    edit_count += edits
-    if edit_count > 1:
-        return None
-
-    # Longest alternatives come first so a richer phrase is not collapsed to
-    # its shorter prefix.  Extra bank-specific prose between these anchors is
-    # allowed, but the anchors themselves remain ordered and tightly matched.
-    alternatives = (
-        (("thoi", "gian", "cho", "vay", "ban", "dau"), "INITIAL_TERM_WORDING"),
-        (("thoi", "gian", "cho", "vay", "goc"), "ORIGINAL_TERM_WORDING"),
-        (("thoi", "han", "goc"), "ORIGINAL_TERM_WORDING"),
-        (("thoi", "gian", "dao", "han"), "MATURITY_TIME_WORDING"),
-        (("thoi", "han", "vay"), "TERM_WORDING"),
-        (("thoi", "gian"), "TIME_WORDING"),
-        (("thoi", "han"), "TERM_WORDING"),
-        (("ky", "han"), "TENOR_WORDING"),
-    )
-    for phrase, variant in alternatives:
-        matched = _phrase_with_at_most_one_edit(tokens, phrase, cursor)
-        if matched is None or edit_count + matched[1] > 1:
-            continue
-        kind = (
-            "EXACT_ACCENTLESS_STRUCTURAL_ANCHORS"
-            if edit_count + matched[1] == 0
-            else "ONE_EDIT_STRUCTURAL_ANCHORS_IN_COMPLETE_TOPOLOGY"
-        )
-        return variant, kind
-    return None
-
-
-def _branch_line_match(line: Mapping[str, Any]) -> dict[str, str] | None:
-    for source, text in _semantic_candidates(line):
-        matched = _branch_variant(text)
-        if matched is not None:
-            variant, match_kind = matched
-            return {
-                "match_kind": match_kind,
-                "semantic_source": source,
-                "surface": text,
-                "variant": variant,
-            }
     return None
 
 
@@ -409,62 +338,68 @@ def _semantic_page(value: Any, *, allow_empty: bool = False) -> dict[str, Any]:
     }
 
 
-def _find_ordered_roles(
-    lines: Sequence[Mapping[str, Any]], branch_index: int
-) -> tuple[list[int], list[dict[str, str]]] | None:
-    positions: list[int] = []
-    match_records: list[dict[str, str]] = []
-    cursor = branch_index
-    for role in _ROLES:
-        search_stop = min(
-            len(lines),
-            branch_index + _MAX_BRANCH_TO_LONG_LINE_SPAN + 1,
-            cursor + _MAX_ROLE_GAP + 1,
-        )
-        matches = [
-            (index, match)
-            for index, line in enumerate(lines[cursor + 1 : search_stop], cursor + 1)
-            if (match := _role_line_match(line, role)) is not None
-        ]
-        if not matches:
-            return None
-        index, match = matches[0]
-        positions.append(index)
-        match_records.append(match)
-        cursor = index
-    if (
-        sum(item["kind"] == "ONE_EDIT_ALIAS_IN_COMPLETE_ORDERED_TOPOLOGY" for item in match_records)
-        > 1
-    ):
-        return None
-    for row_index, position in enumerate(positions):
-        stop = positions[row_index + 1] if row_index + 1 < len(positions) else len(lines)
-        if sum(_number_like(line["vietocr_text"]) for line in lines[position + 1 : stop]) < 2:
-            return None
-    return positions, match_records
+def _region_scan_from_exact_pages(pages: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    engine_pages = [
+        {
+            "page_sequence": page["page_sequence"],
+            "lines": [
+                {
+                    "source_line_index": line["source_line_index"],
+                    "vietocr_text": line["vietocr_text"],
+                }
+                for line in page["lines"]
+            ],
+        }
+        for page in pages
+    ]
+    return build_accounting_variant_region_scan_v1(engine_pages, _FAMILY_ENGINE_SPEC)
+
+
+def build_loan_maturity_region_scan_v1(
+    document_pages: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Enumerate all complete and near maturity regions in one complete PDF."""
+
+    if isinstance(document_pages, (str, bytes, bytearray)) or not document_pages:
+        raise _error("document pages must be one non-empty sequence")
+    pages = [
+        _exact_page(page, f"maturity region scan page {index}")
+        for index, page in enumerate(document_pages)
+    ]
+    sequences = [page["page_sequence"] for page in pages]
+    if sequences != sorted(sequences) or len(set(sequences)) != len(sequences):
+        raise _error("maturity region scan pages must be unique and ordered")
+    return _region_scan_from_exact_pages(pages)
 
 
 def _document_candidates(pages: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    scan = _region_scan_from_exact_pages(pages)
     candidates: list[dict[str, Any]] = []
-    for page in pages:
-        lines = page["lines"]
-        for branch_index, line in enumerate(lines):
-            branch_match = _branch_line_match(line)
-            if branch_match is None:
-                continue
-            matched = _find_ordered_roles(lines, branch_index)
-            if matched is None:
-                continue
-            role_indices, match_records = matched
-            candidates.append(
-                {
-                    "branch_source_line_index": branch_index,
-                    "branch_match": branch_match,
-                    "page_sequence": page["page_sequence"],
-                    "role_match_records": match_records,
-                    "role_source_line_indices": role_indices,
-                }
-            )
+    for region in scan["regions"]:
+        # Missing owner is diagnosed later with the richer source/page context.
+        # Every other engine reason vetoes a complete ordered anchor region.
+        if any(reason != "OWNER_CONTEXT_NOT_RESOLVED" for reason in region["unresolved_reasons"]):
+            continue
+        candidates.append(
+            {
+                "branch_source_line_index": region["branch_source_line_index"],
+                "branch_match": {
+                    **region["branch_match"],
+                    "semantic_source": "VIETOCR_TRANSFORMER",
+                },
+                "page_sequence": region["page_sequence"],
+                "role_match_records": [
+                    {
+                        "kind": record["match_kind"],
+                        "role": record["role"],
+                        "semantic_source": "VIETOCR_TRANSFORMER",
+                        "surface": record["surface"],
+                    }
+                    for record in region["child_match_records"]
+                ],
+                "role_source_line_indices": region["child_source_line_indices"],
+            }
+        )
     return candidates
 
 
