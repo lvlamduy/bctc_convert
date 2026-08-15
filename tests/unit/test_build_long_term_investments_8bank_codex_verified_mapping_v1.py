@@ -54,7 +54,7 @@ def test_persisted_result_replays_pixels_accounting_and_live_schema() -> None:
     )
 
     assert result["result_id"] == (
-        "lti8bcv1:result:8f72ceef53f5148180194d6e682c73da53e09bd790ee77cbd1276e04e16515e3"
+        "lti8bcv1:result:8f6878e02f92b4aee73ac971601e85d331b7484c0b964acc4ee5768152574bc2"
     )
     assert result["metrics"] == {
         "accounting_equation_verified_count": 9,
@@ -98,7 +98,7 @@ def test_review_and_result_coordinated_rehashes_do_not_authenticate() -> None:
 
 def test_schema_extension_is_exact_and_dash_is_zero() -> None:
     authority, by_id = builder._authority_snapshot(builder.PROJECT_ROOT)
-    assert authority["schema_revision"] == "UNIVERSAL_BANK_BCTC_SCHEMA@6069"
+    assert authority["schema_revision"] == "UNIVERSAL_BANK_BCTC_SCHEMA@6072"
     assert builder._schema_binding(by_id[6066], 6066)["schema_parent_report_norm_id"] == 862
     assert builder._schema_binding(by_id[6067], 6067)["schema_parent_report_norm_id"] == 862
     assert builder._normalized({"pixel_transcription": "-"}) == 0

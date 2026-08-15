@@ -38,6 +38,7 @@ from bctc_ai.mapping.semantic_local_accounting_schema_candidate_v1 import _autho
 from bctc_ai.rendering.page_reader import render_composited_displayed_page
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
+    canonical_json_bytes_v1,
     canonical_json_sha256_v1,
     same_typed_json_v1,
 )
@@ -1452,8 +1453,8 @@ def _schema_bindings(
     schema_authority: Mapping[str, Any], schema_by_id: Mapping[int, Any]
 ) -> dict[int, dict[str, Any]]:
     if (
-        schema_authority.get("schema_revision") != "UNIVERSAL_BANK_BCTC_SCHEMA@6069"
-        or schema_authority.get("tm_item_count") != 1714
+        schema_authority.get("schema_revision") != "UNIVERSAL_BANK_BCTC_SCHEMA@6072"
+        or schema_authority.get("tm_item_count") != 1717
     ):
         raise _error("live TM schema authority revision drifted")
     expected_parents = {
@@ -2017,12 +2018,16 @@ def validate_provision_movement_8bank_codex_verified_mapping_replay_v1(
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--review-blueprint", action="store_true")
+    parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     value = (
         _review_blueprint()
         if args.review_blueprint
         else build_live_provision_movement_8bank_codex_verified_mapping_v1()
     )
+    if args.output is not None:
+        args.output.write_bytes(canonical_json_bytes_v1(value))
+        return 0
     print(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
     return 0
 

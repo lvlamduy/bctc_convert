@@ -21,10 +21,10 @@ if TYPE_CHECKING:
     from bctc_ai.schema.registry import SchemaItem
 
 
-BUSINESS_UPDATE_AUDIT = "data/registered/schema_business_update_5712_5713_5714_5718_6069.json"
-PRIOR_BUSINESS_UPDATE_AUDIT = "data/registered/schema_business_update_5712_5713_5714_5718_6068.json"
+BUSINESS_UPDATE_AUDIT = "data/registered/schema_business_update_5712_5713_5714_5718_6072.json"
+PRIOR_BUSINESS_UPDATE_AUDIT = "data/registered/schema_business_update_5712_5713_5714_5718_6069.json"
 PRIOR_BUSINESS_UPDATE_AUDIT_SHA256 = (
-    "1163665d9c4e14a31cb83fd26549eae1e51c5fdf38ccbbd95cb3bbe42eba128a"
+    "d78e0ca39cb4b5b570b44c112064d55d077a4aededf6e30cf693a281d6f971d1"
 )
 
 CDKT_BASELINE_WORKBOOK = "template/Bank_CDKT_ReportNormId.xlsx"
@@ -48,25 +48,25 @@ KQKD_AFTER_ROW_COUNT = 26
 LCTT_BEFORE_ROW_COUNT = 108
 LCTT_AFTER_ROW_COUNT = 111
 TM_BEFORE_ROW_COUNT = 1386
-TM_AFTER_ROW_COUNT = 1715
+TM_AFTER_ROW_COUNT = 1718
 
 BASE_SCHEMA_ITEM_COUNT = 1593
-PRIOR_UNIVERSAL_SCHEMA_ITEM_COUNT = 1947
-UNIVERSAL_SCHEMA_ITEM_COUNT = 1948
-PRIOR_UNIVERSAL_HIGH_WATERMARK = 6068
-UNIVERSAL_HIGH_WATERMARK = 6069
+PRIOR_UNIVERSAL_SCHEMA_ITEM_COUNT = 1948
+UNIVERSAL_SCHEMA_ITEM_COUNT = 1951
+PRIOR_UNIVERSAL_HIGH_WATERMARK = 6069
+UNIVERSAL_HIGH_WATERMARK = 6072
 
 PRIOR_UNIVERSAL_WORKBOOK_SHA256 = {
     "CDKT": "7f871941516d4591417f0f3f018bceb5fd6d91e474a0570f84eaeb141d24531c",
     "KQKD": "f860ff4267054e1dea330f91de498bd2a835fd77f824a5dc444abb412a6346c8",
     "LCTT": "dee9f2065b03da349c9c96174fc2affd7d86c2439c916d246164a2d4d67a5bc8",
-    "TM": "c01a3d6b8e1338833250390b731c21de5c34ddbd5e0673f40509ab4868c7b09a",
+    "TM": "03adbdf13d90ea503876d37e7bddc9b3f67bbc99d80d6e573060ae1f739642aa",
 }
 PRIOR_UNIVERSAL_IDENTITY_ORDER_SHA256 = {
     "CDKT": "da32848b4583ef3fc222be91d328a4a5cd062e8175fbd09659d1fc0385558f2a",
     "KQKD": "d96e239b125c07253fd7646c18db31b4c1ac4ee3ef662fbd787c151906f82693",
     "LCTT": "32a995a3d11af834e86dda84bcea639303197eebd148fa73be495b7ac89e345f",
-    "TM": "8f517c48eeb5e90ab6934734a551792d37820ab69da16b7b4052fdcb2b5dcdb8",
+    "TM": "08d83f98d91988511c642175cfd0987705900932a8ceb46081df57bc5e2fcca6",
 }
 
 PREVIOUS_V2_SHA256 = {
@@ -1068,6 +1068,9 @@ TM_UNIVERSAL_SCHEMA_ITEMS: tuple[tuple[int, str, int, int], ...] = (
         913,
         2,
     ),
+    (6070, "Vay Ngân hàng Nhà nước", 1024, 2),
+    (6071, "Tiền gửi có kỳ hạn của Kho bạc Nhà nước", 1024, 2),
+    (6072, "Tiền gửi của Bộ Tài chính", 1024, 2),
 )
 TM_UNIVERSAL_SCHEMA_IDS = tuple(item[0] for item in TM_UNIVERSAL_SCHEMA_ITEMS)
 TM_UNIVERSAL_DISPLAY_CHAINS: tuple[tuple[tuple[int, ...], int, int], ...] = (
@@ -1112,8 +1115,11 @@ TM_UNIVERSAL_DISPLAY_CHAINS: tuple[tuple[tuple[int, ...], int, int], ...] = (
     ((6066, 6067), 866, 867),
     ((6068,), 920, 921),
     ((6069,), 5971, 942),
+    ((6070,), 1024, 1025),
+    ((6071,), 1037, 1038),
+    ((6072,), 1038, 1039),
 )
-if TM_UNIVERSAL_SCHEMA_IDS != (*range(5991, 6034), *range(6057, 6070)):
+if TM_UNIVERSAL_SCHEMA_IDS != (*range(5991, 6034), *range(6057, 6073)):
     raise AssertionError("TM universal-schema allocation drifted")
 
 FIRST_OBSERVED_PDF_PATH = "vietstock_bctc/MBB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf"
@@ -1520,6 +1526,48 @@ TM_UNIVERSAL_EVIDENCE: dict[int, dict[str, object]] = {
         "observed_values": ["1.219.881", "1.158.286"],
         "user_decision": "Q083",
     },
+    6070: {
+        "bank": "ACB",
+        "period": "Q2/2026",
+        "scope": "CONSOLIDATED",
+        "source_document_path": ("vietstock_bctc/ACB/2026/BCTC Hợp nhất quý 2 năm 2026.pdf"),
+        "source_document_sha256": (
+            "db55bb607d254aeef6daafd873a8199d621ac0740849e68d09ab0db772d11c86"
+        ),
+        "pdf_pages": [20],
+        "source_row_refs": ["GOVERNMENT_NHNN_LIABILITIES:CENTRAL_BANK_LOAN"],
+        "visible_label": "Vay Ngân hàng Nhà nước",
+        "observed_values": ["15.376.131", "31.152.220"],
+        "user_decision": "Q084",
+    },
+    6071: {
+        "bank": "BID",
+        "period": "Q2/2026",
+        "scope": "CONSOLIDATED",
+        "source_document_path": ("vietstock_bctc/BID/2026/BCTC Hợp nhất quý 2 năm 2026.pdf"),
+        "source_document_sha256": (
+            "73d9ead38e4e60b2241ae7d41a6e5382f8f2e5cc59f2e7a70ca0bedb95792003"
+        ),
+        "pdf_pages": [24],
+        "source_row_refs": ["GOVERNMENT_NHNN_LIABILITIES:TREASURY_TERM_DEPOSIT"],
+        "visible_label": "Tiền gửi có kỳ hạn của KBNN",
+        "observed_values": ["184.255.000", "134.625.000"],
+        "user_decision": "Q084",
+    },
+    6072: {
+        "bank": "BID",
+        "period": "Q2/2026",
+        "scope": "CONSOLIDATED",
+        "source_document_path": ("vietstock_bctc/BID/2026/BCTC Hợp nhất quý 2 năm 2026.pdf"),
+        "source_document_sha256": (
+            "73d9ead38e4e60b2241ae7d41a6e5382f8f2e5cc59f2e7a70ca0bedb95792003"
+        ),
+        "pdf_pages": [24],
+        "source_row_refs": ["GOVERNMENT_NHNN_LIABILITIES:FINANCE_MINISTRY_DEPOSIT"],
+        "visible_label": "Tiền gửi của Bộ Tài chính",
+        "observed_values": ["8.763.329", "6.834.201"],
+        "user_decision": "Q084",
+    },
 }
 
 if set(TM_UNIVERSAL_EVIDENCE) != set(TM_UNIVERSAL_SCHEMA_IDS):
@@ -1651,6 +1699,9 @@ TM_JOINT_VENTURE_INVESTMENT_ID = 6066
 TM_ASSOCIATE_INVESTMENT_ID = 6067
 TM_INTANGIBLE_GROSS_COST_DECREASE_ID = 6068
 TM_INTANGIBLE_FULLY_AMORTIZED_STILL_IN_USE_ID = 6069
+TM_CENTRAL_BANK_LOAN_ID = 6070
+TM_TREASURY_TERM_DEPOSIT_ID = 6071
+TM_FINANCE_MINISTRY_DEPOSIT_ID = 6072
 
 CDKT_4350_OLD_NAME = "Chứng khoán đầu tư sẵn sàng để hàng"
 CDKT_4350_CORRECTED_NAME = "Chứng khoán đầu tư sẵn sàng để bán"
@@ -1664,6 +1715,16 @@ LCTT_4136_LEGACY_SOURCE_ALIAS = "Tăng/(Giảm) tiền gửi, tiền vay các TC
 TM_770_OLD_NAME = "+ Công ty TNHH MTV vốn nhà nước trên 50%"
 TM_770_CORRECTED_NAME = "Công ty TNHH MTV (hoặc trên MTV) vốn nhà nước trên 50%"
 TM_770_BASELINE_SOURCE_ROW = 212
+TM_1103_OLD_NAME = "Từ 12 tháng  đến dưới 5 năm"
+TM_1103_CORRECTED_NAME = "Từ 12 tháng đến 5 năm"
+TM_1107_OLD_NAME = "Từ 12 tháng  đến dưới 5 năm"
+TM_1107_CORRECTED_NAME = "Từ 12 tháng đến 5 năm"
+TM_1111_OLD_NAME = "Từ 12 tháng  đến dưới 5 năm"
+TM_1111_CORRECTED_NAME = "Từ 12 tháng đến 5 năm"
+TM_1115_OLD_NAME = "Từ 12 tháng  đến dưới 5 năm"
+TM_1115_CORRECTED_NAME = "Từ 12 tháng đến 5 năm"
+TM_1117_OLD_NAME = "Các loại giấy tờ có giá khác"
+TM_1117_CORRECTED_NAME = "Các loại giấy tờ có giá khác (bao gồm trái phiếu tăng vốn)"
 
 VPB_STRUCTURAL_ALIAS_CANDIDATES: tuple[tuple[str, int, int, int, str], ...] = (
     ("CDKT", 4311, 5, 3, 'Tiền gửi tại Ngân hàng Nhà nước Việt Nam ("NHNN")'),
@@ -1858,7 +1919,7 @@ NEW_SCHEMA_IDS = frozenset(
         *CDKT_CURRENT_SCHEMA_IDS,
     }
 )
-CURRENT_MIGRATION_SCHEMA_IDS = frozenset({6069})
+CURRENT_MIGRATION_SCHEMA_IDS = frozenset({6070, 6071, 6072})
 
 CDKT_4325_COMPONENTS = (4364, 4365, 4342, 4341, 4343, 5699)
 CDKT_TOTAL_EQUITY_COMPONENTS = (4325, 4306)
@@ -2770,6 +2831,17 @@ def _build_updated_workbook(
                 shared_strings, universal_string_indices[schema_id] = (
                     _append_or_reuse_shared_string(shared_strings, name=name)
                 )
+            tenor_name_string_indices: dict[int, int] = {}
+            for schema_id, name in (
+                (1103, TM_1103_CORRECTED_NAME),
+                (1107, TM_1107_CORRECTED_NAME),
+                (1111, TM_1111_CORRECTED_NAME),
+                (1115, TM_1115_CORRECTED_NAME),
+                (1117, TM_1117_CORRECTED_NAME),
+            ):
+                shared_strings, tenor_name_string_indices[schema_id] = (
+                    _append_or_reuse_shared_string(shared_strings, name=name)
+                )
             baseline_sheet = _retarget_shared_string_cell(
                 source.read(_SHEET_MEMBER),
                 source_row=TM_770_BASELINE_SOURCE_ROW,
@@ -2961,6 +3033,16 @@ def _build_updated_workbook(
                 before_row_count=TM_AFTER_ROW_COUNT - len(TM_UNIVERSAL_SCHEMA_ITEMS),
                 shared_string_indices=universal_string_indices,
             )
+            for schema_id, shared_string_index in tenor_name_string_indices.items():
+                sheet = _retarget_shared_string_cell(
+                    sheet,
+                    source_row=_source_row_for_schema_id(
+                        sheet,
+                        row_count=TM_AFTER_ROW_COUNT,
+                        schema_id=schema_id,
+                    ),
+                    shared_string_index=shared_string_index,
+                )
         else:
             raise BusinessSchemaUpdateError(
                 f"unsupported business update statement {statement_type}"
@@ -3196,6 +3278,18 @@ def _assert_candidate(
             raise BusinessSchemaUpdateError("TM 770 display correction is absent")
         if by_id[str(TM_EDUCATION_ID)]["report_norm_name"] != TM_EDUCATION_NAME:
             raise BusinessSchemaUpdateError("TM 737 education display correction is absent")
+        expected_issued_paper_names = {
+            "1103": TM_1103_CORRECTED_NAME,
+            "1107": TM_1107_CORRECTED_NAME,
+            "1111": TM_1111_CORRECTED_NAME,
+            "1115": TM_1115_CORRECTED_NAME,
+            "1117": TM_1117_CORRECTED_NAME,
+        }
+        for schema_id, expected_name in expected_issued_paper_names.items():
+            if by_id[schema_id]["report_norm_name"] != expected_name:
+                raise BusinessSchemaUpdateError(
+                    f"TM {schema_id} issued-paper display correction is absent"
+                )
         additions = (
             (
                 TM_TOTAL_INTERBANK_PROVISION_ID,
@@ -3445,6 +3539,16 @@ def _assert_candidate(
                 record["report_norm_name"] = TM_770_OLD_NAME
             elif record["report_norm_id"] == str(TM_EDUCATION_ID):
                 record["report_norm_name"] = TM_EDUCATION_OLD_NAME
+            elif record["report_norm_id"] == "1103":
+                record["report_norm_name"] = TM_1103_OLD_NAME
+            elif record["report_norm_id"] == "1107":
+                record["report_norm_name"] = TM_1107_OLD_NAME
+            elif record["report_norm_id"] == "1111":
+                record["report_norm_name"] = TM_1111_OLD_NAME
+            elif record["report_norm_id"] == "1115":
+                record["report_norm_name"] = TM_1115_OLD_NAME
+            elif record["report_norm_id"] == "1117":
+                record["report_norm_name"] = TM_1117_OLD_NAME
         if new_pairs != old_pairs:
             raise BusinessSchemaUpdateError("TM candidate changed an unauthorized identity/order")
     else:
@@ -3552,6 +3656,31 @@ def _allowed_existing_name_corrections(statement: str) -> list[dict[str, object]
                 "before": TM_EDUCATION_OLD_NAME,
                 "after": TM_EDUCATION_NAME,
             },
+            {
+                "schema_id": 1103,
+                "before": TM_1103_OLD_NAME,
+                "after": TM_1103_CORRECTED_NAME,
+            },
+            {
+                "schema_id": 1107,
+                "before": TM_1107_OLD_NAME,
+                "after": TM_1107_CORRECTED_NAME,
+            },
+            {
+                "schema_id": 1111,
+                "before": TM_1111_OLD_NAME,
+                "after": TM_1111_CORRECTED_NAME,
+            },
+            {
+                "schema_id": 1115,
+                "before": TM_1115_OLD_NAME,
+                "after": TM_1115_CORRECTED_NAME,
+            },
+            {
+                "schema_id": 1117,
+                "before": TM_1117_OLD_NAME,
+                "after": TM_1117_CORRECTED_NAME,
+            },
         ],
     }[statement]
 
@@ -3581,9 +3710,9 @@ def _expected_schema_strategy(
             ),
         },
         "previous_universal_schema": {
-            "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6068",
+            "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6069",
             "item_count": PRIOR_UNIVERSAL_SCHEMA_ITEM_COUNT,
-            "counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1713},
+            "counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1714},
             "high_watermark": PRIOR_UNIVERSAL_HIGH_WATERMARK,
             "workbook_sha256": PRIOR_UNIVERSAL_WORKBOOK_SHA256,
             "identity_order_sha256": PRIOR_UNIVERSAL_IDENTITY_ORDER_SHA256,
@@ -3591,9 +3720,9 @@ def _expected_schema_strategy(
             "audit_sha256": PRIOR_BUSINESS_UPDATE_AUDIT_SHA256,
         },
         "universal_schema": {
-            "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6069",
+            "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6072",
             "item_count": UNIVERSAL_SCHEMA_ITEM_COUNT,
-            "counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1714},
+            "counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1717},
             "high_watermark": UNIVERSAL_HIGH_WATERMARK,
             "workbook_sha256": after_workbook_sha256,
         },
@@ -4264,6 +4393,24 @@ def _expected_schema_changes() -> list[dict[str, object]]:
             "before": TM_EDUCATION_OLD_NAME,
             "after": TM_EDUCATION_NAME,
         },
+        *(
+            {
+                "change": "CORRECT_DISPLAY_NAME",
+                "statement_type": "TM",
+                "schema_id": schema_id,
+                "before": before,
+                "after": after,
+                "user_decision": "Q085",
+                "backward_compatible_alias_preserved": True,
+            }
+            for schema_id, before, after in (
+                (1103, TM_1103_OLD_NAME, TM_1103_CORRECTED_NAME),
+                (1107, TM_1107_OLD_NAME, TM_1107_CORRECTED_NAME),
+                (1111, TM_1111_OLD_NAME, TM_1111_CORRECTED_NAME),
+                (1115, TM_1115_OLD_NAME, TM_1115_CORRECTED_NAME),
+                (1117, TM_1117_OLD_NAME, TM_1117_CORRECTED_NAME),
+            )
+        ),
         {
             "change": "CORRECT_DISPLAY_NAME",
             "statement_type": "KQKD",
@@ -4432,7 +4579,7 @@ def verify_business_schema_update(project_root: Path, audit_path: Path) -> dict[
     audit = json.loads(audit_path.read_text(encoding="utf-8"))
     if (
         audit.get("format_version") != 1
-        or audit.get("migration_id") != "BUSINESS-SCHEMA-5712-5713-5714-5718-6069"
+        or audit.get("migration_id") != "BUSINESS-SCHEMA-5712-5713-5714-5718-6072"
         or audit.get("status") != "APPLIED_AND_VERIFIED"
     ):
         raise BusinessSchemaUpdateError("invalid business-schema update audit identity")
@@ -4458,6 +4605,8 @@ def verify_business_schema_update(project_root: Path, audit_path: Path) -> dict[
             "Q081",
             "Q082",
             "Q083",
+            "Q084",
+            "Q085",
         ],
     }:
         raise BusinessSchemaUpdateError("business schema authority drifted")
@@ -4580,6 +4729,11 @@ def verify_business_schema_update(project_root: Path, audit_path: Path) -> dict[
             ("CDKT", "4319"): CDKT_4319_OLD_NAME,
             ("CDKT", "4360"): CDKT_4360_OLD_NAME,
             ("LCTT", "4136"): LCTT_4136_OLD_NAME,
+            ("TM", "1103"): TM_1103_OLD_NAME,
+            ("TM", "1107"): TM_1107_OLD_NAME,
+            ("TM", "1111"): TM_1111_OLD_NAME,
+            ("TM", "1115"): TM_1115_OLD_NAME,
+            ("TM", "1117"): TM_1117_OLD_NAME,
         }
         for pair in prior_pairs:
             prior_name = prior_name_by_id.get((statement, str(pair["report_norm_id"])))
@@ -4685,6 +4839,15 @@ def verify_business_schema_update(project_root: Path, audit_path: Path) -> dict[
         raise BusinessSchemaUpdateError("TM 770 correction drifted")
     if tm_by_id[str(TM_EDUCATION_ID)]["report_norm_name"] != TM_EDUCATION_NAME:
         raise BusinessSchemaUpdateError("TM 737 correction drifted")
+    for schema_id, expected_name in {
+        "1103": TM_1103_CORRECTED_NAME,
+        "1107": TM_1107_CORRECTED_NAME,
+        "1111": TM_1111_CORRECTED_NAME,
+        "1115": TM_1115_CORRECTED_NAME,
+        "1117": TM_1117_CORRECTED_NAME,
+    }.items():
+        if tm_by_id[schema_id]["report_norm_name"] != expected_name:
+            raise BusinessSchemaUpdateError(f"TM {schema_id} issued-paper name correction drifted")
     if (
         tm_by_id[str(TM_TOTAL_INTERBANK_PROVISION_ID)]["source_row"]
         != TM_TOTAL_INTERBANK_PROVISION_SOURCE_ROW
@@ -4967,7 +5130,7 @@ def apply_business_schema_update(
 
     audit: dict[str, object] = {
         "format_version": 1,
-        "migration_id": "BUSINESS-SCHEMA-5712-5713-5714-5718-6069",
+        "migration_id": "BUSINESS-SCHEMA-5712-5713-5714-5718-6072",
         "status": "APPLIED_AND_VERIFIED",
         "applied_at": "2026-08-15T00:00:00+00:00",
         "authority": {
@@ -4984,6 +5147,8 @@ def apply_business_schema_update(
                 "Q081",
                 "Q082",
                 "Q083",
+                "Q084",
+                "Q085",
             ],
         },
         "collision_safety": {
@@ -5546,6 +5711,46 @@ def apply_business_formula_hierarchy(schema: Sequence[SchemaItem]) -> None:
         )
         item.hierarchy_source = BUSINESS_UPDATE_AUDIT
 
+    # The government/NHNN family has a general central-bank-loan parent followed
+    # by optional facility details.  Treasury and Finance Ministry deposits are
+    # sibling liabilities, not aliases of a loan facility or "other" liability.
+    for schema_id in range(1025, 1035):
+        item = by_key[("TM", schema_id)]
+        item.parent_id = TM_CENTRAL_BANK_LOAN_ID
+        item.hierarchy_level = 3
+        item.hierarchy_source = BUSINESS_UPDATE_AUDIT
+    for schema_id, parent_id, level in (
+        (1035, 1024, 2),
+        (1036, 1035, 3),
+        (1037, 1035, 3),
+        (1038, 1024, 2),
+        (1039, 1024, 2),
+    ):
+        item = by_key[("TM", schema_id)]
+        item.parent_id = parent_id
+        item.hierarchy_level = level
+        item.hierarchy_source = BUSINESS_UPDATE_AUDIT
+
+    # Issued valuable papers are an instrument tree.  Broad source tenors such
+    # as MBB's "Dưới 5 năm" and "Trên 12 tháng" remain authenticated aggregate
+    # leaves under their instrument; they are never split into invented values.
+    issued_paper_hierarchy = {
+        1101: (1100, 2),
+        1105: (1100, 2),
+        1109: (1100, 2),
+        1113: (1100, 2),
+        1117: (1100, 2),
+        **{schema_id: (1101, 3) for schema_id in (5978, 5979, 6008, 6009, 1102, 1103, 1104)},
+        **{schema_id: (1105, 3) for schema_id in (1106, 1107, 1108)},
+        **{schema_id: (1109, 3) for schema_id in (5980, 5981, 6010, 1110, 1111, 1112)},
+        **{schema_id: (1113, 3) for schema_id in (1114, 1115, 1116)},
+    }
+    for schema_id, (parent_id, level) in issued_paper_hierarchy.items():
+        item = by_key[("TM", schema_id)]
+        item.parent_id = parent_id
+        item.hierarchy_level = level
+        item.hierarchy_source = BUSINESS_UPDATE_AUDIT
+
     universal_reparent_groups = (
         (5991, tuple(range(871, 876)), 4),
         (5992, tuple(range(876, 882)), 4),
@@ -5753,9 +5958,14 @@ def apply_business_formula_hierarchy(schema: Sequence[SchemaItem]) -> None:
         ("TM", 5972): (5973, 5974),
         ("TM", 967): (6007, *range(968, 981), 5975, 5976, 981),
         ("TM", 1075): (5977, *range(1076, 1092)),
-        ("TM", 1100): tuple(range(1101, 1118)),
-        ("TM", 1101): (5978, 5979, 6008, 6009),
-        ("TM", 1109): (5980, 5981, 6010),
+        ("TM", 1024): (6070, 1035, 6071, 1038, 6072, 1039),
+        ("TM", 6070): tuple(range(1025, 1035)),
+        ("TM", 1035): (1036, 1037),
+        ("TM", 1100): (1101, 1105, 1109, 1113, 1117),
+        ("TM", 1101): (5978, 5979, 6008, 6009, 1102, 1103, 1104),
+        ("TM", 1105): (1106, 1107, 1108),
+        ("TM", 1109): (5980, 5981, 6010, 1110, 1111, 1112),
+        ("TM", 1113): (1114, 1115, 1116),
         ("TM", 1128): (
             5982,
             5983,
@@ -6097,6 +6307,9 @@ def apply_business_formula_hierarchy(schema: Sequence[SchemaItem]) -> None:
         *TM_PAGE60_COMBINED_LOAN_IDS,
         *range(5936, 5946),
         *range(6062, 6066),
+        6071,
+        6072,
+        1117,
         1944,
     ):
         item = by_key[("TM", schema_id)]

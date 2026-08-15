@@ -74,23 +74,25 @@ def test_business_schema_migration_is_hash_bound_and_preserves_sealed_baselines(
     assert set(audit["collision_safety"]["new_ids"]).isdisjoint(REVIEWED_EXTERNAL_IDS)
     assert audit["schema_strategy"]["base_schema"]["item_count"] == 1593
     assert audit["schema_strategy"]["universal_schema"] == {
-        "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6069",
-        "item_count": 1948,
-        "counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1714},
-        "high_watermark": 6069,
+        "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6072",
+        "item_count": 1951,
+        "counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1717},
+        "high_watermark": 6072,
         "workbook_sha256": {
             statement: record["after_sha256"] for statement, record in audit["workbooks"].items()
         },
     }
     assert audit["schema_strategy"]["migration_delta"]["new_report_norm_ids"] == [
-        6069,
+        6070,
+        6071,
+        6072,
     ]
     accepted_changes = {
         record["schema_id"]: record
         for record in audit["schema_changes"]
         if record.get("schema_status") == "ACCEPTED_UNIVERSAL"
     }
-    assert set(accepted_changes) == set(range(5991, 6070))
+    assert set(accepted_changes) == set(range(5991, 6073))
     assert all(
         accepted_changes[schema_id]["section"] == "BALANCE_SHEET_NOTES"
         for schema_id in range(5991, 6021)
@@ -112,7 +114,7 @@ def test_business_schema_migration_is_hash_bound_and_preserves_sealed_baselines(
     assert accepted_changes[6056]["section"] == "OFF_BALANCE_SHEET"
     assert all(
         accepted_changes[schema_id]["section"] == "BALANCE_SHEET_NOTES"
-        for schema_id in range(6057, 6070)
+        for schema_id in range(6057, 6073)
     )
     assert accepted_changes[6057]["evidence"]["observed_values"] == ["DASH", "DASH"]
     assert accepted_changes[6058]["evidence"]["visible_label"] == (
@@ -135,6 +137,9 @@ def test_business_schema_migration_is_hash_bound_and_preserves_sealed_baselines(
     assert accepted_changes[6069]["evidence"]["visible_label"] == (
         "Nguyên giá TSCĐ vô hình đã hao mòn hết nhưng vẫn còn sử dụng"
     )
+    assert accepted_changes[6070]["evidence"]["visible_label"] == "Vay Ngân hàng Nhà nước"
+    assert accepted_changes[6071]["evidence"]["visible_label"] == ("Tiền gửi có kỳ hạn của KBNN")
+    assert accepted_changes[6072]["evidence"]["visible_label"] == "Tiền gửi của Bộ Tài chính"
     ctg_swap = accepted_changes[6056]["evidence"]
     assert ctg_swap["user_decision"] == "Q076"
     assert ctg_swap["source_row_ref"] == "ctg-p5-5705"
@@ -469,8 +474,19 @@ def test_business_formula_overlay_has_exact_authorized_edges(project_root):
     assert by_id[967].children[0] == 6007
     assert by_id[967].children[-4:] == [980, 5975, 5976, 981]
     assert by_id[1075].children[0] == 5977
-    assert by_id[1101].children == [5978, 5979, 6008, 6009]
-    assert by_id[1109].children == [5980, 5981, 6010]
+    assert by_id[1024].children == [6070, 1035, 6071, 1038, 6072, 1039]
+    assert by_id[6070].children == list(range(1025, 1035))
+    assert by_id[1035].children == [1036, 1037]
+    assert by_id[1100].children == [1101, 1105, 1109, 1113, 1117]
+    assert by_id[1101].children == [5978, 5979, 6008, 6009, 1102, 1103, 1104]
+    assert by_id[1105].children == [1106, 1107, 1108]
+    assert by_id[1109].children == [5980, 5981, 6010, 1110, 1111, 1112]
+    assert by_id[1113].children == [1114, 1115, 1116]
+    assert by_id[1103].canonical_name == "Từ 12 tháng đến 5 năm"
+    assert by_id[1111].canonical_name == "Từ 12 tháng đến 5 năm"
+    assert by_id[1117].canonical_name == (
+        "Các loại giấy tờ có giá khác (bao gồm trái phiếu tăng vốn)"
+    )
     assert by_id[1128].children[:11] == [5982, 5983, 5984, *range(6011, 6019)]
     assert by_id[1128].children[11:15] == [1129, 6019, 6020, 1141]
     assert by_id[1128].children[-2:] == [5946, 5949]
@@ -528,10 +544,10 @@ def test_business_formula_overlay_has_exact_authorized_edges(project_root):
     }
     assert formula_ids.isdisjoint(range(5898, 5946))
     assert by_id[1944].parent_id is None
-    assert by_id[1944].display_order == 1713
+    assert by_id[1944].display_order == 1716
     assert set(TM_UNIVERSAL_SCHEMA_IDS) == {
         *range(5991, 6034),
-        *range(6057, 6070),
+        *range(6057, 6073),
     }
 
 

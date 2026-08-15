@@ -374,19 +374,14 @@ Q1/2026, không relabel thành Q2/2026.
 
 - **Đã xác minh:** ACB p20, MBB p42, VPB p53, HDB p30, VCB p34, CTG p41,
   BID p24 và VIB p40. Toàn bộ tám PDF chỉ có một vùng thỏa cấu trúc đầy đủ.
-  Đã map 28 khoản mục/58 thành phần giá trị và kiểm tra 28 phương trình tổng,
+  Đã map 32 khoản mục/66 thành phần giá trị và kiểm tra 28 phương trình tổng,
   subtotal, tiền gửi Kho bạc, khoản vay NHNN và repo. Hai dấu `-` tại HDB/VIB
-  được đọc lại trực tiếp từ pixel và chuẩn hóa thành 0.
+  được đọc lại trực tiếp từ pixel và chuẩn hóa thành 0. Ba cách gọi `Vay Ngân
+  hàng Nhà nước`, `Vay NHNN`, `Vay Ngân hàng Trung ương` cùng map vào 6070;
+  tiền gửi có kỳ hạn KBNN map 6071. `Tiền gửi của Bộ Tài chính` tại BID được
+  chuyển khỏi catch-all 1039 sang khoản mục riêng 6072.
 - **Không có cụm này trong báo cáo:** Không có; cả 8 bank đều có đúng một vùng.
-- **Còn thiếu:** Bốn dòng dưới đây giữ `UNRESOLVED`; các phần còn lại của cụm
-  đã được xác minh. PDF VPB là nguồn Q1/2026.
-
-| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
-| --- | ---: | --- | --- |
-| ACB | 20 | Vay Ngân hàng Nhà nước | Không xác định được nhánh nghiệp vụ cụ thể 1025–1033. |
-| CTG | 41 | Vay NHNN | Không xác định được nhánh nghiệp vụ cụ thể 1025–1033. |
-| BID | 24 | Vay Ngân hàng Trung ương | Không xác định được nhánh nghiệp vụ cụ thể 1025–1033. |
-| BID | 24 | Tiền gửi có kỳ hạn của KBNN | Chưa có schema tương đương; 1035 là tiền gửi thanh toán. |
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map. PDF VPB là nguồn Q1/2026.
 
 ## 24. Vốn nhận tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro
 
@@ -406,25 +401,25 @@ Q1/2026, không relabel thành Q2/2026.
 
 - **Đã xác minh:** ACB p21, MBB p44, VPB p56, HDB p31, VCB p35, CTG p42,
   BID p25 và VIB p43. Whole-PDF scan tìm đúng một vùng hoàn chỉnh trên mỗi
-  bank. Đã map 66 khoản mục/124 thành phần giá trị và kiểm tra 36 phương trình
+  bank. Đã map 71 khoản mục/132 thành phần giá trị và kiểm tra 36 phương trình
   theo công cụ, kỳ hạn và tổng family. CTG dùng biến thể kỳ hạn theo hàng × công
   cụ theo cột; bốn ô dấu `-` được khóa trực tiếp bằng pixel và chuẩn hóa thành
   0. ACB chỉ dùng cột giá trị ghi sổ để map, cột mệnh giá làm đối chứng. VCB
-  dùng nhánh gộp `Kỳ phiếu, trái phiếu`; VPB giữ đúng nguồn Q1/2026.
+  dùng nhánh gộp `Kỳ phiếu, trái phiếu`; VPB giữ đúng nguồn Q1/2026. Mốc đúng
+  5 năm của ACB được nhận vào leaf 1103/1111 có biên trên bao gồm 5 năm. MBB
+  map trực tiếp `Trái phiếu — Dưới 5 năm` vào 6010 và `Chứng chỉ tiền gửi —
+  Trên 12 tháng` vào 6009, không tự chia số in thành các kỳ hạn nhỏ hơn. Trái
+  phiếu tăng vốn BIDV map riêng vào 1117 và vẫn là detail không cộng lặp với
+  parent trái phiếu.
 - **Không có cụm này trong báo cáo:** Không có; cả 8 bank đều có đúng một vùng.
-- **Còn thiếu:** Tám hàng nguồn dưới đây không tương đương duy nhất với leaf
-  hiện có, nên không bị ép map.
+- **Còn thiếu:** Chỉ còn ba hàng VPB dưới đây. Đây là trục kỳ hạn của toàn cụm,
+  không chỉ rõ số thuộc chứng chỉ tiền gửi, kỳ phiếu hay trái phiếu.
 
 | Bank | Trang | Khoản mục nguồn | Lý do chưa map |
 | --- | ---: | --- | --- |
-| ACB | 21 | Trái phiếu — Kỳ hạn 5 năm | Mốc đúng 5 năm không thuộc rõ `dưới 5 năm` hay `trên 5 năm`. |
-| ACB | 21 | Chứng chỉ tiền gửi — Kỳ hạn 5 năm | Cùng khoảng trống biên kỳ hạn đúng 5 năm. |
-| MBB | 44 | Trái phiếu — Dưới 5 năm | Gộp cả kỳ hạn ngắn và trung; không thể tách từ số in. |
-| MBB | 44 | Chứng chỉ tiền gửi — Trên 12 tháng | Gộp cả kỳ hạn trung và dài; không thể tách từ số in. |
 | VPB | 56 | Toàn family — Dưới 12 tháng | Trục kỳ hạn áp dụng cho toàn family, không riêng một công cụ. |
 | VPB | 56 | Toàn family — Từ trên 12 tháng đến 5 năm | Trục kỳ hạn toàn family, không riêng một leaf công cụ. |
 | VPB | 56 | Toàn family — Từ trên 5 năm trở lên | Trục kỳ hạn toàn family, không riêng một leaf công cụ. |
-| BID | 25 | Trái phiếu tăng vốn BIDV | Đã cộng vào parent `Trái phiếu`; chưa có leaf độc lập hoặc phân rã kỳ hạn nhìn thấy. |
 
 ## 26. Các khoản phải trả và công nợ khác
 
@@ -531,9 +526,9 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Tăng, giảm TSCĐ vô hình | — | ✓ p39 | ✓\* p50 | — | — | — | — | ✓ p38 | 0 dòng; 32 mapping, 12 phương trình, 5 bank không có bảng; VPB là nguồn Q1 |
 | Tăng, giảm bất động sản đầu tư | — | ✓ p41 | — | — | — | — | — | — | 0 dòng; 9 mapping, 11 phương trình, 7 bank không có bảng chi tiết |
 | Tài sản Có khác | — | ✓ p42 | ✓\* p51–53 | — | — | — | — | ✓\* p39 | 12 dòng OPEN; 58 mapping, 30 phương trình, 5 bank không có bảng chi tiết; VPB là nguồn Q1 |
-| Các khoản nợ Chính phủ/NHNN | ✓\* p20 | ✓ p42 | ✓\* p53 | ✓ p30 | ✓ p34 | ✓\* p41 | ✓\* p24 | ✓ p40 | 4 dòng OPEN; 28 mapping, 28 phương trình; 2 DASH→0; VPB là nguồn Q1 |
+| Các khoản nợ Chính phủ/NHNN | ✓ p20 | ✓ p42 | ✓\* p53 | ✓ p30 | ✓ p34 | ✓ p41 | ✓ p24 | ✓ p40 | 0 dòng; 32 mapping, 28 phương trình; 2 DASH→0; VPB là nguồn Q1 |
 | Vốn nhận tài trợ/ủy thác đầu tư | — | ✓ p43 | ✓\* p56 | — | — | — | — | ✓ p42 | 0 dòng; 6 mapping, 4 phương trình; 5 bank xác nhận không có cụm; VPB là nguồn Q1 |
-| Phát hành giấy tờ có giá | ✓\* p21 | ✓\* p44 | ✓\* p56 | ✓ p31 | ✓ p35 | ✓ p42 | ✓\* p25 | ✓ p43 | 8 dòng OPEN; 66 mapping, 36 phương trình; 4 DASH→0; VPB là nguồn Q1 |
+| Phát hành giấy tờ có giá | ✓ p21 | ✓ p44 | ✓\* p56 | ✓ p31 | ✓ p35 | ✓ p42 | ✓ p25 | ✓ p43 | 3 dòng OPEN; 71 mapping, 36 phương trình; 4 DASH→0; VPB là nguồn Q1 |
 | Các khoản phải trả và công nợ khác | ✓\* p22 | ✓ p44 | ✓\* p57 | ✓ p31 | ✓ p35 | ✓\* p43 | ✓ p26 | ✓\* p43 | 18 dòng OPEN; 39 mapping, 28 phương trình; 2 DASH→0; VPB là nguồn Q1 |
 | Vốn và các quỹ | ✓ p23–24 | ✓ p44–45 | ✓\* p60–61 | ✓\* p33–34 | ✓\* p36–37 | ✓\* p43–44 | △ p27–28 | △ p44–45 | 10 mục OPEN; 65 mapping, 20 phương trình; BID/VIB structure-only; VPB là nguồn Q1 |
 | Thu nhập lãi và các khoản thu nhập tương tự | ✓ p24 | ✓ p46 | ✓\* p62 | ✓ p34 | ✓ p38 | ✓ p45 | ✓ p28 | ✓ p45 | 0 dòng; 54 mapping, 108 ô số, 28 phương trình; VPB là nguồn Q1 |

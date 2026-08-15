@@ -70,13 +70,13 @@ def test_page57_reconciles_exact_schema_source_and_cell_denominators(
 ) -> None:
     result = page57_result
 
-    assert result.schema_item_count == 1_714
+    assert result.schema_item_count == 1_717
     assert result.status_reconciled_schema_count == 317
     assert result.mapped_schema_count == 169
     assert result.structural_mapped_schema_count == 9
     assert result.value_bearing_mapped_schema_count == 160
     assert result.not_observed_schema_count == 148
-    assert result.unassessed_schema_count == 1_397
+    assert result.unassessed_schema_count == 1_400
     assert result.not_applicable_schema_count == 0
     assert result.ambiguous_schema_count == 0
     assert result.unresolved_schema_count == 0
@@ -89,10 +89,10 @@ def test_page57_reconciles_exact_schema_source_and_cell_denominators(
     assert result.extracted_value_count == 92
     assert result.dash_count == 68
     assert result.schema_workbook_sha256 == (
-        "03adbdf13d90ea503876d37e7bddc9b3f67bbc99d80d6e573060ae1f739642aa"
+        "d5a422d436d46170f2b6bc8758c547c410044a142b4833573a2e2c0c4efc2003"
     )
     assert result.schema_projection_sha256 == (
-        "586a3c8750d917bd74c0273cb9988bc8793b78b895686cf8b289f26dd02f5471"
+        "26a75cae0809f8ad964c25d85a7bd31a6416a91932f3b53109a4baa7507297db"
     )
 
 

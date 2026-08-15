@@ -386,9 +386,9 @@ def _validate_policy_payload(payload: Any) -> dict[str, Any]:
         },
         {
             "schema_name": "UNIVERSAL_BANK_BCTC_SCHEMA",
-            "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6069",
+            "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6072",
             "statement_type": _STATEMENT_TYPE,
-            "item_count": 1714,
+            "item_count": 1717,
             "order_authority": "WORKBOOK_DISPLAY_ORDER",
         },
         "native TM schema denominator",
@@ -397,7 +397,7 @@ def _validate_policy_payload(payload: Any) -> dict[str, Any]:
         schema["schema_registry"],
         {
             "path": "data/registered/schema_registry.json",
-            "sha256": "820fd90015b1a45880cfc3cc42430d587a07d16a1913d1ea5c17d5eddb007a88",
+            "sha256": "9cebc948e871898dadc3d046d06f894ffffce90eebc16885d9da2b6639832ae6",
         },
         "schema registry",
     )
@@ -405,7 +405,7 @@ def _validate_policy_payload(payload: Any) -> dict[str, Any]:
         schema["schema_graph"],
         {
             "path": "reference/schemas/schema_graph.jsonl",
-            "sha256": "78d17436d1157b2fab112fe9ae9e5aa0d0e81e86c7a5567b5dc3292db46b92ae",
+            "sha256": "a5ad1b0f1fa89fdf6d07c07b3a32b5bfc06b844433aeba3755be479844848e39",
         },
         "schema graph",
     )
@@ -421,7 +421,7 @@ def _validate_policy_payload(payload: Any) -> dict[str, Any]:
         schema["coverage_registry"],
         {
             "path": "data/registered/schema_coverage_registry.json",
-            "sha256": "8396b2c3f7e8b20d895b5f054c371ba341e05da7a59715eba64f1b590e031827",
+            "sha256": "b3c0ba4645336f3185d7c051d8070bf24e152979c3835b88b46ac40d1aa6d52a",
         },
         "schema coverage registry",
     )
@@ -431,8 +431,8 @@ def _validate_policy_payload(payload: Any) -> dict[str, Any]:
             "tm_context_projection_sha256": schema["tm_context_projection_sha256"],
         },
         {
-            "tm_projection_sha256": "b8245c7f1917b24203fdc75dedc21a0f5caf26d51f79678a354809e48de2942c",
-            "tm_context_projection_sha256": "87f4783d0288ad22fbb76dad454774bf5c965b19bb916c86d62e3f8b607bcecb",
+            "tm_projection_sha256": "64a79dc5b053c22ad0b3840f21cf08678102492bf7f6b6b34bcc4fc2c753ac7a",
+            "tm_context_projection_sha256": "b1352d09b9368e5fbe129050340bb620006b40a59e2c84aaf3d6c889f44d3f94",
         },
         "native TM schema projections",
     )
@@ -474,23 +474,23 @@ def _validate_policy_payload(payload: Any) -> dict[str, Any]:
             "fuzzy_matching_allowed": False,
             "strip_structural_enumerators": False,
             "accounting_abbreviation_expansion_allowed": False,
-            "tm_projection_record_count": 2,
-            "tm_projection_sha256": "cea637baa097229d871656954f88902d4357915c44c9033f67372e70b9991ea1",
+            "tm_projection_record_count": 7,
+            "tm_projection_sha256": "c65829ac0cfbf86b024fa3cf162bf05cf0d8c982d8b710ea1178995dc98117d3",
         },
         "typed TM alias behavior",
     )
     for key, expected in {
         "schema_source_config": (
             "config/schemas/sources.yaml",
-            "5e493f065b42177d04e1ebcc1976011f80f529542fc852f6195f6dd62d71a799",
+            "42a68223c21dd023c278cfde64fad3aec052ce160fd528699ec6cb6816725ea0",
         ),
         "hierarchy_config": (
             "config/schemas/hierarchy_reference.yaml",
-            "4029408ea0808f9686abd565395564e3b5f91fe89c31298c8d0a0256daa9675c",
+            "ed12038bfe6c550562bfb4f5119f70d10fd27a35e3d516a89bc4db48f515b3a5",
         ),
         "hierarchy_registry": (
             "data/registered/hierarchy_registry.json",
-            "c3c657a8d9dfffe9c030ec62e5eb54a79d46cb86a3b93800e0d58816eb37729f",
+            "cc8ead277192a69539a43f3ab9de5568484a258fc98d20c723beac8c9af8f57d",
         ),
         "tm_hierarchy_workbook": (
             "vst_level/vst_bank_detailed_notes_sheet.xlsx",
@@ -502,8 +502,8 @@ def _validate_policy_payload(payload: Any) -> dict[str, Any]:
         aliases["business_update_audits"],
         [
             {
-                "path": "data/registered/schema_business_update_5712_5713_5714_5718_6069.json",
-                "sha256": "d78e0ca39cb4b5b570b44c112064d55d077a4aededf6e30cf693a281d6f971d1",
+                "path": "data/registered/schema_business_update_5712_5713_5714_5718_6072.json",
+                "sha256": "e9bb893d1c6257543c02105c64ad5c9c9c4b1c1a16a4c3e03f0fb2fba334e108",
             }
         ],
         "typed alias business-update audits",
@@ -559,7 +559,7 @@ def _validate_policy_payload(payload: Any) -> dict[str, Any]:
         payload["coverage"],
         {
             "statement_type": _STATEMENT_TYPE,
-            "schema_item_count": 1714,
+            "schema_item_count": 1717,
             "completion_rule": "EXACTLY_ONE_TERMINAL_OUTCOME_PER_SCHEMA_ID_PER_DOCUMENT",
             "terminal_outcomes": list(_TERMINAL_OUTCOMES),
             "outside_bounded_subtree_outcome": "UNRESOLVED",
@@ -3307,7 +3307,7 @@ def _validate_replay_policy_minimum(payload: Any) -> dict[str, Any]:
         ]
         or not isinstance(schema, dict)
         or schema.get("statement_type") != _STATEMENT_TYPE
-        or schema.get("item_count") != 1714
+        or schema.get("item_count") != 1717
         or schema.get("order_authority") != "WORKBOOK_DISPLAY_ORDER"
         or not isinstance(aliases, dict)
         or aliases.get("accepted_authority_types") != list(_ACCEPTED_ALIAS_TYPES)
@@ -3363,7 +3363,7 @@ def _validate_replay_policy_minimum(payload: Any) -> dict[str, Any]:
         or completion.get("equation_tolerance_source_units") != 0
         or not isinstance(coverage, dict)
         or coverage.get("statement_type") != _STATEMENT_TYPE
-        or coverage.get("schema_item_count") != 1714
+        or coverage.get("schema_item_count") != 1717
         or coverage.get("completion_rule")
         != "EXACTLY_ONE_TERMINAL_OUTCOME_PER_SCHEMA_ID_PER_DOCUMENT"
         or coverage.get("terminal_outcomes") != list(_TERMINAL_OUTCOMES)

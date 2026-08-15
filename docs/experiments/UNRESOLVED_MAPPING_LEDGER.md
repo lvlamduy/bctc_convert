@@ -17,8 +17,8 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **118 entries**.  Current open queue: **53**.  Closed history:
-**31** row/graph resolutions and **34** confirmed bound-report family absences.
+Ledger total: **118 entries**.  Current open queue: **44**.  Closed history:
+**40** row/graph resolutions and **34** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
@@ -26,6 +26,13 @@ E-0079 `Thu nhập lãi và các khoản thu nhập tương tự` không bổ su
 cả tám vùng duy nhất đã map hết các dòng nguồn vào 1143–1150. Hai lỗi mất chữ
 số đầu của VietOCR tại VIB được trục số nguồn/PaddleOCR và pixel bác bỏ, nên là
 đối chứng OCR đã đóng chứ không phải khoảng trống mapping.
+
+E-0080 đóng GN-001–GN-004 và IVP-001–IVP-004/IVP-008 theo quyết định của chủ
+dự án. Ba cách gọi khoản vay ngân hàng trung ương dùng schema mới 6070; tiền
+gửi có kỳ hạn KBNN dùng 6071; tiền gửi Bộ Tài chính được chuyển từ 1039 sang
+6072. ACB đúng 5 năm dùng biên kỳ hạn bao gồm 5 năm, MBB dùng trực tiếp hai
+leaf rộng 6010/6009, và trái phiếu tăng vốn BIDV dùng 1117. Chỉ ba trục kỳ hạn
+toàn family của VPB còn OPEN.
 
 ## Open review queue (always first)
 
@@ -60,10 +67,6 @@ số đầu của VietOCR tại VIB được trục số nguồn/PaddleOCR và p
 | OPL-017 | Các khoản phải trả và công nợ khác | VIB | 43 | Các khoản chờ thanh toán khác | Chưa có leaf tương đương; chỉ nằm trong parent phải trả bên ngoài. |
 | OPL-018 | Các khoản phải trả và công nợ khác | VIB | 43 | Doanh thu chờ phân bổ | Chưa có leaf tương đương; giá trị vẫn nằm trong tổng family đã xác minh. |
 | PM-001 | Dự phòng rủi ro cho vay khách hàng | VPB | 45 | Dự phòng chung, dự phòng cụ thể, dự phòng cho vay giao dịch ký quỹ và ứng trước | Đã map và kiểm tra đủ kỳ 01/01–31/03/2026 của PDF được cung cấp; chưa có PDF VPB Q2/2026 nên không được relabel kết quả Q1 thành Q2. |
-| GN-001 | Các khoản nợ Chính phủ và NHNN | ACB | 20 | Vay Ngân hàng Nhà nước | Nguồn không nêu loại nghiệp vụ cụ thể trong các nhánh 1025–1033; không ép số dư vay tổng hợp vào một nhánh gần nhất. |
-| GN-002 | Các khoản nợ Chính phủ và NHNN | CTG | 41 | Vay NHNN | Nguồn không nêu loại nghiệp vụ cụ thể trong các nhánh 1025–1033; không ép số dư vay tổng hợp vào một nhánh gần nhất. |
-| GN-003 | Các khoản nợ Chính phủ và NHNN | BID | 24 | Vay Ngân hàng Trung ương | Nguồn không nêu loại nghiệp vụ cụ thể trong các nhánh 1025–1033; không ép số dư vay tổng hợp vào một nhánh gần nhất. |
-| GN-004 | Các khoản nợ Chính phủ và NHNN | BID | 24 | Tiền gửi có kỳ hạn của KBNN | Schema 1035 chỉ mô tả tiền gửi thanh toán của Kho bạc; chưa có khoản mục riêng tương đương tiền gửi có kỳ hạn. |
 | OA-001 | Tài sản Có khác | VPB | 51 | Phải thu bán tài sản tài chính | Nghĩa nguồn rộng hơn 976 `Phải thu từ bán chứng khoán`; không thu hẹp ngầm. |
 | OA-002 | Tài sản Có khác | VPB | 51 | Dự phòng phí và bồi thường nghiệp vụ nhượng tái bảo hiểm | Chưa có khoản mục con tương đương trong family 966–1023. |
 | OA-003 | Tài sản Có khác | VPB | 52 | Số dư đầu kỳ dự phòng rủi ro cho các tài sản Có nội bảng khác | Chưa có nhánh biến động dự phòng tương ứng. |
@@ -76,14 +79,9 @@ số đầu của VietOCR tại VIB được trục số nguồn/PaddleOCR và p
 | OA-010 | Tài sản Có khác | VIB | 39 | Phải thu từ hoạt động tài trợ thương mại | Chưa có khoản mục con tương đương. |
 | OA-011 | Tài sản Có khác | VIB | 39 | Phải thu hoa hồng bảo hiểm | Chưa chứng minh tương đương khoản phải thu từ công ty bảo hiểm con. |
 | OA-012 | Tài sản Có khác | VIB | 39 | Tài sản thuế TNDN hoãn lại | Chưa có khoản mục con tương đương trong family 966–1023. |
-| IVP-001 | Phát hành giấy tờ có giá | ACB | 21 | Trái phiếu — Kỳ hạn 5 năm | Mốc đúng 5 năm không thuộc rõ leaf `Từ 12 tháng đến dưới 5 năm` hoặc `Trên 5 năm`; giữ nguyên nguồn. |
-| IVP-002 | Phát hành giấy tờ có giá | ACB | 21 | Chứng chỉ tiền gửi — Kỳ hạn 5 năm | Cùng khoảng trống biên kỳ hạn đúng 5 năm; không ép vào leaf gần nhất. |
-| IVP-003 | Phát hành giấy tờ có giá | MBB | 44 | Trái phiếu — Dưới 5 năm | Một số in gộp cả kỳ hạn ngắn và trung, không thể phân bổ an toàn. |
-| IVP-004 | Phát hành giấy tờ có giá | MBB | 44 | Chứng chỉ tiền gửi — Trên 12 tháng | Một số in gộp kỳ hạn trung và dài, không thể phân bổ an toàn. |
 | IVP-005 | Phát hành giấy tờ có giá | VPB | 56 | Dưới 12 tháng | Trục kỳ hạn áp dụng cho toàn family gồm chứng chỉ tiền gửi và trái phiếu, không riêng một instrument leaf. |
 | IVP-006 | Phát hành giấy tờ có giá | VPB | 56 | Từ trên 12 tháng đến 5 năm | Trục kỳ hạn toàn family, không được gán riêng vào CD/kỳ phiếu/trái phiếu. |
 | IVP-007 | Phát hành giấy tờ có giá | VPB | 56 | Từ trên 5 năm trở lên | Trục kỳ hạn toàn family, không được gán riêng vào CD/kỳ phiếu/trái phiếu. |
-| IVP-008 | Phát hành giấy tờ có giá | BID | 25 | Trái phiếu tăng vốn BIDV | Giá trị đã được cộng vào parent `Trái phiếu`; chưa có leaf độc lập hoặc phân rã kỳ hạn nhìn thấy. |
 
 The shared family locator follows a strict minimal-anchor search.  It enumerates
 every parent+child pair first, then every child+child pair, over both complete and
@@ -116,10 +114,11 @@ page or note identifier participates in this decision.
 | IFA-006 | `RESOLVED_VERIFIED_BY_CODEX`; schema 6069 được thêm và map cho disclosure TSCĐ vô hình đã hao mòn hết nhưng vẫn còn sử dụng tại VPB/VIB |
 | IP-001–IP-007 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/VPB/HDB/VCB/CTG/BID/VIB không có bảng biến động bất động sản đầu tư chi tiết trong đúng PDF đã bind; statement, policy, cash-flow và expense mentions giữ làm đối chứng âm |
 | OA-001–OA-012 | `OPEN_SCHEMA_OR_SEMANTIC_GAP`; 58 khoản mục chắc chắn vẫn đã map, 12 dòng này được giữ nguyên nguồn và không ép vào schema gần nhất |
-| GN-001–GN-004 | `OPEN_SCHEMA_OR_SEMANTIC_GAP`; 28 khoản mục chắc chắn vẫn đã map, bốn dòng tổng hợp/khác nghĩa này không bị ép vào nhánh gần nhất |
+| GN-001–GN-004 | `RESOLVED_VERIFIED_BY_PROJECT_OWNER_AND_CODEX`; ba nhãn vay NHNN/Ngân hàng Trung ương map 6070, tiền gửi có kỳ hạn KBNN map 6071; BID `Tiền gửi Bộ Tài chính` được chuyển khỏi 1039 sang 6072 |
 | EIR-001–EIR-005 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/HDB/VCB/CTG/BID chuyển từ tiền gửi khách hàng thẳng sang family nợ kế tiếp, không có note vốn nhận tài trợ/ủy thác trong PDF đã bind |
 | EIR-006–EIR-007 | `RESOLVED_VERIFIED_BY_CODEX`; hai nguồn nhỏ chưa có leaf riêng — ODA của VPB và chương trình nhà ở qua NHNN của VIB — giữ nguyên nhãn nguồn và map vào leaf `Khác` 1099 |
-| IVP-001–IVP-008 | `OPEN_SCHEMA_OR_SCOPE_GAP`; 66 khoản mục chắc chắn vẫn đã map. Hai mốc đúng 5 năm, hai kỳ hạn gộp, ba trục kỳ hạn toàn family và một trái phiếu tăng vốn không bị ép vào leaf hẹp hơn |
+| IVP-001–IVP-004, IVP-008 | `RESOLVED_VERIFIED_BY_PROJECT_OWNER_AND_CODEX`; ACB đúng 5 năm map 1103/1111, MBB broad tenor map trực tiếp 6009/6010, BID trái phiếu tăng vốn map 1117 |
+| IVP-005–IVP-007 | `OPEN_SOURCE_SCOPE_GAP`; ba kỳ hạn VPB áp dụng cho toàn family, chưa có phân bổ nhìn thấy theo từng công cụ |
 | OPL-001–OPL-018 | `OPEN_SCHEMA_OR_SEMANTIC_GAP`; 39 khoản mục chắc chắn vẫn đã map. Các dòng chưa có leaf vẫn được giữ trong parent/tổng nguồn và không bị cộng hai lần |
 
 ## Capital and funds (`CAPITAL_AND_FUNDS`)
@@ -164,10 +163,11 @@ Current exact-replay result:
 - 66 mappings, 124 value components and 36 accounting equations are
   `VERIFIED_BY_CODEX`. Four CTG dash cells are bound to exact render pixels and
   normalized to zero; empty cells are not promoted to zero.
-- IVP-001–IVP-008 remain open because their source scope or boundary is not one
-  unique schema leaf. ACB exact-five-year rows, MBB broad tenors, VPB's
-  whole-family tenor view and BID's capital-increase bond remain fully visible
-  in the machine result. VPB is retained as Q1/2026.
+- E-0080 closes ACB exact-five-year rows through the now-inclusive 1103/1111
+  boundaries, maps MBB's printed broad tenors directly to 6009/6010 without
+  inventing a narrower split, and maps BID's capital-increase bond to 1117.
+  IVP-005–IVP-007 remain open only because VPB prints one whole-family tenor
+  view without an instrument allocation. VPB is retained as Q1/2026.
 
 ## Entrusted/investment-risk capital (`ENTRUSTED_INVESTMENT_RISK_CAPITAL`)
 
@@ -197,9 +197,10 @@ Current exact-replay result:
 - 28 source mappings, 58 visible current/comparative components and 28 exact
   accounting equations are `VERIFIED_BY_CODEX`. Two source dashes omitted from
   OCR are independently bound to render pixels and normalized to zero.
-- GN-001–GN-004 retain three unspecified central-bank-loan aggregates and one
-  Treasury term-deposit row for which the live schema has no exact leaf. VPB is
-  correctly retained as Q1/2026; no result is relabelled as Q2.
+- E-0080 adds broad parent 6070 for the three central-bank-loan wording
+  variants and sibling 6071 for the Treasury term deposit. BID's Finance
+  Ministry deposit is reclassified from catch-all 1039 to dedicated 6072.
+  No source row remains open; VPB is correctly retained as Q1/2026.
 
 ## Other assets (`OTHER_ASSETS`)
 

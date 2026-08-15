@@ -112,11 +112,11 @@ def test_actual_all_27_assembly_and_in_memory_export_are_exact_and_deterministic
         == TM_CONSOLIDATED_TEMPLATE_SHA256
     )
 
-    assert run.first.schema_item_count == 1_714
+    assert run.first.schema_item_count == 1_717
     assert run.first.status_counts == {
         "MAPPED": 890,
         "NA": 23,
-        "NOT_OBSERVED": 801,
+        "NOT_OBSERVED": 804,
     }
     assert run.first.observation_count == run.first.provenance_count == 1_250
     assert run.provenance["summary"]["value_status_counts"] == {
@@ -133,11 +133,11 @@ def test_actual_all_27_assembly_and_in_memory_export_are_exact_and_deterministic
     }
     assert run.provenance["schema_identity"] == assembly.policy.schema_identity
     assert run.provenance["document_coverage"] == {
-        "accounted_schema_item_count": 1_714,
+        "accounted_schema_item_count": 1_717,
         "accounted_source_row_count": 553,
         "ambiguous_schema_item_count": 0,
         "ambiguous_source_row_count": 0,
-        "latest_schema_batch_item_count": 1,
+        "latest_schema_batch_item_count": 3,
         "mapped_latest_schema_batch_item_count": 0,
         "mapped_mixed_source_row_count": 38,
         "mapped_new_schema_item_count": 307,
@@ -146,11 +146,11 @@ def test_actual_all_27_assembly_and_in_memory_export_are_exact_and_deterministic
         "mapped_reused_source_row_count": 300,
         "mapped_schema_item_count": 890,
         "mapped_source_row_count": 493,
-        "new_schema_item_count": 329,
+        "new_schema_item_count": 332,
         "not_applicable_schema_item_count": 23,
-        "not_observed_latest_schema_batch_item_count": 1,
-        "not_observed_new_schema_item_count": 22,
-        "not_observed_schema_item_count": 801,
+        "not_observed_latest_schema_batch_item_count": 3,
+        "not_observed_new_schema_item_count": 25,
+        "not_observed_schema_item_count": 804,
         "observed_output_cell_count": 1_250,
         "source_category_counts": {"MAPPED": 493, "SOURCE_ONLY_VALIDATION": 60},
         "source_only_validation_row_count": 60,
@@ -401,7 +401,7 @@ def test_cli_requires_explicit_output_and_calls_production_export(
             provenance_sha256="b" * 64,
             workbook_size_bytes=1,
             provenance_size_bytes=1,
-            schema_item_count=1_714,
+            schema_item_count=1_717,
             observation_count=1_250,
             provenance_count=1_250,
             status_counts={"MAPPED": 890},
@@ -429,4 +429,4 @@ def test_cli_requires_explicit_output_and_calls_production_export(
     assert captured["output_directory"] == output_directory.resolve()
     assert captured["run_directory"] == run_directory.resolve()
     assert captured["run_id"] == "test-run"
-    assert "TM_SCHEMA_ITEMS=1714" in capsys.readouterr().out
+    assert "TM_SCHEMA_ITEMS=1717" in capsys.readouterr().out

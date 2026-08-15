@@ -62,12 +62,12 @@ def test_page53_reconciles_exact_schema_source_and_cell_denominators(
 ) -> None:
     result = _mapped(project_root, tmp_path)
 
-    assert result.schema_item_count == 1_714
+    assert result.schema_item_count == 1_717
     assert result.status_reconciled_schema_count == 44
     assert result.mapped_schema_count == 44
     assert result.structural_mapped_schema_count == 8
     assert result.value_bearing_mapped_schema_count == 36
-    assert result.unassessed_schema_count == 1_670
+    assert result.unassessed_schema_count == 1_673
     assert result.not_observed_schema_count == 0
     assert result.ambiguous_schema_count == 0
     assert result.unresolved_schema_count == 0

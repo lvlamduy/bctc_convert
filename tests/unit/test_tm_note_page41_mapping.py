@@ -68,13 +68,13 @@ def test_page41_reconciles_complete_942_965_branch_with_exact_statuses(
     assert validate_tm_page41_mapping_result(result) is result
     assert result.mapping_authority_scope.endswith("TOTAL_COLUMN_FIXED_ROWS_ONLY")
     assert result.mapping_authority_granted
-    assert result.schema_item_count == 1_714
+    assert result.schema_item_count == 1_717
     assert result.status_reconciled_schema_count == 32
     assert result.mapped_schema_count == 15
     assert result.unresolved_schema_count == 0
     assert result.not_observed_schema_count == 17
     assert result.not_applicable_schema_count == 0
-    assert result.unassessed_schema_count == 1_682
+    assert result.unassessed_schema_count == 1_685
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == 25
     assert result.mapped_source_row_count == 25
@@ -104,7 +104,7 @@ def test_exact_mapped_unresolved_not_observed_and_unassessed_sets(
     assert by_status[TMPage41SchemaStatus.MAPPED_AUTOMATIC_SCOPED.value] == _MAPPED_IDS
     assert by_status[TMPage41SchemaStatus.UNRESOLVED.value] == _UNRESOLVED_IDS
     assert by_status[TMPage41SchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value] == (_NOT_OBSERVED_IDS)
-    assert len(by_status[TMPage41SchemaStatus.UNASSESSED.value]) == 1_682
+    assert len(by_status[TMPage41SchemaStatus.UNASSESSED.value]) == 1_685
     assert _MAPPED_IDS | _UNRESOLVED_IDS | _NOT_OBSERVED_IDS == (
         set(range(942, 966)) | {5972, 5973, 5974} | set(range(6002, 6007))
     )

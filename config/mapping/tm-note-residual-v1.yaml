@@ -3,12 +3,12 @@ policy: TM_NOTE_RESIDUAL_RECONCILIATION_V1
 statement_type: TM
 document: MBB_CONSOLIDATED_Q1_2026
 report_scope: CONSOLIDATED
-mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_EXACT_RESIDUAL_91_ONLY
+mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_EXACT_RESIDUAL_94_ONLY
 
-schema_workbook_sha256: 03adbdf13d90ea503876d37e7bddc9b3f67bbc99d80d6e573060ae1f739642aa
-schema_projection_sha256: 586a3c8750d917bd74c0273cb9988bc8793b78b895686cf8b289f26dd02f5471
-schema_total: 1714
-scope_schema_total: 91
+schema_workbook_sha256: d5a422d436d46170f2b6bc8758c547c410044a142b4833573a2e2c0c4efc2003
+schema_projection_sha256: 26a75cae0809f8ad964c25d85a7bd31a6416a91932f3b53109a4baa7507297db
+schema_total: 1717
+scope_schema_total: 94
 mapped_structural_schema_ids: [560, 1259]
 not_observed_schema_ids:
   - 564
@@ -29,6 +29,9 @@ not_observed_schema_ids:
   - {start: 1305, end: 1351}
   - {start: 6061, end: 6065}
   - 6069
+  - 6070
+  - 6071
+  - 6072
 
 structural_evidence:
   - report_norm_id: 560
