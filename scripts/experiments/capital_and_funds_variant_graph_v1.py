@@ -126,7 +126,8 @@ def _pages(value: Any) -> list[dict[str, Any]]:
         if type(raw_page["lines"]) is not list:
             raise _error("page lines must be one list")
         lines = []
-        for line_index, raw_line in enumerate(raw_page["lines"]):
+        seen_source_indices: set[int] = set()
+        for raw_line in raw_page["lines"]:
             if type(raw_line) is not dict or set(raw_line) != {
                 "bbox",
                 "semantic_text",
@@ -136,8 +137,14 @@ def _pages(value: Any) -> list[dict[str, Any]]:
                 "vietocr_text",
             }:
                 raise _error("capital-and-funds line fields drifted")
-            if raw_line["source_line_index"] != line_index:
-                raise _error("source line indices must be exact and gap-free")
+            source_line_index = raw_line["source_line_index"]
+            if (
+                type(source_line_index) is not int
+                or source_line_index < 0
+                or source_line_index in seen_source_indices
+            ):
+                raise _error("source line indices must be exact, unique integers")
+            seen_source_indices.add(source_line_index)
             if raw_line["source_text"] is not None and type(raw_line["source_text"]) is not str:
                 raise _error("source text must be null or one exact string")
             if (
@@ -157,12 +164,14 @@ def _pages(value: Any) -> list[dict[str, Any]]:
                     "normalized_text": normalize_vietnamese_anchor_v1(raw_line["semantic_text"]),
                     "page_sequence": page_sequence,
                     "semantic_text_source": raw_line["semantic_text_source"],
-                    "source_line_index": line_index,
+                    "source_line_index": source_line_index,
                     "source_text": raw_line["source_text"],
                     "vietocr_text": raw_line["vietocr_text"],
                 }
             )
             global_ordinal += 1
+        if seen_source_indices != set(range(len(raw_page["lines"]))):
+            raise _error("source line indices must preserve one complete gap-free denominator")
         pages.append(
             {
                 "lines": lines,
@@ -255,6 +264,11 @@ def _movement_role(text: str) -> str | None:
         return "OPENING_BALANCE"
     if value in {"du cuoi", "so du cuoi ky", "so du cuoi nam"}:
         return "CLOSING_BALANCE"
+    if re.fullmatch(r"so [a-z0-9]{1,4} cuoi ky", value):
+        # Bounded rescue for a corrupted middle token (for example VietOCR
+        # ``Số án cuối kỳ``).  The owner, statement heading, equity columns,
+        # unit, opposite opening row and numeric table are still mandatory.
+        return "CLOSING_BALANCE"
     if value in {"tang", "trich lap tang", "phat sinh trong nam tang"}:
         return "INCREASE"
     if value in {"giam", "su dung giam", "phat sinh trong nam giam"}:
@@ -301,9 +315,10 @@ def _column_header_composites(
         header_lines = [
             line
             for line in page_lines
-            if first_unit_y - 210 <= line["bbox"][1] < first_unit_y
+            if first_unit_y - 210 <= line["bbox"][1] <= first_unit_y + 210
             and not _NUMBER.fullmatch(line["normalized_text"])
             and _axis_role(line["normalized_text"]) is None
+            and _movement_role(line["normalized_text"]) is None
             and not _is_owner(line["normalized_text"])
             and not _is_change_heading(line["normalized_text"])
         ]

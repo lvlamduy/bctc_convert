@@ -161,6 +161,37 @@ def test_same_transformer_rotation_is_a_layout_variant() -> None:
     assert result["metrics"]["rotated_rescue_line_count_in_complete_regions"] == len(texts)
 
 
+def test_rotated_layout_may_reorder_complete_source_line_denominator() -> None:
+    page = _page(
+        [
+            "Vốn và quỹ",
+            "Báo cáo tình hình thay đổi vốn chủ sở hữu",
+            "Triệu đồng",
+            "Số dư đầu kỳ",
+            "Số dư cuối kỳ",
+            "Vốn điều lệ",
+            "100",
+            "100",
+            "Thặng dư vốn cổ phần",
+            "20",
+            "20",
+            "Quỹ dự phòng tài chính",
+            "10",
+            "10",
+            "Lợi nhuận chưa phân phối",
+            "30",
+            "35",
+            "160",
+            "165",
+        ],
+        rotated=True,
+    )
+    page["lines"] = [page["lines"][index] for index in [0, 1, *range(4, 19), 2, 3]]
+    result = matcher.build_capital_and_funds_variant_graph_document_v1([page])
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert sorted(event["source_line_index"] for event in result["regions"][0]["events"])
+
+
 @pytest.mark.parametrize(
     "texts",
     [

@@ -111,3 +111,59 @@ def test_scanner_exact_replay_rejects_coordinated_tamper(
     forged["scan_id"] = "caffdsv1:scan:" + scanner.canonical_json_sha256_v1(material)
     with pytest.raises(scanner.CapitalAndFundsFullDocumentScanV1Error, match="replay exactly"):
         scanner.validate_capital_and_funds_full_document_scan_replay_v1(forged, {})
+
+
+def test_rotated_page_reading_order_is_derived_from_geometry() -> None:
+    document = {
+        "document_ordinal": 1,
+        "pages": [
+            {
+                "lines": [
+                    {
+                        "bbox": bbox,
+                        "source_line_index": index,
+                        "source_text": None,
+                        "vietocr_text": "old",
+                    }
+                    for index, bbox in enumerate(
+                        ([300, 20, 310, 80], [100, 20, 110, 80], [200, 20, 210, 80])
+                    )
+                ],
+                "page_sequence": 1,
+                "primary_numeric_authority": False,
+            }
+        ],
+    }
+    rescue_by_locator = {(1, 1, index): {"semantic_text": f"new-{index}"} for index in range(3)}
+    pages, count = scanner._matcher_pages(document, rescue_by_locator)
+    assert count == 3
+    assert [line["source_line_index"] for line in pages[0]["lines"]] == [1, 2, 0]
+    assert [line["semantic_text"] for line in pages[0]["lines"]] == [
+        "new-1",
+        "new-2",
+        "new-0",
+    ]
+    assert [line["vietocr_text"] for line in pages[0]["lines"]] == [
+        "new-1",
+        "new-2",
+        "new-0",
+    ]
+
+
+def test_current_eight_pdf_scan_is_unique_for_every_document() -> None:
+    result = scanner.build_live_capital_and_funds_full_document_scan_v1()
+
+    assert result["metrics"] == {
+        "complete_region_count": 8,
+        "document_count": 8,
+        "document_multiple_complete_region_count": 0,
+        "document_unique_structural_match_count": 8,
+        "mapping_verified_count": 0,
+        "near_region_count": 19,
+        "rotated_rescue_line_count": 1_863,
+        "unresolved_document_count": 0,
+    }
+    assert [
+        trial["matcher_result"]["regions"][0]["owner"]["page_sequence"]
+        for trial in result["trials"]
+    ] == [23, 44, 60, 33, 36, 43, 27, 44]
