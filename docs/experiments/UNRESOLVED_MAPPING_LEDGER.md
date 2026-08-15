@@ -17,7 +17,7 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **90 entries**.  Current open queue: **25**.  Closed history:
+Ledger total: **108 entries**.  Current open queue: **43**.  Closed history:
 **31** row/graph resolutions and **34** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
@@ -26,6 +26,24 @@ Bank/report/page fields below are evidence locators only, never matching rules.
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
 | --- | --- | --- | ---: | --- | --- |
+| OPL-001 | Các khoản phải trả và công nợ khác | ACB | 22 | Thu nhập chưa thực hiện | Chưa có leaf tương đương trong family 1118–1127; giá trị vẫn nằm trong tổng family đã xác minh. |
+| OPL-002 | Các khoản phải trả và công nợ khác | ACB | 22 | Quỹ phát triển khoa học và công nghệ | Chưa có leaf tương đương; giá trị vẫn nằm trong tổng family đã xác minh. |
+| OPL-003 | Các khoản phải trả và công nợ khác | VPB | 57 | Các khoản khách hàng trả trước | Chưa có leaf tương đương; chỉ nằm trong parent phải trả bên ngoài. |
+| OPL-004 | Các khoản phải trả và công nợ khác | VPB | 57 | Doanh thu chờ phân bổ | Chưa có leaf tương đương; chỉ nằm trong parent phải trả bên ngoài. |
+| OPL-005 | Các khoản phải trả và công nợ khác | VPB | 57 | Dự phòng nghiệp vụ bảo hiểm | Không đồng nhất với 1125 `Dự phòng rủi ro khác`. |
+| OPL-006 | Các khoản phải trả và công nợ khác | VPB | 57 | Các khoản treo chờ chuyển tiền | Chưa có leaf tương đương; chỉ nằm trong parent phải trả bên ngoài. |
+| OPL-007 | Các khoản phải trả và công nợ khác | VPB | 57 | Phải trả hoạt động thanh toán thẻ | Chưa có leaf tương đương; chỉ nằm trong parent phải trả bên ngoài. |
+| OPL-008 | Các khoản phải trả và công nợ khác | VPB | 57 | Phải trả nhà cung cấp | Chưa có leaf tương đương; chỉ nằm trong parent phải trả bên ngoài. |
+| OPL-009 | Các khoản phải trả và công nợ khác | VPB | 57 | Phải trả các khoản vay khách hàng của VPBankS | Chưa có leaf tương đương cho nghĩa vụ của công ty con. |
+| OPL-010 | Các khoản phải trả và công nợ khác | VPB | 57 | Tiền giữ hộ và đợi thanh toán | Chưa có leaf tương đương; chỉ nằm trong parent phải trả bên ngoài. |
+| OPL-011 | Các khoản phải trả và công nợ khác | CTG | 43 | Các khoản lãi, phí phải trả | Chưa có leaf tương đương; giá trị vẫn nằm trong tổng family đã xác minh. |
+| OPL-012 | Các khoản phải trả và công nợ khác | VIB | 43 | Các khoản lãi, phí phải trả | Chưa có leaf tương đương; giá trị vẫn nằm trong tổng family đã xác minh. |
+| OPL-013 | Các khoản phải trả và công nợ khác | VIB | 43 | Phải trả cổ tức cho cổ đông | Chưa có leaf tương đương; chỉ nằm trong parent phải trả nội bộ. |
+| OPL-014 | Các khoản phải trả và công nợ khác | VIB | 43 | Tiền giữ hộ và đợi thanh toán | Chưa có leaf tương đương; chỉ nằm trong parent phải trả bên ngoài. |
+| OPL-015 | Các khoản phải trả và công nợ khác | VIB | 43 | Phải trả thanh toán giữa các TCTD | Chưa có leaf tương đương; chỉ nằm trong parent phải trả bên ngoài. |
+| OPL-016 | Các khoản phải trả và công nợ khác | VIB | 43 | Phải trả chuyển tiền chờ thanh toán | Chưa có leaf tương đương; chỉ nằm trong parent phải trả bên ngoài. |
+| OPL-017 | Các khoản phải trả và công nợ khác | VIB | 43 | Các khoản chờ thanh toán khác | Chưa có leaf tương đương; chỉ nằm trong parent phải trả bên ngoài. |
+| OPL-018 | Các khoản phải trả và công nợ khác | VIB | 43 | Doanh thu chờ phân bổ | Chưa có leaf tương đương; giá trị vẫn nằm trong tổng family đã xác minh. |
 | PM-001 | Dự phòng rủi ro cho vay khách hàng | VPB | 45 | Dự phòng chung, dự phòng cụ thể, dự phòng cho vay giao dịch ký quỹ và ứng trước | Đã map và kiểm tra đủ kỳ 01/01–31/03/2026 của PDF được cung cấp; chưa có PDF VPB Q2/2026 nên không được relabel kết quả Q1 thành Q2. |
 | GN-001 | Các khoản nợ Chính phủ và NHNN | ACB | 20 | Vay Ngân hàng Nhà nước | Nguồn không nêu loại nghiệp vụ cụ thể trong các nhánh 1025–1033; không ép số dư vay tổng hợp vào một nhánh gần nhất. |
 | GN-002 | Các khoản nợ Chính phủ và NHNN | CTG | 41 | Vay NHNN | Nguồn không nêu loại nghiệp vụ cụ thể trong các nhánh 1025–1033; không ép số dư vay tổng hợp vào một nhánh gần nhất. |
@@ -87,6 +105,23 @@ page or note identifier participates in this decision.
 | EIR-001–EIR-005 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/HDB/VCB/CTG/BID chuyển từ tiền gửi khách hàng thẳng sang family nợ kế tiếp, không có note vốn nhận tài trợ/ủy thác trong PDF đã bind |
 | EIR-006–EIR-007 | `RESOLVED_VERIFIED_BY_CODEX`; hai nguồn nhỏ chưa có leaf riêng — ODA của VPB và chương trình nhà ở qua NHNN của VIB — giữ nguyên nhãn nguồn và map vào leaf `Khác` 1099 |
 | IVP-001–IVP-008 | `OPEN_SCHEMA_OR_SCOPE_GAP`; 66 khoản mục chắc chắn vẫn đã map. Hai mốc đúng 5 năm, hai kỳ hạn gộp, ba trục kỳ hạn toàn family và một trái phiếu tăng vốn không bị ép vào leaf hẹp hơn |
+| OPL-001–OPL-018 | `OPEN_SCHEMA_OR_SEMANTIC_GAP`; 39 khoản mục chắc chắn vẫn đã map. Các dòng chưa có leaf vẫn được giữ trong parent/tổng nguồn và không bị cộng hai lần |
+
+## Other payables and liabilities (`OTHER_PAYABLES_AND_LIABILITIES`)
+
+Current exact-replay result:
+`docs/experiments/E-0077-other-payables-liabilities-8bank-codex-verified-mapping-v1.json`
+
+- One shared whole-PDF graph finds exactly one complete region in every report
+  and retains 36 near controls. It requires only the owner plus internal and
+  external payable branches; employee, tax, other-payable, risk, welfare,
+  interest/fee and intermediate branches remain optional.
+- Exact visible-pixel/source-numeric replay verifies 39 schema mappings, 78
+  current/comparative components and 28 parent/detail/total equations. Two ACB
+  risk-provision dashes are pixel-bound and normalized to zero.
+- OPL-001–OPL-018 remain open because no exact leaf exists. Their amounts stay
+  inside verified source parents/totals, and overlapping parent/detail views are
+  explicitly non-additive. VPB remains the supplied Q1/2026 source.
 
 ## Issued valuable papers (`ISSUED_VALUABLE_PAPERS`)
 

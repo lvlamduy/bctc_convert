@@ -426,6 +426,39 @@ Q1/2026, không relabel thành Q2/2026.
 | VPB | 56 | Toàn family — Từ trên 5 năm trở lên | Trục kỳ hạn toàn family, không riêng một leaf công cụ. |
 | BID | 25 | Trái phiếu tăng vốn BIDV | Đã cộng vào parent `Trái phiếu`; chưa có leaf độc lập hoặc phân rã kỳ hạn nhìn thấy. |
 
+## 26. Các khoản phải trả và công nợ khác
+
+- **Đã xác minh:** ACB p22, MBB p44, VPB p57, HDB p31, VCB p35, CTG p43,
+  BID p26 và VIB p43. Whole-PDF scan tìm đúng một vùng hoàn chỉnh trên mỗi
+  bank và giữ 36 vùng gần giống làm đối chứng âm. Đã map 39 khoản mục/78 thành
+  phần giá trị, kiểm tra 28 phương trình parent–child/tổng. Hai dấu `-` của dự
+  phòng ACB được khóa bằng pixel và chuẩn hóa thành 0. VPB giữ đúng nguồn
+  Q1/2026.
+- **Không có cụm này trong báo cáo:** Không có; cả 8 bank đều có đúng một vùng.
+- **Còn thiếu:** 18 hàng nguồn dưới đây chưa có leaf tương đương. Các giá trị
+  vẫn được giữ trong parent/tổng nguồn và không bị cộng hai lần.
+
+| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | ---: | --- | --- |
+| ACB | 22 | Thu nhập chưa thực hiện | Chưa có leaf tương đương trong family 1118–1127. |
+| ACB | 22 | Quỹ phát triển khoa học và công nghệ | Chưa có leaf tương đương trong family. |
+| VPB | 57 | Các khoản khách hàng trả trước | Chưa có leaf tương đương; chỉ nằm trong parent phải trả bên ngoài. |
+| VPB | 57 | Doanh thu chờ phân bổ | Chưa có leaf tương đương. |
+| VPB | 57 | Dự phòng nghiệp vụ bảo hiểm | Không đồng nhất với `Dự phòng rủi ro khác` 1125. |
+| VPB | 57 | Các khoản treo chờ chuyển tiền | Chưa có leaf tương đương. |
+| VPB | 57 | Phải trả hoạt động thanh toán thẻ | Chưa có leaf tương đương. |
+| VPB | 57 | Phải trả nhà cung cấp | Chưa có leaf tương đương. |
+| VPB | 57 | Phải trả các khoản vay khách hàng của VPBankS | Chưa có leaf tương đương cho nghĩa vụ của công ty con. |
+| VPB | 57 | Tiền giữ hộ và đợi thanh toán | Chưa có leaf tương đương. |
+| CTG | 43 | Các khoản lãi, phí phải trả | Chưa có leaf tương đương; vẫn nằm trong tổng family đã kiểm tra. |
+| VIB | 43 | Các khoản lãi, phí phải trả | Chưa có leaf tương đương. |
+| VIB | 43 | Phải trả cổ tức cho cổ đông | Chưa có leaf tương đương. |
+| VIB | 43 | Tiền giữ hộ và đợi thanh toán | Chưa có leaf tương đương. |
+| VIB | 43 | Phải trả thanh toán giữa các TCTD | Chưa có leaf tương đương. |
+| VIB | 43 | Phải trả chuyển tiền chờ thanh toán | Chưa có leaf tương đương. |
+| VIB | 43 | Các khoản chờ thanh toán khác | Chưa có leaf tương đương. |
+| VIB | 43 | Doanh thu chờ phân bổ | Chưa có leaf tương đương. |
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -459,3 +492,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Các khoản nợ Chính phủ/NHNN | ✓\* p20 | ✓ p42 | ✓\* p53 | ✓ p30 | ✓ p34 | ✓\* p41 | ✓\* p24 | ✓ p40 | 4 dòng OPEN; 28 mapping, 28 phương trình; 2 DASH→0; VPB là nguồn Q1 |
 | Vốn nhận tài trợ/ủy thác đầu tư | — | ✓ p43 | ✓\* p56 | — | — | — | — | ✓ p42 | 0 dòng; 6 mapping, 4 phương trình; 5 bank xác nhận không có cụm; VPB là nguồn Q1 |
 | Phát hành giấy tờ có giá | ✓\* p21 | ✓\* p44 | ✓\* p56 | ✓ p31 | ✓ p35 | ✓ p42 | ✓\* p25 | ✓ p43 | 8 dòng OPEN; 66 mapping, 36 phương trình; 4 DASH→0; VPB là nguồn Q1 |
+| Các khoản phải trả và công nợ khác | ✓\* p22 | ✓ p44 | ✓\* p57 | ✓ p31 | ✓ p35 | ✓\* p43 | ✓ p26 | ✓\* p43 | 18 dòng OPEN; 39 mapping, 28 phương trình; 2 DASH→0; VPB là nguồn Q1 |
