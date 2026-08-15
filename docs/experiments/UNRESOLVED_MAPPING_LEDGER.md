@@ -17,8 +17,8 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **46 entries**.  Current open queue: **11**.  Closed history:
-**24** row/graph resolutions and **11** confirmed bound-report family absences.
+Ledger total: **46 entries**.  Current open queue: **1**.  Closed history:
+**28** row/graph resolutions and **17** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
@@ -26,17 +26,7 @@ Bank/report/page fields below are evidence locators only, never matching rules.
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
 | --- | --- | --- | ---: | --- | --- |
-| LG-001 | Phân tích dư nợ cho vay theo khu vực địa lý | ACB | 27 | Tổng dư nợ cho vay | Trục nguồn gồm cả cho vay khách hàng và cho vay TCTD khác. Tổng địa lý `752.152.143` lớn hơn owner `Cho vay khách hàng` `745.759.303` đúng `6.392.840`; không thu hẹp bảng rộng thành 5752/765. |
-| LG-002 | Phân tích dư nợ cho vay theo khu vực địa lý | VPB | 73 | Tổng dư nợ cho vay khách hàng, mua nợ và cấp tín dụng cho các TCTD khác | Population hỗn hợp; `1.047.765.320` lớn hơn owner customer-loan `1.040.917.216` đúng `6.848.104`. PDF nguồn là Q1/2026. |
-| LG-003 | Phân tích dư nợ cho vay theo khu vực địa lý | HDB | 37 | Tổng dư nợ cho vay | Footnote nhìn thấy ghi gồm cho vay TCTD khác và cho vay khách hàng. Tổng `670.440.170` lớn hơn owner `659.000.255` đúng `11.439.915`. |
-| LG-004 | Phân tích dư nợ cho vay theo khu vực địa lý | VCB | 42 | Báo cáo bộ phận theo khu vực địa lý | Đây là matrix thu nhập/chi phí theo miền, không phải trục dư nợ cho vay khách hàng. Whole-PDF scan không tìm được vùng loan-geography tương đương; không suy rộng thành tuyên bố ngoài PDF này. |
-| LG-005 | Phân tích dư nợ cho vay theo khu vực địa lý | CTG | 49 | Tổng dư nợ cho vay | Tổng địa lý `2.112.949.308` lớn hơn owner customer-loan `2.092.707.758` đúng `20.241.550`; population rộng hơn nên chưa map. |
-| LG-006 | Phân tích dư nợ cho vay theo khu vực địa lý | BID | 31 | Tổng dư nợ cho vay | Tổng địa lý `2.514.484.193` lớn hơn owner customer-loan `2.501.807.043` đúng `12.677.150`; population rộng hơn nên chưa map. |
-| CD-001 | Tiền gửi của khách hàng / loại hình doanh nghiệp | VPB | 55 | Công ty TNHH 2 thành viên trở lên có phần vốn góp của Nhà nước trên 50% | Giá trị hiện tại `64.165`; schema 1079 chỉ mô tả Công ty TNHH **một** thành viên có vốn Nhà nước trên 50%, nên chưa thể dùng thay thế. |
-| CD-002 | Tiền gửi của khách hàng / loại hình doanh nghiệp | VIB | 42 | Công ty TNHH 2 thành viên trở lên có phần vốn góp của Nhà nước trên 50% | Giá trị hiện tại `174`; cùng khoảng trống schema với CD-001. |
 | PM-001 | Dự phòng rủi ro cho vay khách hàng | VPB | 45 | Dự phòng chung, dự phòng cụ thể, dự phòng cho vay giao dịch ký quỹ và ứng trước | Đã map và kiểm tra đủ kỳ 01/01–31/03/2026 của PDF được cung cấp; chưa có PDF VPB Q2/2026 nên không được relabel kết quả Q1 thành Q2. |
-| IS-001 | Chứng khoán đầu tư | BID | 23 | Chứng khoán đầu tư | Vùng AFS/HTM và số liệu nhìn thấy đầy đủ, nhưng trang nguồn không có đơn vị cục bộ và cơ chế kế thừa đơn vị cấp tài liệu chưa được nhận vào lượt xác minh E-0067. |
-| IS-002 | Chứng khoán đầu tư | VIB | 36 | Trái phiếu và chứng chỉ tiền gửi do các TCTD khác trong nước phát hành | Hai hàng nguồn riêng phải được cộng có kiểm soát trước khi map vào ReportNormId 808; E-0067 chỉ xác minh các dòng Chính phủ và tổng AFS in trực tiếp. |
 
 The shared family locator follows a strict minimal-anchor search.  It enumerates
 every parent+child pair first, then every child+child pair, over both complete and
@@ -51,26 +41,28 @@ page or note identifier participates in this decision.
 
 | IDs | Current disposition |
 | --- | --- |
-| LG-001–LG-003, LG-005–LG-006 | `OPEN_BROADER_LOAN_POPULATION`; exact geography arithmetic is retained but cannot be mapped to customer-loan geography rows 5752/765 |
-| LG-004 | `OPEN_NO_CUSTOMER_LOAN_GEOGRAPHY_REGION`; the visible geographic segment report is a negative-control family, not a customer-loan table |
+| LG-001–LG-006 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; MBB/VIB alone have the exact customer-loan geography family. Five broader total-loan tables and VCB's segment report stay negative controls, never narrowed or relabelled |
 | IDL-001–IDL-002 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; chủ dự án xác nhận HDB/VCB bắt đầu thuyết minh từ family 592 |
 | CBD-001–CBD-002 | `RESOLVED_VERIFIED_BY_PROJECT_OWNER_AND_CODEX`; hai dòng cộng thành 2.148.359 và map vào ReportNormId 574 `Tiền gửi khác` |
 | LT-001–LT-002 | `RESOLVED_VERIFIED_BY_CODEX` |
 | LI-001, LI-008, LI-009 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT` |
 | LI-002–LI-007, LI-010–LI-011 | `RESOLVED_VERIFIED_BY_CODEX` |
 | LE-001–LE-011 | `RESOLVED` by exact family replay, non-additive graph equivalence, or pixel replay |
-| CD-001–CD-002 | `OPEN_SCHEMA_GAP`; không ép Công ty TNHH 2+ thành viên vào schema chỉ dành cho một thành viên |
+| CD-001–CD-002 | `RESOLVED_VERIFIED_BY_PROJECT_OWNER_AND_CODEX`; VPB `64.165` và VIB `174` map vào schema 770 đã đổi tên để bao quát MTV hoặc trên MTV có vốn Nhà nước trên 50% |
 | PM-001 | `OPEN_SOURCE_PERIOD_GAP`; không còn dòng nguồn chưa map trong PDF Q1 đã bind |
 | SEC-001 | `RESOLVED_VERIFIED_BY_CODEX`; E-0067 đã xử lý AFS VIB, map trực tiếp 807/824 và chuyển riêng phép gộp TCTD sang IS-002 |
 | CPM-001–CPM-005 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; chủ dự án xác nhận các mốc bắt đầu thuyết minh loại trừ family 561 trong năm PDF |
-| IS-001 | `OPEN_UNIT_SCOPE_AUTHORITY`; không map số liệu BID cho đến khi kế thừa đơn vị cấp tài liệu được replay-bound |
-| IS-002 | `OPEN_EXPLICIT_AGGREGATION`; không tự gộp hai dòng TCTD VIB vào ReportNormId 808 |
+| IS-001 | `RESOLVED_VERIFIED_BY_PROJECT_OWNER_AND_CODEX`; BID p23 kế thừa tuyên bố `Triệu VND` nhìn thấy tại p13 của cùng PDF và toàn vùng AFS/HTM được replay-bound |
+| IS-002 | `RESOLVED_VERIFIED_BY_PROJECT_OWNER_AND_CODEX`; VIB gộp đúng hai dòng TCTD theo từng kỳ vào ReportNormId 808, giữ nguyên hai thành phần và hai phương trình |
 | DFI-001 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; chủ dự án xác nhận VCB không có thuyết minh family 631 |
 
 ## Customer-loan geography (`LOAN_GEOGRAPHIC_CLASSIFICATION`)
 
-Current exact-replay result:
+Base exact-replay result:
 `docs/experiments/E-0065-loan-geography-8bank-codex-verified-mapping-v1.json`
+
+Project-owner absence closure:
+`docs/experiments/E-0067D-loan-geography-project-owner-absence-closure-v1.json`
 
 - One bank-blind graph scans all 453 pages and combines the geographic
   concentration heading with an exact customer-loan axis before reading the
@@ -81,10 +73,10 @@ Current exact-replay result:
   source rows (5752/765 for each bank), six period-value cells and three
   domestic-plus-foreign equations are `VERIFIED_BY_CODEX`. VIB's two visible
   foreign dashes stay typed `DASH` before zero normalization.
-- ACB/VPB/HDB/CTG/BID remain LG-001/LG-002/LG-003/LG-005/LG-006 because their
-  geographic totals are mechanically larger than independently verified
-  customer-loan owner totals. VCB remains LG-004 because its p42 surface is a
-  segment-report matrix. None is silently narrowed or promoted.
+- LG-001–LG-006 are closed as bound-report absences for this exact family.
+  ACB/VPB/HDB/CTG/BID retain their mechanically broader total-loan geography
+  equations as negative controls; VCB retains its p42 segment-report matrix.
+  None is silently narrowed, promoted, or treated as absent in another filing.
 
 ## Deposits at and loans to other credit institutions (`INTERBANK_DEPOSITS_AND_LOANS`)
 
@@ -159,19 +151,23 @@ Current exact-replay result:
 
 ## Investment securities (`INVESTMENT_SECURITIES`)
 
-Current exact-replay result:
+Base exact-replay result:
 `docs/experiments/E-0067-investment-securities-8bank-codex-verified-mapping-v1.json`
+
+Project-owner closure:
+`docs/experiments/E-0067C-customer-deposit-investment-owner-closure-v1.json`
 
 - One bank-blind graph scans all 453 pages and finds exactly one complete
   investment region per PDF. It supports explicit or implicit family owners,
   AFS/HTM branches, provision and quality alternate views, VAMC, two-page
   continuation and first/last/next-family boundaries.
-- ACB p19, MBB p35–36, VPB p47–48, HDB p29, VCB p32, CTG p40 and VIB p36
-  provide 84 `VERIFIED_BY_CODEX` source mappings/168 period cells; 27 visible
+- ACB p19, MBB p35–36, VPB p47–48, HDB p29, VCB p32, CTG p40, BID p23 and
+  VIB p36 now provide 99 verified source mappings/198 period cells; 39 visible
   parent-child or gross-provision-net equations close exactly.
-- IS-001 retains BID p23 until document-unit inheritance is replay-bound.
-  IS-002 retains VIB's two-row TCTD aggregation; direct VIB rows 807 and 824
-  are verified without silently manufacturing ReportNormId 808.
+- IS-001 is closed by the explicit document-level `Triệu VND` statement on BID
+  p13 of the same PDF. IS-002 is closed by retaining both VIB source components
+  and proving `5.894.320 + 32.879.230 = 38.773.550` and
+  `12.104.102 + 28.252.422 = 40.356.524` before mapping one aggregate to 808.
 
 ## Project-owner TM adjudications
 
@@ -202,22 +198,42 @@ Exact-replay normalized result:
 - All 18 per-axis family/split equations close; no 5746+1944 double count is
   permitted. This closes the two former outside-core ACB/VPB populations.
 
+## Customer-deposit and investment owner closure
+
+Exact-replay result:
+`docs/experiments/E-0067C-customer-deposit-investment-owner-closure-v1.json`
+
+- CD-001/CD-002: the two-state-member-or-more labels at VPB p55 and VIB p42
+  map to the owner-confirmed schema 770 name `Công ty TNHH MTV (hoặc trên MTV)
+  vốn nhà nước trên 50%`; values `64.165` and `174` remain separately bound.
+- IS-001: BID p23 inherits `Triệu VND` only from the visible document-level
+  declaration at p13 of that same PDF. Fourteen mappings, 28 cells and ten
+  accounting equations are independently replayed; the visible comparative
+  dash remains typed before zero normalization.
+- IS-002: VIB p36 retains the bond and certificate-of-deposit components and
+  maps their per-period sums once to 808. No component is dropped or emitted a
+  second time.
+
 ## Customer deposit (`CUSTOMER_DEPOSIT_CLASSIFICATION`)
 
-Current exact-replay result:
+Base exact-replay result:
 `docs/experiments/E-0058-customer-deposit-8bank-codex-verified-mapping-v1.json`
+
+Project-owner closure:
+`docs/experiments/E-0067C-customer-deposit-investment-owner-closure-v1.json`
 
 - Một graph bank-blind quét đủ 453 trang và tìm đúng một vùng hoàn chỉnh trong
   mỗi PDF. Biên đầu/cuối, thứ tự hàng nguồn, bố cục ngang/dọc, kỳ và trục tiền tệ
   đều được giữ lại.
-- 118 dòng được `VERIFIED_BY_CODEX`; 43 phương trình cha = con, tổng cột và tổng
+- 120 dòng được xác minh; 43 phương trình cha = con, tổng cột và tổng
   bảng đóng chính xác. Cột tổng và cột phần trăm chỉ là đối chứng khi không phải
   một khoản mục độc lập.
 - VIB p42 dòng `Công ty Nhà nước`: VietOCR Transformer đọc thiếu chữ số đầu
   (`3.034.518`), còn pixel PDF và numeric challenger PP-OCRv6 cùng cho
   `13.034.518`; kết quả dùng `13.034.518` và lưu nguyên disagreement.
-- CD-001/CD-002 là hai dòng nguồn duy nhất còn chưa map. VPB vẫn giữ đúng kỳ
-  nguồn Q1/2026.
+- CD-001/CD-002 đã đóng: hai dòng VPB/VIB cùng map vào schema 770 theo quyết
+  định của chủ dự án, giữ nguyên giá trị nguồn `64.165` và `174`. Không còn
+  dòng nguồn chưa map trong family; VPB vẫn giữ đúng kỳ nguồn Q1/2026.
 
 ## Provision movement (`PROVISION_MOVEMENT_ROLLFORWARD`)
 
