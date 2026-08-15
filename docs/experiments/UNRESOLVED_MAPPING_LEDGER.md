@@ -187,6 +187,23 @@ Current exact-replay result:
   remains in the open queue; detailed organization rows are retained as
   corroboration and are not double-counted with their mapped parent.
 
+## Tangible fixed assets (`TANGIBLE_FIXED_ASSETS_ROLLFORWARD`)
+
+Current exact-replay result:
+`docs/experiments/E-0069-tangible-fixed-assets-8bank-codex-verified-mapping-v1.json`
+
+- One bank-blind owner/cost/accumulated-depreciation/carrying-value graph scans
+  all 453 pages and finds unique detailed regions at MBB p37, VPB p49 and VIB
+  p37. MBB p38 is retained only as the prior-period continuation control.
+- All 35 reviewed mappings and 12 visible roll-forward/carrying-value equations
+  are `VERIFIED_BY_CODEX`. VIB's rotated page uses fresh same-model VietOCR for
+  text and an independently sealed rotated PP-OCRv6 numeric challenger; four
+  disagreements from the original rotated source OCR are resolved by pixels and
+  exact accounting closure rather than semantic guessing.
+- ACB/HDB/VCB/CTG/BID are confirmed absent only in the bound reports. Main
+  statement balances and accounting-policy prose remain negative controls.
+  There is no open mapping item for this family. VPB remains Q1/2026.
+
 ## Project-owner TM adjudications
 
 Exact-replay decision artifact:

@@ -279,6 +279,22 @@ Q1/2026, không relabel thành Q2/2026.
 Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
 Q1/2026, không relabel thành Q2/2026.
 
+## 18. Tăng, giảm tài sản cố định hữu hình
+
+- **Đã xác minh:** MBB p37, VPB p49 và VIB p37. Đã map 35 dòng giá
+  gốc/hao mòn lũy kế/giá trị còn lại; 12 phương trình tăng–giảm–cuối kỳ và
+  giá gốc trừ hao mòn đều đóng đúng. MBB p38 chỉ là vùng so sánh năm 2025,
+  không được trộn vào kỳ hiện tại.
+- **Không có trong báo cáo:** ACB, HDB, VCB, CTG và BID không trình bày bảng
+  biến động tài sản cố định hữu hình chi tiết trong các PDF đã cung cấp.
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong ba vùng có bảng.
+  Trang VIB xoay được nhận dạng lại bằng đúng VietOCR Transformer cho text và
+  PP-OCRv6 trên ảnh đã xoay cho số; bốn số sai từ OCR nguồn cũ đã được pixel và
+  quan hệ kế toán bác bỏ, không dùng Gemma để nhận số.
+
+Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
+Q1/2026, không relabel thành Q2/2026.
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -304,3 +320,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Tiền gửi khách hàng | ✓ p21 | ✓ p43 | ✓\* p55 | ✓ p31 | ✓ p35 | ✓ p42 | ✓ p25 | ✓ p41–42 | 0 dòng; VPB là nguồn Q1 |
 | Chứng khoán đầu tư | ✓ p19 | ✓ p35–36 | ✓\* p47–48 | ✓ p29 | ✓ p32 | ✓ p40 | ✓ p23 | ✓ p36 | 0 dòng; BID dùng đơn vị cấp tài liệu, VIB gộp hai dòng TCTD vào 808; VPB là nguồn Q1 |
 | Đầu tư dài hạn khác | ✓ p19 | ✓ p36 | ✓\* p48 | ✓ p30 | ✓ p33 | ✓ p40 | ✓ p24 | ✓ p36 | 0 dòng; VPB là nguồn Q1 |
+| Tăng, giảm TSCĐ hữu hình | — | ✓ p37 | ✓\* p49 | — | — | — | — | ✓ p37 | 0 dòng; 5 bank xác nhận không có bảng chi tiết; VPB là nguồn Q1 |
