@@ -11,7 +11,7 @@ from bctc_ai.schema.coverage import (
 def test_every_consumer_contains_tm_1944_in_workbook_order(project_root):
     contract = load_schema_coverage(project_root)
     assert contract.version == 2
-    assert len(contract.targets) == 1946
+    assert len(contract.targets) == 1947
     assert contract.targets[-1].schema_id == 1944
     assert (
         contract.targets[-1].canonical_name
@@ -19,7 +19,7 @@ def test_every_consumer_contains_tm_1944_in_workbook_order(project_root):
     )
     for consumer in SCHEMA_CONSUMERS:
         identifiers = contract.ids_for(consumer)
-        assert len(identifiers) == 1946
+        assert len(identifiers) == 1947
         assert identifiers[-1] == 1944
         assert 1944 in identifiers
 
@@ -53,21 +53,21 @@ def test_mandatory_search_requires_1944_from_both_independent_roles(project_root
     )
     complete = evaluate_mandatory_search(contract, "sha256:document", evidence)
     assert complete.status == "PASS"
-    assert complete.universal_target_count == 1946
+    assert complete.universal_target_count == 1947
     assert complete.target_count_by_statement == {
         "CDKT": 99,
         "KQKD": 25,
         "LCTT": 110,
-        "TM": 1712,
+        "TM": 1713,
     }
-    assert complete.completed_count_by_role == {"ROLE_A": 1946, "ROLE_B": 1946}
-    assert complete.outcome_count_by_role["ROLE_A"]["NOT_OBSERVED"] == 1946
-    assert complete.outcome_count_by_role["ROLE_B"]["NOT_OBSERVED"] == 1945
+    assert complete.completed_count_by_role == {"ROLE_A": 1947, "ROLE_B": 1947}
+    assert complete.outcome_count_by_role["ROLE_A"]["NOT_OBSERVED"] == 1947
+    assert complete.outcome_count_by_role["ROLE_B"]["NOT_OBSERVED"] == 1946
     assert complete.outcome_count_by_role["ROLE_B"]["OBSERVED_VALUE"] == 1
-    assert complete.applicable_count_by_role == {"ROLE_A": 1946, "ROLE_B": 1946}
+    assert complete.applicable_count_by_role == {"ROLE_A": 1947, "ROLE_B": 1947}
     assert complete.observed_count_by_role == {"ROLE_A": 0, "ROLE_B": 1}
     assert complete.mapped_numeric_count_by_role == {"ROLE_A": 0, "ROLE_B": 1}
-    assert complete.not_observed_count_by_role == {"ROLE_A": 1946, "ROLE_B": 1945}
+    assert complete.not_observed_count_by_role == {"ROLE_A": 1947, "ROLE_B": 1946}
     assert complete.not_applicable_count_by_role == {"ROLE_A": 0, "ROLE_B": 0}
     assert complete.ambiguous_count_by_role == {"ROLE_A": 0, "ROLE_B": 0}
     assert complete.unresolved_count_by_role == {"ROLE_A": 0, "ROLE_B": 0}
@@ -105,13 +105,13 @@ def test_mandatory_search_preserves_all_universal_terminal_outcomes(project_root
     assert result.status == "PASS"
     for role in contract.mandatory_search_roles:
         for outcome in canonical_outcomes:
-            expected = 1939 if outcome == "NOT_OBSERVED" else 1
+            expected = 1940 if outcome == "NOT_OBSERVED" else 1
             assert result.outcome_count_by_role[role][outcome] == expected
         assert result.observed_count_by_role[role] == 4
         assert result.mapped_numeric_count_by_role[role] == 2
-        assert result.not_observed_count_by_role[role] == 1939
+        assert result.not_observed_count_by_role[role] == 1940
         assert result.not_applicable_count_by_role[role] == 1
         assert result.ambiguous_count_by_role[role] == 1
         assert result.unresolved_count_by_role[role] == 1
-        assert result.applicable_count_by_role[role] == 1945
+        assert result.applicable_count_by_role[role] == 1946
         assert sum(result.outcome_count_by_role_and_statement[role]["CDKT"].values()) == 99

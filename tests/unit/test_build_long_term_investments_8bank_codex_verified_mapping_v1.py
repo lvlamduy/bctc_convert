@@ -98,7 +98,7 @@ def test_review_and_result_coordinated_rehashes_do_not_authenticate() -> None:
 
 def test_schema_extension_is_exact_and_dash_is_zero() -> None:
     authority, by_id = builder._authority_snapshot(builder.PROJECT_ROOT)
-    assert authority["schema_revision"] == "UNIVERSAL_BANK_BCTC_SCHEMA@6067"
+    assert authority["schema_revision"] == "UNIVERSAL_BANK_BCTC_SCHEMA@6068"
     assert builder._schema_binding(by_id[6066], 6066)["schema_parent_report_norm_id"] == 862
     assert builder._schema_binding(by_id[6067], 6067)["schema_parent_report_norm_id"] == 862
     assert builder._normalized({"pixel_transcription": "-"}) == 0

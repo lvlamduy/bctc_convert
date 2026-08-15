@@ -47,11 +47,18 @@ from bctc_ai.schema.registry import load_all
 
 _SOURCE_PDF = Path("vietstock_bctc/MBB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf")
 _SCHEMA_WORKBOOK = Path("template/Bank_TM_ReportNormId.v2.xlsx")
-_BUSINESS_AUDIT = Path("data/registered/schema_business_update_5712_5713_5714_5718_6067.json")
+_BUSINESS_AUDIT = Path("data/registered/schema_business_update_5712_5713_5714_5718_6068.json")
 
 _PAGE36_43_SCHEMA_CONTRACTS = {
     6066: ("Đầu tư vào công ty liên doanh", 862, 866, 6067, ()),
     6067: ("Đầu tư vào công ty liên kết", 862, 6066, 867, ()),
+    6068: (
+        "Tổng giảm nguyên giá TSCĐ vô hình trong kỳ",
+        914,
+        920,
+        921,
+        tuple(range(921, 928)),
+    ),
     5959: ("Dự phòng giảm giá", 862, 5961, 868, ()),
     5960: ("Đầu tư vào tổ chức kinh tế, dự án dài hạn", 867, 867, 5961, ()),
     5961: ("Đầu tư vào các Quỹ đầu tư", 867, 5960, 5959, ()),
@@ -299,7 +306,7 @@ def test_all_26_page_owners_plus_residual_are_pairwise_disjoint_and_exhaustive(
     page_partitions = _base_page_partitions(project_root)
     existing_owned_ids = set().union(*(partition.scope_ids for partition in page_partitions))
     assert len(page_partitions) == 26
-    assert len(existing_owned_ids) == 1_622
+    assert len(existing_owned_ids) == 1_623
     assert not existing_owned_ids & TM_RESIDUAL_SCOPE_IDS
 
     residual = reconcile_tm_residual_items(
@@ -317,15 +324,15 @@ def test_all_26_page_owners_plus_residual_are_pairwise_disjoint_and_exhaustive(
         [*page_partitions, residual.owned_partition],
     )
 
-    assert aggregate.schema_item_count == 1_712
+    assert aggregate.schema_item_count == 1_713
     assert aggregate.owner_scope_count == 27
     assert aggregate.mapped_schema_count == 890
     assert aggregate.unresolved_schema_count == 0
-    assert aggregate.not_observed_schema_count == 799
+    assert aggregate.not_observed_schema_count == 800
     assert aggregate.not_applicable_schema_count == 23
     assert aggregate.unassessed_schema_count == 0
     assert aggregate.ownership_sha256 == (
-        "66a4af78aa80b7a5d7123c52c1a4b0d3480693a916bea22faade5366d73257e5"
+        "8b349f5ae1a90a5b0760c198287bf4f439d830e24de80176698ced080af8fa07"
     )
 
 

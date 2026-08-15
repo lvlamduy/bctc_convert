@@ -24,7 +24,7 @@ def test_current_investment_securities_result_replays_from_all_fixed_sources() -
     )
 
     assert replayed["result_id"] == (
-        "e0067:result:5433c63914c9463b8eaffc10e3929ed6907facde731cccc6457874141c31abcd"
+        "e0067:result:ba8a22afd96879f4cf44c5430cb880ce7f267ad83dc2a23f55c7b5c905ef1176"
     )
     assert replayed["metrics"] == {
         "accounting_equation_verified_count": 27,

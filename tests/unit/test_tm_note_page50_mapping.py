@@ -75,12 +75,12 @@ def test_page50_reconciles_23_item_scope_and_maps_all_19_visible_items(
 
     assert validate_tm_page50_mapping_result(result) is result
     assert result.status == "SCOPED_PAGE50_TAX_AND_CASH_MAPPING_WITH_COMPLETE_ITEM_COVERAGE"
-    assert result.schema_item_count == 1_712
+    assert result.schema_item_count == 1_713
     assert result.status_reconciled_schema_count == 23
     assert result.mapped_schema_count == 19
     assert result.not_observed_schema_count == 4
     assert result.ambiguous_schema_count == 0
-    assert result.unassessed_schema_count == 1_689
+    assert result.unassessed_schema_count == 1_690
     assert result.source_row_count == 23
     assert result.mapped_source_row_count == 19
     assert result.source_only_row_count == 4
@@ -107,7 +107,7 @@ def test_exact_schema_partition_is_disjoint_from_pages47_to49(
 
     assert by_status[TMPage50SchemaStatus.MAPPED_AUTOMATIC_SCOPED.value] == _MAPPED_IDS
     assert by_status[TMPage50SchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value] == _NOT_OBSERVED_IDS
-    assert len(by_status[TMPage50SchemaStatus.UNASSESSED.value]) == 1_689
+    assert len(by_status[TMPage50SchemaStatus.UNASSESSED.value]) == 1_690
     assert not ({*range(1175, 1247), *range(1269, 1280)} & (_MAPPED_IDS | _NOT_OBSERVED_IDS))
 
 

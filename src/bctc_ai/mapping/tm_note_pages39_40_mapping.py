@@ -24,11 +24,11 @@ from bctc_ai.tables.tm_note_pages39_40 import (
 from bctc_ai.tables.tm_note_word_box import TMNoteRowKind
 
 TM_NOTE_PAGES3940_POLICY_RELATIVE_PATH = Path("config/mapping/tm-note-pages39-40-v1.yaml")
-TM_NOTE_PAGES3940_SCHEMA_TOTAL = 1_712
-TM_NOTE_PAGES3940_RECONCILED_COUNT = 39
+TM_NOTE_PAGES3940_SCHEMA_TOTAL = 1_713
+TM_NOTE_PAGES3940_RECONCILED_COUNT = 40
 TM_NOTE_PAGES3940_MAPPED_SCHEMA_COUNT = 18
 TM_NOTE_PAGES3940_UNRESOLVED_SCHEMA_COUNT = 0
-TM_NOTE_PAGES3940_NOT_OBSERVED_COUNT = 21
+TM_NOTE_PAGES3940_NOT_OBSERVED_COUNT = 22
 TM_NOTE_PAGES3940_UNASSESSED_COUNT = 1_673
 TM_NOTE_PAGES3940_SOURCE_ROW_COUNT = 30
 TM_NOTE_PAGES3940_MAPPED_SOURCE_COUNT = 30
@@ -47,7 +47,7 @@ TM_NOTE_PAGES3940_ACCOUNTING_NOT_TESTABLE_COUNT = 17
 TM_NOTE_PAGES3940_DUPLICATE_CHECK_COUNT = 12
 
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
-_SCOPED_IDS = set(range(913, 942)) | set(range(5967, 5972)) | set(range(5997, 6002))
+_SCOPED_IDS = set(range(913, 942)) | set(range(5967, 5972)) | set(range(5997, 6002)) | {6068}
 _MAPPED_IDS = {
     913,
     914,
@@ -79,7 +79,7 @@ _FORMER_COMPONENT_IDS = {
     940,
 }
 _UNRESOLVED_IDS: set[int] = set()
-_NOT_OBSERVED_IDS = _FORMER_COMPONENT_IDS | {921, 922, 923, 924, 926}
+_NOT_OBSERVED_IDS = _FORMER_COMPONENT_IDS | {921, 922, 923, 924, 926, 6068}
 _FIXED_SCHEMA_NAMES = {
     913: "tang giam tai san co dinh vo hinh",
     914: "nguyen gia",
@@ -390,7 +390,7 @@ def load_tm_note_pages39_40_mapping_policy(path: Path) -> TMNotePages3940Mapping
     title_id = payload.get("title_report_norm_id")
     if (
         payload.get("schema_total") != TM_NOTE_PAGES3940_SCHEMA_TOTAL
-        or set(additional_scope) != set(range(5967, 5972)) | set(range(5997, 6002))
+        or set(additional_scope) != set(range(5967, 5972)) | set(range(5997, 6002)) | {6068}
         or title_id != 913
         or set(fixed) != _MAPPED_IDS
         or set(unresolved) != _UNRESOLVED_IDS

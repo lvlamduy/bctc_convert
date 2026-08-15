@@ -74,24 +74,23 @@ def test_business_schema_migration_is_hash_bound_and_preserves_sealed_baselines(
     assert set(audit["collision_safety"]["new_ids"]).isdisjoint(REVIEWED_EXTERNAL_IDS)
     assert audit["schema_strategy"]["base_schema"]["item_count"] == 1593
     assert audit["schema_strategy"]["universal_schema"] == {
-        "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6067",
-        "item_count": 1946,
-        "counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1712},
-        "high_watermark": 6067,
+        "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6068",
+        "item_count": 1947,
+        "counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1713},
+        "high_watermark": 6068,
         "workbook_sha256": {
             statement: record["after_sha256"] for statement, record in audit["workbooks"].items()
         },
     }
     assert audit["schema_strategy"]["migration_delta"]["new_report_norm_ids"] == [
-        6066,
-        6067,
+        6068,
     ]
     accepted_changes = {
         record["schema_id"]: record
         for record in audit["schema_changes"]
         if record.get("schema_status") == "ACCEPTED_UNIVERSAL"
     }
-    assert set(accepted_changes) == set(range(5991, 6068))
+    assert set(accepted_changes) == set(range(5991, 6069))
     assert all(
         accepted_changes[schema_id]["section"] == "BALANCE_SHEET_NOTES"
         for schema_id in range(5991, 6021)
@@ -113,7 +112,7 @@ def test_business_schema_migration_is_hash_bound_and_preserves_sealed_baselines(
     assert accepted_changes[6056]["section"] == "OFF_BALANCE_SHEET"
     assert all(
         accepted_changes[schema_id]["section"] == "BALANCE_SHEET_NOTES"
-        for schema_id in range(6057, 6068)
+        for schema_id in range(6057, 6069)
     )
     assert accepted_changes[6057]["evidence"]["observed_values"] == ["DASH", "DASH"]
     assert accepted_changes[6058]["evidence"]["visible_label"] == (
@@ -132,6 +131,7 @@ def test_business_schema_migration_is_hash_bound_and_preserves_sealed_baselines(
     assert accepted_changes[6065]["evidence"]["observed_values"] == ["161.614"]
     assert accepted_changes[6066]["evidence"]["visible_label"] == ("Đầu tư vào công ty liên doanh")
     assert accepted_changes[6067]["evidence"]["visible_label"] == ("Đầu tư vào công ty liên kết")
+    assert accepted_changes[6068]["evidence"]["visible_label"] == ("Giảm nguyên giá trong kỳ")
     ctg_swap = accepted_changes[6056]["evidence"]
     assert ctg_swap["user_decision"] == "Q076"
     assert ctg_swap["source_row_ref"] == "ctg-p5-5705"
@@ -440,6 +440,8 @@ def test_business_formula_overlay_has_exact_authorized_edges(project_root):
     assert by_id[867].children == [5960, 5961]
     assert by_id[868].children == [869, 883, 5964]
     assert by_id[869].children == [870, 5991, 5992, 5993, 5962, 882]
+    assert by_id[914].children == [915, 5997, 6068, 5998, 5967, 928]
+    assert by_id[6068].children == list(range(921, 928))
     assert by_id[5991].children == list(range(871, 876))
     assert by_id[5992].children == list(range(876, 882))
     assert by_id[883].children == [884, 5994, 5995, 5996, 5963, 895]
@@ -447,7 +449,8 @@ def test_business_formula_overlay_has_exact_authorized_edges(project_root):
     assert by_id[5995].children == list(range(888, 895))
     assert by_id[5964].children == [5965, 5966]
     assert by_id[913].children == [914, 929, 5969]
-    assert by_id[914].children == [915, 5997, *range(921, 928), 5998, 5967, 928]
+    assert by_id[914].children == [915, 5997, 6068, 5998, 5967, 928]
+    assert by_id[6068].children == list(range(921, 928))
     assert by_id[5997].children == list(range(916, 921))
     assert by_id[929].children == [930, 5999, 6000, 6001, 5968, 941]
     assert by_id[5999].children == list(range(931, 934))
@@ -506,6 +509,7 @@ def test_business_formula_overlay_has_exact_authorized_edges(project_root):
         (5994, tuple(range(885, 888))),
         (5995, tuple(range(888, 895))),
         (5997, tuple(range(916, 921))),
+        (6068, tuple(range(921, 928))),
         (5999, tuple(range(931, 934))),
         (6000, tuple(range(934, 941))),
         (6002, tuple(range(945, 952))),
@@ -521,10 +525,10 @@ def test_business_formula_overlay_has_exact_authorized_edges(project_root):
     }
     assert formula_ids.isdisjoint(range(5898, 5946))
     assert by_id[1944].parent_id is None
-    assert by_id[1944].display_order == 1711
+    assert by_id[1944].display_order == 1712
     assert set(TM_UNIVERSAL_SCHEMA_IDS) == {
         *range(5991, 6034),
-        *range(6057, 6068),
+        *range(6057, 6069),
     }
 
 

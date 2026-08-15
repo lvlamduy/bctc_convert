@@ -295,6 +295,16 @@ Q1/2026, không relabel thành Q2/2026.
 Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
 Q1/2026, không relabel thành Q2/2026.
 
+## 19. Tăng, giảm tài sản cố định thuê tài chính
+
+- **Đã xác minh:** Không có bank nào có bảng biến động TSCĐ thuê tài chính
+  chi tiết trong tám báo cáo đã cung cấp.
+- **Không có trong báo cáo:** ACB, MBB, VPB, HDB, VCB, CTG, BID và VIB.
+  Whole-PDF scan đã phân biệt các bảng TSCĐ hữu hình/vô hình với tên công ty
+  cho thuê tài chính, chính sách kế toán, dòng cho vay và thu nhập cho thuê tài
+  chính; các đối chứng gần này không được nâng thành family 896–912.
+- **Còn thiếu:** Không có khoản mục nguồn chờ map trong tám PDF đã bind.
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -321,3 +331,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Chứng khoán đầu tư | ✓ p19 | ✓ p35–36 | ✓\* p47–48 | ✓ p29 | ✓ p32 | ✓ p40 | ✓ p23 | ✓ p36 | 0 dòng; BID dùng đơn vị cấp tài liệu, VIB gộp hai dòng TCTD vào 808; VPB là nguồn Q1 |
 | Đầu tư dài hạn khác | ✓ p19 | ✓ p36 | ✓\* p48 | ✓ p30 | ✓ p33 | ✓ p40 | ✓ p24 | ✓ p36 | 0 dòng; VPB là nguồn Q1 |
 | Tăng, giảm TSCĐ hữu hình | — | ✓ p37 | ✓\* p49 | — | — | — | — | ✓ p37 | 0 dòng; 5 bank xác nhận không có bảng chi tiết; VPB là nguồn Q1 |
+| Tăng, giảm TSCĐ thuê tài chính | — | — | — | — | — | — | — | — | 0 dòng; cả 8 PDF xác nhận không có bảng chi tiết |

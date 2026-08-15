@@ -27,13 +27,18 @@ from bctc_ai.source_structure.contracts_v1 import (
 
 __all__ = [
     "FORMAT_VERSION",
+    "LEASED_FORMAT_VERSION",
     "TangibleFixedAssetsVariantGraphV1Error",
+    "build_leased_fixed_assets_variant_graph_document_v1",
     "build_tangible_fixed_assets_variant_graph_document_v1",
+    "validate_leased_fixed_assets_variant_graph_replay_v1",
     "validate_tangible_fixed_assets_variant_graph_replay_v1",
 ]
 
 FORMAT_VERSION = "TANGIBLE_FIXED_ASSETS_VARIANT_GRAPH_DOCUMENT_V1"
 FAMILY_ID = "TANGIBLE_FIXED_ASSET_MOVEMENT"
+LEASED_FORMAT_VERSION = "LEASED_FIXED_ASSETS_VARIANT_GRAPH_DOCUMENT_V1"
+LEASED_FAMILY_ID = "LEASED_FIXED_ASSET_MOVEMENT"
 CLAIM_BOUNDARY = (
     "BANK_BLIND_COMPLETE_PDF_FRESH_VIETOCR_TANGIBLE_FIXED_ASSET_OWNER_COST_"
     "ACCUMULATED_DEPRECIATION_CARRYING_VALUE_OPTIONAL_MOVEMENTS_ASSET_CLASS_"
@@ -55,6 +60,13 @@ _SAFETY = {
     "rotated_same_transformer_rescue_may_supply_semantic_text": True,
     "text_similarity_alone_can_accept": False,
 }
+_LEASED_CLAIM_BOUNDARY = (
+    "BANK_BLIND_COMPLETE_PDF_FRESH_VIETOCR_LEASED_FIXED_ASSET_OWNER_COST_"
+    "ACCUMULATED_DEPRECIATION_OPTIONAL_MOVEMENTS_ASSET_CLASS_COLUMNS_"
+    "COMPARATIVE_CONTINUATION_AND_ROTATED_SOURCE_AXIS_STRUCTURE_ONLY_NO_"
+    "NUMERIC_SCHEMA_MAPPING_CANONICALIZATION_OR_EXPORT_AUTHORITY"
+)
+_LEASED_SAFETY = canonical_clone_v1(_SAFETY)
 _RESULT_FIELDS = {
     "claim_boundary",
     "family_id",
@@ -78,6 +90,35 @@ _DATE = re.compile(
     r"(?:so\s+du\s+(?:dau|cuoi)\s+ky)|(?:tai\s+ngay\s+(?:dau|cuoi)\s+ky)"
 )
 _MAX_REGION_PAGES = 2
+
+_TANGIBLE_SPEC = {
+    "claim_boundary": CLAIM_BOUNDARY,
+    "core_roles": ("COST", "ACCUMULATED_DEPRECIATION", "CARRYING_VALUE"),
+    "family_id": FAMILY_ID,
+    "format_version": FORMAT_VERSION,
+    "id_prefix": "tfavgv1:result:",
+    "minimum_numeric_lines": 6,
+    "owner_phrases": ("tai san co dinh huu hinh",),
+    "owner_reject_phrases": ("thong tin khac", "nguyen gia", "bien dong"),
+    "safety": _SAFETY,
+    "trailing_family_phrases": (
+        "tai san co dinh thue tai chinh",
+        "tai san co dinh vo hinh",
+        "bat dong san dau tu",
+    ),
+}
+_LEASED_SPEC = {
+    "claim_boundary": _LEASED_CLAIM_BOUNDARY,
+    "core_roles": ("COST", "ACCUMULATED_DEPRECIATION"),
+    "family_id": LEASED_FAMILY_ID,
+    "format_version": LEASED_FORMAT_VERSION,
+    "id_prefix": "lfavgv1:result:",
+    "minimum_numeric_lines": 4,
+    "owner_phrases": ("tai san co dinh thue tai chinh", "tscd thue tai chinh"),
+    "owner_reject_phrases": ("thong tin khac", "nguyen tac", "chinh sach"),
+    "safety": _LEASED_SAFETY,
+    "trailing_family_phrases": ("tai san co dinh vo hinh", "bat dong san dau tu"),
+}
 
 
 class TangibleFixedAssetsVariantGraphV1Error(ValueError):
@@ -204,22 +245,19 @@ def _strip_enumerator(text: str) -> str:
     return re.sub(r"^(?:[0-9]+(?:[.]?[0-9]+)?\s+)+", "", text).strip()
 
 
-def _is_owner(text: str) -> bool:
+def _is_owner(text: str, spec: Mapping[str, Any] = _TANGIBLE_SPEC) -> bool:
     value = _strip_enumerator(text)
-    if any(prefix in value for prefix in ("thong tin khac", "nguyen gia", "bien dong")):
+    if any(prefix in value for prefix in spec["owner_reject_phrases"]):
         return False
-    return len(value.split()) <= 8 and _near_phrase(value, "tai san co dinh huu hinh", allowance=2)
-
-
-def _is_next_family(text: str) -> bool:
-    value = _strip_enumerator(text)
     return len(value.split()) <= 11 and any(
-        _near_phrase(value, phrase, allowance=2)
-        for phrase in (
-            "tai san co dinh thue tai chinh",
-            "tai san co dinh vo hinh",
-            "bat dong san dau tu",
-        )
+        _near_phrase(value, phrase, allowance=2) for phrase in spec["owner_phrases"]
+    )
+
+
+def _is_next_family(text: str, spec: Mapping[str, Any] = _TANGIBLE_SPEC) -> bool:
+    value = _strip_enumerator(text)
+    return len(value.split()) <= 12 and any(
+        _near_phrase(value, phrase, allowance=2) for phrase in spec["trailing_family_phrases"]
     )
 
 
@@ -293,30 +331,36 @@ def _logical_position(line: Mapping[str, Any], *, rotated: bool) -> tuple[int, i
 
 
 def _candidate_window(
-    owner: Mapping[str, Any], pages: Sequence[Mapping[str, Any]]
+    owner: Mapping[str, Any],
+    pages: Sequence[Mapping[str, Any]],
+    spec: Mapping[str, Any] = _TANGIBLE_SPEC,
 ) -> tuple[list[Mapping[str, Any]], bool]:
     owner_page = pages[owner["page_sequence"] - 1]
     rotated = _is_rotated(owner_page["lines"])
     selected: list[Mapping[str, Any]] = []
     for page in pages[owner["page_sequence"] - 1 : owner["page_sequence"] - 1 + _MAX_REGION_PAGES]:
         if page["page_sequence"] != owner["page_sequence"] and any(
-            _is_next_family(line["normalized_text"]) for line in page["lines"]
+            _is_next_family(line["normalized_text"], spec) for line in page["lines"]
         ):
             break
         for line in page["lines"]:
             if page["page_sequence"] == owner["page_sequence"] and not rotated:
                 if line["global_ordinal"] < owner["global_ordinal"]:
                     continue
-            if line is not owner and _is_owner(line["normalized_text"]):
+            if line is not owner and _is_owner(line["normalized_text"], spec):
                 break
-            if _is_next_family(line["normalized_text"]):
+            if _is_next_family(line["normalized_text"], spec):
                 break
             selected.append(line)
     return selected, rotated
 
 
-def _region(owner: Mapping[str, Any], pages: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
-    window, rotated = _candidate_window(owner, pages)
+def _region(
+    owner: Mapping[str, Any],
+    pages: Sequence[Mapping[str, Any]],
+    spec: Mapping[str, Any] = _TANGIBLE_SPEC,
+) -> dict[str, Any]:
+    window, rotated = _candidate_window(owner, pages, spec)
     branches: dict[str, list[Mapping[str, Any]]] = {}
     movements: dict[str, list[Mapping[str, Any]]] = {}
     periods: list[Mapping[str, Any]] = []
@@ -336,7 +380,7 @@ def _region(owner: Mapping[str, Any], pages: Sequence[Mapping[str, Any]]) -> dic
             units.append(line)
         if _NUMBER.fullmatch(text.replace(" ", "")):
             numeric_lines.append(line)
-    core_roles = ("COST", "ACCUMULATED_DEPRECIATION", "CARRYING_VALUE")
+    core_roles = spec["core_roles"]
     current_branches = {
         role: [
             line
@@ -352,13 +396,15 @@ def _region(owner: Mapping[str, Any], pages: Sequence[Mapping[str, Any]]) -> dic
             _logical_position(current_branches[role][0], rotated=rotated) for role in core_roles
         ]
         owner_position = _logical_position(owner, rotated=rotated)
-        ordered = owner_position < positions[0] < positions[1] < positions[2]
+        ordered = owner_position < positions[0] and all(
+            left < right for left, right in itertools.pairwise(positions)
+        )
     complete = (
         unique_branches
         and ordered
         and len(periods) >= 2
         and len(units) >= 1
-        and len(numeric_lines) >= 6
+        and len(numeric_lines) >= spec["minimum_numeric_lines"]
         and "OPENING" in movements
         and "ENDING" in movements
     )
@@ -407,14 +453,14 @@ def _region(owner: Mapping[str, Any], pages: Sequence[Mapping[str, Any]]) -> dic
     }
 
 
-def _validate_result(value: Any) -> dict[str, Any]:
+def _validate_result(value: Any, spec: Mapping[str, Any] = _TANGIBLE_SPEC) -> dict[str, Any]:
     if type(value) is not dict or set(value) != _RESULT_FIELDS:
         raise _error("tangible-fixed-assets graph result fields drifted")
     if (
-        value["format_version"] != FORMAT_VERSION
-        or value["family_id"] != FAMILY_ID
-        or value["claim_boundary"] != CLAIM_BOUNDARY
-        or not same_typed_json_v1(value["safety"], _SAFETY)
+        value["format_version"] != spec["format_version"]
+        or value["family_id"] != spec["family_id"]
+        or value["claim_boundary"] != spec["claim_boundary"]
+        or not same_typed_json_v1(value["safety"], spec["safety"])
         or type(value["regions"]) is not list
         or type(value["near_regions"]) is not list
         or type(value["metrics"]) is not dict
@@ -448,28 +494,26 @@ def _validate_result(value: Any) -> dict[str, Any]:
         raise _error("tangible-fixed-assets graph metrics or uniqueness drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "tfavgv1:result:" + canonical_json_sha256_v1(material):
+    if identity != spec["id_prefix"] + canonical_json_sha256_v1(material):
         raise _error("tangible-fixed-assets graph identity drifted")
     return canonical_clone_v1(value)
 
 
-def build_tangible_fixed_assets_variant_graph_document_v1(pages: Any) -> dict[str, Any]:
-    """Enumerate every complete and near-complete family region in one PDF."""
-
+def _build_variant_graph_document_v1(pages: Any, spec: Mapping[str, Any]) -> dict[str, Any]:
     normalized_pages = _pages(pages)
     owners = [
         line
         for page in normalized_pages
         for line in page["lines"]
-        if _is_owner(line["normalized_text"])
+        if _is_owner(line["normalized_text"], spec)
     ]
-    candidates = [_region(owner, normalized_pages) for owner in owners]
+    candidates = [_region(owner, normalized_pages, spec) for owner in owners]
     regions = [candidate for candidate in candidates if candidate["complete"]]
     near_regions = [candidate for candidate in candidates if not candidate["complete"]]
     material = {
-        "claim_boundary": CLAIM_BOUNDARY,
-        "family_id": FAMILY_ID,
-        "format_version": FORMAT_VERSION,
+        "claim_boundary": spec["claim_boundary"],
+        "family_id": spec["family_id"],
+        "format_version": spec["format_version"],
         "metrics": {
             "complete_region_count": len(regions),
             "near_region_count": len(near_regions),
@@ -477,7 +521,7 @@ def build_tangible_fixed_assets_variant_graph_document_v1(pages: Any) -> dict[st
         },
         "near_regions": near_regions,
         "regions": regions,
-        "safety": canonical_clone_v1(_SAFETY),
+        "safety": canonical_clone_v1(spec["safety"]),
         "status": (
             "ACCEPTED_UNIQUE_VARIANT_GRAPH"
             if len(regions) == 1
@@ -493,8 +537,21 @@ def build_tangible_fixed_assets_variant_graph_document_v1(pages: Any) -> dict[st
         },
     }
     return _validate_result(
-        {**material, "result_id": "tfavgv1:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": spec["id_prefix"] + canonical_json_sha256_v1(material)},
+        spec,
     )
+
+
+def build_tangible_fixed_assets_variant_graph_document_v1(pages: Any) -> dict[str, Any]:
+    """Enumerate every complete and near-complete tangible-asset region."""
+
+    return _build_variant_graph_document_v1(pages, _TANGIBLE_SPEC)
+
+
+def build_leased_fixed_assets_variant_graph_document_v1(pages: Any) -> dict[str, Any]:
+    """Enumerate every complete and near-complete leased-asset region."""
+
+    return _build_variant_graph_document_v1(pages, _LEASED_SPEC)
 
 
 def validate_tangible_fixed_assets_variant_graph_replay_v1(
@@ -506,4 +563,14 @@ def validate_tangible_fixed_assets_variant_graph_replay_v1(
     rebuilt = build_tangible_fixed_assets_variant_graph_document_v1(pages)
     if not same_typed_json_v1(supplied, rebuilt):
         raise _error("tangible-fixed-assets graph does not replay exactly")
+    return supplied
+
+
+def validate_leased_fixed_assets_variant_graph_replay_v1(value: Any, pages: Any) -> dict[str, Any]:
+    """Rebuild the leased-asset graph from the complete PDF."""
+
+    supplied = _validate_result(value, _LEASED_SPEC)
+    rebuilt = build_leased_fixed_assets_variant_graph_document_v1(pages)
+    if not same_typed_json_v1(supplied, rebuilt):
+        raise _error("leased-fixed-assets graph does not replay exactly")
     return supplied

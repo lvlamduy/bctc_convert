@@ -204,6 +204,19 @@ Current exact-replay result:
   statement balances and accounting-policy prose remain negative controls.
   There is no open mapping item for this family. VPB remains Q1/2026.
 
+## Leased fixed assets (`LEASED_FIXED_ASSETS_ROLLFORWARD`)
+
+Current exact-replay result:
+`docs/experiments/E-0070-leased-fixed-assets-8bank-bound-report-absence-v1.json`
+
+- The shared fixed-asset graph scans all 453 pages and finds no complete or
+  near-complete 896–912 region in ACB, MBB, VPB, HDB, VCB, CTG, BID or VIB.
+- All eight dispositions are `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; this is
+  bounded to the supplied PDFs and is not a broader bank/document absence
+  claim.
+- Twenty-four finance-lease company, policy, lending and income lines remain
+  negative controls. No source row is open and no mapping is manufactured.
+
 ## Project-owner TM adjudications
 
 Exact-replay decision artifact:

@@ -21,10 +21,10 @@ if TYPE_CHECKING:
     from bctc_ai.schema.registry import SchemaItem
 
 
-BUSINESS_UPDATE_AUDIT = "data/registered/schema_business_update_5712_5713_5714_5718_6067.json"
-PRIOR_BUSINESS_UPDATE_AUDIT = "data/registered/schema_business_update_5712_5713_5714_5718_6065.json"
+BUSINESS_UPDATE_AUDIT = "data/registered/schema_business_update_5712_5713_5714_5718_6068.json"
+PRIOR_BUSINESS_UPDATE_AUDIT = "data/registered/schema_business_update_5712_5713_5714_5718_6067.json"
 PRIOR_BUSINESS_UPDATE_AUDIT_SHA256 = (
-    "791abfbe5d9a43d4f2cc258a21ad5ab04304abc73ea970ecacd39c8c74994f93"
+    "e165542c26f39511d0e4eaefb938262e825282c42a51d7eae30a47892a3ae48f"
 )
 
 CDKT_BASELINE_WORKBOOK = "template/Bank_CDKT_ReportNormId.xlsx"
@@ -48,25 +48,25 @@ KQKD_AFTER_ROW_COUNT = 26
 LCTT_BEFORE_ROW_COUNT = 108
 LCTT_AFTER_ROW_COUNT = 111
 TM_BEFORE_ROW_COUNT = 1386
-TM_AFTER_ROW_COUNT = 1713
+TM_AFTER_ROW_COUNT = 1714
 
 BASE_SCHEMA_ITEM_COUNT = 1593
-PRIOR_UNIVERSAL_SCHEMA_ITEM_COUNT = 1944
-UNIVERSAL_SCHEMA_ITEM_COUNT = 1946
-PRIOR_UNIVERSAL_HIGH_WATERMARK = 6065
-UNIVERSAL_HIGH_WATERMARK = 6067
+PRIOR_UNIVERSAL_SCHEMA_ITEM_COUNT = 1946
+UNIVERSAL_SCHEMA_ITEM_COUNT = 1947
+PRIOR_UNIVERSAL_HIGH_WATERMARK = 6067
+UNIVERSAL_HIGH_WATERMARK = 6068
 
 PRIOR_UNIVERSAL_WORKBOOK_SHA256 = {
     "CDKT": "7f871941516d4591417f0f3f018bceb5fd6d91e474a0570f84eaeb141d24531c",
     "KQKD": "f860ff4267054e1dea330f91de498bd2a835fd77f824a5dc444abb412a6346c8",
     "LCTT": "dee9f2065b03da349c9c96174fc2affd7d86c2439c916d246164a2d4d67a5bc8",
-    "TM": "8912e6cbd279f33d507f1bef2235e46328ddcca97ed382d9ddd3fe453cee08d8",
+    "TM": "6fdde8634a7736eaa1f0679055faeb88fd7c2ae0a2a38d9cdfc9443e58e2b5e0",
 }
 PRIOR_UNIVERSAL_IDENTITY_ORDER_SHA256 = {
     "CDKT": "da32848b4583ef3fc222be91d328a4a5cd062e8175fbd09659d1fc0385558f2a",
     "KQKD": "d96e239b125c07253fd7646c18db31b4c1ac4ee3ef662fbd787c151906f82693",
     "LCTT": "32a995a3d11af834e86dda84bcea639303197eebd148fa73be495b7ac89e345f",
-    "TM": "bb23dbe9a7d7f02ae2c0fde854c83f9d8ac3052c011dab38ed1b60e32d51af93",
+    "TM": "7ae45a2f693a44e225a902dc69044ecc9ae13dfcd9aea48f35ea76231637be3d",
 }
 
 PREVIOUS_V2_SHA256 = {
@@ -95,6 +95,7 @@ PREVIOUS_V2_SHA256 = {
         "82215c17f6d0aba33c01b03d6af76cc80ad53e0b129bf101f7e0b266cc9ea28f",
         "e6d61bbf51f2163d53fb854846a7a5768ca9440c140ca866991c1558471a5a03",
         "8912e6cbd279f33d507f1bef2235e46328ddcca97ed382d9ddd3fe453cee08d8",
+        "6fdde8634a7736eaa1f0679055faeb88fd7c2ae0a2a38d9cdfc9443e58e2b5e0",
     ),
 }
 
@@ -1058,6 +1059,7 @@ TM_UNIVERSAL_SCHEMA_ITEMS: tuple[tuple[int, str, int, int], ...] = (
     (6065, "Số dư cuối kỳ này", 6061, 3),
     (6066, "Đầu tư vào công ty liên doanh", 862, 2),
     (6067, "Đầu tư vào công ty liên kết", 862, 2),
+    (6068, "Tổng giảm nguyên giá TSCĐ vô hình trong kỳ", 914, 3),
 )
 TM_UNIVERSAL_SCHEMA_IDS = tuple(item[0] for item in TM_UNIVERSAL_SCHEMA_ITEMS)
 TM_UNIVERSAL_DISPLAY_CHAINS: tuple[tuple[tuple[int, ...], int, int], ...] = (
@@ -1100,8 +1102,9 @@ TM_UNIVERSAL_DISPLAY_CHAINS: tuple[tuple[tuple[int, ...], int, int], ...] = (
     ((6058,), 745, 5749),
     ((6061, 6062, 6063, 6064, 6065), 799, 800),
     ((6066, 6067), 866, 867),
+    ((6068,), 920, 921),
 )
-if TM_UNIVERSAL_SCHEMA_IDS != (*range(5991, 6034), *range(6057, 6068)):
+if TM_UNIVERSAL_SCHEMA_IDS != (*range(5991, 6034), *range(6057, 6069)):
     raise AssertionError("TM universal-schema allocation drifted")
 
 FIRST_OBSERVED_PDF_PATH = "vietstock_bctc/MBB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf"
@@ -1480,6 +1483,20 @@ TM_UNIVERSAL_EVIDENCE: dict[int, dict[str, object]] = {
         "observed_values": ["15.073", "12.342"],
         "user_decision": "Q081",
     },
+    6068: {
+        "bank": "MBB",
+        "period": "Q2/2026",
+        "scope": "CONSOLIDATED",
+        "source_document_path": "vietstock_bctc/MBB/2026/BCTC Hợp nhất quý 2 năm 2026.pdf",
+        "source_document_sha256": (
+            "a86757a4499953264ca22dd57ae2e3257057631107742e1d04ad1ecd0e2c23d1"
+        ),
+        "pdf_pages": [39, 40],
+        "source_row_refs": ["GROSS_COST:DECREASE_COMPONENTS_921_TO_927"],
+        "visible_label": "Giảm nguyên giá trong kỳ",
+        "observed_values": ["(105.478)"],
+        "user_decision": "Q082",
+    },
 }
 
 if set(TM_UNIVERSAL_EVIDENCE) != set(TM_UNIVERSAL_SCHEMA_IDS):
@@ -1608,6 +1625,7 @@ TM_SPECIFIC_PROVISION_MOVEMENT_ID = 792
 TM_MARGIN_ADVANCE_PROVISION_MOVEMENT_ID = 6061
 TM_JOINT_VENTURE_INVESTMENT_ID = 6066
 TM_ASSOCIATE_INVESTMENT_ID = 6067
+TM_INTANGIBLE_GROSS_COST_DECREASE_ID = 6068
 
 CDKT_4350_OLD_NAME = "Chứng khoán đầu tư sẵn sàng để hàng"
 CDKT_4350_CORRECTED_NAME = "Chứng khoán đầu tư sẵn sàng để bán"
@@ -1815,7 +1833,7 @@ NEW_SCHEMA_IDS = frozenset(
         *CDKT_CURRENT_SCHEMA_IDS,
     }
 )
-CURRENT_MIGRATION_SCHEMA_IDS = frozenset(range(6066, 6068))
+CURRENT_MIGRATION_SCHEMA_IDS = frozenset({6068})
 
 CDKT_4325_COMPONENTS = (4364, 4365, 4342, 4341, 4343, 5699)
 CDKT_TOTAL_EQUITY_COMPONENTS = (4325, 4306)
@@ -1920,6 +1938,7 @@ TM_UNIVERSAL_SUM_FORMULAS = (
     (5994, tuple(range(885, 888))),
     (5995, tuple(range(888, 895))),
     (5997, tuple(range(916, 921))),
+    (6068, tuple(range(921, 928))),
     (5999, tuple(range(931, 934))),
     (6000, tuple(range(934, 941))),
     (6002, tuple(range(945, 952))),
@@ -3537,9 +3556,9 @@ def _expected_schema_strategy(
             ),
         },
         "previous_universal_schema": {
-            "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6065",
+            "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6067",
             "item_count": PRIOR_UNIVERSAL_SCHEMA_ITEM_COUNT,
-            "counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1710},
+            "counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1712},
             "high_watermark": PRIOR_UNIVERSAL_HIGH_WATERMARK,
             "workbook_sha256": PRIOR_UNIVERSAL_WORKBOOK_SHA256,
             "identity_order_sha256": PRIOR_UNIVERSAL_IDENTITY_ORDER_SHA256,
@@ -3547,9 +3566,9 @@ def _expected_schema_strategy(
             "audit_sha256": PRIOR_BUSINESS_UPDATE_AUDIT_SHA256,
         },
         "universal_schema": {
-            "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6067",
+            "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6068",
             "item_count": UNIVERSAL_SCHEMA_ITEM_COUNT,
-            "counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1712},
+            "counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1713},
             "high_watermark": UNIVERSAL_HIGH_WATERMARK,
             "workbook_sha256": after_workbook_sha256,
         },
@@ -4250,6 +4269,7 @@ def _expected_hierarchy_changes() -> list[dict[str, object]]:
         ("TM", tuple(range(885, 888)), 883, 5994, 3, 4),
         ("TM", tuple(range(888, 895)), 883, 5995, 3, 4),
         ("TM", tuple(range(916, 921)), 914, 5997, 3, 4),
+        ("TM", tuple(range(921, 928)), 914, 6068, 3, 4),
         ("TM", tuple(range(931, 934)), 929, 5999, 3, 4),
         ("TM", tuple(range(934, 941)), 929, 6000, 3, 4),
         ("TM", tuple(range(945, 952)), 943, 6002, 3, 4),
@@ -4387,7 +4407,7 @@ def verify_business_schema_update(project_root: Path, audit_path: Path) -> dict[
     audit = json.loads(audit_path.read_text(encoding="utf-8"))
     if (
         audit.get("format_version") != 1
-        or audit.get("migration_id") != "BUSINESS-SCHEMA-5712-5713-5714-5718-6067"
+        or audit.get("migration_id") != "BUSINESS-SCHEMA-5712-5713-5714-5718-6068"
         or audit.get("status") != "APPLIED_AND_VERIFIED"
     ):
         raise BusinessSchemaUpdateError("invalid business-schema update audit identity")
@@ -4411,6 +4431,7 @@ def verify_business_schema_update(project_root: Path, audit_path: Path) -> dict[
             "Q079",
             "Q080",
             "Q081",
+            "Q082",
         ],
     }:
         raise BusinessSchemaUpdateError("business schema authority drifted")
@@ -4920,7 +4941,7 @@ def apply_business_schema_update(
 
     audit: dict[str, object] = {
         "format_version": 1,
-        "migration_id": "BUSINESS-SCHEMA-5712-5713-5714-5718-6067",
+        "migration_id": "BUSINESS-SCHEMA-5712-5713-5714-5718-6068",
         "status": "APPLIED_AND_VERIFIED",
         "applied_at": "2026-08-15T00:00:00+00:00",
         "authority": {
@@ -4935,6 +4956,7 @@ def apply_business_schema_update(
                 "Q079",
                 "Q080",
                 "Q081",
+                "Q082",
             ],
         },
         "collision_safety": {
@@ -5503,6 +5525,7 @@ def apply_business_formula_hierarchy(schema: Sequence[SchemaItem]) -> None:
         (5994, tuple(range(885, 888)), 4),
         (5995, tuple(range(888, 895)), 4),
         (5997, tuple(range(916, 921)), 4),
+        (6068, tuple(range(921, 928)), 4),
         (5999, tuple(range(931, 934)), 4),
         (6000, tuple(range(934, 941)), 4),
         (6002, tuple(range(945, 952)), 4),
@@ -5687,8 +5710,9 @@ def apply_business_formula_hierarchy(schema: Sequence[SchemaItem]) -> None:
         ("TM", 5995): tuple(range(888, 895)),
         ("TM", 5964): (5965, 5966),
         ("TM", 913): (914, 929, 5969),
-        ("TM", 914): (915, 5997, *range(921, 928), 5998, 5967, 928),
+        ("TM", 914): (915, 5997, 6068, 5998, 5967, 928),
         ("TM", 5997): tuple(range(916, 921)),
+        ("TM", 6068): tuple(range(921, 928)),
         ("TM", 929): (930, 5999, 6000, 6001, 5968, 941),
         ("TM", 5999): tuple(range(931, 934)),
         ("TM", 6000): tuple(range(934, 941)),

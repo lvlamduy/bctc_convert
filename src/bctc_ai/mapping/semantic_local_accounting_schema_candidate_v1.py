@@ -95,28 +95,28 @@ _EXPECTED_DISPLAY_ORDERS = {
     754: 206,
     755: 207,
     5747: 208,
-    1944: 1711,
+    1944: 1712,
 }
 _EXPECTED_AUTHORITY_HASHES = {
     "schema_registry": (
         "data/registered/schema_registry.json",
-        "b11ec519d35d10e1b6a843a9de14131793a7deac7b495aa56913d2cbe3e82fc9",
+        "e415a0e399e81441611233a822e27c78194cb36707457d1adf8db5d003b3ce40",
     ),
     "schema_graph": (
         "reference/schemas/schema_graph.jsonl",
-        "dcdae9587483fa1044c2121d70a89b0ce2b60b94fb17207343e797dd6313d028",
+        "c36e79dc2d802f4ab598a0d151277facbb36d04785c31c37bb44c8345075c00d",
     ),
     "schema_sources": (
         "config/schemas/sources.yaml",
-        "25479b0e274681904c79b5d020ccf4b9bba1efb3e9c79e8d15b27e84459f300d",
+        "19ae91ee8591d451077175b6ae29d310115314efe90f1b371f5e004991d5875a",
     ),
     "hierarchy_config": (
         "config/schemas/hierarchy_reference.yaml",
-        "5b7e915a3bae631b2f0e2d41886df4e32b7abd0adaf1b7cfca7edf45170a65ad",
+        "a537328481fe533f74035442b2be11815d4623bcfc3a35044b25d58468164c93",
     ),
     "hierarchy_registry": (
         "data/registered/hierarchy_registry.json",
-        "ece1d4f619852d56c46160dc805cb963fdc8a6f5a977195179f10546c97294dc",
+        "f236f2ea971ffdd22a11dcfe993d1d944fbcf6a8c2fc4d4a60583eeb012b6fd8",
     ),
     "tm_hierarchy_workbook": (
         "vst_level/vst_bank_detailed_notes_sheet.xlsx",
@@ -128,16 +128,16 @@ _EXPECTED_AUTHORITY_HASHES = {
     ),
     "schema_coverage_registry": (
         "data/registered/schema_coverage_registry.json",
-        "12d011296c1a166d21e1a6acb85926753fc6b32da0d0c01513c40dc704c6b2af",
+        "84c5f22425f109b0c53d5bc0c2a0473d6823ff44dea5fc59febeda85553166f9",
     ),
     "tm_workbook": (
         "template/Bank_TM_ReportNormId.v2.xlsx",
-        "6fdde8634a7736eaa1f0679055faeb88fd7c2ae0a2a38d9cdfc9443e58e2b5e0",
+        "c01a3d6b8e1338833250390b731c21de5c34ddbd5e0673f40509ab4868c7b09a",
     ),
 }
-_EXPECTED_TM_CONTEXT_SHA256 = "c9e58adc08666cb4c4a1b0359eba77df9e0e745ca114d22c0e328f24a362ffc0"
+_EXPECTED_TM_CONTEXT_SHA256 = "834d6d69883bb2d6d25af7a83052535a545066a35b8e45462d1a1f96ce997e86"
 _EXPECTED_TM_SCHEMA_PROJECTION_SHA256 = (
-    "2c96ea0d76298bcba9a63057c09ff58e39331dc463807f0172a6c168b0e96ac7"
+    "c42b05b78208633e91b251c41a07757255d0b34f8ea5639c484ac6a07cd7f1fb"
 )
 _SAFETY_ITEMS: tuple[tuple[str, bool], ...] = (
     ("typed_graph_roles_only", True),
@@ -199,10 +199,10 @@ def _authority_snapshot(project_root: Path) -> tuple[dict[str, Any], dict[int, S
         raise _error("mapping-safe TM schema authority could not be reconstructed") from exc
     universal = contract.get("universal_schema")
     if universal != {
-        "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6067",
-        "item_count": 1946,
-        "counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1712},
-        "high_watermark": 6067,
+        "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6068",
+        "item_count": 1947,
+        "counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1713},
+        "high_watermark": 6068,
     }:
         raise _error("universal schema revision or denominator drifted")
     if tm_context_projection_sha256(contexts) != _EXPECTED_TM_CONTEXT_SHA256:

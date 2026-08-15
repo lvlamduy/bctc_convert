@@ -70,12 +70,12 @@ def test_page34_reconciles_complete_783_799_scope_and_exact_source_denominators(
     assert validate_tm_page34_mapping_result(result) is result
     assert result.mapping_authority_scope.endswith("OVERALL_SPECIFIC_GENERAL_AXES_ONLY")
     assert result.mapping_authority_granted
-    assert result.schema_item_count == 1_712
+    assert result.schema_item_count == 1_713
     assert result.status_reconciled_schema_count == 17
     assert result.mapped_schema_count == 15
     assert result.ambiguous_schema_count == 0
     assert result.not_observed_schema_count == 2
-    assert result.unassessed_schema_count == 1_695
+    assert result.unassessed_schema_count == 1_696
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == 11
     assert result.mapped_source_row_count == 11
@@ -107,7 +107,7 @@ def test_exact_mapped_ambiguous_not_observed_and_unassessed_schema_sets(
     assert by_status[TMPage34SchemaStatus.MAPPED_AUTOMATIC_SCOPED.value] == _MAPPED_IDS
     assert by_status[TMPage34SchemaStatus.AMBIGUOUS_MAPPING.value] == set()
     assert by_status[TMPage34SchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value] == {789, 797}
-    assert len(by_status[TMPage34SchemaStatus.UNASSESSED.value]) == 1_695
+    assert len(by_status[TMPage34SchemaStatus.UNASSESSED.value]) == 1_696
     assert _MAPPED_IDS | {789, 797} == set(range(783, 800))
     assert all(
         item.source_evidence_ids

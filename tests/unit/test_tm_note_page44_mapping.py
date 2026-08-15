@@ -92,14 +92,14 @@ def test_page44_reconciles_universal_branch_and_all_source_rows_with_exact_statu
     assert validate_tm_page44_mapping_result(result) is result
     assert result.mapping_authority_scope.endswith("FIXED_ROWS_CELLS_AND_NARRATIVE_FACTS_ONLY")
     assert result.mapping_authority_granted
-    assert result.schema_item_count == 1_712
+    assert result.schema_item_count == 1_713
     assert result.status_reconciled_schema_count == 62
     assert result.mapped_schema_count == 31
     assert result.ambiguous_schema_count == 0
     assert result.unresolved_schema_count == 0
     assert result.not_observed_schema_count == 31
     assert result.not_applicable_schema_count == 0
-    assert result.unassessed_schema_count == 1_650
+    assert result.unassessed_schema_count == 1_651
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == 24
     assert result.mapped_source_row_count == 21
@@ -131,7 +131,7 @@ def test_exact_mapped_ambiguous_unresolved_not_observed_and_unassessed_sets(
     assert by_status[TMPage44SchemaStatus.AMBIGUOUS_MAPPING.value] == _AMBIGUOUS_IDS
     assert by_status[TMPage44SchemaStatus.UNRESOLVED.value] == _UNRESOLVED_IDS
     assert by_status[TMPage44SchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value] == (_NOT_OBSERVED_IDS)
-    assert len(by_status[TMPage44SchemaStatus.UNASSESSED.value]) == 1_650
+    assert len(by_status[TMPage44SchemaStatus.UNASSESSED.value]) == 1_651
     assert _MAPPED_IDS | _AMBIGUOUS_IDS | _UNRESOLVED_IDS | _NOT_OBSERVED_IDS == (
         set(range(1100, 1142)) | set(range(5978, 5985)) | set(range(6008, 6021))
     )

@@ -6,13 +6,13 @@ scope: CONSOLIDATED
 source_table_policy: config/tables/tm-note-pages39-40-v1.yaml
 mapping_authority_scope: VISIBLE_NOTE_TITLE_SECTION_LABELS_AND_TOTAL_COLUMN_FIXED_ROWS_ONLY
 
-schema_total: 1712
+schema_total: 1713
 scope_schema_ids: {start: 913, end: 941, total: 29}
-additional_scope_schema_ids: [5967, 5968, 5969, 5970, 5971, 5997, 5998, 5999, 6000, 6001]
+additional_scope_schema_ids: [5967, 5968, 5969, 5970, 5971, 5997, 5998, 5999, 6000, 6001, 6068]
 title_report_norm_id: 913
 fixed_mapped_ids: [913, 914, 915, 925, 928, 929, 930, 941, 5967, 5968, 5969, 5970, 5971, 5997, 5998, 5999, 6000, 6001]
 unresolved_ids: []
-not_observed_ids: [916, 917, 918, 919, 920, 921, 922, 923, 924, 926, 927, 931, 932, 933, 934, 935, 936, 937, 938, 939, 940]
+not_observed_ids: [916, 917, 918, 919, 920, 921, 922, 923, 924, 926, 927, 931, 932, 933, 934, 935, 936, 937, 938, 939, 940, 6068]
 
 source_rules:
   - {page_tag: page-0039, row_key: GROSS_HEADER, disposition: FIXED_STRUCTURAL, report_norm_ids: [914], mapped_cell_index: null, candidate_report_norm_ids: [], question_key: null}

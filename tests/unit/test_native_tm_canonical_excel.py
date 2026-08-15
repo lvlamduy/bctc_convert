@@ -106,7 +106,7 @@ def _schema_payload() -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[
     schema: list[dict[str, Any]] = []
     contexts: list[dict[str, Any]] = []
     dispositions: list[dict[str, Any]] = []
-    for index in range(1712):
+    for index in range(1713):
         identifier = 10_000 + index
         name = "=Mapped total" if index == 0 else f"TM item {index:04d}"
         schema.append(
@@ -440,7 +440,7 @@ def _build_project(source_root: Path, project_root: Path) -> dict[str, Any]:
     reason_counts = {
         "ABSENT_FROM_LOCALLY_COMPLETE_BOUNDED_TABLE_SUBTREE": 1,
         "SYNTHETIC_MAPPED_EXISTING_ITEM": 2,
-        "UNASSESSED_OUTSIDE_BOUNDED_TABLE_SUBTREE": 1709,
+        "UNASSESSED_OUTSIDE_BOUNDED_TABLE_SUBTREE": 1710,
     }
     mapping_relative = "output/development/synthetic-input/mapping.json"
     mapping_payload = {
@@ -451,7 +451,7 @@ def _build_project(source_root: Path, project_root: Path) -> dict[str, Any]:
         "run_id": "synthetic-mapping",
         "source": source,
         "native_tm_observations": observations_receipt,
-        "schema": {"statement_type": "TM", "item_count": 1712},
+        "schema": {"statement_type": "TM", "item_count": 1713},
         "code": {"commit": "c" * 40, "dirty": False, "implementation": []},
         "authority": {},
         "isolation": {},
@@ -519,8 +519,8 @@ def _build_project(source_root: Path, project_root: Path) -> dict[str, Any]:
         ],
         "coverage": {
             "statement_type": "TM",
-            "schema_item_count": 1712,
-            "schema_disposition_count": 1712,
+            "schema_item_count": 1713,
+            "schema_disposition_count": 1713,
             "terminal_outcome_counts": {
                 "OBSERVED_VALUE": 2,
                 "OBSERVED_ZERO": 0,
@@ -529,7 +529,7 @@ def _build_project(source_root: Path, project_root: Path) -> dict[str, Any]:
                 "NOT_OBSERVED": 1,
                 "NOT_APPLICABLE": 0,
                 "AMBIGUOUS": 0,
-                "UNRESOLVED": 1709,
+                "UNRESOLVED": 1710,
             },
             "reason_counts": reason_counts,
             "exactly_one_terminal_outcome_per_schema_id": True,
@@ -647,7 +647,7 @@ def _mock_strict_loaders(monkeypatch: pytest.MonkeyPatch, synthetic: dict[str, A
 
 
 def test_policy_and_public_api_are_bank_agnostic(synthetic: dict[str, Any], policy) -> None:
-    assert policy.schema_disposition_count == 1712
+    assert policy.schema_disposition_count == 1713
     assert not hasattr(policy, "source_disposition_count")
     parameters = inspect.signature(exporter.export_registered_native_tm_canonical_excel).parameters
     assert set(parameters) == {
@@ -666,13 +666,13 @@ def test_policy_and_public_api_are_bank_agnostic(synthetic: dict[str, Any], poli
 def test_workbook_is_complete_auditable_and_formula_free(
     synthetic: dict[str, Any], artifacts
 ) -> None:
-    assert artifacts.summary["tm_schema_disposition_count"] == 1712
+    assert artifacts.summary["tm_schema_disposition_count"] == 1713
     assert artifacts.summary["source_object_disposition_count"] == synthetic["source_count"]
     assert artifacts.summary["source_object_sheet_row_count"] > synthetic["source_count"]
     workbook = load_workbook(BytesIO(artifacts.workbook_bytes), data_only=False)
     try:
         assert tuple(workbook.sheetnames) == exporter.SHEET_NAMES
-        assert workbook["SCHEMA_DISPOSITIONS"].max_row == 1713
+        assert workbook["SCHEMA_DISPOSITIONS"].max_row == 1714
         assert workbook["SOURCE_DISPOSITIONS"].max_row == synthetic["source_count"] + 1
         assert workbook["CANONICAL_OBSERVATIONS"].max_row == 3
         assert workbook["CANONICAL_OBSERVATIONS"]["D2"].value == "=Mapped total"
@@ -837,9 +837,9 @@ def test_zero_accepted_root_and_mismatch_equation_are_valid_generic_cases(
     mapping["equation_checks"][0]["status"] = "MISMATCH"
     mapping["completion"]["accepted_root_count"] = 0
     mapping["coverage"]["terminal_outcome_counts"] = {
-        outcome: 1712 if outcome == "UNRESOLVED" else 0 for outcome in exporter._TERMINAL_OUTCOMES
+        outcome: 1713 if outcome == "UNRESOLVED" else 0 for outcome in exporter._TERMINAL_OUTCOMES
     }
-    mapping["coverage"]["reason_counts"] = {"UNRESOLVED_LOCAL_COMPLETENESS_OR_EQUATION": 1712}
+    mapping["coverage"]["reason_counts"] = {"UNRESOLVED_LOCAL_COMPLETENESS_OR_EQUATION": 1713}
     mapping["source_accounting"]["mapping_source_dispositions_sha256"] = exporter._record_sha256(
         mapping["source_dispositions"]
     )
@@ -948,7 +948,7 @@ def test_completed_pair_uses_old_producer_not_current_semantics(
         provenance_path=provenance,
         provenance_expected_sha256=artifacts.provenance_sha256,
     )
-    assert result.summary["tm_schema_disposition_count"] == 1712
+    assert result.summary["tm_schema_disposition_count"] == 1713
 
 
 @pytest.mark.parametrize(
@@ -1274,7 +1274,7 @@ def test_real_registered_vpb_projection_counts_and_sheets(project_root: Path) ->
         policy=policy,
         exporter_producer=producer,
     )
-    assert built.summary["tm_schema_disposition_count"] == 1712
+    assert built.summary["tm_schema_disposition_count"] == 1713
     assert built.summary["source_object_disposition_count"] == 11032
     assert built.summary["source_object_sheet_row_count"] == 11037
     assert built.summary["canonical_observation_count"] == 8

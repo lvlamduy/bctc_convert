@@ -29,7 +29,7 @@ def test_vst_hierarchy_is_complete_where_claimed_and_partial_for_direct_lctt(pro
     kqkd = next(workbook for workbook in registry.workbooks if workbook.statement_type == "KQKD")
     assert kqkd.schema_only_append_ids == (5713,)
     tm = next(workbook for workbook in registry.workbooks if workbook.statement_type == "TM")
-    assert tm.schema_only_append_ids == (1944, *range(5718, 6034), *range(6057, 6068))
+    assert tm.schema_only_append_ids == (1944, *range(5718, 6034), *range(6057, 6069))
     assert registry.status == "VALIDATED_SUPPORTING_REFERENCE_WITH_SCHEMA_ONLY_APPENDS"
     assert len(hierarchy) == 1535
 

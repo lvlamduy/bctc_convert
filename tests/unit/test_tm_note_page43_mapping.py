@@ -90,13 +90,13 @@ def test_page43_reconciles_complete_two_branch_scope_and_exact_source_denominato
     assert validate_tm_page43_mapping_result(result) is result
     assert result.mapping_authority_scope.endswith("FIXED_ROWS_AND_CELLS_ONLY")
     assert result.mapping_authority_granted
-    assert result.schema_item_count == 1_712
+    assert result.schema_item_count == 1_713
     assert result.status_reconciled_schema_count == 131
     assert result.mapped_schema_count == 34
     assert result.ambiguous_schema_count == 0
     assert result.not_observed_schema_count == 97
     assert result.not_applicable_schema_count == 0
-    assert result.unassessed_schema_count == 1_581
+    assert result.unassessed_schema_count == 1_582
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == 29
     assert result.mapped_source_row_count == 24
@@ -134,7 +134,7 @@ def test_exact_mapped_ambiguous_not_observed_and_unassessed_schema_sets(
     assert by_status[TMPage43SchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value] == (
         _SCOPED_IDS - _MAPPED_IDS
     )
-    assert len(by_status[TMPage43SchemaStatus.UNASSESSED.value]) == 1_581
+    assert len(by_status[TMPage43SchemaStatus.UNASSESSED.value]) == 1_582
     assert (
         _MAPPED_IDS | by_status[TMPage43SchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value] == _SCOPED_IDS
     )

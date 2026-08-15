@@ -6,14 +6,14 @@ report_scope: CONSOLIDATED
 dataset_role: DEVELOPMENT
 
 schema:
-  item_count: 1712
+  item_count: 1713
   workbook_path: template/Bank_TM_ReportNormId.v2.xlsx
-  workbook_sha256: 6fdde8634a7736eaa1f0679055faeb88fd7c2ae0a2a38d9cdfc9443e58e2b5e0
-  projection_sha256: 4c476ffb8e05056c2c373ab27bdd11c404141871a1979ec5b6f997e3eb7f6612
+  workbook_sha256: c01a3d6b8e1338833250390b731c21de5c34ddbd5e0673f40509ab4868c7b09a
+  projection_sha256: c7de9904d0ff0b448ec5840b330ef5d4705e5fa9f9c08f85722dc476ec205a66
 
 schema_identity:
   schema_name: UNIVERSAL_BANK_BCTC_SCHEMA
-  schema_revision: UNIVERSAL_BANK_BCTC_SCHEMA@6067
+  schema_revision: UNIVERSAL_BANK_BCTC_SCHEMA@6068
   base_schema:
     name: BASE_SCHEMA
     item_count: 1593
@@ -21,21 +21,21 @@ schema_identity:
     ordered_canonical_projection_sha256: e63b77ebf99907843bea419cef32bc64cd709129813f89309f3b42fc818a1b10
     ordered_report_norm_ids_sha256: 5cc0e9ea70b23af236ce43b920838299dbc91e9c0ef19d31165f4ce49eea4f9f
   universal_schema:
-    item_count: 1946
-    statement_counts: {CDKT: 99, KQKD: 25, LCTT: 110, TM: 1712}
-    high_watermark: 6067
-    ordered_canonical_projection_sha256: 9be17c7c30bdc1ef23af3387e0ca5757617b5236da7e65e0f1689d57c31587fa
-    ordered_report_norm_ids_sha256: 9392fecaf8282b712529849eb365c75541cd7456891acbfb07c22bdda0ac1f02
-    schema_graph_sha256: dcdae9587483fa1044c2121d70a89b0ce2b60b94fb17207343e797dd6313d028
-    universal_schema_sha256: dcdae9587483fa1044c2121d70a89b0ce2b60b94fb17207343e797dd6313d028
+    item_count: 1947
+    statement_counts: {CDKT: 99, KQKD: 25, LCTT: 110, TM: 1713}
+    high_watermark: 6068
+    ordered_canonical_projection_sha256: 9bee5297907ba2f2b1724a3f70f5db7b73a7ff839d6eb4079dab591185d56750
+    ordered_report_norm_ids_sha256: 1e5505d293e5b60f934be64f4039161a3ee917c72c83e7e7a38db3cebfa6c80d
+    schema_graph_sha256: c36e79dc2d802f4ab598a0d151277facbb36d04785c31c37bb44c8345075c00d
+    universal_schema_sha256: c36e79dc2d802f4ab598a0d151277facbb36d04785c31c37bb44c8345075c00d
   accepted_post_base_tm_additions:
     first_report_norm_id: 5718
-    last_report_norm_id: 6067
-    item_count: 327
+    last_report_norm_id: 6068
+    item_count: 328
   latest_schema_batch:
-    first_report_norm_id: 6066
-    last_report_norm_id: 6067
-    item_count: 2
+    first_report_norm_id: 6068
+    last_report_norm_id: 6068
+    item_count: 1
 
 output_sheets:
   - TM
