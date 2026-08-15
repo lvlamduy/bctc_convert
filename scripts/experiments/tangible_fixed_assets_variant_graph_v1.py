@@ -28,12 +28,15 @@ from bctc_ai.source_structure.contracts_v1 import (
 __all__ = [
     "FORMAT_VERSION",
     "INTANGIBLE_FORMAT_VERSION",
+    "INVESTMENT_PROPERTY_FORMAT_VERSION",
     "LEASED_FORMAT_VERSION",
     "TangibleFixedAssetsVariantGraphV1Error",
     "build_intangible_fixed_assets_variant_graph_document_v1",
+    "build_investment_property_variant_graph_document_v1",
     "build_leased_fixed_assets_variant_graph_document_v1",
     "build_tangible_fixed_assets_variant_graph_document_v1",
     "validate_intangible_fixed_assets_variant_graph_replay_v1",
+    "validate_investment_property_variant_graph_replay_v1",
     "validate_leased_fixed_assets_variant_graph_replay_v1",
     "validate_tangible_fixed_assets_variant_graph_replay_v1",
 ]
@@ -44,6 +47,8 @@ LEASED_FORMAT_VERSION = "LEASED_FIXED_ASSETS_VARIANT_GRAPH_DOCUMENT_V1"
 LEASED_FAMILY_ID = "LEASED_FIXED_ASSET_MOVEMENT"
 INTANGIBLE_FORMAT_VERSION = "INTANGIBLE_FIXED_ASSETS_VARIANT_GRAPH_DOCUMENT_V1"
 INTANGIBLE_FAMILY_ID = "INTANGIBLE_FIXED_ASSET_MOVEMENT"
+INVESTMENT_PROPERTY_FORMAT_VERSION = "INVESTMENT_PROPERTY_VARIANT_GRAPH_DOCUMENT_V1"
+INVESTMENT_PROPERTY_FAMILY_ID = "INVESTMENT_PROPERTY_MOVEMENT"
 CLAIM_BOUNDARY = (
     "BANK_BLIND_COMPLETE_PDF_FRESH_VIETOCR_TANGIBLE_FIXED_ASSET_OWNER_COST_"
     "ACCUMULATED_DEPRECIATION_CARRYING_VALUE_OPTIONAL_MOVEMENTS_ASSET_CLASS_"
@@ -79,6 +84,17 @@ _INTANGIBLE_CLAIM_BOUNDARY = (
     "ONLY_NO_NUMERIC_SCHEMA_MAPPING_CANONICALIZATION_OR_EXPORT_AUTHORITY"
 )
 _INTANGIBLE_SAFETY = canonical_clone_v1(_SAFETY)
+_INVESTMENT_PROPERTY_CLAIM_BOUNDARY = (
+    "BANK_BLIND_COMPLETE_PDF_FRESH_VIETOCR_INVESTMENT_PROPERTY_OWNER_COST_"
+    "ACCUMULATED_DEPRECIATION_CARRYING_VALUE_OPTIONAL_MOVEMENTS_ASSET_CLASS_"
+    "COLUMNS_SAME_PAGE_CURRENT_COMPARATIVE_PERIOD_PARTITION_STRUCTURE_ONLY_"
+    "NO_NUMERIC_SCHEMA_MAPPING_CANONICALIZATION_OR_EXPORT_AUTHORITY"
+)
+_INVESTMENT_PROPERTY_SAFETY = {
+    **canonical_clone_v1(_SAFETY),
+    "latest_explicit_period_selects_current_region": True,
+    "same_page_comparative_region_retained": True,
+}
 _RESULT_FIELDS = {
     "claim_boundary",
     "family_id",
@@ -155,6 +171,46 @@ _INTANGIBLE_SPEC = {
         "xay dung co ban do dang",
         "tai san co khac",
         "cac khoan no chinh phu",
+    ),
+}
+_INVESTMENT_PROPERTY_SPEC = {
+    "branch_same_page_required": False,
+    "branch_phrases": {
+        "ACCUMULATED_DEPRECIATION": (
+            "gia tri hao mon",
+            "gia tri hao mon luy ke",
+            "hao mon luy ke",
+            "khau hao luy ke",
+        ),
+        "CARRYING_VALUE": ("gia tri con lai",),
+        "COST": ("nguyen gia",),
+    },
+    "claim_boundary": _INVESTMENT_PROPERTY_CLAIM_BOUNDARY,
+    "core_roles": ("COST", "ACCUMULATED_DEPRECIATION", "CARRYING_VALUE"),
+    "family_id": INVESTMENT_PROPERTY_FAMILY_ID,
+    "format_version": INVESTMENT_PROPERTY_FORMAT_VERSION,
+    "id_prefix": "ipavgv1:result:",
+    "minimum_numeric_lines": 6,
+    "minimum_period_lines": 1,
+    "owner_left_region_only": True,
+    "owner_phrases": ("bat dong san dau tu", "bds dau tu"),
+    "owner_reject_phrases": (
+        "chuyen sang",
+        "chuyen tu",
+        "gia tri hao mon",
+        "hao mon",
+        "khau hao tscd",
+        "mua sam",
+        "nguyen gia",
+        "thanh ly",
+        "thong tin khac",
+        "tien thu",
+    ),
+    "safety": _INVESTMENT_PROPERTY_SAFETY,
+    "trailing_family_phrases": (
+        "tai san co khac",
+        "cac khoan no chinh phu",
+        "tien gui cua khach hang",
     ),
 }
 
@@ -308,19 +364,25 @@ def _is_next_family(text: str, spec: Mapping[str, Any] = _TANGIBLE_SPEC) -> bool
     )
 
 
-def _branch_role(text: str) -> str | None:
+def _branch_role(text: str, spec: Mapping[str, Any] = _TANGIBLE_SPEC) -> str | None:
     value = _strip_enumerator(text)
     if len(value.split()) > 10:
         return None
-    if _near_phrase(value, "nguyen gia", allowance=1):
-        return "COST"
-    if any(
-        _near_phrase(value, phrase, allowance=2)
-        for phrase in ("hao mon luy ke", "khau hao luy ke", "gia tri hao mon luy ke")
-    ):
-        return "ACCUMULATED_DEPRECIATION"
-    if _near_phrase(value, "gia tri con lai", allowance=2):
-        return "CARRYING_VALUE"
+    phrases = spec.get(
+        "branch_phrases",
+        {
+            "ACCUMULATED_DEPRECIATION": (
+                "hao mon luy ke",
+                "khau hao luy ke",
+                "gia tri hao mon luy ke",
+            ),
+            "CARRYING_VALUE": ("gia tri con lai",),
+            "COST": ("nguyen gia",),
+        },
+    )
+    for role in ("COST", "ACCUMULATED_DEPRECIATION", "CARRYING_VALUE"):
+        if any(_near_phrase(value, phrase, allowance=2) for phrase in phrases[role]):
+            return role
     return None
 
 
@@ -412,6 +474,16 @@ def _region(
     spec: Mapping[str, Any] = _TANGIBLE_SPEC,
 ) -> dict[str, Any]:
     window, rotated = _candidate_window(owner, pages, spec)
+    return _region_from_window(owner, window, rotated=rotated, spec=spec)
+
+
+def _region_from_window(
+    owner: Mapping[str, Any],
+    window: Sequence[Mapping[str, Any]],
+    *,
+    rotated: bool,
+    spec: Mapping[str, Any],
+) -> dict[str, Any]:
     branches: dict[str, list[Mapping[str, Any]]] = {}
     movements: dict[str, list[Mapping[str, Any]]] = {}
     periods: list[Mapping[str, Any]] = []
@@ -419,7 +491,7 @@ def _region(
     numeric_lines: list[Mapping[str, Any]] = []
     for line in window:
         text = line["normalized_text"]
-        branch = _branch_role(text)
+        branch = _branch_role(text, spec)
         movement = _movement_role(text)
         if branch is not None:
             branches.setdefault(branch, []).append(line)
@@ -433,11 +505,15 @@ def _region(
             numeric_lines.append(line)
     core_roles = spec["core_roles"]
     current_branches = {
-        role: [
-            line
-            for line in branches.get(role, [])
-            if line["page_sequence"] == owner["page_sequence"]
-        ]
+        role: (
+            [
+                line
+                for line in branches.get(role, [])
+                if line["page_sequence"] == owner["page_sequence"]
+            ]
+            if spec.get("branch_same_page_required", True)
+            else list(branches.get(role, []))
+        )
         for role in core_roles
     }
     unique_branches = all(len(current_branches[role]) == 1 for role in core_roles)
@@ -453,7 +529,7 @@ def _region(
     complete = (
         unique_branches
         and ordered
-        and len(periods) >= 2
+        and len(periods) >= spec.get("minimum_period_lines", 2)
         and len(units) >= 1
         and len(numeric_lines) >= spec["minimum_numeric_lines"]
         and "OPENING" in movements
@@ -611,6 +687,178 @@ def build_intangible_fixed_assets_variant_graph_document_v1(pages: Any) -> dict[
     return _build_variant_graph_document_v1(pages, _INTANGIBLE_SPEC)
 
 
+_EXPLICIT_PERIOD_END = re.compile(
+    r"(?:ngay\s+)?([0-3]?[0-9])\s+thang\s+([01]?[0-9])\s+nam\s+((?:20)?[0-9]{2})"
+)
+
+
+def _period_end_rank(lines: Sequence[Mapping[str, Any]]) -> tuple[int, int, int] | None:
+    ranks: list[tuple[int, int, int]] = []
+    for line in lines:
+        for day, month, year in _EXPLICIT_PERIOD_END.findall(line["normalized_text"]):
+            normalized_year = int(year)
+            if normalized_year < 100:
+                normalized_year += 2000
+            ranks.append((normalized_year, int(month), int(day)))
+    return max(ranks, default=None)
+
+
+def _investment_property_owner_candidates(
+    owner: Mapping[str, Any], pages: Sequence[Mapping[str, Any]]
+) -> list[dict[str, Any]]:
+    window, rotated = _candidate_window(owner, pages, _INVESTMENT_PROPERTY_SPEC)
+    section_starts = [
+        index
+        for index, line in enumerate(window)
+        if "bat dong san dau tu" in line["normalized_text"]
+        and _DATE.search(line["normalized_text"])
+    ]
+    sections: list[Sequence[Mapping[str, Any]]]
+    if section_starts:
+        sections = [
+            window[start : section_starts[index + 1]]
+            if index + 1 < len(section_starts)
+            else window[start:]
+            for index, start in enumerate(section_starts)
+        ]
+    else:
+        sections = [window]
+    result = []
+    for section in sections:
+        candidate = _region_from_window(
+            owner, section, rotated=rotated, spec=_INVESTMENT_PROPERTY_SPEC
+        )
+        rank = _period_end_rank(section)
+        candidate["period_end"] = None if rank is None else list(rank)
+        result.append(candidate)
+    return result
+
+
+def _validate_investment_property_result(value: Any) -> dict[str, Any]:
+    spec = _INVESTMENT_PROPERTY_SPEC
+    if type(value) is not dict or set(value) != _RESULT_FIELDS:
+        raise _error("investment-property graph result fields drifted")
+    if (
+        value["format_version"] != spec["format_version"]
+        or value["family_id"] != spec["family_id"]
+        or value["claim_boundary"] != spec["claim_boundary"]
+        or not same_typed_json_v1(value["safety"], spec["safety"])
+        or type(value["regions"]) is not list
+        or type(value["near_regions"]) is not list
+    ):
+        raise _error("investment-property graph identity or authority drifted")
+    complete_count = len(value["regions"])
+    comparison_count = sum(
+        len(region.get("comparison_controls", [])) for region in value["regions"]
+    )
+    expected_status = (
+        "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+        if complete_count == 1
+        else (
+            "UNRESOLVED_NO_COMPLETE_REGION"
+            if complete_count == 0
+            else "UNRESOLVED_MULTIPLE_COMPLETE_REGIONS"
+        )
+    )
+    expected_uniqueness = {
+        "complete_region_count": complete_count,
+        "status": "UNIQUE_FULL_MATCH" if complete_count == 1 else "NOT_UNIQUE_FULL_MATCH",
+    }
+    expected_metrics = {
+        "comparison_region_count": comparison_count,
+        "complete_region_count": complete_count,
+        "near_region_count": len(value["near_regions"]),
+        "owner_candidate_count": complete_count + len(value["near_regions"]),
+    }
+    if (
+        value["status"] != expected_status
+        or not same_typed_json_v1(value["uniqueness"], expected_uniqueness)
+        or not same_typed_json_v1(value["metrics"], expected_metrics)
+    ):
+        raise _error("investment-property graph metrics or uniqueness drifted")
+    material = canonical_clone_v1(value)
+    identity = material.pop("result_id")
+    if identity != spec["id_prefix"] + canonical_json_sha256_v1(material):
+        raise _error("investment-property graph identity drifted")
+    return canonical_clone_v1(value)
+
+
+def build_investment_property_variant_graph_document_v1(pages: Any) -> dict[str, Any]:
+    """Enumerate current and retained comparative investment-property regions."""
+
+    normalized_pages = _pages(pages)
+    owners = [
+        line
+        for page in normalized_pages
+        for line in page["lines"]
+        if _is_owner(line["normalized_text"], _INVESTMENT_PROPERTY_SPEC)
+        and _owner_layout_eligible(line, page, _INVESTMENT_PROPERTY_SPEC)
+    ]
+    regions: list[dict[str, Any]] = []
+    near_regions: list[dict[str, Any]] = []
+    for owner in owners:
+        candidates = _investment_property_owner_candidates(owner, normalized_pages)
+        complete = [candidate for candidate in candidates if candidate["complete"]]
+        incomplete = [candidate for candidate in candidates if not candidate["complete"]]
+        near_regions.extend(incomplete)
+        if not complete:
+            continue
+        ranked = [candidate for candidate in complete if candidate["period_end"] is not None]
+        if ranked:
+            newest = max(tuple(candidate["period_end"]) for candidate in ranked)
+            current = [
+                candidate for candidate in complete if tuple(candidate["period_end"]) == newest
+            ]
+            comparisons = [candidate for candidate in complete if candidate not in current]
+        else:
+            current = complete
+            comparisons = []
+        for candidate in current:
+            candidate["comparison_controls"] = canonical_clone_v1(comparisons)
+            candidate["period_selection_rule"] = (
+                "LATEST_EXPLICIT_PERIOD_END_WITHIN_OWNER"
+                if ranked
+                else "NO_EXPLICIT_COMPARATIVE_PERIOD_REGION"
+            )
+            regions.append(candidate)
+    material = {
+        "claim_boundary": _INVESTMENT_PROPERTY_SPEC["claim_boundary"],
+        "family_id": _INVESTMENT_PROPERTY_SPEC["family_id"],
+        "format_version": _INVESTMENT_PROPERTY_SPEC["format_version"],
+        "metrics": {
+            "comparison_region_count": sum(
+                len(region["comparison_controls"]) for region in regions
+            ),
+            "complete_region_count": len(regions),
+            "near_region_count": len(near_regions),
+            "owner_candidate_count": len(regions) + len(near_regions),
+        },
+        "near_regions": near_regions,
+        "regions": regions,
+        "safety": canonical_clone_v1(_INVESTMENT_PROPERTY_SPEC["safety"]),
+        "status": (
+            "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+            if len(regions) == 1
+            else (
+                "UNRESOLVED_NO_COMPLETE_REGION"
+                if not regions
+                else "UNRESOLVED_MULTIPLE_COMPLETE_REGIONS"
+            )
+        ),
+        "uniqueness": {
+            "complete_region_count": len(regions),
+            "status": "UNIQUE_FULL_MATCH" if len(regions) == 1 else "NOT_UNIQUE_FULL_MATCH",
+        },
+    }
+    return _validate_investment_property_result(
+        {
+            **material,
+            "result_id": _INVESTMENT_PROPERTY_SPEC["id_prefix"]
+            + canonical_json_sha256_v1(material),
+        }
+    )
+
+
 def validate_tangible_fixed_assets_variant_graph_replay_v1(
     value: Any, pages: Any
 ) -> dict[str, Any]:
@@ -642,4 +890,14 @@ def validate_intangible_fixed_assets_variant_graph_replay_v1(
     rebuilt = build_intangible_fixed_assets_variant_graph_document_v1(pages)
     if not same_typed_json_v1(supplied, rebuilt):
         raise _error("intangible-fixed-assets graph does not replay exactly")
+    return supplied
+
+
+def validate_investment_property_variant_graph_replay_v1(value: Any, pages: Any) -> dict[str, Any]:
+    """Rebuild the investment-property graph from the complete PDF."""
+
+    supplied = _validate_investment_property_result(value)
+    rebuilt = build_investment_property_variant_graph_document_v1(pages)
+    if not same_typed_json_v1(supplied, rebuilt):
+        raise _error("investment-property graph does not replay exactly")
     return supplied

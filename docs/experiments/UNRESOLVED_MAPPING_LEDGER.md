@@ -17,8 +17,8 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **52 entries**.  Current open queue: **1**.  Closed history:
-**29** row/graph resolutions and **22** confirmed bound-report family absences.
+Ledger total: **59 entries**.  Current open queue: **1**.  Closed history:
+**29** row/graph resolutions and **29** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
@@ -57,6 +57,25 @@ page or note identifier participates in this decision.
 | DFI-001 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; chủ dự án xác nhận VCB không có thuyết minh family 631 |
 | IFA-001–IFA-005 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/HDB/VCB/CTG/BID không có bảng biến động TSCĐ vô hình chi tiết trong PDF đã bind |
 | IFA-006 | `RESOLVED_VERIFIED_BY_CODEX`; schema 6069 được thêm và map cho disclosure TSCĐ vô hình đã hao mòn hết nhưng vẫn còn sử dụng tại VPB/VIB |
+| IP-001–IP-007 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/VPB/HDB/VCB/CTG/BID/VIB không có bảng biến động bất động sản đầu tư chi tiết trong đúng PDF đã bind; statement, policy, cash-flow và expense mentions giữ làm đối chứng âm |
+
+## Investment property (`INVESTMENT_PROPERTY_MOVEMENT`)
+
+Current exact-replay result:
+`docs/experiments/E-0072-investment-property-8bank-codex-verified-mapping-v1.json`
+
+- The shared fixed-asset engine scans all 453 pages, partitions same-page
+  current/comparative regions by their explicit period ends, and finds only
+  MBB p41 as one unique current detailed region. The 31/12/2025 table is retained
+  as comparison evidence rather than mixed into the 30/06/2026 values.
+- Nine source mappings and eleven visible roll-forward, asset-column and
+  carrying-value equations are `VERIFIED_BY_CODEX`. MBB's `Giá trị hao mòn`
+  wording is accepted as the accumulated-depreciation branch. The visible DASH
+  in current cost increases is pixel-bound and normalized to zero.
+- IP-001–IP-007 close the other seven outcomes only for these supplied PDFs.
+  Balance-sheet lines, accounting policies, cash-flow rows and combined
+  fixed-asset/investment-property expenses remain negative controls. No source
+  row in the verified MBB region remains open.
 
 ## Intangible fixed assets (`INTANGIBLE_FIXED_ASSETS_ROLLFORWARD`)
 

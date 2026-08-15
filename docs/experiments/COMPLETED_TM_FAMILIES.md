@@ -320,6 +320,23 @@ Q1/2026, không relabel thành Q2/2026.
 - **Còn thiếu:** Không còn khoản mục nguồn chưa map trong ba vùng có bảng.
   PDF VPB là nguồn Q1/2026 và được giữ đúng kỳ, không relabel thành Q2.
 
+## 21. Tăng, giảm bất động sản đầu tư
+
+- **Đã xác minh:** MBB p41. Vùng hiện kỳ 30/06/2026 được tách khỏi vùng so
+  sánh 31/12/2025 nằm ngay bên dưới trên cùng trang. Đã map 9 dòng tổng của
+  nguyên giá, giá trị hao mòn và giá trị còn lại; 11 phương trình
+  roll-forward, tổng cột tài sản và `nguyên giá - hao mòn = giá trị còn lại`
+  đều đóng đúng.
+- **Biến thể đã đóng:** MBB dùng nhãn `Giá trị hao mòn` thay cho `Giá trị hao
+  mòn lũy kế`; hai cột tài sản được giữ làm thành phần kiểm tra và chỉ cột
+  `Tổng cộng` được map. Ô `Tăng trong kỳ` của nguyên giá là dấu `-`, được khóa
+  trực tiếp bằng pixel và chuẩn hóa thành 0 trước khi kiểm tra phương trình.
+- **Không có bảng biến động chi tiết trong báo cáo:** ACB, VPB, HDB, VCB,
+  CTG, BID và VIB. Các dòng trên báo cáo tình hình tài chính, chính sách kế
+  toán, dòng tiền hoặc chi phí gộp `TSCĐ và bất động sản đầu tư` chỉ là đối
+  chứng âm, không được relabel thành family 942–5974.
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong vùng MBB đã xác minh.
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -348,3 +365,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Tăng, giảm TSCĐ hữu hình | — | ✓ p37 | ✓\* p49 | — | — | — | — | ✓ p37 | 0 dòng; 5 bank xác nhận không có bảng chi tiết; VPB là nguồn Q1 |
 | Tăng, giảm TSCĐ thuê tài chính | — | — | — | — | — | — | — | — | 0 dòng; cả 8 PDF xác nhận không có bảng chi tiết |
 | Tăng, giảm TSCĐ vô hình | — | ✓ p39 | ✓\* p50 | — | — | — | — | ✓ p38 | 0 dòng; 32 mapping, 12 phương trình, 5 bank không có bảng; VPB là nguồn Q1 |
+| Tăng, giảm bất động sản đầu tư | — | ✓ p41 | — | — | — | — | — | — | 0 dòng; 9 mapping, 11 phương trình, 7 bank không có bảng chi tiết |
