@@ -19,20 +19,12 @@ Quy ước:
 - **Đã xác minh:** MBB p30, VPB p38 và VIB p31. Mỗi vùng map bốn dòng
   `Tiền mặt bằng VND`, `Tiền mặt bằng ngoại tệ`, `Vàng/Vàng tiền tệ` và tổng
   family; cả ba phương trình hiện kỳ `VND + ngoại tệ + vàng = tổng` đóng đúng.
-- **Không có vùng thuyết minh chi tiết hoàn chỉnh:** ACB, HDB, VCB, CTG, BID.
-  Các PDF này vẫn có dòng tổng trên báo cáo tình hình tài chính hoặc nhắc lại
-  trong lưu chuyển tiền tệ/rủi ro/công cụ tài chính; các dòng đó không được ép
-  thành bảng phân rã VND–ngoại tệ–vàng.
-- **Còn thiếu:** năm bank trên chưa có nguồn chi tiết để map các hàng con 562,
-  563 và 565. Đây không phải tuyên bố family tiền/vàng vắng mặt khỏi báo cáo.
-
-| Bank | Trang bằng chứng gần nhất | Khoản mục nguồn | Lý do chưa map |
-| --- | ---: | --- | --- |
-| ACB | 3 | Tiền mặt, vàng bạc, đá quý | Chỉ có dòng tổng; không có bảng chi tiết VND/ngoại tệ/vàng. |
-| HDB | 3 | Tiền mặt, vàng | Chỉ có dòng tổng; các vùng p39–43 là bảng rủi ro/công cụ tài chính khác family. |
-| VCB | 7 | Tiền mặt, vàng bạc, đá quý | Chỉ có dòng tổng; các lần lặp sau thuộc lưu chuyển tiền/rủi ro. |
-| CTG | 3 | Tiền mặt, vàng bạc, đá quý | Chỉ có dòng tổng; không có cụm chi tiết đủ trục kỳ/đơn vị/tổng. |
-| BID | 4 | Tiền mặt, vàng bạc, đá quý | Chỉ có dòng tổng trên báo cáo tình hình tài chính. |
+- **Không có cụm thuyết minh trong PDF đã bind:** ACB, HDB, VCB, CTG, BID.
+  Chủ dự án xác nhận ACB bắt đầu phần thuyết minh từ cụm tiền gửi/cho vay TCTD
+  khác tại p16; HDB, VCB, CTG và BID bắt đầu lần lượt từ cụm `Chứng khoán kinh
+  doanh` tại p25, p30, p37 và p20. Dòng tổng trên báo cáo tình hình tài chính
+  không được relabel thành một cụm thuyết minh chi tiết.
+- **Còn thiếu:** Không còn khoản mục nguồn của family này chờ map trong tám PDF.
 
 Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
 Q1/2026, không relabel thành Q2/2026.
@@ -44,9 +36,10 @@ Q1/2026, không relabel thành Q2/2026.
   ngoại tệ` đến dòng tổng đầu tiên. Chỉ hai cột kỳ tiền tệ được dùng; bảng tỷ
   lệ dự trữ sau dòng tổng không thuộc cụm này. Đã map 10 dòng và kiểm tra bốn
   phương trình cộng trừ.
-- **Không có vùng thuyết minh chi tiết hoàn chỉnh:** ACB, HDB, VCB, CTG, BID.
-  Năm PDF vẫn có dòng tổng trên báo cáo tình hình tài chính hoặc các bảng
-  thanh khoản/rủi ro gần giống; không ép chúng thành bảng phân rã tiền tệ.
+- **Không có cụm thuyết minh trong PDF đã bind:** ACB, HDB, VCB, CTG, BID.
+  Các mốc bắt đầu phần thuyết minh đã được chủ dự án xác nhận như mục 1; dòng
+  tổng hoặc bảng thanh khoản/rủi ro không được relabel thành note `Tiền gửi tại
+  NHNN`.
 - **Còn thiếu:** MBB có hai dòng địa lý riêng chưa có khoản mục schema tương
   đương. Hai dòng vẫn được giữ trong graph và tham gia phương trình tổng, nhưng
   không bị ép vào `Tiền gửi khác`.
@@ -92,12 +85,8 @@ Q1/2026, không relabel thành Q2/2026.
   yết/chưa niêm yết; sáu bank còn lại dùng biến thể theo tổ chức phát hành.
 - **Không có vùng `Chứng khoán kinh doanh` hoàn chỉnh trong phạm vi PDF:**
   VIB. Đây không phải tuyên bố VIB không có family chứng khoán nói chung vì
-  VIB có `Chứng khoán đầu tư sẵn sàng để bán` tại p36.
-- **Còn thiếu:**
-
-| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
-| --- | ---: | --- | --- |
-| VIB | 36 | Chứng khoán đầu tư sẵn sàng để bán | Là subfamily AFS riêng, không được ép vào trading; sẽ xử lý ở lượt securities tiếp theo. |
+  VIB có `Chứng khoán đầu tư sẵn sàng để bán` tại p36, đã xử lý riêng ở mục 16.
+- **Còn thiếu:** Không còn khoản mục trading chờ map.
 
 Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
 Q1/2026, không relabel thành Q2/2026.
@@ -266,6 +255,23 @@ Q1/2026, không relabel thành Q2/2026.
 Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
 Q1/2026, không relabel thành Q2/2026.
 
+## 16. Chứng khoán đầu tư
+
+- **Đã xác minh:** ACB p19, MBB p35–36, VPB p47–48, HDB p29, VCB p32,
+  CTG p40 và VIB p36. Đã map 84 khoản mục nguồn/168 ô hiện tại–so sánh của
+  các nhánh sẵn sàng để bán, giữ đến ngày đáo hạn, dự phòng, chất lượng và
+  VAMC đủ chắc; 27 phương trình gross–dự phòng–net hoặc cha–con đóng đúng.
+- **Không có:** Không có bank nào được xác nhận vắng toàn bộ family này.
+- **Còn thiếu:**
+
+| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | ---: | --- | --- |
+| BID | 23 | Chứng khoán đầu tư | Có vùng AFS/HTM đầy đủ nhưng trang nguồn không có đơn vị cục bộ và cơ chế kế thừa đơn vị cấp tài liệu chưa được nhận vào lượt xác minh này. |
+| VIB | 36 | Trái phiếu và chứng chỉ tiền gửi do các TCTD khác trong nước phát hành | Hai hàng nguồn phải được cộng có kiểm soát trước khi map vào ReportNormId 808; hiện chỉ các dòng Chính phủ và tổng AFS in trực tiếp được xác minh. |
+
+Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
+Q1/2026, không relabel thành Q2/2026.
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -274,10 +280,10 @@ hoặc group parent chỉ giữ để kiểm tra.
 
 | Cụm | ACB | MBB | VPB | HDB | VCB | CTG | BID | VIB | Còn chưa map |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Tiền, kim loại quý, đá quý | — tổng p3 | ✓ p30 | ✓\* p38 | — tổng p3 | — tổng p7 | — tổng p3 | — tổng p4 | ✓ p31 | 5 bank không có bảng chi tiết; VPB là nguồn Q1 |
-| Tiền gửi tại NHNN | — tổng p3 | ✓\* p30 | ✓\* p38 | — tổng p3 | — tổng p7 | — tổng p3 | — tổng p4 | ✓ p31 | 2 dòng địa lý MBB; 5 bank không có bảng chi tiết; VPB là nguồn Q1 |
+| Tiền, kim loại quý, đá quý | — | ✓ p30 | ✓\* p38 | — | — | — | — | ✓ p31 | 0 dòng; 5 bank xác nhận không có cụm; VPB là nguồn Q1 |
+| Tiền gửi tại NHNN | — | ✓\* p30 | ✓\* p38 | — | — | — | — | ✓ p31 | 2 dòng địa lý MBB; 5 bank xác nhận không có cụm; VPB là nguồn Q1 |
 | Tiền gửi/vay TCTD khác | ✓ p16 | ✓ p30 | ✓\* p39 | — tổng p3 | — tổng p7 | ✓ p41 | ✓ p25 | ✓ p32 | 2 bank không có bảng chi tiết; VPB là nguồn Q1 |
-| Chứng khoán kinh doanh | ✓ p16 | ✓ p31 | ✓\* p40 | ✓ p24 | ✓ p30 | ✓ p37 | ✓ p20 | △ AFS p36 | 1 subfamily AFS; VPB là nguồn Q1 |
+| Chứng khoán kinh doanh | ✓ p16 | ✓ p31 | ✓\* p40 | ✓ p24 | ✓ p30 | ✓ p37 | ✓ p20 | — | 0 dòng trading; AFS VIB ở cụm Chứng khoán đầu tư; VPB là nguồn Q1 |
 | Công cụ tài chính phái sinh | ✓ p17 | ✓ p43 | ✓\* p41 | ✓ p25 | △ tổng/chính sách | ✓ p38 | ✓ p21 | ✓ p32 | VCB thiếu bảng giao dịch chi tiết; VPB là nguồn Q1 |
 | Loại hình cho vay | ✓ p17 | ✓ p31 | ✓ p42 | ✓ p26 | ✓ p30 | ✓ p38 | ✓ p22 | ✓ p33 | 0 |
 | Ngành nghề kinh doanh | — | ✓ p33 | ✓ p44 | ✓ p27 | — | — | ✓ p22 | ✓ p33 | 0 trong 5 vùng; 3 bank không có |
@@ -289,3 +295,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Dự phòng cho vay | ✓ p18 | ✓ p34 | ✓\* p45 | ✓ p28 | ✓ p31 | ✓ p39 | ✓ p23 | ✓ p34 | 0 dòng; VPB còn thiếu nguồn Q2 |
 | Hoạt động mua nợ | — | ✓ p35 | ✓\* p46 | ✓ p29 | — | — | — | ✓\* p35 | 0 dòng; 4 bank không có; VPB là nguồn Q1 |
 | Tiền gửi khách hàng | ✓ p21 | ✓ p43 | ✓\* p55 | ✓ p31 | ✓ p35 | ✓ p42 | ✓ p25 | ✓\* p41–42 | 2 dòng TNHH cùng một khoảng trống schema; VPB là nguồn Q1 |
+| Chứng khoán đầu tư | ✓ p19 | ✓ p35–36 | ✓\* p47–48 | ✓ p29 | ✓ p32 | ✓ p40 | △ p23 | ✓\* p36 | BID thiếu authority đơn vị; VIB còn phép gộp TCTD; VPB là nguồn Q1 |

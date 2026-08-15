@@ -17,8 +17,8 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **44 entries**.  Current open queue: **20**.  Closed history:
-**21** row/graph resolutions and **3** confirmed bound-report family absences.
+Ledger total: **46 entries**.  Current open queue: **16**.  Closed history:
+**22** row/graph resolutions and **8** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
@@ -40,12 +40,8 @@ Bank/report/page fields below are evidence locators only, never matching rules.
 | CD-001 | Tiền gửi của khách hàng / loại hình doanh nghiệp | VPB | 55 | Công ty TNHH 2 thành viên trở lên có phần vốn góp của Nhà nước trên 50% | Giá trị hiện tại `64.165`; schema 1079 chỉ mô tả Công ty TNHH **một** thành viên có vốn Nhà nước trên 50%, nên chưa thể dùng thay thế. |
 | CD-002 | Tiền gửi của khách hàng / loại hình doanh nghiệp | VIB | 42 | Công ty TNHH 2 thành viên trở lên có phần vốn góp của Nhà nước trên 50% | Giá trị hiện tại `174`; cùng khoảng trống schema với CD-001. |
 | PM-001 | Dự phòng rủi ro cho vay khách hàng | VPB | 45 | Dự phòng chung, dự phòng cụ thể, dự phòng cho vay giao dịch ký quỹ và ứng trước | Đã map và kiểm tra đủ kỳ 01/01–31/03/2026 của PDF được cung cấp; chưa có PDF VPB Q2/2026 nên không được relabel kết quả Q1 thành Q2. |
-| SEC-001 | Chứng khoán / đầu tư sẵn sàng để bán | VIB | 36 | Chứng khoán đầu tư sẵn sàng để bán | Không có vùng trading hoàn chỉnh; vùng AFS là subfamily khác và chưa chạy lượt map AFS. Không tuyên bố family chứng khoán vắng mặt. |
-| CPM-001 | Tiền, kim loại quý và đá quý | ACB | 3 | Tiền mặt, vàng bạc, đá quý | Whole-PDF scan chỉ thấy dòng tổng và một dòng cash-flow; không có bảng chi tiết `VND / ngoại tệ / vàng / tổng` để map các hàng con. Không tuyên bố family vắng mặt. |
-| CPM-002 | Tiền, kim loại quý và đá quý | HDB | 3 | Tiền mặt, vàng | Whole-PDF scan chỉ thấy dòng tổng; các lần lặp tại p39–43 thuộc bảng ngoại tệ/rủi ro/công cụ tài chính, không phải note chi tiết. |
-| CPM-003 | Tiền, kim loại quý và đá quý | VCB | 7 | Tiền mặt, vàng bạc, đá quý | Không có vùng chi tiết đủ owner + hai child tiền tệ + kỳ + đơn vị + trailing total; các lần lặp sau là cash-flow/risk controls. |
-| CPM-004 | Tiền, kim loại quý và đá quý | CTG | 3 | Tiền mặt, vàng bạc, đá quý | Chỉ có dòng tổng và các bảng phân loại/rủi ro gần giống; không có bảng chi tiết VND/ngoại tệ/vàng. |
-| CPM-005 | Tiền, kim loại quý và đá quý | BID | 4 | Tiền mặt, vàng bạc, đá quý | Chỉ có dòng tổng trên báo cáo tình hình tài chính; không có note chi tiết trong 37 trang đã quét. |
+| IS-001 | Chứng khoán đầu tư | BID | 23 | Chứng khoán đầu tư | Vùng AFS/HTM và số liệu nhìn thấy đầy đủ, nhưng trang nguồn không có đơn vị cục bộ và cơ chế kế thừa đơn vị cấp tài liệu chưa được nhận vào lượt xác minh E-0067. |
+| IS-002 | Chứng khoán đầu tư | VIB | 36 | Trái phiếu và chứng chỉ tiền gửi do các TCTD khác trong nước phát hành | Hai hàng nguồn riêng phải được cộng có kiểm soát trước khi map vào ReportNormId 808; E-0067 chỉ xác minh các dòng Chính phủ và tổng AFS in trực tiếp. |
 
 The shared family locator follows a strict minimal-anchor search.  It enumerates
 every parent+child pair first, then every child+child pair, over both complete and
@@ -70,8 +66,10 @@ page or note identifier participates in this decision.
 | LE-001–LE-011 | `RESOLVED` by exact family replay, non-additive graph equivalence, or pixel replay |
 | CD-001–CD-002 | `OPEN_SCHEMA_GAP`; không ép Công ty TNHH 2+ thành viên vào schema chỉ dành cho một thành viên |
 | PM-001 | `OPEN_SOURCE_PERIOD_GAP`; không còn dòng nguồn chưa map trong PDF Q1 đã bind |
-| SEC-001 | `OPEN_DISTINCT_SECURITIES_SUBFAMILY`; trading đã hoàn tất 7 bank, AFS VIB giữ riêng cho lượt kế tiếp |
-| CPM-001–CPM-005 | `OPEN_NO_COMPLETE_DETAILED_NOTE_REGION`; chỉ có dòng tổng hoặc negative-control family, không ép thành bảng chi tiết và không tự tuyên bố absence |
+| SEC-001 | `RESOLVED_VERIFIED_BY_CODEX`; E-0067 đã xử lý AFS VIB, map trực tiếp 807/824 và chuyển riêng phép gộp TCTD sang IS-002 |
+| CPM-001–CPM-005 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; chủ dự án xác nhận các mốc bắt đầu thuyết minh loại trừ family 561 trong năm PDF |
+| IS-001 | `OPEN_UNIT_SCOPE_AUTHORITY`; không map số liệu BID cho đến khi kế thừa đơn vị cấp tài liệu được replay-bound |
+| IS-002 | `OPEN_EXPLICIT_AGGREGATION`; không tự gộp hai dòng TCTD VIB vào ReportNormId 808 |
 
 ## Customer-loan geography (`LOAN_GEOGRAPHIC_CLASSIFICATION`)
 
@@ -123,9 +121,10 @@ Current exact-replay result:
   Ten source rows are `VERIFIED_BY_CODEX`, and four current-period equations
   close exactly. VPB retains its Q1/2026 source-period caveat.
 - MBB's Laos and Cambodia rows remain CBD-001/CBD-002. They stay in the graph
-  and total equation but have no exact live TM schema item. ACB/HDB/VCB/CTG/BID
-  have no complete detailed region under this contract; no broad family-absence
-  claim is made.
+  and total equation but have no exact live TM schema item. The project owner
+  confirmed that ACB/HDB/VCB/CTG/BID do not contain this TM family in the bound
+  PDFs, based on each report's first TM family boundary; balance-sheet totals
+  do not contradict that bounded note-level absence.
 
 ## Cash and precious metals (`CASH_PRECIOUS_METALS`)
 
@@ -138,9 +137,10 @@ Current exact-replay result:
 - 12 source rows are `VERIFIED_BY_CODEX`: ReportNormId 562, 563, 565 and the
   exact family total 561 for each complete region. Three current-period
   `VND + foreign + monetary gold = total` equations close exactly.
-- ACB/HDB/VCB/CTG/BID retain CPM-001–CPM-005. Balance-sheet totals, cash-flow
-  disclosures, financial-instrument classifications and risk tables are
-  explicit negative controls, not manufactured detailed-note mappings.
+- The project owner confirmed ACB/HDB/VCB/CTG/BID do not contain this TM family
+  in the bound PDFs: ACB's notes start at the interbank family, while the other
+  four start at trading securities. Balance-sheet totals and cash-flow/risk
+  disclosures remain negative controls rather than manufactured note mappings.
 - VPB retains its Q1/2026 source-period caveat.
 
 ## Trading securities (`TRADING_SECURITIES`)
@@ -157,7 +157,24 @@ Current exact-replay result:
 - MBB uses the listed/unlisted branch. The other six mapped banks use the issuer
   branch. Unlabeled gross rows are admitted only when topology and the full
   accounting equation both agree.
-- VIB p36 AFS remains SEC-001. VPB retains its Q1/2026 source-period caveat.
+- VIB p36 AFS was deliberately excluded here and is now resolved by E-0067 as
+  the investment-securities family. VPB retains its Q1/2026 source-period caveat.
+
+## Investment securities (`INVESTMENT_SECURITIES`)
+
+Current exact-replay result:
+`docs/experiments/E-0067-investment-securities-8bank-codex-verified-mapping-v1.json`
+
+- One bank-blind graph scans all 453 pages and finds exactly one complete
+  investment region per PDF. It supports explicit or implicit family owners,
+  AFS/HTM branches, provision and quality alternate views, VAMC, two-page
+  continuation and first/last/next-family boundaries.
+- ACB p19, MBB p35–36, VPB p47–48, HDB p29, VCB p32, CTG p40 and VIB p36
+  provide 84 `VERIFIED_BY_CODEX` source mappings/168 period cells; 27 visible
+  parent-child or gross-provision-net equations close exactly.
+- IS-001 retains BID p23 until document-unit inheritance is replay-bound.
+  IS-002 retains VIB's two-row TCTD aggregation; direct VIB rows 807 and 824
+  are verified without silently manufacturing ReportNormId 808.
 
 ## Customer deposit (`CUSTOMER_DEPOSIT_CLASSIFICATION`)
 
