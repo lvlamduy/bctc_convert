@@ -48,8 +48,8 @@ _INPUTS = {
     ),
     "investment_securities": (
         Path("docs/experiments/E-0067-investment-securities-8bank-codex-verified-mapping-v1.json"),
-        "4ee4d7df67320537eeb6be72be7f1f365a5b7086d1be2fd72fc11e07f29760d2",
-        "e0067:result:ba8a22afd96879f4cf44c5430cb880ce7f267ad83dc2a23f55c7b5c905ef1176",
+        "dce930ee0d155cf58839610c73ce5948197247f391ca67effd71b02602d5def8",
+        "e0067:result:476f19c899678494ffc4b0107df973c16ee0d48a493bd6ce504e380cd3c7e242",
     ),
 }
 

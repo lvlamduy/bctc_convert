@@ -266,7 +266,7 @@ def test_real_vpb_rows_have_exhaustive_source_driven_dispositions(real_resolutio
         "CDKT": 99,
         "KQKD": 25,
         "LCTT": 110,
-        "TM": 1713,
+        "TM": 1714,
     }
 
     dispositions = {
@@ -532,7 +532,7 @@ def test_real_vpb_role_b_schema_coverage_is_universal_and_scope_honest(
     real_resolution: dict,
 ):
     result = real_resolution
-    assert len(result["schema_dispositions"]) == 1947
+    assert len(result["schema_dispositions"]) == 1948
     assert result["mandatory_search"]["status"] == "PASS"
     assert result["mandatory_search"]["evaluation_scope"] == ("ROLE_B_ONLY_NO_ROLE_A_OUTPUT_LOADED")
     by_id = {item["report_norm_id"]: item for item in result["schema_dispositions"]}
@@ -1061,10 +1061,10 @@ def test_producer_snapshots_survive_future_current_schema_change(
         loaded_formulas,
         loaded_coverage,
     )
-    assert len(loaded_items) == 1947
+    assert len(loaded_items) == 1948
     assert len(loaded_aliases) == 197
     assert len(loaded_formulas) == 70
-    assert len(loaded_coverage.targets) == 1947
+    assert len(loaded_coverage.targets) == 1948
 
 
 def test_producer_formula_snapshot_is_commit_bound_and_approved(

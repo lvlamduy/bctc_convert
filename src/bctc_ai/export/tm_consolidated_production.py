@@ -44,7 +44,7 @@ TM_PRODUCTION_SCHEMA_WORKBOOK_RELATIVE_PATH = Path("template/Bank_TM_ReportNormI
 TM_PRODUCTION_HIERARCHY_RELATIVE_PATH = Path("config/schemas/hierarchy_reference.yaml")
 TM_PRODUCTION_SCHEMA_GRAPH_RELATIVE_PATH = Path("reference/schemas/schema_graph.jsonl")
 TM_PRODUCTION_SCHEMA_GRAPH_SHA256 = (
-    "c36e79dc2d802f4ab598a0d151277facbb36d04785c31c37bb44c8345075c00d"
+    "78d17436d1157b2fab112fe9ae9e5aa0d0e81e86c7a5567b5dc3292db46b92ae"
 )
 TM_PRODUCTION_SCHEMA_REGISTRY_RELATIVE_PATH = Path("data/registered/schema_registry.json")
 TM_PRODUCTION_RENDER_DPI = 300
@@ -575,8 +575,8 @@ def _load_frozen_schema(
     universal_identity = (policy.schema_identity or {}).get("universal_schema", {})
     if (
         len(schema) != TM_UNIVERSAL_SCHEMA_COUNT
-        or statement_counts != {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1_713}
-        or max(item.schema_id for item in schema) != 6_068
+        or statement_counts != {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1_714}
+        or max(item.schema_id for item in schema) != 6_069
         or not set(TM_DOCUMENT_NEW_REPORT_NORM_IDS) <= {item.schema_id for item in schema}
         or universal_ids_hash != universal_identity.get("ordered_report_norm_ids_sha256")
         or universal_projection_hash

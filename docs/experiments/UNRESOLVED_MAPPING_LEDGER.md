@@ -17,8 +17,8 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **46 entries**.  Current open queue: **1**.  Closed history:
-**28** row/graph resolutions and **17** confirmed bound-report family absences.
+Ledger total: **52 entries**.  Current open queue: **1**.  Closed history:
+**29** row/graph resolutions and **22** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
@@ -55,6 +55,23 @@ page or note identifier participates in this decision.
 | IS-001 | `RESOLVED_VERIFIED_BY_PROJECT_OWNER_AND_CODEX`; BID p23 kế thừa tuyên bố `Triệu VND` nhìn thấy tại p13 của cùng PDF và toàn vùng AFS/HTM được replay-bound |
 | IS-002 | `RESOLVED_VERIFIED_BY_PROJECT_OWNER_AND_CODEX`; VIB gộp đúng hai dòng TCTD theo từng kỳ vào ReportNormId 808, giữ nguyên hai thành phần và hai phương trình |
 | DFI-001 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; chủ dự án xác nhận VCB không có thuyết minh family 631 |
+| IFA-001–IFA-005 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/HDB/VCB/CTG/BID không có bảng biến động TSCĐ vô hình chi tiết trong PDF đã bind |
+| IFA-006 | `RESOLVED_VERIFIED_BY_CODEX`; schema 6069 được thêm và map cho disclosure TSCĐ vô hình đã hao mòn hết nhưng vẫn còn sử dụng tại VPB/VIB |
+
+## Intangible fixed assets (`INTANGIBLE_FIXED_ASSETS_ROLLFORWARD`)
+
+Current exact-replay result:
+`docs/experiments/E-0071-intangible-fixed-assets-8bank-codex-verified-mapping-v1.json`
+
+- One shared fixed-asset graph scans all 453 pages and finds unique current-period
+  regions at MBB p39, VPB p50 and VIB p38; MBB p40 remains comparison-only.
+- 32 source mappings and 12 visible roll-forward/carrying-value equations are
+  `VERIFIED_BY_CODEX`. ReportNormId 6068 groups gross-cost decreases 921–927;
+  new ReportNormId 6069 preserves the distinct fully-amortized-but-still-in-use
+  disclosure at VPB/VIB rather than forcing it into another movement row.
+- IFA-001–IFA-005 close the five no-region outcomes only for the supplied PDFs.
+  IFA-006 closes the schema gap. No intangible-fixed-asset row remains open;
+  VPB keeps its Q1/2026 source-period caveat.
 
 ## Customer-loan geography (`LOAN_GEOGRAPHIC_CLASSIFICATION`)
 

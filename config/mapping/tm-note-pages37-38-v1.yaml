@@ -11,7 +11,7 @@ source_panels:
   - {panel_key: Q1_2026, page_number: 37, page_tag: page-0037, source_render_sha256: fbf3839424685b9045b9b03862deddfd91bddb2b75c3f3c245e64984f1f7f530, source_ocr_sha256: 7f4102e6615284d5f7928a0cd4cde660781de9cdeb7e7830fd31b16c6ed33dd4}
   - {panel_key: FY_2025, page_number: 38, page_tag: page-0038, source_render_sha256: 5dce9305b1ddb5b5bf146bc69dd117c17ee6cc4dd1310766ca32f19f7bc6e198, source_ocr_sha256: b89286ba9a58056adf8703cb4feda569e0d064c0ef6b7970d82301a81d673c30}
 
-schema_total: 1713
+schema_total: 1714
 scoped_schema_ids: [868, 869, 870, 871, 872, 873, 874, 875, 876, 877, 878, 879, 880, 881, 882, 883, 884, 885, 886, 887, 888, 889, 890, 891, 892, 893, 894, 895, 896, 897, 898, 899, 900, 901, 902, 903, 904, 905, 906, 907, 908, 909, 910, 911, 912, 5962, 5963, 5964, 5965, 5966, 5991, 5992, 5993, 5994, 5995, 5996]
 title_mapping: {panel_key: Q1_2026, report_norm_id: 868, visible_title_anchor: tai san co dinh huu hinh}
 minimum_visible_label_similarity: 0.75

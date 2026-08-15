@@ -112,13 +112,13 @@ def test_exact_48_item_schema_reconciliation(project_root: Path, tmp_path: Path)
     result = _mapped(project_root, tmp_path)
 
     assert validate_tm_note_pages32_33_mapping_result(result) is result
-    assert result.schema_item_count == 1_713
+    assert result.schema_item_count == 1_714
     assert result.status_reconciled_schema_count == 48
     assert result.mapped_schema_count == 36
     assert result.ambiguous_schema_count == 0
     assert result.not_observed_schema_count == 12
     assert result.not_applicable_schema_count == 0
-    assert result.unassessed_schema_count == 1_665
+    assert result.unassessed_schema_count == 1_666
     assert result.fully_verified_schema_count == 0
     by_status = {
         status: {

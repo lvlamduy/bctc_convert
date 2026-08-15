@@ -10,7 +10,7 @@ mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_PDF_PAGE_49_FIXED_ROWS_ONLY
 source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
 source_render_sha256: e806551562241d3abf6940e8734a1292faee25a6aea7db08122ee160b05ad281
 source_ocr_sha256: 629d0fc832c0aa6378b78d9b97dbe95ba487b38fa511ffa1f7412eceea6704bb
-schema_total: 1713
+schema_total: 1714
 scoped_schema_ids: [1221, 1222, 1223, 1224, 1225, 1226, 1227, 1228, 1269, 1270, 1271, 1272, 1273, 1274, 1275, 1276, 1277, 1278, 1279, 6031, 6032, 6033]
 minimum_visible_label_similarity: 0.72
 

@@ -21,7 +21,7 @@ def test_current_owner_closure_exact_replays_all_live_inputs() -> None:
     replayed = closure.validate_customer_deposit_investment_owner_closure_replay_v1(persisted)
 
     assert replayed["result_id"] == (
-        "e0067c:result:6a483d65b962f0127fad49c64174765e2774fcbe967ef564ea2ebd72504b3ccd"
+        "e0067c:result:8d88f8beb2cdb50c4d460d59386da576fa7a2ab0995b218103e1bc82751c2796"
     )
     assert replayed["customer_deposit"]["closed_ledger_ids"] == ["CD-001", "CD-002"]
     assert replayed["investment_securities"]["closed_ledger_ids"] == [

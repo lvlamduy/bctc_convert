@@ -21,7 +21,7 @@ def test_current_project_owner_adjudication_exact_replays() -> None:
     replayed = adjudication.validate_project_owner_tm_adjudications_replay_v1(persisted)
 
     assert replayed["adjudication_id"] == (
-        "e0067a:adjudication:af5119127f9e699aa901c064322d416c43215b1f0dd943433f4547f6fa4fbccd"
+        "e0067a:adjudication:0ebc6ffcad1d5d89fe049c56e2daf01cb8db65e1cc5715b6a74ff4783e706725"
     )
     assert replayed["metrics"] == {
         "confirmed_absence_count": 3,

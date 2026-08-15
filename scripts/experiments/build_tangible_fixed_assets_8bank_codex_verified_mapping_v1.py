@@ -1450,9 +1450,9 @@ def validate_live_tangible_fixed_assets_8bank_codex_verified_mapping_v1(
     )
 
 
-def _write(path: Path, value: Any) -> None:
+def _write(path: Path, value: Any, *, replace: bool = False) -> None:
     payload = canonical_json_bytes_v1(value)
-    if path.exists() and path.read_bytes() != payload:
+    if path.exists() and path.read_bytes() != payload and not replace:
         raise _error(f"refusing to replace a different artifact: {path}")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(payload)
@@ -1462,13 +1462,14 @@ def _main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--write-review", action="store_true")
     parser.add_argument("--write-result", action="store_true")
+    parser.add_argument("--replace", action="store_true")
     args = parser.parse_args()
     review = _review_blueprint()
     if args.write_review:
-        _write(REVIEW_PATH, review)
+        _write(REVIEW_PATH, review, replace=args.replace)
     result = build_live_tangible_fixed_assets_8bank_codex_verified_mapping_v1()
     if args.write_result:
-        _write(RESULT_PATH, result)
+        _write(RESULT_PATH, result, replace=args.replace)
     else:
         sys.stdout.buffer.write(canonical_json_bytes_v1(result))
 

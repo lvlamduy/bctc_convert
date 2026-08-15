@@ -20,7 +20,7 @@ accepted_input:
   strict_observations_producer_commit_replay_required: true
 
 denominators:
-  tm_schema_dispositions: 1713
+  tm_schema_dispositions: 1714
   source_object_dispositions: EXACT_POSITIVE_MAPPING_DECLARED_DENOMINATOR
   exactly_one_schema_disposition_per_report_norm_id: true
   exactly_one_mapping_disposition_per_source_object: true

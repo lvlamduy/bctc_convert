@@ -43,7 +43,7 @@ _BASE_WORKBOOKS = {
         "fa284e3af1f90c8a206308f63e6d35e77a9fbf1abcaf60abcb59877c47275140",
     ),
 }
-_UNIVERSAL_COUNTS = {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1713}
+_UNIVERSAL_COUNTS = {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1714}
 
 
 def _base_ids(project_root: Path) -> set[int]:
@@ -81,10 +81,10 @@ def _validate_schema_contract(payload: dict[str, Any], project_root: Path) -> di
         "workbooks": expected_base_workbooks,
     }
     expected_universal = {
-        "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6068",
-        "item_count": 1947,
+        "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6069",
+        "item_count": 1948,
         "counts": _UNIVERSAL_COUNTS,
-        "high_watermark": 6068,
+        "high_watermark": 6069,
     }
     if (
         payload.get("schema_name") != _SCHEMA_NAME

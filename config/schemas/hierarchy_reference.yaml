@@ -389,6 +389,7 @@ sources:
       - 6066
       - 6067
       - 6068
+      - 6069
     columns:
       label: ReportName
       schema_id: ReportNormID

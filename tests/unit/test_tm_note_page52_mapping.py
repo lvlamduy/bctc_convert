@@ -63,12 +63,12 @@ def test_page52_reconciles_promoted_schema_source_and_assignment_denominators(
 ) -> None:
     result = _mapped(project_root, tmp_path)
 
-    assert result.schema_item_count == 1_713
+    assert result.schema_item_count == 1_714
     assert result.status_reconciled_schema_count == 19
     assert result.mapped_schema_count == 14
     assert result.value_bearing_mapped_schema_count == 10
     assert result.not_observed_schema_count == 5
-    assert result.unassessed_schema_count == 1_694
+    assert result.unassessed_schema_count == 1_695
     assert result.source_row_count == 6
     assert result.mapped_source_row_count == 5
     assert result.source_only_row_count == 1

@@ -106,14 +106,14 @@ def test_real_page30_reconciles_1713_schema_and_all_22_source_rows(
     assert result.minimum_independent_semantic_streams == 2
     assert result.independent_reader_status == "COMPLETE"
     assert result.independent_reader_blocker is None
-    assert result.schema_item_count == 1_713
+    assert result.schema_item_count == 1_714
     assert result.assessed_schema_count == 23
     assert result.mapped_schema_count == 21
     assert result.candidate_linked_schema_count == 0
     assert TM_PAGE30_AMBIGUOUS_IDS == ()
     assert result.not_observed_schema_count == 2
     assert result.ambiguous_schema_count == 0
-    assert result.unassessed_schema_count == 1_690
+    assert result.unassessed_schema_count == 1_691
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == result.mapped_source_row_count == 22
     assert result.candidate_linked_source_row_count == 0
@@ -123,7 +123,7 @@ def test_real_page30_reconciles_1713_schema_and_all_22_source_rows(
     assert result.mapped_value_count == 38
     assert result.accounting_check_count == result.accounting_pass_count == 14
     assert result.schema_projection_sha256 == (
-        "878673f604d3f4ab2e7d37c9eb688a67e128db59248fd5398603f44374cc7e15"
+        "5a67120a0db94621079c58511dbee75a8debe8005a2f6c1af10c367e157efbb3"
     )
     assert result.independent_evidence_sha256 == (
         "6182e4634a80371ba560019b85ae67d706608ff48872f689e2645a5b03487c06"
@@ -182,7 +182,7 @@ def test_schema_dispositions_are_21_mapped_2_not_observed_1682_unassessed(
         TM_PAGE30_NOT_OBSERVED_IDS
     )
     assert by_status[TMSchemaMappingStatus.AMBIGUOUS_MAPPING.value] == set()
-    assert len(by_status[TMSchemaMappingStatus.UNASSESSED.value]) == 1_690
+    assert len(by_status[TMSchemaMappingStatus.UNASSESSED.value]) == 1_691
     schema_by_id = {item.report_norm_id: item for item in result.schema_dispositions}
     assert schema_by_id[574].source_row_ids == (
         "page-0030:note-2:row-0004",

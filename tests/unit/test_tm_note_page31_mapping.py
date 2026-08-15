@@ -82,12 +82,12 @@ def test_page31_reconciles_65_schema_statuses_and_maps_30_distinct_items(
     assert result.status == "SCOPED_PAGE31_MAPPING_WITH_COMPLETE_ACCOUNTING_VALIDATION"
     assert result.mapping_authority_scope.endswith("PDF_PAGE_31_FIXED_ROWS_ONLY")
     assert result.mapping_authority_granted
-    assert result.schema_item_count == 1_713
+    assert result.schema_item_count == 1_714
     assert result.status_reconciled_schema_count == 65
     assert result.mapped_schema_count == 30
     assert result.not_observed_schema_count == 12
     assert result.not_applicable_schema_count == 23
-    assert result.unassessed_schema_count == 1_648
+    assert result.unassessed_schema_count == 1_649
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == 33
     assert result.mapped_source_row_count == 29
@@ -113,7 +113,7 @@ def test_exact_mapped_not_observed_not_applicable_and_unassessed_sets(
     assert by_status[TMPage31SchemaStatus.MAPPED_AUTOMATIC_SCOPED.value] == _MAPPED_IDS
     assert by_status[TMPage31SchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value] == (_NOT_OBSERVED_IDS)
     assert by_status[TMPage31SchemaStatus.SCHEMA_ITEM_NOT_APPLICABLE.value] == (_NOT_APPLICABLE_IDS)
-    assert len(by_status[TMPage31SchemaStatus.UNASSESSED.value]) == 1_648
+    assert len(by_status[TMPage31SchemaStatus.UNASSESSED.value]) == 1_649
 
 
 def test_margin_rows_have_explicit_context_assignments_and_legacy_dual_provenance(

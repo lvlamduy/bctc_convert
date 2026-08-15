@@ -25,7 +25,7 @@ from bctc_ai.core.text import retrieval_key
 from bctc_ai.schema.registry import SchemaItem
 
 TM_PAGE30_POLICY_RELATIVE_PATH = Path("config/mapping/tm-note-page30-v1.yaml")
-TM_SCHEMA_ITEM_COUNT = 1713
+TM_SCHEMA_ITEM_COUNT = 1714
 TM_PAGE30_SOURCE_ROW_COUNT = 22
 TM_PAGE30_FIXED_MAPPING_COUNT = 21
 TM_PAGE30_SOURCE_MAPPED_COUNT = 22

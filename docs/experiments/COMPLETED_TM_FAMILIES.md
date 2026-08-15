@@ -305,6 +305,21 @@ Q1/2026, không relabel thành Q2/2026.
   chính; các đối chứng gần này không được nâng thành family 896–912.
 - **Còn thiếu:** Không có khoản mục nguồn chờ map trong tám PDF đã bind.
 
+## 20. Tăng, giảm tài sản cố định vô hình
+
+- **Đã xác minh:** MBB p39, VPB p50 và VIB p38. Đã map 32 dòng nguyên giá,
+  hao mòn lũy kế, giá trị còn lại và 12 phương trình tăng–giảm–cuối kỳ hoặc
+  nguyên giá trừ hao mòn; MBB p40 chỉ là vùng so sánh và không được trộn vào
+  kỳ hiện tại.
+- **Bổ sung schema:** ReportNormId 6068 là `Tổng giảm nguyên giá TSCĐ vô hình
+  trong kỳ`, đối xứng với tổng tăng 5997. ReportNormId 6069 được thêm cho
+  `Nguyên giá TSCĐ vô hình đã hao mòn hết nhưng vẫn còn sử dụng`, nhìn thấy và
+  map tại VPB/VIB.
+- **Không có trong báo cáo:** ACB, HDB, VCB, CTG và BID không trình bày bảng
+  biến động TSCĐ vô hình chi tiết trong các PDF đã cung cấp.
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong ba vùng có bảng.
+  PDF VPB là nguồn Q1/2026 và được giữ đúng kỳ, không relabel thành Q2.
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -332,3 +347,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Đầu tư dài hạn khác | ✓ p19 | ✓ p36 | ✓\* p48 | ✓ p30 | ✓ p33 | ✓ p40 | ✓ p24 | ✓ p36 | 0 dòng; VPB là nguồn Q1 |
 | Tăng, giảm TSCĐ hữu hình | — | ✓ p37 | ✓\* p49 | — | — | — | — | ✓ p37 | 0 dòng; 5 bank xác nhận không có bảng chi tiết; VPB là nguồn Q1 |
 | Tăng, giảm TSCĐ thuê tài chính | — | — | — | — | — | — | — | — | 0 dòng; cả 8 PDF xác nhận không có bảng chi tiết |
+| Tăng, giảm TSCĐ vô hình | — | ✓ p39 | ✓\* p50 | — | — | — | — | ✓ p38 | 0 dòng; 32 mapping, 12 phương trình, 5 bank không có bảng; VPB là nguồn Q1 |

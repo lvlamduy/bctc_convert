@@ -64,12 +64,12 @@ def test_page48_reconciles_disjoint_22_item_scope_and_maps_nine_items(
     result = _mapped(project_root, tmp_path)
 
     assert validate_tm_page48_mapping_result(result) is result
-    assert result.schema_item_count == 1_713
+    assert result.schema_item_count == 1_714
     assert result.status_reconciled_schema_count == 22
     assert result.mapped_schema_count == 9
     assert result.not_observed_schema_count == 13
     assert result.ambiguous_schema_count == 0
-    assert result.unassessed_schema_count == 1_691
+    assert result.unassessed_schema_count == 1_692
     assert result.externally_owned_schema_ids == (1218,)
     assert result.source_row_count == 13
     assert result.mapped_source_row_count == 9
@@ -96,7 +96,7 @@ def test_exact_schema_partition_excludes_1218_for_page47_owner(
 
     assert by_status[TMPage48SchemaStatus.MAPPED_AUTOMATIC_SCOPED.value] == _MAPPED_IDS
     assert by_status[TMPage48SchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value] == _NOT_OBSERVED_IDS
-    assert len(by_status[TMPage48SchemaStatus.UNASSESSED.value]) == 1_691
+    assert len(by_status[TMPage48SchemaStatus.UNASSESSED.value]) == 1_692
     external = next(item for item in result.schema_dispositions if item.report_norm_id == 1218)
     assert external.status == TMPage48SchemaStatus.UNASSESSED.value
     assert "PAGE47_AMBIGUOUS_LONG_TERM_INVESTMENT_PROVISION" in external.reason
