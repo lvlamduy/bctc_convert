@@ -370,6 +370,24 @@ Q1/2026, không relabel thành Q2/2026.
 Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
 Q1/2026, không relabel thành Q2/2026.
 
+## 23. Các khoản nợ Chính phủ và Ngân hàng Nhà nước
+
+- **Đã xác minh:** ACB p20, MBB p42, VPB p53, HDB p30, VCB p34, CTG p41,
+  BID p24 và VIB p40. Toàn bộ tám PDF chỉ có một vùng thỏa cấu trúc đầy đủ.
+  Đã map 28 khoản mục/58 thành phần giá trị và kiểm tra 28 phương trình tổng,
+  subtotal, tiền gửi Kho bạc, khoản vay NHNN và repo. Hai dấu `-` tại HDB/VIB
+  được đọc lại trực tiếp từ pixel và chuẩn hóa thành 0.
+- **Không có cụm này trong báo cáo:** Không có; cả 8 bank đều có đúng một vùng.
+- **Còn thiếu:** Bốn dòng dưới đây giữ `UNRESOLVED`; các phần còn lại của cụm
+  đã được xác minh. PDF VPB là nguồn Q1/2026.
+
+| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | ---: | --- | --- |
+| ACB | 20 | Vay Ngân hàng Nhà nước | Không xác định được nhánh nghiệp vụ cụ thể 1025–1033. |
+| CTG | 41 | Vay NHNN | Không xác định được nhánh nghiệp vụ cụ thể 1025–1033. |
+| BID | 24 | Vay Ngân hàng Trung ương | Không xác định được nhánh nghiệp vụ cụ thể 1025–1033. |
+| BID | 24 | Tiền gửi có kỳ hạn của KBNN | Chưa có schema tương đương; 1035 là tiền gửi thanh toán. |
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -400,3 +418,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Tăng, giảm TSCĐ vô hình | — | ✓ p39 | ✓\* p50 | — | — | — | — | ✓ p38 | 0 dòng; 32 mapping, 12 phương trình, 5 bank không có bảng; VPB là nguồn Q1 |
 | Tăng, giảm bất động sản đầu tư | — | ✓ p41 | — | — | — | — | — | — | 0 dòng; 9 mapping, 11 phương trình, 7 bank không có bảng chi tiết |
 | Tài sản Có khác | — | ✓ p42 | ✓\* p51–53 | — | — | — | — | ✓\* p39 | 12 dòng OPEN; 58 mapping, 30 phương trình, 5 bank không có bảng chi tiết; VPB là nguồn Q1 |
+| Các khoản nợ Chính phủ/NHNN | ✓\* p20 | ✓ p42 | ✓\* p53 | ✓ p30 | ✓ p34 | ✓\* p41 | ✓\* p24 | ✓ p40 | 4 dòng OPEN; 28 mapping, 28 phương trình; 2 DASH→0; VPB là nguồn Q1 |

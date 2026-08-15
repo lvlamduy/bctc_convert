@@ -17,7 +17,7 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **71 entries**.  Current open queue: **13**.  Closed history:
+Ledger total: **75 entries**.  Current open queue: **17**.  Closed history:
 **29** row/graph resolutions and **29** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
@@ -27,6 +27,10 @@ Bank/report/page fields below are evidence locators only, never matching rules.
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
 | --- | --- | --- | ---: | --- | --- |
 | PM-001 | Dự phòng rủi ro cho vay khách hàng | VPB | 45 | Dự phòng chung, dự phòng cụ thể, dự phòng cho vay giao dịch ký quỹ và ứng trước | Đã map và kiểm tra đủ kỳ 01/01–31/03/2026 của PDF được cung cấp; chưa có PDF VPB Q2/2026 nên không được relabel kết quả Q1 thành Q2. |
+| GN-001 | Các khoản nợ Chính phủ và NHNN | ACB | 20 | Vay Ngân hàng Nhà nước | Nguồn không nêu loại nghiệp vụ cụ thể trong các nhánh 1025–1033; không ép số dư vay tổng hợp vào một nhánh gần nhất. |
+| GN-002 | Các khoản nợ Chính phủ và NHNN | CTG | 41 | Vay NHNN | Nguồn không nêu loại nghiệp vụ cụ thể trong các nhánh 1025–1033; không ép số dư vay tổng hợp vào một nhánh gần nhất. |
+| GN-003 | Các khoản nợ Chính phủ và NHNN | BID | 24 | Vay Ngân hàng Trung ương | Nguồn không nêu loại nghiệp vụ cụ thể trong các nhánh 1025–1033; không ép số dư vay tổng hợp vào một nhánh gần nhất. |
+| GN-004 | Các khoản nợ Chính phủ và NHNN | BID | 24 | Tiền gửi có kỳ hạn của KBNN | Schema 1035 chỉ mô tả tiền gửi thanh toán của Kho bạc; chưa có khoản mục riêng tương đương tiền gửi có kỳ hạn. |
 | OA-001 | Tài sản Có khác | VPB | 51 | Phải thu bán tài sản tài chính | Nghĩa nguồn rộng hơn 976 `Phải thu từ bán chứng khoán`; không thu hẹp ngầm. |
 | OA-002 | Tài sản Có khác | VPB | 51 | Dự phòng phí và bồi thường nghiệp vụ nhượng tái bảo hiểm | Chưa có khoản mục con tương đương trong family 966–1023. |
 | OA-003 | Tài sản Có khác | VPB | 52 | Số dư đầu kỳ dự phòng rủi ro cho các tài sản Có nội bảng khác | Chưa có nhánh biến động dự phòng tương ứng. |
@@ -71,6 +75,23 @@ page or note identifier participates in this decision.
 | IFA-006 | `RESOLVED_VERIFIED_BY_CODEX`; schema 6069 được thêm và map cho disclosure TSCĐ vô hình đã hao mòn hết nhưng vẫn còn sử dụng tại VPB/VIB |
 | IP-001–IP-007 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/VPB/HDB/VCB/CTG/BID/VIB không có bảng biến động bất động sản đầu tư chi tiết trong đúng PDF đã bind; statement, policy, cash-flow và expense mentions giữ làm đối chứng âm |
 | OA-001–OA-012 | `OPEN_SCHEMA_OR_SEMANTIC_GAP`; 58 khoản mục chắc chắn vẫn đã map, 12 dòng này được giữ nguyên nguồn và không ép vào schema gần nhất |
+| GN-001–GN-004 | `OPEN_SCHEMA_OR_SEMANTIC_GAP`; 28 khoản mục chắc chắn vẫn đã map, bốn dòng tổng hợp/khác nghĩa này không bị ép vào nhánh gần nhất |
+
+## Government and central-bank liabilities (`GOVERNMENT_NHNN_LIABILITIES`)
+
+Current exact-replay result:
+`docs/experiments/E-0074-government-nhnn-liabilities-8bank-codex-verified-mapping-v1.json`
+
+- One shared whole-PDF graph finds exactly one complete region in each of the
+  eight reports and retains 17 near regions as negative controls. It admits an
+  aggregate-only table, detailed central-bank facilities, Treasury currency or
+  tenor branches, repo rows and other liabilities without bank/page routing.
+- 28 source mappings, 58 visible current/comparative components and 28 exact
+  accounting equations are `VERIFIED_BY_CODEX`. Two source dashes omitted from
+  OCR are independently bound to render pixels and normalized to zero.
+- GN-001–GN-004 retain three unspecified central-bank-loan aggregates and one
+  Treasury term-deposit row for which the live schema has no exact leaf. VPB is
+  correctly retained as Q1/2026; no result is relabelled as Q2.
 
 ## Other assets (`OTHER_ASSETS`)
 
