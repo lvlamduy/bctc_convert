@@ -58,6 +58,16 @@ CTG/BID chỉ có dòng tổng KQKD hoặc đối chứng chính sách/rủi ro/
 các hàng con của note; năm báo cáo được ghi bounded non-observation, không tạo
 candidate hay dòng OPEN giả. VPB giữ đúng kỳ Q1/2026.
 
+E-0084 `Lãi/lỗ thuần từ mua bán chứng khoán kinh doanh` không bổ sung dòng
+OPEN: whole-PDF graph tìm đúng một note chi tiết tại ACB/MBB/VPB/HDB/VCB/CTG/
+BID, map 28 dòng vào 1188–1191 và đóng 14 phương trình hai kỳ. Dấu `-` kỳ so
+sánh của HDB được pixel-bind và chuẩn hóa 0. PDF HDB thực sự in nhãn dự phòng
+`chứng khoán đầu tư` bên trong owner chứng khoán kinh doanh; nhãn nguồn được
+giữ nguyên, còn containment, vị trí hàng và hai phương trình xác nhận vai trò
+1191 nên đây là caveat đã đóng, không phải sửa OCR hay dòng OPEN. VIB chỉ có
+note mua bán chứng khoán đầu tư p46; vùng này là đối chứng family khác và không
+bị relabel. VPB giữ đúng kỳ Q1/2026.
+
 ## Open review queue (always first)
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |

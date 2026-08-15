@@ -554,6 +554,26 @@ Q1/2026, không relabel thành Q2/2026.
 - **Còn thiếu:** Không còn khoản mục nguồn chưa map trong ba vùng chi tiết.
   VPB là nguồn Q1/2026 và được giữ đúng kỳ, không relabel thành Q2.
 
+## 32. Lãi/lỗ thuần từ mua bán chứng khoán kinh doanh
+
+- **Đã map/xác minh:** ACB p24, MBB p47, VPB p63, HDB p34, VCB p39,
+  CTG p45 và BID p29. Whole-PDF scan tìm đúng một vùng chi tiết tại mỗi bank;
+  28 mapping/56 ô số và 14 phương trình `thu nhập + chi phí + dự phòng =
+  lãi/lỗ thuần` đều đóng đúng cho hai kỳ.
+- **Biến thể đã đóng:** MBB có owner con xuống dòng dưới tiêu đề chung chứng
+  khoán kinh doanh/đầu tư; CTG in hai số dự phòng trước nhãn; BID kế thừa đơn vị
+  `Triệu VND` từ đầu section ở trang trước; VPB là bảng Q1/2026. HDB in đúng
+  nhãn nguồn `Trích lập dự phòng rủi ro chứng khoán đầu tư` bên trong bảng mua
+  bán chứng khoán kinh doanh. Nhãn này được giữ nguyên, còn owner, vị trí hàng,
+  trục hai kỳ và hai phương trình đóng đúng xác nhận vai trò 1191. Dấu `-` kỳ
+  so sánh của HDB được khóa trực tiếp bằng pixel và chuẩn hóa thành 0.
+- **Không có cụm thuyết minh chi tiết trong báo cáo:** VIB. VIB có vùng lãi/lỗ
+  mua bán chứng khoán đầu tư tại p46; đây là family kế tiếp và được giữ làm đối
+  chứng âm, không relabel thành chứng khoán kinh doanh.
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong bảy vùng chi tiết.
+  ReportNormId 1192 `Khác` không xuất hiện trong các vùng này. VPB giữ đúng kỳ
+  Q1/2026, không relabel thành Q2.
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -593,3 +613,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Chi phí lãi và các khoản tương tự chi phí lãi | ✓ p24 | ✓ p46 | ✓\* p62 | ✓ p34 | ✓ p39 | ✓ p45 | ✓ p29 | ✓ p45 | 0 dòng; 40 mapping, 80 ô số, 16 phương trình; VPB là nguồn Q1 |
 | Thu nhập/chi phí/lãi thuần hoạt động dịch vụ | — | ✓ p46 | ✓\* p62 | — | — | — | — | ✓ p45 | 0 dòng; 43 mapping, 86 ô số, 18 phương trình; 5 bank không có note chi tiết; VPB là nguồn Q1 |
 | Lãi/lỗ thuần kinh doanh vàng và ngoại hối | — | ✓ p47 | ✓\* p63 | — | — | — | — | ✓ p46 | 0 dòng; 23 mapping, 46 ô số, 18 phương trình; 5 bank không có note chi tiết; VPB là nguồn Q1 |
+| Lãi/lỗ thuần mua bán chứng khoán kinh doanh | ✓ p24 | ✓ p47 | ✓\* p63 | ✓ p34 | ✓ p39 | ✓ p45 | ✓ p29 | — | 0 dòng; 28 mapping, 56 ô số, 14 phương trình; HDB 1 DASH→0; VIB không có note trading chi tiết; VPB là nguồn Q1 |
