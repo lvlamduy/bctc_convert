@@ -484,6 +484,23 @@ Q1/2026, không relabel thành Q2/2026.
 | BID | 27–28 | Báo cáo tình hình thay đổi vốn chủ sở hữu | Bảng xoay đã unique về cấu trúc nhưng nguồn OCR số chưa đủ tin cậy để map. |
 | VIB | 44–45 | Báo cáo tình hình thay đổi vốn chủ sở hữu | Bảng xoay đã unique về cấu trúc nhưng nguồn OCR số chưa đủ tin cậy để map. |
 
+## 28. Thu nhập lãi và các khoản thu nhập tương tự
+
+- **Đã map/xác minh:** ACB p24, MBB p46, VPB p62, HDB p34, VCB p38,
+  CTG p45, BID p28 và VIB p45. Whole-PDF scan tìm đúng một vùng đầy đủ trong
+  mỗi PDF; 54 mapping/108 ô số và 28 phương trình tổng family hoặc subtotal
+  chứng khoán đều đóng đúng.
+- **Biến thể đã đóng:** Bảy bank in tổng family sau các dòng con; VIB in tổng
+  trước các dòng con. Thứ tự các dòng con được phép thay đổi, các dòng cho thuê
+  tài chính, bảo lãnh, mua bán nợ và thu tín dụng khác là tùy chọn. VCB dùng
+  trục số PaddleOCR ở trang terminal; VietOCR chỉ làm text anchor.
+- **Lỗi OCR số đã xử lý:** VietOCR VIB bỏ chữ số đầu ở hai ô (`293.978` thay
+  vì `1.293.978`, `357.506` thay vì `1.357.506`). Kết quả map dùng pixel và
+  trục số nguồn, giữ nguyên hai proposal sai làm đối chứng, không sửa ngầm.
+- **Không có trong báo cáo:** Không có; cả 8 bank đều có cụm.
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong tám vùng đã bind.
+  VPB là nguồn Q1/2026 và được giữ đúng kỳ, không relabel thành Q2.
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -519,3 +536,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Phát hành giấy tờ có giá | ✓\* p21 | ✓\* p44 | ✓\* p56 | ✓ p31 | ✓ p35 | ✓ p42 | ✓\* p25 | ✓ p43 | 8 dòng OPEN; 66 mapping, 36 phương trình; 4 DASH→0; VPB là nguồn Q1 |
 | Các khoản phải trả và công nợ khác | ✓\* p22 | ✓ p44 | ✓\* p57 | ✓ p31 | ✓ p35 | ✓\* p43 | ✓ p26 | ✓\* p43 | 18 dòng OPEN; 39 mapping, 28 phương trình; 2 DASH→0; VPB là nguồn Q1 |
 | Vốn và các quỹ | ✓ p23–24 | ✓ p44–45 | ✓\* p60–61 | ✓\* p33–34 | ✓\* p36–37 | ✓\* p43–44 | △ p27–28 | △ p44–45 | 10 mục OPEN; 65 mapping, 20 phương trình; BID/VIB structure-only; VPB là nguồn Q1 |
+| Thu nhập lãi và các khoản thu nhập tương tự | ✓ p24 | ✓ p46 | ✓\* p62 | ✓ p34 | ✓ p38 | ✓ p45 | ✓ p28 | ✓ p45 | 0 dòng; 54 mapping, 108 ô số, 28 phương trình; VPB là nguồn Q1 |
