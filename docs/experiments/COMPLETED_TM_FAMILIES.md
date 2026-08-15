@@ -535,6 +535,25 @@ Q1/2026, không relabel thành Q2/2026.
 - **Còn thiếu:** Không còn khoản mục nguồn chưa map trong ba vùng chi tiết.
   VPB là nguồn Q1/2026 và được giữ đúng kỳ, không relabel thành Q2.
 
+## 31. Lãi thuần từ hoạt động kinh doanh vàng và ngoại hối
+
+- **Đã map/xác minh:** MBB p47, VPB p63 và VIB p46. Whole-PDF scan tìm đúng
+  một vùng chi tiết ở mỗi bank này; 23 mapping/46 ô số và 18 phương trình
+  `các dòng thu = tổng thu`, `các dòng chi = tổng chi`, `thu + chi = lãi/lỗ
+  thuần` đều đóng đúng cho cả hai kỳ.
+- **Biến thể đã đóng:** MBB gộp kinh doanh ngoại tệ giao ngay và vàng thành
+  một dòng, đồng thời in tổng thu/tổng chi sau các dòng con. VPB tách riêng
+  ngoại tệ giao ngay, vàng và phái sinh tiền tệ; VIB không có dòng vàng riêng;
+  hai bank này in tổng thu/tổng chi trước các dòng con. Thứ tự và sự hiện diện
+  của dòng vàng là tùy chọn, không có rule theo bank/trang.
+- **Không có cụm thuyết minh chi tiết trong báo cáo:** ACB, HDB, VCB, CTG và
+  BID. Các PDF này chỉ có dòng lãi/lỗ thuần trên báo cáo kết quả kinh doanh,
+  hoặc các vùng chính sách, rủi ro tiền tệ, báo cáo bộ phận và tỷ giá gần giống;
+  không vùng nào có đủ cha thu/chi và các dòng con nên không bị relabel thành
+  note chi tiết.
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong ba vùng chi tiết.
+  VPB là nguồn Q1/2026 và được giữ đúng kỳ, không relabel thành Q2.
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -573,3 +592,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Thu nhập lãi và các khoản thu nhập tương tự | ✓ p24 | ✓ p46 | ✓\* p62 | ✓ p34 | ✓ p38 | ✓ p45 | ✓ p28 | ✓ p45 | 0 dòng; 54 mapping, 108 ô số, 28 phương trình; VPB là nguồn Q1 |
 | Chi phí lãi và các khoản tương tự chi phí lãi | ✓ p24 | ✓ p46 | ✓\* p62 | ✓ p34 | ✓ p39 | ✓ p45 | ✓ p29 | ✓ p45 | 0 dòng; 40 mapping, 80 ô số, 16 phương trình; VPB là nguồn Q1 |
 | Thu nhập/chi phí/lãi thuần hoạt động dịch vụ | — | ✓ p46 | ✓\* p62 | — | — | — | — | ✓ p45 | 0 dòng; 43 mapping, 86 ô số, 18 phương trình; 5 bank không có note chi tiết; VPB là nguồn Q1 |
+| Lãi/lỗ thuần kinh doanh vàng và ngoại hối | — | ✓ p47 | ✓\* p63 | — | — | — | — | ✓ p46 | 0 dòng; 23 mapping, 46 ô số, 18 phương trình; 5 bank không có note chi tiết; VPB là nguồn Q1 |

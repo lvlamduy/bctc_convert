@@ -49,6 +49,15 @@ ACB/HDB/CTG/BID chỉ có tổng trên KQKD; VCB có thêm đối chứng báo c
 không vùng nào có các hàng con của note nên năm báo cáo được ghi bounded
 non-observation, không tạo candidate hoặc dòng OPEN giả.
 
+E-0083 `Lãi thuần từ hoạt động kinh doanh vàng và ngoại hối` không bổ sung
+dòng OPEN: whole-PDF graph tìm đúng một note chi tiết tại MBB p47, VPB p63 và
+VIB p46, map 23 dòng vào 1175–1185 cùng 6026–6027 và đóng 18 phương trình.
+MBB dùng biến thể gộp ngoại tệ giao ngay + vàng với tổng cha ở cuối; VPB tách
+vàng riêng; VIB không có dòng vàng; VPB/VIB dùng tổng cha ở đầu. ACB/HDB/VCB/
+CTG/BID chỉ có dòng tổng KQKD hoặc đối chứng chính sách/rủi ro/tỷ giá, không có
+các hàng con của note; năm báo cáo được ghi bounded non-observation, không tạo
+candidate hay dòng OPEN giả. VPB giữ đúng kỳ Q1/2026.
+
 ## Open review queue (always first)
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
