@@ -1,0 +1,38 @@
+{
+  "authority": {
+    "bank_page_or_filename_is_a_mapping_rule": false,
+    "bounded_loan_quality_normalization_only": true,
+    "canonical_or_export_authority": false,
+    "project_owner_decision_required": true,
+    "raw_text_similarity_is_mapping_authority": false,
+    "source_geometry_period_unit_and_accounting_replay_required": true
+  },
+  "context_id": "lqmc:v1:db6b12857ea1b879f36fd1a418175e096f11e30e9344550716da53a1aab23f27",
+  "family": {
+    "canonical_name": "Phân tích chất lượng nợ cho vay",
+    "report_norm_id": 746
+  },
+  "format_version": "LOAN_QUALITY_MARGIN_CONTEXT_V1",
+  "included_source_disclosure": {
+    "canonical_name": "Trong đó: Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
+    "mapping_output_authority": false,
+    "parent_report_norm_id": 747,
+    "report_norm_id": 5746,
+    "role": "SOURCE_PRESENTATION_BRIDGE_ONLY"
+  },
+  "normalization_policy": {
+    "double_count_permitted": false,
+    "included_in_747": "SUBTRACT_EXACT_5746_VALUE_FROM_747_AND_EMIT_1944",
+    "standalone_after_five_grades": "KEEP_747_UNCHANGED_AND_EMIT_1944",
+    "unobserved": "DO_NOT_SYNTHESIZE_1944"
+  },
+  "standalone_item": {
+    "canonical_name": "Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
+    "hierarchy_level": 2,
+    "mapping_eligible_in_this_bounded_context": true,
+    "parent_report_norm_id": 746,
+    "report_norm_id": 1944,
+    "template_identity_reused": true
+  },
+  "state": "PROJECT_OWNER_ADJUDICATED_BOUNDED_SCHEMA_CONTEXT"
+}

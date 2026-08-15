@@ -34,20 +34,15 @@ Q1/2026, không relabel thành Q2/2026.
 - **Đã xác minh:** MBB p30, VPB p38 và VIB p31. Cả ba cụm được giới hạn từ
   owner đầu cụm qua nhánh `Tiền gửi tại NHNN`, hai hàng `Bằng VND` / `Bằng
   ngoại tệ` đến dòng tổng đầu tiên. Chỉ hai cột kỳ tiền tệ được dùng; bảng tỷ
-  lệ dự trữ sau dòng tổng không thuộc cụm này. Đã map 10 dòng và kiểm tra bốn
-  phương trình cộng trừ.
+  lệ dự trữ sau dòng tổng không thuộc cụm này. MBB `Tiền gửi tại Ngân hàng Nhà
+  nước Lào` và `Tiền gửi tại Ngân hàng Quốc gia Campuchia` được cộng thành
+  `Tiền gửi khác` ReportNormId 574 theo quyết định của chủ dự án; `934.855 +
+  1.213.504 = 2.148.359`, và `25.269.011 + 2.148.359 = 27.417.370` đóng đúng.
 - **Không có cụm thuyết minh trong PDF đã bind:** ACB, HDB, VCB, CTG, BID.
   Các mốc bắt đầu phần thuyết minh đã được chủ dự án xác nhận như mục 1; dòng
   tổng hoặc bảng thanh khoản/rủi ro không được relabel thành note `Tiền gửi tại
   NHNN`.
-- **Còn thiếu:** MBB có hai dòng địa lý riêng chưa có khoản mục schema tương
-  đương. Hai dòng vẫn được giữ trong graph và tham gia phương trình tổng, nhưng
-  không bị ép vào `Tiền gửi khác`.
-
-| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
-| --- | ---: | --- | --- |
-| MBB | 30 | Tiền gửi tại Ngân hàng Nhà nước Lào | Schema hiện chưa có child tiền gửi NHTW theo địa lý tương đương. |
-| MBB | 30 | Tiền gửi tại Ngân hàng Quốc gia Campuchia | Cùng khoảng trống schema; không đồng nhất âm thầm với `Tiền gửi khác`. |
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong family này.
 
 Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
 Q1/2026, không relabel thành Q2/2026.
@@ -60,18 +55,12 @@ Q1/2026, không relabel thành Q2/2026.
   family đóng đúng. BID dùng biến thể có `vàng và ngoại tệ` và đơn vị triệu VND
   được kế thừa từ công bố đơn vị ở cấp tài liệu. CTG/BID dùng từ `vay` thay cho
   `cho vay`. Dòng chiết khấu/tái chiết khấu chỉ là chi tiết không cộng thêm.
-- **Không có vùng thuyết minh chi tiết hoàn chỉnh:** HDB, VCB. Hai PDF có dòng
-  tổng hoặc bảng ngoại tệ/giá trị hợp lý gần giống, nhưng không có cụm phân rã
-  tiền gửi–vay đủ cha/con, kỳ và subtotal. Đây không phải tuyên bố family vắng
-  mặt khỏi toàn bộ báo cáo.
-- **Còn thiếu:** HDB và VCB chưa có nguồn chi tiết để map các hàng con. Ba ô dấu
+- **Không có cụm thuyết minh trong PDF đã bind:** HDB, VCB. Chủ dự án xác nhận
+  phần thuyết minh của hai báo cáo bắt đầu từ `Chứng khoán kinh doanh` tại p25
+  và p30; dòng tổng hoặc bảng rủi ro không được relabel thành family 575.
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map. Ba ô dấu
   `-` hiện kỳ của ACB được giữ trạng thái `DASH`, khóa bằng pixel và chuẩn hóa
   thành 0 theo quy ước của chủ dự án.
-
-| Bank | Trang bằng chứng gần nhất | Khoản mục nguồn | Lý do chưa map |
-| --- | ---: | --- | --- |
-| HDB | 3 | Tiền gửi tại và cho vay các TCTD khác | Chỉ có dòng tổng; các vùng chi tiết gần nhất là bảng ngoại tệ/rủi ro khác family. |
-| VCB | 7 | Tiền gửi tại và cho vay các tổ chức tín dụng khác | Chỉ có dòng tổng; các lần lặp sau thuộc chính sách, giá trị hợp lý hoặc rủi ro. |
 
 Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
 Q1/2026, không relabel thành Q2/2026.
@@ -101,14 +90,10 @@ Q1/2026, không relabel thành Q2/2026.
   schema không có trục tương đương. Mười một dấu `-` nhìn thấy ở HDB được giữ
   nguyên trạng thái `DASH` trước khi chuẩn hóa thành 0; ô trống không bị đổi
   thành 0.
-- **Không có:** Không tuyên bố bank nào vắng toàn bộ family phái sinh.
-- **Còn thiếu:** VCB có các dòng tổng/chính sách/giá trị hợp lý hoặc kiểm soát
-  rủi ro liên quan nhưng whole-PDF scan không tìm thấy một bảng giao dịch phái
-  sinh chi tiết đủ hàng con, hai kỳ và trục số để map 632–715.
-
-| Bank | Trang bằng chứng gần nhất | Khoản mục nguồn | Lý do chưa map |
-| --- | ---: | --- | --- |
-| VCB | 7 và các bảng công cụ tài chính/rủi ro phía sau | Công cụ tài chính phái sinh và tài sản/công nợ tài chính khác | Chỉ có tổng hoặc bề mặt chính sách/giá trị hợp lý/rủi ro; không có vùng giao dịch chi tiết hoàn chỉnh. |
+- **Không có cụm thuyết minh trong PDF đã bind:** VCB. Chủ dự án xác nhận PDF
+  này không có phần thuyết minh cho ReportNormId 631; các dòng tổng/chính sách,
+  giá trị hợp lý hoặc kiểm soát rủi ro không được relabel thành bảng giao dịch.
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong family này.
 
 Ghi chú OCR số: BID `6,270,0ss` được đọc lại từ pixel/Paddle là `6,270,055`;
 VIB `2.126.217` được đọc lại là `12.126.217`. VietOCR Transformer chỉ giữ vai
@@ -136,14 +121,21 @@ trò anchor/geometry và không được dùng để tự sửa số. PDF VPB l�
 ## 8. Phân tích chất lượng cho vay
 
 - **Đã xác minh:** ACB p18, MBB p31, VPB p42, HDB p26, VCB p30, CTG p39,
-  BID p22, VIB p60. Năm nhóm chất lượng nợ đã được map cho cả 8 bank.
+  BID p22, VIB p60. Năm nhóm chất lượng nợ đã được map cho cả 8 bank. Bản
+  chuẩn hóa E-0067B còn tách `Cho vay giao dịch ký quỹ và ứng trước tiền bán
+  chứng khoán` thành ReportNormId 1944, là con trực tiếp của 746 trong context
+  đã được chủ dự án phê duyệt: ACB `20.644.553 / 17.340.705`, MBB
+  `16.828.054 / 15.040.585`, VPB `36.278.045 / 34.093.219`.
 - **Không có:** Không có bank nào.
-- **Còn thiếu ngoài lõi quality:**
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map. Với ACB/VPB, 747 giữ
+  nguyên vì margin là dòng đứng ngoài năm nhóm. Với MBB, 5746 chỉ giữ làm cầu
+  nối cách trình bày nguồn; 747 được điều chỉnh từ
+  `1.197.767.532 / 1.059.781.834` xuống
+  `1.180.939.478 / 1.044.741.249`, còn giá trị tách ra map vào 1944. Tổng sau
+  chuẩn hóa vẫn đóng đúng và không double count.
 
-| Bank | Trang | Khoản mục nguồn | Lý do chưa map trong family này |
-| --- | ---: | --- | --- |
-| ACB | 18 | Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán | Là population cộng thêm ngoài năm nhóm chất lượng; giữ source-only để tránh cộng trùng. |
-| VPB | 42 | Cho vay giao dịch ký quỹ và ứng trước cho khách hàng | Là population cộng thêm ngoài năm nhóm chất lượng; giữ source-only để tránh cộng trùng. |
+Kết quả exact-replay:
+`docs/experiments/E-0067B-loan-quality-margin-separation-project-owner-v1.json`.
 
 ## 9. Phân tích dư nợ theo thời gian/thời hạn gốc
 
@@ -261,6 +253,8 @@ Q1/2026, không relabel thành Q2/2026.
   CTG p40 và VIB p36. Đã map 84 khoản mục nguồn/168 ô hiện tại–so sánh của
   các nhánh sẵn sàng để bán, giữ đến ngày đáo hạn, dự phòng, chất lượng và
   VAMC đủ chắc; 27 phương trình gross–dự phòng–net hoặc cha–con đóng đúng.
+  VIB p36 được giữ đúng dưới nhánh 805 của owner 804; cây owner có bốn nhánh
+  805/829/853/859 và toàn family kết thúc tại 861, không bị ép sang trading 592.
 - **Không có:** Không có bank nào được xác nhận vắng toàn bộ family này.
 - **Còn thiếu:**
 
@@ -281,13 +275,13 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Cụm | ACB | MBB | VPB | HDB | VCB | CTG | BID | VIB | Còn chưa map |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Tiền, kim loại quý, đá quý | — | ✓ p30 | ✓\* p38 | — | — | — | — | ✓ p31 | 0 dòng; 5 bank xác nhận không có cụm; VPB là nguồn Q1 |
-| Tiền gửi tại NHNN | — | ✓\* p30 | ✓\* p38 | — | — | — | — | ✓ p31 | 2 dòng địa lý MBB; 5 bank xác nhận không có cụm; VPB là nguồn Q1 |
-| Tiền gửi/vay TCTD khác | ✓ p16 | ✓ p30 | ✓\* p39 | — tổng p3 | — tổng p7 | ✓ p41 | ✓ p25 | ✓ p32 | 2 bank không có bảng chi tiết; VPB là nguồn Q1 |
+| Tiền gửi tại NHNN | — | ✓ p30 | ✓\* p38 | — | — | — | — | ✓ p31 | 0 dòng; Lào+Campuchia → 574; 5 bank xác nhận không có cụm; VPB là nguồn Q1 |
+| Tiền gửi/vay TCTD khác | ✓ p16 | ✓ p30 | ✓\* p39 | — | — | ✓ p41 | ✓ p25 | ✓ p32 | 0 dòng; HDB/VCB xác nhận không có cụm; VPB là nguồn Q1 |
 | Chứng khoán kinh doanh | ✓ p16 | ✓ p31 | ✓\* p40 | ✓ p24 | ✓ p30 | ✓ p37 | ✓ p20 | — | 0 dòng trading; AFS VIB ở cụm Chứng khoán đầu tư; VPB là nguồn Q1 |
-| Công cụ tài chính phái sinh | ✓ p17 | ✓ p43 | ✓\* p41 | ✓ p25 | △ tổng/chính sách | ✓ p38 | ✓ p21 | ✓ p32 | VCB thiếu bảng giao dịch chi tiết; VPB là nguồn Q1 |
+| Công cụ tài chính phái sinh | ✓ p17 | ✓ p43 | ✓\* p41 | ✓ p25 | — | ✓ p38 | ✓ p21 | ✓ p32 | 0 dòng; VCB xác nhận không có cụm; VPB là nguồn Q1 |
 | Loại hình cho vay | ✓ p17 | ✓ p31 | ✓ p42 | ✓ p26 | ✓ p30 | ✓ p38 | ✓ p22 | ✓ p33 | 0 |
 | Ngành nghề kinh doanh | — | ✓ p33 | ✓ p44 | ✓ p27 | — | — | ✓ p22 | ✓ p33 | 0 trong 5 vùng; 3 bank không có |
-| Chất lượng cho vay | ✓\* p18 | ✓ p31 | ✓\* p42 | ✓ p26 | ✓ p30 | ✓ p39 | ✓ p22 | ✓ p60 | 2 population ngoài lõi |
+| Chất lượng cho vay | ✓ p18 | ✓ p31 | ✓ p42 | ✓ p26 | ✓ p30 | ✓ p39 | ✓ p22 | ✓ p60 | 0; 1944 tách riêng tại ACB/MBB/VPB, MBB 747 đã trừ đúng 5746 |
 | Dư nợ theo thời gian | ✓ p18 | ✓ p31 | ✓ p42 | ✓ p26 | ✓ p31 | ✓ p39 | ✓ p22 | ✓ p33 | 0 khoản mục mục tiêu |
 | Cho vay theo loại tiền tệ | — p17–18 | — p31–33 | — p42–44 | — p26–27 | — p30–31 | — p38–39 | — p22 | — p33–34 | 0; family không có trong 8 PDF cố định |
 | Cho vay theo khu vực địa lý | △ p27 | ✓ p52 | △ p73 | △ p37 | — segment p42 | △ p49 | △ p31 | ✓ p53–54 | 5 trục dư nợ rộng hơn; VCB không có cụm loan-geography |
