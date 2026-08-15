@@ -17,8 +17,8 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **122 entries**.  Current open queue: **48**.  Closed history:
-**40** row/graph resolutions and **34** confirmed bound-report family absences.
+Ledger total: **129 entries**.  Current open queue: **50**.  Closed history:
+**40** row/graph resolutions and **39** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
@@ -96,10 +96,20 @@ nguồn bác bỏ. OE-001–OE-004 vẫn OPEN vì là bốn ý nghĩa chi phí r
 leaf schema tương đương; chúng vẫn được giữ trong parent/tổng nguồn và không
 cản các mapping chắc chắn khác. VPB giữ đúng kỳ Q1/2026.
 
+E-0089 `Chi phí dự phòng rủi ro tín dụng` quét đủ 453 trang và tìm đúng một
+note chi tiết tại MBB p49, VPB p66 và VIB p47. 15 mapping/30 ô số và 8 phương
+trình đã `VERIFIED_BY_CODEX`; hai dấu gạch không có OCR line được pixel-bind,
+hai dấu gạch VPB bị VietOCR đọc thành `1` được native source bác bỏ. CRPE-001
+và CRPE-002 vẫn OPEN vì chưa có leaf chi phí dự phòng margin/ứng trước và khoản
+phải thu tài trợ thương mại. ACB/HDB/VCB/CTG/BID được ghi nhận bounded absence
+cho đúng note chi tiết trong các PDF đã bind, không phải vắng mặt số tổng KQKD.
+
 ## Open review queue (always first)
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
 | --- | --- | --- | ---: | --- | --- |
+| CRPE-001 | Chi phí dự phòng rủi ro tín dụng | VPB | 66 | Chi phí dự phòng cho vay giao dịch ký quỹ và ứng trước | Chưa có leaf chi phí dự phòng margin/ứng trước tương đương dưới 1221; dòng vẫn tham gia tổng nguồn đã xác minh. |
+| CRPE-002 | Chi phí dự phòng rủi ro tín dụng | VIB | 47 | Biến động dự phòng rủi ro các khoản phải thu từ hoạt động tài trợ thương mại | Chưa có leaf chi phí dự phòng khoản phải thu tài trợ thương mại; dấu gạch hiện kỳ và số hoàn nhập kỳ so sánh vẫn nằm trong tổng đã xác minh. |
 | OE-001 | Chi phí quản lý chung (Chi phí hoạt động) | VPB | 65 | Chi thuê tài sản | Chưa có leaf riêng dưới 1212 `Chi về tài sản`; dòng vẫn nằm trong parent nguồn đã xác minh. |
 | OE-002 | Chi phí quản lý chung (Chi phí hoạt động) | VPB | 65 | Chi phí công nghệ thông tin | Chưa có leaf chi phí CNTT tương đương trong family 1205–1220. |
 | OE-003 | Chi phí quản lý chung (Chi phí hoạt động) | VPB | 65 | Chi về thuế GTGT đầu vào không được khấu trừ | Chưa có leaf chi phí VAT đầu vào không khấu trừ tương đương. |
@@ -187,6 +197,31 @@ page or note identifier participates in this decision.
 | IVP-005–IVP-007 | `OPEN_SOURCE_SCOPE_GAP`; ba kỳ hạn VPB áp dụng cho toàn family, chưa có phân bổ nhìn thấy theo từng công cụ |
 | OPL-001–OPL-018 | `OPEN_SCHEMA_OR_SEMANTIC_GAP`; 39 khoản mục chắc chắn vẫn đã map. Các dòng chưa có leaf vẫn được giữ trong parent/tổng nguồn và không bị cộng hai lần |
 | OE-001–OE-004 | `OPEN_SCHEMA_GAP`; 99 khoản mục chắc chắn vẫn đã map. Bốn dòng chi phí riêng được giữ trong parent/tổng và các phương trình nguồn, không ép vào leaf gần nghĩa |
+| CRPE-001–CRPE-002 | `OPEN_SCHEMA_GAP`; 15 khoản mục chắc chắn vẫn đã map. Hai dòng dự phòng riêng được giữ trong tổng nguồn và không ép vào leaf gần nghĩa |
+| CRPE-003–CRPE-007 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/HDB/VCB/CTG/BID không có note chi tiết 1221 trong PDF đã bind, dù có thể có dòng tổng KQKD hoặc diễn giải chính sách |
+
+## Credit-risk provision expense (`CREDIT_RISK_PROVISION_EXPENSE`)
+
+Current exact-replay result:
+`docs/experiments/E-0089-credit-risk-provision-expense-8bank-codex-verified-mapping-v1.json`
+
+- One shared whole-PDF graph finds one unique numbered detailed note at MBB
+  p49, VPB p66 and VIB p47. It accepts wrapped labels, optional rows, a customer
+  parent with general/specific children and an unlabeled trailing total without
+  using bank, filename, note number or page as a rule.
+- 15 mappings, 30 value cells and eight accounting equations are independently
+  verified. Combined customer/TCTD/purchased-debt rows use existing schema
+  6031/6032/6033 rather than creating duplicate concepts.
+- **CRPE-001 — OPEN:** VPB p66 `Chi phí dự phòng cho vay giao dịch ký quỹ và
+  ứng trước`; no distinct expense leaf exists below 1221. Visible values are
+  `- / 29.368`; the native dash is numeric zero only because it is visible.
+- **CRPE-002 — OPEN:** VIB p47 `Biến động dự phòng rủi ro các khoản phải thu
+  từ hoạt động tài trợ thương mại`; no distinct expense leaf exists below 1221.
+  Visible values are `- / (244)` and remain in the verified family equation.
+- **CRPE-003–CRPE-007 — confirmed bound-report absences:** ACB, HDB, VCB, CTG
+  and BID have no complete detailed note with period/unit axes, component rows
+  and trailing total in the supplied PDFs. Statement aggregates, policies and
+  explanatory mentions remain negative controls and are not relabelled.
 
 ## Capital and funds (`CAPITAL_AND_FUNDS`)
 

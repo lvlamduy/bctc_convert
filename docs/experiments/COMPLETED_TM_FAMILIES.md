@@ -645,6 +645,28 @@ Q1/2026, không relabel thành Q2/2026.
 | VPB | 65 | Chi về thuế GTGT đầu vào không được khấu trừ | Chưa có leaf chi phí VAT đầu vào không khấu trừ tương đương. |
 | CTG | 47 | Chi khác về TSCĐ | Chưa có leaf riêng dưới `Chi về tài sản`; số vẫn tham gia phương trình nguồn. |
 
+## 37. Chi phí dự phòng rủi ro tín dụng
+
+- **Đã map/xác minh:** MBB p49, VPB p66 và VIB p47. Whole-PDF scan tìm đúng
+  một note chi tiết tại mỗi bank này; 15 mapping/30 ô số và 8 phương trình
+  thành phần–tổng đóng chính xác. MBB map các nhánh cho vay khách hàng, TCTD,
+  mua nợ, rủi ro khác và cam kết; VPB map cho vay khách hàng, mua nợ và VAMC;
+  VIB map parent cho vay khách hàng cùng dự phòng chung/cụ thể và mua nợ.
+- **Biến thể đã đóng:** nhãn có thể xuống dòng; các nhánh là tùy chọn; VIB có
+  parent cho vay khách hàng rồi hai con chung/cụ thể; tổng family không có nhãn
+  và nằm cuối bảng. Hai dấu gạch bị OCR bỏ tại MBB/VIB được khóa bằng pixel và
+  chuẩn hóa thành 0. Hai dấu gạch VPB bị VietOCR đọc thành `1`; source native
+  `-` bác bỏ proposal và giữ giá trị 0. VPB giữ đúng kỳ Q1/2026.
+- **Không có cụm thuyết minh chi tiết trong báo cáo:** ACB, HDB, VCB, CTG và
+  BID. Các PDF này chỉ có số tổng KQKD hoặc diễn giải/chính sách gần giống,
+  không có note đánh số với trục kỳ, đơn vị, các hàng thành phần và tổng.
+- **Còn thiếu:**
+
+| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | ---: | --- | --- |
+| VPB | 66 | Chi phí dự phòng cho vay giao dịch ký quỹ và ứng trước | Chưa có leaf chi phí dự phòng margin/ứng trước trong family 1221. |
+| VIB | 47 | Biến động dự phòng rủi ro các khoản phải thu từ hoạt động tài trợ thương mại | Chưa có leaf chi phí dự phòng khoản phải thu tài trợ thương mại. |
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -689,3 +711,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Lãi thuần CK kinh doanh + CK đầu tư | — | ✓ p47 | — | — | — | — | — | — | 0 dòng; 1 mapping, 2 ô số, 2 phương trình; 7 PDF không in dòng tổng hợp |
 | Thu nhập góp vốn/mua cổ phần/cổ tức | ✓ p25 | ✓ p48 | ✓\* p64 | ✓ p35 | ✓ p39 | ✓ p46 | ✓ p29 | — | 0 dòng; 27 mapping, 54 ô số, 16 phương trình; 5 DASH→0; VIB không có note chi tiết; VPB là nguồn Q1 |
 | Chi phí quản lý chung/Chi phí hoạt động | ✓ p25 | ✓ p48 | ✓\* p65 | ✓ p35 | ✓ p40 | ✓\* p47 | ✓ p30 | ✓ p46 | 4 dòng OPEN; 99 mapping, 198 ô số, 30 phương trình; VCB 1 lỗi số VietOCR bị nguồn/pixel bác bỏ; VPB là nguồn Q1 |
+| Chi phí dự phòng rủi ro tín dụng | — | ✓ p49 | ✓\* p66 | — | — | — | — | ✓\* p47 | 2 dòng OPEN; 15 mapping, 30 ô số, 8 phương trình; 4 DASH→0; 5 bank không có note chi tiết; VPB là nguồn Q1 |
