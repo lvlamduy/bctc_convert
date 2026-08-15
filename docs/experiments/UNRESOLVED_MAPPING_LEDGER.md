@@ -17,7 +17,7 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **108 entries**.  Current open queue: **43**.  Closed history:
+Ledger total: **118 entries**.  Current open queue: **53**.  Closed history:
 **31** row/graph resolutions and **34** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
@@ -26,6 +26,16 @@ Bank/report/page fields below are evidence locators only, never matching rules.
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
 | --- | --- | --- | ---: | --- | --- |
+| CAF-001 | Vốn và các quỹ | VPB | 60 | Quỹ đầu tư phát triển | Chưa có cột số dư vốn tương đương trong schema; giá trị vẫn nằm trong tổng vốn đã xác minh. |
+| CAF-002 | Vốn và các quỹ | VPB | 60 | Cổ phiếu quỹ | Không đồng nhất với nhánh số lượng cổ phiếu 5953; dấu gạch không được tự dùng làm numeric authority. |
+| CAF-003 | Vốn và các quỹ | HDB | 33 | Cổ phiếu quỹ | Không có leaf số dư vốn tương đương; cột trống không bị đổi thành 0. |
+| CAF-004 | Vốn và các quỹ | HDB | 33 | Quỹ đầu tư xây dựng cơ bản | Chưa có leaf tương đương; số vẫn nằm trong tổng vốn đã xác minh. |
+| CAF-005 | Vốn và các quỹ | VCB | 36 | Quỹ đầu tư phát triển | Chưa có leaf tương đương; số vẫn nằm trong subtotal quỹ và tổng vốn đã xác minh. |
+| CAF-006 | Vốn và các quỹ | CTG | 43 | Cổ phiếu quỹ | Không có leaf số dư vốn tương đương; dòng trống không bị đổi thành 0. |
+| CAF-007 | Vốn và các quỹ | CTG | 43 | Chênh lệch đánh giá lại tài sản | Chưa có cột số dư vốn tương đương trong schema. |
+| CAF-008 | Vốn và các quỹ | CTG | 43 | Quỹ đầu tư phát triển | Chưa có leaf tương đương; số vẫn nằm trong tổng vốn đã xác minh. |
+| CAF-009 | Vốn và các quỹ | BID | 27–28 | Báo cáo tình hình thay đổi vốn chủ sở hữu | Cấu trúc bảng xoay đã unique; OCR số nguồn không đủ tin cậy nên chưa map, và VietOCR text không được dùng làm numeric truth. |
+| CAF-010 | Vốn và các quỹ | VIB | 44–45 | Báo cáo tình hình thay đổi vốn chủ sở hữu | Cấu trúc bảng xoay đã unique; OCR số nguồn không đủ tin cậy nên chưa map, và VietOCR text không được dùng làm numeric truth. |
 | OPL-001 | Các khoản phải trả và công nợ khác | ACB | 22 | Thu nhập chưa thực hiện | Chưa có leaf tương đương trong family 1118–1127; giá trị vẫn nằm trong tổng family đã xác minh. |
 | OPL-002 | Các khoản phải trả và công nợ khác | ACB | 22 | Quỹ phát triển khoa học và công nghệ | Chưa có leaf tương đương; giá trị vẫn nằm trong tổng family đã xác minh. |
 | OPL-003 | Các khoản phải trả và công nợ khác | VPB | 57 | Các khoản khách hàng trả trước | Chưa có leaf tương đương; chỉ nằm trong parent phải trả bên ngoài. |
@@ -106,6 +116,20 @@ page or note identifier participates in this decision.
 | EIR-006–EIR-007 | `RESOLVED_VERIFIED_BY_CODEX`; hai nguồn nhỏ chưa có leaf riêng — ODA của VPB và chương trình nhà ở qua NHNN của VIB — giữ nguyên nhãn nguồn và map vào leaf `Khác` 1099 |
 | IVP-001–IVP-008 | `OPEN_SCHEMA_OR_SCOPE_GAP`; 66 khoản mục chắc chắn vẫn đã map. Hai mốc đúng 5 năm, hai kỳ hạn gộp, ba trục kỳ hạn toàn family và một trái phiếu tăng vốn không bị ép vào leaf hẹp hơn |
 | OPL-001–OPL-018 | `OPEN_SCHEMA_OR_SEMANTIC_GAP`; 39 khoản mục chắc chắn vẫn đã map. Các dòng chưa có leaf vẫn được giữ trong parent/tổng nguồn và không bị cộng hai lần |
+
+## Capital and funds (`CAPITAL_AND_FUNDS`)
+
+Current exact-replay result:
+`docs/experiments/E-0078-capital-and-funds-8bank-codex-verified-mapping-v1.json`
+
+- One shared whole-PDF graph finds exactly one complete region in all eight
+  reports, including geometry-selected 90-degree VietOCR rescue for rotated
+  layouts; 19 near regions remain negative controls.
+- ACB/MBB/VPB/HDB/VCB/CTG have 65 verified mappings, 131 numeric components and
+  20 exact accounting equations. The supplied VPB PDF remains Q1/2026.
+- CAF-001–CAF-008 are exact source columns without one equivalent schema leaf.
+  CAF-009–CAF-010 retain BID/VIB as structure-only until an independent rotated
+  numeric challenger is available; rotated VietOCR is text evidence only.
 
 ## Other payables and liabilities (`OTHER_PAYABLES_AND_LIABILITIES`)
 

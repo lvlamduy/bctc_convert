@@ -459,6 +459,31 @@ Q1/2026, không relabel thành Q2/2026.
 | VIB | 43 | Các khoản chờ thanh toán khác | Chưa có leaf tương đương. |
 | VIB | 43 | Doanh thu chờ phân bổ | Chưa có leaf tương đương. |
 
+## 27. Vốn và các quỹ
+
+- **Đã map/xác minh:** ACB p23–24, MBB p44–45, VPB p60–61, HDB p33–34,
+  VCB p36–37 và CTG p43–44. Whole-PDF scan tìm đúng một vùng tại cả 8 bank;
+  65 mapping/131 ô số và 20 phương trình mở đầu–tăng–giảm–cuối kỳ hoặc
+  cột vốn–tổng đã được kiểm tra. VPB giữ đúng nguồn Q1/2026.
+- **Không có cụm này trong báo cáo:** Không có.
+- **Có cụm nhưng còn khoản mục chưa map:** BID p27–28 và VIB p44–45 đã xác
+  minh cấu trúc bảng xoay, nhưng chưa map số vì OCR số nguồn trên bảng xoay
+  chưa đủ tin cậy; VietOCR xoay chỉ được dùng cho text/anchor. Các cột nguồn
+  chưa có leaf tương đương tại VPB/HDB/VCB/CTG cũng giữ `UNRESOLVED`.
+
+| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | ---: | --- | --- |
+| VPB | 60 | Quỹ đầu tư phát triển | Chưa có cột số dư vốn tương đương trong schema; số vẫn nằm trong tổng vốn đã kiểm tra. |
+| VPB | 60 | Cổ phiếu quỹ | Không đồng nhất với nhánh số lượng cổ phiếu 5953; các ô dấu gạch không cần dùng để đóng tổng. |
+| HDB | 33 | Cổ phiếu quỹ | Không có leaf số dư vốn tương đương; cột trống không bị tự đổi thành 0. |
+| HDB | 33 | Quỹ đầu tư xây dựng cơ bản | Chưa có leaf tương đương; số vẫn nằm trong tổng vốn đã kiểm tra. |
+| VCB | 36 | Quỹ đầu tư phát triển | Chưa có leaf tương đương; số được giữ trong subtotal quỹ và tổng vốn. |
+| CTG | 43 | Cổ phiếu quỹ | Không có leaf số dư vốn tương đương; dòng trống không bị tự đổi thành 0. |
+| CTG | 43 | Chênh lệch đánh giá lại tài sản | Chưa có cột số dư vốn tương đương trong schema. |
+| CTG | 43 | Quỹ đầu tư phát triển | Chưa có leaf tương đương; số vẫn nằm trong tổng vốn đã kiểm tra. |
+| BID | 27–28 | Báo cáo tình hình thay đổi vốn chủ sở hữu | Bảng xoay đã unique về cấu trúc nhưng nguồn OCR số chưa đủ tin cậy để map. |
+| VIB | 44–45 | Báo cáo tình hình thay đổi vốn chủ sở hữu | Bảng xoay đã unique về cấu trúc nhưng nguồn OCR số chưa đủ tin cậy để map. |
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -493,3 +518,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Vốn nhận tài trợ/ủy thác đầu tư | — | ✓ p43 | ✓\* p56 | — | — | — | — | ✓ p42 | 0 dòng; 6 mapping, 4 phương trình; 5 bank xác nhận không có cụm; VPB là nguồn Q1 |
 | Phát hành giấy tờ có giá | ✓\* p21 | ✓\* p44 | ✓\* p56 | ✓ p31 | ✓ p35 | ✓ p42 | ✓\* p25 | ✓ p43 | 8 dòng OPEN; 66 mapping, 36 phương trình; 4 DASH→0; VPB là nguồn Q1 |
 | Các khoản phải trả và công nợ khác | ✓\* p22 | ✓ p44 | ✓\* p57 | ✓ p31 | ✓ p35 | ✓\* p43 | ✓ p26 | ✓\* p43 | 18 dòng OPEN; 39 mapping, 28 phương trình; 2 DASH→0; VPB là nguồn Q1 |
+| Vốn và các quỹ | ✓ p23–24 | ✓ p44–45 | ✓\* p60–61 | ✓\* p33–34 | ✓\* p36–37 | ✓\* p43–44 | △ p27–28 | △ p44–45 | 10 mục OPEN; 65 mapping, 20 phương trình; BID/VIB structure-only; VPB là nguồn Q1 |
