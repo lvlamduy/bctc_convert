@@ -76,6 +76,19 @@ phòng. Ba dấu gạch ACB và một dấu gạch MBB được pixel-bind rồi
 chỉ có số tổng báo cáo bộ phận, không có các hàng con của note nên là bounded
 non-observation chứ không tạo candidate hoặc dòng OPEN. VPB giữ đúng kỳ Q1/2026.
 
+E-0086 `Lãi thuần từ chứng khoán kinh doanh, chứng khoán đầu tư` không bổ sung
+dòng OPEN: whole-PDF graph chỉ tìm đúng một dòng tổng hợp có hai giá trị tại
+MBB p47. Hai phương trình với net chứng khoán kinh doanh và net chứng khoán đầu
+tư đóng đúng; bảy PDF còn lại không in dòng tổng hợp tương đương trong phạm vi
+nguồn đã bind.
+
+E-0087 `Thu nhập từ góp vốn, mua cổ phần và thu nhập cổ tức` không bổ sung dòng
+OPEN: whole-PDF graph tìm đúng một note chi tiết tại ACB/MBB/VPB/HDB/VCB/CTG/
+BID, map 27 dòng vào 1198–1204 và đóng 16 phương trình. Năm dấu gạch được bind
+nguồn/pixel và chuẩn hóa 0; hai proposal VietOCR `1` của VPB bị native source
+`-` bác bỏ. VIB chỉ có dòng tổng KQKD, không có note chi tiết nên là bounded
+non-observation, không tạo candidate. VPB giữ đúng kỳ Q1/2026.
+
 ## Open review queue (always first)
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |

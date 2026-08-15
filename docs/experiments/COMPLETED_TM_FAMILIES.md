@@ -592,6 +592,38 @@ Q1/2026, không relabel thành Q2/2026.
 - **Còn thiếu:** Không còn khoản mục nguồn chưa map trong bảy vùng chi tiết.
   ReportNormId 1197 `Khác` không xuất hiện trong các vùng đã bind.
 
+## 34. Lãi thuần từ chứng khoán kinh doanh, chứng khoán đầu tư
+
+- **Đã map/xác minh:** MBB p47. Whole-PDF scan tìm đúng một dòng tổng hợp có
+  hai giá trị cùng hàng; dòng tiêu đề cùng tên ở đầu note không có giá trị cùng
+  hàng nên chỉ là đối chứng âm. ReportNormId 5990 được xác minh với 2 ô số.
+- **Quan hệ kiểm tra:** `249.524 + 3.587 = 253.111` và
+  `415.700 + 1.295.273 = 1.710.973`; cả hai kỳ đều đóng đúng với hai family
+  chứng khoán kinh doanh và chứng khoán đầu tư đã xác minh độc lập.
+- **Không có dòng tổng hợp này trong báo cáo:** ACB, VPB, HDB, VCB, CTG, BID
+  và VIB. Đây là bounded non-observation trong tám PDF cố định, không phải khẳng
+  định vắng mặt trên mọi kỳ/báo cáo.
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map.
+
+## 35. Thu nhập từ góp vốn, mua cổ phần và thu nhập cổ tức
+
+- **Đã map/xác minh:** ACB p25, MBB p48, VPB p64, HDB p35, VCB p39,
+  CTG p46 và BID p29. Whole-PDF scan tìm đúng một note chi tiết ở mỗi bank;
+  27 mapping/54 ô số và 16 phương trình giữa các nhánh cổ tức, góp vốn, phương
+  pháp vốn chủ sở hữu, thu nhập khác và tổng đều đóng đúng.
+- **Biến thể đã đóng:** ACB tách ba nguồn cổ tức; MBB chỉ in một dòng parent và
+  tổng lặp lại; VPB có một dòng cổ tức và giữ đúng nguồn Q1/2026; HDB có thêm
+  thu nhập hợp nhất kinh doanh; VCB/BID có subtotal cổ tức rồi cộng phần chia
+  lãi theo phương pháp vốn chủ sở hữu; CTG gộp `Thu từ chứng khoán Vốn`; BID
+  kế thừa đơn vị `Triệu VND` từ đầu section ở trang trước.
+- **Dấu gạch và lỗi OCR:** 5 dấu `-` được xác minh bằng nguồn/pixel rồi chuẩn
+  hóa thành 0. VietOCR đọc hai dấu gạch VPB thành `1`; nguồn native và pixel
+  bác bỏ hai proposal này nên kết quả số vẫn là 0.
+- **Không có cụm thuyết minh chi tiết trong báo cáo:** VIB. VIB chỉ có dòng
+  tổng trên báo cáo kết quả kinh doanh p8, không có note đánh số với trục kỳ,
+  đơn vị và các hàng con nên không bị relabel thành note chi tiết.
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong bảy note chi tiết.
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -633,3 +665,5 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Lãi/lỗ thuần kinh doanh vàng và ngoại hối | — | ✓ p47 | ✓\* p63 | — | — | — | — | ✓ p46 | 0 dòng; 23 mapping, 46 ô số, 18 phương trình; 5 bank không có note chi tiết; VPB là nguồn Q1 |
 | Lãi/lỗ thuần mua bán chứng khoán kinh doanh | ✓ p24 | ✓ p47 | ✓\* p63 | ✓ p34 | ✓ p39 | ✓ p45 | ✓ p29 | — | 0 dòng; 28 mapping, 56 ô số, 14 phương trình; HDB 1 DASH→0; VIB không có note trading chi tiết; VPB là nguồn Q1 |
 | Lãi/lỗ thuần mua bán chứng khoán đầu tư | ✓ p25 | ✓ p47 | ✓\* p63 | ✓ p35 | — | ✓ p46 | ✓ p29 | ✓ p46 | 0 dòng; 28 mapping, 56 ô số, 14 phương trình; ACB/MBB 4 DASH→0; VCB không có note chi tiết; VPB là nguồn Q1 |
+| Lãi thuần CK kinh doanh + CK đầu tư | — | ✓ p47 | — | — | — | — | — | — | 0 dòng; 1 mapping, 2 ô số, 2 phương trình; 7 PDF không in dòng tổng hợp |
+| Thu nhập góp vốn/mua cổ phần/cổ tức | ✓ p25 | ✓ p48 | ✓\* p64 | ✓ p35 | ✓ p39 | ✓ p46 | ✓ p29 | — | 0 dòng; 27 mapping, 54 ô số, 16 phương trình; 5 DASH→0; VIB không có note chi tiết; VPB là nguồn Q1 |
