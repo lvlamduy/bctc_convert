@@ -62,12 +62,12 @@ def test_page53_reconciles_exact_schema_source_and_cell_denominators(
 ) -> None:
     result = _mapped(project_root, tmp_path)
 
-    assert result.schema_item_count == 1_710
+    assert result.schema_item_count == 1_712
     assert result.status_reconciled_schema_count == 44
     assert result.mapped_schema_count == 44
     assert result.structural_mapped_schema_count == 8
     assert result.value_bearing_mapped_schema_count == 36
-    assert result.unassessed_schema_count == 1_666
+    assert result.unassessed_schema_count == 1_668
     assert result.not_observed_schema_count == 0
     assert result.ambiguous_schema_count == 0
     assert result.unresolved_schema_count == 0
@@ -97,7 +97,7 @@ def test_page53_owns_exact_5762_5805_hierarchy_with_complete_provenance(
     }
 
     assert set(mapped) == set(range(5762, 5806))
-    assert len(unassessed) == 1_666
+    assert len(unassessed) == 1_668
     assert all(item.source_ids for item in mapped.values())
     assert all(
         not item.source_ids

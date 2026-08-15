@@ -23,10 +23,10 @@ from bctc_ai.tables.tm_note_page36 import ParsedTMPage36
 from bctc_ai.tables.tm_note_word_box import TMNoteRowKind
 
 TM_PAGE36_POLICY_RELATIVE_PATH = Path("config/mapping/tm-note-page36-v1.yaml")
-TM_PAGE36_SCHEMA_TOTAL = 1_710
-TM_PAGE36_RECONCILED_SCHEMA_COUNT = 42
+TM_PAGE36_SCHEMA_TOTAL = 1_712
+TM_PAGE36_RECONCILED_SCHEMA_COUNT = 44
 TM_PAGE36_MAPPED_SCHEMA_COUNT = 11
-TM_PAGE36_NOT_OBSERVED_COUNT = 31
+TM_PAGE36_NOT_OBSERVED_COUNT = 33
 TM_PAGE36_UNASSESSED_COUNT = 1_668
 TM_PAGE36_SOURCE_ROW_COUNT = 14
 TM_PAGE36_MAPPED_SOURCE_COUNT = 11
@@ -48,7 +48,7 @@ _REQUIRED_FORBIDDEN = {
     "human_review_answers",
     "accounting_equation_result_as_item_selector",
 }
-_SCOPED_IDS = set(range(829, 868)) | {5959, 5960, 5961}
+_SCOPED_IDS = set(range(829, 868)) | {5959, 5960, 5961, 6066, 6067}
 _MAPPED_IDS = {829, 831, 832, 833, 848, 849, 862, 867, 5959, 5960, 5961}
 
 

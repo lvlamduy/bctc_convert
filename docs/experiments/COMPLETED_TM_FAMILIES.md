@@ -258,6 +258,27 @@ Q1/2026, không relabel thành Q2/2026.
 Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
 Q1/2026, không relabel thành Q2/2026.
 
+## 17. Các khoản đầu tư dài hạn khác
+
+- **Đã xác minh:** ACB p19, MBB p36, VPB p48, HDB p30, VCB p33,
+  CTG p40, BID p24 và VIB p36. Đã map 29 khoản mục nguồn/58 ô hiện
+  tại–so sánh; chín phương trình chi tiết–tổng hoặc giá gốc–dự
+  phòng–giá trị thuần đóng đúng. Mỗi PDF chỉ có một vùng thỏa khung
+  family trên toàn báo cáo.
+- **Biến thể đã đóng:** ACB/VIB chỉ có `Đầu tư dài hạn khác`;
+  MBB tách `Tổ chức kinh tế, dự án dài hạn` và `Quỹ đầu tư`; VPB
+  có bảng chi tiết tổ chức/dự án; HDB/VCB/BID có công ty liên
+  kết; VCB/CTG/BID có công ty liên doanh. Schema đã bổ sung 6066
+  `Đầu tư vào công ty liên doanh` và 6067 `Đầu tư vào công ty
+  liên kết`; dấu `-` hiện kỳ của HDB được giữ `DASH` rồi chuẩn hóa
+  thành 0.
+- **Không có:** Không có bank nào.
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong tám vùng đã
+  xác minh.
+
+Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
+Q1/2026, không relabel thành Q2/2026.
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -282,3 +303,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Hoạt động mua nợ | — | ✓ p35 | ✓\* p46 | ✓ p29 | — | — | — | ✓\* p35 | 0 dòng; 4 bank không có; VPB là nguồn Q1 |
 | Tiền gửi khách hàng | ✓ p21 | ✓ p43 | ✓\* p55 | ✓ p31 | ✓ p35 | ✓ p42 | ✓ p25 | ✓ p41–42 | 0 dòng; VPB là nguồn Q1 |
 | Chứng khoán đầu tư | ✓ p19 | ✓ p35–36 | ✓\* p47–48 | ✓ p29 | ✓ p32 | ✓ p40 | ✓ p23 | ✓ p36 | 0 dòng; BID dùng đơn vị cấp tài liệu, VIB gộp hai dòng TCTD vào 808; VPB là nguồn Q1 |
+| Đầu tư dài hạn khác | ✓ p19 | ✓ p36 | ✓\* p48 | ✓ p30 | ✓ p33 | ✓ p40 | ✓ p24 | ✓ p36 | 0 dòng; VPB là nguồn Q1 |

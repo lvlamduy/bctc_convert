@@ -17,7 +17,14 @@ from bctc_ai.tables.tm_note_page36 import load_tm_page36_policy, parse_tm_page36
 _OCR_FIXTURE = Path("tests/golden/tm/mbb-q1-2026-page-0036-ppocrv6-word-box.json")
 _SOURCE_PDF = Path("vietstock_bctc/MBB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf")
 _MAPPED_IDS = {829, 831, 832, 833, 848, 849, 862, 867, 5959, 5960, 5961}
-_NOT_OBSERVED_IDS = {830, *range(834, 848), *range(850, 862), *range(863, 867)}
+_NOT_OBSERVED_IDS = {
+    830,
+    *range(834, 848),
+    *range(850, 862),
+    *range(863, 867),
+    6066,
+    6067,
+}
 
 
 def _mapped(project_root: Path, tmp_path: Path):
@@ -51,10 +58,10 @@ def test_page36_reconciles_complete_branch_and_maps_eleven_distinct_items(
     assert validate_tm_page36_mapping_result(result) is result
     assert result.mapping_authority_scope.endswith("PDF_PAGE_36_FIXED_ROWS_ONLY")
     assert result.mapping_authority_granted
-    assert result.schema_item_count == 1_710
-    assert result.status_reconciled_schema_count == 42
+    assert result.schema_item_count == 1_712
+    assert result.status_reconciled_schema_count == 44
     assert result.mapped_schema_count == 11
-    assert result.not_observed_schema_count == 31
+    assert result.not_observed_schema_count == 33
     assert result.not_applicable_schema_count == 0
     assert result.ambiguous_schema_count == 0
     assert result.unassessed_schema_count == 1_668
@@ -84,7 +91,13 @@ def test_exact_mapped_not_observed_and_unassessed_schema_sets(
     assert by_status[TMPage36SchemaStatus.MAPPED_AUTOMATIC_SCOPED.value] == _MAPPED_IDS
     assert by_status[TMPage36SchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value] == (_NOT_OBSERVED_IDS)
     assert len(by_status[TMPage36SchemaStatus.UNASSESSED.value]) == 1_668
-    assert _MAPPED_IDS | _NOT_OBSERVED_IDS == set(range(829, 868)) | {5959, 5960, 5961}
+    assert _MAPPED_IDS | _NOT_OBSERVED_IDS == set(range(829, 868)) | {
+        5959,
+        5960,
+        5961,
+        6066,
+        6067,
+    }
 
 
 def test_only_numeric_net_maps_829_and_duplicate_867_rows_are_not_exported(

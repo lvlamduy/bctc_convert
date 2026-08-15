@@ -6,7 +6,7 @@ scope: CONSOLIDATED
 source_table_policy: config/tables/tm-note-pages39-40-v1.yaml
 mapping_authority_scope: VISIBLE_NOTE_TITLE_SECTION_LABELS_AND_TOTAL_COLUMN_FIXED_ROWS_ONLY
 
-schema_total: 1710
+schema_total: 1712
 scope_schema_ids: {start: 913, end: 941, total: 29}
 additional_scope_schema_ids: [5967, 5968, 5969, 5970, 5971, 5997, 5998, 5999, 6000, 6001]
 title_report_norm_id: 913

@@ -1452,8 +1452,8 @@ def _schema_bindings(
     schema_authority: Mapping[str, Any], schema_by_id: Mapping[int, Any]
 ) -> dict[int, dict[str, Any]]:
     if (
-        schema_authority.get("schema_revision") != "UNIVERSAL_BANK_BCTC_SCHEMA@6065"
-        or schema_authority.get("tm_item_count") != 1710
+        schema_authority.get("schema_revision") != "UNIVERSAL_BANK_BCTC_SCHEMA@6067"
+        or schema_authority.get("tm_item_count") != 1712
     ):
         raise _error("live TM schema authority revision drifted")
     expected_parents = {

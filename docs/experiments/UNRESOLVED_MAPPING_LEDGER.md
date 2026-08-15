@@ -169,6 +169,24 @@ Project-owner closure:
   and proving `5.894.320 + 32.879.230 = 38.773.550` and
   `12.104.102 + 28.252.422 = 40.356.524` before mapping one aggregate to 808.
 
+## Other long-term investments (`OTHER_LONG_TERM_INVESTMENTS`)
+
+Current exact-replay result:
+`docs/experiments/E-0068-long-term-investments-8bank-codex-verified-mapping-v1.json`
+
+- One bank-blind graph scans all 453 pages and finds exactly one complete
+  region in each PDF: ACB p19, MBB p36, VPB p48, HDB p30, VCB p33, CTG p40,
+  BID p24 and VIB p36. Optional joint-venture, associate, other-investment,
+  organization/project and fund branches may be absent or reordered.
+- All 29 reviewed source mappings and 58 period cells are
+  `VERIFIED_BY_CODEX`; nine visible accounting equations close exactly. The
+  HDB current associate DASH remains typed before zero normalization. VPB
+  remains explicitly Q1/2026.
+- Schema gaps for joint ventures and associates are closed by ReportNormId
+  6066 and 6067 under parent 862. No source row from the bounded eight regions
+  remains in the open queue; detailed organization rows are retained as
+  corroboration and are not double-counted with their mapped parent.
+
 ## Project-owner TM adjudications
 
 Exact-replay decision artifact:

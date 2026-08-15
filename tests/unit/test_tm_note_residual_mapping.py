@@ -63,7 +63,7 @@ def test_exact_residual_90_reconciles_without_numeric_or_source_row_mutation(
 ) -> None:
     result = residual_result
 
-    assert result.schema_item_count == 1_710
+    assert result.schema_item_count == 1_712
     assert result.status_reconciled_schema_count == 90
     assert result.mapped_schema_count == 2
     assert result.not_observed_schema_count == 88
@@ -71,7 +71,7 @@ def test_exact_residual_90_reconciles_without_numeric_or_source_row_mutation(
     assert result.unresolved_schema_count == 0
     assert result.not_applicable_schema_count == 0
     assert result.extraction_miss_schema_count == 0
-    assert result.unassessed_schema_count == 1_620
+    assert result.unassessed_schema_count == 1_622
     assert result.structural_evidence_count == 2
     assert result.source_row_count_delta == 0
     assert result.financial_slot_count == 0
