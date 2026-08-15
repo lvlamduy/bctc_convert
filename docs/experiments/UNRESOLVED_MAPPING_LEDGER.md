@@ -34,6 +34,13 @@ gửi có kỳ hạn KBNN dùng 6071; tiền gửi Bộ Tài chính được chu
 leaf rộng 6010/6009, và trái phiếu tăng vốn BIDV dùng 1117. Chỉ ba trục kỳ hạn
 toàn family của VPB còn OPEN.
 
+E-0081 `Chi phí lãi và các khoản tương tự chi phí lãi` không bổ sung dòng
+OPEN: whole-PDF graph tìm đúng một vùng tại cả tám bank và map đủ owner/tổng
+1151 cùng bốn dòng con 1152/1153/1154/1156. ReportNormId 1155 được ghi nhận
+không xuất hiện trong đúng tám vùng family đã bind. Lỗi VietOCR MBB
+`(3:975.549)` được trục số nguồn và pixel bác bỏ thành `(3.975.549)`; đây là
+đối chứng OCR đã đóng, không phải khoảng trống mapping.
+
 ## Open review queue (always first)
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
