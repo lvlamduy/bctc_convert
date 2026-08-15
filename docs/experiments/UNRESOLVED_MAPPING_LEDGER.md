@@ -17,7 +17,7 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **118 entries**.  Current open queue: **44**.  Closed history:
+Ledger total: **122 entries**.  Current open queue: **48**.  Closed history:
 **40** row/graph resolutions and **34** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
@@ -89,10 +89,21 @@ nguồn/pixel và chuẩn hóa 0; hai proposal VietOCR `1` của VPB bị native
 `-` bác bỏ. VIB chỉ có dòng tổng KQKD, không có note chi tiết nên là bounded
 non-observation, không tạo candidate. VPB giữ đúng kỳ Q1/2026.
 
+E-0088 `Chi phí quản lý chung (Chi phí hoạt động)` quét đủ 453 trang và tìm
+đúng một note tại cả tám PDF. 99 dòng schema/198 ô số cùng 30 phương trình đã
+`VERIFIED_BY_CODEX`; một lỗi mất chữ số của VietOCR tại VCB bị pixel và trục số
+nguồn bác bỏ. OE-001–OE-004 vẫn OPEN vì là bốn ý nghĩa chi phí riêng chưa có
+leaf schema tương đương; chúng vẫn được giữ trong parent/tổng nguồn và không
+cản các mapping chắc chắn khác. VPB giữ đúng kỳ Q1/2026.
+
 ## Open review queue (always first)
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
 | --- | --- | --- | ---: | --- | --- |
+| OE-001 | Chi phí quản lý chung (Chi phí hoạt động) | VPB | 65 | Chi thuê tài sản | Chưa có leaf riêng dưới 1212 `Chi về tài sản`; dòng vẫn nằm trong parent nguồn đã xác minh. |
+| OE-002 | Chi phí quản lý chung (Chi phí hoạt động) | VPB | 65 | Chi phí công nghệ thông tin | Chưa có leaf chi phí CNTT tương đương trong family 1205–1220. |
+| OE-003 | Chi phí quản lý chung (Chi phí hoạt động) | VPB | 65 | Chi về thuế GTGT đầu vào không được khấu trừ | Chưa có leaf chi phí VAT đầu vào không khấu trừ tương đương. |
+| OE-004 | Chi phí quản lý chung (Chi phí hoạt động) | CTG | 47 | Chi khác về TSCĐ | Chưa có leaf riêng dưới 1212; hai số nguồn vẫn đóng đúng phương trình `khấu hao + chi khác về TSCĐ = chi về tài sản`. |
 | CAF-001 | Vốn và các quỹ | VPB | 60 | Quỹ đầu tư phát triển | Chưa có cột số dư vốn tương đương trong schema; giá trị vẫn nằm trong tổng vốn đã xác minh. |
 | CAF-002 | Vốn và các quỹ | VPB | 60 | Cổ phiếu quỹ | Không đồng nhất với nhánh số lượng cổ phiếu 5953; dấu gạch không được tự dùng làm numeric authority. |
 | CAF-003 | Vốn và các quỹ | HDB | 33 | Cổ phiếu quỹ | Không có leaf số dư vốn tương đương; cột trống không bị đổi thành 0. |
@@ -175,6 +186,7 @@ page or note identifier participates in this decision.
 | IVP-001–IVP-004, IVP-008 | `RESOLVED_VERIFIED_BY_PROJECT_OWNER_AND_CODEX`; ACB đúng 5 năm map 1103/1111, MBB broad tenor map trực tiếp 6009/6010, BID trái phiếu tăng vốn map 1117 |
 | IVP-005–IVP-007 | `OPEN_SOURCE_SCOPE_GAP`; ba kỳ hạn VPB áp dụng cho toàn family, chưa có phân bổ nhìn thấy theo từng công cụ |
 | OPL-001–OPL-018 | `OPEN_SCHEMA_OR_SEMANTIC_GAP`; 39 khoản mục chắc chắn vẫn đã map. Các dòng chưa có leaf vẫn được giữ trong parent/tổng nguồn và không bị cộng hai lần |
+| OE-001–OE-004 | `OPEN_SCHEMA_GAP`; 99 khoản mục chắc chắn vẫn đã map. Bốn dòng chi phí riêng được giữ trong parent/tổng và các phương trình nguồn, không ép vào leaf gần nghĩa |
 
 ## Capital and funds (`CAPITAL_AND_FUNDS`)
 

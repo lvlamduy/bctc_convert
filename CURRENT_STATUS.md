@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-08-15T21:19:13Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
+Updated: 2026-08-15T23:18:00Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
 The detailed historical receipts below remain evidence, but that directive supersedes
@@ -82,6 +82,7 @@ Từ đầu đến snapshot này, project đã đi qua bốn pha chính:
 | Current 8-bank `INVESTMENT_SECURITIES_ACTIVITY` sweep | E-0085 uses the same profiled securities-sale graph and finds exactly **7 unique detailed investment notes** at ACB p25, MBB p47, VPB p63, HDB p35, CTG p46, BID p29 and VIB p46; VCB's p42–43 segment aggregates remain distinct controls. Independent pixels, source numeric challengers, live schema and accounting replay verify **28 mappings / 56 value cells + 14 exact equations**. MBB inherits shared table axes and adds optional long-term-investment provision 6028; VIB omits provision; CTG/BID use `Chi phí dự phòng`; four visible ACB/MBB dashes normalize to zero; VPB remains Q1 |
 | Current 8-bank `COMBINED_SECURITIES_NET` sweep | E-0086 scans all 453 pages with one bank-blind combined-row graph. It finds exactly **1 unique complete region** at MBB p47 and retains the similarly worded MBB section title plus all other reports as controls. Independent pixels, source numeric challengers, live schema and accounting replay verify **1 mapping / 2 value cells + 2 exact equations** under ReportNormId 5990. The seven other fixed reports are bounded-report absences; no source row remains open |
 | Current 8-bank `CAPITAL_CONTRIBUTION_DIVIDEND_INCOME` sweep | E-0087 scans all 453 pages with one Arabic-note-boundary, period-axis, unit and optional-child graph. It finds exactly **7 unique detailed notes** at ACB p25, MBB p48, VPB p64, HDB p35, VCB p39, CTG p46 and BID p29; VIB has only the KQKD aggregate control. Independent pixels, source numeric challengers, live schema and accounting replay verify **27 mappings / 54 value cells + 16 exact equations**. Five visible dashes normalize to zero; two VPB dashes misread by VietOCR as `1` are rejected by native/pixel evidence; VPB remains Q1 |
+| Current 8-bank `OPERATING_EXPENSE` sweep | E-0088 scans all 453 pages with one Arabic-note owner + optional top-level rows + context-bound child graph. It finds exactly **1 unique detailed note per PDF / 8/8 unique** at ACB p25, MBB p48, VPB p65, HDB p35, VCB p40, CTG p47, BID p30 and VIB p46. Independent pixels, source numeric challengers, live schema and accounting replay verify **99 mappings / 198 value cells + 30 exact equations**. VietOCR's VCB `1.771.726` is vetoed by pixel/source `1.777.726`; OE-001–OE-004 remain explicit schema gaps; VPB remains Q1 |
 | Gemma 4 text-rescue diagnostic | Exact official Gemma 4 26B A4B IT QAT Q4_0 + multimodal projector was tested at temperature 0 on 7 difficult fresh-VietOCR crops. Exact pixel text improves from **0/7 to 6/7** and accentless anchor agreement from **6/7 to 7/7**; the CTG one-character insertion is removed. Gemma remains an opt-in text-anchor rescue only and has zero numeric, geometry, schema, mapping or accounting authority |
 | Wave-1 accepted structure | Broad/exhaustive Wave-1 authority remains **0**. The fixed 8-document maturity, loan-quality, loan-type, loan-industry, loan-enterprise, loan-geography, provision-movement, customer-deposit, trading-securities balance, trading-securities activity, investment-securities balance, investment-securities activity, combined-securities-net, capital-contribution/dividend-income, other-long-term-investments, tangible-fixed-assets, intangible-fixed-assets, investment-property, other-assets, government/NHNN-liability, entrusted/investment-risk-capital, issued-valuable-papers, other-payables/liabilities, interest-income, interest-expense, cash/precious-metals, central-bank-deposit, interbank-deposit/loan and derivative-instrument sweeps now contain bounded accepted/verified source-row results, alongside SHB p24; E-0064 separately verifies bounded non-observation of loan-currency rows 756–758 in all eight fixed PDFs. None grants broad-corpus, canonicalization or export authority |
 | Independent item verification / canonical Excel | Fixed 8-bank maturity rows 753/754/755, normalized loan-quality rows 747/748/749/750/751 plus bounded-context 1944, 46 bounded loan-type rows under ReportNormId 717, 80 bounded loan-industry rows under 727, 44 bounded enterprise/population rows, 4 bounded loan-geography rows under 759, 73 bounded provision-movement rows under 784/792/6061, 120 bounded customer-deposit rows under 1056/1075, 99 bounded investment-securities rows under 804, 29 bounded other-long-term-investment rows under 862, 35 bounded tangible-fixed-asset rows under 868, 32 bounded intangible-fixed-asset rows under 913, 9 bounded investment-property rows under 942, 58 bounded other-assets rows under 966, 28 bounded government/NHNN-liability rows under 1024, 6 bounded entrusted/investment-risk-capital rows under 1092, 66 bounded issued-valuable-paper rows under 1100, 39 bounded other-payables/liabilities rows under 1118, 54 bounded interest-income rows under 1143, 40 bounded interest-expense rows under 1151, 43 bounded service-activity rows under 1157/1167/5989, 23 bounded FX/gold-activity rows under 1175–1185/6026–6027, 28 bounded trading-securities-activity rows under 1188–1191, 28 bounded investment-securities-activity rows under 1193–1196/6028, 1 bounded combined-securities-net row under 5990, 27 bounded contribution/dividend rows under 1198–1204, 58 bounded trading-securities-balance rows under 593/616, 12 bounded cash/precious-metals rows under 561, 10 bounded central-bank-deposit rows under 569, 63 bounded interbank-deposit/loan rows under 575, and 86 bounded derivative contract/asset/liability rows under 631 are verified on their exact source graphs. ReportNormId 5747 is maturity-verified only for MBB/VPB; 5746 remains MBB source-presentation evidence and is not emitted in addition to normalized 1944; 6058 is reused once for the exact foreign-branch population. Geography rows are exact only for MBB/VIB; broader total-loan axes are not narrowed. **canonical mapping=0 documents; mapped Excel=0 documents** |
@@ -741,6 +742,25 @@ either row. VPB remains Q1. No source row remains open. Exact result:
 `docs/experiments/E-0087-capital-contribution-dividend-income-8bank-codex-verified-mapping-v1.json`.
 The next live-TM family in display order starts at ReportNormId 1205,
 `Chi phí quản lý chung (Chi phí hoạt động)`, followed by family 1221.
+
+### Latest family checkpoint — E-0088 operating expense
+
+E-0088 scans all 453 pages with one bank-blind Arabic-note owner, period/unit,
+multiple optional top-level expense parents, context-bound employee/asset/admin
+children and trailing-total graph. It finds one unique detailed note at ACB p25,
+MBB p48, VPB p65, HDB p35, VCB p40, CTG p47, BID p30 and VIB p46, with no
+second complete region. The same logic admits changed child order, omitted child
+sets, wrapped labels, BID's inherited section unit and VPB's Q1 period.
+
+Independent pixels, source numeric challengers, live schema and accounting
+replay verify 99 mappings/198 value cells and 30 exact equations. VietOCR drops
+one digit in VCB `Chi về tài sản`; visible pixels and the source numeric axis
+both establish `1.777.726`, so proposal `1.771.726` is retained as a rejected
+numeric disagreement. OE-001–OE-004 keep VPB asset rent/IT/non-deductible VAT
+and CTG other fixed-asset expense explicit as schema gaps while all other rows
+advance. Exact result:
+`docs/experiments/E-0088-operating-expense-8bank-codex-verified-mapping-v1.json`.
+The next unprocessed live-TM family begins at ReportNormId 1221.
 
 ### Latest owner-closure checkpoint — E-0067C deposit/investment
 

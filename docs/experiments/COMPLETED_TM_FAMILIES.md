@@ -624,6 +624,27 @@ Q1/2026, không relabel thành Q2/2026.
   đơn vị và các hàng con nên không bị relabel thành note chi tiết.
 - **Còn thiếu:** Không còn khoản mục nguồn chưa map trong bảy note chi tiết.
 
+## 36. Chi phí quản lý chung (Chi phí hoạt động)
+
+- **Đã map/xác minh:** ACB p25, MBB p48, VPB p65, HDB p35, VCB p40,
+  CTG p47, BID p30 và VIB p46. Whole-PDF scan tìm đúng một note chi tiết trong
+  từng PDF; 99 mapping/198 ô số và 30 phương trình tổng, nhân viên, tài sản hoặc
+  quản lý công vụ đóng chính xác.
+- **Biến thể đã đóng:** các hàng con nhân viên/tài sản/quản lý có thể có hoặc
+  không và đổi thứ tự; MBB/CTG/BID có nhãn xuống dòng; BID kế thừa đơn vị
+  `Triệu VND` ở cuối section; VPB là kỳ Q1/2026. VietOCR đọc thiếu một chữ số ở
+  VCB (`1.771.726`); pixel và trục số nguồn cùng xác minh `1.777.726` nên số
+  VietOCR bị bác bỏ.
+- **Không có:** Không có bank nào; cả tám PDF đều có một vùng family duy nhất.
+- **Còn thiếu:**
+
+| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | ---: | --- | --- |
+| VPB | 65 | Chi thuê tài sản | Schema 1205–1220 chưa có leaf riêng dưới `Chi về tài sản`. |
+| VPB | 65 | Chi phí công nghệ thông tin | Chưa có leaf chi phí CNTT tương đương. |
+| VPB | 65 | Chi về thuế GTGT đầu vào không được khấu trừ | Chưa có leaf chi phí VAT đầu vào không khấu trừ tương đương. |
+| CTG | 47 | Chi khác về TSCĐ | Chưa có leaf riêng dưới `Chi về tài sản`; số vẫn tham gia phương trình nguồn. |
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -667,3 +688,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Lãi/lỗ thuần mua bán chứng khoán đầu tư | ✓ p25 | ✓ p47 | ✓\* p63 | ✓ p35 | — | ✓ p46 | ✓ p29 | ✓ p46 | 0 dòng; 28 mapping, 56 ô số, 14 phương trình; ACB/MBB 4 DASH→0; VCB không có note chi tiết; VPB là nguồn Q1 |
 | Lãi thuần CK kinh doanh + CK đầu tư | — | ✓ p47 | — | — | — | — | — | — | 0 dòng; 1 mapping, 2 ô số, 2 phương trình; 7 PDF không in dòng tổng hợp |
 | Thu nhập góp vốn/mua cổ phần/cổ tức | ✓ p25 | ✓ p48 | ✓\* p64 | ✓ p35 | ✓ p39 | ✓ p46 | ✓ p29 | — | 0 dòng; 27 mapping, 54 ô số, 16 phương trình; 5 DASH→0; VIB không có note chi tiết; VPB là nguồn Q1 |
+| Chi phí quản lý chung/Chi phí hoạt động | ✓ p25 | ✓ p48 | ✓\* p65 | ✓ p35 | ✓ p40 | ✓\* p47 | ✓ p30 | ✓ p46 | 4 dòng OPEN; 99 mapping, 198 ô số, 30 phương trình; VCB 1 lỗi số VietOCR bị nguồn/pixel bác bỏ; VPB là nguồn Q1 |
