@@ -17,8 +17,8 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **75 entries**.  Current open queue: **17**.  Closed history:
-**29** row/graph resolutions and **29** confirmed bound-report family absences.
+Ledger total: **82 entries**.  Current open queue: **17**.  Closed history:
+**31** row/graph resolutions and **34** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
@@ -76,6 +76,24 @@ page or note identifier participates in this decision.
 | IP-001–IP-007 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/VPB/HDB/VCB/CTG/BID/VIB không có bảng biến động bất động sản đầu tư chi tiết trong đúng PDF đã bind; statement, policy, cash-flow và expense mentions giữ làm đối chứng âm |
 | OA-001–OA-012 | `OPEN_SCHEMA_OR_SEMANTIC_GAP`; 58 khoản mục chắc chắn vẫn đã map, 12 dòng này được giữ nguyên nguồn và không ép vào schema gần nhất |
 | GN-001–GN-004 | `OPEN_SCHEMA_OR_SEMANTIC_GAP`; 28 khoản mục chắc chắn vẫn đã map, bốn dòng tổng hợp/khác nghĩa này không bị ép vào nhánh gần nhất |
+| EIR-001–EIR-005 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/HDB/VCB/CTG/BID chuyển từ tiền gửi khách hàng thẳng sang family nợ kế tiếp, không có note vốn nhận tài trợ/ủy thác trong PDF đã bind |
+| EIR-006–EIR-007 | `RESOLVED_VERIFIED_BY_CODEX`; hai nguồn nhỏ chưa có leaf riêng — ODA của VPB và chương trình nhà ở qua NHNN của VIB — giữ nguyên nhãn nguồn và map vào leaf `Khác` 1099 |
+
+## Entrusted/investment-risk capital (`ENTRUSTED_INVESTMENT_RISK_CAPITAL`)
+
+Current exact-replay result:
+`docs/experiments/E-0075-entrusted-investment-risk-capital-8bank-codex-verified-mapping-v1.json`
+
+- One shared whole-PDF graph finds exactly one complete region at MBB p43,
+  VPB p56 and VIB p42, with no second complete match. It admits an aggregate
+  organization/person row, a two-line ODA source and a three-line NHNN housing
+  programme without bank/page routing.
+- Six mappings/12 current-comparative components are `VERIFIED_BY_CODEX`; four
+  printed child-to-total equations at MBB/VPB close exactly. The two small
+  source-specific rows map to explicit schema catch-all 1099 rather than being
+  forced into a semantically narrower currency/international-organization leaf.
+- ACB/HDB/VCB/CTG/BID are absent only within the supplied reports. There are no
+  open source rows for this family. VPB remains Q1/2026.
 
 ## Government and central-bank liabilities (`GOVERNMENT_NHNN_LIABILITIES`)
 

@@ -388,6 +388,20 @@ Q1/2026, không relabel thành Q2/2026.
 | BID | 24 | Vay Ngân hàng Trung ương | Không xác định được nhánh nghiệp vụ cụ thể 1025–1033. |
 | BID | 24 | Tiền gửi có kỳ hạn của KBNN | Chưa có schema tương đương; 1035 là tiền gửi thanh toán. |
 
+## 24. Vốn nhận tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro
+
+- **Đã xác minh:** MBB p43, VPB p56 và VIB p42. Đã map sáu khoản mục/12
+  thành phần giá trị hiện tại–so sánh. MBB map tổng family 1092 và `Vốn nhận
+  của tổ chức, cá nhân khác` vào 1093. Hai nguồn nhỏ chưa có leaf riêng — dự
+  án ODA của VPB và chương trình nhà ở qua NHNN của VIB — được giữ nguyên nhãn
+  nguồn và map vào leaf `Khác` 1099; không ép vào hai nhánh tổ chức quốc tế/VND
+  gần giống. Bốn phương trình dòng con bằng tổng in lặp tại MBB/VPB đóng đúng.
+- **Không có cụm này trong báo cáo:** ACB, HDB, VCB, CTG và BID. Whole-PDF
+  scan không có vùng thỏa; trên phần thuyết minh của từng PDF, cụm tiền gửi
+  khách hàng chuyển thẳng sang phát hành giấy tờ có giá hoặc family nợ kế tiếp.
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong ba vùng có cụm.
+  PDF VPB được cung cấp là Q1/2026 và được giữ đúng kỳ 31/03/2026.
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -419,3 +433,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Tăng, giảm bất động sản đầu tư | — | ✓ p41 | — | — | — | — | — | — | 0 dòng; 9 mapping, 11 phương trình, 7 bank không có bảng chi tiết |
 | Tài sản Có khác | — | ✓ p42 | ✓\* p51–53 | — | — | — | — | ✓\* p39 | 12 dòng OPEN; 58 mapping, 30 phương trình, 5 bank không có bảng chi tiết; VPB là nguồn Q1 |
 | Các khoản nợ Chính phủ/NHNN | ✓\* p20 | ✓ p42 | ✓\* p53 | ✓ p30 | ✓ p34 | ✓\* p41 | ✓\* p24 | ✓ p40 | 4 dòng OPEN; 28 mapping, 28 phương trình; 2 DASH→0; VPB là nguồn Q1 |
+| Vốn nhận tài trợ/ủy thác đầu tư | — | ✓ p43 | ✓\* p56 | — | — | — | — | ✓ p42 | 0 dòng; 6 mapping, 4 phương trình; 5 bank xác nhận không có cụm; VPB là nguồn Q1 |
