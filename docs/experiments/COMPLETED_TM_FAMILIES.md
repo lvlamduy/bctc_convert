@@ -177,7 +177,28 @@ trò anchor/geometry và không được dùng để tự sửa số. PDF VPB l�
   `VND`/`ngoại tệ` gần giống làm đối chứng âm; chúng thuộc tiền gửi/liên ngân
   hàng, nằm ngoài ranh giới `Cho vay khách hàng`, nên không được gán vào 757/758.
 
-## 11. Phân tích theo loại hình doanh nghiệp/đối tượng khách hàng
+## 11. Phân tích dư nợ cho vay theo khu vực địa lý
+
+- **Đã xác minh:** MBB p52 và VIB p53–54. MBB dùng biến thể khu vực theo hàng ×
+  family theo cột; VIB dùng family theo hàng × khu vực theo cột và nối hai trang
+  hiện tại/so sánh. Đã map `Trong nước` (5752) và `Nước ngoài` (765) cho hai
+  bank; ba phương trình `trong nước + nước ngoài = tổng Cho vay khách hàng`
+  đóng đúng. Hai dấu `-` nhìn thấy của VIB được giữ `DASH` rồi chuẩn hóa thành 0.
+- **Không có cụm cho vay theo khu vực:** VCB. Vùng p42 là báo cáo bộ phận theo
+  khu vực với hàng thu nhập/chi phí, không phải phân tích dư nợ cho vay.
+- **Còn thiếu:** ACB, VPB, HDB, CTG và BID có bảng địa lý nhưng trục dư nợ rộng
+  hơn `Cho vay khách hàng`; không được thu hẹp ngầm.
+
+| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | ---: | --- | --- |
+| ACB | 27 | Tổng dư nợ cho vay | Bao gồm cho vay khách hàng và cho vay TCTD khác; lớn hơn owner loan 6.392.840. |
+| VPB | 73 | Tổng dư nợ cho vay khách hàng, mua nợ và cấp tín dụng cho các TCTD khác | Population hỗn hợp; lớn hơn owner loan 6.848.104. PDF VPB là Q1/2026. |
+| HDB | 37 | Tổng dư nợ cho vay | Footnote gồm cho vay TCTD khác và khách hàng; lớn hơn owner loan 11.439.915. |
+| VCB | 42 | Báo cáo bộ phận theo khu vực địa lý | Khác family: hàng thu nhập/chi phí, không có trục dư nợ cho vay khách hàng. |
+| CTG | 49 | Tổng dư nợ cho vay | Lớn hơn owner loan 20.241.550. |
+| BID | 31 | Tổng dư nợ cho vay | Lớn hơn owner loan 12.677.150. |
+
+## 12. Phân tích theo loại hình doanh nghiệp/đối tượng khách hàng
 
 - **Đã xác minh:** MBB p32, VPB p43, HDB p26, VIB p34; 44 khoản mục nguồn
   đã được map. `Cho vay cá nhân` tương đương không cộng thêm với 780,
@@ -185,14 +206,14 @@ trò anchor/geometry và không được dùng để tự sửa số. PDF VPB l�
   nước ngoài dùng 6058.
 - **Không có vùng enterprise/customer-type hoàn chỉnh:** ACB, VCB, CTG, BID.
   Các hàng không tiêu đề của bốn bank này thuộc family loại hình cho vay và đã
-  được xử lý ở mục 3; không ép sang family doanh nghiệp.
+  được xử lý ở mục 6; không ép sang family doanh nghiệp.
 - **Còn thiếu:**
 
 | Bank | Trang | Khoản mục nguồn | Lý do chưa map |
 | --- | ---: | --- | --- |
 | MBB | 32 | Cho vay các TCKT | Giữ làm group parent để kiểm tra tổng các hàng con; chưa xuất thêm một mapping cộng dồn nhằm tránh double count. |
 
-## 12. Dự phòng rủi ro cho vay khách hàng
+## 13. Dự phòng rủi ro cho vay khách hàng
 
 - **Đã xác minh:** ACB p18, MBB p34, VPB p45, HDB p28, VCB p31, CTG p39,
   BID p23, VIB p34. Đã map `Dự phòng chung`, `Dự phòng cụ thể` và các dòng
@@ -207,7 +228,7 @@ trò anchor/geometry và không được dùng để tự sửa số. PDF VPB l�
 | --- | ---: | --- | --- |
 | VPB | 45 | Dự phòng chung, cụ thể và cho vay margin/ứng trước | Đã map từ kỳ 01/01–31/03/2026; nguồn Q2/2026 chưa có trong PDF được cung cấp. |
 
-## 13. Tiền gửi của khách hàng — phân loại theo loại/kỳ hạn/đối tượng
+## 14. Tiền gửi của khách hàng — phân loại theo loại/kỳ hạn/đối tượng
 
 - **Đã xác minh:** ACB p21, MBB p43, VPB p55, HDB p31, VCB p35, CTG p42,
   BID p25 và VIB p41–42. Đã map 118 dòng loại tiền gửi, VND/ngoại tệ và
@@ -246,6 +267,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Chất lượng cho vay | ✓\* p18 | ✓ p31 | ✓\* p42 | ✓ p26 | ✓ p30 | ✓ p39 | ✓ p22 | ✓ p60 | 2 population ngoài lõi |
 | Dư nợ theo thời gian | ✓ p18 | ✓ p31 | ✓ p42 | ✓ p26 | ✓ p31 | ✓ p39 | ✓ p22 | ✓ p33 | 0 khoản mục mục tiêu |
 | Cho vay theo loại tiền tệ | — p17–18 | — p31–33 | — p42–44 | — p26–27 | — p30–31 | — p38–39 | — p22 | — p33–34 | 0; family không có trong 8 PDF cố định |
+| Cho vay theo khu vực địa lý | △ p27 | ✓ p52 | △ p73 | △ p37 | — segment p42 | △ p49 | △ p31 | ✓ p53–54 | 5 trục dư nợ rộng hơn; VCB không có cụm loan-geography |
 | Doanh nghiệp/đối tượng KH | — | ✓\* p32 | ✓ p43 | ✓ p26 | — | — | — | ✓ p34 | 1 group parent check-only |
 | Dự phòng cho vay | ✓ p18 | ✓ p34 | ✓\* p45 | ✓ p28 | ✓ p31 | ✓ p39 | ✓ p23 | ✓ p34 | 0 dòng; VPB còn thiếu nguồn Q2 |
 | Tiền gửi khách hàng | ✓ p21 | ✓ p43 | ✓\* p55 | ✓ p31 | ✓ p35 | ✓ p42 | ✓ p25 | ✓\* p41–42 | 2 dòng TNHH cùng một khoảng trống schema; VPB là nguồn Q1 |

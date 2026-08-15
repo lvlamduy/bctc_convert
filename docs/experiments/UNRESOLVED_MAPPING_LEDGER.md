@@ -1,6 +1,6 @@
 # Unresolved mapping and adjudication review ledger
 
-Updated: 2026-08-14 (UTC)
+Updated: 2026-08-15 (UTC)
 
 This is the cumulative human-readable file requested for every source item or
 family region that could not initially be mapped.  Entries remain here after
@@ -17,7 +17,7 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **38 entries**.  Current open queue: **14**.  Closed history:
+Ledger total: **44 entries**.  Current open queue: **20**.  Closed history:
 **21** row/graph resolutions and **3** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
@@ -26,6 +26,12 @@ Bank/report/page fields below are evidence locators only, never matching rules.
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
 | --- | --- | --- | ---: | --- | --- |
+| LG-001 | Phân tích dư nợ cho vay theo khu vực địa lý | ACB | 27 | Tổng dư nợ cho vay | Trục nguồn gồm cả cho vay khách hàng và cho vay TCTD khác. Tổng địa lý `752.152.143` lớn hơn owner `Cho vay khách hàng` `745.759.303` đúng `6.392.840`; không thu hẹp bảng rộng thành 5752/765. |
+| LG-002 | Phân tích dư nợ cho vay theo khu vực địa lý | VPB | 73 | Tổng dư nợ cho vay khách hàng, mua nợ và cấp tín dụng cho các TCTD khác | Population hỗn hợp; `1.047.765.320` lớn hơn owner customer-loan `1.040.917.216` đúng `6.848.104`. PDF nguồn là Q1/2026. |
+| LG-003 | Phân tích dư nợ cho vay theo khu vực địa lý | HDB | 37 | Tổng dư nợ cho vay | Footnote nhìn thấy ghi gồm cho vay TCTD khác và cho vay khách hàng. Tổng `670.440.170` lớn hơn owner `659.000.255` đúng `11.439.915`. |
+| LG-004 | Phân tích dư nợ cho vay theo khu vực địa lý | VCB | 42 | Báo cáo bộ phận theo khu vực địa lý | Đây là matrix thu nhập/chi phí theo miền, không phải trục dư nợ cho vay khách hàng. Whole-PDF scan không tìm được vùng loan-geography tương đương; không suy rộng thành tuyên bố ngoài PDF này. |
+| LG-005 | Phân tích dư nợ cho vay theo khu vực địa lý | CTG | 49 | Tổng dư nợ cho vay | Tổng địa lý `2.112.949.308` lớn hơn owner customer-loan `2.092.707.758` đúng `20.241.550`; population rộng hơn nên chưa map. |
+| LG-006 | Phân tích dư nợ cho vay theo khu vực địa lý | BID | 31 | Tổng dư nợ cho vay | Tổng địa lý `2.514.484.193` lớn hơn owner customer-loan `2.501.807.043` đúng `12.677.150`; population rộng hơn nên chưa map. |
 | DFI-001 | Công cụ tài chính phái sinh và tài sản/công nợ tài chính khác | VCB | 7 và các bảng công cụ tài chính/rủi ro phía sau | Công cụ tài chính phái sinh và tài sản/công nợ tài chính khác | Whole-PDF scan thấy các dòng tổng, chính sách, giá trị hợp lý hoặc bề mặt rủi ro nhưng không có một bảng giao dịch chi tiết đủ ít nhất hai hàng giao dịch con, hai kỳ và các trục hợp đồng/tài sản/công nợ. Không ép bề mặt gần giống vào schema 632–715 và không tuyên bố family vắng khỏi báo cáo. |
 | IDL-001 | Tiền gửi/vay các TCTD khác | HDB | 3 | Tiền gửi tại và cho vay các TCTD khác | Whole-PDF scan chỉ thấy dòng tổng; các lần lặp sau thuộc bảng ngoại tệ, rủi ro hoặc công cụ tài chính. Không có cụm chi tiết đủ cha tiền gửi/vay, con tiền tệ, kỳ và subtotal; không tuyên bố family vắng mặt. |
 | IDL-002 | Tiền gửi/vay các TCTD khác | VCB | 7 | Tiền gửi tại và cho vay các tổ chức tín dụng khác | Whole-PDF scan chỉ thấy dòng tổng; các lần lặp sau thuộc chính sách, giá trị hợp lý hoặc rủi ro. Không ép các bảng gần giống thành note phân rã tiền gửi/vay. |
@@ -54,6 +60,8 @@ page or note identifier participates in this decision.
 
 | IDs | Current disposition |
 | --- | --- |
+| LG-001–LG-003, LG-005–LG-006 | `OPEN_BROADER_LOAN_POPULATION`; exact geography arithmetic is retained but cannot be mapped to customer-loan geography rows 5752/765 |
+| LG-004 | `OPEN_NO_CUSTOMER_LOAN_GEOGRAPHY_REGION`; the visible geographic segment report is a negative-control family, not a customer-loan table |
 | IDL-001–IDL-002 | `OPEN_NO_COMPLETE_DETAILED_NOTE_REGION`; chỉ có tổng hoặc negative-control family, không ép thành bảng chi tiết và không tự tuyên bố absence |
 | CBD-001–CBD-002 | `OPEN_SCHEMA_GAP`; retained in graph/accounting, not coerced to `Tiền gửi khác` |
 | LT-001–LT-002 | `RESOLVED_VERIFIED_BY_CODEX` |
@@ -64,6 +72,25 @@ page or note identifier participates in this decision.
 | PM-001 | `OPEN_SOURCE_PERIOD_GAP`; không còn dòng nguồn chưa map trong PDF Q1 đã bind |
 | SEC-001 | `OPEN_DISTINCT_SECURITIES_SUBFAMILY`; trading đã hoàn tất 7 bank, AFS VIB giữ riêng cho lượt kế tiếp |
 | CPM-001–CPM-005 | `OPEN_NO_COMPLETE_DETAILED_NOTE_REGION`; chỉ có dòng tổng hoặc negative-control family, không ép thành bảng chi tiết và không tự tuyên bố absence |
+
+## Customer-loan geography (`LOAN_GEOGRAPHIC_CLASSIFICATION`)
+
+Current exact-replay result:
+`docs/experiments/E-0065-loan-geography-8bank-codex-verified-mapping-v1.json`
+
+- One bank-blind graph scans all 453 pages and combines the geographic
+  concentration heading with an exact customer-loan axis before reading the
+  domestic/foreign structure. It supports geography by rows or columns and
+  consecutive-period continuation, while retaining broader total-loan tables
+  and geographic segment reports as negative controls.
+- MBB p52 and VIB p53–54 are the only exact customer-loan populations. Four
+  source rows (5752/765 for each bank), six period-value cells and three
+  domestic-plus-foreign equations are `VERIFIED_BY_CODEX`. VIB's two visible
+  foreign dashes stay typed `DASH` before zero normalization.
+- ACB/VPB/HDB/CTG/BID remain LG-001/LG-002/LG-003/LG-005/LG-006 because their
+  geographic totals are mechanically larger than independently verified
+  customer-loan owner totals. VCB remains LG-004 because its p42 surface is a
+  segment-report matrix. None is silently narrowed or promoted.
 
 ## Deposits at and loans to other credit institutions (`INTERBANK_DEPOSITS_AND_LOANS`)
 
