@@ -228,7 +228,24 @@ trò anchor/geometry và không được dùng để tự sửa số. PDF VPB l�
 | --- | ---: | --- | --- |
 | VPB | 45 | Dự phòng chung, cụ thể và cho vay margin/ứng trước | Đã map từ kỳ 01/01–31/03/2026; nguồn Q2/2026 chưa có trong PDF được cung cấp. |
 
-## 14. Tiền gửi của khách hàng — phân loại theo loại/kỳ hạn/đối tượng
+## 14. Hoạt động mua nợ
+
+- **Đã xác minh:** MBB p35, VPB p46, HDB p29 và VIB p35. Đã map 17 dòng
+  `Mua nợ bằng VNĐ`, `Mua nợ bằng ngoại tệ` (HDB), `Dự phòng rủi ro`, `Nợ
+  gốc đã mua`, `Lãi của khoản nợ đã mua`; 34 ô hiện tại/so sánh và 16 phương
+  trình lõi đều đóng đúng. Năm dấu `-` nhìn thấy được giữ trạng thái `DASH`
+  rồi chuẩn hóa thành 0.
+- **Không có trong báo cáo:** ACB, VCB, CTG, BID. Whole-PDF scan không tìm
+  thấy vùng nào đi từ owner `Hoạt động mua nợ` qua hai khối số dư/gốc-lãi đến
+  ranh giới family kế tiếp.
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong bốn vùng đã xác minh.
+  Nhánh chất lượng và biến động dự phòng của VPB cùng khối mua nợ lịch sử 2017
+  của VIB chỉ dùng kiểm tra, không cộng hoặc map lại vào số dư hiện tại.
+
+Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
+Q1/2026, không relabel thành Q2/2026.
+
+## 15. Tiền gửi của khách hàng — phân loại theo loại/kỳ hạn/đối tượng
 
 - **Đã xác minh:** ACB p21, MBB p43, VPB p55, HDB p31, VCB p35, CTG p42,
   BID p25 và VIB p41–42. Đã map 118 dòng loại tiền gửi, VND/ngoại tệ và
@@ -270,4 +287,5 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Cho vay theo khu vực địa lý | △ p27 | ✓ p52 | △ p73 | △ p37 | — segment p42 | △ p49 | △ p31 | ✓ p53–54 | 5 trục dư nợ rộng hơn; VCB không có cụm loan-geography |
 | Doanh nghiệp/đối tượng KH | — | ✓\* p32 | ✓ p43 | ✓ p26 | — | — | — | ✓ p34 | 1 group parent check-only |
 | Dự phòng cho vay | ✓ p18 | ✓ p34 | ✓\* p45 | ✓ p28 | ✓ p31 | ✓ p39 | ✓ p23 | ✓ p34 | 0 dòng; VPB còn thiếu nguồn Q2 |
+| Hoạt động mua nợ | — | ✓ p35 | ✓\* p46 | ✓ p29 | — | — | — | ✓\* p35 | 0 dòng; 4 bank không có; VPB là nguồn Q1 |
 | Tiền gửi khách hàng | ✓ p21 | ✓ p43 | ✓\* p55 | ✓ p31 | ✓ p35 | ✓ p42 | ✓ p25 | ✓\* p41–42 | 2 dòng TNHH cùng một khoảng trống schema; VPB là nguồn Q1 |

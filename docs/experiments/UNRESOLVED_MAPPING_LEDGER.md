@@ -531,6 +531,40 @@ unresolved.  Six non-additive source group/total equations remain explicit.
 - Resolution: the exact crop-bound pixel value `97.043.851` is retained alongside
   the raw Transformer proposal and maps to ReportNormId `773`; total closure is exact.
 
+## E-0066 — bounded whole-PDF non-observation controls for `Hoạt động mua nợ`
+
+These four entries satisfy the ledger requirement for every no-complete-region
+outcome. They are not open mappings: the supplied PDFs were scanned completely,
+and the family is recorded as absent only inside that fixed source scope.
+
+### PD-001 — ACB — no complete purchased-debt region
+
+- Review status: `RESOLVED_BOUNDED_NOT_OBSERVED_IN_SUPPLIED_PDF`
+- Whole-PDF outcome: no region contains the owner `Hoạt động mua nợ`, the
+  balance rows, the principal/interest detail and the next-family boundary.
+- Mapping outcome: no source row to map; no broad-corpus absence claim.
+
+### PD-002 — VCB — no complete purchased-debt region
+
+- Review status: `RESOLVED_BOUNDED_NOT_OBSERVED_IN_SUPPLIED_PDF`
+- Whole-PDF outcome: no complete owner→balance→principal/interest cluster.
+- Mapping outcome: no source row to map; no broad-corpus absence claim.
+
+### PD-003 — CTG — no complete purchased-debt region
+
+- Review status: `RESOLVED_BOUNDED_NOT_OBSERVED_IN_SUPPLIED_PDF`
+- Whole-PDF outcome: no complete owner→balance→principal/interest cluster.
+- Mapping outcome: no source row to map; no broad-corpus absence claim.
+
+### PD-004 — BID — no complete purchased-debt region
+
+- Review status: `RESOLVED_BOUNDED_NOT_OBSERVED_IN_SUPPLIED_PDF`
+- Whole-PDF outcome: no complete owner→balance→principal/interest cluster.
+- Mapping outcome: no source row to map; no broad-corpus absence claim.
+
+Resolving result: E-0066
+`e0066:result:79e15086c88ca9283d450955da737a620012679f36071e39dce9a63962c76a3b`.
+
 ## Append policy
 
 Every later family appends entries here when a source row or complete region is
