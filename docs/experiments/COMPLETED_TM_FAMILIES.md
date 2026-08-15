@@ -337,6 +337,39 @@ Q1/2026, không relabel thành Q2/2026.
   chứng âm, không được relabel thành family 942–5974.
 - **Còn thiếu:** Không còn khoản mục nguồn chưa map trong vùng MBB đã xác minh.
 
+## 22. Tài sản Có khác
+
+- **Đã xác minh:** MBB p42, VPB p51–53 và VIB p39. Đã map 58 khoản mục
+  nguồn/126 thành phần giá trị hiện tại–so sánh; 30 phép cộng trừ cha–con,
+  subtotal, chất lượng, lãi phí, lợi thế thương mại và tổng family đóng đúng.
+  MBB dùng hai note anh em `Các khoản phải thu`/`Tài sản Có khác`; VPB dùng
+  một owner nối ba trang và các bảng con; VIB dùng một bảng tổng kèm hai bảng
+  chi tiết ngay dưới. Mỗi PDF chỉ có một vùng thỏa đầy đủ trên toàn báo cáo.
+- **Không có bảng thuyết minh chi tiết trong báo cáo:** ACB, HDB, VCB, CTG
+  và BID. Năm báo cáo đi từ family đầu tư dài hạn sang các khoản nợ Chính phủ/
+  NHNN mà không có note `Tài sản Có khác`; các dòng bảng cân đối, chính sách và
+  quản trị rủi ro chỉ là đối chứng âm.
+- **Còn thiếu:** 12 dòng nguồn dưới đây chưa có schema tương đương hoặc có
+  nghĩa rộng/hẹp khác, nên vẫn `UNRESOLVED` thay vì ép vào khoản mục gần nhất.
+
+| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | ---: | --- | --- |
+| VPB | 51 | Phải thu bán tài sản tài chính | Rộng hơn 976 `Phải thu từ bán chứng khoán`. |
+| VPB | 51 | Dự phòng phí và bồi thường nghiệp vụ nhượng tái bảo hiểm | Chưa có khoản mục con tương đương. |
+| VPB | 52 | Số dư đầu kỳ dự phòng rủi ro tài sản Có nội bảng khác | Chưa có nhánh biến động dự phòng tương ứng. |
+| VPB | 52 | Trích lập dự phòng rủi ro trong kỳ | Chưa có nhánh biến động dự phòng tương ứng. |
+| VPB | 52 | Số dư cuối kỳ dự phòng rủi ro tài sản Có nội bảng khác | Chưa có nhánh biến động dự phòng tương ứng. |
+| VPB | 52 | Dự phòng tài sản Có rủi ro tín dụng | Không đồng nhất với population chất lượng 1018. |
+| VPB | 52 | Dự phòng cụ thể | Chưa có khoản mục dự phòng `Tài sản Có khác`. |
+| VPB | 52 | Dự phòng rủi ro phải thu khó đòi | Chưa có khoản mục con tương đương. |
+| VIB | 39 | Phải thu từ Ngân sách Nhà nước | Không đồng nhất với 979 `Phải thu từ NHNN Việt Nam`. |
+| VIB | 39 | Phải thu từ hoạt động tài trợ thương mại | Chưa có khoản mục con tương đương. |
+| VIB | 39 | Phải thu hoa hồng bảo hiểm | Chưa chứng minh tương đương khoản phải thu từ công ty bảo hiểm con. |
+| VIB | 39 | Tài sản thuế TNDN hoãn lại | Chưa có khoản mục con tương đương trong family 966–1023. |
+
+Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
+Q1/2026, không relabel thành Q2/2026.
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -366,3 +399,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Tăng, giảm TSCĐ thuê tài chính | — | — | — | — | — | — | — | — | 0 dòng; cả 8 PDF xác nhận không có bảng chi tiết |
 | Tăng, giảm TSCĐ vô hình | — | ✓ p39 | ✓\* p50 | — | — | — | — | ✓ p38 | 0 dòng; 32 mapping, 12 phương trình, 5 bank không có bảng; VPB là nguồn Q1 |
 | Tăng, giảm bất động sản đầu tư | — | ✓ p41 | — | — | — | — | — | — | 0 dòng; 9 mapping, 11 phương trình, 7 bank không có bảng chi tiết |
+| Tài sản Có khác | — | ✓ p42 | ✓\* p51–53 | — | — | — | — | ✓\* p39 | 12 dòng OPEN; 58 mapping, 30 phương trình, 5 bank không có bảng chi tiết; VPB là nguồn Q1 |

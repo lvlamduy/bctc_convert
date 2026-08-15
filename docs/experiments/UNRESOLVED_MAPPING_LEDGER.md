@@ -17,7 +17,7 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **59 entries**.  Current open queue: **1**.  Closed history:
+Ledger total: **71 entries**.  Current open queue: **13**.  Closed history:
 **29** row/graph resolutions and **29** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
@@ -27,6 +27,18 @@ Bank/report/page fields below are evidence locators only, never matching rules.
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
 | --- | --- | --- | ---: | --- | --- |
 | PM-001 | Dự phòng rủi ro cho vay khách hàng | VPB | 45 | Dự phòng chung, dự phòng cụ thể, dự phòng cho vay giao dịch ký quỹ và ứng trước | Đã map và kiểm tra đủ kỳ 01/01–31/03/2026 của PDF được cung cấp; chưa có PDF VPB Q2/2026 nên không được relabel kết quả Q1 thành Q2. |
+| OA-001 | Tài sản Có khác | VPB | 51 | Phải thu bán tài sản tài chính | Nghĩa nguồn rộng hơn 976 `Phải thu từ bán chứng khoán`; không thu hẹp ngầm. |
+| OA-002 | Tài sản Có khác | VPB | 51 | Dự phòng phí và bồi thường nghiệp vụ nhượng tái bảo hiểm | Chưa có khoản mục con tương đương trong family 966–1023. |
+| OA-003 | Tài sản Có khác | VPB | 52 | Số dư đầu kỳ dự phòng rủi ro cho các tài sản Có nội bảng khác | Chưa có nhánh biến động dự phòng tương ứng. |
+| OA-004 | Tài sản Có khác | VPB | 52 | Trích lập dự phòng rủi ro trong kỳ | Chưa có nhánh biến động dự phòng tương ứng. |
+| OA-005 | Tài sản Có khác | VPB | 52 | Số dư cuối kỳ dự phòng rủi ro cho các tài sản Có nội bảng khác | Chưa có nhánh biến động dự phòng tương ứng. |
+| OA-006 | Tài sản Có khác | VPB | 52 | Dự phòng tài sản Có rủi ro tín dụng | Đây là phân rã số dư dự phòng, không phải population chất lượng 1018. |
+| OA-007 | Tài sản Có khác | VPB | 52 | Dự phòng cụ thể | Chưa có khoản mục dự phòng `Tài sản Có khác`. |
+| OA-008 | Tài sản Có khác | VPB | 52 | Dự phòng rủi ro phải thu khó đòi | Chưa có khoản mục con tương đương. |
+| OA-009 | Tài sản Có khác | VIB | 39 | Phải thu từ Ngân sách Nhà nước | Không đồng nhất với 979 `Phải thu từ NHNN Việt Nam`. |
+| OA-010 | Tài sản Có khác | VIB | 39 | Phải thu từ hoạt động tài trợ thương mại | Chưa có khoản mục con tương đương. |
+| OA-011 | Tài sản Có khác | VIB | 39 | Phải thu hoa hồng bảo hiểm | Chưa chứng minh tương đương khoản phải thu từ công ty bảo hiểm con. |
+| OA-012 | Tài sản Có khác | VIB | 39 | Tài sản thuế TNDN hoãn lại | Chưa có khoản mục con tương đương trong family 966–1023. |
 
 The shared family locator follows a strict minimal-anchor search.  It enumerates
 every parent+child pair first, then every child+child pair, over both complete and
@@ -58,6 +70,24 @@ page or note identifier participates in this decision.
 | IFA-001–IFA-005 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/HDB/VCB/CTG/BID không có bảng biến động TSCĐ vô hình chi tiết trong PDF đã bind |
 | IFA-006 | `RESOLVED_VERIFIED_BY_CODEX`; schema 6069 được thêm và map cho disclosure TSCĐ vô hình đã hao mòn hết nhưng vẫn còn sử dụng tại VPB/VIB |
 | IP-001–IP-007 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/VPB/HDB/VCB/CTG/BID/VIB không có bảng biến động bất động sản đầu tư chi tiết trong đúng PDF đã bind; statement, policy, cash-flow và expense mentions giữ làm đối chứng âm |
+| OA-001–OA-012 | `OPEN_SCHEMA_OR_SEMANTIC_GAP`; 58 khoản mục chắc chắn vẫn đã map, 12 dòng này được giữ nguyên nguồn và không ép vào schema gần nhất |
+
+## Other assets (`OTHER_ASSETS`)
+
+Current exact-replay result:
+`docs/experiments/E-0073-other-assets-8bank-codex-verified-mapping-v1.json`
+
+- Whole-PDF fresh-VietOCR scan finds exactly one complete region in each of
+  MBB p42, VPB p51–53 and VIB p39; no document has a second complete match.
+  The shared graph admits split sibling notes, an explicit multi-page umbrella
+  and an integrated table with subtables without bank/page routing.
+- 58 source mappings, 126 visible current/comparative components and 30 exact
+  accounting equations are `VERIFIED_BY_CODEX`. Five supplied reports are
+  bounded absences between their long-term-investment and government-liability
+  note boundaries.
+- OA-001–OA-012 retain every source row that lacks an equivalent schema or has
+  a broader/narrower meaning. They remain at the top of the open queue while
+  the family itself is closed at its safely mapped core.
 
 ## Investment property (`INVESTMENT_PROPERTY_MOVEMENT`)
 
