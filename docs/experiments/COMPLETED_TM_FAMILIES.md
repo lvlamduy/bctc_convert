@@ -516,6 +516,25 @@ Q1/2026, không relabel thành Q2/2026.
 - **Còn thiếu:** Không còn khoản mục nguồn chưa map. VPB là nguồn Q1/2026 và
   được giữ đúng kỳ, không relabel thành Q2.
 
+## 30. Thu nhập, chi phí và lãi thuần từ hoạt động dịch vụ
+
+- **Đã map/xác minh:** MBB p46, VPB p62 và VIB p45. Whole-PDF scan tìm đúng
+  một vùng chi tiết ở mỗi bank này; 43 mapping/86 ô số và 18 phương trình
+  `các dòng thu = tổng thu`, `các dòng chi = tổng chi`, `thu + chi = lãi
+  thuần` đều đóng đúng cho cả hai kỳ.
+- **Biến thể đã đóng:** MBB in tổng thu và tổng chi sau các dòng con; VPB/VIB
+  in hai tổng này trước các dòng con. Net có thể có nhãn ở cuối hoặc chỉ có
+  hai số dưới owner đầu bảng. Các dòng thanh toán/ngân quỹ, tư vấn, bảo hiểm,
+  ủy thác/đại lý, xử lý nợ/định giá, môi giới, thẻ, viễn thông và khác đều là
+  nhánh tùy chọn, không bị ép cùng thứ tự. Hai dấu `-` của chi tư vấn MBB được
+  khóa trực tiếp bằng pixel và chuẩn hóa thành 0.
+- **Không có cụm thuyết minh chi tiết trong báo cáo:** ACB, HDB, VCB, CTG và
+  BID. ACB/HDB/CTG/BID chỉ có ba dòng tổng trên báo cáo kết quả kinh doanh;
+  VCB còn có các dòng gần giống trong báo cáo bộ phận. Các vùng này không có
+  hàng con dịch vụ nên được giữ làm đối chứng âm, không relabel thành note.
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong ba vùng chi tiết.
+  VPB là nguồn Q1/2026 và được giữ đúng kỳ, không relabel thành Q2.
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -553,3 +572,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Vốn và các quỹ | ✓ p23–24 | ✓ p44–45 | ✓\* p60–61 | ✓\* p33–34 | ✓\* p36–37 | ✓\* p43–44 | △ p27–28 | △ p44–45 | 10 mục OPEN; 65 mapping, 20 phương trình; BID/VIB structure-only; VPB là nguồn Q1 |
 | Thu nhập lãi và các khoản thu nhập tương tự | ✓ p24 | ✓ p46 | ✓\* p62 | ✓ p34 | ✓ p38 | ✓ p45 | ✓ p28 | ✓ p45 | 0 dòng; 54 mapping, 108 ô số, 28 phương trình; VPB là nguồn Q1 |
 | Chi phí lãi và các khoản tương tự chi phí lãi | ✓ p24 | ✓ p46 | ✓\* p62 | ✓ p34 | ✓ p39 | ✓ p45 | ✓ p29 | ✓ p45 | 0 dòng; 40 mapping, 80 ô số, 16 phương trình; VPB là nguồn Q1 |
+| Thu nhập/chi phí/lãi thuần hoạt động dịch vụ | — | ✓ p46 | ✓\* p62 | — | — | — | — | ✓ p45 | 0 dòng; 43 mapping, 86 ô số, 18 phương trình; 5 bank không có note chi tiết; VPB là nguồn Q1 |

@@ -41,6 +41,14 @@ không xuất hiện trong đúng tám vùng family đã bind. Lỗi VietOCR MBB
 `(3:975.549)` được trục số nguồn và pixel bác bỏ thành `(3.975.549)`; đây là
 đối chứng OCR đã đóng, không phải khoảng trống mapping.
 
+E-0082 `Thu nhập/chi phí/lãi thuần từ hoạt động dịch vụ` không bổ sung dòng
+OPEN: whole-PDF graph tìm đúng một note chi tiết tại MBB/VPB/VIB, map 43 dòng
+vào 1157–1174, 5986–5989 và 6021–6025, đồng thời đóng 18 phương trình. Hai
+dấu gạch ở `Chi về dịch vụ tư vấn` của MBB được pixel-bind và chuẩn hóa 0.
+ACB/HDB/CTG/BID chỉ có tổng trên KQKD; VCB có thêm đối chứng báo cáo bộ phận;
+không vùng nào có các hàng con của note nên năm báo cáo được ghi bounded
+non-observation, không tạo candidate hoặc dòng OPEN giả.
+
 ## Open review queue (always first)
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
