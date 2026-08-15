@@ -17,7 +17,7 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **82 entries**.  Current open queue: **17**.  Closed history:
+Ledger total: **90 entries**.  Current open queue: **25**.  Closed history:
 **31** row/graph resolutions and **34** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
@@ -43,6 +43,14 @@ Bank/report/page fields below are evidence locators only, never matching rules.
 | OA-010 | Tài sản Có khác | VIB | 39 | Phải thu từ hoạt động tài trợ thương mại | Chưa có khoản mục con tương đương. |
 | OA-011 | Tài sản Có khác | VIB | 39 | Phải thu hoa hồng bảo hiểm | Chưa chứng minh tương đương khoản phải thu từ công ty bảo hiểm con. |
 | OA-012 | Tài sản Có khác | VIB | 39 | Tài sản thuế TNDN hoãn lại | Chưa có khoản mục con tương đương trong family 966–1023. |
+| IVP-001 | Phát hành giấy tờ có giá | ACB | 21 | Trái phiếu — Kỳ hạn 5 năm | Mốc đúng 5 năm không thuộc rõ leaf `Từ 12 tháng đến dưới 5 năm` hoặc `Trên 5 năm`; giữ nguyên nguồn. |
+| IVP-002 | Phát hành giấy tờ có giá | ACB | 21 | Chứng chỉ tiền gửi — Kỳ hạn 5 năm | Cùng khoảng trống biên kỳ hạn đúng 5 năm; không ép vào leaf gần nhất. |
+| IVP-003 | Phát hành giấy tờ có giá | MBB | 44 | Trái phiếu — Dưới 5 năm | Một số in gộp cả kỳ hạn ngắn và trung, không thể phân bổ an toàn. |
+| IVP-004 | Phát hành giấy tờ có giá | MBB | 44 | Chứng chỉ tiền gửi — Trên 12 tháng | Một số in gộp kỳ hạn trung và dài, không thể phân bổ an toàn. |
+| IVP-005 | Phát hành giấy tờ có giá | VPB | 56 | Dưới 12 tháng | Trục kỳ hạn áp dụng cho toàn family gồm chứng chỉ tiền gửi và trái phiếu, không riêng một instrument leaf. |
+| IVP-006 | Phát hành giấy tờ có giá | VPB | 56 | Từ trên 12 tháng đến 5 năm | Trục kỳ hạn toàn family, không được gán riêng vào CD/kỳ phiếu/trái phiếu. |
+| IVP-007 | Phát hành giấy tờ có giá | VPB | 56 | Từ trên 5 năm trở lên | Trục kỳ hạn toàn family, không được gán riêng vào CD/kỳ phiếu/trái phiếu. |
+| IVP-008 | Phát hành giấy tờ có giá | BID | 25 | Trái phiếu tăng vốn BIDV | Giá trị đã được cộng vào parent `Trái phiếu`; chưa có leaf độc lập hoặc phân rã kỳ hạn nhìn thấy. |
 
 The shared family locator follows a strict minimal-anchor search.  It enumerates
 every parent+child pair first, then every child+child pair, over both complete and
@@ -78,6 +86,24 @@ page or note identifier participates in this decision.
 | GN-001–GN-004 | `OPEN_SCHEMA_OR_SEMANTIC_GAP`; 28 khoản mục chắc chắn vẫn đã map, bốn dòng tổng hợp/khác nghĩa này không bị ép vào nhánh gần nhất |
 | EIR-001–EIR-005 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/HDB/VCB/CTG/BID chuyển từ tiền gửi khách hàng thẳng sang family nợ kế tiếp, không có note vốn nhận tài trợ/ủy thác trong PDF đã bind |
 | EIR-006–EIR-007 | `RESOLVED_VERIFIED_BY_CODEX`; hai nguồn nhỏ chưa có leaf riêng — ODA của VPB và chương trình nhà ở qua NHNN của VIB — giữ nguyên nhãn nguồn và map vào leaf `Khác` 1099 |
+| IVP-001–IVP-008 | `OPEN_SCHEMA_OR_SCOPE_GAP`; 66 khoản mục chắc chắn vẫn đã map. Hai mốc đúng 5 năm, hai kỳ hạn gộp, ba trục kỳ hạn toàn family và một trái phiếu tăng vốn không bị ép vào leaf hẹp hơn |
+
+## Issued valuable papers (`ISSUED_VALUABLE_PAPERS`)
+
+Current exact-replay result:
+`docs/experiments/E-0076-issued-valuable-papers-8bank-codex-verified-mapping-v1.json`
+
+- One shared whole-PDF graph finds exactly one complete region in each of the
+  eight reports and retains 29 near controls. It covers vertical instrument/
+  tenor tables, book-value versus face-value lanes, combined promissory/bond
+  parents and horizontal instrument columns without bank/page routing.
+- 66 mappings, 124 value components and 36 accounting equations are
+  `VERIFIED_BY_CODEX`. Four CTG dash cells are bound to exact render pixels and
+  normalized to zero; empty cells are not promoted to zero.
+- IVP-001–IVP-008 remain open because their source scope or boundary is not one
+  unique schema leaf. ACB exact-five-year rows, MBB broad tenors, VPB's
+  whole-family tenor view and BID's capital-increase bond remain fully visible
+  in the machine result. VPB is retained as Q1/2026.
 
 ## Entrusted/investment-risk capital (`ENTRUSTED_INVESTMENT_RISK_CAPITAL`)
 

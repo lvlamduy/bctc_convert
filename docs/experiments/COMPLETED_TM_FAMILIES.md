@@ -402,6 +402,30 @@ Q1/2026, không relabel thành Q2/2026.
 - **Còn thiếu:** Không còn khoản mục nguồn chưa map trong ba vùng có cụm.
   PDF VPB được cung cấp là Q1/2026 và được giữ đúng kỳ 31/03/2026.
 
+## 25. Phát hành giấy tờ có giá
+
+- **Đã xác minh:** ACB p21, MBB p44, VPB p56, HDB p31, VCB p35, CTG p42,
+  BID p25 và VIB p43. Whole-PDF scan tìm đúng một vùng hoàn chỉnh trên mỗi
+  bank. Đã map 66 khoản mục/124 thành phần giá trị và kiểm tra 36 phương trình
+  theo công cụ, kỳ hạn và tổng family. CTG dùng biến thể kỳ hạn theo hàng × công
+  cụ theo cột; bốn ô dấu `-` được khóa trực tiếp bằng pixel và chuẩn hóa thành
+  0. ACB chỉ dùng cột giá trị ghi sổ để map, cột mệnh giá làm đối chứng. VCB
+  dùng nhánh gộp `Kỳ phiếu, trái phiếu`; VPB giữ đúng nguồn Q1/2026.
+- **Không có cụm này trong báo cáo:** Không có; cả 8 bank đều có đúng một vùng.
+- **Còn thiếu:** Tám hàng nguồn dưới đây không tương đương duy nhất với leaf
+  hiện có, nên không bị ép map.
+
+| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | ---: | --- | --- |
+| ACB | 21 | Trái phiếu — Kỳ hạn 5 năm | Mốc đúng 5 năm không thuộc rõ `dưới 5 năm` hay `trên 5 năm`. |
+| ACB | 21 | Chứng chỉ tiền gửi — Kỳ hạn 5 năm | Cùng khoảng trống biên kỳ hạn đúng 5 năm. |
+| MBB | 44 | Trái phiếu — Dưới 5 năm | Gộp cả kỳ hạn ngắn và trung; không thể tách từ số in. |
+| MBB | 44 | Chứng chỉ tiền gửi — Trên 12 tháng | Gộp cả kỳ hạn trung và dài; không thể tách từ số in. |
+| VPB | 56 | Toàn family — Dưới 12 tháng | Trục kỳ hạn áp dụng cho toàn family, không riêng một công cụ. |
+| VPB | 56 | Toàn family — Từ trên 12 tháng đến 5 năm | Trục kỳ hạn toàn family, không riêng một leaf công cụ. |
+| VPB | 56 | Toàn family — Từ trên 5 năm trở lên | Trục kỳ hạn toàn family, không riêng một leaf công cụ. |
+| BID | 25 | Trái phiếu tăng vốn BIDV | Đã cộng vào parent `Trái phiếu`; chưa có leaf độc lập hoặc phân rã kỳ hạn nhìn thấy. |
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -434,3 +458,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Tài sản Có khác | — | ✓ p42 | ✓\* p51–53 | — | — | — | — | ✓\* p39 | 12 dòng OPEN; 58 mapping, 30 phương trình, 5 bank không có bảng chi tiết; VPB là nguồn Q1 |
 | Các khoản nợ Chính phủ/NHNN | ✓\* p20 | ✓ p42 | ✓\* p53 | ✓ p30 | ✓ p34 | ✓\* p41 | ✓\* p24 | ✓ p40 | 4 dòng OPEN; 28 mapping, 28 phương trình; 2 DASH→0; VPB là nguồn Q1 |
 | Vốn nhận tài trợ/ủy thác đầu tư | — | ✓ p43 | ✓\* p56 | — | — | — | — | ✓ p42 | 0 dòng; 6 mapping, 4 phương trình; 5 bank xác nhận không có cụm; VPB là nguồn Q1 |
+| Phát hành giấy tờ có giá | ✓\* p21 | ✓\* p44 | ✓\* p56 | ✓ p31 | ✓ p35 | ✓ p42 | ✓\* p25 | ✓ p43 | 8 dòng OPEN; 66 mapping, 36 phương trình; 4 DASH→0; VPB là nguồn Q1 |
