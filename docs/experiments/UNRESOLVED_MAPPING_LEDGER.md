@@ -68,6 +68,14 @@ giữ nguyên, còn containment, vị trí hàng và hai phương trình xác nh
 note mua bán chứng khoán đầu tư p46; vùng này là đối chứng family khác và không
 bị relabel. VPB giữ đúng kỳ Q1/2026.
 
+E-0085 `Lãi/lỗ thuần từ mua bán chứng khoán đầu tư` không bổ sung dòng OPEN:
+whole-PDF graph tìm đúng một note chi tiết tại ACB/MBB/VPB/HDB/CTG/BID/VIB,
+map 28 dòng vào 1193–1196 và 6028, đồng thời đóng 14 phương trình hai kỳ. MBB
+có thêm nhánh dự phòng giảm giá góp vốn, đầu tư dài hạn; VIB không có nhánh dự
+phòng. Ba dấu gạch ACB và một dấu gạch MBB được pixel-bind rồi chuẩn hóa 0. VCB
+chỉ có số tổng báo cáo bộ phận, không có các hàng con của note nên là bounded
+non-observation chứ không tạo candidate hoặc dòng OPEN. VPB giữ đúng kỳ Q1/2026.
+
 ## Open review queue (always first)
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |

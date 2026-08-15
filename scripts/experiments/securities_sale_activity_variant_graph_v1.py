@@ -160,12 +160,19 @@ def _child_role(text: str) -> str | None:
         return None
     if "thu nhap" in value and "mua ban chung khoan" in value:
         return "INCOME"
+    # Provision rows often begin with "Chi phi du phong ...".  Resolve the
+    # more specific accounting role before the generic expense wording so the
+    # same bank-blind rule works for CTG/BID as well as rows headed by
+    # "Trich lap" or "Hoan nhap".
+    if "du phong" in value:
+        if "chung khoan" in value:
+            return "PROVISION"
+        if "gop von" in value or "dau tu dai han" in value:
+            return "OTHER"
     if any(token in value for token in ("chi phi", "chi ve", "chi tu")) and (
         "mua ban chung khoan" in value or "chung khoan dau tu" in value
     ):
         return "EXPENSE"
-    if "du phong" in value and "chung khoan" in value:
-        return "PROVISION"
     if value == "khac" or value.startswith("thu khac") or value.startswith("chi khac"):
         return "OTHER"
     return None
@@ -203,7 +210,7 @@ def _region(lines: Sequence[Mapping[str, Any]], start: int, family_variant: str)
     window = _window(lines, start, family_variant)
     prefix = [
         line
-        for line in lines[max(0, start - 12) : start]
+        for line in lines[max(0, start - 28) : start]
         if line["page_sequence"] == owner["page_sequence"]
     ]
     events = [support._line_ref(owner, "OWNER")]
@@ -234,8 +241,15 @@ def _region(lines: Sequence[Mapping[str, Any]], start: int, family_variant: str)
         text = line["normalized_text"]
         axis = support._axis_role(text)
         child = _child_role(text)
-        if child is None and offset + 1 < len(window):
-            child = _child_role(f"{text} {window[offset + 1]['normalized_text']}")
+        if child is None and offset + 1 < len(window) and axis is None:
+            following = window[offset + 1]
+            following_text = following["normalized_text"]
+            if (
+                support._NUMBER.fullmatch(text) is None
+                and support._axis_role(following_text) is None
+                and support._NUMBER.fullmatch(following_text) is None
+            ):
+                child = _child_role(f"{text} {following_text}")
         if child is not None:
             children.append((child, line))
             events.append(support._line_ref(line, child))
@@ -246,7 +260,7 @@ def _region(lines: Sequence[Mapping[str, Any]], start: int, family_variant: str)
     total_position = _net_total_position(children, numerics)
     complete = (
         {"INCOME", "EXPENSE"}.issubset(roles)
-        and len(numerics) >= 6
+        and len(numerics) >= 4
         and period_count >= 2
         and unit_count >= 1
         and total_position == "TRAILING_NET_TOTAL_AFTER_CHILDREN"

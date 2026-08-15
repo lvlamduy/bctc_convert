@@ -1,18 +1,15 @@
-"""Verify trading-securities sale activity in the fixed eight reports."""
+"""Verify investment-securities sale activity in the fixed eight reports."""
 
 from __future__ import annotations
 
 import argparse
 import hashlib
 import importlib.util
-import io
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from types import ModuleType
 from typing import Any
-
-from PIL import Image
 
 from bctc_ai.evaluation.accounting_variant_graph_engine_v1 import (
     normalize_vietnamese_anchor_v1,
@@ -44,66 +41,77 @@ def _load_module(name: str, filename: str) -> ModuleType:
 
 
 foundation = _load_module(
-    "fx_gold_support_for_trading_securities_mapping",
-    "build_fx_gold_activity_8bank_codex_verified_mapping_v1.py",
+    "trading_activity_support_for_investment_securities_mapping",
+    "build_trading_securities_activity_8bank_codex_verified_mapping_v1.py",
 )
 scanner = _load_module(
-    "trading_securities_scan_for_verified_mapping",
-    "scan_trading_securities_activity_full_document_vietocr_v1.py",
+    "investment_securities_scan_for_verified_mapping",
+    "scan_investment_securities_activity_full_document_vietocr_v1.py",
 )
-support = foundation.service.income.foundation.support
+support = foundation.support
 
-FORMAT_VERSION = "TRADING_SECURITIES_ACTIVITY_8BANK_CODEX_VERIFIED_MAPPING_V1"
-REVIEW_FORMAT = "TRADING_SECURITIES_ACTIVITY_8BANK_CODEX_PIXEL_REVIEW_V1"
+FORMAT_VERSION = "INVESTMENT_SECURITIES_ACTIVITY_8BANK_CODEX_VERIFIED_MAPPING_V1"
+REVIEW_FORMAT = "INVESTMENT_SECURITIES_ACTIVITY_8BANK_CODEX_PIXEL_REVIEW_V1"
 CLAIM_BOUNDARY = (
-    "FIXED_EIGHT_DOCUMENT_COMPLETE_PDF_FRESH_VIETOCR_BANK_BLIND_TRADING_"
+    "FIXED_EIGHT_DOCUMENT_COMPLETE_PDF_FRESH_VIETOCR_BANK_BLIND_INVESTMENT_"
     "SECURITIES_ACTIVITY_GRAPH_VISIBLE_PDF_LABEL_PADDLEOCR_OR_NATIVE_SOURCE_"
     "NUMERIC_CHALLENGER_PERIOD_UNIT_ACCOUNTING_AND_LIVE_TM_SCHEMA_ONLY_NO_"
     "CANONICALIZATION_EXPORT_OR_PRODUCTION_AUTHORITY"
 )
 REVIEW_PATH = Path(
-    "docs/experiments/E-0084-trading-securities-activity-8bank-codex-pixel-review-v1.json"
+    "docs/experiments/E-0085-investment-securities-activity-8bank-codex-pixel-review-v1.json"
 )
 RESULT_PATH = Path(
-    "docs/experiments/E-0084-trading-securities-activity-8bank-codex-verified-mapping-v1.json"
+    "docs/experiments/E-0085-investment-securities-activity-8bank-codex-verified-mapping-v1.json"
 )
 SEMANTIC_INDEX_PATH = scanner.DEFAULT_INPUT
-CROP_MANIFEST_PATH = Path(
-    "output/development/loan-maturity-full-document-vietocr-v1/crop_manifest.json"
-)
-EXPECTED_INDEX_SHA256 = "f84fd9ca56fe06af230e011ecad85b0a576e27e1eca32ee141e654a6776b78b4"
-EXPECTED_CROP_MANIFEST_SHA256 = "a9f80cf9104af1177ba43d8a85de00b28c735223a91b663a5a79401bb038d94e"
-EXPECTED_AXIS_SHA256 = "e99873cd16a7234702d0ee6e5fa9eb37637a1a75621228381e3dbcd7c5cfdcca"
-EXPECTED_SCAN_ID = "tsafdsv1:scan:9d7a8f8137cb9e15559d94fa88a780b067bf08a5d4c163d15d32b9aa4e543ed1"
+CROP_MANIFEST_PATH = foundation.CROP_MANIFEST_PATH
+EXPECTED_INDEX_SHA256 = foundation.EXPECTED_INDEX_SHA256
+EXPECTED_CROP_MANIFEST_SHA256 = foundation.EXPECTED_CROP_MANIFEST_SHA256
+EXPECTED_AXIS_SHA256 = foundation.EXPECTED_AXIS_SHA256
+EXPECTED_SCAN_ID = "isafdsv1:scan:ac528409d575749ad114c68932594ec75c7f1cdc6bd676a7728a87779d323823"
 
 _SCHEMA_EXPECTED = {
-    1188: ("Lãi thuần từ hoạt động mua bán chứng khoán kinh doanh", 1142, 742),
-    1189: ("Thu nhập do mua bán chứng khoán kinh doanh", 1188, 743),
-    1190: ("Chi phí mua bán chứng khoán kinh doanh", 1188, 744),
-    1191: ("(Trích lập)/Hoàn nhập dự phòng giảm giá chứng khoán kinh doanh", 1188, 745),
+    1193: ("Lãi thuần từ hoạt động mua bán chứng khoán đầu tư", 1142, 747),
+    1194: ("Thu nhập do mua bán chứng khoán đầu tư", 1193, 748),
+    1195: ("Chi phí mua bán chứng khoán đầu tư", 1193, 749),
+    1196: ("(Trích lập)/Hoàn nhập dự phòng giảm giá chứng khoán đầu tư", 1193, 750),
+    6028: ("(Trích lập)/Hoàn nhập dự phòng giảm giá góp vốn, đầu tư dài hạn", 1193, 751),
+}
+_ROLE_TO_SCHEMA = {
+    "NET_INVESTMENT_SECURITIES": 1193,
+    "INCOME_INVESTMENT_SECURITIES": 1194,
+    "EXPENSE_INVESTMENT_SECURITIES": 1195,
+    "PROVISION_INVESTMENT_SECURITIES": 1196,
+    "OTHER_INVESTMENT_SECURITIES_PROVISION": 6028,
+}
+_ROLE_TO_GRAPH = {
+    "INCOME_INVESTMENT_SECURITIES": "INCOME",
+    "EXPENSE_INVESTMENT_SECURITIES": "EXPENSE",
+    "PROVISION_INVESTMENT_SECURITIES": "PROVISION",
+    "OTHER_INVESTMENT_SECURITIES_PROVISION": "OTHER",
 }
 _AUTHORITY = {
     "bank_filename_note_or_page_used_as_matching_rule": False,
     "canonicalization_or_export_authority": False,
     "complete_pdf_scanned_for_every_document": True,
     "fresh_vietocr_used_as_numeric_truth": False,
-    "investment_securities_activity_relabelled_as_trading_activity": False,
     "live_tm_schema_checked": True,
-    "mapping_authority_bounded_to_seven_reviewed_detailed_trading_regions": True,
+    "mapping_authority_bounded_to_seven_reviewed_detailed_investment_regions": True,
     "paddleocr_or_native_source_axis_used_as_numeric_challenger": True,
     "persisted_result_self_authenticating": False,
     "public_exact_replay_required": True,
-    "source_label_alone_used_to_select_provision_family": False,
     "text_similarity_alone_used_for_mapping": False,
+    "trading_activity_or_segment_aggregate_relabelled_as_investment_activity": False,
 }
 _REVIEW_SAFETY = {
     "bank_page_or_filename_used_as_graph_rule": False,
-    "investment_securities_region_used_as_trading_region": False,
     "mapping_decided_by_text_similarity_alone": False,
     "old_ocr_used_as_semantic_anchor": False,
-    "optional_provision_row_required_in_every_bank": False,
+    "optional_provision_or_long_term_investment_row_required_in_every_bank": False,
     "paddleocr_or_native_source_axis_used_as_semantic_anchor": False,
-    "source_label_caveat_hidden": False,
+    "segment_report_aggregate_used_as_detailed_activity_note": False,
+    "trading_securities_region_used_as_investment_region": False,
     "vietocr_used_as_numeric_truth": False,
     "visible_pdf_pixels_reviewed": True,
     "whole_pdf_uniqueness_replayed": True,
@@ -121,12 +129,12 @@ _RESULT_FIELDS = {
 }
 
 
-class TradingSecuritiesActivity8BankCodexVerifiedMappingV1Error(ValueError):
+class InvestmentSecuritiesActivity8BankCodexVerifiedMappingV1Error(ValueError):
     """The structure, pixels, numbers, equations, or TM schema drifted."""
 
 
-def _error(message: str) -> TradingSecuritiesActivity8BankCodexVerifiedMappingV1Error:
-    return TradingSecuritiesActivity8BankCodexVerifiedMappingV1Error(message)
+def _error(message: str) -> InvestmentSecuritiesActivity8BankCodexVerifiedMappingV1Error:
+    return InvestmentSecuritiesActivity8BankCodexVerifiedMappingV1Error(message)
 
 
 def _ref(page: int, line: int, text: str) -> dict[str, Any]:
@@ -149,7 +157,6 @@ def _dash(page: int, bbox: Sequence[int], pixel_rgb_sha256: str) -> dict[str, An
 
 def _mapping(
     role: str,
-    report_norm_id: int,
     label: tuple[int, str],
     current: dict[str, Any],
     comparative: dict[str, Any],
@@ -159,11 +166,36 @@ def _mapping(
 ) -> dict[str, Any]:
     return {
         "label": _ref(page, label[0], label[1]),
-        "report_norm_id": report_norm_id,
+        "report_norm_id": _ROLE_TO_SCHEMA[role],
         "role": role,
         "topology": topology,
         "values": {"COMPARATIVE_PERIOD": comparative, "CURRENT_PERIOD": current},
     }
+
+
+def _rows(
+    page: int,
+    topology: str,
+    *,
+    owner: tuple[int, str, dict[str, Any], dict[str, Any]],
+    income: tuple[int, str, dict[str, Any], dict[str, Any]],
+    expense: tuple[int, str, dict[str, Any], dict[str, Any]],
+    provision: tuple[int, str, dict[str, Any], dict[str, Any]] | None = None,
+    other: tuple[int, str, dict[str, Any], dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    specifications = [
+        ("NET_INVESTMENT_SECURITIES", owner),
+        ("INCOME_INVESTMENT_SECURITIES", income),
+        ("EXPENSE_INVESTMENT_SECURITIES", expense),
+    ]
+    if provision is not None:
+        specifications.append(("PROVISION_INVESTMENT_SECURITIES", provision))
+    if other is not None:
+        specifications.append(("OTHER_INVESTMENT_SECURITIES_PROVISION", other))
+    return [
+        _mapping(role, (row[0], row[1]), row[2], row[3], topology, page=page)
+        for role, row in specifications
+    ]
 
 
 def _mapped_document(
@@ -174,8 +206,6 @@ def _mapped_document(
     period_lines: Sequence[tuple[int, int, str]],
     unit_lines: Sequence[tuple[int, int, str]],
     mappings: Sequence[dict[str, Any]],
-    *,
-    source_label_caveat: str | None = None,
 ) -> dict[str, Any]:
     return {
         "absence_evidence": None,
@@ -184,7 +214,6 @@ def _mapped_document(
         "page_span": [page, page],
         "period_axis": [_ref(p, line, text) for p, line, text in period_lines],
         "presentation": presentation,
-        "source_label_caveat": source_label_caveat,
         "source_period": source_period,
         "unit_evidence": [_ref(p, line, text) for p, line, text in unit_lines],
     }
@@ -194,7 +223,7 @@ def _absent(code: str, pages: Sequence[int], reason: str) -> dict[str, Any]:
     return {
         "absence_evidence": {
             "complete_pdf_pages_scanned": True,
-            "detailed_trading_activity_graph_match_count": 0,
+            "detailed_investment_activity_graph_match_count": 0,
             "negative_control_pages": list(pages),
             "reason": reason,
             "source_scope_absence_only": True,
@@ -203,97 +232,68 @@ def _absent(code: str, pages: Sequence[int], reason: str) -> dict[str, Any]:
         "mappings": [],
         "page_span": None,
         "period_axis": [],
-        "presentation": "NO_DETAILED_TRADING_SECURITIES_ACTIVITY_NOTE_IN_BOUND_REPORT",
-        "source_label_caveat": None,
+        "presentation": "NO_DETAILED_INVESTMENT_SECURITIES_ACTIVITY_NOTE_IN_BOUND_REPORT",
         "source_period": None,
         "unit_evidence": [],
     }
 
 
-def _four_rows(
-    page: int,
-    owner: tuple[int, str, int, str, int, str],
-    income: tuple[int, str, int, str, int, str],
-    expense: tuple[int, str, int, str, int, str],
-    provision: tuple[int, str, dict[str, Any], dict[str, Any]],
-    topology: str,
-) -> list[dict[str, Any]]:
-    return [
-        _mapping(
-            "NET_TRADING_SECURITIES",
-            1188,
-            (owner[0], owner[1]),
-            _line(page, owner[2], owner[3]),
-            _line(page, owner[4], owner[5]),
-            topology,
-            page=page,
-        ),
-        _mapping(
-            "INCOME_TRADING_SECURITIES",
-            1189,
-            (income[0], income[1]),
-            _line(page, income[2], income[3]),
-            _line(page, income[4], income[5]),
-            topology,
-            page=page,
-        ),
-        _mapping(
-            "EXPENSE_TRADING_SECURITIES",
-            1190,
-            (expense[0], expense[1]),
-            _line(page, expense[2], expense[3]),
-            _line(page, expense[4], expense[5]),
-            topology,
-            page=page,
-        ),
-        _mapping(
-            "PROVISION_TRADING_SECURITIES",
-            1191,
-            (provision[0], provision[1]),
-            provision[2],
-            provision[3],
-            topology,
-            page=page,
-        ),
-    ]
-
-
 def _review_documents() -> list[dict[str, Any]]:
-    trailing = "INCOME_EXPENSE_PROVISION_THEN_UNLABELLED_NET_TWO_PERIOD_LANES"
+    trailing = "INCOME_EXPENSE_OPTIONAL_PROVISION_THEN_UNLABELLED_NET_TWO_PERIOD_LANES"
     return [
         _mapped_document(
             "ACB",
-            24,
+            25,
             "2026-06-30",
-            trailing,
-            [(24, 61, "Đến"), (24, 62, "Đến"), (24, 63, "30.6.2026"), (24, 64, "30.6.2025")],
-            [(24, 65, "Triệu đồng"), (24, 66, "Triệu đồng")],
-            _four_rows(
-                24,
-                (
-                    60,
-                    "LÃI/(LỖ) THUẦN TỪ MUA BÁN CHỨNG KHOÁN KINH DOANH",
-                    77,
-                    "226.898",
-                    78,
-                    "60.389",
-                ),
-                (67, "Thu nhập từ mua bán chứng khoán kinh doanh", 68, "365.141", 69, "218.552"),
-                (70, "Chi phí về mua bán chứng khoán kinh doanh", 71, "(129.873)", 72, "(104.457)"),
-                (
-                    73,
-                    "Hoàn nhập/(Trích lập) dự phòng rủi ro chứng khoán kinh doanh",
-                    _line(24, 75, "(8.370)"),
-                    _line(24, 76, "(53.706)"),
-                ),
+            "THREE_VISIBLE_DASHES_OMITTED_FROM_OCR_THEN_UNLABELLED_NET",
+            [(25, 5, "Đến"), (25, 6, "Đến"), (25, 7, "30.6.2026"), (25, 8, "30.6.2025")],
+            [(25, 9, "Triệu đồng"), (25, 10, "Triệu đồng")],
+            _rows(
+                25,
                 trailing,
+                owner=(
+                    4,
+                    "LÃI/(LỖ) THUẦN TỪ MUA BÁN CHỨNG KHOÁN ĐẦU TƯ",
+                    _line(25, 17, "(21.896)"),
+                    _line(25, 18, "444.596"),
+                ),
+                income=(
+                    11,
+                    "Thu nhập từ mua bán chứng khoán đầu tư",
+                    _dash(
+                        25,
+                        [1284, 594, 1301, 608],
+                        "3c63b0a6e31289b48d3fcc13725fb63fe0051fdfcbed2b291e8d66b1c1c6a808",
+                    ),
+                    _line(25, 12, "447.840"),
+                ),
+                expense=(
+                    13,
+                    "Chi phí về mua bán chứng khoán đầu tư",
+                    _line(25, 14, "(21.896)"),
+                    _line(25, 15, "(3.244)"),
+                ),
+                provision=(
+                    16,
+                    "Hoàn nhập/(Trích lập) dự phòng rủi ro chứng khoán đầu tư",
+                    _dash(
+                        25,
+                        [1284, 673, 1300, 688],
+                        "626bdb25652e1dc7d4ce28665c43121bba547ebc606258b4906c05deee40e78b",
+                    ),
+                    _dash(
+                        25,
+                        [1482, 674, 1498, 690],
+                        "42bd705428a7cc19e35675b2abea1f9b8df628ebc6743e7c49e74af666d77355",
+                    ),
+                ),
             ),
         ),
         _mapped_document(
             "MBB",
             47,
             "2026-06-30",
-            "WRAPPED_INNER_OWNER_UNDER_SHARED_TRADING_AND_INVESTMENT_UMBRELLA",
+            "WRAPPED_INNER_OWNER_SHARED_AXES_WITH_OPTIONAL_LONG_TERM_PROVISION",
             [
                 (47, 31, "Từ 01/01/2026"),
                 (47, 32, "Từ 01/01/2025"),
@@ -301,195 +301,249 @@ def _review_documents() -> list[dict[str, Any]]:
                 (47, 34, "đến 30/06/2025"),
             ],
             [(47, 35, "Triệu đồng"), (47, 36, "Triệu đồng")],
-            _four_rows(
+            _rows(
                 47,
-                (
-                    37,
-                    "Lãi/(lỗ) thuần từ mua bán chứng khoán kinh doanh",
-                    49,
-                    "249.524",
-                    50,
-                    "415.700",
+                "WRAPPED_INNER_OWNER_SHARED_AXES_WITH_OPTIONAL_LONG_TERM_PROVISION",
+                owner=(
+                    51,
+                    "Lãi/(lỗ) thuần từ mua bán chứng khoán đầu tư",
+                    _line(47, 65, "3.587"),
+                    _line(47, 66, "1.295.273"),
                 ),
-                (39, "Thu nhập từ mua bán chứng khoán kinh doanh", 40, "630.564", 41, "580.842"),
-                (42, "Chi về mua bán chứng khoán kinh doanh", 43, "(385.263)", 44, "(132.711)"),
-                (
-                    45,
-                    "(Trích lập)/hoàn nhập dự phòng rủi ro chứng khoán kinh doanh",
-                    _line(47, 47, "4.223"),
-                    _line(47, 48, "(32.431)"),
+                income=(
+                    52,
+                    "Thu nhập từ mua bán chứng khoán đầu tư",
+                    _line(47, 53, "261.677"),
+                    _line(47, 54, "1.318.966"),
                 ),
-                "WRAPPED_INNER_OWNER_UNDER_SHARED_TRADING_AND_INVESTMENT_UMBRELLA",
+                expense=(
+                    55,
+                    "Chi về chứng khoán đầu tư",
+                    _line(47, 56, "(243.217)"),
+                    _line(47, 57, "(91.167)"),
+                ),
+                provision=(
+                    58,
+                    "(Trích lập)/hoàn nhập dự phòng rủi ro chứng khoán đầu tư",
+                    _line(47, 60, "(14.873)"),
+                    _line(47, 61, "25.413"),
+                ),
+                other=(
+                    62,
+                    "(Trích lập)/hoàn nhập dự phòng giảm giá góp vốn, đầu tư dài hạn",
+                    _dash(
+                        47,
+                        [1209, 1327, 1225, 1340],
+                        "807ff471fb9196e5f7a5ce832f66f39b28b82fcd1f38059de04743ca839bc47f",
+                    ),
+                    _line(47, 64, "42.061"),
+                ),
             ),
         ),
         _mapped_document(
             "VPB",
             63,
             "2026-03-31",
-            "Q1_THREE_MONTH_DURATION_WITH_WRAPPED_PERIOD_HEADERS",
+            "Q1_THREE_MONTH_DURATION_WITH_WRAPPED_PERIOD_AND_PROVISION_LABELS",
             [
-                (63, 44, "Cho kỳ kế toán"),
-                (63, 45, "Cho kỳ kế toán"),
-                (63, 48, "ngày 31 tháng 3"),
-                (63, 49, "ngày 31 tháng 3"),
-                (63, 50, "năm 2026"),
-                (63, 51, "năm 2025"),
+                (63, 68, "Cho kỳ kế toán"),
+                (63, 69, "Cho kỳ kế toán"),
+                (63, 70, "3 tháng kết thúc"),
+                (63, 71, "3 tháng kết thúc"),
+                (63, 72, "ngày 31 tháng 3"),
+                (63, 73, "ngày 31 tháng 3"),
+                (63, 74, "năm 2026"),
+                (63, 75, "năm 2025"),
             ],
-            [(63, 52, "Triệu đồng"), (63, 53, "Triệu đồng")],
-            _four_rows(
+            [(63, 76, "Triệu đồng"), (63, 77, "Triệu đồng")],
+            _rows(
                 63,
-                (43, "LÃI THUẦN TỪ MUA BÁN CHỨNG KHOÁN KINH DOANH", 64, "(224.125)", 65, "184.151"),
-                (54, "Thu nhập từ mua bán chứng khoán kinh doanh", 55, "438.077", 56, "259.883"),
-                (57, "Chi phí về mua bán chứng khoán kinh doanh", 58, "(318.313)", 59, "(8.090)"),
-                (
-                    60,
-                    "Trích lập dự phòng chứng khoán kinh doanh",
-                    _line(63, 62, "(343.889)"),
-                    _line(63, 63, "(67.642)"),
+                trailing,
+                owner=(
+                    67,
+                    "LÃI/(LỖ) THUẦN TỪ MUA BÁN CHỨNG KHOÁN ĐẦU TƯ",
+                    _line(63, 88, "14.393"),
+                    _line(63, 89, "(134.849)"),
                 ),
-                "Q1_THREE_MONTH_DURATION_WITH_WRAPPED_PERIOD_HEADERS",
+                income=(
+                    78,
+                    "Thu nhập từ mua bán chứng khoán đầu tư",
+                    _line(63, 79, "15.306"),
+                    _line(63, 80, "16.107"),
+                ),
+                expense=(
+                    81,
+                    "Chi phí về mua bán chứng khoán đầu tư",
+                    _line(63, 82, "(2.714)"),
+                    _line(63, 83, "(13.760)"),
+                ),
+                provision=(
+                    84,
+                    "(Trích lập)/Hoàn nhập dự phòng chứng khoán đầu tư",
+                    _line(63, 86, "1.801"),
+                    _line(63, 87, "(137.196)"),
+                ),
             ),
         ),
         _mapped_document(
             "HDB",
-            34,
+            35,
             "2026-06-30",
-            "VISIBLE_COMPARATIVE_DASH_AND_SOURCE_LABEL_CAVEAT",
-            [(34, 95, "Kỳ này"), (34, 96, "Kỳ trước")],
-            [(34, 97, "Triệu VND"), (34, 98, "Triệu VND")],
-            _four_rows(
-                34,
-                (
-                    94,
-                    "(Lỗ)/Lãi thuần từ hoạt động mua bán chứng khoán kinh doanh",
-                    107,
-                    "(63.114)",
-                    108,
-                    "630.635",
+            "WRAPPED_PROVISION_LABEL_WITH_TRAILING_UNLABELLED_NET",
+            [(35, 8, "Kỳ này"), (35, 9, "Kỳ trước")],
+            [(35, 10, "Triệu VND"), (35, 11, "Triệu VND")],
+            _rows(
+                35,
+                trailing,
+                owner=(
+                    7,
+                    "Lãi/(Lỗ) thuần từ hoạt động mua bán chứng khoán đầu tư",
+                    _line(35, 22, "20.991"),
+                    _line(35, 23, "2.782"),
                 ),
-                (99, "Thu nhập từ mua bán chứng khoán kinh doanh", 100, "205.951", 101, "648.456"),
-                (
-                    102,
-                    "Chi phí về mua bán chứng khoán kinh doanh",
-                    103,
-                    "(90.303)",
-                    104,
-                    "(17.821)",
+                income=(
+                    12,
+                    "Thu nhập từ mua bán chứng khoán đầu tư",
+                    _line(35, 13, "55.528"),
+                    _line(35, 14, "31.191"),
                 ),
-                (
-                    105,
-                    "Trích lập dự phòng rủi ro chứng khoán đầu tư",
-                    _line(34, 106, "(178.762)"),
-                    _dash(
-                        34,
-                        [1495, 2122, 1515, 2140],
-                        "14be48364aeceeea4d1b349652f3da5eeb20bafecb2ed6f65f79415f64cff6e9",
-                    ),
+                expense=(
+                    15,
+                    "Chi phí về mua bán chứng khoán đầu tư",
+                    _line(35, 16, "(15.281)"),
+                    _line(35, 17, "(8.436)"),
                 ),
-                "VISIBLE_COMPARATIVE_DASH_AND_SOURCE_LABEL_CAVEAT",
-            ),
-            source_label_caveat=(
-                "The PDF visibly labels the provision row as investment securities inside the "
-                "trading-securities owner block; owner containment, row position, two-period lanes, "
-                "and both exact net equations bind it to the trading activity graph."
+                provision=(
+                    18,
+                    "Hoàn nhập/(Trích lập) dự phòng rủi ro chứng khoán đầu tư",
+                    _line(35, 19, "(19.256)"),
+                    _line(35, 20, "(19.973)"),
+                ),
             ),
         ),
-        _mapped_document(
+        _absent(
             "VCB",
-            39,
-            "2026-06-30",
-            trailing,
-            [
-                (39, 35, "từ 1/1/2026"),
-                (39, 36, "từ 1/1/2025"),
-                (39, 37, "đến 30/6/2026"),
-                (39, 38, "đến 30/6/2025"),
-            ],
-            [(39, 39, "Triệu VND"), (39, 40, "Triệu VND")],
-            _four_rows(
-                39,
-                (32, "Lãi thuần từ mua bán chứng khoán kinh doanh", 51, "87.745", 52, "33.863"),
-                (42, "Thu nhập từ mua bán chứng khoán kinh doanh", 43, "159.606", 44, "81.123"),
-                (45, "Chi phí về mua bán chứng khoán kinh doanh", 46, "(41.401)", 47, "(40.592)"),
-                (
-                    48,
-                    "Trích lập dự phòng giảm giá chứng khoán kinh doanh",
-                    _line(39, 49, "(30.460)"),
-                    _line(39, 50, "(6.668)"),
-                ),
-                trailing,
-            ),
+            [42, 43],
+            "The complete report has segment-report investment-securities aggregates on pages 42-43 but no detailed investment-securities income/expense activity graph; segment totals are retained only as distinct negative controls.",
         ),
         _mapped_document(
             "CTG",
-            45,
+            46,
             "2026-06-30",
-            "PROVISION_VALUES_PRECEDE_LABEL_THEN_LABELLED_NET",
+            "SPECIFIC_PROVISION_ROLE_PRECEDES_LABELLED_POSITIVE_NET",
             [
-                (45, 67, "từ 01/01/2026 đến"),
-                (45, 68, "từ 01/01/2025 đến"),
-                (45, 69, "hết 30/06/2026"),
-                (45, 70, "hết 30/06/2025"),
+                (46, 5, "Giai đoạn tài chính"),
+                (46, 6, "Giai đoạn tài chính"),
+                (46, 7, "từ 01/01/2026 đến"),
+                (46, 8, "từ 01/01/2025 đến"),
+                (46, 9, "hết 30/06/2026"),
+                (46, 10, "hết 30/06/2025"),
             ],
-            [(45, 71, "triệu đồng"), (45, 72, "triệu đồng")],
-            _four_rows(
-                45,
-                (
-                    82,
-                    "Lãi từ hoạt động mua bán chứng khoán kinh doanh",
-                    83,
-                    "59.310",
-                    84,
-                    "451.414",
+            [(46, 11, "triệu đồng"), (46, 12, "triệu đồng")],
+            _rows(
+                46,
+                trailing,
+                owner=(
+                    4,
+                    "LÃI/(LỖ) THUẦN TỪ HOẠT ĐỘNG MUA BÁN CHỨNG KHOÁN ĐẦU TƯ",
+                    _line(46, 23, "395.275"),
+                    _line(46, 24, "121.551"),
                 ),
-                (73, "Thu nhập từ mua bán chứng khoán kinh doanh", 74, "73.722", 75, "395.757"),
-                (76, "Chi phí về mua bán chứng khoán kinh doanh", 77, "(3.138)", 78, "(18.875)"),
-                (
-                    81,
-                    "Hoàn nhập dự phòng giảm giá chứng khoán kinh doanh",
-                    _line(45, 79, "(11.274)"),
-                    _line(45, 80, "74.532"),
+                income=(
+                    13,
+                    "Thu nhập từ mua bán chứng khoán đầu tư",
+                    _line(46, 14, "21.778"),
+                    _line(46, 15, "46.585"),
                 ),
-                "PROVISION_VALUES_PRECEDE_LABEL_THEN_LABELLED_NET",
+                expense=(
+                    16,
+                    "Chi phí về mua bán chứng khoán đầu tư",
+                    _line(46, 17, "(15.119)"),
+                    _line(46, 18, "(2.004)"),
+                ),
+                provision=(
+                    19,
+                    "Chi phí dự phòng rủi ro chứng khoán đầu tư",
+                    _line(46, 20, "388.616"),
+                    _line(46, 21, "76.970"),
+                ),
             ),
         ),
         _mapped_document(
             "BID",
             29,
             "2026-06-30",
-            "DOCUMENT_SECTION_UNIT_INHERITED_FROM_PRECEDING_PAGE",
+            "DOCUMENT_SECTION_UNIT_INHERITED_AND_LABELLED_PROVISION",
             [
-                (29, 25, "Từ 01/01/2026 đến"),
-                (29, 26, "Từ 01/01/2025 đến"),
-                (29, 27, "30/06/2026"),
-                (29, 28, "30/06/2025"),
+                (29, 42, "Từ 01/01/2026 đến"),
+                (29, 43, "Từ 01/01/2025 đến"),
+                (29, 44, "30/06/2026"),
+                (29, 45, "30/06/2025"),
             ],
             [(28, 58, "Đơn vị: Triệu VND")],
-            _four_rows(
+            _rows(
                 29,
-                (
-                    24,
-                    "LÃI/LỖ THUẦN TỪ MUA BÁN CHỨNG KHOÁN KINH DOANH",
-                    39,
-                    "109,012",
-                    40,
-                    "261,299",
+                trailing,
+                owner=(
+                    41,
+                    "LÃI/LỖ THUẦN TỪ MUA BÁN CHỨNG KHOÁN ĐẦU TƯ",
+                    _line(29, 55, "5,199"),
+                    _line(29, 56, "792,824"),
                 ),
-                (29, "Thu nhập từ mua bán chứng khoán kinh doanh", 30, "439,943", 31, "470,573"),
-                (32, "Chi phí về mua bán chứng khoán kinh doanh", 33, "(305,358)", 34, "(210,908)"),
-                (
-                    35,
-                    "(Chi phí)/Hoàn nhập dự phòng rủi ro chứng khoán kinh doanh",
-                    _line(29, 36, "(25,573)"),
-                    _line(29, 37, "1,634"),
+                income=(
+                    46,
+                    "Thu nhập từ mua bán chứng khoán đầu tư",
+                    _line(29, 47, "17,423"),
+                    _line(29, 48, "698,363"),
                 ),
-                "DOCUMENT_SECTION_UNIT_INHERITED_FROM_PRECEDING_PAGE",
+                expense=(
+                    49,
+                    "Chi phí về mua bán chứng khoán đầu tư",
+                    _line(29, 50, "(643)"),
+                    _line(29, 51, "(421)"),
+                ),
+                provision=(
+                    52,
+                    "Chi phí dự phòng rủi ro chứng khoán đầu tư",
+                    _line(29, 53, "(11,581)"),
+                    _line(29, 54, "94,882"),
+                ),
             ),
         ),
-        _absent(
+        _mapped_document(
             "VIB",
-            [46],
-            "The full report contains a detailed investment-securities activity region on page 46 but no detailed trading-securities income/expense graph; the investment region is a distinct family control.",
+            46,
+            "2026-06-30",
+            "NO_PROVISION_ROW_INCOME_PLUS_EXPENSE_EQUALS_LABELLED_NET",
+            [
+                (46, 35, "6 tháng đầu"),
+                (46, 36, "6 tháng đầu"),
+                (46, 37, "năm 2026"),
+                (46, 38, "năm 2025"),
+            ],
+            [(46, 39, "triệu đồng"), (46, 40, "triệu đồng")],
+            _rows(
+                46,
+                trailing,
+                owner=(
+                    34,
+                    "(LỖ)/LÃI THUẦN TỪ MUA BÁN CHỨNG KHOÁN ĐẦU TƯ",
+                    _line(46, 48, "(179.085)"),
+                    _line(46, 49, "150.481"),
+                ),
+                income=(
+                    41,
+                    "Thu nhập từ mua bán chứng khoán đầu tư",
+                    _line(46, 42, "269.410"),
+                    _line(46, 43, "275.184"),
+                ),
+                expense=(
+                    44,
+                    "Chi phí về mua bán chứng khoán đầu tư",
+                    _line(46, 45, "(448.495)"),
+                    _line(46, 46, "(124.703)"),
+                ),
+            ),
         ),
     ]
 
@@ -501,7 +555,7 @@ def _review_blueprint() -> dict[str, Any]:
         "format_version": REVIEW_FORMAT,
         "reviewer": {
             "kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW",
-            "review_run_id": "E-0084",
+            "review_run_id": "E-0085",
         },
         "safety": canonical_clone_v1(_REVIEW_SAFETY),
         "scan_id": EXPECTED_SCAN_ID,
@@ -509,13 +563,13 @@ def _review_blueprint() -> dict[str, Any]:
         "semantic_index_sha256": EXPECTED_INDEX_SHA256,
         "state": "CODEX_PIXEL_REVIEW_COMPLETE",
     }
-    return {**material, "review_id": "e0084:pixel-review:" + canonical_json_sha256_v1(material)}
+    return {**material, "review_id": "e0085:pixel-review:" + canonical_json_sha256_v1(material)}
 
 
 def _review(value: Any) -> dict[str, Any]:
     expected = _review_blueprint()
     if not same_typed_json_v1(value, expected):
-        raise _error("Codex trading-securities pixel review differs from the fixed ledger")
+        raise _error("Codex investment-securities pixel review differs from the fixed ledger")
     return canonical_clone_v1(expected)
 
 
@@ -578,32 +632,6 @@ def _schema_binding(item: Any, report_norm_id: int) -> dict[str, Any]:
     }
 
 
-def _pixel_dash_value(crop_page: Mapping[str, Any], ref: Mapping[str, Any]) -> dict[str, Any]:
-    payload = support._artifact_bytes(crop_page.get("render_binding"), "page render")
-    image = Image.open(io.BytesIO(payload)).convert("RGB")
-    left, top, right, bottom = ref["bbox"]
-    if not (0 <= left < right <= image.width and 0 <= top < bottom <= image.height):
-        raise _error("authenticated pixel dash bbox is out of bounds")
-    digest = hashlib.sha256(image.crop((left, top, right, bottom)).tobytes()).hexdigest()
-    if digest != ref["pixel_rgb_sha256"]:
-        raise _error("authenticated pixel dash crop drifted")
-    return {
-        "fresh_vietocr_numeric_proposal": None,
-        "fresh_vietocr_numeric_status": "NO_SEMANTIC_LINE_FOR_VISIBLE_DASH",
-        "normalized_value": 0,
-        "page_sequence": ref["page_sequence"],
-        "pixel_bbox": list(ref["bbox"]),
-        "pixel_rgb_sha256": digest,
-        "pixel_transcription": "-",
-        "render_ref": canonical_clone_v1(crop_page["render_binding"]),
-        "source_line_index": None,
-        "source_numeric_challenger": None,
-        "source_numeric_challenger_status": (
-            "VISIBLE_AUTHENTICATED_PIXEL_DASH_NOT_DETECTED_AS_SOURCE_LINE"
-        ),
-    }
-
-
 def _metrics(trials: Sequence[Mapping[str, Any]]) -> dict[str, int]:
     return {
         "accounting_equation_verified_count": sum(
@@ -635,9 +663,6 @@ def _metrics(trials: Sequence[Mapping[str, Any]]) -> dict[str, int]:
             trial["source_period_status"] == "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
             for trial in trials
         ),
-        "source_label_caveat_mapping_count": sum(
-            trial["source_label_caveat"] is not None for trial in trials
-        ),
         "verified_value_cell_count": sum(
             len(mapping["values"]) for trial in trials for mapping in trial["verified_mappings"]
         ),
@@ -646,17 +671,17 @@ def _metrics(trials: Sequence[Mapping[str, Any]]) -> dict[str, int]:
 
 def _validate_result(value: Any) -> dict[str, Any]:
     if type(value) is not dict or set(value) != _RESULT_FIELDS:
-        raise _error("trading-securities result fields drifted")
+        raise _error("investment-securities result fields drifted")
     if (
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "TRADING_SECURITIES_ACTIVITY_8BANK_CODEX_VERIFICATION_COMPLETE"
+        or value["state"] != "INVESTMENT_SECURITIES_ACTIVITY_8BANK_CODEX_VERIFICATION_COMPLETE"
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
         or len(value["trials"]) != 8
         or not same_typed_json_v1(value["metrics"], _metrics(value["trials"]))
     ):
-        raise _error("trading-securities result identity or metrics drifted")
+        raise _error("investment-securities result identity or metrics drifted")
     allowed = {
         "CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT",
         "VERIFIED_BY_CODEX",
@@ -675,11 +700,11 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 for mapping in trial.get("verified_mappings", [])
             )
         ):
-            raise _error("trading-securities trial shape or status drifted")
+            raise _error("investment-securities trial shape or status drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "e0084:result:" + canonical_json_sha256_v1(material):
-        raise _error("trading-securities result identity drifted")
+    if identity != "e0085:result:" + canonical_json_sha256_v1(material):
+        raise _error("investment-securities result identity drifted")
     return canonical_clone_v1(value)
 
 
@@ -690,29 +715,30 @@ def _equations(by_role: Mapping[str, Mapping[str, Any]]) -> list[dict[str, Any]]
         def value(role: str, *, axis_role: str = axis_role) -> Mapping[str, Any]:
             return next(item for item in by_role[role]["values"] if item["axis_role"] == axis_role)
 
-        terms = [
-            value("INCOME_TRADING_SECURITIES"),
-            value("EXPENSE_TRADING_SECURITIES"),
-            value("PROVISION_TRADING_SECURITIES"),
+        term_roles = [
+            role
+            for role in _ROLE_TO_SCHEMA
+            if role != "NET_INVESTMENT_SECURITIES" and role in by_role
         ]
-        total = value("NET_TRADING_SECURITIES")
+        terms = [value(role) for role in term_roles]
+        total = value("NET_INVESTMENT_SECURITIES")
         computed = sum(term["normalized_value"] for term in terms)
         if computed != total["normalized_value"]:
-            raise _error(f"trading-securities net equation does not close: {axis_role}")
+            raise _error(f"investment-securities net equation does not close: {axis_role}")
         result.append(
             {
                 "computed_value": computed,
-                "equation": "INCOME_PLUS_EXPENSE_PLUS_PROVISION_EQUALS_NET_TRADING_ACTIVITY",
+                "equation": "OBSERVED_INCOME_EXPENSE_OPTIONAL_PROVISION_TERMS_EQUAL_NET_INVESTMENT_ACTIVITY",
                 "period_role": axis_role,
                 "status": "CORROBORATED_EXACT",
-                "term_report_norm_ids": [1189, 1190, 1191],
-                "total_report_norm_id": 1188,
+                "term_report_norm_ids": [_ROLE_TO_SCHEMA[role] for role in term_roles],
+                "total_report_norm_id": 1193,
             }
         )
     return result
 
 
-def build_trading_securities_activity_8bank_codex_verified_mapping_v1(
+def build_investment_securities_activity_8bank_codex_verified_mapping_v1(
     semantic_index: Any,
     crop_manifest: Any,
     structure_scan: Any,
@@ -725,6 +751,9 @@ def build_trading_securities_activity_8bank_codex_verified_mapping_v1(
 ) -> dict[str, Any]:
     reviewed_documents = _review(review)["documents"]
     axis_projection = project_full_document_vietocr_accounting_axis_v1(semantic_index)
+    scanner.validate_investment_securities_activity_full_document_scan_replay_v1(
+        structure_scan, semantic_index
+    )
     if (
         axis_projection.get("semantic_axis_sha256") != EXPECTED_AXIS_SHA256
         or structure_scan.get("scan_id") != EXPECTED_SCAN_ID
@@ -744,7 +773,7 @@ def build_trading_securities_activity_8bank_codex_verified_mapping_v1(
         }
         if reviewed["absence_evidence"] is not None:
             if matcher["uniqueness"]["status"] == "UNIQUE_FULL_MATCH":
-                raise _error("absent detailed trading-securities note unexpectedly matched")
+                raise _error("absent detailed investment-securities note unexpectedly matched")
             trials.append(
                 {
                     **base,
@@ -752,7 +781,6 @@ def build_trading_securities_activity_8bank_codex_verified_mapping_v1(
                     "page_span": None,
                     "period_evidence": [],
                     "presentation": reviewed["presentation"],
-                    "source_label_caveat": None,
                     "source_period_status": "NOT_APPLICABLE_NO_DETAILED_NOTE",
                     "status": "CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT",
                     "unit_evidence": [],
@@ -764,7 +792,16 @@ def build_trading_securities_activity_8bank_codex_verified_mapping_v1(
         if not same_typed_json_v1(
             matcher["uniqueness"], {"complete_region_count": 1, "status": "UNIQUE_FULL_MATCH"}
         ) or not same_typed_json_v1(matcher["regions"][0]["page_span"], reviewed["page_span"]):
-            raise _error("reviewed region is not the unique whole-PDF trading graph")
+            raise _error("reviewed region is not the unique whole-PDF investment graph")
+        expected_graph_roles = sorted(
+            _ROLE_TO_GRAPH[mapping["role"]]
+            for mapping in reviewed["mappings"]
+            if mapping["role"] in _ROLE_TO_GRAPH
+        )
+        if not same_typed_json_v1(
+            matcher["regions"][0]["layout"]["child_roles"], expected_graph_roles
+        ):
+            raise _error("reviewed investment child roles differ from whole-PDF graph")
         page_number = reviewed["page_span"][0]
         axis_document = _document(axis_projection["documents"], code, "accounting axis")
         semantic_document = _document(semantic_index["documents"], code, "semantic index")
@@ -802,9 +839,9 @@ def build_trading_securities_activity_8bank_codex_verified_mapping_v1(
                         "page_sequence": ref["page_sequence"],
                     }
                 elif ref["kind"] == "AUTHENTICATED_RENDER_PIXEL_DASH":
-                    evidence = _pixel_dash_value(crop_page, ref)
+                    evidence = foundation._pixel_dash_value(crop_page, ref)
                 else:
-                    raise _error("trading-securities value reference kind drifted")
+                    raise _error("investment-securities value reference kind drifted")
                 values.append({"axis_role": axis_role, **evidence})
             verified_mappings.append(
                 {
@@ -831,7 +868,6 @@ def build_trading_securities_activity_8bank_codex_verified_mapping_v1(
                     for item in reviewed["period_axis"]
                 ],
                 "presentation": reviewed["presentation"],
-                "source_label_caveat": reviewed["source_label_caveat"],
                 "source_period_status": (
                     "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
                     if reviewed["source_period"] == "2026-03-31"
@@ -864,20 +900,20 @@ def build_trading_securities_activity_8bank_codex_verified_mapping_v1(
         },
         "metrics": _metrics(trials),
         "schema_family": {
-            "family_end_display_order": 746,
-            "family_root_report_norm_id": 1188,
+            "family_end_display_order": 752,
+            "family_root_report_norm_id": 1193,
             "mapped_report_norm_ids": sorted(_SCHEMA_EXPECTED),
-            "unobserved_optional_report_norm_ids": [1192],
+            "unobserved_optional_report_norm_ids": [1197],
         },
-        "state": "TRADING_SECURITIES_ACTIVITY_8BANK_CODEX_VERIFICATION_COMPLETE",
+        "state": "INVESTMENT_SECURITIES_ACTIVITY_8BANK_CODEX_VERIFICATION_COMPLETE",
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "e0084:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": "e0085:result:" + canonical_json_sha256_v1(material)}
     )
 
 
-def validate_trading_securities_activity_8bank_codex_verified_mapping_replay_v1(
+def validate_investment_securities_activity_8bank_codex_verified_mapping_replay_v1(
     value: Any,
     semantic_index: Any,
     crop_manifest: Any,
@@ -890,7 +926,7 @@ def validate_trading_securities_activity_8bank_codex_verified_mapping_replay_v1(
     review_sha256: str,
 ) -> dict[str, Any]:
     supplied = _validate_result(value)
-    rebuilt = build_trading_securities_activity_8bank_codex_verified_mapping_v1(
+    rebuilt = build_investment_securities_activity_8bank_codex_verified_mapping_v1(
         semantic_index,
         crop_manifest,
         structure_scan,
@@ -901,7 +937,7 @@ def validate_trading_securities_activity_8bank_codex_verified_mapping_replay_v1(
         review_sha256=review_sha256,
     )
     if not same_typed_json_v1(supplied, rebuilt):
-        raise _error("trading-securities verified mapping does not replay exactly")
+        raise _error("investment-securities verified mapping does not replay exactly")
     return supplied
 
 
@@ -916,13 +952,13 @@ def _stable_json(path: Path, expected_sha256: str | None = None) -> tuple[dict[s
     return value, digest
 
 
-def build_live_trading_securities_activity_8bank_codex_verified_mapping_v1() -> dict[str, Any]:
+def build_live_investment_securities_activity_8bank_codex_verified_mapping_v1() -> dict[str, Any]:
     semantic_index, _ = _stable_json(SEMANTIC_INDEX_PATH, EXPECTED_INDEX_SHA256)
     crop_manifest, crop_sha = _stable_json(CROP_MANIFEST_PATH, EXPECTED_CROP_MANIFEST_SHA256)
-    structure_scan = scanner.build_live_trading_securities_activity_full_document_scan_v1()
+    structure_scan = scanner.build_live_investment_securities_activity_full_document_scan_v1()
     review, review_sha = _stable_json(REVIEW_PATH)
     schema_authority, schema_by_id = _authority_snapshot(PROJECT_ROOT)
-    return build_trading_securities_activity_8bank_codex_verified_mapping_v1(
+    return build_investment_securities_activity_8bank_codex_verified_mapping_v1(
         semantic_index,
         crop_manifest,
         structure_scan,
@@ -934,15 +970,15 @@ def build_live_trading_securities_activity_8bank_codex_verified_mapping_v1() -> 
     )
 
 
-def validate_live_trading_securities_activity_8bank_codex_verified_mapping_v1(
+def validate_live_investment_securities_activity_8bank_codex_verified_mapping_v1(
     value: Any,
 ) -> dict[str, Any]:
     semantic_index, _ = _stable_json(SEMANTIC_INDEX_PATH, EXPECTED_INDEX_SHA256)
     crop_manifest, crop_sha = _stable_json(CROP_MANIFEST_PATH, EXPECTED_CROP_MANIFEST_SHA256)
-    structure_scan = scanner.build_live_trading_securities_activity_full_document_scan_v1()
+    structure_scan = scanner.build_live_investment_securities_activity_full_document_scan_v1()
     review, review_sha = _stable_json(REVIEW_PATH)
     schema_authority, schema_by_id = _authority_snapshot(PROJECT_ROOT)
-    return validate_trading_securities_activity_8bank_codex_verified_mapping_replay_v1(
+    return validate_investment_securities_activity_8bank_codex_verified_mapping_replay_v1(
         value,
         semantic_index,
         crop_manifest,
@@ -970,11 +1006,11 @@ def main() -> None:
         _write(REVIEW_PATH, _review_blueprint())
     if args.write_result:
         _write(
-            RESULT_PATH, build_live_trading_securities_activity_8bank_codex_verified_mapping_v1()
+            RESULT_PATH, build_live_investment_securities_activity_8bank_codex_verified_mapping_v1()
         )
     if args.validate_result:
         result, _ = _stable_json(RESULT_PATH)
-        validate_live_trading_securities_activity_8bank_codex_verified_mapping_v1(result)
+        validate_live_investment_securities_activity_8bank_codex_verified_mapping_v1(result)
 
 
 if __name__ == "__main__":

@@ -102,6 +102,95 @@ def test_wrapped_trading_owner_and_optional_provision_absence_are_admitted() -> 
     assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
 
 
+def test_sparse_dash_investment_table_needs_only_structural_numeric_minimum() -> None:
+    texts = [
+        "Lãi/(lỗ) thuần từ mua bán chứng khoán đầu tư",
+        "Đến 30.6.2026",
+        "Đến 30.6.2025",
+        "Triệu đồng",
+        "Thu nhập từ mua bán chứng khoán đầu tư",
+        "447.840",
+        "Chi phí về mua bán chứng khoán đầu tư",
+        "(21.896)",
+        "(3.244)",
+        "Hoàn nhập/(Trích lập) dự phòng rủi ro chứng khoán đầu tư",
+        "(21.896)",
+        "444.596",
+        "Thu nhập từ góp vốn, mua cổ phần",
+    ]
+    result = matcher.build_securities_sale_activity_variant_graph_document_v1(
+        [_page(texts)], family_variant="INVESTMENT_SECURITIES"
+    )
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["regions"][0]["numeric_line_count"] == 5
+
+
+def test_inner_owner_inherits_same_page_axes_and_admits_long_term_provision() -> None:
+    texts = [
+        "Lãi thuần từ chứng khoán kinh doanh, chứng khoán đầu tư",
+        "Từ 01/01/2026 đến 30/06/2026",
+        "Từ 01/01/2025 đến 30/06/2025",
+        "Triệu đồng",
+        *[f"khoảng cách {index}" for index in range(14)],
+        "Lãi/(lỗ) thuần từ mua bán chứng khoán đầu tư",
+        "Thu nhập từ mua bán chứng khoán đầu tư",
+        "261.677",
+        "1.318.966",
+        "Chi về chứng khoán đầu tư",
+        "(243.217)",
+        "(91.167)",
+        "(Trích lập)/hoàn nhập dự phòng rủi ro chứng khoán đầu tư",
+        "(14.873)",
+        "25.413",
+        "(Trích lập)/hoàn nhập dự phòng giảm giá góp vốn, đầu tư dài hạn",
+        "-",
+        "42.061",
+        "3.587",
+        "1.295.273",
+        "Lãi thuần từ hoạt động kinh doanh khác",
+    ]
+    result = matcher.build_securities_sale_activity_variant_graph_document_v1(
+        [_page(texts)], family_variant="INVESTMENT_SECURITIES"
+    )
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["regions"][0]["layout"]["child_roles"] == [
+        "EXPENSE",
+        "INCOME",
+        "OTHER",
+        "PROVISION",
+    ]
+
+
+def test_specific_provision_role_wins_over_generic_expense_wording() -> None:
+    texts = [
+        "Lãi/(lỗ) thuần từ mua bán chứng khoán đầu tư",
+        "Từ 01/01/2026 đến 30/06/2026",
+        "Từ 01/01/2025 đến 30/06/2025",
+        "Triệu đồng",
+        "Thu nhập từ mua bán chứng khoán đầu tư",
+        "21.778",
+        "46.585",
+        "Chi phí mua bán chứng khoán đầu tư",
+        "(15.119)",
+        "(2.004)",
+        "Chi phí dự phòng rủi ro chứng khoán đầu tư",
+        "388.616",
+        "76.970",
+        "395.275",
+        "121.551",
+        "Lãi thuần từ hoạt động kinh doanh khác",
+    ]
+    result = matcher.build_securities_sale_activity_variant_graph_document_v1(
+        [_page(texts)], family_variant="INVESTMENT_SECURITIES"
+    )
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["regions"][0]["layout"]["child_roles"] == [
+        "EXPENSE",
+        "INCOME",
+        "PROVISION",
+    ]
+
+
 def test_statement_total_policy_and_incomplete_rows_remain_near_or_negative() -> None:
     pages = [
         _page(
