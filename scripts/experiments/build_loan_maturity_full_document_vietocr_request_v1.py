@@ -455,6 +455,13 @@ def _activate_profile(profile: str) -> None:
     VERIFIED_INDEX_DIRECTORY = OUTPUT_ROOT / "verified-index"
 
 
+def _artifact_json_bytes_v1(value: Any) -> bytes:
+    """Preserve the legacy Wave-1 framing while keeping annual artifacts canonical."""
+
+    canonical = canonical_json_bytes_v1(value)
+    return canonical if _ACTIVE_PROFILE == "annual-2025" else canonical + b"\n"
+
+
 def _annual_output_ref(path: Path, label: str) -> dict[str, Any]:
     resolved = path.resolve()
     root = PROJECT_ROOT.resolve()
@@ -928,13 +935,14 @@ def _annual_geometry_selection_payload(producer_commit: str) -> dict[str, Any]:
 def seal_annual_2025_geometry_selection_v1() -> dict[str, Any]:
     """Create the one fixed tracked pin that must precede the VietOCR crop freeze."""
 
+    _activate_profile("annual-2025")
     if _git("status", "--porcelain"):
         raise _error("annual geometry selection requires one clean Git worktree")
     path = PROJECT_ROOT / ANNUAL_2025_GEOMETRY_SELECTION_PATH
     if path.exists():
         raise _error(f"refusing to overwrite annual geometry selection: {path}")
     selection = _annual_geometry_selection_payload(_git("rev-parse", "HEAD"))
-    raw = canonical_json_bytes_v1(selection) + b"\n"
+    raw = _artifact_json_bytes_v1(selection)
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor = os.open(
         path,
@@ -962,6 +970,7 @@ def seal_annual_2025_geometry_selection_v1() -> dict[str, Any]:
 
 
 def _validate_annual_geometry_selection_v1() -> tuple[dict[str, Any], bytes]:
+    _activate_profile("annual-2025")
     if _git("status", "--porcelain"):
         raise _error("annual geometry selection replay requires one clean Git worktree")
     path = PROJECT_ROOT / ANNUAL_2025_GEOMETRY_SELECTION_PATH
@@ -1963,7 +1972,7 @@ def build_full_document_request_v1() -> dict[str, Any]:
                 "union": False,
             },
         }
-        manifest_raw = canonical_json_bytes_v1(manifest) + b"\n"
+        manifest_raw = _artifact_json_bytes_v1(manifest)
         manifest_stage = stage / "crop_manifest.json"
         manifest_stage.write_bytes(manifest_raw)
         request = {
@@ -1983,7 +1992,7 @@ def build_full_document_request_v1() -> dict[str, Any]:
             "state": "READY_FOR_REFERENCE_BLIND_LINE_INFERENCE",
         }
         validate_anonymous_reader_request_v1(request)
-        request_raw = canonical_json_bytes_v1(request) + b"\n"
+        request_raw = _artifact_json_bytes_v1(request)
         (stage / "request.json").write_bytes(request_raw)
         if len(manifest_samples) != total_line_count or len(request_samples) != total_line_count:
             raise _error("private/public sample denominators diverged")
@@ -2249,7 +2258,7 @@ def build_annual_2025_full_document_request_v1() -> dict[str, Any]:
                 "white_border_left_top_right_bottom": list(WHITE_BORDER),
             },
         }
-        manifest_raw = canonical_json_bytes_v1(manifest) + b"\n"
+        manifest_raw = _artifact_json_bytes_v1(manifest)
         (stage / "crop_manifest.json").write_bytes(manifest_raw)
         request = {
             "crop_manifest": {
@@ -2268,7 +2277,7 @@ def build_annual_2025_full_document_request_v1() -> dict[str, Any]:
             "state": "READY_FOR_REFERENCE_BLIND_LINE_INFERENCE",
         }
         validate_anonymous_reader_request_v1(request)
-        request_raw = canonical_json_bytes_v1(request) + b"\n"
+        request_raw = _artifact_json_bytes_v1(request)
         (stage / "request.json").write_bytes(request_raw)
         if len(manifest_samples) != total_line_count or len(request_samples) != total_line_count:
             raise _error("annual private/public sample denominators diverged")
@@ -2292,8 +2301,8 @@ def build_annual_2025_full_document_request_v1() -> dict[str, Any]:
 
 def _verify_canonical_json_file(path: Path, label: str) -> tuple[dict[str, Any], bytes]:
     value, raw = _json(path, label)
-    if canonical_json_bytes_v1(value) + b"\n" != raw:
-        raise _error(f"{label} is not canonical JSON plus one newline")
+    if _artifact_json_bytes_v1(value) != raw:
+        raise _error(f"{label} does not have the exact profile JSON framing")
     return value, raw
 
 
@@ -3147,7 +3156,7 @@ def finalize_verified_vietocr_index_v1() -> dict[str, Any]:
     if destination.exists():
         raise _error(f"refusing to overwrite verified index: {destination}")
     index = read_verified_vietocr_proposals_v1()
-    index_raw = canonical_json_bytes_v1(index) + b"\n"
+    index_raw = _artifact_json_bytes_v1(index)
     receipt = {
         "format_version": (
             "ANNUAL_2025_8DOCUMENT_VIETOCR_TRANSFORMER_INDEX_RECEIPT_V1"
@@ -3162,7 +3171,7 @@ def finalize_verified_vietocr_index_v1() -> dict[str, Any]:
         },
         "state": "VERIFIED_INDEX_PUBLISHED_NO_OVERWRITE",
     }
-    receipt_raw = canonical_json_bytes_v1(receipt) + b"\n"
+    receipt_raw = _artifact_json_bytes_v1(receipt)
     destination.parent.mkdir(parents=True, exist_ok=True)
     stage = Path(tempfile.mkdtemp(prefix=f".{destination.name}.", dir=destination.parent))
     try:

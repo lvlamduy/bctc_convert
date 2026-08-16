@@ -386,7 +386,7 @@ def test_annual_geometry_selection_publication_is_no_overwrite(
     path = tmp_path / builder.ANNUAL_2025_GEOMETRY_SELECTION_PATH
 
     assert result["selection_id"] == selection["selection_id"]
-    assert path.read_bytes() == builder.canonical_json_bytes_v1(selection) + b"\n"
+    assert path.read_bytes() == builder.canonical_json_bytes_v1(selection)
     with pytest.raises(builder.FullDocumentVietOCRRequestV1Error, match="overwrite"):
         builder.seal_annual_2025_geometry_selection_v1()
 
