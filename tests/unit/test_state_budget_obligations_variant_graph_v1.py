@@ -101,6 +101,19 @@ def test_document_unit_inheritance_is_retained_as_layout_variant() -> None:
     assert result["regions"][0]["layout"]["document_unit_inheritance_required"] is True
 
 
+def test_annual_date_pair_resolves_opening_and_closing_without_fixed_years() -> None:
+    texts = _core()
+    texts[1] = "01/01/2025"
+    texts[4] = "31/12/2025"
+
+    result = matcher.build_state_budget_obligations_variant_graph_document_v1([_page(texts)])
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert {"OPENING_AXIS", "CLOSING_AXIS"}.issubset(
+        result["regions"][0]["layout"]["observed_axis_roles"]
+    )
+
+
 @pytest.mark.parametrize(
     "texts",
     [

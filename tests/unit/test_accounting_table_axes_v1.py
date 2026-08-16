@@ -8,6 +8,7 @@ from bctc_ai.evaluation.accounting_table_axes_v1 import (
     AccountingTableAxesV1Error,
     center_x2_v1,
     extract_period_axis_v1,
+    extract_reporting_year_axis_v1,
     extract_typed_value_vector_v1,
     is_number_like_v1,
     money_integer_v1,
@@ -89,6 +90,25 @@ def test_period_axis_fails_closed_on_invalid_or_ambiguous_headers() -> None:
             _line(1, "30/06/2026", 100),
             _line(2, "31/12/2025", 300),
             _line(3, "31/12/2024", 500),
+        ]
+    ) == ([], "UNRESOLVED")
+
+
+def test_reporting_year_axis_uses_latest_of_exactly_two_visible_years() -> None:
+    axis, mode = extract_reporting_year_axis_v1(
+        [_line(7, "31/12/2024", 300), _line(6, "31/12/2025", 100)]
+    )
+
+    assert mode == "VISIBLE_TWO_YEAR_REPORTING_AXIS"
+    assert [(item["role"], item["year"]) for item in axis] == [
+        ("COMPARATIVE_PERIOD", 2024),
+        ("CURRENT_PERIOD", 2025),
+    ]
+    assert extract_reporting_year_axis_v1(
+        [
+            _line(1, "31/12/2025", 100),
+            _line(2, "31/12/2024", 300),
+            _line(3, "narrative 2023", 500),
         ]
     ) == ([], "UNRESOLVED")
 

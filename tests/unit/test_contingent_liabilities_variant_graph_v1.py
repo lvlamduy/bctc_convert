@@ -109,6 +109,15 @@ def test_two_group_ctg_variant_does_not_require_granular_children() -> None:
     assert result["regions"][0]["layout"]["two_group_variant_observed"] is True
 
 
+def test_annual_current_and_comparative_years_are_derived_from_the_page() -> None:
+    texts = _deep_core()
+    texts[1:3] = ["31/12/2025", "31/12/2024"]
+
+    result = matcher.build_contingent_liabilities_variant_graph_document_v1([_page(texts)])
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+
+
 def test_wrapped_vib_rows_are_joined_without_bank_rules() -> None:
     texts = [
         "Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra",

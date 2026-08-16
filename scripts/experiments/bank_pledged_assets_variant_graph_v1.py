@@ -10,6 +10,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any
 
+from bctc_ai.evaluation.accounting_table_axes_v1 import extract_reporting_year_axis_v1
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
     canonical_json_sha256_v1,
@@ -105,17 +106,6 @@ def _role(text: str) -> str | None:
 
 def _axis_role(text: str) -> str | None:
     value = text.strip()
-    if "31 12 2025" in value or "31 thang 12" in value or "nam 2025" in value:
-        return "COMPARATIVE_AXIS"
-    if (
-        "30 6 2026" in value
-        or "30 06 2026" in value
-        or "31 3 2026" in value
-        or "31 thang 3" in value
-        or "30 thang 6" in value
-        or "nam 2026" in value
-    ):
-        return "CURRENT_AXIS"
     if "trieu dong" in value or "trieu vnd" in value:
         return "UNIT_AXIS"
     return None
@@ -140,6 +130,14 @@ def _region(page: Mapping[str, Any], owner: Mapping[str, Any]) -> dict[str, Any]
             axes.append(axis)
             events.append(support._line_ref(line, axis))
         numeric_count += support._NUMBER.fullmatch(text) is not None
+    line_by_index = {line["source_line_index"]: line for line in page["lines"]}
+    year_axis, _year_axis_mode = extract_reporting_year_axis_v1(page["lines"])
+    for item in year_axis:
+        axis = "CURRENT_AXIS" if item["role"] == "CURRENT_PERIOD" else "COMPARATIVE_AXIS"
+        if axis not in axes:
+            axes.append(axis)
+            line = line_by_index[item["evidence_source_line_indices"][0]]
+            events.append(support._line_ref(line, axis))
     observed_roles = list(dict.fromkeys(roles))
     observed_axes = list(dict.fromkeys(axes))
     required_axes = {"CURRENT_AXIS", "COMPARATIVE_AXIS", "UNIT_AXIS"}

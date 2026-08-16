@@ -72,6 +72,15 @@ def test_sibling_order_is_not_a_matching_requirement() -> None:
     }
 
 
+def test_annual_current_and_comparative_years_are_derived_from_the_page() -> None:
+    texts = _core()
+    texts[1:3] = ["31/12/2025", "31/12/2024"]
+
+    result = matcher.build_bank_pledged_assets_variant_graph_document_v1([_page(texts)])
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+
+
 def test_customer_collateral_branch_is_a_negative_control() -> None:
     texts = [
         "Giá trị sổ sách của tài sản thế chấp của khách hàng",

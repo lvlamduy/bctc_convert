@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import importlib.util
 import itertools
+import re
 import sys
 from collections.abc import Mapping
+from datetime import date
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -48,6 +50,9 @@ _FIELDS = {
     "status",
     "uniqueness",
 }
+_DATE_AXIS = re.compile(
+    r"(?<![0-9])([0-3]?[0-9])(?:[./-]|\s+)([01]?[0-9])(?:[./-]|\s+)(20[0-9]{2})(?![0-9])"
+)
 
 
 class StateBudgetObligationsVariantGraphV1Error(ValueError):
@@ -111,19 +116,13 @@ def _role(text: str) -> str | None:
 
 def _axis_role(text: str) -> str | None:
     value = text.strip()
-    if (
-        "so du dau" in value
-        or "so dau ky" in value
-        or value == "dau ky"
-        or "1 1 2026" in value
-        or "31 12 2025" in value
-    ):
+    if "so du dau" in value or "so dau ky" in value or value == "dau ky":
         return "OPENING_AXIS"
     if "so phai nop" in value:
         return "PAYABLE_AXIS"
     if "so da nop" in value:
         return "PAID_AXIS"
-    if "so du cuoi" in value or "so cuoi" in value or "30 6 2026" in value or "30 06 2026" in value:
+    if "so du cuoi" in value or "so cuoi" in value:
         return "CLOSING_AXIS"
     if "tang do hop nhat kinh doanh" in value:
         return "BUSINESS_COMBINATION_INCREASE_AXIS"
@@ -134,12 +133,24 @@ def _axis_role(text: str) -> str | None:
     return None
 
 
+def _date_axis(text: str) -> date | None:
+    matched = _DATE_AXIS.search(text)
+    if matched is None:
+        return None
+    day, month, year = map(int, matched.groups())
+    try:
+        return date(year, month, day)
+    except ValueError:
+        return None
+
+
 def _region(page: Mapping[str, Any], owner: Mapping[str, Any]) -> dict[str, Any]:
     support = _support()
     roles: list[str] = []
     axes: list[str] = []
     events = [support._line_ref(owner, "OWNER")]
     numeric_count = 0
+    dated_lines: dict[date, Mapping[str, Any]] = {}
     lines = page["lines"]
     for index, line in enumerate(lines):
         text = line["normalized_text"]
@@ -153,10 +164,21 @@ def _region(page: Mapping[str, Any], owner: Mapping[str, Any]) -> dict[str, Any]
         if axis is not None:
             axes.append(axis)
             events.append(support._line_ref(line, axis))
+        if (observed_date := _date_axis(text)) is not None:
+            dated_lines.setdefault(observed_date, line)
         if "so phai nop" in text and axis != "PAYABLE_AXIS":
             axes.append("PAYABLE_AXIS")
             events.append(support._line_ref(line, "PAYABLE_AXIS"))
         numeric_count += support._NUMBER.fullmatch(text) is not None
+    if len(dated_lines) == 2:
+        opening_date, closing_date = sorted(dated_lines)
+        for role, observed_date in (
+            ("OPENING_AXIS", opening_date),
+            ("CLOSING_AXIS", closing_date),
+        ):
+            if role not in axes:
+                axes.append(role)
+                events.append(support._line_ref(dated_lines[observed_date], role))
     observed_roles = list(dict.fromkeys(roles))
     observed_axes = list(dict.fromkeys(axes))
     required_roles = {"VAT", "CORPORATE_INCOME_TAX", "OTHER_TAX"}

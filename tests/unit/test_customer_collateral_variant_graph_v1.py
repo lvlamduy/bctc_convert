@@ -85,6 +85,15 @@ def test_generic_note_with_customer_subparent_is_accepted() -> None:
     assert result["regions"][0]["owner"]["vietocr_text"] == "Của khách hàng"
 
 
+def test_annual_current_and_comparative_years_are_derived_from_the_page() -> None:
+    texts = _direct_core()
+    texts[1:3] = ["31/12/2025", "31/12/2024"]
+
+    result = matcher.build_customer_collateral_variant_graph_document_v1([_page(texts)])
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+
+
 def test_own_pledged_assets_without_customer_scope_are_negative_control() -> None:
     texts = [
         "Tài sản, giấy tờ có giá đưa đi thế chấp, cầm cố",

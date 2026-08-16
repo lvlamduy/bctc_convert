@@ -22,6 +22,7 @@ __all__ = [
     "AccountingTableAxesV1Error",
     "center_x2_v1",
     "extract_period_axis_v1",
+    "extract_reporting_year_axis_v1",
     "extract_typed_value_vector_v1",
     "is_number_like_v1",
     "money_integer_v1",
@@ -35,6 +36,7 @@ _NUMBER = re.compile(r"^[()]*[+-]?[0-9][0-9., ]*%?[()]*$")
 _FULL_DATE = re.compile(r"(?<!\d)(\d{1,2})[./-](\d{1,2})[./-](\d{4})(?!\d)")
 _DAY_MONTH = re.compile(r"\bngay\s+(\d{1,2})\s+thang\s+(\d{1,2})\b")
 _YEAR = re.compile(r"\bnam\s+(\d{4})\b")
+_REPORTING_YEAR = re.compile(r"(?<!\d)(20\d{2})(?!\d)")
 
 
 class AccountingTableAxesV1Error(ValueError):
@@ -231,6 +233,41 @@ def extract_period_axis_v1(
     if len(relative) == 2:
         return sorted(relative, key=lambda item: item["x_center_x2"]), "LOCAL_RELATIVE_PERIOD_ROLES"
     return [], "UNRESOLVED"
+
+
+def extract_reporting_year_axis_v1(
+    lines: Sequence[Mapping[str, Any]],
+) -> tuple[list[dict[str, Any]], str]:
+    """Resolve a current/comparative axis from exactly two visible years.
+
+    The later year is the current reporting axis and the earlier year is the
+    comparative axis.  More or fewer than two visible years fail closed so a
+    narrative year or a second table cannot silently choose the period.
+    """
+
+    by_year: dict[int, list[Mapping[str, Any]]] = {}
+    for line in lines:
+        text = _text(line, "reporting-year header")
+        for matched in _REPORTING_YEAR.finditer(text):
+            by_year.setdefault(int(matched.group(1)), []).append(line)
+    if len(by_year) != 2:
+        return [], "UNRESOLVED"
+    comparative_year, current_year = sorted(by_year)
+    records = []
+    for role, year in (
+        ("COMPARATIVE_PERIOD", comparative_year),
+        ("CURRENT_PERIOD", current_year),
+    ):
+        line = by_year[year][0]
+        records.append(
+            {
+                "evidence_source_line_indices": [_source_line_index(line, "reporting-year header")],
+                "role": role,
+                "x_center_x2": center_x2_v1(line),
+                "year": year,
+            }
+        )
+    return records, "VISIBLE_TWO_YEAR_REPORTING_AXIS"
 
 
 def extract_typed_value_vector_v1(
