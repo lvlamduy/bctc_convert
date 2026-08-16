@@ -17,7 +17,7 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **158 entries**.  Current open queue: **59**.  Closed history:
+Ledger total: **161 entries**.  Current open queue: **62**.  Closed history:
 **40** row/graph resolutions and **59** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
@@ -163,10 +163,22 @@ ngân hàng đưa đi thế chấp không bị nhập nhầm. CC-001–CC-004 c�
 thiếu leaf hoặc nhãn nguồn gộp nhiều loại không thể thu hẹp. ACB/MBB/HDB/CTG/
 BID là bounded detailed-note absence; VPB giữ đúng kỳ Q1/2026.
 
+E-0097 `Tài sản, GTCG đưa đi thế chấp, cầm cố và chiết khấu, tái chiết khấu`
+quét đủ 453 trang và tìm đúng một vùng tại VPB p67 và VIB p49. Năm mapping/10
+ô số và sáu quan hệ thành phần đã `VERIFIED_BY_CODEX`; ACB/MBB/HDB/VCB/CTG/
+BID là bounded detailed-note absence. BPA-001 giữ nguyên parent gộp của VPB vì
+tổng nguồn in cộng cả parent lẫn các con “Trong đó”, nên hai phép tái hiện tổng
+chỉ là source-presentation reconciliation chứ không phải accounting identity.
+BPA-002/BPA-003 giữ hai hàng GTCG chung của VIB thay vì ép vào chứng khoán kinh
+doanh/đầu tư khi PDF không in phân rã. VPB giữ đúng kỳ Q1/2026.
+
 ## Open review queue (always first)
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
 | --- | --- | --- | ---: | --- | --- |
+| BPA-001 | Tài sản/GTCG ngân hàng đem thế chấp, cầm cố, chiết khấu | VPB | 67 | Giấy tờ có giá đưa đi thế chấp, cầm cố | Parent gộp bằng hai con “Trong đó”, nhưng tổng nguồn lại cộng parent và hai con lần nữa; giữ source-only, không biến hierarchy double-count thành accounting identity. |
+| BPA-002 | Tài sản/GTCG ngân hàng đem thế chấp, cầm cố, chiết khấu | VIB | 49 | Giấy tờ có giá đưa đi thế chấp, cầm cố | Nguồn không tách chứng khoán kinh doanh/đầu tư nên không ép vào 1290/1291. |
+| BPA-003 | Tài sản/GTCG ngân hàng đem thế chấp, cầm cố, chiết khấu | VIB | 49 | Giấy tờ có giá đưa đi chiết khấu, tái chiết khấu | Nguồn không tách loại chứng khoán; family 1289–1293 chưa có leaf mục đích sử dụng tương đương. |
 | CC-001 | Tài sản thế chấp của khách hàng | VCB | 47 | Tiền gửi | Family 1280–1288 chưa có leaf tài sản thế chấp là tiền gửi; số vẫn tham gia và đóng đúng tổng. |
 | CC-002 | Tài sản thế chấp của khách hàng | VIB | 49 | Quyền khai thác tài sản | Chưa có leaf tương đương; số vẫn tham gia và đóng đúng tổng `Của khách hàng`. |
 | CC-003 | Tài sản thế chấp của khách hàng | VIB | 49 | Bảo lãnh | Không đồng nhất với một loại tài sản thế chấp cụ thể trong schema; số vẫn tham gia tổng. |
@@ -276,6 +288,23 @@ page or note identifier participates in this decision.
 | EI-001–EI-002 | `OPEN_SCHEMA_PERIOD_SEMANTICS_GAP`; các dòng ACB là bình quân mỗi nhân viên cho toàn kỳ sáu tháng, còn schema 1267/1268 quy định bình quân người/tháng. Giá trị và phương trình tỷ lệ nguồn được giữ đầy đủ nhưng không map |
 | SBO-001 | `OPEN_SCHEMA_GAP`; HDB `Tiền thuê đất` không bị ép vào 1277 `Thuế nhà - đất`; dòng nguồn vẫn được giữ trong tổng family và phương trình nguồn đã xác minh |
 | CC-001–CC-004 | `OPEN_SCHEMA_OR_COMBINED_SOURCE_GAP`; VCB `Tiền gửi`, VIB `Quyền khai thác tài sản`, `Bảo lãnh` và dòng gộp `Vàng, ngoại tệ, giấy tờ có giá` vẫn nằm trong các phương trình tổng nhưng không bị ép vào leaf hẹp |
+| BPA-001–BPA-003 | `OPEN_SOURCE_HIERARCHY_OR_SCHEMA_GAP`; VPB parent gộp bị tổng nguồn cộng lặp với các con, còn hai hàng VIB không tách loại chứng khoán; không dòng nào bị ép vào hierarchy/leaf hẹp |
+
+## Bank-owned pledged or discounted assets (`BANK_PLEDGED_OR_DISCOUNTED_ASSETS`)
+
+Current exact-replay result:
+`docs/experiments/E-0097-bank-pledged-assets-8bank-codex-verified-mapping-v1.json`
+
+- One whole-PDF graph finds one unique bank-owned asset region at VPB p67 and
+  VIB p49. ACB/MBB/HDB/VCB/CTG/BID have no detailed note in the supplied
+  reports; customer collateral and borrowing-facility text remain controls.
+- Five mappings, 10 value cells and six component relations are independently
+  verified. Two additional VPB printed-total reproductions are explicitly not
+  accounting identities because the source presentation double-counts a parent
+  and its “Trong đó” children.
+- **BPA-001–BPA-003 — OPEN:** the VPB combined parent and two unsplit VIB
+  use-purpose rows remain source-only rather than being forced into narrower
+  security-class leaves.
 
 ## Customer collateral held (`CUSTOMER_COLLATERAL_HELD`)
 

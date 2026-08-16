@@ -788,6 +788,24 @@ Q1/2026, không relabel thành Q2/2026.
 | VIB | 49 | Bảo lãnh | Không đồng nhất với một loại tài sản thế chấp cụ thể trong schema. |
 | VIB | 49 | Vàng, ngoại tệ, giấy tờ có giá | Một số gộp ba loại; không được thu hẹp toàn bộ vào 1286 `Giấy tờ có giá`. |
 
+## 45. Tài sản, giấy tờ có giá của ngân hàng đưa đi thế chấp, cầm cố và chiết khấu
+
+- **Đã map/xác minh:** VPB p67 và VIB p49. Đã map năm khoản mục/10 ô số vào
+  1289/1290/1291/1293 và kiểm tra sáu quan hệ thành phần theo hai kỳ. VIB có
+  tổng family cùng hai hàng giấy tờ có giá đem cầm cố/chiết khấu. VPB là nguồn
+  Q1/2026 và có nhánh chứng khoán kinh doanh, chứng khoán đầu tư, repo cùng tài
+  sản khác.
+- **Không có cụm thuyết minh chi tiết trong báo cáo:** ACB, MBB, HDB, VCB,
+  CTG và BID. Các hạn mức vay, tài sản khách hàng thế chấp và diễn giải chính
+  sách là đối chứng âm, không được relabel thành tài sản của chính ngân hàng.
+- **Còn thiếu:**
+
+| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | ---: | --- | --- |
+| VPB | 67 | Giấy tờ có giá đưa đi thế chấp, cầm cố | Dòng nguồn là parent gộp và đồng thời các con chứng khoán kinh doanh/đầu tư lại được cộng thêm trong tổng in; giữ source-only để không xác nhận một hierarchy double-count là quan hệ kế toán. |
+| VIB | 49 | Giấy tờ có giá đưa đi thế chấp, cầm cố | Không tách chứng khoán kinh doanh và chứng khoán đầu tư nên không ép vào 1290 hay 1291. |
+| VIB | 49 | Giấy tờ có giá đưa đi chiết khấu, tái chiết khấu | Không tách loại chứng khoán; family 1289–1293 chưa có leaf theo mục đích sử dụng này. |
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -840,3 +858,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Thu nhập nhân viên | ✓\* p26 | — | ✓\* p66 | — | — | — | — | ✓ p49 | 2 dòng ACB OPEN; 13 mapping, 26 ô số, 14 phương trình; 5 bank không có note chi tiết; VPB là nguồn Q1 |
 | Nghĩa vụ với ngân sách nhà nước | ✓ p22 | ✓ p49 | ✓\* p58 | ✓\* p32 | — | ✓ p43 | ✓ p26 | ✓ p47 | 1 dòng HDB OPEN; 33 mapping, 147 ô số, 37 phương trình; 13 DASH→0; VCB không có note chi tiết; VPB là nguồn Q1 |
 | Tài sản thế chấp của khách hàng | — | — | ✓ p67 | — | ✓\* p47 | — | — | ✓\* p49 | 4 dòng OPEN; 15 mapping, 30 ô số, 6 phương trình; 5 bank không có note chi tiết; VPB là nguồn Q1 |
+| Tài sản/GTCG ngân hàng đem thế chấp, cầm cố, chiết khấu | — | — | ✓\* p67 | — | — | — | — | ✓\* p49 | 3 dòng OPEN; 5 mapping, 10 ô số, 6 quan hệ kế toán; 6 bank không có note chi tiết; VPB có hierarchy nguồn double-count và là nguồn Q1 |
