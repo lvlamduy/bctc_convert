@@ -235,7 +235,7 @@ def _child_role(text: str) -> str | None:
         return "CASH_VND"
     if "tien mat bang" in text and "ngoai te" in text:
         return "CASH_FOREIGN"
-    if "chung tu co gia tri ngoai te" in text:
+    if "chung tu co gia" in text and "ngoai te" in text:
         return "FOREIGN_CURRENCY_VALUABLE_DOCUMENT"
     if "vang phi tien te" in text:
         return "NONMONETARY_GOLD"

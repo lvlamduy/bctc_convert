@@ -109,3 +109,86 @@ def test_coordinated_result_rehash_cannot_replace_verified_digit(
             crop_manifest_sha256="a" * 64,
             review_sha256="b" * 64,
         )
+
+
+def test_annual_2025_review_covers_eight_unique_notes_and_all_visible_children() -> None:
+    review = mapping._annual_2025_review_blueprint()
+
+    assert [document["bank_code"] for document in review["documents"]] == [
+        "ACB",
+        "MBB",
+        "VPB",
+        "HDB",
+        "VCB",
+        "CTG",
+        "BID",
+        "VIB",
+    ]
+    assert [document["page_sequence"] for document in review["documents"]] == [
+        45,
+        46,
+        41,
+        33,
+        35,
+        39,
+        39,
+        35,
+    ]
+    assert sum(len(document["mappings"]) for document in review["documents"]) == 35
+    assert all(len(document["equations"]) == 1 for document in review["documents"])
+
+
+def test_annual_2025_hdb_vietocr_disagreement_and_ctg_omitted_dash_are_explicit() -> None:
+    review = mapping._annual_2025_review_blueprint()
+    hdb = next(document for document in review["documents"] if document["bank_code"] == "HDB")
+    hdb_foreign = next(row for row in hdb["mappings"] if row["role"] == "CASH_FOREIGN")
+    assert hdb_foreign["value"] == {
+        "fresh_vietocr_challenger_expected": "1.194.005",
+        "line_index": 42,
+        "pixel_transcription": "1.194.085",
+        "resolution": (
+            "INDEPENDENT_PIXEL_TRANSCRIPTION_CORROBORATED_BY_PROVIDER_AND_EXACT_ACCOUNTING_EQUATION"
+        ),
+        "source_numeric_challenger_expected": "1.194.085",
+    }
+
+    ctg = next(document for document in review["documents"] if document["bank_code"] == "CTG")
+    nonmonetary = next(row for row in ctg["mappings"] if row["role"] == "NONMONETARY_GOLD")
+    assert nonmonetary["value"]["pixel_transcription"] == "-"
+    assert nonmonetary["value"]["render_cell"]["status"] == (
+        "VISIBLE_DASH_WITHOUT_PROVIDER_DETECTION_BOUND_BY_ROW_AND_NUMERIC_LANE"
+    )
+
+
+def test_annual_2025_persisted_result_is_complete_and_accounting_closed() -> None:
+    persisted = mapping._validate_result(
+        json.loads((mapping.PROJECT_ROOT / mapping.ANNUAL_2025_RESULT_PATH).read_text()),
+        "annual-2025",
+    )
+
+    assert persisted["metrics"] == {
+        "accounting_equation_verified_count": 8,
+        "document_count": 8,
+        "document_unique_region_count": 8,
+        "mapping_verified_count": 35,
+        "q1_source_period_caveat_document_count": 0,
+        "unresolved_document_count": 0,
+    }
+    assert all(trial["status"] == "VERIFIED_BY_CODEX" for trial in persisted["trials"])
+    assert all(
+        equation["computed_total"] == equation["visible_total"]
+        for trial in persisted["trials"]
+        for equation in trial["verified_accounting_equations"]
+    )
+
+
+def test_annual_2025_review_tamper_fails_closed() -> None:
+    forged = mapping._annual_2025_review_blueprint()
+    hdb = next(document for document in forged["documents"] if document["bank_code"] == "HDB")
+    hdb_foreign = next(row for row in hdb["mappings"] if row["role"] == "CASH_FOREIGN")
+    hdb_foreign["value"]["pixel_transcription"] = "1.194.005"
+    with pytest.raises(
+        mapping.CashPreciousMetals8BankCodexVerifiedMappingV1Error,
+        match="differs from the fixed ledger",
+    ):
+        mapping._review(forged, "annual-2025")

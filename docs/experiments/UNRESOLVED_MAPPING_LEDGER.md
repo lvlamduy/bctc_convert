@@ -22,6 +22,15 @@ Ledger total: **244 entries**.  Current open queue: **71**.  Closed history:
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
+E-0107 `Tiền, kim loại quý và đá quý` trên tám BCTC hợp nhất kiểm toán năm
+2025 không bổ sung dòng OPEN: whole-PDF graph tìm đúng một vùng tại ACB p45,
+MBB p46, VPB p41, HDB p33, VCB p35, CTG p39, BID p39 và VIB p35. 35 mapping
+và tám phương trình tổng đã `VERIFIED_BY_CODEX`. VietOCR đọc số HDB
+`1.194.005`, nhưng pixel cùng trục số nguồn xác nhận `1.194.085` và phương
+trình đóng đúng; dấu gạch CTG bị provider bỏ sót được bind từ đúng ô ảnh rồi
+chuẩn hóa 0. Hai bất đồng là đối chứng OCR đã đóng, không phải khoảng trống
+mapping.
+
 E-0079 `Thu nhập lãi và các khoản thu nhập tương tự` không bổ sung dòng OPEN:
 cả tám vùng duy nhất đã map hết các dòng nguồn vào 1143–1150. Hai lỗi mất chữ
 số đầu của VietOCR tại VIB được trục số nguồn/PaddleOCR và pixel bác bỏ, nên là

@@ -13,11 +13,15 @@ from __future__ import annotations
 import argparse
 import hashlib
 import importlib.util
+import io
+import struct
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from types import ModuleType
 from typing import Any
+
+from PIL import Image
 
 from bctc_ai.evaluation.accounting_variant_graph_engine_v1 import (
     normalize_vietnamese_anchor_v1,
@@ -38,8 +42,11 @@ __all__ = [
     "FORMAT_VERSION",
     "CashPreciousMetals8BankCodexVerifiedMappingV1Error",
     "build_cash_precious_metals_8bank_codex_verified_mapping_v1",
+    "build_live_annual_2025_cash_precious_metals_8bank_codex_verified_mapping_v1",
     "build_live_cash_precious_metals_8bank_codex_verified_mapping_v1",
+    "validate_live_annual_2025_cash_precious_metals_8bank_codex_verified_mapping_v1",
     "validate_live_cash_precious_metals_8bank_codex_verified_mapping_v1",
+    "validate_annual_2025_cash_precious_metals_8bank_codex_verified_mapping_replay_v1",
     "validate_cash_precious_metals_8bank_codex_verified_mapping_replay_v1",
 ]
 
@@ -89,6 +96,39 @@ EXPECTED_INDEX_SHA256 = "f84fd9ca56fe06af230e011ecad85b0a576e27e1eca32ee141e654a
 EXPECTED_CROP_MANIFEST_SHA256 = "a9f80cf9104af1177ba43d8a85de00b28c735223a91b663a5a79401bb038d94e"
 EXPECTED_AXIS_SHA256 = "e99873cd16a7234702d0ee6e5fa9eb37637a1a75621228381e3dbcd7c5cfdcca"
 EXPECTED_SCAN_ID = "cpmfdsv1:scan:e567cec37d01547ba51687388ae9a52578cd1075634d22f425eb8b76c5dcce31"
+
+ANNUAL_2025_FORMAT_VERSION = "ANNUAL_2025_CASH_PRECIOUS_METALS_8BANK_CODEX_VERIFIED_MAPPING_V1"
+ANNUAL_2025_REVIEW_FORMAT = "ANNUAL_2025_CASH_PRECIOUS_METALS_8BANK_CODEX_PIXEL_REVIEW_V1"
+ANNUAL_2025_CLAIM_BOUNDARY = (
+    "FIXED_EIGHT_AUDITED_CONSOLIDATED_ANNUAL_2025_COMPLETE_PDF_FRESH_VIETOCR_"
+    "GENERIC_CASH_PRECIOUS_METALS_FIRST_LAST_CLUSTER_BOUNDARY_ADAPTIVE_PERIOD_"
+    "UNIT_HEADER_GEOMETRY_VISIBLE_PIXEL_UPSTREAM_NUMERIC_CHALLENGER_EXACT_"
+    "ACCOUNTING_AND_LIVE_TM_SCHEMA_ONLY_NO_EXPORT_OR_PRODUCTION_AUTHORITY"
+)
+ANNUAL_2025_REVIEW_PATH = Path(
+    "docs/experiments/E-0107-annual-2025-cash-precious-metals-8bank-codex-pixel-review-v1.json"
+)
+ANNUAL_2025_RESULT_PATH = Path(
+    "docs/experiments/E-0107-annual-2025-cash-precious-metals-8bank-codex-verified-mapping-v1.json"
+)
+ANNUAL_2025_SEMANTIC_INDEX_PATH = Path(
+    "output/calibration/annual-2025-8bank-full-document-vietocr-v1/verified-index/semantic_index.json"
+)
+ANNUAL_2025_CROP_MANIFEST_PATH = Path(
+    "output/calibration/annual-2025-8bank-full-document-vietocr-v1/crop_manifest.json"
+)
+ANNUAL_2025_EXPECTED_INDEX_SHA256 = (
+    "98bb9854e699230da86538cf024ef3f4817b9e2f4dd2b2a75f46198f00e4247d"
+)
+ANNUAL_2025_EXPECTED_CROP_MANIFEST_SHA256 = (
+    "17d12a4d6b1dfaf0e243300757fd225b8c9cca80810a2d856efdb55a5b4ac000"
+)
+ANNUAL_2025_EXPECTED_AXIS_SHA256 = (
+    "aa81f553fda69315e84b7adbda13347c25a4490b016fc9660ff4f2cd49795ce7"
+)
+ANNUAL_2025_EXPECTED_SCAN_ID = (
+    "cpmfdsv1:scan:68dc2df9c71dbcc30712f8baaa66804403c1346de6e86f9e608ecdfc1c7c03c1"
+)
 
 _REVIEW_CHECKS = [
     "COMPLETE_PDF_UNIQUE_REGION_ENUMERATION",
@@ -146,7 +186,11 @@ _RESULT_FIELDS = {
 _MAPPING_SCHEMA = {
     "CASH_VND": 562,
     "CASH_FOREIGN": 563,
+    "FOREIGN_CURRENCY_VALUABLE_DOCUMENT": 564,
     "MONETARY_GOLD": 565,
+    "NONMONETARY_GOLD": 566,
+    "OTHER_PRECIOUS_METALS_GEMS": 567,
+    "OTHER": 568,
     "TOTAL": 561,
 }
 
@@ -184,6 +228,42 @@ def _value(line_index: int, pixel_transcription: str) -> dict[str, Any]:
     return {"line_index": line_index, "pixel_transcription": pixel_transcription}
 
 
+def _challenged_value(
+    line_index: int,
+    pixel_transcription: str,
+    fresh_vietocr_challenger_expected: str,
+) -> dict[str, Any]:
+    return {
+        "fresh_vietocr_challenger_expected": fresh_vietocr_challenger_expected,
+        "line_index": line_index,
+        "pixel_transcription": pixel_transcription,
+        "resolution": (
+            "INDEPENDENT_PIXEL_TRANSCRIPTION_CORROBORATED_BY_PROVIDER_AND_EXACT_ACCOUNTING_EQUATION"
+        ),
+        "source_numeric_challenger_expected": pixel_transcription,
+    }
+
+
+def _render_dash_value(
+    *,
+    bbox: Sequence[int],
+    lane_reference_line_index: int,
+    raw_rgb_sha256: str,
+    row_label_line_index: int,
+) -> dict[str, Any]:
+    return {
+        "line_index": None,
+        "pixel_transcription": "-",
+        "render_cell": {
+            "bbox": list(bbox),
+            "lane_reference_line_index": lane_reference_line_index,
+            "raw_rgb_sha256": raw_rgb_sha256,
+            "row_label_line_index": row_label_line_index,
+            "status": "VISIBLE_DASH_WITHOUT_PROVIDER_DETECTION_BOUND_BY_ROW_AND_NUMERIC_LANE",
+        },
+    }
+
+
 def _mapping(
     role: str,
     label_line_index: int | None,
@@ -202,6 +282,23 @@ def _mapping(
     }
 
 
+def _mapping_evidence(
+    role: str,
+    label_line_index: int | None,
+    label_pixel_transcription: str | None,
+    value: Mapping[str, Any],
+    topology: str,
+) -> dict[str, Any]:
+    return {
+        "label_line_index": label_line_index,
+        "label_pixel_transcription": label_pixel_transcription,
+        "report_norm_id": _MAPPING_SCHEMA[role],
+        "role": role,
+        "topology": topology,
+        "value": canonical_clone_v1(value),
+    }
+
+
 def _positive_document(
     bank_code: str,
     page_sequence: int,
@@ -209,6 +306,8 @@ def _positive_document(
     owner_line_index: int,
     owner_pixel_transcription: str,
     rows: Sequence[tuple[str, int | None, str | None, int, str, str]],
+    *,
+    equation_name: str = "CASH_VND_PLUS_FOREIGN_PLUS_MONETARY_GOLD_TO_TOTAL",
 ) -> dict[str, Any]:
     mappings = [_mapping(*row) for row in rows]
     components = [row["value"] for row in mappings if row["role"] != "TOTAL"]
@@ -220,7 +319,7 @@ def _positive_document(
         "equations": [
             {
                 "component_values": components,
-                "name": "CASH_VND_PLUS_FOREIGN_PLUS_MONETARY_GOLD_TO_TOTAL",
+                "name": equation_name,
                 "visible_total": total,
             }
         ],
@@ -324,6 +423,231 @@ def _review_documents() -> list[dict[str, Any]]:
     ]
 
 
+def _annual_2025_positive_document(
+    bank_code: str,
+    page_sequence: int,
+    owner_line_index: int,
+    owner_pixel_transcription: str,
+    rows: Sequence[tuple[str, int | None, str | None, Mapping[str, Any], str]],
+) -> dict[str, Any]:
+    mappings = [_mapping_evidence(*row) for row in rows]
+    components = [row["value"] for row in mappings if row["role"] != "TOTAL"]
+    total = next(row["value"] for row in mappings if row["role"] == "TOTAL")
+    return {
+        "bank_code": bank_code,
+        "checks": {check: "PASS" for check in _REVIEW_CHECKS},
+        "disposition": "VERIFIED_DETAILED_CASH_PRECIOUS_METALS_NOTE",
+        "equations": [
+            {
+                "component_values": components,
+                "name": "ALL_VISIBLE_CURRENT_PERIOD_CHILDREN_TO_VISIBLE_TOTAL",
+                "visible_total": total,
+            }
+        ],
+        "evidence_owner_line_index": owner_line_index,
+        "mappings": mappings,
+        "owner_pixel_transcription": owner_pixel_transcription,
+        "page_sequence": page_sequence,
+        "source_period": "2025-12-31",
+    }
+
+
+def _annual_2025_review_documents() -> list[dict[str, Any]]:
+    direct = _value
+    return [
+        _annual_2025_positive_document(
+            "ACB",
+            45,
+            5,
+            "TIỀN MẶT, VÀNG BẠC, ĐÁ QUÝ",
+            [
+                (
+                    "CASH_VND",
+                    10,
+                    "Tiền mặt bằng Đồng Việt Nam",
+                    direct(11, "6.834.569"),
+                    "OWNER_CHILD",
+                ),
+                (
+                    "CASH_FOREIGN",
+                    13,
+                    "Tiền mặt bằng ngoại tệ",
+                    direct(14, "1.778.776"),
+                    "OWNER_CHILD",
+                ),
+                ("MONETARY_GOLD", 16, "Vàng", direct(17, "11.203"), "OWNER_CHILD"),
+                ("TOTAL", None, None, direct(19, "8.624.548"), "UNLABELED_TRAILING_TOTAL"),
+            ],
+        ),
+        _annual_2025_positive_document(
+            "MBB",
+            46,
+            10,
+            "TIỀN MẶT, VÀNG BẠC, ĐÁ QUÝ",
+            [
+                ("CASH_VND", 15, "Tiền mặt bằng VND", direct(16, "4.543.336"), "OWNER_CHILD"),
+                (
+                    "CASH_FOREIGN",
+                    18,
+                    "Tiền mặt bằng ngoại tệ",
+                    direct(19, "413.281"),
+                    "OWNER_CHILD",
+                ),
+                ("MONETARY_GOLD", 21, "Vàng tiền tệ", direct(22, "9.169"), "OWNER_CHILD"),
+                ("TOTAL", None, None, direct(24, "4.965.786"), "UNLABELED_TRAILING_TOTAL"),
+            ],
+        ),
+        _annual_2025_positive_document(
+            "VPB",
+            41,
+            5,
+            "TIỀN MẶT, VÀNG BẠC, ĐÁ QUÝ",
+            [
+                ("CASH_VND", 12, "Tiền mặt bằng VND", direct(13, "2.292.077"), "OWNER_CHILD"),
+                (
+                    "CASH_FOREIGN",
+                    15,
+                    "Tiền mặt bằng ngoại tệ",
+                    direct(16, "481.921"),
+                    "OWNER_CHILD",
+                ),
+                ("MONETARY_GOLD", 18, "Vàng tiền tệ", direct(19, "184"), "OWNER_CHILD"),
+                ("TOTAL", None, None, direct(21, "2.774.182"), "UNLABELED_TRAILING_TOTAL"),
+            ],
+        ),
+        _annual_2025_positive_document(
+            "HDB",
+            33,
+            33,
+            "TIỀN MẶT, VÀNG",
+            [
+                ("CASH_VND", 38, "Tiền mặt bằng VND", direct(39, "2.912.247"), "OWNER_CHILD"),
+                (
+                    "CASH_FOREIGN",
+                    41,
+                    "Tiền mặt bằng ngoại tệ",
+                    _challenged_value(42, "1.194.085", "1.194.005"),
+                    "OWNER_CHILD",
+                ),
+                ("MONETARY_GOLD", 44, "Vàng tiền tệ", direct(45, "20.311"), "OWNER_CHILD"),
+                ("TOTAL", None, None, direct(47, "4.126.643"), "UNLABELED_TRAILING_TOTAL"),
+            ],
+        ),
+        _annual_2025_positive_document(
+            "VCB",
+            35,
+            9,
+            "Tiền mặt, vàng bạc, đá quý",
+            [
+                ("CASH_VND", 15, "Tiền mặt bằng VND", direct(16, "12.274.515"), "OWNER_CHILD"),
+                (
+                    "CASH_FOREIGN",
+                    18,
+                    "Tiền mặt bằng ngoại tệ",
+                    direct(19, "3.267.710"),
+                    "OWNER_CHILD",
+                ),
+                (
+                    "FOREIGN_CURRENCY_VALUABLE_DOCUMENT",
+                    21,
+                    "Chứng từ có giá bằng ngoại tệ",
+                    direct(22, "544"),
+                    "OWNER_CHILD",
+                ),
+                ("MONETARY_GOLD", 24, "Vàng tiền tệ", direct(26, "-"), "OWNER_CHILD"),
+                ("TOTAL", None, None, direct(27, "15.542.769"), "UNLABELED_TRAILING_TOTAL"),
+            ],
+        ),
+        _annual_2025_positive_document(
+            "CTG",
+            39,
+            31,
+            "TIỀN MẶT, VÀNG BẠC, ĐÁ QUÝ",
+            [
+                ("CASH_VND", 36, "Tiền mặt bằng VND", direct(37, "11.206.287"), "OWNER_CHILD"),
+                (
+                    "CASH_FOREIGN",
+                    39,
+                    "Tiền mặt bằng ngoại tệ",
+                    direct(40, "1.349.621"),
+                    "OWNER_CHILD",
+                ),
+                ("MONETARY_GOLD", 42, "Vàng tiền tệ", direct(43, "12.488"), "OWNER_CHILD"),
+                (
+                    "NONMONETARY_GOLD",
+                    45,
+                    "Vàng phi tiền tệ",
+                    _render_dash_value(
+                        bbox=(1258, 1413, 1292, 1447),
+                        lane_reference_line_index=43,
+                        raw_rgb_sha256=(
+                            "27be220cce5b7a5a97a48b48d322f3e032c8883258e4379a617e7fb8ac2a74be"
+                        ),
+                        row_label_line_index=45,
+                    ),
+                    "OWNER_CHILD_MISSING_PROVIDER_CELL_RECONSTRUCTED_FROM_ROW_X_LANE",
+                ),
+                (
+                    "OTHER_PRECIOUS_METALS_GEMS",
+                    47,
+                    "Kim loại quý, đá quý khác",
+                    direct(48, "15.088"),
+                    "OWNER_CHILD",
+                ),
+                ("TOTAL", None, None, direct(50, "12.583.484"), "UNLABELED_TRAILING_TOTAL"),
+            ],
+        ),
+        _annual_2025_positive_document(
+            "BID",
+            39,
+            4,
+            "TIỀN MẶT, VÀNG BẠC, ĐÁ QUÝ",
+            [
+                ("CASH_VND", 9, "Tiền mặt bằng VND", direct(10, "9.973.994"), "OWNER_CHILD"),
+                (
+                    "CASH_FOREIGN",
+                    12,
+                    "Tiền mặt bằng ngoại tệ",
+                    direct(13, "3.046.310"),
+                    "OWNER_CHILD",
+                ),
+                (
+                    "FOREIGN_CURRENCY_VALUABLE_DOCUMENT",
+                    15,
+                    "Chứng từ có giá trị ngoại tệ",
+                    direct(16, "54.762"),
+                    "OWNER_CHILD",
+                ),
+                ("TOTAL", None, None, direct(18, "13.075.066"), "UNLABELED_TRAILING_TOTAL"),
+            ],
+        ),
+        _annual_2025_positive_document(
+            "VIB",
+            35,
+            5,
+            "TIỀN MẶT, VÀNG",
+            [
+                ("CASH_VND", 10, "Tiền mặt bằng VND", direct(11, "1.592.688"), "OWNER_CHILD"),
+                (
+                    "CASH_FOREIGN",
+                    13,
+                    "Tiền mặt bằng ngoại tệ",
+                    direct(14, "1.959.792"),
+                    "OWNER_CHILD",
+                ),
+                (
+                    "MONETARY_GOLD",
+                    18,
+                    "Vàng",
+                    direct(16, "94"),
+                    "PIXEL_ROW_VALUE_PRECEDES_LABEL_IN_PROVIDER_READING_ORDER",
+                ),
+                ("TOTAL", None, None, direct(19, "3.552.574"), "UNLABELED_TRAILING_TOTAL"),
+            ],
+        ),
+    ]
+
+
 def _review_blueprint() -> dict[str, Any]:
     material = {
         "claim_boundary": CLAIM_BOUNDARY,
@@ -343,8 +667,63 @@ def _review_blueprint() -> dict[str, Any]:
     return {**material, "review_id": "e0060:pixel-review:" + canonical_json_sha256_v1(material)}
 
 
-def _review(value: Any) -> dict[str, Any]:
-    expected = _review_blueprint()
+def _annual_2025_review_blueprint() -> dict[str, Any]:
+    material = {
+        "claim_boundary": ANNUAL_2025_CLAIM_BOUNDARY,
+        "documents": _annual_2025_review_documents(),
+        "format_version": ANNUAL_2025_REVIEW_FORMAT,
+        "review_checks": list(_REVIEW_CHECKS),
+        "reviewer": {
+            "kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW",
+            "review_run_id": "E-0107-ANNUAL-2025",
+        },
+        "safety": canonical_clone_v1(_REVIEW_SAFETY),
+        "scan_id": ANNUAL_2025_EXPECTED_SCAN_ID,
+        "semantic_axis_sha256": ANNUAL_2025_EXPECTED_AXIS_SHA256,
+        "semantic_index_sha256": ANNUAL_2025_EXPECTED_INDEX_SHA256,
+        "state": "CODEX_PIXEL_REVIEW_COMPLETE",
+    }
+    return {**material, "review_id": "e0107:pixel-review:" + canonical_json_sha256_v1(material)}
+
+
+def _profile(name: str) -> dict[str, Any]:
+    if name == "wave1-2026":
+        return {
+            "axis_sha256": EXPECTED_AXIS_SHA256,
+            "claim_boundary": CLAIM_BOUNDARY,
+            "crop_manifest_path": CROP_MANIFEST_PATH,
+            "crop_manifest_sha256": EXPECTED_CROP_MANIFEST_SHA256,
+            "format_version": FORMAT_VERSION,
+            "index_path": SEMANTIC_INDEX_PATH,
+            "index_sha256": EXPECTED_INDEX_SHA256,
+            "result_id_prefix": "cpm8bcv1:result:",
+            "result_path": RESULT_PATH,
+            "review_blueprint": _review_blueprint,
+            "review_path": REVIEW_PATH,
+            "scan_id": EXPECTED_SCAN_ID,
+            "state": "CASH_PRECIOUS_METALS_8BANK_CODEX_VERIFICATION_COMPLETE",
+        }
+    if name == "annual-2025":
+        return {
+            "axis_sha256": ANNUAL_2025_EXPECTED_AXIS_SHA256,
+            "claim_boundary": ANNUAL_2025_CLAIM_BOUNDARY,
+            "crop_manifest_path": ANNUAL_2025_CROP_MANIFEST_PATH,
+            "crop_manifest_sha256": ANNUAL_2025_EXPECTED_CROP_MANIFEST_SHA256,
+            "format_version": ANNUAL_2025_FORMAT_VERSION,
+            "index_path": ANNUAL_2025_SEMANTIC_INDEX_PATH,
+            "index_sha256": ANNUAL_2025_EXPECTED_INDEX_SHA256,
+            "result_id_prefix": "annual2025cpm8bcv1:result:",
+            "result_path": ANNUAL_2025_RESULT_PATH,
+            "review_blueprint": _annual_2025_review_blueprint,
+            "review_path": ANNUAL_2025_REVIEW_PATH,
+            "scan_id": ANNUAL_2025_EXPECTED_SCAN_ID,
+            "state": "ANNUAL_2025_CASH_PRECIOUS_METALS_8BANK_CODEX_VERIFICATION_COMPLETE",
+        }
+    raise _error("cash/precious-metals mapping profile is unsupported")
+
+
+def _review(value: Any, profile_name: str = "wave1-2026") -> dict[str, Any]:
+    expected = _profile(profile_name)["review_blueprint"]()
     if not same_typed_json_v1(value, expected):
         raise _error("Codex cash/precious-metals pixel review differs from the fixed ledger")
     return canonical_clone_v1(expected)
@@ -392,6 +771,32 @@ def _axis_line(page: Mapping[str, Any], line_index: int) -> dict[str, Any]:
     return line
 
 
+def _source_line_axis(page: Mapping[str, Any]) -> list[str]:
+    """Read the exact provider text axis used only as a numeric challenger."""
+
+    result = support._strict_json(
+        support._artifact_bytes(page.get("result_ref"), "page result"),
+        "page result",
+    )
+    provider_texts = result.get("rec_texts")
+    if provider_texts is not None:
+        if (
+            page.get("route") != "DOMINANT_RASTER_OCR"
+            or page.get("geometry_mode") != "PPOCRV6_BATCH_PROVIDER_LINE_GEOMETRY_V1"
+            or page.get("supplement_line_count") != 0
+            or type(page.get("primary_line_count")) is not int
+            or type(provider_texts) is not list
+            or len(provider_texts) != page["primary_line_count"]
+            or not all(type(text) is str for text in provider_texts)
+        ):
+            raise _error("raw provider source line axis drifted")
+        return list(provider_texts)
+    try:
+        return support._source_line_axis(page)
+    except Exception as exc:
+        raise _error(f"page result source line axis drifted: {exc}") from exc
+
+
 def _schema_binding(item: Any, role: str) -> dict[str, Any]:
     schema_id = _MAPPING_SCHEMA.get(role)
     expected_parent = 560 if role == "TOTAL" else 561
@@ -429,10 +834,192 @@ def _source_value(
     source_texts: Sequence[str],
     value: Mapping[str, Any],
 ) -> dict[str, Any]:
+    if type(value) is dict and set(value) == {
+        "line_index",
+        "pixel_transcription",
+        "render_cell",
+    }:
+        return _render_cell_value(axis_page, crop_page, value)
+    if type(value) is dict and set(value) == {
+        "fresh_vietocr_challenger_expected",
+        "line_index",
+        "pixel_transcription",
+        "resolution",
+        "source_numeric_challenger_expected",
+    }:
+        return _challenged_source_value(
+            axis_page,
+            semantic_page,
+            crop_page,
+            source_texts,
+            value,
+        )
     try:
         return support._source_value(axis_page, semantic_page, crop_page, source_texts, value)
     except Exception as exc:
         raise _error(f"cash/precious-metals source numeric evidence drifted: {exc}") from exc
+
+
+def _challenged_source_value(
+    axis_page: Mapping[str, Any],
+    semantic_page: Mapping[str, Any],
+    crop_page: Mapping[str, Any],
+    source_texts: Sequence[str],
+    value: Mapping[str, Any],
+) -> dict[str, Any]:
+    if (
+        value["resolution"]
+        != "INDEPENDENT_PIXEL_TRANSCRIPTION_CORROBORATED_BY_PROVIDER_AND_EXACT_ACCOUNTING_EQUATION"
+        or type(value["line_index"]) is not int
+        or type(value["fresh_vietocr_challenger_expected"]) is not str
+        or type(value["source_numeric_challenger_expected"]) is not str
+    ):
+        raise _error("challenged numeric review fields drifted")
+    line_index = value["line_index"]
+    pixel_value = support._money(value["pixel_transcription"])
+    axis = _axis_line(axis_page, line_index)
+    semantic_lines = semantic_page.get("lines")
+    if type(semantic_lines) is not list or not 0 <= line_index < len(semantic_lines):
+        raise _error("challenged semantic-index crop line axis drifted")
+    semantic_line = semantic_lines[line_index]
+    if (
+        type(semantic_line) is not dict
+        or semantic_line.get("source_line_index") != line_index
+        or semantic_line.get("vietocr_text") != axis["vietocr_text"]
+        or type(semantic_line.get("crop_ref")) is not dict
+        or type(semantic_line.get("sample_id")) is not str
+        or not 0 <= line_index < len(source_texts)
+    ):
+        raise _error("challenged semantic-index crop/source binding drifted")
+    source_raw = source_texts[line_index]
+    if source_raw != value["source_numeric_challenger_expected"]:
+        raise _error("challenged source numeric transcription drifted")
+    source_value = support._money(source_raw)
+    if source_value != pixel_value:
+        raise _error("challenged provider numeric transcription disagrees with visible pixels")
+    if axis["vietocr_text"] != value["fresh_vietocr_challenger_expected"]:
+        raise _error("challenged fresh VietOCR transcription drifted")
+    if support._money(axis["vietocr_text"]) == pixel_value:
+        raise _error("challenged fresh VietOCR unexpectedly agrees with visible pixels")
+    crop_ref = semantic_line["crop_ref"]
+    crop_payload = support._stable_bytes(Path(crop_ref["path"]))
+    if (
+        type(crop_ref.get("sha256")) is not str
+        or type(crop_ref.get("size_bytes")) is not int
+        or len(crop_payload) != crop_ref["size_bytes"]
+        or hashlib.sha256(crop_payload).hexdigest() != crop_ref["sha256"]
+    ):
+        raise _error("challenged crop bytes drifted")
+    sample_first = crop_page.get("sample_offset_start")
+    sample_stop = crop_page.get("sample_offset_stop")
+    expected_sample_ordinal = sample_first + line_index + 1 if type(sample_first) is int else None
+    if (
+        type(sample_first) is not int
+        or type(sample_stop) is not int
+        or expected_sample_ordinal is None
+        or not sample_first <= expected_sample_ordinal - 1 < sample_stop
+        or semantic_line["sample_id"] != f"sample-{expected_sample_ordinal:08d}"
+    ):
+        raise _error("challenged crop sample ordinal drifted")
+    return {
+        "crop_ref": canonical_clone_v1(crop_ref),
+        "fresh_vietocr_numeric_proposal": axis["vietocr_text"],
+        "normalized_value": pixel_value,
+        "pixel_transcription": value["pixel_transcription"],
+        "resolution": value["resolution"],
+        "source_line_index": line_index,
+        "source_numeric_challenger": source_raw,
+        "source_numeric_challenger_normalized_value": source_value,
+        "source_numeric_challenger_status": "MATCHED_INDEPENDENT_PIXEL_TRANSCRIPTION",
+        "vietocr_numeric_challenger_status": "DISAGREES_WITH_INDEPENDENT_PIXEL_TRANSCRIPTION",
+    }
+
+
+def _render_cell_value(
+    axis_page: Mapping[str, Any],
+    crop_page: Mapping[str, Any],
+    value: Mapping[str, Any],
+) -> dict[str, Any]:
+    cell = value["render_cell"]
+    if (
+        value["line_index"] is not None
+        or value["pixel_transcription"] != "-"
+        or type(cell) is not dict
+        or set(cell)
+        != {
+            "bbox",
+            "lane_reference_line_index",
+            "raw_rgb_sha256",
+            "row_label_line_index",
+            "status",
+        }
+        or cell["status"] != "VISIBLE_DASH_WITHOUT_PROVIDER_DETECTION_BOUND_BY_ROW_AND_NUMERIC_LANE"
+        or type(cell["bbox"]) is not list
+        or len(cell["bbox"]) != 4
+        or any(type(coordinate) is not int for coordinate in cell["bbox"])
+    ):
+        raise _error("render-derived dash evidence fields drifted")
+    left, top, right, bottom = cell["bbox"]
+    if left < 0 or top < 0 or right <= left or bottom <= top:
+        raise _error("render-derived dash bbox drifted")
+    label = _axis_line(axis_page, cell["row_label_line_index"])
+    lane = _axis_line(axis_page, cell["lane_reference_line_index"])
+    label_bbox = label.get("bbox")
+    lane_bbox = lane.get("bbox")
+    if (
+        type(label_bbox) is not list
+        or len(label_bbox) != 4
+        or type(lane_bbox) is not list
+        or len(lane_bbox) != 4
+        or not label_bbox[1] <= (top + bottom) / 2 <= label_bbox[3]
+        or abs(right - lane_bbox[2]) > max(20, (lane_bbox[2] - lane_bbox[0]) // 4)
+    ):
+        raise _error("render-derived dash row/lane binding drifted")
+    render_ref = crop_page.get("render_binding")
+    if (
+        type(render_ref) is not dict
+        or set(render_ref) != {"path", "sha256", "size_bytes"}
+        or type(render_ref["path"]) is not str
+        or type(render_ref["size_bytes"]) is not int
+    ):
+        raise _error("render-derived dash page render binding drifted")
+    render_payload = support._stable_bytes(Path(render_ref["path"]))
+    if (
+        len(render_payload) != render_ref["size_bytes"]
+        or hashlib.sha256(render_payload).hexdigest() != render_ref["sha256"]
+    ):
+        raise _error("render-derived dash page render bytes drifted")
+    try:
+        image = Image.open(io.BytesIO(render_payload))
+        image.load()
+    except Exception as exc:
+        raise _error("render-derived dash page render is not a decodable image") from exc
+    if image.mode != "RGB" or right > image.width or bottom > image.height:
+        raise _error("render-derived dash render mode/dimensions drifted")
+    crop = image.crop((left, top, right, bottom))
+    raw_material = struct.pack(">II", crop.width, crop.height) + crop.tobytes()
+    if hashlib.sha256(raw_material).hexdigest() != _sha256(
+        cell["raw_rgb_sha256"], "render-derived dash raw RGB"
+    ):
+        raise _error("render-derived dash pixels drifted")
+    gray = crop.convert("L")
+    dark = [
+        (x, y) for y in range(gray.height) for x in range(gray.width) if gray.getpixel((x, y)) < 180
+    ]
+    if not dark:
+        raise _error("render-derived dash crop contains no visible ink")
+    ink_width = max(x for x, _y in dark) - min(x for x, _y in dark) + 1
+    ink_height = max(y for _x, y in dark) - min(y for _x, y in dark) + 1
+    if ink_width <= ink_height or len(dark) > 100:
+        raise _error("render-derived dash crop is not one bounded horizontal glyph")
+    return {
+        "normalized_value": 0,
+        "pixel_transcription": "-",
+        "render_cell": canonical_clone_v1(cell),
+        "render_ref": canonical_clone_v1(render_ref),
+        "source": "VISIBLE_RENDER_DASH_WITHOUT_PROVIDER_DETECTION",
+        "source_numeric_challenger_status": "PROVIDER_OMITTED_VISIBLE_DASH_CELL",
+    }
 
 
 def _metrics(trials: Sequence[Mapping[str, Any]]) -> dict[str, int]:
@@ -453,13 +1040,14 @@ def _metrics(trials: Sequence[Mapping[str, Any]]) -> dict[str, int]:
     }
 
 
-def _validate_result(value: Any) -> dict[str, Any]:
+def _validate_result(value: Any, profile_name: str = "wave1-2026") -> dict[str, Any]:
+    profile = _profile(profile_name)
     if type(value) is not dict or set(value) != _RESULT_FIELDS:
         raise _error("cash/precious-metals mapping result fields drifted")
     if (
-        value["format_version"] != FORMAT_VERSION
-        or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "CASH_PRECIOUS_METALS_8BANK_CODEX_VERIFICATION_COMPLETE"
+        value["format_version"] != profile["format_version"]
+        or value["claim_boundary"] != profile["claim_boundary"]
+        or value["state"] != profile["state"]
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
         or len(value["trials"]) != len(EXPECTED_DOCUMENT_ORDER)
@@ -488,7 +1076,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 raise _error("cash/precious-metals mapping row status drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "cpm8bcv1:result:" + canonical_json_sha256_v1(material):
+    if identity != profile["result_id_prefix"] + canonical_json_sha256_v1(material):
         raise _error("cash/precious-metals mapping result identity drifted")
     return canonical_clone_v1(value)
 
@@ -503,14 +1091,16 @@ def build_cash_precious_metals_8bank_codex_verified_mapping_v1(
     *,
     crop_manifest_sha256: str,
     review_sha256: str,
+    _profile_name: str = "wave1-2026",
 ) -> dict[str, Any]:
     """Build the exact eight-bank bounded cash/precious-metals mapping result."""
 
-    review = _review(review_value)
+    profile = _profile(_profile_name)
+    review = _review(review_value, _profile_name)
     axis = project_full_document_vietocr_accounting_axis_v1(semantic_index)
     if (
-        axis.get("semantic_axis_sha256") != EXPECTED_AXIS_SHA256
-        or structure_scan.get("scan_id") != EXPECTED_SCAN_ID
+        axis.get("semantic_axis_sha256") != profile["axis_sha256"]
+        or structure_scan.get("scan_id") != profile["scan_id"]
         or structure_scan.get("state")
         != "FULL_DOCUMENT_CASH_PRECIOUS_METALS_STRUCTURE_SCAN_COMPLETE"
         or type(crop_manifest) is not dict
@@ -582,7 +1172,7 @@ def build_cash_precious_metals_8bank_codex_verified_mapping_v1(
         semantic_page = _page_by_number(semantic_document, page_number, "semantic index")
         crop_page = _page_by_number(crop_document, page_number, "crop manifest")
         try:
-            source_texts = support._source_line_axis(crop_page)
+            source_texts = _source_line_axis(crop_page)
         except Exception as exc:
             raise _error(f"cash/precious-metals source line axis drifted: {exc}") from exc
         mapped_rows = []
@@ -602,7 +1192,8 @@ def build_cash_precious_metals_8bank_codex_verified_mapping_v1(
                 ) != normalize_vietnamese_anchor_v1(row["label_pixel_transcription"]):
                     raise _error("visible label and fresh VietOCR label disagree beyond accents")
             value_index = row["value"]["line_index"]
-            if value_index not in {
+            is_render_cell = "render_cell" in row["value"]
+            if not is_render_cell and value_index not in {
                 item["source_line_index"] for item in event.get("value_proposals", [])
             }:
                 raise _error("reviewed value is outside the graph-bound row")
@@ -656,7 +1247,9 @@ def build_cash_precious_metals_8bank_codex_verified_mapping_v1(
                 }
             )
         source_period_status = (
-            "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
+            "VERIFIED_SOURCE_PERIOD_ANNUAL_2025"
+            if _profile_name == "annual-2025"
+            else "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
             if reviewed["source_period"] == "2026-03-31"
             else "VERIFIED_SOURCE_PERIOD_Q2_2026"
         )
@@ -685,28 +1278,35 @@ def build_cash_precious_metals_8bank_codex_verified_mapping_v1(
         )
     material = {
         "authority": canonical_clone_v1(_AUTHORITY),
-        "claim_boundary": CLAIM_BOUNDARY,
-        "format_version": FORMAT_VERSION,
+        "claim_boundary": profile["claim_boundary"],
+        "format_version": profile["format_version"],
         "input_refs": {
             "crop_manifest": {
-                "path": CROP_MANIFEST_PATH.as_posix(),
+                "path": profile["crop_manifest_path"].as_posix(),
                 "sha256": crop_manifest_sha256,
             },
-            "pixel_review": {"path": REVIEW_PATH.as_posix(), "sha256": review_sha256},
-            "schema_authority": canonical_clone_v1(schema_authority),
-            "semantic_axis_sha256": EXPECTED_AXIS_SHA256,
-            "semantic_index": {
-                "path": SEMANTIC_INDEX_PATH.as_posix(),
-                "sha256": EXPECTED_INDEX_SHA256,
+            "pixel_review": {
+                "path": profile["review_path"].as_posix(),
+                "sha256": review_sha256,
             },
-            "structure_scan_id": EXPECTED_SCAN_ID,
+            "schema_authority": canonical_clone_v1(schema_authority),
+            "semantic_axis_sha256": profile["axis_sha256"],
+            "semantic_index": {
+                "path": profile["index_path"].as_posix(),
+                "sha256": profile["index_sha256"],
+            },
+            "structure_scan_id": profile["scan_id"],
         },
         "metrics": _metrics(trials),
-        "state": "CASH_PRECIOUS_METALS_8BANK_CODEX_VERIFICATION_COMPLETE",
+        "state": profile["state"],
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "cpm8bcv1:result:" + canonical_json_sha256_v1(material)}
+        {
+            **material,
+            "result_id": profile["result_id_prefix"] + canonical_json_sha256_v1(material),
+        },
+        _profile_name,
     )
 
 
@@ -720,10 +1320,11 @@ def validate_cash_precious_metals_8bank_codex_verified_mapping_replay_v1(
     *,
     crop_manifest_sha256: str,
     review_sha256: str,
+    _profile_name: str = "wave1-2026",
 ) -> dict[str, Any]:
     """Exact-rebuild structure, numeric, accounting and schema decisions."""
 
-    persisted = _validate_result(value)
+    persisted = _validate_result(value, _profile_name)
     structure_scan = scanner.build_cash_precious_metals_full_document_scan_v1(semantic_index)
     expected = build_cash_precious_metals_8bank_codex_verified_mapping_v1(
         semantic_index,
@@ -734,19 +1335,48 @@ def validate_cash_precious_metals_8bank_codex_verified_mapping_replay_v1(
         schema_by_id,
         crop_manifest_sha256=crop_manifest_sha256,
         review_sha256=review_sha256,
+        _profile_name=_profile_name,
     )
     if not same_typed_json_v1(persisted, expected):
         raise _error("cash/precious-metals mapping does not replay exactly")
     return persisted
 
 
-def build_live_cash_precious_metals_8bank_codex_verified_mapping_v1() -> dict[str, Any]:
-    """Read only the fixed live inputs and build the verified result."""
+def validate_annual_2025_cash_precious_metals_8bank_codex_verified_mapping_replay_v1(
+    value: Any,
+    semantic_index: Any,
+    crop_manifest: Any,
+    review_value: Any,
+    schema_authority: Mapping[str, Any],
+    schema_by_id: Mapping[int, Any],
+    *,
+    crop_manifest_sha256: str,
+    review_sha256: str,
+) -> dict[str, Any]:
+    """Exact-rebuild the annual-2025 eight-bank result."""
 
-    semantic_index, index_sha = _stable_json(SEMANTIC_INDEX_PATH, EXPECTED_INDEX_SHA256)
-    crop_manifest, crop_sha = _stable_json(CROP_MANIFEST_PATH, EXPECTED_CROP_MANIFEST_SHA256)
-    review, review_sha = _stable_json(REVIEW_PATH)
-    if index_sha != EXPECTED_INDEX_SHA256:
+    return validate_cash_precious_metals_8bank_codex_verified_mapping_replay_v1(
+        value,
+        semantic_index,
+        crop_manifest,
+        review_value,
+        schema_authority,
+        schema_by_id,
+        crop_manifest_sha256=crop_manifest_sha256,
+        review_sha256=review_sha256,
+        _profile_name="annual-2025",
+    )
+
+
+def _build_live(profile_name: str) -> dict[str, Any]:
+    profile = _profile(profile_name)
+
+    semantic_index, index_sha = _stable_json(profile["index_path"], profile["index_sha256"])
+    crop_manifest, crop_sha = _stable_json(
+        profile["crop_manifest_path"], profile["crop_manifest_sha256"]
+    )
+    review, review_sha = _stable_json(profile["review_path"])
+    if index_sha != profile["index_sha256"]:
         raise _error("semantic index digest drifted")
     structure_scan = scanner.build_cash_precious_metals_full_document_scan_v1(semantic_index)
     schema_authority, schema_by_id = _authority_snapshot(PROJECT_ROOT)
@@ -759,6 +1389,7 @@ def build_live_cash_precious_metals_8bank_codex_verified_mapping_v1() -> dict[st
         schema_by_id,
         crop_manifest_sha256=crop_sha,
         review_sha256=review_sha,
+        _profile_name=profile_name,
     )
     return validate_cash_precious_metals_8bank_codex_verified_mapping_replay_v1(
         result,
@@ -769,17 +1400,30 @@ def build_live_cash_precious_metals_8bank_codex_verified_mapping_v1() -> dict[st
         schema_by_id,
         crop_manifest_sha256=crop_sha,
         review_sha256=review_sha,
+        _profile_name=profile_name,
     )
 
 
-def validate_live_cash_precious_metals_8bank_codex_verified_mapping_v1(
-    value: Any,
-) -> dict[str, Any]:
-    """Replay one persisted result only from the fixed live trust roots."""
+def build_live_cash_precious_metals_8bank_codex_verified_mapping_v1() -> dict[str, Any]:
+    """Read the fixed wave-1 inputs and build the verified result."""
 
-    semantic_index, _ = _stable_json(SEMANTIC_INDEX_PATH, EXPECTED_INDEX_SHA256)
-    crop_manifest, crop_sha = _stable_json(CROP_MANIFEST_PATH, EXPECTED_CROP_MANIFEST_SHA256)
-    review, review_sha = _stable_json(REVIEW_PATH)
+    return _build_live("wave1-2026")
+
+
+def build_live_annual_2025_cash_precious_metals_8bank_codex_verified_mapping_v1() -> dict[str, Any]:
+    """Read the fixed annual-2025 inputs and build the verified result."""
+
+    return _build_live("annual-2025")
+
+
+def _validate_live(value: Any, profile_name: str) -> dict[str, Any]:
+    profile = _profile(profile_name)
+
+    semantic_index, _ = _stable_json(profile["index_path"], profile["index_sha256"])
+    crop_manifest, crop_sha = _stable_json(
+        profile["crop_manifest_path"], profile["crop_manifest_sha256"]
+    )
+    review, review_sha = _stable_json(profile["review_path"])
     schema_authority, schema_by_id = _authority_snapshot(PROJECT_ROOT)
     return validate_cash_precious_metals_8bank_codex_verified_mapping_replay_v1(
         value,
@@ -790,29 +1434,51 @@ def validate_live_cash_precious_metals_8bank_codex_verified_mapping_v1(
         schema_by_id,
         crop_manifest_sha256=crop_sha,
         review_sha256=review_sha,
+        _profile_name=profile_name,
     )
+
+
+def validate_live_cash_precious_metals_8bank_codex_verified_mapping_v1(
+    value: Any,
+) -> dict[str, Any]:
+    """Replay one wave-1 result only from the fixed live trust roots."""
+
+    return _validate_live(value, "wave1-2026")
+
+
+def validate_live_annual_2025_cash_precious_metals_8bank_codex_verified_mapping_v1(
+    value: Any,
+) -> dict[str, Any]:
+    """Replay one annual-2025 result only from the fixed live trust roots."""
+
+    return _validate_live(value, "annual-2025")
 
 
 def _main() -> None:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--profile", choices=("wave1-2026", "annual-2025"), default="wave1-2026")
     parser.add_argument("--write-review", action="store_true")
     parser.add_argument("--validate", type=Path)
-    parser.add_argument("--output", type=Path, default=RESULT_PATH)
+    parser.add_argument("--output", type=Path)
     args = parser.parse_args()
+    profile = _profile(args.profile)
+    output = args.output or (
+        profile["review_path"] if args.write_review else profile["result_path"]
+    )
     if args.write_review and args.validate is not None:
         parser.error("--write-review and --validate are mutually exclusive")
     if args.write_review:
-        payload = canonical_json_bytes_v1(_review_blueprint())
-        args.output.write_bytes(payload)
+        payload = canonical_json_bytes_v1(profile["review_blueprint"]())
+        output.write_bytes(payload)
         return
     if args.validate is not None:
         value, _ = _stable_json(args.validate)
-        result = validate_live_cash_precious_metals_8bank_codex_verified_mapping_v1(value)
+        result = _validate_live(value, args.profile)
         sys.stdout.write(result["result_id"] + "\n")
         return
-    result = build_live_cash_precious_metals_8bank_codex_verified_mapping_v1()
+    result = _build_live(args.profile)
     payload = canonical_json_bytes_v1(result)
-    args.output.write_bytes(payload)
+    output.write_bytes(payload)
     sys.stdout.write(result["result_id"] + "\n")
 
 

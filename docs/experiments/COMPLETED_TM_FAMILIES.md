@@ -16,18 +16,15 @@ Quy ước:
 
 ## 1. Tiền, kim loại quý và đá quý
 
-- **Đã xác minh:** MBB p30, VPB p38 và VIB p31. Mỗi vùng map bốn dòng
-  `Tiền mặt bằng VND`, `Tiền mặt bằng ngoại tệ`, `Vàng/Vàng tiền tệ` và tổng
-  family; cả ba phương trình hiện kỳ `VND + ngoại tệ + vàng = tổng` đóng đúng.
-- **Không có cụm thuyết minh trong PDF đã bind:** ACB, HDB, VCB, CTG, BID.
-  Chủ dự án xác nhận ACB bắt đầu phần thuyết minh từ cụm tiền gửi/cho vay TCTD
-  khác tại p16; HDB, VCB, CTG và BID bắt đầu lần lượt từ cụm `Chứng khoán kinh
-  doanh` tại p25, p30, p37 và p20. Dòng tổng trên báo cáo tình hình tài chính
-  không được relabel thành một cụm thuyết minh chi tiết.
-- **Còn thiếu:** Không còn khoản mục nguồn của family này chờ map trong tám PDF.
-
-Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
-Q1/2026, không relabel thành Q2/2026.
+- **Đã xác minh trên BCTC hợp nhất kiểm toán năm 2025:** ACB p45, MBB p46,
+  VPB p41, HDB p33, VCB p35, CTG p39, BID p39 và VIB p35. Đã map 35 dòng
+  nguồn vào `Tiền mặt bằng VND`, `Tiền mặt bằng ngoại tệ`, chứng từ có giá
+  bằng ngoại tệ, vàng tiền tệ/phi tiền tệ, đá quý khác và tổng family tùy đúng
+  biến thể nhìn thấy; cả tám phương trình hiện kỳ đóng chính xác.
+- **Không có:** Không có bank nào trong tám BCTC annual-2025.
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map. HDB `1.194.085` được pixel
+  và trục số nguồn xác nhận sau khi VietOCR đọc `1.194.005`; dấu gạch hiện kỳ
+  của CTG được bind trực tiếp từ ô ảnh rồi chuẩn hóa thành 0.
 
 ## 2. Tiền gửi tại NHNN
 
@@ -918,7 +915,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 
 | Cụm | ACB | MBB | VPB | HDB | VCB | CTG | BID | VIB | Còn chưa map |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Tiền, kim loại quý, đá quý | — | ✓ p30 | ✓\* p38 | — | — | — | — | ✓ p31 | 0 dòng; 5 bank xác nhận không có cụm; VPB là nguồn Q1 |
+| Tiền, kim loại quý, đá quý | ✓ p45 | ✓ p46 | ✓ p41 | ✓ p33 | ✓ p35 | ✓ p39 | ✓ p39 | ✓ p35 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025 |
 | Tiền gửi tại NHNN | — | ✓ p30 | ✓\* p38 | — | — | — | — | ✓ p31 | 0 dòng; Lào+Campuchia → 574; 5 bank xác nhận không có cụm; VPB là nguồn Q1 |
 | Tiền gửi/vay TCTD khác | ✓ p16 | ✓ p30 | ✓\* p39 | — | — | ✓ p41 | ✓ p25 | ✓ p32 | 0 dòng; HDB/VCB xác nhận không có cụm; VPB là nguồn Q1 |
 | Chứng khoán kinh doanh | ✓ p16 | ✓ p31 | ✓\* p40 | ✓ p24 | ✓ p30 | ✓ p37 | ✓ p20 | — | 0 dòng trading; AFS VIB ở cụm Chứng khoán đầu tư; VPB là nguồn Q1 |

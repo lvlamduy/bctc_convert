@@ -132,6 +132,37 @@ def test_annual_year_labels_full_vietnamese_currency_and_tight_total_are_generic
     ]
 
 
+def test_foreign_currency_valuable_document_word_order_is_generic() -> None:
+    for label in (
+        "Chứng từ có giá trị ngoại tệ",
+        "Chứng từ có giá bằng ngoại tệ",
+    ):
+        surfaces = [
+            ("Tiền mặt, vàng bạc, đá quý", 0, 0),
+            ("31/12/2025", 620, 35),
+            ("31/12/2024", 800, 35),
+            ("Triệu đồng", 620, 65),
+            ("Triệu đồng", 800, 65),
+            ("Tiền mặt bằng VND", 0, 105),
+            ("10", 620, 105),
+            ("8", 800, 105),
+            ("Tiền mặt bằng ngoại tệ", 0, 140),
+            ("20", 620, 140),
+            ("9", 800, 140),
+            (label, 0, 175),
+            ("1", 620, 175),
+            ("2", 800, 175),
+            ("31", 620, 215),
+            ("19", 800, 215),
+            ("Tiền gửi tại NHNN", 0, 260),
+        ]
+        result = cash.build_cash_precious_metals_variant_graph_document_v1([_page(surfaces)])
+        assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+        assert "FOREIGN_CURRENCY_VALUABLE_DOCUMENT" in {
+            event["role"] for event in result["regions"][0]["events"]
+        }
+
+
 def test_balance_sheet_cashflow_and_risk_surfaces_are_not_complete_notes() -> None:
     surfaces = [
         ("Tiền mặt, vàng bạc, đá quý", 0, 0),
