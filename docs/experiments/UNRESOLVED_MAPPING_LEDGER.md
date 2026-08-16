@@ -17,8 +17,8 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **226 entries**.  Current open queue: **105**.  Closed history:
-**50** row/graph resolutions and **71** confirmed bound-report family absences.
+Ledger total: **244 entries**.  Current open queue: **120**.  Closed history:
+**50** row/graph resolutions and **74** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
@@ -217,10 +217,35 @@ nguồn; LRISK-012–LRISK-019 giữ 26 ô VIB vì bảng xoay đã unique về 
 nhưng trục Paddle/source làm rơi chữ số. VietOCR xoay chỉ làm text/geometry
 anchor. VPB giữ đúng kỳ Q1/2026.
 
+E-0104 `Tỷ giá một số ngoại tệ tại thời điểm lập báo cáo` quét đủ 453 trang
+và tìm đúng một vùng tại MBB p61, VPB p90, CTG p61, BID p35 và VIB p71;
+ACB/HDB/VCB là bounded detailed-table absence. Graph chung dùng owner tỷ giá,
+hai trục kỳ, đơn vị VND/đồng hoặc policy quy đổi VND cấp tài liệu và tối thiểu
+hai hàng mã tiền tệ thẳng hàng; không dùng bank/page làm rule. Pixel, trục số
+Paddle/native và live schema xác minh 46 mapping/92 ô, đồng thời giữ đủ 122 ô
+nguồn. FXRATE-001–FXRATE-015 là 15 dòng tiền/vàng ngoài schema 5935–5945;
+chúng đã được xác minh nguồn nhưng vẫn `OPEN`, không bị bỏ hoặc ép vào leaf
+khác. VPB giữ đúng kỳ Q1/2026; BID dùng policy VND nhìn thấy tại p13.
+
 ## Open review queue (always first)
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
 | --- | --- | --- | ---: | --- | --- |
+| FXRATE-001 | Tỷ giá ngoại tệ cuối kỳ | VPB | 90 | CNY | Không có leaf CNY dưới schema 5935–5945. |
+| FXRATE-002 | Tỷ giá ngoại tệ cuối kỳ | VPB | 90 | DKK | Không có leaf DKK dưới schema 5935–5945. |
+| FXRATE-003 | Tỷ giá ngoại tệ cuối kỳ | VPB | 90 | NZD | Không có leaf NZD dưới schema 5935–5945. |
+| FXRATE-004 | Tỷ giá ngoại tệ cuối kỳ | VPB | 90 | Vàng (XAU) | Không có leaf vàng/XAU dưới schema 5935–5945. |
+| FXRATE-005 | Tỷ giá ngoại tệ cuối kỳ | CTG | 61 | NZD | Không có leaf NZD dưới schema 5935–5945. |
+| FXRATE-006 | Tỷ giá ngoại tệ cuối kỳ | CTG | 61 | NOK | Không có leaf NOK dưới schema 5935–5945. |
+| FXRATE-007 | Tỷ giá ngoại tệ cuối kỳ | CTG | 61 | DKK | Không có leaf DKK dưới schema 5935–5945. |
+| FXRATE-008 | Tỷ giá ngoại tệ cuối kỳ | CTG | 61 | HKD | Không có leaf HKD dưới schema 5935–5945. |
+| FXRATE-009 | Tỷ giá ngoại tệ cuối kỳ | CTG | 61 | CNY | Không có leaf CNY dưới schema 5935–5945. |
+| FXRATE-010 | Tỷ giá ngoại tệ cuối kỳ | CTG | 61 | KRW | Không có leaf KRW dưới schema 5935–5945. |
+| FXRATE-011 | Tỷ giá ngoại tệ cuối kỳ | CTG | 61 | LAK | Không có leaf LAK dưới schema 5935–5945. |
+| FXRATE-012 | Tỷ giá ngoại tệ cuối kỳ | VIB | 71 | DKK | Không có leaf DKK dưới schema 5935–5945. |
+| FXRATE-013 | Tỷ giá ngoại tệ cuối kỳ | VIB | 71 | HKD | Không có leaf HKD dưới schema 5935–5945. |
+| FXRATE-014 | Tỷ giá ngoại tệ cuối kỳ | VIB | 71 | NOK | Không có leaf NOK dưới schema 5935–5945. |
+| FXRATE-015 | Tỷ giá ngoại tệ cuối kỳ | VIB | 71 | XAU | Không có leaf vàng/XAU dưới schema 5935–5945. |
 | LRISK-001 | Rủi ro thanh khoản | MBB | 60 | Quá hạn — tổng tài sản/chênh lệch ròng (2 ô) | Tổng nợ quá hạn để trống; không ngầm đổi blank thành 0. |
 | LRISK-002 | Rủi ro thanh khoản | VPB | 82 | 1–3 tháng — tổng tài sản/tổng nợ/chênh lệch ròng (3 ô) | Phép trừ lệch `+6.000` so với chênh lệch in. |
 | LRISK-003 | Rủi ro thanh khoản | VPB | 82 | 1–5 năm — tổng tài sản/tổng nợ/chênh lệch ròng (3 ô) | Phép trừ lệch `-275.500` so với chênh lệch in. |
@@ -457,6 +482,25 @@ Current exact-replay result:
 - **LRISK-012–LRISK-019 — OPEN:** retain 26 observed numeric cells from VIB
   p68–69. Rotated same-VietOCR rescue authenticates only text/geometry; the
   source numeric axis drops digits and cannot authorize mappings.
+
+## End-period exchange rates (`EXCHANGE_RATE`)
+
+Current exact-replay result:
+`docs/experiments/E-0104-exchange-rate-8bank-codex-verified-mapping-v1.json`
+
+- One bank-blind whole-PDF graph finds five unique exchange-rate regions at
+  MBB p61, VPB p90, CTG p61, BID p35 and VIB p71 and confirms three bounded
+  detailed-table absences. Flexible row order, punctuation/grouping variants,
+  split period axes and document-level VND policy inheritance are admitted;
+  currency-risk, interest-rate-risk, liquidity-risk and policy prose remain
+  controls.
+- 46 mappings/92 current-comparative value cells are independently verified.
+  All 122 visible source cells remain present; VietOCR is text/geometry
+  evidence only and the Paddle/native source axis plus pixels controls numbers.
+- **FXRATE-001–FXRATE-015 — OPEN:** retain CNY/DKK/NZD/XAU at VPB,
+  NZD/NOK/DKK/HKD/CNY/KRW/LAK at CTG and DKK/HKD/NOK/XAU at VIB. These are
+  valid source rows with no live TM leaf under 5935–5945; none is discarded or
+  forced into another currency.
 
 ## Project-owner catch-all and monthly-average closure (`E-0100`)
 

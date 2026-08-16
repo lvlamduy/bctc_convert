@@ -898,6 +898,37 @@ Q1/2026, không relabel thành Q2/2026.
   Transformer, nhưng trục số nguồn làm rơi chữ số nên không có số VIB nào
   được nâng quyền.
 
+## 51. Tỷ giá một số ngoại tệ tại thời điểm lập báo cáo
+
+- **Đã map/xác minh:** MBB p61 map đủ 10 đồng tiền có trong schema; VPB p90
+  map 10 đồng tiền; CTG p61 map 10 đồng tiền; BID p35 map 8 đồng tiền; VIB
+  p71 map 8 đồng tiền. Tổng cộng 46 mapping/92 ô tỷ giá hiện kỳ và so sánh
+  được đối chiếu trực tiếp với pixel và trục số nguồn. BID dùng chính sách
+  quy đổi ngoại tệ sang VND nhìn thấy tại p13; VPB giữ đúng nguồn Q1/2026.
+- **Không có bảng tỷ giá chi tiết trong báo cáo:** ACB, HDB và VCB. Toàn PDF
+  đã được quét; bảng rủi ro tiền tệ, lãi suất, thanh khoản và diễn giải chính
+  sách không bị relabel thành bảng tỷ giá cuối kỳ.
+- **Có nhưng còn thiếu:** 15 dòng tiền tệ/vàng nhìn thấy và đã xác minh số,
+  nhưng schema 5935–5945 chưa có leaf tương ứng nên giữ `OPEN`.
+
+| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | ---: | --- | --- |
+| VPB | 90 | CNY | Chưa có leaf CNY dưới family 5935. |
+| VPB | 90 | DKK | Chưa có leaf DKK dưới family 5935. |
+| VPB | 90 | NZD | Chưa có leaf NZD dưới family 5935. |
+| VPB | 90 | Vàng (XAU) | Chưa có leaf vàng/XAU dưới family 5935. |
+| CTG | 61 | NZD | Chưa có leaf NZD dưới family 5935. |
+| CTG | 61 | NOK | Chưa có leaf NOK dưới family 5935. |
+| CTG | 61 | DKK | Chưa có leaf DKK dưới family 5935. |
+| CTG | 61 | HKD | Chưa có leaf HKD dưới family 5935. |
+| CTG | 61 | CNY | Chưa có leaf CNY dưới family 5935. |
+| CTG | 61 | KRW | Chưa có leaf KRW dưới family 5935. |
+| CTG | 61 | LAK | Chưa có leaf LAK dưới family 5935. |
+| VIB | 71 | DKK | Chưa có leaf DKK dưới family 5935. |
+| VIB | 71 | HKD | Chưa có leaf HKD dưới family 5935. |
+| VIB | 71 | NOK | Chưa có leaf NOK dưới family 5935. |
+| VIB | 71 | XAU | Chưa có leaf vàng/XAU dưới family 5935. |
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -956,3 +987,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Rủi ro tiền tệ | — | ✓ p58 | ✓\* p80 | ✓\* p38–39 | ✓\* p50–51 | ✓\* p60 | — | ✓\* p65–66 | 11 nhóm/25 ô OPEN; 103 mapping, 119 ô số, 48 phương trình; ACB/BID không có bảng chi tiết; VPB là nguồn Q1 |
 | Rủi ro lãi suất | — | ✓\* p57 | ✓\* p78 | ✓\* p41 | ✓\* p49 | ✓\* p55 | — | △ p62–63 | 26 nhóm/91 ô OPEN; 149 mapping, 54 phương trình; VIB numeric xoay chưa đủ authority; VPB là nguồn Q1 |
 | Rủi ro thanh khoản | — | ✓\* p60 | ✓\* p82 | ✓\* p43 | ✓\* p53 | ✓\* p58 | — | △ p68–69 | 19 nhóm/52 ô OPEN; 84 mapping, 28 phương trình; 4 residual VPB giữ nguyên, VIB numeric xoay chưa đủ authority; VPB là nguồn Q1 |
+| Tỷ giá ngoại tệ cuối kỳ | — | ✓ p61 | ✓\* p90 | — | — | ✓\* p61 | ✓ p35 | ✓\* p71 | 15 dòng OPEN; 46 mapping/92 ô; VPB là nguồn Q1, BID dùng policy VND p13 |
