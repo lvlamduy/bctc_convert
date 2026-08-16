@@ -150,6 +150,27 @@ def test_rotated_page_reading_order_is_derived_from_geometry() -> None:
     ]
 
 
+def test_rotated_rescue_is_bound_only_to_its_exact_semantic_profile(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sentinel = object()
+    monkeypatch.setattr(
+        scanner,
+        "_rescue_builder",
+        lambda: SimpleNamespace(
+            read_verified_full_document_rotated_vietocr_rescue_v1=lambda: sentinel
+        ),
+    )
+
+    assert (
+        scanner._profile_rescue(
+            {"metrics": {"semantic_axis_sha256": scanner._EXPECTED_SEMANTIC_AXIS_SHA256}}
+        )
+        is sentinel
+    )
+    assert scanner._profile_rescue({"metrics": {"semantic_axis_sha256": "3" * 64}}) is None
+
+
 def test_current_eight_pdf_scan_is_unique_for_every_document() -> None:
     result = scanner.build_live_capital_and_funds_full_document_scan_v1()
 

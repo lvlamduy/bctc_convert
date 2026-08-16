@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import importlib.util
+import json
+import os
+import stat
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -24,8 +26,6 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_INPUT = Path(
     "output/development/loan-maturity-full-document-vietocr-v1/verified-index/semantic_index.json"
 )
-EXPECTED_INDEX_SHA256 = "f84fd9ca56fe06af230e011ecad85b0a576e27e1eca32ee141e654a6776b78b4"
-EXPECTED_AXIS_SHA256 = "e99873cd16a7234702d0ee6e5fa9eb37637a1a75621228381e3dbcd7c5cfdcca"
 FORMAT_VERSION = "EXCHANGE_RATE_8DOCUMENT_FULL_VIETOCR_SCAN_V1"
 MATCHER_FORMAT = "EXCHANGE_RATE_VARIANT_GRAPH_DOCUMENT_V1"
 CLAIM_BOUNDARY = (
@@ -62,6 +62,16 @@ class ExchangeRateFullDocumentScanV1Error(ValueError):
 
 def _error(message: str) -> ExchangeRateFullDocumentScanV1Error:
     return ExchangeRateFullDocumentScanV1Error(message)
+
+
+def _sha256(value: Any, label: str) -> str:
+    if (
+        type(value) is not str
+        or len(value) != 64
+        or any(char not in "0123456789abcdef" for char in value)
+    ):
+        raise _error(f"{label} SHA-256 drifted")
+    return value
 
 
 def _load_matcher() -> ModuleType:
@@ -110,13 +120,13 @@ def _validate(value: Any) -> dict[str, Any]:
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
         or value["state"] != "FULL_DOCUMENT_EXCHANGE_RATE_SCAN_COMPLETE"
-        or value["input_semantic_axis_sha256"] != EXPECTED_AXIS_SHA256
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(trials) is not list
         or len(trials) != len(EXPECTED_DOCUMENT_ORDER)
         or not same_typed_json_v1(value["metrics"], _metrics(trials))
     ):
         raise _error("exchange-rate scan identity drifted")
+    _sha256(value["input_semantic_axis_sha256"], "exchange-rate semantic axis")
     for ordinal, (trial, code) in enumerate(zip(trials, EXPECTED_DOCUMENT_ORDER, strict=True), 1):
         if (
             type(trial) is not dict
@@ -143,8 +153,6 @@ def _validate(value: Any) -> dict[str, Any]:
 
 def build_exchange_rate_full_document_scan_v1(semantic_index: Any) -> dict[str, Any]:
     axis = project_full_document_vietocr_accounting_axis_v1(semantic_index)
-    if axis.get("semantic_axis_sha256") != EXPECTED_AXIS_SHA256:
-        raise _error("exchange-rate semantic axis drifted")
     matcher = _load_matcher()
     trials = []
     for document in axis["documents"]:
@@ -182,15 +190,50 @@ def validate_exchange_rate_full_document_scan_replay_v1(
 
 
 def _stable_json(path: Path) -> dict[str, Any]:
-    payload = path.read_bytes()
-    if hashlib.sha256(payload).hexdigest() != EXPECTED_INDEX_SHA256:
-        raise _error("fixed full-document semantic index drifted")
-    import json
-
-    value = json.loads(payload)
+    try:
+        descriptor = os.open(path, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW)
+    except OSError as exc:
+        raise _error(f"cannot open full-document semantic index nofollow: {path}") from exc
+    try:
+        before = os.fstat(descriptor)
+        if not stat.S_ISREG(before.st_mode):
+            raise _error("full-document semantic index is not one regular file")
+        chunks = []
+        while chunk := os.read(descriptor, 1 << 20):
+            chunks.append(chunk)
+        after = os.fstat(descriptor)
+    finally:
+        os.close(descriptor)
+    if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns) != (
+        after.st_dev,
+        after.st_ino,
+        after.st_size,
+        after.st_mtime_ns,
+    ):
+        raise _error("full-document semantic index changed while being read")
+    payload = b"".join(chunks)
+    try:
+        value = json.loads(
+            payload.decode("utf-8"),
+            parse_constant=lambda token: (_ for _ in ()).throw(
+                ValueError(f"non-finite JSON token: {token}")
+            ),
+            object_pairs_hook=_closed_object,
+        )
+    except (UnicodeDecodeError, ValueError) as exc:
+        raise _error("full-document semantic index is not strict UTF-8 JSON") from exc
     if type(value) is not dict:
         raise _error("semantic index root drifted")
     return value
+
+
+def _closed_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
 
 
 def build_live_exchange_rate_full_document_scan_v1(
@@ -205,8 +248,6 @@ def main() -> None:
     parser.add_argument("--pretty", action="store_true")
     args = parser.parse_args()
     value = build_live_exchange_rate_full_document_scan_v1(args.input)
-    import json
-
     print(json.dumps(value, ensure_ascii=False, indent=2 if args.pretty else None, sort_keys=True))
 
 

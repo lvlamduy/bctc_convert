@@ -120,6 +120,14 @@ def _rescue_builder() -> ModuleType:
     )
 
 
+def _profile_rescue(semantic_index: Any) -> Any | None:
+    metrics = semantic_index.get("metrics") if type(semantic_index) is dict else None
+    semantic_axis = metrics.get("semantic_axis_sha256") if type(metrics) is dict else None
+    if semantic_axis == _EXPECTED_SEMANTIC_AXIS_SHA256:
+        return _rescue_builder().read_verified_full_document_rotated_vietocr_rescue_v1()
+    return None
+
+
 def _validate_rescue(value: Any) -> dict[str, Any]:
     if (
         type(value) is not dict
@@ -404,7 +412,7 @@ def build_live_capital_and_funds_full_document_scan_v1(
 ) -> dict[str, Any]:
     support = _support()
     semantic_index, _ = support._fixed_json(input_path)
-    rescue = _rescue_builder().read_verified_full_document_rotated_vietocr_rescue_v1()
+    rescue = _profile_rescue(semantic_index)
     return build_capital_and_funds_full_document_scan_v1(semantic_index, rescue)
 
 
@@ -413,7 +421,7 @@ def validate_live_capital_and_funds_full_document_scan_v1(
 ) -> dict[str, Any]:
     support = _support()
     semantic_index, _ = support._fixed_json(input_path)
-    rescue = _rescue_builder().read_verified_full_document_rotated_vietocr_rescue_v1()
+    rescue = _profile_rescue(semantic_index)
     return validate_capital_and_funds_full_document_scan_replay_v1(value, semantic_index, rescue)
 
 
