@@ -157,6 +157,11 @@ def test_missing_next_boundary_and_duplicate_regions_fail_closed() -> None:
     assert duplicate["status"] == "UNRESOLVED_MULTIPLE_COMPLETE_REGIONS"
 
 
+def test_period_axis_accepts_annual_current_and_comparative_years() -> None:
+    assert graph._is_period("31 12 2025")
+    assert graph._is_period("31 12 2024")
+
+
 def test_fresh_text_and_typed_page_contract_fail_closed() -> None:
     pages = [_page(1, _cluster())]
     result = graph.build_investment_securities_variant_graph_document_v1(pages)

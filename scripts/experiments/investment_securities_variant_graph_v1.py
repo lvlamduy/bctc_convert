@@ -274,7 +274,7 @@ def _role(text: str, phase: str) -> str | None:
 
 
 def _is_period(text: str) -> bool:
-    return bool(_DATE.search(text)) or text in {"30 06 2026", "31 12 2025"}
+    return bool(_DATE.search(text))
 
 
 def _is_unit(text: str) -> bool:

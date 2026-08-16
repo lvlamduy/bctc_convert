@@ -262,7 +262,6 @@ def _is_period(text: str) -> bool:
         bool(_DATE.search(text))
         or bool(re.fullmatch(r"ngay\s+[0-3]?[0-9]\s+thang\s+[01]?[0-9]", text))
         or bool(re.fullmatch(r"nam\s+20[0-9]{2}", text))
-        or text in {"30 06 2026", "31 12 2025"}
     )
 
 

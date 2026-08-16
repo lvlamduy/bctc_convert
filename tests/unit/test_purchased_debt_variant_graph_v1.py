@@ -110,6 +110,11 @@ def test_duplicate_complete_cluster_is_not_unique() -> None:
     assert result["metrics"]["complete_region_count"] == 2
 
 
+def test_period_axis_accepts_annual_current_and_comparative_years() -> None:
+    assert graph._is_period("31 12 2025")
+    assert graph._is_period("31 12 2024")
+
+
 def test_fresh_text_and_typed_page_contract_fail_closed() -> None:
     pages = [_page(1, _cluster())]
     result = graph.build_purchased_debt_variant_graph_document_v1(pages)
