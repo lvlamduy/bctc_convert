@@ -39,6 +39,14 @@ subtree tổng quát tại BID: các nhánh VND/ngoại tệ của từng jurisd
 kết thúc trước khi tìm tổng family `123.629.833`. VietOCR HDB `B.416.558` được
 pixel và trục số nguồn xác nhận là `8.416.558`; đây là lỗi OCR đã đóng.
 
+E-0109 `Tiền, vàng gửi tại và cho vay/vay các TCTD khác` trên tám BCTC hợp
+nhất kiểm toán năm 2025 không bổ sung dòng OPEN: whole-PDF graph tìm đúng một
+vùng tại ACB p46, MBB p48, VPB p42, HDB p34, VCB p36, CTG p40, BID p39 và VIB
+p36; 86 mapping và 33 phương trình đóng chính xác. Các ô `DASH` của ACB được
+bind từ pixel rồi chuẩn hóa 0. VietOCR HDB `27.921.364` được ảnh gốc, trục số
+nguồn và phép cộng bác bỏ thành `27.921.384`. Dự phòng tổng tại MBB/VCB/BID
+được map vào 5718. Đây đều là đối chứng đã đóng, không phải dòng OPEN.
+
 E-0079 `Thu nhập lãi và các khoản thu nhập tương tự` không bổ sung dòng OPEN:
 cả tám vùng duy nhất đã map hết các dòng nguồn vào 1143–1150. Hai lỗi mất chữ
 số đầu của VietOCR tại VIB được trục số nguồn/PaddleOCR và pixel bác bỏ, nên là

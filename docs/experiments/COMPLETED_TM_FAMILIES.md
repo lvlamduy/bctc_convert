@@ -41,21 +41,16 @@ Quy ước:
 
 ## 3. Tiền, vàng gửi tại và cho vay/vay các TCTD khác
 
-- **Đã xác minh:** ACB p16, MBB p30, VPB p39, CTG p41, BID p25 và VIB p32.
-  Đã map 63 dòng tiền gửi không/có kỳ hạn, VND, ngoại tệ, cho vay/vay, dự
-  phòng và chiết khấu/tái chiết khấu; 23 phương trình cha–con, subtotal và tổng
-  family đóng đúng. BID dùng biến thể có `vàng và ngoại tệ` và đơn vị triệu VND
-  được kế thừa từ công bố đơn vị ở cấp tài liệu. CTG/BID dùng từ `vay` thay cho
-  `cho vay`. Dòng chiết khấu/tái chiết khấu chỉ là chi tiết không cộng thêm.
-- **Không có cụm thuyết minh trong PDF đã bind:** HDB, VCB. Chủ dự án xác nhận
-  phần thuyết minh của hai báo cáo bắt đầu từ `Chứng khoán kinh doanh` tại p25
-  và p30; dòng tổng hoặc bảng rủi ro không được relabel thành family 575.
-- **Còn thiếu:** Không còn khoản mục nguồn chưa map. Ba ô dấu
-  `-` hiện kỳ của ACB được giữ trạng thái `DASH`, khóa bằng pixel và chuẩn hóa
-  thành 0 theo quy ước của chủ dự án.
-
-Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
-Q1/2026, không relabel thành Q2/2026.
+- **Đã xác minh trên BCTC hợp nhất kiểm toán năm 2025:** ACB p46, MBB p48,
+  VPB p42, HDB p34, VCB p36, CTG p40, BID p39 và VIB p36. Đã map 86 dòng
+  tiền gửi không/có kỳ hạn, VND, ngoại tệ, cho vay/vay, dự phòng và chiết
+  khấu/tái chiết khấu; 33 phương trình cha–con, subtotal và tổng family đóng
+  đúng. Dự phòng tổng tại MBB, VCB và BID được map vào ReportNormId 5718.
+- **Không có:** Không có bank nào trong tám BCTC annual-2025.
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map. Các ô `-` hiện kỳ của ACB
+  được bind trực tiếp từ pixel và chuẩn hóa thành 0. HDB `27.921.364` của
+  VietOCR được ảnh gốc, trục số nguồn và phương trình bác bỏ thành
+  `27.921.384`.
 
 ## 4. Chứng khoán kinh doanh
 
@@ -912,7 +907,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Tiền, kim loại quý, đá quý | ✓ p45 | ✓ p46 | ✓ p41 | ✓ p33 | ✓ p35 | ✓ p39 | ✓ p39 | ✓ p35 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025 |
 | Tiền gửi tại NHNN | ✓ p45 | ✓ p46 | ✓ p41 | ✓ p33 | ✓ p35 | ✓ p39 | ✓ p39 | ✓ p35 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; Lào/Campuchia → 574 |
-| Tiền gửi/vay TCTD khác | ✓ p16 | ✓ p30 | ✓\* p39 | — | — | ✓ p41 | ✓ p25 | ✓ p32 | 0 dòng; HDB/VCB xác nhận không có cụm; VPB là nguồn Q1 |
+| Tiền gửi/vay TCTD khác | ✓ p46 | ✓ p48 | ✓ p42 | ✓ p34 | ✓ p36 | ✓ p40 | ✓ p39 | ✓ p36 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025 |
 | Chứng khoán kinh doanh | ✓ p16 | ✓ p31 | ✓\* p40 | ✓ p24 | ✓ p30 | ✓ p37 | ✓ p20 | — | 0 dòng trading; AFS VIB ở cụm Chứng khoán đầu tư; VPB là nguồn Q1 |
 | Công cụ tài chính phái sinh | ✓ p17 | ✓ p43 | ✓\* p41 | ✓ p25 | — | ✓ p38 | ✓ p21 | ✓ p32 | 0 dòng; VCB xác nhận không có cụm; VPB là nguồn Q1 |
 | Loại hình cho vay | ✓ p17 | ✓ p31 | ✓ p42 | ✓ p26 | ✓ p30 | ✓ p38 | ✓ p22 | ✓ p33 | 0 |

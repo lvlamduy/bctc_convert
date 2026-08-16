@@ -157,3 +157,95 @@ def test_review_tamper_bool_poison_and_coordinated_rehash_fail_closed(
             crop_manifest_sha256="a" * 64,
             review_sha256="b" * 64,
         )
+
+
+def test_annual_2025_review_covers_eight_unique_interbank_notes() -> None:
+    review = mapping._annual_2025_review_blueprint()
+
+    assert [document["bank_code"] for document in review["documents"]] == [
+        "ACB",
+        "MBB",
+        "VPB",
+        "HDB",
+        "VCB",
+        "CTG",
+        "BID",
+        "VIB",
+    ]
+    assert [document["page_sequence"] for document in review["documents"]] == [
+        46,
+        48,
+        42,
+        34,
+        36,
+        40,
+        39,
+        36,
+    ]
+    assert sum(len(document["mappings"]) for document in review["documents"]) == 86
+    assert all(document["unmapped_rows"] == [] for document in review["documents"])
+
+
+def test_annual_2025_dash_and_fresh_vietocr_disagreements_are_explicit() -> None:
+    review = mapping._annual_2025_review_blueprint()
+    mapped_dashes = [
+        row
+        for document in review["documents"]
+        for row in document["mappings"]
+        if row["value"]["line_index"] is None
+    ]
+    assert len(mapped_dashes) == 7
+    assert all(row["value"]["pixel_transcription"] == "-" for row in mapped_dashes)
+    assert all(row["value"]["pixel_binding"] is not None for row in mapped_dashes)
+
+    hdb = next(document for document in review["documents"] if document["bank_code"] == "HDB")
+    loan = next(row for row in hdb["mappings"] if row["role"] == "INTERBANK_LOAN")
+    assert loan["value"]["fresh_vietocr_challenger_expected"] == "27.921.364"
+    assert loan["value"]["pixel_transcription"] == "27.921.384"
+    assert loan["value"]["source_numeric_challenger_expected"] == "27.921.384"
+
+
+def test_annual_2025_persisted_result_is_complete_and_accounting_closed() -> None:
+    persisted = mapping._validate_result(
+        json.loads((mapping.PROJECT_ROOT / mapping.ANNUAL_2025_RESULT_PATH).read_text()),
+        "annual-2025",
+    )
+
+    assert persisted["metrics"] == {
+        "accounting_equation_verified_count": 33,
+        "document_count": 8,
+        "document_unique_region_count": 8,
+        "mapping_verified_count": 86,
+        "partial_mapping_document_count": 0,
+        "q1_source_period_caveat_document_count": 0,
+        "unmapped_source_row_count": 0,
+        "unresolved_document_count": 0,
+    }
+    assert all(trial["status"] == "VERIFIED_BY_CODEX" for trial in persisted["trials"])
+    assert all(
+        equation["computed_total"] == equation["visible_total"]
+        for trial in persisted["trials"]
+        for equation in trial["verified_accounting_equations"]
+    )
+    hdb = next(trial for trial in persisted["trials"] if trial["document_provenance"] == "HDB")
+    loan = next(row for row in hdb["verified_mappings"] if row["role"] == "INTERBANK_LOAN")
+    assert loan["normalized_value"] == 27_921_384
+    assert loan["source_value"]["fresh_vietocr_numeric_proposal"] == "27.921.364"
+    for code in ("MBB", "VCB", "BID"):
+        trial = next(trial for trial in persisted["trials"] if trial["document_provenance"] == code)
+        provision = next(
+            row for row in trial["verified_mappings"] if row["role"] == "TOTAL_INTERBANK_PROVISION"
+        )
+        assert provision["report_norm_id"] == 5718
+
+
+def test_annual_2025_pixel_dash_tamper_fails_closed() -> None:
+    forged = mapping._annual_2025_review_blueprint()
+    acb = next(document for document in forged["documents"] if document["bank_code"] == "ACB")
+    dash = next(row for row in acb["mappings"] if row["value"]["line_index"] is None)
+    dash["value"]["pixel_binding"]["rgb_sha256"] = "0" * 64
+    with pytest.raises(
+        mapping.InterbankDepositsLoans8BankCodexVerifiedMappingV1Error,
+        match="differs from fixed ledger",
+    ):
+        mapping._review(forged, "annual-2025")
