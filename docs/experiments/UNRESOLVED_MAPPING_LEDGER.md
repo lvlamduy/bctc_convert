@@ -17,7 +17,7 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **154 entries**.  Current open queue: **55**.  Closed history:
+Ledger total: **158 entries**.  Current open queue: **59**.  Closed history:
 **40** row/graph resolutions and **59** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
@@ -153,10 +153,22 @@ xem pixel. SBO-001 còn OPEN vì `Tiền thuê đất` không đồng nhất v�
 đất` và chưa có leaf riêng. VCB là bounded detailed-note absence; VPB giữ đúng
 kỳ Q1/2026.
 
+E-0096 `Tài sản thế chấp của khách hàng mà ngân hàng đang nắm giữ` quét đủ
+453 trang và tìm đúng một vùng tại VPB p67, VCB p47 và VIB p49. 15 mapping/30
+ô số và sáu phương trình tổng đã `VERIFIED_BY_CODEX`. VIB dùng parent `Của
+khách hàng` trong note chung nên nhánh `Của các TCTD khác` và tài sản chính
+ngân hàng đưa đi thế chấp không bị nhập nhầm. CC-001–CC-004 còn OPEN vì schema
+thiếu leaf hoặc nhãn nguồn gộp nhiều loại không thể thu hẹp. ACB/MBB/HDB/CTG/
+BID là bounded detailed-note absence; VPB giữ đúng kỳ Q1/2026.
+
 ## Open review queue (always first)
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
 | --- | --- | --- | ---: | --- | --- |
+| CC-001 | Tài sản thế chấp của khách hàng | VCB | 47 | Tiền gửi | Family 1280–1288 chưa có leaf tài sản thế chấp là tiền gửi; số vẫn tham gia và đóng đúng tổng. |
+| CC-002 | Tài sản thế chấp của khách hàng | VIB | 49 | Quyền khai thác tài sản | Chưa có leaf tương đương; số vẫn tham gia và đóng đúng tổng `Của khách hàng`. |
+| CC-003 | Tài sản thế chấp của khách hàng | VIB | 49 | Bảo lãnh | Không đồng nhất với một loại tài sản thế chấp cụ thể trong schema; số vẫn tham gia tổng. |
+| CC-004 | Tài sản thế chấp của khách hàng | VIB | 49 | Vàng, ngoại tệ, giấy tờ có giá | Một số gộp ba loại nên không được thu hẹp toàn bộ vào 1286 `Giấy tờ có giá`; số vẫn tham gia tổng. |
 | SBO-001 | Nghĩa vụ với ngân sách nhà nước | HDB | 32 | Tiền thuê đất | Không đồng nhất với 1277 `Thuế nhà - đất`; family 1269–1279 chưa có leaf riêng. Giá trị nguồn vẫn nằm trong tổng đã xác minh. |
 | EI-001 | Thu nhập nhân viên | ACB | 26 | Tiền lương bình quân | Số `90 / 86` bằng quỹ lương chia số nhân viên cho cả kỳ, không chia tiếp sáu tháng; không ép vào 1267 `Lương bình quân người/tháng`. |
 | EI-002 | Thu nhập nhân viên | ACB | 26 | Thu nhập bình quân | Số `243 / 247` bằng tổng thu nhập chia số nhân viên cho cả kỳ, không chia tiếp sáu tháng; không ép vào 1268 `Thu nhập bình quân người/tháng`. |
@@ -261,6 +273,20 @@ page or note identifier participates in this decision.
 | SAD-001–SAD-008 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; cả tám PDF không có bảng chi tiết 1255–1258. Giao dịch HDS của HDB và caption dòng tiền CTG được giữ làm đối chứng, không bị relabel |
 | EI-001–EI-002 | `OPEN_SCHEMA_PERIOD_SEMANTICS_GAP`; các dòng ACB là bình quân mỗi nhân viên cho toàn kỳ sáu tháng, còn schema 1267/1268 quy định bình quân người/tháng. Giá trị và phương trình tỷ lệ nguồn được giữ đầy đủ nhưng không map |
 | SBO-001 | `OPEN_SCHEMA_GAP`; HDB `Tiền thuê đất` không bị ép vào 1277 `Thuế nhà - đất`; dòng nguồn vẫn được giữ trong tổng family và phương trình nguồn đã xác minh |
+| CC-001–CC-004 | `OPEN_SCHEMA_OR_COMBINED_SOURCE_GAP`; VCB `Tiền gửi`, VIB `Quyền khai thác tài sản`, `Bảo lãnh` và dòng gộp `Vàng, ngoại tệ, giấy tờ có giá` vẫn nằm trong các phương trình tổng nhưng không bị ép vào leaf hẹp |
+
+## Customer collateral held (`CUSTOMER_COLLATERAL_HELD`)
+
+Current exact-replay result:
+`docs/experiments/E-0096-customer-collateral-8bank-codex-verified-mapping-v1.json`
+
+- One whole-PDF graph finds one unique customer-scoped region at VPB p67,
+  VCB p47 and VIB p49. ACB/MBB/HDB/CTG/BID have no detailed customer-collateral
+  note in the supplied reports.
+- 15 mappings, 30 value cells and six child-to-parent equations are independently
+  verified. VIB's separate TCTD and own-pledged-asset branches are excluded.
+- **CC-001–CC-004 — OPEN:** four exact source rows remain in the equations but
+  lack an exact leaf or combine multiple non-separable asset types.
 
 ## State-budget obligations (`STATE_BUDGET_OBLIGATIONS`)
 

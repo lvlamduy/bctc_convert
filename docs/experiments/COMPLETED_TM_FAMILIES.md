@@ -761,6 +761,24 @@ Q1/2026, không relabel thành Q2/2026.
 | --- | ---: | --- | --- |
 | HDB | 32 | Tiền thuê đất | Không đồng nhất với 1277 `Thuế nhà - đất`; schema 1269–1279 chưa có leaf riêng. |
 
+## 44. Tài sản thế chấp của khách hàng mà ngân hàng đang nắm giữ
+
+- **Đã map/xác minh:** VPB p67, VCB p47 và VIB p49. Đã map 15 khoản mục/30
+  ô số vào 1280–1288 và kiểm tra sáu phương trình tổng theo hai kỳ. VIB dùng
+  biến thể parent `Của khách hàng` bên trong note chung nhận/đưa tài sản thế
+  chấp; chỉ nhánh khách hàng được lấy. VPB là nguồn Q1/2026.
+- **Không có cụm thuyết minh chi tiết trong báo cáo:** ACB, MBB, HDB, CTG và
+  BID. Vùng tài sản của chính ngân hàng đưa đi thế chấp hoặc diễn giải rủi ro
+  tín dụng không được relabel thành tài sản thế chấp của khách hàng.
+- **Còn thiếu:**
+
+| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | ---: | --- | --- |
+| VCB | 47 | Tiền gửi | Family 1280–1288 chưa có leaf tài sản thế chấp là tiền gửi. |
+| VIB | 49 | Quyền khai thác tài sản | Chưa có leaf tương đương. |
+| VIB | 49 | Bảo lãnh | Không đồng nhất với một loại tài sản thế chấp cụ thể trong schema. |
+| VIB | 49 | Vàng, ngoại tệ, giấy tờ có giá | Một số gộp ba loại; không được thu hẹp toàn bộ vào 1286 `Giấy tờ có giá`. |
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -812,3 +830,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Mua mới và thanh lý các công ty con | — | — | — | — | — | — | — | — | 0 dòng; cả 8 PDF không có bảng chi tiết 1255–1258; HDB/CTG có đối chứng giao dịch/cash-flow nhưng thiếu ba dòng bắt buộc |
 | Thu nhập nhân viên | ✓\* p26 | — | ✓\* p66 | — | — | — | — | ✓ p49 | 2 dòng ACB OPEN; 13 mapping, 26 ô số, 14 phương trình; 5 bank không có note chi tiết; VPB là nguồn Q1 |
 | Nghĩa vụ với ngân sách nhà nước | ✓ p22 | ✓ p49 | ✓\* p58 | ✓\* p32 | — | ✓ p43 | ✓ p26 | ✓ p47 | 1 dòng HDB OPEN; 33 mapping, 147 ô số, 37 phương trình; 13 DASH→0; VCB không có note chi tiết; VPB là nguồn Q1 |
+| Tài sản thế chấp của khách hàng | — | — | ✓ p67 | — | ✓\* p47 | — | — | ✓\* p49 | 4 dòng OPEN; 15 mapping, 30 ô số, 6 phương trình; 5 bank không có note chi tiết; VPB là nguồn Q1 |
