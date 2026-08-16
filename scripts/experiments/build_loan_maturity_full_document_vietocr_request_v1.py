@@ -33,16 +33,13 @@ from typing import Any, cast
 
 from PIL import Image, ImageOps
 
+from bctc_ai.corpus import wave1_role_b_full_reader_v3 as full_v3
 from bctc_ai.evaluation.authenticated_line_pixel_hydration_v1 import (
     project_authenticated_line_pixel_hydration_receipt_v1,
     read_authenticated_line_pixel_hydration_envelope_v1,
     read_authenticated_line_pixel_hydration_render_v1,
     replay_authenticated_line_pixel_hydration_v1,
     validate_authenticated_line_pixel_hydration_envelope_v1,
-)
-from bctc_ai.ocr.ppocrv6_page_session import (
-    PPOCRV6PageSessionError,
-    validate_ppocrv6_payload,
 )
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_json_bytes_v1,
@@ -473,16 +470,53 @@ def _annual_output_ref(path: Path, label: str) -> dict[str, Any]:
 def _annual_ppocr_line_boxes(
     payload: dict[str, Any], *, width: int, height: int
 ) -> list[list[int]]:
-    """Validate the provider denominator and expose only ordered line geometry."""
+    """Validate non-word geometry and expose only ordered line boxes.
 
+    PP-OCR word subdivisions are neither used for the blind VietOCR crop
+    denominator nor exposed downstream. Their schema remains checked, but
+    provider word coordinates are quarantined because they can extend a few
+    pixels outside an otherwise valid rendered-page line box.
+    """
+
+    required_fields = {
+        "dt_polys",
+        "input_path",
+        "model_settings",
+        "page_index",
+        "rec_boxes",
+        "rec_polys",
+        "rec_scores",
+        "rec_texts",
+        "return_word_box",
+        "text_det_params",
+        "text_rec_score_thresh",
+        "text_type",
+        "text_word",
+        "text_word_boxes",
+    }
+    if type(payload) is not dict or set(payload) not in (
+        required_fields,
+        required_fields | {"textline_orientation_angles"},
+    ):
+        raise _error("annual PP-OCRv6 archived provider field set drifted")
+    if type(payload["input_path"]) is not str or not payload["input_path"]:
+        raise _error("annual PP-OCRv6 provider input path is invalid")
+    schema_payload = {key: value for key, value in payload.items() if key != "input_path"}
+    orientation = schema_payload.get("textline_orientation_angles")
+    if orientation is None:
+        if payload.get("rec_boxes") != []:
+            raise _error("annual nonempty PP-OCRv6 page omitted its orientation axis")
+        schema_payload["textline_orientation_angles"] = []
+    elif type(orientation) is not list or len(orientation) != len(payload.get("rec_boxes", [])):
+        raise _error("annual PP-OCRv6 orientation axis drifted")
     try:
-        geometry = validate_ppocrv6_payload(
-            payload,
+        geometry = full_v3._validate_ppocrv6_schema_except_word_geometry(  # noqa: SLF001
+            schema_payload,
             pixel_width=width,
             pixel_height=height,
         )
-    except PPOCRV6PageSessionError as exc:
-        raise _error("annual PP-OCRv6 provider geometry is invalid") from exc
+    except full_v3.WaveOneRoleBFullReaderError as exc:
+        raise _error("annual PP-OCRv6 non-word provider geometry is invalid") from exc
     provider_boxes = payload.get("rec_boxes")
     if type(provider_boxes) is not list or len(provider_boxes) != geometry["line_count"]:
         raise _error("annual PP-OCRv6 line denominator drifted")

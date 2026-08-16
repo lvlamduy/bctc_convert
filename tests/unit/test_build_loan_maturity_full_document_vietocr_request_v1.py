@@ -296,6 +296,10 @@ def test_builder_pins_vietocr_vgg_transformer_0_3_13() -> None:
 
 def _annual_provider_payload(*, text: str = "legacy text") -> dict[str, object]:
     return {
+        "dt_polys": [],
+        "input_path": "/sealed/render.png",
+        "model_settings": {},
+        "page_index": None,
         "rec_texts": [text, ""],
         "rec_scores": [0.99, 0.95],
         "rec_polys": [
@@ -306,6 +310,10 @@ def _annual_provider_payload(*, text: str = "legacy text") -> dict[str, object]:
         "text_word_boxes": [[], []],
         "text_word": [[], []],
         "return_word_box": True,
+        "text_det_params": {},
+        "text_rec_score_thresh": 0.0,
+        "text_type": "general",
+        "textline_orientation_angles": [-1, -1],
     }
 
 
@@ -622,6 +630,33 @@ def test_annual_provider_geometry_is_transcript_independent() -> None:
     )
 
     assert first == second == [[2, 3, 20, 12], [30, 20, 70, 36]]
+
+
+def test_annual_provider_geometry_quarantines_out_of_page_word_boxes() -> None:
+    payload = _annual_provider_payload()
+    payload["text_word"] = [["legacy"], []]
+    payload["text_word_boxes"] = [[[18, 2, 103, 13]], []]
+
+    assert builder._annual_ppocr_line_boxes(payload, width=100, height=80) == [
+        [2, 3, 20, 12],
+        [30, 20, 70, 36],
+    ]
+
+
+def test_annual_provider_geometry_accepts_blank_provider_variant() -> None:
+    payload = _annual_provider_payload()
+    for field in (
+        "rec_texts",
+        "rec_scores",
+        "rec_polys",
+        "rec_boxes",
+        "text_word_boxes",
+        "text_word",
+    ):
+        payload[field] = []
+    del payload["textline_orientation_angles"]
+
+    assert builder._annual_ppocr_line_boxes(payload, width=100, height=80) == []
 
 
 @pytest.mark.parametrize(
