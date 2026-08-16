@@ -290,25 +290,42 @@ def _is_owner(line: Mapping[str, Any]) -> bool:
     )
 
 
-def _period_role(text: str) -> str | None:
-    if re.search(r"(?:30|31)[ /.-](?:03|3|06|6)[ /.-]2026", text) or (
-        "tai ngay" in text and "2026" in text
-    ):
-        return "CURRENT_PERIOD"
-    if re.search(r"31[ /.-]12[ /.-]2025", text) or ("tai ngay" in text and "2025" in text):
-        return "COMPARATIVE_PERIOD"
+def _period_key(text: str) -> tuple[int, int, int] | None:
+    matched = re.search(r"([0-3]?[0-9])[ /.-]([01]?[0-9])[ /.-](20[0-9]{2})", text)
+    if matched is None:
+        matched = re.search(
+            r"([0-3]?[0-9]) thang ([01]?[0-9])(?: nam)? (20[0-9]{2})",
+            text,
+        )
+    if matched is not None:
+        day, month, year = (int(item) for item in matched.groups())
+        if 1 <= day <= 31 and 1 <= month <= 12:
+            return year, month, day
+    if "tai ngay" in text and (year_match := re.search(r"20[0-9]{2}", text)) is not None:
+        return int(year_match.group()), 0, 0
     return None
 
 
 def _period_headings(
     lines: Sequence[Mapping[str, Any]], *, start: int, stop: int
 ) -> list[dict[str, Any]]:
-    headings = []
-    seen: set[str] = set()
+    candidates: list[tuple[Mapping[str, Any], tuple[int, int, int]]] = []
     for line in lines:
         if not start < line["source_line_index"] < stop:
             continue
-        role = _period_role(line["normalized_text"])
+        key = _period_key(line["normalized_text"])
+        if key is not None:
+            candidates.append((line, key))
+    ordered_keys = sorted({key for _, key in candidates}, reverse=True)
+    roles = {}
+    if ordered_keys:
+        roles[ordered_keys[0]] = "CURRENT_PERIOD"
+    if len(ordered_keys) >= 2:
+        roles[ordered_keys[1]] = "COMPARATIVE_PERIOD"
+    headings = []
+    seen: set[str] = set()
+    for line, key in candidates:
+        role = roles.get(key)
         if role is None or role in seen:
             continue
         seen.add(role)

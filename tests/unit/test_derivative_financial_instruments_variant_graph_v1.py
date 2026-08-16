@@ -144,6 +144,29 @@ def test_policy_prose_and_one_period_surface_are_negative_controls() -> None:
     assert result["regions"] == []
 
 
+def test_latest_two_visible_dates_define_annual_current_and_comparative_axes() -> None:
+    surfaces = [
+        (
+            "Tại ngày 31 tháng 12 năm 2025"
+            if text == "Tại ngày 30 tháng 06 năm 2026"
+            else "Tại ngày 31 tháng 12 năm 2024"
+            if text == "Tại ngày 31 tháng 12 năm 2025"
+            else text,
+            x,
+            y,
+        )
+        for text, x, y in _table("ASSET_LIABILITY")
+    ]
+    result = graph.build_derivative_financial_instruments_variant_graph_document_v1(
+        [_page(surfaces)]
+    )
+    headings = result["regions"][0]["layout"]["period_headings"]
+    assert [item["period_role"] for item in headings] == [
+        "CURRENT_PERIOD",
+        "COMPARATIVE_PERIOD",
+    ]
+
+
 def test_numbered_parent_and_numeric_looking_crop_are_retained_without_text_correction() -> None:
     surfaces = _table("ASSET_LIABILITY")
     parent_index = next(
