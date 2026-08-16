@@ -133,6 +133,15 @@ của HDB được xác minh source-only ngoài lõi. Hai lỗi số Transformer
 `418.599.083`/`442.484.641` được pixel, PaddleOCR6 và phương trình bác bỏ để
 dùng `418.599.063`/`442.484.841`.
 
+E-0117 `Phân tích dư nợ cho vay theo khu vực địa lý` trên tám BCTC hợp nhất
+kiểm toán năm 2025 không bổ sung dòng OPEN. Graph chung tìm đúng một vùng tại
+ACB p77, MBB p91 và VIB p59–60; sáu khoản mục 5752/765, 12 ô tiền và sáu
+phương trình đã được xác minh. Dấu `-` của ACB/VIB được bind từ pixel trước khi
+chuẩn hóa thành 0. VPB p81, HDB p60 và BID p63 là đối chứng địa lý có population
+dư nợ rộng hơn `Cho vay khách hàng`, nên không bị thu hẹp ngầm; VCB/CTG không
+có vùng đúng family. Kết quả là ba vùng unique và năm bounded-report absences,
+không còn khoản mục geography annual-2025 chờ map.
+
 E-0079 `Thu nhập lãi và các khoản thu nhập tương tự` không bổ sung dòng OPEN:
 cả tám vùng duy nhất đã map hết các dòng nguồn vào 1143–1150. Hai lỗi mất chữ
 số đầu của VietOCR tại VIB được trục số nguồn/PaddleOCR và pixel bác bỏ, nên là

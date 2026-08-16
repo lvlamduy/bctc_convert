@@ -185,17 +185,23 @@ không bị suy rộng sang annual-2025.
 
 ## 11. Phân tích dư nợ cho vay theo khu vực địa lý
 
-- **Đã xác minh:** MBB p52 và VIB p53–54. MBB dùng biến thể khu vực theo hàng ×
-  family theo cột; VIB dùng family theo hàng × khu vực theo cột và nối hai trang
-  hiện tại/so sánh. Đã map `Trong nước` (5752) và `Nước ngoài` (765) cho hai
-  bank; ba phương trình `trong nước + nước ngoài = tổng Cho vay khách hàng`
-  đóng đúng. Hai dấu `-` nhìn thấy của VIB được giữ `DASH` rồi chuẩn hóa thành 0.
-- **Không có cụm cho vay khách hàng theo khu vực:** ACB, VPB, HDB, VCB, CTG,
-  BID trong các PDF đã cung cấp. Các bảng địa lý tại ACB/VPB/HDB/CTG/BID có
-  population `Tổng dư nợ` rộng hơn `Cho vay khách hàng` nên được giữ làm đối
-  chứng, không thu hẹp hay map ngầm. VCB p42 là báo cáo bộ phận thu nhập/chi phí,
-  thuộc family khác.
-- **Còn thiếu:** Không còn review mở cho family này.
+- **Đã xác minh trên BCTC hợp nhất kiểm toán năm 2025:** ACB p77, MBB p91 và
+  VIB p59–60. Một graph chung nhận cả biến thể khu vực theo hàng × family theo
+  cột và family theo hàng × khu vực theo cột, kể cả bảng so sánh tiếp trang.
+  Đã map `Trong nước` (5752) và `Nước ngoài` (765): 6 khoản mục, 12 ô tiền và
+  6 phương trình `trong nước + nước ngoài = tổng Cho vay khách hàng` đều đóng
+  đúng. Dấu `-` của ACB và VIB được bind từ đúng ô ảnh rồi chuẩn hóa thành 0.
+- **Không có đúng family trong báo cáo annual-2025 đã bind:** VPB, HDB, VCB,
+  CTG và BID. VPB p81, HDB p60 và BID p63 có bảng địa lý nhưng population là
+  dư nợ rộng hơn `Cho vay khách hàng`; chúng là đối chứng âm và không bị thu
+  hẹp ngầm. VCB/CTG không có vùng địa lý đúng family trong toàn PDF.
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong family annual-2025.
+
+Kết quả exact-replay:
+`docs/experiments/E-0117-annual-2025-loan-geography-8bank-codex-verified-mapping-v1.json`.
+
+Lượt BCTC hiện hành trước đó tại MBB p52 và VIB p53–54 vẫn giữ nguyên kết quả
+đã xác minh riêng.
 
 ## 12. Phân tích theo loại hình doanh nghiệp/đối tượng khách hàng
 
@@ -953,7 +959,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Chất lượng cho vay | ✓ p50 | ✓ p51 | ✓ p45 | ✓ p36 | ✓ p39 | ✓ p43 | ✓ p42 | ✓ p66 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; 1944 tách riêng tại ACB/MBB/VPB |
 | Dư nợ theo thời gian | ✓ p50 | ✓ p51 | ✓ p45 | ✓ p36 | ✓ p40 | ✓ p44 | ✓ p42 | ✓ p38 | 0 dòng annual-2025; MBB/VPB map margin, HDB giữ dân số bổ sung source-only |
 | Cho vay theo loại tiền tệ | ✓ p51 | — p51–52 | — p45–47 | ✓ p37 | — p39–40 | — p43–44 | — p41–42 | — p37–39 | 0 dòng annual-2025; HDB giữ dân số thư tín dụng bổ sung source-only |
-| Cho vay theo khu vực địa lý | — | ✓ p52 | — | — | — | — | — | ✓ p53–54 | 0; sáu PDF không có đúng family cho vay khách hàng theo khu vực |
+| Cho vay theo khu vực địa lý | ✓ p77 | ✓ p91 | — p81 | — p60 | — | — | — p63 | ✓ p59–60 | 0 dòng annual-2025; ba bảng địa lý rộng hơn không bị thu hẹp ngầm |
 | Doanh nghiệp/đối tượng KH | — | ✓\* p32 | ✓ p43 | ✓ p26 | — | — | — | ✓ p34 | 1 group parent check-only |
 | Dự phòng cho vay | ✓ p18 | ✓ p34 | ✓\* p45 | ✓ p28 | ✓ p31 | ✓ p39 | ✓ p23 | ✓ p34 | 0 dòng; VPB còn thiếu nguồn Q2 |
 | Hoạt động mua nợ | — | ✓ p35 | ✓\* p46 | ✓ p29 | — | — | — | ✓\* p35 | 0 dòng; 4 bank không có; VPB là nguồn Q1 |
