@@ -75,3 +75,33 @@ def test_live_replay_rejects_coordinated_absence_rehash(live_scan: dict[str, obj
         match="metrics drifted|replay exactly",
     ):
         scanner.validate_live_leased_fixed_assets_full_document_scan_v1(forged)
+
+
+def test_live_scan_delegates_rescue_selection_to_the_input_profile(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    semantic_index = {
+        "format_version": "ANNUAL_2025_8DOCUMENT_VIETOCR_TRANSFORMER_SEMANTIC_INDEX_V1"
+    }
+
+    class Support:
+        @staticmethod
+        def _fixed_json(_path: Path) -> tuple[dict[str, object], bytes]:
+            return semantic_index, b"{}"
+
+        @staticmethod
+        def _profile_rescue(value: object, _root: Path) -> None:
+            assert value is semantic_index
+            return None
+
+    monkeypatch.setattr(scanner, "_support", lambda: Support)
+    monkeypatch.setattr(
+        scanner,
+        "build_leased_fixed_assets_full_document_scan_v1",
+        lambda value, rescue: {"annual": value is semantic_index, "rescue": rescue},
+    )
+
+    assert scanner.build_live_leased_fixed_assets_full_document_scan_v1() == {
+        "annual": True,
+        "rescue": None,
+    }

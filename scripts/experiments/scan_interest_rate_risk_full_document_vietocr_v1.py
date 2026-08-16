@@ -157,20 +157,24 @@ def _validate(value: Any) -> dict[str, Any]:
 
 
 def build_interest_rate_risk_full_document_scan_v1(
-    semantic_index: Any, rescue: Any
+    semantic_index: Any, rescue: Any | None = None
 ) -> dict[str, Any]:
     axis = project_full_document_vietocr_accounting_axis_v1(semantic_index)
     support = _support()
     matcher = _matcher()
-    authenticated_rescue = support._validate_rescue(rescue)
-    rescue_by_locator = {
-        (
-            sample["document_ordinal"],
-            sample["physical_page"],
-            sample["source_line_index"],
-        ): sample
-        for sample in authenticated_rescue["samples"]
-    }
+    authenticated_rescue = support._validate_rescue(rescue) if rescue is not None else None
+    rescue_by_locator = (
+        {
+            (
+                sample["document_ordinal"],
+                sample["physical_page"],
+                sample["source_line_index"],
+            ): sample
+            for sample in authenticated_rescue["samples"]
+        }
+        if authenticated_rescue is not None
+        else {}
+    )
     trials = []
     total_applied = 0
     for document in axis["documents"]:
@@ -186,18 +190,25 @@ def build_interest_rate_risk_full_document_scan_v1(
                 "source_pdf_sha256": document["source_pdf"]["sha256"],
             }
         )
-    if total_applied != authenticated_rescue["metrics"]["line_count"]:
+    if (
+        authenticated_rescue is not None
+        and total_applied != authenticated_rescue["metrics"]["line_count"]
+    ):
         raise _error("rotated semantic rescue did not join its exact source-line denominator")
     material = {
         "authority": canonical_clone_v1(_AUTHORITY),
         "claim_boundary": CLAIM_BOUNDARY,
         "format_version": FORMAT_VERSION,
         "input_axis_projection_id": axis["projection_id"],
-        "input_rescue": {
-            "input_refs": authenticated_rescue["input_refs"],
-            "metrics": authenticated_rescue["metrics"],
-            "projection_id": authenticated_rescue["projection_id"],
-        },
+        "input_rescue": (
+            {
+                "input_refs": authenticated_rescue["input_refs"],
+                "metrics": authenticated_rescue["metrics"],
+                "projection_id": authenticated_rescue["projection_id"],
+            }
+            if authenticated_rescue is not None
+            else None
+        ),
         "input_semantic_axis_sha256": axis["semantic_axis_sha256"],
         "metrics": _metrics(trials),
         "state": "FULL_DOCUMENT_INTEREST_RATE_RISK_SCAN_COMPLETE",
@@ -207,7 +218,7 @@ def build_interest_rate_risk_full_document_scan_v1(
 
 
 def validate_interest_rate_risk_full_document_scan_replay_v1(
-    value: Any, semantic_index: Any, rescue: Any
+    value: Any, semantic_index: Any, rescue: Any | None = None
 ) -> dict[str, Any]:
     supplied = _validate(value)
     rebuilt = build_interest_rate_risk_full_document_scan_v1(semantic_index, rescue)
@@ -221,7 +232,7 @@ def build_live_interest_rate_risk_full_document_scan_v1(
 ) -> dict[str, Any]:
     support = _support()
     semantic_index, _ = support._support()._fixed_json(input_path)
-    rescue = support._rescue_builder().read_verified_full_document_rotated_vietocr_rescue_v1()
+    rescue = support._profile_rescue(semantic_index)
     return build_interest_rate_risk_full_document_scan_v1(semantic_index, rescue)
 
 
@@ -230,7 +241,7 @@ def validate_live_interest_rate_risk_full_document_scan_v1(
 ) -> dict[str, Any]:
     support = _support()
     semantic_index, _ = support._support()._fixed_json(input_path)
-    rescue = support._rescue_builder().read_verified_full_document_rotated_vietocr_rescue_v1()
+    rescue = support._profile_rescue(semantic_index)
     return validate_interest_rate_risk_full_document_scan_replay_v1(value, semantic_index, rescue)
 
 

@@ -242,7 +242,7 @@ def build_live_leased_fixed_assets_full_document_scan_v1(
 ) -> dict[str, Any]:
     support = _support()
     semantic_index, _ = support._fixed_json(input_path)
-    rescue = support.authenticate_rotated_vietocr_semantic_rescue_v1(semantic_index, rescue_root)
+    rescue = support._profile_rescue(semantic_index, rescue_root)
     return build_leased_fixed_assets_full_document_scan_v1(semantic_index, rescue)
 
 
@@ -253,7 +253,7 @@ def validate_live_leased_fixed_assets_full_document_scan_v1(
 ) -> dict[str, Any]:
     support = _support()
     semantic_index, _ = support._fixed_json(input_path)
-    rescue = support.authenticate_rotated_vietocr_semantic_rescue_v1(semantic_index, rescue_root)
+    rescue = support._profile_rescue(semantic_index, rescue_root)
     return validate_leased_fixed_assets_full_document_scan_replay_v1(value, semantic_index, rescue)
 
 

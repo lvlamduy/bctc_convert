@@ -447,6 +447,18 @@ def authenticate_rotated_vietocr_semantic_rescue_v1(
     }
 
 
+def _profile_rescue(
+    semantic_index: Any, rescue_root: Path = DEFAULT_RESCUE_ROOT
+) -> dict[str, Any] | None:
+    if (
+        type(semantic_index) is dict
+        and semantic_index.get("format_version")
+        == "WAVE1_8DOCUMENT_VIETOCR_TRANSFORMER_SEMANTIC_INDEX_V1"
+    ):
+        return authenticate_rotated_vietocr_semantic_rescue_v1(semantic_index, rescue_root)
+    return None
+
+
 def _matcher_pages(
     document: dict[str, Any], rescue: dict[str, Any] | None
 ) -> tuple[list[dict[str, Any]], int]:
@@ -613,7 +625,7 @@ def build_live_tangible_fixed_assets_full_document_scan_v1(
     input_path: Path = DEFAULT_INPUT, rescue_root: Path = DEFAULT_RESCUE_ROOT
 ) -> dict[str, Any]:
     semantic_index, _ = _fixed_json(input_path)
-    rescue = authenticate_rotated_vietocr_semantic_rescue_v1(semantic_index, rescue_root)
+    rescue = _profile_rescue(semantic_index, rescue_root)
     return build_tangible_fixed_assets_full_document_scan_v1(semantic_index, rescue)
 
 
@@ -621,7 +633,7 @@ def validate_live_tangible_fixed_assets_full_document_scan_v1(
     value: Any, input_path: Path = DEFAULT_INPUT, rescue_root: Path = DEFAULT_RESCUE_ROOT
 ) -> dict[str, Any]:
     semantic_index, _ = _fixed_json(input_path)
-    rescue = authenticate_rotated_vietocr_semantic_rescue_v1(semantic_index, rescue_root)
+    rescue = _profile_rescue(semantic_index, rescue_root)
     return validate_tangible_fixed_assets_full_document_scan_replay_v1(
         value, semantic_index, rescue
     )

@@ -153,3 +153,33 @@ def test_rescue_denominator_and_typed_metric_substitution_reject(
     value["metrics"]["document_count"] = 0.0
     with pytest.raises(scan.InterestRateRiskFullDocumentScanV1Error):
         scan._validate(value)
+
+
+def test_another_corpus_runs_without_stale_rotated_rescue(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Matcher:
+        @staticmethod
+        def build_interest_rate_risk_variant_graph_document_v1(pages: object) -> object:
+            del pages
+            return _matcher_result(accepted=False)
+
+    class Support:
+        @staticmethod
+        def _validate_rescue(_value: object) -> object:
+            raise AssertionError("an absent rescue must not be validated")
+
+        @staticmethod
+        def _matcher_pages(document: object, lookup: object) -> tuple[list[object], int]:
+            del document
+            assert lookup == {}
+            return [], 0
+
+    monkeypatch.setattr(scan, "project_full_document_vietocr_accounting_axis_v1", lambda _: _axis())
+    monkeypatch.setattr(scan, "_matcher", lambda: Matcher)
+    monkeypatch.setattr(scan, "_support", lambda: Support)
+
+    result = scan.build_interest_rate_risk_full_document_scan_v1({}, None)
+
+    assert result["input_rescue"] is None
+    assert result["metrics"]["rotated_rescue_line_count"] == 0

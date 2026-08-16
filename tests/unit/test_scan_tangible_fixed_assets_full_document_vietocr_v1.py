@@ -173,3 +173,20 @@ def test_current_eight_pdf_scan_finds_only_three_unique_regions() -> None:
         if trial["matcher_result"]["regions"]
     ] == [("MBB", 37), ("VPB", 49), ("VIB", 37)]
     assert result["trials"][7]["rotated_rescue_line_count"] == 100
+
+
+def test_annual_profile_does_not_load_wave1_rotated_rescue(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        scanner,
+        "authenticate_rotated_vietocr_semantic_rescue_v1",
+        lambda *_args, **_kwargs: pytest.fail("Wave-1 rescue must not be opened for annual input"),
+    )
+
+    assert (
+        scanner._profile_rescue(
+            {"format_version": ("ANNUAL_2025_8DOCUMENT_VIETOCR_TRANSFORMER_SEMANTIC_INDEX_V1")}
+        )
+        is None
+    )
