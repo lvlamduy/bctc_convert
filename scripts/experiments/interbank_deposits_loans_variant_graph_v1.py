@@ -332,6 +332,38 @@ def _row_values(
     ]
 
 
+def _inline_values(
+    lines: Sequence[Mapping[str, Any]], label: Mapping[str, Any]
+) -> list[dict[str, Any]]:
+    label_center = (label["bbox"][1] + label["bbox"][3]) / 2
+    tolerance = max(10.0, (label["bbox"][3] - label["bbox"][1]) * 0.45)
+    return [
+        value
+        for value in _row_values(lines, label)
+        if abs((value["bbox"][1] + value["bbox"][3]) / 2 - label_center) <= tolerance
+    ]
+
+
+def _explicit_group_total_line(
+    lines: Sequence[Mapping[str, Any]],
+    *,
+    group_role: str,
+    start_index: int,
+    stop_index: int,
+) -> Mapping[str, Any] | None:
+    for line in lines:
+        if not start_index < line["source_line_index"] < stop_index:
+            continue
+        text = line["normalized_text"]
+        if "tong" not in text or not ("tctd" in text or "to chuc tin dung" in text):
+            continue
+        if group_role == "INTERBANK_DEPOSIT_PARENT" and "tien gui" in text:
+            return line
+        if group_role == "INTERBANK_LOAN" and ("cho vay" in text or "cap tin dung" in text):
+            return line
+    return None
+
+
 def _numeric_rows(
     lines: Sequence[Mapping[str, Any]], *, start_index: int, stop_index: int
 ) -> list[list[Mapping[str, Any]]]:
@@ -470,7 +502,7 @@ def _group_events(
         if group_line["source_line_index"] < line["source_line_index"] < stop_index
         and _currency_role(line["normalized_text"], line["vietocr_text"]) is not None
     ]
-    group_values = _row_values(lines, group_line)
+    group_values = _inline_values(lines, group_line)
     events = [_event(group_role, "GROUP_PARENT", group_line, group_values)]
     inline_currency = _currency_role(group_line["normalized_text"], group_line["vietocr_text"])
     if inline_currency is not None:
@@ -518,17 +550,33 @@ def _group_events(
     structural_labels.extend(
         line
         for line in lines
-        if any(event["source_line_index"] == line["source_line_index"] for event in auxiliary)
+        if any(
+            event["source_line_index"] == line["source_line_index"]
+            and event["role_kind"] == "NON_ADDITIVE_DETAIL"
+            for event in auxiliary
+        )
     )
     last_label = max(structural_labels, key=lambda line: line["source_line_index"])
     parent_values = events[0]["value_proposals"]
+    explicit_total = _explicit_group_total_line(
+        lines,
+        group_role=group_role,
+        start_index=group_line["source_line_index"],
+        stop_index=stop_index,
+    )
+    if explicit_total is not None:
+        explicit_values = _row_values(lines, explicit_total)
+        if explicit_values:
+            parent_values = explicit_values
+            events[0]["value_proposals"] = parent_values
+            events[0]["value_binding"] = "EXPLICIT_LABELED_PARENT_SUBTOTAL"
     if not parent_values:
         parent_values = _trailing_subtotal(lines, after_label=last_label, stop_index=stop_index)
         events[0]["value_proposals"] = parent_values
         events[0]["value_binding"] = (
             "TRAILING_UNLABELED_PARENT_SUBTOTAL" if parent_values else "NO_VISIBLE_PARENT_VALUE"
         )
-    else:
+    elif "value_binding" not in events[0]:
         events[0]["value_binding"] = "INLINE_PARENT_VALUE"
     return events, auxiliary
 
@@ -789,8 +837,20 @@ def _candidate(
     deposit_values: list[dict[str, Any]] = []
     deposit_binding = "NO_EXPLICIT_DEPOSIT_PARENT"
     if deposit_parent_line is not None:
-        deposit_values = _row_values(lines, deposit_parent_line)
-        deposit_binding = "INLINE_PARENT_VALUE" if deposit_values else "EXPLICIT_PARENT_NO_VALUE"
+        explicit_deposit_total = _explicit_group_total_line(
+            lines,
+            group_role="INTERBANK_DEPOSIT_PARENT",
+            start_index=deposit_parent_line["source_line_index"],
+            stop_index=role_lines["INTERBANK_LOAN"]["source_line_index"],
+        )
+        if explicit_deposit_total is not None:
+            deposit_values = _row_values(lines, explicit_deposit_total)
+            deposit_binding = "EXPLICIT_LABELED_DEPOSIT_SUBTOTAL"
+        else:
+            deposit_values = _inline_values(lines, deposit_parent_line)
+            deposit_binding = (
+                "INLINE_PARENT_VALUE" if deposit_values else "EXPLICIT_PARENT_NO_VALUE"
+            )
     if not deposit_values:
         term_last = max(
             (

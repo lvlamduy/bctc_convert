@@ -231,6 +231,114 @@ def test_family_without_printed_grand_total_still_ends_at_loan_subtotal() -> Non
     assert region["layout"]["family_total_present"] is False
 
 
+def test_explicit_group_subtotals_override_nearer_child_rows() -> None:
+    surfaces = [
+        ("Tiền gửi và cho vay các TCTD khác", 0, 0),
+        ("31/12/2025", 650, 28),
+        ("31/12/2024", 820, 28),
+        ("Triệu đồng", 650, 52),
+        ("Triệu đồng", 820, 52),
+        ("Tiền gửi tại các TCTD khác", 0, 80),
+    ]
+    _row(surfaces, "Tiền gửi không kỳ hạn", "70", "63", 115)
+    _row(surfaces, "Bằng VND", "60", "55", 145)
+    _row(surfaces, "Bằng ngoại tệ", "10", "8", 175)
+    _row(surfaces, "Tiền gửi có kỳ hạn", "120", "108", 205)
+    _row(surfaces, "Bằng VND", "100", "90", 235)
+    _row(surfaces, "Bằng ngoại tệ", "20", "18", 265)
+    _row(surfaces, "Tổng tiền gửi tại các TCTD khác", "190", "171", 300)
+    surfaces.append(("Cho vay các TCTD khác", 0, 340))
+    _row(surfaces, "Bằng VND", "30", "25", 370)
+    _row(surfaces, "Bằng ngoại tệ", "2", "1", 400)
+    _row(surfaces, "Tổng cho vay các TCTD khác", "32", "26", 435)
+    _row(surfaces, "Tổng tiền gửi và cho vay các TCTD khác", "222", "197", 475)
+    surfaces.append(("Chứng khoán kinh doanh", 0, 520))
+
+    result = graph.build_interbank_deposits_loans_variant_graph_document_v1([_page(surfaces)])
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    events = result["regions"][0]["events"]
+    by_role = {event["role"]: event for event in events}
+    assert by_role["INTERBANK_DEPOSIT_PARENT"]["value_binding"] == (
+        "EXPLICIT_LABELED_DEPOSIT_SUBTOTAL"
+    )
+    assert [
+        item["vietocr_text"] for item in by_role["INTERBANK_DEPOSIT_PARENT"]["value_proposals"]
+    ] == [
+        "190",
+        "171",
+    ]
+    assert by_role["INTERBANK_LOAN"]["value_binding"] == ("EXPLICIT_LABELED_PARENT_SUBTOTAL")
+    assert [item["vietocr_text"] for item in by_role["INTERBANK_LOAN"]["value_proposals"]] == [
+        "32",
+        "26",
+    ]
+    assert [item["vietocr_text"] for item in by_role["FAMILY_TOTAL"]["value_proposals"]] == [
+        "222",
+        "197",
+    ]
+
+
+def test_unlabeled_loan_subtotal_precedes_distinct_unlabeled_family_total() -> None:
+    result = graph.build_interbank_deposits_loans_variant_graph_document_v1([_page(_table())])
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    by_role = {event["role"]: event for event in result["regions"][0]["events"]}
+    assert [item["vietocr_text"] for item in by_role["INTERBANK_LOAN"]["value_proposals"]] == [
+        "30",
+        "25",
+    ]
+    assert [item["vietocr_text"] for item in by_role["FAMILY_TOTAL"]["value_proposals"]] == [
+        "220",
+        "196",
+    ]
+    assert by_role["INTERBANK_LOAN"]["value_binding"] == ("TRAILING_UNLABELED_PARENT_SUBTOTAL")
+    assert by_role["FAMILY_TOTAL"]["value_binding"] == "TRAILING_UNLABELED_FAMILY_TOTAL"
+
+
+def test_provision_after_gross_loan_subtotal_does_not_replace_parent_total() -> None:
+    surfaces = [
+        ("Tiền gửi và cho vay các TCTD khác", 0, 0),
+        ("31/12/2025", 650, 28),
+        ("31/12/2024", 820, 28),
+        ("Triệu đồng", 650, 52),
+        ("Triệu đồng", 820, 52),
+        ("Tiền gửi không kỳ hạn", 0, 90),
+    ]
+    _row(surfaces, "Bằng VND", "100", "90", 120)
+    _row(surfaces, "Bằng ngoại tệ", "20", "18", 150)
+    surfaces.append(("Tiền gửi có kỳ hạn", 0, 185))
+    _row(surfaces, "Bằng VND", "60", "55", 215)
+    _row(surfaces, "Bằng ngoại tệ", "10", "8", 245)
+    _row(surfaces, None, "190", "171", 280)
+    surfaces.append(("Cho vay các TCTD khác", 0, 320))
+    _row(surfaces, "Bằng VND", "30", "25", 350)
+    _row(surfaces, "Bằng ngoại tệ", "2", "1", 380)
+    _row(surfaces, None, "32", "26", 415)
+    _row(surfaces, "Dự phòng rủi ro", "-", "(1)", 450)
+    _row(surfaces, None, "222", "196", 485)
+    surfaces.append(("Chứng khoán kinh doanh", 0, 530))
+
+    result = graph.build_interbank_deposits_loans_variant_graph_document_v1([_page(surfaces)])
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    by_role = {event["role"]: event for event in result["regions"][0]["events"]}
+    assert [item["vietocr_text"] for item in by_role["INTERBANK_LOAN"]["value_proposals"]] == [
+        "32",
+        "26",
+    ]
+    assert [
+        item["vietocr_text"] for item in by_role["INTERBANK_LOAN_PROVISION"]["value_proposals"]
+    ] == [
+        "-",
+        "(1)",
+    ]
+    assert [item["vietocr_text"] for item in by_role["FAMILY_TOTAL"]["value_proposals"]] == [
+        "222",
+        "196",
+    ]
+
+
 def test_gold_currency_and_vay_variant_uses_explicit_document_level_unit() -> None:
     declaration = _page(
         [("Các số liệu được trình bày theo đơn vị triệu VND", 0, 0)],
