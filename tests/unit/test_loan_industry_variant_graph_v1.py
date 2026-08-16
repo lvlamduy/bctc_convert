@@ -401,3 +401,102 @@ def test_public_replay_rejects_coordinated_graph_rehash() -> None:
 
     with pytest.raises(loan_industry.LoanIndustryVariantGraphV1Error, match="replay exactly"):
         loan_industry.validate_loan_industry_variant_graph_replay_v1(forged, pages)
+
+
+def test_extended_annual_compact_branch_leading_owner_total_and_population_boundary() -> None:
+    surfaces = [
+        ("Theo ngành nghề kinh doanh", 0, 0),
+        ("Số cuối năm", 500, 40),
+        ("Số đầu năm", 800, 40),
+        ("Triệu VND", 500, 70),
+        ("Triệu VND", 800, 70),
+        ("Cho vay khách hàng", 0, 105),
+        ("100", 500, 105),
+        ("90", 800, 105),
+        ("Thương mại", 0, 150),
+        ("60", 500, 150),
+        ("55", 800, 150),
+        ("Dịch vụ cá nhân và cộng đồng", 0, 195),
+        ("40", 500, 195),
+        ("35", 800, 195),
+        ("Nghiệp vụ phát hành thư tín dụng trả chậm", 0, 240),
+        ("Thương mại", 0, 285),
+        ("5", 500, 285),
+        ("4", 800, 285),
+    ]
+
+    result = loan_industry.build_loan_industry_variant_graph_document_v1(
+        [_page(surfaces)], enable_extended_annual_variants=True
+    )
+
+    graph = result["graphs"][0]
+    assert graph["period_mode"] == "LOCAL_RELATIVE_YEAR_END_PERIOD_ROLES"
+    assert [row["role"] for row in graph["rows"]] == [
+        "TRADE_REPAIR",
+        "PERSONAL_COMMUNITY_SERVICES",
+    ]
+    assert [item["semantic_surface"] for item in graph["total"]] == ["100", "90"]
+    assert all(
+        check["status"] == "CORROBORATED_SEMANTIC_PROPOSAL_ONLY"
+        for check in graph["accounting_checks"]
+    )
+
+
+def test_extended_annual_suffix_and_detached_page_edge_noise_do_not_break_wrapped_label() -> None:
+    surfaces = [
+        ("CHO VAY KHÁCH HÀNG", 0, 0),
+        ("Phân tích dư nợ cho vay theo ngành như sau:", 0, 35),
+        ("31/12/2025", 500, 75),
+        ("31/12/2024", 800, 75),
+        ("Triệu đồng", 500, 105),
+        ("Triệu đồng", 800, 105),
+        ("Cung cấp nước, quản lý và xử lý rác thải,", 0, 150),
+        ("PHÍ", 1500, 165),
+        ("nước thải", 0, 175),
+        ("10", 500, 175),
+        ("9", 800, 175),
+        ("Xây dựng", 0, 220),
+        ("20", 500, 220),
+        ("18", 800, 220),
+        ("30", 500, 265),
+        ("27", 800, 265),
+    ]
+
+    result = loan_industry.build_loan_industry_variant_graph_document_v1(
+        [_page(surfaces)], enable_extended_annual_variants=True
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert [row["role"] for row in result["graphs"][0]["rows"]] == [
+        "WATER_WASTE",
+        "CONSTRUCTION",
+    ]
+
+
+def test_extended_annual_replay_requires_the_same_variant_profile() -> None:
+    surfaces = [
+        ("CHO VAY KHÁCH HÀNG", 0, 0),
+        ("Theo ngành nghề kinh doanh", 0, 35),
+        ("31/12/2025", 500, 75),
+        ("31/12/2024", 800, 75),
+        ("Triệu đồng", 500, 105),
+        ("Triệu đồng", 800, 105),
+        ("Thương mại", 0, 150),
+        ("10", 500, 150),
+        ("9", 800, 150),
+        ("10", 500, 195),
+        ("9", 800, 195),
+    ]
+    pages = [_page(surfaces)]
+    result = loan_industry.build_loan_industry_variant_graph_document_v1(
+        pages, enable_extended_annual_variants=True
+    )
+
+    assert (
+        loan_industry.validate_loan_industry_variant_graph_replay_v1(
+            result, pages, enable_extended_annual_variants=True
+        )
+        == result
+    )
+    with pytest.raises(loan_industry.LoanIndustryVariantGraphV1Error, match="replay exactly"):
+        loan_industry.validate_loan_industry_variant_graph_replay_v1(result, pages)

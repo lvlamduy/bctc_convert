@@ -60,6 +60,11 @@ _BRANCH_ALIASES = (
     "Phân tích dư nợ cho vay theo ngành nghề kinh doanh",
     "Phân tích dư nợ cho vay theo ngành nghề đăng ký kinh doanh",
 )
+_EXTENDED_BRANCH_ALIASES = (
+    "Theo ngành nghề kinh doanh",
+    "Phân tích dư nợ cho vay theo một số ngành kinh tế của khách hàng",
+    "Phân tích dư nợ cho vay theo ngành nghề kinh tế",
+)
 _ROLE_ALIASES: dict[str, tuple[str, ...]] = {
     "AGRICULTURE_FORESTRY_FISHERY": (
         "Nông Lâm nghiệp, Thủy sản",
@@ -140,6 +145,58 @@ _ROLE_ALIASES: dict[str, tuple[str, ...]] = {
     ),
     "BROAD_SERVICES": ("Dịch vụ",),
     "OTHER_INDUSTRIES": ("Khác", "Ngành khác"),
+    # These annual-report concepts are intentionally anchor-only until the
+    # independent schema verifier either binds or preserves them unresolved.
+    "PERSONAL_COMMUNITY_SERVICES": (),
+    "COMBINED_TRADE_SERVICES": (),
+}
+_EXTENDED_ROLE_ALIASES: dict[str, tuple[str, ...]] = {
+    "AGRICULTURE_FORESTRY_FISHERY": (
+        "Nông, lâm nghiệp",
+        "Nông, lâm nghiệp và thủy sản",
+        "Nông, lâm, thủy hải sản",
+    ),
+    "MANUFACTURING": ("Sản xuất và gia công chế biến",),
+    "UTILITIES": (
+        "Sản xuất và phân phối điện, khí đốt và nước",
+        "Sản xuất và phân phối điện, khí đốt",
+    ),
+    "WATER_WASTE": ("Cung cấp nước, quản lý và xử lý rác thải, nước thải",),
+    "TRADE_REPAIR": (
+        "Thương mại",
+        "Bán buôn, bán lẻ, sửa chữa ô tô, xe máy",
+        "Bán buôn và bán lẻ; sửa chữa ô tô, xe máy và xe có động cơ khác",
+    ),
+    "TRANSPORT_STORAGE": (
+        "Kho bãi, giao thông vận tải và thông tin liên lạc",
+        "Vận tải kho bãi và thông tin liên lạc",
+    ),
+    "ACCOMMODATION_FOOD": (
+        "Dịch vụ lưu trú, ăn uống",
+        "Nhà hàng và khách sạn",
+        "Nhà hàng, khách sạn",
+    ),
+    "FINANCE_BANKING_INSURANCE": ("Dịch vụ tài chính",),
+    "REAL_ESTATE": ("Tư vấn và kinh doanh bất động sản",),
+    "PROFESSIONAL_SCIENCE_TECHNOLOGY": (
+        "Hoạt động khoa học, công nghệ",
+        "Chuyên môn, khoa học và công nghệ",
+    ),
+    "HEALTH_SOCIAL_WORK": ("Y tế và cứu trợ xã hội",),
+    "HOUSEHOLD_EMPLOYMENT_SELF_USE": (
+        "Hoạt động làm thuê hộ gia đình",
+        "Hoạt động làm thuê các công việc trong hộ gia đình, sản xuất sản phẩm vật chất và dịch vụ tự tiêu dùng của hộ gia đình",
+    ),
+    "FOREIGN_BRANCH_LOANS": (
+        "Dư nợ tại chi nhánh và ngân hàng con nước ngoài",
+        "Dư nợ tại tại chi nhánh và ngân hàng con nước ngoài",
+    ),
+    "MARGIN_AND_SECURITIES_ADVANCE": (
+        "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán",
+    ),
+    "OTHER_INDUSTRIES": ("Các ngành nghề khác", "Các ngành khác"),
+    "PERSONAL_COMMUNITY_SERVICES": ("Dịch vụ cá nhân và cộng đồng",),
+    "COMBINED_TRADE_SERVICES": ("Thương mại, dịch vụ",),
 }
 _SCHEMA_ELIGIBLE_ROLES = tuple(_ROLE_ALIASES)
 # Detection starts with the smallest useful combination: one recognized family
@@ -163,6 +220,7 @@ _BOUNDARY_PREFIXES = (
     "phan tich du no theo loai hinh doanh nghiep",
     "du phong rui ro cho vay khach hang",
 )
+_EXTENDED_BOUNDARY_PREFIXES = ("nghiep vu phat hanh thu tin dung tra cham",)
 _SAFETY = {
     "bank_filename_note_or_page_used_for_inference": False,
     "blank_or_missing_companion_cells_imputed_as_zero": False,
@@ -290,21 +348,40 @@ def _distinct_aliases(values: Sequence[str]) -> tuple[str, ...]:
     return tuple(distinct.values())
 
 
-def _branch_surface(value: str) -> str:
+def _branch_surface(value: str, *, enable_extended_annual_variants: bool) -> str:
     normalized = normalize_vietnamese_anchor_v1(value)
     normalized = re.sub(r"^(?:\d+\s+)+", "", normalized)
     normalized = re.sub(r"\s+tiep theo$", "", normalized)
+    if enable_extended_annual_variants:
+        normalized = re.sub(r"\s+nhu sau$", "", normalized)
     return normalized
 
 
-def _branch_window(lines: Sequence[Mapping[str, Any]], start: int) -> dict[str, Any] | None:
-    first_normalized = _branch_surface(lines[start]["vietocr_text"])
-    if not first_normalized.startswith("phan tich"):
+def _branch_window(
+    lines: Sequence[Mapping[str, Any]],
+    start: int,
+    *,
+    enable_extended_annual_variants: bool,
+) -> dict[str, Any] | None:
+    first_normalized = _branch_surface(
+        lines[start]["vietocr_text"],
+        enable_extended_annual_variants=enable_extended_annual_variants,
+    )
+    if not first_normalized.startswith("phan tich") and not (
+        enable_extended_annual_variants and first_normalized.startswith("theo ")
+    ):
         return None
-    aliases = [normalize_vietnamese_anchor_v1(alias) for alias in _BRANCH_ALIASES]
+    aliases = [
+        normalize_vietnamese_anchor_v1(alias)
+        for alias in _BRANCH_ALIASES
+        + (_EXTENDED_BRANCH_ALIASES if enable_extended_annual_variants else ())
+    ]
     for width in range(1, min(_MAX_LABEL_WIDTH, len(lines) - start) + 1):
         surface = _joined(lines, start, start + width)
-        normalized = _branch_surface(surface)
+        normalized = _branch_surface(
+            surface,
+            enable_extended_annual_variants=enable_extended_annual_variants,
+        )
         if normalized in aliases:
             return {
                 "match_kind": "EXACT_ACCENTLESS_ALIAS",
@@ -387,15 +464,26 @@ def _customer_loan_context(
     return None
 
 
-def _is_boundary(text: str) -> bool:
+def _is_boundary(text: str, *, enable_extended_annual_variants: bool) -> bool:
     normalized = normalize_vietnamese_anchor_v1(text)
-    return any(normalized.startswith(prefix) for prefix in _BOUNDARY_PREFIXES)
+    prefixes = _BOUNDARY_PREFIXES + (
+        _EXTENDED_BOUNDARY_PREFIXES if enable_extended_annual_variants else ()
+    )
+    return any(normalized.startswith(prefix) for prefix in prefixes)
 
 
-def _table_stop(lines: Sequence[Mapping[str, Any]], branch_stop: int) -> int:
+def _table_stop(
+    lines: Sequence[Mapping[str, Any]],
+    branch_stop: int,
+    *,
+    enable_extended_annual_variants: bool,
+) -> int:
     hard_stop = min(len(lines), branch_stop + _MAX_OWNER_TABLE_LINE_SPAN)
     for index in range(branch_stop, hard_stop):
-        if _is_boundary(lines[index]["vietocr_text"]):
+        if _is_boundary(
+            lines[index]["vietocr_text"],
+            enable_extended_annual_variants=enable_extended_annual_variants,
+        ):
             return index
     return hard_stop
 
@@ -411,7 +499,11 @@ def _union_bbox(lines: Sequence[Mapping[str, Any]], indices: Sequence[int]) -> l
 
 
 def _label_candidates(
-    lines: Sequence[Mapping[str, Any]], start: int, stop: int
+    lines: Sequence[Mapping[str, Any]],
+    start: int,
+    stop: int,
+    *,
+    enable_extended_annual_variants: bool,
 ) -> list[dict[str, Any]]:
     matches: list[dict[str, Any]] = []
     occupied: set[int] = set()
@@ -421,8 +513,18 @@ def _label_candidates(
         if is_number_like_v1(lines[line_index]["vietocr_text"]):
             continue
         text_indices: list[int] = []
+        origin_box = lines[line_index]["bbox"]
         for candidate_index in range(line_index, min(stop, line_index + 9)):
             if not is_number_like_v1(lines[candidate_index]["vietocr_text"]):
+                # Ignore detached stamps/page-edge noise between wrapped label
+                # fragments.  This is relative to the starting label geometry,
+                # not to a bank, page size, or fixed coordinate.
+                if (
+                    enable_extended_annual_variants
+                    and candidate_index != line_index
+                    and lines[candidate_index]["bbox"][0] > origin_box[2] + 200
+                ):
+                    continue
                 text_indices.append(candidate_index)
                 if len(text_indices) == _MAX_LABEL_WIDTH:
                     break
@@ -434,7 +536,12 @@ def _label_candidates(
             # ``&`` in Vietnamese table labels.  Removing it is punctuation
             # normalization only; the original surface remains in evidence.
             match_surface = surface.replace("8", "&")
-            for role, aliases in _ROLE_ALIASES.items():
+            for role, base_aliases in _ROLE_ALIASES.items():
+                aliases = base_aliases + (
+                    _EXTENDED_ROLE_ALIASES.get(role, ()) if enable_extended_annual_variants else ()
+                )
+                if not aliases:
+                    continue
                 kind = match_vietnamese_anchor_alias_v1(match_surface, _distinct_aliases(aliases))
                 if kind is not None:
                     proposals.append((indices, role, kind, surface))
@@ -488,6 +595,8 @@ def _axes(
     page: Mapping[str, Any],
     owner_stop: int,
     first_label: int,
+    *,
+    enable_extended_annual_variants: bool,
 ) -> tuple[list[dict[str, Any]], str, list[str], list[int], dict[str, Any], list[str]]:
     header = page["lines"][owner_stop:first_label]
     reasons: list[str] = []
@@ -495,6 +604,29 @@ def _axes(
         periods, period_mode = extract_period_axis_v1(header)
     except AccountingTableAxesV1Error:
         periods, period_mode = [], "UNRESOLVED"
+    if len(periods) != 2 and enable_extended_annual_variants:
+        relative_by_surface = {
+            "so cuoi nam": "CURRENT_PERIOD_END",
+            "so dau nam": "COMPARATIVE_PERIOD_START",
+        }
+        relative = [
+            {
+                "evidence_source_line_indices": [line["source_line_index"]],
+                "period": role,
+                "x_center_x2": center_x2_v1(line),
+            }
+            for line in header
+            if (
+                role := relative_by_surface.get(
+                    normalize_vietnamese_anchor_v1(line["vietocr_text"])
+                )
+            )
+        ]
+        if len(relative) == 2 and {item["period"] for item in relative} == set(
+            relative_by_surface.values()
+        ):
+            periods = sorted(relative, key=lambda item: item["x_center_x2"])
+            period_mode = "LOCAL_RELATIVE_YEAR_END_PERIOD_ROLES"
     if len(periods) != 2:
         reasons.append("TWO_PERIOD_AXIS_NOT_RESOLVED")
 
@@ -698,6 +830,50 @@ def _rows_and_totals(
     return rows, totals, sorted(set(reasons))
 
 
+def _leading_owner_total(
+    page: Mapping[str, Any],
+    customer_loan_context: Mapping[str, Any] | None,
+    branch_stop: int,
+    first_label: int,
+    lane_types: Sequence[str],
+    lane_centers: Sequence[int],
+) -> list[dict[str, Any]] | None:
+    """Read a visible owner total that precedes its child block.
+
+    Some annual tables print ``Cho vay khách hàng`` and its two totals above
+    the industry children, then start a second, separately named population.
+    The owner row is accepted only when it is local, between branch and first
+    child, and contains exactly one value in every supported lane.
+    """
+
+    if (
+        customer_loan_context is None
+        or customer_loan_context.get("page_sequence") != page["page_sequence"]
+        or type(customer_loan_context.get("source_line_indices")) is not list
+    ):
+        return None
+    owner_indices = customer_loan_context["source_line_indices"]
+    if not owner_indices or min(owner_indices) < branch_stop or max(owner_indices) >= first_label:
+        return None
+    owner_box = _union_bbox(page["lines"], owner_indices)
+    by_lane: dict[int, Mapping[str, Any]] = {}
+    for line in page["lines"][branch_stop:first_label]:
+        if not is_number_like_v1(line["vietocr_text"]):
+            continue
+        numeric_center_x2 = line["bbox"][1] + line["bbox"][3]
+        if not 2 * owner_box[1] <= numeric_center_x2 <= 2 * owner_box[3]:
+            continue
+        lane = _nearest_lane(center_x2_v1(line), lane_centers)
+        if lane is None or lane in by_lane:
+            return None
+        by_lane[lane] = line
+    if set(by_lane) != set(range(len(lane_types))):
+        return None
+    return [
+        _value_record(by_lane[index], index, lane_types[index]) for index in range(len(lane_types))
+    ]
+
+
 def _decimal_percentage(value: str) -> Decimal | None:
     try:
         parsed = Decimal(value.strip().replace("%", "").replace(",", "."))
@@ -758,11 +934,22 @@ def _region(
     page: Mapping[str, Any],
     branch_start: int,
     branch: Mapping[str, Any],
+    *,
+    enable_extended_annual_variants: bool,
 ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
     lines = page["lines"]
     branch_stop = branch["source_line_indices"][-1] + 1
-    stop = _table_stop(lines, branch_stop)
-    labels = _label_candidates(lines, branch_stop, stop)
+    stop = _table_stop(
+        lines,
+        branch_stop,
+        enable_extended_annual_variants=enable_extended_annual_variants,
+    )
+    labels = _label_candidates(
+        lines,
+        branch_stop,
+        stop,
+        enable_extended_annual_variants=enable_extended_annual_variants,
+    )
     schema_roles = [item for item in labels if item["role"] in _SCHEMA_ELIGIBLE_ROLES]
     near = {
         "branch_source_line_index": branch_start,
@@ -780,7 +967,11 @@ def _region(
         return None, near
     first_label = min(item["source_line_indices"][0] for item in labels)
     periods, period_mode, lane_types, lane_centers, unit_scope, reasons = _axes(
-        pages, page, branch_stop, first_label
+        pages,
+        page,
+        branch_stop,
+        first_label,
+        enable_extended_annual_variants=enable_extended_annual_variants,
     )
     customer_loan_context = _customer_loan_context(pages, page, first_label)
     if customer_loan_context is None:
@@ -791,6 +982,18 @@ def _region(
     rows, totals, row_reasons = _rows_and_totals(
         page, labels, first_label, stop, lane_types, lane_centers
     )
+    if enable_extended_annual_variants and not totals:
+        leading_total = _leading_owner_total(
+            page,
+            customer_loan_context,
+            branch_stop,
+            first_label,
+            lane_types,
+            lane_centers,
+        )
+        if leading_total is not None:
+            totals = [leading_total]
+            row_reasons = [reason for reason in row_reasons if reason != "FINAL_TOTAL_NOT_RESOLVED"]
     reasons.extend(row_reasons)
     if len(periods) != 2 or not totals:
         near["unresolved_reasons"] = sorted(set(reasons))
@@ -907,16 +1110,30 @@ def _attach_minimal_anchor_resolution(
         }
 
 
-def _scan(pages: Sequence[Mapping[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+def _scan(
+    pages: Sequence[Mapping[str, Any]],
+    *,
+    enable_extended_annual_variants: bool,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     graphs: list[dict[str, Any]] = []
     near: list[dict[str, Any]] = []
     for page in pages:
         lines = page["lines"]
         for start in range(len(lines)):
-            branch = _branch_window(lines, start)
+            branch = _branch_window(
+                lines,
+                start,
+                enable_extended_annual_variants=enable_extended_annual_variants,
+            )
             if branch is None:
                 continue
-            graph, diagnostic = _region(pages, page, start, branch)
+            graph, diagnostic = _region(
+                pages,
+                page,
+                start,
+                branch,
+                enable_extended_annual_variants=enable_extended_annual_variants,
+            )
             if graph is None:
                 near.append(diagnostic)
             else:
@@ -1058,11 +1275,16 @@ def _validate_result(value: Any) -> dict[str, Any]:
 
 def build_loan_industry_variant_graph_document_v1(
     pages: Sequence[Mapping[str, Any]],
+    *,
+    enable_extended_annual_variants: bool = False,
 ) -> dict[str, Any]:
     """Enumerate every complete customer-loan industry table in one PDF."""
 
     normalized_pages = _pages(pages)
-    graphs, near = _scan(normalized_pages)
+    graphs, near = _scan(
+        normalized_pages,
+        enable_extended_annual_variants=enable_extended_annual_variants,
+    )
     _attach_minimal_anchor_resolution(graphs, near)
     full_match_count = len(graphs)
     material = {
@@ -1108,12 +1330,18 @@ def build_loan_industry_variant_graph_document_v1(
 
 
 def validate_loan_industry_variant_graph_replay_v1(
-    value: Any, pages: Sequence[Mapping[str, Any]]
+    value: Any,
+    pages: Sequence[Mapping[str, Any]],
+    *,
+    enable_extended_annual_variants: bool = False,
 ) -> dict[str, Any]:
     """Exact-rebuild an industry graph from the complete document line axis."""
 
     persisted = _validate_result(value)
-    rebuilt = build_loan_industry_variant_graph_document_v1(pages)
+    rebuilt = build_loan_industry_variant_graph_document_v1(
+        pages,
+        enable_extended_annual_variants=enable_extended_annual_variants,
+    )
     if not same_typed_json_v1(persisted, rebuilt):
         raise _error("loan-industry graph does not replay exactly")
     return rebuilt

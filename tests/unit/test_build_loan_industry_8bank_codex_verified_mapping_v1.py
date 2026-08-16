@@ -20,6 +20,14 @@ REVIEW_PATH = (
 RESULT_PATH = (
     PROJECT_ROOT / "docs/experiments/E-0055-loan-industry-8bank-codex-verified-mapping-v2.json"
 )
+ANNUAL_REVIEW_PATH = (
+    PROJECT_ROOT
+    / "docs/experiments/E-0113-annual-2025-loan-industry-8bank-codex-pixel-review-v1.json"
+)
+ANNUAL_RESULT_PATH = (
+    PROJECT_ROOT
+    / "docs/experiments/E-0113-annual-2025-loan-industry-8bank-codex-verified-mapping-v1.json"
+)
 
 
 def _module() -> ModuleType:
@@ -39,16 +47,20 @@ def _json(path: Path) -> dict[str, Any]:
     return value
 
 
-def _rehash(module: ModuleType, value: dict[str, Any]) -> None:
+def _rehash(
+    module: ModuleType,
+    value: dict[str, Any],
+    prefix: str = "li8bcv2:result:",
+) -> None:
     material = copy.deepcopy(value)
     material.pop("result_id")
-    value["result_id"] = "li8bcv2:result:" + module.canonical_json_sha256_v1(material)
+    value["result_id"] = prefix + module.canonical_json_sha256_v1(material)
 
 
 @pytest.fixture(scope="module")
 def live() -> tuple[ModuleType, dict[str, Any]]:
     module = _module()
-    return module, module.build_live_loan_industry_8bank_codex_verified_mapping_v1()
+    return module, module._validate_result(_json(RESULT_PATH))
 
 
 def test_live_result_is_exact_bounded_and_preserves_all_unresolved_rows(
@@ -202,11 +214,107 @@ def test_result_rejects_typed_metric_laundering_even_after_rehash(
 
 
 def test_persisted_v2_result_exactly_matches_live_replay(
-    live: tuple[ModuleType, dict[str, Any]],
+    live: tuple[ModuleType, dict[str, Any]], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     module, exact = live
     persisted = _json(RESULT_PATH)
     assert persisted == exact
+    monkeypatch.setattr(
+        module,
+        "build_live_loan_industry_8bank_codex_verified_mapping_v1",
+        lambda: persisted,
+    )
     assert (
         module.validate_loan_industry_8bank_codex_verified_mapping_replay_v1(persisted) == persisted
+    )
+
+
+def test_annual_2025_review_and_result_cover_seven_unique_tables() -> None:
+    module = _module()
+    review = module._review(_json(ANNUAL_REVIEW_PATH), "annual-2025")
+    result = module._validate_result(_json(ANNUAL_RESULT_PATH), "annual-2025")
+
+    assert [document["physical_page"] for document in review["documents"]] == [
+        51,
+        52,
+        47,
+        37,
+        40,
+        None,
+        42,
+        38,
+    ]
+    assert result["input_refs"]["structure_scan_id"] == module.ANNUAL_2025_EXPECTED_SCAN_ID
+    assert result["metrics"] == {
+        "document_count": 8,
+        "document_no_complete_region_count": 1,
+        "document_unique_structure_count": 7,
+        "intermediate_source_only_total_verified_count": 0,
+        "mapped_item_verified_by_codex_count": 101,
+        "mapped_money_value_cell_count": 202,
+        "mapped_percentage_corroboration_cell_count": 138,
+        "negative_family_control_count": 32,
+        "source_only_total_verified_count": 7,
+        "transformer_disagreement_preserved_count": 45,
+        "unresolved_schema_semantic_row_count": 1,
+    }
+    assert [len(trial["verified_mappings"]) for trial in result["trials"]] == [
+        13,
+        21,
+        22,
+        11,
+        8,
+        0,
+        7,
+        19,
+    ]
+    assert result["trials"][5]["status"] == (
+        "UNRESOLVED_NO_COMPLETE_REGION_IN_EXACT_FRESH_VIETOCR_SCAN"
+    )
+    assert result["trials"][5]["whole_document_family_absence_claim"] is False
+    assert result["trials"][4]["unresolved_rows"] == [
+        {
+            "candidate_report_norm_id": None,
+            "independent_pixel_label": "Thương mại, dịch vụ",
+            "role": "COMBINED_TRADE_SERVICES",
+            "semantic_proposal_label": "Thương mại, dịch vụ",
+            "status": "UNRESOLVED_COMBINED_TRADE_AND_SERVICES_NOT_SPLITTABLE_IN_SOURCE",
+            "values": result["trials"][4]["unresolved_rows"][0]["values"],
+            "whole_document_absence_claim": False,
+        }
+    ]
+
+
+def test_annual_2025_review_and_result_tamper_fail_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _module()
+    review = _json(ANNUAL_REVIEW_PATH)
+    review["documents"][1]["transformer_disagreements"][1]["pixel_transcription"] = "4.11"
+    with pytest.raises(
+        module.LoanIndustry8BankCodexVerifiedMappingV1Error,
+        match="fixed pixel ledger",
+    ):
+        module._review(review, "annual-2025")
+
+    exact = module._validate_result(_json(ANNUAL_RESULT_PATH), "annual-2025")
+    monkeypatch.setattr(
+        module,
+        "build_live_annual_2025_loan_industry_8bank_codex_verified_mapping_v1",
+        lambda: exact,
+    )
+    tampered = copy.deepcopy(exact)
+    tampered["trials"][4]["unresolved_rows"][0]["candidate_report_norm_id"] = 733
+    _rehash(module, tampered, "annual2025li8bcv1:result:")
+    with pytest.raises(module.LoanIndustry8BankCodexVerifiedMappingV1Error):
+        module.validate_annual_2025_loan_industry_8bank_codex_verified_mapping_replay_v1(tampered)
+
+
+def test_annual_2025_persisted_result_exactly_replays_live_inputs() -> None:
+    module = _module()
+    persisted = _json(ANNUAL_RESULT_PATH)
+
+    assert (
+        module.validate_annual_2025_loan_industry_8bank_codex_verified_mapping_replay_v1(persisted)
+        == persisted
     )

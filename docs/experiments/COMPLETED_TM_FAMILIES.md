@@ -98,13 +98,16 @@ cột dòng tiền vào/ra chỉ dùng kiểm tra vì schema không có trục t
 
 ## 7. Phân tích cho vay theo ngành nghề kinh doanh
 
-- **Đã xác minh:** MBB p33, VPB p44, HDB p27, BID p22, VIB p33; tổng cộng
-  80 khoản mục nguồn đã được map.
-- **Không có trong báo cáo:** ACB, VCB, CTG.
-- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong năm vùng được tìm
-  thấy. Các quyết định đã gồm `Vận tải kho bãi` → 736, population chi nhánh
-  nước ngoài → 6058, khoản vay mua nhà ở cá nhân → khoản mục schema riêng,
-  `Dịch vụ` của BID → khoản mục schema riêng, và các ngành nhỏ phù hợp → 745.
+- **Đã xác minh trên BCTC hợp nhất kiểm toán năm 2025:** ACB p51, MBB p52,
+  VPB p47, HDB p37, VCB p40, BID p42 và VIB p38. Whole-PDF scan tìm đúng một
+  vùng ở mỗi báo cáo này; 101 dòng nguồn đã được map và 22 trục tiền tệ đóng
+  đúng với tổng in. Graph dùng một khung family chung nhưng cho phép tập con,
+  thứ tự hàng, nhãn branch, hai/bốn lane và owner-total đứng trước thay đổi.
+- **Không có trong báo cáo annual-2025 đã bind:** CTG. Toàn PDF không có vùng
+  phân tích cho vay theo ngành; kết luận này chỉ áp dụng cho đúng filing đã bind.
+- **Còn thiếu:** VCB p40, dòng `Thương mại, dịch vụ`. Số nguồn gộp hai khái
+  niệm nên không được tự tách vào `Thương mại: bán buôn, bán lẻ` và một leaf
+  dịch vụ; giữ `UNRESOLVED` đến khi schema có leaf gộp hoặc có nguồn phân rã.
 
 ## 8. Phân tích chất lượng cho vay
 
@@ -912,7 +915,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Chứng khoán kinh doanh | ✓ p47 | ✓ p49 | ✓ p43 | ✓ p34 | ✓ p37 | ✓ p41 | ✓ p40 | — | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; VIB chỉ có family đầu tư |
 | Công cụ tài chính phái sinh | ✓ p49 | ✓ p66 | ✓ p44 | ✓ p35 | — | ✓ p42 | ✓ p41 | ✓ p37 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; VCB không có family |
 | Loại hình cho vay | ✓ p17 | ✓ p31 | ✓ p42 | ✓ p26 | ✓ p30 | ✓ p38 | ✓ p22 | ✓ p33 | 0 |
-| Ngành nghề kinh doanh | — | ✓ p33 | ✓ p44 | ✓ p27 | — | — | ✓ p22 | ✓ p33 | 0 trong 5 vùng; 3 bank không có |
+| Ngành nghề kinh doanh | ✓ p51 | ✓ p52 | ✓ p47 | ✓ p37 | ✓\* p40 | — | ✓ p42 | ✓ p38 | 1 dòng VCB `Thương mại, dịch vụ`; CTG không có family trong filing annual-2025 |
 | Chất lượng cho vay | ✓ p18 | ✓ p31 | ✓ p42 | ✓ p26 | ✓ p30 | ✓ p39 | ✓ p22 | ✓ p60 | 0; 1944 tách riêng tại ACB/MBB/VPB, MBB 747 đã trừ đúng 5746 |
 | Dư nợ theo thời gian | ✓ p18 | ✓ p31 | ✓ p42 | ✓ p26 | ✓ p31 | ✓ p39 | ✓ p22 | ✓ p33 | 0 khoản mục mục tiêu |
 | Cho vay theo loại tiền tệ | — p17–18 | — p31–33 | — p42–44 | — p26–27 | — p30–31 | — p38–39 | — p22 | — p33–34 | 0; family không có trong 8 PDF cố định |

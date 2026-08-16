@@ -8,6 +8,7 @@ meaning is broader, narrower, or differently aggregated remain unresolved.
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import importlib.util
 import json
@@ -33,15 +34,20 @@ from bctc_ai.mapping.semantic_local_accounting_schema_candidate_v1 import (
 )
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
+    canonical_json_bytes_v1,
     canonical_json_sha256_v1,
     same_typed_json_v1,
 )
 
 __all__ = [
+    "ANNUAL_2025_FORMAT_VERSION",
     "FORMAT_VERSION",
     "LoanIndustry8BankCodexVerifiedMappingV1Error",
+    "build_annual_2025_loan_industry_8bank_codex_verified_mapping_v1",
+    "build_live_annual_2025_loan_industry_8bank_codex_verified_mapping_v1",
     "build_live_loan_industry_8bank_codex_verified_mapping_v1",
     "build_loan_industry_8bank_codex_verified_mapping_v1",
+    "validate_annual_2025_loan_industry_8bank_codex_verified_mapping_replay_v1",
     "validate_loan_industry_8bank_codex_verified_mapping_replay_v1",
 ]
 
@@ -65,6 +71,38 @@ CROP_MANIFEST_PATH = Path(
 EXPECTED_INDEX_SHA256 = "f84fd9ca56fe06af230e011ecad85b0a576e27e1eca32ee141e654a6776b78b4"
 EXPECTED_CROP_MANIFEST_SHA256 = "a9f80cf9104af1177ba43d8a85de00b28c735223a91b663a5a79401bb038d94e"
 EXPECTED_AXIS_SHA256 = "e99873cd16a7234702d0ee6e5fa9eb37637a1a75621228381e3dbcd7c5cfdcca"
+
+ANNUAL_2025_FORMAT_VERSION = "ANNUAL_2025_LOAN_INDUSTRY_8BANK_CODEX_VERIFIED_MAPPING_V1"
+ANNUAL_2025_REVIEW_FORMAT = "ANNUAL_2025_LOAN_INDUSTRY_8BANK_CODEX_PIXEL_REVIEW_V1"
+ANNUAL_2025_CLAIM_BOUNDARY = (
+    "AUDITED_CONSOLIDATED_ANNUAL_2025_FIXED_EIGHT_DOCUMENT_COMPLETE_PDF_FRESH_VIETOCR_"
+    "VARIABLE_LOAN_INDUSTRY_STRUCTURE_PLUS_INDEPENDENT_CODEX_VISIBLE_PIXEL_ACCOUNTING_"
+    "SCHEMA_ADJUDICATION_ONLY_NO_BROAD_CORPUS_CANONICALIZATION_EXPORT_OR_PRODUCTION_AUTHORITY"
+)
+ANNUAL_2025_SEMANTIC_INDEX_PATH = Path(
+    "output/calibration/annual-2025-8bank-full-document-vietocr-v1/verified-index/semantic_index.json"
+)
+ANNUAL_2025_CROP_MANIFEST_PATH = Path(
+    "output/calibration/annual-2025-8bank-full-document-vietocr-v1/crop_manifest.json"
+)
+ANNUAL_2025_REVIEW_PATH = Path(
+    "docs/experiments/E-0113-annual-2025-loan-industry-8bank-codex-pixel-review-v1.json"
+)
+ANNUAL_2025_RESULT_PATH = Path(
+    "docs/experiments/E-0113-annual-2025-loan-industry-8bank-codex-verified-mapping-v1.json"
+)
+ANNUAL_2025_EXPECTED_INDEX_SHA256 = (
+    "98bb9854e699230da86538cf024ef3f4817b9e2f4dd2b2a75f46198f00e4247d"
+)
+ANNUAL_2025_EXPECTED_CROP_MANIFEST_SHA256 = (
+    "17d12a4d6b1dfaf0e243300757fd225b8c9cca80810a2d856efdb55a5b4ac000"
+)
+ANNUAL_2025_EXPECTED_AXIS_SHA256 = (
+    "aa81f553fda69315e84b7adbda13347c25a4490b016fc9660ff4f2cd49795ce7"
+)
+ANNUAL_2025_EXPECTED_SCAN_ID = (
+    "lifdsv1:scan:1d9c3605438741e7a2de3a78254a64de00c461d2da3c26f4471fc6ecca740f24"
+)
 
 _ROLE_BINDINGS: dict[str, tuple[int, str]] = {
     "AGRICULTURE_FORESTRY_FISHERY": (728, "+ Nông, lâm, thủy hải sản"),
@@ -105,6 +143,7 @@ _ROLE_BINDINGS: dict[str, tuple[int, str]] = {
         "+ Cho vay tại Chi nhánh và ngân hàng con nước ngoài",
     ),
     "BROAD_SERVICES": (6060, "+ Dịch vụ"),
+    "PERSONAL_COMMUNITY_SERVICES": (739, "+ Dịch vụ cá nhân và cộng đồng"),
 }
 _REVIEW_UNRESOLVED_ROLES: dict[str, tuple[int | None, str]] = {
     "TRANSPORT_STORAGE": (
@@ -127,8 +166,17 @@ _REVIEW_UNRESOLVED_ROLES: dict[str, tuple[int | None, str]] = {
         739,
         "UNRESOLVED_BROAD_SERVICES_NOT_EQUIVALENT_TO_PERSONAL_AND_COMMUNITY_SERVICES",
     ),
+    "COMBINED_TRADE_SERVICES": (
+        None,
+        "UNRESOLVED_COMBINED_TRADE_AND_SERVICES_NOT_SPLITTABLE_IN_SOURCE",
+    ),
 }
-_UNRESOLVED_ROLES: dict[str, tuple[int | None, str]] = {}
+_UNRESOLVED_ROLES: dict[str, tuple[int | None, str]] = {
+    "COMBINED_TRADE_SERVICES": (
+        None,
+        "UNRESOLVED_COMBINED_TRADE_AND_SERVICES_NOT_SPLITTABLE_IN_SOURCE",
+    ),
+}
 _NEGATIVE_FAMILIES = (
     (717, "Phân tích theo loại hình cho vay"),
     (746, "Phân tích chất lượng nợ cho vay"),
@@ -190,6 +238,504 @@ _RESULT_FIELDS = {
     "trials",
 }
 _HEX = set("0123456789abcdef")
+
+
+def _annual_disagreement(
+    field: str,
+    role: str,
+    source_line_index: int,
+    semantic: str,
+    pixel: str,
+    lane_index: int | None = None,
+) -> dict[str, Any]:
+    return {
+        "disposition": (
+            "VISIBLE_PDF_PIXEL_ORTHOGRAPHY_OVERRIDES_TRANSFORMER_TEXT_ERROR"
+            if field == "ROW_LABEL"
+            else "VISIBLE_PDF_PIXEL_PUNCTUATION_OVERRIDES_TRANSFORMER_CHARACTER_ERROR"
+        ),
+        "field": field,
+        "lane_index": lane_index,
+        "pixel_transcription": pixel,
+        "role": role,
+        "semantic_proposal": semantic,
+        "source_line_index": source_line_index,
+    }
+
+
+def _annual_positive_review(
+    *,
+    code: str,
+    page: int,
+    render: str,
+    graph_sha256: str,
+    owner: str,
+    branch: str,
+    periods: Sequence[str],
+    units: Sequence[str],
+    roles: Sequence[str],
+    money_totals: Sequence[str],
+    percentage_totals: Sequence[str] = (),
+    unresolved_roles: Sequence[str] = (),
+    disagreements: Sequence[Mapping[str, Any]] = (),
+    context_page: int | None = None,
+    context_render: str | None = None,
+) -> dict[str, Any]:
+    return {
+        "branch_pixel_transcription": branch,
+        "disposition": "UNIQUE_COMPLETE_REGION_VISIBLE_PIXEL_REVIEWED",
+        "document_provenance": code,
+        "matcher_graph_sha256": graph_sha256,
+        "owner_pixel_transcription": owner,
+        "period_pixel_transcriptions": list(periods),
+        "physical_page": page,
+        "pixel_accounting": {
+            "intermediate_money_totals": [],
+            "maximum_percentage_rounding_residual": "0.00",
+            "money_lane_sums": list(money_totals),
+            "percentage_lane_sums": list(percentage_totals),
+            "printed_money_totals": list(money_totals),
+            "printed_percentage_totals": list(percentage_totals),
+            "row_count": len(roles),
+        },
+        "reviewed_role_order": list(roles),
+        "schema_unresolved_roles": list(unresolved_roles),
+        "statement_context_evidence": {
+            "mode": "PAGE_LOCAL_VISIBLE_HEADING",
+            "physical_page": context_page or page,
+            "pixel_transcription": "THUYẾT MINH BÁO CÁO TÀI CHÍNH HỢP NHẤT",
+            "render_sha256": context_render or render,
+            "report_scope": "CONSOLIDATED",
+        },
+        "target_render_sha256": render,
+        "transformer_disagreements": [canonical_clone_v1(item) for item in disagreements],
+        "unit_pixel_transcriptions": list(units),
+        "whole_document_family_absence_claim": False,
+    }
+
+
+def _annual_negative_review(code: str) -> dict[str, Any]:
+    return {
+        "branch_pixel_transcription": None,
+        "disposition": "NO_COMPLETE_REGION_IN_EXACT_FULL_DOCUMENT_FRESH_VIETOCR_SCAN",
+        "document_provenance": code,
+        "matcher_graph_sha256": None,
+        "owner_pixel_transcription": None,
+        "period_pixel_transcriptions": [],
+        "physical_page": None,
+        "pixel_accounting": None,
+        "reviewed_role_order": [],
+        "schema_unresolved_roles": [],
+        "statement_context_evidence": None,
+        "target_render_sha256": None,
+        "transformer_disagreements": [],
+        "unit_pixel_transcriptions": [],
+        "whole_document_family_absence_claim": False,
+    }
+
+
+def _annual_2025_review_documents() -> list[dict[str, Any]]:
+    money4 = ("100,00", "100,00")
+    return [
+        _annual_positive_review(
+            code="ACB",
+            page=51,
+            render="6a54bc510401937d7f563cad60bcf5d8e8da223c9e5a4e5e662bd2e6889202b1",
+            graph_sha256="86990388f54fa99617455335d0700130f0346946eae33fe574ee99efdffce0bb",
+            owner="CHO VAY KHÁCH HÀNG (tiếp theo)",
+            branch="Theo ngành nghề kinh doanh",
+            periods=("31.12.2025", "31.12.2024"),
+            units=("Triệu VND", "Triệu VND"),
+            roles=(
+                "TRADE_REPAIR",
+                "MANUFACTURING",
+                "CONSTRUCTION",
+                "PERSONAL_COMMUNITY_SERVICES",
+                "REAL_ESTATE",
+                "TRANSPORT_STORAGE",
+                "ACCOMMODATION_FOOD",
+                "AGRICULTURE_FORESTRY_FISHERY",
+                "EDUCATION",
+                "FINANCE_BANKING_INSURANCE",
+                "PROFESSIONAL_SCIENCE_TECHNOLOGY",
+                "HEALTH_SOCIAL_WORK",
+                "OTHER_INDUSTRIES",
+            ),
+            money_totals=("686.777.352", "580.686.248"),
+            disagreements=(
+                _annual_disagreement(
+                    "ROW_LABEL",
+                    "REAL_ESTATE",
+                    38,
+                    "Tư vấn và kinh doanh bắt động sản",
+                    "Tư vấn và kinh doanh bất động sản",
+                ),
+                _annual_disagreement(
+                    "ROW_LABEL",
+                    "HEALTH_SOCIAL_WORK",
+                    59,
+                    "Y tế và cửu trợ xã hội",
+                    "Y tế và cứu trợ xã hội",
+                ),
+            ),
+        ),
+        _annual_positive_review(
+            code="MBB",
+            page=52,
+            render="1c5dc5b29ba40817a9ae1837ba8921374401f9b54c4bcf22696f693cab8864b5",
+            graph_sha256="163a6680871bde25a4ff1ef773c96da4e0a36d2b2a37a21e424a5034bd34f2cc",
+            owner="CHO VAY KHÁCH HÀNG (TIẾP THEO)",
+            branch="Phân tích dư nợ cho vay theo ngành",
+            periods=("31/12/2025", "31/12/2024"),
+            units=("triệu đồng", "%", "triệu đồng", "%"),
+            roles=(
+                "AGRICULTURE_FORESTRY_FISHERY",
+                "MINING",
+                "MANUFACTURING",
+                "UTILITIES",
+                "WATER_WASTE",
+                "CONSTRUCTION",
+                "TRADE_REPAIR",
+                "TRANSPORT_STORAGE",
+                "ACCOMMODATION_FOOD",
+                "INFORMATION_COMMUNICATION",
+                "FINANCE_BANKING_INSURANCE",
+                "REAL_ESTATE",
+                "PROFESSIONAL_SCIENCE_TECHNOLOGY",
+                "ADMIN_SUPPORT",
+                "EDUCATION",
+                "HEALTH_SOCIAL_WORK",
+                "ARTS_ENTERTAINMENT",
+                "OTHER_SERVICES",
+                "HOUSEHOLD_EMPLOYMENT_SELF_USE",
+                "FOREIGN_BRANCH_LOANS",
+                "MARGIN_AND_SECURITIES_ADVANCE",
+            ),
+            money_totals=("1.084.019.370", "776.657.846"),
+            percentage_totals=money4,
+            disagreements=(
+                _annual_disagreement(
+                    "ROW_LABEL",
+                    "UTILITIES",
+                    122,
+                    "Sản xuất và phân phối điện, khi đốt, nước nóng, hợi nước và điều hòa không khí",
+                    "Sản xuất và phân phối điện, khí đốt, nước nóng, hơi nước và điều hòa không khí",
+                ),
+                _annual_disagreement("ROW_VALUE", "CONSTRUCTION", 139, "4.11", "4,11", 3),
+                _annual_disagreement(
+                    "ROW_LABEL",
+                    "INFORMATION_COMMUNICATION",
+                    155,
+                    "Thông tin và truyền thống",
+                    "Thông tin và truyền thông",
+                ),
+                _annual_disagreement(
+                    "ROW_LABEL",
+                    "ADMIN_SUPPORT",
+                    175,
+                    "Hoạt động hành chính và dịch vụ nỗ trợ",
+                    "Hoạt động hành chính và dịch vụ hỗ trợ",
+                ),
+                _annual_disagreement(
+                    "ROW_LABEL",
+                    "OTHER_SERVICES",
+                    195,
+                    "Hoạt động dịch vụ khắc",
+                    "Hoạt động dịch vụ khác",
+                ),
+                _annual_disagreement(
+                    "ROW_LABEL",
+                    "FOREIGN_BRANCH_LOANS",
+                    205,
+                    "Dư nợ tại tại chi nhánh và ngân hàng con nước ngoài",
+                    "Dư nợ tại chi nhánh và ngân hàng con nước ngoài",
+                ),
+            ),
+        ),
+        _annual_positive_review(
+            code="VPB",
+            page=47,
+            render="c25f076abb504792d8ab587c35e95903e4111fdedd6afa57066592d2f81bee0f",
+            graph_sha256="f241f6a2d9e63d9200c235f6beb8d961df4850d3aa715622d98872b6d57c232b",
+            owner="CHO VAY KHÁCH HÀNG (TIẾP THEO)",
+            branch="Phân tích dư nợ cho vay theo một số ngành kinh tế của khách hàng",
+            periods=("Ngày 31 tháng 12 năm 2025", "Ngày 31 tháng 12 năm 2024"),
+            units=("Triệu đồng", "%", "Triệu đồng", "%"),
+            roles=(
+                "AGRICULTURE_FORESTRY_FISHERY",
+                "MINING",
+                "MANUFACTURING",
+                "UTILITIES",
+                "WATER_WASTE",
+                "CONSTRUCTION",
+                "TRADE_REPAIR",
+                "TRANSPORT_STORAGE",
+                "ACCOMMODATION_FOOD",
+                "INFORMATION_COMMUNICATION",
+                "FINANCE_BANKING_INSURANCE",
+                "REAL_ESTATE",
+                "PROFESSIONAL_SCIENCE_TECHNOLOGY",
+                "ADMIN_SUPPORT",
+                "PUBLIC_ADMIN_DEFENCE_SOCIAL_SECURITY",
+                "EDUCATION",
+                "HEALTH_SOCIAL_WORK",
+                "ARTS_ENTERTAINMENT",
+                "OTHER_SERVICES",
+                "HOUSEHOLD_EMPLOYMENT_SELF_USE",
+                "PERSONAL_HOUSING_LOANS",
+                "MARGIN_AND_SECURITIES_ADVANCE",
+            ),
+            money_totals=("943.901.630", "697.771.123"),
+            percentage_totals=("100", "100"),
+            disagreements=(
+                _annual_disagreement(
+                    "ROW_LABEL",
+                    "UTILITIES",
+                    32,
+                    "Sản xuất và phân phối điện, khi đốt, nước nóng, hơi nước và điều hoà không khí",
+                    "Sản xuất và phân phối điện, khí đốt, nước nóng, hơi nước và điều hoà không khí",
+                ),
+                _annual_disagreement(
+                    "ROW_LABEL",
+                    "TRADE_REPAIR",
+                    50,
+                    "Bán buôn và bản lẻ; sửa chữa ô tô, mô tô, xe máy và xe có động cơ khác",
+                    "Bán buôn và bán lẻ; sửa chữa ô tô, mô tô, xe máy và xe có động cơ khác",
+                ),
+                _annual_disagreement(
+                    "ROW_LABEL",
+                    "PROFESSIONAL_SCIENCE_TECHNOLOGY",
+                    82,
+                    "Hoạt động chuyền môn, khoa học và công nghệ",
+                    "Hoạt động chuyên môn, khoa học và công nghệ",
+                ),
+                _annual_disagreement(
+                    "ROW_LABEL",
+                    "PUBLIC_ADMIN_DEFENCE_SOCIAL_SECURITY",
+                    94,
+                    "Hoạt động của Đảng cộng sản, tổ chức chính trị-xã hội, quản lý Nhà nước, an ninh quốc phòng; bào đảm xã hội bắt buộc",
+                    "Hoạt động của Đảng cộng sản, tổ chức chính trị-xã hội, quản lý Nhà nước, an ninh quốc phòng; bảo đảm xã hội bắt buộc",
+                ),
+                _annual_disagreement(
+                    "ROW_LABEL",
+                    "HOUSEHOLD_EMPLOYMENT_SELF_USE",
+                    122,
+                    "Hoạt động làm thuế các công việc trong hộ gia đình, sản xuất sản phẩm vật chắt và dịch vụ tự tiêu dùng của hộ gia đình",
+                    "Hoạt động làm thuê các công việc trong hộ gia đình, sản xuất sản phẩm vật chất và dịch vụ tự tiêu dùng của hộ gia đình",
+                ),
+            ),
+        ),
+        _annual_positive_review(
+            code="HDB",
+            page=37,
+            render="149f2acdd88096089e2db8511c3494399a4446cbe11b7590ed8233eff123241b",
+            graph_sha256="3b6058653b5559625b9139ab7878c9fcc1c670aa5b83b0523a3772369dd1ea78",
+            owner="Cho vay khách hàng",
+            branch="Phân tích dư nợ cho vay theo ngành nghề đăng ký kinh doanh",
+            periods=("Số cuối năm", "Số đầu năm"),
+            units=("Triệu VND", "Triệu VND"),
+            roles=(
+                "HOUSEHOLD_EMPLOYMENT_SELF_USE",
+                "REAL_ESTATE",
+                "TRADE_REPAIR",
+                "CONSTRUCTION",
+                "FINANCE_BANKING_INSURANCE",
+                "MANUFACTURING",
+                "ACCOMMODATION_FOOD",
+                "TRANSPORT_STORAGE",
+                "UTILITIES",
+                "AGRICULTURE_FORESTRY_FISHERY",
+                "OTHER_INDUSTRIES",
+            ),
+            money_totals=("546.370.779", "431.306.069"),
+            disagreements=(
+                _annual_disagreement(
+                    "ROW_LABEL",
+                    "HOUSEHOLD_EMPLOYMENT_SELF_USE",
+                    15,
+                    "Hoạt động làm thuê các công việc trong các hỗ gia đình, sản xuất sản phẩm vật chất và dịch vụ tự tiêu dùng của hộ gia đình",
+                    "Hoạt động làm thuê các công việc trong các hộ gia đình, sản xuất sản phẩm vật chất và dịch vụ tự tiêu dùng của hộ gia đình",
+                ),
+                _annual_disagreement(
+                    "ROW_LABEL",
+                    "TRADE_REPAIR",
+                    23,
+                    "Bán buôn và bán lẻ; sửa chữa ỗ tô, mô tô, xe máy và xe có động cơ khác",
+                    "Bán buôn và bán lẻ; sửa chữa ô tô, mô tô, xe máy và xe có động cơ khác",
+                ),
+                _annual_disagreement(
+                    "ROW_LABEL", "TRANSPORT_STORAGE", 39, "Văn tải kho bãi", "Vận tải kho bãi"
+                ),
+                _annual_disagreement(
+                    "ROW_LABEL",
+                    "UTILITIES",
+                    42,
+                    "Sản xuất và phân phối điện, khi đốt, nước nóng, hơi nước và điều hoà không khí",
+                    "Sản xuất và phân phối điện, khí đốt, nước nóng, hơi nước và điều hoà không khí",
+                ),
+                _annual_disagreement(
+                    "ROW_LABEL",
+                    "AGRICULTURE_FORESTRY_FISHERY",
+                    46,
+                    "Nông nghiệp, lâm nghiệp vài thuỷ sản",
+                    "Nông nghiệp, lâm nghiệp và thuỷ sản",
+                ),
+            ),
+        ),
+        _annual_positive_review(
+            code="VCB",
+            page=40,
+            render="9d0fe14207d7886d65b7d6d0c45eb9b5e7fcce554686e2e5c366062eac2cc118",
+            graph_sha256="5159143166a6425dd47b2354bac9a6756e26b6e7126a9dee6a8584778bb1fbdb",
+            owner="Cho vay khách hàng",
+            branch="Phân tích dư nợ cho vay theo ngành như sau:",
+            periods=("31/12/2025", "31/12/2024"),
+            units=("Triệu VND", "Triệu VND"),
+            roles=(
+                "MANUFACTURING",
+                "COMBINED_TRADE_SERVICES",
+                "CONSTRUCTION",
+                "UTILITIES",
+                "AGRICULTURE_FORESTRY_FISHERY",
+                "TRANSPORT_STORAGE",
+                "MINING",
+                "ACCOMMODATION_FOOD",
+                "OTHER_INDUSTRIES",
+            ),
+            unresolved_roles=("COMBINED_TRADE_SERVICES",),
+            money_totals=("1.673.525.675", "1.449.198.899"),
+        ),
+        _annual_negative_review("CTG"),
+        _annual_positive_review(
+            code="BID",
+            page=42,
+            render="443dc71ee70615358b01109d701014804bca0a24caa41d1b85377f0f3b3b8df9",
+            graph_sha256="105d2f51670f7098404cacdb0826a14f7954d809806f57bef1dbc8a4621452f9",
+            owner="CHO VAY KHÁCH HÀNG",
+            branch="Phân tích dư nợ cho vay theo ngành nghề kinh tế",
+            periods=("Số cuối năm", "Số đầu năm"),
+            units=("Triệu VND", "%", "Triệu VND", "%"),
+            roles=(
+                "AGRICULTURE_FORESTRY_FISHERY",
+                "MANUFACTURING",
+                "UTILITIES",
+                "CONSTRUCTION",
+                "TRADE_REPAIR",
+                "BROAD_SERVICES",
+                "OTHER_INDUSTRIES",
+            ),
+            money_totals=("2.372.955.074", "2.056.082.420"),
+            percentage_totals=money4,
+        ),
+        _annual_positive_review(
+            code="VIB",
+            page=38,
+            render="f2a3aab2957c7f60330e3ae1dd2ee86b80289b2c3142f32a82e944f9d9500f44",
+            graph_sha256="a97480dcfc33123b4d0abc38fc08b671d88b9e3e80e03d08780ab857780219b4",
+            owner="CHO VAY KHÁCH HÀNG (TIẾP THEO)",
+            branch="Phân tích dư nợ theo ngành nghề kinh doanh",
+            periods=("31/12/2025", "31/12/2024"),
+            units=("triệu đồng", "%", "triệu đồng", "%"),
+            roles=(
+                "AGRICULTURE_FORESTRY_FISHERY",
+                "MINING",
+                "MANUFACTURING",
+                "UTILITIES",
+                "WATER_WASTE",
+                "CONSTRUCTION",
+                "TRADE_REPAIR",
+                "TRANSPORT_STORAGE",
+                "ACCOMMODATION_FOOD",
+                "INFORMATION_COMMUNICATION",
+                "FINANCE_BANKING_INSURANCE",
+                "REAL_ESTATE",
+                "PROFESSIONAL_SCIENCE_TECHNOLOGY",
+                "ADMIN_SUPPORT",
+                "EDUCATION",
+                "HEALTH_SOCIAL_WORK",
+                "ARTS_ENTERTAINMENT",
+                "OTHER_SERVICES",
+                "HOUSEHOLD_EMPLOYMENT_SELF_USE",
+            ),
+            money_totals=("381.972.016", "324.009.713"),
+            percentage_totals=money4,
+            disagreements=(
+                _annual_disagreement(
+                    "ROW_LABEL",
+                    "UTILITIES",
+                    56,
+                    "Sản xuất và phân phói điện, khi đốt và nước nóng, hoi nước và điều hòa không khí",
+                    "Sản xuất và phân phối điện, khí đốt và nước nóng, hơi nước và điều hòa không khí",
+                ),
+                _annual_disagreement(
+                    "ROW_LABEL",
+                    "WATER_WASTE",
+                    63,
+                    "Cung cấp nước: hoạt động quản lý và xử lý rác thải, nước thải",
+                    "Cung cấp nước; hoạt động quản lý và xử lý rác thải, nước thải",
+                ),
+                _annual_disagreement(
+                    "ROW_LABEL",
+                    "FINANCE_BANKING_INSURANCE",
+                    95,
+                    "Hoạt động tài chính, ngân hàng và bảo hiềm",
+                    "Hoạt động tài chính, ngân hàng và bảo hiểm",
+                ),
+                _annual_disagreement(
+                    "ROW_LABEL",
+                    "ARTS_ENTERTAINMENT",
+                    127,
+                    "Nghệ thuật vui choi và giải trí",
+                    "Nghệ thuật vui chơi và giải trí",
+                ),
+                *(
+                    _annual_disagreement("ROW_VALUE", role, line, semantic, pixel, lane)
+                    for role, lane, line, semantic, pixel in (
+                        ("MINING", 1, 48, "0.26", "0,26"),
+                        ("UTILITIES", 1, 60, "1.50", "1,50"),
+                        ("UTILITIES", 3, 62, "1.21", "1,21"),
+                        ("WATER_WASTE", 3, 68, "0.04", "0,04"),
+                        ("CONSTRUCTION", 1, 71, "1.72", "1,72"),
+                        ("CONSTRUCTION", 3, 73, "1.05", "1,05"),
+                        ("TRADE_REPAIR", 1, 76, "10.46", "10,46"),
+                        ("TRADE_REPAIR", 3, 78, "7.33", "7,33"),
+                        ("ACCOMMODATION_FOOD", 1, 87, "1.25", "1,25"),
+                        ("ACCOMMODATION_FOOD", 3, 89, "0.42", "0,42"),
+                        ("INFORMATION_COMMUNICATION", 1, 92, "0.06", "0,06"),
+                        ("FINANCE_BANKING_INSURANCE", 1, 98, "8.51", "8,51"),
+                        ("REAL_ESTATE", 1, 103, "5.52", "5,52"),
+                        ("PROFESSIONAL_SCIENCE_TECHNOLOGY", 1, 109, "0.52", "0,52"),
+                        ("PROFESSIONAL_SCIENCE_TECHNOLOGY", 3, 111, "0.40", "0,40"),
+                        ("ADMIN_SUPPORT", 1, 114, "0.12", "0,12"),
+                        ("ADMIN_SUPPORT", 3, 116, "0.09", "0,09"),
+                        ("EDUCATION", 2, 120, "735 418", "735.418"),
+                        ("EDUCATION", 3, 121, "0.23", "0,23"),
+                        ("HEALTH_SOCIAL_WORK", 1, 124, "0.13", "0,13"),
+                        ("OTHER_SERVICES", 1, 134, "0.07", "0,07"),
+                        ("OTHER_SERVICES", 3, 136, "0.03", "0,03"),
+                        ("HOUSEHOLD_EMPLOYMENT_SELF_USE", 3, 143, "71.98", "71,98"),
+                    )
+                ),
+            ),
+        ),
+    ]
+
+
+def _annual_2025_review_blueprint() -> dict[str, Any]:
+    return {
+        "claim_boundary": ANNUAL_2025_CLAIM_BOUNDARY,
+        "documents": _annual_2025_review_documents(),
+        "format_version": ANNUAL_2025_REVIEW_FORMAT,
+        "review_checks": list(_REVIEW_CHECKS),
+        "reviewer": {
+            "kind": "CODEX_INDEPENDENT_PDF_PIXEL_REVIEW",
+            "review_run_id": "E-0113-ANNUAL-2025",
+        },
+        "safety": canonical_clone_v1(_REVIEW_SAFETY),
+        "semantic_axis_sha256": ANNUAL_2025_EXPECTED_AXIS_SHA256,
+        "semantic_index_sha256": ANNUAL_2025_EXPECTED_INDEX_SHA256,
+        "state": "CODEX_PIXEL_REVIEW_COMPLETE",
+    }
 
 
 class LoanIndustry8BankCodexVerifiedMappingV1Error(ValueError):
@@ -321,7 +867,60 @@ def _accounting_review(value: Any, *, lane_count: int, row_count: int) -> dict[s
     return canonical_clone_v1(value)
 
 
-def _review(value: Any) -> dict[str, Any]:
+def _profile(name: str) -> dict[str, Any]:
+    if name == "wave1-2026":
+        return {
+            "authority": canonical_clone_v1(_AUTHORITY),
+            "axis_sha256": EXPECTED_AXIS_SHA256,
+            "claim_boundary": CLAIM_BOUNDARY,
+            "crop_manifest_path": CROP_MANIFEST_PATH,
+            "crop_manifest_sha256": EXPECTED_CROP_MANIFEST_SHA256,
+            "extended_variants": False,
+            "format_version": FORMAT_VERSION,
+            "index_path": SEMANTIC_INDEX_PATH,
+            "index_sha256": EXPECTED_INDEX_SHA256,
+            "result_id_prefix": "li8bcv2:result:",
+            "result_path": Path(
+                "docs/experiments/E-0055-loan-industry-8bank-codex-verified-mapping-v2.json"
+            ),
+            "review_path": REVIEW_PATH,
+            "review_sha256": REVIEW_SHA256,
+            "scan_id": "lifdsv1:scan:a0b560c0ff0fb07fff7e49e4c9b38c2b3f9baa8aefb9d911f37d01a920b54a11",
+            "state": "LOAN_INDUSTRY_8BANK_BOUNDED_CODEX_VERIFICATION_COMPLETE",
+            "unresolved_roles": dict(_UNRESOLVED_ROLES),
+        }
+    if name == "annual-2025":
+        authority = canonical_clone_v1(_AUTHORITY)
+        authority["unmatched_or_non_equivalent_roles_preserved_unresolved"] = True
+        return {
+            "authority": authority,
+            "axis_sha256": ANNUAL_2025_EXPECTED_AXIS_SHA256,
+            "claim_boundary": ANNUAL_2025_CLAIM_BOUNDARY,
+            "crop_manifest_path": ANNUAL_2025_CROP_MANIFEST_PATH,
+            "crop_manifest_sha256": ANNUAL_2025_EXPECTED_CROP_MANIFEST_SHA256,
+            "extended_variants": True,
+            "format_version": ANNUAL_2025_FORMAT_VERSION,
+            "index_path": ANNUAL_2025_SEMANTIC_INDEX_PATH,
+            "index_sha256": ANNUAL_2025_EXPECTED_INDEX_SHA256,
+            "result_id_prefix": "annual2025li8bcv1:result:",
+            "result_path": ANNUAL_2025_RESULT_PATH,
+            "review_path": ANNUAL_2025_REVIEW_PATH,
+            "review_sha256": canonical_json_sha256_v1(_annual_2025_review_blueprint()),
+            "scan_id": ANNUAL_2025_EXPECTED_SCAN_ID,
+            "state": "ANNUAL_2025_LOAN_INDUSTRY_8BANK_CODEX_VERIFICATION_COMPLETE",
+            "unresolved_roles": dict(_UNRESOLVED_ROLES),
+        }
+    raise _error("loan-industry mapping profile is unsupported")
+
+
+def _review(value: Any, profile_name: str = "wave1-2026") -> dict[str, Any]:
+    if profile_name == "annual-2025":
+        expected = _annual_2025_review_blueprint()
+        if not same_typed_json_v1(value, expected):
+            raise _error("annual-2025 Codex industry review differs from fixed pixel ledger")
+        return canonical_clone_v1(expected)
+    if profile_name != "wave1-2026":
+        raise _error("loan-industry mapping profile is unsupported")
     if type(value) is not dict or set(value) != {
         "claim_boundary",
         "documents",
@@ -713,6 +1312,20 @@ def _total_cells(graph_cells: Any) -> tuple[list[dict[str, Any]], list[int | Dec
     return output, parsed
 
 
+def _period_key(value: str) -> str:
+    compact = value.strip()
+    numeric = re.search(r"(?<!\d)(\d{1,2})[./-](\d{1,2})[./-](\d{4})(?!\d)", compact)
+    if numeric is not None:
+        day, month, year = (int(item) for item in numeric.groups())
+        return f"{day:02d}/{month:02d}/{year:04d}"
+    normalized = normalize_vietnamese_anchor_v1(compact)
+    written = re.search(r"\bngay (\d{1,2}) thang (\d{1,2}) nam (\d{4})\b", normalized)
+    if written is not None:
+        day, month, year = (int(item) for item in written.groups())
+        return f"{day:02d}/{month:02d}/{year:04d}"
+    return normalized
+
+
 def _reviewed_axes(graph: Mapping[str, Any], review_document: Mapping[str, Any]) -> None:
     periods = graph.get("period_axis")
     reviewed_periods = review_document["period_pixel_transcriptions"]
@@ -723,9 +1336,27 @@ def _reviewed_axes(graph: Mapping[str, Any], review_document: Mapping[str, Any])
             "so dau ky",
         ]:
             raise _error("review relative-period surfaces drifted")
+    elif graph.get("period_mode") == "LOCAL_RELATIVE_YEAR_END_PERIOD_ROLES":
+        expected_periods = ["CURRENT_PERIOD_END", "COMPARATIVE_PERIOD_START"]
+        if [normalize_vietnamese_anchor_v1(item) for item in reviewed_periods] != [
+            "so cuoi nam",
+            "so dau nam",
+        ]:
+            raise _error("review relative year-end period surfaces drifted")
     else:
-        expected_periods = reviewed_periods
-    if type(periods) is not list or [item.get("period") for item in periods] != expected_periods:
+        expected_periods = [_period_key(item) for item in reviewed_periods]
+    if (
+        type(periods) is not list
+        or [
+            _period_key(item.get("period"))
+            if type(item.get("period")) is str
+            and not item["period"].endswith("_PERIOD_END")
+            and not item["period"].endswith("_PERIOD_START")
+            else item.get("period")
+            for item in periods
+        ]
+        != expected_periods
+    ):
         raise _error("review and unique graph period axis disagree")
     unit_scope = graph.get("unit_scope")
     if type(unit_scope) is not dict:
@@ -755,18 +1386,26 @@ def build_loan_industry_8bank_codex_verified_mapping_v1(
     *,
     crop_manifest_sha256: str,
     review_sha256: str,
+    _profile_name: str = "wave1-2026",
 ) -> dict[str, Any]:
     """Derive bounded verified row mappings from exact live inputs and review."""
 
+    profile = _profile(_profile_name)
     axis = project_full_document_vietocr_accounting_axis_v1(semantic_index)
-    if axis["semantic_axis_sha256"] != EXPECTED_AXIS_SHA256:
+    if axis["semantic_axis_sha256"] != profile["axis_sha256"]:
         raise _error("full-document semantic axis identity drifted")
     scanner = _scanner()
-    scanner.validate_loan_industry_full_document_scan_replay_v1(structure_scan, semantic_index)
-    reviewed = _review(review)
-    if review_sha256 != REVIEW_SHA256:
+    scanner.validate_loan_industry_full_document_scan_replay_v1(
+        structure_scan,
+        semantic_index,
+        **({"enable_extended_annual_variants": True} if profile["extended_variants"] else {}),
+    )
+    if structure_scan.get("scan_id") != profile["scan_id"]:
+        raise _error("loan-industry structure scan identity drifted")
+    reviewed = _review(review, _profile_name)
+    if review_sha256 != profile["review_sha256"]:
         raise _error("Codex pixel review content identity drifted")
-    if crop_manifest_sha256 != EXPECTED_CROP_MANIFEST_SHA256:
+    if crop_manifest_sha256 != profile["crop_manifest_sha256"]:
         raise _error("full-document crop manifest identity drifted")
     if (
         type(crop_manifest) is not dict
@@ -777,6 +1416,7 @@ def build_loan_industry_8bank_codex_verified_mapping_v1(
     if type(schema_authority) is not dict:
         raise _error("live TM schema authority projection drifted")
     schema_roles, negative_controls = _schema(schema_by_id)
+    unresolved_roles = profile["unresolved_roles"]
 
     trials: list[dict[str, Any]] = []
     for ordinal, expected_code in enumerate(EXPECTED_DOCUMENT_ORDER, 1):
@@ -913,7 +1553,7 @@ def build_loan_industry_8bank_codex_verified_mapping_v1(
                     }
                 )
             else:
-                candidate_id, status = _UNRESOLVED_ROLES[role]
+                candidate_id, status = unresolved_roles[role]
                 unresolved.append(
                     {
                         "candidate_report_norm_id": candidate_id,
@@ -1045,37 +1685,42 @@ def build_loan_industry_8bank_codex_verified_mapping_v1(
         ),
     }
     material = {
-        "authority": canonical_clone_v1(_AUTHORITY),
-        "claim_boundary": CLAIM_BOUNDARY,
-        "format_version": FORMAT_VERSION,
+        "authority": canonical_clone_v1(profile["authority"]),
+        "claim_boundary": profile["claim_boundary"],
+        "format_version": profile["format_version"],
         "input_refs": {
             "codex_pixel_review": {
-                "path": REVIEW_PATH.as_posix(),
+                "path": profile["review_path"].as_posix(),
                 "sha256": review_sha256,
             },
             "crop_manifest_sha256": crop_manifest_sha256,
             "semantic_axis_sha256": axis["semantic_axis_sha256"],
-            "semantic_index_sha256": EXPECTED_INDEX_SHA256,
+            "semantic_index_sha256": profile["index_sha256"],
             "structure_scan_id": structure_scan["scan_id"],
             "tm_schema_authority": canonical_clone_v1(schema_authority),
         },
         "metrics": metrics,
-        "state": "LOAN_INDUSTRY_8BANK_BOUNDED_CODEX_VERIFICATION_COMPLETE",
+        "state": profile["state"],
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "li8bcv2:result:" + canonical_json_sha256_v1(material)}
+        {
+            **material,
+            "result_id": profile["result_id_prefix"] + canonical_json_sha256_v1(material),
+        },
+        _profile_name,
     )
 
 
-def _validate_result(value: Any) -> dict[str, Any]:
+def _validate_result(value: Any, profile_name: str = "wave1-2026") -> dict[str, Any]:
+    profile = _profile(profile_name)
     if type(value) is not dict or set(value) != _RESULT_FIELDS:
         raise _error("verified loan-industry result fields drifted")
     if (
-        value["format_version"] != FORMAT_VERSION
-        or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "LOAN_INDUSTRY_8BANK_BOUNDED_CODEX_VERIFICATION_COMPLETE"
-        or not same_typed_json_v1(value["authority"], _AUTHORITY)
+        value["format_version"] != profile["format_version"]
+        or value["claim_boundary"] != profile["claim_boundary"]
+        or value["state"] != profile["state"]
+        or not same_typed_json_v1(value["authority"], profile["authority"])
         or type(value["trials"]) is not list
         or len(value["trials"]) != len(EXPECTED_DOCUMENT_ORDER)
         or type(value["metrics"]) is not dict
@@ -1084,7 +1729,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
         raise _error("verified loan-industry result identity/authority drifted")
     clone = canonical_clone_v1(value)
     result_id = clone.pop("result_id")
-    if result_id != "li8bcv2:result:" + canonical_json_sha256_v1(clone):
+    if result_id != profile["result_id_prefix"] + canonical_json_sha256_v1(clone):
         raise _error("verified loan-industry result identity drifted")
     positive_fields = {
         "document_ordinal",
@@ -1210,9 +1855,9 @@ def _validate_result(value: Any) -> dict[str, Any]:
                     "values",
                     "whole_document_absence_claim",
                 }
-                or item["role"] not in _UNRESOLVED_ROLES
-                or item["status"] != _UNRESOLVED_ROLES[item["role"]][1]
-                or item["candidate_report_norm_id"] != _UNRESOLVED_ROLES[item["role"]][0]
+                or item["role"] not in profile["unresolved_roles"]
+                or item["status"] != profile["unresolved_roles"][item["role"]][1]
+                or item["candidate_report_norm_id"] != profile["unresolved_roles"][item["role"]][0]
                 or item["whole_document_absence_claim"] is not False
             ):
                 raise _error("unresolved loan-industry row shape/status drifted")
@@ -1258,6 +1903,69 @@ def build_live_loan_industry_8bank_codex_verified_mapping_v1() -> dict[str, Any]
     )
 
 
+def build_annual_2025_loan_industry_8bank_codex_verified_mapping_v1(
+    semantic_index: Any,
+    crop_manifest: Any,
+    structure_scan: Any,
+    review: Any,
+    schema_authority: Any,
+    schema_by_id: Mapping[int, Any],
+    *,
+    crop_manifest_sha256: str,
+    review_sha256: str,
+) -> dict[str, Any]:
+    """Derive the audited consolidated annual-2025 industry mappings."""
+
+    return build_loan_industry_8bank_codex_verified_mapping_v1(
+        semantic_index,
+        crop_manifest,
+        structure_scan,
+        review,
+        schema_authority,
+        schema_by_id,
+        crop_manifest_sha256=crop_manifest_sha256,
+        review_sha256=review_sha256,
+        _profile_name="annual-2025",
+    )
+
+
+def build_live_annual_2025_loan_industry_8bank_codex_verified_mapping_v1() -> dict[str, Any]:
+    """Replay the fixed annual-2025 evidence and derive the bounded result."""
+
+    profile = _profile("annual-2025")
+    semantic_index = _json_bytes(
+        _fixed_bytes(profile["index_path"], profile["index_sha256"]),
+        "annual-2025 full-document semantic index",
+    )
+    crop_manifest = _json_bytes(
+        _fixed_bytes(profile["crop_manifest_path"], profile["crop_manifest_sha256"]),
+        "annual-2025 full-document crop manifest",
+    )
+    review = _review(
+        _json_bytes(
+            _fixed_bytes(profile["review_path"], profile["review_sha256"]),
+            "annual-2025 Codex industry pixel review",
+        ),
+        "annual-2025",
+    )
+    scanner = _scanner()
+    structure_scan = scanner.build_loan_industry_full_document_scan_v1(
+        semantic_index,
+        enable_extended_annual_variants=True,
+    )
+    schema_authority, schema_by_id = _authority_snapshot(PROJECT_ROOT)
+    return build_annual_2025_loan_industry_8bank_codex_verified_mapping_v1(
+        semantic_index,
+        crop_manifest,
+        structure_scan,
+        review,
+        schema_authority,
+        schema_by_id,
+        crop_manifest_sha256=profile["crop_manifest_sha256"],
+        review_sha256=profile["review_sha256"],
+    )
+
+
 def validate_loan_industry_8bank_codex_verified_mapping_replay_v1(
     value: Any,
 ) -> dict[str, Any]:
@@ -1270,9 +1978,64 @@ def validate_loan_industry_8bank_codex_verified_mapping_replay_v1(
     return rebuilt
 
 
+def validate_annual_2025_loan_industry_8bank_codex_verified_mapping_replay_v1(
+    value: Any,
+) -> dict[str, Any]:
+    """Exact-rebuild the annual-2025 result from every fixed authority."""
+
+    persisted = _validate_result(value, "annual-2025")
+    rebuilt = build_live_annual_2025_loan_industry_8bank_codex_verified_mapping_v1()
+    if not same_typed_json_v1(persisted, rebuilt):
+        raise _error("annual-2025 verified loan-industry result does not replay exactly")
+    return rebuilt
+
+
 def main() -> int:
-    result = build_live_loan_industry_8bank_codex_verified_mapping_v1()
-    print(json.dumps(result, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--profile", choices=("wave1-2026", "annual-2025"), default="wave1-2026")
+    parser.add_argument("--write-review", action="store_true")
+    parser.add_argument("--validate", type=Path)
+    parser.add_argument("--output", type=Path)
+    args = parser.parse_args()
+    profile = _profile(args.profile)
+    output = args.output or (
+        profile["review_path"] if args.write_review else profile["result_path"]
+    )
+    if args.write_review and args.profile != "annual-2025":
+        parser.error("the immutable wave1 review cannot be regenerated")
+    if args.write_review and args.validate is not None:
+        parser.error("--write-review and --validate are mutually exclusive")
+    if args.write_review:
+        payload = canonical_json_bytes_v1(_annual_2025_review_blueprint())
+        if output.exists():
+            raise _error(f"refusing to overwrite annual review: {output}")
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(payload)
+        print(profile["review_sha256"])
+        return 0
+    if args.validate is not None:
+        value = _json_bytes(args.validate.read_bytes(), "verified loan-industry result")
+        result = (
+            validate_annual_2025_loan_industry_8bank_codex_verified_mapping_replay_v1(value)
+            if args.profile == "annual-2025"
+            else validate_loan_industry_8bank_codex_verified_mapping_replay_v1(value)
+        )
+        print(result["result_id"])
+        return 0
+    result = (
+        build_live_annual_2025_loan_industry_8bank_codex_verified_mapping_v1()
+        if args.profile == "annual-2025"
+        else build_live_loan_industry_8bank_codex_verified_mapping_v1()
+    )
+    payload = canonical_json_bytes_v1(result)
+    if args.output is None and args.profile == "wave1-2026":
+        sys.stdout.buffer.write(payload + b"\n")
+        return 0
+    if output.exists():
+        raise _error(f"refusing to overwrite verified result: {output}")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_bytes(payload)
+    print(result["result_id"])
     return 0
 
 

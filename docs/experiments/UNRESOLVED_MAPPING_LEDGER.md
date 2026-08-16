@@ -17,8 +17,8 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **244 entries**.  Current open queue: **71**.  Closed history:
-**99** row/graph resolutions and **74** confirmed bound-report family absences.
+Ledger total: **246 entries**.  Current open queue: **72**.  Closed history:
+**99** row/graph resolutions and **75** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
@@ -75,6 +75,32 @@ bank: `Số cuối năm/Số đầu năm`, bảng tiền/% bốn lane, khoản p
 tài chính, thư tín dụng trả chậm và các cách gọi margin/đối tượng nước ngoài.
 VietOCR HDB đọc tổng so sánh `442.464.841`; pixel và phép cộng các hàng xác nhận
 `442.484.841`. Đây là lỗi OCR đã đóng, không phải khoảng trống mapping.
+
+E-0113 `Phân tích cho vay theo ngành nghề kinh doanh` trên tám BCTC hợp nhất
+kiểm toán năm 2025 tìm đúng một vùng tại ACB p51, MBB p52, VPB p47, HDB p37,
+VCB p40, BID p42 và VIB p38; CTG được xác nhận không có family trong đúng filing
+đã bind. 101 dòng nguồn được `VERIFIED_BY_CODEX`, 22 trục tiền tệ đóng đúng và
+45 lỗi dấu/ký tự/dấu thập phân của VietOCR được giữ thành bất đồng đã kiểm tra.
+
+### E-0113-LI-001 — VCB — `Thương mại, dịch vụ`
+
+- Report: BCTC hợp nhất kiểm toán năm 2025; physical page 40.
+- Source label: `Thương mại, dịch vụ`.
+- Visible values: `240.272.006 | 214.488.774`.
+- Structure/accounting: nằm đúng trong graph ngành duy nhất và cả hai trục đều
+  tham gia phương trình tổng đã đóng.
+- Reason: một số nguồn gộp cả thương mại và dịch vụ; không thể chia có căn cứ
+  sang ReportNormId 734 và một leaf dịch vụ riêng.
+- Status: `OPEN — UNRESOLVED_COMBINED_TRADE_AND_SERVICES_NOT_SPLITTABLE_IN_SOURCE`.
+
+### E-0113-LI-002 — CTG — family không có trong filing annual-2025 đã bind
+
+- Scan scope: toàn bộ BCTC hợp nhất kiểm toán năm 2025, dùng fresh VietOCR
+  Transformer và kiểm tra các cặp anchor gần đúng.
+- Result: không có bảng phân tích cho vay theo ngành; các vùng gần giống thuộc
+  family khác và không vượt owner/child/period/unit/total checks.
+- Status: `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; không suy rộng sang filing
+  CTG khác.
 
 E-0079 `Thu nhập lãi và các khoản thu nhập tương tự` không bổ sung dòng OPEN:
 cả tám vùng duy nhất đã map hết các dòng nguồn vào 1143–1150. Hai lỗi mất chữ

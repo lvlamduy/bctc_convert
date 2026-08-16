@@ -110,6 +110,29 @@ def test_scan_exact_replay_rebuilds_every_document(monkeypatch: pytest.MonkeyPat
     assert scanner.validate_loan_industry_full_document_scan_replay_v1(result, {}) == result
 
 
+def test_scan_extended_annual_profile_is_forwarded_and_replayed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    axis = _axis()
+    for document in axis["documents"]:
+        document["pages"][0]["lines"][1]["vietocr_text"] = "Theo ngành nghề kinh doanh"
+    monkeypatch.setattr(
+        scanner, "project_full_document_vietocr_accounting_axis_v1", lambda _value: axis
+    )
+
+    result = scanner.build_loan_industry_full_document_scan_v1(
+        {}, enable_extended_annual_variants=True
+    )
+
+    assert result["metrics"]["document_unique_structural_match_count"] == 8
+    assert (
+        scanner.validate_loan_industry_full_document_scan_replay_v1(
+            result, {}, enable_extended_annual_variants=True
+        )
+        == result
+    )
+
+
 def test_coordinated_match_tamper_is_rejected_by_public_replay(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

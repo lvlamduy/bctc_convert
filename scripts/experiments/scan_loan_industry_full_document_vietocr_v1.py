@@ -185,14 +185,23 @@ def _validate_result(value: Any) -> dict[str, Any]:
     return canonical_clone_v1(value)
 
 
-def build_loan_industry_full_document_scan_v1(semantic_index: Any) -> dict[str, Any]:
+def build_loan_industry_full_document_scan_v1(
+    semantic_index: Any,
+    *,
+    enable_extended_annual_variants: bool = False,
+) -> dict[str, Any]:
     """Build the deterministic eight-document structure-only industry scan."""
 
     axis = project_full_document_vietocr_accounting_axis_v1(semantic_index)
     matcher = _matcher()
     trials: list[dict[str, Any]] = []
     for document in axis["documents"]:
-        match = matcher.build_loan_industry_variant_graph_document_v1(_matcher_pages(document))
+        match = matcher.build_loan_industry_variant_graph_document_v1(
+            _matcher_pages(document),
+            **(
+                {"enable_extended_annual_variants": True} if enable_extended_annual_variants else {}
+            ),
+        )
         trials.append(
             {
                 "document_ordinal": document["document_ordinal"],
@@ -242,12 +251,18 @@ def build_loan_industry_full_document_scan_v1(semantic_index: Any) -> dict[str, 
 
 
 def validate_loan_industry_full_document_scan_replay_v1(
-    value: Any, semantic_index: Any
+    value: Any,
+    semantic_index: Any,
+    *,
+    enable_extended_annual_variants: bool = False,
 ) -> dict[str, Any]:
     """Exact-rebuild the scan from the fixed fresh semantic index."""
 
     persisted = _validate_result(value)
-    rebuilt = build_loan_industry_full_document_scan_v1(semantic_index)
+    rebuilt = build_loan_industry_full_document_scan_v1(
+        semantic_index,
+        enable_extended_annual_variants=enable_extended_annual_variants,
+    )
     if not same_typed_json_v1(persisted, rebuilt):
         raise _error("loan-industry full-document scan does not replay exactly")
     return rebuilt
