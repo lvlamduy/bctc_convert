@@ -123,6 +123,16 @@ khoản mục chưa map. Chín bất đồng chữ/số VietOCR được giữ m
 quyết bằng pixel cộng với quan hệ kế toán. Family annual-2025 này đã đóng hoàn
 toàn.
 
+E-0116 `Phân tích cho vay theo loại hình tiền tệ` trên tám BCTC hợp nhất kiểm
+toán năm 2025 không bổ sung dòng OPEN. Graph chung tìm đúng một vùng tại ACB
+p51 và HDB p37; bốn hàng 757/758, tám ô tiền và tám phương trình đã được xác
+minh. MBB, VPB, VCB, CTG, BID và VIB không có family này trong ranh giới note
+`Cho vay khách hàng` của filing annual-2025. Các cặp VND/ngoại tệ trong bảng
+lãi suất và bảng liên ngân hàng là đối chứng âm. Dân số thư tín dụng trả chậm
+của HDB được xác minh source-only ngoài lõi. Hai lỗi số Transformer
+`418.599.083`/`442.484.641` được pixel, PaddleOCR6 và phương trình bác bỏ để
+dùng `418.599.063`/`442.484.841`.
+
 E-0079 `Thu nhập lãi và các khoản thu nhập tương tự` không bổ sung dòng OPEN:
 cả tám vùng duy nhất đã map hết các dòng nguồn vào 1143–1150. Hai lỗi mất chữ
 số đầu của VietOCR tại VIB được trục số nguồn/PaddleOCR và pixel bác bỏ, nên là

@@ -78,6 +78,7 @@ _RESULT_FIELDS = {
 _NUMBER = re.compile(r"^\(?[+-]?[0-9]+(?:[., ][0-9]+)*%?\)?$")
 _DASH = re.compile(r"^[\-–—]+$")
 _MAJOR_NOTE = re.compile(r"^\s*[0-9]{1,2}[.)]\s+(?![0-9])")
+_ISOLATED_MAJOR_NOTE = re.compile(r"^\s*[0-9]{1,2}[.)]\s*$")
 _DATE = re.compile(
     r"(?:[0-3]?[0-9](?:[./-]|\s+)[01]?[0-9](?:[./-]|\s+)(?:20)?[0-9]{2})|"
     r"(?:ngay\s+[0-3]?[0-9]\s+thang\s+[01]?[0-9]\s+nam\s+20[0-9]{2})"
@@ -88,10 +89,13 @@ _OWNER_ALIASES = [
     "Dư nợ cho vay khách hàng",
 ]
 _BRANCH_ALIASES = [
+    "Theo loại tiền tệ",
+    "Theo loại hình tiền tệ",
     "Phân tích theo loại hình tiền tệ",
     "Phân tích theo loại tiền tệ",
     "Phân tích dư nợ theo loại hình tiền tệ",
     "Phân tích dư nợ theo loại tiền tệ",
+    "Phân tích dư nợ cho vay theo loại tiền tệ",
     "Phân tích dư nợ theo loại tiền",
     "Phân loại dư nợ theo loại tiền tệ",
     "Phân tích cho vay theo loại tiền tệ",
@@ -285,19 +289,58 @@ def _dedupe_matches_ending_on_same_line(
     return [dict(selected[key]) for key in sorted(selected)]
 
 
-def _next_note_ordinal(lines: Sequence[Mapping[str, Any]], owner: Mapping[str, Any]) -> int:
+def _next_note_ordinal(
+    lines: Sequence[Mapping[str, Any]],
+    owner: Mapping[str, Any],
+    *,
+    enable_extended_annual_variants: bool,
+) -> int:
     owner_page = owner["page_sequence"]
     for line in lines[owner["global_ordinal"] + 1 :]:
         if line["page_sequence"] > owner_page + _MAX_OWNER_PAGE_SPAN:
             return line["global_ordinal"]
-        if _MAJOR_NOTE.match(line["vietocr_text"]) and line["page_sequence"] >= owner_page:
+        if (
+            _MAJOR_NOTE.match(line["vietocr_text"])
+            or (
+                enable_extended_annual_variants and _ISOLATED_MAJOR_NOTE.match(line["vietocr_text"])
+            )
+        ) and line["page_sequence"] >= owner_page:
             return line["global_ordinal"]
     return len(lines)
 
 
 def _numeric_followers(
-    lines: Sequence[Mapping[str, Any]], match: Mapping[str, Any], stop_ordinal: int
+    lines: Sequence[Mapping[str, Any]],
+    match: Mapping[str, Any],
+    stop_ordinal: int,
+    *,
+    enable_extended_annual_variants: bool,
 ) -> list[dict[str, Any]]:
+    if enable_extended_annual_variants:
+        same_row = [
+            line
+            for line in lines
+            if line["page_sequence"] == match["page_sequence"]
+            and line["global_ordinal"] < stop_ordinal
+            and line["bbox"][0] >= match["bbox"][2]
+            and min(match["bbox"][3], line["bbox"][3]) - max(match["bbox"][1], line["bbox"][1])
+            >= 0.25
+            * min(
+                match["bbox"][3] - match["bbox"][1],
+                line["bbox"][3] - line["bbox"][1],
+            )
+            and _is_money(line["vietocr_text"])
+        ]
+        if len(same_row) >= 2:
+            return [
+                {
+                    "bbox": list(line["bbox"]),
+                    "source_line_index": line["source_line_index"],
+                    "source_text": line["source_text"],
+                    "vietocr_text": line["vietocr_text"],
+                }
+                for line in sorted(same_row, key=lambda item: (item["bbox"][0], item["bbox"][1]))
+            ]
     flattened_axis = (
         match["global_ordinal"] < len(lines)
         and lines[match["global_ordinal"]]["global_ordinal"] == match["global_ordinal"]
@@ -322,6 +365,8 @@ def _numeric_followers(
                     "vietocr_text": line["vietocr_text"],
                 }
             )
+        elif enable_extended_annual_variants and followers:
+            break
     return followers
 
 
@@ -377,6 +422,8 @@ def _region(
     stop: int,
     branches: Sequence[Mapping[str, Any]],
     child_matches: Mapping[str, Sequence[Mapping[str, Any]]],
+    *,
+    enable_extended_annual_variants: bool,
 ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
     role_candidates: dict[str, list[dict[str, Any]]] = {}
     reasons: list[str] = []
@@ -387,7 +434,12 @@ def _region(
             if owner["global_ordinal"] < match["global_ordinal"] < stop
         ]
         for match in candidates:
-            match["value_proposals"] = _numeric_followers(lines, match, stop)
+            match["value_proposals"] = _numeric_followers(
+                lines,
+                match,
+                stop,
+                enable_extended_annual_variants=enable_extended_annual_variants,
+            )
         candidates = [match for match in candidates if len(match["value_proposals"]) >= 2]
         role_candidates[role] = candidates
         if not candidates:
@@ -428,13 +480,23 @@ def _region(
     )
     last_index = max(value["source_line_index"] for value in last_event["value_proposals"])
     first_child_ordinal = min(item["global_ordinal"] for item in selected.values())
-    branch = next(
-        (
+    eligible_branches = [
+        item
+        for item in branches
+        if owner["global_ordinal"] < item["global_ordinal"] < first_child_ordinal
+    ]
+    if enable_extended_annual_variants:
+        eligible_branches.extend(
             item
             for item in branches
-            if owner["global_ordinal"] < item["global_ordinal"] < first_child_ordinal
-        ),
-        None,
+            if item["page_sequence"] == owner["page_sequence"]
+            and item["global_ordinal"] < owner["global_ordinal"]
+            and owner["source_line_index"] - item["end_source_line_index"] <= 8
+        )
+    branch = (
+        max(eligible_branches, key=lambda item: item["global_ordinal"])
+        if eligible_branches
+        else None
     )
     period_records, unit_records = _periods_and_units(
         lines,
@@ -445,9 +507,21 @@ def _region(
     material = {
         "branch_match": canonical_clone_v1(branch),
         "cluster_boundary": {
-            "first_item_role": "CUSTOMER_LOAN_OWNER",
-            "first_page_sequence": owner["page_sequence"],
-            "first_source_line_index": owner["source_line_index"],
+            "first_item_role": (
+                "OPTIONAL_CURRENCY_BRANCH"
+                if branch is not None and branch["global_ordinal"] < owner["global_ordinal"]
+                else "CUSTOMER_LOAN_OWNER"
+            ),
+            "first_page_sequence": (
+                branch["page_sequence"]
+                if branch is not None and branch["global_ordinal"] < owner["global_ordinal"]
+                else owner["page_sequence"]
+            ),
+            "first_source_line_index": (
+                branch["source_line_index"]
+                if branch is not None and branch["global_ordinal"] < owner["global_ordinal"]
+                else owner["source_line_index"]
+            ),
             "last_item_role": last_event["role"],
             "last_page_sequence": last_event["page_sequence"],
             "last_source_line_index": last_index,
@@ -478,6 +552,8 @@ def _region(
 def _orphan_pairs(
     pages: Sequence[Mapping[str, Any]],
     owner_regions: Sequence[Mapping[str, Any]],
+    *,
+    enable_extended_annual_variants: bool,
 ) -> list[dict[str, Any]]:
     covered = {
         (event["page_sequence"], event["source_line_index"])
@@ -501,9 +577,29 @@ def _orphan_pairs(
                     right["source_line_index"],
                 ) in covered:
                     continue
-                if len(_numeric_followers(page["lines"], left, len(page["lines"]))) < 2:
+                if (
+                    len(
+                        _numeric_followers(
+                            page["lines"],
+                            left,
+                            len(page["lines"]),
+                            enable_extended_annual_variants=enable_extended_annual_variants,
+                        )
+                    )
+                    < 2
+                ):
                     continue
-                if len(_numeric_followers(page["lines"], right, len(page["lines"]))) < 2:
+                if (
+                    len(
+                        _numeric_followers(
+                            page["lines"],
+                            right,
+                            len(page["lines"]),
+                            enable_extended_annual_variants=enable_extended_annual_variants,
+                        )
+                    )
+                    < 2
+                ):
                     continue
                 near.append(
                     {
@@ -527,7 +623,45 @@ def _orphan_pairs(
     return near
 
 
-def _build(value: Any) -> dict[str, Any]:
+def _collapse_same_cluster_regions(
+    regions: Sequence[Mapping[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Keep the nearest owner when repeated/continued owners reach one table."""
+
+    selected: dict[tuple[tuple[str, int, int], ...], Mapping[str, Any]] = {}
+    shadowed: list[dict[str, Any]] = []
+    for region in regions:
+        key = tuple(
+            (event["role"], event["page_sequence"], event["source_line_index"])
+            for event in region["events"]
+        )
+        current = selected.get(key)
+        if current is None:
+            selected[key] = region
+            continue
+        winner, loser = sorted(
+            (current, region),
+            key=lambda item: item["owner_context"]["global_ordinal"],
+            reverse=True,
+        )
+        selected[key] = winner
+        shadowed.append(
+            {
+                "owner_context": canonical_clone_v1(loser["owner_context"]),
+                "unresolved_reasons": ["SHADOWED_EARLIER_OWNER_FOR_SAME_CURRENCY_CLUSTER"],
+            }
+        )
+    ordered = sorted(
+        selected.values(),
+        key=lambda item: (
+            item["events"][0]["page_sequence"],
+            item["events"][0]["source_line_index"],
+        ),
+    )
+    return [canonical_clone_v1(item) for item in ordered], shadowed
+
+
+def _build(value: Any, *, enable_extended_annual_variants: bool) -> dict[str, Any]:
     pages = _pages(value)
     lines = _document_lines(pages)
     owners = _dedupe_matches_ending_on_same_line(
@@ -550,13 +684,31 @@ def _build(value: Any) -> dict[str, Any]:
     near_regions: list[dict[str, Any]] = []
     for owner in owners:
         region, near = _region(
-            lines, owner, _next_note_ordinal(lines, owner), branches, child_matches
+            lines,
+            owner,
+            _next_note_ordinal(
+                lines,
+                owner,
+                enable_extended_annual_variants=enable_extended_annual_variants,
+            ),
+            branches,
+            child_matches,
+            enable_extended_annual_variants=enable_extended_annual_variants,
         )
         if region is None:
             near_regions.append(near)
         else:
             regions.append(region)
-    near_regions.extend(_orphan_pairs(pages, regions))
+    if enable_extended_annual_variants:
+        regions, shadowed = _collapse_same_cluster_regions(regions)
+        near_regions.extend(shadowed)
+    near_regions.extend(
+        _orphan_pairs(
+            pages,
+            regions,
+            enable_extended_annual_variants=enable_extended_annual_variants,
+        )
+    )
     uniqueness = {
         "complete_region_count": len(regions),
         "status": (
@@ -616,19 +768,34 @@ def _validate_shape(value: Any) -> dict[str, Any]:
     return canonical_clone_v1(value)
 
 
-def build_loan_currency_variant_graph_document_v1(document_pages: Any) -> dict[str, Any]:
+def build_loan_currency_variant_graph_document_v1(
+    document_pages: Any,
+    *,
+    enable_extended_annual_variants: bool = False,
+) -> dict[str, Any]:
     """Scan one complete PDF for the shared loan-currency family graph."""
 
-    return _validate_shape(_build(document_pages))
+    return _validate_shape(
+        _build(
+            document_pages,
+            enable_extended_annual_variants=enable_extended_annual_variants,
+        )
+    )
 
 
 def validate_loan_currency_variant_graph_replay_v1(
-    value: Any, document_pages: Any
+    value: Any,
+    document_pages: Any,
+    *,
+    enable_extended_annual_variants: bool = False,
 ) -> dict[str, Any]:
     """Rebuild the complete-PDF graph and reject coordinated self-rehashes."""
 
     checked = _validate_shape(value)
-    rebuilt = _build(document_pages)
+    rebuilt = _build(
+        document_pages,
+        enable_extended_annual_variants=enable_extended_annual_variants,
+    )
     if not same_typed_json_v1(checked, rebuilt):
         raise _error("loan-currency graph does not replay exactly")
     return checked

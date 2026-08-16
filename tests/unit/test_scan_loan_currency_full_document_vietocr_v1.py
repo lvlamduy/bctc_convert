@@ -53,11 +53,15 @@ def test_build_scans_all_eight_documents_and_replay_rejects_tamper(
 
     class Matcher:
         calls = 0
+        annual_kwargs: list[dict[str, object]] = []
 
         @classmethod
-        def build_loan_currency_variant_graph_document_v1(cls, pages: object) -> object:
+        def build_loan_currency_variant_graph_document_v1(
+            cls, pages: object, **kwargs: object
+        ) -> object:
             del pages
             cls.calls += 1
+            cls.annual_kwargs.append(kwargs)
             return _matcher_result(accepted=cls.calls != 5)
 
     monkeypatch.setattr(scan, "project_full_document_vietocr_accounting_axis_v1", lambda _: axis)
@@ -75,6 +79,12 @@ def test_build_scans_all_eight_documents_and_replay_rejects_tamper(
         "orphan_currency_pair_negative_control_count": 16,
         "unresolved_document_count": 1,
     }
+    assert Matcher.annual_kwargs == [{}] * 8
+
+    Matcher.calls = 0
+    Matcher.annual_kwargs = []
+    scan.build_loan_currency_full_document_scan_v1({}, enable_extended_annual_variants=True)
+    assert Matcher.annual_kwargs == [{"enable_extended_annual_variants": True}] * 8
     forged = copy.deepcopy(result)
     forged["trials"][0]["document_provenance"] = "MBB"
     with pytest.raises(scan.LoanCurrencyFullDocumentScanV1Error):

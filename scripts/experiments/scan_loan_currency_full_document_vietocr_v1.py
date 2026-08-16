@@ -183,7 +183,11 @@ def _validate_result(value: Any) -> dict[str, Any]:
     return canonical_clone_v1(value)
 
 
-def build_loan_currency_full_document_scan_v1(semantic_index: Any) -> dict[str, Any]:
+def build_loan_currency_full_document_scan_v1(
+    semantic_index: Any,
+    *,
+    enable_extended_annual_variants: bool = False,
+) -> dict[str, Any]:
     """Build one deterministic loan-currency scan over all eight complete PDFs."""
 
     axis = project_full_document_vietocr_accounting_axis_v1(semantic_index)
@@ -193,7 +197,12 @@ def build_loan_currency_full_document_scan_v1(semantic_index: Any) -> dict[str, 
             "document_ordinal": document["document_ordinal"],
             "document_provenance": document["document_provenance"],
             "matcher_result": matcher.build_loan_currency_variant_graph_document_v1(
-                _matcher_pages(document)
+                _matcher_pages(document),
+                **(
+                    {"enable_extended_annual_variants": True}
+                    if enable_extended_annual_variants
+                    else {}
+                ),
             ),
             "source_pdf_sha256": _sha256(document["source_pdf"]["sha256"], "source PDF"),
         }
@@ -215,12 +224,18 @@ def build_loan_currency_full_document_scan_v1(semantic_index: Any) -> dict[str, 
 
 
 def validate_loan_currency_full_document_scan_replay_v1(
-    value: Any, semantic_index: Any
+    value: Any,
+    semantic_index: Any,
+    *,
+    enable_extended_annual_variants: bool = False,
 ) -> dict[str, Any]:
     """Exact-rebuild the scan from the complete fresh-VietOCR semantic axis."""
 
     persisted = _validate_result(value)
-    expected = build_loan_currency_full_document_scan_v1(semantic_index)
+    expected = build_loan_currency_full_document_scan_v1(
+        semantic_index,
+        enable_extended_annual_variants=enable_extended_annual_variants,
+    )
     if not same_typed_json_v1(persisted, expected):
         raise _error("loan-currency scan does not replay exactly")
     return persisted
@@ -228,11 +243,15 @@ def validate_loan_currency_full_document_scan_replay_v1(
 
 def _main() -> None:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--annual-2025", action="store_true")
     parser.add_argument("--input", type=Path, default=DEFAULT_INPUT)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     semantic_index = json.loads((PROJECT_ROOT / args.input).read_text(encoding="utf-8"))
-    result = build_loan_currency_full_document_scan_v1(semantic_index)
+    result = build_loan_currency_full_document_scan_v1(
+        semantic_index,
+        enable_extended_annual_variants=args.annual_2025,
+    )
     payload = canonical_json_bytes_v1(result)
     if args.output is None:
         sys.stdout.buffer.write(payload)

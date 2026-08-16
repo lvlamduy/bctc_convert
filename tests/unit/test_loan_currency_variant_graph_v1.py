@@ -167,6 +167,67 @@ def test_missing_child_is_retained_unresolved_and_multiple_regions_are_ambiguous
     assert result["uniqueness"]["complete_region_count"] == 2
 
 
+def test_annual_profile_uses_nearest_owner_and_branch_before_table_parent() -> None:
+    pages = [
+        _page(["9. Cho vay khách hàng"]),
+        _page(
+            [
+                "Phân tích dư nợ cho vay theo loại tiền tệ",
+                "Cho vay khách hàng",
+                "Bằng VND",
+                "500",
+                "400",
+                "Bằng ngoại tệ",
+                "50",
+                "40",
+                "Dân số tín dụng khác",
+                "9",
+                "8",
+            ],
+            page_sequence=2,
+        ),
+    ]
+    result = graph.build_loan_currency_variant_graph_document_v1(
+        pages, enable_extended_annual_variants=True
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    region = result["regions"][0]
+    assert region["owner_context"]["page_sequence"] == 2
+    assert region["branch_match"]["surface"] == ("Phân tích dư nợ cho vay theo loại tiền tệ")
+    assert region["cluster_boundary"]["first_item_role"] == "OPTIONAL_CURRENCY_BRANCH"
+    assert [len(event["value_proposals"]) for event in region["events"]] == [2, 2]
+    assert any(
+        item["unresolved_reasons"] == ["SHADOWED_EARLIER_OWNER_FOR_SAME_CURRENCY_CLUSTER"]
+        for item in result["near_regions"]
+    )
+
+
+def test_annual_profile_stops_at_isolated_next_note_number() -> None:
+    pages = [
+        _page(["5. Cho vay khách hàng"]),
+        _page(
+            [
+                "6.",
+                "Tiền gửi và cho vay các tổ chức tín dụng khác",
+                "Cho vay bằng VND",
+                "100",
+                "90",
+                "Cho vay bằng ngoại tệ",
+                "20",
+                "10",
+            ],
+            page_sequence=2,
+        ),
+    ]
+    result = graph.build_loan_currency_variant_graph_document_v1(
+        pages, enable_extended_annual_variants=True
+    )
+
+    assert result["status"] == "UNRESOLVED_NO_COMPLETE_REGION"
+    assert result["regions"] == []
+
+
 def test_exact_replay_and_bool_typing_reject_coordinated_tamper() -> None:
     pages = [_page(_implicit_family())]
     result = graph.build_loan_currency_variant_graph_document_v1(pages)

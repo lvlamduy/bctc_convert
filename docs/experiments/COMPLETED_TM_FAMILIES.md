@@ -166,14 +166,22 @@ CTG p39, BID p22 và VIB p33 vẫn giữ nguyên kết quả đã xác minh.
 
 ## 10. Phân tích cho vay theo loại hình tiền tệ
 
-- **Đã xác minh mapping:** Không phát sinh mapping vì cả tám PDF cố định không
-  trình bày family 756–758 trong note `Cho vay khách hàng`.
-- **Không có trong báo cáo:** ACB p17–18, MBB p31–33, VPB p42–44, HDB
-  p26–27, VCB p30–31, CTG p38–39, BID p22 và VIB p33–34. Ranh giới được
-  kiểm tra từ owner đầu note qua family con cuối cùng đến family/note kế tiếp.
-- **Còn thiếu:** Không có khoản mục nguồn cần map. Whole-PDF scan giữ 38 cặp
-  `VND`/`ngoại tệ` gần giống làm đối chứng âm; chúng thuộc tiền gửi/liên ngân
-  hàng, nằm ngoài ranh giới `Cho vay khách hàng`, nên không được gán vào 757/758.
+- **Đã xác minh trên BCTC hợp nhất kiểm toán năm 2025:** ACB p51 và HDB p37.
+  Hai hàng `Cho vay bằng VND` và `Cho vay bằng ngoại tệ` đã map vào 757/758;
+  cả hai kỳ và các dòng tổng khép đúng.
+- **Không có trong báo cáo:** MBB p51–52, VPB p45–47, VCB p39–40, CTG
+  p43–44, BID p41–42 và VIB p37–39. Whole-PDF scan đã kiểm tra tới family kế
+  tiếp. Các cặp VND/ngoại tệ gần đó thuộc bảng lãi suất hoặc liên ngân hàng.
+- **Còn thiếu:** Không còn khoản mục nguồn cần map. HDB có thêm dân số thư tín
+  dụng trả chậm đứng ngoài `Cho vay khách hàng`; dân số này chỉ dùng để khép
+  tổng lớn. Hai chữ số VietOCR sai tại HDB được số nguồn, pixel và phương trình
+  kế toán sửa thành `418.599.063` và `442.484.841`.
+
+Kết quả exact-replay:
+`docs/experiments/E-0116-annual-2025-loan-currency-8bank-codex-verified-mapping-v1.json`.
+
+Lượt tám PDF hiện hành trước đó vẫn giữ kết quả bounded absence E-0064 riêng,
+không bị suy rộng sang annual-2025.
 
 ## 11. Phân tích dư nợ cho vay theo khu vực địa lý
 
@@ -944,7 +952,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Ngành nghề kinh doanh | ✓ p51 | ✓ p52 | ✓ p47 | ✓ p37 | ✓\* p40 | — | ✓ p42 | ✓ p38 | 1 dòng VCB `Thương mại, dịch vụ`; CTG không có family trong filing annual-2025 |
 | Chất lượng cho vay | ✓ p50 | ✓ p51 | ✓ p45 | ✓ p36 | ✓ p39 | ✓ p43 | ✓ p42 | ✓ p66 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; 1944 tách riêng tại ACB/MBB/VPB |
 | Dư nợ theo thời gian | ✓ p50 | ✓ p51 | ✓ p45 | ✓ p36 | ✓ p40 | ✓ p44 | ✓ p42 | ✓ p38 | 0 dòng annual-2025; MBB/VPB map margin, HDB giữ dân số bổ sung source-only |
-| Cho vay theo loại tiền tệ | — p17–18 | — p31–33 | — p42–44 | — p26–27 | — p30–31 | — p38–39 | — p22 | — p33–34 | 0; family không có trong 8 PDF cố định |
+| Cho vay theo loại tiền tệ | ✓ p51 | — p51–52 | — p45–47 | ✓ p37 | — p39–40 | — p43–44 | — p41–42 | — p37–39 | 0 dòng annual-2025; HDB giữ dân số thư tín dụng bổ sung source-only |
 | Cho vay theo khu vực địa lý | — | ✓ p52 | — | — | — | — | — | ✓ p53–54 | 0; sáu PDF không có đúng family cho vay khách hàng theo khu vực |
 | Doanh nghiệp/đối tượng KH | — | ✓\* p32 | ✓ p43 | ✓ p26 | — | — | — | ✓ p34 | 1 group parent check-only |
 | Dự phòng cho vay | ✓ p18 | ✓ p34 | ✓\* p45 | ✓ p28 | ✓ p31 | ✓ p39 | ✓ p23 | ✓ p34 | 0 dòng; VPB còn thiếu nguồn Q2 |
