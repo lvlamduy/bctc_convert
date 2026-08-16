@@ -334,6 +334,63 @@ def test_annual_2025_profile_locks_exact_eight_source_denominator() -> None:
     assert len({item["sha256"] for item in builder.ANNUAL_2025_SOURCES}) == 8
 
 
+def test_annual_geometry_selection_is_deterministic_and_text_free(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def inputs(_source, ordinal):
+        return (
+            b"pdf",
+            {},
+            f"preprocess-{ordinal}".encode(),
+            {},
+            f"envelope-{ordinal}".encode(),
+            Path("batch"),
+            {
+                "batch_identity": f"{ordinal:x}" * 64,
+                "metrics": {"line_count": ordinal},
+            },
+            f"batch-{ordinal}".encode(),
+            [],
+            [],
+        )
+
+    monkeypatch.setattr(builder, "_annual_document_inputs", inputs)
+    first = builder._annual_geometry_selection_payload("1" * 40)
+    second = builder._annual_geometry_selection_payload("1" * 40)
+
+    assert first == second
+    assert first["metrics"]["page_count"] == 695
+    assert first["metrics"]["line_count_vector"] == list(range(1, 9))
+    assert first["metrics"]["sample_count"] == 36
+    assert first["authority"]["ppocr_recognition_text_semantic_authority"] is False
+    assert "rec_text" not in json.dumps(first, sort_keys=True)
+
+
+def test_annual_geometry_selection_publication_is_no_overwrite(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(builder, "PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(
+        builder,
+        "_git",
+        lambda *args: "" if args == ("status", "--porcelain") else "1" * 40,
+    )
+    selection = {
+        "metrics": {"line_count_vector": [1] * 8, "page_count_vector": [1] * 8},
+        "selection_id": "annual-2025-ppocrv6-geometry:" + "2" * 64,
+        "state": "FIXED_POST_PPOCR_GEOMETRY_SELECTION",
+    }
+    monkeypatch.setattr(builder, "_annual_geometry_selection_payload", lambda _commit: selection)
+
+    result = builder.seal_annual_2025_geometry_selection_v1()
+    path = tmp_path / builder.ANNUAL_2025_GEOMETRY_SELECTION_PATH
+
+    assert result["selection_id"] == selection["selection_id"]
+    assert path.read_bytes() == builder.canonical_json_bytes_v1(selection) + b"\n"
+    with pytest.raises(builder.FullDocumentVietOCRRequestV1Error, match="overwrite"):
+        builder.seal_annual_2025_geometry_selection_v1()
+
+
 def test_annual_provider_geometry_is_transcript_independent() -> None:
     first = builder._annual_ppocr_line_boxes(
         _annual_provider_payload(text="poison"), width=100, height=80

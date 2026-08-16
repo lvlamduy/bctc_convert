@@ -69,6 +69,9 @@ VIETOCR_RUNNER_PATH = Path("scripts/models/run_vietocr_line_reader.py")
 ANNUAL_2025_PREPROCESS_ROOT = Path("output/calibration/annual-2025-8bank-vietocr-v1")
 ANNUAL_2025_PPOCR_ROOT = Path("output/calibration/annual-2025-8bank-ppocrv6-v1")
 ANNUAL_2025_OUTPUT_ROOT = Path("output/calibration/annual-2025-8bank-full-document-vietocr-v1")
+ANNUAL_2025_GEOMETRY_SELECTION_PATH = Path(
+    "docs/experiments/E-0106-annual-2025-8bank-ppocrv6-geometry-selection-v1.json"
+)
 ANNUAL_2025_SOURCES = (
     {
         "bank_code": "ACB",
@@ -574,6 +577,152 @@ def _annual_document_inputs(
         cast(list[dict[str, Any]], batch_pages),
         cast(list[dict[str, Any]], renders),
     )
+
+
+def _annual_geometry_selection_payload(producer_commit: str) -> dict[str, Any]:
+    if type(producer_commit) is not str or re.fullmatch(r"[0-9a-f]{40}", producer_commit) is None:
+        raise _error("annual geometry selection producer commit is invalid")
+    documents: list[dict[str, Any]] = []
+    for document_ordinal, source in enumerate(ANNUAL_2025_SOURCES, 1):
+        (
+            _source_raw,
+            _preprocess,
+            preprocess_raw,
+            _preprocess_envelope,
+            preprocess_envelope_raw,
+            _batch_root,
+            batch,
+            batch_raw,
+            _batch_pages,
+            _renders,
+        ) = _annual_document_inputs(source, document_ordinal)
+        bank = cast(str, source["bank_code"])
+        documents.append(
+            {
+                "bank_code": bank,
+                "document_ordinal": document_ordinal,
+                "page_count": source["page_count"],
+                "ppocr_batch_identity": batch["batch_identity"],
+                "ppocr_batch_manifest": {
+                    "path": (ANNUAL_2025_PPOCR_ROOT / bank / "batch_manifest.json").as_posix(),
+                    "sha256": hashlib.sha256(batch_raw).hexdigest(),
+                    "size_bytes": len(batch_raw),
+                },
+                "ppocr_line_count": batch["metrics"]["line_count"],
+                "preprocess_envelope": {
+                    "path": (
+                        ANNUAL_2025_PREPROCESS_ROOT / source["sha256"][:20] / "run_manifest.json"
+                    ).as_posix(),
+                    "sha256": hashlib.sha256(preprocess_envelope_raw).hexdigest(),
+                    "size_bytes": len(preprocess_envelope_raw),
+                },
+                "preprocess_manifest": {
+                    "path": (
+                        ANNUAL_2025_PREPROCESS_ROOT / source["sha256"][:20] / "manifest.json"
+                    ).as_posix(),
+                    "sha256": hashlib.sha256(preprocess_raw).hexdigest(),
+                    "size_bytes": len(preprocess_raw),
+                },
+                "source_pdf": {
+                    "path": source["relative_path"],
+                    "sha256": source["sha256"],
+                    "size_bytes": source["size_bytes"],
+                },
+            }
+        )
+    body = {
+        "authority": {
+            "geometry_proposal_authority": True,
+            "mapping_authority": False,
+            "numeric_authority": False,
+            "ppocr_recognition_text_semantic_authority": False,
+            "schema_authority": False,
+            "vietocr_semantic_text_present": False,
+        },
+        "bank_order": list(_EXPECTED_BANK_ORDER),
+        "claim_boundary": (
+            "POST_PPOCR_FIXED_ANNUAL_2025_WHOLE_DOCUMENT_LINE_GEOMETRY_SELECTION_"
+            "NO_TEXT_NUMERIC_SCHEMA_OR_MAPPING_AUTHORITY"
+        ),
+        "documents": documents,
+        "format_version": "ANNUAL_2025_8BANK_PPOCRV6_GEOMETRY_SELECTION_V1",
+        "metrics": {
+            "document_count": len(documents),
+            "line_count_vector": [document["ppocr_line_count"] for document in documents],
+            "page_count": sum(document["page_count"] for document in documents),
+            "page_count_vector": [document["page_count"] for document in documents],
+            "sample_count": sum(document["ppocr_line_count"] for document in documents),
+        },
+        "producer_commit": producer_commit,
+        "state": "FIXED_POST_PPOCR_GEOMETRY_SELECTION",
+    }
+    return {
+        **body,
+        "selection_id": f"annual-2025-ppocrv6-geometry:{canonical_json_sha256_v1(body)}",
+    }
+
+
+def seal_annual_2025_geometry_selection_v1() -> dict[str, Any]:
+    """Create the one fixed tracked pin that must precede the VietOCR crop freeze."""
+
+    if _git("status", "--porcelain"):
+        raise _error("annual geometry selection requires one clean Git worktree")
+    path = PROJECT_ROOT / ANNUAL_2025_GEOMETRY_SELECTION_PATH
+    if path.exists():
+        raise _error(f"refusing to overwrite annual geometry selection: {path}")
+    selection = _annual_geometry_selection_payload(_git("rev-parse", "HEAD"))
+    raw = canonical_json_bytes_v1(selection) + b"\n"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor = os.open(
+        path,
+        os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC | os.O_NOFOLLOW,
+        0o644,
+    )
+    try:
+        view = memoryview(raw)
+        while view:
+            written = os.write(descriptor, view)
+            if written <= 0:
+                raise _error("annual geometry selection write made no progress")
+            view = view[written:]
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+    return {
+        "line_count_vector": selection["metrics"]["line_count_vector"],
+        "page_count_vector": selection["metrics"]["page_count_vector"],
+        "path": ANNUAL_2025_GEOMETRY_SELECTION_PATH.as_posix(),
+        "selection_id": selection["selection_id"],
+        "sha256": hashlib.sha256(raw).hexdigest(),
+        "status": selection["state"],
+    }
+
+
+def _validate_annual_geometry_selection_v1() -> tuple[dict[str, Any], bytes]:
+    path = PROJECT_ROOT / ANNUAL_2025_GEOMETRY_SELECTION_PATH
+    selection, raw = _verify_canonical_json_file(path, "annual geometry selection")
+    producer_commit = selection.get("producer_commit")
+    expected = _annual_geometry_selection_payload(cast(str, producer_commit))
+    if not same_typed_json_v1(selection, expected):
+        raise _error("annual geometry selection differs from live pinned PP-OCR inputs")
+    try:
+        tracked = subprocess.run(
+            ["git", "show", f"HEAD:{ANNUAL_2025_GEOMETRY_SELECTION_PATH.as_posix()}"],
+            cwd=PROJECT_ROOT,
+            check=True,
+            capture_output=True,
+        ).stdout
+        subprocess.run(
+            ["git", "merge-base", "--is-ancestor", cast(str, producer_commit), "HEAD"],
+            cwd=PROJECT_ROOT,
+            check=True,
+            capture_output=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        raise _error("annual geometry selection is not tracked on a valid Git descendant") from exc
+    if tracked != raw:
+        raise _error("annual geometry selection bytes differ from clean Git HEAD")
+    return selection, raw
 
 
 def _annual_page_geometry(
@@ -1570,6 +1719,7 @@ def build_annual_2025_full_document_request_v1() -> dict[str, Any]:
     destination = PROJECT_ROOT / OUTPUT_ROOT
     if destination.exists():
         raise _error(f"refusing to overwrite existing output: {destination}")
+    _geometry_selection, geometry_selection_raw = _validate_annual_geometry_selection_v1()
     if [source["bank_code"] for source in ANNUAL_2025_SOURCES] != list(_EXPECTED_BANK_ORDER) or sum(
         source["page_count"] for source in ANNUAL_2025_SOURCES
     ) != 695:
@@ -1581,6 +1731,11 @@ def build_annual_2025_full_document_request_v1() -> dict[str, Any]:
         "runner": _repository_file_ref(PROJECT_ROOT / VIETOCR_RUNNER_PATH, "VietOCR runner"),
     }
     input_refs = {
+        "geometry_selection": {
+            "path": ANNUAL_2025_GEOMETRY_SELECTION_PATH.as_posix(),
+            "sha256": hashlib.sha256(geometry_selection_raw).hexdigest(),
+            "size_bytes": len(geometry_selection_raw),
+        },
         "dataset_role_registry": _repository_file_ref(
             PROJECT_ROOT / "data/registered/dataset_roles.jsonl", "dataset-role registry"
         ),
@@ -2205,11 +2360,22 @@ def verify_annual_2025_full_document_freeze_v1(*, replay_geometry: bool = False)
     input_refs = manifest.get("input_refs")
     expected_input_names = {
         "dataset_role_registry",
+        "geometry_selection",
         "source_registry",
         *(f"ppocr_batch_{source['bank_code'].casefold()}" for source in ANNUAL_2025_SOURCES),
     }
     if type(input_refs) is not dict or set(input_refs) != expected_input_names:
         raise _error("annual manifest input ledger drifted")
+    _selection, selection_raw = _validate_annual_geometry_selection_v1()
+    if not same_typed_json_v1(
+        input_refs.get("geometry_selection"),
+        {
+            "path": ANNUAL_2025_GEOMETRY_SELECTION_PATH.as_posix(),
+            "sha256": hashlib.sha256(selection_raw).hexdigest(),
+            "size_bytes": len(selection_raw),
+        },
+    ):
+        raise _error("annual manifest geometry selection binding drifted")
     for name, reference in input_refs.items():
         _verify_repository_content_ref(reference, f"annual manifest input {name}")
     git_binding = manifest.get("git_binding")
@@ -2697,6 +2863,7 @@ def main() -> int:
     action.add_argument("--verify", action="store_true")
     action.add_argument("--replay", action="store_true")
     action.add_argument("--finalize", action="store_true")
+    action.add_argument("--seal-annual-geometry", action="store_true")
     parser.add_argument(
         "--profile",
         choices=("wave1", "annual-2025"),
@@ -2705,7 +2872,11 @@ def main() -> int:
     )
     args = parser.parse_args()
     _activate_profile(args.profile)
-    if args.verify:
+    if args.seal_annual_geometry:
+        if args.profile != "annual-2025":
+            raise _error("annual geometry selection requires --profile annual-2025")
+        output = seal_annual_2025_geometry_selection_v1()
+    elif args.verify:
         output = _verify_active_full_document_freeze_v1(replay_geometry=False)
     elif args.replay:
         output = _verify_active_full_document_freeze_v1(replay_geometry=True)
