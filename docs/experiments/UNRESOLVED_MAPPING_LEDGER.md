@@ -17,8 +17,8 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **177 entries**.  Current open queue: **75**.  Closed history:
-**40** row/graph resolutions and **62** confirmed bound-report family absences.
+Ledger total: **185 entries**.  Current open queue: **78**.  Closed history:
+**40** row/graph resolutions and **67** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
@@ -180,10 +180,21 @@ CL-001–CL-005 và CL-007–CL-014 còn OPEN vì là các leaf L/C, ký quỹ, 
 chi tiết, swap lãi suất hoặc `Trong đó` chưa có schema tương đương. HDB/VCB/BID
 chỉ có bảng B02a và là bounded detailed-note absence; VPB giữ đúng kỳ Q1/2026.
 
+E-0099 `Công cụ tài chính — giá trị ghi sổ và giá trị hợp lý` quét đủ 453
+trang và tìm đúng một bảng tại VPB p86, VCB p44–45 và CTG p51. 64 mapping/55
+ô số và 12 phương trình đã `VERIFIED_BY_CODEX`; một dấu gạch CTG được
+pixel-bind rồi chuẩn hóa 0. ACB/MBB/HDB/BID/VIB là bounded detailed-table
+absence; các bảng rủi ro tiền tệ/lãi suất/thanh khoản là đối chứng âm. FI-001–
+FI-003 giữ OPEN vì nguồn in `(*)` và ghi rõ giá trị hợp lý không xác định được;
+không đổi `(*)` thành 0 hay sao chép giá trị ghi sổ. VPB giữ đúng kỳ Q1/2026.
+
 ## Open review queue (always first)
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
 | --- | --- | --- | ---: | --- | --- |
+| FI-001 | Công cụ tài chính | VPB | 86 | Giá trị hợp lý của các tài sản và nợ tài chính đánh dấu `(*)` | Nguồn ghi không thể xác định giá trị hợp lý; ký hiệu không phải 0 và giá trị ghi sổ không thay thế được. |
+| FI-002 | Công cụ tài chính | VCB | 45 | Giá trị hợp lý của các tài sản và nợ tài chính đánh dấu `(*)` | Không có giá trị số được công bố; giữ nguyên nhóm nguồn OPEN. |
+| FI-003 | Công cụ tài chính | CTG | 51 | Giá trị hợp lý của các tài sản và nợ tài chính đánh dấu `(*)` | Không có giá trị số được công bố; giữ nguyên nhóm nguồn OPEN. |
 | CL-001 | Nghĩa vụ nợ tiềm ẩn/cam kết | ACB | 26 | Thư tín dụng trả ngay | Parent 1295 chưa có leaf L/C trả ngay; số vẫn đóng đúng L/C thuần. |
 | CL-002 | Nghĩa vụ nợ tiềm ẩn/cam kết | ACB | 26 | Thư tín dụng trả chậm | Parent 1295 chưa có leaf L/C trả chậm; số vẫn đóng đúng L/C thuần. |
 | CL-003 | Nghĩa vụ nợ tiềm ẩn/cam kết | ACB | 26 | Trừ: tiền ký quỹ (L/C) | Đây là trục khấu trừ để ra L/C thuần, không phải leaf giá trị hiện có. |
@@ -312,6 +323,17 @@ page or note identifier participates in this decision.
 | BPA-001–BPA-003 | `OPEN_SOURCE_HIERARCHY_OR_SCHEMA_GAP`; VPB parent gộp bị tổng nguồn cộng lặp với các con, còn hai hàng VIB không tách loại chứng khoán; không dòng nào bị ép vào hierarchy/leaf hẹp |
 | CL-001–CL-005, CL-007–CL-014 | `OPEN_SCHEMA_OR_SOURCE_HIERARCHY_GAP`; 47 mapping chắc chắn và 34 phương trình vẫn đã xác minh; các leaf/trục khấu trừ/`Trong đó` chưa tương đương được giữ nguyên nguồn |
 | CL-023–CL-025 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; HDB/VCB/BID có bảng B02a ngoài báo cáo chính nhưng không có note B05a chi tiết của family trong đúng PDF đã bind |
+| FI-001–FI-003 | `OPEN_SOURCE_VALUE_UNAVAILABLE`; VPB/VCB/CTG in `(*)` thay cho phần lớn giá trị hợp lý. Ký hiệu này không được đổi thành 0 hoặc thay bằng giá trị ghi sổ |
+| FI-007–FI-011 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/MBB/HDB/BID/VIB không có bảng chi tiết đồng thời trình bày giá trị ghi sổ và giá trị hợp lý trong đúng PDF đã bind |
+
+## Financial instruments — carrying and fair value (`FINANCIAL_INSTRUMENTS`)
+
+- **FI-001–FI-003 — OPEN:** VPB p86, VCB p45 và CTG p51 dùng `(*)` cho các
+  ô giá trị hợp lý không xác định được. Ba nhóm được giữ nguyên nguồn; không
+  suy diễn 0 và không sao chép số ghi sổ.
+- **FI-007–FI-011 — confirmed bound-report absences:** ACB, MBB, HDB, BID và
+  VIB không có bảng chi tiết mang đồng thời hai nhánh giá trị ghi sổ/giá trị
+  hợp lý. Các bảng rủi ro là matched controls thuộc family kế tiếp.
 
 ## Bank-owned pledged or discounted assets (`BANK_PLEDGED_OR_DISCOUNTED_ASSETS`)
 

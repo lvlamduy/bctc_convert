@@ -827,6 +827,23 @@ Q1/2026, không relabel thành Q2/2026.
 | VPB | 68 | Hoán đổi lãi suất tiền tệ chéo — nhận/trả; hoán đổi lãi suất một đồng tiền | Schema 1301–1302 chỉ có ngoại hối/hoán đổi tiền tệ, chưa có các leaf hoán đổi lãi suất này. |
 | VPB | 68 | Cam kết khác chi tiết; hạn mức tín dụng chưa sử dụng có thể hủy ngang | Dòng đầu trùng tên parent; dòng `Trong đó` là non-additive và chưa có leaf riêng. |
 
+## 47. Công cụ tài chính — giá trị ghi sổ và giá trị hợp lý
+
+- **Đã map/xác minh:** VPB p86, VCB p44–45 và CTG p51. Đã map 64 khoản
+  mục/55 ô số và kiểm tra 12 phương trình. Cùng một graph nhận ra nhánh giá
+  trị ghi sổ, nhánh giá trị hợp lý, tài sản, nợ phải trả và bảng tiếp trang;
+  công cụ phái sinh được phân vai theo nhánh cha gần nhất thay vì theo bank.
+- **Không có bảng chi tiết trong báo cáo:** ACB, MBB, HDB, BID và VIB. Các
+  bảng rủi ro tiền tệ, lãi suất, thanh khoản hoặc chính sách giá trị hợp lý là
+  đối chứng gần nhưng không phải bảng đồng thời có giá trị ghi sổ và hợp lý.
+- **Còn thiếu:**
+
+| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | ---: | --- | --- |
+| VPB | 86 | Giá trị hợp lý của phần lớn tài sản/nợ tài chính ký hiệu `(*)` | PDF ghi không xác định được giá trị hợp lý; không đổi `(*)` thành 0 và không sao chép giá trị ghi sổ. |
+| VCB | 45 | Giá trị hợp lý của phần lớn tài sản/nợ tài chính ký hiệu `(*)` | Nguồn không công bố giá trị số; giữ OPEN. |
+| CTG | 51 | Giá trị hợp lý của phần lớn tài sản/nợ tài chính ký hiệu `(*)` | Nguồn không công bố giá trị số; giữ OPEN. |
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -881,3 +898,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Tài sản thế chấp của khách hàng | — | — | ✓ p67 | — | ✓\* p47 | — | — | ✓\* p49 | 4 dòng OPEN; 15 mapping, 30 ô số, 6 phương trình; 5 bank không có note chi tiết; VPB là nguồn Q1 |
 | Tài sản/GTCG ngân hàng đem thế chấp, cầm cố, chiết khấu | — | — | ✓\* p67 | — | — | — | — | ✓\* p49 | 3 dòng OPEN; 5 mapping, 10 ô số, 6 quan hệ kế toán; 6 bank không có note chi tiết; VPB có hierarchy nguồn double-count và là nguồn Q1 |
 | Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra | ✓\* p26 | ✓ p51 | ✓\* p68 | — | — | ✓ p48 | — | ✓ p50 | 13 dòng OPEN; 47 mapping, 92 ô số, 34 phương trình; 3 bank không có note chi tiết; VPB là nguồn Q1 |
+| Công cụ tài chính — giá trị ghi sổ/hợp lý | — | — | ✓\* p86 | — | ✓\* p44–45 | ✓\* p51 | — | — | 3 nhóm giá trị hợp lý OPEN; 64 mapping, 55 ô số, 12 phương trình; 5 bank không có bảng chi tiết; VPB là nguồn Q1 |
