@@ -1,10 +1,11 @@
-"""Strict adapter from the fresh eight-PDF VietOCR cache to family scanners.
+"""Strict adapter from fixed eight-PDF VietOCR caches to family scanners.
 
-The cache is a semantic proposal axis, never numeric or mapping authority.
-This module validates its fixed 8-document/453-page/34,341-line denominator,
-exact sample order, geometry shapes, and recomputed semantic-axis digest, then
-projects the same bank-blind page/line contract to every accounting family.
-Document codes remain provenance only and are not exposed inside match lines.
+Each cache is a semantic proposal axis, never numeric or mapping authority.
+This module selects one closed denominator from the source format version,
+validates its exact sample order, geometry shapes, and recomputed semantic-axis
+digest, then projects the same bank-blind page/line contract to every accounting
+family. Document codes remain provenance only and are not exposed inside match
+lines.
 """
 
 from __future__ import annotations
@@ -38,6 +39,12 @@ EXPECTED_PAGE_VECTOR = (33, 61, 91, 44, 55, 61, 37, 71)
 EXPECTED_LINE_VECTOR = (2489, 4592, 6942, 3359, 4356, 4047, 3046, 5510)
 EXPECTED_PAGE_COUNT = sum(EXPECTED_PAGE_VECTOR)
 EXPECTED_SAMPLE_COUNT = sum(EXPECTED_LINE_VECTOR)
+_SOURCE_PROFILES = {
+    SOURCE_FORMAT_VERSION: {
+        "line_vector": EXPECTED_LINE_VECTOR,
+        "page_vector": EXPECTED_PAGE_VECTOR,
+    },
+}
 CLAIM_BOUNDARY = (
     "FIXED_EIGHT_DOCUMENT_FRESH_VIETOCR_TRANSFORMER_ORDERED_TEXT_AND_PIXEL_BBOX_"
     "PROJECTION_ONLY_NO_SOURCE_TRANSCRIPT_NUMERIC_SCHEMA_MAPPING_OR_EXPORT_AUTHORITY"
@@ -128,6 +135,33 @@ def _source_pdf_ref(value: Any) -> dict[str, Any]:
     return _ref(value, "semantic index source PDF")
 
 
+def _source_profile(format_version: Any) -> dict[str, tuple[int, ...]]:
+    if type(format_version) is not str or format_version not in _SOURCE_PROFILES:
+        raise _error("full-document VietOCR semantic index format is not admitted")
+    return _SOURCE_PROFILES[format_version]
+
+
+def _projection_profile(metrics: Any) -> dict[str, tuple[int, ...]]:
+    if type(metrics) is not dict:
+        raise _error("full-document accounting axis projection metrics drifted")
+    matches = []
+    for profile in _SOURCE_PROFILES.values():
+        page_vector = profile["page_vector"]
+        line_vector = profile["line_vector"]
+        expected = {
+            "document_count": len(EXPECTED_DOCUMENT_ORDER),
+            "line_count_vector": list(line_vector),
+            "page_count": sum(page_vector),
+            "page_count_vector": list(page_vector),
+            "sample_count": sum(line_vector),
+        }
+        if same_typed_json_v1(metrics, expected):
+            matches.append(profile)
+    if len(matches) != 1:
+        raise _error("full-document accounting axis projection metrics drifted")
+    return matches[0]
+
+
 def _source_index(value: Any) -> dict[str, Any]:
     if type(value) is not dict or set(value) != {
         "authority",
@@ -139,10 +173,14 @@ def _source_index(value: Any) -> dict[str, Any]:
         "state",
     }:
         raise _error("full-document VietOCR semantic index fields drifted")
-    if (
-        value["format_version"] != SOURCE_FORMAT_VERSION
-        or value["state"] != "VERIFIED_COMPLETE_ORDERED_VIETOCR_TRANSFORMER_PROPOSALS"
-        or not same_typed_json_v1(value["authority"], _SOURCE_AUTHORITY)
+    profile = _source_profile(value["format_version"])
+    expected_page_vector = profile["page_vector"]
+    expected_line_vector = profile["line_vector"]
+    expected_page_count = sum(expected_page_vector)
+    expected_sample_count = sum(expected_line_vector)
+    expected_state = "VERIFIED_COMPLETE_ORDERED_VIETOCR_TRANSFORMER_PROPOSALS"
+    if value["state"] != expected_state or not same_typed_json_v1(
+        value["authority"], _SOURCE_AUTHORITY
     ):
         raise _error("full-document VietOCR semantic index identity/authority drifted")
     if type(value["input_refs"]) is not dict or set(value["input_refs"]) != {
@@ -190,7 +228,7 @@ def _source_index(value: Any) -> dict[str, Any]:
         pages = raw_document["pages"]
         page_count = _positive_int(raw_document["page_count"], "document page count")
         if (
-            page_count != EXPECTED_PAGE_VECTOR[document_ordinal - 1]
+            page_count != expected_page_vector[document_ordinal - 1]
             or type(pages) is not list
             or len(pages) != page_count
         ):
@@ -298,7 +336,7 @@ def _source_index(value: Any) -> dict[str, Any]:
                     "primary_numeric_authority": False,
                 }
             )
-        if document_line_count != EXPECTED_LINE_VECTOR[document_ordinal - 1]:
+        if document_line_count != expected_line_vector[document_ordinal - 1]:
             raise _error("full-document VietOCR document line denominator drifted")
         page_vector.append(page_count)
         line_vector.append(document_line_count)
@@ -326,13 +364,13 @@ def _source_index(value: Any) -> dict[str, Any]:
     if (
         type(metrics["document_count"]) is not int
         or metrics["document_count"] != len(EXPECTED_DOCUMENT_ORDER)
-        or not same_typed_json_v1(metrics["page_count_vector"], list(EXPECTED_PAGE_VECTOR))
-        or not same_typed_json_v1(metrics["line_count_vector"], list(EXPECTED_LINE_VECTOR))
+        or not same_typed_json_v1(metrics["page_count_vector"], list(expected_page_vector))
+        or not same_typed_json_v1(metrics["line_count_vector"], list(expected_line_vector))
         or type(metrics["page_count"]) is not int
-        or metrics["page_count"] != EXPECTED_PAGE_COUNT
+        or metrics["page_count"] != expected_page_count
         or type(metrics["sample_count"]) is not int
-        or metrics["sample_count"] != EXPECTED_SAMPLE_COUNT
-        or global_sample_ordinal != EXPECTED_SAMPLE_COUNT
+        or metrics["sample_count"] != expected_sample_count
+        or global_sample_ordinal != expected_sample_count
         or type(metrics["empty_prediction_count"]) is not int
         or metrics["empty_prediction_count"] != empty_prediction_count
         or type(metrics["terminal_page_count"]) is not int
@@ -345,6 +383,7 @@ def _source_index(value: Any) -> dict[str, Any]:
     return {
         "documents": projected_documents,
         "input_refs": input_refs,
+        "profile": profile,
         "semantic_axis_sha256": semantic_axis_sha256,
         "source_index_sha256": canonical_json_sha256_v1(value),
     }
@@ -373,15 +412,7 @@ def _validate_projection(value: Any) -> dict[str, Any]:
         raise _error("full-document accounting axis projection identity drifted")
     _sha256(value["semantic_axis_sha256"], "accounting semantic axis")
     _sha256(value["source_index_sha256"], "source semantic index")
-    expected_metrics = {
-        "document_count": len(EXPECTED_DOCUMENT_ORDER),
-        "line_count_vector": list(EXPECTED_LINE_VECTOR),
-        "page_count": EXPECTED_PAGE_COUNT,
-        "page_count_vector": list(EXPECTED_PAGE_VECTOR),
-        "sample_count": EXPECTED_SAMPLE_COUNT,
-    }
-    if not same_typed_json_v1(value["metrics"], expected_metrics):
-        raise _error("full-document accounting axis projection metrics drifted")
+    _projection_profile(value["metrics"])
     material = canonical_clone_v1(value)
     identity = material.pop("projection_id")
     if identity != "fdvaav1:projection:" + canonical_json_sha256_v1(material):
@@ -393,6 +424,9 @@ def project_full_document_vietocr_accounting_axis_v1(value: Any) -> dict[str, An
     """Project the one fixed semantic cache into family-neutral page records."""
 
     source = _source_index(value)
+    profile = source["profile"]
+    page_vector = profile["page_vector"]
+    line_vector = profile["line_vector"]
     material = {
         "authority": canonical_clone_v1(_AUTHORITY),
         "claim_boundary": CLAIM_BOUNDARY,
@@ -401,10 +435,10 @@ def project_full_document_vietocr_accounting_axis_v1(value: Any) -> dict[str, An
         "input_refs": source["input_refs"],
         "metrics": {
             "document_count": len(EXPECTED_DOCUMENT_ORDER),
-            "line_count_vector": list(EXPECTED_LINE_VECTOR),
-            "page_count": EXPECTED_PAGE_COUNT,
-            "page_count_vector": list(EXPECTED_PAGE_VECTOR),
-            "sample_count": EXPECTED_SAMPLE_COUNT,
+            "line_count_vector": list(line_vector),
+            "page_count": sum(page_vector),
+            "page_count_vector": list(page_vector),
+            "sample_count": sum(line_vector),
         },
         "semantic_axis_sha256": source["semantic_axis_sha256"],
         "source_index_sha256": source["source_index_sha256"],

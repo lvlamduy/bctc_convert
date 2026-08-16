@@ -237,3 +237,18 @@ def test_empty_prediction_metric_is_recomputed_not_trusted(source_index: dict[st
             project_full_document_vietocr_accounting_axis_v1(source_index)
     finally:
         metrics["empty_prediction_count"] = original
+
+
+def test_unregistered_semantic_index_profile_is_rejected(
+    source_index: dict[str, object],
+) -> None:
+    original = source_index["format_version"]
+    source_index["format_version"] = "CALLER_SELECTED_UNPINNED_SEMANTIC_INDEX_V1"
+    try:
+        with pytest.raises(
+            FullDocumentVietOCRAccountingAxisV1Error,
+            match="format is not admitted",
+        ):
+            project_full_document_vietocr_accounting_axis_v1(source_index)
+    finally:
+        source_index["format_version"] = original
