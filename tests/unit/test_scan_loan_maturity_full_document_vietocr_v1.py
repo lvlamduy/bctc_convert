@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import importlib.util
+import json
 import sys
 from pathlib import Path
 
@@ -232,3 +233,22 @@ def test_old_ocr_authority_and_coordinated_result_rehash_fail_closed(monkeypatch
     tampered["scan_id"] = "lmfdsv1:scan:" + canonical_json_sha256_v1(material)
     with pytest.raises(scanner.LoanMaturityFullDocumentScanV1Error):
         scanner.validate_loan_maturity_full_document_scan_replay_v1(tampered, clean_index)
+
+
+def test_explicit_verified_index_path_supports_another_pinned_corpus(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    index = _index()
+    input_path = tmp_path / "annual/semantic_index.json"
+    input_path.parent.mkdir()
+    input_path.write_text(json.dumps(index), encoding="utf-8")
+    monkeypatch.setattr(scanner, "PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(
+        scanner,
+        "build_loan_maturity_full_document_scan_v1",
+        lambda value: {"format_version": value["format_version"]},
+    )
+
+    assert scanner.build_live_loan_maturity_full_document_scan_v1(
+        Path("annual/semantic_index.json")
+    ) == {"format_version": "WAVE1_8DOCUMENT_VIETOCR_TRANSFORMER_SEMANTIC_INDEX_V1"}

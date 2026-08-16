@@ -319,28 +319,42 @@ def validate_loan_maturity_full_document_scan_replay_v1(
     return rebuilt
 
 
-def build_live_loan_maturity_full_document_scan_v1() -> dict[str, Any]:
+def build_live_loan_maturity_full_document_scan_v1(
+    input_path: Path | None = None,
+) -> dict[str, Any]:
     """Replay the fixed upstream VietOCR index and scan all eight PDFs."""
 
-    builder = _load_module(
-        PROJECT_ROOT
-        / "scripts/experiments/build_loan_maturity_full_document_vietocr_request_v1.py",
-        "full_document_vietocr_builder_for_structure_scan",
-    )
-    index = builder.read_verified_vietocr_proposals_v1()
+    if input_path is None:
+        builder = _load_module(
+            PROJECT_ROOT
+            / "scripts/experiments/build_loan_maturity_full_document_vietocr_request_v1.py",
+            "full_document_vietocr_builder_for_structure_scan",
+        )
+        index = builder.read_verified_vietocr_proposals_v1()
+    else:
+        path = input_path if input_path.is_absolute() else PROJECT_ROOT / input_path
+        try:
+            index = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise _error(f"cannot load explicit semantic index: {path}") from error
     return build_loan_maturity_full_document_scan_v1(index)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Scan eight full VietOCR PDFs for maturity graphs")
-    parser.parse_args()
-    print(
-        json.dumps(
-            build_live_loan_maturity_full_document_scan_v1(),
-            ensure_ascii=False,
-            sort_keys=True,
-        )
-    )
+    parser.add_argument("--input", type=Path)
+    parser.add_argument("--output", type=Path)
+    args = parser.parse_args()
+    result = build_live_loan_maturity_full_document_scan_v1(args.input)
+    raw = json.dumps(result, ensure_ascii=False, sort_keys=True).encode("utf-8") + b"\n"
+    if args.output is None:
+        sys.stdout.buffer.write(raw)
+    else:
+        output = args.output if args.output.is_absolute() else PROJECT_ROOT / args.output
+        if output.exists():
+            raise _error(f"refusing to overwrite scan output: {output}")
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(raw)
     return 0
 
 
