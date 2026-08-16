@@ -119,3 +119,93 @@ def test_coordinated_rehash_cannot_promote_unmapped_geography_row(
             crop_manifest_sha256="a" * 64,
             review_sha256="b" * 64,
         )
+
+
+def test_annual_2025_review_covers_eight_unique_central_bank_notes() -> None:
+    review = mapping._annual_2025_review_blueprint()
+
+    assert [document["bank_code"] for document in review["documents"]] == [
+        "ACB",
+        "MBB",
+        "VPB",
+        "HDB",
+        "VCB",
+        "CTG",
+        "BID",
+        "VIB",
+    ]
+    assert [document["page_sequence"] for document in review["documents"]] == [
+        45,
+        46,
+        41,
+        33,
+        35,
+        39,
+        39,
+        35,
+    ]
+    assert sum(len(document["mappings"]) for document in review["documents"]) == 28
+    assert all(document["unmapped_rows"] == [] for document in review["documents"])
+
+
+def test_annual_2025_geography_aggregates_and_hdb_ocr_disagreement_are_explicit() -> None:
+    review = mapping._annual_2025_review_blueprint()
+    aggregates = {}
+    for document in review["documents"]:
+        for row in document["mappings"]:
+            if row["role"] == "OTHER_CENTRAL_BANK_DEPOSITS_AGGREGATE":
+                aggregates[document["bank_code"]] = row
+    assert {bank: row["value"]["pixel_transcription"] for bank, row in aggregates.items()} == {
+        "MBB": "2.258.533",
+        "VCB": "233.253",
+        "BID": "5.827.491",
+    }
+    assert [component["role"] for component in aggregates["BID"]["component_rows"]] == [
+        "CENTRAL_BANK_CAMBODIA",
+        "CENTRAL_BANK_LAOS",
+    ]
+
+    hdb = next(document for document in review["documents"] if document["bank_code"] == "HDB")
+    foreign = next(row for row in hdb["mappings"] if row["role"] == "DEPOSIT_FOREIGN_CURRENCY")
+    assert foreign["value"]["fresh_vietocr_challenger_expected"] == "B.416.558"
+    assert foreign["value"]["pixel_transcription"] == "8.416.558"
+    assert foreign["value"]["source_numeric_challenger_expected"] == "8.416.558"
+
+
+def test_annual_2025_persisted_result_is_complete_and_nested_total_is_correct() -> None:
+    persisted = mapping._validate_result(
+        json.loads((mapping.PROJECT_ROOT / mapping.ANNUAL_2025_RESULT_PATH).read_text()),
+        "annual-2025",
+    )
+
+    assert persisted["metrics"] == {
+        "accounting_equation_verified_count": 10,
+        "document_count": 8,
+        "document_unique_region_count": 8,
+        "mapping_verified_count": 28,
+        "partial_mapping_document_count": 0,
+        "q1_source_period_caveat_document_count": 0,
+        "unmapped_source_row_count": 0,
+        "unresolved_document_count": 0,
+    }
+    assert all(trial["status"] == "VERIFIED_BY_CODEX" for trial in persisted["trials"])
+    bid = next(trial for trial in persisted["trials"] if trial["document_provenance"] == "BID")
+    assert bid["cluster_boundary"]["last_source_line_index"] == 50
+    assert (
+        next(row for row in bid["verified_mappings"] if row["role"] == "TOTAL")["normalized_value"]
+        == 123_629_833
+    )
+
+
+def test_annual_2025_aggregate_component_tamper_fails_closed() -> None:
+    forged = mapping._annual_2025_review_blueprint()
+    mbb = next(document for document in forged["documents"] if document["bank_code"] == "MBB")
+    aggregate = next(
+        row for row in mbb["mappings"] if row["role"] == "OTHER_CENTRAL_BANK_DEPOSITS_AGGREGATE"
+    )
+    aggregate["component_rows"][0]["value"]["pixel_transcription"] = "667.676"
+    with pytest.raises(
+        mapping.CentralBankDeposits8BankCodexVerifiedMappingV1Error,
+        match="differs from fixed ledger",
+    ):
+        mapping._review(forged, "annual-2025")

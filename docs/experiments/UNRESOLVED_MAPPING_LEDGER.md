@@ -31,6 +31,14 @@ trình đóng đúng; dấu gạch CTG bị provider bỏ sót được bind t�
 chuẩn hóa 0. Hai bất đồng là đối chứng OCR đã đóng, không phải khoảng trống
 mapping.
 
+E-0108 `Tiền gửi tại NHNN` trên tám BCTC hợp nhất kiểm toán năm 2025 không
+bổ sung dòng OPEN: whole-PDF graph tìm đúng một vùng tại cả tám bank và map 28
+dòng với mười phương trình đóng chính xác. Tiền gửi tại ngân hàng trung ương
+Lào/Campuchia được gom có kiểm soát vào 574 tại MBB/VCB/BID. Graph đã sửa lỗi
+subtree tổng quát tại BID: các nhánh VND/ngoại tệ của từng jurisdiction phải
+kết thúc trước khi tìm tổng family `123.629.833`. VietOCR HDB `B.416.558` được
+pixel và trục số nguồn xác nhận là `8.416.558`; đây là lỗi OCR đã đóng.
+
 E-0079 `Thu nhập lãi và các khoản thu nhập tương tự` không bổ sung dòng OPEN:
 cả tám vùng duy nhất đã map hết các dòng nguồn vào 1143–1150. Hai lỗi mất chữ
 số đầu của VietOCR tại VIB được trục số nguồn/PaddleOCR và pixel bác bỏ, nên là
