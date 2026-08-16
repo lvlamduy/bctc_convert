@@ -391,6 +391,20 @@ def test_annual_geometry_selection_publication_is_no_overwrite(
         builder.seal_annual_2025_geometry_selection_v1()
 
 
+def test_annual_geometry_selection_replay_rejects_dirty_git_before_read(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(builder, "_git", lambda *_args: " M tracked.py")
+    monkeypatch.setattr(
+        builder,
+        "_verify_canonical_json_file",
+        lambda *_args: pytest.fail("dirty replay must stop before artifact access"),
+    )
+
+    with pytest.raises(builder.FullDocumentVietOCRRequestV1Error, match="clean Git"):
+        builder._validate_annual_geometry_selection_v1()
+
+
 def _annual_batch_trust_fixture(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> tuple[dict[str, object], dict[str, object]]:

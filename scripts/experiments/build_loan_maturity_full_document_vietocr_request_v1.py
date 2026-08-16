@@ -956,6 +956,8 @@ def seal_annual_2025_geometry_selection_v1() -> dict[str, Any]:
 
 
 def _validate_annual_geometry_selection_v1() -> tuple[dict[str, Any], bytes]:
+    if _git("status", "--porcelain"):
+        raise _error("annual geometry selection replay requires one clean Git worktree")
     path = PROJECT_ROOT / ANNUAL_2025_GEOMETRY_SELECTION_PATH
     selection, raw = _verify_canonical_json_file(path, "annual geometry selection")
     producer_commit = selection.get("producer_commit")
