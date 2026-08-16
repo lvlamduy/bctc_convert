@@ -373,6 +373,121 @@ def test_stacked_period_multi_asset_variant_selects_column_by_geometry() -> None
     assert graph["arithmetic_status"] == ("CORROBORATED_STACKED_ROW_AND_COLUMN_POPULATIONS")
 
 
+def test_annual_post_branch_owner_total_and_next_population_boundary_are_generic() -> None:
+    surfaces: list[tuple[str, int]] = [
+        ("Phân tích dư nợ cho vay theo chất lượng nợ", 0),
+        ("Số cuối năm", 300),
+        ("Số đầu năm", 600),
+        ("Triệu VND", 300),
+        ("Triệu VND", 600),
+        ("Cho vay khách hàng", 0),
+        ("120", 300),
+        ("106", 600),
+        ("Nợ đủ tiêu chuẩn", 0),
+        ("100", 300),
+        ("90", 600),
+        ("Nợ cần chú ý", 0),
+        ("10", 300),
+        ("9", 600),
+        ("Nợ dưới tiêu chuẩn", 0),
+        ("5", 300),
+        ("4", 600),
+        ("Nợ nghi ngờ", 0),
+        ("3", 300),
+        ("2", 600),
+        ("Nợ có khả năng mất vốn", 0),
+        ("2", 300),
+        ("1", 600),
+        ("Nghiệp vụ phát hành thư tín dụng trả chậm", 0),
+        ("11", 600),
+        ("Nợ đủ tiêu chuẩn", 0),
+        ("11", 600),
+        ("120", 300),
+        ("117", 600),
+    ]
+    result = quality.build_loan_quality_variant_graph_document_v1(
+        [_page(surfaces)],
+        enable_extended_annual_variants=True,
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    graph = result["graphs"][0]
+    assert graph["owner_context"]["mode"] == "SAME_PAGE_IMMEDIATE_POST_BRANCH_PARENT_ROW"
+    assert graph["period_mode"] == "LOCAL_RELATIVE_YEAR_END_PERIOD_ROLES"
+    assert [item["surface"] for item in graph["totals"]["core"]] == ["120", "106"]
+    assert graph["optional_additive_row"] is None
+    assert graph["arithmetic_status"] == "CORROBORATED_GRADE_POPULATION"
+
+
+def test_annual_stacked_sparse_blanks_close_from_visible_cells_without_imputation() -> None:
+    surfaces: list[tuple[str, int]] = [
+        ("Rủi ro tín dụng (tiếp theo)", 0),
+        (
+            "Chi tiết phân loại chất lượng tài sản có rủi ro tín dụng tại Ngân hàng như sau",
+            0,
+        ),
+        ("Tại ngày 31 tháng 12 năm 2025", 100),
+        ("Tại ngày 31 tháng 12 năm 2024", 300),
+        ("Đơn vị: Triệu đồng", 0),
+        ("Tiền gửi TCTD", 100),
+        ("Cho vay khách hàng", 300),
+        ("Chứng khoán đầu tư", 500),
+        ("Mua nợ", 700),
+        ("Tổng cộng", 900),
+    ]
+    roles = [
+        "Nợ đủ tiêu chuẩn",
+        "Nợ cần chú ý",
+        "Nợ dưới tiêu chuẩn",
+        "Nợ nghi ngờ",
+        "Nợ có khả năng mất vốn",
+    ]
+    for multiplier in (1, 2):
+        surfaces.extend(
+            [
+                (roles[0], 0),
+                (str(10 * multiplier), 100),
+                (str(20 * multiplier), 300),
+                (str(30 * multiplier), 500),
+                (str(40 * multiplier), 700),
+                (str(100 * multiplier), 900),
+            ]
+        )
+        for offset, role in enumerate(roles[1:], 2):
+            surfaces.extend(
+                [
+                    (role, 0),
+                    (str(offset * multiplier), 300),
+                    (str(offset * multiplier), 900),
+                ]
+            )
+        customer_total = sum([20, 2, 3, 4, 5]) * multiplier
+        surfaces.extend(
+            [
+                (str(10 * multiplier), 100),
+                (str(customer_total), 300),
+                (str(30 * multiplier), 500),
+                (str(40 * multiplier), 700),
+                (str((100 + 2 + 3 + 4 + 5) * multiplier), 900),
+            ]
+        )
+    surfaces.append(("0", 0))
+
+    result = quality.build_loan_quality_variant_graph_document_v1(
+        [_page(surfaces)],
+        enable_extended_annual_variants=True,
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    graph = result["graphs"][0]
+    assert graph["arithmetic_status"] == "CORROBORATED_STACKED_ROW_AND_COLUMN_POPULATIONS"
+    assert [item["lane_index"] for item in graph["blocks"][0]["rows"][1]["values"]] == [
+        1,
+        4,
+    ]
+    assert result["safety"]["blank_companion_cells_imputed_as_zero"] is False
+
+
 def test_inline_narrative_branch_and_sparse_companion_cells_share_the_stacked_graph() -> None:
     surfaces = _stacked()
     surfaces[1] = (

@@ -170,7 +170,11 @@ def _validate_result(value: Any) -> dict[str, Any]:
     return canonical_clone_v1(value)
 
 
-def build_loan_quality_full_document_scan_v1(semantic_index: Any) -> dict[str, Any]:
+def build_loan_quality_full_document_scan_v1(
+    semantic_index: Any,
+    *,
+    enable_extended_annual_variants: bool = False,
+) -> dict[str, Any]:
     """Build the deterministic 8-document structure-only quality scan."""
 
     axis = project_full_document_vietocr_accounting_axis_v1(semantic_index)
@@ -193,7 +197,12 @@ def build_loan_quality_full_document_scan_v1(semantic_index: Any) -> dict[str, A
             }
             for page in document["pages"]
         ]
-        match = matcher.build_loan_quality_variant_graph_document_v1(matcher_pages)
+        match = matcher.build_loan_quality_variant_graph_document_v1(
+            matcher_pages,
+            **(
+                {"enable_extended_annual_variants": True} if enable_extended_annual_variants else {}
+            ),
+        )
         trials.append(
             {
                 "document_ordinal": document["document_ordinal"],
@@ -238,12 +247,18 @@ def build_loan_quality_full_document_scan_v1(semantic_index: Any) -> dict[str, A
 
 
 def validate_loan_quality_full_document_scan_replay_v1(
-    value: Any, semantic_index: Any
+    value: Any,
+    semantic_index: Any,
+    *,
+    enable_extended_annual_variants: bool = False,
 ) -> dict[str, Any]:
     """Exact-rebuild the scan from the fixed fresh semantic index."""
 
     persisted = _validate_result(value)
-    rebuilt = build_loan_quality_full_document_scan_v1(semantic_index)
+    rebuilt = build_loan_quality_full_document_scan_v1(
+        semantic_index,
+        enable_extended_annual_variants=enable_extended_annual_variants,
+    )
     if not same_typed_json_v1(persisted, rebuilt):
         raise _error("loan-quality full-document scan does not replay exactly")
     return rebuilt
@@ -253,9 +268,17 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, default=DEFAULT_INPUT)
     parser.add_argument("--output", type=Path)
+    parser.add_argument(
+        "--annual-2025",
+        action="store_true",
+        help="Enable the generic year-end horizontal/stacked presentation variants.",
+    )
     args = parser.parse_args()
     semantic_index = json.loads(args.input.read_text(encoding="utf-8"))
-    result = build_loan_quality_full_document_scan_v1(semantic_index)
+    result = build_loan_quality_full_document_scan_v1(
+        semantic_index,
+        enable_extended_annual_variants=args.annual_2025,
+    )
     raw = canonical_json_bytes_v1(result) + b"\n"
     if args.output is None:
         sys.stdout.buffer.write(raw)

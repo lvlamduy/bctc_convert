@@ -120,6 +120,40 @@ def test_scan_exact_replay_rebuilds_every_document(
     assert scanner.validate_loan_quality_full_document_scan_replay_v1(result, {}) == result
 
 
+def test_extended_annual_profile_is_forwarded_without_changing_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    axis = _axis()
+    for document in axis["documents"]:
+        page = document["pages"][0]
+        page["lines"][0]["vietocr_text"] = "Theo chất lượng nợ cho vay"
+        page["lines"][1]["vietocr_text"] = "Số cuối năm"
+        page["lines"][2]["vietocr_text"] = "Số đầu năm"
+        page["lines"][3]["vietocr_text"] = "Triệu đồng"
+        page["lines"][4]["vietocr_text"] = "Triệu đồng"
+        page["lines"][5]["vietocr_text"] = "Cho vay khách hàng"
+    monkeypatch.setattr(
+        scanner, "project_full_document_vietocr_accounting_axis_v1", lambda _value: axis
+    )
+
+    default = scanner.build_loan_quality_full_document_scan_v1({})
+    annual = scanner.build_loan_quality_full_document_scan_v1(
+        {},
+        enable_extended_annual_variants=True,
+    )
+
+    assert default["metrics"]["document_unique_structural_match_count"] == 0
+    assert annual["metrics"]["document_unique_structural_match_count"] == 8
+    assert (
+        scanner.validate_loan_quality_full_document_scan_replay_v1(
+            annual,
+            {},
+            enable_extended_annual_variants=True,
+        )
+        == annual
+    )
+
+
 def test_coordinated_persisted_match_tamper_is_rejected_by_public_replay(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

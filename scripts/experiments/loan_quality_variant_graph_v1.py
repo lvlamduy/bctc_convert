@@ -131,6 +131,29 @@ _ENGINE_SPEC = {
         "Rủi ro tín dụng",
     ],
 }
+_EXTENDED_BRANCH_VARIANTS = [
+    {
+        "allow_inline_prefix": True,
+        "anchor_phrase": "nợ cho vay",
+        "variant_id": "QUALITY_THEN_LOAN_DEBT_WORDING",
+    },
+    {
+        "allow_inline_prefix": True,
+        "anchor_phrase": "nợ",
+        "variant_id": "QUALITY_TRAILING_DEBT_WORDING",
+    },
+    {
+        "allow_inline_prefix": True,
+        "anchor_phrase": "dư nợ cho vay khách hàng",
+        "variant_id": "QUALITY_THEN_CUSTOMER_LOAN_BALANCE_WORDING",
+    },
+    {
+        "allow_inline_prefix": True,
+        "anchor_phrase": "tài sản có rủi ro tín dụng",
+        "variant_id": "CREDIT_RISK_ASSET_QUALITY_WORDING",
+    },
+]
+_EXTENDED_POST_GRADE_BOUNDARIES = ("nghiep vu phat hanh thu tin dung tra cham",)
 _SAFETY = {
     "bank_filename_note_or_page_used_for_inference": False,
     "blank_companion_cells_imputed_as_zero": False,
@@ -240,7 +263,30 @@ def _pages(value: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
     return pages
 
 
-def _engine_scan(pages: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+def _engine_spec(*, enable_extended_annual_variants: bool) -> dict[str, Any]:
+    if not enable_extended_annual_variants:
+        return _ENGINE_SPEC
+    return {
+        **canonical_clone_v1(_ENGINE_SPEC),
+        "branch_core_phrases": ["chất lượng"],
+        "branch_variants": canonical_clone_v1(_EXTENDED_BRANCH_VARIANTS),
+        "limits": {
+            "max_branch_to_last_child_line_span": 100,
+            "max_child_gap": 32,
+            "min_numeric_followers_per_child": 2,
+        },
+        "optional_intermediate_aliases": [
+            *_ENGINE_SPEC["optional_intermediate_aliases"],
+            "Cho vay khách hàng",
+        ],
+    }
+
+
+def _engine_scan(
+    pages: Sequence[Mapping[str, Any]],
+    *,
+    enable_extended_annual_variants: bool,
+) -> dict[str, Any]:
     return build_accounting_variant_region_scan_v1(
         [
             {
@@ -255,7 +301,7 @@ def _engine_scan(pages: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             }
             for page in pages
         ],
-        _ENGINE_SPEC,
+        _engine_spec(enable_extended_annual_variants=enable_extended_annual_variants),
     )
 
 
@@ -388,6 +434,80 @@ def _lane_axis(
     return lane_types, scope, reasons
 
 
+def _period_axis(
+    lines: Sequence[Mapping[str, Any]],
+    *,
+    enable_extended_annual_variants: bool,
+) -> tuple[list[dict[str, Any]], str]:
+    axes, mode = extract_period_axis_v1(lines)
+    if len(axes) == 2 or not enable_extended_annual_variants:
+        return axes, mode
+    relative_roles = {
+        "so cuoi nam": "CURRENT_PERIOD_END",
+        "so dau nam": "COMPARATIVE_PERIOD_START",
+    }
+    relative = [
+        {
+            "evidence_source_line_indices": [line["source_line_index"]],
+            "period": role,
+            "x_center_x2": center_x2_v1(line),
+        }
+        for line in lines
+        if (role := relative_roles.get(normalize_vietnamese_anchor_v1(line["vietocr_text"])))
+    ]
+    if len(relative) != 2 or {item["period"] for item in relative} != set(relative_roles.values()):
+        return axes, mode
+    return sorted(relative, key=lambda item: item["x_center_x2"]), (
+        "LOCAL_RELATIVE_YEAR_END_PERIOD_ROLES"
+    )
+
+
+def _resolved_owner_context(region: Mapping[str, Any]) -> dict[str, Any] | None:
+    matches = [
+        item
+        for item in region["optional_intermediate_matches"]
+        if match_vietnamese_anchor_alias_v1(item["surface"], ["Cho vay khách hàng"]) is not None
+    ]
+    if len(matches) == 1:
+        match = matches[0]
+        return {
+            "match_kind": match["match_kind"],
+            "mode": "SAME_PAGE_IMMEDIATE_POST_BRANCH_PARENT_ROW",
+            "normalized_surface": match["normalized_surface"],
+            "page_sequence": region["page_sequence"],
+            "source_line_index": match["source_line_index"],
+            "surface": match["surface"],
+        }
+    owner = region["owner_context"]
+    return None if owner is None else canonical_clone_v1(owner)
+
+
+def _leading_owner_total(
+    page: Mapping[str, Any],
+    region: Mapping[str, Any],
+    first_role_index: int,
+    lane_types: Sequence[str],
+) -> list[dict[str, Any]]:
+    owner = _resolved_owner_context(region)
+    if owner is None or owner["mode"] != "SAME_PAGE_IMMEDIATE_POST_BRANCH_PARENT_ROW":
+        return []
+    run, _cursor = _immediate_numeric_run(
+        page["lines"],
+        owner["source_line_index"] + 1,
+        first_role_index,
+    )
+    if len(run) != len(lane_types):
+        return []
+    return (
+        extract_typed_value_vector_v1(
+            run,
+            lane_types,
+            primary_numeric_authority=page["primary_numeric_authority"],
+        )
+        or []
+    )
+
+
 def _role_groups(
     lines: Sequence[Mapping[str, Any]], branch_index: int
 ) -> list[list[dict[str, Any]]]:
@@ -486,6 +606,7 @@ def _sparse_money_vector(
     column_centers: Sequence[int],
     *,
     primary_numeric_authority: bool,
+    ignore_unaligned: bool = False,
 ) -> list[dict[str, Any]] | None:
     """Bind present cells to geometric columns without inventing blank zeros."""
 
@@ -500,7 +621,11 @@ def _sparse_money_vector(
         center = center_x2_v1(line)
         distances = [abs(center - expected) for expected in column_centers]
         column_index = min(range(len(distances)), key=distances.__getitem__)
-        if distances[column_index] > maximum_distance or column_index in by_column:
+        if distances[column_index] > maximum_distance:
+            if ignore_unaligned:
+                continue
+            return None
+        if column_index in by_column:
             return None
         singleton = extract_typed_value_vector_v1(
             [line],
@@ -519,6 +644,8 @@ def _ordinary_graph(
     pages: Sequence[Mapping[str, Any]],
     page: Mapping[str, Any],
     region: Mapping[str, Any],
+    *,
+    enable_extended_annual_variants: bool,
 ) -> dict[str, Any]:
     lines = page["lines"]
     branch_index = region["branch_source_line_index"]
@@ -536,7 +663,10 @@ def _ordinary_graph(
     )
     if lane_count not in {2, 4}:
         reasons.append("ORDINARY_VALUE_LANE_COUNT_NOT_RESOLVED")
-    axes, period_mode = extract_period_axis_v1(header)
+    axes, period_mode = _period_axis(
+        header,
+        enable_extended_annual_variants=enable_extended_annual_variants,
+    )
     if len(axes) != 2:
         reasons.append("PERIOD_AXIS_NOT_RESOLVED")
 
@@ -581,6 +711,13 @@ def _ordinary_graph(
             final_cursor = cursor
             continue
         remainder = lines[cursor:stop]
+        if enable_extended_annual_variants and run:
+            table_right = max(line["bbox"][2] for line in run)
+            remainder = [
+                line
+                for line in remainder
+                if is_number_like_v1(line["vietocr_text"]) or line["bbox"][0] <= table_right + 50
+            ]
         if not remainder:
             continue
         numeric_runs = _numeric_runs(remainder)
@@ -619,12 +756,24 @@ def _ordinary_graph(
         )
 
     tail = lines[final_cursor : final_cursor + 32]
+    if enable_extended_annual_variants:
+        value_indices = [item["source_line_index"] for row in rows for item in row["values"]]
+        if value_indices:
+            table_right = max(lines[index]["bbox"][2] for index in value_indices)
+            tail = [line for line in tail if line["bbox"][0] <= table_right + 50]
     boundary = next(
         (
             index
             for index, line in enumerate(tail)
             if (
                 "phan tich" in normalize_vietnamese_anchor_v1(line["vietocr_text"])
+                or (
+                    enable_extended_annual_variants
+                    and any(
+                        normalize_vietnamese_anchor_v1(line["vietocr_text"]).startswith(prefix)
+                        for prefix in _EXTENDED_POST_GRADE_BOUNDARIES
+                    )
+                )
                 or _SECTION_NUMBER.fullmatch(line["vietocr_text"].strip()) is not None
             )
         ),
@@ -636,12 +785,16 @@ def _ordinary_graph(
         (index for index, line in enumerate(tail) if not is_number_like_v1(line["vietocr_text"])),
         None,
     )
-    core_total: list[dict[str, Any]] = []
+    core_total = (
+        _leading_owner_total(page, region, role_indices[0], lane_types)
+        if enable_extended_annual_variants and lane_types
+        else []
+    )
     additive_row: dict[str, Any] | None = None
     grand_total: list[dict[str, Any]] = []
-    if first_label is None:
+    if first_label is None and not core_total:
         numeric, _ = _immediate_numeric_run(tail, 0, len(tail))
-        if len(numeric) == lane_count:
+        if lane_types and len(numeric) == lane_count:
             core_total = (
                 extract_typed_value_vector_v1(
                     numeric,
@@ -652,10 +805,10 @@ def _ordinary_graph(
             )
         else:
             reasons.append("CORE_TOTAL_NOT_RESOLVED")
-    else:
+    elif first_label is not None:
         before = [line for line in tail[:first_label] if is_number_like_v1(line["vietocr_text"])]
         if before:
-            if len(before) != lane_count:
+            if not lane_types or len(before) != lane_count:
                 reasons.append("CORE_TOTAL_NOT_RESOLVED")
             else:
                 core_total = (
@@ -674,7 +827,7 @@ def _ordinary_graph(
         normalized = normalize_vietnamese_anchor_v1(label_surface)
         numeric = [line for line in tail[label_end:] if is_number_like_v1(line["vietocr_text"])]
         if "tong" in normalized:
-            if before or len(numeric) != lane_count:
+            if before or not lane_types or len(numeric) != lane_count:
                 reasons.append("LABELED_CORE_TOTAL_NOT_RESOLVED")
             else:
                 core_total = (
@@ -687,7 +840,7 @@ def _ordinary_graph(
                 )
         elif not any(token in normalized for token in ("margin", "ky quy", "ung truoc")):
             reasons.append("POST_GRADE_OPTIONAL_ROW_NOT_CLASSIFIED")
-        elif len(numeric) != lane_count * 2:
+        elif not lane_types or len(numeric) != lane_count * 2:
             reasons.append("ADDITIVE_ROW_AND_GRAND_TOTAL_NOT_RESOLVED")
         else:
             additive_vector = (
@@ -771,7 +924,8 @@ def _ordinary_graph(
         if arithmetic.startswith("VETOED"):
             reasons.append("ARITHMETIC_POPULATION_VETO")
 
-    if region["owner_context"] is None:
+    owner_context = _resolved_owner_context(region)
+    if owner_context is None:
         reasons.append("CUSTOMER_LOAN_OWNER_NOT_RESOLVED")
     structural = not reasons
     status = (
@@ -793,7 +947,7 @@ def _ordinary_graph(
         "layout_mode": "HORIZONTAL_TYPED_PERIOD_LANES",
         "nonadditive_rows": nonadditive_rows,
         "optional_additive_row": additive_row,
-        "owner_context": canonical_clone_v1(region["owner_context"]),
+        "owner_context": owner_context,
         "page_sequence": page["page_sequence"],
         "period_mode": period_mode,
         "rows": rows,
@@ -808,6 +962,8 @@ def _stacked_graph(
     pages: Sequence[Mapping[str, Any]],
     page: Mapping[str, Any],
     region: Mapping[str, Any],
+    *,
+    enable_extended_annual_variants: bool,
 ) -> dict[str, Any]:
     lines = page["lines"]
     branch_index = region["branch_source_line_index"]
@@ -815,7 +971,8 @@ def _stacked_graph(
     reasons: list[str] = [
         reason for reason in region["unresolved_reasons"] if reason != "OWNER_CONTEXT_NOT_RESOLVED"
     ]
-    if region["owner_context"] is None:
+    owner_context = _resolved_owner_context(region)
+    if owner_context is None:
         reasons.append("LOAN_QUALITY_OWNER_NOT_RESOLVED")
     if len(groups) != 2:
         reasons.append("EXACT_TWO_STACKED_PERIOD_BLOCKS_NOT_RESOLVED")
@@ -828,7 +985,10 @@ def _stacked_graph(
         reasons.append("CUSTOMER_LOAN_TARGET_COLUMN_NOT_RESOLVED")
     if total_header is None:
         reasons.append("TOTAL_COMPANION_COLUMN_NOT_RESOLVED")
-    axes, period_mode = extract_period_axis_v1(lines[branch_index + 1 :])
+    axes, period_mode = _period_axis(
+        lines[branch_index + 1 :],
+        enable_extended_annual_variants=enable_extended_annual_variants,
+    )
     if len(axes) != 2:
         reasons.append("STACKED_PERIOD_AXIS_NOT_RESOLVED")
 
@@ -917,20 +1077,21 @@ def _stacked_graph(
             rows.append({"label": match, "role": match["role"], "values": vector})
             if role_offset == len(group) - 1:
                 final_cursor = cursor
-        total_runs = [
-            run
+        total_candidates = [
+            vector
             for run in _numeric_runs(lines[final_cursor:next_group_start])
-            if len(run) == column_count
-        ]
-        total = (
-            extract_typed_value_vector_v1(
-                total_runs[0],
-                ["MONEY"] * column_count,
-                primary_numeric_authority=page["primary_numeric_authority"],
+            if (
+                vector := _sparse_money_vector(
+                    run,
+                    column_centers,
+                    primary_numeric_authority=page["primary_numeric_authority"],
+                    ignore_unaligned=True,
+                )
             )
-            if total_runs
-            else None
-        )
+            is not None
+            and [item["lane_index"] for item in vector] == list(range(column_count))
+        ]
+        total = total_candidates[0] if len(total_candidates) == 1 else None
         if total is None:
             reasons.append(f"STACKED_BLOCK_{group_offset}_TOTAL_UNRESOLVED")
             total = []
@@ -940,25 +1101,27 @@ def _stacked_graph(
     if page["primary_numeric_authority"] and blocks:
         block_checks: list[bool] = []
         for block in blocks:
-            if any(
-                [item["lane_index"] for item in row["values"]] != list(range(column_count))
-                for row in block["rows"]
-            ):
+            if any(not row["values"] for row in block["rows"]):
                 block_checks.append(False)
                 continue
-            row_vectors = [money_values_v1(row["values"]) for row in block["rows"]]
             total_vector = money_values_v1(block["total"])
-            if any(value is None for value in row_vectors) or total_vector is None:
+            if total_vector is None or len(total_vector) != column_count:
                 block_checks.append(False)
                 continue
-            typed = [value for value in row_vectors if value is not None]
-            column_ok = [
-                sum(value[index] for value in typed) for index in range(column_count)
-            ] == total_vector
+            visible_by_row = [
+                {item["lane_index"]: money_values_v1([item])[0] for item in row["values"]}
+                for row in block["rows"]
+            ]
+            column_ok = all(
+                sum(row.get(column_index, 0) for row in visible_by_row)
+                == total_vector[column_index]
+                for column_index in range(column_count)
+            )
             row_ok = total_column_index is not None and all(
-                sum(value[index] for index in range(column_count) if index != total_column_index)
-                == value[total_column_index]
-                for value in typed
+                total_column_index in row
+                and sum(value for index, value in row.items() if index != total_column_index)
+                == row[total_column_index]
+                for row in visible_by_row
             )
             block_checks.append(column_ok and row_ok)
         arithmetic = (
@@ -991,7 +1154,7 @@ def _stacked_graph(
             "header": customer_header,
         },
         "layout_mode": "STACKED_PERIOD_BLOCKS_MULTI_ASSET_COLUMNS",
-        "owner_context": canonical_clone_v1(region["owner_context"]),
+        "owner_context": owner_context,
         "page_sequence": page["page_sequence"],
         "period_mode": period_mode,
         "status": status,
@@ -1001,12 +1164,27 @@ def _stacked_graph(
     }
 
 
-def _graph(pages: Sequence[Mapping[str, Any]], region: Mapping[str, Any]) -> dict[str, Any]:
+def _graph(
+    pages: Sequence[Mapping[str, Any]],
+    region: Mapping[str, Any],
+    *,
+    enable_extended_annual_variants: bool,
+) -> dict[str, Any]:
     page = _page_by_sequence(pages, region["page_sequence"])
     lines = page["lines"]
     if len(_role_groups(lines, region["branch_source_line_index"])) >= 2:
-        return _stacked_graph(pages, page, region)
-    return _ordinary_graph(pages, page, region)
+        return _stacked_graph(
+            pages,
+            page,
+            region,
+            enable_extended_annual_variants=enable_extended_annual_variants,
+        )
+    return _ordinary_graph(
+        pages,
+        page,
+        region,
+        enable_extended_annual_variants=enable_extended_annual_variants,
+    )
 
 
 def _validate_result(value: Any) -> dict[str, Any]:
@@ -1066,12 +1244,24 @@ def _validate_result(value: Any) -> dict[str, Any]:
 
 def build_loan_quality_variant_graph_document_v1(
     document_pages: Sequence[Mapping[str, Any]],
+    *,
+    enable_extended_annual_variants: bool = False,
 ) -> dict[str, Any]:
     """Scan one entire PDF and build every loan-quality graph candidate."""
 
     pages = _pages(document_pages)
-    region_scan = _engine_scan(pages)
-    graphs = [_graph(pages, region) for region in region_scan["regions"]]
+    region_scan = _engine_scan(
+        pages,
+        enable_extended_annual_variants=enable_extended_annual_variants,
+    )
+    graphs = [
+        _graph(
+            pages,
+            region,
+            enable_extended_annual_variants=enable_extended_annual_variants,
+        )
+        for region in region_scan["regions"]
+    ]
     metrics = {
         "accepted_graph_count": sum(
             graph["status"] == "ACCEPTED_VARIANT_GRAPH" for graph in graphs
@@ -1130,11 +1320,16 @@ def build_loan_quality_variant_graph_document_v1(
 def validate_loan_quality_variant_graph_replay_v1(
     value: Any,
     document_pages: Sequence[Mapping[str, Any]],
+    *,
+    enable_extended_annual_variants: bool = False,
 ) -> dict[str, Any]:
     """Rebuild from the complete PDF line axis and exact-compare."""
 
     persisted = _validate_result(value)
-    rebuilt = build_loan_quality_variant_graph_document_v1(document_pages)
+    rebuilt = build_loan_quality_variant_graph_document_v1(
+        document_pages,
+        enable_extended_annual_variants=enable_extended_annual_variants,
+    )
     if not same_typed_json_v1(persisted, rebuilt):
         raise _error("loan-quality document graph does not replay exactly")
     return rebuilt

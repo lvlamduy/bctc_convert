@@ -102,6 +102,16 @@ VCB p40, BID p42 và VIB p38; CTG được xác nhận không có family trong �
 - Status: `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; không suy rộng sang filing
   CTG khác.
 
+E-0114 `Phân tích chất lượng cho vay` trên tám BCTC hợp nhất kiểm toán năm
+2025 không bổ sung dòng OPEN: whole-PDF graph tìm đúng một vùng tại ACB p50,
+MBB p51, VPB p45, HDB p36, VCB p39, CTG p43, BID p42 và VIB p66. 40 dòng năm
+nhóm nợ cùng ba dòng margin độc lập ACB/MBB/VPB được map; 16 phương trình tiền
+và hai phương trình phần trăm đóng đúng. HDB giữ population thư tín dụng trả
+chậm kế bên ngoài core; VIB chọn đúng cột `Cho vay khách hàng` trong bảng năm
+cột và không biến ô trống thành 0. Hai vùng chất lượng chứng khoán của CTG là
+đối chứng âm sai owner. 14 lỗi chữ/dấu của VietOCR được pixel giải quyết; không
+có bất đồng số trong 86 ô tiền. Family annual-2025 này đã đóng hoàn toàn.
+
 E-0079 `Thu nhập lãi và các khoản thu nhập tương tự` không bổ sung dòng OPEN:
 cả tám vùng duy nhất đã map hết các dòng nguồn vào 1143–1150. Hai lỗi mất chữ
 số đầu của VietOCR tại VIB được trục số nguồn/PaddleOCR và pixel bác bỏ, nên là

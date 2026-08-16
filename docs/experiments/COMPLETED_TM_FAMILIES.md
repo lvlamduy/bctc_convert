@@ -111,6 +111,20 @@ cột dòng tiền vào/ra chỉ dùng kiểm tra vì schema không có trục t
 
 ## 8. Phân tích chất lượng cho vay
 
+- **Đã xác minh trên BCTC hợp nhất kiểm toán năm 2025:** ACB p50, MBB p51,
+  VPB p45, HDB p36, VCB p39, CTG p43, BID p42 và VIB p66. Whole-PDF scan
+  tìm đúng một graph `Cho vay khách hàng → năm nhóm chất lượng` ở mỗi báo cáo;
+  hai bảng chất lượng chứng khoán gần giống của CTG bị loại đúng bởi owner.
+  Đã map 40 dòng nhóm 1–5 và ba dòng margin riêng của ACB/MBB/VPB vào 1944;
+  16 phương trình tiền đóng đúng, mười ô % của BID đóng về 100% và ô trống
+  trong bảng nhiều cột của VIB không bị đổi thành 0.
+- **Không có trong annual-2025:** Không có bank nào; cả tám filing đều có
+  family này.
+- **Còn thiếu trên annual-2025:** Không còn khoản mục nguồn chưa map. HDB dùng
+  tổng `546.370.779 / 431.306.069` của đúng population cho vay khách hàng;
+  population thư tín dụng trả chậm kế bên được giữ ngoài core. Mười bốn lỗi
+  chữ/dấu của VietOCR được đối chiếu pixel; 86 ô tiền đều khớp ảnh nguồn.
+
 - **Đã xác minh:** ACB p18, MBB p31, VPB p42, HDB p26, VCB p30, CTG p39,
   BID p22, VIB p60. Năm nhóm chất lượng nợ đã được map cho cả 8 bank. Bản
   chuẩn hóa E-0067B còn tách `Cho vay giao dịch ký quỹ và ứng trước tiền bán
@@ -126,6 +140,8 @@ cột dòng tiền vào/ra chỉ dùng kiểm tra vì schema không có trục t
   chuẩn hóa vẫn đóng đúng và không double count.
 
 Kết quả exact-replay:
+`docs/experiments/E-0114-annual-2025-loan-quality-8bank-codex-verified-mapping-v1.json`
+và
 `docs/experiments/E-0067B-loan-quality-margin-separation-project-owner-v1.json`.
 
 ## 9. Phân tích dư nợ theo thời gian/thời hạn gốc
@@ -916,7 +932,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Công cụ tài chính phái sinh | ✓ p49 | ✓ p66 | ✓ p44 | ✓ p35 | — | ✓ p42 | ✓ p41 | ✓ p37 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; VCB không có family |
 | Loại hình cho vay | ✓ p17 | ✓ p31 | ✓ p42 | ✓ p26 | ✓ p30 | ✓ p38 | ✓ p22 | ✓ p33 | 0 |
 | Ngành nghề kinh doanh | ✓ p51 | ✓ p52 | ✓ p47 | ✓ p37 | ✓\* p40 | — | ✓ p42 | ✓ p38 | 1 dòng VCB `Thương mại, dịch vụ`; CTG không có family trong filing annual-2025 |
-| Chất lượng cho vay | ✓ p18 | ✓ p31 | ✓ p42 | ✓ p26 | ✓ p30 | ✓ p39 | ✓ p22 | ✓ p60 | 0; 1944 tách riêng tại ACB/MBB/VPB, MBB 747 đã trừ đúng 5746 |
+| Chất lượng cho vay | ✓ p50 | ✓ p51 | ✓ p45 | ✓ p36 | ✓ p39 | ✓ p43 | ✓ p42 | ✓ p66 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; 1944 tách riêng tại ACB/MBB/VPB |
 | Dư nợ theo thời gian | ✓ p18 | ✓ p31 | ✓ p42 | ✓ p26 | ✓ p31 | ✓ p39 | ✓ p22 | ✓ p33 | 0 khoản mục mục tiêu |
 | Cho vay theo loại tiền tệ | — p17–18 | — p31–33 | — p42–44 | — p26–27 | — p30–31 | — p38–39 | — p22 | — p33–34 | 0; family không có trong 8 PDF cố định |
 | Cho vay theo khu vực địa lý | — | ✓ p52 | — | — | — | — | — | ✓ p53–54 | 0; sáu PDF không có đúng family cho vay khách hàng theo khu vực |
