@@ -855,6 +855,31 @@ Q1/2026, không relabel thành Q2/2026.
 | VIB | 65 | Trạng thái kết hợp — EUR | Kỳ hiện tại không có ô trạng thái ngoại bảng EUR nhìn thấy để đóng phương trình. |
 | VIB | 65 | Trạng thái kết hợp — USD | Kỳ hiện tại không có ô trạng thái ngoại bảng USD nhìn thấy để đóng phương trình. |
 
+## 49. Rủi ro lãi suất
+
+- **Đã map/xác minh:** MBB p57, VPB p78, HDB p41, VCB p49 và CTG
+  p55. Một graph chung nhận các trục định giá lại linh hoạt, thứ tự dòng
+  có thể thay đổi, nhãn bị tách dòng và các nhánh nội/ngoại bảng
+  tùy chọn. Đã xác minh 149 mapping/149 ô số bằng 54 phương trình;
+  VPB giữ đúng kỳ Q1/2026.
+- **Không có bảng rủi ro lãi suất chi tiết trong báo cáo:** ACB và BID.
+  Toàn PDF đã được quét; các đoạn thuyết minh chính sách không có
+  bảng tài sản/nợ/trạng thái theo trục định giá lại nên không bị
+  relabel thành bảng chi tiết.
+- **Có nhưng còn thiếu:** 26 nhóm/91 ô nguồn được giữ `OPEN`.
+  VIB p62–63 được định vị duy nhất bằng cùng VietOCR Transformer sau
+  khi xoay đúng hướng, nhưng trục số Paddle/nguồn làm rơi chữ số nên
+  toàn bộ số VIB chưa map; VietOCR không được dùng làm numeric truth.
+
+| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | ---: | --- | --- |
+| MBB | 57 | Trục quá hạn — tổng tài sản/trạng thái nội bảng | Hai ô nhìn thấy chưa có đủ đối ứng để đóng một phương trình chính xác. |
+| VPB | 78 | Tổng trạng thái nội, ngoại bảng | Chỉ có ô kết hợp nhìn thấy; không tách đủ hai thành phần để đóng phương trình. |
+| HDB | 41 | Các cam kết ngoại bảng trên chín trục lãi suất | Có các ô trạng thái ngoại bảng nhưng thiếu dòng kết hợp/khép số tương ứng; 11 ô giữ source-only. |
+| VCB | 49 | Trạng thái kết hợp tại không lãi, quá hạn, 6–12 tháng và trên 5 năm | Bốn ô không có đủ thành phần nội/ngoại bảng để xác minh phép cộng. |
+| CTG | 55 | Quá hạn trên 3 tháng và đến 3 tháng | Hai cặp tổng tài sản/trạng thái nội bảng chưa có đủ đối ứng để đóng phương trình. |
+| VIB | 62–63 | Toàn bộ chín trục định giá lại, kỳ hiện tại và so sánh | Bảng xoay đã unique về cấu trúc/text, nhưng numeric challenger nguồn làm rơi chữ số; giữ 69 ô OPEN chờ challenger số độc lập. |
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -911,3 +936,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra | ✓\* p26 | ✓ p51 | ✓\* p68 | — | — | ✓ p48 | — | ✓ p50 | 13 dòng OPEN; 47 mapping, 92 ô số, 34 phương trình; 3 bank không có note chi tiết; VPB là nguồn Q1 |
 | Công cụ tài chính — giá trị ghi sổ/hợp lý | — | — | ✓\* p86 | — | ✓\* p44–45 | ✓\* p51 | — | — | 3 nhóm giá trị hợp lý OPEN; 64 mapping, 55 ô số, 12 phương trình; 5 bank không có bảng chi tiết; VPB là nguồn Q1 |
 | Rủi ro tiền tệ | — | ✓ p58 | ✓\* p80 | ✓\* p38–39 | ✓\* p50–51 | ✓\* p60 | — | ✓\* p65–66 | 11 nhóm/25 ô OPEN; 103 mapping, 119 ô số, 48 phương trình; ACB/BID không có bảng chi tiết; VPB là nguồn Q1 |
+| Rủi ro lãi suất | — | ✓\* p57 | ✓\* p78 | ✓\* p41 | ✓\* p49 | ✓\* p55 | — | △ p62–63 | 26 nhóm/91 ô OPEN; 149 mapping, 54 phương trình; VIB numeric xoay chưa đủ authority; VPB là nguồn Q1 |

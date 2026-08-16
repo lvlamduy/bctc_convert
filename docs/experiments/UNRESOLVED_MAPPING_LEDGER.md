@@ -17,8 +17,8 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **198 entries**.  Current open queue: **79**.  Closed history:
-**50** row/graph resolutions and **69** confirmed bound-report family absences.
+Ledger total: **226 entries**.  Current open queue: **105**.  Closed history:
+**50** row/graph resolutions and **71** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
@@ -197,10 +197,46 @@ các trạng thái kết hợp thiếu ô ngoại bảng nhìn thấy và một 
 phạm vi `nợ phải trả` hẹp hơn leaf schema gồm cả vốn chủ sở hữu. VietOCR chỉ
 làm text/geometry anchor; số được khóa bằng trục Paddle/native và pixel.
 
+E-0102 `Rủi ro lãi suất` quét đủ 453 trang và tìm đúng một vùng tại MBB p57,
+VPB p78, HDB p40–41, VCB p48–49, CTG p55 và VIB p62–63. ACB/BID là bounded
+detailed-table absence. Graph chung dùng owner, trục định giá lại linh hoạt,
+tổng tài sản/nợ và trạng thái nội/ngoại/kết hợp; không dùng bank/page làm rule.
+149 mapping/149 ô số và 54 phương trình được `VERIFIED_BY_CODEX` tại MBB/VPB/
+HDB/VCB/CTG. IRISK-001–IRISK-017 giữ 22 ô thiếu đối ứng kế toán; IRISK-018–
+IRISK-026 giữ toàn bộ 69 ô VIB vì bảng xoay đã unique về cấu trúc nhưng trục
+Paddle/source làm rơi chữ số. VietOCR xoay chỉ làm text/geometry anchor, không
+được nâng thành numeric truth. VPB giữ đúng kỳ Q1/2026.
+
 ## Open review queue (always first)
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
 | --- | --- | --- | ---: | --- | --- |
+| IRISK-001 | Rủi ro lãi suất | MBB | 57 | Quá hạn — tổng tài sản/trạng thái nội bảng (2 ô) | Thiếu các ô đối ứng để đóng phương trình chính xác. |
+| IRISK-002 | Rủi ro lãi suất | VPB | 78 | Tổng trạng thái nội, ngoại bảng (1 ô) | Chỉ có giá trị kết hợp nhìn thấy; không đủ hai thành phần để kiểm tra phép cộng. |
+| IRISK-003 | Rủi ro lãi suất | HDB | 41 | Không chịu lãi — trạng thái ngoại bảng (1 ô) | Không có dòng kết hợp/đối ứng để đóng phương trình. |
+| IRISK-004 | Rủi ro lãi suất | HDB | 41 | Quá hạn — tổng tài sản/trạng thái nội và ngoại bảng (3 ô) | Không có đủ bộ tài sản, nợ và trạng thái kết hợp để đóng phương trình. |
+| IRISK-005 | Rủi ro lãi suất | HDB | 41 | Tổng cộng — trạng thái ngoại bảng (1 ô) | Không có dòng kết hợp/đối ứng để đóng phương trình. |
+| IRISK-006 | Rủi ro lãi suất | HDB | 41 | 1–3 tháng — trạng thái ngoại bảng (1 ô) | Không có dòng kết hợp/đối ứng để đóng phương trình. |
+| IRISK-007 | Rủi ro lãi suất | HDB | 41 | 1–5 năm — trạng thái ngoại bảng (1 ô) | Không có dòng kết hợp/đối ứng để đóng phương trình. |
+| IRISK-008 | Rủi ro lãi suất | HDB | 41 | 3–6 tháng — trạng thái ngoại bảng (1 ô) | Không có dòng kết hợp/đối ứng để đóng phương trình. |
+| IRISK-009 | Rủi ro lãi suất | HDB | 41 | 6–12 tháng — trạng thái ngoại bảng (1 ô) | Không có dòng kết hợp/đối ứng để đóng phương trình. |
+| IRISK-010 | Rủi ro lãi suất | HDB | 41 | Trên 5 năm — trạng thái ngoại bảng (1 ô) | Không có dòng kết hợp/đối ứng để đóng phương trình. |
+| IRISK-011 | Rủi ro lãi suất | HDB | 41 | Đến 1 tháng — trạng thái ngoại bảng (1 ô) | Không có dòng kết hợp/đối ứng để đóng phương trình. |
+| IRISK-012 | Rủi ro lãi suất | VCB | 49 | Không chịu lãi — trạng thái kết hợp (1 ô) | Không có đủ trạng thái nội/ngoại bảng để kiểm tra phép cộng. |
+| IRISK-013 | Rủi ro lãi suất | VCB | 49 | Quá hạn — trạng thái kết hợp (1 ô) | Không có đủ trạng thái nội/ngoại bảng để kiểm tra phép cộng. |
+| IRISK-014 | Rủi ro lãi suất | VCB | 49 | 6–12 tháng — trạng thái kết hợp (1 ô) | Không có đủ trạng thái nội/ngoại bảng để kiểm tra phép cộng. |
+| IRISK-015 | Rủi ro lãi suất | VCB | 49 | Trên 5 năm — trạng thái kết hợp (1 ô) | Không có đủ trạng thái nội/ngoại bảng để kiểm tra phép cộng. |
+| IRISK-016 | Rủi ro lãi suất | CTG | 55 | Quá hạn trên 3 tháng — tổng tài sản/trạng thái nội bảng (2 ô) | Thiếu các ô đối ứng để đóng phương trình chính xác. |
+| IRISK-017 | Rủi ro lãi suất | CTG | 55 | Quá hạn đến 3 tháng — tổng tài sản/trạng thái nội bảng (2 ô) | Thiếu các ô đối ứng để đóng phương trình chính xác. |
+| IRISK-018 | Rủi ro lãi suất | VIB | 62–63 | Không chịu lãi (7 ô) | Bảng xoay đã unique; numeric challenger nguồn làm rơi chữ số, cần challenger số độc lập. |
+| IRISK-019 | Rủi ro lãi suất | VIB | 62–63 | Quá hạn (6 ô) | Bảng xoay đã unique; numeric challenger nguồn làm rơi chữ số, cần challenger số độc lập. |
+| IRISK-020 | Rủi ro lãi suất | VIB | 62–63 | Tổng cộng (10 ô) | Bảng xoay đã unique; numeric challenger nguồn làm rơi chữ số, cần challenger số độc lập. |
+| IRISK-021 | Rủi ro lãi suất | VIB | 62–63 | 1–3 tháng (10 ô) | Bảng xoay đã unique; numeric challenger nguồn làm rơi chữ số, cần challenger số độc lập. |
+| IRISK-022 | Rủi ro lãi suất | VIB | 62–63 | 1–5 năm (6 ô) | Bảng xoay đã unique; numeric challenger nguồn làm rơi chữ số, cần challenger số độc lập. |
+| IRISK-023 | Rủi ro lãi suất | VIB | 62–63 | 3–6 tháng (8 ô) | Bảng xoay đã unique; numeric challenger nguồn làm rơi chữ số, cần challenger số độc lập. |
+| IRISK-024 | Rủi ro lãi suất | VIB | 62–63 | 6–12 tháng (9 ô) | Bảng xoay đã unique; numeric challenger nguồn làm rơi chữ số, cần challenger số độc lập. |
+| IRISK-025 | Rủi ro lãi suất | VIB | 62–63 | Trên 5 năm (7 ô) | Bảng xoay đã unique; numeric challenger nguồn làm rơi chữ số, cần challenger số độc lập. |
+| IRISK-026 | Rủi ro lãi suất | VIB | 62–63 | Đến 1 tháng (6 ô) | Bảng xoay đã unique; numeric challenger nguồn làm rơi chữ số, cần challenger số độc lập. |
 | CRISK-001 | Rủi ro tiền tệ | VPB | 80 | EUR — tổng tài sản, tổng nợ, trạng thái nội bảng/kết hợp | `249.696 - 264.460 = (14.764)` nhưng nguồn in `(14.765)`; giữ cả bốn ô, không tự sửa sai số 1. |
 | CRISK-002 | Rủi ro tiền tệ | VPB | 80 | Vàng — tổng tài sản, tổng nợ, trạng thái nội bảng/kết hợp | Family 1352 chưa có nhánh currency-axis vàng; bốn ô vẫn khép nội bảng. |
 | CRISK-003 | Rủi ro tiền tệ | VPB | 80 | Trạng thái nội, ngoại bảng — tiền tệ khác | Không có đủ ô trạng thái ngoại bảng nhìn thấy để kiểm tra giá trị `103.011`. |
@@ -337,6 +373,9 @@ page or note identifier participates in this decision.
 | FI-007–FI-011 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/MBB/HDB/BID/VIB không có bảng chi tiết đồng thời trình bày giá trị ghi sổ và giá trị hợp lý trong đúng PDF đã bind |
 | CRISK-001–CRISK-011 | `OPEN_SCHEMA_SCOPE_OR_SOURCE_CLOSURE_GAP`; 103 mapping/119 ô khác vẫn đã xác minh. Trục vàng, trạng thái thiếu đối ứng, hai residual VPB và VND liability hẹp hơn schema được giữ nguyên nguồn |
 | CRISK-012–CRISK-013 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/BID không có bảng rủi ro tiền tệ chi tiết trong đúng PDF đã bind |
+| IRISK-001–IRISK-017 | `OPEN_SOURCE_CLOSURE_GAP`; 149 mapping/149 ô khác vẫn đã xác minh. 22 ô MBB/VPB/HDB/VCB/CTG thiếu thành phần đối ứng để đóng phương trình và không bị tự sửa |
+| IRISK-018–IRISK-026 | `OPEN_ROTATED_NUMERIC_AUTHORITY_GAP`; VIB p62–63 unique về cấu trúc/text nhưng 69 ô số xoay chờ independent numeric challenger; VietOCR không được dùng làm numeric truth |
+| IRISK-027–IRISK-028 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/BID không có bảng rủi ro lãi suất chi tiết trong đúng PDF đã bind |
 
 ## Financial instruments — carrying and fair value (`FINANCIAL_INSTRUMENTS`)
 
@@ -362,6 +401,23 @@ Current exact-replay result:
   gold axes, missing external-state counterparts, two VPB residuals of one and
   the narrower VCB VND liability scope. No blank is converted to zero and no
   residual is silently repaired.
+
+## Interest-rate risk (`INTEREST_RATE_RISK`)
+
+Current exact-replay result:
+`docs/experiments/E-0102-interest-rate-risk-8bank-codex-verified-mapping-v1.json`
+
+- One bank-blind whole-PDF graph finds six unique interest-rate-risk regions
+  and confirms two bounded absences. Flexible repricing axes/order, split-line
+  labels, optional internal/external states and adjacent-page continuation are
+  admitted; currency, liquidity and fair-value tables remain controls.
+- 149 mappings/value cells are independently verified by 54 exact accounting
+  equations at MBB/VPB/HDB/VCB/CTG. VPB remains Q1/2026.
+- **IRISK-001–IRISK-017 — OPEN:** retain 22 visible cells whose counterpart
+  rows are insufficient for exact accounting closure.
+- **IRISK-018–IRISK-026 — OPEN:** retain all 69 VIB p62–63 numeric cells.
+  Rotated same-VietOCR rescue authenticates only text/geometry; the source
+  numeric axis drops digits and cannot authorize mappings.
 
 ## Project-owner catch-all and monthly-average closure (`E-0100`)
 
