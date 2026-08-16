@@ -40,6 +40,10 @@ from bctc_ai.evaluation.authenticated_line_pixel_hydration_v1 import (
     replay_authenticated_line_pixel_hydration_v1,
     validate_authenticated_line_pixel_hydration_envelope_v1,
 )
+from bctc_ai.ocr.ppocrv6_page_session import (
+    PPOCRV6PageSessionError,
+    validate_ppocrv6_payload,
+)
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_json_bytes_v1,
     canonical_json_sha256_v1,
@@ -62,6 +66,68 @@ VERIFIED_INDEX_DIRECTORY = OUTPUT_ROOT / "verified-index"
 VIETOCR_CONFIG_PATH = Path("config/models/vietocr-0.3.13-rtx4090.toml")
 VIETOCR_READER_PATH = Path("src/bctc_ai/ocr/vietocr_line_reader.py")
 VIETOCR_RUNNER_PATH = Path("scripts/models/run_vietocr_line_reader.py")
+ANNUAL_2025_PREPROCESS_ROOT = Path("output/calibration/annual-2025-8bank-vietocr-v1")
+ANNUAL_2025_PPOCR_ROOT = Path("output/calibration/annual-2025-8bank-ppocrv6-v1")
+ANNUAL_2025_OUTPUT_ROOT = Path("output/calibration/annual-2025-8bank-full-document-vietocr-v1")
+ANNUAL_2025_SOURCES = (
+    {
+        "bank_code": "ACB",
+        "page_count": 100,
+        "relative_path": "vietstock_bctc/ACB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+        "sha256": "2f79c3db9e362eee72fcdfca330359e9d9cbf510fd5fe6cdeb98dcf39deae35b",
+        "size_bytes": 2_357_387,
+    },
+    {
+        "bank_code": "MBB",
+        "page_count": 103,
+        "relative_path": "vietstock_bctc/MBB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+        "sha256": "9853cc4909dc73ddea9907465b09d7ecdb96cf6c1627f56943f3a20d14b49f80",
+        "size_bytes": 10_165_066,
+    },
+    {
+        "bank_code": "VPB",
+        "page_count": 100,
+        "relative_path": "vietstock_bctc/VPB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+        "sha256": "f3298c72cbe58af1eefd8223d235843138761a45648cd7e60c5153ad21776ea0",
+        "size_bytes": 7_578_043,
+    },
+    {
+        "bank_code": "HDB",
+        "page_count": 71,
+        "relative_path": "vietstock_bctc/HDB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+        "sha256": "dad39b45a99747f7290d0a478af2f71f018f4adc59a590e158cdea16dd090ac3",
+        "size_bytes": 5_043_254,
+    },
+    {
+        "bank_code": "VCB",
+        "page_count": 84,
+        "relative_path": "vietstock_bctc/VCB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+        "sha256": "295f397de287f84c26dafbfa06f668604aa696a013e236253149d8547d032d1f",
+        "size_bytes": 11_552_186,
+    },
+    {
+        "bank_code": "CTG",
+        "page_count": 85,
+        "relative_path": "vietstock_bctc/CTG/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+        "sha256": "b82eeb879b667e80d0b5322969c808089fd39b83835b75dc47f9a890189fc137",
+        "size_bytes": 11_853_560,
+    },
+    {
+        "bank_code": "BID",
+        "page_count": 74,
+        "relative_path": "vietstock_bctc/BID/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+        "sha256": "415d713b18f281f97ea5416da01ddec32d20d9ad49342f3e31fc001743b8a222",
+        "size_bytes": 16_399_456,
+    },
+    {
+        "bank_code": "VIB",
+        "page_count": 78,
+        "relative_path": "vietstock_bctc/VIB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+        "sha256": "d6b96ddaaadb19a4ea1c083ceaa1a15500b742383321c2bcb7c22706509837b7",
+        "size_bytes": 3_105_527,
+    },
+)
+_ACTIVE_PROFILE = "wave1"
 SOURCE_PADDING = (8, 4, 8, 4)
 WHITE_BORDER = (12, 8, 12, 8)
 _REF_FIELDS = {"path", "sha256", "size_bytes"}
@@ -365,6 +431,246 @@ def _repository_file_ref(path: Path, label: str) -> dict[str, Any]:
 
 def _canonical_object_sha256(value: dict[str, Any]) -> str:
     return canonical_json_sha256_v1(value)
+
+
+def _activate_profile(profile: str) -> None:
+    """Select one input corpus while retaining the same crop/reader pipeline."""
+
+    global _ACTIVE_PROFILE
+    global OUTPUT_ROOT
+    global VERIFIED_INDEX_DIRECTORY
+    global VIETOCR_OUTPUT_DIRECTORY
+    if profile not in {"wave1", "annual-2025"}:
+        raise _error(f"unsupported full-document profile: {profile}")
+    _ACTIVE_PROFILE = profile
+    OUTPUT_ROOT = (
+        ANNUAL_2025_OUTPUT_ROOT
+        if profile == "annual-2025"
+        else Path("output/development/loan-maturity-full-document-vietocr-v1")
+    )
+    VIETOCR_OUTPUT_DIRECTORY = OUTPUT_ROOT / "vietocr-transformer"
+    VERIFIED_INDEX_DIRECTORY = OUTPUT_ROOT / "verified-index"
+
+
+def _annual_output_ref(path: Path, label: str) -> dict[str, Any]:
+    resolved = path.resolve()
+    root = PROJECT_ROOT.resolve()
+    if not resolved.is_relative_to(root):
+        raise _error(f"{label} lies outside the project root")
+    return _repository_file_ref(resolved, label)
+
+
+def _annual_ppocr_line_boxes(
+    payload: dict[str, Any], *, width: int, height: int
+) -> list[list[int]]:
+    """Validate the provider denominator and expose only ordered line geometry."""
+
+    try:
+        geometry = validate_ppocrv6_payload(
+            payload,
+            pixel_width=width,
+            pixel_height=height,
+        )
+    except PPOCRV6PageSessionError as exc:
+        raise _error("annual PP-OCRv6 provider geometry is invalid") from exc
+    provider_boxes = payload.get("rec_boxes")
+    if type(provider_boxes) is not list or len(provider_boxes) != geometry["line_count"]:
+        raise _error("annual PP-OCRv6 line denominator drifted")
+    return [
+        _bbox(box, width, height, f"annual PP-OCRv6 line {line_index}")
+        for line_index, box in enumerate(provider_boxes)
+    ]
+
+
+def _annual_document_inputs(
+    source: dict[str, Any], document_ordinal: int
+) -> tuple[
+    bytes,
+    dict[str, Any],
+    bytes,
+    dict[str, Any],
+    bytes,
+    Path,
+    dict[str, Any],
+    bytes,
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+]:
+    bank = source["bank_code"]
+    source_path = PROJECT_ROOT / source["relative_path"]
+    source_raw = _stable_bytes(source_path, f"annual source PDF {bank}")
+    if (
+        len(source_raw) != source["size_bytes"]
+        or hashlib.sha256(source_raw).hexdigest() != source["sha256"]
+    ):
+        raise _error(f"annual source PDF identity drifted: {bank}")
+    document_id = source["sha256"][:20]
+    preprocess_root = PROJECT_ROOT / ANNUAL_2025_PREPROCESS_ROOT / document_id
+    preprocess, preprocess_raw = _json(
+        preprocess_root / "manifest.json", f"annual preprocess manifest {bank}"
+    )
+    preprocess_envelope, preprocess_envelope_raw = _json(
+        preprocess_root / "run_manifest.json", f"annual preprocess envelope {bank}"
+    )
+    preprocess_pages = preprocess.get("pages")
+    if (
+        preprocess.get("state") != "PREPROCESSED"
+        or preprocess.get("dataset_role") != "CALIBRATION"
+        or preprocess.get("source_sha256") != source["sha256"]
+        or preprocess.get("code", {}).get("git_dirty") is not False
+        or type(preprocess_pages) is not list
+        or len(preprocess_pages) != source["page_count"]
+        or preprocess_envelope
+        != {
+            "manifest": "manifest.json",
+            "manifest_sha256": hashlib.sha256(preprocess_raw).hexdigest(),
+            "source_sha256": source["sha256"],
+            "state": "PREPROCESSED",
+        }
+    ):
+        raise _error(f"annual preprocess identity/denominator drifted: {bank}")
+
+    batch_root = PROJECT_ROOT / ANNUAL_2025_PPOCR_ROOT / bank
+    batch, batch_raw = _json(batch_root / "batch_manifest.json", f"annual batch {bank}")
+    batch_pages = batch.get("pages")
+    renders = batch.get("renders")
+    input_manifest = batch.get("input_manifest")
+    batch_source = batch.get("source")
+    expected_pages = list(range(1, source["page_count"] + 1))
+    if (
+        batch.get("state") != "OCR_COMPLETE"
+        or batch.get("dataset_role") != "CALIBRATION"
+        or batch.get("evidence_role") != "INDEPENDENT_GEOMETRY_PROPOSAL_ONLY"
+        or batch.get("code", {}).get("dirty") is not False
+        or batch.get("requested_pages") != expected_pages
+        or type(batch_pages) is not list
+        or type(renders) is not list
+        or len(batch_pages) != source["page_count"]
+        or len(renders) != source["page_count"]
+        or [page.get("page") for page in batch_pages if type(page) is dict] != expected_pages
+        or [render.get("page") for render in renders if type(render) is dict] != expected_pages
+        or type(input_manifest) is not dict
+        or input_manifest.get("sha256") != hashlib.sha256(preprocess_raw).hexdigest()
+        or input_manifest.get("size_bytes") != len(preprocess_raw)
+        or type(batch_source) is not dict
+        or batch_source.get("sha256") != source["sha256"]
+        or batch_source.get("size_bytes") != source["size_bytes"]
+        or batch.get("metrics", {}).get("completed_page_count") != source["page_count"]
+    ):
+        raise _error(f"annual PP-OCRv6 batch identity/denominator drifted: {bank}")
+    if len({page.get("page") for page in batch_pages}) != len(batch_pages):
+        raise _error(f"annual PP-OCRv6 batch repeats a page: {bank}")
+    if document_ordinal < 1:
+        raise _error("annual document ordinal must be positive")
+    return (
+        source_raw,
+        preprocess,
+        preprocess_raw,
+        preprocess_envelope,
+        preprocess_envelope_raw,
+        batch_root,
+        batch,
+        batch_raw,
+        cast(list[dict[str, Any]], batch_pages),
+        cast(list[dict[str, Any]], renders),
+    )
+
+
+def _annual_page_geometry(
+    *,
+    bank: str,
+    batch_root: Path,
+    batch: dict[str, Any],
+    batch_page: dict[str, Any],
+    render_record: dict[str, Any],
+    physical_page: int,
+) -> tuple[
+    bytes,
+    list[list[int]],
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+]:
+    if batch_page.get("page") != physical_page or render_record.get("page") != physical_page:
+        raise _error(f"annual page order drifted: {bank}:{physical_page}")
+    render_path_value = render_record.get("path")
+    if type(render_path_value) is not str:
+        raise _error(f"annual render path is invalid: {bank}:{physical_page}")
+    render_path = Path(render_path_value)
+    if not render_path.is_absolute():
+        render_path = PROJECT_ROOT / render_path
+    render_ref = _annual_output_ref(render_path, f"annual render {bank}:{physical_page}")
+    if (
+        render_ref["sha256"] != render_record.get("sha256")
+        or render_ref["size_bytes"] != render_record.get("size_bytes")
+        or render_record.get("dpi") != 200
+    ):
+        raise _error(f"annual render identity drifted: {bank}:{physical_page}")
+    render_raw = _stable_bytes(render_path, f"annual render bytes {bank}:{physical_page}")
+    with Image.open(io.BytesIO(render_raw)) as image:
+        width, height = image.size
+        image.verify()
+    if render_record.get("width_pixels") != width or render_record.get("height_pixels") != height:
+        raise _error(f"annual render dimensions drifted: {bank}:{physical_page}")
+
+    result_value = batch_page.get("ocr_result")
+    run_value = batch_page.get("run_manifest")
+    if type(result_value) is not dict or type(run_value) is not dict:
+        raise _error(f"annual batch page references drifted: {bank}:{physical_page}")
+    result_relative = Path(str(result_value.get("path", "")))
+    run_relative = Path(str(run_value.get("path", "")))
+    if (
+        result_relative.is_absolute()
+        or run_relative.is_absolute()
+        or ".." in result_relative.parts
+        or ".." in run_relative.parts
+    ):
+        raise _error(f"annual batch page reference path is unsafe: {bank}:{physical_page}")
+    result_path = batch_root / result_relative
+    run_path = batch_root / run_relative
+    result_ref = _annual_output_ref(result_path, f"annual PP-OCR result {bank}:{physical_page}")
+    run_ref = _annual_output_ref(run_path, f"annual PP-OCR run {bank}:{physical_page}")
+    if not same_typed_json_v1(result_ref, {**result_value, "path": result_ref["path"]}):
+        raise _error(f"annual PP-OCR result reference drifted: {bank}:{physical_page}")
+    if not same_typed_json_v1(run_ref, {**run_value, "path": run_ref["path"]}):
+        raise _error(f"annual PP-OCR run reference drifted: {bank}:{physical_page}")
+    result_raw = _stable_bytes(result_path, f"annual PP-OCR result bytes {bank}:{physical_page}")
+    payload = _decode_json(result_raw, f"annual PP-OCR result {bank}:{physical_page}")
+    boxes = _annual_ppocr_line_boxes(payload, width=width, height=height)
+    run, _run_raw = _json(run_path, f"annual PP-OCR run {bank}:{physical_page}")
+    run_artifact = run.get("artifacts", {}).get("ocr_result")
+    if (
+        run.get("schema_version") != 1
+        or run.get("state") != "OCR_COMPLETE"
+        or run.get("dataset_role") != "CALIBRATION"
+        or run.get("evidence_role") != "INDEPENDENT_GEOMETRY_PROPOSAL_ONLY"
+        or run.get("confidence_policy") != "NO_AUTOMATIC_TRUTH_OR_SCHEMA_PROMOTION"
+        or run.get("page") != physical_page
+        or run.get("batch_identity") != batch.get("batch_identity")
+        or not same_typed_json_v1(run.get("input"), render_record)
+        or not same_typed_json_v1(run.get("code"), batch.get("code"))
+        or not same_typed_json_v1(run.get("configuration"), batch.get("configuration"))
+        or not same_typed_json_v1(run.get("runtime"), batch.get("runtime_identity"))
+        or not same_typed_json_v1(run.get("metrics"), batch_page.get("metrics"))
+        or type(run_artifact) is not dict
+        or run_artifact.get("path") != result_path.name
+        or run_artifact.get("sha256") != result_ref["sha256"]
+        or run_artifact.get("size_bytes") != result_ref["size_bytes"]
+        or batch_page.get("metrics", {}).get("line_count") != len(boxes)
+    ):
+        raise _error(f"annual PP-OCR run/result binding drifted: {bank}:{physical_page}")
+    geometry_axis_raw = canonical_json_bytes_v1(
+        [{"line_index": index, "raw_pixel_bbox": box} for index, box in enumerate(boxes)]
+    )
+    source_projection = {
+        "batch_identity": batch["batch_identity"],
+        "batch_page_projection_sha256": _canonical_object_sha256(batch_page),
+        "geometry_axis_sha256": hashlib.sha256(geometry_axis_raw).hexdigest(),
+        "mode": "PPOCRV6_BATCH_PROVIDER_LINE_GEOMETRY_V1",
+        "provider_payload_sha256": hashlib.sha256(result_raw).hexdigest(),
+    }
+    return render_raw, boxes, render_ref, source_projection, result_ref, run_ref
 
 
 def _validate_vietocr_transformer_config() -> dict[str, Any]:
@@ -1253,6 +1559,274 @@ def build_full_document_request_v1() -> dict[str, Any]:
             shutil.rmtree(stage)
 
 
+def build_annual_2025_full_document_request_v1() -> dict[str, Any]:
+    """Build the same blind VietOCR request from the audited annual-2025 corpus."""
+
+    _activate_profile("annual-2025")
+    if _git("status", "--porcelain"):
+        raise _error("annual full-document crop freeze requires one clean Git worktree")
+    git_commit = _git("rev-parse", "HEAD")
+    source_tree_oid = _git("write-tree")
+    destination = PROJECT_ROOT / OUTPUT_ROOT
+    if destination.exists():
+        raise _error(f"refusing to overwrite existing output: {destination}")
+    if [source["bank_code"] for source in ANNUAL_2025_SOURCES] != list(_EXPECTED_BANK_ORDER) or sum(
+        source["page_count"] for source in ANNUAL_2025_SOURCES
+    ) != 695:
+        raise _error("annual-2025 fixed source selection drifted")
+    intended_reader = _validate_vietocr_transformer_config()
+    implementation_refs = {
+        "builder": _repository_file_ref(Path(__file__).resolve(), "full-document builder"),
+        "reader": _repository_file_ref(PROJECT_ROOT / VIETOCR_READER_PATH, "VietOCR reader"),
+        "runner": _repository_file_ref(PROJECT_ROOT / VIETOCR_RUNNER_PATH, "VietOCR runner"),
+    }
+    input_refs = {
+        "dataset_role_registry": _repository_file_ref(
+            PROJECT_ROOT / "data/registered/dataset_roles.jsonl", "dataset-role registry"
+        ),
+        "source_registry": _repository_file_ref(
+            PROJECT_ROOT / "data/registered/source_registry.jsonl", "source registry"
+        ),
+    }
+
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    stage = Path(tempfile.mkdtemp(prefix=f".{destination.name}.", dir=destination.parent))
+    try:
+        crop_stage = stage / "frozen" / "crops"
+        crop_stage.mkdir(parents=True)
+        crop_final = destination / "frozen" / "crops"
+        manifest_documents: list[dict[str, Any]] = []
+        manifest_samples: list[dict[str, Any]] = []
+        request_samples: list[dict[str, str]] = []
+        total_line_count = 0
+
+        for document_ordinal, source in enumerate(ANNUAL_2025_SOURCES, 1):
+            (
+                source_raw,
+                preprocess,
+                preprocess_raw,
+                _preprocess_envelope,
+                _preprocess_envelope_raw,
+                batch_root,
+                batch,
+                batch_raw,
+                batch_pages,
+                renders,
+            ) = _annual_document_inputs(source, document_ordinal)
+            preprocess_pages = cast(list[dict[str, Any]], preprocess["pages"])
+            bank = cast(str, source["bank_code"])
+            page_outputs: list[dict[str, Any]] = []
+            for physical_page, (preprocess_page, batch_page, render_record) in enumerate(
+                zip(preprocess_pages, batch_pages, renders, strict=True), 1
+            ):
+                if type(preprocess_page) is not dict:
+                    raise _error(f"annual preprocess page is not an object: {bank}")
+                preprocess_render = preprocess_page.get("render")
+                if (
+                    preprocess_page.get("page") != physical_page
+                    or type(preprocess_render) is not dict
+                    or preprocess_render.get("page") != physical_page
+                    or preprocess_render.get("sha256") != render_record.get("sha256")
+                    or preprocess_render.get("width_pixels") != render_record.get("width_pixels")
+                    or preprocess_render.get("height_pixels") != render_record.get("height_pixels")
+                    or preprocess_render.get("dpi") != 200
+                ):
+                    raise _error(f"annual preprocess/batch render binding drifted: {bank}")
+                (
+                    render_raw,
+                    boxes,
+                    render_binding,
+                    source_projection,
+                    result_ref,
+                    run_ref,
+                ) = _annual_page_geometry(
+                    bank=bank,
+                    batch_root=batch_root,
+                    batch=batch,
+                    batch_page=batch_page,
+                    render_record=render_record,
+                    physical_page=physical_page,
+                )
+                with Image.open(io.BytesIO(render_raw)) as raw_image:
+                    source_image = raw_image.convert("RGB")
+                page_start = total_line_count
+                for line_index, box in enumerate(boxes):
+                    sample_id = f"sample-{total_line_count + 1:08d}"
+                    padded = _padded(box, source_image.width, source_image.height)
+                    crop = ImageOps.expand(
+                        source_image.crop(padded), border=WHITE_BORDER, fill="white"
+                    )
+                    buffer = io.BytesIO()
+                    crop.save(buffer, format="PNG", optimize=False, compress_level=6)
+                    crop_raw = buffer.getvalue()
+                    crop_name = f"{sample_id}.png"
+                    crop_path = crop_stage / crop_name
+                    crop_path.write_bytes(crop_raw)
+                    final_path = crop_final / crop_name
+                    crop_ref = {
+                        "path": final_path.relative_to(PROJECT_ROOT).as_posix(),
+                        "sha256": hashlib.sha256(crop_raw).hexdigest(),
+                        "size_bytes": len(crop_raw),
+                    }
+                    manifest_samples.append(
+                        {
+                            "crop_ref": crop_ref,
+                            "document_ordinal": document_ordinal,
+                            "line_axis_role": "PRIMARY_AUTHENTICATED_LINE",
+                            "line_index": line_index,
+                            "padded_source_bbox_raw_pixels": list(padded),
+                            "physical_page": physical_page,
+                            "sample_id": sample_id,
+                            "source_bbox_raw_pixels": box,
+                        }
+                    )
+                    request_samples.append(
+                        {
+                            "category": "FULL_DOCUMENT_AUTHENTICATED_LINE",
+                            "crop_path": crop_ref["path"],
+                            "crop_sha256": crop_ref["sha256"],
+                            "sample_id": sample_id,
+                        }
+                    )
+                    total_line_count += 1
+                page_outputs.append(
+                    {
+                        "backend_ref": run_ref,
+                        "geometry_mode": source_projection["mode"],
+                        "hydration_receipt": None,
+                        "line_count": len(boxes),
+                        "physical_page": physical_page,
+                        "plan_page_projection_sha256": _canonical_object_sha256(preprocess_page),
+                        "primary_line_count": len(boxes),
+                        "render_binding": render_binding,
+                        "result_ref": result_ref,
+                        "route": _RASTER_ROUTE,
+                        "sample_id_first": (f"sample-{page_start + 1:08d}" if boxes else None),
+                        "sample_id_last": (f"sample-{total_line_count:08d}" if boxes else None),
+                        "sample_offset_start": page_start,
+                        "sample_offset_stop": total_line_count,
+                        "source_projection": source_projection,
+                        "status": _RASTER_STATUS,
+                        "supplement_line_count": 0,
+                        "terminal_status_preserved": False,
+                        "v3_page_record_sha256": _canonical_object_sha256(batch_page),
+                    }
+                )
+
+            manifest_documents.append(
+                {
+                    "bank_code": bank,
+                    "document_manifest": {
+                        "path": (
+                            ANNUAL_2025_PREPROCESS_ROOT / source["sha256"][:20] / "manifest.json"
+                        ).as_posix(),
+                        "sha256": hashlib.sha256(preprocess_raw).hexdigest(),
+                        "size_bytes": len(preprocess_raw),
+                    },
+                    "document_ordinal": document_ordinal,
+                    "page_count": source["page_count"],
+                    "pages": page_outputs,
+                    "plan_document_projection_sha256": _canonical_object_sha256(source),
+                    "source_pdf": {
+                        "path": source["relative_path"],
+                        "sha256": source["sha256"],
+                        "size_bytes": len(source_raw),
+                    },
+                }
+            )
+            input_refs[f"ppocr_batch_{bank.casefold()}"] = {
+                "path": (ANNUAL_2025_PPOCR_ROOT / bank / "batch_manifest.json").as_posix(),
+                "sha256": hashlib.sha256(batch_raw).hexdigest(),
+                "size_bytes": len(batch_raw),
+            }
+
+        page_count_vector = [document["page_count"] for document in manifest_documents]
+        line_count_vector = [
+            sum(page["line_count"] for page in document["pages"]) for document in manifest_documents
+        ]
+        manifest = {
+            "authority": {
+                "geometry_authority": "PINNED_PPOCRV6_PROVIDER_LINE_BOXES_ONLY",
+                "legacy_ocr_transcript_used_for_line_selection": False,
+                "mapping_authority": False,
+                "numeric_authority": False,
+                "ppocr_or_native_transcript_semantic_authority": False,
+                "schema_authority": False,
+                "semantic_authority": False,
+                "semantic_text_source_after_run": "FRESH_VIETOCR_VGG_TRANSFORMER_0_3_13_ONLY",
+                "terminal_word_geometry_or_text_exposed": False,
+                "whole_document_all_line_denominator": True,
+            },
+            "documents": manifest_documents,
+            "format_version": "ANNUAL_2025_8BANK_FULL_DOCUMENT_ALL_LINE_CROP_MANIFEST_V1",
+            "git_binding": {
+                "commit": git_commit,
+                "dirty": False,
+                "implementation_refs": implementation_refs,
+                "source_tree_oid": source_tree_oid,
+            },
+            "input_refs": input_refs,
+            "intended_reader": intended_reader,
+            "metrics": {
+                "document_count": len(manifest_documents),
+                "line_count_vector": line_count_vector,
+                "page_count": sum(page_count_vector),
+                "page_count_vector": page_count_vector,
+                "sample_count": total_line_count,
+                "terminal_page_count": 0,
+            },
+            "samples": manifest_samples,
+            "selection_rule": {
+                "deskew": False,
+                "line_selection": "ALL_PROVIDER_LINES_NO_TEXT_FILTER",
+                "resize": False,
+                "source_padding_left_top_right_bottom": list(SOURCE_PADDING),
+                "threshold": False,
+                "union": False,
+                "white_border_left_top_right_bottom": list(WHITE_BORDER),
+            },
+        }
+        manifest_raw = canonical_json_bytes_v1(manifest) + b"\n"
+        (stage / "crop_manifest.json").write_bytes(manifest_raw)
+        request = {
+            "crop_manifest": {
+                "path": (destination / "crop_manifest.json").relative_to(PROJECT_ROOT).as_posix(),
+                "sha256": hashlib.sha256(manifest_raw).hexdigest(),
+            },
+            "dataset_role": "LOGIC_DEVELOPMENT_AND_CALIBRATION",
+            "evidence_role": "INDEPENDENT_VIETNAMESE_SEMANTIC_PROPOSAL_ONLY",
+            "experiment_id": "VIETOCR_MULTI_BANK_FAMILY_OCR_BENCHMARK_V1",
+            "format_version": 2,
+            "git_commit": git_commit,
+            "git_dirty": False,
+            "reference_text_available_to_reader": False,
+            "sample_count": len(request_samples),
+            "samples": request_samples,
+            "state": "READY_FOR_REFERENCE_BLIND_LINE_INFERENCE",
+        }
+        validate_anonymous_reader_request_v1(request)
+        request_raw = canonical_json_bytes_v1(request) + b"\n"
+        (stage / "request.json").write_bytes(request_raw)
+        if len(manifest_samples) != total_line_count or len(request_samples) != total_line_count:
+            raise _error("annual private/public sample denominators diverged")
+        if _git("status", "--porcelain"):
+            raise _error("Git worktree changed during annual crop construction")
+        if destination.exists():
+            raise _error("annual output appeared during crop construction")
+        _publish_directory_noreplace(stage, destination)
+        return {
+            "manifest_sha256": hashlib.sha256(manifest_raw).hexdigest(),
+            "output_root": OUTPUT_ROOT.as_posix(),
+            "page_count": 695,
+            "request_sha256": hashlib.sha256(request_raw).hexdigest(),
+            "sample_count": total_line_count,
+            "status": "READY_FOR_REFERENCE_BLIND_VIETOCR_TRANSFORMER",
+        }
+    finally:
+        if stage.exists():
+            shutil.rmtree(stage)
+
+
 def _verify_canonical_json_file(path: Path, label: str) -> tuple[dict[str, Any], bytes]:
     value, raw = _json(path, label)
     if canonical_json_bytes_v1(value) + b"\n" != raw:
@@ -1597,6 +2171,236 @@ def verify_full_document_freeze_v1(*, replay_geometry: bool = False) -> dict[str
     }
 
 
+def verify_annual_2025_full_document_freeze_v1(*, replay_geometry: bool = False) -> dict[str, Any]:
+    """Replay the annual-2025 profile without consulting provider transcripts."""
+
+    _activate_profile("annual-2025")
+    manifest, manifest_raw, request, request_raw = _load_frozen_artifacts_v1()
+    if type(manifest) is not dict or set(manifest) != _MANIFEST_FIELDS:
+        raise _error("annual private crop manifest fields drifted")
+    if (
+        manifest.get("format_version")
+        != "ANNUAL_2025_8BANK_FULL_DOCUMENT_ALL_LINE_CROP_MANIFEST_V1"
+    ):
+        raise _error("annual private crop manifest identity drifted")
+    authority = manifest.get("authority")
+    documents = manifest.get("documents")
+    samples = manifest.get("samples")
+    metrics = manifest.get("metrics")
+    if (
+        type(authority) is not dict
+        or authority.get("legacy_ocr_transcript_used_for_line_selection") is not False
+        or authority.get("ppocr_or_native_transcript_semantic_authority") is not False
+        or authority.get("whole_document_all_line_denominator") is not True
+        or authority.get("semantic_text_source_after_run")
+        != "FRESH_VIETOCR_VGG_TRANSFORMER_0_3_13_ONLY"
+        or manifest.get("intended_reader") != _validate_vietocr_transformer_config()
+        or type(documents) is not list
+        or type(samples) is not list
+        or type(metrics) is not dict
+        or len(documents) != len(ANNUAL_2025_SOURCES)
+        or len(samples) != request["sample_count"]
+    ):
+        raise _error("annual manifest authority/reader/denominator drifted")
+    input_refs = manifest.get("input_refs")
+    expected_input_names = {
+        "dataset_role_registry",
+        "source_registry",
+        *(f"ppocr_batch_{source['bank_code'].casefold()}" for source in ANNUAL_2025_SOURCES),
+    }
+    if type(input_refs) is not dict or set(input_refs) != expected_input_names:
+        raise _error("annual manifest input ledger drifted")
+    for name, reference in input_refs.items():
+        _verify_repository_content_ref(reference, f"annual manifest input {name}")
+    git_binding = manifest.get("git_binding")
+    implementation_refs = (
+        git_binding.get("implementation_refs") if type(git_binding) is dict else None
+    )
+    if (
+        type(git_binding) is not dict
+        or git_binding.get("dirty") is not False
+        or type(implementation_refs) is not dict
+        or set(implementation_refs) != {"builder", "reader", "runner"}
+    ):
+        raise _error("annual manifest Git/implementation ledger drifted")
+    for name, reference in implementation_refs.items():
+        _verify_repository_content_ref(reference, f"annual {name} implementation")
+
+    request_samples = request["samples"]
+    cursor = 0
+    page_count_vector: list[int] = []
+    line_count_vector: list[int] = []
+    expected_crop_names: list[str] = []
+    for document_ordinal, (source, document_value) in enumerate(
+        zip(ANNUAL_2025_SOURCES, documents, strict=True), 1
+    ):
+        if type(document_value) is not dict or set(document_value) != _MANIFEST_DOCUMENT_FIELDS:
+            raise _error("annual private manifest document fields drifted")
+        document = cast(dict[str, Any], document_value)
+        (
+            _source_raw,
+            preprocess,
+            preprocess_raw,
+            _preprocess_envelope,
+            _preprocess_envelope_raw,
+            batch_root,
+            batch,
+            _batch_raw,
+            batch_pages,
+            renders,
+        ) = _annual_document_inputs(source, document_ordinal)
+        pages = document.get("pages")
+        expected_source_ref = {
+            "path": source["relative_path"],
+            "sha256": source["sha256"],
+            "size_bytes": source["size_bytes"],
+        }
+        expected_manifest_ref = {
+            "path": (
+                ANNUAL_2025_PREPROCESS_ROOT / source["sha256"][:20] / "manifest.json"
+            ).as_posix(),
+            "sha256": hashlib.sha256(preprocess_raw).hexdigest(),
+            "size_bytes": len(preprocess_raw),
+        }
+        if (
+            document.get("document_ordinal") != document_ordinal
+            or document.get("bank_code") != source["bank_code"]
+            or document.get("page_count") != source["page_count"]
+            or document.get("plan_document_projection_sha256") != _canonical_object_sha256(source)
+            or not same_typed_json_v1(document.get("source_pdf"), expected_source_ref)
+            or not same_typed_json_v1(document.get("document_manifest"), expected_manifest_ref)
+            or type(pages) is not list
+            or len(pages) != source["page_count"]
+        ):
+            raise _error("annual document source/page binding drifted")
+        _verify_repository_content_ref(expected_source_ref, f"annual source {source['bank_code']}")
+        _verify_repository_content_ref(
+            expected_manifest_ref, f"annual preprocess {source['bank_code']}"
+        )
+        preprocess_pages = cast(list[dict[str, Any]], preprocess["pages"])
+        page_count_vector.append(len(pages))
+        document_line_count = 0
+        for physical_page, (page_value, preprocess_page, batch_page, render_record) in enumerate(
+            zip(pages, preprocess_pages, batch_pages, renders, strict=True), 1
+        ):
+            if type(page_value) is not dict or set(page_value) != _MANIFEST_PAGE_FIELDS:
+                raise _error("annual private manifest page fields drifted")
+            page = cast(dict[str, Any], page_value)
+            (
+                render_raw,
+                boxes,
+                render_binding,
+                source_projection,
+                result_ref,
+                run_ref,
+            ) = _annual_page_geometry(
+                bank=cast(str, source["bank_code"]),
+                batch_root=batch_root,
+                batch=batch,
+                batch_page=batch_page,
+                render_record=render_record,
+                physical_page=physical_page,
+            )
+            line_count = len(boxes)
+            if (
+                page.get("physical_page") != physical_page
+                or page.get("sample_offset_start") != cursor
+                or page.get("sample_offset_stop") != cursor + line_count
+                or page.get("line_count") != line_count
+                or page.get("primary_line_count") != line_count
+                or page.get("supplement_line_count") != 0
+                or page.get("terminal_status_preserved") is not False
+                or page.get("route") != _RASTER_ROUTE
+                or page.get("status") != _RASTER_STATUS
+                or page.get("geometry_mode") != source_projection["mode"]
+                or page.get("hydration_receipt") is not None
+                or page.get("plan_page_projection_sha256")
+                != _canonical_object_sha256(preprocess_page)
+                or page.get("v3_page_record_sha256") != _canonical_object_sha256(batch_page)
+                or not same_typed_json_v1(page.get("render_binding"), render_binding)
+                or not same_typed_json_v1(page.get("result_ref"), result_ref)
+                or not same_typed_json_v1(page.get("backend_ref"), run_ref)
+                or not same_typed_json_v1(page.get("source_projection"), source_projection)
+            ):
+                raise _error("annual page/order/provider binding drifted")
+            page_samples = samples[cursor : cursor + line_count]
+            if page.get("sample_id_first") != (
+                page_samples[0].get("sample_id") if page_samples else None
+            ) or page.get("sample_id_last") != (
+                page_samples[-1].get("sample_id") if page_samples else None
+            ):
+                raise _error("annual page sample endpoints drifted")
+            with Image.open(io.BytesIO(render_raw)) as raw_image:
+                source_image = raw_image.convert("RGB")
+            for line_index, (sample_value, box) in enumerate(zip(page_samples, boxes, strict=True)):
+                if type(sample_value) is not dict or set(sample_value) != _MANIFEST_SAMPLE_FIELDS:
+                    raise _error("annual private manifest sample fields drifted")
+                sample = cast(dict[str, Any], sample_value)
+                public_sample = request_samples[cursor + line_index]
+                expected_id = f"sample-{cursor + line_index + 1:08d}"
+                crop_ref = _validate_content_ref(sample.get("crop_ref"), "annual crop")
+                padded = _padded(box, source_image.width, source_image.height)
+                if (
+                    sample.get("sample_id") != expected_id
+                    or sample.get("document_ordinal") != document_ordinal
+                    or sample.get("physical_page") != physical_page
+                    or sample.get("line_index") != line_index
+                    or sample.get("line_axis_role") != "PRIMARY_AUTHENTICATED_LINE"
+                    or sample.get("source_bbox_raw_pixels") != box
+                    or sample.get("padded_source_bbox_raw_pixels") != list(padded)
+                    or public_sample.get("sample_id") != expected_id
+                    or public_sample.get("crop_path") != crop_ref["path"]
+                    or public_sample.get("crop_sha256") != crop_ref["sha256"]
+                ):
+                    raise _error("annual private/public sample correspondence drifted")
+                crop_raw = _verify_repository_content_ref(crop_ref, f"annual crop {expected_id}")
+                expected_crop_names.append(Path(crop_ref["path"]).name)
+                if replay_geometry:
+                    crop = ImageOps.expand(
+                        source_image.crop(padded), border=WHITE_BORDER, fill="white"
+                    )
+                    buffer = io.BytesIO()
+                    crop.save(buffer, format="PNG", optimize=False, compress_level=6)
+                    if buffer.getvalue() != crop_raw:
+                        raise _error("annual crop bytes changed during full source replay")
+            cursor += line_count
+            document_line_count += line_count
+        line_count_vector.append(document_line_count)
+
+    crop_directory = PROJECT_ROOT / OUTPUT_ROOT / "frozen" / "crops"
+    actual_crop_names = sorted(path.name for path in crop_directory.iterdir() if path.is_file())
+    if actual_crop_names != sorted(expected_crop_names):
+        raise _error("annual crop directory contains a missing or extra file")
+    expected_metrics = {
+        "document_count": len(ANNUAL_2025_SOURCES),
+        "line_count_vector": line_count_vector,
+        "page_count": sum(page_count_vector),
+        "page_count_vector": page_count_vector,
+        "sample_count": cursor,
+        "terminal_page_count": 0,
+    }
+    if cursor != len(samples) or metrics != expected_metrics:
+        raise _error("annual whole-document metrics drifted")
+    return {
+        "document_count": len(documents),
+        "line_count_vector": line_count_vector,
+        "manifest_sha256": hashlib.sha256(manifest_raw).hexdigest(),
+        "page_count": sum(page_count_vector),
+        "page_count_vector": page_count_vector,
+        "replay_geometry": replay_geometry,
+        "request_sha256": hashlib.sha256(request_raw).hexdigest(),
+        "sample_count": cursor,
+        "status": "VERIFIED_ANNUAL_2025_FULL_DOCUMENT_VIETOCR_FREEZE",
+        "terminal_page_count": 0,
+    }
+
+
+def _verify_active_full_document_freeze_v1(*, replay_geometry: bool) -> dict[str, Any]:
+    if _ACTIVE_PROFILE == "annual-2025":
+        return verify_annual_2025_full_document_freeze_v1(replay_geometry=replay_geometry)
+    return verify_full_document_freeze_v1(replay_geometry=replay_geometry)
+
+
 def _validate_completed_vietocr_result_v1(
     request: dict[str, Any], result: Any
 ) -> list[dict[str, Any]]:
@@ -1732,7 +2536,7 @@ def read_verified_vietocr_proposals_v1() -> dict[str, Any]:
     older PP-OCR/native transcript as semantic text.
     """
 
-    verify_full_document_freeze_v1(replay_geometry=False)
+    _verify_active_full_document_freeze_v1(replay_geometry=False)
     (
         manifest,
         manifest_raw,
@@ -1893,13 +2697,22 @@ def main() -> int:
     action.add_argument("--verify", action="store_true")
     action.add_argument("--replay", action="store_true")
     action.add_argument("--finalize", action="store_true")
+    parser.add_argument(
+        "--profile",
+        choices=("wave1", "annual-2025"),
+        default="wave1",
+        help="reuse the same blind crop/reader pipeline on one pinned source corpus",
+    )
     args = parser.parse_args()
+    _activate_profile(args.profile)
     if args.verify:
-        output = verify_full_document_freeze_v1(replay_geometry=False)
+        output = _verify_active_full_document_freeze_v1(replay_geometry=False)
     elif args.replay:
-        output = verify_full_document_freeze_v1(replay_geometry=True)
+        output = _verify_active_full_document_freeze_v1(replay_geometry=True)
     elif args.finalize:
         output = finalize_verified_vietocr_index_v1()
+    elif args.profile == "annual-2025":
+        output = build_annual_2025_full_document_request_v1()
     else:
         output = build_full_document_request_v1()
     print(json.dumps(output, ensure_ascii=False, sort_keys=True))

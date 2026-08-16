@@ -294,6 +294,176 @@ def test_builder_pins_vietocr_vgg_transformer_0_3_13() -> None:
     }
 
 
+def _annual_provider_payload(*, text: str = "legacy text") -> dict[str, object]:
+    return {
+        "rec_texts": [text, ""],
+        "rec_scores": [0.99, 0.95],
+        "rec_polys": [
+            [[2, 3], [20, 3], [20, 12], [2, 12]],
+            [[30, 20], [70, 20], [70, 36], [30, 36]],
+        ],
+        "rec_boxes": [[2, 3, 20, 12], [30, 20, 70, 36]],
+        "text_word_boxes": [[], []],
+        "text_word": [[], []],
+        "return_word_box": True,
+    }
+
+
+def test_annual_2025_profile_locks_exact_eight_source_denominator() -> None:
+    assert [item["bank_code"] for item in builder.ANNUAL_2025_SOURCES] == [
+        "ACB",
+        "MBB",
+        "VPB",
+        "HDB",
+        "VCB",
+        "CTG",
+        "BID",
+        "VIB",
+    ]
+    assert [item["page_count"] for item in builder.ANNUAL_2025_SOURCES] == [
+        100,
+        103,
+        100,
+        71,
+        84,
+        85,
+        74,
+        78,
+    ]
+    assert sum(item["page_count"] for item in builder.ANNUAL_2025_SOURCES) == 695
+    assert len({item["sha256"] for item in builder.ANNUAL_2025_SOURCES}) == 8
+
+
+def test_annual_provider_geometry_is_transcript_independent() -> None:
+    first = builder._annual_ppocr_line_boxes(
+        _annual_provider_payload(text="poison"), width=100, height=80
+    )
+    second = builder._annual_ppocr_line_boxes(
+        _annual_provider_payload(text="completely different"), width=100, height=80
+    )
+
+    assert first == second == [[2, 3, 20, 12], [30, 20, 70, 36]]
+
+
+@pytest.mark.parametrize(
+    "bad_box",
+    (
+        [2.0, 3, 20, 12],
+        [2, 3, 101, 12],
+        [2, 3, 2, 12],
+        [True, 3, 20, 12],
+    ),
+)
+def test_annual_provider_geometry_rejects_non_exact_or_invalid_boxes(bad_box) -> None:
+    payload = _annual_provider_payload()
+    payload["rec_boxes"][0] = bad_box
+
+    with pytest.raises(builder.FullDocumentVietOCRRequestV1Error):
+        builder._annual_ppocr_line_boxes(payload, width=100, height=80)
+
+
+def test_annual_profile_reuses_fixed_blind_reader_paths() -> None:
+    builder._activate_profile("annual-2025")
+    try:
+        assert builder.OUTPUT_ROOT == builder.ANNUAL_2025_OUTPUT_ROOT
+        assert builder.VIETOCR_OUTPUT_DIRECTORY == (
+            builder.ANNUAL_2025_OUTPUT_ROOT / "vietocr-transformer"
+        )
+        assert builder.VERIFIED_INDEX_DIRECTORY == (
+            builder.ANNUAL_2025_OUTPUT_ROOT / "verified-index"
+        )
+    finally:
+        builder._activate_profile("wave1")
+
+
+def test_annual_page_geometry_binds_render_result_run_and_hides_text(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(builder, "PROJECT_ROOT", tmp_path)
+    render_path = tmp_path / "renders/page-0001.png"
+    render_path.parent.mkdir(parents=True)
+    render_buffer = io.BytesIO()
+    Image.new("RGB", (100, 80), "white").save(render_buffer, format="PNG")
+    render_raw = render_buffer.getvalue()
+    render_path.write_bytes(render_raw)
+
+    batch_root = tmp_path / "ppocr/ACB"
+    result_path = batch_root / "ppocrv6-page-0001/ocr_result.json"
+    run_path = batch_root / "ppocrv6-page-0001/run_manifest.json"
+    result_path.parent.mkdir(parents=True)
+    result_raw = json.dumps(_annual_provider_payload(text="MUST_NOT_LEAK")).encode()
+    result_path.write_bytes(result_raw)
+    render_record = {
+        "dpi": 200,
+        "height_pixels": 80,
+        "page": 1,
+        "path": "renders/page-0001.png",
+        "sha256": hashlib.sha256(render_raw).hexdigest(),
+        "size_bytes": len(render_raw),
+        "width_pixels": 100,
+    }
+    metrics = {"line_count": 2}
+    batch = {
+        "batch_identity": "1" * 64,
+        "code": {"commit": "2" * 40, "dirty": False},
+        "configuration": {"precision": "fp32"},
+        "runtime_identity": {"device": "cpu"},
+    }
+    run = {
+        "artifacts": {
+            "ocr_result": {
+                "path": "ocr_result.json",
+                "sha256": hashlib.sha256(result_raw).hexdigest(),
+                "size_bytes": len(result_raw),
+            }
+        },
+        "batch_identity": batch["batch_identity"],
+        "code": batch["code"],
+        "confidence_policy": "NO_AUTOMATIC_TRUTH_OR_SCHEMA_PROMOTION",
+        "configuration": batch["configuration"],
+        "dataset_role": "CALIBRATION",
+        "evidence_role": "INDEPENDENT_GEOMETRY_PROPOSAL_ONLY",
+        "input": render_record,
+        "metrics": metrics,
+        "page": 1,
+        "runtime": batch["runtime_identity"],
+        "schema_version": 1,
+        "state": "OCR_COMPLETE",
+    }
+    run_raw = json.dumps(run).encode()
+    run_path.write_bytes(run_raw)
+    batch_page = {
+        "metrics": metrics,
+        "page": 1,
+        "ocr_result": {
+            "path": "ppocrv6-page-0001/ocr_result.json",
+            "sha256": hashlib.sha256(result_raw).hexdigest(),
+            "size_bytes": len(result_raw),
+        },
+        "run_manifest": {
+            "path": "ppocrv6-page-0001/run_manifest.json",
+            "sha256": hashlib.sha256(run_raw).hexdigest(),
+            "size_bytes": len(run_raw),
+        },
+    }
+
+    _render, boxes, render_ref, projection, result_ref, run_ref = builder._annual_page_geometry(
+        bank="ACB",
+        batch_root=batch_root,
+        batch=batch,
+        batch_page=batch_page,
+        render_record=render_record,
+        physical_page=1,
+    )
+
+    assert boxes == [[2, 3, 20, 12], [30, 20, 70, 36]]
+    assert render_ref["path"] == "renders/page-0001.png"
+    assert result_ref["path"] == "ppocr/ACB/ppocrv6-page-0001/ocr_result.json"
+    assert run_ref["path"] == "ppocr/ACB/ppocrv6-page-0001/run_manifest.json"
+    assert projection["mode"] == "PPOCRV6_BATCH_PROVIDER_LINE_GEOMETRY_V1"
+    assert "MUST_NOT_LEAK" not in json.dumps(projection, sort_keys=True)
+
+
 def test_builder_never_reads_legacy_recognition_fields() -> None:
     source = Path(builder.__file__).read_text(encoding="utf-8")
 
