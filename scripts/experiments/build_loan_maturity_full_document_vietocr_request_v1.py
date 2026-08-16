@@ -539,6 +539,7 @@ def _annual_document_inputs(
     renders = batch.get("renders")
     input_manifest = batch.get("input_manifest")
     batch_source = batch.get("source")
+    _validate_annual_ppocr_batch_trust_closure(batch, source)
     expected_pages = list(range(1, source["page_count"] + 1))
     if (
         batch.get("state") != "OCR_COMPLETE"
@@ -577,6 +578,159 @@ def _annual_document_inputs(
         cast(list[dict[str, Any]], batch_pages),
         cast(list[dict[str, Any]], renders),
     )
+
+
+def _validate_annual_ppocr_batch_trust_closure(
+    batch: dict[str, Any], source: dict[str, Any]
+) -> None:
+    code = batch.get("code")
+    configuration = batch.get("configuration")
+    runtime = batch.get("runtime_identity")
+    registration = batch.get("dataset_registration")
+    input_manifest = batch.get("input_manifest")
+    batch_source = batch.get("source")
+    requested_pages = batch.get("requested_pages")
+    renders = batch.get("renders")
+    if (
+        type(code) is not dict
+        or set(code) != {"commit", "dirty"}
+        or type(code.get("commit")) is not str
+        or re.fullmatch(r"[0-9a-f]{40}", code["commit"]) is None
+        or code.get("dirty") is not False
+    ):
+        raise _error("annual PP-OCRv6 batch code identity drifted")
+    commit = cast(str, code["commit"])
+    try:
+        subprocess.run(
+            ["git", "merge-base", "--is-ancestor", commit, "HEAD"],
+            cwd=PROJECT_ROOT,
+            check=True,
+            capture_output=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        raise _error("annual PP-OCRv6 batch commit is not an ancestor of HEAD") from exc
+
+    tracked_paths = (
+        Path("config/models/pp-ocrv6-word-box.yaml"),
+        Path("scripts/models/run_ppocrv6_word_boxes_batch.py"),
+        Path("scripts/models/run_ppocrv6_word_boxes.py"),
+        Path("config/models/gpu-runtime.toml"),
+    )
+    tracked_bytes: dict[Path, bytes] = {}
+    for relative in tracked_paths:
+        current = _stable_bytes(PROJECT_ROOT / relative, f"annual PP-OCR trust file {relative}")
+        try:
+            committed = subprocess.run(
+                ["git", "show", f"{commit}:{relative.as_posix()}"],
+                cwd=PROJECT_ROOT,
+                check=True,
+                capture_output=True,
+            ).stdout
+        except subprocess.CalledProcessError as exc:
+            raise _error(f"annual PP-OCR trust file is absent at run commit: {relative}") from exc
+        if current != committed:
+            raise _error(f"annual PP-OCR trust file changed after the batch: {relative}")
+        tracked_bytes[relative] = current
+
+    expected_configuration = {
+        "cpu_threads": 3,
+        "implicit_orientation_or_unwarp": False,
+        "mkldnn": False,
+        "network_policy": "PROCESS_SOCKET_CONNECT_DENIED",
+        "path": tracked_paths[0].as_posix(),
+        "precision": "fp32",
+        "runner_path": tracked_paths[1].as_posix(),
+        "runner_sha256": hashlib.sha256(tracked_bytes[tracked_paths[1]]).hexdigest(),
+        "sha256": hashlib.sha256(tracked_bytes[tracked_paths[0]]).hexdigest(),
+        "single_page_helper_path": tracked_paths[2].as_posix(),
+        "single_page_helper_sha256": hashlib.sha256(tracked_bytes[tracked_paths[2]]).hexdigest(),
+    }
+    expected_runtime = {
+        "compiled_with_cuda": False,
+        "device": "cpu",
+        "manifest_path": tracked_paths[3].as_posix(),
+        "manifest_sha256": hashlib.sha256(tracked_bytes[tracked_paths[3]]).hexdigest(),
+        "models": [
+            {
+                "key": "pp_ocrv6_medium_det",
+                "repo_id": "PaddlePaddle/PP-OCRv6_medium_det",
+                "revision": "8e0f56fb2ef86b461d99cfc7ac5c137738985f61",
+                "weights_sha256": (
+                    "85218d2e3d98f5a21c58b4220627be923a97aee5db3cc71f39536ab31ac53960"
+                ),
+                "weights_size_bytes": 61_960_476,
+            },
+            {
+                "key": "pp_ocrv6_medium_rec",
+                "repo_id": "PaddlePaddle/PP-OCRv6_medium_rec",
+                "revision": "e5a92bcbc5cc1b494628e458d267778f0704fd7c",
+                "weights_sha256": (
+                    "1b01c79a914587933f615569e75de54f2e638ebb5d3f3b3c1b38c24ede8c7319"
+                ),
+                "weights_size_bytes": 76_465_087,
+            },
+        ],
+        "packages": {
+            "paddleocr": "3.7.0",
+            "paddlepaddle": "3.3.0",
+            "paddlex": "3.7.2",
+        },
+    }
+    expected_registration = {
+        "assigned_at",
+        "dataset_role",
+        "document_id",
+        "immutable",
+        "source_path",
+    }
+    if (
+        not same_typed_json_v1(configuration, expected_configuration)
+        or not same_typed_json_v1(runtime, expected_runtime)
+        or type(registration) is not dict
+        or set(registration) != expected_registration
+        or type(registration.get("assigned_at")) is not str
+        or not registration["assigned_at"]
+        or registration.get("dataset_role") != "CALIBRATION"
+        or registration.get("document_id") != f"sha256:{source['sha256']}"
+        or registration.get("immutable") is not True
+        or registration.get("source_path") != source["relative_path"]
+        or not same_typed_json_v1(
+            batch_source,
+            {
+                "path": source["relative_path"],
+                "sha256": source["sha256"],
+                "size_bytes": source["size_bytes"],
+            },
+        )
+        or type(input_manifest) is not dict
+        or type(requested_pages) is not list
+        or type(renders) is not list
+    ):
+        raise _error("annual PP-OCRv6 batch trust closure drifted")
+
+    immutable_identity = {
+        "code": code,
+        "configuration": configuration,
+        "dataset_registration": registration,
+        "dataset_role": batch.get("dataset_role"),
+        "evidence_role": batch.get("evidence_role"),
+        "input_manifest": input_manifest,
+        "renders": renders,
+        "requested_pages": requested_pages,
+        "runtime_identity": runtime,
+        "schema_version": batch.get("schema_version"),
+        "source": batch_source,
+    }
+    expected_identity = hashlib.sha256(
+        json.dumps(
+            immutable_identity,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("utf-8")
+    ).hexdigest()
+    if batch.get("batch_identity") != expected_identity:
+        raise _error("annual PP-OCRv6 batch identity does not recompute")
 
 
 def _annual_geometry_selection_payload(producer_commit: str) -> dict[str, Any]:

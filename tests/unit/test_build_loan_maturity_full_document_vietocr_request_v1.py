@@ -391,6 +391,126 @@ def test_annual_geometry_selection_publication_is_no_overwrite(
         builder.seal_annual_2025_geometry_selection_v1()
 
 
+def _annual_batch_trust_fixture(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> tuple[dict[str, object], dict[str, object]]:
+    source = copy.deepcopy(builder.ANNUAL_2025_SOURCES[0])
+    tracked = {
+        Path("config/models/pp-ocrv6-word-box.yaml"): b"configuration",
+        Path("scripts/models/run_ppocrv6_word_boxes_batch.py"): b"batch runner",
+        Path("scripts/models/run_ppocrv6_word_boxes.py"): b"page runner",
+        Path("config/models/gpu-runtime.toml"): b"runtime manifest",
+    }
+    monkeypatch.setattr(builder, "PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(
+        builder,
+        "_stable_bytes",
+        lambda path, _label: tracked[path.relative_to(tmp_path)],
+    )
+
+    def fake_run(args, **_kwargs):
+        if args[1:3] == ["merge-base", "--is-ancestor"]:
+            return builder.subprocess.CompletedProcess(args, 0, b"", b"")
+        relative = Path(args[2].split(":", 1)[1])
+        return builder.subprocess.CompletedProcess(args, 0, tracked[relative], b"")
+
+    monkeypatch.setattr(builder.subprocess, "run", fake_run)
+    configuration = {
+        "cpu_threads": 3,
+        "implicit_orientation_or_unwarp": False,
+        "mkldnn": False,
+        "network_policy": "PROCESS_SOCKET_CONNECT_DENIED",
+        "path": "config/models/pp-ocrv6-word-box.yaml",
+        "precision": "fp32",
+        "runner_path": "scripts/models/run_ppocrv6_word_boxes_batch.py",
+        "runner_sha256": hashlib.sha256(
+            tracked[Path("scripts/models/run_ppocrv6_word_boxes_batch.py")]
+        ).hexdigest(),
+        "sha256": hashlib.sha256(tracked[Path("config/models/pp-ocrv6-word-box.yaml")]).hexdigest(),
+        "single_page_helper_path": "scripts/models/run_ppocrv6_word_boxes.py",
+        "single_page_helper_sha256": hashlib.sha256(
+            tracked[Path("scripts/models/run_ppocrv6_word_boxes.py")]
+        ).hexdigest(),
+    }
+    runtime = {
+        "compiled_with_cuda": False,
+        "device": "cpu",
+        "manifest_path": "config/models/gpu-runtime.toml",
+        "manifest_sha256": hashlib.sha256(
+            tracked[Path("config/models/gpu-runtime.toml")]
+        ).hexdigest(),
+        "models": [
+            {
+                "key": "pp_ocrv6_medium_det",
+                "repo_id": "PaddlePaddle/PP-OCRv6_medium_det",
+                "revision": "8e0f56fb2ef86b461d99cfc7ac5c137738985f61",
+                "weights_sha256": "85218d2e3d98f5a21c58b4220627be923a97aee5db3cc71f39536ab31ac53960",
+                "weights_size_bytes": 61_960_476,
+            },
+            {
+                "key": "pp_ocrv6_medium_rec",
+                "repo_id": "PaddlePaddle/PP-OCRv6_medium_rec",
+                "revision": "e5a92bcbc5cc1b494628e458d267778f0704fd7c",
+                "weights_sha256": "1b01c79a914587933f615569e75de54f2e638ebb5d3f3b3c1b38c24ede8c7319",
+                "weights_size_bytes": 76_465_087,
+            },
+        ],
+        "packages": {
+            "paddleocr": "3.7.0",
+            "paddlepaddle": "3.3.0",
+            "paddlex": "3.7.2",
+        },
+    }
+    batch = {
+        "code": {"commit": "1" * 40, "dirty": False},
+        "configuration": configuration,
+        "dataset_registration": {
+            "assigned_at": "2026-08-16T00:00:00+00:00",
+            "dataset_role": "CALIBRATION",
+            "document_id": f"sha256:{source['sha256']}",
+            "immutable": True,
+            "source_path": source["relative_path"],
+        },
+        "dataset_role": "CALIBRATION",
+        "evidence_role": "INDEPENDENT_GEOMETRY_PROPOSAL_ONLY",
+        "input_manifest": {"path": "manifest.json", "sha256": "2" * 64, "size_bytes": 1},
+        "renders": [],
+        "requested_pages": [],
+        "runtime_identity": runtime,
+        "schema_version": 1,
+        "source": {
+            "path": source["relative_path"],
+            "sha256": source["sha256"],
+            "size_bytes": source["size_bytes"],
+        },
+    }
+    batch["batch_identity"] = hashlib.sha256(
+        json.dumps(batch, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode()
+    ).hexdigest()
+    return batch, source
+
+
+def test_annual_batch_trust_closure_binds_code_config_runtime_and_source(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    batch, source = _annual_batch_trust_fixture(tmp_path, monkeypatch)
+
+    builder._validate_annual_ppocr_batch_trust_closure(batch, source)
+
+    tampered = copy.deepcopy(batch)
+    tampered["configuration"]["mkldnn"] = 0
+    tampered["batch_identity"] = hashlib.sha256(
+        json.dumps(
+            {key: value for key, value in tampered.items() if key != "batch_identity"},
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode()
+    ).hexdigest()
+    with pytest.raises(builder.FullDocumentVietOCRRequestV1Error, match="trust closure"):
+        builder._validate_annual_ppocr_batch_trust_closure(tampered, source)
+
+
 def test_annual_provider_geometry_is_transcript_independent() -> None:
     first = builder._annual_ppocr_line_boxes(
         _annual_provider_payload(text="poison"), width=100, height=80
