@@ -153,6 +153,24 @@ def test_reverse_deposit_group_order_is_a_shared_family_variant() -> None:
     )
 
 
+def test_annual_2025_and_2024_period_headers_use_the_same_generic_graph() -> None:
+    surfaces = [
+        (
+            "31/12/2025"
+            if text == "30/06/2026"
+            else "31/12/2024"
+            if text == "31/12/2025"
+            else text,
+            x,
+            y,
+        )
+        for text, x, y in _table()
+    ]
+    result = graph.build_interbank_deposits_loans_variant_graph_document_v1([_page(surfaces)])
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["regions"][0]["layout"]["meaningful_axes"]["period_header_count"] == 2
+
+
 def test_family_without_printed_grand_total_still_ends_at_loan_subtotal() -> None:
     result = graph.build_interbank_deposits_loans_variant_graph_document_v1(
         [_page(_table(family_total=False))]
