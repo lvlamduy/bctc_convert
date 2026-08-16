@@ -298,8 +298,13 @@ def _regions(pages: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
             if not _is_owner(window):
                 continue
             dates = _dates(lines, index)
-            current = [item for item in dates if item["year"] == 2026]
-            comparative = [item for item in dates if item["year"] == 2025]
+            years = sorted({item["year"] for item in dates})
+            current = (
+                [item for item in dates if item["year"] == years[1]] if len(years) == 2 else []
+            )
+            comparative = (
+                [item for item in dates if item["year"] == years[0]] if len(years) == 2 else []
+            )
             row_pairs = [
                 (line_index, matched)
                 for line_index in range(index + 1, len(lines))

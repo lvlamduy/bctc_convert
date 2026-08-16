@@ -84,6 +84,17 @@ def test_split_parallel_date_axes_are_joined_by_geometry() -> None:
     assert region["comparative_period"][0]["year"] == 2025
 
 
+def test_annual_current_and_comparative_years_are_derived_not_hardcoded() -> None:
+    texts = _table()
+    texts[1:3] = ["31/12/2025", "31/12/2024"]
+
+    result = matcher.build_exchange_rate_variant_graph_document_v1([_page(texts)])
+
+    region = next(item for item in result["regions"] if item["status"] == "COMPLETE")
+    assert region["current_period"][0]["year"] == 2025
+    assert region["comparative_period"][0]["year"] == 2024
+
+
 def test_fuzzy_currency_codes_and_gold_are_family_level_variants() -> None:
     texts = _table()
     start = texts.index("USD")
