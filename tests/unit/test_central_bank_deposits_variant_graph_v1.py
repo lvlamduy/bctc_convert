@@ -194,6 +194,57 @@ def test_geography_only_variant_is_not_forced_into_currency_children() -> None:
     ]
 
 
+def test_nested_geography_currency_subtree_precedes_family_total() -> None:
+    surfaces = [
+        ("Tiền gửi tại Ngân hàng Trung ương", 0, 0),
+        ("31/12/2025", 620, 35),
+        ("31/12/2024", 810, 35),
+        ("Triệu đồng", 620, 65),
+        ("Triệu đồng", 810, 65),
+        ("Tiền gửi tại Ngân hàng Nhà nước Việt Nam", 0, 105),
+        ("100", 620, 105),
+        ("80", 810, 105),
+        ("Bằng VND", 0, 140),
+        ("90", 620, 140),
+        ("70", 810, 140),
+        ("Bằng ngoại tệ", 0, 175),
+        ("10", 620, 175),
+        ("10", 810, 175),
+        ("Tiền gửi tại Ngân hàng Quốc gia Campuchia", 0, 210),
+        ("20", 620, 210),
+        ("15", 810, 210),
+        ("Bằng ngoại tệ", 0, 245),
+        ("20", 620, 245),
+        ("15", 810, 245),
+        ("Tiền gửi tại Ngân hàng Trung ương Lào", 0, 280),
+        ("30", 620, 280),
+        ("25", 810, 280),
+        ("Bằng VND", 0, 315),
+        ("2", 620, 315),
+        ("Bằng ngoại tệ", 0, 350),
+        ("28", 620, 350),
+        ("25", 810, 350),
+        ("150", 620, 395),
+        ("120", 810, 395),
+        ("Tiền gửi tại các TCTD khác", 0, 440),
+    ]
+    result = central.build_central_bank_deposits_variant_graph_document_v1([_page(surfaces)])
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    region = result["regions"][0]
+    assert region["events"][-1]["role"] == "TOTAL"
+    assert region["events"][-1]["source_line_index"] == 28
+    assert [value["vietocr_text"] for value in region["events"][-1]["value_proposals"]] == [
+        "150",
+        "120",
+    ]
+    laos = next(event for event in region["events"] if event["role"] == "CENTRAL_BANK_LAOS")
+    assert [child["role"] for child in laos["currency_breakdown"]] == [
+        "DEPOSIT_VND",
+        "DEPOSIT_FOREIGN_CURRENCY",
+    ]
+
+
 def test_balance_sheet_total_or_reserve_ratio_table_is_not_a_complete_note() -> None:
     surfaces = [
         ("Tiền gửi tại Ngân hàng Nhà nước", 0, 0),

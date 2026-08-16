@@ -347,6 +347,63 @@ def _geography_role(text: str) -> str | None:
     return None
 
 
+def _currency_child_role(text: str) -> str | None:
+    if text in {"bang vnd", "bang tien dong", "bang dong viet nam"}:
+        return "DEPOSIT_VND"
+    if text == "bang ngoai te":
+        return "DEPOSIT_FOREIGN_CURRENCY"
+    return None
+
+
+def _nested_currency_breakdown(
+    lines: Sequence[Mapping[str, Any]],
+    geography: Mapping[str, Any],
+    stop_index: int,
+) -> list[dict[str, Any]]:
+    start_index = geography["source_line_index"]
+    children = []
+    for item in lines:
+        index = item["source_line_index"]
+        if not start_index < index < stop_index or index > start_index + 10:
+            continue
+        role = _currency_child_role(item["normalized_text"])
+        if role is None:
+            continue
+        children.append(
+            {
+                "bbox": list(item["bbox"]),
+                "role": role,
+                "source_line_index": index,
+                "value_proposals": _value_proposals(lines, item),
+                "vietocr_text": item["vietocr_text"],
+            }
+        )
+    return children
+
+
+def _subtree_boundary(event: Mapping[str, Any]) -> dict[str, Any]:
+    descendants = event.get("currency_breakdown", [])
+    if type(descendants) is not list or not descendants:
+        return dict(event)
+    boxes = [event["bbox"]]
+    indices = [event["source_line_index"]]
+    for child in descendants:
+        boxes.append(child["bbox"])
+        indices.append(child["source_line_index"])
+        for value in child["value_proposals"]:
+            boxes.append(value["bbox"])
+            indices.append(value["source_line_index"])
+    return {
+        "bbox": [
+            min(box[0] for box in boxes),
+            min(box[1] for box in boxes),
+            max(box[2] for box in boxes),
+            max(box[3] for box in boxes),
+        ],
+        "source_line_index": max(indices),
+    }
+
+
 def _is_owner(text: str) -> bool:
     return (
         text
@@ -621,7 +678,20 @@ def _candidate(
                 }
             )
     events.sort(key=lambda item: item["source_line_index"])
-    last_event = events[-1]
+    optional_positions = [
+        position for position, event in enumerate(events) if event["role_kind"] == "OPTIONAL_CHILD"
+    ]
+    for optional_ordinal, position in enumerate(optional_positions):
+        event = events[position]
+        stop_index = (
+            events[optional_positions[optional_ordinal + 1]]["source_line_index"]
+            if optional_ordinal + 1 < len(optional_positions)
+            else event["source_line_index"] + 11
+        )
+        nested = _nested_currency_breakdown(lines, event, stop_index)
+        if nested:
+            event["currency_breakdown"] = nested
+    last_event = _subtree_boundary(events[-1])
     total = _total_after(lines, last_event)
     first_child_index = min(child_indices)
     periods = _axis_groups(lines, owner_index, first_child_index, kind="PERIOD")
