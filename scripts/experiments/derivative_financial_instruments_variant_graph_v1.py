@@ -359,27 +359,84 @@ def _unit_evidence(
 
 
 def _lane_headers(
-    lines: Sequence[Mapping[str, Any]], *, start: int, first_period_row: int
+    lines: Sequence[Mapping[str, Any]],
+    *,
+    start: int,
+    first_period_row: int,
+    enable_multilevel_headers: bool,
 ) -> dict[str, Any]:
     surfaces = [line for line in lines if start < line["source_line_index"] < first_period_row]
     normalized = " ".join(line["normalized_text"] for line in surfaces)
     has_contract = any("hop dong" in line["normalized_text"] for line in surfaces)
     has_asset = "tai san" in normalized
-    has_liability = "cong no" in normalized
+    has_liability = "cong no" in normalized or (
+        enable_multilevel_headers and "no phai tra" in normalized
+    )
     has_inflow = "dong tien vao" in normalized
     has_outflow = "dong tien ra" in normalized
     has_book_value = "ghi so" in normalized or "so ke toan" in normalized
-    has_net_column = any(
-        ("gia tri thuan" in line["normalized_text"] or "gia tri rong" in line["normalized_text"])
-        and len(line["normalized_text"].split()) <= 4
-        for line in surfaces
+
+    # Multi-level table headers are often emitted as independent OCR lines.
+    # For example, MBB prints ``Giá trị`` above ``thuần`` in one column while
+    # ACB calls the same reconciliation lane ``Tổng cộng``.  Reconstruct only
+    # this short, vertically co-linear header phrase; longer narrative text is
+    # deliberately ineligible.
+    net_center: float | None = next(
+        (
+            (line["bbox"][0] + line["bbox"][2]) / 2
+            for line in surfaces
+            if (
+                any(
+                    token in line["normalized_text"]
+                    for token in (
+                        "gia tri thuan",
+                        "gia tri rong",
+                        *(("so thuan",) if enable_multilevel_headers else ()),
+                    )
+                )
+                and len(line["normalized_text"].split()) <= 4
+            )
+            or (
+                enable_multilevel_headers
+                and line["normalized_text"] == "tong cong"
+                and has_asset
+                and has_liability
+            )
+        ),
+        None,
     )
+    if enable_multilevel_headers and net_center is None:
+        upper_lines = [
+            line
+            for line in surfaces
+            if line["normalized_text"] == "gia tri" and len(line["normalized_text"].split()) <= 2
+        ]
+        lower_lines = [line for line in surfaces if line["normalized_text"] in {"thuan", "rong"}]
+        for upper in upper_lines:
+            upper_center = (upper["bbox"][0] + upper["bbox"][2]) / 2
+            for lower in lower_lines:
+                lower_center = (lower["bbox"][0] + lower["bbox"][2]) / 2
+                vertical_gap = lower["bbox"][1] - upper["bbox"][3]
+                if abs(upper_center - lower_center) <= 50 and -10 <= vertical_gap <= 100:
+                    net_center = (upper_center + lower_center) / 2
+                    break
+            if net_center is not None:
+                break
+    has_net_column = net_center is not None
     roles: list[str]
     if has_inflow and has_outflow:
         roles = ["CONTRACT_VALUE", "INFLOW", "OUTFLOW", "NET_VALUE"]
         mode = "CONTRACT_INFLOW_OUTFLOW_NET"
     elif has_asset and has_liability:
-        if has_net_column:
+        if enable_multilevel_headers and has_contract and has_net_column:
+            roles = [
+                "CONTRACT_VALUE",
+                "ASSET_CARRYING_VALUE",
+                "LIABILITY_CARRYING_VALUE",
+                "NET_VALUE",
+            ]
+            mode = "CONTRACT_ASSET_LIABILITY_NET"
+        elif has_net_column:
             roles = ["ASSET_CARRYING_VALUE", "LIABILITY_CARRYING_VALUE", "NET_VALUE"]
             mode = "ASSET_LIABILITY_NET"
         elif has_contract:
@@ -411,10 +468,12 @@ def _lane_headers(
                 "hop dong",
                 "tai san",
                 "cong no",
+                *(("no phai tra",) if enable_multilevel_headers else ()),
                 "dong tien vao",
                 "dong tien ra",
                 "gia tri thuan",
                 "gia tri rong",
+                *(("so thuan", "tong cong") if enable_multilevel_headers else ()),
                 "ghi so",
             )
         )
@@ -429,14 +488,24 @@ def _lane_headers(
             centers["OUTFLOW"] = center
         elif text in {"tai san", "tai san trieu dong"}:
             centers["ASSET_CARRYING_VALUE"] = center
-        elif "cong no" in text and len(text.split()) <= 4:
+        elif ("cong no" in text or (enable_multilevel_headers and "no phai tra" in text)) and len(
+            text.split()
+        ) <= 4:
             centers["LIABILITY_CARRYING_VALUE"] = center
-        elif "gia tri thuan" in text or "gia tri rong" in text:
+        elif (
+            "gia tri thuan" in text
+            or "gia tri rong" in text
+            or (enable_multilevel_headers and "so thuan" in text)
+        ):
+            centers["NET_VALUE"] = center
+        elif enable_multilevel_headers and text == "tong cong" and has_asset and has_liability:
             centers["NET_VALUE"] = center
         elif "hop dong" in text:
             centers.setdefault("CONTRACT_VALUE", center)
         elif mode == "CONTRACT_NET" and ("ghi so" in text or "so ke toan" in text):
             centers.setdefault("NET_VALUE", center)
+    if has_net_column and net_center is not None:
+        centers.setdefault("NET_VALUE", net_center)
     return {
         "header_lane_centers": {role: centers[role] for role in roles if role in centers},
         "header_lines": header_lines,
@@ -508,7 +577,10 @@ def _minimal_anchor(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
 
 
 def _candidate(
-    page: Mapping[str, Any], owner: Mapping[str, Any]
+    page: Mapping[str, Any],
+    owner: Mapping[str, Any],
+    *,
+    enable_multilevel_headers: bool,
 ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
     lines = page["lines"]
     owner_index = owner["source_line_index"]
@@ -550,7 +622,12 @@ def _candidate(
     if sum(bool(event["value_proposals"]) for event in events) < 2:
         reasons.append("FEWER_THAN_TWO_DERIVATIVE_ROWS_WITH_NUMERIC_GEOMETRY")
     first_derivative_row = min((event["source_line_index"] for event in events), default=stop)
-    layout = _lane_headers(lines, start=owner_index, first_period_row=first_derivative_row)
+    layout = _lane_headers(
+        lines,
+        start=owner_index,
+        first_period_row=first_derivative_row,
+        enable_multilevel_headers=enable_multilevel_headers,
+    )
     lane_roles = layout["lane_roles_left_to_right"]
     if not lane_roles:
         reasons.append("MEANINGFUL_NUMERIC_LANE_LAYOUT_NOT_RESOLVED")
@@ -670,6 +747,8 @@ def _validate_result(value: Any) -> dict[str, Any]:
 
 def build_derivative_financial_instruments_variant_graph_document_v1(
     pages: Any,
+    *,
+    enable_multilevel_headers: bool = False,
 ) -> dict[str, Any]:
     """Build one deterministic derivative graph over a complete PDF."""
 
@@ -680,7 +759,9 @@ def build_derivative_financial_instruments_variant_graph_document_v1(
     for page in normalized_pages:
         owners = [line for line in page["lines"] if _is_owner(line)]
         for owner in owners:
-            candidate, near = _candidate(page, owner)
+            candidate, near = _candidate(
+                page, owner, enable_multilevel_headers=enable_multilevel_headers
+            )
             near_regions.append(near)
             if candidate is not None and candidate["region_id"] not in seen_regions:
                 seen_regions.add(candidate["region_id"])
@@ -723,12 +804,17 @@ def build_derivative_financial_instruments_variant_graph_document_v1(
 
 
 def validate_derivative_financial_instruments_variant_graph_replay_v1(
-    value: Any, pages: Any
+    value: Any,
+    pages: Any,
+    *,
+    enable_multilevel_headers: bool = False,
 ) -> dict[str, Any]:
     """Exact-rebuild one derivative graph from the complete PDF input."""
 
     persisted = _validate_result(value)
-    expected = build_derivative_financial_instruments_variant_graph_document_v1(pages)
+    expected = build_derivative_financial_instruments_variant_graph_document_v1(
+        pages, enable_multilevel_headers=enable_multilevel_headers
+    )
     if not same_typed_json_v1(persisted, expected):
         raise _error("derivative graph does not replay exactly")
     return persisted

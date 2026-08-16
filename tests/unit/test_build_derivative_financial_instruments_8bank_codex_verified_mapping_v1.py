@@ -153,3 +153,100 @@ def test_review_tamper_bool_poison_and_coordinated_result_rehash_fail_closed(
             crop_manifest_sha256="a" * 64,
             review_sha256="b" * 64,
         )
+
+
+def test_annual_2025_review_covers_seven_unique_regions_four_lane_headers_and_dashes() -> None:
+    review = mapping._annual_2025_review_blueprint()
+    positive = [document for document in review["documents"] if document["mappings"]]
+    negative = [document for document in review["documents"] if not document["mappings"]]
+
+    assert [document["bank_code"] for document in positive] == [
+        "ACB",
+        "MBB",
+        "VPB",
+        "HDB",
+        "CTG",
+        "BID",
+        "VIB",
+    ]
+    assert [document["bank_code"] for document in negative] == ["VCB"]
+    assert negative[0]["whole_document_family_absence_claim"] is True
+    assert {document["layout_mode"] for document in positive} == {
+        "ASSET_LIABILITY_NET",
+        "CONTRACT_ASSET_LIABILITY",
+        "CONTRACT_ASSET_LIABILITY_NET",
+        "CONTRACT_INFLOW_OUTFLOW_NET",
+        "CONTRACT_NET",
+    }
+    rows = [row for document in positive for row in document["mappings"]]
+    assert len(rows) == 100
+    assert sum(row["value_line_index"] is None for row in rows) == 24
+    assert all(
+        row["lane_role"] in {"CONTRACT_VALUE", "ASSET_CARRYING_VALUE", "LIABILITY_CARRYING_VALUE"}
+        for row in rows
+    )
+
+
+def test_annual_2025_persisted_result_closes_equations_and_corrects_mbb_digit() -> None:
+    persisted = mapping._validate_annual_2025_result(
+        json.loads((mapping.PROJECT_ROOT / mapping.ANNUAL_2025_RESULT_PATH).read_text())
+    )
+
+    assert persisted["metrics"] == {
+        "accounting_equation_verified_count": 62,
+        "authenticated_pixel_dash_zero_count": 24,
+        "bound_report_absence_document_count": 1,
+        "document_count": 8,
+        "document_unique_region_count": 7,
+        "fresh_vietocr_numeric_disagreement_corrected_by_pixel_source_count": 1,
+        "mapping_verified_count": 100,
+        "unresolved_document_count": 0,
+    }
+    mbb = next(trial for trial in persisted["trials"] if trial["document_provenance"] == "MBB")
+    assert mbb["fresh_vietocr_numeric_disagreement_line_indices"] == [50]
+    assert all(
+        equation["computed_total"] == equation["visible_total"]
+        for trial in persisted["trials"]
+        for equation in trial["verified_accounting_equations"]
+    )
+    dash_rows = [
+        row
+        for trial in persisted["trials"]
+        for row in trial["verified_mappings"]
+        if row["source_value"]["source_numeric_challenger_status"].startswith(
+            "VISIBLE_AUTHENTICATED_PIXEL_DASH"
+        )
+    ]
+    assert len(dash_rows) == 24
+    assert all(row["normalized_value"] == 0 for row in dash_rows)
+
+
+def test_annual_2025_review_and_coordinated_result_tamper_fail_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    forged_review = mapping._annual_2025_review_blueprint()
+    forged_review["documents"][0]["mappings"][0]["pixel_value"] = "3.646.094"
+    with pytest.raises(
+        mapping.DerivativeFinancialInstruments8BankCodexVerifiedMappingV1Error,
+        match="differs from fixed ledger",
+    ):
+        mapping._annual_2025_review(forged_review)
+
+    persisted = json.loads((mapping.PROJECT_ROOT / mapping.ANNUAL_2025_RESULT_PATH).read_text())
+    forged = copy.deepcopy(persisted)
+    forged["trials"][0]["verified_mappings"][0]["normalized_value"] += 1
+    material = copy.deepcopy(forged)
+    material.pop("result_id")
+    forged["result_id"] = "annual2025dfi8bcv1:result:" + mapping.canonical_json_sha256_v1(material)
+    monkeypatch.setattr(
+        mapping,
+        "build_live_annual_2025_derivative_financial_instruments_8bank_codex_verified_mapping_v1",
+        lambda: persisted,
+    )
+    with pytest.raises(
+        mapping.DerivativeFinancialInstruments8BankCodexVerifiedMappingV1Error,
+        match="does not replay exactly",
+    ):
+        mapping.validate_annual_2025_derivative_financial_instruments_8bank_codex_verified_mapping_replay_v1(
+            forged
+        )

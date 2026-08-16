@@ -68,22 +68,20 @@ Quy ước:
 
 ## 5. Công cụ tài chính phái sinh và tài sản/công nợ tài chính khác
 
-- **Đã xác minh:** ACB p17, MBB p43, VPB p41, HDB p25, CTG p38, BID p21
-  và VIB p32. Đã map 86 giao điểm hàng × trục có đúng khoản mục schema:
-  giá trị hợp đồng, giá trị ghi sổ tài sản và giá trị ghi sổ công nợ cho kỳ
-  hiện tại/so sánh; 30 phương trình cha–con hoặc tài sản trừ công nợ đóng
-  chính xác. Các cột dòng tiền vào/ra và giá trị thuần chỉ dùng kiểm tra vì
-  schema không có trục tương đương. Mười một dấu `-` nhìn thấy ở HDB được giữ
-  nguyên trạng thái `DASH` trước khi chuẩn hóa thành 0; ô trống không bị đổi
-  thành 0.
-- **Không có cụm thuyết minh trong PDF đã bind:** VCB. Chủ dự án xác nhận PDF
-  này không có phần thuyết minh cho ReportNormId 631; các dòng tổng/chính sách,
-  giá trị hợp lý hoặc kiểm soát rủi ro không được relabel thành bảng giao dịch.
+- **Đã xác minh trên BCTC hợp nhất kiểm toán năm 2025:** ACB p49, MBB p66,
+  VPB p44, HDB p35, CTG p42, BID p41 và VIB p37. Đã map 100 giao điểm hàng ×
+  trục giá trị hợp đồng/tài sản/công nợ cho kỳ hiện tại và so sánh; 62 phương
+  trình cha–con, tài sản cộng công nợ và dòng tiền vào/ra đóng chính xác. Hai
+  mươi bốn dấu `-` được bind từ đúng giao điểm hình học hàng–cột rồi chuẩn hóa
+  thành 0; ô trống không bị đổi thành 0. Header bốn tầng của MBB được nhận đủ
+  `hợp đồng → tài sản → nợ phải trả → giá trị thuần`.
+- **Không có trong BCTC annual-2025 đã bind:** VCB. Các dòng tổng/chính sách,
+  giá trị hợp lý hoặc kiểm soát rủi ro không bị relabel thành bảng giao dịch.
 - **Còn thiếu:** Không còn khoản mục nguồn chưa map trong family này.
 
-Ghi chú OCR số: BID `6,270,0ss` được đọc lại từ pixel/Paddle là `6,270,055`;
-VIB `2.126.217` được đọc lại là `12.126.217`. VietOCR Transformer chỉ giữ vai
-trò anchor/geometry và không được dùng để tự sửa số. PDF VPB là Q1/2026.
+Ghi chú OCR số: MBB `173.426` của VietOCR được pixel, trục số nguồn và phép
+`136.362.265 - 136.188.840` xác nhận là `173.425`. Cột giá trị thuần và các
+cột dòng tiền vào/ra chỉ dùng kiểm tra vì schema không có trục tương đương.
 
 ## 6. Phân tích theo loại hình cho vay
 
@@ -908,7 +906,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Tiền gửi tại NHNN | ✓ p45 | ✓ p46 | ✓ p41 | ✓ p33 | ✓ p35 | ✓ p39 | ✓ p39 | ✓ p35 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; Lào/Campuchia → 574 |
 | Tiền gửi/vay TCTD khác | ✓ p46 | ✓ p48 | ✓ p42 | ✓ p34 | ✓ p36 | ✓ p40 | ✓ p39 | ✓ p36 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025 |
 | Chứng khoán kinh doanh | ✓ p47 | ✓ p49 | ✓ p43 | ✓ p34 | ✓ p37 | ✓ p41 | ✓ p40 | — | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; VIB chỉ có family đầu tư |
-| Công cụ tài chính phái sinh | ✓ p17 | ✓ p43 | ✓\* p41 | ✓ p25 | — | ✓ p38 | ✓ p21 | ✓ p32 | 0 dòng; VCB xác nhận không có cụm; VPB là nguồn Q1 |
+| Công cụ tài chính phái sinh | ✓ p49 | ✓ p66 | ✓ p44 | ✓ p35 | — | ✓ p42 | ✓ p41 | ✓ p37 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; VCB không có family |
 | Loại hình cho vay | ✓ p17 | ✓ p31 | ✓ p42 | ✓ p26 | ✓ p30 | ✓ p38 | ✓ p22 | ✓ p33 | 0 |
 | Ngành nghề kinh doanh | — | ✓ p33 | ✓ p44 | ✓ p27 | — | — | ✓ p22 | ✓ p33 | 0 trong 5 vùng; 3 bank không có |
 | Chất lượng cho vay | ✓ p18 | ✓ p31 | ✓ p42 | ✓ p26 | ✓ p30 | ✓ p39 | ✓ p22 | ✓ p60 | 0; 1944 tách riêng tại ACB/MBB/VPB, MBB 747 đã trừ đúng 5746 |

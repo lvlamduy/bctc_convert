@@ -180,6 +180,8 @@ def _validate_result(value: Any) -> dict[str, Any]:
 
 def build_derivative_financial_instruments_full_document_scan_v1(
     semantic_index: Any,
+    *,
+    enable_multilevel_headers: bool = False,
 ) -> dict[str, Any]:
     """Build one deterministic derivative financial instruments scan over all eight PDFs."""
 
@@ -191,7 +193,8 @@ def build_derivative_financial_instruments_full_document_scan_v1(
             "document_provenance": document["document_provenance"],
             "matcher_result": (
                 matcher.build_derivative_financial_instruments_variant_graph_document_v1(
-                    _matcher_pages(document)
+                    _matcher_pages(document),
+                    **({"enable_multilevel_headers": True} if enable_multilevel_headers else {}),
                 )
             ),
             "source_pdf_sha256": _sha256(document["source_pdf"]["sha256"], "source PDF"),
@@ -214,12 +217,17 @@ def build_derivative_financial_instruments_full_document_scan_v1(
 
 
 def validate_derivative_financial_instruments_full_document_scan_replay_v1(
-    value: Any, semantic_index: Any
+    value: Any,
+    semantic_index: Any,
+    *,
+    enable_multilevel_headers: bool = False,
 ) -> dict[str, Any]:
     """Exact-rebuild the scan from the complete semantic axis."""
 
     persisted = _validate_result(value)
-    expected = build_derivative_financial_instruments_full_document_scan_v1(semantic_index)
+    expected = build_derivative_financial_instruments_full_document_scan_v1(
+        semantic_index, enable_multilevel_headers=enable_multilevel_headers
+    )
     if not same_typed_json_v1(persisted, expected):
         raise _error("derivative financial instruments scan does not replay exactly")
     return persisted

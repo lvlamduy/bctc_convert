@@ -57,6 +57,15 @@ def _table(mode: str) -> list[tuple[str, int, int]]:
             ],
             [650, 820, 990],
         ),
+        "CONTRACT_ASSET_LIABILITY_NET": (
+            [
+                ("Tổng giá trị của hợp đồng", 570, 35),
+                ("Tài sản", 710, 60),
+                ("Nợ phải trả", 850, 60),
+                ("Giá trị thuần", 990, 60),
+            ],
+            [570, 710, 850, 990],
+        ),
         "ASSET_LIABILITY_NET": (
             [("Tài sản", 650, 60), ("Công nợ", 820, 60), ("Giá trị ròng", 990, 60)],
             [650, 820, 990],
@@ -105,6 +114,7 @@ def _table(mode: str) -> list[tuple[str, int, int]]:
     "mode",
     [
         "CONTRACT_ASSET_LIABILITY",
+        "CONTRACT_ASSET_LIABILITY_NET",
         "ASSET_LIABILITY_NET",
         "CONTRACT_INFLOW_OUTFLOW_NET",
         "ASSET_LIABILITY",
@@ -113,7 +123,7 @@ def _table(mode: str) -> list[tuple[str, int, int]]:
 )
 def test_shared_layout_variants_bind_boundary_periods_and_lanes(mode: str) -> None:
     result = graph.build_derivative_financial_instruments_variant_graph_document_v1(
-        [_page(_table(mode))]
+        [_page(_table(mode))], enable_multilevel_headers=True
     )
 
     assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
@@ -137,7 +147,7 @@ def test_policy_prose_and_one_period_surface_are_negative_controls() -> None:
         ("Các hợp đồng hoán đổi tiền tệ là các cam kết mua và bán", 0, 80),
     ]
     result = graph.build_derivative_financial_instruments_variant_graph_document_v1(
-        [_page(surfaces)]
+        [_page(surfaces)], enable_multilevel_headers=True
     )
 
     assert result["status"] == "UNRESOLVED_NO_COMPLETE_REGION"
@@ -158,12 +168,32 @@ def test_latest_two_visible_dates_define_annual_current_and_comparative_axes() -
         for text, x, y in _table("ASSET_LIABILITY")
     ]
     result = graph.build_derivative_financial_instruments_variant_graph_document_v1(
-        [_page(surfaces)]
+        [_page(surfaces)], enable_multilevel_headers=True
     )
     headings = result["regions"][0]["layout"]["period_headings"]
     assert [item["period_role"] for item in headings] == [
         "CURRENT_PERIOD",
         "COMPARATIVE_PERIOD",
+    ]
+
+
+def test_stacked_net_header_and_liability_synonym_reconstruct_four_lanes() -> None:
+    surfaces = _table("CONTRACT_ASSET_LIABILITY_NET")
+    net_index = next(index for index, item in enumerate(surfaces) if item[0] == "Giá trị thuần")
+    _, x, y = surfaces[net_index]
+    surfaces[net_index : net_index + 1] = [("Giá trị", x, y - 28), ("thuần", x, y)]
+
+    result = graph.build_derivative_financial_instruments_variant_graph_document_v1(
+        [_page(surfaces)], enable_multilevel_headers=True
+    )
+
+    layout = result["regions"][0]["layout"]
+    assert layout["presentation_mode"] == "CONTRACT_ASSET_LIABILITY_NET"
+    assert layout["lane_roles_left_to_right"] == [
+        "CONTRACT_VALUE",
+        "ASSET_CARRYING_VALUE",
+        "LIABILITY_CARRYING_VALUE",
+        "NET_VALUE",
     ]
 
 

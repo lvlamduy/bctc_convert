@@ -56,6 +56,16 @@ hiện kỳ của HDB được bind từ pixel rồi chuẩn hóa 0. Bốn view 
 yết tại ACB/MBB/HDB/CTG được giữ làm đối chứng không cộng trùng. Đây là family
 đã đóng, không tạo candidate hoặc dòng OPEN mới.
 
+E-0111 `Công cụ tài chính phái sinh và tài sản/công nợ tài chính khác` trên
+tám BCTC hợp nhất kiểm toán năm 2025 không bổ sung dòng OPEN: whole-PDF graph
+tìm đúng một vùng tại ACB p49, MBB p66, VPB p44, HDB p35, CTG p42, BID p41 và
+VIB p37; VCB được xác nhận không có family chi tiết trong báo cáo đã bind. 100
+mapping và 62 phương trình đóng chính xác. Header nhiều tầng của MBB được phục
+hồi thành bốn lane bằng quan hệ hình học, không bằng rule theo bank. 24 dấu `-`
+được bind từ giao điểm hàng–cột rồi chuẩn hóa 0. VietOCR đọc dòng kiểm tra MBB
+`173.426`; pixel, trục số nguồn và phép trừ xác nhận `173.425`. Đây là lỗi OCR
+đã đóng, không phải dòng OPEN.
+
 E-0079 `Thu nhập lãi và các khoản thu nhập tương tự` không bổ sung dòng OPEN:
 cả tám vùng duy nhất đã map hết các dòng nguồn vào 1143–1150. Hai lỗi mất chữ
 số đầu của VietOCR tại VIB được trục số nguồn/PaddleOCR và pixel bác bỏ, nên là
