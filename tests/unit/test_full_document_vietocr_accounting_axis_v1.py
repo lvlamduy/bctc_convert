@@ -10,7 +10,9 @@ from bctc_ai.evaluation.full_document_vietocr_accounting_axis_v1 import (
     EXPECTED_PAGE_VECTOR,
     FullDocumentVietOCRAccountingAxisV1Error,
     project_full_document_vietocr_accounting_axis_v1,
+    project_full_document_vietocr_reporting_period_contexts_v1,
     validate_full_document_vietocr_accounting_axis_replay_v1,
+    validate_full_document_vietocr_reporting_period_contexts_replay_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
 
@@ -45,6 +47,14 @@ def _source_index() -> dict[str, object]:
                 sample_ordinal += 1
                 sample_id = f"sample-{sample_ordinal:08d}"
                 text = "" if sample_ordinal == 1 else f"Fresh line {sample_ordinal}"
+                period_surfaces = {
+                    (1, 5): "Tại ngày 31/12/2025",
+                    (1, 6): "Tại ngày 31/12/2024",
+                    (1, 7): "Ngày 1 tháng 1 năm 2025",
+                    (2, 5): "Ngày 31 tháng 12 năm 2025",
+                    (2, 6): "Ngày 31 tháng 12 năm 2024",
+                }
+                text = period_surfaces.get((physical_page, line_index), text)
                 semantic_axis.append({"sample_id": sample_id, "vietocr_text": text})
                 lines.append(
                     {
@@ -151,6 +161,48 @@ def test_fixed_full_document_axis_preserves_exact_denominator_and_empty_text(
     assert set(first_line).isdisjoint({"bank_code", "physical_page", "source_pdf"})
     assert projection["authority"]["numeric_authority"] is False
     assert projection["authority"]["accentless_text_is_anchor_evidence_only"] is True
+    assert "reporting_period_context" not in documents[0]
+
+
+def test_document_reporting_period_contexts_are_a_separate_replay_bound_projection(
+    source_index: dict[str, object],
+) -> None:
+    projection = project_full_document_vietocr_reporting_period_contexts_v1(source_index)
+
+    assert projection["authority"]["reporting_period_context_is_proposal_only"] is True
+    assert projection["authority"]["mapping_authority"] is False
+    assert projection["authority"]["numeric_authority"] is False
+    assert [record["document_provenance"] for record in projection["contexts"]] == list(
+        EXPECTED_DOCUMENT_ORDER
+    )
+    for record in projection["contexts"]:
+        context = record["reporting_period_context"]
+        assert context["current_period_end"] == "31/12/2025"
+        assert context["current_period_start"] == "01/01/2025"
+        assert context["balance_comparative_period_end"] == "31/12/2024"
+        assert context["period_kind"] == "ANNUAL"
+        assert context["reporting_year"] == 2025
+    assert (
+        validate_full_document_vietocr_reporting_period_contexts_replay_v1(projection, source_index)
+        == projection
+    )
+
+
+def test_coordinated_period_context_rehash_cannot_replace_document_dates(
+    source_index: dict[str, object],
+) -> None:
+    projection = project_full_document_vietocr_reporting_period_contexts_v1(source_index)
+    forged = copy.deepcopy(projection)
+    forged["contexts"][0]["reporting_period_context"]["current_period_end"] = "31/12/2024"
+    material = copy.deepcopy(forged)
+    material.pop("projection_id")
+    forged["projection_id"] = "fdvrpcv1:projection:" + canonical_json_sha256_v1(material)
+
+    with pytest.raises(
+        FullDocumentVietOCRAccountingAxisV1Error,
+        match="period contexts do not replay exactly",
+    ):
+        validate_full_document_vietocr_reporting_period_contexts_replay_v1(forged, source_index)
 
 
 def test_projection_exactly_replays_against_the_source_semantic_index(

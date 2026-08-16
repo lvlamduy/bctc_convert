@@ -4,8 +4,10 @@ Each cache is a semantic proposal axis, never numeric or mapping authority.
 This module selects one closed denominator from the source format version,
 validates its exact sample order, geometry shapes, and recomputed semantic-axis
 digest, then projects the same bank-blind page/line contract to every accounting
-family. Document codes remain provenance only and are not exposed inside match
-lines.
+family.  A separate projection derives one document-wide reporting-period
+context from those same authenticated lines without changing the stable family
+axis identity. Document codes remain provenance only and are not exposed inside
+match lines.
 """
 
 from __future__ import annotations
@@ -14,6 +16,9 @@ import math
 import re
 from typing import Any
 
+from bctc_ai.evaluation.accounting_table_axes_v1 import (
+    infer_document_reporting_period_context_v1,
+)
 from bctc_ai.evaluation.accounting_variant_graph_engine_v1 import (
     normalize_vietnamese_anchor_v1,
 )
@@ -28,7 +33,9 @@ __all__ = [
     "FORMAT_VERSION",
     "FullDocumentVietOCRAccountingAxisV1Error",
     "project_full_document_vietocr_accounting_axis_v1",
+    "project_full_document_vietocr_reporting_period_contexts_v1",
     "validate_full_document_vietocr_accounting_axis_replay_v1",
+    "validate_full_document_vietocr_reporting_period_contexts_replay_v1",
 ]
 
 
@@ -460,4 +467,127 @@ def validate_full_document_vietocr_accounting_axis_replay_v1(
     rebuilt = project_full_document_vietocr_accounting_axis_v1(source_semantic_index)
     if not same_typed_json_v1(persisted, rebuilt):
         raise _error("full-document accounting axis does not replay exactly")
+    return rebuilt
+
+
+_PERIOD_CONTEXT_FORMAT_VERSION = "FULL_DOCUMENT_VIETOCR_REPORTING_PERIOD_CONTEXTS_V1"
+_PERIOD_CONTEXT_CLAIM_BOUNDARY = (
+    "FIXED_EIGHT_DOCUMENT_FRESH_VIETOCR_TRANSFORMER_COMPLETE_PDF_REPEATED_DATE_"
+    "REPORTING_PERIOD_CONTEXT_PROPOSAL_ONLY_LOCAL_TABLE_SEMANTICS_STILL_REQUIRED_"
+    "NO_NUMERIC_SCHEMA_MAPPING_CANONICALIZATION_OR_EXPORT_AUTHORITY"
+)
+_PERIOD_CONTEXT_AUTHORITY = {
+    "bank_filename_note_or_page_used_for_period_inference": False,
+    "complete_document_date_consensus_required": True,
+    "local_table_period_semantics_still_required": True,
+    "mapping_authority": False,
+    "numeric_authority": False,
+    "persisted_projection_self_authenticating": False,
+    "reporting_period_context_is_proposal_only": True,
+    "semantic_text_source": "FRESH_VIETOCR_VGG_TRANSFORMER_0_3_13",
+}
+_PERIOD_CONTEXT_KEYS = {
+    "balance_comparative_period_end",
+    "current_period_end",
+    "current_period_start",
+    "flow_comparative_period_end",
+    "flow_comparative_period_start",
+    "observed_dates",
+    "period_kind",
+    "reporting_year",
+    "resolution",
+    "supporting_page_count",
+}
+
+
+def _validate_period_context_projection(value: Any) -> dict[str, Any]:
+    if type(value) is not dict or set(value) != {
+        "authority",
+        "claim_boundary",
+        "contexts",
+        "format_version",
+        "projection_id",
+        "semantic_axis_sha256",
+        "source_index_sha256",
+    }:
+        raise _error("full-document reporting-period projection fields drifted")
+    if (
+        value["format_version"] != _PERIOD_CONTEXT_FORMAT_VERSION
+        or value["claim_boundary"] != _PERIOD_CONTEXT_CLAIM_BOUNDARY
+        or not same_typed_json_v1(value["authority"], _PERIOD_CONTEXT_AUTHORITY)
+        or type(value["contexts"]) is not list
+        or len(value["contexts"]) != len(EXPECTED_DOCUMENT_ORDER)
+    ):
+        raise _error("full-document reporting-period projection identity drifted")
+    _sha256(value["semantic_axis_sha256"], "period-context semantic axis")
+    _sha256(value["source_index_sha256"], "period-context source index")
+    for ordinal, (record, expected_code) in enumerate(
+        zip(value["contexts"], EXPECTED_DOCUMENT_ORDER, strict=True), 1
+    ):
+        if type(record) is not dict or set(record) != {
+            "document_ordinal",
+            "document_provenance",
+            "reporting_period_context",
+            "source_pdf_sha256",
+        }:
+            raise _error("document reporting-period record fields drifted")
+        context = record["reporting_period_context"]
+        if (
+            type(record["document_ordinal"]) is not int
+            or record["document_ordinal"] != ordinal
+            or record["document_provenance"] != expected_code
+            or type(context) is not dict
+            or set(context) != _PERIOD_CONTEXT_KEYS
+            or type(context["observed_dates"]) is not list
+            or type(context["supporting_page_count"]) is not int
+            or context["supporting_page_count"] < 0
+        ):
+            raise _error("document reporting-period record identity drifted")
+        _sha256(record["source_pdf_sha256"], "period-context source PDF")
+    material = canonical_clone_v1(value)
+    identity = material.pop("projection_id")
+    if identity != "fdvrpcv1:projection:" + canonical_json_sha256_v1(material):
+        raise _error("full-document reporting-period projection ID drifted")
+    return canonical_clone_v1(value)
+
+
+def project_full_document_vietocr_reporting_period_contexts_v1(value: Any) -> dict[str, Any]:
+    """Derive one complete-PDF period context per authenticated document."""
+
+    source = _source_index(value)
+    material = {
+        "authority": canonical_clone_v1(_PERIOD_CONTEXT_AUTHORITY),
+        "claim_boundary": _PERIOD_CONTEXT_CLAIM_BOUNDARY,
+        "contexts": [
+            {
+                "document_ordinal": document["document_ordinal"],
+                "document_provenance": document["document_provenance"],
+                "reporting_period_context": infer_document_reporting_period_context_v1(
+                    document["pages"]
+                ),
+                "source_pdf_sha256": document["source_pdf"]["sha256"],
+            }
+            for document in source["documents"]
+        ],
+        "format_version": _PERIOD_CONTEXT_FORMAT_VERSION,
+        "semantic_axis_sha256": source["semantic_axis_sha256"],
+        "source_index_sha256": source["source_index_sha256"],
+    }
+    return _validate_period_context_projection(
+        {
+            **material,
+            "projection_id": "fdvrpcv1:projection:" + canonical_json_sha256_v1(material),
+        }
+    )
+
+
+def validate_full_document_vietocr_reporting_period_contexts_replay_v1(
+    value: Any, source_semantic_index: Any
+) -> dict[str, Any]:
+    """Exact-rebuild all period contexts from the authenticated text axis."""
+
+    persisted = _validate_period_context_projection(value)
+    rebuilt = project_full_document_vietocr_reporting_period_contexts_v1(source_semantic_index)
+    if not same_typed_json_v1(persisted, rebuilt):
+        raise _error("full-document reporting-period contexts do not replay exactly")
     return rebuilt
