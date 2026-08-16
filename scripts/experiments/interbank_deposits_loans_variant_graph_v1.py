@@ -30,6 +30,17 @@ from bctc_ai.source_structure.contracts_v1 import (
     same_typed_json_v1,
 )
 
+try:
+    from scripts.experiments.adaptive_accounting_table_geometry_v1 import (
+        assign_numeric_row_v1,
+        cluster_numeric_rows_v1,
+    )
+except ModuleNotFoundError:  # Direct execution puts scripts/experiments on sys.path.
+    from adaptive_accounting_table_geometry_v1 import (  # type: ignore[no-redef]
+        assign_numeric_row_v1,
+        cluster_numeric_rows_v1,
+    )
+
 __all__ = [
     "FORMAT_VERSION",
     "InterbankDepositsLoansVariantGraphV1Error",
@@ -91,8 +102,11 @@ def _error(message: str) -> InterbankDepositsLoansVariantGraphV1Error:
 
 _OWNER_ALIASES = [
     "Tiền gửi và cho vay các TCTD khác",
+    "Tiền gửi tại và cho vay các TCTD khác",
     "Tiền gửi và vay các TCTD khác",
     "Tiền gửi và cho vay các tổ chức tín dụng khác",
+    "Tiền gửi tại và cho vay các tổ chức tín dụng khác",
+    "Tiền gửi và cấp tín dụng cho các TCTD khác",
     "Tiền, vàng gửi tại và cho vay các TCTD khác",
     "Tiền, vàng gửi và vay các TCTD khác",
     "Tiền gửi và cấp tín dụng cho các tổ chức tín dụng khác",
@@ -300,17 +314,13 @@ def _page_width(lines: Sequence[Mapping[str, Any]]) -> int:
 def _row_values(
     lines: Sequence[Mapping[str, Any]], label: Mapping[str, Any]
 ) -> list[dict[str, Any]]:
-    center = (label["bbox"][1] + label["bbox"][3]) / 2
-    tolerance = max(14.0, (label["bbox"][3] - label["bbox"][1]) * 0.55)
     width = _page_width(lines)
-    values = [
-        line
-        for line in lines
-        if line["bbox"][0] > width * 0.47
-        and line["bbox"][0] < width * 0.94
-        and abs((line["bbox"][1] + line["bbox"][3]) / 2 - center) <= tolerance
-        and _is_money(line)
-    ]
+    values = assign_numeric_row_v1(
+        lines,
+        label_boxes=[label["bbox"]],
+        is_numeric=_is_money,
+        page_width=width,
+    )
     return [
         {
             "bbox": list(line["bbox"]),
@@ -326,25 +336,13 @@ def _numeric_rows(
     lines: Sequence[Mapping[str, Any]], *, start_index: int, stop_index: int
 ) -> list[list[Mapping[str, Any]]]:
     width = _page_width(lines)
-    numeric = [
-        line
-        for line in lines
-        if start_index < line["source_line_index"] < stop_index
-        and line["bbox"][0] > width * 0.47
-        and line["bbox"][0] < width * 0.94
-        and _is_money(line)
-    ]
-    rows: list[list[Mapping[str, Any]]] = []
-    for line in sorted(numeric, key=lambda item: (item["bbox"][1], item["bbox"][0])):
-        center = (line["bbox"][1] + line["bbox"][3]) / 2
-        for row in rows:
-            prior = sum((item["bbox"][1] + item["bbox"][3]) / 2 for item in row) / len(row)
-            if abs(center - prior) <= 14:
-                row.append(line)
-                break
-        else:
-            rows.append([line])
-    return [sorted(row, key=lambda item: item["bbox"][0]) for row in rows]
+    return cluster_numeric_rows_v1(
+        lines,
+        is_numeric=_is_money,
+        start_index=start_index,
+        stop_index=stop_index,
+        page_width=width,
+    )
 
 
 def _proposal_axis(row: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
@@ -362,14 +360,15 @@ def _proposal_axis(row: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
 def _trailing_subtotal(
     lines: Sequence[Mapping[str, Any]], *, after_label: Mapping[str, Any], stop_index: int
 ) -> list[dict[str, Any]]:
-    minimum_y = after_label["bbox"][3] + 3
+    minimum_center_y = after_label["bbox"][3] + 3
     rows = _numeric_rows(
         lines,
         start_index=after_label["source_line_index"],
         stop_index=stop_index,
     )
     for row in rows:
-        if row[0]["bbox"][1] >= minimum_y:
+        row_center_y = sum((item["bbox"][1] + item["bbox"][3]) / 2 for item in row) / len(row)
+        if row_center_y >= minimum_center_y:
             return _proposal_axis(row)
     return []
 
@@ -389,6 +388,7 @@ def _axis_groups(
                 re.search(r"(?:30|31)[ /.-](?:03|3|06|6|12)[ /.-]20[0-9]{2}", text) is not None
                 or "ngay 31 thang" in text
                 or re.fullmatch(r"nam 20[0-9]{2}", text) is not None
+                or text in {"so cuoi nam", "so dau nam"}
             )
         else:
             matched = "trieu dong" in text or "trieu vnd" in text
@@ -429,6 +429,7 @@ def _currency_role(text: str, surface: str) -> str | None:
         return "FOREIGN_CURRENCY"
     if (
         "bang vnd" in text
+        or re.search(r"\bbang v[a-z]?nd\b", text) is not None
         or "dong viet nam" in text
         or "bang tien dong" in text
         or match_vietnamese_anchor_alias_v1(
@@ -469,7 +470,18 @@ def _group_events(
         if group_line["source_line_index"] < line["source_line_index"] < stop_index
         and _currency_role(line["normalized_text"], line["vietocr_text"]) is not None
     ]
-    events = [_event(group_role, "GROUP_PARENT", group_line, _row_values(lines, group_line))]
+    group_values = _row_values(lines, group_line)
+    events = [_event(group_role, "GROUP_PARENT", group_line, group_values)]
+    inline_currency = _currency_role(group_line["normalized_text"], group_line["vietocr_text"])
+    if inline_currency is not None:
+        events.append(
+            _event(
+                f"{group_role}_{inline_currency}",
+                "FLATTENED_CURRENCY_CHILD",
+                group_line,
+                group_values,
+            )
+        )
     for line in nested_labels:
         currency = _currency_role(line["normalized_text"], line["vietocr_text"])
         assert currency is not None
@@ -570,6 +582,129 @@ def _minimal_anchor(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _is_interbank_owner(text: str) -> bool:
+    return (
+        "tien gui" in text
+        and ("cho vay" in text or "cap tin dung" in text)
+        and ("tctd" in text or "to chuc tin dung" in text)
+        and len(text.split()) <= 16
+        and "phan tich" not in text
+        and "du phong" not in text
+        and "lai suat" not in text
+    )
+
+
+def _direct_group_role(text: str) -> str | None:
+    if "tien gui khong ky han" in text or "tien vang gui khong ky han" in text:
+        return "DEMAND_DEPOSIT"
+    if "tien gui co ky han" in text or "tien vang gui co ky han" in text:
+        return "TERM_DEPOSIT"
+    if (
+        ("cho vay" in text or "cap tin dung" in text)
+        and ("tctd" in text or "to chuc tin dung" in text)
+        and "tien gui" not in text
+    ):
+        return "INTERBANK_LOAN"
+    return None
+
+
+def _is_explicit_deposit_parent(text: str) -> bool:
+    return (
+        "tien gui tai" in text
+        and ("tctd" in text or "to chuc tin dung" in text)
+        and "khong ky han" not in text
+        and "co ky han" not in text
+        and "lai suat" not in text
+        and "phan tich" not in text
+    )
+
+
+def _direct_engine_regions(page: Mapping[str, Any]) -> list[tuple[dict[str, Any], str, str]]:
+    lines = page["lines"]
+    owners = [line for line in lines if _is_interbank_owner(line["normalized_text"])]
+    # Repeated short sub-headings immediately below the note title are one
+    # cluster, not two candidates.  Preserve the first (outer) owner.
+    reduced_owners = []
+    for owner in owners:
+        if (
+            reduced_owners
+            and owner["source_line_index"] - reduced_owners[-1]["source_line_index"] <= 3
+        ):
+            continue
+        reduced_owners.append(owner)
+    regions = []
+    for owner in reduced_owners:
+        owner_index = owner["source_line_index"]
+        window = [
+            line for line in lines if owner_index < line["source_line_index"] <= owner_index + 70
+        ]
+        boundary = min(
+            (
+                line["source_line_index"]
+                for line in window
+                if "phan tich chat luong" in line["normalized_text"]
+                or "lai suat" in line["normalized_text"]
+            ),
+            default=owner_index + 71,
+        )
+        window = [line for line in window if line["source_line_index"] < boundary]
+        role_lines: dict[str, Mapping[str, Any]] = {}
+        for line in window:
+            role = _direct_group_role(line["normalized_text"])
+            if role is not None and role not in role_lines:
+                role_lines[role] = line
+        if set(role_lines) != {"DEMAND_DEPOSIT", "TERM_DEPOSIT", "INTERBANK_LOAN"}:
+            continue
+        if (
+            max(
+                role_lines["DEMAND_DEPOSIT"]["source_line_index"],
+                role_lines["TERM_DEPOSIT"]["source_line_index"],
+            )
+            >= role_lines["INTERBANK_LOAN"]["source_line_index"]
+        ):
+            continue
+        deposit_parents = [
+            line
+            for line in window
+            if line["source_line_index"]
+            < min(
+                role_lines["DEMAND_DEPOSIT"]["source_line_index"],
+                role_lines["TERM_DEPOSIT"]["source_line_index"],
+            )
+            and _is_explicit_deposit_parent(line["normalized_text"])
+        ]
+        if deposit_parents:
+            branch = deposit_parents[0]
+            mode = "EXPLICIT_DEPOSIT_PARENT"
+            mode_id = "DIRECT_FAMILY_EXPLICIT_DEPOSIT_PARENT"
+            children = sorted(role_lines.items(), key=lambda item: item[1]["source_line_index"])
+        else:
+            branch = role_lines["DEMAND_DEPOSIT"]
+            mode = "OWNER_DIRECT_DEMAND"
+            mode_id = "DIRECT_FAMILY_OWNER_DIRECT_DEMAND"
+            children = sorted(
+                [(role, line) for role, line in role_lines.items() if role != "DEMAND_DEPOSIT"],
+                key=lambda item: item[1]["source_line_index"],
+            )
+        region = {
+            "branch_match": {
+                "normalized_text": branch["normalized_text"],
+                "source": "DIRECT_SHARED_FAMILY_VARIANT",
+            },
+            "branch_source_line_index": branch["source_line_index"],
+            "child_match_records": [{"role": role} for role, _line in children],
+            "child_source_line_indices": [line["source_line_index"] for _role, line in children],
+            "context_complete": True,
+            "owner_context": {
+                "page_sequence": page["page_sequence"],
+                "source_line_index": owner_index,
+                "vietocr_text": owner["vietocr_text"],
+            },
+        }
+        regions.append((region, mode_id, mode))
+    return regions
+
+
 def _candidate(
     page: Mapping[str, Any],
     engine_region: Mapping[str, Any],
@@ -626,6 +761,7 @@ def _candidate(
         if line["source_line_index"] > role_lines["INTERBANK_LOAN"]["source_line_index"]
         and (
             "phan tich chat luong" in line["normalized_text"]
+            or "lai suat" in line["normalized_text"]
             or "chung khoan kinh doanh" in line["normalized_text"]
             or "cong cu tai chinh phai sinh" in line["normalized_text"]
             or "tien gui cua khach hang" in line["normalized_text"]
@@ -904,6 +1040,23 @@ def build_interbank_deposits_loans_variant_graph_document_v1(
                 continue
             key = (wrapped["page_sequence"], wrapped["owner"]["source_line_index"])
             regions_by_key.setdefault(key, wrapped)
+    for page in pages:
+        for region, mode_id, mode in _direct_engine_regions(page):
+            owner_index = region["owner_context"]["source_line_index"]
+            key = (page["page_sequence"], owner_index)
+            if key in regions_by_key:
+                continue
+            wrapped, near = _candidate(
+                page,
+                region,
+                document_unit_context=document_unit_context,
+                mode_id=mode_id,
+                mode=mode,
+            )
+            if wrapped is None:
+                near_regions.append(near)
+                continue
+            regions_by_key[key] = wrapped
     regions = sorted(
         regions_by_key.values(),
         key=lambda item: (item["page_sequence"], item["owner"]["source_line_index"]),

@@ -171,6 +171,55 @@ def test_annual_2025_and_2024_period_headers_use_the_same_generic_graph() -> Non
     assert result["regions"][0]["layout"]["meaningful_axes"]["period_header_count"] == 2
 
 
+def test_flattened_currency_rows_and_minor_owner_ocr_error_use_shared_direct_variant() -> None:
+    surfaces = [
+        ("TIỀN GỬI VÀ CÁP TÍN DỤNG CHO CÁC TCTD KHÁC", 0, 0),
+        ("31/12/2025", 650, 28),
+        ("31/12/2024", 820, 28),
+        ("Triệu đồng", 650, 52),
+        ("Triệu đồng", 820, 52),
+        ("Tiền gửi tại các TCTD khác", 0, 80),
+        ("Tiền gửi không kỳ hạn bằng VND", 0, 115),
+        ("60", 650, 115),
+        ("55", 820, 115),
+        ("Tiền gửi không kỳ hạn bằng ngoại tệ", 0, 145),
+        ("10", 650, 145),
+        ("8", 820, 145),
+        ("Tiền gửi có kỳ hạn bằng VĨND", 0, 175),
+        ("100", 650, 175),
+        ("90", 820, 175),
+        ("Tiền gửi có kỳ hạn bằng ngoại tệ", 0, 205),
+        ("20", 650, 205),
+        ("18", 820, 205),
+        ("190", 650, 240),
+        ("171", 820, 240),
+        ("Cho vay các TCTD khác", 0, 285),
+        ("Cho vay bằng VND", 0, 315),
+        ("30", 650, 315),
+        ("25", 820, 315),
+        ("Cho vay bằng ngoại tệ", 0, 345),
+        ("2", 650, 345),
+        ("1", 820, 345),
+        ("222", 650, 390),
+        ("197", 820, 390),
+        ("Phân tích chất lượng tiền gửi và cho vay các TCTD khác", 0, 435),
+    ]
+    result = graph.build_interbank_deposits_loans_variant_graph_document_v1([_page(surfaces)])
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    region = result["regions"][0]
+    assert region["generic_engine_binding"]["mode_id"] == ("DIRECT_FAMILY_EXPLICIT_DEPOSIT_PARENT")
+    roles = {event["role"] for event in region["events"]}
+    assert {
+        "DEMAND_DEPOSIT_VND",
+        "DEMAND_DEPOSIT_FOREIGN_CURRENCY",
+        "TERM_DEPOSIT_VND",
+        "TERM_DEPOSIT_FOREIGN_CURRENCY",
+        "INTERBANK_LOAN_VND",
+        "INTERBANK_LOAN_FOREIGN_CURRENCY",
+    } <= roles
+
+
 def test_family_without_printed_grand_total_still_ends_at_loan_subtotal() -> None:
     result = graph.build_interbank_deposits_loans_variant_graph_document_v1(
         [_page(_table(family_total=False))]
