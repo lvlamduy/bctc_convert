@@ -136,6 +136,64 @@ def test_annual_2025_and_2024_period_headers_use_the_same_generic_graph() -> Non
     assert result["regions"][0]["layout"]["meaningful_axes"]["period_header_count"] == 2
 
 
+def test_end_start_year_headers_and_one_confusable_numeric_glyph_are_structural_only() -> None:
+    surfaces = [
+        (
+            "Số cuối năm"
+            if text == "30/06/2026"
+            else "Số đầu năm"
+            if text == "31/12/2025"
+            else "B.416.558"
+            if text == "4.994.778"
+            else "Bằng Đồng Việt Nam"
+            if text == "Bằng VND"
+            else text,
+            x,
+            y,
+        )
+        for text, x, y in _table(geography=False)
+    ]
+    result = central.build_central_bank_deposits_variant_graph_document_v1([_page(surfaces)])
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    foreign = next(
+        event
+        for event in result["regions"][0]["events"]
+        if event["role"] == "DEPOSIT_FOREIGN_CURRENCY"
+    )
+    assert foreign["value_proposals"][0]["vietocr_text"] == "B.416.558"
+    assert result["regions"][0]["primary_numeric_authority"] is True
+
+
+def test_geography_only_variant_is_not_forced_into_currency_children() -> None:
+    surfaces = [
+        ("Tiền gửi tại Ngân hàng Nhà nước", 0, 0),
+        ("31/12/2025", 620, 35),
+        ("31/12/2024", 810, 35),
+        ("Triệu đồng", 620, 65),
+        ("Triệu đồng", 810, 65),
+        ("Tiền gửi tại Ngân hàng Nhà nước Việt Nam", 0, 105),
+        ("37.212.251", 620, 105),
+        ("49.081.534", 810, 105),
+        ("Tiền gửi tại Ngân hàng Nhà nước Lào", 0, 140),
+        ("233.253", 620, 140),
+        ("258.959", 810, 140),
+        ("37.445.504", 620, 185),
+        ("49.340.493", 810, 185),
+        ("Tỷ lệ dự trữ bắt buộc", 0, 225),
+    ]
+    result = central.build_central_bank_deposits_variant_graph_document_v1([_page(surfaces)])
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    region = result["regions"][0]
+    assert region["layout"]["variant"] == "CENTRAL_BANK_GEOGRAPHY_ONLY"
+    assert [event["role"] for event in region["events"]] == [
+        "CENTRAL_BANK_VIETNAM_PARENT",
+        "CENTRAL_BANK_LAOS",
+        "TOTAL",
+    ]
+
+
 def test_balance_sheet_total_or_reserve_ratio_table_is_not_a_complete_note() -> None:
     surfaces = [
         ("Tiền gửi tại Ngân hàng Nhà nước", 0, 0),

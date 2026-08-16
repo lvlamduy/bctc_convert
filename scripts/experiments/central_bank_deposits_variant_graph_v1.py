@@ -47,6 +47,7 @@ CLAIM_BOUNDARY = (
 )
 _NUMBER = re.compile(r"^\(?-?[0-9]+(?:[.,][0-9]+)*\)?$")
 _DASH = re.compile(r"^[\-–—]+$")
+_OCR_NUMERIC_PROPOSAL = re.compile(r"^\(?-?[0-9A-Z]+(?:[.,][0-9A-Z]+)+\)?$")
 _SAFETY = {
     "bank_filename_note_or_page_used_for_inference": False,
     "child_order_variants_are_family_level_not_bank_routed": True,
@@ -89,7 +90,11 @@ def _error(message: str) -> CentralBankDepositsVariantGraphV1Error:
 
 def _family_spec(order: tuple[str, str]) -> dict[str, Any]:
     aliases = {
-        "DEPOSIT_VND": ["Bằng VND", "Bằng tiền đồng"],
+        "DEPOSIT_VND": [
+            "Bằng VND",
+            "Bằng tiền đồng",
+            "Bằng Đồng Việt Nam",
+        ],
         "DEPOSIT_FOREIGN_CURRENCY": ["Bằng ngoại tệ"],
     }
     return {
@@ -99,6 +104,10 @@ def _family_spec(order: tuple[str, str]) -> dict[str, Any]:
             {
                 "anchor_phrase": "tại Ngân hàng Nhà nước Việt Nam",
                 "variant_id": "AT_STATE_BANK_VIETNAM",
+            },
+            {
+                "anchor_phrase": "tại NHNNVN",
+                "variant_id": "AT_STATE_BANK_VIETNAM_ABBREVIATED",
             },
             {
                 "anchor_phrase": "tại Ngân hàng Trung ương",
@@ -116,6 +125,7 @@ def _family_spec(order: tuple[str, str]) -> dict[str, Any]:
         "ordered_children": [{"aliases": aliases[role], "role": role} for role in order],
         "owner_aliases": [
             "Tiền gửi tại NHNN",
+            "Tiền gửi tại Ngân hàng Nhà nước",
             "Tiền gửi tại Ngân hàng Nhà nước Việt Nam",
             "Tiền gửi tại Ngân hàng Trung ương",
         ],
@@ -229,7 +239,18 @@ def _token(line: Mapping[str, Any]) -> str:
 
 def _is_money(line: Mapping[str, Any]) -> bool:
     token = _token(line)
-    return _NUMBER.fullmatch(token) is not None or _DASH.fullmatch(token) is not None
+    if _NUMBER.fullmatch(token) is not None or _DASH.fullmatch(token) is not None:
+        return True
+    # VietOCR is the semantic locator, not numeric authority.  Keep a
+    # right-column token such as ``B.416.558`` as a numeric *proposal* when a
+    # single OCR-confusable glyph replaced a digit; the independently replayed
+    # PP-OCR/pixel challenger must still establish the eventual value.
+    upper = token.upper()
+    return (
+        _OCR_NUMERIC_PROPOSAL.fullmatch(upper) is not None
+        and sum(character.isalpha() for character in upper) <= 1
+        and sum(character.isdigit() for character in upper) >= 4
+    )
 
 
 def _value_proposals(
@@ -273,6 +294,7 @@ def _axis_groups(
                 re.search(r"(?:30|31)[ /.-](?:03|3|06|6|12)[ /.-]20[0-9]{2}", text) is not None
                 or "ngay 31 thang" in text
                 or re.fullmatch(r"nam 20[0-9]{2}", text) is not None
+                or text in {"so cuoi nam", "so dau nam"}
             )
         else:
             matched = "trieu dong" in text or "trieu vnd" in text
@@ -313,6 +335,30 @@ def _optional_role(text: str) -> str | None:
     if text == "tien gui khac":
         return "OTHER_DEPOSIT"
     return None
+
+
+def _geography_role(text: str) -> str | None:
+    if "ngan hang nha nuoc viet nam" in text or "nhnnvn" in text:
+        return "CENTRAL_BANK_VIETNAM_PARENT"
+    if "ngan hang nha nuoc lao" in text or "ngan hang trung uong lao" in text:
+        return "CENTRAL_BANK_LAOS"
+    if "ngan hang quoc gia campuchia" in text or "ngan hang trung uong campuchia" in text:
+        return "CENTRAL_BANK_CAMBODIA"
+    return None
+
+
+def _is_owner(text: str) -> bool:
+    return (
+        text
+        in {
+            "tien gui tai nhnn",
+            "tien gui tai ngan hang nha nuoc",
+            "tien gui tai ngan hang nha nuoc viet nam",
+            "tien gui tai ngan hang trung uong",
+        }
+        or text.startswith("tien gui tai ngan hang nha nuoc (")
+        or text.startswith("tien gui tai ngan hang trung uong (")
+    )
 
 
 def _total_after(
@@ -382,6 +428,126 @@ def _minimal_anchor(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         "tested_pair_count": len(tested),
         "unique_within_complete_context_regions": True,
     }
+
+
+def _minimal_geography_anchor(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    roles = [f"CHILD:{event['role']}" for event in events]
+    tested = [("PARENT:CENTRAL_BANK_DEPOSITS", role) for role in roles]
+    tested.extend(itertools.combinations(roles, 2))
+    if not tested:
+        raise _error("complete central-bank geography graph has no anchor pair")
+    return {
+        "combination_size": 2,
+        "pair_search_order": "ALL_PARENT_CHILD_PAIRS_THEN_ALL_CHILD_CHILD_PAIRS",
+        "selected_roles": list(tested[0]),
+        "tested_pair_count": len(tested),
+        "unique_within_complete_context_regions": True,
+    }
+
+
+def _geography_only_candidate(
+    page: Mapping[str, Any], owner: Mapping[str, Any]
+) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+    lines = page["lines"]
+    owner_index = owner["source_line_index"]
+    children = []
+    for item in lines:
+        if not owner_index < item["source_line_index"] <= owner_index + 16:
+            continue
+        role = _geography_role(item["normalized_text"])
+        if role is None:
+            continue
+        proposals = _value_proposals(lines, item)
+        if len(proposals) < 2:
+            continue
+        children.append(
+            {
+                "bbox": list(item["bbox"]),
+                "role": role,
+                "role_kind": (
+                    "INTERMEDIATE_PARENT"
+                    if role == "CENTRAL_BANK_VIETNAM_PARENT"
+                    else "OPTIONAL_CHILD"
+                ),
+                "source_line_index": item["source_line_index"],
+                "value_proposals": proposals,
+                "vietocr_text": item["vietocr_text"],
+            }
+        )
+    children.sort(key=lambda item: item["source_line_index"])
+    # Geography-only is a distinct layout variant.  Requiring two visible
+    # jurisdictions prevents a lone balance-sheet label from being promoted.
+    if len({item["role"] for item in children}) < 2:
+        return None, {
+            "order_variant": "CENTRAL_BANK_GEOGRAPHY_ONLY",
+            "owner_source_line_index": owner_index,
+            "page_sequence": page["page_sequence"],
+            "reasons": ["FEWER_THAN_TWO_CENTRAL_BANK_GEOGRAPHY_ROWS"],
+        }
+    first_child_index = children[0]["source_line_index"]
+    periods = _axis_groups(lines, owner_index, first_child_index, kind="PERIOD")
+    units = _axis_groups(lines, owner_index, first_child_index, kind="UNIT")
+    total = _total_after(lines, children[-1])
+    reasons = []
+    if len(periods) < 2:
+        reasons.append("FEWER_THAN_TWO_PERIOD_AXES")
+    if len(units) < 1:
+        reasons.append("NO_MONETARY_UNIT_AXIS")
+    if total is None or len(total["value_proposals"]) < 2:
+        reasons.append("NO_TWO_AXIS_TRAILING_TOTAL")
+    near = {
+        "child_roles": [item["role"] for item in children],
+        "order_variant": "CENTRAL_BANK_GEOGRAPHY_ONLY",
+        "owner_source_line_index": owner_index,
+        "page_sequence": page["page_sequence"],
+        "reasons": reasons,
+    }
+    if reasons:
+        return None, near
+    assert total is not None
+    total_end = max(item["source_line_index"] for item in total["value_proposals"])
+    material = {
+        "cluster_boundary": {
+            "first_item_role": "CENTRAL_BANK_DEPOSITS_OWNER",
+            "first_page_sequence": page["page_sequence"],
+            "first_source_line_index": owner_index,
+            "last_item_role": "TOTAL",
+            "last_page_sequence": page["page_sequence"],
+            "last_source_line_index": total_end,
+            "selection_rule": (
+                "OWNER_THEN_TWO_OR_MORE_CENTRAL_BANK_GEOGRAPHY_ROWS_THROUGH_"
+                "FIRST_TWO_AXIS_TOTAL_BEFORE_RESERVE_RATIO_OR_NEXT_NOTE_FAMILY"
+            ),
+        },
+        "events": children + [total],
+        "generic_engine_binding": {
+            "context_complete": True,
+            "detection_path": "GEOGRAPHY_ONLY_FAMILY_VARIANT",
+            "order_variant": "CENTRAL_BANK_GEOGRAPHY_ONLY",
+        },
+        "layout": {
+            "meaningful_axes": {
+                "period_axes": periods,
+                "period_header_count": len(periods),
+                "unit_axes": units,
+                "unit_header_count": len(units),
+            },
+            "orientation": "ROW_LABELS_BY_PERIOD_COLUMNS",
+            "variant": "CENTRAL_BANK_GEOGRAPHY_ONLY",
+        },
+        "minimal_anchor": _minimal_geography_anchor(children),
+        "optional_child_roles": [
+            item["role"] for item in children if item["role_kind"] == "OPTIONAL_CHILD"
+        ],
+        "owner": {
+            "bbox": list(owner["bbox"]),
+            "source_line_index": owner_index,
+            "vietocr_text": owner["vietocr_text"],
+        },
+        "page_sequence": page["page_sequence"],
+        "primary_numeric_authority": page["primary_numeric_authority"],
+    }
+    return {**material, "region_id": "cbdvgv1:region:" + canonical_json_sha256_v1(material)}, near
 
 
 def _candidate(
@@ -618,6 +784,30 @@ def build_central_bank_deposits_variant_graph_document_v1(
                 wrapped["owner"]["source_line_index"],
                 region["branch_source_line_index"],
                 tuple(sorted(region["child_source_line_indices"])),
+            )
+            regions_by_key[key] = wrapped
+    matched_owner_keys = {
+        (region["page_sequence"], region["owner"]["source_line_index"])
+        for region in regions_by_key.values()
+    }
+    for page in pages:
+        for owner in page["lines"]:
+            owner_key = (page["page_sequence"], owner["source_line_index"])
+            if owner_key in matched_owner_keys or not _is_owner(owner["normalized_text"]):
+                continue
+            wrapped, near = _geography_only_candidate(page, owner)
+            if wrapped is None:
+                near_regions.append(near)
+                continue
+            key = (
+                wrapped["page_sequence"],
+                wrapped["owner"]["source_line_index"],
+                wrapped["events"][0]["source_line_index"],
+                tuple(
+                    event["source_line_index"]
+                    for event in wrapped["events"]
+                    if event["role"] != "TOTAL"
+                ),
             )
             regions_by_key[key] = wrapped
     regions = sorted(
