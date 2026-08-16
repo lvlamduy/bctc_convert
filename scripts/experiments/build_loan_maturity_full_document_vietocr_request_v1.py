@@ -546,18 +546,24 @@ def _annual_document_inputs(
         or batch.get("dataset_role") != "CALIBRATION"
         or batch.get("evidence_role") != "INDEPENDENT_GEOMETRY_PROPOSAL_ONLY"
         or batch.get("code", {}).get("dirty") is not False
-        or batch.get("requested_pages") != expected_pages
+        or not same_typed_json_v1(batch.get("requested_pages"), expected_pages)
         or type(batch_pages) is not list
         or type(renders) is not list
         or len(batch_pages) != source["page_count"]
         or len(renders) != source["page_count"]
-        or [page.get("page") for page in batch_pages if type(page) is dict] != expected_pages
-        or [render.get("page") for render in renders if type(render) is dict] != expected_pages
+        or not same_typed_json_v1(
+            [page.get("page") for page in batch_pages if type(page) is dict], expected_pages
+        )
+        or not same_typed_json_v1(
+            [render.get("page") for render in renders if type(render) is dict], expected_pages
+        )
         or type(input_manifest) is not dict
         or input_manifest.get("sha256") != hashlib.sha256(preprocess_raw).hexdigest()
+        or type(input_manifest.get("size_bytes")) is not int
         or input_manifest.get("size_bytes") != len(preprocess_raw)
         or type(batch_source) is not dict
         or batch_source.get("sha256") != source["sha256"]
+        or type(batch_source.get("size_bytes")) is not int
         or batch_source.get("size_bytes") != source["size_bytes"]
         or batch.get("metrics", {}).get("completed_page_count") != source["page_count"]
     ):
@@ -1019,7 +1025,12 @@ def _annual_page_geometry(
     dict[str, Any],
     dict[str, Any],
 ]:
-    if batch_page.get("page") != physical_page or render_record.get("page") != physical_page:
+    if (
+        type(batch_page.get("page")) is not int
+        or batch_page.get("page") != physical_page
+        or type(render_record.get("page")) is not int
+        or render_record.get("page") != physical_page
+    ):
         raise _error(f"annual page order drifted: {bank}:{physical_page}")
     render_path_value = render_record.get("path")
     if type(render_path_value) is not str:
@@ -1031,6 +1042,7 @@ def _annual_page_geometry(
     if (
         render_ref["sha256"] != render_record.get("sha256")
         or render_ref["size_bytes"] != render_record.get("size_bytes")
+        or type(render_record.get("dpi")) is not int
         or render_record.get("dpi") != 200
     ):
         raise _error(f"annual render identity drifted: {bank}:{physical_page}")
@@ -1038,7 +1050,12 @@ def _annual_page_geometry(
     with Image.open(io.BytesIO(render_raw)) as image:
         width, height = image.size
         image.verify()
-    if render_record.get("width_pixels") != width or render_record.get("height_pixels") != height:
+    if (
+        type(render_record.get("width_pixels")) is not int
+        or render_record.get("width_pixels") != width
+        or type(render_record.get("height_pixels")) is not int
+        or render_record.get("height_pixels") != height
+    ):
         raise _error(f"annual render dimensions drifted: {bank}:{physical_page}")
 
     result_value = batch_page.get("ocr_result")
@@ -1068,11 +1085,13 @@ def _annual_page_geometry(
     run, _run_raw = _json(run_path, f"annual PP-OCR run {bank}:{physical_page}")
     run_artifact = run.get("artifacts", {}).get("ocr_result")
     if (
-        run.get("schema_version") != 1
+        type(run.get("schema_version")) is not int
+        or run.get("schema_version") != 1
         or run.get("state") != "OCR_COMPLETE"
         or run.get("dataset_role") != "CALIBRATION"
         or run.get("evidence_role") != "INDEPENDENT_GEOMETRY_PROPOSAL_ONLY"
         or run.get("confidence_policy") != "NO_AUTOMATIC_TRUTH_OR_SCHEMA_PROMOTION"
+        or type(run.get("page")) is not int
         or run.get("page") != physical_page
         or run.get("batch_identity") != batch.get("batch_identity")
         or not same_typed_json_v1(run.get("input"), render_record)
@@ -2056,12 +2075,17 @@ def build_annual_2025_full_document_request_v1() -> dict[str, Any]:
                     raise _error(f"annual preprocess page is not an object: {bank}")
                 preprocess_render = preprocess_page.get("render")
                 if (
-                    preprocess_page.get("page") != physical_page
+                    type(preprocess_page.get("page")) is not int
+                    or preprocess_page.get("page") != physical_page
                     or type(preprocess_render) is not dict
+                    or type(preprocess_render.get("page")) is not int
                     or preprocess_render.get("page") != physical_page
                     or preprocess_render.get("sha256") != render_record.get("sha256")
+                    or type(preprocess_render.get("width_pixels")) is not int
                     or preprocess_render.get("width_pixels") != render_record.get("width_pixels")
+                    or type(preprocess_render.get("height_pixels")) is not int
                     or preprocess_render.get("height_pixels") != render_record.get("height_pixels")
+                    or type(preprocess_render.get("dpi")) is not int
                     or preprocess_render.get("dpi") != 200
                 ):
                     raise _error(f"annual preprocess/batch render binding drifted: {bank}")

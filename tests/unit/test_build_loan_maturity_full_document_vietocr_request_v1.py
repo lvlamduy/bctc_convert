@@ -742,6 +742,30 @@ def test_annual_page_geometry_binds_render_result_run_and_hides_text(
     assert projection["mode"] == "PPOCRV6_BATCH_PROVIDER_LINE_GEOMETRY_V1"
     assert "MUST_NOT_LEAK" not in json.dumps(projection, sort_keys=True)
 
+    float_page = copy.deepcopy(batch_page)
+    float_page["page"] = 1.0
+    with pytest.raises(builder.FullDocumentVietOCRRequestV1Error, match="page order"):
+        builder._annual_page_geometry(
+            bank="ACB",
+            batch_root=batch_root,
+            batch=batch,
+            batch_page=float_page,
+            render_record=render_record,
+            physical_page=1,
+        )
+
+    float_dpi = copy.deepcopy(render_record)
+    float_dpi["dpi"] = 200.0
+    with pytest.raises(builder.FullDocumentVietOCRRequestV1Error, match="render identity"):
+        builder._annual_page_geometry(
+            bank="ACB",
+            batch_root=batch_root,
+            batch=batch,
+            batch_page=batch_page,
+            render_record=float_dpi,
+            physical_page=1,
+        )
+
 
 def test_builder_never_reads_legacy_recognition_fields() -> None:
     source = Path(builder.__file__).read_text(encoding="utf-8")
