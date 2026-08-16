@@ -719,6 +719,18 @@ Q1/2026, không relabel thành Q2/2026.
   Ô chứng khoán kỳ hiện tại của ACB và ô kỳ so sánh của VCB để trống trên PDF
   nên được giữ trống, không đổi thành 0. VPB là nguồn Q1/2026.
 
+## 41. Mua mới và thanh lý các công ty con
+
+- **Đã map/xác minh:** Không có mapping vì cả tám PDF đều không trình bày bảng
+  chi tiết 1255–1258 gồm tổng giá trị giao dịch, phần thanh toán bằng tiền và
+  tiền thực có trong công ty con/đơn vị kinh doanh.
+- **Không có cụm thuyết minh chi tiết trong báo cáo:** ACB, MBB, VPB, HDB,
+  VCB, CTG, BID và VIB.
+- **Còn thiếu:** Không có khoản mục nguồn chưa map. HDB có giao dịch HDS trở
+  thành công ty con nhưng chỉ nêu giao dịch và việc đang xác định giá trị hợp
+  lý; CTG chỉ có caption dòng tiền đầu tư. Hai trường hợp này không đủ ba dòng
+  của family và không được relabel thành bảng chi tiết.
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -767,3 +779,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Thu nhập/chi phí/lãi thuần hoạt động khác | — | ✓ p47 | ✓\* p64 | — | — | — | — | ✓ p46 | 1 dòng OPEN; 23 mapping, 46 ô số, 14 phương trình; 5 bank không có note chi tiết; VPB là nguồn Q1 |
 | Chi phí thuế thu nhập doanh nghiệp | — | ✓ p50 | ✓\* p59 | — | — | — | — | ✓\* p48 | 1 dòng OPEN; 28 mapping, 56 ô số, 20 phương trình; 2 DASH→0, 1 ô trống giữ nguyên; 5 bank không có note chi tiết; VPB là nguồn Q1 |
 | Tiền và các khoản tương đương tiền | ✓ p8 | ✓ p50 | ✓\* p66 | — | ✓ p40 | ✓ p47 | — | ✓ p45 | 0 dòng; 31 mapping, 60 ô số, 12 phương trình; 2 ô trống giữ nguyên; HDB/BID không có note chi tiết; VPB là nguồn Q1 |
+| Mua mới và thanh lý các công ty con | — | — | — | — | — | — | — | — | 0 dòng; cả 8 PDF không có bảng chi tiết 1255–1258; HDB/CTG có đối chứng giao dịch/cash-flow nhưng thiếu ba dòng bắt buộc |

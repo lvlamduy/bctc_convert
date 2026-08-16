@@ -17,8 +17,8 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **143 entries**.  Current open queue: **52**.  Closed history:
-**40** row/graph resolutions and **51** confirmed bound-report family absences.
+Ledger total: **151 entries**.  Current open queue: **52**.  Closed history:
+**40** row/graph resolutions and **59** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
@@ -129,6 +129,13 @@ mapping/60 ô số và 12 phương trình đã `VERIFIED_BY_CODEX`, phủ toàn 
 Không còn dòng nguồn chưa map trong sáu vùng. HDB/BID là bounded detailed-note
 absence; số dư đầu/cuối kỳ và chính sách gần giống không bị relabel.
 
+E-0093 `Mua mới và thanh lý các công ty con` quét đủ 453 trang và không tìm
+thấy bảng nào có đủ ba dòng 1256–1258. Cả tám PDF là bounded detailed-note
+absence, không phải khẳng định không có lịch sử giao dịch. HDB có HDS trở thành
+công ty con nhưng đang áp dụng phương pháp tạm thời; CTG có caption dòng tiền
+mua/bán công ty con. Các đối chứng này thiếu tổng giá trị, tiền thanh toán và
+tiền thực có trong công ty con nên không phát sinh mapping hay dòng OPEN.
+
 ## Open review queue (always first)
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
@@ -231,6 +238,20 @@ page or note identifier participates in this decision.
 | TAX-001 | `OPEN_SCHEMA_GAP_WITH_BLANK_CURRENT_AXIS`; 28 khoản mục chắc chắn vẫn đã map. Dòng VIB `Điều chỉnh khác` chỉ có số kỳ so sánh `163`; ô kỳ hiện tại trống không bị đổi thành 0 và nhãn không bị ép vào 5733 |
 | TAX-002–TAX-006 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/HDB/VCB/CTG/BID không có bảng đối chiếu chi phí thuế chi tiết trong PDF đã bind |
 | CEQ-001–CEQ-002 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; HDB/BID không có bảng chi tiết tiền và tương đương tiền 1248–1254 trong PDF đã bind; số dư lưu chuyển tiền tệ và diễn giải chính sách là đối chứng âm |
+| SAD-001–SAD-008 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; cả tám PDF không có bảng chi tiết 1255–1258. Giao dịch HDS của HDB và caption dòng tiền CTG được giữ làm đối chứng, không bị relabel |
+
+## Subsidiary acquisitions and disposals (`SUBSIDIARY_ACQUISITION_DISPOSAL`)
+
+Current exact-replay result:
+`docs/experiments/E-0093-subsidiary-acquisition-disposal-8bank-bound-report-absence-v1.json`
+
+- The shared whole-PDF graph requires total consideration, cash settlement and
+  cash held by the acquired/disposed subsidiary, plus period and unit evidence.
+- No supplied PDF contains that complete detail table. All eight outcomes are
+  bounded absences with zero mappings and zero open source rows.
+- **SAD-001–SAD-008 — confirmed bound-report absences:** HDB's HDS acquisition
+  narrative and CTG's investment cash-flow captions remain explicit controls;
+  they do not establish the three schema rows 1256–1258.
 
 ## Cash and cash equivalents (`CASH_EQUIVALENTS`)
 
