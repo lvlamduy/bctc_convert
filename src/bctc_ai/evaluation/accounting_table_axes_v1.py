@@ -35,7 +35,7 @@ __all__ = [
 
 
 _NUMBER = re.compile(r"^[()]*[+-]?[0-9][0-9., ]*%?[()]*$")
-_FULL_DATE = re.compile(r"(?<!\d)(\d{1,2})[./-](\d{1,2})[./-](\d{4})(?!\d)")
+_FULL_DATE = re.compile(r"(?<!\d)(\d{1,2})\s*[./-]\s*(\d{1,2})\s*[./-]\s*(\d{4})(?!\d)")
 _DAY_MONTH = re.compile(r"\b(?:ngay\s+)?(\d{1,2})\s+thang\s+(\d{1,2})\b")
 _YEAR = re.compile(r"\bnam\s+(\d{4})\b")
 _REPORTING_YEAR = re.compile(r"(?<!\d)(20\d{2})(?!\d)")

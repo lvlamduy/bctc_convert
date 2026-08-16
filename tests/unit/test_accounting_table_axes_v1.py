@@ -129,7 +129,7 @@ def test_document_period_context_resolves_annual_variants_and_ignores_one_off_fu
             ),
             _page(
                 2,
-                _line(1, "31.12.2025", 100),
+                _line(1, "31. 12. 2025", 100),
                 _line(2, "31.12.2024", 300),
             ),
             _page(
