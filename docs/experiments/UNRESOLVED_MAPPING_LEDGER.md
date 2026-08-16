@@ -17,8 +17,8 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **185 entries**.  Current open queue: **78**.  Closed history:
-**40** row/graph resolutions and **67** confirmed bound-report family absences.
+Ledger total: **185 entries**.  Current open queue: **68**.  Closed history:
+**50** row/graph resolutions and **67** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
@@ -101,17 +101,17 @@ cản các mapping chắc chắn khác. VPB giữ đúng kỳ Q1/2026.
 E-0089 `Chi phí dự phòng rủi ro tín dụng` quét đủ 453 trang và tìm đúng một
 note chi tiết tại MBB p49, VPB p66 và VIB p47. 15 mapping/30 ô số và 8 phương
 trình đã `VERIFIED_BY_CODEX`; hai dấu gạch không có OCR line được pixel-bind,
-hai dấu gạch VPB bị VietOCR đọc thành `1` được native source bác bỏ. CRPE-001
-và CRPE-002 vẫn OPEN vì chưa có leaf chi phí dự phòng margin/ứng trước và khoản
-phải thu tài trợ thương mại. ACB/HDB/VCB/CTG/BID được ghi nhận bounded absence
+hai dấu gạch VPB bị VietOCR đọc thành `1` được native source bác bỏ. E-0100 đã
+đóng CRPE-001/CRPE-002 vào 1228 `Dự phòng khác` theo quyết định chủ dự án và
+tái kiểm tra tổng nguồn. ACB/HDB/VCB/CTG/BID được ghi nhận bounded absence
 cho đúng note chi tiết trong các PDF đã bind, không phải vắng mặt số tổng KQKD.
 
 E-0090 `Thu nhập, chi phí và lãi thuần từ hoạt động khác` quét đủ 453 trang và
 tìm đúng một note chi tiết tại MBB p47, VPB p64 và VIB p46. 23 mapping/46 ô số
 và 14 phương trình đã `VERIFIED_BY_CODEX`; MBB dùng biến thể net-only,
 VPB/VIB dùng parent thu nhập + parent chi phí + các nhánh tùy chọn + lãi thuần.
-Hai dòng thanh lý tài sản của VPB được cộng có kiểm soát theo từng kỳ. Chỉ
-OACT-001 còn OPEN vì schema chưa có leaf thu từ phạt vi phạm hợp đồng.
+Hai dòng thanh lý tài sản của VPB được cộng có kiểm soát theo từng kỳ. E-0100
+đã cộng OACT-001 vào 1239 `Khác` đúng một lần và tái đóng parent thu nhập.
 ACB/HDB/VCB/CTG/BID là bounded detailed-note absence; tổng KQKD, segment và
 diễn giải không bị relabel thành note chi tiết. VPB giữ đúng kỳ Q1/2026.
 
@@ -141,9 +141,8 @@ tiền thực có trong công ty con nên không phát sinh mapping hay dòng OP
 E-0094 `Thu nhập nhân viên của ngân hàng` quét đủ 453 trang và tìm đúng một
 vùng chi tiết tại ACB p26, VPB p66 và VIB p49. 13 mapping/26 ô số và 14
 phương trình tổng hoặc tỷ lệ đã `VERIFIED_BY_CODEX`. VPB giữ đúng kỳ Q1/2026;
-VIB dùng kỳ sáu tháng. EI-001/EI-002 còn OPEN vì hai số bình quân của ACB là
-bình quân mỗi nhân viên cho toàn kỳ sáu tháng, không phải bình quân
-người/tháng như 1267/1268. MBB/HDB/VCB/CTG/BID không có bảng thu nhập nhân
+VIB dùng kỳ sáu tháng. E-0100 chia hai số bình quân ACB cho đúng sáu tháng,
+lưu phân số chính xác và map vào 1267/1268. MBB/HDB/VCB/CTG/BID không có bảng thu nhập nhân
 viên chi tiết trong các PDF đã bind.
 
 E-0095 `Tình hình thực hiện nghĩa vụ với ngân sách nhà nước` quét đủ 453
@@ -151,16 +150,16 @@ trang và tìm đúng một vùng tại ACB p22, MBB p49, VPB p58, HDB p32, CTG 
 BID p26 và VIB p47. 33 mapping/147 ô số và 37 phương trình đã
 `VERIFIED_BY_CODEX`. HDB dùng thêm trục tăng do hợp nhất; CTG tách phải nộp,
 phải thu và số thuần cuối kỳ. 13 dấu gạch chỉ được chuẩn hóa thành 0 sau khi
-xem pixel. SBO-001 còn OPEN vì `Tiền thuê đất` không đồng nhất với `Thuế nhà -
-đất` và chưa có leaf riêng. VCB là bounded detailed-note absence; VPB giữ đúng
+xem pixel. E-0100 đưa `Tiền thuê đất` vào 1279 `Các khoản phải nộp khác`; năm
+dấu gạch nhìn thấy đều bằng 0 nên mapping gộp không làm đổi tổng. VCB là bounded detailed-note absence; VPB giữ đúng
 kỳ Q1/2026.
 
 E-0096 `Tài sản thế chấp của khách hàng mà ngân hàng đang nắm giữ` quét đủ
 453 trang và tìm đúng một vùng tại VPB p67, VCB p47 và VIB p49. 15 mapping/30
 ô số và sáu phương trình tổng đã `VERIFIED_BY_CODEX`. VIB dùng parent `Của
 khách hàng` trong note chung nên nhánh `Của các TCTD khác` và tài sản chính
-ngân hàng đưa đi thế chấp không bị nhập nhầm. CC-001–CC-004 còn OPEN vì schema
-thiếu leaf hoặc nhãn nguồn gộp nhiều loại không thể thu hẹp. ACB/MBB/HDB/CTG/
+ngân hàng đưa đi thế chấp không bị nhập nhầm. E-0100 đã gộp CC-001–CC-004 vào
+1288 `Khác` đúng một lần theo bank; hai tổng VCB/VIB tiếp tục đóng chính xác. ACB/MBB/HDB/CTG/
 BID là bounded detailed-note absence; VPB giữ đúng kỳ Q1/2026.
 
 E-0097 `Tài sản, GTCG đưa đi thế chấp, cầm cố và chiết khấu, tái chiết khấu`
@@ -211,17 +210,7 @@ không đổi `(*)` thành 0 hay sao chép giá trị ghi sổ. VPB giữ đúng
 | BPA-001 | Tài sản/GTCG ngân hàng đem thế chấp, cầm cố, chiết khấu | VPB | 67 | Giấy tờ có giá đưa đi thế chấp, cầm cố | Parent gộp bằng hai con “Trong đó”, nhưng tổng nguồn lại cộng parent và hai con lần nữa; giữ source-only, không biến hierarchy double-count thành accounting identity. |
 | BPA-002 | Tài sản/GTCG ngân hàng đem thế chấp, cầm cố, chiết khấu | VIB | 49 | Giấy tờ có giá đưa đi thế chấp, cầm cố | Nguồn không tách chứng khoán kinh doanh/đầu tư nên không ép vào 1290/1291. |
 | BPA-003 | Tài sản/GTCG ngân hàng đem thế chấp, cầm cố, chiết khấu | VIB | 49 | Giấy tờ có giá đưa đi chiết khấu, tái chiết khấu | Nguồn không tách loại chứng khoán; family 1289–1293 chưa có leaf mục đích sử dụng tương đương. |
-| CC-001 | Tài sản thế chấp của khách hàng | VCB | 47 | Tiền gửi | Family 1280–1288 chưa có leaf tài sản thế chấp là tiền gửi; số vẫn tham gia và đóng đúng tổng. |
-| CC-002 | Tài sản thế chấp của khách hàng | VIB | 49 | Quyền khai thác tài sản | Chưa có leaf tương đương; số vẫn tham gia và đóng đúng tổng `Của khách hàng`. |
-| CC-003 | Tài sản thế chấp của khách hàng | VIB | 49 | Bảo lãnh | Không đồng nhất với một loại tài sản thế chấp cụ thể trong schema; số vẫn tham gia tổng. |
-| CC-004 | Tài sản thế chấp của khách hàng | VIB | 49 | Vàng, ngoại tệ, giấy tờ có giá | Một số gộp ba loại nên không được thu hẹp toàn bộ vào 1286 `Giấy tờ có giá`; số vẫn tham gia tổng. |
-| SBO-001 | Nghĩa vụ với ngân sách nhà nước | HDB | 32 | Tiền thuê đất | Không đồng nhất với 1277 `Thuế nhà - đất`; family 1269–1279 chưa có leaf riêng. Giá trị nguồn vẫn nằm trong tổng đã xác minh. |
-| EI-001 | Thu nhập nhân viên | ACB | 26 | Tiền lương bình quân | Số `90 / 86` bằng quỹ lương chia số nhân viên cho cả kỳ, không chia tiếp sáu tháng; không ép vào 1267 `Lương bình quân người/tháng`. |
-| EI-002 | Thu nhập nhân viên | ACB | 26 | Thu nhập bình quân | Số `243 / 247` bằng tổng thu nhập chia số nhân viên cho cả kỳ, không chia tiếp sáu tháng; không ép vào 1268 `Thu nhập bình quân người/tháng`. |
 | TAX-001 | Chi phí thuế thu nhập doanh nghiệp | VIB | 48 | Điều chỉnh khác | Nhãn rộng hơn leaf 5733; kỳ hiện tại để trống và không được coi là 0, kỳ so sánh `163` vẫn tham gia phương trình tổng thuế hiện hành đã xác minh. |
-| OACT-001 | Thu nhập, chi phí và lãi thuần từ hoạt động khác | VPB | 64 | Thu từ phạt vi phạm hợp đồng | Chưa có leaf tương đương dưới 1229; giá trị `41 / 9` vẫn tham gia và đóng đúng tổng thu nhập nguồn. |
-| CRPE-001 | Chi phí dự phòng rủi ro tín dụng | VPB | 66 | Chi phí dự phòng cho vay giao dịch ký quỹ và ứng trước | Chưa có leaf chi phí dự phòng margin/ứng trước tương đương dưới 1221; dòng vẫn tham gia tổng nguồn đã xác minh. |
-| CRPE-002 | Chi phí dự phòng rủi ro tín dụng | VIB | 47 | Biến động dự phòng rủi ro các khoản phải thu từ hoạt động tài trợ thương mại | Chưa có leaf chi phí dự phòng khoản phải thu tài trợ thương mại; dấu gạch hiện kỳ và số hoàn nhập kỳ so sánh vẫn nằm trong tổng đã xác minh. |
 | OE-001 | Chi phí quản lý chung (Chi phí hoạt động) | VPB | 65 | Chi thuê tài sản | Chưa có leaf riêng dưới 1212 `Chi về tài sản`; dòng vẫn nằm trong parent nguồn đã xác minh. |
 | OE-002 | Chi phí quản lý chung (Chi phí hoạt động) | VPB | 65 | Chi phí công nghệ thông tin | Chưa có leaf chi phí CNTT tương đương trong family 1205–1220. |
 | OE-003 | Chi phí quản lý chung (Chi phí hoạt động) | VPB | 65 | Chi về thuế GTGT đầu vào không được khấu trừ | Chưa có leaf chi phí VAT đầu vào không khấu trừ tương đương. |
@@ -309,17 +298,17 @@ page or note identifier participates in this decision.
 | IVP-005–IVP-007 | `OPEN_SOURCE_SCOPE_GAP`; ba kỳ hạn VPB áp dụng cho toàn family, chưa có phân bổ nhìn thấy theo từng công cụ |
 | OPL-001–OPL-018 | `OPEN_SCHEMA_OR_SEMANTIC_GAP`; 39 khoản mục chắc chắn vẫn đã map. Các dòng chưa có leaf vẫn được giữ trong parent/tổng nguồn và không bị cộng hai lần |
 | OE-001–OE-004 | `OPEN_SCHEMA_GAP`; 99 khoản mục chắc chắn vẫn đã map. Bốn dòng chi phí riêng được giữ trong parent/tổng và các phương trình nguồn, không ép vào leaf gần nghĩa |
-| CRPE-001–CRPE-002 | `OPEN_SCHEMA_GAP`; 15 khoản mục chắc chắn vẫn đã map. Hai dòng dự phòng riêng được giữ trong tổng nguồn và không ép vào leaf gần nghĩa |
+| CRPE-001–CRPE-002 | `CLOSED_BY_PROJECT_OWNER_TO_1228`; E-0100 giữ nguyên bốn giá trị nguồn, map hai dòng vào `Dự phòng khác` và tái đóng đúng tổng VPB/VIB |
 | CRPE-003–CRPE-007 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/HDB/VCB/CTG/BID không có note chi tiết 1221 trong PDF đã bind, dù có thể có dòng tổng KQKD hoặc diễn giải chính sách |
-| OACT-001 | `OPEN_SCHEMA_GAP`; 23 khoản mục chắc chắn vẫn đã map. Dòng phạt vi phạm hợp đồng được giữ trong parent thu nhập và phương trình nguồn, không ép vào `Khác` |
+| OACT-001 | `CLOSED_BY_PROJECT_OWNER_TO_1239`; E-0100 cộng `41 / 9` vào dòng Khác hiện có đúng một lần và tái đóng parent thu nhập VPB |
 | OACT-002–OACT-006 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/HDB/VCB/CTG/BID không có note hoạt động khác chi tiết trong PDF đã bind; tổng KQKD, segment và diễn giải là đối chứng âm |
 | TAX-001 | `OPEN_SCHEMA_GAP_WITH_BLANK_CURRENT_AXIS`; 28 khoản mục chắc chắn vẫn đã map. Dòng VIB `Điều chỉnh khác` chỉ có số kỳ so sánh `163`; ô kỳ hiện tại trống không bị đổi thành 0 và nhãn không bị ép vào 5733 |
 | TAX-002–TAX-006 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/HDB/VCB/CTG/BID không có bảng đối chiếu chi phí thuế chi tiết trong PDF đã bind |
 | CEQ-001–CEQ-002 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; HDB/BID không có bảng chi tiết tiền và tương đương tiền 1248–1254 trong PDF đã bind; số dư lưu chuyển tiền tệ và diễn giải chính sách là đối chứng âm |
 | SAD-001–SAD-008 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; cả tám PDF không có bảng chi tiết 1255–1258. Giao dịch HDS của HDB và caption dòng tiền CTG được giữ làm đối chứng, không bị relabel |
-| EI-001–EI-002 | `OPEN_SCHEMA_PERIOD_SEMANTICS_GAP`; các dòng ACB là bình quân mỗi nhân viên cho toàn kỳ sáu tháng, còn schema 1267/1268 quy định bình quân người/tháng. Giá trị và phương trình tỷ lệ nguồn được giữ đầy đủ nhưng không map |
-| SBO-001 | `OPEN_SCHEMA_GAP`; HDB `Tiền thuê đất` không bị ép vào 1277 `Thuế nhà - đất`; dòng nguồn vẫn được giữ trong tổng family và phương trình nguồn đã xác minh |
-| CC-001–CC-004 | `OPEN_SCHEMA_OR_COMBINED_SOURCE_GAP`; VCB `Tiền gửi`, VIB `Quyền khai thác tài sản`, `Bảo lãnh` và dòng gộp `Vàng, ngoại tệ, giấy tờ có giá` vẫn nằm trong các phương trình tổng nhưng không bị ép vào leaf hẹp |
+| EI-001–EI-002 | `CLOSED_BY_PROJECT_OWNER_MONTHLY_DERIVATION`; E-0100 chia chính xác các số sáu tháng cho 6: lương `15 / 43÷3`, thu nhập `81÷2 / 247÷6`, rồi map 1267/1268 |
+| SBO-001 | `CLOSED_BY_PROJECT_OWNER_TO_1279`; năm dấu gạch HDB được pixel-bind thành 0 và gộp vào `Các khoản phải nộp khác`, không làm đổi tổng |
+| CC-001–CC-004 | `CLOSED_BY_PROJECT_OWNER_TO_1288`; E-0100 gộp một lần vào dòng Khác hiện có. VCB 1288 thành `688.039.608 / 687.893.688`; VIB thành `204.865.534 / 153.501.606`, và hai total đóng đúng |
 | BPA-001–BPA-003 | `OPEN_SOURCE_HIERARCHY_OR_SCHEMA_GAP`; VPB parent gộp bị tổng nguồn cộng lặp với các con, còn hai hàng VIB không tách loại chứng khoán; không dòng nào bị ép vào hierarchy/leaf hẹp |
 | CL-001–CL-005, CL-007–CL-014 | `OPEN_SCHEMA_OR_SOURCE_HIERARCHY_GAP`; 47 mapping chắc chắn và 34 phương trình vẫn đã xác minh; các leaf/trục khấu trừ/`Trong đó` chưa tương đương được giữ nguyên nguồn |
 | CL-023–CL-025 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; HDB/VCB/BID có bảng B02a ngoài báo cáo chính nhưng không có note B05a chi tiết của family trong đúng PDF đã bind |
@@ -334,6 +323,18 @@ page or note identifier participates in this decision.
 - **FI-007–FI-011 — confirmed bound-report absences:** ACB, MBB, HDB, BID và
   VIB không có bảng chi tiết mang đồng thời hai nhánh giá trị ghi sổ/giá trị
   hợp lý. Các bảng rủi ro là matched controls thuộc family kế tiếp.
+
+## Project-owner catch-all and monthly-average closure (`E-0100`)
+
+Exact-replay overlay:
+`docs/experiments/E-0100-owner-adjudicated-catchall-average-closure-v1.json`
+
+- Closes **10** prior OPEN source rows without rewriting E-0089/E-0090/E-0094/
+  E-0095/E-0096: CRPE-001/002 → 1228, OACT-001 → 1239, EI-001/002 →
+  derived 1267/1268, SBO-001 → 1279 and CC-001–004 → 1288.
+- Catch-all rows are aggregated once with any existing same-ID row; 10
+  accounting equations replay exactly. ACB's monthly values retain exact
+  rational numerators/denominators rather than an untracked rounded float.
 
 ## Bank-owned pledged or discounted assets (`BANK_PLEDGED_OR_DISCOUNTED_ASSETS`)
 
@@ -361,8 +362,9 @@ Current exact-replay result:
   note in the supplied reports.
 - 15 mappings, 30 value cells and six child-to-parent equations are independently
   verified. VIB's separate TCTD and own-pledged-asset branches are excluded.
-- **CC-001–CC-004 — OPEN:** four exact source rows remain in the equations but
-  lack an exact leaf or combine multiple non-separable asset types.
+- **CC-001–CC-004 — CLOSED by E-0100:** project-owner adjudication aggregates
+  each bank's source rows into 1288 `Khác` together with its pre-existing
+  catch-all row, once only. Both VCB and VIB parent totals close exactly.
 
 ## State-budget obligations (`STATE_BUDGET_OBLIGATIONS`)
 
@@ -375,8 +377,8 @@ Current exact-replay result:
 - 33 mappings, 147 value cells and 37 roll-forward/net equations are
   independently verified. Thirteen visible dashes are retained as pixel-bound
   zeroes. VPB is explicitly Q1/2026.
-- **SBO-001 — OPEN:** HDB `Tiền thuê đất` has no exact leaf under 1269–1279
-  and is not silently collapsed into house-land tax.
+- **SBO-001 — CLOSED by E-0100:** HDB `Tiền thuê đất` maps to 1279 `Các khoản
+  phải nộp khác`; all five visible source cells are dashes and normalize to 0.
 
 ## Employee income (`EMPLOYEE_INCOME`)
 
@@ -388,9 +390,8 @@ Current exact-replay result:
   the supplied reports.
 - 13 mappings, 26 value cells and 14 additive/ratio equations are independently
   verified. VPB is explicitly Q1/2026; VIB is the six-month period.
-- **EI-001–EI-002 — OPEN:** ACB `Tiền lương bình quân` and `Thu nhập bình
-  quân` are per employee for the reporting period. They are not silently
-  converted into the per-person-per-month schema leaves 1267/1268.
+- **EI-001–EI-002 — CLOSED by E-0100:** the six-month source values are divided
+  by exactly six and retained as rational numbers before mapping 1267/1268.
 
 ## Subsidiary acquisitions and disposals (`SUBSIDIARY_ACQUISITION_DISPOSAL`)
 
@@ -448,9 +449,8 @@ Current exact-replay result:
 - 23 mappings, 46 value cells and 14 accounting equations are independently
   verified. VPB's two visible asset-disposal rows are summed by authenticated
   components before one mapping to 1231.
-- **OACT-001 — OPEN:** VPB p64 `Thu từ phạt vi phạm hợp đồng`, visible values
-  `41 / 9`; no distinct leaf exists below 1229. The row remains inside the
-  verified income-parent and net equations.
+- **OACT-001 — CLOSED by E-0100:** VPB p64 values `41 / 9` are aggregated once
+  into 1239 `Khác`; the income-parent and net equations remain exact.
 - **OACT-002–OACT-006 — confirmed bound-report absences:** ACB, HDB, VCB, CTG
   and BID have no complete numbered detail note with period/unit axes,
   components and net total. Their KQKD totals, segment reports and explanatory
@@ -468,12 +468,9 @@ Current exact-replay result:
 - 15 mappings, 30 value cells and eight accounting equations are independently
   verified. Combined customer/TCTD/purchased-debt rows use existing schema
   6031/6032/6033 rather than creating duplicate concepts.
-- **CRPE-001 — OPEN:** VPB p66 `Chi phí dự phòng cho vay giao dịch ký quỹ và
-  ứng trước`; no distinct expense leaf exists below 1221. Visible values are
-  `- / 29.368`; the native dash is numeric zero only because it is visible.
-- **CRPE-002 — OPEN:** VIB p47 `Biến động dự phòng rủi ro các khoản phải thu
-  từ hoạt động tài trợ thương mại`; no distinct expense leaf exists below 1221.
-  Visible values are `- / (244)` and remain in the verified family equation.
+- **CRPE-001–CRPE-002 — CLOSED by E-0100:** the VPB margin/advance row
+  (`- / 29.368`) and VIB trade-finance-receivable row (`- / (244)`) map to
+  1228 `Dự phòng khác`; both printed family totals replay exactly.
 - **CRPE-003–CRPE-007 — confirmed bound-report absences:** ACB, HDB, VCB, CTG
   and BID have no complete detailed note with period/unit axes, component rows
   and trailing total in the supplied PDFs. Statement aggregates, policies and

@@ -669,12 +669,8 @@ Q1/2026, không relabel thành Q2/2026.
 - **Không có cụm thuyết minh chi tiết trong báo cáo:** ACB, HDB, VCB, CTG và
   BID. Các PDF này chỉ có số tổng KQKD hoặc diễn giải/chính sách gần giống,
   không có note đánh số với trục kỳ, đơn vị, các hàng thành phần và tổng.
-- **Còn thiếu:**
-
-| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
-| --- | ---: | --- | --- |
-| VPB | 66 | Chi phí dự phòng cho vay giao dịch ký quỹ và ứng trước | Chưa có leaf chi phí dự phòng margin/ứng trước trong family 1221. |
-| VIB | 47 | Biến động dự phòng rủi ro các khoản phải thu từ hoạt động tài trợ thương mại | Chưa có leaf chi phí dự phòng khoản phải thu tài trợ thương mại. |
+- **Còn thiếu:** Không còn. E-0100 đưa hai dòng VPB/VIB vào 1228 `Dự phòng
+  khác`; tổng family của cả hai bank vẫn đóng đúng.
 
 ## 38. Thu nhập, chi phí và lãi thuần từ hoạt động khác
 
@@ -689,11 +685,8 @@ Q1/2026, không relabel thành Q2/2026.
   không bị relabel thành note chi tiết.
 - **Không có cụm thuyết minh chi tiết trong báo cáo:** ACB, HDB, VCB, CTG,
   BID.
-- **Còn thiếu:**
-
-| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
-| --- | ---: | --- | --- |
-| VPB | 64 | Thu từ phạt vi phạm hợp đồng | Family thu nhập hoạt động khác 1229–1239 chưa có leaf riêng cho khoản phạt vi phạm hợp đồng; dòng vẫn tham gia phương trình parent thu nhập đã xác minh. |
+- **Còn thiếu:** Không còn. E-0100 cộng dòng phạt hợp đồng vào 1239 `Khác`
+  đúng một lần cùng dòng `Thu nhập khác`; parent thu nhập tiếp tục đóng đúng.
 
 ## 39. Chi phí thuế thu nhập doanh nghiệp
 
@@ -749,12 +742,9 @@ Q1/2026, không relabel thành Q2/2026.
 - **Không có cụm thuyết minh chi tiết trong báo cáo:** MBB, HDB, VCB, CTG và
   BID. Các câu chính sách trợ cấp thôi việc hoặc số nhân viên đứng riêng không
   được relabel thành bảng thu nhập nhân viên.
-- **Còn thiếu:**
-
-| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
-| --- | ---: | --- | --- |
-| ACB | 26 | Tiền lương bình quân | Số nguồn là bình quân mỗi nhân viên cho cả kỳ sáu tháng, trong khi 1267 là bình quân người/tháng. |
-| ACB | 26 | Thu nhập bình quân | Số nguồn là bình quân mỗi nhân viên cho cả kỳ sáu tháng, trong khi 1268 là bình quân người/tháng. |
+- **Còn thiếu:** Không còn. E-0100 chia chính xác hai số ACB cho sáu tháng và
+  map 1267/1268: lương `15` và `43/3`; thu nhập `81/2` và `247/6` triệu đồng
+  mỗi người mỗi tháng cho kỳ hiện tại/kỳ so sánh.
 
 ## 43. Tình hình thực hiện nghĩa vụ với ngân sách nhà nước
 
@@ -764,11 +754,9 @@ Q1/2026, không relabel thành Q2/2026.
   thêm trục tăng do hợp nhất kinh doanh; CTG tách số cuối kỳ thành phải nộp,
   phải thu và số thuần. VPB là nguồn Q1/2026.
 - **Không có cụm thuyết minh chi tiết trong báo cáo:** VCB.
-- **Còn thiếu:**
-
-| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
-| --- | ---: | --- | --- |
-| HDB | 32 | Tiền thuê đất | Không đồng nhất với 1277 `Thuế nhà - đất`; schema 1269–1279 chưa có leaf riêng. |
+- **Còn thiếu:** Không còn. E-0100 đưa `Tiền thuê đất` vào 1279 `Các khoản
+  phải nộp khác`; cả năm ô nguồn đều là dấu gạch và được giữ `DASH` trước khi
+  chuẩn hóa 0.
 
 ## 44. Tài sản thế chấp của khách hàng mà ngân hàng đang nắm giữ
 
@@ -779,14 +767,9 @@ Q1/2026, không relabel thành Q2/2026.
 - **Không có cụm thuyết minh chi tiết trong báo cáo:** ACB, MBB, HDB, CTG và
   BID. Vùng tài sản của chính ngân hàng đưa đi thế chấp hoặc diễn giải rủi ro
   tín dụng không được relabel thành tài sản thế chấp của khách hàng.
-- **Còn thiếu:**
-
-| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
-| --- | ---: | --- | --- |
-| VCB | 47 | Tiền gửi | Family 1280–1288 chưa có leaf tài sản thế chấp là tiền gửi. |
-| VIB | 49 | Quyền khai thác tài sản | Chưa có leaf tương đương. |
-| VIB | 49 | Bảo lãnh | Không đồng nhất với một loại tài sản thế chấp cụ thể trong schema. |
-| VIB | 49 | Vàng, ngoại tệ, giấy tờ có giá | Một số gộp ba loại; không được thu hẹp toàn bộ vào 1286 `Giấy tờ có giá`. |
+- **Còn thiếu:** Không còn. E-0100 gộp các dòng VCB `Tiền gửi` và VIB `Quyền
+  khai thác tài sản`/`Bảo lãnh`/`Vàng, ngoại tệ, giấy tờ có giá` vào 1288
+  `Khác` đúng một lần. Tổng VCB/VIB đóng chính xác sau khi gộp.
 
 ## 45. Tài sản, giấy tờ có giá của ngân hàng đưa đi thế chấp, cầm cố và chiết khấu
 
@@ -888,14 +871,14 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Lãi thuần CK kinh doanh + CK đầu tư | — | ✓ p47 | — | — | — | — | — | — | 0 dòng; 1 mapping, 2 ô số, 2 phương trình; 7 PDF không in dòng tổng hợp |
 | Thu nhập góp vốn/mua cổ phần/cổ tức | ✓ p25 | ✓ p48 | ✓\* p64 | ✓ p35 | ✓ p39 | ✓ p46 | ✓ p29 | — | 0 dòng; 27 mapping, 54 ô số, 16 phương trình; 5 DASH→0; VIB không có note chi tiết; VPB là nguồn Q1 |
 | Chi phí quản lý chung/Chi phí hoạt động | ✓ p25 | ✓ p48 | ✓\* p65 | ✓ p35 | ✓ p40 | ✓\* p47 | ✓ p30 | ✓ p46 | 4 dòng OPEN; 99 mapping, 198 ô số, 30 phương trình; VCB 1 lỗi số VietOCR bị nguồn/pixel bác bỏ; VPB là nguồn Q1 |
-| Chi phí dự phòng rủi ro tín dụng | — | ✓ p49 | ✓\* p66 | — | — | — | — | ✓\* p47 | 2 dòng OPEN; 15 mapping, 30 ô số, 8 phương trình; 4 DASH→0; 5 bank không có note chi tiết; VPB là nguồn Q1 |
-| Thu nhập/chi phí/lãi thuần hoạt động khác | — | ✓ p47 | ✓\* p64 | — | — | — | — | ✓ p46 | 1 dòng OPEN; 23 mapping, 46 ô số, 14 phương trình; 5 bank không có note chi tiết; VPB là nguồn Q1 |
+| Chi phí dự phòng rủi ro tín dụng | — | ✓ p49 | ✓ p66 | — | — | — | — | ✓ p47 | 0 dòng OPEN; 17 source-row mappings, 8 phương trình; CRPE-001/002 → 1228; 5 bank không có note chi tiết; VPB là nguồn Q1 |
+| Thu nhập/chi phí/lãi thuần hoạt động khác | — | ✓ p47 | ✓ p64 | — | — | — | — | ✓ p46 | 0 dòng OPEN; OACT-001 gộp vào 1239, 14 phương trình; 5 bank không có note chi tiết; VPB là nguồn Q1 |
 | Chi phí thuế thu nhập doanh nghiệp | — | ✓ p50 | ✓\* p59 | — | — | — | — | ✓\* p48 | 1 dòng OPEN; 28 mapping, 56 ô số, 20 phương trình; 2 DASH→0, 1 ô trống giữ nguyên; 5 bank không có note chi tiết; VPB là nguồn Q1 |
 | Tiền và các khoản tương đương tiền | ✓ p8 | ✓ p50 | ✓\* p66 | — | ✓ p40 | ✓ p47 | — | ✓ p45 | 0 dòng; 31 mapping, 60 ô số, 12 phương trình; 2 ô trống giữ nguyên; HDB/BID không có note chi tiết; VPB là nguồn Q1 |
 | Mua mới và thanh lý các công ty con | — | — | — | — | — | — | — | — | 0 dòng; cả 8 PDF không có bảng chi tiết 1255–1258; HDB/CTG có đối chứng giao dịch/cash-flow nhưng thiếu ba dòng bắt buộc |
-| Thu nhập nhân viên | ✓\* p26 | — | ✓\* p66 | — | — | — | — | ✓ p49 | 2 dòng ACB OPEN; 13 mapping, 26 ô số, 14 phương trình; 5 bank không có note chi tiết; VPB là nguồn Q1 |
-| Nghĩa vụ với ngân sách nhà nước | ✓ p22 | ✓ p49 | ✓\* p58 | ✓\* p32 | — | ✓ p43 | ✓ p26 | ✓ p47 | 1 dòng HDB OPEN; 33 mapping, 147 ô số, 37 phương trình; 13 DASH→0; VCB không có note chi tiết; VPB là nguồn Q1 |
-| Tài sản thế chấp của khách hàng | — | — | ✓ p67 | — | ✓\* p47 | — | — | ✓\* p49 | 4 dòng OPEN; 15 mapping, 30 ô số, 6 phương trình; 5 bank không có note chi tiết; VPB là nguồn Q1 |
+| Thu nhập nhân viên | ✓ p26 | — | ✓\* p66 | — | — | — | — | ✓ p49 | 0 dòng OPEN; ACB chia đúng 6 tháng vào 1267/1268; 5 bank không có note chi tiết; VPB là nguồn Q1 |
+| Nghĩa vụ với ngân sách nhà nước | ✓ p22 | ✓ p49 | ✓\* p58 | ✓ p32 | — | ✓ p43 | ✓ p26 | ✓ p47 | 0 dòng OPEN; HDB tiền thuê đất → 1279; 37 phương trình; VCB không có note chi tiết; VPB là nguồn Q1 |
+| Tài sản thế chấp của khách hàng | — | — | ✓ p67 | — | ✓ p47 | — | — | ✓ p49 | 0 dòng OPEN; 4 dòng gộp vào 1288 và hai tổng đóng đúng; 5 bank không có note chi tiết; VPB là nguồn Q1 |
 | Tài sản/GTCG ngân hàng đem thế chấp, cầm cố, chiết khấu | — | — | ✓\* p67 | — | — | — | — | ✓\* p49 | 3 dòng OPEN; 5 mapping, 10 ô số, 6 quan hệ kế toán; 6 bank không có note chi tiết; VPB có hierarchy nguồn double-count và là nguồn Q1 |
 | Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra | ✓\* p26 | ✓ p51 | ✓\* p68 | — | — | ✓ p48 | — | ✓ p50 | 13 dòng OPEN; 47 mapping, 92 ô số, 34 phương trình; 3 bank không có note chi tiết; VPB là nguồn Q1 |
 | Công cụ tài chính — giá trị ghi sổ/hợp lý | — | — | ✓\* p86 | — | ✓\* p44–45 | ✓\* p51 | — | — | 3 nhóm giá trị hợp lý OPEN; 64 mapping, 55 ô số, 12 phương trình; 5 bank không có bảng chi tiết; VPB là nguồn Q1 |
