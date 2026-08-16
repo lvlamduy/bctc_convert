@@ -120,6 +120,10 @@ def test_generic_engine_enumerates_complete_and_near_regions_without_bank_routin
 def test_accent_normalization_and_one_character_error_stay_bounded_by_topology():
     assert normalize_vietnamese_anchor_v1("Nợ trùng hạn") == "no trung han"
     assert (
+        match_vietnamese_anchor_alias_v1("Nợ trung hạn (Từ 1 tới 5 năm)", ["Nợ trung hạn"])
+        == "QUALIFIED_PREFIX_ALIAS_IN_COMPLETE_ORDERED_TOPOLOGY"
+    )
+    assert (
         match_vietnamese_anchor_alias_v1("Nợi ngắn hạn", ["Nợ ngắn hạn"])
         == "ONE_EDIT_ALIAS_IN_COMPLETE_ORDERED_TOPOLOGY"
     )

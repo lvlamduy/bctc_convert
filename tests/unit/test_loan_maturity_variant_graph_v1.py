@@ -252,6 +252,147 @@ def test_branch_wording_variants_share_one_ordered_graph(surface: str, variant: 
     )
 
 
+def test_annual_compact_tenor_title_and_bare_role_names_are_one_generic_variant():
+    semantic = _semantic_page(
+        _simple_surfaces(
+            branch="Theo kỳ hạn",
+            short="Ngắn hạn",
+            medium="Trung hạn",
+            long="Dài hạn",
+        )
+    )
+
+    default = matcher.build_loan_maturity_variant_graph_v1(_document_pages(semantic), semantic)
+    annual = matcher.build_loan_maturity_variant_graph_v1(
+        _document_pages(semantic),
+        semantic,
+        enable_extended_annual_variants=True,
+    )
+
+    assert default["status"] == "UNRESOLVED"
+    assert annual["status"] == "ACCEPTED_VARIANT_GRAPH"
+    assert annual["document_candidate_count"] == 1
+    graph = annual["result"]["graph"]
+    assert graph["branch"]["variant"] == "TENOR_WORDING"
+    assert [row["label_surface"] for row in graph["rows"]] == [
+        "Ngắn hạn",
+        "Trung hạn",
+        "Dài hạn",
+    ]
+
+
+def test_annual_post_branch_parent_relative_periods_and_qualified_rows_are_generic():
+    semantic = _semantic_page(
+        [
+            ("Phân tích dư nợ cho vay theo thời hạn gốc của khoản vay", 0),
+            ("Số cuối năm", 100),
+            ("Số đầu năm", 300),
+            ("Triệu VND", 100),
+            ("Triệu VND", 300),
+            ("Cho vay khách hàng", 0),
+            ("60", 100),
+            ("63", 300),
+            ("Nợ ngắn hạn (đến 01 năm)", 0),
+            ("10", 100),
+            ("11", 300),
+            ("Nợ trung hạn (trên 01 đến 05 năm)", 0),
+            ("20", 100),
+            ("21", 300),
+            ("Nợ dài hạn (trên 05 năm)", 0),
+            ("30", 100),
+            ("31", 300),
+            ("Nghiệp vụ phát hành thư tín dụng trả chậm", 0),
+            ("5", 100),
+            ("7", 300),
+            ("65", 100),
+            ("70", 300),
+        ]
+    )
+
+    result = matcher.build_loan_maturity_variant_graph_v1(
+        _document_pages(semantic),
+        semantic,
+        enable_extended_annual_variants=True,
+    )
+
+    assert result["status"] == "ACCEPTED_VARIANT_GRAPH"
+    graph = result["result"]["graph"]
+    assert graph["owner"]["mode"] == "POST_BRANCH_TABLE_PARENT"
+    assert graph["period_mode"] == "LOCAL_RELATIVE_YEAR_END_PERIOD_ROLES"
+    assert all(
+        row["match_kind"] == "QUALIFIED_PREFIX_ALIAS_IN_COMPLETE_ORDERED_TOPOLOGY"
+        for row in graph["rows"]
+    )
+    assert graph["total"]["variant"] == ("LEADING_PARENT_TOTAL_ADDITIONAL_POPULATION_GRAND_TOTAL")
+    assert [item["surface"] for item in graph["total"]["core_values"]] == ["60", "63"]
+    assert [item["surface"] for item in graph["total"]["grand_values"]] == ["65", "70"]
+    assert len(graph["additional_source_populations"]) == 1
+
+
+def test_bbox_row_join_handles_numeric_cells_serialized_before_the_label():
+    semantic = _semantic_page(
+        [
+            ("Cho vay khách hàng", 0),
+            ("Phân tích dư nợ theo thời gian cho vay gốc", 0),
+            ("31/12/2025", 100),
+            ("31/12/2024", 300),
+            ("Triệu đồng", 100),
+            ("%", 200),
+            ("Triệu đồng", 300),
+            ("%", 400),
+            ("Nợ ngắn hạn", 0),
+            ("10", 100),
+            ("40,00", 200),
+            ("11", 300),
+            ("41,00", 400),
+            ("Nợ trung hạn", 0),
+            ("20", 100),
+            ("20,00", 200),
+            ("21", 300),
+            ("20,00", 400),
+            ("30", 100),
+            ("40,00", 200),
+            ("31", 300),
+            ("39,00", 400),
+            ("Nợ dài hạn", 0),
+            ("60", 100),
+            ("100,00", 200),
+            ("63", 300),
+            ("100,00", 400),
+        ]
+    )
+    lines = semantic["lines"]
+    assert isinstance(lines, list)
+    lines[22]["bbox"] = [0, 500, 80, 530]
+    for index in range(18, 22):
+        x = (index - 17) * 100
+        lines[index]["bbox"] = [x, 495, x + 80, 525]
+    for index in range(23, 27):
+        x = (index - 22) * 100
+        lines[index]["bbox"] = [x, 540, x + 80, 570]
+
+    result = matcher.build_loan_maturity_variant_graph_v1(
+        _document_pages(semantic),
+        semantic,
+        enable_extended_annual_variants=True,
+    )
+
+    assert result["status"] == "ACCEPTED_VARIANT_GRAPH"
+    graph = result["result"]["graph"]
+    assert [item["surface"] for item in graph["rows"][2]["values"]] == [
+        "30",
+        "40,00",
+        "31",
+        "39,00",
+    ]
+    assert [item["surface"] for item in graph["total"]["core_values"]] == [
+        "60",
+        "100,00",
+        "63",
+        "100,00",
+    ]
+
+
 def test_one_base_character_branch_error_requires_the_complete_topology():
     semantic = _semantic_page(_simple_surfaces(branch="Phân tíh dư nợ theo thời gian"))
     result = matcher.build_loan_maturity_variant_graph_v1(_document_pages(semantic), semantic)

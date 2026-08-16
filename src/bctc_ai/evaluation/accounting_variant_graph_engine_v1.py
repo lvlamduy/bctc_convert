@@ -291,6 +291,13 @@ def _alias_match(text: str, aliases: Sequence[str]) -> str | None:
     normalized = normalize_vietnamese_anchor_v1(text)
     if normalized in aliases:
         return "EXACT_ACCENTLESS_ALIAS"
+    # A row role is frequently followed by a parenthesized definition such as
+    # ``Nợ ngắn hạn (Dưới 1 năm)``.  The qualifier is presentation metadata,
+    # not a different accounting role.  Admit it only when the base alias is
+    # an exact token prefix and the visible surface ends in parentheses; the
+    # complete ordered topology and numeric followers remain mandatory.
+    if text.rstrip().endswith(")") and any(normalized.startswith(alias + " ") for alias in aliases):
+        return "QUALIFIED_PREFIX_ALIAS_IN_COMPLETE_ORDERED_TOPOLOGY"
     if any(_edit_distance_at_most_one(normalized, alias) for alias in aliases):
         return "ONE_EDIT_ALIAS_IN_COMPLETE_ORDERED_TOPOLOGY"
     return None
@@ -629,6 +636,7 @@ def _scan(pages: Sequence[Mapping[str, Any]], spec: Mapping[str, Any]) -> dict[s
 _ALIAS_MATCH_KINDS = {
     "EXACT_ACCENTLESS_ALIAS",
     "ONE_EDIT_ALIAS_IN_COMPLETE_ORDERED_TOPOLOGY",
+    "QUALIFIED_PREFIX_ALIAS_IN_COMPLETE_ORDERED_TOPOLOGY",
 }
 _BRANCH_MATCH_KINDS = {
     "EXACT_ACCENTLESS_STRUCTURAL_ANCHORS",

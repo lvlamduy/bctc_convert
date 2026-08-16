@@ -252,3 +252,26 @@ def test_explicit_verified_index_path_supports_another_pinned_corpus(
     assert scanner.build_live_loan_maturity_full_document_scan_v1(
         Path("annual/semantic_index.json")
     ) == {"format_version": "WAVE1_8DOCUMENT_VIETOCR_TRANSFORMER_SEMANTIC_INDEX_V1"}
+
+
+def test_explicit_annual_mode_is_forwarded_without_changing_the_default(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    index = _index()
+    input_path = tmp_path / "annual/semantic_index.json"
+    input_path.parent.mkdir()
+    input_path.write_text(json.dumps(index), encoding="utf-8")
+    monkeypatch.setattr(scanner, "PROJECT_ROOT", tmp_path)
+    observed: list[bool] = []
+
+    def _fake(_value: object, *, enable_extended_annual_variants: bool) -> dict[str, object]:
+        observed.append(enable_extended_annual_variants)
+        return {"annual": enable_extended_annual_variants}
+
+    monkeypatch.setattr(scanner, "build_loan_maturity_full_document_scan_v1", _fake)
+
+    assert scanner.build_live_loan_maturity_full_document_scan_v1(
+        Path("annual/semantic_index.json"),
+        enable_extended_annual_variants=True,
+    ) == {"annual": True}
+    assert observed == [True]

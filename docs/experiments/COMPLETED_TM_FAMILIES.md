@@ -146,13 +146,23 @@ và
 
 ## 9. Phân tích dư nợ theo thời gian/thời hạn gốc
 
-- **Đã xác minh:** ACB p18, MBB p31, VPB p42, HDB p26, VCB p31, CTG p39,
-  BID p22, VIB p33. Ba hàng `Nợ ngắn hạn`, `Nợ trung hạn`, `Nợ dài hạn`
-  đã được map cho cả 8 bank; hai hàng margin hợp lệ của MBB và VPB cũng đã
-  được map.
+- **Đã xác minh trên BCTC hợp nhất kiểm toán năm 2025:** ACB p50, MBB p51,
+  VPB p45, HDB p36, VCB p40, CTG p44, BID p42, VIB p38. Ba hàng `Nợ ngắn
+  hạn`, `Nợ trung hạn`, `Nợ dài hạn` đã được map cho cả 8 bank; hai hàng
+  margin độc lập của MBB và VPB cũng đã được map. VIB có thêm hai cột tỷ lệ
+  phần trăm và cả hai kỳ đều khép đúng 100%.
 - **Không có:** Không có bank nào.
 - **Còn thiếu:** Không còn khoản mục mục tiêu chưa map. Các dòng tổng vẫn là
-  dòng kiểm tra nguồn, không map thành khoản mục chi tiết.
+  dòng kiểm tra nguồn, không map thành khoản mục chi tiết. HDB có thêm dân số
+  `Thư tín dụng trả chậm có điều khoản trả ngay` đứng ngoài lõi ba kỳ hạn; dòng
+  này được xác minh nguồn và dùng để khép tổng lớn nhưng không bị ép vào schema
+  kỳ hạn.
+
+Kết quả exact-replay:
+`docs/experiments/E-0115-annual-2025-loan-maturity-8bank-codex-verified-mapping-v1.json`.
+
+Lượt BCTC hiện hành trước đó tại ACB p18, MBB p31, VPB p42, HDB p26, VCB p31,
+CTG p39, BID p22 và VIB p33 vẫn giữ nguyên kết quả đã xác minh.
 
 ## 10. Phân tích cho vay theo loại hình tiền tệ
 
@@ -933,7 +943,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Loại hình cho vay | ✓ p17 | ✓ p31 | ✓ p42 | ✓ p26 | ✓ p30 | ✓ p38 | ✓ p22 | ✓ p33 | 0 |
 | Ngành nghề kinh doanh | ✓ p51 | ✓ p52 | ✓ p47 | ✓ p37 | ✓\* p40 | — | ✓ p42 | ✓ p38 | 1 dòng VCB `Thương mại, dịch vụ`; CTG không có family trong filing annual-2025 |
 | Chất lượng cho vay | ✓ p50 | ✓ p51 | ✓ p45 | ✓ p36 | ✓ p39 | ✓ p43 | ✓ p42 | ✓ p66 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; 1944 tách riêng tại ACB/MBB/VPB |
-| Dư nợ theo thời gian | ✓ p18 | ✓ p31 | ✓ p42 | ✓ p26 | ✓ p31 | ✓ p39 | ✓ p22 | ✓ p33 | 0 khoản mục mục tiêu |
+| Dư nợ theo thời gian | ✓ p50 | ✓ p51 | ✓ p45 | ✓ p36 | ✓ p40 | ✓ p44 | ✓ p42 | ✓ p38 | 0 dòng annual-2025; MBB/VPB map margin, HDB giữ dân số bổ sung source-only |
 | Cho vay theo loại tiền tệ | — p17–18 | — p31–33 | — p42–44 | — p26–27 | — p30–31 | — p38–39 | — p22 | — p33–34 | 0; family không có trong 8 PDF cố định |
 | Cho vay theo khu vực địa lý | — | ✓ p52 | — | — | — | — | — | ✓ p53–54 | 0; sáu PDF không có đúng family cho vay khách hàng theo khu vực |
 | Doanh nghiệp/đối tượng KH | — | ✓\* p32 | ✓ p43 | ✓ p26 | — | — | — | ✓ p34 | 1 group parent check-only |

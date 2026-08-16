@@ -68,6 +68,11 @@ _ROLE_ALIASES = {
     "MEDIUM_TERM": ("no trung han", "cho vay trung han"),
     "LONG_TERM": ("no dai han", "cho vay dai han"),
 }
+_ANNUAL_ROLE_ALIASES = {
+    "SHORT_TERM": (*_ROLE_ALIASES["SHORT_TERM"], "ngan han"),
+    "MEDIUM_TERM": (*_ROLE_ALIASES["MEDIUM_TERM"], "trung han"),
+    "LONG_TERM": (*_ROLE_ALIASES["LONG_TERM"], "dai han"),
+}
 _FAMILY_ENGINE_SPEC = {
     "branch_core_phrases": ["phân tích", "dư nợ"],
     "branch_variants": [
@@ -127,6 +132,33 @@ _RESULT_FIELDS = {
     "unresolved_reasons",
 }
 _NUMBER = re.compile(r"^[()]*[+-]?[0-9][0-9., ]*%?[()]*$")
+
+
+def _engine_specs(*, enable_extended_annual_variants: bool) -> list[dict[str, Any]]:
+    """Return declarative title/row variants without bank or page routing."""
+
+    if not enable_extended_annual_variants:
+        return [canonical_clone_v1(_FAMILY_ENGINE_SPEC)]
+    full_title = canonical_clone_v1(_FAMILY_ENGINE_SPEC)
+    full_title["ordered_children"] = [
+        {"aliases": list(_ANNUAL_ROLE_ALIASES[role]), "role": role} for role in _ROLES
+    ]
+    full_title["optional_intermediate_aliases"] = [
+        *full_title["optional_intermediate_aliases"],
+        "Cho vay khách hàng",
+    ]
+    full_title["limits"] = {
+        "max_branch_to_last_child_line_span": 40,
+        "max_child_gap": 16,
+        "min_numeric_followers_per_child": 2,
+    }
+    compact_title = canonical_clone_v1(full_title)
+    compact_title["branch_core_phrases"] = ["theo"]
+    compact_title["branch_variants"] = [
+        {"anchor_phrase": "kỳ hạn", "variant_id": "TENOR_WORDING"},
+        {"anchor_phrase": "thời hạn", "variant_id": "TERM_WORDING"},
+    ]
+    return [full_title, compact_title]
 
 
 class LoanMaturityVariantGraphV1Error(ValueError):
@@ -298,7 +330,11 @@ def _semantic_page(value: Any, *, allow_empty: bool = False) -> dict[str, Any]:
     }
 
 
-def _region_scan_from_exact_pages(pages: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+def _region_scan_from_exact_pages(
+    pages: Sequence[Mapping[str, Any]],
+    *,
+    enable_extended_annual_variants: bool,
+) -> dict[str, Any]:
     engine_pages = [
         {
             "page_sequence": page["page_sequence"],
@@ -312,11 +348,55 @@ def _region_scan_from_exact_pages(pages: Sequence[Mapping[str, Any]]) -> dict[st
         }
         for page in pages
     ]
-    return build_accounting_variant_region_scan_v1(engine_pages, _FAMILY_ENGINE_SPEC)
+    scans = [
+        build_accounting_variant_region_scan_v1(engine_pages, spec)
+        for spec in _engine_specs(enable_extended_annual_variants=enable_extended_annual_variants)
+    ]
+    if len(scans) == 1:
+        return scans[0]
+
+    regions_by_locator: dict[tuple[int, int], dict[str, Any]] = {}
+    near_by_identity: dict[str, dict[str, Any]] = {}
+    for scan in scans:
+        for region in scan["regions"]:
+            locator = (region["page_sequence"], region["branch_source_line_index"])
+            regions_by_locator.setdefault(locator, canonical_clone_v1(region))
+        for region in scan["near_regions"]:
+            near_by_identity.setdefault(
+                canonical_json_sha256_v1(region), canonical_clone_v1(region)
+            )
+    regions = [regions_by_locator[key] for key in sorted(regions_by_locator)]
+    near_regions = sorted(
+        near_by_identity.values(),
+        key=lambda item: (
+            item["page_sequence"],
+            item["branch_source_line_index"],
+            item["unresolved_reasons"],
+        ),
+    )
+    material = {
+        "claim_boundary": scans[0]["claim_boundary"],
+        "family_id": scans[0]["family_id"],
+        "format_version": scans[0]["format_version"],
+        "metrics": {
+            "complete_context_region_count": sum(region["context_complete"] for region in regions),
+            "near_region_count": len(near_regions),
+            "ordered_anchor_region_count": len(regions),
+        },
+        "near_regions": near_regions,
+        "regions": regions,
+        "safety": canonical_clone_v1(scans[0]["safety"]),
+    }
+    return {
+        **material,
+        "scan_id": "avgev1:scan:" + canonical_json_sha256_v1(material),
+    }
 
 
 def build_loan_maturity_region_scan_v1(
     document_pages: Sequence[Mapping[str, Any]],
+    *,
+    enable_extended_annual_variants: bool = False,
 ) -> dict[str, Any]:
     """Enumerate all complete and near maturity regions in one complete PDF."""
 
@@ -329,11 +409,21 @@ def build_loan_maturity_region_scan_v1(
     sequences = [page["page_sequence"] for page in pages]
     if sequences != sorted(sequences) or len(set(sequences)) != len(sequences):
         raise _error("maturity region scan pages must be unique and ordered")
-    return _region_scan_from_exact_pages(pages)
+    return _region_scan_from_exact_pages(
+        pages,
+        enable_extended_annual_variants=enable_extended_annual_variants,
+    )
 
 
-def _document_candidates(pages: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
-    scan = _region_scan_from_exact_pages(pages)
+def _document_candidates(
+    pages: Sequence[Mapping[str, Any]],
+    *,
+    enable_extended_annual_variants: bool,
+) -> list[dict[str, Any]]:
+    scan = _region_scan_from_exact_pages(
+        pages,
+        enable_extended_annual_variants=enable_extended_annual_variants,
+    )
     candidates: list[dict[str, Any]] = []
     for region in scan["regions"]:
         # Missing owner is diagnosed later with the richer source/page context.
@@ -396,8 +486,32 @@ def _center_x(line: Mapping[str, Any]) -> int:
     return line["bbox"][0] + line["bbox"][2]
 
 
-def _periods(header: Sequence[Mapping[str, Any]]) -> tuple[list[dict[str, Any]], str]:
-    return extract_period_axis_v1(header)
+def _periods(
+    header: Sequence[Mapping[str, Any]],
+    *,
+    enable_extended_annual_variants: bool,
+) -> tuple[list[dict[str, Any]], str]:
+    axes, mode = extract_period_axis_v1(header)
+    if len(axes) == 2 or not enable_extended_annual_variants:
+        return axes, mode
+    relative_roles = {
+        "so cuoi nam": "CURRENT_PERIOD_END",
+        "so dau nam": "COMPARATIVE_PERIOD_START",
+    }
+    relative = [
+        {
+            "evidence_source_line_indices": [line["source_line_index"]],
+            "period": role,
+            "x_center_x2": _center_x(line),
+        }
+        for line in header
+        if (role := relative_roles.get(_normalize(line["vietocr_text"])))
+    ]
+    if len(relative) != 2 or {item["period"] for item in relative} != set(relative_roles.values()):
+        return axes, mode
+    return sorted(relative, key=lambda item: item["x_center_x2"]), (
+        "LOCAL_RELATIVE_YEAR_END_PERIOD_ROLES"
+    )
 
 
 def _inherited_unit(pages: Sequence[Mapping[str, Any]], target_page: int) -> dict[str, Any] | None:
@@ -464,6 +578,45 @@ def _vector(
     return result if len(result) == len(lane_types) else None
 
 
+def _row_vector(
+    lines: Sequence[Mapping[str, Any]],
+    label_index: int,
+    fallback_stop: int,
+    lane_types: Sequence[str],
+    primary: bool,
+) -> list[dict[str, Any]] | None:
+    """Read a row by bbox first, then fall back to provider line order.
+
+    OCR providers may emit right-hand cells before the left-hand label when
+    their vertical boxes overlap.  Selecting the numeric cells that share the
+    label's visual row makes the association invariant to that serialization
+    detail while preserving the source indices for replay.
+    """
+
+    if not lane_types:
+        return None
+    label = lines[label_index]
+    label_box = label["bbox"]
+    label_center_y2 = label_box[1] + label_box[3]
+    label_height = label_box[3] - label_box[1]
+    aligned: list[tuple[int, Mapping[str, Any]]] = []
+    for line in lines:
+        if not _number_like(line["vietocr_text"]) or line["bbox"][0] <= label_box[2]:
+            continue
+        box = line["bbox"]
+        overlap = min(label_box[3], box[3]) - max(label_box[1], box[1])
+        center_distance = abs((box[1] + box[3]) - label_center_y2)
+        if overlap > 0 or center_distance <= max(label_height, box[3] - box[1]):
+            aligned.append((center_distance, line))
+    if len(aligned) >= len(lane_types):
+        chosen = sorted(aligned, key=lambda item: (item[0], _center_x(item[1])))[: len(lane_types)]
+        visual_order = [item[1] for item in sorted(chosen, key=lambda item: _center_x(item[1]))]
+        vector = _vector(visual_order, lane_types, primary)
+        if vector is not None:
+            return vector
+    return _vector(lines[label_index + 1 : fallback_stop], lane_types, primary)
+
+
 def _money_values(vector: Sequence[Mapping[str, Any]]) -> list[int] | None:
     result: list[int] = []
     for item in vector:
@@ -503,7 +656,10 @@ def _qwen_source_count(value: Any) -> int:
 
 
 def _build_result(
-    pages: Sequence[Mapping[str, Any]], semantic_page: Mapping[str, Any]
+    pages: Sequence[Mapping[str, Any]],
+    semantic_page: Mapping[str, Any],
+    *,
+    enable_extended_annual_variants: bool,
 ) -> dict[str, Any]:
     target = semantic_page["page_sequence"]
     merged_pages = [
@@ -524,7 +680,10 @@ def _build_result(
         }
         for page in pages
     ]
-    candidates = _document_candidates(merged_pages)
+    candidates = _document_candidates(
+        merged_pages,
+        enable_extended_annual_variants=enable_extended_annual_variants,
+    )
     reasons: list[str] = []
     if len(candidates) != 1:
         reasons.append("DOCUMENT_COMPLETE_GRAPH_NOT_UNIQUE")
@@ -544,6 +703,24 @@ def _build_result(
     role_indices = candidate["role_source_line_indices"]
 
     owner = canonical_clone_v1(candidate["owner_context"])
+    post_branch_owner_index: int | None = None
+    if enable_extended_annual_variants:
+        owner_aliases = {_normalize(alias) for alias in _FAMILY_ENGINE_SPEC["owner_aliases"]}
+        post_branch_matches = [
+            match
+            for match in candidate["optional_intermediate_matches"]
+            if _normalize(match["surface"]) in owner_aliases
+        ]
+        if post_branch_matches:
+            post_branch = post_branch_matches[-1]
+            post_branch_owner_index = post_branch["source_line_index"]
+            owner = {
+                "mode": "POST_BRANCH_TABLE_PARENT",
+                "page_sequence": target,
+                "semantic_source": post_branch["semantic_source"],
+                "source_line_index": post_branch_owner_index,
+                "surface": post_branch["surface"],
+            }
     if owner is None:
         reasons.append("CUSTOMER_LOAN_OWNER_NOT_RESOLVED")
 
@@ -599,7 +776,10 @@ def _build_result(
         if inherited is None:
             reasons.append("UNIT_SCOPE_NOT_RESOLVED")
 
-    periods, period_mode = _periods(header)
+    periods, period_mode = _periods(
+        header,
+        enable_extended_annual_variants=enable_extended_annual_variants,
+    )
     if not periods:
         reasons.append("PERIOD_AXIS_NOT_RESOLVED")
 
@@ -608,8 +788,12 @@ def _build_result(
         zip(_ROLES, role_indices, candidate["role_match_records"], strict=True)
     ):
         stop = role_indices[row_ordinal + 1] if row_ordinal + 1 < len(role_indices) else len(lines)
-        vector = _vector(
-            lines[role_index + 1 : stop], lane_types, semantic_page["primary_numeric_authority"]
+        vector = _row_vector(
+            lines,
+            role_index,
+            stop,
+            lane_types,
+            semantic_page["primary_numeric_authority"],
         )
         if vector is None:
             reasons.append(f"{role}_VALUE_LANES_NOT_RESOLVED")
@@ -647,13 +831,64 @@ def _build_result(
         None,
     )
     optional_margin: dict[str, Any] | None = None
+    additional_source_populations: list[dict[str, Any]] = []
     core_vector: list[dict[str, Any]] | None = None
     grand_vector: list[dict[str, Any]] | None = None
+    leading_parent_total = (
+        _row_vector(
+            lines,
+            post_branch_owner_index,
+            role_indices[0],
+            lane_types,
+            semantic_page["primary_numeric_authority"],
+        )
+        if enable_extended_annual_variants and post_branch_owner_index is not None
+        else None
+    )
     if margin_offset is None:
-        core_vector = _vector(after, lane_types, semantic_page["primary_numeric_authority"])
-        if core_vector is None:
-            reasons.append("CORE_TOTAL_VALUE_LANES_NOT_RESOLVED")
-        total_variant = "CORE_TOTAL_ONLY"
+        if leading_parent_total is not None:
+            core_vector = leading_parent_total
+            tail_numeric = [line for line in after if _number_like(line["vietocr_text"])]
+            grand_vector = _vector(
+                tail_numeric[-len(lane_types) :],
+                lane_types,
+                semantic_page["primary_numeric_authority"],
+            )
+            grand_start = (
+                min(item["source_line_index"] for item in grand_vector)
+                if grand_vector is not None
+                else len(lines)
+            )
+            population_lines = [line for line in after if line["source_line_index"] < grand_start]
+            label_lines = [
+                line for line in population_lines if not _number_like(line["vietocr_text"])
+            ]
+            value_lines = [line for line in population_lines if _number_like(line["vietocr_text"])]
+            if label_lines:
+                additional_source_populations.append(
+                    {
+                        "classification": "SOURCE_ONLY_ADDITIVE_POPULATION_WITH_OPTIONAL_BREAKDOWN",
+                        "label_source_line_indices": [
+                            line["source_line_index"] for line in label_lines
+                        ],
+                        "label_surface": " ".join(line["vietocr_text"] for line in label_lines),
+                        "semantic_numeric_cells": [
+                            {
+                                "source_line_index": line["source_line_index"],
+                                "surface": line["vietocr_text"],
+                            }
+                            for line in value_lines
+                        ],
+                    }
+                )
+            if grand_vector is None:
+                reasons.append("GRAND_TOTAL_VALUE_LANES_NOT_RESOLVED")
+            total_variant = "LEADING_PARENT_TOTAL_ADDITIONAL_POPULATION_GRAND_TOTAL"
+        else:
+            core_vector = _vector(after, lane_types, semantic_page["primary_numeric_authority"])
+            if core_vector is None:
+                reasons.append("CORE_TOTAL_VALUE_LANES_NOT_RESOLVED")
+            total_variant = "CORE_TOTAL_ONLY"
     else:
         before_margin = after[:margin_offset]
         core_vector = _vector(before_margin, lane_types, semantic_page["primary_numeric_authority"])
@@ -755,6 +990,11 @@ def _build_result(
     )
     graph = {
         "arithmetic_status": arithmetic_status,
+        **(
+            {"additional_source_populations": additional_source_populations}
+            if enable_extended_annual_variants
+            else {}
+        ),
         "axes": periods,
         "branch": {
             "match_kind": candidate["branch_match"]["match_kind"],
@@ -765,16 +1005,17 @@ def _build_result(
             "variant": candidate["branch_match"]["variant"],
             "vietocr_text": candidate["branch_match"]["surface"],
         },
-        "intermediate_header": (
-            {
-                "semantic_source": candidate["optional_intermediate_matches"][0]["semantic_source"],
-                "source_line_index": candidate["optional_intermediate_matches"][0][
-                    "source_line_index"
-                ],
-                "surface": candidate["optional_intermediate_matches"][0]["surface"],
-            }
-            if candidate["optional_intermediate_matches"]
-            else None
+        "intermediate_header": next(
+            (
+                {
+                    "semantic_source": match["semantic_source"],
+                    "source_line_index": match["source_line_index"],
+                    "surface": match["surface"],
+                }
+                for match in candidate["optional_intermediate_matches"]
+                if match["source_line_index"] != post_branch_owner_index
+            ),
+            None,
         ),
         "schema_candidate_frontier_ready": schema_candidate_frontier_ready,
         "optional_margin": optional_margin,
@@ -846,6 +1087,8 @@ def _validate_result(value: Any) -> dict[str, Any]:
 def build_loan_maturity_variant_graph_v1(
     document_pages: Sequence[Mapping[str, Any]],
     fresh_semantic_page: Mapping[str, Any],
+    *,
+    enable_extended_annual_variants: bool = False,
 ) -> dict[str, Any]:
     """Build one deterministic variant graph without bank-specific routing."""
 
@@ -860,7 +1103,11 @@ def build_loan_maturity_variant_graph_v1(
     semantic_page = _semantic_page(fresh_semantic_page)
     if semantic_page["page_sequence"] not in sequences:
         raise _error("fresh semantic page is not in the document denominator")
-    inner = _build_result(pages, semantic_page)
+    inner = _build_result(
+        pages,
+        semantic_page,
+        enable_extended_annual_variants=enable_extended_annual_variants,
+    )
     graph = inner["graph"]
     metrics = {
         "document_candidate_count": inner["candidate_count"],
@@ -896,6 +1143,8 @@ def build_loan_maturity_variant_graph_v1(
 def scan_loan_maturity_variant_graph_document_v1(
     document_pages: Sequence[Mapping[str, Any]],
     semantic_pages: Sequence[Mapping[str, Any]],
+    *,
+    enable_extended_annual_variants: bool = False,
 ) -> dict[str, Any]:
     """Scan one complete PDF once and build only its unique candidate page.
 
@@ -939,7 +1188,10 @@ def scan_loan_maturity_variant_graph_document_v1(
             ):
                 raise _error("document scan semantic text/order axis drifted")
 
-    candidates = _document_candidates(pages)
+    candidates = _document_candidates(
+        pages,
+        enable_extended_annual_variants=enable_extended_annual_variants,
+    )
     target_sequence = (
         candidates[0]["page_sequence"]
         if candidates
@@ -951,18 +1203,28 @@ def scan_loan_maturity_variant_graph_document_v1(
     if target_sequence is None:
         raise _error("document scan contains no semantic lines")
     target = next(page for page in semantics if page["page_sequence"] == target_sequence)
-    return build_loan_maturity_variant_graph_v1(pages, target)
+    return build_loan_maturity_variant_graph_v1(
+        pages,
+        target,
+        enable_extended_annual_variants=enable_extended_annual_variants,
+    )
 
 
 def validate_loan_maturity_variant_graph_replay_v1(
     value: Any,
     document_pages: Sequence[Mapping[str, Any]],
     fresh_semantic_page: Mapping[str, Any],
+    *,
+    enable_extended_annual_variants: bool = False,
 ) -> dict[str, Any]:
     """Rebuild and exact-compare one persisted/projection value."""
 
     persisted = _validate_result(value)
-    rebuilt = build_loan_maturity_variant_graph_v1(document_pages, fresh_semantic_page)
+    rebuilt = build_loan_maturity_variant_graph_v1(
+        document_pages,
+        fresh_semantic_page,
+        enable_extended_annual_variants=enable_extended_annual_variants,
+    )
     if not same_typed_json_v1(persisted, rebuilt):
         raise _error("loan-maturity variant graph does not replay exactly")
     return canonical_clone_v1(rebuilt)

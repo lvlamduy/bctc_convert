@@ -112,6 +112,17 @@ cột và không biến ô trống thành 0. Hai vùng chất lượng chứng k
 đối chứng âm sai owner. 14 lỗi chữ/dấu của VietOCR được pixel giải quyết; không
 có bất đồng số trong 86 ô tiền. Family annual-2025 này đã đóng hoàn toàn.
 
+E-0115 `Phân tích dư nợ theo thời gian/thời hạn gốc` trên tám BCTC hợp nhất
+kiểm toán năm 2025 không bổ sung dòng OPEN: whole-PDF graph tìm đúng một vùng
+tại ACB p50, MBB p51, VPB p45, HDB p36, VCB p40, CTG p44, BID p42 và VIB
+p38. Cả 24 hàng lõi `Nợ ngắn hạn`/`Nợ trung hạn`/`Nợ dài hạn` cùng hai hàng
+margin độc lập của MBB/VPB đã được map; 52 ô tiền, 8 ô tỷ lệ VIB và 26 phương
+trình khép đúng. HDB có dân số thư tín dụng trả chậm kế bên: dòng này được xác
+minh nguồn, tham gia kiểm tra tổng lớn nhưng nằm ngoài lõi kỳ hạn và không phải
+khoản mục chưa map. Chín bất đồng chữ/số VietOCR được giữ minh bạch và giải
+quyết bằng pixel cộng với quan hệ kế toán. Family annual-2025 này đã đóng hoàn
+toàn.
+
 E-0079 `Thu nhập lãi và các khoản thu nhập tương tự` không bổ sung dòng OPEN:
 cả tám vùng duy nhất đã map hết các dòng nguồn vào 1143–1150. Hai lỗi mất chữ
 số đầu của VietOCR tại VIB được trục số nguồn/PaddleOCR và pixel bác bỏ, nên là
