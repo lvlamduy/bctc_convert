@@ -313,7 +313,10 @@ def _period_headings(
     for line in lines:
         if not start < line["source_line_index"] < stop:
             continue
-        key = _period_key(line["normalized_text"])
+        normalized = line["normalized_text"]
+        if "tai ngay" not in normalized and len(normalized.split()) > 4:
+            continue
+        key = _period_key(normalized)
         if key is not None:
             candidates.append((line, key))
     ordered_keys = sorted({key for _, key in candidates}, reverse=True)

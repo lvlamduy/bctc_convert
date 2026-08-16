@@ -167,6 +167,27 @@ def test_latest_two_visible_dates_define_annual_current_and_comparative_axes() -
     ]
 
 
+def test_narrative_transaction_date_does_not_replace_reporting_axes() -> None:
+    surfaces = _table("ASSET_LIABILITY")
+    surfaces.insert(
+        -1,
+        (
+            "Hợp đồng riêng lẻ sẽ đáo hạn vào ngày 31/12/2027 theo điều khoản giao dịch",
+            0,
+            515,
+        ),
+    )
+    result = graph.build_derivative_financial_instruments_variant_graph_document_v1(
+        [_page(surfaces)]
+    )
+    headings = result["regions"][0]["layout"]["period_headings"]
+    assert [item["period_role"] for item in headings] == [
+        "CURRENT_PERIOD",
+        "COMPARATIVE_PERIOD",
+    ]
+    assert all("2027" not in item["vietocr_text"] for item in headings)
+
+
 def test_numbered_parent_and_numeric_looking_crop_are_retained_without_text_correction() -> None:
     surfaces = _table("ASSET_LIABILITY")
     parent_index = next(
