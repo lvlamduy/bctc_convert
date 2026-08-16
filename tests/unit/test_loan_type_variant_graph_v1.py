@@ -149,6 +149,36 @@ def test_direct_total_accepts_reordered_children_without_bank_routing() -> None:
     assert result["safety"]["bank_filename_note_or_page_used_for_inference"] is False
 
 
+def test_owner_plus_two_children_can_be_unique_when_axes_total_and_closure_agree() -> None:
+    surfaces = [
+        ("CHO VAY KHÁCH HÀNG", 0, 0),
+        ("31/12/2025", 500, 40),
+        ("31/12/2024", 800, 40),
+        ("Triệu đồng", 500, 70),
+        ("Triệu đồng", 800, 70),
+        ("Cho vay các tổ chức kinh tế, cá nhân trong nước", 0, 120),
+        ("100", 500, 120),
+        ("90", 800, 120),
+        ("Cho vay chiết khấu công cụ chuyển nhượng và các giấy tờ có giá", 0, 165),
+        ("10", 500, 165),
+        ("9", 800, 165),
+        ("110", 500, 210),
+        ("99", 800, 210),
+        ("Phân tích chất lượng nợ cho vay", 0, 255),
+    ]
+    result = loan_type.build_loan_type_variant_graph_document_v1([_page(surfaces)])
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    graph = result["graphs"][0]
+    assert [row["role"] for row in graph["rows"]] == [
+        "DOMESTIC_ORGANIZATIONS_INDIVIDUALS",
+        "DISCOUNT_INSTRUMENTS",
+    ]
+    assert all(
+        check["status"] == "CORROBORATED_SEMANTIC_PROPOSAL_ONLY"
+        for check in graph["accounting_checks"]
+    )
+
+
 def test_missing_dash_cells_are_not_imputed_as_zero() -> None:
     result = loan_type.build_loan_type_variant_graph_document_v1(
         [_page(_direct(missing_dash=True))]

@@ -98,7 +98,7 @@ _ROLE_ALIASES: dict[str, tuple[str, ...]] = {
     "UNMAPPED_OTHER_CREDIT": ("Cấp tín dụng khác",),
 }
 _SCHEMA_ELIGIBLE_ROLES = tuple(role for role in _ROLE_ALIASES if role != "UNMAPPED_OTHER_CREDIT")
-_MIN_SCHEMA_ROLE_COUNT = 3
+_MIN_SCHEMA_ROLE_COUNT = 2
 _MAX_OWNER_TABLE_LINE_SPAN = 80
 _MAX_LABEL_WIDTH = 3
 _BOUNDARY_PREFIXES = (
