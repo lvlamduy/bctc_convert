@@ -2779,7 +2779,11 @@ def read_verified_vietocr_proposals_v1() -> dict[str, Any]:
             "semantic_text_source": "FRESH_VIETOCR_VGG_TRANSFORMER_0_3_13",
         },
         "documents": indexed_documents,
-        "format_version": "WAVE1_8DOCUMENT_VIETOCR_TRANSFORMER_SEMANTIC_INDEX_V1",
+        "format_version": (
+            "ANNUAL_2025_8DOCUMENT_VIETOCR_TRANSFORMER_SEMANTIC_INDEX_V1"
+            if _ACTIVE_PROFILE == "annual-2025"
+            else "WAVE1_8DOCUMENT_VIETOCR_TRANSFORMER_SEMANTIC_INDEX_V1"
+        ),
         "input_refs": {
             "crop_manifest": {
                 "path": (OUTPUT_ROOT / "crop_manifest.json").as_posix(),
@@ -2831,7 +2835,11 @@ def finalize_verified_vietocr_index_v1() -> dict[str, Any]:
     index = read_verified_vietocr_proposals_v1()
     index_raw = canonical_json_bytes_v1(index) + b"\n"
     receipt = {
-        "format_version": "WAVE1_8DOCUMENT_VIETOCR_TRANSFORMER_INDEX_RECEIPT_V1",
+        "format_version": (
+            "ANNUAL_2025_8DOCUMENT_VIETOCR_TRANSFORMER_INDEX_RECEIPT_V1"
+            if _ACTIVE_PROFILE == "annual-2025"
+            else "WAVE1_8DOCUMENT_VIETOCR_TRANSFORMER_INDEX_RECEIPT_V1"
+        ),
         "metrics": index["metrics"],
         "semantic_index_ref": {
             "path": (VERIFIED_INDEX_DIRECTORY / "semantic_index.json").as_posix(),
