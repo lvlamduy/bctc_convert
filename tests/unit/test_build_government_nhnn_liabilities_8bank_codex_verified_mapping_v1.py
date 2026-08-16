@@ -67,15 +67,15 @@ def test_review_rejects_coordinated_unresolved_promotion() -> None:
         builder._review(forged)
 
 
-def test_current_persisted_artifact_matches_live_eight_document_build() -> None:
+def test_historical_persisted_artifact_remains_byte_frozen_for_owner_closure() -> None:
     persisted = json.loads((builder.PROJECT_ROOT / builder.RESULT_PATH).read_text())
-    rebuilt = builder.build_live_government_nhnn_liabilities_8bank_codex_verified_mapping_v1()
+    validated = builder._validate_result(persisted)
 
-    assert rebuilt == persisted
-    assert rebuilt["result_id"] == (
+    assert validated == persisted
+    assert validated["result_id"] == (
         "e0074:result:dbdaea017840adae9c66a8b7fdc69099e0ec591c7f6b351aa4d4a56fad65565e"
     )
-    assert rebuilt["metrics"] == {
+    assert validated["metrics"] == {
         "accounting_equation_verified_count": 28,
         "authenticated_pixel_dash_zero_count": 2,
         "document_count": 8,

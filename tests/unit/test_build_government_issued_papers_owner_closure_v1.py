@@ -58,6 +58,17 @@ def test_owner_closure_exact_mappings_and_remaining_scope(closure):
         "IVP-006",
         "IVP-007",
     ]
+
+    historical_issued = json.loads(
+        (module.PROJECT_ROOT / module.ISSUED_RESULT_PATH).read_text(encoding="utf-8")
+    )
+    mbb = next(
+        trial for trial in historical_issued["trials"] if trial["document_provenance"] == "MBB"
+    )
+    mbb_schema_ids = {row["schema_binding"]["report_norm_id"] for row in mbb["verified_mappings"]}
+    assert 1112 in mbb_schema_ids  # The separate printed `Trên 5 năm` bond row.
+    assert by_ledger["IVP-003"]["schema_binding"]["report_norm_id"] == 6010
+    assert by_ledger["IVP-004"]["schema_binding"]["report_norm_id"] == 6009
     assert module._validate(value) == value
 
 

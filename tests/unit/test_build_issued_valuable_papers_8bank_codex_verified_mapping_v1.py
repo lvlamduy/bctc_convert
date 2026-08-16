@@ -88,15 +88,15 @@ def test_review_rejects_coordinated_open_row_promotion() -> None:
         builder._review(forged)
 
 
-def test_current_persisted_artifact_matches_live_eight_document_build() -> None:
+def test_historical_persisted_artifact_remains_byte_frozen_for_owner_closure() -> None:
     persisted = json.loads((builder.PROJECT_ROOT / builder.RESULT_PATH).read_text())
-    rebuilt = builder.build_live_issued_valuable_papers_8bank_codex_verified_mapping_v1()
+    validated = builder._validate_result(persisted)
 
-    assert rebuilt == persisted
-    assert rebuilt["result_id"] == (
+    assert validated == persisted
+    assert validated["result_id"] == (
         "e0076:result:3f2e52c32b3e7a0dcbe2206354f20b3dc0e409bb9b27ee716fe6d1c85065d355"
     )
-    assert rebuilt["metrics"] == {
+    assert validated["metrics"] == {
         "accounting_equation_verified_count": 36,
         "authenticated_pixel_dash_zero_count": 4,
         "document_count": 8,

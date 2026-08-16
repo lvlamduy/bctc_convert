@@ -407,10 +407,19 @@ Q1/2026, không relabel thành Q2/2026.
   0. ACB chỉ dùng cột giá trị ghi sổ để map, cột mệnh giá làm đối chứng. VCB
   dùng nhánh gộp `Kỳ phiếu, trái phiếu`; VPB giữ đúng nguồn Q1/2026. Mốc đúng
   5 năm của ACB được nhận vào leaf 1103/1111 có biên trên bao gồm 5 năm. MBB
-  map trực tiếp `Trái phiếu — Dưới 5 năm` vào 6010 và `Chứng chỉ tiền gửi —
-  Trên 12 tháng` vào 6009, không tự chia số in thành các kỳ hạn nhỏ hơn. Trái
-  phiếu tăng vốn BIDV map riêng vào 1117 và vẫn là detail không cộng lặp với
-  parent trái phiếu.
+  giữ hai hàng trái phiếu riêng: `Dưới 5 năm` map 6010 và `Trên 5 năm` map
+  1112. Vì PDF không tách số `Dưới 5 năm` thành `Dưới 12 tháng` và `Từ 12
+  tháng đến 5 năm`, hệ thống không tự bịa phép chia nhỏ hơn. Dòng `Chứng chỉ
+  tiền gửi — Trên 12 tháng` map nguyên vẹn vào 6009; đây cũng là leaf rộng đã
+  có trong schema. Trái phiếu tăng vốn BIDV map riêng vào 1117 và vẫn là
+  detail không cộng lặp với parent trái phiếu.
+- **Cấu trúc schema hiện hành:** 1100 là root; 1101 `Chứng chỉ tiền gửi`, 1105
+  `Kỳ phiếu`, 1109 `Trái phiếu`, 1113 `Tổng kỳ phiếu và trái phiếu` và 1117
+  `Các loại giấy tờ có giá khác (bao gồm trái phiếu tăng vốn)` là các nhánh
+  công cụ. Các leaf 1103/1107/1111/1115 dùng biên `Từ 12 tháng đến 5 năm`
+  (bao gồm đúng 5 năm); 1104/1108/1112/1116 là `Trên 5 năm`. Hai leaf nguồn
+  rộng 6009 `Trên 12 tháng` và 6010 `Dưới 5 năm` được giữ để nhận đúng các
+  bảng không in chi tiết hơn.
 - **Không có cụm này trong báo cáo:** Không có; cả 8 bank đều có đúng một vùng.
 - **Còn thiếu:** Chỉ còn ba hàng VPB dưới đây. Đây là trục kỳ hạn của toàn cụm,
   không chỉ rõ số thuộc chứng chỉ tiền gửi, kỳ phiếu hay trái phiếu.

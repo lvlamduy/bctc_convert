@@ -31,8 +31,10 @@ E-0080 đóng GN-001–GN-004 và IVP-001–IVP-004/IVP-008 theo quyết định
 dự án. Ba cách gọi khoản vay ngân hàng trung ương dùng schema mới 6070; tiền
 gửi có kỳ hạn KBNN dùng 6071; tiền gửi Bộ Tài chính được chuyển từ 1039 sang
 6072. ACB đúng 5 năm dùng biên kỳ hạn bao gồm 5 năm, MBB dùng trực tiếp hai
-leaf rộng 6010/6009, và trái phiếu tăng vốn BIDV dùng 1117. Chỉ ba trục kỳ hạn
-toàn family của VPB còn OPEN.
+leaf rộng 6010/6009, và trái phiếu tăng vốn BIDV dùng 1117. Tại MBB, 6010
+`Dưới 5 năm` và 1112 `Trên 5 năm` là hai hàng trái phiếu tách biệt; 6009 nhận
+nguyên dòng chứng chỉ tiền gửi `Trên 12 tháng`. Chỉ ba trục kỳ hạn toàn family
+của VPB còn OPEN.
 
 E-0081 `Chi phí lãi và các khoản tương tự chi phí lãi` không bổ sung dòng
 OPEN: whole-PDF graph tìm đúng một vùng tại cả tám bank và map đủ owner/tổng
