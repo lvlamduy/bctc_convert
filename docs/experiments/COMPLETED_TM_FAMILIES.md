@@ -707,6 +707,18 @@ Q1/2026, không relabel thành Q2/2026.
 | --- | ---: | --- | --- |
 | VIB | 48 | Điều chỉnh khác | Nhãn rộng hơn leaf 5733 về điều chỉnh thuế của các năm trước; kỳ hiện tại để trống, kỳ so sánh là `163`, nên giữ `TAX-001` chờ schema thay vì ép nghĩa hoặc coi ô trống là 0. |
 
+## 40. Tiền và các khoản tương đương tiền
+
+- **Đã map/xác minh:** ACB p8, MBB p50, VPB p66, VCB p40, CTG p47 và
+  VIB p45. Đã map 31 khoản mục/60 ô số vào đầy đủ family 1248–1254; 12
+  phương trình tổng đều đóng đúng.
+- **Không có cụm thuyết minh chi tiết trong báo cáo:** HDB và BID. Hai PDF
+  chỉ có số dư tiền đầu/cuối kỳ hoặc chính sách gần giống, không có bảng thành
+  phần tiền và tương đương tiền với trục kỳ và tổng.
+- **Còn thiếu:** Không có khoản mục nguồn chưa map trong sáu vùng đã xác minh.
+  Ô chứng khoán kỳ hiện tại của ACB và ô kỳ so sánh của VCB để trống trên PDF
+  nên được giữ trống, không đổi thành 0. VPB là nguồn Q1/2026.
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -754,3 +766,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Chi phí dự phòng rủi ro tín dụng | — | ✓ p49 | ✓\* p66 | — | — | — | — | ✓\* p47 | 2 dòng OPEN; 15 mapping, 30 ô số, 8 phương trình; 4 DASH→0; 5 bank không có note chi tiết; VPB là nguồn Q1 |
 | Thu nhập/chi phí/lãi thuần hoạt động khác | — | ✓ p47 | ✓\* p64 | — | — | — | — | ✓ p46 | 1 dòng OPEN; 23 mapping, 46 ô số, 14 phương trình; 5 bank không có note chi tiết; VPB là nguồn Q1 |
 | Chi phí thuế thu nhập doanh nghiệp | — | ✓ p50 | ✓\* p59 | — | — | — | — | ✓\* p48 | 1 dòng OPEN; 28 mapping, 56 ô số, 20 phương trình; 2 DASH→0, 1 ô trống giữ nguyên; 5 bank không có note chi tiết; VPB là nguồn Q1 |
+| Tiền và các khoản tương đương tiền | ✓ p8 | ✓ p50 | ✓\* p66 | — | ✓ p40 | ✓ p47 | — | ✓ p45 | 0 dòng; 31 mapping, 60 ô số, 12 phương trình; 2 ô trống giữ nguyên; HDB/BID không có note chi tiết; VPB là nguồn Q1 |

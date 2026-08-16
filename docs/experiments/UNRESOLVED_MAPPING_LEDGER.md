@@ -17,8 +17,8 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **141 entries**.  Current open queue: **52**.  Closed history:
-**40** row/graph resolutions and **49** confirmed bound-report family absences.
+Ledger total: **143 entries**.  Current open queue: **52**.  Closed history:
+**40** row/graph resolutions and **51** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
@@ -122,6 +122,13 @@ kỳ hiện tại để trống và kỳ so sánh là `163`; nhãn này không �
 5733 về điều chỉnh thuế của các năm trước. ACB/HDB/VCB/CTG/BID là bounded
 detailed-note absence; tổng KQKD/nghĩa vụ thuế/thuế hoãn lại không bị relabel.
 
+E-0092 `Tiền và các khoản tương đương tiền` quét đủ 453 trang và tìm đúng một
+vùng chi tiết tại ACB p8, MBB p50, VPB p66, VCB p40, CTG p47 và VIB p45. 31
+mapping/60 ô số và 12 phương trình đã `VERIFIED_BY_CODEX`, phủ toàn bộ family
+1248–1254. Hai ô chứng khoán không in số được giữ trống thay vì đổi thành 0.
+Không còn dòng nguồn chưa map trong sáu vùng. HDB/BID là bounded detailed-note
+absence; số dư đầu/cuối kỳ và chính sách gần giống không bị relabel.
+
 ## Open review queue (always first)
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
@@ -223,6 +230,21 @@ page or note identifier participates in this decision.
 | OACT-002–OACT-006 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/HDB/VCB/CTG/BID không có note hoạt động khác chi tiết trong PDF đã bind; tổng KQKD, segment và diễn giải là đối chứng âm |
 | TAX-001 | `OPEN_SCHEMA_GAP_WITH_BLANK_CURRENT_AXIS`; 28 khoản mục chắc chắn vẫn đã map. Dòng VIB `Điều chỉnh khác` chỉ có số kỳ so sánh `163`; ô kỳ hiện tại trống không bị đổi thành 0 và nhãn không bị ép vào 5733 |
 | TAX-002–TAX-006 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/HDB/VCB/CTG/BID không có bảng đối chiếu chi phí thuế chi tiết trong PDF đã bind |
+| CEQ-001–CEQ-002 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; HDB/BID không có bảng chi tiết tiền và tương đương tiền 1248–1254 trong PDF đã bind; số dư lưu chuyển tiền tệ và diễn giải chính sách là đối chứng âm |
+
+## Cash and cash equivalents (`CASH_EQUIVALENTS`)
+
+Current exact-replay result:
+`docs/experiments/E-0092-cash-equivalents-8bank-codex-verified-mapping-v1.json`
+
+- One whole-PDF graph finds one unique detailed region at ACB p8, MBB p50,
+  VPB p66, VCB p40, CTG p47 and VIB p45. It covers total-before-components,
+  combined interbank, demand/term split and optional-securities layouts.
+- 31 mappings, 60 value cells and 12 accounting equations are independently
+  verified, covering ReportNormId 1248–1254. No source row remains open.
+- **CEQ-001–CEQ-002 — confirmed bound-report absences:** HDB and BID have no
+  detailed component table; their cash-flow beginning/end balances and policy
+  text remain negative controls, not mappings.
 
 ## Corporate income tax expense (`INCOME_TAX`)
 
