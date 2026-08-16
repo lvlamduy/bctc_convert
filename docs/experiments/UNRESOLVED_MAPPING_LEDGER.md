@@ -207,10 +207,32 @@ IRISK-026 giữ toàn bộ 69 ô VIB vì bảng xoay đã unique về cấu trú
 Paddle/source làm rơi chữ số. VietOCR xoay chỉ làm text/geometry anchor, không
 được nâng thành numeric truth. VPB giữ đúng kỳ Q1/2026.
 
+E-0103 `Rủi ro thanh khoản` quét đủ 453 trang và tìm đúng một vùng tại MBB
+p60, VPB p82, HDB p43, VCB p53, CTG p58 và VIB p68–69; ACB/BID là bounded
+detailed-table absence. Graph chung nhận quá hạn gộp/tách, các bucket đáo hạn,
+hàng tài sản/nợ gộp hoặc tách và bảng tiếp trang mà không dùng bank/page làm
+rule. 84 mapping/84 ô số và 28 phương trình được `VERIFIED_BY_CODEX` tại năm
+bank không xoay. LRISK-001–LRISK-011 giữ 26 ô thiếu đối ứng hoặc có residual
+nguồn; LRISK-012–LRISK-019 giữ 26 ô VIB vì bảng xoay đã unique về cấu trúc
+nhưng trục Paddle/source làm rơi chữ số. VietOCR xoay chỉ làm text/geometry
+anchor. VPB giữ đúng kỳ Q1/2026.
+
 ## Open review queue (always first)
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
 | --- | --- | --- | ---: | --- | --- |
+| LRISK-001 | Rủi ro thanh khoản | MBB | 60 | Quá hạn — tổng tài sản/chênh lệch ròng (2 ô) | Tổng nợ quá hạn để trống; không ngầm đổi blank thành 0. |
+| LRISK-002 | Rủi ro thanh khoản | VPB | 82 | 1–3 tháng — tổng tài sản/tổng nợ/chênh lệch ròng (3 ô) | Phép trừ lệch `+6.000` so với chênh lệch in. |
+| LRISK-003 | Rủi ro thanh khoản | VPB | 82 | 1–5 năm — tổng tài sản/tổng nợ/chênh lệch ròng (3 ô) | Phép trừ lệch `-275.500` so với chênh lệch in. |
+| LRISK-004 | Rủi ro thanh khoản | VPB | 82 | 3–12 tháng — tổng tài sản/tổng nợ/chênh lệch ròng (3 ô) | Phép trừ lệch `-6.001` so với chênh lệch in. |
+| LRISK-005 | Rủi ro thanh khoản | VPB | 82 | Đến 1 tháng — tổng tài sản/tổng nợ/chênh lệch ròng (3 ô) | Phép trừ lệch `+275.499` so với chênh lệch in. |
+| LRISK-006 | Rủi ro thanh khoản | HDB | 43 | Quá hạn trên 3 tháng — tổng tài sản/chênh lệch ròng (2 ô) | Tổng nợ để trống; không ngầm đổi blank thành 0. |
+| LRISK-007 | Rủi ro thanh khoản | HDB | 43 | Quá hạn đến 3 tháng — tổng tài sản/chênh lệch ròng (2 ô) | Tổng nợ để trống; không ngầm đổi blank thành 0. |
+| LRISK-008 | Rủi ro thanh khoản | VCB | 53 | Quá hạn trên 3 tháng — tổng tài sản/chênh lệch ròng (2 ô) | Tổng nợ để trống; không ngầm đổi blank thành 0. |
+| LRISK-009 | Rủi ro thanh khoản | VCB | 53 | Quá hạn đến 3 tháng — tổng tài sản/chênh lệch ròng (2 ô) | Tổng nợ để trống; không ngầm đổi blank thành 0. |
+| LRISK-010 | Rủi ro thanh khoản | CTG | 58 | Quá hạn trên 3 tháng — tổng tài sản/chênh lệch ròng (2 ô) | Tổng nợ để trống; không ngầm đổi blank thành 0. |
+| LRISK-011 | Rủi ro thanh khoản | CTG | 58 | Quá hạn đến 3 tháng — tổng tài sản/chênh lệch ròng (2 ô) | Tổng nợ để trống; không ngầm đổi blank thành 0. |
+| LRISK-012–LRISK-019 | Rủi ro thanh khoản | VIB | 68–69 | Tám nhóm trục quá hạn/đáo hạn/tổng (26 ô quan sát được) | Bảng xoay unique về text/geometry nhưng numeric challenger nguồn làm rơi chữ số; không dùng VietOCR làm numeric truth. |
 | IRISK-001 | Rủi ro lãi suất | MBB | 57 | Quá hạn — tổng tài sản/trạng thái nội bảng (2 ô) | Thiếu các ô đối ứng để đóng phương trình chính xác. |
 | IRISK-002 | Rủi ro lãi suất | VPB | 78 | Tổng trạng thái nội, ngoại bảng (1 ô) | Chỉ có giá trị kết hợp nhìn thấy; không đủ hai thành phần để kiểm tra phép cộng. |
 | IRISK-003 | Rủi ro lãi suất | HDB | 41 | Không chịu lãi — trạng thái ngoại bảng (1 ô) | Không có dòng kết hợp/đối ứng để đóng phương trình. |
@@ -418,6 +440,23 @@ Current exact-replay result:
 - **IRISK-018–IRISK-026 — OPEN:** retain all 69 VIB p62–63 numeric cells.
   Rotated same-VietOCR rescue authenticates only text/geometry; the source
   numeric axis drops digits and cannot authorize mappings.
+
+## Liquidity risk (`LIQUIDITY_RISK`)
+
+Current exact-replay result:
+`docs/experiments/E-0103-liquidity-risk-8bank-codex-verified-mapping-v1.json`
+
+- One bank-blind whole-PDF graph finds six unique liquidity-risk regions and
+  confirms two bounded absences. Combined/split overdue axes, flexible
+  maturity buckets, source-row aggregation and continuation are admitted;
+  currency, interest-rate and fair-value tables remain controls.
+- 84 mappings/value cells are independently verified by 28 exact
+  `assets - liabilities = net liquidity gap` equations at MBB/VPB/HDB/VCB/CTG.
+- **LRISK-001–LRISK-011 — OPEN:** retain 26 blank-counterpart or non-closing
+  source cells, including four explicit VPB printed residuals.
+- **LRISK-012–LRISK-019 — OPEN:** retain 26 observed numeric cells from VIB
+  p68–69. Rotated same-VietOCR rescue authenticates only text/geometry; the
+  source numeric axis drops digits and cannot authorize mappings.
 
 ## Project-owner catch-all and monthly-average closure (`E-0100`)
 

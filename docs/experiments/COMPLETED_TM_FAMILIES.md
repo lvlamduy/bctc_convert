@@ -880,6 +880,24 @@ Q1/2026, không relabel thành Q2/2026.
 | CTG | 55 | Quá hạn trên 3 tháng và đến 3 tháng | Hai cặp tổng tài sản/trạng thái nội bảng chưa có đủ đối ứng để đóng phương trình. |
 | VIB | 62–63 | Toàn bộ chín trục định giá lại, kỳ hiện tại và so sánh | Bảng xoay đã unique về cấu trúc/text, nhưng numeric challenger nguồn làm rơi chữ số; giữ 69 ô OPEN chờ challenger số độc lập. |
 
+## 50. Rủi ro thanh khoản
+
+- **Đã map/xác minh:** MBB p60, VPB p82, HDB p43, VCB p53 và CTG p58.
+  Một graph chung nhận trục quá hạn gộp hoặc tách, các bucket đáo hạn có thể
+  đổi vị trí, các hàng tài sản/nợ gộp hoặc tách và bảng tiếp trang. Đã map 84
+  ô tổng tài sản/tổng nợ/chênh lệch ròng bằng 28 phương trình
+  `tổng tài sản - tổng nợ = chênh lệch thanh khoản ròng`; VPB giữ đúng kỳ
+  Q1/2026.
+- **Không có bảng rủi ro thanh khoản chi tiết trong báo cáo:** ACB và BID.
+  Toàn PDF đã được quét; diễn giải chính sách hoặc bảng rủi ro lãi suất/tiền
+  tệ không bị relabel thành bảng thanh khoản.
+- **Có nhưng còn thiếu:** 19 nhóm/52 ô nguồn giữ `OPEN`. MBB/HDB/VCB/CTG có
+  các ô quá hạn không in tổng nợ nên ô trống không bị đổi thành 0. Bốn trục
+  VPB có chênh lệch in lệch phép trừ lần lượt `275.499`, `6.000`, `-6.001`,
+  `-275.500`. VIB p68–69 được định vị duy nhất sau xoay bằng cùng VietOCR
+  Transformer, nhưng trục số nguồn làm rơi chữ số nên không có số VIB nào
+  được nâng quyền.
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -937,3 +955,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Công cụ tài chính — giá trị ghi sổ/hợp lý | — | — | ✓\* p86 | — | ✓\* p44–45 | ✓\* p51 | — | — | 3 nhóm giá trị hợp lý OPEN; 64 mapping, 55 ô số, 12 phương trình; 5 bank không có bảng chi tiết; VPB là nguồn Q1 |
 | Rủi ro tiền tệ | — | ✓ p58 | ✓\* p80 | ✓\* p38–39 | ✓\* p50–51 | ✓\* p60 | — | ✓\* p65–66 | 11 nhóm/25 ô OPEN; 103 mapping, 119 ô số, 48 phương trình; ACB/BID không có bảng chi tiết; VPB là nguồn Q1 |
 | Rủi ro lãi suất | — | ✓\* p57 | ✓\* p78 | ✓\* p41 | ✓\* p49 | ✓\* p55 | — | △ p62–63 | 26 nhóm/91 ô OPEN; 149 mapping, 54 phương trình; VIB numeric xoay chưa đủ authority; VPB là nguồn Q1 |
+| Rủi ro thanh khoản | — | ✓\* p60 | ✓\* p82 | ✓\* p43 | ✓\* p53 | ✓\* p58 | — | △ p68–69 | 19 nhóm/52 ô OPEN; 84 mapping, 28 phương trình; 4 residual VPB giữ nguyên, VIB numeric xoay chưa đủ authority; VPB là nguồn Q1 |
