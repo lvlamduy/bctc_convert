@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from scripts.experiments.adaptive_accounting_table_geometry_v1 import (
     assign_numeric_row_v1,
+    build_multilevel_header_graph_v1,
     cluster_numeric_rows_v1,
     infer_numeric_column_centers_v1,
     median_text_height_v1,
@@ -130,3 +131,121 @@ def test_merged_header_prefers_word_boxes_and_has_explicit_order_only_fallback()
     assert {item["geometry_status"] for item in order_only} == {
         "ORDER_ONLY_PROJECTED_TO_BODY_COLUMN_REQUIRES_REPLAY"
     }
+
+
+def test_multilevel_header_graph_recovers_parent_spans_and_leaf_columns() -> None:
+    headers = [
+        _line(0, "31/12/2025", [550, 20, 770, 48]),
+        _line(1, "31/12/2024", [850, 20, 1070, 48]),
+        _line(2, "VND", [555, 58, 645, 86]),
+        _line(3, "Ngoại tệ", [675, 58, 765, 86]),
+        _line(4, "VND", [855, 58, 945, 86]),
+        _line(5, "Ngoại tệ", [975, 58, 1065, 86]),
+    ]
+    graph = build_multilevel_header_graph_v1(
+        headers,
+        column_centers=[600.0, 720.0, 900.0, 1020.0],
+        page_width=1200,
+    )
+
+    assert graph["status"] == "RESOLVED_GEOMETRY_GRAPH"
+    by_text = {}
+    for cell in graph["cells"]:
+        by_text.setdefault(cell["text"], []).append(
+            (cell["level_start"], cell["column_start"], cell["column_stop"])
+        )
+    assert by_text["31/12/2025"] == [(0, 0, 2)]
+    assert by_text["31/12/2024"] == [(0, 2, 4)]
+    assert by_text["VND"] == [(1, 0, 1), (1, 2, 3)]
+    assert by_text["Ngoại tệ"] == [(1, 1, 2), (1, 3, 4)]
+    assert len(graph["edges"]) == 4
+
+
+def test_multilevel_header_graph_is_scale_invariant() -> None:
+    headers = [
+        _line(0, "Kỳ hiện tại", [550, 20, 770, 48]),
+        _line(1, "Kỳ so sánh", [850, 20, 1070, 48]),
+        _line(2, "Số tiền", [555, 58, 645, 86]),
+        _line(3, "%", [675, 58, 765, 86]),
+        _line(4, "Số tiền", [855, 58, 945, 86]),
+        _line(5, "%", [975, 58, 1065, 86]),
+    ]
+    expected = [(0, 2), (2, 4), (0, 1), (1, 2), (2, 3), (3, 4)]
+    for factor in (1, 3):
+        graph = build_multilevel_header_graph_v1(
+            _scaled(headers, factor),
+            column_centers=[value * factor for value in (600.0, 720.0, 900.0, 1020.0)],
+            page_width=1200 * factor,
+        )
+        assert [(cell["column_start"], cell["column_stop"]) for cell in graph["cells"]] == expected
+
+
+def test_multilevel_header_without_word_boxes_is_never_silently_split() -> None:
+    graph = build_multilevel_header_graph_v1(
+        [
+            {
+                **_line(0, "merged provider text", [500, 20, 1100, 60]),
+                "tokens": ["31/12/2025", "31/12/2024"],
+            }
+        ],
+        column_centers=[650.0, 950.0],
+        page_width=1200,
+    )
+
+    assert graph["status"] == "GEOMETRY_GRAPH_WITH_REPLAY_REQUIRED"
+    assert [cell["text"] for cell in graph["cells"]] == ["31/12/2025", "31/12/2024"]
+    assert [cell["column_start"] for cell in graph["cells"]] == [0, 1]
+    assert graph["ambiguities"] == [
+        {"kind": "MERGED_HEADER_ORDER_ONLY_WITHOUT_WORD_BOXES", "source_line_index": 0}
+    ]
+
+
+def test_stacked_same_span_is_exposed_not_forced_to_be_wrap_or_new_level() -> None:
+    graph = build_multilevel_header_graph_v1(
+        [
+            _line(0, "Cho kỳ kết thúc", [580, 20, 760, 46]),
+            _line(1, "31 tháng 12 năm 2025", [570, 52, 770, 78]),
+        ],
+        column_centers=[670.0],
+        page_width=1000,
+    )
+
+    assert graph["status"] == "RESOLVED_GEOMETRY_GRAPH"
+    assert graph["continuation_candidates"] == [
+        {
+            "lower_cell_id": "header-cell-0002-01",
+            "relation": "STACKED_SAME_SPAN_TEXT_REQUIRES_SEMANTIC_DECISION",
+            "upper_cell_id": "header-cell-0001-01",
+        }
+    ]
+
+
+def test_real_mbb_four_lane_period_amount_percent_header_is_resolved() -> None:
+    # Annual-2025 MBB p65: two period parents, each spanning amount and %.
+    headers = [
+        _line(73, "31/12/2025", [812, 1395, 959, 1427]),
+        _line(74, "31/12/2024", [1215, 1395, 1365, 1433]),
+        _line(75, "triệu đồng", [782, 1431, 916, 1470]),
+        _line(76, "%", [1039, 1431, 1075, 1468]),
+        _line(77, "triệu đồng", [1179, 1431, 1314, 1473]),
+        _line(78, "%", [1455, 1435, 1490, 1471]),
+    ]
+
+    graph = build_multilevel_header_graph_v1(
+        headers,
+        column_centers=[833.0, 1035.0, 1232.0, 1450.0],
+        page_width=1654,
+    )
+
+    assert graph["status"] == "RESOLVED_GEOMETRY_GRAPH"
+    assert [
+        (cell["text"], cell["column_start"], cell["column_stop"]) for cell in graph["cells"]
+    ] == [
+        ("31/12/2025", 0, 2),
+        ("31/12/2024", 2, 4),
+        ("triệu đồng", 0, 1),
+        ("%", 1, 2),
+        ("triệu đồng", 2, 3),
+        ("%", 3, 4),
+    ]
+    assert len(graph["edges"]) == 4

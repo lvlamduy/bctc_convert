@@ -29,6 +29,17 @@ from bctc_ai.source_structure.contracts_v1 import (
     same_typed_json_v1,
 )
 
+try:
+    from scripts.experiments.adaptive_accounting_table_geometry_v1 import (
+        cluster_numeric_rows_v1,
+        median_text_height_v1,
+    )
+except ModuleNotFoundError:  # Direct execution puts scripts/experiments on sys.path.
+    from adaptive_accounting_table_geometry_v1 import (  # type: ignore[no-redef]
+        cluster_numeric_rows_v1,
+        median_text_height_v1,
+    )
+
 __all__ = [
     "FORMAT_VERSION",
     "CashPreciousMetalsVariantGraphV1Error",
@@ -218,7 +229,9 @@ def _section_break(text: str) -> bool:
 
 
 def _child_role(text: str) -> str | None:
-    if "tien mat bang" in text and ("vnd" in text or "tien dong" in text):
+    if "tien mat bang" in text and (
+        "vnd" in text or "tien dong" in text or "dong viet nam" in text
+    ):
         return "CASH_VND"
     if "tien mat bang" in text and "ngoai te" in text:
         return "CASH_FOREIGN"
@@ -283,6 +296,7 @@ def _axis_groups(
                 re.search(r"(?:30|31)[ /.-](?:03|3|06|6|12)[ /.-]20[0-9]{2}", text) is not None
                 or "ngay 31 thang" in text
                 or re.fullmatch(r"nam 20[0-9]{2}", text) is not None
+                or text in {"so cuoi nam", "so dau nam"}
             )
         else:
             matched = "trieu dong" in text or "trieu vnd" in text
@@ -317,22 +331,22 @@ def _total_after(
     lines: Sequence[Mapping[str, Any]], child: Mapping[str, Any]
 ) -> dict[str, Any] | None:
     width = max((item["bbox"][2] for item in lines), default=1)
-    child_bottom = child["bbox"][3]
-    numeric = [
-        item
-        for item in lines
-        if item["source_line_index"] > child["source_line_index"]
-        and item["source_line_index"] <= child["source_line_index"] + 8
-        and item["bbox"][0] > width * 0.47
-        and item["bbox"][1] > child_bottom + 3
-        and _is_money(item)
-    ]
-    for seed in numeric:
-        center = (seed["bbox"][1] + seed["bbox"][3]) / 2
-        row = [
-            item for item in numeric if abs((item["bbox"][1] + item["bbox"][3]) / 2 - center) <= 14
-        ]
-        row = sorted(row, key=lambda item: item["bbox"][0])
+    scale = median_text_height_v1(lines)
+    child_center = (child["bbox"][1] + child["bbox"][3]) / 2
+    rows = cluster_numeric_rows_v1(
+        lines,
+        is_numeric=_is_money,
+        start_index=child["source_line_index"],
+        stop_index=min(
+            child["source_line_index"] + 9,
+            max(item["source_line_index"] for item in lines) + 1,
+        ),
+        page_width=width,
+    )
+    for row in rows:
+        center = sum((item["bbox"][1] + item["bbox"][3]) / 2 for item in row) / len(row)
+        if center <= child_center + scale * 0.45:
+            continue
         if len(row) >= 2:
             return {
                 "role": "TOTAL",

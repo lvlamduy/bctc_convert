@@ -98,6 +98,40 @@ def test_annual_2025_and_2024_period_headers_use_the_same_generic_graph() -> Non
     assert result["regions"][0]["layout"]["meaningful_axes"]["period_header_count"] == 2
 
 
+def test_annual_year_labels_full_vietnamese_currency_and_tight_total_are_generic() -> None:
+    surfaces = [
+        ("Tiền mặt, vàng bạc, đá quý", 0, 0),
+        ("Số cuối năm", 620, 35),
+        ("Số đầu năm", 800, 35),
+        ("Triệu đồng", 620, 65),
+        ("Triệu đồng", 800, 65),
+        ("Tiền mặt bằng Đồng Việt Nam", 0, 105),
+        ("10", 620, 105),
+        ("8", 800, 105),
+        ("Tiền mặt bằng ngoại tệ", 0, 140),
+        ("20", 620, 140),
+        ("9", 800, 140),
+        ("Chứng từ có giá trị ngoại tệ", 0, 175),
+        ("1", 620, 175),
+        ("2", 800, 175),
+        # The total begins exactly three pixels below the child bbox.  This is
+        # a normal tight table layout, not an overlap or a fixed-DPI special case.
+        ("31", 620, 202),
+        ("19", 800, 202),
+        ("Tiền gửi tại NHNN", 0, 255),
+    ]
+
+    result = cash.build_cash_precious_metals_variant_graph_document_v1([_page(surfaces)])
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert [event["role"] for event in result["regions"][0]["events"]] == [
+        "CASH_VND",
+        "CASH_FOREIGN",
+        "FOREIGN_CURRENCY_VALUABLE_DOCUMENT",
+        "TOTAL",
+    ]
+
+
 def test_balance_sheet_cashflow_and_risk_surfaces_are_not_complete_notes() -> None:
     surfaces = [
         ("Tiền mặt, vàng bạc, đá quý", 0, 0),
