@@ -4,7 +4,11 @@ import copy
 
 import pytest
 
+from bctc_ai.evaluation import full_document_vietocr_accounting_axis_v1 as axis_module
 from bctc_ai.evaluation.full_document_vietocr_accounting_axis_v1 import (
+    ANNUAL_2025_EXPECTED_LINE_VECTOR,
+    ANNUAL_2025_EXPECTED_PAGE_VECTOR,
+    ANNUAL_2025_SOURCE_FORMAT_VERSION,
     EXPECTED_DOCUMENT_ORDER,
     EXPECTED_LINE_VECTOR,
     EXPECTED_PAGE_VECTOR,
@@ -162,6 +166,26 @@ def test_fixed_full_document_axis_preserves_exact_denominator_and_empty_text(
     assert projection["authority"]["numeric_authority"] is False
     assert projection["authority"]["accentless_text_is_anchor_evidence_only"] is True
     assert "reporting_period_context" not in documents[0]
+
+
+def test_audited_annual_2025_profile_is_fixed_to_the_verified_geometry_denominator() -> None:
+    assert ANNUAL_2025_EXPECTED_PAGE_VECTOR == (100, 103, 100, 71, 84, 85, 74, 78)
+    assert ANNUAL_2025_EXPECTED_LINE_VECTOR == (
+        7343,
+        8087,
+        7249,
+        5800,
+        6539,
+        6930,
+        6321,
+        6080,
+    )
+    assert sum(ANNUAL_2025_EXPECTED_PAGE_VECTOR) == 695
+    assert sum(ANNUAL_2025_EXPECTED_LINE_VECTOR) == 54_349
+    assert axis_module._source_profile(ANNUAL_2025_SOURCE_FORMAT_VERSION) == {
+        "line_vector": ANNUAL_2025_EXPECTED_LINE_VECTOR,
+        "page_vector": ANNUAL_2025_EXPECTED_PAGE_VECTOR,
+    }
 
 
 def test_document_reporting_period_contexts_are_a_separate_replay_bound_projection(
