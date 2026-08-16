@@ -18,11 +18,15 @@ import re
 import stat
 import sys
 from collections.abc import Mapping, Sequence
+from io import BytesIO
 from pathlib import Path
 from types import ModuleType
 from typing import Any
 
+from PIL import Image
+
 from bctc_ai.evaluation.accounting_variant_graph_engine_v1 import (
+    match_vietnamese_anchor_alias_v1,
     normalize_vietnamese_anchor_v1,
 )
 from bctc_ai.evaluation.full_document_vietocr_accounting_axis_v1 import (
@@ -40,8 +44,11 @@ from bctc_ai.source_structure.contracts_v1 import (
 __all__ = [
     "FORMAT_VERSION",
     "TradingSecurities8BankCodexVerifiedMappingV1Error",
+    "build_live_annual_2025_trading_securities_8bank_codex_verified_mapping_v1",
     "build_live_trading_securities_8bank_codex_verified_mapping_v1",
+    "build_annual_2025_trading_securities_8bank_codex_verified_mapping_v1",
     "build_trading_securities_8bank_codex_verified_mapping_v1",
+    "validate_annual_2025_trading_securities_8bank_codex_verified_mapping_replay_v1",
     "validate_trading_securities_8bank_codex_verified_mapping_replay_v1",
 ]
 
@@ -69,6 +76,39 @@ EXPECTED_INDEX_SHA256 = "f84fd9ca56fe06af230e011ecad85b0a576e27e1eca32ee141e654a
 EXPECTED_CROP_MANIFEST_SHA256 = "a9f80cf9104af1177ba43d8a85de00b28c735223a91b663a5a79401bb038d94e"
 EXPECTED_AXIS_SHA256 = "e99873cd16a7234702d0ee6e5fa9eb37637a1a75621228381e3dbcd7c5cfdcca"
 EXPECTED_SCAN_ID = "tsfdsv1:scan:e3c26b48abdf6f792c153c7953fe6772611dcfaeaa17d7e286998b7f76873243"
+
+ANNUAL_2025_FORMAT_VERSION = "ANNUAL_2025_TRADING_SECURITIES_8BANK_CODEX_VERIFIED_MAPPING_V1"
+ANNUAL_2025_REVIEW_FORMAT = "ANNUAL_2025_TRADING_SECURITIES_8BANK_CODEX_PIXEL_REVIEW_V1"
+ANNUAL_2025_CLAIM_BOUNDARY = (
+    "FIXED_EIGHT_AUDITED_CONSOLIDATED_ANNUAL_2025_COMPLETE_PDF_FRESH_VIETOCR_"
+    "GENERIC_TRADING_SECURITIES_OPTIONAL_ASSET_BRANCH_NONADDITIVE_ALTERNATE_"
+    "VIEW_PERIOD_UNIT_STRUCTURE_PLUS_INDEPENDENT_VISIBLE_PIXEL_UPSTREAM_NUMERIC_"
+    "CHALLENGER_ACCOUNTING_AND_LIVE_TM_SCHEMA_ONLY_NO_EXPORT_OR_PRODUCTION_AUTHORITY"
+)
+ANNUAL_2025_REVIEW_PATH = Path(
+    "docs/experiments/E-0110-annual-2025-trading-securities-8bank-codex-pixel-review-v1.json"
+)
+ANNUAL_2025_RESULT_PATH = Path(
+    "docs/experiments/E-0110-annual-2025-trading-securities-8bank-codex-verified-mapping-v1.json"
+)
+ANNUAL_2025_SEMANTIC_INDEX_PATH = Path(
+    "output/calibration/annual-2025-8bank-full-document-vietocr-v1/verified-index/semantic_index.json"
+)
+ANNUAL_2025_CROP_MANIFEST_PATH = Path(
+    "output/calibration/annual-2025-8bank-full-document-vietocr-v1/crop_manifest.json"
+)
+ANNUAL_2025_EXPECTED_INDEX_SHA256 = (
+    "98bb9854e699230da86538cf024ef3f4817b9e2f4dd2b2a75f46198f00e4247d"
+)
+ANNUAL_2025_EXPECTED_CROP_MANIFEST_SHA256 = (
+    "17d12a4d6b1dfaf0e243300757fd225b8c9cca80810a2d856efdb55a5b4ac000"
+)
+ANNUAL_2025_EXPECTED_AXIS_SHA256 = (
+    "aa81f553fda69315e84b7adbda13347c25a4490b016fc9660ff4f2cd49795ce7"
+)
+ANNUAL_2025_EXPECTED_SCAN_ID = (
+    "tsfdsv2:scan:169ad3c84779004af91459b032add1bdafd333e8bca3c1cf9b6848d4948be0d1"
+)
 
 _REVIEW_CHECKS = [
     "COMPLETE_PDF_UNIQUE_REGION_ENUMERATION",
@@ -907,6 +947,704 @@ def _review_documents() -> list[dict[str, Any]]:
     ]
 
 
+def _dash_value(bbox: Sequence[int], pixel_rgb_sha256: str) -> dict[str, Any]:
+    return {
+        "bbox": list(bbox),
+        "kind": "AUTHENTICATED_RENDER_PIXEL_DASH",
+        "pixel_rgb_sha256": pixel_rgb_sha256,
+        "pixel_transcription": "-",
+    }
+
+
+def _annual_doc(
+    code: str,
+    page: int | None,
+    layout: str | None,
+    mappings: Sequence[Mapping[str, Any]],
+    equations: Sequence[Mapping[str, Any]],
+    *,
+    disposition: str = "UNIQUE_COMPLETE_REGION_VISIBLE_PIXEL_REVIEWED",
+    supplemental_views: Sequence[Mapping[str, Any]] = (),
+) -> dict[str, Any]:
+    result = _doc(
+        code,
+        page,
+        layout,
+        "2025-12-31",
+        mappings,
+        equations,
+        disposition=disposition,
+    )
+    result["comparison_period_excluded"] = "31/12/2024" if page is not None else None
+    result["supplemental_views_excluded"] = canonical_clone_v1(list(supplemental_views))
+    result["whole_document_family_absence_claim"] = page is None
+    return result
+
+
+def _supplemental(page: int, anchor: str) -> dict[str, Any]:
+    return {
+        "anchor_pixel_transcription": anchor,
+        "disposition": "EXCLUDED_NONADDITIVE_SUPPLEMENTAL_TRADING_SECURITIES_VIEW",
+        "physical_page": page,
+    }
+
+
+def _annual_2025_review_documents() -> list[dict[str, Any]]:
+    """Fixed independent review of the seven visible annual trading notes."""
+
+    return [
+        _annual_doc(
+            "ACB",
+            47,
+            "ISSUER_CLASSIFICATION_ROWS_X_PERIOD_COLUMNS_WITH_EXPLICIT_GROSS",
+            [
+                _mapping(
+                    595,
+                    "DEBT_GOVERNMENT",
+                    47,
+                    "Chứng khoán Chính phủ",
+                    [28],
+                    _value(29, "1.274.577"),
+                ),
+                _mapping(
+                    596,
+                    "DEBT_TCTD",
+                    47,
+                    "Chứng khoán nợ do các TCTD khác trong nước phát hành",
+                    [31],
+                    _value(32, "1.000.000"),
+                ),
+                _mapping(
+                    597,
+                    "DEBT_DOMESTIC_TCKT",
+                    47,
+                    "Chứng khoán nợ do các TCKT trong nước phát hành",
+                    [33],
+                    _value(34, "270.000"),
+                ),
+                _mapping(
+                    602,
+                    "EQUITY_TCTD",
+                    47,
+                    "Chứng khoán vốn do các TCTD khác trong nước phát hành",
+                    [36],
+                    _value(37, "1.866.996"),
+                ),
+                _mapping(
+                    603,
+                    "EQUITY_DOMESTIC_TCKT",
+                    47,
+                    "Chứng khoán vốn do các TCKT trong nước phát hành",
+                    [39],
+                    _value(40, "2.296.785"),
+                ),
+                _mapping(
+                    611,
+                    "GROSS",
+                    47,
+                    "Tổng chứng khoán kinh doanh",
+                    [42],
+                    _value(43, "6.708.358"),
+                ),
+                _mapping(
+                    612,
+                    "PROVISION",
+                    47,
+                    "Dự phòng giảm giá chứng khoán kinh doanh",
+                    [46],
+                    _value(47, "(163.476)"),
+                ),
+            ],
+            [
+                _equation(
+                    "ISSUER_CHILDREN_TO_GROSS",
+                    47,
+                    [
+                        _value(29, "1.274.577"),
+                        _value(32, "1.000.000"),
+                        _value(34, "270.000"),
+                        _value(37, "1.866.996"),
+                        _value(40, "2.296.785"),
+                    ],
+                    _value(43, "6.708.358"),
+                ),
+                _equation(
+                    "GROSS_PROVISION_TO_NET",
+                    47,
+                    [_value(43, "6.708.358"), _value(47, "(163.476)")],
+                    _value(49, "6.544.882"),
+                ),
+            ],
+            supplemental_views=[_supplemental(48, "Tình trạng niêm yết")],
+        ),
+        _annual_doc(
+            "MBB",
+            49,
+            "ISSUER_CLASSIFICATION_ROWS_X_PERIOD_COLUMNS_WITH_PERCENTAGE_AUXILIARY",
+            [
+                _mapping(594, "DEBT", 49, "Chứng khoán nợ", [15], _value(16, "4.375.694")),
+                _mapping(
+                    595,
+                    "DEBT_GOVERNMENT",
+                    49,
+                    "Chứng khoán do Chính phủ, chính quyền địa phương phát hành",
+                    [18, 19],
+                    _value(20, "1.029.213"),
+                ),
+                _mapping(
+                    596,
+                    "DEBT_TCTD",
+                    49,
+                    "Chứng khoán do các TCTD khác trong nước phát hành",
+                    [22],
+                    _value(23, "3.142.925"),
+                ),
+                _mapping(
+                    597,
+                    "DEBT_DOMESTIC_TCKT",
+                    49,
+                    "Chứng khoán do các tổ chức kinh tế trong nước phát hành",
+                    [25, 26],
+                    _value(27, "203.556"),
+                ),
+                _mapping(600, "EQUITY", 49, "Chứng khoán vốn", [29], _value(30, "316.928")),
+                _mapping(
+                    602,
+                    "EQUITY_TCTD",
+                    49,
+                    "Chứng khoán vốn do các TCTD khác trong nước phát hành",
+                    [32],
+                    _value(33, "182.283"),
+                ),
+                _mapping(
+                    603,
+                    "EQUITY_DOMESTIC_TCKT",
+                    49,
+                    "Chứng khoán vốn do các TCKT khác trong nước phát hành",
+                    [35, 36],
+                    _value(37, "134.645"),
+                ),
+                _mapping(
+                    611,
+                    "GROSS",
+                    49,
+                    None,
+                    [],
+                    _value(39, "4.692.622"),
+                    topology="UNLABELED_TOTAL_AFTER_LAST_EQUITY_CHILD_BEFORE_PROVISION",
+                ),
+                _mapping(
+                    614, "PROVISION_GENERAL", 49, "Dự phòng chung", [42], _value(43, "(39.393)")
+                ),
+            ],
+            [
+                _equation(
+                    "DEBT_CHILDREN_TO_DEBT",
+                    49,
+                    [_value(20, "1.029.213"), _value(23, "3.142.925"), _value(27, "203.556")],
+                    _value(16, "4.375.694"),
+                ),
+                _equation(
+                    "EQUITY_CHILDREN_TO_EQUITY",
+                    49,
+                    [_value(33, "182.283"), _value(37, "134.645")],
+                    _value(30, "316.928"),
+                ),
+                _equation(
+                    "DEBT_EQUITY_TO_GROSS",
+                    49,
+                    [_value(16, "4.375.694"), _value(30, "316.928")],
+                    _value(39, "4.692.622"),
+                ),
+                _equation(
+                    "GROSS_PROVISION_TO_NET",
+                    49,
+                    [_value(39, "4.692.622"), _value(43, "(39.393)")],
+                    _value(45, "4.653.229"),
+                ),
+            ],
+            supplemental_views=[
+                _supplemental(50, "Tình trạng niêm yết của chứng khoán kinh doanh")
+            ],
+        ),
+        _annual_doc(
+            "VPB",
+            43,
+            "ISSUER_CLASSIFICATION_ROWS_X_PERIOD_COLUMNS",
+            [
+                _mapping(
+                    596,
+                    "DEBT_TCTD",
+                    43,
+                    "Chứng khoán nợ do các TCTD khác trong nước phát hành",
+                    [15, 16],
+                    _value(17, "5.445.000"),
+                ),
+                _mapping(
+                    597,
+                    "DEBT_DOMESTIC_TCKT",
+                    43,
+                    "Chứng khoán nợ do các TCKT khác trong nước phát hành",
+                    [19, 20, 21],
+                    _value(22, "13.346.313"),
+                ),
+                _mapping(
+                    602,
+                    "EQUITY_TCTD",
+                    43,
+                    "Chứng khoán vốn do các TCTD khác trong nước phát hành",
+                    [25, 26],
+                    _value(27, "695.515"),
+                ),
+                _mapping(
+                    603,
+                    "EQUITY_DOMESTIC_TCKT",
+                    43,
+                    "Chứng khoán vốn do các TCKT khác trong nước phát hành",
+                    [28, 29],
+                    _value(30, "4.645.559"),
+                ),
+                _mapping(
+                    611,
+                    "GROSS",
+                    43,
+                    None,
+                    [],
+                    _value(32, "24.132.387"),
+                    topology="UNLABELED_TOTAL_AFTER_LAST_EQUITY_CHILD_BEFORE_PROVISION",
+                ),
+                _mapping(
+                    612,
+                    "PROVISION",
+                    43,
+                    "Dự phòng rủi ro chứng khoán kinh doanh",
+                    [34],
+                    _value(35, "(172.266)"),
+                ),
+                _mapping(
+                    614, "PROVISION_GENERAL", 43, "Dự phòng chung", [37], _value(38, "(97.013)")
+                ),
+                _mapping(
+                    613,
+                    "PROVISION_PRICE_DECREASE",
+                    43,
+                    "Dự phòng giảm giá",
+                    [40],
+                    _value(41, "(75.253)"),
+                ),
+            ],
+            [
+                _equation(
+                    "ISSUER_CHILDREN_TO_GROSS",
+                    43,
+                    [
+                        _value(17, "5.445.000"),
+                        _value(22, "13.346.313"),
+                        _value(27, "695.515"),
+                        _value(30, "4.645.559"),
+                    ],
+                    _value(32, "24.132.387"),
+                ),
+                _equation(
+                    "PROVISION_DETAILS_TO_PROVISION",
+                    43,
+                    [_value(38, "(97.013)"), _value(41, "(75.253)")],
+                    _value(35, "(172.266)"),
+                ),
+                _equation(
+                    "GROSS_PROVISION_TO_NET",
+                    43,
+                    [_value(32, "24.132.387"), _value(35, "(172.266)")],
+                    _value(43, "23.960.121"),
+                ),
+            ],
+        ),
+        _annual_doc(
+            "HDB",
+            34,
+            "SPARSE_DEBT_ONLY_PRIMARY_VIEW_WITH_EMBEDDED_LISTING_SUPPLEMENT",
+            [
+                _mapping(
+                    594,
+                    "DEBT",
+                    34,
+                    "Chứng khoán Nợ",
+                    [76],
+                    _value(82, "490.537"),
+                    topology="TRAILING_PARENT_TOTAL_AFTER_LAST_DEBT_CHILD",
+                ),
+                _mapping(
+                    595, "DEBT_GOVERNMENT", 34, "Chứng khoán Chính phủ", [77], _value(78, "490.537")
+                ),
+                _mapping(
+                    596,
+                    "DEBT_TCTD",
+                    34,
+                    "Chứng khoán Nợ do các TCTD khác trong nước phát hành",
+                    [80],
+                    _dash_value(
+                        [1185, 1625, 1230, 1650],
+                        "5919a83db4cfb1347a29d721549724f89079a98dd848f3bfea1ebeaa8e91f046",
+                    ),
+                ),
+            ],
+            [
+                _equation(
+                    "DEBT_CHILDREN_TO_DEBT_WITH_VISIBLE_DASH_ZERO",
+                    34,
+                    [
+                        _value(78, "490.537"),
+                        _dash_value(
+                            [1185, 1625, 1230, 1650],
+                            "5919a83db4cfb1347a29d721549724f89079a98dd848f3bfea1ebeaa8e91f046",
+                        ),
+                    ],
+                    _value(82, "490.537"),
+                )
+            ],
+            supplemental_views=[
+                _supplemental(34, "Thuyết minh về tình trạng niêm yết của chứng khoán kinh doanh")
+            ],
+        ),
+        _annual_doc(
+            "VCB",
+            37,
+            "ISSUER_CLASSIFICATION_ROWS_X_PERIOD_COLUMNS",
+            [
+                _mapping(
+                    595, "DEBT_GOVERNMENT", 37, "Trái phiếu Chính phủ", [41], _value(42, "690.379")
+                ),
+                _mapping(
+                    596,
+                    "DEBT_TCTD",
+                    37,
+                    "Chứng khoán do các TCTD khác trong nước phát hành",
+                    [44],
+                    _value(45, "10.552.647"),
+                ),
+                _mapping(
+                    597,
+                    "DEBT_DOMESTIC_TCKT",
+                    37,
+                    "Chứng khoán do các TCKT trong nước phát hành",
+                    [47],
+                    _value(48, "373.333"),
+                ),
+                _mapping(
+                    602,
+                    "EQUITY_TCTD",
+                    37,
+                    "Chứng khoán vốn do các TCTD khác phát hành",
+                    [50],
+                    _value(51, "75.631"),
+                ),
+                _mapping(
+                    603,
+                    "EQUITY_DOMESTIC_TCKT",
+                    37,
+                    "Chứng khoán vốn do các TCKT trong nước phát hành",
+                    [53],
+                    _value(54, "208.010"),
+                ),
+                _mapping(
+                    611,
+                    "GROSS",
+                    37,
+                    None,
+                    [],
+                    _value(56, "11.900.000"),
+                    topology="UNLABELED_TOTAL_AFTER_LAST_EQUITY_CHILD_BEFORE_PROVISION",
+                ),
+                _mapping(
+                    612,
+                    "PROVISION",
+                    37,
+                    "Dự phòng giảm giá chứng khoán kinh doanh",
+                    [58],
+                    _value(59, "(67.423)"),
+                ),
+            ],
+            [
+                _equation(
+                    "ISSUER_CHILDREN_TO_GROSS",
+                    37,
+                    [
+                        _value(42, "690.379"),
+                        _value(45, "10.552.647"),
+                        _value(48, "373.333"),
+                        _value(51, "75.631"),
+                        _value(54, "208.010"),
+                    ],
+                    _value(56, "11.900.000"),
+                ),
+                _equation(
+                    "GROSS_PROVISION_TO_NET",
+                    37,
+                    [_value(56, "11.900.000"), _value(59, "(67.423)")],
+                    _value(61, "11.832.577"),
+                ),
+            ],
+        ),
+        _annual_doc(
+            "CTG",
+            41,
+            "ISSUER_CLASSIFICATION_WITH_OTHER_EQUITY_AND_PROVISION_DETAIL_SUBTABLE",
+            [
+                _mapping(594, "DEBT", 41, "Chứng khoán nợ", [12], _value(13, "2.512.065")),
+                _mapping(
+                    595,
+                    "DEBT_GOVERNMENT",
+                    41,
+                    "Chứng khoán Chính phủ, chính quyền địa phương",
+                    [15],
+                    _value(16, "1.528.994"),
+                ),
+                _mapping(
+                    596,
+                    "DEBT_TCTD",
+                    41,
+                    "Chứng khoán nợ do các TCTD khác trong nước phát hành",
+                    [18],
+                    _value(19, "891.907"),
+                ),
+                _mapping(
+                    597,
+                    "DEBT_DOMESTIC_TCKT",
+                    41,
+                    "Chứng khoán nợ do các tổ chức kinh tế trong nước phát hành",
+                    [21, 22],
+                    _value(23, "91.164"),
+                ),
+                _mapping(600, "EQUITY", 41, "Chứng khoán vốn", [25], _value(26, "482.086")),
+                _mapping(
+                    602,
+                    "EQUITY_TCTD",
+                    41,
+                    "Chứng khoán vốn do các TCTD khác phát hành",
+                    [28],
+                    _value(29, "207.994"),
+                ),
+                _mapping(
+                    603,
+                    "EQUITY_DOMESTIC_TCKT",
+                    41,
+                    "Chứng khoán vốn do các TCKT trong nước phát hành",
+                    [31],
+                    _value(32, "274.092"),
+                ),
+                _mapping(
+                    605, "EQUITY_OTHER", 41, "Chứng khoán vốn khác", [34], _value(35, "50.000")
+                ),
+                _mapping(
+                    611,
+                    "GROSS",
+                    41,
+                    None,
+                    [],
+                    _value(37, "3.044.151"),
+                    topology="UNLABELED_TOTAL_AFTER_OTHER_EQUITY_BEFORE_PROVISION",
+                ),
+                _mapping(
+                    612,
+                    "PROVISION",
+                    41,
+                    "Dự phòng rủi ro chứng khoán kinh doanh",
+                    [39],
+                    _value(40, "(101.720)"),
+                ),
+                _mapping(
+                    613,
+                    "PROVISION_PRICE_DECREASE",
+                    41,
+                    "Dự phòng giảm giá",
+                    [71],
+                    _value(72, "(100.441)"),
+                ),
+                _mapping(614, "PROVISION_GENERAL", 41, "Dự phòng chung", [74], _value(75, "(684)")),
+                _mapping(
+                    615, "PROVISION_SPECIFIC", 41, "Dự phòng cụ thể", [77], _value(78, "(595)")
+                ),
+            ],
+            [
+                _equation(
+                    "DEBT_CHILDREN_TO_DEBT",
+                    41,
+                    [_value(16, "1.528.994"), _value(19, "891.907"), _value(23, "91.164")],
+                    _value(13, "2.512.065"),
+                ),
+                _equation(
+                    "EQUITY_CORE_CHILDREN_TO_EQUITY",
+                    41,
+                    [_value(29, "207.994"), _value(32, "274.092")],
+                    _value(26, "482.086"),
+                ),
+                _equation(
+                    "DEBT_EQUITY_OTHER_TO_GROSS",
+                    41,
+                    [_value(13, "2.512.065"), _value(26, "482.086"), _value(35, "50.000")],
+                    _value(37, "3.044.151"),
+                ),
+                _equation(
+                    "PROVISION_DETAILS_TO_PROVISION",
+                    41,
+                    [_value(72, "(100.441)"), _value(75, "(684)"), _value(78, "(595)")],
+                    _value(40, "(101.720)"),
+                ),
+                _equation(
+                    "GROSS_PROVISION_TO_NET",
+                    41,
+                    [_value(37, "3.044.151"), _value(40, "(101.720)")],
+                    _value(42, "2.942.431"),
+                ),
+            ],
+            supplemental_views=[
+                _supplemental(
+                    42, "Thuyết minh về tình trạng niêm yết của các chứng khoán kinh doanh"
+                )
+            ],
+        ),
+        _annual_doc(
+            "BID",
+            40,
+            "ISSUER_CLASSIFICATION_ROWS_X_PERIOD_COLUMNS_WITH_PERCENTAGE_AUXILIARY",
+            [
+                _mapping(594, "DEBT", 40, "Chứng khoán Nợ", [54], _value(55, "29.068.526")),
+                _mapping(
+                    595,
+                    "DEBT_GOVERNMENT",
+                    40,
+                    "Chứng khoán Chính phủ, chính quyền địa phương",
+                    [57],
+                    _value(58, "508.999"),
+                ),
+                _mapping(
+                    596,
+                    "DEBT_TCTD",
+                    40,
+                    "Chứng khoán do các TCTD khác trong nước phát hành",
+                    [61, 64],
+                    _value(62, "27.710.613"),
+                ),
+                _mapping(
+                    597,
+                    "DEBT_DOMESTIC_TCKT",
+                    40,
+                    "Chứng khoán do các TCKT trong nước phát hành",
+                    [66],
+                    _value(67, "848.914"),
+                ),
+                _mapping(600, "EQUITY", 40, "Chứng khoán Vốn", [71], _value(72, "1.115.285")),
+                _mapping(
+                    602,
+                    "EQUITY_TCTD",
+                    40,
+                    "Chứng khoán Vốn do các TCTD khác trong nước phát hành",
+                    [75, 79],
+                    _value(76, "293.321"),
+                ),
+                _mapping(
+                    603,
+                    "EQUITY_DOMESTIC_TCKT",
+                    40,
+                    "Chứng khoán Vốn do các TCKT trong nước phát hành",
+                    [81, 84],
+                    _value(82, "821.568"),
+                ),
+                _mapping(
+                    604,
+                    "EQUITY_FOREIGN_TCKT",
+                    40,
+                    "Chứng khoán Vốn do các TCTD nước ngoài phát hành",
+                    [85, 88],
+                    _value(86, "396"),
+                ),
+                _mapping(
+                    612,
+                    "PROVISION",
+                    40,
+                    "Dự phòng rủi ro chứng khoán kinh doanh",
+                    [89],
+                    _value(90, "(31.347)"),
+                ),
+                _mapping(
+                    613,
+                    "PROVISION_PRICE_DECREASE",
+                    40,
+                    "Dự phòng giảm giá",
+                    [92],
+                    _value(93, "(24.980)"),
+                ),
+                _mapping(
+                    614, "PROVISION_GENERAL", 40, "Dự phòng chung", [95], _value(96, "(6.367)")
+                ),
+            ],
+            [
+                _equation(
+                    "DEBT_CHILDREN_TO_DEBT",
+                    40,
+                    [_value(58, "508.999"), _value(62, "27.710.613"), _value(67, "848.914")],
+                    _value(55, "29.068.526"),
+                ),
+                _equation(
+                    "EQUITY_CHILDREN_TO_EQUITY",
+                    40,
+                    [_value(76, "293.321"), _value(82, "821.568"), _value(86, "396")],
+                    _value(72, "1.115.285"),
+                ),
+                _equation(
+                    "PROVISION_DETAILS_TO_PROVISION",
+                    40,
+                    [_value(93, "(24.980)"), _value(96, "(6.367)")],
+                    _value(90, "(31.347)"),
+                ),
+                _equation(
+                    "DEBT_EQUITY_PROVISION_TO_NET",
+                    40,
+                    [_value(55, "29.068.526"), _value(72, "1.115.285"), _value(90, "(31.347)")],
+                    _value(99, "30.152.464"),
+                ),
+            ],
+        ),
+        _annual_doc(
+            "VIB",
+            None,
+            None,
+            [],
+            [],
+            disposition="BOUND_REPORT_FAMILY_ABSENT_DISTINCT_INVESTMENT_SECURITIES_NOT_RELABELED",
+        ),
+    ]
+
+
+def _annual_2025_review_blueprint() -> dict[str, Any]:
+    material = {
+        "claim_boundary": ANNUAL_2025_CLAIM_BOUNDARY,
+        "documents": _annual_2025_review_documents(),
+        "format_version": ANNUAL_2025_REVIEW_FORMAT,
+        "review_checks": list(_REVIEW_CHECKS),
+        "reviewer": {
+            "kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW",
+            "review_run_id": "E-0110",
+        },
+        "safety": canonical_clone_v1(_REVIEW_SAFETY),
+        "scan_id": ANNUAL_2025_EXPECTED_SCAN_ID,
+        "semantic_axis_sha256": ANNUAL_2025_EXPECTED_AXIS_SHA256,
+        "semantic_index_sha256": ANNUAL_2025_EXPECTED_INDEX_SHA256,
+        "state": "CODEX_PIXEL_REVIEW_COMPLETE",
+    }
+    return {
+        **material,
+        "review_id": "e0110:pixel-review:" + canonical_json_sha256_v1(material),
+    }
+
+
+def _annual_2025_review(value: Any) -> dict[str, Any]:
+    expected = _annual_2025_review_blueprint()
+    if not same_typed_json_v1(value, expected):
+        raise _error("annual-2025 Codex trading-securities pixel review differs from fixed ledger")
+    return canonical_clone_v1(expected)
+
+
 def _review_blueprint() -> dict[str, Any]:
     material = {
         "claim_boundary": CLAIM_BOUNDARY,
@@ -989,6 +1727,19 @@ def _artifact_bytes(reference: Any, label: str) -> bytes:
 
 def _source_line_axis(page: Mapping[str, Any]) -> list[str]:
     result = _strict_json(_artifact_bytes(page.get("result_ref"), "page result"), "page result")
+    provider_texts = result.get("rec_texts")
+    if provider_texts is not None:
+        if (
+            page.get("route") != "DOMINANT_RASTER_OCR"
+            or page.get("geometry_mode") != "PPOCRV6_BATCH_PROVIDER_LINE_GEOMETRY_V1"
+            or page.get("supplement_line_count") != 0
+            or type(page.get("primary_line_count")) is not int
+            or type(provider_texts) is not list
+            or len(provider_texts) != page["primary_line_count"]
+            or not all(type(text) is str for text in provider_texts)
+        ):
+            raise _error("raw provider source line axis drifted")
+        return list(provider_texts)
     lines = result.get("lines")
     if type(lines) is list and lines:
         texts = [line.get("raw_text") if type(line) is dict else None for line in lines]
@@ -1079,6 +1830,76 @@ def _source_value(
         "source_numeric_challenger": source_raw,
         "source_numeric_challenger_status": "MATCHED_VISIBLE_PIXEL_TRANSCRIPTION",
     }
+
+
+def _anchor_match(transformer_text: str, pixel_text: str, label: str) -> str:
+    transformer_without_qualifiers = re.sub(r"\([^)]*\)", " ", transformer_text)
+    pixel_without_qualifiers = re.sub(r"\([^)]*\)", " ", pixel_text)
+    transformer = normalize_vietnamese_anchor_v1(transformer_without_qualifiers)
+    pixel = normalize_vietnamese_anchor_v1(pixel_without_qualifiers)
+    if transformer and pixel and (transformer in pixel or pixel in transformer):
+        return "ACCENTLESS_CONTAINMENT_IN_COMPLETE_ORDERED_TOPOLOGY"
+    transformer_tokens = transformer.split()
+    pixel_tokens = pixel.split()
+    if abs(len(transformer_tokens) - len(pixel_tokens)) <= 1:
+        shorter, longer = sorted((transformer_tokens, pixel_tokens), key=lambda tokens: len(tokens))
+        cursor = 0
+        for token in longer:
+            if cursor < len(shorter) and token == shorter[cursor]:
+                cursor += 1
+        if cursor == len(shorter):
+            return "ONE_INSERTED_OR_DROPPED_TOKEN_IN_COMPLETE_ORDERED_TOPOLOGY"
+    kind = match_vietnamese_anchor_alias_v1(transformer_text, [pixel_text])
+    if kind is None:
+        raise _error(f"visible {label} and fresh VietOCR disagree beyond bounded anchor noise")
+    return kind
+
+
+def _pixel_dash_value(crop_page: Mapping[str, Any], value: Mapping[str, Any]) -> dict[str, Any]:
+    if (
+        type(value) is not dict
+        or set(value) != {"bbox", "kind", "pixel_rgb_sha256", "pixel_transcription"}
+        or value["kind"] != "AUTHENTICATED_RENDER_PIXEL_DASH"
+        or value["pixel_transcription"] != "-"
+        or type(value["bbox"]) is not list
+        or len(value["bbox"]) != 4
+        or any(type(coordinate) is not int for coordinate in value["bbox"])
+    ):
+        raise _error("authenticated visible DASH reference fields drifted")
+    payload = _artifact_bytes(crop_page.get("render_binding"), "page render")
+    image = Image.open(BytesIO(payload)).convert("RGB")
+    left, top, right, bottom = value["bbox"]
+    if not (0 <= left < right <= image.width and 0 <= top < bottom <= image.height):
+        raise _error("authenticated visible DASH bbox is out of bounds")
+    digest = hashlib.sha256(image.crop((left, top, right, bottom)).tobytes()).hexdigest()
+    if digest != _sha256(value["pixel_rgb_sha256"], "visible DASH crop"):
+        raise _error("authenticated visible DASH pixels drifted")
+    return {
+        "crop_ref": None,
+        "fresh_vietocr_numeric_proposal": None,
+        "normalized_value": 0,
+        "pixel_bbox": list(value["bbox"]),
+        "pixel_rgb_sha256": digest,
+        "pixel_transcription": "-",
+        "render_ref": canonical_clone_v1(crop_page["render_binding"]),
+        "source_line_index": None,
+        "source_numeric_challenger": None,
+        "source_numeric_challenger_status": (
+            "VISIBLE_AUTHENTICATED_PIXEL_DASH_NOT_DETECTED_AS_SOURCE_LINE_NORMALIZED_TO_ZERO"
+        ),
+    }
+
+
+def _annual_source_value(
+    axis_page: Mapping[str, Any],
+    semantic_page: Mapping[str, Any],
+    crop_page: Mapping[str, Any],
+    source_texts: Sequence[str],
+    value: Mapping[str, Any],
+) -> dict[str, Any]:
+    if type(value) is dict and value.get("kind") == "AUTHENTICATED_RENDER_PIXEL_DASH":
+        return _pixel_dash_value(crop_page, value)
+    return _source_value(axis_page, semantic_page, crop_page, source_texts, value)
 
 
 def _schema_binding(item: Any) -> dict[str, Any]:
@@ -1301,6 +2122,290 @@ def build_trading_securities_8bank_codex_verified_mapping_v1(
     )
 
 
+def _supplemental_anchor_check(
+    axis_document: Mapping[str, Any], supplemental: Mapping[str, Any]
+) -> dict[str, Any]:
+    if (
+        type(supplemental) is not dict
+        or set(supplemental) != {"anchor_pixel_transcription", "disposition", "physical_page"}
+        or supplemental["disposition"]
+        != "EXCLUDED_NONADDITIVE_SUPPLEMENTAL_TRADING_SECURITIES_VIEW"
+        or type(supplemental["physical_page"]) is not int
+        or type(supplemental["anchor_pixel_transcription"]) is not str
+    ):
+        raise _error("annual supplemental trading-view disposition fields drifted")
+    page = _page_by_number(
+        axis_document, supplemental["physical_page"], "supplemental trading view"
+    )
+    lines = page.get("lines")
+    if type(lines) is not list:
+        raise _error("supplemental trading-view line axis drifted")
+    pixel = supplemental["anchor_pixel_transcription"]
+    matches = []
+    for index in range(len(lines)):
+        for width in (1, 2):
+            if index + width > len(lines):
+                continue
+            surface = " ".join(
+                lines[offset]["vietocr_text"] for offset in range(index, index + width)
+            )
+            try:
+                kind = _anchor_match(surface, pixel, "supplemental trading-view anchor")
+            except TradingSecurities8BankCodexVerifiedMappingV1Error:
+                continue
+            matches.append(
+                {
+                    "anchor_match_kind": kind,
+                    "source_line_indices": list(range(index, index + width)),
+                    "vietocr_transformer_text": surface,
+                }
+            )
+    if not matches:
+        raise _error("reviewed supplemental trading-view anchor is absent")
+    best = min(
+        matches, key=lambda item: (len(item["source_line_indices"]), item["source_line_indices"])
+    )
+    return {**canonical_clone_v1(supplemental), **best}
+
+
+def build_annual_2025_trading_securities_8bank_codex_verified_mapping_v1(
+    semantic_index: Any,
+    crop_manifest: Any,
+    structure_scan: Any,
+    review_value: Any,
+    schema_authority: Mapping[str, Any],
+    schema_by_id: Mapping[int, Any],
+    *,
+    crop_manifest_sha256: str,
+    review_sha256: str,
+) -> dict[str, Any]:
+    """Build the audited consolidated annual-2025 trading-securities result."""
+
+    review = _annual_2025_review(review_value)
+    axis = project_full_document_vietocr_accounting_axis_v1(semantic_index)
+    if (
+        axis.get("semantic_axis_sha256") != ANNUAL_2025_EXPECTED_AXIS_SHA256
+        or structure_scan.get("scan_id") != ANNUAL_2025_EXPECTED_SCAN_ID
+        or structure_scan.get("state")
+        != "FULL_DOCUMENT_GENERALIZED_TRADING_SECURITIES_STRUCTURE_SCAN_COMPLETE"
+        or type(crop_manifest) is not dict
+    ):
+        raise _error("annual-2025 trading-securities input authority drifted")
+    _sha256(crop_manifest_sha256, "annual crop manifest")
+    _sha256(review_sha256, "annual pixel review")
+    trials: list[dict[str, Any]] = []
+    for ordinal, code in enumerate(EXPECTED_DOCUMENT_ORDER, 1):
+        reviewed = _document_by_code(review["documents"], code, "annual pixel review")
+        semantic_document = _document_by_code(
+            semantic_index.get("documents"), code, "annual semantic index"
+        )
+        axis_document = _document_by_code(axis["documents"], code, "annual fresh VietOCR axis")
+        crop_document = _document_by_code(
+            crop_manifest.get("documents"), code, "annual crop manifest"
+        )
+        scan_trial = _document_by_code(structure_scan.get("trials"), code, "annual structure scan")
+        matcher = scan_trial.get("matcher_result")
+        if scan_trial.get("document_ordinal") != ordinal or type(matcher) is not dict:
+            raise _error("annual whole-PDF trading-securities scan identity drifted")
+        page_number = reviewed["page_sequence"]
+        if page_number is None:
+            if (
+                matcher.get("status") != "UNRESOLVED_NO_COMPLETE_REGION"
+                or matcher.get("regions") != []
+                or reviewed["mappings"]
+                or reviewed["equations"]
+                or reviewed["supplemental_views_excluded"]
+                or reviewed["whole_document_family_absence_claim"] is not True
+            ):
+                raise _error("annual bound-report trading-securities absence drifted")
+            trials.append(
+                {
+                    "cluster_boundary": None,
+                    "document_ordinal": ordinal,
+                    "document_provenance": code,
+                    "disposition": reviewed["disposition"],
+                    "layout": None,
+                    "source_pdf_sha256": crop_document["source_pdf"]["sha256"],
+                    "source_period": reviewed["source_period"],
+                    "source_period_status": "VERIFIED_BOUND_ANNUAL_2025_REPORT",
+                    "status": "CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT",
+                    "supplemental_views_excluded": [],
+                    "verified_accounting_equations": [],
+                    "verified_mappings": [],
+                    "whole_document_family_absence_claim": True,
+                    "whole_document_uniqueness": canonical_clone_v1(matcher["uniqueness"]),
+                }
+            )
+            continue
+        if (
+            matcher.get("status") != "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+            or not same_typed_json_v1(
+                matcher.get("uniqueness"),
+                {"complete_region_count": 1, "status": "UNIQUE_FULL_MATCH"},
+            )
+            or type(matcher.get("regions")) is not list
+            or len(matcher["regions"]) != 1
+            or reviewed["whole_document_family_absence_claim"] is not False
+        ):
+            raise _error("annual whole-PDF trading-securities region is not exactly unique")
+        region = matcher["regions"][0]
+        meaningful_axes = region.get("layout", {}).get("meaningful_axes", {})
+        if (
+            region.get("page_sequence") != page_number
+            or region.get("layout", {}).get("row_order_preserved_from_pdf") is not True
+            or meaningful_axes.get("unit_header_count", 0) < 1
+            or meaningful_axes.get("period_header_count", 0) < 2
+            or reviewed["source_period"] != "2025-12-31"
+            or reviewed["comparison_period_excluded"] != "31/12/2024"
+        ):
+            raise _error("annual reviewed page/layout/period disagrees with generic graph")
+        axis_page = _page_by_number(axis_document, page_number, "annual fresh VietOCR axis")
+        semantic_page = _page_by_number(semantic_document, page_number, "annual semantic index")
+        crop_page = _page_by_number(crop_document, page_number, "annual crop manifest")
+        source_texts = _source_line_axis(crop_page)
+        mapped_rows = []
+        for row in reviewed["mappings"]:
+            label_lines = row["label_line_indices"]
+            if type(label_lines) is not list or any(
+                type(index) is not int for index in label_lines
+            ):
+                raise _error("annual reviewed trading label line axis drifted")
+            if not label_lines and not row["topology"].startswith("UNLABELED_TOTAL"):
+                raise _error("only topology-bound annual totals may omit a visible label")
+            transformer_text = [
+                _axis_line(axis_page, index)["vietocr_text"] for index in label_lines
+            ]
+            anchor_kind = None
+            if transformer_text:
+                anchor_kind = _anchor_match(
+                    " ".join(transformer_text),
+                    row["label_pixel_transcription"],
+                    "annual trading-securities row label",
+                )
+            source_value = _annual_source_value(
+                axis_page, semantic_page, crop_page, source_texts, row["value"]
+            )
+            schema = _schema_binding(schema_by_id.get(row["report_norm_id"]))
+            mapped_rows.append(
+                {
+                    **schema,
+                    "anchor_match_kind": anchor_kind,
+                    "independent_pixel_label": row["label_pixel_transcription"],
+                    "normalized_anchor": (
+                        normalize_vietnamese_anchor_v1(" ".join(transformer_text))
+                        if transformer_text
+                        else None
+                    ),
+                    "normalized_value": source_value["normalized_value"],
+                    "physical_page": page_number,
+                    "role": row["role"],
+                    "source_value": source_value,
+                    "status": "VERIFIED_BY_CODEX",
+                    "topology": row["topology"],
+                    "vietocr_transformer_text": transformer_text,
+                }
+            )
+        equations = []
+        for equation in reviewed["equations"]:
+            components = [
+                _annual_source_value(axis_page, semantic_page, crop_page, source_texts, value)
+                for value in equation["component_values"]
+            ]
+            total = _annual_source_value(
+                axis_page,
+                semantic_page,
+                crop_page,
+                source_texts,
+                equation["visible_total"],
+            )
+            computed = sum(item["normalized_value"] for item in components)
+            if computed != total["normalized_value"]:
+                raise _error(
+                    f"annual trading-securities accounting equation does not close: {code}"
+                )
+            equations.append(
+                {
+                    "computed_total": computed,
+                    "name": equation["name"],
+                    "physical_page": page_number,
+                    "status": "CORROBORATED_EXACT",
+                    "visible_total": total["normalized_value"],
+                }
+            )
+        supplemental = [
+            _supplemental_anchor_check(axis_document, item)
+            for item in reviewed["supplemental_views_excluded"]
+        ]
+        trials.append(
+            {
+                "cluster_boundary": canonical_clone_v1(region["cluster_boundary"]),
+                "document_ordinal": ordinal,
+                "document_provenance": code,
+                "disposition": reviewed["disposition"],
+                "layout": canonical_clone_v1(region["layout"]),
+                "source_pdf_sha256": crop_document["source_pdf"]["sha256"],
+                "source_period": reviewed["source_period"],
+                "source_period_status": "VERIFIED_SOURCE_PERIOD_ANNUAL_2025",
+                "status": "VERIFIED_BY_CODEX",
+                "supplemental_views_excluded": supplemental,
+                "verified_accounting_equations": equations,
+                "verified_mappings": mapped_rows,
+                "visible_page_render_binding": canonical_clone_v1(crop_page["render_binding"]),
+                "whole_document_family_absence_claim": False,
+                "whole_document_uniqueness": canonical_clone_v1(matcher["uniqueness"]),
+            }
+        )
+    metrics = {
+        "accounting_equation_verified_count": sum(
+            len(trial["verified_accounting_equations"]) for trial in trials
+        ),
+        "authenticated_pixel_dash_zero_count": sum(
+            mapping["source_value"]["source_numeric_challenger_status"].startswith(
+                "VISIBLE_AUTHENTICATED_PIXEL_DASH"
+            )
+            for trial in trials
+            for mapping in trial["verified_mappings"]
+        ),
+        "bound_report_absence_document_count": sum(
+            trial["status"] == "CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT" for trial in trials
+        ),
+        "document_count": len(trials),
+        "document_unique_region_count": sum(
+            trial["whole_document_uniqueness"]["complete_region_count"] == 1 for trial in trials
+        ),
+        "mapping_verified_count": sum(len(trial["verified_mappings"]) for trial in trials),
+        "supplemental_view_excluded_count": sum(
+            len(trial["supplemental_views_excluded"]) for trial in trials
+        ),
+        "unresolved_document_count": sum(trial["status"] == "UNRESOLVED" for trial in trials),
+    }
+    material = {
+        "authority": canonical_clone_v1(_AUTHORITY),
+        "claim_boundary": ANNUAL_2025_CLAIM_BOUNDARY,
+        "format_version": ANNUAL_2025_FORMAT_VERSION,
+        "input_refs": {
+            "codex_pixel_review": {
+                "path": ANNUAL_2025_REVIEW_PATH.as_posix(),
+                "sha256": review_sha256,
+            },
+            "crop_manifest_sha256": crop_manifest_sha256,
+            "semantic_axis_sha256": axis["semantic_axis_sha256"],
+            "semantic_index_sha256": ANNUAL_2025_EXPECTED_INDEX_SHA256,
+            "structure_scan_id": structure_scan["scan_id"],
+            "tm_schema_authority": canonical_clone_v1(schema_authority),
+        },
+        "metrics": metrics,
+        "state": "ANNUAL_2025_TRADING_SECURITIES_8BANK_CODEX_VERIFICATION_COMPLETE",
+        "trials": trials,
+    }
+    return _validate_annual_2025_result(
+        {
+            **material,
+            "result_id": "annual2025ts8bcv1:result:" + canonical_json_sha256_v1(material),
+        }
+    )
+
+
 def _validate_result(value: Any) -> dict[str, Any]:
     if type(value) is not dict or set(value) != _RESULT_FIELDS:
         raise _error("verified trading-securities result fields drifted")
@@ -1317,6 +2422,25 @@ def _validate_result(value: Any) -> dict[str, Any]:
     identity = material.pop("result_id")
     if identity != "ts8bcv1:result:" + canonical_json_sha256_v1(material):
         raise _error("verified trading-securities result identity drifted")
+    return canonical_clone_v1(value)
+
+
+def _validate_annual_2025_result(value: Any) -> dict[str, Any]:
+    if type(value) is not dict or set(value) != _RESULT_FIELDS:
+        raise _error("annual verified trading-securities result fields drifted")
+    if (
+        value["format_version"] != ANNUAL_2025_FORMAT_VERSION
+        or value["claim_boundary"] != ANNUAL_2025_CLAIM_BOUNDARY
+        or value["state"] != "ANNUAL_2025_TRADING_SECURITIES_8BANK_CODEX_VERIFICATION_COMPLETE"
+        or not same_typed_json_v1(value["authority"], _AUTHORITY)
+        or type(value["trials"]) is not list
+        or len(value["trials"]) != 8
+    ):
+        raise _error("annual verified trading-securities identity/authority drifted")
+    material = canonical_clone_v1(value)
+    identity = material.pop("result_id")
+    if identity != "annual2025ts8bcv1:result:" + canonical_json_sha256_v1(material):
+        raise _error("annual verified trading-securities result identity drifted")
     return canonical_clone_v1(value)
 
 
@@ -1338,6 +2462,29 @@ def build_live_trading_securities_8bank_codex_verified_mapping_v1() -> dict[str,
     )
 
 
+def build_live_annual_2025_trading_securities_8bank_codex_verified_mapping_v1() -> dict[str, Any]:
+    semantic_index, _ = _fixed_json(
+        ANNUAL_2025_SEMANTIC_INDEX_PATH, ANNUAL_2025_EXPECTED_INDEX_SHA256
+    )
+    crop_manifest, crop_bytes = _fixed_json(
+        ANNUAL_2025_CROP_MANIFEST_PATH,
+        ANNUAL_2025_EXPECTED_CROP_MANIFEST_SHA256,
+    )
+    review_value, review_bytes = _fixed_json(ANNUAL_2025_REVIEW_PATH)
+    scan = _scanner().build_generalized_trading_securities_full_document_scan_v2(semantic_index)
+    schema_authority, schema_by_id = _authority_snapshot(PROJECT_ROOT)
+    return build_annual_2025_trading_securities_8bank_codex_verified_mapping_v1(
+        semantic_index,
+        crop_manifest,
+        scan,
+        review_value,
+        schema_authority,
+        schema_by_id,
+        crop_manifest_sha256=hashlib.sha256(crop_bytes).hexdigest(),
+        review_sha256=hashlib.sha256(review_bytes).hexdigest(),
+    )
+
+
 def validate_trading_securities_8bank_codex_verified_mapping_replay_v1(
     value: Any,
 ) -> dict[str, Any]:
@@ -1348,18 +2495,33 @@ def validate_trading_securities_8bank_codex_verified_mapping_replay_v1(
     return rebuilt
 
 
+def validate_annual_2025_trading_securities_8bank_codex_verified_mapping_replay_v1(
+    value: Any,
+) -> dict[str, Any]:
+    persisted = _validate_annual_2025_result(value)
+    rebuilt = build_live_annual_2025_trading_securities_8bank_codex_verified_mapping_v1()
+    if not same_typed_json_v1(persisted, rebuilt):
+        raise _error("annual verified trading-securities result does not replay exactly")
+    return rebuilt
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--annual-2025", action="store_true")
     parser.add_argument("--write-review", action="store_true")
-    parser.add_argument("--output", type=Path, default=RESULT_PATH)
+    parser.add_argument("--output", type=Path)
     parser.add_argument("--replace", action="store_true")
     args = parser.parse_args()
     if args.write_review:
-        output = REVIEW_PATH
-        value = _review_blueprint()
+        output = ANNUAL_2025_REVIEW_PATH if args.annual_2025 else REVIEW_PATH
+        value = _annual_2025_review_blueprint() if args.annual_2025 else _review_blueprint()
     else:
-        output = args.output
-        value = build_live_trading_securities_8bank_codex_verified_mapping_v1()
+        output = args.output or (ANNUAL_2025_RESULT_PATH if args.annual_2025 else RESULT_PATH)
+        value = (
+            build_live_annual_2025_trading_securities_8bank_codex_verified_mapping_v1()
+            if args.annual_2025
+            else build_live_trading_securities_8bank_codex_verified_mapping_v1()
+        )
     if output.exists() and not args.replace:
         raise _error(f"refusing to overwrite fixed trading-securities artifact: {output}")
     output.parent.mkdir(parents=True, exist_ok=True)

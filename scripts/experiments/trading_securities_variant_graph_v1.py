@@ -328,14 +328,20 @@ def _value_proposals(
     return sorted(result, key=lambda item: (item["bbox"][0], item["source_line_index"]))
 
 
-def _events(lines: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+def _events(
+    lines: Sequence[Mapping[str, Any]], *, generalized: bool = False
+) -> list[dict[str, Any]]:
     events: list[dict[str, Any]] = []
     active_parent: str | None = None
     for line in lines:
         text = line["normalized_text"]
-        parent = _parent_role(text)
+        generalized_other_child = generalized and text in {
+            "chung khoan no khac",
+            "chung khoan von khac",
+        }
+        parent = None if generalized_other_child else _parent_role(text)
         detail = _provision_detail_role(text)
-        child = _child_role(text)
+        child = "OTHER" if generalized_other_child else _child_role(text)
         if parent is not None:
             active_parent = parent
             role_kind = "PARENT"
@@ -461,8 +467,18 @@ def _candidate_pages(
     result = []
     for page in pages:
         lines = page["lines"]
+
+        def is_owner(text: str) -> bool:
+            # In generalized notes a visibly labelled total such as
+            # ``Tổng chứng khoán kinh doanh`` is part of the current table,
+            # never the beginning of a second family region.  Keep V1 byte-for-
+            # byte compatible while closing that boundary only for V2.
+            return _owner(text) and not (
+                generalized and text.startswith("tong chung khoan kinh doanh")
+            )
+
         owner_positions = [
-            position for position, line in enumerate(lines) if _owner(line["normalized_text"])
+            position for position, line in enumerate(lines) if is_owner(line["normalized_text"])
         ]
         for position in owner_positions:
             first_parent_position = next(
@@ -480,13 +496,13 @@ def _candidate_pages(
             stop = len(lines)
             for offset in range(first_parent_position + 1, len(lines)):
                 if _section_break(lines[offset]["normalized_text"]) or (
-                    stop_at_next_owner and _owner(lines[offset]["normalized_text"])
+                    stop_at_next_owner and is_owner(lines[offset]["normalized_text"])
                 ):
                     stop = offset
                     break
             region_lines = lines[position:stop]
             axis_context_lines = lines[max(0, position - 2) : stop]
-            events = _events(region_lines)
+            events = _events(region_lines, generalized=generalized)
             parents = [event for event in events if event["role_kind"] == "PARENT"]
             result.append(
                 {

@@ -315,14 +315,14 @@ def test_annual_2025_generalized_scan_locks_sparse_and_supplemental_variants() -
     result = scanner.build_generalized_trading_securities_full_document_scan_v2(semantic_index)
 
     assert result["scan_id"] == (
-        "tsfdsv2:scan:c40d3e078aeb11986a71fb6eaa4edf23e75a4a599db36aac263dd2a405eb2e6b"
+        "tsfdsv2:scan:169ad3c84779004af91459b032add1bdafd333e8bca3c1cf9b6848d4948be0d1"
     )
     assert result["metrics"] == {
         "accepted_numeric_graph_count": 0,
         "document_count": 8,
         "document_unique_structural_match_count": 7,
         "mapping_verified_count": 0,
-        "near_region_count": 255,
+        "near_region_count": 254,
         "trading_securities_region_count": 7,
         "unresolved_document_count": 1,
     }

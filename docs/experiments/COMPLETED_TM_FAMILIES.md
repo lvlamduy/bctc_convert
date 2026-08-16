@@ -54,18 +54,17 @@ Quy ước:
 
 ## 4. Chứng khoán kinh doanh
 
-- **Đã xác minh:** ACB p16, MBB p31, VPB p40, HDB p24, VCB p30, CTG p37 và
-  BID p20. Đã map 58 dòng chứng khoán nợ/vốn, nhánh tổ chức hoặc niêm
-  yết/chưa niêm yết, khoản khác, tổng gộp và dự phòng; 20 phương trình
-  cha–con, gross–dự phòng–net đóng chính xác. MBB dùng biến thể niêm
-  yết/chưa niêm yết; sáu bank còn lại dùng biến thể theo tổ chức phát hành.
-- **Không có vùng `Chứng khoán kinh doanh` hoàn chỉnh trong phạm vi PDF:**
-  VIB. Đây không phải tuyên bố VIB không có family chứng khoán nói chung vì
-  VIB có `Chứng khoán đầu tư sẵn sàng để bán` tại p36, đã xử lý riêng ở mục 16.
-- **Còn thiếu:** Không còn khoản mục trading chờ map.
-
-Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
-Q1/2026, không relabel thành Q2/2026.
+- **Đã xác minh trên BCTC hợp nhất kiểm toán năm 2025:** ACB p47, MBB p49,
+  VPB p43, HDB p34, VCB p37, CTG p41 và BID p40. Đã map 58 dòng chứng khoán
+  nợ/vốn, nhánh tổ chức phát hành, khoản khác, tổng và dự phòng; 21 phương
+  trình cha–con, gross–dự phòng–net đóng chính xác. HDB là biến thể sparse chỉ
+  có chứng khoán nợ; dấu `-` hiện kỳ của nhánh TCTD được bind từ pixel và
+  chuẩn hóa thành 0.
+- **Không có trong BCTC annual-2025 đã bind:** VIB. VIB có family riêng
+  `Chứng khoán đầu tư sẵn sàng để bán`, không bị relabel thành trading.
+- **Còn thiếu:** Không còn khoản mục trading chờ map. Bốn bảng tình trạng
+  niêm yết tại ACB p48, MBB p50, HDB p34 và CTG p42 là các view phụ không cộng
+  thêm, đã được giữ làm đối chứng chống double count.
 
 ## 5. Công cụ tài chính phái sinh và tài sản/công nợ tài chính khác
 
@@ -908,7 +907,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Tiền, kim loại quý, đá quý | ✓ p45 | ✓ p46 | ✓ p41 | ✓ p33 | ✓ p35 | ✓ p39 | ✓ p39 | ✓ p35 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025 |
 | Tiền gửi tại NHNN | ✓ p45 | ✓ p46 | ✓ p41 | ✓ p33 | ✓ p35 | ✓ p39 | ✓ p39 | ✓ p35 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; Lào/Campuchia → 574 |
 | Tiền gửi/vay TCTD khác | ✓ p46 | ✓ p48 | ✓ p42 | ✓ p34 | ✓ p36 | ✓ p40 | ✓ p39 | ✓ p36 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025 |
-| Chứng khoán kinh doanh | ✓ p16 | ✓ p31 | ✓\* p40 | ✓ p24 | ✓ p30 | ✓ p37 | ✓ p20 | — | 0 dòng trading; AFS VIB ở cụm Chứng khoán đầu tư; VPB là nguồn Q1 |
+| Chứng khoán kinh doanh | ✓ p47 | ✓ p49 | ✓ p43 | ✓ p34 | ✓ p37 | ✓ p41 | ✓ p40 | — | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; VIB chỉ có family đầu tư |
 | Công cụ tài chính phái sinh | ✓ p17 | ✓ p43 | ✓\* p41 | ✓ p25 | — | ✓ p38 | ✓ p21 | ✓ p32 | 0 dòng; VCB xác nhận không có cụm; VPB là nguồn Q1 |
 | Loại hình cho vay | ✓ p17 | ✓ p31 | ✓ p42 | ✓ p26 | ✓ p30 | ✓ p38 | ✓ p22 | ✓ p33 | 0 |
 | Ngành nghề kinh doanh | — | ✓ p33 | ✓ p44 | ✓ p27 | — | — | ✓ p22 | ✓ p33 | 0 trong 5 vùng; 3 bank không có |

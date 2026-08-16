@@ -47,6 +47,15 @@ bind từ pixel rồi chuẩn hóa 0. VietOCR HDB `27.921.364` được ảnh g�
 nguồn và phép cộng bác bỏ thành `27.921.384`. Dự phòng tổng tại MBB/VCB/BID
 được map vào 5718. Đây đều là đối chứng đã đóng, không phải dòng OPEN.
 
+E-0110 `Chứng khoán kinh doanh` trên tám BCTC hợp nhất kiểm toán năm 2025
+không bổ sung dòng OPEN: whole-PDF graph tìm đúng một vùng tại ACB p47, MBB
+p49, VPB p43, HDB p34, VCB p37, CTG p41 và BID p40; VIB được xác nhận không
+có family trading trong đúng báo cáo đã bind và family chứng khoán đầu tư của
+VIB không bị relabel. 58 mapping và 21 phương trình đóng chính xác. Dấu `-`
+hiện kỳ của HDB được bind từ pixel rồi chuẩn hóa 0. Bốn view tình trạng niêm
+yết tại ACB/MBB/HDB/CTG được giữ làm đối chứng không cộng trùng. Đây là family
+đã đóng, không tạo candidate hoặc dòng OPEN mới.
+
 E-0079 `Thu nhập lãi và các khoản thu nhập tương tự` không bổ sung dòng OPEN:
 cả tám vùng duy nhất đã map hết các dòng nguồn vào 1143–1150. Hai lỗi mất chữ
 số đầu của VietOCR tại VIB được trục số nguồn/PaddleOCR và pixel bác bỏ, nên là
