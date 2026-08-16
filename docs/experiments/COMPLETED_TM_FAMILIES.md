@@ -747,6 +747,20 @@ Q1/2026, không relabel thành Q2/2026.
 | ACB | 26 | Tiền lương bình quân | Số nguồn là bình quân mỗi nhân viên cho cả kỳ sáu tháng, trong khi 1267 là bình quân người/tháng. |
 | ACB | 26 | Thu nhập bình quân | Số nguồn là bình quân mỗi nhân viên cho cả kỳ sáu tháng, trong khi 1268 là bình quân người/tháng. |
 
+## 43. Tình hình thực hiện nghĩa vụ với ngân sách nhà nước
+
+- **Đã map/xác minh:** ACB p22, MBB p49, VPB p58, HDB p32, CTG p43,
+  BID p26 và VIB p47. Đã map 33 khoản mục/147 ô số vào 1269–1279 và kiểm
+  tra 37 phương trình cuốn chiếu hoặc đối chiếu phải nộp/phải thu. HDB dùng
+  thêm trục tăng do hợp nhất kinh doanh; CTG tách số cuối kỳ thành phải nộp,
+  phải thu và số thuần. VPB là nguồn Q1/2026.
+- **Không có cụm thuyết minh chi tiết trong báo cáo:** VCB.
+- **Còn thiếu:**
+
+| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | ---: | --- | --- |
+| HDB | 32 | Tiền thuê đất | Không đồng nhất với 1277 `Thuế nhà - đất`; schema 1269–1279 chưa có leaf riêng. |
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -797,3 +811,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Tiền và các khoản tương đương tiền | ✓ p8 | ✓ p50 | ✓\* p66 | — | ✓ p40 | ✓ p47 | — | ✓ p45 | 0 dòng; 31 mapping, 60 ô số, 12 phương trình; 2 ô trống giữ nguyên; HDB/BID không có note chi tiết; VPB là nguồn Q1 |
 | Mua mới và thanh lý các công ty con | — | — | — | — | — | — | — | — | 0 dòng; cả 8 PDF không có bảng chi tiết 1255–1258; HDB/CTG có đối chứng giao dịch/cash-flow nhưng thiếu ba dòng bắt buộc |
 | Thu nhập nhân viên | ✓\* p26 | — | ✓\* p66 | — | — | — | — | ✓ p49 | 2 dòng ACB OPEN; 13 mapping, 26 ô số, 14 phương trình; 5 bank không có note chi tiết; VPB là nguồn Q1 |
+| Nghĩa vụ với ngân sách nhà nước | ✓ p22 | ✓ p49 | ✓\* p58 | ✓\* p32 | — | ✓ p43 | ✓ p26 | ✓ p47 | 1 dòng HDB OPEN; 33 mapping, 147 ô số, 37 phương trình; 13 DASH→0; VCB không có note chi tiết; VPB là nguồn Q1 |

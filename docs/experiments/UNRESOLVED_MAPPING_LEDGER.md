@@ -17,7 +17,7 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **153 entries**.  Current open queue: **54**.  Closed history:
+Ledger total: **154 entries**.  Current open queue: **55**.  Closed history:
 **40** row/graph resolutions and **59** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
@@ -144,10 +144,20 @@ bình quân mỗi nhân viên cho toàn kỳ sáu tháng, không phải bình qu
 người/tháng như 1267/1268. MBB/HDB/VCB/CTG/BID không có bảng thu nhập nhân
 viên chi tiết trong các PDF đã bind.
 
+E-0095 `Tình hình thực hiện nghĩa vụ với ngân sách nhà nước` quét đủ 453
+trang và tìm đúng một vùng tại ACB p22, MBB p49, VPB p58, HDB p32, CTG p43,
+BID p26 và VIB p47. 33 mapping/147 ô số và 37 phương trình đã
+`VERIFIED_BY_CODEX`. HDB dùng thêm trục tăng do hợp nhất; CTG tách phải nộp,
+phải thu và số thuần cuối kỳ. 13 dấu gạch chỉ được chuẩn hóa thành 0 sau khi
+xem pixel. SBO-001 còn OPEN vì `Tiền thuê đất` không đồng nhất với `Thuế nhà -
+đất` và chưa có leaf riêng. VCB là bounded detailed-note absence; VPB giữ đúng
+kỳ Q1/2026.
+
 ## Open review queue (always first)
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
 | --- | --- | --- | ---: | --- | --- |
+| SBO-001 | Nghĩa vụ với ngân sách nhà nước | HDB | 32 | Tiền thuê đất | Không đồng nhất với 1277 `Thuế nhà - đất`; family 1269–1279 chưa có leaf riêng. Giá trị nguồn vẫn nằm trong tổng đã xác minh. |
 | EI-001 | Thu nhập nhân viên | ACB | 26 | Tiền lương bình quân | Số `90 / 86` bằng quỹ lương chia số nhân viên cho cả kỳ, không chia tiếp sáu tháng; không ép vào 1267 `Lương bình quân người/tháng`. |
 | EI-002 | Thu nhập nhân viên | ACB | 26 | Thu nhập bình quân | Số `243 / 247` bằng tổng thu nhập chia số nhân viên cho cả kỳ, không chia tiếp sáu tháng; không ép vào 1268 `Thu nhập bình quân người/tháng`. |
 | TAX-001 | Chi phí thuế thu nhập doanh nghiệp | VIB | 48 | Điều chỉnh khác | Nhãn rộng hơn leaf 5733; kỳ hiện tại để trống và không được coi là 0, kỳ so sánh `163` vẫn tham gia phương trình tổng thuế hiện hành đã xác minh. |
@@ -250,6 +260,21 @@ page or note identifier participates in this decision.
 | CEQ-001–CEQ-002 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; HDB/BID không có bảng chi tiết tiền và tương đương tiền 1248–1254 trong PDF đã bind; số dư lưu chuyển tiền tệ và diễn giải chính sách là đối chứng âm |
 | SAD-001–SAD-008 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; cả tám PDF không có bảng chi tiết 1255–1258. Giao dịch HDS của HDB và caption dòng tiền CTG được giữ làm đối chứng, không bị relabel |
 | EI-001–EI-002 | `OPEN_SCHEMA_PERIOD_SEMANTICS_GAP`; các dòng ACB là bình quân mỗi nhân viên cho toàn kỳ sáu tháng, còn schema 1267/1268 quy định bình quân người/tháng. Giá trị và phương trình tỷ lệ nguồn được giữ đầy đủ nhưng không map |
+| SBO-001 | `OPEN_SCHEMA_GAP`; HDB `Tiền thuê đất` không bị ép vào 1277 `Thuế nhà - đất`; dòng nguồn vẫn được giữ trong tổng family và phương trình nguồn đã xác minh |
+
+## State-budget obligations (`STATE_BUDGET_OBLIGATIONS`)
+
+Current exact-replay result:
+`docs/experiments/E-0095-state-budget-obligations-8bank-codex-verified-mapping-v1.json`
+
+- One whole-PDF graph finds one unique detailed region at ACB p22, MBB p49,
+  VPB p58, HDB p32, CTG p43, BID p26 and VIB p47; VCB has no detailed note in
+  the supplied report.
+- 33 mappings, 147 value cells and 37 roll-forward/net equations are
+  independently verified. Thirteen visible dashes are retained as pixel-bound
+  zeroes. VPB is explicitly Q1/2026.
+- **SBO-001 — OPEN:** HDB `Tiền thuê đất` has no exact leaf under 1269–1279
+  and is not silently collapsed into house-land tax.
 
 ## Employee income (`EMPLOYEE_INCOME`)
 
