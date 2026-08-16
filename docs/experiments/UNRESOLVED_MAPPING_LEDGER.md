@@ -17,8 +17,8 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **161 entries**.  Current open queue: **62**.  Closed history:
-**40** row/graph resolutions and **59** confirmed bound-report family absences.
+Ledger total: **177 entries**.  Current open queue: **75**.  Closed history:
+**40** row/graph resolutions and **62** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
@@ -172,10 +172,31 @@ chỉ là source-presentation reconciliation chứ không phải accounting iden
 BPA-002/BPA-003 giữ hai hàng GTCG chung của VIB thay vì ép vào chứng khoán kinh
 doanh/đầu tư khi PDF không in phân rã. VPB giữ đúng kỳ Q1/2026.
 
+E-0098 `Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra` quét đủ 453 trang và tìm
+đúng một note chi tiết tại ACB p26, MBB p51, VPB p68, CTG p48 và VIB p50.
+47 mapping/92 ô số và 34 phương trình đã `VERIFIED_BY_CODEX`. VIB map cột
+giá trị thuần sau ký quỹ; cột gộp và ký quỹ được giữ làm accounting controls.
+CL-001–CL-005 và CL-007–CL-014 còn OPEN vì là các leaf L/C, ký quỹ, bảo lãnh
+chi tiết, swap lãi suất hoặc `Trong đó` chưa có schema tương đương. HDB/VCB/BID
+chỉ có bảng B02a và là bounded detailed-note absence; VPB giữ đúng kỳ Q1/2026.
+
 ## Open review queue (always first)
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
 | --- | --- | --- | ---: | --- | --- |
+| CL-001 | Nghĩa vụ nợ tiềm ẩn/cam kết | ACB | 26 | Thư tín dụng trả ngay | Parent 1295 chưa có leaf L/C trả ngay; số vẫn đóng đúng L/C thuần. |
+| CL-002 | Nghĩa vụ nợ tiềm ẩn/cam kết | ACB | 26 | Thư tín dụng trả chậm | Parent 1295 chưa có leaf L/C trả chậm; số vẫn đóng đúng L/C thuần. |
+| CL-003 | Nghĩa vụ nợ tiềm ẩn/cam kết | ACB | 26 | Trừ: tiền ký quỹ (L/C) | Đây là trục khấu trừ để ra L/C thuần, không phải leaf giá trị hiện có. |
+| CL-004 | Nghĩa vụ nợ tiềm ẩn/cam kết | ACB | 26 | Bảo lãnh khác (dòng con) | Dòng con lặp lại tên parent `Bảo lãnh khác`; chưa có leaf riêng để không map hai lần vào 1300. |
+| CL-005 | Nghĩa vụ nợ tiềm ẩn/cam kết | ACB | 26 | Trừ: tiền ký quỹ (bảo lãnh) | Trục khấu trừ đóng đúng parent bảo lãnh nhưng chưa có leaf schema. |
+| CL-007 | Nghĩa vụ nợ tiềm ẩn/cam kết | VPB | 68 | Trừ: tiền ký quỹ (L/C) | Trục khấu trừ đóng đúng L/C thuần nhưng chưa có leaf schema. |
+| CL-008 | Nghĩa vụ nợ tiềm ẩn/cam kết | VPB | 68 | Cam kết bảo lãnh khác | Dòng con nằm trong parent `Bảo lãnh khác`; chưa có leaf riêng để tránh double mapping. |
+| CL-009 | Nghĩa vụ nợ tiềm ẩn/cam kết | VPB | 68 | Trừ: tiền ký quỹ (bảo lãnh) | Trục khấu trừ đóng đúng parent bảo lãnh nhưng chưa có leaf schema. |
+| CL-010 | Nghĩa vụ nợ tiềm ẩn/cam kết | VPB | 68 | Cam kết hoán đổi lãi suất tiền tệ chéo — nhận | Schema hoán đổi tiền tệ 1302/5743–5744 chưa có leaf swap lãi suất chéo nhận. |
+| CL-011 | Nghĩa vụ nợ tiềm ẩn/cam kết | VPB | 68 | Cam kết hoán đổi lãi suất tiền tệ chéo — trả | Schema chưa có leaf swap lãi suất chéo trả. |
+| CL-012 | Nghĩa vụ nợ tiềm ẩn/cam kết | VPB | 68 | Cam kết hoán đổi lãi suất một đồng tiền | Schema chưa có leaf swap lãi suất một đồng tiền. |
+| CL-013 | Nghĩa vụ nợ tiềm ẩn/cam kết | VPB | 68 | Cam kết khác (dòng con) | Dòng con lặp tên parent 1304; giữ trong phương trình parent, không map hai lần. |
+| CL-014 | Nghĩa vụ nợ tiềm ẩn/cam kết | VPB | 68 | Trong đó: hạn mức tín dụng chưa sử dụng có thể hủy ngang | Dòng `Trong đó` là non-additive và chưa có leaf riêng. |
 | BPA-001 | Tài sản/GTCG ngân hàng đem thế chấp, cầm cố, chiết khấu | VPB | 67 | Giấy tờ có giá đưa đi thế chấp, cầm cố | Parent gộp bằng hai con “Trong đó”, nhưng tổng nguồn lại cộng parent và hai con lần nữa; giữ source-only, không biến hierarchy double-count thành accounting identity. |
 | BPA-002 | Tài sản/GTCG ngân hàng đem thế chấp, cầm cố, chiết khấu | VIB | 49 | Giấy tờ có giá đưa đi thế chấp, cầm cố | Nguồn không tách chứng khoán kinh doanh/đầu tư nên không ép vào 1290/1291. |
 | BPA-003 | Tài sản/GTCG ngân hàng đem thế chấp, cầm cố, chiết khấu | VIB | 49 | Giấy tờ có giá đưa đi chiết khấu, tái chiết khấu | Nguồn không tách loại chứng khoán; family 1289–1293 chưa có leaf mục đích sử dụng tương đương. |
@@ -289,6 +310,8 @@ page or note identifier participates in this decision.
 | SBO-001 | `OPEN_SCHEMA_GAP`; HDB `Tiền thuê đất` không bị ép vào 1277 `Thuế nhà - đất`; dòng nguồn vẫn được giữ trong tổng family và phương trình nguồn đã xác minh |
 | CC-001–CC-004 | `OPEN_SCHEMA_OR_COMBINED_SOURCE_GAP`; VCB `Tiền gửi`, VIB `Quyền khai thác tài sản`, `Bảo lãnh` và dòng gộp `Vàng, ngoại tệ, giấy tờ có giá` vẫn nằm trong các phương trình tổng nhưng không bị ép vào leaf hẹp |
 | BPA-001–BPA-003 | `OPEN_SOURCE_HIERARCHY_OR_SCHEMA_GAP`; VPB parent gộp bị tổng nguồn cộng lặp với các con, còn hai hàng VIB không tách loại chứng khoán; không dòng nào bị ép vào hierarchy/leaf hẹp |
+| CL-001–CL-005, CL-007–CL-014 | `OPEN_SCHEMA_OR_SOURCE_HIERARCHY_GAP`; 47 mapping chắc chắn và 34 phương trình vẫn đã xác minh; các leaf/trục khấu trừ/`Trong đó` chưa tương đương được giữ nguyên nguồn |
+| CL-023–CL-025 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; HDB/VCB/BID có bảng B02a ngoài báo cáo chính nhưng không có note B05a chi tiết của family trong đúng PDF đã bind |
 
 ## Bank-owned pledged or discounted assets (`BANK_PLEDGED_OR_DISCOUNTED_ASSETS`)
 

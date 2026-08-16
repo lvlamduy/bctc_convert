@@ -806,6 +806,27 @@ Q1/2026, không relabel thành Q2/2026.
 | VIB | 49 | Giấy tờ có giá đưa đi thế chấp, cầm cố | Không tách chứng khoán kinh doanh và chứng khoán đầu tư nên không ép vào 1290 hay 1291. |
 | VIB | 49 | Giấy tờ có giá đưa đi chiết khấu, tái chiết khấu | Không tách loại chứng khoán; family 1289–1293 chưa có leaf theo mục đích sử dụng này. |
 
+## 46. Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra
+
+- **Đã map/xác minh:** ACB p26, MBB p51, VPB p68, CTG p48 và VIB p50.
+  Đã xác minh 47 mapping/92 ô số và 34 phương trình. ACB/VPB có các parent
+  L/C, bảo lãnh khác và cam kết khác với con chi tiết; MBB có bốn chân ngoại
+  hối; CTG dùng hai parent trung gian `Nghĩa vụ nợ tiềm ẩn`/`Các cam kết đưa
+  ra`; VIB dùng ba trục gộp–ký quỹ–thuần và chỉ cột thuần được map.
+- **Không có cụm thuyết minh chi tiết trong báo cáo:** HDB, VCB và BID. Ba
+  PDF vẫn có bảng B02a ngoài báo cáo tình hình tài chính, nhưng không có note
+  B05a chi tiết với owner, nhánh con và tổng; đây là absence của note chi tiết,
+  không phải khẳng định nguồn không có số ngoài bảng.
+- **Còn thiếu:**
+
+| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | ---: | --- | --- |
+| ACB | 26 | Thư tín dụng trả ngay; Thư tín dụng trả chậm | Schema mới dừng ở parent L/C 1295, chưa có hai leaf theo phương thức thanh toán. |
+| ACB | 26 | Trừ: tiền ký quỹ (L/C và bảo lãnh); Bảo lãnh khác chi tiết | Hai dòng ký quỹ là trục khấu trừ; dòng `Bảo lãnh khác` chi tiết trùng tên với parent nguồn, chưa có leaf riêng. |
+| VPB | 68 | Trừ: tiền ký quỹ (L/C và bảo lãnh); Cam kết bảo lãnh khác | Các dòng vẫn đóng đúng parent nhưng chưa có leaf/trục khấu trừ tương ứng. |
+| VPB | 68 | Hoán đổi lãi suất tiền tệ chéo — nhận/trả; hoán đổi lãi suất một đồng tiền | Schema 1301–1302 chỉ có ngoại hối/hoán đổi tiền tệ, chưa có các leaf hoán đổi lãi suất này. |
+| VPB | 68 | Cam kết khác chi tiết; hạn mức tín dụng chưa sử dụng có thể hủy ngang | Dòng đầu trùng tên parent; dòng `Trong đó` là non-additive và chưa có leaf riêng. |
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -859,3 +880,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Nghĩa vụ với ngân sách nhà nước | ✓ p22 | ✓ p49 | ✓\* p58 | ✓\* p32 | — | ✓ p43 | ✓ p26 | ✓ p47 | 1 dòng HDB OPEN; 33 mapping, 147 ô số, 37 phương trình; 13 DASH→0; VCB không có note chi tiết; VPB là nguồn Q1 |
 | Tài sản thế chấp của khách hàng | — | — | ✓ p67 | — | ✓\* p47 | — | — | ✓\* p49 | 4 dòng OPEN; 15 mapping, 30 ô số, 6 phương trình; 5 bank không có note chi tiết; VPB là nguồn Q1 |
 | Tài sản/GTCG ngân hàng đem thế chấp, cầm cố, chiết khấu | — | — | ✓\* p67 | — | — | — | — | ✓\* p49 | 3 dòng OPEN; 5 mapping, 10 ô số, 6 quan hệ kế toán; 6 bank không có note chi tiết; VPB có hierarchy nguồn double-count và là nguồn Q1 |
+| Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra | ✓\* p26 | ✓ p51 | ✓\* p68 | — | — | ✓ p48 | — | ✓ p50 | 13 dòng OPEN; 47 mapping, 92 ô số, 34 phương trình; 3 bank không có note chi tiết; VPB là nguồn Q1 |
