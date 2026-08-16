@@ -511,6 +511,94 @@ def test_annual_batch_trust_closure_binds_code_config_runtime_and_source(
         builder._validate_annual_ppocr_batch_trust_closure(tampered, source)
 
 
+def _annual_batch_aggregate_fixture() -> dict[str, object]:
+    pages = [
+        {
+            "metrics": {
+                "line_count": 2,
+                "lines_below_0_8": 0,
+                "lines_below_0_9": 1,
+                "mean_line_score": 0.9,
+                "minimum_line_score": 0.8,
+                "wall_seconds": 1.25,
+                "word_token_count": 5,
+            }
+        },
+        {
+            "metrics": {
+                "line_count": 1,
+                "lines_below_0_8": 1,
+                "lines_below_0_9": 1,
+                "mean_line_score": 0.7,
+                "minimum_line_score": 0.7,
+                "wall_seconds": 2.5,
+                "word_token_count": 3,
+            }
+        },
+    ]
+    sessions = [{"model_load_wall_seconds": 0.125, "started_at": "2026-08-16T00:00:00Z"}]
+    return {
+        "metrics": {
+            "completed_page_count": 2,
+            "line_count": 3,
+            "lines_below_0_8": 1,
+            "lines_below_0_9": 2,
+            "mean_line_score": (0.9 * 2 + 0.7) / 3,
+            "minimum_line_score": 0.7,
+            "model_load_session_count": 1,
+            "model_load_wall_seconds_total": 0.125,
+            "page_inference_wall_seconds": 3.75,
+            "word_token_count": 8,
+        },
+        "pages": pages,
+        "sessions": sessions,
+    }
+
+
+def test_annual_batch_aggregate_is_recomputed_with_exact_types() -> None:
+    batch = _annual_batch_aggregate_fixture()
+
+    builder._validate_annual_ppocr_batch_aggregate(batch, bank="ACB")
+
+    aggregate_tamper = copy.deepcopy(batch)
+    aggregate_tamper["metrics"]["line_count"] = 4
+    with pytest.raises(builder.FullDocumentVietOCRRequestV1Error, match="does not recompute"):
+        builder._validate_annual_ppocr_batch_aggregate(aggregate_tamper, bank="ACB")
+
+    page_tamper = copy.deepcopy(batch)
+    page_tamper["pages"][0]["metrics"]["line_count"] = True
+    with pytest.raises(builder.FullDocumentVietOCRRequestV1Error, match="metric values"):
+        builder._validate_annual_ppocr_batch_aggregate(page_tamper, bank="ACB")
+
+
+def test_annual_selection_denominator_must_match_rebuilt_crop_axis() -> None:
+    selection = {
+        "metrics": {
+            "document_count": 8,
+            "line_count_vector": [1, 2, 3, 4, 5, 6, 7, 8],
+            "page_count": 695,
+            "page_count_vector": [100, 103, 100, 71, 84, 85, 74, 78],
+            "sample_count": 36,
+        }
+    }
+    builder._validate_annual_selection_denominator_v1(
+        selection,
+        page_count_vector=[100, 103, 100, 71, 84, 85, 74, 78],
+        line_count_vector=[1, 2, 3, 4, 5, 6, 7, 8],
+        sample_count=36,
+    )
+
+    tampered = copy.deepcopy(selection)
+    tampered["metrics"]["sample_count"] = 36.0
+    with pytest.raises(builder.FullDocumentVietOCRRequestV1Error, match="tracked geometry"):
+        builder._validate_annual_selection_denominator_v1(
+            tampered,
+            page_count_vector=[100, 103, 100, 71, 84, 85, 74, 78],
+            line_count_vector=[1, 2, 3, 4, 5, 6, 7, 8],
+            sample_count=36,
+        )
+
+
 def test_annual_provider_geometry_is_transcript_independent() -> None:
     first = builder._annual_ppocr_line_boxes(
         _annual_provider_payload(text="poison"), width=100, height=80

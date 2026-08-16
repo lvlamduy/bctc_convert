@@ -564,6 +564,7 @@ def _annual_document_inputs(
         raise _error(f"annual PP-OCRv6 batch identity/denominator drifted: {bank}")
     if len({page.get("page") for page in batch_pages}) != len(batch_pages):
         raise _error(f"annual PP-OCRv6 batch repeats a page: {bank}")
+    _validate_annual_ppocr_batch_aggregate(batch, bank=cast(str, bank))
     if document_ordinal < 1:
         raise _error("annual document ordinal must be positive")
     return (
@@ -578,6 +579,108 @@ def _annual_document_inputs(
         cast(list[dict[str, Any]], batch_pages),
         cast(list[dict[str, Any]], renders),
     )
+
+
+def _validate_annual_ppocr_batch_aggregate(batch: dict[str, Any], *, bank: str) -> None:
+    """Recompute the mutable batch summary from its exact ordered page records."""
+
+    pages = batch.get("pages")
+    sessions = batch.get("sessions")
+    metrics = batch.get("metrics")
+    if type(pages) is not list or type(sessions) is not list or type(metrics) is not dict:
+        raise _error(f"annual PP-OCRv6 batch aggregate fields drifted: {bank}")
+
+    page_metric_fields = {
+        "line_count",
+        "lines_below_0_8",
+        "lines_below_0_9",
+        "mean_line_score",
+        "minimum_line_score",
+        "wall_seconds",
+        "word_token_count",
+    }
+    line_count = 0
+    word_token_count = 0
+    lines_below_0_8 = 0
+    lines_below_0_9 = 0
+    page_wall_seconds = 0.0
+    weighted_score = 0.0
+    minimum_scores: list[float] = []
+    for page_offset, page in enumerate(pages, 1):
+        page_metrics = page.get("metrics") if type(page) is dict else None
+        if type(page_metrics) is not dict or set(page_metrics) != page_metric_fields:
+            raise _error(f"annual PP-OCRv6 page metrics drifted: {bank}:{page_offset}")
+        count = page_metrics.get("line_count")
+        words = page_metrics.get("word_token_count")
+        below_0_8 = page_metrics.get("lines_below_0_8")
+        below_0_9 = page_metrics.get("lines_below_0_9")
+        wall_seconds = page_metrics.get("wall_seconds")
+        minimum = page_metrics.get("minimum_line_score")
+        mean = page_metrics.get("mean_line_score")
+        if (
+            type(count) is not int
+            or count < 0
+            or type(words) is not int
+            or words < 0
+            or type(below_0_8) is not int
+            or not 0 <= below_0_8 <= count
+            or type(below_0_9) is not int
+            or not 0 <= below_0_9 <= count
+            or below_0_8 > below_0_9
+            or type(wall_seconds) is not float
+            or not math.isfinite(wall_seconds)
+            or wall_seconds < 0.0
+            or (count == 0 and (minimum is not None or mean is not None))
+            or (
+                count > 0
+                and (
+                    type(minimum) is not float
+                    or not math.isfinite(minimum)
+                    or not 0.0 <= minimum <= 1.0
+                    or type(mean) is not float
+                    or not math.isfinite(mean)
+                    or not 0.0 <= mean <= 1.0
+                )
+            )
+        ):
+            raise _error(f"annual PP-OCRv6 page metric values drifted: {bank}:{page_offset}")
+        line_count += count
+        word_token_count += words
+        lines_below_0_8 += below_0_8
+        lines_below_0_9 += below_0_9
+        page_wall_seconds += wall_seconds
+        if count:
+            weighted_score += cast(float, mean) * count
+            minimum_scores.append(cast(float, minimum))
+
+    load_seconds: list[float] = []
+    for session_offset, session in enumerate(sessions, 1):
+        if (
+            type(session) is not dict
+            or set(session) != {"model_load_wall_seconds", "started_at"}
+            or type(session.get("started_at")) is not str
+            or not session["started_at"]
+            or type(session.get("model_load_wall_seconds")) is not float
+            or not math.isfinite(session["model_load_wall_seconds"])
+            or session["model_load_wall_seconds"] < 0.0
+        ):
+            raise _error(f"annual PP-OCRv6 model-load session drifted: {bank}:{session_offset}")
+        load_seconds.append(session["model_load_wall_seconds"])
+
+    expected = {
+        "completed_page_count": len(pages),
+        "line_count": line_count,
+        "lines_below_0_8": lines_below_0_8,
+        "lines_below_0_9": lines_below_0_9,
+        "mean_line_score": weighted_score / line_count if line_count else None,
+        "minimum_line_score": min(minimum_scores) if minimum_scores else None,
+        "model_load_session_count": len(sessions),
+        "model_load_wall_seconds_total": round(sum(load_seconds), 6),
+        "page_inference_wall_seconds": round(page_wall_seconds, 6),
+        "word_token_count": word_token_count,
+    }
+    if not same_typed_json_v1(metrics, expected):
+        raise _error(f"annual PP-OCRv6 batch aggregate does not recompute: {bank}")
 
 
 def _validate_annual_ppocr_batch_trust_closure(
@@ -877,6 +980,25 @@ def _validate_annual_geometry_selection_v1() -> tuple[dict[str, Any], bytes]:
     if tracked != raw:
         raise _error("annual geometry selection bytes differ from clean Git HEAD")
     return selection, raw
+
+
+def _validate_annual_selection_denominator_v1(
+    selection: dict[str, Any],
+    *,
+    page_count_vector: list[int],
+    line_count_vector: list[int],
+    sample_count: int,
+) -> None:
+    metrics = selection.get("metrics")
+    expected = {
+        "document_count": len(ANNUAL_2025_SOURCES),
+        "line_count_vector": line_count_vector,
+        "page_count": sum(page_count_vector),
+        "page_count_vector": page_count_vector,
+        "sample_count": sample_count,
+    }
+    if not same_typed_json_v1(metrics, expected):
+        raise _error("annual crop denominator differs from tracked geometry selection")
 
 
 def _annual_page_geometry(
@@ -1873,7 +1995,7 @@ def build_annual_2025_full_document_request_v1() -> dict[str, Any]:
     destination = PROJECT_ROOT / OUTPUT_ROOT
     if destination.exists():
         raise _error(f"refusing to overwrite existing output: {destination}")
-    _geometry_selection, geometry_selection_raw = _validate_annual_geometry_selection_v1()
+    geometry_selection, geometry_selection_raw = _validate_annual_geometry_selection_v1()
     if [source["bank_code"] for source in ANNUAL_2025_SOURCES] != list(_EXPECTED_BANK_ORDER) or sum(
         source["page_count"] for source in ANNUAL_2025_SOURCES
     ) != 695:
@@ -2053,6 +2175,12 @@ def build_annual_2025_full_document_request_v1() -> dict[str, Any]:
         line_count_vector = [
             sum(page["line_count"] for page in document["pages"]) for document in manifest_documents
         ]
+        _validate_annual_selection_denominator_v1(
+            geometry_selection,
+            page_count_vector=page_count_vector,
+            line_count_vector=line_count_vector,
+            sample_count=total_line_count,
+        )
         manifest = {
             "authority": {
                 "geometry_authority": "PINNED_PPOCRV6_PROVIDER_LINE_BOXES_ONLY",
@@ -2520,7 +2648,7 @@ def verify_annual_2025_full_document_freeze_v1(*, replay_geometry: bool = False)
     }
     if type(input_refs) is not dict or set(input_refs) != expected_input_names:
         raise _error("annual manifest input ledger drifted")
-    _selection, selection_raw = _validate_annual_geometry_selection_v1()
+    selection, selection_raw = _validate_annual_geometry_selection_v1()
     if not same_typed_json_v1(
         input_refs.get("geometry_selection"),
         {
@@ -2699,6 +2827,12 @@ def verify_annual_2025_full_document_freeze_v1(*, replay_geometry: bool = False)
         "sample_count": cursor,
         "terminal_page_count": 0,
     }
+    _validate_annual_selection_denominator_v1(
+        selection,
+        page_count_vector=page_count_vector,
+        line_count_vector=line_count_vector,
+        sample_count=cursor,
+    )
     if cursor != len(samples) or metrics != expected_metrics:
         raise _error("annual whole-document metrics drifted")
     return {
