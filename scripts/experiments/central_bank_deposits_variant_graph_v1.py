@@ -270,9 +270,9 @@ def _axis_groups(
             continue
         if kind == "PERIOD":
             matched = (
-                re.search(r"(?:30|31)[ /.-](?:03|3|06|6|12)[ /.-]20(?:25|26)", text) is not None
+                re.search(r"(?:30|31)[ /.-](?:03|3|06|6|12)[ /.-]20[0-9]{2}", text) is not None
                 or "ngay 31 thang" in text
-                or text in {"nam 2025", "nam 2026"}
+                or re.fullmatch(r"nam 20[0-9]{2}", text) is not None
             )
         else:
             matched = "trieu dong" in text or "trieu vnd" in text

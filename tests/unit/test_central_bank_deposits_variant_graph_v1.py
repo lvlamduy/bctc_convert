@@ -118,6 +118,24 @@ def test_child_order_is_one_family_variant_and_not_bank_routing() -> None:
     assert result["regions"][0]["layout"]["variant"] == "VIETNAM_VND_FOREIGN_ONLY"
 
 
+def test_annual_2025_and_2024_period_headers_use_the_same_generic_graph() -> None:
+    surfaces = [
+        (
+            "31/12/2025"
+            if text == "30/06/2026"
+            else "31/12/2024"
+            if text == "31/12/2025"
+            else text,
+            x,
+            y,
+        )
+        for text, x, y in _table()
+    ]
+    result = central.build_central_bank_deposits_variant_graph_document_v1([_page(surfaces)])
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["regions"][0]["layout"]["meaningful_axes"]["period_header_count"] == 2
+
+
 def test_balance_sheet_total_or_reserve_ratio_table_is_not_a_complete_note() -> None:
     surfaces = [
         ("Tiền gửi tại Ngân hàng Nhà nước", 0, 0),
