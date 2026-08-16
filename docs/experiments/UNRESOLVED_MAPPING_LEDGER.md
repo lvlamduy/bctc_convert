@@ -66,6 +66,16 @@ hồi thành bốn lane bằng quan hệ hình học, không bằng rule theo ba
 `173.426`; pixel, trục số nguồn và phép trừ xác nhận `173.425`. Đây là lỗi OCR
 đã đóng, không phải dòng OPEN.
 
+E-0112 `Phân tích theo loại hình cho vay` trên tám BCTC hợp nhất kiểm toán năm
+2025 không bổ sung dòng OPEN: whole-PDF graph tìm đúng một vùng tại ACB p50,
+MBB p51, VPB p45, HDB p35, VCB p39, CTG p43, BID p41 và VIB p37; 44 hàng nguồn
+được `VERIFIED_BY_CODEX`, tám tổng family đóng chính xác và ba dấu `-` được giữ
+typed trước khi chuẩn hóa 0. Các biến thể được thêm ở mức family, không theo
+bank: `Số cuối năm/Số đầu năm`, bảng tiền/% bốn lane, khoản phải thu cho thuê
+tài chính, thư tín dụng trả chậm và các cách gọi margin/đối tượng nước ngoài.
+VietOCR HDB đọc tổng so sánh `442.464.841`; pixel và phép cộng các hàng xác nhận
+`442.484.841`. Đây là lỗi OCR đã đóng, không phải khoảng trống mapping.
+
 E-0079 `Thu nhập lãi và các khoản thu nhập tương tự` không bổ sung dòng OPEN:
 cả tám vùng duy nhất đã map hết các dòng nguồn vào 1143–1150. Hai lỗi mất chữ
 số đầu của VietOCR tại VIB được trục số nguồn/PaddleOCR và pixel bác bỏ, nên là

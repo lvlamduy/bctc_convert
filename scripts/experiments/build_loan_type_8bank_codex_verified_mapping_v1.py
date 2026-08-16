@@ -10,6 +10,7 @@ units, totals, accounting closure, pixels, and schema context together.
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import importlib.util
 import json
@@ -36,15 +37,22 @@ from bctc_ai.mapping.semantic_local_accounting_schema_candidate_v1 import (
 )
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
+    canonical_json_bytes_v1,
     canonical_json_sha256_v1,
     same_typed_json_v1,
 )
 
 __all__ = [
+    "ANNUAL_2025_FORMAT_VERSION",
+    "ANNUAL_2025_RESULT_PATH",
     "FORMAT_VERSION",
     "LoanType8BankCodexVerifiedMappingV1Error",
+    "build_live_annual_2025_loan_type_8bank_codex_verified_mapping_v1",
     "build_live_loan_type_8bank_codex_verified_mapping_v1",
+    "build_annual_2025_loan_type_8bank_codex_verified_mapping_v1",
     "build_loan_type_8bank_codex_verified_mapping_v1",
+    "validate_live_annual_2025_loan_type_8bank_codex_verified_mapping_v1",
+    "validate_annual_2025_loan_type_8bank_codex_verified_mapping_replay_v1",
     "validate_loan_type_8bank_codex_verified_mapping_replay_v1",
 ]
 
@@ -68,6 +76,40 @@ CROP_MANIFEST_PATH = Path(
 EXPECTED_INDEX_SHA256 = "f84fd9ca56fe06af230e011ecad85b0a576e27e1eca32ee141e654a6776b78b4"
 EXPECTED_AXIS_SHA256 = "e99873cd16a7234702d0ee6e5fa9eb37637a1a75621228381e3dbcd7c5cfdcca"
 
+ANNUAL_2025_FORMAT_VERSION = "ANNUAL_2025_LOAN_TYPE_8BANK_CODEX_VERIFIED_MAPPING_V1"
+ANNUAL_2025_REVIEW_FORMAT = "ANNUAL_2025_LOAN_TYPE_8BANK_CODEX_PIXEL_REVIEW_V1"
+ANNUAL_2025_CLAIM_BOUNDARY = (
+    "FIXED_EIGHT_AUDITED_CONSOLIDATED_ANNUAL_2025_COMPLETE_PDF_FRESH_VIETOCR_"
+    "GENERIC_CUSTOMER_LOAN_TYPE_OWNER_CHILD_PERIOD_UNIT_GEOMETRY_TOTAL_AND_"
+    "ACCOUNTING_VARIANTS_PLUS_INDEPENDENT_VISIBLE_PIXEL_AND_LIVE_TM_SCHEMA_"
+    "ONLY_NO_EXPORT_OR_PRODUCTION_AUTHORITY"
+)
+ANNUAL_2025_REVIEW_PATH = Path(
+    "docs/experiments/E-0112-annual-2025-loan-type-8bank-codex-pixel-review-v1.json"
+)
+ANNUAL_2025_RESULT_PATH = Path(
+    "docs/experiments/E-0112-annual-2025-loan-type-8bank-codex-verified-mapping-v1.json"
+)
+ANNUAL_2025_SEMANTIC_INDEX_PATH = Path(
+    "output/calibration/annual-2025-8bank-full-document-vietocr-v1/verified-index/"
+    "semantic_index.json"
+)
+ANNUAL_2025_CROP_MANIFEST_PATH = Path(
+    "output/calibration/annual-2025-8bank-full-document-vietocr-v1/crop_manifest.json"
+)
+ANNUAL_2025_EXPECTED_INDEX_SHA256 = (
+    "98bb9854e699230da86538cf024ef3f4817b9e2f4dd2b2a75f46198f00e4247d"
+)
+ANNUAL_2025_EXPECTED_CROP_MANIFEST_SHA256 = (
+    "17d12a4d6b1dfaf0e243300757fd225b8c9cca80810a2d856efdb55a5b4ac000"
+)
+ANNUAL_2025_EXPECTED_AXIS_SHA256 = (
+    "aa81f553fda69315e84b7adbda13347c25a4490b016fc9660ff4f2cd49795ce7"
+)
+ANNUAL_2025_EXPECTED_SCAN_ID = (
+    "ltfdsv1:scan:3303c6e01bf0cec9336039feb904203f5d9dd22ab689a04c0a136513a2798d00"
+)
+
 _ROLE_BINDINGS: dict[str, tuple[int, str, tuple[str, ...]]] = {
     "DOMESTIC_ORGANIZATIONS_INDIVIDUALS": (
         718,
@@ -79,7 +121,11 @@ _ROLE_BINDINGS: dict[str, tuple[int, str, tuple[str, ...]]] = {
             "Cho vay các tổ chức kinh tế, cá nhân",
         ),
     ),
-    "FINANCIAL_LEASE": (719, "+ Cho thuê tài chính", ("Cho thuê tài chính",)),
+    "FINANCIAL_LEASE": (
+        719,
+        "+ Cho thuê tài chính",
+        ("Cho thuê tài chính", "Các khoản phải thu từ cho thuê tài chính"),
+    ),
     "FOREIGN_ORGANIZATIONS_INDIVIDUALS": (
         721,
         "+ Cho vay cá nhân và tổ chức nước ngoài",
@@ -87,6 +133,7 @@ _ROLE_BINDINGS: dict[str, tuple[int, str, tuple[str, ...]]] = {
             "Cho vay cá nhân và tổ chức nước ngoài",
             "Cho vay đối với các tổ chức, cá nhân nước ngoài",
             "Cho vay các TCKT, cá nhân nước ngoài",
+            "Cho vay các tổ chức, cá nhân nước ngoài",
         ),
     ),
     "DISCOUNT_INSTRUMENTS": (
@@ -100,7 +147,7 @@ _ROLE_BINDINGS: dict[str, tuple[int, str, tuple[str, ...]]] = {
     "PAYMENTS_ON_BEHALF": (
         723,
         "+ Các khoản trả thay khách hàng",
-        ("Các khoản trả thay khách hàng",),
+        ("Các khoản trả thay khách hàng", "Các khoản phải trả thay khách hàng"),
     ),
     "FROZEN_OR_PENDING_LOANS": (
         724,
@@ -115,7 +162,15 @@ _ROLE_BINDINGS: dict[str, tuple[int, str, tuple[str, ...]]] = {
         "+ Cho vay bằng vốn tài trợ, ủy thác đầu tư",
         ("Cho vay bằng vốn tài trợ, ủy thác đầu tư",),
     ),
-    "OTHER_LOANS": (726, "+ Cho vay khác", ("Cho vay khác",)),
+    "OTHER_LOANS": (
+        726,
+        "+ Cho vay khác",
+        (
+            "Cho vay khác",
+            "Cho vay trong nghiệp vụ phát hành thư tín dụng trả chậm có điều khoản trả ngay",
+            "Nghiệp vụ phát hành thư tín dụng trả chậm phát sinh trước ngày 01 tháng 7 năm 2024",
+        ),
+    ),
     "UNMAPPED_OTHER_CREDIT": (
         726,
         "+ Cho vay khác",
@@ -134,6 +189,8 @@ _ROLE_BINDINGS: dict[str, tuple[int, str, tuple[str, ...]]] = {
             "Cho vay giao dịch ký quỹ, ứng trước cho khách hàng",
             "Các khoản cho vay margin chứng khoán và ứng trước khách hàng tại MBS",
             "Các khoản cho vay margin chứng khoán và ứng trước khách hàng",
+            "Cho vay giao dịch ký quỹ và ứng trước cho khách hàng",
+            "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán",
         ),
     ),
 }
@@ -304,7 +361,467 @@ def _review_cell(value: Any, label: str) -> dict[str, Any]:
     return canonical_clone_v1(value)
 
 
-def _review(value: Any) -> dict[str, Any]:
+def _annual_2025_cell(surface: str, lane_type: str = "MONEY") -> dict[str, Any]:
+    return {
+        "lane_type": lane_type,
+        "pixel_transcription": surface,
+        "status": "DASH" if surface in {"-", "–", "—"} else "VALUE",
+    }
+
+
+def _annual_2025_row(
+    role: str,
+    pixel_label: str,
+    values: Sequence[str],
+    lane_types: Sequence[str],
+) -> dict[str, Any]:
+    return {
+        "cells": [
+            _annual_2025_cell(surface, lane_type)
+            for surface, lane_type in zip(values, lane_types, strict=True)
+        ],
+        "mapping_disposition": "MAP",
+        "pixel_label": pixel_label,
+        "role": role,
+    }
+
+
+def _annual_2025_review_banks() -> list[dict[str, Any]]:
+    money2 = ("MONEY", "MONEY")
+    money_percent4 = ("MONEY", "PERCENT", "MONEY", "PERCENT")
+    specs = (
+        {
+            "bank_code": "ACB",
+            "page": 50,
+            "render": "d09d8579c3cefdce5158fae5529195e147956a8af088295130c3117eadbfa349",
+            "periods": ("31.12.2025", "31.12.2024"),
+            "units": ("Triệu VND", "Triệu VND"),
+            "lane_types": money2,
+            "rows": (
+                (
+                    "DOMESTIC_ORGANIZATIONS_INDIVIDUALS",
+                    "Cho vay các tổ chức kinh tế, cá nhân trong nước",
+                    ("666.394.943", "568.990.695"),
+                ),
+                (
+                    "DISCOUNT_INSTRUMENTS",
+                    "Cho vay chiết khấu công cụ chuyển nhượng và các giấy tờ có giá",
+                    ("325.828", "269.420"),
+                ),
+                ("FINANCIAL_LEASE", "Cho thuê tài chính", ("2.685.219", "2.261.865")),
+                (
+                    "PAYMENTS_ON_BEHALF",
+                    "Các khoản trả thay khách hàng",
+                    ("30.657", "474.509"),
+                ),
+                (
+                    "MARGIN_AND_SECURITIES_ADVANCE",
+                    "Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
+                    ("17.340.705", "8.689.759"),
+                ),
+            ),
+            "total": ("686.777.352", "580.686.248"),
+            "disagreements": (),
+        },
+        {
+            "bank_code": "MBB",
+            "page": 51,
+            "render": "35d892c6a207fd426cad7d4da67376c980707babdc82bb0b7dd958b9086c1da7",
+            "periods": ("31/12/2025", "31/12/2024"),
+            "units": ("triệu đồng", "triệu đồng"),
+            "lane_types": money2,
+            "rows": (
+                (
+                    "DOMESTIC_ORGANIZATIONS_INDIVIDUALS",
+                    "Cho vay các tổ chức kinh tế, cá nhân",
+                    ("1.054.801.750", "756.463.013"),
+                ),
+                (
+                    "DISCOUNT_INSTRUMENTS",
+                    "Cho vay chiết khấu công cụ chuyển nhượng và các giấy tờ có giá",
+                    ("3.007.877", "2.500.151"),
+                ),
+                (
+                    "PAYMENTS_ON_BEHALF",
+                    "Các khoản trả thay khách hàng",
+                    ("115.795", "62.439"),
+                ),
+                (
+                    "ENTRUSTED_OR_SPONSORED_CAPITAL",
+                    "Cho vay bằng vốn tài trợ, ủy thác đầu tư",
+                    ("21.314", "44.166"),
+                ),
+                (
+                    "FOREIGN_ORGANIZATIONS_INDIVIDUALS",
+                    "Cho vay các tổ chức, cá nhân nước ngoài",
+                    ("11.032.049", "7.294.348"),
+                ),
+                (
+                    "MARGIN_AND_SECURITIES_ADVANCE",
+                    "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán",
+                    ("15.040.585", "10.293.729"),
+                ),
+            ),
+            "total": ("1.084.019.370", "776.657.846"),
+            "disagreements": (),
+        },
+        {
+            "bank_code": "VPB",
+            "page": 45,
+            "render": "7731043083c02a34caf583425c5a1cce03ffe29233e2febccc39fe3df342e842",
+            "periods": ("31 tháng 12 năm 2025", "31 tháng 12 năm 2024"),
+            "units": ("Triệu đồng", "%", "Triệu đồng", "%"),
+            "lane_types": money_percent4,
+            "rows": (
+                (
+                    "DOMESTIC_ORGANIZATIONS_INDIVIDUALS",
+                    "Cho vay các tổ chức kinh tế và cá nhân trong nước",
+                    ("835.269.757", "88,50", "618.320.514", "88,63"),
+                ),
+                (
+                    "DISCOUNT_INSTRUMENTS",
+                    "Cho vay chiết khấu công cụ chuyển nhượng và các giấy tờ có giá",
+                    ("642.502", "0,07", "309.972", "0,04"),
+                ),
+                (
+                    "PAYMENTS_ON_BEHALF",
+                    "Các khoản trả thay khách hàng",
+                    ("44.136", "0,00", "153.474", "0,02"),
+                ),
+                (
+                    "ENTRUSTED_OR_SPONSORED_CAPITAL",
+                    "Cho vay bằng vốn tài trợ, ủy thác đầu tư",
+                    ("3.504", "0,00", "14.430", "0,00"),
+                ),
+                (
+                    "FOREIGN_ORGANIZATIONS_INDIVIDUALS",
+                    "Cho vay đối với các tổ chức, cá nhân nước ngoài",
+                    ("1.316", "0,00", "-", "0,00"),
+                ),
+                (
+                    "UNMAPPED_OTHER_CREDIT",
+                    "Cấp tín dụng khác",
+                    ("73.847.196", "7,82", "69.460.197", "9,95"),
+                ),
+                (
+                    "MARGIN_AND_SECURITIES_ADVANCE",
+                    "Cho vay giao dịch ký quỹ và ứng trước cho khách hàng",
+                    ("34.093.219", "3,61", "9.512.536", "1,36"),
+                ),
+            ),
+            "total": ("943.901.630", "100", "697.771.123", "100"),
+            "disagreements": (),
+        },
+        {
+            "bank_code": "HDB",
+            "page": 35,
+            "render": "d16d8eb20a94438405c7861ab89183e48b3689a14c094fc9bd257c582506e132",
+            "periods": ("Số cuối năm", "Số đầu năm"),
+            "units": ("Triệu VND", "Triệu VND"),
+            "lane_types": money2,
+            "rows": (
+                (
+                    "DOMESTIC_ORGANIZATIONS_INDIVIDUALS",
+                    "Cho vay các tổ chức kinh tế, cá nhân trong nước",
+                    ("543.236.391", "428.318.105"),
+                ),
+                (
+                    "ENTRUSTED_OR_SPONSORED_CAPITAL",
+                    "Cho vay bằng vốn tài trợ, ủy thác đầu tư",
+                    ("2.710.815", "2.713.908"),
+                ),
+                (
+                    "DISCOUNT_INSTRUMENTS",
+                    "Cho vay chiết khấu công cụ chuyển nhượng và các giấy tờ có giá",
+                    ("180.717", "248.071"),
+                ),
+                (
+                    "PAYMENTS_ON_BEHALF",
+                    "Các khoản trả thay khách hàng",
+                    ("-", "25.835"),
+                ),
+                (
+                    "FOREIGN_ORGANIZATIONS_INDIVIDUALS",
+                    "Cho vay đối với các tổ chức, cá nhân nước ngoài",
+                    ("242.856", "150"),
+                ),
+                (
+                    "OTHER_LOANS",
+                    "Nghiệp vụ phát hành thư tín dụng trả chậm phát sinh trước ngày 01 tháng 7 năm 2024",
+                    ("-", "11.178.772"),
+                ),
+            ),
+            "total": ("546.370.779", "442.484.841"),
+            "disagreements": (
+                {
+                    "disposition": "VISIBLE_PDF_PIXEL_AND_EXACT_ACCOUNTING_CLOSURE_OVERRIDE_TRANSFORMER_DIGIT_ERROR",
+                    "field": "SOURCE_ONLY_TOTAL_COMPARATIVE",
+                    "pixel_transcription": "442.484.841",
+                    "semantic_proposal": "442.464.841",
+                },
+            ),
+        },
+        {
+            "bank_code": "VCB",
+            "page": 39,
+            "render": "f6680605fdd69b8973a97de5949f4222bac54d62970255ad0713454b529cf2de",
+            "periods": ("31/12/2025", "31/12/2024"),
+            "units": ("Triệu VND", "Triệu VND"),
+            "lane_types": money2,
+            "rows": (
+                (
+                    "DOMESTIC_ORGANIZATIONS_INDIVIDUALS",
+                    "Cho vay các tổ chức kinh tế, cá nhân trong nước",
+                    ("1.661.183.258", "1.436.710.181"),
+                ),
+                (
+                    "DISCOUNT_INSTRUMENTS",
+                    "Cho vay chiết khấu công cụ chuyển nhượng và các giấy tờ có giá",
+                    ("2.906.099", "2.831.604"),
+                ),
+                ("FINANCIAL_LEASE", "Cho thuê tài chính", ("8.014.204", "7.073.712")),
+                (
+                    "PAYMENTS_ON_BEHALF",
+                    "Các khoản trả thay khách hàng",
+                    ("167.617", "1.770.654"),
+                ),
+                (
+                    "FOREIGN_ORGANIZATIONS_INDIVIDUALS",
+                    "Cho vay đối với các tổ chức, cá nhân nước ngoài",
+                    ("1.254.497", "812.748"),
+                ),
+            ),
+            "total": ("1.673.525.675", "1.449.198.899"),
+            "disagreements": (),
+        },
+        {
+            "bank_code": "CTG",
+            "page": 43,
+            "render": "686ffc712a22c2653401646668e8efbbffd34aac303107932c0c5cdc533074ee",
+            "periods": ("31/12/2025", "31/12/2024"),
+            "units": ("Triệu đồng", "Triệu đồng"),
+            "lane_types": money2,
+            "rows": (
+                (
+                    "DOMESTIC_ORGANIZATIONS_INDIVIDUALS",
+                    "Cho vay các tổ chức kinh tế, cá nhân trong nước",
+                    ("1.954.510.778", "1.703.097.921"),
+                ),
+                (
+                    "DISCOUNT_INSTRUMENTS",
+                    "Cho vay chiết khấu công cụ chuyển nhượng và các giấy tờ có giá",
+                    ("625.084", "1.745.674"),
+                ),
+                ("FINANCIAL_LEASE", "Cho thuê tài chính", ("5.003.655", "4.639.031")),
+                (
+                    "PAYMENTS_ON_BEHALF",
+                    "Các khoản trả thay khách hàng",
+                    ("136.766", "304.240"),
+                ),
+                (
+                    "FOREIGN_ORGANIZATIONS_INDIVIDUALS",
+                    "Cho vay đối với các tổ chức, cá nhân nước ngoài",
+                    ("30.304.309", "9.330.597"),
+                ),
+                (
+                    "ENTRUSTED_OR_SPONSORED_CAPITAL",
+                    "Cho vay bằng vốn tài trợ, ủy thác đầu tư",
+                    ("1.664.438", "1.752.217"),
+                ),
+                (
+                    "OTHER_LOANS",
+                    "Cho vay trong nghiệp vụ phát hành thư tín dụng trả chậm có điều khoản trả ngay",
+                    ("27.838", "1.085.034"),
+                ),
+            ),
+            "total": ("1.992.272.868", "1.721.954.714"),
+            "disagreements": (),
+        },
+        {
+            "bank_code": "BID",
+            "page": 41,
+            "render": "5b7980206c405decc1ddf5064bf2e2f5acf8906875698cc108268376b45bc488",
+            "periods": ("Số cuối năm", "Số đầu năm"),
+            "units": ("Triệu VND", "Triệu VND"),
+            "lane_types": money2,
+            "rows": (
+                (
+                    "DOMESTIC_ORGANIZATIONS_INDIVIDUALS",
+                    "Cho vay các tổ chức kinh tế, cá nhân trong nước",
+                    ("2.329.351.018", "2.015.937.086"),
+                ),
+                (
+                    "DISCOUNT_INSTRUMENTS",
+                    "Cho vay chiết khấu công cụ chuyển nhượng và các giấy tờ có giá",
+                    ("13.143", "58.860"),
+                ),
+                (
+                    "FINANCIAL_LEASE",
+                    "Các khoản phải thu từ cho thuê tài chính",
+                    ("6.688.903", "5.637.831"),
+                ),
+                (
+                    "PAYMENTS_ON_BEHALF",
+                    "Các khoản phải trả thay khách hàng",
+                    ("1.071.855", "1.381.435"),
+                ),
+                (
+                    "FOREIGN_ORGANIZATIONS_INDIVIDUALS",
+                    "Cho vay đối với các tổ chức, cá nhân nước ngoài",
+                    ("35.830.155", "33.067.208"),
+                ),
+            ),
+            "total": ("2.372.955.074", "2.056.082.420"),
+            "disagreements": (),
+        },
+        {
+            "bank_code": "VIB",
+            "page": 37,
+            "render": "ff87c24431f157ca1a30de320923c6d65009f5027eb775ae9b7d254f951414b2",
+            "periods": ("31/12/2025", "31/12/2024"),
+            "units": ("triệu đồng", "triệu đồng"),
+            "lane_types": money2,
+            "rows": (
+                (
+                    "DOMESTIC_ORGANIZATIONS_INDIVIDUALS",
+                    "Cho vay các tổ chức kinh tế, cá nhân",
+                    ("381.876.535", "323.813.343"),
+                ),
+                (
+                    "ENTRUSTED_OR_SPONSORED_CAPITAL",
+                    "Cho vay bằng vốn tài trợ, ủy thác đầu tư",
+                    ("3.047", "5.330"),
+                ),
+                (
+                    "DISCOUNT_INSTRUMENTS",
+                    "Cho vay chiết khấu công cụ chuyển nhượng và các giấy tờ có giá",
+                    ("92.434", "191.040"),
+                ),
+            ),
+            "total": ("381.972.016", "324.009.713"),
+            "disagreements": (),
+        },
+    )
+    result = []
+    for spec in specs:
+        lane_types = spec["lane_types"]
+        result.append(
+            {
+                "bank_code": spec["bank_code"],
+                "intermediate_totals": [],
+                "owner_pixel_transcription": "CHO VAY KHÁCH HÀNG",
+                "period_pixel_transcriptions": list(spec["periods"]),
+                "physical_page": spec["page"],
+                "rows": [
+                    _annual_2025_row(role, label, values, lane_types)
+                    for role, label, values in spec["rows"]
+                ],
+                "source_only_total": [
+                    _annual_2025_cell(surface, lane_type)
+                    for surface, lane_type in zip(spec["total"], lane_types, strict=True)
+                ],
+                "statement_context_evidence": {
+                    "mode": "PAGE_LOCAL_VISIBLE_HEADING",
+                    "physical_page": spec["page"],
+                    "pixel_transcription": "THUYẾT MINH BÁO CÁO TÀI CHÍNH HỢP NHẤT",
+                    "render_sha256": spec["render"],
+                    "report_scope": "CONSOLIDATED",
+                },
+                "target_render_sha256": spec["render"],
+                "transformer_disagreements": list(spec["disagreements"]),
+                "unit_pixel_transcriptions": list(spec["units"]),
+            }
+        )
+    return result
+
+
+def _annual_2025_review_blueprint() -> dict[str, Any]:
+    return {
+        "banks": _annual_2025_review_banks(),
+        "claim_boundary": ANNUAL_2025_CLAIM_BOUNDARY,
+        "format_version": ANNUAL_2025_REVIEW_FORMAT,
+        "review_checks": list(_EXPECTED_REVIEW_CHECKS),
+        "reviewer": {
+            "kind": "CODEX_INDEPENDENT_PDF_PIXEL_REVIEW",
+            "review_run_id": "E-0112-ANNUAL-2025",
+        },
+        "safety": canonical_clone_v1(_EXPECTED_REVIEW_SAFETY),
+        "semantic_axis_sha256": ANNUAL_2025_EXPECTED_AXIS_SHA256,
+        "semantic_index_sha256": ANNUAL_2025_EXPECTED_INDEX_SHA256,
+        "state": "CODEX_PIXEL_REVIEW_COMPLETE",
+    }
+
+
+def _profile(name: str) -> dict[str, Any]:
+    if name == "wave1-2026":
+        return {
+            "axis_sha256": EXPECTED_AXIS_SHA256,
+            "claim_boundary": CLAIM_BOUNDARY,
+            "crop_manifest_path": CROP_MANIFEST_PATH,
+            "crop_manifest_sha256": None,
+            "extended_variants": False,
+            "format_version": FORMAT_VERSION,
+            "index_path": SEMANTIC_INDEX_PATH,
+            "index_sha256": EXPECTED_INDEX_SHA256,
+            "result_id_prefix": "lt8bcv2:result:",
+            "result_path": Path(
+                "docs/experiments/E-0054-loan-type-8bank-codex-verified-mapping-v2.json"
+            ),
+            "review_path": REVIEW_PATH,
+            "review_sha256": REVIEW_SHA256,
+            "scan_id": "ltfdsv1:scan:b7deffb9821669b509a913e4a3341fa243692fca13afdb857e06542ab54f5f72",
+            "scan_metrics": {
+                "accepted_numeric_graph_count": 0,
+                "document_count": 8,
+                "document_unique_structural_match_count": 8,
+                "mapping_verified_count": 0,
+                "near_region_count": 43,
+                "owner_table_region_count": 8,
+                "semantic_proposal_accounting_corroborated_lane_count": 14,
+                "structure_resolved_numeric_unresolved_count": 8,
+                "unresolved_document_count": 0,
+            },
+            "state": "LOAN_TYPE_8BANK_CODEX_VERIFICATION_COMPLETE",
+        }
+    if name == "annual-2025":
+        return {
+            "axis_sha256": ANNUAL_2025_EXPECTED_AXIS_SHA256,
+            "claim_boundary": ANNUAL_2025_CLAIM_BOUNDARY,
+            "crop_manifest_path": ANNUAL_2025_CROP_MANIFEST_PATH,
+            "crop_manifest_sha256": ANNUAL_2025_EXPECTED_CROP_MANIFEST_SHA256,
+            "extended_variants": True,
+            "format_version": ANNUAL_2025_FORMAT_VERSION,
+            "index_path": ANNUAL_2025_SEMANTIC_INDEX_PATH,
+            "index_sha256": ANNUAL_2025_EXPECTED_INDEX_SHA256,
+            "result_id_prefix": "annual2025lt8bcv1:result:",
+            "result_path": ANNUAL_2025_RESULT_PATH,
+            "review_path": ANNUAL_2025_REVIEW_PATH,
+            "review_sha256": canonical_json_sha256_v1(_annual_2025_review_blueprint()),
+            "scan_id": ANNUAL_2025_EXPECTED_SCAN_ID,
+            "scan_metrics": {
+                "accepted_numeric_graph_count": 0,
+                "document_count": 8,
+                "document_unique_structural_match_count": 8,
+                "mapping_verified_count": 0,
+                "near_region_count": 83,
+                "owner_table_region_count": 8,
+                "semantic_proposal_accounting_corroborated_lane_count": 15,
+                "structure_resolved_numeric_unresolved_count": 8,
+                "unresolved_document_count": 0,
+            },
+            "state": "ANNUAL_2025_LOAN_TYPE_8BANK_CODEX_VERIFICATION_COMPLETE",
+        }
+    raise _error("loan-type mapping profile is unsupported")
+
+
+def _review(value: Any, profile_name: str = "wave1-2026") -> dict[str, Any]:
+    if profile_name == "annual-2025":
+        expected = _annual_2025_review_blueprint()
+        if not same_typed_json_v1(value, expected):
+            raise _error("annual-2025 Codex loan-type review differs from fixed pixel ledger")
+        return canonical_clone_v1(expected)
+    if profile_name != "wave1-2026":
+        raise _error("loan-type mapping profile is unsupported")
     if type(value) is not dict or set(value) != {
         "banks",
         "claim_boundary",
@@ -512,6 +1029,11 @@ def _numeric_value(surface: str, lane_type: str) -> int | Decimal:
 def _date_key(value: str) -> tuple[int, int, int] | None:
     match = re.search(r"\b(\d{1,2})\s*[./-]\s*(\d{1,2})\s*[./-]\s*(\d{4})\b", value)
     if match is None:
+        match = re.search(
+            r"\b(\d{1,2})\s+thang\s+(\d{1,2})\s+nam\s+(\d{4})\b",
+            normalize_vietnamese_anchor_v1(value),
+        )
+    if match is None:
         return None
     return tuple(int(item) for item in match.groups())  # type: ignore[return-value]
 
@@ -531,10 +1053,11 @@ def _verify_axes_and_units(graph: Mapping[str, Any], review: Mapping[str, Any]) 
                 raise _error("review and unique graph exact periods disagree")
             continue
         expected = {
-            "CURRENT_PERIOD_END": "so cuoi ky",
-            "COMPARATIVE_PERIOD_START": "so dau ky",
+            "CURRENT_PERIOD_END": ("so cuoi ky", "so cuoi nam"),
+            "COMPARATIVE_PERIOD_START": ("so dau ky", "so dau nam"),
         }.get(semantic)
-        if expected is None or expected not in normalize_vietnamese_anchor_v1(pixel):
+        normalized_pixel = normalize_vietnamese_anchor_v1(pixel)
+        if expected is None or not any(alias in normalized_pixel for alias in expected):
             raise _error("review and unique graph relative periods disagree")
     lanes = graph.get("lane_types")
     units = review["unit_pixel_transcriptions"]
@@ -727,33 +1250,25 @@ def build_loan_type_8bank_codex_verified_mapping_v1(
     *,
     crop_manifest_sha256: str,
     review_sha256: str,
+    _profile_name: str = "wave1-2026",
 ) -> dict[str, Any]:
     """Derive bounded verified mappings from exact live inputs and pixel review."""
 
+    profile = _profile(_profile_name)
     axis = project_full_document_vietocr_accounting_axis_v1(semantic_index)
-    if axis["semantic_axis_sha256"] != EXPECTED_AXIS_SHA256:
+    if axis["semantic_axis_sha256"] != profile["axis_sha256"]:
         raise _error("full-document semantic axis identity drifted")
-    reviewed = _review(review)
-    if review_sha256 != REVIEW_SHA256:
+    reviewed = _review(review, _profile_name)
+    if review_sha256 != profile["review_sha256"]:
         raise _error("Codex pixel review content identity drifted")
     _sha256(crop_manifest_sha256, "crop manifest")
     if type(crop_manifest) is not dict or type(crop_manifest.get("documents")) is not list:
         raise _error("full-document crop manifest shape drifted")
-    expected_scan_metrics = {
-        "accepted_numeric_graph_count": 0,
-        "document_count": 8,
-        "document_unique_structural_match_count": 8,
-        "mapping_verified_count": 0,
-        "near_region_count": 43,
-        "owner_table_region_count": 8,
-        "semantic_proposal_accounting_corroborated_lane_count": 14,
-        "structure_resolved_numeric_unresolved_count": 8,
-        "unresolved_document_count": 0,
-    }
     if (
         type(structure_scan) is not dict
         or type(structure_scan.get("trials")) is not list
-        or not same_typed_json_v1(structure_scan.get("metrics"), expected_scan_metrics)
+        or structure_scan.get("scan_id") != profile["scan_id"]
+        or not same_typed_json_v1(structure_scan.get("metrics"), profile["scan_metrics"])
     ):
         raise _error("full-document loan-type scan denominator drifted")
     if type(schema_authority) is not dict:
@@ -1008,35 +1523,40 @@ def build_loan_type_8bank_codex_verified_mapping_v1(
     }
     material = {
         "authority": canonical_clone_v1(_AUTHORITY),
-        "claim_boundary": CLAIM_BOUNDARY,
-        "format_version": FORMAT_VERSION,
+        "claim_boundary": profile["claim_boundary"],
+        "format_version": profile["format_version"],
         "input_refs": {
             "codex_pixel_review": {
-                "path": REVIEW_PATH.as_posix(),
+                "path": profile["review_path"].as_posix(),
                 "sha256": review_sha256,
             },
             "crop_manifest_sha256": crop_manifest_sha256,
             "semantic_axis_sha256": axis["semantic_axis_sha256"],
-            "semantic_index_sha256": EXPECTED_INDEX_SHA256,
+            "semantic_index_sha256": profile["index_sha256"],
             "structure_scan_id": structure_scan["scan_id"],
             "tm_schema_authority": canonical_clone_v1(schema_authority),
         },
         "metrics": metrics,
-        "state": "LOAN_TYPE_8BANK_CODEX_VERIFICATION_COMPLETE",
+        "state": profile["state"],
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "lt8bcv2:result:" + canonical_json_sha256_v1(material)}
+        {
+            **material,
+            "result_id": profile["result_id_prefix"] + canonical_json_sha256_v1(material),
+        },
+        _profile_name,
     )
 
 
-def _validate_result(value: Any) -> dict[str, Any]:
+def _validate_result(value: Any, profile_name: str = "wave1-2026") -> dict[str, Any]:
+    profile = _profile(profile_name)
     if type(value) is not dict or set(value) != _RESULT_FIELDS:
         raise _error("verified loan-type result fields drifted")
     if (
-        value["format_version"] != FORMAT_VERSION
-        or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "LOAN_TYPE_8BANK_CODEX_VERIFICATION_COMPLETE"
+        value["format_version"] != profile["format_version"]
+        or value["claim_boundary"] != profile["claim_boundary"]
+        or value["state"] != profile["state"]
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
         or len(value["trials"]) != 8
@@ -1046,7 +1566,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
         raise _error("verified loan-type result identity/authority drifted")
     clone = canonical_clone_v1(value)
     result_id = clone.pop("result_id")
-    if result_id != "lt8bcv2:result:" + canonical_json_sha256_v1(clone):
+    if result_id != profile["result_id_prefix"] + canonical_json_sha256_v1(clone):
         raise _error("verified loan-type result identity drifted")
     trial_fields = {
         "bank_provenance",
@@ -1225,7 +1745,42 @@ def _load_module(path: Path, name: str) -> ModuleType:
     return module
 
 
-def _live_inputs() -> tuple[Any, Any, Any, Any, Any, Mapping[int, Any], str]:
+def _live_inputs(
+    profile_name: str = "wave1-2026",
+) -> tuple[Any, Any, Any, Any, Any, Mapping[int, Any], str]:
+    profile = _profile(profile_name)
+    if profile_name == "annual-2025":
+        index_raw = _fixed_bytes(profile["index_path"], profile["index_sha256"])
+        semantic_index = _json_bytes(index_raw, "annual-2025 semantic index")
+        manifest_raw = _fixed_bytes(profile["crop_manifest_path"], profile["crop_manifest_sha256"])
+        manifest = _json_bytes(manifest_raw, "annual-2025 crop manifest")
+        scanner = _load_module(
+            PROJECT_ROOT / "scripts/experiments/scan_loan_type_full_document_vietocr_v1.py",
+            "annual_2025_full_document_loan_type_scan_for_codex_mapping_v1",
+        )
+        structure_scan = scanner.build_loan_type_full_document_scan_v1(
+            semantic_index,
+            enable_extended_owner_table_variants=True,
+        )
+        review = _review(
+            _json_bytes(
+                _fixed_bytes(profile["review_path"], profile["review_sha256"]),
+                "annual-2025 Codex pixel review",
+            ),
+            profile_name,
+        )
+        schema_authority, schema_by_id = _authority_snapshot(PROJECT_ROOT)
+        return (
+            semantic_index,
+            manifest,
+            structure_scan,
+            review,
+            schema_authority,
+            schema_by_id,
+            profile["crop_manifest_sha256"],
+        )
+    if profile_name != "wave1-2026":
+        raise _error("loan-type mapping profile is unsupported")
     builder = _load_module(
         PROJECT_ROOT
         / "scripts/experiments/build_loan_maturity_full_document_vietocr_request_v1.py",
@@ -1243,7 +1798,10 @@ def _live_inputs() -> tuple[Any, Any, Any, Any, Any, Mapping[int, Any], str]:
         "full_document_loan_type_scan_for_codex_mapping_v1",
     )
     structure_scan = scanner.build_loan_type_full_document_scan_v1(semantic_index)
-    review = _review(_json_bytes(_fixed_bytes(REVIEW_PATH, REVIEW_SHA256), "Codex pixel review"))
+    review = _review(
+        _json_bytes(_fixed_bytes(REVIEW_PATH, REVIEW_SHA256), "Codex pixel review"),
+        profile_name,
+    )
     schema_authority, schema_by_id = _authority_snapshot(PROJECT_ROOT)
     return (
         semantic_index,
@@ -1272,6 +1830,50 @@ def build_live_loan_type_8bank_codex_verified_mapping_v1() -> dict[str, Any]:
     )
 
 
+def build_annual_2025_loan_type_8bank_codex_verified_mapping_v1(
+    semantic_index: Any,
+    crop_manifest: Any,
+    structure_scan: Any,
+    review: Any,
+    schema_authority: Any,
+    schema_by_id: Mapping[int, Any],
+    *,
+    crop_manifest_sha256: str,
+    review_sha256: str,
+) -> dict[str, Any]:
+    """Derive the audited consolidated annual-2025 loan-type mappings."""
+
+    return build_loan_type_8bank_codex_verified_mapping_v1(
+        semantic_index,
+        crop_manifest,
+        structure_scan,
+        review,
+        schema_authority,
+        schema_by_id,
+        crop_manifest_sha256=crop_manifest_sha256,
+        review_sha256=review_sha256,
+        _profile_name="annual-2025",
+    )
+
+
+def build_live_annual_2025_loan_type_8bank_codex_verified_mapping_v1() -> dict[str, Any]:
+    """Replay the fixed annual-2025 inputs and derive the bounded result."""
+
+    semantic_index, manifest, scan, review, authority, schema_by_id, manifest_sha = _live_inputs(
+        "annual-2025"
+    )
+    return build_annual_2025_loan_type_8bank_codex_verified_mapping_v1(
+        semantic_index,
+        manifest,
+        scan,
+        review,
+        authority,
+        schema_by_id,
+        crop_manifest_sha256=manifest_sha,
+        review_sha256=_profile("annual-2025")["review_sha256"],
+    )
+
+
 def validate_loan_type_8bank_codex_verified_mapping_replay_v1(value: Any) -> dict[str, Any]:
     """Exact-rebuild a persisted result from every fixed live input."""
 
@@ -1282,14 +1884,72 @@ def validate_loan_type_8bank_codex_verified_mapping_replay_v1(value: Any) -> dic
     return rebuilt
 
 
+def validate_annual_2025_loan_type_8bank_codex_verified_mapping_replay_v1(
+    value: Any,
+) -> dict[str, Any]:
+    """Exact-rebuild the annual-2025 result from every fixed live input."""
+
+    persisted = _validate_result(value, "annual-2025")
+    rebuilt = build_live_annual_2025_loan_type_8bank_codex_verified_mapping_v1()
+    if not same_typed_json_v1(persisted, rebuilt):
+        raise _error("annual-2025 verified loan-type result does not replay exactly")
+    return rebuilt
+
+
+def validate_live_annual_2025_loan_type_8bank_codex_verified_mapping_v1(
+    value: Any,
+) -> dict[str, Any]:
+    """Alias the exact fixed-root annual-2025 replay validator."""
+
+    return validate_annual_2025_loan_type_8bank_codex_verified_mapping_replay_v1(value)
+
+
 def main() -> int:
-    print(
-        json.dumps(
-            build_live_loan_type_8bank_codex_verified_mapping_v1(),
-            ensure_ascii=False,
-            sort_keys=True,
-        )
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--profile", choices=("wave1-2026", "annual-2025"), default="wave1-2026")
+    parser.add_argument("--write-review", action="store_true")
+    parser.add_argument("--validate", type=Path)
+    parser.add_argument("--output", type=Path)
+    args = parser.parse_args()
+    profile = _profile(args.profile)
+    output = args.output or (
+        profile["review_path"] if args.write_review else profile["result_path"]
     )
+    if args.write_review and args.profile != "annual-2025":
+        parser.error("the immutable wave1 review cannot be regenerated")
+    if args.write_review and args.validate is not None:
+        parser.error("--write-review and --validate are mutually exclusive")
+    if args.write_review:
+        payload = canonical_json_bytes_v1(_annual_2025_review_blueprint())
+        if output.exists():
+            raise _error(f"refusing to overwrite annual review: {output}")
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(payload)
+        print(canonical_json_sha256_v1(_annual_2025_review_blueprint()))
+        return 0
+    if args.validate is not None:
+        value = _json_bytes(args.validate.read_bytes(), "verified loan-type result")
+        result = (
+            validate_annual_2025_loan_type_8bank_codex_verified_mapping_replay_v1(value)
+            if args.profile == "annual-2025"
+            else validate_loan_type_8bank_codex_verified_mapping_replay_v1(value)
+        )
+        print(result["result_id"])
+        return 0
+    result = (
+        build_live_annual_2025_loan_type_8bank_codex_verified_mapping_v1()
+        if args.profile == "annual-2025"
+        else build_live_loan_type_8bank_codex_verified_mapping_v1()
+    )
+    payload = canonical_json_bytes_v1(result)
+    if args.output is None and args.profile == "wave1-2026":
+        sys.stdout.buffer.write(payload + b"\n")
+        return 0
+    if output.exists():
+        raise _error(f"refusing to overwrite verified result: {output}")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_bytes(payload)
+    print(result["result_id"])
     return 0
 
 

@@ -18,6 +18,13 @@ REVIEW_PATH = PROJECT_ROOT / "docs/experiments/E-0054-loan-type-8bank-codex-pixe
 RESULT_PATH = (
     PROJECT_ROOT / "docs/experiments/E-0054-loan-type-8bank-codex-verified-mapping-v2.json"
 )
+ANNUAL_REVIEW_PATH = (
+    PROJECT_ROOT / "docs/experiments/E-0112-annual-2025-loan-type-8bank-codex-pixel-review-v1.json"
+)
+ANNUAL_RESULT_PATH = (
+    PROJECT_ROOT
+    / "docs/experiments/E-0112-annual-2025-loan-type-8bank-codex-verified-mapping-v1.json"
+)
 
 
 def _module() -> ModuleType:
@@ -35,10 +42,14 @@ def _json(path: Path) -> dict[str, Any]:
     return value
 
 
-def _rehash(module: ModuleType, value: dict[str, Any]) -> None:
+def _rehash(
+    module: ModuleType,
+    value: dict[str, Any],
+    prefix: str = "lt8bcv2:result:",
+) -> None:
     material = copy.deepcopy(value)
     material.pop("result_id")
-    value["result_id"] = "lt8bcv2:result:" + module.canonical_json_sha256_v1(material)
+    value["result_id"] = prefix + module.canonical_json_sha256_v1(material)
 
 
 def test_fixed_review_and_result_are_closed_exact_and_bounded() -> None:
@@ -183,8 +194,90 @@ def test_result_rejects_typed_metric_laundering_even_after_rehash() -> None:
         module._validate_result(tampered)
 
 
-def test_persisted_result_exactly_replays_every_live_input() -> None:
+def test_persisted_wave1_result_accepts_one_exact_rebuild(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     module = _module()
     persisted = _json(RESULT_PATH)
+    monkeypatch.setattr(
+        module,
+        "build_live_loan_type_8bank_codex_verified_mapping_v1",
+        lambda: persisted,
+    )
 
     assert module.validate_loan_type_8bank_codex_verified_mapping_replay_v1(persisted) == persisted
+
+
+def test_annual_2025_review_and_result_cover_all_eight_unique_tables() -> None:
+    module = _module()
+    review = module._review(_json(ANNUAL_REVIEW_PATH), "annual-2025")
+    result = module._validate_result(_json(ANNUAL_RESULT_PATH), "annual-2025")
+
+    assert [bank["physical_page"] for bank in review["banks"]] == [50, 51, 45, 35, 39, 43, 41, 37]
+    assert result["input_refs"]["structure_scan_id"] == module.ANNUAL_2025_EXPECTED_SCAN_ID
+    assert result["metrics"] == {
+        "document_count": 8,
+        "document_unique_structure_count": 8,
+        "intermediate_source_only_total_verified_count": 0,
+        "mapped_dash_cell_count": 3,
+        "mapped_item_verified_by_codex_count": 44,
+        "mapped_money_value_cell_count": 85,
+        "mapped_percentage_corroboration_cell_count": 14,
+        "negative_family_control_count": 32,
+        "source_only_total_verified_count": 8,
+        "transformer_disagreement_preserved_count": 1,
+        "unresolved_schema_semantic_row_count": 0,
+    }
+    assert [len(trial["verified_mappings"]) for trial in result["trials"]] == [
+        5,
+        6,
+        7,
+        6,
+        5,
+        7,
+        5,
+        3,
+    ]
+    assert all(trial["status"] == "VERIFIED_BY_CODEX" for trial in result["trials"])
+    assert all(trial["unresolved_rows"] == [] for trial in result["trials"])
+    hdb = result["trials"][3]
+    assert hdb["source_only_total"]["values"][1]["independent_pixel_transcription"] == (
+        "442.484.841"
+    )
+    assert hdb["transformer_disagreements"][0]["semantic_proposal"] == "442.464.841"
+    vpb_other = next(
+        mapping
+        for mapping in result["trials"][2]["verified_mappings"]
+        if mapping["role"] == "UNMAPPED_OTHER_CREDIT"
+    )
+    assert vpb_other["report_norm_id"] == 726
+
+
+def test_annual_2025_review_and_result_tamper_fail_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+    module = _module()
+    review = _json(ANNUAL_REVIEW_PATH)
+    review["banks"][3]["source_only_total"][1]["pixel_transcription"] = "442.464.841"
+    with pytest.raises(module.LoanType8BankCodexVerifiedMappingV1Error, match="fixed pixel ledger"):
+        module._review(review, "annual-2025")
+
+    exact = module._validate_result(_json(ANNUAL_RESULT_PATH), "annual-2025")
+    monkeypatch.setattr(
+        module,
+        "build_live_annual_2025_loan_type_8bank_codex_verified_mapping_v1",
+        lambda: exact,
+    )
+    tampered = copy.deepcopy(exact)
+    tampered["trials"][2]["verified_mappings"][5]["report_norm_id"] = 720
+    _rehash(module, tampered, "annual2025lt8bcv1:result:")
+    with pytest.raises(module.LoanType8BankCodexVerifiedMappingV1Error, match="replay exactly"):
+        module.validate_annual_2025_loan_type_8bank_codex_verified_mapping_replay_v1(tampered)
+
+
+def test_annual_2025_persisted_result_exactly_replays_live_inputs() -> None:
+    module = _module()
+    persisted = _json(ANNUAL_RESULT_PATH)
+
+    assert (
+        module.validate_annual_2025_loan_type_8bank_codex_verified_mapping_replay_v1(persisted)
+        == persisted
+    )

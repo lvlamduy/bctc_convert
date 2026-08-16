@@ -296,3 +296,98 @@ def test_public_replay_rejects_coordinated_graph_rehash() -> None:
 
     with pytest.raises(loan_type.LoanTypeVariantGraphV1Error, match="replay exactly"):
         loan_type.validate_loan_type_variant_graph_replay_v1(forged, pages)
+
+
+def test_extended_compact_sibling_boundary_prevents_duplicate_later_margin_row() -> None:
+    surfaces = _direct()[:-3]
+    surfaces.extend(
+        [
+            ("120", 500, 345),
+            ("106", 800, 345),
+            ("Theo đối tượng khách hàng", 0, 390),
+            ("Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán", 0, 435),
+            ("5", 500, 435),
+            ("4", 800, 435),
+        ]
+    )
+
+    result = loan_type.build_loan_type_variant_graph_document_v1(
+        [_page(surfaces)], enable_extended_owner_table_variants=True
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert [row["role"] for row in result["graphs"][0]["rows"]] == [
+        "DOMESTIC_ORGANIZATIONS_INDIVIDUALS",
+        "DISCOUNT_INSTRUMENTS",
+        "FINANCIAL_LEASE",
+        "PAYMENTS_ON_BEHALF",
+        "ENTRUSTED_OR_SPONSORED_CAPITAL",
+    ]
+
+
+def test_extended_quality_sibling_heading_ends_the_implicit_type_table() -> None:
+    surfaces = _direct()[:-3]
+    surfaces.extend(
+        [
+            ("120", 500, 345),
+            ("106", 800, 345),
+            ("Phân tích dư nợ theo chất lượng nợ cho vay như sau", 0, 390),
+            ("Nợ đủ tiêu chuẩn", 0, 435),
+            ("110", 500, 435),
+            ("96", 800, 435),
+            ("Nợ cần chú ý", 0, 480),
+            ("10", 500, 480),
+            ("10", 800, 480),
+            ("120", 500, 525),
+            ("106", 800, 525),
+        ]
+    )
+
+    result = loan_type.build_loan_type_variant_graph_document_v1(
+        [_page(surfaces)], enable_extended_owner_table_variants=True
+    )
+
+    graph = result["graphs"][0]
+    assert graph["intermediate_totals"] == []
+    assert [item["semantic_surface"] for item in graph["total"]] == ["120", "106"]
+
+
+def test_extended_year_end_axis_and_source_semantic_aliases_are_generic() -> None:
+    surfaces = [
+        ("CHO VAY KHÁCH HÀNG", 0, 0),
+        ("Số cuối năm", 500, 40),
+        ("Số đầu năm", 800, 40),
+        ("Triệu VND", 500, 70),
+        ("Triệu VND", 800, 70),
+        ("Cho vay các tổ chức kinh tế, cá nhân trong nước", 0, 120),
+        ("100", 500, 120),
+        ("90", 800, 120),
+        ("Các khoản phải thu từ cho thuê tài chính", 0, 165),
+        ("5", 500, 165),
+        ("4", 800, 165),
+        (
+            "Cho vay trong nghiệp vụ phát hành thư tín dụng trả chậm có điều khoản trả ngay",
+            0,
+            210,
+        ),
+        ("2", 500, 210),
+        ("1", 800, 210),
+        ("107", 500, 255),
+        ("95", 800, 255),
+    ]
+
+    result = loan_type.build_loan_type_variant_graph_document_v1(
+        [_page(surfaces)], enable_extended_owner_table_variants=True
+    )
+
+    graph = result["graphs"][0]
+    assert graph["period_mode"] == "LOCAL_RELATIVE_YEAR_END_PERIOD_ROLES"
+    assert [row["role"] for row in graph["rows"]] == [
+        "DOMESTIC_ORGANIZATIONS_INDIVIDUALS",
+        "FINANCIAL_LEASE",
+        "OTHER_LOANS",
+    ]
+    assert all(
+        check["status"] == "CORROBORATED_SEMANTIC_PROPOSAL_ONLY"
+        for check in graph["accounting_checks"]
+    )

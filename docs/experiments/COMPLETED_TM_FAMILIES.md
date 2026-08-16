@@ -85,12 +85,16 @@ cột dòng tiền vào/ra chỉ dùng kiểm tra vì schema không có trục t
 
 ## 6. Phân tích theo loại hình cho vay
 
-- **Đã xác minh:** ACB p17, MBB p31, VPB p42, HDB p26, VCB p30, CTG p38,
-  BID p22, VIB p33. Tổng cộng 46 khoản mục nguồn đã được map; gồm ACB
-  `Cho vay theo chỉ định của Chính phủ` và VPB `Cấp tín dụng khác`.
-- **Không có:** Không có bank nào. ACB, VCB, CTG và BID là biến thể không có
-  tiêu đề family riêng nhưng các hàng con nằm trực tiếp dưới `Cho vay khách hàng`.
-- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong các vùng đã xác minh.
+- **Đã xác minh trên BCTC hợp nhất kiểm toán năm 2025:** ACB p50, MBB p51,
+  VPB p45, HDB p35, VCB p39, CTG p43, BID p41 và VIB p37. Whole-PDF scan tìm
+  đúng một vùng owner–child hoàn chỉnh ở mỗi báo cáo; 44 hàng nguồn đã map vào
+  718–726 và 5745. VPB giữ đủ bốn lane tiền/% và `Cấp tín dụng khác` được map
+  vào 726; BID nhận biến thể `Các khoản phải thu từ cho thuê tài chính`;
+  HDB/CTG nhận nhánh thư tín dụng trả chậm vào `Cho vay khác`.
+- **Không có:** Không có bank nào trong tám BCTC annual-2025.
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map. Ba dấu `-` được giữ trạng
+  thái nguồn rồi chuẩn hóa thành 0. Tổng so sánh HDB nhìn thấy là `442.484.841`;
+  kết quả VietOCR `442.464.841` bị pixel và phép cộng chính xác bác bỏ.
 
 ## 7. Phân tích cho vay theo ngành nghề kinh doanh
 

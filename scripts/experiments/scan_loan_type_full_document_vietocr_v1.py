@@ -166,7 +166,11 @@ def _validate_result(value: Any) -> dict[str, Any]:
     return canonical_clone_v1(value)
 
 
-def build_loan_type_full_document_scan_v1(semantic_index: Any) -> dict[str, Any]:
+def build_loan_type_full_document_scan_v1(
+    semantic_index: Any,
+    *,
+    enable_extended_owner_table_variants: bool = False,
+) -> dict[str, Any]:
     """Build the deterministic eight-document structure-only loan-type scan."""
 
     axis = project_full_document_vietocr_accounting_axis_v1(semantic_index)
@@ -189,7 +193,14 @@ def build_loan_type_full_document_scan_v1(semantic_index: Any) -> dict[str, Any]
             }
             for page in document["pages"]
         ]
-        match = matcher.build_loan_type_variant_graph_document_v1(matcher_pages)
+        match = matcher.build_loan_type_variant_graph_document_v1(
+            matcher_pages,
+            **(
+                {"enable_extended_owner_table_variants": True}
+                if enable_extended_owner_table_variants
+                else {}
+            ),
+        )
         trials.append(
             {
                 "document_ordinal": document["document_ordinal"],
@@ -239,12 +250,18 @@ def build_loan_type_full_document_scan_v1(semantic_index: Any) -> dict[str, Any]
 
 
 def validate_loan_type_full_document_scan_replay_v1(
-    value: Any, semantic_index: Any
+    value: Any,
+    semantic_index: Any,
+    *,
+    enable_extended_owner_table_variants: bool = False,
 ) -> dict[str, Any]:
     """Exact-rebuild the scan from the fixed fresh semantic index."""
 
     persisted = _validate_result(value)
-    rebuilt = build_loan_type_full_document_scan_v1(semantic_index)
+    rebuilt = build_loan_type_full_document_scan_v1(
+        semantic_index,
+        enable_extended_owner_table_variants=enable_extended_owner_table_variants,
+    )
     if not same_typed_json_v1(persisted, rebuilt):
         raise _error("loan-type full-document scan does not replay exactly")
     return rebuilt

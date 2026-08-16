@@ -97,6 +97,19 @@ _ROLE_ALIASES: dict[str, tuple[str, ...]] = {
     # row until schema semantics establish that the broader phrase is eligible.
     "UNMAPPED_OTHER_CREDIT": ("Cấp tín dụng khác",),
 }
+_EXTENDED_ROLE_ALIASES: dict[str, tuple[str, ...]] = {
+    "FINANCIAL_LEASE": ("Các khoản phải thu từ cho thuê tài chính",),
+    "FOREIGN_ORGANIZATIONS_INDIVIDUALS": ("Cho vay các tổ chức, cá nhân nước ngoài",),
+    "PAYMENTS_ON_BEHALF": ("Các khoản phải trả thay khách hàng",),
+    "OTHER_LOANS": (
+        "Cho vay trong nghiệp vụ phát hành thư tín dụng trả chậm có điều khoản trả ngay",
+        "Nghiệp vụ phát hành thư tín dụng trả chậm phát sinh trước ngày 01 tháng 7 năm 2024",
+    ),
+    "MARGIN_AND_SECURITIES_ADVANCE": (
+        "Cho vay giao dịch ký quỹ và ứng trước cho khách hàng",
+        "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán",
+    ),
+}
 _SCHEMA_ELIGIBLE_ROLES = tuple(role for role in _ROLE_ALIASES if role != "UNMAPPED_OTHER_CREDIT")
 _MIN_SCHEMA_ROLE_COUNT = 2
 _MAX_OWNER_TABLE_LINE_SPAN = 80
@@ -111,6 +124,13 @@ _BOUNDARY_PREFIXES = (
     "phan tich du no cho vay theo doi tuong",
     "phan tich du no theo doi tuong",
     "du phong rui ro cho vay khach hang",
+)
+_COMPACT_SIBLING_BOUNDARY_PREFIXES = (
+    "phan tich du no theo chat luong",
+    "theo doi tuong khach hang",
+    "theo chat luong no cho vay",
+    "theo chat luong du no cho vay",
+    "theo ky han",
 )
 _SAFETY = {
     "bank_filename_note_or_page_used_for_inference": False,
@@ -256,15 +276,26 @@ def _owner_window(lines: Sequence[Mapping[str, Any]], start: int) -> dict[str, A
     return None
 
 
-def _is_boundary(text: str) -> bool:
+def _is_boundary(text: str, *, enable_extended_owner_table_variants: bool) -> bool:
     normalized = normalize_vietnamese_anchor_v1(text)
-    return any(normalized.startswith(prefix) for prefix in _BOUNDARY_PREFIXES)
+    prefixes = _BOUNDARY_PREFIXES + (
+        _COMPACT_SIBLING_BOUNDARY_PREFIXES if enable_extended_owner_table_variants else ()
+    )
+    return any(normalized.startswith(prefix) for prefix in prefixes)
 
 
-def _table_stop(lines: Sequence[Mapping[str, Any]], owner_stop: int) -> int:
+def _table_stop(
+    lines: Sequence[Mapping[str, Any]],
+    owner_stop: int,
+    *,
+    enable_extended_owner_table_variants: bool,
+) -> int:
     hard_stop = min(len(lines), owner_stop + _MAX_OWNER_TABLE_LINE_SPAN)
     for index in range(owner_stop, hard_stop):
-        if _is_boundary(lines[index]["vietocr_text"]):
+        if _is_boundary(
+            lines[index]["vietocr_text"],
+            enable_extended_owner_table_variants=enable_extended_owner_table_variants,
+        ):
             return index
     return hard_stop
 
@@ -280,17 +311,28 @@ def _union_bbox(lines: Sequence[Mapping[str, Any]], indices: Sequence[int]) -> l
 
 
 def _label_candidates(
-    lines: Sequence[Mapping[str, Any]], start: int, stop: int
+    lines: Sequence[Mapping[str, Any]],
+    start: int,
+    stop: int,
+    *,
+    enable_extended_owner_table_variants: bool,
 ) -> list[dict[str, Any]]:
     matches: list[dict[str, Any]] = []
     occupied: set[int] = set()
     for line_index in range(start, stop):
         if line_index in occupied:
             continue
+        if enable_extended_owner_table_variants and not lines[line_index]["vietocr_text"].strip():
+            continue
         if is_number_like_v1(lines[line_index]["vietocr_text"]):
             continue
         text_indices: list[int] = []
         for candidate_index in range(line_index, min(stop, line_index + 9)):
+            if (
+                enable_extended_owner_table_variants
+                and not lines[candidate_index]["vietocr_text"].strip()
+            ):
+                continue
             if not is_number_like_v1(lines[candidate_index]["vietocr_text"]):
                 text_indices.append(candidate_index)
                 if len(text_indices) == _MAX_LABEL_WIDTH:
@@ -299,8 +341,18 @@ def _label_candidates(
         for width in range(1, len(text_indices) + 1):
             indices = text_indices[:width]
             surface = " ".join(lines[index]["vietocr_text"].strip() for index in indices).strip()
-            for role, aliases in _ROLE_ALIASES.items():
-                kind = match_vietnamese_anchor_alias_v1(surface, aliases)
+            match_surface = (
+                re.sub(r"\s*\([ivx]+\)\s*$", "", surface, flags=re.IGNORECASE)
+                if enable_extended_owner_table_variants
+                else surface
+            )
+            for role, base_aliases in _ROLE_ALIASES.items():
+                aliases = base_aliases + (
+                    _EXTENDED_ROLE_ALIASES.get(role, ())
+                    if enable_extended_owner_table_variants
+                    else ()
+                )
+                kind = match_vietnamese_anchor_alias_v1(match_surface, aliases)
                 if kind is not None:
                     proposals.append((indices, role, kind, surface))
         if not proposals:
@@ -353,6 +405,8 @@ def _axes(
     page: Mapping[str, Any],
     owner_stop: int,
     first_label: int,
+    *,
+    enable_extended_owner_table_variants: bool,
 ) -> tuple[list[dict[str, Any]], str, list[str], list[int], dict[str, Any], list[str]]:
     header = page["lines"][owner_stop:first_label]
     reasons: list[str] = []
@@ -360,6 +414,29 @@ def _axes(
         periods, period_mode = extract_period_axis_v1(header)
     except AccountingTableAxesV1Error:
         periods, period_mode = [], "UNRESOLVED"
+    if len(periods) != 2 and enable_extended_owner_table_variants:
+        relative_by_surface = {
+            "so cuoi nam": "CURRENT_PERIOD_END",
+            "so dau nam": "COMPARATIVE_PERIOD_START",
+        }
+        relative = [
+            {
+                "evidence_source_line_indices": [line["source_line_index"]],
+                "period": role,
+                "x_center_x2": center_x2_v1(line),
+            }
+            for line in header
+            if (
+                role := relative_by_surface.get(
+                    normalize_vietnamese_anchor_v1(line["vietocr_text"])
+                )
+            )
+        ]
+        if len(relative) == 2 and {item["period"] for item in relative} == set(
+            relative_by_surface.values()
+        ):
+            periods = sorted(relative, key=lambda item: item["x_center_x2"])
+            period_mode = "LOCAL_RELATIVE_YEAR_END_PERIOD_ROLES"
     if len(periods) != 2:
         reasons.append("TWO_PERIOD_AXIS_NOT_RESOLVED")
 
@@ -623,11 +700,22 @@ def _region(
     page: Mapping[str, Any],
     owner_start: int,
     owner: Mapping[str, Any],
+    *,
+    enable_extended_owner_table_variants: bool,
 ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
     lines = page["lines"]
     owner_stop = owner["source_line_indices"][-1] + 1
-    stop = _table_stop(lines, owner_stop)
-    labels = _label_candidates(lines, owner_stop, stop)
+    stop = _table_stop(
+        lines,
+        owner_stop,
+        enable_extended_owner_table_variants=enable_extended_owner_table_variants,
+    )
+    labels = _label_candidates(
+        lines,
+        owner_stop,
+        stop,
+        enable_extended_owner_table_variants=enable_extended_owner_table_variants,
+    )
     schema_roles = [item for item in labels if item["role"] in _SCHEMA_ELIGIBLE_ROLES]
     near = {
         "matched_roles": [item["role"] for item in labels],
@@ -645,7 +733,11 @@ def _region(
         return None, near
     first_label = min(item["source_line_indices"][0] for item in labels)
     periods, period_mode, lane_types, lane_centers, unit_scope, reasons = _axes(
-        pages, page, owner_stop, first_label
+        pages,
+        page,
+        owner_stop,
+        first_label,
+        enable_extended_owner_table_variants=enable_extended_owner_table_variants,
     )
     if not lane_types:
         near["unresolved_reasons"] = sorted(set(reasons))
@@ -684,7 +776,11 @@ def _region(
     return graph, near
 
 
-def _scan(pages: Sequence[Mapping[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+def _scan(
+    pages: Sequence[Mapping[str, Any]],
+    *,
+    enable_extended_owner_table_variants: bool,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     graphs: list[dict[str, Any]] = []
     near: list[dict[str, Any]] = []
     for page in pages:
@@ -693,7 +789,13 @@ def _scan(pages: Sequence[Mapping[str, Any]]) -> tuple[list[dict[str, Any]], lis
             owner = _owner_window(lines, start)
             if owner is None:
                 continue
-            graph, diagnostic = _region(pages, page, start, owner)
+            graph, diagnostic = _region(
+                pages,
+                page,
+                start,
+                owner,
+                enable_extended_owner_table_variants=enable_extended_owner_table_variants,
+            )
             if graph is None:
                 near.append(diagnostic)
             else:
@@ -791,11 +893,16 @@ def _validate_result(value: Any) -> dict[str, Any]:
 
 def build_loan_type_variant_graph_document_v1(
     pages: Sequence[Mapping[str, Any]],
+    *,
+    enable_extended_owner_table_variants: bool = False,
 ) -> dict[str, Any]:
     """Enumerate and build every complete loan-type owner table in one PDF."""
 
     normalized_pages = _pages(pages)
-    graphs, near = _scan(normalized_pages)
+    graphs, near = _scan(
+        normalized_pages,
+        enable_extended_owner_table_variants=enable_extended_owner_table_variants,
+    )
     full_match_count = len(graphs)
     material = {
         "claim_boundary": CLAIM_BOUNDARY,
@@ -840,12 +947,18 @@ def build_loan_type_variant_graph_document_v1(
 
 
 def validate_loan_type_variant_graph_replay_v1(
-    value: Any, pages: Sequence[Mapping[str, Any]]
+    value: Any,
+    pages: Sequence[Mapping[str, Any]],
+    *,
+    enable_extended_owner_table_variants: bool = False,
 ) -> dict[str, Any]:
     """Exact-rebuild a loan-type graph from the complete document line axis."""
 
     persisted = _validate_result(value)
-    rebuilt = build_loan_type_variant_graph_document_v1(pages)
+    rebuilt = build_loan_type_variant_graph_document_v1(
+        pages,
+        enable_extended_owner_table_variants=enable_extended_owner_table_variants,
+    )
     if not same_typed_json_v1(persisted, rebuilt):
         raise _error("loan-type graph does not replay exactly")
     return rebuilt
