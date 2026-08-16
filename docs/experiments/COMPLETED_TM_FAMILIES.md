@@ -731,6 +731,22 @@ Q1/2026, không relabel thành Q2/2026.
   lý; CTG chỉ có caption dòng tiền đầu tư. Hai trường hợp này không đủ ba dòng
   của family và không được relabel thành bảng chi tiết.
 
+## 42. Thu nhập nhân viên của ngân hàng
+
+- **Đã map/xác minh:** ACB p26, VPB p66 và VIB p49. Đã map 13 khoản mục/26 ô
+  số vào 1261–1268 và kiểm tra 14 phương trình tổng hoặc tỷ lệ. VPB là nguồn
+  Q1/2026; các số bình quân tháng được chia theo đúng ba tháng. VIB được chia
+  theo sáu tháng.
+- **Không có cụm thuyết minh chi tiết trong báo cáo:** MBB, HDB, VCB, CTG và
+  BID. Các câu chính sách trợ cấp thôi việc hoặc số nhân viên đứng riêng không
+  được relabel thành bảng thu nhập nhân viên.
+- **Còn thiếu:**
+
+| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | ---: | --- | --- |
+| ACB | 26 | Tiền lương bình quân | Số nguồn là bình quân mỗi nhân viên cho cả kỳ sáu tháng, trong khi 1267 là bình quân người/tháng. |
+| ACB | 26 | Thu nhập bình quân | Số nguồn là bình quân mỗi nhân viên cho cả kỳ sáu tháng, trong khi 1268 là bình quân người/tháng. |
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -780,3 +796,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Chi phí thuế thu nhập doanh nghiệp | — | ✓ p50 | ✓\* p59 | — | — | — | — | ✓\* p48 | 1 dòng OPEN; 28 mapping, 56 ô số, 20 phương trình; 2 DASH→0, 1 ô trống giữ nguyên; 5 bank không có note chi tiết; VPB là nguồn Q1 |
 | Tiền và các khoản tương đương tiền | ✓ p8 | ✓ p50 | ✓\* p66 | — | ✓ p40 | ✓ p47 | — | ✓ p45 | 0 dòng; 31 mapping, 60 ô số, 12 phương trình; 2 ô trống giữ nguyên; HDB/BID không có note chi tiết; VPB là nguồn Q1 |
 | Mua mới và thanh lý các công ty con | — | — | — | — | — | — | — | — | 0 dòng; cả 8 PDF không có bảng chi tiết 1255–1258; HDB/CTG có đối chứng giao dịch/cash-flow nhưng thiếu ba dòng bắt buộc |
+| Thu nhập nhân viên | ✓\* p26 | — | ✓\* p66 | — | — | — | — | ✓ p49 | 2 dòng ACB OPEN; 13 mapping, 26 ô số, 14 phương trình; 5 bank không có note chi tiết; VPB là nguồn Q1 |

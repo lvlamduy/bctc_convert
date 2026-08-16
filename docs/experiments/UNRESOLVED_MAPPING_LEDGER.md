@@ -17,7 +17,7 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **151 entries**.  Current open queue: **52**.  Closed history:
+Ledger total: **153 entries**.  Current open queue: **54**.  Closed history:
 **40** row/graph resolutions and **59** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
@@ -136,10 +136,20 @@ công ty con nhưng đang áp dụng phương pháp tạm thời; CTG có captio
 mua/bán công ty con. Các đối chứng này thiếu tổng giá trị, tiền thanh toán và
 tiền thực có trong công ty con nên không phát sinh mapping hay dòng OPEN.
 
+E-0094 `Thu nhập nhân viên của ngân hàng` quét đủ 453 trang và tìm đúng một
+vùng chi tiết tại ACB p26, VPB p66 và VIB p49. 13 mapping/26 ô số và 14
+phương trình tổng hoặc tỷ lệ đã `VERIFIED_BY_CODEX`. VPB giữ đúng kỳ Q1/2026;
+VIB dùng kỳ sáu tháng. EI-001/EI-002 còn OPEN vì hai số bình quân của ACB là
+bình quân mỗi nhân viên cho toàn kỳ sáu tháng, không phải bình quân
+người/tháng như 1267/1268. MBB/HDB/VCB/CTG/BID không có bảng thu nhập nhân
+viên chi tiết trong các PDF đã bind.
+
 ## Open review queue (always first)
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
 | --- | --- | --- | ---: | --- | --- |
+| EI-001 | Thu nhập nhân viên | ACB | 26 | Tiền lương bình quân | Số `90 / 86` bằng quỹ lương chia số nhân viên cho cả kỳ, không chia tiếp sáu tháng; không ép vào 1267 `Lương bình quân người/tháng`. |
+| EI-002 | Thu nhập nhân viên | ACB | 26 | Thu nhập bình quân | Số `243 / 247` bằng tổng thu nhập chia số nhân viên cho cả kỳ, không chia tiếp sáu tháng; không ép vào 1268 `Thu nhập bình quân người/tháng`. |
 | TAX-001 | Chi phí thuế thu nhập doanh nghiệp | VIB | 48 | Điều chỉnh khác | Nhãn rộng hơn leaf 5733; kỳ hiện tại để trống và không được coi là 0, kỳ so sánh `163` vẫn tham gia phương trình tổng thuế hiện hành đã xác minh. |
 | OACT-001 | Thu nhập, chi phí và lãi thuần từ hoạt động khác | VPB | 64 | Thu từ phạt vi phạm hợp đồng | Chưa có leaf tương đương dưới 1229; giá trị `41 / 9` vẫn tham gia và đóng đúng tổng thu nhập nguồn. |
 | CRPE-001 | Chi phí dự phòng rủi ro tín dụng | VPB | 66 | Chi phí dự phòng cho vay giao dịch ký quỹ và ứng trước | Chưa có leaf chi phí dự phòng margin/ứng trước tương đương dưới 1221; dòng vẫn tham gia tổng nguồn đã xác minh. |
@@ -239,6 +249,21 @@ page or note identifier participates in this decision.
 | TAX-002–TAX-006 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/HDB/VCB/CTG/BID không có bảng đối chiếu chi phí thuế chi tiết trong PDF đã bind |
 | CEQ-001–CEQ-002 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; HDB/BID không có bảng chi tiết tiền và tương đương tiền 1248–1254 trong PDF đã bind; số dư lưu chuyển tiền tệ và diễn giải chính sách là đối chứng âm |
 | SAD-001–SAD-008 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; cả tám PDF không có bảng chi tiết 1255–1258. Giao dịch HDS của HDB và caption dòng tiền CTG được giữ làm đối chứng, không bị relabel |
+| EI-001–EI-002 | `OPEN_SCHEMA_PERIOD_SEMANTICS_GAP`; các dòng ACB là bình quân mỗi nhân viên cho toàn kỳ sáu tháng, còn schema 1267/1268 quy định bình quân người/tháng. Giá trị và phương trình tỷ lệ nguồn được giữ đầy đủ nhưng không map |
+
+## Employee income (`EMPLOYEE_INCOME`)
+
+Current exact-replay result:
+`docs/experiments/E-0094-employee-income-8bank-codex-verified-mapping-v1.json`
+
+- One whole-PDF graph finds one unique detailed region at ACB p26, VPB p66
+  and VIB p49; MBB/HDB/VCB/CTG/BID have no detailed employee-income note in
+  the supplied reports.
+- 13 mappings, 26 value cells and 14 additive/ratio equations are independently
+  verified. VPB is explicitly Q1/2026; VIB is the six-month period.
+- **EI-001–EI-002 — OPEN:** ACB `Tiền lương bình quân` and `Thu nhập bình
+  quân` are per employee for the reporting period. They are not silently
+  converted into the per-person-per-month schema leaves 1267/1268.
 
 ## Subsidiary acquisitions and disposals (`SUBSIDIARY_ACQUISITION_DISPOSAL`)
 
