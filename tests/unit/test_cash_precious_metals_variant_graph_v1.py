@@ -80,6 +80,24 @@ def test_vib_short_gold_owner_and_one_word_gold_are_generic_variants() -> None:
     assert result["regions"][0]["layout"]["variant"] == "VND_FOREIGN_AND_MONETARY_GOLD"
 
 
+def test_annual_2025_and_2024_period_headers_use_the_same_generic_graph() -> None:
+    surfaces = [
+        (
+            "31/12/2025"
+            if text == "30/06/2026"
+            else "31/12/2024"
+            if text == "31/12/2025"
+            else text,
+            x,
+            y,
+        )
+        for text, x, y in _table()
+    ]
+    result = cash.build_cash_precious_metals_variant_graph_document_v1([_page(surfaces)])
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["regions"][0]["layout"]["meaningful_axes"]["period_header_count"] == 2
+
+
 def test_balance_sheet_cashflow_and_risk_surfaces_are_not_complete_notes() -> None:
     surfaces = [
         ("Tiền mặt, vàng bạc, đá quý", 0, 0),
