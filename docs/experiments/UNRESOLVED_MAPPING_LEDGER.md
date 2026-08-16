@@ -17,8 +17,8 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **185 entries**.  Current open queue: **68**.  Closed history:
-**50** row/graph resolutions and **67** confirmed bound-report family absences.
+Ledger total: **198 entries**.  Current open queue: **79**.  Closed history:
+**50** row/graph resolutions and **69** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
@@ -187,10 +187,31 @@ absence; các bảng rủi ro tiền tệ/lãi suất/thanh khoản là đối c
 FI-003 giữ OPEN vì nguồn in `(*)` và ghi rõ giá trị hợp lý không xác định được;
 không đổi `(*)` thành 0 hay sao chép giá trị ghi sổ. VPB giữ đúng kỳ Q1/2026.
 
+E-0101 `Rủi ro tiền tệ` quét đủ 453 trang và tìm đúng một vùng tại MBB p58,
+VPB p80, HDB p38–39, VCB p50–51, CTG p60 và VIB p65–66. ACB/BID là bounded
+detailed-table absence. Graph chung dùng owner, trục tiền tệ linh hoạt, tổng tài
+sản/nợ và trạng thái nội/ngoại bảng; không dùng bank/page làm rule. 103 mapping,
+119 ô số và 48 phương trình được `VERIFIED_BY_CODEX`. CRISK-001–CRISK-011 giữ
+25 ô nguồn `OPEN`: hai sai số trình bày ±1 của VPB, ba nhánh vàng chưa có schema,
+các trạng thái kết hợp thiếu ô ngoại bảng nhìn thấy và một dòng VND của VCB có
+phạm vi `nợ phải trả` hẹp hơn leaf schema gồm cả vốn chủ sở hữu. VietOCR chỉ
+làm text/geometry anchor; số được khóa bằng trục Paddle/native và pixel.
+
 ## Open review queue (always first)
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
 | --- | --- | --- | ---: | --- | --- |
+| CRISK-001 | Rủi ro tiền tệ | VPB | 80 | EUR — tổng tài sản, tổng nợ, trạng thái nội bảng/kết hợp | `249.696 - 264.460 = (14.764)` nhưng nguồn in `(14.765)`; giữ cả bốn ô, không tự sửa sai số 1. |
+| CRISK-002 | Rủi ro tiền tệ | VPB | 80 | Vàng — tổng tài sản, tổng nợ, trạng thái nội bảng/kết hợp | Family 1352 chưa có nhánh currency-axis vàng; bốn ô vẫn khép nội bảng. |
+| CRISK-003 | Rủi ro tiền tệ | VPB | 80 | Trạng thái nội, ngoại bảng — tiền tệ khác | Không có đủ ô trạng thái ngoại bảng nhìn thấy để kiểm tra giá trị `103.011`. |
+| CRISK-004 | Rủi ro tiền tệ | VPB | 80 | Tổng cộng — tổng tài sản, tổng nợ, trạng thái nội bảng/kết hợp | Tổng tài sản trừ tổng nợ lệch 1 so với trạng thái nội bảng in; không tự sửa. |
+| CRISK-005 | Rủi ro tiền tệ | VPB | 80 | Trạng thái nội, ngoại bảng — USD | Không có đủ ô trạng thái ngoại bảng nhìn thấy để đóng phương trình kết hợp. |
+| CRISK-006 | Rủi ro tiền tệ | HDB | 39 | Trạng thái nội, ngoại bảng — EUR | Ô ngoại bảng EUR không được in; giá trị kết hợp `3.919` không được map riêng. |
+| CRISK-007 | Rủi ro tiền tệ | HDB | 39 | Vàng — tổng tài sản, tổng nợ, trạng thái nội bảng/kết hợp | Schema chưa có nhánh currency-axis vàng. |
+| CRISK-008 | Rủi ro tiền tệ | VCB | 51 | Tổng nợ phải trả — VND | Nguồn chỉ là nợ phải trả; leaf 1418 gồm cả nợ phải trả và vốn chủ sở hữu nên không mở rộng phạm vi ngầm. |
+| CRISK-009 | Rủi ro tiền tệ | CTG | 60 | Vàng — tổng tài sản, trạng thái nội bảng/kết hợp | Nguồn để trống tổng nợ và ngoại bảng vàng; schema cũng chưa có nhánh vàng. |
+| CRISK-010 | Rủi ro tiền tệ | VIB | 65 | Trạng thái nội, ngoại bảng — EUR | Kỳ hiện tại không in ô ngoại bảng EUR; kỳ so sánh p66 đã khép và map riêng. |
+| CRISK-011 | Rủi ro tiền tệ | VIB | 65 | Trạng thái nội, ngoại bảng — USD | Kỳ hiện tại không in ô ngoại bảng USD; kỳ so sánh p66 đã khép và map riêng. |
 | FI-001 | Công cụ tài chính | VPB | 86 | Giá trị hợp lý của các tài sản và nợ tài chính đánh dấu `(*)` | Nguồn ghi không thể xác định giá trị hợp lý; ký hiệu không phải 0 và giá trị ghi sổ không thay thế được. |
 | FI-002 | Công cụ tài chính | VCB | 45 | Giá trị hợp lý của các tài sản và nợ tài chính đánh dấu `(*)` | Không có giá trị số được công bố; giữ nguyên nhóm nguồn OPEN. |
 | FI-003 | Công cụ tài chính | CTG | 51 | Giá trị hợp lý của các tài sản và nợ tài chính đánh dấu `(*)` | Không có giá trị số được công bố; giữ nguyên nhóm nguồn OPEN. |
@@ -314,6 +335,8 @@ page or note identifier participates in this decision.
 | CL-023–CL-025 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; HDB/VCB/BID có bảng B02a ngoài báo cáo chính nhưng không có note B05a chi tiết của family trong đúng PDF đã bind |
 | FI-001–FI-003 | `OPEN_SOURCE_VALUE_UNAVAILABLE`; VPB/VCB/CTG in `(*)` thay cho phần lớn giá trị hợp lý. Ký hiệu này không được đổi thành 0 hoặc thay bằng giá trị ghi sổ |
 | FI-007–FI-011 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/MBB/HDB/BID/VIB không có bảng chi tiết đồng thời trình bày giá trị ghi sổ và giá trị hợp lý trong đúng PDF đã bind |
+| CRISK-001–CRISK-011 | `OPEN_SCHEMA_SCOPE_OR_SOURCE_CLOSURE_GAP`; 103 mapping/119 ô khác vẫn đã xác minh. Trục vàng, trạng thái thiếu đối ứng, hai residual VPB và VND liability hẹp hơn schema được giữ nguyên nguồn |
+| CRISK-012–CRISK-013 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/BID không có bảng rủi ro tiền tệ chi tiết trong đúng PDF đã bind |
 
 ## Financial instruments — carrying and fair value (`FINANCIAL_INSTRUMENTS`)
 
@@ -323,6 +346,22 @@ page or note identifier participates in this decision.
 - **FI-007–FI-011 — confirmed bound-report absences:** ACB, MBB, HDB, BID và
   VIB không có bảng chi tiết mang đồng thời hai nhánh giá trị ghi sổ/giá trị
   hợp lý. Các bảng rủi ro là matched controls thuộc family kế tiếp.
+
+## Currency risk (`CURRENCY_RISK`)
+
+Current exact-replay result:
+`docs/experiments/E-0101-currency-risk-8bank-codex-verified-mapping-v1.json`
+
+- One bank-blind whole-PDF graph finds six unique currency-risk regions and
+  confirms two bounded absences. Flexible axis/row order and page continuation
+  are admitted; interest, liquidity and fair-value tables remain controls.
+- 103 mappings/119 value cells are independently verified by 48 exact
+  accounting equations. The first monetary column in wide VCB/CTG tables is
+  bounded by the actual row-label edge, not a fixed page-percentage cutoff.
+- **CRISK-001–CRISK-011 — OPEN:** retain 25 source cells across unsupported
+  gold axes, missing external-state counterparts, two VPB residuals of one and
+  the narrower VCB VND liability scope. No blank is converted to zero and no
+  residual is silently repaired.
 
 ## Project-owner catch-all and monthly-average closure (`E-0100`)
 

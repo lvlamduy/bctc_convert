@@ -827,6 +827,34 @@ Q1/2026, không relabel thành Q2/2026.
 | VCB | 45 | Giá trị hợp lý của phần lớn tài sản/nợ tài chính ký hiệu `(*)` | Nguồn không công bố giá trị số; giữ OPEN. |
 | CTG | 51 | Giá trị hợp lý của phần lớn tài sản/nợ tài chính ký hiệu `(*)` | Nguồn không công bố giá trị số; giữ OPEN. |
 
+## 48. Rủi ro tiền tệ
+
+- **Đã map/xác minh:** MBB p58, VPB p80, HDB p38–39, VCB p50–51,
+  CTG p60 và VIB p65–66. Một graph chung nhận diện owner `Rủi ro tiền tệ` hoặc
+  `Rủi ro tỷ giá`, các trục tiền tệ có thể đổi thứ tự, các dòng tổng tài sản,
+  tổng nợ, trạng thái nội bảng, ngoại bảng và trạng thái kết hợp; bảng có thể
+  tiếp trang. Đã xác minh 103 mapping/119 ô số bằng 48 phương trình kế toán
+  khép đúng. VIB giữ riêng bảng hiện tại và so sánh; VPB giữ đúng kỳ Q1/2026.
+- **Không có bảng rủi ro tiền tệ chi tiết trong báo cáo:** ACB và BID. Toàn PDF
+  đã được quét; các vùng rủi ro lãi suất, thanh khoản và giá trị hợp lý được
+  giữ làm đối chứng âm, không relabel thành rủi ro tiền tệ.
+- **Còn thiếu:** 25 ô nguồn trong 11 nhóm dưới đây vẫn được giữ `OPEN`; các
+  mapping còn lại của cùng bảng vẫn được xác minh độc lập.
+
+| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | ---: | --- | --- |
+| VPB | 80 | Trục EUR — tổng tài sản, tổng nợ, trạng thái nội bảng/kết hợp | Phép `249.696 - 264.460` lệch 1 so với trạng thái in `(14.765)`; không tự sửa số nguồn. |
+| VPB | 80 | Trục vàng — tổng tài sản, tổng nợ, trạng thái nội bảng/kết hợp | Schema 1352 hiện chưa có nhánh trục vàng. |
+| VPB | 80 | Trạng thái kết hợp — trục tiền tệ khác | Không có đủ trạng thái ngoại bảng nhìn thấy để đóng phương trình kết hợp. |
+| VPB | 80 | Trục tổng cộng — tổng tài sản, tổng nợ, trạng thái nội bảng/kết hợp | Phép tổng tài sản trừ tổng nợ lệch 1 so với trạng thái nội bảng in. |
+| VPB | 80 | Trạng thái kết hợp — USD | Không có đủ trạng thái ngoại bảng nhìn thấy để đóng phương trình kết hợp. |
+| HDB | 39 | Trạng thái kết hợp — EUR | Không có ô trạng thái ngoại bảng EUR nhìn thấy để đóng phương trình. |
+| HDB | 39 | Trục vàng — tổng tài sản, tổng nợ, trạng thái nội bảng/kết hợp | Schema chưa có nhánh trục vàng. |
+| VCB | 51 | Tổng nợ phải trả — VND | Dòng nguồn không gồm vốn chủ sở hữu, còn schema 1418 là `Nợ phải trả và vốn chủ sở hữu`; không thu hẹp/ngầm mở rộng phạm vi. |
+| CTG | 60 | Trục vàng — tổng tài sản, trạng thái nội bảng/kết hợp | Ô tổng nợ và ngoại bảng vàng để trống; schema cũng chưa có nhánh vàng. |
+| VIB | 65 | Trạng thái kết hợp — EUR | Kỳ hiện tại không có ô trạng thái ngoại bảng EUR nhìn thấy để đóng phương trình. |
+| VIB | 65 | Trạng thái kết hợp — USD | Kỳ hiện tại không có ô trạng thái ngoại bảng USD nhìn thấy để đóng phương trình. |
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -882,3 +910,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Tài sản/GTCG ngân hàng đem thế chấp, cầm cố, chiết khấu | — | — | ✓\* p67 | — | — | — | — | ✓\* p49 | 3 dòng OPEN; 5 mapping, 10 ô số, 6 quan hệ kế toán; 6 bank không có note chi tiết; VPB có hierarchy nguồn double-count và là nguồn Q1 |
 | Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra | ✓\* p26 | ✓ p51 | ✓\* p68 | — | — | ✓ p48 | — | ✓ p50 | 13 dòng OPEN; 47 mapping, 92 ô số, 34 phương trình; 3 bank không có note chi tiết; VPB là nguồn Q1 |
 | Công cụ tài chính — giá trị ghi sổ/hợp lý | — | — | ✓\* p86 | — | ✓\* p44–45 | ✓\* p51 | — | — | 3 nhóm giá trị hợp lý OPEN; 64 mapping, 55 ô số, 12 phương trình; 5 bank không có bảng chi tiết; VPB là nguồn Q1 |
+| Rủi ro tiền tệ | — | ✓ p58 | ✓\* p80 | ✓\* p38–39 | ✓\* p50–51 | ✓\* p60 | — | ✓\* p65–66 | 11 nhóm/25 ô OPEN; 103 mapping, 119 ô số, 48 phương trình; ACB/BID không có bảng chi tiết; VPB là nguồn Q1 |
