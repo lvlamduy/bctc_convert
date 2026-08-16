@@ -1,6 +1,6 @@
 # Unresolved mapping and adjudication review ledger
 
-Updated: 2026-08-15 (UTC)
+Updated: 2026-08-16 (UTC)
 
 This is the cumulative human-readable file requested for every source item or
 family region that could not initially be mapped.  Entries remain here after
@@ -17,8 +17,8 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **129 entries**.  Current open queue: **50**.  Closed history:
-**40** row/graph resolutions and **39** confirmed bound-report family absences.
+Ledger total: **135 entries**.  Current open queue: **51**.  Closed history:
+**40** row/graph resolutions and **44** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
@@ -104,10 +104,20 @@ và CRPE-002 vẫn OPEN vì chưa có leaf chi phí dự phòng margin/ứng tr�
 phải thu tài trợ thương mại. ACB/HDB/VCB/CTG/BID được ghi nhận bounded absence
 cho đúng note chi tiết trong các PDF đã bind, không phải vắng mặt số tổng KQKD.
 
+E-0090 `Thu nhập, chi phí và lãi thuần từ hoạt động khác` quét đủ 453 trang và
+tìm đúng một note chi tiết tại MBB p47, VPB p64 và VIB p46. 23 mapping/46 ô số
+và 14 phương trình đã `VERIFIED_BY_CODEX`; MBB dùng biến thể net-only,
+VPB/VIB dùng parent thu nhập + parent chi phí + các nhánh tùy chọn + lãi thuần.
+Hai dòng thanh lý tài sản của VPB được cộng có kiểm soát theo từng kỳ. Chỉ
+OACT-001 còn OPEN vì schema chưa có leaf thu từ phạt vi phạm hợp đồng.
+ACB/HDB/VCB/CTG/BID là bounded detailed-note absence; tổng KQKD, segment và
+diễn giải không bị relabel thành note chi tiết. VPB giữ đúng kỳ Q1/2026.
+
 ## Open review queue (always first)
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
 | --- | --- | --- | ---: | --- | --- |
+| OACT-001 | Thu nhập, chi phí và lãi thuần từ hoạt động khác | VPB | 64 | Thu từ phạt vi phạm hợp đồng | Chưa có leaf tương đương dưới 1229; giá trị `41 / 9` vẫn tham gia và đóng đúng tổng thu nhập nguồn. |
 | CRPE-001 | Chi phí dự phòng rủi ro tín dụng | VPB | 66 | Chi phí dự phòng cho vay giao dịch ký quỹ và ứng trước | Chưa có leaf chi phí dự phòng margin/ứng trước tương đương dưới 1221; dòng vẫn tham gia tổng nguồn đã xác minh. |
 | CRPE-002 | Chi phí dự phòng rủi ro tín dụng | VIB | 47 | Biến động dự phòng rủi ro các khoản phải thu từ hoạt động tài trợ thương mại | Chưa có leaf chi phí dự phòng khoản phải thu tài trợ thương mại; dấu gạch hiện kỳ và số hoàn nhập kỳ so sánh vẫn nằm trong tổng đã xác minh. |
 | OE-001 | Chi phí quản lý chung (Chi phí hoạt động) | VPB | 65 | Chi thuê tài sản | Chưa có leaf riêng dưới 1212 `Chi về tài sản`; dòng vẫn nằm trong parent nguồn đã xác minh. |
@@ -199,6 +209,28 @@ page or note identifier participates in this decision.
 | OE-001–OE-004 | `OPEN_SCHEMA_GAP`; 99 khoản mục chắc chắn vẫn đã map. Bốn dòng chi phí riêng được giữ trong parent/tổng và các phương trình nguồn, không ép vào leaf gần nghĩa |
 | CRPE-001–CRPE-002 | `OPEN_SCHEMA_GAP`; 15 khoản mục chắc chắn vẫn đã map. Hai dòng dự phòng riêng được giữ trong tổng nguồn và không ép vào leaf gần nghĩa |
 | CRPE-003–CRPE-007 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/HDB/VCB/CTG/BID không có note chi tiết 1221 trong PDF đã bind, dù có thể có dòng tổng KQKD hoặc diễn giải chính sách |
+| OACT-001 | `OPEN_SCHEMA_GAP`; 23 khoản mục chắc chắn vẫn đã map. Dòng phạt vi phạm hợp đồng được giữ trong parent thu nhập và phương trình nguồn, không ép vào `Khác` |
+| OACT-002–OACT-006 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/HDB/VCB/CTG/BID không có note hoạt động khác chi tiết trong PDF đã bind; tổng KQKD, segment và diễn giải là đối chứng âm |
+
+## Other activity income, expense and net (`OTHER_ACTIVITY`)
+
+Current exact-replay result:
+`docs/experiments/E-0090-other-activity-8bank-codex-verified-mapping-v1.json`
+
+- One shared whole-PDF graph finds one unique numbered note at MBB p47, VPB
+  p64 and VIB p46. It accepts a net-only variant or gross income/expense
+  parents with optional children and labeled/unlabeled net totals, without
+  using bank, filename, note number or page as a rule.
+- 23 mappings, 46 value cells and 14 accounting equations are independently
+  verified. VPB's two visible asset-disposal rows are summed by authenticated
+  components before one mapping to 1231.
+- **OACT-001 — OPEN:** VPB p64 `Thu từ phạt vi phạm hợp đồng`, visible values
+  `41 / 9`; no distinct leaf exists below 1229. The row remains inside the
+  verified income-parent and net equations.
+- **OACT-002–OACT-006 — confirmed bound-report absences:** ACB, HDB, VCB, CTG
+  and BID have no complete numbered detail note with period/unit axes,
+  components and net total. Their KQKD totals, segment reports and explanatory
+  text remain negative controls.
 
 ## Credit-risk provision expense (`CREDIT_RISK_PROVISION_EXPENSE`)
 
