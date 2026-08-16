@@ -15,6 +15,7 @@ from bctc_ai.evaluation.accounting_table_axes_v1 import (
     money_integer_v1,
     money_values_v1,
     percentage_values_v1,
+    resolve_relative_period_axis_v1,
     unit_kind_v1,
 )
 
@@ -225,6 +226,65 @@ def test_document_period_context_rejects_frequent_old_legal_footer_date() -> Non
     assert context["supporting_page_count"] == 2
 
 
+def test_relative_period_axis_uses_declared_balance_or_rollforward_semantics() -> None:
+    context = infer_document_reporting_period_context_v1(
+        [
+            _page(
+                1,
+                _line(1, "31/12/2025", 100),
+                _line(2, "31/12/2024", 300),
+                _line(3, "01/01/2025", 500),
+            ),
+            _page(
+                2,
+                _line(1, "Ngày 31 tháng 12 năm 2025", 100),
+                _line(2, "Ngày 31 tháng 12 năm 2024", 300),
+            ),
+        ]
+    )
+    relative_axis, mode = extract_period_axis_v1(
+        [_line(7, "Số cuối kỳ", 100), _line(8, "Số đầu kỳ", 300)]
+    )
+    assert mode == "LOCAL_RELATIVE_PERIOD_ROLES"
+
+    balance, balance_mode = resolve_relative_period_axis_v1(
+        relative_axis, context, period_semantics="BALANCE_COMPARATIVE"
+    )
+    assert balance_mode == "DOCUMENT_CONTEXT_BALANCE_COMPARATIVE"
+    assert [(item["resolved_role"], item["resolved_period"]) for item in balance] == [
+        ("CURRENT_PERIOD_END", "31/12/2025"),
+        ("BALANCE_COMPARATIVE_PERIOD_END", "31/12/2024"),
+    ]
+
+    rollforward, rollforward_mode = resolve_relative_period_axis_v1(
+        relative_axis, context, period_semantics="CURRENT_ROLLFORWARD"
+    )
+    assert rollforward_mode == "DOCUMENT_CONTEXT_CURRENT_ROLLFORWARD"
+    assert [(item["resolved_role"], item["resolved_period"]) for item in rollforward] == [
+        ("CURRENT_PERIOD_END", "31/12/2025"),
+        ("CURRENT_PERIOD_START", "01/01/2025"),
+    ]
+
+
+def test_relative_period_axis_fails_closed_without_document_start_or_comparison() -> None:
+    context = infer_document_reporting_period_context_v1(
+        [
+            _page(1, _line(1, "31/12/2025", 100)),
+            _page(2, _line(1, "31.12.2025", 100)),
+        ]
+    )
+    relative_axis, _mode = extract_period_axis_v1(
+        [_line(7, "Số cuối kỳ", 100), _line(8, "Số đầu kỳ", 300)]
+    )
+
+    assert resolve_relative_period_axis_v1(
+        relative_axis, context, period_semantics="BALANCE_COMPARATIVE"
+    ) == ([], "UNRESOLVED")
+    assert resolve_relative_period_axis_v1(
+        relative_axis, context, period_semantics="CURRENT_ROLLFORWARD"
+    ) == ([], "UNRESOLVED")
+
+
 def test_units_and_numeric_surfaces_are_generic_and_typed() -> None:
     assert unit_kind_v1("Đơn vị: Triệu đồng") == "MONEY"
     assert unit_kind_v1("Triệu VND") == "MONEY"
@@ -311,6 +371,10 @@ def test_value_vector_rejects_hidden_extra_or_missing_lanes() -> None:
         (
             lambda: infer_document_reporting_period_context_v1(1),
             "sequence of page records",
+        ),
+        (
+            lambda: resolve_relative_period_axis_v1([], {}, period_semantics="BANK_SPECIFIC"),
+            "accounting semantics",
         ),
         (lambda: is_number_like_v1(1), "exact string"),
         (

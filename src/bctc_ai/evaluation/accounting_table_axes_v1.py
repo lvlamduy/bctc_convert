@@ -29,6 +29,7 @@ __all__ = [
     "money_integer_v1",
     "money_values_v1",
     "percentage_values_v1",
+    "resolve_relative_period_axis_v1",
     "unit_kind_v1",
 ]
 
@@ -469,6 +470,102 @@ def infer_document_reporting_period_context_v1(
         "resolution": "DOMINANT_REPEATED_FULL_DATE_CONSENSUS",
         "supporting_page_count": len({evidence["page_sequence"] for evidence in current_evidence}),
     }
+
+
+def resolve_relative_period_axis_v1(
+    relative_axis: Any,
+    document_context: Any,
+    *,
+    period_semantics: str,
+) -> tuple[list[dict[str, Any]], str]:
+    """Bind local end/start labels to document dates for one table semantics.
+
+    Balance tables resolve ``Số đầu kỳ`` to the comparative balance-sheet end;
+    rollforwards resolve the same surface to the current reporting-period start.
+    The caller must explicitly declare which accounting structure it validated.
+    """
+
+    if period_semantics not in {"BALANCE_COMPARATIVE", "CURRENT_ROLLFORWARD"}:
+        raise _error("relative period accounting semantics drifted")
+    if type(relative_axis) is not list or len(relative_axis) != 2:
+        return [], "UNRESOLVED"
+    if type(document_context) is not dict or set(document_context) != {
+        "balance_comparative_period_end",
+        "current_period_end",
+        "current_period_start",
+        "flow_comparative_period_end",
+        "flow_comparative_period_start",
+        "observed_dates",
+        "period_kind",
+        "reporting_year",
+        "resolution",
+        "supporting_page_count",
+    }:
+        raise _error("document reporting-period context fields drifted")
+    if document_context["resolution"] != "DOMINANT_REPEATED_FULL_DATE_CONSENSUS":
+        return [], "UNRESOLVED"
+
+    by_local_role: dict[str, Mapping[str, Any]] = {}
+    for item in relative_axis:
+        if not isinstance(item, Mapping) or set(item) != {
+            "evidence_source_line_indices",
+            "period",
+            "x_center_x2",
+        }:
+            raise _error("relative period axis item fields drifted")
+        role = item["period"]
+        evidence = item["evidence_source_line_indices"]
+        x_center = item["x_center_x2"]
+        if (
+            role not in {"CURRENT_PERIOD_END", "COMPARATIVE_PERIOD_START"}
+            or role in by_local_role
+            or type(evidence) is not list
+            or not evidence
+            or any(type(index) is not int or index < 0 for index in evidence)
+            or type(x_center) is not int
+        ):
+            raise _error("relative period axis item identity drifted")
+        by_local_role[role] = item
+    if set(by_local_role) != {"CURRENT_PERIOD_END", "COMPARATIVE_PERIOD_START"}:
+        return [], "UNRESOLVED"
+
+    second_context_field, second_resolved_role = (
+        ("balance_comparative_period_end", "BALANCE_COMPARATIVE_PERIOD_END")
+        if period_semantics == "BALANCE_COMPARATIVE"
+        else ("current_period_start", "CURRENT_PERIOD_START")
+    )
+    bindings = (
+        (
+            "CURRENT_PERIOD_END",
+            "current_period_end",
+            "CURRENT_PERIOD_END",
+        ),
+        (
+            "COMPARATIVE_PERIOD_START",
+            second_context_field,
+            second_resolved_role,
+        ),
+    )
+    resolved: list[dict[str, Any]] = []
+    for local_role, context_field, resolved_role in bindings:
+        period = document_context[context_field]
+        if type(period) is not str or _FULL_DATE.fullmatch(period) is None:
+            return [], "UNRESOLVED"
+        item = by_local_role[local_role]
+        resolved.append(
+            {
+                "evidence_source_line_indices": list(item["evidence_source_line_indices"]),
+                "local_period_role": local_role,
+                "resolved_period": period,
+                "resolved_role": resolved_role,
+                "x_center_x2": item["x_center_x2"],
+            }
+        )
+    return sorted(resolved, key=lambda item: item["x_center_x2"]), (
+        "DOCUMENT_CONTEXT_BALANCE_COMPARATIVE"
+        if period_semantics == "BALANCE_COMPARATIVE"
+        else "DOCUMENT_CONTEXT_CURRENT_ROLLFORWARD"
+    )
 
 
 def extract_typed_value_vector_v1(
