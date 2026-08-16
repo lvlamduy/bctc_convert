@@ -98,6 +98,23 @@ def test_one_bank_blind_matcher_scans_all_eight_complete_documents(
     assert result["authority"]["bank_identity_used_for_matching_or_routing"] is False
 
 
+def test_generalized_scan_uses_the_same_eight_document_denominator(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    axis = _axis()
+    monkeypatch.setattr(
+        scanner, "project_full_document_vietocr_accounting_axis_v1", lambda _value: axis
+    )
+
+    result = scanner.build_generalized_trading_securities_full_document_scan_v2({})
+
+    assert result["format_version"] == scanner.GENERALIZED_FORMAT_VERSION
+    assert result["scan_id"].startswith("tsfdsv2:scan:")
+    assert result["metrics"]["document_count"] == 8
+    assert result["metrics"]["document_unique_structural_match_count"] == 8
+    assert result["authority"]["optional_asset_or_provision_branch_supported"] is True
+
+
 def test_exact_replay_rejects_coordinated_match_tamper(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -284,4 +301,42 @@ def test_current_eight_pdf_scan_locks_unique_boundaries_layouts_and_negative() -
             "unit_header_count"
         ]
         == 1
+    )
+
+
+def test_annual_2025_generalized_scan_locks_sparse_and_supplemental_variants() -> None:
+    semantic_index = json.loads(
+        (
+            scanner.PROJECT_ROOT
+            / "output/calibration/annual-2025-8bank-full-document-vietocr-v1/verified-index/semantic_index.json"
+        ).read_text("utf-8")
+    )
+
+    result = scanner.build_generalized_trading_securities_full_document_scan_v2(semantic_index)
+
+    assert result["scan_id"] == (
+        "tsfdsv2:scan:c40d3e078aeb11986a71fb6eaa4edf23e75a4a599db36aac263dd2a405eb2e6b"
+    )
+    assert result["metrics"] == {
+        "accepted_numeric_graph_count": 0,
+        "document_count": 8,
+        "document_unique_structural_match_count": 7,
+        "mapping_verified_count": 0,
+        "near_region_count": 255,
+        "trading_securities_region_count": 7,
+        "unresolved_document_count": 1,
+    }
+    assert [
+        trial["matcher_result"]["regions"][0]["page_sequence"]
+        if trial["matcher_result"]["regions"]
+        else None
+        for trial in result["trials"]
+    ] == [47, 49, 43, 34, 37, 41, 40, None]
+    assert (
+        sum(
+            near["status"] == "EXCLUDED_SUPPLEMENTAL_TRADING_VIEW"
+            for trial in result["trials"]
+            for near in trial["matcher_result"]["near_regions"]
+        )
+        == 3
     )

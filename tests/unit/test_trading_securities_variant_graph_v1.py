@@ -228,3 +228,74 @@ def test_typed_inputs_and_complete_page_order_fail_closed() -> None:
     skipped = _page(_listing_table(), page_sequence=2)
     with pytest.raises(securities.TradingSecuritiesVariantGraphV1Error, match="gap-free"):
         securities.build_trading_securities_variant_graph_document_v1([skipped])
+
+
+def _sparse_debt_only_table(*, include_unit: bool = True) -> list[tuple[str, int, int]]:
+    surfaces: list[tuple[str, int, int]] = [
+        ("Chứng khoán kinh doanh", 0, 0),
+        ("Số cuối năm", 650, 30),
+        ("Số đầu năm", 810, 30),
+    ]
+    if include_unit:
+        surfaces.extend([("Triệu VND", 650, 55), ("Triệu VND", 810, 55)])
+    surfaces.extend(
+        [
+            ("Chứng khoán nợ", 0, 85),
+            ("Chứng khoán Chính phủ", 0, 115),
+            ("490.537", 650, 115),
+            ("778.827", 810, 115),
+            ("Chứng khoán nợ do các TCTD khác trong nước phát hành", 0, 145),
+            ("-", 650, 145),
+            ("21.176.948", 810, 145),
+            ("490.537", 650, 180),
+            ("21.955.775", 810, 180),
+        ]
+    )
+    return surfaces
+
+
+def test_generalized_graph_accepts_unique_sparse_debt_branch_with_full_axes() -> None:
+    result = securities.build_generalized_trading_securities_variant_graph_document_v2(
+        [_page(_sparse_debt_only_table())]
+    )
+
+    assert result["format_version"] == securities.GENERALIZED_FORMAT_VERSION
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    region = result["regions"][0]
+    assert region["parent_roles_in_pdf_order"] == ["DEBT"]
+    assert region["view_kind"] == "GENERAL_DETAIL_VIEW"
+    assert region["cluster_boundary"]["last_item_role"] == "TRAILING_FAMILY_TOTAL"
+    assert region["minimal_anchor"]["combination_size"] == 2
+
+
+def test_generalized_graph_excludes_adjacent_nonadditive_listing_view() -> None:
+    primary = _issuer_table()
+    listing = [(text, x, y + 520) for text, x, y in _listing_table()]
+    listing[0] = ("Tình trạng niêm yết của chứng khoán kinh doanh", 0, 520)
+
+    result = securities.build_generalized_trading_securities_variant_graph_document_v2(
+        [_page(primary + listing)]
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["regions"][0]["view_kind"] == "GENERAL_DETAIL_VIEW"
+    assert any(
+        item["status"] == "EXCLUDED_SUPPLEMENTAL_TRADING_VIEW" for item in result["near_regions"]
+    )
+
+
+def test_generalized_graph_still_accepts_listing_when_it_is_the_only_view() -> None:
+    result = securities.build_generalized_trading_securities_variant_graph_document_v2(
+        [_page(_listing_table())]
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["regions"][0]["view_kind"] == "ALTERNATE_LISTING_VIEW"
+
+
+def test_generalized_sparse_candidate_without_unit_remains_unresolved() -> None:
+    result = securities.build_generalized_trading_securities_variant_graph_document_v2(
+        [_page(_sparse_debt_only_table(include_unit=False))]
+    )
+
+    assert result["status"] == "UNRESOLVED_NO_COMPLETE_REGION"

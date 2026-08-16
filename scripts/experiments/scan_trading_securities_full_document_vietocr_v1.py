@@ -27,10 +27,18 @@ DEFAULT_INPUT = Path(
 )
 FORMAT_VERSION = "TRADING_SECURITIES_8DOCUMENT_FULL_VIETOCR_STRUCTURE_SCAN_V1"
 MATCHER_FORMAT = "TRADING_SECURITIES_VARIANT_GRAPH_DOCUMENT_V1"
+GENERALIZED_FORMAT_VERSION = "TRADING_SECURITIES_8DOCUMENT_FULL_VIETOCR_STRUCTURE_SCAN_V2"
+GENERALIZED_MATCHER_FORMAT = "TRADING_SECURITIES_VARIANT_GRAPH_DOCUMENT_V2"
 CLAIM_BOUNDARY = (
     "FRESH_VIETOCR_TRANSFORMER_COMPLETE_PDF_TRADING_SECURITIES_GENERIC_BOUNDARY_"
     "PARENT_CHILD_PDF_ORDER_LAYOUT_PERIOD_UNIT_GROSS_PROVISION_NET_STRUCTURE_SCAN_"
     "ONLY_NO_NUMERIC_SCHEMA_MAPPING_"
+    "CANONICALIZATION_OR_EXPORT_AUTHORITY"
+)
+GENERALIZED_CLAIM_BOUNDARY = (
+    "FRESH_VIETOCR_TRANSFORMER_COMPLETE_PDF_TRADING_SECURITIES_GENERIC_OPTIONAL_"
+    "ASSET_BRANCH_PARENT_CHILD_PERIOD_UNIT_VISIBLE_TOTAL_AND_NONADDITIVE_"
+    "ALTERNATE_VIEW_STRUCTURE_SCAN_ONLY_NO_NUMERIC_SCHEMA_MAPPING_"
     "CANONICALIZATION_OR_EXPORT_AUTHORITY"
 )
 _AUTHORITY = {
@@ -43,6 +51,11 @@ _AUTHORITY = {
     "persisted_result_self_authenticating": False,
     "public_exact_replay_required": True,
     "semantic_text_source": "FRESH_VIETOCR_VGG_TRANSFORMER_0_3_13",
+}
+_GENERALIZED_AUTHORITY = {
+    **_AUTHORITY,
+    "alternate_nonadditive_view_counted_as_second_family": False,
+    "optional_asset_or_provision_branch_supported": True,
 }
 _RESULT_FIELDS = {
     "authority",
@@ -179,6 +192,58 @@ def _validate_result(value: Any) -> dict[str, Any]:
     return canonical_clone_v1(value)
 
 
+def _validate_generalized_result(value: Any) -> dict[str, Any]:
+    if type(value) is not dict or set(value) != _RESULT_FIELDS:
+        raise _error("generalized trading-securities scan fields drifted")
+    if (
+        value["format_version"] != GENERALIZED_FORMAT_VERSION
+        or value["claim_boundary"] != GENERALIZED_CLAIM_BOUNDARY
+        or value["state"] != "FULL_DOCUMENT_GENERALIZED_TRADING_SECURITIES_STRUCTURE_SCAN_COMPLETE"
+        or not same_typed_json_v1(value["authority"], _GENERALIZED_AUTHORITY)
+        or type(value["trials"]) is not list
+        or len(value["trials"]) != len(EXPECTED_DOCUMENT_ORDER)
+    ):
+        raise _error("generalized trading-securities scan identity or authority drifted")
+    _sha256(value["input_semantic_axis_sha256"], "generalized scan semantic axis")
+    if type(value["input_axis_projection_id"]) is not str or not value[
+        "input_axis_projection_id"
+    ].startswith("fdvaav1:projection:"):
+        raise _error("generalized scan accounting-axis projection identity drifted")
+    for ordinal, (trial, expected_code) in enumerate(
+        zip(value["trials"], EXPECTED_DOCUMENT_ORDER, strict=True), 1
+    ):
+        if type(trial) is not dict or set(trial) != {
+            "document_ordinal",
+            "document_provenance",
+            "matcher_result",
+            "source_pdf_sha256",
+        }:
+            raise _error("generalized trading-securities scan trial fields drifted")
+        result = trial["matcher_result"]
+        if (
+            trial["document_provenance"] != expected_code
+            or type(trial["document_ordinal"]) is not int
+            or trial["document_ordinal"] != ordinal
+            or type(result) is not dict
+            or result.get("format_version") != GENERALIZED_MATCHER_FORMAT
+            or result.get("status")
+            not in {
+                "ACCEPTED_UNIQUE_VARIANT_GRAPH",
+                "UNRESOLVED_MULTIPLE_COMPLETE_REGIONS",
+                "UNRESOLVED_NO_COMPLETE_REGION",
+            }
+        ):
+            raise _error("generalized trading-securities scan trial identity or status drifted")
+        _sha256(trial["source_pdf_sha256"], "generalized trial source PDF")
+    if not same_typed_json_v1(value["metrics"], _metrics(value["trials"])):
+        raise _error("generalized trading-securities scan metrics drifted")
+    material = canonical_clone_v1(value)
+    identity = material.pop("scan_id")
+    if identity != "tsfdsv2:scan:" + canonical_json_sha256_v1(material):
+        raise _error("generalized trading-securities scan identity drifted")
+    return canonical_clone_v1(value)
+
+
 def build_trading_securities_full_document_scan_v1(
     semantic_index: Any,
 ) -> dict[str, Any]:
@@ -212,6 +277,41 @@ def build_trading_securities_full_document_scan_v1(
     )
 
 
+def build_generalized_trading_securities_full_document_scan_v2(
+    semantic_index: Any,
+) -> dict[str, Any]:
+    """Build the optional-branch/supplemental-view scan over all eight PDFs."""
+
+    axis = project_full_document_vietocr_accounting_axis_v1(semantic_index)
+    matcher = _matcher()
+    trials = [
+        {
+            "document_ordinal": document["document_ordinal"],
+            "document_provenance": document["document_provenance"],
+            "matcher_result": (
+                matcher.build_generalized_trading_securities_variant_graph_document_v2(
+                    _matcher_pages(document)
+                )
+            ),
+            "source_pdf_sha256": _sha256(document["source_pdf"]["sha256"], "source PDF"),
+        }
+        for document in axis["documents"]
+    ]
+    material = {
+        "authority": canonical_clone_v1(_GENERALIZED_AUTHORITY),
+        "claim_boundary": GENERALIZED_CLAIM_BOUNDARY,
+        "format_version": GENERALIZED_FORMAT_VERSION,
+        "input_axis_projection_id": axis["projection_id"],
+        "input_semantic_axis_sha256": axis["semantic_axis_sha256"],
+        "metrics": _metrics(trials),
+        "state": "FULL_DOCUMENT_GENERALIZED_TRADING_SECURITIES_STRUCTURE_SCAN_COMPLETE",
+        "trials": trials,
+    }
+    return _validate_generalized_result(
+        {**material, "scan_id": "tsfdsv2:scan:" + canonical_json_sha256_v1(material)}
+    )
+
+
 def validate_trading_securities_full_document_scan_replay_v1(
     value: Any, semantic_index: Any
 ) -> dict[str, Any]:
@@ -221,6 +321,18 @@ def validate_trading_securities_full_document_scan_replay_v1(
     rebuilt = build_trading_securities_full_document_scan_v1(semantic_index)
     if not same_typed_json_v1(persisted, rebuilt):
         raise _error("trading-securities scan does not replay exactly")
+    return rebuilt
+
+
+def validate_generalized_trading_securities_full_document_scan_replay_v2(
+    value: Any, semantic_index: Any
+) -> dict[str, Any]:
+    """Exact-rebuild the optional-branch/supplemental-view scan."""
+
+    persisted = _validate_generalized_result(value)
+    rebuilt = build_generalized_trading_securities_full_document_scan_v2(semantic_index)
+    if not same_typed_json_v1(persisted, rebuilt):
+        raise _error("generalized trading-securities scan does not replay exactly")
     return rebuilt
 
 
