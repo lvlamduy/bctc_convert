@@ -17,8 +17,8 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **135 entries**.  Current open queue: **51**.  Closed history:
-**40** row/graph resolutions and **44** confirmed bound-report family absences.
+Ledger total: **141 entries**.  Current open queue: **52**.  Closed history:
+**40** row/graph resolutions and **49** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
@@ -113,10 +113,20 @@ OACT-001 còn OPEN vì schema chưa có leaf thu từ phạt vi phạm hợp đ�
 ACB/HDB/VCB/CTG/BID là bounded detailed-note absence; tổng KQKD, segment và
 diễn giải không bị relabel thành note chi tiết. VPB giữ đúng kỳ Q1/2026.
 
+E-0091 `Chi phí thuế thu nhập doanh nghiệp` quét đủ 453 trang và tìm đúng một
+bảng đối chiếu chi tiết tại MBB p50, VPB p59 và VIB p48. 28 mapping/56 ô số và
+20 phương trình đã `VERIFIED_BY_CODEX`; toàn bộ schema 5723–5737 được quan sát
+và xác minh qua các biến thể. Hai dấu `-` của VPB chỉ được chuẩn hóa thành 0 sau
+khi trục số nguồn xác nhận. TAX-001 còn OPEN vì VIB chỉ ghi `Điều chỉnh khác`,
+kỳ hiện tại để trống và kỳ so sánh là `163`; nhãn này không đủ để ép vào leaf
+5733 về điều chỉnh thuế của các năm trước. ACB/HDB/VCB/CTG/BID là bounded
+detailed-note absence; tổng KQKD/nghĩa vụ thuế/thuế hoãn lại không bị relabel.
+
 ## Open review queue (always first)
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
 | --- | --- | --- | ---: | --- | --- |
+| TAX-001 | Chi phí thuế thu nhập doanh nghiệp | VIB | 48 | Điều chỉnh khác | Nhãn rộng hơn leaf 5733; kỳ hiện tại để trống và không được coi là 0, kỳ so sánh `163` vẫn tham gia phương trình tổng thuế hiện hành đã xác minh. |
 | OACT-001 | Thu nhập, chi phí và lãi thuần từ hoạt động khác | VPB | 64 | Thu từ phạt vi phạm hợp đồng | Chưa có leaf tương đương dưới 1229; giá trị `41 / 9` vẫn tham gia và đóng đúng tổng thu nhập nguồn. |
 | CRPE-001 | Chi phí dự phòng rủi ro tín dụng | VPB | 66 | Chi phí dự phòng cho vay giao dịch ký quỹ và ứng trước | Chưa có leaf chi phí dự phòng margin/ứng trước tương đương dưới 1221; dòng vẫn tham gia tổng nguồn đã xác minh. |
 | CRPE-002 | Chi phí dự phòng rủi ro tín dụng | VIB | 47 | Biến động dự phòng rủi ro các khoản phải thu từ hoạt động tài trợ thương mại | Chưa có leaf chi phí dự phòng khoản phải thu tài trợ thương mại; dấu gạch hiện kỳ và số hoàn nhập kỳ so sánh vẫn nằm trong tổng đã xác minh. |
@@ -211,6 +221,25 @@ page or note identifier participates in this decision.
 | CRPE-003–CRPE-007 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/HDB/VCB/CTG/BID không có note chi tiết 1221 trong PDF đã bind, dù có thể có dòng tổng KQKD hoặc diễn giải chính sách |
 | OACT-001 | `OPEN_SCHEMA_GAP`; 23 khoản mục chắc chắn vẫn đã map. Dòng phạt vi phạm hợp đồng được giữ trong parent thu nhập và phương trình nguồn, không ép vào `Khác` |
 | OACT-002–OACT-006 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/HDB/VCB/CTG/BID không có note hoạt động khác chi tiết trong PDF đã bind; tổng KQKD, segment và diễn giải là đối chứng âm |
+| TAX-001 | `OPEN_SCHEMA_GAP_WITH_BLANK_CURRENT_AXIS`; 28 khoản mục chắc chắn vẫn đã map. Dòng VIB `Điều chỉnh khác` chỉ có số kỳ so sánh `163`; ô kỳ hiện tại trống không bị đổi thành 0 và nhãn không bị ép vào 5733 |
+| TAX-002–TAX-006 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/HDB/VCB/CTG/BID không có bảng đối chiếu chi phí thuế chi tiết trong PDF đã bind |
+
+## Corporate income tax expense (`INCOME_TAX`)
+
+Current exact-replay result:
+`docs/experiments/E-0091-income-tax-8bank-codex-verified-mapping-v1.json`
+
+- One shared whole-PDF graph finds one unique detailed reconciliation at MBB
+  p50, VPB p59 and VIB p48, using profit before tax, adjustments, taxable
+  income, current tax and period/unit topology rather than bank/page routing.
+- 28 mappings, 56 value cells and 20 accounting equations are independently
+  verified. The mapped union covers ReportNormId 5723–5737. VPB remains Q1.
+- **TAX-001 — OPEN:** VIB p48 `Điều chỉnh khác`; current-period cell is blank,
+  comparative value is `163`. The source meaning is broader than 5733, so it
+  remains explicit and is used only in the comparative printed-total equation.
+- **TAX-002–TAX-006 — confirmed bound-report absences:** ACB, HDB, VCB, CTG
+  and BID have no detailed tax reconciliation; statement totals, tax-obligation
+  movements and deferred-tax balances are retained as negative controls.
 
 ## Other activity income, expense and net (`OTHER_ACTIVITY`)
 
