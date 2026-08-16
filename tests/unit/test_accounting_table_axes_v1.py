@@ -10,6 +10,7 @@ from bctc_ai.evaluation.accounting_table_axes_v1 import (
     extract_period_axis_v1,
     extract_reporting_year_axis_v1,
     extract_typed_value_vector_v1,
+    infer_document_reporting_period_context_v1,
     is_number_like_v1,
     money_integer_v1,
     money_values_v1,
@@ -33,6 +34,10 @@ def _line(
     if source_text is not None:
         result["source_text"] = source_text
     return result
+
+
+def _page(page_sequence: int, *lines: dict[str, object]) -> dict[str, object]:
+    return {"lines": list(lines), "page_sequence": page_sequence}
 
 
 def test_period_axis_supports_exact_split_and_relative_variants() -> None:
@@ -113,6 +118,113 @@ def test_reporting_year_axis_uses_latest_of_exactly_two_visible_years() -> None:
     ) == ([], "UNRESOLVED")
 
 
+def test_document_period_context_resolves_annual_variants_and_ignores_one_off_future_date() -> None:
+    context = infer_document_reporting_period_context_v1(
+        [
+            _page(
+                1,
+                _line(1, "Tại ngày 31/12/2025", 100),
+                _line(2, "Tại ngày 31/12/2024", 300),
+            ),
+            _page(
+                2,
+                _line(1, "31.12.2025", 100),
+                _line(2, "31.12.2024", 300),
+            ),
+            _page(
+                3,
+                _line(1, "Ngày 31 tháng 12 năm 2025", 100),
+                _line(2, "Ngày 31 tháng 12 năm 2024", 300),
+            ),
+            _page(
+                4,
+                _line(1, "31-12-2025", 100),
+                _line(2, "Ngày 1 tháng 1 năm 2025", 300),
+                _line(3, "Ngày 1 tháng 1 năm 2024", 500),
+            ),
+            _page(5, _line(1, "Báo cáo ký ngày 31/03/2026", 100)),
+        ]
+    )
+
+    assert context["resolution"] == "DOMINANT_REPEATED_FULL_DATE_CONSENSUS"
+    assert context["period_kind"] == "ANNUAL"
+    assert context["reporting_year"] == 2025
+    assert context["current_period_end"] == "31/12/2025"
+    assert context["current_period_start"] == "01/01/2025"
+    assert context["balance_comparative_period_end"] == "31/12/2024"
+    assert context["flow_comparative_period_end"] == "31/12/2024"
+    assert context["flow_comparative_period_start"] == "01/01/2024"
+    assert context["supporting_page_count"] == 4
+
+
+def test_document_period_context_resolves_half_year_balance_and_flow_axes() -> None:
+    context = infer_document_reporting_period_context_v1(
+        [
+            _page(
+                1,
+                _line(1, "30/06/2026", 100),
+                _line(2, "31/12/2025", 300),
+            ),
+            _page(
+                2,
+                _line(1, "Ngày 30 tháng 6 năm 2026", 100),
+                _line(2, "Ngày 31 tháng 12 năm 2025", 300),
+            ),
+            _page(
+                3,
+                _line(1, "30.06.2026", 100),
+                _line(2, "30.06.2025", 300),
+                _line(3, "01.01.2026", 500),
+                _line(4, "01.01.2025", 700),
+            ),
+        ]
+    )
+
+    assert context["period_kind"] == "HALF_YEAR_OR_SECOND_QUARTER"
+    assert context["current_period_end"] == "30/06/2026"
+    assert context["balance_comparative_period_end"] == "31/12/2025"
+    assert context["flow_comparative_period_end"] == "30/06/2025"
+    assert context["current_period_start"] == "01/01/2026"
+    assert context["flow_comparative_period_start"] == "01/01/2025"
+
+
+def test_document_period_context_supports_split_dates_and_fails_closed_without_repetition() -> None:
+    context = infer_document_reporting_period_context_v1(
+        [
+            _page(
+                1,
+                _line(1, "Ngày 31 tháng 12", 100),
+                _line(2, "Năm 2025", 100),
+            ),
+            _page(2, _line(1, "31 tháng 12 năm 2025", 100)),
+        ]
+    )
+    assert context["current_period_end"] == "31/12/2025"
+    assert context["supporting_page_count"] == 2
+
+    unresolved = infer_document_reporting_period_context_v1([_page(1, _line(1, "31/12/2025", 100))])
+    assert unresolved["resolution"] == "UNRESOLVED_NO_REPEATED_REPORTING_END_DATE"
+    assert unresolved["current_period_end"] is None
+
+
+def test_document_period_context_rejects_frequent_old_legal_footer_date() -> None:
+    pages = [
+        _page(
+            page_sequence,
+            _line(1, "Giấy phép ngày 31/12/2014", 100),
+            *([_line(2, "Tại ngày 30/06/2026", 300)] if page_sequence in {5, 6} else []),
+            *([_line(3, "Báo cáo ký ngày 31/03/2027", 500)] if page_sequence == 1 else []),
+        )
+        for page_sequence in range(1, 7)
+    ]
+
+    context = infer_document_reporting_period_context_v1(pages)
+
+    assert context["current_period_end"] == "30/06/2026"
+    assert context["period_kind"] == "HALF_YEAR_OR_SECOND_QUARTER"
+    assert context["supporting_page_count"] == 2
+
+
 def test_units_and_numeric_surfaces_are_generic_and_typed() -> None:
     assert unit_kind_v1("Đơn vị: Triệu đồng") == "MONEY"
     assert unit_kind_v1("Triệu VND") == "MONEY"
@@ -177,6 +289,28 @@ def test_value_vector_rejects_hidden_extra_or_missing_lanes() -> None:
                 [_line(1, "30/06/2026", 10) | {"source_line_index": True}]
             ),
             "source line index",
+        ),
+        (
+            lambda: infer_document_reporting_period_context_v1(
+                [_page(True, _line(1, "31/12/2025", 10))]
+            ),
+            "page identity",
+        ),
+        (
+            lambda: infer_document_reporting_period_context_v1(
+                [
+                    _page(
+                        1,
+                        _line(1, "31/12/2025", 10),
+                        _line(1, "31/12/2024", 100),
+                    )
+                ]
+            ),
+            "line axis repeats",
+        ),
+        (
+            lambda: infer_document_reporting_period_context_v1(1),
+            "sequence of page records",
         ),
         (lambda: is_number_like_v1(1), "exact string"),
         (

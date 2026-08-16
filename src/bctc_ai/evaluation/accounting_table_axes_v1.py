@@ -21,6 +21,7 @@ from bctc_ai.evaluation.accounting_variant_graph_engine_v1 import (
 __all__ = [
     "AccountingTableAxesV1Error",
     "center_x2_v1",
+    "infer_document_reporting_period_context_v1",
     "extract_period_axis_v1",
     "extract_reporting_year_axis_v1",
     "extract_typed_value_vector_v1",
@@ -34,9 +35,11 @@ __all__ = [
 
 _NUMBER = re.compile(r"^[()]*[+-]?[0-9][0-9., ]*%?[()]*$")
 _FULL_DATE = re.compile(r"(?<!\d)(\d{1,2})[./-](\d{1,2})[./-](\d{4})(?!\d)")
-_DAY_MONTH = re.compile(r"\bngay\s+(\d{1,2})\s+thang\s+(\d{1,2})\b")
+_DAY_MONTH = re.compile(r"\b(?:ngay\s+)?(\d{1,2})\s+thang\s+(\d{1,2})\b")
 _YEAR = re.compile(r"\bnam\s+(\d{4})\b")
 _REPORTING_YEAR = re.compile(r"(?<!\d)(20\d{2})(?!\d)")
+_REPORTING_PERIOD_ENDS = {(3, 31), (6, 30), (9, 30), (12, 31)}
+_MAX_DOCUMENT_DATE_EVIDENCE = 8
 
 
 class AccountingTableAxesV1Error(ValueError):
@@ -268,6 +271,204 @@ def extract_reporting_year_axis_v1(
             }
         )
     return records, "VISIBLE_TWO_YEAR_REPORTING_AXIS"
+
+
+def _document_date_observations(
+    pages: Sequence[Mapping[str, Any]],
+) -> dict[date, list[dict[str, Any]]]:
+    if not isinstance(pages, Sequence) or isinstance(pages, (str, bytes)):
+        raise _error("document pages must be one sequence of page records")
+    observations: dict[date, list[dict[str, Any]]] = {}
+    for expected_page_sequence, raw_page in enumerate(pages, 1):
+        if not isinstance(raw_page, Mapping):
+            raise _error("document period page must be one mapping")
+        page_sequence = raw_page.get("page_sequence")
+        lines = raw_page.get("lines")
+        if (
+            type(page_sequence) is not int
+            or page_sequence != expected_page_sequence
+            or type(lines) is not list
+        ):
+            raise _error("document period page identity or line axis drifted")
+        partial: list[tuple[Mapping[str, Any], int, int]] = []
+        year_only: list[tuple[Mapping[str, Any], int]] = []
+        page_observations: set[tuple[date, tuple[int, ...]]] = set()
+        seen_line_indices: set[int] = set()
+        for line in lines:
+            if not isinstance(line, Mapping):
+                raise _error("document period line must be one mapping")
+            text = _text(line, "document period line")
+            source_line_index = _source_line_index(line, "document period line")
+            if source_line_index in seen_line_indices:
+                raise _error("document period source line axis repeats")
+            seen_line_indices.add(source_line_index)
+            _bbox(line, "document period line")
+            normalized = normalize_vietnamese_anchor_v1(text)
+            found_full = False
+            for matched in _FULL_DATE.finditer(text):
+                day, month, year = map(int, matched.groups())
+                surface = _date_surface(day, month, year)
+                if surface is None:
+                    continue
+                parsed = date(year, month, day)
+                page_observations.add((parsed, (source_line_index,)))
+                found_full = True
+            if found_full:
+                continue
+            day_month_match = _DAY_MONTH.search(normalized)
+            year_match = _YEAR.search(normalized)
+            if day_month_match is not None and year_match is not None:
+                day = int(day_month_match.group(1))
+                month = int(day_month_match.group(2))
+                year = int(year_match.group(1))
+                surface = _date_surface(day, month, year)
+                if surface is not None:
+                    page_observations.add((date(year, month, day), (source_line_index,)))
+                continue
+            if day_month_match is not None:
+                partial.append((line, int(day_month_match.group(1)), int(day_month_match.group(2))))
+                continue
+            if year_match is not None:
+                year_only.append((line, int(year_match.group(1))))
+
+        remaining_years = list(year_only)
+        for line, day, month in partial:
+            line_index = _source_line_index(line, "split document period")
+            candidates = [
+                item
+                for item in remaining_years
+                if abs(_source_line_index(item[0], "split document period year") - line_index) <= 3
+            ]
+            if not candidates:
+                continue
+            year_line, year = min(
+                candidates,
+                key=lambda item: (
+                    abs(_source_line_index(item[0], "split document period year") - line_index),
+                    abs(center_x2_v1(item[0]) - center_x2_v1(line)),
+                ),
+            )
+            remaining_years.remove((year_line, year))
+            surface = _date_surface(day, month, year)
+            if surface is None:
+                continue
+            indices = tuple(
+                sorted(
+                    (
+                        line_index,
+                        _source_line_index(year_line, "split document period year"),
+                    )
+                )
+            )
+            page_observations.add((date(year, month, day), indices))
+
+        for parsed, indices in sorted(page_observations):
+            observations.setdefault(parsed, []).append(
+                {
+                    "page_sequence": page_sequence,
+                    "source_line_indices": list(indices),
+                }
+            )
+    return observations
+
+
+def infer_document_reporting_period_context_v1(
+    pages: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Infer a document-wide period context from repeated visible full dates.
+
+    This is a bank-, filename-, note- and family-blind context proposal.  A
+    family must still bind the applicable local table headers and must not use
+    this record alone as numeric, mapping, or schema authority.
+    """
+
+    observations = _document_date_observations(pages)
+    summaries: list[dict[str, Any]] = []
+    for parsed in sorted(observations):
+        evidence = sorted(
+            observations[parsed],
+            key=lambda item: (item["page_sequence"], item["source_line_indices"]),
+        )
+        page_count = len({item["page_sequence"] for item in evidence})
+        summaries.append(
+            {
+                "date": parsed.strftime("%d/%m/%Y"),
+                "evidence": evidence[:_MAX_DOCUMENT_DATE_EVIDENCE],
+                "evidence_truncated": len(evidence) > _MAX_DOCUMENT_DATE_EVIDENCE,
+                "occurrence_count": len(evidence),
+                "page_count": page_count,
+            }
+        )
+
+    candidates = [
+        (parsed, evidence)
+        for parsed, evidence in observations.items()
+        if (parsed.month, parsed.day) in _REPORTING_PERIOD_ENDS
+        and len({item["page_sequence"] for item in evidence}) >= 2
+    ]
+    if not candidates:
+        return {
+            "balance_comparative_period_end": None,
+            "current_period_end": None,
+            "current_period_start": None,
+            "flow_comparative_period_end": None,
+            "flow_comparative_period_start": None,
+            "observed_dates": summaries,
+            "period_kind": None,
+            "reporting_year": None,
+            "resolution": "UNRESOLVED_NO_REPEATED_REPORTING_END_DATE",
+            "supporting_page_count": 0,
+        }
+
+    maximum_page_support = max(
+        len({evidence["page_sequence"] for evidence in candidate_evidence})
+        for _candidate, candidate_evidence in candidates
+    )
+    dominant_candidates = [
+        (candidate, candidate_evidence)
+        for candidate, candidate_evidence in candidates
+        if len({evidence["page_sequence"] for evidence in candidate_evidence}) * 4
+        >= maximum_page_support
+    ]
+    current, current_evidence = max(
+        dominant_candidates,
+        key=lambda item: (
+            item[0],
+            len({evidence["page_sequence"] for evidence in item[1]}),
+            len(item[1]),
+        ),
+    )
+    previous_year = current.year - 1
+
+    def observed_surface(day: int, month: int, year: int) -> str | None:
+        try:
+            candidate = date(year, month, day)
+        except ValueError:
+            return None
+        return candidate.strftime("%d/%m/%Y") if candidate in observations else None
+
+    balance_comparative = observed_surface(31, 12, previous_year)
+    flow_comparative = observed_surface(current.day, current.month, previous_year)
+    current_start = observed_surface(1, 1, current.year)
+    flow_comparative_start = observed_surface(1, 1, previous_year)
+    period_kind = {
+        (3, 31): "FIRST_QUARTER",
+        (6, 30): "HALF_YEAR_OR_SECOND_QUARTER",
+        (9, 30): "NINE_MONTH_OR_THIRD_QUARTER",
+        (12, 31): "ANNUAL",
+    }[(current.month, current.day)]
+    return {
+        "balance_comparative_period_end": balance_comparative,
+        "current_period_end": current.strftime("%d/%m/%Y"),
+        "current_period_start": current_start,
+        "flow_comparative_period_end": flow_comparative,
+        "flow_comparative_period_start": flow_comparative_start,
+        "observed_dates": summaries,
+        "period_kind": period_kind,
+        "reporting_year": current.year,
+        "resolution": "DOMINANT_REPEATED_FULL_DATE_CONSENSUS",
+        "supporting_page_count": len({evidence["page_sequence"] for evidence in current_evidence}),
+    }
 
 
 def extract_typed_value_vector_v1(
