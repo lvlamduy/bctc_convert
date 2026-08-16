@@ -31,6 +31,7 @@ from collections.abc import Mapping, Sequence
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
+from bctc_ai.evaluation.accounting_table_axes_v1 import extract_period_axis_v1
 from bctc_ai.evaluation.accounting_variant_graph_engine_v1 import (
     build_accounting_variant_region_scan_v1,
 )
@@ -126,9 +127,6 @@ _RESULT_FIELDS = {
     "unresolved_reasons",
 }
 _NUMBER = re.compile(r"^[()]*[+-]?[0-9][0-9., ]*%?[()]*$")
-_FULL_DATE = re.compile(r"(?<!\d)(\d{1,2})[./-](\d{1,2})[./-](\d{4})(?!\d)")
-_DAY_MONTH = re.compile(r"\bngay\s+(\d{1,2})\s+thang\s+(\d{1,2})\b")
-_YEAR = re.compile(r"\bnam\s+(\d{4})\b")
 
 
 class LoanMaturityVariantGraphV1Error(ValueError):
@@ -399,72 +397,7 @@ def _center_x(line: Mapping[str, Any]) -> int:
 
 
 def _periods(header: Sequence[Mapping[str, Any]]) -> tuple[list[dict[str, Any]], str]:
-    full: list[dict[str, Any]] = []
-    partial: list[tuple[Mapping[str, Any], int, int]] = []
-    years: list[tuple[Mapping[str, Any], int]] = []
-    relative: list[dict[str, Any]] = []
-    for line in header:
-        text = line["vietocr_text"]
-        normalized = _normalize(text)
-        match = _FULL_DATE.search(text)
-        if match is not None:
-            day, month, year = (int(item) for item in match.groups())
-            full.append(
-                {
-                    "evidence_source_line_indices": [line["source_line_index"]],
-                    "period": f"{day:02d}/{month:02d}/{year:04d}",
-                    "x_center_x2": _center_x(line),
-                }
-            )
-            continue
-        match = _DAY_MONTH.search(normalized)
-        if match is not None:
-            partial.append((line, int(match.group(1)), int(match.group(2))))
-            continue
-        match = _YEAR.search(normalized)
-        if match is not None:
-            years.append((line, int(match.group(1))))
-            continue
-        if normalized == "so cuoi ky":
-            relative.append(
-                {
-                    "evidence_source_line_indices": [line["source_line_index"]],
-                    "period": "CURRENT_PERIOD_END",
-                    "x_center_x2": _center_x(line),
-                }
-            )
-        elif normalized == "so dau ky":
-            relative.append(
-                {
-                    "evidence_source_line_indices": [line["source_line_index"]],
-                    "period": "COMPARATIVE_PERIOD_START",
-                    "x_center_x2": _center_x(line),
-                }
-            )
-    if len(full) == 2:
-        return sorted(full, key=lambda item: item["x_center_x2"]), "LOCAL_EXACT_DATES"
-    if len(partial) == 2 and len(years) == 2:
-        combined: list[dict[str, Any]] = []
-        remaining = list(years)
-        for line, day, month in sorted(partial, key=lambda item: _center_x(item[0])):
-            year_line, year = min(
-                remaining, key=lambda item: abs(_center_x(item[0]) - _center_x(line))
-            )
-            remaining.remove((year_line, year))
-            combined.append(
-                {
-                    "evidence_source_line_indices": [
-                        line["source_line_index"],
-                        year_line["source_line_index"],
-                    ],
-                    "period": f"{day:02d}/{month:02d}/{year:04d}",
-                    "x_center_x2": _center_x(line),
-                }
-            )
-        return sorted(combined, key=lambda item: item["x_center_x2"]), "LOCAL_SPLIT_DATES"
-    if len(relative) == 2:
-        return sorted(relative, key=lambda item: item["x_center_x2"]), "LOCAL_RELATIVE_PERIOD_ROLES"
-    return [], "UNRESOLVED"
+    return extract_period_axis_v1(header)
 
 
 def _inherited_unit(pages: Sequence[Mapping[str, Any]], target_page: int) -> dict[str, Any] | None:

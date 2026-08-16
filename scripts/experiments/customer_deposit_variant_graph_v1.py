@@ -315,8 +315,11 @@ def _period_headers(lines: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
     for line in lines:
         text = line["normalized_text"]
         if (
-            re.search(r"(?:30|31)[ /.-](?:0?[136]|12)[ /.-]20(?:25|26)", text)
-            or re.search(r"(?:30|31) thang (?:0?[136]|12) nam 20(?:25|26)", text)
+            re.search(
+                r"(?:30|31)\s*[ /.-]\s*(?:0?[1369]|12)\s*[ /.-]\s*20[0-9]{2}",
+                text,
+            )
+            or re.search(r"(?:30|31) thang (?:0?[1369]|12) nam 20[0-9]{2}", text)
             or "so cuoi ky" in text
             or "so dau ky" in text
             or ("ngay 31 thang" in text and "nam 202" in text)

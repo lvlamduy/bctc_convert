@@ -377,6 +377,22 @@ def test_vpb_split_dates_margin_and_grand_total_without_core_subtotal():
     assert graph["total"]["core_values"] == []
 
 
+def test_maturity_period_axis_accepts_new_reporting_year_and_date_surfaces():
+    surfaces = [
+        ("Ngày 31 tháng 12 năm 2031" if text == "30/06/2026" else text, x)
+        for text, x in _simple_surfaces()
+    ]
+    surfaces = [("31 . 12 . 2030" if text == "31/12/2025" else text, x) for text, x in surfaces]
+    semantic = _semantic_page(surfaces)
+
+    result = matcher.build_loan_maturity_variant_graph_v1(_document_pages(semantic), semantic)
+
+    assert result["status"] == "ACCEPTED_VARIANT_GRAPH"
+    graph = result["result"]["graph"]
+    assert graph["period_mode"] == "LOCAL_EXACT_DATES"
+    assert [item["period"] for item in graph["axes"]] == ["31/12/2031", "31/12/2030"]
+
+
 def test_vib_four_typed_lanes_keep_percentages_and_close_each_population():
     surfaces = [
         ("Cho vay khách hàng", 0),

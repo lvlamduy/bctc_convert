@@ -7,6 +7,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 EXPERIMENT_ROOT = PROJECT_ROOT / "scripts" / "experiments"
 LITERAL_REPORTING_YEAR = re.compile(r"(?<!\d)20\d{2}(?!\d)")
+PINNED_REPORTING_YEAR_ALTERNATION = re.compile(r"20\(\?:\d{2}(?:\|\d{2})+\)")
 
 
 def test_family_scanners_and_variant_graphs_do_not_pin_one_reporting_year() -> None:
@@ -23,7 +24,10 @@ def test_family_scanners_and_variant_graphs_do_not_pin_one_reporting_year() -> N
             if (
                 isinstance(node, ast.Constant)
                 and type(node.value) is str
-                and LITERAL_REPORTING_YEAR.search(node.value) is not None
+                and (
+                    LITERAL_REPORTING_YEAR.search(node.value) is not None
+                    or PINNED_REPORTING_YEAR_ALTERNATION.search(node.value) is not None
+                )
             ):
                 violations.append(f"{path.relative_to(PROJECT_ROOT)}:{node.lineno}:{node.value!r}")
 

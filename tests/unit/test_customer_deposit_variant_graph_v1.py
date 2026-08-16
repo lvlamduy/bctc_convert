@@ -137,6 +137,24 @@ def test_period_stacked_currency_columns_form_two_complete_panels() -> None:
     assert len(page["period_headers"]) >= 2
 
 
+def test_period_headers_are_not_pinned_to_the_original_reporting_years() -> None:
+    surfaces = [
+        ("31 . 12 . 2031" if text == "30/06/2026" else text, x, y) for text, x, y in _row_panel()
+    ]
+    surfaces = [
+        ("31 tháng 12 năm 2030" if text == "31/12/2025" else text, x, y) for text, x, y in surfaces
+    ]
+
+    result = deposit.build_customer_deposit_variant_graph_document_v1([_page(surfaces)])
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    periods = result["regions"][0]["page_records"][0]["period_headers"]
+    assert [item["vietocr_text"] for item in periods] == [
+        "31 . 12 . 2031",
+        "31 tháng 12 năm 2030",
+    ]
+
+
 def test_owner_and_all_required_parent_roles_are_both_required() -> None:
     without_owner = _row_panel()[3:]
     result = deposit.build_customer_deposit_variant_graph_document_v1([_page(without_owner)])
