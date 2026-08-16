@@ -5,7 +5,8 @@ Cập nhật: **2026-08-16 (UTC)**.
 Phạm vi chỉ là kiểm kê file; không thực hiện mapping. Thư mục gốc:
 /workspace/bctc-ai/vietstock_bctc.
 
-- Snapshot S3 20260806T050030130746Z-4a469fab2334: đã khôi phục và kiểm tra đúng hash **141/141** PDF thuộc 8 bank trong 2025–2026.
+- Snapshot `s3://test-s3-duylv/bctc-ai/snapshots/20260806T050030130746Z-4a469fab2334/`:
+  đã khôi phục và kiểm tra đúng hash **141/141** PDF thuộc 8 bank trong 2025–2026.
 - Sau đó đã đối chiếu lại Vietstock hiện hành và tải thêm các BCTC soát xét H1/2026 mới hơn snapshot.
 - Ma trận dưới đây chọn một bản PDF chính cho mỗi ô. Bản raw/searchable hoặc bản tiếng Anh trùng kỳ được ghi riêng ở cuối, không đếm thành một kỳ khác.
 
@@ -189,5 +190,3 @@ Không có ô nào thiếu trong ma trận năm 2025.
 - **ACB 2026 Q1:** ZIP chứa bản raw và bản tra cứu. Ma trận chọn bản raw.
 
 Toàn bộ **156** PDF local của 8 bank trong hai thư mục năm 2025–2026 đều mở được bằng trình đọc PDF; **140** file chính được chọn trong ma trận đều có chữ ký %PDF hợp lệ.
-
-
