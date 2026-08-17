@@ -87,6 +87,13 @@ EXPECTED_INDEX_SHA256 = "f84fd9ca56fe06af230e011ecad85b0a576e27e1eca32ee141e654a
 EXPECTED_CROP_MANIFEST_SHA256 = "a9f80cf9104af1177ba43d8a85de00b28c735223a91b663a5a79401bb038d94e"
 EXPECTED_AXIS_SHA256 = "e99873cd16a7234702d0ee6e5fa9eb37637a1a75621228381e3dbcd7c5cfdcca"
 EXPECTED_SCAN_ID = "eircfds1:scan:949001913526778b1e26031c3d698a8dcd8724105603573e3549fc87005118e5"
+_RESULT_STATE = "ENTRUSTED_INVESTMENT_RISK_CAPITAL_8BANK_CODEX_VERIFICATION_COMPLETE"
+_RESULT_ID_PREFIX = "e0075:result:"
+_REVIEW_STATE = "CODEX_PIXEL_REVIEW_COMPLETE"
+_REVIEW_ID_PREFIX = "e0075:pixel-review:"
+_REVIEW_RUN_ID = "E-0075"
+_EXPECTED_COMPLETE_REGION_COUNT = 3
+_FAMILY_DISPLAY_ORDER_RANGE = [603, 610]
 
 _REVIEW_CHECKS = [
     "COMPLETE_PDF_UNIQUE_REGION_OR_BOUND_ABSENCE",
@@ -141,10 +148,10 @@ _SCHEMA_EXPECTED = {
     1092: (
         "Vốn nhận tài trợ, ủy thác đầu tư, cho vay các tổ chức tín dụng chịu rủi ro",
         560,
-        598,
+        603,
     ),
-    1093: ("Vốn nhận của các tổ chức, cá nhân", 1092, 599),
-    1099: ("Khác", 1092, 605),
+    1093: ("Vốn nhận của các tổ chức, cá nhân", 1092, 604),
+    1099: ("Khác", 1092, 610),
 }
 
 
@@ -406,14 +413,17 @@ def _review_blueprint() -> dict[str, Any]:
         "documents": _review_documents(),
         "format_version": REVIEW_FORMAT,
         "review_checks": list(_REVIEW_CHECKS),
-        "reviewer": {"kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW", "review_run_id": "E-0075"},
+        "reviewer": {
+            "kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW",
+            "review_run_id": _REVIEW_RUN_ID,
+        },
         "safety": canonical_clone_v1(_REVIEW_SAFETY),
         "scan_id": EXPECTED_SCAN_ID,
         "semantic_axis_sha256": EXPECTED_AXIS_SHA256,
         "semantic_index_sha256": EXPECTED_INDEX_SHA256,
-        "state": "CODEX_PIXEL_REVIEW_COMPLETE",
+        "state": _REVIEW_STATE,
     }
-    return {**material, "review_id": "e0075:pixel-review:" + canonical_json_sha256_v1(material)}
+    return {**material, "review_id": _REVIEW_ID_PREFIX + canonical_json_sha256_v1(material)}
 
 
 def _review(value: Any) -> dict[str, Any]:
@@ -497,13 +507,21 @@ def _metrics(trials: Sequence[Mapping[str, Any]]) -> dict[str, int]:
     }
 
 
+def _source_period_status(source_period: str) -> str:
+    return (
+        "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
+        if source_period == "2026-03-31"
+        else "VERIFIED_SOURCE_PERIOD_Q2_2026"
+    )
+
+
 def _validate_result(value: Any) -> dict[str, Any]:
     if type(value) is not dict or set(value) != _RESULT_FIELDS:
         raise _error("entrusted-capital result fields drifted")
     if (
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "ENTRUSTED_INVESTMENT_RISK_CAPITAL_8BANK_CODEX_VERIFICATION_COMPLETE"
+        or value["state"] != _RESULT_STATE
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
         or len(value["trials"]) != len(EXPECTED_DOCUMENT_ORDER)
@@ -531,7 +549,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
             raise _error("entrusted-capital trial shape or status drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "e0075:result:" + canonical_json_sha256_v1(material):
+    if identity != _RESULT_ID_PREFIX + canonical_json_sha256_v1(material):
         raise _error("entrusted-capital result identity drifted")
     return canonical_clone_v1(value)
 
@@ -554,7 +572,8 @@ def build_entrusted_investment_risk_capital_8bank_codex_verified_mapping_v1(
     if (
         axis.get("semantic_axis_sha256") != EXPECTED_AXIS_SHA256
         or structure_scan.get("scan_id") != EXPECTED_SCAN_ID
-        or structure_scan.get("metrics", {}).get("complete_region_count") != 3
+        or structure_scan.get("metrics", {}).get("complete_region_count")
+        != _EXPECTED_COMPLETE_REGION_COUNT
     ):
         raise _error("fixed semantic axis or structure scan identity drifted")
     trials: list[dict[str, Any]] = []
@@ -646,16 +665,23 @@ def build_entrusted_investment_risk_capital_8bank_codex_verified_mapping_v1(
             key = canonical_json_sha256_v1(ref)
             if key not in value_cache:
                 try:
-                    item = foundation.support._source_value(
-                        axis_page,
-                        semantic_page,
-                        crop_page,
-                        source_texts,
-                        {
-                            "line_index": ref["line_index"],
-                            "pixel_transcription": ref["pixel_transcription"],
-                        },
-                    )
+                    if ref["kind"] == "AUTHENTICATED_LINE":
+                        item = foundation.support._source_value(
+                            axis_page,
+                            semantic_page,
+                            crop_page,
+                            source_texts,
+                            {
+                                "line_index": ref["line_index"],
+                                "pixel_transcription": ref["pixel_transcription"],
+                            },
+                        )
+                    elif ref["kind"] == "AUTHENTICATED_RENDER_PIXEL_DASH":
+                        item = foundation._pixel_dash_value(crop_page, ref)
+                    elif ref["kind"] == "AUTHENTICATED_RENDER_PIXEL_NUMBER":
+                        item = foundation._pixel_number_value(crop_page, ref)
+                    else:
+                        raise _error("reviewed numeric evidence kind drifted")
                 except Exception as exc:
                     raise _error(f"{code} source numeric evidence drifted: {exc}") from exc
                 value_cache[key] = {**item, "page_sequence": page_sequence}
@@ -708,11 +734,7 @@ def build_entrusted_investment_risk_capital_8bank_codex_verified_mapping_v1(
                     "visible_total_source_line_index": total["source_line_index"],
                 }
             )
-        period_status = (
-            "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
-            if reviewed["source_period"] == "2026-03-31"
-            else "VERIFIED_SOURCE_PERIOD_Q2_2026"
-        )
+        period_status = _source_period_status(reviewed["source_period"])
         trials.append(
             {
                 "bound_report_absence_evidence": [],
@@ -739,7 +761,7 @@ def build_entrusted_investment_risk_capital_8bank_codex_verified_mapping_v1(
             }
         )
     schema_family = {
-        "family_display_order_range": [598, 605],
+        "family_display_order_range": list(_FAMILY_DISPLAY_ORDER_RANGE),
         "family_root": _schema_binding(schema_by_id.get(1092), 1092),
         "mapped_report_norm_ids": sorted(
             {
@@ -769,11 +791,11 @@ def build_entrusted_investment_risk_capital_8bank_codex_verified_mapping_v1(
         },
         "metrics": _metrics(trials),
         "schema_family": schema_family,
-        "state": "ENTRUSTED_INVESTMENT_RISK_CAPITAL_8BANK_CODEX_VERIFICATION_COMPLETE",
+        "state": _RESULT_STATE,
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "e0075:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": _RESULT_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 

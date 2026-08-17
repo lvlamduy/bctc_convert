@@ -557,17 +557,24 @@ Kết quả exact-replay:
 
 ## 24. Vốn nhận tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro
 
-- **Đã xác minh:** MBB p43, VPB p56 và VIB p42. Đã map sáu khoản mục/12
-  thành phần giá trị hiện tại–so sánh. MBB map tổng family 1092 và `Vốn nhận
-  của tổ chức, cá nhân khác` vào 1093. Hai nguồn nhỏ chưa có leaf riêng — dự
-  án ODA của VPB và chương trình nhà ở qua NHNN của VIB — được giữ nguyên nhãn
-  nguồn và map vào leaf `Khác` 1099; không ép vào hai nhánh tổ chức quốc tế/VND
-  gần giống. Bốn phương trình dòng con bằng tổng in lặp tại MBB/VPB đóng đúng.
-- **Không có cụm này trong báo cáo:** ACB, HDB, VCB, CTG và BID. Whole-PDF
-  scan không có vùng thỏa; trên phần thuyết minh của từng PDF, cụm tiền gửi
-  khách hàng chuyển thẳng sang phát hành giấy tờ có giá hoặc family nợ kế tiếp.
-- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong ba vùng có cụm.
-  PDF VPB được cung cấp là Q1/2026 và được giữ đúng kỳ 31/03/2026.
+- **Đã map/xác minh trên BCTC hợp nhất kiểm toán annual-2025:** ACB p63,
+  MBB p66, VPB p62, HDB p45, VCB p53, CTG p53, BID p51 và VIB p47. Matcher
+  dùng cùng một owner/child/period/unit graph và tìm đúng một vùng trong mỗi
+  PDF; biến thể owner không có số note và dòng con bắt đầu bằng `Vốn tài trợ`
+  được nhận bằng rule chung. Đã xác minh 20 mapping, 40 ô giá trị và 8 phương
+  trình. ACB tách JBIC thành VND/ngoại tệ; CTG tách VND/ngoại tệ; HDB khép ba
+  chương trình con vào nhánh ngoại tệ; BID giữ nguyên dòng gộp vàng + ngoại tệ
+  và map một lần vào 1099 `Khác`. Dấu `-` hiện kỳ của VCB được bind đúng crop
+  ảnh rồi mới chuẩn hóa thành 0.
+- **Không có trong annual-2025:** Không có; cả tám filing đều có đúng một vùng.
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong family annual-2025.
+
+Kết quả exact-replay:
+`docs/experiments/E-0130-annual-2025-entrusted-investment-risk-capital-8bank-codex-verified-mapping-v1.json`.
+
+Lượt hiện hành trước đó vẫn giữ kết quả riêng tại MBB p43, VPB p56 và VIB p42
+(6 mapping/4 phương trình); ACB/HDB/VCB/CTG/BID là bounded absence chỉ trong
+đúng các filing hiện hành đã bind. VPB giữ đúng nguồn Q1/2026.
 
 ## 25. Phát hành giấy tờ có giá
 
@@ -1113,7 +1120,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Tăng, giảm bất động sản đầu tư | ✓ p57 | ✓ p61 | — p54→55 | — p42 | — p49→50 | — p49→50 | — p48→49 | — p43→44 | 0 dòng annual-2025; 18 mapping/27 phương trình; ACB cộng có kiểm soát hai bảng anh em |
 | Tài sản Có khác | ✓\* p58–60 | ✓\* p62–63 | ✓\* p55–57 | ✓\* p42–44 | ✓\* p50–52 | ✓\* p50–51 | ✓\* p49–50 | ✓\* p44–45 | Annual-2025: 35 dòng OPEN, 134 mapping/66 phương trình; lượt hiện hành trước: 12 dòng OPEN |
 | Các khoản nợ Chính phủ/NHNN | ✓ p60 | ✓ p63 | ✓ p58 | ✓ p44 | ✓ p52 | ✓ p51 | ✓ p50 | ✓ p45 | Annual-2025: 0 dòng OPEN, 47 mapping/46 phương trình; sáu DASH→0 và ô HDB `1` đều pixel-bound |
-| Vốn nhận tài trợ/ủy thác đầu tư | — | ✓ p43 | ✓\* p56 | — | — | — | — | ✓ p42 | 0 dòng; 6 mapping, 4 phương trình; 5 bank xác nhận không có cụm; VPB là nguồn Q1 |
+| Vốn nhận tài trợ/ủy thác đầu tư | ✓ p63 | ✓ p66 | ✓ p62 | ✓ p45 | ✓ p53 | ✓ p53 | ✓ p51 | ✓ p47 | 0 dòng annual-2025; 20 mapping/8 phương trình; VCB DASH→0. Lượt hiện hành trước giữ riêng 6 mapping tại MBB/VPB/VIB |
 | Phát hành giấy tờ có giá | ✓ p21 | ✓ p44 | ✓\* p56 | ✓ p31 | ✓ p35 | ✓ p42 | ✓ p25 | ✓ p43 | 3 dòng OPEN; 71 mapping, 36 phương trình; 4 DASH→0; VPB là nguồn Q1 |
 | Các khoản phải trả và công nợ khác | ✓\* p22 | ✓ p44 | ✓\* p57 | ✓ p31 | ✓ p35 | ✓\* p43 | ✓ p26 | ✓\* p43 | 18 dòng OPEN; 39 mapping, 28 phương trình; 2 DASH→0; VPB là nguồn Q1 |
 | Vốn và các quỹ | ✓ p23–24 | ✓ p44–45 | ✓\* p60–61 | ✓\* p33–34 | ✓\* p36–37 | ✓\* p43–44 | △ p27–28 | △ p44–45 | 10 mục OPEN; 65 mapping, 20 phương trình; BID/VIB structure-only; VPB là nguồn Q1 |

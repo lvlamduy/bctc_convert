@@ -214,7 +214,10 @@ def _role(text: str) -> str | None:
         return None
     if _is_owner(text):
         return None
-    if "von nhan" not in value:
+    received_source_prefix = "von nhan" in value or (
+        value.startswith("von tai tro") and ("uy thac" in value or "cho vay" in value)
+    )
+    if not received_source_prefix:
         if value in {"bang ngoai te", "bang tien vnd", "bang vnd"}:
             return "CURRENCY_ONLY_CHILD"
         if value == "khac":
@@ -281,9 +284,13 @@ def _region(owner_index: int, lines: Sequence[Mapping[str, Any]]) -> dict[str, A
         if _NUMBER.fullmatch(compact) and any(char.isdigit() for char in compact):
             numeric.append(line)
     note_context = _has_note_context(owner_index, lines)
-    complete = (
-        note_context and bool(roles) and len(periods) >= 2 and len(units) >= 2 and len(numeric) >= 2
-    )
+    # A visible note enumerator is useful corroboration, but it is not a core
+    # family edge: some audited notes print the exact owner without a number or
+    # place the number outside the detected line axis.  The generic acceptance
+    # graph therefore requires the owner, at least one received-source child,
+    # both period/unit axes, and numeric cells.  Downstream verification still
+    # binds pixels and closes the accounting relation before mapping.
+    complete = bool(roles) and len(periods) >= 2 and len(units) >= 2 and len(numeric) >= 2
     anchor_roles = ["OWNER", *sorted(roles)]
     evidence = [owner, *periods, *units, *numeric]
     for items in roles.values():

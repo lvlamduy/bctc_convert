@@ -90,6 +90,28 @@ def test_three_observed_variants_share_one_generic_graph(
     assert result["regions"][0]["pair_anchor_combinations"]
 
 
+def test_unnumbered_owner_and_von_tai_tro_currency_child_are_generic_variants() -> None:
+    result = matcher.build_entrusted_investment_risk_capital_variant_graph_document_v1(
+        [
+            _page(
+                [
+                    "Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro",
+                    "31/12/2025",
+                    "31/12/2024",
+                    "Triệu đồng",
+                    "Triệu đồng",
+                    "Vốn tài trợ, ủy thác đầu tư, cho vay bằng VND",
+                    "3.912.833",
+                    "2.793.453",
+                ]
+            )
+        ]
+    )
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["regions"][0]["anchor_roles"] == ["OWNER", "VND_RECEIVED_SOURCE"]
+    assert result["regions"][0]["layout"]["note_heading_context"] is False
+
+
 @pytest.mark.parametrize(
     "texts",
     [

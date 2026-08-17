@@ -37,6 +37,22 @@ các leaf pháp lý riêng.
 Machine-readable result:
 `docs/experiments/E-0129-annual-2025-customer-deposit-8bank-codex-verified-mapping-v1.json`.
 
+## CLOSED — annual-2025 `Vốn nhận tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro`
+
+E-0130 quét toàn bộ tám BCTC hợp nhất kiểm toán năm 2025 và tìm đúng một vùng
+family tại ACB p63, MBB p66, VPB p62, HDB p45, VCB p53, CTG p53, BID p51 và
+VIB p47. Exact replay xác minh 20 mapping/40 ô giá trị cùng 8 phương trình;
+không phát sinh dòng OPEN. Matcher được nới theo cấu trúc chung, không theo bank:
+owner có thể không kèm số note nếu đã có child + hai kỳ + hai đơn vị + ô số, và
+dòng child có thể bắt đầu bằng `Vốn tài trợ` thay vì chỉ `Vốn nhận`.
+
+BID `bằng vàng và ngoại tệ` được giữ nguyên một số nguồn rồi map một lần vào
+1099 `Khác`, không thu hẹp giả thành ngoại tệ. Dấu `-` hiện kỳ của VCB được
+bind bằng crop render xác thực trước khi chuẩn hóa thành 0.
+
+Machine-readable result:
+`docs/experiments/E-0130-annual-2025-entrusted-investment-risk-capital-8bank-codex-verified-mapping-v1.json`.
+
 ## CLOSED — annual-2025 `Các khoản nợ Chính phủ và Ngân hàng Nhà nước`
 
 E-0128 quét toàn bộ tám BCTC hợp nhất kiểm toán năm 2025, tìm đúng một vùng
