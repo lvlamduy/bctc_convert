@@ -154,3 +154,36 @@ def test_current_eight_pdf_scan_locks_unique_regions_and_continuation() -> None:
     assert [
         trial["matcher_result"]["graphs"][0]["page_sequences"] for trial in result["trials"]
     ] == [[18], [34], [45], [28], [31], [39], [23], [34, 35]]
+
+
+def test_annual_2025_extended_variants_find_one_region_in_every_pdf() -> None:
+    semantic_index = json.loads(
+        (
+            scanner.PROJECT_ROOT / "output/calibration/annual-2025-8bank-full-document-vietocr-v1/"
+            "verified-index/semantic_index.json"
+        ).read_text("utf-8")
+    )
+
+    result = scanner.build_provision_movement_full_document_scan_v1(
+        semantic_index,
+        enable_extended_reporting_period_variants=True,
+    )
+
+    assert result["scan_id"] == (
+        "pmfdsv1:scan:89af751681a703ee5f93c7fb1381fbb3bda6c97a75a3e17e997173f27e9b862c"
+    )
+    assert result["metrics"] == {
+        "accepted_numeric_graph_count": 0,
+        "accounting_corroborated_semantic_lane_count": 5,
+        "continuation_region_count": 0,
+        "document_count": 8,
+        "document_unique_structural_match_count": 8,
+        "mapping_verified_count": 0,
+        "movement_panel_count": 16,
+        "near_region_count": 15,
+        "provision_region_count": 8,
+        "unresolved_document_count": 0,
+    }
+    assert [
+        trial["matcher_result"]["graphs"][0]["page_sequences"] for trial in result["trials"]
+    ] == [[51], [53], [48], [38], [41], [44], [43], [39]]

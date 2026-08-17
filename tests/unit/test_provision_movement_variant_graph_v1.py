@@ -155,6 +155,63 @@ def test_policy_expense_and_snapshot_regions_are_negative_controls() -> None:
     assert result["metrics"]["near_region_count"] == 1
 
 
+def test_extended_annual_variant_reuses_prior_closing_as_current_opening() -> None:
+    page = _page(
+        [
+            ("Dự phòng rủi ro cho vay khách hàng", 0, 0),
+            ("Số dư tại ngày 1 tháng 1 năm 2024", 0, 45),
+            ("100", 650, 45),
+            ("Trích lập trong năm", 0, 90),
+            ("20", 650, 90),
+            ("Sử dụng trong năm", 0, 135),
+            ("(10)", 650, 135),
+            ("Số dư tại ngày 31 tháng 12 năm 2024", 0, 180),
+            ("110", 650, 180),
+            ("Trích lập trong năm", 0, 225),
+            ("30", 650, 225),
+            ("Sử dụng trong năm", 0, 270),
+            ("(5)", 650, 270),
+            ("Số dư tại ngày 31 tháng 12 năm 2025", 0, 315),
+            ("135", 650, 315),
+        ]
+    )
+
+    base = provision.build_provision_movement_variant_graph_document_v1([page])
+    extended = provision.build_provision_movement_variant_graph_document_v1(
+        [page], enable_extended_reporting_period_variants=True
+    )
+
+    assert base["status"] == "UNRESOLVED_NO_COMPLETE_REGION"
+    assert extended["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    panels = extended["graphs"][0]["panels"]
+    assert len(panels) == 2
+    assert [row["role"] for row in panels[1]["rows"]] == [
+        "OPENING",
+        "PROVISION",
+        "USE",
+        "CLOSING",
+    ]
+    assert panels[1]["accounting_checks"][0]["status"] == ("CORROBORATED_SEMANTIC_PROPOSAL_ONLY")
+
+
+def test_investment_securities_provision_is_a_negative_family_control() -> None:
+    result = provision.build_provision_movement_variant_graph_document_v1(
+        [
+            _page(
+                _panel(
+                    owner=(
+                        "Thay đổi dự phòng rủi ro tín dụng chứng khoán đầu tư giữ đến ngày đáo hạn"
+                    )
+                )
+            )
+        ],
+        enable_extended_reporting_period_variants=True,
+    )
+
+    assert result["status"] == "UNRESOLVED_NO_COMPLETE_REGION"
+    assert result["metrics"]["complete_provision_region_count"] == 0
+
+
 def test_exact_replay_rejects_coordinated_semantic_role_tamper() -> None:
     pages = [_page(_panel())]
     result = provision.build_provision_movement_variant_graph_document_v1(pages)

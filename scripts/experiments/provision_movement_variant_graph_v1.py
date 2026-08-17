@@ -187,6 +187,13 @@ def _page_width(lines: Sequence[Mapping[str, Any]]) -> int:
 def _short_owner_anchor(text: str) -> bool:
     if not text or "du phong" not in text:
         return False
+    # Credit-risk movements for investment securities can have the same
+    # opening/provision/closing skeleton.  They are a distinct accounting
+    # family unless the anchor itself explicitly binds customer loans.
+    if "cho vay khach hang" not in text and any(
+        token in text for token in ("chung khoan", "trai phieu", "dau tu")
+    ):
+        return False
     forbidden = (
         "chi phi",
         "chinh sach",
@@ -241,13 +248,30 @@ def _joined_label(
     return text, tuple(line["source_line_index"] for line in selected)
 
 
-def _movement_role(text: str) -> str | None:
+def _movement_role(text: str, *, enable_extended_reporting_period_variants: bool) -> str | None:
     if text.startswith(("so du dau ky", "so du dau nam")) or text.startswith(
         ("tai ngay 01", "tai ngay 1 thang 1", "tai 01 01")
     ):
         return "OPENING"
+    if enable_extended_reporting_period_variants and text.startswith(
+        (
+            "so du tai ngay 01",
+            "so du tai ngay 1 thang 1",
+            "so du tai 01 01",
+        )
+    ):
+        return "OPENING"
     if text.startswith(("so du cuoi ky", "so du cuoi nam")) or text.startswith(
         ("tai ngay 30 thang", "tai ngay 31 thang 12", "tai 30 06", "tai 31 12")
+    ):
+        return "CLOSING"
+    if enable_extended_reporting_period_variants and text.startswith(
+        (
+            "so du tai ngay 30 thang",
+            "so du tai ngay 31 thang 12",
+            "so du tai 30 06",
+            "so du tai 31 12",
+        )
     ):
         return "CLOSING"
     if ("trich lap" in text or "hoan nhap" in text) and (
@@ -275,7 +299,11 @@ def _movement_role(text: str) -> str | None:
     return None
 
 
-def _events(lines: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+def _events(
+    lines: Sequence[Mapping[str, Any]],
+    *,
+    enable_extended_reporting_period_variants: bool,
+) -> list[dict[str, Any]]:
     width = _page_width(lines)
     result: list[dict[str, Any]] = []
     consumed: set[int] = set()
@@ -288,7 +316,12 @@ def _events(lines: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
             if joined is None:
                 continue
             text, indices = joined
-            role = _movement_role(text)
+            role = _movement_role(
+                text,
+                enable_extended_reporting_period_variants=(
+                    enable_extended_reporting_period_variants
+                ),
+            )
             if role is not None:
                 match = role, indices, size
                 break
@@ -352,40 +385,68 @@ def _decimal_text(token: str) -> str | None:
     return format(value, "f")
 
 
-def _panels(events: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+def _panel_record(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any] | None:
+    material = [canonical_clone_v1(item) for item in rows]
+    roles = [item["role"] for item in material]
+    if not _REQUIRED_ROLES.issubset(roles):
+        return None
+    return {
+        "accounting_checks": _accounting_checks(material),
+        "movement_roles": roles,
+        "rows": material,
+        "status": "STRUCTURALLY_COMPLETE_MOVEMENT_PANEL",
+    }
+
+
+def _panels(
+    events: Sequence[Mapping[str, Any]],
+    *,
+    enable_extended_reporting_period_variants: bool,
+) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
-    position = 0
-    while position < len(events):
-        if events[position]["role"] != "OPENING":
-            position += 1
+    for position, event in enumerate(events):
+        if event["role"] != "OPENING":
             continue
         closing: int | None = None
-        next_opening: int | None = None
         for candidate in range(position + 1, len(events)):
             role = events[candidate]["role"]
             if role == "OPENING":
-                next_opening = candidate
                 break
             if role == "CLOSING" and any(
                 item["role"] == "PROVISION" for item in events[position : candidate + 1]
             ):
                 closing = candidate
                 break
-        if closing is None:
-            position = next_opening if next_opening is not None else position + 1
-            continue
-        rows = [canonical_clone_v1(item) for item in events[position : closing + 1]]
-        roles = [item["role"] for item in rows]
-        if _REQUIRED_ROLES.issubset(roles):
-            result.append(
-                {
-                    "accounting_checks": _accounting_checks(rows),
-                    "movement_roles": roles,
-                    "rows": rows,
-                    "status": "STRUCTURALLY_COMPLETE_MOVEMENT_PANEL",
-                }
-            )
-        position = closing + 1
+        if closing is not None:
+            panel = _panel_record(events[position : closing + 1])
+            if panel is not None:
+                result.append(panel)
+
+    if enable_extended_reporting_period_variants:
+        # Some annual tables print one continuous two-year roll-forward.  The
+        # prior year-end row is simultaneously the current year's opening
+        # balance, so the second panel has no repeated "opening" label.
+        for position, event in enumerate(events):
+            if event["role"] != "CLOSING":
+                continue
+            next_closing: int | None = None
+            for candidate in range(position + 1, len(events)):
+                role = events[candidate]["role"]
+                if role == "OPENING":
+                    break
+                if role == "CLOSING":
+                    if any(
+                        item["role"] == "PROVISION" for item in events[position + 1 : candidate + 1]
+                    ):
+                        next_closing = candidate
+                    break
+            if next_closing is None:
+                continue
+            opening = canonical_clone_v1(event)
+            opening["role"] = "OPENING"
+            panel = _panel_record([opening, *events[position + 1 : next_closing + 1]])
+            if panel is not None:
+                result.append(panel)
     return result
 
 
@@ -460,7 +521,11 @@ def _headers(lines: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
     return unique
 
 
-def _candidate_pages(pages: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+def _candidate_pages(
+    pages: Sequence[Mapping[str, Any]],
+    *,
+    enable_extended_reporting_period_variants: bool,
+) -> list[dict[str, Any]]:
     candidates = []
     for page in pages:
         roots = [line for line in page["lines"] if _short_owner_anchor(line["normalized_text"])]
@@ -476,7 +541,12 @@ def _candidate_pages(pages: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]
         candidates.append(
             {
                 "continuation": _continuation_anchor(root["normalized_text"]),
-                "events": _events(region_lines),
+                "events": _events(
+                    region_lines,
+                    enable_extended_reporting_period_variants=(
+                        enable_extended_reporting_period_variants
+                    ),
+                ),
                 "headers": _headers(region_lines),
                 "page_sequence": page["page_sequence"],
                 "primary_numeric_authority": page["primary_numeric_authority"],
@@ -491,7 +561,11 @@ def _candidate_pages(pages: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]
     return candidates
 
 
-def _group_candidates(candidates: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+def _group_candidates(
+    candidates: Sequence[Mapping[str, Any]],
+    *,
+    enable_extended_reporting_period_variants: bool,
+) -> list[dict[str, Any]]:
     groups: list[dict[str, Any]] = []
     for candidate in candidates:
         if (
@@ -510,7 +584,10 @@ def _group_candidates(candidates: Sequence[Mapping[str, Any]]) -> list[dict[str,
             )
     for group in groups:
         events = [event for page in group["page_records"] for event in page["events"]]
-        group["panels"] = _panels(events)
+        group["panels"] = _panels(
+            events,
+            enable_extended_reporting_period_variants=(enable_extended_reporting_period_variants),
+        )
         group["roles"] = sorted({event["role"] for event in events}, key=_ROLE_ORDER.index)
         group["headers"] = [header for page in group["page_records"] for header in page["headers"]]
         group["complete"] = bool(group["panels"])
@@ -545,8 +622,18 @@ def _minimal_anchor(
     }
 
 
-def _scan(pages: Sequence[Mapping[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    groups = _group_candidates(_candidate_pages(pages))
+def _scan(
+    pages: Sequence[Mapping[str, Any]],
+    *,
+    enable_extended_reporting_period_variants: bool,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    groups = _group_candidates(
+        _candidate_pages(
+            pages,
+            enable_extended_reporting_period_variants=(enable_extended_reporting_period_variants),
+        ),
+        enable_extended_reporting_period_variants=(enable_extended_reporting_period_variants),
+    )
     complete_groups = [group for group in groups if group["complete"]]
     graphs: list[dict[str, Any]] = []
     for ordinal, group in enumerate(complete_groups, 1):
@@ -687,11 +774,16 @@ def _validate_result(value: Any) -> dict[str, Any]:
 
 def build_provision_movement_variant_graph_document_v1(
     pages: Sequence[Mapping[str, Any]],
+    *,
+    enable_extended_reporting_period_variants: bool = False,
 ) -> dict[str, Any]:
     """Scan one complete PDF with the bank-blind provision graph."""
 
     normalized_pages = _pages(pages)
-    graphs, near = _scan(normalized_pages)
+    graphs, near = _scan(
+        normalized_pages,
+        enable_extended_reporting_period_variants=(enable_extended_reporting_period_variants),
+    )
     count = len(graphs)
     material = {
         "claim_boundary": CLAIM_BOUNDARY,
@@ -725,12 +817,18 @@ def build_provision_movement_variant_graph_document_v1(
 
 
 def validate_provision_movement_variant_graph_replay_v1(
-    value: Any, pages: Sequence[Mapping[str, Any]]
+    value: Any,
+    pages: Sequence[Mapping[str, Any]],
+    *,
+    enable_extended_reporting_period_variants: bool = False,
 ) -> dict[str, Any]:
     """Exact-rebuild one document result from the complete fresh-text page list."""
 
     persisted = _validate_result(value)
-    rebuilt = build_provision_movement_variant_graph_document_v1(pages)
+    rebuilt = build_provision_movement_variant_graph_document_v1(
+        pages,
+        enable_extended_reporting_period_variants=(enable_extended_reporting_period_variants),
+    )
     if not same_typed_json_v1(persisted, rebuilt):
         raise _error("provision graph does not replay exactly")
     return rebuilt

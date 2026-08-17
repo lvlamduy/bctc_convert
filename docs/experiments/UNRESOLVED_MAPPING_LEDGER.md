@@ -162,6 +162,14 @@ cộng. Một hàng VCB gộp hai loại hình pháp lý còn OPEN.
   căn cứ tách hai giá trị để map riêng vào ReportNormId 776 và 774.
 - Status: `OPEN — UNRESOLVED_COMBINED_COOPERATIVE_AND_PRIVATE_ENTERPRISE_SOURCE_VALUE_NOT_SPLITTABLE`.
 
+E-0119 `Dự phòng rủi ro cho vay khách hàng` trên tám BCTC hợp nhất kiểm toán
+năm 2025 không bổ sung dòng OPEN. Whole-PDF graph tìm đúng một vùng tại ACB
+p51, MBB p53, VPB p48, HDB p38, VCB p41, CTG p44, BID p43 và VIB p39. 18
+lane cha, 79 dòng movement và 18 phương trình roll-forward đã được xác minh;
+chín dấu `-` được bind từ pixel trước khi chuẩn hóa thành 0. MBB `2.476` của
+VietOCR bị pixel và PaddleOCR6 bác bỏ để dùng `2.478`. Cột tổng và các lane
+phụ chỉ là đối chứng; không còn khoản mục annual-2025 của family này chờ map.
+
 E-0079 `Thu nhập lãi và các khoản thu nhập tương tự` không bổ sung dòng OPEN:
 cả tám vùng duy nhất đã map hết các dòng nguồn vào 1143–1150. Hai lỗi mất chữ
 số đầu của VietOCR tại VIB được trục số nguồn/PaddleOCR và pixel bác bỏ, nên là
@@ -1116,7 +1124,17 @@ Project-owner closure:
 
 ## Provision movement (`PROVISION_MOVEMENT_ROLLFORWARD`)
 
-Current exact-replay result:
+Annual-2025 exact-replay result:
+`docs/experiments/E-0119-annual-2025-provision-movement-8bank-codex-verified-mapping-v1.json`
+
+- ACB p51, MBB p53, VPB p48, HDB p38, VCB p41, CTG p44, BID p43 và VIB p39:
+  `VERIFIED_BY_CODEX` cho đúng roll-forward 2025 của BCTC hợp nhất kiểm toán.
+- 18 lane cha, 79 movement rows, 18 phương trình và chín DASH→0 đều đã đóng;
+  không còn dòng OPEN trong family annual-2025.
+- ACB/VPB map riêng margin/ứng trước 6061–6065. Cột tổng, địa lý và deferred-LC
+  chỉ làm đối chứng, không xuất cộng trùng.
+
+Kết quả kỳ hiện hành trước đó vẫn giữ riêng tại:
 `docs/experiments/E-0057-provision-movement-8bank-codex-verified-mapping-v1.json`
 
 - ACB p18, MBB p34, HDB p28, VCB p31, CTG p39, BID p23 và VIB p34:

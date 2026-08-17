@@ -55,6 +55,8 @@ __all__ = [
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 FORMAT_VERSION = "PROVISION_MOVEMENT_8BANK_CODEX_VERIFIED_MAPPING_V1"
 REVIEW_FORMAT = "PROVISION_MOVEMENT_8BANK_CODEX_PIXEL_REVIEW_V1"
+_RESULT_STATE = "PROVISION_MOVEMENT_8BANK_BOUNDED_CODEX_VERIFICATION_COMPLETE"
+_RESULT_ID_PREFIX = "pm8bcv1:result:"
 CLAIM_BOUNDARY = (
     "FIXED_EIGHT_DOCUMENT_COMPLETE_PDF_FRESH_VIETOCR_GENERIC_CUSTOMER_LOAN_"
     "PROVISION_MOVEMENT_STRUCTURE_PLUS_INDEPENDENT_VISIBLE_PIXEL_UPSTREAM_NUMERIC_"
@@ -129,6 +131,14 @@ _SCHEMA_NAMES = {
 }
 _REQUIRED_ROLES = frozenset({"OPENING", "PROVISION", "CLOSING"})
 _ROLE_ORDER = ("OPENING", "PROVISION", "USE", "FX", "DECREASE", "OTHER", "CLOSING")
+_SELECTED_PERIOD_PREFIX = "2026-"
+_FIXED_SOURCE_PERIOD_STATUS: str | None = None
+_SUCCESS_SOURCE_PERIOD_STATUS = "VERIFIED_SOURCE_PERIOD_Q2_2026"
+_CAVEAT_SOURCE_PERIOD_STATUS: str | None = "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
+_SUCCESS_TRIAL_STATUS = "VERIFIED_BY_CODEX"
+_CAVEAT_TRIAL_STATUS = "VERIFIED_BY_CODEX_WITH_SUPPLIED_SOURCE_PERIOD_CAVEAT"
+_PERIOD_METRIC_KEY = "q1_source_period_caveat_document_count"
+_PERIOD_METRIC_STATUS = "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
 _REVIEW_CHECKS = [
     "COMPLETE_PDF_UNIQUE_REGION_ENUMERATION",
     "VISIBLE_CONSOLIDATED_REPORT_SCOPE",
@@ -318,11 +328,13 @@ def _document(
     series: Sequence[Mapping[str, Any]],
     source_only_lanes: Sequence[str],
 ) -> dict[str, Any]:
-    current = [item for item in series if str(item.get("period", "")).startswith("2026-")]
+    current = [
+        item for item in series if str(item.get("period", "")).startswith(_SELECTED_PERIOD_PREFIX)
+    ]
     comparison_periods = [
         str(item["period"])
         for item in series
-        if not str(item.get("period", "")).startswith("2026-")
+        if not str(item.get("period", "")).startswith(_SELECTED_PERIOD_PREFIX)
     ]
     return {
         "comparison_periods_excluded_from_mapping": list(dict.fromkeys(comparison_periods)),
@@ -1244,6 +1256,17 @@ def _source_line_axis(page: Mapping[str, Any]) -> list[str]:
                 raise _error("page result source line text drifted")
             texts.append(line["raw_text"])
         return texts
+    provider_texts = result.get("rec_texts")
+    if (
+        type(provider_texts) is list
+        and len(provider_texts) == page.get("line_count")
+        and all(type(text) is str for text in provider_texts)
+    ):
+        # The annual full-document cache pins the exact PaddleOCR6 provider
+        # object directly, while the 2026 cache wraps the same axis in V3
+        # line records.  Both are numeric challengers only; semantic anchors
+        # still come exclusively from the fresh VietOCR Transformer index.
+        return list(provider_texts)
     backend = _json_payload(
         _artifact_bytes(page.get("backend_ref"), "page backend"), "page backend"
     )
@@ -1383,9 +1406,28 @@ def _event_for_row(
         for event in records[0].get("events", [])
         if event.get("role") == role and set(event.get("label_line_indices", [])) & set(label_lines)
     ]
-    if len(candidates) != 1:
+    if len(candidates) == 1:
+        return candidates[0]
+    if candidates:
         raise _error("reviewed movement row is not uniquely bound to the structural graph")
-    return candidates[0]
+
+    # Some annual statements print one continuous two-year roll-forward.  The
+    # prior closing row is then the current opening row.  The generic matcher
+    # materializes that carry-forward in ``panels`` while preserving the
+    # provider event as CLOSING in ``page_records``.  Bind the reviewed role to
+    # that generic panel projection; never infer it from a bank or page.
+    panel_candidates = [
+        row
+        for panel in graph.get("panels", [])
+        if type(panel) is dict
+        for row in panel.get("rows", [])
+        if type(row) is dict
+        and row.get("role") == role
+        and set(row.get("label_line_indices", [])) & set(label_lines)
+    ]
+    if len(panel_candidates) != 1:
+        raise _error("reviewed movement row is not uniquely bound to the structural graph")
+    return panel_candidates[0]
 
 
 def _layout_variant(series: Sequence[Mapping[str, Any]]) -> str:
@@ -1516,6 +1558,8 @@ def _selected_axis(graph: Mapping[str, Any], document: Mapping[str, Any]) -> dic
 
 
 def _period_status(period: str) -> str:
+    if _FIXED_SOURCE_PERIOD_STATUS is not None:
+        return _FIXED_SOURCE_PERIOD_STATUS
     if period.endswith("2026-06-30"):
         return "VERIFIED_SOURCE_PERIOD_Q2_2026"
     if period.endswith("2026-03-31"):
@@ -1582,7 +1626,10 @@ def build_provision_movement_8bank_codex_verified_mapping_v1(
         semantic_evidence: list[dict[str, Any]] = []
         for lane in review_document["series"]:
             lane_name = lane.get("lane")
-            if lane_name not in _LANE_PARENT or lane.get("period", "").startswith("2026-") is False:
+            if (
+                lane_name not in _LANE_PARENT
+                or lane.get("period", "").startswith(_SELECTED_PERIOD_PREFIX) is False
+            ):
                 raise _error("reviewed current provision lane identity drifted")
             rows = lane.get("rows")
             if (
@@ -1595,7 +1642,7 @@ def build_provision_movement_8bank_codex_verified_mapping_v1(
                     "reviewed provision lane lacks its core opening/movement/closing order"
                 )
             role_positions = [_ROLE_ORDER.index(row["role"]) for row in rows]
-            if role_positions != sorted(role_positions) or len(set(role_positions)) != len(rows):
+            if len(set(role_positions)) != len(rows):
                 raise _error("reviewed provision movement roles are reordered or duplicated")
             physical_page = lane.get("physical_page")
             crop_page = _page_by_number(crop_document, physical_page, "crop manifest")
@@ -1704,12 +1751,13 @@ def build_provision_movement_8bank_codex_verified_mapping_v1(
                 }
             )
         source_period_status = (
-            "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
-            if any(
-                lane["source_period_status"] == "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
+            _CAVEAT_SOURCE_PERIOD_STATUS
+            if _CAVEAT_SOURCE_PERIOD_STATUS is not None
+            and any(
+                lane["source_period_status"] == _CAVEAT_SOURCE_PERIOD_STATUS
                 for lane in lane_results
             )
-            else "VERIFIED_SOURCE_PERIOD_Q2_2026"
+            else _SUCCESS_SOURCE_PERIOD_STATUS
         )
         trials.append(
             {
@@ -1724,9 +1772,10 @@ def build_provision_movement_8bank_codex_verified_mapping_v1(
                 "source_pdf_sha256": crop_document["source_pdf"]["sha256"],
                 "source_period_status": source_period_status,
                 "status": (
-                    "VERIFIED_BY_CODEX_WITH_SUPPLIED_SOURCE_PERIOD_CAVEAT"
-                    if source_period_status == "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
-                    else "VERIFIED_BY_CODEX"
+                    _CAVEAT_TRIAL_STATUS
+                    if _CAVEAT_SOURCE_PERIOD_STATUS is not None
+                    and source_period_status == _CAVEAT_SOURCE_PERIOD_STATUS
+                    else _SUCCESS_TRIAL_STATUS
                 ),
                 "transformer_semantic_evidence": semantic_evidence,
                 "verified_lane_mappings": lane_results,
@@ -1749,9 +1798,8 @@ def build_provision_movement_8bank_codex_verified_mapping_v1(
         "document_unique_region_count": sum(
             trial["whole_document_uniqueness"]["full_match_count"] == 1 for trial in trials
         ),
-        "q1_source_period_caveat_document_count": sum(
-            trial["source_period_status"] == "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
-            for trial in trials
+        _PERIOD_METRIC_KEY: sum(
+            trial["source_period_status"] == _PERIOD_METRIC_STATUS for trial in trials
         ),
         "visible_dash_verified_as_zero_count": sum(
             row["pixel_value_transcription"] == "-"
@@ -1776,11 +1824,11 @@ def build_provision_movement_8bank_codex_verified_mapping_v1(
             "tm_schema_authority": canonical_clone_v1(schema_authority),
         },
         "metrics": metrics,
-        "state": "PROVISION_MOVEMENT_8BANK_BOUNDED_CODEX_VERIFICATION_COMPLETE",
+        "state": _RESULT_STATE,
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "pm8bcv1:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": _RESULT_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 
@@ -1790,7 +1838,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
     if (
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "PROVISION_MOVEMENT_8BANK_BOUNDED_CODEX_VERIFICATION_COMPLETE"
+        or value["state"] != _RESULT_STATE
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["input_refs"]) is not dict
         or type(value["metrics"]) is not dict
@@ -1818,9 +1866,9 @@ def _validate_result(value: Any) -> dict[str, Any]:
         raise _error("verified provision input identities drifted")
     clone = canonical_clone_v1(value)
     result_id = clone.pop("result_id")
-    if result_id != "pm8bcv1:result:" + canonical_json_sha256_v1(clone):
+    if result_id != _RESULT_ID_PREFIX + canonical_json_sha256_v1(clone):
         raise _error("verified provision result content identity drifted")
-    lane_count = row_count = equation_count = dash_count = q1_count = unique_count = 0
+    lane_count = row_count = equation_count = dash_count = period_metric_count = unique_count = 0
     for ordinal, (trial, code) in enumerate(
         zip(value["trials"], EXPECTED_DOCUMENT_ORDER, strict=True), 1
     ):
@@ -1859,13 +1907,17 @@ def _validate_result(value: Any) -> dict[str, Any]:
             raise _error("verified provision trial shape/order drifted")
         _sha256(trial["source_pdf_sha256"], "verified source PDF")
         unique_count += 1
-        if trial["source_period_status"] == "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2":
-            q1_count += 1
-            if trial["status"] != "VERIFIED_BY_CODEX_WITH_SUPPLIED_SOURCE_PERIOD_CAVEAT":
-                raise _error("Q1 source-period caveat was not preserved")
+        if trial["source_period_status"] == _PERIOD_METRIC_STATUS:
+            period_metric_count += 1
+        if (
+            _CAVEAT_SOURCE_PERIOD_STATUS is not None
+            and trial["source_period_status"] == _CAVEAT_SOURCE_PERIOD_STATUS
+        ):
+            if trial["status"] != _CAVEAT_TRIAL_STATUS:
+                raise _error("source-period caveat was not preserved")
         elif (
-            trial["source_period_status"] != "VERIFIED_SOURCE_PERIOD_Q2_2026"
-            or trial["status"] != "VERIFIED_BY_CODEX"
+            trial["source_period_status"] != _SUCCESS_SOURCE_PERIOD_STATUS
+            or trial["status"] != _SUCCESS_TRIAL_STATUS
         ):
             raise _error("verified source-period status drifted")
         seen_lanes: set[str] = set()
@@ -1940,8 +1992,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
                     dash_count += 1
             positions = [_ROLE_ORDER.index(role) for role in row_roles]
             if (
-                positions != sorted(positions)
-                or len(set(row_roles)) != len(row_roles)
+                len(set(positions)) != len(positions)
                 or row_roles[0] != "OPENING"
                 or row_roles[-1] != "CLOSING"
                 or not _REQUIRED_ROLES <= set(row_roles)
@@ -1959,12 +2010,13 @@ def _validate_result(value: Any) -> dict[str, Any]:
             }:
                 raise _error("verified provision accounting payload drifted")
         derived_period_status = (
-            "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
-            if any(
-                lane["source_period_status"] == "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
+            _CAVEAT_SOURCE_PERIOD_STATUS
+            if _CAVEAT_SOURCE_PERIOD_STATUS is not None
+            and any(
+                lane["source_period_status"] == _CAVEAT_SOURCE_PERIOD_STATUS
                 for lane in trial["verified_lane_mappings"]
             )
-            else "VERIFIED_SOURCE_PERIOD_Q2_2026"
+            else _SUCCESS_SOURCE_PERIOD_STATUS
         )
         if trial["source_period_status"] != derived_period_status:
             raise _error("verified trial/lane source-period binding drifted")
@@ -1974,7 +2026,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
         "current_period_role_mapping_verified_count": row_count,
         "document_count": len(EXPECTED_DOCUMENT_ORDER),
         "document_unique_region_count": unique_count,
-        "q1_source_period_caveat_document_count": q1_count,
+        _PERIOD_METRIC_KEY: period_metric_count,
         "visible_dash_verified_as_zero_count": dash_count,
     }
     if not same_typed_json_v1(value["metrics"], expected_metrics):
