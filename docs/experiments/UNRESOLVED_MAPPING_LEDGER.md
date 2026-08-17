@@ -72,6 +72,15 @@ hình học xoay, không có routing theo bank/page. VietOCR proposal VIB `164.0
 đọc `164.021` và phương trình nguồn xác nhận giá trị đó. Vì không có issue mới,
 tổng ledger và open queue ở đầu file không thay đổi.
 
+E-0125 `Tăng, giảm tài sản cố định vô hình` quét lại toàn bộ tám BCTC hợp nhất
+kiểm toán annual-2025 và tìm đúng một vùng tại ACB p56, MBB p60, VPB p54, HDB
+p42, VCB p49, CTG p49, BID p48 và VIB p43. 107 mapping và 32 phương trình
+roll-forward/carrying-value đã được pixel, trục số PP-OCRv6 nguồn, schema và
+accounting replay xác minh; không phát sinh dòng `OPEN` mới. Ba disclosure có
+số nằm cùng câu được xử lý bằng một rule inline chung. VietOCR CTG đọc sai
+`(65.998)`; pixel, PP-OCRv6 và phương trình đều khóa `(85.998)`. Kết quả
+Q2/2026 và VPB Q1/2026 cũ vẫn byte-exact; tổng ledger và open queue không đổi.
+
 E-0107 `Tiền, kim loại quý và đá quý` trên tám BCTC hợp nhất kiểm toán năm
 2025 không bổ sung dòng OPEN: whole-PDF graph tìm đúng một vùng tại ACB p45,
 MBB p46, VPB p41, HDB p33, VCB p35, CTG p39, BID p39 và VIB p35. 35 mapping

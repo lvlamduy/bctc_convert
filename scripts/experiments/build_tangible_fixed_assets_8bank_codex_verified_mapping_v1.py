@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import importlib.util
 import math
+import re
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -96,6 +97,7 @@ _SOURCE_PERIOD_STATUS_BY_PERIOD = {
     "2026-06-30": "VERIFIED_SOURCE_PERIOD_Q2_2026",
 }
 _REQUIRE_ROTATED_VIETOCR_NUMERIC_MATCH = True
+_NUMERIC_CHALLENGER_INPUT_KEY = "rotated_ppocrv6"
 _PPOCR_REFS = {
     "ocr_result": (
         Path("output/development/vib-page37-rotated-ppocrv6-v1/reader-output/ocr_result.json"),
@@ -311,6 +313,22 @@ def _value(
         "line_index": line_index,
         "pixel_transcription": pixel_transcription,
         "ppocr_rotated_line_index": ppocr_rotated_line_index,
+    }
+
+
+def _inline_value(
+    line_index: int,
+    pixel_transcription: str,
+    numeric_token: str,
+) -> dict[str, Any]:
+    """Bind one visible number embedded in a longer disclosure sentence."""
+
+    _money(numeric_token)
+    return {
+        "line_index": line_index,
+        "numeric_token": numeric_token,
+        "pixel_transcription": pixel_transcription,
+        "ppocr_rotated_line_index": None,
     }
 
 
@@ -1152,9 +1170,11 @@ def _verified_value(
     rescue_by_index: Mapping[int, Mapping[str, Any]],
     rotated_ppocr: Mapping[str, Any],
 ) -> dict[str, Any]:
+    standard_fields = {"line_index", "pixel_transcription", "ppocr_rotated_line_index"}
+    inline_fields = {*standard_fields, "numeric_token"}
     if (
         type(value) is not dict
-        or set(value) != {"line_index", "pixel_transcription", "ppocr_rotated_line_index"}
+        or frozenset(value) not in {frozenset(standard_fields), frozenset(inline_fields)}
         or type(value["line_index"]) is not int
         or (
             value["ppocr_rotated_line_index"] is not None
@@ -1163,7 +1183,8 @@ def _verified_value(
     ):
         raise _error("reviewed value fields drifted")
     line_index = value["line_index"]
-    pixel_value = _money(value["pixel_transcription"])
+    numeric_token = value.get("numeric_token", value["pixel_transcription"])
+    pixel_value = _money(numeric_token)
     semantic = _semantic_evidence(
         axis_page,
         semantic_page,
@@ -1174,10 +1195,19 @@ def _verified_value(
     if not 0 <= line_index < len(source_texts):
         raise _error("source numeric challenger line index drifted")
     source_raw = source_texts[line_index]
-    try:
-        source_value = _money(source_raw)
-    except TangibleFixedAssets8BankCodexVerifiedMappingV1Error:
-        source_value = None
+    if "numeric_token" in value:
+        source_values = []
+        for token in re.findall(r"\(?\d[\d., ]*\d\)?", source_raw):
+            try:
+                source_values.append(_money(token.strip()))
+            except TangibleFixedAssets8BankCodexVerifiedMappingV1Error:
+                continue
+        source_value = pixel_value if pixel_value in source_values else None
+    else:
+        try:
+            source_value = _money(source_raw)
+        except TangibleFixedAssets8BankCodexVerifiedMappingV1Error:
+            source_value = None
     rotated_index = value["ppocr_rotated_line_index"]
     rotated_raw = None
     rotated_score = None
@@ -1482,7 +1512,7 @@ def build_tangible_fixed_assets_8bank_codex_verified_mapping_v1(
         "format_version": FORMAT_VERSION,
         "input_refs": {
             "crop_manifest_sha256": EXPECTED_CROP_MANIFEST_SHA256,
-            "rotated_ppocrv6": canonical_clone_v1(rotated_ppocr["input_refs"]),
+            _NUMERIC_CHALLENGER_INPUT_KEY: canonical_clone_v1(rotated_ppocr["input_refs"]),
             "rotated_vietocr_rescue_id": _rescue_identity(rescue),
             "schema_authority": _schema_authority_for_output(schema_authority),
             "semantic_axis_sha256": EXPECTED_AXIS_SHA256,

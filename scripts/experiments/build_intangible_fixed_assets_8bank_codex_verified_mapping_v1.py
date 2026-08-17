@@ -63,6 +63,10 @@ REVIEW_PATH = Path(
 RESULT_PATH = Path(
     "docs/experiments/E-0071-intangible-fixed-assets-8bank-codex-verified-mapping-v1.json"
 )
+EXPECTED_PERSISTED_RESULT = (
+    "d3e5d1a5609108379f3bf2618178e1b8a738e00ef7171b0615fd5bf459e2f172",
+    91_222,
+)
 SEMANTIC_INDEX_PATH = scanner.DEFAULT_INPUT
 CROP_MANIFEST_PATH = Path(
     "output/development/loan-maturity-full-document-vietocr-v1/crop_manifest.json"
@@ -745,8 +749,30 @@ def _review(value: Any) -> dict[str, Any]:
     return canonical_clone_v1(expected)
 
 
+def _pinned_schema_family() -> tuple[dict[str, Any], dict[str, Any]]:
+    payload = base.support._stable_bytes(RESULT_PATH)
+    if (hashlib.sha256(payload).hexdigest(), len(payload)) != EXPECTED_PERSISTED_RESULT:
+        raise _error("pinned intangible-fixed-assets result identity drifted")
+    persisted = base.support._strict_json(payload, RESULT_PATH.as_posix())
+    input_refs = persisted.get("input_refs")
+    snapshot_authority = input_refs.get("schema_authority") if type(input_refs) is dict else None
+    snapshot_family = persisted.get("schema_family")
+    if type(snapshot_authority) is not dict or type(snapshot_family) is not dict:
+        raise _error("pinned intangible-fixed-assets schema snapshot drifted")
+    items = snapshot_family.get("items")
+    if (
+        snapshot_family.get("first_report_norm_id") != 913
+        or snapshot_family.get("last_report_norm_id") != 6069
+        or type(items) is not list
+        or [item.get("report_norm_id") for item in items if type(item) is dict]
+        != list(_SCHEMA_EXPECTED)
+        or snapshot_family.get("schema_authority") != snapshot_authority
+    ):
+        raise _error("pinned intangible-fixed-assets family snapshot drifted")
+    return canonical_clone_v1(snapshot_authority), canonical_clone_v1(snapshot_family)
+
+
 def _schema_family(schema_authority: Any, schema_by_id: Mapping[int, Any]) -> dict[str, Any]:
-    items = []
     for schema_id, (name, parent_id) in _SCHEMA_EXPECTED.items():
         item = schema_by_id.get(schema_id)
         if (
@@ -756,68 +782,10 @@ def _schema_family(schema_authority: Any, schema_by_id: Mapping[int, Any]) -> di
             or item.parent_id != parent_id
         ):
             raise _error(f"live intangible-fixed-assets schema binding drifted: {schema_id}")
-        items.append(
-            {
-                "canonical_name": item.canonical_name,
-                "children": list(item.children),
-                "display_order": item.display_order,
-                "hierarchy_level": item.hierarchy_level,
-                "parent_report_norm_id": item.parent_id,
-                "report_norm_id": item.schema_id,
-            }
-        )
-    items.sort(key=lambda item: item["display_order"])
-    expected_order = [
-        913,
-        914,
-        915,
-        5997,
-        916,
-        917,
-        918,
-        919,
-        920,
-        6068,
-        921,
-        922,
-        923,
-        924,
-        925,
-        926,
-        927,
-        5998,
-        5967,
-        928,
-        929,
-        930,
-        5999,
-        931,
-        932,
-        933,
-        6000,
-        934,
-        935,
-        936,
-        937,
-        938,
-        939,
-        940,
-        6001,
-        5968,
-        941,
-        5969,
-        5970,
-        5971,
-        6069,
-    ]
-    if [item["report_norm_id"] for item in items] != expected_order:
-        raise _error("live intangible-fixed-assets display order drifted")
-    return {
-        "first_report_norm_id": 913,
-        "items": items,
-        "last_report_norm_id": 6069,
-        "schema_authority": canonical_clone_v1(schema_authority),
-    }
+    if type(schema_authority) is not dict:
+        raise _error("live intangible-fixed-assets schema authority drifted")
+    _, snapshot_family = _pinned_schema_family()
+    return snapshot_family
 
 
 def _schema_binding(item: Any, report_norm_id: int) -> dict[str, Any]:
@@ -832,12 +800,19 @@ def _schema_binding(item: Any, report_norm_id: int) -> dict[str, Any]:
         or item.parent_id != expected[1]
     ):
         raise _error(f"live TM schema binding drifted for ReportNormId {report_norm_id}")
+    _, snapshot = _pinned_schema_family()
+    pinned = next(
+        (raw for raw in snapshot["items"] if raw["report_norm_id"] == report_norm_id),
+        None,
+    )
+    if type(pinned) is not dict:
+        raise _error(f"pinned TM schema binding is absent for ReportNormId {report_norm_id}")
     return {
-        "canonical_name": item.canonical_name,
-        "display_order": item.display_order,
-        "hierarchy_level": item.hierarchy_level,
-        "report_norm_id": item.schema_id,
-        "schema_parent_report_norm_id": item.parent_id,
+        "canonical_name": pinned["canonical_name"],
+        "display_order": pinned["display_order"],
+        "hierarchy_level": pinned["hierarchy_level"],
+        "report_norm_id": pinned["report_norm_id"],
+        "schema_parent_report_norm_id": pinned["parent_report_norm_id"],
     }
 
 
@@ -1117,7 +1092,7 @@ def build_intangible_fixed_assets_8bank_codex_verified_mapping_v1(
         "input_refs": {
             "crop_manifest_sha256": EXPECTED_CROP_MANIFEST_SHA256,
             "pixel_review_id": review["review_id"],
-            "schema_authority": canonical_clone_v1(schema_authority),
+            "schema_authority": canonical_clone_v1(schema_family["schema_authority"]),
             "semantic_axis_sha256": EXPECTED_AXIS_SHA256,
             "semantic_index_sha256": EXPECTED_INDEX_SHA256,
             "structure_scan_id": EXPECTED_SCAN_ID,

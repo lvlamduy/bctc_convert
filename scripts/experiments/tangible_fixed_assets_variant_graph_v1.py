@@ -29,6 +29,7 @@ from bctc_ai.source_structure.contracts_v1 import (
 __all__ = [
     "FORMAT_VERSION",
     "INTANGIBLE_FORMAT_VERSION",
+    "INTANGIBLE_REPORTING_PERIOD_GENERAL_VARIANT_PROFILE",
     "INVESTMENT_PROPERTY_FORMAT_VERSION",
     "LEASED_FORMAT_VERSION",
     "LEASED_REPORTING_PERIOD_GENERAL_VARIANT_PROFILE",
@@ -54,7 +55,11 @@ LEASED_REPORTING_PERIOD_GENERAL_FORMAT_VERSION = "LEASED_FIXED_ASSETS_VARIANT_GR
 LEASED_FAMILY_ID = "LEASED_FIXED_ASSET_MOVEMENT"
 LEASED_REPORTING_PERIOD_GENERAL_VARIANT_PROFILE = "REPORTING_PERIOD_GENERAL_V2"
 INTANGIBLE_FORMAT_VERSION = "INTANGIBLE_FIXED_ASSETS_VARIANT_GRAPH_DOCUMENT_V1"
+INTANGIBLE_REPORTING_PERIOD_GENERAL_FORMAT_VERSION = (
+    "INTANGIBLE_FIXED_ASSETS_VARIANT_GRAPH_DOCUMENT_V2"
+)
 INTANGIBLE_FAMILY_ID = "INTANGIBLE_FIXED_ASSET_MOVEMENT"
+INTANGIBLE_REPORTING_PERIOD_GENERAL_VARIANT_PROFILE = "REPORTING_PERIOD_GENERAL_V2"
 INVESTMENT_PROPERTY_FORMAT_VERSION = "INVESTMENT_PROPERTY_VARIANT_GRAPH_DOCUMENT_V1"
 INVESTMENT_PROPERTY_FAMILY_ID = "INVESTMENT_PROPERTY_MOVEMENT"
 CLAIM_BOUNDARY = (
@@ -104,6 +109,13 @@ _INTANGIBLE_CLAIM_BOUNDARY = (
     "ONLY_NO_NUMERIC_SCHEMA_MAPPING_CANONICALIZATION_OR_EXPORT_AUTHORITY"
 )
 _INTANGIBLE_SAFETY = canonical_clone_v1(_SAFETY)
+_INTANGIBLE_REPORTING_PERIOD_GENERAL_SAFETY = {
+    **canonical_clone_v1(_INTANGIBLE_SAFETY),
+    "dated_balance_roles_derived_from_chronology_not_fixed_calendar_dates": True,
+    "latest_explicit_local_period_selects_current_table": True,
+    "first_complete_ordered_core_cycle_selected_before_later_detail_rows": True,
+    "relative_beginning_and_ending_year_labels_supported": True,
+}
 _INVESTMENT_PROPERTY_CLAIM_BOUNDARY = (
     "BANK_BLIND_COMPLETE_PDF_FRESH_VIETOCR_INVESTMENT_PROPERTY_OWNER_COST_"
     "ACCUMULATED_DEPRECIATION_CARRYING_VALUE_OPTIONAL_MOVEMENTS_ASSET_CLASS_"
@@ -226,6 +238,32 @@ _INTANGIBLE_SPEC = {
         "tai san co khac",
         "cac khoan no chinh phu",
     ),
+}
+_INTANGIBLE_REPORTING_PERIOD_GENERAL_SPEC = {
+    **_INTANGIBLE_SPEC,
+    "adjacent_line_anchor_fusion": True,
+    "branch_same_page_required": False,
+    "branch_reject_phrases": ("da hao mon het", "da khau hao het"),
+    "dynamic_dated_balance_roles": True,
+    "format_version": INTANGIBLE_REPORTING_PERIOD_GENERAL_FORMAT_VERSION,
+    "first_ordered_core_cycle": True,
+    "id_prefix": "ifavgv2:result:",
+    "latest_explicit_period_selects_current_region": True,
+    "owner_left_region_only": False,
+    "owner_reject_phrases": (
+        *_INTANGIBLE_SPEC["owner_reject_phrases"],
+        "co gia tri lon",
+        "gia tri con lai",
+        "phan mem",
+        "quyen su dung dat",
+        "vi tinh",
+        "vo hinh khac",
+    ),
+    "period_pattern": _REPORTING_PERIOD_GENERAL_DATE,
+    "relative_year_balance_roles": True,
+    "rotated_coordinate_window": True,
+    "safety": _INTANGIBLE_REPORTING_PERIOD_GENERAL_SAFETY,
+    "split_repeated_branch_cycles": True,
 }
 _INVESTMENT_PROPERTY_SPEC = {
     "branch_same_page_required": False,
@@ -352,15 +390,43 @@ def _pages(value: Any) -> list[dict[str, Any]]:
             height = max(line["bbox"][3] - line["bbox"][1], 1)
             following_height = max(following["bbox"][3] - following["bbox"][1], 1)
             vertical_gap = following["bbox"][1] - line["bbox"][3]
+            left_edge_gap = abs(following["bbox"][0] - line["bbox"][0])
             horizontally_related = not (
                 following["bbox"][0] > line["bbox"][2] + max(height, following_height) * 2
                 or line["bbox"][0] > following["bbox"][2] + max(height, following_height) * 2
             )
+            current_text = line["normalized_text"]
+            following_text = following["normalized_text"]
+            current_is_complete_axis_or_value = (
+                not current_text
+                or _NUMBER.fullmatch(current_text.replace(" ", "")) is not None
+                or current_text.startswith(
+                    (
+                        "so du ",
+                        "tai ngay ",
+                        "mua ",
+                        "tang ",
+                        "giam ",
+                        "thanh ly",
+                        "nhuong ban",
+                        "khau hao trong",
+                        "phan loai ",
+                        "chenh lech ",
+                        "tong cong",
+                        "trieu dong",
+                        "trieu vnd",
+                    )
+                )
+            )
+            following_is_value = _NUMBER.fullmatch(following_text.replace(" ", "")) is not None
             if (
                 -max(height, following_height) // 2
                 <= vertical_gap
                 <= max(height, following_height) * 2
                 and horizontally_related
+                and left_edge_gap <= max(height, following_height) * 4
+                and not current_is_complete_axis_or_value
+                and not following_is_value
             ):
                 line["normalized_text_with_next"] = " ".join(
                     part for part in (line["normalized_text"], following["normalized_text"]) if part
@@ -681,7 +747,7 @@ def _region_from_window(
         if _NUMBER.fullmatch(text.replace(" ", "")):
             numeric_lines.append(line)
     core_roles = spec["core_roles"]
-    current_branches = {
+    branch_candidates = {
         role: (
             [
                 line
@@ -693,6 +759,23 @@ def _region_from_window(
         )
         for role in core_roles
     }
+    if spec.get("first_ordered_core_cycle", False):
+        current_branches: dict[str, list[Mapping[str, Any]]] = {}
+        cursor = _logical_position(owner, rotated=rotated)
+        for role in core_roles:
+            eligible = sorted(
+                (
+                    line
+                    for line in branch_candidates[role]
+                    if _logical_position(line, rotated=rotated) > cursor
+                ),
+                key=lambda line: _logical_position(line, rotated=rotated),
+            )
+            current_branches[role] = eligible[:1]
+            if eligible:
+                cursor = _logical_position(eligible[0], rotated=rotated)
+    else:
+        current_branches = branch_candidates
     unique_branches = all(len(current_branches[role]) == 1 for role in core_roles)
     ordered = False
     if unique_branches:
@@ -808,6 +891,36 @@ def _select_latest_explicit_period_region(
     return candidates
 
 
+def _candidate_cycle_windows(
+    window: Sequence[Mapping[str, Any]], spec: Mapping[str, Any]
+) -> list[list[Mapping[str, Any]]]:
+    """Split repeated annual branch cycles under one shared owner."""
+
+    material = list(window)
+    if not spec.get("split_repeated_branch_cycles", False):
+        return [material]
+    cost_indices = [
+        index for index, line in enumerate(material) if _branch_role_line(line, spec) == "COST"
+    ]
+    if len(cost_indices) <= 1:
+        return [material]
+    starts = [0]
+    for previous_cost, cost_index in itertools.pairwise(cost_indices):
+        dated = [
+            index
+            for index in range(previous_cost + 1, cost_index)
+            if parse_vietnamese_dates(material[index]["semantic_text"])
+        ]
+        if not dated:
+            return [material]
+        starts.append(dated[-1])
+    if len(set(starts)) != len(cost_indices):
+        return [material]
+    return [
+        material[start:end] for start, end in zip(starts, [*starts[1:], len(material)], strict=True)
+    ]
+
+
 def _validate_result(value: Any, spec: Mapping[str, Any] = _TANGIBLE_SPEC) -> dict[str, Any]:
     if type(value) is not dict or set(value) != _RESULT_FIELDS:
         raise _error("tangible-fixed-assets graph result fields drifted")
@@ -865,8 +978,9 @@ def _build_variant_graph_document_v1(pages: Any, spec: Mapping[str, Any]) -> dic
     records = []
     for owner in owners:
         window, rotated = _candidate_window(owner, normalized_pages, spec)
-        candidate = _region_from_window(owner, window, rotated=rotated, spec=spec)
-        records.append((candidate, _local_period_end_rank(owner, window, spec)))
+        for cycle_window in _candidate_cycle_windows(window, spec):
+            candidate = _region_from_window(owner, cycle_window, rotated=rotated, spec=spec)
+            records.append((candidate, _local_period_end_rank(owner, cycle_window, spec)))
     candidates = _select_latest_explicit_period_region(records, spec)
     regions = [candidate for candidate in candidates if candidate["complete"]]
     near_regions = [candidate for candidate in candidates if not candidate["complete"]]
@@ -934,10 +1048,20 @@ def build_leased_fixed_assets_variant_graph_document_v1(
     return _build_variant_graph_document_v1(pages, _leased_spec(variant_profile))
 
 
-def build_intangible_fixed_assets_variant_graph_document_v1(pages: Any) -> dict[str, Any]:
+def _intangible_spec(variant_profile: str) -> Mapping[str, Any]:
+    if variant_profile == CURRENT_VARIANT_PROFILE:
+        return _INTANGIBLE_SPEC
+    if variant_profile == INTANGIBLE_REPORTING_PERIOD_GENERAL_VARIANT_PROFILE:
+        return _INTANGIBLE_REPORTING_PERIOD_GENERAL_SPEC
+    raise _error("intangible-fixed-assets variant profile drifted")
+
+
+def build_intangible_fixed_assets_variant_graph_document_v1(
+    pages: Any, *, variant_profile: str = CURRENT_VARIANT_PROFILE
+) -> dict[str, Any]:
     """Enumerate every complete and near-complete intangible-asset region."""
 
-    return _build_variant_graph_document_v1(pages, _INTANGIBLE_SPEC)
+    return _build_variant_graph_document_v1(pages, _intangible_spec(variant_profile))
 
 
 _EXPLICIT_PERIOD_END = re.compile(
@@ -1149,12 +1273,18 @@ def validate_leased_fixed_assets_variant_graph_replay_v1(
 
 
 def validate_intangible_fixed_assets_variant_graph_replay_v1(
-    value: Any, pages: Any
+    value: Any,
+    pages: Any,
+    *,
+    variant_profile: str = CURRENT_VARIANT_PROFILE,
 ) -> dict[str, Any]:
     """Rebuild the intangible-asset graph from the complete PDF."""
 
-    supplied = _validate_result(value, _INTANGIBLE_SPEC)
-    rebuilt = build_intangible_fixed_assets_variant_graph_document_v1(pages)
+    spec = _intangible_spec(variant_profile)
+    supplied = _validate_result(value, spec)
+    rebuilt = build_intangible_fixed_assets_variant_graph_document_v1(
+        pages, variant_profile=variant_profile
+    )
     if not same_typed_json_v1(supplied, rebuilt):
         raise _error("intangible-fixed-assets graph does not replay exactly")
     return supplied

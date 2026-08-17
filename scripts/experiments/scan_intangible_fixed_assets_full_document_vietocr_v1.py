@@ -26,6 +26,12 @@ DEFAULT_INPUT = Path(
 )
 FORMAT_VERSION = "INTANGIBLE_FIXED_ASSETS_8DOCUMENT_FULL_VIETOCR_STRUCTURE_SCAN_V1"
 MATCHER_FORMAT = "INTANGIBLE_FIXED_ASSETS_VARIANT_GRAPH_DOCUMENT_V1"
+MATCHER_VARIANT_PROFILE = "CURRENT_V1"
+_MATCHER_FORMAT_BY_PROFILE = {
+    "CURRENT_V1": MATCHER_FORMAT,
+    "REPORTING_PERIOD_GENERAL_V2": "INTANGIBLE_FIXED_ASSETS_VARIANT_GRAPH_DOCUMENT_V2",
+}
+SCAN_ID_PREFIX = "ifafdsv1:scan:"
 CLAIM_BOUNDARY = (
     "FRESH_VIETOCR_TRANSFORMER_COMPLETE_PDF_SHARED_FIXED_ASSET_ENGINE_"
     "INTANGIBLE_OWNER_COST_ACCUMULATED_AMORTIZATION_CARRYING_VALUE_OPTIONAL_"
@@ -93,7 +99,7 @@ def _matcher() -> ModuleType:
 def _metrics(trials: list[dict[str, Any]]) -> dict[str, int]:
     complete = sum(trial["matcher_result"]["metrics"]["complete_region_count"] for trial in trials)
     near = sum(trial["matcher_result"]["metrics"]["near_region_count"] for trial in trials)
-    return {
+    metrics = {
         "complete_region_count": complete,
         "document_count": len(trials),
         "document_multiple_complete_region_count": sum(
@@ -107,10 +113,18 @@ def _metrics(trials: list[dict[str, Any]]) -> dict[str, int]:
         "near_region_count": near,
         "unresolved_document_count": len(trials),
     }
+    if MATCHER_VARIANT_PROFILE != "CURRENT_V1":
+        metrics["rotated_rescue_line_count"] = sum(
+            trial["rotated_rescue_line_count"] for trial in trials
+        )
+    return metrics
 
 
 def _validate_result(value: Any) -> dict[str, Any]:
-    if type(value) is not dict or set(value) != _RESULT_FIELDS:
+    expected_result_fields = set(_RESULT_FIELDS)
+    if MATCHER_VARIANT_PROFILE != "CURRENT_V1":
+        expected_result_fields.add("input_rescue")
+    if type(value) is not dict or set(value) != expected_result_fields:
         raise _error("intangible-fixed-assets scan fields drifted")
     if (
         value["format_version"] != FORMAT_VERSION
@@ -124,49 +138,84 @@ def _validate_result(value: Any) -> dict[str, Any]:
     for ordinal, (trial, code) in enumerate(
         zip(value["trials"], EXPECTED_DOCUMENT_ORDER, strict=True), 1
     ):
-        if type(trial) is not dict or set(trial) != {
+        expected_trial_fields = {
             "document_ordinal",
             "document_provenance",
             "matcher_result",
             "source_pdf_sha256",
-        }:
+        }
+        if MATCHER_VARIANT_PROFILE != "CURRENT_V1":
+            expected_trial_fields.add("rotated_rescue_line_count")
+        if type(trial) is not dict or set(trial) != expected_trial_fields:
             raise _error("intangible-fixed-assets scan trial fields drifted")
         if (
             trial["document_ordinal"] != ordinal
             or trial["document_provenance"] != code
             or type(trial["matcher_result"]) is not dict
-            or trial["matcher_result"].get("format_version") != MATCHER_FORMAT
+            or trial["matcher_result"].get("format_version")
+            != _MATCHER_FORMAT_BY_PROFILE.get(MATCHER_VARIANT_PROFILE)
         ):
             raise _error("intangible-fixed-assets scan trial identity drifted")
     if not same_typed_json_v1(value["metrics"], _metrics(value["trials"])):
         raise _error("intangible-fixed-assets scan metrics drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("scan_id")
-    if identity != "ifafdsv1:scan:" + canonical_json_sha256_v1(material):
+    if identity != SCAN_ID_PREFIX + canonical_json_sha256_v1(material):
         raise _error("intangible-fixed-assets scan identity drifted")
     return canonical_clone_v1(value)
 
 
-def build_intangible_fixed_assets_full_document_scan_v1(semantic_index: Any) -> dict[str, Any]:
+def build_intangible_fixed_assets_full_document_scan_v1(
+    semantic_index: Any, rescue: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Build the exact eight-document intangible-assets structural scan."""
 
     axis = project_full_document_vietocr_accounting_axis_v1(semantic_index)
     support = _support()
     matcher = _matcher()
+    full_rescue_by_locator = (
+        support._full_rescue_by_locator(rescue, axis["semantic_axis_sha256"])
+        if rescue is not None
+        and rescue.get("format_version") == support.FULL_DOCUMENT_RESCUE_FORMAT
+        else None
+    )
     trials = []
     for document in axis["documents"]:
-        pages, applied_count = support._matcher_pages(document, None)
-        if applied_count != 0:
-            raise _error("intangible scan unexpectedly applied a semantic rescue")
-        result = matcher.build_intangible_fixed_assets_variant_graph_document_v1(pages)
-        trials.append(
-            {
-                "document_ordinal": document["document_ordinal"],
-                "document_provenance": document["document_provenance"],
-                "matcher_result": result,
-                "source_pdf_sha256": document["source_pdf"]["sha256"],
-            }
+        pages, applied_count = support._matcher_pages(document, rescue, full_rescue_by_locator)
+        result = matcher.build_intangible_fixed_assets_variant_graph_document_v1(
+            pages, variant_profile=MATCHER_VARIANT_PROFILE
         )
+        trial = {
+            "document_ordinal": document["document_ordinal"],
+            "document_provenance": document["document_provenance"],
+            "matcher_result": result,
+            "source_pdf_sha256": document["source_pdf"]["sha256"],
+        }
+        if MATCHER_VARIANT_PROFILE != "CURRENT_V1":
+            trial["rotated_rescue_line_count"] = applied_count
+        elif applied_count != 0:
+            raise _error("current-profile intangible scan unexpectedly applied a rescue")
+        trials.append(trial)
+    if full_rescue_by_locator is not None and sum(
+        trial["rotated_rescue_line_count"] for trial in trials
+    ) != len(full_rescue_by_locator):
+        raise _error("full-document rotated rescue denominator was not consumed exactly once")
+    rescue_ref = None
+    if rescue is not None and rescue.get("format_version") == support.RESCUE_FORMAT:
+        rescue_ref = {
+            "input_refs": canonical_clone_v1(rescue["input_refs"]),
+            "line_count": rescue["line_count"],
+            "rescue_id": rescue["rescue_id"],
+            "source_pdf_sha256": rescue["source_pdf_sha256"],
+            "source_projection_sha256": rescue["source_projection_sha256"],
+        }
+    elif full_rescue_by_locator is not None:
+        rescue_ref = {
+            "input_refs": canonical_clone_v1(rescue["input_refs"]),
+            "line_count": len(full_rescue_by_locator),
+            "projection_id": rescue["projection_id"],
+            "source_semantic_axis_sha256": rescue["source_semantic_axis_sha256"],
+        }
     material = {
         "authority": canonical_clone_v1(_AUTHORITY),
         "claim_boundary": CLAIM_BOUNDARY,
@@ -177,16 +226,18 @@ def build_intangible_fixed_assets_full_document_scan_v1(semantic_index: Any) -> 
         "state": "FULL_DOCUMENT_INTANGIBLE_FIXED_ASSETS_STRUCTURE_SCAN_COMPLETE",
         "trials": trials,
     }
+    if MATCHER_VARIANT_PROFILE != "CURRENT_V1":
+        material["input_rescue"] = rescue_ref
     return _validate_result(
-        {**material, "scan_id": "ifafdsv1:scan:" + canonical_json_sha256_v1(material)}
+        {**material, "scan_id": SCAN_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 
 def validate_intangible_fixed_assets_full_document_scan_replay_v1(
-    value: Any, semantic_index: Any
+    value: Any, semantic_index: Any, rescue: dict[str, Any] | None = None
 ) -> dict[str, Any]:
     supplied = _validate_result(value)
-    rebuilt = build_intangible_fixed_assets_full_document_scan_v1(semantic_index)
+    rebuilt = build_intangible_fixed_assets_full_document_scan_v1(semantic_index, rescue)
     if not same_typed_json_v1(supplied, rebuilt):
         raise _error("intangible-fixed-assets scan does not replay exactly")
     return supplied
@@ -194,18 +245,33 @@ def validate_intangible_fixed_assets_full_document_scan_replay_v1(
 
 def build_live_intangible_fixed_assets_full_document_scan_v1(
     input_path: Path = DEFAULT_INPUT,
+    rescue_root: Path = Path("output/development/vib-page37-rotated-vietocr-v1"),
 ) -> dict[str, Any]:
     support = _support()
     semantic_index, _ = support._fixed_json(input_path)
-    return build_intangible_fixed_assets_full_document_scan_v1(semantic_index)
+    rescue = (
+        None
+        if MATCHER_VARIANT_PROFILE == "CURRENT_V1"
+        else support._profile_rescue(semantic_index, rescue_root)
+    )
+    return build_intangible_fixed_assets_full_document_scan_v1(semantic_index, rescue)
 
 
 def validate_live_intangible_fixed_assets_full_document_scan_v1(
-    value: Any, input_path: Path = DEFAULT_INPUT
+    value: Any,
+    input_path: Path = DEFAULT_INPUT,
+    rescue_root: Path = Path("output/development/vib-page37-rotated-vietocr-v1"),
 ) -> dict[str, Any]:
     support = _support()
     semantic_index, _ = support._fixed_json(input_path)
-    return validate_intangible_fixed_assets_full_document_scan_replay_v1(value, semantic_index)
+    rescue = (
+        None
+        if MATCHER_VARIANT_PROFILE == "CURRENT_V1"
+        else support._profile_rescue(semantic_index, rescue_root)
+    )
+    return validate_intangible_fixed_assets_full_document_scan_replay_v1(
+        value, semantic_index, rescue
+    )
 
 
 def main() -> None:

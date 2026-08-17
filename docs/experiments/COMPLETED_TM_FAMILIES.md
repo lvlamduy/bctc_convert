@@ -377,18 +377,26 @@ Q1/2026 đó.
 
 ## 20. Tăng, giảm tài sản cố định vô hình
 
-- **Đã xác minh:** MBB p39, VPB p50 và VIB p38. Đã map 32 dòng nguyên giá,
-  hao mòn lũy kế, giá trị còn lại và 12 phương trình tăng–giảm–cuối kỳ hoặc
-  nguyên giá trừ hao mòn; MBB p40 chỉ là vùng so sánh và không được trộn vào
-  kỳ hiện tại.
-- **Bổ sung schema:** ReportNormId 6068 là `Tổng giảm nguyên giá TSCĐ vô hình
-  trong kỳ`, đối xứng với tổng tăng 5997. ReportNormId 6069 được thêm cho
-  `Nguyên giá TSCĐ vô hình đã hao mòn hết nhưng vẫn còn sử dụng`, nhìn thấy và
-  map tại VPB/VIB.
-- **Không có trong báo cáo:** ACB, HDB, VCB, CTG và BID không trình bày bảng
-  biến động TSCĐ vô hình chi tiết trong các PDF đã cung cấp.
-- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong ba vùng có bảng.
-  PDF VPB là nguồn Q1/2026 và được giữ đúng kỳ, không relabel thành Q2.
+- **Đã map/xác minh trên BCTC hợp nhất kiểm toán annual-2025:** ACB p56,
+  MBB p60, VPB p54, HDB p42, VCB p49, CTG p49, BID p48 và VIB p43. Một graph
+  chung tìm đúng một vùng hoàn chỉnh trên toàn bộ mỗi PDF; 107 mapping và 32
+  phương trình nguyên giá, hao mòn lũy kế và giá trị còn lại đóng chính xác.
+  ReportNormId 6069 `Nguyên giá TSCĐ vô hình đã hao mòn hết nhưng vẫn còn sử
+  dụng` được xác minh tại cả tám bank; ba số nằm trong câu thuyết minh vẫn được
+  trích theo cùng rule chung, không có parser riêng theo bank.
+- **Không có:** Không có bank nào trong tám BCTC annual-2025 vắng family này.
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong tám vùng annual-2025.
+  CTG VietOCR đọc tổng giảm nguyên giá là `(65.998)`, còn pixel, trục số nguồn
+  và phương trình cùng xác nhận `(85.998)`; giá trị map là `-85.998`.
+
+Kết quả exact-replay:
+`docs/experiments/E-0125-annual-2025-intangible-fixed-assets-8bank-codex-verified-mapping-v1.json`.
+
+Lượt BCTC hiện hành trước đó tại MBB p39, VPB p50 và VIB p38 vẫn giữ nguyên
+32 mapping/12 phương trình; MBB p40 vẫn chỉ là vùng so sánh. ACB/HDB/VCB/CTG/
+BID vẫn là bounded absence trong đúng các filing hiện hành đó, và VPB vẫn là
+Q1/2026. Schema 6068/6069 cùng snapshot family cũ được giữ byte-exact khi các
+family khác tiếp tục bổ sung schema.
 
 ## 21. Tăng, giảm bất động sản đầu tư
 
@@ -1007,7 +1015,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Đầu tư dài hạn khác | ✓ p54 | ✓ p57 | ✓ p52 | ✓ p41 | ✓ p44–45 | ✓ p47 | ✓ p45 | ✓ p41 | 0 dòng annual-2025; 28 mapping/56 ô/11 phương trình |
 | Tăng, giảm TSCĐ hữu hình | ✓ p55 | ✓ p58 | ✓ p53 | ✓ p41 | ✓ p48 | ✓ p48 | ✓ p47 | ✓ p42 | 0 dòng annual-2025; 105 mapping/32 phương trình; CTG/BID/VIB dùng numeric challenger trên ảnh xoay |
 | Tăng, giảm TSCĐ thuê tài chính | — p55→56 | — p58→60 | — p53→54 | — p41→42 | — p48→49 | — p48→49 | — p47→48 | — p42→43 | 0 dòng annual-2025; cả 8 PDF xác nhận không có bảng chi tiết |
-| Tăng, giảm TSCĐ vô hình | — | ✓ p39 | ✓\* p50 | — | — | — | — | ✓ p38 | 0 dòng; 32 mapping, 12 phương trình, 5 bank không có bảng; VPB là nguồn Q1 |
+| Tăng, giảm TSCĐ vô hình | ✓ p56 | ✓ p60 | ✓ p54 | ✓ p42 | ✓ p49 | ✓ p49 | ✓ p48 | ✓ p43 | 0 dòng annual-2025; 107 mapping/32 phương trình; kết quả hiện hành cũ vẫn byte-exact |
 | Tăng, giảm bất động sản đầu tư | — | ✓ p41 | — | — | — | — | — | — | 0 dòng; 9 mapping, 11 phương trình, 7 bank không có bảng chi tiết |
 | Tài sản Có khác | — | ✓ p42 | ✓\* p51–53 | — | — | — | — | ✓\* p39 | 12 dòng OPEN; 58 mapping, 30 phương trình, 5 bank không có bảng chi tiết; VPB là nguồn Q1 |
 | Các khoản nợ Chính phủ/NHNN | ✓ p20 | ✓ p42 | ✓\* p53 | ✓ p30 | ✓ p34 | ✓ p41 | ✓ p24 | ✓ p40 | 0 dòng; 32 mapping, 28 phương trình; 2 DASH→0; VPB là nguồn Q1 |

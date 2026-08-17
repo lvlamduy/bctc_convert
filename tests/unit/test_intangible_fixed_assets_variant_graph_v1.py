@@ -113,6 +113,151 @@ def test_accounting_policy_and_other_information_are_negative_controls() -> None
     assert result["metrics"]["near_region_count"] == 1
 
 
+def test_reporting_period_profile_accepts_annual_and_split_headers() -> None:
+    texts = [
+        "TÀI SẢN CỐ ĐỊNH VÔ",
+        "HÌNH",
+        "Cho năm kết thúc ngày 31 tháng 12 năm 2025",
+        "Triệu đồng",
+        "Nguyên",
+        "giá",
+        "Số dư đầu năm",
+        "1.000",
+        "Mua trong năm",
+        "100",
+        "Số dư cuối năm",
+        "1.100",
+        "Giá trị hao mòn",
+        "lũy kế",
+        "Số dư đầu năm",
+        "400",
+        "Khấu hao trong năm",
+        "50",
+        "Số dư cuối năm",
+        "450",
+        "Giá trị còn",
+        "lại",
+        "Số dư đầu năm",
+        "600",
+        "Số dư cuối năm",
+        "650",
+    ]
+
+    current = matcher.build_intangible_fixed_assets_variant_graph_document_v1([_page(texts)])
+    annual = matcher.build_intangible_fixed_assets_variant_graph_document_v1(
+        [_page(texts)],
+        variant_profile=matcher.INTANGIBLE_REPORTING_PERIOD_GENERAL_VARIANT_PROFILE,
+    )
+
+    assert current["status"] == "UNRESOLVED_NO_COMPLETE_REGION"
+    assert annual["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert annual["format_version"] == "INTANGIBLE_FIXED_ASSETS_VARIANT_GRAPH_DOCUMENT_V2"
+
+
+@pytest.mark.parametrize(
+    "period",
+    [
+        "31/12/2024",
+        "31.12.2025",
+        "30 tháng 06 năm 2027",
+        "30-09-2028",
+    ],
+)
+def test_reporting_period_profile_is_not_bound_to_one_year_or_date_spelling(
+    period: str,
+) -> None:
+    result = matcher.build_intangible_fixed_assets_variant_graph_document_v1(
+        [_page(_variant(period=period))],
+        variant_profile=matcher.INTANGIBLE_REPORTING_PERIOD_GENERAL_VARIANT_PROFILE,
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+
+
+def test_reporting_period_profile_accepts_core_continuation_on_the_next_page() -> None:
+    first_page = _page(
+        [
+            "TÀI SẢN CỐ ĐỊNH VÔ HÌNH",
+            "Cho kỳ sáu tháng kết thúc ngày 30/09/2027",
+            "Triệu đồng",
+            "Nguyên giá",
+            "Số dư đầu kỳ",
+            "1.000",
+            "Mua trong kỳ",
+            "100",
+            "Số dư cuối kỳ",
+            "1.100",
+        ],
+        1,
+    )
+    continuation = _page(
+        [
+            "Giá trị hao mòn lũy kế",
+            "Số dư đầu kỳ",
+            "400",
+            "Khấu hao trong kỳ",
+            "50",
+            "Số dư cuối kỳ",
+            "450",
+            "Giá trị còn lại",
+            "Số dư đầu kỳ",
+            "600",
+            "Số dư cuối kỳ",
+            "650",
+        ],
+        2,
+    )
+
+    result = matcher.build_intangible_fixed_assets_variant_graph_document_v1(
+        [first_page, continuation],
+        variant_profile=matcher.INTANGIBLE_REPORTING_PERIOD_GENERAL_VARIANT_PROFILE,
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["regions"][0]["page_span"] == [1, 2]
+    assert result["regions"][0]["layout"]["branch_order_verified"] is True
+
+
+def test_reporting_period_profile_rejects_asset_class_column_as_owner() -> None:
+    texts = [
+        "TÀI SẢN CỐ ĐỊNH VÔ HÌNH",
+        "Cho năm kết thúc ngày 31 tháng 12 năm 2025",
+        "Triệu đồng",
+        "Phần mềm",
+        "Tài sản cố định",
+        "vi tính",
+        "vô hình khác",
+        "Tổng cộng",
+        "Nguyên giá",
+        "Số dư đầu năm",
+        "1.000",
+        "Số dư cuối năm",
+        "1.100",
+        "Giá trị hao mòn lũy kế",
+        "Số dư đầu năm",
+        "400",
+        "Số dư cuối năm",
+        "450",
+        "Giá trị còn lại",
+        "Số dư đầu năm",
+        "600",
+        "Số dư cuối năm",
+        "650",
+    ]
+
+    page = _page(texts)
+    for index in range(3, 8):
+        page["lines"][index]["bbox"] = [500, index * 30, 650, index * 30 + 20]
+    result = matcher.build_intangible_fixed_assets_variant_graph_document_v1(
+        [page],
+        variant_profile=matcher.INTANGIBLE_REPORTING_PERIOD_GENERAL_VARIANT_PROFILE,
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["metrics"]["owner_candidate_count"] == 1
+    assert result["regions"][0]["owner"]["source_line_index"] == 0
+
+
 def test_intangible_exact_replay_rejects_coordinated_rehash() -> None:
     pages = [_page(_variant())]
     result = matcher.build_intangible_fixed_assets_variant_graph_document_v1(pages)
