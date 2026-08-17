@@ -509,6 +509,31 @@ Q1/2026, không relabel thành Q2/2026.
 
 ## 23. Các khoản nợ Chính phủ và Ngân hàng Nhà nước
 
+- **Đã map/xác minh trên BCTC hợp nhất kiểm toán annual-2025:** ACB p60,
+  MBB p63, VPB p58, HDB p44, VCB p52, CTG p51, BID p50 và VIB p45.
+  Whole-PDF graph tìm đúng một vùng ở từng báo cáo. Đã xác minh 41 mapping,
+  85 ô giá trị và 43 phương trình cho tổng family, vay NHNN, tiền gửi Kho bạc,
+  tiền gửi Bộ Tài chính, tiền tệ, kỳ hạn và các nhánh vay chi tiết.
+- **Không có cụm này trong báo cáo annual-2025:** Không có; cả tám bank đều có
+  một vùng duy nhất.
+- **Có nhưng còn khoản mục chưa map:** 8 dòng dưới đây giữ `UNRESOLVED`. Sáu
+  dòng có ô so sánh/current là dấu `-` nhìn thấy trên PDF nhưng chưa có bbox
+  numeric độc lập; hai khoản vay dự án/đặc biệt của BID chưa có leaf chính xác.
+
+| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | ---: | --- | --- |
+| ACB | 60 | Giao dịch bán và mua lại trái phiếu Chính phủ với KBNN | Ô so sánh là dấu `-` chưa có bbox số độc lập. |
+| HDB | 44 | Vay NHNN | Ô so sánh là dấu `-` chưa có bbox số độc lập. |
+| HDB | 44 | Vay chiết khấu các giấy tờ có giá | Ô so sánh là dấu `-` chưa có bbox số độc lập. |
+| HDB | 44 | Tiền gửi của Kho bạc Nhà nước | Giá trị so sánh `1` nhìn thấy trên PDF nhưng bị thiếu trên line axis xác thực. |
+| VCB | 52 | Vay cầm cố GTCG | Ô so sánh là dấu `-` chưa có bbox số độc lập. |
+| CTG | 51 | Giao dịch bán và mua lại trái phiếu Chính phủ với Kho bạc Nhà nước | Ô so sánh là dấu `-` chưa có bbox số độc lập. |
+| BID | 50 | Nhận vốn từ NHNN để tạm ứng cho Ban Xử lý nợ cho vay đặc biệt Ngân hàng TMCP Nam Đô | Khoản vay đặc thù chưa có leaf 1025–1033 chính xác. |
+| BID | 50 | Vay thực hiện dự án hiện đại hóa ngân hàng và Hệ thống Thanh toán của Ngân hàng bằng ngoại tệ | Khoản vay dự án chưa có leaf chính xác; ô hiện kỳ là dấu `-`. |
+
+Kết quả exact-replay:
+`docs/experiments/E-0128-annual-2025-government-nhnn-liabilities-8bank-codex-verified-mapping-v1.json`.
+
 - **Đã xác minh:** ACB p20, MBB p42, VPB p53, HDB p30, VCB p34, CTG p41,
   BID p24 và VIB p40. Toàn bộ tám PDF chỉ có một vùng thỏa cấu trúc đầy đủ.
   Đã map 32 khoản mục/66 thành phần giá trị và kiểm tra 28 phương trình tổng,
@@ -1077,7 +1102,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Tăng, giảm TSCĐ vô hình | ✓ p56 | ✓ p60 | ✓ p54 | ✓ p42 | ✓ p49 | ✓ p49 | ✓ p48 | ✓ p43 | 0 dòng annual-2025; 107 mapping/32 phương trình; kết quả hiện hành cũ vẫn byte-exact |
 | Tăng, giảm bất động sản đầu tư | ✓ p57 | ✓ p61 | — p54→55 | — p42 | — p49→50 | — p49→50 | — p48→49 | — p43→44 | 0 dòng annual-2025; 18 mapping/27 phương trình; ACB cộng có kiểm soát hai bảng anh em |
 | Tài sản Có khác | ✓\* p58–60 | ✓\* p62–63 | ✓\* p55–57 | ✓\* p42–44 | ✓\* p50–52 | ✓\* p50–51 | ✓\* p49–50 | ✓\* p44–45 | Annual-2025: 35 dòng OPEN, 134 mapping/66 phương trình; lượt hiện hành trước: 12 dòng OPEN |
-| Các khoản nợ Chính phủ/NHNN | ✓ p20 | ✓ p42 | ✓\* p53 | ✓ p30 | ✓ p34 | ✓ p41 | ✓ p24 | ✓ p40 | 0 dòng; 32 mapping, 28 phương trình; 2 DASH→0; VPB là nguồn Q1 |
+| Các khoản nợ Chính phủ/NHNN | ✓\* p60 | ✓ p63 | ✓ p58 | ✓\* p44 | ✓\* p52 | ✓\* p51 | ✓\* p50 | ✓ p45 | Annual-2025: 8 dòng OPEN, 41 mapping/43 phương trình; lượt hiện hành trước: 0 dòng sau owner closure |
 | Vốn nhận tài trợ/ủy thác đầu tư | — | ✓ p43 | ✓\* p56 | — | — | — | — | ✓ p42 | 0 dòng; 6 mapping, 4 phương trình; 5 bank xác nhận không có cụm; VPB là nguồn Q1 |
 | Phát hành giấy tờ có giá | ✓ p21 | ✓ p44 | ✓\* p56 | ✓ p31 | ✓ p35 | ✓ p42 | ✓ p25 | ✓ p43 | 3 dòng OPEN; 71 mapping, 36 phương trình; 4 DASH→0; VPB là nguồn Q1 |
 | Các khoản phải trả và công nợ khác | ✓\* p22 | ✓ p44 | ✓\* p57 | ✓ p31 | ✓ p35 | ✓\* p43 | ✓ p26 | ✓\* p43 | 18 dòng OPEN; 39 mapping, 28 phương trình; 2 DASH→0; VPB là nguồn Q1 |

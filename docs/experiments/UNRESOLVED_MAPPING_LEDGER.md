@@ -17,10 +17,32 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **284 entries**.  Current open queue: **106**.  Closed history:
+Ledger total: **292 entries**.  Current open queue: **114**.  Closed history:
 **103** row/graph resolutions and **75** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
+
+## OPEN — annual-2025 `Các khoản nợ Chính phủ và Ngân hàng Nhà nước`
+
+E-0128 quét toàn bộ tám BCTC hợp nhất kiểm toán năm 2025, tìm đúng một vùng
+family tại mỗi bank và xác minh 41 mapping/85 ô giá trị cùng 43 phương trình.
+Tám dòng dưới đây giữ nguyên nguồn và `UNRESOLVED`; dấu `-` không được đổi
+thành 0 nếu chưa có bbox numeric độc lập, và khoản vay đặc thù không bị ép vào
+leaf gần nhất.
+
+| ID | Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | --- | ---: | --- | --- |
+| A2025-GN-001 | ACB | 60 | Giao dịch bán và mua lại trái phiếu Chính phủ với KBNN | Ô so sánh là dấu `-` chưa có bbox số độc lập. |
+| A2025-GN-002 | HDB | 44 | Vay NHNN | Ô so sánh là dấu `-` chưa có bbox số độc lập. |
+| A2025-GN-003 | HDB | 44 | Vay chiết khấu các giấy tờ có giá | Ô so sánh là dấu `-` chưa có bbox số độc lập. |
+| A2025-GN-004 | HDB | 44 | Tiền gửi của Kho bạc Nhà nước | Giá trị so sánh `1` nhìn thấy trên PDF nhưng bị thiếu trên line axis xác thực. |
+| A2025-GN-005 | VCB | 52 | Vay cầm cố GTCG | Ô so sánh là dấu `-` chưa có bbox số độc lập. |
+| A2025-GN-006 | CTG | 51 | Giao dịch bán và mua lại trái phiếu Chính phủ với Kho bạc Nhà nước | Ô so sánh là dấu `-` chưa có bbox số độc lập. |
+| A2025-GN-007 | BID | 50 | Nhận vốn từ NHNN để tạm ứng cho Ban Xử lý nợ cho vay đặc biệt Ngân hàng TMCP Nam Đô | Khoản vay đặc thù chưa có leaf 1025–1033 chính xác. |
+| A2025-GN-008 | BID | 50 | Vay thực hiện dự án hiện đại hóa ngân hàng và Hệ thống Thanh toán của Ngân hàng bằng ngoại tệ | Khoản vay dự án chưa có leaf chính xác; ô hiện kỳ là dấu `-`. |
+
+Machine-readable result:
+`docs/experiments/E-0128-annual-2025-government-nhnn-liabilities-8bank-codex-verified-mapping-v1.json`.
 
 ## OPEN — annual-2025 `Tài sản Có khác`
 

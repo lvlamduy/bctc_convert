@@ -54,6 +54,11 @@ scanner = _load_module(
 
 FORMAT_VERSION = "GOVERNMENT_NHNN_LIABILITIES_8BANK_CODEX_VERIFIED_MAPPING_V1"
 REVIEW_FORMAT = "GOVERNMENT_NHNN_LIABILITIES_8BANK_CODEX_PIXEL_REVIEW_V1"
+_RESULT_STATE = "GOVERNMENT_NHNN_LIABILITIES_8BANK_CODEX_VERIFICATION_COMPLETE"
+_RESULT_ID_PREFIX = "e0074:result:"
+_REVIEW_STATE = "CODEX_PIXEL_REVIEW_COMPLETE"
+_REVIEW_ID_PREFIX = "e0074:pixel-review:"
+_REVIEW_RUN_ID = "E-0074"
 CLAIM_BOUNDARY = (
     "FIXED_EIGHT_DOCUMENT_COMPLETE_PDF_FRESH_VIETOCR_BANK_BLIND_GOVERNMENT_"
     "NHNN_LIABILITY_VARIANT_GRAPH_VISIBLE_PDF_PIXEL_SOURCE_NUMERIC_CHALLENGER_"
@@ -911,14 +916,17 @@ def _review_blueprint() -> dict[str, Any]:
         "documents": _review_documents(),
         "format_version": REVIEW_FORMAT,
         "review_checks": list(_REVIEW_CHECKS),
-        "reviewer": {"kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW", "review_run_id": "E-0074"},
+        "reviewer": {
+            "kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW",
+            "review_run_id": _REVIEW_RUN_ID,
+        },
         "safety": canonical_clone_v1(_REVIEW_SAFETY),
         "scan_id": EXPECTED_SCAN_ID,
         "semantic_axis_sha256": EXPECTED_AXIS_SHA256,
         "semantic_index_sha256": EXPECTED_INDEX_SHA256,
-        "state": "CODEX_PIXEL_REVIEW_COMPLETE",
+        "state": _REVIEW_STATE,
     }
-    return {**material, "review_id": "e0074:pixel-review:" + canonical_json_sha256_v1(material)}
+    return {**material, "review_id": _REVIEW_ID_PREFIX + canonical_json_sha256_v1(material)}
 
 
 def _review(value: Any) -> dict[str, Any]:
@@ -1061,13 +1069,21 @@ def _metrics(trials: Sequence[Mapping[str, Any]]) -> dict[str, int]:
     }
 
 
+def _source_period_status(source_period: str) -> str:
+    return (
+        "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
+        if source_period == "2026-03-31"
+        else "VERIFIED_SOURCE_PERIOD_Q2_2026"
+    )
+
+
 def _validate_result(value: Any) -> dict[str, Any]:
     if type(value) is not dict or set(value) != _RESULT_FIELDS:
         raise _error("Government/SBV result fields drifted")
     if (
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "GOVERNMENT_NHNN_LIABILITIES_8BANK_CODEX_VERIFICATION_COMPLETE"
+        or value["state"] != _RESULT_STATE
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
         or len(value["trials"]) != len(EXPECTED_DOCUMENT_ORDER)
@@ -1098,7 +1114,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
             raise _error("Government/SBV trial shape or status drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "e0074:result:" + canonical_json_sha256_v1(material):
+    if identity != _RESULT_ID_PREFIX + canonical_json_sha256_v1(material):
         raise _error("Government/SBV result identity drifted")
     return canonical_clone_v1(value)
 
@@ -1302,11 +1318,7 @@ def build_government_nhnn_liabilities_8bank_codex_verified_mapping_v1(
                     **_semantic_evidence(axis_page, semantic_page, item),
                 }
             )
-        source_period_status = (
-            "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
-            if reviewed["source_period"] == "2026-03-31"
-            else "VERIFIED_SOURCE_PERIOD_Q2_2026"
-        )
+        source_period_status = _source_period_status(reviewed["source_period"])
         status = reviewed["disposition"]
         if source_period_status == "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2":
             status = "VERIFIED_BY_CODEX_WITH_Q1_PERIOD_CAVEAT"
@@ -1366,11 +1378,11 @@ def build_government_nhnn_liabilities_8bank_codex_verified_mapping_v1(
         },
         "metrics": _metrics(trials),
         "schema_family": schema_family,
-        "state": "GOVERNMENT_NHNN_LIABILITIES_8BANK_CODEX_VERIFICATION_COMPLETE",
+        "state": _RESULT_STATE,
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "e0074:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": _RESULT_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 
