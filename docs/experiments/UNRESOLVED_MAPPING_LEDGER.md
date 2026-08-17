@@ -17,29 +17,44 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **292 entries**.  Current open queue: **114**.  Closed history:
-**103** row/graph resolutions and **75** confirmed bound-report family absences.
+Ledger total: **294 entries**.  Current open queue: **108**.  Closed history:
+**111** row/graph resolutions and **75** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
-## OPEN — annual-2025 `Các khoản nợ Chính phủ và Ngân hàng Nhà nước`
+## OPEN — annual-2025 `Tiền gửi của khách hàng`
 
-E-0128 quét toàn bộ tám BCTC hợp nhất kiểm toán năm 2025, tìm đúng một vùng
-family tại mỗi bank và xác minh 41 mapping/85 ô giá trị cùng 43 phương trình.
-Tám dòng dưới đây giữ nguyên nguồn và `UNRESOLVED`; dấu `-` không được đổi
-thành 0 nếu chưa có bbox numeric độc lập, và khoản vay đặc thù không bị ép vào
-leaf gần nhất.
+E-0129 quét toàn bộ tám BCTC hợp nhất kiểm toán năm 2025, tìm đúng một vùng
+family tại mỗi bank và xác minh 159 mapping cùng 43 phương trình. Hai dòng gộp
+của BID p51 dưới đây vẫn tham gia tổng nguồn nhưng không được tách số in sang
+các leaf pháp lý riêng.
 
 | ID | Bank | Trang | Khoản mục nguồn | Lý do chưa map |
 | --- | --- | ---: | --- | --- |
-| A2025-GN-001 | ACB | 60 | Giao dịch bán và mua lại trái phiếu Chính phủ với KBNN | Ô so sánh là dấu `-` chưa có bbox số độc lập. |
-| A2025-GN-002 | HDB | 44 | Vay NHNN | Ô so sánh là dấu `-` chưa có bbox số độc lập. |
-| A2025-GN-003 | HDB | 44 | Vay chiết khấu các giấy tờ có giá | Ô so sánh là dấu `-` chưa có bbox số độc lập. |
-| A2025-GN-004 | HDB | 44 | Tiền gửi của Kho bạc Nhà nước | Giá trị so sánh `1` nhìn thấy trên PDF nhưng bị thiếu trên line axis xác thực. |
-| A2025-GN-005 | VCB | 52 | Vay cầm cố GTCG | Ô so sánh là dấu `-` chưa có bbox số độc lập. |
-| A2025-GN-006 | CTG | 51 | Giao dịch bán và mua lại trái phiếu Chính phủ với Kho bạc Nhà nước | Ô so sánh là dấu `-` chưa có bbox số độc lập. |
-| A2025-GN-007 | BID | 50 | Nhận vốn từ NHNN để tạm ứng cho Ban Xử lý nợ cho vay đặc biệt Ngân hàng TMCP Nam Đô | Khoản vay đặc thù chưa có leaf 1025–1033 chính xác. |
-| A2025-GN-008 | BID | 50 | Vay thực hiện dự án hiện đại hóa ngân hàng và Hệ thống Thanh toán của Ngân hàng bằng ngoại tệ | Khoản vay dự án chưa có leaf chính xác; ô hiện kỳ là dấu `-`. |
+| A2025-CD-001 | BID | 51 | Công ty cổ phần (`204.344.052`) | Dòng nguồn không phân biệt công ty cổ phần vốn Nhà nước trên 50% (1081) và công ty cổ phần khác (1082). |
+| A2025-CD-002 | BID | 51 | Doanh nghiệp tư nhân, cá nhân (`1.109.262.426`) | Một số in gộp doanh nghiệp tư nhân (1083) và cá nhân (1089), không có căn cứ phân bổ. |
+
+Machine-readable result:
+`docs/experiments/E-0129-annual-2025-customer-deposit-8bank-codex-verified-mapping-v1.json`.
+
+## CLOSED — annual-2025 `Các khoản nợ Chính phủ và Ngân hàng Nhà nước`
+
+E-0128 quét toàn bộ tám BCTC hợp nhất kiểm toán năm 2025, tìm đúng một vùng
+family tại mỗi bank. Sau adjudication của chủ dự án, exact replay xác minh 47
+mapping/101 ô giá trị cùng 46 phương trình và không còn dòng OPEN. Sáu dấu `-`
+được bind trực tiếp vào crop ảnh rồi chuẩn hóa 0; số so sánh `1` của HDB cũng
+được bind bằng crop số vì detector không sinh một line/bbox riêng cho glyph nhỏ.
+
+| ID | Bank | Trang | Khoản mục nguồn | Cách đóng |
+| --- | --- | ---: | --- | --- |
+| A2025-GN-001 | ACB | 60 | Giao dịch bán và mua lại trái phiếu Chính phủ với KBNN | Map 1033 `Vay khác`; ô so sánh DASH pixel-bound = 0. |
+| A2025-GN-002 | HDB | 44 | Vay NHNN | Map 6070; ô so sánh DASH pixel-bound = 0. |
+| A2025-GN-003 | HDB | 44 | Vay chiết khấu các giấy tờ có giá | Map 1026; ô so sánh DASH pixel-bound = 0. |
+| A2025-GN-004 | HDB | 44 | Tiền gửi của Kho bạc Nhà nước | Map 1035; số so sánh `1` được xác thực từ crop render dù line detector bỏ sót. |
+| A2025-GN-005 | VCB | 52 | Vay cầm cố GTCG | Map 1027; ô so sánh DASH pixel-bound = 0. |
+| A2025-GN-006 | CTG | 51 | Giao dịch bán và mua lại trái phiếu Chính phủ với Kho bạc Nhà nước | Cộng có kiểm soát vào 1033; ô so sánh DASH pixel-bound = 0. |
+| A2025-GN-007 | BID | 50 | Nhận vốn từ NHNN để tạm ứng cho Ban Xử lý nợ cho vay đặc biệt Ngân hàng TMCP Nam Đô | Cộng có kiểm soát vào 1033 `Vay khác`. |
+| A2025-GN-008 | BID | 50 | Vay thực hiện dự án hiện đại hóa ngân hàng và Hệ thống Thanh toán của Ngân hàng bằng ngoại tệ | Cộng có kiểm soát vào 1033; ô hiện kỳ DASH pixel-bound = 0. |
 
 Machine-readable result:
 `docs/experiments/E-0128-annual-2025-government-nhnn-liabilities-8bank-codex-verified-mapping-v1.json`.

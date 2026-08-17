@@ -176,6 +176,23 @@ def _dash(
     }
 
 
+def _pixel_number(
+    page: int,
+    bbox: Sequence[int],
+    pixel_rgb_sha256: str,
+    pixel_transcription: str,
+    multiplier: int = 1,
+) -> dict[str, Any]:
+    return {
+        "bbox": list(bbox),
+        "kind": "AUTHENTICATED_RENDER_PIXEL_NUMBER",
+        "multiplier": multiplier,
+        "page_sequence": page,
+        "pixel_rgb_sha256": pixel_rgb_sha256,
+        "pixel_transcription": pixel_transcription,
+    }
+
+
 def _label(page: int, line: int, text: str) -> dict[str, Any]:
     return {"line_index": line, "page_sequence": page, "pixel_transcription": text}
 
@@ -1038,6 +1055,49 @@ def _pixel_dash_value(crop_page: Mapping[str, Any], ref: Mapping[str, Any]) -> d
     }
 
 
+def _pixel_number_value(crop_page: Mapping[str, Any], ref: Mapping[str, Any]) -> dict[str, Any]:
+    if (
+        type(ref) is not dict
+        or set(ref)
+        != {
+            "bbox",
+            "kind",
+            "multiplier",
+            "page_sequence",
+            "pixel_rgb_sha256",
+            "pixel_transcription",
+        }
+        or ref["kind"] != "AUTHENTICATED_RENDER_PIXEL_NUMBER"
+        or type(ref["pixel_transcription"]) is not str
+        or type(ref["bbox"]) is not list
+        or len(ref["bbox"]) != 4
+        or any(type(item) is not int for item in ref["bbox"])
+    ):
+        raise _error("authenticated pixel number reference drifted")
+    normalized_value = support._money(ref["pixel_transcription"])
+    payload = support._artifact_bytes(crop_page.get("render_binding"), "page render")
+    image = Image.open(io.BytesIO(payload)).convert("RGB")
+    left, top, right, bottom = ref["bbox"]
+    if not (0 <= left < right <= image.width and 0 <= top < bottom <= image.height):
+        raise _error("authenticated pixel number bbox is out of bounds")
+    crop = image.crop((left, top, right, bottom))
+    digest = hashlib.sha256(crop.tobytes()).hexdigest()
+    if digest != ref["pixel_rgb_sha256"]:
+        raise _error("authenticated pixel number crop drifted")
+    return {
+        "pixel_bbox": list(ref["bbox"]),
+        "pixel_rgb_sha256": digest,
+        "pixel_transcription": ref["pixel_transcription"],
+        "normalized_value": normalized_value,
+        "render_ref": canonical_clone_v1(crop_page["render_binding"]),
+        "source_line_index": None,
+        "source_numeric_challenger": None,
+        "source_numeric_challenger_status": (
+            "VISIBLE_AUTHENTICATED_PIXEL_NUMBER_NOT_DETECTED_AS_SOURCE_LINE"
+        ),
+    }
+
+
 def _metrics(trials: Sequence[Mapping[str, Any]]) -> dict[str, int]:
     return {
         "accounting_equation_verified_count": sum(
@@ -1203,6 +1263,11 @@ def build_government_nhnn_liabilities_8bank_codex_verified_mapping_v1(
                 elif ref["kind"] == "AUTHENTICATED_RENDER_PIXEL_DASH":
                     value_cache[key] = {
                         **_pixel_dash_value(crop_page, ref),
+                        "page_sequence": ref["page_sequence"],
+                    }
+                elif ref["kind"] == "AUTHENTICATED_RENDER_PIXEL_NUMBER":
+                    value_cache[key] = {
+                        **_pixel_number_value(crop_page, ref),
                         "page_sequence": ref["page_sequence"],
                     }
                 else:

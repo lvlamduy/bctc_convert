@@ -65,12 +65,52 @@ def test_exact_schema_coverage_and_accounting(live: dict[str, object]) -> None:
         )
 
 
-def test_unbound_dash_and_schema_gap_rows_remain_open(live: dict[str, object]) -> None:
-    rows = [row for trial in live["trials"] for row in trial["unmapped_source_rows"]]
-    assert [row["item_id"] for row in rows] == [
-        f"A2025-GN-{ordinal:03d}" for ordinal in range(1, 9)
+def test_bound_dashes_and_small_hdb_number_close_all_reviewed_rows(
+    live: dict[str, object],
+) -> None:
+    assert all(not trial["unmapped_source_rows"] for trial in live["trials"])
+    by_bank = {trial["document_provenance"]: trial for trial in live["trials"]}
+
+    hdb = by_bank["HDB"]
+    treasury = next(
+        mapping
+        for mapping in hdb["verified_mappings"]
+        if mapping["schema_binding"]["report_norm_id"] == 1035
+    )
+    assert treasury["values"][1]["normalized_value"] == 1
+    assert treasury["values"][1]["components"][0]["source_numeric_challenger_status"] == (
+        "VISIBLE_AUTHENTICATED_PIXEL_NUMBER_NOT_DETECTED_AS_SOURCE_LINE"
+    )
+
+    zero_cells = [
+        component
+        for trial in live["trials"]
+        for mapping in trial["verified_mappings"]
+        for value in mapping["values"]
+        for component in value["components"]
+        if component["source_numeric_challenger_status"]
+        == "VISIBLE_AUTHENTICATED_PIXEL_DASH_NOT_DETECTED_AS_SOURCE_LINE"
     ]
-    assert all(row["status"] == "UNRESOLVED" for row in rows)
+    assert len(zero_cells) == 6
+    assert all(cell["normalized_value"] == 0 for cell in zero_cells)
+
+
+def test_user_approved_other_bucket_preserves_source_components(
+    live: dict[str, object],
+) -> None:
+    by_bank = {trial["document_provenance"]: trial for trial in live["trials"]}
+    expected = {
+        "ACB": (1_805_161, 0),
+        "CTG": (2_972_159, 6_958),
+        "BID": (149_500, 161_178),
+    }
+    for bank, values in expected.items():
+        mapping = next(
+            item
+            for item in by_bank[bank]["verified_mappings"]
+            if item["schema_binding"]["report_norm_id"] == 1033
+        )
+        assert tuple(value["normalized_value"] for value in mapping["values"]) == values
 
 
 def test_exact_replay_rejects_coordinated_mapping_rehash(live: dict[str, object]) -> None:

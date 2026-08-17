@@ -49,6 +49,12 @@ __all__ = [
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 FORMAT_VERSION = "CUSTOMER_DEPOSIT_8BANK_CODEX_VERIFIED_MAPPING_V1"
 REVIEW_FORMAT = "CUSTOMER_DEPOSIT_8BANK_CODEX_PIXEL_REVIEW_V1"
+_RESULT_STATE = "CUSTOMER_DEPOSIT_8BANK_BOUNDED_CODEX_VERIFICATION_COMPLETE"
+_RESULT_ID_PREFIX = "cd8bcv1:result:"
+_REVIEW_STATE = "CODEX_PIXEL_REVIEW_COMPLETE"
+_REVIEW_ID_PREFIX = "e0058:pixel-review:"
+_REVIEW_RUN_ID = "E-0058"
+_COMPARISON_PERIOD_EXCLUDED = "31/12/2025"
 CLAIM_BOUNDARY = (
     "FIXED_EIGHT_DOCUMENT_COMPLETE_PDF_FRESH_VIETOCR_GENERIC_CUSTOMER_DEPOSIT_"
     "BOUNDARY_LAYOUT_PERIOD_CURRENCY_STRUCTURE_PLUS_INDEPENDENT_VISIBLE_PIXEL_"
@@ -305,7 +311,7 @@ def _doc(
     customer_type_subview: str = "NOT_OBSERVED_IN_BOUND_REPORT",
 ) -> dict[str, Any]:
     return {
-        "comparison_period_excluded": "31/12/2025",
+        "comparison_period_excluded": _COMPARISON_PERIOD_EXCLUDED,
         "customer_type_subview": customer_type_subview,
         "disposition": "UNIQUE_COMPLETE_REGION_VISIBLE_PIXEL_REVIEWED",
         "document_provenance": code,
@@ -1187,14 +1193,17 @@ def _review_blueprint() -> dict[str, Any]:
         "documents": _review_documents(),
         "format_version": REVIEW_FORMAT,
         "review_checks": list(_REVIEW_CHECKS),
-        "reviewer": {"kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW", "review_run_id": "E-0058"},
+        "reviewer": {
+            "kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW",
+            "review_run_id": _REVIEW_RUN_ID,
+        },
         "safety": canonical_clone_v1(_REVIEW_SAFETY),
         "scan_id": EXPECTED_SCAN_ID,
         "semantic_axis_sha256": EXPECTED_AXIS_SHA256,
         "semantic_index_sha256": EXPECTED_INDEX_SHA256,
-        "state": "CODEX_PIXEL_REVIEW_COMPLETE",
+        "state": _REVIEW_STATE,
     }
-    return {**material, "review_id": "e0058:pixel-review:" + canonical_json_sha256_v1(material)}
+    return {**material, "review_id": _REVIEW_ID_PREFIX + canonical_json_sha256_v1(material)}
 
 
 def _review(value: Any) -> dict[str, Any]:
@@ -1259,6 +1268,19 @@ def _artifact_bytes(reference: Any, label: str) -> bytes:
 
 def _source_line_axis(page: Mapping[str, Any]) -> list[str]:
     result = _strict_json(_artifact_bytes(page.get("result_ref"), "page result"), "page result")
+    provider_texts = result.get("rec_texts")
+    if provider_texts is not None:
+        if (
+            page.get("route") != "DOMINANT_RASTER_OCR"
+            or page.get("geometry_mode") != "PPOCRV6_BATCH_PROVIDER_LINE_GEOMETRY_V1"
+            or page.get("supplement_line_count") != 0
+            or type(page.get("primary_line_count")) is not int
+            or type(provider_texts) is not list
+            or len(provider_texts) != page["primary_line_count"]
+            or not all(type(text) is str for text in provider_texts)
+        ):
+            raise _error("raw provider source line axis drifted")
+        return list(provider_texts)
     lines = result.get("lines")
     if type(lines) is list and lines:
         texts = [line.get("raw_text") if type(line) is dict else None for line in lines]
@@ -1364,6 +1386,14 @@ def _schema_binding(item: Any) -> dict[str, Any]:
         "report_norm_id": item.schema_id,
         "schema_parent_report_norm_id": item.parent_id,
     }
+
+
+def _source_period_status(source_period: str) -> str:
+    return (
+        "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
+        if source_period == "2026-03-31"
+        else "VERIFIED_SOURCE_PERIOD_Q2_2026"
+    )
 
 
 def build_customer_deposit_8bank_codex_verified_mapping_v1(
@@ -1515,11 +1545,7 @@ def build_customer_deposit_8bank_codex_verified_mapping_v1(
                     ],
                 }
             )
-        source_period_status = (
-            "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
-            if review_document["source_period"] == "2026-03-31"
-            else "VERIFIED_SOURCE_PERIOD_Q2_2026"
-        )
+        source_period_status = _source_period_status(review_document["source_period"])
         trials.append(
             {
                 "cluster_boundary": canonical_clone_v1(region["cluster_boundary"]),
@@ -1584,11 +1610,11 @@ def build_customer_deposit_8bank_codex_verified_mapping_v1(
             "tm_schema_authority": canonical_clone_v1(schema_authority),
         },
         "metrics": metrics,
-        "state": "CUSTOMER_DEPOSIT_8BANK_BOUNDED_CODEX_VERIFICATION_COMPLETE",
+        "state": _RESULT_STATE,
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "cd8bcv1:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": _RESULT_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 
@@ -1598,7 +1624,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
     if (
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "CUSTOMER_DEPOSIT_8BANK_BOUNDED_CODEX_VERIFICATION_COMPLETE"
+        or value["state"] != _RESULT_STATE
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
         or len(value["trials"]) != 8
@@ -1606,7 +1632,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
         raise _error("verified customer-deposit result identity/authority drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "cd8bcv1:result:" + canonical_json_sha256_v1(material):
+    if identity != _RESULT_ID_PREFIX + canonical_json_sha256_v1(material):
         raise _error("verified customer-deposit result identity drifted")
     return canonical_clone_v1(value)
 

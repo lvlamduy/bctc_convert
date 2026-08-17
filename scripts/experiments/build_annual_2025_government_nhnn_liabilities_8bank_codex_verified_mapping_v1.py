@@ -2,8 +2,8 @@
 
 The complete-PDF graph locates one region per report without routing on bank,
 page, note number or filename.  The page/line coordinates below are the fixed
-post-selection evidence ledger.  Rows whose visible dash or exact schema leaf
-is not authenticated remain explicit ``UNRESOLVED`` evidence.
+post-selection evidence ledger.  Visible dashes and the one small numeric cell
+missed by line detection are bound to exact render crops before normalization.
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ CLAIM_BOUNDARY = (
     "AUDITED_CONSOLIDATED_ANNUAL_2025_FIXED_EIGHT_COMPLETE_PDFS_FRESH_VIETOCR_"
     "BANK_BLIND_GOVERNMENT_NHNN_LIABILITY_VARIANT_GRAPH_VISIBLE_PDF_PIXEL_"
     "UPSTREAM_PPOCRV6_NUMERIC_AXIS_PERIOD_UNIT_PARENT_CHILD_CURRENCY_TENOR_"
-    "AND_ACCOUNTING_ONLY_UNMAPPED_OR_UNBOUND_DASH_ROWS_RETAINED_NO_EXPORT_AUTHORITY"
+    "AUTHENTICATED_PIXEL_CELL_ACCOUNTING_USER_APPROVED_OTHER_BUCKET_NO_EXPORT_AUTHORITY"
 )
 _REVIEW_CHECKS = (
     "COMPLETE_PDF_UNIQUE_REGION",
@@ -57,11 +57,11 @@ _REVIEW_CHECKS = (
     "CURRENT_2025_AND_COMPARATIVE_2024_SNAPSHOT_AXES",
     "VISIBLE_LOCAL_MILLION_VND_UNIT",
     "VISIBLE_PIXEL_LABELS_DIGITS_SIGNS_AND_DASHES",
-    "UPSTREAM_PPOCRV6_NUMERIC_CHALLENGER",
+    "UPSTREAM_PPOCRV6_OR_AUTHENTICATED_PIXEL_CELL_NUMERIC_CHALLENGER",
     "OPTIONAL_CHILDREN_NOT_REQUIRED_FOR_REGION_LOCATION",
     "PARENT_CHILD_AND_FAMILY_TOTAL_ACCOUNTING",
     "LIVE_TM_SCHEMA_HIERARCHY_AND_DISPLAY_ORDER",
-    "UNMAPPED_OR_UNBOUND_DASH_ROWS_RETAINED_WITHOUT_FORCED_EQUIVALENCE",
+    "USER_APPROVED_SEMANTIC_OTHER_BUCKET_WITHOUT_UNSUPPORTED_COMPONENT_SPLIT",
 )
 _REVIEW_SAFETY = {
     "bank_filename_note_or_page_used_as_matching_rule": False,
@@ -71,6 +71,8 @@ _REVIEW_SAFETY = {
     "numeric_truth_source": "VISIBLE_PDF_PIXELS_WITH_UPSTREAM_PPOCRV6_AND_ACCOUNTING",
     "reporting_period_dates_derived_from_pdf": True,
     "source_rows_without_equivalent_schema_forced_into_nearest_item": False,
+    "user_approved_family_other_bucket_used": True,
+    "visible_bound_dash_normalized_to_zero": True,
     "unbound_visible_dash_promoted_to_zero": False,
     "whole_pdf_uniqueness_replayed": True,
 }
@@ -92,24 +94,24 @@ _AUTHORITY = {
     "unmapped_source_rows_retained": True,
 }
 _EXPECTED_IDS = {
-    "ACB": {1024, 1027, 1035, 1036, 6070},
+    "ACB": {1024, 1027, 1033, 1035, 1036, 6070},
     "MBB": {1024, 1035, 6070},
     "VPB": {1024, 1033, 1035, 1036, 6070},
-    "HDB": {1024, 1039},
-    "VCB": {1024, 1025, 1033, 1035, 1036, 1037, 6070},
+    "HDB": {1024, 1026, 1035, 1039, 6070},
+    "VCB": {1024, 1025, 1027, 1033, 1035, 1036, 1037, 6070},
     "CTG": {1024, 1025, 1026, 1033, 1035, 1036, 6070},
-    "BID": {1024, 1025, 1026, 1035, 1036, 1037, 6070, 6071, 6072},
+    "BID": {1024, 1025, 1026, 1033, 1035, 1036, 1037, 6070, 6071, 6072},
     "VIB": {1024, 1026, 6070},
 }
 _EXPECTED_METRICS = {
-    "accounting_equation_verified_count": 43,
+    "accounting_equation_verified_count": 46,
     "annual_source_period_document_count": 8,
     "confirmed_bound_report_absence_count": 0,
     "document_count": 8,
     "document_unique_region_count": 8,
-    "mapping_verified_count": 41,
-    "open_source_row_count": 8,
-    "verified_value_cell_count": 85,
+    "mapping_verified_count": 47,
+    "open_source_row_count": 0,
+    "verified_value_cell_count": 101,
 }
 
 
@@ -183,6 +185,11 @@ def _doc(
 
 def _acb(base: ModuleType) -> dict[str, Any]:
     d, r, e = base._direct, base._line, base._equation
+    repo_dash = base._dash(
+        60,
+        [1518, 1818, 1540, 1834],
+        "21974595199799eeeef9983a8ac427be17233e48126caf99bec87695c480722f",
+    )
     mappings = [
         d(
             1024,
@@ -230,6 +237,15 @@ def _acb(base: ModuleType) -> dict[str, Any]:
             r(60, 54, "18.758"),
             r(60, 55, "6.496"),
         ),
+        d(
+            1033,
+            "OTHER_GOVERNMENT_BOND_REPO",
+            60,
+            56,
+            "Giao dịch bán và mua lại trái phiếu Chính phủ với KBNN",
+            r(60, 57, "1.805.161"),
+            repo_dash,
+        ),
     ]
     equations = [
         e(
@@ -265,20 +281,8 @@ def _acb(base: ModuleType) -> dict[str, Any]:
         e(
             "NONZERO_LOAN_AND_TREASURY_TO_FAMILY_TOTAL",
             "COMPARATIVE",
-            [r(60, 51, "7.948.357"), r(60, 55, "6.496")],
+            [r(60, 51, "7.948.357"), r(60, 55, "6.496"), repo_dash],
             r(60, 60, "7.954.853"),
-        ),
-    ]
-    unresolved = [
-        _open_row(
-            base,
-            "A2025-GN-001",
-            60,
-            56,
-            "Giao dịch bán và mua lại trái phiếu Chính phủ với KBNN",
-            [(57, "1.805.161")],
-            [],
-            "The comparative cell is a visible dash, but no authenticated numeric-line bbox binds that dash; the repo row remains open rather than silently treating a blank axis as zero.",
         ),
     ]
     return _doc(
@@ -291,7 +295,7 @@ def _acb(base: ModuleType) -> dict[str, Any]:
         [(46, "Triệu VND"), (47, "Triệu VND")],
         mappings,
         equations,
-        unresolved,
+        [],
     )
 
 
@@ -451,6 +455,22 @@ def _vpb(base: ModuleType) -> dict[str, Any]:
 
 def _hdb(base: ModuleType) -> dict[str, Any]:
     d, r, e = base._direct, base._line, base._equation
+    treasury_comparative = base._pixel_number(
+        44,
+        [1470, 921, 1492, 952],
+        "27daa97c197ef8494404b50c82e3d86000c0285147d52e8633944414303aea21",
+        "1",
+    )
+    central_bank_loan_dash = base._dash(
+        44,
+        [1475, 963, 1495, 983],
+        "98ff163e7a8526dbbc1d9ceccf5dc5c17378d7f1e85be74c9ac31d4edaf6102d",
+    )
+    discount_loan_dash = base._dash(
+        44,
+        [1475, 996, 1495, 1016],
+        "82841362d27980b9edccee8525e93c6f365fe9ac961158c6638f4676a0feaa73",
+    )
     mappings = [
         d(
             1024,
@@ -463,6 +483,33 @@ def _hdb(base: ModuleType) -> dict[str, Any]:
             "UNLABELED_TOTAL_AFTER_CHILDREN",
         ),
         d(
+            1035,
+            "TREASURY_DEPOSIT",
+            44,
+            36,
+            "Tiền gửi của Kho bạc Nhà nước",
+            r(44, 37, "168"),
+            treasury_comparative,
+        ),
+        d(
+            6070,
+            "CENTRAL_BANK_LOAN",
+            44,
+            38,
+            "Vay NHNN",
+            r(44, 39, "11.418.077"),
+            central_bank_loan_dash,
+        ),
+        d(
+            1026,
+            "DISCOUNT_LOAN",
+            44,
+            40,
+            "Vay chiết khấu các giấy tờ có giá",
+            r(44, 41, "11.418.077"),
+            discount_loan_dash,
+        ),
+        d(
             1039,
             "OTHER_LIABILITY",
             44,
@@ -473,6 +520,18 @@ def _hdb(base: ModuleType) -> dict[str, Any]:
         ),
     ]
     equations = [
+        e(
+            "DISCOUNT_LOAN_EQUALS_CENTRAL_BANK_LOAN",
+            "CURRENT",
+            [r(44, 41, "11.418.077")],
+            r(44, 39, "11.418.077"),
+        ),
+        e(
+            "DISCOUNT_LOAN_EQUALS_CENTRAL_BANK_LOAN",
+            "COMPARATIVE",
+            [discount_loan_dash],
+            central_bank_loan_dash,
+        ),
         e(
             "OTHER_LIABILITY_CHILDREN_TO_PARENT",
             "CURRENT",
@@ -491,37 +550,11 @@ def _hdb(base: ModuleType) -> dict[str, Any]:
             [r(44, 39, "11.418.077"), r(44, 37, "168"), r(44, 43, "7.727")],
             r(44, 51, "11.425.972"),
         ),
-    ]
-    unresolved = [
-        _open_row(
-            base,
-            "A2025-GN-002",
-            44,
-            38,
-            "Vay NHNN",
-            [(39, "11.418.077")],
-            [],
-            "The comparative cell is a visible dash without a bound numeric-line bbox; retain the broad central-bank loan row until the dash geometry is authenticated.",
-        ),
-        _open_row(
-            base,
-            "A2025-GN-003",
-            44,
-            40,
-            "Vay chiết khấu các giấy tờ có giá",
-            [(41, "11.418.077")],
-            [],
-            "The comparative cell is a visible dash without a bound numeric-line bbox; the exact 1026 mapping remains open.",
-        ),
-        _open_row(
-            base,
-            "A2025-GN-004",
-            44,
-            36,
-            "Tiền gửi của Kho bạc Nhà nước",
-            [(37, "168")],
-            [],
-            "The comparative value 1 is visible in the PDF but missing from the authenticated line axis, so the Treasury row is not promoted from a one-sided value.",
+        e(
+            "LOAN_TREASURY_OTHER_TO_FAMILY_TOTAL",
+            "COMPARATIVE",
+            [central_bank_loan_dash, treasury_comparative, r(44, 44, "15.433")],
+            r(44, 52, "15.434"),
         ),
     ]
     return _doc(
@@ -534,12 +567,17 @@ def _hdb(base: ModuleType) -> dict[str, Any]:
         [(34, "Triệu VND"), (35, "Triệu VND")],
         mappings,
         equations,
-        unresolved,
+        [],
     )
 
 
 def _vcb(base: ModuleType) -> dict[str, Any]:
     m, d, r, label, e = base._mapping, base._direct, base._line, base._label, base._equation
+    pledged_loan_dash = base._dash(
+        52,
+        [1423, 961, 1445, 978],
+        "e011591a15d03db9b488befd26ac650d733301991333fe8c7f0446f6350088e7",
+    )
     mappings = [
         d(
             1024,
@@ -568,6 +606,15 @@ def _vcb(base: ModuleType) -> dict[str, Any]:
             "Vay theo hồ sơ tín dụng",
             r(52, 36, "355.322"),
             r(52, 37, "535.580"),
+        ),
+        d(
+            1027,
+            "PLEDGED_SECURITIES_LOAN",
+            52,
+            38,
+            "Vay cầm cố GTCG",
+            r(52, 39, "23.748.932"),
+            pledged_loan_dash,
         ),
         d(1033, "OTHER_LOAN", 52, 40, "Vay khác", r(52, 41, "22.905"), r(52, 42, "51.698")),
         d(
@@ -610,7 +657,7 @@ def _vcb(base: ModuleType) -> dict[str, Any]:
         e(
             "NONZERO_LOAN_CHILDREN_TO_CENTRAL_BANK_LOAN",
             "COMPARATIVE",
-            [r(52, 37, "535.580"), r(52, 42, "51.698")],
+            [r(52, 37, "535.580"), pledged_loan_dash, r(52, 42, "51.698")],
             r(52, 34, "587.278"),
         ),
         e(
@@ -638,18 +685,6 @@ def _vcb(base: ModuleType) -> dict[str, Any]:
             r(52, 57, "78.237.337"),
         ),
     ]
-    unresolved = [
-        _open_row(
-            base,
-            "A2025-GN-005",
-            52,
-            38,
-            "Vay cầm cố GTCG",
-            [(39, "23.748.932")],
-            [],
-            "The comparative cell is a visible dash without an authenticated numeric-line bbox; ReportNormId 1027 remains open for this row.",
-        )
-    ]
     return _doc(
         base,
         "VCB",
@@ -660,12 +695,17 @@ def _vcb(base: ModuleType) -> dict[str, Any]:
         [(30, "Triệu VND"), (31, "Triệu VND")],
         mappings,
         equations,
-        unresolved,
+        [],
     )
 
 
 def _ctg(base: ModuleType) -> dict[str, Any]:
     m, d, r, label, e = base._mapping, base._direct, base._line, base._label, base._equation
+    repo_dash = base._dash(
+        51,
+        [1496, 783, 1518, 802],
+        "1efa207539334e2d719b983cf1f69fdfaa6b6b306c39cd1050a0f0339e6967ac",
+    )
     mappings = [
         m(
             1024,
@@ -702,14 +742,20 @@ def _ctg(base: ModuleType) -> dict[str, Any]:
             r(51, 17, "299.555"),
             r(51, 18, "488.053"),
         ),
-        d(
+        m(
             1033,
-            "OTHER_LOAN",
-            51,
-            19,
-            "Vay hỗ trợ các doanh nghiệp Nhà nước",
-            r(51, 20, "6.958"),
-            r(51, 21, "6.958"),
+            "OTHER_LOAN_AND_GOVERNMENT_BOND_REPO",
+            [
+                label(51, 19, "Vay hỗ trợ các doanh nghiệp Nhà nước"),
+                label(
+                    51,
+                    30,
+                    "Giao dịch bán và mua lại trái phiếu Chính phủ với Kho bạc Nhà nước",
+                ),
+            ],
+            [r(51, 20, "6.958"), r(51, 32, "2.965.201")],
+            [r(51, 21, "6.958"), repo_dash],
+            "USER_APPROVED_SUM_OF_DISTINCT_OTHER_SOURCE_ROWS",
         ),
         d(
             1035,
@@ -768,18 +814,6 @@ def _ctg(base: ModuleType) -> dict[str, Any]:
             r(51, 29, "154.284.104"),
         ),
     ]
-    unresolved = [
-        _open_row(
-            base,
-            "A2025-GN-006",
-            51,
-            30,
-            "Giao dịch bán và mua lại trái phiếu Chính phủ với Kho bạc Nhà nước",
-            [(32, "2.965.201")],
-            [],
-            "The comparative cell is a visible dash without an authenticated numeric-line bbox; the repo source row remains open while the family total retains its controlled nonzero aggregation.",
-        )
-    ]
     return _doc(
         base,
         "CTG",
@@ -790,12 +824,17 @@ def _ctg(base: ModuleType) -> dict[str, Any]:
         [(8, "Triệu đồng"), (9, "Triệu đồng")],
         mappings,
         equations,
-        unresolved,
+        [],
     )
 
 
 def _bid(base: ModuleType) -> dict[str, Any]:
-    d, r, e = base._direct, base._line, base._equation
+    m, d, r, label, e = base._mapping, base._direct, base._line, base._label, base._equation
+    project_loan_dash = base._dash(
+        50,
+        [1218, 1047, 1240, 1064],
+        "887cd9dc8ab76091e839fd32aa833924c64766831bd5a72c77e9a5dccdad53fc",
+    )
     mappings = [
         d(
             1024,
@@ -833,6 +872,25 @@ def _bid(base: ModuleType) -> dict[str, Any]:
             "Vay chiết khấu các giấy tờ có giá Ngân hàng Trung ương",
             r(50, 54, "74.409.153"),
             r(50, 55, "12.942.477"),
+        ),
+        m(
+            1033,
+            "OTHER_SPECIAL_AND_PROJECT_LOANS",
+            [
+                label(
+                    50,
+                    43,
+                    "Nhận vốn từ NHNN để tạm ứng cho Ban Xử lý nợ cho vay đặc biệt Ngân hàng TMCP Nam Đô",
+                ),
+                label(
+                    50,
+                    47,
+                    "Vay thực hiện dự án hiện đại hóa ngân hàng và Hệ thống Thanh toán của Ngân hàng bằng ngoại tệ",
+                ),
+            ],
+            [r(50, 44, "149.500"), project_loan_dash],
+            [r(50, 45, "149.500"), r(50, 48, "11.678")],
+            "USER_APPROVED_SUM_OF_OTHER_CENTRAL_BANK_LOAN_COMPONENTS",
         ),
         d(
             6072,
@@ -884,7 +942,12 @@ def _bid(base: ModuleType) -> dict[str, Any]:
         e(
             "CENTRAL_BANK_LOAN_COMPONENTS",
             "CURRENT",
-            [r(50, 44, "149.500"), r(50, 51, "1.567.354"), r(50, 54, "74.409.153")],
+            [
+                r(50, 44, "149.500"),
+                project_loan_dash,
+                r(50, 51, "1.567.354"),
+                r(50, 54, "74.409.153"),
+            ],
             r(50, 41, "76.126.007"),
         ),
         e(
@@ -957,28 +1020,6 @@ def _bid(base: ModuleType) -> dict[str, Any]:
             r(50, 86, "168.388.958"),
         ),
     ]
-    unresolved = [
-        _open_row(
-            base,
-            "A2025-GN-007",
-            50,
-            43,
-            "Nhận vốn từ NHNN để tạm ứng cho Ban Xử lý nợ cho vay đặc biệt Ngân hàng TMCP Nam Đô",
-            [(44, "149.500")],
-            [(45, "149.500")],
-            "This distinct special-loan source component has no exact 1025-1033 leaf; it remains source evidence used only in the parent accounting equation.",
-        ),
-        _open_row(
-            base,
-            "A2025-GN-008",
-            50,
-            47,
-            "Vay thực hiện dự án hiện đại hóa ngân hàng và Hệ thống Thanh toán của Ngân hàng bằng ngoại tệ",
-            [],
-            [(48, "11.678")],
-            "The current cell is a visible dash and the project-specific source component has no exact 1025-1033 leaf; it remains open.",
-        ),
-    ]
     return _doc(
         base,
         "BID",
@@ -989,7 +1030,7 @@ def _bid(base: ModuleType) -> dict[str, Any]:
         [(38, "Triệu VND"), (39, "Triệu VND")],
         mappings,
         equations,
-        unresolved,
+        [],
     )
 
 
