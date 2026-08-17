@@ -17,10 +17,33 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **294 entries**.  Current open queue: **108**.  Closed history:
+Ledger total: **299 entries**.  Current open queue: **113**.  Closed history:
 **111** row/graph resolutions and **75** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
+
+## OPEN — annual-2025 `Phát hành giấy tờ có giá`
+
+E-0131 quét toàn bộ tám BCTC hợp nhất kiểm toán năm 2025 và tìm đúng một vùng
+family tại ACB p63, MBB p66, VPB p62, HDB p46, VCB p54, CTG p53–54, BID p52
+và VIB p47. Exact replay xác minh 70 mapping/188 thành phần giá trị cùng 34
+phương trình. Mười một ô DASH của CTG/VIB được bind pixel rồi mới chuẩn hóa 0.
+Năm dòng dưới đây vẫn nằm trong parent/tổng nguồn nhưng không được phân bổ hoặc
+ép sang một leaf sai nghĩa.
+
+| ID | Bank | Trang | Khoản mục nguồn | Giá trị 2025 / 2024 | Lý do chưa map |
+| --- | --- | ---: | --- | --- | --- |
+| A2025-IVP-001 | VPB | 62 | Toàn family — Dưới 12 tháng | `25.699.521` / `53.256.694` | Trục kỳ hạn áp dụng cho tổng chứng chỉ tiền gửi và trái phiếu; không có phân bổ theo công cụ. |
+| A2025-IVP-002 | VPB | 62 | Toàn family — Từ 12 tháng đến dưới 5 năm | `72.134.379` / `12.723.428` | Cùng trục toàn-family; không tự chia vào các leaf CD/kỳ phiếu/trái phiếu. |
+| A2025-IVP-003 | VPB | 62 | Toàn family — Từ 5 năm trở lên | `9.286.753` / `995.582` | Cùng trục toàn-family; không tự chia vào các leaf theo công cụ. |
+| A2025-IVP-004 | HDB | 46 | Chi phí phát hành | `(74.995)` / `(35.706)` | Dòng contra đã tham gia chính xác vào tổng giá trị thuần nhưng schema chưa có leaf chi phí phát hành riêng. |
+| A2025-IVP-005 | VCB | 54 | Trung, dài hạn bằng ngoại tệ | `14` / `14` | Một số nguồn gộp hai bucket trung và dài hạn; không có căn cứ phân bổ sang 1115/1116. |
+
+Tổng đầu năm HDB trên pixel là `81.349.744`; fresh VietOCR đọc nhầm
+`31.349.744`, còn PP-OCRv6 và phương trình tổng đều xác nhận chữ số đầu là 8.
+
+Machine-readable result:
+`docs/experiments/E-0131-annual-2025-issued-valuable-papers-8bank-codex-verified-mapping-v1.json`.
 
 ## OPEN — annual-2025 `Tiền gửi của khách hàng`
 

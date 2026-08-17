@@ -137,6 +137,77 @@ def test_balance_sheet_or_cash_flow_mentions_are_negative_controls(texts: list[s
     assert result["status"] == "UNRESOLVED_NO_UNIQUE_REGION"
 
 
+def test_spelled_out_tenors_are_recognized_without_bank_rules() -> None:
+    result = matcher.build_issued_valuable_papers_variant_graph_document_v1(
+        [
+            _page(
+                [
+                    "Phát hành giấy tờ có giá",
+                    "31.12.2025",
+                    "Giá trị ghi sổ",
+                    "Mệnh giá",
+                    "Triệu VND",
+                    "Trái phiếu",
+                    "Trái phiếu kỳ hạn từ một năm đến hai năm",
+                    "100",
+                    "101",
+                    "Trái phiếu kỳ hạn ba năm",
+                    "200",
+                    "201",
+                    "Trái phiếu kỳ hạn mười năm",
+                    "300",
+                    "301",
+                ]
+            )
+        ]
+    )
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["regions"][0]["layout"]["tenor_roles"] == [
+        "TENOR_LONG",
+        "TENOR_MEDIUM_OR_UNSPLIT_OVER_12",
+    ]
+
+
+def test_adjacent_period_continuation_is_one_region() -> None:
+    current = _page(
+        [
+            "Phát hành giấy tờ có giá",
+            "31.12.2025",
+            "Triệu đồng",
+            "Trái phiếu",
+            "Kỳ phiếu",
+            "Dưới 12 tháng",
+            "100",
+            "200",
+            "Từ 12 tháng đến dưới 5 năm",
+            "300",
+            "400",
+        ],
+        1,
+    )
+    comparative = _page(
+        [
+            "Phát hành giấy tờ có giá (tiếp theo)",
+            "31.12.2024",
+            "Triệu đồng",
+            "Trái phiếu",
+            "Kỳ phiếu",
+            "Dưới 12 tháng",
+            "90",
+            "180",
+            "Từ 12 tháng đến dưới 5 năm",
+            "280",
+            "360",
+        ],
+        2,
+    )
+    result = matcher.build_issued_valuable_papers_variant_graph_document_v1([current, comparative])
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["metrics"]["complete_region_count"] == 1
+    assert result["regions"][0]["page_span"] == [1, 2]
+    assert result["regions"][0]["layout"]["presentation"] == ("ADJACENT_PERIOD_TABLE_CONTINUATION")
+
+
 def test_exact_replay_rejects_coordinated_region_tamper() -> None:
     pages = [
         _page(

@@ -91,6 +91,14 @@ EXPECTED_CROP_MANIFEST_SHA256 = "a9f80cf9104af1177ba43d8a85de00b28c735223a91b663
 EXPECTED_AXIS_SHA256 = "e99873cd16a7234702d0ee6e5fa9eb37637a1a75621228381e3dbcd7c5cfdcca"
 EXPECTED_SCAN_ID = "ivpfdsv1:scan:ce6ff7a92671d311354a45489164377e79cbd530d412f3c8433f6bc7c5eca1ad"
 
+_RESULT_STATE = "ISSUED_VALUABLE_PAPERS_8BANK_CODEX_VERIFICATION_COMPLETE"
+_RESULT_ID_PREFIX = "e0076:result:"
+_REVIEW_STATE = "CODEX_PIXEL_REVIEW_COMPLETE"
+_REVIEW_ID_PREFIX = "e0076:pixel-review:"
+_REVIEW_RUN_ID = "E-0076"
+_EXPECTED_COMPLETE_REGION_COUNT = 8
+_FAMILY_DISPLAY_ORDER_RANGE = [606, 630]
+
 _REVIEW_CHECKS = [
     "COMPLETE_PDF_UNIQUE_REGION",
     "OWNER_PRECEDES_INSTRUMENT_AND_TENOR_CHILDREN",
@@ -170,6 +178,14 @@ class IssuedValuablePapers8BankCodexVerifiedMappingV1Error(ValueError):
 
 def _error(message: str) -> IssuedValuablePapers8BankCodexVerifiedMappingV1Error:
     return IssuedValuablePapers8BankCodexVerifiedMappingV1Error(message)
+
+
+def _source_period_status(source_period: str) -> str:
+    return (
+        "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
+        if source_period == "2026-03-31"
+        else "VERIFIED_SOURCE_PERIOD_Q2_2026"
+    )
 
 
 def _label(page: int, line: int, text: str) -> dict[str, Any]:
@@ -1388,14 +1404,17 @@ def _review_blueprint() -> dict[str, Any]:
         "documents": _review_documents(),
         "format_version": REVIEW_FORMAT,
         "review_checks": list(_REVIEW_CHECKS),
-        "reviewer": {"kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW", "review_run_id": "E-0076"},
+        "reviewer": {
+            "kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW",
+            "review_run_id": _REVIEW_RUN_ID,
+        },
         "safety": canonical_clone_v1(_REVIEW_SAFETY),
         "scan_id": EXPECTED_SCAN_ID,
         "semantic_axis_sha256": EXPECTED_AXIS_SHA256,
         "semantic_index_sha256": EXPECTED_INDEX_SHA256,
-        "state": "CODEX_PIXEL_REVIEW_COMPLETE",
+        "state": _REVIEW_STATE,
     }
-    return {**material, "review_id": "e0076:pixel-review:" + canonical_json_sha256_v1(material)}
+    return {**material, "review_id": _REVIEW_ID_PREFIX + canonical_json_sha256_v1(material)}
 
 
 def _review(value: Any) -> dict[str, Any]:
@@ -1516,10 +1535,10 @@ def _validate_result(value: Any) -> dict[str, Any]:
     if (
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "ISSUED_VALUABLE_PAPERS_8BANK_CODEX_VERIFICATION_COMPLETE"
+        or value["state"] != _RESULT_STATE
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
-        or len(value["trials"]) != 8
+        or len(value["trials"]) != _EXPECTED_COMPLETE_REGION_COUNT
         or not same_typed_json_v1(value["metrics"], _metrics(value["trials"]))
     ):
         raise _error("issued-valuable-papers result identity or metrics drifted")
@@ -1542,7 +1561,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
             raise _error("issued-valuable-papers trial shape or status drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "e0076:result:" + canonical_json_sha256_v1(material):
+    if identity != _RESULT_ID_PREFIX + canonical_json_sha256_v1(material):
         raise _error("issued-valuable-papers result identity drifted")
     return canonical_clone_v1(value)
 
@@ -1563,7 +1582,8 @@ def build_issued_valuable_papers_8bank_codex_verified_mapping_v1(
     if (
         axis.get("semantic_axis_sha256") != EXPECTED_AXIS_SHA256
         or structure_scan.get("scan_id") != EXPECTED_SCAN_ID
-        or structure_scan.get("metrics", {}).get("complete_region_count") != 8
+        or structure_scan.get("metrics", {}).get("complete_region_count")
+        != _EXPECTED_COMPLETE_REGION_COUNT
     ):
         raise _error("fixed semantic axis or structure scan identity drifted")
     trials = []
@@ -1580,23 +1600,59 @@ def build_issued_valuable_papers_8bank_codex_verified_mapping_v1(
             or matcher["regions"][0]["owner"]["page_sequence"] != reviewed["owner"]["page_sequence"]
             or matcher["regions"][0]["owner"]["source_line_index"]
             != reviewed["owner"]["line_index"]
+            or matcher["regions"][0]["page_span"] != reviewed["page_span"]
         ):
             raise _error(f"{code} reviewed region is not the unique whole-PDF graph")
-        page = reviewed["owner"]["page_sequence"]
-        axis_page = _page(axis_document, page, "accounting axis")
-        semantic_page = _page(semantic_document, page, "semantic index")
-        crop_page = _page(crop_document, page, "crop manifest")
-        source_texts = foundation.support._source_line_axis(crop_page)
+        first_page, last_page = reviewed["page_span"]
+        if (
+            type(first_page) is not int
+            or type(last_page) is not int
+            or first_page < 1
+            or last_page < first_page
+        ):
+            raise _error("reviewed page span is invalid")
+        allowed_pages = set(range(first_page, last_page + 1))
+        page_contexts: dict[
+            int,
+            tuple[Mapping[str, Any], Mapping[str, Any], Mapping[str, Any], Sequence[str]],
+        ] = {}
+
+        def page_context(
+            page: int,
+            *,
+            allowed_pages: set[int] = allowed_pages,
+            page_contexts: dict[
+                int,
+                tuple[
+                    Mapping[str, Any],
+                    Mapping[str, Any],
+                    Mapping[str, Any],
+                    Sequence[str],
+                ],
+            ] = page_contexts,
+            axis_document: Mapping[str, Any] = axis_document,
+            semantic_document: Mapping[str, Any] = semantic_document,
+            crop_document: Mapping[str, Any] = crop_document,
+        ) -> tuple[Mapping[str, Any], Mapping[str, Any], Mapping[str, Any], Sequence[str]]:
+            if type(page) is not int or page not in allowed_pages:
+                raise _error("review evidence escaped unique page span")
+            if page not in page_contexts:
+                axis_page = _page(axis_document, page, "accounting axis")
+                semantic_page = _page(semantic_document, page, "semantic index")
+                crop_page = _page(crop_document, page, "crop manifest")
+                page_contexts[page] = (
+                    axis_page,
+                    semantic_page,
+                    crop_page,
+                    foundation.support._source_line_axis(crop_page),
+                )
+            return page_contexts[page]
 
         def evidence(
             item: Mapping[str, Any],
-            *,
-            page: int = page,
-            axis_page: Mapping[str, Any] = axis_page,
-            semantic_page: Mapping[str, Any] = semantic_page,
         ) -> dict[str, Any]:
-            if item["page_sequence"] != page:
-                raise _error("review evidence escaped unique one-page region")
+            page = item["page_sequence"]
+            axis_page, semantic_page, _, _ = page_context(page)
             return {"page_sequence": page, **_semantic_evidence(axis_page, semantic_page, item)}
 
         value_cache: dict[str, dict[str, Any]] = {}
@@ -1605,14 +1661,11 @@ def build_issued_valuable_papers_8bank_codex_verified_mapping_v1(
             ref: Mapping[str, Any],
             *,
             value_cache: dict[str, dict[str, Any]] = value_cache,
-            axis_page: Mapping[str, Any] = axis_page,
-            semantic_page: Mapping[str, Any] = semantic_page,
-            crop_page: Mapping[str, Any] = crop_page,
-            source_texts: Sequence[str] = source_texts,
-            page: int = page,
         ) -> dict[str, Any]:
             key = canonical_json_sha256_v1(ref)
             if key not in value_cache:
+                page = ref["page_sequence"]
+                axis_page, semantic_page, crop_page, source_texts = page_context(page)
                 if ref["kind"] == "AUTHENTICATED_LINE":
                     item = foundation.support._source_value(
                         axis_page,
@@ -1672,17 +1725,28 @@ def build_issued_valuable_papers_8bank_codex_verified_mapping_v1(
                 raise _error(
                     f"{code} issued-valuable-papers accounting equation {equation['name']} does not close"
                 )
-            equations.append(
-                {
-                    "computed_total": computed,
-                    "name": equation["name"],
-                    "period_role": equation["period_role"],
-                    "status": "VERIFIED_EXACT",
-                    "term_source_line_indices": [item["source_line_index"] for item in terms],
-                    "visible_total": total["normalized_value"],
-                    "visible_total_source_line_index": total["source_line_index"],
+            equation_result = {
+                "computed_total": computed,
+                "name": equation["name"],
+                "period_role": equation["period_role"],
+                "status": "VERIFIED_EXACT",
+                "term_source_line_indices": [item["source_line_index"] for item in terms],
+                "visible_total": total["normalized_value"],
+                "visible_total_source_line_index": total["source_line_index"],
+            }
+            if first_page != last_page:
+                equation_result["term_source_locations"] = [
+                    {
+                        "page_sequence": item["page_sequence"],
+                        "source_line_index": item["source_line_index"],
+                    }
+                    for item in terms
+                ]
+                equation_result["visible_total_source_location"] = {
+                    "page_sequence": total["page_sequence"],
+                    "source_line_index": total["source_line_index"],
                 }
-            )
+            equations.append(equation_result)
         unresolved = []
         for row in reviewed["unmapped_source_rows"]:
             unresolved.append(
@@ -1703,41 +1767,44 @@ def build_issued_valuable_papers_8bank_codex_verified_mapping_v1(
                     ],
                 }
             )
-        period_status = (
-            "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
-            if reviewed["source_period"] == "2026-03-31"
-            else "VERIFIED_SOURCE_PERIOD_Q2_2026"
-        )
-        trials.append(
-            {
-                "document_ordinal": ordinal,
-                "document_provenance": code,
-                "owner_evidence": evidence(reviewed["owner"]),
-                "page_span": reviewed["page_span"],
-                "period_axis_evidence": [evidence(item) for item in reviewed["period_axis"]],
-                "presentation": reviewed["presentation"],
-                "source_pdf_sha256": crop_document["source_pdf"]["sha256"],
-                "source_period": reviewed["source_period"],
-                "source_period_status": period_status,
-                "status": (
-                    "VERIFIED_BY_CODEX_WITH_OPEN_SOURCE_ROWS_AND_Q1_PERIOD_CAVEAT"
-                    if unresolved and period_status.endswith("NOT_Q2")
-                    else "VERIFIED_BY_CODEX_WITH_OPEN_SOURCE_ROWS"
-                    if unresolved
-                    else "VERIFIED_BY_CODEX_WITH_Q1_PERIOD_CAVEAT"
-                    if period_status.endswith("NOT_Q2")
-                    else "VERIFIED_BY_CODEX"
-                ),
-                "structure_graph_id": matcher["result_id"],
-                "unit_authority": reviewed["unit_authority"],
-                "unit_evidence": [evidence(item) for item in reviewed["unit_evidence"]],
-                "unmapped_source_rows": unresolved,
-                "verified_accounting_equations": equations,
-                "verified_mappings": verified_mappings,
-                "visible_page_render_binding": canonical_clone_v1(crop_page["render_binding"]),
-                "whole_document_uniqueness": canonical_clone_v1(matcher["uniqueness"]),
-            }
-        )
+        period_status = _source_period_status(reviewed["source_period"])
+        trial = {
+            "document_ordinal": ordinal,
+            "document_provenance": code,
+            "owner_evidence": evidence(reviewed["owner"]),
+            "page_span": reviewed["page_span"],
+            "period_axis_evidence": [evidence(item) for item in reviewed["period_axis"]],
+            "presentation": reviewed["presentation"],
+            "source_pdf_sha256": crop_document["source_pdf"]["sha256"],
+            "source_period": reviewed["source_period"],
+            "source_period_status": period_status,
+            "status": (
+                "VERIFIED_BY_CODEX_WITH_OPEN_SOURCE_ROWS_AND_Q1_PERIOD_CAVEAT"
+                if unresolved and period_status.endswith("NOT_Q2")
+                else "VERIFIED_BY_CODEX_WITH_OPEN_SOURCE_ROWS"
+                if unresolved
+                else "VERIFIED_BY_CODEX_WITH_Q1_PERIOD_CAVEAT"
+                if period_status.endswith("NOT_Q2")
+                else "VERIFIED_BY_CODEX"
+            ),
+            "structure_graph_id": matcher["result_id"],
+            "unit_authority": reviewed["unit_authority"],
+            "unit_evidence": [evidence(item) for item in reviewed["unit_evidence"]],
+            "unmapped_source_rows": unresolved,
+            "verified_accounting_equations": equations,
+            "verified_mappings": verified_mappings,
+            "whole_document_uniqueness": canonical_clone_v1(matcher["uniqueness"]),
+        }
+        if first_page == last_page:
+            trial["visible_page_render_binding"] = canonical_clone_v1(
+                page_context(first_page)[2]["render_binding"]
+            )
+        else:
+            trial["visible_page_render_bindings"] = [
+                canonical_clone_v1(page_context(page)[2]["render_binding"])
+                for page in range(first_page, last_page + 1)
+            ]
+        trials.append(trial)
     mapped_ids = sorted(
         {
             row["schema_binding"]["report_norm_id"]
@@ -1765,15 +1832,15 @@ def build_issued_valuable_papers_8bank_codex_verified_mapping_v1(
         },
         "metrics": _metrics(trials),
         "schema_family": {
-            "family_display_order_range": [606, 630],
+            "family_display_order_range": list(_FAMILY_DISPLAY_ORDER_RANGE),
             "family_root": _schema_binding(schema_by_id.get(1100), 1100),
             "mapped_report_norm_ids": mapped_ids,
         },
-        "state": "ISSUED_VALUABLE_PAPERS_8BANK_CODEX_VERIFICATION_COMPLETE",
+        "state": _RESULT_STATE,
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "e0076:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": _RESULT_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 

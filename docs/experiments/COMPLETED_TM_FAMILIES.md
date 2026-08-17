@@ -578,7 +578,30 @@ Lượt hiện hành trước đó vẫn giữ kết quả riêng tại MBB p43,
 
 ## 25. Phát hành giấy tờ có giá
 
-- **Đã xác minh:** ACB p21, MBB p44, VPB p56, HDB p31, VCB p35, CTG p42,
+- **Đã map/xác minh trên BCTC hợp nhất kiểm toán annual-2025:** ACB p63,
+  MBB p66, VPB p62, HDB p46, VCB p54, CTG p53–54, BID p52 và VIB p47.
+  Whole-PDF matcher tìm đúng một vùng ở cả 8/8 bank. Rule chung nhận kỳ hạn
+  viết bằng chữ của ACB và ghép trang CTG `(TIẾP THEO)` chỉ khi hai trang liền
+  nhau giữ cùng tập công cụ/kỳ hạn; bank/page không tham gia quyết định. Đã
+  xác minh 70 mapping, 188 thành phần giá trị và 34 phương trình. Mười một ô
+  `-` của CTG/VIB được bind từ pixel trước khi chuẩn hóa 0. Tổng đầu năm HDB
+  là `81.349.744`; VietOCR đọc nhầm `31.349.744` nên bị loại bằng pixel,
+  PP-OCRv6 và phương trình kế toán.
+- **Không có trong annual-2025:** Không có; cả tám filing đều có đúng một vùng.
+- **Còn thiếu trên annual-2025:** 5 dòng nguồn:
+
+| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | ---: | --- | --- |
+| VPB | 62 | Toàn family — Dưới 12 tháng | Bảng kỳ hạn áp dụng cho tổng chứng chỉ tiền gửi + trái phiếu, không có phân bổ theo công cụ. |
+| VPB | 62 | Toàn family — Từ 12 tháng đến dưới 5 năm | Cùng một trục toàn-family; không tự chia vào các leaf của từng công cụ. |
+| VPB | 62 | Toàn family — Từ 5 năm trở lên | Cùng một trục toàn-family; không tự chia vào các leaf của từng công cụ. |
+| HDB | 46 | Chi phí phát hành (`(74.995)` / `(35.706)`) | Dòng contra đã tham gia phương trình giá trị thuần nhưng schema chưa có leaf chi phí phát hành riêng. |
+| VCB | 54 | Trung, dài hạn bằng ngoại tệ (`14` / `14`) | Một số nguồn gộp trung hạn và dài hạn, không có căn cứ phân bổ sang 1115/1116. |
+
+Kết quả exact-replay annual-2025:
+`docs/experiments/E-0131-annual-2025-issued-valuable-papers-8bank-codex-verified-mapping-v1.json`.
+
+- **Lượt hiện hành đã xác minh trước đó:** ACB p21, MBB p44, VPB p56, HDB p31, VCB p35, CTG p42,
   BID p25 và VIB p43. Whole-PDF scan tìm đúng một vùng hoàn chỉnh trên mỗi
   bank. Đã map 71 khoản mục/132 thành phần giá trị và kiểm tra 36 phương trình
   theo công cụ, kỳ hạn và tổng family. CTG dùng biến thể kỳ hạn theo hàng × công
@@ -599,8 +622,8 @@ Lượt hiện hành trước đó vẫn giữ kết quả riêng tại MBB p43,
   (bao gồm đúng 5 năm); 1104/1108/1112/1116 là `Trên 5 năm`. Hai leaf nguồn
   rộng 6009 `Trên 12 tháng` và 6010 `Dưới 5 năm` được giữ để nhận đúng các
   bảng không in chi tiết hơn.
-- **Không có cụm này trong báo cáo:** Không có; cả 8 bank đều có đúng một vùng.
-- **Còn thiếu:** Chỉ còn ba hàng VPB dưới đây. Đây là trục kỳ hạn của toàn cụm,
+- **Không có cụm này trong các báo cáo hiện hành đã bind:** Không có; cả 8 bank đều có đúng một vùng.
+- **Còn thiếu ở lượt hiện hành:** Chỉ còn ba hàng VPB dưới đây. Đây là trục kỳ hạn của toàn cụm,
   không chỉ rõ số thuộc chứng chỉ tiền gửi, kỳ phiếu hay trái phiếu.
 
 | Bank | Trang | Khoản mục nguồn | Lý do chưa map |
@@ -1121,7 +1144,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Tài sản Có khác | ✓\* p58–60 | ✓\* p62–63 | ✓\* p55–57 | ✓\* p42–44 | ✓\* p50–52 | ✓\* p50–51 | ✓\* p49–50 | ✓\* p44–45 | Annual-2025: 35 dòng OPEN, 134 mapping/66 phương trình; lượt hiện hành trước: 12 dòng OPEN |
 | Các khoản nợ Chính phủ/NHNN | ✓ p60 | ✓ p63 | ✓ p58 | ✓ p44 | ✓ p52 | ✓ p51 | ✓ p50 | ✓ p45 | Annual-2025: 0 dòng OPEN, 47 mapping/46 phương trình; sáu DASH→0 và ô HDB `1` đều pixel-bound |
 | Vốn nhận tài trợ/ủy thác đầu tư | ✓ p63 | ✓ p66 | ✓ p62 | ✓ p45 | ✓ p53 | ✓ p53 | ✓ p51 | ✓ p47 | 0 dòng annual-2025; 20 mapping/8 phương trình; VCB DASH→0. Lượt hiện hành trước giữ riêng 6 mapping tại MBB/VPB/VIB |
-| Phát hành giấy tờ có giá | ✓ p21 | ✓ p44 | ✓\* p56 | ✓ p31 | ✓ p35 | ✓ p42 | ✓ p25 | ✓ p43 | 3 dòng OPEN; 71 mapping, 36 phương trình; 4 DASH→0; VPB là nguồn Q1 |
+| Phát hành giấy tờ có giá | ✓ p63 | ✓ p66 | ✓\* p62 | ✓\* p46 | ✓\* p54 | ✓ p53–54 | ✓ p52 | ✓ p47 | Annual-2025: 5 dòng OPEN, 70 mapping/34 phương trình, 11 DASH→0; lượt hiện hành trước còn 3 dòng VPB OPEN |
 | Các khoản phải trả và công nợ khác | ✓\* p22 | ✓ p44 | ✓\* p57 | ✓ p31 | ✓ p35 | ✓\* p43 | ✓ p26 | ✓\* p43 | 18 dòng OPEN; 39 mapping, 28 phương trình; 2 DASH→0; VPB là nguồn Q1 |
 | Vốn và các quỹ | ✓ p23–24 | ✓ p44–45 | ✓\* p60–61 | ✓\* p33–34 | ✓\* p36–37 | ✓\* p43–44 | △ p27–28 | △ p44–45 | 10 mục OPEN; 65 mapping, 20 phương trình; BID/VIB structure-only; VPB là nguồn Q1 |
 | Thu nhập lãi và các khoản thu nhập tương tự | ✓ p24 | ✓ p46 | ✓\* p62 | ✓ p34 | ✓ p38 | ✓ p45 | ✓ p28 | ✓ p45 | 0 dòng; 54 mapping, 108 ô số, 28 phương trình; VPB là nguồn Q1 |

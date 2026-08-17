@@ -218,6 +218,7 @@ def _tenor_role(text: str) -> str | None:
         for phrase in (
             "duoi 12 thang",
             "duoi 1 nam",
+            "duoi mot nam",
             "tu 12 thang tro xuong",
             "ngan han",
         )
@@ -229,8 +230,11 @@ def _tenor_role(text: str) -> str | None:
             "tu 12 thang den duoi 5 nam",
             "tu tren 12 thang den 5 nam",
             "tu 1 nam den 2 nam",
+            "tu mot nam den hai nam",
             "ky han 3 nam",
+            "ky han ba nam",
             "ky han 5 nam",
+            "ky han nam nam",
             "duoi 5 nam",
             "trung han",
             "tren 12 thang",
@@ -244,6 +248,7 @@ def _tenor_role(text: str) -> str | None:
             "tu 5 nam tro len",
             "tu 05 nam tro len",
             "ky han 10 nam",
+            "ky han muoi nam",
             "dai han",
         )
     ):
@@ -307,10 +312,10 @@ def _region(lines: Sequence[Mapping[str, Any]], start: int) -> dict[str, Any]:
         if instrument is not None:
             instrument_roles.add(instrument)
             events.append(_line_ref(line, instrument))
-        elif tenor is not None:
+        if tenor is not None:
             tenor_roles.add(tenor)
             events.append(_line_ref(line, tenor))
-        elif axis is not None:
+        if instrument is None and tenor is None and axis is not None:
             events.append(_line_ref(line, axis))
             period_count += axis == "PERIOD_AXIS"
             unit_count += axis == "UNIT_AXIS"
@@ -368,6 +373,71 @@ def _metrics(
     }
 
 
+def _is_continuation_region(region: Mapping[str, Any]) -> bool:
+    owner_text = normalize_vietnamese_anchor_v1(region["owner"]["vietocr_text"])
+    return "tiep theo" in owner_text
+
+
+def _merge_adjacent_continuation_regions(
+    candidates: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    merged: list[dict[str, Any]] = []
+    index = 0
+    while index < len(candidates):
+        current = canonical_clone_v1(candidates[index])
+        if index + 1 < len(candidates):
+            following = candidates[index + 1]
+            current_instruments = set(current["layout"]["instrument_roles"])
+            following_instruments = set(following["layout"]["instrument_roles"])
+            current_tenors = set(current["layout"]["tenor_roles"])
+            following_tenors = set(following["layout"]["tenor_roles"])
+            is_one_table_continuation = (
+                current["complete"]
+                and following["complete"]
+                and following["owner"]["page_sequence"] == current["owner"]["page_sequence"] + 1
+                and _is_continuation_region(following)
+                and current_instruments == following_instruments
+                and current_tenors == following_tenors
+            )
+            if is_one_table_continuation:
+                anchor_roles = sorted(
+                    set(current["anchor_roles"]) | set(following["anchor_roles"]),
+                    key=lambda role: (role != "OWNER", role),
+                )
+                current["anchor_roles"] = anchor_roles
+                current["end_global_ordinal"] = following["end_global_ordinal"]
+                current["events"].extend(canonical_clone_v1(following["events"]))
+                current["layout"] = {
+                    "instrument_roles": sorted(current_instruments),
+                    "period_axis_line_count": (
+                        current["layout"]["period_axis_line_count"]
+                        + following["layout"]["period_axis_line_count"]
+                    ),
+                    "presentation": "ADJACENT_PERIOD_TABLE_CONTINUATION",
+                    "tenor_roles": sorted(current_tenors),
+                    "unit_axis_line_count": (
+                        current["layout"]["unit_axis_line_count"]
+                        + following["layout"]["unit_axis_line_count"]
+                    ),
+                    "valuation_axis_line_count": (
+                        current["layout"]["valuation_axis_line_count"]
+                        + following["layout"]["valuation_axis_line_count"]
+                    ),
+                }
+                current["numeric_line_count"] += following["numeric_line_count"]
+                current["page_span"] = [
+                    current["page_span"][0],
+                    following["page_span"][1],
+                ]
+                current["pair_anchor_combinations"] = [
+                    list(pair) for pair in itertools.combinations(anchor_roles, 2)
+                ]
+                index += 1
+        merged.append(current)
+        index += 1
+    return merged
+
+
 def _validate_result(value: Any) -> dict[str, Any]:
     if type(value) is not dict or set(value) != _RESULT_FIELDS:
         raise _error("issued-paper result fields drifted")
@@ -407,11 +477,13 @@ def build_issued_valuable_papers_variant_graph_document_v1(pages: Any) -> dict[s
 
     parsed_pages = _pages(pages)
     lines = _flatten(parsed_pages)
-    candidates = [
-        _region(lines, index)
-        for index, line in enumerate(lines)
-        if _is_owner(line["normalized_text"])
-    ]
+    candidates = _merge_adjacent_continuation_regions(
+        [
+            _region(lines, index)
+            for index, line in enumerate(lines)
+            if _is_owner(line["normalized_text"])
+        ]
+    )
     regions = [item for item in candidates if item["complete"]]
     near = [item for item in candidates if not item["complete"]]
     material = {
