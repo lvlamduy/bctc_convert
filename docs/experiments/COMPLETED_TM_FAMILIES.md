@@ -285,22 +285,32 @@ Q1/2026, không relabel thành Q2/2026.
 
 ## 16. Chứng khoán đầu tư
 
-- **Đã xác minh:** ACB p19, MBB p35–36, VPB p47–48, HDB p29, VCB p32,
-  CTG p40, BID p23 và VIB p36. Đã map 99 khoản mục nguồn/198 ô hiện tại–so sánh của
-  các nhánh sẵn sàng để bán, giữ đến ngày đáo hạn, dự phòng, chất lượng và
-  VAMC đủ chắc; 39 phương trình gross–dự phòng–net hoặc cha–con đóng đúng.
-  VIB p36 được giữ đúng dưới nhánh 805 của owner 804; cây owner có bốn nhánh
-  805/829/853/859 và toàn family kết thúc tại 861, không bị ép sang trading 592.
-- **Điều chỉnh đã đóng:** BID p23 kế thừa đơn vị `Triệu VND` từ tuyên bố đơn vị
-  nhìn thấy trên p13 của chính PDF; toàn vùng AFS/HTM và các phương trình đều
-  được xác minh. Tại VIB p36, `5.894.320 + 32.879.230 = 38.773.550` và
-  `12.104.102 + 28.252.422 = 40.356.524`; hai dòng trái phiếu/chứng chỉ tiền gửi
-  do TCTD khác phát hành được cộng có kiểm soát rồi map một lần vào 808.
-- **Không có:** Không có bank nào được xác nhận vắng toàn bộ family này.
-- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong tám vùng đã xác minh.
+- **Đã xác minh trên BCTC hợp nhất kiểm toán năm 2025:** ACB p52–53, MBB
+  p54–56, VPB p50–52, HDB p39–40, VCB p42–43, CTG p45–46, BID p44–45 và
+  VIB p40–41. Whole-PDF scan tìm đúng một family ở mỗi báo cáo; 110 mapping,
+  220 ô hiện tại–so sánh và 72 phương trình cha–con/gross–dự phòng–net đã được
+  kiểm tra độc lập. Mười tám dấu `-` chỉ được chuẩn hóa thành 0 sau khi bind
+  đúng ô ảnh.
+- **Không có:** Không có bank nào trong tám BCTC annual-2025 vắng toàn bộ
+  family này.
+- **Còn thiếu:** Hai hàng nguồn gộp chưa được tự chia hoặc thu hẹp:
 
-Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
-Q1/2026, không relabel thành Q2/2026.
+| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | ---: | --- | --- |
+| MBB | 54 | Trái phiếu Chính phủ và trái phiếu Chính phủ bảo lãnh | Một số in gộp hai khái niệm; không có căn cứ chia sang 807 và 5740. |
+| HDB | 39 | Tín phiếu NHNN + Chứng khoán Chính phủ | Một số in gộp hai loại tổ chức phát hành; chưa có phép gộp được phê duyệt vào 831. |
+
+Tại VIB annual-2025, hai dòng TCTD được cộng có kiểm soát một lần vào 808:
+`12.104.102 + 28.252.422 = 40.356.524` và
+`12.712.080 + 27.150.253 = 39.862.333`.
+
+Kết quả exact-replay:
+`docs/experiments/E-0121-annual-2025-investment-securities-8bank-codex-verified-mapping-v1.json`.
+
+Lượt BCTC hiện hành trước đó tại ACB p19, MBB p35–36, VPB p47–48, HDB p29,
+VCB p32, CTG p40, BID p23 và VIB p36 vẫn giữ nguyên 99 mapping/198 ô/39
+phương trình. VPB của lượt đó là Q1/2026; BID dùng đơn vị cấp tài liệu và VIB
+gộp đúng hai dòng TCTD vào 808.
 
 ## 17. Các khoản đầu tư dài hạn khác
 
@@ -977,7 +987,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Dự phòng cho vay | ✓ p51 | ✓ p53 | ✓ p48 | ✓ p38 | ✓ p41 | ✓ p44 | ✓ p43 | ✓ p39 | 0 dòng annual-2025; 18 lane/79 dòng/18 phương trình; 9 DASH→0 |
 | Hoạt động mua nợ | — | ✓ p54 | ✓ p49 | ✓ p39 | — | — | — | ✓ p40 | 0 dòng annual-2025; 15 mapping/30 ô/19 phương trình; HDB không in dòng lãi |
 | Tiền gửi khách hàng | ✓ p21 | ✓ p43 | ✓\* p55 | ✓ p31 | ✓ p35 | ✓ p42 | ✓ p25 | ✓ p41–42 | 0 dòng; VPB là nguồn Q1 |
-| Chứng khoán đầu tư | ✓ p19 | ✓ p35–36 | ✓\* p47–48 | ✓ p29 | ✓ p32 | ✓ p40 | ✓ p23 | ✓ p36 | 0 dòng; BID dùng đơn vị cấp tài liệu, VIB gộp hai dòng TCTD vào 808; VPB là nguồn Q1 |
+| Chứng khoán đầu tư | ✓ p52–53 | ✓\* p54–56 | ✓ p50–52 | ✓\* p39–40 | ✓ p42–43 | ✓ p45–46 | ✓ p44–45 | ✓ p40–41 | 2 dòng annual-2025: MBB gộp Chính phủ/bảo lãnh Chính phủ; HDB gộp tín phiếu NHNN/chứng khoán Chính phủ |
 | Đầu tư dài hạn khác | ✓ p19 | ✓ p36 | ✓\* p48 | ✓ p30 | ✓ p33 | ✓ p40 | ✓ p24 | ✓ p36 | 0 dòng; VPB là nguồn Q1 |
 | Tăng, giảm TSCĐ hữu hình | — | ✓ p37 | ✓\* p49 | — | — | — | — | ✓ p37 | 0 dòng; 5 bank xác nhận không có bảng chi tiết; VPB là nguồn Q1 |
 | Tăng, giảm TSCĐ thuê tài chính | — | — | — | — | — | — | — | — | 0 dòng; cả 8 PDF xác nhận không có bảng chi tiết |

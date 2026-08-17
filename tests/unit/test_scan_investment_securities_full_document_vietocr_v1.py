@@ -55,8 +55,11 @@ def test_build_scans_all_eight_documents_and_replay_rejects_tamper(
         calls = 0
 
         @classmethod
-        def build_investment_securities_variant_graph_document_v1(cls, pages: object) -> object:
+        def build_investment_securities_variant_graph_document_v1(
+            cls, pages: object, *, variant_profile: str
+        ) -> object:
             del pages
+            assert variant_profile == scan.MATCHER_VARIANT_PROFILE
             cls.calls += 1
             return _matcher_result(ordinal=cls.calls)
 

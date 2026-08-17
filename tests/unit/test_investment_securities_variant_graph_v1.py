@@ -160,6 +160,61 @@ def test_missing_next_boundary_and_duplicate_regions_fail_closed() -> None:
 def test_period_axis_accepts_annual_current_and_comparative_years() -> None:
     assert graph._is_period("31 12 2025")
     assert graph._is_period("31 12 2024")
+    assert graph._is_period("so cuoi nam", variant_profile=graph.ANNUAL_2025_VARIANT_PROFILE)
+    assert graph._is_period("so dau nam", variant_profile=graph.ANNUAL_2025_VARIANT_PROFILE)
+    assert not graph._is_period("so cuoi nam")
+
+
+def test_summary_htm_then_detailed_afs_restarts_the_afs_phase() -> None:
+    texts = [
+        "Chứng khoán đầu tư",
+        "31/12/2025",
+        "31/12/2024",
+        "Chứng khoán đầu tư sẵn sàng để bán",
+        "300",
+        "290",
+        "Chứng khoán đầu tư giữ đến ngày đáo hạn",
+        "100",
+        "90",
+        "Chứng khoán đầu tư sẵn sàng để bán",
+        "Chứng khoán Chính phủ",
+        "100",
+        "90",
+        "Chứng khoán nợ do các TCTD khác trong nước phát hành",
+        "200",
+        "200",
+        "Góp vốn, đầu tư dài hạn",
+    ]
+    result = graph.build_investment_securities_variant_graph_document_v1(
+        [_page(1, texts)], variant_profile=graph.ANNUAL_2025_VARIANT_PROFILE
+    )
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["regions"][0]["owner_mode"] == "EXPLICIT_FAMILY_OWNER"
+
+
+def test_repeated_owner_and_summary_caption_collapse_to_one_region() -> None:
+    texts = _cluster()
+    texts.insert(1, "Chứng khoán đầu tư")
+    result = graph.build_investment_securities_variant_graph_document_v1(
+        [_page(1, texts)], variant_profile=graph.ANNUAL_2025_VARIANT_PROFILE
+    )
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["metrics"]["complete_region_count"] == 1
+    assert result["regions"][0]["boundary"]["first_item"]["source_line_index"] == 0
+
+
+def test_four_page_family_continuation_is_admitted() -> None:
+    pages = [
+        _page(1, _cluster()[:-1]),
+        _page(2, ["Chi tiết dự phòng chứng khoán đầu tư"]),
+        _page(3, ["Biến động dự phòng chứng khoán đầu tư"]),
+        _page(4, ["Góp vốn, đầu tư dài hạn"]),
+    ]
+    result = graph.build_investment_securities_variant_graph_document_v1(
+        pages, variant_profile=graph.ANNUAL_2025_VARIANT_PROFILE
+    )
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["regions"][0]["boundary"]["next_family"]["page_sequence"] == 4
 
 
 def test_fresh_text_and_typed_page_contract_fail_closed() -> None:

@@ -64,6 +64,11 @@ scanner = _load_module(
 
 FORMAT_VERSION = "INVESTMENT_SECURITIES_8BANK_CODEX_VERIFIED_MAPPING_V1"
 REVIEW_FORMAT = "INVESTMENT_SECURITIES_8BANK_CODEX_PIXEL_REVIEW_V1"
+_RESULT_STATE = "CODEX_VERIFIED_INVESTMENT_SECURITIES_MAPPING_COMPLETE"
+_RESULT_ID_PREFIX = "e0067:result:"
+_REVIEW_STATE = "CODEX_PIXEL_REVIEW_COMPLETE"
+_REVIEW_ID_PREFIX = "e0067:pixel-review:"
+_REVIEW_RUN_ID = "E-0067"
 CLAIM_BOUNDARY = (
     "FIXED_EIGHT_COMPLETE_PDFS_FRESH_VIETOCR_SHARED_INVESTMENT_SECURITIES_"
     "GRAPH_FIRST_LAST_NEXT_FAMILY_BOUNDARY_HORIZONTAL_VERTICAL_HYBRID_"
@@ -1476,11 +1481,14 @@ def _review_blueprint() -> dict[str, Any]:
         "documents": _review_documents(),
         "format_version": REVIEW_FORMAT,
         "review_checks": list(_CHECKS),
-        "reviewer": {"kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW", "review_run_id": "E-0067"},
+        "reviewer": {
+            "kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW",
+            "review_run_id": _REVIEW_RUN_ID,
+        },
         "safety": canonical_clone_v1(_REVIEW_SAFETY),
-        "state": "CODEX_PIXEL_REVIEW_COMPLETE",
+        "state": _REVIEW_STATE,
     }
-    return {**material, "review_id": "e0067:pixel-review:" + canonical_json_sha256_v1(material)}
+    return {**material, "review_id": _REVIEW_ID_PREFIX + canonical_json_sha256_v1(material)}
 
 
 def _review(value: Any) -> dict[str, Any]:
@@ -1754,11 +1762,11 @@ def build_investment_securities_8bank_codex_verified_mapping_v1(
             "tm_schema_projection_sha256": schema_authority["tm_schema_projection_sha256"],
         },
         "metrics": _metrics(trials),
-        "state": "CODEX_VERIFIED_INVESTMENT_SECURITIES_MAPPING_COMPLETE",
+        "state": _RESULT_STATE,
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "e0067:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": _RESULT_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 
@@ -1768,7 +1776,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
     if (
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "CODEX_VERIFIED_INVESTMENT_SECURITIES_MAPPING_COMPLETE"
+        or value["state"] != _RESULT_STATE
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
         or len(value["trials"]) != len(EXPECTED_DOCUMENT_ORDER)
@@ -1801,7 +1809,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
             raise _error("verified investment-securities status drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "e0067:result:" + canonical_json_sha256_v1(material):
+    if identity != _RESULT_ID_PREFIX + canonical_json_sha256_v1(material):
         raise _error("investment-securities verified result identity drifted")
     return canonical_clone_v1(value)
 
@@ -1869,9 +1877,24 @@ def validate_investment_securities_8bank_codex_verified_mapping_replay_v1(
 
     persisted = _validate_result(value)
     rebuilt = build_live_investment_securities_8bank_codex_verified_mapping_v1()
-    if not same_typed_json_v1(persisted, rebuilt):
-        raise _error("verified investment-securities result does not replay exactly")
-    return rebuilt
+    if same_typed_json_v1(persisted, rebuilt):
+        return rebuilt
+
+    # The global TM projection changes when unrelated families gain schema
+    # leaves.  A historical bounded result remains replayable only when every
+    # used row binding, value, equation and authority field is still exact.
+    # Normalize that one global ledger digest (and the identity derived from
+    # it); any relevant schema or evidence drift remains visible and fails.
+    compatible = canonical_clone_v1(rebuilt)
+    compatible["input_refs"]["tm_schema_projection_sha256"] = persisted["input_refs"][
+        "tm_schema_projection_sha256"
+    ]
+    material = canonical_clone_v1(compatible)
+    material.pop("result_id")
+    compatible["result_id"] = _RESULT_ID_PREFIX + canonical_json_sha256_v1(material)
+    if same_typed_json_v1(persisted, compatible):
+        return persisted
+    raise _error("verified investment-securities result does not replay exactly")
 
 
 def _main() -> None:

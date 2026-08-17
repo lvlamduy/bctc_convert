@@ -72,12 +72,20 @@ _RESULT_FIELDS = {
     "uniqueness",
 }
 _NUMBER = re.compile(r"^\(?[+-]?[0-9]+(?:[., ][0-9]+)*%?\)?$")
-_DATE = re.compile(
+_CURRENT_DATE = re.compile(
     r"(?:[0-3]?[0-9](?:[./-]|\s+)[01]?[0-9](?:[./-]|\s+)(?:20)?[0-9]{2})|"
     r"(?:ngay\s+[0-3]?[0-9]\s+thang\s+[01]?[0-9])|(?:nam\s+20[0-9]{2})|"
     r"(?:so\s+(?:cuoi|dau)\s+ky)"
 )
+_ANNUAL_DATE = re.compile(
+    r"(?:[0-3]?[0-9](?:[./-]|\s+)[01]?[0-9](?:[./-]|\s+)(?:20)?[0-9]{2})|"
+    r"(?:ngay\s+[0-3]?[0-9]\s+thang\s+[01]?[0-9])|(?:nam\s+20[0-9]{2})|"
+    r"(?:so\s+(?:cuoi|dau)\s+(?:ky|nam))"
+)
+CURRENT_VARIANT_PROFILE = "CURRENT_V1"
+ANNUAL_2025_VARIANT_PROFILE = "ANNUAL_2025_V1"
 _MAX_REGION_PAGES = 3
+_ANNUAL_MAX_REGION_PAGES = 4
 _MAX_REGION_LINES = 360
 
 
@@ -273,8 +281,14 @@ def _role(text: str, phase: str) -> str | None:
     return None if issuer is None else f"{phase}_{issuer}"
 
 
-def _is_period(text: str) -> bool:
-    return bool(_DATE.search(text))
+def _is_period(text: str, *, variant_profile: str = CURRENT_VARIANT_PROFILE) -> bool:
+    if variant_profile == CURRENT_VARIANT_PROFILE:
+        pattern = _CURRENT_DATE
+    elif variant_profile == ANNUAL_2025_VARIANT_PROFILE:
+        pattern = _ANNUAL_DATE
+    else:
+        raise _error("investment-securities variant profile drifted")
+    return bool(pattern.search(text))
 
 
 def _is_unit(text: str) -> bool:
@@ -348,13 +362,21 @@ def _anchor_combination(anchors: Mapping[str, Mapping[str, Any]]) -> dict[str, A
 
 
 def _candidate_region(
-    lines: Sequence[Mapping[str, Any]], start_index: int, *, explicit_owner: bool
+    lines: Sequence[Mapping[str, Any]],
+    start_index: int,
+    *,
+    explicit_owner: bool,
+    variant_profile: str,
 ) -> dict[str, Any]:
+    if variant_profile not in {CURRENT_VARIANT_PROFILE, ANNUAL_2025_VARIANT_PROFILE}:
+        raise _error("investment-securities variant profile drifted")
+    annual_profile = variant_profile == ANNUAL_2025_VARIANT_PROFILE
+    max_region_pages = _ANNUAL_MAX_REGION_PAGES if annual_profile else _MAX_REGION_PAGES
     start = lines[start_index]
     end = min(len(lines), start_index + _MAX_REGION_LINES)
     boundary_line: Mapping[str, Any] | None = None
     for line in lines[start_index + 1 : end]:
-        if line["page_sequence"] > start["page_sequence"] + _MAX_REGION_PAGES - 1:
+        if line["page_sequence"] > start["page_sequence"] + max_region_pages - 1:
             end = line["global_ordinal"]
             break
         if _is_next_family(line["normalized_text"]):
@@ -371,8 +393,11 @@ def _candidate_region(
     phase = "afs"
     for line in window:
         role = _role(line["normalized_text"], phase)
-        if role == "afs" and "afs" not in anchors:
-            anchors[role] = _record(line, "AFS_BRANCH")
+        if role == "afs":
+            if annual_profile:
+                phase = "afs"
+            if "afs" not in anchors:
+                anchors[role] = _record(line, "AFS_BRANCH")
         elif role == "htm":
             phase = "htm"
             if "htm" not in anchors:
@@ -393,7 +418,9 @@ def _candidate_region(
         elif role is not None and role not in anchors:
             anchors[role] = _record(line, role.upper())
     period_lines = [
-        _record(line, "PERIOD_AXIS") for line in window if _is_period(line["normalized_text"])
+        _record(line, "PERIOD_AXIS")
+        for line in window
+        if _is_period(line["normalized_text"], variant_profile=variant_profile)
     ]
     unit_lines = [
         _record(line, "UNIT_AXIS") for line in window if _is_unit(line["normalized_text"])
@@ -478,6 +505,42 @@ def _metrics(
     }
 
 
+def _collapse_nested_complete_candidates(
+    candidates: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Collapse repeated owner/summary captions for the same exact region.
+
+    A family heading and its first total row may carry the same text.  They are
+    one region only when they resolve to the same next-family boundary, page
+    span and complete anchor-role set.  Independent clusters keep distinct
+    boundaries and are never collapsed.
+    """
+
+    kept: list[dict[str, Any]] = []
+    for raw in sorted(
+        candidates,
+        key=lambda item: item["boundary"]["first_item"]["global_ordinal"],
+    ):
+        candidate = canonical_clone_v1(raw)
+        if candidate["state"] != "COMPLETE_INVESTMENT_SECURITIES_REGION":
+            kept.append(candidate)
+            continue
+        next_boundary = candidate["boundary"]["next_family"]
+        duplicate = any(
+            prior["state"] == "COMPLETE_INVESTMENT_SECURITIES_REGION"
+            and prior["boundary"]["next_family"] is not None
+            and next_boundary is not None
+            and prior["boundary"]["next_family"]["global_ordinal"]
+            == next_boundary["global_ordinal"]
+            and prior["page_span"] == candidate["page_span"]
+            and set(prior["anchors"]) == set(candidate["anchors"])
+            for prior in kept
+        )
+        if not duplicate:
+            kept.append(candidate)
+    return kept
+
+
 def _validate_result(value: Any) -> dict[str, Any]:
     if type(value) is not dict or set(value) != _RESULT_FIELDS:
         raise _error("investment-securities graph result fields drifted")
@@ -519,20 +582,37 @@ def _validate_result(value: Any) -> dict[str, Any]:
     return canonical_clone_v1(value)
 
 
-def build_investment_securities_variant_graph_document_v1(pages: Any) -> dict[str, Any]:
+def build_investment_securities_variant_graph_document_v1(
+    pages: Any, *, variant_profile: str = CURRENT_VARIANT_PROFILE
+) -> dict[str, Any]:
     """Enumerate every investment-securities-like region in one complete PDF."""
 
     lines = _flatten(_pages(pages))
     owner_indexes = [
         index for index, line in enumerate(lines) if _is_owner(line["normalized_text"])
     ]
-    candidates = [_candidate_region(lines, index, explicit_owner=True) for index in owner_indexes]
+    candidates = [
+        _candidate_region(
+            lines,
+            index,
+            explicit_owner=True,
+            variant_profile=variant_profile,
+        )
+        for index in owner_indexes
+    ]
     if not any(item["state"] == "COMPLETE_INVESTMENT_SECURITIES_REGION" for item in candidates):
         candidates.extend(
-            _candidate_region(lines, index, explicit_owner=False)
+            _candidate_region(
+                lines,
+                index,
+                explicit_owner=False,
+                variant_profile=variant_profile,
+            )
             for index, line in enumerate(lines)
             if _is_afs(line["normalized_text"])
         )
+    if variant_profile == ANNUAL_2025_VARIANT_PROFILE:
+        candidates = _collapse_nested_complete_candidates(candidates)
     regions = [
         item for item in candidates if item["state"] == "COMPLETE_INVESTMENT_SECURITIES_REGION"
     ]
@@ -565,12 +645,14 @@ def build_investment_securities_variant_graph_document_v1(pages: Any) -> dict[st
 
 
 def validate_investment_securities_variant_graph_replay_v1(
-    value: Any, pages: Any
+    value: Any, pages: Any, *, variant_profile: str = CURRENT_VARIANT_PROFILE
 ) -> dict[str, Any]:
     """Exact-rebuild a document result from its complete fresh-VietOCR pages."""
 
     persisted = _validate_result(value)
-    expected = build_investment_securities_variant_graph_document_v1(pages)
+    expected = build_investment_securities_variant_graph_document_v1(
+        pages, variant_profile=variant_profile
+    )
     if not same_typed_json_v1(persisted, expected):
         raise _error("investment-securities graph does not replay exactly")
     return persisted

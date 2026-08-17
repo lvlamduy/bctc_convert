@@ -27,6 +27,7 @@ DEFAULT_INPUT = Path(
 )
 FORMAT_VERSION = "INVESTMENT_SECURITIES_8DOCUMENT_FULL_VIETOCR_STRUCTURE_SCAN_V1"
 MATCHER_FORMAT = "INVESTMENT_SECURITIES_VARIANT_GRAPH_DOCUMENT_V1"
+MATCHER_VARIANT_PROFILE = "CURRENT_V1"
 CLAIM_BOUNDARY = (
     "FRESH_VIETOCR_TRANSFORMER_COMPLETE_PDF_SHARED_INVESTMENT_SECURITIES_"
     "EXPLICIT_OR_IMPLICIT_OWNER_AFS_DEBT_ISSUER_OPTIONAL_HTM_PROVISION_"
@@ -199,7 +200,7 @@ def build_investment_securities_full_document_scan_v1(
             "document_ordinal": document["document_ordinal"],
             "document_provenance": document["document_provenance"],
             "matcher_result": matcher.build_investment_securities_variant_graph_document_v1(
-                _matcher_pages(document)
+                _matcher_pages(document), variant_profile=MATCHER_VARIANT_PROFILE
             ),
             "source_pdf_sha256": _sha256(document["source_pdf"]["sha256"], "source PDF"),
         }

@@ -125,6 +125,36 @@ def test_coordinated_rehash_cannot_promote_unresolved_bid(
         mapping.validate_investment_securities_8bank_codex_verified_mapping_replay_v1(forged)
 
 
+def test_unrelated_global_schema_extension_keeps_exact_used_bindings_replayable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    persisted = _persisted()
+    extended = copy.deepcopy(persisted)
+    extended["input_refs"]["tm_schema_projection_sha256"] = "f" * 64
+    material = copy.deepcopy(extended)
+    material.pop("result_id")
+    extended["result_id"] = "e0067:result:" + mapping.canonical_json_sha256_v1(material)
+    monkeypatch.setattr(
+        mapping,
+        "build_live_investment_securities_8bank_codex_verified_mapping_v1",
+        lambda: extended,
+    )
+    assert (
+        mapping.validate_investment_securities_8bank_codex_verified_mapping_replay_v1(persisted)
+        == persisted
+    )
+
+    extended["trials"][0]["verified_mappings"][0]["canonical_name"] += " drift"
+    material = copy.deepcopy(extended)
+    material.pop("result_id")
+    extended["result_id"] = "e0067:result:" + mapping.canonical_json_sha256_v1(material)
+    with pytest.raises(
+        mapping.InvestmentSecurities8BankCodexVerifiedMappingV1Error,
+        match="does not replay exactly",
+    ):
+        mapping.validate_investment_securities_8bank_codex_verified_mapping_replay_v1(persisted)
+
+
 def test_vib_aggregation_gap_is_retained_without_mapping_808() -> None:
     result = mapping._validate_result(_persisted())
     vib = next(trial for trial in result["trials"] if trial["bank_provenance"] == "VIB")

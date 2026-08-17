@@ -17,10 +17,39 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **247 entries**.  Current open queue: **73**.  Closed history:
+Ledger total: **249 entries**.  Current open queue: **75**.  Closed history:
 **99** row/graph resolutions and **75** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
+
+## OPEN — annual-2025 `Chứng khoán đầu tư`
+
+E-0121 quét toàn bộ tám BCTC hợp nhất kiểm toán năm 2025 và xác minh family tại
+ACB p52–53, MBB p54–56, VPB p50–52, HDB p39–40, VCB p42–43, CTG p45–46,
+BID p44–45 và VIB p40–41. Kết quả đã đóng 110 mapping, 220 ô giá trị và 72
+phương trình. Chỉ hai hàng nguồn gộp dưới đây còn `OPEN`; toàn bộ phần còn lại
+đã `VERIFIED_BY_CODEX`.
+
+### E-0121-AIS-001 — MBB — government/government-guaranteed combined row
+
+- Report: BCTC hợp nhất kiểm toán năm 2025; physical page 54.
+- Source label: `Trái phiếu Chính phủ và trái phiếu Chính phủ bảo lãnh`.
+- Nearest schema leaves: 807 và 5740.
+- Structure/accounting: nằm đúng trong nhánh AFS duy nhất; giá trị nguồn tham gia
+  đầy đủ các phương trình tổng đã đóng.
+- Reason: PDF chỉ in một giá trị gộp, nên không thể chia có căn cứ sang hai leaf.
+- Status: `OPEN — UNRESOLVED_COMBINED_GOVERNMENT_AND_GUARANTEED_NOT_SPLITTABLE`.
+
+### E-0121-AIS-002 — HDB — central-bank bill/government-security combined row
+
+- Report: BCTC hợp nhất kiểm toán năm 2025; physical page 39.
+- Source label: `Tín phiếu NHNN + Chứng khoán Chính phủ`.
+- Nearest schema leaf: 831 `Chứng khoán nợ do Chính phủ phát hành`.
+- Structure/accounting: nằm đúng trong nhánh HTM duy nhất; số nguồn và tổng family
+  đã được pixel/PaddleOCR6/phương trình xác minh.
+- Reason: một giá trị gộp tín phiếu NHNN với chứng khoán Chính phủ; chưa có quyết
+  định cho phép thu hẹp hoặc gộp cả hai vào 831.
+- Status: `OPEN — UNRESOLVED_COMBINED_NHNN_BILL_AND_GOVERNMENT_SECURITY_SCOPE`.
 
 E-0107 `Tiền, kim loại quý và đá quý` trên tám BCTC hợp nhất kiểm toán năm
 2025 không bổ sung dòng OPEN: whole-PDF graph tìm đúng một vùng tại ACB p45,
