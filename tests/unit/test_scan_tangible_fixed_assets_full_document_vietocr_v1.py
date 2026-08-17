@@ -82,6 +82,33 @@ def _axis() -> dict[str, object]:
     }
 
 
+def _full_rotated_rescue(axis: dict[str, object]) -> dict[str, object]:
+    first = axis["documents"][0]
+    page = first["pages"][0]
+    samples = [
+        {
+            "document_ordinal": first["document_ordinal"],
+            "mean_decoded_character_probability": 1.0,
+            "physical_page": page["page_sequence"],
+            "semantic_text": line["vietocr_text"],
+            "source_crop_sha256": f"{index + 1:064x}",
+            "source_line_index": line["source_line_index"],
+        }
+        for index, line in enumerate(page["lines"])
+    ]
+    return {
+        "authority": {},
+        "format_version": scanner.FULL_DOCUMENT_RESCUE_FORMAT,
+        "input_refs": {},
+        "metrics": {"document_count": 1, "line_count": len(samples), "page_count": 1},
+        "pages": [],
+        "projection_id": "fdrrv1:projection:" + "3" * 64,
+        "samples": samples,
+        "source_semantic_axis_sha256": axis["semantic_axis_sha256"],
+        "state": "VERIFIED_ROTATED_VIETOCR_SEMANTIC_RESCUE_COMPLETE",
+    }
+
+
 def test_bank_blind_scanner_covers_all_eight_documents(monkeypatch: pytest.MonkeyPatch) -> None:
     axis = _axis()
     monkeypatch.setattr(scanner, "project_full_document_vietocr_accounting_axis_v1", lambda _: axis)
@@ -100,6 +127,47 @@ def test_bank_blind_scanner_covers_all_eight_documents(monkeypatch: pytest.Monke
     assert [trial["document_provenance"] for trial in result["trials"]] == list(
         scanner.EXPECTED_DOCUMENT_ORDER
     )
+
+
+def test_scanner_can_select_period_general_matcher_without_changing_routing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    axis = _axis()
+    monkeypatch.setattr(scanner, "MATCHER_VARIANT_PROFILE", "REPORTING_PERIOD_GENERAL_V2")
+    monkeypatch.setattr(scanner, "project_full_document_vietocr_accounting_axis_v1", lambda _: axis)
+
+    result = scanner.build_tangible_fixed_assets_full_document_scan_v1({})
+
+    assert result["metrics"]["document_unique_structural_match_count"] == 8
+    assert {trial["matcher_result"]["format_version"] for trial in result["trials"]} == {
+        "TANGIBLE_FIXED_ASSETS_VARIANT_GRAPH_DOCUMENT_V2"
+    }
+    assert [trial["document_provenance"] for trial in result["trials"]] == list(
+        scanner.EXPECTED_DOCUMENT_ORDER
+    )
+
+
+def test_full_document_rotated_rescue_is_consumed_by_complete_page_denominator(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    axis = _axis()
+    monkeypatch.setattr(scanner, "project_full_document_vietocr_accounting_axis_v1", lambda _: axis)
+    rescue = _full_rotated_rescue(axis)
+
+    result = scanner.build_tangible_fixed_assets_full_document_scan_v1({}, rescue)
+
+    assert result["metrics"]["rotated_rescue_line_count"] == len(
+        axis["documents"][0]["pages"][0]["lines"]
+    )
+    assert result["input_rescue"]["projection_id"] == rescue["projection_id"]
+
+    rescue["samples"].pop()
+    rescue["metrics"]["line_count"] -= 1
+    with pytest.raises(
+        scanner.TangibleFixedAssetsFullDocumentScanV1Error,
+        match="complete page denominator",
+    ):
+        scanner.build_tangible_fixed_assets_full_document_scan_v1({}, rescue)
 
 
 def test_scan_exact_replay_rejects_coordinated_match_tamper(
@@ -175,7 +243,7 @@ def test_current_eight_pdf_scan_finds_only_three_unique_regions() -> None:
     assert result["trials"][7]["rotated_rescue_line_count"] == 100
 
 
-def test_annual_profile_does_not_load_wave1_rotated_rescue(
+def test_annual_profile_loads_its_own_geometry_selected_rotated_rescue(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
@@ -183,10 +251,16 @@ def test_annual_profile_does_not_load_wave1_rotated_rescue(
         "authenticate_rotated_vietocr_semantic_rescue_v1",
         lambda *_args, **_kwargs: pytest.fail("Wave-1 rescue must not be opened for annual input"),
     )
+    sentinel = {"format_version": scanner.FULL_DOCUMENT_RESCUE_FORMAT}
+    monkeypatch.setattr(
+        scanner,
+        "_read_annual_full_document_rotated_rescue",
+        lambda: sentinel,
+    )
 
     assert (
         scanner._profile_rescue(
             {"format_version": ("ANNUAL_2025_8DOCUMENT_VIETOCR_TRANSFORMER_SEMANTIC_INDEX_V1")}
         )
-        is None
+        is sentinel
     )

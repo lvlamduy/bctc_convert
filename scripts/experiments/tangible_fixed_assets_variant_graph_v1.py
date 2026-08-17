@@ -16,6 +16,7 @@ import re
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from bctc_ai.core.text import parse_vietnamese_dates
 from bctc_ai.evaluation.accounting_variant_graph_engine_v1 import (
     normalize_vietnamese_anchor_v1,
 )
@@ -30,6 +31,7 @@ __all__ = [
     "INTANGIBLE_FORMAT_VERSION",
     "INVESTMENT_PROPERTY_FORMAT_VERSION",
     "LEASED_FORMAT_VERSION",
+    "REPORTING_PERIOD_GENERAL_VARIANT_PROFILE",
     "TangibleFixedAssetsVariantGraphV1Error",
     "build_intangible_fixed_assets_variant_graph_document_v1",
     "build_investment_property_variant_graph_document_v1",
@@ -43,6 +45,9 @@ __all__ = [
 
 FORMAT_VERSION = "TANGIBLE_FIXED_ASSETS_VARIANT_GRAPH_DOCUMENT_V1"
 FAMILY_ID = "TANGIBLE_FIXED_ASSET_MOVEMENT"
+REPORTING_PERIOD_GENERAL_FORMAT_VERSION = "TANGIBLE_FIXED_ASSETS_VARIANT_GRAPH_DOCUMENT_V2"
+CURRENT_VARIANT_PROFILE = "CURRENT_V1"
+REPORTING_PERIOD_GENERAL_VARIANT_PROFILE = "REPORTING_PERIOD_GENERAL_V2"
 LEASED_FORMAT_VERSION = "LEASED_FIXED_ASSETS_VARIANT_GRAPH_DOCUMENT_V1"
 LEASED_FAMILY_ID = "LEASED_FIXED_ASSET_MOVEMENT"
 INTANGIBLE_FORMAT_VERSION = "INTANGIBLE_FIXED_ASSETS_VARIANT_GRAPH_DOCUMENT_V1"
@@ -69,6 +74,12 @@ _SAFETY = {
     "public_exact_replay_required": True,
     "rotated_same_transformer_rescue_may_supply_semantic_text": True,
     "text_similarity_alone_can_accept": False,
+}
+_REPORTING_PERIOD_GENERAL_SAFETY = {
+    **canonical_clone_v1(_SAFETY),
+    "dated_balance_roles_derived_from_chronology_not_fixed_calendar_dates": True,
+    "latest_explicit_local_period_selects_current_table": True,
+    "relative_beginning_and_ending_year_labels_supported": True,
 }
 _LEASED_CLAIM_BOUNDARY = (
     "BANK_BLIND_COMPLETE_PDF_FRESH_VIETOCR_LEASED_FIXED_ASSET_OWNER_COST_"
@@ -117,6 +128,12 @@ _DATE = re.compile(
     r"(?:ngay\s+[0-3]?[0-9]\s+thang\s+[01]?[0-9])|"
     r"(?:so\s+du\s+(?:dau|cuoi)\s+ky)|(?:tai\s+ngay\s+(?:dau|cuoi)\s+ky)"
 )
+_REPORTING_PERIOD_GENERAL_DATE = re.compile(
+    r"(?:[0-3]?[0-9](?:[./-]|\s+)[01]?[0-9](?:[./-]|\s+)(?:20)?[0-9]{2})|"
+    r"(?:ngay\s+[0-3]?[0-9]\s+thang\s+[01]?[0-9])|"
+    r"(?:so\s+(?:du\s+)?(?:dau|cuoi)\s+(?:ky|nam))|"
+    r"(?:tai\s+ngay\s+(?:dau|cuoi)\s+(?:ky|nam))"
+)
 _MAX_REGION_PAGES = 2
 
 _TANGIBLE_SPEC = {
@@ -135,6 +152,18 @@ _TANGIBLE_SPEC = {
         "tai san co dinh vo hinh",
         "bat dong san dau tu",
     ),
+}
+_TANGIBLE_REPORTING_PERIOD_GENERAL_SPEC = {
+    **_TANGIBLE_SPEC,
+    "branch_reject_phrases": ("da khau hao het",),
+    "dynamic_dated_balance_roles": True,
+    "format_version": REPORTING_PERIOD_GENERAL_FORMAT_VERSION,
+    "id_prefix": "tfavgv2:result:",
+    "latest_explicit_period_selects_current_region": True,
+    "owner_phrases": ("tai san co dinh huu hinh", "tscd huu hinh"),
+    "period_pattern": _REPORTING_PERIOD_GENERAL_DATE,
+    "relative_year_balance_roles": True,
+    "safety": _REPORTING_PERIOD_GENERAL_SAFETY,
 }
 _LEASED_SPEC = {
     "claim_boundary": _LEASED_CLAIM_BOUNDARY,
@@ -366,7 +395,9 @@ def _is_next_family(text: str, spec: Mapping[str, Any] = _TANGIBLE_SPEC) -> bool
 
 def _branch_role(text: str, spec: Mapping[str, Any] = _TANGIBLE_SPEC) -> str | None:
     value = _strip_enumerator(text)
-    if len(value.split()) > 10:
+    if len(value.split()) > 10 or any(
+        phrase in value for phrase in spec.get("branch_reject_phrases", ())
+    ):
         return None
     phrases = spec.get(
         "branch_phrases",
@@ -386,26 +417,79 @@ def _branch_role(text: str, spec: Mapping[str, Any] = _TANGIBLE_SPEC) -> str | N
     return None
 
 
-def _movement_role(text: str) -> str | None:
+def _movement_role(text: str, spec: Mapping[str, Any] = _TANGIBLE_SPEC) -> str | None:
     value = _strip_enumerator(text)
     if len(value.split()) > 14:
         return None
+    annual = spec.get("relative_year_balance_roles", False)
     rules = (
-        ("OPENING", ("so du dau ky", "tai ngay dau ky", "tai ngay 1 1")),
-        ("ENDING", ("so du cuoi ky", "tai ngay cuoi ky", "tai ngay 30 06")),
-        ("PURCHASE", ("mua trong ky",)),
-        ("DEPRECIATION", ("khau hao trong ky",)),
-        ("INCREASE", ("tang trong ky",)),
-        ("DECREASE", ("giam trong ky",)),
-        ("OTHER_NET", ("tang giam khac",)),
+        (
+            "OPENING",
+            (
+                "so du dau ky",
+                "tai ngay dau ky",
+                *(("so du dau nam", "so dau nam", "tai ngay dau nam") if annual else ()),
+                *(("tai ngay 1 1",) if not annual else ()),
+            ),
+        ),
+        (
+            "ENDING",
+            (
+                "so du cuoi ky",
+                "tai ngay cuoi ky",
+                *(("so du cuoi nam", "so cuoi nam", "tai ngay cuoi nam") if annual else ()),
+                *(("tai ngay 30 06",) if not annual else ()),
+            ),
+        ),
+        ("PURCHASE", ("mua trong ky", *(("mua trong nam",) if annual else ()))),
+        (
+            "DEPRECIATION",
+            ("khau hao trong ky", *(("khau hao trong nam",) if annual else ())),
+        ),
+        ("INCREASE", ("tang trong ky", *(("tang trong nam",) if annual else ()))),
+        ("DECREASE", ("giam trong ky", *(("giam trong nam",) if annual else ()))),
+        (
+            "OTHER_NET",
+            ("tang giam khac", *(("tang khac", "giam khac") if annual else ())),
+        ),
         ("FOREIGN_EXCHANGE", ("chenh lech ty gia",)),
         ("DISPOSAL", ("thanh ly", "nhuong ban")),
-        ("RECLASSIFICATION", ("phan loai lai",)),
+        (
+            "RECLASSIFICATION",
+            ("phan loai lai", *(("phan loai lai trong nam",) if annual else ())),
+        ),
     )
     for role, phrases in rules:
         if any(_near_phrase(value, phrase, allowance=2) for phrase in phrases):
             return role
     return None
+
+
+def _dated_balance_roles(
+    window: Sequence[Mapping[str, Any]], spec: Mapping[str, Any]
+) -> dict[int, str]:
+    """Infer dated balance-row roles from chronology, never calendar constants."""
+
+    if not spec.get("dynamic_dated_balance_roles", False):
+        return {}
+    candidates: list[tuple[Mapping[str, Any], Any]] = []
+    for line in window:
+        value = _strip_enumerator(line["normalized_text"])
+        if not value.startswith(("tai ngay ", "so du tai ngay ")):
+            continue
+        parsed = parse_vietnamese_dates(line["semantic_text"])
+        if len(parsed) == 1:
+            candidates.append((line, parsed[0]))
+    dates = {parsed for _line, parsed in candidates}
+    if len(dates) < 2:
+        return {}
+    opening = min(dates)
+    ending = max(dates)
+    return {
+        line["global_ordinal"]: "OPENING" if parsed == opening else "ENDING"
+        for line, parsed in candidates
+        if parsed in {opening, ending}
+    }
 
 
 def _line_ref(line: Mapping[str, Any], role: str) -> dict[str, Any]:
@@ -489,15 +573,22 @@ def _region_from_window(
     periods: list[Mapping[str, Any]] = []
     units: list[Mapping[str, Any]] = []
     numeric_lines: list[Mapping[str, Any]] = []
+    dated_balance_roles = _dated_balance_roles(window, spec)
+    period_pattern = spec.get("period_pattern", _DATE)
     for line in window:
         text = line["normalized_text"]
         branch = _branch_role(text, spec)
-        movement = _movement_role(text)
+        movement = _movement_role(text, spec)
+        if movement is None:
+            movement = dated_balance_roles.get(line["global_ordinal"])
         if branch is not None:
             branches.setdefault(branch, []).append(line)
         if movement is not None:
             movements.setdefault(movement, []).append(line)
-        if _DATE.search(text):
+        if period_pattern.search(text) or (
+            spec.get("dynamic_dated_balance_roles", False)
+            and parse_vietnamese_dates(line["semantic_text"])
+        ):
             periods.append(line)
         if "trieu dong" in text or "trieu vnd" in text:
             units.append(line)
@@ -580,6 +671,57 @@ def _region_from_window(
     }
 
 
+def _local_period_end_rank(
+    owner: Mapping[str, Any],
+    window: Sequence[Mapping[str, Any]],
+    spec: Mapping[str, Any],
+) -> tuple[int, int, int] | None:
+    """Read the local table heading after its owner and before its first branch."""
+
+    if not spec.get("latest_explicit_period_selects_current_region", False):
+        return None
+    dates = []
+    for line in window:
+        if line["global_ordinal"] == owner["global_ordinal"]:
+            continue
+        if _branch_role(line["normalized_text"], spec) is not None:
+            break
+        dates.extend(parse_vietnamese_dates(line["semantic_text"]))
+    if not dates:
+        return None
+    latest = max(dates)
+    return latest.year, latest.month, latest.day
+
+
+def _select_latest_explicit_period_region(
+    records: Sequence[tuple[dict[str, Any], tuple[int, int, int] | None]],
+    spec: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    """Retain one newest complete table and quarantine older comparison tables."""
+
+    candidates = [canonical_clone_v1(candidate) for candidate, _rank in records]
+    if not spec.get("latest_explicit_period_selects_current_region", False):
+        return candidates
+    complete_records = [
+        (index, rank) for index, (candidate, rank) in enumerate(records) if candidate["complete"]
+    ]
+    if len(complete_records) < 2 or any(rank is None for _index, rank in complete_records):
+        return candidates
+    newest = max(rank for _index, rank in complete_records if rank is not None)
+    selected = [index for index, rank in complete_records if rank == newest]
+    if len(selected) != 1:
+        return candidates
+    selected_index = selected[0]
+    candidates[selected_index]["layout"]["selected_as_latest_explicit_period"] = True
+    for index, _rank in complete_records:
+        if index == selected_index:
+            continue
+        candidates[index]["complete"] = False
+        candidates[index]["layout"]["comparison_period_control"] = True
+        candidates[index]["layout"]["selected_as_latest_explicit_period"] = False
+    return candidates
+
+
 def _validate_result(value: Any, spec: Mapping[str, Any] = _TANGIBLE_SPEC) -> dict[str, Any]:
     if type(value) is not dict or set(value) != _RESULT_FIELDS:
         raise _error("tangible-fixed-assets graph result fields drifted")
@@ -634,7 +776,12 @@ def _build_variant_graph_document_v1(pages: Any, spec: Mapping[str, Any]) -> dic
         for line in page["lines"]
         if _is_owner(line["normalized_text"], spec) and _owner_layout_eligible(line, page, spec)
     ]
-    candidates = [_region(owner, normalized_pages, spec) for owner in owners]
+    records = []
+    for owner in owners:
+        window, rotated = _candidate_window(owner, normalized_pages, spec)
+        candidate = _region_from_window(owner, window, rotated=rotated, spec=spec)
+        records.append((candidate, _local_period_end_rank(owner, window, spec)))
+    candidates = _select_latest_explicit_period_region(records, spec)
     regions = [candidate for candidate in candidates if candidate["complete"]]
     near_regions = [candidate for candidate in candidates if not candidate["complete"]]
     material = {
@@ -669,10 +816,20 @@ def _build_variant_graph_document_v1(pages: Any, spec: Mapping[str, Any]) -> dic
     )
 
 
-def build_tangible_fixed_assets_variant_graph_document_v1(pages: Any) -> dict[str, Any]:
+def _tangible_spec(variant_profile: str) -> Mapping[str, Any]:
+    if variant_profile == CURRENT_VARIANT_PROFILE:
+        return _TANGIBLE_SPEC
+    if variant_profile == REPORTING_PERIOD_GENERAL_VARIANT_PROFILE:
+        return _TANGIBLE_REPORTING_PERIOD_GENERAL_SPEC
+    raise _error("tangible-fixed-assets variant profile drifted")
+
+
+def build_tangible_fixed_assets_variant_graph_document_v1(
+    pages: Any, *, variant_profile: str = CURRENT_VARIANT_PROFILE
+) -> dict[str, Any]:
     """Enumerate every complete and near-complete tangible-asset region."""
 
-    return _build_variant_graph_document_v1(pages, _TANGIBLE_SPEC)
+    return _build_variant_graph_document_v1(pages, _tangible_spec(variant_profile))
 
 
 def build_leased_fixed_assets_variant_graph_document_v1(pages: Any) -> dict[str, Any]:
@@ -860,12 +1017,18 @@ def build_investment_property_variant_graph_document_v1(pages: Any) -> dict[str,
 
 
 def validate_tangible_fixed_assets_variant_graph_replay_v1(
-    value: Any, pages: Any
+    value: Any,
+    pages: Any,
+    *,
+    variant_profile: str = CURRENT_VARIANT_PROFILE,
 ) -> dict[str, Any]:
     """Rebuild the graph from the complete PDF and require typed equality."""
 
-    supplied = _validate_result(value)
-    rebuilt = build_tangible_fixed_assets_variant_graph_document_v1(pages)
+    spec = _tangible_spec(variant_profile)
+    supplied = _validate_result(value, spec)
+    rebuilt = build_tangible_fixed_assets_variant_graph_document_v1(
+        pages, variant_profile=variant_profile
+    )
     if not same_typed_json_v1(supplied, rebuilt):
         raise _error("tangible-fixed-assets graph does not replay exactly")
     return supplied

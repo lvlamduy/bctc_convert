@@ -85,6 +85,37 @@ def _variant(*, optional_other: bool = True) -> list[str]:
     return result
 
 
+def _annual_variant(year: int) -> list[str]:
+    return [
+        "TÀI SẢN CỐ ĐỊNH HỮU HÌNH",
+        f"Biến động trong năm kết thúc ngày 31 tháng 12 năm {year}",
+        "Triệu đồng",
+        "Nguyên giá",
+        "Số dư đầu năm",
+        "1.000",
+        "Mua trong năm",
+        "100",
+        "Thanh lý, nhượng bán",
+        "(20)",
+        "Số dư cuối năm",
+        "1.080",
+        "Giá trị hao mòn lũy kế",
+        "Số đầu năm",
+        "400",
+        "Khấu hao trong năm",
+        "50",
+        "Thanh lý",
+        "(10)",
+        "Số cuối năm",
+        "440",
+        "Giá trị còn lại",
+        "Số dư đầu năm",
+        "600",
+        "Số dư cuối năm",
+        "640",
+    ]
+
+
 @pytest.mark.parametrize("optional_other", [False, True])
 def test_one_generic_graph_accepts_optional_movements(optional_other: bool) -> None:
     result = matcher.build_tangible_fixed_assets_variant_graph_document_v1(
@@ -135,6 +166,66 @@ def test_comparative_continuation_is_one_region_not_a_second_match() -> None:
         result["regions"][0]["layout"]["presentation"]
         == "CURRENT_TABLE_WITH_COMPARATIVE_CONTINUATION"
     )
+
+
+def test_reporting_period_general_profile_accepts_annual_balance_labels() -> None:
+    result = matcher.build_tangible_fixed_assets_variant_graph_document_v1(
+        [
+            _page(
+                [
+                    *_annual_variant(2025),
+                    "Nguyên giá TSCĐ hữu hình đã khấu hao hết nhưng vẫn còn sử dụng",
+                    "99",
+                ]
+            )
+        ],
+        variant_profile=matcher.REPORTING_PERIOD_GENERAL_VARIANT_PROFILE,
+    )
+
+    assert result["format_version"] == matcher.REPORTING_PERIOD_GENERAL_FORMAT_VERSION
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert {"OPENING", "ENDING", "PURCHASE", "DEPRECIATION"}.issubset(
+        result["regions"][0]["layout"]["movement_roles"]
+    )
+
+
+def test_reporting_period_general_profile_derives_arbitrary_dates_chronologically() -> None:
+    texts = [
+        text.replace("30 tháng 06 năm 2026", "30 tháng 09 năm 2027")
+        .replace("Số dư đầu kỳ", "Tại ngày 01/01/2027")
+        .replace("Số dư cuối kỳ", "Tại ngày 30/09/2027")
+        .replace("Tại ngày đầu kỳ", "Tại ngày 01/01/2027")
+        .replace("Tại ngày cuối kỳ", "Tại ngày 30/09/2027")
+        for text in _variant()
+    ]
+    result = matcher.build_tangible_fixed_assets_variant_graph_document_v1(
+        [_page(texts)],
+        variant_profile=matcher.REPORTING_PERIOD_GENERAL_VARIANT_PROFILE,
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert {"OPENING", "ENDING"}.issubset(result["regions"][0]["layout"]["movement_roles"])
+
+
+def test_reporting_period_general_profile_selects_latest_local_table() -> None:
+    result = matcher.build_tangible_fixed_assets_variant_graph_document_v1(
+        [
+            _page(_annual_variant(2025), page_sequence=1),
+            _page(_annual_variant(2024), page_sequence=2),
+        ],
+        variant_profile=matcher.REPORTING_PERIOD_GENERAL_VARIANT_PROFILE,
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["regions"][0]["owner"]["page_sequence"] == 1
+    assert result["regions"][0]["layout"]["selected_as_latest_explicit_period"] is True
+    comparison = next(
+        region
+        for region in result["near_regions"]
+        if region["layout"].get("comparison_period_control") is True
+    )
+    assert comparison["owner"]["page_sequence"] == 2
+    assert comparison["complete"] is False
 
 
 def test_rotated_source_axis_uses_coordinates_not_broken_source_order() -> None:

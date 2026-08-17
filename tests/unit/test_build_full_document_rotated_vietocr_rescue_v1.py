@@ -150,6 +150,30 @@ def test_current_full_document_index_selects_exact_rotated_denominator() -> None
     ]
 
 
+def test_annual_profile_reuses_same_geometry_rule_on_exact_full_corpus() -> None:
+    try:
+        rescue._activate_profile("annual-2025")
+        index, reference = rescue._source_index()
+        selected = rescue._selected_pages(index)
+
+        assert reference == {
+            "path": rescue.ANNUAL_2025_SOURCE_INDEX_PATH.as_posix(),
+            "sha256": rescue.ANNUAL_2025_SOURCE_INDEX_SHA256,
+            "size_bytes": rescue.ANNUAL_2025_SOURCE_INDEX_SIZE,
+        }
+        assert len(selected) == rescue.ANNUAL_2025_EXPECTED_PAGE_COUNT == 25
+        assert (
+            sum(len(page["lines"]) for page in selected)
+            == rescue.ANNUAL_2025_EXPECTED_LINE_COUNT
+            == 3_338
+        )
+        assert {(page["document_ordinal"], page["physical_page"]) for page in selected}.issuperset(
+            {(6, 48), (7, 47), (8, 42)}
+        )
+    finally:
+        rescue._activate_profile("wave1")
+
+
 def test_reader_surface_is_reference_blind() -> None:
     assert rescue._REQUEST_SAMPLE_FIELDS == {
         "category",

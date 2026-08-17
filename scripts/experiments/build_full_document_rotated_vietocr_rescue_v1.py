@@ -66,6 +66,30 @@ MINIMUM_VERTICAL_PERCENT = 85
 EXPECTED_PAGE_COUNT = 15
 EXPECTED_LINE_COUNT = 1_863
 ROTATION = "CLOCKWISE_90_DEGREES"
+ANNUAL_2025_SOURCE_INDEX_PATH = Path(
+    "output/calibration/annual-2025-8bank-full-document-vietocr-v1/verified-index/"
+    "semantic_index.json"
+)
+ANNUAL_2025_OUTPUT_ROOT = Path(
+    "output/calibration/annual-2025-8bank-full-document-rotated-vietocr-rescue-v1"
+)
+ANNUAL_2025_SOURCE_INDEX_SHA256 = "98bb9854e699230da86538cf024ef3f4817b9e2f4dd2b2a75f46198f00e4247d"
+ANNUAL_2025_SOURCE_INDEX_SIZE = 30_802_711
+ANNUAL_2025_SOURCE_SEMANTIC_AXIS_SHA256 = (
+    "aa81f553fda69315e84b7adbda13347c25a4490b016fc9660ff4f2cd49795ce7"
+)
+ANNUAL_2025_EXPECTED_PAGE_COUNT = 25
+ANNUAL_2025_EXPECTED_LINE_COUNT = 3_338
+_ACTIVE_PROFILE = "wave1"
+_WAVE1_PROFILE = {
+    "expected_line_count": EXPECTED_LINE_COUNT,
+    "expected_page_count": EXPECTED_PAGE_COUNT,
+    "output_root": OUTPUT_ROOT,
+    "source_index_path": SOURCE_INDEX_PATH,
+    "source_index_sha256": SOURCE_INDEX_SHA256,
+    "source_index_size": SOURCE_INDEX_SIZE,
+    "source_semantic_axis_sha256": SOURCE_SEMANTIC_AXIS_SHA256,
+}
 _SAMPLE_RE = re.compile(r"^rotated-sample-[0-9]{8}$")
 _SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 _REF_FIELDS = {"path", "sha256", "size_bytes"}
@@ -157,6 +181,47 @@ class FullDocumentRotatedVietOCRRescueV1Error(RuntimeError):
 
 def _error(message: str) -> FullDocumentRotatedVietOCRRescueV1Error:
     return FullDocumentRotatedVietOCRRescueV1Error(message)
+
+
+def _activate_profile(profile: str) -> None:
+    """Select one pinned corpus; the geometry rule and reader stay identical."""
+
+    global _ACTIVE_PROFILE
+    global EXPECTED_LINE_COUNT
+    global EXPECTED_PAGE_COUNT
+    global MANIFEST_PATH
+    global OUTPUT_ROOT
+    global READER_OUTPUT
+    global REQUEST_PATH
+    global SOURCE_INDEX_PATH
+    global SOURCE_INDEX_SHA256
+    global SOURCE_INDEX_SIZE
+    global SOURCE_SEMANTIC_AXIS_SHA256
+    if profile == "wave1":
+        values = _WAVE1_PROFILE
+    elif profile == "annual-2025":
+        values = {
+            "expected_line_count": ANNUAL_2025_EXPECTED_LINE_COUNT,
+            "expected_page_count": ANNUAL_2025_EXPECTED_PAGE_COUNT,
+            "output_root": ANNUAL_2025_OUTPUT_ROOT,
+            "source_index_path": ANNUAL_2025_SOURCE_INDEX_PATH,
+            "source_index_sha256": ANNUAL_2025_SOURCE_INDEX_SHA256,
+            "source_index_size": ANNUAL_2025_SOURCE_INDEX_SIZE,
+            "source_semantic_axis_sha256": ANNUAL_2025_SOURCE_SEMANTIC_AXIS_SHA256,
+        }
+    else:
+        raise _error(f"unsupported rotated-rescue profile: {profile}")
+    _ACTIVE_PROFILE = profile
+    EXPECTED_LINE_COUNT = values["expected_line_count"]
+    EXPECTED_PAGE_COUNT = values["expected_page_count"]
+    OUTPUT_ROOT = values["output_root"]
+    SOURCE_INDEX_PATH = values["source_index_path"]
+    SOURCE_INDEX_SHA256 = values["source_index_sha256"]
+    SOURCE_INDEX_SIZE = values["source_index_size"]
+    SOURCE_SEMANTIC_AXIS_SHA256 = values["source_semantic_axis_sha256"]
+    MANIFEST_PATH = OUTPUT_ROOT / "crop_manifest.json"
+    REQUEST_PATH = OUTPUT_ROOT / "reader_request.json"
+    READER_OUTPUT = OUTPUT_ROOT / "reader-output"
 
 
 def _git(*args: str) -> str:
@@ -841,10 +906,12 @@ def read_verified_full_document_rotated_vietocr_rescue_v1() -> dict[str, Any]:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--profile", choices=("wave1", "annual-2025"), default="wave1")
     action = parser.add_mutually_exclusive_group()
     action.add_argument("--build", action="store_true")
     action.add_argument("--verify", action="store_true")
     args = parser.parse_args()
+    _activate_profile(args.profile)
     if args.build:
         result = build_full_document_rotated_vietocr_rescue_v1()
     elif args.verify:

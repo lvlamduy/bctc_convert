@@ -32,7 +32,13 @@ DEFAULT_INPUT = Path(
 DEFAULT_RESCUE_ROOT = Path("output/development/vib-page37-rotated-vietocr-v1")
 FORMAT_VERSION = "TANGIBLE_FIXED_ASSETS_8DOCUMENT_FULL_VIETOCR_STRUCTURE_SCAN_V1"
 MATCHER_FORMAT = "TANGIBLE_FIXED_ASSETS_VARIANT_GRAPH_DOCUMENT_V1"
+MATCHER_VARIANT_PROFILE = "CURRENT_V1"
+_MATCHER_FORMAT_BY_PROFILE = {
+    "CURRENT_V1": MATCHER_FORMAT,
+    "REPORTING_PERIOD_GENERAL_V2": "TANGIBLE_FIXED_ASSETS_VARIANT_GRAPH_DOCUMENT_V2",
+}
 RESCUE_FORMAT = "ROTATED_VIETOCR_SEMANTIC_RESCUE_PROJECTION_V1"
+FULL_DOCUMENT_RESCUE_FORMAT = "FULL_DOCUMENT_ROTATED_VIETOCR_RESCUE_PROJECTION_V1"
 CLAIM_BOUNDARY = (
     "FRESH_VIETOCR_TRANSFORMER_COMPLETE_PDF_SHARED_TANGIBLE_FIXED_ASSET_"
     "OWNER_COST_ACCUMULATED_DEPRECIATION_CARRYING_VALUE_OPTIONAL_MOVEMENTS_"
@@ -194,6 +200,25 @@ def _matcher() -> ModuleType:
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
+
+
+def _full_document_rescue_builder() -> ModuleType:
+    path = PROJECT_ROOT / "scripts/experiments/build_full_document_rotated_vietocr_rescue_v1.py"
+    spec = importlib.util.spec_from_file_location(
+        "full_document_rotated_rescue_for_tangible_scan", path
+    )
+    if spec is None or spec.loader is None:
+        raise _error(f"cannot load full-document rotated-rescue builder: {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _read_annual_full_document_rotated_rescue() -> dict[str, Any]:
+    builder = _full_document_rescue_builder()
+    builder._activate_profile("annual-2025")
+    return builder.read_verified_full_document_rotated_vietocr_rescue_v1()
 
 
 def _document(items: Any, source_sha256: str) -> dict[str, Any]:
@@ -456,23 +481,94 @@ def _profile_rescue(
         == "WAVE1_8DOCUMENT_VIETOCR_TRANSFORMER_SEMANTIC_INDEX_V1"
     ):
         return authenticate_rotated_vietocr_semantic_rescue_v1(semantic_index, rescue_root)
+    if (
+        type(semantic_index) is dict
+        and semantic_index.get("format_version")
+        == "ANNUAL_2025_8DOCUMENT_VIETOCR_TRANSFORMER_SEMANTIC_INDEX_V1"
+    ):
+        return _read_annual_full_document_rotated_rescue()
     return None
 
 
+def _full_rescue_by_locator(
+    rescue: dict[str, Any], semantic_axis_sha256: str
+) -> dict[tuple[int, int, int], dict[str, Any]]:
+    if (
+        type(rescue) is not dict
+        or rescue.get("format_version") != FULL_DOCUMENT_RESCUE_FORMAT
+        or rescue.get("state") != "VERIFIED_ROTATED_VIETOCR_SEMANTIC_RESCUE_COMPLETE"
+        or rescue.get("source_semantic_axis_sha256") != semantic_axis_sha256
+        or type(rescue.get("samples")) is not list
+        or type(rescue.get("metrics")) is not dict
+        or rescue["metrics"].get("line_count") != len(rescue["samples"])
+    ):
+        raise _error("full-document rotated semantic rescue identity drifted")
+    result: dict[tuple[int, int, int], dict[str, Any]] = {}
+    for sample in rescue["samples"]:
+        if (
+            type(sample) is not dict
+            or type(sample.get("document_ordinal")) is not int
+            or type(sample.get("physical_page")) is not int
+            or type(sample.get("source_line_index")) is not int
+            or type(sample.get("semantic_text")) is not str
+        ):
+            raise _error("full-document rotated semantic rescue sample drifted")
+        key = (
+            sample["document_ordinal"],
+            sample["physical_page"],
+            sample["source_line_index"],
+        )
+        if key in result:
+            raise _error("full-document rotated semantic rescue repeats one source line")
+        result[key] = sample
+    return result
+
+
 def _matcher_pages(
-    document: dict[str, Any], rescue: dict[str, Any] | None
+    document: dict[str, Any],
+    rescue: dict[str, Any] | None,
+    full_rescue_by_locator: dict[tuple[int, int, int], dict[str, Any]] | None = None,
 ) -> tuple[list[dict[str, Any]], int]:
-    applies = rescue is not None and document["source_pdf"]["sha256"] == rescue["source_pdf_sha256"]
+    applies = (
+        rescue is not None
+        and rescue.get("format_version") == RESCUE_FORMAT
+        and document["source_pdf"]["sha256"] == rescue["source_pdf_sha256"]
+    )
     rescue_by_index = (
         {sample["source_line_index"]: sample for sample in rescue["samples"]} if applies else {}
     )
     applied_count = 0
     pages = []
     for page in document["pages"]:
+        full_page_count = (
+            0
+            if full_rescue_by_locator is None
+            else sum(
+                (
+                    document["document_ordinal"],
+                    page["page_sequence"],
+                    line["source_line_index"],
+                )
+                in full_rescue_by_locator
+                for line in page["lines"]
+            )
+        )
+        if full_page_count not in {0, len(page["lines"])}:
+            raise _error("full-document rotated rescue must cover one complete page denominator")
         rescue_page = applies and page["page_sequence"] == rescue["physical_page"]
         lines = []
         for line in page["lines"]:
-            sample = rescue_by_index.get(line["source_line_index"]) if rescue_page else None
+            sample = (
+                full_rescue_by_locator.get(
+                    (
+                        document["document_ordinal"],
+                        page["page_sequence"],
+                        line["source_line_index"],
+                    )
+                )
+                if full_rescue_by_locator is not None
+                else (rescue_by_index.get(line["source_line_index"]) if rescue_page else None)
+            )
             if sample is not None:
                 semantic_text = sample["semantic_text"]
                 semantic_source = "ROTATED_FRESH_VIETOCR_TRANSFORMER_RESCUE"
@@ -535,6 +631,9 @@ def _validate_result(value: Any) -> dict[str, Any]:
         or (value["input_rescue"] is not None and type(value["input_rescue"]) is not dict)
     ):
         raise _error("tangible-fixed-assets scan identity or authority drifted")
+    expected_matcher_format = _MATCHER_FORMAT_BY_PROFILE.get(MATCHER_VARIANT_PROFILE)
+    if expected_matcher_format is None:
+        raise _error("tangible-fixed-assets matcher variant profile drifted")
     for ordinal, (trial, code) in enumerate(
         zip(value["trials"], EXPECTED_DOCUMENT_ORDER, strict=True), 1
     ):
@@ -552,7 +651,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
             or trial["document_provenance"] != code
             or type(trial["rotated_rescue_line_count"]) is not int
             or type(result) is not dict
-            or result.get("format_version") != MATCHER_FORMAT
+            or result.get("format_version") != expected_matcher_format
         ):
             raise _error("tangible-fixed-assets scan trial identity drifted")
     if not same_typed_json_v1(value["metrics"], _metrics(value["trials"])):
@@ -569,12 +668,21 @@ def build_tangible_fixed_assets_full_document_scan_v1(
 ) -> dict[str, Any]:
     """Build the exact eight-document structural scan."""
 
+    if rescue is not None and type(rescue) is not dict:
+        raise _error("rotated semantic rescue must be one exact object")
     axis = project_full_document_vietocr_accounting_axis_v1(semantic_index)
     matcher = _matcher()
+    full_rescue_by_locator = (
+        _full_rescue_by_locator(rescue, axis["semantic_axis_sha256"])
+        if rescue is not None and rescue.get("format_version") == FULL_DOCUMENT_RESCUE_FORMAT
+        else None
+    )
     trials = []
     for document in axis["documents"]:
-        pages, applied_count = _matcher_pages(document, rescue)
-        result = matcher.build_tangible_fixed_assets_variant_graph_document_v1(pages)
+        pages, applied_count = _matcher_pages(document, rescue, full_rescue_by_locator)
+        result = matcher.build_tangible_fixed_assets_variant_graph_document_v1(
+            pages, variant_profile=MATCHER_VARIANT_PROFILE
+        )
         trials.append(
             {
                 "document_ordinal": document["document_ordinal"],
@@ -584,17 +692,26 @@ def build_tangible_fixed_assets_full_document_scan_v1(
                 "source_pdf_sha256": document["source_pdf"]["sha256"],
             }
         )
-    rescue_ref = (
-        None
-        if rescue is None
-        else {
+    if full_rescue_by_locator is not None and sum(
+        trial["rotated_rescue_line_count"] for trial in trials
+    ) != len(full_rescue_by_locator):
+        raise _error("full-document rotated rescue denominator was not consumed exactly once")
+    rescue_ref = None
+    if rescue is not None and rescue.get("format_version") == RESCUE_FORMAT:
+        rescue_ref = {
             "input_refs": canonical_clone_v1(rescue["input_refs"]),
             "line_count": rescue["line_count"],
             "rescue_id": rescue["rescue_id"],
             "source_pdf_sha256": rescue["source_pdf_sha256"],
             "source_projection_sha256": rescue["source_projection_sha256"],
         }
-    )
+    elif full_rescue_by_locator is not None:
+        rescue_ref = {
+            "input_refs": canonical_clone_v1(rescue["input_refs"]),
+            "line_count": len(full_rescue_by_locator),
+            "projection_id": rescue["projection_id"],
+            "source_semantic_axis_sha256": rescue["source_semantic_axis_sha256"],
+        }
     material = {
         "authority": canonical_clone_v1(_AUTHORITY),
         "claim_boundary": CLAIM_BOUNDARY,
