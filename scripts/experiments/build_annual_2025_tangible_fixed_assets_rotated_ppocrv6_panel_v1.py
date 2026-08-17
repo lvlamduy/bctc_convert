@@ -43,8 +43,15 @@ SEMANTIC_INDEX_PATH = Path(
 CROP_MANIFEST_PATH = Path(
     "output/calibration/annual-2025-8bank-full-document-vietocr-v1/crop_manifest.json"
 )
+ROTATED_RESCUE_MANIFEST_PATH = Path(
+    "output/calibration/annual-2025-8bank-full-document-rotated-vietocr-rescue-v1/"
+    "crop_manifest.json"
+)
 EXPECTED_SEMANTIC_INDEX_SHA256 = "98bb9854e699230da86538cf024ef3f4817b9e2f4dd2b2a75f46198f00e4247d"
 EXPECTED_CROP_MANIFEST_SHA256 = "17d12a4d6b1dfaf0e243300757fd225b8c9cca80810a2d856efdb55a5b4ac000"
+EXPECTED_ROTATED_RESCUE_MANIFEST_SHA256 = (
+    "680c5981dcf0fba79b969fb33d14f15b418956d390cd541443475a4435289e45"
+)
 EXPECTED_SCAN_ID = "tfafdsv1:scan:3bbda7c0a4b2b6228cfeb9edbdd9209c2344fc88a8d90e8df3ce75873cb2ead2"
 EXPECTED_PAGE_COUNT = 3
 FORMAT_VERSION = "ANNUAL_2025_TANGIBLE_FIXED_ASSETS_ROTATED_PPOCRV6_PANEL_V1"
@@ -145,12 +152,22 @@ def _live_selection() -> tuple[list[dict[str, Any]], dict[str, Any]]:
     scanner.MATCHER_VARIANT_PROFILE = "REPORTING_PERIOD_GENERAL_V2"
     semantic_index, semantic_payload = _json(SEMANTIC_INDEX_PATH, EXPECTED_SEMANTIC_INDEX_SHA256)
     crop_manifest, crop_payload = _json(CROP_MANIFEST_PATH, EXPECTED_CROP_MANIFEST_SHA256)
+    rotated_manifest, rotated_manifest_payload = _json(
+        ROTATED_RESCUE_MANIFEST_PATH, EXPECTED_ROTATED_RESCUE_MANIFEST_SHA256
+    )
     scan = scanner.build_live_tangible_fixed_assets_full_document_scan_v1(SEMANTIC_INDEX_PATH)
     if scan.get("scan_id") != EXPECTED_SCAN_ID:
         raise _error("annual tangible-asset scan identity drifted")
     rescue = scanner._profile_rescue(semantic_index, scanner.DEFAULT_RESCUE_ROOT)
     if type(rescue) is not dict or type(rescue.get("samples")) is not list:
         raise _error("annual rotated semantic rescue is unavailable")
+    rotated_manifest_ref = _ref(ROTATED_RESCUE_MANIFEST_PATH, rotated_manifest_payload)
+    if not same_typed_json_v1(
+        rescue.get("input_refs", {}).get("crop_manifest"), rotated_manifest_ref
+    ):
+        raise _error("semantic rescue does not authenticate its rotated crop manifest")
+    if type(rotated_manifest.get("samples")) is not list:
+        raise _error("rotated crop manifest sample denominator drifted")
     rescue_pages = {
         (sample["document_ordinal"], sample["physical_page"]) for sample in rescue["samples"]
     }
@@ -178,6 +195,31 @@ def _live_selection() -> tuple[list[dict[str, Any]], dict[str, Any]]:
         ]
         if len(page_samples) != crop_page["line_count"]:
             raise _error("rotated rescue does not cover the complete selected page")
+        raw_rotated_samples = sorted(
+            (
+                sample
+                for sample in rotated_manifest["samples"]
+                if type(sample) is dict
+                and sample.get("document_ordinal") == document_ordinal
+                and sample.get("physical_page") == physical_page
+            ),
+            key=lambda sample: sample.get("source_line_index", -1),
+        )
+        page_samples = sorted(page_samples, key=lambda sample: sample.get("source_line_index", -1))
+        if len(raw_rotated_samples) != crop_page["line_count"]:
+            raise _error("rotated crop manifest does not cover the selected page")
+        for projected, raw in zip(page_samples, raw_rotated_samples, strict=True):
+            rotated_ref = raw.get("rotated_crop_ref")
+            source_ref = raw.get("source_crop_ref")
+            if (
+                type(rotated_ref) is not dict
+                or set(rotated_ref) != _REF_FIELDS
+                or type(source_ref) is not dict
+                or set(source_ref) != _REF_FIELDS
+                or projected.get("source_line_index") != raw.get("source_line_index")
+                or projected.get("source_crop_sha256") != source_ref.get("sha256")
+            ):
+                raise _error("semantic rescue and rotated manifest line axes drifted")
         render_ref = canonical_clone_v1(crop_page["render_binding"])
         render_payload = _stable_bytes(Path(render_ref["path"]))
         if (
@@ -191,7 +233,7 @@ def _live_selection() -> tuple[list[dict[str, Any]], dict[str, Any]]:
                 "rotated_crop_sha256": sample["rotated_crop_ref"]["sha256"],
                 "source_line_index": sample["source_line_index"],
             }
-            for sample in page_samples
+            for sample in raw_rotated_samples
         ]
         selected.append(
             {
@@ -208,6 +250,7 @@ def _live_selection() -> tuple[list[dict[str, Any]], dict[str, Any]]:
         raise _error("rotated tangible-asset page denominator drifted")
     refs = {
         "crop_manifest": _ref(CROP_MANIFEST_PATH, crop_payload),
+        "rotated_rescue_crop_manifest": rotated_manifest_ref,
         "semantic_index": _ref(SEMANTIC_INDEX_PATH, semantic_payload),
         "structure_scan_id": EXPECTED_SCAN_ID,
     }
