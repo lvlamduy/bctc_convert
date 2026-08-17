@@ -358,13 +358,22 @@ sang annual-2025.
 
 ## 19. Tăng, giảm tài sản cố định thuê tài chính
 
-- **Đã xác minh:** Không có bank nào có bảng biến động TSCĐ thuê tài chính
-  chi tiết trong tám báo cáo đã cung cấp.
-- **Không có trong báo cáo:** ACB, MBB, VPB, HDB, VCB, CTG, BID và VIB.
-  Whole-PDF scan đã phân biệt các bảng TSCĐ hữu hình/vô hình với tên công ty
-  cho thuê tài chính, chính sách kế toán, dòng cho vay và thu nhập cho thuê tài
-  chính; các đối chứng gần này không được nâng thành family 896–912.
-- **Còn thiếu:** Không có khoản mục nguồn chờ map trong tám PDF đã bind.
+- **Đã map/xác minh trên BCTC hợp nhất kiểm toán annual-2025:** Không có bank
+  nào có bảng biến động TSCĐ thuê tài chính chi tiết để map.
+- **Không có trong báo cáo:** ACB, MBB, VPB, HDB, VCB, CTG, BID và VIB. Graph
+  chung quét toàn bộ tám PDF, kể cả các trang xoay và tiêu đề xuống dòng, rồi
+  xác nhận 0 complete/0 near giữa biên `TSCĐ hữu hình → TSCĐ vô hình`: ACB
+  p55→56, MBB p58→60, VPB p53→54, HDB p41→42, VCB p48→49, CTG p48→49, BID
+  p47→48 và VIB p42→43. Ba mươi dòng tên công ty, chính sách, cho vay hoặc thu
+  nhập cho thuê tài chính chỉ là đối chứng âm, không được nâng thành 896–912.
+- **Còn thiếu:** Không có khoản mục nguồn chờ map trong tám filing annual-2025.
+
+Kết quả exact-replay:
+`docs/experiments/E-0124-annual-2025-leased-fixed-assets-8bank-bound-report-absence-v1.json`.
+
+Kết quả trên tám filing hiện hành trước đó vẫn được giữ nguyên tại E-0070;
+việc thêm schema ngoài family không làm thay đổi snapshot Q2/2026 và VPB
+Q1/2026 đó.
 
 ## 20. Tăng, giảm tài sản cố định vô hình
 
@@ -997,7 +1006,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Chứng khoán đầu tư | ✓ p52–53 | ✓ p54–56 | ✓ p50–52 | ✓ p39–40 | ✓ p42–43 | ✓ p45–46 | ✓ p44–45 | ✓ p40–41 | 0 dòng; MBB gộp → 807, HDB cộng hai thành phần → 831 |
 | Đầu tư dài hạn khác | ✓ p54 | ✓ p57 | ✓ p52 | ✓ p41 | ✓ p44–45 | ✓ p47 | ✓ p45 | ✓ p41 | 0 dòng annual-2025; 28 mapping/56 ô/11 phương trình |
 | Tăng, giảm TSCĐ hữu hình | ✓ p55 | ✓ p58 | ✓ p53 | ✓ p41 | ✓ p48 | ✓ p48 | ✓ p47 | ✓ p42 | 0 dòng annual-2025; 105 mapping/32 phương trình; CTG/BID/VIB dùng numeric challenger trên ảnh xoay |
-| Tăng, giảm TSCĐ thuê tài chính | — | — | — | — | — | — | — | — | 0 dòng; cả 8 PDF xác nhận không có bảng chi tiết |
+| Tăng, giảm TSCĐ thuê tài chính | — p55→56 | — p58→60 | — p53→54 | — p41→42 | — p48→49 | — p48→49 | — p47→48 | — p42→43 | 0 dòng annual-2025; cả 8 PDF xác nhận không có bảng chi tiết |
 | Tăng, giảm TSCĐ vô hình | — | ✓ p39 | ✓\* p50 | — | — | — | — | ✓ p38 | 0 dòng; 32 mapping, 12 phương trình, 5 bank không có bảng; VPB là nguồn Q1 |
 | Tăng, giảm bất động sản đầu tư | — | ✓ p41 | — | — | — | — | — | — | 0 dòng; 9 mapping, 11 phương trình, 7 bank không có bảng chi tiết |
 | Tài sản Có khác | — | ✓ p42 | ✓\* p51–53 | — | — | — | — | ✓\* p39 | 12 dòng OPEN; 58 mapping, 30 phương trình, 5 bank không có bảng chi tiết; VPB là nguồn Q1 |

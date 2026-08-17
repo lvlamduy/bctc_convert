@@ -120,6 +120,47 @@ def test_owner_without_both_required_branches_stays_near_only() -> None:
     assert result["metrics"]["near_region_count"] == 1
 
 
+def test_reporting_period_profile_accepts_annual_labels_and_split_anchors() -> None:
+    texts = [
+        "TĂNG, GIẢM TÀI SẢN CỐ ĐỊNH THUÊ TÀI",
+        "CHÍNH",
+        "Cho năm kết thúc ngày 31 tháng 12 năm 2025",
+        "Triệu đồng",
+        "Nguyên",
+        "giá",
+        "Số dư đầu năm",
+        "1.000",
+        "Tài sản thuê tài chính tăng trong năm",
+        "100",
+        "Số dư cuối năm",
+        "1.100",
+        "Giá trị hao mòn",
+        "lũy kế",
+        "Số dư đầu năm",
+        "400",
+        "Khấu hao trong năm",
+        "50",
+        "Số dư cuối năm",
+        "450",
+    ]
+
+    current = matcher.build_leased_fixed_assets_variant_graph_document_v1([_page(texts)])
+    annual = matcher.build_leased_fixed_assets_variant_graph_document_v1(
+        [_page(texts)],
+        variant_profile=matcher.LEASED_REPORTING_PERIOD_GENERAL_VARIANT_PROFILE,
+    )
+
+    assert current["status"] == "UNRESOLVED_NO_COMPLETE_REGION"
+    assert annual["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert annual["format_version"] == "LEASED_FIXED_ASSETS_VARIANT_GRAPH_DOCUMENT_V2"
+    assert annual["regions"][0]["layout"]["movement_roles"] == [
+        "DEPRECIATION",
+        "ENDING",
+        "INCREASE",
+        "OPENING",
+    ]
+
+
 def test_leased_exact_replay_rejects_coordinated_result_rehash() -> None:
     pages = [_page(_variant())]
     result = matcher.build_leased_fixed_assets_variant_graph_document_v1(pages)

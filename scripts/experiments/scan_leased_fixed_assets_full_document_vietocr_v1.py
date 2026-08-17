@@ -30,6 +30,12 @@ DEFAULT_INPUT = Path(
 DEFAULT_RESCUE_ROOT = Path("output/development/vib-page37-rotated-vietocr-v1")
 FORMAT_VERSION = "LEASED_FIXED_ASSETS_8DOCUMENT_FULL_VIETOCR_STRUCTURE_SCAN_V1"
 MATCHER_FORMAT = "LEASED_FIXED_ASSETS_VARIANT_GRAPH_DOCUMENT_V1"
+MATCHER_VARIANT_PROFILE = "CURRENT_V1"
+_MATCHER_FORMAT_BY_PROFILE = {
+    "CURRENT_V1": MATCHER_FORMAT,
+    "REPORTING_PERIOD_GENERAL_V2": "LEASED_FIXED_ASSETS_VARIANT_GRAPH_DOCUMENT_V2",
+}
+SCAN_ID_PREFIX = "lfafdsv1:scan:"
 CLAIM_BOUNDARY = (
     "FRESH_VIETOCR_TRANSFORMER_COMPLETE_PDF_SHARED_FIXED_ASSET_ENGINE_LEASED_"
     "OWNER_COST_ACCUMULATED_DEPRECIATION_OPTIONAL_MOVEMENTS_AND_NEGATIVE_"
@@ -166,14 +172,15 @@ def _validate_result(value: Any) -> dict[str, Any]:
             or type(trial["negative_controls"]) is not list
             or type(trial["rotated_rescue_line_count"]) is not int
             or type(trial["matcher_result"]) is not dict
-            or trial["matcher_result"].get("format_version") != MATCHER_FORMAT
+            or trial["matcher_result"].get("format_version")
+            != _MATCHER_FORMAT_BY_PROFILE.get(MATCHER_VARIANT_PROFILE)
         ):
             raise _error("leased-fixed-assets trial identity drifted")
     if not same_typed_json_v1(value["metrics"], _metrics(value["trials"])):
         raise _error("leased-fixed-assets scan metrics drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("scan_id")
-    if identity != "lfafdsv1:scan:" + canonical_json_sha256_v1(material):
+    if identity != SCAN_ID_PREFIX + canonical_json_sha256_v1(material):
         raise _error("leased-fixed-assets scan identity drifted")
     return canonical_clone_v1(value)
 
@@ -186,10 +193,18 @@ def build_leased_fixed_assets_full_document_scan_v1(
     axis = project_full_document_vietocr_accounting_axis_v1(semantic_index)
     support = _support()
     matcher = _matcher()
+    full_rescue_by_locator = (
+        support._full_rescue_by_locator(rescue, axis["semantic_axis_sha256"])
+        if rescue is not None
+        and rescue.get("format_version") == support.FULL_DOCUMENT_RESCUE_FORMAT
+        else None
+    )
     trials = []
     for document in axis["documents"]:
-        pages, applied_count = support._matcher_pages(document, rescue)
-        result = matcher.build_leased_fixed_assets_variant_graph_document_v1(pages)
+        pages, applied_count = support._matcher_pages(document, rescue, full_rescue_by_locator)
+        result = matcher.build_leased_fixed_assets_variant_graph_document_v1(
+            pages, variant_profile=MATCHER_VARIANT_PROFILE
+        )
         trials.append(
             {
                 "document_ordinal": document["document_ordinal"],
@@ -200,17 +215,26 @@ def build_leased_fixed_assets_full_document_scan_v1(
                 "source_pdf_sha256": document["source_pdf"]["sha256"],
             }
         )
-    rescue_ref = (
-        None
-        if rescue is None
-        else {
+    if full_rescue_by_locator is not None and sum(
+        trial["rotated_rescue_line_count"] for trial in trials
+    ) != len(full_rescue_by_locator):
+        raise _error("full-document rotated rescue denominator was not consumed exactly once")
+    rescue_ref = None
+    if rescue is not None and rescue.get("format_version") == support.RESCUE_FORMAT:
+        rescue_ref = {
             "input_refs": canonical_clone_v1(rescue["input_refs"]),
             "line_count": rescue["line_count"],
             "rescue_id": rescue["rescue_id"],
             "source_pdf_sha256": rescue["source_pdf_sha256"],
             "source_projection_sha256": rescue["source_projection_sha256"],
         }
-    )
+    elif full_rescue_by_locator is not None:
+        rescue_ref = {
+            "input_refs": canonical_clone_v1(rescue["input_refs"]),
+            "line_count": len(full_rescue_by_locator),
+            "projection_id": rescue["projection_id"],
+            "source_semantic_axis_sha256": rescue["source_semantic_axis_sha256"],
+        }
     material = {
         "authority": canonical_clone_v1(_AUTHORITY),
         "claim_boundary": CLAIM_BOUNDARY,
@@ -223,7 +247,7 @@ def build_leased_fixed_assets_full_document_scan_v1(
         "trials": trials,
     }
     return _validate_result(
-        {**material, "scan_id": "lfafdsv1:scan:" + canonical_json_sha256_v1(material)}
+        {**material, "scan_id": SCAN_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 

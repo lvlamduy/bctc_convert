@@ -1094,6 +1094,20 @@ Current exact-replay result:
 
 ## Leased fixed assets (`LEASED_FIXED_ASSETS_ROLLFORWARD`)
 
+Annual-2025 exact-replay result:
+`docs/experiments/E-0124-annual-2025-leased-fixed-assets-8bank-bound-report-absence-v1.json`
+
+- The reporting-period-general graph scans all eight audited consolidated
+  annual-2025 PDFs, including split owner/branch lines and the complete rotated
+  VietOCR rescue denominator. It finds zero complete and zero near 896–912
+  regions. The automatically selected tangible→intangible boundaries are ACB
+  p55→56, MBB p58→60, VPB p53→54, HDB p41→42, VCB p48→49, CTG p48→49, BID
+  p47→48 and VIB p42→43.
+- Thirty finance-lease company, policy, lending and income lines remain exact
+  negative controls. No source row is OPEN and no mapping is manufactured.
+  The family-local schema projection is insensitive to unrelated global schema
+  insertions; live ReportNormId/name/parent compatibility is still required.
+
 Current exact-replay result:
 `docs/experiments/E-0070-leased-fixed-assets-8bank-bound-report-absence-v1.json`
 

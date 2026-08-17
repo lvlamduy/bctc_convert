@@ -31,6 +31,7 @@ __all__ = [
     "INTANGIBLE_FORMAT_VERSION",
     "INVESTMENT_PROPERTY_FORMAT_VERSION",
     "LEASED_FORMAT_VERSION",
+    "LEASED_REPORTING_PERIOD_GENERAL_VARIANT_PROFILE",
     "REPORTING_PERIOD_GENERAL_VARIANT_PROFILE",
     "TangibleFixedAssetsVariantGraphV1Error",
     "build_intangible_fixed_assets_variant_graph_document_v1",
@@ -49,7 +50,9 @@ REPORTING_PERIOD_GENERAL_FORMAT_VERSION = "TANGIBLE_FIXED_ASSETS_VARIANT_GRAPH_D
 CURRENT_VARIANT_PROFILE = "CURRENT_V1"
 REPORTING_PERIOD_GENERAL_VARIANT_PROFILE = "REPORTING_PERIOD_GENERAL_V2"
 LEASED_FORMAT_VERSION = "LEASED_FIXED_ASSETS_VARIANT_GRAPH_DOCUMENT_V1"
+LEASED_REPORTING_PERIOD_GENERAL_FORMAT_VERSION = "LEASED_FIXED_ASSETS_VARIANT_GRAPH_DOCUMENT_V2"
 LEASED_FAMILY_ID = "LEASED_FIXED_ASSET_MOVEMENT"
+LEASED_REPORTING_PERIOD_GENERAL_VARIANT_PROFILE = "REPORTING_PERIOD_GENERAL_V2"
 INTANGIBLE_FORMAT_VERSION = "INTANGIBLE_FIXED_ASSETS_VARIANT_GRAPH_DOCUMENT_V1"
 INTANGIBLE_FAMILY_ID = "INTANGIBLE_FIXED_ASSET_MOVEMENT"
 INVESTMENT_PROPERTY_FORMAT_VERSION = "INVESTMENT_PROPERTY_VARIANT_GRAPH_DOCUMENT_V1"
@@ -88,6 +91,12 @@ _LEASED_CLAIM_BOUNDARY = (
     "NUMERIC_SCHEMA_MAPPING_CANONICALIZATION_OR_EXPORT_AUTHORITY"
 )
 _LEASED_SAFETY = canonical_clone_v1(_SAFETY)
+_LEASED_REPORTING_PERIOD_GENERAL_SAFETY = {
+    **canonical_clone_v1(_LEASED_SAFETY),
+    "dated_balance_roles_derived_from_chronology_not_fixed_calendar_dates": True,
+    "latest_explicit_local_period_selects_current_table": True,
+    "relative_beginning_and_ending_year_labels_supported": True,
+}
 _INTANGIBLE_CLAIM_BOUNDARY = (
     "BANK_BLIND_COMPLETE_PDF_FRESH_VIETOCR_INTANGIBLE_FIXED_ASSET_OWNER_COST_"
     "ACCUMULATED_AMORTIZATION_CARRYING_VALUE_OPTIONAL_MOVEMENTS_ASSET_CLASS_"
@@ -181,6 +190,18 @@ _LEASED_SPEC = {
     "owner_reject_phrases": ("thong tin khac", "nguyen tac", "chinh sach"),
     "safety": _LEASED_SAFETY,
     "trailing_family_phrases": ("tai san co dinh vo hinh", "bat dong san dau tu"),
+}
+_LEASED_REPORTING_PERIOD_GENERAL_SPEC = {
+    **_LEASED_SPEC,
+    "adjacent_line_anchor_fusion": True,
+    "dynamic_dated_balance_roles": True,
+    "format_version": LEASED_REPORTING_PERIOD_GENERAL_FORMAT_VERSION,
+    "id_prefix": "lfavgv2:result:",
+    "latest_explicit_period_selects_current_region": True,
+    "period_pattern": _REPORTING_PERIOD_GENERAL_DATE,
+    "relative_year_balance_roles": True,
+    "rotated_coordinate_window": True,
+    "safety": _LEASED_REPORTING_PERIOD_GENERAL_SAFETY,
 }
 _INTANGIBLE_SPEC = {
     "claim_boundary": _INTANGIBLE_CLAIM_BOUNDARY,
@@ -326,6 +347,24 @@ def _pages(value: Any) -> list[dict[str, Any]]:
                 }
             )
             global_ordinal += 1
+        for index, line in enumerate(lines[:-1]):
+            following = lines[index + 1]
+            height = max(line["bbox"][3] - line["bbox"][1], 1)
+            following_height = max(following["bbox"][3] - following["bbox"][1], 1)
+            vertical_gap = following["bbox"][1] - line["bbox"][3]
+            horizontally_related = not (
+                following["bbox"][0] > line["bbox"][2] + max(height, following_height) * 2
+                or line["bbox"][0] > following["bbox"][2] + max(height, following_height) * 2
+            )
+            if (
+                -max(height, following_height) // 2
+                <= vertical_gap
+                <= max(height, following_height) * 2
+                and horizontally_related
+            ):
+                line["normalized_text_with_next"] = " ".join(
+                    part for part in (line["normalized_text"], following["normalized_text"]) if part
+                )
         pages.append(
             {
                 "lines": lines,
@@ -379,6 +418,30 @@ def _is_owner(text: str, spec: Mapping[str, Any] = _TANGIBLE_SPEC) -> bool:
     return len(value.split()) <= 11 and any(
         _near_phrase(value, phrase, allowance=2) for phrase in spec["owner_phrases"]
     )
+
+
+def _anchor_texts(line: Mapping[str, Any], spec: Mapping[str, Any]) -> tuple[str, ...]:
+    texts = [line["normalized_text"]]
+    fused = line.get("normalized_text_with_next")
+    if spec.get("adjacent_line_anchor_fusion", False) and type(fused) is str and fused:
+        texts.append(fused)
+    return tuple(texts)
+
+
+def _is_owner_line(line: Mapping[str, Any], spec: Mapping[str, Any]) -> bool:
+    return any(_is_owner(text, spec) for text in _anchor_texts(line, spec))
+
+
+def _is_next_family_line(line: Mapping[str, Any], spec: Mapping[str, Any]) -> bool:
+    return any(_is_next_family(text, spec) for text in _anchor_texts(line, spec))
+
+
+def _branch_role_line(line: Mapping[str, Any], spec: Mapping[str, Any]) -> str | None:
+    for text in _anchor_texts(line, spec):
+        role = _branch_role(text, spec)
+        if role is not None:
+            return role
+    return None
 
 
 def _owner_layout_eligible(
@@ -547,11 +610,8 @@ def _candidate_window(
             if _logical_position(line, rotated=True) < owner_position:
                 continue
             if line is not owner and (
-                (
-                    _is_owner(line["normalized_text"], spec)
-                    and _owner_layout_eligible(line, owner_page, spec)
-                )
-                or _is_next_family(line["normalized_text"], spec)
+                (_is_owner_line(line, spec) and _owner_layout_eligible(line, owner_page, spec))
+                or _is_next_family_line(line, spec)
             ):
                 break
             selected.append(line)
@@ -559,7 +619,7 @@ def _candidate_window(
     selected: list[Mapping[str, Any]] = []
     for page in pages[owner["page_sequence"] - 1 : owner["page_sequence"] - 1 + _MAX_REGION_PAGES]:
         if page["page_sequence"] != owner["page_sequence"] and any(
-            _is_next_family(line["normalized_text"], spec) for line in page["lines"]
+            _is_next_family_line(line, spec) for line in page["lines"]
         ):
             break
         for line in page["lines"]:
@@ -568,11 +628,11 @@ def _candidate_window(
                     continue
             if (
                 line is not owner
-                and _is_owner(line["normalized_text"], spec)
+                and _is_owner_line(line, spec)
                 and _owner_layout_eligible(line, page, spec)
             ):
                 break
-            if _is_next_family(line["normalized_text"], spec):
+            if _is_next_family_line(line, spec):
                 break
             selected.append(line)
     return selected, rotated
@@ -603,7 +663,7 @@ def _region_from_window(
     period_pattern = spec.get("period_pattern", _DATE)
     for line in window:
         text = line["normalized_text"]
-        branch = _branch_role(text, spec)
+        branch = _branch_role_line(line, spec)
         movement = _movement_role(text, spec)
         if movement is None:
             movement = dated_balance_roles.get(line["global_ordinal"])
@@ -710,7 +770,7 @@ def _local_period_end_rank(
     for line in window:
         if line["global_ordinal"] == owner["global_ordinal"]:
             continue
-        if _branch_role(line["normalized_text"], spec) is not None:
+        if _branch_role_line(line, spec) is not None:
             break
         dates.extend(parse_vietnamese_dates(line["semantic_text"]))
     if not dates:
@@ -800,7 +860,7 @@ def _build_variant_graph_document_v1(pages: Any, spec: Mapping[str, Any]) -> dic
         line
         for page in normalized_pages
         for line in page["lines"]
-        if _is_owner(line["normalized_text"], spec) and _owner_layout_eligible(line, page, spec)
+        if _is_owner_line(line, spec) and _owner_layout_eligible(line, page, spec)
     ]
     records = []
     for owner in owners:
@@ -858,10 +918,20 @@ def build_tangible_fixed_assets_variant_graph_document_v1(
     return _build_variant_graph_document_v1(pages, _tangible_spec(variant_profile))
 
 
-def build_leased_fixed_assets_variant_graph_document_v1(pages: Any) -> dict[str, Any]:
+def _leased_spec(variant_profile: str) -> Mapping[str, Any]:
+    if variant_profile == CURRENT_VARIANT_PROFILE:
+        return _LEASED_SPEC
+    if variant_profile == LEASED_REPORTING_PERIOD_GENERAL_VARIANT_PROFILE:
+        return _LEASED_REPORTING_PERIOD_GENERAL_SPEC
+    raise _error("leased-fixed-assets variant profile drifted")
+
+
+def build_leased_fixed_assets_variant_graph_document_v1(
+    pages: Any, *, variant_profile: str = CURRENT_VARIANT_PROFILE
+) -> dict[str, Any]:
     """Enumerate every complete and near-complete leased-asset region."""
 
-    return _build_variant_graph_document_v1(pages, _LEASED_SPEC)
+    return _build_variant_graph_document_v1(pages, _leased_spec(variant_profile))
 
 
 def build_intangible_fixed_assets_variant_graph_document_v1(pages: Any) -> dict[str, Any]:
@@ -974,7 +1044,7 @@ def build_investment_property_variant_graph_document_v1(pages: Any) -> dict[str,
         line
         for page in normalized_pages
         for line in page["lines"]
-        if _is_owner(line["normalized_text"], _INVESTMENT_PROPERTY_SPEC)
+        if _is_owner_line(line, _INVESTMENT_PROPERTY_SPEC)
         and _owner_layout_eligible(line, page, _INVESTMENT_PROPERTY_SPEC)
     ]
     regions: list[dict[str, Any]] = []
@@ -1060,11 +1130,19 @@ def validate_tangible_fixed_assets_variant_graph_replay_v1(
     return supplied
 
 
-def validate_leased_fixed_assets_variant_graph_replay_v1(value: Any, pages: Any) -> dict[str, Any]:
+def validate_leased_fixed_assets_variant_graph_replay_v1(
+    value: Any,
+    pages: Any,
+    *,
+    variant_profile: str = CURRENT_VARIANT_PROFILE,
+) -> dict[str, Any]:
     """Rebuild the leased-asset graph from the complete PDF."""
 
-    supplied = _validate_result(value, _LEASED_SPEC)
-    rebuilt = build_leased_fixed_assets_variant_graph_document_v1(pages)
+    spec = _leased_spec(variant_profile)
+    supplied = _validate_result(value, spec)
+    rebuilt = build_leased_fixed_assets_variant_graph_document_v1(
+        pages, variant_profile=variant_profile
+    )
     if not same_typed_json_v1(supplied, rebuilt):
         raise _error("leased-fixed-assets graph does not replay exactly")
     return supplied

@@ -26,6 +26,10 @@ from bctc_ai.source_structure.contracts_v1 import (
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 RESULT_PATH = Path("docs/experiments/E-0070-leased-fixed-assets-8bank-bound-report-absence-v1.json")
+EXPECTED_PERSISTED_RESULT = (
+    "fe02fb3a1413bf3ddd08d75c3f492a22eaae86554d070533eeab6c5a7274fa83",
+    19_948,
+)
 FORMAT_VERSION = "LEASED_FIXED_ASSETS_8BANK_BOUND_REPORT_ABSENCE_V1"
 CLAIM_BOUNDARY = (
     "FIXED_EIGHT_SUPPLIED_PDFS_COMPLETE_FRESH_VIETOCR_SHARED_FIXED_ASSET_"
@@ -145,7 +149,6 @@ def _scanner() -> ModuleType:
 
 def _schema_family() -> tuple[dict[str, Any], dict[str, Any]]:
     authority, by_id = _authority_snapshot(PROJECT_ROOT)
-    items = []
     for schema_id, (name, parent_id) in _EXPECTED_SCHEMA.items():
         item = by_id.get(schema_id)
         if (
@@ -155,17 +158,32 @@ def _schema_family() -> tuple[dict[str, Any], dict[str, Any]]:
             or item.statement_type != "TM"
         ):
             raise _error(f"live leased-fixed-assets schema binding drifted: {schema_id}")
-        items.append(
-            {
-                "canonical_name": item.canonical_name,
-                "children": list(item.children),
-                "display_order": item.display_order,
-                "hierarchy_level": item.hierarchy_level,
-                "parent_report_norm_id": item.parent_id,
-                "report_norm_id": item.schema_id,
-            }
-        )
-    return authority, {"first_report_norm_id": 896, "items": items, "last_report_norm_id": 912}
+    if type(authority) is not dict:
+        raise _error("live schema authority drifted")
+    scanner = _scanner()
+    persisted, _ = scanner._support()._fixed_json(RESULT_PATH, EXPECTED_PERSISTED_RESULT)
+    input_refs = persisted.get("input_refs")
+    snapshot_authority = input_refs.get("schema_authority") if type(input_refs) is dict else None
+    snapshot_family = persisted.get("schema_family")
+    if type(snapshot_authority) is not dict or type(snapshot_family) is not dict:
+        raise _error("pinned leased-fixed-assets schema snapshot drifted")
+    items = snapshot_family.get("items")
+    if (
+        snapshot_family.get("first_report_norm_id") != 896
+        or snapshot_family.get("last_report_norm_id") != 912
+        or type(items) is not list
+        or len(items) != len(_EXPECTED_SCHEMA)
+    ):
+        raise _error("pinned leased-fixed-assets family snapshot drifted")
+    for raw, (schema_id, (name, parent_id)) in zip(items, _EXPECTED_SCHEMA.items(), strict=True):
+        if (
+            type(raw) is not dict
+            or raw.get("report_norm_id") != schema_id
+            or raw.get("canonical_name") != name
+            or raw.get("parent_report_norm_id") != parent_id
+        ):
+            raise _error("pinned leased-fixed-assets family binding drifted")
+    return canonical_clone_v1(snapshot_authority), canonical_clone_v1(snapshot_family)
 
 
 def _line_ref(
