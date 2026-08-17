@@ -335,19 +335,26 @@ VPB của lượt đó là Q1/2026 và không bị relabel thành annual-2025.
 
 ## 18. Tăng, giảm tài sản cố định hữu hình
 
-- **Đã xác minh:** MBB p37, VPB p49 và VIB p37. Đã map 35 dòng giá
-  gốc/hao mòn lũy kế/giá trị còn lại; 12 phương trình tăng–giảm–cuối kỳ và
-  giá gốc trừ hao mòn đều đóng đúng. MBB p38 chỉ là vùng so sánh năm 2025,
-  không được trộn vào kỳ hiện tại.
-- **Không có trong báo cáo:** ACB, HDB, VCB, CTG và BID không trình bày bảng
-  biến động tài sản cố định hữu hình chi tiết trong các PDF đã cung cấp.
-- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong ba vùng có bảng.
-  Trang VIB xoay được nhận dạng lại bằng đúng VietOCR Transformer cho text và
-  PP-OCRv6 trên ảnh đã xoay cho số; bốn số sai từ OCR nguồn cũ đã được pixel và
-  quan hệ kế toán bác bỏ, không dùng Gemma để nhận số.
+- **Đã map/xác minh trên BCTC hợp nhất kiểm toán annual-2025:** ACB p55,
+  MBB p58, VPB p53, HDB p41, VCB p48, CTG p48, BID p47 và VIB p42. Một graph
+  chung tìm đúng một vùng hoàn chỉnh trên toàn bộ mỗi PDF; 105 mapping và 32
+  phương trình nguyên giá, hao mòn lũy kế và giá trị còn lại đóng chính xác.
+  Các dòng tăng/giảm tổng, mua mới, XDCB hoàn thành, phân loại lại, thanh lý,
+  tăng/giảm khác, chênh lệch tỷ giá và điều chỉnh kiểm toán chỉ xuất hiện khi
+  nguồn có in, không bị bắt buộc cho mọi bank.
+- **Không có:** Không có bank nào trong tám BCTC annual-2025 vắng family này.
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong tám vùng annual-2025.
+  CTG, BID và VIB có trục nguồn xoay; PP-OCRv6 chạy trên ảnh xoay làm numeric
+  challenger. VietOCR đọc thiếu chữ số VIB `164.02`, còn pixel/PP-OCRv6 đọc
+  `164.021` và toàn bộ roll-forward chỉ đóng với `164.021`.
 
-Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
-Q1/2026, không relabel thành Q2/2026.
+Kết quả exact-replay:
+`docs/experiments/E-0123-annual-2025-tangible-fixed-assets-8bank-codex-verified-mapping-v1.json`.
+
+Lượt BCTC hiện hành trước đó tại MBB p37, VPB p49 và VIB p37 vẫn giữ nguyên
+35 mapping/12 phương trình. VPB của lượt đó là Q1/2026; ACB/HDB/VCB/CTG/BID
+chỉ là bounded absence trong đúng các filing hiện hành đó, không bị suy rộng
+sang annual-2025.
 
 ## 19. Tăng, giảm tài sản cố định thuê tài chính
 
@@ -989,7 +996,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Tiền gửi khách hàng | ✓ p21 | ✓ p43 | ✓\* p55 | ✓ p31 | ✓ p35 | ✓ p42 | ✓ p25 | ✓ p41–42 | 0 dòng; VPB là nguồn Q1 |
 | Chứng khoán đầu tư | ✓ p52–53 | ✓ p54–56 | ✓ p50–52 | ✓ p39–40 | ✓ p42–43 | ✓ p45–46 | ✓ p44–45 | ✓ p40–41 | 0 dòng; MBB gộp → 807, HDB cộng hai thành phần → 831 |
 | Đầu tư dài hạn khác | ✓ p54 | ✓ p57 | ✓ p52 | ✓ p41 | ✓ p44–45 | ✓ p47 | ✓ p45 | ✓ p41 | 0 dòng annual-2025; 28 mapping/56 ô/11 phương trình |
-| Tăng, giảm TSCĐ hữu hình | — | ✓ p37 | ✓\* p49 | — | — | — | — | ✓ p37 | 0 dòng; 5 bank xác nhận không có bảng chi tiết; VPB là nguồn Q1 |
+| Tăng, giảm TSCĐ hữu hình | ✓ p55 | ✓ p58 | ✓ p53 | ✓ p41 | ✓ p48 | ✓ p48 | ✓ p47 | ✓ p42 | 0 dòng annual-2025; 105 mapping/32 phương trình; CTG/BID/VIB dùng numeric challenger trên ảnh xoay |
 | Tăng, giảm TSCĐ thuê tài chính | — | — | — | — | — | — | — | — | 0 dòng; cả 8 PDF xác nhận không có bảng chi tiết |
 | Tăng, giảm TSCĐ vô hình | — | ✓ p39 | ✓\* p50 | — | — | — | — | ✓ p38 | 0 dòng; 32 mapping, 12 phương trình, 5 bank không có bảng; VPB là nguồn Q1 |
 | Tăng, giảm bất động sản đầu tư | — | ✓ p41 | — | — | — | — | — | — | 0 dòng; 9 mapping, 11 phương trình, 7 bank không có bảng chi tiết |

@@ -62,6 +62,16 @@ bind ảnh; dấu `-` so sánh CAEX tại VPB chỉ dùng để đóng subtotal 
 được biến thành một khoản mục schema riêng. Vì không có issue mới, tổng ledger
 và open queue ở đầu file không thay đổi.
 
+E-0123 `Tăng, giảm tài sản cố định hữu hình` quét lại toàn bộ tám BCTC hợp nhất
+kiểm toán annual-2025 và tìm đúng một vùng tại ACB p55, MBB p58, VPB p53, HDB
+p41, VCB p48, CTG p48, BID p47 và VIB p42. 105 mapping và 32 phương trình
+roll-forward/carrying-value đã được pixel, PP-OCRv6, schema và accounting replay
+xác minh; không phát sinh dòng `OPEN` mới. CTG/BID/VIB dùng cùng một biến thể
+hình học xoay, không có routing theo bank/page. VietOCR proposal VIB `164.02`
+được giữ nguyên làm semantic evidence không đủ thẩm quyền số; numeric challenger
+đọc `164.021` và phương trình nguồn xác nhận giá trị đó. Vì không có issue mới,
+tổng ledger và open queue ở đầu file không thay đổi.
+
 E-0107 `Tiền, kim loại quý và đá quý` trên tám BCTC hợp nhất kiểm toán năm
 2025 không bổ sung dòng OPEN: whole-PDF graph tìm đúng một vùng tại ACB p45,
 MBB p46, VPB p41, HDB p33, VCB p35, CTG p39, BID p39 và VIB p35. 35 mapping

@@ -128,3 +128,14 @@ def test_exact_replay_rejects_coordinated_mapping_rehash(
         match="does not replay exactly",
     ):
         base.validate_tangible_fixed_assets_8bank_codex_verified_mapping_replay_v1(forged, *inputs)
+
+
+def test_persisted_artifacts_equal_the_live_replay(
+    live: tuple[object, tuple[object, ...], dict[str, object]],
+) -> None:
+    base, _, result = live
+    persisted_review, _ = base._stable_json(builder.REVIEW_PATH)
+    persisted_result, _ = base._stable_json(builder.RESULT_PATH)
+
+    assert persisted_review == base._review_blueprint()
+    assert persisted_result == result
