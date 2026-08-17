@@ -81,6 +81,16 @@ số nằm cùng câu được xử lý bằng một rule inline chung. VietOCR 
 `(65.998)`; pixel, PP-OCRv6 và phương trình đều khóa `(85.998)`. Kết quả
 Q2/2026 và VPB Q1/2026 cũ vẫn byte-exact; tổng ledger và open queue không đổi.
 
+E-0126 `Tăng, giảm bất động sản đầu tư` quét lại toàn bộ tám BCTC hợp nhất
+kiểm toán annual-2025 và tìm đúng hai vùng duy nhất tại ACB p57 và MBB p61.
+18 mapping cùng 27 phương trình được pixel, trục số PP-OCRv6 nguồn, family-local
+schema và accounting replay xác minh; không phát sinh dòng `OPEN`. ACB có hai
+bảng anh em `cho thuê`/`nắm giữ chờ tăng giá`: năm tổng family được cộng đúng
+một lần từ các component đã xác minh, còn DASH được bind bằng hình học hàng–cột
+trước khi chuẩn hóa 0. VPB/HDB/VCB/CTG/BID/VIB là bounded absence giữa family
+TSCĐ vô hình và Tài sản Có khác trong đúng filing annual-2025. E-0072 hiện hành
+vẫn byte-exact; tổng ledger và open queue không đổi.
+
 E-0107 `Tiền, kim loại quý và đá quý` trên tám BCTC hợp nhất kiểm toán năm
 2025 không bổ sung dòng OPEN: whole-PDF graph tìm đúng một vùng tại ACB p45,
 MBB p46, VPB p41, HDB p33, VCB p35, CTG p39, BID p39 và VIB p35. 35 mapping

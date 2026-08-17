@@ -65,6 +65,17 @@ REVIEW_PATH = Path("docs/experiments/E-0072-investment-property-8bank-codex-pixe
 RESULT_PATH = Path(
     "docs/experiments/E-0072-investment-property-8bank-codex-verified-mapping-v1.json"
 )
+EXPECTED_PERSISTED_RESULT = (
+    "2831f70486cdd624a222158f0aaffdb1340e378264fa31d688e4f435136b935d",
+    58_162,
+)
+SCHEMA_SNAPSHOT_RESULT_PATH = RESULT_PATH
+EXPECTED_SCHEMA_SNAPSHOT_RESULT = EXPECTED_PERSISTED_RESULT
+_RESULT_STATE = "INVESTMENT_PROPERTY_8BANK_CODEX_VERIFICATION_COMPLETE"
+_RESULT_ID_PREFIX = "e0072:result:"
+_REVIEW_STATE = "CODEX_VISIBLE_PDF_REVIEW_COMPLETE"
+_REVIEW_ID_PREFIX = "e0072:review:"
+_SOURCE_PERIOD_STATUS = "VERIFIED_SOURCE_PERIOD_Q2_2026"
 SEMANTIC_INDEX_PATH = scanner.DEFAULT_INPUT
 CROP_MANIFEST_PATH = Path(
     "output/development/loan-maturity-full-document-vietocr-v1/crop_manifest.json"
@@ -193,7 +204,6 @@ _SCHEMA_EXPECTED = {
     5973: ("Số dư đầu kỳ", 5972),
     5974: ("Số dư cuối kỳ", 5972),
 }
-_SCHEMA_ORDER = tuple(_SCHEMA_EXPECTED)
 _MAPPED_SCHEMA_IDS = frozenset({944, 6002, 6004, 955, 957, 6005, 965, 5973, 5974})
 _BOUNDARIES = {
     "ACB": (
@@ -235,6 +245,18 @@ def _error(message: str) -> InvestmentProperty8BankCodexVerifiedMappingV1Error:
     return InvestmentProperty8BankCodexVerifiedMappingV1Error(message)
 
 
+def _iso_period_end(value: Any) -> list[int]:
+    if type(value) is not str:
+        raise _error("reviewed source period must be one ISO date")
+    try:
+        year, month, day = (int(part) for part in value.split("-"))
+    except (TypeError, ValueError):
+        raise _error("reviewed source period must be one ISO date") from None
+    if not (1900 <= year <= 2200 and 1 <= month <= 12 and 1 <= day <= 31):
+        raise _error("reviewed source period is outside the supported date domain")
+    return [year, month, day]
+
+
 def _value(line_index: int, pixel_transcription: str) -> dict[str, Any]:
     return {
         "line_index": line_index,
@@ -249,6 +271,34 @@ def _dash_value(pixel_bbox: Sequence[int]) -> dict[str, Any]:
         "line_index": None,
         "pixel_bbox": list(pixel_bbox),
         "pixel_transcription": "-",
+        "ppocr_rotated_line_index": None,
+    }
+
+
+def _grid_dash_value(
+    row_label_line_index: int, column_value_anchor_line_index: int
+) -> dict[str, Any]:
+    """Describe a dash by its row and right-aligned value column, not fixed pixels."""
+
+    return {
+        "column_value_anchor_line_index": column_value_anchor_line_index,
+        "line_index": None,
+        "pixel_transcription": "-",
+        "ppocr_rotated_line_index": None,
+        "row_label_line_index": row_label_line_index,
+    }
+
+
+def _aggregate_value(components: Sequence[dict[str, Any]]) -> dict[str, Any]:
+    """Describe a controlled sum of independently visible source cells."""
+
+    if not components:
+        raise _error("aggregate value requires at least one visible component")
+    return {
+        "aggregate_components": [canonical_clone_v1(component) for component in components],
+        "aggregation": "SUM",
+        "line_index": None,
+        "pixel_transcription": None,
         "ppocr_rotated_line_index": None,
     }
 
@@ -495,9 +545,9 @@ def _review_blueprint() -> dict[str, Any]:
         "claim_boundary": CLAIM_BOUNDARY,
         "documents": _review_documents(),
         "format_version": REVIEW_FORMAT,
-        "state": "CODEX_VISIBLE_PDF_REVIEW_COMPLETE",
+        "state": _REVIEW_STATE,
     }
-    return {**material, "review_id": "e0072:review:" + canonical_json_sha256_v1(material)}
+    return {**material, "review_id": _REVIEW_ID_PREFIX + canonical_json_sha256_v1(material)}
 
 
 def _review(value: Any) -> dict[str, Any]:
@@ -507,8 +557,30 @@ def _review(value: Any) -> dict[str, Any]:
     return canonical_clone_v1(expected)
 
 
+def _pinned_schema_family() -> tuple[dict[str, Any], dict[str, Any]]:
+    payload = base.support._stable_bytes(SCHEMA_SNAPSHOT_RESULT_PATH)
+    if (hashlib.sha256(payload).hexdigest(), len(payload)) != EXPECTED_SCHEMA_SNAPSHOT_RESULT:
+        raise _error("pinned investment-property result identity drifted")
+    persisted = base.support._strict_json(payload, SCHEMA_SNAPSHOT_RESULT_PATH.as_posix())
+    input_refs = persisted.get("input_refs")
+    snapshot_authority = input_refs.get("schema_authority") if type(input_refs) is dict else None
+    snapshot_family = persisted.get("schema_family")
+    if type(snapshot_authority) is not dict or type(snapshot_family) is not dict:
+        raise _error("pinned investment-property schema snapshot drifted")
+    items = snapshot_family.get("items")
+    if (
+        snapshot_family.get("first_report_norm_id") != 942
+        or snapshot_family.get("last_report_norm_id") != 5974
+        or type(items) is not list
+        or [item.get("report_norm_id") for item in items if type(item) is dict]
+        != list(_SCHEMA_EXPECTED)
+        or snapshot_family.get("schema_authority") != snapshot_authority
+    ):
+        raise _error("pinned investment-property family snapshot drifted")
+    return canonical_clone_v1(snapshot_authority), canonical_clone_v1(snapshot_family)
+
+
 def _schema_family(schema_authority: Any, schema_by_id: Mapping[int, Any]) -> dict[str, Any]:
-    items = []
     for schema_id, (name, parent_id) in _SCHEMA_EXPECTED.items():
         item = schema_by_id.get(schema_id)
         if (
@@ -518,25 +590,10 @@ def _schema_family(schema_authority: Any, schema_by_id: Mapping[int, Any]) -> di
             or item.parent_id != parent_id
         ):
             raise _error(f"live investment-property schema binding drifted: {schema_id}")
-        items.append(
-            {
-                "canonical_name": item.canonical_name,
-                "children": list(item.children),
-                "display_order": item.display_order,
-                "hierarchy_level": item.hierarchy_level,
-                "parent_report_norm_id": item.parent_id,
-                "report_norm_id": item.schema_id,
-            }
-        )
-    items.sort(key=lambda item: item["display_order"])
-    if [item["report_norm_id"] for item in items] != list(_SCHEMA_ORDER):
-        raise _error("live investment-property display order drifted")
-    return {
-        "first_report_norm_id": 942,
-        "items": items,
-        "last_report_norm_id": 5974,
-        "schema_authority": canonical_clone_v1(schema_authority),
-    }
+    if type(schema_authority) is not dict:
+        raise _error("live investment-property schema authority drifted")
+    _, snapshot_family = _pinned_schema_family()
+    return snapshot_family
 
 
 def _schema_binding(item: Any, report_norm_id: int) -> dict[str, Any]:
@@ -546,16 +603,24 @@ def _schema_binding(item: Any, report_norm_id: int) -> dict[str, Any]:
         or expected is None
         or item is None
         or item.statement_type != "TM"
+        or item.schema_id != report_norm_id
         or item.canonical_name != expected[0]
         or item.parent_id != expected[1]
     ):
         raise _error(f"live TM schema binding drifted for ReportNormId {report_norm_id}")
+    _, snapshot = _pinned_schema_family()
+    pinned = next(
+        (raw for raw in snapshot["items"] if raw["report_norm_id"] == report_norm_id),
+        None,
+    )
+    if type(pinned) is not dict:
+        raise _error(f"pinned TM schema binding is absent for ReportNormId {report_norm_id}")
     return {
-        "canonical_name": item.canonical_name,
-        "display_order": item.display_order,
-        "hierarchy_level": item.hierarchy_level,
-        "report_norm_id": item.schema_id,
-        "schema_parent_report_norm_id": item.parent_id,
+        "canonical_name": pinned["canonical_name"],
+        "display_order": pinned["display_order"],
+        "hierarchy_level": pinned["hierarchy_level"],
+        "report_norm_id": pinned["report_norm_id"],
+        "schema_parent_report_norm_id": pinned["parent_report_norm_id"],
     }
 
 
@@ -644,6 +709,85 @@ def _verified_dash_value(crop_page: Mapping[str, Any], value: Mapping[str, Any])
     }
 
 
+def _verified_grid_dash_value(
+    axis_page: Mapping[str, Any],
+    crop_page: Mapping[str, Any],
+    value: Mapping[str, Any],
+) -> dict[str, Any]:
+    if (
+        type(value) is not dict
+        or set(value)
+        != {
+            "column_value_anchor_line_index",
+            "line_index",
+            "pixel_transcription",
+            "ppocr_rotated_line_index",
+            "row_label_line_index",
+        }
+        or value["line_index"] is not None
+        or value["ppocr_rotated_line_index"] is not None
+        or value["pixel_transcription"] != "-"
+        or type(value["row_label_line_index"]) is not int
+        or type(value["column_value_anchor_line_index"]) is not int
+    ):
+        raise _error("geometry-derived dash review fields drifted")
+    row = base._axis_line(axis_page, value["row_label_line_index"])
+    column = base._axis_line(axis_page, value["column_value_anchor_line_index"])
+    row_bbox = row["bbox"]
+    column_bbox = column["bbox"]
+    row_height = row_bbox[3] - row_bbox[1]
+    column_width = column_bbox[2] - column_bbox[0]
+    right = column_bbox[2] + max(row_height // 3, 4)
+    width = max(column_width * 2, row_height * 4)
+    bbox = [right - width, row_bbox[1] - 4, right, row_bbox[3] + 4]
+    render_ref = crop_page.get("render_binding")
+    payload = base._artifact_bytes(render_ref, "investment-property source render")
+    with Image.open(BytesIO(payload)) as image:
+        grayscale = image.convert("L")
+        if not (
+            0 <= bbox[0] < bbox[2] <= grayscale.width and 0 <= bbox[1] < bbox[3] <= grayscale.height
+        ):
+            raise _error("geometry-derived dash bbox is outside the authenticated render")
+        crop = grayscale.crop(tuple(bbox))
+        dark = [
+            (x, y)
+            for y in range(crop.height)
+            for x in range(crop.width)
+            if crop.getpixel((x, y)) < 160
+        ]
+        if not dark:
+            raise _error("geometry-derived dash cell has no visible mark")
+        mark_width = max(x for x, _ in dark) - min(x for x, _ in dark) + 1
+        mark_height = max(y for _, y in dark) - min(y for _, y in dark) + 1
+        if not (
+            3 <= mark_width <= row_height and 1 <= mark_height <= 8 and mark_width >= mark_height
+        ):
+            raise _error("geometry-derived dash cell is not one short horizontal mark")
+        rgb = crop.convert("RGB")
+    digest = hashlib.sha256(
+        rgb.width.to_bytes(4, "big") + rgb.height.to_bytes(4, "big") + rgb.tobytes()
+    ).hexdigest()
+    return {
+        "fresh_vietocr_proposal": None,
+        "normalized_pixel_transcription": "-",
+        "normalized_semantic_proposal": None,
+        "normalized_value": 0,
+        "pixel_bbox": bbox,
+        "pixel_rgb_sha256": digest,
+        "pixel_transcription": "-",
+        "rotated_ppocrv6_challenger": None,
+        "rotated_ppocrv6_challenger_line_index": None,
+        "rotated_ppocrv6_challenger_score": None,
+        "rotated_ppocrv6_challenger_status": "NOT_APPLICABLE_VISIBLE_DASH_CELL",
+        "semantic_text_source": "NO_LINE_AXIS_GEOMETRY_DERIVED_VISIBLE_DASH_CELL",
+        "source_crop_ref": None,
+        "source_line_index": None,
+        "source_numeric_challenger": None,
+        "source_numeric_challenger_status": "VISIBLE_DASH_HAS_NO_PPOCR_LINE_GEOMETRY",
+        "source_render_ref": canonical_clone_v1(render_ref),
+    }
+
+
 def _verified_value(
     axis_page: Mapping[str, Any],
     semantic_page: Mapping[str, Any],
@@ -651,7 +795,60 @@ def _verified_value(
     source_texts: Sequence[str],
     value: Mapping[str, Any],
 ) -> dict[str, Any]:
+    if "aggregate_components" in value:
+        if (
+            type(value) is not dict
+            or set(value)
+            != {
+                "aggregate_components",
+                "aggregation",
+                "line_index",
+                "pixel_transcription",
+                "ppocr_rotated_line_index",
+            }
+            or value["aggregation"] != "SUM"
+            or value["line_index"] is not None
+            or value["pixel_transcription"] is not None
+            or value["ppocr_rotated_line_index"] is not None
+            or type(value["aggregate_components"]) is not list
+            or not value["aggregate_components"]
+        ):
+            raise _error("controlled aggregate review fields drifted")
+        components = [
+            _verified_value(axis_page, semantic_page, crop_page, source_texts, component)
+            for component in value["aggregate_components"]
+        ]
+        normalized_value = sum(component["normalized_value"] for component in components)
+        return {
+            "aggregate_components": components,
+            "aggregation": "SUM",
+            "fresh_vietocr_proposal": None,
+            "normalized_pixel_transcription": " + ".join(
+                component["normalized_pixel_transcription"] for component in components
+            ),
+            "normalized_semantic_proposal": None,
+            "normalized_value": normalized_value,
+            "pixel_bbox": None,
+            "pixel_rgb_sha256": None,
+            "pixel_transcription": " + ".join(
+                component["pixel_transcription"] for component in components
+            ),
+            "rotated_ppocrv6_challenger": None,
+            "rotated_ppocrv6_challenger_line_index": None,
+            "rotated_ppocrv6_challenger_score": None,
+            "rotated_ppocrv6_challenger_status": "COMPONENTS_INDEPENDENTLY_VERIFIED",
+            "semantic_text_source": "CONTROLLED_SUM_OF_VISIBLE_SOURCE_CELLS",
+            "source_crop_ref": None,
+            "source_line_index": None,
+            "source_numeric_challenger": " + ".join(
+                str(component["source_numeric_challenger"]) for component in components
+            ),
+            "source_numeric_challenger_status": "COMPONENTS_INDEPENDENTLY_VERIFIED",
+            "source_render_ref": canonical_clone_v1(crop_page.get("render_binding")),
+        }
     if value.get("line_index") is None:
+        if "row_label_line_index" in value:
+            return _verified_grid_dash_value(axis_page, crop_page, value)
         return _verified_dash_value(crop_page, value)
     normalized = {
         "line_index": value["line_index"],
@@ -662,6 +859,17 @@ def _verified_value(
 
 
 def _value_key(value: Mapping[str, Any]) -> tuple[Any, ...]:
+    if "aggregate_components" in value:
+        return (
+            "AGGREGATE_SUM",
+            *(_value_key(component) for component in value["aggregate_components"]),
+        )
+    if "row_label_line_index" in value:
+        return (
+            "GRID_DASH",
+            value["row_label_line_index"],
+            value["column_value_anchor_line_index"],
+        )
     return (
         (
             "LINE",
@@ -683,7 +891,7 @@ def _metrics(trials: Sequence[Mapping[str, Any]]) -> dict[str, int]:
         "open_review_item_count": 0,
         "verified_present_document_count": sum(bool(trial["mappings"]) for trial in trials),
         "visible_dash_zero_mapping_count": sum(
-            mapping["value"]["source_line_index"] is None
+            mapping["value"]["normalized_pixel_transcription"] == "-"
             for trial in trials
             for mapping in trial["mappings"]
         ),
@@ -696,7 +904,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
     if (
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "INVESTMENT_PROPERTY_8BANK_CODEX_VERIFICATION_COMPLETE"
+        or value["state"] != _RESULT_STATE
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
         or len(value["trials"]) != len(EXPECTED_DOCUMENT_ORDER)
@@ -723,7 +931,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
         raise _error("investment-property metrics drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "e0072:result:" + canonical_json_sha256_v1(material):
+    if identity != _RESULT_ID_PREFIX + canonical_json_sha256_v1(material):
         raise _error("investment-property result identity drifted")
     return canonical_clone_v1(value)
 
@@ -775,13 +983,17 @@ def build_investment_property_8bank_codex_verified_mapping_v1(
             )
             continue
         regions = matcher_result["regions"]
+        comparison = reviewed["comparative_control"]
+        expected_comparison_periods = (
+            [] if comparison is None else [_iso_period_end(comparison["source_period"])]
+        )
         if (
             len(regions) != 1
             or regions[0]["owner"]["page_sequence"] != reviewed["page_sequence"]
             or regions[0]["owner"]["source_line_index"] != reviewed["owner_line_index"]
-            or regions[0]["period_end"] != [2026, 6, 30]
-            or len(regions[0]["comparison_controls"]) != 1
-            or regions[0]["comparison_controls"][0]["period_end"] != [2025, 12, 31]
+            or regions[0]["period_end"] != _iso_period_end(reviewed["source_period"])
+            or [item["period_end"] for item in regions[0]["comparison_controls"]]
+            != expected_comparison_periods
         ):
             raise _error("reviewed current region does not match whole-PDF period selection")
         axis_page = base._page(axis_document, reviewed["page_sequence"], "accounting axis")
@@ -879,24 +1091,26 @@ def build_investment_property_8bank_codex_verified_mapping_v1(
                     "visible_total_source_line_index": total["source_line_index"],
                 }
             )
-        comparison = reviewed["comparative_control"]
-        comparison_evidence = base._semantic_evidence(
-            axis_page,
-            semantic_page,
-            comparison["period_header_line_index"],
-            comparison["pixel_transcription"],
-            {},
-        )
+        comparison_output = None
+        if comparison is not None:
+            comparison_evidence = base._semantic_evidence(
+                axis_page,
+                semantic_page,
+                comparison["period_header_line_index"],
+                comparison["pixel_transcription"],
+                {},
+            )
+            comparison_output = {
+                "disposition": "EXCLUDED_COMPARATIVE_PERIOD_SAME_PAGE",
+                "period_header_evidence": comparison_evidence,
+                "source_period": comparison["source_period"],
+            }
         trials.append(
             {
                 "absence_reason": None,
                 "asset_class_axes": asset_class_axes,
                 "branch_evidence": branch_evidence,
-                "comparative_control": {
-                    "disposition": "EXCLUDED_COMPARATIVE_PERIOD_SAME_PAGE",
-                    "period_header_evidence": comparison_evidence,
-                    "source_period": comparison["source_period"],
-                },
+                "comparative_control": comparison_output,
                 "disposition": reviewed["disposition"],
                 "document_ordinal": ordinal,
                 "document_provenance": code,
@@ -906,13 +1120,14 @@ def build_investment_property_8bank_codex_verified_mapping_v1(
                 "page_sequence": reviewed["page_sequence"],
                 "source_pdf_sha256": crop_document["source_pdf"]["sha256"],
                 "source_period": reviewed["source_period"],
-                "source_period_status": "VERIFIED_SOURCE_PERIOD_Q2_2026",
+                "source_period_status": _SOURCE_PERIOD_STATUS,
                 "structure_graph_id": matcher_result["result_id"],
                 "unit_authority": reviewed["unit_authority"],
                 "visible_page_render_binding": canonical_clone_v1(crop_page["render_binding"]),
             }
         )
     schema_family = _schema_family(schema_authority, schema_by_id)
+    snapshot_schema_authority, _ = _pinned_schema_family()
     material = {
         "authority": canonical_clone_v1(_AUTHORITY),
         "claim_boundary": CLAIM_BOUNDARY,
@@ -920,18 +1135,18 @@ def build_investment_property_8bank_codex_verified_mapping_v1(
         "input_refs": {
             "crop_manifest_sha256": EXPECTED_CROP_MANIFEST_SHA256,
             "pixel_review_id": review["review_id"],
-            "schema_authority": canonical_clone_v1(schema_authority),
+            "schema_authority": snapshot_schema_authority,
             "semantic_axis_sha256": EXPECTED_AXIS_SHA256,
             "semantic_index_sha256": EXPECTED_INDEX_SHA256,
             "structure_scan_id": EXPECTED_SCAN_ID,
         },
         "metrics": _metrics(trials),
         "schema_family": schema_family,
-        "state": "INVESTMENT_PROPERTY_8BANK_CODEX_VERIFICATION_COMPLETE",
+        "state": _RESULT_STATE,
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "e0072:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": _RESULT_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 

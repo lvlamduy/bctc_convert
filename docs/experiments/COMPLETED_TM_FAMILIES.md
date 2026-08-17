@@ -400,20 +400,26 @@ family khác tiếp tục bổ sung schema.
 
 ## 21. Tăng, giảm bất động sản đầu tư
 
-- **Đã xác minh:** MBB p41. Vùng hiện kỳ 30/06/2026 được tách khỏi vùng so
-  sánh 31/12/2025 nằm ngay bên dưới trên cùng trang. Đã map 9 dòng tổng của
-  nguyên giá, giá trị hao mòn và giá trị còn lại; 11 phương trình
-  roll-forward, tổng cột tài sản và `nguyên giá - hao mòn = giá trị còn lại`
-  đều đóng đúng.
-- **Biến thể đã đóng:** MBB dùng nhãn `Giá trị hao mòn` thay cho `Giá trị hao
-  mòn lũy kế`; hai cột tài sản được giữ làm thành phần kiểm tra và chỉ cột
-  `Tổng cộng` được map. Ô `Tăng trong kỳ` của nguyên giá là dấu `-`, được khóa
-  trực tiếp bằng pixel và chuẩn hóa thành 0 trước khi kiểm tra phương trình.
-- **Không có bảng biến động chi tiết trong báo cáo:** ACB, VPB, HDB, VCB,
-  CTG, BID và VIB. Các dòng trên báo cáo tình hình tài chính, chính sách kế
-  toán, dòng tiền hoặc chi phí gộp `TSCĐ và bất động sản đầu tư` chỉ là đối
-  chứng âm, không được relabel thành family 942–5974.
-- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong vùng MBB đã xác minh.
+- **Đã map/xác minh trên BCTC hợp nhất kiểm toán annual-2025:** ACB p57 và
+  MBB p61. Một graph chung quét toàn bộ từng PDF và chọn đúng hai vùng duy
+  nhất. 18 mapping và 27 phương trình nguyên giá, hao mòn lũy kế, giá trị còn
+  lại và tổng cột tài sản đóng chính xác; không còn dòng nguồn chưa map.
+- **Biến thể đã đóng:** ACB trình bày hai bảng anh em `cho thuê` và `nắm giữ
+  chờ tăng giá`; năm tổng family được cộng đúng một lần từ các ô nguồn đã xác
+  minh độc lập. Ba ô đầu kỳ của bảng cho thuê là dấu `-`; bbox được suy ra từ
+  giao điểm hàng–cột rồi chuẩn hóa 0. MBB có bảng hiện kỳ 2025 và bảng so sánh
+  2024 ngay bên dưới; chỉ bảng 2025 được map, còn bảng 2024 là control.
+- **Không có bảng biến động chi tiết trong báo cáo annual-2025:** VPB, HDB,
+  VCB, CTG, BID và VIB. Biên `TSCĐ vô hình → Tài sản Có khác` cùng whole-PDF
+  scan xác nhận bounded absence; policy/statement/near-text không bị relabel.
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong hai vùng annual-2025.
+
+Kết quả exact-replay:
+`docs/experiments/E-0126-annual-2025-investment-property-8bank-codex-verified-mapping-v1.json`.
+
+Lượt hiện hành trước đó tại MBB p41 vẫn giữ nguyên 9 mapping/11 phương trình;
+ACB/VPB/HDB/VCB/CTG/BID/VIB vẫn chỉ là bounded absence trong đúng các filing
+Q2/2026 hoặc VPB Q1/2026 đã bind, không bị suy rộng sang annual-2025.
 
 ## 22. Tài sản Có khác
 
@@ -1016,7 +1022,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Tăng, giảm TSCĐ hữu hình | ✓ p55 | ✓ p58 | ✓ p53 | ✓ p41 | ✓ p48 | ✓ p48 | ✓ p47 | ✓ p42 | 0 dòng annual-2025; 105 mapping/32 phương trình; CTG/BID/VIB dùng numeric challenger trên ảnh xoay |
 | Tăng, giảm TSCĐ thuê tài chính | — p55→56 | — p58→60 | — p53→54 | — p41→42 | — p48→49 | — p48→49 | — p47→48 | — p42→43 | 0 dòng annual-2025; cả 8 PDF xác nhận không có bảng chi tiết |
 | Tăng, giảm TSCĐ vô hình | ✓ p56 | ✓ p60 | ✓ p54 | ✓ p42 | ✓ p49 | ✓ p49 | ✓ p48 | ✓ p43 | 0 dòng annual-2025; 107 mapping/32 phương trình; kết quả hiện hành cũ vẫn byte-exact |
-| Tăng, giảm bất động sản đầu tư | — | ✓ p41 | — | — | — | — | — | — | 0 dòng; 9 mapping, 11 phương trình, 7 bank không có bảng chi tiết |
+| Tăng, giảm bất động sản đầu tư | ✓ p57 | ✓ p61 | — p54→55 | — p42 | — p49→50 | — p49→50 | — p48→49 | — p43→44 | 0 dòng annual-2025; 18 mapping/27 phương trình; ACB cộng có kiểm soát hai bảng anh em |
 | Tài sản Có khác | — | ✓ p42 | ✓\* p51–53 | — | — | — | — | ✓\* p39 | 12 dòng OPEN; 58 mapping, 30 phương trình, 5 bank không có bảng chi tiết; VPB là nguồn Q1 |
 | Các khoản nợ Chính phủ/NHNN | ✓ p20 | ✓ p42 | ✓\* p53 | ✓ p30 | ✓ p34 | ✓ p41 | ✓ p24 | ✓ p40 | 0 dòng; 32 mapping, 28 phương trình; 2 DASH→0; VPB là nguồn Q1 |
 | Vốn nhận tài trợ/ủy thác đầu tư | — | ✓ p43 | ✓\* p56 | — | — | — | — | ✓ p42 | 0 dòng; 6 mapping, 4 phương trình; 5 bank xác nhận không có cụm; VPB là nguồn Q1 |

@@ -31,6 +31,7 @@ __all__ = [
     "INTANGIBLE_FORMAT_VERSION",
     "INTANGIBLE_REPORTING_PERIOD_GENERAL_VARIANT_PROFILE",
     "INVESTMENT_PROPERTY_FORMAT_VERSION",
+    "INVESTMENT_PROPERTY_REPORTING_PERIOD_GENERAL_VARIANT_PROFILE",
     "LEASED_FORMAT_VERSION",
     "LEASED_REPORTING_PERIOD_GENERAL_VARIANT_PROFILE",
     "REPORTING_PERIOD_GENERAL_VARIANT_PROFILE",
@@ -61,7 +62,11 @@ INTANGIBLE_REPORTING_PERIOD_GENERAL_FORMAT_VERSION = (
 INTANGIBLE_FAMILY_ID = "INTANGIBLE_FIXED_ASSET_MOVEMENT"
 INTANGIBLE_REPORTING_PERIOD_GENERAL_VARIANT_PROFILE = "REPORTING_PERIOD_GENERAL_V2"
 INVESTMENT_PROPERTY_FORMAT_VERSION = "INVESTMENT_PROPERTY_VARIANT_GRAPH_DOCUMENT_V1"
+INVESTMENT_PROPERTY_REPORTING_PERIOD_GENERAL_FORMAT_VERSION = (
+    "INVESTMENT_PROPERTY_VARIANT_GRAPH_DOCUMENT_V2"
+)
 INVESTMENT_PROPERTY_FAMILY_ID = "INVESTMENT_PROPERTY_MOVEMENT"
+INVESTMENT_PROPERTY_REPORTING_PERIOD_GENERAL_VARIANT_PROFILE = "REPORTING_PERIOD_GENERAL_V2"
 CLAIM_BOUNDARY = (
     "BANK_BLIND_COMPLETE_PDF_FRESH_VIETOCR_TANGIBLE_FIXED_ASSET_OWNER_COST_"
     "ACCUMULATED_DEPRECIATION_CARRYING_VALUE_OPTIONAL_MOVEMENTS_ASSET_CLASS_"
@@ -126,6 +131,11 @@ _INVESTMENT_PROPERTY_SAFETY = {
     **canonical_clone_v1(_SAFETY),
     "latest_explicit_period_selects_current_region": True,
     "same_page_comparative_region_retained": True,
+}
+_INVESTMENT_PROPERTY_REPORTING_PERIOD_GENERAL_SAFETY = {
+    **canonical_clone_v1(_INVESTMENT_PROPERTY_SAFETY),
+    "dated_balance_roles_derived_from_chronology_not_fixed_calendar_dates": True,
+    "relative_beginning_and_ending_year_labels_supported": True,
 }
 _RESULT_FIELDS = {
     "claim_boundary",
@@ -304,6 +314,17 @@ _INVESTMENT_PROPERTY_SPEC = {
         "cac khoan no chinh phu",
         "tien gui cua khach hang",
     ),
+}
+_INVESTMENT_PROPERTY_REPORTING_PERIOD_GENERAL_SPEC = {
+    **_INVESTMENT_PROPERTY_SPEC,
+    "adjacent_line_anchor_fusion": True,
+    "dynamic_dated_balance_roles": True,
+    "format_version": INVESTMENT_PROPERTY_REPORTING_PERIOD_GENERAL_FORMAT_VERSION,
+    "id_prefix": "ipavgv2:result:",
+    "period_pattern": _REPORTING_PERIOD_GENERAL_DATE,
+    "relative_year_balance_roles": True,
+    "rotated_coordinate_window": True,
+    "safety": _INVESTMENT_PROPERTY_REPORTING_PERIOD_GENERAL_SAFETY,
 }
 
 
@@ -1081,14 +1102,17 @@ def _period_end_rank(lines: Sequence[Mapping[str, Any]]) -> tuple[int, int, int]
 
 
 def _investment_property_owner_candidates(
-    owner: Mapping[str, Any], pages: Sequence[Mapping[str, Any]]
+    owner: Mapping[str, Any],
+    pages: Sequence[Mapping[str, Any]],
+    spec: Mapping[str, Any],
 ) -> list[dict[str, Any]]:
-    window, rotated = _candidate_window(owner, pages, _INVESTMENT_PROPERTY_SPEC)
+    window, rotated = _candidate_window(owner, pages, spec)
+    period_pattern = spec.get("period_pattern", _DATE)
     section_starts = [
         index
         for index, line in enumerate(window)
         if "bat dong san dau tu" in line["normalized_text"]
-        and _DATE.search(line["normalized_text"])
+        and period_pattern.search(line["normalized_text"])
     ]
     sections: list[Sequence[Mapping[str, Any]]]
     if section_starts:
@@ -1102,17 +1126,22 @@ def _investment_property_owner_candidates(
         sections = [window]
     result = []
     for section in sections:
-        candidate = _region_from_window(
-            owner, section, rotated=rotated, spec=_INVESTMENT_PROPERTY_SPEC
-        )
+        candidate = _region_from_window(owner, section, rotated=rotated, spec=spec)
         rank = _period_end_rank(section)
         candidate["period_end"] = None if rank is None else list(rank)
         result.append(candidate)
     return result
 
 
-def _validate_investment_property_result(value: Any) -> dict[str, Any]:
-    spec = _INVESTMENT_PROPERTY_SPEC
+def _investment_property_spec(variant_profile: str) -> Mapping[str, Any]:
+    if variant_profile == CURRENT_VARIANT_PROFILE:
+        return _INVESTMENT_PROPERTY_SPEC
+    if variant_profile == INVESTMENT_PROPERTY_REPORTING_PERIOD_GENERAL_VARIANT_PROFILE:
+        return _INVESTMENT_PROPERTY_REPORTING_PERIOD_GENERAL_SPEC
+    raise _error("investment-property variant profile drifted")
+
+
+def _validate_investment_property_result(value: Any, spec: Mapping[str, Any]) -> dict[str, Any]:
     if type(value) is not dict or set(value) != _RESULT_FIELDS:
         raise _error("investment-property graph result fields drifted")
     if (
@@ -1160,21 +1189,23 @@ def _validate_investment_property_result(value: Any) -> dict[str, Any]:
     return canonical_clone_v1(value)
 
 
-def build_investment_property_variant_graph_document_v1(pages: Any) -> dict[str, Any]:
+def build_investment_property_variant_graph_document_v1(
+    pages: Any, *, variant_profile: str = CURRENT_VARIANT_PROFILE
+) -> dict[str, Any]:
     """Enumerate current and retained comparative investment-property regions."""
 
+    spec = _investment_property_spec(variant_profile)
     normalized_pages = _pages(pages)
     owners = [
         line
         for page in normalized_pages
         for line in page["lines"]
-        if _is_owner_line(line, _INVESTMENT_PROPERTY_SPEC)
-        and _owner_layout_eligible(line, page, _INVESTMENT_PROPERTY_SPEC)
+        if _is_owner_line(line, spec) and _owner_layout_eligible(line, page, spec)
     ]
     regions: list[dict[str, Any]] = []
     near_regions: list[dict[str, Any]] = []
     for owner in owners:
-        candidates = _investment_property_owner_candidates(owner, normalized_pages)
+        candidates = _investment_property_owner_candidates(owner, normalized_pages, spec)
         complete = [candidate for candidate in candidates if candidate["complete"]]
         incomplete = [candidate for candidate in candidates if not candidate["complete"]]
         near_regions.extend(incomplete)
@@ -1199,9 +1230,9 @@ def build_investment_property_variant_graph_document_v1(pages: Any) -> dict[str,
             )
             regions.append(candidate)
     material = {
-        "claim_boundary": _INVESTMENT_PROPERTY_SPEC["claim_boundary"],
-        "family_id": _INVESTMENT_PROPERTY_SPEC["family_id"],
-        "format_version": _INVESTMENT_PROPERTY_SPEC["format_version"],
+        "claim_boundary": spec["claim_boundary"],
+        "family_id": spec["family_id"],
+        "format_version": spec["format_version"],
         "metrics": {
             "comparison_region_count": sum(
                 len(region["comparison_controls"]) for region in regions
@@ -1212,7 +1243,7 @@ def build_investment_property_variant_graph_document_v1(pages: Any) -> dict[str,
         },
         "near_regions": near_regions,
         "regions": regions,
-        "safety": canonical_clone_v1(_INVESTMENT_PROPERTY_SPEC["safety"]),
+        "safety": canonical_clone_v1(spec["safety"]),
         "status": (
             "ACCEPTED_UNIQUE_VARIANT_GRAPH"
             if len(regions) == 1
@@ -1230,9 +1261,9 @@ def build_investment_property_variant_graph_document_v1(pages: Any) -> dict[str,
     return _validate_investment_property_result(
         {
             **material,
-            "result_id": _INVESTMENT_PROPERTY_SPEC["id_prefix"]
-            + canonical_json_sha256_v1(material),
-        }
+            "result_id": spec["id_prefix"] + canonical_json_sha256_v1(material),
+        },
+        spec,
     )
 
 
@@ -1290,11 +1321,19 @@ def validate_intangible_fixed_assets_variant_graph_replay_v1(
     return supplied
 
 
-def validate_investment_property_variant_graph_replay_v1(value: Any, pages: Any) -> dict[str, Any]:
+def validate_investment_property_variant_graph_replay_v1(
+    value: Any,
+    pages: Any,
+    *,
+    variant_profile: str = CURRENT_VARIANT_PROFILE,
+) -> dict[str, Any]:
     """Rebuild the investment-property graph from the complete PDF."""
 
-    supplied = _validate_investment_property_result(value)
-    rebuilt = build_investment_property_variant_graph_document_v1(pages)
+    spec = _investment_property_spec(variant_profile)
+    supplied = _validate_investment_property_result(value, spec)
+    rebuilt = build_investment_property_variant_graph_document_v1(
+        pages, variant_profile=variant_profile
+    )
     if not same_typed_json_v1(supplied, rebuilt):
         raise _error("investment-property graph does not replay exactly")
     return supplied

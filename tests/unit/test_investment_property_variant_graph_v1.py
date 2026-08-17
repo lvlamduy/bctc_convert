@@ -109,6 +109,26 @@ def test_same_page_period_partition_selects_latest_and_retains_comparison() -> N
     ]
 
 
+def test_reporting_period_profile_accepts_annual_balance_and_movement_labels() -> None:
+    annual_section = [
+        text.replace("Số dư đầu kỳ", "Số dư đầu năm")
+        .replace("Số dư cuối kỳ", "Số dư cuối năm")
+        .replace("Tăng trong kỳ", "Tăng trong năm")
+        for text in _section("31 tháng 12 năm 2025")
+    ]
+    pages = [_page(["BẤT ĐỘNG SẢN ĐẦU TƯ", *annual_section])]
+
+    current = matcher.build_investment_property_variant_graph_document_v1(pages)
+    annual = matcher.build_investment_property_variant_graph_document_v1(
+        pages,
+        variant_profile=matcher.INVESTMENT_PROPERTY_REPORTING_PERIOD_GENERAL_VARIANT_PROFILE,
+    )
+
+    assert current["status"] == "UNRESOLVED_NO_COMPLETE_REGION"
+    assert annual["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert annual["regions"][0]["period_end"] == [2025, 12, 31]
+
+
 @pytest.mark.parametrize(
     "texts",
     [

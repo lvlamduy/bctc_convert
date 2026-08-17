@@ -26,6 +26,8 @@ DEFAULT_INPUT = Path(
 )
 FORMAT_VERSION = "INVESTMENT_PROPERTY_8DOCUMENT_FULL_VIETOCR_STRUCTURE_SCAN_V1"
 MATCHER_FORMAT = "INVESTMENT_PROPERTY_VARIANT_GRAPH_DOCUMENT_V1"
+MATCHER_VARIANT_PROFILE = "CURRENT_V1"
+SCAN_ID_PREFIX = "ipfdsv1:scan:"
 CLAIM_BOUNDARY = (
     "FRESH_VIETOCR_TRANSFORMER_COMPLETE_PDF_SHARED_FIXED_ASSET_ENGINE_"
     "INVESTMENT_PROPERTY_OWNER_COST_ACCUMULATED_DEPRECIATION_CARRYING_VALUE_"
@@ -147,7 +149,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
         raise _error("investment-property scan metrics drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("scan_id")
-    if identity != "ipfdsv1:scan:" + canonical_json_sha256_v1(material):
+    if identity != SCAN_ID_PREFIX + canonical_json_sha256_v1(material):
         raise _error("investment-property scan identity drifted")
     return canonical_clone_v1(value)
 
@@ -163,7 +165,9 @@ def build_investment_property_full_document_scan_v1(semantic_index: Any) -> dict
         pages, applied_count = support._matcher_pages(document, None)
         if applied_count != 0:
             raise _error("investment-property scan unexpectedly applied a semantic rescue")
-        result = matcher.build_investment_property_variant_graph_document_v1(pages)
+        result = matcher.build_investment_property_variant_graph_document_v1(
+            pages, variant_profile=MATCHER_VARIANT_PROFILE
+        )
         trials.append(
             {
                 "document_ordinal": document["document_ordinal"],
@@ -183,7 +187,7 @@ def build_investment_property_full_document_scan_v1(semantic_index: Any) -> dict
         "trials": trials,
     }
     return _validate_result(
-        {**material, "scan_id": "ipfdsv1:scan:" + canonical_json_sha256_v1(material)}
+        {**material, "scan_id": SCAN_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 
