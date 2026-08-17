@@ -459,6 +459,9 @@ def _ppocr_page(page: dict[str, Any], ordinal: int) -> dict[str, Any]:
             and 0 <= value[1] < value[3] <= normalized_height
         )
 
+    def valid_line_box(value: Any) -> bool:
+        return valid_word_box(value)
+
     if (
         type(texts) is not list
         or type(scores) is not list
@@ -467,6 +470,7 @@ def _ppocr_page(page: dict[str, Any], ordinal: int) -> dict[str, Any]:
         or not texts
         or not all(type(text) is str for text in texts)
         or not all(type(score) is float and math.isfinite(score) for score in scores)
+        or any(not valid_line_box(box) for box in boxes)
         or (
             INCLUDE_WORD_AXIS
             and (

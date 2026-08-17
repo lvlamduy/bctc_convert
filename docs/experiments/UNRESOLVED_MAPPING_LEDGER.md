@@ -46,9 +46,10 @@ và
 E-0133 quét toàn bộ tám BCTC hợp nhất kiểm toán năm 2025 và tìm đúng một vùng
 family tại ACB p65–66, MBB p69–70, VPB p66–67, HDB p48–49, VCB p56–57,
 CTG p55–56, BID p53–54 và VIB p49–50; 23 vùng gần giống được giữ làm đối
-chứng âm. Năm bảng đọc số được đã xác minh 46 mapping/82 ô giá trị cùng 12
-phương trình. HDB fresh VietOCR đọc `835.956`; pixel, PP-OCRv6 và phương trình
-nguồn xác nhận đúng là `535.956`.
+chứng âm. Xoay toàn trang rồi detect lại CTG/BID/VIB trong tọa độ landscape
+chuẩn giúp cả tám bảng xác minh 74 mapping/132 ô giá trị cùng 18 phương trình.
+BID dùng word boxes để tách hai số chung một line. HDB fresh VietOCR đọc
+`835.956`; pixel, PP-OCRv6 và phương trình nguồn xác nhận đúng là `535.956`.
 
 | ID | Bank | Trang | Khoản mục nguồn | Giá trị mở/đóng kỳ | Lý do chưa map |
 | --- | --- | ---: | --- | --- | --- |
@@ -56,9 +57,9 @@ nguồn xác nhận đúng là `535.956`.
 | A2025-CAF-002 | HDB | 48 | Cổ phiếu quỹ | `(413.448)` / ô trống | Schema chưa có leaf số dư vốn tương đương; ô đóng kỳ trống không được đổi thành 0. |
 | A2025-CAF-003 | HDB | 48 | Vốn đầu tư xây dựng cơ bản | `89` / `89` | Schema chưa có leaf số dư vốn tương đương. |
 | A2025-CAF-004 | VCB | 56 | Quỹ đầu tư phát triển | `1.357.643` / `9.058.060` | Schema chưa có leaf riêng; hai số vẫn nằm trong subtotal quỹ và tổng vốn đã xác minh. |
-| A2025-CAF-005 | CTG | 55–56 | Báo cáo tình hình thay đổi vốn chủ sở hữu | — | Vùng đã unique về cấu trúc; numeric challenger trên bảng xoay chưa đủ tin cậy nên chưa map số. |
-| A2025-CAF-006 | BID | 53–54 | Báo cáo tình hình thay đổi vốn chủ sở hữu | — | Vùng đã unique về cấu trúc; numeric challenger trên bảng xoay chưa đủ tin cậy nên chưa map số. |
-| A2025-CAF-007 | VIB | 49–50 | Báo cáo tình hình thay đổi vốn chủ sở hữu | — | Vùng đã unique về cấu trúc; numeric challenger trên bảng xoay chưa đủ tin cậy nên chưa map số. |
+| A2025-CAF-005 | CTG | 55 | Quỹ đầu tư phát triển | `512.455` / `548.467` | Schema chưa có leaf số dư vốn tương đương; hai số vẫn nằm trong tổng vốn đã xác minh. |
+| A2025-CAF-006 | BID | 53 | Quỹ đầu tư phát triển | `290.036` / `6.903.598` | Schema chưa có leaf số dư vốn tương đương; hai số vẫn nằm trong tổng vốn đã xác minh. |
+| A2025-CAF-007 | VIB | 49 | Quỹ đầu tư phát triển | `10.556` / `10.556` | Schema chưa có leaf số dư vốn tương đương; hai số vẫn nằm trong tổng vốn đã xác minh. |
 
 Machine-readable result:
 `docs/experiments/E-0133-annual-2025-capital-and-funds-8bank-codex-verified-mapping-v1.json`.

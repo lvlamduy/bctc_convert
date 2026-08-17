@@ -71,7 +71,7 @@ def _write_reader_output(root: Path, manifest: dict[str, object]) -> None:
         output_root.mkdir()
         rotated_ref = page["rotated_page_ref"]
         result = {
-            "rec_boxes": [[10, 20, 30, 40], [50, 60, 70, 80]],
+            "rec_boxes": [[10, 5, 30, 20], [31, 5, 55, 25]],
             "rec_scores": [0.99, 0.98],
             "rec_texts": ["17.253.570", "(938.137)"],
         }

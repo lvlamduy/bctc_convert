@@ -83,7 +83,7 @@ def test_current_persisted_artifact_matches_live_eight_document_build() -> None:
 
     assert rebuilt == persisted
     assert rebuilt["result_id"] == (
-        "e0078:result:2325b0e34c220df9d5406c9bb781b3a525f69e40c747c5a15cd28e59ee593616"
+        "e0078:result:64836d56055fbb6f6aa74a0986585047520a76ca117af8a058e334d3d228db5f"
     )
     assert rebuilt["metrics"] == {
         "accounting_equation_verified_count": 20,

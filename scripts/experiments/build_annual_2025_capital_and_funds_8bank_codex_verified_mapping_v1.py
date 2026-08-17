@@ -45,13 +45,17 @@ EXPECTED_AXIS_SHA256 = "aa81f553fda69315e84b7adbda13347c25a4490b016fc9660ff4f2cd
 EXPECTED_SCAN_ID = (
     "a2025caffdsv1:scan:146159e597cf9aed4a3adb86fdfcc83a71ee78c474adb37fb89023115dc8d32a"
 )
+EXPECTED_ROTATED_PPOCRV6_PROJECTION_ID = (
+    "a2025cafrpv1:projection:c17b7a128dbb3eb58baf934ec5082a9ad35e595239090ac7ad9c6b12af426407"
+)
 
 CLAIM_BOUNDARY = (
     "AUDITED_CONSOLIDATED_ANNUAL_2025_FIXED_EIGHT_COMPLETE_PDFS_FRESH_AND_"
     "GEOMETRY_SELECTED_ROTATED_VIETOCR_BANK_BLIND_CAPITAL_FUNDS_OWNER_"
     "OPTIONAL_CHANGE_HEADING_DYNAMIC_BALANCE_DATES_EQUITY_COLUMNS_VISIBLE_"
-    "PIXELS_UPSTREAM_PPOCRV6_ACCOUNTING_AND_LIVE_TM_SCHEMA_FIVE_NUMERIC_"
-    "READABLE_TABLES_THREE_ROTATED_TABLES_STRUCTURE_ONLY_NO_EXPORT_AUTHORITY"
+    "PIXELS_UPSTREAM_PPOCRV6_ACCOUNTING_AND_LIVE_TM_SCHEMA_EIGHT_NUMERIC_"
+    "READABLE_TABLES_THREE_NORMALIZED_ROTATED_FULL_PAGE_PPOCRV6_TABLES_NO_"
+    "EXPORT_AUTHORITY"
 )
 _REVIEW_SAFETY = {
     "bank_filename_note_page_or_year_used_as_graph_rule": False,
@@ -71,11 +75,13 @@ _AUTHORITY = {
     "gemma_json_used_as_mapping_or_numeric_authority": False,
     "independent_pdf_pixel_and_upstream_ppocrv6_used_for_numeric_truth": True,
     "live_tm_schema_checked": True,
-    "mapping_authority_bounded_to_five_source_numeric_readable_tables": True,
+    "mapping_authority_bounded_to_eight_source_numeric_readable_tables": True,
+    "normalized_rotated_page_used_as_canonical_table_coordinate_space": True,
     "persisted_result_self_authenticating": False,
     "public_exact_replay_required": True,
     "reporting_period_dates_derived_from_pdf": True,
     "rotated_rescue_used_for_semantic_structure_only": True,
+    "rotated_full_page_ppocrv6_used_as_independent_numeric_challenger": True,
     "source_numeric_challenger_and_accounting_closure_required": True,
     "text_similarity_alone_used_for_mapping": False,
     "unmapped_source_rows_retained": True,
@@ -102,20 +108,20 @@ _EXPECTED_IDS = {
     "VPB": {1129, 1141, 5984, 6011, 6013, 6014, 6017, 6018},
     "HDB": {1129, 1141, 5984, 6011, 6013, 6014, 6015, 6017, 6018},
     "VCB": {1129, 1141, 5984, 6011, 6012, 6013, 6014, 6016, 6017, 6018},
-    "CTG": set(),
-    "BID": set(),
-    "VIB": set(),
+    "CTG": {1129, 1141, 5984, 6011, 6012, 6013, 6014, 6016, 6017, 6018},
+    "BID": {1129, 1141, 5984, 6011, 6012, 6013, 6014, 6015, 6016, 6017, 6018},
+    "VIB": {1129, 1141, 5984, 6011, 6013, 6014, 6017},
 }
 _EXPECTED_METRICS = {
-    "accounting_equation_verified_count": 12,
+    "accounting_equation_verified_count": 18,
     "document_count": 8,
     "document_unique_region_count": 8,
-    "mapping_verified_count": 46,
-    "numeric_mapping_unresolved_document_count": 3,
+    "mapping_verified_count": 74,
+    "numeric_mapping_unresolved_document_count": 0,
     "open_source_row_count": 7,
     "q1_source_period_caveat_document_count": 0,
-    "rotated_structural_document_count": 3,
-    "verified_value_cell_count": 82,
+    "normalized_rotated_full_page_redetected_document_count": 3,
+    "verified_value_cell_count": 132,
 }
 
 
@@ -170,6 +176,59 @@ def _balance_mapping(
             "CLOSING": [base._line(page, closing[0], closing[1])],
         },
         "EQUITY_COLUMN_CROSSED_WITH_VISIBLE_ANNUAL_OPENING_AND_CLOSING_ROWS",
+    )
+
+
+def _rotated_line(
+    page: int,
+    line: int,
+    text: str,
+    *,
+    word_indices: tuple[int, ...] = (),
+    multiplier: int = 1,
+) -> dict[str, Any]:
+    return {
+        "evidence_axis": "NORMALIZED_ROTATED_FULL_PAGE_PPOCRV6_WORD_GEOMETRY_V1",
+        "line_index": line,
+        "multiplier": multiplier,
+        "page_sequence": page,
+        "pixel_transcription": text,
+        "word_indices": list(word_indices),
+    }
+
+
+def _rotated_balance_mapping(
+    base: ModuleType,
+    report_norm_id: int,
+    role: str,
+    page: int,
+    labels: list[tuple[int, str]],
+    opening: tuple[int, str, tuple[int, ...]],
+    closing: tuple[int, str, tuple[int, ...]],
+) -> dict[str, Any]:
+    return base._mapping(
+        report_norm_id,
+        role,
+        [base._label(page, line, text) for line, text in labels],
+        {
+            "OPENING": [
+                _rotated_line(
+                    page,
+                    opening[0],
+                    opening[1],
+                    word_indices=opening[2],
+                )
+            ],
+            "CLOSING": [
+                _rotated_line(
+                    page,
+                    closing[0],
+                    closing[1],
+                    word_indices=closing[2],
+                )
+            ],
+        },
+        "EQUITY_COLUMN_CROSSED_WITH_NORMALIZED_ROTATED_VISIBLE_ANNUAL_BALANCE_ROWS",
     )
 
 
@@ -849,43 +908,411 @@ def _review_documents(base: ModuleType) -> list[dict[str, Any]]:
         "ANNUAL_NESTED_RESERVE_COLUMNS_WITH_SPLIT_UNIT_HEADER",
     )
 
-    structural = [
+    p = 55
+    ctg_columns = [
         (
-            "CTG",
-            (55, 56),
-            "A2025-CAF-005",
-            "ROTATED_SOURCE_NUMERIC_CHALLENGER_NOT_RELIABLE; UNIQUE_STRUCTURE_VERIFIED_BUT_NUMERIC_MAPPING_DEFERRED",
+            5984,
+            "CHARTER_CAPITAL",
+            [(116, "Vốn góp của"), (117, "chủ sở hữu")],
+            (93, "53.699.917", ()),
+            (140, "77.669.446", ()),
         ),
         (
-            "BID",
-            (53, 54),
-            "A2025-CAF-006",
-            "ROTATED_SOURCE_NUMERIC_CHALLENGER_NOT_RELIABLE; UNIQUE_STRUCTURE_VERIFIED_BUT_NUMERIC_MAPPING_DEFERRED",
+            6011,
+            "SHARE_PREMIUM",
+            [(106, "Thặng dư"), (107, "vốn"), (108, "cổ phần")],
+            (94, "8.974.677", ()),
+            (130, "8.974.666", ()),
         ),
         (
-            "VIB",
-            (49, 50),
-            "A2025-CAF-007",
-            "ROTATED_SOURCE_NUMERIC_CHALLENGER_NOT_RELIABLE; UNIQUE_STRUCTURE_VERIFIED_BUT_NUMERIC_MAPPING_DEFERRED",
+            6012,
+            "OTHER_CAPITAL",
+            [(95, "Vốn khác")],
+            (95, "909.405", ()),
+            (131, "1.574.563", ()),
+        ),
+        (
+            6013,
+            "CAPITAL_RESERVE",
+            [(83, "Quỹ dự trữ bổ"), (84, "sung vốn"), (85, "điều lệ")],
+            (85, "9.770.029", ()),
+            (132, "13.089.194", ()),
+        ),
+        (
+            6014,
+            "FINANCIAL_RESERVE",
+            [(72, "Quỹ dự"), (73, "phòng tài"), (74, "chính")],
+            (86, "15.034.273", ()),
+            (133, "18.016.694", ()),
+        ),
+        (
+            6016,
+            "FX_DIFFERENCE",
+            [(52, "Chênh lệch"), (53, "tỷ giá hối"), (54, "đoái")],
+            (88, "243.105", ()),
+            (135, "362.748", ()),
+        ),
+        (
+            6017,
+            "RETAINED_EARNINGS",
+            [(32, "Lợi nhuận sau"), (33, "thuế chưa"), (34, "phân phối")],
+            (89, "58.390.118", ()),
+            (136, "58.212.794", ()),
+        ),
+        (
+            6018,
+            "NON_CONTROLLING_INTEREST",
+            [(18, "Lợi ích của cổ"), (19, "đông không"), (20, "kiểm soát")],
+            (90, "970.729", ()),
+            (137, "1.206.433", ()),
         ),
     ]
-    structural_docs = [
-        _annual_doc(
-            base,
-            code,
-            span,
-            None,
-            None,
-            [],
-            [],
-            [],
-            [],
-            [opened(item_id, "Báo cáo tình hình thay đổi vốn chủ sở hữu", reason)],
-            "ROTATED_ANNUAL_EQUITY_TABLE_STRUCTURE_ONLY",
-        )
-        for code, span, item_id, reason in structural
+    ctg = _annual_doc(
+        base,
+        "CTG",
+        (55, 56),
+        (p, 134, "VỐN CHỦ SỞ HỮU"),
+        (p, 123, "Tình hình thay đổi vốn chủ sở hữu"),
+        [(p, 131, "Tại ngày 31 tháng 12 năm 2024"), (p, 132, "Tại ngày 31 tháng 12 năm 2025")],
+        [(p, 3, "Triệu đồng"), (p, 21, "Triệu đồng")],
+        [
+            base._mapping(
+                1129,
+                "OPENING_TOTAL",
+                [label(p, 131, "Tại ngày 31 tháng 12 năm 2024")],
+                {"OPENING": [_rotated_line(p, 91, "148.504.708")]},
+                "PRINTED_ANNUAL_OPENING_TOTAL_ON_NORMALIZED_ROTATED_PAGE",
+            ),
+            base._mapping(
+                1141,
+                "CLOSING_TOTAL",
+                [label(p, 132, "Tại ngày 31 tháng 12 năm 2025")],
+                {"CLOSING": [_rotated_line(p, 138, "179.655.005")]},
+                "PRINTED_ANNUAL_CLOSING_TOTAL_ON_NORMALIZED_ROTATED_PAGE",
+            ),
+            *[
+                _rotated_balance_mapping(base, schema_id, role, p, labels, opening, closing)
+                for schema_id, role, labels, opening, closing in ctg_columns
+            ],
+        ],
+        [
+            equation(
+                "EQUITY_COLUMNS_TO_OPENING_TOTAL",
+                "OPENING",
+                [
+                    _rotated_line(p, index, text)
+                    for index, text in [
+                        (93, "53.699.917"),
+                        (94, "8.974.677"),
+                        (95, "909.405"),
+                        (85, "9.770.029"),
+                        (86, "15.034.273"),
+                        (87, "512.455"),
+                        (88, "243.105"),
+                        (89, "58.390.118"),
+                        (90, "970.729"),
+                    ]
+                ],
+                _rotated_line(p, 91, "148.504.708"),
+            ),
+            equation(
+                "EQUITY_COLUMNS_TO_CLOSING_TOTAL",
+                "CLOSING",
+                [
+                    _rotated_line(p, index, text)
+                    for index, text in [
+                        (140, "77.669.446"),
+                        (130, "8.974.666"),
+                        (131, "1.574.563"),
+                        (132, "13.089.194"),
+                        (133, "18.016.694"),
+                        (134, "548.467"),
+                        (135, "362.748"),
+                        (136, "58.212.794"),
+                        (137, "1.206.433"),
+                    ]
+                ],
+                _rotated_line(p, 138, "179.655.005"),
+            ),
+        ],
+        [
+            opened(
+                "A2025-CAF-005",
+                "Quỹ đầu tư phát triển",
+                "NO_EXACT_SCHEMA_BALANCE_COLUMN; VALUES_REMAIN_IN_VERIFIED_EQUITY_TOTAL",
+                [label(p, 61, "Quỹ đầu tư"), label(p, 62, "phát triển")],
+                {
+                    "OPENING": [_rotated_line(p, 87, "512.455")],
+                    "CLOSING": [_rotated_line(p, 134, "548.467")],
+                },
+            )
+        ],
+        "NORMALIZED_ROTATED_ANNUAL_EQUITY_COLUMNS_WITH_WORD_GEOMETRY",
+    )
+
+    p = 53
+    bid_columns = [
+        (
+            5984,
+            "CHARTER_CAPITAL",
+            [(86, "Vốn điều lệ")],
+            (46, "68.975.153", ()),
+            (109, "70.213.619", ()),
+        ),
+        (
+            6011,
+            "SHARE_PREMIUM",
+            [(77, "Thặng dư"), (78, "vốn cổ phần")],
+            (47, "15.361.020", ()),
+            (110, "18.875.728", ()),
+        ),
+        (
+            6014,
+            "FINANCIAL_RESERVE",
+            [(72, "dự phòng"), (65, "tài chính")],
+            (48, "12.595.515", ()),
+            (111, "15.152.519", (0,)),
+        ),
+        (
+            6013,
+            "CAPITAL_RESERVE",
+            [(66, "Quỹ dự trữ"), (67, "bổ sung"), (65, "vốn điều lệ")],
+            (49, "6.453.861", ()),
+            (111, "11.582.717", (2,)),
+        ),
+        (
+            6015,
+            "OTHER_FUNDS",
+            [(49, "Quỹ khác"), (50, "thuộc"), (51, "Vốn chủ"), (52, "sở hữu")],
+            (51, "57.408", ()),
+            (113, "71.806", ()),
+        ),
+        (
+            6012,
+            "OTHER_CAPITAL",
+            [(45, "Vốn khác")],
+            (52, "452.623", ()),
+            (114, "1.000.084", ()),
+        ),
+        (
+            6016,
+            "FX_DIFFERENCE",
+            [(37, "Chênh"), (38, "lệch"), (39, "tỷ giá"), (40, "hối đoái")],
+            (53, "(701.036)", ()),
+            (115, "(597.397)", ()),
+        ),
+        (
+            6017,
+            "RETAINED_EARNINGS",
+            [(25, "Lợi nhuận"), (26, "chưa"), (27, "phân phối")],
+            (54, "36.264.506", ()),
+            (116, "44.786.285", ()),
+        ),
+        (
+            6018,
+            "NON_CONTROLLING_INTEREST",
+            [(13, "Lợi ích"), (14, "cổ đông"), (15, "không"), (18, "kiểm soát")],
+            (55, "5.235.108", ()),
+            (117, "5.563.943", ()),
+        ),
     ]
-    return [acb, mbb, vpb, hdb, vcb, *structural_docs]
+    bid = _annual_doc(
+        base,
+        "BID",
+        (53, 54),
+        (p, 100, "VỐN VÀ CÁC QUỸ"),
+        (p, 84, "Báo cáo tình hình thay đổi vốn chủ sở hữu"),
+        [(p, 107, "Số dư đầu năm"), (p, 108, "Số dư cuối năm")],
+        [(p, 2, "Triệu VND"), (p, 19, "Triệu VND")],
+        [
+            base._mapping(
+                1129,
+                "OPENING_TOTAL",
+                [label(p, 107, "Số dư đầu năm")],
+                {"OPENING": [_rotated_line(p, 56, "144.984.194")]},
+                "PRINTED_ANNUAL_OPENING_TOTAL_ON_NORMALIZED_ROTATED_PAGE",
+            ),
+            base._mapping(
+                1141,
+                "CLOSING_TOTAL",
+                [label(p, 108, "Số dư cuối năm")],
+                {"CLOSING": [_rotated_line(p, 118, "173.552.902")]},
+                "PRINTED_ANNUAL_CLOSING_TOTAL_ON_NORMALIZED_ROTATED_PAGE",
+            ),
+            *[
+                _rotated_balance_mapping(base, schema_id, role, p, labels, opening, closing)
+                for schema_id, role, labels, opening, closing in bid_columns
+            ],
+        ],
+        [
+            equation(
+                "EQUITY_COLUMNS_TO_OPENING_TOTAL",
+                "OPENING",
+                [
+                    _rotated_line(p, index, text)
+                    for index, text in [
+                        (46, "68.975.153"),
+                        (47, "15.361.020"),
+                        (48, "12.595.515"),
+                        (49, "6.453.861"),
+                        (50, "290.036"),
+                        (51, "57.408"),
+                        (52, "452.623"),
+                        (53, "(701.036)"),
+                        (54, "36.264.506"),
+                        (55, "5.235.108"),
+                    ]
+                ],
+                _rotated_line(p, 56, "144.984.194"),
+            ),
+            equation(
+                "EQUITY_COLUMNS_TO_CLOSING_TOTAL",
+                "CLOSING",
+                [
+                    _rotated_line(p, 109, "70.213.619"),
+                    _rotated_line(p, 110, "18.875.728"),
+                    _rotated_line(p, 111, "15.152.519", word_indices=(0,)),
+                    _rotated_line(p, 111, "11.582.717", word_indices=(2,)),
+                    _rotated_line(p, 112, "6.903.598"),
+                    _rotated_line(p, 113, "71.806"),
+                    _rotated_line(p, 114, "1.000.084"),
+                    _rotated_line(p, 115, "(597.397)"),
+                    _rotated_line(p, 116, "44.786.285"),
+                    _rotated_line(p, 117, "5.563.943"),
+                ],
+                _rotated_line(p, 118, "173.552.902"),
+            ),
+        ],
+        [
+            opened(
+                "A2025-CAF-006",
+                "Quỹ đầu tư phát triển",
+                "NO_EXACT_SCHEMA_BALANCE_COLUMN; VALUES_REMAIN_IN_VERIFIED_EQUITY_TOTAL",
+                [label(p, 60, "Quỹ"), label(p, 58, "đầu tư"), label(p, 61, "phát triển")],
+                {
+                    "OPENING": [_rotated_line(p, 50, "290.036")],
+                    "CLOSING": [_rotated_line(p, 112, "6.903.598")],
+                },
+            )
+        ],
+        "NORMALIZED_ROTATED_ANNUAL_EQUITY_COLUMNS_WITH_MERGED_LINE_WORD_SPLIT",
+    )
+
+    p = 49
+    vib_columns = [
+        (
+            5984,
+            "CHARTER_CAPITAL",
+            [(66, "Vốn"), (67, "điều lệ")],
+            (27, "29.791.278", ()),
+            (60, "34.040.057", ()),
+        ),
+        (
+            6011,
+            "SHARE_PREMIUM",
+            [(58, "Thặng dư"), (59, "vốn cổ phần")],
+            (28, "1.767", ()),
+            (61, "1.946", ()),
+        ),
+        (
+            6013,
+            "CAPITAL_RESERVE",
+            [(46, "Quỹ dự trữ"), (47, "bổ sung"), (48, "vốn điều lệ")],
+            (29, "438.149", ()),
+            (62, "732.751", ()),
+        ),
+        (
+            6014,
+            "FINANCIAL_RESERVE",
+            [(35, "Quỹ"), (36, "dự phòng"), (37, "tài chính")],
+            (30, "3.884.639", ()),
+            (63, "4.603.414", ()),
+        ),
+        (
+            6017,
+            "RETAINED_EARNINGS",
+            [(16, "Lợi nhuận"), (17, "chưa"), (18, "phân phối")],
+            (32, "7.735.420", ()),
+            (65, "7.516.015", ()),
+        ),
+    ]
+    vib = _annual_doc(
+        base,
+        "VIB",
+        (49, 50),
+        (p, 88, "VỐN VÀ QUỸ"),
+        (p, 73, "Báo cáo tình hình thay đổi vốn chủ sở hữu"),
+        [(p, 81, "Số dư tại ngày 1/1/2025"), (p, 80, "Số dư tại ngày 31/12/2025")],
+        [(p, 7, "Đơn vị: triệu đồng")],
+        [
+            base._mapping(
+                1129,
+                "OPENING_TOTAL",
+                [label(p, 81, "Số dư tại ngày 1/1/2025")],
+                {"OPENING": [_rotated_line(p, 33, "41.861.809")]},
+                "PRINTED_ANNUAL_OPENING_TOTAL_ON_NORMALIZED_ROTATED_PAGE",
+            ),
+            base._mapping(
+                1141,
+                "CLOSING_TOTAL",
+                [label(p, 80, "Số dư tại ngày 31/12/2025")],
+                {"CLOSING": [_rotated_line(p, 66, "46.904.739")]},
+                "PRINTED_ANNUAL_CLOSING_TOTAL_ON_NORMALIZED_ROTATED_PAGE",
+            ),
+            *[
+                _rotated_balance_mapping(base, schema_id, role, p, labels, opening, closing)
+                for schema_id, role, labels, opening, closing in vib_columns
+            ],
+        ],
+        [
+            equation(
+                "EQUITY_COLUMNS_TO_OPENING_TOTAL",
+                "OPENING",
+                [
+                    _rotated_line(p, index, text)
+                    for index, text in [
+                        (27, "29.791.278"),
+                        (28, "1.767"),
+                        (29, "438.149"),
+                        (30, "3.884.639"),
+                        (31, "10.556"),
+                        (32, "7.735.420"),
+                    ]
+                ],
+                _rotated_line(p, 33, "41.861.809"),
+            ),
+            equation(
+                "EQUITY_COLUMNS_TO_CLOSING_TOTAL",
+                "CLOSING",
+                [
+                    _rotated_line(p, index, text)
+                    for index, text in [
+                        (60, "34.040.057"),
+                        (61, "1.946"),
+                        (62, "732.751"),
+                        (63, "4.603.414"),
+                        (64, "10.556"),
+                        (65, "7.516.015"),
+                    ]
+                ],
+                _rotated_line(p, 66, "46.904.739"),
+            ),
+        ],
+        [
+            opened(
+                "A2025-CAF-007",
+                "Quỹ đầu tư phát triển",
+                "NO_EXACT_SCHEMA_BALANCE_COLUMN; VALUES_REMAIN_IN_VERIFIED_EQUITY_TOTAL",
+                [label(p, 31, "Quỹ đầu tư"), label(p, 32, "phát triển")],
+                {
+                    "OPENING": [_rotated_line(p, 31, "10.556")],
+                    "CLOSING": [_rotated_line(p, 64, "10.556")],
+                },
+            )
+        ],
+        "NORMALIZED_ROTATED_ANNUAL_EQUITY_COLUMNS_WITH_WORD_GEOMETRY",
+    )
+    return [acb, mbb, vpb, hdb, vcb, ctg, bid, vib]
 
 
 def _adapt_structure_scan(scan: dict[str, Any]) -> dict[str, Any]:
@@ -903,6 +1330,150 @@ def _adapt_structure_scan(scan: dict[str, Any]) -> dict[str, Any]:
             }
         )
     return {"scan_id": scan["scan_id"], "state": STRUCTURE_SCAN_STATE, "trials": trials}
+
+
+def _annual_metrics(base_metrics: Any, trials: list[dict[str, Any]]) -> dict[str, int]:
+    metrics = base_metrics(trials)
+    metrics.pop("rotated_structural_document_count")
+    metrics["normalized_rotated_full_page_redetected_document_count"] = sum(
+        trial["rotated_rescue_line_count"] > 0 for trial in trials
+    )
+    return metrics
+
+
+def _rotated_panel() -> ModuleType:
+    return _load_module(
+        "annual_2025_capital_and_funds_rotated_numeric_panel_v1",
+        "build_annual_2025_capital_and_funds_rotated_ppocrv6_panel_v1.py",
+    )
+
+
+def _configure_rotated_numeric_evidence(base: ModuleType) -> None:
+    projection = (
+        _rotated_panel().read_verified_annual_2025_capital_and_funds_rotated_ppocrv6_panel_v1()
+    )
+    if projection.get("projection_id") != EXPECTED_ROTATED_PPOCRV6_PROJECTION_ID:
+        raise _error("annual capital/funds rotated PP-OCRv6 projection drifted")
+    pages = projection.get("pages")
+    if type(pages) is not list or [page.get("document_ordinal") for page in pages] != [6, 7, 8]:
+        raise _error("annual capital/funds rotated PP-OCRv6 document axis drifted")
+    by_document = {page["document_ordinal"]: page for page in pages}
+
+    def verify(
+        document_ordinal: int,
+        _document_provenance: str,
+        crop_document: dict[str, Any],
+        ref: dict[str, Any],
+    ) -> dict[str, Any]:
+        if (
+            type(ref) is not dict
+            or set(ref)
+            != {
+                "evidence_axis",
+                "line_index",
+                "multiplier",
+                "page_sequence",
+                "pixel_transcription",
+                "word_indices",
+            }
+            or ref["evidence_axis"] != "NORMALIZED_ROTATED_FULL_PAGE_PPOCRV6_WORD_GEOMETRY_V1"
+            or type(ref["line_index"]) is not int
+            or type(ref["multiplier"]) is not int
+            or ref["multiplier"] not in {-1, 1}
+            or type(ref["page_sequence"]) is not int
+            or type(ref["pixel_transcription"]) is not str
+            or type(ref["word_indices"]) is not list
+            or any(type(index) is not int for index in ref["word_indices"])
+            or any(index < 0 for index in ref["word_indices"])
+            or ref["word_indices"] != sorted(set(ref["word_indices"]))
+        ):
+            raise _error("normalized rotated numeric reference shape drifted")
+        page = by_document.get(document_ordinal)
+        source_pdf = crop_document.get("source_pdf")
+        if (
+            type(page) is not dict
+            or type(source_pdf) is not dict
+            or page.get("source_pdf_sha256") != source_pdf.get("sha256")
+            or page.get("physical_page") != ref["page_sequence"]
+        ):
+            raise _error("normalized rotated numeric page/source binding drifted")
+        line_index = ref["line_index"]
+        texts = page.get("rec_texts")
+        boxes = page.get("rec_boxes")
+        scores = page.get("rec_scores")
+        words = page.get("text_word")
+        word_boxes = page.get("text_word_boxes")
+        if (
+            type(texts) is not list
+            or type(boxes) is not list
+            or type(scores) is not list
+            or type(words) is not list
+            or type(word_boxes) is not list
+            or not 0 <= line_index < len(texts)
+            or not len(texts) == len(boxes) == len(scores) == len(words) == len(word_boxes)
+        ):
+            raise _error("normalized rotated PP-OCRv6 line axis drifted")
+        selected_word_indices = ref["word_indices"]
+        if selected_word_indices:
+            if any(index >= len(words[line_index]) for index in selected_word_indices):
+                raise _error("normalized rotated PP-OCRv6 word index drifted")
+            proposal = "".join(words[line_index][index] for index in selected_word_indices)
+            selected_boxes = [word_boxes[line_index][index] for index in selected_word_indices]
+            bbox = [
+                min(box[0] for box in selected_boxes),
+                min(box[1] for box in selected_boxes),
+                max(box[2] for box in selected_boxes),
+                max(box[3] for box in selected_boxes),
+            ]
+        else:
+            proposal = texts[line_index]
+            bbox = boxes[line_index]
+        if (
+            type(proposal) is not str
+            or type(bbox) is not list
+            or len(bbox) != 4
+            or any(type(value) is not int for value in bbox)
+        ):
+            raise _error("normalized rotated PP-OCRv6 selected value geometry drifted")
+        pixel_value = base.foundation.support._money(ref["pixel_transcription"])
+        if base.foundation.support._money(proposal) != pixel_value:
+            raise _error("normalized rotated PP-OCRv6 and visible pixel value disagree")
+        return {
+            "coordinate_space": "NORMALIZED_ROTATED_PAGE_TOP_LEFT_X_RIGHT_Y_DOWN",
+            "fresh_vietocr_numeric_proposal": None,
+            "normalized_value": pixel_value,
+            "ocr_result_ref": canonical_clone_v1(page["ocr_result_ref"]),
+            "pixel_transcription": ref["pixel_transcription"],
+            "rotated_page_ref": canonical_clone_v1(page["rotated_page_ref"]),
+            "run_manifest_ref": canonical_clone_v1(page["run_manifest_ref"]),
+            "source_bbox_normalized_pixels": list(bbox),
+            "source_line_index": line_index,
+            "source_numeric_challenger": proposal,
+            "source_numeric_challenger_status": (
+                "ROTATED_FULL_PAGE_PPOCRV6_MATCHED_VISIBLE_PIXEL_TRANSCRIPTION"
+            ),
+            "word_indices": list(selected_word_indices),
+        }
+
+    base._ALTERNATE_VALUE_VERIFIER = verify
+    base._EXTRA_INPUT_REFS = {
+        "normalized_rotated_ppocrv6_panel": {
+            "coordinate_space": "NORMALIZED_ROTATED_PAGE_TOP_LEFT_X_RIGHT_Y_DOWN",
+            "inverse_projection_to_source_pdf_required_for_mapping": False,
+            "panel_id": projection["panel_id"],
+            "panel_manifest": canonical_clone_v1(projection["input_refs"]["panel_manifest"]),
+            "pages": [
+                {
+                    "document_ordinal": page["document_ordinal"],
+                    "ocr_result_ref": canonical_clone_v1(page["ocr_result_ref"]),
+                    "rotated_page_ref": canonical_clone_v1(page["rotated_page_ref"]),
+                    "run_manifest_ref": canonical_clone_v1(page["run_manifest_ref"]),
+                }
+                for page in pages
+            ],
+            "projection_id": projection["projection_id"],
+        }
+    }
 
 
 def _configure(base: ModuleType) -> None:
@@ -928,6 +1499,8 @@ def _configure(base: ModuleType) -> None:
     base._AUTHORITY = dict(_AUTHORITY)
     base._SCHEMA_EXPECTED = dict(_SCHEMA_EXPECTED)
     base._review_documents = lambda: _review_documents(base)
+    original_metrics = base._metrics
+    base._metrics = lambda trials: _annual_metrics(original_metrics, list(trials))
     base._source_period_status = lambda source_period: (
         "VERIFIED_AUDITED_CONSOLIDATED_ANNUAL_2025_OPENING_AND_CLOSING_BALANCES"
         if source_period == "2025-12-31"
@@ -959,6 +1532,7 @@ def build_live_annual_2025_capital_and_funds_8bank_codex_verified_mapping_v1() -
     base = _load_base()
     scanner = _load_scanner()
     _configure(base)
+    _configure_rotated_numeric_evidence(base)
     semantic_index, _ = base._stable_json(SEMANTIC_INDEX_PATH, EXPECTED_INDEX_SHA256)
     crop_manifest, crop_sha = base._stable_json(CROP_MANIFEST_PATH, EXPECTED_CROP_MANIFEST_SHA256)
     review = base._review_blueprint()

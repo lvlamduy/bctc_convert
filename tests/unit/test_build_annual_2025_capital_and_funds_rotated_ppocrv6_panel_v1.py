@@ -140,6 +140,23 @@ def test_word_box_outside_normalized_page_is_rejected(
         builder.read_verified_annual_2025_capital_and_funds_rotated_ppocrv6_panel_v1()
 
 
+def test_line_box_outside_normalized_page_is_rejected(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    manifest = _build(tmp_path, monkeypatch)
+    _write_reader_output(tmp_path, manifest)
+    result_path = tmp_path / builder.OUTPUT_ROOT / "page-0001/reader-output/ocr_result.json"
+    result = json.loads(result_path.read_text(encoding="utf-8"))
+    result["rec_boxes"][0] = [5, 5, 61, 20]
+    result_path.write_text(json.dumps(result), encoding="utf-8")
+
+    with pytest.raises(
+        builder.Annual2025CapitalAndFundsRotatedPPocrV6PanelError,
+        match="result or runtime identity drifted",
+    ):
+        builder.read_verified_annual_2025_capital_and_funds_rotated_ppocrv6_panel_v1()
+
+
 def test_bank_page_and_inverse_projection_are_not_routing_or_mapping_authority() -> None:
     assert builder.SELECTION_RULE == (
         "UNIQUE_COMPLETE_CAPITAL_AND_FUNDS_REGION_AND_GEOMETRY_ROTATED_SOURCE_AXIS_TRUE"

@@ -91,6 +91,7 @@ _WAVE1_PROFILE = {
     "source_semantic_axis_sha256": SOURCE_SEMANTIC_AXIS_SHA256,
 }
 _SAMPLE_RE = re.compile(r"^rotated-sample-[0-9]{8}$")
+_COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 _SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 _REF_FIELDS = {"path", "sha256", "size_bytes"}
 _MANIFEST_FIELDS = {
@@ -348,6 +349,44 @@ def _read_ref(value: Any, label: str) -> bytes:
     ):
         raise _error(f"{label} bytes drifted")
     return payload
+
+
+def _generation_implementation(git_binding: dict[str, Any]) -> bytes:
+    """Authenticate the exact committed builder that generated an artifact.
+
+    A completed inference artifact remains replayable after a clean descendant
+    adds another corpus profile.  The manifest pins its generation commit and
+    builder blob, so replay authenticates that immutable Git blob instead of
+    requiring today's working-tree builder to remain byte-for-byte frozen.
+    """
+
+    commit = git_binding["commit"]
+    reference = _ref(git_binding["implementation_ref"], "rescue builder")
+    if _COMMIT_RE.fullmatch(commit) is None or reference["path"] != BUILDER_PATH.as_posix():
+        raise _error("rotated crop manifest implementation binding drifted")
+    ancestry = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", commit, "HEAD"],
+        cwd=PROJECT_ROOT,
+        check=False,
+        capture_output=True,
+    )
+    if ancestry.returncode != 0:
+        raise _error("rotated crop manifest run commit is not an ancestor of HEAD")
+    try:
+        tracked = subprocess.run(
+            ["git", "show", f"{commit}:{BUILDER_PATH.as_posix()}"],
+            cwd=PROJECT_ROOT,
+            check=True,
+            capture_output=True,
+        ).stdout
+    except subprocess.CalledProcessError as exc:
+        raise _error("rotated crop manifest run commit is unavailable") from exc
+    if (
+        len(tracked) != reference["size_bytes"]
+        or hashlib.sha256(tracked).hexdigest() != reference["sha256"]
+    ):
+        raise _error("rotated crop manifest implementation binding drifted")
+    return tracked
 
 
 def _bbox(value: Any) -> list[int]:
@@ -673,18 +712,7 @@ def _validate_freeze() -> tuple[
         or git_binding["dirty"] is not False
     ):
         raise _error("rotated crop manifest Git binding drifted")
-    builder = _read_ref(git_binding["implementation_ref"], "rescue builder")
-    try:
-        tracked = subprocess.run(
-            ["git", "show", f"{git_binding['commit']}:{BUILDER_PATH.as_posix()}"],
-            cwd=PROJECT_ROOT,
-            check=True,
-            capture_output=True,
-        ).stdout
-    except subprocess.CalledProcessError as exc:
-        raise _error("rotated crop manifest run commit is unavailable") from exc
-    if builder != tracked:
-        raise _error("rotated crop manifest implementation binding drifted")
+    _generation_implementation(git_binding)
 
     cursor = 0
     for raw_page, selected_page in zip(manifest["pages"], selected, strict=True):

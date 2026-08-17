@@ -658,16 +658,18 @@ Closure lượt hiện hành:
 ## 27. Vốn và các quỹ
 
 - **Đã map/xác minh trên BCTC hợp nhất kiểm toán annual-2025:** ACB p65–66,
-  MBB p69–70, VPB p66–67, HDB p48–49 và VCB p56–57. Whole-PDF matcher tìm
-  đúng một vùng ở cả 8/8 bank và giữ 23 vùng gần giống làm đối chứng âm. Năm
-  bảng đọc số được đã xác minh 46 mapping/82 ô số và 12 phương trình tổng vốn.
-  HDB VietOCR đọc `835.956`; pixel, PP-OCRv6 và phương trình xác nhận
-  `535.956`.
+  MBB p69–70, VPB p66–67, HDB p48–49, VCB p56–57, CTG p55–56, BID p53–54
+  và VIB p49–50. Whole-PDF matcher tìm đúng một vùng ở cả 8/8 bank và giữ 23
+  vùng gần giống làm đối chứng âm. Xoay toàn trang rồi detect lại CTG/BID/VIB
+  trong tọa độ landscape chuẩn giúp xác minh tổng cộng 74 mapping/132 ô số và
+  18 phương trình tổng vốn. BID có hai ô cùng một line nhưng word boxes tách
+  đúng từng số. HDB VietOCR đọc `835.956`; pixel, PP-OCRv6 và phương trình xác
+  nhận `535.956`.
 - **Không có trong annual-2025:** Không có.
-- **Có cụm nhưng còn khoản mục chưa map:** Bốn dòng nguồn dưới đây chưa có
-  leaf số dư vốn tương đương. CTG p55–56, BID p53–54 và VIB p49–50 đã unique
-  về cấu trúc nhưng chưa map số vì numeric challenger trên ba bảng xoay chưa
-  đủ tin cậy; VietOCR xoay chỉ được dùng cho text/anchor.
+- **Có cụm nhưng còn khoản mục chưa map:** Bảy dòng nguồn dưới đây chưa có
+  leaf số dư vốn tương đương. Không còn bảng nào thiếu numeric authority;
+  VietOCR xoay chỉ được dùng cho text/anchor, còn số dựa trên pixel, full-page
+  PP-OCRv6 và phép khép tổng.
 
 | Bank | Trang | Khoản mục nguồn | Lý do chưa map |
 | --- | ---: | --- | --- |
@@ -675,9 +677,9 @@ Closure lượt hiện hành:
 | HDB | 48 | Cổ phiếu quỹ (`(413.448)` / ô đóng kỳ để trống) | Chưa có leaf số dư vốn tương đương; ô trống không bị đổi thành 0. |
 | HDB | 48 | Vốn đầu tư xây dựng cơ bản (`89` / `89`) | Chưa có leaf số dư vốn tương đương. |
 | VCB | 56 | Quỹ đầu tư phát triển (`1.357.643` / `9.058.060`) | Chưa có leaf riêng; số vẫn nằm trong subtotal quỹ và tổng vốn đã xác minh. |
-| CTG | 55–56 | Báo cáo tình hình thay đổi vốn chủ sở hữu | Bảng xoay đã unique nhưng numeric challenger nguồn chưa đủ tin cậy để map. |
-| BID | 53–54 | Báo cáo tình hình thay đổi vốn chủ sở hữu | Bảng xoay đã unique nhưng numeric challenger nguồn chưa đủ tin cậy để map. |
-| VIB | 49–50 | Báo cáo tình hình thay đổi vốn chủ sở hữu | Bảng xoay đã unique nhưng numeric challenger nguồn chưa đủ tin cậy để map. |
+| CTG | 55 | Quỹ đầu tư phát triển (`512.455` / `548.467`) | Chưa có leaf số dư vốn tương đương; hai số vẫn nằm trong tổng vốn đã xác minh. |
+| BID | 53 | Quỹ đầu tư phát triển (`290.036` / `6.903.598`) | Chưa có leaf số dư vốn tương đương; hai số vẫn nằm trong tổng vốn đã xác minh. |
+| VIB | 49 | Quỹ đầu tư phát triển (`10.556` / `10.556`) | Chưa có leaf số dư vốn tương đương; hai số vẫn nằm trong tổng vốn đã xác minh. |
 
 - **Lượt hiện hành trước:** E-0078 đã xác minh 65 mapping/131 ô số/20 phương
   trình tại ACB, MBB, VPB, HDB, VCB và CTG; BID/VIB structure-only và mười
@@ -1142,7 +1144,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Vốn nhận tài trợ/ủy thác đầu tư | ✓ p63 | ✓ p66 | ✓ p62 | ✓ p45 | ✓ p53 | ✓ p53 | ✓ p51 | ✓ p47 | 0 dòng annual-2025; 20 mapping/8 phương trình; VCB DASH→0. Lượt hiện hành trước giữ riêng 6 mapping tại MBB/VPB/VIB |
 | Phát hành giấy tờ có giá | ✓ p63 | ✓ p66 | ✓\* p62 | ✓\* p46 | ✓\* p54 | ✓ p53–54 | ✓ p52 | ✓ p47 | Annual-2025: 5 dòng OPEN, 70 mapping/34 phương trình, 11 DASH→0; lượt hiện hành trước còn 3 dòng VPB OPEN |
 | Các khoản phải trả và công nợ khác | ✓ p64 | ✓ p67 | ✓ p63 | ✓ p47 | ✓ p54 | ✓ p54 | ✓ p52 | ✓ p48 | Annual-2025: 0 dòng OPEN, 53 mapping/32 phương trình, 3 DASH→0; E-0132A đóng 18 dòng lượt hiện hành vào 1127 `Khác` |
-| Vốn và các quỹ | ✓ p65–66 | ✓ p69–70 | ✓\* p66–67 | ✓\* p48–49 | ✓\* p56–57 | △ p55–56 | △ p53–54 | △ p49–50 | Annual-2025: 7 mục OPEN; 46 mapping/82 ô/12 phương trình; 3 bảng xoay structure-only. Lượt hiện hành trước: 10 OPEN/65 mapping |
+| Vốn và các quỹ | ✓ p65–66 | ✓ p69–70 | ✓\* p66–67 | ✓\* p48–49 | ✓\* p56–57 | ✓\* p55–56 | ✓\* p53–54 | ✓\* p49–50 | Annual-2025: 7 mục OPEN do thiếu leaf số dư vốn; 74 mapping/132 ô/18 phương trình; 3 bảng xoay đã full-page re-detect. Lượt hiện hành trước: 10 OPEN/65 mapping |
 | Thu nhập lãi và các khoản thu nhập tương tự | ✓ p24 | ✓ p46 | ✓\* p62 | ✓ p34 | ✓ p38 | ✓ p45 | ✓ p28 | ✓ p45 | 0 dòng; 54 mapping, 108 ô số, 28 phương trình; VPB là nguồn Q1 |
 | Chi phí lãi và các khoản tương tự chi phí lãi | ✓ p24 | ✓ p46 | ✓\* p62 | ✓ p34 | ✓ p39 | ✓ p45 | ✓ p29 | ✓ p45 | 0 dòng; 40 mapping, 80 ô số, 16 phương trình; VPB là nguồn Q1 |
 | Thu nhập/chi phí/lãi thuần hoạt động dịch vụ | — | ✓ p46 | ✓\* p62 | — | — | — | — | ✓ p45 | 0 dòng; 43 mapping, 86 ô số, 18 phương trình; 5 bank không có note chi tiết; VPB là nguồn Q1 |

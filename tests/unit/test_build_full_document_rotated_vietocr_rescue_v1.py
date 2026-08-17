@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import io
 import sys
@@ -189,3 +190,26 @@ def test_reader_surface_is_reference_blind() -> None:
         "family_id",
         "report_norm_id",
     }.intersection(rescue._REQUEST_SAMPLE_FIELDS)
+
+
+def test_completed_wave1_artifact_authenticates_immutable_generation_blob() -> None:
+    manifest, _reference = rescue._fixed_json(rescue.MANIFEST_PATH)
+    git_binding = manifest["git_binding"]
+    generation = rescue._generation_implementation(git_binding)
+
+    assert hashlib.sha256(generation).hexdigest() == git_binding["implementation_ref"]["sha256"]
+    assert len(generation) == git_binding["implementation_ref"]["size_bytes"]
+    assert generation != rescue._stable_bytes(rescue.BUILDER_PATH)
+
+    poisoned = {
+        **git_binding,
+        "implementation_ref": {
+            **git_binding["implementation_ref"],
+            "sha256": "0" * 64,
+        },
+    }
+    with pytest.raises(
+        rescue.FullDocumentRotatedVietOCRRescueV1Error,
+        match="implementation binding drifted",
+    ):
+        rescue._generation_implementation(poisoned)

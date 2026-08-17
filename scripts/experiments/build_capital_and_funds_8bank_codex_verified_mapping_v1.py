@@ -64,7 +64,7 @@ REVIEW_STATE = "CODEX_PIXEL_REVIEW_COMPLETE"
 REVIEW_ID_PREFIX = "e0078:pixel-review:"
 REVIEW_RUN_ID = "E-0078"
 STRUCTURE_SCAN_STATE = "FULL_DOCUMENT_CAPITAL_AND_FUNDS_SCAN_COMPLETE"
-FAMILY_END_DISPLAY_ORDER = 667
+FAMILY_END_DISPLAY_ORDER = 672
 CLAIM_BOUNDARY = (
     "FIXED_EIGHT_DOCUMENT_COMPLETE_PDF_FRESH_AND_ROTATED_VIETOCR_BANK_BLIND_"
     "CAPITAL_FUNDS_GRAPH_VISIBLE_PDF_LABEL_SOURCE_NUMERIC_CHALLENGER_PERIOD_"
@@ -83,20 +83,20 @@ EXPECTED_AXIS_SHA256 = "e99873cd16a7234702d0ee6e5fa9eb37637a1a75621228381e3dbcd7
 EXPECTED_SCAN_ID = "caffdsv1:scan:cb3aec79185072a97f4ab5d62322a74cd523652461c90790bee4b1b2f102668c"
 
 _SCHEMA_EXPECTED = {
-    1128: ("Vốn và các quỹ", 560, 641),
-    5984: ("Vốn điều lệ của Ngân hàng", 1128, 644),
-    6011: ("Thặng dư vốn cổ phần", 1128, 645),
-    6012: ("Vốn khác", 1128, 646),
-    6013: ("Quỹ dự trữ bổ sung vốn điều lệ", 1128, 647),
-    6014: ("Quỹ dự phòng tài chính", 1128, 648),
-    6015: ("Quỹ khác", 1128, 649),
-    6016: ("Chênh lệch tỷ giá hối đoái", 1128, 650),
-    6017: ("Lợi nhuận chưa phân phối", 1128, 651),
-    6018: ("Lợi ích cổ đông không kiểm soát", 1128, 652),
-    1129: ("Số dư đầu kỳ", 1128, 653),
-    6019: ("Trích lập/Tăng", 1128, 654),
-    6020: ("Sử dụng/Giảm", 1128, 662),
-    1141: ("Số dư cuối kỳ", 1128, 667),
+    1128: ("Vốn và các quỹ", 560, 646),
+    5984: ("Vốn điều lệ của Ngân hàng", 1128, 649),
+    6011: ("Thặng dư vốn cổ phần", 1128, 650),
+    6012: ("Vốn khác", 1128, 651),
+    6013: ("Quỹ dự trữ bổ sung vốn điều lệ", 1128, 652),
+    6014: ("Quỹ dự phòng tài chính", 1128, 653),
+    6015: ("Quỹ khác", 1128, 654),
+    6016: ("Chênh lệch tỷ giá hối đoái", 1128, 655),
+    6017: ("Lợi nhuận chưa phân phối", 1128, 656),
+    6018: ("Lợi ích cổ đông không kiểm soát", 1128, 657),
+    1129: ("Số dư đầu kỳ", 1128, 658),
+    6019: ("Trích lập/Tăng", 1128, 659),
+    6020: ("Sử dụng/Giảm", 1128, 667),
+    1141: ("Số dư cuối kỳ", 1128, 672),
 }
 _AUTHORITY = {
     "bank_filename_note_or_page_used_as_matching_rule": False,
