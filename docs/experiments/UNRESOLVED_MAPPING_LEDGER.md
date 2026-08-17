@@ -1487,11 +1487,14 @@ unresolved.  Six non-additive source group/total equations remain explicit.
 - Resolution: the exact crop-bound pixel value `97.043.851` is retained alongside
   the raw Transformer proposal and maps to ReportNormId `773`; total closure is exact.
 
-## E-0066 — bounded whole-PDF non-observation controls for `Hoạt động mua nợ`
+## E-0066 / E-0120 — bounded whole-PDF controls for `Hoạt động mua nợ`
 
-These four entries satisfy the ledger requirement for every no-complete-region
-outcome. They are not open mappings: the supplied PDFs were scanned completely,
-and the family is recorded as absent only inside that fixed source scope.
+E-0120 repeats the complete-PDF scan on the eight audited consolidated
+annual-2025 filings. It maps MBB p54, VPB p49, HDB p39 and VIB p40 with 15
+schema rows, 30 cells and 19 exact equations. HDB's legitimate source variant
+has no separate interest row, so 5739 is not fabricated. Five visible dashes
+remain typed before zero normalization. These four entries are not open
+mappings: the family is absent only inside each fixed supplied-PDF scope.
 
 ### PD-001 — ACB — no complete purchased-debt region
 
@@ -1520,6 +1523,9 @@ and the family is recorded as absent only inside that fixed source scope.
 
 Resolving result: E-0066
 `e0066:result:79e15086c88ca9283d450955da737a620012679f36071e39dce9a63962c76a3b`.
+
+Annual-2025 resolving result: E-0120
+`annual2025pd8bcv1:result:6c91fc19548f1ff71df439cf2d027d65e797aeb2c8f2a51b4776a732610909d2`.
 
 ## Append policy
 

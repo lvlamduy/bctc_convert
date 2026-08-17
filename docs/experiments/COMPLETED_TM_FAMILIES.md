@@ -246,20 +246,22 @@ không bị relabel thành Q2.
 
 ## 14. Hoạt động mua nợ
 
-- **Đã xác minh:** MBB p35, VPB p46, HDB p29 và VIB p35. Đã map 17 dòng
-  `Mua nợ bằng VNĐ`, `Mua nợ bằng ngoại tệ` (HDB), `Dự phòng rủi ro`, `Nợ
-  gốc đã mua`, `Lãi của khoản nợ đã mua`; 34 ô hiện tại/so sánh và 16 phương
-  trình lõi đều đóng đúng. Năm dấu `-` nhìn thấy được giữ trạng thái `DASH`
-  rồi chuẩn hóa thành 0.
-- **Không có trong báo cáo:** ACB, VCB, CTG, BID. Whole-PDF scan không tìm
-  thấy vùng nào đi từ owner `Hoạt động mua nợ` qua hai khối số dư/gốc-lãi đến
-  ranh giới family kế tiếp.
-- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong bốn vùng đã xác minh.
-  Nhánh chất lượng và biến động dự phòng của VPB cùng khối mua nợ lịch sử 2017
-  của VIB chỉ dùng kiểm tra, không cộng hoặc map lại vào số dư hiện tại.
+- **Đã map/xác minh trên BCTC hợp nhất kiểm toán annual-2025:** MBB p54,
+  VPB p49, HDB p39 và VIB p40. Đã map 15 dòng `Mua nợ bằng VNĐ`, `Dự phòng
+  rủi ro`, `Nợ gốc đã mua` và dòng lãi khi nguồn có trình bày; 30 ô số, 16
+  phương trình lõi và ba phương trình nhánh đều đóng chính xác.
+- **Không có trong báo cáo annual-2025 đã bind:** ACB, VCB, CTG và BID.
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map. HDB không in dòng lãi
+  riêng nên graph chấp nhận biến thể gốc-only, không tự tạo dòng 5739. MBB và
+  VPB có một ô lãi `-`; ba ô so sánh của HDB cũng là `-`; cả năm ô chỉ được
+  chuẩn hóa 0 sau khi bind ảnh. Nhánh chất lượng/biến động dự phòng và khối
+  lịch sử 2017 của VIB chỉ làm kiểm tra, không cộng trùng.
 
-Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
-Q1/2026, không relabel thành Q2/2026.
+Kết quả exact-replay:
+`docs/experiments/E-0120-annual-2025-purchased-debt-8bank-codex-verified-mapping-v1.json`.
+
+Lượt BCTC hiện hành trước đó vẫn giữ nguyên như kết quả kỳ riêng; VPB của lượt
+đó là Q1/2026 và không bị relabel thành annual-2025.
 
 ## 15. Tiền gửi của khách hàng — phân loại theo loại/kỳ hạn/đối tượng
 
@@ -973,7 +975,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Cho vay theo khu vực địa lý | ✓ p77 | ✓ p91 | — p81 | — p60 | — | — | — p63 | ✓ p59–60 | 0 dòng annual-2025; ba bảng địa lý rộng hơn không bị thu hẹp ngầm |
 | Doanh nghiệp/đối tượng KH | — | ✓ p52 | ✓ p46 | ✓ p36 | ✓\* p40 | — | ✓ p42 | ✓ p39 | 1 dòng VCB gộp `Hợp tác xã` + `công ty tư nhân` |
 | Dự phòng cho vay | ✓ p51 | ✓ p53 | ✓ p48 | ✓ p38 | ✓ p41 | ✓ p44 | ✓ p43 | ✓ p39 | 0 dòng annual-2025; 18 lane/79 dòng/18 phương trình; 9 DASH→0 |
-| Hoạt động mua nợ | — | ✓ p35 | ✓\* p46 | ✓ p29 | — | — | — | ✓\* p35 | 0 dòng; 4 bank không có; VPB là nguồn Q1 |
+| Hoạt động mua nợ | — | ✓ p54 | ✓ p49 | ✓ p39 | — | — | — | ✓ p40 | 0 dòng annual-2025; 15 mapping/30 ô/19 phương trình; HDB không in dòng lãi |
 | Tiền gửi khách hàng | ✓ p21 | ✓ p43 | ✓\* p55 | ✓ p31 | ✓ p35 | ✓ p42 | ✓ p25 | ✓ p41–42 | 0 dòng; VPB là nguồn Q1 |
 | Chứng khoán đầu tư | ✓ p19 | ✓ p35–36 | ✓\* p47–48 | ✓ p29 | ✓ p32 | ✓ p40 | ✓ p23 | ✓ p36 | 0 dòng; BID dùng đơn vị cấp tài liệu, VIB gộp hai dòng TCTD vào 808; VPB là nguồn Q1 |
 | Đầu tư dài hạn khác | ✓ p19 | ✓ p36 | ✓\* p48 | ✓ p30 | ✓ p33 | ✓ p40 | ✓ p24 | ✓ p36 | 0 dòng; VPB là nguồn Q1 |

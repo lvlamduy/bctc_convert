@@ -7,10 +7,11 @@ ReportNormId 804 (investment securities).  A complete source cluster starts at
 ``Mua nợ bằng VND`` [optionally ``Mua nợ bằng ngoại tệ``]
 ``Dự phòng rủi ro`` -> unlabeled net total,
 
-followed by the detail block ``Nợ gốc đã mua`` and ``Lãi của khoản nợ đã
-mua``.  Quality and provision-movement tables may follow as non-additive
-branches.  The next investment-securities heading closes the region, including
-when it occurs on the following page.
+followed by the detail block ``Nợ gốc đã mua`` and, when separately disclosed,
+``Lãi của/từ khoản nợ đã mua``.  The interest row, quality table and
+provision-movement table are optional branches.  The next
+investment-securities heading closes the region, including when it occurs on
+the following page.
 
 Fresh VietOCR Transformer text is anchor evidence only.  Numeric values,
 period/unit scope, DASH cells, accounting equations and schema mapping require
@@ -80,11 +81,12 @@ _NUMBER = re.compile(r"^\(?[+-]?[0-9]+(?:[., ][0-9]+)*%?\)?$")
 _DATE = re.compile(
     r"(?:[0-3]?[0-9](?:[./-]|\s+)[01]?[0-9](?:[./-]|\s+)(?:20)?[0-9]{2})|"
     r"(?:ngay\s+[0-3]?[0-9]\s+thang\s+[01]?[0-9]\s+nam\s+20[0-9]{2})|"
-    r"(?:so\s+(?:cuoi|dau)\s+ky)"
+    r"(?:so\s+(?:cuoi|dau)\s+(?:ky|nam))"
 )
 _MAX_REGION_PAGES = 3
 _MAX_REGION_LINES = 260
 _CORE_ROLES = ("owner", "purchase_vnd", "provision", "principal", "interest")
+_REQUIRED_ROLES = ("owner", "purchase_vnd", "provision", "principal")
 
 
 class PurchasedDebtVariantGraphV1Error(ValueError):
@@ -240,9 +242,13 @@ def _role(text: str) -> str | None:
         return "purchase_fx"
     if _near_phrase(text, "no goc da mua"):
         return "principal"
-    if _near_phrase(text, "lai cua khoan no da mua", allowance=3):
+    if _near_phrase(text, "lai cua khoan no da mua", allowance=3) or _near_phrase(
+        text, "lai tu cac khoan no da mua", allowance=3
+    ):
         return "interest"
-    if _near_phrase(text, "du phong rui ro") and len(text.split()) <= 8:
+    if (
+        _near_phrase(text, "du phong rui ro") or text in {"du phong chung", "du phong cu the"}
+    ) and len(text.split()) <= 8:
         return "provision"
     if "phan tich chat luong" in text and "mua no" in text:
         return "quality_branch"
@@ -335,7 +341,7 @@ def _candidate_region(
     reasons = []
     if not strong_owner:
         reasons.append("BARE_MUA_NO_MENTION_NOT_FAMILY_OWNER")
-    for role in _CORE_ROLES[1:]:
+    for role in _REQUIRED_ROLES[1:]:
         if role not in anchors:
             reasons.append(f"MISSING_{role.upper()}_ANCHOR")
     if len(period_lines) < 2:

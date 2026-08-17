@@ -91,13 +91,31 @@ def test_bare_balance_sheet_mention_is_only_a_near_region() -> None:
     )
 
 
-def test_missing_interest_or_next_boundary_fails_closed() -> None:
+def test_missing_interest_is_an_admitted_family_variant() -> None:
     missing_interest = [text for text in _cluster() if text != "Lãi của khoản nợ đã mua"]
+    result = graph.build_purchased_debt_variant_graph_document_v1([_page(1, missing_interest)])
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    region = result["regions"][0]
+    assert "interest" not in region["anchors"]
+    assert region["boundary"]["last_schema_item"]["surface"] == "Nợ gốc đã mua"
+
+
+def test_interest_from_purchased_debt_alias_is_admitted() -> None:
+    texts = [
+        "Lãi từ các khoản nợ đã mua" if text == "Lãi của khoản nợ đã mua" else text
+        for text in _cluster()
+    ]
+    result = graph.build_purchased_debt_variant_graph_document_v1([_page(1, texts)])
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["regions"][0]["anchors"]["interest"]["surface"] == ("Lãi từ các khoản nợ đã mua")
+
+
+def test_missing_next_boundary_still_fails_closed() -> None:
     missing_boundary = [text for text in _cluster() if text != "Chứng khoán đầu tư"]
     wrong_later_family = [
         "Góp vốn đầu tư dài hạn" if text == "Chứng khoán đầu tư" else text for text in _cluster()
     ]
-    for texts in (missing_interest, missing_boundary, wrong_later_family):
+    for texts in (missing_boundary, wrong_later_family):
         result = graph.build_purchased_debt_variant_graph_document_v1([_page(1, texts)])
         assert result["status"] == "UNRESOLVED_NO_COMPLETE_REGION"
         assert result["regions"] == []
@@ -113,6 +131,19 @@ def test_duplicate_complete_cluster_is_not_unique() -> None:
 def test_period_axis_accepts_annual_current_and_comparative_years() -> None:
     assert graph._is_period("31 12 2025")
     assert graph._is_period("31 12 2024")
+    assert graph._is_period("so cuoi nam")
+    assert graph._is_period("so dau nam")
+
+
+def test_generic_provision_lane_names_are_admitted_inside_family_boundary() -> None:
+    texts = [
+        "Dự phòng chung" if text == "Dự phòng rủi ro" else text
+        for text in _cluster()
+        if text != "Lãi của khoản nợ đã mua"
+    ]
+    result = graph.build_purchased_debt_variant_graph_document_v1([_page(1, texts)])
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["regions"][0]["anchors"]["provision"]["surface"] == "Dự phòng chung"
 
 
 def test_fresh_text_and_typed_page_contract_fail_closed() -> None:

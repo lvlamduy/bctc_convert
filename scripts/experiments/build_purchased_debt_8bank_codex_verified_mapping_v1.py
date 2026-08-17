@@ -86,6 +86,11 @@ EXPECTED_INDEX_SHA256 = "f84fd9ca56fe06af230e011ecad85b0a576e27e1eca32ee141e654a
 EXPECTED_CROP_MANIFEST_SHA256 = "a9f80cf9104af1177ba43d8a85de00b28c735223a91b663a5a79401bb038d94e"
 EXPECTED_SCAN_ID = "pdfdsv1:scan:6ebf6df34d69223bf45f696a054d71bc1b3edaf34c52ba3ae10b8e7898e025fd"
 REVIEW_SHA256 = "e851895bb9fa622dfa0a1b7921eeeb1a3357c54c256ae96e5411f3c12050d8ec"
+_RESULT_STATE = "CODEX_VERIFIED_PURCHASED_DEBT_MAPPING_COMPLETE"
+_RESULT_ID_PREFIX = "e0066:result:"
+_REVIEW_STATE = "CODEX_PIXEL_REVIEW_COMPLETE"
+_REVIEW_ID_PREFIX = "e0066:pixel-review:"
+_REVIEW_RUN_ID = "E-0066"
 
 _CHECKS = [
     "COMPLETE_PDF_REGION_ENUMERATION",
@@ -568,12 +573,12 @@ def _review_blueprint() -> dict[str, Any]:
         "review_checks": list(_CHECKS),
         "reviewer": {
             "kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW",
-            "review_run_id": "E-0066",
+            "review_run_id": _REVIEW_RUN_ID,
         },
         "safety": canonical_clone_v1(_REVIEW_SAFETY),
-        "state": "CODEX_PIXEL_REVIEW_COMPLETE",
+        "state": _REVIEW_STATE,
     }
-    return {**material, "review_id": "e0066:pixel-review:" + canonical_json_sha256_v1(material)}
+    return {**material, "review_id": _REVIEW_ID_PREFIX + canonical_json_sha256_v1(material)}
 
 
 def _review(value: Any) -> dict[str, Any]:
@@ -882,13 +887,15 @@ def _trial(
                     balance_net[index]["normalized_value"],
                 )
             )
+            detail_addends = [row_values["PRINCIPAL"][index]]
+            if "INTEREST" in row_values:
+                detail_addends.append(row_values["INTEREST"][index])
             equations.append(
                 _equation(
-                    f"{period_role}_PRINCIPAL_PLUS_INTEREST_EQUALS_DETAIL_TOTAL",
-                    [
-                        row_values["PRINCIPAL"][index],
-                        row_values["INTEREST"][index],
-                    ],
+                    f"{period_role}_PRINCIPAL"
+                    + ("_PLUS_INTEREST" if "INTEREST" in row_values else "")
+                    + "_EQUALS_DETAIL_TOTAL",
+                    detail_addends,
                     detail_total[index]["normalized_value"],
                 )
             )
@@ -1055,11 +1062,11 @@ def build_purchased_debt_8bank_codex_verified_mapping_v1(
             "tm_schema_projection_sha256": schema_authority["tm_schema_projection_sha256"],
         },
         "metrics": _metrics(trials),
-        "state": "CODEX_VERIFIED_PURCHASED_DEBT_MAPPING_COMPLETE",
+        "state": _RESULT_STATE,
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "e0066:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": _RESULT_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 
@@ -1069,7 +1076,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
     if (
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "CODEX_VERIFIED_PURCHASED_DEBT_MAPPING_COMPLETE"
+        or value["state"] != _RESULT_STATE
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
         or len(value["trials"]) != len(EXPECTED_DOCUMENT_ORDER)
@@ -1088,14 +1095,20 @@ def _validate_result(value: Any) -> dict[str, Any]:
         ):
             raise _error("purchased-debt verified trial identity drifted")
         if trial["status"] == "VERIFIED_BY_CODEX":
-            expected_ids = {801, 803, 5738, 5739}
-            if code == "HDB":
-                expected_ids.add(802)
-            if {
-                mapping.get("report_norm_id") for mapping in trial["verified_mappings"]
-            } != expected_ids or any(
-                mapping.get("status") != "VERIFIED_BY_CODEX"
-                for mapping in trial["verified_mappings"]
+            expected_ids = {
+                row.get("report_norm_id")
+                for page in trial["page_evidence"]
+                for row in page.get("rows", [])
+            }
+            if (
+                {mapping.get("report_norm_id") for mapping in trial["verified_mappings"]}
+                != expected_ids
+                or not {801, 803, 5738}.issubset(expected_ids)
+                or not expected_ids.issubset({801, 802, 803, 5738, 5739})
+                or any(
+                    mapping.get("status") != "VERIFIED_BY_CODEX"
+                    for mapping in trial["verified_mappings"]
+                )
             ):
                 raise _error("verified purchased-debt mapping shape drifted")
         elif (
@@ -1108,7 +1121,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
             raise _error("not-observed purchased-debt trial was promoted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "e0066:result:" + canonical_json_sha256_v1(material):
+    if identity != _RESULT_ID_PREFIX + canonical_json_sha256_v1(material):
         raise _error("purchased-debt verified result identity drifted")
     return canonical_clone_v1(value)
 
