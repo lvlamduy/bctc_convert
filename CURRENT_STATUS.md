@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-08-17T16:47:34Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
+Updated: 2026-08-17T16:49:51Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
 The detailed historical receipts below remain evidence, but that directive supersedes
@@ -649,6 +649,9 @@ rejected in favor of pixel/source/accounting `535.956`. Seven source balance
 columns without exact schema leaves remain A2025-CAF-001–007; VietOCR text and
 Gemma are not used as numeric truth. Result:
 `docs/experiments/E-0133-annual-2025-capital-and-funds-8bank-codex-verified-mapping-v1.json`.
+The exact 13-file/6,279,526-byte full-page PP-OCRv6 panel passed immutable S3
+upload and full restore under artifact snapshot
+`20260817T164852Z-e0133-annual-capital-rotated-ppocrv6-b42dbad-456d5aa41971`.
 
 ### Latest family checkpoint — E-0078 capital and funds
 
