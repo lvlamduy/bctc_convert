@@ -17,10 +17,29 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **299 entries**.  Current open queue: **113**.  Closed history:
-**111** row/graph resolutions and **75** confirmed bound-report family absences.
+Ledger total: **299 entries**.  Current open queue: **95**.  Closed history:
+**129** row/graph resolutions and **75** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
+
+## CLOSED — annual-2025 `Các khoản phải trả và công nợ khác`
+
+E-0132 quét toàn bộ tám BCTC hợp nhất kiểm toán năm 2025, tìm đúng một vùng
+family tại ACB p64, MBB p67, VPB p63, HDB p47, VCB p54, CTG p54, BID p52 và
+VIB p48. Exact replay xác minh 53 mapping/184 thành phần giá trị cùng 32 phương
+trình; ba ô DASH của MBB/CTG được bind pixel trước khi chuẩn hóa 0. Không còn
+dòng OPEN: mọi nhãn nguồn không có leaf chuyên biệt được map vào 1127 `Khác`,
+giữ nguyên thành phần nguồn và đánh dấu non-additive với parent để không cộng
+lặp. HDB fresh VietOCR đọc `14.169.816`; pixel, PP-OCRv6 và phương trình nguồn
+xác nhận đúng là `4.169.816`.
+
+E-0132A áp dụng cùng quyết định của chủ dự án cho lượt hiện hành E-0077 và đóng
+OPL-001–OPL-018 vào 1127 `Khác`, không đổi số nguồn hay tái phân bổ parent.
+
+Machine-readable results:
+`docs/experiments/E-0132-annual-2025-other-payables-liabilities-8bank-codex-verified-mapping-v1.json`
+và
+`docs/experiments/E-0132A-other-payables-project-owner-other-closure-v1.json`.
 
 ## OPEN — annual-2025 `Phát hành giấy tờ có giá`
 
@@ -634,24 +653,24 @@ khác. VPB giữ đúng kỳ Q1/2026; BID dùng policy VND nhìn thấy tại p1
 | CAF-008 | Vốn và các quỹ | CTG | 43 | Quỹ đầu tư phát triển | Chưa có leaf tương đương; số vẫn nằm trong tổng vốn đã xác minh. |
 | CAF-009 | Vốn và các quỹ | BID | 27–28 | Báo cáo tình hình thay đổi vốn chủ sở hữu | Cấu trúc bảng xoay đã unique; OCR số nguồn không đủ tin cậy nên chưa map, và VietOCR text không được dùng làm numeric truth. |
 | CAF-010 | Vốn và các quỹ | VIB | 44–45 | Báo cáo tình hình thay đổi vốn chủ sở hữu | Cấu trúc bảng xoay đã unique; OCR số nguồn không đủ tin cậy nên chưa map, và VietOCR text không được dùng làm numeric truth. |
-| OPL-001 | Các khoản phải trả và công nợ khác | ACB | 22 | Thu nhập chưa thực hiện | Chưa có leaf tương đương trong family 1118–1127; giá trị vẫn nằm trong tổng family đã xác minh. |
-| OPL-002 | Các khoản phải trả và công nợ khác | ACB | 22 | Quỹ phát triển khoa học và công nghệ | Chưa có leaf tương đương; giá trị vẫn nằm trong tổng family đã xác minh. |
-| OPL-003 | Các khoản phải trả và công nợ khác | VPB | 57 | Các khoản khách hàng trả trước | Chưa có leaf tương đương; chỉ nằm trong parent phải trả bên ngoài. |
-| OPL-004 | Các khoản phải trả và công nợ khác | VPB | 57 | Doanh thu chờ phân bổ | Chưa có leaf tương đương; chỉ nằm trong parent phải trả bên ngoài. |
-| OPL-005 | Các khoản phải trả và công nợ khác | VPB | 57 | Dự phòng nghiệp vụ bảo hiểm | Không đồng nhất với 1125 `Dự phòng rủi ro khác`. |
-| OPL-006 | Các khoản phải trả và công nợ khác | VPB | 57 | Các khoản treo chờ chuyển tiền | Chưa có leaf tương đương; chỉ nằm trong parent phải trả bên ngoài. |
-| OPL-007 | Các khoản phải trả và công nợ khác | VPB | 57 | Phải trả hoạt động thanh toán thẻ | Chưa có leaf tương đương; chỉ nằm trong parent phải trả bên ngoài. |
-| OPL-008 | Các khoản phải trả và công nợ khác | VPB | 57 | Phải trả nhà cung cấp | Chưa có leaf tương đương; chỉ nằm trong parent phải trả bên ngoài. |
-| OPL-009 | Các khoản phải trả và công nợ khác | VPB | 57 | Phải trả các khoản vay khách hàng của VPBankS | Chưa có leaf tương đương cho nghĩa vụ của công ty con. |
-| OPL-010 | Các khoản phải trả và công nợ khác | VPB | 57 | Tiền giữ hộ và đợi thanh toán | Chưa có leaf tương đương; chỉ nằm trong parent phải trả bên ngoài. |
-| OPL-011 | Các khoản phải trả và công nợ khác | CTG | 43 | Các khoản lãi, phí phải trả | Chưa có leaf tương đương; giá trị vẫn nằm trong tổng family đã xác minh. |
-| OPL-012 | Các khoản phải trả và công nợ khác | VIB | 43 | Các khoản lãi, phí phải trả | Chưa có leaf tương đương; giá trị vẫn nằm trong tổng family đã xác minh. |
-| OPL-013 | Các khoản phải trả và công nợ khác | VIB | 43 | Phải trả cổ tức cho cổ đông | Chưa có leaf tương đương; chỉ nằm trong parent phải trả nội bộ. |
-| OPL-014 | Các khoản phải trả và công nợ khác | VIB | 43 | Tiền giữ hộ và đợi thanh toán | Chưa có leaf tương đương; chỉ nằm trong parent phải trả bên ngoài. |
-| OPL-015 | Các khoản phải trả và công nợ khác | VIB | 43 | Phải trả thanh toán giữa các TCTD | Chưa có leaf tương đương; chỉ nằm trong parent phải trả bên ngoài. |
-| OPL-016 | Các khoản phải trả và công nợ khác | VIB | 43 | Phải trả chuyển tiền chờ thanh toán | Chưa có leaf tương đương; chỉ nằm trong parent phải trả bên ngoài. |
-| OPL-017 | Các khoản phải trả và công nợ khác | VIB | 43 | Các khoản chờ thanh toán khác | Chưa có leaf tương đương; chỉ nằm trong parent phải trả bên ngoài. |
-| OPL-018 | Các khoản phải trả và công nợ khác | VIB | 43 | Doanh thu chờ phân bổ | Chưa có leaf tương đương; giá trị vẫn nằm trong tổng family đã xác minh. |
+| OPL-001 | Các khoản phải trả và công nợ khác | ACB | 22 | Thu nhập chưa thực hiện | `CLOSED_E0132A`: map 1127 `Khác`; giữ trong tổng family, không cộng lặp. |
+| OPL-002 | Các khoản phải trả và công nợ khác | ACB | 22 | Quỹ phát triển khoa học và công nghệ | `CLOSED_E0132A`: map 1127 `Khác`; giữ trong tổng family, không cộng lặp. |
+| OPL-003 | Các khoản phải trả và công nợ khác | VPB | 57 | Các khoản khách hàng trả trước | `CLOSED_E0132A`: map 1127 `Khác`; non-additive với parent phải trả bên ngoài. |
+| OPL-004 | Các khoản phải trả và công nợ khác | VPB | 57 | Doanh thu chờ phân bổ | `CLOSED_E0132A`: map 1127 `Khác`; non-additive với parent phải trả bên ngoài. |
+| OPL-005 | Các khoản phải trả và công nợ khác | VPB | 57 | Dự phòng nghiệp vụ bảo hiểm | `CLOSED_E0132A`: map 1127 `Khác`, không ép sang 1125. |
+| OPL-006 | Các khoản phải trả và công nợ khác | VPB | 57 | Các khoản treo chờ chuyển tiền | `CLOSED_E0132A`: map 1127 `Khác`; non-additive với parent phải trả bên ngoài. |
+| OPL-007 | Các khoản phải trả và công nợ khác | VPB | 57 | Phải trả hoạt động thanh toán thẻ | `CLOSED_E0132A`: map 1127 `Khác`; non-additive với parent phải trả bên ngoài. |
+| OPL-008 | Các khoản phải trả và công nợ khác | VPB | 57 | Phải trả nhà cung cấp | `CLOSED_E0132A`: map 1127 `Khác`; non-additive với parent phải trả bên ngoài. |
+| OPL-009 | Các khoản phải trả và công nợ khác | VPB | 57 | Phải trả các khoản vay khách hàng của VPBankS | `CLOSED_E0132A`: map 1127 `Khác`; giữ nguyên nghĩa vụ công ty con. |
+| OPL-010 | Các khoản phải trả và công nợ khác | VPB | 57 | Tiền giữ hộ và đợi thanh toán | `CLOSED_E0132A`: map 1127 `Khác`; non-additive với parent phải trả bên ngoài. |
+| OPL-011 | Các khoản phải trả và công nợ khác | CTG | 43 | Các khoản lãi, phí phải trả | `CLOSED_E0132A`: map 1127 `Khác`; giữ trong tổng family, không cộng lặp. |
+| OPL-012 | Các khoản phải trả và công nợ khác | VIB | 43 | Các khoản lãi, phí phải trả | `CLOSED_E0132A`: map 1127 `Khác`; giữ trong tổng family, không cộng lặp. |
+| OPL-013 | Các khoản phải trả và công nợ khác | VIB | 43 | Phải trả cổ tức cho cổ đông | `CLOSED_E0132A`: map 1127 `Khác`; non-additive với parent phải trả nội bộ. |
+| OPL-014 | Các khoản phải trả và công nợ khác | VIB | 43 | Tiền giữ hộ và đợi thanh toán | `CLOSED_E0132A`: map 1127 `Khác`; non-additive với parent phải trả bên ngoài. |
+| OPL-015 | Các khoản phải trả và công nợ khác | VIB | 43 | Phải trả thanh toán giữa các TCTD | `CLOSED_E0132A`: map 1127 `Khác`; non-additive với parent phải trả bên ngoài. |
+| OPL-016 | Các khoản phải trả và công nợ khác | VIB | 43 | Phải trả chuyển tiền chờ thanh toán | `CLOSED_E0132A`: map 1127 `Khác`; non-additive với parent phải trả bên ngoài. |
+| OPL-017 | Các khoản phải trả và công nợ khác | VIB | 43 | Các khoản chờ thanh toán khác | `CLOSED_E0132A`: map 1127 `Khác`; non-additive với parent phải trả bên ngoài. |
+| OPL-018 | Các khoản phải trả và công nợ khác | VIB | 43 | Doanh thu chờ phân bổ | `CLOSED_E0132A`: map 1127 `Khác`; giữ trong tổng family, không cộng lặp. |
 | PM-001 | Dự phòng rủi ro cho vay khách hàng | VPB | 45 | Dự phòng chung, dự phòng cụ thể, dự phòng cho vay giao dịch ký quỹ và ứng trước | Đã map và kiểm tra đủ kỳ 01/01–31/03/2026 của PDF được cung cấp; chưa có PDF VPB Q2/2026 nên không được relabel kết quả Q1 thành Q2. |
 | OA-001 | Tài sản Có khác | VPB | 51 | Phải thu bán tài sản tài chính | Nghĩa nguồn rộng hơn 976 `Phải thu từ bán chứng khoán`; không thu hẹp ngầm. |
 | OA-002 | Tài sản Có khác | VPB | 51 | Dự phòng phí và bồi thường nghiệp vụ nhượng tái bảo hiểm | Chưa có khoản mục con tương đương trong family 966–1023. |
@@ -705,7 +724,7 @@ page or note identifier participates in this decision.
 | EIR-006–EIR-007 | `RESOLVED_VERIFIED_BY_CODEX`; hai nguồn nhỏ chưa có leaf riêng — ODA của VPB và chương trình nhà ở qua NHNN của VIB — giữ nguyên nhãn nguồn và map vào leaf `Khác` 1099 |
 | IVP-001–IVP-004, IVP-008 | `RESOLVED_VERIFIED_BY_PROJECT_OWNER_AND_CODEX`; ACB đúng 5 năm map 1103/1111, MBB broad tenor map trực tiếp 6009/6010, BID trái phiếu tăng vốn map 1117 |
 | IVP-005–IVP-007 | `OPEN_SOURCE_SCOPE_GAP`; ba kỳ hạn VPB áp dụng cho toàn family, chưa có phân bổ nhìn thấy theo từng công cụ |
-| OPL-001–OPL-018 | `OPEN_SCHEMA_OR_SEMANTIC_GAP`; 39 khoản mục chắc chắn vẫn đã map. Các dòng chưa có leaf vẫn được giữ trong parent/tổng nguồn và không bị cộng hai lần |
+| OPL-001–OPL-018 | `RESOLVED_VERIFIED_BY_PROJECT_OWNER_AND_CODEX`; E-0132A map toàn bộ vào 1127 `Khác`, giữ nguyên 36 giá trị nguồn và không cộng lặp với parent/tổng |
 | OE-001–OE-004 | `OPEN_SCHEMA_GAP`; 99 khoản mục chắc chắn vẫn đã map. Bốn dòng chi phí riêng được giữ trong parent/tổng và các phương trình nguồn, không ép vào leaf gần nghĩa |
 | CRPE-001–CRPE-002 | `CLOSED_BY_PROJECT_OWNER_TO_1228`; E-0100 giữ nguyên bốn giá trị nguồn, map hai dòng vào `Dự phòng khác` và tái đóng đúng tổng VPB/VIB |
 | CRPE-003–CRPE-007 | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`; ACB/HDB/VCB/CTG/BID không có note chi tiết 1221 trong PDF đã bind, dù có thể có dòng tổng KQKD hoặc diễn giải chính sách |
@@ -982,9 +1001,10 @@ Current exact-replay result:
 - Exact visible-pixel/source-numeric replay verifies 39 schema mappings, 78
   current/comparative components and 28 parent/detail/total equations. Two ACB
   risk-provision dashes are pixel-bound and normalized to zero.
-- OPL-001–OPL-018 remain open because no exact leaf exists. Their amounts stay
-  inside verified source parents/totals, and overlapping parent/detail views are
-  explicitly non-additive. VPB remains the supplied Q1/2026 source.
+- E-0132A closes OPL-001–OPL-018 to 1127 `Khác` under the project-owner rule
+  for source rows without a dedicated leaf. Their amounts remain inside verified
+  source parents/totals, and overlapping parent/detail views stay explicitly
+  non-additive. VPB remains the supplied Q1/2026 source.
 
 ## Issued valuable papers (`ISSUED_VALUABLE_PAPERS`)
 

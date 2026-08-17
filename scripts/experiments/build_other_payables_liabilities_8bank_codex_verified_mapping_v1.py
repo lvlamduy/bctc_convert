@@ -68,6 +68,11 @@ scanner = _load_module(
 
 FORMAT_VERSION = "OTHER_PAYABLES_LIABILITIES_8BANK_CODEX_VERIFIED_MAPPING_V1"
 REVIEW_FORMAT = "OTHER_PAYABLES_LIABILITIES_8BANK_CODEX_PIXEL_REVIEW_V1"
+RESULT_STATE = "OTHER_PAYABLES_LIABILITIES_8BANK_CODEX_VERIFICATION_COMPLETE"
+RESULT_ID_PREFIX = "e0077:result:"
+REVIEW_STATE = "CODEX_PIXEL_REVIEW_COMPLETE"
+REVIEW_ID_PREFIX = "e0077:pixel-review:"
+REVIEW_RUN_ID = "E-0077"
 CLAIM_BOUNDARY = (
     "FIXED_EIGHT_DOCUMENT_COMPLETE_PDF_FRESH_VIETOCR_BANK_BLIND_OTHER_PAYABLES_"
     "OWNER_INTERNAL_EXTERNAL_OPTIONAL_CHILD_VISIBLE_PDF_PIXEL_SOURCE_NUMERIC_"
@@ -1342,17 +1347,17 @@ def _review_blueprint() -> dict[str, Any]:
         "review_checks": list(_REVIEW_CHECKS),
         "reviewer": {
             "kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW",
-            "review_run_id": "E-0077",
+            "review_run_id": REVIEW_RUN_ID,
         },
         "safety": canonical_clone_v1(_REVIEW_SAFETY),
         "scan_id": EXPECTED_SCAN_ID,
         "semantic_axis_sha256": EXPECTED_AXIS_SHA256,
         "semantic_index_sha256": EXPECTED_INDEX_SHA256,
-        "state": "CODEX_PIXEL_REVIEW_COMPLETE",
+        "state": REVIEW_STATE,
     }
     return {
         **material,
-        "review_id": "e0077:pixel-review:" + canonical_json_sha256_v1(material),
+        "review_id": REVIEW_ID_PREFIX + canonical_json_sha256_v1(material),
     }
 
 
@@ -1458,13 +1463,21 @@ def _metrics(trials: Sequence[Mapping[str, Any]]) -> dict[str, int]:
     }
 
 
+def _source_period_status(source_period: str) -> str:
+    if source_period == "2026-03-31":
+        return "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
+    if source_period == "2026-06-30":
+        return "VERIFIED_SOURCE_PERIOD_Q2_2026"
+    raise _error("reviewed other-payables source period is not admitted")
+
+
 def _validate_result(value: Any) -> dict[str, Any]:
     if type(value) is not dict or set(value) != _RESULT_FIELDS:
         raise _error("other-payables result fields drifted")
     if (
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "OTHER_PAYABLES_LIABILITIES_8BANK_CODEX_VERIFICATION_COMPLETE"
+        or value["state"] != RESULT_STATE
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
         or len(value["trials"]) != len(EXPECTED_DOCUMENT_ORDER)
@@ -1495,7 +1508,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
             raise _error("other-payables trial shape or status drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "e0077:result:" + canonical_json_sha256_v1(material):
+    if identity != RESULT_ID_PREFIX + canonical_json_sha256_v1(material):
         raise _error("other-payables result identity drifted")
     return canonical_clone_v1(value)
 
@@ -1710,11 +1723,7 @@ def build_other_payables_liabilities_8bank_codex_verified_mapping_v1(
                     **_semantic_evidence(axis_page, semantic_page, item),
                 }
             )
-        source_period_status = (
-            "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
-            if reviewed["source_period"] == "2026-03-31"
-            else "VERIFIED_SOURCE_PERIOD_Q2_2026"
-        )
+        source_period_status = _source_period_status(reviewed["source_period"])
         status = reviewed["disposition"]
         if source_period_status == "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2":
             status = "VERIFIED_BY_CODEX_WITH_Q1_PERIOD_CAVEAT"
@@ -1774,11 +1783,11 @@ def build_other_payables_liabilities_8bank_codex_verified_mapping_v1(
         },
         "metrics": _metrics(trials),
         "schema_family": schema_family,
-        "state": "OTHER_PAYABLES_LIABILITIES_8BANK_CODEX_VERIFICATION_COMPLETE",
+        "state": RESULT_STATE,
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "e0077:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": RESULT_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 

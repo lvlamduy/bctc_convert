@@ -634,36 +634,26 @@ Kết quả exact-replay annual-2025:
 
 ## 26. Các khoản phải trả và công nợ khác
 
-- **Đã xác minh:** ACB p22, MBB p44, VPB p57, HDB p31, VCB p35, CTG p43,
-  BID p26 và VIB p43. Whole-PDF scan tìm đúng một vùng hoàn chỉnh trên mỗi
-  bank và giữ 36 vùng gần giống làm đối chứng âm. Đã map 39 khoản mục/78 thành
-  phần giá trị, kiểm tra 28 phương trình parent–child/tổng. Hai dấu `-` của dự
-  phòng ACB được khóa bằng pixel và chuẩn hóa thành 0. VPB giữ đúng nguồn
-  Q1/2026.
-- **Không có cụm này trong báo cáo:** Không có; cả 8 bank đều có đúng một vùng.
-- **Còn thiếu:** 18 hàng nguồn dưới đây chưa có leaf tương đương. Các giá trị
-  vẫn được giữ trong parent/tổng nguồn và không bị cộng hai lần.
+- **Đã map/xác minh trên BCTC hợp nhất kiểm toán annual-2025:** ACB p64,
+  MBB p67, VPB p63, HDB p47, VCB p54, CTG p54, BID p52 và VIB p48.
+  Whole-PDF matcher tìm đúng một vùng ở cả 8/8 bank. Đã xác minh 53 mapping,
+  184 thành phần giá trị và 32 phương trình parent–child/tổng. Ba dấu `-` của
+  MBB/CTG được bind từ pixel rồi chuẩn hóa 0. HDB VietOCR đọc sai
+  `14.169.816`; pixel, PP-OCRv6 và phương trình chi tiết xác nhận
+  `4.169.816`.
+- **Không có trong annual-2025:** Không có; cả tám filing đều có đúng một vùng.
+- **Còn thiếu trên annual-2025:** 0. Dòng không có leaf riêng được gom vào
+  ReportNormId 1127 `Khác`, đồng thời giữ topology non-additive nên không cộng
+  lặp với parent nội bộ/bên ngoài đã in.
+- **Lượt hiện hành trước:** E-0077 đã xác minh 39 mapping/78 thành phần/28
+  phương trình. Theo quyết định chủ dự án, E-0132A đóng OPL-001–OPL-018 vào
+  1127 `Khác`; giá trị nguồn cũ không đổi và không cộng lặp parent.
 
-| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
-| --- | ---: | --- | --- |
-| ACB | 22 | Thu nhập chưa thực hiện | Chưa có leaf tương đương trong family 1118–1127. |
-| ACB | 22 | Quỹ phát triển khoa học và công nghệ | Chưa có leaf tương đương trong family. |
-| VPB | 57 | Các khoản khách hàng trả trước | Chưa có leaf tương đương; chỉ nằm trong parent phải trả bên ngoài. |
-| VPB | 57 | Doanh thu chờ phân bổ | Chưa có leaf tương đương. |
-| VPB | 57 | Dự phòng nghiệp vụ bảo hiểm | Không đồng nhất với `Dự phòng rủi ro khác` 1125. |
-| VPB | 57 | Các khoản treo chờ chuyển tiền | Chưa có leaf tương đương. |
-| VPB | 57 | Phải trả hoạt động thanh toán thẻ | Chưa có leaf tương đương. |
-| VPB | 57 | Phải trả nhà cung cấp | Chưa có leaf tương đương. |
-| VPB | 57 | Phải trả các khoản vay khách hàng của VPBankS | Chưa có leaf tương đương cho nghĩa vụ của công ty con. |
-| VPB | 57 | Tiền giữ hộ và đợi thanh toán | Chưa có leaf tương đương. |
-| CTG | 43 | Các khoản lãi, phí phải trả | Chưa có leaf tương đương; vẫn nằm trong tổng family đã kiểm tra. |
-| VIB | 43 | Các khoản lãi, phí phải trả | Chưa có leaf tương đương. |
-| VIB | 43 | Phải trả cổ tức cho cổ đông | Chưa có leaf tương đương. |
-| VIB | 43 | Tiền giữ hộ và đợi thanh toán | Chưa có leaf tương đương. |
-| VIB | 43 | Phải trả thanh toán giữa các TCTD | Chưa có leaf tương đương. |
-| VIB | 43 | Phải trả chuyển tiền chờ thanh toán | Chưa có leaf tương đương. |
-| VIB | 43 | Các khoản chờ thanh toán khác | Chưa có leaf tương đương. |
-| VIB | 43 | Doanh thu chờ phân bổ | Chưa có leaf tương đương. |
+Kết quả annual-2025:
+`docs/experiments/E-0132-annual-2025-other-payables-liabilities-8bank-codex-verified-mapping-v1.json`.
+
+Closure lượt hiện hành:
+`docs/experiments/E-0132A-other-payables-project-owner-other-closure-v1.json`.
 
 ## 27. Vốn và các quỹ
 
@@ -1145,7 +1135,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Các khoản nợ Chính phủ/NHNN | ✓ p60 | ✓ p63 | ✓ p58 | ✓ p44 | ✓ p52 | ✓ p51 | ✓ p50 | ✓ p45 | Annual-2025: 0 dòng OPEN, 47 mapping/46 phương trình; sáu DASH→0 và ô HDB `1` đều pixel-bound |
 | Vốn nhận tài trợ/ủy thác đầu tư | ✓ p63 | ✓ p66 | ✓ p62 | ✓ p45 | ✓ p53 | ✓ p53 | ✓ p51 | ✓ p47 | 0 dòng annual-2025; 20 mapping/8 phương trình; VCB DASH→0. Lượt hiện hành trước giữ riêng 6 mapping tại MBB/VPB/VIB |
 | Phát hành giấy tờ có giá | ✓ p63 | ✓ p66 | ✓\* p62 | ✓\* p46 | ✓\* p54 | ✓ p53–54 | ✓ p52 | ✓ p47 | Annual-2025: 5 dòng OPEN, 70 mapping/34 phương trình, 11 DASH→0; lượt hiện hành trước còn 3 dòng VPB OPEN |
-| Các khoản phải trả và công nợ khác | ✓\* p22 | ✓ p44 | ✓\* p57 | ✓ p31 | ✓ p35 | ✓\* p43 | ✓ p26 | ✓\* p43 | 18 dòng OPEN; 39 mapping, 28 phương trình; 2 DASH→0; VPB là nguồn Q1 |
+| Các khoản phải trả và công nợ khác | ✓ p64 | ✓ p67 | ✓ p63 | ✓ p47 | ✓ p54 | ✓ p54 | ✓ p52 | ✓ p48 | Annual-2025: 0 dòng OPEN, 53 mapping/32 phương trình, 3 DASH→0; E-0132A đóng 18 dòng lượt hiện hành vào 1127 `Khác` |
 | Vốn và các quỹ | ✓ p23–24 | ✓ p44–45 | ✓\* p60–61 | ✓\* p33–34 | ✓\* p36–37 | ✓\* p43–44 | △ p27–28 | △ p44–45 | 10 mục OPEN; 65 mapping, 20 phương trình; BID/VIB structure-only; VPB là nguồn Q1 |
 | Thu nhập lãi và các khoản thu nhập tương tự | ✓ p24 | ✓ p46 | ✓\* p62 | ✓ p34 | ✓ p38 | ✓ p45 | ✓ p28 | ✓ p45 | 0 dòng; 54 mapping, 108 ô số, 28 phương trình; VPB là nguồn Q1 |
 | Chi phí lãi và các khoản tương tự chi phí lãi | ✓ p24 | ✓ p46 | ✓\* p62 | ✓ p34 | ✓ p39 | ✓ p45 | ✓ p29 | ✓ p45 | 0 dòng; 40 mapping, 80 ô số, 16 phương trình; VPB là nguồn Q1 |
