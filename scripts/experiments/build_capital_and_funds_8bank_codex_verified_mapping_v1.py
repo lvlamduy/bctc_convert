@@ -58,6 +58,13 @@ scanner = _load_module(
 
 FORMAT_VERSION = "CAPITAL_AND_FUNDS_8BANK_CODEX_VERIFIED_MAPPING_V1"
 REVIEW_FORMAT = "CAPITAL_AND_FUNDS_8BANK_CODEX_PIXEL_REVIEW_V1"
+RESULT_STATE = "CAPITAL_AND_FUNDS_8BANK_CODEX_VERIFICATION_COMPLETE"
+RESULT_ID_PREFIX = "e0078:result:"
+REVIEW_STATE = "CODEX_PIXEL_REVIEW_COMPLETE"
+REVIEW_ID_PREFIX = "e0078:pixel-review:"
+REVIEW_RUN_ID = "E-0078"
+STRUCTURE_SCAN_STATE = "FULL_DOCUMENT_CAPITAL_AND_FUNDS_SCAN_COMPLETE"
+FAMILY_END_DISPLAY_ORDER = 667
 CLAIM_BOUNDARY = (
     "FIXED_EIGHT_DOCUMENT_COMPLETE_PDF_FRESH_AND_ROTATED_VIETOCR_BANK_BLIND_"
     "CAPITAL_FUNDS_GRAPH_VISIBLE_PDF_LABEL_SOURCE_NUMERIC_CHALLENGER_PERIOD_"
@@ -125,6 +132,8 @@ _RESULT_FIELDS = {
     "state",
     "trials",
 }
+_ALTERNATE_VALUE_VERIFIER: Any = None
+_EXTRA_INPUT_REFS: dict[str, Any] = {}
 
 
 class CapitalAndFunds8BankCodexVerifiedMappingV1Error(ValueError):
@@ -1217,14 +1226,17 @@ def _review_blueprint() -> dict[str, Any]:
         "claim_boundary": CLAIM_BOUNDARY,
         "documents": _review_documents(),
         "format_version": REVIEW_FORMAT,
-        "reviewer": {"kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW", "review_run_id": "E-0078"},
+        "reviewer": {
+            "kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW",
+            "review_run_id": REVIEW_RUN_ID,
+        },
         "safety": canonical_clone_v1(_REVIEW_SAFETY),
         "scan_id": EXPECTED_SCAN_ID,
         "semantic_axis_sha256": EXPECTED_AXIS_SHA256,
         "semantic_index_sha256": EXPECTED_INDEX_SHA256,
-        "state": "CODEX_PIXEL_REVIEW_COMPLETE",
+        "state": REVIEW_STATE,
     }
-    return {**material, "review_id": "e0078:pixel-review:" + canonical_json_sha256_v1(material)}
+    return {**material, "review_id": REVIEW_ID_PREFIX + canonical_json_sha256_v1(material)}
 
 
 def _review(value: Any) -> dict[str, Any]:
@@ -1297,6 +1309,14 @@ def _schema_binding(item: Any, report_norm_id: int) -> dict[str, Any]:
     }
 
 
+def _source_period_status(source_period: str) -> str:
+    return (
+        "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
+        if source_period == "2026-03-31"
+        else "VERIFIED_SOURCE_PERIOD_Q2_2026"
+    )
+
+
 def _metrics(trials: Sequence[Mapping[str, Any]]) -> dict[str, int]:
     return {
         "accounting_equation_verified_count": sum(
@@ -1334,7 +1354,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
     if (
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "CAPITAL_AND_FUNDS_8BANK_CODEX_VERIFICATION_COMPLETE"
+        or value["state"] != RESULT_STATE
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
         or len(value["trials"]) != 8
@@ -1366,7 +1386,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
             raise _error("capital-and-funds trial shape or status drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "e0078:result:" + canonical_json_sha256_v1(material):
+    if identity != RESULT_ID_PREFIX + canonical_json_sha256_v1(material):
         raise _error("capital-and-funds result identity drifted")
     return canonical_clone_v1(value)
 
@@ -1387,7 +1407,7 @@ def build_capital_and_funds_8bank_codex_verified_mapping_v1(
     if (
         axis.get("semantic_axis_sha256") != EXPECTED_AXIS_SHA256
         or structure_scan.get("scan_id") != EXPECTED_SCAN_ID
-        or structure_scan.get("state") != "FULL_DOCUMENT_CAPITAL_AND_FUNDS_SCAN_COMPLETE"
+        or structure_scan.get("state") != STRUCTURE_SCAN_STATE
         or type(crop_manifest) is not dict
     ):
         raise _error("fixed semantic axis, crop manifest, or structure scan drifted")
@@ -1434,20 +1454,35 @@ def build_capital_and_funds_8bank_codex_verified_mapping_v1(
             *,
             value_cache: dict[str, dict[str, Any]] = value_cache,
             context: Any = context,
+            document_ordinal: int = ordinal,
+            document_provenance: str = code,
+            crop_document: Mapping[str, Any] = crop_document,
         ) -> dict[str, Any]:
             key = canonical_json_sha256_v1(ref)
             if key not in value_cache:
-                axis_page, semantic_page, crop_page, source_texts = context(ref["page_sequence"])
-                evidence = foundation.support._source_value(
-                    axis_page,
-                    semantic_page,
-                    crop_page,
-                    source_texts,
-                    {
-                        "line_index": ref["line_index"],
-                        "pixel_transcription": ref["pixel_transcription"],
-                    },
-                )
+                if "evidence_axis" in ref:
+                    if not callable(_ALTERNATE_VALUE_VERIFIER):
+                        raise _error("alternate numeric evidence axis is not configured")
+                    evidence = _ALTERNATE_VALUE_VERIFIER(
+                        document_ordinal,
+                        document_provenance,
+                        crop_document,
+                        ref,
+                    )
+                else:
+                    axis_page, semantic_page, crop_page, source_texts = context(
+                        ref["page_sequence"]
+                    )
+                    evidence = foundation.support._source_value(
+                        axis_page,
+                        semantic_page,
+                        crop_page,
+                        source_texts,
+                        {
+                            "line_index": ref["line_index"],
+                            "pixel_transcription": ref["pixel_transcription"],
+                        },
+                    )
                 value_cache[key] = {**evidence, "page_sequence": ref["page_sequence"]}
             return canonical_clone_v1(value_cache[key])
 
@@ -1582,11 +1617,7 @@ def build_capital_and_funds_8bank_codex_verified_mapping_v1(
                     **_semantic_evidence(axis_page, semantic_page, item),
                 }
             )
-        source_period_status = (
-            "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
-            if reviewed["source_period"] == "2026-03-31"
-            else "VERIFIED_SOURCE_PERIOD_Q2_2026"
-        )
+        source_period_status = _source_period_status(reviewed["source_period"])
         status = reviewed["disposition"]
         if source_period_status == "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2" and status.startswith(
             "VERIFIED_BY_CODEX"
@@ -1614,7 +1645,7 @@ def build_capital_and_funds_8bank_codex_verified_mapping_v1(
             }
         )
     schema_family = {
-        "family_end_display_order": 667,
+        "family_end_display_order": FAMILY_END_DISPLAY_ORDER,
         "family_root": _schema_binding(schema_by_id.get(1128), 1128),
         "mapped_report_norm_ids": sorted(
             {
@@ -1641,14 +1672,15 @@ def build_capital_and_funds_8bank_codex_verified_mapping_v1(
                 "sha256": EXPECTED_INDEX_SHA256,
             },
             "structure_scan_id": EXPECTED_SCAN_ID,
+            **canonical_clone_v1(_EXTRA_INPUT_REFS),
         },
         "metrics": _metrics(trials),
         "schema_family": schema_family,
-        "state": "CAPITAL_AND_FUNDS_8BANK_CODEX_VERIFICATION_COMPLETE",
+        "state": RESULT_STATE,
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "e0078:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": RESULT_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 

@@ -17,7 +17,7 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **299 entries**.  Current open queue: **95**.  Closed history:
+Ledger total: **306 entries**.  Current open queue: **102**.  Closed history:
 **129** row/graph resolutions and **75** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
@@ -40,6 +40,28 @@ Machine-readable results:
 `docs/experiments/E-0132-annual-2025-other-payables-liabilities-8bank-codex-verified-mapping-v1.json`
 và
 `docs/experiments/E-0132A-other-payables-project-owner-other-closure-v1.json`.
+
+## OPEN — annual-2025 `Vốn và các quỹ`
+
+E-0133 quét toàn bộ tám BCTC hợp nhất kiểm toán năm 2025 và tìm đúng một vùng
+family tại ACB p65–66, MBB p69–70, VPB p66–67, HDB p48–49, VCB p56–57,
+CTG p55–56, BID p53–54 và VIB p49–50; 23 vùng gần giống được giữ làm đối
+chứng âm. Năm bảng đọc số được đã xác minh 46 mapping/82 ô giá trị cùng 12
+phương trình. HDB fresh VietOCR đọc `835.956`; pixel, PP-OCRv6 và phương trình
+nguồn xác nhận đúng là `535.956`.
+
+| ID | Bank | Trang | Khoản mục nguồn | Giá trị mở/đóng kỳ | Lý do chưa map |
+| --- | --- | ---: | --- | --- | --- |
+| A2025-CAF-001 | VPB | 66 | Quỹ đầu tư phát triển | `68.758` / `68.758` | Schema chưa có leaf số dư vốn tương đương; hai số vẫn nằm trong tổng vốn đã xác minh. |
+| A2025-CAF-002 | HDB | 48 | Cổ phiếu quỹ | `(413.448)` / ô trống | Schema chưa có leaf số dư vốn tương đương; ô đóng kỳ trống không được đổi thành 0. |
+| A2025-CAF-003 | HDB | 48 | Vốn đầu tư xây dựng cơ bản | `89` / `89` | Schema chưa có leaf số dư vốn tương đương. |
+| A2025-CAF-004 | VCB | 56 | Quỹ đầu tư phát triển | `1.357.643` / `9.058.060` | Schema chưa có leaf riêng; hai số vẫn nằm trong subtotal quỹ và tổng vốn đã xác minh. |
+| A2025-CAF-005 | CTG | 55–56 | Báo cáo tình hình thay đổi vốn chủ sở hữu | — | Vùng đã unique về cấu trúc; numeric challenger trên bảng xoay chưa đủ tin cậy nên chưa map số. |
+| A2025-CAF-006 | BID | 53–54 | Báo cáo tình hình thay đổi vốn chủ sở hữu | — | Vùng đã unique về cấu trúc; numeric challenger trên bảng xoay chưa đủ tin cậy nên chưa map số. |
+| A2025-CAF-007 | VIB | 49–50 | Báo cáo tình hình thay đổi vốn chủ sở hữu | — | Vùng đã unique về cấu trúc; numeric challenger trên bảng xoay chưa đủ tin cậy nên chưa map số. |
+
+Machine-readable result:
+`docs/experiments/E-0133-annual-2025-capital-and-funds-8bank-codex-verified-mapping-v1.json`.
 
 ## OPEN — annual-2025 `Phát hành giấy tờ có giá`
 

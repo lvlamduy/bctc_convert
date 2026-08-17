@@ -56,6 +56,10 @@ EXPECTED_SCAN_ID = "tfafdsv1:scan:3bbda7c0a4b2b6228cfeb9edbdd9209c2344fc88a8d90e
 EXPECTED_PAGE_COUNT = 3
 FORMAT_VERSION = "ANNUAL_2025_TANGIBLE_FIXED_ASSETS_ROTATED_PPOCRV6_PANEL_V1"
 PROJECTION_FORMAT = "ANNUAL_2025_TANGIBLE_FIXED_ASSETS_ROTATED_PPOCRV6_VERIFIED_PROJECTION_V1"
+SELECTION_RULE = "UNIQUE_COMPLETE_TANGIBLE_ASSET_REGION_AND_ROTATED_SOURCE_AXIS_TRUE"
+PANEL_ID_PREFIX = "a2025tfarpv1:panel:"
+PROJECTION_ID_PREFIX = "a2025tfarpv1:projection:"
+INCLUDE_WORD_AXIS = False
 _REF_FIELDS = {"path", "sha256", "size_bytes"}
 _PAGE_FIELDS = {
     "document_ordinal",
@@ -364,14 +368,12 @@ def build_annual_2025_tangible_rotated_ppocrv6_panel_v1() -> dict[str, Any]:
             "input_refs": input_refs,
             "metrics": {"page_count": len(pages)},
             "pages": pages,
-            "selection_rule": (
-                "UNIQUE_COMPLETE_TANGIBLE_ASSET_REGION_AND_ROTATED_SOURCE_AXIS_TRUE"
-            ),
+            "selection_rule": SELECTION_RULE,
             "state": "ROTATED_PPOCRV6_PAGE_PANEL_READY",
         }
         manifest = {
             **material,
-            "panel_id": "a2025tfarpv1:panel:" + canonical_json_sha256_v1(material),
+            "panel_id": PANEL_ID_PREFIX + canonical_json_sha256_v1(material),
         }
         (stage / MANIFEST_PATH.name).write_bytes(canonical_json_bytes_v1(manifest) + b"\n")
         _publish_noreplace(stage, PROJECT_ROOT / OUTPUT_ROOT)
@@ -398,6 +400,7 @@ def _validate_manifest(value: Any) -> dict[str, Any]:
         }
         or value["format_version"] != FORMAT_VERSION
         or value["state"] != "ROTATED_PPOCRV6_PAGE_PANEL_READY"
+        or value["selection_rule"] != SELECTION_RULE
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["pages"]) is not list
         or len(value["pages"]) != EXPECTED_PAGE_COUNT
@@ -409,7 +412,7 @@ def _validate_manifest(value: Any) -> dict[str, Any]:
             raise _error("rotated numeric panel page shape drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("panel_id")
-    if identity != "a2025tfarpv1:panel:" + canonical_json_sha256_v1(material):
+    if identity != PANEL_ID_PREFIX + canonical_json_sha256_v1(material):
         raise _error("rotated numeric panel identity drifted")
     return canonical_clone_v1(value)
 
@@ -441,8 +444,21 @@ def _ppocr_page(page: dict[str, Any], ordinal: int) -> dict[str, Any]:
     texts = result.get("rec_texts")
     scores = result.get("rec_scores")
     boxes = result.get("rec_boxes")
+    words = result.get("text_word")
+    word_boxes = result.get("text_word_boxes")
     runtime = run.get("runtime")
     models = runtime.get("models") if type(runtime) is dict else None
+    normalized_width, normalized_height = actual.size
+
+    def valid_word_box(value: Any) -> bool:
+        return (
+            type(value) is list
+            and len(value) == 4
+            and all(type(item) is int for item in value)
+            and 0 <= value[0] < value[2] <= normalized_width
+            and 0 <= value[1] < value[3] <= normalized_height
+        )
+
     if (
         type(texts) is not list
         or type(scores) is not list
@@ -451,6 +467,24 @@ def _ppocr_page(page: dict[str, Any], ordinal: int) -> dict[str, Any]:
         or not texts
         or not all(type(text) is str for text in texts)
         or not all(type(score) is float and math.isfinite(score) for score in scores)
+        or (
+            INCLUDE_WORD_AXIS
+            and (
+                result.get("return_word_box") is not True
+                or type(words) is not list
+                or type(word_boxes) is not list
+                or len(words) != len(texts)
+                or len(word_boxes) != len(texts)
+                or any(type(line) is not list for line in words)
+                or any(type(line) is not list for line in word_boxes)
+                or any(type(token) is not str for line in words for token in line)
+                or any(
+                    len(line_words) != len(line_boxes)
+                    for line_words, line_boxes in zip(words, word_boxes, strict=True)
+                )
+                or any(not valid_word_box(box) for line in word_boxes for box in line)
+            )
+        )
         or run.get("state") != "OCR_COMPLETE"
         or run.get("dataset_role") != "CALIBRATION"
         or run.get("evidence_role") != "INDEPENDENT_GEOMETRY_PROPOSAL_ONLY"
@@ -464,7 +498,7 @@ def _ppocr_page(page: dict[str, Any], ordinal: int) -> dict[str, Any]:
         or models[1].get("repo_id") != "PaddlePaddle/PP-OCRv6_medium_rec"
     ):
         raise _error("rotated PP-OCRv6 result or runtime identity drifted")
-    return {
+    projection = {
         **canonical_clone_v1(page),
         "ocr_result_ref": _ref(result_path, result_payload),
         "rec_boxes": boxes,
@@ -472,6 +506,10 @@ def _ppocr_page(page: dict[str, Any], ordinal: int) -> dict[str, Any]:
         "rec_texts": texts,
         "run_manifest_ref": _ref(run_path, run_payload),
     }
+    if INCLUDE_WORD_AXIS:
+        projection["text_word"] = words
+        projection["text_word_boxes"] = word_boxes
+    return projection
 
 
 def read_verified_annual_2025_tangible_rotated_ppocrv6_panel_v1() -> dict[str, Any]:
@@ -510,7 +548,7 @@ def read_verified_annual_2025_tangible_rotated_ppocrv6_panel_v1() -> dict[str, A
     }
     return {
         **material,
-        "projection_id": "a2025tfarpv1:projection:" + canonical_json_sha256_v1(material),
+        "projection_id": PROJECTION_ID_PREFIX + canonical_json_sha256_v1(material),
     }
 
 
