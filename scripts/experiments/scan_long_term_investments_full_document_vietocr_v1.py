@@ -27,6 +27,7 @@ DEFAULT_INPUT = Path(
 )
 FORMAT_VERSION = "LONG_TERM_INVESTMENTS_8DOCUMENT_FULL_VIETOCR_STRUCTURE_SCAN_V1"
 MATCHER_FORMAT = "LONG_TERM_INVESTMENTS_VARIANT_GRAPH_DOCUMENT_V1"
+MATCHER_VARIANT_PROFILE = "CURRENT_V1"
 CLAIM_BOUNDARY = (
     "FRESH_VIETOCR_TRANSFORMER_COMPLETE_PDF_SHARED_LONG_TERM_INVESTMENT_"
     "OWNER_OPTIONAL_JOINT_VENTURE_ASSOCIATE_OTHER_ORGANIZATION_PROJECT_FUND_"
@@ -161,7 +162,7 @@ def build_long_term_investments_full_document_scan_v1(semantic_index: Any) -> di
     trials = []
     for document in axis["documents"]:
         result = matcher.build_long_term_investments_variant_graph_document_v1(
-            _matcher_pages(document)
+            _matcher_pages(document), variant_profile=MATCHER_VARIANT_PROFILE
         )
         trials.append(
             {

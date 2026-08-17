@@ -72,11 +72,18 @@ _RESULT_FIELDS = {
     "uniqueness",
 }
 _NUMBER = re.compile(r"^\(?[+-]?[0-9]+(?:[., ][0-9]+)*%?\)?$")
-_DATE = re.compile(
+_CURRENT_DATE = re.compile(
     r"(?:[0-3]?[0-9](?:[./-]|\s+)[01]?[0-9](?:[./-]|\s+)(?:20)?[0-9]{2})|"
     r"(?:ngay\s+[0-3]?[0-9]\s+thang\s+[01]?[0-9])|"
     r"(?:so\s+(?:cuoi|dau)\s+ky)"
 )
+_ANNUAL_DATE = re.compile(
+    r"(?:[0-3]?[0-9](?:[./-]|\s+)[01]?[0-9](?:[./-]|\s+)(?:20)?[0-9]{2})|"
+    r"(?:ngay\s+[0-3]?[0-9]\s+thang\s+[01]?[0-9])|"
+    r"(?:so\s+(?:cuoi|dau)\s+(?:ky|nam))"
+)
+CURRENT_VARIANT_PROFILE = "CURRENT_V1"
+ANNUAL_2025_VARIANT_PROFILE = "ANNUAL_2025_V1"
 _MAX_REGION_LINES = 180
 _MAX_REGION_PAGES = 2
 
@@ -251,7 +258,18 @@ def _flatten(pages: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
     return [line for page in pages for line in page["lines"]]
 
 
-def _region(owner_index: int, lines: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+def _region(
+    owner_index: int,
+    lines: Sequence[Mapping[str, Any]],
+    *,
+    variant_profile: str,
+) -> dict[str, Any]:
+    if variant_profile == CURRENT_VARIANT_PROFILE:
+        date_pattern = _CURRENT_DATE
+    elif variant_profile == ANNUAL_2025_VARIANT_PROFILE:
+        date_pattern = _ANNUAL_DATE
+    else:
+        raise _error("long-term-investment variant profile drifted")
     owner = lines[owner_index]
     window: list[Mapping[str, Any]] = []
     for line in lines[owner_index + 1 : owner_index + 1 + _MAX_REGION_LINES]:
@@ -271,7 +289,7 @@ def _region(owner_index: int, lines: Sequence[Mapping[str, Any]]) -> dict[str, A
         role = _child_role(text)
         if role is not None:
             children.setdefault(role, []).append(line)
-        if _DATE.search(text):
+        if date_pattern.search(text):
             periods.append(line)
         if "trieu dong" in text or "trieu vnd" in text:
             units.append(line)
@@ -314,6 +332,53 @@ def _region(owner_index: int, lines: Sequence[Mapping[str, Any]]) -> dict[str, A
         ],
         "start_global_ordinal": owner["global_ordinal"],
     }
+
+
+def _merge_adjacent_summary_and_detail(
+    candidates: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Merge an immediately following detailed block into its family summary.
+
+    Some annual notes print a complete summary and then repeat the owner for a
+    detailed associate/joint-venture table.  Exact adjacency plus the same
+    normalized owner is required; unrelated regions remain separate.
+    """
+
+    merged: list[dict[str, Any]] = []
+    for raw in candidates:
+        candidate = canonical_clone_v1(raw)
+        if merged:
+            prior = merged[-1]
+            same_owner = normalize_vietnamese_anchor_v1(
+                prior["owner"]["vietocr_text"]
+            ) == normalize_vietnamese_anchor_v1(candidate["owner"]["vietocr_text"])
+            if (
+                prior["complete"]
+                and candidate["complete"]
+                and prior["end_global_ordinal"] + 1 == candidate["start_global_ordinal"]
+                and same_owner
+            ):
+                roles = list(dict.fromkeys([*prior["anchor_roles"], *candidate["anchor_roles"]]))
+                prior["anchor_roles"] = roles
+                prior["end_global_ordinal"] = candidate["end_global_ordinal"]
+                prior["events"].extend(candidate["events"])
+                prior["layout"]["child_roles"] = sorted(
+                    set(prior["layout"]["child_roles"]) | set(candidate["layout"]["child_roles"])
+                )
+                prior["layout"]["explicit_unit_line_count"] += candidate["layout"][
+                    "explicit_unit_line_count"
+                ]
+                prior["layout"]["period_axis_line_count"] += candidate["layout"][
+                    "period_axis_line_count"
+                ]
+                prior["numeric_line_count"] += candidate["numeric_line_count"]
+                prior["page_span"][1] = candidate["page_span"][1]
+                prior["pair_anchor_combinations"] = [
+                    list(pair) for pair in itertools.combinations(roles, 2)
+                ]
+                continue
+        merged.append(candidate)
+    return merged
 
 
 def _validate_result(value: Any) -> dict[str, Any]:
@@ -362,16 +427,20 @@ def _validate_result(value: Any) -> dict[str, Any]:
     return canonical_clone_v1(value)
 
 
-def build_long_term_investments_variant_graph_document_v1(pages: Any) -> dict[str, Any]:
+def build_long_term_investments_variant_graph_document_v1(
+    pages: Any, *, variant_profile: str = CURRENT_VARIANT_PROFILE
+) -> dict[str, Any]:
     """Enumerate every complete and near-complete family region in one PDF."""
 
     normalized_pages = _pages(pages)
     lines = _flatten(normalized_pages)
     candidates = [
-        _region(index, lines)
+        _region(index, lines, variant_profile=variant_profile)
         for index, line in enumerate(lines)
         if _is_owner(line["normalized_text"])
     ]
+    if variant_profile == ANNUAL_2025_VARIANT_PROFILE:
+        candidates = _merge_adjacent_summary_and_detail(candidates)
     regions = [candidate for candidate in candidates if candidate["complete"]]
     near_regions = [candidate for candidate in candidates if not candidate["complete"]]
     material = {
@@ -406,12 +475,14 @@ def build_long_term_investments_variant_graph_document_v1(pages: Any) -> dict[st
 
 
 def validate_long_term_investments_variant_graph_replay_v1(
-    value: Any, pages: Any
+    value: Any, pages: Any, *, variant_profile: str = CURRENT_VARIANT_PROFILE
 ) -> dict[str, Any]:
     """Rebuild the graph from the complete PDF and require typed equality."""
 
     supplied = _validate_result(value)
-    rebuilt = build_long_term_investments_variant_graph_document_v1(pages)
+    rebuilt = build_long_term_investments_variant_graph_document_v1(
+        pages, variant_profile=variant_profile
+    )
     if not same_typed_json_v1(supplied, rebuilt):
         raise _error("long-term-investment graph does not replay exactly")
     return supplied

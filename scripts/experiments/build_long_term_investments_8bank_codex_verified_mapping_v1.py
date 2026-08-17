@@ -60,6 +60,11 @@ scanner = _load_experiment_module(
 
 FORMAT_VERSION = "LONG_TERM_INVESTMENTS_8BANK_CODEX_VERIFIED_MAPPING_V1"
 REVIEW_FORMAT = "LONG_TERM_INVESTMENTS_8BANK_CODEX_PIXEL_REVIEW_V1"
+_RESULT_STATE = "LONG_TERM_INVESTMENTS_8BANK_CODEX_VERIFICATION_COMPLETE"
+_RESULT_ID_PREFIX = "lti8bcv1:result:"
+_REVIEW_STATE = "CODEX_PIXEL_REVIEW_COMPLETE"
+_REVIEW_ID_PREFIX = "e0068:pixel-review:"
+_REVIEW_RUN_ID = "E-0068"
 CLAIM_BOUNDARY = (
     "FIXED_EIGHT_DOCUMENT_COMPLETE_PDF_FRESH_VIETOCR_GENERIC_LONG_TERM_"
     "INVESTMENT_VARIANT_GRAPH_PLUS_INDEPENDENT_VISIBLE_PIXEL_UPSTREAM_NUMERIC_"
@@ -80,6 +85,17 @@ EXPECTED_INDEX_SHA256 = "f84fd9ca56fe06af230e011ecad85b0a576e27e1eca32ee141e654a
 EXPECTED_CROP_MANIFEST_SHA256 = "a9f80cf9104af1177ba43d8a85de00b28c735223a91b663a5a79401bb038d94e"
 EXPECTED_AXIS_SHA256 = "e99873cd16a7234702d0ee6e5fa9eb37637a1a75621228381e3dbcd7c5cfdcca"
 EXPECTED_SCAN_ID = "ltifdsv1:scan:6889236ce0183b78f765e88fcb1657c0ac6832e57c04f8813fac577d20926284"
+REVIEW_SHA256 = "7a20a878fd705505e8e5bc908d6306d3da4826dfe58a0987bb8b9651c1489e48"
+_SOURCE_PERIOD_STATUS_BY_PERIOD = {
+    "2026-03-31": "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2",
+    "2026-06-30": "VERIFIED_SOURCE_PERIOD_Q2_2026",
+}
+_TRIAL_STATUS_BY_SOURCE_PERIOD_STATUS = {
+    "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2": (
+        "VERIFIED_BY_CODEX_WITH_SUPPLIED_SOURCE_PERIOD_CAVEAT"
+    ),
+    "VERIFIED_SOURCE_PERIOD_Q2_2026": "VERIFIED_BY_CODEX",
+}
 
 _REVIEW_CHECKS = [
     "COMPLETE_PDF_UNIQUE_REGION_ENUMERATION",
@@ -185,8 +201,10 @@ def _mapping(
     *,
     topology: str = "OWNER_DIRECT_CHILD",
     dash_anchor_line_index: int | None = None,
+    comparative_dash_anchor_line_index: int | None = None,
+    page_sequence: int | None = None,
 ) -> dict[str, Any]:
-    return {
+    result = {
         "label_line_index": label_line_index,
         "label_pixel_transcription": label_pixel_transcription,
         "report_norm_id": report_norm_id,
@@ -199,9 +217,19 @@ def _mapping(
                 current[1],
                 dash_anchor_line_index=dash_anchor_line_index if current[0] is None else None,
             ),
-            _value("COMPARATIVE", comparative[0], comparative[1]),
+            _value(
+                "COMPARATIVE",
+                comparative[0],
+                comparative[1],
+                dash_anchor_line_index=(
+                    comparative_dash_anchor_line_index if comparative[0] is None else None
+                ),
+            ),
         ],
     }
+    if page_sequence is not None:
+        result["page_sequence"] = page_sequence
+    return result
 
 
 def _equation(
@@ -212,8 +240,10 @@ def _equation(
     comparative_total: tuple[int, str],
     *,
     dash_anchor_line_index: int | None = None,
+    comparative_dash_anchor_line_index: int | None = None,
+    page_sequence: int | None = None,
 ) -> dict[str, Any]:
-    return {
+    result = {
         "axes": [
             {
                 "components": [
@@ -232,7 +262,14 @@ def _equation(
             },
             {
                 "components": [
-                    _value("COMPARATIVE", line_index, text)
+                    _value(
+                        "COMPARATIVE",
+                        line_index,
+                        text,
+                        dash_anchor_line_index=(
+                            comparative_dash_anchor_line_index if line_index is None else None
+                        ),
+                    )
                     for line_index, text in comparative_components
                 ],
                 "period_role": "COMPARATIVE",
@@ -241,6 +278,9 @@ def _equation(
         ],
         "name": name,
     }
+    if page_sequence is not None:
+        result["page_sequence"] = page_sequence
+    return result
 
 
 def _doc(
@@ -670,14 +710,17 @@ def _review_blueprint() -> dict[str, Any]:
         "documents": _review_documents(),
         "format_version": REVIEW_FORMAT,
         "review_checks": list(_REVIEW_CHECKS),
-        "reviewer": {"kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW", "review_run_id": "E-0068"},
+        "reviewer": {
+            "kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW",
+            "review_run_id": _REVIEW_RUN_ID,
+        },
         "safety": canonical_clone_v1(_REVIEW_SAFETY),
         "scan_id": EXPECTED_SCAN_ID,
         "semantic_axis_sha256": EXPECTED_AXIS_SHA256,
         "semantic_index_sha256": EXPECTED_INDEX_SHA256,
-        "state": "CODEX_PIXEL_REVIEW_COMPLETE",
+        "state": _REVIEW_STATE,
     }
-    return {**material, "review_id": "e0068:pixel-review:" + canonical_json_sha256_v1(material)}
+    return {**material, "review_id": _REVIEW_ID_PREFIX + canonical_json_sha256_v1(material)}
 
 
 def _review(value: Any) -> dict[str, Any]:
@@ -835,7 +878,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
     if (
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "LONG_TERM_INVESTMENTS_8BANK_CODEX_VERIFICATION_COMPLETE"
+        or value["state"] != _RESULT_STATE
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
         or len(value["trials"]) != len(EXPECTED_DOCUMENT_ORDER)
@@ -861,7 +904,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
             raise _error("long-term-investment mapping row status drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "lti8bcv1:result:" + canonical_json_sha256_v1(material):
+    if identity != _RESULT_ID_PREFIX + canonical_json_sha256_v1(material):
         raise _error("long-term-investment mapping result identity drifted")
     return canonical_clone_v1(value)
 
@@ -910,40 +953,119 @@ def build_long_term_investments_8bank_codex_verified_mapping_v1(
         owner = _axis_line(axis_page, reviewed["owner_line_index"])
         if "gop von" not in normalize_vietnamese_anchor_v1(owner["vietocr_text"]):
             raise _error("reviewed owner is not supported by fresh VietOCR")
-        source_texts = support._source_line_axis(crop_page)
+        page_cache: dict[int, tuple[dict[str, Any], dict[str, Any], dict[str, Any], Any]] = {
+            page_sequence: (
+                axis_page,
+                semantic_page,
+                crop_page,
+                support._source_line_axis(crop_page),
+            )
+        }
+
+        def evidence_page(
+            requested_page_sequence: int,
+            *,
+            _page_cache: dict[
+                int, tuple[dict[str, Any], dict[str, Any], dict[str, Any], Any]
+            ] = page_cache,
+            _axis_document: dict[str, Any] = axis_document,
+            _semantic_document: dict[str, Any] = semantic_document,
+            _crop_document: dict[str, Any] = crop_document,
+        ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], Any]:
+            if requested_page_sequence not in _page_cache:
+                requested_axis_page = _page(
+                    _axis_document, requested_page_sequence, "accounting axis"
+                )
+                requested_semantic_page = _page(
+                    _semantic_document, requested_page_sequence, "semantic index"
+                )
+                requested_crop_page = _page(
+                    _crop_document, requested_page_sequence, "crop manifest"
+                )
+                _page_cache[requested_page_sequence] = (
+                    requested_axis_page,
+                    requested_semantic_page,
+                    requested_crop_page,
+                    support._source_line_axis(requested_crop_page),
+                )
+            return _page_cache[requested_page_sequence]
+
         mapped_rows = []
         for mapping in reviewed["mappings"]:
+            mapping_page_sequence = mapping.get("page_sequence", page_sequence)
+            if type(mapping_page_sequence) is not int:
+                raise _error("reviewed mapping page identity drifted")
+            mapping_axis_page, mapping_semantic_page, mapping_crop_page, source_texts = (
+                evidence_page(mapping_page_sequence)
+            )
             label_proposal = None
             if mapping["label_line_index"] is not None:
-                label_proposal = _axis_line(axis_page, mapping["label_line_index"])["vietocr_text"]
+                label_proposal = _axis_line(mapping_axis_page, mapping["label_line_index"])[
+                    "vietocr_text"
+                ]
+                if type(mapping["label_pixel_transcription"]) is not str:
+                    raise _error("reviewed mapping pixel label drifted")
+                try:
+                    support._anchor_match(
+                        label_proposal,
+                        mapping["label_pixel_transcription"],
+                        "long-term-investment row label",
+                    )
+                except Exception as exc:
+                    raise _error(
+                        f"long-term-investment semantic label evidence drifted: {exc}"
+                    ) from exc
             values = [
-                _verified_value(axis_page, semantic_page, crop_page, source_texts, item)
+                _verified_value(
+                    mapping_axis_page,
+                    mapping_semantic_page,
+                    mapping_crop_page,
+                    source_texts,
+                    item,
+                )
                 for item in mapping["values"]
             ]
-            mapped_rows.append(
-                {
-                    "fresh_vietocr_label_proposal": label_proposal,
-                    "label_line_index": mapping["label_line_index"],
-                    "label_pixel_transcription": mapping["label_pixel_transcription"],
-                    "role": mapping["role"],
-                    "schema_binding": _schema_binding(
-                        schema_by_id.get(mapping["report_norm_id"]), mapping["report_norm_id"]
-                    ),
-                    "status": "VERIFIED_BY_CODEX",
-                    "topology": mapping["topology"],
-                    "values": values,
-                }
-            )
+            mapped_row = {
+                "fresh_vietocr_label_proposal": label_proposal,
+                "label_line_index": mapping["label_line_index"],
+                "label_pixel_transcription": mapping["label_pixel_transcription"],
+                "role": mapping["role"],
+                "schema_binding": _schema_binding(
+                    schema_by_id.get(mapping["report_norm_id"]), mapping["report_norm_id"]
+                ),
+                "status": "VERIFIED_BY_CODEX",
+                "topology": mapping["topology"],
+                "values": values,
+            }
+            if "page_sequence" in mapping:
+                mapped_row["page_sequence"] = mapping_page_sequence
+            mapped_rows.append(mapped_row)
         equations = []
         for equation in reviewed["equations"]:
+            equation_page_sequence = equation.get("page_sequence", page_sequence)
+            if type(equation_page_sequence) is not int:
+                raise _error("reviewed equation page identity drifted")
+            equation_axis_page, equation_semantic_page, equation_crop_page, source_texts = (
+                evidence_page(equation_page_sequence)
+            )
             axes = []
             for equation_axis in equation["axes"]:
                 components = [
-                    _verified_value(axis_page, semantic_page, crop_page, source_texts, item)
+                    _verified_value(
+                        equation_axis_page,
+                        equation_semantic_page,
+                        equation_crop_page,
+                        source_texts,
+                        item,
+                    )
                     for item in equation_axis["components"]
                 ]
                 total = _verified_value(
-                    axis_page, semantic_page, crop_page, source_texts, equation_axis["total"]
+                    equation_axis_page,
+                    equation_semantic_page,
+                    equation_crop_page,
+                    source_texts,
+                    equation_axis["total"],
                 )
                 computed = sum(_normalized(item) for item in components)
                 visible = _normalized(total)
@@ -958,12 +1080,20 @@ def build_long_term_investments_8bank_codex_verified_mapping_v1(
                         "visible_total": visible,
                     }
                 )
-            equations.append({"axes": axes, "name": equation["name"], "status": "VERIFIED_EXACT"})
-        source_period_status = (
-            "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
-            if reviewed["source_period"] == "2026-03-31"
-            else "VERIFIED_SOURCE_PERIOD_Q2_2026"
-        )
+            verified_equation = {
+                "axes": axes,
+                "name": equation["name"],
+                "status": "VERIFIED_EXACT",
+            }
+            if "page_sequence" in equation:
+                verified_equation["page_sequence"] = equation_page_sequence
+            equations.append(verified_equation)
+        source_period_status = _SOURCE_PERIOD_STATUS_BY_PERIOD.get(reviewed["source_period"])
+        if source_period_status is None:
+            raise _error("reviewed source period is not admitted by this profile")
+        trial_status = _TRIAL_STATUS_BY_SOURCE_PERIOD_STATUS.get(source_period_status)
+        if trial_status is None:
+            raise _error("reviewed source-period trial status drifted")
         trials.append(
             {
                 "document_ordinal": ordinal,
@@ -977,11 +1107,7 @@ def build_long_term_investments_8bank_codex_verified_mapping_v1(
                 "source_pdf_sha256": crop_document["source_pdf"]["sha256"],
                 "source_period": reviewed["source_period"],
                 "source_period_status": source_period_status,
-                "status": (
-                    "VERIFIED_BY_CODEX_WITH_SUPPLIED_SOURCE_PERIOD_CAVEAT"
-                    if source_period_status == "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
-                    else "VERIFIED_BY_CODEX"
-                ),
+                "status": trial_status,
                 "unit_authority": reviewed["unit_authority"],
                 "verified_accounting_equations": equations,
                 "verified_mappings": mapped_rows,
@@ -1009,11 +1135,11 @@ def build_long_term_investments_8bank_codex_verified_mapping_v1(
             "structure_scan_id": EXPECTED_SCAN_ID,
         },
         "metrics": _metrics(trials),
-        "state": "LONG_TERM_INVESTMENTS_8BANK_CODEX_VERIFICATION_COMPLETE",
+        "state": _RESULT_STATE,
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "lti8bcv1:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": _RESULT_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 
@@ -1048,7 +1174,7 @@ def validate_long_term_investments_8bank_codex_verified_mapping_replay_v1(
 def build_live_long_term_investments_8bank_codex_verified_mapping_v1() -> dict[str, Any]:
     semantic_index, _ = _stable_json(SEMANTIC_INDEX_PATH, EXPECTED_INDEX_SHA256)
     crop_manifest, crop_sha = _stable_json(CROP_MANIFEST_PATH, EXPECTED_CROP_MANIFEST_SHA256)
-    review, review_sha = _stable_json(REVIEW_PATH)
+    review, review_sha = _stable_json(REVIEW_PATH, REVIEW_SHA256 or None)
     scan = scanner.build_long_term_investments_full_document_scan_v1(semantic_index)
     schema_authority, schema_by_id = _authority_snapshot(PROJECT_ROOT)
     result = build_long_term_investments_8bank_codex_verified_mapping_v1(
@@ -1078,7 +1204,7 @@ def validate_live_long_term_investments_8bank_codex_verified_mapping_v1(
 ) -> dict[str, Any]:
     semantic_index, _ = _stable_json(SEMANTIC_INDEX_PATH, EXPECTED_INDEX_SHA256)
     crop_manifest, crop_sha = _stable_json(CROP_MANIFEST_PATH, EXPECTED_CROP_MANIFEST_SHA256)
-    review, review_sha = _stable_json(REVIEW_PATH)
+    review, review_sha = _stable_json(REVIEW_PATH, REVIEW_SHA256 or None)
     schema_authority, schema_by_id = _authority_snapshot(PROJECT_ROOT)
     return validate_long_term_investments_8bank_codex_verified_mapping_replay_v1(
         value,

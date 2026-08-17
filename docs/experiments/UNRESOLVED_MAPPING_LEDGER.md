@@ -51,6 +51,15 @@ phương trình. Chỉ hai hàng nguồn gộp dưới đây còn `OPEN`; toàn 
   định cho phép thu hẹp hoặc gộp cả hai vào 831.
 - Status: `OPEN — UNRESOLVED_COMBINED_NHNN_BILL_AND_GOVERNMENT_SECURITY_SCOPE`.
 
+E-0122 `Các khoản đầu tư dài hạn khác` quét lại toàn bộ tám BCTC hợp nhất kiểm
+toán annual-2025 và tìm đúng một vùng tại ACB p54, MBB p57, VPB p52, HDB p41,
+VCB p44–45, CTG p47, BID p45 và VIB p41. 28 mapping, 56 ô giá trị và 11
+phương trình đã được pixel/PaddleOCR6/schema/accounting replay xác minh; không
+phát sinh dòng `OPEN` mới. Dấu `-` của CTG được map thành dự phòng 0 sau khi
+bind ảnh; dấu `-` so sánh CAEX tại VPB chỉ dùng để đóng subtotal 5960 và không
+được biến thành một khoản mục schema riêng. Vì không có issue mới, tổng ledger
+và open queue ở đầu file không thay đổi.
+
 E-0107 `Tiền, kim loại quý và đá quý` trên tám BCTC hợp nhất kiểm toán năm
 2025 không bổ sung dòng OPEN: whole-PDF graph tìm đúng một vùng tại ACB p45,
 MBB p46, VPB p41, HDB p33, VCB p35, CTG p39, BID p39 và VIB p35. 35 mapping

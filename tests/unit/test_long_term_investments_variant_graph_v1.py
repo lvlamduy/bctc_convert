@@ -112,3 +112,38 @@ def test_exact_replay_and_exact_types_fail_closed() -> None:
     poisoned["primary_numeric_authority"] = 0
     with pytest.raises(matcher.LongTermInvestmentsVariantGraphV1Error, match="exact bool"):
         matcher.build_long_term_investments_variant_graph_document_v1([poisoned])
+
+
+def test_annual_relative_year_headers_and_adjacent_detail_form_one_region() -> None:
+    texts = [
+        "Góp vốn, đầu tư dài hạn",
+        "Số cuối năm",
+        "Số đầu năm",
+        "Triệu VND",
+        "Đầu tư vào công ty liên kết",
+        "100",
+        "90",
+        "Các khoản đầu tư dài hạn khác",
+        "20",
+        "10",
+        "Góp vốn, đầu tư dài hạn",
+        "Số cuối năm",
+        "Số đầu năm",
+        "Đầu tư vào công ty liên kết",
+        "100",
+        "90",
+        "Dự phòng giảm giá đầu tư dài hạn",
+        "(5)",
+        "(4)",
+        "Tài sản cố định hữu hình",
+    ]
+    current = matcher.build_long_term_investments_variant_graph_document_v1([_page(texts)])
+    annual = matcher.build_long_term_investments_variant_graph_document_v1(
+        [_page(texts)], variant_profile=matcher.ANNUAL_2025_VARIANT_PROFILE
+    )
+
+    assert current["status"] == "UNRESOLVED_NO_COMPLETE_REGION"
+    assert annual["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert annual["metrics"]["complete_region_count"] == 1
+    assert annual["regions"][0]["numeric_line_count"] == 8
+    assert annual["regions"][0]["layout"]["period_axis_line_count"] == 4

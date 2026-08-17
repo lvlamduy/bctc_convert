@@ -314,24 +314,28 @@ gộp đúng hai dòng TCTD vào 808.
 
 ## 17. Các khoản đầu tư dài hạn khác
 
-- **Đã xác minh:** ACB p19, MBB p36, VPB p48, HDB p30, VCB p33,
-  CTG p40, BID p24 và VIB p36. Đã map 29 khoản mục nguồn/58 ô hiện
-  tại–so sánh; chín phương trình chi tiết–tổng hoặc giá gốc–dự
-  phòng–giá trị thuần đóng đúng. Mỗi PDF chỉ có một vùng thỏa khung
-  family trên toàn báo cáo.
-- **Biến thể đã đóng:** ACB/VIB chỉ có `Đầu tư dài hạn khác`;
-  MBB tách `Tổ chức kinh tế, dự án dài hạn` và `Quỹ đầu tư`; VPB
-  có bảng chi tiết tổ chức/dự án; HDB/VCB/BID có công ty liên
-  kết; VCB/CTG/BID có công ty liên doanh. Schema đã bổ sung 6066
-  `Đầu tư vào công ty liên doanh` và 6067 `Đầu tư vào công ty
-  liên kết`; dấu `-` hiện kỳ của HDB được giữ `DASH` rồi chuẩn hóa
-  thành 0.
-- **Không có:** Không có bank nào.
-- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong tám vùng đã
-  xác minh.
+- **Đã map/xác minh trên BCTC hợp nhất kiểm toán annual-2025:** ACB p54,
+  MBB p57, VPB p52, HDB p41, VCB p44–45, CTG p47, BID p45 và VIB p41.
+  Whole-PDF scan tìm đúng một vùng family trong mỗi báo cáo; 28 mapping/56 ô
+  hiện tại–so sánh và 11 phương trình chi tiết–subtotal hoặc
+  gross–dự phòng–net đóng chính xác.
+- **Biến thể đã đóng:** ACB có summary rồi bảng niêm yết/chưa niêm yết; MBB
+  tách tổ chức/dự án và quỹ đầu tư; VPB chỉ có bảng chi tiết ba tổ chức;
+  HDB có summary rồi lặp owner ở bảng công ty liên kết; VCB tách liên doanh và
+  liên kết qua hai trang; CTG có dự phòng hiện kỳ là dấu `-`; BID có đủ liên
+  doanh/liên kết/khác/dự phòng; VIB in hai giá trị dự phòng trước nhãn. Các
+  detail row không bị cộng trùng với parent.
+- **Không có:** Không có bank nào trong tám BCTC annual-2025 vắng family này.
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong tám vùng annual-2025.
+  CTG `-` được bind đúng ô và chuẩn hóa thành 0; dấu `-` so sánh của công ty
+  CAEX tại VPB chỉ tham gia phương trình subtotal, không sinh leaf schema giả.
 
-Ghi chú kỳ: PDF VPB được cung cấp là tại 31/03/2026 nên kết quả VPB giữ đúng
-Q1/2026, không relabel thành Q2/2026.
+Kết quả exact-replay:
+`docs/experiments/E-0122-annual-2025-long-term-investments-8bank-codex-verified-mapping-v1.json`.
+
+Lượt BCTC hiện hành trước đó tại ACB p19, MBB p36, VPB p48, HDB p30, VCB p33,
+CTG p40, BID p24 và VIB p36 vẫn giữ nguyên 29 mapping/58 ô/9 phương trình;
+VPB của lượt đó là Q1/2026 và không bị relabel thành annual-2025.
 
 ## 18. Tăng, giảm tài sản cố định hữu hình
 
@@ -988,7 +992,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Hoạt động mua nợ | — | ✓ p54 | ✓ p49 | ✓ p39 | — | — | — | ✓ p40 | 0 dòng annual-2025; 15 mapping/30 ô/19 phương trình; HDB không in dòng lãi |
 | Tiền gửi khách hàng | ✓ p21 | ✓ p43 | ✓\* p55 | ✓ p31 | ✓ p35 | ✓ p42 | ✓ p25 | ✓ p41–42 | 0 dòng; VPB là nguồn Q1 |
 | Chứng khoán đầu tư | ✓ p52–53 | ✓\* p54–56 | ✓ p50–52 | ✓\* p39–40 | ✓ p42–43 | ✓ p45–46 | ✓ p44–45 | ✓ p40–41 | 2 dòng annual-2025: MBB gộp Chính phủ/bảo lãnh Chính phủ; HDB gộp tín phiếu NHNN/chứng khoán Chính phủ |
-| Đầu tư dài hạn khác | ✓ p19 | ✓ p36 | ✓\* p48 | ✓ p30 | ✓ p33 | ✓ p40 | ✓ p24 | ✓ p36 | 0 dòng; VPB là nguồn Q1 |
+| Đầu tư dài hạn khác | ✓ p54 | ✓ p57 | ✓ p52 | ✓ p41 | ✓ p44–45 | ✓ p47 | ✓ p45 | ✓ p41 | 0 dòng annual-2025; 28 mapping/56 ô/11 phương trình |
 | Tăng, giảm TSCĐ hữu hình | — | ✓ p37 | ✓\* p49 | — | — | — | — | ✓ p37 | 0 dòng; 5 bank xác nhận không có bảng chi tiết; VPB là nguồn Q1 |
 | Tăng, giảm TSCĐ thuê tài chính | — | — | — | — | — | — | — | — | 0 dòng; cả 8 PDF xác nhận không có bảng chi tiết |
 | Tăng, giảm TSCĐ vô hình | — | ✓ p39 | ✓\* p50 | — | — | — | — | ✓ p38 | 0 dòng; 32 mapping, 12 phương trình, 5 bank không có bảng; VPB là nguồn Q1 |
