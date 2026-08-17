@@ -3,8 +3,9 @@
 The annual profile reuses the bank-blind complete-PDF variant graph.  It binds
 the eight unique regions to visible pixels, fresh VietOCR semantic anchors,
 PaddleOCR6 numeric challengers, exact annual periods, units, accounting
-equations and the live TM schema.  Source rows that combine two schema leaves
-remain explicit instead of being split without printed values.
+equations and the live TM schema.  Source rows that combine concepts are kept
+as one source value and are mapped or aggregated only under an explicitly
+approved combined semantic; they are never split into invented components.
 """
 
 from __future__ import annotations
@@ -53,14 +54,14 @@ RESULT_PATH = Path(
 EXPECTED_INDEX_SHA256 = "98bb9854e699230da86538cf024ef3f4817b9e2f4dd2b2a75f46198f00e4247d"
 EXPECTED_CROP_MANIFEST_SHA256 = "17d12a4d6b1dfaf0e243300757fd225b8c9cca80810a2d856efdb55a5b4ac000"
 EXPECTED_SCAN_ID = "isfdsv1:scan:51d4135dc7529576a427d8e035e31dbea0110b83e605b093b516099985bdb57e"
-EXPECTED_REVIEW_SHA256 = "dfc92695096475bcc5ffb3df5574df7d36e95553d51909d8a5c1a511c232d789"
+EXPECTED_REVIEW_SHA256 = "e93aef874b462348d0da21e8a88cd23a787e35f81274b568029889c66bb94f17"
 EXPECTED_DOCUMENT_ORDER = ("ACB", "MBB", "VPB", "HDB", "VCB", "CTG", "BID", "VIB")
 
 _EXPECTED_IDS = {
     "ACB": {807, 808, 809, 815, 816, 825, 827, 831, 832, 848},
-    "MBB": {806, 808, 809, 824, 825, 826, 827, 831, 832, 833, 848, 849, 851, 852},
+    "MBB": {806, 807, 808, 809, 824, 825, 826, 827, 831, 832, 833, 848, 849, 851, 852},
     "VPB": {806, 807, 5740, 808, 809, 812, 815, 824, 825, 826, 827, 854, 860},
-    "HDB": {806, 807, 808, 809, 812, 815, 824, 825, 827, 828, 830, 833, 849, 851},
+    "HDB": {806, 807, 808, 809, 812, 815, 824, 825, 827, 828, 830, 831, 833, 849, 851},
     "VCB": {807, 808, 810, 824, 831, 832, 833, 834, 848, 849, 851, 852, 854},
     "CTG": {
         806,
@@ -370,6 +371,14 @@ def _review_documents(base: ModuleType) -> list[dict[str, Any]]:
                         line(55, "205.507.956"),
                     ),
                     row(
+                        "AFS_GOVERNMENT",
+                        807,
+                        45,
+                        "Trái phiếu Chính phủ và trái phiếu Chính phủ bảo lãnh",
+                        line(46, "63.880.125"),
+                        line(47, "70.456.485"),
+                    ),
+                    row(
                         "AFS_TCTD",
                         808,
                         48,
@@ -548,13 +557,6 @@ def _review_documents(base: ModuleType) -> list[dict[str, Any]]:
                 [line(59, "13.810"), line(62, "226.635")],
                 line(56, "240.445"),
             ),
-        ],
-        unresolved_items=[
-            {
-                "page_sequence": 54,
-                "reason": "COMBINED_GOVERNMENT_AND_GOVERNMENT_GUARANTEED_ROW_HAS_NO_PRINTED_SPLIT",
-                "source_label": "Trái phiếu Chính phủ và trái phiếu Chính phủ bảo lãnh",
-            }
         ],
     )
 
@@ -997,13 +999,6 @@ def _review_documents(base: ModuleType) -> list[dict[str, Any]]:
                 [line(80, "17.436.610"), line(91, "(6.000)")],
                 line(97, "17.430.610"),
             ),
-        ],
-        unresolved_items=[
-            {
-                "page_sequence": 39,
-                "reason": "NHNN_BILL_AND_GOVERNMENT_BOND_REQUIRE_CONTROLLED_AGGREGATION_INTO_REPORT_NORM_ID_831",
-                "source_label": "Tín phiếu NHNN + Chứng khoán Chính phủ",
-            }
         ],
     )
 
@@ -1930,7 +1925,7 @@ def _review_documents(base: ModuleType) -> list[dict[str, Any]]:
     return [docs[code] for code in EXPECTED_DOCUMENT_ORDER]
 
 
-def _install_vib_808_aggregation(base: ModuleType) -> None:
+def _install_controlled_aggregations(base: ModuleType) -> None:
     original_trial = base._trial
 
     def annual_trial(
@@ -1951,25 +1946,58 @@ def _install_vib_808_aggregation(base: ModuleType) -> None:
             crop_manifest,
             schema_bindings,
         )
-        if code != "VIB":
+        if code not in {"HDB", "VIB"}:
             return trial
         semantic_document = base.support._document(
-            semantic_index["documents"], "VIB", "semantic index"
+            semantic_index["documents"], code, "semantic index"
         )
         manifest_document = base.support._document(
-            crop_manifest["documents"], "VIB", "crop manifest"
+            crop_manifest["documents"], code, "crop manifest"
         )
-        render_sha = "31e7c3a92bf012ed0aa0da07f9b2e70d89555d166c0afb745aca8e5c199b07ce"
+        if code == "HDB":
+            page_sequence = 39
+            render_sha = "548718289b9148db34e90938512495b68f4f2fbed7395d66bae3b25dbc4fd690"
+            report_norm_id = 831
+            aggregation = "SUM_OF_NHNN_BILL_AND_GOVERNMENT_SECURITIES_ROWS_PER_PERIOD"
+            source_status = "AGGREGATED_NHNN_BILL_AND_GOVERNMENT_SECURITIES_VALUES"
+            period_specs = (
+                (
+                    "CURRENT",
+                    (base._dash([1135, 1780, 1222, 1815]), base._line(84, "3.225.821")),
+                ),
+                (
+                    "COMPARATIVE",
+                    (base._line(82, "13.250.000"), base._line(85, "3.386.590")),
+                ),
+            )
+            label_specs = (
+                base._line(81, "Tín phiếu NHNN"),
+                base._line(83, "Chứng khoán Chính phủ"),
+            )
+        else:
+            page_sequence = 40
+            render_sha = "31e7c3a92bf012ed0aa0da07f9b2e70d89555d166c0afb745aca8e5c199b07ce"
+            report_norm_id = 808
+            aggregation = "SUM_OF_TCTD_BOND_AND_CERTIFICATE_ROWS_PER_PERIOD"
+            source_status = "AGGREGATED_TWO_VISIBLE_TCTD_VALUES"
+            period_specs = (
+                ("CURRENT", (base._line(60, "12.104.102"), base._line(64, "28.252.422"))),
+                (
+                    "COMPARATIVE",
+                    (base._line(61, "12.712.080"), base._line(65, "27.150.253")),
+                ),
+            )
+            label_specs = (
+                base._line(59, "Trái phiếu do các TCTD khác trong nước phát hành"),
+                base._line(63, "Chứng chỉ tiền gửi do các TCTD khác trong nước phát hành"),
+            )
         periods = []
-        for period_role, specs in (
-            ("CURRENT", (base._line(60, "12.104.102"), base._line(64, "28.252.422"))),
-            ("COMPARATIVE", (base._line(61, "12.712.080"), base._line(65, "27.150.253"))),
-        ):
+        for period_role, specs in period_specs:
             components = [
                 base.support._money_evidence(
                     semantic_document,
                     manifest_document,
-                    40,
+                    page_sequence,
                     spec,
                     render_sha,
                 )
@@ -1980,13 +2008,23 @@ def _install_vib_808_aggregation(base: ModuleType) -> None:
                     "component_source_values": components,
                     "normalized_value": sum(item["normalized_value"] for item in components),
                     "period_role": period_role,
-                    "source_cell_status": "AGGREGATED_TWO_VISIBLE_TCTD_VALUES",
+                    "source_cell_status": source_status,
                 }
             )
         trial["verified_mappings"].append(
             {
-                **canonical_clone_v1(schema_bindings[808]),
-                "aggregation": "SUM_OF_TCTD_BOND_AND_CERTIFICATE_ROWS_PER_PERIOD",
+                **canonical_clone_v1(schema_bindings[report_norm_id]),
+                "aggregation": aggregation,
+                "component_source_labels": [
+                    base.support._label_evidence(
+                        semantic_document,
+                        manifest_document,
+                        page_sequence,
+                        spec,
+                        render_sha,
+                    )
+                    for spec in label_specs
+                ],
                 "source_values": periods,
                 "status": "VERIFIED_BY_CODEX",
             }
@@ -2028,7 +2066,7 @@ def _base() -> ModuleType:
     base._EXPECTED_IDS = {code: set(ids) for code, ids in _EXPECTED_IDS.items()}
     base._review_documents = lambda: _review_documents(base)
     numeric._install_primary_numeric_challenger(base.support)
-    _install_vib_808_aggregation(base)
+    _install_controlled_aggregations(base)
     return base
 
 

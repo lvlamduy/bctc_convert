@@ -262,6 +262,40 @@ def test_grouped_parents_subtotal_margin_and_grand_total_share_one_graph() -> No
     )
 
 
+def test_exact_row_label_cannot_absorb_the_next_wrapped_role_across_value_lanes() -> None:
+    surfaces = _headers()
+    surfaces.extend(
+        [
+            ("Công ty TNHH khác", 0, 150),
+            ("40", 500, 150),
+            ("40", 700, 150),
+            ("35", 900, 150),
+            ("35", 1100, 150),
+            ("Công ty Cổ phận Vốn Nhà nước - 50%", 0, 198),
+            ("(Nhà nước chiếm cổ phần chi phối)", 0, 222),
+            ("60", 500, 198),
+            ("60", 700, 198),
+            ("65", 900, 198),
+            ("65", 1100, 198),
+            ("100", 500, 270),
+            ("100", 700, 270),
+            ("100", 900, 270),
+            ("100", 1100, 270),
+        ]
+    )
+
+    result = loan_enterprise.build_loan_enterprise_variant_graph_document_v1([_page(surfaces)])
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    rows = result["graphs"][0]["rows"]
+    assert [row["role"] for row in rows] == [
+        "OTHER_LLC",
+        "STATE_CONTROLLED_JOINT_STOCK",
+    ]
+    assert rows[0]["label"]["source_line_indices"] == [8]
+    assert rows[1]["label"]["source_line_indices"] == [13, 14]
+
+
 def test_two_money_lanes_and_missing_cell_stay_structured_but_numeric_unresolved() -> None:
     result = loan_enterprise.build_loan_enterprise_variant_graph_document_v1(
         [_page(_two_lane_with_missing_cell())]

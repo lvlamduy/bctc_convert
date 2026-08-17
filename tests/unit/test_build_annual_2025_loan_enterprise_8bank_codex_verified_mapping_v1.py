@@ -41,15 +41,15 @@ def test_annual_enterprise_result_has_six_unique_tables_and_two_bounded_absences
         "document_count": 8,
         "document_no_complete_region_count": 2,
         "document_unique_structure_count": 6,
-        "mapped_item_verified_by_codex_count": 56,
-        "mapped_money_value_cell_count": 112,
+        "mapped_item_verified_by_codex_count": 57,
+        "mapped_money_value_cell_count": 114,
         "mapped_percentage_corroboration_cell_count": 86,
         "negative_family_control_count": 32,
         "source_group_equation_verified_count": 0,
         "source_only_total_verified_count": 6,
         "transformer_disagreement_preserved_count": 33,
         "typed_dash_cell_verified_count": 2,
-        "unresolved_schema_semantic_row_count": 1,
+        "unresolved_schema_semantic_row_count": 0,
     }
     assert [_trial(live, bank)["physical_page"] for bank in builder._POSITIVE_BANKS] == [
         52,
@@ -63,14 +63,18 @@ def test_annual_enterprise_result_has_six_unique_tables_and_two_bounded_absences
     assert _trial(live, "CTG")["verified_mappings"] == []
 
 
-def test_vcb_combined_legal_form_is_not_silently_split(live: dict) -> None:
-    unresolved = _trial(live, "VCB")["unresolved_rows"]
-    assert len(unresolved) == 1
-    item = unresolved[0]
+def test_vcb_combined_legal_form_maps_to_exact_combined_leaf(live: dict) -> None:
+    trial = _trial(live, "VCB")
+    assert trial["unresolved_rows"] == []
+    item = next(
+        mapping
+        for mapping in trial["verified_mappings"]
+        if mapping["role"] == "COOPERATIVE_AND_PRIVATE_ENTERPRISE_COMBINED"
+    )
     assert item["role"] == "COOPERATIVE_AND_PRIVATE_ENTERPRISE_COMBINED"
-    assert item["candidate_report_norm_id"] is None
+    assert item["report_norm_id"] == 6074
     assert item["independent_pixel_label"] == "Hợp tác xã và công ty tư nhân"
-    assert [value["normalized_value"] for value in item["values"]] == [937036, 1371552]
+    assert [value["normalized_value"] for value in item["money_values"]] == [937036, 1371552]
 
 
 def test_mbb_pixel_bound_dashes_are_retained_before_zero_normalization(live: dict) -> None:

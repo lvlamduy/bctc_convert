@@ -40,32 +40,35 @@ def test_annual_investment_maps_all_eight_unique_regions(live: dict) -> None:
         "document_count": 8,
         "document_unresolved_count": 0,
         "document_verified_count": 8,
-        "mapped_value_cell_count": 220,
-        "mapping_verified_count": 110,
-        "unresolved_mapping_count": 2,
+        "mapped_value_cell_count": 224,
+        "mapping_verified_count": 112,
+        "unresolved_mapping_count": 0,
     }
     assert [(trial["bank_provenance"], trial["status"]) for trial in live["trials"]] == [
         (code, "VERIFIED_BY_CODEX") for code in builder.EXPECTED_DOCUMENT_ORDER
     ]
 
 
-def test_only_two_unsplittable_source_groups_remain_explicit(live: dict) -> None:
-    unresolved = [
-        (trial["bank_provenance"], item["source_label"], item["reason"])
-        for trial in live["trials"]
-        for item in trial["unresolved_items"]
+def test_approved_combined_source_groups_map_without_invented_splits(live: dict) -> None:
+    assert all(trial["unresolved_items"] == [] for trial in live["trials"])
+    mbb = next(
+        item for item in _trial(live, "MBB")["verified_mappings"] if item["report_norm_id"] == 807
+    )
+    assert [item["normalized_value"] for item in mbb["source_values"]] == [
+        63_880_125,
+        70_456_485,
     ]
-    assert unresolved == [
-        (
-            "MBB",
-            "Trái phiếu Chính phủ và trái phiếu Chính phủ bảo lãnh",
-            "COMBINED_GOVERNMENT_AND_GOVERNMENT_GUARANTEED_ROW_HAS_NO_PRINTED_SPLIT",
-        ),
-        (
-            "HDB",
-            "Tín phiếu NHNN + Chứng khoán Chính phủ",
-            "NHNN_BILL_AND_GOVERNMENT_BOND_REQUIRE_CONTROLLED_AGGREGATION_INTO_REPORT_NORM_ID_831",
-        ),
+    hdb = next(
+        item for item in _trial(live, "HDB")["verified_mappings"] if item["report_norm_id"] == 831
+    )
+    assert hdb["aggregation"] == "SUM_OF_NHNN_BILL_AND_GOVERNMENT_SECURITIES_ROWS_PER_PERIOD"
+    assert [item["normalized_value"] for item in hdb["source_values"]] == [
+        3_225_821,
+        16_636_590,
+    ]
+    assert [item["independent_pixel_transcription"] for item in hdb["component_source_labels"]] == [
+        "Tín phiếu NHNN",
+        "Chứng khoán Chính phủ",
     ]
 
 

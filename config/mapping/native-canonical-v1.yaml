@@ -15,33 +15,33 @@ schema_authority:
   schema_strategy: SOURCE_EVIDENCE_DRIVEN_APPEND_ONLY_SUPERSET
   source_config:
     path: config/schemas/sources.yaml
-    sha256: 42a68223c21dd023c278cfde64fad3aec052ce160fd528699ec6cb6816725ea0
+    sha256: 4257e534dc0bf151b0457d9b336719461f59a70a059761c1e1fc657c30fdcaf3
   hierarchy_config:
     path: config/schemas/hierarchy_reference.yaml
-    sha256: ed12038bfe6c550562bfb4f5119f70d10fd27a35e3d516a89bc4db48f515b3a5
+    sha256: 64972e90a76841367500c02e79b16d0a3ed0dbc4a9b04887b5687bc05e3f125e
   schema_registry:
     path: data/registered/schema_registry.json
-    sha256: 9cebc948e871898dadc3d046d06f894ffffce90eebc16885d9da2b6639832ae6
+    sha256: a58642134cc9c6dad251e958a20c65dec2bad02075c7daf37bbff4ebdf5ec7b7
   hierarchy_registry:
     path: data/registered/hierarchy_registry.json
-    sha256: cc8ead277192a69539a43f3ab9de5568484a258fc98d20c723beac8c9af8f57d
+    sha256: 26150cd3e7a5b23605c12f5116fe4bafa24e2171db4247679ddd726c122b21b7
   coverage_config:
     path: config/schemas/coverage-v1.yaml
     sha256: 708c9f36945791e33ffceceae097193070c9ad7797cf0b3629a9fddf05d136bc
   coverage_registry:
     path: data/registered/schema_coverage_registry.json
-    sha256: b3c0ba4645336f3185d7c051d8070bf24e152979c3835b88b46ac40d1aa6d52a
-  revision: UNIVERSAL_BANK_BCTC_SCHEMA@6072
-  item_count: 1951
-  counts: {CDKT: 99, KQKD: 25, LCTT: 110, TM: 1717}
-  high_watermark: 6072
-  graph_sha256: a5ad1b0f1fa89fdf6d07c07b3a32b5bfc06b844433aeba3755be479844848e39
-  ordered_canonical_projection_sha256: ed2e2ec431ef8b9c25ef5ef8632582ae15f8ace202b5333ce29bf1800a2748d1
+    sha256: 890b3904a4276d7c310b97d6e38045b6f78af5c691729aadd7eb363123ff9001
+  revision: UNIVERSAL_BANK_BCTC_SCHEMA@6074
+  item_count: 1953
+  counts: {CDKT: 99, KQKD: 25, LCTT: 110, TM: 1719}
+  high_watermark: 6074
+  graph_sha256: e3845a2f72995445d0519dac3036a0a34d9013c29154c71608c56a944310251b
+  ordered_canonical_projection_sha256: b6db1a5abe9cfe62c7cd55e43ebda6b7ca1bddd27d22c9761ea808a8eb3d8778
   statement_projection_sha256:
     CDKT: 17f3231fa85af91aa59815ac741e908ed89a11e0565c875686e0e704a7249ed9
     KQKD: d314b7937c0e5fae67f599291e58024673fcb0364ba51feb7ef85c3ff9453d25
     LCTT: c4f984b6c0e9b9cdc3300f1ef702ebb455a54a41bacc9382f7bd25aa75384d5b
-    TM: 64a79dc5b053c22ad0b3840f21cf08678102492bf7f6b6b34bcc4fc2c753ac7a
+    TM: e77f4ca6ef6d84b3eff1d5fc5929973acbeb3e5b1eaf104c3c1dc60e89dcf6cb
 
 mapping:
   statement_types: [CDKT, KQKD, LCTT, TM]

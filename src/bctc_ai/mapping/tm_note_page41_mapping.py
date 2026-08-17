@@ -19,17 +19,17 @@ from bctc_ai.core.contracts import ObservationKind
 from bctc_ai.core.hashing import sha256_file
 from bctc_ai.core.text import retrieval_key
 from bctc_ai.evaluation.word_box_rows import VisualCellEvidence
-from bctc_ai.schema.registry import SchemaItem
+from bctc_ai.schema.registry import UNIVERSAL_TM_SCHEMA_ITEM_COUNT, SchemaItem
 from bctc_ai.tables.tm_note_page41 import ParsedTMPage41
 from bctc_ai.tables.tm_note_word_box import TMNoteRowKind
 
 TM_PAGE41_POLICY_RELATIVE_PATH = Path("config/mapping/tm-note-page41-v1.yaml")
-TM_PAGE41_SCHEMA_TOTAL = 1_717
+TM_PAGE41_SCHEMA_TOTAL = UNIVERSAL_TM_SCHEMA_ITEM_COUNT
 TM_PAGE41_RECONCILED_SCHEMA_COUNT = 32
 TM_PAGE41_MAPPED_SCHEMA_COUNT = 15
 TM_PAGE41_UNRESOLVED_SCHEMA_COUNT = 0
 TM_PAGE41_NOT_OBSERVED_COUNT = 17
-TM_PAGE41_UNASSESSED_COUNT = 1_685
+TM_PAGE41_UNASSESSED_COUNT = TM_PAGE41_SCHEMA_TOTAL - TM_PAGE41_RECONCILED_SCHEMA_COUNT
 TM_PAGE41_SOURCE_ROW_COUNT = 25
 TM_PAGE41_MAPPED_SOURCE_COUNT = 25
 TM_PAGE41_PARTIAL_SOURCE_COUNT = 19

@@ -74,25 +74,24 @@ def test_business_schema_migration_is_hash_bound_and_preserves_sealed_baselines(
     assert set(audit["collision_safety"]["new_ids"]).isdisjoint(REVIEWED_EXTERNAL_IDS)
     assert audit["schema_strategy"]["base_schema"]["item_count"] == 1593
     assert audit["schema_strategy"]["universal_schema"] == {
-        "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6072",
-        "item_count": 1951,
-        "counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1717},
-        "high_watermark": 6072,
+        "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6074",
+        "item_count": 1953,
+        "counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1719},
+        "high_watermark": 6074,
         "workbook_sha256": {
             statement: record["after_sha256"] for statement, record in audit["workbooks"].items()
         },
     }
     assert audit["schema_strategy"]["migration_delta"]["new_report_norm_ids"] == [
-        6070,
-        6071,
-        6072,
+        6073,
+        6074,
     ]
     accepted_changes = {
         record["schema_id"]: record
         for record in audit["schema_changes"]
         if record.get("schema_status") == "ACCEPTED_UNIVERSAL"
     }
-    assert set(accepted_changes) == set(range(5991, 6073))
+    assert set(accepted_changes) == set(range(5991, 6075))
     assert all(
         accepted_changes[schema_id]["section"] == "BALANCE_SHEET_NOTES"
         for schema_id in range(5991, 6021)
@@ -114,7 +113,7 @@ def test_business_schema_migration_is_hash_bound_and_preserves_sealed_baselines(
     assert accepted_changes[6056]["section"] == "OFF_BALANCE_SHEET"
     assert all(
         accepted_changes[schema_id]["section"] == "BALANCE_SHEET_NOTES"
-        for schema_id in range(6057, 6073)
+        for schema_id in range(6057, 6075)
     )
     assert accepted_changes[6057]["evidence"]["observed_values"] == ["DASH", "DASH"]
     assert accepted_changes[6058]["evidence"]["visible_label"] == (
@@ -140,6 +139,8 @@ def test_business_schema_migration_is_hash_bound_and_preserves_sealed_baselines(
     assert accepted_changes[6070]["evidence"]["visible_label"] == "Vay Ngân hàng Nhà nước"
     assert accepted_changes[6071]["evidence"]["visible_label"] == ("Tiền gửi có kỳ hạn của KBNN")
     assert accepted_changes[6072]["evidence"]["visible_label"] == "Tiền gửi của Bộ Tài chính"
+    assert accepted_changes[6073]["evidence"]["visible_label"] == "Thương mại, dịch vụ"
+    assert accepted_changes[6074]["evidence"]["visible_label"] == ("Hợp tác xã và công ty tư nhân")
     ctg_swap = accepted_changes[6056]["evidence"]
     assert ctg_swap["user_decision"] == "Q076"
     assert ctg_swap["source_row_ref"] == "ctg-p5-5705"
@@ -301,6 +302,7 @@ def test_business_formula_overlay_has_exact_authorized_edges(project_root):
         732,
         733,
         734,
+        6073,
         735,
         736,
         TM_EDUCATION_ID,
@@ -338,7 +340,12 @@ def test_business_formula_overlay_has_exact_authorized_edges(project_root):
     assert by_id[717].children == [718, 719, 720, 6057, 721, 722, 723, 724, 725, 726, 5745]
     assert by_id[747].children == [5746]
     assert by_id[752].children == [753, 754, 755, 5747]
-    assert by_id[TM_LOAN_BUSINESS_PARENT_ID].children == [*range(767, 783), 5748]
+    assert by_id[TM_LOAN_BUSINESS_PARENT_ID].children == [
+        *range(767, 777),
+        6074,
+        *range(777, 783),
+        5748,
+    ]
     assert by_id[TM_LOAN_BUSINESS_OTHER_ID].parent_id == TM_LOAN_BUSINESS_PARENT_ID
     assert tuple(by_id[TM_PROVISION_MOVEMENT_ID].children) == TM_PROVISION_MOVEMENT_COMPONENTS
     assert by_id[TM_GENERAL_PROVISION_MOVEMENT_ID].children == list(range(785, 792))
@@ -544,10 +551,10 @@ def test_business_formula_overlay_has_exact_authorized_edges(project_root):
     }
     assert formula_ids.isdisjoint(range(5898, 5946))
     assert by_id[1944].parent_id is None
-    assert by_id[1944].display_order == 1716
+    assert by_id[1944].display_order == 1718
     assert set(TM_UNIVERSAL_SCHEMA_IDS) == {
         *range(5991, 6034),
-        *range(6057, 6073),
+        *range(6057, 6075),
     }
 
 

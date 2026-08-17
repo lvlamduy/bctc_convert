@@ -29,7 +29,7 @@ def test_vst_hierarchy_is_complete_where_claimed_and_partial_for_direct_lctt(pro
     kqkd = next(workbook for workbook in registry.workbooks if workbook.statement_type == "KQKD")
     assert kqkd.schema_only_append_ids == (5713,)
     tm = next(workbook for workbook in registry.workbooks if workbook.statement_type == "TM")
-    assert tm.schema_only_append_ids == (1944, *range(5718, 6034), *range(6057, 6073))
+    assert tm.schema_only_append_ids == (1944, *range(5718, 6034), *range(6057, 6075))
     assert registry.status == "VALIDATED_SUPPORTING_REFERENCE_WITH_SCHEMA_ONLY_APPENDS"
     assert len(hierarchy) == 1535
 
@@ -104,6 +104,7 @@ def test_hierarchy_edges_and_structural_aliases_are_attached_without_reordering(
         732,
         733,
         734,
+        6073,
         735,
         736,
         737,
@@ -131,7 +132,12 @@ def test_hierarchy_edges_and_structural_aliases_are_attached_without_reordering(
     assert by_id[717].children == [718, 719, 720, 6057, 721, 722, 723, 724, 725, 726, 5745]
     assert by_id[747].children == [5746]
     assert by_id[752].children == [753, 754, 755, 5747]
-    assert by_id[766].children == [*range(767, 783), 5748]
+    assert by_id[766].children == [
+        *range(767, 777),
+        6074,
+        *range(777, 783),
+        5748,
+    ]
     assert by_id[782].parent_id == 766
     assert by_id[783].children == [784, 792, 6061]
     assert by_id[784].children == list(range(785, 792))

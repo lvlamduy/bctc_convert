@@ -70,13 +70,15 @@ def test_page58_reconciles_exact_schema_source_and_financial_slot_denominators(
 ) -> None:
     result = page58_result
 
-    assert result.schema_item_count == 1_717
+    assert result.schema_item_count == 1_719
     assert result.status_reconciled_schema_count == 139
     assert result.mapped_schema_count == 77
     assert result.structural_mapped_schema_count == 5
     assert result.value_bearing_mapped_schema_count == 72
     assert result.not_observed_schema_count == 62
-    assert result.unassessed_schema_count == 1_578
+    assert result.unassessed_schema_count == (
+        result.schema_item_count - result.status_reconciled_schema_count
+    )
     assert result.not_applicable_schema_count == 0
     assert result.ambiguous_schema_count == 0
     assert result.unresolved_schema_count == 0
@@ -89,10 +91,10 @@ def test_page58_reconciles_exact_schema_source_and_financial_slot_denominators(
     assert result.extracted_value_count == 63
     assert result.dash_count == 9
     assert result.schema_workbook_sha256 == (
-        "d5a422d436d46170f2b6bc8758c547c410044a142b4833573a2e2c0c4efc2003"
+        "8d9e76de0d42aa26591a87a5e2d522e7a69e089528047928b029ac4ed49f2b3c"
     )
     assert result.schema_projection_sha256 == (
-        "26a75cae0809f8ad964c25d85a7bd31a6416a91932f3b53109a4baa7507297db"
+        "194df64364a4dd2452252585770128697168feb7014961479dfcbd8db942b695"
     )
 
 
@@ -117,7 +119,7 @@ def test_page58_owns_exact_currency_risk_scope_and_keeps_page57_disjoint(
 
     assert len(mapped) == 77
     assert len(not_observed) == 62
-    assert len(unassessed) == 1_574
+    assert len(unassessed) == page58_result.unassessed_schema_count
     assert mapped | not_observed == set(range(1352, 1483)) | set(range(5849, 5857))
     assert not mapped & not_observed
     assert set(range(1405, 1431)) <= not_observed

@@ -10,7 +10,7 @@ mapping_authority_scope: MBB_CONSOLIDATED_Q1_2026_PDF_PAGE_48_FIXED_FINANCIAL_RO
 source_pdf_sha256: eebeda2ebc09b0d4203259e92cda0169b46fde555557f150a314c72517fc1c83
 source_render_sha256: f9d8489a6d4041bd68bcea2e1b165b10aaa6e3c0810d0e10a0c8e23d17af27b2
 source_ocr_sha256: 4f1ec95810a4c4563c2259579ddfff01a5332f540fc1fecc789718ce8396a020
-schema_total: 1717
+schema_total: 1719
 
 # ReportNormId 1218 is deliberately absent. Page 47 owns it as an ambiguous
 # candidate for its visible long-term-investment provision row.

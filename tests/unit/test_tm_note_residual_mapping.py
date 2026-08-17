@@ -14,6 +14,7 @@ from bctc_ai.mapping.tm_note_page51_mapping import (
     TM_PAGE51_SOURCE_ROW_COUNT,
 )
 from bctc_ai.mapping.tm_note_residual_mapping import (
+    TM_RESIDUAL_BASELINE_SCHEMA_HIGH_WATERMARK,
     TM_RESIDUAL_MAPPED_IDS,
     TM_RESIDUAL_NOT_OBSERVED_IDS,
     TM_RESIDUAL_SCOPE_IDS,
@@ -41,37 +42,44 @@ def residual_inputs(project_root: Path):
     policy = load_tm_residual_mapping_policy(
         project_root / "config/mapping/tm-note-residual-v1.yaml"
     )
-    all_tm_ids = {item.schema_id for item in schema if item.statement_type == "TM"}
-    return schema, policy, all_tm_ids
+    legacy_owned_ids = {
+        item.schema_id
+        for item in schema
+        if item.statement_type == "TM"
+        and item.schema_id <= TM_RESIDUAL_BASELINE_SCHEMA_HIGH_WATERMARK
+    } - TM_RESIDUAL_SCOPE_IDS
+    return schema, policy, legacy_owned_ids
 
 
 @pytest.fixture(scope="module")
 def residual_result(project_root: Path, residual_inputs):
-    schema, policy, all_tm_ids = residual_inputs
+    schema, policy, legacy_owned_ids = residual_inputs
     return reconcile_tm_residual_items(
         schema,
         policy=policy,
         project_root=project_root,
         source_pdf_path=project_root / _SOURCE_PDF,
         schema_workbook_path=project_root / _SCHEMA_WORKBOOK,
-        existing_owned_schema_ids=all_tm_ids - TM_RESIDUAL_SCOPE_IDS,
+        existing_owned_schema_ids=legacy_owned_ids,
     )
 
 
-def test_exact_residual_91_reconciles_without_numeric_or_source_row_mutation(
+def test_base_residual_and_append_only_quarantine_preserve_source_denominators(
     residual_result,
 ) -> None:
     result = residual_result
 
-    assert result.schema_item_count == 1_717
-    assert result.status_reconciled_schema_count == 94
+    assert result.schema_item_count == 1_719
+    assert result.status_reconciled_schema_count == 96
     assert result.mapped_schema_count == 2
     assert result.not_observed_schema_count == 92
     assert result.ambiguous_schema_count == 0
-    assert result.unresolved_schema_count == 0
+    assert result.unresolved_schema_count == 2
     assert result.not_applicable_schema_count == 0
     assert result.extraction_miss_schema_count == 0
-    assert result.unassessed_schema_count == 1_623
+    assert result.unassessed_schema_count == (
+        result.schema_item_count - result.status_reconciled_schema_count
+    )
     assert result.structural_evidence_count == 2
     assert result.source_row_count_delta == 0
     assert result.financial_slot_count == 0
@@ -93,10 +101,16 @@ def test_only_560_and_1259_are_source_backed_structural_mappings(residual_result
         for item in residual_result.schema_dispositions
         if item.status == TMResidualSchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value
     }
+    unresolved = {
+        item.report_norm_id
+        for item in residual_result.schema_dispositions
+        if item.status == TMResidualSchemaStatus.UNRESOLVED.value
+    }
     evidence = {item.report_norm_id: item for item in residual_result.structural_evidence}
 
     assert set(mapped) == set(evidence) == TM_RESIDUAL_MAPPED_IDS
     assert not_observed == TM_RESIDUAL_NOT_OBSERVED_IDS
+    assert unresolved == {6073, 6074}
     assert mapped[560].source_ids == ("page-0030:section-title",)
     assert mapped[1259].source_ids == ("page-0051:off_balance_commitments:row-0001",)
     assert evidence[560].visible_label_similarity == pytest.approx(0.977778)
@@ -115,14 +129,14 @@ def test_residual_scope_fails_closed_on_overlap_or_policy_drift(
     project_root: Path,
     residual_inputs,
 ) -> None:
-    schema, policy, all_tm_ids = residual_inputs
+    schema, policy, legacy_owned_ids = residual_inputs
     common = {
         "schema": schema,
         "policy": policy,
         "project_root": project_root,
         "source_pdf_path": project_root / _SOURCE_PDF,
         "schema_workbook_path": project_root / _SCHEMA_WORKBOOK,
-        "existing_owned_schema_ids": all_tm_ids - TM_RESIDUAL_SCOPE_IDS,
+        "existing_owned_schema_ids": legacy_owned_ids,
     }
     with pytest.raises(TMResidualMappingError, match="overlaps"):
         reconcile_tm_residual_items(
@@ -138,3 +152,30 @@ def test_residual_scope_fails_closed_on_overlap_or_policy_drift(
                 ),
             }
         )
+    with pytest.raises(TMResidualMappingError, match="legacy page ownership drifted"):
+        reconcile_tm_residual_items(
+            **{
+                **common,
+                "existing_owned_schema_ids": legacy_owned_ids - {561},
+            }
+        )
+
+
+def test_claimed_append_only_schema_item_leaves_quarantine(
+    project_root: Path,
+    residual_inputs,
+) -> None:
+    schema, policy, legacy_owned_ids = residual_inputs
+    result = reconcile_tm_residual_items(
+        schema,
+        policy=policy,
+        project_root=project_root,
+        source_pdf_path=project_root / _SOURCE_PDF,
+        schema_workbook_path=project_root / _SCHEMA_WORKBOOK,
+        existing_owned_schema_ids={*legacy_owned_ids, 6073},
+    )
+    assert {
+        item.report_norm_id
+        for item in result.schema_dispositions
+        if item.status == TMResidualSchemaStatus.UNRESOLVED.value
+    } == {6074}

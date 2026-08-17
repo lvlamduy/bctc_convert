@@ -22,10 +22,10 @@ from rapidfuzz.fuzz import ratio
 from bctc_ai.core.contracts import BoundingBox, ObservationKind
 from bctc_ai.core.hashing import sha256_file
 from bctc_ai.core.text import retrieval_key
-from bctc_ai.schema.registry import SchemaItem
+from bctc_ai.schema.registry import UNIVERSAL_TM_SCHEMA_ITEM_COUNT, SchemaItem
 
 TM_PAGE30_POLICY_RELATIVE_PATH = Path("config/mapping/tm-note-page30-v1.yaml")
-TM_SCHEMA_ITEM_COUNT = 1717
+TM_SCHEMA_ITEM_COUNT = UNIVERSAL_TM_SCHEMA_ITEM_COUNT
 TM_PAGE30_SOURCE_ROW_COUNT = 22
 TM_PAGE30_FIXED_MAPPING_COUNT = 21
 TM_PAGE30_SOURCE_MAPPED_COUNT = 22

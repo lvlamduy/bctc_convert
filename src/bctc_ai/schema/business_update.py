@@ -21,10 +21,10 @@ if TYPE_CHECKING:
     from bctc_ai.schema.registry import SchemaItem
 
 
-BUSINESS_UPDATE_AUDIT = "data/registered/schema_business_update_5712_5713_5714_5718_6072.json"
-PRIOR_BUSINESS_UPDATE_AUDIT = "data/registered/schema_business_update_5712_5713_5714_5718_6069.json"
+BUSINESS_UPDATE_AUDIT = "data/registered/schema_business_update_5712_5713_5714_5718_6074.json"
+PRIOR_BUSINESS_UPDATE_AUDIT = "data/registered/schema_business_update_5712_5713_5714_5718_6072.json"
 PRIOR_BUSINESS_UPDATE_AUDIT_SHA256 = (
-    "d78e0ca39cb4b5b570b44c112064d55d077a4aededf6e30cf693a281d6f971d1"
+    "e9bb893d1c6257543c02105c64ad5c9c9c4b1c1a16a4c3e03f0fb2fba334e108"
 )
 
 CDKT_BASELINE_WORKBOOK = "template/Bank_CDKT_ReportNormId.xlsx"
@@ -48,25 +48,25 @@ KQKD_AFTER_ROW_COUNT = 26
 LCTT_BEFORE_ROW_COUNT = 108
 LCTT_AFTER_ROW_COUNT = 111
 TM_BEFORE_ROW_COUNT = 1386
-TM_AFTER_ROW_COUNT = 1718
+TM_AFTER_ROW_COUNT = 1720
 
 BASE_SCHEMA_ITEM_COUNT = 1593
-PRIOR_UNIVERSAL_SCHEMA_ITEM_COUNT = 1948
-UNIVERSAL_SCHEMA_ITEM_COUNT = 1951
-PRIOR_UNIVERSAL_HIGH_WATERMARK = 6069
-UNIVERSAL_HIGH_WATERMARK = 6072
+PRIOR_UNIVERSAL_SCHEMA_ITEM_COUNT = 1951
+UNIVERSAL_SCHEMA_ITEM_COUNT = 1953
+PRIOR_UNIVERSAL_HIGH_WATERMARK = 6072
+UNIVERSAL_HIGH_WATERMARK = 6074
 
 PRIOR_UNIVERSAL_WORKBOOK_SHA256 = {
     "CDKT": "7f871941516d4591417f0f3f018bceb5fd6d91e474a0570f84eaeb141d24531c",
     "KQKD": "f860ff4267054e1dea330f91de498bd2a835fd77f824a5dc444abb412a6346c8",
     "LCTT": "dee9f2065b03da349c9c96174fc2affd7d86c2439c916d246164a2d4d67a5bc8",
-    "TM": "03adbdf13d90ea503876d37e7bddc9b3f67bbc99d80d6e573060ae1f739642aa",
+    "TM": "d5a422d436d46170f2b6bc8758c547c410044a142b4833573a2e2c0c4efc2003",
 }
 PRIOR_UNIVERSAL_IDENTITY_ORDER_SHA256 = {
     "CDKT": "da32848b4583ef3fc222be91d328a4a5cd062e8175fbd09659d1fc0385558f2a",
     "KQKD": "d96e239b125c07253fd7646c18db31b4c1ac4ee3ef662fbd787c151906f82693",
     "LCTT": "32a995a3d11af834e86dda84bcea639303197eebd148fa73be495b7ac89e345f",
-    "TM": "08d83f98d91988511c642175cfd0987705900932a8ceb46081df57bc5e2fcca6",
+    "TM": "7c29736c2639c140e007ad00f2e6bce5b6409896cc336beef091fa0729f8b043",
 }
 
 PREVIOUS_V2_SHA256 = {
@@ -98,6 +98,7 @@ PREVIOUS_V2_SHA256 = {
         "6fdde8634a7736eaa1f0679055faeb88fd7c2ae0a2a38d9cdfc9443e58e2b5e0",
         "c01a3d6b8e1338833250390b731c21de5c34ddbd5e0673f40509ab4868c7b09a",
         "03adbdf13d90ea503876d37e7bddc9b3f67bbc99d80d6e573060ae1f739642aa",
+        "d5a422d436d46170f2b6bc8758c547c410044a142b4833573a2e2c0c4efc2003",
     ),
 }
 
@@ -1071,6 +1072,8 @@ TM_UNIVERSAL_SCHEMA_ITEMS: tuple[tuple[int, str, int, int], ...] = (
     (6070, "Vay Ngân hàng Nhà nước", 1024, 2),
     (6071, "Tiền gửi có kỳ hạn của Kho bạc Nhà nước", 1024, 2),
     (6072, "Tiền gửi của Bộ Tài chính", 1024, 2),
+    (6073, "+ Thương mại, dịch vụ", 727, 3),
+    (6074, "+ Hợp tác xã và công ty tư nhân", 766, 3),
 )
 TM_UNIVERSAL_SCHEMA_IDS = tuple(item[0] for item in TM_UNIVERSAL_SCHEMA_ITEMS)
 TM_UNIVERSAL_DISPLAY_CHAINS: tuple[tuple[tuple[int, ...], int, int], ...] = (
@@ -1118,8 +1121,10 @@ TM_UNIVERSAL_DISPLAY_CHAINS: tuple[tuple[tuple[int, ...], int, int], ...] = (
     ((6070,), 1024, 1025),
     ((6071,), 1037, 1038),
     ((6072,), 1038, 1039),
+    ((6073,), 734, 735),
+    ((6074,), 776, 777),
 )
-if TM_UNIVERSAL_SCHEMA_IDS != (*range(5991, 6034), *range(6057, 6073)):
+if TM_UNIVERSAL_SCHEMA_IDS != (*range(5991, 6034), *range(6057, 6075)):
     raise AssertionError("TM universal-schema allocation drifted")
 
 FIRST_OBSERVED_PDF_PATH = "vietstock_bctc/MBB/2026/BCTC Hợp nhất quý 1 năm 2026.pdf"
@@ -1568,6 +1573,34 @@ TM_UNIVERSAL_EVIDENCE: dict[int, dict[str, object]] = {
         "observed_values": ["8.763.329", "6.834.201"],
         "user_decision": "Q084",
     },
+    6073: {
+        "bank": "VCB",
+        "period": "FY2025",
+        "scope": "CONSOLIDATED",
+        "source_document_path": ("vietstock_bctc/VCB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf"),
+        "source_document_sha256": (
+            "295f397de287f84c26dafbfa06f668604aa696a013e236253149d8547d032d1f"
+        ),
+        "pdf_pages": [40],
+        "source_row_refs": ["LOAN_INDUSTRY:COMBINED_TRADE_SERVICES"],
+        "visible_label": "Thương mại, dịch vụ",
+        "observed_values": ["240.272.006", "214.488.774"],
+        "user_decision": "Q086",
+    },
+    6074: {
+        "bank": "VCB",
+        "period": "FY2025",
+        "scope": "CONSOLIDATED",
+        "source_document_path": ("vietstock_bctc/VCB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf"),
+        "source_document_sha256": (
+            "295f397de287f84c26dafbfa06f668604aa696a013e236253149d8547d032d1f"
+        ),
+        "pdf_pages": [40],
+        "source_row_refs": ["LOAN_ENTERPRISE:COMBINED_COOPERATIVE_PRIVATE_COMPANY"],
+        "visible_label": "Hợp tác xã và công ty tư nhân",
+        "observed_values": ["937.036", "1.371.552"],
+        "user_decision": "Q086",
+    },
 }
 
 if set(TM_UNIVERSAL_EVIDENCE) != set(TM_UNIVERSAL_SCHEMA_IDS):
@@ -1702,6 +1735,8 @@ TM_INTANGIBLE_FULLY_AMORTIZED_STILL_IN_USE_ID = 6069
 TM_CENTRAL_BANK_LOAN_ID = 6070
 TM_TREASURY_TERM_DEPOSIT_ID = 6071
 TM_FINANCE_MINISTRY_DEPOSIT_ID = 6072
+TM_COMBINED_TRADE_SERVICES_ID = 6073
+TM_COMBINED_COOPERATIVE_PRIVATE_COMPANY_ID = 6074
 
 CDKT_4350_OLD_NAME = "Chứng khoán đầu tư sẵn sàng để hàng"
 CDKT_4350_CORRECTED_NAME = "Chứng khoán đầu tư sẵn sàng để bán"
@@ -1919,7 +1954,7 @@ NEW_SCHEMA_IDS = frozenset(
         *CDKT_CURRENT_SCHEMA_IDS,
     }
 )
-CURRENT_MIGRATION_SCHEMA_IDS = frozenset({6070, 6071, 6072})
+CURRENT_MIGRATION_SCHEMA_IDS = frozenset({6073, 6074})
 
 CDKT_4325_COMPONENTS = (4364, 4365, 4342, 4341, 4343, 5699)
 CDKT_TOTAL_EQUITY_COMPONENTS = (4325, 4306)
@@ -3710,9 +3745,9 @@ def _expected_schema_strategy(
             ),
         },
         "previous_universal_schema": {
-            "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6069",
+            "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6072",
             "item_count": PRIOR_UNIVERSAL_SCHEMA_ITEM_COUNT,
-            "counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1714},
+            "counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1717},
             "high_watermark": PRIOR_UNIVERSAL_HIGH_WATERMARK,
             "workbook_sha256": PRIOR_UNIVERSAL_WORKBOOK_SHA256,
             "identity_order_sha256": PRIOR_UNIVERSAL_IDENTITY_ORDER_SHA256,
@@ -3720,9 +3755,9 @@ def _expected_schema_strategy(
             "audit_sha256": PRIOR_BUSINESS_UPDATE_AUDIT_SHA256,
         },
         "universal_schema": {
-            "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6072",
+            "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6074",
             "item_count": UNIVERSAL_SCHEMA_ITEM_COUNT,
-            "counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1717},
+            "counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1719},
             "high_watermark": UNIVERSAL_HIGH_WATERMARK,
             "workbook_sha256": after_workbook_sha256,
         },
@@ -4579,7 +4614,7 @@ def verify_business_schema_update(project_root: Path, audit_path: Path) -> dict[
     audit = json.loads(audit_path.read_text(encoding="utf-8"))
     if (
         audit.get("format_version") != 1
-        or audit.get("migration_id") != "BUSINESS-SCHEMA-5712-5713-5714-5718-6072"
+        or audit.get("migration_id") != "BUSINESS-SCHEMA-5712-5713-5714-5718-6074"
         or audit.get("status") != "APPLIED_AND_VERIFIED"
     ):
         raise BusinessSchemaUpdateError("invalid business-schema update audit identity")
@@ -4592,7 +4627,7 @@ def verify_business_schema_update(project_root: Path, audit_path: Path) -> dict[
     if audit.get("structural_alias_changes") != _expected_structural_alias_changes():
         raise BusinessSchemaUpdateError("business structural-alias audit drifted")
     if audit.get("authority") != {
-        "approved_on": "2026-08-15",
+        "approved_on": "2026-08-17",
         "policy": "USER_AUTHORIZED_EVOLVING_UNIVERSAL_BANK_BCTC_SCHEMA",
         "decision_ids": [
             "Q074",
@@ -4607,6 +4642,7 @@ def verify_business_schema_update(project_root: Path, audit_path: Path) -> dict[
             "Q083",
             "Q084",
             "Q085",
+            "Q086",
         ],
     }:
         raise BusinessSchemaUpdateError("business schema authority drifted")
@@ -5130,11 +5166,11 @@ def apply_business_schema_update(
 
     audit: dict[str, object] = {
         "format_version": 1,
-        "migration_id": "BUSINESS-SCHEMA-5712-5713-5714-5718-6072",
+        "migration_id": "BUSINESS-SCHEMA-5712-5713-5714-5718-6074",
         "status": "APPLIED_AND_VERIFIED",
-        "applied_at": "2026-08-15T00:00:00+00:00",
+        "applied_at": "2026-08-17T00:00:00+00:00",
         "authority": {
-            "approved_on": "2026-08-15",
+            "approved_on": "2026-08-17",
             "policy": "USER_AUTHORIZED_EVOLVING_UNIVERSAL_BANK_BCTC_SCHEMA",
             "decision_ids": [
                 "Q074",
@@ -5149,6 +5185,7 @@ def apply_business_schema_update(
                 "Q083",
                 "Q084",
                 "Q085",
+                "Q086",
             ],
         },
         "collision_safety": {
@@ -5993,6 +6030,7 @@ def apply_business_formula_hierarchy(schema: Sequence[SchemaItem]) -> None:
             732,
             733,
             734,
+            TM_COMBINED_TRADE_SERVICES_ID,
             735,
             736,
             TM_EDUCATION_ID,
@@ -6017,7 +6055,9 @@ def apply_business_formula_hierarchy(schema: Sequence[SchemaItem]) -> None:
         ("TM", 747): (TM_MARGIN_LOAN_QUALITY_ID,),
         ("TM", 752): (753, 754, 755, TM_MARGIN_LOAN_MATURITY_ID),
         ("TM", TM_LOAN_BUSINESS_PARENT_ID): (
-            *range(767, 783),
+            *range(767, 777),
+            TM_COMBINED_COOPERATIVE_PRIVATE_COMPANY_ID,
+            *range(777, 783),
             TM_MARGIN_LOAN_BUSINESS_ID,
         ),
         ("TM", TM_PROVISION_MOVEMENT_ID): TM_PROVISION_MOVEMENT_COMPONENTS,
@@ -6309,6 +6349,8 @@ def apply_business_formula_hierarchy(schema: Sequence[SchemaItem]) -> None:
         *range(6062, 6066),
         6071,
         6072,
+        TM_COMBINED_TRADE_SERVICES_ID,
+        TM_COMBINED_COOPERATIVE_PRIVATE_COMPANY_ID,
         1117,
         1944,
     ):

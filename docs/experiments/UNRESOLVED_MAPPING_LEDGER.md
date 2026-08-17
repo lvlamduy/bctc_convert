@@ -17,18 +17,18 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **249 entries**.  Current open queue: **75**.  Closed history:
-**99** row/graph resolutions and **75** confirmed bound-report family absences.
+Ledger total: **249 entries**.  Current open queue: **71**.  Closed history:
+**103** row/graph resolutions and **75** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
-## OPEN — annual-2025 `Chứng khoán đầu tư`
+## CLOSED HISTORY — annual-2025 `Chứng khoán đầu tư`
 
 E-0121 quét toàn bộ tám BCTC hợp nhất kiểm toán năm 2025 và xác minh family tại
 ACB p52–53, MBB p54–56, VPB p50–52, HDB p39–40, VCB p42–43, CTG p45–46,
-BID p44–45 và VIB p40–41. Kết quả đã đóng 110 mapping, 220 ô giá trị và 72
-phương trình. Chỉ hai hàng nguồn gộp dưới đây còn `OPEN`; toàn bộ phần còn lại
-đã `VERIFIED_BY_CODEX`.
+BID p44–45 và VIB p40–41. Kết quả đã đóng 112 mapping, 224 ô giá trị và 72
+phương trình. Hai hàng nguồn gộp dưới đây đã được chủ dự án adjudicate và
+`VERIFIED_BY_CODEX` mà không tách giả giá trị in.
 
 ### E-0121-AIS-001 — MBB — government/government-guaranteed combined row
 
@@ -37,8 +37,9 @@ phương trình. Chỉ hai hàng nguồn gộp dưới đây còn `OPEN`; toàn 
 - Nearest schema leaves: 807 và 5740.
 - Structure/accounting: nằm đúng trong nhánh AFS duy nhất; giá trị nguồn tham gia
   đầy đủ các phương trình tổng đã đóng.
-- Reason: PDF chỉ in một giá trị gộp, nên không thể chia có căn cứ sang hai leaf.
-- Status: `OPEN — UNRESOLVED_COMBINED_GOVERNMENT_AND_GUARANTEED_NOT_SPLITTABLE`.
+- Resolution: giữ nguyên số in gộp và map một lần vào 807 theo quyết định của
+  chủ dự án; không đồng thời ghi 5740 nên không phát sinh double count.
+- Status: `CLOSED — VERIFIED_BY_CODEX_AS_ONE_PRINTED_ROW_TO_807`.
 
 ### E-0121-AIS-002 — HDB — central-bank bill/government-security combined row
 
@@ -47,9 +48,10 @@ phương trình. Chỉ hai hàng nguồn gộp dưới đây còn `OPEN`; toàn 
 - Nearest schema leaf: 831 `Chứng khoán nợ do Chính phủ phát hành`.
 - Structure/accounting: nằm đúng trong nhánh HTM duy nhất; số nguồn và tổng family
   đã được pixel/PaddleOCR6/phương trình xác minh.
-- Reason: một giá trị gộp tín phiếu NHNN với chứng khoán Chính phủ; chưa có quyết
-  định cho phép thu hẹp hoặc gộp cả hai vào 831.
-- Status: `OPEN — UNRESOLVED_COMBINED_NHNN_BILL_AND_GOVERNMENT_SECURITY_SCOPE`.
+- Resolution: cộng có kiểm soát đúng hai hàng nguồn theo từng kỳ rồi map một lần
+  vào 831: `0 + 3.225.821 = 3.225.821` và
+  `13.250.000 + 3.386.590 = 16.636.590`.
+- Status: `CLOSED — VERIFIED_CONTROLLED_TWO_ROW_AGGREGATION_TO_831`.
 
 E-0122 `Các khoản đầu tư dài hạn khác` quét lại toàn bộ tám BCTC hợp nhất kiểm
 toán annual-2025 và tìm đúng một vùng tại ACB p54, MBB p57, VPB p52, HDB p41,
@@ -117,7 +119,7 @@ VietOCR HDB đọc tổng so sánh `442.464.841`; pixel và phép cộng các h�
 E-0113 `Phân tích cho vay theo ngành nghề kinh doanh` trên tám BCTC hợp nhất
 kiểm toán năm 2025 tìm đúng một vùng tại ACB p51, MBB p52, VPB p47, HDB p37,
 VCB p40, BID p42 và VIB p38; CTG được xác nhận không có family trong đúng filing
-đã bind. 101 dòng nguồn được `VERIFIED_BY_CODEX`, 22 trục tiền tệ đóng đúng và
+đã bind. 102 dòng nguồn được `VERIFIED_BY_CODEX`, 22 trục tiền tệ đóng đúng và
 45 lỗi dấu/ký tự/dấu thập phân của VietOCR được giữ thành bất đồng đã kiểm tra.
 
 ### E-0113-LI-001 — VCB — `Thương mại, dịch vụ`
@@ -127,9 +129,9 @@ VCB p40, BID p42 và VIB p38; CTG được xác nhận không có family trong �
 - Visible values: `240.272.006 | 214.488.774`.
 - Structure/accounting: nằm đúng trong graph ngành duy nhất và cả hai trục đều
   tham gia phương trình tổng đã đóng.
-- Reason: một số nguồn gộp cả thương mại và dịch vụ; không thể chia có căn cứ
-  sang ReportNormId 734 và một leaf dịch vụ riêng.
-- Status: `OPEN — UNRESOLVED_COMBINED_TRADE_AND_SERVICES_NOT_SPLITTABLE_IN_SOURCE`.
+- Resolution: schema có leaf gộp 6073 `Thương mại, dịch vụ`; giữ nguyên một số
+  nguồn và map một lần, không phân bổ sang các leaf thành phần.
+- Status: `CLOSED — VERIFIED_BY_CODEX_TO_COMBINED_SCHEMA_LEAF_6073`.
 
 ### E-0113-LI-002 — CTG — family không có trong filing annual-2025 đã bind
 
@@ -183,11 +185,11 @@ không còn khoản mục geography annual-2025 chờ map.
 E-0118 `Phân tích theo loại hình doanh nghiệp/đối tượng khách hàng` trên tám
 BCTC hợp nhất kiểm toán năm 2025 tìm đúng một vùng tại MBB p52, VPB p46, HDB
 p36, VCB p40, BID p42 và VIB p39; ACB/CTG không có complete region trong exact
-fresh-VietOCR scan. 56 khoản mục, 112 ô tiền, 86 ô tỷ lệ và sáu tổng nguồn đã
+fresh-VietOCR scan. 57 khoản mục, 114 ô tiền, 86 ô tỷ lệ và sáu tổng nguồn đã
 được kiểm tra độc lập. Hai dấu `-` của MBB được bind từ pixel rồi mới chuẩn hóa
 thành 0. JSON nhiều tầng từ ảnh toàn trang của Gemma chỉ là challenger cấu trúc;
 matcher vẫn quyết định bằng owner/con/trật tự/hình học/trục kỳ/đơn vị và phép
-cộng. Một hàng VCB gộp hai loại hình pháp lý còn OPEN.
+cộng. Hàng gộp VCB được giữ nguyên và map một lần vào leaf 6074.
 
 ### E-0118-LE-001 — VCB — `Hợp tác xã và công ty tư nhân`
 
@@ -196,9 +198,9 @@ cộng. Một hàng VCB gộp hai loại hình pháp lý còn OPEN.
 - Visible values: `937.036 | 1.371.552`.
 - Structure/accounting: nằm trong graph enterprise/customer-type duy nhất; cả
   hai trục tham gia tổng `Cho vay khách hàng` đã đóng chính xác.
-- Reason: một số nguồn gộp `Hợp tác xã` và `Doanh nghiệp tư nhân`; không có
-  căn cứ tách hai giá trị để map riêng vào ReportNormId 776 và 774.
-- Status: `OPEN — UNRESOLVED_COMBINED_COOPERATIVE_AND_PRIVATE_ENTERPRISE_SOURCE_VALUE_NOT_SPLITTABLE`.
+- Resolution: schema có leaf gộp 6074 `Hợp tác xã và công ty tư nhân`; không
+  chia giá trị nguồn sang 776/774 và không ghi trùng.
+- Status: `CLOSED — VERIFIED_BY_CODEX_TO_COMBINED_SCHEMA_LEAF_6074`.
 
 E-0119 `Dự phòng rủi ro cho vay khách hàng` trên tám BCTC hợp nhất kiểm toán
 năm 2025 không bổ sung dòng OPEN. Whole-PDF graph tìm đúng một vùng tại ACB
@@ -408,7 +410,6 @@ khác. VPB giữ đúng kỳ Q1/2026; BID dùng policy VND nhìn thấy tại p1
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
 | --- | --- | --- | ---: | --- | --- |
-| E-0118-LE-001 | Doanh nghiệp/đối tượng KH | VCB | 40 | Hợp tác xã và công ty tư nhân | Một số nguồn gộp hai loại hình pháp lý; không thể chia có căn cứ vào 776/774. |
 | FXRATE-001 | Tỷ giá ngoại tệ cuối kỳ | VPB | 90 | CNY | Không có leaf CNY dưới schema 5935–5945. |
 | FXRATE-002 | Tỷ giá ngoại tệ cuối kỳ | VPB | 90 | DKK | Không có leaf DKK dưới schema 5935–5945. |
 | FXRATE-003 | Tỷ giá ngoại tệ cuối kỳ | VPB | 90 | NZD | Không có leaf NZD dưới schema 5935–5945. |

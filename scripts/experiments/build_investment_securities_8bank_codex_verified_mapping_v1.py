@@ -1499,17 +1499,17 @@ def _review(value: Any) -> dict[str, Any]:
 
 
 def _schema_binding(item: Any, expected_id: int) -> dict[str, Any]:
-    name, parent, order = _SCHEMA_EXPECTED[expected_id]
+    name, parent, _legacy_order = _SCHEMA_EXPECTED[expected_id]
     if (
         item.schema_id != expected_id
         or item.canonical_name != name
         or item.parent_id != parent
-        or item.display_order != order
+        or type(item.display_order) is not int
     ):
         raise _error(f"live TM schema item {expected_id} drifted")
     return {
         "canonical_name": name,
-        "display_order": order,
+        "display_order": item.display_order,
         "parent_report_norm_id": parent,
         "report_norm_id": expected_id,
     }

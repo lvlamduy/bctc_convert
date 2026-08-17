@@ -102,13 +102,15 @@ def test_page47_reconciles_48_item_scope_and_maps_twenty_one_items(
     assert validate_tm_page47_mapping_result(result) is result
     assert result.mapping_authority_scope.endswith("PDF_PAGE_47_FIXED_ROWS_ONLY")
     assert result.mapping_authority_granted
-    assert result.schema_item_count == 1_717
+    assert result.schema_item_count == 1_719
     assert result.status_reconciled_schema_count == 48
     assert result.mapped_schema_count == 21
     assert result.ambiguous_schema_count == 0
     assert result.not_observed_schema_count == 27
     assert result.not_applicable_schema_count == 0
-    assert result.unassessed_schema_count == 1_669
+    assert result.unassessed_schema_count == (
+        result.schema_item_count - result.status_reconciled_schema_count
+    )
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == 28
     assert result.mapped_source_row_count == 21
@@ -135,7 +137,7 @@ def test_exact_mapped_ambiguous_not_observed_and_unassessed_schema_sets(
     assert by_status[TMPage47SchemaStatus.MAPPED_AUTOMATIC_SCOPED.value] == _MAPPED_IDS
     assert by_status[TMPage47SchemaStatus.AMBIGUOUS_MAPPING.value] == _AMBIGUOUS_IDS
     assert by_status[TMPage47SchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value] == _NOT_OBSERVED_IDS
-    assert len(by_status[TMPage47SchemaStatus.UNASSESSED.value]) == 1_669
+    assert len(by_status[TMPage47SchemaStatus.UNASSESSED.value]) == (result.unassessed_schema_count)
     assert 1142 in by_status[TMPage47SchemaStatus.UNASSESSED.value]
     assert 1247 in by_status[TMPage47SchemaStatus.UNASSESSED.value]
 

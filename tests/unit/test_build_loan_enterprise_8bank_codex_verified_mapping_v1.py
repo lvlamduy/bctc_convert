@@ -53,7 +53,7 @@ def test_live_result_maps_all_safe_rows_and_retains_every_unresolved_boundary(
 ) -> None:
     module, result = live
     assert result["result_id"] == (
-        "le8bcv1:result:b6b858689f966259c4b2c8b4ea91bcc7c6bec906ce3cd060df9ebcb3eb5f27a9"
+        "le8bcv1:result:a0d9c7cb7211241f30ec315fb80a73272e4055068774c8f01e677a8986785aae"
     )
     assert result["metrics"] == {
         "document_count": 8,
@@ -91,6 +91,54 @@ def test_live_result_maps_all_safe_rows_and_retains_every_unresolved_boundary(
         ("VIB", 34, 8, 0),
     ]
     assert all(trial["whole_document_family_absence_claim"] is False for trial in result["trials"])
+
+
+def test_wave1_semantic_graph_contract_is_independent_of_schema_growth() -> None:
+    module = _module()
+    semantic = module._json_bytes(
+        module._fixed_bytes(module.SEMANTIC_INDEX_PATH, module.EXPECTED_INDEX_SHA256),
+        "semantic",
+    )
+    scan = module._scanner().build_loan_enterprise_full_document_scan_v1(semantic)
+    serialized_scan = json.dumps(scan, ensure_ascii=False, sort_keys=True)
+    assert "report_norm_id" not in serialized_scan
+    assert "schema_revision" not in serialized_scan
+    observed = []
+    for trial in scan["trials"]:
+        matcher = trial["matcher_result"]
+        observed.append(
+            (
+                trial["document_provenance"],
+                matcher["status"],
+                [module.canonical_json_sha256_v1(graph) for graph in matcher.get("graphs", [])],
+            )
+        )
+    assert observed == [
+        ("ACB", "UNRESOLVED_NO_COMPLETE_REGION", []),
+        (
+            "MBB",
+            "ACCEPTED_UNIQUE_VARIANT_GRAPH",
+            ["aa6a520e03eaa8a7b77a78b005c7e7ba525a7484e459ac117ecfb6046189d6dc"],
+        ),
+        (
+            "VPB",
+            "ACCEPTED_UNIQUE_VARIANT_GRAPH",
+            ["ee5ce61f97a46fe27950a711334b89eff1a70fb88d65f007df5ce2b89d73d9cd"],
+        ),
+        (
+            "HDB",
+            "ACCEPTED_UNIQUE_VARIANT_GRAPH",
+            ["3b81bc38cd8ae0f1a0c379f5ea8f895c95c37b5bbec79f0c248f07e585b83fb4"],
+        ),
+        ("VCB", "UNRESOLVED_NO_COMPLETE_REGION", []),
+        ("CTG", "UNRESOLVED_NO_COMPLETE_REGION", []),
+        ("BID", "UNRESOLVED_NO_COMPLETE_REGION", []),
+        (
+            "VIB",
+            "ACCEPTED_UNIQUE_VARIANT_GRAPH",
+            ["78c0494a725f3884ba2759db239922558affc4295a64e710d07a8d396d7c8159"],
+        ),
+    ]
 
 
 def test_schema_ids_are_live_parent_children_and_foreign_population_reuses_exact_schema_item(

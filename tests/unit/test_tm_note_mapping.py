@@ -106,14 +106,16 @@ def test_real_page30_reconciles_1713_schema_and_all_22_source_rows(
     assert result.minimum_independent_semantic_streams == 2
     assert result.independent_reader_status == "COMPLETE"
     assert result.independent_reader_blocker is None
-    assert result.schema_item_count == 1_717
+    assert result.schema_item_count == 1_719
     assert result.assessed_schema_count == 23
     assert result.mapped_schema_count == 21
     assert result.candidate_linked_schema_count == 0
     assert TM_PAGE30_AMBIGUOUS_IDS == ()
     assert result.not_observed_schema_count == 2
     assert result.ambiguous_schema_count == 0
-    assert result.unassessed_schema_count == 1_694
+    assert result.unassessed_schema_count == (
+        result.schema_item_count - result.assessed_schema_count
+    )
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == result.mapped_source_row_count == 22
     assert result.candidate_linked_source_row_count == 0
@@ -123,7 +125,7 @@ def test_real_page30_reconciles_1713_schema_and_all_22_source_rows(
     assert result.mapped_value_count == 38
     assert result.accounting_check_count == result.accounting_pass_count == 14
     assert result.schema_projection_sha256 == (
-        "05146b2fc1086ab8ec4adceb410e3246070da48a012ce231479f45478c415075"
+        "f892100c5be2bec2672eb99b473360b8ef56f5ee89a1a9856a8fd0547907e7da"
     )
     assert result.independent_evidence_sha256 == (
         "6182e4634a80371ba560019b85ae67d706608ff48872f689e2645a5b03487c06"
@@ -182,7 +184,9 @@ def test_schema_dispositions_are_21_mapped_2_not_observed_1682_unassessed(
         TM_PAGE30_NOT_OBSERVED_IDS
     )
     assert by_status[TMSchemaMappingStatus.AMBIGUOUS_MAPPING.value] == set()
-    assert len(by_status[TMSchemaMappingStatus.UNASSESSED.value]) == 1_694
+    assert len(by_status[TMSchemaMappingStatus.UNASSESSED.value]) == (
+        result.unassessed_schema_count
+    )
     schema_by_id = {item.report_norm_id: item for item in result.schema_dispositions}
     assert schema_by_id[574].source_row_ids == (
         "page-0030:note-2:row-0004",

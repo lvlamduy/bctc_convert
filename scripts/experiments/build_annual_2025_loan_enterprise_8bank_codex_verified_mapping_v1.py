@@ -70,7 +70,7 @@ EXPECTED_AXIS_SHA256 = "aa81f553fda69315e84b7adbda13347c25a4490b016fc9660ff4f2cd
 EXPECTED_LOAN_QUALITY_RESULT_SHA256 = (
     "82fe06bb50fe4bde264226f2c71422e6d7339b351cf4c7b4b41c2c8c48932e3c"
 )
-EXPECTED_REVIEW_SHA256 = "59cc5683ce181a3caf0bf3d9bffb64433d6ce6fc080b07b97948430199a15fdd"
+EXPECTED_REVIEW_SHA256 = "e2295da6f1eb0567756c9bc7e2f74b7e9dfaa60442b83cc7994e5bc63146eded"
 EXPECTED_SCAN_ID = "lefdsv1:scan:1b85947080bb52a6364dfa864cc3020f2e63b4a725d42a275c3eddb0936d1aaf"
 EXPECTED_DOCUMENT_ORDER = ("ACB", "MBB", "VPB", "HDB", "VCB", "CTG", "BID", "VIB")
 _POSITIVE_BANKS = ("MBB", "VPB", "HDB", "VCB", "BID", "VIB")
@@ -155,12 +155,7 @@ _MBB_DASH_BINDINGS = {
         "rgb_sha256": "7b304cfb7c9fac96c636528f89edbe8aef771f7195d45560f2fdab3ee525d09a",
     },
 }
-_UNRESOLVED_ROLES = {
-    "COOPERATIVE_AND_PRIVATE_ENTERPRISE_COMBINED": (
-        None,
-        "UNRESOLVED_COMBINED_COOPERATIVE_AND_PRIVATE_ENTERPRISE_SOURCE_VALUE_NOT_SPLITTABLE",
-    )
-}
+_UNRESOLVED_ROLES: dict[str, tuple[int | None, str]] = {}
 _CLAIM_BOUNDARY = (
     "AUDITED_CONSOLIDATED_ANNUAL_2025_FIXED_EIGHT_COMPLETE_PDFS_FRESH_VIETOCR_"
     "GENERIC_LOAN_ENTERPRISE_WHOLE_PDF_UNIQUENESS_VISIBLE_PIXEL_PPOCRV6_NUMERIC_"
@@ -698,9 +693,14 @@ def validate_annual_2025_loan_enterprise_8bank_codex_verified_mapping_replay_v1(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--print-review-blueprint", action="store_true")
+    parser.add_argument("--write-review", action="store_true")
+    parser.add_argument("--write-result", action="store_true")
     parser.add_argument("--verify", action="store_true")
     args = parser.parse_args()
-    if args.print_review_blueprint:
+    selected = sum((args.print_review_blueprint, args.write_review, args.write_result, args.verify))
+    if selected > 1:
+        parser.error("choose at most one operation")
+    if args.print_review_blueprint or args.write_review:
         _, semantic, manifest, _, scan = _live_core(include_review=False)
         value = build_annual_2025_loan_enterprise_pixel_review_blueprint_v1(
             semantic, manifest, scan
@@ -711,6 +711,18 @@ def main() -> int:
         )
     else:
         value = build_live_annual_2025_loan_enterprise_8bank_codex_verified_mapping_v1()
+    if args.write_review:
+        if REVIEW_PATH.exists():
+            raise _error(f"refusing to overwrite annual enterprise review: {REVIEW_PATH}")
+        REVIEW_PATH.write_bytes(canonical_json_bytes_v1(value) + b"\n")
+        print(hashlib.sha256(canonical_json_bytes_v1(value) + b"\n").hexdigest())
+        return 0
+    if args.write_result:
+        if RESULT_PATH.exists():
+            raise _error(f"refusing to overwrite annual enterprise result: {RESULT_PATH}")
+        RESULT_PATH.write_bytes(canonical_json_bytes_v1(value) + b"\n")
+        print(value["result_id"])
+        return 0
     sys.stdout.buffer.write(canonical_json_bytes_v1(value) + b"\n")
     return 0
 

@@ -100,14 +100,14 @@ cột dòng tiền vào/ra chỉ dùng kiểm tra vì schema không có trục t
 
 - **Đã xác minh trên BCTC hợp nhất kiểm toán năm 2025:** ACB p51, MBB p52,
   VPB p47, HDB p37, VCB p40, BID p42 và VIB p38. Whole-PDF scan tìm đúng một
-  vùng ở mỗi báo cáo này; 101 dòng nguồn đã được map và 22 trục tiền tệ đóng
+  vùng ở mỗi báo cáo này; 102 dòng nguồn đã được map và 22 trục tiền tệ đóng
   đúng với tổng in. Graph dùng một khung family chung nhưng cho phép tập con,
   thứ tự hàng, nhãn branch, hai/bốn lane và owner-total đứng trước thay đổi.
 - **Không có trong báo cáo annual-2025 đã bind:** CTG. Toàn PDF không có vùng
   phân tích cho vay theo ngành; kết luận này chỉ áp dụng cho đúng filing đã bind.
-- **Còn thiếu:** VCB p40, dòng `Thương mại, dịch vụ`. Số nguồn gộp hai khái
-  niệm nên không được tự tách vào `Thương mại: bán buôn, bán lẻ` và một leaf
-  dịch vụ; giữ `UNRESOLVED` đến khi schema có leaf gộp hoặc có nguồn phân rã.
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map. Dòng gộp VCB p40
+  `Thương mại, dịch vụ` được giữ nguyên một số nguồn và map vào leaf chuyên
+  biệt 6073; không tách giả sang hai leaf thành phần.
 
 ## 8. Phân tích chất lượng cho vay
 
@@ -207,16 +207,14 @@ Lượt BCTC hiện hành trước đó tại MBB p52 và VIB p53–54 vẫn gi�
 
 - **Đã map/xác minh trên BCTC hợp nhất kiểm toán annual-2025:** MBB p52
   (14 khoản mục), VPB p46 (14), HDB p36 (8), VCB p40 (5), BID p42 (7) và
-  VIB p39 (8), tổng cộng 56 khoản mục. Cả sáu tổng nguồn đều khép đúng với
-  `Cho vay khách hàng`; 112 ô tiền và 86 ô tỷ lệ được kiểm tra độc lập.
+  VIB p39 (8), tổng cộng 57 khoản mục. Cả sáu tổng nguồn đều khép đúng với
+  `Cho vay khách hàng`; 114 ô tiền và 86 ô tỷ lệ được kiểm tra độc lập.
 - **Không tìm thấy vùng family hoàn chỉnh trong đúng báo cáo đã bind:** ACB và
   CTG. Đây là kết quả quét toàn PDF, không phải tuyên bố rằng mọi filing của hai
   bank đều không có family.
-- **Còn thiếu:**
-
-| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
-| --- | ---: | --- | --- |
-| VCB | 40 | Hợp tác xã và công ty tư nhân (`937.036` / `1.371.552`) | Một hàng nguồn gộp hai loại hình pháp lý; không có căn cứ chia số in sang hai leaf `Hợp tác xã` và `Doanh nghiệp tư nhân`. |
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map. Dòng VCB p40
+  `Hợp tác xã và công ty tư nhân` (`937.036 / 1.371.552`) được map nguyên vẹn
+  vào leaf gộp 6074; không phân bổ số nguồn sang 776 và 774.
 
 Kết quả exact-replay:
 `docs/experiments/E-0118-annual-2025-loan-enterprise-8bank-codex-verified-mapping-v1.json`.
@@ -287,18 +285,16 @@ Q1/2026, không relabel thành Q2/2026.
 
 - **Đã xác minh trên BCTC hợp nhất kiểm toán năm 2025:** ACB p52–53, MBB
   p54–56, VPB p50–52, HDB p39–40, VCB p42–43, CTG p45–46, BID p44–45 và
-  VIB p40–41. Whole-PDF scan tìm đúng một family ở mỗi báo cáo; 110 mapping,
-  220 ô hiện tại–so sánh và 72 phương trình cha–con/gross–dự phòng–net đã được
+  VIB p40–41. Whole-PDF scan tìm đúng một family ở mỗi báo cáo; 112 mapping,
+  224 ô hiện tại–so sánh và 72 phương trình cha–con/gross–dự phòng–net đã được
   kiểm tra độc lập. Mười tám dấu `-` chỉ được chuẩn hóa thành 0 sau khi bind
   đúng ô ảnh.
 - **Không có:** Không có bank nào trong tám BCTC annual-2025 vắng toàn bộ
   family này.
-- **Còn thiếu:** Hai hàng nguồn gộp chưa được tự chia hoặc thu hẹp:
-
-| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
-| --- | ---: | --- | --- |
-| MBB | 54 | Trái phiếu Chính phủ và trái phiếu Chính phủ bảo lãnh | Một số in gộp hai khái niệm; không có căn cứ chia sang 807 và 5740. |
-| HDB | 39 | Tín phiếu NHNN + Chứng khoán Chính phủ | Một số in gộp hai loại tổ chức phát hành; chưa có phép gộp được phê duyệt vào 831. |
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map. MBB p54 giữ nguyên dòng
+  gộp `Trái phiếu Chính phủ và trái phiếu Chính phủ bảo lãnh` tại 807. HDB p39
+  cộng có kiểm soát `Tín phiếu NHNN` với `Chứng khoán Chính phủ` theo từng kỳ
+  vào 831; các thành phần nguồn vẫn được lưu riêng để replay.
 
 Tại VIB annual-2025, hai dòng TCTD được cộng có kiểm soát một lần vào 808:
 `12.104.102 + 28.252.422 = 40.356.524` và
@@ -982,16 +978,16 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Chứng khoán kinh doanh | ✓ p47 | ✓ p49 | ✓ p43 | ✓ p34 | ✓ p37 | ✓ p41 | ✓ p40 | — | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; VIB chỉ có family đầu tư |
 | Công cụ tài chính phái sinh | ✓ p49 | ✓ p66 | ✓ p44 | ✓ p35 | — | ✓ p42 | ✓ p41 | ✓ p37 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; VCB không có family |
 | Loại hình cho vay | ✓ p17 | ✓ p31 | ✓ p42 | ✓ p26 | ✓ p30 | ✓ p38 | ✓ p22 | ✓ p33 | 0 |
-| Ngành nghề kinh doanh | ✓ p51 | ✓ p52 | ✓ p47 | ✓ p37 | ✓\* p40 | — | ✓ p42 | ✓ p38 | 1 dòng VCB `Thương mại, dịch vụ`; CTG không có family trong filing annual-2025 |
+| Ngành nghề kinh doanh | ✓ p51 | ✓ p52 | ✓ p47 | ✓ p37 | ✓ p40 | — | ✓ p42 | ✓ p38 | 0 dòng; VCB gộp `Thương mại, dịch vụ` → 6073; CTG không có family trong filing annual-2025 |
 | Chất lượng cho vay | ✓ p50 | ✓ p51 | ✓ p45 | ✓ p36 | ✓ p39 | ✓ p43 | ✓ p42 | ✓ p66 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; 1944 tách riêng tại ACB/MBB/VPB |
 | Dư nợ theo thời gian | ✓ p50 | ✓ p51 | ✓ p45 | ✓ p36 | ✓ p40 | ✓ p44 | ✓ p42 | ✓ p38 | 0 dòng annual-2025; MBB/VPB map margin, HDB giữ dân số bổ sung source-only |
 | Cho vay theo loại tiền tệ | ✓ p51 | — p51–52 | — p45–47 | ✓ p37 | — p39–40 | — p43–44 | — p41–42 | — p37–39 | 0 dòng annual-2025; HDB giữ dân số thư tín dụng bổ sung source-only |
 | Cho vay theo khu vực địa lý | ✓ p77 | ✓ p91 | — p81 | — p60 | — | — | — p63 | ✓ p59–60 | 0 dòng annual-2025; ba bảng địa lý rộng hơn không bị thu hẹp ngầm |
-| Doanh nghiệp/đối tượng KH | — | ✓ p52 | ✓ p46 | ✓ p36 | ✓\* p40 | — | ✓ p42 | ✓ p39 | 1 dòng VCB gộp `Hợp tác xã` + `công ty tư nhân` |
+| Doanh nghiệp/đối tượng KH | — | ✓ p52 | ✓ p46 | ✓ p36 | ✓ p40 | — | ✓ p42 | ✓ p39 | 0 dòng; VCB gộp `Hợp tác xã và công ty tư nhân` → 6074 |
 | Dự phòng cho vay | ✓ p51 | ✓ p53 | ✓ p48 | ✓ p38 | ✓ p41 | ✓ p44 | ✓ p43 | ✓ p39 | 0 dòng annual-2025; 18 lane/79 dòng/18 phương trình; 9 DASH→0 |
 | Hoạt động mua nợ | — | ✓ p54 | ✓ p49 | ✓ p39 | — | — | — | ✓ p40 | 0 dòng annual-2025; 15 mapping/30 ô/19 phương trình; HDB không in dòng lãi |
 | Tiền gửi khách hàng | ✓ p21 | ✓ p43 | ✓\* p55 | ✓ p31 | ✓ p35 | ✓ p42 | ✓ p25 | ✓ p41–42 | 0 dòng; VPB là nguồn Q1 |
-| Chứng khoán đầu tư | ✓ p52–53 | ✓\* p54–56 | ✓ p50–52 | ✓\* p39–40 | ✓ p42–43 | ✓ p45–46 | ✓ p44–45 | ✓ p40–41 | 2 dòng annual-2025: MBB gộp Chính phủ/bảo lãnh Chính phủ; HDB gộp tín phiếu NHNN/chứng khoán Chính phủ |
+| Chứng khoán đầu tư | ✓ p52–53 | ✓ p54–56 | ✓ p50–52 | ✓ p39–40 | ✓ p42–43 | ✓ p45–46 | ✓ p44–45 | ✓ p40–41 | 0 dòng; MBB gộp → 807, HDB cộng hai thành phần → 831 |
 | Đầu tư dài hạn khác | ✓ p54 | ✓ p57 | ✓ p52 | ✓ p41 | ✓ p44–45 | ✓ p47 | ✓ p45 | ✓ p41 | 0 dòng annual-2025; 28 mapping/56 ô/11 phương trình |
 | Tăng, giảm TSCĐ hữu hình | — | ✓ p37 | ✓\* p49 | — | — | — | — | ✓ p37 | 0 dòng; 5 bank xác nhận không có bảng chi tiết; VPB là nguồn Q1 |
 | Tăng, giảm TSCĐ thuê tài chính | — | — | — | — | — | — | — | — | 0 dòng; cả 8 PDF xác nhận không có bảng chi tiết |

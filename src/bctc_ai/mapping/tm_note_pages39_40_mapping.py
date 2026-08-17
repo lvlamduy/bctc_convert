@@ -16,7 +16,7 @@ import yaml
 from bctc_ai.core.contracts import ObservationKind
 from bctc_ai.core.hashing import sha256_file
 from bctc_ai.core.text import retrieval_key
-from bctc_ai.schema.registry import SchemaItem
+from bctc_ai.schema.registry import UNIVERSAL_TM_SCHEMA_ITEM_COUNT, SchemaItem
 from bctc_ai.tables.tm_note_pages39_40 import (
     ParsedTMNotePages3940,
     TMIntangibleLogicalRow,
@@ -24,12 +24,17 @@ from bctc_ai.tables.tm_note_pages39_40 import (
 from bctc_ai.tables.tm_note_word_box import TMNoteRowKind
 
 TM_NOTE_PAGES3940_POLICY_RELATIVE_PATH = Path("config/mapping/tm-note-pages39-40-v1.yaml")
-TM_NOTE_PAGES3940_SCHEMA_TOTAL = 1_717
+TM_NOTE_PAGES3940_SCHEMA_TOTAL = UNIVERSAL_TM_SCHEMA_ITEM_COUNT
 TM_NOTE_PAGES3940_RECONCILED_COUNT = 40
 TM_NOTE_PAGES3940_MAPPED_SCHEMA_COUNT = 18
 TM_NOTE_PAGES3940_UNRESOLVED_SCHEMA_COUNT = 0
 TM_NOTE_PAGES3940_NOT_OBSERVED_COUNT = 22
-TM_NOTE_PAGES3940_UNASSESSED_COUNT = 1_677
+TM_NOTE_PAGES3940_UNASSESSED_COUNT = (
+    TM_NOTE_PAGES3940_SCHEMA_TOTAL
+    - TM_NOTE_PAGES3940_MAPPED_SCHEMA_COUNT
+    - TM_NOTE_PAGES3940_UNRESOLVED_SCHEMA_COUNT
+    - TM_NOTE_PAGES3940_NOT_OBSERVED_COUNT
+)
 TM_NOTE_PAGES3940_SOURCE_ROW_COUNT = 30
 TM_NOTE_PAGES3940_MAPPED_SOURCE_COUNT = 30
 TM_NOTE_PAGES3940_UNRESOLVED_SOURCE_COUNT = 0

@@ -16,14 +16,15 @@ from rapidfuzz.fuzz import ratio
 
 from bctc_ai.core.hashing import sha256_file
 from bctc_ai.core.text import retrieval_key
-from bctc_ai.schema.registry import SchemaItem
+from bctc_ai.schema.registry import UNIVERSAL_TM_SCHEMA_ITEM_COUNT, SchemaItem
 
 TM_RESIDUAL_POLICY_RELATIVE_PATH = Path("config/mapping/tm-note-residual-v1.yaml")
-TM_RESIDUAL_SCHEMA_TOTAL = 1_717
+TM_RESIDUAL_SCHEMA_TOTAL = UNIVERSAL_TM_SCHEMA_ITEM_COUNT
+TM_RESIDUAL_BASELINE_SCHEMA_TOTAL = 1_717
+TM_RESIDUAL_BASELINE_SCHEMA_HIGH_WATERMARK = 6_072
 TM_RESIDUAL_SCOPE_SCHEMA_COUNT = 94
 TM_RESIDUAL_MAPPED_SCHEMA_COUNT = 2
 TM_RESIDUAL_NOT_OBSERVED_SCHEMA_COUNT = 92
-TM_RESIDUAL_UNASSESSED_SCHEMA_COUNT = 1_623
 TM_RESIDUAL_STRUCTURAL_EVIDENCE_COUNT = 2
 TM_RESIDUAL_FINANCIAL_SLOT_COUNT = 0
 TM_RESIDUAL_MAPPED_ASSIGNMENT_COUNT = 0
@@ -57,10 +58,10 @@ TM_RESIDUAL_NOT_OBSERVED_IDS = frozenset(
 )
 TM_RESIDUAL_SCOPE_IDS = TM_RESIDUAL_MAPPED_IDS | TM_RESIDUAL_NOT_OBSERVED_IDS
 
-TM_FINAL_MAPPED_SCHEMA_COUNT = 890
-TM_FINAL_UNRESOLVED_SCHEMA_COUNT = 0
-TM_FINAL_NOT_OBSERVED_SCHEMA_COUNT = 804
-TM_FINAL_NOT_APPLICABLE_SCHEMA_COUNT = 23
+TM_BASELINE_FINAL_MAPPED_SCHEMA_COUNT = 890
+TM_BASELINE_FINAL_UNRESOLVED_SCHEMA_COUNT = 0
+TM_BASELINE_FINAL_NOT_OBSERVED_SCHEMA_COUNT = 804
+TM_BASELINE_FINAL_NOT_APPLICABLE_SCHEMA_COUNT = 23
 
 _EXPECTED_CANONICAL_NAMES = {
     560: "I. THÔNG TIN BỔ SUNG CHO CÁC KHOẢN MỤC TRÌNH BÀY TRONG BẢNG CÂN ĐỐI KẾ TOÁN",
@@ -86,6 +87,7 @@ class TMResidualMappingError(ValueError):
 
 class TMResidualSchemaStatus(StrEnum):
     MAPPED_AUTOMATIC_SCOPED = "MAPPED_AUTOMATIC_SCOPED"
+    UNRESOLVED = "UNRESOLVED"
     NOT_OBSERVED_IN_THIS_PDF = "NOT_OBSERVED_IN_THIS_PDF"
     UNASSESSED = "UNASSESSED"
 
@@ -209,11 +211,17 @@ class TMResidualMappingResult:
 
     @property
     def owned_partition(self) -> TMOwnedSchemaPartition:
+        ids_by_status = {
+            status: frozenset(
+                item.report_norm_id for item in self.schema_dispositions if item.status == status
+            )
+            for status in (item.value for item in TMResidualSchemaStatus)
+        }
         return TMOwnedSchemaPartition(
             owner_scope=self.mapping_authority_scope,
-            mapped_ids=TM_RESIDUAL_MAPPED_IDS,
-            unresolved_ids=frozenset(),
-            not_observed_ids=TM_RESIDUAL_NOT_OBSERVED_IDS,
+            mapped_ids=ids_by_status[TMResidualSchemaStatus.MAPPED_AUTOMATIC_SCOPED.value],
+            unresolved_ids=ids_by_status[TMResidualSchemaStatus.UNRESOLVED.value],
+            not_observed_ids=ids_by_status[TMResidualSchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value],
             not_applicable_ids=frozenset(),
         )
 
@@ -497,8 +505,26 @@ def reconcile_tm_residual_items(
     ):
         raise TMResidualMappingError("TM residual schema denominator/order drifted")
     schema_by_id = {item.schema_id: item for item in tm_schema}
-    if set(existing_owned_schema_ids) & TM_RESIDUAL_SCOPE_IDS:
+    existing_owned_ids = set(existing_owned_schema_ids)
+    if existing_owned_ids - set(schema_by_id):
+        raise TMResidualMappingError("TM existing page owner references an unknown schema ID")
+    if existing_owned_ids & TM_RESIDUAL_SCOPE_IDS:
         raise TMResidualMappingError("TM residual scope overlaps an existing page owner")
+    baseline_ids = frozenset(
+        item.schema_id
+        for item in tm_schema
+        if item.schema_id <= TM_RESIDUAL_BASELINE_SCHEMA_HIGH_WATERMARK
+    )
+    append_only_ids = frozenset(schema_by_id) - baseline_ids
+    unclaimed_ids = frozenset(schema_by_id) - existing_owned_ids - TM_RESIDUAL_SCOPE_IDS
+    if (
+        len(baseline_ids) != TM_RESIDUAL_BASELINE_SCHEMA_TOTAL
+        or not unclaimed_ids <= append_only_ids
+    ):
+        raise TMResidualMappingError(
+            "TM legacy page ownership drifted outside the append-only schema quarantine"
+        )
+    extension_unresolved_ids = unclaimed_ids
     if (
         any(schema_id not in schema_by_id for schema_id in TM_RESIDUAL_SCOPE_IDS)
         or any(
@@ -530,6 +556,8 @@ def reconcile_tm_residual_items(
                 if item.schema_id in TM_RESIDUAL_MAPPED_IDS
                 else TMResidualSchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value
                 if item.schema_id in TM_RESIDUAL_NOT_OBSERVED_IDS
+                else TMResidualSchemaStatus.UNRESOLVED.value
+                if item.schema_id in extension_unresolved_ids
                 else TMResidualSchemaStatus.UNASSESSED.value
             ),
             source_ids=(source_by_schema[item.schema_id],)
@@ -541,6 +569,8 @@ def reconcile_tm_residual_items(
                 if item.schema_id in TM_RESIDUAL_MAPPED_IDS
                 else "explicit residual schema item is not visible anywhere in this PDF"
                 if item.schema_id in TM_RESIDUAL_NOT_OBSERVED_IDS
+                else "append-only schema item has no Q1-2026 page-family owner yet"
+                if item.schema_id in extension_unresolved_ids
                 else "owned by another page scope or an existing unresolved partition"
             ),
         )
@@ -550,18 +580,24 @@ def reconcile_tm_residual_items(
         statement_type="TM",
         document=policy.document,
         report_scope=policy.report_scope,
-        status="EXACT_RESIDUAL_94_RECONCILED_WITH_TWO_STRUCTURAL_HEADINGS",
+        status="BASE_RESIDUAL_RECONCILED_WITH_APPEND_ONLY_SCHEMA_QUARANTINE",
         mapping_authority_scope=policy.mapping_authority_scope,
         mapping_authority_granted=True,
         schema_item_count=len(tm_schema),
-        status_reconciled_schema_count=TM_RESIDUAL_SCOPE_SCHEMA_COUNT,
+        status_reconciled_schema_count=(
+            TM_RESIDUAL_SCOPE_SCHEMA_COUNT + len(extension_unresolved_ids)
+        ),
         mapped_schema_count=TM_RESIDUAL_MAPPED_SCHEMA_COUNT,
         not_observed_schema_count=TM_RESIDUAL_NOT_OBSERVED_SCHEMA_COUNT,
         ambiguous_schema_count=0,
-        unresolved_schema_count=0,
+        unresolved_schema_count=len(extension_unresolved_ids),
         not_applicable_schema_count=0,
         extraction_miss_schema_count=TM_RESIDUAL_EXTRACTION_MISS_COUNT,
-        unassessed_schema_count=TM_RESIDUAL_UNASSESSED_SCHEMA_COUNT,
+        unassessed_schema_count=(
+            TM_RESIDUAL_SCHEMA_TOTAL
+            - TM_RESIDUAL_SCOPE_SCHEMA_COUNT
+            - len(extension_unresolved_ids)
+        ),
         structural_evidence_count=len(evidence),
         source_row_count_delta=0,
         financial_slot_count=TM_RESIDUAL_FINANCIAL_SLOT_COUNT,
@@ -584,16 +620,21 @@ def validate_tm_residual_mapping_result(
         }
         for status in (item.value for item in TMResidualSchemaStatus)
     }
+    extension_unresolved_ids = by_status[TMResidualSchemaStatus.UNRESOLVED.value]
+    expected_status_reconciled_count = TM_RESIDUAL_SCOPE_SCHEMA_COUNT + len(
+        extension_unresolved_ids
+    )
+    expected_unassessed_count = TM_RESIDUAL_SCHEMA_TOTAL - expected_status_reconciled_count
     if (
         result.schema_item_count != TM_RESIDUAL_SCHEMA_TOTAL
-        or result.status_reconciled_schema_count != TM_RESIDUAL_SCOPE_SCHEMA_COUNT
+        or result.status_reconciled_schema_count != expected_status_reconciled_count
         or result.mapped_schema_count != TM_RESIDUAL_MAPPED_SCHEMA_COUNT
         or result.not_observed_schema_count != TM_RESIDUAL_NOT_OBSERVED_SCHEMA_COUNT
         or result.ambiguous_schema_count != 0
-        or result.unresolved_schema_count != 0
+        or result.unresolved_schema_count != len(extension_unresolved_ids)
         or result.not_applicable_schema_count != 0
         or result.extraction_miss_schema_count != 0
-        or result.unassessed_schema_count != TM_RESIDUAL_UNASSESSED_SCHEMA_COUNT
+        or result.unassessed_schema_count != expected_unassessed_count
         or result.structural_evidence_count != TM_RESIDUAL_STRUCTURAL_EVIDENCE_COUNT
         or result.source_row_count_delta != 0
         or result.financial_slot_count != 0
@@ -603,8 +644,12 @@ def validate_tm_residual_mapping_result(
         or by_status[TMResidualSchemaStatus.MAPPED_AUTOMATIC_SCOPED.value] != TM_RESIDUAL_MAPPED_IDS
         or by_status[TMResidualSchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value]
         != TM_RESIDUAL_NOT_OBSERVED_IDS
-        or len(by_status[TMResidualSchemaStatus.UNASSESSED.value])
-        != TM_RESIDUAL_UNASSESSED_SCHEMA_COUNT
+        or any(
+            item.report_norm_id <= TM_RESIDUAL_BASELINE_SCHEMA_HIGH_WATERMARK
+            for item in result.schema_dispositions
+            if item.status == TMResidualSchemaStatus.UNRESOLVED.value
+        )
+        or len(by_status[TMResidualSchemaStatus.UNASSESSED.value]) != expected_unassessed_count
         or {item.report_norm_id for item in result.structural_evidence} != TM_RESIDUAL_MAPPED_IDS
         or any(
             item.value_status != "STRUCTURAL_HEADING_NO_VALUE_NO_FINANCIAL_SLOT"
@@ -629,9 +674,25 @@ def validate_tm_full_schema_partition(
     schema: Sequence[SchemaItem],
     partitions: Sequence[TMOwnedSchemaPartition],
 ) -> TMFullSchemaPartition:
-    tm_ids = frozenset(item.schema_id for item in schema if item.statement_type == "TM")
-    if len(tm_ids) != TM_RESIDUAL_SCHEMA_TOTAL or not partitions:
+    tm_items = tuple(
+        sorted(
+            (item for item in schema if item.statement_type == "TM"),
+            key=lambda item: item.display_order,
+        )
+    )
+    tm_ids = frozenset(item.schema_id for item in tm_items)
+    if (
+        len(tm_ids) != TM_RESIDUAL_SCHEMA_TOTAL
+        or [item.display_order for item in tm_items] != list(range(TM_RESIDUAL_SCHEMA_TOTAL))
+        or not partitions
+    ):
         raise TMResidualMappingError("TM full partition schema denominator drifted")
+    baseline_ids = frozenset(
+        item.schema_id
+        for item in tm_items
+        if item.schema_id <= TM_RESIDUAL_BASELINE_SCHEMA_HIGH_WATERMARK
+    )
+    extension_ids = tm_ids - baseline_ids
     seen: set[int] = set()
     status_sets = {
         "mapped": set(),
@@ -680,12 +741,22 @@ def validate_tm_full_schema_partition(
         len(status_sets["not_applicable"]),
         len(unassessed),
     )
-    if counts != (
-        TM_FINAL_MAPPED_SCHEMA_COUNT,
-        TM_FINAL_UNRESOLVED_SCHEMA_COUNT,
-        TM_FINAL_NOT_OBSERVED_SCHEMA_COUNT,
-        TM_FINAL_NOT_APPLICABLE_SCHEMA_COUNT,
-        0,
+    baseline_counts = (
+        len(status_sets["mapped"] - extension_ids),
+        len(status_sets["unresolved"] - extension_ids),
+        len(status_sets["not_observed"] - extension_ids),
+        len(status_sets["not_applicable"] - extension_ids),
+    )
+    if (
+        len(baseline_ids) != TM_RESIDUAL_BASELINE_SCHEMA_TOTAL
+        or baseline_counts
+        != (
+            TM_BASELINE_FINAL_MAPPED_SCHEMA_COUNT,
+            TM_BASELINE_FINAL_UNRESOLVED_SCHEMA_COUNT,
+            TM_BASELINE_FINAL_NOT_OBSERVED_SCHEMA_COUNT,
+            TM_BASELINE_FINAL_NOT_APPLICABLE_SCHEMA_COUNT,
+        )
+        or unassessed
     ):
         raise TMResidualMappingError(f"TM final business partition drifted: {counts}")
     ownership_sha256 = hashlib.sha256(

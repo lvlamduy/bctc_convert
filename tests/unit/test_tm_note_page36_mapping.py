@@ -58,13 +58,15 @@ def test_page36_reconciles_complete_branch_and_maps_eleven_distinct_items(
     assert validate_tm_page36_mapping_result(result) is result
     assert result.mapping_authority_scope.endswith("PDF_PAGE_36_FIXED_ROWS_ONLY")
     assert result.mapping_authority_granted
-    assert result.schema_item_count == 1_717
+    assert result.schema_item_count == 1_719
     assert result.status_reconciled_schema_count == 44
     assert result.mapped_schema_count == 11
     assert result.not_observed_schema_count == 33
     assert result.not_applicable_schema_count == 0
     assert result.ambiguous_schema_count == 0
-    assert result.unassessed_schema_count == 1_673
+    assert result.unassessed_schema_count == (
+        result.schema_item_count - result.status_reconciled_schema_count
+    )
     assert result.fully_verified_schema_count == 0
     assert result.source_row_count == 14
     assert result.mapped_source_row_count == 11
@@ -90,7 +92,7 @@ def test_exact_mapped_not_observed_and_unassessed_schema_sets(
 
     assert by_status[TMPage36SchemaStatus.MAPPED_AUTOMATIC_SCOPED.value] == _MAPPED_IDS
     assert by_status[TMPage36SchemaStatus.NOT_OBSERVED_IN_THIS_PDF.value] == (_NOT_OBSERVED_IDS)
-    assert len(by_status[TMPage36SchemaStatus.UNASSESSED.value]) == 1_673
+    assert len(by_status[TMPage36SchemaStatus.UNASSESSED.value]) == (result.unassessed_schema_count)
     assert _MAPPED_IDS | _NOT_OBSERVED_IDS == set(range(829, 868)) | {
         5959,
         5960,

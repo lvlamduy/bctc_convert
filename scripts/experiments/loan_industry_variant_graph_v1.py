@@ -515,14 +515,15 @@ def _label_candidates(
         text_indices: list[int] = []
         origin_box = lines[line_index]["bbox"]
         for candidate_index in range(line_index, min(stop, line_index + 9)):
-            if not is_number_like_v1(lines[candidate_index]["vietocr_text"]):
+            candidate = lines[candidate_index]
+            if not is_number_like_v1(candidate["vietocr_text"]):
                 # Ignore detached stamps/page-edge noise between wrapped label
                 # fragments.  This is relative to the starting label geometry,
                 # not to a bank, page size, or fixed coordinate.
                 if (
                     enable_extended_annual_variants
                     and candidate_index != line_index
-                    and lines[candidate_index]["bbox"][0] > origin_box[2] + 200
+                    and candidate["bbox"][0] > origin_box[2] + 200
                 ):
                     continue
                 text_indices.append(candidate_index)
@@ -547,11 +548,15 @@ def _label_candidates(
                     proposals.append((indices, role, kind, surface))
         if not proposals:
             continue
-        # Prefer the longest wrapped label, then the exact match.  A role may
-        # occur only once inside an accepted owner table.
+        # Prefer an exact role surface before a longer qualified-prefix
+        # proposal.  Without this ordering, a complete short row label can
+        # absorb the next row merely because intervening numeric lane cells
+        # are intentionally omitted from ``text_indices``.  Among equally
+        # exact candidates the longer wrapped label still wins, which keeps a
+        # specific multi-line role ahead of a generic prefix role.
         indices, role, kind, surface = max(
             proposals,
-            key=lambda item: (len(item[0]), item[2] == "EXACT_ACCENTLESS_ALIAS"),
+            key=lambda item: (item[2] == "EXACT_ACCENTLESS_ALIAS", len(item[0])),
         )
         occupied.update(indices)
         box = _union_bbox(lines, indices)

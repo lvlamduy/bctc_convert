@@ -18,15 +18,15 @@ from bctc_ai.core.contracts import ObservationKind
 from bctc_ai.core.hashing import sha256_file
 from bctc_ai.core.text import retrieval_key
 from bctc_ai.evaluation.word_box_rows import VisualCellEvidence
-from bctc_ai.schema.registry import SchemaItem
+from bctc_ai.schema.registry import UNIVERSAL_TM_SCHEMA_ITEM_COUNT, SchemaItem
 from bctc_ai.tables.tm_note_page48 import ParsedTMPage48
 
 TM_PAGE48_POLICY_RELATIVE_PATH = Path("config/mapping/tm-note-page48-v1.yaml")
-TM_PAGE48_SCHEMA_TOTAL = 1_717
+TM_PAGE48_SCHEMA_TOTAL = UNIVERSAL_TM_SCHEMA_ITEM_COUNT
 TM_PAGE48_RECONCILED_SCHEMA_COUNT = 22
 TM_PAGE48_MAPPED_SCHEMA_COUNT = 9
 TM_PAGE48_NOT_OBSERVED_COUNT = 13
-TM_PAGE48_UNASSESSED_COUNT = 1_695
+TM_PAGE48_UNASSESSED_COUNT = TM_PAGE48_SCHEMA_TOTAL - TM_PAGE48_RECONCILED_SCHEMA_COUNT
 TM_PAGE48_SOURCE_ROW_COUNT = 13
 TM_PAGE48_MAPPED_SOURCE_COUNT = 9
 TM_PAGE48_SOURCE_ONLY_COUNT = 4

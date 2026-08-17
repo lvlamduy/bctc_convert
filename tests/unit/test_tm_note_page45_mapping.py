@@ -77,7 +77,7 @@ def test_page45_reconciles_exact_schema_source_and_assignment_denominators(
     assert validate_tm_page45_mapping_result(result) is result
     assert result.mapping_authority_scope.endswith("IDS_5946_5958_ONLY")
     assert result.mapping_authority_granted
-    assert result.schema_item_count == 1_717
+    assert result.schema_item_count == 1_719
     assert result.status_reconciled_schema_count == 13
     assert result.mapped_schema_count == 13
     assert result.structural_mapped_schema_count == 2
@@ -86,7 +86,9 @@ def test_page45_reconciles_exact_schema_source_and_assignment_denominators(
     assert result.not_applicable_schema_count == 0
     assert result.ambiguous_schema_count == 0
     assert result.unresolved_schema_count == 0
-    assert result.unassessed_schema_count == 1_704
+    assert result.unassessed_schema_count == (
+        result.schema_item_count - result.status_reconciled_schema_count
+    )
     assert result.source_row_count == 14
     assert result.mapped_source_row_count == 13
     assert result.source_only_validation_row_count == 1

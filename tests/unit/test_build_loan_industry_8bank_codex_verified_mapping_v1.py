@@ -250,20 +250,20 @@ def test_annual_2025_review_and_result_cover_seven_unique_tables() -> None:
         "document_no_complete_region_count": 1,
         "document_unique_structure_count": 7,
         "intermediate_source_only_total_verified_count": 0,
-        "mapped_item_verified_by_codex_count": 101,
-        "mapped_money_value_cell_count": 202,
+        "mapped_item_verified_by_codex_count": 102,
+        "mapped_money_value_cell_count": 204,
         "mapped_percentage_corroboration_cell_count": 138,
         "negative_family_control_count": 32,
         "source_only_total_verified_count": 7,
         "transformer_disagreement_preserved_count": 45,
-        "unresolved_schema_semantic_row_count": 1,
+        "unresolved_schema_semantic_row_count": 0,
     }
     assert [len(trial["verified_mappings"]) for trial in result["trials"]] == [
         13,
         21,
         22,
         11,
-        8,
+        9,
         0,
         7,
         19,
@@ -272,17 +272,14 @@ def test_annual_2025_review_and_result_cover_seven_unique_tables() -> None:
         "UNRESOLVED_NO_COMPLETE_REGION_IN_EXACT_FRESH_VIETOCR_SCAN"
     )
     assert result["trials"][5]["whole_document_family_absence_claim"] is False
-    assert result["trials"][4]["unresolved_rows"] == [
-        {
-            "candidate_report_norm_id": None,
-            "independent_pixel_label": "Thương mại, dịch vụ",
-            "role": "COMBINED_TRADE_SERVICES",
-            "semantic_proposal_label": "Thương mại, dịch vụ",
-            "status": "UNRESOLVED_COMBINED_TRADE_AND_SERVICES_NOT_SPLITTABLE_IN_SOURCE",
-            "values": result["trials"][4]["unresolved_rows"][0]["values"],
-            "whole_document_absence_claim": False,
-        }
-    ]
+    combined = next(
+        item
+        for item in result["trials"][4]["verified_mappings"]
+        if item["role"] == "COMBINED_TRADE_SERVICES"
+    )
+    assert combined["report_norm_id"] == 6073
+    assert combined["independent_pixel_label"] == "Thương mại, dịch vụ"
+    assert result["trials"][4]["unresolved_rows"] == []
 
 
 def test_annual_2025_review_and_result_tamper_fail_closed(
@@ -304,7 +301,7 @@ def test_annual_2025_review_and_result_tamper_fail_closed(
         lambda: exact,
     )
     tampered = copy.deepcopy(exact)
-    tampered["trials"][4]["unresolved_rows"][0]["candidate_report_norm_id"] = 733
+    tampered["trials"][4]["verified_mappings"][1]["report_norm_id"] = 733
     _rehash(module, tampered, "annual2025li8bcv1:result:")
     with pytest.raises(module.LoanIndustry8BankCodexVerifiedMappingV1Error):
         module.validate_annual_2025_loan_industry_8bank_codex_verified_mapping_replay_v1(tampered)

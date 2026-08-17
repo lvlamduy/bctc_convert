@@ -17,11 +17,11 @@ from rapidfuzz.fuzz import ratio
 from bctc_ai.core.contracts import ObservationKind
 from bctc_ai.core.hashing import sha256_file
 from bctc_ai.core.text import retrieval_key
-from bctc_ai.schema.registry import SchemaItem
+from bctc_ai.schema.registry import UNIVERSAL_TM_SCHEMA_ITEM_COUNT, SchemaItem
 from bctc_ai.tables.tm_note_word_box import ParsedTMPage31, TMNoteRowKind
 
 TM_PAGE31_POLICY_RELATIVE_PATH = Path("config/mapping/tm-note-page31-v1.yaml")
-TM_PAGE31_SCHEMA_TOTAL = 1_717
+TM_PAGE31_SCHEMA_TOTAL = UNIVERSAL_TM_SCHEMA_ITEM_COUNT
 TM_PAGE31_SOURCE_ROW_COUNT = 33
 TM_PAGE31_MAPPED_SCHEMA_COUNT = 30
 TM_PAGE31_MAPPED_SOURCE_COUNT = 29
@@ -29,7 +29,7 @@ TM_PAGE31_SOURCE_ONLY_COUNT = 4
 TM_PAGE31_NOT_OBSERVED_COUNT = 12
 TM_PAGE31_NOT_APPLICABLE_COUNT = 23
 TM_PAGE31_ASSESSED_SCHEMA_COUNT = 65
-TM_PAGE31_UNASSESSED_SCHEMA_COUNT = 1_652
+TM_PAGE31_UNASSESSED_SCHEMA_COUNT = TM_PAGE31_SCHEMA_TOTAL - TM_PAGE31_ASSESSED_SCHEMA_COUNT
 TM_PAGE31_ACCOUNTING_CHECK_COUNT = 14
 TM_PAGE31_MAPPED_VALUE_COUNT = 48
 TM_PAGE31_MAPPED_VALUE_ASSIGNMENT_COUNT = 50

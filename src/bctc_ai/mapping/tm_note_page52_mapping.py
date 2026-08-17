@@ -18,17 +18,17 @@ from rapidfuzz.fuzz import ratio
 from bctc_ai.core.contracts import ObservationKind
 from bctc_ai.core.hashing import sha256_file
 from bctc_ai.core.text import retrieval_key
-from bctc_ai.schema.registry import SchemaItem
+from bctc_ai.schema.registry import UNIVERSAL_TM_SCHEMA_ITEM_COUNT, SchemaItem
 from bctc_ai.tables.tm_note_page52 import ParsedTMPage52
 
 TM_PAGE52_POLICY_RELATIVE_PATH = Path("config/mapping/tm-note-page52-v1.yaml")
-TM_PAGE52_SCHEMA_TOTAL = 1_717
+TM_PAGE52_SCHEMA_TOTAL = UNIVERSAL_TM_SCHEMA_ITEM_COUNT
 TM_PAGE52_SCOPE_SCHEMA_COUNT = 19
 TM_PAGE52_SCHEMA_RECONCILED_COUNT = 19
 TM_PAGE52_MAPPED_SCHEMA_COUNT = 14
 TM_PAGE52_VALUE_BEARING_MAPPED_SCHEMA_COUNT = 10
 TM_PAGE52_NOT_OBSERVED_SCHEMA_COUNT = 5
-TM_PAGE52_SCHEMA_UNASSESSED_COUNT = 1_698
+TM_PAGE52_SCHEMA_UNASSESSED_COUNT = TM_PAGE52_SCHEMA_TOTAL - TM_PAGE52_SCHEMA_RECONCILED_COUNT
 TM_PAGE52_SOURCE_ROW_COUNT = 6
 TM_PAGE52_MAPPED_SOURCE_ROW_COUNT = 5
 TM_PAGE52_SOURCE_ONLY_ROW_COUNT = 1

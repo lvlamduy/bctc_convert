@@ -38,6 +38,7 @@ from bctc_ai.mapping.native_tm_canonical import (
 from bctc_ai.rows.native_tm_observations import (
     load_registered_native_tm_observations,
 )
+from bctc_ai.schema.registry import UNIVERSAL_TM_SCHEMA_ITEM_COUNT
 
 EXPORT_POLICY_RELATIVE_PATH = Path("config/export/native-tm-canonical-excel-v1.yaml")
 
@@ -64,7 +65,7 @@ _OBSERVATIONS_CLAIM = "SOURCE_ONLY_NATIVE_TM_OBSERVATION_FLATTENING"
 _OBSERVATIONS_STATUS = "COMPLETE_NATIVE_TM_SOURCE_OBJECT_ACCOUNTING"
 _DATASET_ROLE = "LOGIC_DEVELOPMENT"
 _OUTPUT_DIRECTORY = "output/development"
-_TM_SCHEMA_COUNT = 1717
+_TM_SCHEMA_COUNT = UNIVERSAL_TM_SCHEMA_ITEM_COUNT
 _TERMINAL_OUTCOMES = (
     "OBSERVED_VALUE",
     "OBSERVED_ZERO",

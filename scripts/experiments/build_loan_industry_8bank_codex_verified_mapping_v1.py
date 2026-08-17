@@ -112,6 +112,7 @@ _ROLE_BINDINGS: dict[str, tuple[int, str]] = {
     "CONSTRUCTION": (732, "+ Xây dựng"),
     "MANUFACTURING": (733, "+ Sản xuất công nghiệp và gia công chế biến"),
     "TRADE_REPAIR": (734, "+ Thương mại: bán buôn, bán lẻ"),
+    "COMBINED_TRADE_SERVICES": (6073, "+ Thương mại, dịch vụ"),
     "REAL_ESTATE": (735, "+ Hoạt động kinh doanh bất động sản"),
     "EDUCATION": (737, "Giáo dục & Đào tạo"),
     "HEALTH_SOCIAL_WORK": (5719, "Y tế & hoạt động trợ giúp xã hội"),
@@ -166,17 +167,8 @@ _REVIEW_UNRESOLVED_ROLES: dict[str, tuple[int | None, str]] = {
         739,
         "UNRESOLVED_BROAD_SERVICES_NOT_EQUIVALENT_TO_PERSONAL_AND_COMMUNITY_SERVICES",
     ),
-    "COMBINED_TRADE_SERVICES": (
-        None,
-        "UNRESOLVED_COMBINED_TRADE_AND_SERVICES_NOT_SPLITTABLE_IN_SOURCE",
-    ),
 }
-_UNRESOLVED_ROLES: dict[str, tuple[int | None, str]] = {
-    "COMBINED_TRADE_SERVICES": (
-        None,
-        "UNRESOLVED_COMBINED_TRADE_AND_SERVICES_NOT_SPLITTABLE_IN_SOURCE",
-    ),
-}
+_UNRESOLVED_ROLES: dict[str, tuple[int | None, str]] = {}
 _NEGATIVE_FAMILIES = (
     (717, "Phân tích theo loại hình cho vay"),
     (746, "Phân tích chất lượng nợ cho vay"),
@@ -602,7 +594,7 @@ def _annual_2025_review_documents() -> list[dict[str, Any]]:
                 "ACCOMMODATION_FOOD",
                 "OTHER_INDUSTRIES",
             ),
-            unresolved_roles=("COMBINED_TRADE_SERVICES",),
+            unresolved_roles=(),
             money_totals=("1.673.525.675", "1.449.198.899"),
         ),
         _annual_negative_review("CTG"),

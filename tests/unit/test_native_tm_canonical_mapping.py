@@ -85,7 +85,7 @@ def _schema_bundle(*families: tuple[int, tuple[str, ...]]) -> tuple[list[dict], 
         for child_id, label in zip(child_ids, labels, strict=True):
             add(child_id, label, parent=root_id, children=[], family_root=root_id)
     next_id = 900_000
-    while len(records) < 1717:
+    while len(records) < 1719:
         while next_id in used_ids:
             next_id += 1
         add(
@@ -305,8 +305,8 @@ def test_zero_qualified_roots_is_valid_complete_disposition_artifact(policy: dic
     assert result["accepted_subtrees"] == []
     assert result["root_assessments"] == []
     assert result["canonical_observations"] == []
-    assert result["coverage"]["terminal_outcome_counts"]["UNRESOLVED"] == 1717
-    assert result["coverage"]["reason_counts"] == {"UNASSESSED_OUTSIDE_BOUNDED_TABLE_SUBTREE": 1717}
+    assert result["coverage"]["terminal_outcome_counts"]["UNRESOLVED"] == 1719
+    assert result["coverage"]["reason_counts"] == {"UNASSESSED_OUTSIDE_BOUNDED_TABLE_SUBTREE": 1719}
     assert len(result["source_dispositions"]) == 1
 
 
@@ -333,7 +333,7 @@ def test_two_disjoint_roots_are_accepted_independently(policy: dict):
         "NOT_OBSERVED": 2,
         "NOT_APPLICABLE": 0,
         "AMBIGUOUS": 0,
-        "UNRESOLVED": 1707,
+        "UNRESOLVED": 1709,
     }
 
 
@@ -510,7 +510,7 @@ def test_enumerator_and_abbreviation_convenience_are_not_mapping_authority(
     result = _resolve(policy, payload, schema, contexts)
 
     assert result["accepted_subtrees"] == []
-    assert result["coverage"]["terminal_outcome_counts"]["UNRESOLVED"] == 1717
+    assert result["coverage"]["terminal_outcome_counts"]["UNRESOLVED"] == 1719
 
 
 @pytest.mark.parametrize(
@@ -894,7 +894,7 @@ def test_live_authority_bundle_is_exact_and_typed_alias_only(project_root: Path,
         for guard in reversed(guards):
             canonical._close_guard(guard)
 
-    assert len(schema) == len(contexts) == 1717
+    assert len(schema) == len(contexts) == 1719
     assert len(aliases) == 7
     assert identity["typed_alias_projection_sha256"] == (
         "c65829ac0cfbf86b024fa3cf162bf05cf0d8c982d8b710ea1178995dc98117d3"
@@ -1021,9 +1021,9 @@ def test_real_observation_projection_discovers_the_gold_bundle_without_fixture_s
         "NOT_OBSERVED": 4,
         "NOT_APPLICABLE": 0,
         "AMBIGUOUS": 0,
-        "UNRESOLVED": 1709,
+        "UNRESOLVED": 1711,
     }
-    assert result["coverage"]["reason_counts"]["UNASSESSED_OUTSIDE_BOUNDED_TABLE_SUBTREE"] == 1709
+    assert result["coverage"]["reason_counts"]["UNASSESSED_OUTSIDE_BOUNDED_TABLE_SUBTREE"] == 1711
 
 
 def test_snapshot_envelope_detects_authority_record_tamper(project_root: Path, policy: dict):
@@ -1626,7 +1626,7 @@ def test_strict_loader_uses_frozen_lineage_when_all_current_observation_semantic
     )
 
     assert loaded == payload
-    assert loaded["coverage"]["schema_item_count"] == 1717
+    assert loaded["coverage"]["schema_item_count"] == 1719
     assert loaded["completion"]["accepted_root_count"] == 1
 
 

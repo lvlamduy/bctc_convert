@@ -18,7 +18,7 @@ from bctc_ai.core.contracts import BoundingBox, ObservationKind
 from bctc_ai.core.hashing import sha256_file
 from bctc_ai.core.text import retrieval_key
 from bctc_ai.evaluation.word_box_rows import VisualCellEvidence
-from bctc_ai.schema.registry import SchemaItem
+from bctc_ai.schema.registry import UNIVERSAL_TM_SCHEMA_ITEM_COUNT, SchemaItem
 from bctc_ai.tables.tm_note_pages37_38 import (
     ParsedTMFixedAssetPages37_38,
     TMFixedAssetLogicalRow,
@@ -26,12 +26,14 @@ from bctc_ai.tables.tm_note_pages37_38 import (
 from bctc_ai.tables.tm_note_word_box import TMNoteRowKind
 
 TM_FIXED_ASSET_MAPPING_POLICY_RELATIVE_PATH = Path("config/mapping/tm-note-pages37-38-v1.yaml")
-TM_FIXED_ASSET_SCHEMA_TOTAL = 1_717
+TM_FIXED_ASSET_SCHEMA_TOTAL = UNIVERSAL_TM_SCHEMA_ITEM_COUNT
 TM_FIXED_ASSET_RECONCILED_SCHEMA_COUNT = 56
 TM_FIXED_ASSET_MAPPED_SCHEMA_COUNT = 21
 TM_FIXED_ASSET_UNRESOLVED_SCHEMA_COUNT = 0
 TM_FIXED_ASSET_NOT_OBSERVED_SCHEMA_COUNT = 35
-TM_FIXED_ASSET_UNASSESSED_SCHEMA_COUNT = 1_661
+TM_FIXED_ASSET_UNASSESSED_SCHEMA_COUNT = (
+    TM_FIXED_ASSET_SCHEMA_TOTAL - TM_FIXED_ASSET_RECONCILED_SCHEMA_COUNT
+)
 TM_FIXED_ASSET_SOURCE_ROW_COUNT = 35
 TM_FIXED_ASSET_MAPPED_SOURCE_ROW_COUNT = 35
 TM_FIXED_ASSET_SOURCE_ONLY_ROW_COUNT = 0

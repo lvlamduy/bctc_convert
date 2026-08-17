@@ -87,6 +87,10 @@ _ROLE_BINDINGS: dict[str, tuple[int, str]] = {
     "OTHER_JOINT_STOCK": (773, "- Công ty cổ phần khác"),
     "PRIVATE_ENTERPRISE": (774, "- Doanh nghiệp tư nhân"),
     "COOPERATIVE": (776, "- Hợp tác xã và liên hợp tác xã"),
+    "COOPERATIVE_AND_PRIVATE_ENTERPRISE_COMBINED": (
+        6074,
+        "+ Hợp tác xã và công ty tư nhân",
+    ),
     "PARTNERSHIP": (778, "- Công ty hợp danh"),
     "FOREIGN_INVESTED_ENTERPRISE": (779, "- Công ty vốn nước ngoài"),
     "HOUSEHOLD_INDIVIDUAL": (780, "- Hộ kinh doanh, cá nhân"),

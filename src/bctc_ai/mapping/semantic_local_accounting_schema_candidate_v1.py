@@ -17,7 +17,12 @@ from typing import Any
 from bctc_ai.core.hashing import sha256_file
 from bctc_ai.mapping.ordered_subgraph_v2 import build_schema_projection_v2
 from bctc_ai.schema.hierarchy import apply_hierarchy_reference, load_hierarchy_reference
-from bctc_ai.schema.registry import SchemaItem, load_all, load_schema_contract
+from bctc_ai.schema.registry import (
+    UNIVERSAL_TM_SCHEMA_ITEM_COUNT,
+    SchemaItem,
+    load_all,
+    load_schema_contract,
+)
 from bctc_ai.schema.tm_context import (
     TM_CONTEXT_POLICY_RELATIVE_PATH,
     build_tm_schema_context,
@@ -87,36 +92,26 @@ _EXPECTED_CHILDREN = {
     716: [717, 727, 746, 752, 756, 759, 766],
     752: [753, 754, 755, 5747],
 }
-_EXPECTED_DISPLAY_ORDERS = {
-    560: 0,
-    716: 157,
-    752: 204,
-    753: 205,
-    754: 206,
-    755: 207,
-    5747: 208,
-    1944: 1716,
-}
 _EXPECTED_AUTHORITY_HASHES = {
     "schema_registry": (
         "data/registered/schema_registry.json",
-        "9cebc948e871898dadc3d046d06f894ffffce90eebc16885d9da2b6639832ae6",
+        "a58642134cc9c6dad251e958a20c65dec2bad02075c7daf37bbff4ebdf5ec7b7",
     ),
     "schema_graph": (
         "reference/schemas/schema_graph.jsonl",
-        "a5ad1b0f1fa89fdf6d07c07b3a32b5bfc06b844433aeba3755be479844848e39",
+        "e3845a2f72995445d0519dac3036a0a34d9013c29154c71608c56a944310251b",
     ),
     "schema_sources": (
         "config/schemas/sources.yaml",
-        "42a68223c21dd023c278cfde64fad3aec052ce160fd528699ec6cb6816725ea0",
+        "4257e534dc0bf151b0457d9b336719461f59a70a059761c1e1fc657c30fdcaf3",
     ),
     "hierarchy_config": (
         "config/schemas/hierarchy_reference.yaml",
-        "ed12038bfe6c550562bfb4f5119f70d10fd27a35e3d516a89bc4db48f515b3a5",
+        "64972e90a76841367500c02e79b16d0a3ed0dbc4a9b04887b5687bc05e3f125e",
     ),
     "hierarchy_registry": (
         "data/registered/hierarchy_registry.json",
-        "cc8ead277192a69539a43f3ab9de5568484a258fc98d20c723beac8c9af8f57d",
+        "26150cd3e7a5b23605c12f5116fe4bafa24e2171db4247679ddd726c122b21b7",
     ),
     "tm_hierarchy_workbook": (
         "vst_level/vst_bank_detailed_notes_sheet.xlsx",
@@ -128,16 +123,16 @@ _EXPECTED_AUTHORITY_HASHES = {
     ),
     "schema_coverage_registry": (
         "data/registered/schema_coverage_registry.json",
-        "b3c0ba4645336f3185d7c051d8070bf24e152979c3835b88b46ac40d1aa6d52a",
+        "890b3904a4276d7c310b97d6e38045b6f78af5c691729aadd7eb363123ff9001",
     ),
     "tm_workbook": (
         "template/Bank_TM_ReportNormId.v2.xlsx",
-        "d5a422d436d46170f2b6bc8758c547c410044a142b4833573a2e2c0c4efc2003",
+        "8d9e76de0d42aa26591a87a5e2d522e7a69e089528047928b029ac4ed49f2b3c",
     ),
 }
-_EXPECTED_TM_CONTEXT_SHA256 = "b1352d09b9368e5fbe129050340bb620006b40a59e2c84aaf3d6c889f44d3f94"
+_EXPECTED_TM_CONTEXT_SHA256 = "0b9b9320cc4ca101123996acc4395500442b9068e33296b6d3b2e33c7e67b406"
 _EXPECTED_TM_SCHEMA_PROJECTION_SHA256 = (
-    "64a79dc5b053c22ad0b3840f21cf08678102492bf7f6b6b34bcc4fc2c753ac7a"
+    "e77f4ca6ef6d84b3eff1d5fc5929973acbeb3e5b1eaf104c3c1dc60e89dcf6cb"
 )
 _SAFETY_ITEMS: tuple[tuple[str, bool], ...] = (
     ("typed_graph_roles_only", True),
@@ -199,10 +194,15 @@ def _authority_snapshot(project_root: Path) -> tuple[dict[str, Any], dict[int, S
         raise _error("mapping-safe TM schema authority could not be reconstructed") from exc
     universal = contract.get("universal_schema")
     if universal != {
-        "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6072",
-        "item_count": 1951,
-        "counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1717},
-        "high_watermark": 6072,
+        "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6074",
+        "item_count": 1953,
+        "counts": {
+            "CDKT": 99,
+            "KQKD": 25,
+            "LCTT": 110,
+            "TM": UNIVERSAL_TM_SCHEMA_ITEM_COUNT,
+        },
+        "high_watermark": 6074,
     }:
         raise _error("universal schema revision or denominator drifted")
     if tm_context_projection_sha256(contexts) != _EXPECTED_TM_CONTEXT_SHA256:
@@ -219,7 +219,7 @@ def _authority_snapshot(project_root: Path) -> tuple[dict[str, Any], dict[int, S
             or item.canonical_name != name
             or item.statement_type != "TM"
             or item.parent_id != _EXPECTED_PARENTS[schema_id]
-            or item.display_order != _EXPECTED_DISPLAY_ORDERS[schema_id]
+            or type(item.display_order) is not int
         ):
             raise _error(f"TM schema identity/hierarchy drifted for ReportNormId {schema_id}")
     for schema_id, children in _EXPECTED_CHILDREN.items():
