@@ -96,6 +96,7 @@ _ROLE_ALIASES: dict[str, tuple[str, ...]] = {
         "Hợp tác xã và liên hiệp hợp tác xã",
         "Hợp tác xã và Liên hiệp Hợp tác xã",
     ),
+    "COOPERATIVE_AND_PRIVATE_ENTERPRISE_COMBINED": (),
     "HOUSEHOLD_INDIVIDUAL": ("Hộ kinh doanh, cá nhân",),
     "ADMIN_PUBLIC_ASSOCIATION": (
         "Đơn vị hành chính sự nghiệp, Đoàn thể và hiệp hội",
@@ -130,6 +131,36 @@ _BOUNDARY_PREFIXES = (
     "du phong rui ro cho vay khach hang",
     "tien gui cua khach hang",
 )
+_EXTENDED_ROLE_ALIASES: dict[str, tuple[str, ...]] = {
+    # Some filings print the legal form without an ``khác`` qualifier.  The
+    # state-controlled forms remain separate explicit roles, so these broad
+    # labels are the non-state residual legal-form leaves rather than a
+    # bank-specific rewrite.
+    "OTHER_LLC": ("Công ty trách nhiệm hữu hạn", "Công ty TNHH"),
+    "STATE_CONTROLLED_MULTI_MEMBER_LLC": ("Công ty TNHH MTV trở lên có vốn Nhà nước trên 50%",),
+    "STATE_CONTROLLED_JOINT_STOCK": (
+        "Công ty cổ phần vốn Nhà nước trên 50%",
+        "Công ty cổ phần có vốn góp của Nhà nước trên 50% vốn điều lệ hoặc tổng số cổ phần có quyền biểu quyết; hoặc Nhà nước giữ quyền chi phối trong Điều lệ của công ty",
+    ),
+    "OTHER_JOINT_STOCK": ("Công ty cổ phần",),
+    "HOUSEHOLD_INDIVIDUAL": ("Cá nhân và hộ kinh doanh cá thể",),
+    "ADMIN_PUBLIC_ASSOCIATION": ("Dịch vụ hành chính sự nghiệp, đoàn thể và hiệp hội",),
+    "FOREIGN_BRANCH_LOANS_SOURCE_ONLY": (
+        "Dư nợ tại tại chi nhánh và ngân hàng con nước ngoài",
+        "Dư nợ tại chi nhánh và ngân hàng con nước ngoài",
+    ),
+    "MARGIN_AND_SECURITIES_ADVANCE": (
+        "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng",
+    ),
+    "COOPERATIVE_AND_PRIVATE_ENTERPRISE_COMBINED": ("Hợp tác xã và công ty tư nhân",),
+}
+_EXTENDED_BOUNDARY_PREFIXES = (
+    # A separately headed credit population may immediately follow the
+    # customer-loan enterprise table and repeat some legal-form children.  It
+    # must terminate the first population instead of creating duplicate roles.
+    "nghiep vu phat hanh thu tin dung tra cham",
+)
+_EXTENDED_BRANCH_ALIASES: tuple[str, ...] = ()
 _SAFETY = {
     "bank_filename_note_or_page_used_for_inference": False,
     "blank_or_missing_companion_cells_imputed_as_zero": False,
@@ -198,16 +229,28 @@ def _variable_population_engine() -> ModuleType:
     module._MAX_LABEL_WIDTH = 5
     module._MAX_OWNER_TABLE_LINE_SPAN = 180
     module._BOUNDARY_PREFIXES = _BOUNDARY_PREFIXES
+    module._EXTENDED_BRANCH_ALIASES = _EXTENDED_BRANCH_ALIASES
+    module._EXTENDED_BOUNDARY_PREFIXES = _EXTENDED_BOUNDARY_PREFIXES
+    module._EXTENDED_ROLE_ALIASES = _EXTENDED_ROLE_ALIASES
     return module
 
 
 def _enterprise_graphs(
     pages: Sequence[Mapping[str, Any]],
+    *,
+    enable_extended_reporting_period_variants: bool,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     engine = _variable_population_engine()
+    # The longest observed generic legal-form label wraps to six source lines.
+    # Keep the historical five-line limit for the base profile and widen only
+    # when the caller enables the reporting-period/layout variants.
+    engine._MAX_LABEL_WIDTH = 6 if enable_extended_reporting_period_variants else 5
     try:
         normalized_pages = engine._pages(pages)
-        graphs, near = engine._scan(normalized_pages)
+        graphs, near = engine._scan(
+            normalized_pages,
+            enable_extended_annual_variants=enable_extended_reporting_period_variants,
+        )
         engine._attach_minimal_anchor_resolution(graphs, near)
     except Exception as exc:
         raise _error(f"variable-population graph engine rejected input: {exc}") from exc
@@ -334,10 +377,15 @@ def _validate_result(value: Any) -> dict[str, Any]:
 
 def build_loan_enterprise_variant_graph_document_v1(
     pages: Sequence[Mapping[str, Any]],
+    *,
+    enable_extended_reporting_period_variants: bool = False,
 ) -> dict[str, Any]:
     """Enumerate every complete enterprise/customer-type region in one PDF."""
 
-    graphs, near = _enterprise_graphs(pages)
+    graphs, near = _enterprise_graphs(
+        pages,
+        enable_extended_reporting_period_variants=(enable_extended_reporting_period_variants),
+    )
     count = len(graphs)
     material = {
         "claim_boundary": CLAIM_BOUNDARY,
@@ -382,12 +430,18 @@ def build_loan_enterprise_variant_graph_document_v1(
 
 
 def validate_loan_enterprise_variant_graph_replay_v1(
-    value: Any, pages: Sequence[Mapping[str, Any]]
+    value: Any,
+    pages: Sequence[Mapping[str, Any]],
+    *,
+    enable_extended_reporting_period_variants: bool = False,
 ) -> dict[str, Any]:
     """Exact-rebuild an enterprise graph from the complete document line axis."""
 
     persisted = _validate_result(value)
-    rebuilt = build_loan_enterprise_variant_graph_document_v1(pages)
+    rebuilt = build_loan_enterprise_variant_graph_document_v1(
+        pages,
+        enable_extended_reporting_period_variants=(enable_extended_reporting_period_variants),
+    )
     if not same_typed_json_v1(persisted, rebuilt):
         raise _error("loan-enterprise graph does not replay exactly")
     return rebuilt

@@ -1,6 +1,6 @@
 # Unresolved mapping and adjudication review ledger
 
-Updated: 2026-08-16 (UTC)
+Updated: 2026-08-17 (UTC)
 
 This is the cumulative human-readable file requested for every source item or
 family region that could not initially be mapped.  Entries remain here after
@@ -17,7 +17,7 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **246 entries**.  Current open queue: **72**.  Closed history:
+Ledger total: **247 entries**.  Current open queue: **73**.  Closed history:
 **99** row/graph resolutions and **75** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
@@ -141,6 +141,26 @@ chuẩn hóa thành 0. VPB p81, HDB p60 và BID p63 là đối chứng địa l�
 dư nợ rộng hơn `Cho vay khách hàng`, nên không bị thu hẹp ngầm; VCB/CTG không
 có vùng đúng family. Kết quả là ba vùng unique và năm bounded-report absences,
 không còn khoản mục geography annual-2025 chờ map.
+
+E-0118 `Phân tích theo loại hình doanh nghiệp/đối tượng khách hàng` trên tám
+BCTC hợp nhất kiểm toán năm 2025 tìm đúng một vùng tại MBB p52, VPB p46, HDB
+p36, VCB p40, BID p42 và VIB p39; ACB/CTG không có complete region trong exact
+fresh-VietOCR scan. 56 khoản mục, 112 ô tiền, 86 ô tỷ lệ và sáu tổng nguồn đã
+được kiểm tra độc lập. Hai dấu `-` của MBB được bind từ pixel rồi mới chuẩn hóa
+thành 0. JSON nhiều tầng từ ảnh toàn trang của Gemma chỉ là challenger cấu trúc;
+matcher vẫn quyết định bằng owner/con/trật tự/hình học/trục kỳ/đơn vị và phép
+cộng. Một hàng VCB gộp hai loại hình pháp lý còn OPEN.
+
+### E-0118-LE-001 — VCB — `Hợp tác xã và công ty tư nhân`
+
+- Report: BCTC hợp nhất kiểm toán năm 2025; physical page 40.
+- Source label: `Hợp tác xã và công ty tư nhân`.
+- Visible values: `937.036 | 1.371.552`.
+- Structure/accounting: nằm trong graph enterprise/customer-type duy nhất; cả
+  hai trục tham gia tổng `Cho vay khách hàng` đã đóng chính xác.
+- Reason: một số nguồn gộp `Hợp tác xã` và `Doanh nghiệp tư nhân`; không có
+  căn cứ tách hai giá trị để map riêng vào ReportNormId 776 và 774.
+- Status: `OPEN — UNRESOLVED_COMBINED_COOPERATIVE_AND_PRIVATE_ENTERPRISE_SOURCE_VALUE_NOT_SPLITTABLE`.
 
 E-0079 `Thu nhập lãi và các khoản thu nhập tương tự` không bổ sung dòng OPEN:
 cả tám vùng duy nhất đã map hết các dòng nguồn vào 1143–1150. Hai lỗi mất chữ
@@ -342,6 +362,7 @@ khác. VPB giữ đúng kỳ Q1/2026; BID dùng policy VND nhìn thấy tại p1
 
 | ID | Family | Bank | Trang | Khoản mục nguồn | Lý do còn mở |
 | --- | --- | --- | ---: | --- | --- |
+| E-0118-LE-001 | Doanh nghiệp/đối tượng KH | VCB | 40 | Hợp tác xã và công ty tư nhân | Một số nguồn gộp hai loại hình pháp lý; không thể chia có căn cứ vào 776/774. |
 | FXRATE-001 | Tỷ giá ngoại tệ cuối kỳ | VPB | 90 | CNY | Không có leaf CNY dưới schema 5935–5945. |
 | FXRATE-002 | Tỷ giá ngoại tệ cuối kỳ | VPB | 90 | DKK | Không có leaf DKK dưới schema 5935–5945. |
 | FXRATE-003 | Tỷ giá ngoại tệ cuối kỳ | VPB | 90 | NZD | Không có leaf NZD dưới schema 5935–5945. |

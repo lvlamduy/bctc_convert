@@ -288,6 +288,71 @@ def test_deposit_table_with_same_branch_words_is_a_negative_control() -> None:
     ]
 
 
+def test_extended_period_mode_stops_at_a_second_credit_population() -> None:
+    surfaces = [
+        ("CHO VAY KHÁCH HÀNG", 0, 0),
+        ("Phân tích dư nợ cho vay theo đối tượng khách hàng", 0, 35),
+        ("Số cuối năm", 500, 75),
+        ("Số đầu năm", 900, 75),
+        ("Triệu VND", 500, 105),
+        ("Triệu VND", 900, 105),
+        ("Công ty trách nhiệm hữu hạn", 0, 150),
+        ("60", 500, 150),
+        ("55", 900, 150),
+        ("Công ty cổ phần", 0, 195),
+        ("40", 500, 195),
+        ("45", 900, 195),
+        ("100", 500, 240),
+        ("100", 900, 240),
+        ("Nghiệp vụ phát hành thư tín dụng trả chậm", 0, 285),
+        # These repeated legal forms belong to the separate population and
+        # must not make the customer-loan family look internally duplicated.
+        ("Công ty cổ phần", 0, 330),
+        ("7", 500, 330),
+        ("8", 900, 330),
+    ]
+
+    result = loan_enterprise.build_loan_enterprise_variant_graph_document_v1(
+        [_page(surfaces)],
+        enable_extended_reporting_period_variants=True,
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    graph = result["graphs"][0]
+    assert [item["period"] for item in graph["period_axis"]] == [
+        "CURRENT_PERIOD_END",
+        "COMPARATIVE_PERIOD_START",
+    ]
+    assert [row["role"] for row in graph["rows"]] == [
+        "OTHER_LLC",
+        "OTHER_JOINT_STOCK",
+    ]
+
+
+def test_extended_mode_does_not_admit_an_industry_branch_with_one_shared_row() -> None:
+    industry = [
+        ("CHO VAY KHÁCH HÀNG", 0, 0),
+        ("Phân tích dư nợ cho vay theo một số ngành kinh tế của khách hàng", 0, 35),
+        ("31/12/2025", 500, 75),
+        ("31/12/2024", 900, 75),
+        ("Triệu đồng", 500, 105),
+        ("Triệu đồng", 900, 105),
+        ("Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán", 0, 150),
+        ("100", 500, 150),
+        ("90", 900, 150),
+        ("100", 500, 195),
+        ("90", 900, 195),
+    ]
+
+    result = loan_enterprise.build_loan_enterprise_variant_graph_document_v1(
+        [_page(_flat_enterprise()), _page(industry, page_sequence=2)],
+        enable_extended_reporting_period_variants=True,
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["graphs"][0]["page_sequence"] == 1
+
+
 def test_two_complete_regions_fail_document_uniqueness() -> None:
     result = loan_enterprise.build_loan_enterprise_variant_graph_document_v1(
         [

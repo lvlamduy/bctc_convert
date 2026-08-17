@@ -14,6 +14,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 import stat
 import sys
 from collections.abc import Mapping, Sequence
@@ -53,6 +54,10 @@ __all__ = [
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 FORMAT_VERSION = "LOAN_ENTERPRISE_8BANK_CODEX_VERIFIED_MAPPING_V1"
+REVIEW_FORMAT_VERSION = "LOAN_ENTERPRISE_8BANK_CODEX_PIXEL_REVIEW_V1"
+REVIEW_STATE = "CODEX_PIXEL_REVIEW_COMPLETE"
+RESULT_ID_PREFIX = "le8bcv1:result:"
+RESULT_STATE = "LOAN_ENTERPRISE_8BANK_BOUNDED_CODEX_VERIFICATION_COMPLETE"
 CLAIM_BOUNDARY = (
     "FIXED_EIGHT_DOCUMENT_COMPLETE_PDF_FRESH_VIETOCR_GENERIC_LOAN_ENTERPRISE_"
     "STRUCTURE_PLUS_INDEPENDENT_VISIBLE_PIXEL_DASH_ACCOUNTING_AND_LIVE_TM_SCHEMA_"
@@ -519,8 +524,8 @@ def _review(value: Any) -> dict[str, Any]:
     if type(value) is not dict or set(value) != top_fields:
         raise _error("Codex enterprise review top-level fields drifted")
     if (
-        value["format_version"] != "LOAN_ENTERPRISE_8BANK_CODEX_PIXEL_REVIEW_V1"
-        or value["state"] != "CODEX_PIXEL_REVIEW_COMPLETE"
+        value["format_version"] != REVIEW_FORMAT_VERSION
+        or value["state"] != REVIEW_STATE
         or value["semantic_index_sha256"] != EXPECTED_INDEX_SHA256
         or value["semantic_axis_sha256"] != EXPECTED_AXIS_SHA256
         or not same_typed_json_v1(value["review_checks"], _REVIEW_CHECKS)
@@ -855,11 +860,10 @@ def _pixel_label(
         ):
             raise _error("pixel label correction does not bind the fresh graph")
         pixel = correction["pixel_transcription"]
-    aliases = matcher._ROLE_ALIASES.get(role)
-    if (
-        aliases is None
-        or match_vietnamese_anchor_alias_v1(pixel, _distinct_aliases(aliases)) is None
-    ):
+    aliases = tuple(matcher._ROLE_ALIASES.get(role, ())) + tuple(
+        getattr(matcher, "_EXTENDED_ROLE_ALIASES", {}).get(role, ())
+    )
+    if not aliases or match_vietnamese_anchor_alias_v1(pixel, _distinct_aliases(aliases)) is None:
         raise _error("independent pixel label is not one family role surface")
     return pixel
 
@@ -906,9 +910,9 @@ def _pixel_cell(
                 raise _error("pixel-only dash unexpectedly has semantic geometry")
             _verify_pixel_binding(pixel_binding, render_bytes)
     if pixel == "-":
-        if lane_type != "MONEY" or pixel_binding is None:
+        if pixel_binding is None:
             raise _error("visible dash lacks independent pixel-only binding")
-        parsed: int | Decimal = 0
+        parsed: int | Decimal = 0 if lane_type == "MONEY" else Decimal(0)
         value_status = "DASH"
         # Preserve the raw DASH status and pixel transcription, while exposing
         # the project-owner-approved numeric interpretation explicitly as zero.
@@ -967,16 +971,49 @@ def _total_cells(cells: Any) -> tuple[list[dict[str, Any]], list[int | Decimal]]
 def _reviewed_axes(graph: Mapping[str, Any], review_document: Mapping[str, Any]) -> None:
     periods = graph.get("period_axis")
     reviewed_periods = review_document["period_pixel_transcriptions"]
-    if graph.get("period_mode") == "LOCAL_RELATIVE_PERIOD_ROLES":
+    period_mode = graph.get("period_mode")
+    relative_period_mode = type(period_mode) is str and period_mode.startswith("LOCAL_RELATIVE_")
+    if relative_period_mode:
         expected_periods = ["CURRENT_PERIOD_END", "COMPARATIVE_PERIOD_START"]
-        if [normalize_vietnamese_anchor_v1(item) for item in reviewed_periods] != [
+        normalized_periods = [normalize_vietnamese_anchor_v1(item) for item in reviewed_periods]
+        if normalized_periods[0] not in {
+            "cuoi ky",
+            "cuoi nam",
             "so cuoi ky",
+            "so cuoi nam",
+        } or normalized_periods[1] not in {
+            "dau ky",
+            "dau nam",
             "so dau ky",
-        ]:
+            "so dau nam",
+        }:
             raise _error("review relative-period surfaces drifted")
     else:
         expected_periods = reviewed_periods
-    if type(periods) is not list or [item.get("period") for item in periods] != expected_periods:
+    observed_periods = [item.get("period") for item in periods] if type(periods) is list else []
+    exact_period_match = observed_periods == expected_periods
+    if not exact_period_match and not relative_period_mode:
+
+        def date_key(value: Any) -> tuple[int, int, int] | None:
+            if type(value) is not str:
+                return None
+            numbers = [int(item) for item in re.findall(r"\d+", value)]
+            years = [item for item in numbers if item >= 1900]
+            if len(years) != 1 or len(numbers) < 3:
+                return None
+            year = years[0]
+            before = numbers[: numbers.index(year)]
+            if len(before) < 2:
+                return None
+            day, month = before[-2:]
+            if not (1 <= day <= 31 and 1 <= month <= 12):
+                return None
+            return year, month, day
+
+        exact_period_match = [date_key(item) for item in observed_periods] == [
+            date_key(item) for item in reviewed_periods
+        ] and all(date_key(item) is not None for item in observed_periods + reviewed_periods)
+    if not exact_period_match:
         raise _error("review and unique graph period axis disagree")
     unit_scope = graph.get("unit_scope")
     if type(unit_scope) is not dict:
@@ -1132,6 +1169,7 @@ def build_loan_enterprise_8bank_codex_verified_mapping_v1(
     *,
     crop_manifest_sha256: str,
     review_sha256: str,
+    enable_extended_reporting_period_variants: bool = False,
 ) -> dict[str, Any]:
     """Derive the bounded verified enterprise mappings from exact authorities."""
 
@@ -1140,7 +1178,11 @@ def build_loan_enterprise_8bank_codex_verified_mapping_v1(
         raise _error("full-document semantic axis identity drifted")
     scanner = _scanner()
     matcher = _matcher()
-    scanner.validate_loan_enterprise_full_document_scan_replay_v1(structure_scan, semantic_index)
+    scanner.validate_loan_enterprise_full_document_scan_replay_v1(
+        structure_scan,
+        semantic_index,
+        enable_extended_reporting_period_variants=(enable_extended_reporting_period_variants),
+    )
     reviewed = _review(review)
     if review_sha256 != REVIEW_SHA256:
         raise _error("Codex pixel review content identity drifted")
@@ -1427,7 +1469,7 @@ def build_loan_enterprise_8bank_codex_verified_mapping_v1(
             cell["value_status"] == "DASH"
             for trial in trials
             for item in trial["verified_mappings"]
-            for cell in item["money_values"]
+            for cell in item["money_values"] + item["percentage_corroboration"]
         ),
         "unresolved_schema_semantic_row_count": sum(
             len(trial["unresolved_rows"]) for trial in trials
@@ -1449,11 +1491,11 @@ def build_loan_enterprise_8bank_codex_verified_mapping_v1(
             "tm_schema_authority": canonical_clone_v1(schema_authority),
         },
         "metrics": metrics,
-        "state": "LOAN_ENTERPRISE_8BANK_BOUNDED_CODEX_VERIFICATION_COMPLETE",
+        "state": RESULT_STATE,
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "le8bcv1:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": RESULT_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 
@@ -1463,7 +1505,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
     if (
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "LOAN_ENTERPRISE_8BANK_BOUNDED_CODEX_VERIFICATION_COMPLETE"
+        or value["state"] != RESULT_STATE
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
         or len(value["trials"]) != len(EXPECTED_DOCUMENT_ORDER)
@@ -1473,7 +1515,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
         raise _error("verified loan-enterprise result identity/authority drifted")
     clone = canonical_clone_v1(value)
     result_id = clone.pop("result_id")
-    if result_id != "le8bcv1:result:" + canonical_json_sha256_v1(clone):
+    if result_id != RESULT_ID_PREFIX + canonical_json_sha256_v1(clone):
         raise _error("verified loan-enterprise result identity drifted")
     positive_fields = {
         "document_ordinal",
@@ -1593,7 +1635,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
             seen_ids.add(mapping["report_norm_id"])
             money += len(mapping["money_values"])
             percentage += len(mapping["percentage_corroboration"])
-            for cell in mapping["money_values"]:
+            for cell in mapping["money_values"] + mapping["percentage_corroboration"]:
                 if cell.get("value_status") == "DASH":
                     if cell.get("normalized_value") != 0:
                         raise _error("verified DASH must retain raw status and normalize to zero")

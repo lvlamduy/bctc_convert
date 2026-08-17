@@ -205,18 +205,24 @@ Lượt BCTC hiện hành trước đó tại MBB p52 và VIB p53–54 vẫn gi�
 
 ## 12. Phân tích theo loại hình doanh nghiệp/đối tượng khách hàng
 
-- **Đã xác minh:** MBB p32, VPB p43, HDB p26, VIB p34; 44 khoản mục nguồn
-  đã được map. `Cho vay cá nhân` tương đương không cộng thêm với 780,
-  `Cho vay khác` tương đương không cộng thêm với 782, và population chi nhánh
-  nước ngoài dùng 6058.
-- **Không có vùng enterprise/customer-type hoàn chỉnh:** ACB, VCB, CTG, BID.
-  Các hàng không tiêu đề của bốn bank này thuộc family loại hình cho vay và đã
-  được xử lý ở mục 6; không ép sang family doanh nghiệp.
+- **Đã map/xác minh trên BCTC hợp nhất kiểm toán annual-2025:** MBB p52
+  (14 khoản mục), VPB p46 (14), HDB p36 (8), VCB p40 (5), BID p42 (7) và
+  VIB p39 (8), tổng cộng 56 khoản mục. Cả sáu tổng nguồn đều khép đúng với
+  `Cho vay khách hàng`; 112 ô tiền và 86 ô tỷ lệ được kiểm tra độc lập.
+- **Không tìm thấy vùng family hoàn chỉnh trong đúng báo cáo đã bind:** ACB và
+  CTG. Đây là kết quả quét toàn PDF, không phải tuyên bố rằng mọi filing của hai
+  bank đều không có family.
 - **Còn thiếu:**
 
 | Bank | Trang | Khoản mục nguồn | Lý do chưa map |
 | --- | ---: | --- | --- |
-| MBB | 32 | Cho vay các TCKT | Giữ làm group parent để kiểm tra tổng các hàng con; chưa xuất thêm một mapping cộng dồn nhằm tránh double count. |
+| VCB | 40 | Hợp tác xã và công ty tư nhân (`937.036` / `1.371.552`) | Một hàng nguồn gộp hai loại hình pháp lý; không có căn cứ chia số in sang hai leaf `Hợp tác xã` và `Doanh nghiệp tư nhân`. |
+
+Kết quả exact-replay:
+`docs/experiments/E-0118-annual-2025-loan-enterprise-8bank-codex-verified-mapping-v1.json`.
+
+Lượt BCTC hiện hành trước đó vẫn giữ nguyên như một kết quả riêng, không được
+trộn kỳ với annual-2025.
 
 ## 13. Dự phòng rủi ro cho vay khách hàng
 
@@ -960,7 +966,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Dư nợ theo thời gian | ✓ p50 | ✓ p51 | ✓ p45 | ✓ p36 | ✓ p40 | ✓ p44 | ✓ p42 | ✓ p38 | 0 dòng annual-2025; MBB/VPB map margin, HDB giữ dân số bổ sung source-only |
 | Cho vay theo loại tiền tệ | ✓ p51 | — p51–52 | — p45–47 | ✓ p37 | — p39–40 | — p43–44 | — p41–42 | — p37–39 | 0 dòng annual-2025; HDB giữ dân số thư tín dụng bổ sung source-only |
 | Cho vay theo khu vực địa lý | ✓ p77 | ✓ p91 | — p81 | — p60 | — | — | — p63 | ✓ p59–60 | 0 dòng annual-2025; ba bảng địa lý rộng hơn không bị thu hẹp ngầm |
-| Doanh nghiệp/đối tượng KH | — | ✓\* p32 | ✓ p43 | ✓ p26 | — | — | — | ✓ p34 | 1 group parent check-only |
+| Doanh nghiệp/đối tượng KH | — | ✓ p52 | ✓ p46 | ✓ p36 | ✓\* p40 | — | ✓ p42 | ✓ p39 | 1 dòng VCB gộp `Hợp tác xã` + `công ty tư nhân` |
 | Dự phòng cho vay | ✓ p18 | ✓ p34 | ✓\* p45 | ✓ p28 | ✓ p31 | ✓ p39 | ✓ p23 | ✓ p34 | 0 dòng; VPB còn thiếu nguồn Q2 |
 | Hoạt động mua nợ | — | ✓ p35 | ✓\* p46 | ✓ p29 | — | — | — | ✓\* p35 | 0 dòng; 4 bank không có; VPB là nguồn Q1 |
 | Tiền gửi khách hàng | ✓ p21 | ✓ p43 | ✓\* p55 | ✓ p31 | ✓ p35 | ✓ p42 | ✓ p25 | ✓ p41–42 | 0 dòng; VPB là nguồn Q1 |
