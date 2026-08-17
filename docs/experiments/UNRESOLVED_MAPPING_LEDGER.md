@@ -17,10 +17,58 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **249 entries**.  Current open queue: **71**.  Closed history:
+Ledger total: **284 entries**.  Current open queue: **106**.  Closed history:
 **103** row/graph resolutions and **75** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
+
+## OPEN — annual-2025 `Tài sản Có khác`
+
+E-0127 quét toàn bộ tám BCTC hợp nhất kiểm toán năm 2025 và tìm đúng một vùng
+family tại mỗi bank. 134 mapping và 66 phương trình đã đóng; 35 dòng dưới đây
+giữ nguyên nguồn và `UNRESOLVED` vì chưa có schema chính xác, dòng gộp không có
+phân bổ, hoặc ô DASH chưa có numeric bbox độc lập.
+
+| ID | Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | --- | ---: | --- | --- |
+| A2025-OA-001 | ACB | 58 | Các khoản tạm ứng và phải thu nội bộ | Một dòng gộp 975/970, không có phân bổ nguồn. |
+| A2025-OA-002 | ACB | 58 | Phải thu Ngân sách Nhà nước | Không nói đây là thuế nộp thừa/được khấu trừ để map 974. |
+| A2025-OA-003 | ACB | 59 | Tài sản thuế thu nhập doanh nghiệp hoãn lại | Family 966–1023 chưa có leaf tương đương. |
+| A2025-OA-004 | ACB | 59 | Tài sản thay thế cho việc thực hiện nghĩa vụ của bên bảo đảm | Ô so sánh là DASH chưa có numeric bbox độc lập. |
+| A2025-OA-005 | ACB | 60 | Các khoản dự phòng rủi ro cho các tài sản Có nội bảng khác | Chưa có nhánh số dư/biến động dự phòng tương ứng. |
+| A2025-OA-006 | MBB | 62 | Phải thu liên quan đến tài trợ thương mại | Chưa có leaf tương đương; ô hiện kỳ là DASH. |
+| A2025-OA-007 | MBB | 62 | Các khoản phải thu miễn truy đòi theo bộ chứng từ | Ô so sánh là DASH chưa có numeric bbox độc lập. |
+| A2025-OA-008 | MBB | 62 | Các khoản tạm ứng và đặt cọc hợp đồng | Một dòng gộp 975/973, không có phân bổ nguồn. |
+| A2025-OA-009 | MBB | 62 | Dự phòng phí và dự phòng bồi thường nghiệp vụ nhượng tái bảo hiểm | Chưa có leaf tương đương. |
+| A2025-OA-010 | MBB | 62 | Lãi phải thu hoạt động tín dụng và phí phải thu | Dòng gộp lãi tín dụng và phí, không thu hẹp vào 983. |
+| A2025-OA-011 | MBB | 63 | Lợi thế thương mại | Ô hiện kỳ là DASH chưa có numeric bbox độc lập. |
+| A2025-OA-012 | MBB | 63 | Dự phòng rủi ro cho các tài sản Có nội bảng khác | Chưa có nhánh số dư/biến động dự phòng tương ứng. |
+| A2025-OA-013 | VPB | 55 | Phải thu bán tài sản tài chính | Rộng hơn 976 `Phải thu từ bán chứng khoán`. |
+| A2025-OA-014 | VPB | 55 | Dự phòng phí và bồi thường nghiệp vụ nhượng tái bảo hiểm | Chưa có leaf tương đương. |
+| A2025-OA-015 | VPB | 55 | Nợ đủ tiêu chuẩn | Ô so sánh là DASH chưa có numeric bbox độc lập. |
+| A2025-OA-016 | VPB | 56 | Tài sản có khác | Ô so sánh là DASH chưa có numeric bbox độc lập. |
+| A2025-OA-017 | VPB | 56 | Lợi thế thương mại | Ô hiện kỳ là DASH chưa có numeric bbox độc lập. |
+| A2025-OA-018 | VPB | 57 | Dự phòng rủi ro cho các tài sản Có nội bảng khác | Chưa có nhánh số dư/biến động dự phòng tương ứng. |
+| A2025-OA-019 | HDB | 42 | Các khoản tạm ứng và phải thu nội bộ | Một dòng gộp 975/970, không có phân bổ nguồn. |
+| A2025-OA-020 | HDB | 43 | Phải thu từ thanh lý TSCĐ | Ô hiện kỳ là DASH và chưa có leaf chính xác. |
+| A2025-OA-021 | HDB | 44 | Dự phòng rủi ro các tài sản Có nội bảng khác | Chưa có nhánh số dư/biến động dự phòng tương ứng. |
+| A2025-OA-022 | VCB | 50 | Phải thu từ ngân sách Nhà nước về hỗ trợ lãi suất | Là phải thu ngân sách, không phải phải thu NHNN 979. |
+| A2025-OA-023 | VCB | 51 | Tài sản thuế thu nhập hoãn lại | Family 966–1023 chưa có leaf tương đương. |
+| A2025-OA-024 | VCB | 51 | Các khoản dự phòng rủi ro cho các tài sản Có nội bảng khác | Chưa có nhánh số dư/biến động dự phòng tương ứng. |
+| A2025-OA-025 | CTG | 50 | Các khoản tạm ứng và phải thu nội bộ | Một dòng gộp 975/970, không có phân bổ nguồn. |
+| A2025-OA-026 | CTG | 50 | Các khoản dự phòng rủi ro cho các tài sản Có nội bảng khác | Chưa có nhánh số dư/biến động dự phòng tương ứng. |
+| A2025-OA-027 | BID | 49 | Các khoản phải thu khác | Parent gộp phải thu nội bộ và bên ngoài, không phải leaf hẹp 981. |
+| A2025-OA-028 | BID | 49 | Tài sản thuế thu nhập doanh nghiệp hoãn lại | Family 966–1023 chưa có leaf tương đương. |
+| A2025-OA-029 | BID | 49 | Dự phòng rủi ro cho các tài sản Có nội bảng khác | Chưa có nhánh số dư/biến động dự phòng tương ứng. |
+| A2025-OA-030 | BID | 49 | Phải thu trong nghiệp vụ tài trợ thương mại | Chưa có leaf tương đương. |
+| A2025-OA-031 | VIB | 44 | Phải thu từ Ngân sách Nhà nước | Không đủ nghĩa để map vào 974 hoặc 979. |
+| A2025-OA-032 | VIB | 44 | Phải thu từ hoạt động tài trợ thương mại | Chưa có leaf tương đương. |
+| A2025-OA-033 | VIB | 44 | Phải thu hoa hồng bảo hiểm | Không xác định đối tác là công ty bảo hiểm con như 978 yêu cầu. |
+| A2025-OA-034 | VIB | 44 | Tài sản thuế TNDN hoãn lại | Family 966–1023 chưa có leaf tương đương. |
+| A2025-OA-035 | VIB | 44 | Các khoản dự phòng rủi ro cho các tài sản Có nội bảng khác | Ô hiện kỳ là DASH và chưa có nhánh dự phòng chính xác. |
+
+Machine-readable result:
+`docs/experiments/E-0127-annual-2025-other-assets-8bank-codex-verified-mapping-v1.json`.
 
 ## CLOSED HISTORY — annual-2025 `Chứng khoán đầu tư`
 

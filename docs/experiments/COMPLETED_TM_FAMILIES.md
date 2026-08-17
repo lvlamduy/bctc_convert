@@ -423,7 +423,60 @@ Q2/2026 hoặc VPB Q1/2026 đã bind, không bị suy rộng sang annual-2025.
 
 ## 22. Tài sản Có khác
 
-- **Đã xác minh:** MBB p42, VPB p51–53 và VIB p39. Đã map 58 khoản mục
+- **Đã map/xác minh trên BCTC hợp nhất kiểm toán annual-2025:** ACB p58–60,
+  MBB p62–63, VPB p55–57, HDB p42–44, VCB p50–52, CTG p50–51, BID p49–50
+  và VIB p44–45. Whole-PDF graph chung tìm đúng một vùng ở cả tám báo cáo;
+  134 mapping/295 ô nguồn và 66 phương trình cha–con, subtotal, lãi phí,
+  XDCB, chất lượng và tổng family đóng chính xác.
+- **Không có cụm này trong báo cáo annual-2025:** Không có; cả tám bank đều có
+  đúng một vùng đầy đủ.
+- **Có nhưng còn khoản mục chưa map:** 35 dòng nguồn dưới đây được giữ
+  `UNRESOLVED`; không ép các khái niệm gộp, deferred tax, tài trợ thương mại
+  hoặc dự phòng vào leaf gần nhất.
+
+| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | ---: | --- | --- |
+| ACB | 58 | Các khoản tạm ứng và phải thu nội bộ | Một dòng gộp hai khái niệm 975/970, không có phân bổ nguồn. |
+| ACB | 58 | Phải thu Ngân sách Nhà nước | Không nói đây là thuế nộp thừa/được khấu trừ để map 974. |
+| ACB | 59 | Tài sản thuế thu nhập doanh nghiệp hoãn lại | Family 966–1023 chưa có leaf tương đương. |
+| ACB | 59 | Tài sản thay thế cho việc thực hiện nghĩa vụ của bên bảo đảm | Ô so sánh là dấu gạch chưa có bbox số độc lập. |
+| ACB | 60 | Các khoản dự phòng rủi ro cho các tài sản Có nội bảng khác | Chưa có nhánh số dư/biến động dự phòng tương ứng. |
+| MBB | 62 | Phải thu liên quan đến tài trợ thương mại | Chưa có leaf tương đương; ô hiện kỳ là dấu gạch. |
+| MBB | 62 | Các khoản phải thu miễn truy đòi theo bộ chứng từ | Ô so sánh là dấu gạch chưa có bbox số độc lập. |
+| MBB | 62 | Các khoản tạm ứng và đặt cọc hợp đồng | Một dòng gộp 975/973, không có phân bổ nguồn. |
+| MBB | 62 | Dự phòng phí và dự phòng bồi thường nghiệp vụ nhượng tái bảo hiểm | Chưa có leaf tương đương. |
+| MBB | 62 | Lãi phải thu hoạt động tín dụng và phí phải thu | Dòng gộp lãi tín dụng và phí, không thu hẹp vào 983. |
+| MBB | 63 | Lợi thế thương mại | Ô hiện kỳ là dấu gạch chưa có bbox số độc lập. |
+| MBB | 63 | Dự phòng rủi ro cho các tài sản Có nội bảng khác | Chưa có nhánh số dư/biến động dự phòng tương ứng. |
+| VPB | 55 | Phải thu bán tài sản tài chính | Rộng hơn 976 `Phải thu từ bán chứng khoán`. |
+| VPB | 55 | Dự phòng phí và bồi thường nghiệp vụ nhượng tái bảo hiểm | Chưa có leaf tương đương. |
+| VPB | 55 | Nợ đủ tiêu chuẩn | Ô so sánh là dấu gạch chưa có bbox số độc lập. |
+| VPB | 56 | Tài sản có khác | Ô so sánh là dấu gạch chưa có bbox số độc lập. |
+| VPB | 56 | Lợi thế thương mại | Ô hiện kỳ là dấu gạch chưa có bbox số độc lập. |
+| VPB | 57 | Dự phòng rủi ro cho các tài sản Có nội bảng khác | Chưa có nhánh số dư/biến động dự phòng tương ứng. |
+| HDB | 42 | Các khoản tạm ứng và phải thu nội bộ | Một dòng gộp 975/970, không có phân bổ nguồn. |
+| HDB | 43 | Phải thu từ thanh lý TSCĐ | Ô hiện kỳ là dấu gạch và chưa có leaf chính xác. |
+| HDB | 44 | Dự phòng rủi ro các tài sản Có nội bảng khác | Chưa có nhánh số dư/biến động dự phòng tương ứng. |
+| VCB | 50 | Phải thu từ ngân sách Nhà nước về hỗ trợ lãi suất | Là phải thu ngân sách, không phải phải thu NHNN 979. |
+| VCB | 51 | Tài sản thuế thu nhập hoãn lại | Family 966–1023 chưa có leaf tương đương. |
+| VCB | 51 | Các khoản dự phòng rủi ro cho các tài sản Có nội bảng khác | Chưa có nhánh số dư/biến động dự phòng tương ứng. |
+| CTG | 50 | Các khoản tạm ứng và phải thu nội bộ | Một dòng gộp 975/970, không có phân bổ nguồn. |
+| CTG | 50 | Các khoản dự phòng rủi ro cho các tài sản Có nội bảng khác | Chưa có nhánh số dư/biến động dự phòng tương ứng. |
+| BID | 49 | Các khoản phải thu khác | Parent gộp phải thu nội bộ và bên ngoài, không phải leaf hẹp 981. |
+| BID | 49 | Tài sản thuế thu nhập doanh nghiệp hoãn lại | Family 966–1023 chưa có leaf tương đương. |
+| BID | 49 | Dự phòng rủi ro cho các tài sản Có nội bảng khác | Chưa có nhánh số dư/biến động dự phòng tương ứng. |
+| BID | 49 | Phải thu trong nghiệp vụ tài trợ thương mại | Chưa có leaf tương đương. |
+| VIB | 44 | Phải thu từ Ngân sách Nhà nước | Không đủ nghĩa để map vào 974 hoặc 979. |
+| VIB | 44 | Phải thu từ hoạt động tài trợ thương mại | Chưa có leaf tương đương. |
+| VIB | 44 | Phải thu hoa hồng bảo hiểm | Không xác định đối tác là công ty bảo hiểm con như 978 yêu cầu. |
+| VIB | 44 | Tài sản thuế TNDN hoãn lại | Family 966–1023 chưa có leaf tương đương. |
+| VIB | 44 | Các khoản dự phòng rủi ro cho các tài sản Có nội bảng khác | Ô hiện kỳ là dấu gạch và chưa có nhánh dự phòng chính xác. |
+
+Kết quả exact-replay:
+`docs/experiments/E-0127-annual-2025-other-assets-8bank-codex-verified-mapping-v1.json`.
+
+- **Lượt hiện hành trước đó — đã xác minh:** MBB p42, VPB p51–53 và VIB p39.
+  Đã map 58 khoản mục
   nguồn/126 thành phần giá trị hiện tại–so sánh; 30 phép cộng trừ cha–con,
   subtotal, chất lượng, lãi phí, lợi thế thương mại và tổng family đóng đúng.
   MBB dùng hai note anh em `Các khoản phải thu`/`Tài sản Có khác`; VPB dùng
@@ -1023,7 +1076,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Tăng, giảm TSCĐ thuê tài chính | — p55→56 | — p58→60 | — p53→54 | — p41→42 | — p48→49 | — p48→49 | — p47→48 | — p42→43 | 0 dòng annual-2025; cả 8 PDF xác nhận không có bảng chi tiết |
 | Tăng, giảm TSCĐ vô hình | ✓ p56 | ✓ p60 | ✓ p54 | ✓ p42 | ✓ p49 | ✓ p49 | ✓ p48 | ✓ p43 | 0 dòng annual-2025; 107 mapping/32 phương trình; kết quả hiện hành cũ vẫn byte-exact |
 | Tăng, giảm bất động sản đầu tư | ✓ p57 | ✓ p61 | — p54→55 | — p42 | — p49→50 | — p49→50 | — p48→49 | — p43→44 | 0 dòng annual-2025; 18 mapping/27 phương trình; ACB cộng có kiểm soát hai bảng anh em |
-| Tài sản Có khác | — | ✓ p42 | ✓\* p51–53 | — | — | — | — | ✓\* p39 | 12 dòng OPEN; 58 mapping, 30 phương trình, 5 bank không có bảng chi tiết; VPB là nguồn Q1 |
+| Tài sản Có khác | ✓\* p58–60 | ✓\* p62–63 | ✓\* p55–57 | ✓\* p42–44 | ✓\* p50–52 | ✓\* p50–51 | ✓\* p49–50 | ✓\* p44–45 | Annual-2025: 35 dòng OPEN, 134 mapping/66 phương trình; lượt hiện hành trước: 12 dòng OPEN |
 | Các khoản nợ Chính phủ/NHNN | ✓ p20 | ✓ p42 | ✓\* p53 | ✓ p30 | ✓ p34 | ✓ p41 | ✓ p24 | ✓ p40 | 0 dòng; 32 mapping, 28 phương trình; 2 DASH→0; VPB là nguồn Q1 |
 | Vốn nhận tài trợ/ủy thác đầu tư | — | ✓ p43 | ✓\* p56 | — | — | — | — | ✓ p42 | 0 dòng; 6 mapping, 4 phương trình; 5 bank xác nhận không có cụm; VPB là nguồn Q1 |
 | Phát hành giấy tờ có giá | ✓ p21 | ✓ p44 | ✓\* p56 | ✓ p31 | ✓ p35 | ✓ p42 | ✓ p25 | ✓ p43 | 3 dòng OPEN; 71 mapping, 36 phương trình; 4 DASH→0; VPB là nguồn Q1 |
