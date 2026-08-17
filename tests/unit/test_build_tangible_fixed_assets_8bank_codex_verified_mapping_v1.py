@@ -123,6 +123,24 @@ def test_schema_is_reused_without_family_specific_new_ids(
     )
 
 
+def test_unrelated_schema_insertions_do_not_reseal_the_prior_mapping(
+    live: tuple[tuple[object, ...], dict[str, object]],
+) -> None:
+    inputs, result = live
+    schema_by_id = inputs[-1]
+    persisted_orders = {
+        mapping["report_norm_id"]: mapping["schema_binding"]["display_order"]
+        for trial in result["trials"]
+        for mapping in trial["mappings"]
+    }
+
+    assert schema_by_id[5965].display_order != persisted_orders[5965]
+    assert persisted_orders[5965] == builder._SCHEMA_DISPLAY_ORDER_SNAPSHOT[5965]
+    assert {
+        mapping["report_norm_id"] for trial in result["trials"] for mapping in trial["mappings"]
+    } == set(builder._SCHEMA_EXPECTED)
+
+
 def test_exact_replay_rejects_coordinated_mapping_promotion(
     live: tuple[tuple[object, ...], dict[str, object]],
 ) -> None:

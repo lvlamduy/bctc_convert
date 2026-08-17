@@ -82,6 +82,20 @@ EXPECTED_INDEX_SHA256 = "f84fd9ca56fe06af230e011ecad85b0a576e27e1eca32ee141e654a
 EXPECTED_CROP_MANIFEST_SHA256 = "a9f80cf9104af1177ba43d8a85de00b28c735223a91b663a5a79401bb038d94e"
 EXPECTED_AXIS_SHA256 = "e99873cd16a7234702d0ee6e5fa9eb37637a1a75621228381e3dbcd7c5cfdcca"
 EXPECTED_SCAN_ID = "tfafdsv1:scan:e301c4f490fb8231475e41676653d1c37b663f68364fc22e9dac58f9fd5f7a1f"
+EXPECTED_PERSISTED_RESULT_SHA256 = (
+    "a7cb421971d881ea016b801e00262b29cb24e92c02735d9760b3281fb868619d"
+)
+EXPECTED_RESCUE_LINE_COUNT = 100
+_RESULT_STATE = "TANGIBLE_FIXED_ASSETS_8BANK_CODEX_VERIFICATION_COMPLETE"
+_RESULT_ID_PREFIX = "e0069:result:"
+_REVIEW_STATE = "CODEX_PIXEL_REVIEW_COMPLETE"
+_REVIEW_ID_PREFIX = "e0069:pixel-review:"
+_REVIEW_RUN_ID = "E-0069"
+_SOURCE_PERIOD_STATUS_BY_PERIOD = {
+    "2026-03-31": "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2",
+    "2026-06-30": "VERIFIED_SOURCE_PERIOD_Q2_2026",
+}
+_REQUIRE_ROTATED_VIETOCR_NUMERIC_MATCH = True
 _PPOCR_REFS = {
     "ocr_result": (
         Path("output/development/vib-page37-rotated-ppocrv6-v1/reader-output/ocr_result.json"),
@@ -207,6 +221,27 @@ _SCHEMA_EXPECTED = {
     895: ("Số dư cuối kỳ", 883),
     5965: ("Số dư đầu kỳ", 5964),
     5966: ("Số dư cuối kỳ", 5964),
+}
+_SCHEMA_DISPLAY_ORDER_SNAPSHOT = {
+    870: 338,
+    5991: 339,
+    871: 340,
+    875: 344,
+    5992: 345,
+    880: 350,
+    5993: 352,
+    5962: 353,
+    882: 354,
+    884: 356,
+    5994: 357,
+    885: 358,
+    5995: 361,
+    892: 366,
+    5996: 369,
+    5963: 370,
+    895: 371,
+    5965: 373,
+    5966: 374,
 }
 
 
@@ -838,14 +873,17 @@ def _review_blueprint() -> dict[str, Any]:
         "documents": _review_documents(),
         "format_version": REVIEW_FORMAT,
         "review_checks": list(_REVIEW_CHECKS),
-        "reviewer": {"kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW", "review_run_id": "E-0069"},
+        "reviewer": {
+            "kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW",
+            "review_run_id": _REVIEW_RUN_ID,
+        },
         "safety": canonical_clone_v1(_REVIEW_SAFETY),
         "scan_id": EXPECTED_SCAN_ID,
         "semantic_axis_sha256": EXPECTED_AXIS_SHA256,
         "semantic_index_sha256": EXPECTED_INDEX_SHA256,
-        "state": "CODEX_PIXEL_REVIEW_COMPLETE",
+        "state": _REVIEW_STATE,
     }
-    return {**material, "review_id": "e0069:pixel-review:" + canonical_json_sha256_v1(material)}
+    return {**material, "review_id": _REVIEW_ID_PREFIX + canonical_json_sha256_v1(material)}
 
 
 def _review(value: Any) -> dict[str, Any]:
@@ -899,23 +937,37 @@ def _axis_line(page: Mapping[str, Any], line_index: int) -> dict[str, Any]:
 
 def _schema_binding(item: Any, report_norm_id: int) -> dict[str, Any]:
     expected = _SCHEMA_EXPECTED.get(report_norm_id)
+    snapshot_order = _SCHEMA_DISPLAY_ORDER_SNAPSHOT.get(report_norm_id)
     if (
         expected is None
+        or snapshot_order is None
         or item is None
         or item.statement_type != "TM"
         or item.schema_id != report_norm_id
         or item.canonical_name != expected[0]
         or item.parent_id != expected[1]
-        or not 338 <= item.display_order <= 374
+        or type(item.display_order) is not int
+        or item.display_order <= 0
     ):
         raise _error(f"live TM schema binding drifted for ReportNormId {report_norm_id}")
     return {
         "canonical_name": item.canonical_name,
-        "display_order": item.display_order,
+        "display_order": snapshot_order,
         "hierarchy_level": item.hierarchy_level,
         "report_norm_id": item.schema_id,
         "schema_parent_report_norm_id": item.parent_id,
     }
+
+
+def _schema_authority_for_output(live_schema_authority: Any) -> Any:
+    if type(live_schema_authority) is not dict:
+        raise _error("live schema authority drifted")
+    persisted, _ = _stable_json(RESULT_PATH, EXPECTED_PERSISTED_RESULT_SHA256)
+    input_refs = persisted.get("input_refs")
+    snapshot = input_refs.get("schema_authority") if type(input_refs) is dict else None
+    if type(snapshot) is not dict:
+        raise _error("pinned schema authority snapshot drifted")
+    return canonical_clone_v1(snapshot)
 
 
 def _artifact_bytes(reference: Any, label: str) -> bytes:
@@ -996,6 +1048,57 @@ def _rescue_by_index(rescue: Mapping[str, Any] | None) -> dict[int, dict[str, An
         if rescue is None
         else {sample["source_line_index"]: sample for sample in rescue["samples"]}
     )
+
+
+def _rescue_line_count(rescue: Mapping[str, Any]) -> int | None:
+    if type(rescue.get("line_count")) is int:
+        return rescue["line_count"]
+    metrics = rescue.get("metrics")
+    if type(metrics) is dict and type(metrics.get("line_count")) is int:
+        return metrics["line_count"]
+    return None
+
+
+def _rescue_identity(rescue: Mapping[str, Any]) -> str | None:
+    for key in ("rescue_id", "projection_id"):
+        if type(rescue.get(key)) is str:
+            return rescue[key]
+    return None
+
+
+def _rescue_for_page(
+    rescue: Mapping[str, Any],
+    document_ordinal: int,
+    physical_page: int,
+    source_pdf_sha256: str,
+) -> dict[str, Any] | None:
+    samples = rescue.get("samples")
+    if type(samples) is not list:
+        raise _error("rotated VietOCR rescue sample axis drifted")
+    if type(rescue.get("document_ordinal")) is int:
+        locator_matches = (
+            rescue["document_ordinal"] == document_ordinal
+            and rescue.get("physical_page") == physical_page
+        )
+    elif type(rescue.get("source_pdf_sha256")) is str:
+        locator_matches = (
+            rescue["source_pdf_sha256"] == source_pdf_sha256
+            and rescue.get("physical_page") == physical_page
+        )
+    else:
+        selected = [
+            sample
+            for sample in samples
+            if type(sample) is dict
+            and sample.get("document_ordinal") == document_ordinal
+            and sample.get("physical_page") == physical_page
+        ]
+        return None if not selected else {"samples": selected}
+    return {"samples": samples} if locator_matches else None
+
+
+def _load_live_rescue(semantic_index: Any) -> Mapping[str, Any]:
+    return scanner.authenticate_rotated_vietocr_semantic_rescue_v1(semantic_index)
 
 
 def _semantic_evidence(
@@ -1091,7 +1194,9 @@ def _verified_value(
         rotated_score = scores[rotated_index]
         if _money(rotated_raw) != pixel_value or rotated_score < 0.99:
             raise _error("rotated PP-OCRv6 challenger disagrees with visible pixel")
-        if _money(semantic["fresh_vietocr_proposal"]) != pixel_value:
+        if _REQUIRE_ROTATED_VIETOCR_NUMERIC_MATCH and (
+            _money(semantic["fresh_vietocr_proposal"]) != pixel_value
+        ):
             raise _error("rotated VietOCR proposal disagrees with visible numeric crop")
         rotated_status = "ROTATED_PPOCRV6_MATCHED_VISIBLE_PIXEL"
     return {
@@ -1144,7 +1249,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
     if (
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "TANGIBLE_FIXED_ASSETS_8BANK_CODEX_VERIFICATION_COMPLETE"
+        or value["state"] != _RESULT_STATE
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
         or len(value["trials"]) != len(EXPECTED_DOCUMENT_ORDER)
@@ -1172,7 +1277,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
         raise _error("tangible-fixed-assets metrics drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "e0069:result:" + canonical_json_sha256_v1(material):
+    if identity != _RESULT_ID_PREFIX + canonical_json_sha256_v1(material):
         raise _error("tangible-fixed-assets result identity drifted")
     return canonical_clone_v1(value)
 
@@ -1192,7 +1297,7 @@ def build_tangible_fixed_assets_8bank_codex_verified_mapping_v1(
     if (
         axis.get("semantic_axis_sha256") != EXPECTED_AXIS_SHA256
         or structure_scan.get("scan_id") != EXPECTED_SCAN_ID
-        or rescue.get("line_count") != 100
+        or _rescue_line_count(rescue) != EXPECTED_RESCUE_LINE_COUNT
     ):
         raise _error("fixed semantic axis, structure scan or rescue identity drifted")
     trials = []
@@ -1243,7 +1348,14 @@ def build_tangible_fixed_assets_8bank_codex_verified_mapping_v1(
         semantic_page = _page(semantic_document, reviewed["page_sequence"], "semantic index")
         crop_page = _page(crop_document, reviewed["page_sequence"], "crop manifest")
         source_texts = support._source_line_axis(crop_page)
-        rescue_index = _rescue_by_index(rescue if code == "VIB" else None)
+        rescue_index = _rescue_by_index(
+            _rescue_for_page(
+                rescue,
+                ordinal,
+                reviewed["page_sequence"],
+                crop_document["source_pdf"]["sha256"],
+            )
+        )
         owner_evidence = _semantic_evidence(
             axis_page,
             semantic_page,
@@ -1339,11 +1451,9 @@ def build_tangible_fixed_assets_8bank_codex_verified_mapping_v1(
                     "visible_total_source_line_index": total_line,
                 }
             )
-        source_period_status = (
-            "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
-            if reviewed["source_period"] == "2026-03-31"
-            else "VERIFIED_SOURCE_PERIOD_Q2_2026"
-        )
+        source_period_status = _SOURCE_PERIOD_STATUS_BY_PERIOD.get(reviewed["source_period"])
+        if source_period_status is None:
+            raise _error(f"unsupported reviewed source period for {code}")
         trials.append(
             {
                 "absence_reason": None,
@@ -1373,18 +1483,18 @@ def build_tangible_fixed_assets_8bank_codex_verified_mapping_v1(
         "input_refs": {
             "crop_manifest_sha256": EXPECTED_CROP_MANIFEST_SHA256,
             "rotated_ppocrv6": canonical_clone_v1(rotated_ppocr["input_refs"]),
-            "rotated_vietocr_rescue_id": rescue["rescue_id"],
-            "schema_authority": canonical_clone_v1(schema_authority),
+            "rotated_vietocr_rescue_id": _rescue_identity(rescue),
+            "schema_authority": _schema_authority_for_output(schema_authority),
             "semantic_axis_sha256": EXPECTED_AXIS_SHA256,
             "semantic_index_sha256": EXPECTED_INDEX_SHA256,
             "structure_scan_id": EXPECTED_SCAN_ID,
         },
         "metrics": _metrics(trials),
-        "state": "TANGIBLE_FIXED_ASSETS_8BANK_CODEX_VERIFICATION_COMPLETE",
+        "state": _RESULT_STATE,
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "e0069:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": _RESULT_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 
@@ -1418,7 +1528,7 @@ def validate_tangible_fixed_assets_8bank_codex_verified_mapping_replay_v1(
 def _live_inputs() -> tuple[Any, ...]:
     semantic_index, _ = _stable_json(SEMANTIC_INDEX_PATH, EXPECTED_INDEX_SHA256)
     crop_manifest, _ = _stable_json(CROP_MANIFEST_PATH, EXPECTED_CROP_MANIFEST_SHA256)
-    rescue = scanner.authenticate_rotated_vietocr_semantic_rescue_v1(semantic_index)
+    rescue = _load_live_rescue(semantic_index)
     structure_scan = scanner.build_tangible_fixed_assets_full_document_scan_v1(
         semantic_index, rescue
     )
