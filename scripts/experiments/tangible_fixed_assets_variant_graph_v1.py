@@ -160,9 +160,10 @@ _TANGIBLE_REPORTING_PERIOD_GENERAL_SPEC = {
     "format_version": REPORTING_PERIOD_GENERAL_FORMAT_VERSION,
     "id_prefix": "tfavgv2:result:",
     "latest_explicit_period_selects_current_region": True,
-    "owner_phrases": ("tai san co dinh huu hinh", "tscd huu hinh"),
+    "owner_phrases": ("tai san co dinh huu hinh",),
     "period_pattern": _REPORTING_PERIOD_GENERAL_DATE,
     "relative_year_balance_roles": True,
+    "rotated_coordinate_window": True,
     "safety": _REPORTING_PERIOD_GENERAL_SAFETY,
 }
 _LEASED_SPEC = {
@@ -530,6 +531,28 @@ def _candidate_window(
 ) -> tuple[list[Mapping[str, Any]], bool]:
     owner_page = pages[owner["page_sequence"] - 1]
     rotated = _is_rotated(owner_page["lines"])
+    if rotated and spec.get("rotated_coordinate_window", False):
+        # Provider order on a landscape table follows extraction columns and can
+        # put numeric cells before the section/branch labels.  Reconstruct the
+        # table's vertical reading axis from geometry, while retaining the
+        # provider line identities and semantic evidence unchanged.
+        owner_position = _logical_position(owner, rotated=True)
+        selected = []
+        for line in sorted(
+            owner_page["lines"], key=lambda item: _logical_position(item, rotated=True)
+        ):
+            if _logical_position(line, rotated=True) < owner_position:
+                continue
+            if line is not owner and (
+                (
+                    _is_owner(line["normalized_text"], spec)
+                    and _owner_layout_eligible(line, owner_page, spec)
+                )
+                or _is_next_family(line["normalized_text"], spec)
+            ):
+                break
+            selected.append(line)
+        return selected, True
     selected: list[Mapping[str, Any]] = []
     for page in pages[owner["page_sequence"] - 1 : owner["page_sequence"] - 1 + _MAX_REGION_PAGES]:
         if page["page_sequence"] != owner["page_sequence"] and any(

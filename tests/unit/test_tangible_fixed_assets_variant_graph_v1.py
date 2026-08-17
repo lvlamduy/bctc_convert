@@ -252,6 +252,47 @@ def test_rotated_source_axis_uses_coordinates_not_broken_source_order() -> None:
     assert region["layout"]["presentation"] == "ROTATED_VERTICAL_SOURCE_AXIS_MOVEMENT_GRID"
 
 
+def test_reporting_period_general_rotated_window_uses_geometry_not_provider_columns() -> None:
+    logical = [
+        "TÀI SẢN CỐ ĐỊNH HỮU HÌNH",
+        "TSCĐ hữu hình",
+        "Triệu VND",
+        "Nguyên giá TSCĐ hữu hình",
+        "Số dư đầu năm",
+        "1.000",
+        "Mua trong năm",
+        "100",
+        "Số dư cuối năm",
+        "1.100",
+        "Giá trị hao mòn lũy kế",
+        "Số dư đầu năm",
+        "400",
+        "Khấu hao trong năm",
+        "50",
+        "Số dư cuối năm",
+        "450",
+        "Giá trị còn lại của TSCĐ hữu hình",
+        "Số dư đầu năm",
+        "600",
+        "Số dư cuối năm",
+        "650",
+    ]
+    entries = list(enumerate(logical))
+    provider_order = entries[5:17] + entries[:5] + entries[17:]
+    page = _page([text for _position, text in provider_order], rotated=True)
+    for line, (position, _text) in zip(page["lines"], provider_order, strict=True):
+        line["bbox"] = [100 + position * 30, 20, 120 + position * 30, 500]
+
+    result = matcher.build_tangible_fixed_assets_variant_graph_document_v1(
+        [page], variant_profile=matcher.REPORTING_PERIOD_GENERAL_VARIANT_PROFILE
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["metrics"]["complete_region_count"] == 1
+    assert result["regions"][0]["owner"]["semantic_text"] == logical[0]
+    assert result["regions"][0]["layout"]["rotated_source_axis"] is True
+
+
 def test_narrative_main_statement_and_next_families_are_negative_controls() -> None:
     result = matcher.build_tangible_fixed_assets_variant_graph_document_v1(
         [
