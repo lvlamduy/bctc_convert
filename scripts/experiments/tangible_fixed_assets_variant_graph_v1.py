@@ -160,7 +160,10 @@ _TANGIBLE_REPORTING_PERIOD_GENERAL_SPEC = {
     "format_version": REPORTING_PERIOD_GENERAL_FORMAT_VERSION,
     "id_prefix": "tfavgv2:result:",
     "latest_explicit_period_selects_current_region": True,
-    "owner_phrases": ("tai san co dinh huu hinh",),
+    "owner_phrases": (
+        "tai san co dinh huu hinh",
+        "tai san co dinh tscd huu hinh",
+    ),
     "period_pattern": _REPORTING_PERIOD_GENERAL_DATE,
     "relative_year_balance_roles": True,
     "rotated_coordinate_window": True,

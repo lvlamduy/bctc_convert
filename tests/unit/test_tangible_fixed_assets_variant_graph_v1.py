@@ -189,6 +189,19 @@ def test_reporting_period_general_profile_accepts_annual_balance_labels() -> Non
     )
 
 
+def test_reporting_period_general_profile_accepts_expanded_owner_with_acronym() -> None:
+    texts = _annual_variant(2025)
+    texts[0] = "TÀI SẢN CỐ ĐỊNH (TSCĐ) HỮU HÌNH"
+
+    result = matcher.build_tangible_fixed_assets_variant_graph_document_v1(
+        [_page(texts)],
+        variant_profile=matcher.REPORTING_PERIOD_GENERAL_VARIANT_PROFILE,
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["metrics"]["complete_region_count"] == 1
+
+
 def test_reporting_period_general_profile_derives_arbitrary_dates_chronologically() -> None:
     texts = [
         text.replace("30 tháng 06 năm 2026", "30 tháng 09 năm 2027")
