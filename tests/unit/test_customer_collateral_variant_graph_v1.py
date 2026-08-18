@@ -94,6 +94,32 @@ def test_annual_current_and_comparative_years_are_derived_from_the_page() -> Non
     assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
 
 
+def test_annual_relative_period_headers_are_supported_without_bank_routing() -> None:
+    texts = _direct_core()
+    texts[1:3] = ["Số cuối năm", "Số đầu năm"]
+
+    result = matcher.build_customer_collateral_variant_graph_document_v1([_page(texts)])
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["regions"][0]["layout"]["observed_axis_roles"] == [
+        "CURRENT_AXIS",
+        "COMPARATIVE_AXIS",
+        "UNIT_AXIS",
+    ]
+
+
+def test_unrelated_legal_year_before_local_table_does_not_poison_period_axis() -> None:
+    texts = [
+        "Ban hành theo Thông tư năm 2014",
+        *[f"boilerplate {index}" for index in range(9)],
+        *_direct_core(),
+    ]
+
+    result = matcher.build_customer_collateral_variant_graph_document_v1([_page(texts)])
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+
+
 def test_own_pledged_assets_without_customer_scope_are_negative_control() -> None:
     texts = [
         "Tài sản, giấy tờ có giá đưa đi thế chấp, cầm cố",

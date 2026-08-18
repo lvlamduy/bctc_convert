@@ -93,6 +93,29 @@ chuẩn hóa 0; numeric challenger bác lỗi VietOCR `80.055` và giữ số ng
 Machine-readable result:
 `docs/experiments/E-0150-annual-2025-state-budget-obligations-8bank-codex-verified-mapping-v1.json`.
 
+## CLOSED — annual-2025 `Tài sản thế chấp của khách hàng mà ngân hàng đang nắm giữ`
+
+E-0151 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025. Graph chung
+tìm đúng một vùng customer-scoped tại ACB p74, VPB p74, HDB p54 và VIB p54;
+pixel, trục số nguồn, schema hiện hành và 10 phương trình xác minh 25 mapping/50
+ô số. ACB giữ dòng `GTCG do doanh nghiệp phát hành` như chi tiết không cộng lặp;
+VIB cộng bốn dòng nguồn đã xác thực đúng một lần vào 1288 `Khác`.
+
+HDB dùng trục tương đối `Số cuối năm`/`Số đầu năm`. Crop nguồn bác proposal
+VietOCR `368.639.341` và xác nhận `388.639.341`; chỉ số nguồn này mới làm tổng
+so sánh `706.190.899` đóng chính xác. Không còn dòng OPEN.
+
+| ID | Bank | Locator/đối chứng | Disposition và căn cứ bounded absence |
+| --- | --- | --- | --- |
+| CC-A2025-001 | MBB | Toàn filing | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`: không có note chi tiết customer-collateral 1280–1288 với owner, hai trục và các hàng thành phần; policy/credit-risk mentions không được relabel. |
+| CC-A2025-002 | VCB | Toàn filing | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`: không có vùng customer-scoped thỏa graph đầy đủ; tài sản của chính ngân hàng và diễn giải bảo đảm là đối chứng âm. |
+| CC-A2025-003 | CTG | Toàn filing | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`: không có note chi tiết 1280–1288 với period/unit/numeric topology trong filing annual đã bind. |
+| CC-A2025-004 | BID | Toàn filing | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`: không có note chi tiết 1280–1288; các mention chính sách/hạn mức không mang bảng thành phần khách hàng. |
+
+Các kết luận trên chỉ là vắng mặt trong đúng filing annual-2025 đã bind, không
+phải khẳng định bank/source rộng hơn. Machine-readable result:
+`docs/experiments/E-0151-annual-2025-customer-collateral-8bank-codex-verified-mapping-v1.json`.
+
 ## COMPLETE — annual-2025 `Mua mới và thanh lý các công ty con`
 
 E-0148 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025 và không tìm

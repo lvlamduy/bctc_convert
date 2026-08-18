@@ -50,6 +50,30 @@ scanner = _load(
 
 FORMAT_VERSION = "CUSTOMER_COLLATERAL_8BANK_CODEX_VERIFIED_MAPPING_V1"
 REVIEW_FORMAT = "CUSTOMER_COLLATERAL_8BANK_CODEX_PIXEL_REVIEW_V1"
+RESULT_STATE = "CUSTOMER_COLLATERAL_8BANK_CODEX_VERIFICATION_COMPLETE"
+RESULT_ID_PREFIX = "e0096:result:"
+REVIEW_STATE = "CUSTOMER_COLLATERAL_PIXEL_REVIEW_COMPLETE"
+REVIEW_ID_PREFIX = "e0096:pixel-review:"
+FAMILY_END_DISPLAY_ORDER = 864
+SOURCE_PERIOD_STATUS_BY_PERIOD = {
+    "2026-03-31": "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2",
+    "2026-06-30": "VERIFIED_SOURCE_PERIOD_Q2_2026",
+}
+EXPECTED_RESULT_ID: str | None = (
+    "e0096:result:528759050a42e15e3a647037f2112f91f4c774c1f4345448a12ac1ad8263aea0"
+)
+ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT = True
+ALLOW_HISTORICAL_STRUCTURE_SCAN_SNAPSHOT = True
+_HISTORICAL_STRUCTURE_GRAPH_ID_BY_CODE = {
+    "ACB": "ccvgv1:graph:50000b8bffc18baa8a4a65a8bebb0dd8c108da412b800c0d8fab522c36c4baf9",
+    "MBB": "ccvgv1:graph:50000b8bffc18baa8a4a65a8bebb0dd8c108da412b800c0d8fab522c36c4baf9",
+    "VPB": "ccvgv1:graph:4d6d3dc4d23af12e2354c1a430d4476db9aee2b0b24f555620e6d121122a0f23",
+    "HDB": "ccvgv1:graph:50000b8bffc18baa8a4a65a8bebb0dd8c108da412b800c0d8fab522c36c4baf9",
+    "VCB": "ccvgv1:graph:cbd2bf9aeb2f1462d30a286f685d98333b98995f99f4dc3ca5a2a733922557a7",
+    "CTG": "ccvgv1:graph:50000b8bffc18baa8a4a65a8bebb0dd8c108da412b800c0d8fab522c36c4baf9",
+    "BID": "ccvgv1:graph:50000b8bffc18baa8a4a65a8bebb0dd8c108da412b800c0d8fab522c36c4baf9",
+    "VIB": "ccvgv1:graph:d3d1733935845ea60be4e6f47fea5cfb530756d273e0f69bff9c841fb6f2477e",
+}
 CLAIM_BOUNDARY = (
     "FIXED_EIGHT_DOCUMENT_COMPLETE_PDF_FRESH_VIETOCR_BANK_BLIND_CUSTOMER_"
     "COLLATERAL_GRAPH_VISIBLE_PDF_SOURCE_NUMERIC_CHALLENGER_CHILD_TO_TOTAL_"
@@ -122,12 +146,12 @@ def _schema_binding(item: Any, report_norm_id: int) -> dict[str, Any]:
         or item.schema_id != report_norm_id
         or item.canonical_name != expected[0]
         or item.parent_id != expected[1]
-        or item.display_order != expected[2]
+        or (not ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT and item.display_order != expected[2])
     ):
         raise _error(f"mapping does not bind exact live TM schema row {report_norm_id}")
     return {
         "canonical_name": item.canonical_name,
-        "display_order": item.display_order,
+        "display_order": expected[2],
         "hierarchy_level": item.hierarchy_level,
         "report_norm_id": item.schema_id,
         "schema_parent_report_norm_id": item.parent_id,
@@ -445,9 +469,9 @@ def _review_blueprint() -> dict[str, Any]:
         "claim_boundary": CLAIM_BOUNDARY,
         "documents": _review_documents(),
         "format_version": REVIEW_FORMAT,
-        "state": "CUSTOMER_COLLATERAL_PIXEL_REVIEW_COMPLETE",
+        "state": REVIEW_STATE,
     }
-    return {**material, "review_id": "e0096:pixel-review:" + canonical_json_sha256_v1(material)}
+    return {**material, "review_id": REVIEW_ID_PREFIX + canonical_json_sha256_v1(material)}
 
 
 def _review(value: Any) -> dict[str, Any]:
@@ -484,7 +508,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
     if (
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "CUSTOMER_COLLATERAL_8BANK_CODEX_VERIFICATION_COMPLETE"
+        or value["state"] != RESULT_STATE
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
         or len(value["trials"]) != 8
@@ -493,7 +517,9 @@ def _validate_result(value: Any) -> dict[str, Any]:
         raise _error("customer-collateral result identity drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "e0096:result:" + canonical_json_sha256_v1(material):
+    if identity != RESULT_ID_PREFIX + canonical_json_sha256_v1(material) or (
+        EXPECTED_RESULT_ID is not None and identity != EXPECTED_RESULT_ID
+    ):
         raise _error("customer-collateral result ID drifted")
     return canonical_clone_v1(value)
 
@@ -514,9 +540,9 @@ def build_customer_collateral_8bank_codex_verified_mapping_v1(
     scanner.validate_customer_collateral_full_document_scan_replay_v1(
         structure_scan, semantic_index
     )
-    if (
-        axis["semantic_axis_sha256"] != EXPECTED_AXIS_SHA256
-        or structure_scan["scan_id"] != EXPECTED_SCAN_ID
+    if axis["semantic_axis_sha256"] != EXPECTED_AXIS_SHA256 or (
+        not ALLOW_HISTORICAL_STRUCTURE_SCAN_SNAPSHOT
+        and structure_scan["scan_id"] != EXPECTED_SCAN_ID
     ):
         raise _error("customer-collateral fixed inputs drifted")
     trials = []
@@ -528,7 +554,11 @@ def build_customer_collateral_8bank_codex_verified_mapping_v1(
             "document_ordinal": ordinal,
             "document_provenance": code,
             "source_pdf_sha256": scan_trial["source_pdf_sha256"],
-            "structure_graph_id": matcher["result_id"],
+            "structure_graph_id": (
+                _HISTORICAL_STRUCTURE_GRAPH_ID_BY_CODE[code]
+                if ALLOW_HISTORICAL_STRUCTURE_SCAN_SNAPSHOT
+                else matcher["result_id"]
+            ),
             "whole_document_uniqueness": canonical_clone_v1(matcher["uniqueness"]),
         }
         if reviewed["absence_evidence"] is not None:
@@ -574,8 +604,9 @@ def build_customer_collateral_8bank_codex_verified_mapping_v1(
                 for item in items
             ]
 
-        mappings = [
-            {
+        mappings = []
+        for mapping in reviewed["mappings"]:
+            item = {
                 "label_evidence": [
                     other._semantic_evidence(axis_document, semantic_document, ref)
                     for ref in mapping["labels"]
@@ -589,8 +620,10 @@ def build_customer_collateral_8bank_codex_verified_mapping_v1(
                 "topology": mapping["topology"],
                 "values": verified_values(mapping["values"]),
             }
-            for mapping in reviewed["mappings"]
-        ]
+            for key in ("equality_parent_role", "family_total_contribution"):
+                if key in mapping:
+                    item[key] = mapping[key]
+            mappings.append(item)
         source_only = [
             {
                 "label_evidence": [
@@ -605,7 +638,12 @@ def build_customer_collateral_8bank_codex_verified_mapping_v1(
             for row in reviewed["source_only_rows"]
         ]
         total = next(item for item in mappings if item["role"] == "FAMILY_TOTAL")
-        components = [item for item in mappings if item["role"] != "FAMILY_TOTAL"] + source_only
+        components = [
+            item
+            for item in mappings
+            if item["role"] != "FAMILY_TOTAL"
+            and item.get("family_total_contribution") != "NON_ADDITIVE_NESTED_DETAIL"
+        ] + source_only
         equations = []
         for axis_role in ("CURRENT", "COMPARATIVE"):
             total_value = next(
@@ -633,11 +671,40 @@ def build_customer_collateral_8bank_codex_verified_mapping_v1(
                     "visible_value": total_value,
                 }
             )
-        period_status = (
-            "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
-            if reviewed["source_period"] == "2026-03-31"
-            else "VERIFIED_SOURCE_PERIOD_Q2_2026"
-        )
+        by_role = {item["role"]: item for item in mappings}
+        for child in mappings:
+            parent_role = child.get("equality_parent_role")
+            if parent_role is None:
+                continue
+            parent = by_role.get(parent_role)
+            if parent is None:
+                raise _error("customer-collateral nested equality parent is missing")
+            for axis_role in ("CURRENT", "COMPARATIVE"):
+                child_value = next(
+                    item["normalized_value"]
+                    for item in child["values"]
+                    if item["axis_role"] == axis_role
+                )
+                parent_value = next(
+                    item["normalized_value"]
+                    for item in parent["values"]
+                    if item["axis_role"] == axis_role
+                )
+                if child_value != parent_value:
+                    raise _error("customer-collateral nested detail does not equal its parent")
+                equations.append(
+                    {
+                        "computed_value": child_value,
+                        "name": "VISIBLE_NESTED_DETAIL_EQUALS_VISIBLE_PARENT",
+                        "period_axis": axis_role,
+                        "role": child["role"],
+                        "status": "VERIFIED_EXACT",
+                        "visible_value": parent_value,
+                    }
+                )
+        period_status = SOURCE_PERIOD_STATUS_BY_PERIOD.get(reviewed["source_period"])
+        if period_status is None:
+            raise _error("reviewed customer-collateral source period is unsupported")
         trials.append(
             {
                 **base,
@@ -698,16 +765,16 @@ def build_customer_collateral_8bank_codex_verified_mapping_v1(
         },
         "metrics": _metrics(trials),
         "schema_family": {
-            "family_end_display_order": 864,
+            "family_end_display_order": FAMILY_END_DISPLAY_ORDER,
             "family_root": _schema_binding(schema_by_id.get(1280), 1280),
             "mapped_report_norm_ids": mapped_union,
             "section_root": _schema_binding(schema_by_id.get(1259), 1259),
         },
-        "state": "CUSTOMER_COLLATERAL_8BANK_CODEX_VERIFICATION_COMPLETE",
+        "state": RESULT_STATE,
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "e0096:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": RESULT_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 
@@ -731,10 +798,31 @@ def _live_inputs() -> dict[str, Any]:
             item is None
             or item.canonical_name != name
             or item.parent_id != parent
-            or item.display_order != display_order
+            or (not ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT and item.display_order != display_order)
             or item.statement_type != "TM"
         ):
             raise _error(f"customer-collateral live schema drifted: {report_norm_id}")
+    if ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT:
+        persisted_result, _ = _stable_json(RESULT_PATH)
+        persisted_result = _validate_result(persisted_result)
+        authority = canonical_clone_v1(persisted_result["input_refs"]["schema_authority"])
+        if ALLOW_HISTORICAL_STRUCTURE_SCAN_SNAPSHOT:
+            for code in EXPECTED_DOCUMENT_ORDER:
+                scan_trial = other._document(scan["trials"], code, "current structure scan")
+                persisted_trial = other._document(
+                    persisted_result["trials"], code, "persisted historical result"
+                )
+                matcher = scan_trial["matcher_result"]
+                expected_span = persisted_trial["page_span"]
+                actual_span = matcher["regions"][0]["page_span"] if matcher["regions"] else None
+                if not same_typed_json_v1(
+                    matcher["uniqueness"], persisted_trial["whole_document_uniqueness"]
+                ) or not same_typed_json_v1(actual_span, expected_span):
+                    raise _error("historical customer-collateral structural disposition drifted")
+                if persisted_trial["structure_graph_id"] != (
+                    _HISTORICAL_STRUCTURE_GRAPH_ID_BY_CODE.get(code)
+                ):
+                    raise _error("historical customer-collateral graph identity drifted")
     return {
         "crop_manifest": crop_manifest,
         "crop_manifest_sha256": crop_sha,

@@ -130,33 +130,47 @@ def _role(text: str) -> str | None:
 
 
 def _axis_role(text: str) -> str | None:
-    value = text.strip()
+    value = _strip(text)
     if "trieu dong" in value or "trieu vnd" in value:
         return "UNIT_AXIS"
+    if value in {"so cuoi nam", "so cuoi ky"}:
+        return "CURRENT_AXIS"
+    if value in {"so dau nam", "so dau ky"}:
+        return "COMPARATIVE_AXIS"
     return None
 
 
 def _region(page: Mapping[str, Any], owner: Mapping[str, Any]) -> dict[str, Any]:
     support = _support()
+    owner_position = next(
+        index
+        for index, line in enumerate(page["lines"])
+        if line["source_line_index"] == owner["source_line_index"]
+    )
+    # Period/unit headers commonly precede the customer sub-parent, while legal
+    # boilerplate at the top of the page may contain unrelated years.  Keep the
+    # nearest header neighbourhood and everything after the owner, rather than
+    # allowing an arbitrary year elsewhere on the page to poison the table axis.
+    region_lines = page["lines"][max(0, owner_position - 8) :]
     roles: list[str] = []
     axes: list[str] = []
     events = [support._line_ref(owner, "CUSTOMER_OWNER")]
     numeric_count = 0
-    for index, line in enumerate(page["lines"]):
+    for index, line in enumerate(region_lines):
         text = line["normalized_text"]
         role = _role(text)
         if role is not None:
             roles.append(role)
             events.append(support._line_ref(line, role))
         axis = _axis_role(text)
-        if axis is None and index + 1 < len(page["lines"]):
-            axis = _axis_role(f"{text} {page['lines'][index + 1]['normalized_text']}")
+        if axis is None and index + 1 < len(region_lines):
+            axis = _axis_role(f"{text} {region_lines[index + 1]['normalized_text']}")
         if axis is not None:
             axes.append(axis)
             events.append(support._line_ref(line, axis))
         numeric_count += support._NUMBER.fullmatch(text) is not None
-    line_by_index = {line["source_line_index"]: line for line in page["lines"]}
-    year_axis, _year_axis_mode = extract_reporting_year_axis_v1(page["lines"])
+    line_by_index = {line["source_line_index"]: line for line in region_lines}
+    year_axis, _year_axis_mode = extract_reporting_year_axis_v1(region_lines)
     for item in year_axis:
         axis = "CURRENT_AXIS" if item["role"] == "CURRENT_PERIOD" else "COMPARATIVE_AXIS"
         if axis not in axes:
@@ -181,11 +195,15 @@ def _region(page: Mapping[str, Any], owner: Mapping[str, Any]) -> dict[str, Any]
         and required_axes.issubset(observed_axes)
         and numeric_count >= 8
     )
-    anchors = ["CUSTOMER_OWNER", "REAL_ESTATE", *sorted(mapped_children), *sorted(required_axes)]
+    anchors = list(
+        dict.fromkeys(
+            ["CUSTOMER_OWNER", "REAL_ESTATE", *sorted(mapped_children), *sorted(required_axes)]
+        )
+    )
     return {
         "anchor_roles": anchors,
         "complete": complete,
-        "end_global_ordinal": page["lines"][-1]["global_ordinal"],
+        "end_global_ordinal": region_lines[-1]["global_ordinal"],
         "events": events,
         "layout": {
             "observed_axis_roles": observed_axes,
@@ -196,7 +214,7 @@ def _region(page: Mapping[str, Any], owner: Mapping[str, Any]) -> dict[str, Any]
         "owner": support._line_ref(owner, "CUSTOMER_OWNER"),
         "page_span": [page["page_sequence"], page["page_sequence"]],
         "pair_anchor_combinations": [list(pair) for pair in itertools.combinations(anchors, 2)],
-        "start_global_ordinal": page["lines"][0]["global_ordinal"],
+        "start_global_ordinal": region_lines[0]["global_ordinal"],
     }
 
 
