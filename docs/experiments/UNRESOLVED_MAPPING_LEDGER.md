@@ -22,6 +22,23 @@ Ledger total: **309 entries**.  Current open queue: **104**.  Closed history:
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
+## CLOSED — annual-2025 `Lãi/lỗ thuần từ mua bán chứng khoán đầu tư`
+
+E-0140 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025 và tìm đúng
+một vùng family tại ACB p68, MBB p73, VPB p70, HDB p50, VCB p59, CTG p59,
+BID p56 và VIB p51. Exact replay xác minh 32 mapping/64 ô logic từ 70 thành
+phần nguồn cùng 16 phương trình; không có dòng OPEN, family absence hoặc
+disagreement số VietOCR.
+
+Một graph chung nhận net có/không có nhãn, owner con dưới umbrella trading +
+investment và nhánh dự phòng tùy chọn. VPB/VIB in nhiều hàng dự phòng AFS/HTM;
+mỗi thành phần được pixel/source-challenge trước khi cộng đúng một lần vào 1196.
+VCB không in dự phòng nên đóng `thu + chi = net`. Năm dấu `-` tại ACB/VPB/VIB
+được khóa bằng crop trước khi chuẩn hóa 0. Không có bank/page rule mới.
+
+Machine-readable result:
+`docs/experiments/E-0140-annual-2025-investment-securities-activity-8bank-codex-verified-mapping-v1.json`.
+
 ## CLOSED — annual-2025 `Lãi/lỗ thuần từ mua bán chứng khoán kinh doanh`
 
 E-0139 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025 và tìm đúng

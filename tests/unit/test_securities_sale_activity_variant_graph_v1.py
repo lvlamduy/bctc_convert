@@ -161,6 +161,44 @@ def test_inner_owner_inherits_same_page_axes_and_admits_long_term_provision() ->
     ]
 
 
+def test_combined_umbrella_does_not_swallow_nested_trading_and_investment_families() -> None:
+    texts = [
+        "Lãi thuần từ mua bán chứng khoán kinh doanh và chứng khoán đầu tư",
+        "Năm 2025",
+        "Năm 2024",
+        "Triệu đồng",
+        "Lãi thuần từ mua bán chứng khoán kinh doanh",
+        "Thu nhập từ mua bán chứng khoán kinh doanh",
+        "100",
+        "90",
+        "Chi phí mua bán chứng khoán kinh doanh",
+        "(20)",
+        "(10)",
+        "80",
+        "80",
+        "Lãi thuần từ mua bán chứng khoán đầu tư",
+        "Thu nhập từ mua bán chứng khoán đầu tư",
+        "70",
+        "60",
+        "Chi phí mua bán chứng khoán đầu tư",
+        "(30)",
+        "(20)",
+        "40",
+        "40",
+        "Thu nhập từ góp vốn, mua cổ phần",
+    ]
+    trading = matcher.build_securities_sale_activity_variant_graph_document_v1(
+        [_page(texts)], family_variant="TRADING_SECURITIES"
+    )
+    investment = matcher.build_securities_sale_activity_variant_graph_document_v1(
+        [_page(texts)], family_variant="INVESTMENT_SECURITIES"
+    )
+    assert trading["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert investment["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert trading["regions"][0]["owner"]["source_line_index"] == 4
+    assert investment["regions"][0]["owner"]["source_line_index"] == 13
+
+
 def test_specific_provision_role_wins_over_generic_expense_wording() -> None:
     texts = [
         "Lãi/(lỗ) thuần từ mua bán chứng khoán đầu tư",

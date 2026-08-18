@@ -143,6 +143,8 @@ def _is_next_family(text: str, family_variant: str) -> bool:
         return False
     if family_variant == "TRADING_SECURITIES" and _is_owner(value, "INVESTMENT_SECURITIES"):
         return True
+    if family_variant == "INVESTMENT_SECURITIES" and _is_owner(value, "TRADING_SECURITIES"):
+        return True
     return any(
         phrase in value
         for phrase in (

@@ -834,21 +834,28 @@ Kết quả annual-2025:
 
 ## 34. Lãi/lỗ thuần từ mua bán chứng khoán đầu tư
 
-- **Đã map/xác minh:** ACB p25, MBB p47, VPB p63, HDB p35, CTG p46,
-  BID p29 và VIB p46. Whole-PDF scan tìm đúng một vùng chi tiết tại mỗi bank;
-  28 mapping/56 ô số và 14 phương trình `thu nhập + chi phí + các nhánh dự
-  phòng nhìn thấy = lãi/lỗ thuần` đều đóng đúng cho hai kỳ.
-- **Biến thể đã đóng:** MBB dùng owner con dưới tiêu đề chung chứng khoán kinh
-  doanh/đầu tư, kế thừa trục kỳ/đơn vị của cùng bảng và có thêm nhánh dự phòng
-  giảm giá góp vốn, đầu tư dài hạn 6028; VIB không in dòng dự phòng; CTG/BID
-  gọi dòng dự phòng là `Chi phí dự phòng`; BID kế thừa đơn vị `Triệu VND` từ
-  đầu section ở trang trước. Ba dấu `-` của ACB và một dấu `-` của MBB được
-  khóa trực tiếp bằng pixel rồi chuẩn hóa thành 0. VPB giữ đúng nguồn Q1/2026.
-- **Không có cụm thuyết minh chi tiết trong báo cáo:** VCB. VCB chỉ có số tổng
-  chứng khoán đầu tư trong báo cáo bộ phận tại p42–43, không có các hàng thu
-  nhập/chi phí/dự phòng nên được giữ làm đối chứng âm, không relabel thành note.
-- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong bảy vùng chi tiết.
-  ReportNormId 1197 `Khác` không xuất hiện trong các vùng đã bind.
+- **Đã map/xác minh trên BCTC hợp nhất kiểm toán annual-2025:** ACB p68,
+  MBB p73, VPB p70, HDB p50, VCB p59, CTG p59, BID p56 và VIB p51. Whole-PDF
+  scan đủ 695 trang tìm đúng một vùng ở cả 8 filing; 32 mapping/64 ô logic từ
+  70 thành phần nguồn và 16 phương trình hai kỳ đều đóng chính xác.
+- **Biến thể annual-2025 đã đóng:** VCB không in dòng dự phòng nên dùng
+  `thu nhập + chi phí = lãi thuần`. MBB in thêm dự phòng góp vốn/đầu tư dài hạn
+  6028. VPB tách dự phòng AFS và HTM; VIB tách AFS, HTM chung và HTM cụ thể:
+  từng ô nguồn được xác minh rồi mới cộng đúng một lần vào 1196. BID đặt owner
+  đầu tư dưới umbrella chứng khoán kinh doanh + đầu tư; ranh giới family chung
+  loại ứng viên ô dù và giữ đúng owner con, không dùng bank/trang làm rule.
+- **Dấu gạch và số:** 5 dấu `-` nhìn thấy ở ACB/VPB/VIB được crop-authenticate
+  rồi chuẩn hóa 0. Không có disagreement số VietOCR; ReportNormId 1197 `Khác`
+  không xuất hiện.
+- **Không có trong báo cáo annual-2025:** Không bank nào; cả 8 filing đều có
+  graph chi tiết duy nhất.
+- **Còn thiếu annual-2025:** Không còn khoản mục nguồn chưa map.
+- **Lượt hiện hành trước:** ACB p25, MBB p47, VPB p63, HDB p35, CTG p46,
+  BID p29 và VIB p46 giữ nguyên 28 mapping/56 ô/14 phương trình; VCB là bounded
+  absence và VPB giữ đúng nguồn Q1/2026.
+
+Kết quả annual-2025:
+`docs/experiments/E-0140-annual-2025-investment-securities-activity-8bank-codex-verified-mapping-v1.json`.
 
 ## 35. Lãi thuần từ chứng khoán kinh doanh, chứng khoán đầu tư
 
@@ -1200,7 +1207,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Thu nhập/chi phí/lãi thuần hoạt động dịch vụ | ✓ p67 | ✓ p72 | ✓ p69 | ✓ p50 | ✓ p58 | ✓\* p58 | ✓ p55 | ✓ p50 | Annual-2025: 2 hàng CTG OPEN, 101 mapping/202 ô/48 phương trình. Lượt hiện hành trước: 43 mapping tại MBB/VPB/VIB; VPB là Q1 |
 | Lãi/lỗ thuần kinh doanh vàng và ngoại hối | ✓ p68 | ✓ p73 | ✓ p69 | ✓ p50 | ✓ p59 | ✓ p58 | ✓ p55 | ✓ p51 | Annual-2025: 0 dòng OPEN, 69 mapping/138 ô logic/152 thành phần, 48 phương trình, 5 DASH→0. Lượt hiện hành trước: 23 mapping tại MBB/VPB/VIB; VPB là Q1 |
 | Lãi/lỗ thuần mua bán chứng khoán kinh doanh | ✓ p68 | ✓ p73 | ✓ p70 | ✓ p50 | ✓ p59 | ✓ p58 | ✓ p56 | — | Annual-2025: 0 dòng OPEN, 27 mapping/54 ô/14 phương trình; HDB không in dự phòng; VIB chỉ có family đầu tư. Lượt hiện hành trước: 28 mapping, VPB là Q1 |
-| Lãi/lỗ thuần mua bán chứng khoán đầu tư | ✓ p25 | ✓ p47 | ✓\* p63 | ✓ p35 | — | ✓ p46 | ✓ p29 | ✓ p46 | 0 dòng; 28 mapping, 56 ô số, 14 phương trình; ACB/MBB 4 DASH→0; VCB không có note chi tiết; VPB là nguồn Q1 |
+| Lãi/lỗ thuần mua bán chứng khoán đầu tư | ✓ p68 | ✓ p73 | ✓ p70 | ✓ p50 | ✓ p59 | ✓ p59 | ✓ p56 | ✓ p51 | Annual-2025: 0 dòng OPEN, 32 mapping/64 ô logic từ 70 thành phần/16 phương trình, 5 DASH→0. Lượt hiện hành trước: 28 mapping; VCB bounded absence, VPB là Q1 |
 | Lãi thuần CK kinh doanh + CK đầu tư | — | ✓ p47 | — | — | — | — | — | — | 0 dòng; 1 mapping, 2 ô số, 2 phương trình; 7 PDF không in dòng tổng hợp |
 | Thu nhập góp vốn/mua cổ phần/cổ tức | ✓ p25 | ✓ p48 | ✓\* p64 | ✓ p35 | ✓ p39 | ✓ p46 | ✓ p29 | — | 0 dòng; 27 mapping, 54 ô số, 16 phương trình; 5 DASH→0; VIB không có note chi tiết; VPB là nguồn Q1 |
 | Chi phí quản lý chung/Chi phí hoạt động | ✓ p25 | ✓ p48 | ✓\* p65 | ✓ p35 | ✓ p40 | ✓\* p47 | ✓ p30 | ✓ p46 | 4 dòng OPEN; 99 mapping, 198 ô số, 30 phương trình; VCB 1 lỗi số VietOCR bị nguồn/pixel bác bỏ; VPB là nguồn Q1 |
