@@ -906,24 +906,45 @@ Kết quả annual-2025:
 
 ## 37. Chi phí quản lý chung (Chi phí hoạt động)
 
-- **Đã map/xác minh:** ACB p25, MBB p48, VPB p65, HDB p35, VCB p40,
-  CTG p47, BID p30 và VIB p46. Whole-PDF scan tìm đúng một note chi tiết trong
-  từng PDF; 99 mapping/198 ô số và 30 phương trình tổng, nhân viên, tài sản hoặc
-  quản lý công vụ đóng chính xác.
-- **Biến thể đã đóng:** các hàng con nhân viên/tài sản/quản lý có thể có hoặc
-  không và đổi thứ tự; MBB/CTG/BID có nhãn xuống dòng; BID kế thừa đơn vị
-  `Triệu VND` ở cuối section; VPB là kỳ Q1/2026. VietOCR đọc thiếu một chữ số ở
-  VCB (`1.771.726`); pixel và trục số nguồn cùng xác minh `1.777.726` nên số
-  VietOCR bị bác bỏ.
-- **Không có:** Không có bank nào; cả tám PDF đều có một vùng family duy nhất.
-- **Còn thiếu:**
+- **BCTC hợp nhất kiểm toán annual-2025 đã map/xác minh:** ACB p70, MBB p74,
+  VPB p72, HDB p51, VCB p61, CTG p60, BID p57 và VIB p52. Whole-PDF scan quét
+  đủ 695 trang và tìm đúng một vùng family ở mỗi filing. Pixel, trục số nguồn,
+  live schema và 42 phương trình xác minh 103 mapping/206 ô số.
+- **Biến thể annual-2025 đã đóng:** parent tổng có thể đứng ở cuối; các nhánh
+  nhân viên, tài sản và quản lý có tập con/thứ tự khác nhau; nhãn có thể xuống
+  dòng hoặc có `Trong đó`; dòng dự phòng có thể là aggregate, hai component
+  chi tiết hoặc chỉ một nhãn chung. Dấu `-` hiện kỳ của VCB được bind rồi chuẩn
+  hóa 0. Bốn lỗi số VietOCR tại HDB/CTG/VIB bị pixel, source axis và phương
+  trình bác bỏ, không sửa ngầm số nguồn.
+- **Không có trong annual-2025:** Không có bank nào; cả tám filing đều có đúng
+  một vùng family.
+- **Còn thiếu annual-2025:** 14 hàng nguồn có ý nghĩa riêng nhưng schema
+  1205–1220 chưa có leaf tương ứng; các hàng vẫn nằm trong phương trình nguồn
+  và không bị ép sang leaf gần tên.
 
 | Bank | Trang | Khoản mục nguồn | Lý do chưa map |
 | --- | ---: | --- | --- |
-| VPB | 65 | Chi thuê tài sản | Schema 1205–1220 chưa có leaf riêng dưới `Chi về tài sản`. |
-| VPB | 65 | Chi phí công nghệ thông tin | Chưa có leaf chi phí CNTT tương đương. |
-| VPB | 65 | Chi về thuế GTGT đầu vào không được khấu trừ | Chưa có leaf chi phí VAT đầu vào không khấu trừ tương đương. |
-| CTG | 47 | Chi khác về TSCĐ | Chưa có leaf riêng dưới `Chi về tài sản`; số vẫn tham gia phương trình nguồn. |
+| ACB | 70 | Chi khác (dưới `Chi về tài sản`) | Không có leaf chi phí tài sản khác; không đồng nhất với chi phí quản lý khác. |
+| ACB | 70 | Hoàn nhập chi phí dự phòng (tổng) | Aggregate của hai component đã map; giữ source-only để kiểm tra và tránh double count. |
+| MBB | 74 | Chi khác về tài sản | Không có leaf chi phí tài sản khác. |
+| VPB | 72 | Chi thuê tài sản | Không có leaf chi phí thuê tài sản dưới `Chi về tài sản`. |
+| VPB | 72 | Chi phí công nghệ thông tin | Không có leaf chi phí CNTT. |
+| VPB | 72 | Chi về thuế GTGT đầu vào không được khấu trừ | Không có leaf VAT đầu vào không khấu trừ. |
+| HDB | 51 | Chi thuê tài sản | Không có leaf chi phí thuê tài sản. |
+| HDB | 51 | Chi về bảo dưỡng và sửa chữa tài sản | Không có leaf bảo dưỡng/sửa chữa tài sản. |
+| HDB | 51 | Chi khác về tài sản | Không có leaf chi phí tài sản khác. |
+| HDB | 51 | Chi phí quảng cáo, tiếp thị, khuyến mại | Không có leaf quảng cáo/tiếp thị/khuyến mại. |
+| HDB | 51 | Chi phí hội nghị, lễ tân, khánh tiết | Không có leaf hội nghị/lễ tân/khánh tiết. |
+| HDB | 51 | Chi phí điện, nước, vệ sinh cơ quan | Không có leaf tiện ích/vệ sinh cơ quan. |
+| CTG | 60 | Chi khác (dưới `Chi về tài sản`) | Không có leaf chi phí tài sản khác. |
+| CTG | 60 | Chi phí dự phòng | Nhãn nguồn chung không đủ căn cứ thu hẹp vào 1218 hoặc 1220. |
+
+Kết quả annual-2025:
+`docs/experiments/E-0143-annual-2025-operating-expense-8bank-codex-verified-mapping-v1.json`.
+
+- **Lượt hiện hành trước:** ACB p25, MBB p48, VPB p65, HDB p35, VCB p40,
+  CTG p47, BID p30 và VIB p46 giữ nguyên 99 mapping/198 ô/30 phương trình và
+  bốn hàng OPEN; VPB giữ đúng nguồn Q1/2026.
 
 ## 38. Chi phí dự phòng rủi ro tín dụng
 
@@ -1225,7 +1246,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Lãi/lỗ thuần mua bán chứng khoán đầu tư | ✓ p68 | ✓ p73 | ✓ p70 | ✓ p50 | ✓ p59 | ✓ p59 | ✓ p56 | ✓ p51 | Annual-2025: 0 dòng OPEN, 32 mapping/64 ô logic từ 70 thành phần/16 phương trình, 5 DASH→0. Lượt hiện hành trước: 28 mapping; VCB bounded absence, VPB là Q1 |
 | Lãi thuần CK kinh doanh + CK đầu tư | — | — | — | — | — | — | — | — | Annual-2025: 8 bounded absences, BID p56 là tiêu đề đối chứng âm, 0 dòng OPEN. Lượt hiện hành trước: MBB p47 có 1 mapping/2 ô/2 phương trình |
 | Thu nhập góp vốn/mua cổ phần/cổ tức | ✓ p69 | ✓ p74 | ✓ p71 | ✓ p51 | ✓ p60 | ✓\* p59 | ✓ p56 | — | Annual-2025: 1 dòng CTG OPEN, 28 mapping/56 ô/20 phương trình, 4 DASH→0; VIB không có note chi tiết. Lượt hiện hành trước: 27 mapping; VPB là Q1 |
-| Chi phí quản lý chung/Chi phí hoạt động | ✓ p25 | ✓ p48 | ✓\* p65 | ✓ p35 | ✓ p40 | ✓\* p47 | ✓ p30 | ✓ p46 | 4 dòng OPEN; 99 mapping, 198 ô số, 30 phương trình; VCB 1 lỗi số VietOCR bị nguồn/pixel bác bỏ; VPB là nguồn Q1 |
+| Chi phí quản lý chung/Chi phí hoạt động | ✓\* p70 | ✓\* p74 | ✓\* p72 | ✓\* p51 | ✓ p61 | ✓\* p60 | ✓ p57 | ✓ p52 | Annual-2025: 14 dòng OPEN, 103 mapping/206 ô/42 phương trình, 4 lỗi số VietOCR bị nguồn/pixel/accounting bác bỏ. Lượt hiện hành trước: 4 OPEN/99 mapping; VPB là Q1 |
 | Chi phí dự phòng rủi ro tín dụng | — | ✓ p49 | ✓ p66 | — | — | — | — | ✓ p47 | 0 dòng OPEN; 17 source-row mappings, 8 phương trình; CRPE-001/002 → 1228; 5 bank không có note chi tiết; VPB là nguồn Q1 |
 | Thu nhập/chi phí/lãi thuần hoạt động khác | — | ✓ p47 | ✓ p64 | — | — | — | — | ✓ p46 | 0 dòng OPEN; OACT-001 gộp vào 1239, 14 phương trình; 5 bank không có note chi tiết; VPB là nguồn Q1 |
 | Chi phí thuế thu nhập doanh nghiệp | — | ✓ p50 | ✓\* p59 | — | — | — | — | ✓\* p48 | 1 dòng OPEN; 28 mapping, 56 ô số, 20 phương trình; 2 DASH→0, 1 ô trống giữ nguyên; 5 bank không có note chi tiết; VPB là nguồn Q1 |

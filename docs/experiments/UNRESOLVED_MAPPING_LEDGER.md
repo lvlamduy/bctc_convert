@@ -17,10 +17,40 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **319 entries**.  Current open queue: **105**.  Closed history:
+Ledger total: **333 entries**.  Current open queue: **119**.  Closed history:
 **129** row/graph resolutions and **85** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
+
+## OPEN — annual-2025 `Chi phí quản lý chung (Chi phí hoạt động)`
+
+E-0143 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025 và tìm đúng
+một vùng family tại ACB p70, MBB p74, VPB p72, HDB p51, VCB p61, CTG p60,
+BID p57 và VIB p52. Pixel, trục số nguồn, schema hiện hành và 42 phương trình
+xác minh 103 mapping/206 ô số. Bốn disagreement số của VietOCR được giữ nguyên
+trong evidence và bị source/pixel/accounting bác bỏ: HDB `11.960.755` →
+`11.980.755`, CTG `7.127.165` → `1.127.165`, CTG `75.588` → `15.588`, VIB
+`804 696` → `804.696`. Dấu `-` hiện kỳ VCB được bind trước khi chuẩn hóa 0.
+
+| ID | Bank | Trang | Khoản mục nguồn | Giá trị 2025 / 2024 | Lý do chưa map |
+| --- | --- | ---: | --- | --- | --- |
+| OE-A2025-001 | ACB | 70 | Chi khác (dưới `Chi về tài sản`) | `1.222.510` / `1.212.164` | Schema không có leaf chi phí tài sản khác; không thu hẹp vào chi phí quản lý khác. |
+| OE-A2025-002 | ACB | 70 | Hoàn nhập chi phí dự phòng (tổng) | `(3.362)` / `(16.637)` | Aggregate của hai component 1218/1220 đã map; giữ source-only để kiểm tra và tránh double count. |
+| OE-A2025-003 | MBB | 74 | Chi khác về tài sản | `1.870.772` / `1.532.145` | Schema không có leaf chi phí tài sản khác. |
+| OE-A2025-004 | VPB | 72 | Chi thuê tài sản | `1.009.205` / `924.119` | Schema không có leaf chi phí thuê tài sản dưới 1212. |
+| OE-A2025-005 | VPB | 72 | Chi phí công nghệ thông tin | `1.275.072` / `928.944` | Schema không có leaf chi phí CNTT. |
+| OE-A2025-006 | VPB | 72 | Chi về thuế GTGT đầu vào không được khấu trừ | `150.526` / `134.629` | Schema không có leaf VAT đầu vào không khấu trừ. |
+| OE-A2025-007 | HDB | 51 | Chi thuê tài sản | `520.137` / `510.494` | Schema không có leaf chi phí thuê tài sản. |
+| OE-A2025-008 | HDB | 51 | Chi về bảo dưỡng và sửa chữa tài sản | `372.394` / `300.759` | Schema không có leaf bảo dưỡng/sửa chữa tài sản. |
+| OE-A2025-009 | HDB | 51 | Chi khác về tài sản | `134.640` / `155.665` | Schema không có leaf chi phí tài sản khác. |
+| OE-A2025-010 | HDB | 51 | Chi phí quảng cáo, tiếp thị, khuyến mại | `812.322` / `857.690` | Schema không có leaf quảng cáo/tiếp thị/khuyến mại. |
+| OE-A2025-011 | HDB | 51 | Chi phí hội nghị, lễ tân, khánh tiết | `232.505` / `458.607` | Schema không có leaf hội nghị/lễ tân/khánh tiết. |
+| OE-A2025-012 | HDB | 51 | Chi phí điện, nước, vệ sinh cơ quan | `160.138` / `141.194` | Schema không có leaf tiện ích/vệ sinh cơ quan. |
+| OE-A2025-013 | CTG | 60 | Chi khác (dưới `Chi về tài sản`) | `2.016.938` / `1.845.093` | Schema không có leaf chi phí tài sản khác. |
+| OE-A2025-014 | CTG | 60 | Chi phí dự phòng | `161.178` / `427.692` | Nhãn nguồn chung không đủ căn cứ thu hẹp vào 1218 hoặc 1220. |
+
+Machine-readable result:
+`docs/experiments/E-0143-annual-2025-operating-expense-8bank-codex-verified-mapping-v1.json`.
 
 ## OPEN/CLOSED — annual-2025 `Thu nhập từ góp vốn, mua cổ phần và thu nhập cổ tức`
 

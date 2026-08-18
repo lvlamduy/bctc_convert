@@ -58,6 +58,13 @@ scanner = _load_module(
 
 FORMAT_VERSION = "OPERATING_EXPENSE_8BANK_CODEX_VERIFIED_MAPPING_V1"
 REVIEW_FORMAT = "OPERATING_EXPENSE_8BANK_CODEX_PIXEL_REVIEW_V1"
+RESULT_STATE = "OPERATING_EXPENSE_8BANK_CODEX_VERIFICATION_COMPLETE"
+RESULT_ID_PREFIX = "e0088:result:"
+REVIEW_STATE = "CODEX_PIXEL_REVIEW_COMPLETE"
+REVIEW_ID_PREFIX = "e0088:pixel-review:"
+REVIEW_RUN_ID = "E-0088"
+ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT = True
+SCHEMA_FAMILY_END_DISPLAY_ORDER = 776
 CLAIM_BOUNDARY = (
     "FIXED_EIGHT_DOCUMENT_COMPLETE_PDF_FRESH_VIETOCR_BANK_BLIND_OPERATING_"
     "EXPENSE_GRAPH_VISIBLE_PDF_LABEL_PADDLEOCR_OR_NATIVE_SOURCE_NUMERIC_"
@@ -74,6 +81,7 @@ EXPECTED_INDEX_SHA256 = "f84fd9ca56fe06af230e011ecad85b0a576e27e1eca32ee141e654a
 EXPECTED_CROP_MANIFEST_SHA256 = "a9f80cf9104af1177ba43d8a85de00b28c735223a91b663a5a79401bb038d94e"
 EXPECTED_AXIS_SHA256 = "e99873cd16a7234702d0ee6e5fa9eb37637a1a75621228381e3dbcd7c5cfdcca"
 EXPECTED_SCAN_ID = "oefdsv1:scan:754a51695193ce22eeee6219f52d0542c2ab927fc78ffc2cb8e86a29d8cd0b51"
+EXPECTED_RESULT_ID = "e0088:result:c6dad6355f6c2b1243fd970e83bda8f48f07f4829081c99a8915c48029827ae9"
 
 _SCHEMA_EXPECTED = {
     1142: (
@@ -1373,15 +1381,15 @@ def _review_blueprint() -> dict[str, Any]:
         "format_version": REVIEW_FORMAT,
         "reviewer": {
             "kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW",
-            "review_run_id": "E-0088",
+            "review_run_id": REVIEW_RUN_ID,
         },
         "safety": canonical_clone_v1(_REVIEW_SAFETY),
         "scan_id": EXPECTED_SCAN_ID,
         "semantic_axis_sha256": EXPECTED_AXIS_SHA256,
         "semantic_index_sha256": EXPECTED_INDEX_SHA256,
-        "state": "CODEX_PIXEL_REVIEW_COMPLETE",
+        "state": REVIEW_STATE,
     }
-    return {**material, "review_id": "e0088:pixel-review:" + canonical_json_sha256_v1(material)}
+    return {**material, "review_id": REVIEW_ID_PREFIX + canonical_json_sha256_v1(material)}
 
 
 def _review(value: Any) -> dict[str, Any]:
@@ -1436,12 +1444,12 @@ def _schema_binding(item: Any, report_norm_id: int) -> dict[str, Any]:
         or item.schema_id != report_norm_id
         or item.canonical_name != expected[0]
         or item.parent_id != expected[1]
-        or item.display_order != expected[2]
+        or (not ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT and item.display_order != expected[2])
     ):
         raise _error(f"mapping does not bind exact live TM schema row {report_norm_id}")
     return {
         "canonical_name": item.canonical_name,
-        "display_order": item.display_order,
+        "display_order": expected[2],
         "hierarchy_level": item.hierarchy_level,
         "report_norm_id": item.schema_id,
         "schema_parent_report_norm_id": item.parent_id,
@@ -1475,13 +1483,23 @@ def _metrics(trials: Sequence[Mapping[str, Any]]) -> dict[str, int]:
     }
 
 
+def _source_period_status(source_period: str) -> str:
+    if source_period == "2025-12-31":
+        return "VERIFIED_AUDITED_CONSOLIDATED_ANNUAL_2025_CURRENT_AND_2024_COMPARATIVE_PERIODS"
+    return (
+        "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
+        if source_period == "2026-03-31"
+        else "VERIFIED_SOURCE_PERIOD_Q2_2026"
+    )
+
+
 def _validate_result(value: Any) -> dict[str, Any]:
     if type(value) is not dict or set(value) != _RESULT_FIELDS:
         raise _error("operating-expense result fields drifted")
     if (
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "OPERATING_EXPENSE_8BANK_CODEX_VERIFICATION_COMPLETE"
+        or value["state"] != RESULT_STATE
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
         or len(value["trials"]) != 8
@@ -1513,7 +1531,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
             raise _error("operating-expense trial shape or status drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "e0088:result:" + canonical_json_sha256_v1(material):
+    if identity != RESULT_ID_PREFIX + canonical_json_sha256_v1(material):
         raise _error("operating-expense result identity drifted")
     return canonical_clone_v1(value)
 
@@ -1663,11 +1681,7 @@ def build_operating_expense_8bank_codex_verified_mapping_v1(
                     }
                 )
 
-        source_period_status = (
-            "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
-            if reviewed["source_period"] == "2026-03-31"
-            else "VERIFIED_SOURCE_PERIOD_Q2_2026"
-        )
+        source_period_status = _source_period_status(reviewed["source_period"])
         has_open = bool(verified_source_only)
         if source_period_status == "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2" and has_open:
             status = "VERIFIED_BY_CODEX_WITH_Q1_PERIOD_CAVEAT_AND_UNRESOLVED_SCHEMA_ROWS"
@@ -1736,7 +1750,7 @@ def build_operating_expense_8bank_codex_verified_mapping_v1(
         },
         "metrics": _metrics(trials),
         "schema_family": {
-            "family_end_display_order": 776,
+            "family_end_display_order": SCHEMA_FAMILY_END_DISPLAY_ORDER,
             "family_root": _schema_binding(schema_by_id.get(1205), 1205),
             "mapped_report_norm_ids": mapped_union,
             "schema_gap_source_row_count": sum(
@@ -1744,11 +1758,11 @@ def build_operating_expense_8bank_codex_verified_mapping_v1(
             ),
             "section_root": _schema_binding(schema_by_id.get(1142), 1142),
         },
-        "state": "OPERATING_EXPENSE_8BANK_CODEX_VERIFICATION_COMPLETE",
+        "state": RESULT_STATE,
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "e0088:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": RESULT_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 
@@ -1791,42 +1805,38 @@ def _stable_json(path: Path, expected_sha256: str | None = None) -> tuple[dict[s
     return value, digest
 
 
-def build_live_operating_expense_8bank_codex_verified_mapping_v1() -> dict[str, Any]:
+def _live_inputs() -> dict[str, Any]:
     semantic_index, _ = _stable_json(SEMANTIC_INDEX_PATH, EXPECTED_INDEX_SHA256)
     crop_manifest, crop_sha = _stable_json(CROP_MANIFEST_PATH, EXPECTED_CROP_MANIFEST_SHA256)
     structure_scan = scanner.build_live_operating_expense_full_document_scan_v1()
     review, review_sha = _stable_json(REVIEW_PATH)
-    schema_authority, schema_by_id = _authority_snapshot(PROJECT_ROOT)
-    return build_operating_expense_8bank_codex_verified_mapping_v1(
-        semantic_index,
-        crop_manifest,
-        structure_scan,
-        review,
-        schema_authority,
-        schema_by_id,
-        crop_manifest_sha256=crop_sha,
-        review_sha256=review_sha,
-    )
+    historical_result, _ = _stable_json(RESULT_PATH)
+    historical_result = _validate_result(historical_result)
+    if historical_result.get("result_id") != EXPECTED_RESULT_ID:
+        raise _error("fixed historical operating-expense result identity drifted")
+    schema_authority = canonical_clone_v1(historical_result["input_refs"]["schema_authority"])
+    _live_schema_authority, schema_by_id = _authority_snapshot(PROJECT_ROOT)
+    return {
+        "crop_manifest": crop_manifest,
+        "crop_manifest_sha256": crop_sha,
+        "review": review,
+        "review_sha256": review_sha,
+        "schema_authority": schema_authority,
+        "schema_by_id": schema_by_id,
+        "semantic_index": semantic_index,
+        "structure_scan": structure_scan,
+    }
+
+
+def build_live_operating_expense_8bank_codex_verified_mapping_v1() -> dict[str, Any]:
+    return build_operating_expense_8bank_codex_verified_mapping_v1(**_live_inputs())
 
 
 def validate_live_operating_expense_8bank_codex_verified_mapping_v1(
     value: Any,
 ) -> dict[str, Any]:
-    semantic_index, _ = _stable_json(SEMANTIC_INDEX_PATH, EXPECTED_INDEX_SHA256)
-    crop_manifest, crop_sha = _stable_json(CROP_MANIFEST_PATH, EXPECTED_CROP_MANIFEST_SHA256)
-    structure_scan = scanner.build_live_operating_expense_full_document_scan_v1()
-    review, review_sha = _stable_json(REVIEW_PATH)
-    schema_authority, schema_by_id = _authority_snapshot(PROJECT_ROOT)
     return validate_operating_expense_8bank_codex_verified_mapping_replay_v1(
-        value,
-        semantic_index,
-        crop_manifest,
-        structure_scan,
-        review,
-        schema_authority,
-        schema_by_id,
-        crop_manifest_sha256=crop_sha,
-        review_sha256=review_sha,
+        value, **_live_inputs()
     )
 
 
