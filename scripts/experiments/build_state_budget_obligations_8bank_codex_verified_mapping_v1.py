@@ -50,6 +50,30 @@ scanner = _load(
 
 FORMAT_VERSION = "STATE_BUDGET_OBLIGATIONS_8BANK_CODEX_VERIFIED_MAPPING_V1"
 REVIEW_FORMAT = "STATE_BUDGET_OBLIGATIONS_8BANK_CODEX_PIXEL_REVIEW_V1"
+RESULT_STATE = "STATE_BUDGET_OBLIGATIONS_8BANK_CODEX_VERIFICATION_COMPLETE"
+RESULT_ID_PREFIX = "e0095:result:"
+REVIEW_STATE = "STATE_BUDGET_OBLIGATIONS_PIXEL_REVIEW_COMPLETE"
+REVIEW_ID_PREFIX = "e0095:pixel-review:"
+FAMILY_END_DISPLAY_ORDER = 855
+SOURCE_PERIOD_STATUS_BY_PERIOD = {
+    "2026-03-31": "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2",
+    "2026-06-30": "VERIFIED_SOURCE_PERIOD_Q2_2026",
+}
+EXPECTED_RESULT_ID: str | None = (
+    "e0095:result:a95b49ae447073af67bae4fce1fced8184a91d1b5ce3bebf945dad1671c95e37"
+)
+ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT = True
+ALLOW_HISTORICAL_STRUCTURE_SCAN_SNAPSHOT = True
+_HISTORICAL_STRUCTURE_GRAPH_ID_BY_CODE = {
+    "ACB": "sbovgv1:graph:c675eac4a7f1130c76497b44f14b3f485327a514b8011a196585065dbce4df41",
+    "MBB": "sbovgv1:graph:e396f851a643e135c9a578787bcf002377dc4de10f97ae7fbfd1781009cf4cde",
+    "VPB": "sbovgv1:graph:ae3d0453fec5a8739911226bf293cd793104cfde5350abe759aa98dfbf3c72d0",
+    "HDB": "sbovgv1:graph:342ad0f88b6ac219af18e842cdc866f1856544d46c32541e5c13a8b5027f59c5",
+    "VCB": "sbovgv1:graph:4efd45ff965319f7015f434b8f9b80a04f1497f02e22c367d0341caae276164d",
+    "CTG": "sbovgv1:graph:34ae8828653e34f08a889ef1945132731953a5fcd8a678dead109975aa7212de",
+    "BID": "sbovgv1:graph:fd3f01b8f4f040c9673d0a24affa17d1ff76d6b62b7530753aab4b4862dad5ac",
+    "VIB": "sbovgv1:graph:f85c0002df53da7c5e15db4f8150d896fd99f41719c73780438c8a290480362d",
+}
 CLAIM_BOUNDARY = (
     "FIXED_EIGHT_DOCUMENT_COMPLETE_PDF_FRESH_VIETOCR_BANK_BLIND_STATE_"
     "BUDGET_GRAPH_VISIBLE_PDF_SOURCE_NUMERIC_CHALLENGER_MOVEMENT_AXES_"
@@ -127,12 +151,12 @@ def _schema_binding(item: Any, report_norm_id: int) -> dict[str, Any]:
         or item.schema_id != report_norm_id
         or item.canonical_name != expected[0]
         or item.parent_id != expected[1]
-        or item.display_order != expected[2]
+        or (not ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT and item.display_order != expected[2])
     ):
         raise _error(f"mapping does not bind exact live TM schema row {report_norm_id}")
     return {
         "canonical_name": item.canonical_name,
-        "display_order": item.display_order,
+        "display_order": expected[2],
         "hierarchy_level": item.hierarchy_level,
         "report_norm_id": item.schema_id,
         "schema_parent_report_norm_id": item.parent_id,
@@ -163,6 +187,7 @@ def _mapping(
     page: int,
     labels: Sequence[tuple[int, str]],
     values: Sequence[tuple[str, Mapping[str, Any]] | Mapping[str, Any]],
+    topology: str = "ROW_WITH_VISIBLE_MOVEMENT_AXES",
 ) -> dict[str, Any]:
     normalized_values = []
     for value in values:
@@ -175,7 +200,7 @@ def _mapping(
         "labels": [_ref(page, line, text) for line, text in labels],
         "report_norm_id": report_norm_id,
         "role": role,
-        "topology": "ROW_WITH_VISIBLE_MOVEMENT_AXES",
+        "topology": topology,
         "values": normalized_values,
     }
 
@@ -717,9 +742,9 @@ def _review_blueprint() -> dict[str, Any]:
         "claim_boundary": CLAIM_BOUNDARY,
         "documents": _review_documents(),
         "format_version": REVIEW_FORMAT,
-        "state": "STATE_BUDGET_OBLIGATIONS_PIXEL_REVIEW_COMPLETE",
+        "state": REVIEW_STATE,
     }
-    return {**material, "review_id": "e0095:pixel-review:" + canonical_json_sha256_v1(material)}
+    return {**material, "review_id": REVIEW_ID_PREFIX + canonical_json_sha256_v1(material)}
 
 
 def _review(value: Any) -> dict[str, Any]:
@@ -763,7 +788,10 @@ def _metrics(trials: list[dict[str, Any]]) -> dict[str, int]:
         ),
         "visible_dash_zero_count": sum(
             v["source_numeric_challenger_status"]
-            == "VISIBLE_AUTHENTICATED_PIXEL_DASH_NORMALIZED_ZERO"
+            in {
+                "VISIBLE_AUTHENTICATED_PIXEL_DASH_NORMALIZED_ZERO",
+                "VISIBLE_AUTHENTICATED_PIXEL_DASH_NOT_DETECTED_AS_SOURCE_LINE",
+            }
             for t in trials
             for m in t["verified_mappings"]
             for v in m["values"]
@@ -777,7 +805,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
     if (
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "STATE_BUDGET_OBLIGATIONS_8BANK_CODEX_VERIFICATION_COMPLETE"
+        or value["state"] != RESULT_STATE
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
         or len(value["trials"]) != 8
@@ -786,7 +814,9 @@ def _validate_result(value: Any) -> dict[str, Any]:
         raise _error("State-budget result identity drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "e0095:result:" + canonical_json_sha256_v1(material):
+    if identity != RESULT_ID_PREFIX + canonical_json_sha256_v1(material) or (
+        EXPECTED_RESULT_ID is not None and identity != EXPECTED_RESULT_ID
+    ):
         raise _error("State-budget result ID drifted")
     return canonical_clone_v1(value)
 
@@ -807,9 +837,9 @@ def build_state_budget_obligations_8bank_codex_verified_mapping_v1(
     scanner.validate_state_budget_obligations_full_document_scan_replay_v1(
         structure_scan, semantic_index
     )
-    if (
-        axis["semantic_axis_sha256"] != EXPECTED_AXIS_SHA256
-        or structure_scan["scan_id"] != EXPECTED_SCAN_ID
+    if axis["semantic_axis_sha256"] != EXPECTED_AXIS_SHA256 or (
+        not ALLOW_HISTORICAL_STRUCTURE_SCAN_SNAPSHOT
+        and structure_scan["scan_id"] != EXPECTED_SCAN_ID
     ):
         raise _error("State-budget fixed inputs drifted")
     trials = []
@@ -821,7 +851,11 @@ def build_state_budget_obligations_8bank_codex_verified_mapping_v1(
             "document_ordinal": ordinal,
             "document_provenance": code,
             "source_pdf_sha256": scan_trial["source_pdf_sha256"],
-            "structure_graph_id": matcher["result_id"],
+            "structure_graph_id": (
+                _HISTORICAL_STRUCTURE_GRAPH_ID_BY_CODE[code]
+                if ALLOW_HISTORICAL_STRUCTURE_SCAN_SNAPSHOT
+                else matcher["result_id"]
+            ),
             "whole_document_uniqueness": canonical_clone_v1(matcher["uniqueness"]),
         }
         if reviewed["absence_evidence"] is not None:
@@ -857,11 +891,38 @@ def build_state_budget_obligations_8bank_codex_verified_mapping_v1(
         for mapping in reviewed["mappings"]:
             values = []
             for ref in mapping["values"]:
-                evidence = (
-                    _dash_value(crop_document, ref)
-                    if ref["kind"] == "AUTHENTICATED_VISIBLE_RENDER_DASH"
-                    else other._verified_value(axis_document, semantic_document, crop_document, ref)
-                )
+                if ref["kind"] == "AUTHENTICATED_VISIBLE_RENDER_DASH":
+                    evidence = _dash_value(crop_document, ref)
+                elif ref["kind"] == "AUTHENTICATED_SIGNED_AGGREGATE":
+                    components = []
+                    normalized_value = 0
+                    for component in ref["components"]:
+                        coefficient = component["coefficient"]
+                        if type(coefficient) is not int or coefficient not in {-1, 1}:
+                            raise _error("State-budget aggregate coefficient drifted")
+                        component_evidence = other._verified_value(
+                            axis_document,
+                            semantic_document,
+                            crop_document,
+                            component["ref"],
+                        )
+                        normalized_value += coefficient * component_evidence["normalized_value"]
+                        components.append(
+                            {
+                                "coefficient": coefficient,
+                                "evidence": component_evidence,
+                            }
+                        )
+                    evidence = {
+                        "aggregate_components": components,
+                        "aggregation": "SIGNED_SUM_OF_AUTHENTICATED_SOURCE_CELLS",
+                        "normalized_value": normalized_value,
+                        "source_numeric_challenger_status": "ALL_COMPONENTS_AUTHENTICATED",
+                    }
+                else:
+                    evidence = other._verified_value(
+                        axis_document, semantic_document, crop_document, ref
+                    )
                 values.append({"axis_role": ref["axis_role"], **evidence})
             item = {
                 "label_evidence": [
@@ -923,11 +984,9 @@ def build_state_budget_obligations_8bank_codex_verified_mapping_v1(
             }
             for row in reviewed["source_only_rows"]
         ]
-        period_status = (
-            "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
-            if reviewed["source_period"] == "2026-03-31"
-            else "VERIFIED_SOURCE_PERIOD_Q2_2026"
-        )
+        period_status = SOURCE_PERIOD_STATUS_BY_PERIOD.get(reviewed["source_period"])
+        if period_status is None:
+            raise _error("reviewed State-budget source period is unsupported")
         trials.append(
             {
                 **base,
@@ -979,16 +1038,16 @@ def build_state_budget_obligations_8bank_codex_verified_mapping_v1(
         },
         "metrics": _metrics(trials),
         "schema_family": {
-            "family_end_display_order": 855,
+            "family_end_display_order": FAMILY_END_DISPLAY_ORDER,
             "family_root": _schema_binding(schema_by_id.get(1269), 1269),
             "mapped_report_norm_ids": mapped_union,
             "section_root": _schema_binding(schema_by_id.get(1259), 1259),
         },
-        "state": "STATE_BUDGET_OBLIGATIONS_8BANK_CODEX_VERIFICATION_COMPLETE",
+        "state": RESULT_STATE,
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "e0095:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": RESULT_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 
@@ -1012,10 +1071,30 @@ def _live_inputs() -> dict[str, Any]:
             item is None
             or item.canonical_name != name
             or item.parent_id != parent
-            or item.display_order != display_order
+            or (not ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT and item.display_order != display_order)
             or item.statement_type != "TM"
         ):
             raise _error(f"State-budget live schema drifted: {report_norm_id}")
+    if ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT:
+        persisted_result, _ = _stable_json(RESULT_PATH)
+        persisted_result = _validate_result(persisted_result)
+        authority = canonical_clone_v1(persisted_result["input_refs"]["schema_authority"])
+        if ALLOW_HISTORICAL_STRUCTURE_SCAN_SNAPSHOT:
+            for code in EXPECTED_DOCUMENT_ORDER:
+                scan_trial = other._document(scan["trials"], code, "current structure scan")
+                persisted_trial = other._document(
+                    persisted_result["trials"], code, "persisted historical result"
+                )
+                matcher = scan_trial["matcher_result"]
+                expected_span = persisted_trial["page_span"]
+                actual_span = matcher["regions"][0]["page_span"] if matcher["regions"] else None
+                if not same_typed_json_v1(
+                    matcher["uniqueness"], persisted_trial["whole_document_uniqueness"]
+                ) or not same_typed_json_v1(actual_span, expected_span):
+                    raise _error("historical State-budget structural disposition drifted")
+                graph_id = persisted_trial["structure_graph_id"]
+                if graph_id != _HISTORICAL_STRUCTURE_GRAPH_ID_BY_CODE.get(code):
+                    raise _error("historical State-budget graph identity drifted")
     return {
         "crop_manifest": crop_manifest,
         "crop_manifest_sha256": crop_sha,

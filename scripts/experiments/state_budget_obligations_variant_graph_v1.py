@@ -101,7 +101,7 @@ def _role(text: str) -> str | None:
         return "PERSONAL_INCOME_TAX"
     if value == "thue nha dat":
         return "HOUSE_LAND_TAX"
-    if value in {"cac loai thue khac", "thue khac"}:
+    if value in {"cac loai thue khac", "thue khac"} or value.startswith("cac loai thue khac "):
         return "OTHER_TAX"
     if "cac khoan phi le phi" in value or "cac khoan phai nop khac" in value:
         return "OTHER_PAYABLE"
@@ -116,13 +116,18 @@ def _role(text: str) -> str | None:
 
 def _axis_role(text: str) -> str | None:
     value = text.strip()
-    if "so du dau" in value or "so dau ky" in value or value == "dau ky":
+    if (
+        "so du dau" in value
+        or "so dau ky" in value
+        or "so dau nam" in value
+        or value in {"dau ky", "dau nam"}
+    ):
         return "OPENING_AXIS"
-    if "so phai nop" in value:
+    if "so phai nop" in value or "phat sinh tang" in value or value == "phai nop":
         return "PAYABLE_AXIS"
-    if "so da nop" in value:
+    if "so da nop" in value or "phat sinh giam" in value:
         return "PAID_AXIS"
-    if "so du cuoi" in value or "so cuoi" in value:
+    if "so du cuoi" in value or "so cuoi" in value or value == "cuoi nam":
         return "CLOSING_AXIS"
     if "tang do hop nhat kinh doanh" in value:
         return "BUSINESS_COMBINATION_INCREASE_AXIS"
@@ -164,7 +169,10 @@ def _region(page: Mapping[str, Any], owner: Mapping[str, Any]) -> dict[str, Any]
         if axis is not None:
             axes.append(axis)
             events.append(support._line_ref(line, axis))
-        if (observed_date := _date_axis(text)) is not None:
+        if (
+            line["global_ordinal"] >= owner["global_ordinal"]
+            and (observed_date := _date_axis(text)) is not None
+        ):
             dated_lines.setdefault(observed_date, line)
         if "so phai nop" in text and axis != "PAYABLE_AXIS":
             axes.append("PAYABLE_AXIS")

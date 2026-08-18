@@ -115,6 +115,48 @@ def test_annual_date_pair_resolves_opening_and_closing_without_fixed_years() -> 
 
 
 @pytest.mark.parametrize(
+    "axes",
+    [
+        ["Số đầu năm", "Phát sinh tăng", "Phát sinh giảm", "Số cuối năm"],
+        ["đầu năm", "Số phải nộp", "Số đã nộp", "cuối năm"],
+    ],
+)
+def test_annual_movement_axis_wording_is_generic(axes: list[str]) -> None:
+    texts = _core()
+    texts[1:5] = axes
+
+    result = matcher.build_state_budget_obligations_variant_graph_document_v1([_page(texts)])
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+
+
+def test_combined_receivable_payable_header_keeps_payable_movement_axis() -> None:
+    texts = _core()
+    texts[1:5] = [
+        "01/01/2025",
+        "Số phải thu/",
+        "phải nộp",
+        "Số đã nộp",
+        "31/12/2025",
+    ]
+
+    result = matcher.build_state_budget_obligations_variant_graph_document_v1([_page(texts)])
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+
+
+def test_wrapped_other_tax_and_fee_label_can_precede_its_values() -> None:
+    texts = _core()
+    other_index = texts.index("Các loại thuế khác")
+    texts[other_index] = "Các loại thuế khác, các khoản phí,"
+    texts.insert(other_index + 5, "lệ phí và phải nộp khác")
+
+    result = matcher.build_state_budget_obligations_variant_graph_document_v1([_page(texts)])
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+
+
+@pytest.mark.parametrize(
     "texts",
     [
         ["Thuế TNDN hiện hành", "100", "Chi phí thuế TNDN", "100"],

@@ -77,6 +77,22 @@ quy đổi 12 tháng sang 1267/1268; OCR không được dùng làm numeric trut
 Machine-readable result:
 `docs/experiments/E-0149-annual-2025-employee-income-8bank-codex-verified-mapping-v1.json`.
 
+## CLOSED — annual-2025 `Tình hình thực hiện nghĩa vụ với ngân sách nhà nước`
+
+E-0150 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025 và tìm đúng
+một vùng family tại ACB p73, MBB p68, VPB p64, HDB p47, VCB p65, CTG p62,
+BID p52 và VIB p52. Pixel, trục số nguồn, schema hiện hành và 35 phương trình
+xác minh 35 mapping/140 ô logic; không có family absence hoặc dòng OPEN.
+
+Các biến thể nhiều block, cột phải trả/ứng trước, nhánh phải thu/phải trả và
+nhãn quấn dòng đều được xử lý bằng graph chung. CTG chỉ net các ô phải thu/phải
+trả sau khi từng thành phần được xác thực. Dấu `-` HDB được bind pixel rồi mới
+chuẩn hóa 0; numeric challenger bác lỗi VietOCR `80.055` và giữ số nguồn
+`60.055`. Không có khoản mục nào cần đưa vào ledger OPEN.
+
+Machine-readable result:
+`docs/experiments/E-0150-annual-2025-state-budget-obligations-8bank-codex-verified-mapping-v1.json`.
+
 ## COMPLETE — annual-2025 `Mua mới và thanh lý các công ty con`
 
 E-0148 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025 và không tìm

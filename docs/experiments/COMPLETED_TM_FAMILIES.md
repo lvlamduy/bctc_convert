@@ -1087,15 +1087,25 @@ Kết quả annual-2025:
 
 ## 44. Tình hình thực hiện nghĩa vụ với ngân sách nhà nước
 
-- **Đã map/xác minh:** ACB p22, MBB p49, VPB p58, HDB p32, CTG p43,
-  BID p26 và VIB p47. Đã map 33 khoản mục/147 ô số vào 1269–1279 và kiểm
-  tra 37 phương trình cuốn chiếu hoặc đối chiếu phải nộp/phải thu. HDB dùng
-  thêm trục tăng do hợp nhất kinh doanh; CTG tách số cuối kỳ thành phải nộp,
-  phải thu và số thuần. VPB là nguồn Q1/2026.
-- **Không có cụm thuyết minh chi tiết trong báo cáo:** VCB.
-- **Còn thiếu:** Không còn. E-0100 đưa `Tiền thuê đất` vào 1279 `Các khoản
-  phải nộp khác`; cả năm ô nguồn đều là dấu gạch và được giữ `DASH` trước khi
-  chuẩn hóa 0.
+- **BCTC hợp nhất kiểm toán annual-2025 đã map/xác minh:** ACB p73, MBB p68,
+  VPB p64, HDB p47, VCB p65, CTG p62, BID p52 và VIB p52. Whole-PDF scan tìm
+  đúng một vùng family ở cả 8/8 báo cáo; 35 mapping/140 ô logic và 35 phương
+  trình cuốn chiếu đóng chính xác.
+- **Biến thể đã đóng:** MBB có hai block năm, chỉ block 2025 được lấy; VCB có
+  hai cột cuối năm `Phải trả`/`Ứng trước` nhưng map giá trị thuần `Tổng cộng`;
+  CTG tách nhánh phải thu và phải trả nên từng ô schema được tính bằng tổng có
+  dấu của các ô nguồn đã xác thực; HDB có nhãn `Các loại thuế khác, các khoản
+  phí, lệ phí và phải nộp khác` quấn hai dòng, với dấu `-` cuối năm được bind
+  pixel rồi chuẩn hóa 0. Numeric challenger sửa lỗi VietOCR HDB `80.055` thành
+  số nguồn `60.055`; không sửa số bằng text OCR.
+- **Không có cụm trong annual-2025:** Không bank nào.
+- **Còn thiếu annual-2025:** Không có khoản mục nguồn chưa map.
+- **Lượt hiện hành trước:** E-0095/E-0100 giữ riêng ACB p22, MBB p49, VPB p58,
+  HDB p32, CTG p43, BID p26 và VIB p47; VCB là bounded absence, VPB là nguồn
+  Q1/2026. HDB `Tiền thuê đất` đã được đưa vào 1279.
+
+Kết quả annual-2025:
+`docs/experiments/E-0150-annual-2025-state-budget-obligations-8bank-codex-verified-mapping-v1.json`.
 
 ## 45. Tài sản thế chấp của khách hàng mà ngân hàng đang nắm giữ
 
@@ -1300,7 +1310,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Tiền và các khoản tương đương tiền | ✓ p73 | ✓ p78 | ✓ p73 | ✓ p54 | ✓ p64 | ✓ p62 | ✓ p58 | ✓ p50 | Annual-2025: 0 dòng OPEN, 43 mapping/86 ô/18 phương trình, 3 DASH→0; lượt hiện hành trước giữ riêng 31 mapping và HDB/BID absence |
 | Mua mới và thanh lý các công ty con | — | — | — | — | — | — | — | — | Annual-2025: 8 bounded absences/695 trang/25 đối chứng âm, 0 OPEN; lượt hiện hành E-0093 giữ nguyên 8 absences |
 | Thu nhập nhân viên | ✓ p73 | — | ✓ p73 | — | — | — | ✓ p58 | ✓ p54 | Annual-2025: 0 dòng OPEN, 18 mapping/36 ô/16 phương trình; ACB bình quân năm được kiểm tra rồi quy đổi 12 tháng. Lượt hiện hành trước giữ riêng 13 mapping; VPB là nguồn Q1 |
-| Nghĩa vụ với ngân sách nhà nước | ✓ p22 | ✓ p49 | ✓\* p58 | ✓ p32 | — | ✓ p43 | ✓ p26 | ✓ p47 | 0 dòng OPEN; HDB tiền thuê đất → 1279; 37 phương trình; VCB không có note chi tiết; VPB là nguồn Q1 |
+| Nghĩa vụ với ngân sách nhà nước | ✓ p73 | ✓ p68 | ✓ p64 | ✓ p47 | ✓ p65 | ✓ p62 | ✓ p52 | ✓ p52 | Annual-2025: 0 dòng OPEN, 35 mapping/140 ô logic/35 phương trình, 1 DASH→0; CTG net nhánh phải thu/phải trả bằng tổng có dấu. Lượt hiện hành trước giữ riêng 33 mapping; VCB absence, VPB Q1 |
 | Tài sản thế chấp của khách hàng | — | — | ✓ p67 | — | ✓ p47 | — | — | ✓ p49 | 0 dòng OPEN; 4 dòng gộp vào 1288 và hai tổng đóng đúng; 5 bank không có note chi tiết; VPB là nguồn Q1 |
 | Tài sản/GTCG ngân hàng đem thế chấp, cầm cố, chiết khấu | — | — | ✓\* p67 | — | — | — | — | ✓\* p49 | 3 dòng OPEN; 5 mapping, 10 ô số, 6 quan hệ kế toán; 6 bank không có note chi tiết; VPB có hierarchy nguồn double-count và là nguồn Q1 |
 | Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra | ✓\* p26 | ✓ p51 | ✓\* p68 | — | — | ✓ p48 | — | ✓ p50 | 13 dòng OPEN; 47 mapping, 92 ô số, 34 phương trình; 3 bank không có note chi tiết; VPB là nguồn Q1 |

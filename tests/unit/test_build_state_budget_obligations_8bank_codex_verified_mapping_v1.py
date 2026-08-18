@@ -132,6 +132,6 @@ def test_public_replay_rejects_coordinated_dash_promotion() -> None:
     forged["result_id"] = "e0095:result:" + builder.canonical_json_sha256_v1(material)
     with pytest.raises(
         builder.StateBudgetObligations8BankCodexVerifiedMappingV1Error,
-        match="replay exactly",
+        match="result ID drifted",
     ):
         builder.validate_live_state_budget_obligations_8bank_codex_verified_mapping_v1(forged)
