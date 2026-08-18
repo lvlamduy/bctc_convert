@@ -69,12 +69,12 @@ def test_base_residual_and_append_only_quarantine_preserve_source_denominators(
 ) -> None:
     result = residual_result
 
-    assert result.schema_item_count == 1_719
-    assert result.status_reconciled_schema_count == 96
+    assert result.schema_item_count == 1_721
+    assert result.status_reconciled_schema_count == 98
     assert result.mapped_schema_count == 2
     assert result.not_observed_schema_count == 92
     assert result.ambiguous_schema_count == 0
-    assert result.unresolved_schema_count == 2
+    assert result.unresolved_schema_count == 4
     assert result.not_applicable_schema_count == 0
     assert result.extraction_miss_schema_count == 0
     assert result.unassessed_schema_count == (
@@ -110,7 +110,7 @@ def test_only_560_and_1259_are_source_backed_structural_mappings(residual_result
 
     assert set(mapped) == set(evidence) == TM_RESIDUAL_MAPPED_IDS
     assert not_observed == TM_RESIDUAL_NOT_OBSERVED_IDS
-    assert unresolved == {6073, 6074}
+    assert unresolved == {6073, 6074, 6075, 6076}
     assert mapped[560].source_ids == ("page-0030:section-title",)
     assert mapped[1259].source_ids == ("page-0051:off_balance_commitments:row-0001",)
     assert evidence[560].visible_label_similarity == pytest.approx(0.977778)
@@ -178,4 +178,4 @@ def test_claimed_append_only_schema_item_leaves_quarantine(
         item.report_norm_id
         for item in result.schema_dispositions
         if item.status == TMResidualSchemaStatus.UNRESOLVED.value
-    } == {6074}
+    } == {6074, 6075, 6076}

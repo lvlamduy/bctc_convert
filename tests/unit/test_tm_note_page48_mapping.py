@@ -64,7 +64,7 @@ def test_page48_reconciles_disjoint_22_item_scope_and_maps_nine_items(
     result = _mapped(project_root, tmp_path)
 
     assert validate_tm_page48_mapping_result(result) is result
-    assert result.schema_item_count == 1_719
+    assert result.schema_item_count == 1_721
     assert result.status_reconciled_schema_count == 22
     assert result.mapped_schema_count == 9
     assert result.not_observed_schema_count == 13

@@ -137,21 +137,21 @@ def test_live_tm_context_is_complete_ordered_and_hash_stable(project_root, live_
     assert policy.source_sha256 == (
         "50b0e7fcd5fbb54b45f6643d1d9c577de6013fdd04b748c620c755c54ee55e0a"
     )
-    assert len(contexts) == 1719
-    assert [context.display_order for context in contexts] == list(range(1719))
-    assert len({context.report_norm_id for context in contexts}) == 1719
+    assert len(contexts) == 1721
+    assert [context.display_order for context in contexts] == list(range(1721))
+    assert len({context.report_norm_id for context in contexts}) == 1721
     assert Counter(context.section for context in contexts) == {
         "BALANCE_SHEET_NOTES": 686,
-        "INCOME_STATEMENT_NOTES": 139,
+        "INCOME_STATEMENT_NOTES": 141,
         "CASH_FLOW_NOTES": 12,
         "OTHER_QUANTITATIVE_NOTES": 881,
         None: 1,
     }
     assert Counter(context.context_status for context in contexts) == {
-        "RESOLVED": 1718,
+        "RESOLVED": 1720,
         "UNRESOLVED_ORPHAN": 1,
     }
-    assert Counter(context.mapping_eligible for context in contexts) == {True: 1718, False: 1}
+    assert Counter(context.mapping_eligible for context in contexts) == {True: 1720, False: 1}
 
     by_id = {context.report_norm_id: context for context in contexts}
     assert by_id[560].ancestor_path == (560,)
@@ -188,11 +188,11 @@ def test_live_tm_context_is_complete_ordered_and_hash_stable(project_root, live_
     assert by_id[1944].derived_hierarchy_level is None
 
     projection = tm_context_projection(contexts)
-    assert len(projection) == 1719
+    assert len(projection) == 1721
     assert projection[0]["report_norm_id"] == 560
     assert projection[-1]["report_norm_id"] == 1944
     assert tm_context_projection_sha256(contexts) == (
-        "0b9b9320cc4ca101123996acc4395500442b9068e33296b6d3b2e33c7e67b406"
+        "f3d13642c4c7c26fc3cd9110e8d7d4e4eece77e10f6a953006734363af0371f0"
     )
 
 

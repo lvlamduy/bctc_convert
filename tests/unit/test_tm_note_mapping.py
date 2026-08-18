@@ -106,7 +106,7 @@ def test_real_page30_reconciles_1713_schema_and_all_22_source_rows(
     assert result.minimum_independent_semantic_streams == 2
     assert result.independent_reader_status == "COMPLETE"
     assert result.independent_reader_blocker is None
-    assert result.schema_item_count == 1_719
+    assert result.schema_item_count == 1_721
     assert result.assessed_schema_count == 23
     assert result.mapped_schema_count == 21
     assert result.candidate_linked_schema_count == 0
@@ -125,7 +125,7 @@ def test_real_page30_reconciles_1713_schema_and_all_22_source_rows(
     assert result.mapped_value_count == 38
     assert result.accounting_check_count == result.accounting_pass_count == 14
     assert result.schema_projection_sha256 == (
-        "f892100c5be2bec2672eb99b473360b8ef56f5ee89a1a9856a8fd0547907e7da"
+        "907ff3f67197d73d03becd7af208a63df956ce2bb28199f96cbe5b0e307cfb8e"
     )
     assert result.independent_evidence_sha256 == (
         "6182e4634a80371ba560019b85ae67d706608ff48872f689e2645a5b03487c06"

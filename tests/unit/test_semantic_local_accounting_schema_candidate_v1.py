@@ -88,7 +88,7 @@ def test_exact_tm_authority_builds_candidate_only_strict_maturity_core(
             "report_norm_id": 5747,
             "parent_report_norm_id": 752,
             "canonical_name": "Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
-            "display_order": 208,
+            "display_order": 209,
             "disposition": "UNASSESSED_SCHEMA_CHILD",
         }
     ]

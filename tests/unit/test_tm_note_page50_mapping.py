@@ -75,7 +75,7 @@ def test_page50_reconciles_23_item_scope_and_maps_all_19_visible_items(
 
     assert validate_tm_page50_mapping_result(result) is result
     assert result.status == "SCOPED_PAGE50_TAX_AND_CASH_MAPPING_WITH_COMPLETE_ITEM_COVERAGE"
-    assert result.schema_item_count == 1_719
+    assert result.schema_item_count == 1_721
     assert result.status_reconciled_schema_count == 23
     assert result.mapped_schema_count == 19
     assert result.not_observed_schema_count == 4

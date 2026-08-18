@@ -73,21 +73,27 @@ EXPECTED_INDEX_SHA256 = "f84fd9ca56fe06af230e011ecad85b0a576e27e1eca32ee141e654a
 EXPECTED_CROP_MANIFEST_SHA256 = "a9f80cf9104af1177ba43d8a85de00b28c735223a91b663a5a79401bb038d94e"
 EXPECTED_AXIS_SHA256 = "e99873cd16a7234702d0ee6e5fa9eb37637a1a75621228381e3dbcd7c5cfdcca"
 EXPECTED_SCAN_ID = "iifdsv1:scan:04759af3c6fc86368c37a8616102d96ff0bab94dd5bef5a9abc178cabad5eb20"
+RESULT_STATE = "INTEREST_INCOME_8BANK_CODEX_VERIFICATION_COMPLETE"
+RESULT_ID_PREFIX = "e0079:result:"
+REVIEW_STATE = "CODEX_PIXEL_REVIEW_COMPLETE"
+REVIEW_ID_PREFIX = "e0079:pixel-review:"
+REVIEW_RUN_ID = "E-0079"
+FAMILY_END_DISPLAY_ORDER = 696
 
 _SCHEMA_EXPECTED = {
     1142: (
         "II. THÔNG TIN BỔ SUNG CHO CÁC KHOẢN MỤC TRÌNH BÀY TRONG BẢNG KẾT QUẢ KINH DOANH",
         None,
-        681,
+        686,
     ),
-    1143: ("Thu nhập lãi và các khoản thu nhập tương tự", 1142, 682),
-    1144: ("Thu lãi tiền gửi", 1143, 683),
-    1145: ("Thu lãi cho vay khách hàng", 1143, 684),
-    1146: ("Thu lãi từ kinh doanh, đầu tư chứng khoán", 1143, 685),
-    1147: ("Thu nhập lãi cho thuê tài chính", 1143, 686),
-    1148: ("Thu phí từ nghiệp vụ bảo lãnh", 1143, 687),
-    1149: ("Thu nhập lãi từ nghiệp vụ mua bán nợ", 1143, 688),
-    1150: ("Thu khác từ hoạt động tín dụng", 1143, 689),
+    1143: ("Thu nhập lãi và các khoản thu nhập tương tự", 1142, 687),
+    1144: ("Thu lãi tiền gửi", 1143, 688),
+    1145: ("Thu lãi cho vay khách hàng", 1143, 689),
+    1146: ("Thu lãi từ kinh doanh, đầu tư chứng khoán", 1143, 691),
+    1147: ("Thu nhập lãi cho thuê tài chính", 1143, 692),
+    1148: ("Thu phí từ nghiệp vụ bảo lãnh", 1143, 694),
+    1149: ("Thu nhập lãi từ nghiệp vụ mua bán nợ", 1143, 695),
+    1150: ("Thu khác từ hoạt động tín dụng", 1143, 696),
 }
 _AUTHORITY = {
     "bank_filename_note_or_page_used_as_matching_rule": False,
@@ -144,6 +150,17 @@ def _value(page: int, line: int, text: str, multiplier: int = 1) -> dict[str, An
         "multiplier": multiplier,
         "page_sequence": page,
         "pixel_transcription": text,
+    }
+
+
+def _dash(page: int, bbox: Sequence[int], pixel_rgb_sha256: str) -> dict[str, Any]:
+    return {
+        "bbox": list(bbox),
+        "kind": "AUTHENTICATED_RENDER_PIXEL_DASH",
+        "multiplier": 1,
+        "page_sequence": page,
+        "pixel_rgb_sha256": pixel_rgb_sha256,
+        "pixel_transcription": "-",
     }
 
 
@@ -783,14 +800,17 @@ def _review_blueprint() -> dict[str, Any]:
         "claim_boundary": CLAIM_BOUNDARY,
         "documents": _review_documents(),
         "format_version": REVIEW_FORMAT,
-        "reviewer": {"kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW", "review_run_id": "E-0079"},
+        "reviewer": {
+            "kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW",
+            "review_run_id": REVIEW_RUN_ID,
+        },
         "safety": canonical_clone_v1(_REVIEW_SAFETY),
         "scan_id": EXPECTED_SCAN_ID,
         "semantic_axis_sha256": EXPECTED_AXIS_SHA256,
         "semantic_index_sha256": EXPECTED_INDEX_SHA256,
-        "state": "CODEX_PIXEL_REVIEW_COMPLETE",
+        "state": REVIEW_STATE,
     }
-    return {**material, "review_id": "e0079:pixel-review:" + canonical_json_sha256_v1(material)}
+    return {**material, "review_id": REVIEW_ID_PREFIX + canonical_json_sha256_v1(material)}
 
 
 def _review(value: Any) -> dict[str, Any]:
@@ -895,13 +915,21 @@ def _metrics(trials: Sequence[Mapping[str, Any]]) -> dict[str, int]:
     }
 
 
+def _source_period_status(source_period: str) -> str:
+    if source_period == "2026-03-31":
+        return "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
+    if source_period == "2026-06-30":
+        return "VERIFIED_SOURCE_PERIOD_Q2_2026"
+    raise _error("interest-income source period drifted")
+
+
 def _validate_result(value: Any) -> dict[str, Any]:
     if type(value) is not dict or set(value) != _RESULT_FIELDS:
         raise _error("interest-income result fields drifted")
     if (
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "INTEREST_INCOME_8BANK_CODEX_VERIFICATION_COMPLETE"
+        or value["state"] != RESULT_STATE
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
         or len(value["trials"]) != 8
@@ -925,7 +953,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
             raise _error("interest-income trial shape or status drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "e0079:result:" + canonical_json_sha256_v1(material):
+    if identity != RESULT_ID_PREFIX + canonical_json_sha256_v1(material):
         raise _error("interest-income result identity drifted")
     return canonical_clone_v1(value)
 
@@ -980,31 +1008,38 @@ def build_interest_income_8bank_codex_verified_mapping_v1(
         ) -> dict[str, Any]:
             key = canonical_json_sha256_v1(ref)
             if key not in value_cache:
-                evidence = foundation.support._source_value(
-                    axis_page,
-                    semantic_page,
-                    crop_page,
-                    source_texts,
-                    {
-                        "line_index": ref["line_index"],
-                        "pixel_transcription": ref["pixel_transcription"],
-                    },
-                )
-                try:
-                    proposal_value = foundation.support._money(
-                        evidence["fresh_vietocr_numeric_proposal"]
+                if ref.get("kind") == "AUTHENTICATED_RENDER_PIXEL_DASH":
+                    value_cache[key] = {
+                        **foundation._pixel_dash_value(crop_page, ref),
+                        "fresh_vietocr_numeric_status": "NO_VIETOCR_LINE_FOR_VISIBLE_DASH",
+                        "page_sequence": ref["page_sequence"],
+                    }
+                else:
+                    evidence = foundation.support._source_value(
+                        axis_page,
+                        semantic_page,
+                        crop_page,
+                        source_texts,
+                        {
+                            "line_index": ref["line_index"],
+                            "pixel_transcription": ref["pixel_transcription"],
+                        },
                     )
-                except ValueError:
-                    proposal_value = None
-                value_cache[key] = {
-                    **evidence,
-                    "fresh_vietocr_numeric_status": (
-                        "MATCHES_SOURCE_NUMERIC_CHALLENGER"
-                        if proposal_value == evidence["normalized_value"]
-                        else "DISAGREES_WITH_SOURCE_NUMERIC_CHALLENGER"
-                    ),
-                    "page_sequence": ref["page_sequence"],
-                }
+                    try:
+                        proposal_value = foundation.support._money(
+                            evidence["fresh_vietocr_numeric_proposal"]
+                        )
+                    except ValueError:
+                        proposal_value = None
+                    value_cache[key] = {
+                        **evidence,
+                        "fresh_vietocr_numeric_status": (
+                            "MATCHES_SOURCE_NUMERIC_CHALLENGER"
+                            if proposal_value == evidence["normalized_value"]
+                            else "DISAGREES_WITH_SOURCE_NUMERIC_CHALLENGER"
+                        ),
+                        "page_sequence": ref["page_sequence"],
+                    }
             return canonical_clone_v1(value_cache[key])
 
         verified_mappings = []
@@ -1074,11 +1109,7 @@ def build_interest_income_8bank_codex_verified_mapping_v1(
                         "visible_total_source_line_index": total["source_line_index"],
                     }
                 )
-        source_period_status = (
-            "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
-            if reviewed["source_period"] == "2026-03-31"
-            else "VERIFIED_SOURCE_PERIOD_Q2_2026"
-        )
+        source_period_status = _source_period_status(reviewed["source_period"])
         trials.append(
             {
                 "document_ordinal": ordinal,
@@ -1129,7 +1160,7 @@ def build_interest_income_8bank_codex_verified_mapping_v1(
         },
         "metrics": _metrics(trials),
         "schema_family": {
-            "family_end_display_order": 689,
+            "family_end_display_order": FAMILY_END_DISPLAY_ORDER,
             "family_root": _schema_binding(schema_by_id.get(1143), 1143),
             "mapped_report_norm_ids": sorted(
                 {
@@ -1140,11 +1171,11 @@ def build_interest_income_8bank_codex_verified_mapping_v1(
             ),
             "section_root": _schema_binding(schema_by_id.get(1142), 1142),
         },
-        "state": "INTEREST_INCOME_8BANK_CODEX_VERIFICATION_COMPLETE",
+        "state": RESULT_STATE,
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "e0079:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": RESULT_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 

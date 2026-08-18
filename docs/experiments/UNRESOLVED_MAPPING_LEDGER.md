@@ -1,6 +1,6 @@
 # Unresolved mapping and adjudication review ledger
 
-Updated: 2026-08-17 (UTC)
+Updated: 2026-08-18 (UTC)
 
 This is the cumulative human-readable file requested for every source item or
 family region that could not initially be mapped.  Entries remain here after
@@ -21,6 +21,22 @@ Ledger total: **306 entries**.  Current open queue: **102**.  Closed history:
 **129** row/graph resolutions and **75** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
+
+## CLOSED — annual-2025 `Thu nhập lãi và các khoản thu nhập tương tự`
+
+E-0134 quét toàn bộ tám BCTC hợp nhất kiểm toán năm 2025 và tìm đúng một vùng
+family tại ACB p67, MBB p72, VPB p68, HDB p49, VCB p57, CTG p57, BID p54 và
+VIB p50. Exact replay xác minh 55 mapping/110 ô giá trị cùng 28 phương trình;
+không có dòng OPEN hoặc family absence.
+
+Hai khoảng trống schema thực sự khác bản chất đã được đóng bằng append-only
+ReportNormId 6075 `Thu nhập lãi cho vay khách hàng và các TCTD khác` cho dòng
+gộp của MBB và 6076 `Thu phí nghiệp vụ thư tín dụng (L/C)` cho HDB. Các ID cũ,
+giá trị và trạng thái mapping trước đó không đổi. Không có lỗi numeric cần
+Gemma/rescue trong family annual này.
+
+Machine-readable result:
+`docs/experiments/E-0134-annual-2025-interest-income-8bank-codex-verified-mapping-v1.json`.
 
 ## CLOSED — annual-2025 `Các khoản phải trả và công nợ khác`
 

@@ -68,7 +68,7 @@ def test_page41_reconciles_complete_942_965_branch_with_exact_statuses(
     assert validate_tm_page41_mapping_result(result) is result
     assert result.mapping_authority_scope.endswith("TOTAL_COLUMN_FIXED_ROWS_ONLY")
     assert result.mapping_authority_granted
-    assert result.schema_item_count == 1_719
+    assert result.schema_item_count == 1_721
     assert result.status_reconciled_schema_count == 32
     assert result.mapped_schema_count == 15
     assert result.unresolved_schema_count == 0

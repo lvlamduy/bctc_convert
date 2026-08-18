@@ -90,7 +90,7 @@ def test_page43_reconciles_complete_two_branch_scope_and_exact_source_denominato
     assert validate_tm_page43_mapping_result(result) is result
     assert result.mapping_authority_scope.endswith("FIXED_ROWS_AND_CELLS_ONLY")
     assert result.mapping_authority_granted
-    assert result.schema_item_count == 1_719
+    assert result.schema_item_count == 1_721
     assert result.status_reconciled_schema_count == 131
     assert result.mapped_schema_count == 34
     assert result.ambiguous_schema_count == 0

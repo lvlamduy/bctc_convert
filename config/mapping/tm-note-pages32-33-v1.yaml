@@ -6,7 +6,7 @@ scope: CONSOLIDATED
 source_table_policy: config/tables/tm-note-pages32-33-v1.yaml
 mapping_authority_scope: VISIBLE_FIXED_LABELS_TO_AMOUNT_AXES_ONLY
 
-schema_total: 1719
+schema_total: 1721
 scope_schema_ids:
   - {start: 727, end: 745}
   - {start: 756, end: 758}

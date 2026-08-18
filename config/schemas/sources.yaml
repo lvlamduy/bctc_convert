@@ -14,10 +14,10 @@ base_schema:
     LCTT: {path: template/Bank_LCTT_ReportNormId.xlsx, item_count: 107, sha256: 2c9d52737c492f115895eab9a571da2269fcfd3c3e77539ec581782e579d260a}
     TM: {path: template/Bank_TM_ReportNormId.xlsx, item_count: 1385, sha256: fa284e3af1f90c8a206308f63e6d35e77a9fbf1abcaf60abcb59877c47275140}
 universal_schema:
-  revision: UNIVERSAL_BANK_BCTC_SCHEMA@6074
-  item_count: 1953
-  counts: {CDKT: 99, KQKD: 25, LCTT: 110, TM: 1719}
-  high_watermark: 6074
+  revision: UNIVERSAL_BANK_BCTC_SCHEMA@6076
+  item_count: 1955
+  counts: {CDKT: 99, KQKD: 25, LCTT: 110, TM: 1721}
+  high_watermark: 6076
 cash_flow_rules: config/mapping/lctt-v2.yaml
 sources:
   CDKT: template/Bank_CDKT_ReportNormId.v2.xlsx
@@ -28,4 +28,4 @@ pending_additions: proposed_schema_additions.jsonl
 approved_append_audits:
   - data/registered/schema_append_1944.json
 approved_business_update_audits:
-  - data/registered/schema_business_update_5712_5713_5714_5718_6074.json
+  - data/registered/schema_business_update_5712_5713_5714_5718_6076.json

@@ -346,7 +346,7 @@ def test_production_policy_pins_current_schema_and_all_27_required_owners(
 ) -> None:
     policy = load_tm_consolidated_export_policy(project_root / TM_CONSOLIDATED_POLICY_RELATIVE_PATH)
 
-    assert policy.schema_item_count == TM_CONSOLIDATED_SCHEMA_COUNT == 1_719
+    assert policy.schema_item_count == TM_CONSOLIDATED_SCHEMA_COUNT == 1_721
     assert policy.schema_workbook_sha256 == TM_CONSOLIDATED_TEMPLATE_SHA256
     assert policy.schema_projection_sha256 == TM_CONSOLIDATED_SCHEMA_PROJECTION_SHA256
     assert policy.output_sheets == TM_CONSOLIDATED_SHEETS

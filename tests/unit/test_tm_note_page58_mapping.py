@@ -70,7 +70,7 @@ def test_page58_reconciles_exact_schema_source_and_financial_slot_denominators(
 ) -> None:
     result = page58_result
 
-    assert result.schema_item_count == 1_719
+    assert result.schema_item_count == 1_721
     assert result.status_reconciled_schema_count == 139
     assert result.mapped_schema_count == 77
     assert result.structural_mapped_schema_count == 5
@@ -91,10 +91,10 @@ def test_page58_reconciles_exact_schema_source_and_financial_slot_denominators(
     assert result.extracted_value_count == 63
     assert result.dash_count == 9
     assert result.schema_workbook_sha256 == (
-        "8d9e76de0d42aa26591a87a5e2d522e7a69e089528047928b029ac4ed49f2b3c"
+        "64589f7ee2b025ac0bd784c13e0b0ba0aff9d46456a83fa7fe2d68a7de375115"
     )
     assert result.schema_projection_sha256 == (
-        "194df64364a4dd2452252585770128697168feb7014961479dfcbd8db942b695"
+        "43d3ba7113e8457c6213afb22c0e2fa691d4f0a26f391975c80a622b261fc71d"
     )
 
 

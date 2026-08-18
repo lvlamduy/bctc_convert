@@ -97,7 +97,7 @@ def test_page46_reconciles_universal_scope_and_maps_printed_children_plus_derive
     assert validate_tm_page46_mapping_result(result) is result
     assert result.mapping_authority_scope.endswith("PDF_PAGE_46_FIXED_ROWS_ONLY")
     assert result.mapping_authority_granted
-    assert result.schema_item_count == 1_719
+    assert result.schema_item_count == 1_721
     assert result.status_reconciled_schema_count == 43
     assert result.mapped_schema_count == 33
     assert result.ambiguous_schema_count == 0

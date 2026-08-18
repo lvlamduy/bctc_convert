@@ -82,7 +82,7 @@ def test_page31_reconciles_65_schema_statuses_and_maps_30_distinct_items(
     assert result.status == "SCOPED_PAGE31_MAPPING_WITH_COMPLETE_ACCOUNTING_VALIDATION"
     assert result.mapping_authority_scope.endswith("PDF_PAGE_31_FIXED_ROWS_ONLY")
     assert result.mapping_authority_granted
-    assert result.schema_item_count == 1_719
+    assert result.schema_item_count == 1_721
     assert result.status_reconciled_schema_count == 65
     assert result.mapped_schema_count == 30
     assert result.not_observed_schema_count == 12

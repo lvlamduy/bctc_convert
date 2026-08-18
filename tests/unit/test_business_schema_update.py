@@ -74,24 +74,24 @@ def test_business_schema_migration_is_hash_bound_and_preserves_sealed_baselines(
     assert set(audit["collision_safety"]["new_ids"]).isdisjoint(REVIEWED_EXTERNAL_IDS)
     assert audit["schema_strategy"]["base_schema"]["item_count"] == 1593
     assert audit["schema_strategy"]["universal_schema"] == {
-        "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6074",
-        "item_count": 1953,
-        "counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1719},
-        "high_watermark": 6074,
+        "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6076",
+        "item_count": 1955,
+        "counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1721},
+        "high_watermark": 6076,
         "workbook_sha256": {
             statement: record["after_sha256"] for statement, record in audit["workbooks"].items()
         },
     }
     assert audit["schema_strategy"]["migration_delta"]["new_report_norm_ids"] == [
-        6073,
-        6074,
+        6075,
+        6076,
     ]
     accepted_changes = {
         record["schema_id"]: record
         for record in audit["schema_changes"]
         if record.get("schema_status") == "ACCEPTED_UNIVERSAL"
     }
-    assert set(accepted_changes) == set(range(5991, 6075))
+    assert set(accepted_changes) == set(range(5991, 6077))
     assert all(
         accepted_changes[schema_id]["section"] == "BALANCE_SHEET_NOTES"
         for schema_id in range(5991, 6021)
@@ -114,6 +114,10 @@ def test_business_schema_migration_is_hash_bound_and_preserves_sealed_baselines(
     assert all(
         accepted_changes[schema_id]["section"] == "BALANCE_SHEET_NOTES"
         for schema_id in range(6057, 6075)
+    )
+    assert all(
+        accepted_changes[schema_id]["section"] == "INCOME_STATEMENT_NOTES"
+        for schema_id in (6075, 6076)
     )
     assert accepted_changes[6057]["evidence"]["observed_values"] == ["DASH", "DASH"]
     assert accepted_changes[6058]["evidence"]["visible_label"] == (
@@ -141,6 +145,10 @@ def test_business_schema_migration_is_hash_bound_and_preserves_sealed_baselines(
     assert accepted_changes[6072]["evidence"]["visible_label"] == "Tiền gửi của Bộ Tài chính"
     assert accepted_changes[6073]["evidence"]["visible_label"] == "Thương mại, dịch vụ"
     assert accepted_changes[6074]["evidence"]["visible_label"] == ("Hợp tác xã và công ty tư nhân")
+    assert accepted_changes[6075]["evidence"]["visible_label"] == (
+        "Thu nhập lãi cho vay khách hàng và các TCTD khác"
+    )
+    assert accepted_changes[6076]["evidence"]["visible_label"] == "Thu phí nghiệp vụ L/C"
     ctg_swap = accepted_changes[6056]["evidence"]
     assert ctg_swap["user_decision"] == "Q076"
     assert ctg_swap["source_row_ref"] == "ctg-p5-5705"
@@ -519,6 +527,7 @@ def test_business_formula_overlay_has_exact_authorized_edges(project_root):
         1227,
         1228,
     ]
+    assert by_id[1143].children == [1144, 1145, 6075, 1146, 1147, 6076, 1148, 1149, 1150]
     assert audit_formula_components(project_root, 862) == (867, 5959)
     assert audit_formula_components(project_root, 5965) == (870, 884)
     assert audit_formula_components(project_root, 5970) == (915, 930)
@@ -551,10 +560,10 @@ def test_business_formula_overlay_has_exact_authorized_edges(project_root):
     }
     assert formula_ids.isdisjoint(range(5898, 5946))
     assert by_id[1944].parent_id is None
-    assert by_id[1944].display_order == 1718
+    assert by_id[1944].display_order == 1720
     assert set(TM_UNIVERSAL_SCHEMA_IDS) == {
         *range(5991, 6034),
-        *range(6057, 6075),
+        *range(6057, 6077),
     }
 
 

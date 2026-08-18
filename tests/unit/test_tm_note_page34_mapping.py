@@ -70,7 +70,7 @@ def test_page34_reconciles_complete_783_799_scope_and_exact_source_denominators(
     assert validate_tm_page34_mapping_result(result) is result
     assert result.mapping_authority_scope.endswith("OVERALL_SPECIFIC_GENERAL_AXES_ONLY")
     assert result.mapping_authority_granted
-    assert result.schema_item_count == 1_719
+    assert result.schema_item_count == 1_721
     assert result.status_reconciled_schema_count == 17
     assert result.mapped_schema_count == 15
     assert result.ambiguous_schema_count == 0

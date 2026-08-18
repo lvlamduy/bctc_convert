@@ -46,7 +46,7 @@ def test_page49_reconciles_exact_business_and_source_denominators(
 ) -> None:
     result = _mapped(project_root, tmp_path)
 
-    assert result.schema_item_count == 1_719
+    assert result.schema_item_count == 1_721
     assert result.status_reconciled_schema_count == 22
     assert result.mapped_schema_count == 10
     assert result.ambiguous_schema_count == 0

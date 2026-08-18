@@ -92,7 +92,7 @@ def test_page44_reconciles_universal_branch_and_all_source_rows_with_exact_statu
     assert validate_tm_page44_mapping_result(result) is result
     assert result.mapping_authority_scope.endswith("FIXED_ROWS_CELLS_AND_NARRATIVE_FACTS_ONLY")
     assert result.mapping_authority_granted
-    assert result.schema_item_count == 1_719
+    assert result.schema_item_count == 1_721
     assert result.status_reconciled_schema_count == 62
     assert result.mapped_schema_count == 31
     assert result.ambiguous_schema_count == 0

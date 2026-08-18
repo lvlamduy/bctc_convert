@@ -60,7 +60,7 @@ def test_page35_reconciles_complete_branch_and_maps_thirteen_distinct_items(
     assert validate_tm_page35_mapping_result(result) is result
     assert result.mapping_authority_scope.endswith("PDF_PAGE_35_FIXED_ROWS_ONLY")
     assert result.mapping_authority_granted
-    assert result.schema_item_count == 1_719
+    assert result.schema_item_count == 1_721
     assert result.status_reconciled_schema_count == 32
     assert result.mapped_schema_count == 13
     assert result.not_observed_schema_count == 19
