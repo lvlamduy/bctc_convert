@@ -17,6 +17,9 @@ from bctc_ai.source_structure.contracts_v1 import (
 )
 
 FORMAT_VERSION = "CASH_EQUIVALENTS_VARIANT_GRAPH_DOCUMENT_V1"
+BASELINE_VARIANT_PROFILE = "HISTORICAL_BASELINE_V1"
+EXTENDED_VARIANT_PROFILE = "GENERIC_CENTRAL_BANK_NAMES_AND_OCR_NOISE_V2"
+_VARIANT_PROFILES = {BASELINE_VARIANT_PROFILE, EXTENDED_VARIANT_PROFILE}
 _FIELDS = {
     "claim_boundary",
     "format_version",
@@ -86,8 +89,53 @@ def _owner_text(text: str) -> bool:
     }
 
 
-def _role(text: str) -> str | None:
+def _extended(profile: str) -> bool:
+    if profile not in _VARIANT_PROFILES:
+        raise _error("cash-equivalents variant profile is unsupported")
+    return profile == EXTENDED_VARIANT_PROFILE
+
+
+def _within_one_edit(left: str, right: str) -> bool:
+    """Return whether two short OCR tokens differ by at most one edit."""
+
+    if left == right:
+        return True
+    if abs(len(left) - len(right)) > 1:
+        return False
+    if len(left) > len(right):
+        left, right = right, left
+    if len(left) == len(right):
+        return sum(a != b for a, b in zip(left, right, strict=True)) <= 1
+    cursor = 0
+    for index, character in enumerate(right):
+        if cursor < len(left) and left[cursor] == character:
+            cursor += 1
+        elif index - cursor > 0:
+            return False
+    return True
+
+
+def _central_bank_deposit(value: str, profile: str) -> bool:
+    baseline = (
+        value.startswith("tien gui tai nhnn")
+        or value.startswith("tien gui tai ngan hang nha nuoc")
+        or value.startswith("tien gui thanh toan tai ngan hang nha nuoc")
+    )
+    if baseline or not _extended(profile):
+        return baseline
+    if value.startswith("tien gui tai ngan hang trung uong"):
+        return True
+    words = value.split()
+    return (
+        len(words) >= 4
+        and words[:3] == ["tien", "gui", "tai"]
+        and _within_one_edit(words[3], "nhnn")
+    )
+
+
+def _role(text: str, profile: str = BASELINE_VARIANT_PROFILE) -> str | None:
     value = _strip(text)
+    _extended(profile)
     if len(value.split()) > 24:
         return None
     if _owner_text(value):
@@ -96,11 +144,7 @@ def _role(text: str) -> str | None:
         "tien va cac khoan tuong duong tien tai quy"
     ):
         return "CASH_AND_PRECIOUS_METALS"
-    if (
-        value.startswith("tien gui tai nhnn")
-        or value.startswith("tien gui tai ngan hang nha nuoc")
-        or value.startswith("tien gui thanh toan tai ngan hang nha nuoc")
-    ):
+    if _central_bank_deposit(value, profile):
         return "CENTRAL_BANK_DEPOSIT"
     if "tctd" in value or "to chuc tin dung" in value:
         if "khong ky han" in value or "thanh toan" in value:
@@ -120,7 +164,11 @@ def _role(text: str) -> str | None:
     return None
 
 
-def _region(lines: Sequence[Mapping[str, Any]], start: int) -> dict[str, Any]:
+def _region(
+    lines: Sequence[Mapping[str, Any]],
+    start: int,
+    profile: str = BASELINE_VARIANT_PROFILE,
+) -> dict[str, Any]:
     support = _support()
     owner = lines[start]
     window = [line for line in lines if line["page_sequence"] == owner["page_sequence"]]
@@ -137,11 +185,27 @@ def _region(lines: Sequence[Mapping[str, Any]], start: int) -> dict[str, Any]:
             period_count += axis == "PERIOD_AXIS"
             unit_count += axis == "UNIT_AXIS"
             continue
-        role = _role(text)
-        if role is None and index + 1 < len(window):
-            following = window[index + 1]["normalized_text"]
-            if not support._NUMBER.fullmatch(following):
-                role = _role(f"{text} {following}")
+        role = _role(text, profile)
+        if not _extended(profile):
+            # Preserve the exact historical V1 graph and its persisted IDs.
+            if role is None and index + 1 < len(window):
+                following = window[index + 1]["normalized_text"]
+                if not support._NUMBER.fullmatch(following):
+                    role = _role(f"{text} {following}", profile)
+        else:
+            continuation_candidate = role is None or (
+                role == "INTERBANK_GENERAL"
+                and _strip(text).endswith(("khong", "khong qua", "ky han"))
+            )
+            if continuation_candidate and index + 1 < len(window):
+                for following_line in window[index + 1 : index + 4]:
+                    following = following_line["normalized_text"]
+                    if support._NUMBER.fullmatch(following):
+                        continue
+                    combined_role = _role(f"{text} {following}", profile)
+                    if combined_role is not None:
+                        role = combined_role
+                    break
         if role and role != "OWNER":
             roles.append(role)
             events.append(support._line_ref(line, role))
@@ -248,14 +312,17 @@ def _validate(value: Any) -> dict[str, Any]:
     return canonical_clone_v1(value)
 
 
-def build_cash_equivalents_variant_graph_document_v1(pages: Any) -> dict[str, Any]:
+def build_cash_equivalents_variant_graph_document_v1(
+    pages: Any, *, variant_profile: str = BASELINE_VARIANT_PROFILE
+) -> dict[str, Any]:
+    _extended(variant_profile)
     try:
         parsed = _support()._pages(pages)
     except Exception as exc:
         raise _error(str(exc)) from exc
     lines = _support()._flatten(parsed)
     candidates = [
-        _region(lines, index)
+        _region(lines, index, variant_profile)
         for index, line in enumerate(lines)
         if _owner_text(line["normalized_text"])
     ]
@@ -281,9 +348,16 @@ def build_cash_equivalents_variant_graph_document_v1(pages: Any) -> dict[str, An
     )
 
 
-def validate_cash_equivalents_variant_graph_replay_v1(value: Any, pages: Any) -> dict[str, Any]:
+def validate_cash_equivalents_variant_graph_replay_v1(
+    value: Any,
+    pages: Any,
+    *,
+    variant_profile: str = BASELINE_VARIANT_PROFILE,
+) -> dict[str, Any]:
     supplied = _validate(value)
-    rebuilt = build_cash_equivalents_variant_graph_document_v1(pages)
+    rebuilt = build_cash_equivalents_variant_graph_document_v1(
+        pages, variant_profile=variant_profile
+    )
     if not same_typed_json_v1(supplied, rebuilt):
         raise _error("cash-equivalents graph does not replay exactly")
     return supplied

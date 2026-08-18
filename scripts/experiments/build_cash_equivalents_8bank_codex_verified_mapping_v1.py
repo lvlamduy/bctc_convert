@@ -50,6 +50,21 @@ scanner = _load(
 
 FORMAT_VERSION = "CASH_EQUIVALENTS_8BANK_CODEX_VERIFIED_MAPPING_V1"
 REVIEW_FORMAT = "CASH_EQUIVALENTS_8BANK_CODEX_PIXEL_REVIEW_V1"
+RESULT_STATE = "CASH_EQUIVALENTS_8BANK_CODEX_VERIFICATION_COMPLETE"
+RESULT_ID_PREFIX = "e0092:result:"
+REVIEW_STATE = "CODEX_PIXEL_REVIEW_COMPLETE"
+REVIEW_ID_PREFIX = "e0092:pixel-review:"
+REVIEW_RUN_ID = "E-0092"
+VARIANT_PROFILE = "HISTORICAL_BASELINE_V1"
+FAMILY_END_DISPLAY_ORDER = 830
+SOURCE_PERIOD_STATUS_BY_PERIOD = {
+    "2026-03-31": "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2",
+    "2026-06-30": "VERIFIED_SOURCE_PERIOD_Q2_2026",
+}
+EXPECTED_RESULT_ID: str | None = (
+    "e0092:result:bf97e1e636c1029dd8c41d424dabde0ecbb507c4230a53a8a5ccfd12b70dfb75"
+)
+ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT = True
 CLAIM_BOUNDARY = (
     "FIXED_EIGHT_DOCUMENT_COMPLETE_PDF_FRESH_VIETOCR_BANK_BLIND_CASH_"
     "EQUIVALENTS_GRAPH_VISIBLE_PDF_PADDLEOCR_OR_NATIVE_NUMERIC_CHALLENGER_"
@@ -145,6 +160,16 @@ def _sum(page: int, items: Sequence[tuple[int, str]]) -> dict[str, Any]:
         "components": [_line(page, line, text) for line, text in items],
         "kind": "AUTHENTICATED_CONTROLLED_SUM",
         "page_sequence": page,
+    }
+
+
+def _dash(page: int, bbox: Sequence[int], rgb_sha256: str) -> dict[str, Any]:
+    return {
+        "bbox_raw_pixels": list(bbox),
+        "kind": "AUTHENTICATED_RENDER_PIXEL_DASH",
+        "page_sequence": page,
+        "pixel_rgb_sha256": rgb_sha256,
+        "pixel_transcription": "-",
     }
 
 
@@ -683,17 +708,17 @@ def _review_blueprint() -> dict[str, Any]:
         "format_version": REVIEW_FORMAT,
         "reviewer": {
             "kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW",
-            "review_run_id": "E-0092",
+            "review_run_id": REVIEW_RUN_ID,
         },
         "safety": canonical_clone_v1(_REVIEW_SAFETY),
         "scan_id": EXPECTED_SCAN_ID,
         "semantic_axis_sha256": EXPECTED_AXIS_SHA256,
         "semantic_index_sha256": EXPECTED_INDEX_SHA256,
-        "state": "CODEX_PIXEL_REVIEW_COMPLETE",
+        "state": REVIEW_STATE,
     }
     return {
         **material,
-        "review_id": "e0092:pixel-review:" + canonical_json_sha256_v1(material),
+        "review_id": REVIEW_ID_PREFIX + canonical_json_sha256_v1(material),
     }
 
 
@@ -721,12 +746,12 @@ def _schema_binding(item: Any, report_norm_id: int) -> dict[str, Any]:
         or item.schema_id != report_norm_id
         or item.canonical_name != expected[0]
         or item.parent_id != expected[1]
-        or item.display_order != expected[2]
+        or (not ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT and item.display_order != expected[2])
     ):
         raise _error(f"mapping does not bind exact live TM schema row {report_norm_id}")
     return {
         "canonical_name": item.canonical_name,
-        "display_order": item.display_order,
+        "display_order": expected[2],
         "hierarchy_level": item.hierarchy_level,
         "report_norm_id": item.schema_id,
         "schema_parent_report_norm_id": item.parent_id,
@@ -770,7 +795,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
     if (
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "CASH_EQUIVALENTS_8BANK_CODEX_VERIFICATION_COMPLETE"
+        or value["state"] != RESULT_STATE
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
         or len(value["trials"]) != 8
@@ -798,7 +823,9 @@ def _validate_result(value: Any) -> dict[str, Any]:
             raise _error("cash-equivalents trial shape or status drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "e0092:result:" + canonical_json_sha256_v1(material):
+    if identity != RESULT_ID_PREFIX + canonical_json_sha256_v1(material) or (
+        EXPECTED_RESULT_ID is not None and identity != EXPECTED_RESULT_ID
+    ):
         raise _error("cash-equivalents result identity drifted")
     return canonical_clone_v1(value)
 
@@ -816,7 +843,9 @@ def build_cash_equivalents_8bank_codex_verified_mapping_v1(
 ) -> dict[str, Any]:
     reviewed_documents = _review(review)["documents"]
     axis = project_full_document_vietocr_accounting_axis_v1(semantic_index)
-    scanner.validate_cash_equivalents_full_document_scan_replay_v1(structure_scan, semantic_index)
+    scanner.validate_cash_equivalents_full_document_scan_replay_v1(
+        structure_scan, semantic_index, variant_profile=VARIANT_PROFILE
+    )
     if (
         axis.get("semantic_axis_sha256") != EXPECTED_AXIS_SHA256
         or structure_scan.get("scan_id") != EXPECTED_SCAN_ID
@@ -943,11 +972,9 @@ def build_cash_equivalents_8bank_codex_verified_mapping_v1(
                         "visible_total": parent["normalized_value"],
                     }
                 )
-        period_status = (
-            "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
-            if reviewed["source_period"] == "2026-03-31"
-            else "VERIFIED_SOURCE_PERIOD_Q2_2026"
-        )
+        period_status = SOURCE_PERIOD_STATUS_BY_PERIOD.get(reviewed["source_period"])
+        if period_status is None:
+            raise _error("reviewed cash-equivalents source period is unsupported")
         page_number = reviewed["page_span"][0]
         trials.append(
             {
@@ -1009,17 +1036,17 @@ def build_cash_equivalents_8bank_codex_verified_mapping_v1(
         },
         "metrics": _metrics(trials),
         "schema_family": {
-            "family_end_display_order": 830,
+            "family_end_display_order": FAMILY_END_DISPLAY_ORDER,
             "family_root": _schema_binding(schema_by_id.get(1248), 1248),
             "mapped_report_norm_ids": mapped_union,
             "schema_gap_source_row_count": 0,
             "section_root": _schema_binding(schema_by_id.get(1247), 1247),
         },
-        "state": "CASH_EQUIVALENTS_8BANK_CODEX_VERIFICATION_COMPLETE",
+        "state": RESULT_STATE,
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "e0092:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": RESULT_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 
@@ -1047,9 +1074,19 @@ def _stable_json(path: Path, expected_sha256: str | None = None) -> tuple[dict[s
 def _live_inputs() -> dict[str, Any]:
     semantic_index, _ = _stable_json(SEMANTIC_INDEX_PATH, EXPECTED_INDEX_SHA256)
     crop_manifest, crop_sha = _stable_json(CROP_MANIFEST_PATH, EXPECTED_CROP_MANIFEST_SHA256)
-    structure_scan = scanner.build_live_cash_equivalents_full_document_scan_v1()
+    structure_scan = scanner.build_live_cash_equivalents_full_document_scan_v1(
+        SEMANTIC_INDEX_PATH, variant_profile=VARIANT_PROFILE
+    )
     review, review_sha = _stable_json(REVIEW_PATH)
     schema_authority, schema_by_id = _authority_snapshot(PROJECT_ROOT)
+    if ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT:
+        # E-0092 is a fixed historical receipt.  Later additive TM-schema
+        # revisions must not silently rewrite its already authenticated input
+        # authority.  The exact persisted result ID pins this snapshot, while
+        # current schema rows are still independently checked above.
+        persisted_result, _ = _stable_json(RESULT_PATH)
+        persisted_result = _validate_result(persisted_result)
+        schema_authority = canonical_clone_v1(persisted_result["input_refs"]["schema_authority"])
     return {
         "semantic_index": semantic_index,
         "crop_manifest": crop_manifest,

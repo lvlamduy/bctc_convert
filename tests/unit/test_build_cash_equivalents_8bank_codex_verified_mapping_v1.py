@@ -101,6 +101,6 @@ def test_public_replay_rejects_coordinated_value_tamper() -> None:
     forged["result_id"] = "e0092:result:" + builder.canonical_json_sha256_v1(material)
     with pytest.raises(
         builder.CashEquivalents8BankCodexVerifiedMappingV1Error,
-        match="replay exactly",
+        match="result identity drifted",
     ):
         builder.validate_live_cash_equivalents_8bank_codex_verified_mapping_v1(forged)

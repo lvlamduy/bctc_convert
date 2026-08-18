@@ -62,6 +62,17 @@ cộng có kiểm soát trên từng số nguồn đã xác minh; parent thu, pa
 Machine-readable result:
 `docs/experiments/E-0145-annual-2025-other-activity-8bank-codex-verified-mapping-v1.json`.
 
+## COMPLETE — annual-2025 `Tiền và các khoản tương đương tiền`
+
+E-0147 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025 và tìm đúng
+một vùng family tại ACB p73, MBB p78, VPB p73, HDB p54, VCB p64, CTG p62,
+BID p58 và VIB p50. Pixel, trục số nguồn, schema hiện hành và 18 phương trình
+xác minh 43 mapping/86 ô số. Ba dấu `-` nhìn thấy được bind trước khi chuẩn hóa
+zero. Không có family absence, disagreement số hay dòng OPEN mới.
+
+Machine-readable result:
+`docs/experiments/E-0147-annual-2025-cash-equivalents-8bank-codex-verified-mapping-v1.json`.
+
 ## OPEN — annual-2025 `Chi phí thuế thu nhập doanh nghiệp`
 
 E-0146 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025 và tìm đúng

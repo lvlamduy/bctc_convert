@@ -1035,15 +1035,20 @@ Kết quả annual-2025:
 
 ## 41. Tiền và các khoản tương đương tiền
 
-- **Đã map/xác minh:** ACB p8, MBB p50, VPB p66, VCB p40, CTG p47 và
-  VIB p45. Đã map 31 khoản mục/60 ô số vào đầy đủ family 1248–1254; 12
-  phương trình tổng đều đóng đúng.
-- **Không có cụm thuyết minh chi tiết trong báo cáo:** HDB và BID. Hai PDF
-  chỉ có số dư tiền đầu/cuối kỳ hoặc chính sách gần giống, không có bảng thành
-  phần tiền và tương đương tiền với trục kỳ và tổng.
-- **Còn thiếu:** Không có khoản mục nguồn chưa map trong sáu vùng đã xác minh.
-  Ô chứng khoán kỳ hiện tại của ACB và ô kỳ so sánh của VCB để trống trên PDF
-  nên được giữ trống, không đổi thành 0. VPB là nguồn Q1/2026.
+- **BCTC hợp nhất kiểm toán annual-2025 đã map/xác minh:** ACB p73, MBB p78,
+  VPB p73, HDB p54, VCB p64, CTG p62, BID p58 và VIB p50. Whole-PDF scan
+  tìm đúng một vùng family trong cả 8/8 filing; 43 mapping/86 ô số và 18
+  phương trình đóng đúng trên đầy đủ family 1248–1254.
+- **Không có cụm trong annual-2025:** Không bank nào.
+- **Còn thiếu annual-2025:** Không có khoản mục nguồn chưa map. Ba dấu `-`
+  nhìn thấy tại ACB, HDB và VPB được bind vào pixel trước khi chuẩn hóa thành
+  zero; không ô trống nào bị đổi thành zero.
+- **Lượt hiện hành trước:** ACB p8, MBB p50, VPB p66, VCB p40, CTG p47 và
+  VIB p45 giữ nguyên 31 mapping/60 ô/12 phương trình. HDB/BID là bounded
+  detailed-note absences trong đúng hai filing cũ; VPB là nguồn Q1/2026.
+
+Kết quả annual-2025:
+`docs/experiments/E-0147-annual-2025-cash-equivalents-8bank-codex-verified-mapping-v1.json`.
 
 ## 42. Mua mới và thanh lý các công ty con
 
@@ -1282,7 +1287,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Chi phí dự phòng rủi ro tín dụng | ✓ p70 | ✓ p75 | ✓ p73 | — | ✓ p61 | — | — | ✓ p52 | Annual-2025: 0 dòng OPEN, 25 mapping/50 ô/12 phương trình, 1 DASH→0; HDB/CTG/BID không có note chi tiết. Lượt hiện hành trước: 15 mapping, E-0100 đóng CRPE-001/002 → 1228; VPB là Q1 |
 | Thu nhập/chi phí/lãi thuần hoạt động khác | ✓ p69 | ✓ p74 | ✓ p71 | ✓ p51 | ✓ p60 | ✓ p59 | ✓ p56 | ✓ p51 | Annual-2025: 0 dòng OPEN, 72 mapping/144 ô/48 phương trình, 8/8 vùng unique. Lượt hiện hành trước: 23 mapping; OACT-001 → 1239; VPB là Q1 |
 | Chi phí thuế thu nhập doanh nghiệp | ✓\* p71 | ✓\* p76 | ✓\* p64 | ✓ p52 | ✓ p62 | ✓\* p60 | ✓ p57 | ✓\* p53 | Annual-2025: 7 dòng OPEN; 61 mapping/120 ô/32 phương trình; 2 lỗi số VietOCR bị source challenger bác bỏ; 0 family absence |
-| Tiền và các khoản tương đương tiền | ✓ p8 | ✓ p50 | ✓\* p66 | — | ✓ p40 | ✓ p47 | — | ✓ p45 | 0 dòng; 31 mapping, 60 ô số, 12 phương trình; 2 ô trống giữ nguyên; HDB/BID không có note chi tiết; VPB là nguồn Q1 |
+| Tiền và các khoản tương đương tiền | ✓ p73 | ✓ p78 | ✓ p73 | ✓ p54 | ✓ p64 | ✓ p62 | ✓ p58 | ✓ p50 | Annual-2025: 0 dòng OPEN, 43 mapping/86 ô/18 phương trình, 3 DASH→0; lượt hiện hành trước giữ riêng 31 mapping và HDB/BID absence |
 | Mua mới và thanh lý các công ty con | — | — | — | — | — | — | — | — | 0 dòng; cả 8 PDF không có bảng chi tiết 1255–1258; HDB/CTG có đối chứng giao dịch/cash-flow nhưng thiếu ba dòng bắt buộc |
 | Thu nhập nhân viên | ✓ p26 | — | ✓\* p66 | — | — | — | — | ✓ p49 | 0 dòng OPEN; ACB chia đúng 6 tháng vào 1267/1268; 5 bank không có note chi tiết; VPB là nguồn Q1 |
 | Nghĩa vụ với ngân sách nhà nước | ✓ p22 | ✓ p49 | ✓\* p58 | ✓ p32 | — | ✓ p43 | ✓ p26 | ✓ p47 | 0 dòng OPEN; HDB tiền thuê đất → 1279; 37 phương trình; VCB không có note chi tiết; VPB là nguồn Q1 |

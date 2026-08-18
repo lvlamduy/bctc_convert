@@ -78,6 +78,62 @@ def test_combined_interbank_and_optional_securities_form_same_core() -> None:
     assert result["regions"][0]["layout"]["securities_row_present"] is True
 
 
+@pytest.mark.parametrize(
+    "central_bank_label",
+    [
+        "Tiền gửi tại Ngân hàng Trung ương",
+        "Tiền gửi tại NHĨNN",
+    ],
+)
+def test_extended_profile_accepts_generic_central_bank_names_and_one_edit_ocr_noise(
+    central_bank_label: str,
+) -> None:
+    texts = _detail()
+    texts[7] = central_bank_label
+    baseline = matcher.build_cash_equivalents_variant_graph_document_v1([_page(texts)])
+    assert baseline["status"] == "UNRESOLVED_NO_UNIQUE_REGION"
+    result = matcher.build_cash_equivalents_variant_graph_document_v1(
+        [_page(texts)], variant_profile=matcher.EXTENDED_VARIANT_PROFILE
+    )
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert "CENTRAL_BANK_DEPOSIT" in result["regions"][0]["layout"]["observed_roles"]
+
+
+def test_extended_profile_does_not_fuzz_an_unrelated_deposit_counterparty() -> None:
+    texts = _detail()
+    texts[7] = "Tiền gửi tại khách hàng"
+    result = matcher.build_cash_equivalents_variant_graph_document_v1(
+        [_page(texts)], variant_profile=matcher.EXTENDED_VARIANT_PROFILE
+    )
+    assert result["status"] == "UNRESOLVED_NO_UNIQUE_REGION"
+
+
+def test_extended_profile_joins_a_wrapped_interbank_term_label() -> None:
+    texts = _detail()
+    texts[13:14] = [
+        "Tiền gửi tại các TCTD khác có kỳ hạn không quá",
+        "ba tháng",
+    ]
+    result = matcher.build_cash_equivalents_variant_graph_document_v1(
+        [_page(texts)], variant_profile=matcher.EXTENDED_VARIANT_PROFILE
+    )
+    assert "INTERBANK_TERM_UP_TO_3_MONTHS" in result["regions"][0]["layout"]["observed_roles"]
+
+
+def test_extended_profile_joins_wrapped_label_after_two_provider_order_values() -> None:
+    texts = _detail()
+    texts[13:14] = [
+        "Tiền gửi tại các TCTD khác có kỳ hạn",
+        "40.000",
+        "36.000",
+        "không quá ba tháng",
+    ]
+    result = matcher.build_cash_equivalents_variant_graph_document_v1(
+        [_page(texts)], variant_profile=matcher.EXTENDED_VARIANT_PROFILE
+    )
+    assert "INTERBANK_TERM_UP_TO_3_MONTHS" in result["regions"][0]["layout"]["observed_roles"]
+
+
 def test_cash_flow_total_before_components_variant_is_supported() -> None:
     texts = _detail("Tiền và các khoản tương đương tiền gồm có:")
     result = matcher.build_cash_equivalents_variant_graph_document_v1([_page(texts)])
