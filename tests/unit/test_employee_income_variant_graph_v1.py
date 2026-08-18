@@ -91,6 +91,12 @@ def test_direct_income_variant_is_accepted() -> None:
     assert result["regions"][0]["layout"]["direct_employee_income_present"] is True
 
 
+def test_staff_wording_for_average_employee_count_is_generic() -> None:
+    assert (
+        matcher._role("Tổng số cán bộ, nhân viên bình quân trong năm (người)") == "EMPLOYEE_COUNT"
+    )
+
+
 @pytest.mark.parametrize(
     "texts",
     [

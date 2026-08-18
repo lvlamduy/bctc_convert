@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import itertools
+import re
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -87,12 +88,14 @@ def _owner(text: str) -> bool:
 
 
 def _role(text: str) -> str | None:
-    value = _strip(text)
+    value = _support().normalize_vietnamese_anchor_v1(text)
+    value = re.sub(r"[^a-z0-9]+", " ", _strip(value)).strip()
     if _owner(value):
         return "OWNER"
     if (
         "so luong nhan vien binh quan" in value
         or "tong so nhan vien binh quan" in value
+        or "tong so can bo nhan vien binh quan" in value
         or "binh quan so can bo nhan vien" in value
     ):
         return "EMPLOYEE_COUNT"

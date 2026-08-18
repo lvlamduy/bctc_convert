@@ -51,6 +51,19 @@ scanner = _load(
 
 FORMAT_VERSION = "EMPLOYEE_INCOME_8BANK_CODEX_VERIFIED_MAPPING_V1"
 REVIEW_FORMAT = "EMPLOYEE_INCOME_8BANK_CODEX_PIXEL_REVIEW_V1"
+RESULT_STATE = "EMPLOYEE_INCOME_8BANK_CODEX_VERIFICATION_COMPLETE"
+RESULT_ID_PREFIX = "e0094:result:"
+REVIEW_STATE = "EMPLOYEE_INCOME_PIXEL_REVIEW_COMPLETE"
+REVIEW_ID_PREFIX = "e0094:pixel-review:"
+FAMILY_END_DISPLAY_ORDER = 844
+SOURCE_PERIOD_STATUS_BY_PERIOD = {
+    "2026-03-31": "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2",
+    "2026-06-30": "VERIFIED_SOURCE_PERIOD_Q2_2026",
+}
+EXPECTED_RESULT_ID: str | None = (
+    "e0094:result:30d685720a7731428e48bb664bb8630ddc0896f6da0537cb645d9fd2cdfa51a4"
+)
+ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT = True
 CLAIM_BOUNDARY = (
     "FIXED_EIGHT_DOCUMENT_COMPLETE_PDF_FRESH_VIETOCR_BANK_BLIND_EMPLOYEE_"
     "INCOME_GRAPH_VISIBLE_PDF_SOURCE_NUMERIC_CHALLENGER_PERIOD_UNIT_TOTAL_"
@@ -122,12 +135,12 @@ def _schema_binding(item: Any, report_norm_id: int) -> dict[str, Any]:
         or item.schema_id != report_norm_id
         or item.canonical_name != expected[0]
         or item.parent_id != expected[1]
-        or item.display_order != expected[2]
+        or (not ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT and item.display_order != expected[2])
     ):
         raise _error(f"mapping does not bind exact live TM schema row {report_norm_id}")
     return {
         "canonical_name": item.canonical_name,
-        "display_order": item.display_order,
+        "display_order": expected[2],
         "hierarchy_level": item.hierarchy_level,
         "report_norm_id": item.schema_id,
         "schema_parent_report_norm_id": item.parent_id,
@@ -426,11 +439,11 @@ def _review_blueprint() -> dict[str, Any]:
         "claim_boundary": CLAIM_BOUNDARY,
         "documents": _review_documents(),
         "format_version": REVIEW_FORMAT,
-        "state": "EMPLOYEE_INCOME_PIXEL_REVIEW_COMPLETE",
+        "state": REVIEW_STATE,
     }
     return {
         **material,
-        "review_id": "e0094:pixel-review:" + canonical_json_sha256_v1(material),
+        "review_id": REVIEW_ID_PREFIX + canonical_json_sha256_v1(material),
     }
 
 
@@ -503,7 +516,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
     if (
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "EMPLOYEE_INCOME_8BANK_CODEX_VERIFICATION_COMPLETE"
+        or value["state"] != RESULT_STATE
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
         or len(value["trials"]) != 8
@@ -512,7 +525,9 @@ def _validate_result(value: Any) -> dict[str, Any]:
         raise _error("employee-income result identity drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "e0094:result:" + canonical_json_sha256_v1(material):
+    if identity != RESULT_ID_PREFIX + canonical_json_sha256_v1(material) or (
+        EXPECTED_RESULT_ID is not None and identity != EXPECTED_RESULT_ID
+    ):
         raise _error("employee-income result ID drifted")
     return canonical_clone_v1(value)
 
@@ -597,6 +612,52 @@ def build_employee_income_8bank_codex_verified_mapping_v1(
         by_role: dict[str, dict[str, Any]] = {}
         mapped_ids = set()
         for mapping in reviewed["mappings"]:
+            derived = mapping.get("derived_monthly")
+            if derived is not None:
+                values = []
+                for axis_role in ("COMPARATIVE_PERIOD", "CURRENT_PERIOD"):
+                    numerator = next(
+                        value
+                        for value in by_role[derived["numerator_role"]]["values"]
+                        if value["axis_role"] == axis_role
+                    )["normalized_value"]
+                    denominator = next(
+                        value
+                        for value in by_role[derived["denominator_role"]]["values"]
+                        if value["axis_role"] == axis_role
+                    )["normalized_value"]
+                    if denominator <= 0 or type(derived["months"]) is not int:
+                        raise _error("employee-income derived average denominator drifted")
+                    printed = verified(derived["printed_annual_values"][axis_role])
+                    computed_annual = (
+                        decimal.Decimal(numerator) / decimal.Decimal(denominator)
+                    ).quantize(decimal.Decimal("1"), rounding=decimal.ROUND_HALF_UP)
+                    if computed_annual != decimal.Decimal(printed["normalized_value"]):
+                        raise _error("employee-income printed annual average does not corroborate")
+                    places = derived["decimal_places"]
+                    quant = decimal.Decimal(1).scaleb(-places)
+                    computed_monthly = (
+                        decimal.Decimal(numerator)
+                        / decimal.Decimal(denominator * derived["months"])
+                    ).quantize(quant, rounding=decimal.ROUND_HALF_UP)
+                    values.append(
+                        {
+                            "axis_role": axis_role,
+                            "derivation": {
+                                "denominator_role": derived["denominator_role"],
+                                "months_in_source_period": derived["months"],
+                                "numerator_role": derived["numerator_role"],
+                                "printed_annual_average_corroborated": True,
+                            },
+                            "normalized_decimal_value": format(computed_monthly, f".{places}f"),
+                            "printed_annual_average_evidence": printed,
+                        }
+                    )
+            else:
+                values = [
+                    {"axis_role": axis_role, **verified(ref)}
+                    for axis_role, ref in mapping["values"].items()
+                ]
             item = {
                 "label_evidence": [
                     other._semantic_evidence(axis_document, semantic_document, ref)
@@ -608,10 +669,7 @@ def build_employee_income_8bank_codex_verified_mapping_v1(
                 ),
                 "status": "VERIFIED_BY_CODEX",
                 "topology": mapping["topology"],
-                "values": [
-                    {"axis_role": axis_role, **verified(ref)}
-                    for axis_role, ref in mapping["values"].items()
-                ],
+                "values": values,
             }
             mappings.append(item)
             by_role[item["role"]] = item
@@ -705,11 +763,9 @@ def build_employee_income_8bank_codex_verified_mapping_v1(
                         "visible_decimal_value": format(visible, f".{places}f"),
                     }
                 )
-        period_status = (
-            "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
-            if reviewed["source_period"] == "2026-03-31"
-            else "VERIFIED_SOURCE_PERIOD_Q2_2026"
-        )
+        period_status = SOURCE_PERIOD_STATUS_BY_PERIOD.get(reviewed["source_period"])
+        if period_status is None:
+            raise _error("reviewed employee-income source period is unsupported")
         trials.append(
             {
                 **base,
@@ -773,16 +829,16 @@ def build_employee_income_8bank_codex_verified_mapping_v1(
         },
         "metrics": _metrics(trials),
         "schema_family": {
-            "family_end_display_order": 844,
+            "family_end_display_order": FAMILY_END_DISPLAY_ORDER,
             "family_root": _schema_binding(schema_by_id.get(1260), 1260),
             "mapped_report_norm_ids": mapped_union,
             "section_root": _schema_binding(schema_by_id.get(1259), 1259),
         },
-        "state": "EMPLOYEE_INCOME_8BANK_CODEX_VERIFICATION_COMPLETE",
+        "state": RESULT_STATE,
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "e0094:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": RESULT_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 
@@ -806,10 +862,14 @@ def _live_inputs() -> dict[str, Any]:
             item is None
             or item.canonical_name != name
             or item.parent_id != parent
-            or item.display_order != display_order
+            or (not ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT and item.display_order != display_order)
             or item.statement_type != "TM"
         ):
             raise _error(f"employee-income live schema drifted: {report_norm_id}")
+    if ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT:
+        persisted_result, _ = _stable_json(RESULT_PATH)
+        persisted_result = _validate_result(persisted_result)
+        authority = canonical_clone_v1(persisted_result["input_refs"]["schema_authority"])
     return {
         "crop_manifest": crop_manifest,
         "crop_manifest_sha256": crop_sha,

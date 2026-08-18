@@ -1069,16 +1069,21 @@ Kết quả annual-2025:
 
 ## 43. Thu nhập nhân viên của ngân hàng
 
-- **Đã map/xác minh:** ACB p26, VPB p66 và VIB p49. Đã map 13 khoản mục/26 ô
-  số vào 1261–1268 và kiểm tra 14 phương trình tổng hoặc tỷ lệ. VPB là nguồn
-  Q1/2026; các số bình quân tháng được chia theo đúng ba tháng. VIB được chia
-  theo sáu tháng.
-- **Không có cụm thuyết minh chi tiết trong báo cáo:** MBB, HDB, VCB, CTG và
-  BID. Các câu chính sách trợ cấp thôi việc hoặc số nhân viên đứng riêng không
-  được relabel thành bảng thu nhập nhân viên.
-- **Còn thiếu:** Không còn. E-0100 chia chính xác hai số ACB cho sáu tháng và
-  map 1267/1268: lương `15` và `43/3`; thu nhập `81/2` và `247/6` triệu đồng
-  mỗi người mỗi tháng cho kỳ hiện tại/kỳ so sánh.
+- **BCTC hợp nhất kiểm toán annual-2025 đã map/xác minh:** ACB p73, VPB p73,
+  BID p58 và VIB p54. Whole-PDF scan tìm đúng một vùng family ở mỗi báo cáo;
+  18 mapping/36 ô số và 16 phương trình tổng hoặc tỷ lệ đã xác minh.
+- **Biến thể đã đóng:** BID dùng nhãn quấn dòng `Tổng số cán bộ, nhân viên bình
+  quân trong năm`; VIB trả hai số bình quân trước nhãn. ACB in bình quân
+  người/năm: số in được kiểm tra lại bằng tử số/mẫu số, rồi mới chia 12 để map
+  1267/1268 theo đơn vị người/tháng (`14.16`/`13.94` và `37.57`/`38.10`).
+- **Không có cụm trong annual-2025:** MBB, HDB, VCB và CTG. Policy trợ cấp
+  thôi việc hoặc số nhân viên đứng riêng không được relabel thành bảng.
+- **Còn thiếu annual-2025:** Không có khoản mục nguồn chưa map.
+- **Lượt hiện hành trước:** E-0094/E-0100 giữ riêng ACB p26, VPB p66 và VIB
+  p49 với 13 mapping/26 ô/14 phương trình; VPB là nguồn Q1/2026.
+
+Kết quả annual-2025:
+`docs/experiments/E-0149-annual-2025-employee-income-8bank-codex-verified-mapping-v1.json`.
 
 ## 44. Tình hình thực hiện nghĩa vụ với ngân sách nhà nước
 
@@ -1294,7 +1299,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Chi phí thuế thu nhập doanh nghiệp | ✓\* p71 | ✓\* p76 | ✓\* p64 | ✓ p52 | ✓ p62 | ✓\* p60 | ✓ p57 | ✓\* p53 | Annual-2025: 7 dòng OPEN; 61 mapping/120 ô/32 phương trình; 2 lỗi số VietOCR bị source challenger bác bỏ; 0 family absence |
 | Tiền và các khoản tương đương tiền | ✓ p73 | ✓ p78 | ✓ p73 | ✓ p54 | ✓ p64 | ✓ p62 | ✓ p58 | ✓ p50 | Annual-2025: 0 dòng OPEN, 43 mapping/86 ô/18 phương trình, 3 DASH→0; lượt hiện hành trước giữ riêng 31 mapping và HDB/BID absence |
 | Mua mới và thanh lý các công ty con | — | — | — | — | — | — | — | — | Annual-2025: 8 bounded absences/695 trang/25 đối chứng âm, 0 OPEN; lượt hiện hành E-0093 giữ nguyên 8 absences |
-| Thu nhập nhân viên | ✓ p26 | — | ✓\* p66 | — | — | — | — | ✓ p49 | 0 dòng OPEN; ACB chia đúng 6 tháng vào 1267/1268; 5 bank không có note chi tiết; VPB là nguồn Q1 |
+| Thu nhập nhân viên | ✓ p73 | — | ✓ p73 | — | — | — | ✓ p58 | ✓ p54 | Annual-2025: 0 dòng OPEN, 18 mapping/36 ô/16 phương trình; ACB bình quân năm được kiểm tra rồi quy đổi 12 tháng. Lượt hiện hành trước giữ riêng 13 mapping; VPB là nguồn Q1 |
 | Nghĩa vụ với ngân sách nhà nước | ✓ p22 | ✓ p49 | ✓\* p58 | ✓ p32 | — | ✓ p43 | ✓ p26 | ✓ p47 | 0 dòng OPEN; HDB tiền thuê đất → 1279; 37 phương trình; VCB không có note chi tiết; VPB là nguồn Q1 |
 | Tài sản thế chấp của khách hàng | — | — | ✓ p67 | — | ✓ p47 | — | — | ✓ p49 | 0 dòng OPEN; 4 dòng gộp vào 1288 và hai tổng đóng đúng; 5 bank không có note chi tiết; VPB là nguồn Q1 |
 | Tài sản/GTCG ngân hàng đem thế chấp, cầm cố, chiết khấu | — | — | ✓\* p67 | — | — | — | — | ✓\* p49 | 3 dòng OPEN; 5 mapping, 10 ô số, 6 quan hệ kế toán; 6 bank không có note chi tiết; VPB có hierarchy nguồn double-count và là nguồn Q1 |

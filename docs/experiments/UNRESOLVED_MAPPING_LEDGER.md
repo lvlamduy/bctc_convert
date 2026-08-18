@@ -62,6 +62,21 @@ cộng có kiểm soát trên từng số nguồn đã xác minh; parent thu, pa
 Machine-readable result:
 `docs/experiments/E-0145-annual-2025-other-activity-8bank-codex-verified-mapping-v1.json`.
 
+## CLOSED — annual-2025 `Thu nhập nhân viên của ngân hàng`
+
+E-0149 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025 và tìm đúng
+một vùng family tại ACB p73, VPB p73, BID p58 và VIB p54. Pixel, trục số nguồn,
+schema hiện hành và 16 phương trình xác minh 18 mapping/36 ô số. MBB, HDB, VCB
+và CTG là bounded detailed-note absences trong đúng filing đã bind.
+
+Không còn dòng OPEN. BID được nhận bằng biến thể từ vựng tổng quát cho `cán bộ,
+nhân viên bình quân`; VIB giữ topology số đứng trước nhãn. Hai số bình quân năm
+ACB được kiểm tra ngược với quỹ lương/tổng thu nhập chia số nhân viên, rồi mới
+quy đổi 12 tháng sang 1267/1268; OCR không được dùng làm numeric truth.
+
+Machine-readable result:
+`docs/experiments/E-0149-annual-2025-employee-income-8bank-codex-verified-mapping-v1.json`.
+
 ## COMPLETE — annual-2025 `Mua mới và thanh lý các công ty con`
 
 E-0148 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025 và không tìm
