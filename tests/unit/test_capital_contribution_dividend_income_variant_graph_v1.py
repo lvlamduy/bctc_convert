@@ -94,6 +94,124 @@ def test_collapsed_and_optional_equity_method_variants_accept() -> None:
     ]
 
 
+def test_generic_dividend_sale_liquidation_and_combined_equity_variants() -> None:
+    mbb = matcher.build_capital_contribution_dividend_income_variant_graph_document_v1(
+        [
+            _page(
+                [
+                    "33.",
+                    "Thu nhập từ góp vốn, mua cổ phần",
+                    "Năm 2025",
+                    "Năm 2024",
+                    "Triệu đồng",
+                    "Triệu đồng",
+                    "Thu từ cổ tức, lợi tức",
+                    "59.336",
+                    "52.643",
+                    "Lãi từ việc bán các khoản góp vốn, mua cổ phần",
+                    "115.008",
+                    "-",
+                    "Thu nhập từ góp vốn, mua cổ phần",
+                    "174.344",
+                    "52.643",
+                ]
+            )
+        ]
+    )
+    assert mbb["regions"][0]["layout"]["child_roles"] == [
+        "COLLAPSED_PARENT",
+        "DIRECT_DIVIDEND",
+        "OTHER_INCOME",
+    ]
+
+    vcb = matcher.build_capital_contribution_dividend_income_variant_graph_document_v1(
+        [
+            _page(
+                [
+                    "30.",
+                    "Thu nhập từ góp vốn, mua cổ phần",
+                    "2025",
+                    "2024",
+                    "Triệu VND",
+                    "Triệu VND",
+                    "Cổ tức nhận được từ các khoản góp vốn, mua cổ phần",
+                    "118.576",
+                    "160.709",
+                    "Thu nhập từ thanh lý các khoản đầu tư góp vốn, mua cổ phần",
+                    "-",
+                    "747",
+                    "281.862",
+                    "307.179",
+                ]
+            )
+        ]
+    )
+    assert vcb["regions"][0]["layout"]["child_roles"] == [
+        "DIRECT_DIVIDEND",
+        "OTHER_INCOME",
+    ]
+
+    ctg = matcher.build_capital_contribution_dividend_income_variant_graph_document_v1(
+        [
+            _page(
+                [
+                    "28.",
+                    "Thu nhập từ góp vốn, mua cổ phần",
+                    "Năm 2025",
+                    "Năm 2024",
+                    "Triệu đồng",
+                    "Triệu đồng",
+                    "Cổ tức nhận được trong năm từ góp vốn, mua cổ phần",
+                    "71.352",
+                    "20.539",
+                    "Từ chứng khoán vốn",
+                    "15.823",
+                    "13.284",
+                    "Từ góp vốn, đầu tư dài hạn",
+                    "55.529",
+                    "7.255",
+                    "440.367",
+                    "390.648",
+                ]
+            )
+        ]
+    )
+    assert ctg["regions"][0]["layout"]["child_roles"] == [
+        "COMBINED_EQUITY_SECURITIES_DIVIDEND",
+        "DIRECT_DIVIDEND",
+        "LONG_TERM_CAPITAL_DIVIDEND",
+    ]
+
+
+def test_unrelated_sale_or_liquidation_text_is_not_a_child_anchor() -> None:
+    assert matcher._child_role("Chi phí thanh lý tài sản") is None
+    assert matcher._child_role("Lãi từ việc bán chứng khoán đầu tư") is None
+
+
+def test_wrapped_child_label_can_interleave_two_same_row_value_lines() -> None:
+    result = matcher.build_capital_contribution_dividend_income_variant_graph_document_v1(
+        [
+            _page(
+                [
+                    "32.",
+                    "Thu nhập từ góp vốn, mua cổ phần",
+                    "Năm nay",
+                    "Năm trước",
+                    "Triệu VND",
+                    "Triệu VND",
+                    "Cổ tức nhận được; lãi được chia trong năm từ góp",
+                    "112.395",
+                    "26.104",
+                    "vốn, mua cổ phần",
+                    "1.097.172",
+                    "445.742",
+                ]
+            )
+        ]
+    )
+    assert result["regions"][0]["layout"]["child_roles"] == ["DIRECT_DIVIDEND"]
+
+
 def test_statement_aggregate_without_numbered_note_axes_is_negative() -> None:
     result = matcher.build_capital_contribution_dividend_income_variant_graph_document_v1(
         [_page(["Thu nhập từ góp vốn, mua cổ phần", "200", "100", "200", "100"])]

@@ -170,11 +170,30 @@ def _child_role(text: str) -> str | None:
         return "INVESTMENT_EQUITY_DIVIDEND"
     if "gop von dau tu dai han" in value:
         return "LONG_TERM_CAPITAL_DIVIDEND"
-    if "co tuc" in value and "gop von" in value:
+    if "co tuc" in value and ("gop von" in value or "loi tuc" in value):
         return "DIRECT_DIVIDEND"
-    if value.startswith("thu tu chung khoan von"):
+    if (value.startswith("lai tu viec ban") and "gop von" in value and "mua co phan" in value) or (
+        value.startswith("thu nhap tu thanh ly") and "gop von" in value and "mua co phan" in value
+    ):
+        return "OTHER_INCOME"
+    if value.startswith(("thu tu chung khoan von", "tu chung khoan von")):
         return "COMBINED_EQUITY_SECURITIES_DIVIDEND"
     return None
+
+
+def _could_start_wrapped_child(text: str) -> bool:
+    value = _strip_enumerator(text)
+    return any(
+        anchor in value
+        for anchor in (
+            "co tuc",
+            "gop von",
+            "lai tu viec ban",
+            "phan chia lai",
+            "thu nhap tu",
+            "chung khoan von",
+        )
+    )
 
 
 def _region(lines: Sequence[Mapping[str, Any]], start: int) -> dict[str, Any]:
@@ -202,6 +221,30 @@ def _region(lines: Sequence[Mapping[str, Any]], start: int) -> dict[str, Any]:
                 and support._NUMBER.fullmatch(following["normalized_text"]) is None
             ):
                 child = _child_role(f"{text} {following['normalized_text']}")
+        if (
+            child is None
+            and axis is None
+            and support._NUMBER.fullmatch(text) is None
+            and _could_start_wrapped_child(text)
+        ):
+            fragments = [text]
+            last_bottom = line["bbox"][3]
+            for following in window[offset + 1 : offset + 5]:
+                following_text = following["normalized_text"]
+                if support._axis_role(following_text) is not None:
+                    break
+                if support._NUMBER.fullmatch(following_text) is not None:
+                    continue
+                if (
+                    following["bbox"][1] - last_bottom > 80
+                    or abs(following["bbox"][0] - line["bbox"][0]) > 160
+                ):
+                    break
+                fragments.append(following_text)
+                child = _child_role(" ".join(fragments))
+                if child is not None:
+                    break
+                last_bottom = max(last_bottom, following["bbox"][3])
         if child is not None:
             children.append((child, line))
             events.append(support._line_ref(line, child))

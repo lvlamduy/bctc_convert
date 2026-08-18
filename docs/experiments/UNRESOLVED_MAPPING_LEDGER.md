@@ -17,10 +17,41 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **317 entries**.  Current open queue: **104**.  Closed history:
-**129** row/graph resolutions and **84** confirmed bound-report family absences.
+Ledger total: **319 entries**.  Current open queue: **105**.  Closed history:
+**129** row/graph resolutions and **85** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
+
+## OPEN/CLOSED — annual-2025 `Thu nhập từ góp vốn, mua cổ phần và thu nhập cổ tức`
+
+E-0142 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025, tìm đúng
+một note chi tiết tại ACB p69, MBB p74, VPB p71, HDB p51, VCB p60, CTG p59 và
+BID p56. Pixel, trục số nguồn, schema hiện hành và 20 phương trình xác minh 28
+mapping/56 ô số; bốn dấu `-` được crop-bind trước khi chuẩn hóa 0 và không có
+disagreement số VietOCR. VIB chỉ in aggregate ở báo cáo kết quả hoạt động p11;
+toàn filing không có note chi tiết nên tạo một bounded absence.
+
+Graph chung bổ sung ba biến thể ngữ nghĩa, không có bank/page rule: `Thu từ cổ
+tức, lợi tức`; lãi bán hoặc thu nhập thanh lý khoản góp vốn/mua cổ phần; và
+`Từ chứng khoán vốn`. BID chứng minh nhãn con có thể xuống dòng với hai giá trị
+xen giữa hai fragment. Matcher hiện hành E-0087 vẫn giữ nguyên scan ID và replay
+byte-exact.
+
+### CCDI-CTG-001 — CTG — dòng chứng khoán vốn gộp
+
+- Report: BCTC hợp nhất kiểm toán năm 2025.
+- Physical page / family: 59 / thu nhập từ góp vốn, mua cổ phần và cổ tức.
+- Source label / accentless: `Từ chứng khoán vốn` / `tu chung khoan von`.
+- Visible values: `15.823 | 13.284` (`2025 | 2024`, triệu đồng).
+- Nearest schema: ReportNormId 1200 `Từ chứng khoán Vốn kinh doanh` và 1201
+  `Từ chứng khoán Vốn đầu tư`.
+- Review status: `OPEN_NEEDS_SCHEMA_DECISION`.
+- Reason: một số in gộp hai phạm vi mà schema hiện tách riêng; không có nguồn
+  phân rã để chia số hoặc chọn một leaf. Dòng được xác minh source-only và cùng
+  1202 đóng `15.823 + 55.529 = 71.352` / `13.284 + 7.255 = 20.539`.
+
+Machine-readable result:
+`docs/experiments/E-0142-annual-2025-capital-contribution-dividend-income-8bank-codex-verified-mapping-v1.json`.
 
 ## CLOSED — annual-2025 `Lãi thuần từ chứng khoán kinh doanh, chứng khoán đầu tư`
 

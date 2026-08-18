@@ -878,22 +878,31 @@ Kết quả annual-2025:
 
 ## 36. Thu nhập từ góp vốn, mua cổ phần và thu nhập cổ tức
 
-- **Đã map/xác minh:** ACB p25, MBB p48, VPB p64, HDB p35, VCB p39,
-  CTG p46 và BID p29. Whole-PDF scan tìm đúng một note chi tiết ở mỗi bank;
-  27 mapping/54 ô số và 16 phương trình giữa các nhánh cổ tức, góp vốn, phương
-  pháp vốn chủ sở hữu, thu nhập khác và tổng đều đóng đúng.
-- **Biến thể đã đóng:** ACB tách ba nguồn cổ tức; MBB chỉ in một dòng parent và
-  tổng lặp lại; VPB có một dòng cổ tức và giữ đúng nguồn Q1/2026; HDB có thêm
-  thu nhập hợp nhất kinh doanh; VCB/BID có subtotal cổ tức rồi cộng phần chia
-  lãi theo phương pháp vốn chủ sở hữu; CTG gộp `Thu từ chứng khoán Vốn`; BID
-  kế thừa đơn vị `Triệu VND` từ đầu section ở trang trước.
-- **Dấu gạch và lỗi OCR:** 5 dấu `-` được xác minh bằng nguồn/pixel rồi chuẩn
-  hóa thành 0. VietOCR đọc hai dấu gạch VPB thành `1`; nguồn native và pixel
-  bác bỏ hai proposal này nên kết quả số vẫn là 0.
-- **Không có cụm thuyết minh chi tiết trong báo cáo:** VIB. VIB chỉ có dòng
-  tổng trên báo cáo kết quả kinh doanh p8, không có note đánh số với trục kỳ,
-  đơn vị và các hàng con nên không bị relabel thành note chi tiết.
-- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong bảy note chi tiết.
+- **BCTC hợp nhất kiểm toán annual-2025 đã map/xác minh:** ACB p69, MBB p74,
+  VPB p71, HDB p51, VCB p60, CTG p59 và BID p56. Whole-PDF scan quét đủ 695
+  trang, tìm đúng một note chi tiết tại mỗi bank này và xác minh 28 mapping/56
+  ô số cùng 20 phương trình hai kỳ. Bốn dấu `-` được crop-bind rồi chuẩn hóa 0;
+  không có disagreement số VietOCR.
+- **Biến thể annual-2025 đã đóng:** ACB tách ba nguồn cổ tức; MBB tách cổ
+  tức/lợi tức và lãi bán khoản góp vốn trước tổng; VPB chỉ có một dòng cổ tức;
+  HDB cộng cổ tức dài hạn với phần chia lãi theo phương pháp vốn chủ sở hữu;
+  VCB có thêm thu nhập thanh lý; BID có nhãn cổ tức xuống dòng nhưng hai ô số
+  xen giữa hai fragment. CTG in một dòng gộp `Từ chứng khoán vốn`; dòng này vẫn
+  tham gia phương trình nguồn nhưng không bị tách vào hai leaf trading/investment.
+- **Không có note chi tiết annual-2025:** VIB. VIB p11 chỉ in aggregate trên
+  báo cáo kết quả hoạt động; toàn bộ 78 trang không có note đánh số với trục kỳ,
+  đơn vị và graph con nên aggregate không bị relabel thành note chi tiết.
+- **Lượt hiện hành trước:** ACB p25, MBB p48, VPB p64, HDB p35, VCB p39,
+  CTG p46 và BID p29 giữ nguyên 27 mapping/54 ô/16 phương trình; VIB là bounded
+  absence và VPB giữ đúng nguồn Q1/2026.
+- **Còn thiếu annual-2025:**
+
+| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | ---: | --- | --- |
+| CTG | 59 | Từ chứng khoán vốn (`15.823` / `13.284`) | Một số nguồn gộp chứng khoán vốn kinh doanh và đầu tư; schema 1200/1201 tách hai leaf nên không được tự chia hoặc thu hẹp. Dòng được giữ source-only và vẫn đóng subtotal cổ tức. |
+
+Kết quả annual-2025:
+`docs/experiments/E-0142-annual-2025-capital-contribution-dividend-income-8bank-codex-verified-mapping-v1.json`.
 
 ## 37. Chi phí quản lý chung (Chi phí hoạt động)
 
@@ -1215,7 +1224,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Lãi/lỗ thuần mua bán chứng khoán kinh doanh | ✓ p68 | ✓ p73 | ✓ p70 | ✓ p50 | ✓ p59 | ✓ p58 | ✓ p56 | — | Annual-2025: 0 dòng OPEN, 27 mapping/54 ô/14 phương trình; HDB không in dự phòng; VIB chỉ có family đầu tư. Lượt hiện hành trước: 28 mapping, VPB là Q1 |
 | Lãi/lỗ thuần mua bán chứng khoán đầu tư | ✓ p68 | ✓ p73 | ✓ p70 | ✓ p50 | ✓ p59 | ✓ p59 | ✓ p56 | ✓ p51 | Annual-2025: 0 dòng OPEN, 32 mapping/64 ô logic từ 70 thành phần/16 phương trình, 5 DASH→0. Lượt hiện hành trước: 28 mapping; VCB bounded absence, VPB là Q1 |
 | Lãi thuần CK kinh doanh + CK đầu tư | — | — | — | — | — | — | — | — | Annual-2025: 8 bounded absences, BID p56 là tiêu đề đối chứng âm, 0 dòng OPEN. Lượt hiện hành trước: MBB p47 có 1 mapping/2 ô/2 phương trình |
-| Thu nhập góp vốn/mua cổ phần/cổ tức | ✓ p25 | ✓ p48 | ✓\* p64 | ✓ p35 | ✓ p39 | ✓ p46 | ✓ p29 | — | 0 dòng; 27 mapping, 54 ô số, 16 phương trình; 5 DASH→0; VIB không có note chi tiết; VPB là nguồn Q1 |
+| Thu nhập góp vốn/mua cổ phần/cổ tức | ✓ p69 | ✓ p74 | ✓ p71 | ✓ p51 | ✓ p60 | ✓\* p59 | ✓ p56 | — | Annual-2025: 1 dòng CTG OPEN, 28 mapping/56 ô/20 phương trình, 4 DASH→0; VIB không có note chi tiết. Lượt hiện hành trước: 27 mapping; VPB là Q1 |
 | Chi phí quản lý chung/Chi phí hoạt động | ✓ p25 | ✓ p48 | ✓\* p65 | ✓ p35 | ✓ p40 | ✓\* p47 | ✓ p30 | ✓ p46 | 4 dòng OPEN; 99 mapping, 198 ô số, 30 phương trình; VCB 1 lỗi số VietOCR bị nguồn/pixel bác bỏ; VPB là nguồn Q1 |
 | Chi phí dự phòng rủi ro tín dụng | — | ✓ p49 | ✓ p66 | — | — | — | — | ✓ p47 | 0 dòng OPEN; 17 source-row mappings, 8 phương trình; CRPE-001/002 → 1228; 5 bank không có note chi tiết; VPB là nguồn Q1 |
 | Thu nhập/chi phí/lãi thuần hoạt động khác | — | ✓ p47 | ✓ p64 | — | — | — | — | ✓ p46 | 0 dòng OPEN; OACT-001 gộp vào 1239, 14 phương trình; 5 bank không có note chi tiết; VPB là nguồn Q1 |
