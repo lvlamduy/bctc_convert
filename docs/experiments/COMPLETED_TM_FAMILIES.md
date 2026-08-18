@@ -738,7 +738,27 @@ Kết quả annual-2025:
 Kết quả annual-2025:
 `docs/experiments/E-0135-annual-2025-interest-expense-8bank-codex-verified-mapping-v1.json`.
 
-## 30. Thu nhập, chi phí và lãi thuần từ hoạt động dịch vụ
+## 30. Thu nhập từ lãi thuần
+
+- **Đã map/xác minh trên BCTC hợp nhất kiểm toán annual-2025:** ACB p10,
+  MBB p13, VPB p12, HDB p10, VCB p11, CTG p11, BID p12 và VIB p11.
+  Whole-PDF scan 695 trang tìm đúng một graph báo cáo kết quả hoạt động hợp
+  nhất ở mỗi PDF; 8 mapping/16 ô số và 48 đối chiếu statement–TM–công thức
+  đều khớp chính xác cho năm 2025 và 2024.
+- **Biến thể đã đóng:** Nhãn có thể là `Thu nhập lãi thuần` hoặc `Thu nhập từ
+  lãi thuần`; VIB trả hai ô số trước nhãn trong provider order nhưng geometry
+  vẫn bind đúng hàng. Các vùng thuyết minh trùng text tại MBB/VIB bị loại vì
+  không có heading, trục kỳ, đơn vị và bộ ba thu nhập–chi phí–lãi thuần của
+  báo cáo kết quả hoạt động hợp nhất.
+- **Không có trong annual-2025:** Không có; cả 8 bank đều có dòng 5985.
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map. Giá trị 5985 đồng thời
+  khớp hai dòng statement và hai family TM 1143/1151 đã xác minh ở E-0134/
+  E-0135; không dùng VietOCR làm numeric truth.
+
+Kết quả annual-2025:
+`docs/experiments/E-0136-annual-2025-net-interest-income-8bank-codex-verified-mapping-v1.json`.
+
+## 31. Thu nhập, chi phí và lãi thuần từ hoạt động dịch vụ
 
 - **Đã map/xác minh:** MBB p46, VPB p62 và VIB p45. Whole-PDF scan tìm đúng
   một vùng chi tiết ở mỗi bank này; 43 mapping/86 ô số và 18 phương trình
@@ -757,7 +777,7 @@ Kết quả annual-2025:
 - **Còn thiếu:** Không còn khoản mục nguồn chưa map trong ba vùng chi tiết.
   VPB là nguồn Q1/2026 và được giữ đúng kỳ, không relabel thành Q2.
 
-## 31. Lãi thuần từ hoạt động kinh doanh vàng và ngoại hối
+## 32. Lãi thuần từ hoạt động kinh doanh vàng và ngoại hối
 
 - **Đã map/xác minh:** MBB p47, VPB p63 và VIB p46. Whole-PDF scan tìm đúng
   một vùng chi tiết ở mỗi bank này; 23 mapping/46 ô số và 18 phương trình
@@ -776,7 +796,7 @@ Kết quả annual-2025:
 - **Còn thiếu:** Không còn khoản mục nguồn chưa map trong ba vùng chi tiết.
   VPB là nguồn Q1/2026 và được giữ đúng kỳ, không relabel thành Q2.
 
-## 32. Lãi/lỗ thuần từ mua bán chứng khoán kinh doanh
+## 33. Lãi/lỗ thuần từ mua bán chứng khoán kinh doanh
 
 - **Đã map/xác minh:** ACB p24, MBB p47, VPB p63, HDB p34, VCB p39,
   CTG p45 và BID p29. Whole-PDF scan tìm đúng một vùng chi tiết tại mỗi bank;
@@ -796,7 +816,7 @@ Kết quả annual-2025:
   ReportNormId 1192 `Khác` không xuất hiện trong các vùng này. VPB giữ đúng kỳ
   Q1/2026, không relabel thành Q2.
 
-## 33. Lãi/lỗ thuần từ mua bán chứng khoán đầu tư
+## 34. Lãi/lỗ thuần từ mua bán chứng khoán đầu tư
 
 - **Đã map/xác minh:** ACB p25, MBB p47, VPB p63, HDB p35, CTG p46,
   BID p29 và VIB p46. Whole-PDF scan tìm đúng một vùng chi tiết tại mỗi bank;
@@ -814,7 +834,7 @@ Kết quả annual-2025:
 - **Còn thiếu:** Không còn khoản mục nguồn chưa map trong bảy vùng chi tiết.
   ReportNormId 1197 `Khác` không xuất hiện trong các vùng đã bind.
 
-## 34. Lãi thuần từ chứng khoán kinh doanh, chứng khoán đầu tư
+## 35. Lãi thuần từ chứng khoán kinh doanh, chứng khoán đầu tư
 
 - **Đã map/xác minh:** MBB p47. Whole-PDF scan tìm đúng một dòng tổng hợp có
   hai giá trị cùng hàng; dòng tiêu đề cùng tên ở đầu note không có giá trị cùng
@@ -827,7 +847,7 @@ Kết quả annual-2025:
   định vắng mặt trên mọi kỳ/báo cáo.
 - **Còn thiếu:** Không còn khoản mục nguồn chưa map.
 
-## 35. Thu nhập từ góp vốn, mua cổ phần và thu nhập cổ tức
+## 36. Thu nhập từ góp vốn, mua cổ phần và thu nhập cổ tức
 
 - **Đã map/xác minh:** ACB p25, MBB p48, VPB p64, HDB p35, VCB p39,
   CTG p46 và BID p29. Whole-PDF scan tìm đúng một note chi tiết ở mỗi bank;
@@ -846,7 +866,7 @@ Kết quả annual-2025:
   đơn vị và các hàng con nên không bị relabel thành note chi tiết.
 - **Còn thiếu:** Không còn khoản mục nguồn chưa map trong bảy note chi tiết.
 
-## 36. Chi phí quản lý chung (Chi phí hoạt động)
+## 37. Chi phí quản lý chung (Chi phí hoạt động)
 
 - **Đã map/xác minh:** ACB p25, MBB p48, VPB p65, HDB p35, VCB p40,
   CTG p47, BID p30 và VIB p46. Whole-PDF scan tìm đúng một note chi tiết trong
@@ -867,7 +887,7 @@ Kết quả annual-2025:
 | VPB | 65 | Chi về thuế GTGT đầu vào không được khấu trừ | Chưa có leaf chi phí VAT đầu vào không khấu trừ tương đương. |
 | CTG | 47 | Chi khác về TSCĐ | Chưa có leaf riêng dưới `Chi về tài sản`; số vẫn tham gia phương trình nguồn. |
 
-## 37. Chi phí dự phòng rủi ro tín dụng
+## 38. Chi phí dự phòng rủi ro tín dụng
 
 - **Đã map/xác minh:** MBB p49, VPB p66 và VIB p47. Whole-PDF scan tìm đúng
   một note chi tiết tại mỗi bank này; 15 mapping/30 ô số và 8 phương trình
@@ -885,7 +905,7 @@ Kết quả annual-2025:
 - **Còn thiếu:** Không còn. E-0100 đưa hai dòng VPB/VIB vào 1228 `Dự phòng
   khác`; tổng family của cả hai bank vẫn đóng đúng.
 
-## 38. Thu nhập, chi phí và lãi thuần từ hoạt động khác
+## 39. Thu nhập, chi phí và lãi thuần từ hoạt động khác
 
 - **Đã map/xác minh:** MBB p47, VPB p64 và VIB p46. Whole-PDF scan tìm đúng
   một note chi tiết tại mỗi bank; 23 mapping/46 ô số và 14 phương trình thu,
@@ -901,7 +921,7 @@ Kết quả annual-2025:
 - **Còn thiếu:** Không còn. E-0100 cộng dòng phạt hợp đồng vào 1239 `Khác`
   đúng một lần cùng dòng `Thu nhập khác`; parent thu nhập tiếp tục đóng đúng.
 
-## 39. Chi phí thuế thu nhập doanh nghiệp
+## 40. Chi phí thuế thu nhập doanh nghiệp
 
 - **Đã map/xác minh:** MBB p50, VPB p59 và VIB p48. Whole-PDF scan tìm đúng
   một bảng đối chiếu thuế chi tiết tại mỗi bank; 28 mapping/56 ô số và 20
@@ -922,7 +942,7 @@ Kết quả annual-2025:
 | --- | ---: | --- | --- |
 | VIB | 48 | Điều chỉnh khác | Nhãn rộng hơn leaf 5733 về điều chỉnh thuế của các năm trước; kỳ hiện tại để trống, kỳ so sánh là `163`, nên giữ `TAX-001` chờ schema thay vì ép nghĩa hoặc coi ô trống là 0. |
 
-## 40. Tiền và các khoản tương đương tiền
+## 41. Tiền và các khoản tương đương tiền
 
 - **Đã map/xác minh:** ACB p8, MBB p50, VPB p66, VCB p40, CTG p47 và
   VIB p45. Đã map 31 khoản mục/60 ô số vào đầy đủ family 1248–1254; 12
@@ -934,7 +954,7 @@ Kết quả annual-2025:
   Ô chứng khoán kỳ hiện tại của ACB và ô kỳ so sánh của VCB để trống trên PDF
   nên được giữ trống, không đổi thành 0. VPB là nguồn Q1/2026.
 
-## 41. Mua mới và thanh lý các công ty con
+## 42. Mua mới và thanh lý các công ty con
 
 - **Đã map/xác minh:** Không có mapping vì cả tám PDF đều không trình bày bảng
   chi tiết 1255–1258 gồm tổng giá trị giao dịch, phần thanh toán bằng tiền và
@@ -946,7 +966,7 @@ Kết quả annual-2025:
   lý; CTG chỉ có caption dòng tiền đầu tư. Hai trường hợp này không đủ ba dòng
   của family và không được relabel thành bảng chi tiết.
 
-## 42. Thu nhập nhân viên của ngân hàng
+## 43. Thu nhập nhân viên của ngân hàng
 
 - **Đã map/xác minh:** ACB p26, VPB p66 và VIB p49. Đã map 13 khoản mục/26 ô
   số vào 1261–1268 và kiểm tra 14 phương trình tổng hoặc tỷ lệ. VPB là nguồn
@@ -959,7 +979,7 @@ Kết quả annual-2025:
   map 1267/1268: lương `15` và `43/3`; thu nhập `81/2` và `247/6` triệu đồng
   mỗi người mỗi tháng cho kỳ hiện tại/kỳ so sánh.
 
-## 43. Tình hình thực hiện nghĩa vụ với ngân sách nhà nước
+## 44. Tình hình thực hiện nghĩa vụ với ngân sách nhà nước
 
 - **Đã map/xác minh:** ACB p22, MBB p49, VPB p58, HDB p32, CTG p43,
   BID p26 và VIB p47. Đã map 33 khoản mục/147 ô số vào 1269–1279 và kiểm
@@ -971,7 +991,7 @@ Kết quả annual-2025:
   phải nộp khác`; cả năm ô nguồn đều là dấu gạch và được giữ `DASH` trước khi
   chuẩn hóa 0.
 
-## 44. Tài sản thế chấp của khách hàng mà ngân hàng đang nắm giữ
+## 45. Tài sản thế chấp của khách hàng mà ngân hàng đang nắm giữ
 
 - **Đã map/xác minh:** VPB p67, VCB p47 và VIB p49. Đã map 15 khoản mục/30
   ô số vào 1280–1288 và kiểm tra sáu phương trình tổng theo hai kỳ. VIB dùng
@@ -984,7 +1004,7 @@ Kết quả annual-2025:
   khai thác tài sản`/`Bảo lãnh`/`Vàng, ngoại tệ, giấy tờ có giá` vào 1288
   `Khác` đúng một lần. Tổng VCB/VIB đóng chính xác sau khi gộp.
 
-## 45. Tài sản, giấy tờ có giá của ngân hàng đưa đi thế chấp, cầm cố và chiết khấu
+## 46. Tài sản, giấy tờ có giá của ngân hàng đưa đi thế chấp, cầm cố và chiết khấu
 
 - **Đã map/xác minh:** VPB p67 và VIB p49. Đã map năm khoản mục/10 ô số vào
   1289/1290/1291/1293 và kiểm tra sáu quan hệ thành phần theo hai kỳ. VIB có
@@ -1002,7 +1022,7 @@ Kết quả annual-2025:
 | VIB | 49 | Giấy tờ có giá đưa đi thế chấp, cầm cố | Không tách chứng khoán kinh doanh và chứng khoán đầu tư nên không ép vào 1290 hay 1291. |
 | VIB | 49 | Giấy tờ có giá đưa đi chiết khấu, tái chiết khấu | Không tách loại chứng khoán; family 1289–1293 chưa có leaf theo mục đích sử dụng này. |
 
-## 46. Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra
+## 47. Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra
 
 - **Đã map/xác minh:** ACB p26, MBB p51, VPB p68, CTG p48 và VIB p50.
   Đã xác minh 47 mapping/92 ô số và 34 phương trình. ACB/VPB có các parent
@@ -1023,7 +1043,7 @@ Kết quả annual-2025:
 | VPB | 68 | Hoán đổi lãi suất tiền tệ chéo — nhận/trả; hoán đổi lãi suất một đồng tiền | Schema 1301–1302 chỉ có ngoại hối/hoán đổi tiền tệ, chưa có các leaf hoán đổi lãi suất này. |
 | VPB | 68 | Cam kết khác chi tiết; hạn mức tín dụng chưa sử dụng có thể hủy ngang | Dòng đầu trùng tên parent; dòng `Trong đó` là non-additive và chưa có leaf riêng. |
 
-## 47. Công cụ tài chính — giá trị ghi sổ và giá trị hợp lý
+## 48. Công cụ tài chính — giá trị ghi sổ và giá trị hợp lý
 
 - **Đã map/xác minh:** VPB p86, VCB p44–45 và CTG p51. Đã map 64 khoản
   mục/55 ô số và kiểm tra 12 phương trình. Cùng một graph nhận ra nhánh giá
@@ -1040,7 +1060,7 @@ Kết quả annual-2025:
 | VCB | 45 | Giá trị hợp lý của phần lớn tài sản/nợ tài chính ký hiệu `(*)` | Nguồn không công bố giá trị số; giữ OPEN. |
 | CTG | 51 | Giá trị hợp lý của phần lớn tài sản/nợ tài chính ký hiệu `(*)` | Nguồn không công bố giá trị số; giữ OPEN. |
 
-## 48. Rủi ro tiền tệ
+## 49. Rủi ro tiền tệ
 
 - **Đã map/xác minh:** MBB p58, VPB p80, HDB p38–39, VCB p50–51,
   CTG p60 và VIB p65–66. Sau adjudication E-0105 có 120 mapping/136 ô số và
@@ -1060,7 +1080,7 @@ Kết quả annual-2025:
 | HDB | 39 | Trục vàng — tổng tài sản, tổng nợ, trạng thái nội bảng/kết hợp | Schema chưa có nhánh trục vàng. |
 | CTG | 60 | Trục vàng — tổng tài sản, trạng thái nội bảng/kết hợp | Ô tổng nợ và ngoại bảng vàng để trống; schema cũng chưa có nhánh vàng. |
 
-## 49. Rủi ro lãi suất
+## 50. Rủi ro lãi suất
 
 - **Đã map/xác minh:** MBB p57, VPB p78, HDB p41, VCB p49, CTG p55 và
   VIB p62–63. E-0105 đóng toàn bộ 26 gap trước đây: dấu `-` được đọc là 0,
@@ -1073,7 +1093,7 @@ Kết quả annual-2025:
   relabel thành bảng chi tiết.
 - **Còn thiếu:** Không còn khoản mục nguồn chờ map trong family này.
 
-## 50. Rủi ro thanh khoản
+## 51. Rủi ro thanh khoản
 
 - **Đã map/xác minh:** MBB p60, HDB p43, VCB p53, CTG p58 và VIB p68–69;
   VPB p82 đã map các trục khép số. E-0105 đóng các dấu `-` tổng nợ quá hạn
@@ -1092,7 +1112,7 @@ Kết quả annual-2025:
 | VPB | 82 | Từ trên 3 đến 12 tháng | `290.157.812 - 461.620.500 = (171.462.688)`, nguồn in `(171.456.687)`; lệch 6.001. |
 | VPB | 82 | Đến 1 tháng | `392.844.039 - 389.919.465 = 2.924.574`, nguồn in `2.649.075`; lệch 275.499. |
 
-## 51. Tỷ giá một số ngoại tệ tại thời điểm lập báo cáo
+## 52. Tỷ giá một số ngoại tệ tại thời điểm lập báo cáo
 
 - **Đã map/xác minh:** MBB p61 map đủ 10 đồng tiền có trong schema; VPB p90
   map 10 đồng tiền; CTG p61 map 10 đồng tiền; BID p35 map 8 đồng tiền; VIB
@@ -1160,6 +1180,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Vốn và các quỹ | ✓ p65–66 | ✓ p69–70 | ✓\* p66–67 | ✓\* p48–49 | ✓\* p56–57 | ✓\* p55–56 | ✓\* p53–54 | ✓\* p49–50 | Annual-2025: 7 mục OPEN do thiếu leaf số dư vốn; 74 mapping/132 ô/18 phương trình; 3 bảng xoay đã full-page re-detect. Lượt hiện hành trước: 10 OPEN/65 mapping |
 | Thu nhập lãi và các khoản thu nhập tương tự | ✓ p67 | ✓ p72 | ✓ p68 | ✓ p49 | ✓ p57 | ✓ p57 | ✓ p54 | ✓ p50 | Annual-2025: 0 dòng OPEN, 55 mapping/110 ô/28 phương trình; MBB gộp → 6075, HDB phí L/C → 6076. Lượt hiện hành E-0079 giữ riêng 54 mapping |
 | Chi phí lãi và các khoản tương tự chi phí lãi | ✓ p67 | ✓ p72 | ✓ p68 | ✓ p49 | ✓ p58 | ✓ p57 | ✓ p55 | ✓ p50 | Annual-2025: 0 dòng OPEN, 40 mapping/80 ô/16 phương trình. Lượt hiện hành E-0081 giữ riêng 40 mapping; VPB của lượt đó là nguồn Q1 |
+| Thu nhập từ lãi thuần | ✓ p10 | ✓ p13 | ✓ p12 | ✓ p10 | ✓ p11 | ✓ p11 | ✓ p12 | ✓ p11 | Annual-2025: 0 dòng OPEN, 8 mapping/16 ô/48 đối chiếu statement–TM–công thức |
 | Thu nhập/chi phí/lãi thuần hoạt động dịch vụ | — | ✓ p46 | ✓\* p62 | — | — | — | — | ✓ p45 | 0 dòng; 43 mapping, 86 ô số, 18 phương trình; 5 bank không có note chi tiết; VPB là nguồn Q1 |
 | Lãi/lỗ thuần kinh doanh vàng và ngoại hối | — | ✓ p47 | ✓\* p63 | — | — | — | — | ✓ p46 | 0 dòng; 23 mapping, 46 ô số, 18 phương trình; 5 bank không có note chi tiết; VPB là nguồn Q1 |
 | Lãi/lỗ thuần mua bán chứng khoán kinh doanh | ✓ p24 | ✓ p47 | ✓\* p63 | ✓ p34 | ✓ p39 | ✓ p45 | ✓ p29 | — | 0 dòng; 28 mapping, 56 ô số, 14 phương trình; HDB 1 DASH→0; VIB không có note trading chi tiết; VPB là nguồn Q1 |

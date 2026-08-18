@@ -22,6 +22,23 @@ Ledger total: **306 entries**.  Current open queue: **102**.  Closed history:
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
+## CLOSED — annual-2025 `Thu nhập từ lãi thuần`
+
+E-0136 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025 và tìm đúng
+một graph báo cáo kết quả hoạt động hợp nhất tại ACB p10, MBB p13, VPB p12,
+HDB p10, VCB p11, CTG p11, BID p12 và VIB p11. Exact replay xác minh 8
+mapping/16 ô giá trị cùng 48 đối chiếu statement–TM–công thức; không có dòng
+OPEN hoặc family absence.
+
+Hai cách gọi `Thu nhập lãi thuần` và `Thu nhập từ lãi thuần` cùng bind vào
+ReportNormId 5985. VIB có provider order đặt hai giá trị trước nhãn nhưng
+geometry vẫn bind đúng hàng. Mỗi giá trị statement được đối chiếu lại với
+family 1143/1151 đã xác minh và phương trình live-schema `5985 = 1143 + 1151`;
+VietOCR không được dùng làm numeric truth.
+
+Machine-readable result:
+`docs/experiments/E-0136-annual-2025-net-interest-income-8bank-codex-verified-mapping-v1.json`.
+
 ## CLOSED — annual-2025 `Chi phí lãi và các khoản tương tự chi phí lãi`
 
 E-0135 quét toàn bộ tám BCTC hợp nhất kiểm toán năm 2025 và tìm đúng một vùng
