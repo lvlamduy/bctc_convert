@@ -17,10 +17,27 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **308 entries**.  Current open queue: **104**.  Closed history:
-**129** row/graph resolutions and **75** confirmed bound-report family absences.
+Ledger total: **309 entries**.  Current open queue: **104**.  Closed history:
+**129** row/graph resolutions and **76** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
+
+## CLOSED — annual-2025 `Lãi/lỗ thuần từ mua bán chứng khoán kinh doanh`
+
+E-0139 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025 và tìm đúng
+một vùng family tại ACB p68, MBB p73, VPB p70, HDB p50, VCB p59, CTG p58 và
+BID p56. Exact replay xác minh 27 mapping/54 ô số cùng 14 phương trình; không
+có dòng OPEN hoặc disagreement số VietOCR.
+
+Graph dùng chung cho phép net có/không có nhãn, nhãn dự phòng xuống dòng, owner
+trading nằm dưới umbrella trading + investment và hàng dự phòng là tùy chọn.
+HDB không in dự phòng nên `thu + chi = net`; sáu vùng còn lại đóng `thu + chi +
+dự phòng = net`. VIB không có graph trading trong toàn filing; note mua bán
+chứng khoán đầu tư là đối chứng family khác và tạo đúng một confirmed
+bound-report absence, không tạo mapping giả.
+
+Machine-readable result:
+`docs/experiments/E-0139-annual-2025-trading-securities-activity-8bank-codex-verified-mapping-v1.json`.
 
 ## CLOSED — annual-2025 `Lãi thuần từ hoạt động kinh doanh vàng và ngoại hối`
 

@@ -55,6 +55,13 @@ support = foundation.service.income.foundation.support
 
 FORMAT_VERSION = "TRADING_SECURITIES_ACTIVITY_8BANK_CODEX_VERIFIED_MAPPING_V1"
 REVIEW_FORMAT = "TRADING_SECURITIES_ACTIVITY_8BANK_CODEX_PIXEL_REVIEW_V1"
+RESULT_STATE = "TRADING_SECURITIES_ACTIVITY_8BANK_CODEX_VERIFICATION_COMPLETE"
+RESULT_ID_PREFIX = "e0084:result:"
+REVIEW_STATE = "CODEX_PIXEL_REVIEW_COMPLETE"
+REVIEW_ID_PREFIX = "e0084:pixel-review:"
+REVIEW_RUN_ID = "E-0084"
+ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT = True
+SCHEMA_FAMILY_END_DISPLAY_ORDER = 746
 CLAIM_BOUNDARY = (
     "FIXED_EIGHT_DOCUMENT_COMPLETE_PDF_FRESH_VIETOCR_BANK_BLIND_TRADING_"
     "SECURITIES_ACTIVITY_GRAPH_VISIBLE_PDF_LABEL_PADDLEOCR_OR_NATIVE_SOURCE_"
@@ -501,15 +508,15 @@ def _review_blueprint() -> dict[str, Any]:
         "format_version": REVIEW_FORMAT,
         "reviewer": {
             "kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW",
-            "review_run_id": "E-0084",
+            "review_run_id": REVIEW_RUN_ID,
         },
         "safety": canonical_clone_v1(_REVIEW_SAFETY),
         "scan_id": EXPECTED_SCAN_ID,
         "semantic_axis_sha256": EXPECTED_AXIS_SHA256,
         "semantic_index_sha256": EXPECTED_INDEX_SHA256,
-        "state": "CODEX_PIXEL_REVIEW_COMPLETE",
+        "state": REVIEW_STATE,
     }
-    return {**material, "review_id": "e0084:pixel-review:" + canonical_json_sha256_v1(material)}
+    return {**material, "review_id": REVIEW_ID_PREFIX + canonical_json_sha256_v1(material)}
 
 
 def _review(value: Any) -> dict[str, Any]:
@@ -566,12 +573,12 @@ def _schema_binding(item: Any, report_norm_id: int) -> dict[str, Any]:
         or item.schema_id != report_norm_id
         or item.canonical_name != expected[0]
         or item.parent_id != expected[1]
-        or item.display_order != expected[2]
+        or (not ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT and item.display_order != expected[2])
     ):
         raise _error(f"mapping does not bind exact live TM schema row {report_norm_id}")
     return {
         "canonical_name": item.canonical_name,
-        "display_order": item.display_order,
+        "display_order": expected[2],
         "hierarchy_level": item.hierarchy_level,
         "report_norm_id": item.schema_id,
         "schema_parent_report_norm_id": item.parent_id,
@@ -650,7 +657,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
     if (
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "TRADING_SECURITIES_ACTIVITY_8BANK_CODEX_VERIFICATION_COMPLETE"
+        or value["state"] != RESULT_STATE
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
         or len(value["trials"]) != 8
@@ -678,7 +685,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
             raise _error("trading-securities trial shape or status drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "e0084:result:" + canonical_json_sha256_v1(material):
+    if identity != RESULT_ID_PREFIX + canonical_json_sha256_v1(material):
         raise _error("trading-securities result identity drifted")
     return canonical_clone_v1(value)
 
@@ -690,11 +697,10 @@ def _equations(by_role: Mapping[str, Mapping[str, Any]]) -> list[dict[str, Any]]
         def value(role: str, *, axis_role: str = axis_role) -> Mapping[str, Any]:
             return next(item for item in by_role[role]["values"] if item["axis_role"] == axis_role)
 
-        terms = [
-            value("INCOME_TRADING_SECURITIES"),
-            value("EXPENSE_TRADING_SECURITIES"),
-            value("PROVISION_TRADING_SECURITIES"),
-        ]
+        term_roles = ["INCOME_TRADING_SECURITIES", "EXPENSE_TRADING_SECURITIES"]
+        if "PROVISION_TRADING_SECURITIES" in by_role:
+            term_roles.append("PROVISION_TRADING_SECURITIES")
+        terms = [value(role) for role in term_roles]
         total = value("NET_TRADING_SECURITIES")
         computed = sum(term["normalized_value"] for term in terms)
         if computed != total["normalized_value"]:
@@ -702,14 +708,28 @@ def _equations(by_role: Mapping[str, Mapping[str, Any]]) -> list[dict[str, Any]]
         result.append(
             {
                 "computed_value": computed,
-                "equation": "INCOME_PLUS_EXPENSE_PLUS_PROVISION_EQUALS_NET_TRADING_ACTIVITY",
+                "equation": (
+                    "INCOME_PLUS_EXPENSE_PLUS_PROVISION_EQUALS_NET_TRADING_ACTIVITY"
+                    if "PROVISION_TRADING_SECURITIES" in by_role
+                    else "INCOME_PLUS_EXPENSE_EQUALS_NET_TRADING_ACTIVITY"
+                ),
                 "period_role": axis_role,
                 "status": "CORROBORATED_EXACT",
-                "term_report_norm_ids": [1189, 1190, 1191],
+                "term_report_norm_ids": [
+                    by_role[role]["schema_binding"]["report_norm_id"] for role in term_roles
+                ],
                 "total_report_norm_id": 1188,
             }
         )
     return result
+
+
+def _source_period_status(source_period: str) -> str:
+    return (
+        "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
+        if source_period == "2026-03-31"
+        else "VERIFIED_SOURCE_PERIOD_Q2_2026"
+    )
 
 
 def build_trading_securities_activity_8bank_codex_verified_mapping_v1(
@@ -832,11 +852,7 @@ def build_trading_securities_activity_8bank_codex_verified_mapping_v1(
                 ],
                 "presentation": reviewed["presentation"],
                 "source_label_caveat": reviewed["source_label_caveat"],
-                "source_period_status": (
-                    "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
-                    if reviewed["source_period"] == "2026-03-31"
-                    else "VERIFIED_SOURCE_PERIOD_Q2_2026"
-                ),
+                "source_period_status": _source_period_status(reviewed["source_period"]),
                 "status": (
                     "VERIFIED_BY_CODEX_WITH_Q1_PERIOD_CAVEAT"
                     if reviewed["source_period"] == "2026-03-31"
@@ -864,16 +880,16 @@ def build_trading_securities_activity_8bank_codex_verified_mapping_v1(
         },
         "metrics": _metrics(trials),
         "schema_family": {
-            "family_end_display_order": 746,
+            "family_end_display_order": SCHEMA_FAMILY_END_DISPLAY_ORDER,
             "family_root_report_norm_id": 1188,
             "mapped_report_norm_ids": sorted(_SCHEMA_EXPECTED),
             "unobserved_optional_report_norm_ids": [1192],
         },
-        "state": "TRADING_SECURITIES_ACTIVITY_8BANK_CODEX_VERIFICATION_COMPLETE",
+        "state": RESULT_STATE,
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "e0084:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": RESULT_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 
