@@ -51,6 +51,12 @@ scanner = _load_module(
 
 FORMAT_VERSION = "INTEREST_EXPENSE_8BANK_CODEX_VERIFIED_MAPPING_V1"
 REVIEW_FORMAT = "INTEREST_EXPENSE_8BANK_CODEX_PIXEL_REVIEW_V1"
+RESULT_STATE = "INTEREST_EXPENSE_8BANK_CODEX_VERIFICATION_COMPLETE"
+RESULT_ID_PREFIX = "e0081:result:"
+REVIEW_STATE = "CODEX_PIXEL_REVIEW_COMPLETE"
+REVIEW_ID_PREFIX = "e0081:pixel-review:"
+REVIEW_RUN_ID = "E-0081"
+FAMILY_END_DISPLAY_ORDER = 702
 CLAIM_BOUNDARY = (
     "FIXED_EIGHT_DOCUMENT_COMPLETE_PDF_FRESH_VIETOCR_BANK_BLIND_INTEREST_"
     "EXPENSE_GRAPH_VISIBLE_PDF_LABEL_PADDLEOCR_OR_NATIVE_SOURCE_NUMERIC_"
@@ -72,14 +78,14 @@ _SCHEMA_EXPECTED = {
     1142: (
         "II. THÔNG TIN BỔ SUNG CHO CÁC KHOẢN MỤC TRÌNH BÀY TRONG BẢNG KẾT QUẢ KINH DOANH",
         None,
-        684,
+        686,
     ),
-    1151: ("Chi phí lãi và các khoản tương tự chi phí lãi", 1142, 693),
-    1152: ("Trả lãi tiền gửi", 1151, 694),
-    1153: ("Trả lãi tiền vay", 1151, 695),
-    1154: ("Trả lãi phát hành giấy tờ có giá", 1151, 696),
-    1155: ("Trả lãi tiền thuê tài chính", 1151, 697),
-    1156: ("Chi phí khác cho hoạt động tín dụng", 1151, 698),
+    1151: ("Chi phí lãi và các khoản tương tự chi phí lãi", 1142, 697),
+    1152: ("Trả lãi tiền gửi", 1151, 698),
+    1153: ("Trả lãi tiền vay", 1151, 699),
+    1154: ("Trả lãi phát hành giấy tờ có giá", 1151, 700),
+    1155: ("Trả lãi tiền thuê tài chính", 1151, 701),
+    1156: ("Chi phí khác cho hoạt động tín dụng", 1151, 702),
 }
 _AUTHORITY = {
     "bank_filename_note_or_page_used_as_matching_rule": False,
@@ -559,14 +565,17 @@ def _review_blueprint() -> dict[str, Any]:
         "claim_boundary": CLAIM_BOUNDARY,
         "documents": _review_documents(),
         "format_version": REVIEW_FORMAT,
-        "reviewer": {"kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW", "review_run_id": "E-0081"},
+        "reviewer": {
+            "kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW",
+            "review_run_id": REVIEW_RUN_ID,
+        },
         "safety": canonical_clone_v1(_REVIEW_SAFETY),
         "scan_id": EXPECTED_SCAN_ID,
         "semantic_axis_sha256": EXPECTED_AXIS_SHA256,
         "semantic_index_sha256": EXPECTED_INDEX_SHA256,
-        "state": "CODEX_PIXEL_REVIEW_COMPLETE",
+        "state": REVIEW_STATE,
     }
-    return {**material, "review_id": "e0081:pixel-review:" + canonical_json_sha256_v1(material)}
+    return {**material, "review_id": REVIEW_ID_PREFIX + canonical_json_sha256_v1(material)}
 
 
 def _review(value: Any) -> dict[str, Any]:
@@ -665,7 +674,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
     if (
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "INTEREST_EXPENSE_8BANK_CODEX_VERIFICATION_COMPLETE"
+        or value["state"] != RESULT_STATE
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
         or len(value["trials"]) != 8
@@ -689,9 +698,17 @@ def _validate_result(value: Any) -> dict[str, Any]:
             raise _error("interest-expense trial shape or status drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "e0081:result:" + canonical_json_sha256_v1(material):
+    if identity != RESULT_ID_PREFIX + canonical_json_sha256_v1(material):
         raise _error("interest-expense result identity drifted")
     return canonical_clone_v1(value)
+
+
+def _source_period_status(source_period: str) -> str:
+    if source_period == "2026-03-31":
+        return "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
+    if source_period == "2026-06-30":
+        return "VERIFIED_SOURCE_PERIOD_Q2_2026"
+    raise _error("unsupported interest-expense source period")
 
 
 def build_interest_expense_8bank_codex_verified_mapping_v1(
@@ -812,11 +829,7 @@ def build_interest_expense_8bank_codex_verified_mapping_v1(
                     "visible_total": total["normalized_value"],
                 }
             )
-        source_period_status = (
-            "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
-            if reviewed["source_period"] == "2026-03-31"
-            else "VERIFIED_SOURCE_PERIOD_Q2_2026"
-        )
+        source_period_status = _source_period_status(reviewed["source_period"])
         page_number = reviewed["page_span"][0]
         semantic_page = _page(semantic_document, page_number, "semantic index")
         trials.append(
@@ -870,17 +883,17 @@ def build_interest_expense_8bank_codex_verified_mapping_v1(
         },
         "metrics": _metrics(trials),
         "schema_family": {
-            "family_end_display_order": 698,
+            "family_end_display_order": FAMILY_END_DISPLAY_ORDER,
             "family_root": _schema_binding(schema_by_id.get(1151), 1151),
             "mapped_report_norm_ids": [1151, 1152, 1153, 1154, 1156],
             "not_observed_report_norm_ids": [1155],
             "section_root": _schema_binding(schema_by_id.get(1142), 1142),
         },
-        "state": "INTEREST_EXPENSE_8BANK_CODEX_VERIFICATION_COMPLETE",
+        "state": RESULT_STATE,
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "e0081:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": RESULT_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 

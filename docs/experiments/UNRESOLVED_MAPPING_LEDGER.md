@@ -22,6 +22,23 @@ Ledger total: **306 entries**.  Current open queue: **102**.  Closed history:
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
+## CLOSED — annual-2025 `Chi phí lãi và các khoản tương tự chi phí lãi`
+
+E-0135 quét toàn bộ tám BCTC hợp nhất kiểm toán năm 2025 và tìm đúng một vùng
+family tại ACB p67, MBB p72, VPB p68, HDB p49, VCB p58, CTG p57, BID p55 và
+VIB p50. Exact replay xác minh 40 mapping/80 ô giá trị cùng 16 phương trình;
+không có dòng OPEN hoặc family absence.
+
+CTG dùng hai nhãn nguồn rút gọn `Lãi tiền gửi` và `Lãi tiền vay`; matcher chỉ
+nhận chúng trong graph chi phí lãi đầy đủ, không nhận bằng chuỗi độc lập. HDB
+VietOCR đọc `26,150.925`, còn pixel/trục số nguồn đọc `26.150.925`; cả hai
+chuẩn hóa về 26.150.925 nên không phát sinh numeric disagreement. ReportNormId
+1155 `Trả lãi tiền thuê tài chính` được ghi nhận không quan sát thấy trong tám
+vùng đã bind, không phải tuyên bố vắng mặt toàn PDF.
+
+Machine-readable result:
+`docs/experiments/E-0135-annual-2025-interest-expense-8bank-codex-verified-mapping-v1.json`.
+
 ## CLOSED — annual-2025 `Thu nhập lãi và các khoản thu nhập tương tự`
 
 E-0134 quét toàn bộ tám BCTC hợp nhất kiểm toán năm 2025 và tìm đúng một vùng

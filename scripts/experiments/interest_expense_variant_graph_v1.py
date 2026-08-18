@@ -137,7 +137,10 @@ def _is_next_family(text: str) -> bool:
 def _child_role(text: str) -> str | None:
     value = _strip_enumerator(text)
     tokens = set(value.split())
-    expense_action = "tra" in tokens or "chi" in tokens or "chi phi" in value
+    compact_interest_cost = value.startswith(("lai tien gui", "lai tien vay"))
+    expense_action = (
+        "tra" in tokens or "chi" in tokens or "chi phi" in value or compact_interest_cost
+    )
     if len(value.split()) > 20 or _is_owner(value):
         return None
     if "phat hanh giay to co gia" in value:

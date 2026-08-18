@@ -137,6 +137,50 @@ def test_combined_deposit_and_borrowing_row_has_borrowing_semantics() -> None:
     assert roles.count("BORROWING_INTEREST") == 1
 
 
+def test_compact_bare_interest_cost_labels_require_the_expense_owner_graph() -> None:
+    children = [
+        "Lãi tiền gửi",
+        "100",
+        "90",
+        "Lãi tiền vay",
+        "20",
+        "10",
+        "Lãi phát hành giấy tờ có giá",
+        "30",
+        "25",
+        "Chi phí hoạt động tín dụng khác",
+        "5",
+        "4",
+        "155",
+        "129",
+    ]
+    accepted = matcher.build_interest_expense_variant_graph_document_v1(
+        [
+            _page(
+                [
+                    "Chi phí lãi và các chi phí tương tự",
+                    "Năm 2025",
+                    "Năm 2024",
+                    "Triệu đồng",
+                    *children,
+                ]
+            )
+        ]
+    )
+    assert accepted["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert accepted["regions"][0]["layout"]["child_roles"] == [
+        "BORROWING_INTEREST",
+        "DEPOSIT_INTEREST",
+        "ISSUED_PAPER_INTEREST",
+        "OTHER_CREDIT_EXPENSE",
+    ]
+
+    no_owner = matcher.build_interest_expense_variant_graph_document_v1(
+        [_page(["Chi phí hoạt động", "Năm 2025", "Năm 2024", "Triệu đồng", *children])]
+    )
+    assert no_owner["status"] == "UNRESOLVED_NO_UNIQUE_REGION"
+
+
 def test_income_finance_lease_is_not_expense_because_chinh_contains_chi() -> None:
     assert matcher._child_role("Thu lãi cho thuê tài chính") is None
 

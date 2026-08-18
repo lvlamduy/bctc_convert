@@ -713,23 +713,30 @@ Kết quả annual-2025:
 
 ## 29. Chi phí lãi và các khoản tương tự chi phí lãi
 
-- **Đã map/xác minh:** ACB p24, MBB p46, VPB p62, HDB p34, VCB p39,
-  CTG p45, BID p29 và VIB p45. Whole-PDF scan tìm đúng một vùng đầy đủ trong
-  mỗi PDF; 40 mapping/80 ô số và 16 phương trình `bốn dòng con = tổng family`
-  đều đóng đúng.
-- **Biến thể đã đóng:** Bảy bank in tổng family sau các dòng con; VIB in tổng
-  trước các dòng con. MBB/VIB kế thừa trục kỳ và đơn vị từ phần đầu của cùng
-  bảng; BID kế thừa `Triệu VND` từ trang thuyết minh ngay trước đó. VCB gộp
-  `Trả lãi tiền gửi và vay các tổ chức tín dụng khác` vào đúng dòng
-  `Trả lãi tiền vay` 1153, không tính trùng vào tiền gửi.
-- **Lỗi OCR số đã xử lý:** VietOCR MBB đọc `(3:975.549)` thay vì
-  `(3.975.549)`. Pixel và trục số nguồn xác minh `-3.975.549`; proposal sai
-  được giữ làm đối chứng và không dùng làm numeric truth.
-- **Không có trong báo cáo:** Không có; cả 8 bank đều có cụm. Dòng
+- **Đã map/xác minh trên BCTC hợp nhất kiểm toán annual-2025:** ACB p67,
+  MBB p72, VPB p68, HDB p49, VCB p58, CTG p57, BID p55 và VIB p50.
+  Whole-PDF scan tìm đúng một vùng ở cả 8/8 báo cáo; 40 mapping/80 ô số và
+  16 phương trình `bốn dòng con = tổng family` đều đóng đúng cho năm 2025 và
+  2024.
+- **Biến thể đã đóng:** Sáu bank in tổng family sau các dòng con; MBB/VIB in
+  tổng trước. Trục kỳ/đơn vị có thể nằm ngay trên family hoặc được kế thừa từ
+  phần đầu cùng bảng. CTG dùng nhãn rút gọn `Lãi tiền gửi`, `Lãi tiền vay`;
+  các nhãn này chỉ được nhận khi đồng thời nằm dưới owner chi phí lãi, có đủ
+  các dòng anh em, hai trục kỳ, đơn vị và phương trình tổng.
+- **Lỗi OCR số đã xử lý:** HDB VietOCR đọc dấu phân cách `26,150.925`; pixel
+  và trục số nguồn là `26.150.925`. Hai chuỗi vẫn chuẩn hóa về cùng giá trị
+  `26.150.925`, còn proposal thô được giữ nguyên trong evidence.
+- **Không có trong annual-2025:** Không có; cả 8 bank đều có family. Dòng
   `Trả lãi tiền thuê tài chính` 1155 không xuất hiện trong tám vùng family đã
-  bind; đây là non-observation trong vùng, không phải suy diễn từ text gần đúng.
-- **Còn thiếu:** Không còn khoản mục nguồn chưa map. VPB là nguồn Q1/2026 và
-  được giữ đúng kỳ, không relabel thành Q2.
+  bind; đây là non-observation trong vùng, không phải tuyên bố vắng mặt toàn
+  tài liệu.
+- **Còn thiếu:** Không còn khoản mục nguồn chưa map.
+- **Lượt hiện hành trước:** E-0081 vẫn giữ riêng ACB p24, MBB p46, VPB p62,
+  HDB p34, VCB p39, CTG p45, BID p29 và VIB p45 với 40 mapping/80 ô số/16
+  phương trình; VPB vẫn đúng phạm vi Q1/2026.
+
+Kết quả annual-2025:
+`docs/experiments/E-0135-annual-2025-interest-expense-8bank-codex-verified-mapping-v1.json`.
 
 ## 30. Thu nhập, chi phí và lãi thuần từ hoạt động dịch vụ
 
@@ -1152,7 +1159,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Các khoản phải trả và công nợ khác | ✓ p64 | ✓ p67 | ✓ p63 | ✓ p47 | ✓ p54 | ✓ p54 | ✓ p52 | ✓ p48 | Annual-2025: 0 dòng OPEN, 53 mapping/32 phương trình, 3 DASH→0; E-0132A đóng 18 dòng lượt hiện hành vào 1127 `Khác` |
 | Vốn và các quỹ | ✓ p65–66 | ✓ p69–70 | ✓\* p66–67 | ✓\* p48–49 | ✓\* p56–57 | ✓\* p55–56 | ✓\* p53–54 | ✓\* p49–50 | Annual-2025: 7 mục OPEN do thiếu leaf số dư vốn; 74 mapping/132 ô/18 phương trình; 3 bảng xoay đã full-page re-detect. Lượt hiện hành trước: 10 OPEN/65 mapping |
 | Thu nhập lãi và các khoản thu nhập tương tự | ✓ p67 | ✓ p72 | ✓ p68 | ✓ p49 | ✓ p57 | ✓ p57 | ✓ p54 | ✓ p50 | Annual-2025: 0 dòng OPEN, 55 mapping/110 ô/28 phương trình; MBB gộp → 6075, HDB phí L/C → 6076. Lượt hiện hành E-0079 giữ riêng 54 mapping |
-| Chi phí lãi và các khoản tương tự chi phí lãi | ✓ p24 | ✓ p46 | ✓\* p62 | ✓ p34 | ✓ p39 | ✓ p45 | ✓ p29 | ✓ p45 | 0 dòng; 40 mapping, 80 ô số, 16 phương trình; VPB là nguồn Q1 |
+| Chi phí lãi và các khoản tương tự chi phí lãi | ✓ p67 | ✓ p72 | ✓ p68 | ✓ p49 | ✓ p58 | ✓ p57 | ✓ p55 | ✓ p50 | Annual-2025: 0 dòng OPEN, 40 mapping/80 ô/16 phương trình. Lượt hiện hành E-0081 giữ riêng 40 mapping; VPB của lượt đó là nguồn Q1 |
 | Thu nhập/chi phí/lãi thuần hoạt động dịch vụ | — | ✓ p46 | ✓\* p62 | — | — | — | — | ✓ p45 | 0 dòng; 43 mapping, 86 ô số, 18 phương trình; 5 bank không có note chi tiết; VPB là nguồn Q1 |
 | Lãi/lỗ thuần kinh doanh vàng và ngoại hối | — | ✓ p47 | ✓\* p63 | — | — | — | — | ✓ p46 | 0 dòng; 23 mapping, 46 ô số, 18 phương trình; 5 bank không có note chi tiết; VPB là nguồn Q1 |
 | Lãi/lỗ thuần mua bán chứng khoán kinh doanh | ✓ p24 | ✓ p47 | ✓\* p63 | ✓ p34 | ✓ p39 | ✓ p45 | ✓ p29 | — | 0 dòng; 28 mapping, 56 ô số, 14 phương trình; HDB 1 DASH→0; VIB không có note trading chi tiết; VPB là nguồn Q1 |
