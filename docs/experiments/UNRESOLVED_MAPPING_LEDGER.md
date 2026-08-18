@@ -140,6 +140,40 @@ BPA-001–BPA-003 của lượt hiện hành E-0097 vẫn OPEN theo đúng sourc
 cũ và không bị kết quả annual relabel. Machine-readable result:
 `docs/experiments/E-0152-annual-2025-bank-pledged-assets-8bank-codex-verified-mapping-v1.json`.
 
+## OPEN/CLOSED — annual-2025 `Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra`
+
+E-0153 quét đủ 695 trang và tìm đúng một vùng value-bearing tại ACB p75,
+MBB p79, VPB p75, HDB p55, CTG p63, BID p59 và VIB p55. VCB p66 chỉ có
+diễn giải family; p67 đã sang note giao dịch bên liên quan, nên đây là một
+bounded detailed-table absence trong đúng filing annual đã bind. Pixel, trục số
+nguồn, schema hiện hành và 46 phương trình xác minh 58 mapping/114 ô số.
+
+HDB dùng hai parent trung gian và tiền ký quỹ âm; BID dùng group bảo lãnh cùng
+group cam kết thanh toán; VIB map cột thuần sau khi gross và ký quỹ đóng đúng.
+Tất cả 15 ReportNormId hiện có của family đều đã được dùng nơi nguồn hỗ trợ.
+Các source row sau vẫn OPEN vì source có độ chi tiết/trục khấu trừ mà schema
+không có. Chúng tái diễn đúng các gap CL-001–CL-005/CL-007–CL-014 của lượt hiện
+hành, nên ledger giữ cùng ID thay vì tạo 13 schema-gap ID trùng nghĩa.
+
+| ID | Bank | Trang annual-2025 | Khoản mục nguồn | Giá trị 2025 / 2024 | Lý do chưa map |
+| --- | --- | ---: | --- | --- | --- |
+| CL-001 | ACB | 75 | Cam kết trong nghiệp vụ L/C trả ngay | `3.393.925` / `1.999.681` | Parent 1295 chưa có leaf L/C trả ngay. |
+| CL-002 | ACB | 75 | Cam kết trong nghiệp vụ L/C trả chậm | `3.531.929` / `1.519.333` | Parent 1295 chưa có leaf L/C trả chậm. |
+| CL-003 | ACB | 75 | Trừ: Tiền ký quỹ — L/C | `(259.375)` / `(207.241)` | Đây là trục khấu trừ để ra L/C thuần, không phải schema value hiện có. |
+| CL-004 | ACB | 75 | Bảo lãnh khác — dòng con | `11.804.589` / `7.752.095` | Dòng con lặp tên group parent; map thêm vào 1300 sẽ double-count. |
+| CL-005 | ACB | 75 | Trừ: Tiền ký quỹ — bảo lãnh | `(1.459.157)` / `(1.068.032)` | Đây là trục khấu trừ để ra bảo lãnh thuần, chưa có leaf schema. |
+| CL-007 | VPB | 75 | Trừ: Tiền ký quỹ — L/C | `(387.745)` / `(57.332)` | Trục khấu trừ đóng parent L/C nhưng chưa có leaf schema. |
+| CL-008 | VPB | 75 | Cam kết bảo lãnh khác | `25.861.416` / `9.932.865` | Child lặp nghĩa group `Bảo lãnh khác`; không map hai lần vào 1300. |
+| CL-009 | VPB | 75 | Trừ: Tiền ký quỹ — bảo lãnh | `(1.959.457)` / `(671.675)` | Trục khấu trừ đóng parent bảo lãnh nhưng chưa có leaf schema. |
+| CL-010 | VPB | 75 | Hoán đổi lãi suất tiền tệ chéo — nhận | `46.229.090` / `35.324.065` | Chưa có leaf nhận của swap lãi suất tiền tệ chéo. |
+| CL-011 | VPB | 75 | Hoán đổi lãi suất tiền tệ chéo — trả | `46.716.751` / `36.760.922` | Chưa có leaf trả của swap lãi suất tiền tệ chéo. |
+| CL-012 | VPB | 75 | Hoán đổi lãi suất một đồng tiền | `24.343.737` / `39.136.588` | Chưa có leaf swap lãi suất một đồng tiền. |
+| CL-013 | VPB | 75 | Cam kết khác — dòng con | `296.447.263` / `229.654.799` | Child lặp tên parent 1304; map thêm sẽ double-count. |
+| CL-014 | VPB | 75 | Trong đó: hạn mức tín dụng chưa sử dụng có thể hủy ngang | `294.728.542` / `229.511.446` | Dòng `Trong đó` non-additive chưa có leaf schema. |
+
+Machine-readable result:
+`docs/experiments/E-0153-annual-2025-contingent-liabilities-8bank-codex-verified-mapping-v1.json`.
+
 ## COMPLETE — annual-2025 `Mua mới và thanh lý các công ty con`
 
 E-0148 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025 và không tìm

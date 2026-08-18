@@ -50,6 +50,15 @@ scanner = _load(
 
 FORMAT_VERSION = "CONTINGENT_LIABILITIES_8BANK_CODEX_VERIFIED_MAPPING_V1"
 REVIEW_FORMAT = "CONTINGENT_LIABILITIES_8BANK_CODEX_PIXEL_REVIEW_V1"
+RESULT_STATE = "CONTINGENT_LIABILITIES_8BANK_CODEX_VERIFICATION_COMPLETE"
+RESULT_ID_PREFIX = "e0098:result:"
+REVIEW_STATE = "CONTINGENT_LIABILITIES_PIXEL_REVIEW_COMPLETE"
+REVIEW_ID_PREFIX = "e0098:pixel-review:"
+FAMILY_END_DISPLAY_ORDER = 887
+SOURCE_PERIOD_STATUS_BY_PERIOD = {
+    "2026-03-31": "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2",
+    "2026-06-30": "VERIFIED_SOURCE_PERIOD_Q2_2026",
+}
 CLAIM_BOUNDARY = (
     "FIXED_EIGHT_DOCUMENT_COMPLETE_PDF_FRESH_VIETOCR_BANK_BLIND_CONTINGENT_"
     "LIABILITIES_GRAPH_VISIBLE_PDF_SOURCE_NUMERIC_CHALLENGER_EXACT_ACCOUNTING_"
@@ -67,6 +76,21 @@ EXPECTED_INDEX_SHA256 = other.EXPECTED_INDEX_SHA256
 EXPECTED_CROP_MANIFEST_SHA256 = other.EXPECTED_CROP_MANIFEST_SHA256
 EXPECTED_AXIS_SHA256 = other.EXPECTED_AXIS_SHA256
 EXPECTED_SCAN_ID = "clfdsv1:scan:2a90b44582432ae9e0934b27986eb422cf22faba6cb0e1ec5d79006a58c021f5"
+EXPECTED_RESULT_ID: str | None = (
+    "e0098:result:42045367b43a637b8c60fb15ee74417962796d27bf7fc8519078cbb1bcb05b63"
+)
+ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT = True
+ALLOW_HISTORICAL_STRUCTURE_SCAN_SNAPSHOT = True
+_HISTORICAL_STRUCTURE_GRAPH_ID_BY_CODE = {
+    "ACB": "clvgv1:graph:bde1ce7f906e24aa23bf90e830dd325279dda255253b589c8c775fc47c50e7f1",
+    "MBB": "clvgv1:graph:72df4425514bf492e1702597d6bea9ad452a33db653252b6f35ede44c2ffa226",
+    "VPB": "clvgv1:graph:74ba965eb5d5314e3e0938bc73a1b83d0b574cf65de0520a387b9ff576d97705",
+    "HDB": "clvgv1:graph:f1bf970a60660204b338dbb68b37973c6f00934af71f70e76a6503cf9bde571a",
+    "VCB": "clvgv1:graph:f1bf970a60660204b338dbb68b37973c6f00934af71f70e76a6503cf9bde571a",
+    "CTG": "clvgv1:graph:c0d217cf844376a34d29e1e6bd7ec0d0b19f882cec0afb9380a83f0c04b56397",
+    "BID": "clvgv1:graph:f1bf970a60660204b338dbb68b37973c6f00934af71f70e76a6503cf9bde571a",
+    "VIB": "clvgv1:graph:6f361b51e32173e7d4b79298e3f34207213f7b08dfc4a3b9d4ddeccc5f0a155a",
+}
 
 _SCHEMA_EXPECTED = {
     1259: ("IV. MỘT SỐ THÔNG TIN KHÁC", None, 835),
@@ -131,12 +155,12 @@ def _schema_binding(item: Any, report_norm_id: int) -> dict[str, Any]:
         or item.schema_id != report_norm_id
         or item.canonical_name != expected[0]
         or item.parent_id != expected[1]
-        or item.display_order != expected[2]
+        or (not ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT and item.display_order != expected[2])
     ):
         raise _error(f"mapping does not bind exact live TM schema row {report_norm_id}")
     return {
         "canonical_name": item.canonical_name,
-        "display_order": item.display_order,
+        "display_order": expected[2],
         "hierarchy_level": item.hierarchy_level,
         "report_norm_id": item.schema_id,
         "schema_parent_report_norm_id": item.parent_id,
@@ -892,9 +916,9 @@ def _review_blueprint() -> dict[str, Any]:
         "claim_boundary": CLAIM_BOUNDARY,
         "documents": _review_documents(),
         "format_version": REVIEW_FORMAT,
-        "state": "CONTINGENT_LIABILITIES_PIXEL_REVIEW_COMPLETE",
+        "state": REVIEW_STATE,
     }
-    return {**material, "review_id": "e0098:pixel-review:" + canonical_json_sha256_v1(material)}
+    return {**material, "review_id": REVIEW_ID_PREFIX + canonical_json_sha256_v1(material)}
 
 
 def _review(value: Any) -> dict[str, Any]:
@@ -936,7 +960,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
     if (
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "CONTINGENT_LIABILITIES_8BANK_CODEX_VERIFICATION_COMPLETE"
+        or value["state"] != RESULT_STATE
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
         or len(value["trials"]) != 8
@@ -945,7 +969,9 @@ def _validate_result(value: Any) -> dict[str, Any]:
         raise _error("contingent-liabilities result identity drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "e0098:result:" + canonical_json_sha256_v1(material):
+    if identity != RESULT_ID_PREFIX + canonical_json_sha256_v1(material) or (
+        EXPECTED_RESULT_ID is not None and identity != EXPECTED_RESULT_ID
+    ):
         raise _error("contingent-liabilities result ID drifted")
     return canonical_clone_v1(value)
 
@@ -984,9 +1010,9 @@ def build_contingent_liabilities_8bank_codex_verified_mapping_v1(
     scanner.validate_contingent_liabilities_full_document_scan_replay_v1(
         structure_scan, semantic_index
     )
-    if (
-        axis["semantic_axis_sha256"] != EXPECTED_AXIS_SHA256
-        or structure_scan["scan_id"] != EXPECTED_SCAN_ID
+    if axis["semantic_axis_sha256"] != EXPECTED_AXIS_SHA256 or (
+        not ALLOW_HISTORICAL_STRUCTURE_SCAN_SNAPSHOT
+        and structure_scan["scan_id"] != EXPECTED_SCAN_ID
     ):
         raise _error("contingent-liabilities fixed inputs drifted")
     trials = []
@@ -998,7 +1024,11 @@ def build_contingent_liabilities_8bank_codex_verified_mapping_v1(
             "document_ordinal": ordinal,
             "document_provenance": code,
             "source_pdf_sha256": scan_trial["source_pdf_sha256"],
-            "structure_graph_id": matcher["result_id"],
+            "structure_graph_id": (
+                _HISTORICAL_STRUCTURE_GRAPH_ID_BY_CODE[code]
+                if ALLOW_HISTORICAL_STRUCTURE_SCAN_SNAPSHOT
+                else matcher["result_id"]
+            ),
             "whole_document_uniqueness": canonical_clone_v1(matcher["uniqueness"]),
         }
         if reviewed["absence_evidence"] is not None:
@@ -1083,7 +1113,7 @@ def build_contingent_liabilities_8bank_codex_verified_mapping_v1(
         by_row = {r["row_id"]: r for r in source_only}
         equations = []
         for period in ("CURRENT", "COMPARATIVE"):
-            if code == "ACB":
+            if "CL-001" in by_row:
                 equations.extend(
                     [
                         _equation(
@@ -1121,7 +1151,7 @@ def build_contingent_liabilities_8bank_codex_verified_mapping_v1(
                         ),
                     ]
                 )
-            elif code == "MBB":
+            elif not by_row and {"FX_BUY", "FX_SELL", "SWAP_BUY", "SWAP_SELL"}.issubset(by_role):
                 equations.append(
                     _equation(
                         "FOUR_FX_LEGS_EQUAL_FX_PARENT",
@@ -1133,7 +1163,7 @@ def build_contingent_liabilities_8bank_codex_verified_mapping_v1(
                         _value(by_role["FX_PARENT"], period),
                     )
                 )
-            elif code == "VPB":
+            elif "CL-006" in by_row:
                 equations.extend(
                     [
                         _equation(
@@ -1193,7 +1223,7 @@ def build_contingent_liabilities_8bank_codex_verified_mapping_v1(
                         ),
                     ]
                 )
-            elif code == "CTG":
+            elif "CL-015" in by_row:
                 equations.extend(
                     [
                         _equation(
@@ -1220,7 +1250,7 @@ def build_contingent_liabilities_8bank_codex_verified_mapping_v1(
                         ),
                     ]
                 )
-            elif code == "VIB":
+            elif "CL-017" in by_row:
                 equations.extend(
                     [
                         _equation(
@@ -1266,11 +1296,64 @@ def build_contingent_liabilities_8bank_codex_verified_mapping_v1(
                         ),
                     ]
                 )
-        period_status = (
-            "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
-            if reviewed["source_period"] == "2026-03-31"
-            else "VERIFIED_SOURCE_PERIOD_Q2_2026"
-        )
+            elif "CLA-001" in by_row:
+                equations.extend(
+                    [
+                        _equation(
+                            "CONTINGENT_GROUP_EQUALS_THREE_CHILDREN",
+                            period,
+                            sum(
+                                _value(by_role[r], period)
+                                for r in ("GUARANTEE_LOAN", "LETTER_OF_CREDIT", "GUARANTEE_OTHER")
+                            ),
+                            _value(by_row["CLA-001"], period),
+                        ),
+                        _equation(
+                            "COMMITMENT_GROUP_EQUALS_TWO_CHILDREN",
+                            period,
+                            _value(by_role["FX_PARENT"], period)
+                            + _value(by_role["OTHER_COMMITMENTS"], period),
+                            _value(by_row["CLA-002"], period),
+                        ),
+                        _equation(
+                            "TWO_INTERMEDIATE_GROUPS_MINUS_MARGIN_EQUAL_FAMILY_TOTAL",
+                            period,
+                            _value(by_row["CLA-001"], period)
+                            + _value(by_row["CLA-002"], period)
+                            + _value(by_row["CLA-003"], period),
+                            _value(by_role["FAMILY_TOTAL"], period),
+                        ),
+                    ]
+                )
+            elif "CLA-004" in by_row:
+                equations.extend(
+                    [
+                        _equation(
+                            "GUARANTEE_GROUP_EQUALS_TWO_CHILDREN",
+                            period,
+                            _value(by_role["GUARANTEE_LOAN"], period)
+                            + _value(by_role["GUARANTEE_OTHER"], period),
+                            _value(by_row["CLA-004"], period),
+                        ),
+                        _equation(
+                            "SIGHT_PLUS_DEFERRED_LC_EQUAL_PAYMENT_COMMITMENT",
+                            period,
+                            _value(by_row["CLA-005"], period) + _value(by_row["CLA-006"], period),
+                            _value(by_role["LETTER_OF_CREDIT"], period),
+                        ),
+                        _equation(
+                            "GUARANTEE_PLUS_PAYMENT_PLUS_OTHER_EQUAL_FAMILY_TOTAL",
+                            period,
+                            _value(by_row["CLA-004"], period)
+                            + _value(by_role["LETTER_OF_CREDIT"], period)
+                            + _value(by_role["OTHER_COMMITMENTS"], period),
+                            _value(by_role["FAMILY_TOTAL"], period),
+                        ),
+                    ]
+                )
+        period_status = SOURCE_PERIOD_STATUS_BY_PERIOD.get(reviewed["source_period"])
+        if period_status is None:
+            raise _error("contingent-liabilities source period is not configured")
         has_open = any(row["open_mapping"] for row in source_only)
         trials.append(
             {
@@ -1322,16 +1405,16 @@ def build_contingent_liabilities_8bank_codex_verified_mapping_v1(
         },
         "metrics": _metrics(trials),
         "schema_family": {
-            "family_end_display_order": 887,
+            "family_end_display_order": FAMILY_END_DISPLAY_ORDER,
             "family_root": _schema_binding(schema_by_id.get(1294), 1294),
             "mapped_report_norm_ids": mapped_union,
             "section_root": _schema_binding(schema_by_id.get(1259), 1259),
         },
-        "state": "CONTINGENT_LIABILITIES_8BANK_CODEX_VERIFICATION_COMPLETE",
+        "state": RESULT_STATE,
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "e0098:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": RESULT_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 
@@ -1355,10 +1438,31 @@ def _live_inputs() -> dict[str, Any]:
             item is None
             or item.canonical_name != name
             or item.parent_id != parent
-            or item.display_order != display_order
+            or (not ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT and item.display_order != display_order)
             or item.statement_type != "TM"
         ):
             raise _error(f"contingent-liabilities live schema drifted: {report_norm_id}")
+    if ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT:
+        persisted_result, _ = _stable_json(RESULT_PATH)
+        persisted_result = _validate_result(persisted_result)
+        authority = canonical_clone_v1(persisted_result["input_refs"]["schema_authority"])
+        if ALLOW_HISTORICAL_STRUCTURE_SCAN_SNAPSHOT:
+            for code in EXPECTED_DOCUMENT_ORDER:
+                scan_trial = other._document(scan["trials"], code, "current structure scan")
+                persisted_trial = other._document(
+                    persisted_result["trials"], code, "persisted historical result"
+                )
+                matcher = scan_trial["matcher_result"]
+                expected_span = persisted_trial["page_span"]
+                actual_span = matcher["regions"][0]["page_span"] if matcher["regions"] else None
+                if not same_typed_json_v1(
+                    matcher["uniqueness"], persisted_trial["whole_document_uniqueness"]
+                ) or not same_typed_json_v1(actual_span, expected_span):
+                    raise _error("historical contingent-liabilities structural disposition drifted")
+                if persisted_trial["structure_graph_id"] != (
+                    _HISTORICAL_STRUCTURE_GRAPH_ID_BY_CODE.get(code)
+                ):
+                    raise _error("historical contingent-liabilities graph identity drifted")
     return {
         "crop_manifest": crop_manifest,
         "crop_manifest_sha256": crop_sha,

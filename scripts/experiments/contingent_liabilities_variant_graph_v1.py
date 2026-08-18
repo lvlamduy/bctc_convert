@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import itertools
+import re
 import sys
 from collections.abc import Mapping
 from pathlib import Path
@@ -20,9 +21,9 @@ from bctc_ai.source_structure.contracts_v1 import (
 FORMAT_VERSION = "CONTINGENT_LIABILITIES_VARIANT_GRAPH_DOCUMENT_V1"
 FAMILY_ID = "CONTINGENT_LIABILITIES_AND_COMMITMENTS"
 CLAIM_BOUNDARY = (
-    "BANK_BLIND_COMPLETE_PDF_FRESH_VIETOCR_PAIR_FIRST_OWNER_GROUP_CHILD_"
-    "PERIOD_UNIT_NUMERIC_AND_ACCOUNTING_STRUCTURE_ONLY_NO_NUMERIC_SCHEMA_"
-    "MAPPING_OR_EXPORT_AUTHORITY"
+    "BANK_BLIND_COMPLETE_PDF_FRESH_VIETOCR_PAIR_FIRST_LOCAL_OWNER_TABLE_"
+    "OPTIONAL_ONE_PAGE_CONTINUATION_GROUP_CHILD_PERIOD_UNIT_NUMERIC_AND_"
+    "ACCOUNTING_STRUCTURE_ONLY_NO_NUMERIC_SCHEMA_MAPPING_OR_EXPORT_AUTHORITY"
 )
 _SAFETY = {
     "bank_filename_note_or_page_used_as_matching_or_routing": False,
@@ -35,7 +36,9 @@ _SAFETY = {
     "pair_search_exhausted_before_larger_combinations": True,
     "persisted_result_self_authenticating": False,
     "public_exact_replay_required": True,
+    "single_next_page_continuation_supported": True,
     "sibling_order_required_for_matching": False,
+    "table_evidence_scoped_from_owner_to_next_numbered_note": True,
     "text_similarity_alone_can_accept": False,
 }
 _FIELDS = {
@@ -81,7 +84,10 @@ def _strip(text: str) -> str:
 def _owner(text: str) -> bool:
     value = _strip(text)
     return (
-        ("nghia vu no tiem" in value and "cam ket dua ra" in value)
+        (
+            ("nghia vu no tiem" in value or "nghia vu tiem" in value)
+            and ("cam ket dua ra" in value or "cac cam ket" in value)
+        )
         or value in {"cac cam ket ngoai bang", "cam ket ngoai bang"}
         or (
             "hoat dong ngoai bang" in value
@@ -104,6 +110,10 @@ def _negative_family(text: str) -> bool:
 
 def _role(text: str) -> str | None:
     value = _strip(text)
+    if "cac khoan bao lanh" in value:
+        return "GUARANTEE_GROUP"
+    if "cam ket thanh toan" in value:
+        return "PAYMENT_COMMITMENT_GROUP"
     if "bao lanh vay von" in value:
         return "GUARANTEE_LOAN"
     if "bao lanh thanh toan" in value:
@@ -126,11 +136,11 @@ def _role(text: str) -> str | None:
         return "SWAP_PARENT"
     if "cam ket giao dich hoi doai" in value or "cac cam ket giao dich hoi doai" in value:
         return "FX_PARENT"
-    if "thu tin dung" in value or "nghiep vu l c" in value or "nghiep vu lc" in value:
+    if "thu tin dung" in value or ("cam ket" in value and "nghiep vu l" in value):
         return "LETTER_OF_CREDIT"
     if "mua ban giay to co gia" in value:
         return "VALUABLE_PAPER_COMMITMENT"
-    if value.startswith("nghia vu no tiem"):
+    if value.startswith("nghia vu") and "tiem" in value:
         return "CONTINGENT_GROUP"
     if value == "cac cam ket dua ra":
         return "COMMITMENT_GROUP"
@@ -142,31 +152,91 @@ def _role(text: str) -> str | None:
 
 
 def _axis_role(text: str) -> str | None:
-    value = text.strip()
+    value = _strip(text)
     if "trieu dong" in value or "trieu vnd" in value:
         return "UNIT_AXIS"
+    if value in {"so cuoi nam", "so cuoi ky"}:
+        return "CURRENT_AXIS"
+    if value in {"so dau nam", "so dau ky"}:
+        return "COMPARATIVE_AXIS"
     return None
 
 
-def _region(page: Mapping[str, Any], owner: Mapping[str, Any]) -> dict[str, Any]:
+def _numbered_note_marker(line: Mapping[str, Any]) -> bool:
+    return bool(
+        line["bbox"][0] < 350
+        and re.fullmatch(r"[0-9]{1,3}(?:\.[0-9]{1,3}){0,2}\.?", line["normalized_text"].strip())
+    )
+
+
+def _region_lines(
+    pages: list[dict[str, Any]],
+    page_index: int,
+    owner_index: int,
+    *,
+    include_next_page: bool,
+) -> list[dict[str, Any]]:
+    selected = [pages[page_index]["lines"][owner_index]]
+    current = pages[page_index]["lines"]
+    for line in current[owner_index + 1 :]:
+        if _numbered_note_marker(line):
+            break
+        selected.append(line)
+    if include_next_page and page_index + 1 < len(pages):
+        following = pages[page_index + 1]
+        if following["page_sequence"] == pages[page_index]["page_sequence"] + 1:
+            for line in following["lines"]:
+                if _numbered_note_marker(line):
+                    break
+                selected.append(line)
+    return selected
+
+
+def _pre_owner_context(
+    pages: list[dict[str, Any]], page_index: int, owner_index: int
+) -> list[dict[str, Any]]:
+    owner = pages[page_index]["lines"][owner_index]
+    if _numbered_note_marker(owner):
+        return []
+    lines = pages[page_index]["lines"]
+    start = 0
+    for index in range(owner_index - 1, -1, -1):
+        if _numbered_note_marker(lines[index]):
+            start = index + 1
+            break
+    return lines[start:owner_index]
+
+
+def _region(
+    pages: list[dict[str, Any]],
+    page_index: int,
+    owner_index: int,
+    *,
+    include_next_page: bool = False,
+) -> dict[str, Any]:
     support = _support()
+    owner = pages[page_index]["lines"][owner_index]
+    region_lines = _region_lines(
+        pages, page_index, owner_index, include_next_page=include_next_page
+    )
     roles: list[str] = []
     axes: list[str] = []
     events = [support._line_ref(owner, "FAMILY_OWNER")]
     numeric_count = 0
     negative_controls = []
-    for index, line in enumerate(page["lines"]):
-        text = line["normalized_text"]
-        if _negative_family(text):
+    for line in [*_pre_owner_context(pages, page_index, owner_index), *region_lines]:
+        if _negative_family(line["normalized_text"]):
             negative_controls.append(support._line_ref(line, "NEGATIVE_FAMILY_OWNER"))
+    for index, line in enumerate(region_lines):
+        text = line["normalized_text"]
         joined_two = (
-            f"{text} {page['lines'][index + 1]['normalized_text']}"
-            if index + 1 < len(page["lines"])
+            f"{text} {region_lines[index + 1]['normalized_text']}"
+            if index + 1 < len(region_lines)
             else text
         )
         joined_three = (
-            f"{joined_two} {page['lines'][index + 2]['normalized_text']}"
-            if index + 2 < len(page["lines"])
+            f"{joined_two} {region_lines[index + 2]['normalized_text']}"
+            if index + 2 < len(region_lines)
             else joined_two
         )
         role = _role(text) or _role(joined_two) or _role(joined_three)
@@ -174,31 +244,27 @@ def _region(page: Mapping[str, Any], owner: Mapping[str, Any]) -> dict[str, Any]
             roles.append(role)
             events.append(support._line_ref(line, role))
         axis = _axis_role(text)
-        if axis is None and index + 1 < len(page["lines"]):
-            axis = _axis_role(f"{text} {page['lines'][index + 1]['normalized_text']}")
+        if axis is None and index + 1 < len(region_lines):
+            axis = _axis_role(f"{text} {region_lines[index + 1]['normalized_text']}")
         if axis is not None:
             axes.append(axis)
             events.append(support._line_ref(line, axis))
         numeric_count += support._NUMBER.fullmatch(text) is not None
-    line_by_index = {line["source_line_index"]: line for line in page["lines"]}
-    year_axis, _year_axis_mode = extract_reporting_year_axis_v1(page["lines"])
-    for item in year_axis:
-        axis = "CURRENT_AXIS" if item["role"] == "CURRENT_PERIOD" else "COMPARATIVE_AXIS"
-        if axis not in axes:
-            axes.append(axis)
-            line = line_by_index[item["evidence_source_line_indices"][0]]
-            events.append(support._line_ref(line, axis))
+    for page_sequence in dict.fromkeys(line["page_sequence"] for line in region_lines):
+        local_lines = [line for line in region_lines if line["page_sequence"] == page_sequence]
+        line_by_index = {line["source_line_index"]: line for line in local_lines}
+        year_axis, _year_axis_mode = extract_reporting_year_axis_v1(local_lines)
+        for item in year_axis:
+            axis = "CURRENT_AXIS" if item["role"] == "CURRENT_PERIOD" else "COMPARATIVE_AXIS"
+            if axis not in axes:
+                axes.append(axis)
+                line = line_by_index[item["evidence_source_line_indices"][0]]
+                events.append(support._line_ref(line, axis))
     observed_roles = list(dict.fromkeys(roles))
     observed_axes = list(dict.fromkeys(axes))
-    core = {
-        "GUARANTEE_LOAN",
-        "FX_PARENT",
-        "LETTER_OF_CREDIT",
-        "GUARANTEE_OTHER",
-        "OTHER_COMMITMENTS",
-    }
+    observed_role_set = set(observed_roles)
     child_depth = bool(
-        set(observed_roles)
+        observed_role_set
         & {
             "FX_BUY",
             "FX_SELL",
@@ -209,37 +275,55 @@ def _region(page: Mapping[str, Any], owner: Mapping[str, Any]) -> dict[str, Any]
             "GUARANTEE_PERFORMANCE",
             "GUARANTEE_BID",
             "VALUABLE_PAPER_COMMITMENT",
+            "GUARANTEE_GROUP",
+            "PAYMENT_COMMITMENT_GROUP",
         }
     )
-    two_group_variant = {"CONTINGENT_GROUP", "COMMITMENT_GROUP"}.issubset(observed_roles)
+    two_group_variant = {"CONTINGENT_GROUP", "COMMITMENT_GROUP"}.issubset(observed_role_set)
     required_axes = {"CURRENT_AXIS", "COMPARATIVE_AXIS", "UNIT_AXIS"}
     complete = (
         not negative_controls
-        and len(core & set(observed_roles)) >= 3
-        and (child_depth or two_group_variant)
+        and len(observed_role_set) >= 2
         and required_axes.issubset(observed_axes)
-        and numeric_count >= 8
+        and numeric_count >= 4
     )
-    anchors = ["FAMILY_OWNER", *sorted(core & set(observed_roles))]
-    return {
+    anchors = list(dict.fromkeys(["FAMILY_OWNER", *sorted(observed_role_set)]))
+    result = {
         "anchor_roles": anchors,
         "complete": complete,
-        "end_global_ordinal": page["lines"][-1]["global_ordinal"],
+        "end_global_ordinal": region_lines[-1]["global_ordinal"],
         "events": events,
         "layout": {
             "child_depth_observed": child_depth,
             "observed_axis_roles": observed_axes,
             "observed_source_roles": observed_roles,
+            "owner_bounded_local_scope": True,
             "sibling_order_is_semantic": False,
+            "single_next_page_continuation": (
+                region_lines[-1]["page_sequence"] != owner["page_sequence"]
+            ),
             "two_group_variant_observed": two_group_variant,
         },
         "negative_family_controls": negative_controls,
         "numeric_token_count": numeric_count,
         "owner": support._line_ref(owner, "FAMILY_OWNER"),
-        "page_span": [page["page_sequence"], page["page_sequence"]],
+        "page_span": [owner["page_sequence"], region_lines[-1]["page_sequence"]],
         "pair_anchor_combinations": [list(pair) for pair in itertools.combinations(anchors, 2)],
-        "start_global_ordinal": page["lines"][0]["global_ordinal"],
+        "start_global_ordinal": owner["global_ordinal"],
     }
+    if (
+        not complete
+        and not include_next_page
+        and page_index + 1 < len(pages)
+        and pages[page_index + 1]["page_sequence"] == owner["page_sequence"] + 1
+    ):
+        return _region(
+            pages,
+            page_index,
+            owner_index,
+            include_next_page=True,
+        )
+    return result
 
 
 def _metrics(regions: list[dict[str, Any]], near: list[dict[str, Any]]) -> dict[str, int]:
@@ -293,7 +377,7 @@ def _validate(value: Any) -> dict[str, Any]:
 def build_contingent_liabilities_variant_graph_document_v1(pages: Any) -> dict[str, Any]:
     parsed = _support()._pages(pages)
     candidates = []
-    for page in parsed:
+    for page_index, page in enumerate(parsed):
         owners = []
         for index, line in enumerate(page["lines"]):
             text = line["normalized_text"]
@@ -303,9 +387,9 @@ def build_contingent_liabilities_variant_graph_document_v1(pages: Any) -> dict[s
                 else text
             )
             if _owner(text) or _owner(joined):
-                owners.append(line)
-        for owner in owners:
-            candidates.append(_region(page, owner))
+                owners.append(index)
+        for owner_index in owners:
+            candidates.append(_region(parsed, page_index, owner_index))
     # A heading repeated in prose on the same page is one physical region, not a second candidate.
     by_page: dict[int, dict[str, Any]] = {}
     for candidate in candidates:

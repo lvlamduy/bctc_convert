@@ -119,6 +119,6 @@ def test_public_replay_rejects_coordinated_open_row_promotion() -> None:
     forged["result_id"] = "e0098:result:" + builder.canonical_json_sha256_v1(material)
     with pytest.raises(
         builder.ContingentLiabilities8BankCodexVerifiedMappingV1Error,
-        match="replay exactly",
+        match="result ID drifted|replay exactly",
     ):
         builder.validate_live_contingent_liabilities_8bank_codex_verified_mapping_v1(forged)

@@ -1151,24 +1151,36 @@ Kết quả annual-2025:
 
 ## 47. Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra
 
-- **Đã map/xác minh:** ACB p26, MBB p51, VPB p68, CTG p48 và VIB p50.
-  Đã xác minh 47 mapping/92 ô số và 34 phương trình. ACB/VPB có các parent
-  L/C, bảo lãnh khác và cam kết khác với con chi tiết; MBB có bốn chân ngoại
-  hối; CTG dùng hai parent trung gian `Nghĩa vụ nợ tiềm ẩn`/`Các cam kết đưa
-  ra`; VIB dùng ba trục gộp–ký quỹ–thuần và chỉ cột thuần được map.
-- **Không có cụm thuyết minh chi tiết trong báo cáo:** HDB, VCB và BID. Ba
-  PDF vẫn có bảng B02a ngoài báo cáo tình hình tài chính, nhưng không có note
-  B05a chi tiết với owner, nhánh con và tổng; đây là absence của note chi tiết,
-  không phải khẳng định nguồn không có số ngoài bảng.
-- **Còn thiếu:**
+- **BCTC hợp nhất kiểm toán annual-2025 đã map/xác minh:** ACB p75, MBB p79,
+  VPB p75, HDB p55, CTG p63, BID p59 và VIB p55. Whole-PDF scan tìm đúng một
+  vùng family ở cả bảy báo cáo; 58 mapping/114 ô số và 46 phương trình đóng
+  chính xác.
+- **Biến thể đã đóng:** MBB không in family total nhưng có owner và các child
+  đầy đủ; HDB dùng `Số cuối năm`/`Số đầu năm`, hai parent trung gian và tiền ký
+  quỹ âm; CTG có owner rút gọn `Nghĩa vụ nợ tiềm ẩn và các cam kết`; BID dùng
+  parent `Các khoản bảo lãnh`/`Cam kết thanh toán` với hai child L/C; VIB dùng
+  ba trục gộp–ký quỹ–thuần và chỉ cột thuần được map. Matcher dừng ở note đánh
+  số kế tiếp và cho phép đúng một trang tiếp nối, không dùng bank/page làm rule.
+- **Không có bảng chi tiết trong annual-2025:** VCB. p66 chỉ có diễn giải; p67
+  đã sang note giao dịch bên liên quan. Đây là bounded absence của bảng chi
+  tiết trong đúng filing, không phải khẳng định nguồn rộng hơn không có family.
+- **Còn thiếu annual-2025:**
 
 | Bank | Trang | Khoản mục nguồn | Lý do chưa map |
 | --- | ---: | --- | --- |
-| ACB | 26 | Thư tín dụng trả ngay; Thư tín dụng trả chậm | Schema mới dừng ở parent L/C 1295, chưa có hai leaf theo phương thức thanh toán. |
-| ACB | 26 | Trừ: tiền ký quỹ (L/C và bảo lãnh); Bảo lãnh khác chi tiết | Hai dòng ký quỹ là trục khấu trừ; dòng `Bảo lãnh khác` chi tiết trùng tên với parent nguồn, chưa có leaf riêng. |
-| VPB | 68 | Trừ: tiền ký quỹ (L/C và bảo lãnh); Cam kết bảo lãnh khác | Các dòng vẫn đóng đúng parent nhưng chưa có leaf/trục khấu trừ tương ứng. |
-| VPB | 68 | Hoán đổi lãi suất tiền tệ chéo — nhận/trả; hoán đổi lãi suất một đồng tiền | Schema 1301–1302 chỉ có ngoại hối/hoán đổi tiền tệ, chưa có các leaf hoán đổi lãi suất này. |
-| VPB | 68 | Cam kết khác chi tiết; hạn mức tín dụng chưa sử dụng có thể hủy ngang | Dòng đầu trùng tên parent; dòng `Trong đó` là non-additive và chưa có leaf riêng. |
+| ACB | 75 | Thư tín dụng trả ngay; Thư tín dụng trả chậm | Schema mới dừng ở parent L/C 1295, chưa có hai leaf theo phương thức thanh toán. |
+| ACB | 75 | Trừ: tiền ký quỹ (L/C và bảo lãnh); Bảo lãnh khác chi tiết | Hai dòng ký quỹ là trục khấu trừ; dòng `Bảo lãnh khác` chi tiết trùng tên với parent nguồn, chưa có leaf riêng. |
+| VPB | 75 | Trừ: tiền ký quỹ (L/C và bảo lãnh); Cam kết bảo lãnh khác | Các dòng vẫn đóng đúng parent nhưng chưa có leaf/trục khấu trừ tương ứng. |
+| VPB | 75 | Hoán đổi lãi suất tiền tệ chéo — nhận/trả; hoán đổi lãi suất một đồng tiền | Schema 1301–1302 chỉ có ngoại hối/hoán đổi tiền tệ, chưa có các leaf hoán đổi lãi suất này. |
+| VPB | 75 | Cam kết khác chi tiết; hạn mức tín dụng chưa sử dụng có thể hủy ngang | Dòng đầu trùng tên parent; dòng `Trong đó` là non-additive và chưa có leaf riêng. |
+
+- **Lượt hiện hành trước:** E-0098 giữ riêng ACB p26, MBB p51, VPB p68,
+  CTG p48 và VIB p50 với 47 mapping/92 ô/34 phương trình; HDB/VCB/BID là
+  bounded absence và VPB là nguồn Q1/2026. Các gap CL-001–CL-014 cùng nghĩa
+  được giữ một lần trong ledger, không bị annual result relabel.
+
+Kết quả annual-2025:
+`docs/experiments/E-0153-annual-2025-contingent-liabilities-8bank-codex-verified-mapping-v1.json`.
 
 ## 48. Công cụ tài chính — giá trị ghi sổ và giá trị hợp lý
 
@@ -1324,7 +1336,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Nghĩa vụ với ngân sách nhà nước | ✓ p73 | ✓ p68 | ✓ p64 | ✓ p47 | ✓ p65 | ✓ p62 | ✓ p52 | ✓ p52 | Annual-2025: 0 dòng OPEN, 35 mapping/140 ô logic/35 phương trình, 1 DASH→0; CTG net nhánh phải thu/phải trả bằng tổng có dấu. Lượt hiện hành trước giữ riêng 33 mapping; VCB absence, VPB Q1 |
 | Tài sản thế chấp của khách hàng | ✓ p74 | — | ✓ p74 | ✓ p54 | — | — | — | ✓ p54 | Annual-2025: 0 dòng OPEN, 25 mapping/50 ô/10 phương trình; MBB/VCB/CTG/BID bounded absence. Lượt hiện hành trước giữ riêng VPB p67, VCB p47, VIB p49 |
 | Tài sản/GTCG ngân hàng đem thế chấp, cầm cố, chiết khấu | ✓ p74 | ✓ p78 | ✓ p74 | — | — | ✓ p63 | — | ✓ p54 | Annual-2025: 0 dòng OPEN, 13 mapping/26 ô/10 phương trình; HDB/VCB/BID bounded absence. Lượt hiện hành trước giữ riêng 3 dòng OPEN tại VPB/VIB |
-| Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra | ✓\* p26 | ✓ p51 | ✓\* p68 | — | — | ✓ p48 | — | ✓ p50 | 13 dòng OPEN; 47 mapping, 92 ô số, 34 phương trình; 3 bank không có note chi tiết; VPB là nguồn Q1 |
+| Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra | ✓\* p75 | ✓ p79 | ✓\* p75 | ✓ p55 | — | ✓ p63 | ✓ p59 | ✓ p55 | Annual-2025: 13 dòng OPEN tại ACB/VPB, 58 mapping/114 ô/46 phương trình; VCB bounded absence. Lượt hiện hành trước giữ riêng 47 mapping; VPB của lượt đó là Q1 |
 | Công cụ tài chính — giá trị ghi sổ/hợp lý | — | — | ✓\* p86 | — | ✓\* p44–45 | ✓\* p51 | — | — | 3 nhóm giá trị hợp lý OPEN; 64 mapping, 55 ô số, 12 phương trình; 5 bank không có bảng chi tiết; VPB là nguồn Q1 |
 | Rủi ro tiền tệ | — | ✓ p58 | ✓\* p80 | ✓\* p38–39 | ✓ p50–51 | ✓\* p60 | — | ✓ p65–66 | 3 nhánh vàng/11 ô OPEN do chưa có schema; 120 mapping, 136 ô số, 51 phương trình; ACB/BID không có bảng chi tiết; VPB là nguồn Q1 |
 | Rủi ro lãi suất | — | ✓ p57 | ✓\* p78 | ✓ p41 | ✓ p49 | ✓ p55 | — | ✓ p62–63 | 0 ô OPEN; 234 mapping, 279 ô số, 108 phương trình; VIB đã được challenger ảnh độc lập; VPB là nguồn Q1 |
