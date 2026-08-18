@@ -343,36 +343,51 @@ def _configured_modules() -> tuple[ModuleType, ModuleType, ModuleType]:
             return roles, events
         header_bottom = max(line["bbox"][3] for line in header_lines)
         label_zone_limit = max(line["bbox"][2] for line in lines) * 0.48
-        for index, line in enumerate(lines):
+        line_height = statistics.median(line["bbox"][3] - line["bbox"][1] for line in lines)
+        label_lines = [
+            line
+            for line in lines
+            if line["bbox"][0] <= label_zone_limit
+            and support._NUMBER.fullmatch(line["normalized_text"]) is None
+        ]
+        for line in lines:
             if line["bbox"][3] <= header_bottom:
                 continue
             candidates = [line["normalized_text"]]
+            continuation_texts: list[str] = []
             current_is_label = (
                 line["bbox"][0] <= label_zone_limit
                 and support._NUMBER.fullmatch(line["normalized_text"]) is None
             )
-            if (
-                current_is_label
-                and index + 1 < len(lines)
-                and lines[index + 1]["bbox"][0] <= label_zone_limit
-                and support._NUMBER.fullmatch(lines[index + 1]["normalized_text"]) is None
+            if current_is_label:
+                center_y = (line["bbox"][1] + line["bbox"][3]) / 2
+                continuations = sorted(
+                    (
+                        other
+                        for other in label_lines
+                        if other is not line
+                        and 0
+                        < (other["bbox"][1] + other["bbox"][3]) / 2 - center_y
+                        <= line_height * 1.8
+                    ),
+                    key=lambda other: (
+                        (other["bbox"][1] + other["bbox"][3]) / 2,
+                        other["bbox"][0],
+                    ),
+                )[:2]
+                for continuation in continuations:
+                    continuation_texts.append(continuation["normalized_text"])
+                    candidates.append(f"{candidates[-1]} {continuation['normalized_text']}")
+            role = annual_role(candidates[0])
+            for candidate, continuation_text in zip(
+                candidates[1:], continuation_texts, strict=True
             ):
-                candidates.append(f"{candidates[-1]} {lines[index + 1]['normalized_text']}")
-            if (
-                len(candidates) == 2
-                and index + 2 < len(lines)
-                and lines[index + 2]["bbox"][0] <= label_zone_limit
-                and support._NUMBER.fullmatch(lines[index + 2]["normalized_text"]) is None
-            ):
-                candidates.append(f"{candidates[-1]} {lines[index + 2]['normalized_text']}")
-            role = next(
-                (
-                    found
-                    for value in reversed(candidates)
-                    if (found := annual_role(value)) is not None
-                ),
-                None,
-            )
+                continuation_role = annual_role(continuation_text)
+                joined_role = annual_role(candidate)
+                if continuation_role is not None:
+                    break
+                if joined_role is not None:
+                    role = joined_role
             if role is None:
                 continue
             if role == "ASSET_TOTAL":

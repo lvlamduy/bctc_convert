@@ -26,7 +26,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 OUTPUT_ROOT = Path("output/calibration/annual-2025-currency-risk-rotated-ppocrv6-panel-v1")
 MANIFEST_PATH = OUTPUT_ROOT / "panel_manifest.json"
 EXPECTED_SCAN_ID = (
-    "a2025crfdsv1:scan:3423250f79d91c015bd36031c6eb20bfe4aebbb096be25d4c47faa040c0b3ec8"
+    "a2025crfdsv1:scan:b2dd66fa2292064a87e383d140988048b7155f4d139915462c4fe1c555b7b321"
 )
 EXPECTED_PAGE_COUNT = 1
 FORMAT_VERSION = "ANNUAL_2025_CURRENCY_RISK_ROTATED_PPOCRV6_PANEL_V1"

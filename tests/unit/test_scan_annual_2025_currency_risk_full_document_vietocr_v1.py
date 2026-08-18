@@ -27,7 +27,7 @@ def test_live_scan_finds_one_bank_blind_region_in_every_complete_pdf(
     live_scan: dict[str, object],
 ) -> None:
     assert live_scan["scan_id"] == (
-        "a2025crfdsv1:scan:3423250f79d91c015bd36031c6eb20bfe4aebbb096be25d4c47faa040c0b3ec8"
+        "a2025crfdsv1:scan:b2dd66fa2292064a87e383d140988048b7155f4d139915462c4fe1c555b7b321"
     )
     assert live_scan["metrics"] == {
         "bounded_detailed_table_absence_count": 0,
@@ -69,6 +69,14 @@ def test_annual_variants_are_generic_and_typed_replay_rejects_tamper(
     assert axes["MBB"] == ["USD", "EUR", "OTHER", "TOTAL"]
     assert axes["VPB"] == ["EUR", "USD", "GOLD", "OTHER", "TOTAL"]
     assert axes["BID"] == ["EUR", "USD", "OTHER", "TOTAL"]
+    observed_roles = {
+        trial["document_provenance"]: trial["matcher_result"]["regions"][0]["layout"][
+            "observed_source_roles"
+        ]
+        for trial in trials
+    }
+    assert "STATE_COMBINED" in observed_roles["CTG"]
+    assert "STATE_COMBINED" in observed_roles["VIB"]
     assert live_scan["authority"]["rotated_rescue_selected_by_geometry_not_bank_or_page"] is True
 
     forged = copy.deepcopy(live_scan)
