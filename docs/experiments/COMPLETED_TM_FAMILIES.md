@@ -948,21 +948,30 @@ Kết quả annual-2025:
 
 ## 38. Chi phí dự phòng rủi ro tín dụng
 
-- **Đã map/xác minh:** MBB p49, VPB p66 và VIB p47. Whole-PDF scan tìm đúng
-  một note chi tiết tại mỗi bank này; 15 mapping/30 ô số và 8 phương trình
-  thành phần–tổng đóng chính xác. MBB map các nhánh cho vay khách hàng, TCTD,
-  mua nợ, rủi ro khác và cam kết; VPB map cho vay khách hàng, mua nợ và VAMC;
-  VIB map parent cho vay khách hàng cùng dự phòng chung/cụ thể và mua nợ.
-- **Biến thể đã đóng:** nhãn có thể xuống dòng; các nhánh là tùy chọn; VIB có
-  parent cho vay khách hàng rồi hai con chung/cụ thể; tổng family không có nhãn
-  và nằm cuối bảng. Hai dấu gạch bị OCR bỏ tại MBB/VIB được khóa bằng pixel và
-  chuẩn hóa thành 0. Hai dấu gạch VPB bị VietOCR đọc thành `1`; source native
-  `-` bác bỏ proposal và giữ giá trị 0. VPB giữ đúng kỳ Q1/2026.
-- **Không có cụm thuyết minh chi tiết trong báo cáo:** ACB, HDB, VCB, CTG và
-  BID. Các PDF này chỉ có số tổng KQKD hoặc diễn giải/chính sách gần giống,
-  không có note đánh số với trục kỳ, đơn vị, các hàng thành phần và tổng.
-- **Còn thiếu:** Không còn. E-0100 đưa hai dòng VPB/VIB vào 1228 `Dự phòng
-  khác`; tổng family của cả hai bank vẫn đóng đúng.
+- **BCTC hợp nhất kiểm toán annual-2025 đã map/xác minh:** ACB p70, MBB p75,
+  VPB p73, VCB p61 và VIB p52. Whole-PDF scan quét đủ 695 trang và tìm đúng
+  một note chi tiết ở mỗi filing này. Pixel, trục số nguồn, live schema và 12
+  phương trình xác minh 25 mapping/50 ô số; không có disagreement số VietOCR.
+- **Biến thể annual-2025 đã đóng:** ACB tách dự phòng chung/cụ thể/phải thu khó
+  đòi; MBB có cho vay khách hàng, TCTD, mua nợ, cam kết và rủi ro khác; VPB có
+  margin/ứng trước và tài sản có rủi ro khác; VCB tách chung/cụ thể cho khách
+  hàng và trái phiếu doanh nghiệp chưa niêm yết; VIB dùng parent cho vay khách
+  hàng với hai con chung/cụ thể. VPB và VCB cộng các component đã xác minh đúng
+  một lần vào 1228 `Dự phòng khác`. Một dấu `-` hiện kỳ của VPB được crop-bind
+  trước khi chuẩn hóa thành 0.
+- **Không có cụm thuyết minh chi tiết trong annual-2025:** HDB, CTG và BID.
+  HDB chỉ có số aggregate trong báo cáo bộ phận/chính sách; CTG chỉ có dòng dự
+  phòng chung ở chi phí hoạt động và aggregate KQKD; BID có dòng chi phí hoạt
+  động loại trừ dự phòng tín dụng/chứng khoán cùng aggregate KQKD. Không nguồn
+  nào đủ cấu trúc để relabel thành note chi tiết 1221.
+- **Còn thiếu annual-2025:** Không còn; 0 dòng OPEN.
+
+Kết quả annual-2025:
+`docs/experiments/E-0144-annual-2025-credit-risk-provision-expense-8bank-codex-verified-mapping-v1.json`.
+
+- **Lượt hiện hành trước:** MBB p49, VPB p66 và VIB p47 giữ nguyên 15
+  mapping/30 ô/8 phương trình. E-0100 đóng CRPE-001/002 vào 1228; ACB, HDB,
+  VCB, CTG và BID là bounded detailed-note absences; VPB giữ đúng nguồn Q1/2026.
 
 ## 39. Thu nhập, chi phí và lãi thuần từ hoạt động khác
 
@@ -1247,7 +1256,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Lãi thuần CK kinh doanh + CK đầu tư | — | — | — | — | — | — | — | — | Annual-2025: 8 bounded absences, BID p56 là tiêu đề đối chứng âm, 0 dòng OPEN. Lượt hiện hành trước: MBB p47 có 1 mapping/2 ô/2 phương trình |
 | Thu nhập góp vốn/mua cổ phần/cổ tức | ✓ p69 | ✓ p74 | ✓ p71 | ✓ p51 | ✓ p60 | ✓\* p59 | ✓ p56 | — | Annual-2025: 1 dòng CTG OPEN, 28 mapping/56 ô/20 phương trình, 4 DASH→0; VIB không có note chi tiết. Lượt hiện hành trước: 27 mapping; VPB là Q1 |
 | Chi phí quản lý chung/Chi phí hoạt động | ✓\* p70 | ✓\* p74 | ✓\* p72 | ✓\* p51 | ✓ p61 | ✓\* p60 | ✓ p57 | ✓ p52 | Annual-2025: 14 dòng OPEN, 103 mapping/206 ô/42 phương trình, 4 lỗi số VietOCR bị nguồn/pixel/accounting bác bỏ. Lượt hiện hành trước: 4 OPEN/99 mapping; VPB là Q1 |
-| Chi phí dự phòng rủi ro tín dụng | — | ✓ p49 | ✓ p66 | — | — | — | — | ✓ p47 | 0 dòng OPEN; 17 source-row mappings, 8 phương trình; CRPE-001/002 → 1228; 5 bank không có note chi tiết; VPB là nguồn Q1 |
+| Chi phí dự phòng rủi ro tín dụng | ✓ p70 | ✓ p75 | ✓ p73 | — | ✓ p61 | — | — | ✓ p52 | Annual-2025: 0 dòng OPEN, 25 mapping/50 ô/12 phương trình, 1 DASH→0; HDB/CTG/BID không có note chi tiết. Lượt hiện hành trước: 15 mapping, E-0100 đóng CRPE-001/002 → 1228; VPB là Q1 |
 | Thu nhập/chi phí/lãi thuần hoạt động khác | — | ✓ p47 | ✓ p64 | — | — | — | — | ✓ p46 | 0 dòng OPEN; OACT-001 gộp vào 1239, 14 phương trình; 5 bank không có note chi tiết; VPB là nguồn Q1 |
 | Chi phí thuế thu nhập doanh nghiệp | — | ✓ p50 | ✓\* p59 | — | — | — | — | ✓\* p48 | 1 dòng OPEN; 28 mapping, 56 ô số, 20 phương trình; 2 DASH→0, 1 ô trống giữ nguyên; 5 bank không có note chi tiết; VPB là nguồn Q1 |
 | Tiền và các khoản tương đương tiền | ✓ p8 | ✓ p50 | ✓\* p66 | — | ✓ p40 | ✓ p47 | — | ✓ p45 | 0 dòng; 31 mapping, 60 ô số, 12 phương trình; 2 ô trống giữ nguyên; HDB/BID không có note chi tiết; VPB là nguồn Q1 |

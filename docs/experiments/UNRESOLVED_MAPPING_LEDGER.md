@@ -17,10 +17,31 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **333 entries**.  Current open queue: **119**.  Closed history:
-**129** row/graph resolutions and **85** confirmed bound-report family absences.
+Ledger total: **336 entries**.  Current open queue: **119**.  Closed history:
+**129** row/graph resolutions and **88** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
+
+## CLOSED — annual-2025 `Chi phí dự phòng rủi ro tín dụng`
+
+E-0144 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025. Graph chung
+tìm đúng một note chi tiết tại ACB p70, MBB p75, VPB p73, VCB p61 và VIB p52;
+pixel, trục số nguồn, schema hiện hành và 12 phương trình xác minh 25 mapping/50
+ô số. Một dấu `-` hiện kỳ của VPB được crop-bind trước khi chuẩn hóa 0; không có
+disagreement số VietOCR và không còn dòng OPEN. Các component `Dự phòng cho vay
+giao dịch ký quỹ và ứng trước` + `Dự phòng cho tài sản Có khác có rủi ro` của
+VPB, cũng như hai component dự phòng trái phiếu doanh nghiệp chưa niêm yết của
+VCB, được xác minh riêng rồi cộng đúng một lần vào 1228 `Dự phòng khác`.
+
+| ID | Bank | Locator/đối chứng | Disposition và căn cứ bounded absence |
+| --- | --- | --- | --- |
+| CRPE-A2025-001 | HDB | Toàn filing; aggregate tại KQKD/báo cáo bộ phận và diễn giải chính sách | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`: không có note chi tiết 1221 với trục kỳ, đơn vị, các hàng thành phần và tổng; aggregate không được relabel thành bảng chi tiết. |
+| CRPE-A2025-002 | CTG | p60 chi phí hoạt động + aggregate KQKD | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`: `Chi phí dự phòng` là nhãn chung trong family chi phí hoạt động, không phải note chi tiết rủi ro tín dụng 1221. |
+| CRPE-A2025-003 | BID | p57 chi phí hoạt động + aggregate KQKD | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`: dòng `(Hoàn nhập) dự phòng` tại p57 loại trừ dự phòng rủi ro tín dụng/chứng khoán; không có note chi tiết 1221 ở nơi khác trong filing. |
+
+Các kết luận trên chỉ là vắng mặt trong đúng filing annual-2025 đã bind, không
+phải khẳng định bank/source rộng hơn. Machine-readable result:
+`docs/experiments/E-0144-annual-2025-credit-risk-provision-expense-8bank-codex-verified-mapping-v1.json`.
 
 ## OPEN — annual-2025 `Chi phí quản lý chung (Chi phí hoạt động)`
 

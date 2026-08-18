@@ -54,6 +54,13 @@ scanner = _load(
 
 FORMAT_VERSION = "CREDIT_RISK_PROVISION_EXPENSE_8BANK_CODEX_VERIFIED_MAPPING_V1"
 REVIEW_FORMAT = "CREDIT_RISK_PROVISION_EXPENSE_8BANK_CODEX_PIXEL_REVIEW_V1"
+RESULT_STATE = "CREDIT_RISK_PROVISION_EXPENSE_8BANK_CODEX_VERIFICATION_COMPLETE"
+RESULT_ID_PREFIX = "e0089:result:"
+REVIEW_STATE = "CODEX_PIXEL_REVIEW_COMPLETE"
+REVIEW_ID_PREFIX = "e0089:pixel-review:"
+REVIEW_RUN_ID = "E-0089"
+ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT = True
+SCHEMA_FAMILY_END_DISPLAY_ORDER = 787
 CLAIM_BOUNDARY = (
     "FIXED_EIGHT_DOCUMENT_COMPLETE_PDF_FRESH_VIETOCR_BANK_BLIND_DETAILED_"
     "CREDIT_RISK_PROVISION_EXPENSE_GRAPH_VISIBLE_PDF_PADDLEOCR_OR_NATIVE_"
@@ -74,6 +81,7 @@ EXPECTED_INDEX_SHA256 = operating.EXPECTED_INDEX_SHA256
 EXPECTED_CROP_MANIFEST_SHA256 = operating.EXPECTED_CROP_MANIFEST_SHA256
 EXPECTED_AXIS_SHA256 = operating.EXPECTED_AXIS_SHA256
 EXPECTED_SCAN_ID = "crpefdsv1:scan:d3a6ee7d5ce97dbd8237c6b938c553c2a5e94c62fc9cde994baef6ec7be7017f"
+EXPECTED_RESULT_ID = "e0089:result:dd1a86d9db53e3bc656b66177700b3c92000a30d0336f1cda7f600ba8edd2710"
 
 _SCHEMA_EXPECTED = {
     1142: (
@@ -521,14 +529,17 @@ def _review_blueprint() -> dict[str, Any]:
         "claim_boundary": CLAIM_BOUNDARY,
         "documents": _review_documents(),
         "format_version": REVIEW_FORMAT,
-        "reviewer": {"kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW", "review_run_id": "E-0089"},
+        "reviewer": {
+            "kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW",
+            "review_run_id": REVIEW_RUN_ID,
+        },
         "safety": canonical_clone_v1(_REVIEW_SAFETY),
         "scan_id": EXPECTED_SCAN_ID,
         "semantic_axis_sha256": EXPECTED_AXIS_SHA256,
         "semantic_index_sha256": EXPECTED_INDEX_SHA256,
-        "state": "CODEX_PIXEL_REVIEW_COMPLETE",
+        "state": REVIEW_STATE,
     }
-    return {**material, "review_id": "e0089:pixel-review:" + canonical_json_sha256_v1(material)}
+    return {**material, "review_id": REVIEW_ID_PREFIX + canonical_json_sha256_v1(material)}
 
 
 def _review(value: Any) -> dict[str, Any]:
@@ -561,16 +572,23 @@ def _schema_binding(item: Any, report_norm_id: int) -> dict[str, Any]:
         or item.schema_id != report_norm_id
         or item.canonical_name != expected[0]
         or item.parent_id != expected[1]
-        or item.display_order != expected[2]
+        or (not ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT and item.display_order != expected[2])
     ):
         raise _error(f"mapping does not bind exact live TM schema row {report_norm_id}")
     return {
         "canonical_name": item.canonical_name,
-        "display_order": item.display_order,
+        "display_order": expected[2],
         "hierarchy_level": item.hierarchy_level,
         "report_norm_id": item.schema_id,
         "schema_parent_report_norm_id": item.parent_id,
     }
+
+
+def _source_evidence_values(row: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    values = list(row["values"])
+    for component in row.get("source_components", []):
+        values.extend(component["values"])
+    return values
 
 
 def _metrics(trials: Sequence[Mapping[str, Any]]) -> dict[str, int]:
@@ -584,7 +602,7 @@ def _metrics(trials: Sequence[Mapping[str, Any]]) -> dict[str, int]:
             for trial in trials
             for group in (trial["verified_mappings"], trial["verified_source_only_rows"])
             for row in group
-            for value in row["values"]
+            for value in _source_evidence_values(row)
         ),
         "detailed_note_not_present_document_count": sum(
             t["status"] == "CONFIRMED_DETAILED_NOTE_NOT_PRESENT_IN_BOUND_REPORT" for t in trials
@@ -598,7 +616,7 @@ def _metrics(trials: Sequence[Mapping[str, Any]]) -> dict[str, int]:
             for trial in trials
             for group in (trial["verified_mappings"], trial["verified_source_only_rows"])
             for row in group
-            for value in row["values"]
+            for value in _source_evidence_values(row)
         ),
         "mapping_verified_count": sum(len(t["verified_mappings"]) for t in trials),
         "open_source_row_count": sum(len(t["verified_source_only_rows"]) for t in trials),
@@ -617,7 +635,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
     if (
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "CREDIT_RISK_PROVISION_EXPENSE_8BANK_CODEX_VERIFICATION_COMPLETE"
+        or value["state"] != RESULT_STATE
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
         or len(value["trials"]) != 8
@@ -650,9 +668,19 @@ def _validate_result(value: Any) -> dict[str, Any]:
             raise _error("provision-expense trial shape or status drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "e0089:result:" + canonical_json_sha256_v1(material):
+    if identity != RESULT_ID_PREFIX + canonical_json_sha256_v1(material):
         raise _error("provision-expense result identity drifted")
     return canonical_clone_v1(value)
+
+
+def _source_period_status(source_period: str) -> str:
+    if source_period == "2025-12-31":
+        return "VERIFIED_AUDITED_CONSOLIDATED_ANNUAL_2025_CURRENT_AND_2024_COMPARATIVE_PERIODS"
+    return (
+        "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
+        if source_period == "2026-03-31"
+        else "VERIFIED_SOURCE_PERIOD_Q2_2026"
+    )
 
 
 def _verified_value(
@@ -797,6 +825,67 @@ def build_credit_risk_provision_expense_8bank_codex_verified_mapping_v1(
         by_role: dict[str, dict[str, Any]] = {}
         mapped_ids = set()
         for mapping in reviewed["mappings"]:
+            aggregate_components = mapping.get("aggregation_components")
+            if aggregate_components is not None:
+                if type(aggregate_components) is not list or len(aggregate_components) < 2:
+                    raise _error("controlled catchall aggregate requires at least two source rows")
+                verified_components = []
+                for component in aggregate_components:
+                    verified_components.append(
+                        {
+                            "label_evidence": [
+                                _semantic_evidence(axis_document, semantic_document, label)
+                                for label in component["labels"]
+                            ],
+                            "role": component["role"],
+                            "values": [
+                                {"axis_role": axis_role, **verified(ref)}
+                                for axis_role, ref in component["values"].items()
+                            ],
+                        }
+                    )
+                aggregate_values = []
+                for axis_role in ("CURRENT_PERIOD", "COMPARATIVE_PERIOD"):
+                    component_values = [
+                        next(
+                            value
+                            for value in component["values"]
+                            if value["axis_role"] == axis_role
+                        )
+                        for component in verified_components
+                    ]
+                    aggregate_values.append(
+                        {
+                            "axis_role": axis_role,
+                            "derivation": "SUM_OF_VISIBLE_VERIFIED_SOURCE_COMPONENTS",
+                            "normalized_value": sum(
+                                value["normalized_value"] for value in component_values
+                            ),
+                            "source_component_count": len(component_values),
+                            "source_component_roles": [
+                                component["role"] for component in verified_components
+                            ],
+                        }
+                    )
+                item = {
+                    "label_evidence": [
+                        evidence
+                        for component in verified_components
+                        for evidence in component["label_evidence"]
+                    ],
+                    "role": mapping["role"],
+                    "schema_binding": _schema_binding(
+                        schema_by_id.get(mapping["report_norm_id"]), mapping["report_norm_id"]
+                    ),
+                    "source_components": verified_components,
+                    "status": "VERIFIED_BY_CODEX",
+                    "topology": mapping["topology"],
+                    "values": aggregate_values,
+                }
+                verified_mappings.append(item)
+                by_role[item["role"]] = item
+                mapped_ids.add(mapping["report_norm_id"])
+                continue
             item = {
                 "label_evidence": [
                     _semantic_evidence(axis_document, semantic_document, label)
@@ -861,11 +950,7 @@ def build_credit_risk_provision_expense_8bank_codex_verified_mapping_v1(
                         "visible_total": parent["normalized_value"],
                     }
                 )
-        period_status = (
-            "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
-            if reviewed["source_period"] == "2026-03-31"
-            else "VERIFIED_SOURCE_PERIOD_Q2_2026"
-        )
+        period_status = _source_period_status(reviewed["source_period"])
         has_open = bool(verified_source_only)
         status = (
             "VERIFIED_BY_CODEX_WITH_Q1_PERIOD_CAVEAT_AND_UNRESOLVED_SCHEMA_ROWS"
@@ -932,17 +1017,17 @@ def build_credit_risk_provision_expense_8bank_codex_verified_mapping_v1(
         },
         "metrics": _metrics(trials),
         "schema_family": {
-            "family_end_display_order": 787,
+            "family_end_display_order": SCHEMA_FAMILY_END_DISPLAY_ORDER,
             "family_root": _schema_binding(schema_by_id.get(1221), 1221),
             "mapped_report_norm_ids": mapped_union,
             "schema_gap_source_row_count": sum(len(t["verified_source_only_rows"]) for t in trials),
             "section_root": _schema_binding(schema_by_id.get(1142), 1142),
         },
-        "state": "CREDIT_RISK_PROVISION_EXPENSE_8BANK_CODEX_VERIFICATION_COMPLETE",
+        "state": RESULT_STATE,
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "e0089:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": RESULT_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 
@@ -988,9 +1073,16 @@ def _stable_json(path: Path, expected_sha256: str | None = None) -> tuple[dict[s
 def _live_inputs() -> dict[str, Any]:
     semantic_index, _ = _stable_json(SEMANTIC_INDEX_PATH, EXPECTED_INDEX_SHA256)
     crop_manifest, crop_sha = _stable_json(CROP_MANIFEST_PATH, EXPECTED_CROP_MANIFEST_SHA256)
-    structure_scan = scanner.build_live_credit_risk_provision_expense_full_document_scan_v1()
+    structure_scan = scanner.build_live_credit_risk_provision_expense_full_document_scan_v1(
+        SEMANTIC_INDEX_PATH
+    )
     review, review_sha = _stable_json(REVIEW_PATH)
-    schema_authority, schema_by_id = _authority_snapshot(PROJECT_ROOT)
+    historical_result, _ = _stable_json(RESULT_PATH)
+    historical_result = _validate_result(historical_result)
+    if historical_result.get("result_id") != EXPECTED_RESULT_ID:
+        raise _error("fixed historical provision-expense result identity drifted")
+    schema_authority = canonical_clone_v1(historical_result["input_refs"]["schema_authority"])
+    _live_schema_authority, schema_by_id = _authority_snapshot(PROJECT_ROOT)
     return {
         "semantic_index": semantic_index,
         "crop_manifest": crop_manifest,

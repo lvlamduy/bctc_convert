@@ -104,6 +104,14 @@ def test_only_true_schema_gaps_remain_open() -> None:
     assert result["trials"][2]["source_period_status"] == ("VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2")
 
 
+def test_historical_current_period_result_still_replays_against_live_schema() -> None:
+    persisted = _result()
+    validated = builder.validate_live_credit_risk_provision_expense_8bank_codex_verified_mapping_v1(
+        persisted
+    )
+    assert validated["result_id"] == builder.EXPECTED_RESULT_ID
+
+
 def test_public_replay_rejects_coordinated_value_tamper() -> None:
     forged = copy.deepcopy(_result())
     forged["trials"][1]["verified_mappings"][0]["values"][0]["normalized_value"] += 1
