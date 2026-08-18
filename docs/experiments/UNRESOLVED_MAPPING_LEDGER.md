@@ -17,10 +17,31 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **306 entries**.  Current open queue: **102**.  Closed history:
+Ledger total: **308 entries**.  Current open queue: **104**.  Closed history:
 **129** row/graph resolutions and **75** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
+
+## OPEN — annual-2025 `Thu nhập, chi phí và lãi thuần từ hoạt động dịch vụ`
+
+E-0137 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025 và tìm đúng
+một vùng family tại ACB p67, MBB p72, VPB p69, HDB p50, VCB p58, CTG p58,
+BID p55 và VIB p50. Exact replay xác minh 101 mapping/202 ô giá trị cùng 48
+phương trình. Hai hàng gộp của CTG vẫn tham gia chính xác vào tổng thu/tổng chi
+nhưng không được tách hoặc thu hẹp vào một leaf schema đơn lẻ.
+
+| ID | Bank | Trang | Khoản mục nguồn | Giá trị 2025 / 2024 | Lý do chưa map |
+| --- | --- | ---: | --- | --- | --- |
+| SA-CTG-001 | CTG | 58 | Thu từ dịch vụ tư vấn, ủy thác và đại lý | `965.390` / `961.413` | Một số nguồn gộp tư vấn với ủy thác/đại lý; schema hiện chỉ có các leaf tách rời 5986 và 1163, không có căn cứ phân bổ. |
+| SA-CTG-002 | CTG | 58 | Chi về dịch vụ tư vấn, ủy thác và đại lý | `(309.758)` / `(195.158)` | Một số nguồn gộp tư vấn với ủy thác/đại lý; schema hiện chỉ có các leaf tách rời 5987 và 1172, không có căn cứ phân bổ. |
+
+Hai disagreement số của VietOCR được giữ làm evidence, không tạo thêm OPEN:
+HDB đọc thiếu ngoặc mở `73.409)` nhưng pixel/source là `(73.409)`; VIB đọc
+`993 178` nhưng pixel/source là `993.178`. Numeric challenger và sáu phương
+trình mỗi bank giữ đúng giá trị nguồn.
+
+Machine-readable result:
+`docs/experiments/E-0137-annual-2025-service-activity-8bank-codex-verified-mapping-v1.json`.
 
 ## CLOSED — annual-2025 `Thu nhập từ lãi thuần`
 

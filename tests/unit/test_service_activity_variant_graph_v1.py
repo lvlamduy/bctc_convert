@@ -16,7 +16,7 @@ sys.modules[_SPEC.name] = matcher
 _SPEC.loader.exec_module(matcher)
 
 
-def _page(texts: list[str]) -> dict[str, object]:
+def _page(texts: list[str], page_sequence: int = 1) -> dict[str, object]:
     return {
         "lines": [
             {
@@ -29,7 +29,7 @@ def _page(texts: list[str]) -> dict[str, object]:
             }
             for index, text in enumerate(texts)
         ],
-        "page_sequence": 1,
+        "page_sequence": page_sequence,
         "primary_numeric_authority": True,
     }
 
@@ -136,3 +136,57 @@ def test_exact_replay_rejects_coordinated_tamper() -> None:
     forged["result_id"] = "savgv1:graph:" + matcher.canonical_json_sha256_v1(material)
     with pytest.raises(matcher.ServiceActivityVariantGraphV1Error, match="replay exactly"):
         matcher.validate_service_activity_variant_graph_replay_v1(forged, pages)
+
+
+def test_v2_accepts_ordered_income_expense_siblings_without_net_owner() -> None:
+    source = _trailing()
+    texts = [source[4], *source[1:4], *source[5:22]]
+    result = matcher.build_service_activity_variant_graph_document_v2([_page(texts)])
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["metrics"]["income_expense_sibling_region_count"] == 1
+    assert result["metrics"]["net_owner_region_count"] == 0
+    assert result["regions"][0]["layout"]["presentation"].startswith("ORDERED_INCOME_PARENT")
+
+
+def test_v2_accepts_generic_expense_preposition_without_changing_v1() -> None:
+    texts = [
+        text.replace("Chi phí hoạt động dịch vụ", "Chi phí cho hoạt động dịch vụ")
+        for text in _trailing()
+    ]
+    v1 = matcher.build_service_activity_variant_graph_document_v1([_page(texts)])
+    v2 = matcher.build_service_activity_variant_graph_document_v2([_page(texts)])
+    assert v1["status"] == "UNRESOLVED_NO_UNIQUE_REGION"
+    assert v2["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert v2["metrics"]["net_owner_region_count"] == 1
+
+
+def test_v2_uses_next_page_only_when_first_page_is_incomplete() -> None:
+    first = _trailing()[:13]
+    second = _trailing()[13:]
+    result = matcher.build_service_activity_variant_graph_document_v2(
+        [_page(first), _page(second, 2)]
+    )
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["regions"][0]["page_span"] == [1, 2]
+    assert result["metrics"]["two_page_continuation_region_count"] == 1
+
+
+def test_v2_still_rejects_parent_only_statement_trio() -> None:
+    result = matcher.build_service_activity_variant_graph_document_v2(
+        [
+            _page(
+                [
+                    "Thu nhập từ hoạt động dịch vụ",
+                    "100",
+                    "90",
+                    "Chi phí hoạt động dịch vụ",
+                    "(20)",
+                    "(10)",
+                    "Lãi thuần từ hoạt động dịch vụ",
+                    "80",
+                    "80",
+                ]
+            )
+        ]
+    )
+    assert result["status"] == "UNRESOLVED_NO_UNIQUE_REGION"

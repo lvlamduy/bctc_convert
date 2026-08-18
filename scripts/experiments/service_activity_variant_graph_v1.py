@@ -35,12 +35,16 @@ from bctc_ai.source_structure.contracts_v1 import (
 
 __all__ = [
     "FORMAT_VERSION",
+    "FORMAT_VERSION_V2",
     "ServiceActivityVariantGraphV1Error",
     "build_service_activity_variant_graph_document_v1",
+    "build_service_activity_variant_graph_document_v2",
     "validate_service_activity_variant_graph_replay_v1",
+    "validate_service_activity_variant_graph_replay_v2",
 ]
 
 FORMAT_VERSION = "SERVICE_ACTIVITY_VARIANT_GRAPH_DOCUMENT_V1"
+FORMAT_VERSION_V2 = "SERVICE_ACTIVITY_VARIANT_GRAPH_DOCUMENT_V2"
 FAMILY_ID = "SERVICE_ACTIVITY_INCOME_EXPENSE_NET"
 CLAIM_BOUNDARY = (
     "BANK_BLIND_COMPLETE_PDF_FRESH_VIETOCR_NET_SERVICE_OWNER_INCOME_EXPENSE_"
@@ -82,6 +86,19 @@ _OWNER_ALIASES = (
     "Lỗ/lãi thuần từ hoạt động dịch vụ",
 )
 _MAX_REGION_LINES = 80
+
+_CLAIM_BOUNDARY_V2 = (
+    "BANK_BLIND_COMPLETE_PDF_FRESH_VIETOCR_SERVICE_ACTIVITY_NET_OWNER_OR_"
+    "ORDERED_INCOME_EXPENSE_SIBLING_PARENTS_OPTIONAL_UNORDERED_CHILDREN_"
+    "ONE_PAGE_CONTINUATION_FLEXIBLE_PARENT_TOTAL_STRUCTURE_ONLY_NO_NUMERIC_"
+    "SCHEMA_MAPPING_OR_EXPORT_AUTHORITY"
+)
+_SAFETY_V2 = {
+    **_SAFETY,
+    "income_then_expense_sibling_variant_without_net_owner_supported": True,
+    "net_owner_required_in_every_detailed_note": False,
+    "single_next_page_continuation_supported": True,
+}
 
 
 class ServiceActivityVariantGraphV1Error(ValueError):
@@ -152,6 +169,18 @@ def _section_parent(text: str) -> str | None:
     return None
 
 
+def _section_parent_v2(text: str) -> str | None:
+    """Recognize the same accounting parents with non-bank-specific prepositions."""
+
+    parent = _section_parent(text)
+    if parent is not None:
+        return parent
+    value = _strip_enumerator(text)
+    if len(value.split()) <= 12 and value == "chi phi cho hoat dong dich vu":
+        return "EXPENSE_PARENT"
+    return None
+
+
 def _child_role(text: str, section: str | None) -> str | None:
     if section not in {"INCOME", "EXPENSE"}:
         return None
@@ -190,6 +219,163 @@ def _window(lines: list[dict[str, Any]], start: int) -> list[dict[str, Any]]:
             break
         window.append(line)
     return window
+
+
+def _window_v2(
+    lines: list[dict[str, Any]], start: int, *, include_next_page: bool
+) -> list[dict[str, Any]]:
+    """Allow one physical-page continuation while retaining family boundaries."""
+
+    anchor = lines[start]
+    window = []
+    for line in lines[start + 1 : start + 1 + _MAX_REGION_LINES]:
+        maximum_page = anchor["page_sequence"] + int(include_next_page)
+        if line["page_sequence"] > maximum_page or _is_next_family(line["normalized_text"]):
+            break
+        window.append(line)
+    return window
+
+
+def _region_v2(
+    lines: list[dict[str, Any]],
+    start: int,
+    *,
+    presentation_kind: str,
+    include_next_page: bool = False,
+) -> dict[str, Any]:
+    support = _support()
+    anchor = lines[start]
+    window = _window_v2(lines, start, include_next_page=include_next_page)
+    parents: dict[str, Mapping[str, Any]] = {}
+    events = []
+    if presentation_kind == "NET_OWNER":
+        events.append(support._line_ref(anchor, "OWNER"))
+    elif presentation_kind == "INCOME_EXPENSE_SIBLING":
+        parents["INCOME_PARENT"] = anchor
+        events.append(support._line_ref(anchor, "INCOME_EXPENSE_SIBLING_ANCHOR"))
+    else:  # pragma: no cover - private caller closes this enum
+        raise _error("service-activity V2 presentation kind drifted")
+
+    children: dict[str, list[tuple[str, Mapping[str, Any]]]] = {
+        "INCOME": [],
+        "EXPENSE": [],
+    }
+    numerics: list[Mapping[str, Any]] = []
+    section: str | None = "INCOME" if presentation_kind == "INCOME_EXPENSE_SIBLING" else None
+    period_count = 0
+    unit_count = 0
+    for line in window:
+        text = line["normalized_text"]
+        parent = _section_parent_v2(text)
+        axis = support._axis_role(text)
+        if parent is not None:
+            section = "INCOME" if parent == "INCOME_PARENT" else "EXPENSE"
+            parents[parent] = line
+            events.append(support._line_ref(line, parent))
+            continue
+        child = _child_role(text, section)
+        if child is not None:
+            children[section].append((child, line))
+            events.append(support._line_ref(line, child))
+        elif axis is not None:
+            events.append(support._line_ref(line, axis))
+            period_count += axis == "PERIOD_AXIS"
+            unit_count += axis == "UNIT_AXIS"
+        if axis is None and support._NUMBER.fullmatch(text):
+            numerics.append(line)
+
+    income_position = _position(
+        parents.get("INCOME_PARENT"),
+        children["INCOME"],
+        numerics,
+        parents.get("EXPENSE_PARENT"),
+    )
+    expense_position = _position(parents.get("EXPENSE_PARENT"), children["EXPENSE"], numerics, None)
+    income_roles = {role for role, _ in children["INCOME"]}
+    expense_roles = {role for role, _ in children["EXPENSE"]}
+    complete = (
+        set(parents) == {"INCOME_PARENT", "EXPENSE_PARENT"}
+        and bool(income_roles)
+        and bool(expense_roles)
+        and len(numerics) >= 10
+        and period_count >= 2
+        and unit_count >= 1
+        and income_position != "NO_PRINTED_PARENT_TOTAL_POSITION"
+        and expense_position != "NO_PRINTED_PARENT_TOTAL_POSITION"
+    )
+    anchor_roles = [
+        "OWNER" if presentation_kind == "NET_OWNER" else "INCOME_EXPENSE_SIBLING_ANCHOR",
+        *sorted(parents),
+        *sorted(income_roles | expense_roles),
+        "PERIOD_AXIS",
+        "UNIT_AXIS",
+    ]
+    end = window[-1] if window else anchor
+    result = {
+        "anchor_roles": anchor_roles,
+        "complete": complete,
+        "end_global_ordinal": end["global_ordinal"],
+        "events": events,
+        "layout": {
+            "expense_child_roles": sorted(expense_roles),
+            "expense_parent_total_position": expense_position,
+            "income_child_roles": sorted(income_roles),
+            "income_parent_total_position": income_position,
+            "period_axis_line_count": period_count,
+            "presentation": (
+                "NET_OWNER_INCOME_PARENT_OPTIONAL_CHILDREN_EXPENSE_PARENT_"
+                "OPTIONAL_CHILDREN_FLEXIBLE_TOTALS"
+                if presentation_kind == "NET_OWNER"
+                else "ORDERED_INCOME_PARENT_OPTIONAL_CHILDREN_EXPENSE_PARENT_"
+                "OPTIONAL_CHILDREN_WITHOUT_NET_OWNER"
+            ),
+            "unit_axis_line_count": unit_count,
+        },
+        "numeric_line_count": len(numerics),
+        "owner": support._line_ref(
+            anchor,
+            "OWNER" if presentation_kind == "NET_OWNER" else "INCOME_EXPENSE_SIBLING_ANCHOR",
+        ),
+        "page_span": [anchor["page_sequence"], end["page_sequence"]],
+        "pair_anchor_combinations": [
+            list(pair) for pair in itertools.combinations(dict.fromkeys(anchor_roles), 2)
+        ],
+        "start_global_ordinal": anchor["global_ordinal"],
+    }
+    if (
+        not complete
+        and not include_next_page
+        and any(
+            line["page_sequence"] == anchor["page_sequence"] + 1
+            for line in lines[start + 1 : start + 1 + _MAX_REGION_LINES]
+        )
+    ):
+        return _region_v2(
+            lines,
+            start,
+            presentation_kind=presentation_kind,
+            include_next_page=True,
+        )
+    return result
+
+
+def _metrics_v2(regions: list[dict[str, Any]], near: list[dict[str, Any]]) -> dict[str, int]:
+    metrics = _metrics(regions, near)
+    metrics.update(
+        {
+            "income_expense_sibling_region_count": sum(
+                item["layout"]["presentation"].startswith("ORDERED_INCOME_PARENT")
+                for item in regions
+            ),
+            "net_owner_region_count": sum(
+                item["layout"]["presentation"].startswith("NET_OWNER") for item in regions
+            ),
+            "two_page_continuation_region_count": sum(
+                item["page_span"][0] != item["page_span"][1] for item in regions
+            ),
+        }
+    )
+    return metrics
 
 
 def _position(
@@ -409,4 +595,96 @@ def validate_service_activity_variant_graph_replay_v1(value: Any, pages: Any) ->
     rebuilt = build_service_activity_variant_graph_document_v1(pages)
     if not same_typed_json_v1(supplied, rebuilt):
         raise _error("service-activity graph does not replay exactly")
+    return supplied
+
+
+def _validate_result_v2(value: Any) -> dict[str, Any]:
+    if type(value) is not dict or set(value) != _RESULT_FIELDS:
+        raise _error("service-activity V2 result fields drifted")
+    if (
+        value["format_version"] != FORMAT_VERSION_V2
+        or value["family_id"] != FAMILY_ID
+        or value["claim_boundary"] != _CLAIM_BOUNDARY_V2
+        or not same_typed_json_v1(value["safety"], _SAFETY_V2)
+        or type(value["regions"]) is not list
+        or type(value["near_regions"]) is not list
+        or not same_typed_json_v1(
+            value["metrics"], _metrics_v2(value["regions"], value["near_regions"])
+        )
+    ):
+        raise _error("service-activity V2 result identity or metrics drifted")
+    count = len(value["regions"])
+    expected_status = (
+        "ACCEPTED_UNIQUE_VARIANT_GRAPH" if count == 1 else "UNRESOLVED_NO_UNIQUE_REGION"
+    )
+    expected_uniqueness = {
+        "complete_region_count": count,
+        "status": "UNIQUE_FULL_MATCH" if count == 1 else "NOT_UNIQUE_FULL_MATCH",
+    }
+    if value["status"] != expected_status or not same_typed_json_v1(
+        value["uniqueness"], expected_uniqueness
+    ):
+        raise _error("service-activity V2 uniqueness drifted")
+    material = canonical_clone_v1(value)
+    identity = material.pop("result_id")
+    if identity != "savgv2:graph:" + canonical_json_sha256_v1(material):
+        raise _error("service-activity V2 graph identity drifted")
+    return canonical_clone_v1(value)
+
+
+def build_service_activity_variant_graph_document_v2(pages: Any) -> dict[str, Any]:
+    """Enumerate net-owner and ordered income/expense-sibling variants."""
+
+    try:
+        parsed = _support()._pages(pages)
+    except Exception as exc:
+        raise _error(str(exc)) from exc
+    lines = _support()._flatten(parsed)
+    owner_candidates = [
+        _region_v2(lines, index, presentation_kind="NET_OWNER")
+        for index, line in enumerate(lines)
+        if _is_owner(line["normalized_text"])
+    ]
+    owner_intervals = [
+        (item["start_global_ordinal"], item["end_global_ordinal"]) for item in owner_candidates
+    ]
+    sibling_candidates = []
+    for index, line in enumerate(lines):
+        if _section_parent_v2(line["normalized_text"]) != "INCOME_PARENT":
+            continue
+        ordinal = line["global_ordinal"]
+        if any(start <= ordinal <= end for start, end in owner_intervals):
+            continue
+        sibling_candidates.append(
+            _region_v2(lines, index, presentation_kind="INCOME_EXPENSE_SIBLING")
+        )
+    candidates = [*owner_candidates, *sibling_candidates]
+    regions = [item for item in candidates if item["complete"]]
+    near = [item for item in candidates if not item["complete"]]
+    material = {
+        "claim_boundary": _CLAIM_BOUNDARY_V2,
+        "family_id": FAMILY_ID,
+        "format_version": FORMAT_VERSION_V2,
+        "metrics": _metrics_v2(regions, near),
+        "near_regions": near,
+        "regions": regions,
+        "safety": canonical_clone_v1(_SAFETY_V2),
+        "status": (
+            "ACCEPTED_UNIQUE_VARIANT_GRAPH" if len(regions) == 1 else "UNRESOLVED_NO_UNIQUE_REGION"
+        ),
+        "uniqueness": {
+            "complete_region_count": len(regions),
+            "status": "UNIQUE_FULL_MATCH" if len(regions) == 1 else "NOT_UNIQUE_FULL_MATCH",
+        },
+    }
+    return _validate_result_v2(
+        {**material, "result_id": "savgv2:graph:" + canonical_json_sha256_v1(material)}
+    )
+
+
+def validate_service_activity_variant_graph_replay_v2(value: Any, pages: Any) -> dict[str, Any]:
+    supplied = _validate_result_v2(value)
+    rebuilt = build_service_activity_variant_graph_document_v2(pages)
+    if not same_typed_json_v1(supplied, rebuilt):
+        raise _error("service-activity V2 graph does not replay exactly")
     return supplied
