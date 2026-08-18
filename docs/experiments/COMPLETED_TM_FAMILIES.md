@@ -1184,20 +1184,28 @@ Kết quả annual-2025:
 
 ## 48. Công cụ tài chính — giá trị ghi sổ và giá trị hợp lý
 
-- **Đã map/xác minh:** VPB p86, VCB p44–45 và CTG p51. Đã map 64 khoản
-  mục/55 ô số và kiểm tra 12 phương trình. Cùng một graph nhận ra nhánh giá
-  trị ghi sổ, nhánh giá trị hợp lý, tài sản, nợ phải trả và bảng tiếp trang;
-  công cụ phái sinh được phân vai theo nhánh cha gần nhất thay vì theo bank.
-- **Không có bảng chi tiết trong báo cáo:** ACB, MBB, HDB, BID và VIB. Các
-  bảng rủi ro tiền tệ, lãi suất, thanh khoản hoặc chính sách giá trị hợp lý là
-  đối chứng gần nhưng không phải bảng đồng thời có giá trị ghi sổ và hợp lý.
-- **Còn thiếu:**
+- **Annual-2025 đã map/xác minh:** VPB p94 và VCB p73–74. Đã map 41 khoản
+  mục/35 ô số và kiểm tra 9 phương trình. Hai trang bảng landscape được giữ
+  theo chiều đọc chuẩn và cùng một hệ tọa độ canonical; graph nhận ra nhánh
+  giá trị ghi sổ, nhánh giá trị hợp lý, tài sản, nợ phải trả và tiếp trang mà
+  không dùng bank/page để route.
+- **Annual-2025 không có bảng chi tiết trong báo cáo:** ACB, MBB, HDB, CTG,
+  BID và VIB. ACB chỉ công bố diễn giải rằng chưa xác định giá trị hợp lý;
+  các bảng phái sinh, tín dụng và rủi ro của năm bank còn lại là đối chứng
+  gần nhưng không phải bảng đồng thời có giá trị ghi sổ và giá trị hợp lý.
+- **Annual-2025 còn thiếu:**
 
 | Bank | Trang | Khoản mục nguồn | Lý do chưa map |
 | --- | ---: | --- | --- |
-| VPB | 86 | Giá trị hợp lý của phần lớn tài sản/nợ tài chính ký hiệu `(*)` | PDF ghi không xác định được giá trị hợp lý; không đổi `(*)` thành 0 và không sao chép giá trị ghi sổ. |
-| VCB | 45 | Giá trị hợp lý của phần lớn tài sản/nợ tài chính ký hiệu `(*)` | Nguồn không công bố giá trị số; giữ OPEN. |
-| CTG | 51 | Giá trị hợp lý của phần lớn tài sản/nợ tài chính ký hiệu `(*)` | Nguồn không công bố giá trị số; giữ OPEN. |
+| VPB | 94 | Giá trị hợp lý của phần lớn tài sản/nợ tài chính ký hiệu `(*)` | PDF ghi chưa xác định được giá trị hợp lý; không đổi `(*)` thành 0 và không sao chép giá trị ghi sổ. |
+| VCB | 74 | Giá trị hợp lý của phần lớn tài sản/nợ tài chính ký hiệu `(*)` | Nguồn ghi không thể ước tính đáng tin cậy và không công bố giá trị số; giữ OPEN. |
+
+- **Lượt hiện hành trước:** E-0099 giữ riêng VPB p86, VCB p44–45 và CTG
+  p51 với 64 mapping/55 ô/12 phương trình; ba nhóm `(*)` FI-001–FI-003 vẫn
+  OPEN và VPB là nguồn Q1/2026.
+
+Kết quả annual-2025:
+`docs/experiments/E-0154-annual-2025-financial-instruments-8bank-codex-verified-mapping-v1.json`.
 
 ## 49. Rủi ro tiền tệ
 
@@ -1337,7 +1345,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Tài sản thế chấp của khách hàng | ✓ p74 | — | ✓ p74 | ✓ p54 | — | — | — | ✓ p54 | Annual-2025: 0 dòng OPEN, 25 mapping/50 ô/10 phương trình; MBB/VCB/CTG/BID bounded absence. Lượt hiện hành trước giữ riêng VPB p67, VCB p47, VIB p49 |
 | Tài sản/GTCG ngân hàng đem thế chấp, cầm cố, chiết khấu | ✓ p74 | ✓ p78 | ✓ p74 | — | — | ✓ p63 | — | ✓ p54 | Annual-2025: 0 dòng OPEN, 13 mapping/26 ô/10 phương trình; HDB/VCB/BID bounded absence. Lượt hiện hành trước giữ riêng 3 dòng OPEN tại VPB/VIB |
 | Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra | ✓\* p75 | ✓ p79 | ✓\* p75 | ✓ p55 | — | ✓ p63 | ✓ p59 | ✓ p55 | Annual-2025: 13 dòng OPEN tại ACB/VPB, 58 mapping/114 ô/46 phương trình; VCB bounded absence. Lượt hiện hành trước giữ riêng 47 mapping; VPB của lượt đó là Q1 |
-| Công cụ tài chính — giá trị ghi sổ/hợp lý | — | — | ✓\* p86 | — | ✓\* p44–45 | ✓\* p51 | — | — | 3 nhóm giá trị hợp lý OPEN; 64 mapping, 55 ô số, 12 phương trình; 5 bank không có bảng chi tiết; VPB là nguồn Q1 |
+| Công cụ tài chính — giá trị ghi sổ/hợp lý | — | — | ✓\* p94 | — | ✓\* p73–74 | — | — | — | Annual-2025: 2 nhóm giá trị hợp lý OPEN; 41 mapping, 35 ô số, 9 phương trình; 6 bank không có bảng chi tiết. Lượt hiện hành E-0099 giữ riêng 64 mapping tại VPB/VCB/CTG; VPB là Q1 |
 | Rủi ro tiền tệ | — | ✓ p58 | ✓\* p80 | ✓\* p38–39 | ✓ p50–51 | ✓\* p60 | — | ✓ p65–66 | 3 nhánh vàng/11 ô OPEN do chưa có schema; 120 mapping, 136 ô số, 51 phương trình; ACB/BID không có bảng chi tiết; VPB là nguồn Q1 |
 | Rủi ro lãi suất | — | ✓ p57 | ✓\* p78 | ✓ p41 | ✓ p49 | ✓ p55 | — | ✓ p62–63 | 0 ô OPEN; 234 mapping, 279 ô số, 108 phương trình; VIB đã được challenger ảnh độc lập; VPB là nguồn Q1 |
 | Rủi ro thanh khoản | — | ✓ p60 | ✓\* p82 | ✓ p43 | ✓ p53 | ✓ p58 | — | ✓ p68–69 | 4 trục/12 ô VPB OPEN vì residual lớn; 129 mapping, 153 ô số, 51 phương trình; VPB là nguồn Q1 |

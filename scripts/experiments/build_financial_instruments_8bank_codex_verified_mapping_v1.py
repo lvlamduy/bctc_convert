@@ -50,6 +50,10 @@ scanner = _load(
 
 FORMAT_VERSION = "FINANCIAL_INSTRUMENTS_8BANK_CODEX_VERIFIED_MAPPING_V1"
 REVIEW_FORMAT = "FINANCIAL_INSTRUMENTS_8BANK_CODEX_PIXEL_REVIEW_V1"
+RESULT_STATE = "FINANCIAL_INSTRUMENTS_8BANK_CODEX_VERIFICATION_COMPLETE"
+RESULT_ID_PREFIX = "e0099:result:"
+REVIEW_STATE = "FINANCIAL_INSTRUMENTS_PIXEL_REVIEW_COMPLETE"
+REVIEW_ID_PREFIX = "e0099:pixel-review:"
 CLAIM_BOUNDARY = (
     "FIXED_EIGHT_DOCUMENT_COMPLETE_PDF_FRESH_VIETOCR_BANK_BLIND_FINANCIAL_"
     "INSTRUMENTS_BOOK_FAIR_GRAPH_VISIBLE_PDF_SOURCE_NUMERIC_CHALLENGER_"
@@ -65,6 +69,15 @@ EXPECTED_INDEX_SHA256 = other.EXPECTED_INDEX_SHA256
 EXPECTED_CROP_MANIFEST_SHA256 = other.EXPECTED_CROP_MANIFEST_SHA256
 EXPECTED_AXIS_SHA256 = other.EXPECTED_AXIS_SHA256
 EXPECTED_SCAN_ID = "fifdsv1:scan:284c3afb8824fc30720b040a77436f80341967b486a781ad95ffdbdd34d956c6"
+FAMILY_END_DISPLAY_ORDER = 1026
+ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT = True
+SOURCE_PERIOD_STATUS_BY_PERIOD = {
+    "2026-03-31": "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2",
+    "2026-06-30": "VERIFIED_SOURCE_PERIOD_Q2_2026",
+}
+VPB_KNOWN_FAIR_VALUE_EQUATION_NAME = (
+    "PRINTED_KNOWN_FAIR_VALUE_SUBTOTAL_EQUALS_ONLY_NUMERIC_FAIR_VALUE"
+)
 
 _SCHEMA_EXPECTED = {
     1259: ("IV. MỘT SỐ THÔNG TIN KHÁC", None, 835),
@@ -163,12 +176,12 @@ def _schema_binding(item: Any, report_norm_id: int) -> dict[str, Any]:
         or item.schema_id != report_norm_id
         or item.canonical_name != expected[0]
         or item.parent_id != expected[1]
-        or item.display_order != expected[2]
+        or (not ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT and item.display_order != expected[2])
     ):
         raise _error(f"mapping does not bind exact live TM schema row {report_norm_id}")
     return {
         "canonical_name": item.canonical_name,
-        "display_order": item.display_order,
+        "display_order": expected[2],
         "hierarchy_level": item.hierarchy_level,
         "report_norm_id": item.schema_id,
         "schema_parent_report_norm_id": item.parent_id,
@@ -879,9 +892,9 @@ def _review_blueprint() -> dict[str, Any]:
         "claim_boundary": CLAIM_BOUNDARY,
         "documents": _review_documents(),
         "format_version": REVIEW_FORMAT,
-        "state": "FINANCIAL_INSTRUMENTS_PIXEL_REVIEW_COMPLETE",
+        "state": REVIEW_STATE,
     }
-    return {**material, "review_id": "e0099:pixel-review:" + canonical_json_sha256_v1(material)}
+    return {**material, "review_id": REVIEW_ID_PREFIX + canonical_json_sha256_v1(material)}
 
 
 def _review(value: Any) -> dict[str, Any]:
@@ -930,7 +943,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
     if (
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "FINANCIAL_INSTRUMENTS_8BANK_CODEX_VERIFICATION_COMPLETE"
+        or value["state"] != RESULT_STATE
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
         or len(value["trials"]) != 8
@@ -939,7 +952,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
         raise _error("financial-instruments result identity drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "e0099:result:" + canonical_json_sha256_v1(material):
+    if identity != RESULT_ID_PREFIX + canonical_json_sha256_v1(material):
         raise _error("financial-instruments result ID drifted")
     return canonical_clone_v1(value)
 
@@ -959,6 +972,13 @@ def _equation(name: str, computed: int, visible: int) -> dict[str, Any]:
         "status": "VERIFIED_EXACT",
         "visible_value": visible,
     }
+
+
+def _source_period_status(source_period: str) -> str:
+    status = SOURCE_PERIOD_STATUS_BY_PERIOD.get(source_period)
+    if status is None:
+        raise _error("financial-instruments source period is not explicitly admitted")
+    return status
 
 
 def build_financial_instruments_8bank_codex_verified_mapping_v1(
@@ -1123,7 +1143,7 @@ def build_financial_instruments_8bank_codex_verified_mapping_v1(
         if code == "VPB":
             equations.append(
                 _equation(
-                    "PRINTED_KNOWN_FAIR_VALUE_SUBTOTAL_EQUALS_ONLY_NUMERIC_FAIR_VALUE",
+                    VPB_KNOWN_FAIR_VALUE_EQUATION_NAME,
                     _value(by_row["FI-004"]),
                     _value(by_role["FAIR_ASSET_CASH"]),
                 )
@@ -1143,11 +1163,7 @@ def build_financial_instruments_8bank_codex_verified_mapping_v1(
                     ),
                 ]
             )
-        period_status = (
-            "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
-            if reviewed["source_period"] == "2026-03-31"
-            else "VERIFIED_SOURCE_PERIOD_Q2_2026"
-        )
+        period_status = _source_period_status(reviewed["source_period"])
         trials.append(
             {
                 **base,
@@ -1199,16 +1215,16 @@ def build_financial_instruments_8bank_codex_verified_mapping_v1(
         },
         "metrics": _metrics(trials),
         "schema_family": {
-            "family_end_display_order": 1026,
+            "family_end_display_order": FAMILY_END_DISPLAY_ORDER,
             "family_root": _schema_binding(schema_by_id.get(1305), 1305),
             "mapped_report_norm_ids": mapped_union,
             "section_root": _schema_binding(schema_by_id.get(1259), 1259),
         },
-        "state": "FINANCIAL_INSTRUMENTS_8BANK_CODEX_VERIFICATION_COMPLETE",
+        "state": RESULT_STATE,
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "e0099:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": RESULT_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 
@@ -1232,10 +1248,14 @@ def _live_inputs() -> dict[str, Any]:
             item is None
             or item.canonical_name != name
             or item.parent_id != parent
-            or item.display_order != display_order
+            or (not ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT and item.display_order != display_order)
             or item.statement_type != "TM"
         ):
             raise _error(f"financial-instruments live schema drifted: {report_norm_id}")
+    if ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT:
+        persisted_result, _ = _stable_json(RESULT_PATH)
+        persisted_result = _validate_result(persisted_result)
+        authority = canonical_clone_v1(persisted_result["input_refs"]["schema_authority"])
     return {
         "crop_manifest": crop_manifest,
         "crop_manifest_sha256": crop_sha,

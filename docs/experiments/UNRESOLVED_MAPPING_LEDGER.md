@@ -174,6 +174,30 @@ hành, nên ledger giữ cùng ID thay vì tạo 13 schema-gap ID trùng nghĩa.
 Machine-readable result:
 `docs/experiments/E-0153-annual-2025-contingent-liabilities-8bank-codex-verified-mapping-v1.json`.
 
+## OPEN/CLOSED — annual-2025 `Công cụ tài chính — giá trị ghi sổ và giá trị hợp lý`
+
+E-0154 quét đủ 695 trang và tìm đúng hai bảng đồng thời có nhánh giá trị ghi
+sổ và giá trị hợp lý tại VPB p94 và VCB p73–74. Pixel toàn trang, trục số
+nguồn, schema hiện hành và 9 phương trình xác minh 41 mapping/35 ô số. Hai
+trang bảng landscape được xử lý trực tiếp trong hệ tọa độ upright canonical;
+không xoay về portrait và không chiếu bbox ngược vào logic dựng bảng.
+
+ACB chỉ có diễn giải rằng chưa xác định giá trị hợp lý. MBB/BID chỉ có bảng
+phái sinh; HDB/VIB chỉ có nội dung rủi ro tín dụng; CTG có bảng rủi ro tiền tệ.
+Đó là sáu bounded detailed-table absences trong đúng filing annual-2025, không
+phải khẳng định source-wide rằng bank không có công cụ tài chính.
+
+Hai gap nguồn tái diễn đúng FI-001/FI-002 của lượt hiện hành nên không tạo ID
+schema-gap trùng nghĩa:
+
+| ID | Bank | Trang annual-2025 | Khoản mục nguồn | Giá trị | Lý do chưa map |
+| --- | --- | ---: | --- | --- | --- |
+| FI-001 | VPB | 94 | Giá trị hợp lý của phần lớn tài sản và nợ tài chính | `(*)` | Nguồn ghi chưa xác định được giá trị hợp lý; ký hiệu không phải 0 và giá trị ghi sổ không được dùng thay thế. |
+| FI-002 | VCB | 74 | Giá trị hợp lý của phần lớn tài sản và nợ phải trả tài chính | `(*)` | Nguồn ghi không thể ước tính đáng tin cậy và không thuyết minh giá trị số; giữ OPEN. |
+
+Machine-readable result:
+`docs/experiments/E-0154-annual-2025-financial-instruments-8bank-codex-verified-mapping-v1.json`.
+
 ## COMPLETE — annual-2025 `Mua mới và thanh lý các công ty con`
 
 E-0148 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025 và không tìm
