@@ -43,6 +43,25 @@ Các kết luận trên chỉ là vắng mặt trong đúng filing annual-2025 �
 phải khẳng định bank/source rộng hơn. Machine-readable result:
 `docs/experiments/E-0144-annual-2025-credit-risk-provision-expense-8bank-codex-verified-mapping-v1.json`.
 
+## CLOSED — annual-2025 `Thu nhập, chi phí và lãi thuần từ hoạt động khác`
+
+E-0145 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025 và tìm đúng
+một vùng family tại ACB p69, MBB p74, VPB p71, HDB p51, VCB p60, CTG p59,
+BID p56 và VIB p51. Pixel, trục số nguồn, schema hiện hành và 48 phương trình
+xác minh 72 mapping/144 ô số; không có disagreement số VietOCR, family absence
+hoặc dòng OPEN.
+
+Graph chung nhận tổng có/không có nhãn, số đứng trước nhãn theo provider order,
+child tùy chọn và các cách gọi `hoán đổi lãi suất`, `giao dịch phái sinh`, `nợ
+xấu/cho vay đã xử lý`, `nghiệp vụ bán nợ`. Các dòng phạt hợp đồng, kinh doanh
+khác, tài trợ khác hoặc `Khác` được đưa vào catch-all tương ứng chỉ bằng phép
+cộng có kiểm soát trên từng số nguồn đã xác minh; parent thu, parent chi và net
+đều phải đóng. Không tạo unresolved candidate mới và không dùng bank/page làm
+điều kiện matching.
+
+Machine-readable result:
+`docs/experiments/E-0145-annual-2025-other-activity-8bank-codex-verified-mapping-v1.json`.
+
 ## OPEN — annual-2025 `Chi phí quản lý chung (Chi phí hoạt động)`
 
 E-0143 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025 và tìm đúng

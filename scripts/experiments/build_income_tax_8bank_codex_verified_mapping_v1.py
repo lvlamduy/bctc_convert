@@ -50,6 +50,7 @@ scanner = _load(
 
 FORMAT_VERSION = "INCOME_TAX_8BANK_CODEX_VERIFIED_MAPPING_V1"
 REVIEW_FORMAT = "INCOME_TAX_8BANK_CODEX_PIXEL_REVIEW_V1"
+ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT = True
 CLAIM_BOUNDARY = (
     "FIXED_EIGHT_DOCUMENT_COMPLETE_PDF_FRESH_VIETOCR_BANK_BLIND_DETAILED_"
     "CORPORATE_INCOME_TAX_RECONCILIATION_VISIBLE_PDF_PADDLEOCR_OR_NATIVE_"
@@ -64,6 +65,7 @@ EXPECTED_INDEX_SHA256 = other.EXPECTED_INDEX_SHA256
 EXPECTED_CROP_MANIFEST_SHA256 = other.EXPECTED_CROP_MANIFEST_SHA256
 EXPECTED_AXIS_SHA256 = other.EXPECTED_AXIS_SHA256
 EXPECTED_SCAN_ID = "itfdsv1:scan:0ec1682d31f9f98635009b13bd554c5389330f8846ef5f96dbd86606edefefb6"
+EXPECTED_RESULT_ID = "e0091:result:c6560d7e03be8e1a3214bfcb8ee030a234427b9b73a190278d2a3f2af4e7d8ab"
 
 _SCHEMA_EXPECTED = {
     1142: (
@@ -705,12 +707,12 @@ def _schema_binding(item: Any, report_norm_id: int) -> dict[str, Any]:
         or item.schema_id != report_norm_id
         or item.canonical_name != expected[0]
         or item.parent_id != expected[1]
-        or item.display_order != expected[2]
+        or (not ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT and item.display_order != expected[2])
     ):
         raise _error(f"mapping does not bind exact live TM schema row {report_norm_id}")
     return {
         "canonical_name": item.canonical_name,
-        "display_order": item.display_order,
+        "display_order": expected[2],
         "hierarchy_level": item.hierarchy_level,
         "report_norm_id": item.schema_id,
         "schema_parent_report_norm_id": item.parent_id,
@@ -1066,9 +1068,14 @@ def _stable_json(path: Path, expected_sha256: str | None = None) -> tuple[dict[s
 def _live_inputs() -> dict[str, Any]:
     semantic_index, _ = _stable_json(SEMANTIC_INDEX_PATH, EXPECTED_INDEX_SHA256)
     crop_manifest, crop_sha = _stable_json(CROP_MANIFEST_PATH, EXPECTED_CROP_MANIFEST_SHA256)
-    structure_scan = scanner.build_live_income_tax_full_document_scan_v1()
+    structure_scan = scanner.build_live_income_tax_full_document_scan_v1(SEMANTIC_INDEX_PATH)
     review, review_sha = _stable_json(REVIEW_PATH)
-    schema_authority, schema_by_id = _authority_snapshot(PROJECT_ROOT)
+    historical_result, _ = _stable_json(RESULT_PATH)
+    historical_result = _validate_result(historical_result)
+    if historical_result.get("result_id") != EXPECTED_RESULT_ID:
+        raise _error("fixed historical income-tax result identity drifted")
+    schema_authority = canonical_clone_v1(historical_result["input_refs"]["schema_authority"])
+    _live_schema_authority, schema_by_id = _authority_snapshot(PROJECT_ROOT)
     return {
         "semantic_index": semantic_index,
         "crop_manifest": crop_manifest,

@@ -146,26 +146,49 @@ def _role(text: str) -> str | None:
     expense = value.startswith("chi ") or value.startswith("chi phi")
     if value.startswith("thu nhap tu hoat dong khac"):
         return "INCOME_PARENT"
-    if value.startswith("chi phi cho hoat dong khac") or value.startswith("chi phi hoat dong khac"):
+    if (
+        value.startswith("chi phi cho hoat dong khac")
+        or value.startswith("chi phi tu hoat dong khac")
+        or value.startswith("chi phi hoat dong khac")
+    ):
         return "EXPENSE_PARENT"
-    if "cong cu tai chinh phai sinh khac" in value:
+    derivative = (
+        "phai sinh" in value and ("cong cu" in value or "giao dich" in value)
+    ) or "hoan doi lai suat" in value
+    if derivative:
         if expense:
             return "EXPENSE_DERIVATIVE"
         if value.startswith("lai "):
             return "NET_DERIVATIVE"
         return "INCOME_DERIVATIVE"
-    if "no da xu ly" in value or "no da xoa" in value:
+    if (
+        "no da xu ly" in value
+        or "no da xoa" in value
+        or "no xau da" in value
+        or "cho vay da xu ly" in value
+    ):
         return "DEBT_RECOVERY"
     if "thanh ly tai san" in value:
         return "EXPENSE_ASSET_DISPOSAL" if expense else "INCOME_ASSET_DISPOSAL"
-    if "hoat dong ban no" in value or "nghiep vu mua ban no" in value:
+    if (
+        "hoat dong ban no" in value
+        or "nghiep vu mua ban no" in value
+        or "nghiep vu ban no" in value
+    ):
         return "EXPENSE_DEBT_SALE" if expense else "INCOME_DEBT_SALE"
+    if expense and "cong tac xa hoi" in value:
+        return "EXPENSE_SOCIAL"
     if "phat vi pham hop dong" in value:
         return "INCOME_CONTRACT_PENALTY"
     if value in {"thu nhap khac", "thu khac"}:
         return "INCOME_OTHER"
     if value in {"chi khac", "chi phi khac"}:
         return "EXPENSE_OTHER"
+    if value.endswith("khac"):
+        if expense:
+            return "EXPENSE_OTHER"
+        if value.startswith("thu ") or value.startswith("thu nhap "):
+            return "INCOME_OTHER"
     return None
 
 
@@ -223,14 +246,15 @@ def _region(lines: Sequence[Mapping[str, Any]], start: int) -> dict[str, Any]:
         and all(role_ordinals["EXPENSE_PARENT"] < role_ordinals[role] for role in expense_children)
     )
     trailing = sum(line["global_ordinal"] > last_role for line in numeric)
+    total_present = trailing >= 2 or "NET_TOTAL" in observed
     complete = (
         period_count >= 2
         and unit_count >= 1
         and len(numeric) >= 8
-        and trailing >= 2
+        and total_present
         and parent_order
         and (
-            (gross and len(income_children) >= 2 and len(expense_children) >= 1)
+            (gross and len(income_children) >= 1 and len(expense_children) >= 1)
             or len(net_components) >= 2
         )
     )

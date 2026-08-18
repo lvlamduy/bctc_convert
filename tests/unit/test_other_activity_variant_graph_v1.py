@@ -100,6 +100,85 @@ def test_gross_optional_children_form_one_bank_blind_graph() -> None:
     ]
 
 
+def test_minimal_gross_parent_and_one_child_per_side_is_sufficient() -> None:
+    texts = [
+        "29. Lãi thuần từ hoạt động khác",
+        "Năm 2025",
+        "Năm 2024",
+        "Triệu đồng",
+        "Thu nhập từ hoạt động khác",
+        "100",
+        "90",
+        "Thu nhập khác",
+        "100",
+        "90",
+        "Chi phí từ hoạt động khác",
+        "(30)",
+        "(20)",
+        "Chi phí khác",
+        "(30)",
+        "(20)",
+        "70",
+        "70",
+    ]
+    result = matcher.build_other_activity_variant_graph_document_v1([_page(texts)])
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["regions"][0]["layout"]["observed_roles"] == [
+        "INCOME_PARENT",
+        "INCOME_OTHER",
+        "EXPENSE_PARENT",
+        "EXPENSE_OTHER",
+    ]
+
+
+def test_explicit_net_label_can_close_provider_order_without_trailing_numbers() -> None:
+    texts = [
+        "31. Lãi thuần từ hoạt động khác",
+        "Năm 2025",
+        "Năm 2024",
+        "Triệu đồng",
+        "Thu nhập từ hoạt động khác",
+        "100",
+        "90",
+        "Thu từ các công cụ phái sinh khác",
+        "100",
+        "90",
+        "Chi phí từ hoạt động khác",
+        "(30)",
+        "(20)",
+        "Chi từ các công cụ phái sinh khác",
+        "(30)",
+        "(20)",
+        "70",
+        "70",
+        "Lãi thuần từ hoạt động khác",
+    ]
+    result = matcher.build_other_activity_variant_graph_document_v1([_page(texts)])
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    region = result["regions"][0]
+    assert region["layout"]["trailing_numeric_count_after_last_role"] == 0
+    assert "NET_TOTAL" in region["layout"]["observed_roles"]
+
+
+def test_gross_parents_without_any_child_remain_unresolved() -> None:
+    texts = [
+        "29. Lãi thuần từ hoạt động khác",
+        "Năm 2025",
+        "Năm 2024",
+        "Triệu đồng",
+        "Thu nhập từ hoạt động khác",
+        "100",
+        "90",
+        "Chi phí từ hoạt động khác",
+        "(30)",
+        "(20)",
+        "70",
+        "70",
+    ]
+    result = matcher.build_other_activity_variant_graph_document_v1([_page(texts)])
+    assert result["status"] == "UNRESOLVED_NO_UNIQUE_REGION"
+
+
 def test_net_only_variant_does_not_require_gross_parents() -> None:
     result = matcher.build_other_activity_variant_graph_document_v1([_page(_net())])
     assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"

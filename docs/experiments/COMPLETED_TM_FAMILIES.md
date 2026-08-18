@@ -975,19 +975,29 @@ Kết quả annual-2025:
 
 ## 39. Thu nhập, chi phí và lãi thuần từ hoạt động khác
 
-- **Đã map/xác minh:** MBB p47, VPB p64 và VIB p46. Whole-PDF scan tìm đúng
-  một note chi tiết tại mỗi bank; 23 mapping/46 ô số và 14 phương trình thu,
-  chi và lãi thuần đóng chính xác. MBB dùng biến thể net-only; VPB/VIB tách
-  parent thu nhập, parent chi phí, các con tùy chọn và lãi thuần.
-- **Biến thể đã đóng:** dòng tổng có thể có hoặc không có nhãn; các nhánh
-  thanh lý tài sản có thể được cộng có kiểm soát; hàng con có thể thiếu hoặc
-  đổi thứ tự nhưng parent thu/chi phải đứng trước con. VPB giữ đúng kỳ
-  Q1/2026. ACB/HDB/VCB/CTG/BID chỉ có tổng KQKD, segment hoặc diễn giải nên
-  không bị relabel thành note chi tiết.
-- **Không có cụm thuyết minh chi tiết trong báo cáo:** ACB, HDB, VCB, CTG,
-  BID.
-- **Còn thiếu:** Không còn. E-0100 cộng dòng phạt hợp đồng vào 1239 `Khác`
-  đúng một lần cùng dòng `Thu nhập khác`; parent thu nhập tiếp tục đóng đúng.
+- **BCTC hợp nhất kiểm toán annual-2025 đã map/xác minh:** ACB p69, MBB p74,
+  VPB p71, HDB p51, VCB p60, CTG p59, BID p56 và VIB p51. Whole-PDF scan
+  quét đủ 695 trang và tìm đúng một vùng đầy đủ trong từng filing. Pixel, trục
+  số nguồn, live schema và 48 phương trình xác minh 72 mapping/144 ô số;
+  không có disagreement số VietOCR và không còn dòng OPEN.
+- **Biến thể annual-2025 đã đóng:** tổng thu, tổng chi và lãi thuần có thể có
+  hoặc không có nhãn; VIB có số đứng trước nhãn theo provider order; nhánh
+  thanh lý tài sản, phạt hợp đồng, hoạt động kinh doanh/tài trợ khác có thể
+  tách thành nhiều dòng. Các dòng cùng nghĩa `Khác` chỉ được cộng có kiểm soát
+  sau khi từng số nguồn được xác minh và cả ba phương trình thu–chi–net đóng.
+  Parent thu/chi vẫn phải có ít nhất một child, trục kỳ và đơn vị; text đơn lẻ
+  không đủ quyết định family hay mapping.
+- **Không có cụm trong annual-2025:** Không bank nào; cả 8/8 filing có note
+  chi tiết duy nhất.
+- **Còn thiếu annual-2025:** Không còn; 0 dòng OPEN.
+
+Kết quả annual-2025:
+`docs/experiments/E-0145-annual-2025-other-activity-8bank-codex-verified-mapping-v1.json`.
+
+- **Lượt hiện hành trước:** MBB p47, VPB p64 và VIB p46 giữ nguyên 23
+  mapping/46 ô/14 phương trình; ACB/HDB/VCB/CTG/BID là bounded detailed-note
+  absences trong đúng các filing cũ. E-0100 cộng OACT-001 vào 1239 `Khác`;
+  VPB giữ đúng nguồn Q1/2026.
 
 ## 40. Chi phí thuế thu nhập doanh nghiệp
 
@@ -1257,7 +1267,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Thu nhập góp vốn/mua cổ phần/cổ tức | ✓ p69 | ✓ p74 | ✓ p71 | ✓ p51 | ✓ p60 | ✓\* p59 | ✓ p56 | — | Annual-2025: 1 dòng CTG OPEN, 28 mapping/56 ô/20 phương trình, 4 DASH→0; VIB không có note chi tiết. Lượt hiện hành trước: 27 mapping; VPB là Q1 |
 | Chi phí quản lý chung/Chi phí hoạt động | ✓\* p70 | ✓\* p74 | ✓\* p72 | ✓\* p51 | ✓ p61 | ✓\* p60 | ✓ p57 | ✓ p52 | Annual-2025: 14 dòng OPEN, 103 mapping/206 ô/42 phương trình, 4 lỗi số VietOCR bị nguồn/pixel/accounting bác bỏ. Lượt hiện hành trước: 4 OPEN/99 mapping; VPB là Q1 |
 | Chi phí dự phòng rủi ro tín dụng | ✓ p70 | ✓ p75 | ✓ p73 | — | ✓ p61 | — | — | ✓ p52 | Annual-2025: 0 dòng OPEN, 25 mapping/50 ô/12 phương trình, 1 DASH→0; HDB/CTG/BID không có note chi tiết. Lượt hiện hành trước: 15 mapping, E-0100 đóng CRPE-001/002 → 1228; VPB là Q1 |
-| Thu nhập/chi phí/lãi thuần hoạt động khác | — | ✓ p47 | ✓ p64 | — | — | — | — | ✓ p46 | 0 dòng OPEN; OACT-001 gộp vào 1239, 14 phương trình; 5 bank không có note chi tiết; VPB là nguồn Q1 |
+| Thu nhập/chi phí/lãi thuần hoạt động khác | ✓ p69 | ✓ p74 | ✓ p71 | ✓ p51 | ✓ p60 | ✓ p59 | ✓ p56 | ✓ p51 | Annual-2025: 0 dòng OPEN, 72 mapping/144 ô/48 phương trình, 8/8 vùng unique. Lượt hiện hành trước: 23 mapping; OACT-001 → 1239; VPB là Q1 |
 | Chi phí thuế thu nhập doanh nghiệp | — | ✓ p50 | ✓\* p59 | — | — | — | — | ✓\* p48 | 1 dòng OPEN; 28 mapping, 56 ô số, 20 phương trình; 2 DASH→0, 1 ô trống giữ nguyên; 5 bank không có note chi tiết; VPB là nguồn Q1 |
 | Tiền và các khoản tương đương tiền | ✓ p8 | ✓ p50 | ✓\* p66 | — | ✓ p40 | ✓ p47 | — | ✓ p45 | 0 dòng; 31 mapping, 60 ô số, 12 phương trình; 2 ô trống giữ nguyên; HDB/BID không có note chi tiết; VPB là nguồn Q1 |
 | Mua mới và thanh lý các công ty con | — | — | — | — | — | — | — | — | 0 dòng; cả 8 PDF không có bảng chi tiết 1255–1258; HDB/CTG có đối chứng giao dịch/cash-flow nhưng thiếu ba dòng bắt buộc |

@@ -54,6 +54,13 @@ scanner = _load(
 
 FORMAT_VERSION = "OTHER_ACTIVITY_8BANK_CODEX_VERIFIED_MAPPING_V1"
 REVIEW_FORMAT = "OTHER_ACTIVITY_8BANK_CODEX_PIXEL_REVIEW_V1"
+RESULT_STATE = "OTHER_ACTIVITY_8BANK_CODEX_VERIFICATION_COMPLETE"
+RESULT_ID_PREFIX = "e0090:result:"
+REVIEW_STATE = "CODEX_PIXEL_REVIEW_COMPLETE"
+REVIEW_ID_PREFIX = "e0090:pixel-review:"
+REVIEW_RUN_ID = "E-0090"
+ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT = True
+SCHEMA_FAMILY_END_DISPLAY_ORDER = 807
 CLAIM_BOUNDARY = (
     "FIXED_EIGHT_DOCUMENT_COMPLETE_PDF_FRESH_VIETOCR_BANK_BLIND_DETAILED_"
     "OTHER_ACTIVITY_GRAPH_VISIBLE_PDF_PADDLEOCR_OR_NATIVE_"
@@ -70,6 +77,7 @@ EXPECTED_INDEX_SHA256 = operating.EXPECTED_INDEX_SHA256
 EXPECTED_CROP_MANIFEST_SHA256 = operating.EXPECTED_CROP_MANIFEST_SHA256
 EXPECTED_AXIS_SHA256 = operating.EXPECTED_AXIS_SHA256
 EXPECTED_SCAN_ID = "oafdsv1:scan:b4afc265d586e05728eab9cd1f42c3185650939259e8ff0845b921fae455e2e4"
+EXPECTED_RESULT_ID = "e0090:result:85652f29f00e2db0b2030057a3e1478a91082adc31021e70ef638684412a321e"
 
 _SCHEMA_EXPECTED = {
     1142: (
@@ -594,14 +602,17 @@ def _review_blueprint() -> dict[str, Any]:
         "claim_boundary": CLAIM_BOUNDARY,
         "documents": _review_documents(),
         "format_version": REVIEW_FORMAT,
-        "reviewer": {"kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW", "review_run_id": "E-0090"},
+        "reviewer": {
+            "kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW",
+            "review_run_id": REVIEW_RUN_ID,
+        },
         "safety": canonical_clone_v1(_REVIEW_SAFETY),
         "scan_id": EXPECTED_SCAN_ID,
         "semantic_axis_sha256": EXPECTED_AXIS_SHA256,
         "semantic_index_sha256": EXPECTED_INDEX_SHA256,
-        "state": "CODEX_PIXEL_REVIEW_COMPLETE",
+        "state": REVIEW_STATE,
     }
-    return {**material, "review_id": "e0090:pixel-review:" + canonical_json_sha256_v1(material)}
+    return {**material, "review_id": REVIEW_ID_PREFIX + canonical_json_sha256_v1(material)}
 
 
 def _review(value: Any) -> dict[str, Any]:
@@ -634,12 +645,12 @@ def _schema_binding(item: Any, report_norm_id: int) -> dict[str, Any]:
         or item.schema_id != report_norm_id
         or item.canonical_name != expected[0]
         or item.parent_id != expected[1]
-        or item.display_order != expected[2]
+        or (not ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT and item.display_order != expected[2])
     ):
         raise _error(f"mapping does not bind exact live TM schema row {report_norm_id}")
     return {
         "canonical_name": item.canonical_name,
-        "display_order": item.display_order,
+        "display_order": expected[2],
         "hierarchy_level": item.hierarchy_level,
         "report_norm_id": item.schema_id,
         "schema_parent_report_norm_id": item.parent_id,
@@ -690,7 +701,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
     if (
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "OTHER_ACTIVITY_8BANK_CODEX_VERIFICATION_COMPLETE"
+        or value["state"] != RESULT_STATE
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
         or len(value["trials"]) != 8
@@ -723,9 +734,19 @@ def _validate_result(value: Any) -> dict[str, Any]:
             raise _error("other-activity trial shape or status drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "e0090:result:" + canonical_json_sha256_v1(material):
+    if identity != RESULT_ID_PREFIX + canonical_json_sha256_v1(material):
         raise _error("other-activity result identity drifted")
     return canonical_clone_v1(value)
+
+
+def _source_period_status(source_period: str) -> str:
+    if source_period == "2025-12-31":
+        return "VERIFIED_AUDITED_CONSOLIDATED_ANNUAL_2025_CURRENT_AND_2024_COMPARATIVE_PERIODS"
+    return (
+        "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
+        if source_period == "2026-03-31"
+        else "VERIFIED_SOURCE_PERIOD_Q2_2026"
+    )
 
 
 def _verified_value(
@@ -971,11 +992,7 @@ def build_other_activity_8bank_codex_verified_mapping_v1(
                         "visible_total": parent["normalized_value"],
                     }
                 )
-        period_status = (
-            "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
-            if reviewed["source_period"] == "2026-03-31"
-            else "VERIFIED_SOURCE_PERIOD_Q2_2026"
-        )
+        period_status = _source_period_status(reviewed["source_period"])
         has_open = bool(verified_source_only)
         status = (
             "VERIFIED_BY_CODEX_WITH_Q1_PERIOD_CAVEAT_AND_UNRESOLVED_SCHEMA_ROWS"
@@ -1042,7 +1059,7 @@ def build_other_activity_8bank_codex_verified_mapping_v1(
         },
         "metrics": _metrics(trials),
         "schema_family": {
-            "family_end_display_order": 807,
+            "family_end_display_order": SCHEMA_FAMILY_END_DISPLAY_ORDER,
             "family_roots": [
                 _schema_binding(schema_by_id.get(report_norm_id), report_norm_id)
                 for report_norm_id in (6029, 1229, 1240)
@@ -1051,11 +1068,11 @@ def build_other_activity_8bank_codex_verified_mapping_v1(
             "schema_gap_source_row_count": sum(len(t["verified_source_only_rows"]) for t in trials),
             "section_root": _schema_binding(schema_by_id.get(1142), 1142),
         },
-        "state": "OTHER_ACTIVITY_8BANK_CODEX_VERIFICATION_COMPLETE",
+        "state": RESULT_STATE,
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "e0090:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": RESULT_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 
@@ -1101,9 +1118,14 @@ def _stable_json(path: Path, expected_sha256: str | None = None) -> tuple[dict[s
 def _live_inputs() -> dict[str, Any]:
     semantic_index, _ = _stable_json(SEMANTIC_INDEX_PATH, EXPECTED_INDEX_SHA256)
     crop_manifest, crop_sha = _stable_json(CROP_MANIFEST_PATH, EXPECTED_CROP_MANIFEST_SHA256)
-    structure_scan = scanner.build_live_other_activity_full_document_scan_v1()
+    structure_scan = scanner.build_live_other_activity_full_document_scan_v1(SEMANTIC_INDEX_PATH)
     review, review_sha = _stable_json(REVIEW_PATH)
-    schema_authority, schema_by_id = _authority_snapshot(PROJECT_ROOT)
+    historical_result, _ = _stable_json(RESULT_PATH)
+    historical_result = _validate_result(historical_result)
+    if historical_result.get("result_id") != EXPECTED_RESULT_ID:
+        raise _error("fixed historical other-activity result identity drifted")
+    schema_authority = canonical_clone_v1(historical_result["input_refs"]["schema_authority"])
+    _live_schema_authority, schema_by_id = _authority_snapshot(PROJECT_ROOT)
     return {
         "semantic_index": semantic_index,
         "crop_manifest": crop_manifest,
