@@ -116,6 +116,30 @@ Các kết luận trên chỉ là vắng mặt trong đúng filing annual-2025 �
 phải khẳng định bank/source rộng hơn. Machine-readable result:
 `docs/experiments/E-0151-annual-2025-customer-collateral-8bank-codex-verified-mapping-v1.json`.
 
+## CLOSED — annual-2025 `Tài sản/GTCG ngân hàng đưa đi thế chấp, cầm cố và chiết khấu`
+
+E-0152 quét đủ 695 trang và tìm đúng một vùng bank-owned tại ACB p74, MBB p78,
+VPB p74, CTG p63 và VIB p54. Graph chung cho phép owner + một child khi hai kỳ,
+đơn vị và ô số cùng đóng topology; vì vậy bảng MBB một hàng không còn bị loại
+bởi ngưỡng hai child cũ. Nhãn quấn dòng CTG, các child trực tiếp ACB và các hàng
+GTCG/repo tổng quát đều đi qua cùng matcher, không dùng bank/page để route.
+
+Pixel, trục số nguồn, schema hiện hành và 10 phương trình xác minh 13 mapping/26
+ô số. Hai dash ACB và một dash CTG chỉ thành 0 sau khi crop render được xác thực.
+Các hàng nguồn tổng quát tại MBB/VPB/CTG/VIB được cộng đúng một lần vào 1293
+`Tài sản khác`; không thu hẹp ngầm sang 1290/1291. Không còn dòng annual OPEN.
+
+| ID | Bank | Locator/đối chứng | Disposition và căn cứ bounded absence |
+| --- | --- | --- | --- |
+| BPA-A2025-001 | HDB | Toàn filing | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`: không có owner bank-owned cùng ít nhất một child, hai kỳ và đơn vị; customer collateral/policy không được relabel. |
+| BPA-A2025-002 | VCB | Toàn filing | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`: không có bảng 1289–1293 chi tiết thỏa graph trong filing đã bind. |
+| BPA-A2025-003 | BID | Toàn filing | `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`: không có vùng bank-owned pledged/discounted-assets đủ topology; các mention vay/bảo đảm không phải bảng family. |
+
+Ba kết luận này chỉ là bounded absence trong đúng filing annual-2025. Các dòng
+BPA-001–BPA-003 của lượt hiện hành E-0097 vẫn OPEN theo đúng source/hierarchy
+cũ và không bị kết quả annual relabel. Machine-readable result:
+`docs/experiments/E-0152-annual-2025-bank-pledged-assets-8bank-codex-verified-mapping-v1.json`.
+
 ## COMPLETE — annual-2025 `Mua mới và thanh lý các công ty con`
 
 E-0148 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025 và không tìm

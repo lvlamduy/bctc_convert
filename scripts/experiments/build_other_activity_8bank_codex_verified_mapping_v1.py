@@ -800,7 +800,10 @@ def _verified_value(
             "pixel_transcription": " + ".join(item["pixel_transcription"] for item in evidence),
             "source_line_index": None,
             "source_numeric_challenger": " + ".join(
-                item["source_numeric_challenger"] for item in evidence
+                item["source_numeric_challenger"]
+                if item["source_numeric_challenger"] is not None
+                else item["pixel_transcription"]
+                for item in evidence
             ),
             "source_numeric_challenger_status": (
                 "CONTROLLED_SUM_OF_AUTHENTICATED_SOURCE_NUMERIC_LINES"

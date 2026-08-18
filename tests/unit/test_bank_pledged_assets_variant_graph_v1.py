@@ -103,9 +103,80 @@ def test_customer_collateral_branch_is_a_negative_control() -> None:
 
 
 def test_incomplete_owned_asset_region_is_retained_as_near() -> None:
-    result = matcher.build_bank_pledged_assets_variant_graph_document_v1([_page(_core()[:7])])
+    result = matcher.build_bank_pledged_assets_variant_graph_document_v1([_page(_core()[:6])])
     assert result["metrics"]["complete_region_count"] == 0
     assert result["metrics"]["near_region_count"] == 1
+
+
+def test_owner_and_one_generic_child_can_uniquely_identify_the_family() -> None:
+    result = matcher.build_bank_pledged_assets_variant_graph_document_v1(
+        [
+            _page(
+                [
+                    "Tài sản, GTCG đưa đi thế chấp, cầm cố và chiết khấu, tái chiết khấu",
+                    "31/12/2025",
+                    "31/12/2024",
+                    "triệu đồng",
+                    "Giấy tờ có giá",
+                    "4.508.464",
+                    "12.260.320",
+                ]
+            )
+        ]
+    )
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["regions"][0]["layout"]["observed_source_roles"] == ["GENERIC_VALUABLE_PAPERS"]
+
+
+def test_period_inference_is_scoped_to_the_owner_table_neighbourhood() -> None:
+    preamble = [
+        "Ban hành theo Thông tư số 49/2014/TT-NHNN",
+        "Ngân hàng Nhà nước Việt Nam",
+        "Tiền và các khoản tương đương tiền",
+        "Tiền mặt",
+        "Tổng cộng",
+        "Báo cáo tài chính hợp nhất",
+        "Cho năm tài chính",
+        "Nội dung",
+        "Tiếp theo",
+        "Thuyết minh",
+        "Bảng số liệu",
+        "Thông tin bổ sung",
+    ]
+    result = matcher.build_bank_pledged_assets_variant_graph_document_v1(
+        [_page([*preamble, *_core()])]
+    )
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+
+
+def test_direct_schema_children_and_wrapped_debt_security_rows_are_generic() -> None:
+    texts = [
+        "Tài sản, GTCG đưa đi thế chấp, cầm cố và chiết khấu, tái chiết khấu",
+        "31.12.2025",
+        "31.12.2024",
+        "Triệu VND",
+        "Chứng khoán kinh doanh",
+        "10",
+        "-",
+        "Chứng khoán đầu tư",
+        "20",
+        "18",
+        "Tài sản cố định",
+        "-",
+        "1",
+        "Chứng khoán Nợ đưa đi cầm cố trong giao dịch vay cầm",
+        "cố các giấy tờ có giá",
+        "30",
+        "19",
+    ]
+    result = matcher.build_bank_pledged_assets_variant_graph_document_v1([_page(texts)])
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["regions"][0]["layout"]["observed_source_roles"] == [
+        "TRADING_SECURITIES",
+        "INVESTMENT_SECURITIES",
+        "FIXED_ASSETS",
+        "PLEDGED_DEBT_SECURITIES",
+    ]
 
 
 def test_two_complete_regions_are_not_unique() -> None:

@@ -1129,21 +1129,25 @@ Kết quả annual-2025:
 
 ## 46. Tài sản, giấy tờ có giá của ngân hàng đưa đi thế chấp, cầm cố và chiết khấu
 
-- **Đã map/xác minh:** VPB p67 và VIB p49. Đã map năm khoản mục/10 ô số vào
-  1289/1290/1291/1293 và kiểm tra sáu quan hệ thành phần theo hai kỳ. VIB có
-  tổng family cùng hai hàng giấy tờ có giá đem cầm cố/chiết khấu. VPB là nguồn
-  Q1/2026 và có nhánh chứng khoán kinh doanh, chứng khoán đầu tư, repo cùng tài
-  sản khác.
-- **Không có cụm thuyết minh chi tiết trong báo cáo:** ACB, MBB, HDB, VCB,
-  CTG và BID. Các hạn mức vay, tài sản khách hàng thế chấp và diễn giải chính
-  sách là đối chứng âm, không được relabel thành tài sản của chính ngân hàng.
-- **Còn thiếu:**
+- **BCTC hợp nhất kiểm toán annual-2025 đã map/xác minh:** ACB p74, MBB p78,
+  VPB p74, CTG p63 và VIB p54. Whole-PDF scan tìm đúng một vùng family ở mỗi
+  báo cáo này; 13 mapping/26 ô số và 10 phương trình child→total đóng chính
+  xác.
+- **Biến thể đã đóng:** ACB map trực tiếp chứng khoán kinh doanh, chứng khoán
+  đầu tư và TSCĐ, còn tiền gửi có kỳ hạn tại TCTD vào 1293 `Tài sản khác`;
+  hai dấu `-` được bind pixel rồi chuẩn hóa 0. MBB chỉ có một child `Giấy tờ có
+  giá`, đủ unique khi kết hợp owner, hai kỳ và đơn vị. VPB/CTG/VIB cộng có kiểm
+  soát toàn bộ các hàng nguồn chưa tách được loại chứng khoán đúng một lần vào
+  1293; dấu `-` so sánh của CTG cũng được bind pixel trước khi cộng.
+- **Không có cụm thuyết minh chi tiết trong annual-2025:** HDB, VCB và BID.
+  Đây chỉ là bounded absence trong đúng filing đã bind.
+- **Còn thiếu annual-2025:** Không có khoản mục nguồn chưa map.
+- **Lượt hiện hành trước:** E-0097 giữ riêng VPB p67 và VIB p49 với năm
+  mapping/10 ô; ba dòng BPA-001–003 cùng hierarchy double-count của VPB vẫn là
+  OPEN lịch sử, không bị annual result relabel.
 
-| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
-| --- | ---: | --- | --- |
-| VPB | 67 | Giấy tờ có giá đưa đi thế chấp, cầm cố | Dòng nguồn là parent gộp và đồng thời các con chứng khoán kinh doanh/đầu tư lại được cộng thêm trong tổng in; giữ source-only để không xác nhận một hierarchy double-count là quan hệ kế toán. |
-| VIB | 49 | Giấy tờ có giá đưa đi thế chấp, cầm cố | Không tách chứng khoán kinh doanh và chứng khoán đầu tư nên không ép vào 1290 hay 1291. |
-| VIB | 49 | Giấy tờ có giá đưa đi chiết khấu, tái chiết khấu | Không tách loại chứng khoán; family 1289–1293 chưa có leaf theo mục đích sử dụng này. |
+Kết quả annual-2025:
+`docs/experiments/E-0152-annual-2025-bank-pledged-assets-8bank-codex-verified-mapping-v1.json`.
 
 ## 47. Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra
 
@@ -1319,7 +1323,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Thu nhập nhân viên | ✓ p73 | — | ✓ p73 | — | — | — | ✓ p58 | ✓ p54 | Annual-2025: 0 dòng OPEN, 18 mapping/36 ô/16 phương trình; ACB bình quân năm được kiểm tra rồi quy đổi 12 tháng. Lượt hiện hành trước giữ riêng 13 mapping; VPB là nguồn Q1 |
 | Nghĩa vụ với ngân sách nhà nước | ✓ p73 | ✓ p68 | ✓ p64 | ✓ p47 | ✓ p65 | ✓ p62 | ✓ p52 | ✓ p52 | Annual-2025: 0 dòng OPEN, 35 mapping/140 ô logic/35 phương trình, 1 DASH→0; CTG net nhánh phải thu/phải trả bằng tổng có dấu. Lượt hiện hành trước giữ riêng 33 mapping; VCB absence, VPB Q1 |
 | Tài sản thế chấp của khách hàng | ✓ p74 | — | ✓ p74 | ✓ p54 | — | — | — | ✓ p54 | Annual-2025: 0 dòng OPEN, 25 mapping/50 ô/10 phương trình; MBB/VCB/CTG/BID bounded absence. Lượt hiện hành trước giữ riêng VPB p67, VCB p47, VIB p49 |
-| Tài sản/GTCG ngân hàng đem thế chấp, cầm cố, chiết khấu | — | — | ✓\* p67 | — | — | — | — | ✓\* p49 | 3 dòng OPEN; 5 mapping, 10 ô số, 6 quan hệ kế toán; 6 bank không có note chi tiết; VPB có hierarchy nguồn double-count và là nguồn Q1 |
+| Tài sản/GTCG ngân hàng đem thế chấp, cầm cố, chiết khấu | ✓ p74 | ✓ p78 | ✓ p74 | — | — | ✓ p63 | — | ✓ p54 | Annual-2025: 0 dòng OPEN, 13 mapping/26 ô/10 phương trình; HDB/VCB/BID bounded absence. Lượt hiện hành trước giữ riêng 3 dòng OPEN tại VPB/VIB |
 | Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra | ✓\* p26 | ✓ p51 | ✓\* p68 | — | — | ✓ p48 | — | ✓ p50 | 13 dòng OPEN; 47 mapping, 92 ô số, 34 phương trình; 3 bank không có note chi tiết; VPB là nguồn Q1 |
 | Công cụ tài chính — giá trị ghi sổ/hợp lý | — | — | ✓\* p86 | — | ✓\* p44–45 | ✓\* p51 | — | — | 3 nhóm giá trị hợp lý OPEN; 64 mapping, 55 ô số, 12 phương trình; 5 bank không có bảng chi tiết; VPB là nguồn Q1 |
 | Rủi ro tiền tệ | — | ✓ p58 | ✓\* p80 | ✓\* p38–39 | ✓ p50–51 | ✓\* p60 | — | ✓ p65–66 | 3 nhánh vàng/11 ô OPEN do chưa có schema; 120 mapping, 136 ô số, 51 phương trình; ACB/BID không có bảng chi tiết; VPB là nguồn Q1 |

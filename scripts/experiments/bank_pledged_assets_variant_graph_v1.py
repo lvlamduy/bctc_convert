@@ -89,6 +89,22 @@ def _owner(text: str) -> bool:
 
 def _role(text: str) -> str | None:
     value = _strip(text)
+    if "tien gui co ky han" in value and ("tctd" in value or "to chuc tin dung" in value):
+        return "OTHER_PLEDGED_ASSETS"
+    if "chung khoan kinh doanh" in value:
+        return "TRADING_SECURITIES"
+    if "chung khoan dau tu" in value:
+        return "INVESTMENT_SECURITIES"
+    if "tai san co dinh" in value:
+        return "FIXED_ASSETS"
+    if (
+        "chung khoan" in value
+        and ("dua di cam co" in value or "dua di the chap" in value)
+        and "giao dich vay" in value
+    ):
+        return "PLEDGED_DEBT_SECURITIES"
+    if "chung khoan" in value and "giao dich ban" in value and "mua lai" in value:
+        return "REPURCHASED_VALUABLE_PAPERS"
     if "giay to co gia dua di the chap" in value or "giay to co gia dua di cam co" in value:
         return "PLEDGED_VALUABLE_PAPERS"
     if "giay to co gia dua di chiet khau" in value:
@@ -101,37 +117,87 @@ def _role(text: str) -> str | None:
         return "REPURCHASED_VALUABLE_PAPERS"
     if "tai san khac dua di the chap" in value or "tai san khac dua di cam co" in value:
         return "OTHER_PLEDGED_ASSETS"
+    if value == "giay to co gia":
+        return "GENERIC_VALUABLE_PAPERS"
     return None
 
 
 def _axis_role(text: str) -> str | None:
-    value = text.strip()
+    value = _strip(text)
     if "trieu dong" in value or "trieu vnd" in value:
         return "UNIT_AXIS"
+    if value in {"so cuoi nam", "so cuoi ky"}:
+        return "CURRENT_AXIS"
+    if value in {"so dau nam", "so dau ky"}:
+        return "COMPARATIVE_AXIS"
     return None
 
 
 def _region(page: Mapping[str, Any], owner: Mapping[str, Any]) -> dict[str, Any]:
     support = _support()
+    owner_position = next(
+        index
+        for index, line in enumerate(page["lines"])
+        if line["source_line_index"] == owner["source_line_index"]
+    )
+    page_right = max(line["bbox"][2] for line in page["lines"])
+    table_end = len(page["lines"])
+    for index in range(owner_position + 4, len(page["lines"]) - 1):
+        line = page["lines"][index]
+        value = _strip(line["normalized_text"])
+        if (
+            value.isdigit()
+            and len(value) <= 3
+            and line["bbox"][0] <= page_right * 0.25
+            and support._NUMBER.fullmatch(page["lines"][index + 1]["normalized_text"]) is None
+        ):
+            table_end = index
+            break
+    # Period/unit headers may precede the bank-owned sub-parent, while page
+    # boilerplate can contain unrelated legal years (for example the year of a
+    # governing circular).  Restrict period inference to the nearest header
+    # neighbourhood and the table following the owner, stopping at the next
+    # numbered note owner when it is present on the same page.
+    region_lines = page["lines"][max(0, owner_position - 8) : table_end]
     roles: list[str] = []
     axes: list[str] = []
     events = [support._line_ref(owner, "BANK_OWN_ASSET_OWNER")]
-    numeric_count = 0
-    for index, line in enumerate(page["lines"]):
+    numeric_line_indices: set[int] = set()
+    for index, line in enumerate(region_lines):
         text = line["normalized_text"]
-        role = _role(text)
-        if role is not None:
-            roles.append(role)
-            events.append(support._line_ref(line, role))
+        after_owner = line["global_ordinal"] > owner["global_ordinal"]
+        if after_owner:
+            role = _role(text)
+            if (
+                role is None
+                and index + 1 < len(region_lines)
+                and any(
+                    token in _strip(text)
+                    for token in ("chung khoan", "giay to co gia", "tai san khac", "tien gui")
+                )
+            ):
+                role = _role(f"{text} {region_lines[index + 1]['normalized_text']}")
+            if role is not None:
+                roles.append(role)
+                events.append(support._line_ref(line, role))
         axis = _axis_role(text)
-        if axis is None and index + 1 < len(page["lines"]):
-            axis = _axis_role(f"{text} {page['lines'][index + 1]['normalized_text']}")
+        if axis is None and "trieu" in _strip(text) and index + 1 < len(region_lines):
+            axis = _axis_role(f"{text} {region_lines[index + 1]['normalized_text']}")
         if axis is not None:
             axes.append(axis)
             events.append(support._line_ref(line, axis))
-        numeric_count += support._NUMBER.fullmatch(text) is not None
-    line_by_index = {line["source_line_index"]: line for line in page["lines"]}
-    year_axis, _year_axis_mode = extract_reporting_year_axis_v1(page["lines"])
+        if (
+            after_owner
+            and support._NUMBER.fullmatch(text) is not None
+            and line["bbox"][0] >= page_right * 0.55
+        ):
+            numeric_line_indices.add(line["source_line_index"])
+    line_by_index = {line["source_line_index"]: line for line in region_lines}
+    year_axis, _year_axis_mode = extract_reporting_year_axis_v1(region_lines)
+    year_axis_line_indices = {
+        line_index for item in year_axis for line_index in item["evidence_source_line_indices"]
+    }
+    numeric_count = len(numeric_line_indices - year_axis_line_indices)
     for item in year_axis:
         axis = "CURRENT_AXIS" if item["role"] == "CURRENT_PERIOD" else "COMPARATIVE_AXIS"
         if axis not in axes:
@@ -142,13 +208,15 @@ def _region(page: Mapping[str, Any], owner: Mapping[str, Any]) -> dict[str, Any]
     observed_axes = list(dict.fromkeys(axes))
     required_axes = {"CURRENT_AXIS", "COMPARATIVE_AXIS", "UNIT_AXIS"}
     complete = (
-        len(observed_roles) >= 2 and required_axes.issubset(observed_axes) and numeric_count >= 6
+        len(observed_roles) >= 1 and required_axes.issubset(observed_axes) and numeric_count >= 2
     )
-    anchors = ["BANK_OWN_ASSET_OWNER", *sorted(observed_roles), *sorted(required_axes)]
+    anchors = list(
+        dict.fromkeys(["BANK_OWN_ASSET_OWNER", *sorted(observed_roles), *sorted(required_axes)])
+    )
     return {
         "anchor_roles": anchors,
         "complete": complete,
-        "end_global_ordinal": page["lines"][-1]["global_ordinal"],
+        "end_global_ordinal": region_lines[-1]["global_ordinal"],
         "events": events,
         "layout": {
             "observed_axis_roles": observed_axes,
@@ -159,7 +227,7 @@ def _region(page: Mapping[str, Any], owner: Mapping[str, Any]) -> dict[str, Any]
         "owner": support._line_ref(owner, "BANK_OWN_ASSET_OWNER"),
         "page_span": [page["page_sequence"], page["page_sequence"]],
         "pair_anchor_combinations": [list(pair) for pair in itertools.combinations(anchors, 2)],
-        "start_global_ordinal": page["lines"][0]["global_ordinal"],
+        "start_global_ordinal": region_lines[0]["global_ordinal"],
     }
 
 

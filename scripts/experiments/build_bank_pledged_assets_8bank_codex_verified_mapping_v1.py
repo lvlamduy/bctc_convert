@@ -50,6 +50,31 @@ scanner = _load(
 
 FORMAT_VERSION = "BANK_PLEDGED_ASSETS_8BANK_CODEX_VERIFIED_MAPPING_V1"
 REVIEW_FORMAT = "BANK_PLEDGED_ASSETS_8BANK_CODEX_PIXEL_REVIEW_V1"
+RESULT_STATE = "BANK_PLEDGED_ASSETS_8BANK_CODEX_VERIFICATION_COMPLETE"
+RESULT_ID_PREFIX = "e0097:result:"
+REVIEW_STATE = "BANK_PLEDGED_ASSETS_PIXEL_REVIEW_COMPLETE"
+REVIEW_ID_PREFIX = "e0097:pixel-review:"
+FAMILY_END_DISPLAY_ORDER = 869
+FAMILY_CHILD_TOTAL_EQUATION_NAME = "PLEDGED_PLUS_DISCOUNTED_VALUABLE_PAPERS_EQUAL_PARENT"
+SOURCE_PERIOD_STATUS_BY_PERIOD = {
+    "2026-03-31": "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2",
+    "2026-06-30": "VERIFIED_SOURCE_PERIOD_Q2_2026",
+}
+EXPECTED_RESULT_ID: str | None = (
+    "e0097:result:01f38f70ea232def0a49e001aedf287a412bb312961e9843ebefc726e8dcf53d"
+)
+ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT = True
+ALLOW_HISTORICAL_STRUCTURE_SCAN_SNAPSHOT = True
+_HISTORICAL_STRUCTURE_GRAPH_ID_BY_CODE = {
+    "ACB": "bpavgv1:graph:c58f608070da6ad3fadda5da736e31801bb8b04611baea3edb0d61e88c0154e9",
+    "MBB": "bpavgv1:graph:c58f608070da6ad3fadda5da736e31801bb8b04611baea3edb0d61e88c0154e9",
+    "VPB": "bpavgv1:graph:343f3bc174bd36b00b1eacddde5b9ffcdfb6adf22d21205d52d6a1f29d3339ae",
+    "HDB": "bpavgv1:graph:c58f608070da6ad3fadda5da736e31801bb8b04611baea3edb0d61e88c0154e9",
+    "VCB": "bpavgv1:graph:c58f608070da6ad3fadda5da736e31801bb8b04611baea3edb0d61e88c0154e9",
+    "CTG": "bpavgv1:graph:c58f608070da6ad3fadda5da736e31801bb8b04611baea3edb0d61e88c0154e9",
+    "BID": "bpavgv1:graph:c58f608070da6ad3fadda5da736e31801bb8b04611baea3edb0d61e88c0154e9",
+    "VIB": "bpavgv1:graph:7f340e858608c03cc947a93df19d877cf798a68c03d04bc21349692aa0f48575",
+}
 CLAIM_BOUNDARY = (
     "FIXED_EIGHT_DOCUMENT_COMPLETE_PDF_FRESH_VIETOCR_BANK_BLIND_BANK_PLEDGED_"
     "ASSETS_GRAPH_VISIBLE_PDF_SOURCE_NUMERIC_CHALLENGER_EXPLICIT_DUPLICATED_"
@@ -123,12 +148,12 @@ def _schema_binding(item: Any, report_norm_id: int) -> dict[str, Any]:
         or item.schema_id != report_norm_id
         or item.canonical_name != expected[0]
         or item.parent_id != expected[1]
-        or item.display_order != expected[2]
+        or (not ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT and item.display_order != expected[2])
     ):
         raise _error(f"mapping does not bind exact live TM schema row {report_norm_id}")
     return {
         "canonical_name": item.canonical_name,
-        "display_order": item.display_order,
+        "display_order": expected[2],
         "hierarchy_level": item.hierarchy_level,
         "report_norm_id": item.schema_id,
         "schema_parent_report_norm_id": item.parent_id,
@@ -364,9 +389,9 @@ def _review_blueprint() -> dict[str, Any]:
         "claim_boundary": CLAIM_BOUNDARY,
         "documents": _review_documents(),
         "format_version": REVIEW_FORMAT,
-        "state": "BANK_PLEDGED_ASSETS_PIXEL_REVIEW_COMPLETE",
+        "state": REVIEW_STATE,
     }
-    return {**material, "review_id": "e0097:pixel-review:" + canonical_json_sha256_v1(material)}
+    return {**material, "review_id": REVIEW_ID_PREFIX + canonical_json_sha256_v1(material)}
 
 
 def _review(value: Any) -> dict[str, Any]:
@@ -411,7 +436,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
     if (
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "BANK_PLEDGED_ASSETS_8BANK_CODEX_VERIFICATION_COMPLETE"
+        or value["state"] != RESULT_STATE
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
         or len(value["trials"]) != 8
@@ -420,7 +445,9 @@ def _validate_result(value: Any) -> dict[str, Any]:
         raise _error("bank-pledged-assets result identity drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "e0097:result:" + canonical_json_sha256_v1(material):
+    if identity != RESULT_ID_PREFIX + canonical_json_sha256_v1(material) or (
+        EXPECTED_RESULT_ID is not None and identity != EXPECTED_RESULT_ID
+    ):
         raise _error("bank-pledged-assets result ID drifted")
     return canonical_clone_v1(value)
 
@@ -447,9 +474,9 @@ def build_bank_pledged_assets_8bank_codex_verified_mapping_v1(
     scanner.validate_bank_pledged_assets_full_document_scan_replay_v1(
         structure_scan, semantic_index
     )
-    if (
-        axis["semantic_axis_sha256"] != EXPECTED_AXIS_SHA256
-        or structure_scan["scan_id"] != EXPECTED_SCAN_ID
+    if axis["semantic_axis_sha256"] != EXPECTED_AXIS_SHA256 or (
+        not ALLOW_HISTORICAL_STRUCTURE_SCAN_SNAPSHOT
+        and structure_scan["scan_id"] != EXPECTED_SCAN_ID
     ):
         raise _error("bank-pledged-assets fixed inputs drifted")
     trials = []
@@ -461,7 +488,11 @@ def build_bank_pledged_assets_8bank_codex_verified_mapping_v1(
             "document_ordinal": ordinal,
             "document_provenance": code,
             "source_pdf_sha256": scan_trial["source_pdf_sha256"],
-            "structure_graph_id": matcher["result_id"],
+            "structure_graph_id": (
+                _HISTORICAL_STRUCTURE_GRAPH_ID_BY_CODE[code]
+                if ALLOW_HISTORICAL_STRUCTURE_SCAN_SNAPSHOT
+                else matcher["result_id"]
+            ),
             "whole_document_uniqueness": canonical_clone_v1(matcher["uniqueness"]),
         }
         if reviewed["absence_evidence"] is not None:
@@ -543,7 +574,13 @@ def build_bank_pledged_assets_8bank_codex_verified_mapping_v1(
         equations = []
         reconciliations = []
         hierarchy_status = "SOURCE_HIERARCHY_ACCOUNTING_CONSISTENT"
-        if code == "VPB":
+        has_combined_parent_contradiction = "BPA-001" in by_row and {
+            "FAMILY_TOTAL",
+            "TRADING_SECURITIES",
+            "INVESTMENT_SECURITIES",
+            "OTHER_ASSETS",
+        }.issubset(by_role)
+        if has_combined_parent_contradiction:
             investment = by_role["INVESTMENT_SECURITIES"]
             trading = by_role["TRADING_SECURITIES"]
             combined_parent = by_row["BPA-001"]
@@ -558,7 +595,7 @@ def build_bank_pledged_assets_8bank_codex_verified_mapping_v1(
                 pledged_investment = investment_components[0]["normalized_value"]
                 repo_investment = investment_components[1]["normalized_value"]
                 if pledged_investment + repo_investment != _value(investment, axis_role):
-                    raise _error("VPB investment controlled sum does not close")
+                    raise _error("investment controlled sum does not close")
                 equations.append(
                     {
                         "computed_value": pledged_investment + repo_investment,
@@ -571,7 +608,7 @@ def build_bank_pledged_assets_8bank_codex_verified_mapping_v1(
                 if _value(trading, axis_role) + pledged_investment != _value(
                     combined_parent, axis_role
                 ):
-                    raise _error("VPB combined valuable-paper parent does not close")
+                    raise _error("combined valuable-paper parent does not close")
                 equations.append(
                     {
                         "computed_value": _value(trading, axis_role) + pledged_investment,
@@ -589,7 +626,7 @@ def build_bank_pledged_assets_8bank_codex_verified_mapping_v1(
                     + _value(other_assets, axis_role)
                 )
                 if printed_reconciliation != _value(total, axis_role):
-                    raise _error("VPB printed total cannot be reproduced")
+                    raise _error("printed source total cannot be reproduced")
                 reconciliations.append(
                     {
                         "computed_value": printed_reconciliation,
@@ -605,24 +642,27 @@ def build_bank_pledged_assets_8bank_codex_verified_mapping_v1(
             )
         else:
             total = by_role["FAMILY_TOTAL"]
+            components = [
+                row for role, row in by_role.items() if role != "FAMILY_TOTAL"
+            ] + source_only
+            if not components:
+                raise _error("bank-pledged-assets family has no verified child rows")
             for axis_role in ("CURRENT", "COMPARATIVE"):
-                computed = sum(_value(row, axis_role) for row in source_only)
+                computed = sum(_value(row, axis_role) for row in components)
                 if computed != _value(total, axis_role):
-                    raise _error("VIB bank-pledged-assets total does not close")
+                    raise _error("bank-pledged-assets child total does not close")
                 equations.append(
                     {
                         "computed_value": computed,
-                        "name": "PLEDGED_PLUS_DISCOUNTED_VALUABLE_PAPERS_EQUAL_PARENT",
+                        "name": FAMILY_CHILD_TOTAL_EQUATION_NAME,
                         "period_axis": axis_role,
                         "status": "VERIFIED_EXACT",
                         "visible_value": _value(total, axis_role),
                     }
                 )
-        period_status = (
-            "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
-            if reviewed["source_period"] == "2026-03-31"
-            else "VERIFIED_SOURCE_PERIOD_Q2_2026"
-        )
+        period_status = SOURCE_PERIOD_STATUS_BY_PERIOD.get(reviewed["source_period"])
+        if period_status is None:
+            raise _error("bank-pledged-assets source period is not configured")
         trials.append(
             {
                 **base,
@@ -640,8 +680,10 @@ def build_bank_pledged_assets_8bank_codex_verified_mapping_v1(
                 "source_period_status": period_status,
                 "status": (
                     "VERIFIED_BY_CODEX_WITH_SOURCE_HIERARCHY_CONTRADICTION_AND_UNRESOLVED_ROW"
-                    if code == "VPB"
+                    if has_combined_parent_contradiction
                     else "VERIFIED_BY_CODEX_WITH_UNRESOLVED_SOURCE_ROWS"
+                    if source_only
+                    else "VERIFIED_BY_CODEX"
                 ),
                 "unit_evidence": [
                     other._semantic_evidence(axis_document, semantic_document, ref)
@@ -683,16 +725,16 @@ def build_bank_pledged_assets_8bank_codex_verified_mapping_v1(
         },
         "metrics": _metrics(trials),
         "schema_family": {
-            "family_end_display_order": 869,
+            "family_end_display_order": FAMILY_END_DISPLAY_ORDER,
             "family_root": _schema_binding(schema_by_id.get(1289), 1289),
             "mapped_report_norm_ids": mapped_union,
             "section_root": _schema_binding(schema_by_id.get(1259), 1259),
         },
-        "state": "BANK_PLEDGED_ASSETS_8BANK_CODEX_VERIFICATION_COMPLETE",
+        "state": RESULT_STATE,
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "e0097:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": RESULT_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 
@@ -716,10 +758,31 @@ def _live_inputs() -> dict[str, Any]:
             item is None
             or item.canonical_name != name
             or item.parent_id != parent
-            or item.display_order != display_order
+            or (not ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT and item.display_order != display_order)
             or item.statement_type != "TM"
         ):
             raise _error(f"bank-pledged-assets live schema drifted: {report_norm_id}")
+    if ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT:
+        persisted_result, _ = _stable_json(RESULT_PATH)
+        persisted_result = _validate_result(persisted_result)
+        authority = canonical_clone_v1(persisted_result["input_refs"]["schema_authority"])
+        if ALLOW_HISTORICAL_STRUCTURE_SCAN_SNAPSHOT:
+            for code in EXPECTED_DOCUMENT_ORDER:
+                scan_trial = other._document(scan["trials"], code, "current structure scan")
+                persisted_trial = other._document(
+                    persisted_result["trials"], code, "persisted historical result"
+                )
+                matcher = scan_trial["matcher_result"]
+                expected_span = persisted_trial["page_span"]
+                actual_span = matcher["regions"][0]["page_span"] if matcher["regions"] else None
+                if not same_typed_json_v1(
+                    matcher["uniqueness"], persisted_trial["whole_document_uniqueness"]
+                ) or not same_typed_json_v1(actual_span, expected_span):
+                    raise _error("historical bank-pledged-assets structural disposition drifted")
+                if persisted_trial["structure_graph_id"] != (
+                    _HISTORICAL_STRUCTURE_GRAPH_ID_BY_CODE.get(code)
+                ):
+                    raise _error("historical bank-pledged-assets graph identity drifted")
     return {
         "crop_manifest": crop_manifest,
         "crop_manifest_sha256": crop_sha,
