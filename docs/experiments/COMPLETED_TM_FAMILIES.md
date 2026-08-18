@@ -859,16 +859,22 @@ Kết quả annual-2025:
 
 ## 35. Lãi thuần từ chứng khoán kinh doanh, chứng khoán đầu tư
 
-- **Đã map/xác minh:** MBB p47. Whole-PDF scan tìm đúng một dòng tổng hợp có
-  hai giá trị cùng hàng; dòng tiêu đề cùng tên ở đầu note không có giá trị cùng
-  hàng nên chỉ là đối chứng âm. ReportNormId 5990 được xác minh với 2 ô số.
-- **Quan hệ kiểm tra:** `249.524 + 3.587 = 253.111` và
-  `415.700 + 1.295.273 = 1.710.973`; cả hai kỳ đều đóng đúng với hai family
-  chứng khoán kinh doanh và chứng khoán đầu tư đã xác minh độc lập.
-- **Không có dòng tổng hợp này trong báo cáo:** ACB, VPB, HDB, VCB, CTG, BID
-  và VIB. Đây là bounded non-observation trong tám PDF cố định, không phải khẳng
-  định vắng mặt trên mọi kỳ/báo cáo.
-- **Còn thiếu:** Không còn khoản mục nguồn chưa map.
+- **BCTC hợp nhất kiểm toán annual-2025:** Không bank nào trong ACB, MBB, VPB,
+  HDB, VCB, CTG, BID và VIB in một dòng số tổng hợp cho ReportNormId 5990.
+  Whole-PDF scan quét đủ 695 trang: 0 complete numeric row, 1 near control.
+- **Đối chứng âm BID p56:** Nhãn `Lãi thuần từ mua bán chứng khoán kinh doanh và
+  chứng khoán đầu tư` là tiêu đề mục 30. Bên dưới là hai bảng riêng 30.1 và 30.2;
+  tiêu đề không có hai giá trị cùng hàng nên không được cộng hai bảng để tạo một
+  khoản mục 5990 không được in.
+- **Lượt hiện hành trước:** MBB p47 vẫn giữ mapping đã xác minh. Whole-PDF scan
+  tìm đúng một dòng tổng hợp có hai giá trị cùng hàng; các phương trình
+  `249.524 + 3.587 = 253.111` và `415.700 + 1.295.273 = 1.710.973` đóng đúng.
+  ACB, VPB, HDB, VCB, CTG, BID và VIB của lượt đó là bounded absence.
+- **Còn thiếu:** Không có dòng nguồn annual-2025 cần map; đây là vắng mặt trong
+  tám filing cố định, không phải khẳng định vắng mặt trên mọi kỳ/báo cáo.
+
+Kết quả annual-2025:
+`docs/experiments/E-0141-annual-2025-combined-securities-net-8bank-bound-report-absence-v1.json`.
 
 ## 36. Thu nhập từ góp vốn, mua cổ phần và thu nhập cổ tức
 
@@ -1208,7 +1214,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Lãi/lỗ thuần kinh doanh vàng và ngoại hối | ✓ p68 | ✓ p73 | ✓ p69 | ✓ p50 | ✓ p59 | ✓ p58 | ✓ p55 | ✓ p51 | Annual-2025: 0 dòng OPEN, 69 mapping/138 ô logic/152 thành phần, 48 phương trình, 5 DASH→0. Lượt hiện hành trước: 23 mapping tại MBB/VPB/VIB; VPB là Q1 |
 | Lãi/lỗ thuần mua bán chứng khoán kinh doanh | ✓ p68 | ✓ p73 | ✓ p70 | ✓ p50 | ✓ p59 | ✓ p58 | ✓ p56 | — | Annual-2025: 0 dòng OPEN, 27 mapping/54 ô/14 phương trình; HDB không in dự phòng; VIB chỉ có family đầu tư. Lượt hiện hành trước: 28 mapping, VPB là Q1 |
 | Lãi/lỗ thuần mua bán chứng khoán đầu tư | ✓ p68 | ✓ p73 | ✓ p70 | ✓ p50 | ✓ p59 | ✓ p59 | ✓ p56 | ✓ p51 | Annual-2025: 0 dòng OPEN, 32 mapping/64 ô logic từ 70 thành phần/16 phương trình, 5 DASH→0. Lượt hiện hành trước: 28 mapping; VCB bounded absence, VPB là Q1 |
-| Lãi thuần CK kinh doanh + CK đầu tư | — | ✓ p47 | — | — | — | — | — | — | 0 dòng; 1 mapping, 2 ô số, 2 phương trình; 7 PDF không in dòng tổng hợp |
+| Lãi thuần CK kinh doanh + CK đầu tư | — | — | — | — | — | — | — | — | Annual-2025: 8 bounded absences, BID p56 là tiêu đề đối chứng âm, 0 dòng OPEN. Lượt hiện hành trước: MBB p47 có 1 mapping/2 ô/2 phương trình |
 | Thu nhập góp vốn/mua cổ phần/cổ tức | ✓ p25 | ✓ p48 | ✓\* p64 | ✓ p35 | ✓ p39 | ✓ p46 | ✓ p29 | — | 0 dòng; 27 mapping, 54 ô số, 16 phương trình; 5 DASH→0; VIB không có note chi tiết; VPB là nguồn Q1 |
 | Chi phí quản lý chung/Chi phí hoạt động | ✓ p25 | ✓ p48 | ✓\* p65 | ✓ p35 | ✓ p40 | ✓\* p47 | ✓ p30 | ✓ p46 | 4 dòng OPEN; 99 mapping, 198 ô số, 30 phương trình; VCB 1 lỗi số VietOCR bị nguồn/pixel bác bỏ; VPB là nguồn Q1 |
 | Chi phí dự phòng rủi ro tín dụng | — | ✓ p49 | ✓ p66 | — | — | — | — | ✓ p47 | 0 dòng OPEN; 17 source-row mappings, 8 phương trình; CRPE-001/002 → 1228; 5 bank không có note chi tiết; VPB là nguồn Q1 |

@@ -80,6 +80,45 @@ def test_heading_without_two_values_cannot_accept() -> None:
     assert result["metrics"]["near_region_count"] == 1
 
 
+def test_optional_mua_ban_va_words_form_one_heading_near_control() -> None:
+    result = matcher.build_combined_securities_net_variant_graph_document_v1(
+        [
+            _page(
+                [
+                    "30.",
+                    "LÃI THUẦN TỪ MUA BÁN CHỨNG KHOÁN KINH DOANH VÀ",
+                    "CHỨNG KHOÁN ĐẦU TƯ",
+                    "30.1 Lãi thuần từ mua bán chứng khoán kinh doanh",
+                ]
+            )
+        ]
+    )
+    assert result["status"] == "UNRESOLVED_NO_UNIQUE_REGION"
+    assert result["metrics"] == {
+        "complete_region_count": 0,
+        "near_region_count": 1,
+        "two_value_region_count": 0,
+        "wrapped_complete_region_count": 0,
+    }
+    assert result["near_regions"][0]["label_line_count"] == 2
+
+
+def test_explanatory_sentence_with_muc_prefix_is_not_a_family_owner() -> None:
+    result = matcher.build_combined_securities_net_variant_graph_document_v1(
+        [
+            _page(
+                [
+                    "Mục lãi/(lỗ) thuần từ chứng khoán kinh doanh, chứng khoán đầu tư",
+                    "1.000",
+                    "2.000",
+                ]
+            )
+        ]
+    )
+    assert result["metrics"]["complete_region_count"] == 0
+    assert result["metrics"]["near_region_count"] == 0
+
+
 def test_two_numeric_totals_are_not_unique() -> None:
     result = matcher.build_combined_securities_net_variant_graph_document_v1(
         [_page(_texts()), _page(_texts(), 2)]

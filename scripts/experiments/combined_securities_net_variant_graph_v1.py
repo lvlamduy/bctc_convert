@@ -33,7 +33,11 @@ __all__ = [
 ]
 
 FORMAT_VERSION = "COMBINED_SECURITIES_NET_VARIANT_GRAPH_DOCUMENT_V1"
-_TARGET = "lai thuan tu chung khoan kinh doanh chung khoan dau tu"
+_NET_PREFIXES = (
+    "lai thuan tu ",
+    "lai lo thuan tu ",
+    "lo lai thuan tu ",
+)
 _RESULT_FIELDS = {
     "claim_boundary",
     "format_version",
@@ -86,14 +90,36 @@ def _support() -> ModuleType:
     return module
 
 
+def _is_owner_text(text: str) -> bool:
+    """Recognize the family label without fixing optional connector words.
+
+    Annual reports may insert ``mua bán``, ``hoạt động`` or ``và`` between the
+    net-income prefix and the two securities families.  Both family anchors
+    remain mandatory, and the text must start with the accounting-result
+    prefix after stripping a note enumerator.  The start constraint rejects
+    explanatory prose such as ``mục lãi/(lỗ) thuần ...``.
+    """
+
+    value = _support()._strip_enumerator(text)
+    return (
+        len(value.split()) <= 20
+        and value.startswith(_NET_PREFIXES)
+        and "chung khoan kinh doanh" in value
+        and "chung khoan dau tu" in value
+    )
+
+
 def _owner_width(lines: Sequence[Mapping[str, Any]], start: int) -> int | None:
     first = lines[start]
-    if first["normalized_text"] == _TARGET:
+    if _is_owner_text(first["normalized_text"]):
         return 1
     if start + 1 >= len(lines) or lines[start + 1]["page_sequence"] != first["page_sequence"]:
         return None
+    first_fragment = _support()._strip_enumerator(first["normalized_text"])
+    if not first_fragment.startswith(_NET_PREFIXES):
+        return None
     combined = f"{first['normalized_text']} {lines[start + 1]['normalized_text']}".strip()
-    return 2 if combined == _TARGET else None
+    return 2 if _is_owner_text(combined) else None
 
 
 def _region(lines: Sequence[Mapping[str, Any]], start: int, width: int) -> dict[str, Any]:

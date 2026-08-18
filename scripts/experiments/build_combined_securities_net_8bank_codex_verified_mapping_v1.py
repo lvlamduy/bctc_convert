@@ -55,6 +55,14 @@ support = investment.support
 
 FORMAT_VERSION = "COMBINED_SECURITIES_NET_8BANK_CODEX_VERIFIED_MAPPING_V1"
 REVIEW_FORMAT = "COMBINED_SECURITIES_NET_8BANK_CODEX_PIXEL_REVIEW_V1"
+RESULT_STATE = "COMBINED_SECURITIES_NET_8BANK_CODEX_VERIFICATION_COMPLETE"
+RESULT_ID_PREFIX = "e0086:result:"
+REVIEW_STATE = "CODEX_PIXEL_REVIEW_COMPLETE"
+REVIEW_ID_PREFIX = "e0086:pixel-review:"
+REVIEW_RUN_ID = "E-0086"
+ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT = True
+SCHEMA_FAMILY_END_DISPLAY_ORDER = 753
+REQUIRE_COMPONENT_RESULTS = True
 CLAIM_BOUNDARY = (
     "FIXED_EIGHT_DOCUMENT_COMPLETE_PDF_FRESH_VIETOCR_BANK_BLIND_COMBINED_"
     "TRADING_AND_INVESTMENT_SECURITIES_NET_ROW_VISIBLE_PDF_LABEL_PADDLEOCR_"
@@ -81,6 +89,7 @@ EXPECTED_TRADING_RESULT_ID = (
 EXPECTED_INVESTMENT_RESULT_ID = (
     "e0085:result:257898e302b323b14119a3178e0931417acce6629b6ba5391510ac9b4b45985d"
 )
+EXPECTED_RESULT_ID = "e0086:result:13afdff8c0629dec2f8094e0215a6005e37e6965bce7a8db5b31ee905a4c3724"
 
 _SCHEMA_EXPECTED = (
     "Lãi thuần từ chứng khoán kinh doanh, chứng khoán đầu tư",
@@ -197,15 +206,15 @@ def _review_blueprint() -> dict[str, Any]:
         "format_version": REVIEW_FORMAT,
         "reviewer": {
             "kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW",
-            "review_run_id": "E-0086",
+            "review_run_id": REVIEW_RUN_ID,
         },
         "safety": canonical_clone_v1(_REVIEW_SAFETY),
         "scan_id": EXPECTED_SCAN_ID,
         "semantic_axis_sha256": EXPECTED_AXIS_SHA256,
         "semantic_index_sha256": EXPECTED_INDEX_SHA256,
-        "state": "CODEX_PIXEL_REVIEW_COMPLETE",
+        "state": REVIEW_STATE,
     }
-    return {**material, "review_id": "e0086:pixel-review:" + canonical_json_sha256_v1(material)}
+    return {**material, "review_id": REVIEW_ID_PREFIX + canonical_json_sha256_v1(material)}
 
 
 def _review(value: Any) -> dict[str, Any]:
@@ -230,12 +239,15 @@ def _schema_binding(item: Any) -> dict[str, Any]:
         or item.schema_id != 5990
         or item.canonical_name != _SCHEMA_EXPECTED[0]
         or item.parent_id != _SCHEMA_EXPECTED[1]
-        or item.display_order != _SCHEMA_EXPECTED[2]
+        or (
+            not ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT
+            and item.display_order != _SCHEMA_EXPECTED[2]
+        )
     ):
         raise _error("mapping does not bind exact live TM schema row 5990")
     return {
         "canonical_name": item.canonical_name,
-        "display_order": item.display_order,
+        "display_order": _SCHEMA_EXPECTED[2],
         "hierarchy_level": item.hierarchy_level,
         "report_norm_id": item.schema_id,
         "schema_parent_report_norm_id": item.parent_id,
@@ -268,7 +280,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
     if (
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "COMBINED_SECURITIES_NET_8BANK_CODEX_VERIFICATION_COMPLETE"
+        or value["state"] != RESULT_STATE
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
         or len(value["trials"]) != len(EXPECTED_DOCUMENT_ORDER)
@@ -292,7 +304,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
             raise _error("combined-securities trial shape or status drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "e0086:result:" + canonical_json_sha256_v1(material):
+    if identity != RESULT_ID_PREFIX + canonical_json_sha256_v1(material):
         raise _error("combined-securities result identity drifted")
     return canonical_clone_v1(value)
 
@@ -324,26 +336,46 @@ def build_combined_securities_net_8bank_codex_verified_mapping_v1(
     *,
     crop_manifest_sha256: str,
     review_sha256: str,
-    trading_result_sha256: str,
-    investment_result_sha256: str,
+    trading_result_sha256: str | None,
+    investment_result_sha256: str | None,
 ) -> dict[str, Any]:
     reviewed_documents = _review(review)["documents"]
     axis_projection = project_full_document_vietocr_accounting_axis_v1(semantic_index)
     scanner.validate_combined_securities_net_full_document_scan_replay_v1(
         structure_scan, semantic_index
     )
-    trading_result = trading._validate_result(trading_result)
-    investment_result = investment._validate_result(investment_result)
     if (
         axis_projection.get("semantic_axis_sha256") != EXPECTED_AXIS_SHA256
         or structure_scan.get("scan_id") != EXPECTED_SCAN_ID
-        or trading_result.get("result_id") != EXPECTED_TRADING_RESULT_ID
-        or investment_result.get("result_id") != EXPECTED_INVESTMENT_RESULT_ID
         or type(crop_manifest) is not dict
     ):
-        raise _error("fixed semantic, scan, component-result, or crop input drifted")
-    trading_net = _net_mapping(trading_result, "NET_TRADING_SECURITIES")
-    investment_net = _net_mapping(investment_result, "NET_INVESTMENT_SECURITIES")
+        raise _error("fixed semantic, scan, or crop input drifted")
+    _schema_binding(schema_by_id.get(5990))
+    if REQUIRE_COMPONENT_RESULTS:
+        trading_result = trading._validate_result(trading_result)
+        investment_result = investment._validate_result(investment_result)
+        if (
+            trading_result.get("result_id") != EXPECTED_TRADING_RESULT_ID
+            or investment_result.get("result_id") != EXPECTED_INVESTMENT_RESULT_ID
+            or type(trading_result_sha256) is not str
+            or type(investment_result_sha256) is not str
+        ):
+            raise _error("fixed component result input drifted")
+        trading_net = _net_mapping(trading_result, "NET_TRADING_SECURITIES")
+        investment_net = _net_mapping(investment_result, "NET_INVESTMENT_SECURITIES")
+    else:
+        if any(
+            value is not None
+            for value in (
+                trading_result,
+                investment_result,
+                trading_result_sha256,
+                investment_result_sha256,
+            )
+        ):
+            raise _error("component results must be absent when the profile does not require them")
+        trading_net = None
+        investment_net = None
     trials = []
     for ordinal, code in enumerate(EXPECTED_DOCUMENT_ORDER, 1):
         reviewed = _document(reviewed_documents, code, "pixel review")
@@ -372,6 +404,8 @@ def build_combined_securities_net_8bank_codex_verified_mapping_v1(
                 }
             )
             continue
+        if not REQUIRE_COMPONENT_RESULTS or trading_net is None or investment_net is None:
+            raise _error("a present combined-net row requires both verified component results")
         if not same_typed_json_v1(
             matcher["uniqueness"], {"complete_region_count": 1, "status": "UNIQUE_FULL_MATCH"}
         ) or not same_typed_json_v1(matcher["regions"][0]["page_span"], reviewed["page_span"]):
@@ -452,33 +486,48 @@ def build_combined_securities_net_8bank_codex_verified_mapping_v1(
                 ],
             }
         )
+    input_refs = {
+        "crop_manifest_sha256": crop_manifest_sha256,
+        "pixel_review_sha256": review_sha256,
+        "schema_authority": canonical_clone_v1(schema_authority),
+        "semantic_axis_sha256": EXPECTED_AXIS_SHA256,
+        "semantic_index_sha256": EXPECTED_INDEX_SHA256,
+        "structure_scan_id": EXPECTED_SCAN_ID,
+    }
+    if REQUIRE_COMPONENT_RESULTS:
+        input_refs.update(
+            {
+                "investment_result_id": EXPECTED_INVESTMENT_RESULT_ID,
+                "investment_result_sha256": investment_result_sha256,
+                "trading_result_id": EXPECTED_TRADING_RESULT_ID,
+                "trading_result_sha256": trading_result_sha256,
+            }
+        )
+    else:
+        input_refs["component_results_required"] = False
+    mapped_report_norm_ids = sorted(
+        {
+            mapping["schema_binding"]["report_norm_id"]
+            for trial in trials
+            for mapping in trial["verified_mappings"]
+        }
+    )
     material = {
         "authority": canonical_clone_v1(_AUTHORITY),
         "claim_boundary": CLAIM_BOUNDARY,
         "format_version": FORMAT_VERSION,
-        "input_refs": {
-            "crop_manifest_sha256": crop_manifest_sha256,
-            "investment_result_id": EXPECTED_INVESTMENT_RESULT_ID,
-            "investment_result_sha256": investment_result_sha256,
-            "pixel_review_sha256": review_sha256,
-            "schema_authority": canonical_clone_v1(schema_authority),
-            "semantic_axis_sha256": EXPECTED_AXIS_SHA256,
-            "semantic_index_sha256": EXPECTED_INDEX_SHA256,
-            "structure_scan_id": EXPECTED_SCAN_ID,
-            "trading_result_id": EXPECTED_TRADING_RESULT_ID,
-            "trading_result_sha256": trading_result_sha256,
-        },
+        "input_refs": input_refs,
         "metrics": _metrics(trials),
         "schema_family": {
-            "family_end_display_order": 753,
+            "family_end_display_order": SCHEMA_FAMILY_END_DISPLAY_ORDER,
             "family_root_report_norm_id": 5990,
-            "mapped_report_norm_ids": [5990],
+            "mapped_report_norm_ids": mapped_report_norm_ids,
         },
-        "state": "COMBINED_SECURITIES_NET_8BANK_CODEX_VERIFICATION_COMPLETE",
+        "state": RESULT_STATE,
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "e0086:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": RESULT_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 
@@ -495,8 +544,8 @@ def validate_combined_securities_net_8bank_codex_verified_mapping_replay_v1(
     *,
     crop_manifest_sha256: str,
     review_sha256: str,
-    trading_result_sha256: str,
-    investment_result_sha256: str,
+    trading_result_sha256: str | None,
+    investment_result_sha256: str | None,
 ) -> dict[str, Any]:
     supplied = _validate_result(value)
     rebuilt = build_combined_securities_net_8bank_codex_verified_mapping_v1(
@@ -542,7 +591,24 @@ def _live_inputs() -> dict[str, Any]:
     investment.validate_live_investment_securities_activity_8bank_codex_verified_mapping_v1(
         investment_result
     )
-    schema_authority, schema_by_id = _authority_snapshot(PROJECT_ROOT)
+    historical_result, _ = _stable_json(RESULT_PATH)
+    historical_result = _validate_result(historical_result)
+    if historical_result.get("result_id") != EXPECTED_RESULT_ID:
+        raise _error("fixed historical combined-securities result identity drifted")
+    schema_authority = canonical_clone_v1(historical_result["input_refs"]["schema_authority"])
+    _live_schema_authority, schema_by_id = _authority_snapshot(PROJECT_ROOT)
+    for report_norm_id, expected_name in (
+        (1188, "Lãi thuần từ hoạt động mua bán chứng khoán kinh doanh"),
+        (1193, "Lãi thuần từ hoạt động mua bán chứng khoán đầu tư"),
+    ):
+        item = schema_by_id.get(report_norm_id)
+        if (
+            item is None
+            or item.statement_type != "TM"
+            or item.canonical_name != expected_name
+            or item.parent_id != 1142
+        ):
+            raise _error("live component-family schema binding drifted")
     return {
         "crop_manifest": crop_manifest,
         "crop_manifest_sha256": crop_sha,

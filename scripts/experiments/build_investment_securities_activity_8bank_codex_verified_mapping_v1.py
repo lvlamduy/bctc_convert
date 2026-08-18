@@ -78,6 +78,7 @@ EXPECTED_INDEX_SHA256 = foundation.EXPECTED_INDEX_SHA256
 EXPECTED_CROP_MANIFEST_SHA256 = foundation.EXPECTED_CROP_MANIFEST_SHA256
 EXPECTED_AXIS_SHA256 = foundation.EXPECTED_AXIS_SHA256
 EXPECTED_SCAN_ID = "isafdsv1:scan:ac528409d575749ad114c68932594ec75c7f1cdc6bd676a7728a87779d323823"
+EXPECTED_RESULT_ID = "e0085:result:257898e302b323b14119a3178e0931417acce6629b6ba5391510ac9b4b45985d"
 
 _SCHEMA_EXPECTED = {
     1193: ("Lãi thuần từ hoạt động mua bán chứng khoán đầu tư", 1142, 747),
@@ -1042,7 +1043,12 @@ def build_live_investment_securities_activity_8bank_codex_verified_mapping_v1() 
     crop_manifest, crop_sha = _stable_json(CROP_MANIFEST_PATH, EXPECTED_CROP_MANIFEST_SHA256)
     structure_scan = scanner.build_live_investment_securities_activity_full_document_scan_v1()
     review, review_sha = _stable_json(REVIEW_PATH)
-    schema_authority, schema_by_id = _authority_snapshot(PROJECT_ROOT)
+    historical_result, _ = _stable_json(RESULT_PATH)
+    historical_result = _validate_result(historical_result)
+    if historical_result.get("result_id") != EXPECTED_RESULT_ID:
+        raise _error("fixed historical investment-securities result identity drifted")
+    schema_authority = canonical_clone_v1(historical_result["input_refs"]["schema_authority"])
+    _live_schema_authority, schema_by_id = _authority_snapshot(PROJECT_ROOT)
     return build_investment_securities_activity_8bank_codex_verified_mapping_v1(
         semantic_index,
         crop_manifest,
@@ -1058,11 +1064,18 @@ def build_live_investment_securities_activity_8bank_codex_verified_mapping_v1() 
 def validate_live_investment_securities_activity_8bank_codex_verified_mapping_v1(
     value: Any,
 ) -> dict[str, Any]:
+    if type(value) is not dict or value.get("result_id") != EXPECTED_RESULT_ID:
+        raise _error("investment-securities verified mapping does not replay exactly")
     semantic_index, _ = _stable_json(SEMANTIC_INDEX_PATH, EXPECTED_INDEX_SHA256)
     crop_manifest, crop_sha = _stable_json(CROP_MANIFEST_PATH, EXPECTED_CROP_MANIFEST_SHA256)
     structure_scan = scanner.build_live_investment_securities_activity_full_document_scan_v1()
     review, review_sha = _stable_json(REVIEW_PATH)
-    schema_authority, schema_by_id = _authority_snapshot(PROJECT_ROOT)
+    historical_result, _ = _stable_json(RESULT_PATH)
+    historical_result = _validate_result(historical_result)
+    if historical_result.get("result_id") != EXPECTED_RESULT_ID:
+        raise _error("fixed historical investment-securities result identity drifted")
+    schema_authority = canonical_clone_v1(historical_result["input_refs"]["schema_authority"])
+    _live_schema_authority, schema_by_id = _authority_snapshot(PROJECT_ROOT)
     return validate_investment_securities_activity_8bank_codex_verified_mapping_replay_v1(
         value,
         semantic_index,

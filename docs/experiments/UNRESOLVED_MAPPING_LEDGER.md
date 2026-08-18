@@ -17,10 +17,28 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **309 entries**.  Current open queue: **104**.  Closed history:
-**129** row/graph resolutions and **76** confirmed bound-report family absences.
+Ledger total: **317 entries**.  Current open queue: **104**.  Closed history:
+**129** row/graph resolutions and **84** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
+
+## CLOSED — annual-2025 `Lãi thuần từ chứng khoán kinh doanh, chứng khoán đầu tư`
+
+E-0141 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025 và không tìm
+thấy dòng số tổng hợp ReportNormId 5990 trong bất kỳ filing nào: 0 complete
+numeric row, 1 near control, 8 bounded absences và 0 dòng OPEN.
+
+BID p56 in một tiêu đề mục chung `Lãi thuần từ mua bán chứng khoán kinh doanh và
+chứng khoán đầu tư`, rồi trình bày hai bảng độc lập 30.1 trading và 30.2
+investment. Pixel và hình học xác nhận tiêu đề không có hai giá trị cùng hàng;
+hai bảng con không bị cộng để tạo một dòng schema không được in. Matcher dùng
+cụm mở đầu lãi/(lỗ) thuần cùng đủ hai family anchors và cho phép từ nối `mua
+bán`/`và`, nhưng vẫn yêu cầu số cùng hàng để trở thành complete region. ACB,
+MBB, VPB, HDB, VCB, CTG và VIB không có cả near lẫn complete match. Kết luận chỉ
+có authority trong tám báo cáo annual-2025 đã bind.
+
+Machine-readable result:
+`docs/experiments/E-0141-annual-2025-combined-securities-net-8bank-bound-report-absence-v1.json`.
 
 ## CLOSED — annual-2025 `Lãi/lỗ thuần từ mua bán chứng khoán đầu tư`
 
