@@ -770,11 +770,21 @@ def _verified_value(
             for item in components
         ]
         proposals = [item["fresh_vietocr_numeric_proposal"] for item in evidence]
+        parsed_proposals = []
+        for proposal in proposals:
+            try:
+                parsed_proposals.append(
+                    operating.income.foundation.support._money(proposal)
+                    if proposal is not None
+                    else None
+                )
+            except ValueError:
+                parsed_proposals.append(None)
         return {
             "component_evidence": evidence,
             "fresh_vietocr_numeric_proposal": (
-                sum(operating.income.foundation.support._money(item) for item in proposals)
-                if all(item is not None for item in proposals)
+                sum(item for item in parsed_proposals if item is not None)
+                if all(item is not None for item in parsed_proposals)
                 else None
             ),
             "fresh_vietocr_numeric_status": (

@@ -1001,24 +1001,37 @@ Kết quả annual-2025:
 
 ## 40. Chi phí thuế thu nhập doanh nghiệp
 
-- **Đã map/xác minh:** MBB p50, VPB p59 và VIB p48. Whole-PDF scan tìm đúng
-  một bảng đối chiếu thuế chi tiết tại mỗi bank; 28 mapping/56 ô số và 20
-  phương trình từ lợi nhuận trước thuế qua điều chỉnh, thu nhập chịu thuế đến
-  chi phí thuế đều đóng chính xác. Toàn bộ ReportNormId 5723–5737 xuất hiện và
-  được xác minh ở ít nhất một biến thể.
-- **Biến thể đã đóng:** MBB có cả bảng tóm tắt thuế hiện hành/hoãn lại và bảng
-  đối chiếu năm thành phần; VPB là Q1/2026 và gộp có kiểm soát thu nhập không
-  chịu thuế, điều chỉnh hợp nhất và điều chỉnh khác vào 5729; VIB có một dòng
-  điều chỉnh chỉ in số kỳ so sánh. Hai dấu `-` của VPB được giữ là dấu nguồn
-  rồi chuẩn hóa thành 0; ô trống kỳ hiện tại của VIB không bị đổi thành 0.
-- **Không có cụm thuyết minh chi tiết trong báo cáo:** ACB, HDB, VCB, CTG và
-  BID. Các dòng tổng trên KQKD, nghĩa vụ thuế hoặc số dư thuế hoãn lại là đối
-  chứng âm, không được relabel thành bảng đối chiếu chi phí thuế.
-- **Còn thiếu:**
+- **BCTC hợp nhất kiểm toán annual-2025 đã map/xác minh:** ACB p71, MBB p76,
+  VPB p64, HDB p52, VCB p62, CTG p60, BID p57 và VIB p53. Whole-PDF scan
+  quét đủ 695 trang và tìm đúng một vùng thuế chi tiết trên cả 8/8 filing.
+  Pixel, trục số nguồn, live schema và 32 phương trình xác minh 61 mapping/120
+  ô số; không bank nào thiếu family.
+- **Biến thể annual-2025 đã đóng:** graph chung nhận nhãn lợi nhuận trước thuế
+  dài hoặc ngắn, điều chỉnh tùy chọn, bảng ngân hàng/chi nhánh nước ngoài/công
+  ty con, ô so sánh để trống và bảng thuế hoãn lại tách riêng. CTG
+  `(370.109]` và VIB `2.40i` là hai lỗi VietOCR được giữ nguyên làm proposal;
+  trục số nguồn xác nhận `(370.109)` và `2.401`, rồi các phương trình đóng mà
+  không sửa tay hay dùng VietOCR làm numeric truth.
+- **Không có cụm trong annual-2025:** Không bank nào.
+- **Còn thiếu annual-2025:** bảy dòng nguồn dưới đây vẫn hiển thị và tham gia
+  kiểm tra khi cần, nhưng chưa có leaf chính xác hoặc nhãn chưa đủ hẹp:
 
 | Bank | Trang | Khoản mục nguồn | Lý do chưa map |
 | --- | ---: | --- | --- |
-| VIB | 48 | Điều chỉnh khác | Nhãn rộng hơn leaf 5733 về điều chỉnh thuế của các năm trước; kỳ hiện tại để trống, kỳ so sánh là `163`, nên giữ `TAX-001` chờ schema thay vì ép nghĩa hoặc coi ô trống là 0. |
+| ACB | 71 | Các khoản điều chỉnh làm tăng/(giảm) thu nhập chịu thuế khác | Nhãn rộng; không ép vào một leaf điều chỉnh cụ thể. |
+| ACB | 71 | Hoàn nhập tài sản thuế TNDN hoãn lại | Schema có net thuế hoãn lại nhưng chưa có leaf component nguồn này. |
+| ACB | 71 | Chênh lệch tạm thời được khấu trừ | Schema có net thuế hoãn lại nhưng chưa có leaf component nguồn này. |
+| MBB | 76 | Thuế TNDN do thoái vốn tại công ty con | Chưa có leaf thuế hiện hành do thoái vốn; ô so sánh để trống và không đổi thành 0. |
+| VPB | 64 | Các điều chỉnh khác | Thuộc phần cuốn chiếu thuế phải nộp sau chi phí thuế; chưa có leaf chi phí tương đương, ô so sánh để trống. |
+| CTG | 60 | Điều chỉnh khác | Thuộc phần cuốn chiếu thuế phải nộp sau bảng chi phí thuế, không ép vào family chi phí. |
+| VIB | 53 | Điều chỉnh khác | Nhãn rộng hơn 5733 về điều chỉnh thuế các năm trước; giữ source-only nhưng dùng trong phương trình tổng đã xác minh. |
+
+Kết quả annual-2025:
+`docs/experiments/E-0146-annual-2025-income-tax-8bank-codex-verified-mapping-v1.json`.
+
+- **Lượt hiện hành trước:** MBB p50, VPB p59 và VIB p48 giữ nguyên 28
+  mapping/56 ô/20 phương trình; ACB/HDB/VCB/CTG/BID là bounded detailed-note
+  absences trong đúng các filing cũ. VIB `TAX-001` vẫn được giữ nguyên.
 
 ## 41. Tiền và các khoản tương đương tiền
 
@@ -1268,7 +1281,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Chi phí quản lý chung/Chi phí hoạt động | ✓\* p70 | ✓\* p74 | ✓\* p72 | ✓\* p51 | ✓ p61 | ✓\* p60 | ✓ p57 | ✓ p52 | Annual-2025: 14 dòng OPEN, 103 mapping/206 ô/42 phương trình, 4 lỗi số VietOCR bị nguồn/pixel/accounting bác bỏ. Lượt hiện hành trước: 4 OPEN/99 mapping; VPB là Q1 |
 | Chi phí dự phòng rủi ro tín dụng | ✓ p70 | ✓ p75 | ✓ p73 | — | ✓ p61 | — | — | ✓ p52 | Annual-2025: 0 dòng OPEN, 25 mapping/50 ô/12 phương trình, 1 DASH→0; HDB/CTG/BID không có note chi tiết. Lượt hiện hành trước: 15 mapping, E-0100 đóng CRPE-001/002 → 1228; VPB là Q1 |
 | Thu nhập/chi phí/lãi thuần hoạt động khác | ✓ p69 | ✓ p74 | ✓ p71 | ✓ p51 | ✓ p60 | ✓ p59 | ✓ p56 | ✓ p51 | Annual-2025: 0 dòng OPEN, 72 mapping/144 ô/48 phương trình, 8/8 vùng unique. Lượt hiện hành trước: 23 mapping; OACT-001 → 1239; VPB là Q1 |
-| Chi phí thuế thu nhập doanh nghiệp | — | ✓ p50 | ✓\* p59 | — | — | — | — | ✓\* p48 | 1 dòng OPEN; 28 mapping, 56 ô số, 20 phương trình; 2 DASH→0, 1 ô trống giữ nguyên; 5 bank không có note chi tiết; VPB là nguồn Q1 |
+| Chi phí thuế thu nhập doanh nghiệp | ✓\* p71 | ✓\* p76 | ✓\* p64 | ✓ p52 | ✓ p62 | ✓\* p60 | ✓ p57 | ✓\* p53 | Annual-2025: 7 dòng OPEN; 61 mapping/120 ô/32 phương trình; 2 lỗi số VietOCR bị source challenger bác bỏ; 0 family absence |
 | Tiền và các khoản tương đương tiền | ✓ p8 | ✓ p50 | ✓\* p66 | — | ✓ p40 | ✓ p47 | — | ✓ p45 | 0 dòng; 31 mapping, 60 ô số, 12 phương trình; 2 ô trống giữ nguyên; HDB/BID không có note chi tiết; VPB là nguồn Q1 |
 | Mua mới và thanh lý các công ty con | — | — | — | — | — | — | — | — | 0 dòng; cả 8 PDF không có bảng chi tiết 1255–1258; HDB/CTG có đối chứng giao dịch/cash-flow nhưng thiếu ba dòng bắt buộc |
 | Thu nhập nhân viên | ✓ p26 | — | ✓\* p66 | — | — | — | — | ✓ p49 | 0 dòng OPEN; ACB chia đúng 6 tháng vào 1267/1268; 5 bank không có note chi tiết; VPB là nguồn Q1 |

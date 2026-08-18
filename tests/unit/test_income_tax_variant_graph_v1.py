@@ -82,10 +82,54 @@ def test_q1_and_optional_adjustments_do_not_change_core_graph() -> None:
         "Cho kỳ kế toán 3 tháng kết thúc ngày 31 tháng 3 năm 2025",
     ]
     texts[13:13] = ["Điều chỉnh liên quan đến hợp nhất", "3", "2"]
-    result = matcher.build_income_tax_variant_graph_document_v1([_page(texts)])
+    result = matcher.build_income_tax_variant_graph_document_v1(
+        [_page(texts)], variant_profile=matcher.EXTENDED_VARIANT_PROFILE
+    )
     assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
     assert result["regions"][0]["layout"]["q1_period_context"] is True
     assert "CONSOLIDATION_ADJUSTMENT" in result["regions"][0]["layout"]["observed_roles"]
+
+
+def test_plain_profit_label_and_issuer_tax_components_are_generic_variants() -> None:
+    texts = _tax()
+    texts[4] = "Lợi nhuận trước thuế"
+    texts[10] = "Các khoản chi phí không được trừ"
+    texts[16:22] = [
+        "Chi phí thuế TNDN hiện hành ước tính của Ngân hàng",
+        "19",
+        "17",
+        "Chi phí thuế TNDN hiện hành của công ty con",
+        "2",
+        "1",
+    ]
+    result = matcher.build_income_tax_variant_graph_document_v1(
+        [_page(texts)], variant_profile=matcher.EXTENDED_VARIANT_PROFILE
+    )
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert "CURRENT_TAX_BANK" in result["regions"][0]["layout"]["observed_roles"]
+    assert "CURRENT_TAX_SUBSIDIARIES" in result["regions"][0]["layout"]["observed_roles"]
+
+
+def test_narrative_profit_sentence_does_not_duplicate_table_owner() -> None:
+    texts = _tax()
+    texts.insert(
+        4,
+        "Số thuế TNDN hiện hành trên lợi nhuận kế toán hợp nhất trước thuế của Ngân hàng khác với số thuế phổ thông",
+    )
+    result = matcher.build_income_tax_variant_graph_document_v1(
+        [_page(texts)], variant_profile=matcher.EXTENDED_VARIANT_PROFILE
+    )
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["metrics"]["complete_region_count"] == 1
+
+
+def test_reconciliation_can_use_non_taxable_adjustment_without_nondeductible_row() -> None:
+    texts = _tax()
+    del texts[10:13]
+    result = matcher.build_income_tax_variant_graph_document_v1(
+        [_page(texts)], variant_profile=matcher.EXTENDED_VARIANT_PROFILE
+    )
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
 
 
 def test_statement_tax_aggregate_without_taxable_income_is_negative_control() -> None:

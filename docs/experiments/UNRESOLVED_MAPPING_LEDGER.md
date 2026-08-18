@@ -17,7 +17,7 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **336 entries**.  Current open queue: **119**.  Closed history:
+Ledger total: **343 entries**.  Current open queue: **126**.  Closed history:
 **129** row/graph resolutions and **88** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
@@ -61,6 +61,28 @@ cộng có kiểm soát trên từng số nguồn đã xác minh; parent thu, pa
 
 Machine-readable result:
 `docs/experiments/E-0145-annual-2025-other-activity-8bank-codex-verified-mapping-v1.json`.
+
+## OPEN — annual-2025 `Chi phí thuế thu nhập doanh nghiệp`
+
+E-0146 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025 và tìm đúng
+một vùng thuế chi tiết tại ACB p71, MBB p76, VPB p64, HDB p52, VCB p62,
+CTG p60, BID p57 và VIB p53. Pixel, trục số nguồn, schema hiện hành và 32
+phương trình xác minh 61 mapping/120 ô số. Không có family absence. Hai proposal
+số VietOCR sai được giữ nguyên và bị numeric challenger bác bỏ: CTG
+`(370.109]` → `(370.109)` và VIB `2.40i` → `2.401`; không sửa tay số nguồn.
+
+| ID | Bank | Trang | Khoản mục nguồn | Giá trị 2025 / 2024 | Lý do chưa map |
+| --- | --- | ---: | --- | --- | --- |
+| A2025-ITAX-ACB-001 | ACB | 71 | Các khoản điều chỉnh làm tăng/(giảm) thu nhập chịu thuế khác | `31.324` / `(145.520)` | Nhãn rộng; không ép vào một leaf điều chỉnh thuế cụ thể. |
+| A2025-ITAX-ACB-002 | ACB | 71 | Hoàn nhập tài sản thuế TNDN hoãn lại | `14.913` / `33.594` | Schema có net thuế hoãn lại nhưng chưa có leaf component nguồn này; dòng vẫn tham gia phương trình net. |
+| A2025-ITAX-ACB-003 | ACB | 71 | Chênh lệch tạm thời được khấu trừ | `(14.858)` / `(17.190)` | Schema có net thuế hoãn lại nhưng chưa có leaf component nguồn này; dòng vẫn tham gia phương trình net. |
+| A2025-ITAX-MBB-001 | MBB | 76 | Thuế TNDN do thoái vốn tại công ty con | `(341.855)` / `BLANK` | Chưa có leaf thuế hiện hành do thoái vốn; ô so sánh để trống và không đổi thành 0. |
+| A2025-ITAX-VPB-001 | VPB | 64 | Các điều chỉnh khác | `45.695` / `BLANK` | Dòng thuộc phần cuốn chiếu thuế phải nộp sau chi phí thuế, chưa có leaf chi phí tương đương; ô so sánh giữ trống. |
+| A2025-ITAX-CTG-001 | CTG | 60 | Điều chỉnh khác | `1.396` / `(61.403)` | Dòng thuộc phần cuốn chiếu thuế phải nộp, không ép vào family chi phí thuế. |
+| A2025-ITAX-VIB-001 | VIB | 53 | Điều chỉnh khác | `163` / `169` | Nhãn rộng hơn leaf 5733 về điều chỉnh thuế các năm trước; giữ source-only nhưng dùng trong phương trình tổng đã xác minh. |
+
+Machine-readable result:
+`docs/experiments/E-0146-annual-2025-income-tax-8bank-codex-verified-mapping-v1.json`.
 
 ## OPEN — annual-2025 `Chi phí quản lý chung (Chi phí hoạt động)`
 

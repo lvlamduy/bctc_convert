@@ -139,14 +139,16 @@ def _validate(value: Any) -> dict[str, Any]:
     return canonical_clone_v1(value)
 
 
-def build_income_tax_full_document_scan_v1(semantic_index: Any) -> dict[str, Any]:
+def build_income_tax_full_document_scan_v1(
+    semantic_index: Any, *, variant_profile: str = "HISTORICAL_BASELINE_V1"
+) -> dict[str, Any]:
     axis = project_full_document_vietocr_accounting_axis_v1(semantic_index)
     matcher = _matcher()
     support = _support()
     trials = []
     for document in axis["documents"]:
         result = matcher.build_income_tax_variant_graph_document_v1(
-            support._matcher_pages(document)
+            support._matcher_pages(document), variant_profile=variant_profile
         )
         trials.append(
             {
@@ -170,27 +172,40 @@ def build_income_tax_full_document_scan_v1(semantic_index: Any) -> dict[str, Any
 
 
 def validate_income_tax_full_document_scan_replay_v1(
-    value: Any, semantic_index: Any
+    value: Any, semantic_index: Any, *, variant_profile: str = "HISTORICAL_BASELINE_V1"
 ) -> dict[str, Any]:
     supplied = _validate(value)
-    rebuilt = build_income_tax_full_document_scan_v1(semantic_index)
+    rebuilt = build_income_tax_full_document_scan_v1(
+        semantic_index, variant_profile=variant_profile
+    )
     if not same_typed_json_v1(supplied, rebuilt):
         raise _error("income-tax scan does not replay exactly")
     return supplied
 
 
-def build_live_income_tax_full_document_scan_v1(input_path: Path = DEFAULT_INPUT) -> dict[str, Any]:
+def build_live_income_tax_full_document_scan_v1(
+    input_path: Path = DEFAULT_INPUT, *, variant_profile: str = "HISTORICAL_BASELINE_V1"
+) -> dict[str, Any]:
     support = _support()._support()
     semantic_index = support._strict_json(support._stable_bytes(input_path), input_path.as_posix())
-    return build_income_tax_full_document_scan_v1(semantic_index)
+    return build_income_tax_full_document_scan_v1(semantic_index, variant_profile=variant_profile)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", type=Path, default=DEFAULT_INPUT)
+    parser.add_argument(
+        "--variant-profile",
+        choices=("HISTORICAL_BASELINE_V1", "GENERIC_ANNUAL_AND_INTERIM_V2"),
+        default="HISTORICAL_BASELINE_V1",
+    )
     args = parser.parse_args()
     sys.stdout.buffer.write(
-        canonical_json_bytes_v1(build_live_income_tax_full_document_scan_v1(args.input))
+        canonical_json_bytes_v1(
+            build_live_income_tax_full_document_scan_v1(
+                args.input, variant_profile=args.variant_profile
+            )
+        )
     )
 
 

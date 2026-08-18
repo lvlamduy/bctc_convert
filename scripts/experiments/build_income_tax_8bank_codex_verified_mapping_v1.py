@@ -66,6 +66,18 @@ EXPECTED_CROP_MANIFEST_SHA256 = other.EXPECTED_CROP_MANIFEST_SHA256
 EXPECTED_AXIS_SHA256 = other.EXPECTED_AXIS_SHA256
 EXPECTED_SCAN_ID = "itfdsv1:scan:0ec1682d31f9f98635009b13bd554c5389330f8846ef5f96dbd86606edefefb6"
 EXPECTED_RESULT_ID = "e0091:result:c6560d7e03be8e1a3214bfcb8ee030a234427b9b73a190278d2a3f2af4e7d8ab"
+RESULT_STATE = "INCOME_TAX_8BANK_CODEX_VERIFICATION_COMPLETE"
+RESULT_ID_PREFIX = "e0091:result:"
+REVIEW_STATE = "CODEX_PIXEL_REVIEW_COMPLETE"
+REVIEW_ID_PREFIX = "e0091:pixel-review:"
+REVIEW_RUN_ID = "E-0091"
+VARIANT_PROFILE = "HISTORICAL_BASELINE_V1"
+FAMILY_END_DISPLAY_ORDER = 822
+SOURCE_PERIOD_STATUS_BY_PERIOD = {
+    "2025-12-31": "VERIFIED_SOURCE_PERIOD_ANNUAL_2025",
+    "2026-03-31": "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2",
+    "2026-06-30": "VERIFIED_SOURCE_PERIOD_Q2_2026",
+}
 
 _SCHEMA_EXPECTED = {
     1142: (
@@ -673,14 +685,17 @@ def _review_blueprint() -> dict[str, Any]:
         "claim_boundary": CLAIM_BOUNDARY,
         "documents": _review_documents(),
         "format_version": REVIEW_FORMAT,
-        "reviewer": {"kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW", "review_run_id": "E-0091"},
+        "reviewer": {
+            "kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW",
+            "review_run_id": REVIEW_RUN_ID,
+        },
         "safety": canonical_clone_v1(_REVIEW_SAFETY),
         "scan_id": EXPECTED_SCAN_ID,
         "semantic_axis_sha256": EXPECTED_AXIS_SHA256,
         "semantic_index_sha256": EXPECTED_INDEX_SHA256,
-        "state": "CODEX_PIXEL_REVIEW_COMPLETE",
+        "state": REVIEW_STATE,
     }
-    return {**material, "review_id": "e0091:pixel-review:" + canonical_json_sha256_v1(material)}
+    return {**material, "review_id": REVIEW_ID_PREFIX + canonical_json_sha256_v1(material)}
 
 
 def _review(value: Any) -> dict[str, Any]:
@@ -765,7 +780,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
     if (
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "INCOME_TAX_8BANK_CODEX_VERIFICATION_COMPLETE"
+        or value["state"] != RESULT_STATE
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
         or len(value["trials"]) != 8
@@ -798,7 +813,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
             raise _error("income-tax trial shape or status drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "e0091:result:" + canonical_json_sha256_v1(material):
+    if identity != RESULT_ID_PREFIX + canonical_json_sha256_v1(material):
         raise _error("income-tax result identity drifted")
     return canonical_clone_v1(value)
 
@@ -816,7 +831,9 @@ def build_income_tax_8bank_codex_verified_mapping_v1(
 ) -> dict[str, Any]:
     reviewed_documents = _review(review)["documents"]
     axis = project_full_document_vietocr_accounting_axis_v1(semantic_index)
-    scanner.validate_income_tax_full_document_scan_replay_v1(structure_scan, semantic_index)
+    scanner.validate_income_tax_full_document_scan_replay_v1(
+        structure_scan, semantic_index, variant_profile=VARIANT_PROFILE
+    )
     if (
         axis.get("semantic_axis_sha256") != EXPECTED_AXIS_SHA256
         or structure_scan.get("scan_id") != EXPECTED_SCAN_ID
@@ -957,11 +974,9 @@ def build_income_tax_8bank_codex_verified_mapping_v1(
                         "visible_total": parent["normalized_value"],
                     }
                 )
-        period_status = (
-            "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
-            if reviewed["source_period"] == "2026-03-31"
-            else "VERIFIED_SOURCE_PERIOD_Q2_2026"
-        )
+        period_status = SOURCE_PERIOD_STATUS_BY_PERIOD.get(reviewed["source_period"])
+        if period_status is None:
+            raise _error("reviewed income-tax source period is unsupported")
         status = (
             "VERIFIED_BY_CODEX_WITH_UNRESOLVED_SCHEMA_ROWS"
             if verified_source_only
@@ -1027,7 +1042,7 @@ def build_income_tax_8bank_codex_verified_mapping_v1(
         },
         "metrics": _metrics(trials),
         "schema_family": {
-            "family_end_display_order": 822,
+            "family_end_display_order": FAMILY_END_DISPLAY_ORDER,
             "family_roots": [
                 _schema_binding(schema_by_id.get(report_norm_id), report_norm_id)
                 for report_norm_id in (5727, 5731, 5737)
@@ -1036,11 +1051,11 @@ def build_income_tax_8bank_codex_verified_mapping_v1(
             "schema_gap_source_row_count": sum(len(t["verified_source_only_rows"]) for t in trials),
             "section_root": _schema_binding(schema_by_id.get(1142), 1142),
         },
-        "state": "INCOME_TAX_8BANK_CODEX_VERIFICATION_COMPLETE",
+        "state": RESULT_STATE,
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "e0091:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": RESULT_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 
@@ -1068,14 +1083,19 @@ def _stable_json(path: Path, expected_sha256: str | None = None) -> tuple[dict[s
 def _live_inputs() -> dict[str, Any]:
     semantic_index, _ = _stable_json(SEMANTIC_INDEX_PATH, EXPECTED_INDEX_SHA256)
     crop_manifest, crop_sha = _stable_json(CROP_MANIFEST_PATH, EXPECTED_CROP_MANIFEST_SHA256)
-    structure_scan = scanner.build_live_income_tax_full_document_scan_v1(SEMANTIC_INDEX_PATH)
+    structure_scan = scanner.build_live_income_tax_full_document_scan_v1(
+        SEMANTIC_INDEX_PATH, variant_profile=VARIANT_PROFILE
+    )
     review, review_sha = _stable_json(REVIEW_PATH)
-    historical_result, _ = _stable_json(RESULT_PATH)
-    historical_result = _validate_result(historical_result)
-    if historical_result.get("result_id") != EXPECTED_RESULT_ID:
-        raise _error("fixed historical income-tax result identity drifted")
-    schema_authority = canonical_clone_v1(historical_result["input_refs"]["schema_authority"])
-    _live_schema_authority, schema_by_id = _authority_snapshot(PROJECT_ROOT)
+    live_schema_authority, schema_by_id = _authority_snapshot(PROJECT_ROOT)
+    if EXPECTED_RESULT_ID is None:
+        schema_authority = canonical_clone_v1(live_schema_authority)
+    else:
+        historical_result, _ = _stable_json(RESULT_PATH)
+        historical_result = _validate_result(historical_result)
+        if historical_result.get("result_id") != EXPECTED_RESULT_ID:
+            raise _error("fixed historical income-tax result identity drifted")
+        schema_authority = canonical_clone_v1(historical_result["input_refs"]["schema_authority"])
     return {
         "semantic_index": semantic_index,
         "crop_manifest": crop_manifest,

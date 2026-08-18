@@ -17,6 +17,9 @@ from bctc_ai.source_structure.contracts_v1 import (
 )
 
 FORMAT_VERSION = "INCOME_TAX_VARIANT_GRAPH_DOCUMENT_V1"
+BASELINE_VARIANT_PROFILE = "HISTORICAL_BASELINE_V1"
+EXTENDED_VARIANT_PROFILE = "GENERIC_ANNUAL_AND_INTERIM_V2"
+_VARIANT_PROFILES = {BASELINE_VARIANT_PROFILE, EXTENDED_VARIANT_PROFILE}
 _FIELDS = {
     "claim_boundary",
     "format_version",
@@ -79,46 +82,98 @@ def _strip(text: str) -> str:
     return _support()._strip_enumerator(text).strip()
 
 
-def _profit_before_tax(text: str) -> bool:
+def _extended(profile: str) -> bool:
+    if profile not in _VARIANT_PROFILES:
+        raise _error("income-tax variant profile is unsupported")
+    return profile == EXTENDED_VARIANT_PROFILE
+
+
+def _profit_before_tax(text: str, profile: str = BASELINE_VARIANT_PROFILE) -> bool:
     value = _strip(text)
+    if not _extended(profile):
+        return (
+            "loi nhuan" in value
+            and "truoc thue" in value
+            and ("tndn" in value or "ke toan" in value)
+        )
+    words = value.split()
     return (
-        "loi nhuan" in value and "truoc thue" in value and ("tndn" in value or "ke toan" in value)
+        len(words) <= 12
+        and "loi nhuan" in value
+        and "truoc thue" in value
+        and (
+            "tndn" in value
+            or "ke toan" in value
+            or value in {"loi nhuan truoc thue", "tong loi nhuan truoc thue"}
+        )
     )
 
 
-def _role(text: str) -> str | None:
+def _role(text: str, profile: str = BASELINE_VARIANT_PROFILE) -> str | None:
     value = _strip(text)
+    extended = _extended(profile)
     if len(value.split()) > 30:
         return None
-    if _profit_before_tax(value):
+    if _profit_before_tax(value, profile):
         return "PROFIT_BEFORE_TAX"
-    if "thu nhap khong chiu thue" in value or (
-        "thu nhap tu" in value and "khong chiu thue" in value
+    if (
+        "thu nhap khong chiu thue" in value
+        or ("thu nhap tu" in value and "khong chiu thue" in value)
+        or (
+            extended
+            and (
+                ("co tuc" in value and "khong chiu thue" in value)
+                or "thu nhap tu gop von mua co phan" in value
+            )
+        )
     ):
         return "NON_TAXABLE_INCOME"
-    if "chi phi khong duoc khau tru" in value:
+    if "chi phi khong duoc khau tru" in value or (
+        extended and "chi phi khong duoc" in value and "duoc tru" in value
+    ):
         return "NON_DEDUCTIBLE_EXPENSE"
-    if value.startswith("dieu chinh lien quan"):
+    if value.startswith("dieu chinh lien quan") or (
+        extended and ("dieu chinh hop nhat" in value or "but toan dieu chinh hop nhat" in value)
+    ):
         return "CONSOLIDATION_ADJUSTMENT"
     if value.startswith("cac khoan dieu chinh khac"):
         return "OTHER_TAXABLE_INCOME_ADJUSTMENT"
     if value.startswith("thu nhap chiu thue"):
         return "TAXABLE_INCOME"
-    if "theo thue suat hien hanh" in value or "tinh tren thu nhap chiu thue" in value:
+    if (
+        "theo thue suat hien hanh" in value
+        or "tinh tren thu nhap chiu thue" in value
+        or (
+            extended
+            and ("theo thue suat ap dung" in value or "chi phi thue tndn theo thue suat" in value)
+        )
+    ):
         return "CURRENT_TAX_AT_RATE"
     if "dieu chinh" in value and (
         "cac ky truoc" in value or "cac nam truoc" in value or "nam truoc" in value
     ):
         return "PRIOR_PERIOD_TAX_ADJUSTMENT"
-    if value.startswith("tong chi phi thue tndn hien hanh") or value.startswith(
-        "chi phi thue tndn phai tra trong ky"
+    if (
+        value.startswith("tong chi phi thue tndn hien hanh")
+        or value.startswith("chi phi thue tndn phai tra trong ky")
+        or (extended and value.startswith("chi phi thue tndn trong nam"))
     ):
         return "CURRENT_TAX_TOTAL"
-    if "chi phi thue tndn hien hanh rieng ngan hang" in value:
+    if "chi phi thue tndn hien hanh rieng ngan hang" in value or (
+        extended
+        and (
+            ("thue tndn cua ngan hang" in value and "chi nhanh" not in value)
+            or ("chi phi thue tndn hien hanh" in value and "ngan hang" in value)
+        )
+    ):
         return "CURRENT_TAX_BANK"
-    if "chi phi thue tndn chi nhanh nuoc ngoai" in value:
+    if "chi phi thue tndn chi nhanh nuoc ngoai" in value or (
+        extended and "thue tndn" in value and "chi nhanh nuoc ngoai" in value
+    ):
         return "CURRENT_TAX_FOREIGN_BRANCH"
-    if "chi phi thue tndn cua cac cong ty con" in value:
+    if "chi phi thue tndn cua cac cong ty con" in value or (
+        extended and "thue tndn" in value and ("cong ty con" in value or "toan he thong" in value)
+    ):
         return "CURRENT_TAX_SUBSIDIARIES"
     if "chi phi" in value and "thue tndn hoan lai" in value:
         return "DEFERRED_TAX_COMPONENT"
@@ -146,7 +201,9 @@ def _page_window(lines: Sequence[Mapping[str, Any]], start: int) -> list[Mapping
     return [line for line in lines if line["page_sequence"] == page]
 
 
-def _region(lines: Sequence[Mapping[str, Any]], start: int) -> dict[str, Any]:
+def _region(
+    lines: Sequence[Mapping[str, Any]], start: int, profile: str = BASELINE_VARIANT_PROFILE
+) -> dict[str, Any]:
     support = _support()
     window = _page_window(lines, start)
     owner = lines[start]
@@ -164,11 +221,11 @@ def _region(lines: Sequence[Mapping[str, Any]], start: int) -> dict[str, Any]:
             period_count += axis == "PERIOD_AXIS"
             unit_count += axis == "UNIT_AXIS"
             continue
-        role = _role(text)
+        role = _role(text, profile)
         if role is None and index + 1 < len(window):
             following = window[index + 1]["normalized_text"]
             if not support._NUMBER.fullmatch(following):
-                role = _role(f"{text} {following}")
+                role = _role(f"{text} {following}", profile)
         if role:
             roles.append(role)
             ordinals.setdefault(role, line["global_ordinal"])
@@ -176,11 +233,25 @@ def _region(lines: Sequence[Mapping[str, Any]], start: int) -> dict[str, Any]:
         if support._NUMBER.fullmatch(text) and line["bbox"][0] > 400:
             numeric_count += 1
     observed = list(dict.fromkeys(roles))
-    required = {
-        "PROFIT_BEFORE_TAX",
-        "NON_DEDUCTIBLE_EXPENSE",
-        "TAXABLE_INCOME",
-    }
+    extended = _extended(profile)
+    required = (
+        {"PROFIT_BEFORE_TAX", "TAXABLE_INCOME"}
+        if extended
+        else {"PROFIT_BEFORE_TAX", "NON_DEDUCTIBLE_EXPENSE", "TAXABLE_INCOME"}
+    )
+    has_adjustment = (
+        any(
+            role in observed
+            for role in (
+                "CONSOLIDATION_ADJUSTMENT",
+                "NON_DEDUCTIBLE_EXPENSE",
+                "NON_TAXABLE_INCOME",
+                "OTHER_TAXABLE_INCOME_ADJUSTMENT",
+            )
+        )
+        if extended
+        else True
+    )
     has_tax = any(
         role in observed
         for role in (
@@ -198,6 +269,7 @@ def _region(lines: Sequence[Mapping[str, Any]], start: int) -> dict[str, Any]:
     )
     complete = (
         required <= set(observed)
+        and has_adjustment
         and has_tax
         and order_ok
         and period_count >= 2
@@ -287,16 +359,19 @@ def _validate(value: Any) -> dict[str, Any]:
     return canonical_clone_v1(value)
 
 
-def build_income_tax_variant_graph_document_v1(pages: Any) -> dict[str, Any]:
+def build_income_tax_variant_graph_document_v1(
+    pages: Any, *, variant_profile: str = BASELINE_VARIANT_PROFILE
+) -> dict[str, Any]:
+    _extended(variant_profile)
     try:
         parsed = _support()._pages(pages)
     except Exception as exc:
         raise _error(str(exc)) from exc
     lines = _support()._flatten(parsed)
     candidates = [
-        _region(lines, index)
+        _region(lines, index, variant_profile)
         for index, line in enumerate(lines)
-        if _profit_before_tax(line["normalized_text"])
+        if _profit_before_tax(line["normalized_text"], variant_profile)
     ]
     regions = [item for item in candidates if item["complete"]]
     near = [item for item in candidates if not item["complete"]]
@@ -320,9 +395,11 @@ def build_income_tax_variant_graph_document_v1(pages: Any) -> dict[str, Any]:
     )
 
 
-def validate_income_tax_variant_graph_replay_v1(value: Any, pages: Any) -> dict[str, Any]:
+def validate_income_tax_variant_graph_replay_v1(
+    value: Any, pages: Any, *, variant_profile: str = BASELINE_VARIANT_PROFILE
+) -> dict[str, Any]:
     supplied = _validate(value)
-    rebuilt = build_income_tax_variant_graph_document_v1(pages)
+    rebuilt = build_income_tax_variant_graph_document_v1(pages, variant_profile=variant_profile)
     if not same_typed_json_v1(supplied, rebuilt):
         raise _error("income-tax graph does not replay exactly")
     return supplied
