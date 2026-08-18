@@ -151,3 +151,15 @@ def test_typed_tamper_rejects() -> None:
     tampered["metrics"]["complete_region_count"] = 1.0
     with pytest.raises(matcher.CurrencyRiskVariantGraphV1Error):
         matcher.validate_currency_risk_variant_graph_document_v1(tampered)
+
+
+def test_empty_page_is_one_valid_negative_page() -> None:
+    result = matcher.build_currency_risk_variant_graph_document_v1(
+        [{"lines": [], "page_sequence": 1, "primary_numeric_authority": True}]
+    )
+    assert result["metrics"] == {
+        "complete_region_count": 0,
+        "complete_table_page_count": 0,
+        "near_region_count": 0,
+        "page_count_with_complete_region": 0,
+    }

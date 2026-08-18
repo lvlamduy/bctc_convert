@@ -206,6 +206,8 @@ def _joined_roles(page: Mapping[str, Any]) -> tuple[list[str], list[dict[str, An
     events: list[dict[str, Any]] = []
     after_asset_total = False
     lines = page["lines"]
+    if not lines:
+        return roles, events
     label_zone_limit = max(line["bbox"][2] for line in lines) * 0.48
     for index, line in enumerate(lines):
         candidates = [line["normalized_text"]]
