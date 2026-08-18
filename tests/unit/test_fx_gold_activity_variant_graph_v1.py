@@ -119,6 +119,52 @@ def test_combined_spot_gold_and_trailing_totals_use_same_graph() -> None:
     assert "INCOME_SPOT_FX_AND_GOLD" in layout["income_child_roles"]
 
 
+def test_v2_accepts_generic_about_preposition_and_combined_fx_gold_without_giao_ngay() -> None:
+    texts = [
+        "Lãi thuần từ hoạt động kinh doanh ngoại hối",
+        "Năm 2025",
+        "Năm 2024",
+        "triệu đồng",
+        "triệu đồng",
+        "Thu nhập từ hoạt động kinh doanh ngoại hối",
+        "5.077.663",
+        "7.057.250",
+        "Thu về kinh doanh ngoại tệ và vàng",
+        "3.607.161",
+        "3.996.204",
+        "Thu từ các công cụ tài chính phái sinh tiền tệ",
+        "1.470.502",
+        "3.061.046",
+        "Chi phí về hoạt động kinh doanh ngoại hối",
+        "(3.320.741)",
+        "(5.057.086)",
+        "Chi về kinh doanh ngoại tệ và vàng",
+        "(964.614)",
+        "(1.309.588)",
+        "Chi về các công cụ tài chính phái sinh tiền tệ",
+        "(2.356.127)",
+        "(3.747.498)",
+        "Lãi thuần từ hoạt động kinh doanh ngoại hối",
+        "1.756.922",
+        "2.000.164",
+        "Lãi thuần từ mua bán chứng khoán kinh doanh",
+    ]
+    assert matcher.build_fx_gold_activity_variant_graph_document_v1([_page(texts)])["status"] == (
+        "UNRESOLVED_NO_UNIQUE_REGION"
+    )
+    result = matcher.build_fx_gold_activity_variant_graph_document_v2([_page(texts)])
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["regions"][0]["layout"]["income_child_roles"] == [
+        "INCOME_CURRENCY_DERIVATIVES",
+        "INCOME_SPOT_FX_AND_GOLD",
+    ]
+    assert result["regions"][0]["layout"]["expense_child_roles"] == [
+        "EXPENSE_CURRENCY_DERIVATIVES",
+        "EXPENSE_SPOT_FX_AND_GOLD",
+    ]
+    assert matcher.validate_fx_gold_activity_variant_graph_replay_v2(result, [_page(texts)])
+
+
 @pytest.mark.parametrize(
     "texts",
     [

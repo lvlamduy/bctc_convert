@@ -22,6 +22,25 @@ Ledger total: **308 entries**.  Current open queue: **104**.  Closed history:
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
+## CLOSED — annual-2025 `Lãi thuần từ hoạt động kinh doanh vàng và ngoại hối`
+
+E-0138 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025 và tìm đúng
+một vùng family tại ACB p68, MBB p73, VPB p69, HDB p50, VCB p59, CTG p58,
+BID p55 và VIB p51. Exact replay xác minh 69 mapping/138 ô logic từ 152 thành
+phần nguồn cùng 48 phương trình; không có dòng OPEN hoặc family absence.
+
+Graph dùng chung nhận tổng thu/chi đứng trước, đứng sau hoặc được suy ra từ
+children; nhánh vàng tùy chọn; ngoại tệ giao ngay và vàng có thể tách hoặc gộp.
+VCB cộng đúng một lần các thành phần bán/đánh giá lại vàng và giao dịch/đánh giá
+lại phái sinh. ACB suy ra hai parent không in giá trị từ các child rồi đối chiếu
+net. MBB được nhận qua owner, siblings, trục kỳ, đơn vị và accounting closure dù
+nhãn gộp không có `giao ngay`. Năm dấu `-` nhìn thấy ở VCB/BID được xác thực từ
+crop trước khi chuẩn hóa thành 0; các ô không phải DASH không có disagreement số
+VietOCR.
+
+Machine-readable result:
+`docs/experiments/E-0138-annual-2025-fx-gold-activity-8bank-codex-verified-mapping-v1.json`.
+
 ## OPEN — annual-2025 `Thu nhập, chi phí và lãi thuần từ hoạt động dịch vụ`
 
 E-0137 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025 và tìm đúng

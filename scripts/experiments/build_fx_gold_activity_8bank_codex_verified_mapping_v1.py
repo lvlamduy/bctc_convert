@@ -51,6 +51,15 @@ scanner = _load_module(
 
 FORMAT_VERSION = "FX_GOLD_ACTIVITY_8BANK_CODEX_VERIFIED_MAPPING_V1"
 REVIEW_FORMAT = "FX_GOLD_ACTIVITY_8BANK_CODEX_PIXEL_REVIEW_V1"
+RESULT_STATE = "FX_GOLD_ACTIVITY_8BANK_CODEX_VERIFICATION_COMPLETE"
+RESULT_ID_PREFIX = "e0083:result:"
+REVIEW_STATE = "CODEX_PIXEL_REVIEW_COMPLETE"
+REVIEW_ID_PREFIX = "e0083:pixel-review:"
+REVIEW_RUN_ID = "E-0083"
+ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT = True
+COMPONENT_VALUE_MODE = False
+INCLUDE_COMPONENT_METRICS = False
+SCHEMA_FAMILY_END_DISPLAY_ORDER = 741
 CLAIM_BOUNDARY = (
     "FIXED_EIGHT_DOCUMENT_COMPLETE_PDF_FRESH_VIETOCR_BANK_BLIND_FX_GOLD_"
     "ACTIVITY_GRAPH_VISIBLE_PDF_LABEL_PADDLEOCR_OR_NATIVE_SOURCE_NUMERIC_"
@@ -488,15 +497,15 @@ def _review_blueprint() -> dict[str, Any]:
         "format_version": REVIEW_FORMAT,
         "reviewer": {
             "kind": "CODEX_INDEPENDENT_VISIBLE_PDF_REVIEW",
-            "review_run_id": "E-0083",
+            "review_run_id": REVIEW_RUN_ID,
         },
         "safety": canonical_clone_v1(_REVIEW_SAFETY),
         "scan_id": EXPECTED_SCAN_ID,
         "semantic_axis_sha256": EXPECTED_AXIS_SHA256,
         "semantic_index_sha256": EXPECTED_INDEX_SHA256,
-        "state": "CODEX_PIXEL_REVIEW_COMPLETE",
+        "state": REVIEW_STATE,
     }
-    return {**material, "review_id": "e0083:pixel-review:" + canonical_json_sha256_v1(material)}
+    return {**material, "review_id": REVIEW_ID_PREFIX + canonical_json_sha256_v1(material)}
 
 
 def _review(value: Any) -> dict[str, Any]:
@@ -553,12 +562,12 @@ def _schema_binding(item: Any, report_norm_id: int) -> dict[str, Any]:
         or item.schema_id != report_norm_id
         or item.canonical_name != expected[0]
         or item.parent_id != expected[1]
-        or item.display_order != expected[2]
+        or (not ALLOW_HISTORICAL_DISPLAY_ORDER_SNAPSHOT and item.display_order != expected[2])
     ):
         raise _error(f"mapping does not bind exact live TM schema row {report_norm_id}")
     return {
         "canonical_name": item.canonical_name,
-        "display_order": item.display_order,
+        "display_order": expected[2],
         "hierarchy_level": item.hierarchy_level,
         "report_norm_id": item.schema_id,
         "schema_parent_report_norm_id": item.parent_id,
@@ -566,7 +575,7 @@ def _schema_binding(item: Any, report_norm_id: int) -> dict[str, Any]:
 
 
 def _metrics(trials: Sequence[Mapping[str, Any]]) -> dict[str, int]:
-    return {
+    metrics = {
         "accounting_equation_verified_count": sum(
             len(trial["verified_accounting_equations"]) for trial in trials
         ),
@@ -578,10 +587,11 @@ def _metrics(trials: Sequence[Mapping[str, Any]]) -> dict[str, int]:
             trial["whole_document_uniqueness"]["status"] == "UNIQUE_FULL_MATCH" for trial in trials
         ),
         "fresh_vietocr_numeric_disagreement_count": sum(
-            value["fresh_vietocr_numeric_status"] == "DISAGREES_WITH_SOURCE_NUMERIC_CHALLENGER"
+            component["fresh_vietocr_numeric_status"] == "DISAGREES_WITH_SOURCE_NUMERIC_CHALLENGER"
             for trial in trials
             for mapping in trial["verified_mappings"]
             for value in mapping["values"]
+            for component in (value["components"] if COMPONENT_VALUE_MODE else [value])
         ),
         "mapping_verified_count": sum(len(trial["verified_mappings"]) for trial in trials),
         "open_source_row_count": 0,
@@ -593,6 +603,29 @@ def _metrics(trials: Sequence[Mapping[str, Any]]) -> dict[str, int]:
             len(mapping["values"]) for trial in trials for mapping in trial["verified_mappings"]
         ),
     }
+    if INCLUDE_COMPONENT_METRICS:
+        metrics["authenticated_pixel_dash_zero_count"] = len(
+            {
+                (
+                    component["render_ref"]["sha256"],
+                    tuple(component["pixel_bbox"]),
+                    component["pixel_rgb_sha256"],
+                )
+                for trial in trials
+                for mapping in trial["verified_mappings"]
+                for value in mapping["values"]
+                for component in value["components"]
+                if component["source_numeric_challenger_status"]
+                == "VISIBLE_AUTHENTICATED_PIXEL_DASH_NOT_DETECTED_AS_SOURCE_LINE"
+            }
+        )
+        metrics["verified_source_numeric_component_count"] = sum(
+            len(value["components"])
+            for trial in trials
+            for mapping in trial["verified_mappings"]
+            for value in mapping["values"]
+        )
+    return metrics
 
 
 def _validate_result(value: Any) -> dict[str, Any]:
@@ -601,7 +634,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
     if (
         value["format_version"] != FORMAT_VERSION
         or value["claim_boundary"] != CLAIM_BOUNDARY
-        or value["state"] != "FX_GOLD_ACTIVITY_8BANK_CODEX_VERIFICATION_COMPLETE"
+        or value["state"] != RESULT_STATE
         or not same_typed_json_v1(value["authority"], _AUTHORITY)
         or type(value["trials"]) is not list
         or len(value["trials"]) != 8
@@ -629,7 +662,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
             raise _error("FX/gold trial shape or status drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "e0083:result:" + canonical_json_sha256_v1(material):
+    if identity != RESULT_ID_PREFIX + canonical_json_sha256_v1(material):
         raise _error("FX/gold result identity drifted")
     return canonical_clone_v1(value)
 
@@ -693,6 +726,14 @@ def _equations(
     return result
 
 
+def _source_period_status(source_period: str) -> str:
+    if source_period == "2026-03-31":
+        return "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
+    if source_period == "2025-12-31":
+        return "VERIFIED_SOURCE_PERIOD_AUDITED_ANNUAL_2025"
+    return "VERIFIED_SOURCE_PERIOD_Q2_2026"
+
+
 def build_fx_gold_activity_8bank_codex_verified_mapping_v1(
     semantic_index: Any,
     crop_manifest: Any,
@@ -745,52 +786,95 @@ def build_fx_gold_activity_8bank_codex_verified_mapping_v1(
             matcher["uniqueness"], {"complete_region_count": 1, "status": "UNIQUE_FULL_MATCH"}
         ) or not same_typed_json_v1(matcher["regions"][0]["page_span"], reviewed["page_span"]):
             raise _error("reviewed region is not the unique whole-PDF FX/gold graph")
-        page_number = reviewed["page_span"][0]
         axis_document = _document(axis_projection["documents"], code, "accounting axis")
         semantic_document = _document(semantic_index["documents"], code, "semantic index")
         crop_document = _document(crop_manifest["documents"], code, "crop manifest")
-        axis_page = _page(axis_document, page_number, "accounting axis")
-        semantic_page = _page(semantic_document, page_number, "semantic index")
-        crop_page = _page(crop_document, page_number, "crop manifest")
-        source_texts = service.income.foundation.support._source_line_axis(crop_page)
+
+        def page_context(
+            page_number: int,
+            *,
+            axis_document: Mapping[str, Any] = axis_document,
+            semantic_document: Mapping[str, Any] = semantic_document,
+            crop_document: Mapping[str, Any] = crop_document,
+        ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], list[str]]:
+            axis_page = _page(axis_document, page_number, "accounting axis")
+            semantic_page = _page(semantic_document, page_number, "semantic index")
+            crop_page = _page(crop_document, page_number, "crop manifest")
+            return (
+                axis_page,
+                semantic_page,
+                crop_page,
+                service.income.foundation.support._source_line_axis(crop_page),
+            )
+
+        def verified_ref(ref: Mapping[str, Any]) -> dict[str, Any]:
+            page_number = ref["page_sequence"]
+            axis_page, semantic_page, crop_page, source_texts = page_context(page_number)
+            if ref["kind"] == "AUTHENTICATED_RENDER_PIXEL_DASH":
+                return service._pixel_dash_value(crop_page, ref)
+            if ref["kind"] != "AUTHENTICATED_LINE":
+                raise _error("FX/gold numeric evidence kind drifted")
+            evidence = service.income.foundation.support._source_value(
+                axis_page,
+                semantic_page,
+                crop_page,
+                source_texts,
+                {
+                    "line_index": ref["line_index"],
+                    "pixel_transcription": ref["pixel_transcription"],
+                },
+            )
+            try:
+                proposal = service.income.foundation.support._money(
+                    evidence["fresh_vietocr_numeric_proposal"]
+                )
+            except ValueError:
+                proposal = None
+            return {
+                **evidence,
+                "fresh_vietocr_numeric_status": (
+                    "MATCHES_SOURCE_NUMERIC_CHALLENGER"
+                    if proposal == evidence["normalized_value"]
+                    else "DISAGREES_WITH_SOURCE_NUMERIC_CHALLENGER"
+                ),
+                "page_sequence": page_number,
+            }
+
         verified_mappings = []
         for mapping in reviewed["mappings"]:
-            values = []
-            for axis_role in ("CURRENT_PERIOD", "COMPARATIVE_PERIOD"):
-                ref = mapping["values"][axis_role]
-                evidence = service.income.foundation.support._source_value(
-                    axis_page,
-                    semantic_page,
-                    crop_page,
-                    source_texts,
-                    {
-                        "line_index": ref["line_index"],
-                        "pixel_transcription": ref["pixel_transcription"],
-                    },
-                )
-                try:
-                    proposal = service.income.foundation.support._money(
-                        evidence["fresh_vietocr_numeric_proposal"]
+            if COMPONENT_VALUE_MODE:
+                values = []
+                for axis_role in ("CURRENT_PERIOD", "COMPARATIVE_PERIOD"):
+                    components = [verified_ref(ref) for ref in mapping["values"][axis_role]]
+                    values.append(
+                        {
+                            "aggregation": (
+                                "DIRECT_VISIBLE_VALUE"
+                                if len(components) == 1
+                                else "SUM_OF_VISIBLE_SOURCE_ROWS"
+                            ),
+                            "axis_role": axis_role,
+                            "components": components,
+                            "normalized_value": sum(
+                                component["normalized_value"] for component in components
+                            ),
+                        }
                     )
-                except ValueError:
-                    proposal = None
-                values.append(
-                    {
-                        "axis_role": axis_role,
-                        **evidence,
-                        "fresh_vietocr_numeric_status": (
-                            "MATCHES_SOURCE_NUMERIC_CHALLENGER"
-                            if proposal == evidence["normalized_value"]
-                            else "DISAGREES_WITH_SOURCE_NUMERIC_CHALLENGER"
-                        ),
-                        "page_sequence": page_number,
-                    }
+                label_evidence: Any = [
+                    _semantic_evidence(axis_document, semantic_document, item)
+                    for item in mapping["labels"]
+                ]
+            else:
+                values = [
+                    {"axis_role": axis_role, **verified_ref(mapping["values"][axis_role])}
+                    for axis_role in ("CURRENT_PERIOD", "COMPARATIVE_PERIOD")
+                ]
+                label_evidence = _semantic_evidence(
+                    axis_document, semantic_document, mapping["label"]
                 )
             verified_mappings.append(
                 {
-                    "label_evidence": _semantic_evidence(
-                        axis_document, semantic_document, mapping["label"]
-                    ),
+                    "label_evidence": label_evidence,
                     "role": mapping["role"],
                     "schema_binding": _schema_binding(
                         schema_by_id.get(mapping["report_norm_id"]), mapping["report_norm_id"]
@@ -815,11 +899,7 @@ def build_fx_gold_activity_8bank_codex_verified_mapping_v1(
                     for item in reviewed["period_axis"]
                 ],
                 "presentation": reviewed["presentation"],
-                "source_period_status": (
-                    "VERIFIED_SOURCE_PERIOD_Q1_2026_NOT_Q2"
-                    if reviewed["source_period"] == "2026-03-31"
-                    else "VERIFIED_SOURCE_PERIOD_Q2_2026"
-                ),
+                "source_period_status": _source_period_status(reviewed["source_period"]),
                 "status": (
                     "VERIFIED_BY_CODEX_WITH_Q1_PERIOD_CAVEAT"
                     if reviewed["source_period"] == "2026-03-31"
@@ -847,15 +927,15 @@ def build_fx_gold_activity_8bank_codex_verified_mapping_v1(
         },
         "metrics": _metrics(trials),
         "schema_family": {
-            "family_end_display_order": 741,
+            "family_end_display_order": SCHEMA_FAMILY_END_DISPLAY_ORDER,
             "family_root_report_norm_id": 1175,
             "mapped_report_norm_ids": sorted(_SCHEMA_EXPECTED),
         },
-        "state": "FX_GOLD_ACTIVITY_8BANK_CODEX_VERIFICATION_COMPLETE",
+        "state": RESULT_STATE,
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "e0083:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": RESULT_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 

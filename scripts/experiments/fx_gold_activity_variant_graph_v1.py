@@ -20,7 +20,7 @@ import importlib.util
 import itertools
 import re
 import sys
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -36,12 +36,16 @@ from bctc_ai.source_structure.contracts_v1 import (
 
 __all__ = [
     "FORMAT_VERSION",
+    "FORMAT_VERSION_V2",
     "FxGoldActivityVariantGraphV1Error",
     "build_fx_gold_activity_variant_graph_document_v1",
+    "build_fx_gold_activity_variant_graph_document_v2",
     "validate_fx_gold_activity_variant_graph_replay_v1",
+    "validate_fx_gold_activity_variant_graph_replay_v2",
 ]
 
 FORMAT_VERSION = "FX_GOLD_ACTIVITY_VARIANT_GRAPH_DOCUMENT_V1"
+FORMAT_VERSION_V2 = "FX_GOLD_ACTIVITY_VARIANT_GRAPH_DOCUMENT_V2"
 FAMILY_ID = "NET_FOREIGN_EXCHANGE_AND_GOLD_ACTIVITY"
 CLAIM_BOUNDARY = (
     "BANK_BLIND_COMPLETE_PDF_FRESH_VIETOCR_NET_FX_GOLD_OWNER_INCOME_EXPENSE_"
@@ -64,6 +68,19 @@ _SAFETY = {
     "printed_income_and_expense_totals_may_precede_or_follow_children": True,
     "public_exact_replay_required": True,
     "text_similarity_alone_can_accept": False,
+}
+_CLAIM_BOUNDARY_V2 = (
+    "BANK_BLIND_COMPLETE_PDF_FRESH_VIETOCR_NET_FX_GOLD_OWNER_INCOME_"
+    "EXPENSE_PARENTS_OPTIONAL_UNORDERED_CHILDREN_COMBINED_OR_SPLIT_SPOT_"
+    "GOLD_REVALUATION_DERIVATIVE_AND_FX_DIFFERENCE_FLEXIBLE_PARENT_TOTAL_"
+    "POSITION_STRUCTURE_ONLY_NO_NUMERIC_SCHEMA_MAPPING_OR_EXPORT_AUTHORITY"
+)
+_SAFETY_V2 = {
+    **_SAFETY,
+    "generic_preposition_variants_supported": True,
+    "gold_sale_and_revaluation_rows_supported": True,
+    "currency_derivative_word_may_be_implicit_under_fx_parent": True,
+    "spot_fx_and_gold_combination_requires_giao_ngay_token": False,
 }
 _RESULT_FIELDS = {
     "claim_boundary",
@@ -163,6 +180,22 @@ def _section_parent(text: str) -> str | None:
     return None
 
 
+def _section_parent_v2(text: str) -> str | None:
+    """Recognize family-equivalent parent wording without report-specific rules."""
+
+    parent = _section_parent(text)
+    if parent is not None:
+        return parent
+    value = _strip_enumerator(text)
+    if len(value.split()) > 15 or _is_owner(value):
+        return None
+    if "thu nhap" in value and "hoat dong kinh doanh" in value and "ngoai hoi" in value:
+        return "INCOME_PARENT"
+    if "chi phi" in value and "hoat dong kinh doanh" in value and "ngoai hoi" in value:
+        return "EXPENSE_PARENT"
+    return None
+
+
 def _child_role(text: str, section: str | None) -> str | None:
     if section not in {"INCOME", "EXPENSE"}:
         return None
@@ -180,6 +213,39 @@ def _child_role(text: str, section: str | None) -> str | None:
         return f"{prefix}_CURRENCY_DERIVATIVES"
     if "chenh lech ty gia" in value:
         return f"{prefix}_FX_DIFFERENCE"
+    if "khac" in value:
+        return f"{prefix}_OTHER"
+    return None
+
+
+def _child_role_v2(text: str, section: str | None) -> str | None:
+    """Classify optional FX/gold rows by accounting meaning inside a section.
+
+    Currency/gold context comes from the already-established section parent.
+    This deliberately avoids bank, page, note-number and filename routing.
+    """
+
+    role = _child_role(text, section)
+    if role is not None:
+        return role
+    if section not in {"INCOME", "EXPENSE"}:
+        return None
+    value = _strip_enumerator(text)
+    if len(value.split()) > 20 or _section_parent_v2(value) is not None or _is_owner(value):
+        return None
+    prefix = "INCOME" if section == "INCOME" else "EXPENSE"
+    if "ngoai te" in value and "vang" in value:
+        return f"{prefix}_SPOT_FX_AND_GOLD"
+    if "phai sinh" in value:
+        return f"{prefix}_CURRENCY_DERIVATIVES"
+    if "chenh lech ty gia" in value:
+        return f"{prefix}_FX_DIFFERENCE"
+    if "vang" in value:
+        return f"{prefix}_GOLD"
+    if "ngoai te" in value and any(
+        phrase in value for phrase in ("giao ngay", "mua ban", "kinh doanh")
+    ):
+        return f"{prefix}_SPOT_FX"
     if "khac" in value:
         return f"{prefix}_OTHER"
     return None
@@ -219,7 +285,13 @@ def _position(
     return "NO_PRINTED_PARENT_TOTAL_POSITION"
 
 
-def _region(lines: Sequence[Mapping[str, Any]], start: int) -> dict[str, Any]:
+def _region(
+    lines: Sequence[Mapping[str, Any]],
+    start: int,
+    *,
+    parent_resolver: Callable[[str], str | None] = _section_parent,
+    child_resolver: Callable[[str, str | None], str | None] = _child_role,
+) -> dict[str, Any]:
     support = _support()
     owner = lines[start]
     window = _window(lines, start)
@@ -235,14 +307,14 @@ def _region(lines: Sequence[Mapping[str, Any]], start: int) -> dict[str, Any]:
     unit_count = 0
     for line in window:
         text = line["normalized_text"]
-        parent = _section_parent(text)
+        parent = parent_resolver(text)
         axis = support._axis_role(text)
         if parent is not None:
             section = "INCOME" if parent == "INCOME_PARENT" else "EXPENSE"
             parents[parent] = line
             events.append(support._line_ref(line, parent))
             continue
-        child = _child_role(text, section)
+        child = child_resolver(text, section)
         if child is not None:
             children[section].append((child, line))
             events.append(support._line_ref(line, child))
@@ -339,14 +411,21 @@ def _metrics(regions: list[dict[str, Any]], near: list[dict[str, Any]]) -> dict[
     }
 
 
-def _validate_result(value: Any) -> dict[str, Any]:
+def _validate_result_config(
+    value: Any,
+    *,
+    format_version: str,
+    claim_boundary: str,
+    safety: Mapping[str, Any],
+    result_prefix: str,
+) -> dict[str, Any]:
     if type(value) is not dict or set(value) != _RESULT_FIELDS:
         raise _error("FX/gold result fields drifted")
     if (
-        value["format_version"] != FORMAT_VERSION
+        value["format_version"] != format_version
         or value["family_id"] != FAMILY_ID
-        or value["claim_boundary"] != CLAIM_BOUNDARY
-        or not same_typed_json_v1(value["safety"], _SAFETY)
+        or value["claim_boundary"] != claim_boundary
+        or not same_typed_json_v1(value["safety"], safety)
         or type(value["regions"]) is not list
         or type(value["near_regions"]) is not list
         or not same_typed_json_v1(
@@ -368,34 +447,56 @@ def _validate_result(value: Any) -> dict[str, Any]:
         raise _error("FX/gold uniqueness drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "fxgav1:graph:" + canonical_json_sha256_v1(material):
+    if identity != result_prefix + canonical_json_sha256_v1(material):
         raise _error("FX/gold graph identity drifted")
     return canonical_clone_v1(value)
 
 
-def build_fx_gold_activity_variant_graph_document_v1(pages: Any) -> dict[str, Any]:
-    """Enumerate every detailed FX/gold-activity-like region in one complete PDF."""
+def _validate_result(value: Any) -> dict[str, Any]:
+    return _validate_result_config(
+        value,
+        format_version=FORMAT_VERSION,
+        claim_boundary=CLAIM_BOUNDARY,
+        safety=_SAFETY,
+        result_prefix="fxgav1:graph:",
+    )
 
+
+def _build(
+    pages: Any,
+    *,
+    format_version: str,
+    claim_boundary: str,
+    safety: Mapping[str, Any],
+    result_prefix: str,
+    parent_resolver: Callable[[str], str | None],
+    child_resolver: Callable[[str, str | None], str | None],
+) -> dict[str, Any]:
     try:
         parsed = _support()._pages(pages)
     except Exception as exc:
         raise _error(str(exc)) from exc
     lines = _support()._flatten(parsed)
     candidates = [
-        _region(lines, index)
+        _region(
+            lines,
+            index,
+            parent_resolver=parent_resolver,
+            child_resolver=child_resolver,
+        )
         for index, line in enumerate(lines)
         if _is_owner(line["normalized_text"])
     ]
     regions = [item for item in candidates if item["complete"]]
     near = [item for item in candidates if not item["complete"]]
     material = {
-        "claim_boundary": CLAIM_BOUNDARY,
+        "claim_boundary": claim_boundary,
         "family_id": FAMILY_ID,
-        "format_version": FORMAT_VERSION,
+        "format_version": format_version,
         "metrics": _metrics(regions, near),
         "near_regions": near,
         "regions": regions,
-        "safety": canonical_clone_v1(_SAFETY),
+        "safety": canonical_clone_v1(safety),
         "status": (
             "ACCEPTED_UNIQUE_VARIANT_GRAPH" if len(regions) == 1 else "UNRESOLVED_NO_UNIQUE_REGION"
         ),
@@ -404,8 +505,40 @@ def build_fx_gold_activity_variant_graph_document_v1(pages: Any) -> dict[str, An
             "status": "UNIQUE_FULL_MATCH" if len(regions) == 1 else "NOT_UNIQUE_FULL_MATCH",
         },
     }
-    return _validate_result(
-        {**material, "result_id": "fxgav1:graph:" + canonical_json_sha256_v1(material)}
+    return _validate_result_config(
+        {**material, "result_id": result_prefix + canonical_json_sha256_v1(material)},
+        format_version=format_version,
+        claim_boundary=claim_boundary,
+        safety=safety,
+        result_prefix=result_prefix,
+    )
+
+
+def build_fx_gold_activity_variant_graph_document_v1(pages: Any) -> dict[str, Any]:
+    """Enumerate every detailed FX/gold-activity-like region in one complete PDF."""
+
+    return _build(
+        pages,
+        format_version=FORMAT_VERSION,
+        claim_boundary=CLAIM_BOUNDARY,
+        safety=_SAFETY,
+        result_prefix="fxgav1:graph:",
+        parent_resolver=_section_parent,
+        child_resolver=_child_role,
+    )
+
+
+def build_fx_gold_activity_variant_graph_document_v2(pages: Any) -> dict[str, Any]:
+    """Enumerate the generic annual-compatible FX/gold graph variants."""
+
+    return _build(
+        pages,
+        format_version=FORMAT_VERSION_V2,
+        claim_boundary=_CLAIM_BOUNDARY_V2,
+        safety=_SAFETY_V2,
+        result_prefix="fxgav2:graph:",
+        parent_resolver=_section_parent_v2,
+        child_resolver=_child_role_v2,
     )
 
 
@@ -414,4 +547,18 @@ def validate_fx_gold_activity_variant_graph_replay_v1(value: Any, pages: Any) ->
     rebuilt = build_fx_gold_activity_variant_graph_document_v1(pages)
     if not same_typed_json_v1(supplied, rebuilt):
         raise _error("FX/gold graph does not replay exactly")
+    return supplied
+
+
+def validate_fx_gold_activity_variant_graph_replay_v2(value: Any, pages: Any) -> dict[str, Any]:
+    supplied = _validate_result_config(
+        value,
+        format_version=FORMAT_VERSION_V2,
+        claim_boundary=_CLAIM_BOUNDARY_V2,
+        safety=_SAFETY_V2,
+        result_prefix="fxgav2:graph:",
+    )
+    rebuilt = build_fx_gold_activity_variant_graph_document_v2(pages)
+    if not same_typed_json_v1(supplied, rebuilt):
+        raise _error("FX/gold V2 graph does not replay exactly")
     return supplied
