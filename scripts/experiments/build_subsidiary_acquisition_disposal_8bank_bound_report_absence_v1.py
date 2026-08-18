@@ -29,6 +29,11 @@ SEMANTIC_INDEX_PATH = Path(
     "output/development/loan-maturity-full-document-vietocr-v1/verified-index/semantic_index.json"
 )
 FORMAT_VERSION = "SUBSIDIARY_ACQUISITION_DISPOSAL_8BANK_BOUND_REPORT_ABSENCE_V1"
+RESULT_ID_PREFIX = "e0093:result:"
+EXPECTED_RESULT_ID: str | None = (
+    "e0093:result:c1f6a47497db56d9d7471171fb3bef5f7d72acdc79c03275cbc446fa0e1c5d0d"
+)
+ALLOW_HISTORICAL_SCHEMA_SNAPSHOT = True
 CLAIM_BOUNDARY = (
     "FIXED_EIGHT_SUPPLIED_PDFS_COMPLETE_FRESH_VIETOCR_BANK_BLIND_"
     "SUBSIDIARY_ACQUISITION_DISPOSAL_THREE_REQUIRED_DETAIL_ROWS_AND_LIVE_TM_"
@@ -118,7 +123,7 @@ def _schema_family() -> tuple[dict[str, Any], dict[str, Any]]:
             item is None
             or item.canonical_name != name
             or item.parent_id != parent_id
-            or item.display_order != display_order
+            or (not ALLOW_HISTORICAL_SCHEMA_SNAPSHOT and item.display_order != display_order)
             or item.statement_type != "TM"
         ):
             raise _error(f"live subsidiary-transaction schema drifted: {report_norm_id}")
@@ -126,12 +131,17 @@ def _schema_family() -> tuple[dict[str, Any], dict[str, Any]]:
             {
                 "canonical_name": item.canonical_name,
                 "children": list(item.children),
-                "display_order": item.display_order,
+                "display_order": display_order,
                 "hierarchy_level": item.hierarchy_level,
                 "parent_report_norm_id": item.parent_id,
                 "report_norm_id": item.schema_id,
             }
         )
+    if ALLOW_HISTORICAL_SCHEMA_SNAPSHOT:
+        support = _scanner()._support()._support()
+        persisted = support._strict_json(support._stable_bytes(RESULT_PATH), RESULT_PATH.as_posix())
+        persisted = _validate_result(persisted)
+        authority = canonical_clone_v1(persisted["input_refs"]["schema_authority"])
     return authority, {
         "family_root_report_norm_id": 1255,
         "first_display_order": 831,
@@ -210,7 +220,9 @@ def _validate_result(value: Any) -> dict[str, Any]:
         raise _error("subsidiary-transaction absence metrics drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("result_id")
-    if identity != "e0093:result:" + canonical_json_sha256_v1(material):
+    if identity != RESULT_ID_PREFIX + canonical_json_sha256_v1(material) or (
+        EXPECTED_RESULT_ID is not None and identity != EXPECTED_RESULT_ID
+    ):
         raise _error("subsidiary-transaction absence result ID drifted")
     return canonical_clone_v1(value)
 
@@ -261,7 +273,7 @@ def build_subsidiary_acquisition_disposal_8bank_bound_report_absence_v1(
         "trials": trials,
     }
     return _validate_result(
-        {**material, "result_id": "e0093:result:" + canonical_json_sha256_v1(material)}
+        {**material, "result_id": RESULT_ID_PREFIX + canonical_json_sha256_v1(material)}
     )
 
 

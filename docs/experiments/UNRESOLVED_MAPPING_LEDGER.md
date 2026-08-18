@@ -62,6 +62,17 @@ cộng có kiểm soát trên từng số nguồn đã xác minh; parent thu, pa
 Machine-readable result:
 `docs/experiments/E-0145-annual-2025-other-activity-8bank-codex-verified-mapping-v1.json`.
 
+## COMPLETE — annual-2025 `Mua mới và thanh lý các công ty con`
+
+E-0148 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025 và không tìm
+thấy vùng nào có đủ ba dòng bắt buộc 1256–1258. Tất cả 25 hit gần là policy,
+narrative mua/bán/hợp nhất công ty con hoặc caption dòng tiền; không hit nào có
+đủ tổng giá trị, tiền thanh toán và tiền thực có trong đơn vị được mua/thanh lý.
+Kết quả là 8 bounded-report absences, 0 mapping và 0 dòng OPEN.
+
+Machine-readable result:
+`docs/experiments/E-0148-annual-2025-subsidiary-acquisition-disposal-8bank-bound-report-absence-v1.json`.
+
 ## COMPLETE — annual-2025 `Tiền và các khoản tương đương tiền`
 
 E-0147 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025 và tìm đúng
