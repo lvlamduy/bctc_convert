@@ -2260,6 +2260,40 @@ Annual-2025 resolving result: E-0120
 - Result:
   `annual2025lrr8bcv1:result:671984613ccb960a8f1c491fc6b828c6b1b1e3544c7da5283be7c2fb34731b27`.
 
+## E-0158 — annual-2025 `Tỷ giá một số ngoại tệ tại thời điểm lập báo cáo`
+
+- Review status: `OPEN_SCHEMA_GAPS_SOURCE_VALUES_VERIFIED`.
+- MBB p103, VPB p98, HDB p69, CTG p85, BID p70 và VIB p77 là sáu vùng
+  unique; ACB/VCB là hai bounded detailed-table absences. E-0158 xác minh
+  55 mapping/110 ô schema trên tổng 74 hàng/148 ô nguồn.
+- Xung đột duy nhất HDB/NZD comparative giữ cả VietOCR `14.382` và trục
+  nguồn `14.362`; Gemma 4 crop-bound đọc `14.362`. Đây là challenger độc
+  lập, không phải numeric truth và không tạo quy tắc sửa số tổng quát.
+- Result:
+  `annual2025fxrate8bcv1:result:add0abc2a953baa5115e0cbc881c654c681dea5e537350e4b3adbee4aca76c23`.
+
+| ID | Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | --- | ---: | --- | --- |
+| AFXRATE-001 | VPB | 98 | CNY | Chưa có leaf CNY dưới schema 5935–5945. |
+| AFXRATE-002 | VPB | 98 | DKK | Chưa có leaf DKK dưới schema 5935–5945. |
+| AFXRATE-003 | VPB | 98 | NZD | Chưa có leaf NZD dưới schema 5935–5945. |
+| AFXRATE-004 | VPB | 98 | XAU | Chưa có leaf vàng/XAU dưới schema 5935–5945. |
+| AFXRATE-005 | HDB | 69 | CNY | Chưa có leaf CNY dưới schema 5935–5945. |
+| AFXRATE-006 | HDB | 69 | HKD | Chưa có leaf HKD dưới schema 5935–5945. |
+| AFXRATE-007 | HDB | 69 | KRW | Chưa có leaf KRW dưới schema 5935–5945. |
+| AFXRATE-008 | HDB | 69 | NZD | Chưa có leaf NZD dưới schema 5935–5945. |
+| AFXRATE-009 | CTG | 85 | NZD | Chưa có leaf NZD dưới schema 5935–5945. |
+| AFXRATE-010 | CTG | 85 | NOK | Chưa có leaf NOK dưới schema 5935–5945. |
+| AFXRATE-011 | CTG | 85 | DKK | Chưa có leaf DKK dưới schema 5935–5945. |
+| AFXRATE-012 | CTG | 85 | HKD | Chưa có leaf HKD dưới schema 5935–5945. |
+| AFXRATE-013 | CTG | 85 | CNY | Chưa có leaf CNY dưới schema 5935–5945. |
+| AFXRATE-014 | CTG | 85 | KRW | Chưa có leaf KRW dưới schema 5935–5945. |
+| AFXRATE-015 | CTG | 85 | LAK | Chưa có leaf LAK dưới schema 5935–5945. |
+| AFXRATE-016 | VIB | 77 | DKK | Chưa có leaf DKK dưới schema 5935–5945. |
+| AFXRATE-017 | VIB | 77 | HKD | Chưa có leaf HKD dưới schema 5935–5945. |
+| AFXRATE-018 | VIB | 77 | NOK | Chưa có leaf NOK dưới schema 5935–5945. |
+| AFXRATE-019 | VIB | 77 | XAU | Chưa có leaf vàng/XAU dưới schema 5935–5945. |
+
 ## Append policy
 
 Every later family appends entries here when a source row or complete region is

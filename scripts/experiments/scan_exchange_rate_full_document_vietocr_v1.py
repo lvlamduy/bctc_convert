@@ -6,6 +6,7 @@ import argparse
 import importlib.util
 import json
 import os
+import re
 import stat
 import sys
 from pathlib import Path
@@ -15,6 +16,7 @@ from typing import Any
 from bctc_ai.evaluation.full_document_vietocr_accounting_axis_v1 import (
     EXPECTED_DOCUMENT_ORDER,
     project_full_document_vietocr_accounting_axis_v1,
+    project_full_document_vietocr_reporting_period_contexts_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
@@ -26,6 +28,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_INPUT = Path(
     "output/development/loan-maturity-full-document-vietocr-v1/verified-index/semantic_index.json"
 )
+# Compatibility pins for the fixed current-period consumer.  The scanner itself
+# accepts another complete-document index, but the historical E-0104 structure
+# scan must continue to authenticate the exact input on which it was sealed.
+EXPECTED_INDEX_SHA256 = "f84fd9ca56fe06af230e011ecad85b0a576e27e1eca32ee141e654a6776b78b4"
+EXPECTED_AXIS_SHA256 = "e99873cd16a7234702d0ee6e5fa9eb37637a1a75621228381e3dbcd7c5cfdcca"
 FORMAT_VERSION = "EXCHANGE_RATE_8DOCUMENT_FULL_VIETOCR_SCAN_V1"
 MATCHER_FORMAT = "EXCHANGE_RATE_VARIANT_GRAPH_DOCUMENT_V1"
 CLAIM_BOUNDARY = (
@@ -154,14 +161,34 @@ def _validate(value: Any) -> dict[str, Any]:
 def build_exchange_rate_full_document_scan_v1(semantic_index: Any) -> dict[str, Any]:
     axis = project_full_document_vietocr_accounting_axis_v1(semantic_index)
     matcher = _load_matcher()
+    contexts_by_document: dict[str, Any] = {}
+    if type(semantic_index) is dict and type(semantic_index.get("documents")) is list:
+        period_projection = project_full_document_vietocr_reporting_period_contexts_v1(
+            semantic_index
+        )
+        contexts_by_document = {
+            item["document_provenance"]: item["reporting_period_context"]
+            for item in period_projection["contexts"]
+        }
     trials = []
     for document in axis["documents"]:
+        context = contexts_by_document.get(document["document_provenance"])
+        period_years: dict[str, int] = {}
+        if context is not None:
+            for key, output_key in (
+                ("current_period_end", "current_period_year"),
+                ("balance_comparative_period_end", "comparative_period_year"),
+            ):
+                match = re.fullmatch(r"\d{2}/\d{2}/(20\d{2})", context[key])
+                if match is None:
+                    raise _error("exchange-rate document period context drifted")
+                period_years[output_key] = int(match.group(1))
         trials.append(
             {
                 "document_ordinal": document["document_ordinal"],
                 "document_provenance": document["document_provenance"],
                 "matcher_result": matcher.build_exchange_rate_variant_graph_document_v1(
-                    document["pages"]
+                    document["pages"], **period_years
                 ),
                 "source_pdf_sha256": document["source_pdf"]["sha256"],
             }

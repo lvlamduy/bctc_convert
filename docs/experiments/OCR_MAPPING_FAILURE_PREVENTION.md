@@ -542,6 +542,79 @@ record the new gate.
   suites in one Python process; their persisted results must equal their live
   rebuilds regardless of collection order.
 
+### F-040 — Requiring every table to print literal period dates locally
+
+- Observed failure: HDB's annual exchange-rate table was structurally complete
+  but remained `NEAR` because its columns say `Số cuối năm` and `Số đầu năm`
+  rather than repeating `31/12/2025` and `31/12/2024` inside the table.
+- Root cause: the family matcher required explicit local dates even though the
+  audited report establishes the balance-sheet periods repeatedly at document
+  level and the two relative headers have a unique ordered meaning.
+- Correction: first prefer explicit local dates.  Otherwise promote relative
+  end/start-year headers only when the authenticated document period context,
+  header order, owner, unit, currency rows, geometry, and whole-PDF uniqueness
+  all agree.  Never infer a year from a filename, bank, page, or hard-coded run
+  period.
+- Regression gate: HDB annual 2025 resolves to current 31/12/2025 and
+  comparative 31/12/2024; changing either document period or swapping the two
+  physical columns must reject the result.
+
+### F-041 — Guessing a digit when two authenticated OCR surfaces disagree
+
+- Observed failure: HDB/NZD comparative was read as `14.382` by fresh VietOCR
+  but as `14.362` by the bound provider/source axis.  Accepting either surface
+  silently would turn an OCR proposal into numeric authority.
+- Root cause: a single recognizer was treated as sufficient even when a small
+  digit substitution was material and no accounting equation could arbitrate
+  an exchange-rate row.
+- Correction: stop on every unreviewed numeric disagreement.  For the one fixed
+  crop, run a fresh-context local Gemma rescue; record that Gemma and the source
+  challenger independently read `14.362`, retain the disagreeing VietOCR text,
+  and explicitly keep `gemma4_used_as_numeric_truth=false`.  Any other crop,
+  line, code, text, or digest conflict remains unresolved.
+- Regression gate: exactly one pinned conflict may use the recorded rescue;
+  coordinated changes to the crop digest, line identity, either OCR surface, or
+  normalized value must fail public live replay.
+
+### F-042 — Generalizing a producer while breaking its fixed-input consumer
+
+- Observed failure: the exchange-rate scanner was generalized to accept an
+  arbitrary complete-document index, while its historical consumer still
+  imported two removed digest constants.  The generalized matcher also selected
+  periods from all years mentioned near a table, changing one historical
+  near-candidate when an explanatory sentence named another year.
+- Root cause: a producer's execution API and period-selection semantics changed
+  without replaying all sealed dependants.  A local text window is not the
+  authority for which two reporting years the document represents.
+- Correction: retain the historical digest constants as compatibility pins,
+  derive current/comparative years from the authenticated document reporting-
+  period context, and pass those years into the otherwise generic matcher.  New
+  consumers authenticate their own inputs; old sealed consumers continue to
+  replay byte-for-byte without hard-coding a bank, page, or run year.
+- Regression gate: reproduce the historical E-0104 structure-scan ID alongside
+  the annual exchange-rate suite after every scanner-interface change.
+
+### F-043 — Rebuilding a sealed artifact against a later schema revision
+
+- Observed failure: the historical E-0104 mapping artifact pins TM schema
+  projection `64a79d…`, where family 5935 and USD began at display orders
+  1705/1706.  Four append-only schema additions now place the same stable
+  ReportNormIds at 1709/1710, so a test demanding byte-identical live rebuild
+  against today's schema fails although the semantic IDs, names, parents and
+  source mapping have not changed.
+- Root cause: `display_order` and the whole-schema projection digest were used
+  both as historical snapshot evidence and as if they were immutable semantic
+  identity.  Later schema growth legitimately changes the former.
+- Correction: preserve old artifacts and replay them at their pinned Git/schema
+  snapshot.  New family builders bind current live schema by stable
+  ReportNormId, statement type, parent, hierarchy and canonical name; they
+  record the current display order but do not hard-code it as cross-revision
+  identity.  Never rewrite a sealed result merely to absorb a later schema.
+- Regression gate: schema append tests must prove all pre-existing ReportNormId
+  semantic identities remain unchanged, while current-revision builders replay
+  exactly and historical snapshot tests do not impersonate a live-schema
+  rebuild.
+
 ## Maintenance checklist
 
 - Add a new `F-xxx` entry whenever a corrected failure is discovered.

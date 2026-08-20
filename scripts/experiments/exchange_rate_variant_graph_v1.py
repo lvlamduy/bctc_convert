@@ -287,7 +287,12 @@ def _unit_context(
     }
 
 
-def _regions(pages: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+def _regions(
+    pages: Sequence[Mapping[str, Any]],
+    *,
+    current_period_year: int | None = None,
+    comparative_period_year: int | None = None,
+) -> list[dict[str, Any]]:
     regions: list[dict[str, Any]] = []
     for page in pages:
         lines = page["lines"]
@@ -299,12 +304,20 @@ def _regions(pages: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
                 continue
             dates = _dates(lines, index)
             years = sorted({item["year"] for item in dates})
-            current = (
-                [item for item in dates if item["year"] == years[1]] if len(years) == 2 else []
-            )
-            comparative = (
-                [item for item in dates if item["year"] == years[0]] if len(years) == 2 else []
-            )
+            if (
+                type(current_period_year) is int
+                and type(comparative_period_year) is int
+                and current_period_year != comparative_period_year
+            ):
+                current = [item for item in dates if item["year"] == current_period_year]
+                comparative = [item for item in dates if item["year"] == comparative_period_year]
+            else:
+                current = (
+                    [item for item in dates if item["year"] == years[1]] if len(years) == 2 else []
+                )
+                comparative = (
+                    [item for item in dates if item["year"] == years[0]] if len(years) == 2 else []
+                )
             row_pairs = [
                 (line_index, matched)
                 for line_index in range(index + 1, len(lines))
@@ -376,9 +389,18 @@ def _validate(value: Any) -> dict[str, Any]:
     return canonical_clone_v1(value)
 
 
-def build_exchange_rate_variant_graph_document_v1(pages: Any) -> dict[str, Any]:
+def build_exchange_rate_variant_graph_document_v1(
+    pages: Any,
+    *,
+    current_period_year: int | None = None,
+    comparative_period_year: int | None = None,
+) -> dict[str, Any]:
     authenticated_pages = _pages(pages)
-    regions = _regions(authenticated_pages)
+    regions = _regions(
+        authenticated_pages,
+        current_period_year=current_period_year,
+        comparative_period_year=comparative_period_year,
+    )
     complete_count = sum(item["status"] == "COMPLETE" for item in regions)
     material = {
         "authority": canonical_clone_v1(_AUTHORITY),

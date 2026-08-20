@@ -92,3 +92,10 @@ def test_live_index_reader_rejects_duplicate_keys_and_leaf_symlinks(tmp_path: Pa
     symlink.symlink_to(regular)
     with pytest.raises(scanner.ExchangeRateFullDocumentScanV1Error, match="nofollow"):
         scanner._stable_json(symlink)
+
+
+def test_historical_fixed_index_retains_e0104_structure_scan_identity() -> None:
+    result = scanner.build_live_exchange_rate_full_document_scan_v1()
+    assert result["scan_id"] == (
+        "erfdsv1:scan:6d9d93df41596c681a2edaf32d0d1e8a5648f50d64450d6d72ead65b6968c67b"
+    )

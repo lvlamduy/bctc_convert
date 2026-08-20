@@ -1338,6 +1338,32 @@ Kết quả annual-2025:
 
 ## 52. Tỷ giá một số ngoại tệ tại thời điểm lập báo cáo
 
+### Annual-2025 — E-0158
+
+- **Đã map/xác minh:** MBB p103 map 10 đồng tiền; VPB p98 map 10; HDB p69
+  map 9; CTG p85 map 10; BID p70 map 8; VIB p77 map 8. Tổng cộng 55
+  mapping/110 ô tỷ giá trong 148 ô nguồn nhìn thấy. HDB dùng tiêu đề tương
+  đối `Số cuối năm`/`Số đầu năm`, được ràng buộc vào kỳ tài liệu
+  31/12/2025 và 31/12/2024. Một xung đột HDB/NZD (`14.382` từ VietOCR so
+  với `14.362` từ trục nguồn) được đọc lại độc lập bằng Gemma 4; Gemma và
+  nguồn cùng cho `14.362`, nhưng Gemma không được dùng làm numeric truth.
+- **Không có bảng tỷ giá chi tiết trong báo cáo:** ACB và VCB. Toàn bộ PDF
+  đã được quét; các bảng rủi ro và diễn giải chính sách là đối chứng âm.
+- **Có nhưng còn khoản mục chưa map:** 19 dòng tiền tệ/vàng đã giữ đủ hai
+  ô nguồn nhưng schema 5935–5945 chưa có leaf tương ứng.
+
+| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | ---: | --- | --- |
+| VPB | 98 | CNY, DKK, NZD, XAU | Chưa có leaf tương ứng dưới family 5935. |
+| HDB | 69 | CNY, HKD, KRW, NZD | Chưa có leaf tương ứng dưới family 5935. |
+| CTG | 85 | CNY, DKK, HKD, KRW, LAK, NOK, NZD | Chưa có leaf tương ứng dưới family 5935. |
+| VIB | 77 | DKK, HKD, NOK, XAU | Chưa có leaf tương ứng dưới family 5935. |
+
+Kết quả annual-2025:
+`docs/experiments/E-0158-annual-2025-exchange-rate-8bank-codex-verified-mapping-v1.json`.
+
+### Lượt hiện hành trước — E-0104
+
 - **Đã map/xác minh:** MBB p61 map đủ 10 đồng tiền có trong schema; VPB p90
   map 10 đồng tiền; CTG p61 map 10 đồng tiền; BID p35 map 8 đồng tiền; VIB
   p71 map 8 đồng tiền. Tổng cộng 46 mapping/92 ô tỷ giá hiện kỳ và so sánh
@@ -1426,4 +1452,4 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Rủi ro tiền tệ | ✓\* p84 | ✓ p97 | ✓\* p88 | ✓\* p63 | ✓ p80 | ✓\* p71 | ✓ p65 | ✓ p71 | Annual-2025: 7 trục/34 ô OPEN ngoài schema, 155 mapping/155 ô số/74 phương trình; 8/8 vùng unique. Lượt hiện hành trước giữ riêng 120 mapping và 3 nhánh vàng OPEN; VPB của lượt đó là Q1 |
 | Rủi ro lãi suất | ✓\* p87 | ✓\* p95 | ✓\* p85 | ✓\* p65 | ✓\* p78 | ✓\* p75 | ✓\* p67 | ✓\* p68 | Annual-2025: 1 nhóm/5 ô VPB OPEN vì residual 2; 280 mapping/280 ô/87 phương trình, 8/8 vùng unique. Lượt hiện hành trước giữ riêng 234 mapping/279 ô/108 phương trình và OPEN=0; VPB của lượt đó là Q1 |
 | Rủi ro thanh khoản | ✓ p92 | ✓ p100 | ✓ p90 | ✓ p67 | ✓ p82 | ✓ p79 | ✓ p69 | ✓ p74 | Annual-2025: 0 OPEN, 181 mapping/181 ô/54 phương trình, 9 DASH→0; lượt hiện hành trước giữ 4 trục/12 ô VPB OPEN |
-| Tỷ giá ngoại tệ cuối kỳ | — | ✓ p61 | ✓\* p90 | — | — | ✓\* p61 | ✓ p35 | ✓\* p71 | 15 dòng OPEN; 46 mapping/92 ô; VPB là nguồn Q1, BID dùng policy VND p13 |
+| Tỷ giá ngoại tệ cuối kỳ | — | ✓ p103 | ✓\* p98 | ✓\* p69 | — | ✓\* p85 | ✓ p70 | ✓\* p77 | Annual-2025: 19 dòng OPEN, 55 mapping/110 ô; HDB dùng kỳ tài liệu cho `Số cuối năm/Số đầu năm`. Lượt hiện hành trước: 15 OPEN/46 mapping |
