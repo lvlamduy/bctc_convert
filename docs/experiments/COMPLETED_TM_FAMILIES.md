@@ -1393,6 +1393,29 @@ Kết quả annual-2025:
 | VIB | 71 | NOK | Chưa có leaf NOK dưới family 5935. |
 | VIB | 71 | XAU | Chưa có leaf vàng/XAU dưới family 5935. |
 
+## 53. Tiền, vàng gửi và vay các tổ chức tín dụng khác — nguồn vốn
+
+### Annual-2025 — E-0159
+
+- **Đã map/xác minh:** ACB p61, MBB p64, VPB p58–59, HDB p44, VCB p52,
+  CTG p51, BID p50 và VIB p45. Whole-PDF scan tìm đúng một vùng hoàn chỉnh
+  trong mỗi báo cáo, tách riêng family nguồn vốn 1040–1052 khỏi family tài sản
+  575. Tổng cộng 95 mapping/190 ô số và 40 phương trình tiền gửi không kỳ
+  hạn, tiền gửi có kỳ hạn, tiền gửi, vay và tổng family đóng chính xác.
+- **Không có:** Không có bank nào trong tám BCTC annual-2025.
+- **Có nhưng còn khoản mục chưa map:** hai hàng phụ nhìn thấy được giữ
+  source-only vì schema chưa có leaf chính xác: VPB p59 `Vốn vay từ Công ty
+  Tài chính Quốc tế (IFC)` là chi tiết không cộng thêm; HDB p44 `Phải trả về
+  nghiệp vụ UPAS LC` là parent trung gian đã được cộng đúng một lần qua các
+  dòng VND/ngoại tệ vào tổng vay.
+
+Hai lỗi VietOCR số tại HDB (`6.960.904`/`6.980.904` và
+`5.616.757`/`5.816.757`) được pixel, trục số nguồn và phương trình kế toán bác
+bỏ; Gemma 4 chỉ là challenger đọc lại crop, không phải numeric truth.
+
+Kết quả annual-2025:
+`docs/experiments/E-0159-annual-2025-interbank-funding-8bank-codex-verified-mapping-v1.json`.
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -1403,7 +1426,8 @@ hoặc group parent chỉ giữ để kiểm tra.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Tiền, kim loại quý, đá quý | ✓ p45 | ✓ p46 | ✓ p41 | ✓ p33 | ✓ p35 | ✓ p39 | ✓ p39 | ✓ p35 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025 |
 | Tiền gửi tại NHNN | ✓ p45 | ✓ p46 | ✓ p41 | ✓ p33 | ✓ p35 | ✓ p39 | ✓ p39 | ✓ p35 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; Lào/Campuchia → 574 |
-| Tiền gửi/vay TCTD khác | ✓ p46 | ✓ p48 | ✓ p42 | ✓ p34 | ✓ p36 | ✓ p40 | ✓ p39 | ✓ p36 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025 |
+| Tiền gửi tại/cho vay TCTD khác — tài sản (575) | ✓ p46 | ✓ p48 | ✓ p42 | ✓ p34 | ✓ p36 | ✓ p40 | ✓ p39 | ✓ p36 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025 |
+| Tiền, vàng gửi và vay TCTD khác — nguồn vốn (1040) | ✓ p61 | ✓ p64 | ✓\* p58–59 | ✓\* p44 | ✓ p52 | ✓ p51 | ✓ p50 | ✓ p45 | 2 hàng phụ source-only: VPB IFC và HDB UPAS LC |
 | Chứng khoán kinh doanh | ✓ p47 | ✓ p49 | ✓ p43 | ✓ p34 | ✓ p37 | ✓ p41 | ✓ p40 | — | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; VIB chỉ có family đầu tư |
 | Công cụ tài chính phái sinh | ✓ p49 | ✓ p66 | ✓ p44 | ✓ p35 | — | ✓ p42 | ✓ p41 | ✓ p37 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; VCB không có family |
 | Loại hình cho vay | ✓ p17 | ✓ p31 | ✓ p42 | ✓ p26 | ✓ p30 | ✓ p38 | ✓ p22 | ✓ p33 | 0 |

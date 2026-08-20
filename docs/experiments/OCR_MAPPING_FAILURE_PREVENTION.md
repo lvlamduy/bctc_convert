@@ -615,6 +615,47 @@ record the new gate.
   exactly and historical snapshot tests do not impersonate a live-schema
   rebuild.
 
+### F-044 — Conflating asset-side interbank lending with liability-side borrowing
+
+- Observed failure: the shared interbank graph admitted both `Cho vay các TCTD
+  khác` and `Vay các TCTD khác` as one semantic group, while its mapping builder
+  always targeted asset-side root 575.  The annual artifact happened to select
+  the asset table, but the same matcher could misclassify the similarly named
+  liability table under root 1040.
+- Root cause: accent-normalized text similarity and neighbouring deposit rows
+  were allowed to erase the accounting direction.  `Cho vay` is an asset and
+  `vay` is a liability; the two families can have nearly identical owner text,
+  period axes, units and row layouts without sharing mapping authority.
+- Correction: model the two directions as separate family definitions and
+  separate schema roots.  Require the owner/branch surface, accounting
+  direction, child topology, statement-side context, totals and whole-PDF
+  uniqueness to agree.  Text remains an anchor; a shared generic table engine
+  may be reused, but its family identity and role-to-ReportNormId map must be
+  immutable per invocation.
+- Regression gate: every annual PDF must independently scan both asset and
+  liability candidates; an authenticated asset table must fail the liability
+  mapper and vice versa.  Similar-looking credit-risk and liquidity tables are
+  negative controls, and changing `cho vay` to `vay` without changing the full
+  accounting context must not promote a mapping.
+
+### F-045 — Treating audit-stamp digit fragments as an extra table value
+
+- Observed failure: an HDB audit stamp contributed the numeric-looking token
+  `1500` on the same horizontal band as the two legitimate term-deposit cells.
+  A row parser that retained every right-side number therefore saw three values
+  and rejected the complete table.
+- Root cause: row membership was decided by y-overlap alone.  Page-edge stamps,
+  signatures and form furniture can share a row without belonging to any table
+  axis.
+- Correction: resolve the two repeated period/unit column centres independently
+  from the complete header geometry, then bind each value to those centres.
+  Extra numeric-looking tokens remain outside the table.  Do not solve this by
+  hard-coding a pixel cutoff or by always taking the first/last two values.
+- Regression gate: the recorded HDB row must bind exactly `119.590.000` and
+  `69.100.000`, reject `1500`, and still close the term-deposit equation.  Moving
+  a genuine value away from both authenticated column centres must reject the
+  mapping rather than silently select a substitute.
+
 ## Maintenance checklist
 
 - Add a new `F-xxx` entry whenever a corrected failure is discovered.

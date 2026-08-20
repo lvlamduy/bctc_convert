@@ -2294,6 +2294,24 @@ Annual-2025 resolving result: E-0120
 | AFXRATE-018 | VIB | 77 | NOK | Chưa có leaf NOK dưới schema 5935–5945. |
 | AFXRATE-019 | VIB | 77 | XAU | Chưa có leaf vàng/XAU dưới schema 5935–5945. |
 
+## E-0159 — annual-2025 `Tiền, vàng gửi và vay các TCTD khác` — nguồn vốn
+
+- Review status: `OPEN_TWO_SOURCE_ONLY_AUXILIARY_ROWS`.
+- ACB p61, MBB p64, VPB p58–59, HDB p44, VCB p52, CTG p51, BID p50 và
+  VIB p45 là tám vùng unique. E-0159 xác minh 95 mapping/190 ô schema và
+  40 phương trình dưới đúng root nguồn vốn 1040; family tài sản 575 là đối
+  chứng âm và không được dùng chung mapping authority.
+- Hai xung đột OCR số HDB đã được giải quyết bằng pixel, trục số nguồn và
+  closure kế toán; chúng không phải dòng OPEN. Gemma 4 chỉ đọc lại hai crop
+  làm challenger, không thay thế numeric authority.
+- Result:
+  `annual2025if8bcv1:result:0678d0d0bc4feaf02d5f6fbb72d6c744b29d8086f0449578931c3af698053395`.
+
+| ID | Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | --- | ---: | --- | --- |
+| AIFUND-001 | VPB | 59 | Vốn vay từ Công ty Tài chính Quốc tế (IFC) | Chi tiết source-only, không cộng thêm vào subtotal vay và chưa có leaf chính xác dưới 1040–1052. |
+| AIFUND-002 | HDB | 44 | Phải trả về nghiệp vụ UPAS LC | Parent trung gian chưa có leaf chính xác; hai dòng VND/ngoại tệ của nó đã được cộng đúng một lần vào aggregate vay 1049/1052, không map thêm parent. |
+
 ## Append policy
 
 Every later family appends entries here when a source row or complete region is
