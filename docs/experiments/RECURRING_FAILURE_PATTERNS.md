@@ -228,3 +228,25 @@ Status meanings:
   population and accounting checks remain independent mandatory gates.
 - **Status:** `MITIGATED`; `accounting_family_topology_v1` covers the semantic
   topology class, while all-filing family coverage is still in progress.
+
+## RFP-017 — Detector geometry is mistaken for numeric recognition authority
+
+- **Pattern:** PP-OCR detection boxes are treated as though they already prove
+  the digits inside a financial cell, or a semantic line proposal is reused as
+  the final numeric value.
+- **Examples:** visible dashes without a recognition token; dropped final digits
+  such as VIB `97.043.85`; closely spaced risk-table cells whose boxes are
+  correct while one recognizer merges their content.
+- **Cause:** text detection and text recognition are separate models, but their
+  outputs are collapsed into one informal “OCR result”.
+- **Do not:** infer digits from bbox presence, promote an empty detector token
+  to zero, or repair a recognizer result from an expected total.
+- **Generic primitive/fix:** PP-OCRv6 detector supplies only the ordered geometry
+  axis. After graph/table logic selects a numeric cell, its immutable pixel crop
+  is consumed by the separately pinned `PP-OCRv6_medium_rec`; the raw proposal
+  is parsed by `family_first_numeric_cell_evidence_v1`. A visible dash may become
+  zero, a blank remains unresolved, and accounting closure only corroborates or
+  vetoes. Gemma may provide a blind independent challenger on difficult crops.
+- **Status:** `MITIGATED`; detector and conservative numeric-evidence primitives
+  are separated, while the new family-first authenticated numeric batch receipt
+  is still pending.
