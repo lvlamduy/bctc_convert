@@ -76,6 +76,29 @@ def _generic_spec(*, parent_mode: str = "EXPLICIT_ONLY") -> dict[str, object]:
     }
 
 
+def _parent_child_pair_spec(*, parent_mode: str = "EXPLICIT_ONLY") -> dict[str, object]:
+    return {
+        "children": [
+            {
+                "aliases": ["Nông nghiệp"],
+                "presence": "REQUIRED",
+                "role": "AGRICULTURE",
+                "role_kind": "ADDITIVE_CHILD",
+            }
+        ],
+        "family_id": "LOAN_INDUSTRY",
+        "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V1",
+        "hard_negative_aliases": [],
+        "limits": {"max_cluster_span_lines": 20, "max_label_line_span": 2},
+        "parent": {
+            "aliases": ["Phân tích dư nợ theo ngành kinh tế"],
+            "resolution_mode": parent_mode,
+            "role": "LOAN_INDUSTRY",
+        },
+        "structural_reset_aliases": [],
+    }
+
+
 def test_cash_spec_is_declarative_and_accepts_reordered_wrapped_children() -> None:
     pages = [
         _page(
@@ -132,6 +155,24 @@ def test_parent_can_be_implied_only_when_the_declarative_family_permits_it() -> 
     assert implied["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
     assert implied["regions"][0]["parent_resolution"] == "IMPLIED_BY_REQUIRED_CHILD_CLUSTER"
     assert implied["regions"][0]["preferred_sibling_order_preserved"] is False
+
+
+def test_explicit_parent_plus_one_required_child_can_prove_unique_pair() -> None:
+    pages = [_page(["Phân tích dư nợ theo ngành kinh tế", "Nông nghiệp", "100"])]
+
+    explicit = build_accounting_family_topology_scan_v1(pages, _parent_child_pair_spec())
+    missing_parent = build_accounting_family_topology_scan_v1(
+        [_page(["Nông nghiệp", "100"])],
+        _parent_child_pair_spec(parent_mode="EXPLICIT_OR_UNIQUE_REQUIRED_CHILD_CLUSTER"),
+    )
+
+    assert explicit["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    assert explicit["regions"][0]["minimal_unique_anchor"] == {
+        "combination_size": 2,
+        "pair_before_triple_search": True,
+        "selected_roles": ["PARENT:LOAN_INDUSTRY", "CHILD:AGRICULTURE"],
+    }
+    assert missing_parent["status"] == "UNRESOLVED_NO_COMPLETE_REGION"
 
 
 def test_hard_negative_and_structural_reset_fail_closed_without_layout_routing() -> None:

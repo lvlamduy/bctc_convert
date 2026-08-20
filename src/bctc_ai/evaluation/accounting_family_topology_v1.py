@@ -153,8 +153,8 @@ def _spec(value: Any) -> dict[str, Any]:
         raise _error("accounting family parent resolution mode drifted")
 
     raw_children = value["children"]
-    if type(raw_children) is not list or len(raw_children) < 2:
-        raise _error("accounting family needs at least two child roles")
+    if type(raw_children) is not list or not raw_children:
+        raise _error("accounting family needs at least one child role")
     children: list[dict[str, Any]] = []
     roles = {parent_role}
     for raw in raw_children:
@@ -179,8 +179,8 @@ def _spec(value: Any) -> dict[str, Any]:
                 "role_kind": role_kind,
             }
         )
-    if sum(child["presence"] == "REQUIRED" for child in children) < 2:
-        raise _error("accounting family needs at least two required child roles")
+    if sum(child["presence"] == "REQUIRED" for child in children) < 1:
+        raise _error("accounting family needs at least one required child role")
 
     limits = value["limits"]
     if type(limits) is not dict or set(limits) != {
@@ -463,6 +463,11 @@ def _implied_candidates(
     if spec["parent"]["resolution_mode"] != "EXPLICIT_OR_UNIQUE_REQUIRED_CHILD_CLUSTER":
         return []
     required = [child for child in spec["children"] if child["presence"] == "REQUIRED"]
+    # One child can form a unique pair with an explicit parent, but it cannot
+    # safely imply a missing parent by itself. Parent-less inference therefore
+    # starts at a child-child pair, matching the pair-before-triple policy.
+    if len(required) < 2:
+        return []
     axes = [hits["children"][child["role"]] for child in required]
     if any(not axis for axis in axes):
         return []
