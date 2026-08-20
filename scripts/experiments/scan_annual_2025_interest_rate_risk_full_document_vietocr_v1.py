@@ -206,7 +206,11 @@ def _configured_modules() -> tuple[ModuleType, ModuleType, ModuleType]:
         )
         overdue = "qua han" in value
         if no_interest and overdue:
-            return ["OVERDUE_OR_NO_INTEREST"]
+            # A detector may merge two adjacent header cells into one text
+            # line.  These remain two physical/accounting axes.  Downstream
+            # geometry binds them to separate numeric column centres; this
+            # structural scan must not invent a compound schema axis.
+            return ["OVERDUE", "NO_INTEREST"]
         ranges = []
         if re.search(r"\btu\s+0?1\s+thang.*\bden\s+0?3\s+thang\b", value):
             ranges.append("WITHIN_1_3M")
@@ -311,9 +315,11 @@ def _configured_modules() -> tuple[ModuleType, ModuleType, ModuleType]:
                 key=lambda item: (item["bbox"][1], item["bbox"][0]),
             )
             composed = " ".join(item["normalized_text"] for item in aligned)
-            # Interpret the complete geometric column once.  Independently
-            # reading fragments would turn one range into a false overdue
-            # axis or duplicate a merged overdue/non-interest column.
+            # Interpret the complete geometric header surface once.
+            # Independently reading fragments would turn one range into a
+            # false overdue axis.  A surface containing both overdue and
+            # no-interest intentionally yields two ordered semantic axes;
+            # the exact physical split is proven later from numeric columns.
             roles = annual_axis_roles(composed) or annual_axis_roles(line["normalized_text"])
             candidates.extend((role, line, composed) for role in roles)
         latest = {role: (line, text) for role, line, text in candidates}
@@ -414,7 +420,6 @@ def _configured_modules() -> tuple[ModuleType, ModuleType, ModuleType]:
                     "OVERDUE",
                     "OVERDUE_LE3M",
                     "OVERDUE_GT3M",
-                    "OVERDUE_OR_NO_INTEREST",
                 }
                 & set(features["repricing_axes"])
             )

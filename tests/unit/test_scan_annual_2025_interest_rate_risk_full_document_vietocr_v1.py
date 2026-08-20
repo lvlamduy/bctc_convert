@@ -29,7 +29,7 @@ def test_live_scan_finds_one_bank_blind_region_in_every_complete_pdf(
     live_scan: dict[str, object],
 ) -> None:
     assert live_scan["scan_id"] == (
-        "a2025irrfdsv1:scan:74579b1c5c82a4165b7e54fbf6c054776ab4d9eef27294d7d00940629ec2ec25"
+        "a2025irrfdsv1:scan:25c201ab5db1ae82d85e7c850f66c597217003f058835df87135e29dec4c6405"
     )
     assert live_scan["metrics"] == {
         "bounded_detailed_table_absence_count": 0,
@@ -71,17 +71,18 @@ def test_generic_variants_cover_split_merged_fuzzy_and_optional_rows(
     assert {"OVERDUE", "NO_INTEREST", "WITHIN_1_5Y", "TOTAL"} <= set(
         layouts["MBB"]["repricing_axes_observed"]
     )
-    # CTG's merged ``Quá hạn, Không chịu lãi`` surface stays one compound
-    # source axis; it is never duplicated into two narrower schema branches.
+    # CTG's detector merged ``Quá hạn, Không chịu lãi`` into one text line,
+    # but the source table and the numeric rows retain two physical columns.
+    # The generic structural graph therefore retains two ordered roles; the
+    # downstream geometry stage binds each to its own numeric column centre.
     assert {
-        "OVERDUE_OR_NO_INTEREST",
+        "OVERDUE",
+        "NO_INTEREST",
         "WITHIN_1_3M",
         "WITHIN_3_6M",
         "WITHIN_6_12M",
         "WITHIN_1_5Y",
     } <= set(layouts["CTG"]["repricing_axes_observed"])
-    assert "NO_INTEREST" not in layouts["CTG"]["repricing_axes_observed"]
-    assert "OVERDUE" not in layouts["CTG"]["repricing_axes_observed"]
     # BID truly has no separately printed external-state row.  The complete
     # topology is admitted without inventing an implicit zero or mapping.
     assert layouts["BID"]["state_roles_observed"] == ["STATE_INTERNAL", "STATE_COMBINED"]
