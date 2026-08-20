@@ -673,6 +673,24 @@ record the new gate.
   controls must remain non-candidates, and a blank foreign cell must never be
   converted to zero without an authenticated dash bbox.
 
+### F-047 — Forcing source-specific segment axes or blank cells into near schema leaves
+
+- Observed failure: segment reports contain plausible but non-equivalent axes
+  such as `Miền Trung và Tây Nguyên`, `Nước ngoài`, finance leasing and
+  non-bank finance.  VIB also prints a genuinely blank Central fixed-asset
+  cell, while CTG VietOCR reads one comparative elimination value as
+  `(6.341.026)` although the pixel reads `(5.341.026)`.
+- Root cause: label proximity and row geometry were treated as enough to map a
+  broader/narrower axis, and blank/OCR output was at risk of becoming numeric
+  truth without an independent accounting closure.
+- Correction: map only semantically coextensive live-schema axes; keep other
+  axes source-only and visible blanks as typed `BLANK`.  Resolve OCR numeric
+  conflicts with the authenticated pixel plus the complete row equation, not
+  string confidence or a bank-specific substitution.
+- Regression gate: E-0161 must retain all 17 source variants, preserve the two
+  VIB blank cells as nonnumeric, bind CTG elimination to `(5.341.026)`, close
+  all 43 admitted equations and keep root 5750 unprocessed.
+
 ## Maintenance checklist
 
 - Add a new `F-xxx` entry whenever a corrected failure is discovered.

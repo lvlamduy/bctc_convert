@@ -1432,11 +1432,36 @@ Kết quả annual-2025:
 Kết quả annual-2025:
 `docs/experiments/E-0160-annual-2025-securities-geography-8bank-codex-verified-mapping-v1.json`.
 
+## 55. Báo cáo bộ phận hợp nhất
+
+### Annual-2025 — E-0161
+
+- **Đã map/xác minh:** whole-PDF scan tìm đúng một vùng báo cáo bộ phận tại
+  ACB p95–99, MBB p83–90, VPB p95–97, HDB p60–61, VCB p71–72, CTG p81–84,
+  BID p36–38 và VIB p61–62. Phần schema hỗ trợ có 73 binding cấu trúc, 208
+  mapping số và 43 phương trình khép đúng. Hai ô trống thật của VIB được giữ
+  là `BLANK`, không đổi thành dấu `-` hoặc số 0.
+- **Không có nhánh chi tiết trong báo cáo:** VPB không có bảng bộ phận theo
+  địa lý; HDB và VIB không có bảng bộ phận theo lĩnh vực kinh doanh. Đây là
+  bounded absence của đúng nhánh, không phải absence của toàn family.
+- **Có nhưng còn khoản mục chưa map:** 17 biến thể nguồn chưa đồng nhất với
+  trục schema hiện hành, gồm các trục `Nước ngoài`, trục gộp
+  `Miền Trung và Tây Nguyên`, các lĩnh vực cho thuê tài chính/chứng khoán/tài
+  chính phi ngân hàng và hai trường hợp nhãn kết quả bộ phận chưa nói rõ lợi
+  nhuận trước thuế. Chi tiết bank/trang/tên nguồn nằm trong
+  `UNRESOLVED_MAPPING_LEDGER.md`.
+- **Không xử lý:** family 5750 `Giao dịch với các bên liên quan` được đánh dấu
+  `SKIPPED_BY_USER`; không có dòng nào của family này được scan hoặc map.
+
+Kết quả annual-2025:
+`docs/experiments/E-0161-annual-2025-consolidated-segment-report-8bank-codex-verified-mapping-v1.json`.
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
 thấy vùng nguồn nhưng chưa map; **✓\*** đã map phần mục tiêu, còn hàng ngoài lõi
-hoặc group parent chỉ giữ để kiểm tra.
+hoặc group parent chỉ giữ để kiểm tra; **SKIP** không xử lý theo chỉ đạo người
+dùng.
 
 | Cụm | ACB | MBB | VPB | HDB | VCB | CTG | BID | VIB | Còn chưa map |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -1494,3 +1519,5 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Rủi ro lãi suất | ✓\* p87 | ✓\* p95 | ✓\* p85 | ✓\* p65 | ✓\* p78 | ✓\* p75 | ✓\* p67 | ✓\* p68 | Annual-2025: 1 nhóm/5 ô VPB OPEN vì residual 2; 280 mapping/280 ô/87 phương trình, 8/8 vùng unique. Lượt hiện hành trước giữ riêng 234 mapping/279 ô/108 phương trình và OPEN=0; VPB của lượt đó là Q1 |
 | Rủi ro thanh khoản | ✓ p92 | ✓ p100 | ✓ p90 | ✓ p67 | ✓ p82 | ✓ p79 | ✓ p69 | ✓ p74 | Annual-2025: 0 OPEN, 181 mapping/181 ô/54 phương trình, 9 DASH→0; lượt hiện hành trước giữ 4 trục/12 ô VPB OPEN |
 | Tỷ giá ngoại tệ cuối kỳ | — | ✓ p103 | ✓\* p98 | ✓\* p69 | — | ✓\* p85 | ✓ p70 | ✓\* p77 | Annual-2025: 19 dòng OPEN, 55 mapping/110 ô; HDB dùng kỳ tài liệu cho `Số cuối năm/Số đầu năm`. Lượt hiện hành trước: 15 OPEN/46 mapping |
+| Giao dịch với các bên liên quan | SKIP | SKIP | SKIP | SKIP | SKIP | SKIP | SKIP | SKIP | Không xử lý theo chỉ đạo người dùng; không diễn giải thành absence hay unresolved mapping |
+| Báo cáo bộ phận hợp nhất | ✓\* p95–99 | ✓\* p83–90 | ✓\* p95–97 | ✓\* p60–61 | ✓\* p71–72 | ✓\* p81–84 | ✓\* p36–38 | ✓\* p61–62 | 17 biến thể nguồn giữ OPEN; 73 binding cấu trúc/208 mapping số/43 phương trình |

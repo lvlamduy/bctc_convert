@@ -1,6 +1,6 @@
 # Unresolved mapping and adjudication review ledger
 
-Updated: 2026-08-18 (UTC)
+Updated: 2026-08-20 (UTC)
 
 This is the cumulative human-readable file requested for every source item or
 family region that could not initially be mapped.  Entries remain here after
@@ -17,7 +17,7 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **343 entries**.  Current open queue: **126**.  Closed history:
+Ledger total: **360 entries**.  Current open queue: **143**.  Closed history:
 **129** row/graph resolutions and **88** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
@@ -2323,6 +2323,42 @@ Annual-2025 resolving result: E-0120
 - Không còn dòng nguồn annual-2025 nào của family 5759–5761 trong ledger.
 - Result:
   `annual2025sg8bcv1:result:5d80cb90d755c6b8ed1267a1fd640d1d2f959f62910eda3268e669633d7ae965`.
+
+## E-0161 — annual-2025 `Báo cáo bộ phận hợp nhất`
+
+- Review status: `OPEN_SOURCE_VARIANTS_WITH_SUPPORTED_SUBSET_VERIFIED`.
+- Whole-PDF scan tìm đúng một vùng báo cáo bộ phận trong cả tám BCTC. Phần
+  schema hỗ trợ đã được xác minh qua 73 binding cấu trúc, 208 mapping số và
+  43 phương trình; VPB không có nhánh địa lý chi tiết, HDB/VIB không có nhánh
+  lĩnh vực kinh doanh chi tiết.
+- Hai ô VIB `Tài sản cố định — Miền Trung` là ô trống thật, không phải dấu
+  `-` và không được đổi thành 0. Những trục nguồn rộng/hẹp khác schema được giữ
+  source-only thay vì ép vào một leaf gần tên.
+- Root 5750 `Giao dịch với các bên liên quan` có trạng thái
+  `SKIPPED_BY_USER`. Nó không thuộc queue unresolved, không được scan/map và
+  không được diễn giải thành bounded absence.
+- Result:
+  `annual2025csr8bcv1:result:8395c0524c6b1345910d057fc8bca97aba732231d7379e7c7d0eccb645f79707`.
+
+| ID | Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | --- | ---: | --- | --- |
+| ASEG-001 | ACB | 95 | Cho thuê tài chính | Schema business segment 5807–5842 chưa có trục này. |
+| ASEG-002 | ACB | 95 | Chứng khoán / Quản lý quỹ | Hai trục nguồn cần phép cộng được kiểm soát trước khi đưa vào trục gộp của schema. |
+| ASEG-003 | ACB | 95 | Kết quả kinh doanh bộ phận | Nhãn nguồn không xác lập rõ đây là lợi nhuận trước thuế. |
+| ASEG-004 | MBB | 87 | Nước ngoài | Không đồng nhất ngữ nghĩa với trục `Khu vực khác`. |
+| ASEG-005 | MBB | 83 | Thu nhập / Chi phí nội bộ | Đối trừ doanh thu/chi phí nội bộ chưa nằm trong lượt review số có giới hạn này. |
+| ASEG-006 | VPB | 96 | Hoạt động công ty tài chính | Schema business segment chưa có trục riêng. |
+| ASEG-007 | VPB | 96 | Hoạt động chứng khoán | Hẹp hơn trục gộp `Chứng khoán và quản lý quỹ` trong schema. |
+| ASEG-008 | HDB | 61 | Nước ngoài | Không đồng nhất ngữ nghĩa với trục `Khu vực khác`. |
+| ASEG-009 | HDB | 61 | Kết quả kinh doanh bộ phận | Nhãn nguồn không xác lập rõ đây là lợi nhuận trước thuế. |
+| ASEG-010 | VCB | 71 | Miền Trung và Tây Nguyên | Rộng hơn trục `Miền Trung`; không được tự thu hẹp. |
+| ASEG-011 | VCB | 71 | Nước ngoài | Schema địa lý hiện chưa có trục tương ứng. |
+| ASEG-012 | VCB | 72 | Dịch vụ tài chính phi ngân hàng / Chứng khoán / Khác | Các trục nguồn không đồng nhất với các trục business hiện có. |
+| ASEG-013 | CTG | 82 | Dịch vụ tài chính phi ngân hàng / Khác | Các trục nguồn không đồng nhất với các trục business hiện có. |
+| ASEG-014 | CTG | 82 | Bảng bộ phận kinh doanh xoay | Chưa promote số theo trục khi chưa hoàn tất đối chiếu toàn hàng trên ảnh xoay. |
+| ASEG-015 | BID | 37 | Cho thuê tài chính / Chứng khoán / Khác | Các trục nguồn không đồng nhất với các trục business hiện có. |
+| ASEG-016 | BID | 38 | Trong nước / Nước ngoài | Không tương đương với ba trục Bắc/Trung/Nam của schema. |
+| ASEG-017 | VIB | 61 | Tài sản cố định — Miền Trung | Ô nguồn nhìn thấy là trống, không phải dấu `-` hay số 0. |
 
 ## Append policy
 
