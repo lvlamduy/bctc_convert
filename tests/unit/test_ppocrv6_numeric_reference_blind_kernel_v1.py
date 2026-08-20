@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import shutil
 from pathlib import Path
 
 import pytest
@@ -38,15 +39,19 @@ class _Result:
 
 
 class _Recognizer:
-    def __init__(self) -> None:
+    def __init__(self, expected_batch_size: int = 4) -> None:
         self.calls = 0
         self.images = None
+        self.expected_batch_size = expected_batch_size
 
     def predict(self, *, input, batch_size):
         self.calls += 1
         self.images = input
-        assert batch_size == 4
-        return [_Result("603.040.884"), _Result("–", 0.91)]
+        assert batch_size == self.expected_batch_size
+        values = ["603.040.884", "–", "1.234", "(55)"]
+        return [
+            _Result(values[index % len(values)], 0.99 - index / 100) for index in range(len(input))
+        ]
 
 
 def _model_projection() -> dict[str, object]:
@@ -64,6 +69,35 @@ def _model_projection() -> dict[str, object]:
     }
 
 
+def test_private_model_snapshot_consumes_only_verified_bytes(tmp_path: Path) -> None:
+    source = tmp_path / "model"
+    source.mkdir()
+    required = []
+    for index, name in enumerate(["inference.json", "inference.pdiparams", "inference.yml"], 1):
+        payload = f"payload-{index}".encode()
+        (source / name).write_bytes(payload)
+        required.append(
+            {
+                "path": f"MODEL_CACHE/official_models/PP-OCRv6_medium_rec/{name}",
+                "sha256": hashlib.sha256(payload).hexdigest(),
+                "size_bytes": len(payload),
+            }
+        )
+    projection = {**_model_projection(), "required_files": required}
+    snapshot = kernel._materialize_private_model_snapshot(source, projection)
+    try:
+        assert snapshot.stat().st_mode & 0o777 == 0o700
+        assert sorted(item.name for item in snapshot.iterdir()) == sorted(
+            ["inference.json", "inference.pdiparams", "inference.yml"]
+        )
+        for reference in required:
+            name = Path(reference["path"]).name
+            assert hashlib.sha256((snapshot / name).read_bytes()).hexdigest() == reference["sha256"]
+            assert (snapshot / name).stat().st_ino != (source / name).stat().st_ino
+    finally:
+        shutil.rmtree(snapshot)
+
+
 def test_kernel_is_reference_blind_and_preserves_exact_order(
     monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:
@@ -77,6 +111,14 @@ def test_kernel_is_reference_blind_and_preserves_exact_order(
 
     monkeypatch.setattr(kernel, "_recognizer_projection", projection)
     monkeypatch.setattr(kernel, "_load_recognizer", lambda *_args, **_kwargs: recognizer)
+    snapshot = tmp_path / "snapshot"
+    snapshot.mkdir()
+    monkeypatch.setattr(kernel, "_materialize_private_model_snapshot", lambda *_args: snapshot)
+    monkeypatch.setattr(
+        kernel.importlib.metadata,
+        "version",
+        lambda name: {"paddleocr": "3.7.0", "paddlepaddle": "3.3.0"}[name],
+    )
     records = kernel.recognize_reference_blind_numeric_crops_v1(
         tmp_path,
         model_cache=tmp_path,
@@ -104,6 +146,82 @@ def test_kernel_is_reference_blind_and_preserves_exact_order(
         "accounting",
     ):
         assert forbidden not in serialized
+
+
+def test_stream_kernel_loads_once_and_exhausts_exact_archive_axis(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    recognizer = _Recognizer(expected_batch_size=2)
+    projection_calls = 0
+    chunks = [
+        (
+            {
+                "crop_png_bytes": _crop(),
+                "crop_sha256": hashlib.sha256(_crop()).hexdigest(),
+                "sample_id": "sample-000000001",
+            },
+            {
+                "crop_png_bytes": _crop((250, 250, 250)),
+                "crop_sha256": hashlib.sha256(_crop((250, 250, 250))).hexdigest(),
+                "sample_id": "sample-000000002",
+            },
+            {
+                "crop_png_bytes": _crop((245, 245, 245)),
+                "crop_sha256": hashlib.sha256(_crop((245, 245, 245))).hexdigest(),
+                "sample_id": "sample-000000003",
+            },
+        ),
+        (),
+    ]
+
+    def projection(_root, _cache):
+        nonlocal projection_calls
+        projection_calls += 1
+        return _model_projection(), tmp_path / "PP-OCRv6_medium_rec"
+
+    monkeypatch.setattr(kernel, "_recognizer_projection", projection)
+    monkeypatch.setattr(kernel, "_load_recognizer", lambda *_args, **_kwargs: recognizer)
+    snapshot = tmp_path / "snapshot"
+    snapshot.mkdir()
+    monkeypatch.setattr(kernel, "_materialize_private_model_snapshot", lambda *_args: snapshot)
+    monkeypatch.setattr(
+        kernel.importlib.metadata,
+        "version",
+        lambda name: {"paddleocr": "3.7.0", "paddlepaddle": "3.3.0"}[name],
+    )
+    monkeypatch.setattr(
+        kernel,
+        "read_authenticated_family_first_semantic_label_chunk_v1",
+        lambda _session, *, maximum_samples: chunks.pop(0),
+    )
+    records = []
+    runtime, counts, metrics = kernel.execute_authenticated_ppocrv6_numeric_reference_blind_v1(
+        tmp_path,
+        object(),
+        expected_sample_count=3,
+        model_cache=tmp_path,
+        result_sink=records.append,
+        batch_size=2,
+        cpu_threads=2,
+    )
+
+    assert projection_calls == 3
+    assert recognizer.calls == 2
+    assert [item["sample_id"] for item in records] == [
+        "sample-000000001",
+        "sample-000000002",
+        "sample-000000003",
+    ]
+    assert counts == {
+        "formal_run_count": 1,
+        "model_build_count": 1,
+        "reader_chunk_call_count": 2,
+        "recognizer_predict_call_count": 2,
+        "result_count": 3,
+    }
+    assert runtime["device"] == "cpu"
+    assert runtime["precision"] == "fp32"
+    assert metrics["total_wall_seconds"] >= metrics["model_load_seconds"] >= 0
 
 
 @pytest.mark.parametrize(

@@ -18,7 +18,11 @@ import io
 import math
 import os
 import re
+import shutil
 import socket
+import tempfile
+import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -26,14 +30,20 @@ import numpy as np
 from PIL import Image
 
 from bctc_ai.evaluation import family_first_semantic_label_plan_v1 as plan_v1
+from bctc_ai.evaluation.family_first_semantic_label_archive_v1 import (
+    AuthenticatedFamilyFirstSemanticLabelReaderSessionV1,
+    read_authenticated_family_first_semantic_label_chunk_v1,
+)
 
 __all__ = [
     "FamilyFirstPPocrV6NumericKernelV1Error",
+    "execute_authenticated_ppocrv6_numeric_reference_blind_v1",
     "recognize_reference_blind_numeric_crops_v1",
 ]
 
 
 _SAMPLE_ID = re.compile(r"^numeric-sample-[0-9]{8}$")
+_ARCHIVE_SAMPLE_ID = re.compile(r"^sample-[0-9]{9}$")
 _SAMPLE_FIELDS = {"crop_png_bytes", "crop_sha256", "sample_id"}
 _RESULT_FIELDS = {"crop_sha256", "raw_prediction", "reader_score", "sample_id"}
 
@@ -62,19 +72,28 @@ def _png_array(payload: bytes) -> np.ndarray:
         raise _error("reference-blind numeric crop cannot be decoded") from exc
 
 
-def _samples(value: Any) -> tuple[list[dict[str, Any]], list[np.ndarray]]:
+def _samples(
+    value: Any, *, first_ordinal: int = 1, archive_axis: bool = False
+) -> tuple[list[dict[str, Any]], list[np.ndarray]]:
     if type(value) is not tuple or not value:
         raise _error("numeric recognizer input must be one non-empty exact tuple")
     metadata: list[dict[str, Any]] = []
     images: list[np.ndarray] = []
     seen: set[str] = set()
-    for expected_ordinal, raw in enumerate(value, 1):
-        expected_id = f"numeric-sample-{expected_ordinal:08d}"
+    if type(first_ordinal) is not int or first_ordinal <= 0 or type(archive_axis) is not bool:
+        raise _error("numeric recognizer anonymous sample-axis policy drifted")
+    for expected_ordinal, raw in enumerate(value, first_ordinal):
+        expected_id = (
+            f"sample-{expected_ordinal:09d}"
+            if archive_axis
+            else f"numeric-sample-{expected_ordinal:08d}"
+        )
+        pattern = _ARCHIVE_SAMPLE_ID if archive_axis else _SAMPLE_ID
         if (
             type(raw) is not dict
             or set(raw) != _SAMPLE_FIELDS
             or type(raw["sample_id"]) is not str
-            or _SAMPLE_ID.fullmatch(raw["sample_id"]) is None
+            or pattern.fullmatch(raw["sample_id"]) is None
             or raw["sample_id"] != expected_id
             or raw["sample_id"] in seen
             or type(raw["crop_sha256"]) is not str
@@ -141,6 +160,50 @@ def _load_recognizer(model_directory: Path, *, cpu_threads: int) -> Any:
     )
 
 
+def _write_snapshot_file(directory: Path, name: str, payload: bytes) -> None:
+    descriptor = os.open(
+        directory / name,
+        os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+        0o400,
+    )
+    try:
+        view = memoryview(payload)
+        while view:
+            count = os.write(descriptor, view)
+            if count <= 0:
+                raise _error("private numeric model snapshot write made no progress")
+            view = view[count:]
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def _materialize_private_model_snapshot(model_directory: Path, projection: dict[str, Any]) -> Path:
+    stage = Path(tempfile.mkdtemp(prefix="family-first-ppocrv6-numeric-model-"))
+    os.chmod(stage, 0o700)
+    try:
+        for reference in projection["required_files"]:
+            name = Path(reference["path"]).name
+            payload, _metadata = plan_v1._stable_bytes(
+                model_directory / name, f"PP-OCRv6 numeric model source {name}"
+            )
+            if (
+                len(payload) != reference["size_bytes"]
+                or hashlib.sha256(payload).hexdigest() != reference["sha256"]
+            ):
+                raise _error("PP-OCRv6 numeric model changed before private snapshot")
+            _write_snapshot_file(stage, name, payload)
+        descriptor = os.open(stage, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+        return stage
+    except BaseException:
+        shutil.rmtree(stage)
+        raise
+
+
 def _provider_result(value: Any) -> tuple[str, float]:
     wrapped = getattr(value, "json", None)
     if type(wrapped) is not dict or set(wrapped) != {"res"} or type(wrapped["res"]) is not dict:
@@ -184,26 +247,134 @@ def recognize_reference_blind_numeric_crops_v1(
         raise _error("numeric recognizer CPU threads must be one positive exact integer")
     metadata, images = _samples(samples)
     before, model_directory = _recognizer_projection(project_root, model_cache)
-    recognizer = _load_recognizer(model_directory, cpu_threads=cpu_threads)
-    after_load, _directory = _recognizer_projection(project_root, model_cache)
-    if after_load != before:
-        raise _error("PP-OCRv6 numeric model changed during load")
-    results = recognizer.predict(input=images, batch_size=batch_size)
-    if type(results) is not list or len(results) != len(metadata):
-        raise _error("PP-OCRv6 numeric recognizer changed the crop denominator")
-    records: list[dict[str, Any]] = []
-    for sample, result in zip(metadata, results, strict=True):
-        raw_text, score = _provider_result(result)
-        record = {
-            "crop_sha256": sample["crop_sha256"],
-            "raw_prediction": raw_text,
-            "reader_score": score,
-            "sample_id": sample["sample_id"],
+    snapshot = _materialize_private_model_snapshot(model_directory, before)
+    try:
+        recognizer = _load_recognizer(snapshot, cpu_threads=cpu_threads)
+        after_load, _directory = _recognizer_projection(project_root, model_cache)
+        if after_load != before:
+            raise _error("PP-OCRv6 numeric model changed during load")
+        results = recognizer.predict(input=images, batch_size=batch_size)
+        if type(results) is not list or len(results) != len(metadata):
+            raise _error("PP-OCRv6 numeric recognizer changed the crop denominator")
+        records: list[dict[str, Any]] = []
+        for sample, result in zip(metadata, results, strict=True):
+            raw_text, score = _provider_result(result)
+            record = {
+                "crop_sha256": sample["crop_sha256"],
+                "raw_prediction": raw_text,
+                "reader_score": score,
+                "sample_id": sample["sample_id"],
+            }
+            if set(record) != _RESULT_FIELDS:
+                raise _error("PP-OCRv6 numeric result fields drifted")
+            records.append(record)
+        after, _directory = _recognizer_projection(project_root, model_cache)
+        if after != before:
+            raise _error("PP-OCRv6 numeric model changed during inference")
+        return tuple(records)
+    finally:
+        shutil.rmtree(snapshot)
+
+
+def execute_authenticated_ppocrv6_numeric_reference_blind_v1(
+    project_root: Path,
+    reader_session: AuthenticatedFamilyFirstSemanticLabelReaderSessionV1,
+    *,
+    expected_sample_count: int,
+    model_cache: Path,
+    result_sink: Callable[[dict[str, Any]], None],
+    batch_size: int = 64,
+    cpu_threads: int = 16,
+) -> tuple[dict[str, Any], dict[str, int], dict[str, float]]:
+    """Stream the complete authenticated archive through one recognizer load."""
+
+    if not isinstance(project_root, Path) or not isinstance(model_cache, Path):
+        raise _error("project root and model cache must be pathlib Paths")
+    if type(expected_sample_count) is not int or expected_sample_count <= 0:
+        raise _error("numeric reader expected denominator must be one positive exact integer")
+    if not callable(result_sink):
+        raise _error("numeric reader result sink must be callable")
+    if type(batch_size) is not int or not 1 <= batch_size <= 512:
+        raise _error("numeric reader batch size must be one exact integer in [1,512]")
+    if type(cpu_threads) is not int or not 1 <= cpu_threads <= 64:
+        raise _error("numeric reader CPU threads must be one exact integer in [1,64]")
+
+    started = time.perf_counter()
+    before, model_directory = _recognizer_projection(project_root, model_cache)
+    snapshot = _materialize_private_model_snapshot(model_directory, before)
+    model_started = time.perf_counter()
+    try:
+        recognizer = _load_recognizer(snapshot, cpu_threads=cpu_threads)
+        model_load_seconds = time.perf_counter() - model_started
+        after_load, _directory = _recognizer_projection(project_root, model_cache)
+        if after_load != before:
+            raise _error("PP-OCRv6 numeric model changed during load")
+
+        counts = {
+            "formal_run_count": 1,
+            "model_build_count": 1,
+            "reader_chunk_call_count": 0,
+            "recognizer_predict_call_count": 0,
+            "result_count": 0,
         }
-        if set(record) != _RESULT_FIELDS:
-            raise _error("PP-OCRv6 numeric result fields drifted")
-        records.append(record)
-    after, _directory = _recognizer_projection(project_root, model_cache)
-    if after != before:
-        raise _error("PP-OCRv6 numeric model changed during inference")
-    return tuple(records)
+        cursor = 0
+        while cursor < expected_sample_count:
+            maximum = min(4096, expected_sample_count - cursor)
+            chunk = read_authenticated_family_first_semantic_label_chunk_v1(
+                reader_session, maximum_samples=maximum
+            )
+            counts["reader_chunk_call_count"] += 1
+            if not chunk:
+                raise _error("authenticated numeric crop stream ended before its denominator")
+            offset = 0
+            while offset < len(chunk):
+                raw_batch = chunk[offset : offset + batch_size]
+                metadata, images = _samples(
+                    raw_batch,
+                    first_ordinal=cursor + offset + 1,
+                    archive_axis=True,
+                )
+                results = recognizer.predict(input=images, batch_size=batch_size)
+                counts["recognizer_predict_call_count"] += 1
+                if type(results) is not list or len(results) != len(metadata):
+                    raise _error("PP-OCRv6 numeric recognizer changed a streamed crop denominator")
+                for sample, result in zip(metadata, results, strict=True):
+                    raw_text, score = _provider_result(result)
+                    result_sink(
+                        {
+                            "crop_sha256": sample["crop_sha256"],
+                            "raw_prediction": raw_text,
+                            "reader_score": score,
+                            "sample_id": sample["sample_id"],
+                        }
+                    )
+                    counts["result_count"] += 1
+                offset += len(raw_batch)
+            cursor += len(chunk)
+        trailing = read_authenticated_family_first_semantic_label_chunk_v1(
+            reader_session, maximum_samples=1
+        )
+        counts["reader_chunk_call_count"] += 1
+        if trailing:
+            raise _error("authenticated numeric crop stream retained trailing samples")
+        if cursor != expected_sample_count or counts["result_count"] != expected_sample_count:
+            raise _error("PP-OCRv6 numeric execution denominator drifted")
+        after, _directory = _recognizer_projection(project_root, model_cache)
+        if after != before:
+            raise _error("PP-OCRv6 numeric model changed during inference")
+        runtime = {
+            "device": "cpu",
+            "model": before,
+            "packages": {
+                "paddleocr": importlib.metadata.version("paddleocr"),
+                "paddlepaddle": importlib.metadata.version("paddlepaddle"),
+            },
+            "precision": "fp32",
+        }
+        metrics = {
+            "model_load_seconds": float(model_load_seconds),
+            "total_wall_seconds": float(time.perf_counter() - started),
+        }
+        return runtime, counts, metrics
+    finally:
+        shutil.rmtree(snapshot)
