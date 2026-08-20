@@ -325,6 +325,18 @@ def _configured_modules() -> tuple[ModuleType, ModuleType, ModuleType]:
         latest = {role: (line, text) for role, line, text in candidates}
         if {"OVERDUE_GT3M", "OVERDUE_LE3M"} & set(latest):
             latest.pop("OVERDUE", None)
+        # A vertically split ``Từ trên 1 năm / đến 5 năm`` header can expose
+        # the fragment role GT1Y as well as the complete 1-5Y range.  The
+        # complete range is one physical column, so discard only the fragment
+        # when both were recovered from the same header area.
+        if "WITHIN_1_5Y" in latest:
+            latest.pop("WITHIN_GT1Y", None)
+        elif "WITHIN_GT1Y" in latest and "WITHIN_GT5Y" in latest:
+            # A comparative header may lose its lower ``đến 5 năm`` fragment.
+            # In an ordered, mutually-exclusive band set, a ``trên 1 năm``
+            # column immediately before ``trên 5 năm`` necessarily ends at
+            # five years; otherwise the two physical columns overlap.
+            latest["WITHIN_1_5Y"] = latest.pop("WITHIN_GT1Y")
         same_cell_order = {
             "OVERDUE": 0,
             "OVERDUE_LE3M": 0,

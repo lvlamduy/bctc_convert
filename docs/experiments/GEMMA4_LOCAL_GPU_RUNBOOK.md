@@ -97,3 +97,8 @@ repeated.
    `/workspace/bctc-ai-models/official_models` made the runner look for
    `official_models/official_models/...` and fail before model load. The pinned
    `run_ppocrv6_word_boxes.py` cache root is `/workspace/bctc-ai-models`.
+8. **A vertically split range header created an extra fragment axis.** CTG's
+   `Từ trên 1 năm / đến 5 năm` was briefly represented as both `GT1Y` and
+   `1-5Y`. When a complete range and its incomplete fragment occupy the same
+   header area, retain the complete physical column only. Confirm the final
+   axis count against repeated numeric x-centres before mapping.
