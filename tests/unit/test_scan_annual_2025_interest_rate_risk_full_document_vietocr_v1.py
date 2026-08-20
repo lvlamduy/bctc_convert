@@ -29,7 +29,7 @@ def test_live_scan_finds_one_bank_blind_region_in_every_complete_pdf(
     live_scan: dict[str, object],
 ) -> None:
     assert live_scan["scan_id"] == (
-        "a2025irrfdsv1:scan:6daa92e2bedd7e9493fcf05843f6dfd27ec9a4053a9a5f04c71997f28a82f30b"
+        "a2025irrfdsv1:scan:74579b1c5c82a4165b7e54fbf6c054776ab4d9eef27294d7d00940629ec2ec25"
     )
     assert live_scan["metrics"] == {
         "bounded_detailed_table_absence_count": 0,
@@ -38,7 +38,7 @@ def test_live_scan_finds_one_bank_blind_region_in_every_complete_pdf(
         "document_count": 8,
         "document_unique_structural_match_count": 8,
         "mapping_verified_count": 0,
-        "near_region_count": 34,
+        "near_region_count": 33,
         "rotated_rescue_line_count": 3338,
     }
     trials = live_scan["trials"]
@@ -71,16 +71,17 @@ def test_generic_variants_cover_split_merged_fuzzy_and_optional_rows(
     assert {"OVERDUE", "NO_INTEREST", "WITHIN_1_5Y", "TOTAL"} <= set(
         layouts["MBB"]["repricing_axes_observed"]
     )
-    # CTG's merged ``Quá hạn, Không chịu lãi`` surface contributes both
-    # semantic axes while its remaining multiline ranges retain their roles.
+    # CTG's merged ``Quá hạn, Không chịu lãi`` surface stays one compound
+    # source axis; it is never duplicated into two narrower schema branches.
     assert {
-        "NO_INTEREST",
-        "OVERDUE_LE3M",
-        "OVERDUE_GT3M",
+        "OVERDUE_OR_NO_INTEREST",
+        "WITHIN_1_3M",
         "WITHIN_3_6M",
         "WITHIN_6_12M",
         "WITHIN_1_5Y",
     } <= set(layouts["CTG"]["repricing_axes_observed"])
+    assert "NO_INTEREST" not in layouts["CTG"]["repricing_axes_observed"]
+    assert "OVERDUE" not in layouts["CTG"]["repricing_axes_observed"]
     # BID truly has no separately printed external-state row.  The complete
     # topology is admitted without inventing an implicit zero or mapping.
     assert layouts["BID"]["state_roles_observed"] == ["STATE_INTERNAL", "STATE_COMBINED"]

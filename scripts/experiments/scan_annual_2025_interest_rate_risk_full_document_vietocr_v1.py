@@ -194,11 +194,7 @@ def _configured_modules() -> tuple[ModuleType, ModuleType, ModuleType]:
 
     def annual_axis_roles(text: str) -> list[str]:
         value = matcher._strip(text)
-        roles = []
-        original = original_axis_role(text)
-        if original is not None:
-            roles.append(original)
-        if (
+        no_interest = (
             "khong chiu l" in value
             or (
                 "khong" in value
@@ -207,24 +203,37 @@ def _configured_modules() -> tuple[ModuleType, ModuleType, ModuleType]:
                 and "lai suat" in value
             )
             or "khong bi dinh gia lai" in value
+        )
+        overdue = "qua han" in value
+        if no_interest and overdue:
+            return ["OVERDUE_OR_NO_INTEREST"]
+        ranges = []
+        if re.search(r"\btu\s+0?1\s+thang.*\bden\s+0?3\s+thang\b", value):
+            ranges.append("WITHIN_1_3M")
+        if re.search(r"\btu\s+(?:tren\s+)?0?3\s+thang.*\bden\s+0?6\s+thang\b", value):
+            ranges.append("WITHIN_3_6M")
+        if re.search(
+            r"\btu\s+(?:tren\s+)?0?6\s+(?:thang|mang).*\bden\s+12\s+thang\b",
+            value,
         ):
+            ranges.append("WITHIN_6_12M")
+        if re.search(r"\btu\s+tren\b.*\bden\s+0?5\s+nam\b", value):
+            ranges.append("WITHIN_1_5Y")
+        if ranges:
+            return list(dict.fromkeys(ranges))
+        roles = []
+        original = original_axis_role(text)
+        if original is not None:
+            roles.append(original)
+        if no_interest:
             roles.append("NO_INTEREST")
-        if "qua han" in value:
+        if overdue:
             if re.search(r"\btren\s+0?3\s+thang\b", value):
                 roles.append("OVERDUE_GT3M")
             elif re.search(r"\bden\s+0?3\s+thang\b", value):
                 roles.append("OVERDUE_LE3M")
             else:
                 roles.append("OVERDUE")
-        if re.search(r"\btu\s+(?:tren\s+)?0?3\s+thang.*\bden\s+0?6\s+thang\b", value):
-            roles.append("WITHIN_3_6M")
-        if re.search(
-            r"\btu\s+(?:tren\s+)?0?6\s+(?:thang|mang).*\bden\s+12\s+thang\b",
-            value,
-        ):
-            roles.append("WITHIN_6_12M")
-        if re.search(r"\btu\s+tren\b.*\bden\s+0?5\s+nam\b", value):
-            roles.append("WITHIN_1_5Y")
         return list(dict.fromkeys(roles))
 
     core_aliases = {
@@ -302,11 +311,10 @@ def _configured_modules() -> tuple[ModuleType, ModuleType, ModuleType]:
                 key=lambda item: (item["bbox"][1], item["bbox"][0]),
             )
             composed = " ".join(item["normalized_text"] for item in aligned)
-            roles = list(
-                dict.fromkeys(
-                    annual_axis_roles(line["normalized_text"]) + annual_axis_roles(composed)
-                )
-            )
+            # Interpret the complete geometric column once.  Independently
+            # reading fragments would turn one range into a false overdue
+            # axis or duplicate a merged overdue/non-interest column.
+            roles = annual_axis_roles(composed) or annual_axis_roles(line["normalized_text"])
             candidates.extend((role, line, composed) for role in roles)
         latest = {role: (line, text) for role, line, text in candidates}
         if {"OVERDUE_GT3M", "OVERDUE_LE3M"} & set(latest):
@@ -401,7 +409,13 @@ def _configured_modules() -> tuple[ModuleType, ModuleType, ModuleType]:
         features["complete"] = (
             "TOTAL" in features["repricing_axes"]
             and bool(
-                {"NO_INTEREST", "OVERDUE", "OVERDUE_LE3M", "OVERDUE_GT3M"}
+                {
+                    "NO_INTEREST",
+                    "OVERDUE",
+                    "OVERDUE_LE3M",
+                    "OVERDUE_GT3M",
+                    "OVERDUE_OR_NO_INTEREST",
+                }
                 & set(features["repricing_axes"])
             )
             and len(set(features["repricing_axes"]) & term_axes) >= 3

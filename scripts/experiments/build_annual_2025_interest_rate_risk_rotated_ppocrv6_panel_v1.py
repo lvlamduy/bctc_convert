@@ -24,7 +24,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 OUTPUT_ROOT = Path("output/calibration/annual-2025-interest-rate-risk-rotated-ppocrv6-panel-v1")
 MANIFEST_PATH = OUTPUT_ROOT / "panel_manifest.json"
 EXPECTED_SCAN_ID = (
-    "a2025irrfdsv1:scan:6daa92e2bedd7e9493fcf05843f6dfd27ec9a4053a9a5f04c71997f28a82f30b"
+    "a2025irrfdsv1:scan:74579b1c5c82a4165b7e54fbf6c054776ab4d9eef27294d7d00940629ec2ec25"
 )
 EXPECTED_PAGE_COUNT = 5
 FORMAT_VERSION = "ANNUAL_2025_INTEREST_RATE_RISK_ROTATED_PPOCRV6_PANEL_V1"
