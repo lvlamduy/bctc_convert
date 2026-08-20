@@ -43,6 +43,30 @@ def _error(message: str) -> VietOCRReferenceBlindKernelV1Error:
     return VietOCRReferenceBlindKernelV1Error(message)
 
 
+def _preflight_package_versions() -> dict[str, str]:
+    """Read ambient dependencies before the private VietOCR wheel exists.
+
+    VietOCR itself is deliberately absent from the ambient environment.  Its
+    exact wheel bytes and installed overlay are authenticated below, then the
+    complete package ledger is observed again after that wheel is materialized
+    into the private execution overlay.  Asking ``importlib.metadata`` for
+    VietOCR here would incorrectly require an unauthenticated ambient install.
+    """
+
+    packages = {"vietocr": runtime_v3._EXPECTED_PACKAGES["vietocr"]}
+    try:
+        packages.update(
+            {
+                name: importlib.metadata.version(name)
+                for name in sorted(runtime_v3._EXPECTED_PACKAGES)
+                if name != "vietocr"
+            }
+        )
+    except importlib.metadata.PackageNotFoundError as exc:
+        raise _error("formal VietOCR ambient dependency metadata is unavailable") from exc
+    return dict(sorted(packages.items()))
+
+
 def preflight_authenticated_vietocr_runtime_v1(config_payload: bytes) -> dict[str, Any]:
     """Reject a wrong Python/GPU/package environment before staking an attempt."""
 
@@ -53,9 +77,7 @@ def preflight_authenticated_vietocr_runtime_v1(config_payload: bytes) -> dict[st
         import torch
     except ImportError as exc:
         raise _error("formal VietOCR runtime does not provide pinned PyTorch") from exc
-    packages = {
-        name: importlib.metadata.version(name) for name in sorted(runtime_v3._EXPECTED_PACKAGES)
-    }
+    packages = _preflight_package_versions()
     if (
         packages != runtime_v3._EXPECTED_PACKAGES
         or f"{sys.version_info.major}.{sys.version_info.minor}" != "3.11"
