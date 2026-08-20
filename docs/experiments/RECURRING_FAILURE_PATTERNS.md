@@ -250,3 +250,24 @@ Status meanings:
 - **Status:** `MITIGATED`; detector and conservative numeric-evidence primitives
   are separated, while the new family-first authenticated numeric batch receipt
   is still pending.
+
+## RFP-018 — An OCR receipt locks unrelated family-engine source forever
+
+- **Pattern:** replay requires the complete `src/bctc_ai` tree to remain
+  byte-identical after inference, so adding a generic topology/header primitive
+  for a later family invalidates an otherwise unchanged OCR cache.
+- **Examples:** the first numeric-index ledger compared the whole current source
+  tree with the run tree even though the recognizer, archive, runner, index and
+  their imported dependencies were unchanged.
+- **Cause:** a broad source-tree identity was used as a shortcut for an exact
+  executable trust closure.
+- **Do not:** weaken replay to untracked current code, or force an expensive OCR
+  rerun merely because an unrelated family specification/engine was added.
+- **Generic primitive/fix:** retain the run source-tree OID as an observation,
+  but pin every statically imported local dependency plus the fixed
+  orchestrator/config by path, bytes and commit. Permit only a clean descendant
+  whose complete pinned trust closure is unchanged. Regression tests derive the
+  local import closure from the source AST so a later import cannot be omitted
+  silently.
+- **Status:** `RESOLVED` for the family-first VietOCR and PP-OCRv6 numeric lanes
+  before either formal all-filing inference run.

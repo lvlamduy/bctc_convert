@@ -56,7 +56,6 @@ LINE_FORMAT_VERSION = "FAMILY_FIRST_VIETOCR_SEMANTIC_LINE_V1"
 STATE = "VERIFIED_COMPLETE_ORDERED_VIETOCR_TRANSFORMER_PROPOSALS"
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _COMMIT = re.compile(r"^[0-9a-f]{40}$")
-_INDEX_IMPLEMENTATION_PATH = Path("src/bctc_ai/evaluation/family_first_semantic_index_v1.py")
 _AUTHORITY = {
     "accounting_authority": False,
     "all_empty_predictions_preserved": True,
@@ -214,14 +213,7 @@ def _git_ledger(root: Path, run_git: Any) -> str:
         archive_v1._git(root, "merge-base", "--is-ancestor", run_commit, head)
     except archive_v1.FamilyFirstSemanticLabelArchiveV1Error as exc:
         raise _error("formal VietOCR commit is not an ancestor of current HEAD") from exc
-    expected_paths = [
-        runner_v1._ARCHIVE_PATH.as_posix(),
-        runner_v1._KERNEL_PATH.as_posix(),
-        runner_v1._IMPLEMENTATION_PATH.as_posix(),
-        runner_v1._ORCHESTRATOR_PATH.as_posix(),
-        _INDEX_IMPLEMENTATION_PATH.as_posix(),
-        runner_v1.CONFIG_PATH.as_posix(),
-    ]
+    expected_paths = [path.as_posix() for path in runner_v1._TRUST_PATHS]
     observed_paths = [
         item.get("path") if type(item) is dict else None for item in run_git["implementation_refs"]
     ]

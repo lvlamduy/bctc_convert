@@ -47,11 +47,51 @@ _ATTEMPT_NAME = "attempt.json"
 _INCOMPLETE_NAME = "semantic-proposals.jsonl.incomplete"
 _PROPOSAL_NAME = "semantic-proposals.jsonl"
 _RUN_NAME = "run_manifest.json"
-_ARCHIVE_PATH = Path("src/bctc_ai/evaluation/family_first_semantic_label_archive_v1.py")
-_INDEX_PATH = Path("src/bctc_ai/evaluation/family_first_semantic_index_v1.py")
-_KERNEL_PATH = Path("src/bctc_ai/ocr/vietocr_reference_blind_kernel_v1.py")
-_IMPLEMENTATION_PATH = Path("src/bctc_ai/ocr/family_first_vietocr_runner_v1.py")
-_ORCHESTRATOR_PATH = Path("scripts/experiments/run_family_first_vietocr_v1.py")
+_TRUST_PATHS = tuple(
+    Path(value)
+    for value in (
+        "src/bctc_ai/core/contracts.py",
+        "src/bctc_ai/core/coordinates.py",
+        "src/bctc_ai/core/hashing.py",
+        "src/bctc_ai/core/text.py",
+        "src/bctc_ai/corpus/__init__.py",
+        "src/bctc_ai/corpus/wave1_pre_ocr_structure.py",
+        "src/bctc_ai/corpus/wave1_role_b_full_reader_v3.py",
+        "src/bctc_ai/corpus/wave1_role_b_page_reader.py",
+        "src/bctc_ai/corpus/wave1_role_b_sentinel.py",
+        "src/bctc_ai/corpus/wave1_role_b_word_box_normalization.py",
+        "src/bctc_ai/evaluation/__init__.py",
+        "src/bctc_ai/evaluation/authenticated_line_pixel_hydration_v1.py",
+        "src/bctc_ai/evaluation/family_first_filing_inventory_v1.py",
+        "src/bctc_ai/evaluation/family_first_semantic_index_v1.py",
+        "src/bctc_ai/evaluation/family_first_semantic_label_archive_v1.py",
+        "src/bctc_ai/evaluation/family_first_semantic_label_freeze_v1.py",
+        "src/bctc_ai/evaluation/family_first_semantic_label_plan_v1.py",
+        "src/bctc_ai/evaluation/loan_maturity_8bank_panel_prerequisite_v1.py",
+        "src/bctc_ai/evaluation/loan_maturity_8bank_ready_panel_v1.py",
+        "src/bctc_ai/evaluation/vietocr_all_line_freezer_v3.py",
+        "src/bctc_ai/ocr/__init__.py",
+        "src/bctc_ai/ocr/_causal_visibility_core.py",
+        "src/bctc_ai/ocr/causal_native_text.py",
+        "src/bctc_ai/ocr/causal_native_text_evidence_v1.py",
+        "src/bctc_ai/ocr/causal_native_text_evidence_v2.py",
+        "src/bctc_ai/ocr/family_first_vietocr_runner_v1.py",
+        "src/bctc_ai/ocr/native_text_quality_v2.py",
+        "src/bctc_ai/ocr/pdf_text.py",
+        "src/bctc_ai/ocr/ppocrv6_page_session.py",
+        "src/bctc_ai/ocr/vietocr_all_line_runner_v3.py",
+        "src/bctc_ai/ocr/vietocr_reference_blind_kernel_v1.py",
+        "src/bctc_ai/rendering/page_reader.py",
+        "src/bctc_ai/source_structure/__init__.py",
+        "src/bctc_ai/source_structure/contracts_v1.py",
+        "src/bctc_ai/source_structure/contracts_v2.py",
+        "src/bctc_ai/source_structure/evidence_projection_v1.py",
+        "src/bctc_ai/source_structure/evidence_projection_v2.py",
+        "src/bctc_ai/source_structure/finalized_v3_survey_stream_v1.py",
+        "scripts/experiments/run_family_first_vietocr_v1.py",
+        "config/models/vietocr-0.3.13-vgg-transformer-all-line-v3.toml",
+    )
+)
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _COMMIT = re.compile(r"^[0-9a-f]{40}$")
 _RENAME_NOREPLACE = 1
@@ -131,12 +171,8 @@ def _git_binding(root: Path) -> dict[str, Any]:
         "commit": commit,
         "dirty": False,
         "implementation_refs": [
-            runtime_v3._tracked_ref(root, _ARCHIVE_PATH, "family-first archive implementation"),
-            runtime_v3._tracked_ref(root, _KERNEL_PATH, "reference-blind VietOCR kernel"),
-            runtime_v3._tracked_ref(root, _IMPLEMENTATION_PATH, "family-first VietOCR runner"),
-            runtime_v3._tracked_ref(root, _ORCHESTRATOR_PATH, "family-first VietOCR orchestrator"),
-            runtime_v3._tracked_ref(root, _INDEX_PATH, "family-first semantic index"),
-            runtime_v3._tracked_ref(root, CONFIG_PATH, "pinned VietOCR configuration"),
+            runtime_v3._tracked_ref(root, path, f"family-first VietOCR trust file {path}")
+            for path in _TRUST_PATHS
         ],
         "source_tree_oid": tree,
     }

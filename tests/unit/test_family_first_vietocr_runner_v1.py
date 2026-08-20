@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import copy
 import json
 import math
@@ -190,3 +191,50 @@ def test_formal_runner_writes_all_proposals_once_and_preserves_null_empty(
         "sample-000000001",
         "sample-000000002",
     ]
+
+
+def _local_import_closure(modules: tuple[str, ...]) -> set[str]:
+    source_root = Path(runner.__file__).resolve().parents[2]
+
+    def module_path(module: str) -> Path | None:
+        candidate = source_root.joinpath(*module.split("."))
+        if candidate.with_suffix(".py").is_file():
+            return candidate.with_suffix(".py")
+        if (candidate / "__init__.py").is_file():
+            return candidate / "__init__.py"
+        return None
+
+    seen: set[str] = set()
+    pending = list(modules)
+    while pending:
+        module = pending.pop()
+        if module in seen:
+            continue
+        path = module_path(module)
+        if path is None:
+            continue
+        seen.add(module)
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if isinstance(node, ast.Import):
+                names = [alias.name for alias in node.names]
+            elif isinstance(node, ast.ImportFrom) and node.module is not None:
+                names = [node.module, *(f"{node.module}.{alias.name}" for alias in node.names)]
+            else:
+                continue
+            pending.extend(
+                name for name in names if name.startswith("bctc_ai") and module_path(name)
+            )
+    return {module_path(module).relative_to(source_root.parent).as_posix() for module in seen}
+
+
+def test_semantic_trust_paths_cover_every_static_local_import() -> None:
+    closure = _local_import_closure(
+        (
+            "bctc_ai.evaluation.family_first_semantic_label_archive_v1",
+            "bctc_ai.evaluation.family_first_semantic_index_v1",
+            "bctc_ai.ocr.family_first_vietocr_runner_v1",
+            "bctc_ai.ocr.vietocr_reference_blind_kernel_v1",
+        )
+    )
+    pinned_source = {path.as_posix() for path in runner._TRUST_PATHS if path.parts[0] == "src"}
+    assert pinned_source == closure

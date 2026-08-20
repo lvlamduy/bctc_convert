@@ -132,14 +132,7 @@ def _directory_listing(root: Path, relative: Path, label: str) -> list[str]:
 
 def _git_ledger(root: Path, binding: Any) -> str:
     head = archive_v1._clean_head(root)
-    expected_paths = [
-        runner_v1._ARCHIVE_PATH.as_posix(),
-        runner_v1._KERNEL_PATH.as_posix(),
-        runner_v1._IMPLEMENTATION_PATH.as_posix(),
-        runner_v1._ORCHESTRATOR_PATH.as_posix(),
-        runner_v1._INDEX_PATH.as_posix(),
-        runner_v1._CONFIG_PATH.as_posix(),
-    ]
+    expected_paths = [path.as_posix() for path in runner_v1._TRUST_PATHS]
     if (
         type(binding) is not dict
         or set(binding) != {"commit", "dirty", "implementation_refs", "source_tree_oid"}
@@ -174,13 +167,8 @@ def _git_ledger(root: Path, binding: Any) -> str:
         .decode("ascii", errors="strict")
         .strip()
     )
-    current_tree = (
-        archive_v1._git(root, "rev-parse", f"{head}:src/bctc_ai")
-        .decode("ascii", errors="strict")
-        .strip()
-    )
-    if run_tree != binding["source_tree_oid"] or current_tree != run_tree:
-        raise _error("formal numeric source tree changed after inference")
+    if run_tree != binding["source_tree_oid"]:
+        raise _error("formal numeric source-tree identity drifted at its run commit")
     if archive_v1._clean_head(root) != head:
         raise _error("Git HEAD/worktree changed during numeric ledger replay")
     return head

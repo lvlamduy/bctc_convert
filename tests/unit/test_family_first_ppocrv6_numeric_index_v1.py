@@ -162,3 +162,40 @@ def test_capability_is_opaque_noncopyable_nonserializable() -> None:
     ):
         with pytest.raises(TypeError):
             action()
+
+
+def test_git_ledger_allows_unrelated_source_change_on_clean_descendant(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run_commit = "a" * 40
+    head = "b" * 40
+    run_tree = "c" * 40
+    payload = b"trusted implementation bytes"
+    references = [
+        {
+            "path": path.as_posix(),
+            "sha256": hashlib.sha256(payload).hexdigest(),
+            "size_bytes": len(payload),
+        }
+        for path in runner._TRUST_PATHS
+    ]
+    binding = {
+        "commit": run_commit,
+        "dirty": False,
+        "implementation_refs": references,
+        "source_tree_oid": run_tree,
+    }
+    monkeypatch.setattr(index.archive_v1, "_clean_head", lambda _root: head)
+    monkeypatch.setattr(index, "_root_bytes", lambda *_args, **_kwargs: payload)
+
+    def fake_git(_root: Path, *arguments: str) -> bytes:
+        if arguments[:2] == ("merge-base", "--is-ancestor"):
+            return b""
+        if arguments[0] == "show":
+            return payload
+        if arguments == ("rev-parse", f"{run_commit}:src/bctc_ai"):
+            return (run_tree + "\n").encode("ascii")
+        raise AssertionError(arguments)
+
+    monkeypatch.setattr(index.archive_v1, "_git", fake_git)
+    assert index._git_ledger(tmp_path, binding) == head
