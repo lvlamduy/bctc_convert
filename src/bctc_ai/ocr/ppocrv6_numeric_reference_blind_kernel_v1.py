@@ -29,6 +29,7 @@ from typing import Any
 import numpy as np
 from PIL import Image
 
+from bctc_ai.evaluation import family_first_semantic_label_archive_v1 as archive_v1
 from bctc_ai.evaluation import family_first_semantic_label_plan_v1 as plan_v1
 from bctc_ai.evaluation.family_first_semantic_label_archive_v1 import (
     AuthenticatedFamilyFirstSemanticLabelReaderSessionV1,
@@ -109,6 +110,56 @@ def _samples(
         metadata.append({"crop_sha256": digest, "sample_id": raw["sample_id"]})
         images.append(_png_array(payload))
     return metadata, images
+
+
+def _seek_authenticated_archive_reader_v1(
+    session: AuthenticatedFamilyFirstSemanticLabelReaderSessionV1,
+    *,
+    first_sample_ordinal: int,
+) -> int:
+    """Seek one sealed reader to a fixed global sample ordinal.
+
+    The complete archive manifest already binds every frame size and crop hash.
+    Sharded recognition must not reread a multi-gigabyte prefix for every
+    shard, so the offset is derived from that closed public frame axis and
+    checked against the archive descriptor before the session cursor moves.
+    A shard orchestrator may safely reset the same immutable session between
+    completed shards; no provider output or partial shard state is reused.
+    Every selected frame is still read and hash-verified by the ordinary chunk
+    accessor; the final shard aggregate proves complete contiguous coverage.
+    """
+
+    if type(session) is not AuthenticatedFamilyFirstSemanticLabelReaderSessionV1:
+        raise _error("one exact authenticated archive reader session is required")
+    state = archive_v1._SESSIONS.get(session)
+    if state is None:
+        raise _error("numeric shard reader session is not live")
+    if type(first_sample_ordinal) is not int or first_sample_ordinal <= 0:
+        raise _error("numeric shard first sample ordinal must be one positive integer")
+    total = state.batch["sample_count"]
+    if type(total) is not int or not 1 <= first_sample_ordinal <= total:
+        raise _error("numeric shard first sample lies outside the archive denominator")
+    sizes = [sample["crop_ref"]["size_bytes"] for sample in state.batch["samples"]]
+    if (
+        len(sizes) != total
+        or any(type(size) is not int or size <= 0 for size in sizes)
+        or os.fstat(state.descriptor).st_size
+        != len(archive_v1._MAGIC) + sum(archive_v1._FRAME.size + size for size in sizes)
+    ):
+        raise _error("numeric shard archive frame-size axis drifted")
+    start_index = first_sample_ordinal - 1
+    offset = len(archive_v1._MAGIC) + sum(
+        archive_v1._FRAME.size + size for size in sizes[:start_index]
+    )
+    encoded = os.pread(state.descriptor, archive_v1._FRAME.size, offset)
+    if (
+        len(encoded) != archive_v1._FRAME.size
+        or archive_v1._FRAME.unpack(encoded)[0] != sizes[start_index]
+    ):
+        raise _error("numeric shard archive seek target differs from its frame manifest")
+    state.cursor = start_index
+    state.offset = offset
+    return total
 
 
 def _recognizer_projection(project_root: Path, model_cache: Path) -> tuple[dict[str, Any], Path]:
@@ -285,8 +336,16 @@ def execute_authenticated_ppocrv6_numeric_reference_blind_v1(
     result_sink: Callable[[dict[str, Any]], None],
     batch_size: int = 64,
     cpu_threads: int = 16,
+    first_sample_ordinal: int = 1,
+    require_archive_end: bool = True,
 ) -> tuple[dict[str, Any], dict[str, int], dict[str, float]]:
-    """Stream the complete authenticated archive through one recognizer load."""
+    """Stream one exact contiguous archive range through one recognizer load.
+
+    Defaults retain the V1 complete-axis contract.  The range controls exist
+    for the V2 shard orchestrator: every shard receives a fresh sealed archive
+    reader, seeks by the closed frame-size axis, and emits global sample IDs.
+    Only the final shard is allowed to assert archive exhaustion.
+    """
 
     if not isinstance(project_root, Path) or not isinstance(model_cache, Path):
         raise _error("project root and model cache must be pathlib Paths")
@@ -298,6 +357,20 @@ def execute_authenticated_ppocrv6_numeric_reference_blind_v1(
         raise _error("numeric reader batch size must be one exact integer in [1,512]")
     if type(cpu_threads) is not int or not 1 <= cpu_threads <= 64:
         raise _error("numeric reader CPU threads must be one exact integer in [1,64]")
+    if type(first_sample_ordinal) is not int or first_sample_ordinal <= 0:
+        raise _error("numeric reader first sample ordinal must be one positive integer")
+    if type(require_archive_end) is not bool:
+        raise _error("numeric reader archive-end policy must be one exact boolean")
+
+    archive_sample_count = _seek_authenticated_archive_reader_v1(
+        reader_session,
+        first_sample_ordinal=first_sample_ordinal,
+    )
+    last_sample_ordinal = first_sample_ordinal + expected_sample_count - 1
+    if last_sample_ordinal > archive_sample_count:
+        raise _error("numeric reader shard exceeds the authenticated archive denominator")
+    if require_archive_end and last_sample_ordinal != archive_sample_count:
+        raise _error("numeric reader archive-end assertion is not on the final sample")
 
     started = time.perf_counter()
     before, model_directory = _recognizer_projection(project_root, model_cache)
@@ -331,7 +404,7 @@ def execute_authenticated_ppocrv6_numeric_reference_blind_v1(
                 raw_batch = chunk[offset : offset + batch_size]
                 metadata, images = _samples(
                     raw_batch,
-                    first_ordinal=cursor + offset + 1,
+                    first_ordinal=first_sample_ordinal + cursor + offset,
                     archive_axis=True,
                 )
                 results = recognizer.predict(input=images, batch_size=batch_size)
@@ -351,12 +424,13 @@ def execute_authenticated_ppocrv6_numeric_reference_blind_v1(
                     counts["result_count"] += 1
                 offset += len(raw_batch)
             cursor += len(chunk)
-        trailing = read_authenticated_family_first_semantic_label_chunk_v1(
-            reader_session, maximum_samples=1
-        )
-        counts["reader_chunk_call_count"] += 1
-        if trailing:
-            raise _error("authenticated numeric crop stream retained trailing samples")
+        if require_archive_end:
+            trailing = read_authenticated_family_first_semantic_label_chunk_v1(
+                reader_session, maximum_samples=1
+            )
+            counts["reader_chunk_call_count"] += 1
+            if trailing:
+                raise _error("authenticated numeric crop stream retained trailing samples")
         if cursor != expected_sample_count or counts["result_count"] != expected_sample_count:
             raise _error("PP-OCRv6 numeric execution denominator drifted")
         after, _directory = _recognizer_projection(project_root, model_cache)

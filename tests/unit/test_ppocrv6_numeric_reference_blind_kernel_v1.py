@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import hashlib
 import io
+import os
 import shutil
+import tempfile
 from pathlib import Path
 
 import pytest
 from PIL import Image
 
+from bctc_ai.evaluation import family_first_semantic_label_archive_v1 as archive
 from bctc_ai.ocr import ppocrv6_numeric_reference_blind_kernel_v1 as kernel
 
 
@@ -194,6 +197,13 @@ def test_stream_kernel_loads_once_and_exhausts_exact_archive_axis(
         "read_authenticated_family_first_semantic_label_chunk_v1",
         lambda _session, *, maximum_samples: chunks.pop(0),
     )
+    monkeypatch.setattr(
+        kernel,
+        "_seek_authenticated_archive_reader_v1",
+        lambda _session, *, first_sample_ordinal: (
+            3 if first_sample_ordinal == 1 else pytest.fail("unexpected shard start")
+        ),
+    )
     records = []
     runtime, counts, metrics = kernel.execute_authenticated_ppocrv6_numeric_reference_blind_v1(
         tmp_path,
@@ -222,6 +232,145 @@ def test_stream_kernel_loads_once_and_exhausts_exact_archive_axis(
     assert runtime["device"] == "cpu"
     assert runtime["precision"] == "fp32"
     assert metrics["total_wall_seconds"] >= metrics["model_load_seconds"] >= 0
+
+
+def test_stream_kernel_emits_global_ids_for_one_nonfinal_shard(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    recognizer = _Recognizer(expected_batch_size=2)
+    chunks = [
+        (
+            {
+                "crop_png_bytes": _crop(),
+                "crop_sha256": hashlib.sha256(_crop()).hexdigest(),
+                "sample_id": "sample-000000004",
+            },
+            {
+                "crop_png_bytes": _crop((250, 250, 250)),
+                "crop_sha256": hashlib.sha256(_crop((250, 250, 250))).hexdigest(),
+                "sample_id": "sample-000000005",
+            },
+        )
+    ]
+    monkeypatch.setattr(
+        kernel,
+        "_recognizer_projection",
+        lambda *_args: (_model_projection(), tmp_path / "PP-OCRv6_medium_rec"),
+    )
+    monkeypatch.setattr(kernel, "_load_recognizer", lambda *_args, **_kwargs: recognizer)
+    snapshot = tmp_path / "snapshot"
+    snapshot.mkdir()
+    monkeypatch.setattr(kernel, "_materialize_private_model_snapshot", lambda *_args: snapshot)
+    monkeypatch.setattr(
+        kernel.importlib.metadata,
+        "version",
+        lambda name: {"paddleocr": "3.7.0", "paddlepaddle": "3.3.0"}[name],
+    )
+    monkeypatch.setattr(
+        kernel,
+        "_seek_authenticated_archive_reader_v1",
+        lambda _session, *, first_sample_ordinal: (
+            10 if first_sample_ordinal == 4 else pytest.fail("unexpected shard start")
+        ),
+    )
+    monkeypatch.setattr(
+        kernel,
+        "read_authenticated_family_first_semantic_label_chunk_v1",
+        lambda _session, *, maximum_samples: chunks.pop(0),
+    )
+    records = []
+    _runtime, counts, _metrics = kernel.execute_authenticated_ppocrv6_numeric_reference_blind_v1(
+        tmp_path,
+        object(),
+        expected_sample_count=2,
+        model_cache=tmp_path,
+        result_sink=records.append,
+        batch_size=2,
+        cpu_threads=2,
+        first_sample_ordinal=4,
+        require_archive_end=False,
+    )
+
+    assert [item["sample_id"] for item in records] == [
+        "sample-000000004",
+        "sample-000000005",
+    ]
+    assert counts["reader_chunk_call_count"] == 1
+
+
+def test_stream_kernel_rejects_nonfinal_archive_end_claim(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(
+        kernel,
+        "_seek_authenticated_archive_reader_v1",
+        lambda _session, *, first_sample_ordinal: 10,
+    )
+    with pytest.raises(
+        kernel.FamilyFirstPPocrV6NumericKernelV1Error,
+        match="archive-end assertion",
+    ):
+        kernel.execute_authenticated_ppocrv6_numeric_reference_blind_v1(
+            tmp_path,
+            object(),
+            expected_sample_count=2,
+            model_cache=tmp_path,
+            result_sink=lambda _value: None,
+            first_sample_ordinal=4,
+            require_archive_end=True,
+        )
+
+
+def test_archive_seek_accounts_for_magic_and_can_reset_sealed_session() -> None:
+    crops = (b"first", b"second", b"third")
+    temporary = tempfile.TemporaryFile()
+    descriptor = os.dup(temporary.fileno())
+    os.write(descriptor, archive._MAGIC)
+    for crop in crops:
+        os.write(descriptor, archive._FRAME.pack(len(crop)))
+        os.write(descriptor, crop)
+    batch = {
+        "sample_count": len(crops),
+        "samples": [
+            {
+                "crop_ref": {
+                    "sha256": hashlib.sha256(crop).hexdigest(),
+                    "size_bytes": len(crop),
+                },
+                "sample_id": f"sample-{ordinal:09d}",
+            }
+            for ordinal, crop in enumerate(crops, 1)
+        ],
+    }
+    session = archive.AuthenticatedFamilyFirstSemanticLabelReaderSessionV1(archive._MINT)
+    archive._SESSIONS[session] = archive._SessionState(
+        descriptor=descriptor,
+        batch=batch,
+        cursor=0,
+        offset=len(archive._MAGIC),
+        archive=object(),
+    )
+    try:
+        assert kernel._seek_authenticated_archive_reader_v1(session, first_sample_ordinal=2) == len(
+            crops
+        )
+        assert (
+            archive.read_authenticated_family_first_semantic_label_chunk_v1(
+                session, maximum_samples=1
+            )[0]["sample_id"]
+            == "sample-000000002"
+        )
+        assert kernel._seek_authenticated_archive_reader_v1(session, first_sample_ordinal=1) == len(
+            crops
+        )
+        assert (
+            archive.read_authenticated_family_first_semantic_label_chunk_v1(
+                session, maximum_samples=1
+            )[0]["sample_id"]
+            == "sample-000000001"
+        )
+    finally:
+        archive._SESSIONS.pop(session, None)
+        os.close(descriptor)
+        temporary.close()
 
 
 @pytest.mark.parametrize(
