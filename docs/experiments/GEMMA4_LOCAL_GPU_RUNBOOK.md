@@ -4,6 +4,11 @@ Use this lane only as a bounded page-level table-structure/text challenger.
 Run one independent request per page. Do not use Gemma numeric output as final
 numeric authority without a separate cell OCR and accounting-equation check.
 
+Before changing this lane, also review
+`docs/experiments/OCR_MAPPING_FAILURE_PREVENTION.md`. It is the cumulative
+failure-prevention checklist for OCR, geometry, family graphs, schema mapping,
+artifact handling, and authority claims.
+
 ## Fixed local runtime
 
 - Model: `/workspace/bctc-ai-runtime/gemma-4-26b-a4b-it-q4_0/gemma-4-26B_q4_0-it.gguf`
