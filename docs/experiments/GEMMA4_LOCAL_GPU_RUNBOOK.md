@@ -93,3 +93,7 @@ repeated.
    separate overdue and no-interest branches. OCR representation errors must
    be repaired at the evidence/geometry layer, never by weakening or merging
    schema concepts.
+7. **The PP-OCRv6 model-cache root was passed one directory too deep.** Passing
+   `/workspace/bctc-ai-models/official_models` made the runner look for
+   `official_models/official_models/...` and fail before model load. The pinned
+   `run_ppocrv6_word_boxes.py` cache root is `/workspace/bctc-ai-models`.
