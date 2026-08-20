@@ -63,10 +63,19 @@ Annual2025InterestRateRiskRotatedPPocrV6PanelError = (
 )
 
 
-def _interest_rate_risk_selection() -> tuple[list[dict[str, Any]], dict[str, Any]]:
+def _interest_rate_risk_selection(
+    *,
+    scanner_module_name: str = "annual_2025_interest_rate_risk_rotated_ppocrv6_scanner_v1",
+    scanner_filename: str = "scan_annual_2025_interest_rate_risk_full_document_vietocr_v1.py",
+    scan_builder_name: str = "build_annual_2025_interest_rate_risk_full_document_scan_v1",
+    expected_scan_id: str = EXPECTED_SCAN_ID,
+    expected_page_count: int = EXPECTED_PAGE_COUNT,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Select any graph family from the fixed annual rotated-page closure."""
+
     scanner = _load_module(
-        "annual_2025_interest_rate_risk_rotated_ppocrv6_scanner_v1",
-        "scripts/experiments/scan_annual_2025_interest_rate_risk_full_document_vietocr_v1.py",
+        scanner_module_name,
+        f"scripts/experiments/{scanner_filename}",
     )
     semantic_index, semantic_payload = _CORE._json(
         _CORE.SEMANTIC_INDEX_PATH, _CORE.EXPECTED_SEMANTIC_INDEX_SHA256
@@ -78,12 +87,17 @@ def _interest_rate_risk_selection() -> tuple[list[dict[str, Any]], dict[str, Any
         _CORE.ROTATED_RESCUE_MANIFEST_PATH,
         _CORE.EXPECTED_ROTATED_RESCUE_MANIFEST_SHA256,
     )
-    scan = scanner.build_annual_2025_interest_rate_risk_full_document_scan_v1()
-    if scan.get("scan_id") != EXPECTED_SCAN_ID:
+    scan = getattr(scanner, scan_builder_name)()
+    if scan.get("scan_id") != expected_scan_id:
         raise Annual2025InterestRateRiskRotatedPPocrV6PanelError(
             "annual interest-rate-risk scan identity drifted"
         )
-    _matcher, rotated_support, rescue_builder = scanner._configured_modules()
+    configured = scanner._configured_modules()
+    if type(configured) is not tuple or len(configured) < 3:
+        raise Annual2025InterestRateRiskRotatedPPocrV6PanelError(
+            "annual family scanner did not expose its matcher and rotated closure"
+        )
+    _matcher, rotated_support, rescue_builder = configured[:3]
     rescue = rotated_support._validate_rescue(
         rescue_builder.read_verified_full_document_rotated_vietocr_rescue_v1()
     )
@@ -194,7 +208,7 @@ def _interest_rate_risk_selection() -> tuple[list[dict[str, Any]], dict[str, Any
                     "source_semantic_line_axis_sha256": canonical_json_sha256_v1(axis_material),
                 }
             )
-    if len(selected) != EXPECTED_PAGE_COUNT:
+    if len(selected) != expected_page_count:
         raise Annual2025InterestRateRiskRotatedPPocrV6PanelError(
             "rotated interest-rate-risk page denominator drifted"
         )
@@ -202,7 +216,7 @@ def _interest_rate_risk_selection() -> tuple[list[dict[str, Any]], dict[str, Any
         "crop_manifest": _CORE._ref(_CORE.CROP_MANIFEST_PATH, crop_payload),
         "rotated_rescue_crop_manifest": rotated_ref,
         "semantic_index": _CORE._ref(_CORE.SEMANTIC_INDEX_PATH, semantic_payload),
-        "structure_scan_id": EXPECTED_SCAN_ID,
+        "structure_scan_id": expected_scan_id,
     }
 
 

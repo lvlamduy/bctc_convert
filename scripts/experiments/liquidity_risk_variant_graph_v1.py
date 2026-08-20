@@ -193,6 +193,8 @@ def _joined_roles(page: Mapping[str, Any]) -> tuple[list[str], list[dict[str, An
     events: list[dict[str, Any]] = []
     after_asset_total = False
     lines = page["lines"]
+    if not lines:
+        return roles, events
     label_zone_limit = max(line["bbox"][2] for line in lines) * 0.46
     label_lines = [
         line
@@ -251,6 +253,8 @@ def _axis_role(value: str) -> str | None:
 
 def _header_features(page: Mapping[str, Any]) -> tuple[list[str], list[dict[str, Any]], int]:
     support = _support()
+    if not page["lines"]:
+        return [], [], 0
     cutoff = len(page["lines"])
     for index, line in enumerate(page["lines"]):
         role = _raw_role(line["normalized_text"])

@@ -462,6 +462,36 @@ record the new gate.
   external row can map, but a row participating in a visible nonzero residual
   cannot.
 
+### F-035 — Letting one empty page abort a complete-PDF family scan
+
+- Observed failure: the annual-2025 semantic index contains a page with no
+  authenticated line axis; liquidity-risk detection called `max()` on that
+  empty page and aborted before scanning the remaining report.
+- Root cause: the family matcher assumed every PDF page had at least one OCR
+  line, even though blank/image-only pages are valid complete-document input.
+- Correction: treat an empty page as having no row roles and no header axes.
+  It contributes neither a complete nor a near candidate, while later pages in
+  the same PDF remain eligible.
+- Regression gate: an empty page before a unique complete table must not alter
+  the table identity, page sequence, or uniqueness result.
+
+### F-036 — Parsing each fragment of a multi-level header independently
+
+- Observed failure: five annual liquidity tables had eight repeated numeric
+  columns, but the matcher recovered only five or six axes. Header cells such
+  as `Từ trên / 3 tháng / đến 12 tháng` were split vertically, while
+  BID/VIB merged `Trên 3 tháng` and `Đến 3 tháng` into one OCR line.
+- Root cause: each OCR fragment and bbox was treated as a complete semantic
+  header cell. Fragments were misclassified as overdue axes, and a merged bbox
+  was assumed to represent one physical column.
+- Correction: compose the complete geometric header surface, recover every
+  compatible semantic axis, and allow a merged line to nominate multiple axes.
+  The mapping stage must later bind those roles to distinct repeated numeric
+  x-centres; header bboxes alone never determine the denominator.
+- Regression gate: all eight annual reports must expose the same eight
+  accounting maturity roles, while nearby interest-rate tables remain negative
+  controls and every PDF retains exactly one liquidity region.
+
 ## Maintenance checklist
 
 - Add a new `F-xxx` entry whenever a corrected failure is discovered.

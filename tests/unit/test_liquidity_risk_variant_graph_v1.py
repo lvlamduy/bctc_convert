@@ -136,6 +136,13 @@ def test_complete_table_without_owner_is_only_near() -> None:
     )
 
 
+def test_empty_source_page_is_not_a_candidate_and_does_not_abort_document_scan() -> None:
+    empty = {"lines": [], "page_sequence": 1, "primary_numeric_authority": True}
+    result = matcher.build_liquidity_risk_variant_graph_document_v1([empty, _page(_table(), 2)])
+    assert result["uniqueness"]["status"] == "UNIQUE_FULL_MATCH"
+    assert result["regions"][0]["table_page_sequences"] == [2]
+
+
 def test_currency_interest_rate_and_fair_value_controls_cannot_accept() -> None:
     for negative in ("Rủi ro tiền tệ", "Rủi ro lãi suất", "Giá trị hợp lý"):
         result = matcher.build_liquidity_risk_variant_graph_document_v1(
