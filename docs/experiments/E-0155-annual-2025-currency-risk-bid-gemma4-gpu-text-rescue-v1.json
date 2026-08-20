@@ -1,0 +1,184 @@
+{
+  "format_version": "ANNUAL_2025_CURRENCY_RISK_BID_GEMMA4_GPU_TEXT_RESCUE_V1",
+  "state": "COMPLETE",
+  "claim_boundary": "FIXED_BID_ANNUAL_2025_UPRIGHT_CURRENCY_RISK_TWO_DIFFICULT_LABEL_CROPS_GPU_TEXT_RESCUE_DIAGNOSTIC_ONLY_NO_NUMERIC_GEOMETRY_MAPPING_SCHEMA_OR_ACCOUNTING_AUTHORITY",
+  "evaluation_id": "annual2025crgemma4v1:evaluation:6b1ba36157150b415e5c035916d6fd87e098218498485c294c770adc1e72acb7",
+  "source_document": {
+    "bank_code": "BID",
+    "physical_page": 65,
+    "source_pdf": {
+      "path": "vietstock_bctc/BID/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+      "sha256": "415d713b18f281f97ea5416da01ddec32d20d9ad49342f3e31fc001743b8a222",
+      "size_bytes": 16399456
+    },
+    "upright_page_ref": {
+      "path": "output/calibration/annual-2025-currency-risk-rotated-ppocrv6-panel-v1/page-0001/rotated-page.png",
+      "sha256": "ce3e0b2ab7d171c80cf15b2df38e49c4dc34f0599294eaf836a6b569a3f281c5",
+      "size_bytes": 1590660
+    },
+    "ppocrv6_result_ref": {
+      "path": "output/calibration/annual-2025-currency-risk-rotated-ppocrv6-panel-v1/page-0001/reader-output/ocr_result.json",
+      "sha256": "1d3ccb145850e52f55a6f34156e7da3b92e7b78f648f46bdb9231070afb38531",
+      "size_bytes": 113959
+    }
+  },
+  "primary_reader": {
+    "model": "VIETOCR_0.3.13_VGG19_BN_TRANSFORMER",
+    "rotated_rescue_manifest_ref": {
+      "path": "output/calibration/annual-2025-8bank-full-document-rotated-vietocr-rescue-v1/crop_manifest.json",
+      "sha256": "680c5981dcf0fba79b969fb33d14f15b418956d390cd541443475a4435289e45",
+      "size_bytes": 2139367
+    },
+    "rotated_rescue_result_ref": {
+      "path": "output/calibration/annual-2025-8bank-full-document-rotated-vietocr-rescue-v1/reader-output/ocr_result.json",
+      "sha256": "a7c04bdb9dafb0b2017525ef83dbf8c672230cc4bbb04ba957c4c52cb7d904a4",
+      "size_bytes": 1798255
+    }
+  },
+  "rescue_reader": {
+    "model": "GEMMA4_26B_A4B_IT_QAT_Q4_0",
+    "model_file": {
+      "path": "/workspace/bctc-ai-runtime/gemma-4-26b-a4b-it-q4_0/gemma-4-26B_q4_0-it.gguf",
+      "sha256": "3eca3b8f6d7baf218a7dd6bba5fb59a56ee25fe2d567b6f5f589b4f697eca51d",
+      "size_bytes": 14439363584
+    },
+    "multimodal_projector_file": {
+      "path": "/workspace/bctc-ai-runtime/gemma-4-26b-a4b-it-q4_0/gemma-4-26B-it-mmproj.gguf",
+      "sha256": "a359953a076b877db30c31dbbb4c6d93b4a6e017ee5db5784247e4d4c0dd4f3b",
+      "size_bytes": 1194828160
+    },
+    "runtime": {
+      "implementation": "llama.cpp llama-server",
+      "build": "b10425",
+      "commit": "3d9388535",
+      "server_file_sha256": "e231931ad258597129db73dd024b521ff3318031b438833c80f8c94aca3a2e70",
+      "server_file_size_bytes": 17896,
+      "device": "NVIDIA GeForce RTX 4090",
+      "gpu_layers": "ALL",
+      "observed_vram_mib": 16548,
+      "context_tokens": 32768,
+      "reasoning": false,
+      "reasoning_budget": 0,
+      "temperature": 0,
+      "maximum_generated_tokens": 100,
+      "prompt": "Đọc đúng chính tả dòng chữ trong ảnh. Chỉ trả về một JSON string."
+    }
+  },
+  "full_page_negative_control": {
+    "prompt": "Chuyển toàn bộ bảng trong ảnh thành JSON, giữ đúng chính tả tiếng Việt của các khoản mục và giữ nguyên các giá trị in trên ảnh. Không suy luận, không sửa số, không phản hồi gì ngoài JSON.",
+    "elapsed_seconds": 16.597,
+    "completion_token_count": 3031,
+    "exact_table_transcription": false,
+    "observed_failures": [
+      {
+        "field": "Tiền gửi của khách hàng — Tổng",
+        "pixel_text": "208.538.945",
+        "gemma4_text": "208.538.545",
+        "failure": "ONE_DIGIT_SUBSTITUTION"
+      },
+      {
+        "field": "Trạng thái tiền tệ nội bảng",
+        "pixel_text": "Trạng thái tiền tệ nội bảng",
+        "gemma4_text": "Trạng thái tiền tệ nội tệ",
+        "failure": "SEMANTIC_WORD_SUBSTITUTION"
+      },
+      {
+        "field": "Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro",
+        "pixel_text": "Vốn tài trợ, ủy thác đầu tư, cho vay TCTD chịu rủi ro",
+        "failure": "ROW_LABEL_AND_ADJACENT_VALUE_ALIGNMENT_DRIFT"
+      }
+    ],
+    "disposition": "FULL_PAGE_JSON_IS_STRUCTURE_CHALLENGER_ONLY"
+  },
+  "trials": [
+    {
+      "role": "STATE_INTERNAL",
+      "primary_vietocr_evidence": {
+        "sample_id": "rotated-sample-00001990",
+        "crop_ref": {
+          "path": "output/calibration/annual-2025-8bank-full-document-rotated-vietocr-rescue-v1/crops/rotated-sample-00001990.png",
+          "sha256": "5b8aa9c15a6997a3310d9830d7da26ebbbd3e45ac80e5c62799faf3cdb63ef49",
+          "size_bytes": 21481
+        },
+        "text": "Trang thái tiền tệ nội bảng",
+        "mean_decoded_character_probability": 0.9242190100528576
+      },
+      "ppocrv6_geometry_evidence": {
+        "source_line_index": 89,
+        "bbox_upright_pixels": [343, 1106, 654, 1137],
+        "text": "Trng thái tin t ni bng",
+        "score": 0.9984629154205322
+      },
+      "gemma4_model_input": {
+        "crop_bbox_upright_pixels": [320, 1095, 710, 1140],
+        "crop_png_sha256": "c947c3784c3ec625b1ebadff201353882266499241ee066b51137596f50d431c",
+        "crop_png_size_bytes": 18905
+      },
+      "gemma4_raw_response_content": "```json\n\"Trạng thái tiền tệ nội bảng\"\n```",
+      "gemma4_text": "Trạng thái tiền tệ nội bảng",
+      "independent_pixel_text": "Trạng thái tiền tệ nội bảng",
+      "vietocr_exact_pixel_match": false,
+      "gemma4_exact_pixel_match": true,
+      "disposition": "GEMMA4_EXACTLY_CORROBORATES_PIXEL_TEXT"
+    },
+    {
+      "role": "STATE_EXTERNAL",
+      "primary_vietocr_evidence": {
+        "sample_id": "rotated-sample-00001986",
+        "crop_ref": {
+          "path": "output/calibration/annual-2025-8bank-full-document-rotated-vietocr-rescue-v1/crops/rotated-sample-00001986.png",
+          "sha256": "56a9c050e9f7a1926d89f3d543064c129a0fd297046871e1da07fe5011dc0a6d",
+          "size_bytes": 24512
+        },
+        "text": "Trạng thái tiền tệ ngoại bằng",
+        "mean_decoded_character_probability": 0.9321469561807041
+      },
+      "ppocrv6_geometry_evidence": {
+        "source_line_index": 94,
+        "bbox_upright_pixels": [342, 1139, 681, 1169],
+        "text": "Trng thái tin t ngoi báng",
+        "score": 0.9748031497001648
+      },
+      "gemma4_model_input": {
+        "crop_bbox_upright_pixels": [320, 1128, 740, 1175],
+        "crop_png_sha256": "7777827e56cb29dc00458f4ec2dca1e299ed9765832a7b27ba9c8ea6bb86dc32",
+        "crop_png_size_bytes": 25433
+      },
+      "gemma4_raw_response_content": "```json\n\"Trạng thái tiền tệ ngoại bảng\"\n```",
+      "gemma4_text": "Trạng thái tiền tệ ngoại bảng",
+      "independent_pixel_text": "Trạng thái tiền tệ ngoại bảng",
+      "vietocr_exact_pixel_match": false,
+      "gemma4_exact_pixel_match": true,
+      "disposition": "GEMMA4_EXACTLY_CORROBORATES_PIXEL_TEXT"
+    }
+  ],
+  "metrics": {
+    "trial_count": 2,
+    "vietocr_exact_pixel_match_count": 0,
+    "gemma4_exact_pixel_match_count": 2,
+    "full_page_negative_control_count": 1,
+    "targeted_crop_rescue_success_count": 2
+  },
+  "decision": {
+    "primary_text_reader": "VIETOCR_0.3.13_VGG19_BN_TRANSFORMER",
+    "rescue_text_reader": "GEMMA4_26B_A4B_IT_QAT_Q4_0_GPU",
+    "invoke_rescue_only_for_clear_vietocr_pixel_or_structural_conflict": true,
+    "one_stateless_conversation_per_crop": true,
+    "full_page_json_can_supply_hierarchy_challenge": true,
+    "full_page_json_can_supply_numeric_truth": false,
+    "gemma_output_can_silently_replace_vietocr_output": false,
+    "text_alone_can_decide_family_or_mapping": false,
+    "rescue_requires_geometry_axes_scope_and_accounting_corroboration": true
+  },
+  "authority": {
+    "ocr_text_anchor_diagnostic": true,
+    "numeric_authority": false,
+    "geometry_authority": false,
+    "schema_authority": false,
+    "mapping_authority": false,
+    "accounting_authority": false,
+    "canonicalization_authority": false,
+    "export_authority": false,
+    "broad_corpus_accuracy_claim": false
+  }
+}

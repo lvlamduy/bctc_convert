@@ -198,6 +198,37 @@ schema-gap trùng nghĩa:
 Machine-readable result:
 `docs/experiments/E-0154-annual-2025-financial-instruments-8bank-codex-verified-mapping-v1.json`.
 
+## OPEN/CLOSED — annual-2025 `Rủi ro tiền tệ`
+
+E-0155 quét toàn bộ 695 trang và tìm đúng một bảng hiện kỳ tại ACB p84,
+MBB p97, VPB p88, HDB p63, VCB p80, CTG p71, BID p65 và VIB p71. Bốn bảng
+so sánh tại ACB p85, MBB p98, CTG p72 và VIB p72 được nhận diện nhưng không
+được dùng thay cho kỳ báo cáo. Pixel, trục số nguồn, schema hiện hành và 74
+phương trình xác minh 155 mapping/155 ô số; tám dấu `-` được xác thực trước
+khi chuẩn hóa thành 0. Không có residual trình bày ở các mapping đã nhận.
+
+Gemma 4 local GPU cứu hộ đúng hai nhãn BID mà VietOCR Transformer sai
+chính tả: `Trạng thái tiền tệ nội bảng` và `Trạng thái tiền tệ ngoại bảng`.
+Một full-page control làm sai chữ số nên Gemma chỉ có text-diagnostic
+authority trên hai crop đó, tuyệt đối không có numeric authority.
+
+Bảy nhóm sau vẫn OPEN/source-only. Đây là khoảng trống schema, không phải lỗi
+OCR hay hình học; các giá trị của chúng vẫn được giữ đầy đủ để đóng các tổng
+nguồn và không bị gộp ngầm sang một trục tiền tệ khác.
+
+| ID | Bank | Trang annual-2025 | Khoản mục nguồn | Lý do chưa map |
+| --- | --- | ---: | --- | --- |
+| A2025-CRISK-001 | ACB | 84 | AUD | Không có trục AUD tương đương dưới family 1352–1482. |
+| A2025-CRISK-002 | ACB | 84 | CAD | Không có trục CAD tương đương dưới family 1352–1482. |
+| A2025-CRISK-003 | ACB | 84 | JPY | Không có trục JPY tương đương dưới family 1352–1482. |
+| A2025-CRISK-004 | ACB | 84 | Vàng | Schema chưa có nhánh trục vàng. |
+| A2025-CRISK-005 | VPB | 88 | Vàng | Schema chưa có nhánh trục vàng. |
+| A2025-CRISK-006 | HDB | 63 | Vàng | Schema chưa có nhánh trục vàng. |
+| A2025-CRISK-007 | CTG | 71 | Vàng | Schema chưa có nhánh trục vàng. |
+
+Machine-readable result:
+`docs/experiments/E-0155-annual-2025-currency-risk-8bank-codex-verified-mapping-v1.json`.
+
 ## COMPLETE — annual-2025 `Mua mới và thanh lý các công ty con`
 
 E-0148 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025 và không tìm

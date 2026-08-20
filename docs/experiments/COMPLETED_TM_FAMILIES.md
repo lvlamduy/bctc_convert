@@ -1209,6 +1209,40 @@ Kết quả annual-2025:
 
 ## 49. Rủi ro tiền tệ
 
+### BCTC hợp nhất kiểm toán năm 2025 — E-0155
+
+- **Đã map/xác minh:** ACB p84, MBB p97, VPB p88, HDB p63, VCB p80,
+  CTG p71, BID p65 và VIB p71. Một graph chung nhận diện owner rủi ro tiền
+  tệ, các trục tiền tệ, năm báo cáo, đơn vị và các dòng tổng/trạng thái mà
+  không dùng bank/page để route. Kết quả có 155 mapping/155 ô số, 74 phương
+  trình khép đúng và 8 dấu `-` được xác thực trên pixel trước khi đổi thành 0.
+- **Không có cụm trong annual-2025:** Không bank nào; cả 8/8 filing có đúng
+  một vùng hiện kỳ thỏa đầy đủ. Bốn bảng so sánh tại ACB p85, MBB p98,
+  CTG p72 và VIB p72 được nhận diện nhưng loại khỏi mapping hiện kỳ.
+- **Có nhưng còn khoản mục chưa map:** bảy trục nguồn dưới đây chưa có nhánh
+  tương đương trong schema. Các số nguồn vẫn được giữ trong phương trình và
+  không bị gộp ngầm vào `Tiền tệ khác`.
+
+| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | ---: | --- | --- |
+| ACB | 84 | AUD | Schema 1352–1482 chưa có trục AUD. |
+| ACB | 84 | CAD | Schema 1352–1482 chưa có trục CAD. |
+| ACB | 84 | JPY | Schema 1352–1482 chưa có trục JPY. |
+| ACB | 84 | Vàng | Schema chưa có nhánh trục vàng. |
+| VPB | 88 | Vàng | Schema chưa có nhánh trục vàng. |
+| HDB | 63 | Vàng | Schema chưa có nhánh trục vàng. |
+| CTG | 71 | Vàng | Schema chưa có nhánh trục vàng. |
+
+Gemma 4 local GPU chỉ cứu hộ đúng hai crop nhãn BID `Trạng thái tiền tệ nội
+bảng` và `Trạng thái tiền tệ ngoại bảng` mà VietOCR sai dấu/chữ. Thử nghiệm
+cả trang có một chữ số sai nên Gemma không có numeric authority; mọi số vẫn
+được ràng buộc bởi pixel, trục số nguồn và phương trình kế toán.
+
+Kết quả annual-2025:
+`docs/experiments/E-0155-annual-2025-currency-risk-8bank-codex-verified-mapping-v1.json`.
+
+### Lượt hiện hành trước — E-0105
+
 - **Đã map/xác minh:** MBB p58, VPB p80, HDB p38–39, VCB p50–51,
   CTG p60 và VIB p65–66. Sau adjudication E-0105 có 120 mapping/136 ô số và
   51 phương trình khép đúng. Dấu `-` ngoại bảng HDB/VIB được chuẩn hóa 0;
@@ -1346,7 +1380,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Tài sản/GTCG ngân hàng đem thế chấp, cầm cố, chiết khấu | ✓ p74 | ✓ p78 | ✓ p74 | — | — | ✓ p63 | — | ✓ p54 | Annual-2025: 0 dòng OPEN, 13 mapping/26 ô/10 phương trình; HDB/VCB/BID bounded absence. Lượt hiện hành trước giữ riêng 3 dòng OPEN tại VPB/VIB |
 | Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra | ✓\* p75 | ✓ p79 | ✓\* p75 | ✓ p55 | — | ✓ p63 | ✓ p59 | ✓ p55 | Annual-2025: 13 dòng OPEN tại ACB/VPB, 58 mapping/114 ô/46 phương trình; VCB bounded absence. Lượt hiện hành trước giữ riêng 47 mapping; VPB của lượt đó là Q1 |
 | Công cụ tài chính — giá trị ghi sổ/hợp lý | — | — | ✓\* p94 | — | ✓\* p73–74 | — | — | — | Annual-2025: 2 nhóm giá trị hợp lý OPEN; 41 mapping, 35 ô số, 9 phương trình; 6 bank không có bảng chi tiết. Lượt hiện hành E-0099 giữ riêng 64 mapping tại VPB/VCB/CTG; VPB là Q1 |
-| Rủi ro tiền tệ | — | ✓ p58 | ✓\* p80 | ✓\* p38–39 | ✓ p50–51 | ✓\* p60 | — | ✓ p65–66 | 3 nhánh vàng/11 ô OPEN do chưa có schema; 120 mapping, 136 ô số, 51 phương trình; ACB/BID không có bảng chi tiết; VPB là nguồn Q1 |
+| Rủi ro tiền tệ | ✓\* p84 | ✓ p97 | ✓\* p88 | ✓\* p63 | ✓ p80 | ✓\* p71 | ✓ p65 | ✓ p71 | Annual-2025: 7 trục/34 ô OPEN ngoài schema, 155 mapping/155 ô số/74 phương trình; 8/8 vùng unique. Lượt hiện hành trước giữ riêng 120 mapping và 3 nhánh vàng OPEN; VPB của lượt đó là Q1 |
 | Rủi ro lãi suất | — | ✓ p57 | ✓\* p78 | ✓ p41 | ✓ p49 | ✓ p55 | — | ✓ p62–63 | 0 ô OPEN; 234 mapping, 279 ô số, 108 phương trình; VIB đã được challenger ảnh độc lập; VPB là nguồn Q1 |
 | Rủi ro thanh khoản | — | ✓ p60 | ✓\* p82 | ✓ p43 | ✓ p53 | ✓ p58 | — | ✓ p68–69 | 4 trục/12 ô VPB OPEN vì residual lớn; 129 mapping, 153 ô số, 51 phương trình; VPB là nguồn Q1 |
 | Tỷ giá ngoại tệ cuối kỳ | — | ✓ p61 | ✓\* p90 | — | — | ✓\* p61 | ✓ p35 | ✓\* p71 | 15 dòng OPEN; 46 mapping/92 ô; VPB là nguồn Q1, BID dùng policy VND p13 |
