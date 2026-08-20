@@ -1,0 +1,92 @@
+{
+  "children": [
+    {
+      "aliases": [
+        "Tiền mặt bằng VND",
+        "Tiền mặt bằng tiền đồng",
+        "Tiền mặt bằng Đồng Việt Nam"
+      ],
+      "presence": "REQUIRED",
+      "role": "CASH_VND",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "aliases": [
+        "Tiền mặt bằng ngoại tệ"
+      ],
+      "presence": "REQUIRED",
+      "role": "CASH_FOREIGN",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "aliases": [
+        "Chứng từ có giá trị ngoại tệ",
+        "Chứng từ có giá bằng ngoại tệ"
+      ],
+      "presence": "OPTIONAL",
+      "role": "FOREIGN_CURRENCY_VALUABLE_DOCUMENT",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "aliases": [
+        "Vàng",
+        "Vàng tiền tệ"
+      ],
+      "presence": "OPTIONAL",
+      "role": "MONETARY_GOLD",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "aliases": [
+        "Vàng phi tiền tệ"
+      ],
+      "presence": "OPTIONAL",
+      "role": "NONMONETARY_GOLD",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "aliases": [
+        "Kim loại quý và đá quý khác",
+        "Kim loại quý, đá quý khác"
+      ],
+      "presence": "OPTIONAL",
+      "role": "OTHER_PRECIOUS_METALS_GEMS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "aliases": [
+        "Khác"
+      ],
+      "presence": "OPTIONAL",
+      "role": "OTHER",
+      "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "CASH_PRECIOUS_METALS",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V1",
+  "hard_negative_aliases": [
+    "Tiền và các khoản tương đương tiền",
+    "Phân loại tài sản tài chính và công nợ tài chính",
+    "Rủi ro thanh khoản",
+    "Rủi ro tiền tệ"
+  ],
+  "limits": {
+    "max_cluster_span_lines": 48,
+    "max_label_line_span": 3
+  },
+  "parent": {
+    "aliases": [
+      "Tiền, kim loại quý và đá quý",
+      "Tiền mặt, vàng bạc, đá quý",
+      "Tiền mặt, vàng"
+    ],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "CASH_PRECIOUS_METALS"
+  },
+  "structural_reset_aliases": [
+    "Tiền gửi tại Ngân hàng Nhà nước",
+    "Tiền gửi tại NHNN",
+    "Tiền gửi và cho vay các tổ chức tín dụng khác",
+    "Chứng khoán kinh doanh"
+  ]
+}

@@ -1,0 +1,62 @@
+format_version = "FAMILY_FIRST_OCR_RUNTIME_V1"
+state = "PINNED_LOCAL_NO_NETWORK"
+paddle_device = "cpu"
+paddlepaddle_version = "3.3.0"
+paddleocr_version = "3.7.0"
+pymupdf_version = "1.28.0"
+render_dpi = 200
+render_colorspace = "RGB"
+detector_recognition_text_enabled = false
+all_detected_lines_retained = true
+
+[detector]
+repo_id = "PaddlePaddle/PP-OCRv6_medium_det"
+revision = "8e0f56fb2ef86b461d99cfc7ac5c137738985f61"
+cache_directory = "PP-OCRv6_medium_det"
+enable_mkldnn = false
+
+[[detector.required_files]]
+path = "inference.json"
+size_bytes = 312150
+sha256 = "0f1a7ec35da36173529c7a60238b7f7919e3831929c3f700ad90ad4896adecd5"
+
+[[detector.required_files]]
+path = "inference.pdiparams"
+size_bytes = 61960476
+sha256 = "85218d2e3d98f5a21c58b4220627be923a97aee5db3cc71f39536ab31ac53960"
+
+[[detector.required_files]]
+path = "inference.yml"
+size_bytes = 886
+sha256 = "7298d5ead546584af2504d03355f881ac7a7bc0eb1e282d3e159277c1d0af871"
+
+[numeric_recognizer]
+repo_id = "PaddlePaddle/PP-OCRv6_medium_rec"
+revision = "e5a92bcbc5cc1b494628e458d267778f0704fd7c"
+cache_directory = "PP-OCRv6_medium_rec"
+enable_mkldnn = false
+
+[[numeric_recognizer.required_files]]
+path = "inference.json"
+size_bytes = 221814
+sha256 = "0b2e25e990bd072f1bf77d59d67d508bce6c4bd44af6624e0fb27d6da2cd00e8"
+
+[[numeric_recognizer.required_files]]
+path = "inference.pdiparams"
+size_bytes = 76465087
+sha256 = "1b01c79a914587933f615569e75de54f2e638ebb5d3f3b3c1b38c24ede8c7319"
+
+[[numeric_recognizer.required_files]]
+path = "inference.yml"
+size_bytes = 150580
+sha256 = "991b700facf5b50a7de193468207d5f4255b538dde0d312ae3b7c7a9b6873129"
+
+[semantic_reader]
+role = "PRIMARY_VIETNAMESE_SEMANTIC_TEXT"
+config_path = "config/models/vietocr-0.3.13-rtx4090.toml"
+
+[gemma_rescue]
+role = "SECOND_OCR_OR_STRUCTURE_CHALLENGER_ONLY"
+run_unconditionally = false
+expected_schema_or_report_norm_id_in_prompt = false
+single_request_context = true
