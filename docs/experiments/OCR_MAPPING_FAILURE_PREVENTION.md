@@ -376,6 +376,92 @@ record the new gate.
 - Regression gate: counters must bound global replay count independently of
   page/sample count; output bytes/authority must remain identical.
 
+### F-029 — Merging two complete adjacent accounting rows
+
+- Observed failure: VPB had separate `nội bảng` and `ngoại bảng` rows, each with
+  its own numeric cells, but a multiline-label heuristic joined them and lost
+  the internal row.
+- Root cause: nearby vertical distance was treated as sufficient evidence of a
+  wrapped label.
+- Correction: before joining label fragments, detect whether the first label
+  already owns one or more numeric cells on the same y-band. A complete numeric
+  row is never merged with the next label; multiline joining is reserved for a
+  label fragment without aligned values.
+- Regression gate: adjacent complete internal/external rows must remain two
+  roles, while a genuinely wrapped combined-state label without first-line
+  values must still reconstruct as one role.
+
+### F-030 — Dropping a column because one header token was misspelled
+
+- Observed failure: VPB's nine numeric columns were visible and repeated, but
+  header OCR produced `Tứt-3` and `Trần 5`; exact header parsing returned only
+  seven axes and could not bind a nine-cell row.
+- Root cause: the header text detector determined the denominator instead of
+  the numeric table geometry.
+- Correction: derive the column denominator and centres from complete numeric
+  rows, project all noisy/multiline header fragments into those fixed columns,
+  then use bounded accentless edit matching to name each axis.
+- Regression gate: one-character header errors may not drop or merge numeric
+  columns; every complete row must bind exactly the geometry-derived axis count.
+
+### F-031 — Reading a regulatory date as the table period
+
+- Observed failure: HDB's page header mentions `31/12/2014` as the issue date of
+  an NHNN circular, while the annual-2025 interest-rate table continuation does
+  not reprint its own period date.
+- Root cause: every visible full date was treated as a candidate table axis,
+  and a local-date requirement could not distinguish a regulation citation from
+  the repeated document reporting context.
+- Correction: local dates win only when they match the authenticated document
+  current/comparative axes. A missing local match may inherit the document
+  current period only for one unique full-PDF family region containing exactly
+  one table; multi-table/comparative regions still require local disambiguation.
+- Regression gate: a regulation date must never become a source period; a
+  unique single current table may inherit, while two undated candidate tables
+  must remain unresolved.
+
+### F-032 — Choosing the shortest fragment of a wrapped row label
+
+- Observed failure: VIB's external-state label spans three lines. Keeping only
+  the first recognizable fragment shifted its last numeric cell into the next
+  combined-state row and produced ten cells for a nine-column table.
+- Root cause: “shortest recognized label window” was used without considering
+  the numeric row boundary.
+- Correction: extend label fragments until an intervening horizontal numeric
+  band is encountered; that band terminates the label and prevents consuming
+  the next accounting row. Bind values to the completed label y-span.
+- Regression gate: a three-line label followed by a sparse numeric row and an
+  adjacent two-line label must retain both rows and their exact denominators.
+
+### F-033 — Pulling a neighbouring total into the next row by bbox tolerance
+
+- Observed failure: on VIB's comparative page, the preceding row's rightmost
+  total ended only two pixels above `Tổng tài sản`; bbox tolerance produced ten
+  cells for a nine-axis total row.
+- Root cause: numeric cells were assigned independently to the nearest label,
+  without first reconstructing horizontal numeric bands.
+- Correction: cluster candidate cells by y-centre, select one complete band per
+  semantic row using label-centre proximity, then align that band to x-axis
+  centres. Neighbouring bands cannot contribute isolated cells.
+- Regression gate: two rows separated by only 1–2 pixels must retain their own
+  denominators, including sparse rows and a rightmost total cell.
+
+### F-034 — Requiring an accounting equation for every directly printed row
+
+- Observed failure: 34 annual interest-rate groups were left OPEN even though
+  their source role, axis, geometry, schema binding, pixels, and independent
+  numeric challenger were exact; the filing merely omitted a component needed
+  to form a corroborating equation.
+- Root cause: arithmetic corroboration was treated as the only verification
+  path rather than one member of the evidence stack.
+- Correction: a directly printed core row may verify from exact semantic role,
+  axis, geometry, source numeric challenger, period/unit/scope, and schema
+  binding. Require an equation whenever all operands are visibly present; keep
+  any nonzero residual OPEN. Never invent a missing operand or implicit zero.
+- Regression gate: a direct combined-state row without a separately disclosed
+  external row can map, but a row participating in a visible nonzero residual
+  cannot.
+
 ## Maintenance checklist
 
 - Add a new `F-xxx` entry whenever a corrected failure is discovered.

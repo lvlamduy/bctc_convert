@@ -1263,6 +1263,34 @@ Kết quả annual-2025:
 
 ## 50. Rủi ro lãi suất
 
+### BCTC hợp nhất kiểm toán năm 2025 — E-0156
+
+- **Đã map/xác minh:** ACB p87, MBB p95, VPB p85, HDB p65, VCB p78,
+  CTG p75, BID p67 và VIB p68. Full-PDF scan tìm đúng một vùng ở cả 8/8
+  filing. Cùng một graph owner/trục/dòng lõi xử lý bảng thường, bảng landscape,
+  header nhiều dòng và header CTG gộp text `Quá hạn`/`Không chịu lãi` nhưng
+  vẫn giữ hai cột số độc lập. Kết quả xác minh 280 mapping/280 ô số, 87
+  phương trình exact và 10 dấu `-` được xác thực trên pixel trước khi đổi
+  thành 0.
+- **Không có cụm trong annual-2025:** Không bank nào. Bốn bảng so sánh ACB
+  p88, MBB p96, CTG p76 và VIB p69 được nhận diện nhưng không dùng thay kỳ
+  hiện tại. HDB p65 là một bảng continuation duy nhất không in lại ngày; kỳ
+  hiện tại được kế thừa từ period receipt toàn tài liệu, còn ngày 31/12/2014
+  của Thông tư NHNN bị loại.
+- **Có nhưng còn khoản mục chưa map:** chỉ còn tổng VPB p85. Năm số nguồn
+  được giữ nguyên; `198.106.343 + 2 = 198.106.345`, trong khi trạng thái kết
+  hợp in `198.106.343`, residual 2. Không sửa số hoặc tự coi là làm tròn khi
+  chưa có adjudication riêng.
+
+| Bank | Trang | Khoản mục nguồn | Lý do chưa map |
+| --- | ---: | --- | --- |
+| VPB | 85 | Tổng cộng — tổng tài sản, tổng nợ, trạng thái nội bảng, ngoại bảng và kết hợp | Trạng thái nội bảng + ngoại bảng lệch 2 so với trạng thái kết hợp in; giữ 5 ô source-bound và OPEN. |
+
+Kết quả annual-2025:
+`docs/experiments/E-0156-annual-2025-interest-rate-risk-8bank-codex-verified-mapping-v1.json`.
+
+### Lượt hiện hành trước — E-0105
+
 - **Đã map/xác minh:** MBB p57, VPB p78, HDB p41, VCB p49, CTG p55 và
   VIB p62–63. E-0105 đóng toàn bộ 26 gap trước đây: dấu `-` được đọc là 0,
   các dòng nội/ngoại/kết hợp được tách đúng theo tọa độ, và bảng xoay VIB
@@ -1381,6 +1409,6 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra | ✓\* p75 | ✓ p79 | ✓\* p75 | ✓ p55 | — | ✓ p63 | ✓ p59 | ✓ p55 | Annual-2025: 13 dòng OPEN tại ACB/VPB, 58 mapping/114 ô/46 phương trình; VCB bounded absence. Lượt hiện hành trước giữ riêng 47 mapping; VPB của lượt đó là Q1 |
 | Công cụ tài chính — giá trị ghi sổ/hợp lý | — | — | ✓\* p94 | — | ✓\* p73–74 | — | — | — | Annual-2025: 2 nhóm giá trị hợp lý OPEN; 41 mapping, 35 ô số, 9 phương trình; 6 bank không có bảng chi tiết. Lượt hiện hành E-0099 giữ riêng 64 mapping tại VPB/VCB/CTG; VPB là Q1 |
 | Rủi ro tiền tệ | ✓\* p84 | ✓ p97 | ✓\* p88 | ✓\* p63 | ✓ p80 | ✓\* p71 | ✓ p65 | ✓ p71 | Annual-2025: 7 trục/34 ô OPEN ngoài schema, 155 mapping/155 ô số/74 phương trình; 8/8 vùng unique. Lượt hiện hành trước giữ riêng 120 mapping và 3 nhánh vàng OPEN; VPB của lượt đó là Q1 |
-| Rủi ro lãi suất | — | ✓ p57 | ✓\* p78 | ✓ p41 | ✓ p49 | ✓ p55 | — | ✓ p62–63 | 0 ô OPEN; 234 mapping, 279 ô số, 108 phương trình; VIB đã được challenger ảnh độc lập; VPB là nguồn Q1 |
+| Rủi ro lãi suất | ✓\* p87 | ✓\* p95 | ✓\* p85 | ✓\* p65 | ✓\* p78 | ✓\* p75 | ✓\* p67 | ✓\* p68 | Annual-2025: 1 nhóm/5 ô VPB OPEN vì residual 2; 280 mapping/280 ô/87 phương trình, 8/8 vùng unique. Lượt hiện hành trước giữ riêng 234 mapping/279 ô/108 phương trình và OPEN=0; VPB của lượt đó là Q1 |
 | Rủi ro thanh khoản | — | ✓ p60 | ✓\* p82 | ✓ p43 | ✓ p53 | ✓ p58 | — | ✓ p68–69 | 4 trục/12 ô VPB OPEN vì residual lớn; 129 mapping, 153 ô số, 51 phương trình; VPB là nguồn Q1 |
 | Tỷ giá ngoại tệ cuối kỳ | — | ✓ p61 | ✓\* p90 | — | — | ✓\* p61 | ✓ p35 | ✓\* p71 | 15 dòng OPEN; 46 mapping/92 ô; VPB là nguồn Q1, BID dùng policy VND p13 |

@@ -338,6 +338,8 @@ def _context_period(
     axis_document: Mapping[str, Any],
     page_lines: Sequence[Mapping[str, Any]],
     context: Mapping[str, Any],
+    *,
+    allow_unique_single_table_current_inheritance: bool = False,
 ) -> tuple[str, str, str]:
     if (
         context.get("resolution") != "DOMINANT_REPEATED_FULL_DATE_CONSENSUS"
@@ -364,6 +366,12 @@ def _context_period(
         return "COMPARATIVE", _iso(comparative), "LOCAL_COMPARATIVE_MATCHES_DOCUMENT_CONTEXT"
     if current in observed:
         return "CURRENT", _iso(current), "LOCAL_CURRENT_MATCHES_DOCUMENT_CONTEXT"
+    if allow_unique_single_table_current_inheritance:
+        return (
+            "CURRENT",
+            _iso(current),
+            "UNIQUE_SINGLE_TABLE_INHERITS_REPEATED_DOCUMENT_CURRENT_PERIOD",
+        )
     raise _error(
         "currency-risk local table date does not match the repeated complete-PDF period context"
     )
@@ -664,6 +672,7 @@ def _parsed_table(
     page_sequence: int,
     label_factory: Callable[[Mapping[str, Any]], dict[str, Any]],
     value_factory: Callable[..., dict[str, Any]],
+    allow_unique_single_table_current_inheritance: bool = False,
 ) -> dict[str, Any]:
     role_events = [event for event in events if event["role"] in _CORE_ROLES]
     if len({event["role"] for event in role_events}) != len(role_events) or not {
@@ -710,14 +719,35 @@ def _parsed_table(
         cells_by_role[role].append(
             {
                 "center_x": (line["bbox"][0] + line["bbox"][2]) / 2,
+                "center_y": center_y,
                 "line": line,
                 "normalized_value": normalized_value,
                 "right_edge": line["bbox"][2],
                 "source_text": source_text,
             }
         )
-    for cells in cells_by_role.values():
-        cells.sort(key=lambda item: item["center_x"])
+    for role, cells in cells_by_role.items():
+        ordered = sorted(cells, key=lambda item: (item["center_y"], item["center_x"]))
+        bands: list[list[dict[str, Any]]] = []
+        for cell in ordered:
+            if not bands or cell["center_y"] - statistics.mean(
+                item["center_y"] for item in bands[-1]
+            ) > max(4.0, line_height * 0.6):
+                bands.append([cell])
+            else:
+                bands[-1].append(cell)
+        if bands:
+            anchor_center = anchors[role][0]
+            selected = min(
+                bands,
+                key=lambda band: (
+                    abs(statistics.mean(item["center_y"] for item in band) - anchor_center),
+                    -len(band),
+                ),
+            )
+        else:
+            selected = []
+        cells_by_role[role] = sorted(selected, key=lambda item: item["center_x"])
     full_row = max(cells_by_role.values(), key=len)
     if len(full_row) != len(axes):
         raise _error(
@@ -730,7 +760,14 @@ def _parsed_table(
     if not spacings or min(spacings) <= line_height * 1.5:
         raise _error("annual currency-risk currency columns are not geometrically separated")
     minimum_spacing = min(spacings)
-    period_axis, source_period_date, period_status = _context_period(axis_document, lines, context)
+    period_axis, source_period_date, period_status = _context_period(
+        axis_document,
+        lines,
+        context,
+        allow_unique_single_table_current_inheritance=(
+            allow_unique_single_table_current_inheritance
+        ),
+    )
     image, _payload = _image(image_ref)
     rows: dict[str, dict[str, Any]] = {}
     for role, (anchor_center, event) in anchors.items():

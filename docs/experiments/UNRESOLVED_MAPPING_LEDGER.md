@@ -229,6 +229,24 @@ nguồn và không bị gộp ngầm sang một trục tiền tệ khác.
 Machine-readable result:
 `docs/experiments/E-0155-annual-2025-currency-risk-8bank-codex-verified-mapping-v1.json`.
 
+## OPEN — annual-2025 `Rủi ro lãi suất`
+
+E-0156 quét toàn bộ 695 trang và tìm đúng một vùng hiện kỳ tại ACB p87,
+MBB p95, VPB p85, HDB p65, VCB p78, CTG p75, BID p67 và VIB p68. Bốn bảng
+so sánh ACB p88, MBB p96, CTG p76 và VIB p69 được giữ làm control. Header
+CTG gộp text `Quá hạn`/`Không chịu lãi`, nhưng x-centre của các hàng số xác
+thực hai cột độc lập. Exact replay xác minh 280 mapping/280 ô, 87 phương
+trình và 10 DASH→0 có pixel component.
+
+Chỉ còn một nhóm OPEN. Đây là residual nguồn, không phải lỗi OCR/header:
+
+| ID | Bank | Trang annual-2025 | Khoản mục nguồn | Giá trị và lý do chưa map |
+| --- | --- | ---: | --- | --- |
+| AIRRISK-001 | VPB | 85 | Tổng cộng — tổng tài sản, tổng nợ, trạng thái nội bảng/ngoại bảng/kết hợp | `1.277.980.310 - 1.079.873.967 = 198.106.343`; ngoại bảng `2`; nội + ngoại = `198.106.345`, nhưng kết hợp in `198.106.343`. Giữ nguyên cả 5 ô, residual 2 và không tự sửa/làm tròn. |
+
+Machine-readable result:
+`docs/experiments/E-0156-annual-2025-interest-rate-risk-8bank-codex-verified-mapping-v1.json`.
+
 ## COMPLETE — annual-2025 `Mua mới và thanh lý các công ty con`
 
 E-0148 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025 và không tìm
