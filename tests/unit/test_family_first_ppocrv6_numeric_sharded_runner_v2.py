@@ -3,6 +3,8 @@ from __future__ import annotations
 import ast
 import copy
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -272,3 +274,20 @@ def test_numeric_v2_trust_paths_cover_every_static_local_import() -> None:
     )
     pinned_source = {path.as_posix() for path in runner._TRUST_PATHS if path.parts[0] == "src"}
     assert pinned_source == closure
+
+
+def test_numeric_v2_cli_bootstraps_source_tree_without_installed_package(tmp_path: Path) -> None:
+    project_root = Path(runner.__file__).resolve().parents[3]
+    result = subprocess.run(
+        [
+            sys.executable,
+            project_root / "scripts/experiments/run_family_first_ppocrv6_numeric_v2.py",
+            "--help",
+        ],
+        cwd=tmp_path,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "run-missing" in result.stdout

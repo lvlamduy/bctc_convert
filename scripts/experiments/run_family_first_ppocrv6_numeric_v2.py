@@ -2,17 +2,23 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import sys
 from pathlib import Path
 
-from bctc_ai.evaluation.family_first_ppocrv6_numeric_index_v2 import (
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, os.fspath(PROJECT_ROOT))
+sys.path.insert(0, os.fspath(PROJECT_ROOT / "src"))
+
+from bctc_ai.evaluation.family_first_ppocrv6_numeric_index_v2 import (  # noqa: E402
     authenticate_family_first_ppocrv6_numeric_index_v2,
     finalize_authenticated_family_first_ppocrv6_numeric_index_v2,
     project_authenticated_family_first_ppocrv6_numeric_index_v2,
 )
-from bctc_ai.evaluation.family_first_semantic_label_archive_v1 import (
+from bctc_ai.evaluation.family_first_semantic_label_archive_v1 import (  # noqa: E402
     authenticate_family_first_semantic_label_archive_v1,
 )
-from bctc_ai.ocr.family_first_ppocrv6_numeric_sharded_runner_v2 import (
+from bctc_ai.ocr.family_first_ppocrv6_numeric_sharded_runner_v2 import (  # noqa: E402
     aggregate_authenticated_family_first_ppocrv6_numeric_v2,
     project_authenticated_family_first_ppocrv6_numeric_shards_v2,
     run_authenticated_family_first_ppocrv6_numeric_missing_shards_v2,
@@ -32,7 +38,7 @@ def main() -> int:
         choices=("run-shard", "run-missing", "status", "aggregate", "finalize", "verify"),
     )
     arguments = parser.parse_args()
-    root = Path(__file__).resolve().parents[2]
+    root = PROJECT_ROOT
     archive = authenticate_family_first_semantic_label_archive_v1(
         root, model_cache=arguments.model_cache
     )
