@@ -1416,6 +1416,22 @@ bỏ; Gemma 4 chỉ là challenger đọc lại crop, không phải numeric trut
 Kết quả annual-2025:
 `docs/experiments/E-0159-annual-2025-interbank-funding-8bank-codex-verified-mapping-v1.json`.
 
+## 54. Kinh doanh và đầu tư chứng khoán — phân theo khu vực địa lý
+
+### Annual-2025 — E-0160
+
+- **Đã map/xác minh:** ACB p77, MBB p91, VPB p81, HDB p60, BID p63 và
+  VIB p59–60. Sáu whole-PDF scan đều chỉ có một vùng hoàn chỉnh; tổng cộng
+  12 mapping/18 ô, 15 phương trình và năm dấu `-` được pixel-bind trước khi
+  chuẩn hóa về 0. Tổng hiện kỳ được đối chiếu với chứng khoán kinh doanh gộp
+  cộng chứng khoán đầu tư gộp, trước dự phòng.
+- **Không có cụm này trong báo cáo:** VCB và CTG. Các bảng báo cáo bộ phận,
+  rủi ro và tập trung địa lý gần giống chỉ là đối chứng âm.
+- **Có nhưng còn khoản mục chưa map:** Không có.
+
+Kết quả annual-2025:
+`docs/experiments/E-0160-annual-2025-securities-geography-8bank-codex-verified-mapping-v1.json`.
+
 ## Bảng tổng hợp
 
 Ký hiệu: **✓** đã map/xác minh; **—** không có vùng family tương ứng; **△** đã
@@ -1441,6 +1457,7 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Hoạt động mua nợ | — | ✓ p54 | ✓ p49 | ✓ p39 | — | — | — | ✓ p40 | 0 dòng annual-2025; 15 mapping/30 ô/19 phương trình; HDB không in dòng lãi |
 | Tiền gửi khách hàng | ✓ p62 | ✓ p65 | ✓ p60–61 | ✓ p45 | ✓ p53 | ✓ p52 | ✓\* p51 | ✓ p46–47 | Annual-2025: 2 dòng BID gộp còn OPEN; 159 mapping/43 phương trình. Lượt hiện hành trước: 0 dòng OPEN |
 | Chứng khoán đầu tư | ✓ p52–53 | ✓ p54–56 | ✓ p50–52 | ✓ p39–40 | ✓ p42–43 | ✓ p45–46 | ✓ p44–45 | ✓ p40–41 | 0 dòng; MBB gộp → 807, HDB cộng hai thành phần → 831 |
+| Kinh doanh và đầu tư chứng khoán — khu vực địa lý | ✓ p77 | ✓ p91 | ✓ p81 | ✓ p60 | — | — | ✓ p63 | ✓ p59–60 | 0 dòng annual-2025; 12 mapping/18 ô/15 phương trình; 5 DASH→0 |
 | Đầu tư dài hạn khác | ✓ p54 | ✓ p57 | ✓ p52 | ✓ p41 | ✓ p44–45 | ✓ p47 | ✓ p45 | ✓ p41 | 0 dòng annual-2025; 28 mapping/56 ô/11 phương trình |
 | Tăng, giảm TSCĐ hữu hình | ✓ p55 | ✓ p58 | ✓ p53 | ✓ p41 | ✓ p48 | ✓ p48 | ✓ p47 | ✓ p42 | 0 dòng annual-2025; 105 mapping/32 phương trình; CTG/BID/VIB dùng numeric challenger trên ảnh xoay |
 | Tăng, giảm TSCĐ thuê tài chính | — p55→56 | — p58→60 | — p53→54 | — p41→42 | — p48→49 | — p48→49 | — p47→48 | — p42→43 | 0 dòng annual-2025; cả 8 PDF xác nhận không có bảng chi tiết |

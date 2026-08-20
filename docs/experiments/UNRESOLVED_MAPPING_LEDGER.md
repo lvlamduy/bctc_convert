@@ -2312,6 +2312,18 @@ Annual-2025 resolving result: E-0120
 | AIFUND-001 | VPB | 59 | Vốn vay từ Công ty Tài chính Quốc tế (IFC) | Chi tiết source-only, không cộng thêm vào subtotal vay và chưa có leaf chính xác dưới 1040–1052. |
 | AIFUND-002 | HDB | 44 | Phải trả về nghiệp vụ UPAS LC | Parent trung gian chưa có leaf chính xác; hai dòng VND/ngoại tệ của nó đã được cộng đúng một lần vào aggregate vay 1049/1052, không map thêm parent. |
 
+## E-0160 — annual-2025 `Kinh doanh và đầu tư chứng khoán` — khu vực địa lý
+
+- Review status: `RESOLVED_VERIFIED_BY_CODEX_NO_ANNUAL_OPEN_ROWS`.
+- ACB p77, MBB p91, VPB p81, HDB p60, BID p63 và VIB p59–60 có đúng một
+  vùng hoàn chỉnh; 12 mapping/18 ô và 15 phương trình được xác minh. Năm dấu
+  `-` có bbox pixel riêng trước khi chuẩn hóa về 0.
+- VCB và CTG không có vùng thuyết minh hoàn chỉnh trong hai PDF đã bind. Các
+  trang báo cáo bộ phận gần giống được giữ làm đối chứng âm, không map.
+- Không còn dòng nguồn annual-2025 nào của family 5759–5761 trong ledger.
+- Result:
+  `annual2025sg8bcv1:result:5d80cb90d755c6b8ed1267a1fd640d1d2f959f62910eda3268e669633d7ae965`.
+
 ## Append policy
 
 Every later family appends entries here when a source row or complete region is

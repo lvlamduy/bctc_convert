@@ -656,6 +656,23 @@ record the new gate.
   a genuine value away from both authenticated column centres must reject the
   mapping rather than silently select a substitute.
 
+### F-046 — Reconciling a gross geographic population to net securities balances
+
+- Observed failure: the first securities-geography reconciliation used trading
+  and investment balances after provision.  The source geographic table is a
+  gross exposure table, so otherwise correct domestic/foreign rows appeared not
+  to close.
+- Root cause: similarly named securities totals were treated as interchangeable
+  without checking whether provision had already been deducted.
+- Correction: derive gross trading and gross AFS/HTM/VAMC populations from the
+  independently verified securities families, exclude provision rows, then
+  require `trading gross + investment gross = domestic + foreign` for the
+  current period.  Text similarity never selects the accounting measure.
+- Regression gate: all six present annual regions must close at gross values;
+  substituting any net-after-provision total must fail.  VCB/CTG segment-report
+  controls must remain non-candidates, and a blank foreign cell must never be
+  converted to zero without an authenticated dash bbox.
+
 ## Maintenance checklist
 
 - Add a new `F-xxx` entry whenever a corrected failure is discovered.
