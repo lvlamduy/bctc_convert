@@ -2248,6 +2248,18 @@ Resolving result: E-0066
 Annual-2025 resolving result: E-0120
 `annual2025pd8bcv1:result:6c91fc19548f1ff71df439cf2d027d65e797aeb2c8f2a51b4776a732610909d2`.
 
+## E-0157 — annual-2025 `Rủi ro thanh khoản`
+
+- Review status: `RESOLVED_VERIFIED_BY_CODEX_NO_ANNUAL_OPEN_ROWS`.
+- All eight audited consolidated annual-2025 PDFs contain one unique liquidity
+  table. E-0157 verifies 181 mappings/181 cells and 54 exact equations; nine
+  visible dashes are pixel-authenticated before normalization to zero.
+- No annual-2025 source row remains in this ledger. The historical Q1/2026 VPB
+  residuals LRISK-002–LRISK-005 remain attached only to that older filing and
+  are not silently rewritten by the annual result.
+- Result:
+  `annual2025lrr8bcv1:result:671984613ccb960a8f1c491fc6b828c6b1b1e3544c7da5283be7c2fb34731b27`.
+
 ## Append policy
 
 Every later family appends entries here when a source row or complete region is

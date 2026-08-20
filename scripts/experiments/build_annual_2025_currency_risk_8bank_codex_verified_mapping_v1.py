@@ -171,6 +171,7 @@ _CORE_ROLES = {
     "STATE_EXTERNAL",
     "STATE_INTERNAL",
 }
+_REQUIRED_PARSED_ROLES = {"ASSET_TOTAL", "LIABILITY_TOTAL", "STATE_INTERNAL"}
 _AUTHORITY = {
     "bank_filename_note_or_page_used_as_matching_rule": False,
     "blank_cell_interpreted_as_zero": False,
@@ -673,13 +674,12 @@ def _parsed_table(
     label_factory: Callable[[Mapping[str, Any]], dict[str, Any]],
     value_factory: Callable[..., dict[str, Any]],
     allow_unique_single_table_current_inheritance: bool = False,
+    column_centres: Sequence[float] | None = None,
 ) -> dict[str, Any]:
     role_events = [event for event in events if event["role"] in _CORE_ROLES]
-    if len({event["role"] for event in role_events}) != len(role_events) or not {
-        "ASSET_TOTAL",
-        "LIABILITY_TOTAL",
-        "STATE_INTERNAL",
-    }.issubset(event["role"] for event in role_events):
+    if len({event["role"] for event in role_events}) != len(
+        role_events
+    ) or not _REQUIRED_PARSED_ROLES.issubset(event["role"] for event in role_events):
         raise _error("annual currency-risk core row events drifted")
     by_index = {line["source_line_index"]: line for line in lines}
     if set(by_index) != set(range(len(lines))) or len(numeric_axis) != len(lines):
@@ -749,13 +749,27 @@ def _parsed_table(
             selected = []
         cells_by_role[role] = sorted(selected, key=lambda item: item["center_x"])
     full_row = max(cells_by_role.values(), key=len)
-    if len(full_row) != len(axes):
-        raise _error(
-            "annual currency-risk full row does not bind every observed currency axis: "
-            f"page={page_sequence}, axes={list(axes)}, cells={len(full_row)}"
-        )
-    centers = [cell["center_x"] for cell in full_row]
-    right_edges = [cell["right_edge"] for cell in full_row]
+    if column_centres is None:
+        if len(full_row) != len(axes):
+            raise _error(
+                "annual currency-risk full row does not bind every observed currency axis: "
+                f"page={page_sequence}, axes={list(axes)}, cells={len(full_row)}"
+            )
+        centers = [cell["center_x"] for cell in full_row]
+        right_edges = [cell["right_edge"] for cell in full_row]
+    else:
+        centers = list(column_centres)
+        if (
+            len(centers) != len(axes)
+            or centers != sorted(centers)
+            or len(set(centers)) != len(centers)
+        ):
+            raise _error("annual table explicit column geometry drifted")
+        midpoints = [(left + right) / 2 for left, right in zip(centers, centers[1:], strict=False)]
+        right_edges = [
+            *midpoints,
+            centers[-1] + (centers[-1] - centers[-2]) / 2,
+        ]
     spacings = [right - left for left, right in zip(centers, centers[1:], strict=False)]
     if not spacings or min(spacings) <= line_height * 1.5:
         raise _error("annual currency-risk currency columns are not geometrically separated")

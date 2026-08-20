@@ -87,6 +87,8 @@ _CORE_ROLES = {
     "STATE_EXTERNAL",
     "STATE_INTERNAL",
 }
+_REQUIRED_SPAN_ROLES = {"ASSET_TOTAL", "LIABILITY_TOTAL", "STATE_INTERNAL"}
+_USE_EXPLICIT_COLUMN_CENTRES = False
 _AUTHORITY = {
     "bank_filename_note_or_page_used_as_matching_rule": False,
     "blank_cell_interpreted_as_zero": False,
@@ -306,8 +308,7 @@ def _ppocr_spans(lines: Sequence[Mapping[str, Any]]) -> dict[str, dict[str, Any]
                     "y2": max(part["bbox"][3] for part in parts),
                 }
             )
-    required = {"ASSET_TOTAL", "LIABILITY_TOTAL", "STATE_INTERNAL"}
-    if not required <= set(candidates):
+    if not _REQUIRED_SPAN_ROLES <= set(candidates):
         raise _error(f"rotated PP-OCRv6 core label topology drifted: {sorted(candidates)}")
     median_height = statistics.median(line["bbox"][3] - line["bbox"][1] for line in lines)
 
@@ -763,6 +764,7 @@ def _ordinary_table(
             allow_unique_single_table_current_inheritance=(
                 allow_unique_single_table_current_inheritance
             ),
+            column_centres=centres if _USE_EXPLICIT_COLUMN_CENTRES else None,
         )
     except Exception as exc:
         raise _error(str(exc)) from exc
@@ -807,6 +809,7 @@ def _rotated_table(
             allow_unique_single_table_current_inheritance=(
                 allow_unique_single_table_current_inheritance
             ),
+            column_centres=centres if _USE_EXPLICIT_COLUMN_CENTRES else None,
         )
     except Exception as exc:
         raise _error(str(exc)) from exc

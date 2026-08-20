@@ -492,6 +492,56 @@ record the new gate.
   accounting maturity roles, while nearby interest-rate tables remain negative
   controls and every PDF retains exactly one liquidity region.
 
+### F-037 — Inferring a table denominator only from non-dash numeric tokens
+
+- Observed failure: HDB's annual liquidity totals have eight physical columns,
+  but two cells are visible dashes. The longest parsed numeric band therefore
+  contained seven tokens and the mapper rejected the otherwise complete table.
+- Root cause: column-centre discovery ignored visual DASH cells before the
+  later DASH-to-zero verifier had a chance to authenticate them.
+- Correction: prefer a complete numeric core row; if every row is sparse only
+  because of dashes, accept the repeated per-column unit axis as a geometric
+  denominator only after a numeric band covers all but at most one centre and
+  aligns tightly to those centres. The missing cell is still zero only after
+  independent pixel-component DASH verification.
+- Regression gate: an eight-column row with one authenticated dash retains all
+  eight axes; a sparse row without a complete repeated unit axis remains
+  unresolved and a blank cell is never treated as zero.
+
+### F-038 — Treating OCR-damaged range anchors as missing table structure
+
+- Observed failure: on rotated CTG/BID/VIB liquidity tables, PP-OCRv6 read
+  header surfaces such as `Tùrtrên 1tháng dn3tháng`, `Tù 1-5năm`, and
+  `Mc chênh thanh khon ròng`. Exact phrase matching lost the 1–3 month,
+  1–5 year, or net-liquidity role even though the column/row geometry and
+  neighbouring accounting topology were complete.
+- Root cause: the rescue parser normalized Vietnamese accents but still
+  expected every range endpoint and role token to retain exact spelling.
+- Correction: normalize the full composed header surface; admit bounded
+  insert/delete/substitute errors only when the ordered endpoints, time unit,
+  unique physical column, owner/core rows, period, unit, and accounting
+  equation agree. Text remains an anchor, never the mapping decision or
+  numeric authority.
+- Regression gate: the recorded noisy surfaces must recover their exact role;
+  every annual filing must still expose the same eight distinct maturity axes,
+  and every asset-minus-liability equation must close. A similar-looking
+  interest-rate table remains a negative control.
+
+### F-039 — Reconfiguring a shared parser module across accounting families
+
+- Observed failure: the liquidity mapper reused the annual currency/interest
+  table machinery by mutating its module-level core roles. Liquidity passed in
+  isolation, but a combined pytest process made the already-verified
+  interest-rate family parse with liquidity roles and fail.
+- Root cause: family-specific configuration was stored in a shared imported
+  module, so test/import order changed behaviour.
+- Correction: load an isolated parser instance for the new family and keep
+  compatibility switches disabled by default in the older family. Family
+  configuration must not mutate another family's live module.
+- Regression gate: run annual currency, interest-rate, and liquidity mapping
+  suites in one Python process; their persisted results must equal their live
+  rebuilds regardless of collection order.
+
 ## Maintenance checklist
 
 - Add a new `F-xxx` entry whenever a corrected failure is discovered.

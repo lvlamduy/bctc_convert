@@ -1304,6 +1304,21 @@ Kết quả annual-2025:
 
 ## 51. Rủi ro thanh khoản
 
+### Annual-2025 — E-0157
+
+- **Đã map/xác minh:** ACB p92, MBB p100, VPB p90, HDB p67, VCB p82,
+  CTG p79, BID p69 và VIB p74. Cả 8 PDF có đúng một vùng family; 181
+  mapping/181 ô số và 54 phương trình `tài sản - nợ = chênh lệch thanh khoản`
+  khép đúng. Chín dấu `-` chỉ được đổi thành 0 sau khi pixel được xác thực.
+- **Không có cụm trong annual-2025:** Không bank nào.
+- **Có nhưng còn khoản mục chưa map:** Không còn. Bốn bảng so sánh ACB p93,
+  MBB p101, CTG p80 và VIB p75 được giữ lại nhưng loại khỏi kỳ hiện tại.
+
+Kết quả annual-2025:
+`docs/experiments/E-0157-annual-2025-liquidity-risk-8bank-codex-verified-mapping-v1.json`.
+
+### Lượt hiện hành trước — E-0105
+
 - **Đã map/xác minh:** MBB p60, HDB p43, VCB p53, CTG p58 và VIB p68–69;
   VPB p82 đã map các trục khép số. E-0105 đóng các dấu `-` tổng nợ quá hạn
   thành 0 và đọc lại đủ bảng xoay VIB bằng Gemma 4 + pixel + 16 phương trình.
@@ -1410,5 +1425,5 @@ hoặc group parent chỉ giữ để kiểm tra.
 | Công cụ tài chính — giá trị ghi sổ/hợp lý | — | — | ✓\* p94 | — | ✓\* p73–74 | — | — | — | Annual-2025: 2 nhóm giá trị hợp lý OPEN; 41 mapping, 35 ô số, 9 phương trình; 6 bank không có bảng chi tiết. Lượt hiện hành E-0099 giữ riêng 64 mapping tại VPB/VCB/CTG; VPB là Q1 |
 | Rủi ro tiền tệ | ✓\* p84 | ✓ p97 | ✓\* p88 | ✓\* p63 | ✓ p80 | ✓\* p71 | ✓ p65 | ✓ p71 | Annual-2025: 7 trục/34 ô OPEN ngoài schema, 155 mapping/155 ô số/74 phương trình; 8/8 vùng unique. Lượt hiện hành trước giữ riêng 120 mapping và 3 nhánh vàng OPEN; VPB của lượt đó là Q1 |
 | Rủi ro lãi suất | ✓\* p87 | ✓\* p95 | ✓\* p85 | ✓\* p65 | ✓\* p78 | ✓\* p75 | ✓\* p67 | ✓\* p68 | Annual-2025: 1 nhóm/5 ô VPB OPEN vì residual 2; 280 mapping/280 ô/87 phương trình, 8/8 vùng unique. Lượt hiện hành trước giữ riêng 234 mapping/279 ô/108 phương trình và OPEN=0; VPB của lượt đó là Q1 |
-| Rủi ro thanh khoản | — | ✓ p60 | ✓\* p82 | ✓ p43 | ✓ p53 | ✓ p58 | — | ✓ p68–69 | 4 trục/12 ô VPB OPEN vì residual lớn; 129 mapping, 153 ô số, 51 phương trình; VPB là nguồn Q1 |
+| Rủi ro thanh khoản | ✓ p92 | ✓ p100 | ✓ p90 | ✓ p67 | ✓ p82 | ✓ p79 | ✓ p69 | ✓ p74 | Annual-2025: 0 OPEN, 181 mapping/181 ô/54 phương trình, 9 DASH→0; lượt hiện hành trước giữ 4 trục/12 ô VPB OPEN |
 | Tỷ giá ngoại tệ cuối kỳ | — | ✓ p61 | ✓\* p90 | — | — | ✓\* p61 | ✓ p35 | ✓\* p71 | 15 dòng OPEN; 46 mapping/92 ô; VPB là nguồn Q1, BID dùng policy VND p13 |
