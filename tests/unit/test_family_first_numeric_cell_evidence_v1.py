@@ -22,7 +22,7 @@ def _crop(color: tuple[int, int, int] = (255, 255, 255)) -> bytes:
 
 def _provider(text: str = "603.040.884") -> dict[str, object]:
     return {
-        "input_path": "/opaque/private/crop.png",
+        "input_path": None,
         "page_index": None,
         "rec_score": 0.999,
         "rec_text": text,

@@ -300,8 +300,8 @@ def _crop_ref(crop_png_bytes: Any) -> dict[str, Any]:
 def _provider(value: Any) -> dict[str, Any]:
     if type(value) is not dict or set(value) != _PROVIDER_FIELDS:
         raise _error("PP-OCRv6 recognizer result fields drifted")
-    if type(value["input_path"]) is not str or not value["input_path"]:
-        raise _error("PP-OCRv6 provider input path must be one non-empty string")
+    if value["input_path"] is not None:
+        raise _error("reference-blind PP-OCRv6 provider input path must be null")
     if value["page_index"] is not None:
         raise _error("standalone numeric crop provider page index must be null")
     if type(value["rec_text"]) is not str:
