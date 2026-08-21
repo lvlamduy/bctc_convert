@@ -49,6 +49,7 @@ __all__ = [
 
 FORMAT_VERSION = "FAMILY_FIRST_ACCOUNTING_EVIDENCE_SWEEP_V1"
 EVALUATION_SPEC_FORMAT = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V1"
+EVALUATION_SPEC_FORMAT_V2 = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V2"
 CLAIM_BOUNDARY = (
     "AUTHENTICATED_ALL_FILING_COMPLETE_DOCUMENT_TOPOLOGY_FRESH_VIETOCR_LABEL_"
     "PPOCRV6_MEDIUM_NUMERIC_PERIOD_UNIT_AND_VISIBLE_ADDITIVE_CLOSURE_EVIDENCE_"
@@ -86,6 +87,8 @@ _SPEC_FIELDS = {
     "format_version",
     "period_semantics",
 }
+_SPEC_FIELDS_V2 = {*_SPEC_FIELDS, "source_group_equivalences"}
+_SOURCE_GROUP_EQUIVALENCE_FIELDS = {"component_roles", "group_role"}
 _TRIAL_FIELDS = {
     "additive_closure",
     "column_context",
@@ -118,12 +121,13 @@ def _error(message: str) -> FamilyFirstAccountingEvidenceSweepV1Error:
     return FamilyFirstAccountingEvidenceSweepV1Error(message)
 
 
-def _evaluation_spec(value: Any, family_id: str) -> dict[str, Any]:
+def _evaluation_spec(value: Any, family_spec: dict[str, Any]) -> dict[str, Any]:
+    is_v2 = type(value) is dict and value.get("format_version") == EVALUATION_SPEC_FORMAT_V2
     if (
         type(value) is not dict
-        or set(value) != _SPEC_FIELDS
-        or value["format_version"] != EVALUATION_SPEC_FORMAT
-        or value["family_id"] != family_id
+        or set(value) != (_SPEC_FIELDS_V2 if is_v2 else _SPEC_FIELDS)
+        or value["format_version"] not in {EVALUATION_SPEC_FORMAT, EVALUATION_SPEC_FORMAT_V2}
+        or value["family_id"] != family_spec["family_id"]
         or value["period_semantics"] not in {"BALANCE_COMPARATIVE", "CURRENT_ROLLFORWARD"}
         or value["closure_policy"]
         not in {
@@ -135,6 +139,33 @@ def _evaluation_spec(value: Any, family_id: str) -> dict[str, Any]:
         or any(item not in {"MONEY", "PERCENT"} for item in value["expected_lane_unit_kinds"])
     ):
         raise _error("family evaluation specification drifted")
+    if is_v2:
+        if (
+            type(value["source_group_equivalences"]) is not list
+            or not value["source_group_equivalences"]
+        ):
+            raise _error("family evaluation source-group equivalence drifted")
+        role_kinds = {child["role"]: child["role_kind"] for child in family_spec["children"]}
+        groups: set[str] = set()
+        components: set[str] = set()
+        for item in value["source_group_equivalences"]:
+            if (
+                type(item) is not dict
+                or set(item) != _SOURCE_GROUP_EQUIVALENCE_FIELDS
+                or type(item["group_role"]) is not str
+                or not item["group_role"]
+                or type(item["component_roles"]) is not list
+                or not item["component_roles"]
+                or any(type(role) is not str or not role for role in item["component_roles"])
+                or len(item["component_roles"]) != len(set(item["component_roles"]))
+                or item["group_role"] in groups
+                or any(role in components for role in item["component_roles"])
+                or role_kinds.get(item["group_role"]) != "SOURCE_ONLY_GROUP_PARENT"
+                or any(role_kinds.get(role) != "ADDITIVE_CHILD" for role in item["component_roles"])
+            ):
+                raise _error("family evaluation source-group equivalence drifted")
+            groups.add(item["group_role"])
+            components.update(item["component_roles"])
     return canonical_clone_v1(value)
 
 
@@ -339,6 +370,7 @@ def _trial(
         row_axis,
         joined_pages,
         family_spec,
+        source_group_equivalences=evaluation_spec.get("source_group_equivalences", []),
         visible_dash_rescues=dash_rescues,
     )
     reasons = _unresolved_reasons(row_axis, column_context, closure, evaluation_spec)
@@ -444,7 +476,7 @@ def build_authenticated_family_first_accounting_evidence_sweep_v1(
         compiled = topology_v1._spec(family_spec)
     except (ValueError, RuntimeError) as exc:
         raise _error("family topology specification drifted") from exc
-    policy = _evaluation_spec(evaluation_spec, compiled["family_id"])
+    policy = _evaluation_spec(evaluation_spec, compiled)
     try:
         semantic_projection = semantic_v1.project_authenticated_family_first_semantic_index_v1(
             semantic_index_capability

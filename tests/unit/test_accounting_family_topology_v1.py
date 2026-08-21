@@ -403,6 +403,84 @@ def test_source_only_group_parent_can_share_the_explicit_family_parent_row() -> 
     assert region["child_matches"][0]["document_line_ordinal"] == 0
 
 
+def test_coextensive_source_group_is_not_duplicated_when_another_core_is_complete() -> None:
+    spec = _alternative_core_spec()
+    spec["parent"]["resolution_mode"] = "EXPLICIT_ONLY"
+    spec["presence_evidence_mode"] = "WITHIN_EXPLICIT_PARENT_CLUSTER"
+    spec["children"][2]["aliases"].append("Tiền gửi tại NHNN")
+
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    "Tiền gửi tại NHNN",
+                    "31/12/2025",
+                    "31/12/2024",
+                    "Bằng VND",
+                    "100",
+                    "90",
+                    "Bằng ngoại tệ",
+                    "20",
+                    "10",
+                    "120",
+                    "100",
+                ]
+            )
+        ],
+        spec,
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    assert result["regions"][0]["observed_roles"] == ["VND", "FOREIGN"]
+
+
+def test_nested_source_group_parent_does_not_hide_outer_family_header() -> None:
+    spec = _alternative_core_spec()
+    spec["parent"]["resolution_mode"] = "EXPLICIT_ONLY"
+    spec["presence_evidence_mode"] = "WITHIN_EXPLICIT_PARENT_CLUSTER"
+    spec["parent"]["aliases"].append("Tiền gửi tại NHNN Việt Nam")
+
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    "Tiền gửi tại NHNN",
+                    "31/12/2025",
+                    "31/12/2024",
+                    "Triệu đồng",
+                    "Tiền gửi tại NHNN Việt Nam",
+                    "100",
+                    "90",
+                    "Bằng VND",
+                    "80",
+                    "70",
+                    "Bằng ngoại tệ",
+                    "20",
+                    "20",
+                    "Tiền gửi tại Ngân hàng Nhà nước Lào",
+                    "10",
+                    "5",
+                    "110",
+                    "95",
+                ]
+            )
+        ],
+        spec,
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    assert result["metrics"]["complete_region_count"] == 1
+    region = result["regions"][0]
+    assert region["parent_match"]["document_line_ordinal"] == 0
+    assert region["cluster_start_source_line_index"] == 0
+    assert (
+        next(item for item in region["child_matches"] if item["role"] == "VIETNAM")[
+            "document_line_ordinal"
+        ]
+        == 4
+    )
+
+
 @pytest.mark.parametrize(
     "surface",
     [

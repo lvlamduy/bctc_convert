@@ -198,3 +198,63 @@ def test_exact_replay_rejects_coordinated_equation_mutation() -> None:
 
     with pytest.raises(AccountingAdditiveTableClosureV1Error, match="replay exactly"):
         validate_accounting_additive_table_closure_replay_v1(forged, axis, pages, _spec())
+
+
+def test_declared_source_group_replaces_its_exact_components_without_double_count() -> None:
+    spec = _spec()
+    spec["format_version"] = "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V2"
+    spec["presence_evidence_mode"] = "GLOBAL_CORE_HITS"
+    spec["required_role_combinations"] = [["SHORT_TERM", "MEDIUM_TERM"]]
+    for child in spec["children"]:
+        child["presence"] = "OPTIONAL"
+    spec["children"].insert(
+        0,
+        {
+            "aliases": ["Dư nợ lõi"],
+            "presence": "OPTIONAL",
+            "role": "CORE_GROUP",
+            "role_kind": "SOURCE_ONLY_GROUP_PARENT",
+        },
+    )
+    pages = _pages(total_rows=[("310", "280")])
+    lines = pages[0]["lines"]
+    lines[1:1] = [
+        _line(20, "Dư nợ lõi", "", [50, 70, 300, 92]),
+        _line(21, "300", "300", [600, 70, 700, 92]),
+        _line(22, "270", "270", [800, 70, 900, 92]),
+    ]
+    lines[10:10] = [
+        _line(23, "Phụ trội", "", [50, 180, 300, 202]),
+        _line(24, "10", "10", [600, 180, 700, 202]),
+        _line(25, "10", "10", [800, 180, 900, 202]),
+    ]
+    spec["children"].append(
+        {
+            "aliases": ["Phụ trội"],
+            "presence": "OPTIONAL",
+            "role": "MARGIN",
+            "role_kind": "ADDITIVE_CHILD",
+        }
+    )
+    for ordinal, line in enumerate(lines):
+        line["line_ordinal"] = ordinal
+        line["sample_id"] = f"sample-{ordinal + 1:09d}"
+        line["crop_ref"] = {
+            "path": f"opaque/crop-{ordinal + 1:04d}.png",
+            "sha256": f"{ordinal + 1:064x}",
+            "size_bytes": 101 + ordinal,
+        }
+    axis = build_accounting_family_row_axis_v1(pages, spec)
+    equivalences = [{"group_role": "CORE_GROUP", "component_roles": ["SHORT_TERM", "MEDIUM_TERM"]}]
+
+    result = build_accounting_additive_table_closure_v1(
+        axis,
+        pages,
+        spec,
+        source_group_equivalences=equivalences,
+    )
+
+    assert result["format_version"] == "ACCOUNTING_ADDITIVE_TABLE_CLOSURE_V2"
+    assert result["status"] == "CORROBORATED_EXACT_UNIQUE_TRAILING_TOTAL"
+    assert result["additive_roles"] == ["CORE_GROUP", "MARGIN"]
+    assert [item["sum_value"]["coefficient"] for item in result["lane_sums"]] == [310, 280]

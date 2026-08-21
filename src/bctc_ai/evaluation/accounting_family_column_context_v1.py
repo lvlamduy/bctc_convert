@@ -136,8 +136,13 @@ def _header_lines(
 ) -> tuple[list[dict[str, Any]], int] | None:
     if not region["child_matches"]:
         return None
-    header_stop = min(item["document_line_ordinal"] for item in region["child_matches"])
     header_start = region["cluster_start_document_line_ordinal"]
+    body_matches = [
+        item for item in region["child_matches"] if item["document_line_ordinal"] > header_start
+    ]
+    header_stop = min(
+        item["document_line_ordinal"] for item in (body_matches or region["child_matches"])
+    )
     offset = 0
     selected: list[dict[str, Any]] = []
     page_sequences: set[int] = set()
@@ -154,8 +159,16 @@ def _header_lines(
                     }
                 )
         offset += len(page["lines"])
-    if region["parent_resolution"] == "IMPLIED_BY_REQUIRED_CHILD_CLUSTER":
-        first_child = min(region["child_matches"], key=lambda item: item["document_line_ordinal"])
+    # Period and unit bands may precede either an implied child cluster or an
+    # explicit value-bearing parent row.  Extend the local header upward in a
+    # page-local, text-height-bounded body-column band for both cases.  Only
+    # period/unit parsers consume these extra lines; arbitrary preceding values
+    # therefore cannot become an axis merely by proximity.
+    first_child = min(
+        body_matches or region["child_matches"],
+        key=lambda item: item["document_line_ordinal"],
+    )
+    if first_child["page_sequence"] == region["page_sequence"]:
         child_page = next(
             (page for page in pages if page["page_sequence"] == first_child["page_sequence"]),
             None,

@@ -5,6 +5,15 @@
     "MONEY"
   ],
   "family_id": "CENTRAL_BANK_DEPOSITS",
-  "format_version": "ACCOUNTING_FAMILY_EVALUATION_SPEC_V1",
-  "period_semantics": "BALANCE_COMPARATIVE"
+  "format_version": "ACCOUNTING_FAMILY_EVALUATION_SPEC_V2",
+  "period_semantics": "BALANCE_COMPARATIVE",
+  "source_group_equivalences": [
+    {
+      "component_roles": [
+        "DEPOSIT_VND",
+        "DEPOSIT_FOREIGN_CURRENCY"
+      ],
+      "group_role": "CENTRAL_BANK_VIETNAM_PARENT"
+    }
+  ]
 }

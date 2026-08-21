@@ -526,6 +526,25 @@ def _candidate(
     spec: Mapping[str, Any],
     hard_negative_hits: Sequence[Mapping[str, Any]],
 ) -> dict[str, Any]:
+    # When the broad family parent and a source-only group parent share one
+    # visual label, do not duplicate that same source row as a child if another
+    # declared core combination already proves the family.  The coextensive
+    # group remains necessary (and is retained) when it is itself part of the
+    # only satisfied alternative, such as ``Vietnam + Laos``.
+    pruned_records = list(records)
+    for record in records:
+        if (
+            record["role_kind"] != "SOURCE_ONLY_GROUP_PARENT"
+            or record["document_line_ordinal"] != start
+        ):
+            continue
+        roles_without = {item["role"] for item in records if item is not record}
+        if any(
+            set(combination).issubset(roles_without)
+            for combination in spec["required_role_combinations"]
+        ):
+            pruned_records.remove(record)
+    records = pruned_records
     observed_roles = [record["role"] for record in records]
     matched_combinations = [
         combination
@@ -597,13 +616,33 @@ def _explicit_candidates(
     maximum_span = spec["limits"]["max_cluster_span_lines"]
     max_continuation = spec["limits"]["max_continuation_pages"]
     maximum_page = max(page_end_exclusive)
+    source_group_parent_positions = {
+        hit["document_line_ordinal"]
+        for child in spec["children"]
+        if child["role_kind"] == "SOURCE_ONLY_GROUP_PARENT"
+        for hit in hits["children"][child["role"]]
+    }
     for parent_offset, parent in enumerate(hits["parents"]):
         start = parent["document_line_ordinal"]
         allowed_end_page = min(maximum_page, parent["page_sequence"] + max_continuation)
         stops = [start + maximum_span + 1]
         stops.append(page_end_exclusive[allowed_end_page])
-        if parent_offset + 1 < len(hits["parents"]):
-            stops.append(hits["parents"][parent_offset + 1]["document_line_ordinal"])
+        # A visible source grouping row may legitimately repeat a broad family
+        # parent's wording (for example an outer central-bank note followed by
+        # a valued Vietnam subgroup).  Such a row is a child boundary, not the
+        # start of a second table.  Skip it when finding the next *independent*
+        # family parent; the later containment pass removes the redundant
+        # nested candidate only after the outer proposal proves complete.
+        next_independent_parent = next(
+            (
+                hit["document_line_ordinal"]
+                for hit in hits["parents"][parent_offset + 1 :]
+                if hit["document_line_ordinal"] not in source_group_parent_positions
+            ),
+            None,
+        )
+        if next_independent_parent is not None:
+            stops.append(next_independent_parent)
         reset = _first_after(hits["resets"], start)
         if reset is not None:
             stops.append(reset)
@@ -620,7 +659,28 @@ def _explicit_candidates(
                 hard_negative_hits=hits["hard_negatives"],
             )
         )
-    return candidates
+    retained = []
+    for candidate in candidates:
+        start = candidate["cluster_start_document_line_ordinal"]
+        if start not in source_group_parent_positions:
+            retained.append(candidate)
+            continue
+        containing_complete = any(
+            other is not candidate
+            and not other["unresolved_reasons"]
+            and other["cluster_start_document_line_ordinal"]
+            < start
+            < other["cluster_end_document_line_ordinal_exclusive"]
+            and any(
+                record["role_kind"] == "SOURCE_ONLY_GROUP_PARENT"
+                and record["document_line_ordinal"] == start
+                for record in other["child_matches"]
+            )
+            for other in candidates
+        )
+        if not containing_complete:
+            retained.append(candidate)
+    return retained
 
 
 def _implied_candidates(

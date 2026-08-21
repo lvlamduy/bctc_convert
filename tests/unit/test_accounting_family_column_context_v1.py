@@ -360,6 +360,31 @@ def test_implied_parent_recovers_preceding_relative_headers_by_body_geometry() -
     ]
 
 
+def test_explicit_parent_recovers_preceding_headers_in_body_column_band() -> None:
+    pages = _pages()
+    lines = pages[0]["lines"]
+    parent = lines.pop(0)
+    lines.insert(3, parent)
+    for ordinal, line in enumerate(lines):
+        line["line_ordinal"] = ordinal
+    axis = _axis(pages)
+
+    result = build_accounting_family_column_context_v1(
+        axis,
+        pages,
+        _spec(),
+        period_semantics="BALANCE_COMPARATIVE",
+        expected_lane_unit_kinds=["MONEY", "MONEY"],
+    )
+
+    assert axis["topology_region"]["parent_resolution"] == "EXPLICIT_PARENT"
+    assert result["status"] == "PERIOD_UNIT_COLUMN_CONTEXT_RESOLVED_PROPOSAL_ONLY"
+    assert [item["resolved_period"] for item in result["period_axis"]] == [
+        "31/12/2025",
+        "31/12/2024",
+    ]
+
+
 def test_conflicting_document_units_fail_closed_without_local_unit() -> None:
     pages = _pages(local_unit=False, conflicting_document_unit=True)
     axis = _axis(pages)

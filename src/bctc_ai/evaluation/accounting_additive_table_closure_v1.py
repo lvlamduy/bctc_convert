@@ -15,6 +15,7 @@ from bctc_ai.evaluation.accounting_family_row_axis_v1 import (
     AccountingFamilyRowAxisV1Error,
     validate_accounting_family_row_axis_replay_v1,
 )
+from bctc_ai.evaluation.accounting_family_topology_v1 import _spec as _topology_spec
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
     canonical_json_sha256_v1,
@@ -30,10 +31,16 @@ __all__ = [
 
 
 FORMAT_VERSION = "ACCOUNTING_ADDITIVE_TABLE_CLOSURE_V1"
+FORMAT_VERSION_V2 = "ACCOUNTING_ADDITIVE_TABLE_CLOSURE_V2"
 CLAIM_BOUNDARY = (
     "EXACT_VISIBLE_ADDITIVE_CHILD_SUM_TO_UNIQUE_VISIBLE_TRAILING_TOTAL_"
     "CORROBORATION_ONLY_NO_DIGIT_REPAIR_MISSING_CELL_PERIOD_UNIT_POPULATION_"
     "SCHEMA_MAPPING_CANONICALIZATION_OR_EXPORT_AUTHORITY"
+)
+CLAIM_BOUNDARY_V2 = (
+    "EXACT_VISIBLE_DECLARED_SOURCE_GROUP_REPRESENTATIVE_OR_ADDITIVE_CHILD_SUM_TO_"
+    "UNIQUE_VISIBLE_TRAILING_TOTAL_CORROBORATION_ONLY_NO_DIGIT_REPAIR_MISSING_"
+    "CELL_PERIOD_UNIT_POPULATION_SCHEMA_MAPPING_CANONICALIZATION_OR_EXPORT_AUTHORITY"
 )
 _SAFETY = {
     "accounting_equation_can_change_or_supply_digits": False,
@@ -62,6 +69,8 @@ _RESULT_FIELDS = {
     "status",
     "unresolved_reasons",
 }
+_RESULT_FIELDS_V2 = {*_RESULT_FIELDS, "source_group_equivalences"}
+_EQUIVALENCE_FIELDS = {"component_roles", "group_role"}
 _NUMBER_FIELDS = {"coefficient", "percentage_mark_present", "scale"}
 _LANE_SUM_FIELDS = {
     "component_sample_ids",
@@ -215,6 +224,99 @@ def _exact_candidates(
     return exact
 
 
+def _source_group_equivalences(value: Any, family_topology_spec: Any) -> list[dict[str, Any]]:
+    if type(value) is not list:
+        raise _error("source-group equivalences must be one exact list")
+    try:
+        compiled = _topology_spec(family_topology_spec)
+    except (ValueError, RuntimeError) as exc:
+        raise _error("source-group equivalence topology specification drifted") from exc
+    role_kinds = {child["role"]: child["role_kind"] for child in compiled["children"]}
+    result = []
+    seen_groups: set[str] = set()
+    seen_components: set[str] = set()
+    for item in value:
+        if (
+            type(item) is not dict
+            or set(item) != _EQUIVALENCE_FIELDS
+            or type(item["group_role"]) is not str
+            or not item["group_role"]
+            or type(item["component_roles"]) is not list
+            or not item["component_roles"]
+            or any(type(role) is not str or not role for role in item["component_roles"])
+            or len(item["component_roles"]) != len(set(item["component_roles"]))
+            or item["group_role"] in item["component_roles"]
+            or item["group_role"] in seen_groups
+            or any(role in seen_components for role in item["component_roles"])
+            or role_kinds.get(item["group_role"]) != "SOURCE_ONLY_GROUP_PARENT"
+            or any(role_kinds.get(role) != "ADDITIVE_CHILD" for role in item["component_roles"])
+        ):
+            raise _error("source-group equivalence contract drifted")
+        seen_groups.add(item["group_role"])
+        seen_components.update(item["component_roles"])
+        result.append(canonical_clone_v1(item))
+    return result
+
+
+def _numbers_by_lane(row: Mapping[str, Any]) -> tuple[list[int], list[dict[str, Any]]] | None:
+    axis = _lane_axis([row])
+    if axis is None:
+        return None
+    numbers = [
+        _number(next(value for value in row["values"] if value["column_ordinal"] == lane))
+        for lane in axis
+    ]
+    if any(number is None for number in numbers):
+        return None
+    return list(axis), [number for number in numbers if number is not None]
+
+
+def _select_additive_rows(
+    rows: Sequence[Mapping[str, Any]],
+    equivalences: Sequence[Mapping[str, Any]],
+) -> tuple[list[dict[str, Any]], list[str]]:
+    selected = [canonical_clone_v1(row) for row in rows if row["role_kind"] == "ADDITIVE_CHILD"]
+    by_role = {row["role"]: row for row in rows}
+    reasons = []
+    for equivalence in equivalences:
+        group = by_role.get(equivalence["group_role"])
+        if group is None:
+            continue
+        components = [by_role[role] for role in equivalence["component_roles"] if role in by_role]
+        if components and len(components) != len(equivalence["component_roles"]):
+            reasons.append(
+                "SOURCE_GROUP_EQUIVALENCE_PARTIAL_COMPONENT_POPULATION:" + equivalence["group_role"]
+            )
+            continue
+        if components:
+            group_axis = _numbers_by_lane(group)
+            component_axis = _lane_axis(components)
+            component_sums = (
+                _lane_sums(components, component_axis) if component_axis is not None else None
+            )
+            if (
+                group_axis is None
+                or component_axis is None
+                or component_sums is None
+                or group_axis[0] != list(component_axis)
+                or not all(
+                    _numbers_equal(group_number, lane_sum["sum_value"])
+                    for group_number, lane_sum in zip(group_axis[1], component_sums, strict=True)
+                )
+            ):
+                reasons.append(
+                    "SOURCE_GROUP_PARENT_NOT_EXACT_SUM_OF_DECLARED_COMPONENTS:"
+                    + equivalence["group_role"]
+                )
+                continue
+            component_roles = set(equivalence["component_roles"])
+            selected = [row for row in selected if row["role"] not in component_roles]
+        selected.append(canonical_clone_v1(group))
+    role_order = {row["role"]: ordinal for ordinal, row in enumerate(rows)}
+    selected.sort(key=lambda row: role_order[row["role"]])
+    return selected, reasons
+
+
 def _result_metrics(
     additive_roles: Sequence[str],
     lane_sums: Sequence[Mapping[str, Any]],
@@ -242,11 +344,14 @@ def _validate_number(value: Any) -> None:
 
 
 def _validate_result(value: Any) -> dict[str, Any]:
+    is_v2 = type(value) is dict and value.get("format_version") == FORMAT_VERSION_V2
+    expected_fields = _RESULT_FIELDS_V2 if is_v2 else _RESULT_FIELDS
+    expected_boundary = CLAIM_BOUNDARY_V2 if is_v2 else CLAIM_BOUNDARY
     if (
         type(value) is not dict
-        or set(value) != _RESULT_FIELDS
-        or value["format_version"] != FORMAT_VERSION
-        or value["claim_boundary"] != CLAIM_BOUNDARY
+        or set(value) != expected_fields
+        or value["format_version"] not in {FORMAT_VERSION, FORMAT_VERSION_V2}
+        or value["claim_boundary"] != expected_boundary
         or not same_typed_json_v1(value["safety"], _SAFETY)
         or type(value["family_id"]) is not str
         or not value["family_id"]
@@ -264,6 +369,21 @@ def _validate_result(value: Any) -> dict[str, Any]:
         or any(type(metric) is not int or metric < 0 for metric in value["metrics"].values())
     ):
         raise _error("additive closure result contract drifted")
+    if is_v2 and (
+        type(value["source_group_equivalences"]) is not list
+        or not value["source_group_equivalences"]
+        or any(
+            type(item) is not dict
+            or set(item) != _EQUIVALENCE_FIELDS
+            or type(item["group_role"]) is not str
+            or not item["group_role"]
+            or type(item["component_roles"]) is not list
+            or not item["component_roles"]
+            or any(type(role) is not str or not role for role in item["component_roles"])
+            for item in value["source_group_equivalences"]
+        )
+    ):
+        raise _error("additive closure source-group equivalence record drifted")
     for expected_lane, lane_sum in enumerate(value["lane_sums"]):
         if (
             type(lane_sum) is not dict
@@ -301,7 +421,8 @@ def _validate_result(value: Any) -> dict[str, Any]:
         raise _error("additive closure metrics drifted")
     material = canonical_clone_v1(value)
     identity = material.pop("closure_id")
-    if identity != "aatcv1:closure:" + canonical_json_sha256_v1(material):
+    identity_prefix = "aatcv2:closure:" if is_v2 else "aatcv1:closure:"
+    if identity != identity_prefix + canonical_json_sha256_v1(material):
         raise _error("additive closure identity drifted")
     return canonical_clone_v1(value)
 
@@ -311,6 +432,7 @@ def build_accounting_additive_table_closure_v1(
     pages: Any,
     family_topology_spec: Any,
     *,
+    source_group_equivalences: Any = (),
     visible_dash_rescues: Any = (),
 ) -> dict[str, Any]:
     """Corroborate exactly one visible trailing total across every numeric lane."""
@@ -324,7 +446,9 @@ def build_accounting_additive_table_closure_v1(
         )
     except AccountingFamilyRowAxisV1Error as exc:
         raise _error("additive closure row-axis replay failed") from exc
-    additive_rows = [row for row in axis["rows"] if row["role_kind"] == "ADDITIVE_CHILD"]
+    raw_equivalences = [] if source_group_equivalences == () else source_group_equivalences
+    equivalences = _source_group_equivalences(raw_equivalences, family_topology_spec)
+    additive_rows, equivalence_reasons = _select_additive_rows(axis["rows"], equivalences)
     roles = [row["role"] for row in additive_rows]
     lane_axis = _lane_axis(additive_rows)
     sums = _lane_sums(additive_rows, lane_axis) if lane_axis is not None else None
@@ -333,7 +457,7 @@ def build_accounting_additive_table_closure_v1(
         if lane_axis is not None and sums is not None
         else []
     )
-    reasons = []
+    reasons = list(equivalence_reasons)
     if axis["topology_status"] != "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL":
         reasons.append("TOPOLOGY_NOT_UNIQUE_ACCEPTED_PROPOSAL")
     if not additive_rows:
@@ -353,10 +477,10 @@ def build_accounting_additive_table_closure_v1(
     )
     material = {
         "additive_roles": roles,
-        "claim_boundary": CLAIM_BOUNDARY,
+        "claim_boundary": CLAIM_BOUNDARY_V2 if equivalences else CLAIM_BOUNDARY,
         "exact_total_candidates": exact,
         "family_id": axis["family_id"],
-        "format_version": FORMAT_VERSION,
+        "format_version": FORMAT_VERSION_V2 if equivalences else FORMAT_VERSION,
         "lane_sums": sums or [],
         "metrics": _result_metrics(roles, sums or [], exact, len(axis["trailing_value_rows"])),
         "row_axis_id": axis["row_axis_id"],
@@ -364,8 +488,11 @@ def build_accounting_additive_table_closure_v1(
         "status": status,
         "unresolved_reasons": reasons,
     }
+    if equivalences:
+        material["source_group_equivalences"] = equivalences
+    identity_prefix = "aatcv2:closure:" if equivalences else "aatcv1:closure:"
     return _validate_result(
-        {**material, "closure_id": "aatcv1:closure:" + canonical_json_sha256_v1(material)}
+        {**material, "closure_id": identity_prefix + canonical_json_sha256_v1(material)}
     )
 
 
@@ -375,6 +502,7 @@ def validate_accounting_additive_table_closure_replay_v1(
     pages: Any,
     family_topology_spec: Any,
     *,
+    source_group_equivalences: Any = (),
     visible_dash_rescues: Any = (),
 ) -> dict[str, Any]:
     """Reject any equation/result drift by exact complete-input reconstruction."""
@@ -384,6 +512,7 @@ def validate_accounting_additive_table_closure_replay_v1(
         row_axis,
         pages,
         family_topology_spec,
+        source_group_equivalences=source_group_equivalences,
         visible_dash_rescues=visible_dash_rescues,
     )
     if not same_typed_json_v1(persisted, expected):

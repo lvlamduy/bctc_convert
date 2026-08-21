@@ -390,6 +390,33 @@ def test_evaluation_policy_type_and_enum_drift_fail_closed(monkeypatch, mutation
         )
 
 
+@pytest.mark.parametrize("equivalences", [[], 0, False, {}])
+def test_v2_source_group_equivalence_requires_one_exact_nonempty_list(equivalences) -> None:
+    family = _family_spec()
+    family["format_version"] = "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V2"
+    family["presence_evidence_mode"] = "GLOBAL_CORE_HITS"
+    family["required_role_combinations"] = [["CASH_VND", "CASH_FOREIGN"]]
+    for child in family["children"]:
+        child["presence"] = "OPTIONAL"
+    family["children"].append(
+        {
+            "aliases": ["Tiền mặt tại Việt Nam"],
+            "presence": "OPTIONAL",
+            "role": "CASH_VIETNAM_PARENT",
+            "role_kind": "SOURCE_ONLY_GROUP_PARENT",
+        }
+    )
+    policy = _evaluation_spec()
+    policy["format_version"] = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V2"
+    policy["source_group_equivalences"] = equivalences
+
+    with pytest.raises(
+        subject.FamilyFirstAccountingEvidenceSweepV1Error,
+        match="source-group equivalence",
+    ):
+        subject._evaluation_spec(policy, family)
+
+
 def test_semantic_numeric_denominator_mismatch_fails_before_documents(monkeypatch) -> None:
     _patch_live_inputs(monkeypatch)
     monkeypatch.setattr(

@@ -618,7 +618,7 @@ def test_tracked_central_bank_deposit_specs_bind_generic_variants_to_live_schema
     )
 
     compiled = topology_v1._spec(family)
-    evidence_v1._evaluation_spec(evaluation, family["family_id"])
+    evidence_v1._evaluation_spec(evaluation, compiled)
     parsed_binding = subject._schema_spec(binding, family)
     nodes, _ = subject._schema_graph(_PROJECT_ROOT)
     parent, direct, aggregates = subject._bind_schema(nodes, parsed_binding)
