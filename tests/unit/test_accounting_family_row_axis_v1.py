@@ -11,6 +11,7 @@ from bctc_ai.evaluation import accounting_family_row_axis_v1 as row_axis_v1
 from bctc_ai.evaluation import family_first_authenticated_page_region_v1 as region_v1
 from bctc_ai.evaluation.accounting_family_row_axis_v1 import (
     AccountingFamilyRowAxisV1Error,
+    build_accounting_family_row_axis_for_topology_region_v1,
     build_accounting_family_row_axis_v1,
     validate_accounting_family_row_axis_replay_v1,
 )
@@ -50,6 +51,53 @@ def _spec(*, continuation_pages: int = 1) -> dict[str, object]:
             "role": "LOAN_MATURITY",
         },
         "structural_reset_aliases": ["Phân tích cho vay theo ngành"],
+    }
+
+
+def _contextual_summary_spec() -> dict[str, object]:
+    return {
+        "children": [
+            {
+                "matchers": [{"aliases": ["Tiền gửi tại TCTD khác"], "within_role": None}],
+                "presence": "OPTIONAL",
+                "role": "DEPOSIT_GROUP",
+                "role_kind": "STRUCTURAL_GROUP",
+            },
+            {
+                "matchers": [{"aliases": ["Bằng VND"], "within_role": "DEPOSIT_GROUP"}],
+                "presence": "OPTIONAL",
+                "role": "DEPOSIT_VND",
+                "role_kind": "ADDITIVE_CHILD",
+            },
+            {
+                "matchers": [{"aliases": ["Cho vay TCTD khác"], "within_role": None}],
+                "presence": "OPTIONAL",
+                "role": "LOAN_GROUP",
+                "role_kind": "STRUCTURAL_GROUP",
+            },
+            {
+                "matchers": [{"aliases": ["Bằng VND"], "within_role": "LOAN_GROUP"}],
+                "presence": "OPTIONAL",
+                "role": "LOAN_VND",
+                "role_kind": "ADDITIVE_CHILD",
+            },
+        ],
+        "family_id": "INTERBANK",
+        "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+        "hard_negative_aliases": [],
+        "limits": {
+            "max_cluster_span_lines": 30,
+            "max_continuation_pages": 1,
+            "max_label_line_span": 2,
+        },
+        "parent": {
+            "aliases": ["Tiền gửi và cho vay các TCTD khác"],
+            "resolution_mode": "EXPLICIT_ONLY",
+            "role": "INTERBANK",
+        },
+        "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+        "required_role_combinations": [["DEPOSIT_GROUP", "LOAN_GROUP"]],
+        "structural_reset_aliases": [],
     }
 
 
@@ -162,6 +210,60 @@ def test_visible_rows_bind_to_body_derived_lane_ordinals() -> None:
         value["parsed_token"]["coefficient"] for value in result["trailing_value_rows"][0]["values"]
     ] == [300, 270]
     assert result["safety"]["detector_geometry_treated_as_numeric_recognition"] is False
+
+
+def test_structural_groups_emit_only_complete_noncoextensive_inline_values() -> None:
+    summary = [
+        _page(
+            [
+                _line(0, "Tiền gửi và cho vay các TCTD khác", "", [30, 20, 430, 42]),
+                _line(1, "31.12.2025", "31.12.2025", [600, 50, 700, 72]),
+                _line(2, "31.12.2024", "31.12.2024", [800, 50, 900, 72]),
+                _line(3, "Tiền gửi tại TCTD khác", "", [50, 100, 300, 122]),
+                _line(4, "100", "100", [600, 100, 700, 122]),
+                _line(5, "90", "90", [800, 100, 900, 122]),
+                _line(6, "Cho vay TCTD khác", "", [50, 150, 300, 172]),
+                _line(7, "20", "20", [600, 150, 700, 172]),
+                _line(8, "10", "10", [800, 150, 900, 172]),
+            ]
+        )
+    ]
+
+    result = build_accounting_family_row_axis_v1(summary, _contextual_summary_spec())
+
+    assert result["status"] == "VISIBLE_ROW_LANE_AXIS_BOUND_PROPOSAL_ONLY"
+    assert [row["role"] for row in result["rows"]] == ["DEPOSIT_GROUP", "LOAN_GROUP"]
+    assert all(row["role_kind"] == "STRUCTURAL_GROUP" for row in result["rows"])
+    assert [value["raw_prediction"] for value in result["rows"][0]["values"]] == [
+        "100",
+        "90",
+    ]
+
+
+def test_label_only_structural_groups_do_not_borrow_child_values() -> None:
+    detail = [
+        _page(
+            [
+                _line(0, "Tiền gửi và cho vay các TCTD khác", "", [30, 20, 430, 42]),
+                _line(1, "31.12.2025", "31.12.2025", [600, 50, 700, 72]),
+                _line(2, "31.12.2024", "31.12.2024", [800, 50, 900, 72]),
+                _line(3, "Tiền gửi tại TCTD khác", "", [50, 90, 300, 112]),
+                _line(4, "Bằng VND", "", [80, 130, 300, 152]),
+                _line(5, "100", "100", [600, 130, 700, 152]),
+                _line(6, "90", "90", [800, 130, 900, 152]),
+                _line(7, "Cho vay TCTD khác", "", [50, 190, 300, 212]),
+                _line(8, "Bằng VND", "", [80, 230, 300, 252]),
+                _line(9, "20", "20", [600, 230, 700, 252]),
+                _line(10, "10", "10", [800, 230, 900, 252]),
+            ]
+        )
+    ]
+
+    result = build_accounting_family_row_axis_v1(detail, _contextual_summary_spec())
+
+    assert [row["role"] for row in result["rows"]] == ["DEPOSIT_VND", "LOAN_VND"]
+    used = [value["sample_id"] for row in result["rows"] for value in row["values"]]
+    assert len(used) == len(set(used))
 
 
 def test_missing_recognized_cell_keeps_actual_comparative_lane_and_requires_rescue() -> None:
@@ -355,6 +457,75 @@ def test_family_rows_continue_across_pages_without_joining_label_text() -> None:
     assert [row["label_match"]["page_sequence"] for row in result["rows"]] == [1, 2]
     assert [value["page_sequence"] for value in result["rows"][1]["values"]] == [2, 2]
     assert result["trailing_value_rows"][0]["page_sequence"] == 2
+
+
+def test_one_exact_region_can_be_bound_for_downstream_disambiguation() -> None:
+    spec = copy.deepcopy(_contextual_summary_spec())
+    spec["children"][1]["matchers"].append({"aliases": ["Tiền gửi bằng VND"], "within_role": None})
+    spec["required_role_combinations"].append(["DEPOSIT_VND", "LOAN_GROUP"])
+    pages = [
+        _page(
+            [
+                _line(0, "Tiền gửi và cho vay các TCTD khác", "", [30, 20, 430, 42]),
+                _line(1, "31.12.2025", "31.12.2025", [600, 50, 700, 72]),
+                _line(2, "31.12.2024", "31.12.2024", [800, 50, 900, 72]),
+                _line(3, "Tiền gửi tại TCTD khác", "", [50, 100, 300, 122]),
+                _line(4, "100", "100", [600, 100, 700, 122]),
+                _line(5, "90", "90", [800, 100, 900, 122]),
+                _line(6, "Cho vay TCTD khác", "", [50, 150, 300, 172]),
+                _line(7, "20", "20", [600, 150, 700, 172]),
+                _line(8, "10", "10", [800, 150, 900, 172]),
+            ],
+            page_sequence=1,
+        ),
+        _page(
+            [
+                _line(
+                    0,
+                    "Tiền gửi và cho vay các TCTD khác",
+                    "",
+                    [30, 20, 430, 42],
+                    page=2,
+                ),
+                _line(1, "31.12.2025", "31.12.2025", [600, 50, 700, 72], page=2),
+                _line(2, "31.12.2024", "31.12.2024", [800, 50, 900, 72], page=2),
+                _line(3, "Tiền gửi bằng VND", "", [50, 130, 300, 152], page=2),
+                _line(4, "Ghi chú", "", [80, 160, 300, 182], page=2),
+                _line(5, "100", "100", [600, 130, 700, 152], page=2),
+                _line(6, "90", "90", [800, 130, 900, 152], page=2),
+                _line(7, "Cho vay TCTD khác", "", [50, 190, 300, 212], page=2),
+                _line(8, "Bằng VND", "", [80, 230, 300, 252], page=2),
+                _line(9, "20", "20", [600, 230, 700, 252], page=2),
+                _line(10, "10", "10", [800, 230, 900, 252], page=2),
+            ],
+            page_sequence=2,
+        ),
+    ]
+    topology = row_axis_v1.topology_v1.build_accounting_family_topology_scan_v1(
+        row_axis_v1._topology_pages(row_axis_v1._pages(pages)),
+        spec,
+    )
+    assert topology["status"] == "UNRESOLVED_MULTIPLE_OR_NONUNIQUE_COMPLETE_REGIONS"
+    assert build_accounting_family_row_axis_v1(pages, spec)["rows"] == []
+
+    candidates = [
+        build_accounting_family_row_axis_for_topology_region_v1(
+            pages,
+            spec,
+            region,
+        )
+        for region in topology["regions"]
+    ]
+
+    assert [candidate["topology_region"]["page_sequence"] for candidate in candidates] == [1, 2]
+    assert [row["role"] for row in candidates[0]["rows"]] == [
+        "DEPOSIT_GROUP",
+        "LOAN_GROUP",
+    ]
+    assert [row["role"] for row in candidates[1]["rows"]] == ["DEPOSIT_VND", "LOAN_VND"]
+    assert (
+        validate_accounting_family_row_axis_replay_v1(candidates[1], pages, spec) == candidates[1]
+    )
 
 
 def test_noncandidate_pages_need_no_render_width_but_matched_pages_do() -> None:

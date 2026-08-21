@@ -13,6 +13,7 @@ from typing import Any
 
 from bctc_ai.evaluation import accounting_family_row_axis_v1 as row_axis_v1
 from bctc_ai.evaluation import accounting_family_topology_v1 as topology_v1
+from bctc_ai.evaluation import accounting_hierarchical_table_closure_v1 as hierarchical_v1
 from bctc_ai.evaluation import family_first_accounting_input_snapshot_v1 as snapshot_v1
 from bctc_ai.evaluation import family_first_authenticated_page_region_v1 as render_v1
 from bctc_ai.evaluation import family_first_ppocrv6_numeric_index_v3 as numeric_v3
@@ -50,6 +51,7 @@ __all__ = [
 FORMAT_VERSION = "FAMILY_FIRST_ACCOUNTING_EVIDENCE_SWEEP_V1"
 EVALUATION_SPEC_FORMAT = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V1"
 EVALUATION_SPEC_FORMAT_V2 = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V2"
+EVALUATION_SPEC_FORMAT_V3 = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V3"
 CLAIM_BOUNDARY = (
     "AUTHENTICATED_ALL_FILING_COMPLETE_DOCUMENT_TOPOLOGY_FRESH_VIETOCR_LABEL_"
     "PPOCRV6_MEDIUM_NUMERIC_PERIOD_UNIT_AND_VISIBLE_ADDITIVE_CLOSURE_EVIDENCE_"
@@ -88,6 +90,7 @@ _SPEC_FIELDS = {
     "period_semantics",
 }
 _SPEC_FIELDS_V2 = {*_SPEC_FIELDS, "source_group_equivalences"}
+_SPEC_FIELDS_V3 = {*_SPEC_FIELDS, "hierarchical_closure_spec"}
 _SOURCE_GROUP_EQUIVALENCE_FIELDS = {"component_roles", "group_role"}
 _TRIAL_FIELDS = {
     "additive_closure",
@@ -121,17 +124,29 @@ def _error(message: str) -> FamilyFirstAccountingEvidenceSweepV1Error:
     return FamilyFirstAccountingEvidenceSweepV1Error(message)
 
 
-def _evaluation_spec(value: Any, family_spec: dict[str, Any]) -> dict[str, Any]:
+def _evaluation_spec(
+    value: Any,
+    family_spec: dict[str, Any],
+    *,
+    raw_family_spec: Any = None,
+) -> dict[str, Any]:
     is_v2 = type(value) is dict and value.get("format_version") == EVALUATION_SPEC_FORMAT_V2
+    is_v3 = type(value) is dict and value.get("format_version") == EVALUATION_SPEC_FORMAT_V3
     if (
         type(value) is not dict
-        or set(value) != (_SPEC_FIELDS_V2 if is_v2 else _SPEC_FIELDS)
-        or value["format_version"] not in {EVALUATION_SPEC_FORMAT, EVALUATION_SPEC_FORMAT_V2}
+        or set(value) != (_SPEC_FIELDS_V3 if is_v3 else _SPEC_FIELDS_V2 if is_v2 else _SPEC_FIELDS)
+        or value["format_version"]
+        not in {
+            EVALUATION_SPEC_FORMAT,
+            EVALUATION_SPEC_FORMAT_V2,
+            EVALUATION_SPEC_FORMAT_V3,
+        }
         or value["family_id"] != family_spec["family_id"]
         or value["period_semantics"] not in {"BALANCE_COMPARATIVE", "CURRENT_ROLLFORWARD"}
         or value["closure_policy"]
         not in {
             "CORROBORATE_IF_VISIBLE",
+            "HIERARCHICAL_RECURSIVE_CORROBORATE_OR_DERIVE",
             "REQUIRE_EXACT_UNIQUE_VISIBLE_TRAILING_TOTAL",
         }
         or type(value["expected_lane_unit_kinds"]) is not list
@@ -139,6 +154,17 @@ def _evaluation_spec(value: Any, family_spec: dict[str, Any]) -> dict[str, Any]:
         or any(item not in {"MONEY", "PERCENT"} for item in value["expected_lane_unit_kinds"])
     ):
         raise _error("family evaluation specification drifted")
+    if is_v3:
+        if value["closure_policy"] != "HIERARCHICAL_RECURSIVE_CORROBORATE_OR_DERIVE":
+            raise _error("hierarchical family evaluation closure policy drifted")
+        hierarchy = value["hierarchical_closure_spec"]
+        if type(hierarchy) is not dict:
+            raise _error("hierarchical family evaluation specification drifted")
+        if raw_family_spec is not None:
+            try:
+                hierarchical_v1._spec(hierarchy, raw_family_spec)
+            except (ValueError, RuntimeError) as exc:
+                raise _error("hierarchical family evaluation specification drifted") from exc
     if is_v2:
         if (
             type(value["source_group_equivalences"]) is not list
@@ -288,7 +314,12 @@ def _unresolved_reasons(
         reasons.extend(
             f"COLUMN_CONTEXT:{reason}" for reason in column_context["unresolved_reasons"]
         )
-    if (
+    if policy["closure_policy"] == "HIERARCHICAL_RECURSIVE_CORROBORATE_OR_DERIVE":
+        if closure["status"] != "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO":
+            reasons.extend(
+                f"HIERARCHICAL_CLOSURE:{reason}" for reason in closure["unresolved_reasons"]
+            )
+    elif (
         policy["closure_policy"] == "REQUIRE_EXACT_UNIQUE_VISIBLE_TRAILING_TOTAL"
         and closure["status"] != "CORROBORATED_EXACT_UNIQUE_TRAILING_TOTAL"
     ):
@@ -302,6 +333,39 @@ def _unresolved_reasons(
             f"VISIBLE_ADDITIVE_CLOSURE_VETO:{reason}" for reason in closure["unresolved_reasons"]
         )
     return reasons
+
+
+def _select_candidate_evidence(
+    candidate_evidence: list[dict[str, Any]], evaluation_spec: dict[str, Any]
+) -> tuple[dict[str, Any] | None, list[str]]:
+    ready = [candidate for candidate in candidate_evidence if not candidate["reasons"]]
+    if (
+        len(ready) > 1
+        and evaluation_spec["closure_policy"] == "HIERARCHICAL_RECURSIVE_CORROBORATE_OR_DERIVE"
+    ):
+        role_sets = [
+            {record["role"] for record in candidate["additive_closure"]["resolved_roles"]}
+            for candidate in ready
+        ]
+        ready = [
+            candidate
+            for index, candidate in enumerate(ready)
+            if not any(role_sets[index] < other for other in role_sets)
+        ]
+    if len(ready) == 1:
+        return ready[0], []
+    if len(candidate_evidence) == 1:
+        selected = candidate_evidence[0]
+        return selected, selected["reasons"]
+    return None, (
+        ["MULTIPLE_DOWNSTREAM_EVIDENCE_COMPLETE_TOPOLOGY_REGIONS"]
+        if ready
+        else [
+            f"CANDIDATE_{candidate['candidate_ordinal'] + 1}:{reason}"
+            for candidate in candidate_evidence
+            for reason in candidate["reasons"]
+        ]
+    )
 
 
 def _trial(
@@ -329,7 +393,11 @@ def _trial(
             "row_axis": None,
             "unresolved_reasons": [],
         }
-    if topology_scan["status"] != "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL":
+    candidate_topology_statuses = {
+        "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL",
+        "UNRESOLVED_MULTIPLE_OR_NONUNIQUE_COMPLETE_REGIONS",
+    }
+    if topology_scan["status"] not in candidate_topology_statuses:
         return {
             **base,
             "additive_closure": None,
@@ -347,44 +415,82 @@ def _trial(
         selected_page_render_snapshots=render_snapshots,
     )
     joined_pages = project_accounting_family_document_pages_v1(document_axis)
-    base_row_axis = build_accounting_family_row_axis_v1(joined_pages, family_spec)
-    dash_rescues = _visible_dash_rescue_inputs(
-        joined_pages=joined_pages,
-        row_axis=base_row_axis,
-        render_snapshots=render_snapshots,
-    )
-    row_axis = build_accounting_family_row_axis_v1(
-        joined_pages,
-        family_spec,
-        visible_dash_rescues=dash_rescues,
-    )
-    column_context = build_accounting_family_column_context_v1(
-        row_axis,
-        joined_pages,
-        family_spec,
-        period_semantics=evaluation_spec["period_semantics"],
-        expected_lane_unit_kinds=evaluation_spec["expected_lane_unit_kinds"],
-        visible_dash_rescues=dash_rescues,
-    )
-    closure = build_accounting_additive_table_closure_v1(
-        row_axis,
-        joined_pages,
-        family_spec,
-        source_group_equivalences=evaluation_spec.get("source_group_equivalences", []),
-        visible_dash_rescues=dash_rescues,
-    )
-    reasons = _unresolved_reasons(row_axis, column_context, closure, evaluation_spec)
+    candidate_evidence = []
+    for candidate_ordinal, topology_region in enumerate(topology_scan["regions"]):
+        base_row_axis = (
+            build_accounting_family_row_axis_v1(joined_pages, family_spec)
+            if topology_scan["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+            else row_axis_v1.build_accounting_family_row_axis_for_topology_region_v1(
+                joined_pages,
+                family_spec,
+                topology_region,
+            )
+        )
+        dash_rescues = _visible_dash_rescue_inputs(
+            joined_pages=joined_pages,
+            row_axis=base_row_axis,
+            render_snapshots=render_snapshots,
+        )
+        row_axis = (
+            build_accounting_family_row_axis_v1(
+                joined_pages,
+                family_spec,
+                visible_dash_rescues=dash_rescues,
+            )
+            if topology_scan["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+            else row_axis_v1.build_accounting_family_row_axis_for_topology_region_v1(
+                joined_pages,
+                family_spec,
+                topology_region,
+                visible_dash_rescues=dash_rescues,
+            )
+        )
+        column_context = build_accounting_family_column_context_v1(
+            row_axis,
+            joined_pages,
+            family_spec,
+            period_semantics=evaluation_spec["period_semantics"],
+            expected_lane_unit_kinds=evaluation_spec["expected_lane_unit_kinds"],
+            visible_dash_rescues=dash_rescues,
+        )
+        if evaluation_spec["closure_policy"] == "HIERARCHICAL_RECURSIVE_CORROBORATE_OR_DERIVE":
+            closure = hierarchical_v1.build_accounting_hierarchical_table_closure_v1(
+                row_axis,
+                joined_pages,
+                family_spec,
+                evaluation_spec["hierarchical_closure_spec"],
+                visible_dash_rescues=dash_rescues,
+            )
+        else:
+            closure = build_accounting_additive_table_closure_v1(
+                row_axis,
+                joined_pages,
+                family_spec,
+                source_group_equivalences=evaluation_spec.get("source_group_equivalences", []),
+                visible_dash_rescues=dash_rescues,
+            )
+        reasons = _unresolved_reasons(row_axis, column_context, closure, evaluation_spec)
+        candidate_evidence.append(
+            {
+                "additive_closure": closure,
+                "candidate_ordinal": candidate_ordinal,
+                "column_context": column_context,
+                "reasons": reasons,
+                "row_axis": row_axis,
+            }
+        )
+    selected, reasons = _select_candidate_evidence(candidate_evidence, evaluation_spec)
     return {
         **base,
-        "additive_closure": closure,
-        "column_context": column_context,
+        "additive_closure": selected["additive_closure"] if selected is not None else None,
+        "column_context": selected["column_context"] if selected is not None else None,
         "document_axis_binding": _axis_binding(document_axis),
         "evidence_status": (
             "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY"
             if not reasons
             else "UNRESOLVED_EVIDENCE_GATES"
         ),
-        "row_axis": row_axis,
+        "row_axis": selected["row_axis"] if selected is not None else None,
         "unresolved_reasons": reasons,
     }
 
@@ -476,7 +582,7 @@ def build_authenticated_family_first_accounting_evidence_sweep_v1(
         compiled = topology_v1._spec(family_spec)
     except (ValueError, RuntimeError) as exc:
         raise _error("family topology specification drifted") from exc
-    policy = _evaluation_spec(evaluation_spec, compiled)
+    policy = _evaluation_spec(evaluation_spec, compiled, raw_family_spec=family_spec)
     try:
         semantic_projection = semantic_v1.project_authenticated_family_first_semantic_index_v1(
             semantic_index_capability
@@ -509,7 +615,11 @@ def build_authenticated_family_first_accounting_evidence_sweep_v1(
     accepted = [
         (document, topology_scan)
         for document, topology_scan in prepared
-        if topology_scan["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+        if topology_scan["status"]
+        in {
+            "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL",
+            "UNRESOLVED_MULTIPLE_OR_NONUNIQUE_COMPLETE_REGIONS",
+        }
     ]
     numeric_by_document = {}
     renders_by_document: dict[int, list[dict[str, Any]]] = {}
@@ -525,11 +635,17 @@ def build_authenticated_family_first_accounting_evidence_sweep_v1(
         }
         selections = tuple(
             {
-                "document_ordinal": document["document_ordinal"],
-                "physical_page": page,
+                "document_ordinal": document_ordinal,
+                "physical_page": physical_page,
             }
-            for document, topology_scan in accepted
-            for page in _region_pages(document, topology_scan["regions"][0])
+            for document_ordinal, physical_page in sorted(
+                {
+                    (document["document_ordinal"], page)
+                    for document, topology_scan in accepted
+                    for region in topology_scan["regions"]
+                    for page in _region_pages(document, region)
+                }
+            )
         )
         render_snapshots = render_v1.read_authenticated_family_first_page_renders_v1(
             semantic_index_capability, selections=selections

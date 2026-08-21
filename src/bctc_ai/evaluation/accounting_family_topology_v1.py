@@ -35,6 +35,7 @@ __all__ = [
     "FORMAT_VERSION",
     "SPEC_FORMAT_VERSION",
     "SPEC_FORMAT_VERSION_V2",
+    "SPEC_FORMAT_VERSION_V3",
     "AccountingFamilyTopologyV1Error",
     "build_accounting_family_topology_scan_v1",
     "validate_accounting_family_topology_scan_replay_v1",
@@ -44,6 +45,7 @@ __all__ = [
 FORMAT_VERSION = "ACCOUNTING_FAMILY_TOPOLOGY_SCAN_V1"
 SPEC_FORMAT_VERSION = "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V1"
 SPEC_FORMAT_VERSION_V2 = "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V2"
+SPEC_FORMAT_VERSION_V3 = "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3"
 CLAIM_BOUNDARY = (
     "COMPLETE_DOCUMENT_BANK_BLIND_FRESH_VIETOCR_PARENT_REQUIRED_OPTIONAL_SIBLING_"
     "WRAPPED_LABEL_FLEXIBLE_ORDER_HARD_NEGATIVE_STRUCTURAL_RESET_AND_PAIR_BEFORE_"
@@ -79,6 +81,7 @@ _SPEC_V2_FIELDS = {
     "presence_evidence_mode",
     "required_role_combinations",
 }
+_SPEC_V3_FIELDS = _SPEC_V2_FIELDS
 _RESULT_FIELDS = {
     "claim_boundary",
     "family_id",
@@ -95,6 +98,7 @@ _ROLE_KINDS = {
     "ADDITIVE_CHILD",
     "NONADDITIVE_CHILD",
     "SOURCE_ONLY_GROUP_PARENT",
+    "STRUCTURAL_GROUP",
     "SUBTOTAL",
     "TOTAL",
 }
@@ -163,11 +167,19 @@ def _bbox(value: Any) -> list[int]:
 
 
 def _spec(value: Any) -> dict[str, Any]:
-    if type(value) is not dict or (set(value) != _SPEC_FIELDS and set(value) != _SPEC_V2_FIELDS):
+    if type(value) is not dict or (
+        set(value) != _SPEC_FIELDS
+        and set(value) != _SPEC_V2_FIELDS
+        and set(value) != _SPEC_V3_FIELDS
+    ):
         raise _error("accounting family topology spec fields drifted")
     family_id = _nonempty_string(value["family_id"], "family ID")
     spec_version = value["format_version"]
-    if spec_version not in {SPEC_FORMAT_VERSION, SPEC_FORMAT_VERSION_V2}:
+    if spec_version not in {
+        SPEC_FORMAT_VERSION,
+        SPEC_FORMAT_VERSION_V2,
+        SPEC_FORMAT_VERSION_V3,
+    }:
         raise _error("accounting family topology spec version drifted")
     if (spec_version == SPEC_FORMAT_VERSION) is not (set(value) == _SPEC_FIELDS):
         raise _error("accounting family topology spec version/field set drifted")
@@ -185,7 +197,12 @@ def _spec(value: Any) -> dict[str, Any]:
     children: list[dict[str, Any]] = []
     roles = {parent_role}
     for raw in raw_children:
-        if type(raw) is not dict or set(raw) != {"aliases", "presence", "role", "role_kind"}:
+        expected_child_fields = (
+            {"matchers", "presence", "role", "role_kind"}
+            if spec_version == SPEC_FORMAT_VERSION_V3
+            else {"aliases", "presence", "role", "role_kind"}
+        )
+        if type(raw) is not dict or set(raw) != expected_child_fields:
             raise _error("accounting family child spec fields drifted")
         role = _nonempty_string(raw["role"], "child role")
         presence = raw["presence"]
@@ -197,15 +214,83 @@ def _spec(value: Any) -> dict[str, Any]:
         if type(role_kind) is not str or role_kind not in _ROLE_KINDS:
             raise _error("accounting family child semantic kind drifted")
         roles.add(role)
+        if spec_version == SPEC_FORMAT_VERSION_V3:
+            raw_matchers = raw["matchers"]
+            if type(raw_matchers) is not list or not raw_matchers:
+                raise _error("contextual accounting family role needs at least one matcher")
+            matchers = []
+            seen_matchers: set[tuple[tuple[str, ...], str | None]] = set()
+            for raw_matcher in raw_matchers:
+                if (
+                    type(raw_matcher) is not dict
+                    or set(raw_matcher) != {"aliases", "within_role"}
+                    or (
+                        raw_matcher["within_role"] is not None
+                        and (
+                            type(raw_matcher["within_role"]) is not str
+                            or not raw_matcher["within_role"]
+                        )
+                    )
+                ):
+                    raise _error("contextual accounting family matcher fields drifted")
+                matcher_aliases = _aliases(
+                    raw_matcher["aliases"], f"{role} contextual matcher aliases"
+                )
+                signature = (tuple(matcher_aliases), raw_matcher["within_role"])
+                if signature in seen_matchers:
+                    raise _error("contextual accounting family matchers must be unique")
+                seen_matchers.add(signature)
+                matchers.append(
+                    {
+                        "aliases": matcher_aliases,
+                        "within_role": raw_matcher["within_role"],
+                    }
+                )
+        else:
+            matchers = [
+                {"aliases": _aliases(raw["aliases"], f"{role} aliases"), "within_role": None}
+            ]
         children.append(
             {
-                "aliases": _aliases(raw["aliases"], f"{role} aliases"),
+                "matchers": matchers,
                 "preferred_ordinal": len(children),
                 "presence": presence,
                 "role": role,
                 "role_kind": role_kind,
             }
         )
+    if spec_version == SPEC_FORMAT_VERSION_V3:
+        child_roles = {child["role"] for child in children}
+        role_kind_by_role = {child["role"]: child["role_kind"] for child in children}
+        for child in children:
+            for matcher in child["matchers"]:
+                within_role = matcher["within_role"]
+                if within_role is not None and (
+                    within_role == child["role"]
+                    or within_role not in child_roles
+                    or role_kind_by_role[within_role] != "STRUCTURAL_GROUP"
+                ):
+                    raise _error(
+                        "contextual accounting family matcher must reference another structural role"
+                    )
+        structural_parent: dict[str, str | None] = {}
+        for child in children:
+            parents = {
+                matcher["within_role"]
+                for matcher in child["matchers"]
+                if matcher["within_role"] is not None
+            }
+            if child["role_kind"] == "STRUCTURAL_GROUP" and len(parents) > 1:
+                raise _error("one structural group cannot have multiple contextual parents")
+            structural_parent[child["role"]] = next(iter(parents), None)
+        for role in structural_parent:
+            seen = {role}
+            cursor = structural_parent[role]
+            while cursor is not None:
+                if cursor in seen:
+                    raise _error("contextual accounting family role hierarchy contains a cycle")
+                seen.add(cursor)
+                cursor = structural_parent[cursor]
     required_roles = [child["role"] for child in children if child["presence"] == "REQUIRED"]
     if spec_version == SPEC_FORMAT_VERSION:
         if not required_roles:
@@ -278,6 +363,9 @@ def _spec(value: Any) -> dict[str, Any]:
         "presence_evidence_mode": presence_evidence_mode,
         "required_role_combinations": required_role_combinations,
         "spec_format_version": spec_version,
+        "structural_parent_by_role": (
+            structural_parent if spec_version == SPEC_FORMAT_VERSION_V3 else {}
+        ),
         "structural_reset_aliases": _aliases(
             value["structural_reset_aliases"], "structural reset", allow_empty=True
         ),
@@ -390,6 +478,148 @@ def _alias_kind(surface: str, aliases: Sequence[str]) -> str | None:
     return None
 
 
+def _without_decorative_parentheticals(surface: str) -> str:
+    """Remove only bounded footnote markers and uppercase acronyms.
+
+    Accounting labels commonly carry a trailing ``(i)``/``(1)`` footnote or
+    repeat an immediately preceding organization name as ``("TCTD")``.  Both
+    are typographic annotations rather than semantic qualifiers.  Longer or
+    ordinary mixed/lower-case parentheticals are retained because they can
+    change population, period, sign, or accounting meaning.
+    """
+
+    def replacement(match: re.Match[str]) -> str:
+        content = match.group(1).strip()
+        compact = re.sub(r"[^0-9A-Za-zÀ-ỿĐđ*]+", "", content)
+        if not compact or len(compact) > 8:
+            return match.group(0)
+        letters = [character for character in compact if character.isalpha()]
+        is_footnote = compact.isdigit() or compact.lower() in {
+            "i",
+            "ii",
+            "iii",
+            "iv",
+            "v",
+            "vi",
+            "vii",
+            "viii",
+            "ix",
+            "x",
+        }
+        is_uppercase_acronym = bool(letters) and all(character.isupper() for character in letters)
+        return " " if is_footnote or is_uppercase_acronym else match.group(0)
+
+    return re.sub(r"\(([^()]*)\)", replacement, surface)
+
+
+def _surface_candidates(
+    lines: Sequence[Mapping[str, Any]], max_label_span: int
+) -> list[list[dict[str, Any]]]:
+    """Normalize every bounded joined label once per page, not once per role.
+
+    A family can declare many semantic roles and contextual matchers. Repeating
+    Unicode normalization and enumeration-prefix handling for every role made
+    complete-corpus sweeps scale with ``lines × roles × aliases``. The joined
+    surface axis is role-independent, so cache it once while preserving the
+    exact shortest-width-first matching behavior of :func:`_role_hits`.
+    """
+
+    result = []
+    for start in range(len(lines)):
+        axis = []
+        for width in range(1, min(max_label_span, len(lines) - start) + 1):
+            # Empty semantic observations cannot carry either edge of a
+            # wrapped label.  Allowing them here widens an otherwise exact
+            # hit over the adjacent numeric cell/empty detector token, which
+            # then makes the row-axis reader skip that cell as if it were part
+            # of the label.  Interior non-empty wrapped fragments remain
+            # supported; this only removes geometry that contributes no text.
+            if (
+                not lines[start]["vietocr_text"].strip()
+                or not lines[start + width - 1]["vietocr_text"].strip()
+            ):
+                continue
+            surface = _joined(lines, start, start + width)
+            normalized = normalize_vietnamese_anchor_v1(surface)
+            stripped = _ENUMERATION_PREFIX.sub("", surface, count=1)
+            stripped_normalized = (
+                normalize_vietnamese_anchor_v1(stripped) if stripped != surface else None
+            )
+            decorative_surface = _without_decorative_parentheticals(surface)
+            decorative_normalized = (
+                normalize_vietnamese_anchor_v1(decorative_surface)
+                if decorative_surface != surface
+                else None
+            )
+            decorative_stripped = _ENUMERATION_PREFIX.sub("", decorative_surface, count=1)
+            decorative_stripped_normalized = (
+                normalize_vietnamese_anchor_v1(decorative_stripped)
+                if decorative_stripped != decorative_surface
+                else None
+            )
+            axis.append(
+                {
+                    "decorative_normalized": (
+                        decorative_normalized
+                        if decorative_normalized and decorative_normalized != normalized
+                        else None
+                    ),
+                    "decorative_stripped_normalized": (
+                        decorative_stripped_normalized
+                        if decorative_stripped_normalized
+                        and decorative_stripped_normalized
+                        not in {normalized, stripped_normalized, decorative_normalized}
+                        else None
+                    ),
+                    "normalized": normalized,
+                    "stripped_normalized": (
+                        stripped_normalized
+                        if stripped_normalized and stripped_normalized != normalized
+                        else None
+                    ),
+                    "surface": surface,
+                    "width": width,
+                }
+            )
+        result.append(axis)
+    return result
+
+
+def _cached_alias_kind(
+    candidate: Mapping[str, Any],
+    aliases: Sequence[str],
+    *,
+    allow_decorative_parenthetical_removal: bool,
+) -> str | None:
+    axes = [(candidate["normalized"], "")]
+    if candidate["stripped_normalized"] is not None:
+        axes.append((candidate["stripped_normalized"], "_AFTER_ENUMERATION_PREFIX"))
+    if allow_decorative_parenthetical_removal and candidate["decorative_normalized"] is not None:
+        axes.append(
+            (
+                candidate["decorative_normalized"],
+                "_AFTER_DECORATIVE_PARENTHETICAL_REMOVAL",
+            )
+        )
+    if (
+        allow_decorative_parenthetical_removal
+        and candidate["decorative_stripped_normalized"] is not None
+    ):
+        axes.append(
+            (
+                candidate["decorative_stripped_normalized"],
+                "_AFTER_ENUMERATION_PREFIX_AND_DECORATIVE_PARENTHETICAL_REMOVAL",
+            )
+        )
+    for normalized, suffix in axes:
+        if normalized in aliases:
+            return "EXACT_ACCENTLESS_ALIAS" + suffix
+    for normalized, suffix in axes:
+        if any(_one_edit_alias_is_safe(normalized, alias) for alias in aliases):
+            return "ONE_EDIT_ALIAS" + suffix + "_REQUIRES_COMPLETE_TOPOLOGY"
+    return None
+
+
 def _joined(lines: Sequence[Mapping[str, Any]], start: int, stop: int) -> str:
     return " ".join(line["vietocr_text"].strip() for line in lines[start:stop]).strip()
 
@@ -401,26 +631,40 @@ def _role_hits(
     document_offset: int,
     max_label_span: int,
     page_sequence: int,
+    surface_candidates: Sequence[Sequence[Mapping[str, Any]]] | None = None,
+    within_role: str | None = None,
+    allow_decorative_parenthetical_removal: bool = False,
 ) -> list[dict[str, Any]]:
     hits: list[dict[str, Any]] = []
     for start in range(len(lines)):
-        for width in range(1, min(max_label_span, len(lines) - start) + 1):
-            surface = _joined(lines, start, start + width)
-            kind = _alias_kind(surface, aliases)
+        candidates = (
+            surface_candidates[start]
+            if surface_candidates is not None
+            else _surface_candidates(lines[start:], max_label_span)[0]
+        )
+        for candidate in candidates:
+            width = candidate["width"]
+            surface = candidate["surface"]
+            kind = _cached_alias_kind(
+                candidate,
+                aliases,
+                allow_decorative_parenthetical_removal=allow_decorative_parenthetical_removal,
+            )
             if kind is None:
                 continue
-            hits.append(
-                {
-                    "document_line_ordinal": document_offset + start,
-                    "end_document_line_ordinal": document_offset + start + width - 1,
-                    "end_source_line_index": lines[start + width - 1]["source_line_index"],
-                    "match_kind": kind,
-                    "normalized_surface": normalize_vietnamese_anchor_v1(surface),
-                    "page_sequence": page_sequence,
-                    "source_line_index": lines[start]["source_line_index"],
-                    "surface": surface,
-                }
-            )
+            hit = {
+                "document_line_ordinal": document_offset + start,
+                "end_document_line_ordinal": document_offset + start + width - 1,
+                "end_source_line_index": lines[start + width - 1]["source_line_index"],
+                "match_kind": kind,
+                "normalized_surface": normalize_vietnamese_anchor_v1(surface),
+                "page_sequence": page_sequence,
+                "source_line_index": lines[start]["source_line_index"],
+                "surface": surface,
+            }
+            if within_role is not None:
+                hit["_within_role"] = within_role
+            hits.append(hit)
             break
     # A wrapped match may also expose an exact shorter match beginning on its
     # continuation line.  Retain the shortest match at each ending position so
@@ -438,16 +682,42 @@ def _page_hits(
 ) -> dict[str, Any]:
     lines = page["lines"]
     max_span = spec["limits"]["max_label_line_span"]
-    children = {
-        child["role"]: _role_hits(
-            lines,
-            aliases=child["aliases"],
-            document_offset=document_offset,
-            max_label_span=max_span,
-            page_sequence=page["page_sequence"],
+    allow_decorative_parenthetical_removal = spec["spec_format_version"] == SPEC_FORMAT_VERSION_V3
+    surfaces = _surface_candidates(lines, max_span)
+    children = {}
+    for child in spec["children"]:
+        combined = []
+        for matcher in child["matchers"]:
+            combined.extend(
+                _role_hits(
+                    lines,
+                    aliases=matcher["aliases"],
+                    document_offset=document_offset,
+                    max_label_span=max_span,
+                    page_sequence=page["page_sequence"],
+                    surface_candidates=surfaces,
+                    within_role=matcher["within_role"],
+                    allow_decorative_parenthetical_removal=(allow_decorative_parenthetical_removal),
+                )
+            )
+        by_signature = {}
+        for hit in combined:
+            signature = (
+                hit["document_line_ordinal"],
+                hit["end_document_line_ordinal"],
+                hit.get("_within_role"),
+            )
+            prior = by_signature.get(signature)
+            if prior is None or hit["match_kind"].startswith("EXACT_"):
+                by_signature[signature] = hit
+        children[child["role"]] = sorted(
+            by_signature.values(),
+            key=lambda item: (
+                item["document_line_ordinal"],
+                item["end_document_line_ordinal"],
+                item.get("_within_role") or "",
+            ),
         )
-        for child in spec["children"]
-    }
     return {
         "children": children,
         "hard_negatives": _role_hits(
@@ -456,6 +726,8 @@ def _page_hits(
             document_offset=document_offset,
             max_label_span=max_span,
             page_sequence=page["page_sequence"],
+            surface_candidates=surfaces,
+            allow_decorative_parenthetical_removal=allow_decorative_parenthetical_removal,
         ),
         "parents": _role_hits(
             lines,
@@ -463,6 +735,8 @@ def _page_hits(
             document_offset=document_offset,
             max_label_span=max_span,
             page_sequence=page["page_sequence"],
+            surface_candidates=surfaces,
+            allow_decorative_parenthetical_removal=allow_decorative_parenthetical_removal,
         ),
         "resets": _role_hits(
             lines,
@@ -470,6 +744,8 @@ def _page_hits(
             document_offset=document_offset,
             max_label_span=max_span,
             page_sequence=page["page_sequence"],
+            surface_candidates=surfaces,
+            allow_decorative_parenthetical_removal=allow_decorative_parenthetical_removal,
         ),
     }
 
@@ -488,6 +764,42 @@ def _child_records_in_range(
     start: int,
     stop: int,
 ) -> list[dict[str, Any]]:
+    role_kind = {child["role"]: child["role_kind"] for child in spec["children"]}
+    structural_parent = spec["structural_parent_by_role"]
+
+    def structural_depth(role: str) -> int:
+        depth = 0
+        cursor = structural_parent.get(role)
+        while cursor is not None:
+            depth += 1
+            cursor = structural_parent.get(cursor)
+        return depth
+
+    structural_roles = {role for role, kind in role_kind.items() if kind == "STRUCTURAL_GROUP"}
+
+    def context_bound(hit: Mapping[str, Any]) -> bool:
+        within_role = hit.get("_within_role")
+        if within_role is None:
+            return True
+        contexts = [
+            item
+            for item in hits[within_role]
+            if start < item["document_line_ordinal"] <= hit["document_line_ordinal"] < stop
+        ]
+        if not contexts:
+            return False
+        context = max(contexts, key=lambda item: item["document_line_ordinal"])
+        context_depth = structural_depth(within_role)
+        boundaries = [
+            item["document_line_ordinal"]
+            for role in structural_roles
+            if structural_depth(role) <= context_depth
+            for item in hits[role]
+            if context["document_line_ordinal"] < item["document_line_ordinal"] < stop
+        ]
+        context_stop = min(boundaries, default=stop)
+        return hit["document_line_ordinal"] < context_stop
+
     records: list[dict[str, Any]] = []
     for child in spec["children"]:
         candidates = [
@@ -500,13 +812,17 @@ def _child_records_in_range(
                     and hit["document_line_ordinal"] == start
                 )
             )
+            and context_bound(hit)
         ]
         if not candidates:
             continue
         hit = min(candidates, key=lambda item: item["document_line_ordinal"])
+        public_hit = {key: item for key, item in hit.items() if key != "_within_role"}
+        if spec["spec_format_version"] == SPEC_FORMAT_VERSION_V3:
+            public_hit["matched_within_role"] = hit.get("_within_role")
         records.append(
             {
-                **canonical_clone_v1(hit),
+                **canonical_clone_v1(public_hit),
                 "preferred_ordinal": child["preferred_ordinal"],
                 "presence": child["presence"],
                 "role": child["role"],
@@ -627,17 +943,32 @@ def _explicit_candidates(
         allowed_end_page = min(maximum_page, parent["page_sequence"] + max_continuation)
         stops = [start + maximum_span + 1]
         stops.append(page_end_exclusive[allowed_end_page])
+
         # A visible source grouping row may legitimately repeat a broad family
         # parent's wording (for example an outer central-bank note followed by
         # a valued Vietnam subgroup).  Such a row is a child boundary, not the
         # start of a second table.  Skip it when finding the next *independent*
         # family parent; the later containment pass removes the redundant
         # nested candidate only after the outer proposal proves complete.
+        def is_continuation_parent(
+            hit: Mapping[str, Any],
+            *,
+            current_page: int = parent["page_sequence"],
+            current_allowed_end_page: int = allowed_end_page,
+        ) -> bool:
+            return (
+                spec["spec_format_version"] == SPEC_FORMAT_VERSION_V3
+                and hit["page_sequence"] == current_page + 1
+                and hit["page_sequence"] <= current_allowed_end_page
+                and "tiep theo" in hit["normalized_surface"]
+            )
+
         next_independent_parent = next(
             (
                 hit["document_line_ordinal"]
                 for hit in hits["parents"][parent_offset + 1 :]
                 if hit["document_line_ordinal"] not in source_group_parent_positions
+                and not is_continuation_parent(hit)
             ),
             None,
         )
@@ -828,6 +1159,22 @@ def _build(pages: Sequence[Mapping[str, Any]], spec: Mapping[str, Any]) -> dict[
     ]
 
     complete = [candidate for candidate in candidates if not candidate["unresolved_reasons"]]
+    if spec["spec_format_version"] == SPEC_FORMAT_VERSION_V3:
+        # A filing can repeat a broad parent + two aggregate rows in the
+        # primary statements or accounting-policy prose before presenting the
+        # full note later.  If one complete proposal exposes a strict superset
+        # of another proposal's semantic roles, retain the richer topology.
+        # Equal-role proposals remain non-unique and must be separated later
+        # by period/unit/geometry/numeric evidence.
+        complete = [
+            candidate
+            for candidate in complete
+            if not any(
+                other is not candidate
+                and set(candidate["observed_roles"]) < set(other["observed_roles"])
+                for other in complete
+            )
+        ]
     for candidate in complete:
         candidate["minimal_unique_anchor"] = _minimal_unique_anchors(
             candidate, candidates, spec["parent"]["role"]

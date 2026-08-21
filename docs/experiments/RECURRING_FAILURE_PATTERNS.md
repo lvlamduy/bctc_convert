@@ -549,3 +549,71 @@ Status meanings:
   remains unchanged.
 - **Status:** `MITIGATED`; the failed attempt published no artifact, and clean
   evidence/schema build plus public verify pass in the pinned executor.
+
+## RFP-026 — Decorative parentheticals break otherwise exact family anchors
+
+- **Pattern:** a stable accounting label carries `(i)`, `(1)` or a repeated
+  uppercase acronym such as `(TCTD)`, so the accentless exact anchor misses it.
+- **Examples:** interbank demand/term headings with footnote markers and an
+  owner heading ending in `(TCTD)` across annual and H1 filings.
+- **Cause:** typographic annotations were compared as if they changed the
+  population or accounting meaning.
+- **Do not:** strip every parenthetical; phrases such as `(không bao gồm tiền
+  gửi ký quỹ)` can materially change scope.
+- **Generic primitive/fix:** V3 topology adds a bounded surface candidate that
+  removes only numeric/Roman footnotes or short uppercase acronyms. Ordinary
+  semantic qualifiers remain intact and are covered by a negative test.
+- **Status:** `RESOLVED` in the shared topology normalizer.
+
+## RFP-027 — Empty OCR geometry widens a label into its value cell
+
+- **Pattern:** an empty semantic observation immediately before a label joins
+  with that label into the same normalized string. The match span then starts
+  on the empty line and row binding skips the adjacent value as label geometry.
+- **Examples:** repeated `Bằng VND` children in nested interbank tables when an
+  empty detector/recognizer token precedes the visible label.
+- **Cause:** multi-line candidate generation joined bounded line spans without
+  requiring either edge to contribute semantic text.
+- **Do not:** widen row affinity, borrow the missing value from a sibling or
+  special-case the affected label.
+- **Generic primitive/fix:** wrapped-label candidates require non-empty semantic
+  text at both edges; interior layout remains bounded and all ordinary wrapped
+  labels continue to work.
+- **Status:** `RESOLVED` with topology-to-row-axis regression coverage.
+
+## RFP-028 — Structural group headings may or may not carry values
+
+- **Pattern:** the same conceptual parent is a label-only nesting context in a
+  detailed note but an inline subtotal row in a summary presentation.
+- **Examples:** `Tiền gửi tại các TCTD khác` and `Cho vay các TCTD khác` across
+  detailed annual notes versus quarterly balance summaries.
+- **Cause:** treating every group as nonnumeric drops valid summary values;
+  treating every group as numeric steals child cells in nested tables.
+- **Do not:** create one parser per presentation or infer a subtotal from label
+  text alone.
+- **Generic primitive/fix:** structural groups always constrain contextual role
+  matching, but become value rows only when geometry binds one complete,
+  exclusive visible lane axis. Recursive declarative closure may retain a
+  printed group, derive it from children or corroborate both; mismatches veto
+  and never repair source digits.
+- **Status:** `RESOLVED` in shared row-axis and hierarchical-closure primitives.
+
+## RFP-029 — Summary and detailed regions are both valid text matches
+
+- **Pattern:** one filing contains a two-row balance summary and a later nested
+  detailed note for the same family. Text-only topology therefore finds two
+  complete regions.
+- **Examples:** VIB filings expose both the primary-statement interbank summary
+  and the detailed currency breakdown; some CTG filings also contain an
+  accounting-policy mention with the same two group labels.
+- **Cause:** uniqueness was decided before numeric lanes, period/unit context
+  and accounting structure were available.
+- **Do not:** choose the later page, the bank-specific note number, or simply
+  the longest text cluster.
+- **Generic primitive/fix:** every exact topology candidate can be replay-bound
+  independently. Candidates pass geometry, period, unit and recursive closure;
+  a candidate whose resolved accounting-role set is a strict subset of another
+  admitted candidate is discarded. Equal incomparable candidates remain
+  `UNRESOLVED` without bank/page routing.
+- **Status:** `RESOLVED` in the evidence engine; full clean-corpus evidence gate
+  remains pending for the interbank family.

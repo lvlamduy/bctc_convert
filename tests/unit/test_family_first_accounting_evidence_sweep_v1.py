@@ -371,6 +371,62 @@ def test_optional_closure_policy_still_vetoes_a_visible_mismatching_total(monkey
     ]
 
 
+def test_hierarchical_downstream_role_superset_selects_detail_over_summary() -> None:
+    summary = {
+        "additive_closure": {
+            "resolved_roles": [
+                {"role": "DEPOSIT_GROUP"},
+                {"role": "LOAN_GROUP"},
+                {"role": "FAMILY"},
+            ]
+        },
+        "candidate_ordinal": 0,
+        "reasons": [],
+    }
+    detail = {
+        "additive_closure": {
+            "resolved_roles": [
+                {"role": "DEPOSIT_VND"},
+                {"role": "DEPOSIT_GROUP"},
+                {"role": "LOAN_VND"},
+                {"role": "LOAN_GROUP"},
+                {"role": "FAMILY"},
+            ]
+        },
+        "candidate_ordinal": 1,
+        "reasons": [],
+    }
+
+    selected, reasons = subject._select_candidate_evidence(
+        [summary, detail],
+        {"closure_policy": "HIERARCHICAL_RECURSIVE_CORROBORATE_OR_DERIVE"},
+    )
+
+    assert selected is detail
+    assert reasons == []
+
+
+def test_equal_hierarchical_candidates_remain_unresolved_without_page_routing() -> None:
+    candidates = [
+        {
+            "additive_closure": {
+                "resolved_roles": [{"role": "DEPOSIT_GROUP"}, {"role": "LOAN_GROUP"}]
+            },
+            "candidate_ordinal": ordinal,
+            "reasons": [],
+        }
+        for ordinal in range(2)
+    ]
+
+    selected, reasons = subject._select_candidate_evidence(
+        candidates,
+        {"closure_policy": "HIERARCHICAL_RECURSIVE_CORROBORATE_OR_DERIVE"},
+    )
+
+    assert selected is None
+    assert reasons == ["MULTIPLE_DOWNSTREAM_EVIDENCE_COMPLETE_TOPOLOGY_REGIONS"]
+
+
 @pytest.mark.parametrize(
     "mutation",
     [

@@ -154,6 +154,61 @@ def _alternative_core_spec() -> dict[str, object]:
     }
 
 
+def _contextual_interbank_spec() -> dict[str, object]:
+    def group(role: str, aliases: list[str]) -> dict[str, object]:
+        return {
+            "matchers": [{"aliases": aliases, "within_role": None}],
+            "presence": "OPTIONAL",
+            "role": role,
+            "role_kind": "STRUCTURAL_GROUP",
+        }
+
+    def currency(role: str, within_role: str, flattened: str) -> dict[str, object]:
+        return {
+            "matchers": [
+                {"aliases": ["Bằng VND"], "within_role": within_role},
+                {"aliases": [flattened], "within_role": None},
+            ],
+            "presence": "OPTIONAL",
+            "role": role,
+            "role_kind": "ADDITIVE_CHILD",
+        }
+
+    return {
+        "children": [
+            group(
+                "DEMAND_GROUP",
+                ["Tiền gửi không kỳ hạn", "Tiền gửi không kỳ hạn bằng VND"],
+            ),
+            currency(
+                "DEMAND_VND",
+                "DEMAND_GROUP",
+                "Tiền gửi không kỳ hạn bằng VND",
+            ),
+            group("TERM_GROUP", ["Tiền gửi có kỳ hạn", "Tiền gửi có kỳ hạn bằng VND"]),
+            currency("TERM_VND", "TERM_GROUP", "Tiền gửi có kỳ hạn bằng VND"),
+            group("LOAN_GROUP", ["Cho vay các TCTD khác", "Cho vay bằng VND"]),
+            currency("LOAN_VND", "LOAN_GROUP", "Cho vay bằng VND"),
+        ],
+        "family_id": "INTERBANK_DEPOSITS_AND_LOANS",
+        "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+        "hard_negative_aliases": ["Tiền gửi và vay các TCTD khác"],
+        "limits": {
+            "max_cluster_span_lines": 30,
+            "max_continuation_pages": 1,
+            "max_label_line_span": 2,
+        },
+        "parent": {
+            "aliases": ["Tiền gửi và cho vay các TCTD khác"],
+            "resolution_mode": "EXPLICIT_ONLY",
+            "role": "INTERBANK_DEPOSITS_AND_LOANS",
+        },
+        "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+        "required_role_combinations": [["DEMAND_GROUP", "TERM_GROUP", "LOAN_GROUP"]],
+        "structural_reset_aliases": ["Chứng khoán kinh doanh"],
+    }
+
+
 def test_cash_spec_is_declarative_and_accepts_reordered_wrapped_children() -> None:
     pages = [
         _page(
@@ -200,6 +255,26 @@ def test_cash_spec_is_declarative_and_accepts_reordered_wrapped_children() -> No
     assert region["child_matches"][1]["surface"] == "Tiền mặt bằng Đồng Việt Nam"
     assert region["minimal_unique_anchor"]["combination_size"] == 2
     assert result["safety"]["bank_filename_note_page_year_used_for_matching"] is False
+
+
+def test_empty_semantic_neighbor_never_expands_an_exact_label_span() -> None:
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    "Phân tích dư nợ theo thời gian",
+                    "",
+                    "Nợ ngắn hạn",
+                    "Nợ trung hạn",
+                ]
+            )
+        ],
+        _generic_spec(),
+    )
+
+    region = result["regions"][0]
+    short = next(match for match in region["child_matches"] if match["role"] == "SHORT_TERM")
+    assert short["source_line_index"] == short["end_source_line_index"] == 2
 
 
 @pytest.mark.parametrize("parent", ["Tiền mặt và vàng", "Tiền mặt và vàng bạc"])
@@ -301,6 +376,237 @@ def test_alternative_core_role_combinations_accept_distinct_generic_variants(
         "complete_region_count": 1,
         "minimal_role_combination_proved": True,
     }
+
+
+def test_contextual_roles_disambiguate_repeated_currency_labels_by_structural_parent() -> None:
+    spec = _contextual_interbank_spec()
+    for child in spec["children"]:
+        if child["role"].endswith("_VND"):
+            child["matchers"] = child["matchers"][:1]
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    "Tiền gửi và cho vay các TCTD khác",
+                    "Tiền gửi không kỳ hạn",
+                    "Bằng VND",
+                    "100",
+                    "Tiền gửi có kỳ hạn",
+                    "Bằng VND",
+                    "200",
+                    "Cho vay các TCTD khác",
+                    "Bằng VND",
+                    "50",
+                    "350",
+                    "Chứng khoán kinh doanh",
+                ]
+            )
+        ],
+        spec,
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    matches = {item["role"]: item for item in result["regions"][0]["child_matches"]}
+    assert matches["DEMAND_VND"]["source_line_index"] == 2
+    assert matches["DEMAND_VND"]["matched_within_role"] == "DEMAND_GROUP"
+    assert matches["TERM_VND"]["source_line_index"] == 5
+    assert matches["TERM_VND"]["matched_within_role"] == "TERM_GROUP"
+    assert matches["LOAN_VND"]["source_line_index"] == 8
+    assert matches["LOAN_VND"]["matched_within_role"] == "LOAN_GROUP"
+
+
+def test_contextual_roles_accept_flattened_rows_without_bank_or_layout_routing() -> None:
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    "Tiền gửi và cho vay các TCTD khác",
+                    "Tiền gửi không kỳ hạn bằng VND",
+                    "100",
+                    "Tiền gửi có kỳ hạn bằng VND",
+                    "200",
+                    "Cho vay bằng VND",
+                    "50",
+                    "350",
+                    "Chứng khoán kinh doanh",
+                ]
+            )
+        ],
+        _contextual_interbank_spec(),
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    matches = {item["role"]: item for item in result["regions"][0]["child_matches"]}
+    assert matches["DEMAND_VND"]["matched_within_role"] is None
+    assert matches["TERM_VND"]["matched_within_role"] is None
+    assert matches["LOAN_VND"]["matched_within_role"] is None
+
+
+def test_contextual_v3_ignores_bounded_footnotes_and_uppercase_acronyms() -> None:
+    spec = _contextual_interbank_spec()
+    spec["parent"]["aliases"].append("Tiền gửi và cho vay các tổ chức tín dụng khác")
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    'Tiền gửi và cho vay các tổ chức tín dụng ("TCTD") khác',
+                    "Tiền gửi không kỳ hạn",
+                    "Bằng VND",
+                    "100",
+                    "Tiền gửi có kỳ hạn (i)",
+                    "Bằng VND",
+                    "200",
+                    "Cho vay các TCTD khác (1)",
+                    "Bằng VND",
+                    "50",
+                    "350",
+                ]
+            )
+        ],
+        spec,
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    region = result["regions"][0]
+    assert region["parent_match"]["match_kind"] == (
+        "EXACT_ACCENTLESS_ALIAS_AFTER_DECORATIVE_PARENTHETICAL_REMOVAL"
+    )
+    matches = {item["role"]: item for item in region["child_matches"]}
+    assert matches["TERM_GROUP"]["match_kind"] == (
+        "EXACT_ACCENTLESS_ALIAS_AFTER_DECORATIVE_PARENTHETICAL_REMOVAL"
+    )
+    assert matches["LOAN_GROUP"]["match_kind"] == (
+        "EXACT_ACCENTLESS_ALIAS_AFTER_DECORATIVE_PARENTHETICAL_REMOVAL"
+    )
+
+
+def test_contextual_v3_does_not_strip_semantic_parenthetical_qualifiers() -> None:
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    "Tiền gửi và cho vay các TCTD khác",
+                    "Tiền gửi không kỳ hạn",
+                    "Bằng VND",
+                    "100",
+                    "Tiền gửi có kỳ hạn (không bao gồm tiền gửi ký quỹ)",
+                    "Bằng VND",
+                    "200",
+                    "Cho vay các TCTD khác",
+                    "Bằng VND",
+                    "50",
+                ]
+            )
+        ],
+        _contextual_interbank_spec(),
+    )
+
+    assert result["status"] == "UNRESOLVED_NO_COMPLETE_REGION"
+    assert result["near_regions"][0]["unresolved_reasons"] == [
+        "MISSING_REQUIRED_ROLE_COMBINATION:DEMAND_GROUP+TERM_GROUP+LOAN_GROUP"
+    ]
+
+
+def test_contextual_v3_joins_repeated_continuation_and_prefers_richer_note() -> None:
+    spec = _contextual_interbank_spec()
+    spec["required_role_combinations"].append(["DEMAND_GROUP", "LOAN_GROUP"])
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    "Tiền gửi và cho vay các TCTD khác",
+                    "Tiền gửi không kỳ hạn",
+                    "100",
+                    "Cho vay các TCTD khác",
+                    "50",
+                ],
+                page_sequence=1,
+            ),
+            _page(
+                [
+                    "Tiền gửi và cho vay các TCTD khác",
+                    "Tiền gửi không kỳ hạn",
+                    "Bằng VND",
+                    "100",
+                    "Tiền gửi có kỳ hạn",
+                    "Bằng VND",
+                    "200",
+                ],
+                page_sequence=2,
+            ),
+            _page(
+                [
+                    "Tiền gửi và cho vay các TCTD khác (TIẾP THEO)",
+                    "Cho vay các TCTD khác",
+                    "Bằng VND",
+                    "50",
+                    "350",
+                    "Chứng khoán kinh doanh",
+                ],
+                page_sequence=3,
+            ),
+        ],
+        spec,
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    region = result["regions"][0]
+    assert region["page_sequence"] == 2
+    assert region["continuation_page_count"] == 1
+    assert region["observed_roles"] == [
+        "DEMAND_GROUP",
+        "DEMAND_VND",
+        "TERM_GROUP",
+        "TERM_VND",
+        "LOAN_GROUP",
+        "LOAN_VND",
+    ]
+
+
+def test_contextual_role_cannot_borrow_same_currency_label_from_sibling_group() -> None:
+    spec = _contextual_interbank_spec()
+    pages = [
+        _page(
+            [
+                "Tiền gửi và cho vay các TCTD khác",
+                "Tiền gửi không kỳ hạn",
+                "Bằng VND",
+                "100",
+                "Tiền gửi có kỳ hạn",
+                "200",
+                "Cho vay các TCTD khác",
+                "Bằng VND",
+                "50",
+                "350",
+            ]
+        )
+    ]
+
+    result = build_accounting_family_topology_scan_v1(pages, spec)
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    roles = {item["role"] for item in result["regions"][0]["child_matches"]}
+    assert "DEMAND_VND" in roles
+    assert "TERM_VND" not in roles
+    assert "LOAN_VND" in roles
+
+
+def test_contextual_spec_rejects_unknown_nonstructural_or_cyclic_contexts() -> None:
+    unknown = _contextual_interbank_spec()
+    unknown["children"][1]["matchers"][0]["within_role"] = "UNKNOWN"
+    with pytest.raises(AccountingFamilyTopologyV1Error, match="structural role"):
+        build_accounting_family_topology_scan_v1([_page(["Bằng VND"])], unknown)
+
+    nonstructural = _contextual_interbank_spec()
+    nonstructural["children"][1]["matchers"][0]["within_role"] = "TERM_VND"
+    with pytest.raises(AccountingFamilyTopologyV1Error, match="structural role"):
+        build_accounting_family_topology_scan_v1([_page(["Bằng VND"])], nonstructural)
+
+    cyclic = _contextual_interbank_spec()
+    cyclic["children"][0]["matchers"][0]["within_role"] = "TERM_GROUP"
+    cyclic["children"][2]["matchers"][0]["within_role"] = "DEMAND_GROUP"
+    with pytest.raises(AccountingFamilyTopologyV1Error, match="cycle"):
+        build_accounting_family_topology_scan_v1([_page(["Bằng VND"])], cyclic)
 
 
 def test_alternative_core_parent_only_is_not_observed_but_partial_core_is_unresolved() -> None:

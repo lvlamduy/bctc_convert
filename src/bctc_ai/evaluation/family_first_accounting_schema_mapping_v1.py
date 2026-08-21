@@ -30,6 +30,7 @@ __all__ = [
     "FORMAT_VERSION",
     "SPEC_FORMAT_VERSION",
     "SPEC_FORMAT_VERSION_V2",
+    "SPEC_FORMAT_VERSION_V3",
     "FamilyFirstAccountingSchemaMappingV1Error",
     "build_authenticated_family_first_accounting_schema_mapping_v1",
     "validate_authenticated_family_first_accounting_schema_mapping_replay_v1",
@@ -39,6 +40,7 @@ __all__ = [
 FORMAT_VERSION = "FAMILY_FIRST_ACCOUNTING_SCHEMA_MAPPING_V1"
 SPEC_FORMAT_VERSION = "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V1"
 SPEC_FORMAT_VERSION_V2 = "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V2"
+SPEC_FORMAT_VERSION_V3 = "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V3"
 SCHEMA_GRAPH_PATH = Path("reference/schemas/schema_graph.jsonl")
 CLAIM_BOUNDARY = (
     "LIVE_REPLAYED_FAMILY_EVIDENCE_TO_TRACKED_TM_SCHEMA_DIRECT_PARENT_CHILD_BINDING_"
@@ -67,6 +69,7 @@ _SPEC_FIELDS = {
     "role_bindings",
 }
 _SPEC_V2_FIELDS = {*_SPEC_FIELDS, "aggregate_role_bindings"}
+_SPEC_V3_FIELDS = {*_SPEC_FIELDS, "ignored_roles"}
 _ROLE_BINDING_FIELDS = {"report_norm_id", "role"}
 _AGGREGATE_ROLE_BINDING_FIELDS = {
     "operation",
@@ -126,19 +129,33 @@ def _schema_spec(value: Any, family_spec: Any) -> dict[str, Any]:
         or type(family_spec.get("children")) is not list
     ):
         raise _error("family topology specification is malformed")
-    family_roles = [child.get("role") for child in family_spec["children"]]
+    nonstructural_roles = [
+        child.get("role")
+        for child in family_spec["children"]
+        if child.get("role_kind") != "STRUCTURAL_GROUP"
+    ]
+    all_roles = [child.get("role") for child in family_spec["children"]]
+    candidate_version = value.get("format_version") if type(value) is dict else None
+    family_roles = all_roles if candidate_version == SPEC_FORMAT_VERSION_V3 else nonstructural_roles
     if (
         not family_roles
         or any(type(role) is not str or not role for role in family_roles)
         or len(family_roles) != len(set(family_roles))
     ):
         raise _error("family topology role axis is malformed")
-    if type(value) is not dict or (set(value) != _SPEC_FIELDS and set(value) != _SPEC_V2_FIELDS):
+    if type(value) is not dict or frozenset(value) not in {
+        frozenset(_SPEC_FIELDS),
+        frozenset(_SPEC_V2_FIELDS),
+        frozenset(_SPEC_V3_FIELDS),
+    }:
         raise _error("family schema-binding specification fields drifted")
     spec_version = value["format_version"]
-    if spec_version not in {SPEC_FORMAT_VERSION, SPEC_FORMAT_VERSION_V2} or (
-        (spec_version == SPEC_FORMAT_VERSION) is not (set(value) == _SPEC_FIELDS)
-    ):
+    expected_fields = {
+        SPEC_FORMAT_VERSION: _SPEC_FIELDS,
+        SPEC_FORMAT_VERSION_V2: _SPEC_V2_FIELDS,
+        SPEC_FORMAT_VERSION_V3: _SPEC_V3_FIELDS,
+    }
+    if spec_version not in expected_fields or set(value) != expected_fields[spec_version]:
         raise _error("family schema-binding specification version drifted")
     if (
         type(value["family_id"]) is not str
@@ -181,6 +198,13 @@ def _schema_spec(value: Any, family_spec: Any) -> dict[str, Any]:
             ):
                 raise _error("aggregate family schema role binding drifted")
             aggregates.append(canonical_clone_v1(raw))
+    ignored_roles = value.get("ignored_roles", [])
+    if spec_version == SPEC_FORMAT_VERSION_V3 and (
+        type(ignored_roles) is not list
+        or any(type(role) is not str or not role for role in ignored_roles)
+        or len(ignored_roles) != len(set(ignored_roles))
+    ):
+        raise _error("hierarchical schema ignored-role axis drifted")
     direct_roles = [item["role"] for item in direct]
     aggregate_source_roles = [role for item in aggregates for role in item["source_roles"]]
     target_roles = [*direct_roles, *(item["role"] for item in aggregates)]
@@ -189,6 +213,19 @@ def _schema_spec(value: Any, family_spec: Any) -> dict[str, Any]:
         *(item["report_norm_id"] for item in aggregates),
     ]
     role_order = {role: ordinal for ordinal, role in enumerate(family_roles)}
+    if spec_version == SPEC_FORMAT_VERSION_V3:
+        if (
+            aggregates
+            or any(role not in role_order for role in [*direct_roles, *ignored_roles])
+            or set([*direct_roles, *ignored_roles]) != set(family_roles)
+            or len([*direct_roles, *ignored_roles]) != len(set([*direct_roles, *ignored_roles]))
+            or direct_roles != sorted(direct_roles, key=role_order.__getitem__)
+            or ignored_roles != sorted(ignored_roles, key=role_order.__getitem__)
+            or len(target_ids) != len(set(target_ids))
+            or value["family_report_norm_id"] in target_ids
+        ):
+            raise _error("hierarchical schema binding must partition the exact role axis")
+        return canonical_clone_v1(value)
     if (
         any(role not in role_order for role in [*direct_roles, *aggregate_source_roles])
         or len([*direct_roles, *aggregate_source_roles])
@@ -256,18 +293,47 @@ def _bind_schema(
         *spec["role_bindings"],
         *spec.get("aggregate_role_bindings", []),
     ]
+
+    def is_admitted_descendant(node: dict[str, Any]) -> bool:
+        if spec["format_version"] != SPEC_FORMAT_VERSION_V3:
+            return (
+                node.get("parent_id") == parent["schema_id"]
+                and node["schema_id"] in parent["children"]
+            )
+        seen = set()
+        cursor = node
+        while cursor.get("parent_id") is not None:
+            parent_id = cursor["parent_id"]
+            if type(parent_id) is not int or parent_id in seen:
+                raise _error("tracked schema descendant hierarchy drifted")
+            seen.add(parent_id)
+            next_parent = nodes.get(parent_id)
+            if (
+                type(next_parent) is not dict
+                or type(next_parent.get("children")) is not list
+                or cursor.get("schema_id") not in next_parent["children"]
+            ):
+                return False
+            if parent_id == parent["schema_id"]:
+                return True
+            cursor = next_parent
+        return False
+
     for binding in bindings:
         node = nodes.get(binding["report_norm_id"])
         if (
             type(node) is not dict
             or node.get("statement_type") != "TM"
-            or node.get("parent_id") != parent["schema_id"]
-            or binding["report_norm_id"] not in parent["children"]
+            or not is_admitted_descendant(node)
             or type(node.get("canonical_name")) is not str
             or not node["canonical_name"]
             or not _schema_contract_axes_are_closed(node)
         ):
-            raise _error("role ReportNormId is not a direct live child of its family")
+            raise _error(
+                "role ReportNormId is not an admitted live descendant of its family"
+                if spec["format_version"] == SPEC_FORMAT_VERSION_V3
+                else "role ReportNormId is not a direct live child of its family"
+            )
         if "source_roles" in binding:
             aggregate_bindings.append((binding, node))
         else:
@@ -465,6 +531,111 @@ def _aggregate_mapping(
     }
 
 
+def _derived_hierarchical_cell(value: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
+    number = value.get("number")
+    sample_ids = value.get("source_sample_ids")
+    if (
+        type(number) is not dict
+        or set(number) != {"coefficient", "percentage_mark_present", "scale"}
+        or type(number["coefficient"]) is not int
+        or type(number["scale"]) is not int
+        or number["scale"] < 0
+        or type(number["percentage_mark_present"]) is not bool
+        or type(sample_ids) is not list
+        or not sample_ids
+        or any(type(sample_id) is not str or not sample_id for sample_id in sample_ids)
+        or len(sample_ids) != len(set(sample_ids))
+    ):
+        raise _error("hierarchical derived value lost exact source components")
+    return {
+        "column_ordinal": value["column_ordinal"],
+        "currency": context["currency"],
+        "magnitude_power10": context["magnitude_power10"],
+        "numeric_value": {
+            "coefficient": number["coefficient"],
+            "scale": number["scale"],
+        },
+        "period": context["period"],
+        "source_component_sample_ids": list(sample_ids),
+        "unit_kind": context["unit_kind"],
+    }
+
+
+def _hierarchical_mapping(
+    record: dict[str, Any],
+    node: dict[str, Any],
+    contexts: dict[int, dict[str, Any]],
+) -> dict[str, Any]:
+    source = record.get("source")
+    source_surface = None
+    if source is not None:
+        if type(source) is not dict or set(source) != {"kind", "record"}:
+            raise _error("hierarchical mapping source record drifted")
+        source_record = source["record"]
+        if source["kind"] == "ROLE_ROW":
+            source_surface = source_record["label_match"]["surface"]
+            visible_values = source_record["values"]
+        elif source["kind"] == "TRAILING_VALUE_ROW":
+            visible_values = source_record["values"]
+        else:
+            raise _error("hierarchical mapping source kind drifted")
+        if set(value.get("column_ordinal") for value in visible_values) != set(contexts):
+            raise _error("hierarchical visible role does not cover its complete column axis")
+        values = [
+            _cell(value, contexts[value["column_ordinal"]])
+            for value in sorted(visible_values, key=lambda item: item["column_ordinal"])
+        ]
+    else:
+        closure_values = record.get("values")
+        if type(closure_values) is not list or set(
+            value.get("column_ordinal") for value in closure_values
+        ) != set(contexts):
+            raise _error("hierarchical derived role does not cover its complete column axis")
+        values = [
+            _derived_hierarchical_cell(value, contexts[value["column_ordinal"]])
+            for value in sorted(closure_values, key=lambda item: item["column_ordinal"])
+        ]
+    material = {
+        "canonical_name": node["canonical_name"],
+        "component_roles": canonical_clone_v1(record["component_roles"]),
+        "mapping_kind": "HIERARCHICAL_" + record["resolution_kind"],
+        "report_norm_id": node["schema_id"],
+        "role": record["role"],
+        "source_surface": source_surface,
+        "values": values,
+    }
+    return {
+        **material,
+        "item_mapping_id": "ffasmv1:item:" + canonical_json_sha256_v1(material),
+    }
+
+
+def _compatibility_reasons(
+    mappings: list[dict[str, Any]],
+    nodes: dict[int, dict[str, Any]],
+    *,
+    source_scope: str | None,
+    schema_period_type: str,
+) -> list[str]:
+    reasons = []
+    for mapping in mappings:
+        node = nodes[mapping["report_norm_id"]]
+        if source_scope is None or source_scope not in node["scope"]:
+            reasons.append(
+                f"SCHEMA_SCOPE_NOT_ALLOWED:{node['schema_id']}:{source_scope or 'UNRESOLVED'}"
+            )
+        if schema_period_type not in node["allowed_period_type"]:
+            reasons.append(
+                f"SCHEMA_PERIOD_TYPE_NOT_ALLOWED:{node['schema_id']}:{schema_period_type}"
+            )
+        for value in mapping["values"]:
+            coefficient = value["numeric_value"]["coefficient"]
+            sign = "ZERO" if coefficient == 0 else "POSITIVE" if coefficient > 0 else "NEGATIVE"
+            if sign not in node["allowed_sign"]:
+                reasons.append(f"SCHEMA_SIGN_NOT_ALLOWED:{node['schema_id']}:{sign}")
+    return list(dict.fromkeys(reasons))
+
+
 def _total_mapping(
     trial: dict[str, Any], node: dict[str, Any], contexts: dict[int, dict[str, Any]]
 ) -> dict[str, Any]:
@@ -510,6 +681,7 @@ def _trial(
     aggregate_bindings: list[tuple[dict[str, Any], dict[str, Any]]],
     *,
     schema_period_type: str,
+    schema_binding_spec: dict[str, Any],
 ) -> dict[str, Any]:
     base = {
         "document_ordinal": trial["document_ordinal"],
@@ -531,6 +703,55 @@ def _trial(
             "unresolved_reasons": canonical_clone_v1(trial["unresolved_reasons"]),
         }
     contexts = _context_by_column(trial)
+    source_scope = _SOURCE_SCOPE_TO_SCHEMA_SCOPE.get(trial["private_provenance"].get("scope"))
+    if schema_binding_spec["format_version"] == SPEC_FORMAT_VERSION_V3:
+        closure = trial["additive_closure"]
+        if (
+            type(closure) is not dict
+            or closure.get("status") != "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+            or type(closure.get("resolved_roles")) is not list
+        ):
+            raise _error("schema-ready hierarchical trial lost its exact closure")
+        resolved = {record.get("role"): record for record in closure["resolved_roles"]}
+        if None in resolved or len(resolved) != len(closure["resolved_roles"]):
+            raise _error("schema-ready hierarchical role axis repeats or is malformed")
+        allowed = {
+            *by_role,
+            *schema_binding_spec["ignored_roles"],
+            closure["family_id"],
+        }
+        if any(role not in allowed for role in resolved):
+            raise _error("schema-ready hierarchical closure retained one unbound role")
+        family_record = resolved.get(closure["family_id"])
+        if family_record is None:
+            raise _error("schema-ready hierarchical closure lost its family root")
+        mappings = [_hierarchical_mapping(family_record, parent, contexts)]
+        mappings.extend(
+            _hierarchical_mapping(resolved[role], node, contexts)
+            for role, node in by_role.items()
+            if role in resolved
+        )
+        nodes = {parent["schema_id"]: parent}
+        nodes.update({node["schema_id"]: node for node in by_role.values()})
+        compatibility_reasons = _compatibility_reasons(
+            mappings,
+            nodes,
+            source_scope=source_scope,
+            schema_period_type=schema_period_type,
+        )
+        if compatibility_reasons:
+            return {
+                **base,
+                "mapping_status": "UNRESOLVED",
+                "mappings": [],
+                "unresolved_reasons": compatibility_reasons,
+            }
+        return {
+            **base,
+            "mapping_status": "VERIFIED_BY_CODEX",
+            "mappings": mappings,
+            "unresolved_reasons": [],
+        }
     rows = trial["row_axis"]["rows"]
     aggregate_by_source = {
         source_role: (binding, node)
@@ -559,32 +780,21 @@ def _trial(
         emitted_aggregates.add(binding["role"])
         mappings.append(_aggregate_mapping(rows, binding, node, contexts))
     mappings.append(_total_mapping(trial, parent, contexts))
-    source_scope = _SOURCE_SCOPE_TO_SCHEMA_SCOPE.get(trial["private_provenance"].get("scope"))
     nodes = {parent["schema_id"]: parent}
     nodes.update({node["schema_id"]: node for node in by_role.values()})
     nodes.update({node["schema_id"]: node for _, node in aggregate_bindings})
-    compatibility_reasons = []
-    for mapping in mappings:
-        node = nodes[mapping["report_norm_id"]]
-        if source_scope is None or source_scope not in node["scope"]:
-            compatibility_reasons.append(
-                f"SCHEMA_SCOPE_NOT_ALLOWED:{node['schema_id']}:{source_scope or 'UNRESOLVED'}"
-            )
-        if schema_period_type not in node["allowed_period_type"]:
-            compatibility_reasons.append(
-                f"SCHEMA_PERIOD_TYPE_NOT_ALLOWED:{node['schema_id']}:{schema_period_type}"
-            )
-        for value in mapping["values"]:
-            coefficient = value["numeric_value"]["coefficient"]
-            sign = "ZERO" if coefficient == 0 else "POSITIVE" if coefficient > 0 else "NEGATIVE"
-            if sign not in node["allowed_sign"]:
-                compatibility_reasons.append(f"SCHEMA_SIGN_NOT_ALLOWED:{node['schema_id']}:{sign}")
+    compatibility_reasons = _compatibility_reasons(
+        mappings,
+        nodes,
+        source_scope=source_scope,
+        schema_period_type=schema_period_type,
+    )
     if compatibility_reasons:
         return {
             **base,
             "mapping_status": "UNRESOLVED",
             "mappings": [],
-            "unresolved_reasons": list(dict.fromkeys(compatibility_reasons)),
+            "unresolved_reasons": compatibility_reasons,
         }
     return {
         **base,
@@ -696,6 +906,7 @@ def build_authenticated_family_first_accounting_schema_mapping_v1(
             by_role,
             aggregate_bindings,
             schema_period_type=schema_period_type,
+            schema_binding_spec=spec,
         )
         for trial in sweep["trials"]
     ]

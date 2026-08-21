@@ -45,6 +45,7 @@ __all__ = [
     "FORMAT_VERSION",
     "AccountingFamilyRowAxisV1Error",
     "build_accounting_family_row_axis_v1",
+    "build_accounting_family_row_axis_for_topology_region_v1",
     "validate_accounting_family_row_axis_replay_v1",
 ]
 
@@ -438,7 +439,26 @@ def _rows(pages: Sequence[Mapping[str, Any]], region: Mapping[str, Any]) -> list
     by_page = {page["page_sequence"]: page for page in pages}
     region_by_page = _region_lines(pages, region)
     rows = []
+    nonstructural_spans = {
+        (
+            match["page_sequence"],
+            match["source_line_index"],
+            match["end_source_line_index"],
+        )
+        for match in region["child_matches"]
+        if match["role_kind"] != "STRUCTURAL_GROUP"
+    }
     for match in region["child_matches"]:
+        span = (
+            match["page_sequence"],
+            match["source_line_index"],
+            match["end_source_line_index"],
+        )
+        # A flattened source row can satisfy both its structural context and
+        # one valued leaf (for example "Tiền gửi không kỳ hạn bằng VND").
+        # The same detector cell may never be emitted twice.
+        if match["role_kind"] == "STRUCTURAL_GROUP" and span in nonstructural_spans:
+            continue
         page_sequence = match["page_sequence"]
         page = by_page[page_sequence]
         if type(page["page_width"]) is not int:
@@ -492,7 +512,17 @@ def _rows(pages: Sequence[Mapping[str, Any]], region: Mapping[str, Any]) -> list
                 "values": values,
             }
         )
-    return _enforce_exclusive_source_cells(rows)
+    exclusive = _enforce_exclusive_source_cells(rows)
+    # Structural headings are allowed to be either valued inline subtotals or
+    # label-only contexts. Retain them as source rows only when the complete
+    # visible lane axis binds after global cell exclusivity; otherwise they
+    # remain available solely through the topology region. This behavior is
+    # needed by hierarchical families and does not synthesize missing cells.
+    return [
+        row
+        for row in exclusive
+        if row["role_kind"] != "STRUCTURAL_GROUP" or row["status"] == "VISIBLE_VALUE_LANES_BOUND"
+    ]
 
 
 def _rescue_projection(
@@ -830,41 +860,28 @@ def _validate_result(value: Any) -> dict[str, Any]:
     return canonical_clone_v1(value)
 
 
-def build_accounting_family_row_axis_v1(
-    pages: Any,
-    family_topology_spec: Any,
-    *,
-    visible_dash_rescues: Any = (),
+def _build_axis(
+    parsed_pages: list[dict[str, Any]],
+    topology: dict[str, Any],
+    selected_region: dict[str, Any] | None,
+    visible_dash_rescues: Any,
 ) -> dict[str, Any]:
-    """Rebuild topology and bind its observed child labels to visible lanes."""
-
-    parsed_pages = _pages(pages)
-    try:
-        topology = topology_v1.build_accounting_family_topology_scan_v1(
-            _topology_pages(parsed_pages), family_topology_spec
-        )
-    except topology_v1.AccountingFamilyTopologyV1Error as exc:
-        raise _error("family row-axis topology input drifted") from exc
-    base_rows = (
-        _rows(parsed_pages, topology["regions"][0])
-        if topology["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
-        else []
-    )
+    base_rows = _rows(parsed_pages, selected_region) if selected_region is not None else []
     rows, rescue_projections = (
         _apply_visible_dash_rescues(
             parsed_pages,
-            topology["regions"][0],
+            selected_region,
             base_rows,
             visible_dash_rescues,
         )
-        if topology["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+        if selected_region is not None
         else (base_rows, [])
     )
-    if topology["status"] != "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL" and visible_dash_rescues != ():
-        raise _error("visible-dash rescue cannot bypass unresolved topology")
+    if selected_region is None and visible_dash_rescues != ():
+        raise _error("visible-dash rescue cannot bypass an unselected topology region")
     trailing = (
-        _trailing_value_rows(parsed_pages, topology["regions"][0], rows)
-        if topology["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+        _trailing_value_rows(parsed_pages, selected_region, rows)
+        if selected_region is not None
         else []
     )
     material = {
@@ -882,9 +899,7 @@ def build_accounting_family_row_axis_v1(
             else "VISIBLE_ROW_LANE_AXIS_BOUND_PROPOSAL_ONLY"
         ),
         "topology_region": (
-            canonical_clone_v1(topology["regions"][0])
-            if topology["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
-            else None
+            canonical_clone_v1(selected_region) if selected_region is not None else None
         ),
         "topology_scan_id": topology["scan_id"],
         "topology_status": topology["status"],
@@ -894,6 +909,61 @@ def build_accounting_family_row_axis_v1(
     return _validate_result(
         {**material, "row_axis_id": "afrav1:axis:" + canonical_json_sha256_v1(material)}
     )
+
+
+def _scan_topology(parsed_pages: list[dict[str, Any]], family_topology_spec: Any) -> dict[str, Any]:
+    try:
+        return topology_v1.build_accounting_family_topology_scan_v1(
+            _topology_pages(parsed_pages), family_topology_spec
+        )
+    except topology_v1.AccountingFamilyTopologyV1Error as exc:
+        raise _error("family row-axis topology input drifted") from exc
+
+
+def build_accounting_family_row_axis_v1(
+    pages: Any,
+    family_topology_spec: Any,
+    *,
+    visible_dash_rescues: Any = (),
+) -> dict[str, Any]:
+    """Rebuild topology and bind its unique child region to visible lanes."""
+
+    parsed_pages = _pages(pages)
+    topology = _scan_topology(parsed_pages, family_topology_spec)
+    selected = (
+        topology["regions"][0]
+        if topology["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+        else None
+    )
+    return _build_axis(parsed_pages, topology, selected, visible_dash_rescues)
+
+
+def build_accounting_family_row_axis_for_topology_region_v1(
+    pages: Any,
+    family_topology_spec: Any,
+    topology_region: Any,
+    *,
+    visible_dash_rescues: Any = (),
+) -> dict[str, Any]:
+    """Bind one exact observed region so later evidence can disambiguate it.
+
+    The caller cannot invent or alter a region: the complete-document topology
+    scan is rebuilt and the supplied value must exactly equal one of its
+    regions.  This keeps bank/page routing out of candidate selection while
+    allowing period, unit, geometry and accounting gates to distinguish two
+    semantically plausible regions.
+    """
+
+    parsed_pages = _pages(pages)
+    topology = _scan_topology(parsed_pages, family_topology_spec)
+    if type(topology_region) is not dict:
+        raise _error("selected topology region must be one exact object")
+    selected = [
+        region for region in topology["regions"] if same_typed_json_v1(region, topology_region)
+    ]
+    if len(selected) != 1:
+        raise _error("selected topology region is not one exact scan candidate")
+    return _build_axis(parsed_pages, topology, selected[0], visible_dash_rescues)
 
 
 def validate_accounting_family_row_axis_replay_v1(
@@ -906,10 +976,20 @@ def validate_accounting_family_row_axis_replay_v1(
     """Reject any row/lane mutation by exact complete-input reconstruction."""
 
     persisted = _validate_result(value)
-    expected = build_accounting_family_row_axis_v1(
-        pages,
-        family_topology_spec,
-        visible_dash_rescues=visible_dash_rescues,
+    expected = (
+        build_accounting_family_row_axis_for_topology_region_v1(
+            pages,
+            family_topology_spec,
+            persisted["topology_region"],
+            visible_dash_rescues=visible_dash_rescues,
+        )
+        if persisted["topology_region"] is not None
+        and persisted["topology_status"] != "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+        else build_accounting_family_row_axis_v1(
+            pages,
+            family_topology_spec,
+            visible_dash_rescues=visible_dash_rescues,
+        )
     )
     if not same_typed_json_v1(persisted, expected):
         raise _error("family row-axis result does not replay exactly")

@@ -644,3 +644,119 @@ def test_tracked_central_bank_deposit_specs_bind_generic_variants_to_live_schema
     )
     for token in ("ACB", "MBB", "VPB", "HDB", "VCB", "CTG", "BID", "VIB", "2025", "2026"):
         assert token not in serialized
+
+
+def test_hierarchical_trial_maps_derived_family_and_visible_descendant_roles() -> None:
+    trial = _ready_trial()
+    cash_vnd, cash_foreign = trial["row_axis"]["rows"]
+
+    def visible_record(row):
+        return {
+            "component_roles": [],
+            "resolution_kind": "VISIBLE_SOURCE_ROLE",
+            "role": row["role"],
+            "source": {"kind": "ROLE_ROW", "record": copy.deepcopy(row)},
+            "values": [],
+        }
+
+    trial["additive_closure"] = {
+        "family_id": "CASH_PRECIOUS_METALS",
+        "resolved_roles": [
+            visible_record(cash_vnd),
+            visible_record(cash_foreign),
+            {
+                "component_roles": ["CASH_VND", "CASH_FOREIGN"],
+                "resolution_kind": "DERIVED_EXACT_COMPONENT_SUM",
+                "role": "CASH_PRECIOUS_METALS",
+                "source": None,
+                "values": [
+                    {
+                        "column_ordinal": 0,
+                        "number": {
+                            "coefficient": 120,
+                            "percentage_mark_present": False,
+                            "scale": 0,
+                        },
+                        "source_sample_ids": [
+                            cash_vnd["values"][0]["sample_id"],
+                            cash_foreign["values"][0]["sample_id"],
+                        ],
+                    },
+                    {
+                        "column_ordinal": 1,
+                        "number": {
+                            "coefficient": 90,
+                            "percentage_mark_present": False,
+                            "scale": 0,
+                        },
+                        "source_sample_ids": [
+                            cash_vnd["values"][1]["sample_id"],
+                            cash_foreign["values"][1]["sample_id"],
+                        ],
+                    },
+                ],
+            },
+        ],
+        "status": "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO",
+    }
+    nodes = {
+        node["schema_id"]: node
+        for node in map(json.loads, _schema_payload().decode("utf-8").splitlines())
+    }
+    schema_spec = {
+        "family_id": "CASH_PRECIOUS_METALS",
+        "family_report_norm_id": 561,
+        "format_version": subject.SPEC_FORMAT_VERSION_V3,
+        "ignored_roles": [],
+        "role_bindings": [
+            {"report_norm_id": 562, "role": "CASH_VND"},
+            {"report_norm_id": 563, "role": "CASH_FOREIGN"},
+        ],
+    }
+
+    result = subject._trial(
+        trial,
+        nodes[561],
+        {"CASH_VND": nodes[562], "CASH_FOREIGN": nodes[563]},
+        [],
+        schema_period_type="SNAPSHOT",
+        schema_binding_spec=schema_spec,
+    )
+
+    assert result["mapping_status"] == "VERIFIED_BY_CODEX"
+    assert [mapping["report_norm_id"] for mapping in result["mappings"]] == [561, 562, 563]
+    family = result["mappings"][0]
+    assert family["mapping_kind"] == "HIERARCHICAL_DERIVED_EXACT_COMPONENT_SUM"
+    assert family["values"][0]["source_component_sample_ids"] == [
+        cash_vnd["values"][0]["sample_id"],
+        cash_foreign["values"][0]["sample_id"],
+    ]
+
+
+def test_tracked_interbank_specs_bind_recursive_roles_to_live_schema_descendants() -> None:
+    config_root = _PROJECT_ROOT / "config/families"
+    family = json.loads(
+        (config_root / "tm-interbank-deposits-loans-topology-v3.json").read_text(encoding="utf-8")
+    )
+    evaluation = json.loads(
+        (config_root / "tm-interbank-deposits-loans-evaluation-v3.json").read_text(encoding="utf-8")
+    )
+    binding = json.loads(
+        (config_root / "tm-interbank-deposits-loans-schema-binding-v3.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    compiled = topology_v1._spec(family)
+    evidence_v1._evaluation_spec(evaluation, compiled, raw_family_spec=family)
+    parsed_binding = subject._schema_spec(binding, family)
+    nodes, _ = subject._schema_graph(_PROJECT_ROOT)
+    parent, direct, aggregates = subject._bind_schema(nodes, parsed_binding)
+
+    assert parent["schema_id"] == 575
+    assert direct["INTERBANK_DEPOSIT_GROUP"]["schema_id"] == 576
+    assert direct["DEMAND_DEPOSIT_VND"]["schema_id"] == 578
+    assert direct["INTERBANK_LOAN_FOREIGN_CURRENCY"]["schema_id"] == 588
+    assert direct["TOTAL_INTERBANK_PROVISION"]["schema_id"] == 5718
+    assert aggregates == []
+    assert binding["ignored_roles"] == ["EXPLICIT_FAMILY_TOTAL"]

@@ -1,0 +1,66 @@
+{
+  "family_id": "INTERBANK_DEPOSITS_AND_LOANS",
+  "family_report_norm_id": 575,
+  "format_version": "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V3",
+  "ignored_roles": [
+    "EXPLICIT_FAMILY_TOTAL"
+  ],
+  "role_bindings": [
+    {
+      "report_norm_id": 576,
+      "role": "INTERBANK_DEPOSIT_GROUP"
+    },
+    {
+      "report_norm_id": 577,
+      "role": "DEMAND_DEPOSIT_GROUP"
+    },
+    {
+      "report_norm_id": 578,
+      "role": "DEMAND_DEPOSIT_VND"
+    },
+    {
+      "report_norm_id": 579,
+      "role": "DEMAND_DEPOSIT_FOREIGN_CURRENCY"
+    },
+    {
+      "report_norm_id": 580,
+      "role": "TERM_DEPOSIT_GROUP"
+    },
+    {
+      "report_norm_id": 581,
+      "role": "TERM_DEPOSIT_VND"
+    },
+    {
+      "report_norm_id": 582,
+      "role": "TERM_DEPOSIT_FOREIGN_CURRENCY"
+    },
+    {
+      "report_norm_id": 585,
+      "role": "INTERBANK_LOAN_GROUP"
+    },
+    {
+      "report_norm_id": 586,
+      "role": "INTERBANK_LOAN_VND"
+    },
+    {
+      "report_norm_id": 588,
+      "role": "INTERBANK_LOAN_FOREIGN_CURRENCY"
+    },
+    {
+      "report_norm_id": 587,
+      "role": "INTERBANK_LOAN_DISCOUNT_REDISCOUNT"
+    },
+    {
+      "report_norm_id": 583,
+      "role": "INTERBANK_DEPOSIT_PROVISION"
+    },
+    {
+      "report_norm_id": 590,
+      "role": "INTERBANK_LOAN_PROVISION"
+    },
+    {
+      "report_norm_id": 5718,
+      "role": "TOTAL_INTERBANK_PROVISION"
+    }
+  ]
+}
