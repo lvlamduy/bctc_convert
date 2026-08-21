@@ -323,6 +323,21 @@ def test_finalize_and_authenticate_v3_index_from_complete_shard_aggregate(
         tmp_path, archive_capability, model_cache=tmp_path
     )
 
+    projection_distributions = []
+
+    def project_model(_root, _cache, *, paddle_distribution):
+        projection_distributions.append(paddle_distribution)
+        return copy.deepcopy(model), tmp_path
+
+    monkeypatch.setattr(index.runner_v3, "_git_ledger", lambda *_args: "a" * 40)
+    monkeypatch.setattr(
+        index.runner_v3,
+        "_configuration_ref",
+        lambda _root: (b"config", copy.deepcopy(context["config_ref"])),
+    )
+    monkeypatch.setattr(index.kernel_v1, "_recognizer_projection", project_model)
+    projection = index.project_authenticated_family_first_ppocrv6_numeric_index_v3(capability)
+
     assert receipt["metrics"] == {
         "document_count": 1,
         "empty_prediction_count": 0,
@@ -331,3 +346,5 @@ def test_finalize_and_authenticate_v3_index_from_complete_shard_aggregate(
         "shard_count": 1,
     }
     assert type(capability) is index.AuthenticatedFamilyFirstPPocrV6NumericIndexV3
+    assert projection["metrics"] == receipt["metrics"]
+    assert projection_distributions == ["paddlepaddle-gpu"]

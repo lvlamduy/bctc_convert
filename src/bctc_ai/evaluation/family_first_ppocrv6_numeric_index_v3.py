@@ -404,7 +404,11 @@ def _live_index(
     aggregate = _canonical_object(aggregate_payload, "numeric V3 aggregate")
     runner_v3._git_ledger(state.root, aggregate.get("git_binding"))
     config_payload, config_ref = runner_v3._configuration_ref(state.root)
-    live_model, _directory = kernel_v1._recognizer_projection(state.root, state.model_cache)
+    live_model, _directory = kernel_v1._recognizer_projection(
+        state.root,
+        state.model_cache,
+        paddle_distribution="paddlepaddle-gpu",
+    )
     if (
         config_payload == b""
         or not same_typed_json_v1(config_ref, aggregate["input"]["configuration_ref"])
