@@ -395,7 +395,11 @@ Status meanings:
   pinned recognizer on the RTX 4090 measured about 26.3 crops/second. The GPU
   lane therefore has a separate V3 cache, execution policy and receipt that
   pin `paddlepaddle-gpu`, `gpu:0`, FP32, the device name and compute capability;
-  CPU and GPU shards are never mixed in one aggregate.
+  CPU and GPU shards are never mixed in one aggregate. The live index verifier
+  must pass the same explicit `paddlepaddle-gpu` distribution identity when it
+  re-authenticates the recognizer; relying on the kernel's CPU-default
+  `paddlepaddle` name makes a valid GPU aggregate unverifiable. A regression now
+  requires the GPU distribution keyword at the index projection boundary.
 - **Status:** `MITIGATED`; CPU V2 and GPU V3 shard/aggregate/index contracts pass
   focused tests, the first CPU shard is retained only as a cross-backend
   challenger, and the formal GPU all-axis execution is pending.
