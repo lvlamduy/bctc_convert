@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from scripts.experiments.adaptive_accounting_table_geometry_v1 import (
     assign_numeric_row_v1,
+    assign_value_row_lanes_v1,
     build_multilevel_header_graph_v1,
     cluster_numeric_rows_v1,
     infer_numeric_column_centers_v1,
     median_text_height_v1,
     project_merged_header_tokens_v1,
+    propose_missing_value_lane_regions_v1,
     row_affinity_v1,
 )
 
@@ -110,6 +112,119 @@ def test_adjacent_numeric_rows_do_not_collapse_under_dpi_scaling() -> None:
             [1, 2],
             [4, 5],
         ]
+
+
+def test_missing_lane_does_not_borrow_a_touching_next_row_cell() -> None:
+    lines = [
+        _line(0, "A", [20, 60, 100, 94]),
+        _line(1, "10", [650, 60, 720, 94]),
+        _line(2, "9", [850, 60, 920, 94]),
+        _line(3, "Target", [20, 100, 180, 134]),
+        _line(4, "8", [850, 100, 920, 134]),
+        _line(5, "Following", [20, 132, 180, 166]),
+        _line(6, "7", [650, 130, 720, 164]),
+        _line(7, "6", [850, 132, 920, 166]),
+    ]
+
+    values = assign_numeric_row_v1(
+        lines,
+        label_boxes=[lines[3]["bbox"]],
+        is_numeric=_numeric,
+        page_width=1000,
+    )
+
+    assert [line["source_line_index"] for line in values] == [4]
+
+    bound = assign_value_row_lanes_v1(
+        lines,
+        label_boxes=[lines[3]["bbox"]],
+        is_numeric=_numeric,
+        page_width=1000,
+    )
+    assert [(item["column_ordinal"], item["line"]["source_line_index"]) for item in bound] == [
+        (1, 4)
+    ]
+
+    proposals = propose_missing_value_lane_regions_v1(
+        lines,
+        label_boxes=[lines[3]["bbox"]],
+        is_numeric=_numeric,
+        page_width=1000,
+        page_height=300,
+    )
+    assert len(proposals) == 1
+    assert proposals[0]["column_ordinal"] == 0
+    assert proposals[0]["visible_lane_ordinals"] == [1]
+    assert proposals[0]["row_band_evidence"] == "VISIBLE_SIBLING_CELL_ROW_BAND"
+    assert proposals[0]["geometry_status"] == (
+        "BODY_GRID_MISSING_DETECTOR_CELL_PROPOSAL_REQUIRES_PIXEL_RECOGNITION"
+    )
+    left, top, right, bottom = proposals[0]["raw_pixel_bbox"]
+    assert left < 685 < right
+    assert 95 <= top < bottom <= 133
+    # The proposed current-lane crop must not reach the following-row bbox.
+    assert bottom < lines[6]["bbox"][3]
+
+
+def test_complete_row_does_not_propose_detector_independent_regions() -> None:
+    lines = [
+        _line(0, "A", [20, 60, 100, 94]),
+        _line(1, "10", [650, 60, 720, 94]),
+        _line(2, "9", [850, 60, 920, 94]),
+        _line(3, "B", [20, 110, 100, 144]),
+        _line(4, "8", [650, 110, 720, 144]),
+        _line(5, "7", [850, 110, 920, 144]),
+    ]
+    assert (
+        propose_missing_value_lane_regions_v1(
+            lines,
+            label_boxes=[lines[3]["bbox"]],
+            is_numeric=_numeric,
+            page_width=1000,
+            page_height=300,
+        )
+        == []
+    )
+
+
+def test_real_ctg_visible_dash_without_detector_box_is_recovered_from_grid() -> None:
+    # Annual-2025 CTG p39.  The current-period dash at [1258,1413,1292,1447]
+    # is visible on the page render but absent from the detector line axis.
+    lines = [
+        _line(36, "Tiền mặt bằng VND", [319, 1318, 570, 1349]),
+        _line(37, "11.206.287", [1142, 1316, 1285, 1349]),
+        _line(38, "9.605.071", [1386, 1317, 1513, 1345]),
+        _line(39, "Tiền mặt bằng ngoại tệ", [317, 1347, 610, 1383]),
+        _line(40, "1.349.621", [1157, 1349, 1284, 1379]),
+        _line(41, "1.501.440", [1387, 1349, 1515, 1377]),
+        _line(42, "Vàng tiền tệ", [318, 1381, 476, 1415]),
+        _line(43, "12.488", [1196, 1379, 1290, 1415]),
+        _line(44, "22.581", [1423, 1380, 1517, 1412]),
+        _line(45, "Vàng phi tiền tệ", [319, 1413, 521, 1447]),
+        _line(46, "17", [1476, 1411, 1520, 1445]),
+        _line(47, "Kim loại quý, đá quý khác", [318, 1445, 642, 1477]),
+        _line(48, "15.088", [1196, 1441, 1289, 1477]),
+        _line(49, "18.440", [1424, 1443, 1518, 1476]),
+        _line(50, "12.583.484", [1143, 1508, 1287, 1539]),
+        _line(51, "11.147.549", [1371, 1507, 1516, 1538]),
+    ]
+    target = next(line for line in lines if line["source_line_index"] == 45)
+    proposals = propose_missing_value_lane_regions_v1(
+        lines,
+        label_boxes=[target["bbox"]],
+        is_numeric=_numeric,
+        page_width=1654,
+        page_height=2339,
+        retain_singleton_columns=True,
+    )
+    assert len(proposals) == 1
+    proposal = proposals[0]
+    assert proposal["column_ordinal"] == 0
+    assert proposal["visible_lane_ordinals"] == [1]
+    left, top, right, bottom = proposal["raw_pixel_bbox"]
+    assert left <= 1258 < 1292 <= right
+    assert top <= 1413 < bottom
+    assert bottom <= 1445
 
 
 def test_merged_header_prefers_word_boxes_and_has_explicit_order_only_fallback() -> None:

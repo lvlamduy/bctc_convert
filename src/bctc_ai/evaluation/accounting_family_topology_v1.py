@@ -113,6 +113,12 @@ def _positive_int(value: Any, label: str) -> int:
     return value
 
 
+def _nonnegative_int(value: Any, label: str) -> int:
+    if type(value) is not int or value < 0:
+        raise _error(f"{label} must be one nonnegative exact integer")
+    return value
+
+
 def _aliases(value: Any, label: str, *, allow_empty: bool = False) -> list[str]:
     if type(value) is not list or (not value and not allow_empty):
         raise _error(f"{label} must be one {'list' if allow_empty else 'non-empty list'}")
@@ -184,6 +190,7 @@ def _spec(value: Any) -> dict[str, Any]:
 
     limits = value["limits"]
     if type(limits) is not dict or set(limits) != {
+        "max_continuation_pages",
         "max_cluster_span_lines",
         "max_label_line_span",
     }:
@@ -198,6 +205,9 @@ def _spec(value: Any) -> dict[str, Any]:
             value["hard_negative_aliases"], "hard-negative", allow_empty=True
         ),
         "limits": {
+            "max_continuation_pages": _nonnegative_int(
+                limits["max_continuation_pages"], "maximum continuation pages"
+            ),
             "max_cluster_span_lines": _positive_int(
                 limits["max_cluster_span_lines"], "maximum cluster span"
             ),
@@ -297,7 +307,9 @@ def _role_hits(
     lines: Sequence[Mapping[str, Any]],
     *,
     aliases: Sequence[str],
+    document_offset: int,
     max_label_span: int,
+    page_sequence: int,
 ) -> list[dict[str, Any]]:
     hits: list[dict[str, Any]] = []
     for start in range(len(lines)):
@@ -308,9 +320,12 @@ def _role_hits(
                 continue
             hits.append(
                 {
+                    "document_line_ordinal": document_offset + start,
+                    "end_document_line_ordinal": document_offset + start + width - 1,
                     "end_source_line_index": lines[start + width - 1]["source_line_index"],
                     "match_kind": kind,
                     "normalized_surface": normalize_vietnamese_anchor_v1(surface),
+                    "page_sequence": page_sequence,
                     "source_line_index": lines[start]["source_line_index"],
                     "surface": surface,
                 }
@@ -327,11 +342,19 @@ def _role_hits(
     return sorted(by_end.values(), key=lambda item: item["source_line_index"])
 
 
-def _page_hits(page: Mapping[str, Any], spec: Mapping[str, Any]) -> dict[str, Any]:
+def _page_hits(
+    page: Mapping[str, Any], spec: Mapping[str, Any], *, document_offset: int
+) -> dict[str, Any]:
     lines = page["lines"]
     max_span = spec["limits"]["max_label_line_span"]
     children = {
-        child["role"]: _role_hits(lines, aliases=child["aliases"], max_label_span=max_span)
+        child["role"]: _role_hits(
+            lines,
+            aliases=child["aliases"],
+            document_offset=document_offset,
+            max_label_span=max_span,
+            page_sequence=page["page_sequence"],
+        )
         for child in spec["children"]
     }
     return {
@@ -339,23 +362,31 @@ def _page_hits(page: Mapping[str, Any], spec: Mapping[str, Any]) -> dict[str, An
         "hard_negatives": _role_hits(
             lines,
             aliases=spec["hard_negative_aliases"],
+            document_offset=document_offset,
             max_label_span=max_span,
+            page_sequence=page["page_sequence"],
         ),
         "parents": _role_hits(
             lines,
             aliases=spec["parent"]["aliases"],
+            document_offset=document_offset,
             max_label_span=max_span,
+            page_sequence=page["page_sequence"],
         ),
         "resets": _role_hits(
             lines,
             aliases=spec["structural_reset_aliases"],
+            document_offset=document_offset,
             max_label_span=max_span,
+            page_sequence=page["page_sequence"],
         ),
     }
 
 
 def _first_after(hits: Sequence[Mapping[str, Any]], index: int) -> int | None:
-    positions = [hit["source_line_index"] for hit in hits if hit["source_line_index"] > index]
+    positions = [
+        hit["document_line_ordinal"] for hit in hits if hit["document_line_ordinal"] > index
+    ]
     return min(positions) if positions else None
 
 
@@ -368,10 +399,12 @@ def _child_records_in_range(
 ) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
     for child in spec["children"]:
-        candidates = [hit for hit in hits[child["role"]] if start < hit["source_line_index"] < stop]
+        candidates = [
+            hit for hit in hits[child["role"]] if start < hit["document_line_ordinal"] < stop
+        ]
         if not candidates:
             continue
-        hit = min(candidates, key=lambda item: item["source_line_index"])
+        hit = min(candidates, key=lambda item: item["document_line_ordinal"])
         records.append(
             {
                 **canonical_clone_v1(hit),
@@ -381,12 +414,12 @@ def _child_records_in_range(
                 "role_kind": child["role_kind"],
             }
         )
-    return sorted(records, key=lambda item: item["source_line_index"])
+    return sorted(records, key=lambda item: item["document_line_ordinal"])
 
 
 def _candidate(
     *,
-    page: Mapping[str, Any],
+    line_by_document_ordinal: Mapping[int, Mapping[str, Any]],
     parent: Mapping[str, Any] | None,
     records: Sequence[Mapping[str, Any]],
     start: int,
@@ -402,19 +435,35 @@ def _candidate(
     hard_negatives = [
         canonical_clone_v1(hit)
         for hit in hard_negative_hits
-        if start <= hit["source_line_index"] < stop
+        if start <= hit["document_line_ordinal"] < stop
     ]
     reasons = [f"MISSING_REQUIRED_CHILD:{role}" for role in missing]
     if hard_negatives:
         reasons.append("HARD_NEGATIVE_FAMILY_IN_CLUSTER")
     preferred = sorted(records, key=lambda item: item["preferred_ordinal"])
+    anchors = [record for record in records]
+    if parent is not None:
+        anchors.append(parent)
+    if not anchors:
+        raise _error("accounting family candidate retained no structural anchor")
+    start_page = min(item["page_sequence"] for item in anchors)
+    end_page = max(item["page_sequence"] for item in anchors)
+    stop_line = line_by_document_ordinal.get(stop)
     return {
         "child_matches": canonical_clone_v1(list(records)),
-        "cluster_end_source_line_index_exclusive": stop,
-        "cluster_start_source_line_index": start,
+        "cluster_end_document_line_ordinal_exclusive": stop,
+        "cluster_end_page_sequence_inclusive": end_page,
+        "cluster_end_source_line_index_exclusive": (
+            stop_line["source_line_index"]
+            if stop_line is not None and stop_line["page_sequence"] == start_page
+            else None
+        ),
+        "cluster_start_document_line_ordinal": start,
+        "cluster_start_source_line_index": line_by_document_ordinal[start]["source_line_index"],
+        "continuation_page_count": end_page - start_page,
         "hard_negative_matches": hard_negatives,
         "observed_roles": observed_roles,
-        "page_sequence": page["page_sequence"],
+        "page_sequence": start_page,
         "parent_match": canonical_clone_v1(parent) if parent is not None else None,
         "parent_resolution": (
             "EXPLICIT_PARENT" if parent is not None else "IMPLIED_BY_REQUIRED_CHILD_CLUSTER"
@@ -426,15 +475,23 @@ def _candidate(
 
 
 def _explicit_candidates(
-    page: Mapping[str, Any], hits: Mapping[str, Any], spec: Mapping[str, Any]
+    hits: Mapping[str, Any],
+    spec: Mapping[str, Any],
+    *,
+    line_by_document_ordinal: Mapping[int, Mapping[str, Any]],
+    page_end_exclusive: Mapping[int, int],
 ) -> list[dict[str, Any]]:
     candidates = []
     maximum_span = spec["limits"]["max_cluster_span_lines"]
+    max_continuation = spec["limits"]["max_continuation_pages"]
+    maximum_page = max(page_end_exclusive)
     for parent_offset, parent in enumerate(hits["parents"]):
-        start = parent["source_line_index"]
+        start = parent["document_line_ordinal"]
+        allowed_end_page = min(maximum_page, parent["page_sequence"] + max_continuation)
         stops = [start + maximum_span + 1]
+        stops.append(page_end_exclusive[allowed_end_page])
         if parent_offset + 1 < len(hits["parents"]):
-            stops.append(hits["parents"][parent_offset + 1]["source_line_index"])
+            stops.append(hits["parents"][parent_offset + 1]["document_line_ordinal"])
         reset = _first_after(hits["resets"], start)
         if reset is not None:
             stops.append(reset)
@@ -442,7 +499,7 @@ def _explicit_candidates(
         records = _child_records_in_range(hits["children"], spec, start=start, stop=stop)
         candidates.append(
             _candidate(
-                page=page,
+                line_by_document_ordinal=line_by_document_ordinal,
                 parent=parent,
                 records=records,
                 start=start,
@@ -455,10 +512,12 @@ def _explicit_candidates(
 
 
 def _implied_candidates(
-    page: Mapping[str, Any],
     hits: Mapping[str, Any],
     spec: Mapping[str, Any],
     explicit: Sequence[Mapping[str, Any]],
+    *,
+    line_by_document_ordinal: Mapping[int, Mapping[str, Any]],
+    page_end_exclusive: Mapping[int, int],
 ) -> list[dict[str, Any]]:
     if spec["parent"]["resolution_mode"] != "EXPLICIT_OR_UNIQUE_REQUIRED_CHILD_CLUSTER":
         return []
@@ -472,38 +531,47 @@ def _implied_candidates(
     if any(not axis for axis in axes):
         return []
     maximum_span = spec["limits"]["max_cluster_span_lines"]
+    max_continuation = spec["limits"]["max_continuation_pages"]
     candidates: list[dict[str, Any]] = []
     seen: set[tuple[int, ...]] = set()
     for combination in itertools.product(*axes):
-        positions = [hit["source_line_index"] for hit in combination]
-        if len(set(positions)) != len(positions) or max(positions) - min(positions) > maximum_span:
+        positions = [hit["document_line_ordinal"] for hit in combination]
+        pages = [hit["page_sequence"] for hit in combination]
+        if (
+            len(set(positions)) != len(positions)
+            or max(positions) - min(positions) > maximum_span
+            or max(pages) - min(pages) > max_continuation
+        ):
             continue
         signature = tuple(sorted(positions))
         if signature in seen:
             continue
         seen.add(signature)
         start = min(positions) - 1
-        stop = max(positions) + maximum_span + 1
+        stop = min(
+            max(positions) + maximum_span + 1,
+            page_end_exclusive[min(max(page_end_exclusive), min(pages) + max_continuation)],
+        )
         resets = [
-            hit["source_line_index"]
+            hit["document_line_ordinal"]
             for hit in hits["resets"]
-            if start < hit["source_line_index"] < stop
+            if start < hit["document_line_ordinal"] < stop
         ]
         if resets and min(resets) <= max(positions):
             continue
         if resets:
             stop = min(stop, min(resets))
         if any(
-            item["cluster_start_source_line_index"]
+            item["cluster_start_document_line_ordinal"]
             <= min(positions)
-            < item["cluster_end_source_line_index_exclusive"]
+            < item["cluster_end_document_line_ordinal_exclusive"]
             for item in explicit
         ):
             continue
         records = _child_records_in_range(hits["children"], spec, start=start, stop=stop)
         candidates.append(
             _candidate(
-                page=page,
+                line_by_document_ordinal=line_by_document_ordinal,
                 parent=None,
                 records=records,
                 start=max(0, start),
@@ -547,12 +615,45 @@ def _minimal_unique_anchors(
 
 
 def _build(pages: Sequence[Mapping[str, Any]], spec: Mapping[str, Any]) -> dict[str, Any]:
-    candidates: list[dict[str, Any]] = []
+    combined_hits: dict[str, Any] = {
+        "children": {child["role"]: [] for child in spec["children"]},
+        "hard_negatives": [],
+        "parents": [],
+        "resets": [],
+    }
+    line_by_document_ordinal: dict[int, dict[str, Any]] = {}
+    page_end_exclusive: dict[int, int] = {}
+    offset = 0
     for page in pages:
-        hits = _page_hits(page, spec)
-        explicit = _explicit_candidates(page, hits, spec)
-        candidates.extend(explicit)
-        candidates.extend(_implied_candidates(page, hits, spec, explicit))
+        for local_ordinal, line in enumerate(page["lines"]):
+            line_by_document_ordinal[offset + local_ordinal] = {
+                "page_sequence": page["page_sequence"],
+                "source_line_index": line["source_line_index"],
+            }
+        hits = _page_hits(page, spec, document_offset=offset)
+        for role in combined_hits["children"]:
+            combined_hits["children"][role].extend(hits["children"][role])
+        for axis in ("hard_negatives", "parents", "resets"):
+            combined_hits[axis].extend(hits[axis])
+        offset += len(page["lines"])
+        page_end_exclusive[page["page_sequence"]] = offset
+
+    explicit = _explicit_candidates(
+        combined_hits,
+        spec,
+        line_by_document_ordinal=line_by_document_ordinal,
+        page_end_exclusive=page_end_exclusive,
+    )
+    candidates = [
+        *explicit,
+        *_implied_candidates(
+            combined_hits,
+            spec,
+            explicit,
+            line_by_document_ordinal=line_by_document_ordinal,
+            page_end_exclusive=page_end_exclusive,
+        ),
+    ]
 
     complete = [candidate for candidate in candidates if not candidate["unresolved_reasons"]]
     for candidate in complete:
@@ -561,6 +662,9 @@ def _build(pages: Sequence[Mapping[str, Any]], spec: Mapping[str, Any]) -> dict[
         )
     near = [candidate for candidate in candidates if candidate["unresolved_reasons"]]
     unique = len(complete) == 1 and complete[0]["minimal_unique_anchor"] is not None
+    semantic_anchor_hit_count = len(combined_hits["parents"]) + sum(
+        len(hits) for hits in combined_hits["children"].values()
+    )
     return {
         "metrics": {
             "complete_region_count": len(complete),
@@ -575,12 +679,15 @@ def _build(pages: Sequence[Mapping[str, Any]], spec: Mapping[str, Any]) -> dict[
             "reordered_complete_region_count": sum(
                 not item["preferred_sibling_order_preserved"] for item in complete
             ),
+            "semantic_anchor_hit_count": semantic_anchor_hit_count,
         },
         "near_regions": near,
         "regions": complete,
         "status": (
             "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
             if unique
+            else "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+            if semantic_anchor_hit_count == 0
             else "UNRESOLVED_NO_COMPLETE_REGION"
             if not complete
             else "UNRESOLVED_MULTIPLE_OR_NONUNIQUE_COMPLETE_REGIONS"

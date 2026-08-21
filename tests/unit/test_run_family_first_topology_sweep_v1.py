@@ -29,7 +29,11 @@ def _family_spec() -> dict[str, object]:
         "family_id": "CASH_PRECIOUS_METALS",
         "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V1",
         "hard_negative_aliases": [],
-        "limits": {"max_cluster_span_lines": 20, "max_label_line_span": 2},
+        "limits": {
+            "max_cluster_span_lines": 20,
+            "max_continuation_pages": 1,
+            "max_label_line_span": 2,
+        },
         "parent": {
             "aliases": ["Tiền mặt, vàng bạc, đá quý"],
             "resolution_mode": "EXPLICIT_ONLY",

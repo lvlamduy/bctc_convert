@@ -34,7 +34,11 @@ def _spec() -> dict[str, object]:
         "family_id": "CASH_PRECIOUS_METALS",
         "format_version": topology.SPEC_FORMAT_VERSION,
         "hard_negative_aliases": ["Tiền và các khoản tương đương tiền"],
-        "limits": {"max_cluster_span_lines": 20, "max_label_line_span": 2},
+        "limits": {
+            "max_cluster_span_lines": 20,
+            "max_continuation_pages": 1,
+            "max_label_line_span": 2,
+        },
         "parent": {
             "aliases": ["Tiền mặt, vàng bạc, đá quý"],
             "resolution_mode": "EXPLICIT_OR_UNIQUE_REQUIRED_CHILD_CLUSTER",
@@ -113,9 +117,9 @@ def test_sweep_routes_no_provenance_into_shared_matcher(monkeypatch: pytest.Monk
         "document_count": 2,
         "mapping_verified_count": 0,
         "multiple_or_nonunique_document_count": 0,
-        "no_complete_region_document_count": 1,
-        "not_observed_count": 0,
-        "unresolved_document_count": 2,
+        "no_complete_region_document_count": 0,
+        "not_observed_count": 1,
+        "unresolved_document_count": 0,
     }
     assert result["trials"][0]["private_provenance"]["bank"] == "ACB"
     assert result["trials"][0]["topology_scan"]["status"] == ("ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL")

@@ -1,0 +1,35 @@
+{
+  "family_id": "CASH_PRECIOUS_METALS",
+  "family_report_norm_id": 561,
+  "format_version": "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V1",
+  "role_bindings": [
+    {
+      "report_norm_id": 562,
+      "role": "CASH_VND"
+    },
+    {
+      "report_norm_id": 563,
+      "role": "CASH_FOREIGN"
+    },
+    {
+      "report_norm_id": 564,
+      "role": "FOREIGN_CURRENCY_VALUABLE_DOCUMENT"
+    },
+    {
+      "report_norm_id": 565,
+      "role": "MONETARY_GOLD"
+    },
+    {
+      "report_norm_id": 566,
+      "role": "NONMONETARY_GOLD"
+    },
+    {
+      "report_norm_id": 567,
+      "role": "OTHER_PRECIOUS_METALS_GEMS"
+    },
+    {
+      "report_norm_id": 568,
+      "role": "OTHER"
+    }
+  ]
+}

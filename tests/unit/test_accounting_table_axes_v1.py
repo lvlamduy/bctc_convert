@@ -6,11 +6,14 @@ import pytest
 
 from bctc_ai.evaluation.accounting_table_axes_v1 import (
     AccountingTableAxesV1Error,
+    accounting_unit_surface_v1,
     center_x2_v1,
     extract_period_axis_v1,
     extract_reporting_year_axis_v1,
     extract_typed_value_vector_v1,
+    infer_document_accounting_unit_context_v1,
     infer_document_reporting_period_context_v1,
+    is_accounting_value_surface_v1,
     is_number_like_v1,
     money_integer_v1,
     money_values_v1,
@@ -266,6 +269,16 @@ def test_relative_period_axis_uses_declared_balance_or_rollforward_semantics() -
     ]
 
 
+def test_relative_period_axis_accepts_year_end_and_year_start_surfaces() -> None:
+    axis, mode = extract_period_axis_v1([_line(7, "Số cuối năm", 100), _line(8, "Số đầu năm", 300)])
+
+    assert mode == "LOCAL_RELATIVE_PERIOD_ROLES"
+    assert [(item["period"], item["evidence_source_line_indices"]) for item in axis] == [
+        ("CURRENT_PERIOD_END", [7]),
+        ("COMPARATIVE_PERIOD_START", [8]),
+    ]
+
+
 def test_relative_period_axis_fails_closed_without_document_start_or_comparison() -> None:
     context = infer_document_reporting_period_context_v1(
         [
@@ -289,15 +302,56 @@ def test_units_and_numeric_surfaces_are_generic_and_typed() -> None:
     assert unit_kind_v1("Đơn vị: Triệu đồng") == "MONEY"
     assert unit_kind_v1("Triệu VND") == "MONEY"
     assert unit_kind_v1("Tỷ lệ %") == "PERCENT"
-    assert unit_kind_v1("Tỷ đồng") is None
+    assert accounting_unit_surface_v1("Tỷ lệ nợ xấu 2%") is None
+    assert unit_kind_v1("Tỷ đồng") == "MONEY"
+    assert accounting_unit_surface_v1("Đơn vị tính: nghìn VND") == {
+        "currency": "VND",
+        "magnitude_power10": 3,
+        "normalized_surface": "don vi tinh nghin vnd",
+        "unit_kind": "MONEY",
+    }
 
     assert is_number_like_v1("(1.210.726.423)") is True
     assert is_number_like_v1("49,50%") is True
     assert is_number_like_v1("-") is False
+    assert is_accounting_value_surface_v1("-") is True
+    assert is_accounting_value_surface_v1("–") is True
+    assert is_accounting_value_surface_v1("") is False
     assert money_integer_v1("1.210.726.423") == 1_210_726_423
     assert money_integer_v1("(35.170)") == -35_170
     assert money_integer_v1("-112,995") == -112_995
     assert money_integer_v1("49,50%") is None
+
+
+def test_document_unit_context_uses_explicit_consensus_without_bank_or_file_routing() -> None:
+    context = infer_document_accounting_unit_context_v1(
+        [
+            _page(1, _line(1, "Đơn vị tính: Triệu đồng", 100)),
+            _page(2, _line(1, "Triệu VND", 100)),
+            _page(3, _line(1, "Khoản tiền đồng thời được đối chiếu", 100)),
+        ]
+    )
+
+    assert context["resolution"] == "REPEATED_EXPLICIT_DOCUMENT_UNIT_CONSENSUS"
+    assert context["unit_kind"] == "MONEY"
+    assert context["currency"] == "VND"
+    assert context["magnitude_power10"] == 6
+    assert context["supporting_page_count"] == 2
+    assert [item["page_sequence"] for item in context["evidence"]] == [1, 2]
+
+
+def test_document_unit_context_fails_closed_on_conflicting_scales() -> None:
+    context = infer_document_accounting_unit_context_v1(
+        [
+            _page(1, _line(1, "Đơn vị: Triệu đồng", 100)),
+            _page(2, _line(1, "Đơn vị: Tỷ đồng", 100)),
+        ]
+    )
+
+    assert context["resolution"] == "UNRESOLVED_CONFLICTING_EXPLICIT_DOCUMENT_UNITS"
+    assert context["unit_kind"] is None
+    assert context["magnitude_power10"] is None
+    assert len(context["evidence"]) == 2
 
 
 def test_value_vector_uses_geometry_and_preserves_money_percent_lanes() -> None:

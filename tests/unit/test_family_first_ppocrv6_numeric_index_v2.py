@@ -5,12 +5,14 @@ import hashlib
 import io
 import pickle
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from PIL import Image
 
 from bctc_ai.evaluation import family_first_ppocrv6_numeric_index_v2 as index
 from bctc_ai.ocr import family_first_ppocrv6_numeric_runner_v1 as runner_v1
+from bctc_ai.ocr import family_first_ppocrv6_numeric_sharded_runner_v2 as runner_v2
 from bctc_ai.source_structure.contracts_v1 import canonical_json_bytes_v1
 
 
@@ -193,3 +195,132 @@ def test_v2_receipt_rejects_bool_as_int_and_self_rehash() -> None:
     attacked["receipt_id"] = "ffpniv2:receipt:" + index.canonical_json_sha256_v1(attacked_material)
     with pytest.raises(index.FamilyFirstPPocrV6NumericIndexV2Error):
         index._validate_receipt(attacked)
+
+
+def test_finalize_and_authenticate_v2_index_from_complete_shard_aggregate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "output/calibration").mkdir(parents=True)
+    model = {
+        "cache_directory": "PP-OCRv6_medium_rec",
+        "enable_mkldnn": False,
+        "repo_id": "PaddlePaddle/PP-OCRv6_medium_rec",
+        "required_files": [
+            {"path": f"model-{number}", "sha256": str(number) * 64, "size_bytes": number}
+            for number in range(1, 4)
+        ],
+        "revision": "e5a92bcbc5cc1b494628e458d267778f0704fd7c",
+    }
+    crop = _crop()
+    crop_sha = hashlib.sha256(crop).hexdigest()
+    batch = {
+        "batch_id": "ffslcv1:batch:" + "2" * 64,
+        "sample_count": 2,
+        "samples": [
+            {
+                "crop_ref": {"sha256": crop_sha, "size_bytes": len(crop)},
+                "sample_id": f"sample-{ordinal:09d}",
+            }
+            for ordinal in (1, 2)
+        ],
+    }
+    context = {
+        "archive": object(),
+        "batch": batch,
+        "config_payload": b"config",
+        "config_ref": {
+            "path": runner_v2._CONFIG_PATH.as_posix(),
+            "sha256": "c" * 64,
+            "size_bytes": 6,
+        },
+        "git": {
+            "commit": "a" * 40,
+            "dirty": False,
+            "implementation_refs": [],
+            "source_tree_oid": "b" * 40,
+        },
+        "model": model,
+        "model_cache": tmp_path,
+        "projection": {
+            "archive_id": "ffslav1:archive:" + "1" * 64,
+            "batch_id": batch["batch_id"],
+            "plan_id": "ffslpv1:plan:" + "3" * 64,
+            "sample_count": 2,
+        },
+        "session": object(),
+        "strict_git_head": True,
+    }
+
+    def execute(
+        _root,
+        _session,
+        *,
+        expected_sample_count,
+        result_sink,
+        first_sample_ordinal,
+        require_archive_end,
+        **_kwargs,
+    ):
+        for ordinal in range(first_sample_ordinal, first_sample_ordinal + expected_sample_count):
+            result_sink(
+                {
+                    "crop_sha256": crop_sha,
+                    "raw_prediction": "1" if ordinal == 1 else "–",
+                    "reader_score": 0.9,
+                    "sample_id": f"sample-{ordinal:09d}",
+                }
+            )
+        return (
+            {
+                "device": "cpu",
+                "model": copy.deepcopy(model),
+                "packages": {"paddleocr": "3.7.0", "paddlepaddle": "3.3.0"},
+                "precision": "fp32",
+            },
+            runner_v2._expected_counts(expected_sample_count, final_shard=require_archive_end),
+            {"model_load_seconds": 1.0, "total_wall_seconds": 2.0},
+        )
+
+    monkeypatch.setattr(
+        runner_v2.kernel_v1,
+        "execute_authenticated_ppocrv6_numeric_reference_blind_v1",
+        execute,
+    )
+    monkeypatch.setattr(runner_v2, "_assert_context", lambda *_args: None)
+    runner_v2._run_shard(tmp_path, context, shard_ordinal=1)
+    monkeypatch.setattr(runner_v2.runtime_v3, "_resolve_root", lambda value: value)
+    monkeypatch.setattr(runner_v2, "_context", lambda *_args, **_kwargs: copy.deepcopy(context))
+    runner_v2.aggregate_authenticated_family_first_ppocrv6_numeric_v2(
+        tmp_path, object(), model_cache=tmp_path
+    )
+
+    archive_capability = object()
+    plan = {
+        "plan_id": context["projection"]["plan_id"],
+        "documents": [{"page_count": 1}],
+    }
+    archive_payloads = (
+        SimpleNamespace(root=tmp_path, model_cache=tmp_path),
+        {"archive_id": context["projection"]["archive_id"]},
+        batch,
+        plan,
+        {"samples": []},
+    )
+    monkeypatch.setattr(index.archive_v1, "_root", lambda value: value)
+    monkeypatch.setattr(index.archive_v1, "_archive_payloads", lambda _capability: archive_payloads)
+
+    receipt = index.finalize_authenticated_family_first_ppocrv6_numeric_index_v2(
+        tmp_path, archive_capability, model_cache=tmp_path
+    )
+    capability = index.authenticate_family_first_ppocrv6_numeric_index_v2(
+        tmp_path, archive_capability, model_cache=tmp_path
+    )
+
+    assert receipt["metrics"] == {
+        "document_count": 1,
+        "empty_prediction_count": 0,
+        "page_count": 1,
+        "sample_count": 2,
+        "shard_count": 1,
+    }
+    assert type(capability) is index.AuthenticatedFamilyFirstPPocrV6NumericIndexV2

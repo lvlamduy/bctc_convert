@@ -27,6 +27,10 @@ Status meanings:
   corroborates or vetoes. Gemma 4 may independently reread a bound crop without
   seeing expected values. `family_first_numeric_cell_evidence_v1` rejects
   malformed groupings such as a dropped final digit instead of repairing them.
+  `accounting_additive_table_closure_v1` requires complete recognized
+  additive-child lanes and exactly one visible trailing row equal to every
+  lane sum; a mismatch, missing crop, or second equal candidate remains
+  unresolved and never back-solves a digit.
 - **Status:** `MITIGATED`.
 
 ## RFP-002 — Adjacent or merged column headers collapse into one header
@@ -81,7 +85,11 @@ Status meanings:
 - **Do not:** merge every next page or require the owner to repeat verbatim.
 - **Generic primitive/fix:** continuation requires compatible columns, period,
   unit, row topology, open boundary and no structural reset; hard negative
-  families remain explicit.
+  families remain explicit. The shared declarative topology scan now carries a
+  document-wide line ordinal and a family-configured continuation-page budget,
+  so parent/child anchors may cross a page boundary without joining label text
+  across pages. A structural reset terminates that proposal; period, unit and
+  column compatibility remain mandatory in the later evaluation gate.
 - **Status:** `MITIGATED`.
 
 ## RFP-006 — Source-only parent is mapped or added twice
@@ -112,15 +120,26 @@ Status meanings:
 
 - **Pattern:** a table lacks a local date/unit and inherits from a document,
   section or prior page; a nearby narrative/year becomes the chosen context.
-- **Examples:** BID million-VND notes; relative `Số cuối kỳ/Số đầu kỳ` headers;
-  annual vs interim periods.
+- **Examples:** BID million-VND notes; relative `Số cuối kỳ/Số đầu kỳ` or
+  `Số cuối năm/Số đầu năm` headers; annual vs interim periods; a
+  following central-bank-deposit heading adding a second pair of dates to the
+  candidate window when the structural reset wording has a qualifier.
 - **Cause:** nearest text is used without repeated document-level consensus and
   continuation scope.
 - **Do not:** hard-code 2025/2026 or inherit across a structural reset.
 - **Generic primitive/fix:** dominant repeated document-period context, typed
   balance/roll-forward semantics, scoped unit inheritance and visible reset
-  boundaries.
-- **Status:** `MITIGATED`; unit inheritance remains incomplete.
+  boundaries. The shared local-period extractor treats the `kỳ` and `năm`
+  end/start surfaces as the same relative roles; family specs enumerate
+  semantic next-family headings, including qualified central-bank variants,
+  so a later table cannot contaminate the local axis. Explicit document units
+  now retain currency and decimal magnitude; inheritance is allowed only when
+  all explicit document-unit evidence agrees. Local exact, split, two-year or
+  relative period headers are projected onto body-derived numeric columns and
+  checked against repeated document dates without reading a filename or fixed
+  year.
+- **Status:** `MITIGATED`; the shared period/unit column gate exists, while
+  cross-page axis inheritance and full-matrix coverage remain incomplete.
 
 ## RFP-009 — Quarter and cumulative periods are conflated
 
@@ -149,7 +168,10 @@ Status meanings:
 
 - **Pattern:** Gemma reconstructs a plausible nested table that conflicts with
   OCR boxes, source order or accounting closure.
-- **Examples:** rotated risk tables and merged multi-level headers.
+- **Examples:** rotated risk tables and merged multi-level headers. On CTG
+  annual cash p39, full-page Gemma copied the comparative `17` into the
+  current-period cell whose source pixel is a dash, and also changed visible
+  `22.581` to `22.561`; a row-only request omitted the dash entirely.
 - **Cause:** multimodal generation supplies semantic structure but not stable
   pixel provenance.
 - **Do not:** let Gemma alone choose a mapping, value, expected schema ID or
@@ -177,12 +199,31 @@ Status meanings:
 - **Pattern:** an empty cell, a visible dash and a printed zero are treated as
   the same value.
 - **Examples:** VIB segment fixed-assets blank; HDB/VCB risk-table dashes.
+- **Additional falsifier:** CTG annual cash/non-monetary-gold has a visible dash
+  in the current-period lane but the detector emits no box at all for that
+  cell; line-crop recognition alone therefore cannot distinguish it from a
+  blank.
 - **Cause:** absence of an OCR token is interpreted numerically.
 - **Do not:** turn an undetected or blank cell into zero.
 - **Generic primitive/fix:** typed `BLANK`, `DASH`, `PRINTED_ZERO` states; only a
   pixel-bound dash may normalize to numeric zero under the family policy. The
   shared numeric-cell evidence primitive now emits `BLANK_UNRESOLVED`,
   `DASH_ZERO`, or a conservative signed-number parse from the immutable crop.
+  Shared geometry treats a visible dash as a cell candidate but never treats
+  an empty OCR surface as zero; a row candidate whose baseline displacement
+  exceeds the adaptive row scale is rejected even when adjacent OCR boxes
+  touch, so a missing lane cannot borrow a value from the following row.
+  The row-binding projection retains each visible cell's body-derived
+  `column_ordinal`; a lone right-hand value therefore remains comparative/right
+  rather than being shifted into the first lane. When the table grid proves a
+  lane is present but the detector has no box, the downstream authenticated
+  page-region primitive re-renders the exact sealed source page and crops the
+  proposed row-band × column-domain cell. The crop is still only evidence
+  input: either the recognizer must independently see the dash or the narrowly
+  bounded pixel-glyph classifier must prove one centered horizontal mark before
+  zero is admitted. The family row-axis now replays that proposed region and
+  glyph evidence before completing the missing lane; a blank or non-dash crop
+  leaves the row incomplete.
 - **Status:** `MITIGATED`.
 
 ## RFP-014 — A table row absorbs page furniture or an audit stamp
@@ -236,7 +277,8 @@ Status meanings:
   the final numeric value.
 - **Examples:** visible dashes without a recognition token; dropped final digits
   such as VIB `97.043.85`; closely spaced risk-table cells whose boxes are
-  correct while one recognizer merges their content.
+  correct while one recognizer merges their content; a visible numeric/dash
+  cell for which the detector produced no geometry at all.
 - **Cause:** text detection and text recognition are separate models, but their
   outputs are collapsed into one informal “OCR result”.
 - **Do not:** infer digits from bbox presence, promote an empty detector token
@@ -247,9 +289,22 @@ Status meanings:
   is parsed by `family_first_numeric_cell_evidence_v1`. A visible dash may become
   zero, a blank remains unresolved, and accounting closure only corroborates or
   vetoes. Gemma may provide a blind independent challenger on difficult crops.
-- **Status:** `MITIGATED`; detector and conservative numeric-evidence primitives
-  are separated, while the new family-first authenticated numeric batch receipt
-  is still pending.
+  If detector geometry is absent, a proposed cell is cropped from an
+  authenticated full-page render using generic table row/column geometry; this
+  proposal is explicitly not numeric authority and remains replayable from the
+  pinned source PDF and bbox. A wide missing-cell crop is tightened to stable
+  glyph components before recognition. Because PP-OCRv6 can still read a short
+  dash as a letter (real CTG result: `è`) and Gemma can copy the neighboring
+  value, one centered horizontal-glyph classifier supplies a separate
+  crop-hash-bound `VISIBLE_HORIZONTAL_DASH_GLYPH` observation. It never
+  classifies digits, blanks, multiple components, off-center marks, or table
+  rules and never sees an expected value or accounting equation. The bounded
+  solid horizontal bar emitted by some embedded PDF dash fonts is supported,
+  while a full-span table rule remains rejected.
+- **Status:** `MITIGATED`; detector, recognizer, authenticated page-region crop,
+  and conservative visible-dash pixel evidence are separated. The GPU-sharded
+  family-first authenticated numeric receipt is implemented and its full-axis
+  formal execution is in progress.
 
 ## RFP-018 — An OCR receipt locks unrelated family-engine source forever
 
@@ -271,3 +326,91 @@ Status meanings:
   silently.
 - **Status:** `RESOLVED` for the family-first VietOCR and PP-OCRv6 numeric lanes
   before either formal all-filing inference run.
+
+## RFP-019 — Preflight requires an unauthenticated ambient model distribution
+
+- **Pattern:** a model runner rejects the intended clean environment before
+  inference because it asks package metadata for a model package that is
+  deliberately available only through its authenticated private wheel.
+- **Examples:** the first family-first VietOCR launch found the exact pinned
+  PyTorch/CUDA environment but raised `PackageNotFoundError: vietocr` before
+  attempt creation, model import or model load.
+- **Cause:** ambient dependency validation and private model-wheel validation
+  were performed as though they shared one import environment.
+- **Do not:** install a second ambient VietOCR copy, suppress version checks, or
+  count a preflight-only launcher failure as a model inference attempt.
+- **Generic primitive/fix:** preflight validates ambient dependencies excluding
+  the deliberately private model distribution, authenticates the exact wheel
+  and installed overlay bytes, materializes that wheel into a private 0700
+  overlay, then observes and validates the complete package ledger after import
+  from that overlay. No output root is staked before this preflight succeeds.
+- **Status:** `RESOLVED` for the family-first VietOCR runner; regression and real
+  RTX 4090 preflight both pass.
+
+## RFP-020 — Right-aligned short values create a false numeric column
+
+- **Pattern:** a short value such as `17` has a bbox center far to the right of
+  longer values in the same column, so center-only clustering invents an extra
+  lane and proposes a missing cell in the real comparative column.
+- **Examples:** CTG annual cash/non-monetary-gold: `17` shares the comparative
+  right edge with `22.581` and `18.440`, but its bbox center differs by about one
+  full glyph width.
+- **Cause:** numeric columns are inferred only from bbox centers although
+  financial values may be right-, center-, or left-aligned.
+- **Do not:** add a coordinate tolerance for one page, drop short values, or
+  assume every table is right-aligned.
+- **Generic primitive/fix:** cluster the same body values independently by
+  left, center, and right anchors; select the alignment with the smallest
+  coherent repeated lane set, then project the cluster's median visual center
+  to headers and rows. This remains page-scale adaptive and bank/family blind.
+- **Status:** `MITIGATED`; synthetic scale tests and the exact CTG source-page
+  dash replay pass, while the 140-filing family sweep remains pending.
+
+## RFP-021 — One monolithic OCR process makes completed work non-durable
+
+- **Pattern:** a complete-corpus recognizer keeps every proposal in an
+  `.incomplete` artifact until the final sample, so one external termination
+  discards hours or days of otherwise ordered output.
+- **Examples:** the first all-filing PP-OCRv6 numeric attempt was externally
+  sent `SIGTERM` after 6,528 of 667,224 crops; Paddle, the model and the crop
+  axis had not failed.
+- **Cause:** atomicity was applied only to the full corpus instead of to bounded
+  deterministic units of work.
+- **Do not:** relabel the partial JSONL as complete, resume inside an unverified
+  partial shard, or claim that no physical retry occurred.
+- **Generic primitive/fix:** partition the immutable anonymous archive axis
+  into fixed contiguous shards. Each shard starts from a fresh or reset sealed
+  reader position, retains global sample IDs, validates every crop/result and
+  is published atomically only after complete readback. Hidden interrupted
+  stages have no authority and are never resumed. A later aggregate is
+  published only after all shard ranges replay gap-free in order. Receipts
+  explicitly set physical-attempt and retry-absence attestations to false. A
+  real CPU shard measured only about 1.5 crops/second, while the exact same
+  pinned recognizer on the RTX 4090 measured about 26.3 crops/second. The GPU
+  lane therefore has a separate V3 cache, execution policy and receipt that
+  pin `paddlepaddle-gpu`, `gpu:0`, FP32, the device name and compute capability;
+  CPU and GPU shards are never mixed in one aggregate.
+- **Status:** `MITIGATED`; CPU V2 and GPU V3 shard/aggregate/index contracts pass
+  focused tests, the first CPU shard is retained only as a cross-backend
+  challenger, and the formal GPU all-axis execution is pending.
+
+## RFP-022 — No semantic anchor is confused with a partial family match
+
+- **Pattern:** a complete filing with none of a family's parent/child anchors is
+  reported as the same unresolved state as a filing that contains a partial or
+  ambiguous family structure.
+- **Examples:** a filing whose notes begin after the cash family versus a filing
+  that contains the cash heading but loses one required row or column.
+- **Cause:** all zero-region topology outcomes were collapsed into one
+  `UNRESOLVED_NO_COMPLETE_REGION` status.
+- **Do not:** claim authoritative absence from string search alone, or keep a
+  genuinely partial structure in the no-anchor bucket.
+- **Generic primitive/fix:** the complete-document topology scan counts blind
+  semantic anchors before region assembly. Zero parent/child anchors yields
+  `NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY`; any partial anchor evidence
+  remains `UNRESOLVED_NO_COMPLETE_REGION`. Exact live replay is still required,
+  and `NOT_OBSERVED` remains proposal-only rather than source-wide absence
+  authority.
+- **Status:** `MITIGATED`; shared topology and both topology/evidence sweep
+  metrics now preserve the distinction, while the first 140-filing formal
+  sweep remains pending completion of the OCR indices.

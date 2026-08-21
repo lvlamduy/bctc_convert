@@ -66,7 +66,11 @@ def _generic_spec(*, parent_mode: str = "EXPLICIT_ONLY") -> dict[str, object]:
         "family_id": "LOAN_MATURITY",
         "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V1",
         "hard_negative_aliases": ["Phân tích chất lượng nợ"],
-        "limits": {"max_cluster_span_lines": 20, "max_label_line_span": 3},
+        "limits": {
+            "max_cluster_span_lines": 20,
+            "max_continuation_pages": 1,
+            "max_label_line_span": 3,
+        },
         "parent": {
             "aliases": ["Phân tích dư nợ theo thời gian"],
             "resolution_mode": parent_mode,
@@ -89,7 +93,11 @@ def _parent_child_pair_spec(*, parent_mode: str = "EXPLICIT_ONLY") -> dict[str, 
         "family_id": "LOAN_INDUSTRY",
         "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V1",
         "hard_negative_aliases": [],
-        "limits": {"max_cluster_span_lines": 20, "max_label_line_span": 2},
+        "limits": {
+            "max_cluster_span_lines": 20,
+            "max_continuation_pages": 1,
+            "max_label_line_span": 2,
+        },
         "parent": {
             "aliases": ["Phân tích dư nợ theo ngành kinh tế"],
             "resolution_mode": parent_mode,
@@ -119,7 +127,9 @@ def test_cash_spec_is_declarative_and_accepts_reordered_wrapped_children() -> No
                 "2",
                 "31",
                 "34",
-                "Tiền gửi tại NHNN",
+                "Tiền gửi tại Ngân hàng Nhà nước Việt Nam",
+                "31/12/2026",
+                "31/12/2025",
             ]
         )
     ]
@@ -133,8 +143,10 @@ def test_cash_spec_is_declarative_and_accepts_reordered_wrapped_children() -> No
         "implied_parent_region_count": 0,
         "near_region_count": 0,
         "reordered_complete_region_count": 1,
+        "semantic_anchor_hit_count": 4,
     }
     region = result["regions"][0]
+    assert region["cluster_end_source_line_index_exclusive"] == 16
     assert region["observed_roles"] == ["CASH_FOREIGN", "CASH_VND", "MONETARY_GOLD"]
     assert region["preferred_sibling_order_preserved"] is False
     assert region["child_matches"][1]["surface"] == "Tiền mặt bằng Đồng Việt Nam"
@@ -157,6 +169,24 @@ def test_parent_can_be_implied_only_when_the_declarative_family_permits_it() -> 
     assert implied["regions"][0]["preferred_sibling_order_preserved"] is False
 
 
+def test_complete_document_without_any_family_anchor_is_distinct_from_partial_match() -> None:
+    absent = build_accounting_family_topology_scan_v1(
+        [_page(["Chứng khoán kinh doanh", "100", "200"])],
+        _generic_spec(),
+    )
+    partial = build_accounting_family_topology_scan_v1(
+        [_page(["Nợ ngắn hạn", "100"])],
+        _generic_spec(),
+    )
+
+    assert absent["status"] == "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    assert absent["metrics"]["semantic_anchor_hit_count"] == 0
+    assert absent["regions"] == []
+    assert absent["near_regions"] == []
+    assert partial["status"] == "UNRESOLVED_NO_COMPLETE_REGION"
+    assert partial["metrics"]["semantic_anchor_hit_count"] == 1
+
+
 def test_explicit_parent_plus_one_required_child_can_prove_unique_pair() -> None:
     pages = [_page(["Phân tích dư nợ theo ngành kinh tế", "Nông nghiệp", "100"])]
 
@@ -173,6 +203,70 @@ def test_explicit_parent_plus_one_required_child_can_prove_unique_pair() -> None
         "selected_roles": ["PARENT:LOAN_INDUSTRY", "CHILD:AGRICULTURE"],
     }
     assert missing_parent["status"] == "UNRESOLVED_NO_COMPLETE_REGION"
+
+
+def test_explicit_family_can_continue_once_across_a_physical_page_boundary() -> None:
+    pages = [
+        _page(
+            [
+                "Phân tích dư nợ theo thời gian",
+                "Nợ ngắn hạn",
+                "100",
+            ],
+            page_sequence=1,
+        ),
+        _page(
+            [
+                "Nợ trung hạn",
+                "200",
+                "Nợ dài hạn",
+                "300",
+            ],
+            page_sequence=2,
+        ),
+    ]
+
+    result = build_accounting_family_topology_scan_v1(pages, _generic_spec())
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    region = result["regions"][0]
+    assert region["continuation_page_count"] == 1
+    assert region["page_sequence"] == 1
+    assert region["cluster_end_page_sequence_inclusive"] == 2
+    assert region["cluster_end_source_line_index_exclusive"] is None
+    assert [item["page_sequence"] for item in region["child_matches"]] == [1, 2, 2]
+    assert region["minimal_unique_anchor"]["combination_size"] == 2
+
+
+def test_continuation_budget_and_next_page_reset_both_fail_closed() -> None:
+    pages = [
+        _page(
+            ["Phân tích dư nợ theo thời gian", "Nợ ngắn hạn", "100"],
+            page_sequence=1,
+        ),
+        _page(["Nợ trung hạn", "200"], page_sequence=2),
+    ]
+    no_continuation = _generic_spec()
+    no_continuation["limits"]["max_continuation_pages"] = 0
+
+    bounded = build_accounting_family_topology_scan_v1(pages, no_continuation)
+    reset = build_accounting_family_topology_scan_v1(
+        [
+            pages[0],
+            _page(
+                ["Phân tích cho vay theo ngành", "Nợ trung hạn", "200"],
+                page_sequence=2,
+            ),
+        ],
+        _generic_spec(),
+    )
+
+    assert bounded["status"] == "UNRESOLVED_NO_COMPLETE_REGION"
+    assert bounded["near_regions"][0]["unresolved_reasons"] == [
+        "MISSING_REQUIRED_CHILD:MEDIUM_TERM"
+    ]
+    assert reset["status"] == "UNRESOLVED_NO_COMPLETE_REGION"
+    assert reset["near_regions"][0]["unresolved_reasons"] == ["MISSING_REQUIRED_CHILD:MEDIUM_TERM"]
 
 
 def test_hard_negative_and_structural_reset_fail_closed_without_layout_routing() -> None:

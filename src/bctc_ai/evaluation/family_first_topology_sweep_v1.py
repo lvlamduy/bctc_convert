@@ -110,14 +110,18 @@ def _metrics(trials: list[dict[str, Any]]) -> dict[str, int]:
     no_complete = sum(
         trial["topology_scan"]["status"] == "UNRESOLVED_NO_COMPLETE_REGION" for trial in trials
     )
+    not_observed = sum(
+        trial["topology_scan"]["status"] == "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+        for trial in trials
+    )
     return {
         "accepted_unique_topology_proposal_count": accepted,
         "document_count": len(trials),
         "mapping_verified_count": 0,
         "multiple_or_nonunique_document_count": multiple,
         "no_complete_region_document_count": no_complete,
-        "not_observed_count": 0,
-        "unresolved_document_count": len(trials),
+        "not_observed_count": not_observed,
+        "unresolved_document_count": len(trials) - accepted - not_observed,
     }
 
 

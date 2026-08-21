@@ -20,8 +20,11 @@ from bctc_ai.evaluation.accounting_variant_graph_engine_v1 import (
 
 __all__ = [
     "AccountingTableAxesV1Error",
+    "accounting_unit_surface_v1",
     "center_x2_v1",
+    "infer_document_accounting_unit_context_v1",
     "infer_document_reporting_period_context_v1",
+    "is_accounting_value_surface_v1",
     "extract_period_axis_v1",
     "extract_reporting_year_axis_v1",
     "extract_typed_value_vector_v1",
@@ -35,12 +38,14 @@ __all__ = [
 
 
 _NUMBER = re.compile(r"^[()]*[+-]?[0-9][0-9., ]*%?[()]*$")
+_VISIBLE_DASHES = {"-", "–", "—", "−"}
 _FULL_DATE = re.compile(r"(?<!\d)(\d{1,2})\s*[./-]\s*(\d{1,2})\s*[./-]\s*(\d{4})(?!\d)")
 _DAY_MONTH = re.compile(r"\b(?:ngay\s+)?(\d{1,2})\s+thang\s+(\d{1,2})\b")
 _YEAR = re.compile(r"\bnam\s+(\d{4})\b")
 _REPORTING_YEAR = re.compile(r"(?<!\d)(20\d{2})(?!\d)")
 _REPORTING_PERIOD_ENDS = {(3, 31), (6, 30), (9, 30), (12, 31)}
 _MAX_DOCUMENT_DATE_EVIDENCE = 8
+_MAX_DOCUMENT_UNIT_EVIDENCE = 12
 
 
 class AccountingTableAxesV1Error(ValueError):
@@ -102,6 +107,20 @@ def is_number_like_v1(value: str) -> bool:
     return bool(compact and _NUMBER.fullmatch(compact) and any(char.isdigit() for char in compact))
 
 
+def is_accounting_value_surface_v1(value: str) -> bool:
+    """Return whether a visible crop can occupy an accounting value cell.
+
+    A printed dash is a real cell surface even though it is not a recognized
+    number.  An empty OCR surface is not evidence of a zero-valued cell.
+    Numeric parsing and the family dash-to-zero policy remain separate gates.
+    """
+
+    if type(value) is not str:
+        raise _error("accounting value surface must be one exact string")
+    compact = value.strip()
+    return compact in _VISIBLE_DASHES or is_number_like_v1(value)
+
+
 def money_integer_v1(value: str) -> int | None:
     if type(value) is not str:
         raise _error("money surface must be one exact string")
@@ -133,13 +152,169 @@ def _percentage(value: str) -> Decimal | None:
     return result if result.is_finite() else None
 
 
-def unit_kind_v1(value: str) -> str | None:
+def accounting_unit_surface_v1(value: str) -> dict[str, Any] | None:
+    """Parse one explicit accounting unit without using a family or schema.
+
+    Magnitudes are powers of ten in the stated currency.  The record is only a
+    visible-text proposal: its scope still has to be established locally or by
+    a document-wide inheritance gate.
+    """
+
+    if type(value) is not str:
+        raise _error("accounting unit surface must be one exact string")
     normalized = normalize_vietnamese_anchor_v1(value)
     if "%" in normalized:
-        return "PERCENT"
-    if "trieu" in normalized and ("vnd" in normalized or "dong" in normalized):
-        return "MONEY"
+        words = set(normalized.replace("%", " ").split())
+        if any(character.isdigit() for character in normalized) or not (
+            normalized.startswith(("don vi ", "don vi tinh ", "dvt "))
+            or words <= {"le", "phan", "tram", "ty"}
+        ):
+            return None
+        return {
+            "currency": None,
+            "magnitude_power10": None,
+            "normalized_surface": normalized,
+            "unit_kind": "PERCENT",
+        }
+    words = set(normalized.split())
+    currency = "VND" if words & {"dong", "vnd"} else None
+    if currency is None:
+        return None
+    if "ty" in words:
+        magnitude = 9
+    elif "trieu" in words:
+        magnitude = 6
+    elif "nghin" in words:
+        magnitude = 3
+    elif normalized.startswith(("don vi ", "don vi tinh ", "dvt ")):
+        magnitude = 0
+    else:
+        return None
+    return {
+        "currency": currency,
+        "magnitude_power10": magnitude,
+        "normalized_surface": normalized,
+        "unit_kind": "MONEY",
+    }
+
+
+def unit_kind_v1(value: str) -> str | None:
+    parsed = accounting_unit_surface_v1(value)
+    if parsed is not None:
+        return parsed["unit_kind"]
     return None
+
+
+def _is_explicit_document_unit_surface(normalized: str) -> bool:
+    if normalized.startswith(("don vi ", "don vi tinh ", "dvt ")):
+        return True
+    return normalized in {
+        "dong",
+        "nghin dong",
+        "nghin vnd",
+        "trieu dong",
+        "trieu vnd",
+        "ty dong",
+        "ty vnd",
+    }
+
+
+def infer_document_accounting_unit_context_v1(
+    pages: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Propose one repeated/unique explicit document money unit.
+
+    The routine never reads a bank, path, filename, year, note or family.  It
+    rejects conflicting explicit units and retains source locations so a later
+    family gate can prove that inheritance does not cross a structural reset.
+    """
+
+    if not isinstance(pages, Sequence) or isinstance(pages, (str, bytes)):
+        raise _error("document unit pages must be one sequence of page records")
+    observations: dict[tuple[str, str | None, int | None], list[dict[str, Any]]] = {}
+    for expected_page_sequence, raw_page in enumerate(pages, 1):
+        if not isinstance(raw_page, Mapping):
+            raise _error("document unit page must be one mapping")
+        page_sequence = raw_page.get("page_sequence")
+        lines = raw_page.get("lines")
+        if (
+            type(page_sequence) is not int
+            or page_sequence != expected_page_sequence
+            or type(lines) is not list
+        ):
+            raise _error("document unit page identity or line axis drifted")
+        seen_line_indices: set[int] = set()
+        for line in lines:
+            if not isinstance(line, Mapping):
+                raise _error("document unit line must be one mapping")
+            text = _text(line, "document unit line")
+            source_line_index = _source_line_index(line, "document unit line")
+            if source_line_index in seen_line_indices:
+                raise _error("document unit source line axis repeats")
+            seen_line_indices.add(source_line_index)
+            _bbox(line, "document unit line")
+            parsed = accounting_unit_surface_v1(text)
+            normalized = normalize_vietnamese_anchor_v1(text)
+            if parsed is None or not _is_explicit_document_unit_surface(normalized):
+                continue
+            key = (
+                parsed["unit_kind"],
+                parsed["currency"],
+                parsed["magnitude_power10"],
+            )
+            observations.setdefault(key, []).append(
+                {
+                    "page_sequence": page_sequence,
+                    "source_line_index": source_line_index,
+                    "surface": text,
+                }
+            )
+    if not observations:
+        return {
+            "currency": None,
+            "evidence": [],
+            "evidence_truncated": False,
+            "magnitude_power10": None,
+            "resolution": "UNRESOLVED_NO_EXPLICIT_DOCUMENT_UNIT",
+            "supporting_page_count": 0,
+            "unit_kind": None,
+        }
+    if len(observations) != 1:
+        evidence = [
+            {
+                "currency": key[1],
+                "magnitude_power10": key[2],
+                "occurrence_count": len(items),
+                "supporting_page_count": len({item["page_sequence"] for item in items}),
+                "unit_kind": key[0],
+            }
+            for key, items in sorted(observations.items(), key=lambda item: str(item[0]))
+        ]
+        return {
+            "currency": None,
+            "evidence": evidence,
+            "evidence_truncated": False,
+            "magnitude_power10": None,
+            "resolution": "UNRESOLVED_CONFLICTING_EXPLICIT_DOCUMENT_UNITS",
+            "supporting_page_count": 0,
+            "unit_kind": None,
+        }
+    (unit_kind, currency, magnitude), evidence = next(iter(observations.items()))
+    ordered = sorted(evidence, key=lambda item: (item["page_sequence"], item["source_line_index"]))
+    supporting_pages = len({item["page_sequence"] for item in ordered})
+    return {
+        "currency": currency,
+        "evidence": ordered[:_MAX_DOCUMENT_UNIT_EVIDENCE],
+        "evidence_truncated": len(ordered) > _MAX_DOCUMENT_UNIT_EVIDENCE,
+        "magnitude_power10": magnitude,
+        "resolution": (
+            "REPEATED_EXPLICIT_DOCUMENT_UNIT_CONSENSUS"
+            if supporting_pages >= 2
+            else "UNIQUE_EXPLICIT_DOCUMENT_UNIT_PROPOSAL"
+        ),
+        "supporting_page_count": supporting_pages,
+        "unit_kind": unit_kind,
+    }
 
 
 def extract_period_axis_v1(
@@ -190,7 +365,7 @@ def extract_period_axis_v1(
         if matched := _YEAR.search(normalized):
             years.append((line, int(matched.group(1))))
             continue
-        if normalized == "so cuoi ky":
+        if normalized in {"so cuoi ky", "so cuoi nam"}:
             relative.append(
                 {
                     "evidence_source_line_indices": [
@@ -200,7 +375,7 @@ def extract_period_axis_v1(
                     "x_center_x2": center_x2_v1(line),
                 }
             )
-        elif normalized == "so dau ky":
+        elif normalized in {"so dau ky", "so dau nam"}:
             relative.append(
                 {
                     "evidence_source_line_indices": [

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.metadata
 import io
 import sys
 import types
@@ -18,6 +19,59 @@ def _png() -> bytes:
     output = io.BytesIO()
     Image.new("RGB", (20, 10), "white").save(output, format="PNG")
     return output.getvalue()
+
+
+def test_preflight_authenticates_private_vietocr_wheel_without_ambient_distribution(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[str] = []
+
+    def version(name: str) -> str:
+        calls.append(name)
+        if name == "vietocr":
+            raise importlib.metadata.PackageNotFoundError(name)
+        return kernel.runtime_v3._EXPECTED_PACKAGES[name]
+
+    torch = types.ModuleType("torch")
+    torch.__version__ = "2.12.0+cu130"
+    torch.version = types.SimpleNamespace(cuda="13.0")
+    torch.cuda = types.SimpleNamespace(
+        get_device_capability=lambda _ordinal: (8, 9),
+        get_device_name=lambda _ordinal: "NVIDIA GeForce RTX 4090",
+        is_available=lambda: True,
+    )
+    monkeypatch.setitem(sys.modules, "torch", torch)
+    monkeypatch.setattr(kernel.importlib.metadata, "version", version)
+    monkeypatch.setattr(
+        kernel.runtime_v3,
+        "_validate_config",
+        lambda _payload: {"runtime": {"site_packages": "site-packages"}},
+    )
+    monkeypatch.setattr(
+        kernel.runtime_v3,
+        "_snapshot_runtime",
+        lambda _config: (
+            {"wheel": b"authenticated-wheel"},
+            {"wheel": {"sha256": "1" * 64}},
+        ),
+    )
+    verified: list[tuple[bytes, Path]] = []
+    monkeypatch.setattr(
+        kernel.runtime_v3,
+        "_verify_wheel_overlay",
+        lambda wheel, path: verified.append((wheel, path)),
+    )
+
+    result = kernel.preflight_authenticated_vietocr_runtime_v1(b"config")
+
+    assert "vietocr" not in calls
+    assert result["snapshots"]["wheel"] == b"authenticated-wheel"
+    assert verified == [
+        (
+            b"authenticated-wheel",
+            kernel.runtime_v3.RUNTIME_ROOT / "site-packages",
+        )
+    ]
 
 
 def test_kernel_consumes_one_opaque_session_in_order_and_preserves_nan_as_null(

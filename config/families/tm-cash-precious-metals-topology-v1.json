@@ -71,6 +71,7 @@
     "Rủi ro tiền tệ"
   ],
   "limits": {
+    "max_continuation_pages": 1,
     "max_cluster_span_lines": 48,
     "max_label_line_span": 3
   },
@@ -85,6 +86,8 @@
   },
   "structural_reset_aliases": [
     "Tiền gửi tại Ngân hàng Nhà nước",
+    "Tiền gửi tại Ngân hàng Nhà nước Việt Nam",
+    "Tiền gửi tại Ngân hàng Trung ương",
     "Tiền gửi tại NHNN",
     "Tiền gửi và cho vay các tổ chức tín dụng khác",
     "Chứng khoán kinh doanh"
