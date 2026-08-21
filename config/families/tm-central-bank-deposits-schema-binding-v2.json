@@ -1,0 +1,34 @@
+{
+  "aggregate_role_bindings": [
+    {
+      "operation": "SUM_OBSERVED_SOURCE_ROLES",
+      "report_norm_id": 574,
+      "role": "OTHER_CENTRAL_BANK_DEPOSITS_AGGREGATE",
+      "source_roles": [
+        "CENTRAL_BANK_LAOS",
+        "CENTRAL_BANK_CAMBODIA"
+      ]
+    }
+  ],
+  "family_id": "CENTRAL_BANK_DEPOSITS",
+  "family_report_norm_id": 569,
+  "format_version": "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V2",
+  "role_bindings": [
+    {
+      "report_norm_id": 571,
+      "role": "DEPOSIT_VND"
+    },
+    {
+      "report_norm_id": 572,
+      "role": "DEPOSIT_FOREIGN_CURRENCY"
+    },
+    {
+      "report_norm_id": 570,
+      "role": "CENTRAL_BANK_VIETNAM_PARENT"
+    },
+    {
+      "report_norm_id": 573,
+      "role": "BLOCKED_DEPOSIT"
+    }
+  ]
+}

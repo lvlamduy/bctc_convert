@@ -7,8 +7,9 @@ schema, and mapping decisions to independent shared primitives and the family
 evaluation layer.
 
 The same engine supports explicit or structurally implied parents, required
-and optional siblings, reordered rows, wrapped labels, hard-negative families,
-and structural resets.  It also proves the smallest role combination that is
+and optional siblings, declarative alternative core-role combinations,
+reordered rows, wrapped labels, hard-negative families, and structural resets.
+It also proves the smallest role combination that is
 unique in the supplied document by exhausting pairs before triples.  No bank,
 filename, note number, page selector, reporting year, or schema ID is accepted
 by the specification.
@@ -33,6 +34,7 @@ from bctc_ai.source_structure.contracts_v1 import (
 __all__ = [
     "FORMAT_VERSION",
     "SPEC_FORMAT_VERSION",
+    "SPEC_FORMAT_VERSION_V2",
     "AccountingFamilyTopologyV1Error",
     "build_accounting_family_topology_scan_v1",
     "validate_accounting_family_topology_scan_replay_v1",
@@ -41,6 +43,7 @@ __all__ = [
 
 FORMAT_VERSION = "ACCOUNTING_FAMILY_TOPOLOGY_SCAN_V1"
 SPEC_FORMAT_VERSION = "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V1"
+SPEC_FORMAT_VERSION_V2 = "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V2"
 CLAIM_BOUNDARY = (
     "COMPLETE_DOCUMENT_BANK_BLIND_FRESH_VIETOCR_PARENT_REQUIRED_OPTIONAL_SIBLING_"
     "WRAPPED_LABEL_FLEXIBLE_ORDER_HARD_NEGATIVE_STRUCTURAL_RESET_AND_PAIR_BEFORE_"
@@ -71,6 +74,7 @@ _SPEC_FIELDS = {
     "parent",
     "structural_reset_aliases",
 }
+_SPEC_V2_FIELDS = {*_SPEC_FIELDS, "required_role_combinations"}
 _RESULT_FIELDS = {
     "claim_boundary",
     "family_id",
@@ -151,11 +155,14 @@ def _bbox(value: Any) -> list[int]:
 
 
 def _spec(value: Any) -> dict[str, Any]:
-    if type(value) is not dict or set(value) != _SPEC_FIELDS:
+    if type(value) is not dict or (set(value) != _SPEC_FIELDS and set(value) != _SPEC_V2_FIELDS):
         raise _error("accounting family topology spec fields drifted")
     family_id = _nonempty_string(value["family_id"], "family ID")
-    if value["format_version"] != SPEC_FORMAT_VERSION:
+    spec_version = value["format_version"]
+    if spec_version not in {SPEC_FORMAT_VERSION, SPEC_FORMAT_VERSION_V2}:
         raise _error("accounting family topology spec version drifted")
+    if (spec_version == SPEC_FORMAT_VERSION) is not (set(value) == _SPEC_FIELDS):
+        raise _error("accounting family topology spec version/field set drifted")
     parent = value["parent"]
     if type(parent) is not dict or set(parent) != {"aliases", "resolution_mode", "role"}:
         raise _error("accounting family parent spec fields drifted")
@@ -191,8 +198,33 @@ def _spec(value: Any) -> dict[str, Any]:
                 "role_kind": role_kind,
             }
         )
-    if sum(child["presence"] == "REQUIRED" for child in children) < 1:
-        raise _error("accounting family needs at least one required child role")
+    required_roles = [child["role"] for child in children if child["presence"] == "REQUIRED"]
+    if spec_version == SPEC_FORMAT_VERSION:
+        if not required_roles:
+            raise _error("accounting family needs at least one required child role")
+        required_role_combinations = [required_roles]
+    else:
+        if required_roles:
+            raise _error("alternative-core topology roles must use OPTIONAL presence")
+        raw_combinations = value["required_role_combinations"]
+        if type(raw_combinations) is not list or not raw_combinations:
+            raise _error("alternative-core topology needs required role combinations")
+        child_roles = {child["role"] for child in children}
+        required_role_combinations = []
+        seen_combinations: set[tuple[str, ...]] = set()
+        for raw_combination in raw_combinations:
+            if (
+                type(raw_combination) is not list
+                or len(raw_combination) not in {2, 3}
+                or any(type(role) is not str or role not in child_roles for role in raw_combination)
+                or len(raw_combination) != len(set(raw_combination))
+            ):
+                raise _error("alternative required role combination drifted")
+            combination = tuple(raw_combination)
+            if combination in seen_combinations:
+                raise _error("alternative required role combinations must be unique")
+            seen_combinations.add(combination)
+            required_role_combinations.append(list(combination))
 
     limits = value["limits"]
     if type(limits) is not dict or set(limits) != {
@@ -224,6 +256,8 @@ def _spec(value: Any) -> dict[str, Any]:
             "resolution_mode": resolution_mode,
             "role": parent_role,
         },
+        "required_role_combinations": required_role_combinations,
+        "spec_format_version": spec_version,
         "structural_reset_aliases": _aliases(
             value["structural_reset_aliases"], "structural reset", allow_empty=True
         ),
@@ -465,16 +499,29 @@ def _candidate(
     hard_negative_hits: Sequence[Mapping[str, Any]],
 ) -> dict[str, Any]:
     observed_roles = [record["role"] for record in records]
-    required_roles = [
-        child["role"] for child in spec["children"] if child["presence"] == "REQUIRED"
+    matched_combinations = [
+        combination
+        for combination in spec["required_role_combinations"]
+        if set(combination).issubset(observed_roles)
     ]
-    missing = [role for role in required_roles if role not in observed_roles]
     hard_negatives = [
         canonical_clone_v1(hit)
         for hit in hard_negative_hits
         if start <= hit["document_line_ordinal"] < stop
     ]
-    reasons = [f"MISSING_REQUIRED_CHILD:{role}" for role in missing]
+    if matched_combinations:
+        reasons = []
+    elif spec["spec_format_version"] == SPEC_FORMAT_VERSION:
+        reasons = [
+            f"MISSING_REQUIRED_CHILD:{role}"
+            for role in spec["required_role_combinations"][0]
+            if role not in observed_roles
+        ]
+    else:
+        encoded = "|".join(
+            "+".join(combination) for combination in spec["required_role_combinations"]
+        )
+        reasons = [f"MISSING_REQUIRED_ROLE_COMBINATION:{encoded}"]
     if hard_negatives:
         reasons.append("HARD_NEGATIVE_FAMILY_IN_CLUSTER")
     preferred = sorted(records, key=lambda item: item["preferred_ordinal"])
@@ -558,65 +605,65 @@ def _implied_candidates(
 ) -> list[dict[str, Any]]:
     if spec["parent"]["resolution_mode"] != "EXPLICIT_OR_UNIQUE_REQUIRED_CHILD_CLUSTER":
         return []
-    required = [child for child in spec["children"] if child["presence"] == "REQUIRED"]
-    # One child can form a unique pair with an explicit parent, but it cannot
-    # safely imply a missing parent by itself. Parent-less inference therefore
-    # starts at a child-child pair, matching the pair-before-triple policy.
-    if len(required) < 2:
-        return []
-    axes = [hits["children"][child["role"]] for child in required]
-    if any(not axis for axis in axes):
-        return []
     maximum_span = spec["limits"]["max_cluster_span_lines"]
     max_continuation = spec["limits"]["max_continuation_pages"]
     candidates: list[dict[str, Any]] = []
     seen: set[tuple[int, ...]] = set()
-    for combination in itertools.product(*axes):
-        positions = [hit["document_line_ordinal"] for hit in combination]
-        pages = [hit["page_sequence"] for hit in combination]
-        if (
-            len(set(positions)) != len(positions)
-            or max(positions) - min(positions) > maximum_span
-            or max(pages) - min(pages) > max_continuation
-        ):
+    # Every declared alternative is already a child-child pair or triple.
+    # Parent-less inference evaluates each alternative independently, then
+    # de-duplicates the resulting source-position signature.
+    for required_roles in spec["required_role_combinations"]:
+        if len(required_roles) < 2:
             continue
-        signature = tuple(sorted(positions))
-        if signature in seen:
+        axes = [hits["children"][role] for role in required_roles]
+        if any(not axis for axis in axes):
             continue
-        seen.add(signature)
-        start = min(positions) - 1
-        stop = min(
-            max(positions) + maximum_span + 1,
-            page_end_exclusive[min(max(page_end_exclusive), min(pages) + max_continuation)],
-        )
-        resets = [
-            hit["document_line_ordinal"]
-            for hit in hits["resets"]
-            if start < hit["document_line_ordinal"] < stop
-        ]
-        if resets and min(resets) <= max(positions):
-            continue
-        if resets:
-            stop = min(stop, min(resets))
-        if any(
-            item["cluster_start_document_line_ordinal"]
-            <= min(positions)
-            < item["cluster_end_document_line_ordinal_exclusive"]
-            for item in explicit
-        ):
-            continue
-        records = _child_records_in_range(hits["children"], spec, start=start, stop=stop)
-        candidates.append(
-            _candidate(
-                line_by_document_ordinal=line_by_document_ordinal,
-                parent=None,
-                records=records,
-                start=max(0, start),
-                stop=stop,
-                spec=spec,
-                hard_negative_hits=hits["hard_negatives"],
+        for combination in itertools.product(*axes):
+            positions = [hit["document_line_ordinal"] for hit in combination]
+            pages = [hit["page_sequence"] for hit in combination]
+            if (
+                len(set(positions)) != len(positions)
+                or max(positions) - min(positions) > maximum_span
+                or max(pages) - min(pages) > max_continuation
+            ):
+                continue
+            signature = tuple(sorted(positions))
+            if signature in seen:
+                continue
+            seen.add(signature)
+            start = min(positions) - 1
+            stop = min(
+                max(positions) + maximum_span + 1,
+                page_end_exclusive[min(max(page_end_exclusive), min(pages) + max_continuation)],
             )
-        )
+            resets = [
+                hit["document_line_ordinal"]
+                for hit in hits["resets"]
+                if start < hit["document_line_ordinal"] < stop
+            ]
+            if resets and min(resets) <= max(positions):
+                continue
+            if resets:
+                stop = min(stop, min(resets))
+            if any(
+                item["cluster_start_document_line_ordinal"]
+                <= min(positions)
+                < item["cluster_end_document_line_ordinal_exclusive"]
+                for item in explicit
+            ):
+                continue
+            records = _child_records_in_range(hits["children"], spec, start=start, stop=stop)
+            candidates.append(
+                _candidate(
+                    line_by_document_ordinal=line_by_document_ordinal,
+                    parent=None,
+                    records=records,
+                    start=max(0, start),
+                    stop=stop,
+                    spec=spec,
+                    hard_negative_hits=hits["hard_negatives"],
+                )
+            )
     return candidates
 
 
@@ -702,10 +749,11 @@ def _build(pages: Sequence[Mapping[str, Any]], spec: Mapping[str, Any]) -> dict[
     semantic_anchor_hit_count = len(combined_hits["parents"]) + sum(
         len(hits) for hits in combined_hits["children"].values()
     )
+    core_roles = {
+        role for combination in spec["required_role_combinations"] for role in combination
+    }
     core_semantic_anchor_hit_count = sum(
-        len(combined_hits["children"][child["role"]])
-        for child in spec["children"]
-        if child["presence"] == "REQUIRED"
+        len(combined_hits["children"][role]) for role in core_roles
     )
     return {
         "metrics": {

@@ -1,0 +1,110 @@
+{
+  "children": [
+    {
+      "aliases": [
+        "Bằng VND",
+        "Bằng Đồng Việt Nam",
+        "Bằng tiền đồng",
+        "Tiền gửi tại NHNNVN bằng VND",
+        "Tiền gửi tại NHNN Việt Nam bằng VND",
+        "Tiền gửi thanh toán và dự trữ bắt buộc bằng VND"
+      ],
+      "presence": "OPTIONAL",
+      "role": "DEPOSIT_VND",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "aliases": [
+        "Bằng ngoại tệ",
+        "Tiền gửi tại NHNNVN bằng ngoại tệ",
+        "Tiền gửi tại NHNN Việt Nam bằng ngoại tệ",
+        "Tiền gửi thanh toán và dự trữ bắt buộc bằng ngoại tệ"
+      ],
+      "presence": "OPTIONAL",
+      "role": "DEPOSIT_FOREIGN_CURRENCY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "aliases": [
+        "Tiền gửi tại NHNN Việt Nam",
+        "Tiền gửi tại NHNNVN",
+        "Tiền gửi tại NHNNVN (i)",
+        "Tiền gửi tại Ngân hàng Nhà nước Việt Nam"
+      ],
+      "presence": "OPTIONAL",
+      "role": "CENTRAL_BANK_VIETNAM_PARENT",
+      "role_kind": "SOURCE_ONLY_GROUP_PARENT"
+    },
+    {
+      "aliases": [
+        "Tiền gửi tại Ngân hàng Nhà nước Lào",
+        "Tiền gửi tại Ngân hàng Trung ương Lào"
+      ],
+      "presence": "OPTIONAL",
+      "role": "CENTRAL_BANK_LAOS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "aliases": [
+        "Tiền gửi tại Ngân hàng Quốc gia Campuchia",
+        "Tiền gửi tại Ngân hàng Trung ương Campuchia"
+      ],
+      "presence": "OPTIONAL",
+      "role": "CENTRAL_BANK_CAMBODIA",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "aliases": [
+        "Tiền gửi phong tỏa",
+        "Tiền gửi bị phong tỏa"
+      ],
+      "presence": "OPTIONAL",
+      "role": "BLOCKED_DEPOSIT",
+      "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "CENTRAL_BANK_DEPOSITS",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V2",
+  "hard_negative_aliases": [
+    "Tiền và các khoản tương đương tiền",
+    "Rủi ro thanh khoản",
+    "Rủi ro tiền tệ",
+    "Phân loại tài sản tài chính và công nợ tài chính"
+  ],
+  "limits": {
+    "max_continuation_pages": 1,
+    "max_cluster_span_lines": 64,
+    "max_label_line_span": 3
+  },
+  "parent": {
+    "aliases": [
+      "Tiền gửi tại NHNN",
+      "Tiền gửi tại NHNNVN",
+      "Tiền gửi tại Ngân hàng Nhà nước",
+      "Tiền gửi tại Ngân hàng Nhà nước Việt Nam",
+      "Tiền gửi tại Ngân hàng Trung ương"
+    ],
+    "resolution_mode": "EXPLICIT_OR_UNIQUE_REQUIRED_CHILD_CLUSTER",
+    "role": "CENTRAL_BANK_DEPOSITS"
+  },
+  "required_role_combinations": [
+    [
+      "DEPOSIT_VND",
+      "DEPOSIT_FOREIGN_CURRENCY"
+    ],
+    [
+      "CENTRAL_BANK_VIETNAM_PARENT",
+      "CENTRAL_BANK_LAOS"
+    ],
+    [
+      "CENTRAL_BANK_VIETNAM_PARENT",
+      "CENTRAL_BANK_CAMBODIA"
+    ]
+  ],
+  "structural_reset_aliases": [
+    "Tỷ lệ dự trữ bắt buộc",
+    "Tiền gửi và cho vay các tổ chức tín dụng khác",
+    "Tiền, vàng gửi tại và cho vay các tổ chức tín dụng khác",
+    "Chứng khoán kinh doanh"
+  ]
+}

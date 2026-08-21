@@ -1,0 +1,10 @@
+{
+  "closure_policy": "REQUIRE_EXACT_UNIQUE_VISIBLE_TRAILING_TOTAL",
+  "expected_lane_unit_kinds": [
+    "MONEY",
+    "MONEY"
+  ],
+  "family_id": "CENTRAL_BANK_DEPOSITS",
+  "format_version": "ACCOUNTING_FAMILY_EVALUATION_SPEC_V1",
+  "period_semantics": "BALANCE_COMPARATIVE"
+}

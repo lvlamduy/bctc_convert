@@ -2,9 +2,10 @@
 
 The mapper contains no bank, filing, page, year, family label, or ReportNormId
 logic.  A declarative binding spec connects semantic roles to the current TM
-schema graph only after the shared topology, geometry, numeric, period, unit,
-and accounting gates have all admitted a trial.  The exact live evidence sweep
-is rebuilt on every public replay.
+schema graph, either directly or by an exact sum of observed source roles,
+only after the shared topology, geometry, numeric, period, unit, and accounting
+gates have all admitted a trial.  Every aggregate retains its component crops;
+the exact live evidence sweep is rebuilt on every public replay.
 """
 
 from __future__ import annotations
@@ -27,6 +28,8 @@ from bctc_ai.source_structure.contracts_v1 import (
 
 __all__ = [
     "FORMAT_VERSION",
+    "SPEC_FORMAT_VERSION",
+    "SPEC_FORMAT_VERSION_V2",
     "FamilyFirstAccountingSchemaMappingV1Error",
     "build_authenticated_family_first_accounting_schema_mapping_v1",
     "validate_authenticated_family_first_accounting_schema_mapping_replay_v1",
@@ -35,6 +38,7 @@ __all__ = [
 
 FORMAT_VERSION = "FAMILY_FIRST_ACCOUNTING_SCHEMA_MAPPING_V1"
 SPEC_FORMAT_VERSION = "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V1"
+SPEC_FORMAT_VERSION_V2 = "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V2"
 SCHEMA_GRAPH_PATH = Path("reference/schemas/schema_graph.jsonl")
 CLAIM_BOUNDARY = (
     "LIVE_REPLAYED_FAMILY_EVIDENCE_TO_TRACKED_TM_SCHEMA_DIRECT_PARENT_CHILD_BINDING_"
@@ -62,7 +66,15 @@ _SPEC_FIELDS = {
     "format_version",
     "role_bindings",
 }
+_SPEC_V2_FIELDS = {*_SPEC_FIELDS, "aggregate_role_bindings"}
 _ROLE_BINDING_FIELDS = {"report_norm_id", "role"}
+_AGGREGATE_ROLE_BINDING_FIELDS = {
+    "operation",
+    "report_norm_id",
+    "role",
+    "source_roles",
+}
+_AGGREGATE_OPERATIONS = {"SUM_OBSERVED_SOURCE_ROLES"}
 _SOURCE_SCOPE_TO_SCHEMA_SCOPE = {
     "CONSOLIDATED": "CONSOLIDATED",
     "PARENT_OR_SEPARATE": "SEPARATE",
@@ -121,18 +133,22 @@ def _schema_spec(value: Any, family_spec: Any) -> dict[str, Any]:
         or len(family_roles) != len(set(family_roles))
     ):
         raise _error("family topology role axis is malformed")
+    if type(value) is not dict or (set(value) != _SPEC_FIELDS and set(value) != _SPEC_V2_FIELDS):
+        raise _error("family schema-binding specification fields drifted")
+    spec_version = value["format_version"]
+    if spec_version not in {SPEC_FORMAT_VERSION, SPEC_FORMAT_VERSION_V2} or (
+        (spec_version == SPEC_FORMAT_VERSION) is not (set(value) == _SPEC_FIELDS)
+    ):
+        raise _error("family schema-binding specification version drifted")
     if (
-        type(value) is not dict
-        or set(value) != _SPEC_FIELDS
-        or value["format_version"] != SPEC_FORMAT_VERSION
+        type(value["family_id"]) is not str
         or value["family_id"] != family_spec["family_id"]
         or type(value["family_report_norm_id"]) is not int
         or value["family_report_norm_id"] <= 0
         or type(value["role_bindings"]) is not list
-        or len(value["role_bindings"]) != len(family_roles)
     ):
         raise _error("family schema-binding specification drifted")
-    parsed = []
+    direct = []
     for raw in value["role_bindings"]:
         if (
             type(raw) is not dict
@@ -143,13 +159,54 @@ def _schema_spec(value: Any, family_spec: Any) -> dict[str, Any]:
             or raw["report_norm_id"] <= 0
         ):
             raise _error("family schema role binding drifted")
-        parsed.append(canonical_clone_v1(raw))
+        direct.append(canonical_clone_v1(raw))
+    aggregates = []
+    if spec_version == SPEC_FORMAT_VERSION_V2:
+        if type(value["aggregate_role_bindings"]) is not list:
+            raise _error("aggregate schema role bindings must be one exact list")
+        for raw in value["aggregate_role_bindings"]:
+            if (
+                type(raw) is not dict
+                or set(raw) != _AGGREGATE_ROLE_BINDING_FIELDS
+                or type(raw["operation"]) is not str
+                or raw["operation"] not in _AGGREGATE_OPERATIONS
+                or type(raw["report_norm_id"]) is not int
+                or raw["report_norm_id"] <= 0
+                or type(raw["role"]) is not str
+                or not raw["role"]
+                or type(raw["source_roles"]) is not list
+                or len(raw["source_roles"]) < 2
+                or any(type(role) is not str or not role for role in raw["source_roles"])
+                or len(raw["source_roles"]) != len(set(raw["source_roles"]))
+            ):
+                raise _error("aggregate family schema role binding drifted")
+            aggregates.append(canonical_clone_v1(raw))
+    direct_roles = [item["role"] for item in direct]
+    aggregate_source_roles = [role for item in aggregates for role in item["source_roles"]]
+    target_roles = [*direct_roles, *(item["role"] for item in aggregates)]
+    target_ids = [
+        *(item["report_norm_id"] for item in direct),
+        *(item["report_norm_id"] for item in aggregates),
+    ]
+    role_order = {role: ordinal for ordinal, role in enumerate(family_roles)}
     if (
-        [item["role"] for item in parsed] != family_roles
-        or len({item["report_norm_id"] for item in parsed}) != len(parsed)
-        or value["family_report_norm_id"] in {item["report_norm_id"] for item in parsed}
+        any(role not in role_order for role in [*direct_roles, *aggregate_source_roles])
+        or len([*direct_roles, *aggregate_source_roles])
+        != len(set([*direct_roles, *aggregate_source_roles]))
+        or set([*direct_roles, *aggregate_source_roles]) != set(family_roles)
+        or direct_roles != sorted(direct_roles, key=role_order.__getitem__)
+        or any(
+            item["source_roles"] != sorted(item["source_roles"], key=role_order.__getitem__)
+            for item in aggregates
+        )
+        or any(item["role"] in family_roles for item in aggregates)
+        or len(target_roles) != len(set(target_roles))
+        or len(target_ids) != len(set(target_ids))
+        or value["family_report_norm_id"] in target_ids
     ):
         raise _error("family schema binding must cover the exact declarative role axis")
+    if spec_version == SPEC_FORMAT_VERSION and direct_roles != family_roles:
+        raise _error("V1 family schema binding must directly cover every role")
     return canonical_clone_v1(value)
 
 
@@ -179,7 +236,11 @@ def _schema_graph(root: Path) -> tuple[dict[int, dict[str, Any]], dict[str, Any]
 
 def _bind_schema(
     nodes: dict[int, dict[str, Any]], spec: dict[str, Any]
-) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
+) -> tuple[
+    dict[str, Any],
+    dict[str, dict[str, Any]],
+    list[tuple[dict[str, Any], dict[str, Any]]],
+]:
     parent = nodes.get(spec["family_report_norm_id"])
     if (
         type(parent) is not dict
@@ -190,7 +251,12 @@ def _bind_schema(
     ):
         raise _error("family ReportNormId is not one live TM schema parent")
     by_role: dict[str, dict[str, Any]] = {}
-    for binding in spec["role_bindings"]:
+    aggregate_bindings: list[tuple[dict[str, Any], dict[str, Any]]] = []
+    bindings = [
+        *spec["role_bindings"],
+        *spec.get("aggregate_role_bindings", []),
+    ]
+    for binding in bindings:
         node = nodes.get(binding["report_norm_id"])
         if (
             type(node) is not dict
@@ -202,8 +268,11 @@ def _bind_schema(
             or not _schema_contract_axes_are_closed(node)
         ):
             raise _error("role ReportNormId is not a direct live child of its family")
-        by_role[binding["role"]] = node
-    return parent, by_role
+        if "source_roles" in binding:
+            aggregate_bindings.append((binding, node))
+        else:
+            by_role[binding["role"]] = node
+    return parent, by_role, aggregate_bindings
 
 
 def _schema_contract_axes_are_closed(node: dict[str, Any]) -> bool:
@@ -305,6 +374,97 @@ def _row_mapping(
     }
 
 
+def _sum_row_values(values: list[dict[str, Any]]) -> dict[str, int]:
+    tokens = [value.get("parsed_token") for value in values]
+    if (
+        not tokens
+        or any(
+            type(token) is not dict
+            or token.get("classification") not in {"DASH_ZERO", "SIGNED_NUMBER"}
+            or type(token.get("coefficient")) is not int
+            or type(token.get("scale")) is not int
+            or token["scale"] < 0
+            or type(token.get("percentage_mark_present")) is not bool
+            for token in tokens
+        )
+        or len({token["percentage_mark_present"] for token in tokens}) != 1
+    ):
+        raise _error("aggregate schema role retained incompatible numeric components")
+    scale = max(token["scale"] for token in tokens)
+    coefficient = sum(token["coefficient"] * (10 ** (scale - token["scale"])) for token in tokens)
+    while scale > 0 and coefficient % 10 == 0:
+        coefficient //= 10
+        scale -= 1
+    return {"coefficient": coefficient, "scale": scale}
+
+
+def _aggregate_mapping(
+    rows: list[dict[str, Any]],
+    binding: dict[str, Any],
+    node: dict[str, Any],
+    contexts: dict[int, dict[str, Any]],
+) -> dict[str, Any]:
+    by_role = {row["role"]: row for row in rows}
+    components = []
+    for role in binding["source_roles"]:
+        row = by_role.get(role)
+        if row is None:
+            continue
+        values = row.get("values")
+        if (
+            type(values) is not list
+            or set(value.get("column_ordinal") for value in values) != set(contexts)
+            or row.get("status") != "VISIBLE_VALUE_LANES_BOUND"
+        ):
+            raise _error("aggregate schema source role does not cover its complete column axis")
+        components.append(
+            {
+                "role": role,
+                "source_surface": row["label_match"]["surface"],
+                "values": [
+                    _cell(value, contexts[value["column_ordinal"]])
+                    for value in sorted(values, key=lambda item: item["column_ordinal"])
+                ],
+            }
+        )
+    if not components:
+        raise _error("aggregate schema mapping requires at least one observed source role")
+    values = []
+    for column_ordinal, context in contexts.items():
+        raw_components = [
+            next(
+                value
+                for value in by_role[component["role"]]["values"]
+                if value["column_ordinal"] == column_ordinal
+            )
+            for component in components
+        ]
+        values.append(
+            {
+                "column_ordinal": column_ordinal,
+                "currency": context["currency"],
+                "magnitude_power10": context["magnitude_power10"],
+                "numeric_value": _sum_row_values(raw_components),
+                "period": context["period"],
+                "source_component_sample_ids": [value["sample_id"] for value in raw_components],
+                "unit_kind": context["unit_kind"],
+            }
+        )
+    material = {
+        "canonical_name": node["canonical_name"],
+        "mapping_kind": "SUM_OBSERVED_SOURCE_ROLES_TO_LIVE_SCHEMA_CHILD",
+        "report_norm_id": node["schema_id"],
+        "role": binding["role"],
+        "source_components": components,
+        "source_surface": None,
+        "values": values,
+    }
+    return {
+        **material,
+        "item_mapping_id": "ffasmv1:item:" + canonical_json_sha256_v1(material),
+    }
+
+
 def _total_mapping(
     trial: dict[str, Any], node: dict[str, Any], contexts: dict[int, dict[str, Any]]
 ) -> dict[str, Any]:
@@ -347,6 +507,7 @@ def _trial(
     trial: dict[str, Any],
     parent: dict[str, Any],
     by_role: dict[str, dict[str, Any]],
+    aggregate_bindings: list[tuple[dict[str, Any], dict[str, Any]]],
     *,
     schema_period_type: str,
 ) -> dict[str, Any]:
@@ -371,17 +532,37 @@ def _trial(
         }
     contexts = _context_by_column(trial)
     rows = trial["row_axis"]["rows"]
+    aggregate_by_source = {
+        source_role: (binding, node)
+        for binding, node in aggregate_bindings
+        for source_role in binding["source_roles"]
+    }
     if (
         type(rows) is not list
         or len(rows) != len({row.get("role") for row in rows})
-        or any(row.get("role") not in by_role for row in rows)
+        or any(
+            row.get("role") not in by_role and row.get("role") not in aggregate_by_source
+            for row in rows
+        )
     ):
         raise _error("schema-ready trial retained an unknown or duplicate semantic role")
-    mappings = [_row_mapping(row, by_role[row["role"]], contexts) for row in rows]
+    mappings = []
+    emitted_aggregates: set[str] = set()
+    for row in rows:
+        role = row["role"]
+        if role in by_role:
+            mappings.append(_row_mapping(row, by_role[role], contexts))
+            continue
+        binding, node = aggregate_by_source[role]
+        if binding["role"] in emitted_aggregates:
+            continue
+        emitted_aggregates.add(binding["role"])
+        mappings.append(_aggregate_mapping(rows, binding, node, contexts))
     mappings.append(_total_mapping(trial, parent, contexts))
     source_scope = _SOURCE_SCOPE_TO_SCHEMA_SCOPE.get(trial["private_provenance"].get("scope"))
     nodes = {parent["schema_id"]: parent}
     nodes.update({node["schema_id"]: node for node in by_role.values()})
+    nodes.update({node["schema_id"]: node for _, node in aggregate_bindings})
     compatibility_reasons = []
     for mapping in mappings:
         node = nodes[mapping["report_norm_id"]]
@@ -494,7 +675,7 @@ def build_authenticated_family_first_accounting_schema_mapping_v1(
     root = archive_v1._root(project_root)
     spec = _schema_spec(schema_binding_spec, family_spec)
     nodes, graph_ref = _schema_graph(root)
-    parent, by_role = _bind_schema(nodes, spec)
+    parent, by_role, aggregate_bindings = _bind_schema(nodes, spec)
     sweep = evidence_v1.build_authenticated_family_first_accounting_evidence_sweep_v1(
         semantic_index_capability,
         numeric_index_capability,
@@ -509,7 +690,13 @@ def build_authenticated_family_first_accounting_schema_mapping_v1(
     except (KeyError, TypeError) as exc:
         raise _error("family evidence lost its resolved schema period type") from exc
     trials = [
-        _trial(trial, parent, by_role, schema_period_type=schema_period_type)
+        _trial(
+            trial,
+            parent,
+            by_role,
+            aggregate_bindings,
+            schema_period_type=schema_period_type,
+        )
         for trial in sweep["trials"]
     ]
     material = {

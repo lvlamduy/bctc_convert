@@ -6,8 +6,12 @@ from pathlib import Path
 
 import pytest
 
+from bctc_ai.evaluation import accounting_family_topology_v1 as topology_v1
+from bctc_ai.evaluation import family_first_accounting_evidence_sweep_v1 as evidence_v1
 from bctc_ai.evaluation import family_first_accounting_schema_mapping_v1 as subject
 from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
+
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _family_spec() -> dict[str, object]:
@@ -136,6 +140,7 @@ def _value(
         "parsed_token": {
             "classification": "DASH_ZERO" if dash else "SIGNED_NUMBER",
             "coefficient": coefficient,
+            "percentage_mark_present": False,
             "scale": 0,
         },
         "raw_prediction": raw_prediction,
@@ -276,6 +281,115 @@ def _build() -> dict[str, object]:
     )
 
 
+def _aggregate_family_spec() -> dict[str, object]:
+    spec = _family_spec()
+    spec["format_version"] = "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V2"
+    spec["required_role_combinations"] = [
+        ["CASH_VND", "CASH_FOREIGN"],
+        ["CENTRAL_BANK_LAOS", "CENTRAL_BANK_CAMBODIA"],
+    ]
+    for child in spec["children"]:
+        child["presence"] = "OPTIONAL"
+    spec["children"].extend(
+        [
+            {
+                "aliases": ["Tiền gửi tại Ngân hàng Nhà nước Lào"],
+                "presence": "OPTIONAL",
+                "role": "CENTRAL_BANK_LAOS",
+                "role_kind": "ADDITIVE_CHILD",
+            },
+            {
+                "aliases": ["Tiền gửi tại Ngân hàng Quốc gia Campuchia"],
+                "presence": "OPTIONAL",
+                "role": "CENTRAL_BANK_CAMBODIA",
+                "role_kind": "ADDITIVE_CHILD",
+            },
+        ]
+    )
+    return spec
+
+
+def _aggregate_binding_spec() -> dict[str, object]:
+    return {
+        "aggregate_role_bindings": [
+            {
+                "operation": "SUM_OBSERVED_SOURCE_ROLES",
+                "report_norm_id": 564,
+                "role": "OTHER_CENTRAL_BANK_DEPOSITS_AGGREGATE",
+                "source_roles": ["CENTRAL_BANK_LAOS", "CENTRAL_BANK_CAMBODIA"],
+            }
+        ],
+        "family_id": "CASH_PRECIOUS_METALS",
+        "family_report_norm_id": 561,
+        "format_version": subject.SPEC_FORMAT_VERSION_V2,
+        "role_bindings": [
+            {"report_norm_id": 562, "role": "CASH_VND"},
+            {"report_norm_id": 563, "role": "CASH_FOREIGN"},
+        ],
+    }
+
+
+def _aggregate_schema_payload() -> bytes:
+    nodes = [json.loads(line) for line in _schema_payload().decode("utf-8").splitlines()]
+    nodes[0]["children"].append(564)
+    nodes.append(
+        {
+            "allowed_period_type": ["SNAPSHOT", "DURATION"],
+            "allowed_sign": ["POSITIVE", "NEGATIVE", "ZERO"],
+            "canonical_name": "Tiền gửi khác",
+            "children": [],
+            "parent_id": 561,
+            "schema_id": 564,
+            "scope": ["SEPARATE", "CONSOLIDATED"],
+            "statement_type": "TM",
+        }
+    )
+    return (
+        b"\n".join(
+            json.dumps(node, ensure_ascii=False, sort_keys=True).encode("utf-8") for node in nodes
+        )
+        + b"\n"
+    )
+
+
+def _aggregate_ready_trial(*, include_cambodia: bool = True) -> dict[str, object]:
+    trial = _ready_trial()
+    trial["row_axis"]["rows"].append(
+        _row(
+            "CENTRAL_BANK_LAOS",
+            "Tiền gửi tại Ngân hàng Nhà nước Lào",
+            4,
+            (10, 5),
+        )
+    )
+    if include_cambodia:
+        trial["row_axis"]["rows"].append(
+            _row(
+                "CENTRAL_BANK_CAMBODIA",
+                "Tiền gửi tại Ngân hàng Quốc gia Campuchia",
+                5,
+                (20, 7),
+            )
+        )
+    return trial
+
+
+def _build_aggregate(
+    monkeypatch: pytest.MonkeyPatch, *, include_cambodia: bool = True
+) -> dict[str, object]:
+    state = _patch_live(monkeypatch)
+    state["graph"] = _aggregate_schema_payload()
+    state["sweep"]["trials"][0] = _aggregate_ready_trial(include_cambodia=include_cambodia)
+    return subject.build_authenticated_family_first_accounting_schema_mapping_v1(
+        Path("/repo"),
+        object(),
+        object(),
+        _aggregate_family_spec(),
+        _evaluation_spec(),
+        _aggregate_binding_spec(),
+    )
+
+
 def test_live_ready_not_observed_and_unresolved_outcomes(monkeypatch) -> None:
     _patch_live(monkeypatch)
 
@@ -303,6 +417,55 @@ def test_live_ready_not_observed_and_unresolved_outcomes(monkeypatch) -> None:
     assert unresolved["mapping_status"] == "UNRESOLVED"
     assert unresolved["unresolved_reasons"] == ["VISIBLE_ROLE_ROW_LANES_NOT_COMPLETE"]
     assert result["authority"]["persisted_result_self_authenticating"] is False
+
+
+@pytest.mark.parametrize(
+    ("include_cambodia", "expected", "component_roles"),
+    [
+        (True, (30, 12), ["CENTRAL_BANK_LAOS", "CENTRAL_BANK_CAMBODIA"]),
+        (False, (10, 5), ["CENTRAL_BANK_LAOS"]),
+    ],
+)
+def test_v2_aggregates_only_observed_source_roles_with_exact_component_evidence(
+    monkeypatch, include_cambodia: bool, expected: tuple[int, int], component_roles: list[str]
+) -> None:
+    result = _build_aggregate(monkeypatch, include_cambodia=include_cambodia)
+
+    trial = result["trials"][0]
+    assert trial["mapping_status"] == "VERIFIED_BY_CODEX"
+    aggregate = next(item for item in trial["mappings"] if item["report_norm_id"] == 564)
+    assert aggregate["mapping_kind"] == "SUM_OBSERVED_SOURCE_ROLES_TO_LIVE_SCHEMA_CHILD"
+    assert aggregate["role"] == "OTHER_CENTRAL_BANK_DEPOSITS_AGGREGATE"
+    assert [item["role"] for item in aggregate["source_components"]] == component_roles
+    assert tuple(item["numeric_value"]["coefficient"] for item in aggregate["values"]) == expected
+    assert all(
+        len(item["source_component_sample_ids"]) == len(component_roles)
+        for item in aggregate["values"]
+    )
+
+
+def test_v2_aggregate_uses_exact_decimal_scale_arithmetic(monkeypatch) -> None:
+    state = _patch_live(monkeypatch)
+    state["graph"] = _aggregate_schema_payload()
+    trial = _aggregate_ready_trial()
+    laos, cambodia = trial["row_axis"]["rows"][-2:]
+    laos["values"][0]["parsed_token"].update({"coefficient": 15, "scale": 1})
+    cambodia["values"][0]["parsed_token"].update({"coefficient": 225, "scale": 2})
+    state["sweep"]["trials"][0] = trial
+
+    result = subject.build_authenticated_family_first_accounting_schema_mapping_v1(
+        Path("/repo"),
+        object(),
+        object(),
+        _aggregate_family_spec(),
+        _evaluation_spec(),
+        _aggregate_binding_spec(),
+    )
+
+    aggregate = next(
+        item for item in result["trials"][0]["mappings"] if item["report_norm_id"] == 564
+    )
+    assert aggregate["values"][0]["numeric_value"] == {"coefficient": 375, "scale": 2}
 
 
 def test_exact_live_replay_rejects_coordinated_persisted_numeric_change(monkeypatch) -> None:
@@ -395,7 +558,89 @@ def test_schema_binding_spec_type_identity_and_role_axis_fail_closed(monkeypatch
         )
 
 
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda value: value["aggregate_role_bindings"][0].__setitem__("operation", []),
+        lambda value: value["aggregate_role_bindings"][0].__setitem__(
+            "operation", "CALLER_DEFINED_SUM"
+        ),
+        lambda value: value["aggregate_role_bindings"][0].__setitem__(
+            "source_roles", ["CASH_FOREIGN", "CENTRAL_BANK_CAMBODIA"]
+        ),
+        lambda value: value["aggregate_role_bindings"][0].__setitem__(
+            "source_roles", ["CENTRAL_BANK_CAMBODIA", "CENTRAL_BANK_LAOS"]
+        ),
+        lambda value: value["aggregate_role_bindings"][0].__setitem__(
+            "source_roles", ["CENTRAL_BANK_LAOS", "BANK_SPECIFIC"]
+        ),
+        lambda value: value["aggregate_role_bindings"][0].__setitem__("report_norm_id", 563),
+        lambda value: value["aggregate_role_bindings"][0].__setitem__("role", "CENTRAL_BANK_LAOS"),
+        lambda value: value["role_bindings"].pop(),
+    ],
+)
+def test_v2_schema_binding_rejects_overlap_order_unknown_and_caller_operation(
+    monkeypatch, mutation
+) -> None:
+    _patch_live(monkeypatch)
+    spec = _aggregate_binding_spec()
+    mutation(spec)
+
+    with pytest.raises(subject.FamilyFirstAccountingSchemaMappingV1Error):
+        subject.build_authenticated_family_first_accounting_schema_mapping_v1(
+            Path("/repo"),
+            object(),
+            object(),
+            _aggregate_family_spec(),
+            _evaluation_spec(),
+            spec,
+        )
+
+
 def test_mapper_contains_no_bank_page_year_or_filing_specific_route() -> None:
     payload = Path(subject.__file__).read_text(encoding="utf-8")
     for token in ("ACB", "MBB", "VPB", "HDB", "VCB", "CTG", "BID", "VIB", "2025", "2026"):
         assert token not in payload
+
+
+def test_tracked_central_bank_deposit_specs_bind_generic_variants_to_live_schema() -> None:
+    config_root = _PROJECT_ROOT / "config/families"
+    family = json.loads(
+        (config_root / "tm-central-bank-deposits-topology-v2.json").read_text(encoding="utf-8")
+    )
+    evaluation = json.loads(
+        (config_root / "tm-central-bank-deposits-evaluation-v1.json").read_text(encoding="utf-8")
+    )
+    binding = json.loads(
+        (config_root / "tm-central-bank-deposits-schema-binding-v2.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    compiled = topology_v1._spec(family)
+    evidence_v1._evaluation_spec(evaluation, family["family_id"])
+    parsed_binding = subject._schema_spec(binding, family)
+    nodes, _ = subject._schema_graph(_PROJECT_ROOT)
+    parent, direct, aggregates = subject._bind_schema(nodes, parsed_binding)
+
+    assert compiled["required_role_combinations"] == [
+        ["DEPOSIT_VND", "DEPOSIT_FOREIGN_CURRENCY"],
+        ["CENTRAL_BANK_VIETNAM_PARENT", "CENTRAL_BANK_LAOS"],
+        ["CENTRAL_BANK_VIETNAM_PARENT", "CENTRAL_BANK_CAMBODIA"],
+    ]
+    assert parent["schema_id"] == 569
+    assert {role: node["schema_id"] for role, node in direct.items()} == {
+        "BLOCKED_DEPOSIT": 573,
+        "CENTRAL_BANK_VIETNAM_PARENT": 570,
+        "DEPOSIT_FOREIGN_CURRENCY": 572,
+        "DEPOSIT_VND": 571,
+    }
+    assert [(item["role"], node["schema_id"]) for item, node in aggregates] == [
+        ("OTHER_CENTRAL_BANK_DEPOSITS_AGGREGATE", 574)
+    ]
+    serialized = json.dumps(
+        {"binding": binding, "evaluation": evaluation, "family": family},
+        ensure_ascii=False,
+    )
+    for token in ("ACB", "MBB", "VPB", "HDB", "VCB", "CTG", "BID", "VIB", "2025", "2026"):
+        assert token not in serialized

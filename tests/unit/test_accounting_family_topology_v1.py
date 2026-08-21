@@ -107,6 +107,52 @@ def _parent_child_pair_spec(*, parent_mode: str = "EXPLICIT_ONLY") -> dict[str, 
     }
 
 
+def _alternative_core_spec() -> dict[str, object]:
+    return {
+        "children": [
+            {
+                "aliases": ["Bằng VND"],
+                "presence": "OPTIONAL",
+                "role": "VND",
+                "role_kind": "ADDITIVE_CHILD",
+            },
+            {
+                "aliases": ["Bằng ngoại tệ"],
+                "presence": "OPTIONAL",
+                "role": "FOREIGN",
+                "role_kind": "ADDITIVE_CHILD",
+            },
+            {
+                "aliases": ["Tiền gửi tại NHNN Việt Nam"],
+                "presence": "OPTIONAL",
+                "role": "VIETNAM",
+                "role_kind": "SOURCE_ONLY_GROUP_PARENT",
+            },
+            {
+                "aliases": ["Tiền gửi tại Ngân hàng Nhà nước Lào"],
+                "presence": "OPTIONAL",
+                "role": "LAOS",
+                "role_kind": "ADDITIVE_CHILD",
+            },
+        ],
+        "family_id": "CENTRAL_BANK_DEPOSITS",
+        "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V2",
+        "hard_negative_aliases": [],
+        "limits": {
+            "max_cluster_span_lines": 20,
+            "max_continuation_pages": 1,
+            "max_label_line_span": 2,
+        },
+        "parent": {
+            "aliases": ["Tiền gửi tại NHNN"],
+            "resolution_mode": "EXPLICIT_OR_UNIQUE_REQUIRED_CHILD_CLUSTER",
+            "role": "CENTRAL_BANK_DEPOSITS",
+        },
+        "required_role_combinations": [["VND", "FOREIGN"], ["VIETNAM", "LAOS"]],
+        "structural_reset_aliases": ["Tiền gửi và cho vay các TCTD khác"],
+    }
+
+
 def test_cash_spec_is_declarative_and_accepts_reordered_wrapped_children() -> None:
     pages = [
         _page(
@@ -228,6 +274,62 @@ def test_parent_can_be_implied_only_when_the_declarative_family_permits_it() -> 
     assert implied["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
     assert implied["regions"][0]["parent_resolution"] == "IMPLIED_BY_REQUIRED_CHILD_CLUSTER"
     assert implied["regions"][0]["preferred_sibling_order_preserved"] is False
+
+
+@pytest.mark.parametrize(
+    "rows",
+    [
+        ["Tiền gửi tại NHNN", "Bằng VND", "100", "Bằng ngoại tệ", "20", "120"],
+        [
+            "Tiền gửi tại NHNN",
+            "Tiền gửi tại NHNN Việt Nam",
+            "100",
+            "Tiền gửi tại Ngân hàng Nhà nước Lào",
+            "20",
+            "120",
+        ],
+    ],
+)
+def test_alternative_core_role_combinations_accept_distinct_generic_variants(
+    rows: list[str],
+) -> None:
+    result = build_accounting_family_topology_scan_v1([_page(rows)], _alternative_core_spec())
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    assert result["uniqueness"] == {
+        "complete_region_count": 1,
+        "minimal_role_combination_proved": True,
+    }
+
+
+def test_alternative_core_parent_only_is_not_observed_but_partial_core_is_unresolved() -> None:
+    parent_only = build_accounting_family_topology_scan_v1(
+        [_page(["Tiền gửi tại NHNN", "100", "90"])], _alternative_core_spec()
+    )
+    partial = build_accounting_family_topology_scan_v1(
+        [_page(["Tiền gửi tại NHNN", "Tiền gửi tại NHNN Việt Nam", "100"])],
+        _alternative_core_spec(),
+    )
+
+    assert parent_only["status"] == "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    assert parent_only["metrics"]["core_semantic_anchor_hit_count"] == 0
+    assert partial["status"] == "UNRESOLVED_NO_COMPLETE_REGION"
+    assert partial["metrics"]["core_semantic_anchor_hit_count"] == 1
+    assert partial["near_regions"][0]["unresolved_reasons"] == [
+        "MISSING_REQUIRED_ROLE_COMBINATION:VND+FOREIGN|VIETNAM+LAOS"
+    ]
+
+
+def test_alternative_core_rejects_required_presence_and_unknown_combination_role() -> None:
+    required = _alternative_core_spec()
+    required["children"][0]["presence"] = "REQUIRED"
+    with pytest.raises(AccountingFamilyTopologyV1Error, match="must use OPTIONAL"):
+        build_accounting_family_topology_scan_v1([_page(["Bằng VND"])], required)
+
+    unknown = _alternative_core_spec()
+    unknown["required_role_combinations"] = [["VND", "UNKNOWN"]]
+    with pytest.raises(AccountingFamilyTopologyV1Error, match="combination"):
+        build_accounting_family_topology_scan_v1([_page(["Bằng VND"])], unknown)
 
 
 @pytest.mark.parametrize(
