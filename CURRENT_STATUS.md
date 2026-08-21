@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-08-21T21:07:31Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
+Updated: 2026-08-21T22:14:32Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
 The detailed historical receipts below remain evidence, but that directive supersedes
@@ -44,6 +44,16 @@ older queue priorities where they conflict.
   period subset matches both document periods and column geometry. The next
   schema-order family is `INTERBANK_DEPOSITS_AND_LOANS`
   (`Tiền, vàng gửi tại và cho vay các TCTD khác`).
+- The pushed family-2 checkpoint is Git `0d623e7b1912` and restore-verified S3
+  checkpoint `20260821T215421803905Z-0d623e7b1912`: manifest SHA-256
+  `41fe820a4dd7a49e44c98a9e69d5d5dcff177c2964686e121405c4bd2f0a9ab6`,
+  PASS run SHA-256
+  `5f28a37d0a616a95170999ab91cc890ec93e7e1b8d5219ec872acc0852695c20`,
+  809 logical files / 1,009,256,299 logical bytes, 803 reused objects and six
+  new objects. Full incremental restore and remote run-record verification pass.
+  The separate Codex-session backup remains fail-closed: its latest scan found
+  130 prohibited credential-like patterns across 32 items, so no session archive
+  or manifest was uploaded and the three-layer recovery prerequisite remains partial.
 
 ## Executive handoff — chiến lược cũ đã làm gì và đang ở đâu
 
@@ -2078,7 +2088,7 @@ The recovery-first audit is complete from current Git, S3 and local bytes; boots
 - **The recovered runtime is usable and materially different from stale old-host manifests.** Direct probes show Ryzen 9 5900X (12 cores/24 threads), 67,348,615,168 bytes RAM, RTX 4090 with 24,564 MiB VRAM/compute capability 8.9 and driver 580.126.09, and currently 107,697,401,856 bytes free on the 206,327,119,872-byte workspace filesystem. `.venv` and `.gpu-venv` use Python 3.11.10; package integrity passes, and Torch 2.12.0+cu130 sees the GPU. Exact pinned Qwen3.5-27B-GPTQ-Int4, DeepSeek-OCR-2, VietOCR, PP-OCRv6 det/rec and numeric-recognition model bytes are local; they remain optional tools, not a reason to reopen the frozen reader or start a model survey.
 - **The bounded working set is recovered without restoring the corpus wholesale.** All 27 Wave-1 PDFs are local and hash-exact (248,588,591 bytes / 1,449 pages); local storage has 29 registered PDFs total, while 2,538 registered paths remain intentionally absent. BASE_SCHEMA is verified at 1,593 items and active `UNIVERSAL_BANK_BCTC_SCHEMA@6065` at 1,944 items with exact graph/order identities. Finalized V3, the four current Wave-1 survey artifacts, Role-A Level 1, E-0041 and preserved mapped Excel outputs are all locally present at their recorded hashes.
 - **Recovered regression is GREEN within the current authority boundary.** The cacheless source-structure gate passes `191 passed, 1 explicit real-replay skip`; the recovery/control-plane/schema/source-registry gate passes `52/52`; scoped Ruff check and format check pass. The repository-wide format check still identifies 74 historical files outside the current slice, and prior broader sealed-experiment drift is not relabeled as GREEN.
-- **Core project recovery is proven through Git plus the project S3 layer, but the mandatory three-layer backup prerequisite remains partial because the Codex-session layer is not accepted.** The newest restore-verified project checkpoint is `20260821T161335214360Z-06fa16f69964`: manifest SHA-256 `c6cbcb12c5d8b2b9de8ba2173a009507528867169638559e46464148cb7a81fc`, bound PASS run SHA-256 `4bf9d354578f5e1de8bf17f64ac7d2d4993d3e36de0b27eee50922ceebeb4a8f`, 806 logical files / 1,004,395,665 logical bytes. It binds pushed source Git `06fa16f6996413b76d920edb0ff9f6ea625f6b9b`, includes both completed 667,224-line semantic/numeric caches and all three formal `CASH_PRECIOUS_METALS` artifacts, and passes full incremental restore plus remote run-record verification against the restore-verified full-snapshot trust root. The newest session-backup attempt failed before secret scanning or upload because the active Codex session file changed while being hashed; no loose or incomplete snapshot was accepted. An earlier V2 attempt also remained rejected because its fail-closed scanner found prohibited credential-like patterns. No session archive or manifest was uploaded in either case. Therefore project code/data recovery is healthy, but strict recovery readiness across all three required persistence layers is **NOT FULLY PROVEN** until a stable, clean, restore-verified session backup exists.
+- **Core project recovery is proven through Git plus the project S3 layer, but the mandatory three-layer backup prerequisite remains partial because the Codex-session layer is not accepted.** The newest restore-verified project checkpoint is `20260821T215421803905Z-0d623e7b1912`: manifest SHA-256 `41fe820a4dd7a49e44c98a9e69d5d5dcff177c2964686e121405c4bd2f0a9ab6`, bound PASS run SHA-256 `5f28a37d0a616a95170999ab91cc890ec93e7e1b8d5219ec872acc0852695c20`, 809 logical files / 1,009,256,299 logical bytes. It binds pushed source Git `0d623e7b191244a961859777591e07cc84b97117`, includes both completed 667,224-line semantic/numeric caches and all three formal artifacts for both `CASH_PRECIOUS_METALS` and `CENTRAL_BANK_DEPOSITS`, and passes full incremental restore plus remote run-record verification against the restore-verified full-snapshot trust root. Its 803 pre-existing content objects were reused and only six new objects were uploaded. The newest session-backup attempt completed byte staging but the fail-closed secret scan rejected 130 matches across 32 items (`github_classic_token`, `private_key_header`); no session archive or manifest was uploaded. An earlier attempt had also failed because the active session changed while being hashed. Therefore project code/data recovery is healthy, but strict recovery readiness across all three required persistence layers is **NOT FULLY PROVEN** until a clean, restore-verified session backup exists.
 
 ## 1. Breadth-first corpus strategy and generalization KPI
 
