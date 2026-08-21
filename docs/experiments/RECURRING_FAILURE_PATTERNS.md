@@ -56,7 +56,9 @@ Status meanings:
 - **Examples:** ACB customer-deposit vertical period blocks; risk tables with
   group headers over currency or repricing lanes; HDB H1 cash tables where an
   implied parent initially made the topology window start at the final unit
-  header and hid the preceding `Số cuối kỳ` / `Số đầu kỳ` row.
+  header and hid the preceding `Số cuối kỳ` / `Số đầu kỳ` row; MBB H1/2025
+  central-bank deposits where a narrative `31/12/2014` date initially joined
+  the real table dates `30/6/2025` and `31/12/2024`.
 - **Cause:** text order is used without geometry and span relationships.
 - **Do not:** require a single-line exact header or hand-author a bank-specific
   header tree.
@@ -65,7 +67,10 @@ Status meanings:
   For a structurally implied parent, extend the header band upward only on the
   first-child page, within a page-local text-height window and the body-derived
   numeric-column band; unrelated narrative and bank/page coordinates are not
-  matching inputs.
+  matching inputs. When an otherwise valid band contains extra narrative
+  dates, the shared period resolver tests 2–4-line subsets against the document
+  periods and numeric-column geometry; it accepts only one unique subset and
+  remains unresolved when two subsets are equally valid.
 - **Status:** `MITIGATED`; the shared header-band/span graph exists, but the
   family evaluators have not yet exercised it across the full filing matrix.
 
@@ -103,11 +108,15 @@ Status meanings:
 
 - **Pattern:** a visible grouping parent is mapped as a value row although its
   children already populate the accounting total.
-- **Examples:** HDB UPAS-LC parent; optional margin and source group parents.
+- **Examples:** HDB UPAS-LC parent; optional margin and source group parents;
+  `Tiền gửi tại NHNNVN` appearing above its exact VND/foreign-currency children.
 - **Cause:** every labeled row is assumed additive and schema-eligible.
 - **Do not:** map both parent and children without a population equation.
 - **Generic primitive/fix:** typed `SOURCE_ONLY_GROUP_PARENT`, explicit child
-  population, and same-population closure before mapping.
+  population, and same-population closure before mapping. A declarative source
+  group may replace its exact component rows only when their values sum to the
+  group parent on every admitted lane; a partial population or mismatch remains
+  unresolved, and the parent plus children are never counted twice.
 - **Status:** `MITIGATED`.
 
 ## RFP-007 — Same wording identifies a different accounting population

@@ -17,10 +17,28 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **362 entries**.  Current open queue: **145**.  Closed history:
+Ledger total: **363 entries**.  Current open queue: **146**.  Closed history:
 **129** row/graph resolutions and **88** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
+
+## OPEN — family-first 140-filing `Tiền gửi tại NHNN`
+
+Formal topology/evidence/schema replay scanned all 140 available filings and
+produced 69 `VERIFIED_BY_CODEX`, 70 `NOT_OBSERVED_PROPOSAL_ONLY` and one
+`UNRESOLVED`. The unresolved region is structurally unique and has the correct
+parent, period axes, unit and visible family total; only its comparative numeric
+token is not admitted by the strict numeric parser.
+
+| ID | Bank/report | Trang | Khoản mục nguồn và giá trị nhìn thấy | Lý do còn OPEN |
+| --- | --- | ---: | --- | --- |
+| FF-CBD-001 | MBB H1/2026 công ty mẹ | 39 | `Tiền gửi tại NHNNVN bằng VND (i)`: `19.849.504` / `55.307.732`; PP-OCRv6 comparative token `55,307.732`; sample `sample-000498485`; crop SHA `232a952a6707802818f1971ccbd785252fc61ee28375d4a1a44f27df419daa42` | Dấu phân nhóm `,`/`.` lẫn làm comparative lane không được strict numeric parser nhận, nên child lanes và additive closure chưa đầy đủ. Pixel và VietOCR cùng đọc `55.307.732`, nhưng VietOCR là semantic authority, không phải numeric truth; không sửa token chỉ để phép cộng đóng. Chờ authenticated numeric challenger rồi replay family. |
+
+Machine-readable authorities:
+`output/calibration/family-first-topology-sweeps-v1/central-bank-deposits.json`,
+`output/calibration/family-first-accounting-evidence-sweeps-v1/central-bank-deposits.json`
+và
+`output/calibration/family-first-accounting-schema-mappings-v1/central-bank-deposits.json`.
 
 ## OPEN — family-first 140-filing `Tiền, kim loại quý và đá quý`
 

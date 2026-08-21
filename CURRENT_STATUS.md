@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-08-21T16:32:08Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
+Updated: 2026-08-21T21:07:31Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
 The detailed historical receipts below remain evidence, but that directive supersedes
@@ -31,8 +31,19 @@ older queue priorities where they conflict.
   `ffasmv1:mapping:48dd9aa68e03dbd5e4721cc018463c642aa5e7d76810267ef91c50340bf9cf8a`:
   **70 verified documents / 284 mappings / 68 not observed / 2 unresolved**.
   Two independent local Gemma requests read the difficult pixels as
-  `1.460.873` and `1.460.854`, but remain challenger-only. The next schema-order
-  family is `CENTRAL_BANK_DEPOSITS` (`Tiền gửi tại NHNN`).
+  `1.460.873` and `1.460.854`, but remain challenger-only.
+- `CENTRAL_BANK_DEPOSITS`, the second schema-order family, is formally complete
+  across all 140 available filings. Topology exact-replay finds 70 unique regions
+  and 70 `NOT_OBSERVED_PROPOSAL_ONLY`; evidence promotes 69 and keeps one MBB
+  H1/2026 parent-company mixed-separator numeric cell unresolved. Schema build
+  and verify agree on mapping
+  `ffasmv1:mapping:94b5ad7d021b1c636822f0d031c35c4016c0a940a1374161d1786e95169eb013`:
+  **69 verified documents / 241 mappings / 70 not observed / 1 unresolved**.
+  The shared engine now handles exact source-group/component equivalence without
+  double count and rejects narrative-date contamination unless one unique local
+  period subset matches both document periods and column geometry. The next
+  schema-order family is `INTERBANK_DEPOSITS_AND_LOANS`
+  (`Tiền, vàng gửi tại và cho vay các TCTD khác`).
 
 ## Executive handoff — chiến lược cũ đã làm gì và đang ở đâu
 
