@@ -6,6 +6,8 @@
         "Bằng Đồng Việt Nam",
         "Bằng tiền đồng",
         "Tiền gửi tại NHNNVN bằng VND",
+        "Tiền gửi tại NHNNVN bằng VND (i)",
+        "Tiền gửi tại NHNNVN bằng VND (1)",
         "Tiền gửi tại NHNN Việt Nam bằng VND",
         "Tiền gửi thanh toán và dự trữ bắt buộc bằng VND"
       ],
@@ -17,6 +19,8 @@
       "aliases": [
         "Bằng ngoại tệ",
         "Tiền gửi tại NHNNVN bằng ngoại tệ",
+        "Tiền gửi tại NHNNVN bằng ngoại tệ (i)",
+        "Tiền gửi tại NHNNVN bằng ngoại tệ (ii)",
         "Tiền gửi tại NHNN Việt Nam bằng ngoại tệ",
         "Tiền gửi thanh toán và dự trữ bắt buộc bằng ngoại tệ"
       ],
@@ -29,7 +33,8 @@
         "Tiền gửi tại NHNN Việt Nam",
         "Tiền gửi tại NHNNVN",
         "Tiền gửi tại NHNNVN (i)",
-        "Tiền gửi tại Ngân hàng Nhà nước Việt Nam"
+        "Tiền gửi tại Ngân hàng Nhà nước Việt Nam",
+        "Tiền gửi tại Ngân hàng Nhà nước Việt Nam (i)"
       ],
       "presence": "OPTIONAL",
       "role": "CENTRAL_BANK_VIETNAM_PARENT",
@@ -38,7 +43,9 @@
     {
       "aliases": [
         "Tiền gửi tại Ngân hàng Nhà nước Lào",
-        "Tiền gửi tại Ngân hàng Trung ương Lào"
+        "Tiền gửi tại Ngân hàng Nhà nước Lào (ii)",
+        "Tiền gửi tại Ngân hàng Trung ương Lào",
+        "Tiền gửi tại Ngân hàng Trung ương Lào (ii)"
       ],
       "presence": "OPTIONAL",
       "role": "CENTRAL_BANK_LAOS",
@@ -47,7 +54,9 @@
     {
       "aliases": [
         "Tiền gửi tại Ngân hàng Quốc gia Campuchia",
-        "Tiền gửi tại Ngân hàng Trung ương Campuchia"
+        "Tiền gửi tại Ngân hàng Quốc gia Campuchia (iii)",
+        "Tiền gửi tại Ngân hàng Trung ương Campuchia",
+        "Tiền gửi tại Ngân hàng Trung ương Campuchia (iii)"
       ],
       "presence": "OPTIONAL",
       "role": "CENTRAL_BANK_CAMBODIA",
@@ -81,12 +90,14 @@
       "Tiền gửi tại NHNN",
       "Tiền gửi tại NHNNVN",
       "Tiền gửi tại Ngân hàng Nhà nước",
+      "Tiền gửi tại Ngân hàng Nhà nước (NHNN)",
       "Tiền gửi tại Ngân hàng Nhà nước Việt Nam",
       "Tiền gửi tại Ngân hàng Trung ương"
     ],
-    "resolution_mode": "EXPLICIT_OR_UNIQUE_REQUIRED_CHILD_CLUSTER",
+    "resolution_mode": "EXPLICIT_ONLY",
     "role": "CENTRAL_BANK_DEPOSITS"
   },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
   "required_role_combinations": [
     [
       "DEPOSIT_VND",

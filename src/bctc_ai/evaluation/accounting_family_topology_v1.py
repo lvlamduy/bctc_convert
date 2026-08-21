@@ -74,7 +74,11 @@ _SPEC_FIELDS = {
     "parent",
     "structural_reset_aliases",
 }
-_SPEC_V2_FIELDS = {*_SPEC_FIELDS, "required_role_combinations"}
+_SPEC_V2_FIELDS = {
+    *_SPEC_FIELDS,
+    "presence_evidence_mode",
+    "required_role_combinations",
+}
 _RESULT_FIELDS = {
     "claim_boundary",
     "family_id",
@@ -96,6 +100,10 @@ _ROLE_KINDS = {
 }
 _PRESENCE = {"OPTIONAL", "REQUIRED"}
 _PARENT_RESOLUTION = {"EXPLICIT_ONLY", "EXPLICIT_OR_UNIQUE_REQUIRED_CHILD_CLUSTER"}
+_PRESENCE_EVIDENCE_MODES = {
+    "GLOBAL_CORE_HITS",
+    "WITHIN_EXPLICIT_PARENT_CLUSTER",
+}
 _ENUMERATION_PREFIX = re.compile(
     r"^\s*(?:(?:\d{1,3}(?:\.\d{1,3})*)[.)\-:]|"
     r"(?:\(\d{1,3}(?:\.\d{1,3})*\))|(?:[ivxlcdm]{1,8}|[a-z])[.)\-:])\s+",
@@ -203,6 +211,7 @@ def _spec(value: Any) -> dict[str, Any]:
         if not required_roles:
             raise _error("accounting family needs at least one required child role")
         required_role_combinations = [required_roles]
+        presence_evidence_mode = "GLOBAL_CORE_HITS"
     else:
         if required_roles:
             raise _error("alternative-core topology roles must use OPTIONAL presence")
@@ -225,6 +234,16 @@ def _spec(value: Any) -> dict[str, Any]:
                 raise _error("alternative required role combinations must be unique")
             seen_combinations.add(combination)
             required_role_combinations.append(list(combination))
+        presence_evidence_mode = value["presence_evidence_mode"]
+        if (
+            type(presence_evidence_mode) is not str
+            or presence_evidence_mode not in _PRESENCE_EVIDENCE_MODES
+            or (
+                presence_evidence_mode == "WITHIN_EXPLICIT_PARENT_CLUSTER"
+                and resolution_mode != "EXPLICIT_ONLY"
+            )
+        ):
+            raise _error("alternative-core presence evidence mode drifted")
 
     limits = value["limits"]
     if type(limits) is not dict or set(limits) != {
@@ -256,6 +275,7 @@ def _spec(value: Any) -> dict[str, Any]:
             "resolution_mode": resolution_mode,
             "role": parent_role,
         },
+        "presence_evidence_mode": presence_evidence_mode,
         "required_role_combinations": required_role_combinations,
         "spec_format_version": spec_version,
         "structural_reset_aliases": _aliases(
@@ -471,7 +491,15 @@ def _child_records_in_range(
     records: list[dict[str, Any]] = []
     for child in spec["children"]:
         candidates = [
-            hit for hit in hits[child["role"]] if start < hit["document_line_ordinal"] < stop
+            hit
+            for hit in hits[child["role"]]
+            if (
+                start < hit["document_line_ordinal"] < stop
+                or (
+                    child["role_kind"] == "SOURCE_ONLY_GROUP_PARENT"
+                    and hit["document_line_ordinal"] == start
+                )
+            )
         ]
         if not candidates:
             continue
@@ -752,9 +780,22 @@ def _build(pages: Sequence[Mapping[str, Any]], spec: Mapping[str, Any]) -> dict[
     core_roles = {
         role for combination in spec["required_role_combinations"] for role in combination
     }
-    core_semantic_anchor_hit_count = sum(
-        len(combined_hits["children"][role]) for role in core_roles
-    )
+    if spec["presence_evidence_mode"] == "WITHIN_EXPLICIT_PARENT_CLUSTER":
+        scoped_core_hits = {
+            (record["role"], record["document_line_ordinal"])
+            for candidate in explicit
+            if any(
+                record["role_kind"] != "SOURCE_ONLY_GROUP_PARENT"
+                for record in candidate["child_matches"]
+            )
+            for record in candidate["child_matches"]
+            if record["role"] in core_roles
+        }
+        core_semantic_anchor_hit_count = len(scoped_core_hits)
+    else:
+        core_semantic_anchor_hit_count = sum(
+            len(combined_hits["children"][role]) for role in core_roles
+        )
     return {
         "metrics": {
             "complete_region_count": len(complete),

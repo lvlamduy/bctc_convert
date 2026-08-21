@@ -148,6 +148,7 @@ def _alternative_core_spec() -> dict[str, object]:
             "resolution_mode": "EXPLICIT_OR_UNIQUE_REQUIRED_CHILD_CLUSTER",
             "role": "CENTRAL_BANK_DEPOSITS",
         },
+        "presence_evidence_mode": "GLOBAL_CORE_HITS",
         "required_role_combinations": [["VND", "FOREIGN"], ["VIETNAM", "LAOS"]],
         "structural_reset_aliases": ["Tiền gửi và cho vay các TCTD khác"],
     }
@@ -330,6 +331,76 @@ def test_alternative_core_rejects_required_presence_and_unknown_combination_role
     unknown["required_role_combinations"] = [["VND", "UNKNOWN"]]
     with pytest.raises(AccountingFamilyTopologyV1Error, match="combination"):
         build_accounting_family_topology_scan_v1([_page(["Bằng VND"])], unknown)
+
+
+def test_explicit_cluster_presence_mode_ignores_generic_child_pairs_outside_parent() -> None:
+    spec = _alternative_core_spec()
+    spec["parent"]["resolution_mode"] = "EXPLICIT_ONLY"
+    spec["presence_evidence_mode"] = "WITHIN_EXPLICIT_PARENT_CLUSTER"
+    absent_detail = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    "Tiền gửi tại NHNN",
+                    "100",
+                    "Tiền gửi và cho vay các TCTD khác",
+                    "Bằng VND",
+                    "80",
+                    "Bằng ngoại tệ",
+                    "20",
+                ]
+            )
+        ],
+        spec,
+    )
+    partial_detail = build_accounting_family_topology_scan_v1(
+        [_page(["Tiền gửi tại NHNN", "Bằng VND", "100"])],
+        spec,
+    )
+
+    assert absent_detail["status"] == "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    assert absent_detail["metrics"]["core_semantic_anchor_hit_count"] == 0
+    assert partial_detail["status"] == "UNRESOLVED_NO_COMPLETE_REGION"
+    assert partial_detail["metrics"]["core_semantic_anchor_hit_count"] == 1
+
+
+def test_explicit_cluster_presence_mode_requires_explicit_only_parent_resolution() -> None:
+    spec = _alternative_core_spec()
+    spec["presence_evidence_mode"] = "WITHIN_EXPLICIT_PARENT_CLUSTER"
+
+    with pytest.raises(AccountingFamilyTopologyV1Error, match="presence evidence mode"):
+        build_accounting_family_topology_scan_v1([_page(["Bằng VND"])], spec)
+
+
+def test_source_only_group_parent_can_share_the_explicit_family_parent_row() -> None:
+    spec = _alternative_core_spec()
+    spec["parent"]["resolution_mode"] = "EXPLICIT_ONLY"
+    spec["presence_evidence_mode"] = "WITHIN_EXPLICIT_PARENT_CLUSTER"
+    spec["children"][2]["aliases"].append("Tiền gửi tại NHNN")
+
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    "Tiền gửi tại NHNN",
+                    "100",
+                    "90",
+                    "Tiền gửi tại Ngân hàng Nhà nước Lào",
+                    "20",
+                    "10",
+                    "120",
+                    "100",
+                ]
+            )
+        ],
+        spec,
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    region = result["regions"][0]
+    assert region["observed_roles"] == ["VIETNAM", "LAOS"]
+    assert region["parent_match"]["document_line_ordinal"] == 0
+    assert region["child_matches"][0]["document_line_ordinal"] == 0
 
 
 @pytest.mark.parametrize(
