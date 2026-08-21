@@ -12,10 +12,13 @@ from __future__ import annotations
 from typing import Any
 
 from bctc_ai.evaluation import accounting_family_topology_v1 as topology_v1
+from bctc_ai.evaluation.family_first_accounting_input_snapshot_v1 import (
+    read_authenticated_family_first_semantic_documents_snapshot_v1,
+    validate_authenticated_family_first_semantic_documents_snapshot_v1,
+)
 from bctc_ai.evaluation.family_first_semantic_index_v1 import (
     AuthenticatedFamilyFirstSemanticIndexV1,
     project_authenticated_family_first_semantic_index_v1,
-    read_authenticated_family_first_semantic_document_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
@@ -177,10 +180,19 @@ def build_authenticated_family_first_topology_sweep_v1(
         raise _error("family-first topology sweep inputs are not authenticated") from exc
     trials = []
     document_count = projection["metrics"]["document_count"]
-    for document_ordinal in range(1, document_count + 1):
-        document = read_authenticated_family_first_semantic_document_v1(
-            semantic_index_capability, document_ordinal=document_ordinal
+    document_ordinals = tuple(range(1, document_count + 1))
+    try:
+        documents = read_authenticated_family_first_semantic_documents_snapshot_v1(
+            semantic_index_capability,
+            document_ordinals=document_ordinals,
         )
+    except RuntimeError as exc:
+        raise _error("family-first topology semantic snapshot is not authenticated") from exc
+    if len(documents) != document_count:
+        raise _error("family-first topology semantic snapshot denominator drifted")
+    for document_ordinal, document in enumerate(documents, 1):
+        if document["document_ordinal"] != document_ordinal:
+            raise _error("family-first topology semantic snapshot order drifted")
         scan = topology_v1.build_accounting_family_topology_scan_v1(
             _blind_pages(document), family_spec
         )
@@ -192,6 +204,13 @@ def build_authenticated_family_first_topology_sweep_v1(
                 "topology_scan": scan,
             }
         )
+    try:
+        validate_authenticated_family_first_semantic_documents_snapshot_v1(
+            semantic_index_capability,
+            documents,
+        )
+    except RuntimeError as exc:
+        raise _error("family-first topology semantic snapshot changed after use") from exc
     material = {
         "authority": canonical_clone_v1(_AUTHORITY),
         "claim_boundary": CLAIM_BOUNDARY,

@@ -1,6 +1,6 @@
 # Recurring failure patterns — family-first TM digitization
 
-Updated: 2026-08-20 (UTC)
+Updated: 2026-08-21 (UTC)
 
 This ledger is a mandatory pre-change check for shared table/OCR logic. It keeps
 only recurring or high-impact patterns. A family wrapper may declare semantic
@@ -17,7 +17,8 @@ Status meanings:
 
 - **Pattern:** Vietnamese labels lose/add characters; numeric strings lose or
   substitute a digit even at high confidence.
-- **Examples:** MBB `Nợ trùng hạn`; VIB `97.043.85`; HDB
+- **Examples:** MBB `Nợ trùng hạn`; cash-family labels `Tiện mặt`,
+  `Tiền mặt bảng ngoại tệ`, and `Vùng tiền tệ`; VIB `97.043.85`; HDB
   `6.960.904/6.980.904`; CTG `(6.341.026)/(5.341.026)`.
 - **Cause:** sequence recognition confidence is not character-level truth.
 - **Do not:** correct text/numbers from an expected schema value or merely to
@@ -244,12 +245,29 @@ Status meanings:
 
 - **Pattern:** stamps/signatures contribute number-like tokens on the same
   horizontal band as genuine values.
-- **Examples:** HDB `1500` audit-stamp fragment beside a two-period row.
+- **Examples:** HDB `1500` and an ACB H1 audit-stamp `5` beside two-period
+  family rows; a VCB missing DASH and a CTG adjacent row both weakly overlap
+  the preceding/following numeric bbox.
 - **Cause:** y-overlap alone defines row membership.
 - **Do not:** keep every number on the band or hard-code a page-edge cutoff.
-- **Generic primitive/fix:** bind values to authenticated leaf-column centres;
-  unmatched number-like tokens remain outside the table.
-- **Status:** `RESOLVED` for the two-period column-centre primitive.
+- **Generic primitive/fix:** infer authenticated leaf-column centres from
+  repeated body alignments.  When repeated columns exist, isolated singleton
+  centres are not promoted to new lanes; singleton lanes remain available only
+  for genuinely sparse bodies with no repeated axis.  Row values then bind to
+  those body-derived centres.  Numeric source cells are also consumed globally
+  and exclusively: the unique strongest row affinity wins, while an exact tie
+  remains missing for pixel rescue.  The same singleton policy is replayed for
+  role rows, unlabeled trailing totals and missing-cell dash crop proposals, so
+  an unmatched number-like token cannot silently expand only one downstream
+  grid or be reused by two accounting roles.  Crucially, the missing-cell crop
+  proposer now consumes the already resolved column centres and the target
+  row's post-exclusivity visible cells.  It does not run a second row-affinity
+  assignment that could borrow the rejected value from an adjacent row.
+- **Status:** `MITIGATED`; repeated-body tables now reject singleton furniture.
+  Exact source-pixel replay now recovers the formerly missed VCB monetary-gold
+  and CTG non-monetary-gold dashes as zero without reusing their neighbouring
+  rows.  A genuinely sparse value lane that appears only once still needs an
+  independently bound column-header axis before it may be admitted.
 
 ## RFP-015 — Bank/page/period-specific fixes masquerade as variants
 
@@ -465,3 +483,35 @@ Status meanings:
 - **Status:** `RESOLVED`; the production join already consumes authenticated
   render dimensions, and the exact 84-page VPB filing passes topology, row,
   period/unit and additive-closure replay without any bbox tolerance.
+
+## RFP-024 — Per-document live replay scales quadratically across a corpus
+
+- **Pattern:** each accepted filing reparses the complete private source axis,
+  complete numeric proposal axis and source-render ledger before reading one
+  document or one page.  Correctness remains intact, but a family sweep performs
+  hundreds of gigabytes of redundant logical reads and becomes too slow to
+  iterate or replay across 140 filings.
+- **Examples:** the earlier eight-page authenticated sweep repeatedly reopened
+  the same READY/freeze/receipt roots; the first all-filing evidence builder
+  repeated the 667,224-line numeric/archive replay for every unique family hit
+  and rendered a source page again for every missing-dash crop.
+- **Cause:** a safe single-item capability accessor was placed inside a corpus
+  loop instead of authenticating one immutable multi-item snapshot.
+- **Do not:** skip capability replay, cache mutable filesystem paths, consume raw
+  projections, or read crop paths directly to gain speed.
+- **Generic primitive/fix:** authenticate the live numeric/archive and render
+  roots immediately before and after one exact source-ordered batch; read the
+  selected semantic documents through the same bounded snapshot pattern and
+  re-read their exact bytes before result minting; retain immutable
+  proposal/render bytes in those calls; verify every sample/crop/source
+  locator; then run family logic on the snapshots.  Missing cell crops are
+  derived from the already authenticated page-render bytes, so they do not
+  reopen the PDF or capability.  Both topology and evidence sweeps consume the
+  source-ordered semantic batch and re-read every selected semantic document
+  immediately before minting; the evidence builder additionally repeats final
+  semantic/numeric capability projections.  Single-item accessors remain
+  available for interactive reads.
+- **Status:** `MITIGATED`; batch semantic-document, numeric-document and
+  page-render accessors plus regression gates cover the first family.  Real
+  clean-root runtime and memory measurements remain part of the formal
+  140-filing replay gate.

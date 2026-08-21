@@ -97,11 +97,20 @@ def test_sweep_routes_no_provenance_into_shared_matcher(monkeypatch: pytest.Monk
             "metrics": {"document_count": 2},
         },
     )
-    documents = {1: _document(1, matched=True), 2: _document(2, matched=False)}
+    documents = (_document(1, matched=True), _document(2, matched=False))
+    reads = []
     monkeypatch.setattr(
         sweep,
-        "read_authenticated_family_first_semantic_document_v1",
-        lambda _cap, *, document_ordinal: copy.deepcopy(documents[document_ordinal]),
+        "read_authenticated_family_first_semantic_documents_snapshot_v1",
+        lambda _cap, *, document_ordinals: (
+            reads.append(document_ordinals) or copy.deepcopy(documents)
+        ),
+    )
+    validations = []
+    monkeypatch.setattr(
+        sweep,
+        "validate_authenticated_family_first_semantic_documents_snapshot_v1",
+        lambda _cap, value: validations.append(copy.deepcopy(value)),
     )
     original = sweep.topology_v1.build_accounting_family_topology_scan_v1
 
@@ -123,6 +132,8 @@ def test_sweep_routes_no_provenance_into_shared_matcher(monkeypatch: pytest.Monk
     }
     assert result["trials"][0]["private_provenance"]["bank"] == "ACB"
     assert result["trials"][0]["topology_scan"]["status"] == ("ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL")
+    assert reads == [(1, 2)]
+    assert validations == [documents]
 
 
 def test_sweep_shape_rejects_coordinated_metric_elevation(
@@ -138,8 +149,13 @@ def test_sweep_shape_rejects_coordinated_metric_elevation(
     )
     monkeypatch.setattr(
         sweep,
-        "read_authenticated_family_first_semantic_document_v1",
-        lambda *_args, **_kwargs: _document(1, matched=True),
+        "read_authenticated_family_first_semantic_documents_snapshot_v1",
+        lambda *_args, **_kwargs: (_document(1, matched=True),),
+    )
+    monkeypatch.setattr(
+        sweep,
+        "validate_authenticated_family_first_semantic_documents_snapshot_v1",
+        lambda *_args, **_kwargs: None,
     )
     result = sweep.build_authenticated_family_first_topology_sweep_v1(object(), _spec())
     tampered = copy.deepcopy(result)
@@ -149,3 +165,36 @@ def test_sweep_shape_rejects_coordinated_metric_elevation(
     tampered["sweep_id"] = "fftsv1:sweep:" + canonical_json_sha256_v1(material)
     with pytest.raises(sweep.FamilyFirstTopologySweepV1Error, match="metrics"):
         sweep._validate(tampered)
+
+
+def test_sweep_rejects_snapshot_drift_after_consumption(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        sweep,
+        "project_authenticated_family_first_semantic_index_v1",
+        lambda _cap: {
+            "index_id": "ffsiv1:index:" + "1" * 64,
+            "metrics": {"document_count": 1},
+        },
+    )
+    monkeypatch.setattr(
+        sweep,
+        "read_authenticated_family_first_semantic_documents_snapshot_v1",
+        lambda *_args, **_kwargs: (_document(1, matched=True),),
+    )
+
+    def reject(*_args, **_kwargs):
+        raise RuntimeError("changed")
+
+    monkeypatch.setattr(
+        sweep,
+        "validate_authenticated_family_first_semantic_documents_snapshot_v1",
+        reject,
+    )
+
+    with pytest.raises(
+        sweep.FamilyFirstTopologySweepV1Error,
+        match="changed after use",
+    ):
+        sweep.build_authenticated_family_first_topology_sweep_v1(object(), _spec())

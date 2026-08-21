@@ -1,8 +1,9 @@
 # Gemma 4 local GPU runbook
 
-Use this lane only as a bounded page-level table-structure/text challenger.
-Run one independent request per page. Do not use Gemma numeric output as final
-numeric authority without a separate cell OCR and accounting-equation check.
+Use this lane only as a bounded page-level table-structure or crop-level
+text/number challenger. Run one fresh independent request per page or crop. Do
+not use Gemma numeric output as final numeric authority without separate cell
+OCR/pixel evidence and an accounting-equation check.
 
 Before changing this lane, also review
 `docs/experiments/OCR_MAPPING_FAILURE_PREVENTION.md`. It is the cumulative
@@ -64,6 +65,17 @@ Bind the result to the exact input image SHA-256. Treat its header hierarchy,
 row/column grouping, and spelling rescue as challenger evidence. Reconcile
 every numeric cell against independently segmented pixel cells and table
 equations before mapping.
+
+For one difficult label or number crop, start another fresh chat with no prior
+page context and use only this short request:
+
+> Chuyển nội dung nhìn thấy trong ảnh thành JSON {"text":"..."}, giữ nguyên
+> chính tả và dấu câu. Không phản hồi gì thêm ngoài JSON.
+
+The crop request must not contain an expected value, schema label, ReportNormId,
+bank, page, or accounting result. Bind the response to the exact crop SHA-256,
+retain the raw response, and compare it with VietOCR/PP-OCRv6 plus the source
+pixels. A Gemma-only number remains a challenger, not numeric truth.
 
 ## Failure modes already observed
 

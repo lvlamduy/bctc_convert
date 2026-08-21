@@ -28,7 +28,7 @@ def _render_record(payload: bytes) -> dict[str, object]:
         "sha256": hashlib.sha256(payload).hexdigest(),
         "size_bytes": len(payload),
     }
-    return {
+    material = {
         "archive_id": "archive",
         "authority": dict(region_v1._RENDER_AUTHORITY),
         "document_ordinal": 1,
@@ -36,9 +36,12 @@ def _render_record(payload: bytes) -> dict[str, object]:
         "index_id": "index",
         "physical_page": 2,
         "plan_id": "plan",
-        "render_id": "render",
         "render_ref": reference,
         "state": "AUTHENTICATED_EXACT_SOURCE_PAGE_RENDER_SNAPSHOT",
+    }
+    return {
+        **material,
+        "render_id": "ffaprv1:render:" + canonical_json_sha256_v1(material),
     }
 
 
@@ -267,6 +270,92 @@ def test_authenticated_render_rejects_source_change_during_replay(monkeypatch) -
         region_v1._authenticated_render(state, document_ordinal=1, physical_page=1)
 
 
+def test_render_batch_replays_live_roots_once_for_multiple_pages(monkeypatch) -> None:
+    render = _png()
+    source = b"pdf"
+    source_ref = {
+        "path": "source-1.pdf",
+        "sha256": hashlib.sha256(source).hexdigest(),
+        "size_bytes": len(source),
+    }
+    render_ref = {
+        "pixel_height": 30,
+        "pixel_width": 40,
+        "sha256": hashlib.sha256(render).hexdigest(),
+        "size_bytes": len(render),
+    }
+    plan = {
+        "documents": [
+            {
+                "document_ordinal": ordinal,
+                "page_count": 1,
+                "source_pdf_ref": {**source_ref, "path": f"source-{ordinal}.pdf"},
+            }
+            for ordinal in (1, 2)
+        ],
+        "plan_id": "plan",
+        "render_policy": {"dpi": 144},
+    }
+    index_manifest = {
+        "documents": [{"document_ordinal": ordinal} for ordinal in (1, 2)],
+        "index_id": "index",
+    }
+    archive_manifest = {"archive_id": "archive"}
+    archive_capability = object()
+    root = Path("/project")
+    archive_state = SimpleNamespace(root=root)
+    index_state = SimpleNamespace(root=root, archive=archive_capability)
+    counts = {"index": 0, "archive": 0, "page": 0, "source": 0}
+
+    def live_index(_capability):
+        counts["index"] += 1
+        return index_state, index_manifest
+
+    def archive_payloads(_capability):
+        counts["archive"] += 1
+        return archive_state, archive_manifest, {}, plan, {}
+
+    def root_bytes(_root, relative, _label):
+        if str(relative).endswith("page.json"):
+            counts["page"] += 1
+            return b"page-1" if "document-0001" in str(relative) else b"page-2"
+        counts["source"] += 1
+        return source
+
+    monkeypatch.setattr(region_v1.index_v1, "_live_index", live_index)
+    monkeypatch.setattr(region_v1.archive_v1, "_archive_payloads", archive_payloads)
+    monkeypatch.setattr(region_v1.archive_v1, "_root_bytes", root_bytes)
+    monkeypatch.setattr(
+        region_v1.archive_v1,
+        "_historical_cache_object",
+        lambda payload, _label: {"document_ordinal": int(payload[-1:])},
+    )
+    monkeypatch.setattr(
+        region_v1.archive_v1,
+        "_page_artifact",
+        lambda value: {
+            "document_ordinal": value["document_ordinal"],
+            "page_freeze": {"physical_page": 1, "render_ref": render_ref},
+            "physical_page": 1,
+            "plan_id": "plan",
+        },
+    )
+    monkeypatch.setattr(region_v1.archive_v1, "_matches_ref", lambda *_args: None)
+    monkeypatch.setattr(region_v1.freeze_v1, "_validate_page", lambda value: value)
+    monkeypatch.setattr(region_v1, "_render_page", lambda *_args, **_kwargs: render)
+
+    snapshots = region_v1.read_authenticated_family_first_page_renders_v1(
+        "capability",
+        selections=(
+            {"document_ordinal": 1, "physical_page": 1},
+            {"document_ordinal": 2, "physical_page": 1},
+        ),
+    )
+
+    assert [snapshot["document_ordinal"] for snapshot in snapshots] == [1, 2]
+    assert counts == {"index": 2, "archive": 2, "page": 4, "source": 4}
+
+
 def test_render_reference_requires_exact_types() -> None:
     reference = {
         "pixel_height": 1,
@@ -292,3 +381,29 @@ def test_blank_proposed_cell_is_not_manufactured_into_a_glyph() -> None:
     recognition, status = region_v1._foreground_recognition_bbox(image, proposed)
     assert recognition == proposed
     assert status == "NO_GLYPH_COMPONENT_FULL_PROPOSED_CELL_PRESERVED"
+
+
+def test_page_render_batch_selection_is_exact_unique_and_source_ordered() -> None:
+    valid = ({"document_ordinal": 1, "physical_page": 2},)
+    assert region_v1._render_selections(valid) == ((1, 2),)
+    for value in (
+        [valid[0]],
+        ({**valid[0], "bank": "ACB"},),
+        ({"document_ordinal": True, "physical_page": 2},),
+        (valid[0], valid[0]),
+    ):
+        with pytest.raises(region_v1.FamilyFirstAuthenticatedPageRegionV1Error):
+            region_v1._render_selections(value)
+
+
+def test_render_snapshot_crop_rejects_coherent_record_with_changed_bytes() -> None:
+    render = _png()
+    snapshot = {**_render_record(render), "render_png_bytes": render}
+    region_v1._crop_authenticated_family_first_page_render_snapshot_v1(
+        snapshot, raw_pixel_bbox=[8, 9, 24, 18]
+    )
+    attacked = {**snapshot, "render_png_bytes": render + b"tamper"}
+    with pytest.raises(region_v1.FamilyFirstAuthenticatedPageRegionV1Error, match="snapshot bytes"):
+        region_v1._crop_authenticated_family_first_page_render_snapshot_v1(
+            attacked, raw_pixel_bbox=[8, 9, 24, 18]
+        )

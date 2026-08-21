@@ -79,7 +79,9 @@
     "aliases": [
       "Tiền, kim loại quý và đá quý",
       "Tiền mặt, vàng bạc, đá quý",
-      "Tiền mặt, vàng"
+      "Tiền mặt, vàng",
+      "Tiền mặt và vàng",
+      "Tiền mặt và vàng bạc"
     ],
     "resolution_mode": "EXPLICIT_OR_UNIQUE_REQUIRED_CHILD_CLUSTER",
     "role": "CASH_PRECIOUS_METALS"

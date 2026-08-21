@@ -13,6 +13,7 @@ from typing import Any
 
 from bctc_ai.evaluation import accounting_family_row_axis_v1 as row_axis_v1
 from bctc_ai.evaluation import accounting_family_topology_v1 as topology_v1
+from bctc_ai.evaluation import family_first_accounting_input_snapshot_v1 as snapshot_v1
 from bctc_ai.evaluation import family_first_authenticated_page_region_v1 as render_v1
 from bctc_ai.evaluation import family_first_ppocrv6_numeric_index_v3 as numeric_v3
 from bctc_ai.evaluation import family_first_semantic_index_v1 as semantic_v1
@@ -179,9 +180,7 @@ def _axis_binding(document_axis: dict[str, Any]) -> dict[str, Any]:
 
 
 def _visible_dash_rescue_inputs(
-    semantic_capability: Any,
     *,
-    document_ordinal: int,
     joined_pages: list[dict[str, Any]],
     row_axis: dict[str, Any],
     render_snapshots: tuple[dict[str, Any], ...],
@@ -210,23 +209,28 @@ def _visible_dash_rescue_inputs(
             for line in page["lines"]
             if match["source_line_index"] <= line["line_ordinal"] <= match["end_source_line_index"]
         ]
+        centers, visible_cells = row_axis_v1._resolved_page_grid_inputs(row_axis["rows"], row)
         proposals = propose_missing_value_lane_regions_v1(
             region_lines[page_sequence],
             label_boxes=label_boxes,
             is_numeric=row_axis_v1._is_numeric,
             page_width=page["page_width"],
             page_height=page_height,
-            retain_singleton_columns=True,
+            retain_singleton_columns=False,
+            resolved_column_centers=centers,
+            resolved_visible_value_cells=visible_cells,
         )
         by_lane = {proposal["column_ordinal"]: proposal for proposal in proposals}
         for lane in row["missing_column_ordinals"]:
             proposal = by_lane.get(lane)
             if proposal is None:
                 continue
-            crop = render_v1.crop_authenticated_family_first_page_region_v1(
-                semantic_capability,
-                document_ordinal=document_ordinal,
-                physical_page=page_sequence,
+            crop = render_v1._crop_authenticated_family_first_page_render_snapshot_v1(
+                next(
+                    snapshot
+                    for snapshot in render_snapshots
+                    if snapshot["physical_page"] == page_sequence
+                ),
                 raw_pixel_bbox=proposal["raw_pixel_bbox"],
             )
             rescues.append(
@@ -270,12 +274,13 @@ def _unresolved_reasons(
 
 
 def _trial(
-    semantic_capability: Any,
-    numeric_capability: Any,
     document: dict[str, Any],
     topology_scan: dict[str, Any],
     family_spec: dict[str, Any],
     evaluation_spec: dict[str, Any],
+    *,
+    numeric_document: dict[str, Any] | None,
+    render_snapshots: tuple[dict[str, Any], ...],
 ) -> dict[str, Any]:
     base = {
         "document_ordinal": document["document_ordinal"],
@@ -303,20 +308,8 @@ def _trial(
             "row_axis": None,
             "unresolved_reasons": [topology_scan["status"]],
         }
-    region = topology_scan["regions"][0]
-    pages = _region_pages(document, region)
-    render_snapshots = tuple(
-        render_v1.read_authenticated_family_first_page_render_v1(
-            semantic_capability,
-            document_ordinal=document["document_ordinal"],
-            physical_page=page,
-        )
-        for page in pages
-    )
-    numeric_document = numeric_v3.read_authenticated_family_first_ppocrv6_numeric_document_v3(
-        numeric_capability,
-        document_ordinal=document["document_ordinal"],
-    )
+    if numeric_document is None or not render_snapshots:
+        raise _error("unique topology trial lacks its authenticated batch snapshots")
     document_axis = build_accounting_family_document_axis_join_v1(
         document,
         numeric_document,
@@ -325,8 +318,6 @@ def _trial(
     joined_pages = project_accounting_family_document_pages_v1(document_axis)
     base_row_axis = build_accounting_family_row_axis_v1(joined_pages, family_spec)
     dash_rescues = _visible_dash_rescue_inputs(
-        semantic_capability,
-        document_ordinal=document["document_ordinal"],
         joined_pages=joined_pages,
         row_axis=base_row_axis,
         render_snapshots=render_snapshots,
@@ -472,24 +463,74 @@ def build_authenticated_family_first_accounting_evidence_sweep_v1(
             or semantic_metrics[key] != numeric_metrics[key]
         ):
             raise _error("semantic and numeric index denominators differ")
-    trials = []
-    for document_ordinal in range(1, semantic_metrics["document_count"] + 1):
-        document = semantic_v1.read_authenticated_family_first_semantic_document_v1(
-            semantic_index_capability, document_ordinal=document_ordinal
-        )
+    semantic_documents = snapshot_v1.read_authenticated_family_first_semantic_documents_snapshot_v1(
+        semantic_index_capability,
+        document_ordinals=tuple(range(1, semantic_metrics["document_count"] + 1)),
+    )
+    prepared = []
+    for document in semantic_documents:
         topology_scan = topology_v1.build_accounting_family_topology_scan_v1(
             _blind_pages(document), family_spec
         )
-        trials.append(
-            _trial(
-                semantic_index_capability,
-                numeric_index_capability,
-                document,
-                topology_scan,
-                family_spec,
-                policy,
+        prepared.append((document, topology_scan))
+
+    accepted = [
+        (document, topology_scan)
+        for document, topology_scan in prepared
+        if topology_scan["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    ]
+    numeric_by_document = {}
+    renders_by_document: dict[int, list[dict[str, Any]]] = {}
+    if accepted:
+        ordinals = tuple(document["document_ordinal"] for document, _scan in accepted)
+        numeric_documents = (
+            snapshot_v1.read_authenticated_family_first_numeric_documents_snapshot_v1(
+                numeric_index_capability, document_ordinals=ordinals
             )
         )
+        numeric_by_document = {
+            document["document_ordinal"]: document for document in numeric_documents
+        }
+        selections = tuple(
+            {
+                "document_ordinal": document["document_ordinal"],
+                "physical_page": page,
+            }
+            for document, topology_scan in accepted
+            for page in _region_pages(document, topology_scan["regions"][0])
+        )
+        render_snapshots = render_v1.read_authenticated_family_first_page_renders_v1(
+            semantic_index_capability, selections=selections
+        )
+        for snapshot in render_snapshots:
+            renders_by_document.setdefault(snapshot["document_ordinal"], []).append(snapshot)
+
+    trials = [
+        _trial(
+            document,
+            topology_scan,
+            family_spec,
+            policy,
+            numeric_document=numeric_by_document.get(document["document_ordinal"]),
+            render_snapshots=tuple(renders_by_document.get(document["document_ordinal"], [])),
+        )
+        for document, topology_scan in prepared
+    ]
+    snapshot_v1.validate_authenticated_family_first_semantic_documents_snapshot_v1(
+        semantic_index_capability, semantic_documents
+    )
+    final_semantic_projection = semantic_v1.project_authenticated_family_first_semantic_index_v1(
+        semantic_index_capability
+    )
+    final_numeric_projection = (
+        numeric_v3.project_authenticated_family_first_ppocrv6_numeric_index_v3(
+            numeric_index_capability
+        )
+    )
+    if not same_typed_json_v1(
+        final_semantic_projection, semantic_projection
+    ) or not same_typed_json_v1(final_numeric_projection, numeric_projection):
+        raise _error("family-first accounting sweep inputs changed during batch construction")
     material = {
         "authority": canonical_clone_v1(_AUTHORITY),
         "claim_boundary": CLAIM_BOUNDARY,

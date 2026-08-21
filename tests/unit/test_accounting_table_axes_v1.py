@@ -300,6 +300,14 @@ def test_relative_period_axis_fails_closed_without_document_start_or_comparison(
 
 def test_units_and_numeric_surfaces_are_generic_and_typed() -> None:
     assert unit_kind_v1("Đơn vị: Triệu đồng") == "MONEY"
+    # A diacritic-only VietOCR substitution must normalize to the same unit
+    # surface while the immutable raw prediction remains available upstream.
+    assert accounting_unit_surface_v1("triệu đóng") == {
+        "currency": "VND",
+        "magnitude_power10": 6,
+        "normalized_surface": "trieu dong",
+        "unit_kind": "MONEY",
+    }
     assert unit_kind_v1("Triệu VND") == "MONEY"
     assert unit_kind_v1("Tỷ lệ %") == "PERCENT"
     assert accounting_unit_surface_v1("Tỷ lệ nợ xấu 2%") is None

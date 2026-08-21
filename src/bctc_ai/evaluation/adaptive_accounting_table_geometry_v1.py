@@ -10,6 +10,7 @@ geometry.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
+from math import isfinite
 from statistics import median
 from typing import Any
 
@@ -745,6 +746,8 @@ def propose_missing_value_lane_regions_v1(
     minimum_x_ratio: float = 0.47,
     maximum_x_ratio: float = 0.94,
     retain_singleton_columns: bool = False,
+    resolved_column_centers: Sequence[float] | None = None,
+    resolved_visible_value_cells: Sequence[Mapping[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     """Propose pixel regions for body lanes with no detector-produced cell.
 
@@ -757,26 +760,62 @@ def propose_missing_value_lane_regions_v1(
 
     if type(page_height) is not int or page_height <= 0:
         raise _error("page height must be one positive exact integer")
+    if (resolved_column_centers is None) != (resolved_visible_value_cells is None):
+        raise _error("resolved body grid requires both centers and visible cells")
     scale = median_text_height_v1(lines)
-    centers = infer_numeric_column_centers_v1(
-        lines,
-        is_numeric=is_numeric,
-        page_width=page_width,
-        minimum_x_ratio=minimum_x_ratio,
-        maximum_x_ratio=maximum_x_ratio,
-        retain_singleton_columns=retain_singleton_columns,
-    )
+    if resolved_column_centers is None:
+        centers = infer_numeric_column_centers_v1(
+            lines,
+            is_numeric=is_numeric,
+            page_width=page_width,
+            minimum_x_ratio=minimum_x_ratio,
+            maximum_x_ratio=maximum_x_ratio,
+            retain_singleton_columns=retain_singleton_columns,
+        )
+        visible = assign_value_row_lanes_v1(
+            lines,
+            label_boxes=label_boxes,
+            is_numeric=is_numeric,
+            page_width=page_width,
+            minimum_x_ratio=minimum_x_ratio,
+            maximum_x_ratio=maximum_x_ratio,
+            retain_singleton_columns=retain_singleton_columns,
+        )
+    else:
+        if (
+            type(resolved_column_centers) not in {list, tuple}
+            or not resolved_column_centers
+            or any(
+                type(center) is not float or not isfinite(center) or not 0 <= center <= page_width
+                for center in resolved_column_centers
+            )
+        ):
+            raise _error("resolved body-column centers are invalid")
+        centers = list(resolved_column_centers)
+        if centers != sorted(set(centers)):
+            raise _error("resolved body-column centers must be strictly ordered")
+        if type(resolved_visible_value_cells) not in {list, tuple}:
+            raise _error("resolved visible value cells must be one exact sequence")
+        visible = []
+        seen_lanes: set[int] = set()
+        for cell in resolved_visible_value_cells:
+            if (
+                type(cell) is not dict
+                or set(cell) != {"bbox", "column_ordinal"}
+                or type(cell["column_ordinal"]) is not int
+                or not 0 <= cell["column_ordinal"] < len(centers)
+                or cell["column_ordinal"] in seen_lanes
+            ):
+                raise _error("resolved visible value-cell binding is invalid")
+            seen_lanes.add(cell["column_ordinal"])
+            visible.append(
+                {
+                    "column_ordinal": cell["column_ordinal"],
+                    "line": {"bbox": list(_bbox(cell["bbox"]))},
+                }
+            )
     if not centers:
         return []
-    visible = assign_value_row_lanes_v1(
-        lines,
-        label_boxes=label_boxes,
-        is_numeric=is_numeric,
-        page_width=page_width,
-        minimum_x_ratio=minimum_x_ratio,
-        maximum_x_ratio=maximum_x_ratio,
-        retain_singleton_columns=retain_singleton_columns,
-    )
     visible_lanes = {item["column_ordinal"] for item in visible}
     missing_lanes = [ordinal for ordinal in range(len(centers)) if ordinal not in visible_lanes]
     if not missing_lanes:

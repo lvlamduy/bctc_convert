@@ -7,6 +7,7 @@ import io
 import pytest
 from PIL import Image, ImageDraw
 
+from bctc_ai.evaluation import accounting_family_row_axis_v1 as row_axis_v1
 from bctc_ai.evaluation import family_first_authenticated_page_region_v1 as region_v1
 from bctc_ai.evaluation.accounting_family_row_axis_v1 import (
     AccountingFamilyRowAxisV1Error,
@@ -198,7 +199,7 @@ def test_pixel_replayed_dash_completes_only_the_body_grid_missing_lane() -> None
         is_numeric=lambda line: line["numeric_recognition"]["raw_prediction"].isdigit(),
         page_width=1000,
         page_height=1200,
-        retain_singleton_columns=True,
+        retain_singleton_columns=False,
     )
     proposal = next(item for item in proposals if item["column_ordinal"] == 0)
     rescue = {
@@ -237,6 +238,92 @@ def test_geometry_binds_value_even_when_provider_reading_order_precedes_label() 
     short = result["rows"][0]
     assert short["status"] == "VISIBLE_VALUE_LANES_BOUND"
     assert [value["raw_prediction"] for value in short["values"]] == ["100", "90"]
+
+
+def test_repeated_body_columns_reject_one_same_row_audit_stamp_number() -> None:
+    pages = _ordinary_pages()
+    pages[0]["lines"].insert(
+        9,
+        _line(11, "5", "5", [950, 150, 990, 172]),
+    )
+    for ordinal, line in enumerate(pages[0]["lines"]):
+        line["line_ordinal"] = ordinal
+
+    result = build_accounting_family_row_axis_v1(pages, _spec())
+
+    assert result["status"] == "VISIBLE_ROW_LANE_AXIS_BOUND_PROPOSAL_ONLY"
+    assert result["metrics"]["bound_value_count"] == 4
+    assert result["metrics"]["complete_trailing_value_row_count"] == 1
+    assert result["metrics"]["partial_trailing_value_row_count"] == 0
+    medium = result["rows"][1]
+    assert [value["raw_prediction"] for value in medium["values"]] == ["200", "180"]
+    assert all(value["sample_id"] != "sample-000000012" for value in medium["values"])
+    assert [value["raw_prediction"] for value in result["trailing_value_rows"][0]["values"]] == [
+        "300",
+        "270",
+    ]
+
+
+def test_adjacent_rows_cannot_consume_the_same_source_cell_twice() -> None:
+    pages = _ordinary_pages()
+    # Remove MEDIUM current and place SHORT current low enough that it weakly
+    # overlaps MEDIUM too.  Per-row assignment alone would duplicate `100`.
+    pages[0]["lines"][4]["bbox"] = [600, 116, 700, 144]
+    pages[0]["lines"][7]["numeric_recognition"] = {
+        "raw_prediction": "",
+        "reader_score": 0.2,
+    }
+
+    result = build_accounting_family_row_axis_v1(pages, _spec())
+
+    short, medium = result["rows"]
+    assert [value["raw_prediction"] for value in short["values"]] == ["100", "90"]
+    assert [value["raw_prediction"] for value in medium["values"]] == ["180"]
+    assert medium["missing_column_ordinals"] == [0]
+    assert medium["status"] == "PARTIAL_VISIBLE_VALUE_LANES_REQUIRES_PIXEL_RESCUE"
+    used = [value["sample_id"] for row in result["rows"] for value in row["values"]]
+    assert len(used) == len(set(used))
+
+
+def test_adjacent_row_exclusivity_is_reused_by_visible_dash_rescue() -> None:
+    pages = _ordinary_pages()
+    pages[0]["lines"][4]["bbox"] = [600, 116, 700, 144]
+    pages[0]["lines"][7]["numeric_recognition"] = {
+        "raw_prediction": "",
+        "reader_score": 0.2,
+    }
+    base = build_accounting_family_row_axis_v1(pages, _spec())
+    medium = base["rows"][1]
+    centers, visible_cells = row_axis_v1._resolved_page_grid_inputs(base["rows"], medium)
+    label = medium["label_match"]
+    proposals = propose_missing_value_lane_regions_v1(
+        [{**line, "source_line_index": line["line_ordinal"]} for line in pages[0]["lines"]],
+        label_boxes=[pages[0]["lines"][label["source_line_index"]]["bbox"]],
+        is_numeric=lambda line: line["numeric_recognition"]["raw_prediction"].isdigit(),
+        page_width=1000,
+        page_height=1200,
+        resolved_column_centers=centers,
+        resolved_visible_value_cells=visible_cells,
+    )
+    proposal = next(item for item in proposals if item["column_ordinal"] == 0)
+
+    result = build_accounting_family_row_axis_v1(
+        pages,
+        _spec(),
+        visible_dash_rescues=(
+            {
+                "column_ordinal": 0,
+                "page_sequence": 1,
+                "region": _dash_region(proposal["raw_pixel_bbox"]),
+                "role": "MEDIUM_TERM",
+            },
+        ),
+    )
+
+    short, medium = result["rows"]
+    assert [value["raw_prediction"] for value in short["values"]] == ["100", "90"]
+    assert [value["raw_prediction"] for value in medium["values"]] == ["-", "180"]
+    assert result["metrics"]["visible_dash_zero_count"] == 1
 
 
 def test_family_rows_continue_across_pages_without_joining_label_text() -> None:

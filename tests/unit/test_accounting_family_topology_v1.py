@@ -155,6 +155,66 @@ def test_cash_spec_is_declarative_and_accepts_reordered_wrapped_children() -> No
     assert result["safety"]["bank_filename_note_page_year_used_for_matching"] is False
 
 
+@pytest.mark.parametrize("parent", ["Tiền mặt và vàng", "Tiền mặt và vàng bạc"])
+def test_cash_spec_accepts_conjunction_parent_variant_without_routing(parent: str) -> None:
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    f"4. {parent}",
+                    "Tiền mặt bằng VND",
+                    "100",
+                    "Tiền mặt bằng ngoại tệ",
+                    "20",
+                    "Vàng tiền tệ",
+                    "1",
+                    "121",
+                ]
+            )
+        ],
+        _cash_spec(),
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    region = result["regions"][0]
+    assert region["parent_resolution"] == "EXPLICIT_PARENT"
+    assert region["parent_match"]["surface"] == f"4. {parent}"
+
+
+def test_cash_spec_uses_bounded_one_edit_rescue_for_observed_ocr_errors() -> None:
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    "4. Tiền mặt và vàng",
+                    "Tiện mặt bằng VND",
+                    "100",
+                    "Tiền mặt bảng ngoại tệ",
+                    "20",
+                    "Vùng tiền tệ",
+                    "1",
+                    "121",
+                ]
+            )
+        ],
+        _cash_spec(),
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    matches = {item["role"]: item for item in result["regions"][0]["child_matches"]}
+    assert {role: (item["surface"], item["match_kind"]) for role, item in matches.items()} == {
+        "CASH_VND": ("Tiện mặt bằng VND", "EXACT_ACCENTLESS_ALIAS"),
+        "CASH_FOREIGN": (
+            "Tiền mặt bảng ngoại tệ",
+            "EXACT_ACCENTLESS_ALIAS",
+        ),
+        "MONETARY_GOLD": (
+            "Vùng tiền tệ",
+            "ONE_EDIT_ALIAS_REQUIRES_COMPLETE_TOPOLOGY",
+        ),
+    }
+
+
 def test_parent_can_be_implied_only_when_the_declarative_family_permits_it() -> None:
     pages = [_page(["Nợ trung hạn", "2", "Nợ ngắn hạn", "1", "Nợ dài hạn", "3"])]
 

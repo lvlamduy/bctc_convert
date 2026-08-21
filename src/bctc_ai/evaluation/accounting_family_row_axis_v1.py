@@ -338,6 +338,102 @@ def _value_record(
     }
 
 
+def _enforce_exclusive_source_cells(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Let one detector cell support at most one semantic source row.
+
+    Adjacent labels can both have weak vertical overlap with the same value.
+    Assigning each row independently then duplicates that source cell across
+    two accounting roles.  The globally strongest row affinity wins only when
+    it is unique; an exact affinity tie is ambiguous and the cell is removed
+    from every contender so the ordinary pixel-rescue path can fail closed.
+    """
+
+    uses: dict[str, list[tuple[dict[str, Any], dict[str, Any]]]] = {}
+    for row in rows:
+        for value in row["values"]:
+            uses.setdefault(value["sample_id"], []).append((row, value))
+    for contenders in uses.values():
+        if len(contenders) == 1:
+            continue
+        affinities = [value["row_affinity"] for _row, value in contenders]
+        if any(type(affinity) is not float for affinity in affinities):
+            raise _error("visible source-cell row affinity drifted")
+        strongest = max(affinities)
+        winners = [(row, value) for row, value in contenders if value["row_affinity"] == strongest]
+        winner = winners[0] if len(winners) == 1 else None
+        for row, value in contenders:
+            if winner is not None and row is winner[0] and value is winner[1]:
+                continue
+            row["values"].remove(value)
+            lane = value["column_ordinal"]
+            if lane not in row["missing_column_ordinals"]:
+                row["missing_column_ordinals"].append(lane)
+                row["missing_column_ordinals"].sort()
+    for row in rows:
+        row["status"] = (
+            "UNRESOLVED_NO_VISIBLE_RECOGNIZED_VALUE_CELL"
+            if not row["values"]
+            else "PARTIAL_VISIBLE_VALUE_LANES_REQUIRES_PIXEL_RESCUE"
+            if row["missing_column_ordinals"]
+            else "VISIBLE_VALUE_LANES_BOUND"
+        )
+    return rows
+
+
+def _resolved_page_grid_inputs(
+    rows: Sequence[Mapping[str, Any]],
+    target_row: Mapping[str, Any],
+) -> tuple[tuple[float, ...], tuple[dict[str, Any], ...]]:
+    """Reuse the exclusive row-axis grid for detector-independent cell crops.
+
+    Re-running row affinity inside the crop proposer can borrow an adjacent
+    row's detector cell after the row-axis exclusivity gate has already
+    rejected that assignment.  All role rows on one page were built from the
+    same inferred grid, so their retained lane centers form the exact input to
+    the missing-cell proposal.
+    """
+
+    page_sequence = target_row["label_match"]["page_sequence"]
+    page_rows = [row for row in rows if row["label_match"]["page_sequence"] == page_sequence]
+    lane_count = (
+        max(
+            (
+                lane
+                for row in page_rows
+                for lane in (
+                    [value["column_ordinal"] for value in row["values"]]
+                    + list(row["missing_column_ordinals"])
+                )
+            ),
+            default=-1,
+        )
+        + 1
+    )
+    if lane_count <= 0:
+        raise _error("resolved page grid retained no numeric lane")
+    centers = []
+    for lane in range(lane_count):
+        candidates = {
+            value["column_center"]
+            for row in page_rows
+            for value in row["values"]
+            if value["column_ordinal"] == lane
+        }
+        if len(candidates) != 1 or any(
+            type(center) is not float or not math.isfinite(center) for center in candidates
+        ):
+            raise _error("resolved page grid lane center is absent or inconsistent")
+        centers.append(next(iter(candidates)))
+    visible_cells = tuple(
+        {
+            "bbox": canonical_clone_v1(value["bbox"]),
+            "column_ordinal": value["column_ordinal"],
+        }
+        for value in target_row["values"]
+    )
+    return tuple(centers), visible_cells
+
+
 def _rows(pages: Sequence[Mapping[str, Any]], region: Mapping[str, Any]) -> list[dict[str, Any]]:
     by_page = {page["page_sequence"]: page for page in pages}
     region_by_page = _region_lines(pages, region)
@@ -359,14 +455,14 @@ def _rows(pages: Sequence[Mapping[str, Any]], region: Mapping[str, Any]) -> list
             local_lines,
             is_numeric=_is_numeric,
             page_width=page["page_width"],
-            retain_singleton_columns=True,
+            retain_singleton_columns=False,
         )
         assignments = assign_value_row_lanes_v1(
             local_lines,
             label_boxes=label_boxes,
             is_numeric=_is_numeric,
             page_width=page["page_width"],
-            retain_singleton_columns=True,
+            retain_singleton_columns=False,
         )
         values = [
             _value_record(
@@ -396,7 +492,7 @@ def _rows(pages: Sequence[Mapping[str, Any]], region: Mapping[str, Any]) -> list
                 "values": values,
             }
         )
-    return rows
+    return _enforce_exclusive_source_cells(rows)
 
 
 def _rescue_projection(
@@ -451,13 +547,16 @@ def _rescue_projection(
         <= line["line_ordinal"]
         <= label_match["end_source_line_index"]
     ]
+    centers, visible_cells = _resolved_page_grid_inputs(rows, row)
     proposals = propose_missing_value_lane_regions_v1(
         local_lines,
         label_boxes=label_boxes,
         is_numeric=_is_numeric,
         page_width=page["page_width"],
         page_height=render_ref["pixel_height"],
-        retain_singleton_columns=True,
+        retain_singleton_columns=False,
+        resolved_column_centers=centers,
+        resolved_visible_value_cells=visible_cells,
     )
     expected = next(
         (proposal for proposal in proposals if proposal["column_ordinal"] == lane), None
@@ -597,7 +696,7 @@ def _trailing_value_rows(
             geometry_lines,
             is_numeric=_is_numeric,
             page_width=page["page_width"],
-            retain_singleton_columns=True,
+            retain_singleton_columns=False,
         )
         if not centers:
             continue

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import pytest
+
 from scripts.experiments.adaptive_accounting_table_geometry_v1 import (
+    AdaptiveAccountingTableGeometryV1Error,
     assign_numeric_row_v1,
     assign_value_row_lanes_v1,
     build_multilevel_header_graph_v1,
@@ -225,6 +228,83 @@ def test_real_ctg_visible_dash_without_detector_box_is_recovered_from_grid() -> 
     assert left <= 1258 < 1292 <= right
     assert top <= 1413 < bottom
     assert bottom <= 1445
+
+
+def test_resolved_exclusive_grid_does_not_reborrow_an_adjacent_row_cell() -> None:
+    # The target row's current-period dash has no detector cell.  The next
+    # row's current-period number slightly overlaps the target label band, so
+    # an independent affinity pass incorrectly considers both lanes visible.
+    lines = [
+        _line(0, "Tiền mặt bằng VND", [319, 1308, 570, 1350]),
+        _line(1, "11.206.287", [1139, 1308, 1288, 1350]),
+        _line(2, "9.605.071", [1383, 1313, 1516, 1347]),
+        _line(3, "Vàng phi tiền tệ", [319, 1413, 521, 1447]),
+        _line(4, "17", [1477, 1411, 1519, 1445]),
+        _line(5, "Kim loại quý, đá quý khác", [318, 1440, 642, 1476]),
+        _line(6, "15.088", [1194, 1440, 1290, 1476]),
+        _line(7, "18.440", [1423, 1440, 1519, 1476]),
+    ]
+    target = lines[3]
+
+    assert (
+        propose_missing_value_lane_regions_v1(
+            lines,
+            label_boxes=[target["bbox"]],
+            is_numeric=_numeric,
+            page_width=1654,
+            page_height=2339,
+        )
+        == []
+    )
+
+    proposals = propose_missing_value_lane_regions_v1(
+        lines,
+        label_boxes=[target["bbox"]],
+        is_numeric=_numeric,
+        page_width=1654,
+        page_height=2339,
+        resolved_column_centers=(1220.5, 1461.0),
+        resolved_visible_value_cells=({"bbox": lines[4]["bbox"], "column_ordinal": 1},),
+    )
+
+    assert len(proposals) == 1
+    assert proposals[0]["column_ordinal"] == 0
+    assert proposals[0]["visible_lane_ordinals"] == [1]
+    left, top, right, bottom = proposals[0]["raw_pixel_bbox"]
+    assert left <= 1258 < 1292 <= right
+    assert top <= 1413 < bottom <= 1445
+
+
+def test_resolved_missing_lane_grid_rejects_partial_or_typed_forgery() -> None:
+    lines = [
+        _line(0, "Target", [20, 100, 180, 134]),
+        _line(1, "8", [850, 100, 920, 134]),
+    ]
+    with pytest.raises(
+        AdaptiveAccountingTableGeometryV1Error,
+        match="requires both centers and visible cells",
+    ):
+        propose_missing_value_lane_regions_v1(
+            lines,
+            label_boxes=[lines[0]["bbox"]],
+            is_numeric=_numeric,
+            page_width=1000,
+            page_height=300,
+            resolved_column_centers=(685.0, 885.0),
+        )
+    with pytest.raises(
+        AdaptiveAccountingTableGeometryV1Error,
+        match="visible value-cell binding",
+    ):
+        propose_missing_value_lane_regions_v1(
+            lines,
+            label_boxes=[lines[0]["bbox"]],
+            is_numeric=_numeric,
+            page_width=1000,
+            page_height=300,
+            resolved_column_centers=(685.0, 885.0),
+            resolved_visible_value_cells=({"bbox": lines[1]["bbox"], "column_ordinal": True},),
+        )
 
 
 def test_merged_header_prefers_word_boxes_and_has_explicit_order_only_fallback() -> None:

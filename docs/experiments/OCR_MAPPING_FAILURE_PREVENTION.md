@@ -691,6 +691,25 @@ record the new gate.
   VIB blank cells as nonnumeric, bind CTG elimination to `(5.341.026)`, close
   all 43 admitted equations and keep root 5750 unprocessed.
 
+### F-048 — Reassigning an adjacent row cell during missing-DASH rescue
+
+- Observed failure: VCB's missing current-period monetary-gold dash and CTG's
+  missing current-period non-monetary-gold dash were initially recognized as
+  partial rows, but the crop proposer ran row affinity again and borrowed the
+  neighbouring row's current-period number.  It then concluded that no lane
+  was missing and produced no source-pixel crop.
+- Root cause: row values were made globally exclusive in one stage, while the
+  detector-independent rescue stage independently reconstructed row
+  membership from overlapping bboxes.
+- Correction: consume each detector cell at most once using the unique
+  strongest row affinity; ties stay unresolved.  The missing-cell proposer
+  must reuse the resulting body-column centres and the target row's retained
+  visible cells instead of assigning rows a second time.
+- Regression gate: the real VCB/CTG source pages must each yield exactly one
+  current-lane crop classified as `VISIBLE_HORIZONTAL_DASH_GLYPH` and numeric
+  zero, while the neighbouring `544`/`15.088` values remain attached only to
+  their own rows.  Audit-stamp singleton columns must remain excluded.
+
 ## Maintenance checklist
 
 - Add a new `F-xxx` entry whenever a corrected failure is discovered.

@@ -39,6 +39,7 @@ __all__ = [
     "FamilyFirstAuthenticatedPageRegionV1Error",
     "crop_authenticated_family_first_page_region_v1",
     "read_authenticated_family_first_page_render_v1",
+    "read_authenticated_family_first_page_renders_v1",
 ]
 
 
@@ -62,6 +63,20 @@ _REGION_AUTHORITY = {
     "numeric_authority": False,
     "recognizer_required_for_text_or_number": True,
     "schema_authority": False,
+}
+_RENDER_SELECTION_FIELDS = {"document_ordinal", "physical_page"}
+_RENDER_SNAPSHOT_FIELDS = {
+    "archive_id",
+    "authority",
+    "document_ordinal",
+    "format_version",
+    "index_id",
+    "physical_page",
+    "plan_id",
+    "render_id",
+    "render_png_bytes",
+    "render_ref",
+    "state",
 }
 
 
@@ -195,11 +210,28 @@ def _render_page(source: bytes, *, physical_page: int, dpi: int) -> bytes:
         document.close()
 
 
-def _authenticated_render(
-    capability: Any, *, document_ordinal: int, physical_page: int
-) -> tuple[dict[str, Any], bytes]:
-    ordinal = _positive_int(document_ordinal, "document ordinal")
-    page_number = _positive_int(physical_page, "physical page")
+def _render_selections(value: Any) -> tuple[tuple[int, int], ...]:
+    if type(value) is not tuple or not value:
+        raise _error("page-render selections must be one non-empty exact tuple")
+    result = []
+    for raw in value:
+        if type(raw) is not dict or set(raw) != _RENDER_SELECTION_FIELDS:
+            raise _error("page-render selection shape drifted")
+        result.append(
+            (
+                _positive_int(raw["document_ordinal"], "document ordinal"),
+                _positive_int(raw["physical_page"], "physical page"),
+            )
+        )
+    if result != sorted(set(result)):
+        raise _error("page-render selections must be unique and source ordered")
+    return tuple(result)
+
+
+def _authenticated_renders(
+    capability: Any, *, selections: tuple[dict[str, int], ...]
+) -> tuple[tuple[dict[str, Any], bytes], ...]:
+    locators = _render_selections(selections)
     try:
         index_state, index_manifest = index_v1._live_index(capability)
         archive_state, archive_manifest, _batch, plan, _private = archive_v1._archive_payloads(
@@ -212,63 +244,81 @@ def _authenticated_render(
         raise _error("live semantic/archive capability replay failed") from exc
     if archive_state.root != index_state.root:
         raise _error("semantic index and source archive belong to different roots")
-    planned = _document(plan, ordinal)
-    if page_number > planned["page_count"]:
-        raise _error("physical page lies outside the authenticated filing denominator")
-    if (
-        ordinal > len(index_manifest["documents"])
-        or index_manifest["documents"][ordinal - 1]["document_ordinal"] != ordinal
-    ):
-        raise _error("semantic index document denominator drifted")
 
-    relative = (
-        Path("output/calibration/family-first-semantic-label-cache-v1/documents")
-        / f"document-{ordinal:04d}"
-        / f"page-{page_number:04d}"
-        / "page.json"
-    )
-    page_payload = archive_v1._root_bytes(
-        archive_state.root, relative, "semantic-label page artifact"
-    )
-    page_artifact = archive_v1._page_artifact(
-        archive_v1._historical_cache_object(page_payload, "semantic-label page artifact")
-    )
-    try:
-        page_freeze = freeze_v1._validate_page(page_artifact["page_freeze"])
-    except freeze_v1.FamilyFirstSemanticLabelFreezeV1Error as exc:
-        raise _error("sealed page-freeze contract drifted") from exc
-    if (
-        page_artifact["plan_id"] != plan["plan_id"]
-        or page_artifact["document_ordinal"] != ordinal
-        or page_artifact["physical_page"] != page_number
-        or page_freeze["physical_page"] != page_number
-    ):
-        raise _error("sealed page artifact belongs to another source page")
+    results = []
+    stable_inputs = []
+    for ordinal, page_number in locators:
+        planned = _document(plan, ordinal)
+        if page_number > planned["page_count"]:
+            raise _error("physical page lies outside the authenticated filing denominator")
+        if (
+            ordinal > len(index_manifest["documents"])
+            or index_manifest["documents"][ordinal - 1]["document_ordinal"] != ordinal
+        ):
+            raise _error("semantic index document denominator drifted")
 
-    source = archive_v1._root_bytes(
-        archive_state.root, planned["source_pdf_ref"]["path"], "authenticated source PDF"
-    )
-    archive_v1._matches_ref(source, planned["source_pdf_ref"], "authenticated source PDF")
-    dpi = plan["render_policy"]["dpi"]
-    if type(dpi) is not int or dpi <= 0:
-        raise _error("authenticated render DPI drifted")
-    render = _render_page(source, physical_page=page_number, dpi=dpi)
-    reference = _render_reference(page_freeze["render_ref"])
-    image = _png_image(render)
-    if (
-        len(render) != reference["size_bytes"]
-        or hashlib.sha256(render).hexdigest() != reference["sha256"]
-        or image.width != reference["pixel_width"]
-        or image.height != reference["pixel_height"]
-    ):
-        raise _error("re-rendered source page differs from its sealed render reference")
+        relative = (
+            Path("output/calibration/family-first-semantic-label-cache-v1/documents")
+            / f"document-{ordinal:04d}"
+            / f"page-{page_number:04d}"
+            / "page.json"
+        )
+        page_payload = archive_v1._root_bytes(
+            archive_state.root, relative, "semantic-label page artifact"
+        )
+        page_artifact = archive_v1._page_artifact(
+            archive_v1._historical_cache_object(page_payload, "semantic-label page artifact")
+        )
+        try:
+            page_freeze = freeze_v1._validate_page(page_artifact["page_freeze"])
+        except freeze_v1.FamilyFirstSemanticLabelFreezeV1Error as exc:
+            raise _error("sealed page-freeze contract drifted") from exc
+        if (
+            page_artifact["plan_id"] != plan["plan_id"]
+            or page_artifact["document_ordinal"] != ordinal
+            or page_artifact["physical_page"] != page_number
+            or page_freeze["physical_page"] != page_number
+        ):
+            raise _error("sealed page artifact belongs to another source page")
 
-    final_source = archive_v1._root_bytes(
-        archive_state.root, planned["source_pdf_ref"]["path"], "authenticated source PDF"
-    )
-    final_page = archive_v1._root_bytes(
-        archive_state.root, relative, "semantic-label page artifact"
-    )
+        source_path = planned["source_pdf_ref"]["path"]
+        source = archive_v1._root_bytes(archive_state.root, source_path, "authenticated source PDF")
+        archive_v1._matches_ref(source, planned["source_pdf_ref"], "authenticated source PDF")
+        dpi = plan["render_policy"]["dpi"]
+        if type(dpi) is not int or dpi <= 0:
+            raise _error("authenticated render DPI drifted")
+        render = _render_page(source, physical_page=page_number, dpi=dpi)
+        reference = _render_reference(page_freeze["render_ref"])
+        image = _png_image(render)
+        if (
+            len(render) != reference["size_bytes"]
+            or hashlib.sha256(render).hexdigest() != reference["sha256"]
+            or image.width != reference["pixel_width"]
+            or image.height != reference["pixel_height"]
+        ):
+            raise _error("re-rendered source page differs from its sealed render reference")
+        material = {
+            "archive_id": archive_manifest["archive_id"],
+            "authority": canonical_clone_v1(_RENDER_AUTHORITY),
+            "document_ordinal": ordinal,
+            "format_version": RENDER_FORMAT_VERSION,
+            "index_id": index_manifest["index_id"],
+            "physical_page": page_number,
+            "plan_id": plan["plan_id"],
+            "render_ref": reference,
+            "state": "AUTHENTICATED_EXACT_SOURCE_PAGE_RENDER_SNAPSHOT",
+        }
+        results.append(
+            (
+                {
+                    **material,
+                    "render_id": "ffaprv1:render:" + canonical_json_sha256_v1(material),
+                },
+                render,
+            )
+        )
+        stable_inputs.append((source_path, source, relative, page_payload))
+
     try:
         final_index_state, final_index_manifest = index_v1._live_index(capability)
         final_archive_state, final_archive_manifest, _batch, final_plan, _private = (
@@ -278,32 +328,38 @@ def _authenticated_render(
         index_v1.FamilyFirstSemanticIndexV1Error,
         archive_v1.FamilyFirstSemanticLabelArchiveV1Error,
     ) as exc:
-        raise _error("live capability changed while replaying the source page") from exc
+        raise _error("live capability changed while replaying source pages") from exc
     if (
         final_index_state is not index_state
         or final_archive_state is not archive_state
-        or final_source != source
-        or final_page != page_payload
         or not same_typed_json_v1(final_index_manifest, index_manifest)
         or not same_typed_json_v1(final_archive_manifest, archive_manifest)
-        or final_plan["plan_id"] != plan["plan_id"]
+        or not same_typed_json_v1(final_plan, plan)
     ):
-        raise _error("source, page, archive, or semantic index changed during render replay")
-    material = {
-        "archive_id": archive_manifest["archive_id"],
-        "authority": canonical_clone_v1(_RENDER_AUTHORITY),
-        "document_ordinal": ordinal,
-        "format_version": RENDER_FORMAT_VERSION,
-        "index_id": index_manifest["index_id"],
-        "physical_page": page_number,
-        "plan_id": plan["plan_id"],
-        "render_ref": reference,
-        "state": "AUTHENTICATED_EXACT_SOURCE_PAGE_RENDER_SNAPSHOT",
-    }
-    return {
-        **material,
-        "render_id": "ffaprv1:render:" + canonical_json_sha256_v1(material),
-    }, render
+        raise _error("archive, semantic index, or render plan changed during batched replay")
+    for source_path, source, relative, page_payload in stable_inputs:
+        if (
+            archive_v1._root_bytes(archive_state.root, source_path, "authenticated source PDF")
+            != source
+            or archive_v1._root_bytes(archive_state.root, relative, "semantic-label page artifact")
+            != page_payload
+        ):
+            raise _error("source or page changed during render replay (batched snapshot)")
+    return tuple(results)
+
+
+def _authenticated_render(
+    capability: Any, *, document_ordinal: int, physical_page: int
+) -> tuple[dict[str, Any], bytes]:
+    return _authenticated_renders(
+        capability,
+        selections=(
+            {
+                "document_ordinal": document_ordinal,
+                "physical_page": physical_page,
+            },
+        ),
+    )[0]
 
 
 def read_authenticated_family_first_page_render_v1(
@@ -322,20 +378,64 @@ def read_authenticated_family_first_page_render_v1(
     return {**record, "render_png_bytes": render}
 
 
-def crop_authenticated_family_first_page_region_v1(
+def read_authenticated_family_first_page_renders_v1(
     capability: index_v1.AuthenticatedFamilyFirstSemanticIndexV1,
     *,
-    document_ordinal: int,
-    physical_page: int,
-    raw_pixel_bbox: list[int],
-) -> dict[str, Any]:
-    """Crop a proposed cell/region even when PP-OCRv6 detector emitted no box."""
+    selections: tuple[dict[str, int], ...],
+) -> tuple[dict[str, Any], ...]:
+    """Return several source-ordered renders from one authenticated snapshot."""
 
-    render_record, render = _authenticated_render(
-        capability,
-        document_ordinal=document_ordinal,
-        physical_page=physical_page,
+    return tuple(
+        {**record, "render_png_bytes": render}
+        for record, render in _authenticated_renders(capability, selections=selections)
     )
+
+
+def _validated_render_snapshot(value: Any) -> tuple[dict[str, Any], bytes]:
+    if (
+        type(value) is not dict
+        or set(value) != _RENDER_SNAPSHOT_FIELDS
+        or value["format_version"] != RENDER_FORMAT_VERSION
+        or value["state"] != "AUTHENTICATED_EXACT_SOURCE_PAGE_RENDER_SNAPSHOT"
+        or not same_typed_json_v1(value["authority"], _RENDER_AUTHORITY)
+        or type(value["archive_id"]) is not str
+        or not value["archive_id"]
+        or type(value["index_id"]) is not str
+        or not value["index_id"]
+        or type(value["plan_id"]) is not str
+        or not value["plan_id"]
+        or type(value["render_id"]) is not str
+        or type(value["render_png_bytes"]) is not bytes
+    ):
+        raise _error("authenticated page-render snapshot shape drifted")
+    _positive_int(value["document_ordinal"], "document ordinal")
+    _positive_int(value["physical_page"], "physical page")
+    reference = _render_reference(value["render_ref"])
+    render = value["render_png_bytes"]
+    image = _png_image(render)
+    if (
+        len(render) != reference["size_bytes"]
+        or hashlib.sha256(render).hexdigest() != reference["sha256"]
+        or image.width != reference["pixel_width"]
+        or image.height != reference["pixel_height"]
+    ):
+        raise _error("authenticated page-render snapshot bytes drifted")
+    material = {
+        key: canonical_clone_v1(item)
+        for key, item in value.items()
+        if key not in {"render_id", "render_png_bytes"}
+    }
+    if value["render_id"] != "ffaprv1:render:" + canonical_json_sha256_v1(material):
+        raise _error("authenticated page-render snapshot identity drifted")
+    return material, render
+
+
+def _crop_authenticated_family_first_page_render_snapshot_v1(
+    render_snapshot: dict[str, Any], *, raw_pixel_bbox: list[int]
+) -> dict[str, Any]:
+    """Crop one already authenticated immutable page-render snapshot."""
+
+    render_record, render = _validated_render_snapshot(render_snapshot)
     image = _png_image(render)
     proposed_bbox = _region_bbox(raw_pixel_bbox, width=image.width, height=image.height)
     recognition_bbox, localization_status = _foreground_recognition_bbox(image, proposed_bbox)
@@ -361,7 +461,7 @@ def crop_authenticated_family_first_page_region_v1(
         "proposed_raw_pixel_bbox": proposed_bbox,
         "recognition_raw_pixel_bbox": recognition_bbox,
         "region_png_ref": crop_ref,
-        "render_id": render_record["render_id"],
+        "render_id": render_snapshot["render_id"],
         "render_ref": canonical_clone_v1(render_record["render_ref"]),
         "state": "AUTHENTICATED_RENDER_CALLER_PROPOSED_REGION_CROP",
         "white_border": list(WHITE_BORDER),
@@ -371,3 +471,22 @@ def crop_authenticated_family_first_page_region_v1(
         "region_id": "ffaprv1:region:" + canonical_json_sha256_v1(material),
         "region_png_bytes": payload,
     }
+
+
+def crop_authenticated_family_first_page_region_v1(
+    capability: index_v1.AuthenticatedFamilyFirstSemanticIndexV1,
+    *,
+    document_ordinal: int,
+    physical_page: int,
+    raw_pixel_bbox: list[int],
+) -> dict[str, Any]:
+    """Crop a proposed cell/region even when PP-OCRv6 detector emitted no box."""
+
+    snapshot = read_authenticated_family_first_page_render_v1(
+        capability,
+        document_ordinal=document_ordinal,
+        physical_page=physical_page,
+    )
+    return _crop_authenticated_family_first_page_render_snapshot_v1(
+        snapshot, raw_pixel_bbox=raw_pixel_bbox
+    )

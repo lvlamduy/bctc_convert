@@ -247,24 +247,37 @@ def _patch_live_inputs(monkeypatch):
         },
     )
     monkeypatch.setattr(
-        subject.semantic_v1,
-        "read_authenticated_family_first_semantic_document_v1",
-        lambda _cap, *, document_ordinal: copy.deepcopy(documents[document_ordinal]),
+        subject.snapshot_v1,
+        "read_authenticated_family_first_semantic_documents_snapshot_v1",
+        lambda _cap, *, document_ordinals: tuple(
+            copy.deepcopy(documents[document_ordinal]) for document_ordinal in document_ordinals
+        ),
     )
     monkeypatch.setattr(
-        subject.numeric_v3,
-        "read_authenticated_family_first_ppocrv6_numeric_document_v3",
-        lambda _cap, *, document_ordinal: copy.deepcopy(numeric[document_ordinal]),
+        subject.snapshot_v1,
+        "validate_authenticated_family_first_semantic_documents_snapshot_v1",
+        lambda _cap, _documents: None,
+    )
+    monkeypatch.setattr(
+        subject.snapshot_v1,
+        "read_authenticated_family_first_numeric_documents_snapshot_v1",
+        lambda _cap, *, document_ordinals: tuple(
+            copy.deepcopy(numeric[document_ordinal]) for document_ordinal in document_ordinals
+        ),
     )
 
-    def read_render(_cap, *, document_ordinal, physical_page):
-        render_calls.append((document_ordinal, physical_page))
-        return _render(document_ordinal, physical_page)
+    def read_renders(_cap, *, selections):
+        result = []
+        for selection in selections:
+            locator = (selection["document_ordinal"], selection["physical_page"])
+            render_calls.append(locator)
+            result.append(_render(*locator))
+        return tuple(result)
 
     monkeypatch.setattr(
         subject.render_v1,
-        "read_authenticated_family_first_page_render_v1",
-        read_render,
+        "read_authenticated_family_first_page_renders_v1",
+        read_renders,
     )
     return documents, numeric, render_calls
 
@@ -316,13 +329,15 @@ def test_detector_omitted_visible_dash_is_pixel_replayed_before_closure(monkeypa
     numeric[1]["lines"][10]["raw_prediction"] = "100"
     crop_calls = []
 
-    def crop(_cap, *, document_ordinal, physical_page, raw_pixel_bbox):
-        crop_calls.append((document_ordinal, physical_page, list(raw_pixel_bbox)))
-        return _dash_region(document_ordinal, physical_page, raw_pixel_bbox)
+    def crop(snapshot, *, raw_pixel_bbox):
+        crop_calls.append(
+            (snapshot["document_ordinal"], snapshot["physical_page"], list(raw_pixel_bbox))
+        )
+        return _dash_region(snapshot["document_ordinal"], snapshot["physical_page"], raw_pixel_bbox)
 
     monkeypatch.setattr(
         subject.render_v1,
-        "crop_authenticated_family_first_page_region_v1",
+        "_crop_authenticated_family_first_page_render_snapshot_v1",
         crop,
     )
 
