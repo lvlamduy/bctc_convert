@@ -81,7 +81,7 @@
       "Tiền mặt, vàng bạc, đá quý",
       "Tiền mặt, vàng"
     ],
-    "resolution_mode": "EXPLICIT_ONLY",
+    "resolution_mode": "EXPLICIT_OR_UNIQUE_REQUIRED_CHILD_CLUSTER",
     "role": "CASH_PRECIOUS_METALS"
   },
   "structural_reset_aliases": [

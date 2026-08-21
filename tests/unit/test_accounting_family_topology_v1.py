@@ -139,6 +139,7 @@ def test_cash_spec_is_declarative_and_accepts_reordered_wrapped_children() -> No
     assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
     assert result["metrics"] == {
         "complete_region_count": 1,
+        "core_semantic_anchor_hit_count": 2,
         "explicit_parent_region_count": 1,
         "implied_parent_region_count": 0,
         "near_region_count": 0,
@@ -169,6 +170,82 @@ def test_parent_can_be_implied_only_when_the_declarative_family_permits_it() -> 
     assert implied["regions"][0]["preferred_sibling_order_preserved"] is False
 
 
+@pytest.mark.parametrize(
+    "surface",
+    [
+        "1. Phân tích dư nợ theo thời gian",
+        "(1) Phân tích dư nợ theo thời gian",
+        "II- Phân tích dư nợ theo thời gian",
+        "a) Phân tích dư nợ theo thời gian",
+    ],
+)
+def test_generic_enumeration_prefix_does_not_hide_explicit_parent(surface: str) -> None:
+    result = build_accounting_family_topology_scan_v1(
+        [_page([surface, "Nợ ngắn hạn", "100", "Nợ trung hạn", "200"])],
+        _generic_spec(),
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    parent = result["regions"][0]["parent_match"]
+    assert parent["surface"] == surface
+    assert "AFTER_ENUMERATION_PREFIX" in parent["match_kind"]
+
+
+def test_plain_leading_number_without_enumeration_punctuation_is_not_stripped() -> None:
+    result = build_accounting_family_topology_scan_v1(
+        [_page(["1 Phân tích dư nợ theo thời gian", "Nợ ngắn hạn", "100", "Nợ trung hạn", "200"])],
+        _generic_spec(),
+    )
+
+    assert result["status"] == "UNRESOLVED_NO_COMPLETE_REGION"
+
+
+def test_long_label_one_edit_rescue_remains_available_inside_complete_topology() -> None:
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    "Phân tích dư nợ theo thời gian",
+                    "Nợ ngắn hạn",
+                    "100",
+                    "Nợ trung hạna",
+                    "200",
+                ]
+            )
+        ],
+        _generic_spec(),
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    medium = next(
+        item for item in result["regions"][0]["child_matches"] if item["role"] == "MEDIUM_TERM"
+    )
+    assert medium["match_kind"] == "ONE_EDIT_ALIAS_REQUIRES_COMPLETE_TOPOLOGY"
+
+
+def test_short_generic_one_edit_alias_cannot_invent_an_optional_child() -> None:
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    "Tiền mặt, vàng bạc, đá quý",
+                    "Tiền mặt bằng VND",
+                    "100",
+                    "Tiền mặt bằng ngoại tệ",
+                    "20",
+                    "hàng",
+                    "1",
+                    "120",
+                ]
+            )
+        ],
+        _cash_spec(),
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    assert result["regions"][0]["observed_roles"] == ["CASH_VND", "CASH_FOREIGN"]
+
+
 def test_complete_document_without_any_family_anchor_is_distinct_from_partial_match() -> None:
     absent = build_accounting_family_topology_scan_v1(
         [_page(["Chứng khoán kinh doanh", "100", "200"])],
@@ -181,10 +258,38 @@ def test_complete_document_without_any_family_anchor_is_distinct_from_partial_ma
 
     assert absent["status"] == "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
     assert absent["metrics"]["semantic_anchor_hit_count"] == 0
+    assert absent["metrics"]["core_semantic_anchor_hit_count"] == 0
     assert absent["regions"] == []
     assert absent["near_regions"] == []
     assert partial["status"] == "UNRESOLVED_NO_COMPLETE_REGION"
     assert partial["metrics"]["semantic_anchor_hit_count"] == 1
+    assert partial["metrics"]["core_semantic_anchor_hit_count"] == 1
+
+
+def test_optional_child_surface_alone_does_not_claim_partial_family_presence() -> None:
+    result = build_accounting_family_topology_scan_v1(
+        [_page(["Nợ dài hạn", "100"])],
+        _generic_spec(),
+    )
+
+    assert result["status"] == "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    assert result["metrics"]["semantic_anchor_hit_count"] == 1
+    assert result["metrics"]["core_semantic_anchor_hit_count"] == 0
+
+
+def test_parent_summary_without_any_required_child_is_not_a_detailed_family_region() -> None:
+    result = build_accounting_family_topology_scan_v1(
+        [_page(["Phân tích dư nợ theo thời gian", "1.000", "2.000"])],
+        _generic_spec(),
+    )
+
+    assert result["status"] == "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
+    assert result["metrics"]["semantic_anchor_hit_count"] == 1
+    assert result["metrics"]["core_semantic_anchor_hit_count"] == 0
+    assert result["near_regions"][0]["unresolved_reasons"] == [
+        "MISSING_REQUIRED_CHILD:MEDIUM_TERM",
+        "MISSING_REQUIRED_CHILD:SHORT_TERM",
+    ]
 
 
 def test_explicit_parent_plus_one_required_child_can_prove_unique_pair() -> None:

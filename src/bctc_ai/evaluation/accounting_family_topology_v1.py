@@ -17,6 +17,7 @@ by the specification.
 from __future__ import annotations
 
 import itertools
+import re
 from collections.abc import Mapping, Sequence
 from typing import Any
 
@@ -91,6 +92,11 @@ _ROLE_KINDS = {
 }
 _PRESENCE = {"OPTIONAL", "REQUIRED"}
 _PARENT_RESOLUTION = {"EXPLICIT_ONLY", "EXPLICIT_OR_UNIQUE_REQUIRED_CHILD_CLUSTER"}
+_ENUMERATION_PREFIX = re.compile(
+    r"^\s*(?:(?:\d{1,3}(?:\.\d{1,3})*)[.)\-:]|"
+    r"(?:\(\d{1,3}(?:\.\d{1,3})*\))|(?:[ivxlcdm]{1,8}|[a-z])[.)\-:])\s+",
+    flags=re.IGNORECASE,
+)
 
 
 class AccountingFamilyTopologyV1Error(ValueError):
@@ -290,12 +296,43 @@ def _edit_distance_at_most_one(left: str, right: str) -> bool:
     return True
 
 
+def _one_edit_alias_is_safe(candidate: str, alias: str) -> bool:
+    """Permit one-edit rescue only on a sufficiently informative surface.
+
+    One edit on a short generic Vietnamese word is too permissive (`vàng`
+    versus `hàng`, or `khác` versus unrelated text).  Multiword and long
+    single-token anchors still retain the requested missing/extra-character
+    rescue, and complete topology remains a separate acceptance gate.
+    """
+
+    alias_tokens = alias.split()
+    compact_length = len(alias.replace(" ", ""))
+    minimum_length = 8 if len(alias_tokens) == 1 else 6
+    return compact_length >= minimum_length and _edit_distance_at_most_one(candidate, alias)
+
+
 def _alias_kind(surface: str, aliases: Sequence[str]) -> str | None:
     normalized = normalize_vietnamese_anchor_v1(surface)
-    if normalized in aliases:
-        return "EXACT_ACCENTLESS_ALIAS"
-    if any(_edit_distance_at_most_one(normalized, alias) for alias in aliases):
-        return "ONE_EDIT_ALIAS_REQUIRES_COMPLETE_TOPOLOGY"
+    candidates = [(normalized, False)]
+    stripped = _ENUMERATION_PREFIX.sub("", surface, count=1)
+    if stripped != surface:
+        stripped_normalized = normalize_vietnamese_anchor_v1(stripped)
+        if stripped_normalized and stripped_normalized != normalized:
+            candidates.append((stripped_normalized, True))
+    for candidate, enumeration_stripped in candidates:
+        if candidate in aliases:
+            return (
+                "EXACT_ACCENTLESS_ALIAS_AFTER_ENUMERATION_PREFIX"
+                if enumeration_stripped
+                else "EXACT_ACCENTLESS_ALIAS"
+            )
+    for candidate, enumeration_stripped in candidates:
+        if any(_one_edit_alias_is_safe(candidate, alias) for alias in aliases):
+            return (
+                "ONE_EDIT_ALIAS_AFTER_ENUMERATION_PREFIX_REQUIRES_COMPLETE_TOPOLOGY"
+                if enumeration_stripped
+                else "ONE_EDIT_ALIAS_REQUIRES_COMPLETE_TOPOLOGY"
+            )
     return None
 
 
@@ -665,9 +702,15 @@ def _build(pages: Sequence[Mapping[str, Any]], spec: Mapping[str, Any]) -> dict[
     semantic_anchor_hit_count = len(combined_hits["parents"]) + sum(
         len(hits) for hits in combined_hits["children"].values()
     )
+    core_semantic_anchor_hit_count = sum(
+        len(combined_hits["children"][child["role"]])
+        for child in spec["children"]
+        if child["presence"] == "REQUIRED"
+    )
     return {
         "metrics": {
             "complete_region_count": len(complete),
+            "core_semantic_anchor_hit_count": core_semantic_anchor_hit_count,
             "explicit_parent_region_count": sum(
                 item["parent_resolution"] == "EXPLICIT_PARENT" for item in complete
             ),
@@ -687,7 +730,7 @@ def _build(pages: Sequence[Mapping[str, Any]], spec: Mapping[str, Any]) -> dict[
             "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
             if unique
             else "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY"
-            if semantic_anchor_hit_count == 0
+            if core_semantic_anchor_hit_count == 0
             else "UNRESOLVED_NO_COMPLETE_REGION"
             if not complete
             else "UNRESOLVED_MULTIPLE_OR_NONUNIQUE_COMPLETE_REGIONS"

@@ -65,27 +65,42 @@ def _binding_spec() -> dict[str, object]:
     }
 
 
-def _schema_payload(*, foreign_parent: int = 561) -> bytes:
+def _schema_payload(
+    *,
+    foreign_parent: int = 561,
+    foreign_period_types: tuple[str, ...] = ("SNAPSHOT", "DURATION"),
+    foreign_scope: tuple[str, ...] = ("SEPARATE", "CONSOLIDATED"),
+    foreign_signs: tuple[str, ...] = ("POSITIVE", "NEGATIVE", "ZERO"),
+) -> bytes:
     nodes = [
         {
             "canonical_name": "Tiền, kim loại quý và đá quý",
+            "allowed_period_type": ["SNAPSHOT", "DURATION"],
+            "allowed_sign": ["POSITIVE", "NEGATIVE", "ZERO"],
             "children": [562, 563],
             "parent_id": 560,
             "schema_id": 561,
+            "scope": ["SEPARATE", "CONSOLIDATED"],
             "statement_type": "TM",
         },
         {
             "canonical_name": "Tiền mặt bằng VNĐ",
+            "allowed_period_type": ["SNAPSHOT", "DURATION"],
+            "allowed_sign": ["POSITIVE", "NEGATIVE", "ZERO"],
             "children": [],
             "parent_id": 561,
             "schema_id": 562,
+            "scope": ["SEPARATE", "CONSOLIDATED"],
             "statement_type": "TM",
         },
         {
             "canonical_name": "Tiền mặt bằng ngoại tệ",
+            "allowed_period_type": list(foreign_period_types),
+            "allowed_sign": list(foreign_signs),
             "children": [],
             "parent_id": foreign_parent,
             "schema_id": 563,
+            "scope": list(foreign_scope),
             "statement_type": "TM",
         },
     ]
@@ -190,7 +205,10 @@ def _ready_trial() -> dict[str, object]:
         },
         "document_ordinal": 1,
         "evidence_status": "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY",
-        "private_provenance": {"opaque_filing": "filing-0001"},
+        "private_provenance": {
+            "opaque_filing": "filing-0001",
+            "scope": "CONSOLIDATED",
+        },
         "row_axis": {"rows": rows, "trailing_value_rows": [total]},
         "source_pdf_ref": {
             "path": "opaque/source-0001.pdf",
@@ -203,6 +221,9 @@ def _ready_trial() -> dict[str, object]:
 
 def _sweep() -> dict[str, object]:
     return {
+        "evaluation_spec": {
+            "value": {"period_semantics": "BALANCE_COMPARATIVE"},
+        },
         "family_id": "CASH_PRECIOUS_METALS",
         "sweep_id": "ffaesv1:sweep:" + "4" * 64,
         "trials": [
@@ -314,6 +335,44 @@ def test_live_schema_graph_drift_rejects_direct_child_binding(monkeypatch) -> No
         subject.FamilyFirstAccountingSchemaMappingV1Error, match="direct live child"
     ):
         _build()
+
+
+def test_live_schema_scope_incompatibility_remains_unresolved(monkeypatch) -> None:
+    state = _patch_live(monkeypatch)
+    state["graph"] = _schema_payload(foreign_scope=("SEPARATE",))
+
+    result = _build()
+
+    assert result["trials"][0]["mapping_status"] == "UNRESOLVED"
+    assert result["trials"][0]["mappings"] == []
+    assert result["trials"][0]["unresolved_reasons"] == [
+        "SCHEMA_SCOPE_NOT_ALLOWED:563:CONSOLIDATED"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("graph", "reason"),
+    [
+        (
+            _schema_payload(foreign_period_types=("DURATION",)),
+            "SCHEMA_PERIOD_TYPE_NOT_ALLOWED:563:SNAPSHOT",
+        ),
+        (
+            _schema_payload(foreign_signs=("POSITIVE",)),
+            "SCHEMA_SIGN_NOT_ALLOWED:563:ZERO",
+        ),
+    ],
+)
+def test_live_schema_period_and_sign_incompatibility_remain_unresolved(
+    monkeypatch, graph: bytes, reason: str
+) -> None:
+    state = _patch_live(monkeypatch)
+    state["graph"] = graph
+
+    result = _build()
+
+    assert result["trials"][0]["mapping_status"] == "UNRESOLVED"
+    assert result["trials"][0]["unresolved_reasons"] == [reason]
 
 
 @pytest.mark.parametrize(

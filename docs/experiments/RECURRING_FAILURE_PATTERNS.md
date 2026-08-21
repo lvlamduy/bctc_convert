@@ -266,7 +266,13 @@ Status meanings:
   sibling order, explicit-or-structurally-implied parent policy, reset and
   hard-negative boundaries, followed by whole-document minimal-anchor
   uniqueness with all pairs exhausted before triples. Period, unit, geometry,
-  population and accounting checks remain independent mandatory gates.
+  population and accounting checks remain independent mandatory gates. A
+  generic enumeration-prefix normalizer strips only an explicit numbering
+  marker such as `1.`, `(1)`, `II-` or `a)` before alias comparison; the raw
+  source surface and match kind remain retained. One-edit rescue is disabled
+  for short generic single-token aliases, preventing examples such as `Vàng`
+  versus `hàng`, while long/multiword labels retain bounded added/dropped-letter
+  tolerance.
 - **Status:** `MITIGATED`; `accounting_family_topology_v1` covers the semantic
   topology class, while all-filing family coverage is still in progress.
 
@@ -406,7 +412,10 @@ Status meanings:
 - **Do not:** claim authoritative absence from string search alone, or keep a
   genuinely partial structure in the no-anchor bucket.
 - **Generic primitive/fix:** the complete-document topology scan counts blind
-  semantic anchors before region assembly. Zero parent/child anchors yields
+  semantic anchors before region assembly, but only required children establish
+  detailed-family presence; a parent total on the primary statement, or an
+  optional generic row such as `Khác` or `Vàng`, cannot do so alone. Zero
+  required-child anchors yields
   `NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY`; any partial anchor evidence
   remains `UNRESOLVED_NO_COMPLETE_REGION`. Exact live replay is still required,
   and `NOT_OBSERVED` remains proposal-only rather than source-wide absence

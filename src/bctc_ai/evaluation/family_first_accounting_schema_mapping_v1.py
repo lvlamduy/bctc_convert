@@ -39,8 +39,8 @@ SCHEMA_GRAPH_PATH = Path("reference/schemas/schema_graph.jsonl")
 CLAIM_BOUNDARY = (
     "LIVE_REPLAYED_FAMILY_EVIDENCE_TO_TRACKED_TM_SCHEMA_DIRECT_PARENT_CHILD_BINDING_"
     "VERIFIED_BY_CODEX_ONLY_AFTER_TOPOLOGY_GEOMETRY_PERIOD_UNIT_PIXEL_BOUND_PPOCRV6_"
-    "NUMERIC_AND_ACCOUNTING_GATES_NO_BANK_PAGE_YEAR_ROUTING_NO_SCHEMA_CREATION_"
-    "CANONICALIZATION_EXPORT_OR_PRODUCTION_AUTHORITY"
+    "NUMERIC_ACCOUNTING_SOURCE_SCOPE_SCHEMA_PERIOD_TYPE_AND_SIGN_GATES_NO_BANK_PAGE_"
+    "YEAR_ROUTING_NO_SCHEMA_CREATION_CANONICALIZATION_EXPORT_OR_PRODUCTION_AUTHORITY"
 )
 _AUTHORITY = {
     "bank_file_page_period_scope_used_for_mapping_or_routing": False,
@@ -53,6 +53,8 @@ _AUTHORITY = {
     "production_authority": False,
     "public_exact_live_replay_required": True,
     "schema_binding_uses_tracked_graph_parent_child_relations": True,
+    "schema_period_type_and_sign_compatibility_required": True,
+    "source_scope_schema_compatibility_required": True,
 }
 _SPEC_FIELDS = {
     "family_id",
@@ -61,6 +63,14 @@ _SPEC_FIELDS = {
     "role_bindings",
 }
 _ROLE_BINDING_FIELDS = {"report_norm_id", "role"}
+_SOURCE_SCOPE_TO_SCHEMA_SCOPE = {
+    "CONSOLIDATED": "CONSOLIDATED",
+    "PARENT_OR_SEPARATE": "SEPARATE",
+}
+_PERIOD_SEMANTICS_TO_SCHEMA_TYPE = {
+    "BALANCE_COMPARATIVE": "SNAPSHOT",
+    "CURRENT_ROLLFORWARD": "DURATION",
+}
 _RESULT_FIELDS = {
     "authority",
     "claim_boundary",
@@ -176,6 +186,7 @@ def _bind_schema(
         or parent.get("statement_type") != "TM"
         or type(parent.get("canonical_name")) is not str
         or type(parent.get("children")) is not list
+        or not _schema_contract_axes_are_closed(parent)
     ):
         raise _error("family ReportNormId is not one live TM schema parent")
     by_role: dict[str, dict[str, Any]] = {}
@@ -188,10 +199,28 @@ def _bind_schema(
             or binding["report_norm_id"] not in parent["children"]
             or type(node.get("canonical_name")) is not str
             or not node["canonical_name"]
+            or not _schema_contract_axes_are_closed(node)
         ):
             raise _error("role ReportNormId is not a direct live child of its family")
         by_role[binding["role"]] = node
     return parent, by_role
+
+
+def _schema_contract_axes_are_closed(node: dict[str, Any]) -> bool:
+    return (
+        type(node.get("scope")) is list
+        and bool(node["scope"])
+        and all(item in {"CONSOLIDATED", "SEPARATE"} for item in node["scope"])
+        and len(node["scope"]) == len(set(node["scope"]))
+        and type(node.get("allowed_period_type")) is list
+        and bool(node["allowed_period_type"])
+        and all(item in {"DURATION", "SNAPSHOT"} for item in node["allowed_period_type"])
+        and len(node["allowed_period_type"]) == len(set(node["allowed_period_type"]))
+        and type(node.get("allowed_sign")) is list
+        and bool(node["allowed_sign"])
+        and all(item in {"NEGATIVE", "POSITIVE", "ZERO"} for item in node["allowed_sign"])
+        and len(node["allowed_sign"]) == len(set(node["allowed_sign"]))
+    )
 
 
 def _context_by_column(trial: dict[str, Any]) -> dict[int, dict[str, Any]]:
@@ -315,7 +344,11 @@ def _total_mapping(
 
 
 def _trial(
-    trial: dict[str, Any], parent: dict[str, Any], by_role: dict[str, dict[str, Any]]
+    trial: dict[str, Any],
+    parent: dict[str, Any],
+    by_role: dict[str, dict[str, Any]],
+    *,
+    schema_period_type: str,
 ) -> dict[str, Any]:
     base = {
         "document_ordinal": trial["document_ordinal"],
@@ -346,6 +379,32 @@ def _trial(
         raise _error("schema-ready trial retained an unknown or duplicate semantic role")
     mappings = [_row_mapping(row, by_role[row["role"]], contexts) for row in rows]
     mappings.append(_total_mapping(trial, parent, contexts))
+    source_scope = _SOURCE_SCOPE_TO_SCHEMA_SCOPE.get(trial["private_provenance"].get("scope"))
+    nodes = {parent["schema_id"]: parent}
+    nodes.update({node["schema_id"]: node for node in by_role.values()})
+    compatibility_reasons = []
+    for mapping in mappings:
+        node = nodes[mapping["report_norm_id"]]
+        if source_scope is None or source_scope not in node["scope"]:
+            compatibility_reasons.append(
+                f"SCHEMA_SCOPE_NOT_ALLOWED:{node['schema_id']}:{source_scope or 'UNRESOLVED'}"
+            )
+        if schema_period_type not in node["allowed_period_type"]:
+            compatibility_reasons.append(
+                f"SCHEMA_PERIOD_TYPE_NOT_ALLOWED:{node['schema_id']}:{schema_period_type}"
+            )
+        for value in mapping["values"]:
+            coefficient = value["numeric_value"]["coefficient"]
+            sign = "ZERO" if coefficient == 0 else "POSITIVE" if coefficient > 0 else "NEGATIVE"
+            if sign not in node["allowed_sign"]:
+                compatibility_reasons.append(f"SCHEMA_SIGN_NOT_ALLOWED:{node['schema_id']}:{sign}")
+    if compatibility_reasons:
+        return {
+            **base,
+            "mapping_status": "UNRESOLVED",
+            "mappings": [],
+            "unresolved_reasons": list(dict.fromkeys(compatibility_reasons)),
+        }
     return {
         **base,
         "mapping_status": "VERIFIED_BY_CODEX",
@@ -444,7 +503,15 @@ def build_authenticated_family_first_accounting_schema_mapping_v1(
     )
     if sweep["family_id"] != spec["family_id"]:
         raise _error("family evidence and schema binding identify different families")
-    trials = [_trial(trial, parent, by_role) for trial in sweep["trials"]]
+    try:
+        period_semantics = sweep["evaluation_spec"]["value"]["period_semantics"]
+        schema_period_type = _PERIOD_SEMANTICS_TO_SCHEMA_TYPE[period_semantics]
+    except (KeyError, TypeError) as exc:
+        raise _error("family evidence lost its resolved schema period type") from exc
+    trials = [
+        _trial(trial, parent, by_role, schema_period_type=schema_period_type)
+        for trial in sweep["trials"]
+    ]
     material = {
         "authority": canonical_clone_v1(_AUTHORITY),
         "claim_boundary": CLAIM_BOUNDARY,
