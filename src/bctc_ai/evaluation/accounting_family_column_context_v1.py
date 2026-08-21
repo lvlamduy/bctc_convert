@@ -25,6 +25,9 @@ from bctc_ai.evaluation.accounting_table_axes_v1 import (
     infer_document_reporting_period_context_v1,
     resolve_relative_period_axis_v1,
 )
+from bctc_ai.evaluation.adaptive_accounting_table_geometry_v1 import (
+    median_text_height_v1,
+)
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
     canonical_json_sha256_v1,
@@ -117,7 +120,9 @@ def _axis_pages(pages: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
 
 
 def _header_lines(
-    pages: Sequence[Mapping[str, Any]], region: Mapping[str, Any]
+    pages: Sequence[Mapping[str, Any]],
+    region: Mapping[str, Any],
+    centers: Sequence[float],
 ) -> tuple[list[dict[str, Any]], int] | None:
     if not region["child_matches"]:
         return None
@@ -139,6 +144,50 @@ def _header_lines(
                     }
                 )
         offset += len(page["lines"])
+    if region["parent_resolution"] == "IMPLIED_BY_REQUIRED_CHILD_CLUSTER":
+        first_child = min(region["child_matches"], key=lambda item: item["document_line_ordinal"])
+        child_page = next(
+            (page for page in pages if page["page_sequence"] == first_child["page_sequence"]),
+            None,
+        )
+        if child_page is None:
+            raise _error("implied-parent first-child page is absent from the document axis")
+        child_lines = [
+            line
+            for line in child_page["lines"]
+            if first_child["source_line_index"]
+            <= line["line_ordinal"]
+            <= first_child["end_source_line_index"]
+        ]
+        if not child_lines:
+            raise _error("implied-parent first-child geometry is absent from its page")
+        child_top = min(line["bbox"][1] for line in child_lines)
+        scale = median_text_height_v1(child_page["lines"])
+        lane_gap = (
+            float(median(right - left for left, right in zip(centers, centers[1:], strict=False)))
+            if len(centers) > 1
+            else scale * 8.0
+        )
+        band_left = centers[0] - lane_gap * 0.5
+        band_right = centers[-1] + lane_gap * 0.5
+        lookback_top = child_top - scale * 6.0
+        by_index = {line["source_line_index"]: line for line in selected}
+        for line in child_page["lines"]:
+            bbox = line["bbox"]
+            if (
+                line["line_ordinal"] < first_child["source_line_index"]
+                and bbox[1] < child_top
+                and bbox[3] >= lookback_top
+                and bbox[2] >= band_left
+                and bbox[0] <= band_right
+            ):
+                by_index[line["line_ordinal"]] = {
+                    "bbox": canonical_clone_v1(bbox),
+                    "source_line_index": line["line_ordinal"],
+                    "vietocr_text": line["vietocr_text"],
+                }
+        selected = [by_index[index] for index in sorted(by_index)]
+        page_sequences.add(first_child["page_sequence"])
     if not selected or len(page_sequences) != 1:
         return None
     return selected, next(iter(page_sequences))
@@ -514,8 +563,8 @@ def build_accounting_family_column_context_v1(
     document_unit = infer_document_accounting_unit_context_v1(document_pages)
     centers = _lane_centers(axis)
     header = (
-        _header_lines(parsed_pages, axis["topology_region"])
-        if axis["topology_region"] is not None
+        _header_lines(parsed_pages, axis["topology_region"], centers)
+        if axis["topology_region"] is not None and centers is not None
         else None
     )
     period_axis: list[dict[str, Any]] = []

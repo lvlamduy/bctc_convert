@@ -186,6 +186,35 @@ def test_relative_end_start_headers_resolve_from_repeated_document_dates() -> No
     )
 
 
+def test_implied_parent_recovers_preceding_relative_headers_by_body_geometry() -> None:
+    pages = _pages()
+    pages[0]["lines"][0]["vietocr_text"] = "THUYẾT MINH BÁO CÁO TÀI CHÍNH"
+    pages[0]["lines"][1]["vietocr_text"] = "Số cuối kỳ"
+    pages[0]["lines"][2]["vietocr_text"] = "Số đầu kỳ"
+    spec = _spec()
+    spec["parent"]["resolution_mode"] = "EXPLICIT_OR_UNIQUE_REQUIRED_CHILD_CLUSTER"
+    axis = build_accounting_family_row_axis_v1(pages, spec)
+
+    assert axis["topology_region"]["parent_resolution"] == "IMPLIED_BY_REQUIRED_CHILD_CLUSTER"
+    result = build_accounting_family_column_context_v1(
+        axis,
+        pages,
+        spec,
+        period_semantics="BALANCE_COMPARATIVE",
+        expected_lane_unit_kinds=["MONEY", "MONEY"],
+    )
+
+    assert result["status"] == "PERIOD_UNIT_COLUMN_CONTEXT_RESOLVED_PROPOSAL_ONLY"
+    assert [item["resolved_period"] for item in result["period_axis"]] == [
+        "31/12/2025",
+        "31/12/2024",
+    ]
+    assert [item["evidence_locations"] for item in result["period_axis"]] == [
+        [{"page_sequence": 1, "source_line_index": 1}],
+        [{"page_sequence": 1, "source_line_index": 2}],
+    ]
+
+
 def test_conflicting_document_units_fail_closed_without_local_unit() -> None:
     pages = _pages(local_unit=False, conflicting_document_unit=True)
     axis = _axis(pages)

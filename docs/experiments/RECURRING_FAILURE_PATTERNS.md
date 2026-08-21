@@ -53,12 +53,18 @@ Status meanings:
 - **Pattern:** period, unit, group, and leaf headers occupy several rows or one
   label wraps across lines; flat OCR order loses the hierarchy.
 - **Examples:** ACB customer-deposit vertical period blocks; risk tables with
-  group headers over currency or repricing lanes.
+  group headers over currency or repricing lanes; HDB H1 cash tables where an
+  implied parent initially made the topology window start at the final unit
+  header and hid the preceding `Số cuối kỳ` / `Số đầu kỳ` row.
 - **Cause:** text order is used without geometry and span relationships.
 - **Do not:** require a single-line exact header or hand-author a bank-specific
   header tree.
 - **Generic primitive/fix:** reconstruct header bands, span containment,
   repeated column centres and wrapped-line unions before assigning axis roles.
+  For a structurally implied parent, extend the header band upward only on the
+  first-child page, within a page-local text-height window and the body-derived
+  numeric-column band; unrelated narrative and bank/page coordinates are not
+  matching inputs.
 - **Status:** `MITIGATED`; the shared header-band/span graph exists, but the
   family evaluators have not yet exercised it across the full filing matrix.
 
