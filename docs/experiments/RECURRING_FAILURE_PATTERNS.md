@@ -400,9 +400,12 @@ Status meanings:
   re-authenticates the recognizer; relying on the kernel's CPU-default
   `paddlepaddle` name makes a valid GPU aggregate unverifiable. A regression now
   requires the GPU distribution keyword at the index projection boundary.
-- **Status:** `MITIGATED`; CPU V2 and GPU V3 shard/aggregate/index contracts pass
-  focused tests, the first CPU shard is retained only as a cross-backend
-  challenger, and the formal GPU all-axis execution is pending.
+- **Status:** `RESOLVED`; CPU V2 and GPU V3 shard/aggregate/index contracts pass
+  focused tests.  The corrected clean GPU run published all 326 shards covering
+  exactly 667,224 samples, retained all 3,223 empty predictions, aggregated the
+  gap-free axis, minted receipt `ffpniv3:receipt:2d5021adaa068363...`, and passed
+  the independent live verifier with the explicit `paddlepaddle-gpu`
+  distribution.  Earlier incomplete/diagnostic attempts retain no authority.
 
 ## RFP-022 — No semantic anchor is confused with a partial family match
 
@@ -427,3 +430,24 @@ Status meanings:
 - **Status:** `MITIGATED`; shared topology and both topology/evidence sweep
   metrics now preserve the distinction, while the first 140-filing formal
   sweep remains pending completion of the OCR indices.
+
+## RFP-023 — Recomputing raster dimensions from PDF points loses one edge pixel
+
+- **Pattern:** a valid detector bbox appears one pixel outside a page when a
+  diagnostic reconstructs the raster width with `round(page_points * DPI / 72)`.
+- **Examples:** VPB Q3/2025 separate p22 is 584 PDF points wide.  The fixed
+  200-DPI renderer produces 1,623 pixels, while ordinary rounding produces
+  1,622 and falsely rejects a bbox whose right edge is exactly 1,623.
+- **Cause:** PDF-to-raster dimensions follow the renderer's integer pixel
+  allocation policy; they are not safely recoverable with caller-chosen
+  rounding after the fact.
+- **Do not:** widen bbox tolerances, clamp coordinates, subtract one from the
+  detector axis, or treat a derived page size as authenticated geometry.
+- **Generic primitive/fix:** every production geometry consumer reads the exact
+  authenticated render `pixel_width`/`pixel_height` retained by the document
+  axis join.  A read-only diagnostic that has no render receipt must reproduce
+  the same renderer or, for this fixed DPI policy, use the renderer-compatible
+  ceiling only as non-authoritative inspection evidence.
+- **Status:** `RESOLVED`; the production join already consumes authenticated
+  render dimensions, and the exact 84-page VPB filing passes topology, row,
+  period/unit and additive-closure replay without any bbox tolerance.

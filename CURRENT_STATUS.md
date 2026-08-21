@@ -1,10 +1,30 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-08-20T09:52:54Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
+Updated: 2026-08-21T03:19:18Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
 The detailed historical receipts below remain evidence, but that directive supersedes
 older queue priorities where they conflict.
+
+## Current family-first expansion checkpoint
+
+- The 140-filing inventory remains fixed at 8,947 pages. Four genuinely unavailable
+  filings are inventory gaps, not `NOT_OBSERVED`: HDB H1/2026 consolidated and
+  separate, plus BID H1/2026 consolidated and separate.
+- The clean GPU `PP-OCRv6_medium_rec` numeric lane has completed all 326 shards and
+  exactly 667,224 ordered crops. It preserves 3,223 empty predictions, publishes
+  numeric axis `dd5bc33c9645798100129fc1309714472958fded41b9e371fac75cd7ec524871`,
+  and passes the independent live verifier using the explicit
+  `paddlepaddle-gpu` distribution. The detector remains geometry-only; numeric
+  strings come from the separately authenticated recognizer.
+- The independent VietOCR Transformer semantic lane is still running and has not
+  published a completed cache. Its partial stream is not mapping authority.
+- `CASH_PRECIOUS_METALS`, the first schema-order family in the 140-filing sweep,
+  has been fully inspected through documents 1–36 (ACB, MBB and VPB across all
+  available annual/H1/Q1/Q2/Q3/Q4 scopes): 28 complete unique regions, 8 bounded
+  no-semantic-anchor dispositions and zero unresolved regions so far. This is an
+  in-progress diagnostic checkpoint; the family is not complete or promoted until
+  every filing is scanned against the finalized OCR indices.
 
 ## Executive handoff — chiến lược cũ đã làm gì và đang ở đâu
 
