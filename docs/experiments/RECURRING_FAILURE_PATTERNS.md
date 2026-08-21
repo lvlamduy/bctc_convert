@@ -617,3 +617,21 @@ Status meanings:
   `UNRESOLVED` without bank/page routing.
 - **Status:** `RESOLVED` in the evidence engine; full clean-corpus evidence gate
   remains pending for the interbank family.
+
+## RFP-030 — Optional dash rescue aborts on an inconsistent visible grid
+
+- **Pattern:** one partially recognized row needs a dash crop, but complete
+  sibling rows on the same page imply inconsistent numeric-lane centers. The
+  rescue helper raises before the filing can be retained as unresolved.
+- **Examples:** an interbank candidate in the 140-filing evidence sweep reached
+  `resolved page grid lane center is absent or inconsistent` after all OCR
+  caches had authenticated successfully.
+- **Cause:** inability to propose a safe optional rescue bbox was treated as a
+  malformed corpus rather than an unresolved cell-evidence gate.
+- **Do not:** average incompatible columns, borrow a sibling bbox, widen the
+  crop, or abort unrelated filings in the family.
+- **Generic primitive/fix:** a missing-lane rescue is attempted only when the
+  already-visible page grid is coherent. Otherwise no crop is minted and the
+  original missing lane flows to row/closure as `UNRESOLVED`; source digits and
+  geometry remain unchanged.
+- **Status:** `RESOLVED` in the shared evidence sweep with regression coverage.

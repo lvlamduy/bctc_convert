@@ -266,7 +266,14 @@ def _visible_dash_rescue_inputs(
             for line in page["lines"]
             if match["source_line_index"] <= line["line_ordinal"] <= match["end_source_line_index"]
         ]
-        centers, visible_cells = row_axis_v1._resolved_page_grid_inputs(row_axis["rows"], row)
+        try:
+            centers, visible_cells = row_axis_v1._resolved_page_grid_inputs(row_axis["rows"], row)
+        except row_axis_v1.AccountingFamilyRowAxisV1Error:
+            # Pixel dash rescue is optional and may never broaden an
+            # inconsistent observed grid.  Preserve the missing lane so the
+            # ordinary row-axis gate remains UNRESOLVED instead of aborting
+            # every filing in the family sweep.
+            continue
         proposals = propose_missing_value_lane_regions_v1(
             region_lines[page_sequence],
             label_boxes=label_boxes,

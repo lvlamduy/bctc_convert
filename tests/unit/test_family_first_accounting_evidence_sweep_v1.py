@@ -354,6 +354,35 @@ def test_detector_omitted_visible_dash_is_pixel_replayed_before_closure(monkeypa
     assert len(crop_calls) == 1
 
 
+def test_inconsistent_visible_grid_skips_optional_dash_rescue_and_stays_unresolved(
+    monkeypatch,
+) -> None:
+    _documents, numeric, _render_calls = _patch_live_inputs(monkeypatch)
+    numeric[1]["lines"][8]["raw_prediction"] = ""
+    numeric[1]["lines"][8]["reader_score"] = 0.1
+    monkeypatch.setattr(
+        subject.row_axis_v1,
+        "_resolved_page_grid_inputs",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            subject.row_axis_v1.AccountingFamilyRowAxisV1Error(
+                "resolved page grid lane center is absent or inconsistent"
+            )
+        ),
+    )
+
+    result = subject.build_authenticated_family_first_accounting_evidence_sweep_v1(
+        object(), object(), _family_spec(), _evaluation_spec()
+    )
+
+    trial = result["trials"][0]
+    assert trial["evidence_status"] == "UNRESOLVED_EVIDENCE_GATES"
+    assert trial["row_axis"]["metrics"]["visible_dash_rescue_attempt_count"] == 0
+    assert trial["unresolved_reasons"] == [
+        "VISIBLE_ROLE_ROW_LANES_NOT_COMPLETE",
+        "ADDITIVE_CLOSURE:ADDITIVE_CHILD_LANES_INCOMPLETE_OR_NUMERIC_TOKEN_UNRESOLVED",
+    ]
+
+
 def test_optional_closure_policy_still_vetoes_a_visible_mismatching_total(monkeypatch) -> None:
     _documents, numeric, _render_calls = _patch_live_inputs(monkeypatch)
     numeric[1]["lines"][10]["raw_prediction"] = "121"
