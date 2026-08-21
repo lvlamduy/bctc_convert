@@ -9,6 +9,7 @@ bank-, path-, page-, note-, year- and schema-blind.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from itertools import combinations
 from statistics import median
 from typing import Any
 
@@ -423,6 +424,15 @@ def _local_period_records(
                 "LOCAL_DUPLICATED_CURRENT_DATE_COMPARATIVE_QUALIFIER_BOUND_TO_DOCUMENT_CONTEXT",
             )
         return records, mode
+    # Do not silently downgrade an ambiguous set of full/split/relative period
+    # surfaces to a coarser two-year axis.  The caller may still recover one
+    # unique expected-period subset using document context plus lane geometry.
+    if any(
+        extract_period_axis_v1(subset)[1] != "UNRESOLVED"
+        for subset_size in range(2, min(4, len(header_lines)) + 1)
+        for subset in combinations(header_lines, subset_size)
+    ):
+        return [], "UNRESOLVED_MULTIPLE_LOCAL_PERIOD_SURFACES"
     years, year_mode = extract_reporting_year_axis_v1(header_lines)
     expected = _expected_periods(document_context, semantics)
     if year_mode != "VISIBLE_TWO_YEAR_REPORTING_AXIS" or expected is None:
@@ -458,9 +468,51 @@ def _period_axis(
         semantics,
     )
     expected = _expected_periods(document_context, semantics)
-    if expected is None or {item["resolved_period"] for item in records} != set(expected):
+    if expected is None:
         return []
-    projected = _project_records_to_lanes(records, centers)
+    projected = (
+        _project_records_to_lanes(records, centers)
+        if {item["resolved_period"] for item in records} == set(expected)
+        else None
+    )
+    if projected is None:
+        # A bounded header lookback can legitimately include a narrative date
+        # from the preceding disclosure paragraph.  Search the smallest
+        # header subsets needed by the supported exact/split/relative/year
+        # axis forms, then accept only one unique expected-period geometry.
+        # The expected dates come from repeated document evidence; bank, page,
+        # note and fixed-year identities never enter this choice.
+        alternatives: dict[
+            tuple[tuple[int, str, tuple[int, ...], int], ...],
+            tuple[list[tuple[int, Mapping[str, Any]]], str],
+        ] = {}
+        for subset_size in range(2, min(4, len(header_lines)) + 1):
+            for subset in combinations(header_lines, subset_size):
+                subset_records, subset_mode = _local_period_records(
+                    subset,
+                    page_lines,
+                    document_context,
+                    semantics,
+                )
+                if {item["resolved_period"] for item in subset_records} != set(expected):
+                    continue
+                subset_projection = _project_records_to_lanes(subset_records, centers)
+                if subset_projection is None:
+                    continue
+                key = tuple(
+                    (
+                        lane,
+                        record["resolved_period"],
+                        tuple(record["evidence_source_line_indices"]),
+                        record["x_center_x2"],
+                    )
+                    for lane, record in subset_projection
+                )
+                alternatives[key] = (subset_projection, subset_mode)
+        if len(alternatives) != 1:
+            return []
+        projected, mode = next(iter(alternatives.values()))
+        mode += "_UNIQUE_EXPECTED_HEADER_SUBSET"
     if projected is None:
         return []
     return [

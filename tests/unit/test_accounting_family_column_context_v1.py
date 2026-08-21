@@ -360,11 +360,20 @@ def test_implied_parent_recovers_preceding_relative_headers_by_body_geometry() -
     ]
 
 
-def test_explicit_parent_recovers_preceding_headers_in_body_column_band() -> None:
+def test_explicit_parent_recovers_preceding_headers_despite_one_narrative_date() -> None:
     pages = _pages()
     lines = pages[0]["lines"]
     parent = lines.pop(0)
     lines.insert(3, parent)
+    lines.insert(
+        0,
+        _line(
+            99,
+            "số dư ngày 31 tháng 12 năm 2014 của ngân hàng",
+            "",
+            [600, 5, 900, 27],
+        ),
+    )
     for ordinal, line in enumerate(lines):
         line["line_ordinal"] = ordinal
     axis = _axis(pages)
@@ -383,6 +392,34 @@ def test_explicit_parent_recovers_preceding_headers_in_body_column_band() -> Non
         "31/12/2025",
         "31/12/2024",
     ]
+    assert all(
+        item["projection_status"]
+        == "LOCAL_EXACT_DATES_UNIQUE_EXPECTED_HEADER_SUBSET_PROJECTED_TO_BODY_COLUMN"
+        for item in result["period_axis"]
+    )
+
+
+def test_two_distinct_expected_period_pairs_remain_ambiguous() -> None:
+    pages = _pages()
+    lines = pages[0]["lines"]
+    lines[1:1] = [
+        _line(90, "31/12/2025", "", [600, 30, 700, 48]),
+        _line(91, "31/12/2024", "", [800, 30, 900, 48]),
+    ]
+    for ordinal, line in enumerate(lines):
+        line["line_ordinal"] = ordinal
+    axis = _axis(pages)
+
+    result = build_accounting_family_column_context_v1(
+        axis,
+        pages,
+        _spec(),
+        period_semantics="BALANCE_COMPARATIVE",
+        expected_lane_unit_kinds=["MONEY", "MONEY"],
+    )
+
+    assert result["status"] == "UNRESOLVED_PERIOD_UNIT_COLUMN_CONTEXT"
+    assert result["unresolved_reasons"] == ["PERIOD_AXIS_NOT_BOUND_TO_EVERY_BODY_COLUMN"]
 
 
 def test_conflicting_document_units_fail_closed_without_local_unit() -> None:
