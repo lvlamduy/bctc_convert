@@ -162,11 +162,18 @@ def _seek_authenticated_archive_reader_v1(
     return total
 
 
-def _recognizer_projection(project_root: Path, model_cache: Path) -> tuple[dict[str, Any], Path]:
+def _recognizer_projection(
+    project_root: Path,
+    model_cache: Path,
+    *,
+    paddle_distribution: str = "paddlepaddle",
+) -> tuple[dict[str, Any], Path]:
+    if paddle_distribution not in {"paddlepaddle", "paddlepaddle-gpu"}:
+        raise _error("PP-OCRv6 numeric Paddle distribution policy drifted")
     try:
         runtime, _runtime_bytes = plan_v1._runtime(project_root.resolve())
         if (
-            importlib.metadata.version("paddlepaddle") != runtime["paddlepaddle_version"]
+            importlib.metadata.version(paddle_distribution) != runtime["paddlepaddle_version"]
             or importlib.metadata.version("paddleocr") != runtime["paddleocr_version"]
         ):
             raise _error("PP-OCRv6 numeric package runtime drifted")
@@ -196,7 +203,14 @@ def _deny_network_connections() -> None:
     socket.create_connection = denied  # type: ignore[assignment]
 
 
-def _load_recognizer(model_directory: Path, *, cpu_threads: int) -> Any:
+def _load_recognizer(
+    model_directory: Path,
+    *,
+    cpu_threads: int,
+    device: str = "cpu",
+) -> Any:
+    if device not in {"cpu", "gpu:0"}:
+        raise _error("PP-OCRv6 numeric execution device drifted")
     os.environ["PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK"] = "True"
     _deny_network_connections()
     from paddleocr import TextRecognition
@@ -204,7 +218,7 @@ def _load_recognizer(model_directory: Path, *, cpu_threads: int) -> Any:
     return TextRecognition(
         model_name="PP-OCRv6_medium_rec",
         model_dir=os.fspath(model_directory),
-        device="cpu",
+        device=device,
         precision="fp32",
         enable_mkldnn=False,
         cpu_threads=cpu_threads,
@@ -338,6 +352,8 @@ def execute_authenticated_ppocrv6_numeric_reference_blind_v1(
     cpu_threads: int = 16,
     first_sample_ordinal: int = 1,
     require_archive_end: bool = True,
+    device: str = "cpu",
+    paddle_distribution: str = "paddlepaddle",
 ) -> tuple[dict[str, Any], dict[str, int], dict[str, float]]:
     """Stream one exact contiguous archive range through one recognizer load.
 
@@ -361,6 +377,12 @@ def execute_authenticated_ppocrv6_numeric_reference_blind_v1(
         raise _error("numeric reader first sample ordinal must be one positive integer")
     if type(require_archive_end) is not bool:
         raise _error("numeric reader archive-end policy must be one exact boolean")
+    if device not in {"cpu", "gpu:0"}:
+        raise _error("numeric reader execution device drifted")
+    if paddle_distribution not in {"paddlepaddle", "paddlepaddle-gpu"}:
+        raise _error("numeric reader Paddle distribution drifted")
+    if (device == "cpu") != (paddle_distribution == "paddlepaddle"):
+        raise _error("numeric reader device/distribution pairing drifted")
 
     archive_sample_count = _seek_authenticated_archive_reader_v1(
         reader_session,
@@ -373,13 +395,25 @@ def execute_authenticated_ppocrv6_numeric_reference_blind_v1(
         raise _error("numeric reader archive-end assertion is not on the final sample")
 
     started = time.perf_counter()
-    before, model_directory = _recognizer_projection(project_root, model_cache)
+    before, model_directory = _recognizer_projection(
+        project_root,
+        model_cache,
+        paddle_distribution=paddle_distribution,
+    )
     snapshot = _materialize_private_model_snapshot(model_directory, before)
     model_started = time.perf_counter()
     try:
-        recognizer = _load_recognizer(snapshot, cpu_threads=cpu_threads)
+        recognizer = _load_recognizer(
+            snapshot,
+            cpu_threads=cpu_threads,
+            device=device,
+        )
         model_load_seconds = time.perf_counter() - model_started
-        after_load, _directory = _recognizer_projection(project_root, model_cache)
+        after_load, _directory = _recognizer_projection(
+            project_root,
+            model_cache,
+            paddle_distribution=paddle_distribution,
+        )
         if after_load != before:
             raise _error("PP-OCRv6 numeric model changed during load")
 
@@ -433,18 +467,30 @@ def execute_authenticated_ppocrv6_numeric_reference_blind_v1(
                 raise _error("authenticated numeric crop stream retained trailing samples")
         if cursor != expected_sample_count or counts["result_count"] != expected_sample_count:
             raise _error("PP-OCRv6 numeric execution denominator drifted")
-        after, _directory = _recognizer_projection(project_root, model_cache)
+        after, _directory = _recognizer_projection(
+            project_root,
+            model_cache,
+            paddle_distribution=paddle_distribution,
+        )
         if after != before:
             raise _error("PP-OCRv6 numeric model changed during inference")
-        runtime = {
-            "device": "cpu",
+        runtime: dict[str, Any] = {
+            "device": device,
             "model": before,
             "packages": {
                 "paddleocr": importlib.metadata.version("paddleocr"),
-                "paddlepaddle": importlib.metadata.version("paddlepaddle"),
+                paddle_distribution: importlib.metadata.version(paddle_distribution),
             },
             "precision": "fp32",
         }
+        if device == "gpu:0":
+            import paddle
+
+            capability = paddle.device.cuda.get_device_capability(0)
+            runtime["accelerator"] = {
+                "compute_capability": [int(capability[0]), int(capability[1])],
+                "device_name": paddle.device.cuda.get_device_name(0),
+            }
         metrics = {
             "model_load_seconds": float(model_load_seconds),
             "total_wall_seconds": float(time.perf_counter() - started),

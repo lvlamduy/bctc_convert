@@ -4,8 +4,10 @@ import hashlib
 import io
 import os
 import shutil
+import sys
 import tempfile
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from PIL import Image
@@ -107,7 +109,7 @@ def test_kernel_is_reference_blind_and_preserves_exact_order(
     recognizer = _Recognizer()
     calls = 0
 
-    def projection(_root, _cache):
+    def projection(_root, _cache, **_kwargs):
         nonlocal calls
         calls += 1
         return _model_projection(), tmp_path / "PP-OCRv6_medium_rec"
@@ -177,7 +179,7 @@ def test_stream_kernel_loads_once_and_exhausts_exact_archive_axis(
         (),
     ]
 
-    def projection(_root, _cache):
+    def projection(_root, _cache, **_kwargs):
         nonlocal projection_calls
         projection_calls += 1
         return _model_projection(), tmp_path / "PP-OCRv6_medium_rec"
@@ -255,7 +257,7 @@ def test_stream_kernel_emits_global_ids_for_one_nonfinal_shard(
     monkeypatch.setattr(
         kernel,
         "_recognizer_projection",
-        lambda *_args: (_model_projection(), tmp_path / "PP-OCRv6_medium_rec"),
+        lambda *_args, **_kwargs: (_model_projection(), tmp_path / "PP-OCRv6_medium_rec"),
     )
     monkeypatch.setattr(kernel, "_load_recognizer", lambda *_args, **_kwargs: recognizer)
     snapshot = tmp_path / "snapshot"
@@ -296,6 +298,84 @@ def test_stream_kernel_emits_global_ids_for_one_nonfinal_shard(
         "sample-000000005",
     ]
     assert counts["reader_chunk_call_count"] == 1
+
+
+def test_stream_kernel_pins_gpu_distribution_and_accelerator(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    recognizer = _Recognizer(expected_batch_size=1)
+    crop = _crop()
+    chunks = [
+        (
+            {
+                "crop_png_bytes": crop,
+                "crop_sha256": hashlib.sha256(crop).hexdigest(),
+                "sample_id": "sample-000000001",
+            },
+        ),
+        (),
+    ]
+    projection_distributions: list[str] = []
+
+    def projection(_root, _cache, *, paddle_distribution):
+        projection_distributions.append(paddle_distribution)
+        return _model_projection(), tmp_path / "PP-OCRv6_medium_rec"
+
+    monkeypatch.setattr(kernel, "_recognizer_projection", projection)
+    monkeypatch.setattr(kernel, "_load_recognizer", lambda *_args, **_kwargs: recognizer)
+    snapshot = tmp_path / "snapshot"
+    snapshot.mkdir()
+    monkeypatch.setattr(kernel, "_materialize_private_model_snapshot", lambda *_args: snapshot)
+    monkeypatch.setattr(
+        kernel.importlib.metadata,
+        "version",
+        lambda name: {"paddleocr": "3.7.0", "paddlepaddle-gpu": "3.3.0"}[name],
+    )
+    fake_cuda = SimpleNamespace(
+        get_device_capability=lambda _ordinal: (8, 9),
+        get_device_name=lambda _ordinal: "NVIDIA GeForce RTX 4090",
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "paddle",
+        SimpleNamespace(device=SimpleNamespace(cuda=fake_cuda)),
+    )
+    monkeypatch.setattr(
+        kernel,
+        "_seek_authenticated_archive_reader_v1",
+        lambda _session, *, first_sample_ordinal: 1,
+    )
+    monkeypatch.setattr(
+        kernel,
+        "read_authenticated_family_first_semantic_label_chunk_v1",
+        lambda _session, *, maximum_samples: chunks.pop(0),
+    )
+    records: list[dict[str, object]] = []
+    runtime, counts, _metrics = kernel.execute_authenticated_ppocrv6_numeric_reference_blind_v1(
+        tmp_path,
+        object(),
+        expected_sample_count=1,
+        model_cache=tmp_path,
+        result_sink=records.append,
+        batch_size=1,
+        cpu_threads=4,
+        device="gpu:0",
+        paddle_distribution="paddlepaddle-gpu",
+    )
+
+    assert projection_distributions == ["paddlepaddle-gpu"] * 3
+    assert runtime == {
+        "accelerator": {
+            "compute_capability": [8, 9],
+            "device_name": "NVIDIA GeForce RTX 4090",
+        },
+        "device": "gpu:0",
+        "model": _model_projection(),
+        "packages": {"paddleocr": "3.7.0", "paddlepaddle-gpu": "3.3.0"},
+        "precision": "fp32",
+    }
+    assert counts["result_count"] == 1
+    assert len(records) == 1
 
 
 def test_stream_kernel_rejects_nonfinal_archive_end_claim(monkeypatch, tmp_path) -> None:
