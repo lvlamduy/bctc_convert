@@ -25,6 +25,9 @@ from bctc_ai.evaluation.accounting_table_axes_v1 import (
     infer_document_reporting_period_context_v1,
     resolve_relative_period_axis_v1,
 )
+from bctc_ai.evaluation.accounting_variant_graph_engine_v1 import (
+    normalize_vietnamese_anchor_v1,
+)
 from bctc_ai.evaluation.adaptive_accounting_table_geometry_v1 import (
     median_text_height_v1,
 )
@@ -92,6 +95,13 @@ _UNIT_FIELDS = {
 }
 _METRIC_FIELDS = {"column_count", "period_column_count", "unit_column_count"}
 _LOCATION_FIELDS = {"page_sequence", "source_line_index"}
+_COMPARATIVE_QUALIFIERS = {
+    "da kiem toan",
+    "da soat xet",
+    "da duoc kiem toan",
+    "da duoc soat xet",
+    "so lieu so sanh",
+}
 
 
 class AccountingFamilyColumnContextV1Error(ValueError):
@@ -252,8 +262,113 @@ def _expected_periods(context: Mapping[str, Any], semantics: str) -> list[str] |
     return values if all(type(value) is str and value for value in values) else None
 
 
+def _duplicate_current_date_rescue(
+    records: Sequence[Mapping[str, Any]],
+    header_lines: Sequence[Mapping[str, Any]],
+    page_lines: Sequence[Mapping[str, Any]],
+    document_context: Mapping[str, Any],
+    semantics: str,
+) -> list[dict[str, Any]] | None:
+    """Resolve a qualified comparison column after one duplicated local date.
+
+    The missing date is supplied only by repeated document-wide consensus and
+    only when one audited/reviewed/comparative qualifier geometrically selects
+    exactly one of the duplicate date columns.  Otherwise the caller remains
+    unresolved instead of guessing from column order.
+    """
+
+    expected = _expected_periods(document_context, semantics)
+    if (
+        semantics != "BALANCE_COMPARATIVE"
+        or expected is None
+        or expected[0] == expected[1]
+        or len(records) != 2
+        or any(
+            set(record)
+            != {
+                "evidence_source_line_indices",
+                "resolved_period",
+                "x_center_x2",
+            }
+            for record in records
+        )
+        or {record["resolved_period"] for record in records} != {expected[0]}
+    ):
+        return None
+    ordered = sorted(records, key=lambda item: item["x_center_x2"])
+    gap = ordered[1]["x_center_x2"] - ordered[0]["x_center_x2"]
+    if type(gap) not in {int, float} or gap <= 0:
+        return None
+    candidates: list[tuple[int, int]] = []
+    for line in header_lines:
+        normalized = normalize_vietnamese_anchor_v1(line["vietocr_text"])
+        if not any(qualifier in normalized for qualifier in _COMPARATIVE_QUALIFIERS):
+            continue
+        x_center = center_x2_v1(line)
+        distances = [abs(x_center - record["x_center_x2"]) for record in ordered]
+        selected = min(range(2), key=lambda index: distances[index])
+        if distances[selected] <= gap * 0.45 and distances[selected] < distances[1 - selected]:
+            candidates.append((selected, line["source_line_index"]))
+    if len(candidates) != 1:
+        return None
+    comparative_index, qualifier_line_index = candidates[0]
+    supporting_current_lines: set[int] = set()
+    supporting_comparative_lines: set[int] = set()
+    tolerance = gap * 0.45
+    for left_index, left in enumerate(page_lines):
+        for right in page_lines[left_index + 1 :]:
+            left_bbox = left["bbox"]
+            right_bbox = right["bbox"]
+            left_height = left_bbox[3] - left_bbox[1]
+            right_height = right_bbox[3] - right_bbox[1]
+            if abs((left_bbox[1] + left_bbox[3]) - (right_bbox[1] + right_bbox[3])) > 2 * max(
+                left_height, right_height
+            ):
+                continue
+            axis, mode = extract_period_axis_v1([left, right])
+            if mode != "LOCAL_EXACT_DATES" or {item["period"] for item in axis} != set(expected):
+                continue
+            by_period = {item["period"]: item for item in axis}
+            current_lane = 1 - comparative_index
+            if (
+                abs(by_period[expected[0]]["x_center_x2"] - ordered[current_lane]["x_center_x2"])
+                > tolerance
+                or abs(
+                    by_period[expected[1]]["x_center_x2"]
+                    - ordered[comparative_index]["x_center_x2"]
+                )
+                > tolerance
+            ):
+                continue
+            support_by_period = {
+                item["period"]: item["evidence_source_line_indices"] for item in axis
+            }
+            supporting_current_lines.update(support_by_period[expected[0]])
+            supporting_comparative_lines.update(support_by_period[expected[1]])
+    if len(supporting_current_lines) < 2 or len(supporting_comparative_lines) < 2:
+        return None
+    rescued = []
+    for index, record in enumerate(ordered):
+        evidence = list(record["evidence_source_line_indices"])
+        resolved_period = record["resolved_period"]
+        if index == comparative_index:
+            evidence = sorted(set([*evidence, qualifier_line_index, *supporting_comparative_lines]))
+            resolved_period = expected[1]
+        else:
+            evidence = sorted(set([*evidence, *supporting_current_lines]))
+        rescued.append(
+            {
+                "evidence_source_line_indices": evidence,
+                "resolved_period": resolved_period,
+                "x_center_x2": record["x_center_x2"],
+            }
+        )
+    return rescued
+
+
 def _local_period_records(
     header_lines: Sequence[Mapping[str, Any]],
+    page_lines: Sequence[Mapping[str, Any]],
     document_context: Mapping[str, Any],
     semantics: str,
 ) -> tuple[list[dict[str, Any]], str]:
@@ -274,17 +389,27 @@ def _local_period_records(
             resolved_mode,
         )
     if mode in {"LOCAL_EXACT_DATES", "LOCAL_SPLIT_DATES"}:
-        return (
-            [
-                {
-                    "evidence_source_line_indices": item["evidence_source_line_indices"],
-                    "resolved_period": item["period"],
-                    "x_center_x2": item["x_center_x2"],
-                }
-                for item in axis
-            ],
-            mode,
+        records = [
+            {
+                "evidence_source_line_indices": item["evidence_source_line_indices"],
+                "resolved_period": item["period"],
+                "x_center_x2": item["x_center_x2"],
+            }
+            for item in axis
+        ]
+        rescued = _duplicate_current_date_rescue(
+            records,
+            header_lines,
+            page_lines,
+            document_context,
+            semantics,
         )
+        if rescued is not None:
+            return (
+                rescued,
+                "LOCAL_DUPLICATED_CURRENT_DATE_COMPARATIVE_QUALIFIER_BOUND_TO_DOCUMENT_CONTEXT",
+            )
+        return records, mode
     years, year_mode = extract_reporting_year_axis_v1(header_lines)
     expected = _expected_periods(document_context, semantics)
     if year_mode != "VISIBLE_TWO_YEAR_REPORTING_AXIS" or expected is None:
@@ -307,12 +432,18 @@ def _local_period_records(
 
 def _period_axis(
     header_lines: Sequence[Mapping[str, Any]],
+    page_lines: Sequence[Mapping[str, Any]],
     header_page_sequence: int,
     centers: Sequence[float],
     document_context: Mapping[str, Any],
     semantics: str,
 ) -> list[dict[str, Any]]:
-    records, mode = _local_period_records(header_lines, document_context, semantics)
+    records, mode = _local_period_records(
+        header_lines,
+        page_lines,
+        document_context,
+        semantics,
+    )
     expected = _expected_periods(document_context, semantics)
     if expected is None or {item["resolved_period"] for item in records} != set(expected):
         return []
@@ -582,6 +713,7 @@ def build_accounting_family_column_context_v1(
         header_lines, header_page = header
         period_axis = _period_axis(
             header_lines,
+            next(page["lines"] for page in document_pages if page["page_sequence"] == header_page),
             header_page,
             centers,
             document_period,

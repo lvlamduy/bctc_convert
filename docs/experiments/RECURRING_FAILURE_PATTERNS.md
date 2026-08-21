@@ -129,7 +129,9 @@ Status meanings:
 - **Examples:** BID million-VND notes; relative `Số cuối kỳ/Số đầu kỳ` or
   `Số cuối năm/Số đầu năm` headers; annual vs interim periods; a
   following central-bank-deposit heading adding a second pair of dates to the
-  candidate window when the structural reset wording has a qualifier.
+  candidate window when the structural reset wording has a qualifier; a VCB
+  quarter-end cash table that visibly repeats the current date over both
+  columns while marking only the comparison column `(đã kiểm toán)`.
 - **Cause:** nearest text is used without repeated document-level consensus and
   continuation scope.
 - **Do not:** hard-code 2025/2026 or inherit across a structural reset.
@@ -140,7 +142,13 @@ Status meanings:
   semantic next-family headings, including qualified central-bank variants,
   so a later table cannot contaminate the local axis. Explicit document units
   now retain currency and decimal magnitude; inheritance is allowed only when
-  all explicit document-unit evidence agrees. Local exact, split, two-year or
+  all explicit document-unit evidence agrees. A duplicated local current date
+  may be repaired only when repeated document consensus supplies one distinct
+  comparative date, at least two other exact current/comparative pairs repeat
+  in aligned row bands on the same page and column grid, and exactly one
+  duplicate column is selected geometrically by an audited/reviewed/comparative
+  qualifier; without all signals the axis remains unresolved. Local exact,
+  split, two-year or
   relative period headers are projected onto body-derived numeric columns and
   checked against repeated document dates without reading a filename or fixed
   year.

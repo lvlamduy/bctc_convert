@@ -186,6 +186,151 @@ def test_relative_end_start_headers_resolve_from_repeated_document_dates() -> No
     )
 
 
+@pytest.mark.parametrize(
+    "qualifier",
+    ["(đã kiểm toán)", "(đã được kiểm toán)", "(đã soát xét)", "Số liệu so sánh"],
+)
+def test_qualified_duplicate_current_date_uses_document_comparative_consensus(
+    qualifier: str,
+) -> None:
+    pages = _pages()
+    pages[0]["lines"][2]["vietocr_text"] = "31/12/2025"
+    pages[0]["lines"].insert(3, _line(99, qualifier, "", [800, 73, 900, 94]))
+    pages[0]["lines"].extend(
+        [
+            _line(95, "Tiền gửi tại Ngân hàng Nhà nước", "", [30, 240, 500, 262]),
+            _line(96, "31/12/2025", "", [600, 270, 700, 292]),
+            _line(97, "31/12/2024", "", [800, 270, 900, 292]),
+            _line(98, "31/12/2025", "", [600, 310, 700, 332]),
+            _line(94, "31/12/2024", "", [800, 310, 900, 332]),
+        ]
+    )
+    for ordinal, line in enumerate(pages[0]["lines"]):
+        line["line_ordinal"] = ordinal
+    axis = _axis(pages)
+
+    result = build_accounting_family_column_context_v1(
+        axis,
+        pages,
+        _spec(),
+        period_semantics="BALANCE_COMPARATIVE",
+        expected_lane_unit_kinds=["MONEY", "MONEY"],
+    )
+
+    assert result["status"] == "PERIOD_UNIT_COLUMN_CONTEXT_RESOLVED_PROPOSAL_ONLY"
+    assert [item["resolved_period"] for item in result["period_axis"]] == [
+        "31/12/2025",
+        "31/12/2024",
+    ]
+    comparison_evidence = result["period_axis"][1]["evidence_locations"]
+    assert {item["source_line_index"] for item in comparison_evidence} == {2, 3, 15, 17}
+    assert all(item["page_sequence"] == 1 for item in comparison_evidence)
+    assert all(
+        item["projection_status"]
+        == "LOCAL_DUPLICATED_CURRENT_DATE_COMPARATIVE_QUALIFIER_BOUND_TO_DOCUMENT_CONTEXT_"
+        "PROJECTED_TO_BODY_COLUMN"
+        for item in result["period_axis"]
+    )
+
+
+def test_unqualified_duplicate_current_date_remains_unresolved() -> None:
+    pages = _pages()
+    pages[0]["lines"][2]["vietocr_text"] = "31/12/2025"
+    axis = _axis(pages)
+
+    result = build_accounting_family_column_context_v1(
+        axis,
+        pages,
+        _spec(),
+        period_semantics="BALANCE_COMPARATIVE",
+        expected_lane_unit_kinds=["MONEY", "MONEY"],
+    )
+
+    assert result["status"] == "UNRESOLVED_PERIOD_UNIT_COLUMN_CONTEXT"
+    assert result["period_axis"] == []
+    assert "PERIOD_AXIS_NOT_BOUND_TO_EVERY_BODY_COLUMN" in result["unresolved_reasons"]
+
+
+def test_qualified_duplicate_without_same_page_axis_repetition_remains_unresolved() -> None:
+    pages = _pages()
+    pages[0]["lines"][2]["vietocr_text"] = "31/12/2025"
+    pages[0]["lines"].insert(3, _line(99, "(đã kiểm toán)", "", [800, 73, 900, 94]))
+    for ordinal, line in enumerate(pages[0]["lines"]):
+        line["line_ordinal"] = ordinal
+    axis = _axis(pages)
+
+    result = build_accounting_family_column_context_v1(
+        axis,
+        pages,
+        _spec(),
+        period_semantics="BALANCE_COMPARATIVE",
+        expected_lane_unit_kinds=["MONEY", "MONEY"],
+    )
+
+    assert result["status"] == "UNRESOLVED_PERIOD_UNIT_COLUMN_CONTEXT"
+    assert result["period_axis"] == []
+
+
+def test_qualified_duplicate_does_not_cross_pair_dates_from_different_rows() -> None:
+    pages = _pages()
+    pages[0]["lines"][2]["vietocr_text"] = "31/12/2025"
+    pages[0]["lines"].insert(3, _line(99, "(đã kiểm toán)", "", [800, 73, 900, 94]))
+    pages[0]["lines"].extend(
+        [
+            _line(95, "31/12/2025", "", [600, 270, 700, 292]),
+            _line(96, "31/12/2025", "", [600, 310, 700, 332]),
+            _line(97, "31/12/2024", "", [800, 400, 900, 422]),
+            _line(98, "31/12/2024", "", [800, 440, 900, 462]),
+        ]
+    )
+    for ordinal, line in enumerate(pages[0]["lines"]):
+        line["line_ordinal"] = ordinal
+    axis = _axis(pages)
+
+    result = build_accounting_family_column_context_v1(
+        axis,
+        pages,
+        _spec(),
+        period_semantics="BALANCE_COMPARATIVE",
+        expected_lane_unit_kinds=["MONEY", "MONEY"],
+    )
+
+    assert result["status"] == "UNRESOLVED_PERIOD_UNIT_COLUMN_CONTEXT"
+    assert result["period_axis"] == []
+
+
+def test_qualified_duplicate_comparative_column_may_precede_current_column() -> None:
+    pages = _pages()
+    pages[0]["lines"][1]["vietocr_text"] = "31/12/2025"
+    pages[0]["lines"][2]["vietocr_text"] = "31/12/2025"
+    pages[0]["lines"].insert(3, _line(99, "(đã kiểm toán)", "", [600, 73, 700, 94]))
+    pages[0]["lines"].extend(
+        [
+            _line(95, "31/12/2024", "", [600, 270, 700, 292]),
+            _line(96, "31/12/2025", "", [800, 270, 900, 292]),
+            _line(97, "31/12/2024", "", [600, 310, 700, 332]),
+            _line(98, "31/12/2025", "", [800, 310, 900, 332]),
+        ]
+    )
+    for ordinal, line in enumerate(pages[0]["lines"]):
+        line["line_ordinal"] = ordinal
+    axis = _axis(pages)
+
+    result = build_accounting_family_column_context_v1(
+        axis,
+        pages,
+        _spec(),
+        period_semantics="BALANCE_COMPARATIVE",
+        expected_lane_unit_kinds=["MONEY", "MONEY"],
+    )
+
+    assert result["status"] == "PERIOD_UNIT_COLUMN_CONTEXT_RESOLVED_PROPOSAL_ONLY"
+    assert [item["resolved_period"] for item in result["period_axis"]] == [
+        "31/12/2024",
+        "31/12/2025",
+    ]
+
+
 def test_implied_parent_recovers_preceding_relative_headers_by_body_geometry() -> None:
     pages = _pages()
     pages[0]["lines"][0]["vietocr_text"] = "THUYẾT MINH BÁO CÁO TÀI CHÍNH"
