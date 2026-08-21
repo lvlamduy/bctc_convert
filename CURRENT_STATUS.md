@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-08-21T03:19:18Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
+Updated: 2026-08-21T16:05:26Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
 The detailed historical receipts below remain evidence, but that directive supersedes
@@ -17,14 +17,22 @@ older queue priorities where they conflict.
   and passes the independent live verifier using the explicit
   `paddlepaddle-gpu` distribution. The detector remains geometry-only; numeric
   strings come from the separately authenticated recognizer.
-- The independent VietOCR Transformer semantic lane is still running and has not
-  published a completed cache. Its partial stream is not mapping authority.
-- `CASH_PRECIOUS_METALS`, the first schema-order family in the 140-filing sweep,
-  has been fully inspected through documents 1–36 (ACB, MBB and VPB across all
-  available annual/H1/Q1/Q2/Q3/Q4 scopes): 28 complete unique regions, 8 bounded
-  no-semantic-anchor dispositions and zero unresolved regions so far. This is an
-  in-progress diagnostic checkpoint; the family is not complete or promoted until
-  every filing is scanned against the finalized OCR indices.
+- The fixed completed VietOCR Transformer semantic output now covers all 140
+  documents, 8,947 pages and exactly 667,224 ordered crops. It preserves 620
+  empty/null predictions and every line carries raw VietOCR text, NFC text and
+  accentless text. Main-workspace `verify-index` passes with index
+  `ffsiv1:index:3aba376f04e965ba3bfb53290046c7b3488091022b74f2bd187ec5d5986890c2`
+  and semantic axis `47c361c0861218df3e89a0672fd4eb2fccf7ab5bffe524b6a46c10a3fa9a1ce3`.
+- `CASH_PRECIOUS_METALS`, the first schema-order family, is formally complete
+  across all 140 available filings. Topology exact-replay finds 72 unique regions,
+  68 `NOT_OBSERVED_PROPOSAL_ONLY`, zero ambiguous/non-unique regions; evidence
+  promotes 70 and keeps two VIB Q2/2025 mixed-separator numeric cells unresolved.
+  Schema build and verify agree on mapping
+  `ffasmv1:mapping:48dd9aa68e03dbd5e4721cc018463c642aa5e7d76810267ef91c50340bf9cf8a`:
+  **70 verified documents / 284 mappings / 68 not observed / 2 unresolved**.
+  Two independent local Gemma requests read the difficult pixels as
+  `1.460.873` and `1.460.854`, but remain challenger-only. The next schema-order
+  family is `CENTRAL_BANK_DEPOSITS` (`Tiền gửi tại NHNN`).
 
 ## Executive handoff — chiến lược cũ đã làm gì và đang ở đâu
 

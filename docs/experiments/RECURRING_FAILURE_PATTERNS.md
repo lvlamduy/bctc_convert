@@ -459,9 +459,10 @@ Status meanings:
   remains `UNRESOLVED_NO_COMPLETE_REGION`. Exact live replay is still required,
   and `NOT_OBSERVED` remains proposal-only rather than source-wide absence
   authority.
-- **Status:** `MITIGATED`; shared topology and both topology/evidence sweep
-  metrics now preserve the distinction, while the first 140-filing formal
-  sweep remains pending completion of the OCR indices.
+- **Status:** `RESOLVED` for the first formal family-first sweep. Exact topology
+  build and public replay preserve 72 unique regions, 68 bounded
+  `NOT_OBSERVED_PROPOSAL_ONLY`, zero ambiguous/non-unique regions and zero
+  topology-unresolved filings across all 140 available documents.
 
 ## RFP-023 — Recomputing raster dimensions from PDF points loses one edge pixel
 
@@ -512,6 +513,30 @@ Status meanings:
   semantic/numeric capability projections.  Single-item accessors remain
   available for interactive reads.
 - **Status:** `MITIGATED`; batch semantic-document, numeric-document and
-  page-render accessors plus regression gates cover the first family.  Real
-  clean-root runtime and memory measurements remain part of the formal
-  140-filing replay gate.
+  page-render accessors plus regression gates cover the first family. Real
+  clean-root measurements show topology build/verify at roughly 9 minutes each,
+  while evidence and schema boundaries still spend roughly 26–29 minutes each
+  re-authenticating the 667,224-record numeric chain. Further optimization must
+  retain one immutable snapshot plus the final full public replay gate.
+
+## RFP-025 — Replaying a GPU numeric receipt from the control-plane venv
+
+- **Pattern:** a downstream evidence/schema command can look CPU-only yet still
+  re-authenticates the pinned GPU numeric recognizer. Launching it with `.venv`
+  fails because distribution metadata for `paddlepaddle-gpu` is absent.
+- **Example:** the first formal `CASH_PRECIOUS_METALS` evidence build failed
+  before publication with `PackageNotFoundError: paddlepaddle-gpu`; the numeric
+  cache itself was complete and valid.
+- **Cause:** the command executor was chosen by the apparent downstream task,
+  not by the transitive trust closure it replays. `.gpu-venv` contains the CPU
+  `paddlepaddle` distribution, while the formal V3 numeric receipt explicitly
+  pins `paddlepaddle-gpu` in `.paddle-gpu-venv`.
+- **Do not:** install/spoof GPU Paddle metadata in `.venv`, weaken the receipt to
+  accept the CPU distribution, or reuse an output from the failed invocation.
+- **Generic primitive/fix:** every CLI that consumes the V3 numeric index runs
+  through `.paddle-gpu-venv/bin/python` and preflights exact
+  `paddlepaddle-gpu==3.3.0` plus `paddleocr==3.7.0`. A future fixed launcher may
+  select this executor explicitly, but the authenticated distribution identity
+  remains unchanged.
+- **Status:** `MITIGATED`; the failed attempt published no artifact, and clean
+  evidence/schema build plus public verify pass in the pinned executor.

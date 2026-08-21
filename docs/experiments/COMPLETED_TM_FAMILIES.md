@@ -16,15 +16,21 @@ Quy ước:
 
 ## 1. Tiền, kim loại quý và đá quý
 
-- **Đã xác minh trên BCTC hợp nhất kiểm toán năm 2025:** ACB p45, MBB p46,
-  VPB p41, HDB p33, VCB p35, CTG p39, BID p39 và VIB p35. Đã map 35 dòng
-  nguồn vào `Tiền mặt bằng VND`, `Tiền mặt bằng ngoại tệ`, chứng từ có giá
-  bằng ngoại tệ, vàng tiền tệ/phi tiền tệ, đá quý khác và tổng family tùy đúng
-  biến thể nhìn thấy; cả tám phương trình hiện kỳ đóng chính xác.
-- **Không có:** Không có bank nào trong tám BCTC annual-2025.
-- **Còn thiếu:** Không còn khoản mục nguồn chưa map. HDB `1.194.085` được pixel
-  và trục số nguồn xác nhận sau khi VietOCR đọc `1.194.005`; dấu gạch hiện kỳ
-  của CTG được bind trực tiếp từ ô ảnh rồi chuẩn hóa thành 0.
+- **Đã xác minh trên ma trận family-first hiện có:** 70/140 filing, gồm ACB 6,
+  MBB 18, VPB 18, HDB 4, VCB 4, CTG 2, BID 2 và VIB 16. Tổng cộng 284 mapping:
+  70 dòng VND, 70 dòng ngoại tệ, 70 tổng family, 67 vàng tiền tệ và 7 nhánh
+  tùy chọn chứng từ ngoại tệ/vàng phi tiền tệ/kim loại quý, đá quý khác. Kết
+  quả annual-2025 trước đây được replay và tái sử dụng trong denominator này.
+- **Không quan sát thấy trong phạm vi filing đã quét:** 68 filing, gồm ACB 12,
+  HDB 12, VCB 14, CTG 16 và BID 14. MBB/VPB không có absence; VIB có family
+  trong cả 18 filing. Đây là `NOT_OBSERVED_PROPOSAL_ONLY`, không phải khẳng định
+  ngoài đúng PDF đã bind. Bốn filing H1/2026 thực sự chưa có file không nằm
+  trong denominator 140 và không bị tính là absence.
+- **Còn thiếu:** VIB Q2/2025 hợp nhất p32 và công ty mẹ p31, cùng dòng nguồn
+  `Tiền mặt bằng VND`. PP-OCRv6 đọc ô hiện kỳ lần lượt `1.460,873` và
+  `1,460.854`, làm parser giữ fail-closed vì dấu phân nhóm lẫn. Pixel và hai
+  request Gemma 4 độc lập đọc `1.460.873`/`1.460.854`, nhưng Gemma chưa phải
+  numeric authority của contract nên hai filing vẫn `UNRESOLVED`.
 
 ## 2. Tiền gửi tại NHNN
 
@@ -1465,7 +1471,7 @@ dùng.
 
 | Cụm | ACB | MBB | VPB | HDB | VCB | CTG | BID | VIB | Còn chưa map |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Tiền, kim loại quý, đá quý | ✓ p45 | ✓ p46 | ✓ p41 | ✓ p33 | ✓ p35 | ✓ p39 | ✓ p39 | ✓ p35 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025 |
+| Tiền, kim loại quý, đá quý | ✓ 6 / — 12 | ✓ 18 | ✓ 18 | ✓ 4 / — 12 | ✓ 4 / — 14 | ✓ 2 / — 16 | ✓ 2 / — 14 | ✓ 16 / △ 2 | 2 dòng VIB Q2/2025: ô `Tiền mặt bằng VND` hiện kỳ còn UNRESOLVED do dấu phân nhóm OCR lẫn |
 | Tiền gửi tại NHNN | ✓ p45 | ✓ p46 | ✓ p41 | ✓ p33 | ✓ p35 | ✓ p39 | ✓ p39 | ✓ p35 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; Lào/Campuchia → 574 |
 | Tiền gửi tại/cho vay TCTD khác — tài sản (575) | ✓ p46 | ✓ p48 | ✓ p42 | ✓ p34 | ✓ p36 | ✓ p40 | ✓ p39 | ✓ p36 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025 |
 | Tiền, vàng gửi và vay TCTD khác — nguồn vốn (1040) | ✓ p61 | ✓ p64 | ✓\* p58–59 | ✓\* p44 | ✓ p52 | ✓ p51 | ✓ p50 | ✓ p45 | 2 hàng phụ source-only: VPB IFC và HDB UPAS LC |
