@@ -71,17 +71,26 @@ Quy ước:
 
 ## 4. Chứng khoán kinh doanh
 
-- **Đã xác minh trên BCTC hợp nhất kiểm toán năm 2025:** ACB p47, MBB p49,
-  VPB p43, HDB p34, VCB p37, CTG p41 và BID p40. Đã map 58 dòng chứng khoán
-  nợ/vốn, nhánh tổ chức phát hành, khoản khác, tổng và dự phòng; 21 phương
-  trình cha–con, gross–dự phòng–net đóng chính xác. HDB là biến thể sparse chỉ
-  có chứng khoán nợ; dấu `-` hiện kỳ của nhánh TCTD được bind từ pixel và
-  chuẩn hóa thành 0.
-- **Không có trong BCTC annual-2025 đã bind:** VIB. VIB có family riêng
-  `Chứng khoán đầu tư sẵn sàng để bán`, không bị relabel thành trading.
-- **Còn thiếu:** Không còn khoản mục trading chờ map. Bốn bảng tình trạng
-  niêm yết tại ACB p48, MBB p50, HDB p34 và CTG p42 là các view phụ không cộng
-  thêm, đã được giữ làm đối chứng chống double count.
+- **Đã xác minh trên ma trận family-first hiện có:** 36/140 filing, gồm ACB 3,
+  MBB 6, VPB 3, VCB 15, CTG 4 và BID 5. Tổng cộng 126 mapping leaf có population
+  rõ; không map family root hay tổng suy diễn khi nguồn chỉ cho một subset.
+  Annual-2025 đã xác minh trước đây được giữ làm evidence độc lập, không bị
+  dựng lại từ đầu.
+- **Không quan sát thấy trong phạm vi filing đã quét:** 26 filing, gồm 18 filing
+  VIB, 6 filing riêng lẻ của VPB và 2 filing riêng lẻ của CTG. Đây là
+  `NOT_OBSERVED_PROPOSAL_ONLY` trong đúng PDF đã bind. VIB có family riêng
+  `Chứng khoán đầu tư`, không bị relabel thành chứng khoán kinh doanh.
+- **Có family nhưng còn thiếu:** 78 filing: ACB 15, MBB 12, VPB 9, HDB 16, VCB
+  3, CTG 12 và BID 11. Các nguyên nhân còn mở là ô số/kỳ chưa đủ lane, merged
+  header hoặc trục cột chưa dựng duy nhất, kế thừa kỳ/đơn vị qua trang chưa
+  chứng minh, và các view issuer với listed/unlisted không được cộng lẫn.
+  Danh sách từng filing, trang, owner nguồn và lý do nằm ở đầu
+  `UNRESOLVED_MAPPING_LEDGER.md`.
+- **Biến thể chung đã khóa:** owner `Chứng khoán kinh doanh` có thể dẫn vào
+  issuer view hoặc listed/unlisted view; các nhánh nợ, vốn, khác và dự phòng có
+  thể thiếu/reordered; owner + một child phân biệt đã đủ làm anchor khi unique
+  trên toàn PDF. Hai view cùng population là các biểu diễn thay thế, không phải
+  các bảng cộng dồn.
 
 ## 5. Công cụ tài chính phái sinh và tài sản/công nợ tài chính khác
 

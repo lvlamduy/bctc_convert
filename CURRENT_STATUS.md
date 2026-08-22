@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-08-22T04:02:20Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
+Updated: 2026-08-22T04:57:47Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
 The detailed historical receipts below remain evidence, but that directive supersedes
@@ -53,8 +53,22 @@ older queue priorities where they conflict.
   filings versus the preceding 66/60 checkpoint without weakening closure
   vetoes. The immutable OCR SQLite base remains 140 documents / 8,947 pages /
   667,224 lines; refreshing the 140-trial family sidecar took 0.477 seconds and
-  the final reason query 0.009 seconds. The next schema-order family is
-  `TRADING_SECURITIES`; its annual-2025 evidence is reused rather than rebuilt.
+  the final reason query 0.009 seconds.
+- `TRADING_SECURITIES`, the fourth schema-order family, has now been swept over
+  all 140 available filings through the authenticated document store. Evidence
+  sweep `ffaesv1:sweep:c35c0a0e81c7885b7a6fd8469910c30a540a8910e820b6660344e886f918c523`
+  and mapping
+  `ffasmv1:mapping:92b192228194a38029a085bd90a35877322434bf0e081449c814df0e2667bf51`
+  yield **36 verified documents / 126 verified leaf mappings / 26 bounded
+  not-observed / 78 unresolved**. Verified filings span ACB, MBB, VPB, VCB,
+  CTG and BID. HDB remains present-but-unresolved; all VIB filings are bounded
+  trading-not-observed because their securities tables belong to investment
+  families. The shared engine admits explicit parent + one distinctive child
+  when that pair is unique across the PDF, preserves issuer and listed/unlisted
+  views as alternative populations, and permits verified hierarchical leaves
+  without manufacturing a missing family-root value. The build took 114.092 s
+  and exact verify 115.986 s with zero OCR replay. The next schema-order family
+  is `DERIVATIVE_FINANCIAL_INSTRUMENTS`; annual-2025 evidence will be reused.
 - The measured family topology bottleneck no longer requires a 140-document
   sequential pass on every edit. The unchanged engine/spec path fell from
   137.071 seconds to 13.810 seconds with 12 balanced document processes; every

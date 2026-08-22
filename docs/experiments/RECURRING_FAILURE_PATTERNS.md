@@ -798,3 +798,56 @@ Status meanings:
   central-bank-deposit refresh 6.514 s. No OCR or other-document evidence
   replay occurred. Full replay remains required when OCR, geometry, topology,
   dash-rescue pixels or the upstream store revision changes.
+
+## RFP-038 — Recomputing identical topology at every downstream evidence stage
+
+- **Pattern:** the topology shortlist is already authenticated, but row-axis,
+  column-context and closure builders each scan the same document lines again.
+- **Example:** before the trading-securities fix, one filing spent 2.7–10.6 s
+  inside repeated topology/row/closure construction although packet-root and
+  document snapshot checks took only 0.03–0.42 s.
+- **Cause:** every public primitive was designed as an independent replay entry
+  point and no same-turn trusted handoff existed between them.
+- **Do not:** remove public replay validation, cache a mutable Python object
+  globally, or special-case the family/bank/page.
+- **Generic primitive/fix:** authenticate one topology scan, pass that exact
+  typed object through private same-turn row/column/closure seams, and retain
+  full source rebuilding at each public replay boundary. Cache keys include the
+  document evidence root, family spec and topology-engine trust closure.
+- **Status:** `RESOLVED`; the trading checkpoint uses one topology construction
+  per document and the focused regression rejects a different scan/region.
+
+## RFP-039 — One malformed filing aborts an otherwise valid all-filing sweep
+
+- **Pattern:** one period-axis, row-axis or closure exception terminates the
+  complete 140-filing family run, discarding valid results from unrelated
+  documents.
+- **Cause:** document-local evidence incompleteness was treated as corruption of
+  the shared corpus/capability.
+- **Do not:** ignore the exception, weaken the malformed filing, or rerun OCR for
+  every document.
+- **Generic primitive/fix:** capability/packet/schema corruption remains fatal;
+  a typed document-local row, period, unit or accounting failure is converted
+  into that filing's exact `UNRESOLVED_EVIDENCE_GATES` reason and the sweep
+  continues. The failed source rows stay unchanged.
+- **Status:** `RESOLVED`; trading-securities tests prove one malformed period
+  axis remains local while all other trials and the 140-document denominator
+  are preserved.
+
+## RFP-040 — Period and unit context is rebuilt after topology is already cached
+
+- **Pattern:** hot topology lookup is below 0.1 s for 140 filings, but a stable
+  family checkpoint still spends about two minutes rebuilding document-wide
+  period/unit context.
+- **Cause:** period/unit observations are immutable per document but are derived
+  inside each family execution rather than stored as separately versioned
+  document features.
+- **Do not:** infer periods from filenames/fixed years, share one unit across a
+  document without ownership edges, or bypass final exact verification.
+- **Generic primitive/fix:** next optimization should materialize period-header
+  candidates, local/continuation unit edges and their document-root binding once;
+  family logic then selects compatible subsets. A page/crop refresh invalidates
+  only the affected document feature packet.
+- **Status:** `OPEN`; current trading build/verify are correct but measured at
+  114.092/115.986 s. This is the next performance seam, not a reason to weaken
+  period or unit provenance.

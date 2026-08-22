@@ -17,10 +17,35 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **363 entries**.  Current open queue: **143**.  Closed history:
+Ledger total: **441 entries**.  Current open queue: **221**.  Closed history:
 **132** row/graph resolutions and **88** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
+
+## OPEN — family-first 140-filing `Chứng khoán kinh doanh`
+
+The authenticated document-store sweep finds 114 filing-local topology regions:
+36 are `VERIFIED_BY_CODEX`, 26 are bounded `NOT_OBSERVED_PROPOSAL_ONLY`, and 78
+remain `UNRESOLVED_EVIDENCE_GATES`.  The 78 exact filing trials and source rows
+are retained in
+`output/calibration/family-first-accounting-evidence-sweeps-v1/trading-securities.json`;
+the table below groups only identical open failure classes for readability.
+
+| Bank | Filing/trang còn mở | Owner/khoản mục nguồn nhìn thấy | Lý do chưa map |
+| --- | --- | --- | --- |
+| ACB | annual/H1/Q1–Q4 2025 và H1/Q1/Q2 2026, p15–16, p41, p45–48 | `Chi tiết chứng khoán kinh doanh`; `Chứng khoán nợ/vốn`; issuer leaves; listed/unlisted view | 15 filing có ít nhất một hàng source thiếu ô của một kỳ; các bảng hai trang chưa chứng minh kế thừa kỳ/đơn vị. Không điền ô thiếu và không cộng issuer view với listed/unlisted view. |
+| MBB | annual/H1/Q1–Q4 2025 và H1/Q1/Q2 2026, p27, p30, p38, p41, p48–52 | `Chứng khoán kinh doanh`; `Chứng khoán nợ/vốn`; issuer leaves; `Đã/Chưa niêm yết` | 12 filing: một số hàng thiếu lane; một số header có lane đơn vị không khớp body; annual/H1 hợp nhất chứa hai view cùng population nên subtotal không bằng union của mọi child nhìn thấy. |
+| VPB | annual/H1/Q1–Q4 2025, p30–32, p37, p40, p43, p45 | `Chứng khoán kinh doanh`; issuer/listing children | 9 filing: hàng source thiếu lane; các bảng công ty mẹ có merged header hoặc continuation làm trục cột/kỳ/đơn vị chưa duy nhất; subtotal nợ thuộc một alternate view, không được dùng để đóng union hai view. |
+| HDB | annual/H1/Q1–Q4 2025 và Q1/Q2 2026, p21–35 | `Chứng khoán kinh doanh`; `Chứng khoán Nợ/Vốn`; issuer/listing/provision leaves | Cả 16 filing có family nhưng còn mở. Bốn annual/H1 dùng header kỳ tương đối chưa xác thực identity; các quarter thiếu numeric lane hoặc merged header; Q2/2026 p24–25 còn lệch số lane unit/body và continuation chưa chứng minh. Cần refresh đúng các page/crop này, không quét lại corpus. |
+| VCB | annual và Q4/2025, p29–31, p37–38 | `Chứng khoán kinh doanh`; issuer leaves | 3 filing: hàng source thiếu lane hoặc period header chưa phủ mọi cột; continuation annual/Q4 chưa có period/unit edge chắc. |
+| CTG | annual/H1/Q1–Q4 2025 và H1/Q1/Q2 2026, p29, p33–45 | `Chứng khoán kinh doanh`; `Chứng khoán nợ/vốn`; issuer/listing leaves | 12 filing: merged/local header và incomplete lanes chiếm đa số; một số subtotal nợ/vốn không bằng population child vì alternate view; không ép closure bằng cách cộng hai view. |
+| BID | annual/H1/Q1–Q4 2025 và Q1/Q2 2026, p19–41 | `Chứng khoán kinh doanh`; issuer/listing leaves | 11 filing: body-column/header chưa dựng duy nhất, nhiều hàng thiếu lane, hoặc period/unit continuation chưa được chứng minh. |
+
+VIB không nằm trong queue này: cả 18 filing là bounded
+`NOT_OBSERVED_PROPOSAL_ONLY` cho trading securities; các bảng AFS/HTM thuộc
+`Chứng khoán đầu tư`.  Sáu filing riêng lẻ VPB và hai filing riêng lẻ CTG cũng
+không quan sát thấy family trong đúng PDF đã bind.  Không kết luận rộng hơn các
+filing này.
 
 ## CLOSED — family-first 140-filing `Tiền gửi tại NHNN`
 
