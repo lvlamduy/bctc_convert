@@ -380,13 +380,35 @@ def build_accounting_hierarchical_table_closure_v1(
             and not visible_candidates
             and equation["trailing_result_policy"] == "CORROBORATE_IF_PRESENT"
         ):
-            candidates = [_trailing_resolution(item) for item in axis["trailing_value_rows"]]
+            trailing_rows = axis["trailing_value_rows"]
+            if any(
+                item.get("status")
+                not in {
+                    "COMPLETE_VISIBLE_TRAILING_VALUE_ROW",
+                    "PARTIAL_TRAILING_VALUE_ROW_REQUIRES_PIXEL_RESCUE",
+                }
+                for item in trailing_rows
+            ):
+                raise _error("hierarchical closure trailing candidate status drifted")
+            incomplete_count = sum(
+                item["status"] == "PARTIAL_TRAILING_VALUE_ROW_REQUIRES_PIXEL_RESCUE"
+                for item in trailing_rows
+            )
+            candidates = [
+                _trailing_resolution(item)
+                for item in trailing_rows
+                if item["status"] == "COMPLETE_VISIBLE_TRAILING_VALUE_ROW"
+            ]
             exact = [
                 candidate
                 for candidate in candidates
                 if _same_values(candidate["values"], component_sum)
             ]
-            if candidates and len(exact) != 1:
+            if incomplete_count:
+                reasons.append(
+                    f"TRAILING_RESULT_INCOMPLETE_LANE_AXIS:{result_role}:{incomplete_count}"
+                )
+            elif candidates and len(exact) != 1:
                 reasons.append(
                     f"TRAILING_RESULT_NOT_ONE_EXACT_COMPONENT_SUM:{result_role}:{len(exact)}"
                 )

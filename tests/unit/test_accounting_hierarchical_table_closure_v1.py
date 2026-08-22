@@ -269,6 +269,27 @@ def test_explicit_corroborated_total_is_not_vetoed_by_later_unlabelled_numeric_r
     assert family["resolution_kind"] == "VISIBLE_SOURCE_ROLE_CORROBORATED_BY_COMPONENTS"
 
 
+def test_partial_unlabelled_trailing_row_is_unresolved_instead_of_aborting_sweep() -> None:
+    pages = _detail_pages(family_total=None)
+    last = pages[0]["lines"][-1]["line_ordinal"] + 1
+    pages[0]["lines"].append(
+        _line(last, "150", "150", [600, 420, 700, 440]),
+    )
+
+    _axis, closure = _build(pages)
+
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert closure["unresolved_reasons"] == [
+        "TRAILING_RESULT_INCOMPLETE_LANE_AXIS:INTERBANK_DEPOSITS_AND_LOANS:1"
+    ]
+    family = next(
+        record
+        for record in closure["resolved_roles"]
+        if record["role"] == "INTERBANK_DEPOSITS_AND_LOANS"
+    )
+    assert family["resolution_kind"] == "DERIVED_EXACT_COMPONENT_SUM"
+
+
 def test_replay_rejects_coordinated_role_value_and_identity_mutation() -> None:
     pages = _detail_pages()
     axis, closure = _build(pages)

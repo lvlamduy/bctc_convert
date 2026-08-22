@@ -655,3 +655,22 @@ Status meanings:
   role/page/lane proposals remain forbidden.
 - **Status:** `RESOLVED` in the shared row-axis primitive with a two-rescue
   order-independence regression.
+
+## RFP-032 — A partial unlabelled trailing row aborts hierarchical closure
+
+- **Pattern:** the bounded region contains an unlabelled numeric row after the
+  recognized children, but only part of the table lane axis is visible or
+  recognized. It is a possible total, not a complete corroborating total.
+- **Example:** the 140-filing interbank evidence sweep reached a partial
+  trailing row after passing row, period and unit replay; the strict total
+  converter raised `hierarchical closure trailing candidate axis drifted`.
+- **Cause:** all trailing rows were converted as complete candidates before
+  their row-axis status was considered.
+- **Do not:** fill the missing lane, discard the visible value, use the partial
+  row as an accounting total, or abort unrelated filings.
+- **Generic primitive/fix:** only complete trailing axes are eligible for exact
+  corroboration. A partial trailing axis produces an explicit accounting veto
+  and leaves that filing `UNRESOLVED`; complete component-derived roles and all
+  source digits remain preserved.
+- **Status:** `RESOLVED` in the shared hierarchical-closure primitive with a
+  partial-trailing-row regression.
