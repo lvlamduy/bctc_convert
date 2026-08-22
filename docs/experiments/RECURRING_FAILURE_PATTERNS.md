@@ -58,16 +58,18 @@ Status meanings:
   implied parent initially made the topology window start at the final unit
   header and hid the preceding `Số cuối kỳ` / `Số đầu kỳ` row; MBB H1/2025
   central-bank deposits where a narrative `31/12/2014` date initially joined
-  the real table dates `30/6/2025` and `31/12/2024`.
+  the real table dates `30/6/2025` and `31/12/2024`; interbank disclosures where
+  a label-only deposit/loan group precedes the actual period and unit header.
 - **Cause:** text order is used without geometry and span relationships.
 - **Do not:** require a single-line exact header or hand-author a bank-specific
   header tree.
 - **Generic primitive/fix:** reconstruct header bands, span containment,
   repeated column centres and wrapped-line unions before assigning axis roles.
-  For a structurally implied parent, extend the header band upward only on the
-  first-child page, within a page-local text-height window and the body-derived
-  numeric-column band; unrelated narrative and bank/page coordinates are not
-  matching inputs. When an otherwise valid band contains extra narrative
+  The band ends at the first value-bearing role row, not the first semantic
+  child, so label-only intermediate groups cannot hide a later header. Extend
+  it upward only on that body-row page, within a page-local text-height window
+  and the body-derived numeric-column band; unrelated narrative and bank/page
+  coordinates are not matching inputs. When a valid band contains extra narrative
   dates, the shared period resolver tests 2–4-line subsets against the document
   periods and numeric-column geometry; it accepts only one unique subset and
   remains unresolved when two subsets are equally valid.
@@ -667,10 +669,12 @@ Status meanings:
 - **Cause:** all trailing rows were converted as complete candidates before
   their row-axis status was considered.
 - **Do not:** fill the missing lane, discard the visible value, use the partial
-  row as an accounting total, or abort unrelated filings.
+  row as an accounting total, or let an unlabelled orphan cell veto a complete
+  independently bound component axis.
 - **Generic primitive/fix:** only complete trailing axes are eligible for exact
-  corroboration. A partial trailing axis produces an explicit accounting veto
-  and leaves that filing `UNRESOLVED`; complete component-derived roles and all
-  source digits remain preserved.
+  corroboration or veto. A partial trailing axis remains in row-axis
+  diagnostics but is ineligible as a total; complete component-derived roles
+  and all source digits remain preserved. An explicitly labelled partial total
+  remains a role-row failure and is not covered by this relaxation.
 - **Status:** `RESOLVED` in the shared hierarchical-closure primitive with a
   partial-trailing-row regression.

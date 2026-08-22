@@ -134,16 +134,17 @@ def _header_lines(
     pages: Sequence[Mapping[str, Any]],
     region: Mapping[str, Any],
     centers: Sequence[float],
+    rows: Sequence[Mapping[str, Any]],
 ) -> tuple[list[dict[str, Any]], int] | None:
-    if not region["child_matches"]:
+    value_rows = [row for row in rows if row["values"]]
+    if not region["child_matches"] or not value_rows:
         return None
     header_start = region["cluster_start_document_line_ordinal"]
-    body_matches = [
-        item for item in region["child_matches"] if item["document_line_ordinal"] > header_start
-    ]
-    header_stop = min(
-        item["document_line_ordinal"] for item in (body_matches or region["child_matches"])
+    first_body = min(
+        (row["label_match"] for row in value_rows),
+        key=lambda item: item["document_line_ordinal"],
     )
+    header_stop = first_body["document_line_ordinal"]
     offset = 0
     selected: list[dict[str, Any]] = []
     page_sequences: set[int] = set()
@@ -165,13 +166,9 @@ def _header_lines(
     # page-local, text-height-bounded body-column band for both cases.  Only
     # period/unit parsers consume these extra lines; arbitrary preceding values
     # therefore cannot become an axis merely by proximity.
-    first_child = min(
-        body_matches or region["child_matches"],
-        key=lambda item: item["document_line_ordinal"],
-    )
-    if first_child["page_sequence"] == region["page_sequence"]:
+    if first_body["page_sequence"] == region["page_sequence"]:
         child_page = next(
-            (page for page in pages if page["page_sequence"] == first_child["page_sequence"]),
+            (page for page in pages if page["page_sequence"] == first_body["page_sequence"]),
             None,
         )
         if child_page is None:
@@ -179,9 +176,9 @@ def _header_lines(
         child_lines = [
             line
             for line in child_page["lines"]
-            if first_child["source_line_index"]
+            if first_body["source_line_index"]
             <= line["line_ordinal"]
-            <= first_child["end_source_line_index"]
+            <= first_body["end_source_line_index"]
         ]
         if not child_lines:
             raise _error("implied-parent first-child geometry is absent from its page")
@@ -194,12 +191,16 @@ def _header_lines(
         )
         band_left = centers[0] - lane_gap * 0.5
         band_right = centers[-1] + lane_gap * 0.5
-        lookback_top = child_top - scale * 6.0
+        # A body group label may sit between the family owner and a multi-row
+        # period/unit header.  Ten median text rows covers the observed
+        # page-level and nested header bands while remaining page-scale,
+        # geometry-bounded, and independent of bank/family/year identities.
+        lookback_top = child_top - scale * 10.0
         by_index = {line["source_line_index"]: line for line in selected}
         for line in child_page["lines"]:
             bbox = line["bbox"]
             if (
-                line["line_ordinal"] < first_child["source_line_index"]
+                line["line_ordinal"] < first_body["source_line_index"]
                 and bbox[1] < child_top
                 and bbox[3] >= lookback_top
                 and bbox[2] >= band_left
@@ -211,7 +212,7 @@ def _header_lines(
                     "vietocr_text": line["vietocr_text"],
                 }
         selected = [by_index[index] for index in sorted(by_index)]
-        page_sequences.add(first_child["page_sequence"])
+        page_sequences.add(first_body["page_sequence"])
     if not selected or len(page_sequences) != 1:
         return None
     return selected, next(iter(page_sequences))
@@ -759,7 +760,7 @@ def build_accounting_family_column_context_v1(
     document_unit = infer_document_accounting_unit_context_v1(document_pages)
     centers = _lane_centers(axis)
     header = (
-        _header_lines(parsed_pages, axis["topology_region"], centers)
+        _header_lines(parsed_pages, axis["topology_region"], centers, axis["rows"])
         if axis["topology_region"] is not None and centers is not None
         else None
     )

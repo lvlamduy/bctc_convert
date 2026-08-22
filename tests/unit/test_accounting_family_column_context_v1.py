@@ -360,6 +360,51 @@ def test_implied_parent_recovers_preceding_relative_headers_by_body_geometry() -
     ]
 
 
+def test_headers_after_label_only_structural_group_bind_to_first_value_row() -> None:
+    pages = _pages()
+    pages[0]["lines"] = [
+        _line(0, "Tiền, kim loại quý và đá quý", "", [30, 20, 430, 42]),
+        _line(1, "Dư nợ tiền mặt", "", [40, 50, 360, 72]),
+        _line(2, "31/12/2025", "", [600, 80, 700, 102]),
+        _line(3, "31/12/2024", "", [800, 80, 900, 102]),
+        _line(4, "Đơn vị: Triệu đồng", "", [600, 105, 900, 127]),
+        _line(5, "Tiền mặt bằng VND", "", [50, 140, 300, 162]),
+        _line(6, "100", "100", [600, 140, 700, 162]),
+        _line(7, "90", "90", [800, 140, 900, 162]),
+        _line(8, "Tiền mặt bằng ngoại tệ", "", [50, 190, 300, 212]),
+        _line(9, "20", "20", [600, 190, 700, 212]),
+        _line(10, "10", "10", [800, 190, 900, 212]),
+    ]
+    spec = _spec()
+    spec["children"].insert(
+        0,
+        {
+            "aliases": ["Dư nợ tiền mặt"],
+            "presence": "OPTIONAL",
+            "role": "CASH_STRUCTURAL_GROUP",
+            "role_kind": "SOURCE_ONLY_GROUP_PARENT",
+        },
+    )
+    axis = build_accounting_family_row_axis_v1(pages, spec)
+
+    assert axis["rows"][0]["role"] == "CASH_STRUCTURAL_GROUP"
+    assert axis["rows"][0]["values"] == []
+    result = build_accounting_family_column_context_v1(
+        axis,
+        pages,
+        spec,
+        period_semantics="BALANCE_COMPARATIVE",
+        expected_lane_unit_kinds=["MONEY", "MONEY"],
+    )
+
+    assert result["status"] == "PERIOD_UNIT_COLUMN_CONTEXT_RESOLVED_PROPOSAL_ONLY"
+    assert [item["resolved_period"] for item in result["period_axis"]] == [
+        "31/12/2025",
+        "31/12/2024",
+    ]
+    assert [item["unit_kind"] for item in result["unit_axis"]] == ["MONEY", "MONEY"]
+
+
 def test_explicit_parent_recovers_preceding_headers_despite_one_narrative_date() -> None:
     pages = _pages()
     lines = pages[0]["lines"]
