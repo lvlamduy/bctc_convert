@@ -59,6 +59,25 @@ def test_centered_solid_bar_from_embedded_pdf_dash_font_is_zero() -> None:
     assert evidence["glyph_metrics"]["component_height_ratio"] > 0.35
 
 
+def test_compact_high_fill_horizontal_dash_is_zero_but_ambiguous_blob_is_not() -> None:
+    compact = build_family_first_visible_dash_glyph_evidence_v1(
+        crop_png_bytes=_crop(lambda draw: draw.rectangle((16, 11, 23, 15), fill="black"))
+    )
+    ambiguous = build_family_first_visible_dash_glyph_evidence_v1(
+        crop_png_bytes=_crop(
+            lambda draw: (
+                draw.rectangle((16, 11, 23, 11), fill="black"),
+                draw.rectangle((16, 15, 23, 15), fill="black"),
+                draw.point((16, 12), fill="black"),
+            )
+        )
+    )
+
+    assert compact["glyph_metrics"]["component_aspect_ratio"] == 1.6
+    assert compact["classification"] == "VISIBLE_HORIZONTAL_DASH_GLYPH"
+    assert ambiguous["classification"] == "UNRESOLVED_NOT_ONE_DASH_GLYPH"
+
+
 @pytest.mark.parametrize(
     "drawer",
     (

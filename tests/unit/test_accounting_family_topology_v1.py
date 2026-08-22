@@ -976,7 +976,7 @@ def test_continuation_budget_and_next_page_reset_both_fail_closed() -> None:
         [
             pages[0],
             _page(
-                ["Phân tích cho vay theo ngành", "Nợ trung hạn", "200"],
+                ["Phân tích cho vay theo ngành kinh tế", "Nợ trung hạn", "200"],
                 page_sequence=2,
             ),
         ],

@@ -119,6 +119,8 @@ def _axis_pages(pages: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
             "lines": [
                 {
                     "bbox": canonical_clone_v1(line["bbox"]),
+                    "numeric_score": line["numeric_recognition"]["reader_score"],
+                    "numeric_text": line["numeric_recognition"]["raw_prediction"],
                     "source_line_index": line["line_ordinal"],
                     "vietocr_text": line["vietocr_text"],
                 }
@@ -156,6 +158,8 @@ def _header_lines(
                 selected.append(
                     {
                         "bbox": canonical_clone_v1(line["bbox"]),
+                        "numeric_score": line["numeric_recognition"]["reader_score"],
+                        "numeric_text": line["numeric_recognition"]["raw_prediction"],
                         "source_line_index": line["line_ordinal"],
                         "vietocr_text": line["vietocr_text"],
                     }
@@ -208,6 +212,8 @@ def _header_lines(
             ):
                 by_index[line["line_ordinal"]] = {
                     "bbox": canonical_clone_v1(bbox),
+                    "numeric_score": line["numeric_recognition"]["reader_score"],
+                    "numeric_text": line["numeric_recognition"]["raw_prediction"],
                     "source_line_index": line["line_ordinal"],
                     "vietocr_text": line["vietocr_text"],
                 }

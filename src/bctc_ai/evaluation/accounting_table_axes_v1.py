@@ -8,6 +8,7 @@ their own.
 
 from __future__ import annotations
 
+import math
 import re
 from collections.abc import Mapping, Sequence
 from datetime import date
@@ -46,6 +47,7 @@ _REPORTING_YEAR = re.compile(r"(?<!\d)(20\d{2})(?!\d)")
 _REPORTING_PERIOD_ENDS = {(3, 31), (6, 30), (9, 30), (12, 31)}
 _MAX_DOCUMENT_DATE_EVIDENCE = 8
 _MAX_DOCUMENT_UNIT_EVIDENCE = 12
+_MIN_NUMERIC_PERIOD_READER_SCORE = 0.95
 
 
 class AccountingTableAxesV1Error(ValueError):
@@ -76,6 +78,59 @@ def _text(line: Mapping[str, Any], label: str) -> str:
     if type(value) is not str:
         raise _error(f"{label} VietOCR text drifted")
     return value
+
+
+def _contains_period_surface(value: str) -> bool:
+    """Return whether one OCR surface contains a syntactically valid date part.
+
+    This deliberately does not decide which reporting period applies.  The
+    local body-column projection and repeated document-period consensus remain
+    the authority for that later decision.
+    """
+
+    for matched in _FULL_DATE.finditer(value):
+        day, month, year = map(int, matched.groups())
+        if _date_surface(day, month, year) is not None:
+            return True
+    normalized = normalize_vietnamese_anchor_v1(value)
+    if matched := _DAY_MONTH.search(normalized):
+        day, month = map(int, matched.groups())
+        if 1 <= day <= 31 and 1 <= month <= 12:
+            return True
+    return _YEAR.search(normalized) is not None or _REPORTING_YEAR.search(value) is not None
+
+
+def _period_text(line: Mapping[str, Any], label: str) -> str:
+    """Select text only for period parsing, preferring the numeric challenger.
+
+    VietOCR remains the semantic-text source.  A separately authenticated
+    numeric reader may replace its surface here only when it has a high finite
+    score and independently emits a valid date/year grammar.  This is useful
+    for digit confusions such as ``B1``/``31`` or ``2626``/``2026``; it cannot
+    inject a period from a filename, bank, page, family, or expected value.
+    """
+
+    semantic = _text(line, label)
+    has_numeric_text = "numeric_text" in line
+    has_numeric_score = "numeric_score" in line
+    if not has_numeric_text and not has_numeric_score:
+        return semantic
+    numeric = line.get("numeric_text")
+    score = line.get("numeric_score")
+    if (
+        type(numeric) is not str
+        or type(score) is not float
+        or not math.isfinite(score)
+        or not 0 <= score <= 1
+    ):
+        raise _error(f"{label} numeric period challenger drifted")
+    if (
+        score >= _MIN_NUMERIC_PERIOD_READER_SCORE
+        and normalize_vietnamese_anchor_v1(numeric) != normalize_vietnamese_anchor_v1(semantic)
+        and _contains_period_surface(numeric)
+    ):
+        return numeric
+    return semantic
 
 
 def _source_line_index(line: Mapping[str, Any], label: str) -> int:
@@ -327,7 +382,7 @@ def extract_period_axis_v1(
     years: list[tuple[Mapping[str, Any], int]] = []
     relative: list[dict[str, Any]] = []
     for line in lines:
-        text = _text(line, "period header")
+        text = _period_text(line, "period header")
         normalized = normalize_vietnamese_anchor_v1(text)
         if matched := _FULL_DATE.search(text):
             day, month, year = map(int, matched.groups())
@@ -426,7 +481,7 @@ def extract_reporting_year_axis_v1(
 
     by_year: dict[int, list[Mapping[str, Any]]] = {}
     for line in lines:
-        text = _text(line, "reporting-year header")
+        text = _period_text(line, "reporting-year header")
         for matched in _REPORTING_YEAR.finditer(text):
             by_year.setdefault(int(matched.group(1)), []).append(line)
     if len(by_year) != 2:
@@ -473,7 +528,7 @@ def _document_date_observations(
         for line in lines:
             if not isinstance(line, Mapping):
                 raise _error("document period line must be one mapping")
-            text = _text(line, "document period line")
+            text = _period_text(line, "document period line")
             source_line_index = _source_line_index(line, "document period line")
             if source_line_index in seen_line_indices:
                 raise _error("document period source line axis repeats")
@@ -580,6 +635,7 @@ def infer_document_reporting_period_context_v1(
         (parsed, evidence)
         for parsed, evidence in observations.items()
         if (parsed.month, parsed.day) in _REPORTING_PERIOD_ENDS
+        and _REPORTING_YEAR.fullmatch(f"{parsed.year:04d}") is not None
         and len({item["page_sequence"] for item in evidence}) >= 2
     ]
     if not candidates:

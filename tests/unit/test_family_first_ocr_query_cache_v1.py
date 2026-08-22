@@ -144,3 +144,57 @@ def test_cache_query_arguments_fail_closed(tmp_path) -> None:
         cache_v1.read_cached_blind_pages_v1(database, True)
     with pytest.raises(cache_v1.FamilyFirstOcrQueryCacheV1Error):
         cache_v1.read_cached_joined_pages_v1(database, 1, selected_pages=())
+
+
+def _evidence(tmp_path, *, sweep_id: str, reason: str) -> None:
+    trial = {
+        "document_ordinal": 1,
+        "evidence_status": "UNRESOLVED_EVIDENCE_GATES",
+        "topology_scan": {
+            "regions": [{"page_sequence": 1}],
+            "status": "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL",
+        },
+        "unresolved_reasons": [reason],
+    }
+    value = {
+        "family_id": "INTERBANK",
+        "sweep_id": sweep_id,
+        "trials": [trial],
+    }
+    (tmp_path / "evidence.json").write_bytes(cache_v1.canonical_json_bytes_v1(value) + b"\n")
+
+
+def test_incremental_family_cache_replaces_only_small_trial_sidecar(tmp_path) -> None:
+    database = _database(tmp_path)
+    family_database = tmp_path / "family.sqlite3"
+    _evidence(tmp_path, sweep_id="sweep-1", reason="OLD_REASON")
+
+    first = cache_v1.refresh_family_first_trial_query_cache_v1(
+        tmp_path,
+        database,
+        family_database,
+        evidence_sweep_paths=(tmp_path / "evidence.json",),
+    )
+    assert first["trial_count"] == 1
+    assert first["refreshed_families"] == ["INTERBANK"]
+    assert cache_v1.family_trial_reason_counts_from_incremental_cache_v1(
+        database, family_database, "INTERBANK"
+    ) == [{"reason": "OLD_REASON", "document_count": 1}]
+
+    _evidence(tmp_path, sweep_id="sweep-2", reason="NEW_REASON")
+    second = cache_v1.refresh_family_first_trial_query_cache_v1(
+        tmp_path,
+        database,
+        family_database,
+        evidence_sweep_paths=(tmp_path / "evidence.json",),
+    )
+    assert second["cache_id"] != first["cache_id"]
+    assert cache_v1.family_trial_reason_counts_from_incremental_cache_v1(
+        database, family_database, "INTERBANK"
+    ) == [{"reason": "NEW_REASON", "document_count": 1}]
+    assert cache_v1.read_cached_family_trials_from_incremental_cache_v1(
+        database,
+        family_database,
+        "INTERBANK",
+        evidence_status="UNRESOLVED_EVIDENCE_GATES",
+    )[0]["unresolved_reasons"] == ["NEW_REASON"]

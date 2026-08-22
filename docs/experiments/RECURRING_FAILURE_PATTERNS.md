@@ -1,6 +1,6 @@
 # Recurring failure patterns — family-first TM digitization
 
-Updated: 2026-08-21 (UTC)
+Updated: 2026-08-22 (UTC)
 
 This ledger is a mandatory pre-change check for shared table/OCR logic. It keeps
 only recurring or high-impact patterns. A family wrapper may declare semantic
@@ -32,6 +32,15 @@ Status meanings:
   additive-child lanes and exactly one visible trailing row equal to every
   lane sum; a mismatch, missing crop, or second equal candidate remains
   unresolved and never back-solves a digit.
+  The dash classifier also admits a compact 1.5–1.8 aspect glyph only when it
+  is centered, thin and at least 90% filled; shorter/fragmented blobs, blank
+  cells and multiple components remain unresolved.
+  Period digits are parsed from the independently authenticated numeric-reader
+  surface when its finite confidence is at least 0.95 and that surface itself
+  contains valid date/year grammar. VietOCR remains the semantic-text source;
+  the numeric challenger cannot supply a bank/file/fixed-year expectation, and
+  the candidate must still agree with the repeated document period and local
+  body-column geometry.
 - **Status:** `MITIGATED`.
 
 ## RFP-002 — Adjacent or merged column headers collapse into one header
@@ -163,7 +172,13 @@ Status meanings:
   split, two-year or
   relative period headers are projected onto body-derived numeric columns and
   checked against repeated document dates without reading a filename or fixed
-  year.
+  year. Date/year OCR substitutions are challenged on the same bbox by the
+  numeric reader before document consensus and local-axis projection; invalid,
+  low-confidence or non-date challenger text is ignored. Only the same modern
+  four-digit `20xx` reporting-year domain already supported by the explicit
+  year-axis grammar is eligible for document-period selection, so a systematic
+  `2026`→`2626` substitution cannot become the reporting year; within that
+  domain, recency still prevents a repeated old legal date from winning.
 - **Status:** `MITIGATED`; the shared period/unit column gate exists, while
   cross-page axis inheritance and full-matrix coverage remain incomplete.
 
@@ -678,3 +693,61 @@ Status meanings:
   remains a role-row failure and is not covered by this relaxation.
 - **Status:** `RESOLVED` in the shared hierarchical-closure primitive with a
   partial-trailing-row regression.
+
+## RFP-033 — Child subtotals or a following analysis table are treated as the family total
+
+- **Pattern:** one owner contains separate deposit and loan subtables, each with
+  an unlabelled subtotal, followed by a credit-quality table. A parent-level
+  closure sees every later numeric row and treats all of them as competing
+  family totals.
+- **Examples:** VPB and CTG interbank notes place deposit/loan subtotals before
+  `Phân tích chất lượng ...`; HDB additionally has a source-only UPAS-LC loan
+  branch, so its loan subtotal correctly exposes an incomplete child
+  population rather than a parent-total mismatch.
+- **Cause:** trailing total candidates were global to the whole topology region,
+  not scoped by child subtotal identity and structural-reset boundary.
+- **Do not:** ignore every mismatching total, select the nearest/boldest row, or
+  add bank/page-specific exclusions. A visible row that is not a proven child
+  subtotal may be an omitted provision or other accounting component and must
+  still veto.
+- **Generic primitive/fix:** terminate the family region at a declarative
+  analysis reset; at a parent equation, exclude only complete trailing rows
+  whose typed values exactly duplicate one already-resolved direct component.
+  Remaining complete rows retain strict corroboration/veto semantics.
+- **Status:** `MITIGATED`; shared closure regression and full-family cache parity
+  are required before promotion.
+
+## RFP-034 — Rebuilding the complete OCR cache for one changed family
+
+- **Pattern:** a new family evidence artifact changes only 140 small trial
+  records, but refreshing it rebuilds 667,224 OCR lines and the FTS index.
+- **Cause:** immutable OCR observations and mutable family-derived trials were
+  stored in the same SQLite publication unit.
+- **Do not:** rerun OCR, rebuild the 432 MB base, or replay every source
+  capability after each rule edit.
+- **Generic primitive/fix:** keep one content-bound read-only OCR base and a
+  small atomically refreshed family-trial sidecar keyed by base cache ID,
+  family ID and evidence sweep identity. Query/witness work uses the sidecar;
+  full source replay is reserved for OCR-snapshot changes and audit
+  checkpoints.
+- **Status:** `RESOLVED`; real 140-trial refresh is 0.381 s and reason query is
+  0.005 s versus a 124.6 s cold base rebuild.
+
+## RFP-035 — Schema mapping repeats the complete authenticated family sweep
+
+- **Pattern:** evidence is formally built across all filings, then the mapping
+  command rebuilds the identical evidence sweep before performing a small
+  deterministic schema bind.
+- **Cause:** evidence and mapping were separate public commands without a
+  same-turn authenticated in-memory handoff.
+- **Do not:** treat a raw persisted evidence JSON as self-authenticating, or
+  remove the final source replay gate merely to save time.
+- **Generic primitive/fix:** the paired family accounting pipeline authenticates
+  the semantic/numeric indices once, builds one live sweep, maps that exact
+  same-turn object, cross-links `evidence_sweep_id`, and publishes both closed
+  artifacts. Paired verification likewise performs one live sweep and compares
+  both canonical artifacts. Development still uses the SQL sidecar; this lane
+  is reserved for the stable family checkpoint.
+- **Status:** `RESOLVED`; regression asserts one source traversal per paired
+  build or verify and rollback of the first owned file if the second exclusive
+  publication fails.

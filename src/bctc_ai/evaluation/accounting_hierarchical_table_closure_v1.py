@@ -395,6 +395,20 @@ def build_accounting_hierarchical_table_closure_v1(
                 for item in trailing_rows
                 if item["status"] == "COMPLETE_VISIBLE_TRAILING_VALUE_ROW"
             ]
+            # A separate child subtable commonly prints its own unlabelled
+            # subtotal before the next child group.  At the parent equation,
+            # an exact duplicate of one already-resolved direct component is
+            # that child subtotal, not a competing parent total.  Exclude only
+            # typed exact duplicates; every other complete trailing row keeps
+            # its strict accounting-challenger role.
+            candidates = [
+                candidate
+                for candidate in candidates
+                if not any(
+                    _same_values(candidate["values"], resolved[role]["values"])
+                    for role in component_roles
+                )
+            ]
             exact = [
                 candidate
                 for candidate in candidates

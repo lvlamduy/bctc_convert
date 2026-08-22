@@ -590,6 +590,7 @@ def _cached_alias_kind(
     aliases: Sequence[str],
     *,
     allow_decorative_parenthetical_removal: bool,
+    allow_leading_alias: bool = False,
 ) -> str | None:
     axes = [(candidate["normalized"], "")]
     if candidate["stripped_normalized"] is not None:
@@ -614,6 +615,12 @@ def _cached_alias_kind(
     for normalized, suffix in axes:
         if normalized in aliases:
             return "EXACT_ACCENTLESS_ALIAS" + suffix
+    if allow_leading_alias:
+        for normalized, suffix in axes:
+            if any(
+                len(alias.split()) >= 3 and normalized.startswith(alias + " ") for alias in aliases
+            ):
+                return "LEADING_ACCENTLESS_ALIAS" + suffix
     for normalized, suffix in axes:
         if any(_one_edit_alias_is_safe(normalized, alias) for alias in aliases):
             return "ONE_EDIT_ALIAS" + suffix + "_REQUIRES_COMPLETE_TOPOLOGY"
@@ -634,6 +641,7 @@ def _role_hits(
     surface_candidates: Sequence[Sequence[Mapping[str, Any]]] | None = None,
     within_role: str | None = None,
     allow_decorative_parenthetical_removal: bool = False,
+    allow_leading_alias: bool = False,
 ) -> list[dict[str, Any]]:
     hits: list[dict[str, Any]] = []
     for start in range(len(lines)):
@@ -649,6 +657,7 @@ def _role_hits(
                 candidate,
                 aliases,
                 allow_decorative_parenthetical_removal=allow_decorative_parenthetical_removal,
+                allow_leading_alias=allow_leading_alias,
             )
             if kind is None:
                 continue
@@ -746,6 +755,7 @@ def _page_hits(
             page_sequence=page["page_sequence"],
             surface_candidates=surfaces,
             allow_decorative_parenthetical_removal=allow_decorative_parenthetical_removal,
+            allow_leading_alias=True,
         ),
     }
 

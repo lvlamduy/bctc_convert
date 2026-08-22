@@ -147,20 +147,26 @@ def _metrics(image: Image.Image) -> tuple[dict[str, Any], bool]:
 
 def _is_dash_metrics(metrics: dict[str, Any]) -> bool:
     common = (
-        metrics["component_aspect_ratio"] >= 1.8
-        and 0.04 <= metrics["component_width_ratio"] <= 0.65
+        0.04 <= metrics["component_width_ratio"] <= 0.65
         and metrics["horizontal_center_displacement_ratio"] <= 0.18
         and metrics["vertical_center_displacement_ratio"] <= 0.18
     )
     thin_dash = (
-        0.02 <= metrics["component_height_ratio"] <= 0.35 and metrics["ink_fill_ratio"] >= 0.2
+        metrics["component_aspect_ratio"] >= 1.8
+        and 0.02 <= metrics["component_height_ratio"] <= 0.35
+        and metrics["ink_fill_ratio"] >= 0.2
+    )
+    compact_high_fill_dash = (
+        1.5 <= metrics["component_aspect_ratio"] < 1.8
+        and 0.02 <= metrics["component_height_ratio"] <= 0.25
+        and metrics["ink_fill_ratio"] >= 0.9
     )
     embedded_font_solid_bar = (
         metrics["component_aspect_ratio"] >= 3.0
         and 0.35 < metrics["component_height_ratio"] <= 0.75
         and metrics["ink_fill_ratio"] >= 0.85
     )
-    return common and (thin_dash or embedded_font_solid_bar)
+    return common and (thin_dash or compact_high_fill_dash or embedded_font_solid_bar)
 
 
 def _validate(value: Any) -> dict[str, Any]:

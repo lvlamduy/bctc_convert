@@ -20,11 +20,16 @@ from bctc_ai.evaluation.accounting_family_topology_v1 import (  # noqa: E402
 )
 from bctc_ai.evaluation.family_first_ocr_query_cache_v1 import (  # noqa: E402
     DEFAULT_DATABASE_PATH,
+    DEFAULT_FAMILY_DATABASE_PATH,
     build_family_first_ocr_query_cache_v1,
+    family_trial_reason_counts_from_incremental_cache_v1,
     family_trial_reason_counts_v1,
     project_family_first_ocr_query_cache_v1,
+    project_family_first_trial_query_cache_v1,
     read_cached_blind_pages_v1,
+    read_cached_family_trials_from_incremental_cache_v1,
     read_cached_family_trials_v1,
+    refresh_family_first_trial_query_cache_v1,
     search_cached_ocr_lines_v1,
 )
 
@@ -39,6 +44,7 @@ def _object(path: Path) -> dict:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--database", type=Path, default=DEFAULT_DATABASE_PATH)
+    parser.add_argument("--family-database", type=Path, default=DEFAULT_FAMILY_DATABASE_PATH)
     sub = parser.add_subparsers(dest="command", required=True)
     build = sub.add_parser("build")
     build.add_argument("--evidence", action="append", default=[], type=Path)
@@ -51,6 +57,14 @@ def _parser() -> argparse.ArgumentParser:
     trials = sub.add_parser("trials")
     trials.add_argument("family_id")
     trials.add_argument("--evidence-status")
+    refresh = sub.add_parser("refresh-family")
+    refresh.add_argument("--evidence", action="append", required=True, type=Path)
+    sub.add_parser("family-stats")
+    incremental_reasons = sub.add_parser("family-reasons")
+    incremental_reasons.add_argument("family_id")
+    incremental_trials = sub.add_parser("family-trials")
+    incremental_trials.add_argument("family_id")
+    incremental_trials.add_argument("--evidence-status")
     benchmark = sub.add_parser("benchmark")
     benchmark.add_argument("--family-spec", required=True, type=Path)
     return parser
@@ -59,6 +73,11 @@ def _parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = _parser().parse_args()
     database = args.database if args.database.is_absolute() else PROJECT_ROOT / args.database
+    family_database = (
+        args.family_database
+        if args.family_database.is_absolute()
+        else PROJECT_ROOT / args.family_database
+    )
     if args.command == "build":
         result = build_family_first_ocr_query_cache_v1(
             PROJECT_ROOT,
@@ -79,6 +98,34 @@ def main() -> int:
         started = time.perf_counter()
         trials = read_cached_family_trials_v1(
             database,
+            args.family_id,
+            evidence_status=args.evidence_status,
+        )
+        result = {
+            "elapsed_seconds": time.perf_counter() - started,
+            "trial_count": len(trials),
+            "trials": trials,
+        }
+    elif args.command == "refresh-family":
+        result = refresh_family_first_trial_query_cache_v1(
+            PROJECT_ROOT,
+            database,
+            family_database,
+            evidence_sweep_paths=tuple(args.evidence),
+        )
+    elif args.command == "family-stats":
+        result = project_family_first_trial_query_cache_v1(database, family_database)
+    elif args.command == "family-reasons":
+        started = time.perf_counter()
+        counts = family_trial_reason_counts_from_incremental_cache_v1(
+            database, family_database, args.family_id
+        )
+        result = {"elapsed_seconds": time.perf_counter() - started, "reasons": counts}
+    elif args.command == "family-trials":
+        started = time.perf_counter()
+        trials = read_cached_family_trials_from_incremental_cache_v1(
+            database,
+            family_database,
             args.family_id,
             evidence_status=args.evidence_status,
         )

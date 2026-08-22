@@ -29,6 +29,8 @@ def _line(
     x1: int,
     *,
     source_text: str | None = None,
+    numeric_text: str | None = None,
+    numeric_score: float = 0.99,
 ) -> dict[str, object]:
     result: dict[str, object] = {
         "bbox": [x1, 10, x1 + 80, 30],
@@ -37,6 +39,9 @@ def _line(
     }
     if source_text is not None:
         result["source_text"] = source_text
+    if numeric_text is not None:
+        result["numeric_text"] = numeric_text
+        result["numeric_score"] = numeric_score
     return result
 
 
@@ -101,6 +106,41 @@ def test_period_axis_fails_closed_on_invalid_or_ambiguous_headers() -> None:
             _line(3, "31/12/2024", 500),
         ]
     ) == ([], "UNRESOLVED")
+
+
+def test_period_axis_uses_high_confidence_numeric_reader_only_for_date_grammar() -> None:
+    axis, mode = extract_period_axis_v1(
+        [
+            _line(8, "81 thang 03", 100, numeric_text="31 tháng 03"),
+            _line(11, "2016", 100, numeric_text="năm 2026"),
+            _line(6, "31 thang 12", 300, numeric_text="31 tháng 12"),
+            _line(9, "202s", 300, numeric_text="năm 2025"),
+        ]
+    )
+    assert mode == "LOCAL_SPLIT_DATES"
+    assert [item["period"] for item in axis] == ["31/03/2026", "31/12/2025"]
+
+    low_score, low_score_mode = extract_period_axis_v1(
+        [
+            _line(1, "B1 tháng 12", 100, numeric_text="31 tháng 12", numeric_score=0.94),
+            _line(2, "nam 2025", 100),
+            _line(3, "31 tháng 12", 300),
+            _line(4, "nam 2024", 300),
+        ]
+    )
+    assert low_score == []
+    assert low_score_mode == "UNRESOLVED"
+
+    non_date, non_date_mode = extract_period_axis_v1(
+        [
+            _line(1, "B1 tháng 12", 100, numeric_text="not a period"),
+            _line(2, "nam 2025", 100),
+            _line(3, "31 tháng 12", 300),
+            _line(4, "nam 2024", 300),
+        ]
+    )
+    assert non_date == []
+    assert non_date_mode == "UNRESOLVED"
 
 
 def test_reporting_year_axis_uses_latest_of_exactly_two_visible_years() -> None:
@@ -209,6 +249,41 @@ def test_document_period_context_supports_split_dates_and_fails_closed_without_r
     unresolved = infer_document_reporting_period_context_v1([_page(1, _line(1, "31/12/2025", 100))])
     assert unresolved["resolution"] == "UNRESOLVED_NO_REPEATED_REPORTING_END_DATE"
     assert unresolved["current_period_end"] is None
+
+
+def test_document_period_context_prefers_repeated_numeric_date_challenger() -> None:
+    pages = [
+        _page(
+            page_sequence,
+            _line(
+                1,
+                "Tại ngày 30/06/2626",
+                100,
+                numeric_text="Tại ngày 30/06/2026",
+            ),
+            _line(2, "31/12/2025", 300, numeric_text="31/12/2025"),
+        )
+        for page_sequence in range(1, 4)
+    ]
+    context = infer_document_reporting_period_context_v1(pages)
+    assert context["current_period_end"] == "30/06/2026"
+    assert context["balance_comparative_period_end"] == "31/12/2025"
+
+
+def test_document_period_context_rejects_out_of_domain_systematic_ocr_year_error() -> None:
+    pages = [
+        _page(
+            page_sequence,
+            _line(1, "30/06/2026", 100),
+            *([_line(2, "30/06/2626", 300)] if page_sequence in {1, 2, 3} else []),
+            _line(3, "31/12/2025", 500),
+        )
+        for page_sequence in range(1, 13)
+    ]
+    context = infer_document_reporting_period_context_v1(pages)
+    assert context["current_period_end"] == "30/06/2026"
+    assert context["balance_comparative_period_end"] == "31/12/2025"
+    assert context["supporting_page_count"] == 12
 
 
 def test_document_period_context_rejects_frequent_old_legal_footer_date() -> None:

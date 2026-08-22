@@ -28,19 +28,26 @@ from bctc_ai.source_structure.contracts_v1 import canonical_json_bytes_v1
 
 __all__ = [
     "CACHE_FORMAT_VERSION",
+    "DEFAULT_FAMILY_DATABASE_PATH",
     "FamilyFirstOcrQueryCacheV1Error",
     "build_family_first_ocr_query_cache_v1",
+    "family_trial_reason_counts_from_incremental_cache_v1",
     "family_trial_reason_counts_v1",
     "project_family_first_ocr_query_cache_v1",
+    "project_family_first_trial_query_cache_v1",
     "read_cached_blind_pages_v1",
     "read_cached_family_trials_v1",
+    "read_cached_family_trials_from_incremental_cache_v1",
     "read_cached_joined_pages_v1",
+    "refresh_family_first_trial_query_cache_v1",
     "search_cached_ocr_lines_v1",
 ]
 
 
 CACHE_FORMAT_VERSION = "FAMILY_FIRST_OCR_QUERY_CACHE_V1"
 DEFAULT_DATABASE_PATH = Path("data/local/family_first_ocr_query_cache_v1.sqlite3")
+DEFAULT_FAMILY_DATABASE_PATH = Path("data/local/family_first_family_trial_query_cache_v1.sqlite3")
+FAMILY_CACHE_FORMAT_VERSION = "FAMILY_FIRST_FAMILY_TRIAL_QUERY_CACHE_V1"
 _CACHE_AUTHORITY = {
     "accounting_authority": False,
     "cache_disposable_and_rebuildable": True,
@@ -51,6 +58,8 @@ _CACHE_AUTHORITY = {
 }
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _SCHEMA_VERSION = 1
+_FAMILY_SCHEMA_VERSION = 1
+_FAMILY_APPLICATION_ID = 1179665234
 
 
 class FamilyFirstOcrQueryCacheV1Error(RuntimeError):
@@ -219,6 +228,47 @@ def _create_schema(connection: sqlite3.Connection) -> None:
     )
 
 
+def _create_family_schema(connection: sqlite3.Connection) -> None:
+    connection.executescript(
+        f"""
+        PRAGMA application_id = {_FAMILY_APPLICATION_ID};
+        PRAGMA user_version = {_FAMILY_SCHEMA_VERSION};
+        CREATE TABLE metadata (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        ) STRICT, WITHOUT ROWID;
+        CREATE TABLE family_sources (
+            family_id TEXT PRIMARY KEY,
+            sweep_id TEXT NOT NULL,
+            path TEXT NOT NULL,
+            sha256 TEXT NOT NULL,
+            size_bytes INTEGER NOT NULL
+        ) STRICT, WITHOUT ROWID;
+        CREATE TABLE family_trials (
+            family_id TEXT NOT NULL,
+            sweep_id TEXT NOT NULL,
+            document_ordinal INTEGER NOT NULL,
+            evidence_status TEXT NOT NULL,
+            topology_status TEXT NOT NULL,
+            candidate_pages_json TEXT NOT NULL,
+            unresolved_reasons_json TEXT NOT NULL,
+            trial_json TEXT NOT NULL,
+            PRIMARY KEY (family_id, document_ordinal)
+        ) STRICT, WITHOUT ROWID;
+        CREATE TABLE trial_reasons (
+            family_id TEXT NOT NULL,
+            document_ordinal INTEGER NOT NULL,
+            reason TEXT NOT NULL,
+            PRIMARY KEY (family_id, document_ordinal, reason),
+            FOREIGN KEY (family_id, document_ordinal)
+                REFERENCES family_trials(family_id, document_ordinal)
+                ON DELETE CASCADE
+        ) STRICT, WITHOUT ROWID;
+        CREATE INDEX trial_reason_idx ON trial_reasons(family_id, reason);
+        """
+    )
+
+
 def _page_metadata(root: Path, document_ordinal: int, page_count: int) -> list[tuple[Any, ...]]:
     document_path = (
         root
@@ -318,6 +368,7 @@ def _trial_rows(
             raise _error("family evidence sweep identity/trials drifted")
         references.append(
             {
+                "family_id": family_id,
                 "path": relative.as_posix(),
                 "sha256": hashlib.sha256(payload).hexdigest(),
                 "size_bytes": len(payload),
@@ -619,6 +670,241 @@ def project_family_first_ocr_query_cache_v1(database_path: Path) -> dict[str, An
     if any(metadata.get(key) != value for key, value in observed.items()):
         raise _error("OCR query cache denominators differ from metadata")
     return {**metadata, "size_bytes": database_path.stat().st_size}
+
+
+def _family_connect(path: Path) -> sqlite3.Connection:
+    uri = f"file:{path.resolve()}?mode=ro&immutable=1"
+    connection = sqlite3.connect(uri, uri=True)
+    connection.row_factory = sqlite3.Row
+    application_id = connection.execute("PRAGMA application_id").fetchone()[0]
+    user_version = connection.execute("PRAGMA user_version").fetchone()[0]
+    format_row = connection.execute(
+        "SELECT value FROM metadata WHERE key = 'format_version'"
+    ).fetchone()
+    if (
+        application_id != _FAMILY_APPLICATION_ID
+        or user_version != _FAMILY_SCHEMA_VERSION
+        or format_row is None
+        or json.loads(format_row[0]) != FAMILY_CACHE_FORMAT_VERSION
+    ):
+        connection.close()
+        raise _error("family trial query cache schema/format identity drifted")
+    return connection
+
+
+def _fsync_directory(path: Path) -> None:
+    try:
+        descriptor = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    except OSError as exc:
+        raise _error("cannot open family cache parent directory") from exc
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def refresh_family_first_trial_query_cache_v1(
+    project_root: Path,
+    ocr_database_path: Path,
+    family_database_path: Path = DEFAULT_FAMILY_DATABASE_PATH,
+    *,
+    evidence_sweep_paths: Sequence[Path],
+) -> dict[str, Any]:
+    """Atomically insert or replace only the supplied families in a small sidecar DB."""
+
+    started = time.perf_counter()
+    if not evidence_sweep_paths:
+        raise _error("incremental family cache refresh requires evidence")
+    root = project_root.resolve()
+    ocr_database = (
+        ocr_database_path if ocr_database_path.is_absolute() else root / ocr_database_path
+    )
+    destination = (
+        family_database_path if family_database_path.is_absolute() else root / family_database_path
+    )
+    base = project_family_first_ocr_query_cache_v1(ocr_database)
+    trials, reasons, references = _trial_rows(root, evidence_sweep_paths)
+    family_ids = [reference["family_id"] for reference in references]
+    if len(family_ids) != len(set(family_ids)):
+        raise _error("incremental family cache refresh repeats one family")
+    expected_ordinals = set(range(1, base["document_count"] + 1))
+    for family_id in family_ids:
+        observed = {row[2] for row in trials if row[0] == family_id}
+        if observed != expected_ordinals:
+            raise _error("family evidence does not cover the exact OCR document axis")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    stage_fd, stage_name = tempfile.mkstemp(
+        prefix=".family-first-trial-cache-", dir=destination.parent
+    )
+    os.close(stage_fd)
+    stage = Path(stage_name)
+    try:
+        if destination.exists():
+            before = destination.lstat()
+            if destination.is_symlink() or not stat.S_ISREG(before.st_mode):
+                raise _error("existing family trial cache is not one regular nofollow file")
+            source = sqlite3.connect(f"file:{destination.resolve()}?mode=ro", uri=True)
+            target = sqlite3.connect(stage)
+            try:
+                source.backup(target)
+            finally:
+                target.close()
+                source.close()
+        connection = sqlite3.connect(stage)
+        try:
+            connection.row_factory = sqlite3.Row
+            connection.execute("PRAGMA foreign_keys=ON")
+            if not destination.exists():
+                _create_family_schema(connection)
+            existing_base = connection.execute(
+                "SELECT value FROM metadata WHERE key = 'base_cache_id'"
+            ).fetchone()
+            if existing_base is not None and json.loads(existing_base[0]) != base["cache_id"]:
+                raise _error("family trial cache belongs to another OCR snapshot")
+            for family_id in family_ids:
+                connection.execute("DELETE FROM trial_reasons WHERE family_id = ?", (family_id,))
+                connection.execute("DELETE FROM family_trials WHERE family_id = ?", (family_id,))
+                connection.execute("DELETE FROM family_sources WHERE family_id = ?", (family_id,))
+            connection.executemany(
+                "INSERT INTO family_trials VALUES (?, ?, ?, ?, ?, ?, ?, ?)", trials
+            )
+            connection.executemany("INSERT INTO trial_reasons VALUES (?, ?, ?)", reasons)
+            connection.executemany(
+                "INSERT INTO family_sources VALUES (?, ?, ?, ?, ?)",
+                [
+                    (
+                        reference["family_id"],
+                        reference["sweep_id"],
+                        reference["path"],
+                        reference["sha256"],
+                        reference["size_bytes"],
+                    )
+                    for reference in references
+                ],
+            )
+            all_sources = [
+                dict(row)
+                for row in connection.execute(
+                    "SELECT * FROM family_sources ORDER BY family_id"
+                ).fetchall()
+            ]
+            trial_count = connection.execute("SELECT COUNT(*) FROM family_trials").fetchone()[0]
+            material = {
+                "base_cache_id": base["cache_id"],
+                "family_count": len(all_sources),
+                "format_version": FAMILY_CACHE_FORMAT_VERSION,
+                "schema_version": _FAMILY_SCHEMA_VERSION,
+                "sources": all_sources,
+                "trial_count": trial_count,
+            }
+            metadata = {
+                **material,
+                "cache_id": "ffftqcv1:cache:"
+                + hashlib.sha256(canonical_json_bytes_v1(material)).hexdigest(),
+            }
+            connection.executemany(
+                "INSERT OR REPLACE INTO metadata(key, value) VALUES (?, ?)",
+                [(key, _json_text(value)) for key, value in metadata.items()],
+            )
+            connection.commit()
+            if connection.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
+                raise _error("completed family trial cache failed SQLite integrity check")
+        finally:
+            connection.close()
+        os.chmod(stage, 0o444)
+        if destination.exists():
+            os.replace(stage, destination)
+        else:
+            try:
+                os.link(stage, destination)
+            except FileExistsError as exc:
+                raise _error("family trial cache appeared during publication") from exc
+            stage.unlink()
+        _fsync_directory(destination.parent)
+    finally:
+        if stage.exists():
+            stage.unlink()
+    return {
+        "base_cache_id": base["cache_id"],
+        "cache_id": metadata["cache_id"],
+        "family_count": metadata["family_count"],
+        "refresh_seconds": time.perf_counter() - started,
+        "refreshed_families": sorted(family_ids),
+        "size_bytes": destination.stat().st_size,
+        "trial_count": metadata["trial_count"],
+    }
+
+
+def project_family_first_trial_query_cache_v1(
+    ocr_database_path: Path, family_database_path: Path
+) -> dict[str, Any]:
+    base = project_family_first_ocr_query_cache_v1(ocr_database_path)
+    with _family_connect(family_database_path) as connection:
+        metadata = {
+            row["key"]: json.loads(row["value"])
+            for row in connection.execute("SELECT key, value FROM metadata")
+        }
+        observed = {
+            "family_count": connection.execute("SELECT COUNT(*) FROM family_sources").fetchone()[0],
+            "trial_count": connection.execute("SELECT COUNT(*) FROM family_trials").fetchone()[0],
+        }
+    if metadata.get("base_cache_id") != base["cache_id"] or any(
+        metadata.get(key) != value for key, value in observed.items()
+    ):
+        raise _error("family trial cache metadata differs from its OCR snapshot/content")
+    return {**metadata, "size_bytes": family_database_path.stat().st_size}
+
+
+def family_trial_reason_counts_from_incremental_cache_v1(
+    ocr_database_path: Path, family_database_path: Path, family_id: str
+) -> list[dict[str, Any]]:
+    if type(family_id) is not str or not family_id:
+        raise _error("family trial query identifier drifted")
+    project_family_first_trial_query_cache_v1(ocr_database_path, family_database_path)
+    with _family_connect(family_database_path) as connection:
+        rows = connection.execute(
+            """
+            SELECT reason, COUNT(*) AS document_count
+              FROM trial_reasons
+             WHERE family_id = ?
+             GROUP BY reason
+             ORDER BY document_count DESC, reason
+            """,
+            (family_id,),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def read_cached_family_trials_from_incremental_cache_v1(
+    ocr_database_path: Path,
+    family_database_path: Path,
+    family_id: str,
+    *,
+    evidence_status: str | None = None,
+) -> list[dict[str, Any]]:
+    if type(family_id) is not str or not family_id:
+        raise _error("family trial query identifier drifted")
+    if evidence_status is not None and (type(evidence_status) is not str or not evidence_status):
+        raise _error("family trial evidence-status filter drifted")
+    project_family_first_trial_query_cache_v1(ocr_database_path, family_database_path)
+    sql = "SELECT trial_json FROM family_trials WHERE family_id = ?"
+    parameters: tuple[Any, ...] = (family_id,)
+    if evidence_status is not None:
+        sql += " AND evidence_status = ?"
+        parameters += (evidence_status,)
+    sql += " ORDER BY document_ordinal"
+    with _family_connect(family_database_path) as connection:
+        rows = connection.execute(sql, parameters).fetchall()
+    result = []
+    for row in rows:
+        try:
+            trial = json.loads(row["trial_json"])
+        except json.JSONDecodeError as exc:
+            raise _error("incremental cached family trial JSON drifted") from exc
+        if type(trial) is not dict:
+            raise _error("incremental cached family trial is not one JSON object")
+        result.append(trial)
+    return result
 
 
 def _fts_phrase(value: str) -> str:

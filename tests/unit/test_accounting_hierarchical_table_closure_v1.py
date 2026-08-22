@@ -288,6 +288,45 @@ def test_partial_unlabelled_trailing_row_is_ineligible_as_total_without_veto() -
     assert family["resolution_kind"] == "DERIVED_EXACT_COMPONENT_SUM"
 
 
+def test_child_subtotals_are_not_competing_parent_totals() -> None:
+    lines = [
+        _line(0, "Tiền gửi và cho vay các TCTD khác", "", [30, 20, 450, 42]),
+        _line(1, "31.12.2025", "31.12.2025", [600, 50, 700, 72]),
+        _line(2, "31.12.2024", "31.12.2024", [800, 50, 900, 72]),
+        _line(3, "Tiền gửi tại TCTD khác", "", [50, 100, 360, 120]),
+        _line(4, "Bằng VND", "", [50, 130, 360, 150]),
+        _line(5, "100", "100", [600, 130, 700, 150]),
+        _line(6, "80", "80", [800, 130, 900, 150]),
+        _line(7, "Bằng ngoại tệ", "", [50, 160, 360, 180]),
+        _line(8, "20", "20", [600, 160, 700, 180]),
+        _line(9, "15", "15", [800, 160, 900, 180]),
+        _line(10, "120", "120", [600, 190, 700, 210]),
+        _line(11, "95", "95", [800, 190, 900, 210]),
+        _line(12, "Cho vay TCTD khác", "", [50, 220, 360, 240]),
+        _line(13, "Bằng VND", "", [50, 250, 360, 270]),
+        _line(14, "25", "25", [600, 250, 700, 270]),
+        _line(15, "25", "25", [800, 250, 900, 270]),
+        _line(16, "Bằng ngoại tệ", "", [50, 280, 360, 300]),
+        _line(17, "5", "5", [600, 280, 700, 300]),
+        _line(18, "5", "5", [800, 280, 900, 300]),
+        _line(19, "30", "30", [600, 310, 700, 330]),
+        _line(20, "30", "30", [800, 310, 900, 330]),
+    ]
+    pages = [{"lines": lines, "page_sequence": 1, "page_width": 1000}]
+
+    axis, closure = _build(pages)
+
+    assert len(axis["trailing_value_rows"]) == 1
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    family = next(
+        record
+        for record in closure["resolved_roles"]
+        if record["role"] == "INTERBANK_DEPOSITS_AND_LOANS"
+    )
+    assert family["resolution_kind"] == "DERIVED_EXACT_COMPONENT_SUM"
+    assert [value["number"]["coefficient"] for value in family["values"]] == [150, 125]
+
+
 def test_replay_rejects_coordinated_role_value_and_identity_mutation() -> None:
     pages = _detail_pages()
     axis, closure = _build(pages)

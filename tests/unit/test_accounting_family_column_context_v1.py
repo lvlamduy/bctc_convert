@@ -140,6 +140,41 @@ def test_local_dates_and_spanning_unit_bind_to_body_columns() -> None:
     )
 
 
+def test_local_period_axis_uses_same_bbox_numeric_date_challenger() -> None:
+    pages = _pages()
+    pages[0]["lines"][1]["vietocr_text"] = "B1 tháng 12"
+    pages[0]["lines"][1]["numeric_recognition"] = {
+        "raw_prediction": "31 tháng 12",
+        "reader_score": 0.99,
+    }
+    pages[0]["lines"][2]["vietocr_text"] = "2010"
+    pages[0]["lines"][2]["numeric_recognition"] = {
+        "raw_prediction": "năm 2024",
+        "reader_score": 0.99,
+    }
+    pages[0]["lines"].insert(
+        2,
+        _line(99, "nam 2025", "năm 2025", [600, 73, 700, 93]),
+    )
+    for ordinal, line in enumerate(pages[0]["lines"]):
+        line["line_ordinal"] = ordinal
+    axis = _axis(pages)
+
+    result = build_accounting_family_column_context_v1(
+        axis,
+        pages,
+        _spec(),
+        period_semantics="BALANCE_COMPARATIVE",
+        expected_lane_unit_kinds=["MONEY", "MONEY"],
+    )
+
+    assert result["status"] == "PERIOD_UNIT_COLUMN_CONTEXT_RESOLVED_PROPOSAL_ONLY"
+    assert [item["resolved_period"] for item in result["period_axis"]] == [
+        "31/12/2025",
+        "31/12/2024",
+    ]
+
+
 def test_unambiguous_document_unit_can_be_inherited_when_local_unit_is_absent() -> None:
     pages = _pages(local_unit=False)
     axis = _axis(pages)

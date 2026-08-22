@@ -883,15 +883,41 @@ def build_authenticated_family_first_accounting_schema_mapping_v1(
     """Rebuild live family evidence and bind admitted roles to the tracked schema."""
 
     root = archive_v1._root(project_root)
-    spec = _schema_spec(schema_binding_spec, family_spec)
-    nodes, graph_ref = _schema_graph(root)
-    parent, by_role, aggregate_bindings = _bind_schema(nodes, spec)
     sweep = evidence_v1.build_authenticated_family_first_accounting_evidence_sweep_v1(
         semantic_index_capability,
         numeric_index_capability,
         family_spec,
         evaluation_spec,
     )
+    return _build_from_same_turn_authenticated_evidence_sweep_v1(
+        root,
+        sweep,
+        family_spec,
+        schema_binding_spec,
+    )
+
+
+def _build_from_same_turn_authenticated_evidence_sweep_v1(
+    project_root: Path,
+    evidence_sweep: Any,
+    family_spec: Any,
+    schema_binding_spec: Any,
+) -> dict[str, Any]:
+    """Map a sweep returned by the live builder in the same trusted call chain.
+
+    This private seam exists so orchestration can publish evidence and mapping
+    after one authenticated source traversal.  It is not a persisted-artifact
+    authenticator: callers must not pass a raw JSON file here.  Public replay
+    continues to rebuild the live sweep before reaching this function.
+    """
+
+    root = archive_v1._root(project_root)
+    spec = _schema_spec(schema_binding_spec, family_spec)
+    nodes, graph_ref = _schema_graph(root)
+    parent, by_role, aggregate_bindings = _bind_schema(nodes, spec)
+    if type(evidence_sweep) is not dict:
+        raise _error("same-turn authenticated family evidence is not one object")
+    sweep = canonical_clone_v1(evidence_sweep)
     if sweep["family_id"] != spec["family_id"]:
         raise _error("family evidence and schema binding identify different families")
     try:
