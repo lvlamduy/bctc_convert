@@ -496,6 +496,101 @@ def test_mixed_separator_candidate_never_passes_from_model_vote_without_equation
     assert reasons == ["MIXED_SEPARATOR:EXACT_VISIBLE_ACCOUNTING_CLOSURE_ABSENT:mixed"]
 
 
+def test_bounded_document_snapshot_rebuilds_only_one_existing_trial(monkeypatch) -> None:
+    _patch_live_inputs(monkeypatch)
+    family = _family_spec()
+    policy = _evaluation_spec()
+    sweep = subject.build_authenticated_family_first_accounting_evidence_sweep_v1(
+        object(), object(), family, policy
+    )
+    baseline = copy.deepcopy(sweep["trials"][0])
+    baseline["private_provenance"] = {
+        "bank": "ACB",
+        "period": "ANNUAL",
+        "scope": "CONSOLIDATED",
+        "year": 2025,
+    }
+    semantic = _documents()[1]
+    numeric = _numeric_document(semantic)
+    numeric_by_sample = {line["sample_id"]: line for line in numeric["lines"]}
+    joined = [
+        {
+            "lines": [
+                {
+                    "bbox": copy.deepcopy(line["source_bbox_raw_pixels"]),
+                    "crop_ref": copy.deepcopy(line["crop_ref"]),
+                    "line_ordinal": line["line_ordinal"],
+                    "numeric_recognition": {
+                        "raw_prediction": numeric_by_sample[line["sample_id"]]["raw_prediction"],
+                        "reader_score": numeric_by_sample[line["sample_id"]]["reader_score"],
+                    },
+                    "sample_id": line["sample_id"],
+                    "vietocr_text": line["vietocr_text"],
+                }
+                for line in page["lines"]
+            ],
+            "page_sequence": page["physical_page"],
+            "page_width": 1000,
+        }
+        for page in semantic["pages"]
+    ]
+    packet = {
+        "assurance": "AUDITED",
+        "bank_provenance": "ACB",
+        "document_evidence_root_sha256": "1" * 64,
+        "document_id": semantic["document_id"],
+        "document_ordinal": 1,
+        "line_count": semantic["line_count"],
+        "packet_id": "ffdesv1:document:" + "2" * 64,
+        "page_count": semantic["page_count"],
+        "period": "ANNUAL",
+        "scope": "CONSOLIDATED",
+        "source_pdf_ref": copy.deepcopy(semantic["source_pdf_ref"]),
+        "year": 2025,
+    }
+    material = {
+        "document_packet": packet,
+        "joined_pages": joined,
+        "manifest_id": "ffdesv1:manifest:" + "3" * 64,
+        "selected_page_dimensions": [
+            {
+                "physical_page": 1,
+                "pixel_height": 1400,
+                "pixel_width": 1000,
+                "render_sha256": "4" * 64,
+                "render_size_bytes": 100,
+            },
+            {
+                "physical_page": 2,
+                "pixel_height": 1400,
+                "pixel_width": 1000,
+                "render_sha256": "5" * 64,
+                "render_size_bytes": 100,
+            },
+        ],
+    }
+    snapshot = {
+        **material,
+        "snapshot_id": "ffdesv1:snapshot:" + canonical_json_sha256_v1(material),
+    }
+
+    rebuilt = subject.rebuild_family_first_accounting_trial_from_document_snapshot_v1(
+        baseline, snapshot, family, policy
+    )
+
+    assert rebuilt["document_ordinal"] == 1
+    assert rebuilt["evidence_status"] == "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY"
+    assert rebuilt["document_axis_binding"] == baseline["document_axis_binding"]
+    snapshot["joined_pages"][0]["lines"][5]["numeric_recognition"]["raw_prediction"] = "999"
+    with pytest.raises(
+        subject.FamilyFirstAccountingEvidenceSweepV1Error,
+        match="snapshot identity",
+    ):
+        subject.rebuild_family_first_accounting_trial_from_document_snapshot_v1(
+            baseline, snapshot, family, policy
+        )
+
+
 def test_hierarchical_downstream_role_superset_selects_detail_over_summary() -> None:
     summary = {
         "additive_closure": {

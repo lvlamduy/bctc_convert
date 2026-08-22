@@ -47,6 +47,7 @@ __all__ = [
     "FORMAT_VERSION",
     "FamilyFirstAccountingEvidenceSweepV1Error",
     "build_authenticated_family_first_accounting_evidence_sweep_v1",
+    "rebuild_family_first_accounting_trial_from_document_snapshot_v1",
     "validate_authenticated_family_first_accounting_evidence_sweep_replay_v1",
 ]
 
@@ -492,53 +493,14 @@ def _select_candidate_evidence(
     )
 
 
-def _trial(
-    document: dict[str, Any],
+def _candidate_evidence_from_joined_pages(
+    *,
+    joined_pages: list[dict[str, Any]],
     topology_scan: dict[str, Any],
     family_spec: dict[str, Any],
     evaluation_spec: dict[str, Any],
-    *,
-    numeric_document: dict[str, Any] | None,
     render_snapshots: tuple[dict[str, Any], ...],
-) -> dict[str, Any]:
-    base = {
-        "document_ordinal": document["document_ordinal"],
-        "private_provenance": canonical_clone_v1(document["private_provenance"]),
-        "source_pdf_ref": canonical_clone_v1(document["source_pdf_ref"]),
-        "topology_scan": topology_scan,
-    }
-    if topology_scan["status"] == "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY":
-        return {
-            **base,
-            "additive_closure": None,
-            "column_context": None,
-            "document_axis_binding": None,
-            "evidence_status": "NOT_OBSERVED_PROPOSAL_ONLY",
-            "row_axis": None,
-            "unresolved_reasons": [],
-        }
-    candidate_topology_statuses = {
-        "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL",
-        "UNRESOLVED_MULTIPLE_OR_NONUNIQUE_COMPLETE_REGIONS",
-    }
-    if topology_scan["status"] not in candidate_topology_statuses:
-        return {
-            **base,
-            "additive_closure": None,
-            "column_context": None,
-            "document_axis_binding": None,
-            "evidence_status": "UNRESOLVED_NO_UNIQUE_COMPLETE_TOPOLOGY",
-            "row_axis": None,
-            "unresolved_reasons": [topology_scan["status"]],
-        }
-    if numeric_document is None or not render_snapshots:
-        raise _error("unique topology trial lacks its authenticated batch snapshots")
-    document_axis = build_accounting_family_document_axis_join_v1(
-        document,
-        numeric_document,
-        selected_page_render_snapshots=render_snapshots,
-    )
-    joined_pages = project_accounting_family_document_pages_v1(document_axis)
+) -> list[dict[str, Any]]:
     candidate_evidence = []
     for candidate_ordinal, topology_region in enumerate(topology_scan["regions"]):
         base_row_axis = (
@@ -602,16 +564,72 @@ def _trial(
                 joined_pages=joined_pages,
             )
         )
-        reasons = list(dict.fromkeys(reasons))
         candidate_evidence.append(
             {
                 "additive_closure": closure,
                 "candidate_ordinal": candidate_ordinal,
                 "column_context": column_context,
-                "reasons": reasons,
+                "reasons": list(dict.fromkeys(reasons)),
                 "row_axis": row_axis,
             }
         )
+    return candidate_evidence
+
+
+def _trial(
+    document: dict[str, Any],
+    topology_scan: dict[str, Any],
+    family_spec: dict[str, Any],
+    evaluation_spec: dict[str, Any],
+    *,
+    numeric_document: dict[str, Any] | None,
+    render_snapshots: tuple[dict[str, Any], ...],
+) -> dict[str, Any]:
+    base = {
+        "document_ordinal": document["document_ordinal"],
+        "private_provenance": canonical_clone_v1(document["private_provenance"]),
+        "source_pdf_ref": canonical_clone_v1(document["source_pdf_ref"]),
+        "topology_scan": topology_scan,
+    }
+    if topology_scan["status"] == "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY":
+        return {
+            **base,
+            "additive_closure": None,
+            "column_context": None,
+            "document_axis_binding": None,
+            "evidence_status": "NOT_OBSERVED_PROPOSAL_ONLY",
+            "row_axis": None,
+            "unresolved_reasons": [],
+        }
+    candidate_topology_statuses = {
+        "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL",
+        "UNRESOLVED_MULTIPLE_OR_NONUNIQUE_COMPLETE_REGIONS",
+    }
+    if topology_scan["status"] not in candidate_topology_statuses:
+        return {
+            **base,
+            "additive_closure": None,
+            "column_context": None,
+            "document_axis_binding": None,
+            "evidence_status": "UNRESOLVED_NO_UNIQUE_COMPLETE_TOPOLOGY",
+            "row_axis": None,
+            "unresolved_reasons": [topology_scan["status"]],
+        }
+    if numeric_document is None or not render_snapshots:
+        raise _error("unique topology trial lacks its authenticated batch snapshots")
+    document_axis = build_accounting_family_document_axis_join_v1(
+        document,
+        numeric_document,
+        selected_page_render_snapshots=render_snapshots,
+    )
+    joined_pages = project_accounting_family_document_pages_v1(document_axis)
+    candidate_evidence = _candidate_evidence_from_joined_pages(
+        joined_pages=joined_pages,
+        topology_scan=topology_scan,
+        family_spec=family_spec,
+        evaluation_spec=evaluation_spec,
+        render_snapshots=render_snapshots,
+    )
     selected, reasons = _select_candidate_evidence(candidate_evidence, evaluation_spec)
     return {
         **base,
@@ -626,6 +644,128 @@ def _trial(
         "row_axis": selected["row_axis"] if selected is not None else None,
         "unresolved_reasons": reasons,
     }
+
+
+def rebuild_family_first_accounting_trial_from_document_snapshot_v1(
+    baseline_trial: Any,
+    document_snapshot: Any,
+    family_spec: Any,
+    evaluation_spec: Any,
+) -> dict[str, Any]:
+    """Recompute one affected trial from an authenticated document snapshot.
+
+    This bounded seam is for family/parser edits that do not alter upstream
+    OCR, geometry, or topology. It deliberately cannot reconstruct omitted
+    dash cells because that requires authenticated render bytes; such a trial
+    must use the full live builder instead.
+    """
+
+    try:
+        compiled = topology_v1._spec(family_spec)
+    except (ValueError, RuntimeError) as exc:
+        raise _error("family topology specification drifted") from exc
+    policy = _evaluation_spec(evaluation_spec, compiled, raw_family_spec=family_spec)
+    if (
+        type(baseline_trial) is not dict
+        or set(baseline_trial) != _TRIAL_FIELDS
+        or type(document_snapshot) is not dict
+        or set(document_snapshot)
+        != {
+            "document_packet",
+            "joined_pages",
+            "manifest_id",
+            "selected_page_dimensions",
+            "snapshot_id",
+        }
+        or type(document_snapshot["snapshot_id"]) is not str
+        or not document_snapshot["snapshot_id"].startswith("ffdesv1:snapshot:")
+    ):
+        raise _error("bounded document trial refresh input shape drifted")
+    snapshot_material = canonical_clone_v1(document_snapshot)
+    snapshot_id = snapshot_material.pop("snapshot_id")
+    if snapshot_id != "ffdesv1:snapshot:" + canonical_json_sha256_v1(snapshot_material):
+        raise _error("bounded document evidence snapshot identity drifted")
+    packet = document_snapshot["document_packet"]
+    provenance = baseline_trial["private_provenance"]
+    topology_scan = baseline_trial["topology_scan"]
+    if (
+        packet["document_ordinal"] != baseline_trial["document_ordinal"]
+        or not same_typed_json_v1(packet["source_pdf_ref"], baseline_trial["source_pdf_ref"])
+        or packet["bank_provenance"] != provenance.get("bank")
+        or packet["year"] != provenance.get("year")
+        or packet["period"] != provenance.get("period")
+        or packet["scope"] != provenance.get("scope")
+        or topology_scan.get("family_id") != compiled["family_id"]
+        or topology_scan.get("status")
+        not in {
+            "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL",
+            "UNRESOLVED_MULTIPLE_OR_NONUNIQUE_COMPLETE_REGIONS",
+        }
+        or baseline_trial["document_axis_binding"] is None
+    ):
+        raise _error("bounded document snapshot belongs to another family trial")
+    joined_pages = document_snapshot["joined_pages"]
+    if (
+        type(joined_pages) is not list
+        or len(joined_pages) != packet["page_count"]
+        or sum(len(page.get("lines", [])) for page in joined_pages) != packet["line_count"]
+    ):
+        raise _error("bounded document snapshot denominator drifted")
+    expected_selected_pages: set[int] = set()
+    for region in topology_scan["regions"]:
+        start = region["cluster_start_document_line_ordinal"]
+        stop = region["cluster_end_document_line_ordinal_exclusive"]
+        offset = 0
+        for page in joined_pages:
+            page_stop = offset + len(page["lines"])
+            if offset < stop and page_stop > start:
+                expected_selected_pages.add(page["page_sequence"])
+            offset = page_stop
+    selected_dimensions = document_snapshot["selected_page_dimensions"]
+    if (
+        type(selected_dimensions) is not list
+        or {item.get("physical_page") for item in selected_dimensions} != expected_selected_pages
+        or any(
+            page["page_width"]
+            != (
+                next(
+                    item["pixel_width"]
+                    for item in selected_dimensions
+                    if item["physical_page"] == page["page_sequence"]
+                )
+                if page["page_sequence"] in expected_selected_pages
+                else None
+            )
+            for page in joined_pages
+        )
+    ):
+        raise _error("bounded document snapshot selected-page axis drifted")
+    candidate_evidence = _candidate_evidence_from_joined_pages(
+        joined_pages=joined_pages,
+        topology_scan=topology_scan,
+        family_spec=family_spec,
+        evaluation_spec=policy,
+        render_snapshots=(),
+    )
+    selected, reasons = _select_candidate_evidence(candidate_evidence, policy)
+    return canonical_clone_v1(
+        {
+            "additive_closure": (selected["additive_closure"] if selected is not None else None),
+            "column_context": selected["column_context"] if selected is not None else None,
+            "document_axis_binding": baseline_trial["document_axis_binding"],
+            "document_ordinal": baseline_trial["document_ordinal"],
+            "evidence_status": (
+                "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY"
+                if not reasons
+                else "UNRESOLVED_EVIDENCE_GATES"
+            ),
+            "private_provenance": baseline_trial["private_provenance"],
+            "row_axis": selected["row_axis"] if selected is not None else None,
+            "source_pdf_ref": baseline_trial["source_pdf_ref"],
+            "topology_scan": topology_scan,
+            "unresolved_reasons": reasons,
+        }
+    )
 
 
 def _metrics(trials: list[dict[str, Any]]) -> dict[str, int]:
