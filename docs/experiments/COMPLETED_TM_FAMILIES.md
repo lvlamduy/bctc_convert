@@ -1495,7 +1495,7 @@ dùng.
 | Tiền gửi tại NHNN | ✓ 6 / — 12 | ✓ 18 | ✓ 18 | ✓ 4 / — 12 | ✓ 2 / — 16 | ✓ 2 / — 16 | ✓ 2 / — 14 | ✓ 18 | 0; ô MBB `55,307.732` đã đóng bằng cùng rule chung |
 | Tiền gửi tại/cho vay TCTD khác — tài sản (575) | ✓ 8 / △ 10 | ✓ 16 / △ 2 | ✓ 14 / △ 4 | ✓ 6 / △ 10 | ✓ 18 | ✓ 13 / △ 3 / — 2 | ✓ 3 / △ 1 / — 12 | ✓ 6 / △ 12 | 42 filing còn UNRESOLVED; 84/140 filing, 701 mapping đã xác minh |
 | Tiền, vàng gửi và vay TCTD khác — nguồn vốn (1040) | ✓ p61 | ✓ p64 | ✓\* p58–59 | ✓\* p44 | ✓ p52 | ✓ p51 | ✓ p50 | ✓ p45 | 2 hàng phụ source-only: VPB IFC và HDB UPAS LC |
-| Chứng khoán kinh doanh | ✓ p47 | ✓ p49 | ✓ p43 | ✓ p34 | ✓ p37 | ✓ p41 | ✓ p40 | — | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; VIB chỉ có family đầu tư |
+| Chứng khoán kinh doanh | ✓ 3 / △ 15 | ✓ 6 / △ 12 | ✓ 3 / △ 9 / — 6 | △ 16 | ✓ 15 / △ 3 | ✓ 4 / △ 12 / — 2 | ✓ 5 / △ 11 | — 18 | 78 filing còn `UNRESOLVED`; 36/140 filing và 126 leaf mapping đã xác minh; từng PDF/kỳ/scope/trang/lý do ở `UNRESOLVED_MAPPING_LEDGER.md` |
 | Công cụ tài chính phái sinh | ✓ p49 | ✓ p66 | ✓ p44 | ✓ p35 | — | ✓ p42 | ✓ p41 | ✓ p37 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; VCB không có family |
 | Loại hình cho vay | ✓ p17 | ✓ p31 | ✓ p42 | ✓ p26 | ✓ p30 | ✓ p38 | ✓ p22 | ✓ p33 | 0 |
 | Ngành nghề kinh doanh | ✓ p51 | ✓ p52 | ✓ p47 | ✓ p37 | ✓ p40 | — | ✓ p42 | ✓ p38 | 0 dòng; VCB gộp `Thương mại, dịch vụ` → 6073; CTG không có family trong filing annual-2025 |
