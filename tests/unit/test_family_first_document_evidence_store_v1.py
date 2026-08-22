@@ -250,3 +250,75 @@ def test_document_evidence_root_ignores_global_transport_but_not_numeric_change(
         first_packet["document_evidence_root_sha256"]
         != changed_packet["document_evidence_root_sha256"]
     )
+
+
+def test_authenticated_document_snapshot_recomputes_one_packet_and_reads_joined_axis(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database = tmp_path / "store.sqlite3"
+    _database(database, transport=7, numeric_text="1.460,873")
+    inventory = {
+        "filings": [
+            {
+                "assurance": "AUDITED",
+                "bank_provenance": "ACB",
+                "content_ref": {
+                    "path": "vietstock_bctc/a.pdf",
+                    "sha256": "2" * 64,
+                    "size_bytes": 1,
+                },
+                "period": "ANNUAL",
+                "scope": "CONSOLIDATED",
+                "year": 2025,
+            }
+        ]
+    }
+    packet = store_v1._document_packets(database, inventory)[0]
+    manifest = {
+        "documents": [packet],
+        "manifest_id": "ffdesv1:manifest:" + "9" * 64,
+        "metrics": {"document_count": 1},
+    }
+    state = store_v1._StoreState(
+        tmp_path,
+        manifest,
+        b"manifest",
+        database,
+        (0, 0, 0, 0),
+    )
+    monkeypatch.setattr(store_v1, "_live_store", lambda _capability: state)
+
+    snapshot = store_v1.read_authenticated_family_first_document_evidence_snapshot_v1(
+        object(), document_ordinal=1, selected_pages=(1,)
+    )
+    assert snapshot["document_packet"] == packet
+    assert snapshot["joined_pages"][0]["lines"][0]["numeric_recognition"] == {
+        "raw_prediction": "1.460,873",
+        "reader_score": 0.8,
+    }
+    assert snapshot["joined_pages"][0]["page_width"] == 100
+    assert snapshot["selected_page_dimensions"] == [
+        {
+            "physical_page": 1,
+            "pixel_height": 200,
+            "pixel_width": 100,
+            "render_sha256": "4" * 64,
+            "render_size_bytes": 1,
+        }
+    ]
+    material = copy.deepcopy(snapshot)
+    identity = material.pop("snapshot_id")
+    assert identity == "ffdesv1:snapshot:" + store_v1.canonical_json_sha256_v1(material)
+
+    connection = sqlite3.connect(database)
+    connection.execute("UPDATE lines SET numeric_text = '1.460.874'")
+    connection.commit()
+    connection.close()
+    with pytest.raises(
+        store_v1.FamilyFirstDocumentEvidenceStoreV1Error,
+        match="authenticated packet root",
+    ):
+        store_v1.read_authenticated_family_first_document_evidence_snapshot_v1(
+            object(), document_ordinal=1, selected_pages=(1,)
+        )

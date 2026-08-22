@@ -107,6 +107,7 @@ def _unresolved(token: str, *, percentage: bool, parentheses: bool) -> dict[str,
 def _parsed_number(
     token: str,
     *,
+    classification: str = "SIGNED_NUMBER",
     digits: str,
     scale: int,
     negative: bool,
@@ -118,7 +119,7 @@ def _parsed_number(
     if negative and coefficient:
         coefficient = -coefficient
     return {
-        "classification": "SIGNED_NUMBER",
+        "classification": classification,
         "coefficient": coefficient,
         "negative_parentheses": parentheses,
         "normalized_token": token,
@@ -155,6 +156,30 @@ def _decimal_parts(value: str, decimal_separator: str) -> tuple[str, str] | None
     if integer_digits is None:
         return None
     return integer_digits, fraction
+
+
+def _mixed_grouped_integer(value: str) -> str | None:
+    """Return digits for an OCR token whose thousands marks disagree.
+
+    ``1.460,873`` and ``1,460.854`` are not accepted as final numbers here.
+    They are retained as typed candidates because every group after the first
+    contains exactly three digits, while both punctuation kinds occur.  A
+    downstream table gate must still corroborate the candidate with an
+    independent same-crop reader, an integer-money column, peer formatting,
+    and an exact visible accounting equation.
+    """
+
+    if "." not in value or "," not in value:
+        return None
+    parts = re.split(r"[.,]", value)
+    if (
+        len(parts) < 3
+        or not 1 <= len(parts[0]) <= 3
+        or not all(_DIGITS.fullmatch(part) for part in parts)
+        or not all(len(part) == 3 for part in parts[1:])
+    ):
+        return None
+    return "".join(parts)
 
 
 def parse_visible_financial_numeric_token_v1(raw_text: Any) -> dict[str, Any]:
@@ -258,6 +283,18 @@ def parse_visible_financial_numeric_token_v1(raw_text: Any) -> dict[str, Any]:
                 separator="DECIMAL_POINT" if separator == "." else "DECIMAL_COMMA",
             )
     elif len(present) == 2:
+        mixed_grouped = _mixed_grouped_integer(core)
+        if mixed_grouped is not None and not percentage:
+            return _parsed_number(
+                token,
+                classification="MIXED_GROUPED_INTEGER_CANDIDATE",
+                digits=mixed_grouped,
+                scale=0,
+                negative=negative,
+                parentheses=parentheses,
+                percentage=False,
+                separator="MIXED_GROUPED_INTEGER_CANDIDATE",
+            )
         decimal_separator = "." if core.rfind(".") > core.rfind(",") else ","
         decimal = _decimal_parts(core, decimal_separator)
         if decimal is not None:

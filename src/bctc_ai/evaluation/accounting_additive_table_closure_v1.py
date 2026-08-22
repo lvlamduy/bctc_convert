@@ -97,7 +97,11 @@ def _error(message: str) -> AccountingAdditiveTableClosureV1Error:
 
 def _number(value: Mapping[str, Any]) -> dict[str, Any] | None:
     parsed = value["parsed_token"]
-    if parsed["classification"] not in {"DASH_ZERO", "SIGNED_NUMBER"}:
+    if parsed["classification"] not in {
+        "DASH_ZERO",
+        "MIXED_GROUPED_INTEGER_CANDIDATE",
+        "SIGNED_NUMBER",
+    }:
         return None
     coefficient = parsed["coefficient"]
     scale = parsed["scale"]

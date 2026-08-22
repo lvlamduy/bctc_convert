@@ -42,6 +42,7 @@ __all__ = [
     "authenticate_family_first_document_evidence_store_v1",
     "build_authenticated_family_first_document_evidence_manifest_v1",
     "project_authenticated_family_first_document_evidence_store_v1",
+    "read_authenticated_family_first_document_evidence_snapshot_v1",
     "read_authenticated_family_first_document_packet_v1",
     "validate_family_first_document_evidence_manifest_shape_v1",
 ]
@@ -272,6 +273,98 @@ def _hash_record(digest: Any, kind: str, value: dict[str, Any]) -> None:
     digest.update(canonical_json_bytes_v1({"kind": kind, "value": value}))
 
 
+def _document_packet_from_connection(
+    connection: Any,
+    *,
+    expected_ordinal: int,
+    filing: dict[str, Any],
+) -> dict[str, Any]:
+    document_row = connection.execute(
+        "SELECT * FROM documents WHERE document_ordinal = ?",
+        (expected_ordinal,),
+    ).fetchone()
+    if document_row is None:
+        raise _error("document evidence database source order drifted")
+    document = dict(document_row)
+    if document["document_ordinal"] != expected_ordinal or not same_typed_json_v1(
+        filing["content_ref"],
+        {
+            "path": document["source_path"],
+            "sha256": document["source_sha256"],
+            "size_bytes": document["source_size_bytes"],
+        },
+    ):
+        raise _error("document evidence database/inventory source differs")
+    if (
+        filing["bank_provenance"] != document["bank"]
+        or filing["year"] != document["year"]
+        or filing["period"] != document["period"]
+        or filing["scope"] != document["scope"]
+    ):
+        raise _error("document evidence database/inventory provenance differs")
+    digest = hashlib.sha256()
+    # Transport/global ordinals are deliberately absent from the evidence
+    # root. If one document gains a line, later global sample IDs and crop
+    # paths may shift even though their local pixels/text/numbers did not.
+    _hash_record(
+        digest,
+        "DOCUMENT",
+        {
+            key: document[key]
+            for key in (
+                "bank",
+                "year",
+                "period",
+                "scope",
+                "source_sha256",
+                "source_size_bytes",
+                "page_count",
+                "line_count",
+            )
+        },
+    )
+    pages = connection.execute(
+        "SELECT * FROM pages WHERE document_ordinal = ? ORDER BY physical_page",
+        (expected_ordinal,),
+    ).fetchall()
+    lines = connection.execute(
+        """
+        SELECT physical_page, line_ordinal,
+               bbox_left, bbox_top, bbox_right, bbox_bottom,
+               crop_sha256, crop_size_bytes,
+               vietocr_text, vietocr_text_nfc, accentless_text,
+               semantic_probability, processed_width, processed_height,
+               numeric_text, numeric_score
+          FROM lines WHERE document_ordinal = ?
+        ORDER BY physical_page, line_ordinal
+        """,
+        (expected_ordinal,),
+    ).fetchall()
+    if len(pages) != document["page_count"] or len(lines) != document["line_count"]:
+        raise _error("document evidence packet page/line denominator drifted")
+    for row in pages:
+        _hash_record(digest, "PAGE", dict(row))
+    for row in lines:
+        _hash_record(digest, "LINE", dict(row))
+    material = {
+        "assurance": filing["assurance"],
+        "bank_provenance": filing["bank_provenance"],
+        "document_evidence_root_sha256": digest.hexdigest(),
+        "document_id": document["document_id"],
+        "document_ordinal": expected_ordinal,
+        "line_count": document["line_count"],
+        "page_count": document["page_count"],
+        "period": filing["period"],
+        "scope": filing["scope"],
+        "source_pdf_ref": canonical_clone_v1(filing["content_ref"]),
+        "year": filing["year"],
+    }
+    return {
+        **material,
+        "packet_id": "ffdesv1:document:" + canonical_json_sha256_v1(material),
+    }
+
+
 def _document_packets(database_path: Path, inventory: dict[str, Any]) -> tuple[dict[str, Any], ...]:
     filings = inventory["filings"]
     by_source = {item["content_ref"]["sha256"]: item for item in filings}
@@ -287,85 +380,14 @@ def _document_packets(database_path: Path, inventory: dict[str, Any]) -> tuple[d
             if document["document_ordinal"] != expected_ordinal:
                 raise _error("document evidence database source order drifted")
             filing = by_source.get(document["source_sha256"])
-            if filing is None or not same_typed_json_v1(
-                filing["content_ref"],
-                {
-                    "path": document["source_path"],
-                    "sha256": document["source_sha256"],
-                    "size_bytes": document["source_size_bytes"],
-                },
-            ):
+            if filing is None:
                 raise _error("document evidence database/inventory source differs")
-            if (
-                filing["bank_provenance"] != document["bank"]
-                or filing["year"] != document["year"]
-                or filing["period"] != document["period"]
-                or filing["scope"] != document["scope"]
-            ):
-                raise _error("document evidence database/inventory provenance differs")
-            digest = hashlib.sha256()
-            # Transport/global ordinals are deliberately absent from the
-            # evidence root.  If one document gains a line, later global
-            # sample IDs and crop paths may shift even though their local
-            # pixels/text/numbers did not change.
-            _hash_record(
-                digest,
-                "DOCUMENT",
-                {
-                    key: document[key]
-                    for key in (
-                        "bank",
-                        "year",
-                        "period",
-                        "scope",
-                        "source_sha256",
-                        "source_size_bytes",
-                        "page_count",
-                        "line_count",
-                    )
-                },
-            )
-            pages = connection.execute(
-                "SELECT * FROM pages WHERE document_ordinal = ? ORDER BY physical_page",
-                (expected_ordinal,),
-            ).fetchall()
-            lines = connection.execute(
-                """
-                SELECT physical_page, line_ordinal,
-                       bbox_left, bbox_top, bbox_right, bbox_bottom,
-                       crop_sha256, crop_size_bytes,
-                       vietocr_text, vietocr_text_nfc, accentless_text,
-                       semantic_probability, processed_width, processed_height,
-                       numeric_text, numeric_score
-                  FROM lines WHERE document_ordinal = ?
-                ORDER BY physical_page, line_ordinal
-                """,
-                (expected_ordinal,),
-            ).fetchall()
-            if len(pages) != document["page_count"] or len(lines) != document["line_count"]:
-                raise _error("document evidence packet page/line denominator drifted")
-            for row in pages:
-                _hash_record(digest, "PAGE", dict(row))
-            for row in lines:
-                _hash_record(digest, "LINE", dict(row))
-            material = {
-                "assurance": filing["assurance"],
-                "bank_provenance": filing["bank_provenance"],
-                "document_evidence_root_sha256": digest.hexdigest(),
-                "document_id": document["document_id"],
-                "document_ordinal": expected_ordinal,
-                "line_count": document["line_count"],
-                "page_count": document["page_count"],
-                "period": filing["period"],
-                "scope": filing["scope"],
-                "source_pdf_ref": canonical_clone_v1(filing["content_ref"]),
-                "year": filing["year"],
-            }
             packets.append(
-                {
-                    **material,
-                    "packet_id": "ffdesv1:document:" + canonical_json_sha256_v1(material),
-                }
+                _document_packet_from_connection(
+                    connection,
+                    expected_ordinal=expected_ordinal,
+                    filing=filing,
+                )
             )
     return tuple(packets)
 
@@ -696,3 +718,110 @@ def read_authenticated_family_first_document_packet_v1(
     ):
         raise _error("document evidence packet ordinal lies outside the store")
     return copy.deepcopy(state.manifest["documents"][document_ordinal - 1])
+
+
+def read_authenticated_family_first_document_evidence_snapshot_v1(
+    capability: AuthenticatedFamilyFirstDocumentEvidenceStoreV1,
+    *,
+    document_ordinal: int,
+    selected_pages: tuple[int, ...],
+) -> dict[str, Any]:
+    """Read and root-check one document for bounded downstream recomputation.
+
+    The full document line axis is returned because topology regions use
+    document-local offsets. Page widths/heights are exposed only for the
+    selected region pages. The accessor recomputes the document packet root
+    from SQLite before returning, so a family edit never needs to replay the
+    other 139 filings.
+    """
+
+    state = _live_store(capability)
+    if (
+        type(document_ordinal) is not int
+        or not 1 <= document_ordinal <= state.manifest["metrics"]["document_count"]
+        or type(selected_pages) is not tuple
+        or not selected_pages
+        or any(type(page) is not int or page <= 0 for page in selected_pages)
+        or len(selected_pages) != len(set(selected_pages))
+    ):
+        raise _error("document evidence snapshot selection drifted")
+    expected = state.manifest["documents"][document_ordinal - 1]
+    filing = {
+        "assurance": expected["assurance"],
+        "bank_provenance": expected["bank_provenance"],
+        "content_ref": expected["source_pdf_ref"],
+        "period": expected["period"],
+        "scope": expected["scope"],
+        "year": expected["year"],
+    }
+    with cache_v1._connect(state.database_path) as connection:
+        observed = _document_packet_from_connection(
+            connection,
+            expected_ordinal=document_ordinal,
+            filing=filing,
+        )
+        if not same_typed_json_v1(observed, expected):
+            raise _error("document evidence snapshot differs from its authenticated packet root")
+        dimensions = {
+            row["physical_page"]: {
+                "pixel_height": row["pixel_height"],
+                "pixel_width": row["pixel_width"],
+                "render_sha256": row["render_sha256"],
+                "render_size_bytes": row["render_size_bytes"],
+            }
+            for row in connection.execute(
+                "SELECT physical_page, pixel_width, pixel_height, render_sha256, "
+                "render_size_bytes FROM pages WHERE document_ordinal = ?",
+                (document_ordinal,),
+            )
+        }
+        records = cache_v1._line_records(connection, document_ordinal)
+    if any(page not in dimensions for page in selected_pages) or not records:
+        raise _error("document evidence snapshot selected page is absent")
+    pages: dict[int, list[dict[str, Any]]] = {}
+    for row in records:
+        pages.setdefault(row["physical_page"], []).append(
+            {
+                "bbox": [
+                    row["bbox_left"],
+                    row["bbox_top"],
+                    row["bbox_right"],
+                    row["bbox_bottom"],
+                ],
+                "crop_ref": {
+                    "path": row["crop_path"],
+                    "sha256": row["crop_sha256"],
+                    "size_bytes": row["crop_size_bytes"],
+                },
+                "line_ordinal": row["line_ordinal"],
+                "numeric_recognition": {
+                    "raw_prediction": row["numeric_text"],
+                    "reader_score": row["numeric_score"],
+                },
+                "sample_id": row["sample_id"],
+                "vietocr_text": row["vietocr_text"],
+            }
+        )
+    selected = set(selected_pages)
+    joined_pages = [
+        {
+            "lines": lines,
+            "page_sequence": page,
+            "page_width": dimensions[page]["pixel_width"] if page in selected else None,
+        }
+        for page, lines in sorted(pages.items())
+    ]
+    material = {
+        "document_packet": canonical_clone_v1(expected),
+        "joined_pages": joined_pages,
+        "manifest_id": state.manifest["manifest_id"],
+        "selected_page_dimensions": [
+            {"physical_page": page, **dimensions[page]} for page in selected_pages
+        ],
+    }
+    return canonical_clone_v1(
+        {
+            **material,
+            "snapshot_id": "ffdesv1:snapshot:" + canonical_json_sha256_v1(material),
+        }
+    )

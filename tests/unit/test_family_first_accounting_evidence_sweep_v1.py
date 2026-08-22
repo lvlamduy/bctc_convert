@@ -400,6 +400,102 @@ def test_optional_closure_policy_still_vetoes_a_visible_mismatching_total(monkey
     ]
 
 
+def _mixed_value(sample_id: str, raw: str, coefficient: int) -> dict[str, object]:
+    return {
+        "column_ordinal": 0,
+        "parsed_token": {
+            "classification": "MIXED_GROUPED_INTEGER_CANDIDATE",
+            "coefficient": coefficient,
+            "negative_parentheses": False,
+            "normalized_token": raw,
+            "percentage_mark_present": False,
+            "scale": 0,
+            "separator_interpretation": "MIXED_GROUPED_INTEGER_CANDIDATE",
+            "sign": 1,
+        },
+        "sample_id": sample_id,
+    }
+
+
+def _signed_value(sample_id: str, coefficient: int) -> dict[str, object]:
+    return {
+        "column_ordinal": 0,
+        "parsed_token": {
+            "classification": "SIGNED_NUMBER",
+            "coefficient": coefficient,
+            "negative_parentheses": False,
+            "normalized_token": str(coefficient),
+            "percentage_mark_present": False,
+            "scale": 0,
+            "separator_interpretation": "NONE",
+            "sign": 1,
+        },
+        "sample_id": sample_id,
+    }
+
+
+def test_mixed_separator_candidate_requires_independent_reader_money_peers_and_equation() -> None:
+    candidate = _mixed_value("mixed", "1.460,873", 1_460_873)
+    row_axis = {
+        "rows": [
+            {"role": "CASH_VND", "values": [candidate]},
+            {"role": "CASH_FOREIGN", "values": [_signed_value("peer-1", 382_482)]},
+            {"role": "MONETARY_GOLD", "values": [_signed_value("peer-2", 94)]},
+        ],
+        "trailing_value_rows": [{"values": [_signed_value("total", 1_843_449)]}],
+    }
+    column = {"unit_axis": [{"column_ordinal": 0, "unit_kind": "MONEY"}]}
+    closure = {
+        "format_version": "ACCOUNTING_ADDITIVE_TABLE_CLOSURE_V1",
+        "status": "CORROBORATED_EXACT_UNIQUE_TRAILING_TOTAL",
+        "lane_sums": [{"component_sample_ids": ["mixed", "peer-1", "peer-2"]}],
+        "exact_total_candidates": [{"sample_ids": ["total"]}],
+    }
+    pages = [{"lines": [{"sample_id": "mixed", "vietocr_text": "1.460.873"}]}]
+
+    assert (
+        subject._mixed_separator_consensus_reasons(
+            row_axis=row_axis,
+            column_context=column,
+            closure=closure,
+            joined_pages=pages,
+        )
+        == []
+    )
+
+    pages[0]["lines"][0]["vietocr_text"] = "1.460.879"
+    assert subject._mixed_separator_consensus_reasons(
+        row_axis=row_axis,
+        column_context=column,
+        closure=closure,
+        joined_pages=pages,
+    ) == ["MIXED_SEPARATOR:INDEPENDENT_SAME_CROP_READER_DISAGREES:mixed"]
+
+
+def test_mixed_separator_candidate_never_passes_from_model_vote_without_equation() -> None:
+    candidate = _mixed_value("mixed", "55,307.732", 55_307_732)
+    reasons = subject._mixed_separator_consensus_reasons(
+        row_axis={
+            "rows": [
+                {"role": "DEPOSIT_VND", "values": [candidate]},
+                {"role": "DEPOSIT_FOREIGN", "values": [_signed_value("peer-1", 1)]},
+                {"role": "DEPOSIT_LAOS", "values": [_signed_value("peer-2", 2)]},
+            ],
+            "trailing_value_rows": [],
+        },
+        column_context={"unit_axis": [{"column_ordinal": 0, "unit_kind": "MONEY"}]},
+        closure={
+            "format_version": "ACCOUNTING_ADDITIVE_TABLE_CLOSURE_V1",
+            "status": "UNRESOLVED_ADDITIVE_TABLE_CLOSURE",
+            "lane_sums": [],
+            "exact_total_candidates": [],
+        },
+        joined_pages=[{"lines": [{"sample_id": "mixed", "vietocr_text": "55.307.732"}]}],
+    )
+
+    assert reasons == ["MIXED_SEPARATOR:EXACT_VISIBLE_ACCOUNTING_CLOSURE_ABSENT:mixed"]
+
+
 def test_hierarchical_downstream_role_superset_selects_detail_over_summary() -> None:
     summary = {
         "additive_closure": {

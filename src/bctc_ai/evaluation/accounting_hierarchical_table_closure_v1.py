@@ -144,7 +144,8 @@ def _number(value: Mapping[str, Any]) -> dict[str, Any]:
     parsed = value.get("parsed_token")
     if (
         type(parsed) is not dict
-        or parsed.get("classification") not in {"DASH_ZERO", "SIGNED_NUMBER"}
+        or parsed.get("classification")
+        not in {"DASH_ZERO", "MIXED_GROUPED_INTEGER_CANDIDATE", "SIGNED_NUMBER"}
         or type(parsed.get("coefficient")) is not int
         or type(parsed.get("scale")) is not int
         or parsed["scale"] < 0

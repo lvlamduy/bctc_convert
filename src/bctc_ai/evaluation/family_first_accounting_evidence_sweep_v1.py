@@ -34,6 +34,9 @@ from bctc_ai.evaluation.accounting_family_row_axis_v1 import (
 from bctc_ai.evaluation.adaptive_accounting_table_geometry_v1 import (
     propose_missing_value_lane_regions_v1,
 )
+from bctc_ai.evaluation.family_first_numeric_cell_evidence_v1 import (
+    parse_visible_financial_numeric_token_v1,
+)
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
     canonical_json_sha256_v1,
@@ -342,6 +345,120 @@ def _unresolved_reasons(
     return reasons
 
 
+def _axis_numeric_values(row_axis: dict[str, Any]) -> list[tuple[str | None, dict[str, Any]]]:
+    return [
+        *((row["role"], value) for row in row_axis["rows"] for value in row["values"]),
+        *((None, value) for row in row_axis["trailing_value_rows"] for value in row["values"]),
+    ]
+
+
+def _mixed_candidate_has_accounting_corroboration(
+    *, role: str | None, sample_id: str, closure: dict[str, Any]
+) -> bool:
+    if closure["format_version"] in {
+        "ACCOUNTING_ADDITIVE_TABLE_CLOSURE_V1",
+        "ACCOUNTING_ADDITIVE_TABLE_CLOSURE_V2",
+    }:
+        if closure["status"] != "CORROBORATED_EXACT_UNIQUE_TRAILING_TOTAL":
+            return False
+        if any(sample_id in lane["component_sample_ids"] for lane in closure["lane_sums"]) or any(
+            sample_id in candidate["sample_ids"] for candidate in closure["exact_total_candidates"]
+        ):
+            return True
+        # V2 may replace exact component rows with their visible source-group
+        # parent in the outer sum. Successful closure means that group equality
+        # was checked before replacement.
+        return role is not None and any(
+            role in item["component_roles"] for item in closure.get("source_group_equivalences", [])
+        )
+    if closure["format_version"] == "ACCOUNTING_HIERARCHICAL_TABLE_CLOSURE_V1":
+        if closure["status"] != "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO":
+            return False
+        return role is not None and any(
+            equation["status"]
+            in {
+                "VISIBLE_RESULT_CORROBORATED_BY_COMPONENTS",
+                "VISIBLE_TRAILING_RESULT_CORROBORATED_BY_COMPONENTS",
+            }
+            and (role == equation["result_role"] or role in equation["component_roles_present"])
+            for equation in closure["equations"]
+        )
+    return False
+
+
+def _mixed_separator_consensus_reasons(
+    *,
+    row_axis: dict[str, Any],
+    column_context: dict[str, Any],
+    closure: dict[str, Any],
+    joined_pages: list[dict[str, Any]],
+) -> list[str]:
+    """Require independent text, money/scale, and equation support.
+
+    The raw PP-OCRv6 token retains its complete digit sequence. Fresh VietOCR
+    on the identical crop must read the same scale-zero integer, the resolved
+    lane must be monetary with consistent scale-zero peers, and the candidate
+    must participate in an exact visible accounting equation. No bank, page,
+    family, expected value, or manual pixel coordinate enters this decision.
+    """
+
+    values = _axis_numeric_values(row_axis)
+    candidates = [
+        (role, value)
+        for role, value in values
+        if value["parsed_token"]["classification"] == "MIXED_GROUPED_INTEGER_CANDIDATE"
+    ]
+    if not candidates:
+        return []
+    semantic_by_sample = {
+        line["sample_id"]: line["vietocr_text"] for page in joined_pages for line in page["lines"]
+    }
+    units = {
+        item["column_ordinal"]: item
+        for item in column_context.get("unit_axis", [])
+        if type(item) is dict and type(item.get("column_ordinal")) is int
+    }
+    reasons = []
+    exact_total_samples = {
+        sample_id
+        for candidate in closure.get("exact_total_candidates", [])
+        for sample_id in candidate.get("sample_ids", [])
+    }
+    for role, candidate in candidates:
+        sample_id = candidate["sample_id"]
+        parsed = candidate["parsed_token"]
+        semantic = parse_visible_financial_numeric_token_v1(semantic_by_sample.get(sample_id, ""))
+        if not (
+            semantic["classification"] == "SIGNED_NUMBER"
+            and semantic["coefficient"] == parsed["coefficient"]
+            and semantic["scale"] == 0
+            and semantic["percentage_mark_present"] is False
+        ):
+            reasons.append("MIXED_SEPARATOR:INDEPENDENT_SAME_CROP_READER_DISAGREES:" + sample_id)
+        unit = units.get(candidate["column_ordinal"])
+        if unit is None or unit.get("unit_kind") != "MONEY":
+            reasons.append("MIXED_SEPARATOR:INTEGER_MONEY_UNIT_NOT_RESOLVED:" + sample_id)
+        peers = [
+            value["parsed_token"]
+            for peer_role, value in values
+            if value["sample_id"] != sample_id
+            and value["column_ordinal"] == candidate["column_ordinal"]
+            and (peer_role is not None or value["sample_id"] in exact_total_samples)
+            and value["parsed_token"]["classification"] in {"DASH_ZERO", "SIGNED_NUMBER"}
+        ]
+        if len(peers) < 2 or any(
+            peer["scale"] != 0 or peer["percentage_mark_present"] is not False for peer in peers
+        ):
+            reasons.append("MIXED_SEPARATOR:SCALE_ZERO_LANE_PEERS_NOT_ESTABLISHED:" + sample_id)
+        if not _mixed_candidate_has_accounting_corroboration(
+            role=role,
+            sample_id=sample_id,
+            closure=closure,
+        ):
+            reasons.append("MIXED_SEPARATOR:EXACT_VISIBLE_ACCOUNTING_CLOSURE_ABSENT:" + sample_id)
+    return list(dict.fromkeys(reasons))
+
+
 def _select_candidate_evidence(
     candidate_evidence: list[dict[str, Any]], evaluation_spec: dict[str, Any]
 ) -> tuple[dict[str, Any] | None, list[str]]:
@@ -477,6 +594,15 @@ def _trial(
                 visible_dash_rescues=dash_rescues,
             )
         reasons = _unresolved_reasons(row_axis, column_context, closure, evaluation_spec)
+        reasons.extend(
+            _mixed_separator_consensus_reasons(
+                row_axis=row_axis,
+                column_context=column_context,
+                closure=closure,
+                joined_pages=joined_pages,
+            )
+        )
+        reasons = list(dict.fromkeys(reasons))
         candidate_evidence.append(
             {
                 "additive_closure": closure,

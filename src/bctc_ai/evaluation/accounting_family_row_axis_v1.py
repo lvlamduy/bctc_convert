@@ -293,7 +293,11 @@ def _topology_pages(pages: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
 
 def _is_numeric(line: Mapping[str, Any]) -> bool:
     parsed = parse_visible_financial_numeric_token_v1(line["numeric_recognition"]["raw_prediction"])
-    return parsed["classification"] in {"DASH_ZERO", "SIGNED_NUMBER"}
+    return parsed["classification"] in {
+        "DASH_ZERO",
+        "MIXED_GROUPED_INTEGER_CANDIDATE",
+        "SIGNED_NUMBER",
+    }
 
 
 def _region_lines(
