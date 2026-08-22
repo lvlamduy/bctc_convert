@@ -653,7 +653,10 @@ def _apply_visible_dash_rescues(
             raw,
             pages=pages,
             region=region,
-            rows=completed,
+            # Every proposal is authenticated against the same immutable base
+            # row grid.  Applying an earlier dash changes `completed` and must
+            # not move the expected bbox for a later rescue.
+            rows=rows,
         )
         key = (
             projection["role"],

@@ -428,6 +428,58 @@ def test_adjacent_row_exclusivity_is_reused_by_visible_dash_rescue() -> None:
     assert result["metrics"]["visible_dash_zero_count"] == 1
 
 
+def test_multiple_dash_rescues_replay_against_one_immutable_base_grid() -> None:
+    pages = _ordinary_pages()
+    pages[0]["lines"][4]["numeric_recognition"] = {
+        "raw_prediction": "",
+        "reader_score": 0.2,
+    }
+    pages[0]["lines"][8]["numeric_recognition"] = {
+        "raw_prediction": "",
+        "reader_score": 0.2,
+    }
+    base = build_accounting_family_row_axis_v1(pages, _spec())
+    rescues: list[dict[str, object]] = []
+    for row, lane in zip(base["rows"], (0, 1), strict=True):
+        centers, visible_cells = row_axis_v1._resolved_page_grid_inputs(base["rows"], row)
+        label = row["label_match"]
+        proposals = propose_missing_value_lane_regions_v1(
+            [{**line, "source_line_index": line["line_ordinal"]} for line in pages[0]["lines"]],
+            label_boxes=[pages[0]["lines"][label["source_line_index"]]["bbox"]],
+            is_numeric=lambda line: line["numeric_recognition"]["raw_prediction"].isdigit(),
+            page_width=1000,
+            page_height=1200,
+            resolved_column_centers=centers,
+            resolved_visible_value_cells=visible_cells,
+        )
+        proposal = next(item for item in proposals if item["column_ordinal"] == lane)
+        rescues.append(
+            {
+                "column_ordinal": lane,
+                "page_sequence": 1,
+                "region": _dash_region(proposal["raw_pixel_bbox"]),
+                "role": row["role"],
+            }
+        )
+
+    result = build_accounting_family_row_axis_v1(
+        pages,
+        _spec(),
+        visible_dash_rescues=tuple(rescues),
+    )
+
+    assert result["status"] == "VISIBLE_ROW_LANE_AXIS_BOUND_PROPOSAL_ONLY"
+    assert result["metrics"]["visible_dash_rescue_attempt_count"] == 2
+    assert result["metrics"]["visible_dash_zero_count"] == 2
+    assert [row["missing_column_ordinals"] for row in result["rows"]] == [[], []]
+    assert [
+        value["parsed_token"]["classification"]
+        for row in result["rows"]
+        for value in row["values"]
+        if value["raw_prediction"] == "-"
+    ] == ["DASH_ZERO", "DASH_ZERO"]
+
+
 def test_family_rows_continue_across_pages_without_joining_label_text() -> None:
     pages = [
         _page(

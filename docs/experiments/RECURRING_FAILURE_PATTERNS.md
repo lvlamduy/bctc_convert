@@ -635,3 +635,23 @@ Status meanings:
   original missing lane flows to row/closure as `UNRESOLVED`; source digits and
   geometry remain unchanged.
 - **Status:** `RESOLVED` in the shared evidence sweep with regression coverage.
+
+## RFP-031 — Earlier dash rescue moves the grid used to authenticate a later rescue
+
+- **Pattern:** two different rows in one table each have one visible dash that
+  the primary numeric recognizer omitted. Both crop proposals are derived from
+  the original visible body grid, but validating the first rescue mutates that
+  grid before the second proposal is replayed.
+- **Example:** the interbank evidence sweep produced two valid missing-lane
+  proposals, then rejected the second with `visible-dash rescue differs from
+  the body-grid proposal` after the first zero had already been inserted.
+- **Cause:** proposal authentication and proposal application were interleaved
+  against a changing row collection.
+- **Do not:** make later crop coordinates depend on rescue order, silently
+  regenerate a different bbox, or accept a caller-supplied dash without replay.
+- **Generic primitive/fix:** authenticate every rescue against the same
+  immutable base row grid from which all proposals were minted; only the
+  accepted values are accumulated into a separate result grid. Duplicate
+  role/page/lane proposals remain forbidden.
+- **Status:** `RESOLVED` in the shared row-axis primitive with a two-rescue
+  order-independence regression.
