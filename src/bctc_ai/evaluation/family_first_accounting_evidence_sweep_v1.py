@@ -248,6 +248,12 @@ def _visible_dash_rescue_inputs(
     row_axis: dict[str, Any],
     render_snapshots: tuple[dict[str, Any], ...],
 ) -> tuple[dict[str, Any], ...]:
+    if not render_snapshots:
+        # The document-store fast path intentionally carries authenticated
+        # text/numeric/geometry evidence but no render pixels.  Missing cells
+        # therefore remain unresolved for a bounded page-local pixel refresh;
+        # they must not abort or silently broaden the family sweep.
+        return ()
     region = row_axis["topology_region"]
     if region is None:
         return ()

@@ -424,6 +424,17 @@ def test_inconsistent_visible_grid_skips_optional_dash_rescue_and_stays_unresolv
     ]
 
 
+def test_cached_evidence_without_render_pixels_defers_dash_rescue() -> None:
+    assert (
+        subject._visible_dash_rescue_inputs(
+            joined_pages=[],
+            row_axis={"topology_region": {"cluster_start_document_line_ordinal": 0}},
+            render_snapshots=(),
+        )
+        == ()
+    )
+
+
 def test_optional_closure_policy_still_vetoes_a_visible_mismatching_total(monkeypatch) -> None:
     _documents, numeric, _render_calls = _patch_live_inputs(monkeypatch)
     numeric[1]["lines"][10]["raw_prediction"] = "121"
