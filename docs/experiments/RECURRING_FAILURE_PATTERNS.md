@@ -770,6 +770,9 @@ Status meanings:
   spec + engine revision; run independent documents in parallel; mint the final
   family artifact from the exact 140 result roots. Full corpus byte replay is a
   separate OCR-corpus audit, not a per-family operation.
-- **Status:** `OPEN`; architecture and measured bottleneck are fixed, but the
-  authenticated packet/Merkle implementation must land before the next formal
-  family checkpoint.
+- **Status:** `MITIGATED`; exact unchanged topology fell from 137.071 seconds
+  sequential to 13.810 seconds with 12 balanced document workers, and a hot
+  content/spec/engine-keyed per-document result cache returns the same 140
+  scans in 0.075 seconds. All 140 scans are typed-equal to the prior formal
+  evidence. The authenticated packet/result-root aggregate must still replace
+  the old formal whole-corpus mint gate before the next formal checkpoint.

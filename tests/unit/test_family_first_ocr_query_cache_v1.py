@@ -144,6 +144,143 @@ def test_cache_query_arguments_fail_closed(tmp_path) -> None:
         cache_v1.read_cached_blind_pages_v1(database, True)
     with pytest.raises(cache_v1.FamilyFirstOcrQueryCacheV1Error):
         cache_v1.read_cached_joined_pages_v1(database, 1, selected_pages=())
+    with pytest.raises(cache_v1.FamilyFirstOcrQueryCacheV1Error):
+        cache_v1.scan_cached_accounting_family_topology_v1(database, {}, jobs=True)
+
+
+def test_cached_topology_scan_balances_documents_and_preserves_source_order(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database = _database(tmp_path)
+    family_spec = {"family_id": "TEST_FAMILY", "format_version": "test"}
+    monkeypatch.setattr(cache_v1.topology_v1, "_spec", lambda value: value)
+    monkeypatch.setattr(
+        cache_v1.topology_v1,
+        "build_accounting_family_topology_scan_v1",
+        lambda pages, spec: {
+            "format": spec["format_version"],
+            "scan_id": "scan-test",
+            "surface": pages[0]["lines"][0]["vietocr_text"],
+        },
+    )
+
+    assert cache_v1._balanced_document_chunks(((1, 100), (2, 50), (3, 25)), 2) == (
+        (1,),
+        (2, 3),
+    )
+    assert cache_v1.scan_cached_accounting_family_topology_v1(database, family_spec, jobs=1) == (
+        {
+            "format": "test",
+            "scan_id": "scan-test",
+            "surface": "Tiền gửi tại các TCTD khác",
+        },
+    )
+
+    scans = ({"status": "UNIQUE", "count": 1},)
+    assert cache_v1.topology_scan_parity_v1(
+        scans,
+        {
+            "trials": [
+                {
+                    "document_ordinal": 1,
+                    "topology_scan": {"status": "UNIQUE", "count": 1},
+                }
+            ]
+        },
+    ) == {
+        "mismatch_document_ordinals": [],
+        "scan_count": 1,
+        "typed_equal_count": 1,
+    }
+    assert cache_v1.topology_scan_parity_v1(
+        scans,
+        {
+            "trials": [
+                {
+                    "document_ordinal": 1,
+                    "topology_scan": {"status": "UNIQUE", "count": 1.0},
+                }
+            ]
+        },
+    )["mismatch_document_ordinals"] == [1]
+
+    connection = sqlite3.connect(database)
+    connection.execute(
+        "INSERT INTO documents VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (2, "document-2", "MBB", 2026, "H1", "CONSOLIDATED", "b.pdf", "e" * 64, 1, 1, 1),
+    )
+    connection.execute(
+        "INSERT INTO pages VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (2, 1, 1, 1000, 1400, "f" * 64, 2, "page-2.json", "a" * 64, 3),
+    )
+    connection.execute(
+        "INSERT INTO lines VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            2,
+            2,
+            1,
+            0,
+            "sample-000000002",
+            10,
+            20,
+            200,
+            40,
+            "crop-2.png",
+            "b" * 64,
+            4,
+            "Cho vay các TCTD khác",
+            "Cho vay các TCTD khác",
+            "cho vay cac tctd khac",
+            0.9,
+            200,
+            32,
+            "456",
+            0.8,
+        ),
+    )
+    connection.executemany(
+        "UPDATE metadata SET value = ? WHERE key = ?",
+        [("2", "document_count"), ("2", "page_count"), ("2", "line_count")],
+    )
+    connection.commit()
+    connection.close()
+
+    topology_database = tmp_path / "topology.sqlite3"
+    first = cache_v1.refresh_cached_topology_results_v1(
+        database, topology_database, family_spec, jobs=1
+    )
+    assert first["cache_hit_count"] == 0
+    assert first["recomputed_count"] == 2
+    second = cache_v1.refresh_cached_topology_results_v1(
+        database, topology_database, family_spec, jobs=1
+    )
+    assert second["cache_hit_count"] == 2
+    assert second["recomputed_count"] == 0
+    assert cache_v1.read_cached_topology_results_v1(database, topology_database, family_spec) == (
+        {
+            "format": "test",
+            "scan_id": "scan-test",
+            "surface": "Tiền gửi tại các TCTD khác",
+        },
+        {
+            "format": "test",
+            "scan_id": "scan-test",
+            "surface": "Cho vay các TCTD khác",
+        },
+    )
+
+    connection = sqlite3.connect(database)
+    connection.execute(
+        "UPDATE documents SET document_id = ? WHERE document_ordinal = 1",
+        ("document-1-revised",),
+    )
+    connection.commit()
+    connection.close()
+    revised = cache_v1.refresh_cached_topology_results_v1(
+        database, topology_database, family_spec, jobs=1
+    )
+    assert revised["cache_hit_count"] == 1
+    assert revised["recomputed_count"] == 1
 
 
 def _evidence(tmp_path, *, sweep_id: str, reason: str) -> None:

@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-08-22T02:59:05Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
+Updated: 2026-08-22T03:19:24Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
 The detailed historical receipts below remain evidence, but that directive supersedes
@@ -53,6 +53,15 @@ older queue priorities where they conflict.
   667,224 lines; refreshing the 140-trial family sidecar took 0.477 seconds and
   the final reason query 0.009 seconds. The next schema-order family is
   `TRADING_SECURITIES`; its annual-2025 evidence is reused rather than rebuilt.
+- The measured family topology bottleneck no longer requires a 140-document
+  sequential pass on every edit. The unchanged engine/spec path fell from
+  137.071 seconds to 13.810 seconds with 12 balanced document processes; every
+  one of the 140 topology payloads is typed-equal to the formal family-3
+  checkpoint. A second run from the content/spec/engine-keyed per-document
+  result cache takes 0.075 seconds (140 hits, zero recomputes). The cache remains
+  explicitly non-authoritative; the remaining formal task is to bind immutable
+  per-document feature roots and mint from their ordered result roots rather
+  than canonicalize 667,224 semantic lines again.
 - The pushed family-2 checkpoint is Git `0d623e7b1912` and restore-verified S3
   checkpoint `20260821T215421803905Z-0d623e7b1912`: manifest SHA-256
   `41fe820a4dd7a49e44c98a9e69d5d5dcff177c2964686e121405c4bd2f0a9ab6`,

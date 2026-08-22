@@ -15,22 +15,23 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, os.fspath(PROJECT_ROOT))
 sys.path.insert(0, os.fspath(PROJECT_ROOT / "src"))
 
-from bctc_ai.evaluation.accounting_family_topology_v1 import (  # noqa: E402
-    build_accounting_family_topology_scan_v1,
-)
 from bctc_ai.evaluation.family_first_ocr_query_cache_v1 import (  # noqa: E402
     DEFAULT_DATABASE_PATH,
     DEFAULT_FAMILY_DATABASE_PATH,
+    DEFAULT_TOPOLOGY_DATABASE_PATH,
     build_family_first_ocr_query_cache_v1,
     family_trial_reason_counts_from_incremental_cache_v1,
     family_trial_reason_counts_v1,
     project_family_first_ocr_query_cache_v1,
     project_family_first_trial_query_cache_v1,
-    read_cached_blind_pages_v1,
     read_cached_family_trials_from_incremental_cache_v1,
     read_cached_family_trials_v1,
+    read_cached_topology_results_v1,
+    refresh_cached_topology_results_v1,
     refresh_family_first_trial_query_cache_v1,
+    scan_cached_accounting_family_topology_v1,
     search_cached_ocr_lines_v1,
+    topology_scan_parity_v1,
 )
 
 
@@ -67,6 +68,14 @@ def _parser() -> argparse.ArgumentParser:
     incremental_trials.add_argument("--evidence-status")
     benchmark = sub.add_parser("benchmark")
     benchmark.add_argument("--family-spec", required=True, type=Path)
+    benchmark.add_argument("--jobs", default=min(12, os.cpu_count() or 1), type=int)
+    benchmark.add_argument("--expected-evidence", type=Path)
+    benchmark.add_argument(
+        "--topology-cache",
+        const=DEFAULT_TOPOLOGY_DATABASE_PATH,
+        nargs="?",
+        type=Path,
+    )
     return parser
 
 
@@ -137,18 +146,32 @@ def main() -> int:
     else:
         spec = _object(PROJECT_ROOT / args.family_spec)
         started = time.perf_counter()
-        statuses = Counter()
-        projection = project_family_first_ocr_query_cache_v1(database)
-        for ordinal in range(1, projection["document_count"] + 1):
-            scan = build_accounting_family_topology_scan_v1(
-                read_cached_blind_pages_v1(database, ordinal), spec
+        topology_cache = args.topology_cache
+        if topology_cache is not None:
+            topology_cache = (
+                topology_cache if topology_cache.is_absolute() else PROJECT_ROOT / topology_cache
             )
-            statuses[scan["status"]] += 1
+            cache_refresh = refresh_cached_topology_results_v1(
+                database, topology_cache, spec, jobs=args.jobs
+            )
+            scans = read_cached_topology_results_v1(database, topology_cache, spec)
+        else:
+            cache_refresh = None
+            scans = scan_cached_accounting_family_topology_v1(database, spec, jobs=args.jobs)
+        statuses = Counter(scan["status"] for scan in scans)
+        projection = project_family_first_ocr_query_cache_v1(database)
         result = {
             "document_count": projection["document_count"],
             "elapsed_seconds": time.perf_counter() - started,
+            "jobs": args.jobs,
             "statuses": dict(sorted(statuses.items())),
         }
+        if cache_refresh is not None:
+            result["topology_cache"] = cache_refresh
+        if args.expected_evidence is not None:
+            result["formal_parity"] = topology_scan_parity_v1(
+                scans, _object(PROJECT_ROOT / args.expected_evidence)
+            )
     print(json.dumps(result, ensure_ascii=False, separators=(",", ":"), sort_keys=True))
     return 0
 

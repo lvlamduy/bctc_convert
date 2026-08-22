@@ -10,25 +10,33 @@ Every cache records the exact upstream identities and is disposable.
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
 import os
 import re
+import shutil
 import sqlite3
 import stat
 import tempfile
 import time
 from collections.abc import Iterable, Sequence
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Any
 
+from bctc_ai.evaluation import accounting_family_topology_v1 as topology_v1
 from bctc_ai.evaluation import family_first_ppocrv6_numeric_index_v3 as numeric_v3
 from bctc_ai.evaluation import family_first_semantic_index_v1 as semantic_v1
 from bctc_ai.ocr import family_first_ppocrv6_numeric_runner_v1 as numeric_runner_v1
-from bctc_ai.source_structure.contracts_v1 import canonical_json_bytes_v1
+from bctc_ai.source_structure.contracts_v1 import (
+    canonical_json_bytes_v1,
+    same_typed_json_v1,
+)
 
 __all__ = [
     "CACHE_FORMAT_VERSION",
     "DEFAULT_FAMILY_DATABASE_PATH",
+    "DEFAULT_TOPOLOGY_DATABASE_PATH",
     "FamilyFirstOcrQueryCacheV1Error",
     "build_family_first_ocr_query_cache_v1",
     "family_trial_reason_counts_from_incremental_cache_v1",
@@ -39,15 +47,21 @@ __all__ = [
     "read_cached_family_trials_v1",
     "read_cached_family_trials_from_incremental_cache_v1",
     "read_cached_joined_pages_v1",
+    "read_cached_topology_results_v1",
+    "refresh_cached_topology_results_v1",
     "refresh_family_first_trial_query_cache_v1",
+    "scan_cached_accounting_family_topology_v1",
     "search_cached_ocr_lines_v1",
+    "topology_scan_parity_v1",
 ]
 
 
 CACHE_FORMAT_VERSION = "FAMILY_FIRST_OCR_QUERY_CACHE_V1"
 DEFAULT_DATABASE_PATH = Path("data/local/family_first_ocr_query_cache_v1.sqlite3")
 DEFAULT_FAMILY_DATABASE_PATH = Path("data/local/family_first_family_trial_query_cache_v1.sqlite3")
+DEFAULT_TOPOLOGY_DATABASE_PATH = Path("data/local/family_first_topology_result_cache_v1.sqlite3")
 FAMILY_CACHE_FORMAT_VERSION = "FAMILY_FIRST_FAMILY_TRIAL_QUERY_CACHE_V1"
+TOPOLOGY_CACHE_FORMAT_VERSION = "FAMILY_FIRST_TOPOLOGY_RESULT_CACHE_V1"
 _CACHE_AUTHORITY = {
     "accounting_authority": False,
     "cache_disposable_and_rebuildable": True,
@@ -60,6 +74,8 @@ _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _SCHEMA_VERSION = 1
 _FAMILY_SCHEMA_VERSION = 1
 _FAMILY_APPLICATION_ID = 1179665234
+_TOPOLOGY_APPLICATION_ID = 1179665235
+_TOPOLOGY_SCHEMA_VERSION = 1
 
 
 class FamilyFirstOcrQueryCacheV1Error(RuntimeError):
@@ -266,6 +282,45 @@ def _create_family_schema(connection: sqlite3.Connection) -> None:
         ) STRICT, WITHOUT ROWID;
         CREATE INDEX trial_reason_idx ON trial_reasons(family_id, reason);
         """
+    )
+
+
+def _create_topology_cache_schema(connection: sqlite3.Connection) -> None:
+    connection.executescript(
+        f"""
+        PRAGMA application_id = {_TOPOLOGY_APPLICATION_ID};
+        PRAGMA user_version = {_TOPOLOGY_SCHEMA_VERSION};
+        CREATE TABLE metadata (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        ) STRICT, WITHOUT ROWID;
+        CREATE TABLE source_snapshots (
+            base_cache_id TEXT PRIMARY KEY
+        ) STRICT, WITHOUT ROWID;
+        CREATE TABLE topology_results (
+            document_id TEXT NOT NULL,
+            family_id TEXT NOT NULL,
+            family_spec_sha256 TEXT NOT NULL,
+            topology_engine_sha256 TEXT NOT NULL,
+            scan_id TEXT NOT NULL,
+            scan_sha256 TEXT NOT NULL,
+            scan_json TEXT NOT NULL,
+            PRIMARY KEY (
+                document_id,
+                family_spec_sha256,
+                topology_engine_sha256
+            )
+        ) STRICT, WITHOUT ROWID;
+        CREATE INDEX topology_results_family_idx
+            ON topology_results(family_id, family_spec_sha256, topology_engine_sha256);
+        """
+    )
+    connection.executemany(
+        "INSERT INTO metadata(key, value) VALUES (?, ?)",
+        [
+            ("format_version", _json_text(TOPOLOGY_CACHE_FORMAT_VERSION)),
+            ("schema_version", _json_text(_TOPOLOGY_SCHEMA_VERSION)),
+        ],
     )
 
 
@@ -948,24 +1003,376 @@ def _line_records(connection: sqlite3.Connection, document_ordinal: int) -> list
     ).fetchall()
 
 
-def read_cached_blind_pages_v1(database_path: Path, document_ordinal: int) -> list[dict[str, Any]]:
-    if type(document_ordinal) is not int or document_ordinal <= 0:
-        raise _error("cached document ordinal drifted")
-    with _connect(database_path) as connection:
-        records = _line_records(connection, document_ordinal)
+def _blind_pages_from_records(records: Sequence[sqlite3.Row]) -> list[dict[str, Any]]:
     if not records:
         raise _error("cached document is absent")
     pages: dict[int, list[dict[str, Any]]] = {}
     for row in records:
         pages.setdefault(row["physical_page"], []).append(
             {
-                "bbox": [row["bbox_left"], row["bbox_top"], row["bbox_right"], row["bbox_bottom"]],
+                "bbox": [
+                    row["bbox_left"],
+                    row["bbox_top"],
+                    row["bbox_right"],
+                    row["bbox_bottom"],
+                ],
                 "source_line_index": row["line_ordinal"],
                 "source_text": None,
                 "vietocr_text": row["vietocr_text"],
             }
         )
     return [{"lines": lines, "page_sequence": page} for page, lines in sorted(pages.items())]
+
+
+def read_cached_blind_pages_v1(database_path: Path, document_ordinal: int) -> list[dict[str, Any]]:
+    if type(document_ordinal) is not int or document_ordinal <= 0:
+        raise _error("cached document ordinal drifted")
+    with _connect(database_path) as connection:
+        records = _line_records(connection, document_ordinal)
+    return _blind_pages_from_records(records)
+
+
+def _balanced_document_chunks(
+    documents: Sequence[tuple[int, int]], jobs: int
+) -> tuple[tuple[int, ...], ...]:
+    """Greedily balance immutable document work by its cached line denominator."""
+
+    if (
+        type(jobs) is not int
+        or jobs <= 0
+        or not documents
+        or any(
+            type(ordinal) is not int
+            or ordinal <= 0
+            or type(line_count) is not int
+            or line_count <= 0
+            for ordinal, line_count in documents
+        )
+    ):
+        raise _error("cached topology worker/document denominator drifted")
+    worker_count = min(jobs, len(documents))
+    bins: list[list[int]] = [[] for _ in range(worker_count)]
+    loads = [0] * worker_count
+    for ordinal, line_count in sorted(documents, key=lambda item: (-item[1], item[0])):
+        target = min(range(worker_count), key=lambda index: (loads[index], index))
+        bins[target].append(ordinal)
+        loads[target] += line_count
+    return tuple(tuple(sorted(chunk)) for chunk in bins if chunk)
+
+
+def _scan_cached_topology_chunk(
+    request: tuple[str, dict[str, Any], tuple[int, ...]],
+) -> list[tuple[int, dict[str, Any]]]:
+    database, family_spec, ordinals = request
+    result = []
+    with _connect(Path(database)) as connection:
+        for ordinal in ordinals:
+            pages = _blind_pages_from_records(_line_records(connection, ordinal))
+            result.append(
+                (
+                    ordinal,
+                    topology_v1.build_accounting_family_topology_scan_v1(pages, family_spec),
+                )
+            )
+    return result
+
+
+def scan_cached_accounting_family_topology_v1(
+    database_path: Path,
+    family_spec: Any,
+    *,
+    document_ordinals: Sequence[int] | None = None,
+    jobs: int = 1,
+) -> tuple[dict[str, Any], ...]:
+    """Scan every cached filing in parallel without changing topology semantics."""
+
+    if not isinstance(database_path, Path) or type(family_spec) is not dict:
+        raise _error("cached topology scan input type drifted")
+    if type(jobs) is not int or not 1 <= jobs <= 64:
+        raise _error("cached topology scan worker count must be an integer from 1 to 64")
+    # Compile once in the parent so malformed specifications fail before worker
+    # creation.  Workers compile their private copy inside the unchanged public
+    # topology builder; no mutable compiled matcher is shared across processes.
+    topology_v1._spec(family_spec)
+    with _connect(database_path) as connection:
+        all_documents = [
+            (row["document_ordinal"], row["line_count"])
+            for row in connection.execute(
+                "SELECT document_ordinal, line_count FROM documents ORDER BY document_ordinal"
+            ).fetchall()
+        ]
+    if document_ordinals is None:
+        documents = all_documents
+    else:
+        if (
+            type(document_ordinals) not in {list, tuple}
+            or not document_ordinals
+            or any(type(ordinal) is not int or ordinal <= 0 for ordinal in document_ordinals)
+            or len(document_ordinals) != len(set(document_ordinals))
+        ):
+            raise _error("cached topology selected document axis drifted")
+        by_ordinal = dict(all_documents)
+        if any(ordinal not in by_ordinal for ordinal in document_ordinals):
+            raise _error("cached topology selected document is absent")
+        documents = [(ordinal, by_ordinal[ordinal]) for ordinal in sorted(document_ordinals)]
+    chunks = _balanced_document_chunks(documents, jobs)
+    requests = tuple((os.fspath(database_path.resolve()), family_spec, chunk) for chunk in chunks)
+    if len(requests) == 1:
+        scanned = _scan_cached_topology_chunk(requests[0])
+    else:
+        with ProcessPoolExecutor(max_workers=len(requests)) as executor:
+            scanned = [
+                item
+                for batch in executor.map(_scan_cached_topology_chunk, requests)
+                for item in batch
+            ]
+    scanned.sort(key=lambda item: item[0])
+    expected_ordinals = [ordinal for ordinal, _line_count in documents]
+    if [ordinal for ordinal, _scan in scanned] != expected_ordinals:
+        raise _error("parallel cached topology scan lost or reordered one document")
+    return tuple(scan for _ordinal, scan in scanned)
+
+
+def topology_scan_parity_v1(scans: Any, expected_evidence_sweep: Any) -> dict[str, Any]:
+    """Compare cached scans with every persisted formal trial using typed JSON.
+
+    This is deliberately a benchmark/audit helper rather than an authority
+    conversion: a cache can prove that it reproduced a formal checkpoint, but
+    parity does not make the disposable cache self-authenticating.
+    """
+
+    if (
+        type(scans) not in {list, tuple}
+        or type(expected_evidence_sweep) is not dict
+        or type(expected_evidence_sweep.get("trials")) is not list
+    ):
+        raise _error("cached topology parity input drifted")
+    trials = expected_evidence_sweep["trials"]
+    if len(scans) != len(trials):
+        raise _error("cached/formal topology parity denominator drifted")
+    mismatches = []
+    for expected_ordinal, (scan, trial) in enumerate(zip(scans, trials, strict=True), 1):
+        if (
+            type(scan) is not dict
+            or type(trial) is not dict
+            or trial.get("document_ordinal") != expected_ordinal
+            or type(trial.get("topology_scan")) is not dict
+        ):
+            raise _error("cached/formal topology parity source order drifted")
+        if not same_typed_json_v1(scan, trial["topology_scan"]):
+            mismatches.append(expected_ordinal)
+    return {
+        "mismatch_document_ordinals": mismatches,
+        "scan_count": len(scans),
+        "typed_equal_count": len(scans) - len(mismatches),
+    }
+
+
+def _topology_cache_identity(connection: sqlite3.Connection) -> None:
+    application_id = connection.execute("PRAGMA application_id").fetchone()[0]
+    user_version = connection.execute("PRAGMA user_version").fetchone()[0]
+    metadata = {
+        row["key"]: json.loads(row["value"])
+        for row in connection.execute("SELECT key, value FROM metadata")
+    }
+    if (
+        application_id != _TOPOLOGY_APPLICATION_ID
+        or user_version != _TOPOLOGY_SCHEMA_VERSION
+        or metadata
+        != {
+            "format_version": TOPOLOGY_CACHE_FORMAT_VERSION,
+            "schema_version": _TOPOLOGY_SCHEMA_VERSION,
+        }
+    ):
+        raise _error("topology result cache schema/format identity drifted")
+
+
+def _topology_cache_key_material(
+    database_path: Path, family_spec: Any
+) -> tuple[list[tuple[int, str]], str, str, str]:
+    topology_v1._spec(family_spec)
+    family_id = family_spec["family_id"]
+    family_spec_sha256 = hashlib.sha256(canonical_json_bytes_v1(family_spec)).hexdigest()
+    closure_functions = {
+        "accounting_family_topology_v1": topology_v1.build_accounting_family_topology_scan_v1,
+        "accounting_variant_graph_engine_v1": topology_v1.normalize_vietnamese_anchor_v1,
+        "contracts_v1": topology_v1.canonical_json_sha256_v1,
+    }
+    closure = {}
+    for label, function in closure_functions.items():
+        source_path = inspect.getsourcefile(function)
+        if source_path is None:
+            raise _error("topology engine trust-closure source is unavailable")
+        closure[label] = hashlib.sha256(
+            _stable_bytes(Path(source_path), f"{label} implementation")
+        ).hexdigest()
+    topology_engine_sha256 = hashlib.sha256(canonical_json_bytes_v1(closure)).hexdigest()
+    with _connect(database_path) as connection:
+        documents = [
+            (row["document_ordinal"], row["document_id"])
+            for row in connection.execute(
+                "SELECT document_ordinal, document_id FROM documents ORDER BY document_ordinal"
+            ).fetchall()
+        ]
+    return documents, family_id, family_spec_sha256, topology_engine_sha256
+
+
+def _validated_cached_scan(row: sqlite3.Row) -> dict[str, Any]:
+    try:
+        scan = json.loads(row["scan_json"])
+    except json.JSONDecodeError as exc:
+        raise _error("cached topology result is not strict JSON") from exc
+    if (
+        type(scan) is not dict
+        or scan.get("scan_id") != row["scan_id"]
+        or hashlib.sha256(canonical_json_bytes_v1(scan)).hexdigest() != row["scan_sha256"]
+    ):
+        raise _error("cached topology result differs from its content identity")
+    return scan
+
+
+def refresh_cached_topology_results_v1(
+    database_path: Path,
+    topology_database_path: Path,
+    family_spec: Any,
+    *,
+    jobs: int = 1,
+) -> dict[str, Any]:
+    """Reuse immutable per-document topology results and compute only misses."""
+
+    started = time.perf_counter()
+    if not isinstance(topology_database_path, Path):
+        raise _error("topology result cache path type drifted")
+    documents, family_id, spec_sha, engine_sha = _topology_cache_key_material(
+        database_path, family_spec
+    )
+    base = project_family_first_ocr_query_cache_v1(database_path)
+    destination = Path(os.path.abspath(topology_database_path))
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.exists():
+        before = destination.lstat()
+        if destination.is_symlink() or not stat.S_ISREG(before.st_mode):
+            raise _error("topology result cache is not one regular file")
+    stage_fd, stage_name = tempfile.mkstemp(
+        prefix=".family-first-topology-cache-", dir=destination.parent
+    )
+    os.close(stage_fd)
+    stage = Path(stage_name)
+    try:
+        if destination.exists():
+            shutil.copyfile(destination, stage)
+        connection = sqlite3.connect(stage)
+        connection.row_factory = sqlite3.Row
+        try:
+            if destination.exists():
+                _topology_cache_identity(connection)
+            else:
+                _create_topology_cache_schema(connection)
+            cached: dict[str, dict[str, Any]] = {}
+            for _ordinal, document_id in documents:
+                row = connection.execute(
+                    """
+                    SELECT scan_id, scan_sha256, scan_json
+                      FROM topology_results
+                     WHERE document_id = ?
+                       AND family_spec_sha256 = ?
+                       AND topology_engine_sha256 = ?
+                    """,
+                    (document_id, spec_sha, engine_sha),
+                ).fetchone()
+                if row is not None:
+                    cached[document_id] = _validated_cached_scan(row)
+            missing = [ordinal for ordinal, document_id in documents if document_id not in cached]
+            scans = (
+                scan_cached_accounting_family_topology_v1(
+                    database_path,
+                    family_spec,
+                    document_ordinals=missing,
+                    jobs=jobs,
+                )
+                if missing
+                else ()
+            )
+            if len(scans) != len(missing):
+                raise _error("topology result cache miss denominator drifted")
+            document_id_by_ordinal = dict(documents)
+            for ordinal, scan in zip(missing, scans, strict=True):
+                scan_json = _json_text(scan)
+                scan_sha256 = hashlib.sha256(canonical_json_bytes_v1(scan)).hexdigest()
+                connection.execute(
+                    "INSERT OR REPLACE INTO topology_results VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        document_id_by_ordinal[ordinal],
+                        family_id,
+                        spec_sha,
+                        engine_sha,
+                        scan["scan_id"],
+                        scan_sha256,
+                        scan_json,
+                    ),
+                )
+            connection.execute(
+                "INSERT OR IGNORE INTO source_snapshots VALUES (?)", (base["cache_id"],)
+            )
+            connection.commit()
+            if connection.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
+                raise _error("topology result cache failed SQLite integrity check")
+        finally:
+            connection.close()
+        os.chmod(stage, 0o444)
+        os.replace(stage, destination)
+        _fsync_directory(destination.parent)
+    finally:
+        if stage.exists():
+            stage.unlink()
+    return {
+        "cache_hit_count": len(documents) - len(missing),
+        "document_count": len(documents),
+        "elapsed_seconds": time.perf_counter() - started,
+        "family_id": family_id,
+        "family_spec_sha256": spec_sha,
+        "recomputed_count": len(missing),
+        "topology_engine_sha256": engine_sha,
+    }
+
+
+def read_cached_topology_results_v1(
+    database_path: Path, topology_database_path: Path, family_spec: Any
+) -> tuple[dict[str, Any], ...]:
+    """Read one exact source-ordered family result set from the result cache."""
+
+    documents, family_id, spec_sha, engine_sha = _topology_cache_key_material(
+        database_path, family_spec
+    )
+    resolved_cache = Path(os.path.abspath(topology_database_path))
+    try:
+        cache_stat = resolved_cache.lstat()
+    except OSError as exc:
+        raise _error("cannot stat topology result cache") from exc
+    if resolved_cache.is_symlink() or not stat.S_ISREG(cache_stat.st_mode):
+        raise _error("topology result cache is not one regular nofollow file")
+    connection = sqlite3.connect(f"file:{resolved_cache}?mode=ro&immutable=1", uri=True)
+    connection.row_factory = sqlite3.Row
+    try:
+        _topology_cache_identity(connection)
+        scans = []
+        for _ordinal, document_id in documents:
+            row = connection.execute(
+                """
+                SELECT family_id, scan_id, scan_sha256, scan_json
+                  FROM topology_results
+                 WHERE document_id = ?
+                   AND family_spec_sha256 = ?
+                   AND topology_engine_sha256 = ?
+                """,
+                (document_id, spec_sha, engine_sha),
+            ).fetchone()
+            if row is None or row["family_id"] != family_id:
+                raise _error("topology result cache is incomplete for this family revision")
+            scans.append(_validated_cached_scan(row))
+    finally:
+        connection.close()
+    return tuple(scans)
 
 
 def read_cached_joined_pages_v1(
