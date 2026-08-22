@@ -1663,21 +1663,47 @@ Project-owner absence closure:
 
 ## Deposits at and loans to other credit institutions (`INTERBANK_DEPOSITS_AND_LOANS`)
 
-Current exact-replay result:
-`docs/experiments/E-0062-interbank-deposits-loans-8bank-codex-verified-mapping-v1.json`
+Current all-filing artifacts:
+`output/calibration/family-first-accounting-evidence-sweeps-v1/interbank-deposits-and-loans.json`
+and
+`output/calibration/family-first-accounting-schema-mappings-v1/interbank-deposits-and-loans.json`.
 
-- One bank-blind graph scans all 453 pages, binds the first family owner through
-  demand/term deposits, currency children, interbank loans and the last printed
-  subtotal or family total. It admits `cho vay`/`vay`, optional deposit-parent
-  labels, gold+foreign-currency wording, non-additive discount details and an
-  explicit document-level unit declaration.
-- ACB p16, MBB p30, VPB p39, CTG p41, BID p25 and VIB p32 are unique complete
-  clusters. 63 source rows are `VERIFIED_BY_CODEX`; 23 accounting equations
-  close exactly. Three ACB visible dashes remain typed `DASH` before the
-  project-owner-approved zero normalization. VPB retains its Q1/2026 caveat.
-- HDB/VCB are now confirmed not present in the bound reports by the project
-  owner: both supplied note sections begin at trading securities. Their totals
-  and foreign-exchange/fair-value controls remain negative controls.
+- **OPEN — ACB (10 filing):** annual-2025 consolidated p7/p46 and H1-2025
+  consolidated p7/p45 contain both a summary and detailed region headed
+  `Tiền gửi và cho vay các TCTD khác`; neither candidate has a fully bound
+  column/body axis. Q1/Q4-2025 and Q1/Q2-2026, both scopes, p15–16 retain the
+  same owner but one or more visible role rows lack a complete two-lane axis.
+- **OPEN — MBB (2 filing):** Q1-2025 consolidated p29 and parent p26,
+  `Tiền gửi và cho vay các TCTD khác`; the printed deposit/family result differs
+  from the exact component population currently bound. Source values are not
+  repaired to force closure.
+- **OPEN — VPB (4 filing):** annual-2025 and H1-2025, both scopes, p42/p36 and
+  p44/p36, owner `Tiền gửi và cấp tín dụng cho các TCTD khác`; one or more role
+  rows lack a complete visible lane axis.
+- **OPEN — HDB (10 filing):** annual-2025 both scopes p34/p33 and Q3-2025 both
+  scopes p3 have incomplete visible role lanes; H1-2025 p31/p30 has a trailing
+  result that is not one exact family-component sum; Q1/Q2-2025, both scopes,
+  p3 has a printed `Cho vay các TCTD khác` result that does not equal the
+  visible component population. The owner is `Tiền gửi tại và cho vay các
+  TCTD khác`.
+- **OPEN — CTG (3 filing):** annual-2025 parent p39 lacks proven cross-page
+  period/unit inheritance; H1-2025 parent p11/p21 has two competing regions;
+  Q1-2025 consolidated p4 has an interbank-loan result that does not equal the
+  visible component population. Source owner: `Tiền gửi và cho vay các TCTD
+  khác`.
+- **OPEN — BID (1 filing):** H1-2025 consolidated p9, `Tiền gửi và cho vay các
+  TCTD khác`; the trailing result is not one exact sum of the bound family
+  components.
+- **OPEN — VIB (12 filing):** annual-2025 parent, H1-2025 both scopes,
+  Q1-2025 both scopes, Q2-2025 parent, Q3/Q4-2025 both scopes and Q2-2026 both
+  scopes contain both summary and detailed regions headed `Tiền gửi và cho vay
+  các TCTD khác`. Pages are respectively p9/p37, p9–10/p37–38, p9–10/p37,
+  p5/p32, p8–9/p36–37, p5/p32–33 and p5/p32. Header/body geometry or complete
+  role lanes do not yet choose one region uniquely; no bank/page routing is
+  used to break the tie.
+- **CLOSED COUNTS:** 84/140 filing and 701 source mappings are
+  `VERIFIED_BY_CODEX`; 14 filing are `NOT_OBSERVED_PROPOSAL_ONLY` (BID 12,
+  CTG 2); the 42 filing above remain `UNRESOLVED`.
 
 ## Deposits at central banks (`CENTRAL_BANK_DEPOSITS`)
 

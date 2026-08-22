@@ -55,16 +55,20 @@ Quy ước:
 
 ## 3. Tiền, vàng gửi tại và cho vay/vay các TCTD khác
 
-- **Đã xác minh trên BCTC hợp nhất kiểm toán năm 2025:** ACB p46, MBB p48,
-  VPB p42, HDB p34, VCB p36, CTG p40, BID p39 và VIB p36. Đã map 86 dòng
-  tiền gửi không/có kỳ hạn, VND, ngoại tệ, cho vay/vay, dự phòng và chiết
-  khấu/tái chiết khấu; 33 phương trình cha–con, subtotal và tổng family đóng
-  đúng. Dự phòng tổng tại MBB, VCB và BID được map vào ReportNormId 5718.
-- **Không có:** Không có bank nào trong tám BCTC annual-2025.
-- **Còn thiếu:** Không còn khoản mục nguồn chưa map. Các ô `-` hiện kỳ của ACB
-  được bind trực tiếp từ pixel và chuẩn hóa thành 0. HDB `27.921.364` của
-  VietOCR được ảnh gốc, trục số nguồn và phương trình bác bỏ thành
-  `27.921.384`.
+- **Đã map/xác minh trên ma trận family-first hiện có:** 84/140 filing, gồm ACB
+  8, MBB 16, VPB 14, HDB 6, VCB 18, CTG 13, BID 3 và VIB 6; tổng cộng 701
+  mapping. Logic chung hỗ trợ bảng tóm tắt hoặc chi tiết, parent tiền gửi/cho
+  vay có thể in giá trị hoặc chỉ làm group, child VND/ngoại tệ, subtotal con,
+  reordered siblings và reset trước bảng phân tích kế tiếp.
+- **Không quan sát thấy trong phạm vi filing đã quét:** 14 filing, gồm BID 12 và
+  CTG 2. Đây là `NOT_OBSERVED_PROPOSAL_ONLY` của đúng PDF đã bind, không phải
+  khẳng định ngoài filing.
+- **Còn thiếu:** 42 filing: ACB 10, MBB 2, VPB 4, HDB 10, CTG 3, BID 1 và VIB
+  12. Các nhóm còn mở là ô role chưa đủ hai lane, subtotal/tổng nguồn không
+  đóng đúng population đã thấy, một ca kế thừa kỳ/đơn vị qua trang chưa được
+  chứng minh, và các filing có cả bảng tóm tắt lẫn bảng chi tiết nhưng chưa đủ
+  geometry/header để chọn duy nhất. Chi tiết bank, kỳ, trang, nhãn nguồn và lý
+  do nằm trong `UNRESOLVED_MAPPING_LEDGER.md`.
 
 ## 4. Chứng khoán kinh doanh
 
@@ -1481,7 +1485,7 @@ dùng.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Tiền, kim loại quý, đá quý | ✓ 6 / — 12 | ✓ 18 | ✓ 18 | ✓ 4 / — 12 | ✓ 4 / — 14 | ✓ 2 / — 16 | ✓ 2 / — 14 | ✓ 16 / △ 2 | 2 dòng VIB Q2/2025: ô `Tiền mặt bằng VND` hiện kỳ còn UNRESOLVED do dấu phân nhóm OCR lẫn |
 | Tiền gửi tại NHNN | ✓ 6 / — 12 | ✓ 17 / △ 1 | ✓ 18 | ✓ 4 / — 12 | ✓ 2 / — 16 | ✓ 2 / — 16 | ✓ 2 / — 14 | ✓ 18 | 1 dòng MBB H1/2026 công ty mẹ p39 còn UNRESOLVED do token `55,307.732` có dấu phân nhóm lẫn |
-| Tiền gửi tại/cho vay TCTD khác — tài sản (575) | ✓ p46 | ✓ p48 | ✓ p42 | ✓ p34 | ✓ p36 | ✓ p40 | ✓ p39 | ✓ p36 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025 |
+| Tiền gửi tại/cho vay TCTD khác — tài sản (575) | ✓ 8 / △ 10 | ✓ 16 / △ 2 | ✓ 14 / △ 4 | ✓ 6 / △ 10 | ✓ 18 | ✓ 13 / △ 3 / — 2 | ✓ 3 / △ 1 / — 12 | ✓ 6 / △ 12 | 42 filing còn UNRESOLVED; 84/140 filing, 701 mapping đã xác minh |
 | Tiền, vàng gửi và vay TCTD khác — nguồn vốn (1040) | ✓ p61 | ✓ p64 | ✓\* p58–59 | ✓\* p44 | ✓ p52 | ✓ p51 | ✓ p50 | ✓ p45 | 2 hàng phụ source-only: VPB IFC và HDB UPAS LC |
 | Chứng khoán kinh doanh | ✓ p47 | ✓ p49 | ✓ p43 | ✓ p34 | ✓ p37 | ✓ p41 | ✓ p40 | — | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; VIB chỉ có family đầu tư |
 | Công cụ tài chính phái sinh | ✓ p49 | ✓ p66 | ✓ p44 | ✓ p35 | — | ✓ p42 | ✓ p41 | ✓ p37 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; VCB không có family |

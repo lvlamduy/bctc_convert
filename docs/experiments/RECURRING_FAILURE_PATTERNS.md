@@ -714,8 +714,9 @@ Status meanings:
   analysis reset; at a parent equation, exclude only complete trailing rows
   whose typed values exactly duplicate one already-resolved direct component.
   Remaining complete rows retain strict corroboration/veto semantics.
-- **Status:** `MITIGATED`; shared closure regression and full-family cache parity
-  are required before promotion.
+- **Status:** `RESOLVED`; the clean 140-filing checkpoint promoted 18 additional
+  filings across the combined reset/subtotal/period fixes while retaining all
+  non-component closure vetoes.
 
 ## RFP-034 — Rebuilding the complete OCR cache for one changed family
 
@@ -730,8 +731,8 @@ Status meanings:
   family ID and evidence sweep identity. Query/witness work uses the sidecar;
   full source replay is reserved for OCR-snapshot changes and audit
   checkpoints.
-- **Status:** `RESOLVED`; real 140-trial refresh is 0.381 s and reason query is
-  0.005 s versus a 124.6 s cold base rebuild.
+- **Status:** `RESOLVED`; the latest real 140-trial refresh is 0.477 s and reason
+  query is 0.009 s versus a 124.6 s cold base rebuild.
 
 ## RFP-035 — Schema mapping repeats the complete authenticated family sweep
 
@@ -751,3 +752,24 @@ Status meanings:
 - **Status:** `RESOLVED`; regression asserts one source traversal per paired
   build or verify and rollback of the first owned file if the second exclusive
   publication fails.
+
+## RFP-036 — Every family checkpoint reserializes the complete semantic corpus
+
+- **Pattern:** after family trials are already built, final mint validation
+  canonicalizes and byte-compares all 140 semantic documents—667,224 lines—so
+  one stable family checkpoint spends more than 30 minutes on one CPU.
+- **Example:** the final `INTERBANK_DEPOSITS_AND_LOANS` paired build took about
+  31.5 minutes although the same 140 trial records refresh into the SQLite
+  sidecar in 0.477 seconds and the unresolved-reason query takes 0.009 seconds.
+- **Cause:** a whole-corpus TOCTOU replay gate from the original small-corpus
+  capability design sits inside every downstream family build.
+- **Do not:** remove provenance checks, trust a mutable SQL cache, repeat the
+  checkpoint after each rule edit, or hide the cost behind Redis.
+- **Generic primitive/fix:** publish immutable per-document feature packets
+  with content roots; cache document-family results by feature-root + family
+  spec + engine revision; run independent documents in parallel; mint the final
+  family artifact from the exact 140 result roots. Full corpus byte replay is a
+  separate OCR-corpus audit, not a per-family operation.
+- **Status:** `OPEN`; architecture and measured bottleneck are fixed, but the
+  authenticated packet/Merkle implementation must land before the next formal
+  family checkpoint.

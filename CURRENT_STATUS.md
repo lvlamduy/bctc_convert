@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-08-21T22:14:32Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
+Updated: 2026-08-22T02:59:05Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
 The detailed historical receipts below remain evidence, but that directive supersedes
@@ -41,9 +41,18 @@ older queue priorities where they conflict.
   **69 verified documents / 241 mappings / 70 not observed / 1 unresolved**.
   The shared engine now handles exact source-group/component equivalence without
   double count and rejects narrative-date contamination unless one unique local
-  period subset matches both document periods and column geometry. The next
-  schema-order family is `INTERBANK_DEPOSITS_AND_LOANS`
-  (`Tiền, vàng gửi tại và cho vay các TCTD khác`).
+  period subset matches both document periods and column geometry.
+- `INTERBANK_DEPOSITS_AND_LOANS`, the third schema-order family, is now formally
+  complete across all 140 available filings. One authenticated evidence+mapping
+  traversal produced mapping
+  `ffasmv1:mapping:a0281df098238a711f394c2425f1f4afc4766fc959c18568b510a703c2445528`:
+  **84 verified documents / 701 mappings / 14 not observed / 42 unresolved**.
+  Shared reset, child-subtotal and period-header fixes promoted 18 additional
+  filings versus the preceding 66/60 checkpoint without weakening closure
+  vetoes. The immutable OCR SQLite base remains 140 documents / 8,947 pages /
+  667,224 lines; refreshing the 140-trial family sidecar took 0.477 seconds and
+  the final reason query 0.009 seconds. The next schema-order family is
+  `TRADING_SECURITIES`; its annual-2025 evidence is reused rather than rebuilt.
 - The pushed family-2 checkpoint is Git `0d623e7b1912` and restore-verified S3
   checkpoint `20260821T215421803905Z-0d623e7b1912`: manifest SHA-256
   `41fe820a4dd7a49e44c98a9e69d5d5dcff177c2964686e121405c4bd2f0a9ab6`,
