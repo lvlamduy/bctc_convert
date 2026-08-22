@@ -1,0 +1,98 @@
+{
+  "family_id": "TRADING_SECURITIES",
+  "family_report_norm_id": 592,
+  "format_version": "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V3",
+  "ignored_roles": [
+    "DEBT_SECURITIES_GROUP",
+    "EQUITY_SECURITIES_GROUP",
+    "OTHER_TRADING_SECURITIES_GROUP",
+    "EXPLICIT_GROSS_TOTAL",
+    "TRADING_SECURITIES_PROVISION_GROUP",
+    "PROVISION_PRICE_DECREASE",
+    "PROVISION_GENERAL",
+    "PROVISION_SPECIFIC",
+    "EXPLICIT_NET_TOTAL"
+  ],
+  "role_bindings": [
+    {
+      "report_norm_id": 595,
+      "role": "DEBT_GOVERNMENT"
+    },
+    {
+      "report_norm_id": 596,
+      "role": "DEBT_DOMESTIC_CREDIT_INSTITUTIONS"
+    },
+    {
+      "report_norm_id": 597,
+      "role": "DEBT_DOMESTIC_ECONOMIC_ORGANIZATIONS"
+    },
+    {
+      "report_norm_id": 598,
+      "role": "DEBT_FOREIGN_ECONOMIC_ORGANIZATIONS"
+    },
+    {
+      "report_norm_id": 599,
+      "role": "DEBT_OTHER"
+    },
+    {
+      "report_norm_id": 618,
+      "role": "DEBT_LISTED"
+    },
+    {
+      "report_norm_id": 619,
+      "role": "DEBT_UNLISTED"
+    },
+    {
+      "report_norm_id": 601,
+      "role": "EQUITY_GOVERNMENT"
+    },
+    {
+      "report_norm_id": 602,
+      "role": "EQUITY_DOMESTIC_CREDIT_INSTITUTIONS"
+    },
+    {
+      "report_norm_id": 603,
+      "role": "EQUITY_DOMESTIC_ECONOMIC_ORGANIZATIONS"
+    },
+    {
+      "report_norm_id": 604,
+      "role": "EQUITY_FOREIGN_ECONOMIC_ORGANIZATIONS"
+    },
+    {
+      "report_norm_id": 605,
+      "role": "EQUITY_OTHER"
+    },
+    {
+      "report_norm_id": 621,
+      "role": "EQUITY_LISTED"
+    },
+    {
+      "report_norm_id": 622,
+      "role": "EQUITY_UNLISTED"
+    },
+    {
+      "report_norm_id": 607,
+      "role": "OTHER_GOVERNMENT"
+    },
+    {
+      "report_norm_id": 608,
+      "role": "OTHER_DOMESTIC_CREDIT_INSTITUTIONS"
+    },
+    {
+      "report_norm_id": 609,
+      "role": "OTHER_DOMESTIC_ECONOMIC_ORGANIZATIONS"
+    },
+    {
+      "report_norm_id": 610,
+      "role": "OTHER_FOREIGN_ECONOMIC_ORGANIZATIONS"
+    },
+    {
+      "report_norm_id": 624,
+      "role": "OTHER_LISTED"
+    },
+    {
+      "report_norm_id": 625,
+      "role": "OTHER_UNLISTED"
+    }
+  ]
+}

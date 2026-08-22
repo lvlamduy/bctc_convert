@@ -16,6 +16,7 @@ from bctc_ai.evaluation import accounting_family_topology_v1 as topology_v1
 from bctc_ai.evaluation import accounting_hierarchical_table_closure_v1 as hierarchical_v1
 from bctc_ai.evaluation import family_first_accounting_input_snapshot_v1 as snapshot_v1
 from bctc_ai.evaluation import family_first_authenticated_page_region_v1 as render_v1
+from bctc_ai.evaluation import family_first_document_evidence_store_v1 as document_store_v1
 from bctc_ai.evaluation import family_first_ppocrv6_numeric_index_v3 as numeric_v3
 from bctc_ai.evaluation import family_first_semantic_index_v1 as semantic_v1
 from bctc_ai.evaluation.accounting_additive_table_closure_v1 import (
@@ -47,6 +48,7 @@ __all__ = [
     "FORMAT_VERSION",
     "FamilyFirstAccountingEvidenceSweepV1Error",
     "build_authenticated_family_first_accounting_evidence_sweep_v1",
+    "build_authenticated_family_first_accounting_evidence_sweep_from_document_store_v1",
     "rebuild_family_first_accounting_trial_from_document_snapshot_v1",
     "validate_authenticated_family_first_accounting_evidence_sweep_replay_v1",
 ]
@@ -765,6 +767,214 @@ def rebuild_family_first_accounting_trial_from_document_snapshot_v1(
             "topology_scan": topology_scan,
             "unresolved_reasons": reasons,
         }
+    )
+
+
+def _topology_pages_from_document_snapshot_v1(
+    joined_pages: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "lines": [
+                {
+                    "bbox": canonical_clone_v1(line["bbox"]),
+                    "source_line_index": line["line_ordinal"],
+                    "source_text": None,
+                    "vietocr_text": line["vietocr_text"],
+                }
+                for line in page["lines"]
+            ],
+            "page_sequence": page["page_sequence"],
+        }
+        for page in joined_pages
+    ]
+
+
+def _selected_topology_pages_v1(
+    joined_pages: list[dict[str, Any]], topology_scan: dict[str, Any]
+) -> set[int]:
+    selected: set[int] = set()
+    offset = 0
+    for page in joined_pages:
+        stop = offset + len(page["lines"])
+        if any(
+            offset < region["cluster_end_document_line_ordinal_exclusive"]
+            and stop > region["cluster_start_document_line_ordinal"]
+            for region in topology_scan["regions"]
+        ):
+            selected.add(page["page_sequence"])
+        offset = stop
+    return selected
+
+
+def _document_store_axis_binding_v1(
+    packet: dict[str, Any], selected_pages: set[int]
+) -> dict[str, Any]:
+    provenance = {
+        "bank": packet["bank_provenance"],
+        "period": packet["period"],
+        "scope": packet["scope"],
+        "year": packet["year"],
+    }
+    source_binding = canonical_json_sha256_v1(
+        {
+            "document_id": packet["document_id"],
+            "private_provenance": provenance,
+            "source_pdf_ref": packet["source_pdf_ref"],
+        }
+    )
+    metrics = {
+        "line_count": packet["line_count"],
+        "page_count": packet["page_count"],
+        "page_count_with_authenticated_dimensions": len(selected_pages),
+    }
+    material = {
+        "document_packet_id": packet["packet_id"],
+        "metrics": metrics,
+        "selected_pages": sorted(selected_pages),
+        "source_binding_sha256": source_binding,
+    }
+    return {
+        "document_axis_id": "ffdesv1:accounting-axis:" + canonical_json_sha256_v1(material),
+        "metrics": metrics,
+        "source_binding_sha256": source_binding,
+    }
+
+
+def _trial_from_document_store_snapshot_v1(
+    snapshot: dict[str, Any],
+    family_spec: dict[str, Any],
+    evaluation_spec: dict[str, Any],
+) -> dict[str, Any]:
+    packet = snapshot["document_packet"]
+    joined_pages = snapshot["joined_pages"]
+    topology_scan = topology_v1.build_accounting_family_topology_scan_v1(
+        _topology_pages_from_document_snapshot_v1(joined_pages), family_spec
+    )
+    base = {
+        "document_ordinal": packet["document_ordinal"],
+        "private_provenance": {
+            "bank": packet["bank_provenance"],
+            "period": packet["period"],
+            "scope": packet["scope"],
+            "year": packet["year"],
+        },
+        "source_pdf_ref": canonical_clone_v1(packet["source_pdf_ref"]),
+        "topology_scan": topology_scan,
+    }
+    if topology_scan["status"] == "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY":
+        return {
+            **base,
+            "additive_closure": None,
+            "column_context": None,
+            "document_axis_binding": None,
+            "evidence_status": "NOT_OBSERVED_PROPOSAL_ONLY",
+            "row_axis": None,
+            "unresolved_reasons": [],
+        }
+    if topology_scan["status"] not in {
+        "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL",
+        "UNRESOLVED_MULTIPLE_OR_NONUNIQUE_COMPLETE_REGIONS",
+    }:
+        return {
+            **base,
+            "additive_closure": None,
+            "column_context": None,
+            "document_axis_binding": None,
+            "evidence_status": "UNRESOLVED_NO_UNIQUE_COMPLETE_TOPOLOGY",
+            "row_axis": None,
+            "unresolved_reasons": [topology_scan["status"]],
+        }
+    selected_pages = _selected_topology_pages_v1(joined_pages, topology_scan)
+    if not selected_pages:
+        raise _error("document-store topology selected no physical page")
+    projected_pages = [
+        {
+            **canonical_clone_v1(page),
+            "page_width": page["page_width"] if page["page_sequence"] in selected_pages else None,
+        }
+        for page in joined_pages
+    ]
+    candidates = _candidate_evidence_from_joined_pages(
+        joined_pages=projected_pages,
+        topology_scan=topology_scan,
+        family_spec=family_spec,
+        evaluation_spec=evaluation_spec,
+        render_snapshots=(),
+    )
+    selected, reasons = _select_candidate_evidence(candidates, evaluation_spec)
+    return {
+        **base,
+        "additive_closure": selected["additive_closure"] if selected is not None else None,
+        "column_context": selected["column_context"] if selected is not None else None,
+        "document_axis_binding": _document_store_axis_binding_v1(packet, selected_pages),
+        "evidence_status": (
+            "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY"
+            if not reasons
+            else "UNRESOLVED_EVIDENCE_GATES"
+        ),
+        "row_axis": selected["row_axis"] if selected is not None else None,
+        "unresolved_reasons": reasons,
+    }
+
+
+def build_authenticated_family_first_accounting_evidence_sweep_from_document_store_v1(
+    document_store_capability: document_store_v1.AuthenticatedFamilyFirstDocumentEvidenceStoreV1,
+    family_spec: Any,
+    evaluation_spec: Any,
+) -> dict[str, Any]:
+    """Build one family from root-checked document packets without replaying OCR.
+
+    Every document packet is independently recomputed from the registered
+    SQLite evidence store. The complete document text/geometry/numeric axis is
+    still scanned, but unchanged PDF extraction and model inference are never
+    repeated. Render-only dash rescue remains deliberately out of scope and
+    such a row stays unresolved for a later page-local refresh.
+    """
+
+    try:
+        compiled = topology_v1._spec(family_spec)
+    except (ValueError, RuntimeError) as exc:
+        raise _error("family topology specification drifted") from exc
+    policy = _evaluation_spec(evaluation_spec, compiled, raw_family_spec=family_spec)
+    projection = document_store_v1.project_authenticated_family_first_document_evidence_store_v1(
+        document_store_capability
+    )
+    document_count = projection["metrics"]["document_count"]
+    trials = []
+    for ordinal in range(1, document_count + 1):
+        packet = document_store_v1.read_authenticated_family_first_document_packet_v1(
+            document_store_capability, document_ordinal=ordinal
+        )
+        snapshot = document_store_v1.read_authenticated_family_first_document_evidence_snapshot_v1(
+            document_store_capability,
+            document_ordinal=ordinal,
+            selected_pages=tuple(range(1, packet["page_count"] + 1)),
+        )
+        trials.append(_trial_from_document_store_snapshot_v1(snapshot, family_spec, policy))
+    material = {
+        "authority": canonical_clone_v1(_AUTHORITY),
+        "claim_boundary": CLAIM_BOUNDARY,
+        "evaluation_spec": {
+            "sha256": canonical_json_sha256_v1(policy),
+            "value": canonical_clone_v1(policy),
+        },
+        "family_id": compiled["family_id"],
+        "family_spec": {
+            "sha256": canonical_json_sha256_v1(family_spec),
+            "value": canonical_clone_v1(family_spec),
+        },
+        "format_version": FORMAT_VERSION,
+        "input_indices": {
+            "numeric_receipt_id": projection["input_indices"]["numeric_receipt_id"],
+            "semantic_index_id": projection["input_indices"]["semantic_index_id"],
+        },
+        "metrics": _metrics(trials),
+        "state": "ALL_FILING_ACCOUNTING_EVIDENCE_SWEEP_COMPLETE_PROPOSAL_ONLY",
+        "trials": trials,
+    }
+    return _validate(
+        {**material, "sweep_id": "ffaesv1:sweep:" + canonical_json_sha256_v1(material)}
     )
 
 

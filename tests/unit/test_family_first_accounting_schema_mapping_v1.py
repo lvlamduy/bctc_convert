@@ -760,3 +760,46 @@ def test_tracked_interbank_specs_bind_recursive_roles_to_live_schema_descendants
     assert direct["TOTAL_INTERBANK_PROVISION"]["schema_id"] == 5718
     assert aggregates == []
     assert binding["ignored_roles"] == ["EXPLICIT_FAMILY_TOTAL"]
+
+
+def test_tracked_trading_securities_specs_partition_variants_without_bank_routes() -> None:
+    config_root = _PROJECT_ROOT / "config/families"
+    family = json.loads(
+        (config_root / "tm-trading-securities-topology-v1.json").read_text(encoding="utf-8")
+    )
+    evaluation = json.loads(
+        (config_root / "tm-trading-securities-evaluation-v1.json").read_text(encoding="utf-8")
+    )
+    binding = json.loads(
+        (config_root / "tm-trading-securities-schema-binding-v1.json").read_text(encoding="utf-8")
+    )
+
+    compiled = topology_v1._spec(family)
+    evidence_v1._evaluation_spec(evaluation, compiled, raw_family_spec=family)
+    parsed_binding = subject._schema_spec(binding, family)
+    nodes, _ = subject._schema_graph(_PROJECT_ROOT)
+    parent, direct, aggregates = subject._bind_schema(nodes, parsed_binding)
+
+    assert parent["schema_id"] == 592
+    assert direct["DEBT_GOVERNMENT"]["schema_id"] == 595
+    assert direct["DEBT_LISTED"]["schema_id"] == 618
+    assert direct["EQUITY_UNLISTED"]["schema_id"] == 622
+    assert direct["OTHER_UNLISTED"]["schema_id"] == 625
+    assert aggregates == []
+    assert binding["ignored_roles"] == [
+        "DEBT_SECURITIES_GROUP",
+        "EQUITY_SECURITIES_GROUP",
+        "OTHER_TRADING_SECURITIES_GROUP",
+        "EXPLICIT_GROSS_TOTAL",
+        "TRADING_SECURITIES_PROVISION_GROUP",
+        "PROVISION_PRICE_DECREASE",
+        "PROVISION_GENERAL",
+        "PROVISION_SPECIFIC",
+        "EXPLICIT_NET_TOTAL",
+    ]
+    serialized = json.dumps(
+        {"binding": binding, "evaluation": evaluation, "family": family},
+        ensure_ascii=False,
+    )
+    for token in ("ACB", "MBB", "VPB", "HDB", "VCB", "CTG", "BID", "VIB", "2025", "2026"):
+        assert token not in serialized

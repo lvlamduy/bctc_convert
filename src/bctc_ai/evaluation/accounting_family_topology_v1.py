@@ -309,11 +309,16 @@ def _spec(value: Any) -> dict[str, Any]:
         for raw_combination in raw_combinations:
             if (
                 type(raw_combination) is not list
-                or len(raw_combination) not in {2, 3}
+                or len(raw_combination) not in {1, 2, 3}
                 or any(type(role) is not str or role not in child_roles for role in raw_combination)
                 or len(raw_combination) != len(set(raw_combination))
             ):
                 raise _error("alternative required role combination drifted")
+            if len(raw_combination) == 1 and not (
+                resolution_mode == "EXPLICIT_ONLY"
+                and value["presence_evidence_mode"] == "WITHIN_EXPLICIT_PARENT_CLUSTER"
+            ):
+                raise _error("single-child core requires one explicit parent-scoped cluster")
             combination = tuple(raw_combination)
             if combination in seen_combinations:
                 raise _error("alternative required role combinations must be unique")

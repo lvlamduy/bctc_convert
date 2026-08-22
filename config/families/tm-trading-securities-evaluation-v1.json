@@ -1,0 +1,104 @@
+{
+  "closure_policy": "HIERARCHICAL_RECURSIVE_CORROBORATE_OR_DERIVE",
+  "expected_lane_unit_kinds": [
+    "MONEY",
+    "MONEY"
+  ],
+  "family_id": "TRADING_SECURITIES",
+  "format_version": "ACCOUNTING_FAMILY_EVALUATION_SPEC_V3",
+  "hierarchical_closure_spec": {
+    "equations": [
+      {
+        "component_roles": [
+          "DEBT_GOVERNMENT",
+          "DEBT_DOMESTIC_CREDIT_INSTITUTIONS",
+          "DEBT_DOMESTIC_ECONOMIC_ORGANIZATIONS",
+          "DEBT_FOREIGN_ECONOMIC_ORGANIZATIONS",
+          "DEBT_OTHER",
+          "DEBT_LISTED",
+          "DEBT_UNLISTED"
+        ],
+        "minimum_component_count": 1,
+        "result_role": "DEBT_SECURITIES_GROUP",
+        "trailing_result_policy": "IGNORE",
+        "visible_result_roles": [
+          "DEBT_SECURITIES_GROUP"
+        ]
+      },
+      {
+        "component_roles": [
+          "EQUITY_GOVERNMENT",
+          "EQUITY_DOMESTIC_CREDIT_INSTITUTIONS",
+          "EQUITY_DOMESTIC_ECONOMIC_ORGANIZATIONS",
+          "EQUITY_FOREIGN_ECONOMIC_ORGANIZATIONS",
+          "EQUITY_OTHER",
+          "EQUITY_LISTED",
+          "EQUITY_UNLISTED"
+        ],
+        "minimum_component_count": 1,
+        "result_role": "EQUITY_SECURITIES_GROUP",
+        "trailing_result_policy": "IGNORE",
+        "visible_result_roles": [
+          "EQUITY_SECURITIES_GROUP"
+        ]
+      },
+      {
+        "component_roles": [
+          "OTHER_GOVERNMENT",
+          "OTHER_DOMESTIC_CREDIT_INSTITUTIONS",
+          "OTHER_DOMESTIC_ECONOMIC_ORGANIZATIONS",
+          "OTHER_FOREIGN_ECONOMIC_ORGANIZATIONS",
+          "OTHER_LISTED",
+          "OTHER_UNLISTED"
+        ],
+        "minimum_component_count": 1,
+        "result_role": "OTHER_TRADING_SECURITIES_GROUP",
+        "trailing_result_policy": "IGNORE",
+        "visible_result_roles": [
+          "OTHER_TRADING_SECURITIES_GROUP"
+        ]
+      },
+      {
+        "component_roles": [
+          "PROVISION_PRICE_DECREASE",
+          "PROVISION_GENERAL",
+          "PROVISION_SPECIFIC"
+        ],
+        "minimum_component_count": 1,
+        "result_role": "TRADING_SECURITIES_PROVISION_GROUP",
+        "trailing_result_policy": "IGNORE",
+        "visible_result_roles": [
+          "TRADING_SECURITIES_PROVISION_GROUP"
+        ]
+      },
+      {
+        "component_roles": [
+          "DEBT_SECURITIES_GROUP",
+          "EQUITY_SECURITIES_GROUP",
+          "OTHER_TRADING_SECURITIES_GROUP"
+        ],
+        "minimum_component_count": 1,
+        "result_role": "EXPLICIT_GROSS_TOTAL",
+        "trailing_result_policy": "CORROBORATE_IF_PRESENT",
+        "visible_result_roles": [
+          "EXPLICIT_GROSS_TOTAL"
+        ]
+      },
+      {
+        "component_roles": [
+          "EXPLICIT_GROSS_TOTAL",
+          "TRADING_SECURITIES_PROVISION_GROUP"
+        ],
+        "minimum_component_count": 1,
+        "result_role": "TRADING_SECURITIES",
+        "trailing_result_policy": "CORROBORATE_IF_PRESENT",
+        "visible_result_roles": [
+          "EXPLICIT_NET_TOTAL"
+        ]
+      }
+    ],
+    "family_id": "TRADING_SECURITIES",
+    "format_version": "ACCOUNTING_HIERARCHICAL_CLOSURE_SPEC_V1"
+  },
+  "period_semantics": "BALANCE_COMPARATIVE"
+}

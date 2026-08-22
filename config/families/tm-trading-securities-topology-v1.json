@@ -1,0 +1,501 @@
+{
+  "children": [
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chứng khoán nợ"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "DEBT_SECURITIES_GROUP",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chứng khoán Chính phủ",
+            "Trái phiếu Chính phủ",
+            "Trái phiếu do Chính phủ phát hành",
+            "Chứng khoán do Chính phủ phát hành",
+            "Chứng khoán nợ do Chính phủ phát hành",
+            "Chứng khoán do Chính phủ, chính quyền địa phương phát hành",
+            "Chứng khoán Chính phủ, chính quyền địa phương"
+          ],
+          "within_role": "DEBT_SECURITIES_GROUP"
+        },
+        {
+          "aliases": [
+            "Chứng khoán Chính phủ",
+            "Trái phiếu Chính phủ",
+            "Trái phiếu do Chính phủ phát hành",
+            "Chứng khoán do Chính phủ phát hành",
+            "Chứng khoán nợ do Chính phủ phát hành",
+            "Chứng khoán do Chính phủ, chính quyền địa phương phát hành",
+            "Chứng khoán Chính phủ, chính quyền địa phương"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "DEBT_GOVERNMENT",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chứng khoán do các TCTD khác trong nước phát hành",
+            "Chứng khoán do các TCTD trong nước phát hành",
+            "Chứng khoán nợ do các TCTD khác trong nước phát hành",
+            "Chứng khoán nợ do các TCTD trong nước phát hành",
+            "Trái phiếu do các TCTD khác trong nước phát hành",
+            "Trái phiếu do các TCTD trong nước phát hành",
+            "Chứng chỉ tiền gửi do các TCTD khác trong nước phát hành"
+          ],
+          "within_role": "DEBT_SECURITIES_GROUP"
+        },
+        {
+          "aliases": [
+            "Chứng khoán do các TCTD khác trong nước phát hành",
+            "Chứng khoán do các TCTD trong nước phát hành",
+            "Chứng khoán nợ do các TCTD khác trong nước phát hành",
+            "Chứng khoán nợ do các TCTD trong nước phát hành",
+            "Trái phiếu do các TCTD khác trong nước phát hành",
+            "Trái phiếu do các TCTD trong nước phát hành",
+            "Chứng chỉ tiền gửi do các TCTD khác trong nước phát hành"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "DEBT_DOMESTIC_CREDIT_INSTITUTIONS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chứng khoán do các TCKT trong nước phát hành",
+            "Chứng khoán do các TCKT khác trong nước phát hành",
+            "Chứng khoán do các tổ chức kinh tế trong nước phát hành",
+            "Chứng khoán nợ do các TCKT trong nước phát hành",
+            "Chứng khoán nợ do các TCKT khác trong nước phát hành",
+            "Trái phiếu do các TCKT trong nước phát hành"
+          ],
+          "within_role": "DEBT_SECURITIES_GROUP"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "DEBT_DOMESTIC_ECONOMIC_ORGANIZATIONS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chứng khoán do các TCKT nước ngoài phát hành",
+            "Chứng khoán nợ do các TCKT nước ngoài phát hành",
+            "Chứng khoán nước ngoài"
+          ],
+          "within_role": "DEBT_SECURITIES_GROUP"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "DEBT_FOREIGN_ECONOMIC_ORGANIZATIONS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Khác",
+            "Chứng khoán nợ khác"
+          ],
+          "within_role": "DEBT_SECURITIES_GROUP"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "DEBT_OTHER",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Đã niêm yết",
+            "Chứng khoán nợ đã niêm yết"
+          ],
+          "within_role": "DEBT_SECURITIES_GROUP"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "DEBT_LISTED",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chưa niêm yết",
+            "Chứng khoán nợ chưa niêm yết"
+          ],
+          "within_role": "DEBT_SECURITIES_GROUP"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "DEBT_UNLISTED",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chứng khoán vốn"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EQUITY_SECURITIES_GROUP",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chứng khoán vốn do Chính phủ phát hành"
+          ],
+          "within_role": "EQUITY_SECURITIES_GROUP"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EQUITY_GOVERNMENT",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chứng khoán vốn do các TCTD khác phát hành",
+            "Chứng khoán vốn do các TCTD khác trong nước phát hành",
+            "Chứng khoán do các TCTD khác trong nước phát hành"
+          ],
+          "within_role": "EQUITY_SECURITIES_GROUP"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EQUITY_DOMESTIC_CREDIT_INSTITUTIONS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chứng khoán vốn do các TCKT trong nước phát hành",
+            "Chứng khoán vốn do các TCKT khác trong nước phát hành",
+            "Chứng khoán do các TCKT trong nước phát hành",
+            "Chứng khoán vốn do các tổ chức kinh tế trong nước phát hành"
+          ],
+          "within_role": "EQUITY_SECURITIES_GROUP"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EQUITY_DOMESTIC_ECONOMIC_ORGANIZATIONS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chứng khoán vốn do các TCTD nước ngoài phát hành",
+            "Chứng khoán vốn do các TCKT nước ngoài phát hành",
+            "Chứng khoán nước ngoài"
+          ],
+          "within_role": "EQUITY_SECURITIES_GROUP"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EQUITY_FOREIGN_ECONOMIC_ORGANIZATIONS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Khác",
+            "Chứng khoán vốn khác"
+          ],
+          "within_role": "EQUITY_SECURITIES_GROUP"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EQUITY_OTHER",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Đã niêm yết",
+            "Chứng khoán vốn đã niêm yết"
+          ],
+          "within_role": "EQUITY_SECURITIES_GROUP"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EQUITY_LISTED",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chưa niêm yết",
+            "Chứng khoán vốn chưa niêm yết"
+          ],
+          "within_role": "EQUITY_SECURITIES_GROUP"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EQUITY_UNLISTED",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chứng khoán kinh doanh khác"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "OTHER_TRADING_SECURITIES_GROUP",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Do Chính phủ phát hành",
+            "Do NHNN, Kho bạc phát hành"
+          ],
+          "within_role": "OTHER_TRADING_SECURITIES_GROUP"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "OTHER_GOVERNMENT",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Do các TCTD khác trong nước phát hành"
+          ],
+          "within_role": "OTHER_TRADING_SECURITIES_GROUP"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "OTHER_DOMESTIC_CREDIT_INSTITUTIONS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Do các TCKT trong nước phát hành"
+          ],
+          "within_role": "OTHER_TRADING_SECURITIES_GROUP"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "OTHER_DOMESTIC_ECONOMIC_ORGANIZATIONS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Do các TCKT nước ngoài phát hành"
+          ],
+          "within_role": "OTHER_TRADING_SECURITIES_GROUP"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "OTHER_FOREIGN_ECONOMIC_ORGANIZATIONS",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Đã niêm yết"
+          ],
+          "within_role": "OTHER_TRADING_SECURITIES_GROUP"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "OTHER_LISTED",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Chưa niêm yết"
+          ],
+          "within_role": "OTHER_TRADING_SECURITIES_GROUP"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "OTHER_UNLISTED",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Tổng chứng khoán kinh doanh",
+            "Tổng số chứng khoán kinh doanh"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EXPLICIT_GROSS_TOTAL",
+      "role_kind": "TOTAL"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Dự phòng rủi ro chứng khoán kinh doanh",
+            "Dự phòng rủi ro chứng khoán",
+            "Dự phòng giảm giá chứng khoán kinh doanh"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "TRADING_SECURITIES_PROVISION_GROUP",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Dự phòng giảm giá",
+            "Dự phòng giảm giá chứng khoán"
+          ],
+          "within_role": "TRADING_SECURITIES_PROVISION_GROUP"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "PROVISION_PRICE_DECREASE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Dự phòng chung"
+          ],
+          "within_role": "TRADING_SECURITIES_PROVISION_GROUP"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "PROVISION_GENERAL",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Dự phòng cụ thể"
+          ],
+          "within_role": "TRADING_SECURITIES_PROVISION_GROUP"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "PROVISION_SPECIFIC",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Giá trị thuần",
+            "Giá trị ghi sổ",
+            "Giá trị còn lại"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EXPLICIT_NET_TOTAL",
+      "role_kind": "TOTAL"
+    }
+  ],
+  "family_id": "TRADING_SECURITIES",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Chứng khoán đầu tư",
+    "Chứng khoán đầu tư sẵn sàng để bán",
+    "Chứng khoán đầu tư giữ đến ngày đáo hạn",
+    "Lãi thuần từ mua bán chứng khoán kinh doanh",
+    "Lỗ thuần từ mua bán chứng khoán kinh doanh"
+  ],
+  "limits": {
+    "max_continuation_pages": 1,
+    "max_cluster_span_lines": 128,
+    "max_label_line_span": 3
+  },
+  "parent": {
+    "aliases": [
+      "Chứng khoán kinh doanh",
+      "Chi tiết chứng khoán kinh doanh"
+    ],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "TRADING_SECURITIES"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [
+    [
+      "DEBT_GOVERNMENT"
+    ],
+    [
+      "DEBT_DOMESTIC_CREDIT_INSTITUTIONS"
+    ],
+    [
+      "DEBT_LISTED"
+    ],
+    [
+      "DEBT_UNLISTED"
+    ],
+    [
+      "DEBT_SECURITIES_GROUP",
+      "EQUITY_SECURITIES_GROUP"
+    ],
+    [
+      "DEBT_SECURITIES_GROUP",
+      "DEBT_GOVERNMENT"
+    ],
+    [
+      "DEBT_SECURITIES_GROUP",
+      "DEBT_DOMESTIC_CREDIT_INSTITUTIONS"
+    ]
+  ],
+  "structural_reset_aliases": [
+    "Thay đổi dự phòng chứng khoán kinh doanh",
+    "Biến động dự phòng chứng khoán kinh doanh",
+    "Chứng khoán đầu tư",
+    "Các công cụ tài chính phái sinh và các tài sản tài chính khác",
+    "Công cụ tài chính phái sinh và các tài sản tài chính khác",
+    "Cho vay khách hàng"
+  ]
+}

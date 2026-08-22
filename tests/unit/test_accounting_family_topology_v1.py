@@ -378,6 +378,36 @@ def test_alternative_core_role_combinations_accept_distinct_generic_variants(
     }
 
 
+def test_alternative_core_explicit_parent_plus_one_child_is_a_bounded_pair() -> None:
+    spec = _alternative_core_spec()
+    spec["parent"]["resolution_mode"] = "EXPLICIT_ONLY"
+    spec["presence_evidence_mode"] = "WITHIN_EXPLICIT_PARENT_CLUSTER"
+    spec["required_role_combinations"] = [["VIETNAM"]]
+
+    result = build_accounting_family_topology_scan_v1(
+        [_page(["Tiền gửi tại NHNN", "Tiền gửi tại NHNN Việt Nam", "100"])],
+        spec,
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    assert result["regions"][0]["minimal_unique_anchor"] == {
+        "combination_size": 2,
+        "pair_before_triple_search": True,
+        "selected_roles": ["PARENT:CENTRAL_BANK_DEPOSITS", "CHILD:VIETNAM"],
+    }
+
+
+def test_alternative_core_one_child_never_enables_parentless_inference() -> None:
+    spec = _alternative_core_spec()
+    spec["required_role_combinations"] = [["VIETNAM"]]
+
+    with pytest.raises(AccountingFamilyTopologyV1Error, match="explicit parent-scoped"):
+        build_accounting_family_topology_scan_v1(
+            [_page(["Tiền gửi tại NHNN Việt Nam", "100"])],
+            spec,
+        )
+
+
 def test_contextual_roles_disambiguate_repeated_currency_labels_by_structural_parent() -> None:
     spec = _contextual_interbank_spec()
     for child in spec["children"]:

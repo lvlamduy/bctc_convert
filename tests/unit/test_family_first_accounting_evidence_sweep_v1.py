@@ -167,6 +167,47 @@ def _numeric_document(document):
     }
 
 
+def _document_store_snapshot(document: dict[str, object]) -> dict[str, object]:
+    numeric = _numeric_document(document)
+    numeric_by_sample = {line["sample_id"]: line for line in numeric["lines"]}
+    joined_pages = [
+        {
+            "lines": [
+                {
+                    "bbox": copy.deepcopy(line["source_bbox_raw_pixels"]),
+                    "crop_ref": copy.deepcopy(line["crop_ref"]),
+                    "line_ordinal": line["line_ordinal"],
+                    "numeric_recognition": {
+                        "raw_prediction": numeric_by_sample[line["sample_id"]]["raw_prediction"],
+                        "reader_score": numeric_by_sample[line["sample_id"]]["reader_score"],
+                    },
+                    "sample_id": line["sample_id"],
+                    "vietocr_text": line["vietocr_text"],
+                }
+                for line in page["lines"]
+            ],
+            "page_sequence": page["physical_page"],
+            "page_width": 1000,
+        }
+        for page in document["pages"]
+    ]
+    packet = {
+        "assurance": "AUDITED",
+        "bank_provenance": "ACB",
+        "document_evidence_root_sha256": "1" * 64,
+        "document_id": document["document_id"],
+        "document_ordinal": document["document_ordinal"],
+        "line_count": document["line_count"],
+        "packet_id": f"ffdesv1:document:{document['document_ordinal']:064x}",
+        "page_count": document["page_count"],
+        "period": "ANNUAL",
+        "scope": "CONSOLIDATED",
+        "source_pdf_ref": copy.deepcopy(document["source_pdf_ref"]),
+        "year": 2025,
+    }
+    return {"document_packet": packet, "joined_pages": joined_pages}
+
+
 def _render(document: int, page: int):
     stream = io.BytesIO()
     Image.new("RGB", (1000, 1400), color=(255, 255, 255)).save(stream, format="PNG")
@@ -589,6 +630,72 @@ def test_bounded_document_snapshot_rebuilds_only_one_existing_trial(monkeypatch)
         subject.rebuild_family_first_accounting_trial_from_document_snapshot_v1(
             baseline, snapshot, family, policy
         )
+
+
+def test_document_store_sweep_recomputes_each_packet_once_without_live_ocr(monkeypatch) -> None:
+    documents = _documents()
+    snapshots = {
+        ordinal: _document_store_snapshot(document) for ordinal, document in documents.items()
+    }
+    calls = {"packet": [], "snapshot": []}
+    monkeypatch.setattr(
+        subject.document_store_v1,
+        "project_authenticated_family_first_document_evidence_store_v1",
+        lambda _cap: {
+            "input_indices": {
+                "numeric_axis_sha256": "3" * 64,
+                "numeric_receipt_id": "ffpniv3:receipt:" + "1" * 64,
+                "semantic_index_id": "ffsiv1:index:" + "2" * 64,
+            },
+            "metrics": {"document_count": 2},
+        },
+    )
+
+    def packet(_cap, *, document_ordinal):
+        calls["packet"].append(document_ordinal)
+        return copy.deepcopy(snapshots[document_ordinal]["document_packet"])
+
+    def snapshot(_cap, *, document_ordinal, selected_pages):
+        calls["snapshot"].append((document_ordinal, selected_pages))
+        return copy.deepcopy(snapshots[document_ordinal])
+
+    monkeypatch.setattr(
+        subject.document_store_v1,
+        "read_authenticated_family_first_document_packet_v1",
+        packet,
+    )
+    monkeypatch.setattr(
+        subject.document_store_v1,
+        "read_authenticated_family_first_document_evidence_snapshot_v1",
+        snapshot,
+    )
+    monkeypatch.setattr(
+        subject.semantic_v1,
+        "project_authenticated_family_first_semantic_index_v1",
+        lambda *_args, **_kwargs: pytest.fail("document-store sweep replayed semantic OCR"),
+    )
+    monkeypatch.setattr(
+        subject.numeric_v3,
+        "project_authenticated_family_first_ppocrv6_numeric_index_v3",
+        lambda *_args, **_kwargs: pytest.fail("document-store sweep replayed numeric OCR"),
+    )
+
+    result = (
+        subject.build_authenticated_family_first_accounting_evidence_sweep_from_document_store_v1(
+            object(), _family_spec(), _evaluation_spec()
+        )
+    )
+
+    assert result["metrics"] == {
+        "document_count": 2,
+        "evidence_ready_for_schema_review_count": 1,
+        "mapping_verified_count": 0,
+        "not_observed_count": 1,
+        "unique_topology_document_count": 1,
+        "unresolved_document_count": 0,
+    }
+    assert calls["packet"] == [1, 2]
+    assert calls["snapshot"] == [(1, (1, 2)), (2, (1,))]
 
 
 def test_hierarchical_downstream_role_superset_selects_detail_over_summary() -> None:
