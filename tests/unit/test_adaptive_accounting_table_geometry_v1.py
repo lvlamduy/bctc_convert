@@ -169,6 +169,57 @@ def test_missing_lane_does_not_borrow_a_touching_next_row_cell() -> None:
     assert bottom < lines[6]["bbox"][3]
 
 
+def test_resolved_body_grid_is_reused_without_a_second_x_cutoff() -> None:
+    lines = [
+        _line(0, "Target", [20, 100, 180, 134]),
+        # This leftmost body cell starts before the assignment helper's
+        # historical 0.47 cutoff but belongs to the already-resolved grid.
+        _line(1, "100", [455, 100, 505, 134]),
+        _line(2, "90", [650, 100, 700, 134]),
+        _line(3, "80", [800, 100, 850, 134]),
+        _line(4, "70", [900, 100, 950, 134]),
+    ]
+
+    bound = assign_value_row_lanes_v1(
+        lines,
+        label_boxes=[lines[0]["bbox"]],
+        is_numeric=_numeric,
+        page_width=1000,
+        resolved_column_centers=(480.0, 675.0, 825.0, 925.0),
+    )
+
+    assert [item["column_ordinal"] for item in bound] == [0, 1, 2, 3]
+    assert [item["line"]["source_line_index"] for item in bound] == [1, 2, 3, 4]
+
+
+@pytest.mark.parametrize(
+    "centers",
+    [
+        [480.0, 675.0],
+        (480, 675.0),
+        (675.0, 480.0),
+        (480.0, 480.0),
+        (480.0, float("inf")),
+    ],
+)
+def test_resolved_body_grid_rejects_mutable_typed_or_ordered_forgery(
+    centers: object,
+) -> None:
+    lines = [
+        _line(0, "Target", [20, 100, 180, 134]),
+        _line(1, "100", [455, 100, 505, 134]),
+    ]
+
+    with pytest.raises(AdaptiveAccountingTableGeometryV1Error):
+        assign_value_row_lanes_v1(
+            lines,
+            label_boxes=[lines[0]["bbox"]],
+            is_numeric=_numeric,
+            page_width=1000,
+            resolved_column_centers=centers,  # type: ignore[arg-type]
+        )
+
+
 def test_complete_row_does_not_propose_detector_independent_regions() -> None:
     lines = [
         _line(0, "A", [20, 60, 100, 94]),

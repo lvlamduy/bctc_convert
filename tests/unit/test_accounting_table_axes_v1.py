@@ -9,6 +9,7 @@ from bctc_ai.evaluation.accounting_table_axes_v1 import (
     accounting_unit_surface_v1,
     center_x2_v1,
     extract_period_axis_v1,
+    extract_period_observations_v1,
     extract_reporting_year_axis_v1,
     extract_typed_value_vector_v1,
     infer_document_accounting_unit_context_v1,
@@ -106,6 +107,45 @@ def test_period_axis_fails_closed_on_invalid_or_ambiguous_headers() -> None:
             _line(3, "31/12/2024", 500),
         ]
     ) == ([], "UNRESOLVED")
+
+
+def test_period_observations_retain_stacked_exact_split_and_relative_blocks() -> None:
+    observations = extract_period_observations_v1(
+        [
+            _line(3, "Tại ngày 30 tháng 06 năm 2026", 100),
+            _line(10, "Ngày 31 tháng 12", 100),
+            _line(11, "năm 2025", 100),
+            _line(20, "Số cuối kỳ", 100),
+        ]
+    )
+    assert [item["period"] for item in observations] == [
+        "30/06/2026",
+        "31/12/2025",
+        "CURRENT_PERIOD_END",
+    ]
+    assert [item["evidence_source_line_indices"] for item in observations] == [
+        [3],
+        [10, 11],
+        [20],
+    ]
+
+
+def test_period_observations_join_standalone_year_fragments() -> None:
+    observations = extract_period_observations_v1(
+        [
+            _line(0, "Tại ngày 30 tháng 6 năm", 100),
+            _line(1, "2026", 100),
+            _line(2, "Giao dịch kỳ hạn tiền tệ", 100),
+            _line(3, "Tại ngày 31 tháng 12 năm", 100),
+            # One interleaved OCR fragment is allowed by the bounded split
+            # join; the year itself must remain one standalone 20xx token.
+            _line(4, "3", 900),
+            _line(5, "2025", 100),
+        ]
+    )
+
+    assert [item["period"] for item in observations] == ["30/06/2026", "31/12/2025"]
+    assert observations[1]["evidence_source_line_indices"] == [3, 5]
 
 
 def test_period_axis_uses_high_confidence_numeric_reader_only_for_date_grammar() -> None:

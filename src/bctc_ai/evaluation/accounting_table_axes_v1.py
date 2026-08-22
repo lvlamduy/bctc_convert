@@ -27,6 +27,7 @@ __all__ = [
     "infer_document_reporting_period_context_v1",
     "is_accounting_value_surface_v1",
     "extract_period_axis_v1",
+    "extract_period_observations_v1",
     "extract_reporting_year_axis_v1",
     "extract_typed_value_vector_v1",
     "is_number_like_v1",
@@ -146,6 +147,17 @@ def _date_surface(day: int, month: int, year: int) -> str | None:
     except ValueError:
         return None
     return f"{day:02d}/{month:02d}/{year:04d}"
+
+
+def _standalone_or_prefixed_year(value: str) -> int | None:
+    """Parse a visible year fragment without treating narrative numbers as dates."""
+
+    normalized = normalize_vietnamese_anchor_v1(value)
+    if matched := _YEAR.search(normalized):
+        return int(matched.group(1))
+    if re.fullmatch(r"20\d{2}", normalized):
+        return int(normalized)
+    return None
 
 
 def center_x2_v1(line: Mapping[str, Any]) -> int:
@@ -417,8 +429,8 @@ def extract_period_axis_v1(
                 continue
             partial.append((line, day, month))
             continue
-        if matched := _YEAR.search(normalized):
-            years.append((line, int(matched.group(1))))
+        if (year := _standalone_or_prefixed_year(text)) is not None:
+            years.append((line, year))
             continue
         if normalized in {"so cuoi ky", "so cuoi nam"}:
             relative.append(
@@ -467,6 +479,114 @@ def extract_period_axis_v1(
     if len(relative) == 2:
         return sorted(relative, key=lambda item: item["x_center_x2"]), "LOCAL_RELATIVE_PERIOD_ROLES"
     return [], "UNRESOLVED"
+
+
+def extract_period_observations_v1(
+    lines: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Return every visible exact or relative period in source-line order.
+
+    Unlike :func:`extract_period_axis_v1`, this helper does not require two
+    horizontal columns.  It is intended for tables that repeat the same row
+    roles in vertically stacked period blocks.  It only parses the supplied
+    local header band and grants no current/comparative selection authority.
+    """
+
+    if isinstance(lines, (str, bytes, bytearray)) or not isinstance(lines, Sequence):
+        raise _error("period observation lines must be one sequence")
+    observations: list[dict[str, Any]] = []
+    partial: list[tuple[Mapping[str, Any], int, int]] = []
+    years: list[tuple[Mapping[str, Any], int]] = []
+    for line in lines:
+        if not isinstance(line, Mapping):
+            raise _error("period observation line must be one mapping")
+        text = _period_text(line, "period observation")
+        normalized = normalize_vietnamese_anchor_v1(text)
+        source_index = _source_line_index(line, "period observation")
+        if matched := _FULL_DATE.search(text):
+            day, month, year = map(int, matched.groups())
+            surface = _date_surface(day, month, year)
+            if surface is not None:
+                observations.append(
+                    {
+                        "evidence_source_line_indices": [source_index],
+                        "period": surface,
+                        "source_line_index": source_index,
+                        "x_center_x2": center_x2_v1(line),
+                    }
+                )
+            continue
+        if matched := _DAY_MONTH.search(normalized):
+            day, month = map(int, matched.groups())
+            if year_match := _YEAR.search(normalized):
+                surface = _date_surface(day, month, int(year_match.group(1)))
+                if surface is not None:
+                    observations.append(
+                        {
+                            "evidence_source_line_indices": [source_index],
+                            "period": surface,
+                            "source_line_index": source_index,
+                            "x_center_x2": center_x2_v1(line),
+                        }
+                    )
+                continue
+            partial.append((line, day, month))
+            continue
+        if (year := _standalone_or_prefixed_year(text)) is not None:
+            years.append((line, year))
+            continue
+        relative_role = (
+            "CURRENT_PERIOD_END"
+            if normalized in {"so cuoi ky", "so cuoi nam"}
+            else "COMPARATIVE_PERIOD_START"
+            if normalized in {"so dau ky", "so dau nam"}
+            else None
+        )
+        if relative_role is not None:
+            observations.append(
+                {
+                    "evidence_source_line_indices": [source_index],
+                    "period": relative_role,
+                    "source_line_index": source_index,
+                    "x_center_x2": center_x2_v1(line),
+                }
+            )
+    remaining = list(years)
+    for line, day, month in partial:
+        candidates = [
+            item
+            for item in remaining
+            if abs(
+                _source_line_index(item[0], "split period year")
+                - _source_line_index(line, "split period day/month")
+            )
+            <= 3
+        ]
+        if not candidates:
+            continue
+        year_line, year = min(
+            candidates, key=lambda item: abs(center_x2_v1(item[0]) - center_x2_v1(line))
+        )
+        remaining.remove((year_line, year))
+        surface = _date_surface(day, month, year)
+        if surface is None:
+            continue
+        evidence = sorted(
+            {
+                _source_line_index(line, "split period day/month"),
+                _source_line_index(year_line, "split period year"),
+            }
+        )
+        observations.append(
+            {
+                "evidence_source_line_indices": evidence,
+                "period": surface,
+                "source_line_index": min(evidence),
+                "x_center_x2": center_x2_v1(line),
+            }
+        )
+    observations.sort(key=lambda item: (item["source_line_index"], item["x_center_x2"]))
+    return observations
 
 
 def extract_reporting_year_axis_v1(

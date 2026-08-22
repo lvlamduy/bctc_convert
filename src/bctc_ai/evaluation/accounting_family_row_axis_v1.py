@@ -14,6 +14,7 @@ import hashlib
 import math
 import re
 from collections.abc import Mapping, Sequence
+from statistics import median
 from typing import Any
 
 from bctc_ai.evaluation import accounting_family_topology_v1 as topology_v1
@@ -452,6 +453,7 @@ def _rows(pages: Sequence[Mapping[str, Any]], region: Mapping[str, Any]) -> list
         for match in region["child_matches"]
         if match["role_kind"] != "STRUCTURAL_GROUP"
     }
+    retained_matches = []
     for match in region["child_matches"]:
         span = (
             match["page_sequence"],
@@ -463,10 +465,54 @@ def _rows(pages: Sequence[Mapping[str, Any]], region: Mapping[str, Any]) -> list
         # The same detector cell may never be emitted twice.
         if match["role_kind"] == "STRUCTURAL_GROUP" and span in nonstructural_spans:
             continue
-        page_sequence = match["page_sequence"]
+        retained_matches.append(match)
+
+    # Resolve one immutable numeric-column grid per page from every semantic
+    # row in the selected family region.  The left boundary is derived from
+    # the observed label bboxes rather than a fixed page-width percentage:
+    # wide four-lane tables commonly start before 45% of the page, while a
+    # narrow two-lane table begins much farther right.
+    centers_by_page: dict[int, list[float]] = {}
+    for page_sequence in sorted({item["page_sequence"] for item in retained_matches}):
         page = by_page[page_sequence]
         if type(page["page_width"]) is not int:
             raise _error("matched family page requires one authenticated render width")
+        local_lines = region_by_page[page_sequence]
+        label_rights: list[int] = []
+        for match in retained_matches:
+            if match["page_sequence"] != page_sequence:
+                continue
+            boxes = [
+                line["bbox"]
+                for line in page["lines"]
+                if match["source_line_index"]
+                <= line["line_ordinal"]
+                <= match["end_source_line_index"]
+            ]
+            if not boxes:
+                raise _error("topology label span retained no row-axis geometry")
+            label_rights.append(max(box[2] for box in boxes))
+        heights = [line["bbox"][3] - line["bbox"][1] for line in local_lines]
+        if not label_rights or not heights:
+            raise _error("family page retained no adaptive row/column geometry")
+        minimum_x_ratio = min(
+            0.45,
+            max(
+                0.05,
+                (float(median(label_rights)) + float(median(heights)) * 0.5) / page["page_width"],
+            ),
+        )
+        centers_by_page[page_sequence] = infer_numeric_column_centers_v1(
+            local_lines,
+            is_numeric=_is_numeric,
+            page_width=page["page_width"],
+            minimum_x_ratio=minimum_x_ratio,
+            retain_singleton_columns=False,
+        )
+
+    for match in retained_matches:
+        page_sequence = match["page_sequence"]
+        page = by_page[page_sequence]
         local_lines = region_by_page[page_sequence]
         label_boxes = [
             line["bbox"]
@@ -475,18 +521,18 @@ def _rows(pages: Sequence[Mapping[str, Any]], region: Mapping[str, Any]) -> list
         ]
         if not label_boxes:
             raise _error("topology label span retained no row-axis geometry")
-        centers = infer_numeric_column_centers_v1(
-            local_lines,
-            is_numeric=_is_numeric,
-            page_width=page["page_width"],
-            retain_singleton_columns=False,
-        )
-        assignments = assign_value_row_lanes_v1(
-            local_lines,
-            label_boxes=label_boxes,
-            is_numeric=_is_numeric,
-            page_width=page["page_width"],
-            retain_singleton_columns=False,
+        centers = centers_by_page[page_sequence]
+        assignments = (
+            assign_value_row_lanes_v1(
+                local_lines,
+                label_boxes=label_boxes,
+                is_numeric=_is_numeric,
+                page_width=page["page_width"],
+                retain_singleton_columns=False,
+                resolved_column_centers=tuple(centers),
+            )
+            if centers
+            else []
         )
         values = [
             _value_record(

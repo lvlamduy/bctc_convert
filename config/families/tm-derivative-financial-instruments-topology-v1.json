@@ -1,0 +1,182 @@
+{
+  "children": [
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Công cụ tài chính phái sinh tiền tệ",
+            "Công cụ TC phái sinh tiền tệ"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "CURRENCY_DERIVATIVE_GROUP",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Giao dịch kỳ hạn tiền tệ"
+          ],
+          "within_role": "CURRENCY_DERIVATIVE_GROUP"
+        },
+        {
+          "aliases": [
+            "Giao dịch kỳ hạn tiền tệ"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "FORWARD_CURRENCY",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Giao dịch hoán đổi tiền tệ"
+          ],
+          "within_role": "CURRENCY_DERIVATIVE_GROUP"
+        },
+        {
+          "aliases": [
+            "Giao dịch hoán đổi tiền tệ"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "CURRENCY_SWAP",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Giao dịch tương lai tiền tệ"
+          ],
+          "within_role": "CURRENCY_DERIVATIVE_GROUP"
+        },
+        {
+          "aliases": [
+            "Giao dịch tương lai tiền tệ"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "CURRENCY_FUTURE",
+      "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Công cụ tài chính phái sinh khác",
+            "Công cụ tài chính phái sinh lãi suất",
+            "Công cụ tài chính phái sinh lãi suất tiền tệ",
+            "Công cụ tài chính phái sinh lãi suất tiền tệ chéo"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "OTHER_DERIVATIVE_GROUP",
+      "role_kind": "STRUCTURAL_GROUP"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Giao dịch hoán đổi lãi suất",
+            "Giao dịch hoán đổi lãi suất tiền tệ chéo"
+          ],
+          "within_role": "OTHER_DERIVATIVE_GROUP"
+        },
+        {
+          "aliases": [
+            "Giao dịch hoán đổi lãi suất",
+            "Giao dịch hoán đổi lãi suất tiền tệ chéo"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "INTEREST_RATE_SWAP",
+      "role_kind": "ADDITIVE_CHILD"
+    }
+  ],
+  "family_id": "DERIVATIVE_FINANCIAL_INSTRUMENTS",
+  "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3",
+  "hard_negative_aliases": [
+    "Công cụ tài chính phái sinh và kế toán phòng ngừa rủi ro",
+    "Tóm tắt các chính sách kế toán chủ yếu",
+    "Giá trị hợp lý của các công cụ tài chính",
+    "Rủi ro tiền tệ",
+    "Rủi ro lãi suất",
+    "Thu từ các công cụ tài chính phái sinh tiền tệ",
+    "Chi về các công cụ tài chính phái sinh tiền tệ",
+    "Thu từ các công cụ tài chính phái sinh khác",
+    "Chi về các công cụ tài chính phái sinh khác"
+  ],
+  "limits": {
+    "max_continuation_pages": 1,
+    "max_cluster_span_lines": 160,
+    "max_label_line_span": 3
+  },
+  "parent": {
+    "aliases": [
+      "Các công cụ tài chính phái sinh và các tài sản tài chính khác",
+      "Các công cụ tài chính phái sinh và tài sản tài chính khác",
+      "Các công cụ tài chính phái sinh và các tài sản công nợ tài chính khác",
+      "Các công cụ tài chính phái sinh và tài sản công nợ tài chính khác",
+      "Các công cụ tài chính phái sinh và các tài sản tài chính/nợ tài chính khác",
+      "Các công cụ tài chính phái sinh và tài sản nợ phải trả tài chính khác",
+      "Các công cụ tài chính phái sinh và các tài sản/khoản nợ tài chính khác",
+      "Các công cụ tài chính phái sinh và các khoản tài sản/công nợ tài chính khác",
+      "Các công cụ tài chính phái sinh và công nợ tài chính khác",
+      "Các công cụ tài chính phái sinh và các khoản nợ tài chính khác",
+      "Các công cụ tài chính phái sinh và các khoản nợ phải trả tài chính khác",
+      "Các công cụ tài chính phái sinh và nợ phải trả tài chính khác",
+      "Công cụ tài chính phái sinh và các tài sản tài chính khác",
+      "Công cụ tài chính phái sinh và các tài sản công nợ tài chính khác",
+      "Công cụ tài chính phái sinh và các tài sản/khoản nợ tài chính khác",
+      "Công cụ tài chính phái sinh và các khoản nợ tài chính khác",
+      "Công cụ tài chính phái sinh và các khoản nợ phải trả tài chính khác"
+    ],
+    "resolution_mode": "EXPLICIT_ONLY",
+    "role": "DERIVATIVE_FINANCIAL_INSTRUMENTS"
+  },
+  "presence_evidence_mode": "WITHIN_EXPLICIT_PARENT_CLUSTER",
+  "required_role_combinations": [
+    [
+      "CURRENCY_DERIVATIVE_GROUP"
+    ],
+    [
+      "FORWARD_CURRENCY"
+    ],
+    [
+      "CURRENCY_SWAP"
+    ],
+    [
+      "OTHER_DERIVATIVE_GROUP"
+    ],
+    [
+      "INTEREST_RATE_SWAP"
+    ],
+    [
+      "CURRENCY_DERIVATIVE_GROUP",
+      "OTHER_DERIVATIVE_GROUP"
+    ]
+  ],
+  "structural_reset_aliases": [
+    "Cho vay khách hàng",
+    "Vốn tài trợ, ủy thác đầu tư",
+    "Tiền gửi của khách hàng",
+    "Phát hành giấy tờ có giá",
+    "Chứng khoán đầu tư"
+  ]
+}

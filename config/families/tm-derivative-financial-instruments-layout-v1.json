@@ -1,0 +1,110 @@
+{
+  "allowed_lane_role_sequences": [
+    [
+      "CONTRACT_VALUE",
+      "ASSET_CARRYING_VALUE",
+      "LIABILITY_CARRYING_VALUE",
+      "NET_VALUE"
+    ],
+    [
+      "ASSET_CARRYING_VALUE",
+      "LIABILITY_CARRYING_VALUE",
+      "NET_VALUE"
+    ],
+    [
+      "CONTRACT_VALUE",
+      "ASSET_CARRYING_VALUE",
+      "LIABILITY_CARRYING_VALUE"
+    ],
+    [
+      "ASSET_CARRYING_VALUE",
+      "LIABILITY_CARRYING_VALUE"
+    ],
+    [
+      "CONTRACT_VALUE",
+      "NET_VALUE"
+    ],
+    [
+      "CONTRACT_VALUE",
+      "INFLOW",
+      "OUTFLOW",
+      "NET_VALUE"
+    ]
+  ],
+  "conditional_lane_aliases": [
+    {
+      "aliases": [
+        "Tổng giá trị ghi sổ kế toán",
+        "Giá trị ghi sổ kế toán"
+      ],
+      "role": "NET_VALUE",
+      "when_roles_absent": [
+        "ASSET_CARRYING_VALUE",
+        "LIABILITY_CARRYING_VALUE"
+      ]
+    }
+  ],
+  "family_id": "DERIVATIVE_FINANCIAL_INSTRUMENTS",
+  "format_version": "ACCOUNTING_STACKED_PERIOD_LANE_LAYOUT_SPEC_V1",
+  "lane_roles": [
+    {
+      "aliases": [
+        "Tổng giá trị của hợp đồng",
+        "Giá trị hợp đồng",
+        "Hợp đồng"
+      ],
+      "mapping_eligible": true,
+      "role": "CONTRACT_VALUE",
+      "unit_kind": "MONEY"
+    },
+    {
+      "aliases": [
+        "Tài sản"
+      ],
+      "mapping_eligible": true,
+      "role": "ASSET_CARRYING_VALUE",
+      "unit_kind": "MONEY"
+    },
+    {
+      "aliases": [
+        "Công nợ",
+        "Nợ phải trả"
+      ],
+      "mapping_eligible": true,
+      "role": "LIABILITY_CARRYING_VALUE",
+      "unit_kind": "MONEY"
+    },
+    {
+      "aliases": [
+        "Tổng cộng",
+        "Giá trị thuần",
+        "Giá trị ròng",
+        "Số thuần"
+      ],
+      "mapping_eligible": false,
+      "role": "NET_VALUE",
+      "unit_kind": "MONEY"
+    },
+    {
+      "aliases": [
+        "Dòng tiền vào"
+      ],
+      "mapping_eligible": false,
+      "role": "INFLOW",
+      "unit_kind": "MONEY"
+    },
+    {
+      "aliases": [
+        "Dòng tiền ra"
+      ],
+      "mapping_eligible": false,
+      "role": "OUTFLOW",
+      "unit_kind": "MONEY"
+    }
+  ],
+  "max_header_line_span": 3,
+  "max_period_blocks": 2,
+  "minimum_distinct_valued_roles": 2,
+  "minimum_period_blocks": 2,
+  "orientation": "STACKED_PERIOD_BLOCKS"
+}

@@ -656,6 +656,7 @@ def assign_value_row_lanes_v1(
     minimum_x_ratio: float = 0.47,
     maximum_x_ratio: float = 0.94,
     retain_singleton_columns: bool = False,
+    resolved_column_centers: Sequence[float] | None = None,
 ) -> list[dict[str, Any]]:
     """Assign visible cells to explicit body-derived lane ordinals.
 
@@ -665,14 +666,30 @@ def assign_value_row_lanes_v1(
     """
 
     scale = median_text_height_v1(lines)
-    centers = infer_numeric_column_centers_v1(
-        lines,
-        is_numeric=is_numeric,
-        page_width=page_width,
-        minimum_x_ratio=minimum_x_ratio,
-        maximum_x_ratio=maximum_x_ratio,
-        retain_singleton_columns=retain_singleton_columns,
-    )
+    if resolved_column_centers is None:
+        centers = infer_numeric_column_centers_v1(
+            lines,
+            is_numeric=is_numeric,
+            page_width=page_width,
+            minimum_x_ratio=minimum_x_ratio,
+            maximum_x_ratio=maximum_x_ratio,
+            retain_singleton_columns=retain_singleton_columns,
+        )
+    else:
+        if (
+            type(page_width) is not int
+            or page_width <= 0
+            or type(resolved_column_centers) is not tuple
+            or not resolved_column_centers
+            or any(
+                type(center) is not float or not isfinite(center) or not 0 <= center <= page_width
+                for center in resolved_column_centers
+            )
+        ):
+            raise _error("resolved value-row column centers are invalid")
+        centers = list(resolved_column_centers)
+        if centers != sorted(set(centers)):
+            raise _error("resolved value-row column centers must be strictly ordered")
     lane_tolerance = (
         max(scale * 1.6, min(b - a for a, b in zip(centers, centers[1:], strict=False)) * 0.42)
         if len(centers) > 1
@@ -681,10 +698,14 @@ def assign_value_row_lanes_v1(
     by_lane: dict[int, tuple[float, Mapping[str, Any]]] = {}
     for line in lines:
         left, _top, _right, _bottom = _bbox(line["bbox"])
-        if (
-            not is_numeric(line)
-            or left <= page_width * minimum_x_ratio
-            or left >= page_width * maximum_x_ratio
+        if not is_numeric(line):
+            continue
+        # When the caller supplies the immutable table-body grid, membership
+        # is decided by affinity to that grid rather than by reapplying a
+        # second x-ratio cutoff.  Reapplying the cutoff could discard the
+        # leftmost column even though the complete body axis authenticated it.
+        if resolved_column_centers is None and (
+            left <= page_width * minimum_x_ratio or left >= page_width * maximum_x_ratio
         ):
             continue
         affinity = row_affinity_v1(

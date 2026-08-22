@@ -38,6 +38,7 @@ __all__ = [
     "SPEC_FORMAT_VERSION_V3",
     "AccountingFamilyTopologyV1Error",
     "build_accounting_family_topology_scan_v1",
+    "enumerate_accounting_family_role_occurrences_v1",
     "validate_accounting_family_topology_scan_replay_v1",
 ]
 
@@ -109,10 +110,11 @@ _PRESENCE_EVIDENCE_MODES = {
     "WITHIN_EXPLICIT_PARENT_CLUSTER",
 }
 _ENUMERATION_PREFIX = re.compile(
-    r"^\s*(?:(?:\d{1,3}(?:\.\d{1,3})*)[.)\-:]|"
+    r"^\s*(?:(?:\d{1,3}(?:\.\d{1,3})*)\s*[.),\-:]|"
     r"(?:\(\d{1,3}(?:\.\d{1,3})*\))|(?:[ivxlcdm]{1,8}|[a-z])[.)\-:])\s+",
     flags=re.IGNORECASE,
 )
+_BARE_NUMERIC_HEADING_PREFIX = re.compile(r"^\s*\d{1,3}(?:\.\d{1,3})*\s+(?=[A-ZÀ-ỴĐ]{2})")
 
 
 class AccountingFamilyTopologyV1Error(ValueError):
@@ -595,6 +597,7 @@ def _cached_alias_kind(
     aliases: Sequence[str],
     *,
     allow_decorative_parenthetical_removal: bool,
+    allow_bare_numeric_heading_prefix: bool = False,
     allow_leading_alias: bool = False,
 ) -> str | None:
     axes = [(candidate["normalized"], "")]
@@ -617,6 +620,12 @@ def _cached_alias_kind(
                 "_AFTER_ENUMERATION_PREFIX_AND_DECORATIVE_PARENTHETICAL_REMOVAL",
             )
         )
+    if allow_bare_numeric_heading_prefix and candidate["width"] == 1:
+        bare_stripped = _BARE_NUMERIC_HEADING_PREFIX.sub("", candidate["surface"], count=1)
+        if bare_stripped != candidate["surface"]:
+            bare_normalized = normalize_vietnamese_anchor_v1(bare_stripped)
+            if bare_normalized and bare_normalized not in {item[0] for item in axes}:
+                axes.append((bare_normalized, "_AFTER_BARE_NUMERIC_HEADING_PREFIX"))
     for normalized, suffix in axes:
         if normalized in aliases:
             return "EXACT_ACCENTLESS_ALIAS" + suffix
@@ -645,6 +654,7 @@ def _role_hits(
     page_sequence: int,
     surface_candidates: Sequence[Sequence[Mapping[str, Any]]] | None = None,
     within_role: str | None = None,
+    allow_bare_numeric_heading_prefix: bool = False,
     allow_decorative_parenthetical_removal: bool = False,
     allow_leading_alias: bool = False,
 ) -> list[dict[str, Any]]:
@@ -661,6 +671,7 @@ def _role_hits(
             kind = _cached_alias_kind(
                 candidate,
                 aliases,
+                allow_bare_numeric_heading_prefix=allow_bare_numeric_heading_prefix,
                 allow_decorative_parenthetical_removal=allow_decorative_parenthetical_removal,
                 allow_leading_alias=allow_leading_alias,
             )
@@ -686,7 +697,7 @@ def _role_hits(
     by_end: dict[int, dict[str, Any]] = {}
     for hit in hits:
         existing = by_end.get(hit["end_source_line_index"])
-        if existing is None or hit["source_line_index"] < existing["source_line_index"]:
+        if existing is None or hit["source_line_index"] > existing["source_line_index"]:
             by_end[hit["end_source_line_index"]] = hit
     return sorted(by_end.values(), key=lambda item: item["source_line_index"])
 
@@ -750,6 +761,7 @@ def _page_hits(
             max_label_span=max_span,
             page_sequence=page["page_sequence"],
             surface_candidates=surfaces,
+            allow_bare_numeric_heading_prefix=True,
             allow_decorative_parenthetical_removal=allow_decorative_parenthetical_removal,
         ),
         "resets": _role_hits(
@@ -776,6 +788,7 @@ def _child_records_in_range(
     hits: Mapping[str, Sequence[Mapping[str, Any]]],
     spec: Mapping[str, Any],
     *,
+    retain_all_occurrences: bool = False,
     start: int,
     stop: int,
 ) -> list[dict[str, Any]]:
@@ -831,19 +844,46 @@ def _child_records_in_range(
         ]
         if not candidates:
             continue
-        hit = min(candidates, key=lambda item: item["document_line_ordinal"])
-        public_hit = {key: item for key, item in hit.items() if key != "_within_role"}
-        if spec["spec_format_version"] == SPEC_FORMAT_VERSION_V3:
-            public_hit["matched_within_role"] = hit.get("_within_role")
-        records.append(
-            {
+        selected = candidates
+        if retain_all_occurrences:
+            # A role can expose both its contextual and context-free matcher at
+            # the same visual span.  That is one occurrence, not two.  Prefer
+            # the contextual record because it carries the stronger parent
+            # binding already checked by ``context_bound``.
+            by_span: dict[tuple[int, int], Mapping[str, Any]] = {}
+            for candidate in candidates:
+                signature = (
+                    candidate["document_line_ordinal"],
+                    candidate["end_document_line_ordinal"],
+                )
+                prior = by_span.get(signature)
+                if prior is None or (
+                    prior.get("_within_role") is None and candidate.get("_within_role") is not None
+                ):
+                    by_span[signature] = candidate
+            selected = sorted(
+                by_span.values(),
+                key=lambda item: (
+                    item["document_line_ordinal"],
+                    item["end_document_line_ordinal"],
+                ),
+            )
+        else:
+            selected = [min(candidates, key=lambda item: item["document_line_ordinal"])]
+        for occurrence_ordinal, hit in enumerate(selected):
+            public_hit = {key: item for key, item in hit.items() if key != "_within_role"}
+            if spec["spec_format_version"] == SPEC_FORMAT_VERSION_V3:
+                public_hit["matched_within_role"] = hit.get("_within_role")
+            record = {
                 **canonical_clone_v1(public_hit),
                 "preferred_ordinal": child["preferred_ordinal"],
                 "presence": child["presence"],
                 "role": child["role"],
                 "role_kind": child["role_kind"],
             }
-        )
+            if retain_all_occurrences:
+                record["role_occurrence_ordinal"] = occurrence_ordinal
+            records.append(record)
     return sorted(records, key=lambda item: item["document_line_ordinal"])
 
 
@@ -1132,7 +1172,11 @@ def _minimal_unique_anchors(
     return None
 
 
-def _build(pages: Sequence[Mapping[str, Any]], spec: Mapping[str, Any]) -> dict[str, Any]:
+def _document_hits(
+    pages: Sequence[Mapping[str, Any]], spec: Mapping[str, Any]
+) -> tuple[dict[str, Any], dict[int, dict[str, Any]], dict[int, int]]:
+    """Build the complete source-ordered hit axis once for later generic stages."""
+
     combined_hits: dict[str, Any] = {
         "children": {child["role"]: [] for child in spec["children"]},
         "hard_negatives": [],
@@ -1155,6 +1199,21 @@ def _build(pages: Sequence[Mapping[str, Any]], spec: Mapping[str, Any]) -> dict[
             combined_hits[axis].extend(hits[axis])
         offset += len(page["lines"])
         page_end_exclusive[page["page_sequence"]] = offset
+    return combined_hits, line_by_document_ordinal, page_end_exclusive
+
+
+_DocumentHits = tuple[dict[str, Any], dict[int, dict[str, Any]], dict[int, int]]
+
+
+def _build(
+    pages: Sequence[Mapping[str, Any]],
+    spec: Mapping[str, Any],
+    *,
+    prepared_hits: _DocumentHits | None = None,
+) -> dict[str, Any]:
+    if prepared_hits is None:
+        prepared_hits = _document_hits(pages, spec)
+    combined_hits, line_by_document_ordinal, page_end_exclusive = prepared_hits
 
     explicit = _explicit_candidates(
         combined_hits,
@@ -1280,7 +1339,18 @@ def build_accounting_family_topology_scan_v1(
 
     pages = _pages(document_pages)
     spec = _spec(family_spec)
-    built = _build(pages, spec)
+    return _build_validated_scan(pages, spec)
+
+
+def _build_validated_scan(
+    pages: Sequence[Mapping[str, Any]],
+    spec: Mapping[str, Any],
+    *,
+    prepared_hits: _DocumentHits | None = None,
+) -> dict[str, Any]:
+    """Build one validated scan, optionally reusing its exact live hit axis."""
+
+    built = _build(pages, spec, prepared_hits=prepared_hits)
     material = {
         "claim_boundary": CLAIM_BOUNDARY,
         "family_id": spec["family_id"],
@@ -1290,6 +1360,45 @@ def build_accounting_family_topology_scan_v1(
     }
     return _validate_result(
         {**material, "scan_id": "aftv1:scan:" + canonical_json_sha256_v1(material)}
+    )
+
+
+def enumerate_accounting_family_role_occurrences_v1(
+    document_pages: Any,
+    family_spec: Any,
+    topology_region: Any,
+) -> list[dict[str, Any]]:
+    """Return every exact semantic role occurrence inside one live scan region.
+
+    Topology discovery intentionally retains the first hit per role because a
+    small parent/child set is sufficient for whole-document uniqueness.  Some
+    tables then repeat the same roles in stacked current/comparative blocks.
+    Later generic table-axis stages need those repeated rows, but they must not
+    broaden or invent the selected family boundary.  This accessor therefore
+    rebuilds the complete scan, requires one exact selected region, and only
+    expands role hits already contained by that region and its structural
+    parent contexts.
+    """
+
+    pages = _pages(document_pages)
+    spec = _spec(family_spec)
+    prepared_hits = _document_hits(pages, spec)
+    built = _build_validated_scan(pages, spec, prepared_hits=prepared_hits)
+    if type(topology_region) is not dict:
+        raise _error("role-occurrence region must be one exact topology object")
+    selected = [
+        region for region in built["regions"] if same_typed_json_v1(region, topology_region)
+    ]
+    if len(selected) != 1:
+        raise _error("role-occurrence region is not one exact complete scan candidate")
+    region = selected[0]
+    hits, _line_axis, _page_axis = prepared_hits
+    return _child_records_in_range(
+        hits["children"],
+        spec,
+        retain_all_occurrences=True,
+        start=region["cluster_start_document_line_ordinal"],
+        stop=region["cluster_end_document_line_ordinal_exclusive"],
     )
 
 
