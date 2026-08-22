@@ -1,7 +1,8 @@
 {
   "family_id": "TRADING_SECURITIES",
   "family_report_norm_id": 592,
-  "format_version": "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V3",
+  "family_root_mapping_policy": "MAP_WHEN_HIERARCHICALLY_RESOLVED",
+  "format_version": "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V4",
   "ignored_roles": [
     "DEBT_SECURITIES_GROUP",
     "EQUITY_SECURITIES_GROUP",

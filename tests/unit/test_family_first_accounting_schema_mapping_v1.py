@@ -733,6 +733,51 @@ def test_hierarchical_trial_maps_derived_family_and_visible_descendant_roles() -
     ]
 
 
+def test_v4_hierarchical_binding_maps_complete_leaf_without_inventing_family_root() -> None:
+    trial = _ready_trial()
+    cash_vnd = trial["row_axis"]["rows"][0]
+    trial["additive_closure"] = {
+        "family_id": "CASH_PRECIOUS_METALS",
+        "resolved_roles": [
+            {
+                "component_roles": [],
+                "resolution_kind": "VISIBLE_SOURCE_ROLE",
+                "role": "CASH_VND",
+                "source": {"kind": "ROLE_ROW", "record": copy.deepcopy(cash_vnd)},
+                "values": [],
+            }
+        ],
+        "status": "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO",
+    }
+    nodes = {
+        node["schema_id"]: node
+        for node in map(json.loads, _schema_payload().decode("utf-8").splitlines())
+    }
+    schema_spec = {
+        "family_id": "CASH_PRECIOUS_METALS",
+        "family_report_norm_id": 561,
+        "family_root_mapping_policy": "MAP_WHEN_HIERARCHICALLY_RESOLVED",
+        "format_version": subject.SPEC_FORMAT_VERSION_V4,
+        "ignored_roles": [],
+        "role_bindings": [
+            {"report_norm_id": 562, "role": "CASH_VND"},
+            {"report_norm_id": 563, "role": "CASH_FOREIGN"},
+        ],
+    }
+
+    result = subject._trial(
+        trial,
+        nodes[561],
+        {"CASH_VND": nodes[562], "CASH_FOREIGN": nodes[563]},
+        [],
+        schema_period_type="SNAPSHOT",
+        schema_binding_spec=schema_spec,
+    )
+
+    assert result["mapping_status"] == "VERIFIED_BY_CODEX"
+    assert [mapping["report_norm_id"] for mapping in result["mappings"]] == [562]
+
+
 def test_tracked_interbank_specs_bind_recursive_roles_to_live_schema_descendants() -> None:
     config_root = _PROJECT_ROOT / "config/families"
     family = json.loads(

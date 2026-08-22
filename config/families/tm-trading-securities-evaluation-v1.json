@@ -70,31 +70,6 @@
         "visible_result_roles": [
           "TRADING_SECURITIES_PROVISION_GROUP"
         ]
-      },
-      {
-        "component_roles": [
-          "DEBT_SECURITIES_GROUP",
-          "EQUITY_SECURITIES_GROUP",
-          "OTHER_TRADING_SECURITIES_GROUP"
-        ],
-        "minimum_component_count": 1,
-        "result_role": "EXPLICIT_GROSS_TOTAL",
-        "trailing_result_policy": "CORROBORATE_IF_PRESENT",
-        "visible_result_roles": [
-          "EXPLICIT_GROSS_TOTAL"
-        ]
-      },
-      {
-        "component_roles": [
-          "EXPLICIT_GROSS_TOTAL",
-          "TRADING_SECURITIES_PROVISION_GROUP"
-        ],
-        "minimum_component_count": 1,
-        "result_role": "TRADING_SECURITIES",
-        "trailing_result_policy": "CORROBORATE_IF_PRESENT",
-        "visible_result_roles": [
-          "EXPLICIT_NET_TOTAL"
-        ]
       }
     ],
     "family_id": "TRADING_SECURITIES",

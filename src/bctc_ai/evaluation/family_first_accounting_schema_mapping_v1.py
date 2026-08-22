@@ -31,6 +31,7 @@ __all__ = [
     "SPEC_FORMAT_VERSION",
     "SPEC_FORMAT_VERSION_V2",
     "SPEC_FORMAT_VERSION_V3",
+    "SPEC_FORMAT_VERSION_V4",
     "FamilyFirstAccountingSchemaMappingV1Error",
     "build_authenticated_family_first_accounting_schema_mapping_v1",
     "validate_authenticated_family_first_accounting_schema_mapping_replay_v1",
@@ -41,6 +42,7 @@ FORMAT_VERSION = "FAMILY_FIRST_ACCOUNTING_SCHEMA_MAPPING_V1"
 SPEC_FORMAT_VERSION = "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V1"
 SPEC_FORMAT_VERSION_V2 = "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V2"
 SPEC_FORMAT_VERSION_V3 = "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V3"
+SPEC_FORMAT_VERSION_V4 = "ACCOUNTING_FAMILY_SCHEMA_BINDING_SPEC_V4"
 SCHEMA_GRAPH_PATH = Path("reference/schemas/schema_graph.jsonl")
 CLAIM_BOUNDARY = (
     "LIVE_REPLAYED_FAMILY_EVIDENCE_TO_TRACKED_TM_SCHEMA_DIRECT_PARENT_CHILD_BINDING_"
@@ -70,6 +72,7 @@ _SPEC_FIELDS = {
 }
 _SPEC_V2_FIELDS = {*_SPEC_FIELDS, "aggregate_role_bindings"}
 _SPEC_V3_FIELDS = {*_SPEC_FIELDS, "ignored_roles"}
+_SPEC_V4_FIELDS = {*_SPEC_V3_FIELDS, "family_root_mapping_policy"}
 _ROLE_BINDING_FIELDS = {"report_norm_id", "role"}
 _AGGREGATE_ROLE_BINDING_FIELDS = {
     "operation",
@@ -136,7 +139,11 @@ def _schema_spec(value: Any, family_spec: Any) -> dict[str, Any]:
     ]
     all_roles = [child.get("role") for child in family_spec["children"]]
     candidate_version = value.get("format_version") if type(value) is dict else None
-    family_roles = all_roles if candidate_version == SPEC_FORMAT_VERSION_V3 else nonstructural_roles
+    family_roles = (
+        all_roles
+        if candidate_version in {SPEC_FORMAT_VERSION_V3, SPEC_FORMAT_VERSION_V4}
+        else nonstructural_roles
+    )
     if (
         not family_roles
         or any(type(role) is not str or not role for role in family_roles)
@@ -147,6 +154,7 @@ def _schema_spec(value: Any, family_spec: Any) -> dict[str, Any]:
         frozenset(_SPEC_FIELDS),
         frozenset(_SPEC_V2_FIELDS),
         frozenset(_SPEC_V3_FIELDS),
+        frozenset(_SPEC_V4_FIELDS),
     }:
         raise _error("family schema-binding specification fields drifted")
     spec_version = value["format_version"]
@@ -154,6 +162,7 @@ def _schema_spec(value: Any, family_spec: Any) -> dict[str, Any]:
         SPEC_FORMAT_VERSION: _SPEC_FIELDS,
         SPEC_FORMAT_VERSION_V2: _SPEC_V2_FIELDS,
         SPEC_FORMAT_VERSION_V3: _SPEC_V3_FIELDS,
+        SPEC_FORMAT_VERSION_V4: _SPEC_V4_FIELDS,
     }
     if spec_version not in expected_fields or set(value) != expected_fields[spec_version]:
         raise _error("family schema-binding specification version drifted")
@@ -199,7 +208,7 @@ def _schema_spec(value: Any, family_spec: Any) -> dict[str, Any]:
                 raise _error("aggregate family schema role binding drifted")
             aggregates.append(canonical_clone_v1(raw))
     ignored_roles = value.get("ignored_roles", [])
-    if spec_version == SPEC_FORMAT_VERSION_V3 and (
+    if spec_version in {SPEC_FORMAT_VERSION_V3, SPEC_FORMAT_VERSION_V4} and (
         type(ignored_roles) is not list
         or any(type(role) is not str or not role for role in ignored_roles)
         or len(ignored_roles) != len(set(ignored_roles))
@@ -213,7 +222,7 @@ def _schema_spec(value: Any, family_spec: Any) -> dict[str, Any]:
         *(item["report_norm_id"] for item in aggregates),
     ]
     role_order = {role: ordinal for ordinal, role in enumerate(family_roles)}
-    if spec_version == SPEC_FORMAT_VERSION_V3:
+    if spec_version in {SPEC_FORMAT_VERSION_V3, SPEC_FORMAT_VERSION_V4}:
         if (
             aggregates
             or any(role not in role_order for role in [*direct_roles, *ignored_roles])
@@ -225,6 +234,11 @@ def _schema_spec(value: Any, family_spec: Any) -> dict[str, Any]:
             or value["family_report_norm_id"] in target_ids
         ):
             raise _error("hierarchical schema binding must partition the exact role axis")
+        if spec_version == SPEC_FORMAT_VERSION_V4 and value["family_root_mapping_policy"] not in {
+            "REQUIRE_HIERARCHICALLY_RESOLVED",
+            "MAP_WHEN_HIERARCHICALLY_RESOLVED",
+        }:
+            raise _error("hierarchical family-root mapping policy drifted")
         return canonical_clone_v1(value)
     if (
         any(role not in role_order for role in [*direct_roles, *aggregate_source_roles])
@@ -295,7 +309,7 @@ def _bind_schema(
     ]
 
     def is_admitted_descendant(node: dict[str, Any]) -> bool:
-        if spec["format_version"] != SPEC_FORMAT_VERSION_V3:
+        if spec["format_version"] not in {SPEC_FORMAT_VERSION_V3, SPEC_FORMAT_VERSION_V4}:
             return (
                 node.get("parent_id") == parent["schema_id"]
                 and node["schema_id"] in parent["children"]
@@ -706,7 +720,10 @@ def _trial(
         }
     contexts = _context_by_column(trial)
     source_scope = _SOURCE_SCOPE_TO_SCHEMA_SCOPE.get(trial["private_provenance"].get("scope"))
-    if schema_binding_spec["format_version"] == SPEC_FORMAT_VERSION_V3:
+    if schema_binding_spec["format_version"] in {
+        SPEC_FORMAT_VERSION_V3,
+        SPEC_FORMAT_VERSION_V4,
+    }:
         closure = trial["additive_closure"]
         if (
             type(closure) is not dict
@@ -725,14 +742,29 @@ def _trial(
         if any(role not in allowed for role in resolved):
             raise _error("schema-ready hierarchical closure retained one unbound role")
         family_record = resolved.get(closure["family_id"])
-        if family_record is None:
+        if family_record is None and (
+            schema_binding_spec["format_version"] == SPEC_FORMAT_VERSION_V3
+            or schema_binding_spec["family_root_mapping_policy"]
+            == "REQUIRE_HIERARCHICALLY_RESOLVED"
+        ):
             raise _error("schema-ready hierarchical closure lost its family root")
-        mappings = [_hierarchical_mapping(family_record, parent, contexts)]
+        mappings = (
+            [_hierarchical_mapping(family_record, parent, contexts)]
+            if family_record is not None
+            else []
+        )
         mappings.extend(
             _hierarchical_mapping(resolved[role], node, contexts)
             for role, node in by_role.items()
             if role in resolved
         )
+        if not mappings:
+            return {
+                **base,
+                "mapping_status": "UNRESOLVED",
+                "mappings": [],
+                "unresolved_reasons": ["NO_BOUND_HIERARCHICAL_ROLE_RESOLVED"],
+            }
         nodes = {parent["schema_id"]: parent}
         nodes.update({node["schema_id"]: node for node in by_role.values()})
         compatibility_reasons = _compatibility_reasons(
