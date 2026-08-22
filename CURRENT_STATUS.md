@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-08-22T03:19:24Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
+Updated: 2026-08-22T04:02:20Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
 The detailed historical receipts below remain evidence, but that directive supersedes
@@ -26,19 +26,21 @@ older queue priorities where they conflict.
 - `CASH_PRECIOUS_METALS`, the first schema-order family, is formally complete
   across all 140 available filings. Topology exact-replay finds 72 unique regions,
   68 `NOT_OBSERVED_PROPOSAL_ONLY`, zero ambiguous/non-unique regions; evidence
-  promotes 70 and keeps two VIB Q2/2025 mixed-separator numeric cells unresolved.
-  Schema build and verify agree on mapping
-  `ffasmv1:mapping:48dd9aa68e03dbd5e4721cc018463c642aa5e7d76810267ef91c50340bf9cf8a`:
-  **70 verified documents / 284 mappings / 68 not observed / 2 unresolved**.
-  Two independent local Gemma requests read the difficult pixels as
-  `1.460.873` and `1.460.854`, but remain challenger-only.
+  now promotes all 72. The authenticated bounded refresh mapping is
+  `ffasmv1:mapping:531480f7dc3e680cd654d1bd2847e3b66c7869c0bc75c3c498ba26edd41f21c8`:
+  **72 verified documents / 292 mappings / 68 not observed / 0 unresolved**.
+  The two VIB mixed-separator cells close only after same-crop VietOCR,
+  monetary scale-0 peers and exact visible totals agree. Two independent local
+  Gemma requests agree here but remain challenger-only.
 - `CENTRAL_BANK_DEPOSITS`, the second schema-order family, is formally complete
   across all 140 available filings. Topology exact-replay finds 70 unique regions
-  and 70 `NOT_OBSERVED_PROPOSAL_ONLY`; evidence promotes 69 and keeps one MBB
-  H1/2026 parent-company mixed-separator numeric cell unresolved. Schema build
-  and verify agree on mapping
-  `ffasmv1:mapping:94b5ad7d021b1c636822f0d031c35c4016c0a940a1374161d1786e95169eb013`:
-  **69 verified documents / 241 mappings / 70 not observed / 1 unresolved**.
+  and 70 `NOT_OBSERVED_PROPOSAL_ONLY`; evidence now promotes all 70. The
+  authenticated bounded refresh mapping is
+  `ffasmv1:mapping:1e4543b379bc47754a531b21a06243254113d2f218793827d00b0f7f68939a2d`:
+  **70 verified documents / 245 mappings / 70 not observed / 0 unresolved**.
+  MBB raw PP-OCRv6 `55,307.732` is retained, while same-crop VietOCR plus the
+  exact visible equation admits scale-0 `55.307.732`; local Gemma repeated the
+  PP punctuation error and therefore contributes no authority.
   The shared engine now handles exact source-group/component equivalence without
   double count and rejects narrative-date contamination unless one unique local
   period subset matches both document periods and column geometry.
@@ -59,9 +61,14 @@ older queue priorities where they conflict.
   one of the 140 topology payloads is typed-equal to the formal family-3
   checkpoint. A second run from the content/spec/engine-keyed per-document
   result cache takes 0.075 seconds (140 hits, zero recomputes). The cache remains
-  explicitly non-authoritative; the remaining formal task is to bind immutable
-  per-document feature roots and mint from their ordered result roots rather
-  than canonicalize 667,224 semantic lines again.
+  explicitly non-authoritative. That remaining trust seam is now closed by the
+  tracked document-evidence manifest
+  `ffdesv1:manifest:1d1bfcaf1c61274cea93c990a85e6e8dc9d2b42a077d4283150a1008987d5b93`:
+  its one-time full migration audit took 540.542 seconds, while authenticating
+  the store and root-checking the three affected documents took 1.407 seconds.
+  The complete bounded evidence+mapping refresh took 8.465 seconds for the two
+  cash documents and 6.514 seconds for the one central-bank-deposit document;
+  neither run OCRed nor canonicalized the other filings.
 - The pushed family-2 checkpoint is Git `0d623e7b1912` and restore-verified S3
   checkpoint `20260821T215421803905Z-0d623e7b1912`: manifest SHA-256
   `41fe820a4dd7a49e44c98a9e69d5d5dcff177c2964686e121405c4bd2f0a9ab6`,

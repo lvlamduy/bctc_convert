@@ -16,9 +16,9 @@ Quy ước:
 
 ## 1. Tiền, kim loại quý và đá quý
 
-- **Đã xác minh trên ma trận family-first hiện có:** 70/140 filing, gồm ACB 6,
-  MBB 18, VPB 18, HDB 4, VCB 4, CTG 2, BID 2 và VIB 16. Tổng cộng 284 mapping:
-  70 dòng VND, 70 dòng ngoại tệ, 70 tổng family, 67 vàng tiền tệ và 7 nhánh
+- **Đã xác minh trên ma trận family-first hiện có:** 72/140 filing, gồm ACB 6,
+  MBB 18, VPB 18, HDB 4, VCB 4, CTG 2, BID 2 và VIB 18. Tổng cộng 292 mapping:
+  72 dòng VND, 72 dòng ngoại tệ, 72 tổng family, 69 vàng tiền tệ và 7 nhánh
   tùy chọn chứng từ ngoại tệ/vàng phi tiền tệ/kim loại quý, đá quý khác. Kết
   quả annual-2025 trước đây được replay và tái sử dụng trong denominator này.
 - **Không quan sát thấy trong phạm vi filing đã quét:** 68 filing, gồm ACB 12,
@@ -26,27 +26,26 @@ Quy ước:
   trong cả 18 filing. Đây là `NOT_OBSERVED_PROPOSAL_ONLY`, không phải khẳng định
   ngoài đúng PDF đã bind. Bốn filing H1/2026 thực sự chưa có file không nằm
   trong denominator 140 và không bị tính là absence.
-- **Còn thiếu:** VIB Q2/2025 hợp nhất p32 và công ty mẹ p31, cùng dòng nguồn
-  `Tiền mặt bằng VND`. PP-OCRv6 đọc ô hiện kỳ lần lượt `1.460,873` và
-  `1,460.854`, làm parser giữ fail-closed vì dấu phân nhóm lẫn. Pixel và hai
-  request Gemma 4 độc lập đọc `1.460.873`/`1.460.854`, nhưng Gemma chưa phải
-  numeric authority của contract nên hai filing vẫn `UNRESOLVED`.
+- **Còn thiếu:** Không còn. VIB Q2/2025 hợp nhất p32 và công ty mẹ p31 đã được
+  đóng bằng rule mixed-separator chung: giữ nguyên dãy chữ số của PP-OCRv6,
+  bắt buộc VietOCR cùng crop đồng ý, lane là tiền scale 0 và phương trình nhìn
+  thấy đóng chính xác (`1.460.873 + 382.482 + 94 = 1.843.449`;
+  `1.460.854 + 382.482 + 94 = 1.843.430`). Gemma chỉ là chẩn đoán phụ.
 
 ## 2. Tiền gửi tại NHNN
 
-- **Đã xác minh trên ma trận family-first hiện có:** 69/140 filing, gồm ACB 6,
-  MBB 17, VPB 18, HDB 4, VCB 2, CTG 2, BID 2 và VIB 18. Tổng cộng 241 mapping:
-  67 dòng VND, 67 dòng ngoại tệ, 69 tổng family, 18 subtotal NHNN Việt Nam và
-  20 aggregate `Tiền gửi khác` 574. Kết quả annual-2025 trước đây được replay
+- **Đã xác minh trên ma trận family-first hiện có:** 70/140 filing, gồm ACB 6,
+  MBB 18, VPB 18, HDB 4, VCB 2, CTG 2, BID 2 và VIB 18. Tổng cộng 245 mapping:
+  68 dòng VND, 68 dòng ngoại tệ, 70 tổng family, 18 subtotal NHNN Việt Nam và
+  21 aggregate `Tiền gửi khác` 574. Kết quả annual-2025 trước đây được replay
   và tái sử dụng trong denominator này.
 - **Không quan sát thấy trong phạm vi filing đã quét:** 70 filing, gồm ACB 12,
   HDB 12, VCB 16, CTG 16 và BID 14. MBB/VPB/VIB không có absence. Đây là
   `NOT_OBSERVED_PROPOSAL_ONLY`, không phải khẳng định ngoài đúng PDF đã bind.
-- **Còn thiếu:** MBB H1/2026 công ty mẹ p39, dòng `Tiền gửi tại NHNNVN bằng
-  VND (i)`: `19.849.504` / `55.307.732`. PP-OCRv6 đọc ô so sánh
-  `55,307.732`, nên strict numeric parser không nhận đủ hai lane và giữ filing
-  `UNRESOLVED`. Pixel và VietOCR đều cho thấy `55.307.732`, nhưng VietOCR
-  semantic không được dùng thay numeric authority.
+- **Còn thiếu:** Không còn. MBB H1/2026 công ty mẹ p39 đã được đóng bởi cùng
+  rule chung. Raw PP-OCRv6 `55,307.732` vẫn được giữ nguyên; giá trị scale-0
+  `55.307.732` chỉ được nhận sau khi VietOCR cùng crop đồng ý và phương trình
+  `55.307.732 + 10.429.524 + 667.675 = 66.404.931` đóng chính xác.
 - Logic chung đã bao phủ parent nguồn NHNN Việt Nam có thể cùng tồn tại với
   hai child VND/ngoại tệ: parent chỉ thay đúng population hai child khi tổng
   khớp trên mọi lane, không cộng hai lần. Header kỳ còn cho phép chọn duy nhất
@@ -1483,8 +1482,8 @@ dùng.
 
 | Cụm | ACB | MBB | VPB | HDB | VCB | CTG | BID | VIB | Còn chưa map |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Tiền, kim loại quý, đá quý | ✓ 6 / — 12 | ✓ 18 | ✓ 18 | ✓ 4 / — 12 | ✓ 4 / — 14 | ✓ 2 / — 16 | ✓ 2 / — 14 | ✓ 16 / △ 2 | 2 dòng VIB Q2/2025: ô `Tiền mặt bằng VND` hiện kỳ còn UNRESOLVED do dấu phân nhóm OCR lẫn |
-| Tiền gửi tại NHNN | ✓ 6 / — 12 | ✓ 17 / △ 1 | ✓ 18 | ✓ 4 / — 12 | ✓ 2 / — 16 | ✓ 2 / — 16 | ✓ 2 / — 14 | ✓ 18 | 1 dòng MBB H1/2026 công ty mẹ p39 còn UNRESOLVED do token `55,307.732` có dấu phân nhóm lẫn |
+| Tiền, kim loại quý, đá quý | ✓ 6 / — 12 | ✓ 18 | ✓ 18 | ✓ 4 / — 12 | ✓ 4 / — 14 | ✓ 2 / — 16 | ✓ 2 / — 14 | ✓ 18 | 0; hai ô VIB mixed-separator đã đóng bằng same-crop + money-scale + exact-total consensus |
+| Tiền gửi tại NHNN | ✓ 6 / — 12 | ✓ 18 | ✓ 18 | ✓ 4 / — 12 | ✓ 2 / — 16 | ✓ 2 / — 16 | ✓ 2 / — 14 | ✓ 18 | 0; ô MBB `55,307.732` đã đóng bằng cùng rule chung |
 | Tiền gửi tại/cho vay TCTD khác — tài sản (575) | ✓ 8 / △ 10 | ✓ 16 / △ 2 | ✓ 14 / △ 4 | ✓ 6 / △ 10 | ✓ 18 | ✓ 13 / △ 3 / — 2 | ✓ 3 / △ 1 / — 12 | ✓ 6 / △ 12 | 42 filing còn UNRESOLVED; 84/140 filing, 701 mapping đã xác minh |
 | Tiền, vàng gửi và vay TCTD khác — nguồn vốn (1040) | ✓ p61 | ✓ p64 | ✓\* p58–59 | ✓\* p44 | ✓ p52 | ✓ p51 | ✓ p50 | ✓ p45 | 2 hàng phụ source-only: VPB IFC và HDB UPAS LC |
 | Chứng khoán kinh doanh | ✓ p47 | ✓ p49 | ✓ p43 | ✓ p34 | ✓ p37 | ✓ p41 | ✓ p40 | — | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; VIB chỉ có family đầu tư |

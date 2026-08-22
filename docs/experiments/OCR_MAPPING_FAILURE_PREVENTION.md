@@ -710,6 +710,26 @@ record the new gate.
   zero, while the neighbouring `544`/`15.088` values remain attached only to
   their own rows.  Audit-stamp singleton columns must remain excluded.
 
+### F-049 — Treating mixed thousands punctuation as a decimal or using model majority vote
+
+- Observed failure: PP-OCRv6 emitted `1.460,873`, `1,460.854` and `55,307.732`
+  for three rounded monetary integers. A decimal interpretation dropped the
+  row from the scale-0 accounting lane. Gemma agreed with the pixels on the two
+  VIB crops but repeated PP-OCR's punctuation error on the MBB crop.
+- Root cause: punctuation was being treated as numeric meaning before checking
+  the reporting unit, lane scale and visible accounting equation; alternatively,
+  a simple OCR majority could promote two correlated wrong readers.
+- Correction: preserve the complete digit sequence as a typed
+  `MIXED_GROUPED_INTEGER_CANDIDATE`, never as final numeric truth. Admit it only
+  when same-crop VietOCR yields the identical scale-0 coefficient, the column
+  is a monetary lane with at least two scale-0 peers, and the candidate
+  participates in one exact visible additive/hierarchical equation. Keep the
+  raw PP token unchanged. Gemma remains diagnostic only.
+- Regression gate: the three recorded cells and totals must close exactly;
+  changing any digit, removing the money unit, changing a peer to decimal, or
+  removing the equation must restore `UNRESOLVED`. Candidate punctuation in an
+  unrelated family region must not be promoted.
+
 ## Maintenance checklist
 
 - Add a new `F-xxx` entry whenever a corrected failure is discovered.

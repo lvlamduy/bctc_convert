@@ -1,6 +1,6 @@
 # Unresolved mapping and adjudication review ledger
 
-Updated: 2026-08-21 (UTC)
+Updated: 2026-08-22 (UTC)
 
 This is the cumulative human-readable file requested for every source item or
 family region that could not initially be mapped.  Entries remain here after
@@ -17,47 +17,47 @@ candidate, accounting/structure checks that passed or failed, the unresolved
 reason, and the next evidence needed.  Bank/report/page fields are evidence
 locators only and are never parser or mapping conditions.
 
-Ledger total: **363 entries**.  Current open queue: **146**.  Closed history:
-**129** row/graph resolutions and **88** confirmed bound-report family absences.
+Ledger total: **363 entries**.  Current open queue: **143**.  Closed history:
+**132** row/graph resolutions and **88** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
-## OPEN — family-first 140-filing `Tiền gửi tại NHNN`
+## CLOSED — family-first 140-filing `Tiền gửi tại NHNN`
 
-Formal topology/evidence/schema replay scanned all 140 available filings and
-produced 69 `VERIFIED_BY_CODEX`, 70 `NOT_OBSERVED_PROPOSAL_ONLY` and one
-`UNRESOLVED`. The unresolved region is structurally unique and has the correct
-parent, period axes, unit and visible family total; only its comparative numeric
-token is not admitted by the strict numeric parser.
+The baseline formal replay scanned all 140 available filings. A bounded refresh
+then authenticated and root-checked only the affected MBB document packet,
+proved it was the only mixed-separator candidate inside this family's topology
+regions, and produced 70 `VERIFIED_BY_CODEX`, 70
+`NOT_OBSERVED_PROPOSAL_ONLY`, zero `UNRESOLVED` and 245 mappings.
 
-| ID | Bank/report | Trang | Khoản mục nguồn và giá trị nhìn thấy | Lý do còn OPEN |
+| ID | Bank/report | Trang | Khoản mục nguồn và giá trị nhìn thấy | Kết quả đóng |
 | --- | --- | ---: | --- | --- |
-| FF-CBD-001 | MBB H1/2026 công ty mẹ | 39 | `Tiền gửi tại NHNNVN bằng VND (i)`: `19.849.504` / `55.307.732`; PP-OCRv6 comparative token `55,307.732`; sample `sample-000498485`; crop SHA `232a952a6707802818f1971ccbd785252fc61ee28375d4a1a44f27df419daa42` | Dấu phân nhóm `,`/`.` lẫn làm comparative lane không được strict numeric parser nhận, nên child lanes và additive closure chưa đầy đủ. Pixel và VietOCR cùng đọc `55.307.732`, nhưng VietOCR là semantic authority, không phải numeric truth; không sửa token chỉ để phép cộng đóng. Chờ authenticated numeric challenger rồi replay family. |
+| FF-CBD-001 | MBB H1/2026 công ty mẹ | 39 | `Tiền gửi tại NHNNVN bằng VND (i)`: `19.849.504` / `55.307.732`; raw PP-OCRv6 comparative token `55,307.732`; sample `sample-000498485`; crop SHA `232a952a6707802818f1971ccbd785252fc61ee28375d4a1a44f27df419daa42` | `CLOSED`: giữ nguyên raw token, bảo toàn dãy chữ số thành candidate scale 0; VietOCR cùng crop đọc `55.307.732`, lane tiền có các peer scale 0 và `55.307.732 + 10.429.524 + 667.675 = 66.404.931` đóng chính xác. Gemma lặp lại dấu sai của PP-OCR nên không tham gia authority. |
 
 Machine-readable authorities:
 `output/calibration/family-first-topology-sweeps-v1/central-bank-deposits.json`,
-`output/calibration/family-first-accounting-evidence-sweeps-v1/central-bank-deposits.json`
-và
-`output/calibration/family-first-accounting-schema-mappings-v1/central-bank-deposits.json`.
+`output/calibration/family-first-accounting-incremental-refresh-v1/central-bank-deposits-evidence.json`,
+`output/calibration/family-first-accounting-incremental-refresh-v1/central-bank-deposits-mapping.json`
+và receipt cùng thư mục.
 
-## OPEN — family-first 140-filing `Tiền, kim loại quý và đá quý`
+## CLOSED — family-first 140-filing `Tiền, kim loại quý và đá quý`
 
-Formal topology/evidence/schema replay scanned all 140 available filings and
-produced 70 `VERIFIED_BY_CODEX`, 68 `NOT_OBSERVED_PROPOSAL_ONLY` and the two
-source rows below as `UNRESOLVED`. Both regions are structurally unique, have
-the correct parent/children, two period axes and visible total; only the current
-VND numeric token is not admitted by the strict numeric parser.
+The baseline formal replay scanned all 140 available filings. A bounded refresh
+authenticated and root-checked only the two affected VIB document packets,
+proved they were the complete mixed-separator scope inside this family's
+topology regions, and produced 72 `VERIFIED_BY_CODEX`, 68
+`NOT_OBSERVED_PROPOSAL_ONLY`, zero `UNRESOLVED` and 292 mappings.
 
-| ID | Bank/report | Trang | Khoản mục nguồn và giá trị nhìn thấy | Lý do còn OPEN |
+| ID | Bank/report | Trang | Khoản mục nguồn và giá trị nhìn thấy | Kết quả đóng |
 | --- | --- | ---: | --- | --- |
-| FF-CASH-001 | VIB Q2/2025 hợp nhất | 32 | `Tiền mặt bằng VND`: `1.460.873` / `1.195.200`; PP-OCRv6 current token `1.460,873`; crop SHA `ef1eca9f1bb9cfb0c2494ad7bd1ad5c7b8e05054457cb3b9276ab9833fac49aa` | Dấu `.`/`,` lẫn làm token bị hiểu thành số thập phân scale 3, nên thiếu current lane và phép cộng không được promote. Pixel và fresh-context Gemma 4 cùng đọc `1.460.873`, nhưng chưa có authenticated Gemma/numeric-challenger receipt để thay numeric authority. |
-| FF-CASH-002 | VIB Q2/2025 công ty mẹ | 31 | `Tiền mặt bằng VND`: `1.460.854` / `1.195.181`; PP-OCRv6 current token `1,460.854`; crop SHA `99ff5a40cacb70c9b4ca1c257a946ed8484400e8d51823c03013de1da462ca40` | Cùng lỗi mixed separator; pixel và fresh-context Gemma 4 cùng đọc `1.460.854`. Không sửa token chỉ để total đóng; chờ generic authenticated challenger receipt rồi replay toàn family. |
+| FF-CASH-001 | VIB Q2/2025 hợp nhất | 32 | `Tiền mặt bằng VND`: `1.460.873` / `1.195.200`; raw PP-OCRv6 current token `1.460,873`; crop SHA `ef1eca9f1bb9cfb0c2494ad7bd1ad5c7b8e05054457cb3b9276ab9833fac49aa` | `CLOSED`: VietOCR cùng crop và hai request Gemma độc lập đọc `1.460.873`; lane tiền scale 0 và `1.460.873 + 382.482 + 94 = 1.843.449` đóng chính xác. |
+| FF-CASH-002 | VIB Q2/2025 công ty mẹ | 31 | `Tiền mặt bằng VND`: `1.460.854` / `1.195.181`; raw PP-OCRv6 current token `1,460.854`; crop SHA `99ff5a40cacb70c9b4ca1c257a946ed8484400e8d51823c03013de1da462ca40` | `CLOSED`: VietOCR cùng crop và hai request Gemma độc lập đọc `1.460.854`; lane tiền scale 0 và `1.460.854 + 382.482 + 94 = 1.843.430` đóng chính xác. |
 
 Machine-readable authorities:
 `output/calibration/family-first-topology-sweeps-v1/cash-precious-metals.json`,
-`output/calibration/family-first-accounting-evidence-sweeps-v1/cash-precious-metals.json`
-và
-`output/calibration/family-first-accounting-schema-mappings-v1/cash-precious-metals.json`.
+`output/calibration/family-first-accounting-incremental-refresh-v1/cash-precious-metals-evidence.json`,
+`output/calibration/family-first-accounting-incremental-refresh-v1/cash-precious-metals-mapping.json`
+và receipt cùng thư mục.
 
 ## CLOSED — annual-2025 `Chi phí dự phòng rủi ro tín dụng`
 

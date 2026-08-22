@@ -776,3 +776,25 @@ Status meanings:
   scans in 0.075 seconds. All 140 scans are typed-equal to the prior formal
   evidence. The authenticated packet/result-root aggregate must still replace
   the old formal whole-corpus mint gate before the next formal checkpoint.
+
+## RFP-037 — Replaying 140 filings for a parser change that affects three cells
+
+- **Pattern:** one generic numeric-parser correction changes two family trials
+  in VIB and one in MBB, but the legacy public replay would deserialize and
+  canonicalize all 667,224 lines again.
+- **Cause:** source-evidence authentication was only available as a corpus-wide
+  capability, with no public document-local snapshot whose rows could be
+  checked against an immutable packet root.
+- **Do not:** OCR the corpus again, trust raw SQLite rows, patch generated JSON
+  by hand, or assume only the three known bank/page locators are affected.
+- **Generic primitive/fix:** authenticate the tracked store once; query every
+  syntactically affected token inside the baseline family's topology regions;
+  require that exhaustive scope to equal the requested document ordinals;
+  recompute each selected document packet root and only those family trials;
+  reuse unchanged baseline trials and rebuild schema mapping deterministically.
+- **Status:** `RESOLVED` for bounded family/parser changes. The one-time store
+  audit took 540.542 s. Store authentication plus three packet snapshots took
+  1.407 s; the two-document cash refresh took 8.465 s and the one-document
+  central-bank-deposit refresh 6.514 s. No OCR or other-document evidence
+  replay occurred. Full replay remains required when OCR, geometry, topology,
+  dash-rescue pixels or the upstream store revision changes.
