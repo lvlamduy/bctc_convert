@@ -44,6 +44,7 @@ __all__ = [
     "project_authenticated_family_first_document_evidence_store_v1",
     "read_authenticated_family_first_document_evidence_snapshot_v1",
     "read_authenticated_family_first_document_packet_v1",
+    "read_authenticated_family_first_topology_scans_v1",
     "validate_family_first_document_evidence_manifest_shape_v1",
 ]
 
@@ -718,6 +719,43 @@ def read_authenticated_family_first_document_packet_v1(
     ):
         raise _error("document evidence packet ordinal lies outside the store")
     return copy.deepcopy(state.manifest["documents"][document_ordinal - 1])
+
+
+def read_authenticated_family_first_topology_scans_v1(
+    capability: AuthenticatedFamilyFirstDocumentEvidenceStoreV1,
+    family_spec: Any,
+    *,
+    jobs: int = 12,
+) -> tuple[dict[str, Any], ...]:
+    """Return exact source-ordered topology scans through a disposable result cache.
+
+    The SQLite evidence store remains the authenticated source.  Cache hits are
+    keyed by each document identity, the exact family specification, and the
+    topology-engine trust closure; misses alone are recomputed in parallel.
+    """
+
+    state = _live_store(capability)
+    topology_path = state.root / cache_v1.DEFAULT_TOPOLOGY_DATABASE_PATH
+    try:
+        cache_v1.refresh_cached_topology_results_v1(
+            state.database_path,
+            topology_path,
+            family_spec,
+            jobs=jobs,
+        )
+        scans = cache_v1.read_cached_topology_results_v1(
+            state.database_path,
+            topology_path,
+            family_spec,
+        )
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise _error("cannot build exact authenticated family topology cache") from exc
+    if len(scans) != state.manifest["metrics"]["document_count"]:
+        raise _error("authenticated family topology denominator drifted")
+    final = _live_store(capability)
+    if final is not state:
+        raise _error("document evidence store changed during family topology scan")
+    return tuple(canonical_clone_v1(scan) for scan in scans)
 
 
 def read_authenticated_family_first_document_evidence_snapshot_v1(

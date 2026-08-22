@@ -13,6 +13,7 @@ from itertools import combinations
 from statistics import median
 from typing import Any
 
+from bctc_ai.evaluation import accounting_family_row_axis_v1 as row_axis_v1
 from bctc_ai.evaluation.accounting_family_row_axis_v1 import (
     AccountingFamilyRowAxisV1Error,
     validate_accounting_family_row_axis_replay_v1,
@@ -736,7 +737,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
     return canonical_clone_v1(value)
 
 
-def build_accounting_family_column_context_v1(
+def _build_accounting_family_column_context_v1(
     row_axis: Any,
     pages: Any,
     family_topology_spec: Any,
@@ -744,15 +745,18 @@ def build_accounting_family_column_context_v1(
     period_semantics: str,
     expected_lane_unit_kinds: Any,
     visible_dash_rescues: Any = (),
+    replay_row_axis: bool,
 ) -> dict[str, Any]:
-    """Bind local/document period and unit evidence to every body-derived lane."""
-
     try:
-        axis = validate_accounting_family_row_axis_replay_v1(
-            row_axis,
-            pages,
-            family_topology_spec,
-            visible_dash_rescues=visible_dash_rescues,
+        axis = (
+            validate_accounting_family_row_axis_replay_v1(
+                row_axis,
+                pages,
+                family_topology_spec,
+                visible_dash_rescues=visible_dash_rescues,
+            )
+            if replay_row_axis
+            else row_axis_v1._validate_result(row_axis)
         )
     except AccountingFamilyRowAxisV1Error as exc:
         raise _error("family column context row-axis replay failed") from exc
@@ -829,6 +833,48 @@ def build_accounting_family_column_context_v1(
             **material,
             "column_context_id": "afccv1:context:" + canonical_json_sha256_v1(material),
         }
+    )
+
+
+def build_accounting_family_column_context_v1(
+    row_axis: Any,
+    pages: Any,
+    family_topology_spec: Any,
+    *,
+    period_semantics: str,
+    expected_lane_unit_kinds: Any,
+    visible_dash_rescues: Any = (),
+) -> dict[str, Any]:
+    """Bind local/document period and unit evidence to every body-derived lane."""
+
+    return _build_accounting_family_column_context_v1(
+        row_axis,
+        pages,
+        family_topology_spec,
+        period_semantics=period_semantics,
+        expected_lane_unit_kinds=expected_lane_unit_kinds,
+        visible_dash_rescues=visible_dash_rescues,
+        replay_row_axis=True,
+    )
+
+
+def _build_accounting_family_column_context_from_authenticated_row_axis_v1(
+    row_axis: Any,
+    pages: Any,
+    family_topology_spec: Any,
+    *,
+    period_semantics: str,
+    expected_lane_unit_kinds: Any,
+    visible_dash_rescues: Any = (),
+) -> dict[str, Any]:
+    return _build_accounting_family_column_context_v1(
+        row_axis,
+        pages,
+        family_topology_spec,
+        period_semantics=period_semantics,
+        expected_lane_unit_kinds=expected_lane_unit_kinds,
+        visible_dash_rescues=visible_dash_rescues,
+        replay_row_axis=False,
     )
 
 

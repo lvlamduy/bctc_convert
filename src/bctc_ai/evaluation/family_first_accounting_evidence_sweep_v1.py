@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from bctc_ai.evaluation import accounting_additive_table_closure_v1 as additive_v1
+from bctc_ai.evaluation import accounting_family_column_context_v1 as column_context_v1
 from bctc_ai.evaluation import accounting_family_row_axis_v1 as row_axis_v1
 from bctc_ai.evaluation import accounting_family_topology_v1 as topology_v1
 from bctc_ai.evaluation import accounting_hierarchical_table_closure_v1 as hierarchical_v1
@@ -19,18 +21,9 @@ from bctc_ai.evaluation import family_first_authenticated_page_region_v1 as rend
 from bctc_ai.evaluation import family_first_document_evidence_store_v1 as document_store_v1
 from bctc_ai.evaluation import family_first_ppocrv6_numeric_index_v3 as numeric_v3
 from bctc_ai.evaluation import family_first_semantic_index_v1 as semantic_v1
-from bctc_ai.evaluation.accounting_additive_table_closure_v1 import (
-    build_accounting_additive_table_closure_v1,
-)
-from bctc_ai.evaluation.accounting_family_column_context_v1 import (
-    build_accounting_family_column_context_v1,
-)
 from bctc_ai.evaluation.accounting_family_document_axis_join_v1 import (
     build_accounting_family_document_axis_join_v1,
     project_accounting_family_document_pages_v1,
-)
-from bctc_ai.evaluation.accounting_family_row_axis_v1 import (
-    build_accounting_family_row_axis_v1,
 )
 from bctc_ai.evaluation.adaptive_accounting_table_geometry_v1 import (
     propose_missing_value_lane_regions_v1,
@@ -513,11 +506,10 @@ def _candidate_evidence_from_joined_pages(
     for candidate_ordinal, topology_region in enumerate(topology_scan["regions"]):
         try:
             base_row_axis = (
-                build_accounting_family_row_axis_v1(joined_pages, family_spec)
-                if topology_scan["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
-                else row_axis_v1.build_accounting_family_row_axis_for_topology_region_v1(
+                row_axis_v1._build_accounting_family_row_axis_from_authenticated_topology_scan_v1(
                     joined_pages,
                     family_spec,
+                    topology_scan,
                     topology_region,
                 )
             )
@@ -527,15 +519,10 @@ def _candidate_evidence_from_joined_pages(
                 render_snapshots=render_snapshots,
             )
             row_axis = (
-                build_accounting_family_row_axis_v1(
+                row_axis_v1._build_accounting_family_row_axis_from_authenticated_topology_scan_v1(
                     joined_pages,
                     family_spec,
-                    visible_dash_rescues=dash_rescues,
-                )
-                if topology_scan["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
-                else row_axis_v1.build_accounting_family_row_axis_for_topology_region_v1(
-                    joined_pages,
-                    family_spec,
+                    topology_scan,
                     topology_region,
                     visible_dash_rescues=dash_rescues,
                 )
@@ -552,7 +539,7 @@ def _candidate_evidence_from_joined_pages(
             )
             continue
         try:
-            column_context = build_accounting_family_column_context_v1(
+            column_context = column_context_v1._build_accounting_family_column_context_from_authenticated_row_axis_v1(
                 row_axis,
                 joined_pages,
                 family_spec,
@@ -573,7 +560,7 @@ def _candidate_evidence_from_joined_pages(
             continue
         try:
             if evaluation_spec["closure_policy"] == "HIERARCHICAL_RECURSIVE_CORROBORATE_OR_DERIVE":
-                closure = hierarchical_v1.build_accounting_hierarchical_table_closure_v1(
+                closure = hierarchical_v1._build_accounting_hierarchical_table_closure_from_authenticated_row_axis_v1(
                     row_axis,
                     joined_pages,
                     family_spec,
@@ -581,7 +568,7 @@ def _candidate_evidence_from_joined_pages(
                     visible_dash_rescues=dash_rescues,
                 )
             else:
-                closure = build_accounting_additive_table_closure_v1(
+                closure = additive_v1._build_accounting_additive_table_closure_from_authenticated_row_axis_v1(
                     row_axis,
                     joined_pages,
                     family_spec,
@@ -887,12 +874,15 @@ def _trial_from_document_store_snapshot_v1(
     snapshot: dict[str, Any],
     family_spec: dict[str, Any],
     evaluation_spec: dict[str, Any],
+    *,
+    topology_scan: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     packet = snapshot["document_packet"]
     joined_pages = snapshot["joined_pages"]
-    topology_scan = topology_v1.build_accounting_family_topology_scan_v1(
-        _topology_pages_from_document_snapshot_v1(joined_pages), family_spec
-    )
+    if topology_scan is None:
+        topology_scan = topology_v1.build_accounting_family_topology_scan_v1(
+            _topology_pages_from_document_snapshot_v1(joined_pages), family_spec
+        )
     base = {
         "document_ordinal": packet["document_ordinal"],
         "private_provenance": {
@@ -983,6 +973,12 @@ def build_authenticated_family_first_accounting_evidence_sweep_from_document_sto
         document_store_capability
     )
     document_count = projection["metrics"]["document_count"]
+    topology_scans = document_store_v1.read_authenticated_family_first_topology_scans_v1(
+        document_store_capability,
+        family_spec,
+    )
+    if len(topology_scans) != document_count:
+        raise _error("document-store topology denominator differs from its packet axis")
     trials = []
     for ordinal in range(1, document_count + 1):
         packet = document_store_v1.read_authenticated_family_first_document_packet_v1(
@@ -993,7 +989,14 @@ def build_authenticated_family_first_accounting_evidence_sweep_from_document_sto
             document_ordinal=ordinal,
             selected_pages=tuple(range(1, packet["page_count"] + 1)),
         )
-        trials.append(_trial_from_document_store_snapshot_v1(snapshot, family_spec, policy))
+        trials.append(
+            _trial_from_document_store_snapshot_v1(
+                snapshot,
+                family_spec,
+                policy,
+                topology_scan=topology_scans[ordinal - 1],
+            )
+        )
     material = {
         "authority": canonical_clone_v1(_AUTHORITY),
         "claim_boundary": CLAIM_BOUNDARY,

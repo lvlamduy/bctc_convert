@@ -455,8 +455,8 @@ def test_optional_closure_policy_still_vetoes_a_visible_mismatching_total(monkey
 def test_one_malformed_period_axis_stays_document_local_unresolved(monkeypatch) -> None:
     _patch_live_inputs(monkeypatch)
     monkeypatch.setattr(
-        subject,
-        "build_accounting_family_column_context_v1",
+        subject.column_context_v1,
+        "_build_accounting_family_column_context_from_authenticated_row_axis_v1",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(ValueError("period axis drifted")),
     )
 
@@ -669,6 +669,13 @@ def test_document_store_sweep_recomputes_each_packet_once_without_live_ocr(monke
     snapshots = {
         ordinal: _document_store_snapshot(document) for ordinal, document in documents.items()
     }
+    topology_scans = tuple(
+        subject.topology_v1.build_accounting_family_topology_scan_v1(
+            subject._topology_pages_from_document_snapshot_v1(snapshot["joined_pages"]),
+            _family_spec(),
+        )
+        for snapshot in snapshots.values()
+    )
     calls = {"packet": [], "snapshot": []}
     monkeypatch.setattr(
         subject.document_store_v1,
@@ -700,6 +707,16 @@ def test_document_store_sweep_recomputes_each_packet_once_without_live_ocr(monke
         subject.document_store_v1,
         "read_authenticated_family_first_document_evidence_snapshot_v1",
         snapshot,
+    )
+    monkeypatch.setattr(
+        subject.document_store_v1,
+        "read_authenticated_family_first_topology_scans_v1",
+        lambda _cap, _family: copy.deepcopy(topology_scans),
+    )
+    monkeypatch.setattr(
+        subject.topology_v1,
+        "build_accounting_family_topology_scan_v1",
+        lambda *_args, **_kwargs: pytest.fail("document-store sweep rescanned topology"),
     )
     monkeypatch.setattr(
         subject.semantic_v1,

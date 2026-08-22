@@ -600,6 +600,33 @@ def test_noncandidate_pages_need_no_render_width_but_matched_pages_do() -> None:
         build_accounting_family_row_axis_v1(pages, _spec())
 
 
+def test_authenticated_same_turn_topology_seam_avoids_full_rescan(monkeypatch) -> None:
+    pages = _ordinary_pages()
+    spec = _spec()
+    topology = row_axis_v1.topology_v1.build_accounting_family_topology_scan_v1(
+        row_axis_v1._topology_pages(row_axis_v1._pages(pages)), spec
+    )
+    monkeypatch.setattr(
+        row_axis_v1.topology_v1,
+        "build_accounting_family_topology_scan_v1",
+        lambda *_args, **_kwargs: pytest.fail("same-turn row axis rescanned the full document"),
+    )
+
+    result = row_axis_v1._build_accounting_family_row_axis_from_authenticated_topology_scan_v1(
+        pages, spec, topology, topology["regions"][0]
+    )
+
+    assert result["topology_scan_id"] == topology["scan_id"]
+    assert [row["role"] for row in result["rows"]] == ["SHORT_TERM", "MEDIUM_TERM"]
+
+    forged = copy.deepcopy(topology)
+    forged["status"] = "UNRESOLVED_NO_COMPLETE_REGION"
+    with pytest.raises(AccountingFamilyRowAxisV1Error, match="topology input drifted"):
+        row_axis_v1._build_accounting_family_row_axis_from_authenticated_topology_scan_v1(
+            pages, spec, forged, topology["regions"][0]
+        )
+
+
 def test_exact_replay_rejects_coordinated_value_mutation_and_types() -> None:
     pages = _ordinary_pages()
     result = build_accounting_family_row_axis_v1(pages, _spec())

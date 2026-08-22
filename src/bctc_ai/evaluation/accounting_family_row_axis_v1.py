@@ -973,6 +973,38 @@ def build_accounting_family_row_axis_for_topology_region_v1(
     return _build_axis(parsed_pages, topology, selected[0], visible_dash_rescues)
 
 
+def _build_accounting_family_row_axis_from_authenticated_topology_scan_v1(
+    pages: Any,
+    family_topology_spec: Any,
+    topology_scan: Any,
+    topology_region: Any,
+    *,
+    visible_dash_rescues: Any = (),
+) -> dict[str, Any]:
+    """Bind a region from an already authenticated same-engine scan.
+
+    This private seam avoids rebuilding the complete-document semantic scan
+    during row/column/accounting evaluation.  Its caller must obtain the scan
+    from a live evidence capability or from the same-turn topology builder;
+    public replay continues to rebuild the scan from source pages.
+    """
+
+    parsed_pages = _pages(pages)
+    try:
+        topology = topology_v1._validate_result(topology_scan)
+        compiled = topology_v1._spec(family_topology_spec)
+    except topology_v1.AccountingFamilyTopologyV1Error as exc:
+        raise _error("authenticated family row-axis topology input drifted") from exc
+    if topology["family_id"] != compiled["family_id"] or type(topology_region) is not dict:
+        raise _error("authenticated family row-axis topology family/region drifted")
+    selected = [
+        region for region in topology["regions"] if same_typed_json_v1(region, topology_region)
+    ]
+    if len(selected) != 1:
+        raise _error("authenticated selected topology region is not one exact scan candidate")
+    return _build_axis(parsed_pages, topology, selected[0], visible_dash_rescues)
+
+
 def validate_accounting_family_row_axis_replay_v1(
     value: Any,
     pages: Any,

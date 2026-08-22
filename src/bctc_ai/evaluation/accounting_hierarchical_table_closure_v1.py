@@ -330,22 +330,25 @@ def _validate_result(value: Any) -> dict[str, Any]:
     return canonical_clone_v1(value)
 
 
-def build_accounting_hierarchical_table_closure_v1(
+def _build_accounting_hierarchical_table_closure_v1(
     row_axis: Any,
     pages: Any,
     family_topology_spec: Any,
     hierarchy_spec: Any,
     *,
     visible_dash_rescues: Any = (),
+    replay_row_axis: bool,
 ) -> dict[str, Any]:
-    """Resolve visible or exact-derived hierarchical accounting roles."""
-
     try:
-        axis = row_axis_v1.validate_accounting_family_row_axis_replay_v1(
-            row_axis,
-            pages,
-            family_topology_spec,
-            visible_dash_rescues=visible_dash_rescues,
+        axis = (
+            row_axis_v1.validate_accounting_family_row_axis_replay_v1(
+                row_axis,
+                pages,
+                family_topology_spec,
+                visible_dash_rescues=visible_dash_rescues,
+            )
+            if replay_row_axis
+            else row_axis_v1._validate_result(row_axis)
         )
     except row_axis_v1.AccountingFamilyRowAxisV1Error as exc:
         raise _error("hierarchical closure row-axis replay failed") from exc
@@ -489,6 +492,44 @@ def build_accounting_hierarchical_table_closure_v1(
     }
     return _validate_result(
         {**material, "closure_id": "ahtcv1:closure:" + canonical_json_sha256_v1(material)}
+    )
+
+
+def build_accounting_hierarchical_table_closure_v1(
+    row_axis: Any,
+    pages: Any,
+    family_topology_spec: Any,
+    hierarchy_spec: Any,
+    *,
+    visible_dash_rescues: Any = (),
+) -> dict[str, Any]:
+    """Resolve visible or exact-derived hierarchical accounting roles."""
+
+    return _build_accounting_hierarchical_table_closure_v1(
+        row_axis,
+        pages,
+        family_topology_spec,
+        hierarchy_spec,
+        visible_dash_rescues=visible_dash_rescues,
+        replay_row_axis=True,
+    )
+
+
+def _build_accounting_hierarchical_table_closure_from_authenticated_row_axis_v1(
+    row_axis: Any,
+    pages: Any,
+    family_topology_spec: Any,
+    hierarchy_spec: Any,
+    *,
+    visible_dash_rescues: Any = (),
+) -> dict[str, Any]:
+    return _build_accounting_hierarchical_table_closure_v1(
+        row_axis,
+        pages,
+        family_topology_spec,
+        hierarchy_spec,
+        visible_dash_rescues=visible_dash_rescues,
+        replay_row_axis=False,
     )
 
 

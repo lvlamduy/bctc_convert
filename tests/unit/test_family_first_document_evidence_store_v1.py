@@ -7,6 +7,7 @@ import pickle
 import sqlite3
 import subprocess
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -322,3 +323,42 @@ def test_authenticated_document_snapshot_recomputes_one_packet_and_reads_joined_
         store_v1.read_authenticated_family_first_document_evidence_snapshot_v1(
             object(), document_ordinal=1, selected_pages=(1,)
         )
+
+
+def test_authenticated_topology_accessor_reuses_exact_engine_keyed_cache(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    state = SimpleNamespace(
+        database_path=tmp_path / "evidence.sqlite3",
+        manifest={"metrics": {"document_count": 2}},
+        root=tmp_path,
+    )
+    scans = ({"scan_id": "scan-1"}, {"scan_id": "scan-2"})
+    calls = []
+    monkeypatch.setattr(store_v1, "_live_store", lambda _cap: state)
+    monkeypatch.setattr(
+        store_v1.cache_v1,
+        "refresh_cached_topology_results_v1",
+        lambda database, topology, family, *, jobs: calls.append(
+            (database, topology, family, jobs)
+        ),
+    )
+    monkeypatch.setattr(
+        store_v1.cache_v1,
+        "read_cached_topology_results_v1",
+        lambda _database, _topology, _family: scans,
+    )
+
+    result = store_v1.read_authenticated_family_first_topology_scans_v1(
+        object(), {"family_id": "FAMILY"}, jobs=7
+    )
+
+    assert result == scans
+    assert calls == [
+        (
+            state.database_path,
+            tmp_path / store_v1.cache_v1.DEFAULT_TOPOLOGY_DATABASE_PATH,
+            {"family_id": "FAMILY"},
+            7,
+        )
+    ]
