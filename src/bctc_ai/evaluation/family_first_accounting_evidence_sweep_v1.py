@@ -511,58 +511,94 @@ def _candidate_evidence_from_joined_pages(
 ) -> list[dict[str, Any]]:
     candidate_evidence = []
     for candidate_ordinal, topology_region in enumerate(topology_scan["regions"]):
-        base_row_axis = (
-            build_accounting_family_row_axis_v1(joined_pages, family_spec)
-            if topology_scan["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
-            else row_axis_v1.build_accounting_family_row_axis_for_topology_region_v1(
-                joined_pages,
-                family_spec,
-                topology_region,
+        try:
+            base_row_axis = (
+                build_accounting_family_row_axis_v1(joined_pages, family_spec)
+                if topology_scan["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+                else row_axis_v1.build_accounting_family_row_axis_for_topology_region_v1(
+                    joined_pages,
+                    family_spec,
+                    topology_region,
+                )
             )
-        )
-        dash_rescues = _visible_dash_rescue_inputs(
-            joined_pages=joined_pages,
-            row_axis=base_row_axis,
-            render_snapshots=render_snapshots,
-        )
-        row_axis = (
-            build_accounting_family_row_axis_v1(
-                joined_pages,
-                family_spec,
-                visible_dash_rescues=dash_rescues,
+            dash_rescues = _visible_dash_rescue_inputs(
+                joined_pages=joined_pages,
+                row_axis=base_row_axis,
+                render_snapshots=render_snapshots,
             )
-            if topology_scan["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
-            else row_axis_v1.build_accounting_family_row_axis_for_topology_region_v1(
-                joined_pages,
-                family_spec,
-                topology_region,
-                visible_dash_rescues=dash_rescues,
+            row_axis = (
+                build_accounting_family_row_axis_v1(
+                    joined_pages,
+                    family_spec,
+                    visible_dash_rescues=dash_rescues,
+                )
+                if topology_scan["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+                else row_axis_v1.build_accounting_family_row_axis_for_topology_region_v1(
+                    joined_pages,
+                    family_spec,
+                    topology_region,
+                    visible_dash_rescues=dash_rescues,
+                )
             )
-        )
-        column_context = build_accounting_family_column_context_v1(
-            row_axis,
-            joined_pages,
-            family_spec,
-            period_semantics=evaluation_spec["period_semantics"],
-            expected_lane_unit_kinds=evaluation_spec["expected_lane_unit_kinds"],
-            visible_dash_rescues=dash_rescues,
-        )
-        if evaluation_spec["closure_policy"] == "HIERARCHICAL_RECURSIVE_CORROBORATE_OR_DERIVE":
-            closure = hierarchical_v1.build_accounting_hierarchical_table_closure_v1(
+        except ValueError as exc:
+            candidate_evidence.append(
+                {
+                    "additive_closure": None,
+                    "candidate_ordinal": candidate_ordinal,
+                    "column_context": None,
+                    "reasons": [f"ROW_AXIS_ERROR:{type(exc).__name__}:{exc}"],
+                    "row_axis": None,
+                }
+            )
+            continue
+        try:
+            column_context = build_accounting_family_column_context_v1(
                 row_axis,
                 joined_pages,
                 family_spec,
-                evaluation_spec["hierarchical_closure_spec"],
+                period_semantics=evaluation_spec["period_semantics"],
+                expected_lane_unit_kinds=evaluation_spec["expected_lane_unit_kinds"],
                 visible_dash_rescues=dash_rescues,
             )
-        else:
-            closure = build_accounting_additive_table_closure_v1(
-                row_axis,
-                joined_pages,
-                family_spec,
-                source_group_equivalences=evaluation_spec.get("source_group_equivalences", []),
-                visible_dash_rescues=dash_rescues,
+        except ValueError as exc:
+            candidate_evidence.append(
+                {
+                    "additive_closure": None,
+                    "candidate_ordinal": candidate_ordinal,
+                    "column_context": None,
+                    "reasons": [f"COLUMN_CONTEXT_ERROR:{type(exc).__name__}:{exc}"],
+                    "row_axis": row_axis,
+                }
             )
+            continue
+        try:
+            if evaluation_spec["closure_policy"] == "HIERARCHICAL_RECURSIVE_CORROBORATE_OR_DERIVE":
+                closure = hierarchical_v1.build_accounting_hierarchical_table_closure_v1(
+                    row_axis,
+                    joined_pages,
+                    family_spec,
+                    evaluation_spec["hierarchical_closure_spec"],
+                    visible_dash_rescues=dash_rescues,
+                )
+            else:
+                closure = build_accounting_additive_table_closure_v1(
+                    row_axis,
+                    joined_pages,
+                    family_spec,
+                    source_group_equivalences=evaluation_spec.get("source_group_equivalences", []),
+                    visible_dash_rescues=dash_rescues,
+                )
+        except ValueError as exc:
+            candidate_evidence.append(
+                {
+                    "additive_closure": None,
+                    "candidate_ordinal": candidate_ordinal,
+                    "column_context": column_context,
+                    "reasons": [f"ACCOUNTING_CLOSURE_ERROR:{type(exc).__name__}:{exc}"],
+                    "row_axis": row_axis,
+                }
+            )
+            continue
         reasons = _unresolved_reasons(row_axis, column_context, closure, evaluation_spec)
         reasons.extend(
             _mixed_separator_consensus_reasons(

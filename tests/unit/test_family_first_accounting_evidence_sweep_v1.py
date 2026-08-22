@@ -452,6 +452,27 @@ def test_optional_closure_policy_still_vetoes_a_visible_mismatching_total(monkey
     ]
 
 
+def test_one_malformed_period_axis_stays_document_local_unresolved(monkeypatch) -> None:
+    _patch_live_inputs(monkeypatch)
+    monkeypatch.setattr(
+        subject,
+        "build_accounting_family_column_context_v1",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(ValueError("period axis drifted")),
+    )
+
+    result = subject.build_authenticated_family_first_accounting_evidence_sweep_v1(
+        object(), object(), _family_spec(), _evaluation_spec()
+    )
+
+    assert result["metrics"]["document_count"] == 2
+    assert result["metrics"]["unresolved_document_count"] == 1
+    assert result["trials"][0]["evidence_status"] == "UNRESOLVED_EVIDENCE_GATES"
+    assert result["trials"][0]["unresolved_reasons"] == [
+        "COLUMN_CONTEXT_ERROR:ValueError:period axis drifted"
+    ]
+    assert result["trials"][1]["evidence_status"] == "NOT_OBSERVED_PROPOSAL_ONLY"
+
+
 def _mixed_value(sample_id: str, raw: str, coefficient: int) -> dict[str, object]:
     return {
         "column_ordinal": 0,
