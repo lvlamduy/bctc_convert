@@ -1,0 +1,252 @@
+from __future__ import annotations
+
+import copy
+import hashlib
+import json
+import pickle
+import sqlite3
+import subprocess
+from pathlib import Path
+
+import pytest
+
+from bctc_ai.evaluation import family_first_document_evidence_store_v1 as store_v1
+from bctc_ai.evaluation import family_first_ocr_query_cache_v1 as cache_v1
+
+
+def _ref(path: str, payload: bytes) -> dict:
+    return {
+        "path": path,
+        "sha256": hashlib.sha256(payload).hexdigest(),
+        "size_bytes": len(payload),
+    }
+
+
+def _packet(*, document_id: str = "document-1", evidence_root: str = "1" * 64) -> dict:
+    material = {
+        "assurance": "AUDITED",
+        "bank_provenance": "ACB",
+        "document_evidence_root_sha256": evidence_root,
+        "document_id": document_id,
+        "document_ordinal": 1,
+        "line_count": 1,
+        "page_count": 1,
+        "period": "ANNUAL",
+        "scope": "CONSOLIDATED",
+        "source_pdf_ref": {"path": "vietstock_bctc/a.pdf", "sha256": "2" * 64, "size_bytes": 1},
+        "year": 2025,
+    }
+    return {
+        **material,
+        "packet_id": "ffdesv1:document:" + store_v1.canonical_json_sha256_v1(material),
+    }
+
+
+def _manifest(root: Path, audit_commit: str) -> dict:
+    database = (root / "data/local/store.sqlite3").read_bytes()
+    inventory = (root / "docs/inventory.md").read_bytes()
+    document_store = (root / "src/document_store.py").read_bytes()
+    query_cache = (root / "src/query_cache.py").read_bytes()
+    material = {
+        "audit_commit": audit_commit,
+        "authority": copy.deepcopy(store_v1._AUTHORITY),
+        "claim_boundary": store_v1.CLAIM_BOUNDARY,
+        "database_ref": _ref("data/local/store.sqlite3", database),
+        "documents": [_packet()],
+        "format_version": store_v1.FORMAT_VERSION,
+        "implementation_refs": {
+            "document_store": _ref("src/document_store.py", document_store),
+            "query_cache_builder": _ref("src/query_cache.py", query_cache),
+        },
+        "input_indices": {
+            "numeric_axis_sha256": "3" * 64,
+            "numeric_receipt_id": "numeric-1",
+            "semantic_index_id": "semantic-1",
+        },
+        "inventory_ref": _ref("docs/inventory.md", inventory),
+        "metrics": {"document_count": 1, "line_count": 1, "page_count": 1},
+        "state": "FULL_AUDIT_DOCUMENT_EVIDENCE_ROOTS_SEALED",
+    }
+    return {
+        **material,
+        "manifest_id": "ffdesv1:manifest:" + store_v1.canonical_json_sha256_v1(material),
+    }
+
+
+def _git(root: Path, *args: str) -> None:
+    subprocess.run(["git", "-C", root, *args], check=True, capture_output=True)
+
+
+def test_tracked_document_store_is_opaque_and_rejects_live_drift(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    for relative, payload in {
+        ".gitignore": b"data/local/store.sqlite3\n",
+        "data/local/store.sqlite3": b"immutable database",
+        "docs/inventory.md": b"inventory",
+        "src/document_store.py": b"store",
+        "src/query_cache.py": b"cache",
+    }.items():
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(payload)
+    _git(tmp_path, "init")
+    _git(tmp_path, "config", "user.email", "test@example.com")
+    _git(tmp_path, "config", "user.name", "Test")
+    _git(tmp_path, "add", ".")
+    _git(tmp_path, "commit", "-m", "audit implementation")
+    audit_commit = subprocess.run(
+        ["git", "-C", tmp_path, "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    manifest = _manifest(tmp_path, audit_commit)
+    registry = tmp_path / store_v1.REGISTRY_PATH
+    registry.parent.mkdir(parents=True, exist_ok=True)
+    registry.write_bytes(store_v1.canonical_json_bytes_v1(manifest) + b"\n")
+    _git(tmp_path, "add", store_v1.REGISTRY_PATH.as_posix())
+    _git(tmp_path, "commit", "-m", "register store")
+    monkeypatch.setattr(
+        store_v1.cache_v1,
+        "project_family_first_ocr_query_cache_v1",
+        lambda _path: {
+            "document_count": 1,
+            "line_count": 1,
+            "page_count": 1,
+            "sources": {
+                "numeric_axis_sha256": "3" * 64,
+                "numeric_receipt_id": "numeric-1",
+                "semantic_index_id": "semantic-1",
+            },
+        },
+    )
+
+    capability = store_v1.authenticate_family_first_document_evidence_store_v1(tmp_path)
+    assert (
+        store_v1.project_authenticated_family_first_document_evidence_store_v1(capability)[
+            "manifest_id"
+        ]
+        == manifest["manifest_id"]
+    )
+    assert (
+        store_v1.read_authenticated_family_first_document_packet_v1(capability, document_ordinal=1)[
+            "assurance"
+        ]
+        == "AUDITED"
+    )
+    with pytest.raises(TypeError):
+        copy.copy(capability)
+    with pytest.raises(TypeError):
+        pickle.dumps(capability)
+    with pytest.raises(TypeError):
+        store_v1.AuthenticatedFamilyFirstDocumentEvidenceStoreV1()
+
+    database = tmp_path / "data/local/store.sqlite3"
+    database.write_bytes(b"tampered database")
+    with pytest.raises(store_v1.FamilyFirstDocumentEvidenceStoreV1Error):
+        store_v1.read_authenticated_family_first_document_packet_v1(capability, document_ordinal=1)
+
+
+def _database(path: Path, *, transport: int, numeric_text: str) -> None:
+    connection = sqlite3.connect(path)
+    cache_v1._create_schema(connection)
+    connection.executemany(
+        "INSERT INTO metadata(key, value) VALUES (?, ?)",
+        [
+            ("cache_id", json.dumps("cache")),
+            ("document_count", "1"),
+            ("format_version", json.dumps(cache_v1.CACHE_FORMAT_VERSION)),
+            ("line_count", "1"),
+            ("page_count", "1"),
+            ("schema_version", "1"),
+            ("sources", "{}"),
+            ("authority", "{}"),
+        ],
+    )
+    connection.execute(
+        "INSERT INTO documents VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            1,
+            f"semantic-document-{transport}",
+            "ACB",
+            2025,
+            "ANNUAL",
+            "CONSOLIDATED",
+            "vietstock_bctc/a.pdf",
+            "2" * 64,
+            1,
+            1,
+            1,
+        ),
+    )
+    connection.execute(
+        "INSERT INTO pages VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (1, 1, 1, 100, 200, "4" * 64, 1, "page.json", "5" * 64, 1),
+    )
+    connection.execute(
+        "INSERT INTO lines VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            transport,
+            1,
+            1,
+            0,
+            f"global-sample-{transport}",
+            1,
+            2,
+            20,
+            10,
+            f"global-crop-{transport}.png",
+            "6" * 64,
+            1,
+            "Tiền mặt",
+            "Tiền mặt",
+            "tien mat",
+            0.9,
+            20,
+            32,
+            numeric_text,
+            0.8,
+        ),
+    )
+    connection.commit()
+    connection.close()
+
+
+def test_document_evidence_root_ignores_global_transport_but_not_numeric_change(
+    tmp_path: Path,
+) -> None:
+    first = tmp_path / "first.sqlite3"
+    shifted = tmp_path / "shifted.sqlite3"
+    changed = tmp_path / "changed.sqlite3"
+    _database(first, transport=1, numeric_text="123")
+    _database(shifted, transport=999, numeric_text="123")
+    _database(changed, transport=999, numeric_text="124")
+    inventory = {
+        "filings": [
+            {
+                "assurance": "AUDITED",
+                "bank_provenance": "ACB",
+                "content_ref": {
+                    "path": "vietstock_bctc/a.pdf",
+                    "sha256": "2" * 64,
+                    "size_bytes": 1,
+                },
+                "period": "ANNUAL",
+                "scope": "CONSOLIDATED",
+                "year": 2025,
+            }
+        ]
+    }
+
+    first_packet = store_v1._document_packets(first, inventory)[0]
+    shifted_packet = store_v1._document_packets(shifted, inventory)[0]
+    changed_packet = store_v1._document_packets(changed, inventory)[0]
+    assert (
+        first_packet["document_evidence_root_sha256"]
+        == shifted_packet["document_evidence_root_sha256"]
+    )
+    assert (
+        first_packet["document_evidence_root_sha256"]
+        != changed_packet["document_evidence_root_sha256"]
+    )
