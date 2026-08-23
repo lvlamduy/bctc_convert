@@ -157,8 +157,11 @@ record the new gate.
 - Observed failure: reasoning consumed an 8,192-token budget and returned empty
   or truncated JSON content.
 - Root cause: thinking was enabled for a transcription/structure task.
-- Correction: use a fresh chat/request per crop/page, `--jinja`, reasoning off,
-  and reasoning budget zero. Keep the prompt short and demand only JSON.
+- Correction: use the hosted API first with one fresh request per page,
+  `thinking_level=MINIMAL`, a generous output limit and a short JSON-only
+  prompt. Increase thinking only after deterministic visible-row/column checks
+  reject that first response. Local llama.cpp comparisons must use `--jinja`,
+  reasoning off and reasoning budget zero.
 - Regression gate: response must be nonempty, parse as closed JSON, and contain
   all expected source regions before it can be used as a proposal.
 
@@ -173,6 +176,23 @@ record the new gate.
   code afterward.
 - Regression gate: prompt fixtures forbid ReportNormIds, arithmetic repair, or
   inferred values in the model response.
+
+### F-011A — Cropping a table before structure rescue
+
+- Observed failure: a label/cell crop removed multi-level headers and sibling
+  context, so a locally plausible value could not be attached to the correct
+  role or period.
+- Root cause: crop-level recognition was asked to reconstruct a page-level
+  table.
+- Correction: send the exact canonical full-page PNG to one fresh hosted Gemma
+  API chat first, without resizing; request closed multi-level JSON with every
+  visible column preserved. Use a later fresh crop chat only as a bounded
+  challenger for one unresolved label/cell. Bind both responses to their image
+  hashes.
+- Regression gate: fixtures with interleaved listed/unlisted rows, multi-level
+  headers, and faint DASH cells must reconstruct the page hierarchy, while any
+  Gemma digit disagreement remains non-authoritative until independent cell
+  evidence and accounting closure agree.
 
 ## Family graphs, schema, and accounting decisions
 

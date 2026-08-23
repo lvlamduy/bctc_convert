@@ -79,6 +79,54 @@ def _union(boxes: Sequence[Any]) -> tuple[int, int, int, int]:
     )
 
 
+def _terminal_label_baseline(
+    boxes: Sequence[Any], *, median_text_height: float
+) -> tuple[tuple[int, int, int, int], bool]:
+    """Return the final physical baseline of a possibly wrapped label.
+
+    When every value cell on a row is an omitted dash, the detector supplies
+    no numeric sibling from which to recover the row band.  Centering a crop
+    on the union of a two-line label then places it between both baselines and
+    can miss values aligned to the terminal text line.  Group label boxes into
+    DPI-relative physical baselines and retain the lowest band only when more
+    than one distinct band exists.  Multiple tokens on one baseline remain a
+    single band.
+
+    This helper proposes geometry only.  The authenticated render crop must
+    still independently contain a recognized dash/number before it can become
+    value evidence.
+    """
+
+    if type(median_text_height) is not float or median_text_height <= 0:
+        raise _error("median text height must be one positive float")
+    parsed = [_bbox(value) for value in boxes]
+    if not parsed:
+        raise _error("row label must contain at least one bbox")
+    bands: list[list[tuple[int, int, int, int]]] = []
+    for box in sorted(parsed, key=lambda value: ((value[1] + value[3]) / 2, value[0])):
+        center = (box[1] + box[3]) / 2
+        target = next(
+            (
+                band
+                for band in bands
+                if abs(center - float(median((item[1] + item[3]) / 2 for item in band)))
+                <= median_text_height * 0.45
+            ),
+            None,
+        )
+        if target is None:
+            bands.append([box])
+        else:
+            target.append(box)
+    if len(bands) == 1:
+        return _union([list(box) for box in parsed]), False
+    terminal = max(
+        bands,
+        key=lambda band: float(median((item[1] + item[3]) / 2 for item in band)),
+    )
+    return _union([list(box) for box in terminal]), True
+
+
 def row_affinity_v1(
     label_boxes: Sequence[Any], candidate_bbox: Any, *, median_text_height: float
 ) -> float | None:
@@ -696,6 +744,7 @@ def assign_value_row_lanes_v1(
         else scale * 2.5
     )
     by_lane: dict[int, tuple[float, Mapping[str, Any]]] = {}
+    rejected_same_grid_candidates: list[tuple[int, Mapping[str, Any]]] = []
     for line in lines:
         left, _top, _right, _bottom = _bbox(line["bbox"])
         if not is_numeric(line):
@@ -713,15 +762,53 @@ def assign_value_row_lanes_v1(
             line["bbox"],
             median_text_height=scale,
         )
-        if affinity is None or not centers:
+        if not centers:
             continue
         center = _x_center(line)
         lane = min(range(len(centers)), key=lambda index: abs(center - centers[index]))
         if abs(center - centers[lane]) > lane_tolerance:
             continue
+        if affinity is None:
+            rejected_same_grid_candidates.append((lane, line))
+            continue
         prior = by_lane.get(lane)
         if prior is None or affinity > prior[0]:
             by_lane[lane] = (affinity, line)
+
+    # Detector boxes belonging to the same printed numeric row can differ by
+    # a few pixels in height.  Near the row-affinity boundary that jitter used
+    # to admit one lane while rejecting its co-baseline sibling.  Complete a
+    # missing lane only from an already accepted *different* lane whose box
+    # has near-identical vertical geometry.  This is a physical-row relation,
+    # not a relaxed label distance: an adjacent row that merely touches the
+    # target row cannot qualify.
+    for lane, line in rejected_same_grid_candidates:
+        if lane in by_lane:
+            continue
+        _left, top, _right, bottom = _bbox(line["bbox"])
+        height = bottom - top
+        center_y = (top + bottom) / 2
+        peers: list[tuple[float, Mapping[str, Any]]] = []
+        for peer_lane, (peer_affinity, peer) in by_lane.items():
+            if peer_lane == lane:
+                continue
+            _peer_left, peer_top, _peer_right, peer_bottom = _bbox(peer["bbox"])
+            peer_height = peer_bottom - peer_top
+            overlap = min(bottom, peer_bottom) - max(top, peer_top)
+            overlap_ratio = max(0, overlap) / max(1, min(height, peer_height))
+            peer_center_y = (peer_top + peer_bottom) / 2
+            if (
+                overlap_ratio >= 0.75
+                and abs(center_y - peer_center_y) <= scale * 0.2
+                and abs(top - peer_top) <= scale * 0.2
+            ):
+                peers.append((peer_affinity, peer))
+        if peers:
+            # Reuse the strongest accepted co-baseline affinity so global
+            # source-cell exclusivity moves or rejects the physical row as a
+            # unit when two semantic labels compete for it.
+            by_lane[lane] = max(peers, key=lambda item: item[0])
+            by_lane[lane] = (by_lane[lane][0], line)
     return [
         {
             "column_center": centers[lane],
@@ -849,7 +936,9 @@ def propose_missing_value_lane_regions_v1(
         if is_numeric(line)
         and page_width * minimum_x_ratio < _bbox(line["bbox"])[0] < page_width * maximum_x_ratio
     ]
-    typical_height = float(median(box[3] - box[1] for box in numeric_boxes))
+    typical_height = (
+        float(median(box[3] - box[1] for box in numeric_boxes)) if numeric_boxes else scale
+    )
     widths_by_lane: dict[int, list[int]] = {ordinal: [] for ordinal in range(len(centers))}
     for box in numeric_boxes:
         center = (box[0] + box[2]) / 2
@@ -866,10 +955,17 @@ def propose_missing_value_lane_regions_v1(
         row_height = float(median(box[3] - box[1] for box in visible_boxes))
         row_evidence = "VISIBLE_SIBLING_CELL_ROW_BAND"
     else:
-        _left, top, _right, bottom = _union(label_boxes)
+        (_left, top, _right, bottom), wrapped = _terminal_label_baseline(
+            label_boxes,
+            median_text_height=scale,
+        )
         row_center = (top + bottom) / 2
         row_height = typical_height
-        row_evidence = "LABEL_BASELINE_AND_BODY_NUMERIC_HEIGHT"
+        row_evidence = (
+            "TERMINAL_WRAPPED_LABEL_BASELINE_AND_BODY_NUMERIC_HEIGHT"
+            if wrapped
+            else "LABEL_BASELINE_AND_BODY_NUMERIC_HEIGHT"
+        )
     crop_height = max(1.0, min(max(row_height, typical_height) * 1.35, scale * 2.2))
     top = max(0, int(round(row_center - crop_height / 2)))
     bottom = min(page_height, int(round(row_center + crop_height / 2)))

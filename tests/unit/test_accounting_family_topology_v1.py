@@ -16,12 +16,19 @@ from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
 _ROOT = Path(__file__).resolve().parents[2]
 
 
-def _line(index: int, text: str, *, x: int = 20, y: int | None = None) -> dict[str, object]:
+def _line(
+    index: int,
+    text: str,
+    *,
+    source_text: str | None = None,
+    x: int = 20,
+    y: int | None = None,
+) -> dict[str, object]:
     top = index * 30 if y is None else y
     return {
         "bbox": [x, top, x + 360, top + 22],
         "source_line_index": index,
-        "source_text": None,
+        "source_text": source_text,
         "vietocr_text": text,
     }
 
@@ -31,6 +38,69 @@ def _page(surfaces: list[str], page_sequence: int = 1) -> dict[str, object]:
         "lines": [_line(index, text) for index, text in enumerate(surfaces)],
         "page_sequence": page_sequence,
     }
+
+
+def test_exact_source_bound_text_challenger_can_rescue_one_vietocr_label() -> None:
+    page = _page(
+        [
+            "Phân tích dư nợ theo thời gian",
+            "Nợ ngắn hạn",
+            "Nội dung OCR sai",
+        ]
+    )
+    page["lines"][2]["source_text"] = "Nợ trung hạn"
+
+    result = build_accounting_family_topology_scan_v1([page], _generic_spec())
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    medium = next(
+        match for match in result["regions"][0]["child_matches"] if match["role"] == "MEDIUM_TERM"
+    )
+    assert medium["surface"] == "Nợ trung hạn"
+    assert medium["match_kind"] == "EXACT_ACCENTLESS_BOUND_SOURCE_TEXT_CHALLENGER_ALIAS"
+    assert result["safety"][
+        "source_bound_text_challenger_requires_exact_alias_and_complete_topology"
+    ]
+
+
+def test_source_bound_text_challenger_does_not_use_fuzzy_alias_matching() -> None:
+    page = _page(
+        [
+            "Phân tích dư nợ theo thời gian",
+            "Nợ ngắn hạn",
+            "Nội dung OCR sai",
+        ]
+    )
+    page["lines"][2]["source_text"] = "Nợ trun hạn"
+
+    result = build_accounting_family_topology_scan_v1([page], _generic_spec())
+
+    assert result["status"] != "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+
+
+def test_geometry_joins_wrapped_label_around_interleaved_numeric_cells() -> None:
+    page = {
+        "lines": [
+            _line(0, "Phân tích dư nợ theo thời gian", y=20),
+            _line(1, "Nợ", x=50, y=100),
+            _line(2, "100", x=600, y=100),
+            _line(3, "90", x=800, y=100),
+            _line(4, "ngắn hạn", x=50, y=126),
+            _line(5, "Nợ trung hạn", x=50, y=180),
+        ],
+        "page_sequence": 1,
+    }
+
+    result = build_accounting_family_topology_scan_v1([page], _generic_spec())
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    short = next(
+        match for match in result["regions"][0]["child_matches"] if match["role"] == "SHORT_TERM"
+    )
+    assert short["surface"] == "Nợ ngắn hạn"
+    assert short["source_line_indices"] == [1, 4]
+    assert short["source_line_index"] == 1
+    assert short["end_source_line_index"] == 4
 
 
 def _cash_spec() -> dict[str, object]:
@@ -621,6 +691,55 @@ def test_contextual_role_cannot_borrow_same_currency_label_from_sibling_group() 
     assert "LOAN_VND" in roles
 
 
+def test_contextual_role_uses_visual_order_when_provider_order_is_reversed() -> None:
+    spec = _contextual_interbank_spec()
+    for child in spec["children"]:
+        if child["role"].endswith("_VND"):
+            child["matchers"] = child["matchers"][:1]
+    lines = [
+        _line(0, "Tiền gửi và cho vay các TCTD khác", y=0),
+        # The provider emitted the visually later child before its group.
+        _line(1, "Bằng VND", y=150),
+        _line(2, "Tiền gửi không kỳ hạn", y=90),
+        _line(3, "Tiền gửi có kỳ hạn", y=210),
+        _line(4, "Bằng VND", y=240),
+        _line(5, "Cho vay các TCTD khác", y=300),
+        _line(6, "Bằng VND", y=330),
+    ]
+
+    result = build_accounting_family_topology_scan_v1([{"lines": lines, "page_sequence": 1}], spec)
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    matches = {item["role"]: item for item in result["regions"][0]["child_matches"]}
+    assert matches["DEMAND_VND"]["source_line_index"] == 1
+    assert matches["DEMAND_VND"]["matched_within_role"] == "DEMAND_GROUP"
+    assert matches["TERM_VND"]["source_line_index"] == 4
+    assert matches["LOAN_VND"]["source_line_index"] == 6
+
+
+def test_contextual_twin_wins_over_context_free_twin_after_provider_reorder() -> None:
+    spec = _contextual_interbank_spec()
+    # Both matchers intentionally recognize the same surface.  Visual order,
+    # rather than the provider's reversed source order, binds it to the group.
+    spec["children"][1]["matchers"][1]["aliases"] = ["Bằng VND"]
+    lines = [
+        _line(0, "Tiền gửi và cho vay các TCTD khác", y=0),
+        _line(1, "Bằng VND", y=150),
+        _line(2, "Tiền gửi không kỳ hạn", y=90),
+        _line(3, "Tiền gửi có kỳ hạn", y=210),
+        _line(4, "Bằng VND", y=240),
+        _line(5, "Cho vay các TCTD khác", y=300),
+        _line(6, "Bằng VND", y=330),
+    ]
+
+    result = build_accounting_family_topology_scan_v1([{"lines": lines, "page_sequence": 1}], spec)
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    matches = {item["role"]: item for item in result["regions"][0]["child_matches"]}
+    assert matches["DEMAND_VND"]["source_line_index"] == 1
+    assert matches["DEMAND_VND"]["matched_within_role"] == "DEMAND_GROUP"
+
+
 def test_contextual_spec_rejects_unknown_nonstructural_or_cyclic_contexts() -> None:
     unknown = _contextual_interbank_spec()
     unknown["children"][1]["matchers"][0]["within_role"] = "UNKNOWN"
@@ -988,6 +1107,79 @@ def test_explicit_family_can_continue_once_across_a_physical_page_boundary() -> 
     assert region["cluster_end_source_line_index_exclusive"] is None
     assert [item["page_sequence"] for item in region["child_matches"]] == [1, 2, 2]
     assert region["minimal_unique_anchor"]["combination_size"] == 2
+
+
+def test_next_page_must_fill_a_role_deficit_not_only_expose_a_generic_total() -> None:
+    spec = _generic_spec()
+    spec["children"].append(
+        {
+            "aliases": ["Giá trị thuần"],
+            "presence": "OPTIONAL",
+            "role": "GENERIC_NET_TOTAL",
+            "role_kind": "TOTAL",
+        }
+    )
+    pages = [
+        _page(
+            [
+                "Phân tích dư nợ theo thời gian",
+                "Nợ ngắn hạn",
+                "100",
+                "Nợ trung hạn",
+                "200",
+            ],
+            page_sequence=1,
+        ),
+        _page(
+            [
+                "Công cụ tài chính phái sinh",
+                "Giá trị thuần",
+                "999",
+            ],
+            page_sequence=2,
+        ),
+    ]
+
+    result = build_accounting_family_topology_scan_v1(pages, spec)
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    region = result["regions"][0]
+    assert region["continuation_page_count"] == 0
+    assert region["observed_roles"] == ["SHORT_TERM", "MEDIUM_TERM"]
+    assert region["cluster_end_source_line_index_exclusive"] is None
+
+
+def test_trading_region_stops_before_derivative_heading_with_asset_liability_qualifier() -> None:
+    spec = json.loads(
+        (_ROOT / "config/families/tm-trading-securities-topology-v1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    result = build_accounting_family_topology_scan_v1(
+        [
+            _page(
+                [
+                    "1. CHỨNG KHOÁN KINH DOANH",
+                    "Chứng khoán nợ",
+                    "100",
+                    "Chứng khoán vốn",
+                    "200",
+                    "2 CÁC CÔNG CỤ TÀI CHÍNH PHÁI SINH VÀ CÁC TÀI SẢN/(CÔNG NỢ) TÀI CHÍNH KHÁC",
+                    "Giá trị thuần",
+                    "999",
+                ]
+            )
+        ],
+        spec,
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    region = result["regions"][0]
+    assert region["cluster_end_source_line_index_exclusive"] == 5
+    assert [item["role"] for item in region["child_matches"]] == [
+        "DEBT_SECURITIES_GROUP",
+        "EQUITY_SECURITIES_GROUP",
+    ]
 
 
 def test_continuation_budget_and_next_page_reset_both_fail_closed() -> None:

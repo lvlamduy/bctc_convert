@@ -18,10 +18,15 @@ from statistics import median
 from typing import Any
 
 from bctc_ai.evaluation import accounting_family_topology_v1 as topology_v1
+from bctc_ai.evaluation.accounting_table_axes_v1 import (
+    accounting_unit_surface_v1,
+    extract_period_axis_v1,
+)
 from bctc_ai.evaluation.adaptive_accounting_table_geometry_v1 import (
     assign_value_row_lanes_v1,
     cluster_numeric_rows_v1,
     infer_numeric_column_centers_v1,
+    median_text_height_v1,
     propose_missing_value_lane_regions_v1,
 )
 from bctc_ai.evaluation.family_first_authenticated_page_region_v1 import (
@@ -54,21 +59,29 @@ __all__ = [
 FORMAT_VERSION = "ACCOUNTING_FAMILY_ROW_AXIS_V1"
 CLAIM_BOUNDARY = (
     "COMPLETE_DOCUMENT_DECLARATIVE_FAMILY_TOPOLOGY_TO_GEOMETRY_BOUND_VISIBLE_"
-    "PPOCRV6_RECOGNITION_LANE_PROPOSAL_ONLY_NO_MISSING_CELL_INFERENCE_PERIOD_"
-    "UNIT_NUMERIC_ACCOUNTING_SCHEMA_MAPPING_CANONICALIZATION_OR_EXPORT_AUTHORITY"
+    "PPOCRV6_RECOGNITION_LANE_WITH_EXACT_LOCAL_PERIOD_AND_UNIT_HEADER_SUPPORTED_"
+    "MISSING_COLUMN_GEOMETRY_PROPOSAL_ONLY_NO_MISSING_CELL_INFERENCE_NUMERIC_"
+    "ACCOUNTING_SCHEMA_MAPPING_CANONICALIZATION_OR_EXPORT_AUTHORITY"
 )
 _SAFETY = {
     "accounting_authority": False,
     "bank_file_note_page_period_scope_used_for_matching_or_routing": False,
     "detector_geometry_treated_as_numeric_recognition": False,
+    "degraded_short_mark_requires_clear_same_row_peer_and_accounting": True,
     "family_layout_logic_is_declarative": True,
+    "header_supported_column_completion_requires_period_unit_geometry_agreement": True,
     "mapping_authority": False,
     "missing_cells_synthesized": False,
+    "numeric_reader_may_identify_bounded_left_footnote_marker": True,
     "numeric_authority": False,
+    "optional_blank_structural_groups_remain_topology_only": True,
+    "optional_label_only_rows_require_blank_pixel_lanes_and_complete_structural_parent": True,
+    "optional_partial_rows_require_blank_missing_lanes_and_complete_structural_parent": True,
     "period_or_unit_authority": False,
     "ppocrv6_recognition_used_as_raw_proposal_only": True,
     "raw_record_self_authenticating": False,
     "schema_authority": False,
+    "staggered_lane_bboxes_bound_by_complete_parent_child_row_axis": True,
     "text_similarity_alone_can_accept": False,
     "visible_dash_pixel_evidence_may_complete_missing_lane": True,
     "visible_dash_pixel_evidence_required_for_non_detector_zero": True,
@@ -86,6 +99,7 @@ _RECOGNITION_FIELDS = {"raw_prediction", "reader_score"}
 _REF_FIELDS = {"path", "sha256", "size_bytes"}
 _RESULT_FIELDS = {
     "claim_boundary",
+    "column_grids",
     "family_id",
     "format_version",
     "metrics",
@@ -99,7 +113,14 @@ _RESULT_FIELDS = {
     "trailing_value_rows",
     "visible_dash_rescues",
 }
+_COLUMN_GRID_FIELDS = {
+    "column_centers",
+    "geometry_status",
+    "header_evidence_source_line_indices",
+    "page_sequence",
+}
 _SHA = re.compile(r"^[0-9a-f]{64}$")
+_STANDALONE_DECORATIVE_MARKER = re.compile(r"^\(\s*(?:[0-9]{1,2}|[ivxIVX]{1,4}|\*{1,3})\s*\)$")
 _REGION_INPUT_FIELDS = {
     "authority",
     "document_ordinal",
@@ -128,6 +149,7 @@ _RESCUE_PROJECTION_FIELDS = {
     "recognition_raw_pixel_bbox",
     "region_id",
     "role",
+    "supporting_peer_dash_column_ordinal",
 }
 
 
@@ -297,6 +319,7 @@ def _is_numeric(line: Mapping[str, Any]) -> bool:
     return parsed["classification"] in {
         "DASH_ZERO",
         "MIXED_GROUPED_INTEGER_CANDIDATE",
+        "NOISE_SUFFIXED_GROUPED_INTEGER_CANDIDATE",
         "SIGNED_NUMBER",
     }
 
@@ -317,6 +340,47 @@ def _region_lines(
         if selected:
             result[page["page_sequence"]] = selected
         offset += len(page["lines"])
+    return result
+
+
+def _role_body_lines_by_page(
+    pages: Sequence[Mapping[str, Any]],
+    region: Mapping[str, Any],
+    matches: Sequence[Mapping[str, Any]],
+) -> dict[int, list[dict[str, Any]]]:
+    """Bound numeric-grid inference to the semantic role body on each page.
+
+    A topology region can intentionally span an adjacent subview or page, but
+    the remainder of either page may contain a different table with percentage
+    columns, approval stamps, or the next disclosure.  Inferring one grid from
+    the complete topology window lets that later furniture manufacture extra
+    numeric lanes.  The role labels are the stable vertical anchors: retain the
+    visible body plus a small text-height-scaled trailing band for printed
+    subtotals, without using a bank, page, family, or fixed pixel threshold.
+    """
+
+    by_page = {page["page_sequence"]: page for page in pages}
+    region_by_page = _region_lines(pages, region)
+    result: dict[int, list[dict[str, Any]]] = {}
+    for page_sequence in sorted({match["page_sequence"] for match in matches}):
+        page = by_page[page_sequence]
+        local = region_by_page.get(page_sequence, [])
+        page_matches = [match for match in matches if match["page_sequence"] == page_sequence]
+        label_lines = [
+            line
+            for match in page_matches
+            for line in page["lines"]
+            if line["line_ordinal"] in _match_source_line_indices(match)
+        ]
+        if not local or not label_lines:
+            raise _error("family role-body band retained no source geometry")
+        scale = median_text_height_v1(local)
+        top = min(line["bbox"][1] for line in label_lines) - scale * 0.8
+        bottom = max(line["bbox"][3] for line in label_lines) + scale * 4.0
+        selected = [line for line in local if line["bbox"][3] >= top and line["bbox"][1] <= bottom]
+        if not selected:
+            raise _error("family role-body band selected no source line")
+        result[page_sequence] = selected
     return result
 
 
@@ -344,6 +408,220 @@ def _value_record(
     }
 
 
+def _match_source_line_indices(match: Mapping[str, Any]) -> tuple[int, ...]:
+    """Return only semantic label fragments, excluding interleaved value cells."""
+
+    raw = match.get("source_line_indices")
+    if raw is None:
+        start = match["source_line_index"]
+        stop = match["end_source_line_index"]
+        return tuple(range(start, stop + 1))
+    if (
+        type(raw) is not list
+        or len(raw) < 2
+        or any(type(index) is not int for index in raw)
+        or raw != sorted(set(raw))
+        or raw[0] != match["source_line_index"]
+        or raw[-1] != match["end_source_line_index"]
+    ):
+        raise _error("noncontiguous topology label source axis drifted")
+    return tuple(raw)
+
+
+def _label_geometry_boxes(
+    page: Mapping[str, Any],
+    match: Mapping[str, Any],
+    *,
+    column_centers: Sequence[float],
+    page_matches: Sequence[Mapping[str, Any]],
+    local_lines: Sequence[Mapping[str, Any]],
+) -> list[list[int]]:
+    """Retain a bounded standalone footnote as part of its source label band.
+
+    A wrapped accounting label can end with ``(ii)`` on a separate detector
+    line while its two numeric cells share that final line's baseline.  The
+    semantic matcher correctly prefers the shorter label surface, but row
+    geometry must not therefore strand the values.  Extend the geometry by at
+    most one immediately following decorative marker, only on the label side
+    of an already inferred numeric grid and before the next semantic role.
+
+    This is deliberately narrower than deleting arbitrary parentheticals: a
+    year, narrative qualifier, value-lane token, or non-adjacent line cannot
+    change the row band.
+    """
+
+    label_indices = _match_source_line_indices(match)
+    stop = match["end_source_line_index"]
+    boxes = [
+        canonical_clone_v1(line["bbox"])
+        for line in page["lines"]
+        if line["line_ordinal"] in label_indices
+    ]
+    if not boxes or not column_centers:
+        return boxes
+    following_ordinal = stop + 1
+    next_role = min(
+        (
+            other["source_line_index"]
+            for other in page_matches
+            if other is not match and other["source_line_index"] > stop
+        ),
+        default=None,
+    )
+    if next_role is not None and following_ordinal >= next_role:
+        return boxes
+    following = next(
+        (line for line in page["lines"] if line["line_ordinal"] == following_ordinal),
+        None,
+    )
+    if following is None:
+        return boxes
+    marker_surfaces = (
+        following["vietocr_text"].strip(),
+        following["numeric_recognition"]["raw_prediction"].strip(),
+    )
+    if not any(_STANDALONE_DECORATIVE_MARKER.fullmatch(surface) for surface in marker_surfaces):
+        return boxes
+    marker = following["bbox"]
+    if marker[2] >= min(column_centers):
+        return boxes
+    scale = median_text_height_v1(local_lines)
+    label_bottom = max(box[3] for box in boxes)
+    if marker[1] - label_bottom > scale * 0.45:
+        return boxes
+    return [*boxes, canonical_clone_v1(marker)]
+
+
+def _complete_physical_value_clusters(
+    rows: Sequence[Mapping[str, Any]], *, lane_count: int
+) -> list[list[dict[str, Any]]]:
+    """Cluster unique detector cells into complete physical value rows."""
+
+    unique: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        for value in row["values"]:
+            prior = unique.get(value["sample_id"])
+            if prior is not None and not same_typed_json_v1(prior, value):
+                # Row affinity is role-relative; every other source-cell field
+                # must remain identical across contenders.
+                left = canonical_clone_v1(prior)
+                right = canonical_clone_v1(value)
+                left.pop("row_affinity")
+                right.pop("row_affinity")
+                if not same_typed_json_v1(left, right):
+                    raise _error("one source cell changed across semantic row contenders")
+            unique.setdefault(value["sample_id"], canonical_clone_v1(value))
+    if not unique:
+        return []
+    heights = [value["bbox"][3] - value["bbox"][1] for value in unique.values()]
+    scale = float(median(heights))
+    clusters: list[list[dict[str, Any]]] = []
+    for value in sorted(
+        unique.values(),
+        key=lambda item: (
+            item["page_sequence"],
+            (item["bbox"][1] + item["bbox"][3]) / 2,
+            item["column_ordinal"],
+        ),
+    ):
+        center = (value["bbox"][1] + value["bbox"][3]) / 2
+        target = next(
+            (
+                cluster
+                for cluster in clusters
+                if cluster[0]["page_sequence"] == value["page_sequence"]
+                and value["column_ordinal"] not in {item["column_ordinal"] for item in cluster}
+                and abs(
+                    center
+                    - float(median((item["bbox"][1] + item["bbox"][3]) / 2 for item in cluster))
+                )
+                <= scale * 0.55
+            ),
+            None,
+        )
+        if target is None:
+            clusters.append([value])
+        else:
+            target.append(value)
+    expected_lanes = list(range(lane_count))
+    return [
+        sorted(cluster, key=lambda item: item["column_ordinal"])
+        for cluster in clusters
+        if sorted(item["column_ordinal"] for item in cluster) == expected_lanes
+    ]
+
+
+def _structural_group_cluster_assignments(
+    rows: list[dict[str, Any]],
+) -> dict[str, int]:
+    """Bind complete physical rows to a label-only group's exact children.
+
+    If one structural group has N observed children and exactly N complete
+    numeric row clusters, the parent is a label-only context.  Matching the
+    ordered physical axes as wholes prevents staggered detector boxes from
+    splitting the two lanes between adjacent labels.  N+1 clusters retain a
+    genuinely valued parent and deliberately do not enter this rule.
+    """
+
+    assignments: dict[str, int] = {}
+    for group in rows:
+        if group["role_kind"] != "STRUCTURAL_GROUP":
+            continue
+        children = [
+            (index, row)
+            for index, row in enumerate(rows)
+            if row["label_match"].get("matched_within_role") == group["role"]
+            and row["label_match"]["page_sequence"] == group["label_match"]["page_sequence"]
+        ]
+        if not children:
+            continue
+        lane_count = group["_lane_count"]
+        if any(child["_lane_count"] != lane_count for _index, child in children):
+            raise _error("one structural group spans inconsistent value-lane counts")
+        participants = [group, *(child for _index, child in children)]
+        clusters = _complete_physical_value_clusters(participants, lane_count=lane_count)
+        if len(clusters) != len(children):
+            continue
+        ordered_children = sorted(children, key=lambda item: item[1]["_label_vertical_center"])
+        ordered_clusters = sorted(
+            clusters,
+            key=lambda cluster: float(
+                median((item["bbox"][1] + item["bbox"][3]) / 2 for item in cluster)
+            ),
+        )
+        cluster_sample_ids = {
+            value["sample_id"] for cluster in ordered_clusters for value in cluster
+        }
+        proposed: dict[str, int] = {}
+        coherent = True
+        for cluster, (child_index, child) in zip(ordered_clusters, ordered_children, strict=True):
+            cluster_center = float(
+                median((item["bbox"][1] + item["bbox"][3]) / 2 for item in cluster)
+            )
+            cluster_height = float(median(item["bbox"][3] - item["bbox"][1] for item in cluster))
+            cluster_lanes = {item["column_ordinal"] for item in cluster}
+            residual_lanes = {
+                item["column_ordinal"]
+                for item in child["values"]
+                if item["sample_id"] not in cluster_sample_ids
+            }
+            if (
+                abs(cluster_center - child["_label_vertical_center"]) > cluster_height
+                or cluster_lanes & residual_lanes
+            ):
+                coherent = False
+                break
+            for value in cluster:
+                proposed[value["sample_id"]] = child_index
+        if not coherent:
+            continue
+        for sample_id, child_index in proposed.items():
+            prior = assignments.setdefault(sample_id, child_index)
+            if prior != child_index:
+                raise _error("one physical value row belongs to two structural groups")
+    return assignments
+
+
 def _enforce_exclusive_source_cells(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Let one detector cell support at most one semantic source row.
 
@@ -353,6 +631,38 @@ def _enforce_exclusive_source_cells(rows: list[dict[str, Any]]) -> list[dict[str
     it is unique; an exact affinity tie is ambiguous and the cell is removed
     from every contender so the ordinary pixel-rescue path can fail closed.
     """
+
+    cluster_assignments = _structural_group_cluster_assignments(rows)
+    if cluster_assignments:
+        original_uses: dict[str, list[tuple[int, dict[str, Any]]]] = {}
+        for row_index, row in enumerate(rows):
+            for value in row["values"]:
+                original_uses.setdefault(value["sample_id"], []).append((row_index, value))
+        assigned_samples = set(cluster_assignments)
+        for row in rows:
+            removed = [value for value in row["values"] if value["sample_id"] in assigned_samples]
+            row["values"] = [
+                value for value in row["values"] if value["sample_id"] not in assigned_samples
+            ]
+            for value in removed:
+                lane = value["column_ordinal"]
+                if lane not in row["missing_column_ordinals"]:
+                    row["missing_column_ordinals"].append(lane)
+            row["missing_column_ordinals"].sort()
+        for sample_id, target_index in cluster_assignments.items():
+            contenders = original_uses[sample_id]
+            direct = next((value for index, value in contenders if index == target_index), None)
+            template = canonical_clone_v1(direct if direct is not None else contenders[0][1])
+            if direct is None:
+                template["row_affinity"] = None
+            lane = template["column_ordinal"]
+            target = rows[target_index]
+            if any(value["column_ordinal"] == lane for value in target["values"]):
+                raise _error("physical row-cluster binding repeats one value lane")
+            target["values"].append(template)
+            target["values"].sort(key=lambda value: value["column_ordinal"])
+            if lane in target["missing_column_ordinals"]:
+                target["missing_column_ordinals"].remove(lane)
 
     uses: dict[str, list[tuple[dict[str, Any], dict[str, Any]]]] = {}
     for row in rows:
@@ -376,6 +686,8 @@ def _enforce_exclusive_source_cells(rows: list[dict[str, Any]]) -> list[dict[str
                 row["missing_column_ordinals"].append(lane)
                 row["missing_column_ordinals"].sort()
     for row in rows:
+        row.pop("_label_vertical_center")
+        row.pop("_lane_count")
         row["status"] = (
             "UNRESOLVED_NO_VISIBLE_RECOGNIZED_VALUE_CELL"
             if not row["values"]
@@ -389,6 +701,7 @@ def _enforce_exclusive_source_cells(rows: list[dict[str, Any]]) -> list[dict[str
 def _resolved_page_grid_inputs(
     rows: Sequence[Mapping[str, Any]],
     target_row: Mapping[str, Any],
+    column_grids: Sequence[Mapping[str, Any]] | None = None,
 ) -> tuple[tuple[float, ...], tuple[dict[str, Any], ...]]:
     """Reuse the exclusive row-axis grid for detector-independent cell crops.
 
@@ -401,6 +714,14 @@ def _resolved_page_grid_inputs(
 
     page_sequence = target_row["label_match"]["page_sequence"]
     page_rows = [row for row in rows if row["label_match"]["page_sequence"] == page_sequence]
+    grid = (
+        next(
+            (item for item in column_grids if item["page_sequence"] == page_sequence),
+            None,
+        )
+        if column_grids is not None
+        else None
+    )
     lane_count = (
         max(
             (
@@ -415,21 +736,29 @@ def _resolved_page_grid_inputs(
         )
         + 1
     )
+    if grid is not None:
+        centers = tuple(grid["column_centers"])
+        if len(centers) != lane_count:
+            raise _error("retained page column grid differs from the role-row lane axis")
+    else:
+        centers = ()
     if lane_count <= 0:
         raise _error("resolved page grid retained no numeric lane")
-    centers = []
-    for lane in range(lane_count):
-        candidates = {
-            value["column_center"]
-            for row in page_rows
-            for value in row["values"]
-            if value["column_ordinal"] == lane
-        }
-        if len(candidates) != 1 or any(
-            type(center) is not float or not math.isfinite(center) for center in candidates
-        ):
-            raise _error("resolved page grid lane center is absent or inconsistent")
-        centers.append(next(iter(candidates)))
+    if not centers:
+        reconstructed = []
+        for lane in range(lane_count):
+            candidates = {
+                value["column_center"]
+                for row in page_rows
+                for value in row["values"]
+                if value["column_ordinal"] == lane
+            }
+            if len(candidates) != 1 or any(
+                type(center) is not float or not math.isfinite(center) for center in candidates
+            ):
+                raise _error("resolved page grid lane center is absent or inconsistent")
+            reconstructed.append(next(iter(candidates)))
+        centers = tuple(reconstructed)
     visible_cells = tuple(
         {
             "bbox": canonical_clone_v1(value["bbox"]),
@@ -437,18 +766,220 @@ def _resolved_page_grid_inputs(
         }
         for value in target_row["values"]
     )
-    return tuple(centers), visible_cells
+    return centers, visible_cells
 
 
-def _rows(pages: Sequence[Mapping[str, Any]], region: Mapping[str, Any]) -> list[dict[str, Any]]:
+def _header_axis_line(line: Mapping[str, Any]) -> dict[str, Any]:
+    """Project one joined evidence line into the shared header parser shape."""
+
+    return {
+        "bbox": canonical_clone_v1(line["bbox"]),
+        "numeric_score": line["numeric_recognition"]["reader_score"],
+        "numeric_text": line["numeric_recognition"]["raw_prediction"],
+        "source_line_index": line["line_ordinal"],
+        "vietocr_text": line["vietocr_text"],
+    }
+
+
+def _box_anchor(box: Sequence[int], alignment: str) -> float:
+    if alignment == "LEFT":
+        return float(box[0])
+    if alignment == "CENTER":
+        return (box[0] + box[2]) / 2
+    if alignment == "RIGHT":
+        return float(box[2])
+    raise _error("header/body column alignment mode drifted")
+
+
+def _evidence_union_box(
+    lines_by_index: Mapping[int, Mapping[str, Any]], indices: Sequence[int]
+) -> list[int] | None:
+    selected = [lines_by_index.get(index) for index in indices]
+    if not selected or any(line is None for line in selected):
+        return None
+    boxes = [line["bbox"] for line in selected if line is not None]
+    return [
+        min(box[0] for box in boxes),
+        min(box[1] for box in boxes),
+        max(box[2] for box in boxes),
+        max(box[3] for box in boxes),
+    ]
+
+
+def _header_supported_numeric_column_centers(
+    *,
+    page: Mapping[str, Any],
+    body_lines: Sequence[Mapping[str, Any]],
+    header_source_lines: Sequence[Mapping[str, Any]],
+    page_matches: Sequence[Mapping[str, Any]],
+    body_centers: Sequence[float],
+    region_start_source_line_index: int,
+) -> tuple[list[float], list[int]] | None:
+    """Complete a detector-deficient body grid from two agreeing header levels.
+
+    A detector can omit every printed DASH in one comparison column, leaving
+    the body with only one recognized numeric lane.  The missing *cell* is not
+    inferred here.  We recover only its column geometry, and only when one
+    bounded local header band independently contains a complete period axis
+    and a coextensive unit axis.  Existing body cells must align uniquely with
+    the resulting grid; a later authenticated pixel crop still has to prove a
+    visible DASH or number.
+    """
+
+    if not page_matches:
+        return None
+    first_match = min(page_matches, key=lambda item: item["source_line_index"])
+    first_boxes = [
+        line["bbox"]
+        for line in body_lines
+        if line["line_ordinal"] in _match_source_line_indices(first_match)
+    ]
+    if not first_boxes:
+        raise _error("first family role retained no page-local geometry")
+    scale = median_text_height_v1(header_source_lines)
+    first_top = min(box[1] for box in first_boxes)
+    header_lines = [
+        _header_axis_line(line)
+        for line in header_source_lines
+        if region_start_source_line_index <= line["line_ordinal"]
+        and line["bbox"][1] < first_top
+        and first_top - scale * 10.0 <= line["bbox"][3] <= first_top + scale * 0.35
+    ]
+    period_records, period_mode = extract_period_axis_v1(header_lines)
+    if period_mode not in {
+        "LOCAL_EXACT_DATES",
+        "LOCAL_RELATIVE_PERIOD_ROLES",
+        "LOCAL_SPLIT_DATES",
+    } or not (2 <= len(period_records) <= 8):
+        return None
+    period_roles = [record["period"] for record in period_records]
+    if len(period_roles) != len(set(period_roles)):
+        return None
+    unit_lines = [
+        line
+        for line in header_lines
+        if accounting_unit_surface_v1(line["vietocr_text"]) is not None
+    ]
+    if len(unit_lines) != len(period_records):
+        return None
+    unit_lines.sort(key=lambda line: (line["bbox"][0] + line["bbox"][2], line["source_line_index"]))
+    lines_by_index = {line["source_line_index"]: line for line in header_lines}
+    period_boxes = [
+        _evidence_union_box(lines_by_index, record["evidence_source_line_indices"])
+        for record in period_records
+    ]
+    if any(box is None for box in period_boxes):
+        return None
+    parsed_period_boxes = [box for box in period_boxes if box is not None]
+    lane_gap = min(
+        (right[0] + right[2]) / 2 - (left[0] + left[2]) / 2
+        for left, right in zip(parsed_period_boxes, parsed_period_boxes[1:], strict=False)
+    )
+    if lane_gap <= scale * 2.0:
+        return None
+    alignment, residuals = min(
+        [
+            (
+                mode,
+                [
+                    abs(_box_anchor(period_box, mode) - _box_anchor(unit["bbox"], mode))
+                    for period_box, unit in zip(parsed_period_boxes, unit_lines, strict=True)
+                ],
+            )
+            for mode in ("LEFT", "CENTER", "RIGHT")
+        ],
+        key=lambda item: (
+            float(median(item[1])),
+            ("RIGHT", "CENTER", "LEFT").index(item[0]),
+        ),
+    )
+    if max(residuals) > max(scale * 1.5, lane_gap * 0.2):
+        return None
+    body_boxes = [
+        line["bbox"]
+        for line in body_lines
+        if line["line_ordinal"] >= first_match["source_line_index"] and _is_numeric(line)
+    ]
+    if body_boxes:
+        typical_width = float(median(box[2] - box[0] for box in body_boxes))
+        if alignment == "RIGHT":
+            candidates = [float(line["bbox"][2]) - typical_width / 2 for line in unit_lines]
+        elif alignment == "LEFT":
+            candidates = [float(line["bbox"][0]) + typical_width / 2 for line in unit_lines]
+        else:
+            candidates = [(line["bbox"][0] + line["bbox"][2]) / 2 for line in unit_lines]
+    else:
+        # A table whose every body value is a printed DASH can legitimately
+        # have zero detector-produced numeric boxes.  Two independent local
+        # header levels (period and unit) still prove the lane geometry.  This
+        # only creates pixel-crop proposals; the render-level glyph reader must
+        # independently prove each DASH before any zero enters the row axis.
+        candidates = [(line["bbox"][0] + line["bbox"][2]) / 2 for line in unit_lines]
+    if (
+        candidates != sorted(set(candidates))
+        or candidates[0] < 0
+        or candidates[-1] > page["page_width"]
+        or len(candidates) <= len(body_centers)
+    ):
+        return None
+    candidate_gap = min(
+        right - left for left, right in zip(candidates, candidates[1:], strict=False)
+    )
+    tolerance = max(scale * 2.5, candidate_gap * 0.35)
+    used: set[int] = set()
+    for center in body_centers:
+        lane = min(range(len(candidates)), key=lambda ordinal: abs(center - candidates[ordinal]))
+        if lane in used or abs(center - candidates[lane]) > tolerance:
+            return None
+        used.add(lane)
+    evidence_indices = sorted(
+        {
+            *(
+                index
+                for record in period_records
+                for index in record["evidence_source_line_indices"]
+            ),
+            *(line["source_line_index"] for line in unit_lines),
+        }
+    )
+    return candidates, evidence_indices
+
+
+def _structural_roles_with_complete_children(
+    rows: Sequence[Mapping[str, Any]],
+) -> set[str]:
+    roles = {
+        row["label_match"].get("matched_within_role")
+        for row in rows
+        if row["status"] == "VISIBLE_VALUE_LANES_BOUND"
+    }
+    for index, row in enumerate(rows):
+        if row["role_kind"] != "STRUCTURAL_GROUP":
+            continue
+        following = []
+        for candidate in rows[index + 1 :]:
+            if candidate["role_kind"] == "STRUCTURAL_GROUP":
+                break
+            following.append(candidate)
+        if any(
+            candidate["role_kind"] == "ADDITIVE_CHILD"
+            and candidate["status"] == "VISIBLE_VALUE_LANES_BOUND"
+            and candidate["label_match"].get("matched_within_role") in {None, row["role"]}
+            for candidate in following
+        ):
+            roles.add(row["role"])
+    return {role for role in roles if type(role) is str}
+
+
+def _rows(
+    pages: Sequence[Mapping[str, Any]], region: Mapping[str, Any]
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     by_page = {page["page_sequence"]: page for page in pages}
-    region_by_page = _region_lines(pages, region)
     rows = []
     nonstructural_spans = {
         (
             match["page_sequence"],
-            match["source_line_index"],
-            match["end_source_line_index"],
+            _match_source_line_indices(match),
         )
         for match in region["child_matches"]
         if match["role_kind"] != "STRUCTURAL_GROUP"
@@ -457,8 +988,7 @@ def _rows(pages: Sequence[Mapping[str, Any]], region: Mapping[str, Any]) -> list
     for match in region["child_matches"]:
         span = (
             match["page_sequence"],
-            match["source_line_index"],
-            match["end_source_line_index"],
+            _match_source_line_indices(match),
         )
         # A flattened source row can satisfy both its structural context and
         # one valued leaf (for example "Tiền gửi không kỳ hạn bằng VND").
@@ -466,6 +996,7 @@ def _rows(pages: Sequence[Mapping[str, Any]], region: Mapping[str, Any]) -> list
         if match["role_kind"] == "STRUCTURAL_GROUP" and span in nonstructural_spans:
             continue
         retained_matches.append(match)
+    region_by_page = _role_body_lines_by_page(pages, region, retained_matches)
 
     # Resolve one immutable numeric-column grid per page from every semantic
     # row in the selected family region.  The left boundary is derived from
@@ -473,6 +1004,7 @@ def _rows(pages: Sequence[Mapping[str, Any]], region: Mapping[str, Any]) -> list
     # wide four-lane tables commonly start before 45% of the page, while a
     # narrow two-lane table begins much farther right.
     centers_by_page: dict[int, list[float]] = {}
+    grids_by_page: dict[int, dict[str, Any]] = {}
     for page_sequence in sorted({item["page_sequence"] for item in retained_matches}):
         page = by_page[page_sequence]
         if type(page["page_width"]) is not int:
@@ -485,9 +1017,7 @@ def _rows(pages: Sequence[Mapping[str, Any]], region: Mapping[str, Any]) -> list
             boxes = [
                 line["bbox"]
                 for line in page["lines"]
-                if match["source_line_index"]
-                <= line["line_ordinal"]
-                <= match["end_source_line_index"]
+                if line["line_ordinal"] in _match_source_line_indices(match)
             ]
             if not boxes:
                 raise _error("topology label span retained no row-axis geometry")
@@ -502,26 +1032,59 @@ def _rows(pages: Sequence[Mapping[str, Any]], region: Mapping[str, Any]) -> list
                 (float(median(label_rights)) + float(median(heights)) * 0.5) / page["page_width"],
             ),
         )
-        centers_by_page[page_sequence] = infer_numeric_column_centers_v1(
+        body_centers = infer_numeric_column_centers_v1(
             local_lines,
             is_numeric=_is_numeric,
             page_width=page["page_width"],
             minimum_x_ratio=minimum_x_ratio,
             retain_singleton_columns=False,
         )
+        header_grid = _header_supported_numeric_column_centers(
+            page=page,
+            body_lines=local_lines,
+            header_source_lines=page["lines"],
+            page_matches=[
+                item for item in retained_matches if item["page_sequence"] == page_sequence
+            ],
+            body_centers=body_centers,
+            region_start_source_line_index=(
+                region["cluster_start_source_line_index"]
+                if page_sequence == region["page_sequence"]
+                and type(region["cluster_start_source_line_index"]) is int
+                else 0
+            ),
+        )
+        centers = header_grid[0] if header_grid is not None else body_centers
+        centers_by_page[page_sequence] = centers
+        grids_by_page[page_sequence] = {
+            "column_centers": canonical_clone_v1(centers),
+            "geometry_status": (
+                "LOCAL_PERIOD_AND_UNIT_HEADER_SUPPORTED_COLUMN_GRID"
+                if header_grid is not None
+                else "BODY_DERIVED_NUMERIC_COLUMN_GRID"
+            ),
+            "header_evidence_source_line_indices": (
+                canonical_clone_v1(header_grid[1]) if header_grid is not None else []
+            ),
+            "page_sequence": page_sequence,
+        }
 
     for match in retained_matches:
         page_sequence = match["page_sequence"]
         page = by_page[page_sequence]
         local_lines = region_by_page[page_sequence]
-        label_boxes = [
-            line["bbox"]
-            for line in page["lines"]
-            if match["source_line_index"] <= line["line_ordinal"] <= match["end_source_line_index"]
-        ]
+        centers = centers_by_page[page_sequence]
+        label_boxes = _label_geometry_boxes(
+            page,
+            match,
+            column_centers=centers,
+            page_matches=[
+                item for item in retained_matches if item["page_sequence"] == page_sequence
+            ],
+            local_lines=local_lines,
+        )
         if not label_boxes:
             raise _error("topology label span retained no row-axis geometry")
-        centers = centers_by_page[page_sequence]
         assignments = (
             assign_value_row_lanes_v1(
                 local_lines,
@@ -548,6 +1111,10 @@ def _rows(pages: Sequence[Mapping[str, Any]], region: Mapping[str, Any]) -> list
         missing = [ordinal for ordinal in range(len(centers)) if ordinal not in visible]
         rows.append(
             {
+                "_label_vertical_center": float(
+                    median((box[1] + box[3]) / 2 for box in label_boxes)
+                ),
+                "_lane_count": len(centers),
                 "label_match": canonical_clone_v1(match),
                 "missing_column_ordinals": missing,
                 "role": match["role"],
@@ -568,11 +1135,16 @@ def _rows(pages: Sequence[Mapping[str, Any]], region: Mapping[str, Any]) -> list
     # visible lane axis binds after global cell exclusivity; otherwise they
     # remain available solely through the topology region. This behavior is
     # needed by hierarchical families and does not synthesize missing cells.
-    return [
+    complete_roles = _structural_roles_with_complete_children(exclusive)
+    retained_rows = [
         row
         for row in exclusive
-        if row["role_kind"] != "STRUCTURAL_GROUP" or row["status"] == "VISIBLE_VALUE_LANES_BOUND"
+        if row["role_kind"] != "STRUCTURAL_GROUP"
+        or row["status"] == "VISIBLE_VALUE_LANES_BOUND"
+        or row["role"] not in complete_roles
     ]
+    retained_pages = {row["label_match"]["page_sequence"] for row in retained_rows}
+    return retained_rows, [grids_by_page[page] for page in sorted(retained_pages)]
 
 
 def _rescue_projection(
@@ -581,6 +1153,7 @@ def _rescue_projection(
     pages: Sequence[Mapping[str, Any]],
     region: Mapping[str, Any],
     rows: Sequence[Mapping[str, Any]],
+    column_grids: Sequence[Mapping[str, Any]],
 ) -> tuple[dict[str, Any], dict[str, Any] | None]:
     if (
         type(raw) is not dict
@@ -623,11 +1196,9 @@ def _rescue_projection(
     label_boxes = [
         line["bbox"]
         for line in page["lines"]
-        if label_match["source_line_index"]
-        <= line["line_ordinal"]
-        <= label_match["end_source_line_index"]
+        if line["line_ordinal"] in _match_source_line_indices(label_match)
     ]
-    centers, visible_cells = _resolved_page_grid_inputs(rows, row)
+    centers, visible_cells = _resolved_page_grid_inputs(rows, row, column_grids)
     proposals = propose_missing_value_lane_regions_v1(
         local_lines,
         label_boxes=label_boxes,
@@ -663,8 +1234,12 @@ def _rescue_projection(
         ),
         "region_id": region_record["region_id"],
         "role": raw["role"],
+        "supporting_peer_dash_column_ordinal": None,
     }
-    if dash["classification"] != "VISIBLE_HORIZONTAL_DASH_GLYPH":
+    if dash["classification"] not in {
+        "DEGRADED_CENTERED_SHORT_MARK_CANDIDATE",
+        "VISIBLE_HORIZONTAL_DASH_GLYPH",
+    }:
         return projection, None
     crop_ref = dash["crop_ref"]
     value = {
@@ -691,12 +1266,14 @@ def _apply_visible_dash_rescues(
     pages: Sequence[Mapping[str, Any]],
     region: Mapping[str, Any],
     rows: list[dict[str, Any]],
+    column_grids: Sequence[Mapping[str, Any]],
     value: Any,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     if type(value) is not tuple:
         raise _error("visible-dash rescues must be one exact tuple")
     completed = canonical_clone_v1(rows)
     projections: list[dict[str, Any]] = []
+    proposed_values: list[dict[str, Any] | None] = []
     keys: set[tuple[str, int, int]] = set()
     for raw in value:
         projection, rescued = _rescue_projection(
@@ -707,6 +1284,7 @@ def _apply_visible_dash_rescues(
             # row grid.  Applying an earlier dash changes `completed` and must
             # not move the expected bbox for a later rescue.
             rows=rows,
+            column_grids=column_grids,
         )
         key = (
             projection["role"],
@@ -717,6 +1295,22 @@ def _apply_visible_dash_rescues(
             raise _error("visible-dash rescue body lane repeats")
         keys.add(key)
         projections.append(projection)
+        proposed_values.append(rescued)
+    for index, (projection, rescued) in enumerate(zip(projections, proposed_values, strict=True)):
+        if projection["classification"] == "DEGRADED_CENTERED_SHORT_MARK_CANDIDATE":
+            peers = sorted(
+                candidate["column_ordinal"]
+                for candidate in projections
+                if candidate["classification"] == "VISIBLE_HORIZONTAL_DASH_GLYPH"
+                and candidate["role"] == projection["role"]
+                and candidate["page_sequence"] == projection["page_sequence"]
+                and candidate["column_ordinal"] != projection["column_ordinal"]
+            )
+            if not peers:
+                proposed_values[index] = None
+                rescued = None
+            else:
+                projection["supporting_peer_dash_column_ordinal"] = peers[0]
         if rescued is None:
             continue
         row = next(
@@ -739,6 +1333,90 @@ def _apply_visible_dash_rescues(
     return completed, projections
 
 
+def _mark_optional_blank_rows(
+    rows: list[dict[str, Any]], rescue_projections: Sequence[Mapping[str, Any]]
+) -> list[dict[str, Any]]:
+    """Retain optional blank lanes without pretending they contain values.
+
+    Some disclosures print a valued structural parent and then spell out
+    optional component names without placing a number or DASH on one or all
+    of those child lanes.  Such labels and any genuinely visible peer values
+    are useful provenance, but a blank pixel crop is never zero.  Admit the
+    optional row as nonblocking only when its exact parent is a complete
+    visible structural row and every missing body-grid crop is independently
+    blank.  The incomplete child remains excluded from the numeric/accounting
+    role axis downstream and therefore remains visible as an unmapped source
+    item rather than blocking secure sibling/parent mappings.
+    """
+
+    completed = canonical_clone_v1(rows)
+    parent_by_role = {
+        row["role"]: row
+        for row in completed
+        if row["role_kind"] == "STRUCTURAL_GROUP" and row["status"] == "VISIBLE_VALUE_LANES_BOUND"
+    }
+    rescue_by_key = {
+        (item["role"], item["page_sequence"], item["column_ordinal"]): item
+        for item in rescue_projections
+    }
+    for row in completed:
+        match = row["label_match"]
+        parent_role = match.get("matched_within_role")
+        if (
+            row["role_kind"] != "ADDITIVE_CHILD"
+            or match.get("presence") != "OPTIONAL"
+            or type(parent_role) is not str
+            or parent_role not in parent_by_role
+            or not row["missing_column_ordinals"]
+        ):
+            continue
+        blank = []
+        for lane in row["missing_column_ordinals"]:
+            rescue = rescue_by_key.get((row["role"], match["page_sequence"], lane))
+            blank.append(
+                rescue is not None
+                and rescue["classification"] == "UNRESOLVED_NOT_ONE_DASH_GLYPH"
+                and rescue["dash_evidence"]["glyph_metrics"]["component_count"] == 0
+            )
+        if blank and all(blank):
+            row["status"] = (
+                "VISIBLE_OPTIONAL_PARTIAL_VALUE_ROW_WITH_BLANK_LANES"
+                if row["values"]
+                else "VISIBLE_OPTIONAL_LABEL_ONLY_NO_VALUE_CELLS"
+            )
+    return completed
+
+
+def _blank_optional_structural_group_keys(
+    rows: Sequence[Mapping[str, Any]],
+    rescue_projections: Sequence[Mapping[str, Any]],
+) -> set[tuple[str, int]]:
+    """Keep an empty optional group as topology, not a manufactured value row."""
+
+    rescue_by_key = {
+        (item["role"], item["page_sequence"], item["column_ordinal"]): item
+        for item in rescue_projections
+    }
+    result = set()
+    for row in rows:
+        match = row["label_match"]
+        if (
+            row["role_kind"] != "STRUCTURAL_GROUP"
+            or match.get("presence") != "OPTIONAL"
+            or row["values"]
+            or not row["missing_column_ordinals"]
+        ):
+            continue
+        if all(
+            (rescue := rescue_by_key.get((row["role"], match["page_sequence"], lane))) is not None
+            and rescue["classification"] == "UNRESOLVED_NOT_ONE_DASH_GLYPH"
+            and rescue["dash_evidence"]["glyph_metrics"]["component_count"] == 0
+            for lane in row["missing_column_ordinals"]
+        ):
+            result.add((row["role"], match["page_sequence"]))
+    return result
+
+
 def _trailing_value_rows(
     pages: Sequence[Mapping[str, Any]],
     region: Mapping[str, Any],
@@ -747,7 +1425,7 @@ def _trailing_value_rows(
     if not region["child_matches"]:
         return []
     by_page = {page["page_sequence"]: page for page in pages}
-    region_by_page = _region_lines(pages, region)
+    region_by_page = _role_body_lines_by_page(pages, region, region["child_matches"])
     last_match = max(region["child_matches"], key=lambda item: item["end_document_line_ordinal"])
     first_page = last_match["page_sequence"]
     assigned_sample_ids = {value["sample_id"] for row in role_rows for value in row["values"]}
@@ -832,7 +1510,31 @@ def _trailing_value_rows(
 def _metrics(rows: Sequence[Mapping[str, Any]]) -> dict[str, int]:
     return {
         "bound_value_count": sum(len(row["values"]) for row in rows),
-        "missing_lane_count": sum(len(row["missing_column_ordinals"]) for row in rows),
+        "missing_lane_count": sum(
+            len(row["missing_column_ordinals"])
+            for row in rows
+            if row["status"]
+            not in {
+                "VISIBLE_OPTIONAL_LABEL_ONLY_NO_VALUE_CELLS",
+                "VISIBLE_OPTIONAL_PARTIAL_VALUE_ROW_WITH_BLANK_LANES",
+            }
+        ),
+        "optional_label_only_blank_lane_count": sum(
+            len(row["missing_column_ordinals"])
+            for row in rows
+            if row["status"] == "VISIBLE_OPTIONAL_LABEL_ONLY_NO_VALUE_CELLS"
+        ),
+        "optional_label_only_row_count": sum(
+            row["status"] == "VISIBLE_OPTIONAL_LABEL_ONLY_NO_VALUE_CELLS" for row in rows
+        ),
+        "optional_partial_blank_lane_count": sum(
+            len(row["missing_column_ordinals"])
+            for row in rows
+            if row["status"] == "VISIBLE_OPTIONAL_PARTIAL_VALUE_ROW_WITH_BLANK_LANES"
+        ),
+        "optional_partial_row_count": sum(
+            row["status"] == "VISIBLE_OPTIONAL_PARTIAL_VALUE_ROW_WITH_BLANK_LANES" for row in rows
+        ),
         "partial_row_count": sum(
             row["status"] == "PARTIAL_VISIBLE_VALUE_LANES_REQUIRES_PIXEL_RESCUE" for row in rows
         ),
@@ -860,7 +1562,12 @@ def _result_metrics(
         "trailing_value_row_count": len(trailing),
         "visible_dash_rescue_attempt_count": len(rescues),
         "visible_dash_zero_count": sum(
-            item["classification"] == "VISIBLE_HORIZONTAL_DASH_GLYPH" for item in rescues
+            item["classification"] == "VISIBLE_HORIZONTAL_DASH_GLYPH"
+            or (
+                item["classification"] == "DEGRADED_CENTERED_SHORT_MARK_CANDIDATE"
+                and item["supporting_peer_dash_column_ordinal"] is not None
+            )
+            for item in rescues
         ),
     }
 
@@ -878,6 +1585,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
         or not value["topology_scan_id"].startswith("aftv1:scan:")
         or type(value["topology_status"]) is not str
         or (value["topology_region"] is not None and type(value["topology_region"]) is not dict)
+        or type(value["column_grids"]) is not list
         or type(value["rows"]) is not list
         or type(value["trailing_value_rows"]) is not list
         or type(value["visible_dash_rescues"]) is not list
@@ -889,6 +1597,74 @@ def _validate_result(value: Any) -> dict[str, Any]:
         )
     ):
         raise _error("family row-axis result contract drifted")
+    grid_by_page: dict[int, dict[str, Any]] = {}
+    for expected_page_order, grid in enumerate(value["column_grids"]):
+        if (
+            type(grid) is not dict
+            or set(grid) != _COLUMN_GRID_FIELDS
+            or type(grid["page_sequence"]) is not int
+            or grid["page_sequence"] <= 0
+            or grid["page_sequence"] in grid_by_page
+            or (
+                expected_page_order > 0
+                and grid["page_sequence"]
+                <= value["column_grids"][expected_page_order - 1]["page_sequence"]
+            )
+            or type(grid["column_centers"]) is not list
+            or any(
+                type(center) is not float or not math.isfinite(center) or center < 0
+                for center in grid["column_centers"]
+            )
+            or grid["column_centers"] != sorted(set(grid["column_centers"]))
+            or grid["geometry_status"]
+            not in {
+                "BODY_DERIVED_NUMERIC_COLUMN_GRID",
+                "LOCAL_PERIOD_AND_UNIT_HEADER_SUPPORTED_COLUMN_GRID",
+            }
+            or type(grid["header_evidence_source_line_indices"]) is not list
+            or any(
+                type(index) is not int or index < 0
+                for index in grid["header_evidence_source_line_indices"]
+            )
+            or grid["header_evidence_source_line_indices"]
+            != sorted(set(grid["header_evidence_source_line_indices"]))
+            or (
+                grid["geometry_status"] == "BODY_DERIVED_NUMERIC_COLUMN_GRID"
+                and grid["header_evidence_source_line_indices"]
+            )
+            or (
+                grid["geometry_status"] == "LOCAL_PERIOD_AND_UNIT_HEADER_SUPPORTED_COLUMN_GRID"
+                and (not grid["column_centers"] or not grid["header_evidence_source_line_indices"])
+            )
+        ):
+            raise _error("family row-axis page column grid drifted")
+        grid_by_page[grid["page_sequence"]] = grid
+    if {row["label_match"].get("page_sequence") for row in value["rows"]} != set(grid_by_page):
+        raise _error("family role-row pages differ from their column-grid axis")
+    for row in value["rows"]:
+        grid = grid_by_page[row["label_match"]["page_sequence"]]
+        lane_count = len(grid["column_centers"])
+        observed = [item["column_ordinal"] for item in row["values"]]
+        missing = row["missing_column_ordinals"]
+        if (
+            observed != sorted(set(observed))
+            or type(missing) is not list
+            or missing != sorted(set(missing))
+            or sorted([*observed, *missing]) != list(range(lane_count))
+            or any(
+                item["column_center"] != grid["column_centers"][item["column_ordinal"]]
+                for item in row["values"]
+            )
+            or row["status"]
+            not in {
+                "PARTIAL_VISIBLE_VALUE_LANES_REQUIRES_PIXEL_RESCUE",
+                "UNRESOLVED_NO_VISIBLE_RECOGNIZED_VALUE_CELL",
+                "VISIBLE_OPTIONAL_LABEL_ONLY_NO_VALUE_CELLS",
+                "VISIBLE_OPTIONAL_PARTIAL_VALUE_ROW_WITH_BLANK_LANES",
+                "VISIBLE_VALUE_LANES_BOUND",
+            }
+        ):
+            raise _error("family role row differs from its retained page column grid")
     material = canonical_clone_v1(value)
     identity = material.pop("row_axis_id")
     if identity != "afrav1:axis:" + canonical_json_sha256_v1(material):
@@ -898,7 +1674,11 @@ def _validate_result(value: Any) -> dict[str, Any]:
             type(rescue) is not dict
             or set(rescue) != _RESCUE_PROJECTION_FIELDS
             or rescue["classification"]
-            not in {"VISIBLE_HORIZONTAL_DASH_GLYPH", "UNRESOLVED_NOT_ONE_DASH_GLYPH"}
+            not in {
+                "DEGRADED_CENTERED_SHORT_MARK_CANDIDATE",
+                "UNRESOLVED_NOT_ONE_DASH_GLYPH",
+                "VISIBLE_HORIZONTAL_DASH_GLYPH",
+            }
             or type(rescue["column_center"]) is not float
             or type(rescue["column_ordinal"]) is not int
             or rescue["column_ordinal"] < 0
@@ -908,8 +1688,74 @@ def _validate_result(value: Any) -> dict[str, Any]:
             or not rescue["region_id"].startswith("ffaprv1:region:")
             or type(rescue["role"]) is not str
             or not rescue["role"]
+            or (
+                rescue["supporting_peer_dash_column_ordinal"] is not None
+                and (
+                    type(rescue["supporting_peer_dash_column_ordinal"]) is not int
+                    or rescue["supporting_peer_dash_column_ordinal"] < 0
+                    or rescue["supporting_peer_dash_column_ordinal"] == rescue["column_ordinal"]
+                )
+            )
         ):
             raise _error("visible-dash rescue projection drifted")
+        if (
+            rescue["supporting_peer_dash_column_ordinal"] is not None
+            and rescue["classification"] != "DEGRADED_CENTERED_SHORT_MARK_CANDIDATE"
+        ):
+            raise _error("degraded visible-mark peer binding drifted")
+        if rescue["supporting_peer_dash_column_ordinal"] is not None and not any(
+            peer["classification"] == "VISIBLE_HORIZONTAL_DASH_GLYPH"
+            and peer["role"] == rescue["role"]
+            and peer["page_sequence"] == rescue["page_sequence"]
+            and peer["column_ordinal"] == rescue["supporting_peer_dash_column_ordinal"]
+            for peer in value["visible_dash_rescues"]
+        ):
+            raise _error("degraded visible-mark clear peer is absent")
+    assigned_region_ids = {item["sample_id"] for row in value["rows"] for item in row["values"]}
+    for rescue in value["visible_dash_rescues"]:
+        if rescue["classification"] == "DEGRADED_CENTERED_SHORT_MARK_CANDIDATE" and (
+            rescue["supporting_peer_dash_column_ordinal"] is not None
+        ) != (rescue["region_id"] in assigned_region_ids):
+            raise _error("degraded visible-mark admission drifted")
+    for row in value["rows"]:
+        if row["status"] not in {
+            "VISIBLE_OPTIONAL_LABEL_ONLY_NO_VALUE_CELLS",
+            "VISIBLE_OPTIONAL_PARTIAL_VALUE_ROW_WITH_BLANK_LANES",
+        }:
+            continue
+        match = row["label_match"]
+        parent = next(
+            (
+                candidate
+                for candidate in value["rows"]
+                if candidate["role"] == match.get("matched_within_role")
+                and candidate["role_kind"] == "STRUCTURAL_GROUP"
+                and candidate["status"] == "VISIBLE_VALUE_LANES_BOUND"
+            ),
+            None,
+        )
+        if (
+            match.get("presence") != "OPTIONAL"
+            or parent is None
+            or (row["status"] == "VISIBLE_OPTIONAL_LABEL_ONLY_NO_VALUE_CELLS" and row["values"])
+            or (
+                row["status"] == "VISIBLE_OPTIONAL_PARTIAL_VALUE_ROW_WITH_BLANK_LANES"
+                and not row["values"]
+            )
+            or not row["missing_column_ordinals"]
+            or any(
+                not any(
+                    rescue["role"] == row["role"]
+                    and rescue["page_sequence"] == match["page_sequence"]
+                    and rescue["column_ordinal"] == lane
+                    and rescue["classification"] == "UNRESOLVED_NOT_ONE_DASH_GLYPH"
+                    and rescue["dash_evidence"]["glyph_metrics"]["component_count"] == 0
+                    for rescue in value["visible_dash_rescues"]
+                )
+                for lane in row["missing_column_ordinals"]
+            )
+        ):
+            raise _error("optional blank-lane role lacks exact pixel-parent proof")
     return canonical_clone_v1(value)
 
 
@@ -919,17 +1765,44 @@ def _build_axis(
     selected_region: dict[str, Any] | None,
     visible_dash_rescues: Any,
 ) -> dict[str, Any]:
-    base_rows = _rows(parsed_pages, selected_region) if selected_region is not None else []
+    base_rows, column_grids = (
+        _rows(parsed_pages, selected_region) if selected_region is not None else ([], [])
+    )
     rows, rescue_projections = (
         _apply_visible_dash_rescues(
             parsed_pages,
             selected_region,
             base_rows,
+            column_grids,
             visible_dash_rescues,
         )
         if selected_region is not None
         else (base_rows, [])
     )
+    complete_structural_roles = _structural_roles_with_complete_children(rows)
+    originally_complete_structural_rows = {
+        (row["role"], row["label_match"]["page_sequence"])
+        for row in base_rows
+        if row["role_kind"] == "STRUCTURAL_GROUP" and row["status"] == "VISIBLE_VALUE_LANES_BOUND"
+    }
+    blank_optional_structural_rows = _blank_optional_structural_group_keys(rows, rescue_projections)
+    rows = [
+        row
+        for row in rows
+        if (row["role"], row["label_match"]["page_sequence"]) not in blank_optional_structural_rows
+        and (
+            row["role_kind"] != "STRUCTURAL_GROUP"
+            or (
+                row["status"] == "VISIBLE_VALUE_LANES_BOUND"
+                and (row["role"], row["label_match"]["page_sequence"])
+                in originally_complete_structural_rows
+            )
+            or row["role"] not in complete_structural_roles
+        )
+    ]
+    retained_pages = {row["label_match"]["page_sequence"] for row in rows}
+    column_grids = [grid for grid in column_grids if grid["page_sequence"] in retained_pages]
+    rows = _mark_optional_blank_rows(rows, rescue_projections)
     if selected_region is None and visible_dash_rescues != ():
         raise _error("visible-dash rescue cannot bypass an unselected topology region")
     trailing = (
@@ -939,6 +1812,7 @@ def _build_axis(
     )
     material = {
         "claim_boundary": CLAIM_BOUNDARY,
+        "column_grids": column_grids,
         "family_id": topology["family_id"],
         "format_version": FORMAT_VERSION,
         "metrics": _result_metrics(rows, trailing, rescue_projections),
@@ -948,7 +1822,15 @@ def _build_axis(
             "UNRESOLVED_TOPOLOGY"
             if not rows
             else "ROW_AXIS_PROPOSAL_WITH_UNRESOLVED_CELLS"
-            if any(row["status"] != "VISIBLE_VALUE_LANES_BOUND" for row in rows)
+            if any(
+                row["status"]
+                not in {
+                    "VISIBLE_OPTIONAL_LABEL_ONLY_NO_VALUE_CELLS",
+                    "VISIBLE_OPTIONAL_PARTIAL_VALUE_ROW_WITH_BLANK_LANES",
+                    "VISIBLE_VALUE_LANES_BOUND",
+                }
+                for row in rows
+            )
             else "VISIBLE_ROW_LANE_AXIS_BOUND_PROPOSAL_ONLY"
         ),
         "topology_region": (

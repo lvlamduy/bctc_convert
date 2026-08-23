@@ -272,7 +272,9 @@ def _visible_dash_rescue_inputs(
             if match["source_line_index"] <= line["line_ordinal"] <= match["end_source_line_index"]
         ]
         try:
-            centers, visible_cells = row_axis_v1._resolved_page_grid_inputs(row_axis["rows"], row)
+            centers, visible_cells = row_axis_v1._resolved_page_grid_inputs(
+                row_axis["rows"], row, row_axis["column_grids"]
+            )
         except row_axis_v1.AccountingFamilyRowAxisV1Error:
             # Pixel dash rescue is optional and may never broaden an
             # inconsistent observed grid.  Preserve the missing lane so the
@@ -397,18 +399,42 @@ def _mixed_separator_consensus_reasons(
 ) -> list[str]:
     """Require independent text, money/scale, and equation support.
 
-    The raw PP-OCRv6 token retains its complete digit sequence. Fresh VietOCR
-    on the identical crop must read the same scale-zero integer, the resolved
-    lane must be monetary with consistent scale-zero peers, and the candidate
-    must participate in an exact visible accounting equation. No bank, page,
-    family, expected value, or manual pixel coordinate enters this decision.
+    The raw PP-OCRv6 token retains either the complete digit sequence with
+    mixed grouping punctuation or one intact grouped-integer prefix followed
+    by OCR contamination. Fresh VietOCR on the identical crop must retain the
+    same scale-zero integer (exactly, or as the same grouped leading prefix),
+    the resolved lane must be monetary with consistent scale-zero peers, and
+    the candidate must participate in an exact visible accounting equation.
+    No bank, page, family, expected value, or manual pixel coordinate enters
+    this decision.
     """
+
+    def semantic_retains_grouped_prefix(surface: str, coefficient: int) -> bool:
+        """Prove that one independent OCR surface starts with the same integer."""
+
+        normalized = surface.strip()
+        for end in range(1, len(normalized) + 1):
+            if end < len(normalized) and normalized[end].isdigit():
+                continue
+            parsed_prefix = parse_visible_financial_numeric_token_v1(normalized[:end])
+            if (
+                parsed_prefix["classification"] == "SIGNED_NUMBER"
+                and parsed_prefix["coefficient"] == coefficient
+                and parsed_prefix["scale"] == 0
+                and parsed_prefix["percentage_mark_present"] is False
+            ):
+                return True
+        return False
 
     values = _axis_numeric_values(row_axis)
     candidates = [
         (role, value)
         for role, value in values
-        if value["parsed_token"]["classification"] == "MIXED_GROUPED_INTEGER_CANDIDATE"
+        if value["parsed_token"]["classification"]
+        in {
+            "MIXED_GROUPED_INTEGER_CANDIDATE",
+            "NOISE_SUFFIXED_GROUPED_INTEGER_CANDIDATE",
+        }
     ]
     if not candidates:
         return []
@@ -429,17 +455,28 @@ def _mixed_separator_consensus_reasons(
     for role, candidate in candidates:
         sample_id = candidate["sample_id"]
         parsed = candidate["parsed_token"]
-        semantic = parse_visible_financial_numeric_token_v1(semantic_by_sample.get(sample_id, ""))
-        if not (
+        candidate_kind = parsed["classification"]
+        reason_prefix = (
+            "MIXED_SEPARATOR"
+            if candidate_kind == "MIXED_GROUPED_INTEGER_CANDIDATE"
+            else "OCR_NOISE_SUFFIX"
+        )
+        semantic_surface = semantic_by_sample.get(sample_id, "")
+        semantic = parse_visible_financial_numeric_token_v1(semantic_surface)
+        independent_agrees = (
             semantic["classification"] == "SIGNED_NUMBER"
             and semantic["coefficient"] == parsed["coefficient"]
             and semantic["scale"] == 0
             and semantic["percentage_mark_present"] is False
-        ):
-            reasons.append("MIXED_SEPARATOR:INDEPENDENT_SAME_CROP_READER_DISAGREES:" + sample_id)
+        ) or (
+            candidate_kind == "NOISE_SUFFIXED_GROUPED_INTEGER_CANDIDATE"
+            and semantic_retains_grouped_prefix(semantic_surface, parsed["coefficient"])
+        )
+        if not independent_agrees:
+            reasons.append(reason_prefix + ":INDEPENDENT_SAME_CROP_READER_DISAGREES:" + sample_id)
         unit = units.get(candidate["column_ordinal"])
         if unit is None or unit.get("unit_kind") != "MONEY":
-            reasons.append("MIXED_SEPARATOR:INTEGER_MONEY_UNIT_NOT_RESOLVED:" + sample_id)
+            reasons.append(reason_prefix + ":INTEGER_MONEY_UNIT_NOT_RESOLVED:" + sample_id)
         peers = [
             value["parsed_token"]
             for peer_role, value in values
@@ -451,13 +488,118 @@ def _mixed_separator_consensus_reasons(
         if len(peers) < 2 or any(
             peer["scale"] != 0 or peer["percentage_mark_present"] is not False for peer in peers
         ):
-            reasons.append("MIXED_SEPARATOR:SCALE_ZERO_LANE_PEERS_NOT_ESTABLISHED:" + sample_id)
+            reasons.append(reason_prefix + ":SCALE_ZERO_LANE_PEERS_NOT_ESTABLISHED:" + sample_id)
         if not _mixed_candidate_has_accounting_corroboration(
             role=role,
             sample_id=sample_id,
             closure=closure,
         ):
-            reasons.append("MIXED_SEPARATOR:EXACT_VISIBLE_ACCOUNTING_CLOSURE_ABSENT:" + sample_id)
+            reasons.append(reason_prefix + ":EXACT_VISIBLE_ACCOUNTING_CLOSURE_ABSENT:" + sample_id)
+    return list(dict.fromkeys(reasons))
+
+
+def _degraded_dash_consensus_reasons(
+    *, row_axis: dict[str, Any], closure: dict[str, Any]
+) -> list[str]:
+    """Require exact accounting or a repeated same-page dash-glyph family.
+
+    The pixel contract deliberately does not call a two- or three-pixel mark a
+    dash.  The row-axis layer may provisionally admit it only when a clear dash
+    exists in another lane of the same source row.  This final gate additionally
+    requires either an exact visible accounting equation or a repeated clear
+    dash family on the same rendered page.  The latter covers low-resolution
+    scans where one horizontal dash rasterizes to a square, without accepting a
+    lone dot: the same-row peer, component height, crop scale and at least four
+    independent clear page peers must all agree.
+    """
+
+    def repeated_page_glyph_consensus(candidate: dict[str, Any]) -> bool:
+        evidence = candidate.get("dash_evidence")
+        if type(evidence) is not dict or type(evidence.get("glyph_metrics")) is not dict:
+            return False
+        metrics = evidence["glyph_metrics"]
+        crop = evidence.get("crop_ref")
+        bbox = metrics.get("component_bbox")
+        if (
+            type(crop) is not dict
+            or type(bbox) is not list
+            or len(bbox) != 4
+            or any(type(item) is not int for item in bbox)
+        ):
+            return False
+        height = bbox[3] - bbox[1]
+        width = bbox[2] - bbox[0]
+        peers = [
+            item
+            for item in row_axis["visible_dash_rescues"]
+            if item.get("classification") == "VISIBLE_HORIZONTAL_DASH_GLYPH"
+            and item.get("page_sequence") == candidate.get("page_sequence")
+            and type(item.get("dash_evidence")) is dict
+            and type(item["dash_evidence"].get("glyph_metrics")) is dict
+            and type(item["dash_evidence"].get("crop_ref")) is dict
+        ]
+        same_row = next(
+            (
+                item
+                for item in peers
+                if item.get("role") == candidate.get("role")
+                and item.get("column_ordinal")
+                == candidate.get("supporting_peer_dash_column_ordinal")
+            ),
+            None,
+        )
+        if same_row is None:
+            return False
+        comparable = []
+        height_tolerance = max(1, int(round(height * 0.34)))
+        for peer in peers:
+            peer_metrics = peer["dash_evidence"]["glyph_metrics"]
+            peer_bbox = peer_metrics.get("component_bbox")
+            peer_crop = peer["dash_evidence"]["crop_ref"]
+            if (
+                type(peer_bbox) is list
+                and len(peer_bbox) == 4
+                and all(type(item) is int for item in peer_bbox)
+                and type(peer_crop.get("pixel_height")) is int
+                and abs(peer_crop["pixel_height"] - crop.get("pixel_height", -1000)) <= 2
+                and abs((peer_bbox[3] - peer_bbox[1]) - height) <= height_tolerance
+            ):
+                comparable.append(peer)
+        same_metrics = same_row["dash_evidence"]["glyph_metrics"]
+        same_bbox = same_metrics.get("component_bbox")
+        if type(same_bbox) is not list or len(same_bbox) != 4:
+            return False
+        same_width = same_bbox[2] - same_bbox[0]
+        return (
+            len(comparable) >= 6
+            and height > 0
+            and width > 0
+            and same_width > 0
+            and width * 2 >= same_width
+            and width <= same_width
+        )
+
+    roles_by_sample = {
+        value["sample_id"]: row["role"] for row in row_axis["rows"] for value in row["values"]
+    }
+    reasons = []
+    for rescue in row_axis["visible_dash_rescues"]:
+        if (
+            rescue["classification"] != "DEGRADED_CENTERED_SHORT_MARK_CANDIDATE"
+            or rescue["supporting_peer_dash_column_ordinal"] is None
+        ):
+            continue
+        sample_id = rescue["region_id"]
+        role = roles_by_sample.get(sample_id)
+        if role is None or not (
+            _mixed_candidate_has_accounting_corroboration(
+                role=role,
+                sample_id=sample_id,
+                closure=closure,
+            )
+            or repeated_page_glyph_consensus(rescue)
+        ):
+            reasons.append("DEGRADED_DASH:EXACT_VISIBLE_ACCOUNTING_CLOSURE_ABSENT:" + sample_id)
     return list(dict.fromkeys(reasons))
 
 
@@ -593,6 +735,12 @@ def _candidate_evidence_from_joined_pages(
                 column_context=column_context,
                 closure=closure,
                 joined_pages=joined_pages,
+            )
+        )
+        reasons.extend(
+            _degraded_dash_consensus_reasons(
+                row_axis=row_axis,
+                closure=closure,
             )
         )
         candidate_evidence.append(
@@ -808,7 +956,7 @@ def _topology_pages_from_document_snapshot_v1(
                 {
                     "bbox": canonical_clone_v1(line["bbox"]),
                     "source_line_index": line["line_ordinal"],
-                    "source_text": None,
+                    "source_text": line["numeric_recognition"]["raw_prediction"],
                     "vietocr_text": line["vietocr_text"],
                 }
                 for line in page["lines"]
@@ -834,6 +982,42 @@ def _selected_topology_pages_v1(
             selected.add(page["page_sequence"])
         offset = stop
     return selected
+
+
+def _missing_render_pages_for_document_store_trial_v1(
+    trial: dict[str, Any],
+    topology_scan: dict[str, Any],
+    joined_pages: list[dict[str, Any]],
+) -> tuple[int, ...]:
+    """Select only pages whose missing lanes can benefit from pixel replay.
+
+    A unique candidate retains its row axis, so its missing-row pages are
+    explicit.  With multiple topology candidates, downstream selection can
+    temporarily return no row axis even though one candidate would become
+    complete after the ordinary dash-pixel pass.  In that case render only the
+    pages intersecting those candidates, and only when the recorded candidate
+    reasons actually include incomplete visible lanes.  Period/accounting-only
+    ambiguity therefore does not trigger an unnecessary PDF render.
+    """
+
+    row_axis = trial["row_axis"]
+    if row_axis is not None:
+        if row_axis["status"] == "VISIBLE_ROW_LANE_AXIS_BOUND_PROPOSAL_ONLY":
+            return ()
+        return tuple(
+            sorted(
+                {
+                    row["label_match"]["page_sequence"]
+                    for row in row_axis["rows"]
+                    if row["missing_column_ordinals"]
+                }
+            )
+        )
+    if topology_scan["status"] == "UNRESOLVED_MULTIPLE_OR_NONUNIQUE_COMPLETE_REGIONS" and any(
+        "VISIBLE_ROLE_ROW_LANES_NOT_COMPLETE" in reason for reason in trial["unresolved_reasons"]
+    ):
+        return tuple(sorted(_selected_topology_pages_v1(joined_pages, topology_scan)))
+    return ()
 
 
 def _document_store_axis_binding_v1(
@@ -875,6 +1059,7 @@ def _trial_from_document_store_snapshot_v1(
     family_spec: dict[str, Any],
     evaluation_spec: dict[str, Any],
     *,
+    render_snapshots: tuple[dict[str, Any], ...] = (),
     topology_scan: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     packet = snapshot["document_packet"]
@@ -932,7 +1117,7 @@ def _trial_from_document_store_snapshot_v1(
         topology_scan=topology_scan,
         family_spec=family_spec,
         evaluation_spec=evaluation_spec,
-        render_snapshots=(),
+        render_snapshots=render_snapshots,
     )
     selected, reasons = _select_candidate_evidence(candidates, evaluation_spec)
     return {
@@ -989,14 +1174,29 @@ def build_authenticated_family_first_accounting_evidence_sweep_from_document_sto
             document_ordinal=ordinal,
             selected_pages=tuple(range(1, packet["page_count"] + 1)),
         )
-        trials.append(
-            _trial_from_document_store_snapshot_v1(
+        trial = _trial_from_document_store_snapshot_v1(
+            snapshot,
+            family_spec,
+            policy,
+            topology_scan=topology_scans[ordinal - 1],
+        )
+        missing_pages = _missing_render_pages_for_document_store_trial_v1(
+            trial, topology_scans[ordinal - 1], snapshot["joined_pages"]
+        )
+        if missing_pages:
+            renders = document_store_v1.read_authenticated_family_first_document_page_renders_v1(
+                document_store_capability,
+                document_ordinal=ordinal,
+                physical_pages=missing_pages,
+            )
+            trial = _trial_from_document_store_snapshot_v1(
                 snapshot,
                 family_spec,
                 policy,
+                render_snapshots=renders,
                 topology_scan=topology_scans[ordinal - 1],
             )
-        )
+        trials.append(trial)
     material = {
         "authority": canonical_clone_v1(_AUTHORITY),
         "claim_boundary": CLAIM_BOUNDARY,

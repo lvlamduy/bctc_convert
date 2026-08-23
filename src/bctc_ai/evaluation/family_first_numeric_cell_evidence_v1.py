@@ -81,6 +81,9 @@ _PARSED_FIELDS = {
 _DASHES = {"-", "\u2013", "\u2014", "\u2212"}
 _SPACES = {" ", "\u00a0", "\u2007", "\u202f"}
 _DIGITS = re.compile(r"^[0-9]+$")
+_GROUPED_INTEGER_WITH_NOISE_SUFFIX = re.compile(
+    r"^([0-9]{1,3}([.,])[0-9]{3}(?:\2[0-9]{3})*)[\s]+(\S.*)$"
+)
 
 
 class FamilyFirstNumericCellEvidenceV1Error(ValueError):
@@ -226,6 +229,31 @@ def parse_visible_financial_numeric_token_v1(raw_text: Any) -> dict[str, Any]:
     if not core or (parentheses and (explicit_negative or explicit_positive)):
         return _unresolved(token, percentage=percentage, parentheses=parentheses)
     negative = parentheses or explicit_negative
+
+    # A detector crop can contain one intact black monetary token followed by
+    # a spatially overlapping coloured stamp or annotation.  Preserve the
+    # intact leading token as a *candidate* only; downstream code must still
+    # require an independent same-crop reader, an integer-money lane, peers,
+    # and exact accounting closure before it can be used.  Requiring a
+    # whitespace boundary, one consistent grouping separator, and an
+    # alphabetic suffix avoids interpreting two adjacent numeric cells as one
+    # rescued value.
+    noisy = _GROUPED_INTEGER_WITH_NOISE_SUFFIX.fullmatch(core)
+    if noisy is not None and any(character.isalpha() for character in noisy.group(3)):
+        grouped_surface = noisy.group(1)
+        separator = noisy.group(2)
+        digits = _grouped_integer(grouped_surface, separator)
+        if digits is not None and not percentage:
+            return _parsed_number(
+                token,
+                classification="NOISE_SUFFIXED_GROUPED_INTEGER_CANDIDATE",
+                digits=digits,
+                scale=0,
+                negative=negative,
+                parentheses=parentheses,
+                percentage=False,
+                separator="NOISE_SUFFIXED_GROUPED_INTEGER_CANDIDATE",
+            )
 
     if _DIGITS.fullmatch(core):
         return _parsed_number(

@@ -23,6 +23,8 @@ from bctc_ai.source_structure.contracts_v1 import (
 __all__ = [
     "FORMAT_VERSION",
     "SPEC_FORMAT_VERSION",
+    "SPEC_FORMAT_VERSION_V2",
+    "SPEC_FORMAT_VERSION_V3",
     "AccountingHierarchicalTableClosureV1Error",
     "build_accounting_hierarchical_table_closure_v1",
     "validate_accounting_hierarchical_table_closure_replay_v1",
@@ -31,6 +33,8 @@ __all__ = [
 
 FORMAT_VERSION = "ACCOUNTING_HIERARCHICAL_TABLE_CLOSURE_V1"
 SPEC_FORMAT_VERSION = "ACCOUNTING_HIERARCHICAL_CLOSURE_SPEC_V1"
+SPEC_FORMAT_VERSION_V2 = "ACCOUNTING_HIERARCHICAL_CLOSURE_SPEC_V2"
+SPEC_FORMAT_VERSION_V3 = "ACCOUNTING_HIERARCHICAL_CLOSURE_SPEC_V3"
 CLAIM_BOUNDARY = (
     "VISIBLE_SOURCE_ROLE_OR_EXACT_RECURSIVE_COMPONENT_SUM_WITH_OPTIONAL_VISIBLE_"
     "RESULT_AND_TRAILING_TOTAL_CORROBORATION_NO_DIGIT_REPAIR_MISSING_CELL_PERIOD_"
@@ -45,6 +49,7 @@ _SAFETY = {
     "missing_cells_synthesized": False,
     "numeric_authority": False,
     "period_or_unit_authority": False,
+    "partial_component_sets_cannot_derive_or_veto_visible_result": True,
     "schema_authority": False,
     "visible_mismatch_is_veto": True,
 }
@@ -56,7 +61,27 @@ _EQUATION_FIELDS = {
     "trailing_result_policy",
     "visible_result_roles",
 }
-_TRAILING_POLICIES = {"IGNORE", "CORROBORATE_IF_PRESENT"}
+_EQUATION_FIELDS_V2 = {
+    "component_role_alternatives",
+    "result_role",
+    "trailing_result_policy",
+    "visible_result_roles",
+}
+_ALTERNATIVE_FIELDS = {"component_roles", "minimum_component_count"}
+_ALTERNATIVE_FIELDS_V3 = {
+    "component_roles",
+    "coverage_policy",
+    "minimum_component_count",
+}
+_COVERAGE_POLICIES = {
+    "EXHAUSTIVE_COMPONENT_SET",
+    "VISIBLE_RESULT_CORROBORATION_ONLY",
+}
+_TRAILING_POLICIES = {
+    "IGNORE",
+    "CORROBORATE_IF_PRESENT",
+    "CORROBORATE_UNIQUE_MATCH_IF_PRESENT",
+}
 _RESULT_FIELDS = {
     "claim_boundary",
     "closure_id",
@@ -88,7 +113,8 @@ def _spec(value: Any, family_topology_spec: Any) -> dict[str, Any]:
     if (
         type(value) is not dict
         or set(value) != _SPEC_FIELDS
-        or value["format_version"] != SPEC_FORMAT_VERSION
+        or value["format_version"]
+        not in {SPEC_FORMAT_VERSION, SPEC_FORMAT_VERSION_V2, SPEC_FORMAT_VERSION_V3}
         or value["family_id"] != topology["family_id"]
         or type(value["equations"]) is not list
         or not value["equations"]
@@ -100,22 +126,17 @@ def _spec(value: Any, family_topology_spec: Any) -> dict[str, Any]:
     visible_roles: set[str] = set()
     equations = []
     for raw in value["equations"]:
+        is_alternative = value["format_version"] in {
+            SPEC_FORMAT_VERSION_V2,
+            SPEC_FORMAT_VERSION_V3,
+        }
         if (
             type(raw) is not dict
-            or set(raw) != _EQUATION_FIELDS
+            or set(raw) != (_EQUATION_FIELDS_V2 if is_alternative else _EQUATION_FIELDS)
             or type(raw["result_role"]) is not str
             or not raw["result_role"]
             or raw["result_role"] not in known_roles
             or raw["result_role"] in result_roles
-            or type(raw["component_roles"]) is not list
-            or not raw["component_roles"]
-            or any(
-                type(role) is not str or role not in known_roles for role in raw["component_roles"]
-            )
-            or len(raw["component_roles"]) != len(set(raw["component_roles"]))
-            or raw["result_role"] in raw["component_roles"]
-            or type(raw["minimum_component_count"]) is not int
-            or not 1 <= raw["minimum_component_count"] <= len(raw["component_roles"])
             or type(raw["visible_result_roles"]) is not list
             or not raw["visible_result_roles"]
             or any(role not in child_roles for role in raw["visible_result_roles"])
@@ -124,19 +145,84 @@ def _spec(value: Any, family_topology_spec: Any) -> dict[str, Any]:
             or raw["trailing_result_policy"] not in _TRAILING_POLICIES
         ):
             raise _error("hierarchical closure equation contract drifted")
+        raw_alternatives = (
+            raw["component_role_alternatives"]
+            if is_alternative
+            else [
+                {
+                    "component_roles": raw["component_roles"],
+                    "minimum_component_count": raw["minimum_component_count"],
+                }
+            ]
+        )
+        if type(raw_alternatives) is not list or not raw_alternatives:
+            raise _error("hierarchical closure component alternatives drifted")
+        alternatives = []
+        role_sets: set[tuple[str, ...]] = set()
+        for alternative in raw_alternatives:
+            if (
+                type(alternative) is not dict
+                or set(alternative)
+                != (
+                    _ALTERNATIVE_FIELDS_V3
+                    if value["format_version"] == SPEC_FORMAT_VERSION_V3
+                    else _ALTERNATIVE_FIELDS
+                )
+                or type(alternative["component_roles"]) is not list
+                or not alternative["component_roles"]
+                or any(
+                    type(role) is not str or role not in known_roles
+                    for role in alternative["component_roles"]
+                )
+                or len(alternative["component_roles"]) != len(set(alternative["component_roles"]))
+                or raw["result_role"] in alternative["component_roles"]
+                or type(alternative["minimum_component_count"]) is not int
+                or not 1
+                <= alternative["minimum_component_count"]
+                <= len(alternative["component_roles"])
+                or (
+                    value["format_version"] == SPEC_FORMAT_VERSION_V3
+                    and alternative["coverage_policy"] not in _COVERAGE_POLICIES
+                )
+            ):
+                raise _error("hierarchical closure component alternative drifted")
+            signature = tuple(alternative["component_roles"])
+            if signature in role_sets:
+                raise _error("hierarchical closure component alternatives repeat")
+            role_sets.add(signature)
+            alternatives.append(
+                {
+                    "component_roles": canonical_clone_v1(alternative["component_roles"]),
+                    "coverage_policy": (
+                        alternative["coverage_policy"]
+                        if value["format_version"] == SPEC_FORMAT_VERSION_V3
+                        else "EXHAUSTIVE_COMPONENT_SET"
+                    ),
+                    "minimum_component_count": alternative["minimum_component_count"],
+                }
+            )
         # Recursive results must be defined before a later equation consumes
         # them. Every other component must be one declared source role.
         if any(
-            role not in child_roles and role not in result_roles for role in raw["component_roles"]
+            role not in child_roles and role not in result_roles
+            for alternative in alternatives
+            for role in alternative["component_roles"]
         ):
             raise _error("hierarchical closure equations are not in dependency order")
         result_roles.add(raw["result_role"])
         visible_roles.update(raw["visible_result_roles"])
-        equations.append(canonical_clone_v1(raw))
+        equations.append(
+            {
+                "component_role_alternatives": alternatives,
+                "result_role": raw["result_role"],
+                "trailing_result_policy": raw["trailing_result_policy"],
+                "visible_result_roles": canonical_clone_v1(raw["visible_result_roles"]),
+            }
+        )
     return {
         "equations": equations,
         "family_id": topology["family_id"],
-        "format_version": SPEC_FORMAT_VERSION,
+        "format_version": value["format_version"],
     }
 
 
@@ -145,7 +231,12 @@ def _number(value: Mapping[str, Any]) -> dict[str, Any]:
     if (
         type(parsed) is not dict
         or parsed.get("classification")
-        not in {"DASH_ZERO", "MIXED_GROUPED_INTEGER_CANDIDATE", "SIGNED_NUMBER"}
+        not in {
+            "DASH_ZERO",
+            "MIXED_GROUPED_INTEGER_CANDIDATE",
+            "NOISE_SUFFIXED_GROUPED_INTEGER_CANDIDATE",
+            "SIGNED_NUMBER",
+        }
         or type(parsed.get("coefficient")) is not int
         or type(parsed.get("scale")) is not int
         or parsed["scale"] < 0
@@ -358,15 +449,24 @@ def _build_accounting_hierarchical_table_closure_v1(
         resolved: dict[str, dict[str, Any]] = {}
     else:
         reasons = []
-        resolved = {row["role"]: _row_resolution(row) for row in axis["rows"]}
-        if len(resolved) != len(axis["rows"]):
+        valued_rows = [row for row in axis["rows"] if row["status"] == "VISIBLE_VALUE_LANES_BOUND"]
+        resolved = {row["role"]: _row_resolution(row) for row in valued_rows}
+        if len(resolved) != len(valued_rows):
             raise _error("hierarchical closure source roles repeat")
     equation_records = []
     for equation in spec["equations"]:
         result_role = equation["result_role"]
-        component_roles = [role for role in equation["component_roles"] if role in resolved]
-        components_complete = len(component_roles) >= equation["minimum_component_count"]
-        component_sum = _sum_components(component_roles, resolved) if components_complete else None
+        component_alternatives = []
+        for alternative in equation["component_role_alternatives"]:
+            roles = [role for role in alternative["component_roles"] if role in resolved]
+            if len(roles) >= alternative["minimum_component_count"]:
+                component_alternatives.append(
+                    {
+                        "component_roles": roles,
+                        "coverage_policy": alternative["coverage_policy"],
+                        "values": _sum_components(roles, resolved),
+                    }
+                )
         visible_candidates = [
             resolved[role] for role in equation["visible_result_roles"] if role in resolved
         ]
@@ -378,12 +478,28 @@ def _build_accounting_hierarchical_table_closure_v1(
         ):
             reasons.append(f"VISIBLE_RESULT_ROLES_DISAGREE:{result_role}")
         visible = visible_candidates[0] if visible_candidates else None
+        component_roles: list[str] = []
+        component_sum = None
+        exhaustive = [
+            alternative
+            for alternative in component_alternatives
+            if alternative["coverage_policy"] == "EXHAUSTIVE_COMPONENT_SET"
+        ]
+        exact_visible_alternatives = (
+            [
+                alternative
+                for alternative in component_alternatives
+                if visible is not None and _same_values(visible["values"], alternative["values"])
+            ]
+            if visible is not None
+            else []
+        )
         trailing = None
-        if (
-            component_sum is not None
-            and not visible_candidates
-            and equation["trailing_result_policy"] == "CORROBORATE_IF_PRESENT"
-        ):
+        trailing_candidates: list[dict[str, Any]] = []
+        if not visible_candidates and equation["trailing_result_policy"] in {
+            "CORROBORATE_IF_PRESENT",
+            "CORROBORATE_UNIQUE_MATCH_IF_PRESENT",
+        }:
             trailing_rows = axis["trailing_value_rows"]
             if any(
                 item.get("status")
@@ -394,41 +510,97 @@ def _build_accounting_hierarchical_table_closure_v1(
                 for item in trailing_rows
             ):
                 raise _error("hierarchical closure trailing candidate status drifted")
-            candidates = [
+            trailing_candidates = [
                 _trailing_resolution(item)
                 for item in trailing_rows
                 if item["status"] == "COMPLETE_VISIBLE_TRAILING_VALUE_ROW"
             ]
-            # A separate child subtable commonly prints its own unlabelled
-            # subtotal before the next child group.  At the parent equation,
-            # an exact duplicate of one already-resolved direct component is
-            # that child subtotal, not a competing parent total.  Exclude only
-            # typed exact duplicates; every other complete trailing row keeps
-            # its strict accounting-challenger role.
-            candidates = [
+
+        # Alternative layouts are representations of the same accounting
+        # parent, not simultaneous additive branches.  A visible parent or
+        # one complete unlabelled total may select the unique alternative that
+        # closes exactly.  This is what lets issuer, listing, currency, or
+        # other table variants coexist declaratively without double-counting.
+        # With no printed challenger, disagreeing exhaustive alternatives
+        # remain a strict veto.
+        if visible is not None and exhaustive:
+            baseline = exhaustive[0]
+            if any(
+                not _same_values(baseline["values"], alternative["values"])
+                for alternative in exhaustive[1:]
+            ):
+                reasons.append(f"ALTERNATIVE_COMPONENT_SETS_DISAGREE:{result_role}")
+            else:
+                component_roles = baseline["component_roles"]
+                component_sum = baseline["values"]
+        elif exact_visible_alternatives:
+            selected_alternative = max(
+                exact_visible_alternatives,
+                key=lambda alternative: len(alternative["component_roles"]),
+            )
+            component_roles = selected_alternative["component_roles"]
+            component_sum = selected_alternative["values"]
+        elif exhaustive and trailing_candidates:
+            direct_component_roles = {
+                role for alternative in exhaustive for role in alternative["component_roles"]
+            }
+            trailing_challengers = [
                 candidate
-                for candidate in candidates
+                for candidate in trailing_candidates
                 if not any(
-                    _same_values(candidate["values"], resolved[role]["values"])
-                    for role in component_roles
+                    role in resolved and _same_values(candidate["values"], resolved[role]["values"])
+                    for role in direct_component_roles
                 )
             ]
-            exact = [
-                candidate
-                for candidate in candidates
-                if _same_values(candidate["values"], component_sum)
+            exact_pairs = [
+                (alternative, candidate)
+                for alternative in exhaustive
+                for candidate in trailing_challengers
+                if _same_values(alternative["values"], candidate["values"])
             ]
-            # An unlabelled partial row is not a total candidate: it has
-            # neither total semantics nor a complete body-lane axis.  Retain
-            # it in the row-axis diagnostics, but do not let an unrelated
-            # orphan cell veto an exact component-derived result.  Complete
-            # unlabelled rows remain strict accounting challengers below.
-            if candidates and len(exact) != 1:
+            matching_trailing = {
+                tuple(
+                    sample_id
+                    for value in candidate["values"]
+                    for sample_id in value["source_sample_ids"]
+                )
+                for _alternative, candidate in exact_pairs
+            }
+            if not trailing_challengers:
+                if equation["trailing_result_policy"] == "CORROBORATE_IF_PRESENT":
+                    baseline = exhaustive[0]
+                    if any(
+                        not _same_values(baseline["values"], alternative["values"])
+                        for alternative in exhaustive[1:]
+                    ):
+                        reasons.append(f"ALTERNATIVE_COMPONENT_SETS_DISAGREE:{result_role}")
+                    else:
+                        component_roles = baseline["component_roles"]
+                        component_sum = baseline["values"]
+            elif len(matching_trailing) == 1:
+                selected_alternative, trailing = max(
+                    exact_pairs,
+                    key=lambda pair: len(pair[0]["component_roles"]),
+                )
+                component_roles = selected_alternative["component_roles"]
+                component_sum = selected_alternative["values"]
+            elif equation["trailing_result_policy"] == "CORROBORATE_IF_PRESENT":
                 reasons.append(
-                    f"TRAILING_RESULT_NOT_ONE_EXACT_COMPONENT_SUM:{result_role}:{len(exact)}"
+                    f"TRAILING_RESULT_NOT_ONE_EXACT_COMPONENT_SUM:{result_role}:"
+                    f"{len(matching_trailing)}"
                 )
-            elif len(exact) == 1:
-                trailing = exact[0]
+        elif exhaustive and equation["trailing_result_policy"] != (
+            "CORROBORATE_UNIQUE_MATCH_IF_PRESENT"
+        ):
+            baseline = exhaustive[0]
+            if any(
+                not _same_values(baseline["values"], alternative["values"])
+                for alternative in exhaustive[1:]
+            ):
+                reasons.append(f"ALTERNATIVE_COMPONENT_SETS_DISAGREE:{result_role}")
+            else:
+                component_roles = baseline["component_roles"]
+                component_sum = baseline["values"]
         status = "NOT_APPLICABLE_NO_SOURCE_OR_COMPLETE_COMPONENT_SET"
         if visible is not None and component_sum is not None:
             if not _same_values(visible["values"], component_sum):
@@ -451,7 +623,11 @@ def _build_accounting_hierarchical_table_closure_v1(
                 "role": result_role,
             }
         elif visible is not None:
-            status = "VISIBLE_RESULT_RETAINED_WITH_INCOMPLETE_COMPONENT_SET"
+            status = (
+                "VISIBLE_RESULT_RETAINED_WITH_NONEXHAUSTIVE_COMPONENT_EVIDENCE"
+                if component_alternatives
+                else "VISIBLE_RESULT_RETAINED_WITH_INCOMPLETE_COMPONENT_SET"
+            )
             resolved[result_role] = {
                 **canonical_clone_v1(visible),
                 "component_roles": list(component_roles),

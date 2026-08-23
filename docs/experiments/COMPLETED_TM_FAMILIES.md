@@ -71,26 +71,26 @@ Quy ước:
 
 ## 4. Chứng khoán kinh doanh
 
-- **Đã xác minh trên ma trận family-first hiện có:** 36/140 filing, gồm ACB 3,
-  MBB 6, VPB 3, VCB 15, CTG 4 và BID 5. Tổng cộng 126 mapping leaf có population
-  rõ; không map family root hay tổng suy diễn khi nguồn chỉ cho một subset.
-  Annual-2025 đã xác minh trước đây được giữ làm evidence độc lập, không bị
-  dựng lại từ đầu.
+- **Đã xác minh trên ma trận family-first hiện có:** 114/140 filing, gồm ACB 18,
+  MBB 18, VPB 12, HDB 16, VCB 18, CTG 16 và BID 16; tổng cộng 457 mapping.
+  Không map family root hay dòng tổng chỉ dùng để kiểm tra. Evidence OCR đã có
+  được tái sử dụng; sweep này không chạy lại OCR.
 - **Không quan sát thấy trong phạm vi filing đã quét:** 26 filing, gồm 18 filing
   VIB, 6 filing riêng lẻ của VPB và 2 filing riêng lẻ của CTG. Đây là
   `NOT_OBSERVED_PROPOSAL_ONLY` trong đúng PDF đã bind. VIB có family riêng
   `Chứng khoán đầu tư`, không bị relabel thành chứng khoán kinh doanh.
-- **Có family nhưng còn thiếu:** 78 filing: ACB 15, MBB 12, VPB 9, HDB 16, VCB
-  3, CTG 12 và BID 11. Các nguyên nhân còn mở là ô số/kỳ chưa đủ lane, merged
-  header hoặc trục cột chưa dựng duy nhất, kế thừa kỳ/đơn vị qua trang chưa
-  chứng minh, và các view issuer với listed/unlisted không được cộng lẫn.
-  Danh sách từng filing, trang, owner nguồn và lý do nằm ở đầu
-  `UNRESOLVED_MAPPING_LEDGER.md`.
+- **Có family nhưng còn thiếu:** Không còn filing nào; số unresolved là 0.
 - **Biến thể chung đã khóa:** owner `Chứng khoán kinh doanh` có thể dẫn vào
   issuer view hoặc listed/unlisted view; các nhánh nợ, vốn, khác và dự phòng có
   thể thiếu/reordered; owner + một child phân biệt đã đủ làm anchor khi unique
   trên toàn PDF. Hai view cùng population là các biểu diễn thay thế, không phải
-  các bảng cộng dồn.
+  các bảng cộng dồn. Engine còn hỗ trợ xuống trang, header lặp/đổi vị trí, ô
+  dash bị detector bỏ, structural parent chỉ in một phần lane, và chọn biến thể
+  thành phần duy nhất khớp subtotal/net in trên PDF.
+- VPB annual-2025 p43 có crop bị con dấu màu chồng lên `3.202.820`. Raw PP-OCRv6
+  và VietOCR cùng giữ tiền tố số; năm lần PP-OCRv6 sau phép loại nhiễu màu tổng
+  quát đều đọc `3.202.820`, Gemma API full-page cũng đọc `3.202.820`, và phương
+  trình các leaf cộng dự phòng khớp chính xác dòng net `13.110.971`.
 
 ## 5. Công cụ tài chính phái sinh và tài sản/công nợ tài chính khác
 
@@ -1495,7 +1495,7 @@ dùng.
 | Tiền gửi tại NHNN | ✓ 6 / — 12 | ✓ 18 | ✓ 18 | ✓ 4 / — 12 | ✓ 2 / — 16 | ✓ 2 / — 16 | ✓ 2 / — 14 | ✓ 18 | 0; ô MBB `55,307.732` đã đóng bằng cùng rule chung |
 | Tiền gửi tại/cho vay TCTD khác — tài sản (575) | ✓ 8 / △ 10 | ✓ 16 / △ 2 | ✓ 14 / △ 4 | ✓ 6 / △ 10 | ✓ 18 | ✓ 13 / △ 3 / — 2 | ✓ 3 / △ 1 / — 12 | ✓ 6 / △ 12 | 42 filing còn UNRESOLVED; 84/140 filing, 701 mapping đã xác minh |
 | Tiền, vàng gửi và vay TCTD khác — nguồn vốn (1040) | ✓ p61 | ✓ p64 | ✓\* p58–59 | ✓\* p44 | ✓ p52 | ✓ p51 | ✓ p50 | ✓ p45 | 2 hàng phụ source-only: VPB IFC và HDB UPAS LC |
-| Chứng khoán kinh doanh | ✓ 3 / △ 15 | ✓ 6 / △ 12 | ✓ 3 / △ 9 / — 6 | △ 16 | ✓ 15 / △ 3 | ✓ 4 / △ 12 / — 2 | ✓ 5 / △ 11 | — 18 | 78 filing còn `UNRESOLVED`; 36/140 filing và 126 leaf mapping đã xác minh; từng PDF/kỳ/scope/trang/lý do ở `UNRESOLVED_MAPPING_LEDGER.md` |
+| Chứng khoán kinh doanh | ✓ 18 | ✓ 18 | ✓ 12 / — 6 | ✓ 16 | ✓ 18 | ✓ 16 / — 2 | ✓ 16 | — 18 | 0; 114/140 filing, 457 mapping; 26 bounded `NOT_OBSERVED` |
 | Công cụ tài chính phái sinh | ✓ p49 | ✓ p66 | ✓ p44 | ✓ p35 | — | ✓ p42 | ✓ p41 | ✓ p37 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; VCB không có family |
 | Loại hình cho vay | ✓ p17 | ✓ p31 | ✓ p42 | ✓ p26 | ✓ p30 | ✓ p38 | ✓ p22 | ✓ p33 | 0 |
 | Ngành nghề kinh doanh | ✓ p51 | ✓ p52 | ✓ p47 | ✓ p37 | ✓ p40 | — | ✓ p42 | ✓ p38 | 0 dòng; VCB gộp `Thương mại, dịch vụ` → 6073; CTG không có family trong filing annual-2025 |

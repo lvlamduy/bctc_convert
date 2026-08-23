@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-08-22T04:57:47Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
+Updated: 2026-08-23T04:04:20Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
 The detailed historical receipts below remain evidence, but that directive supersedes
@@ -56,19 +56,21 @@ older queue priorities where they conflict.
   the final reason query 0.009 seconds.
 - `TRADING_SECURITIES`, the fourth schema-order family, has now been swept over
   all 140 available filings through the authenticated document store. Evidence
-  sweep `ffaesv1:sweep:c35c0a0e81c7885b7a6fd8469910c30a540a8910e820b6660344e886f918c523`
+  sweep `ffaesv1:sweep:956dad7d687c5bf999460b6074f1f26df3ac71088fbd35cebfaf11618e242be5`
   and mapping
-  `ffasmv1:mapping:92b192228194a38029a085bd90a35877322434bf0e081449c814df0e2667bf51`
-  yield **36 verified documents / 126 verified leaf mappings / 26 bounded
-  not-observed / 78 unresolved**. Verified filings span ACB, MBB, VPB, VCB,
-  CTG and BID. HDB remains present-but-unresolved; all VIB filings are bounded
-  trading-not-observed because their securities tables belong to investment
-  families. The shared engine admits explicit parent + one distinctive child
-  when that pair is unique across the PDF, preserves issuer and listed/unlisted
-  views as alternative populations, and permits verified hierarchical leaves
-  without manufacturing a missing family-root value. The build took 114.092 s
-  and exact verify 115.986 s with zero OCR replay. The next schema-order family
-  is `DERIVATIVE_FINANCIAL_INSTRUMENTS`; annual-2025 evidence will be reused.
+  `ffasmv1:mapping:b0ea7cec9cf8a3c79d34f5bd633a934238c6d0c8730f3adc2311e6e98e26d9a1`
+  yield **114 verified documents / 457 mappings / 26 bounded not-observed /
+  0 unresolved**. Verified counts are ACB 18, MBB 18, VPB 12, HDB 16, VCB 18,
+  CTG 16 and BID 16. All VIB filings, six VPB separate filings and two CTG
+  separate filings are bounded trading-not-observed in their exact PDFs.
+  Shared rules now cover cross-page tables, translated repeated headers,
+  detector-missed dash cells, optional partial group rows, and mutually
+  alternative issuer/listing layouts selected only by one exact printed
+  subtotal/net. The VPB stamp-contaminated `3.202.820` cell also requires
+  same-prefix VietOCR and exact leaf-plus-provision-to-net closure; independent
+  chroma-suppressed PP-OCR and Gemma full-page reads agree. This final audit
+  took 174.518 s with zero OCR replay. The next schema-order family is
+  `DERIVATIVE_FINANCIAL_INSTRUMENTS`; annual-2025 evidence will be reused.
 - The measured family topology bottleneck no longer requires a 140-document
   sequential pass on every edit. The unchanged engine/spec path fell from
   137.071 seconds to 13.810 seconds with 12 balanced document processes; every

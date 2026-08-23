@@ -113,6 +113,48 @@ def _hierarchy_spec() -> dict[str, object]:
     }
 
 
+def _alternative_view_specs() -> tuple[dict[str, object], dict[str, object]]:
+    topology = _topology_spec()
+    topology["children"].extend(
+        [
+            {
+                "matchers": [_matcher("Đã niêm yết", "DEPOSIT_GROUP")],
+                "presence": "OPTIONAL",
+                "role": "DEPOSIT_LISTED",
+                "role_kind": "ADDITIVE_CHILD",
+            },
+            {
+                "matchers": [_matcher("Chưa niêm yết", "DEPOSIT_GROUP")],
+                "presence": "OPTIONAL",
+                "role": "DEPOSIT_UNLISTED",
+                "role_kind": "ADDITIVE_CHILD",
+            },
+        ]
+    )
+    hierarchy = {
+        "equations": [
+            {
+                "component_role_alternatives": [
+                    {
+                        "component_roles": ["DEPOSIT_VND", "DEPOSIT_FOREIGN_CURRENCY"],
+                        "minimum_component_count": 2,
+                    },
+                    {
+                        "component_roles": ["DEPOSIT_LISTED", "DEPOSIT_UNLISTED"],
+                        "minimum_component_count": 2,
+                    },
+                ],
+                "result_role": "DEPOSIT_GROUP",
+                "trailing_result_policy": "IGNORE",
+                "visible_result_roles": ["DEPOSIT_GROUP"],
+            }
+        ],
+        "family_id": "INTERBANK_DEPOSITS_AND_LOANS",
+        "format_version": "ACCOUNTING_HIERARCHICAL_CLOSURE_SPEC_V2",
+    }
+    return topology, hierarchy
+
+
 def _line(ordinal: int, text: str, numeric: str, bbox: list[int]) -> dict[str, object]:
     return {
         "bbox": bbox,
@@ -228,6 +270,178 @@ def test_visible_total_mismatch_is_veto_and_never_repairs_source_digits() -> Non
         record for record in closure["resolved_roles"] if record["role"] == "EXPLICIT_FAMILY_TOTAL"
     )
     assert total["values"][0]["number"]["coefficient"] == 151
+
+
+def test_alternative_subviews_corroborate_one_parent_without_double_counting() -> None:
+    topology, hierarchy = _alternative_view_specs()
+    pages = _page(
+        [
+            ("Tiền gửi tại TCTD khác", "120", "95"),
+            ("Bằng VND", "100", "80"),
+            ("Bằng ngoại tệ", "20", "15"),
+            ("Đã niêm yết", "70", "60"),
+            ("Chưa niêm yết", "50", "35"),
+            ("Cho vay TCTD khác", "30", "30"),
+        ]
+    )
+
+    axis = build_accounting_family_row_axis_v1(pages, topology)
+    closure = build_accounting_hierarchical_table_closure_v1(axis, pages, topology, hierarchy)
+
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    group = next(
+        record for record in closure["resolved_roles"] if record["role"] == "DEPOSIT_GROUP"
+    )
+    assert group["component_roles"] == ["DEPOSIT_VND", "DEPOSIT_FOREIGN_CURRENCY"]
+    assert [value["number"]["coefficient"] for value in group["values"]] == [120, 95]
+
+
+def test_disagreeing_complete_alternative_subviews_are_an_accounting_veto() -> None:
+    topology, hierarchy = _alternative_view_specs()
+    pages = _page(
+        [
+            ("Tiền gửi tại TCTD khác", "120", "95"),
+            ("Bằng VND", "100", "80"),
+            ("Bằng ngoại tệ", "20", "15"),
+            ("Đã niêm yết", "70", "60"),
+            ("Chưa niêm yết", "51", "35"),
+            ("Cho vay TCTD khác", "30", "30"),
+        ]
+    )
+
+    axis = build_accounting_family_row_axis_v1(pages, topology)
+    closure = build_accounting_hierarchical_table_closure_v1(axis, pages, topology, hierarchy)
+
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert closure["unresolved_reasons"] == ["ALTERNATIVE_COMPONENT_SETS_DISAGREE:DEPOSIT_GROUP"]
+
+
+def test_unique_unlabelled_total_selects_one_of_disagreeing_layout_alternatives() -> None:
+    topology, hierarchy = _alternative_view_specs()
+    hierarchy["equations"][0]["trailing_result_policy"] = "CORROBORATE_IF_PRESENT"
+    pages = _page(
+        [
+            ("Tiền gửi tại TCTD khác", "", ""),
+            ("Bằng VND", "100", "80"),
+            ("Bằng ngoại tệ", "20", "15"),
+            ("Đã niêm yết", "70", "60"),
+            ("Chưa niêm yết", "51", "35"),
+            ("Cho vay TCTD khác", "30", "30"),
+            ("", "120", "95"),
+        ]
+    )
+
+    axis = build_accounting_family_row_axis_v1(pages, topology)
+    closure = build_accounting_hierarchical_table_closure_v1(axis, pages, topology, hierarchy)
+
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    group = next(
+        record for record in closure["resolved_roles"] if record["role"] == "DEPOSIT_GROUP"
+    )
+    assert group["resolution_kind"] == "VISIBLE_TRAILING_TOTAL_CORROBORATED_BY_COMPONENTS"
+    assert group["component_roles"] == ["DEPOSIT_VND", "DEPOSIT_FOREIGN_CURRENCY"]
+
+
+def test_optional_trailing_variant_does_not_veto_an_unrelated_complete_row() -> None:
+    topology, hierarchy = _alternative_view_specs()
+    hierarchy["equations"][0]["trailing_result_policy"] = "CORROBORATE_UNIQUE_MATCH_IF_PRESENT"
+    pages = _page(
+        [
+            ("Tiền gửi tại TCTD khác", "", ""),
+            ("Bằng VND", "100", "80"),
+            ("Bằng ngoại tệ", "20", "15"),
+            ("Đã niêm yết", "70", "60"),
+            ("Chưa niêm yết", "51", "35"),
+            ("Cho vay TCTD khác", "30", "30"),
+            ("", "999", "888"),
+        ]
+    )
+
+    axis = build_accounting_family_row_axis_v1(pages, topology)
+    closure = build_accounting_hierarchical_table_closure_v1(axis, pages, topology, hierarchy)
+
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    equation = closure["equations"][0]
+    assert equation == {
+        "component_roles_present": [],
+        "result_role": "DEPOSIT_GROUP",
+        "status": "NOT_APPLICABLE_NO_SOURCE_OR_COMPLETE_COMPONENT_SET",
+    }
+
+
+def test_partial_component_evidence_neither_derives_nor_vetoes_visible_parent() -> None:
+    topology, hierarchy = _alternative_view_specs()
+    hierarchy["format_version"] = "ACCOUNTING_HIERARCHICAL_CLOSURE_SPEC_V3"
+    for alternative in hierarchy["equations"][0]["component_role_alternatives"]:
+        alternative["coverage_policy"] = "VISIBLE_RESULT_CORROBORATION_ONLY"
+        alternative["minimum_component_count"] = 1
+    pages = _page(
+        [
+            ("Tiền gửi tại TCTD khác", "120", "95"),
+            ("Bằng VND", "100", "80"),
+            ("Cho vay TCTD khác", "30", "30"),
+        ]
+    )
+
+    axis = build_accounting_family_row_axis_v1(pages, topology)
+    closure = build_accounting_hierarchical_table_closure_v1(axis, pages, topology, hierarchy)
+
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    group = next(
+        record for record in closure["resolved_roles"] if record["role"] == "DEPOSIT_GROUP"
+    )
+    assert group["resolution_kind"] == "VISIBLE_SOURCE_ROLE"
+    equation = next(item for item in closure["equations"] if item["result_role"] == "DEPOSIT_GROUP")
+    assert equation["status"] == ("VISIBLE_RESULT_RETAINED_WITH_NONEXHAUSTIVE_COMPONENT_EVIDENCE")
+
+
+def test_partial_component_evidence_may_corroborate_an_exact_visible_parent() -> None:
+    topology, hierarchy = _alternative_view_specs()
+    hierarchy["format_version"] = "ACCOUNTING_HIERARCHICAL_CLOSURE_SPEC_V3"
+    for alternative in hierarchy["equations"][0]["component_role_alternatives"]:
+        alternative["coverage_policy"] = "VISIBLE_RESULT_CORROBORATION_ONLY"
+        alternative["minimum_component_count"] = 1
+    pages = _page(
+        [
+            ("Tiền gửi tại TCTD khác", "120", "95"),
+            ("Bằng VND", "120", "95"),
+            ("Cho vay TCTD khác", "30", "30"),
+        ]
+    )
+
+    axis = build_accounting_family_row_axis_v1(pages, topology)
+    closure = build_accounting_hierarchical_table_closure_v1(axis, pages, topology, hierarchy)
+
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    group = next(
+        record for record in closure["resolved_roles"] if record["role"] == "DEPOSIT_GROUP"
+    )
+    assert group["resolution_kind"] == "VISIBLE_SOURCE_ROLE_CORROBORATED_BY_COMPONENTS"
+
+
+def test_partial_exact_subtotal_cannot_mask_exhaustive_component_mismatch() -> None:
+    topology, hierarchy = _alternative_view_specs()
+    hierarchy["format_version"] = "ACCOUNTING_HIERARCHICAL_CLOSURE_SPEC_V3"
+    issuer, listing = hierarchy["equations"][0]["component_role_alternatives"]
+    issuer["coverage_policy"] = "VISIBLE_RESULT_CORROBORATION_ONLY"
+    issuer["minimum_component_count"] = 1
+    listing["coverage_policy"] = "EXHAUSTIVE_COMPONENT_SET"
+    listing["minimum_component_count"] = 2
+    pages = _page(
+        [
+            ("Tiền gửi tại TCTD khác", "120", "95"),
+            ("Bằng VND", "120", "95"),
+            ("Đã niêm yết", "70", "60"),
+            ("Chưa niêm yết", "51", "35"),
+            ("Cho vay TCTD khác", "30", "30"),
+        ]
+    )
+
+    axis = build_accounting_family_row_axis_v1(pages, topology)
+    closure = build_accounting_hierarchical_table_closure_v1(axis, pages, topology, hierarchy)
+
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert closure["unresolved_reasons"] == ["VISIBLE_RESULT_NOT_EXACT_COMPONENT_SUM:DEPOSIT_GROUP"]
 
 
 def test_unique_unlabelled_trailing_total_is_corroborated() -> None:

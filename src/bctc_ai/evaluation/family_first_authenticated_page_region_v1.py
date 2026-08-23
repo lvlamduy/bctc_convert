@@ -160,6 +160,105 @@ def _foreground_recognition_bbox(
     if not components:
         return list(proposed_bbox), "NO_GLYPH_COMPONENT_FULL_PROPOSED_CELL_PRESERVED"
 
+    # Printed table borders often enter the top or bottom edge of an otherwise
+    # correct cell proposal.  PP-OCR may split one horizontal rule at column
+    # junctions, so filtering only one full-width connected component is not
+    # sufficient.  Remove an edge-aligned, collinear rule group only when it
+    # spans most of the proposed cell and a separate glyph-like component
+    # remains in the central vertical band.  A blank cell or a lone rule is
+    # therefore never manufactured into a digit or DASH.
+    central = [
+        component
+        for component in components
+        if abs((component["bbox"][1] + component["bbox"][3]) / 2 - height / 2) / height <= 0.20
+    ]
+    if central:
+        thin_limit = max(2, int(round(height * 0.08)))
+        edge_candidates = [
+            component
+            for component in components
+            if component not in central
+            and component["bbox"][3] - component["bbox"][1] <= thin_limit
+            and (
+                (component["bbox"][1] + component["bbox"][3]) / 2 <= height * 0.25
+                or (component["bbox"][1] + component["bbox"][3]) / 2 >= height * 0.75
+            )
+        ]
+        rule_groups: list[list[dict[str, Any]]] = []
+        for component in sorted(
+            edge_candidates,
+            key=lambda item: (
+                (item["bbox"][1] + item["bbox"][3]) / 2,
+                item["bbox"][0],
+            ),
+        ):
+            target = next(
+                (
+                    group
+                    for group in rule_groups
+                    if abs(
+                        (group[0]["bbox"][1] + group[0]["bbox"][3]) / 2
+                        - (component["bbox"][1] + component["bbox"][3]) / 2
+                    )
+                    <= 1
+                ),
+                None,
+            )
+            if target is None:
+                rule_groups.append([component])
+            else:
+                target.append(component)
+        discarded = {
+            id(component)
+            for group in rule_groups
+            if max(item["bbox"][2] for item in group) - min(item["bbox"][0] for item in group)
+            >= width * 0.6
+            and sum(item["bbox"][2] - item["bbox"][0] for item in group) >= width * 0.2
+            for component in group
+        }
+        if discarded and any(id(component) not in discarded for component in components):
+            components = [component for component in components if id(component) not in discarded]
+
+    # A clean central dash can also be surrounded by isolated scan specks or
+    # short fragments of a broken lower rule whose combined span is too small
+    # for the rule-group test above.  Tighten to that dash only when it is the
+    # sole central horizontal component and every discarded component is both
+    # vertically separate and materially smaller.  Digits, parentheses and a
+    # multi-component number remain untouched and are handled by the numeric
+    # recognizer rather than being coerced to zero.
+    dash_candidates = []
+    for component in components:
+        component_width = component["bbox"][2] - component["bbox"][0]
+        component_height = component["bbox"][3] - component["bbox"][1]
+        if (
+            component_height > 0
+            and component_width / component_height >= 1.25
+            and component_height <= height * 0.25
+            and component_width <= width * 0.35
+            and abs((component["bbox"][1] + component["bbox"][3]) / 2 - height / 2) / height <= 0.20
+        ):
+            dash_candidates.append(component)
+    if len(dash_candidates) == 1:
+        selected = dash_candidates[0]
+        selected_width = selected["bbox"][2] - selected["bbox"][0]
+        selected_height = selected["bbox"][3] - selected["bbox"][1]
+        selected_center_y = (selected["bbox"][1] + selected["bbox"][3]) / 2
+        discarded = [component for component in components if component is not selected]
+        if (
+            selected_height > 0
+            and selected_width / selected_height >= 1.25
+            and selected_height <= height * 0.25
+            and discarded
+            and all(
+                component["bbox"][3] - component["bbox"][1] <= selected_height
+                and component["ink_pixel_count"] <= selected["ink_pixel_count"] * 0.5
+                and abs((component["bbox"][1] + component["bbox"][3]) / 2 - selected_center_y)
+                > selected_height
+                for component in discarded
+            )
+        ):
+            components = [selected]
+
     ink_left = min(component["bbox"][0] for component in components)
     ink_top = min(component["bbox"][1] for component in components)
     ink_right = max(component["bbox"][2] for component in components)

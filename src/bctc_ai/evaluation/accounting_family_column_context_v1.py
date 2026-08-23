@@ -50,11 +50,13 @@ __all__ = [
 FORMAT_VERSION = "ACCOUNTING_FAMILY_COLUMN_CONTEXT_V1"
 CLAIM_BOUNDARY = (
     "VISIBLE_LOCAL_OR_UNAMBIGUOUS_DOCUMENT_INHERITED_PERIOD_AND_UNIT_TO_BODY_"
-    "DERIVED_COLUMN_PROPOSAL_ONLY_NO_NUMERIC_ACCOUNTING_POPULATION_SCHEMA_"
-    "MAPPING_CANONICALIZATION_OR_EXPORT_AUTHORITY"
+    "DERIVED_COLUMN_WITH_ROLE_DEFICIT_CONTINUATION_GEOMETRY_AND_ANY_REPEATED_"
+    "HEADER_CORROBORATION_PROPOSAL_ONLY_NO_NUMERIC_ACCOUNTING_POPULATION_"
+    "SCHEMA_MAPPING_CANONICALIZATION_OR_EXPORT_AUTHORITY"
 )
 _SAFETY = {
     "bank_file_note_page_or_fixed_year_used_for_routing": False,
+    "cross_page_context_requires_role_deficit_and_geometry_compatibility": True,
     "document_unit_inheritance_requires_no_conflicting_explicit_unit": True,
     "mapping_authority": False,
     "numeric_authority": False,
@@ -115,7 +117,7 @@ def _error(message: str) -> AccountingFamilyColumnContextV1Error:
 
 
 def _axis_pages(pages: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
-    return [
+    candidates = [
         {
             "lines": [
                 {
@@ -131,6 +133,51 @@ def _axis_pages(pages: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
         }
         for page in pages
     ]
+    return candidates
+
+
+def _match_source_line_indices(match: Mapping[str, Any]) -> tuple[int, ...]:
+    raw = match.get("source_line_indices")
+    if raw is None:
+        return tuple(range(match["source_line_index"], match["end_source_line_index"] + 1))
+    if (
+        type(raw) is not list
+        or len(raw) < 2
+        or any(type(index) is not int for index in raw)
+        or raw != sorted(set(raw))
+        or raw[0] != match["source_line_index"]
+        or raw[-1] != match["end_source_line_index"]
+    ):
+        raise _error("column-context noncontiguous label source axis drifted")
+    return tuple(raw)
+
+
+def _match_geometry(
+    pages: Sequence[Mapping[str, Any]], match: Mapping[str, Any]
+) -> list[Mapping[str, Any]]:
+    page = next(
+        (page for page in pages if page["page_sequence"] == match["page_sequence"]),
+        None,
+    )
+    if page is None:
+        raise _error("column-context label page is absent")
+    indices = set(_match_source_line_indices(match))
+    selected = [line for line in page["lines"] if line["line_ordinal"] in indices]
+    if len(selected) != len(indices):
+        raise _error("column-context label geometry is incomplete")
+    return selected
+
+
+def _visual_match_key(
+    pages: Sequence[Mapping[str, Any]], match: Mapping[str, Any]
+) -> tuple[int, int, int, int]:
+    geometry = _match_geometry(pages, match)
+    return (
+        match["page_sequence"],
+        min(line["bbox"][1] for line in geometry),
+        min(line["bbox"][0] for line in geometry),
+        match["source_line_index"],
+    )
 
 
 def _header_lines(
@@ -145,7 +192,7 @@ def _header_lines(
     header_start = region["cluster_start_document_line_ordinal"]
     first_body = min(
         (row["label_match"] for row in value_rows),
-        key=lambda item: item["document_line_ordinal"],
+        key=lambda item: _visual_match_key(pages, item),
     )
     header_stop = first_body["document_line_ordinal"]
     offset = 0
@@ -178,13 +225,7 @@ def _header_lines(
         )
         if child_page is None:
             raise _error("implied-parent first-child page is absent from the document axis")
-        child_lines = [
-            line
-            for line in child_page["lines"]
-            if first_body["source_line_index"]
-            <= line["line_ordinal"]
-            <= first_body["end_source_line_index"]
-        ]
+        child_lines = list(_match_geometry(pages, first_body))
         if not child_lines:
             raise _error("implied-parent first-child geometry is absent from its page")
         child_top = min(line["bbox"][1] for line in child_lines)
@@ -205,7 +246,7 @@ def _header_lines(
         for line in child_page["lines"]:
             bbox = line["bbox"]
             if (
-                line["line_ordinal"] < first_body["source_line_index"]
+                line["line_ordinal"] not in _match_source_line_indices(first_body)
                 and bbox[1] < child_top
                 and bbox[3] >= lookback_top
                 and bbox[2] >= band_left
@@ -228,6 +269,14 @@ def _header_lines(
 def _lane_centers(axis: Mapping[str, Any]) -> list[float] | None:
     if not axis["rows"]:
         return None
+    row_pages = sorted({row["label_match"]["page_sequence"] for row in axis["rows"]})
+    grid_by_page = {grid["page_sequence"]: grid for grid in axis["column_grids"]}
+    if set(row_pages) == set(grid_by_page):
+        reference = grid_by_page[row_pages[0]]["column_centers"]
+        if reference and all(
+            len(grid_by_page[page]["column_centers"]) == len(reference) for page in row_pages
+        ):
+            return canonical_clone_v1(reference)
     lane_count = (
         max(
             (value["column_ordinal"] for row in axis["rows"] for value in row["values"]),
@@ -249,6 +298,95 @@ def _lane_centers(axis: Mapping[str, Any]) -> list[float] | None:
             return None
         centers.append(float(median(value["column_center"] for value in values)))
     return centers if centers == sorted(set(centers)) else None
+
+
+def _page_lane_centers(axis: Mapping[str, Any], page_sequence: int) -> list[float] | None:
+    retained = next(
+        (
+            grid["column_centers"]
+            for grid in axis["column_grids"]
+            if grid["page_sequence"] == page_sequence
+        ),
+        None,
+    )
+    if retained is not None:
+        return canonical_clone_v1(retained)
+    rows = [row for row in axis["rows"] if row["label_match"]["page_sequence"] == page_sequence]
+    lanes = sorted({value["column_ordinal"] for row in rows for value in row["values"]})
+    if not rows or lanes != list(range(len(lanes))):
+        return None
+    centers = []
+    for lane in lanes:
+        values = [
+            value for row in rows for value in row["values"] if value["column_ordinal"] == lane
+        ]
+        if not values:
+            return None
+        centers.append(float(median(value["column_center"] for value in values)))
+    return centers if centers == sorted(set(centers)) else None
+
+
+def _continuation_header_lines(
+    page: Mapping[str, Any],
+    rows: Sequence[Mapping[str, Any]],
+    centers: Sequence[float],
+) -> list[dict[str, Any]]:
+    page_rows = [
+        row
+        for row in rows
+        if row["label_match"]["page_sequence"] == page["page_sequence"] and row["values"]
+    ]
+    if not page_rows:
+        return []
+    first = min(
+        page_rows,
+        key=lambda row: _visual_match_key([page], row["label_match"]),
+    )["label_match"]
+    label_lines = list(_match_geometry([page], first))
+    if not label_lines:
+        raise _error("continuation first-role geometry is absent from its page")
+    first_top = min(line["bbox"][1] for line in label_lines)
+    scale = median_text_height_v1(page["lines"])
+    lane_gap = (
+        float(median(right - left for left, right in zip(centers, centers[1:], strict=False)))
+        if len(centers) > 1
+        else scale * 8.0
+    )
+    band_left = centers[0] - lane_gap * 0.5
+    band_right = centers[-1] + lane_gap * 0.5
+    lookback_top = first_top - scale * 10.0
+    candidates = [
+        {
+            "bbox": canonical_clone_v1(line["bbox"]),
+            "numeric_score": line["numeric_recognition"]["reader_score"],
+            "numeric_text": line["numeric_recognition"]["raw_prediction"],
+            "source_line_index": line["line_ordinal"],
+            "vietocr_text": line["vietocr_text"],
+        }
+        for line in page["lines"]
+        if line["line_ordinal"] not in _match_source_line_indices(first)
+        and line["bbox"][1] < first_top
+        and line["bbox"][3] >= lookback_top
+        and line["bbox"][2] >= band_left
+        and line["bbox"][0] <= band_right
+    ]
+    # Adjacent tables can both fall inside the DPI-relative lookback window.
+    # Retain the nearest coherent visual header band after the largest clear
+    # baseline gap.  This removes a preceding table's dates/units without
+    # assuming provider source order, a page number, or a fixed pixel gap.
+    centers_y = sorted({(line["bbox"][1] + line["bbox"][3]) / 2 for line in candidates})
+    gaps = [
+        (right - left, left, right)
+        for left, right in zip(centers_y, centers_y[1:], strict=False)
+        if right - left > scale * 1.8
+    ]
+    if gaps:
+        _gap, left, right = max(gaps, key=lambda item: (item[0], item[2]))
+        cutoff = (left + right) / 2
+        candidates = [
+            line for line in candidates if (line["bbox"][1] + line["bbox"][3]) / 2 > cutoff
+        ]
+    return candidates
 
 
 def _project_records_to_lanes(
@@ -396,6 +534,18 @@ def _local_period_records(
 ) -> tuple[list[dict[str, Any]], str]:
     axis, mode = extract_period_axis_v1(header_lines)
     if mode == "LOCAL_RELATIVE_PERIOD_ROLES":
+        relative_roles = [item.get("period") for item in axis]
+        # A bounded lookback can contain the same relative header twice (for
+        # example the preceding table's "Số cuối năm" and the active table's
+        # identical header).  That is an ambiguous local surface, not a
+        # malformed authority record.  Leave the subset unresolved so the
+        # unique-header search can select the active pair instead of raising
+        # for the whole filing.
+        if len(relative_roles) != len(set(relative_roles)) or set(relative_roles) != {
+            "CURRENT_PERIOD_END",
+            "COMPARATIVE_PERIOD_START",
+        }:
+            return [], "UNRESOLVED_MULTIPLE_LOCAL_RELATIVE_PERIOD_SURFACES"
         resolved, resolved_mode = resolve_relative_period_axis_v1(
             axis, document_context, period_semantics=semantics
         )
@@ -468,6 +618,8 @@ def _period_axis(
     centers: Sequence[float],
     document_context: Mapping[str, Any],
     semantics: str,
+    *,
+    owner_source_line_index: int | None = None,
 ) -> list[dict[str, Any]]:
     records, mode = _local_period_records(
         header_lines,
@@ -492,7 +644,7 @@ def _period_axis(
         # note and fixed-year identities never enter this choice.
         alternatives: dict[
             tuple[tuple[int, str, tuple[int, ...], int], ...],
-            tuple[list[tuple[int, Mapping[str, Any]]], str],
+            tuple[list[tuple[int, Mapping[str, Any]]], str, tuple[int, ...]],
         ] = {}
         for subset_size in range(2, min(4, len(header_lines)) + 1):
             for subset in combinations(header_lines, subset_size):
@@ -516,10 +668,119 @@ def _period_axis(
                     )
                     for lane, record in subset_projection
                 )
-                alternatives[key] = (subset_projection, subset_mode)
-        if len(alternatives) != 1:
+                evidence_indices = {
+                    index
+                    for _lane, record in subset_projection
+                    for index in record["evidence_source_line_indices"]
+                }
+                selection_indices = tuple(
+                    sorted(
+                        line["source_line_index"]
+                        for line in subset
+                        if line["source_line_index"] in evidence_indices
+                        or any(
+                            qualifier in normalize_vietnamese_anchor_v1(line["vietocr_text"])
+                            for qualifier in _COMPARATIVE_QUALIFIERS
+                        )
+                    )
+                )
+                candidate = (subset_projection, subset_mode, selection_indices)
+                existing = alternatives.get(key)
+                if existing is None or (
+                    max(selection_indices) - min(selection_indices),
+                    len(selection_indices),
+                ) < (
+                    max(existing[2]) - min(existing[2]),
+                    len(existing[2]),
+                ):
+                    alternatives[key] = candidate
+        if not alternatives:
             return []
-        projected, mode = next(iter(alternatives.values()))
+        candidates = list(alternatives.values())
+        # A bounded geometry lookback may contain a complete axis from the
+        # preceding table, while a broad family region may also contain the
+        # repeated axis of a nested subtable.  Select by the owner/child
+        # topology, never by bank, note, page, or year:
+        #
+        # * with an explicit owner, the first complete axis at/after it is the
+        #   owner-level axis; a later repeated axis belongs to a nested view;
+        # * with an implied owner, the last complete axis before the first
+        #   required child is the locally adjacent axis.
+        #
+        # Subset span and size only break redundant supersets containing
+        # unrelated header-band lines.  A true positional tie remains
+        # ambiguous unless its projected records are exactly identical.
+        if owner_source_line_index is not None:
+            after_owner = [
+                candidate
+                for candidate in candidates
+                if min(candidate[2]) >= owner_source_line_index
+            ]
+            if after_owner:
+                candidates = after_owner
+                compactness = min(
+                    (max(candidate[2]) - min(candidate[2]), len(candidate[2]))
+                    for candidate in candidates
+                )
+                compact = [
+                    candidate
+                    for candidate in candidates
+                    if (max(candidate[2]) - min(candidate[2]), len(candidate[2])) == compactness
+                ]
+                if len(compact) > 1:
+                    compact.sort(key=lambda candidate: min(candidate[2]))
+                    first = compact[0]
+                    first_end = max(first[2])
+                    next_start = min(compact[1][2])
+                    lane_gap = (
+                        min(right - left for left, right in zip(centers, centers[1:], strict=False))
+                        if len(centers) > 1
+                        else max(centers[0] * 0.25, 1.0)
+                    )
+                    left_band_right = centers[0] - lane_gap * 0.25
+                    structurally_separated = any(
+                        first_end < line["source_line_index"] < next_start
+                        and line["bbox"][2] < left_band_right
+                        and bool(normalize_vietnamese_anchor_v1(line["vietocr_text"]))
+                        and not any(
+                            qualifier in normalize_vietnamese_anchor_v1(line["vietocr_text"])
+                            for qualifier in _COMPARATIVE_QUALIFIERS
+                        )
+                        for line in header_lines
+                    )
+                    if not structurally_separated:
+                        return []
+                    candidates = [first]
+                else:
+                    candidates = compact
+                rank = lambda candidate: (  # noqa: E731
+                    min(candidate[2]) - owner_source_line_index,
+                    max(candidate[2]) - min(candidate[2]),
+                    len(candidate[2]),
+                )
+            else:
+                rank = lambda candidate: (  # noqa: E731
+                    owner_source_line_index - max(candidate[2]),
+                    max(candidate[2]) - min(candidate[2]),
+                    len(candidate[2]),
+                )
+        else:
+            rank = lambda candidate: (  # noqa: E731
+                -max(candidate[2]),
+                max(candidate[2]) - min(candidate[2]),
+                len(candidate[2]),
+            )
+        best_rank = min(rank(candidate) for candidate in candidates)
+        best = [candidate for candidate in candidates if rank(candidate) == best_rank]
+        if len(best) != 1:
+            first_projection, first_mode, _first_indices = best[0]
+            if any(
+                candidate_mode != first_mode
+                or not same_typed_json_v1(candidate_projection, first_projection)
+                for candidate_projection, candidate_mode, _indices in best[1:]
+            ):
+                return []
+        projected, mode, _selected_indices = best[0]
         mode += "_UNIQUE_EXPECTED_HEADER_SUBSET"
     if projected is None:
         return []
@@ -647,6 +908,150 @@ def _unit_axis(
             for lane, center in enumerate(centers)
         ]
     return []
+
+
+def _prove_cross_page_context(
+    *,
+    axis: Mapping[str, Any],
+    pages: Sequence[Mapping[str, Any]],
+    document_context: Mapping[str, Any],
+    expected_kinds: Sequence[str],
+    period_axis: Sequence[Mapping[str, Any]],
+    period_semantics: str,
+    unit_axis: Sequence[Mapping[str, Any]],
+) -> tuple[str | None, dict[int, list[dict[str, int]]], dict[int, list[dict[str, int]]]]:
+    """Prove that a role-deficit continuation retains the same column axis.
+
+    The topology stage has already admitted a later page only because it fills
+    a missing family role or a structurally bound alternate subview.  Here we
+    independently require the same lane count/order in normalized page
+    geometry.  Any repeated local period or unit header must also agree with
+    the first-page axis; absence of a repeated header is permitted because a
+    genuine continued table commonly prints it only once.
+    """
+
+    region = axis["topology_region"]
+    if region is None or not region["continuation_page_count"]:
+        return None, {}, {}
+    page_by_sequence = {page["page_sequence"]: page for page in pages}
+    row_pages = sorted(
+        {row["label_match"]["page_sequence"] for row in axis["rows"] if row["values"]}
+    )
+    expected_pages = list(
+        range(region["page_sequence"], region["cluster_end_page_sequence_inclusive"] + 1)
+    )
+    if row_pages != expected_pages:
+        return "CROSS_PAGE_BODY_ROLE_AXIS_NOT_CONTIGUOUS", {}, {}
+    centers_by_page = {
+        page_sequence: _page_lane_centers(axis, page_sequence) for page_sequence in row_pages
+    }
+    if any(centers is None for centers in centers_by_page.values()):
+        return "CROSS_PAGE_BODY_COLUMN_GEOMETRY_NOT_COMPATIBLE", {}, {}
+    lane_count = len(period_axis)
+    if (
+        lane_count == 0
+        or len(unit_axis) != lane_count
+        or any(len(centers_by_page[page]) != lane_count for page in row_pages)
+    ):
+        return "CROSS_PAGE_BODY_COLUMN_GEOMETRY_NOT_COMPATIBLE", {}, {}
+    normalized = {}
+    for page_sequence in row_pages:
+        width = page_by_sequence[page_sequence]["page_width"]
+        if type(width) is not int or width <= 0:
+            return "CROSS_PAGE_BODY_COLUMN_GEOMETRY_NOT_COMPATIBLE", {}, {}
+        normalized[page_sequence] = [center / width for center in centers_by_page[page_sequence]]
+    reference = normalized[row_pages[0]]
+    minimum_gap = (
+        min(right - left for left, right in zip(reference, reference[1:], strict=False))
+        if len(reference) > 1
+        else 0.1
+    )
+    tolerance = max(0.025, minimum_gap * 0.35)
+    geometry_compatible = not any(
+        abs(observed - expected) > tolerance
+        for page_sequence in row_pages[1:]
+        for observed, expected in zip(normalized[page_sequence], reference, strict=True)
+    )
+
+    expected_periods = [item["resolved_period"] for item in period_axis]
+    expected_units = [
+        (item["unit_kind"], item["currency"], item["magnitude_power10"]) for item in unit_axis
+    ]
+    period_evidence: dict[int, list[dict[str, int]]] = {}
+    unit_evidence: dict[int, list[dict[str, int]]] = {}
+    for page_sequence in row_pages[1:]:
+        page = page_by_sequence[page_sequence]
+        centers = centers_by_page[page_sequence]
+        if centers is None:
+            raise _error("continuation page centers disappeared after validation")
+        headers = _continuation_header_lines(page, axis["rows"], centers)
+        page_lines = [
+            {
+                "bbox": canonical_clone_v1(line["bbox"]),
+                "numeric_score": line["numeric_recognition"]["reader_score"],
+                "numeric_text": line["numeric_recognition"]["raw_prediction"],
+                "source_line_index": line["line_ordinal"],
+                "vietocr_text": line["vietocr_text"],
+            }
+            for line in page["lines"]
+        ]
+        records, mode = _local_period_records(
+            headers,
+            page_lines,
+            document_context,
+            period_semantics,
+        )
+        local_period_axis = _period_axis(
+            headers,
+            page_lines,
+            page_sequence,
+            centers,
+            document_context,
+            period_semantics,
+        )
+        repeated_period_header = bool(local_period_axis)
+        if local_period_axis:
+            if [record["resolved_period"] for record in local_period_axis] != expected_periods:
+                return "CROSS_PAGE_LOCAL_PERIOD_HEADER_CONFLICT", {}, {}
+            for record in local_period_axis:
+                period_evidence.setdefault(record["column_ordinal"], []).extend(
+                    canonical_clone_v1(record["evidence_locations"])
+                )
+        elif records or mode != "UNRESOLVED":
+            return "CROSS_PAGE_LOCAL_PERIOD_HEADER_CONFLICT", {}, {}
+
+        local_units = _local_unit_records(headers, page_sequence)
+        repeated_unit_header = False
+        if local_units:
+            local_axis = _unit_axis(
+                headers,
+                page_sequence,
+                centers,
+                expected_kinds,
+                {**document_context, "unit_kind": None},
+            )
+            if (
+                len(local_axis) != lane_count
+                or [
+                    (item["unit_kind"], item["currency"], item["magnitude_power10"])
+                    for item in local_axis
+                ]
+                != expected_units
+            ):
+                return "CROSS_PAGE_LOCAL_UNIT_HEADER_CONFLICT", {}, {}
+            repeated_unit_header = True
+            for item in local_axis:
+                unit_evidence.setdefault(item["column_ordinal"], []).extend(
+                    canonical_clone_v1(item["evidence_locations"])
+                )
+        # A complete repeated period+unit header is independently projected
+        # onto the continuation page's own ordered body lanes.  It therefore
+        # proves the same semantic axes even when a narrower/wider continued
+        # table translates or rescales its columns.  Without both repeated
+        # header levels, retain the stricter normalized-coordinate check.
+        if not geometry_compatible and not (repeated_period_header and repeated_unit_header):
+            return "CROSS_PAGE_BODY_COLUMN_GEOMETRY_NOT_COMPATIBLE", {}, {}
+    return None, period_evidence, unit_evidence
 
 
 def _metrics(
@@ -781,8 +1186,6 @@ def _build_accounting_family_column_context_v1(
         reasons.append("BODY_DERIVED_COLUMN_AXIS_UNRESOLVED")
     elif len(expected_lane_unit_kinds) != len(centers):
         reasons.append("DECLARED_UNIT_KIND_AXIS_LENGTH_DIFFERS_FROM_BODY_COLUMNS")
-    if axis["topology_region"] is not None and axis["topology_region"]["continuation_page_count"]:
-        reasons.append("CROSS_PAGE_PERIOD_UNIT_INHERITANCE_NOT_PROVEN")
     if header is None:
         reasons.append("LOCAL_HEADER_REGION_UNRESOLVED")
     if centers is not None and header is not None:
@@ -794,6 +1197,11 @@ def _build_accounting_family_column_context_v1(
             centers,
             document_period,
             period_semantics,
+            owner_source_line_index=(
+                axis["topology_region"]["parent_match"]["source_line_index"]
+                if axis["topology_region"]["parent_resolution"] == "EXPLICIT_PARENT"
+                else None
+            ),
         )
         if len(expected_lane_unit_kinds) == len(centers):
             unit_axis = _unit_axis(
@@ -807,6 +1215,53 @@ def _build_accounting_family_column_context_v1(
             reasons.append("PERIOD_AXIS_NOT_BOUND_TO_EVERY_BODY_COLUMN")
         if len(unit_axis) != len(centers):
             reasons.append("UNIT_AXIS_NOT_BOUND_TO_EVERY_BODY_COLUMN")
+    if axis["topology_region"] is not None and axis["topology_region"]["continuation_page_count"]:
+        if centers is None or len(period_axis) != len(centers) or len(unit_axis) != len(centers):
+            reasons.append("CROSS_PAGE_PERIOD_UNIT_INHERITANCE_NOT_PROVEN")
+        else:
+            cross_page_reason, period_evidence, unit_evidence = _prove_cross_page_context(
+                axis=axis,
+                pages=parsed_pages,
+                document_context=document_period,
+                expected_kinds=expected_lane_unit_kinds,
+                period_axis=period_axis,
+                period_semantics=period_semantics,
+                unit_axis=unit_axis,
+            )
+            if cross_page_reason is not None:
+                reasons.append(cross_page_reason)
+            else:
+                repeated_header = bool(period_evidence or unit_evidence)
+                for record in period_axis:
+                    record["evidence_locations"] = sorted(
+                        {
+                            (item["page_sequence"], item["source_line_index"]): item
+                            for item in [
+                                *record["evidence_locations"],
+                                *period_evidence.get(record["column_ordinal"], []),
+                            ]
+                        }.values(),
+                        key=lambda item: (item["page_sequence"], item["source_line_index"]),
+                    )
+                    record["projection_status"] += (
+                        "_AND_ROLE_DEFICIT_CONTINUATION_GEOMETRY_PROVEN"
+                        + ("_WITH_REPEATED_HEADER_CORROBORATION" if repeated_header else "")
+                    )
+                for record in unit_axis:
+                    record["evidence_locations"] = sorted(
+                        {
+                            (item["page_sequence"], item["source_line_index"]): item
+                            for item in [
+                                *record["evidence_locations"],
+                                *unit_evidence.get(record["column_ordinal"], []),
+                            ]
+                        }.values(),
+                        key=lambda item: (item["page_sequence"], item["source_line_index"]),
+                    )
+                    record["projection_status"] += (
+                        "_AND_ROLE_DEFICIT_CONTINUATION_GEOMETRY_PROVEN"
+                        + ("_WITH_REPEATED_HEADER_CORROBORATION" if repeated_header else "")
+                    )
     lane_count = len(centers or [])
     status = (
         "PERIOD_UNIT_COLUMN_CONTEXT_RESOLVED_PROPOSAL_ONLY"

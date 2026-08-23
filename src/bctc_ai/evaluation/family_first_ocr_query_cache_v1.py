@@ -1024,6 +1024,28 @@ def _blind_pages_from_records(records: Sequence[sqlite3.Row]) -> list[dict[str, 
     return [{"lines": lines, "page_sequence": page} for page, lines in sorted(pages.items())]
 
 
+def _topology_pages_from_records(records: Sequence[sqlite3.Row]) -> list[dict[str, Any]]:
+    """Expose the same bound text axes as the authenticated document snapshot.
+
+    The public blind-page reader deliberately hides the numeric-reader surface.
+    Topology replay cannot do so: the live document-store builder supplies that
+    exact bound surface as the narrowly constrained source-text challenger.
+    Keeping it here restores typed parity without reopening a PDF or rerunning
+    either OCR reader.
+    """
+
+    pages = _blind_pages_from_records(records)
+    numeric_by_locator = {
+        (row["physical_page"], row["line_ordinal"]): row["numeric_text"] for row in records
+    }
+    for page in pages:
+        for line in page["lines"]:
+            line["source_text"] = numeric_by_locator[
+                (page["page_sequence"], line["source_line_index"])
+            ]
+    return pages
+
+
 def read_cached_blind_pages_v1(database_path: Path, document_ordinal: int) -> list[dict[str, Any]]:
     if type(document_ordinal) is not int or document_ordinal <= 0:
         raise _error("cached document ordinal drifted")
@@ -1067,7 +1089,7 @@ def _scan_cached_topology_chunk(
     result = []
     with _connect(Path(database)) as connection:
         for ordinal in ordinals:
-            pages = _blind_pages_from_records(_line_records(connection, ordinal))
+            pages = _topology_pages_from_records(_line_records(connection, ordinal))
             result.append(
                 (
                     ordinal,
@@ -1197,6 +1219,7 @@ def _topology_cache_key_material(
         "accounting_family_topology_v1": topology_v1.build_accounting_family_topology_scan_v1,
         "accounting_variant_graph_engine_v1": topology_v1.normalize_vietnamese_anchor_v1,
         "contracts_v1": topology_v1.canonical_json_sha256_v1,
+        "family_first_ocr_query_cache_topology_adapter_v1": _topology_pages_from_records,
     }
     closure = {}
     for label, function in closure_functions.items():

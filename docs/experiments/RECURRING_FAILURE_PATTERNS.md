@@ -32,9 +32,14 @@ Status meanings:
   additive-child lanes and exactly one visible trailing row equal to every
   lane sum; a mismatch, missing crop, or second equal candidate remains
   unresolved and never back-solves a digit.
-  The dash classifier also admits a compact 1.5–1.8 aspect glyph only when it
-  is centered, thin and at least 90% filled; shorter/fragmented blobs, blank
+  The dash classifier also admits a compact 1.25–1.8 aspect glyph only when it
+  is centered, thin and at least 65% filled; the lower bound covers a real
+  anti-aliased 8×5 PDF dash whose single connected component is 67.5% ink.
+  Shorter/fragmented blobs, connected box outlines, blank
   cells and multiple components remain unresolved.
+  One tiny noncentral rule/speck may be discarded only when exactly one
+  centered dash candidate remains and the discarded component is at most 25%
+  of its ink; two central components still fail closed.
   Period digits are parsed from the independently authenticated numeric-reader
   surface when its finite confidence is at least 0.95 and that surface itself
   contains valid date/year grammar. VietOCR remains the semantic-text source;
@@ -219,7 +224,15 @@ Status meanings:
   silently replace VietOCR.
 - **Generic primitive/fix:** bind each Gemma proposal to the exact page/crop;
   compare it with geometry, VietOCR and accounting evidence; fail closed on an
-  unresolved conflict. Use a fresh context per rescue request.
+  unresolved conflict. Use a fresh context per rescue request. Start from the
+  canonical 200-DPI full-page render. A 300-DPI attempt is a separately hashed
+  rerender from the PDF, used only after a visible-row/column completeness
+  failure; it never overwrites the 200-DPI answer. Real ACB and MBB trials
+  showed that 300 DPI can omit more cells even when the remaining glyphs are
+  sharper. The hosted 26B A4B API lane is the first Gemma rescue; raise its
+  thinking level or try a hosted 31B/stronger 26B configuration only after
+  deterministic completeness rejects the first result. Local 31B/26B Q4 is a
+  bounded comparison only. No response becomes numeric authority.
 - **Status:** `MITIGATED`.
 
 ## RFP-012 — Rotated pages are parsed in the wrong frame
@@ -262,9 +275,12 @@ Status meanings:
   proposed row-band × column-domain cell. The crop is still only evidence
   input: either the recognizer must independently see the dash or the narrowly
   bounded pixel-glyph classifier must prove one centered horizontal mark before
-  zero is admitted. The family row-axis now replays that proposed region and
-  glyph evidence before completing the missing lane; a blank or non-dash crop
-  leaves the row incomplete.
+  zero is admitted. A degraded two-to-three-pixel horizontal mark is admitted
+  only when a clear DASH peer exists on the same semantic row and the exact
+  accounting equation closes; neither signal alone is sufficient. The family
+  row-axis now replays that proposed region and glyph evidence before
+  completing the missing lane; a blank or non-dash crop leaves the row
+  incomplete.
 - **Status:** `MITIGATED`.
 
 ## RFP-014 — A table row absorbs page furniture or an audit stamp
@@ -579,7 +595,14 @@ Status meanings:
   gửi ký quỹ)` can materially change scope.
 - **Generic primitive/fix:** V3 topology adds a bounded surface candidate that
   removes only numeric/Roman footnotes or short uppercase acronyms. Ordinary
-  semantic qualifiers remain intact and are covered by a negative test.
+  semantic qualifiers remain intact and are covered by a negative test. When a
+  footnote is emitted as a separate OCR line after a matched label, row binding
+  may extend the label geometry by exactly one standalone numeric/Roman/asterisk
+  marker only if it precedes the next semantic role, remains left of the
+  inferred numeric grid and lies within a page-local text-height gap. This lets
+  values sharing the marker baseline remain attached to the label without
+  changing the semantic match span; a year-like `(2025)` or narrative
+  parenthetical is never eligible.
 - **Status:** `RESOLVED` in the shared topology normalizer.
 
 ## RFP-027 — Empty OCR geometry widens a label into its value cell
@@ -848,6 +871,94 @@ Status meanings:
   candidates, local/continuation unit edges and their document-root binding once;
   family logic then selects compatible subsets. A page/crop refresh invalidates
   only the affected document feature packet.
-- **Status:** `OPEN`; current trading build/verify are correct but measured at
-  114.092/115.986 s. This is the next performance seam, not a reason to weaken
-  period or unit provenance.
+- **Status:** `OPEN`; the final zero-unresolved trading audit measured 174.518 s
+  for evidence plus mapping from the authenticated store. This is the next
+  performance seam, not a reason to weaken period or unit provenance.
+
+## RFP-041 — A whole comparison column contains only omitted DASH glyphs
+
+- **Pattern:** numeric OCR retains one period column but the detector omits
+  every printed DASH in the other column, so a body-only grid incorrectly has
+  one lane and cannot even propose the missing-cell crops.
+- **Example:** VPB H1/2025 separate page 37 has two local period headers, two
+  coextensive unit headers, current values `8.933`, and comparison DASH cells
+  for both trading-security rows. Hosted Gemma reconstructed both columns, but
+  remains challenger evidence.
+- **Cause:** the old crop proposer tried to reconstruct a missing lane from
+  already recognized body cells; by definition an all-omitted lane supplied no
+  body center.
+- **Do not:** accept Gemma's DASH directly, copy another page's x-coordinate,
+  or collapse the table to one period.
+- **Generic primitive/fix:** persist one page-local column grid derived from
+  agreeing period and unit header geometry, require every observed body cell
+  to align uniquely to it, then authenticate each proposed missing cell from
+  the original full-page pixels. An empty body-derived grid remains a valid
+  unresolved state and must not become a validator exception.
+- **Status:** `RESOLVED`; the 140-filing development benchmark moved from
+  71 to 75 READY and from 43 to 39 OPEN without OCR replay. VPB page 37 now
+  binds both zero-valued comparison DASH cells through independent pixel
+  crops.
+
+## RFP-042 — An all-DASH wrapped row is cropped between its label baselines
+
+- **Pattern:** a row label wraps onto two physical lines and every value is a
+  printed DASH omitted by the detector. With no visible numeric sibling, a
+  crop centered on the union of both label lines lands between their
+  baselines and can miss both DASH glyphs.
+- **Example:** ACB Q4/2025 separate page 16, `Chứng khoán vốn do các tổ chức
+  kinh tế trong nước / phát hành`, with two comparison-lane DASH values.
+- **Cause:** missing-cell geometry treated a wrapped semantic span as one tall
+  baseline instead of retaining its constituent physical text baselines.
+- **Do not:** add a page-specific y-offset, widen the crop into adjacent rows,
+  or infer zero merely because the row has no recognized numeric token.
+- **Generic primitive/fix:** cluster label boxes into DPI-relative physical
+  baselines. Only when the row has no visible value cell and more than one
+  label baseline exists, propose the missing-cell band from the terminal
+  baseline. The original render crop must still independently classify each
+  DASH; any visible sibling cell continues to determine the row band directly.
+- **Status:** `RESOLVED`; selective authenticated replay recovers both DASH
+  cells and makes the filing ready without OCR or corpus replay.
+
+## RFP-043 — Alternative table views are added together or veto one another
+
+- **Pattern:** one family may be printed by issuer, listing status, currency or
+  another breakdown. More than one role set can be visible near the same owner,
+  but these are alternative representations rather than simultaneous additive
+  branches.
+- **Cause:** the closure engine either summed every visible role or required all
+  declarative alternatives to produce the same subtotal before consulting the
+  subtotal/net actually printed on the PDF.
+- **Do not:** choose an alternative by bank/page, always prefer the longest role
+  list, or ignore a printed mismatch.
+- **Generic primitive/fix:** keep each representation as a declarative component
+  alternative. A visible parent remains strict. For an unlabelled result, admit
+  an alternative only when exactly one complete trailing subtotal/net equals
+  its complete component sum; equal alternatives are deterministic ties, while
+  multiple matching totals remain unresolved. An optional family-level net
+  corroborator ignores unrelated child subtotals instead of manufacturing a
+  veto.
+- **Status:** `RESOLVED`; the trading-securities 140-filing sweep now has 114
+  verified, 26 bounded not observed and zero unresolved without double-counting
+  issuer and listed/unlisted views.
+
+## RFP-044 — A coloured stamp appends letters/digits to an intact money token
+
+- **Pattern:** the black financial token is visible and complete, but a red or
+  coloured stamp overlaps the same detector crop. PP-OCRv6 emits the intact
+  grouped integer followed by garbage, while VietOCR may continue the noise as
+  additional numeric-looking groups.
+- **Example:** VPB annual-2025 p43: PP-OCRv6 `3.202.820 0UNG`, VietOCR
+  `3.202.820.000NG)`, visible value `3.202.820`.
+- **Do not:** accept an arbitrary numeric prefix, crop at a page-specific x
+  coordinate, trust Gemma alone, or change digits to close a total.
+- **Generic primitive/fix:** retain a grouped integer prefix only as
+  `NOISE_SUFFIXED_GROUPED_INTEGER_CANDIDATE` when a whitespace-separated
+  alphabetic suffix exists. Require an independent same-crop reader to retain
+  the same complete prefix, a money/scale-zero lane with peers, and an exact
+  visible accounting equation containing that source cell. As independent
+  diagnostics, remove high-chroma pixels without touching grayscale/black
+  pixels and reread the derived crop; use one fresh hosted Gemma full-page JSON
+  request. Neither diagnostic may bypass the structural/accounting gates.
+- **Status:** `RESOLVED`; five chroma thresholds all reread `3.202.820`
+  (PP-OCR confidence 0.956–0.998), hosted Gemma agrees, and the source leaves
+  plus provision close exactly to printed net `13.110.971`.

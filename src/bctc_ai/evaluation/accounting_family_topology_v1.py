@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import itertools
 import re
+from bisect import bisect_left, bisect_right
 from collections.abc import Mapping, Sequence
 from typing import Any
 
@@ -48,7 +49,8 @@ SPEC_FORMAT_VERSION = "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V1"
 SPEC_FORMAT_VERSION_V2 = "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V2"
 SPEC_FORMAT_VERSION_V3 = "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V3"
 CLAIM_BOUNDARY = (
-    "COMPLETE_DOCUMENT_BANK_BLIND_FRESH_VIETOCR_PARENT_REQUIRED_OPTIONAL_SIBLING_"
+    "COMPLETE_DOCUMENT_BANK_BLIND_FRESH_VIETOCR_PRIMARY_EXACT_BOUND_SOURCE_TEXT_"
+    "CHALLENGER_PARENT_REQUIRED_OPTIONAL_SIBLING_"
     "WRAPPED_LABEL_FLEXIBLE_ORDER_HARD_NEGATIVE_STRUCTURAL_RESET_AND_PAIR_BEFORE_"
     "TRIPLE_UNIQUENESS_PROPOSAL_ONLY_NO_PERIOD_UNIT_NUMERIC_ACCOUNTING_SCHEMA_"
     "MAPPING_CANONICALIZATION_OR_EXPORT_AUTHORITY"
@@ -56,6 +58,7 @@ CLAIM_BOUNDARY = (
 _SAFETY = {
     "bank_filename_note_page_year_used_for_matching": False,
     "continuation_authority": False,
+    "contextual_roles_use_page_geometry_when_provider_order_drifts": True,
     "family_layout_logic_is_declarative": True,
     "mapping_authority": False,
     "numeric_authority": False,
@@ -64,6 +67,7 @@ _SAFETY = {
     "persisted_result_self_authenticating": False,
     "reordered_siblings_permitted": True,
     "schema_authority": False,
+    "source_bound_text_challenger_requires_exact_alias_and_complete_topology": True,
     "text_similarity_alone_can_accept": False,
     "vietocr_transformer_text_required": True,
     "whole_document_enumeration_required": True,
@@ -531,6 +535,110 @@ def _surface_candidates(
     exact shortest-width-first matching behavior of :func:`_role_hits`.
     """
 
+    def candidate(positions: Sequence[int]) -> dict[str, Any]:
+        selected = [lines[position] for position in positions]
+        surface = " ".join(line["vietocr_text"].strip() for line in selected).strip()
+        normalized = normalize_vietnamese_anchor_v1(surface)
+        stripped = _ENUMERATION_PREFIX.sub("", surface, count=1)
+        stripped_normalized = (
+            normalize_vietnamese_anchor_v1(stripped) if stripped != surface else None
+        )
+        decorative_surface = _without_decorative_parentheticals(surface)
+        decorative_normalized = (
+            normalize_vietnamese_anchor_v1(decorative_surface)
+            if decorative_surface != surface
+            else None
+        )
+        decorative_stripped = _ENUMERATION_PREFIX.sub("", decorative_surface, count=1)
+        decorative_stripped_normalized = (
+            normalize_vietnamese_anchor_v1(decorative_stripped)
+            if decorative_stripped != decorative_surface
+            else None
+        )
+        source_surface = (
+            " ".join(line["source_text"].strip() for line in selected).strip()
+            if all(
+                type(line["source_text"]) is str and line["source_text"].strip()
+                for line in selected
+            )
+            else None
+        )
+        source_normalized = (
+            normalize_vietnamese_anchor_v1(source_surface) if source_surface is not None else None
+        )
+        item = {
+            "decorative_normalized": (
+                decorative_normalized
+                if decorative_normalized and decorative_normalized != normalized
+                else None
+            ),
+            "decorative_stripped_normalized": (
+                decorative_stripped_normalized
+                if decorative_stripped_normalized
+                and decorative_stripped_normalized
+                not in {normalized, stripped_normalized, decorative_normalized}
+                else None
+            ),
+            "line_positions": list(positions),
+            "normalized": normalized,
+            "source_normalized": source_normalized,
+            "source_stripped_normalized": None,
+            "source_surface": source_surface,
+            "stripped_normalized": (
+                stripped_normalized
+                if stripped_normalized and stripped_normalized != normalized
+                else None
+            ),
+            "surface": surface,
+            "width": len(positions),
+        }
+        if source_surface is not None:
+            source_stripped = _ENUMERATION_PREFIX.sub("", source_surface, count=1)
+            if source_stripped != source_surface:
+                source_stripped_normalized = normalize_vietnamese_anchor_v1(source_stripped)
+                if source_stripped_normalized != source_normalized:
+                    item["source_stripped_normalized"] = source_stripped_normalized
+        return item
+
+    # Provider order is usually row-major, but a wrapped label can be emitted
+    # as ``label fragment, value lane 1, value lane 2, continuation``.  Build a
+    # bounded visual-continuation graph once per page so exact aliases can join
+    # those label fragments without swallowing the interleaved numeric cells.
+    visual_axis = sorted(
+        (
+            ((line["bbox"][1] + line["bbox"][3]) / 2.0, position)
+            for position, line in enumerate(lines)
+        )
+    )
+    visual_centers = [item[0] for item in visual_axis]
+    followers: dict[int, list[int]] = {}
+    for position, line in enumerate(lines):
+        box = line["bbox"]
+        height = box[3] - box[1]
+        center = (box[1] + box[3]) / 2.0
+        lower = bisect_left(visual_centers, center + height * 0.35)
+        upper = bisect_right(visual_centers, center + height * 2.5)
+        candidates = []
+        for _visual_center, other_position in visual_axis[lower:upper]:
+            if other_position <= position or not lines[other_position]["vietocr_text"].strip():
+                continue
+            other_box = lines[other_position]["bbox"]
+            other_height = other_box[3] - other_box[1]
+            horizontal_tolerance = max(height, other_height) * 6.0
+            if abs(other_box[0] - box[0]) <= horizontal_tolerance or (
+                other_box[0] <= box[2] + horizontal_tolerance
+                and box[0] <= other_box[2] + horizontal_tolerance
+            ):
+                candidates.append(other_position)
+        followers[position] = sorted(
+            candidates,
+            key=lambda other: (
+                (lines[other]["bbox"][1] + lines[other]["bbox"][3]) / 2.0,
+                lines[other]["bbox"][0],
+                other,
+            ),
+        )
+
     result = []
     for start in range(len(lines)):
         axis = []
@@ -546,48 +654,28 @@ def _surface_candidates(
                 or not lines[start + width - 1]["vietocr_text"].strip()
             ):
                 continue
-            surface = _joined(lines, start, start + width)
-            normalized = normalize_vietnamese_anchor_v1(surface)
-            stripped = _ENUMERATION_PREFIX.sub("", surface, count=1)
-            stripped_normalized = (
-                normalize_vietnamese_anchor_v1(stripped) if stripped != surface else None
-            )
-            decorative_surface = _without_decorative_parentheticals(surface)
-            decorative_normalized = (
-                normalize_vietnamese_anchor_v1(decorative_surface)
-                if decorative_surface != surface
-                else None
-            )
-            decorative_stripped = _ENUMERATION_PREFIX.sub("", decorative_surface, count=1)
-            decorative_stripped_normalized = (
-                normalize_vietnamese_anchor_v1(decorative_stripped)
-                if decorative_stripped != decorative_surface
-                else None
-            )
-            axis.append(
-                {
-                    "decorative_normalized": (
-                        decorative_normalized
-                        if decorative_normalized and decorative_normalized != normalized
-                        else None
-                    ),
-                    "decorative_stripped_normalized": (
-                        decorative_stripped_normalized
-                        if decorative_stripped_normalized
-                        and decorative_stripped_normalized
-                        not in {normalized, stripped_normalized, decorative_normalized}
-                        else None
-                    ),
-                    "normalized": normalized,
-                    "stripped_normalized": (
-                        stripped_normalized
-                        if stripped_normalized and stripped_normalized != normalized
-                        else None
-                    ),
-                    "surface": surface,
-                    "width": width,
-                }
-            )
+            axis.append(candidate(tuple(range(start, start + width))))
+
+        seen_positions = {tuple(item["line_positions"]) for item in axis}
+        positions = (start,) if lines[start]["vietocr_text"].strip() else ()
+        while positions and len(positions) < max_label_span:
+            next_axis = followers[positions[-1]]
+            if not next_axis:
+                break
+            # A visual row has only one next wrapped fragment at the closest
+            # lower baseline.  Following every geometrically nearby line here
+            # creates an exponential path set on wide tables.  The closest
+            # candidate is deterministic; exact full-alias matching remains a
+            # separate gate, so selecting an unrelated next row cannot accept
+            # anything by itself.
+            expanded = (*positions, next_axis[0])
+            if expanded in seen_positions:
+                break
+            seen_positions.add(expanded)
+            if expanded != tuple(range(expanded[0], expanded[-1] + 1)):
+                axis.append(candidate(expanded))
+            positions = expanded
+        axis.sort(key=lambda item: (item["width"], item["line_positions"][-1]))
         result.append(axis)
     return result
 
@@ -666,7 +754,7 @@ def _role_hits(
             else _surface_candidates(lines[start:], max_label_span)[0]
         )
         for candidate in candidates:
-            width = candidate["width"]
+            positions = candidate["line_positions"]
             surface = candidate["surface"]
             kind = _cached_alias_kind(
                 candidate,
@@ -675,18 +763,51 @@ def _role_hits(
                 allow_decorative_parenthetical_removal=allow_decorative_parenthetical_removal,
                 allow_leading_alias=allow_leading_alias,
             )
+            matched_surface = surface
+            if kind is None and candidate["source_surface"] is not None:
+                source_axes = [
+                    (candidate["source_normalized"], ""),
+                    (
+                        candidate["source_stripped_normalized"],
+                        "_AFTER_ENUMERATION_PREFIX",
+                    ),
+                ]
+                source_match = next(
+                    (
+                        (normalized, suffix)
+                        for normalized, suffix in source_axes
+                        if normalized is not None and normalized in aliases
+                    ),
+                    None,
+                )
+                if source_match is not None:
+                    _normalized, suffix = source_match
+                    kind = "EXACT_ACCENTLESS_BOUND_SOURCE_TEXT_CHALLENGER_ALIAS" + suffix
+                    matched_surface = candidate["source_surface"]
             if kind is None:
                 continue
+            selected_lines = [lines[position] for position in positions]
+            start_position = positions[0]
+            end_position = positions[-1]
             hit = {
-                "document_line_ordinal": document_offset + start,
-                "end_document_line_ordinal": document_offset + start + width - 1,
-                "end_source_line_index": lines[start + width - 1]["source_line_index"],
+                "_bbox": [
+                    min(line["bbox"][0] for line in selected_lines),
+                    min(line["bbox"][1] for line in selected_lines),
+                    max(line["bbox"][2] for line in selected_lines),
+                    max(line["bbox"][3] for line in selected_lines),
+                ],
+                "document_line_ordinal": document_offset + start_position,
+                "end_document_line_ordinal": document_offset + end_position,
+                "end_source_line_index": selected_lines[-1]["source_line_index"],
                 "match_kind": kind,
-                "normalized_surface": normalize_vietnamese_anchor_v1(surface),
+                "normalized_surface": normalize_vietnamese_anchor_v1(matched_surface),
                 "page_sequence": page_sequence,
-                "source_line_index": lines[start]["source_line_index"],
-                "surface": surface,
+                "source_line_index": selected_lines[0]["source_line_index"],
+                "surface": matched_surface,
             }
+            contiguous = positions == list(range(start_position, end_position + 1))
+            if not contiguous:
+                hit["source_line_indices"] = [line["source_line_index"] for line in selected_lines]
             if within_role is not None:
                 hit["_within_role"] = within_role
             hits.append(hit)
@@ -771,6 +892,7 @@ def _page_hits(
             max_label_span=max_span,
             page_sequence=page["page_sequence"],
             surface_candidates=surfaces,
+            allow_bare_numeric_heading_prefix=True,
             allow_decorative_parenthetical_removal=allow_decorative_parenthetical_removal,
             allow_leading_alias=True,
         ),
@@ -805,6 +927,13 @@ def _child_records_in_range(
 
     structural_roles = {role for role, kind in role_kind.items() if kind == "STRUCTURAL_GROUP"}
 
+    def visual_position(hit: Mapping[str, Any]) -> tuple[int, float]:
+        bbox = hit["_bbox"]
+        return hit["page_sequence"], (bbox[1] + bbox[3]) / 2
+
+    def visually_precedes(left: Mapping[str, Any], right: Mapping[str, Any]) -> bool:
+        return visual_position(left) < visual_position(right)
+
     def context_bound(hit: Mapping[str, Any]) -> bool:
         within_role = hit.get("_within_role")
         if within_role is None:
@@ -812,21 +941,22 @@ def _child_records_in_range(
         contexts = [
             item
             for item in hits[within_role]
-            if start < item["document_line_ordinal"] <= hit["document_line_ordinal"] < stop
+            if start < item["document_line_ordinal"] < stop and visually_precedes(item, hit)
         ]
         if not contexts:
             return False
-        context = max(contexts, key=lambda item: item["document_line_ordinal"])
+        context = max(contexts, key=visual_position)
         context_depth = structural_depth(within_role)
-        boundaries = [
-            item["document_line_ordinal"]
+        intervening_boundaries = [
+            item
             for role in structural_roles
             if structural_depth(role) <= context_depth
             for item in hits[role]
-            if context["document_line_ordinal"] < item["document_line_ordinal"] < stop
+            if start < item["document_line_ordinal"] < stop
+            and visually_precedes(context, item)
+            and visually_precedes(item, hit)
         ]
-        context_stop = min(boundaries, default=stop)
-        return hit["document_line_ordinal"] < context_stop
+        return not intervening_boundaries
 
     records: list[dict[str, Any]] = []
     for child in spec["children"]:
@@ -844,34 +974,38 @@ def _child_records_in_range(
         ]
         if not candidates:
             continue
-        selected = candidates
+        # A role can expose both its contextual and context-free matcher at the
+        # same visual span.  That is one occurrence even when the caller keeps
+        # only the first hit.  Prefer the contextual record because it carries
+        # the stronger parent binding already checked by ``context_bound``.
+        # This is also important when a provider emits overlapping parent and
+        # child lines in reverse source order: visual geometry still proves the
+        # parent context, while a stable sort would otherwise retain the
+        # context-free twin merely because it was inserted first.
+        by_span: dict[tuple[int, int], Mapping[str, Any]] = {}
+        for candidate in candidates:
+            signature = (
+                candidate["document_line_ordinal"],
+                candidate["end_document_line_ordinal"],
+            )
+            prior = by_span.get(signature)
+            if prior is None or (
+                prior.get("_within_role") is None and candidate.get("_within_role") is not None
+            ):
+                by_span[signature] = candidate
+        unique_candidates = list(by_span.values())
         if retain_all_occurrences:
-            # A role can expose both its contextual and context-free matcher at
-            # the same visual span.  That is one occurrence, not two.  Prefer
-            # the contextual record because it carries the stronger parent
-            # binding already checked by ``context_bound``.
-            by_span: dict[tuple[int, int], Mapping[str, Any]] = {}
-            for candidate in candidates:
-                signature = (
-                    candidate["document_line_ordinal"],
-                    candidate["end_document_line_ordinal"],
-                )
-                prior = by_span.get(signature)
-                if prior is None or (
-                    prior.get("_within_role") is None and candidate.get("_within_role") is not None
-                ):
-                    by_span[signature] = candidate
             selected = sorted(
-                by_span.values(),
+                unique_candidates,
                 key=lambda item: (
                     item["document_line_ordinal"],
                     item["end_document_line_ordinal"],
                 ),
             )
         else:
-            selected = [min(candidates, key=lambda item: item["document_line_ordinal"])]
+            selected = [min(unique_candidates, key=lambda item: item["document_line_ordinal"])]
         for occurrence_ordinal, hit in enumerate(selected):
-            public_hit = {key: item for key, item in hit.items() if key != "_within_role"}
+            public_hit = {key: item for key, item in hit.items() if not key.startswith("_")}
             if spec["spec_format_version"] == SPEC_FORMAT_VERSION_V3:
                 public_hit["matched_within_role"] = hit.get("_within_role")
             record = {
@@ -993,6 +1127,79 @@ def _explicit_candidates(
         if child["role_kind"] == "SOURCE_ONLY_GROUP_PARENT"
         for hit in hits["children"][child["role"]]
     }
+
+    def role_deficit_continuation_stop(
+        *,
+        parent: Mapping[str, Any],
+        records: Sequence[Mapping[str, Any]],
+        proposed_stop: int,
+    ) -> int:
+        """Retain only structurally useful physical-page continuations.
+
+        ``max_continuation_pages`` is a search budget, not permission to absorb
+        every familiar label on the next page.  Starting with the roles visible
+        on the parent's page, a later page must either fill one still-viable
+        core-role deficit, add a child bound to a structural group already in
+        the table (or repeated on that page), or carry an explicit ``tiếp theo``
+        parent.  This is deliberately role- and relationship-driven: bank,
+        note, page number, schema ID, and fixed layout never enter the rule.
+
+        The boundary closes at the prior physical page as soon as one candidate
+        page contributes no such evidence.  This prevents a generic label such
+        as ``Giá trị thuần`` in the following family from being borrowed merely
+        because it falls within the numeric continuation budget.
+        """
+
+        start_page = parent["page_sequence"]
+        observed = {record["role"] for record in records if record["page_sequence"] == start_page}
+        maximum_candidate_page = max(
+            (
+                page
+                for page in page_end_exclusive
+                if page_end_exclusive.get(page - 1, 0) < proposed_stop
+            ),
+            default=start_page,
+        )
+        for page_sequence in range(start_page + 1, maximum_candidate_page + 1):
+            page_records = [
+                record for record in records if record["page_sequence"] == page_sequence
+            ]
+            new_records = [record for record in page_records if record["role"] not in observed]
+            deficits = {
+                role
+                for combination in spec["required_role_combinations"]
+                if not set(combination).issubset(observed)
+                for role in combination
+                if role not in observed
+            }
+            page_structural_groups = {
+                record["role"]
+                for record in page_records
+                if record["role_kind"] == "STRUCTURAL_GROUP"
+            }
+            structurally_connected = any(
+                record.get("matched_within_role") in {*observed, *page_structural_groups}
+                for record in new_records
+                if record.get("matched_within_role") is not None
+            ) or any(
+                record["role_kind"] == "STRUCTURAL_GROUP"
+                and any(
+                    child.get("matched_within_role") == record["role"] for child in page_records
+                )
+                for record in new_records
+            )
+            fills_core_deficit = any(record["role"] in deficits for record in new_records)
+            explicit_continuation_parent = any(
+                hit["page_sequence"] == page_sequence and "tiep theo" in hit["normalized_surface"]
+                for hit in hits["parents"]
+            )
+            if not page_records or not (
+                fills_core_deficit or structurally_connected or explicit_continuation_parent
+            ):
+                return page_end_exclusive[page_sequence - 1]
+            observed.update(record["role"] for record in page_records)
+        return proposed_stop
+
     for parent_offset, parent in enumerate(hits["parents"]):
         start = parent["document_line_ordinal"]
         allowed_end_page = min(maximum_page, parent["page_sequence"] + max_continuation)
@@ -1033,6 +1240,12 @@ def _explicit_candidates(
         if reset is not None:
             stops.append(reset)
         stop = min(stops)
+        records = _child_records_in_range(hits["children"], spec, start=start, stop=stop)
+        stop = role_deficit_continuation_stop(
+            parent=parent,
+            records=records,
+            proposed_stop=stop,
+        )
         records = _child_records_in_range(hits["children"], spec, start=start, stop=stop)
         candidates.append(
             _candidate(

@@ -169,6 +169,68 @@ def test_missing_lane_does_not_borrow_a_touching_next_row_cell() -> None:
     assert bottom < lines[6]["bbox"][3]
 
 
+def test_same_physical_row_peer_overcomes_detector_height_jitter() -> None:
+    lines = [
+        _line(0, "Target", [20, 100, 400, 147]),
+        # Both values start on the same physical baseline.  The taller first
+        # detector box falls just outside the individual affinity cutoff while
+        # the second remains just inside it.
+        _line(1, "638.515", [650, 144, 750, 181]),
+        _line(2, "598.006", [850, 144, 950, 178]),
+        _line(3, "Following", [20, 205, 300, 239]),
+        _line(4, "1", [650, 205, 750, 239]),
+        _line(5, "2", [850, 205, 950, 239]),
+    ]
+
+    bound = assign_value_row_lanes_v1(
+        lines,
+        label_boxes=[lines[0]["bbox"]],
+        is_numeric=_numeric,
+        page_width=1000,
+        resolved_column_centers=(700.0, 900.0),
+    )
+
+    assert [(item["column_ordinal"], item["line"]["source_line_index"]) for item in bound] == [
+        (0, 1),
+        (1, 2),
+    ]
+
+
+def test_all_missing_wrapped_row_uses_terminal_label_baseline_for_pixel_proposal() -> None:
+    lines = [
+        _line(0, "31.12.2025", [650, 20, 750, 48]),
+        _line(1, "31.12.2024", [850, 20, 950, 48]),
+        _line(2, "Visible peer", [20, 70, 260, 98]),
+        _line(3, "100", [650, 70, 750, 98]),
+        _line(4, "90", [850, 70, 950, 98]),
+        _line(5, "Chứng khoán vốn do các tổ chức kinh tế trong nước", [20, 120, 590, 148]),
+        _line(6, "phát hành", [20, 160, 150, 188]),
+        _line(7, "Following peer", [20, 210, 260, 238]),
+        _line(8, "80", [650, 210, 750, 238]),
+        _line(9, "70", [850, 210, 950, 238]),
+    ]
+
+    proposals = propose_missing_value_lane_regions_v1(
+        lines,
+        label_boxes=[lines[5]["bbox"], lines[6]["bbox"]],
+        is_numeric=_numeric,
+        page_width=1000,
+        page_height=300,
+        resolved_column_centers=(700.0, 900.0),
+        resolved_visible_value_cells=(),
+    )
+
+    assert [item["column_ordinal"] for item in proposals] == [0, 1]
+    assert {item["row_band_evidence"] for item in proposals} == {
+        "TERMINAL_WRAPPED_LABEL_BASELINE_AND_BODY_NUMERIC_HEIGHT"
+    }
+    for proposal in proposals:
+        _left, top, _right, bottom = proposal["raw_pixel_bbox"]
+        assert top <= 174 <= bottom
+        assert top > lines[5]["bbox"][3]
+        assert bottom < lines[7]["bbox"][1]
+
+
 def test_resolved_body_grid_is_reused_without_a_second_x_cutoff() -> None:
     lines = [
         _line(0, "Target", [20, 100, 180, 134]),

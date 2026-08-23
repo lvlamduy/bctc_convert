@@ -49,8 +49,10 @@
         {
           "aliases": [
             "Chứng khoán do các TCTD khác trong nước phát hành",
+            "Chứng khoán do các TCTD khác phát hành",
             "Chứng khoán do các TCTD trong nước phát hành",
             "Chứng khoán nợ do các TCTD khác trong nước phát hành",
+            "Chứng khoán nợ do các TCTD khác phát hành",
             "Chứng khoán nợ do các TCTD trong nước phát hành",
             "Trái phiếu do các TCTD khác trong nước phát hành",
             "Trái phiếu do các TCTD trong nước phát hành",
@@ -61,8 +63,10 @@
         {
           "aliases": [
             "Chứng khoán do các TCTD khác trong nước phát hành",
+            "Chứng khoán do các TCTD khác phát hành",
             "Chứng khoán do các TCTD trong nước phát hành",
             "Chứng khoán nợ do các TCTD khác trong nước phát hành",
+            "Chứng khoán nợ do các TCTD khác phát hành",
             "Chứng khoán nợ do các TCTD trong nước phát hành",
             "Trái phiếu do các TCTD khác trong nước phát hành",
             "Trái phiếu do các TCTD trong nước phát hành",
@@ -80,11 +84,14 @@
         {
           "aliases": [
             "Chứng khoán do các TCKT trong nước phát hành",
+            "Chứng khoán do các TCKT khác phát hành",
             "Chứng khoán do các TCKT khác trong nước phát hành",
             "Chứng khoán do các tổ chức kinh tế trong nước phát hành",
             "Chứng khoán nợ do các TCKT trong nước phát hành",
+            "Chứng khoán nợ do các TCKT khác phát hành",
             "Chứng khoán nợ do các TCKT khác trong nước phát hành",
-            "Trái phiếu do các TCKT trong nước phát hành"
+            "Trái phiếu do các TCKT trong nước phát hành",
+            "Trái phiếu do các tổ chức kinh tế trong nước phát hành"
           ],
           "within_role": "DEBT_SECURITIES_GROUP"
         }
@@ -182,6 +189,10 @@
           "aliases": [
             "Chứng khoán vốn do các TCTD khác phát hành",
             "Chứng khoán vốn do các TCTD khác trong nước phát hành",
+            "Chứng khoán vốn do các TCTD trong nước phát hành",
+            "Cổ phiếu do các TCTD khác phát hành",
+            "Cổ phiếu do các TCTD khác trong nước phát hành",
+            "Cổ phiếu do các TCTD trong nước phát hành",
             "Chứng khoán do các TCTD khác trong nước phát hành"
           ],
           "within_role": "EQUITY_SECURITIES_GROUP"
@@ -196,8 +207,13 @@
         {
           "aliases": [
             "Chứng khoán vốn do các TCKT trong nước phát hành",
+            "Chứng khoán vốn do các TCKT khác phát hành",
             "Chứng khoán vốn do các TCKT khác trong nước phát hành",
             "Chứng khoán do các TCKT trong nước phát hành",
+            "Cổ phiếu do các TCKT khác phát hành",
+            "Cổ phiếu do các TCKT khác trong nước phát hành",
+            "Cổ phiếu do các TCKT trong nước phát hành",
+            "Cổ phiếu do các tổ chức kinh tế trong nước phát hành",
             "Chứng khoán vốn do các tổ chức kinh tế trong nước phát hành"
           ],
           "within_role": "EQUITY_SECURITIES_GROUP"
@@ -375,8 +391,7 @@
         {
           "aliases": [
             "Dự phòng rủi ro chứng khoán kinh doanh",
-            "Dự phòng rủi ro chứng khoán",
-            "Dự phòng giảm giá chứng khoán kinh doanh"
+            "Dự phòng rủi ro chứng khoán"
           ],
           "within_role": null
         }
@@ -390,7 +405,8 @@
         {
           "aliases": [
             "Dự phòng giảm giá",
-            "Dự phòng giảm giá chứng khoán"
+            "Dự phòng giảm giá chứng khoán",
+            "Dự phòng giảm giá chứng khoán kinh doanh"
           ],
           "within_role": "TRADING_SECURITIES_PROVISION_GROUP"
         }
@@ -495,7 +511,11 @@
     "Biến động dự phòng chứng khoán kinh doanh",
     "Chứng khoán đầu tư",
     "Các công cụ tài chính phái sinh và các tài sản tài chính khác",
+    "Các công cụ tài chính phái sinh và các tài sản/(công nợ) tài chính khác",
     "Công cụ tài chính phái sinh và các tài sản tài chính khác",
+    "Công cụ tài chính phái sinh và tài sản/công nợ tài chính khác",
+    "Các công cụ tài chính phái sinh",
+    "Công cụ tài chính phái sinh",
     "Cho vay khách hàng"
   ]
 }

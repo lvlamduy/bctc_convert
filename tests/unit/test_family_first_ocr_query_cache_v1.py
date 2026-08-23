@@ -160,6 +160,7 @@ def test_cached_topology_scan_balances_documents_and_preserves_source_order(
         lambda pages, spec: {
             "format": spec["format_version"],
             "scan_id": "scan-test",
+            "source": pages[0]["lines"][0]["source_text"],
             "surface": pages[0]["lines"][0]["vietocr_text"],
         },
     )
@@ -172,6 +173,7 @@ def test_cached_topology_scan_balances_documents_and_preserves_source_order(
         {
             "format": "test",
             "scan_id": "scan-test",
+            "source": "123",
             "surface": "Tiền gửi tại các TCTD khác",
         },
     )
@@ -260,11 +262,13 @@ def test_cached_topology_scan_balances_documents_and_preserves_source_order(
         {
             "format": "test",
             "scan_id": "scan-test",
+            "source": "123",
             "surface": "Tiền gửi tại các TCTD khác",
         },
         {
             "format": "test",
             "scan_id": "scan-test",
+            "source": "456",
             "surface": "Cho vay các TCTD khác",
         },
     )

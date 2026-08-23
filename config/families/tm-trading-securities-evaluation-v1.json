@@ -9,16 +9,27 @@
   "hierarchical_closure_spec": {
     "equations": [
       {
-        "component_roles": [
-          "DEBT_GOVERNMENT",
-          "DEBT_DOMESTIC_CREDIT_INSTITUTIONS",
-          "DEBT_DOMESTIC_ECONOMIC_ORGANIZATIONS",
-          "DEBT_FOREIGN_ECONOMIC_ORGANIZATIONS",
-          "DEBT_OTHER",
-          "DEBT_LISTED",
-          "DEBT_UNLISTED"
+        "component_role_alternatives": [
+          {
+            "component_roles": [
+              "DEBT_GOVERNMENT",
+              "DEBT_DOMESTIC_CREDIT_INSTITUTIONS",
+              "DEBT_DOMESTIC_ECONOMIC_ORGANIZATIONS",
+              "DEBT_FOREIGN_ECONOMIC_ORGANIZATIONS",
+              "DEBT_OTHER"
+            ],
+            "coverage_policy": "VISIBLE_RESULT_CORROBORATION_ONLY",
+            "minimum_component_count": 1
+          },
+          {
+            "component_roles": [
+              "DEBT_LISTED",
+              "DEBT_UNLISTED"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "minimum_component_count": 2
+          }
         ],
-        "minimum_component_count": 1,
         "result_role": "DEBT_SECURITIES_GROUP",
         "trailing_result_policy": "IGNORE",
         "visible_result_roles": [
@@ -26,16 +37,27 @@
         ]
       },
       {
-        "component_roles": [
-          "EQUITY_GOVERNMENT",
-          "EQUITY_DOMESTIC_CREDIT_INSTITUTIONS",
-          "EQUITY_DOMESTIC_ECONOMIC_ORGANIZATIONS",
-          "EQUITY_FOREIGN_ECONOMIC_ORGANIZATIONS",
-          "EQUITY_OTHER",
-          "EQUITY_LISTED",
-          "EQUITY_UNLISTED"
+        "component_role_alternatives": [
+          {
+            "component_roles": [
+              "EQUITY_GOVERNMENT",
+              "EQUITY_DOMESTIC_CREDIT_INSTITUTIONS",
+              "EQUITY_DOMESTIC_ECONOMIC_ORGANIZATIONS",
+              "EQUITY_FOREIGN_ECONOMIC_ORGANIZATIONS",
+              "EQUITY_OTHER"
+            ],
+            "coverage_policy": "VISIBLE_RESULT_CORROBORATION_ONLY",
+            "minimum_component_count": 1
+          },
+          {
+            "component_roles": [
+              "EQUITY_LISTED",
+              "EQUITY_UNLISTED"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "minimum_component_count": 2
+          }
         ],
-        "minimum_component_count": 1,
         "result_role": "EQUITY_SECURITIES_GROUP",
         "trailing_result_policy": "IGNORE",
         "visible_result_roles": [
@@ -43,15 +65,26 @@
         ]
       },
       {
-        "component_roles": [
-          "OTHER_GOVERNMENT",
-          "OTHER_DOMESTIC_CREDIT_INSTITUTIONS",
-          "OTHER_DOMESTIC_ECONOMIC_ORGANIZATIONS",
-          "OTHER_FOREIGN_ECONOMIC_ORGANIZATIONS",
-          "OTHER_LISTED",
-          "OTHER_UNLISTED"
+        "component_role_alternatives": [
+          {
+            "component_roles": [
+              "OTHER_GOVERNMENT",
+              "OTHER_DOMESTIC_CREDIT_INSTITUTIONS",
+              "OTHER_DOMESTIC_ECONOMIC_ORGANIZATIONS",
+              "OTHER_FOREIGN_ECONOMIC_ORGANIZATIONS"
+            ],
+            "coverage_policy": "VISIBLE_RESULT_CORROBORATION_ONLY",
+            "minimum_component_count": 1
+          },
+          {
+            "component_roles": [
+              "OTHER_LISTED",
+              "OTHER_UNLISTED"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "minimum_component_count": 2
+          }
         ],
-        "minimum_component_count": 1,
         "result_role": "OTHER_TRADING_SECURITIES_GROUP",
         "trailing_result_policy": "IGNORE",
         "visible_result_roles": [
@@ -59,21 +92,80 @@
         ]
       },
       {
-        "component_roles": [
-          "PROVISION_PRICE_DECREASE",
-          "PROVISION_GENERAL",
-          "PROVISION_SPECIFIC"
+        "component_role_alternatives": [
+          {
+            "component_roles": [
+              "PROVISION_PRICE_DECREASE",
+              "PROVISION_GENERAL",
+              "PROVISION_SPECIFIC"
+            ],
+            "coverage_policy": "VISIBLE_RESULT_CORROBORATION_ONLY",
+            "minimum_component_count": 1
+          }
         ],
-        "minimum_component_count": 1,
         "result_role": "TRADING_SECURITIES_PROVISION_GROUP",
         "trailing_result_policy": "IGNORE",
         "visible_result_roles": [
           "TRADING_SECURITIES_PROVISION_GROUP"
         ]
+      },
+      {
+        "component_role_alternatives": [
+          {
+            "component_roles": [
+              "EXPLICIT_GROSS_TOTAL",
+              "TRADING_SECURITIES_PROVISION_GROUP"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "minimum_component_count": 2
+          },
+          {
+            "component_roles": [
+              "DEBT_SECURITIES_GROUP",
+              "EQUITY_SECURITIES_GROUP",
+              "OTHER_TRADING_SECURITIES_GROUP",
+              "TRADING_SECURITIES_PROVISION_GROUP"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "minimum_component_count": 2
+          },
+          {
+            "component_roles": [
+              "DEBT_GOVERNMENT",
+              "DEBT_DOMESTIC_CREDIT_INSTITUTIONS",
+              "DEBT_DOMESTIC_ECONOMIC_ORGANIZATIONS",
+              "DEBT_FOREIGN_ECONOMIC_ORGANIZATIONS",
+              "DEBT_OTHER",
+              "DEBT_LISTED",
+              "DEBT_UNLISTED",
+              "EQUITY_GOVERNMENT",
+              "EQUITY_DOMESTIC_CREDIT_INSTITUTIONS",
+              "EQUITY_DOMESTIC_ECONOMIC_ORGANIZATIONS",
+              "EQUITY_FOREIGN_ECONOMIC_ORGANIZATIONS",
+              "EQUITY_OTHER",
+              "EQUITY_LISTED",
+              "EQUITY_UNLISTED",
+              "OTHER_GOVERNMENT",
+              "OTHER_DOMESTIC_CREDIT_INSTITUTIONS",
+              "OTHER_DOMESTIC_ECONOMIC_ORGANIZATIONS",
+              "OTHER_FOREIGN_ECONOMIC_ORGANIZATIONS",
+              "OTHER_LISTED",
+              "OTHER_UNLISTED",
+              "TRADING_SECURITIES_PROVISION_GROUP"
+            ],
+            "coverage_policy": "EXHAUSTIVE_COMPONENT_SET",
+            "minimum_component_count": 1
+          }
+        ],
+        "result_role": "EXPLICIT_NET_TOTAL",
+        "trailing_result_policy": "CORROBORATE_UNIQUE_MATCH_IF_PRESENT",
+        "visible_result_roles": [
+          "EXPLICIT_NET_TOTAL"
+        ]
       }
     ],
     "family_id": "TRADING_SECURITIES",
-    "format_version": "ACCOUNTING_HIERARCHICAL_CLOSURE_SPEC_V1"
+    "format_version": "ACCOUNTING_HIERARCHICAL_CLOSURE_SPEC_V3"
   },
   "period_semantics": "BALANCE_COMPARATIVE"
 }

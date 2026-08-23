@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from bctc_ai.evaluation import family_first_authenticated_page_region_v1 as render_v1
 from bctc_ai.evaluation import family_first_filing_inventory_v1 as inventory_v1
 from bctc_ai.evaluation import family_first_ocr_query_cache_v1 as cache_v1
 from bctc_ai.evaluation import family_first_ppocrv6_numeric_index_v3 as numeric_v3
@@ -44,6 +45,7 @@ __all__ = [
     "project_authenticated_family_first_document_evidence_store_v1",
     "read_authenticated_family_first_document_evidence_snapshot_v1",
     "read_authenticated_family_first_document_packet_v1",
+    "read_authenticated_family_first_document_page_renders_v1",
     "read_authenticated_family_first_topology_scans_v1",
     "validate_family_first_document_evidence_manifest_shape_v1",
 ]
@@ -719,6 +721,98 @@ def read_authenticated_family_first_document_packet_v1(
     ):
         raise _error("document evidence packet ordinal lies outside the store")
     return copy.deepcopy(state.manifest["documents"][document_ordinal - 1])
+
+
+def read_authenticated_family_first_document_page_renders_v1(
+    capability: AuthenticatedFamilyFirstDocumentEvidenceStoreV1,
+    *,
+    document_ordinal: int,
+    physical_pages: tuple[int, ...],
+) -> tuple[dict[str, Any], ...]:
+    """Re-render only shortlisted pages and authenticate their sealed pixels.
+
+    This accessor deliberately does not reopen OCR or the full semantic axis.
+    The tracked document packet pins the exact source PDF, while the immutable
+    SQLite page record pins the 200-DPI PNG bytes and dimensions.  The returned
+    snapshots use the common authenticated-render shape so downstream dash-cell
+    crops retain the same replay and provenance checks as the full live lane.
+    """
+
+    state = _live_store(capability)
+    if (
+        type(document_ordinal) is not int
+        or not 1 <= document_ordinal <= state.manifest["metrics"]["document_count"]
+        or type(physical_pages) is not tuple
+        or not physical_pages
+        or any(type(page) is not int or page <= 0 for page in physical_pages)
+        or tuple(sorted(set(physical_pages))) != physical_pages
+    ):
+        raise _error("document evidence render selection drifted")
+    packet = state.manifest["documents"][document_ordinal - 1]
+    if any(page > packet["page_count"] for page in physical_pages):
+        raise _error("document evidence render page lies outside the source PDF")
+    source_path = state.root / packet["source_pdf_ref"]["path"]
+    source = _stable_bytes(source_path, "document evidence source PDF")
+    if not same_typed_json_v1(
+        packet["source_pdf_ref"],
+        _stream_ref(state.root, source_path, "document evidence source PDF"),
+    ):
+        raise _error("document evidence source PDF differs from its packet")
+    with cache_v1._connect(state.database_path) as connection:
+        references = {
+            row["physical_page"]: {
+                "pixel_height": row["pixel_height"],
+                "pixel_width": row["pixel_width"],
+                "sha256": row["render_sha256"],
+                "size_bytes": row["render_size_bytes"],
+            }
+            for row in connection.execute(
+                "SELECT physical_page, pixel_width, pixel_height, render_sha256, "
+                "render_size_bytes FROM pages WHERE document_ordinal = ? "
+                "AND physical_page IN ("
+                + ",".join("?" for _page in physical_pages)
+                + ") ORDER BY physical_page",
+                (document_ordinal, *physical_pages),
+            )
+        }
+    if tuple(references) != physical_pages:
+        raise _error("document evidence render selection is absent from the page axis")
+    snapshots = []
+    for physical_page in physical_pages:
+        render = render_v1._render_page(source, physical_page=physical_page, dpi=200)
+        reference = render_v1._render_reference(references[physical_page])
+        image = render_v1._png_image(render)
+        if (
+            len(render) != reference["size_bytes"]
+            or hashlib.sha256(render).hexdigest() != reference["sha256"]
+            or image.width != reference["pixel_width"]
+            or image.height != reference["pixel_height"]
+        ):
+            raise _error("document evidence page pixels differ from the sealed render reference")
+        material = {
+            "archive_id": state.manifest["manifest_id"],
+            "authority": canonical_clone_v1(render_v1._RENDER_AUTHORITY),
+            "document_ordinal": document_ordinal,
+            "format_version": render_v1.RENDER_FORMAT_VERSION,
+            "index_id": state.manifest["input_indices"]["semantic_index_id"],
+            "physical_page": physical_page,
+            "plan_id": state.manifest["manifest_id"],
+            "render_ref": reference,
+            "state": "AUTHENTICATED_EXACT_SOURCE_PAGE_RENDER_SNAPSHOT",
+        }
+        snapshot = {
+            **material,
+            "render_id": "ffaprv1:render:" + canonical_json_sha256_v1(material),
+            "render_png_bytes": render,
+        }
+        render_v1._validated_render_snapshot(snapshot)
+        snapshots.append(snapshot)
+    if (
+        _live_store(capability) is not state
+        or _stable_bytes(source_path, "document evidence source PDF") != source
+    ):
+        raise _error("document evidence store or source changed during page render replay")
+    return tuple(snapshots)
 
 
 def read_authenticated_family_first_topology_scans_v1(

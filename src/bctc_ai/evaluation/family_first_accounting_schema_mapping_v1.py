@@ -401,7 +401,12 @@ def _cell(value: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
     if (
         type(token) is not dict
         or token.get("classification")
-        not in {"DASH_ZERO", "MIXED_GROUPED_INTEGER_CANDIDATE", "SIGNED_NUMBER"}
+        not in {
+            "DASH_ZERO",
+            "MIXED_GROUPED_INTEGER_CANDIDATE",
+            "NOISE_SUFFIXED_GROUPED_INTEGER_CANDIDATE",
+            "SIGNED_NUMBER",
+        }
         or type(token.get("coefficient")) is not int
         or type(token.get("scale")) is not int
         or type(value.get("sample_id")) is not str
@@ -462,7 +467,12 @@ def _sum_row_values(values: list[dict[str, Any]]) -> dict[str, int]:
         or any(
             type(token) is not dict
             or token.get("classification")
-            not in {"DASH_ZERO", "MIXED_GROUPED_INTEGER_CANDIDATE", "SIGNED_NUMBER"}
+            not in {
+                "DASH_ZERO",
+                "MIXED_GROUPED_INTEGER_CANDIDATE",
+                "NOISE_SUFFIXED_GROUPED_INTEGER_CANDIDATE",
+                "SIGNED_NUMBER",
+            }
             or type(token.get("coefficient")) is not int
             or type(token.get("scale")) is not int
             or token["scale"] < 0

@@ -383,6 +383,52 @@ def test_blank_proposed_cell_is_not_manufactured_into_a_glyph() -> None:
     assert status == "NO_GLYPH_COMPONENT_FULL_PROPOSED_CELL_PRESERVED"
 
 
+def test_foreground_localization_discards_split_edge_table_rule_but_keeps_dash() -> None:
+    image = Image.new("RGB", (160, 50), "white")
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((124, 21, 131, 24), fill="black")
+    draw.line((12, 42, 57, 42), fill="black", width=1)
+    draw.line((59, 42, 147, 42), fill="black", width=1)
+
+    recognition, status = region_v1._foreground_recognition_bbox(image, [10, 5, 150, 46])
+
+    assert status == "GLYPH_COMPONENT_TIGHTENED_WITHIN_PROPOSED_CELL"
+    assert recognition[1] <= 21
+    assert recognition[3] < 42
+    assert recognition[0] <= 124 < 132 <= recognition[2]
+
+
+def test_foreground_localization_discards_widely_fragmented_rule_and_scan_specks() -> None:
+    image = Image.new("RGB", (200, 58), "white")
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((119, 27, 128, 30), fill="black")
+    for x, y in ((35, 18), (90, 19), (174, 11), (58, 41)):
+        draw.rectangle((x, y, x + 2, y + 2), fill="black")
+    draw.line((12, 47, 28, 47), fill="black", width=1)
+    draw.line((76, 47, 88, 47), fill="black", width=1)
+    draw.line((101, 47, 107, 47), fill="black", width=1)
+
+    recognition, status = region_v1._foreground_recognition_bbox(
+        image, [0, 0, image.width, image.height]
+    )
+
+    assert status == "GLYPH_COMPONENT_TIGHTENED_WITHIN_PROPOSED_CELL"
+    assert recognition[0] <= 119 < 129 <= recognition[2]
+    assert recognition[1] <= 27 < 31 <= recognition[3]
+    assert recognition[3] < 41
+
+
+def test_foreground_localization_does_not_discard_a_lone_table_rule_into_blank() -> None:
+    image = Image.new("RGB", (160, 50), "white")
+    ImageDraw.Draw(image).line((12, 42, 147, 42), fill="black", width=1)
+    proposed = [10, 5, 150, 46]
+
+    recognition, status = region_v1._foreground_recognition_bbox(image, proposed)
+
+    assert status == "NO_GLYPH_COMPONENT_FULL_PROPOSED_CELL_PRESERVED"
+    assert recognition == proposed
+
+
 def test_page_render_batch_selection_is_exact_unique_and_source_ordered() -> None:
     valid = ({"document_ordinal": 1, "physical_page": 2},)
     assert region_v1._render_selections(valid) == ((1, 2),)

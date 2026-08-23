@@ -346,7 +346,7 @@ def test_all_documents_scan_and_only_unique_region_opens_numeric_and_render(monk
     assert not_observed["evidence_status"] == "NOT_OBSERVED_PROPOSAL_ONLY"
     assert not_observed["unresolved_reasons"] == []
     assert not_observed["row_axis"] is None
-    assert render_calls == [(1, 1), (1, 2)]
+    assert render_calls == [(1, 1)]
     assert result["authority"]["not_observed_authority"] is False
 
 
@@ -507,6 +507,23 @@ def _signed_value(sample_id: str, coefficient: int) -> dict[str, object]:
     }
 
 
+def _noise_suffix_value(sample_id: str, raw: str, coefficient: int) -> dict[str, object]:
+    return {
+        "column_ordinal": 0,
+        "parsed_token": {
+            "classification": "NOISE_SUFFIXED_GROUPED_INTEGER_CANDIDATE",
+            "coefficient": coefficient,
+            "negative_parentheses": False,
+            "normalized_token": raw,
+            "percentage_mark_present": False,
+            "scale": 0,
+            "separator_interpretation": "NOISE_SUFFIXED_GROUPED_INTEGER_CANDIDATE",
+            "sign": 1,
+        },
+        "sample_id": sample_id,
+    }
+
+
 def test_mixed_separator_candidate_requires_independent_reader_money_peers_and_equation() -> None:
     candidate = _mixed_value("mixed", "1.460,873", 1_460_873)
     row_axis = {
@@ -569,6 +586,54 @@ def test_mixed_separator_candidate_never_passes_from_model_vote_without_equation
     assert reasons == ["MIXED_SEPARATOR:EXACT_VISIBLE_ACCOUNTING_CLOSURE_ABSENT:mixed"]
 
 
+def test_noise_suffix_candidate_needs_shared_prefix_money_peers_and_exact_equation() -> None:
+    candidate = _noise_suffix_value("stamped", "3.202.820 0UNG", 3_202_820)
+    row_axis = {
+        "rows": [
+            {"role": "DEBT_OTHER_BANK", "values": [candidate]},
+            {"role": "DEBT_GOVERNMENT", "values": [_signed_value("peer-1", 2_000_000)]},
+            {"role": "DEBT_ECONOMIC", "values": [_signed_value("peer-2", 1_000_000)]},
+        ],
+        "trailing_value_rows": [{"values": [_signed_value("total", 6_202_820)]}],
+    }
+    column = {"unit_axis": [{"column_ordinal": 0, "unit_kind": "MONEY"}]}
+    closure = {
+        "format_version": "ACCOUNTING_ADDITIVE_TABLE_CLOSURE_V1",
+        "status": "CORROBORATED_EXACT_UNIQUE_TRAILING_TOTAL",
+        "lane_sums": [{"component_sample_ids": ["stamped", "peer-1", "peer-2"]}],
+        "exact_total_candidates": [{"sample_ids": ["total"]}],
+    }
+    pages = [{"lines": [{"sample_id": "stamped", "vietocr_text": "3.202.820.000NG)"}]}]
+
+    assert (
+        subject._mixed_separator_consensus_reasons(
+            row_axis=row_axis,
+            column_context=column,
+            closure=closure,
+            joined_pages=pages,
+        )
+        == []
+    )
+
+    pages[0]["lines"][0]["vietocr_text"] = "3.202.829.000NG)"
+    assert subject._mixed_separator_consensus_reasons(
+        row_axis=row_axis,
+        column_context=column,
+        closure=closure,
+        joined_pages=pages,
+    ) == ["OCR_NOISE_SUFFIX:INDEPENDENT_SAME_CROP_READER_DISAGREES:stamped"]
+
+    pages[0]["lines"][0]["vietocr_text"] = "3.202.820.000NG)"
+    closure["status"] = "UNRESOLVED_ADDITIVE_TABLE_CLOSURE"
+    closure["lane_sums"] = []
+    assert subject._mixed_separator_consensus_reasons(
+        row_axis=row_axis,
+        column_context=column,
+        closure=closure,
+        joined_pages=pages,
+    ) == ["OCR_NOISE_SUFFIX:EXACT_VISIBLE_ACCOUNTING_CLOSURE_ABSENT:stamped"]
+
+
 def test_bounded_document_snapshot_rebuilds_only_one_existing_trial(monkeypatch) -> None:
     _patch_live_inputs(monkeypatch)
     family = _family_spec()
@@ -607,6 +672,7 @@ def test_bounded_document_snapshot_rebuilds_only_one_existing_trial(monkeypatch)
         }
         for page in semantic["pages"]
     ]
+    joined[1]["page_width"] = None
     packet = {
         "assurance": "AUDITED",
         "bank_provenance": "ACB",
@@ -631,13 +697,6 @@ def test_bounded_document_snapshot_rebuilds_only_one_existing_trial(monkeypatch)
                 "pixel_height": 1400,
                 "pixel_width": 1000,
                 "render_sha256": "4" * 64,
-                "render_size_bytes": 100,
-            },
-            {
-                "physical_page": 2,
-                "pixel_height": 1400,
-                "pixel_width": 1000,
-                "render_sha256": "5" * 64,
                 "render_size_bytes": 100,
             },
         ],
@@ -803,6 +862,42 @@ def test_equal_hierarchical_candidates_remain_unresolved_without_page_routing() 
     assert reasons == ["MULTIPLE_DOWNSTREAM_EVIDENCE_COMPLETE_TOPOLOGY_REGIONS"]
 
 
+def test_multiple_candidates_with_missing_lanes_request_only_candidate_pages() -> None:
+    joined_pages = [
+        {"lines": [{} for _ in range(10)], "page_sequence": 1},
+        {"lines": [{} for _ in range(10)], "page_sequence": 2},
+        {"lines": [{} for _ in range(10)], "page_sequence": 3},
+    ]
+    topology_scan = {
+        "regions": [
+            {
+                "cluster_start_document_line_ordinal": 12,
+                "cluster_end_document_line_ordinal_exclusive": 18,
+            }
+        ],
+        "status": "UNRESOLVED_MULTIPLE_OR_NONUNIQUE_COMPLETE_REGIONS",
+    }
+    trial = {
+        "row_axis": None,
+        "unresolved_reasons": [
+            "CANDIDATE_1:VISIBLE_ROLE_ROW_LANES_NOT_COMPLETE",
+            "CANDIDATE_2:COLUMN_CONTEXT:PERIOD_AXIS_NOT_BOUND_TO_EVERY_BODY_COLUMN",
+        ],
+    }
+
+    assert subject._missing_render_pages_for_document_store_trial_v1(
+        trial, topology_scan, joined_pages
+    ) == (2,)
+
+    trial["unresolved_reasons"] = ["MULTIPLE_DOWNSTREAM_EVIDENCE_COMPLETE_TOPOLOGY_REGIONS"]
+    assert (
+        subject._missing_render_pages_for_document_store_trial_v1(
+            trial, topology_scan, joined_pages
+        )
+        == ()
+    )
+
+
 @pytest.mark.parametrize(
     "mutation",
     [
@@ -881,3 +976,110 @@ def test_bool_numeric_denominator_does_not_launder_as_integer(monkeypatch) -> No
         subject.build_authenticated_family_first_accounting_evidence_sweep_v1(
             object(), object(), _family_spec(), _evaluation_spec()
         )
+
+
+def test_degraded_dash_requires_exact_accounting_corroboration() -> None:
+    sample_id = "ffaprv1:region:" + "1" * 64
+    row_axis = {
+        "rows": [
+            {
+                "role": "CASH_VND",
+                "values": [{"sample_id": sample_id}],
+            }
+        ],
+        "visible_dash_rescues": [
+            {
+                "classification": "DEGRADED_CENTERED_SHORT_MARK_CANDIDATE",
+                "region_id": sample_id,
+                "supporting_peer_dash_column_ordinal": 1,
+            }
+        ],
+    }
+    unresolved = {
+        "equations": [],
+        "format_version": "ACCOUNTING_HIERARCHICAL_TABLE_CLOSURE_V1",
+        "status": "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO",
+    }
+    corroborated = copy.deepcopy(unresolved)
+    corroborated["equations"] = [
+        {
+            "component_roles_present": ["CASH_VND"],
+            "result_role": "CASH_TOTAL",
+            "status": "VISIBLE_RESULT_CORROBORATED_BY_COMPONENTS",
+        }
+    ]
+
+    assert subject._degraded_dash_consensus_reasons(
+        row_axis=row_axis,
+        closure=unresolved,
+    ) == ["DEGRADED_DASH:EXACT_VISIBLE_ACCOUNTING_CLOSURE_ABSENT:" + sample_id]
+    assert (
+        subject._degraded_dash_consensus_reasons(
+            row_axis=row_axis,
+            closure=corroborated,
+        )
+        == []
+    )
+
+
+def test_degraded_dash_accepts_repeated_same_page_pixel_glyph_family() -> None:
+    sample_id = "ffaprv1:region:" + "1" * 64
+
+    def glyph(
+        role: str,
+        column: int,
+        *,
+        classification: str,
+        width: int,
+        height: int = 6,
+        peer: int | None = None,
+    ) -> dict[str, object]:
+        return {
+            "classification": classification,
+            "column_ordinal": column,
+            "dash_evidence": {
+                "crop_ref": {"pixel_height": 28},
+                "glyph_metrics": {"component_bbox": [16, 11, 16 + width, 11 + height]},
+            },
+            "page_sequence": 1,
+            "region_id": sample_id if classification.startswith("DEGRADED") else "peer",
+            "role": role,
+            "supporting_peer_dash_column_ordinal": peer,
+        }
+
+    row_axis = {
+        "rows": [{"role": "CASH_VND", "values": [{"sample_id": sample_id}]}],
+        "visible_dash_rescues": [
+            glyph(
+                "CASH_VND",
+                0,
+                classification="DEGRADED_CENTERED_SHORT_MARK_CANDIDATE",
+                width=6,
+                peer=1,
+            ),
+            glyph(
+                "CASH_VND",
+                1,
+                classification="VISIBLE_HORIZONTAL_DASH_GLYPH",
+                width=9,
+                height=4,
+            ),
+            glyph("PEER_2", 0, classification="VISIBLE_HORIZONTAL_DASH_GLYPH", width=8, height=4),
+            glyph("PEER_3", 0, classification="VISIBLE_HORIZONTAL_DASH_GLYPH", width=9, height=4),
+            glyph("PEER_4", 0, classification="VISIBLE_HORIZONTAL_DASH_GLYPH", width=10, height=4),
+            glyph("PEER_5", 0, classification="VISIBLE_HORIZONTAL_DASH_GLYPH", width=8, height=4),
+            glyph("PEER_6", 0, classification="VISIBLE_HORIZONTAL_DASH_GLYPH", width=9, height=4),
+        ],
+    }
+    closure = {
+        "equations": [],
+        "format_version": "ACCOUNTING_HIERARCHICAL_TABLE_CLOSURE_V1",
+        "status": "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO",
+    }
+
+    assert subject._degraded_dash_consensus_reasons(row_axis=row_axis, closure=closure) == []
+
+    row_axis["visible_dash_rescues"] = row_axis["visible_dash_rescues"][:-2]
+    assert subject._degraded_dash_consensus_reasons(row_axis=row_axis, closure=closure) == [
+        "DEGRADED_DASH:EXACT_VISIBLE_ACCOUNTING_CLOSURE_ABSENT:" + sample_id
+    ]
