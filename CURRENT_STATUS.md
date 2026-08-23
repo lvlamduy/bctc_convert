@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-08-23T13:09:11Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
+Updated: 2026-08-23T13:13:07Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
 The detailed historical receipts below remain evidence, but that directive supersedes
@@ -104,9 +104,14 @@ older queue priorities where they conflict.
   reads; the single corrected conflict cell is also bound to a printed control
   and accounting closure, so Gemma is not sole numeric authority. Compact seal:
   E-0171 at clean engine Git `047711b2e8e7e7eccdfea8a6c16126d350912aad`.
-  S3 registration is pending. Public exact replay requires the restored
-  snapshot containing the formal result and hosted assets; a bare Git checkout
-  is intentionally insufficient.
+  The formal result, 300-DPI hosted page and both raw hosted responses are
+  full-restore verified in S3 checkpoint
+  `20260823T131218475925Z-195457c13a5d`: manifest SHA-256
+  `23a663dd9158449e6dc59988724dc6760a58e7c7deff68672ac85408d99be2c1`
+  and bound PASS run SHA-256
+  `0ac92bff057803a8e4eee313041525bf685c5aee6d4fbcaafc069e7e7e266da0`.
+  Compact registration receipt: E-0172. Public exact replay requires that
+  restored checkpoint; a bare Git checkout is intentionally insufficient.
 - The measured family topology bottleneck no longer requires a 140-document
   sequential pass on every edit. The unchanged engine/spec path fell from
   137.071 seconds to 13.810 seconds with 12 balanced document processes; every

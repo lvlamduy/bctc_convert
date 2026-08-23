@@ -208,8 +208,10 @@ challenger; Gemma không quyết định số một mình.
 
 Kết quả 140 filing:
 `docs/experiments/E-0171-family-first-loan-maturity-140-filing-schema-sweep-seal-v1.json`.
-E-0115 là tập con annual-2025 lịch sử. S3 registration đang chờ; public exact
-replay cần restored snapshot, không chỉ bare Git checkout.
+E-0115 là tập con annual-2025 lịch sử. Formal result, ảnh full-page 300 DPI và
+hai raw hosted response đã full-restore PASS trong checkpoint S3
+`20260823T131218475925Z-195457c13a5d`; receipt E-0172. Public exact replay cần
+restored checkpoint này, không chỉ bare Git checkout.
 
 ## 10. Phân tích cho vay theo loại hình tiền tệ
 

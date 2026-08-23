@@ -1,0 +1,108 @@
+{
+  "format_version": "FAMILY_FIRST_LOAN_MATURITY_S3_REGISTRATION_V1",
+  "state": "REGISTERED",
+  "receipt_id": "e0172:receipt:819fcf523e0c3875c8cf4129f80290ac2088d9b68797702d9fb970d2ea18117d",
+  "experiment_id": "E-0172",
+  "family_id": "LOAN_MATURITY_BUCKETS",
+  "claim_boundary": "POST_SEAL_S3_DURABILITY_AND_EXACT_RESTORE_REGISTRATION_ONLY_NO_NEW_MAPPING_SCHEMA_NUMERIC_OCR_OR_PRODUCTION_AUTHORITY",
+  "seal_ref": {
+    "path": "docs/experiments/E-0171-family-first-loan-maturity-140-filing-schema-sweep-seal-v1.json",
+    "sha256": "ad0a7883327aab29629c1496305a820b55ae0c47b0ad91a1fe8909b75b526eb8",
+    "size_bytes": 8313,
+    "seal_id": "e0171:seal:950a5889b3dd999f471014d5b6532de854527d765d329537d1cd250ebb5c9c85",
+    "sweep_id": "lm140v1:sweep:3bfe3d4c0c412b013686ca553a690fc2a2a3246ac332736cac488e9e64da029c",
+    "engine_git_commit": "047711b2e8e7e7eccdfea8a6c16126d350912aad"
+  },
+  "checkpoint": {
+    "policy_id": "S3_INCREMENTAL_PROJECT_CHECKPOINT_V1",
+    "checkpoint_id": "20260823T131218475925Z-195457c13a5d",
+    "source_git_commit": "195457c13a5d22ea789f2a4a8f4458dc7046fbd2",
+    "manifest": {
+      "key": "bctc-ai/project-checkpoints/20260823T131218475925Z-195457c13a5d/manifest-23a663dd9158449e6dc59988724dc6760a58e7c7deff68672ac85408d99be2c1.json",
+      "sha256": "23a663dd9158449e6dc59988724dc6760a58e7c7deff68672ac85408d99be2c1",
+      "size_bytes": 8290,
+      "version_id": "2_ZF6IPKz0nFLznrX22QkF26LHks0hsi",
+      "head_metadata_hash_size_version_verified": true,
+      "download_sha256_verified": true
+    },
+    "run_record": {
+      "key": "bctc-ai/project-checkpoint-runs/20260823T131218475925Z-195457c13a5d/run-0ac92bff057803a8e4eee313041525bf685c5aee6d4fbcaafc069e7e7e266da0.json",
+      "sha256": "0ac92bff057803a8e4eee313041525bf685c5aee6d4fbcaafc069e7e7e266da0",
+      "size_bytes": 2583,
+      "version_id": "rlpNHj897mZ6zup1hsvEyGccuWjQwRHx",
+      "status": "PASS",
+      "head_metadata_hash_size_version_verified": true,
+      "download_sha256_verified": true
+    },
+    "inventory": {
+      "logical_file_count": 7,
+      "generated_output_file_count": 4,
+      "unique_object_count": 7,
+      "logical_bytes": 28406342
+    },
+    "restore": {
+      "status": "PASS",
+      "logical_file_restore_count": 7,
+      "generated_output_restore_count": 4,
+      "catalog_head_verified_count": 7,
+      "unique_object_download_count": 7,
+      "manifest_download_verified": true,
+      "control_plane_restore_verified": true,
+      "git_bundle_verified": true,
+      "parent_full_content_stream_verified": true
+    },
+    "selected_output_credential_scan": {
+      "status": "PASS",
+      "scanned_file_count": 4,
+      "scanned_bytes": 5238157
+    }
+  },
+  "generated_output_objects": [
+    {
+      "role": "formal_result",
+      "logical_path": "output/calibration/family-first-loan-maturity-140-filing-schema-sweep-v1/result.json",
+      "object_key": "bctc-ai/objects/sha256/1c/1c0a5aff8a6653abfab5546cf78d99ebcef66c032ef4a403da74cdfbb3dc5797",
+      "sha256": "1c0a5aff8a6653abfab5546cf78d99ebcef66c032ef4a403da74cdfbb3dc5797",
+      "size_bytes": 4259054,
+      "version_id": "0xIv09MVcHeoR8HwTsZiNNdZEiPRjop0",
+      "head_metadata_hash_size_version_verified": true
+    },
+    {
+      "role": "hosted_slot_1_raw_response",
+      "logical_path": "output/calibration/family-first-loan-maturity-hosted-gemma4-v1/document-0017/hosted-slot-1-raw-response.json",
+      "object_key": "bctc-ai/objects/sha256/61/61c44db52cbd261136a90d1ed27b8f28f3ea7ec15708f558e8b8bbef31b51eb0",
+      "sha256": "61c44db52cbd261136a90d1ed27b8f28f3ea7ec15708f558e8b8bbef31b51eb0",
+      "size_bytes": 6051,
+      "version_id": "Eb2XF4SPFQE9hc_yQKfg2xTTfGP6fxrJ",
+      "head_metadata_hash_size_version_verified": true
+    },
+    {
+      "role": "hosted_slot_2_raw_response",
+      "logical_path": "output/calibration/family-first-loan-maturity-hosted-gemma4-v1/document-0017/hosted-slot-2-raw-response.json",
+      "object_key": "bctc-ai/objects/sha256/35/350cc4de55959fd3991241f235d3d5c3d0aa45e31e7ea721bd67c42a07f7c449",
+      "sha256": "350cc4de55959fd3991241f235d3d5c3d0aa45e31e7ea721bd67c42a07f7c449",
+      "size_bytes": 6051,
+      "version_id": "DvieQTky3vb4XyTMN0qYWKCDu1zodjWr",
+      "head_metadata_hash_size_version_verified": true
+    },
+    {
+      "role": "hosted_full_page_png",
+      "logical_path": "output/calibration/family-first-loan-maturity-hosted-gemma4-v1/document-0017/page-0030-300dpi.png",
+      "object_key": "bctc-ai/objects/sha256/71/717df29faee49a42870b2d22e54fad5f82c3dec0b821fd18c98c221efaba023f",
+      "sha256": "717df29faee49a42870b2d22e54fad5f82c3dec0b821fd18c98c221efaba023f",
+      "size_bytes": 967001,
+      "version_id": "YDap_CQwdPbF5jkZ0VUOzcv.ejXsso1I",
+      "head_metadata_hash_size_version_verified": true
+    }
+  ],
+  "authority": {
+    "s3_durability_registration": true,
+    "exact_incremental_restore_verified": true,
+    "generated_outputs_restore_verified": true,
+    "public_exact_replay_assets_registered": true,
+    "mapping_or_schema_authority_added": false,
+    "numeric_or_ocr_authority_added": false,
+    "production_or_export_authority_added": false,
+    "credentials_persisted": false
+  }
+}

@@ -40,8 +40,9 @@ Gemma không là numeric authority duy nhất.
 
 E-0115 là tập con annual-2025 lịch sử và được sweep này supersede. Seal:
 `docs/experiments/E-0171-family-first-loan-maturity-140-filing-schema-sweep-seal-v1.json`.
-S3 registration đang chờ; public exact replay cần restored snapshot chứa formal
-result và hosted assets, không thể chỉ dùng bare Git checkout.
+Formal result và ba hosted assets đã full-restore PASS trong checkpoint S3
+`20260823T131218475925Z-195457c13a5d`, đăng ký bởi receipt E-0172. Public exact
+replay cần restored checkpoint đó, không thể chỉ dùng bare Git checkout.
 
 ## CLOSED — family-first 140-filing `Phân tích chất lượng cho vay`
 
