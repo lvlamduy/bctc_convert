@@ -45,6 +45,7 @@ __all__ = [
     "project_authenticated_family_first_document_evidence_store_v1",
     "read_authenticated_family_first_document_evidence_snapshot_v1",
     "read_authenticated_family_first_document_selected_pages_v1",
+    "read_authenticated_family_first_documents_selected_pages_v1",
     "read_authenticated_family_first_document_packet_v1",
     "read_authenticated_family_first_document_page_renders_v1",
     "read_authenticated_family_first_topology_scans_v1",
@@ -996,22 +997,12 @@ def read_authenticated_family_first_document_evidence_snapshot_v1(
     )
 
 
-def read_authenticated_family_first_document_selected_pages_v1(
-    capability: AuthenticatedFamilyFirstDocumentEvidenceStoreV1,
+def _selected_pages_snapshot_from_state(
+    state: _StoreState,
     *,
     document_ordinal: int,
     selected_pages: tuple[int, ...],
 ) -> dict[str, Any]:
-    """Hydrate only shortlisted page rows from the authenticated SQLite store.
-
-    Store authentication has already bound every byte of the immutable SQLite
-    database to the tracked manifest.  This accessor therefore keeps the
-    authenticated document packet root as the enclosing identity while
-    pushing the selected-page predicate into SQLite; it does not re-read or
-    canonicalize unrelated pages in the same filing.
-    """
-
-    state = _live_store(capability)
     if (
         type(document_ordinal) is not int
         or not 1 <= document_ordinal <= state.manifest["metrics"]["document_count"]
@@ -1056,6 +1047,75 @@ def read_authenticated_family_first_document_selected_pages_v1(
         **material,
         "snapshot_id": "ffdesv1:selected:" + canonical_json_sha256_v1(material),
     }
+    return canonical_clone_v1(result)
+
+
+def read_authenticated_family_first_document_selected_pages_v1(
+    capability: AuthenticatedFamilyFirstDocumentEvidenceStoreV1,
+    *,
+    document_ordinal: int,
+    selected_pages: tuple[int, ...],
+) -> dict[str, Any]:
+    """Hydrate only shortlisted page rows from the authenticated SQLite store.
+
+    Store authentication has already bound every byte of the immutable SQLite
+    database to the tracked manifest.  This accessor therefore keeps the
+    authenticated document packet root as the enclosing identity while
+    pushing the selected-page predicate into SQLite; it does not re-read or
+    canonicalize unrelated pages in the same filing.
+    """
+
+    state = _live_store(capability)
+    result = _selected_pages_snapshot_from_state(
+        state,
+        document_ordinal=document_ordinal,
+        selected_pages=selected_pages,
+    )
     if _live_store(capability) is not state:
         raise _error("document evidence store changed during selected-page hydration")
-    return canonical_clone_v1(result)
+    return result
+
+
+def read_authenticated_family_first_documents_selected_pages_v1(
+    capability: AuthenticatedFamilyFirstDocumentEvidenceStoreV1,
+    *,
+    document_page_selections: tuple[tuple[int, tuple[int, ...]], ...],
+) -> tuple[dict[str, Any], ...]:
+    """Hydrate a source-ordered multi-document shortlist under one live guard.
+
+    The single-document accessor intentionally rechecks Git, the tracked
+    manifest and the immutable SQLite identity around every call.  A formal
+    family sweep already owns one complete, source-ordered selection receipt;
+    repeating that process-level guard hundreds of times adds latency but no
+    evidence.  This batch entrypoint performs the same typed per-document
+    projection while checking the live store exactly before and after the
+    complete bounded read.
+    """
+
+    state = _live_store(capability)
+    if (
+        type(document_page_selections) is not tuple
+        or not document_page_selections
+        or any(
+            type(item) is not tuple
+            or len(item) != 2
+            or type(item[0]) is not int
+            or type(item[1]) is not tuple
+            for item in document_page_selections
+        )
+    ):
+        raise _error("document evidence batch selected-page axis drifted")
+    ordinals = [item[0] for item in document_page_selections]
+    if ordinals != sorted(set(ordinals)):
+        raise _error("document evidence batch document axis must be sorted and unique")
+    snapshots = tuple(
+        _selected_pages_snapshot_from_state(
+            state,
+            document_ordinal=document_ordinal,
+            selected_pages=selected_pages,
+        )
+        for document_ordinal, selected_pages in document_page_selections
+    )
+    if _live_store(capability) is not state:
+        raise _error("document evidence store changed during batch selected-page hydration")
+    return snapshots

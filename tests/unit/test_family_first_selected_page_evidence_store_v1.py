@@ -87,6 +87,38 @@ def test_cache_selected_page_reader_pushes_filter_into_sqlite(tmp_path: Path) ->
     assert selected["selection_id"].startswith("ffoqcv1:selection:")
 
 
+def test_cache_selected_page_reader_preserves_registered_zero_line_page(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "cache.sqlite3"
+    _database(database)
+    connection = sqlite3.connect(database)
+    connection.execute("DELETE FROM lines WHERE document_ordinal = 1 AND physical_page = 3")
+    connection.execute(
+        "UPDATE pages SET line_count = 0 WHERE document_ordinal = 1 AND physical_page = 3"
+    )
+    connection.execute("UPDATE documents SET line_count = 2 WHERE document_ordinal = 1")
+    connection.commit()
+    connection.close()
+
+    selected = cache_v1.read_cached_selected_joined_pages_v1(
+        database,
+        1,
+        selected_pages=(3,),
+    )
+
+    assert selected["joined_pages"] == [{"lines": [], "page_sequence": 3, "page_width": 100}]
+    assert selected["selected_page_dimensions"] == [
+        {
+            "physical_page": 3,
+            "pixel_height": 200,
+            "pixel_width": 100,
+            "render_sha256": "3" * 64,
+            "render_size_bytes": 3,
+        }
+    ]
+
+
 def test_authenticated_selected_page_reader_binds_packet_and_rejects_bad_selection(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

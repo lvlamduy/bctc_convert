@@ -984,3 +984,34 @@ Status meanings:
   mapping authority.
 - **Status:** `RESOLVED` for Family10; keep the staging and single-LF gates on
   every later formal family.
+
+## RFP-046 — Corpus-wide fuzzy matching is slower and less safe than region-first retrieval
+
+- **Pattern:** a family matcher normalizes and fuzzily compares every OCR line
+  with every alias before it knows whether the page contains the relevant note
+  or accounting population. Common Vietnamese anchors such as `cho vay` can
+  create thousands of irrelevant comparisons and false local contexts.
+- **Cause:** retrieval, semantic assignment and table reconstruction were
+  collapsed into one corpus-wide step. A self-consistent cached shortlist was
+  also at risk of being mistaken for evidence of uniqueness or absence.
+- **Do not:** run unrestricted Levenshtein/sentence-embedding search over the
+  whole corpus, treat a fuzzy score as mapping authority, silently add an OCR
+  typo as a semantic alias, or declare `NOT_OBSERVED` from an unproved zero-hit
+  result.
+- **Generic primitive/fix:** query the authenticated SQLite FTS5 trigram and
+  accentless indexes first; use rare q-gram probes, exact NFC/accentless
+  channels, one bounded edit and one bounded whitespace-fusion channel only to
+  propose local regions. Require owner, population and role groups to intersect
+  within the same or adjacent page region, stop at structural resets, and then
+  run the same shared graph on the selected pages. True historical semantic
+  variants need exact document/page/sample support records; ordinary OCR errors
+  stay deterministic matcher channels. If local coverage cannot be proved,
+  hydrate the complete document. A formal family seal must replay the receipt
+  from the immutable database and prove sparse/full structural fingerprints are
+  identical; retrieval never owns mapping or absence.
+- **Status:** `RESOLVED` in the Family11 retrieval layer. The final 140-document
+  receipt selects 409 indexed pages plus 1,586 pages from 24 fail-closed full
+  fallbacks: 1,995/8,947 pages and 153,239/667,224 lines, a 77.033% line
+  reduction. Median indexed query plus selected hydration is 6.789 s. All 24
+  fallbacks retain the explicit reason `NO_LOCALLY_VALIDATED_REGION`; none is
+  converted to absence by retrieval.

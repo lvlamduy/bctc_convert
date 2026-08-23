@@ -1530,8 +1530,6 @@ def read_cached_selected_joined_pages_v1(
                 "vietocr_text": row["vietocr_text"],
             }
         )
-    if any(not lines_by_page[page] for page in selected):
-        raise _error("cached selected page has no OCR line evidence")
     dimensions = [
         {
             "physical_page": row["physical_page"],

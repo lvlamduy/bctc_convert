@@ -362,3 +362,195 @@ def test_authenticated_topology_accessor_reuses_exact_engine_keyed_cache(
             7,
         )
     ]
+
+
+def test_authenticated_selected_page_batch_uses_one_outer_live_guard(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    first = _packet(document_id="document-1")
+    second_material = {
+        **{key: copy.deepcopy(value) for key, value in first.items() if key != "packet_id"},
+        "document_id": "document-2",
+        "document_ordinal": 2,
+    }
+    second = {
+        **second_material,
+        "packet_id": "ffdesv1:document:" + store_v1.canonical_json_sha256_v1(second_material),
+    }
+    state = SimpleNamespace(
+        database_path=tmp_path / "evidence.sqlite3",
+        manifest={
+            "documents": [first, second],
+            "manifest_id": "ffdesv1:manifest:" + "9" * 64,
+            "metrics": {"document_count": 2},
+        },
+    )
+    live_calls = []
+    cache_calls = []
+
+    def live(_capability: object) -> SimpleNamespace:
+        live_calls.append(True)
+        return state
+
+    def selected(
+        _database: Path, document_ordinal: int, *, selected_pages: tuple[int, ...]
+    ) -> dict:
+        cache_calls.append((document_ordinal, selected_pages))
+        packet = state.manifest["documents"][document_ordinal - 1]
+        material = {
+            "document_id": packet["document_id"],
+            "document_ordinal": document_ordinal,
+            "joined_pages": [
+                {
+                    "lines": [
+                        {
+                            "bbox": [1, 2, 20, 10],
+                            "crop_ref": {
+                                "path": "crop.png",
+                                "sha256": "6" * 64,
+                                "size_bytes": 1,
+                            },
+                            "line_ordinal": 0,
+                            "numeric_recognition": {
+                                "raw_prediction": "123",
+                                "reader_score": 0.8,
+                            },
+                            "sample_id": f"sample-{document_ordinal}",
+                            "vietocr_text": "Tiền mặt",
+                        }
+                    ],
+                    "page_sequence": 1,
+                    "page_width": 100,
+                }
+            ],
+            "selected_page_dimensions": [
+                {
+                    "physical_page": 1,
+                    "pixel_height": 200,
+                    "pixel_width": 100,
+                    "render_sha256": "4" * 64,
+                    "render_size_bytes": 1,
+                }
+            ],
+        }
+        return {
+            **material,
+            "selection_id": "ffoqcv1:selection:" + store_v1.canonical_json_sha256_v1(material),
+        }
+
+    monkeypatch.setattr(store_v1, "_live_store", live)
+    monkeypatch.setattr(
+        store_v1.cache_v1,
+        "read_cached_selected_joined_pages_v1",
+        selected,
+    )
+
+    individual = tuple(
+        store_v1.read_authenticated_family_first_document_selected_pages_v1(
+            object(),
+            document_ordinal=document_ordinal,
+            selected_pages=(1,),
+        )
+        for document_ordinal in (1, 2)
+    )
+    snapshots = store_v1.read_authenticated_family_first_documents_selected_pages_v1(
+        object(),
+        document_page_selections=((1, (1,)), (2, (1,))),
+    )
+
+    assert store_v1.same_typed_json_v1(snapshots, individual)
+    assert len(snapshots) == 2
+    assert [item["document_packet"]["document_ordinal"] for item in snapshots] == [1, 2]
+    assert cache_calls == [(1, (1,)), (2, (1,)), (1, (1,)), (2, (1,))]
+    # Two guards per individual read, versus two guards for the whole batch.
+    assert len(live_calls) == 6
+    for snapshot in snapshots:
+        material = copy.deepcopy(snapshot)
+        identity = material.pop("snapshot_id")
+        assert identity == "ffdesv1:selected:" + store_v1.canonical_json_sha256_v1(material)
+
+
+@pytest.mark.parametrize(
+    "selection",
+    [
+        (),
+        ((2, (1,)), (1, (1,))),
+        ((1, (1,)), (1, (1,))),
+        ((True, (1,)),),
+        ((1, (True,)),),
+    ],
+)
+def test_authenticated_selected_page_batch_rejects_ambiguous_axes(
+    selection: tuple[tuple[int, tuple[int, ...]], ...],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state = SimpleNamespace(
+        database_path=Path("unused.sqlite3"),
+        manifest={"documents": [_packet()], "metrics": {"document_count": 1}},
+    )
+    monkeypatch.setattr(store_v1, "_live_store", lambda _capability: state)
+
+    with pytest.raises(store_v1.FamilyFirstDocumentEvidenceStoreV1Error):
+        store_v1.read_authenticated_family_first_documents_selected_pages_v1(
+            object(),
+            document_page_selections=selection,
+        )
+
+
+def test_authenticated_selected_page_batch_rejects_mid_read_store_drift(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    packet = _packet()
+    first = SimpleNamespace(
+        database_path=tmp_path / "first.sqlite3",
+        manifest={
+            "documents": [packet],
+            "manifest_id": "ffdesv1:manifest:" + "8" * 64,
+            "metrics": {"document_count": 1},
+        },
+    )
+    second = SimpleNamespace(
+        database_path=tmp_path / "second.sqlite3",
+        manifest={
+            "documents": [packet],
+            "manifest_id": "ffdesv1:manifest:" + "9" * 64,
+            "metrics": {"document_count": 1},
+        },
+    )
+    states = iter((first, second))
+    monkeypatch.setattr(store_v1, "_live_store", lambda _capability: next(states))
+
+    def selected(_database: Path, _ordinal: int, *, selected_pages: tuple[int, ...]) -> dict:
+        material = {
+            "document_id": packet["document_id"],
+            "document_ordinal": 1,
+            "joined_pages": [{"lines": [], "page_sequence": selected_pages[0], "page_width": 100}],
+            "selected_page_dimensions": [
+                {
+                    "physical_page": selected_pages[0],
+                    "pixel_height": 200,
+                    "pixel_width": 100,
+                    "render_sha256": "4" * 64,
+                    "render_size_bytes": 1,
+                }
+            ],
+        }
+        return {
+            **material,
+            "selection_id": "ffoqcv1:selection:" + store_v1.canonical_json_sha256_v1(material),
+        }
+
+    monkeypatch.setattr(
+        store_v1.cache_v1,
+        "read_cached_selected_joined_pages_v1",
+        selected,
+    )
+
+    with pytest.raises(
+        store_v1.FamilyFirstDocumentEvidenceStoreV1Error,
+        match="changed during batch selected-page hydration",
+    ):
+        store_v1.read_authenticated_family_first_documents_selected_pages_v1(
+            object(),
+            document_page_selections=((1, (1,)),),
+        )
