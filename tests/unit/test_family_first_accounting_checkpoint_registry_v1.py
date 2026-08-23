@@ -43,9 +43,9 @@ def test_registered_family_checkpoint_binds_live_artifacts_and_trust_closure() -
     assert checkpoint["metrics"] == {
         "document_count": 140,
         "not_observed_proposal_count": 26,
-        "unresolved_document_count": 78,
-        "verified_document_count": 36,
-        "verified_mapping_count": 126,
+        "unresolved_document_count": 0,
+        "verified_document_count": 114,
+        "verified_mapping_count": 457,
     }
     for ref in [
         checkpoint["evidence_ref"],

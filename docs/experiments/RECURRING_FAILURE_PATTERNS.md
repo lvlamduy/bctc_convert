@@ -871,9 +871,10 @@ Status meanings:
   candidates, local/continuation unit edges and their document-root binding once;
   family logic then selects compatible subsets. A page/crop refresh invalidates
   only the affected document feature packet.
-- **Status:** `OPEN`; the final zero-unresolved trading audit measured 174.518 s
-  for evidence plus mapping from the authenticated store. This is the next
-  performance seam, not a reason to weaken period or unit provenance.
+- **Status:** `OPEN`; the clean final zero-unresolved trading build measured
+  207.093 s for evidence plus mapping from the authenticated store, while the
+  canonical artifact shape/cross-link validation took 1.325 s. This is the
+  next performance seam, not a reason to weaken period or unit provenance.
 
 ## RFP-041 — A whole comparison column contains only omitted DASH glyphs
 

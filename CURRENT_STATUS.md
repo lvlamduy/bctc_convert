@@ -68,8 +68,9 @@ older queue priorities where they conflict.
   alternative issuer/listing layouts selected only by one exact printed
   subtotal/net. The VPB stamp-contaminated `3.202.820` cell also requires
   same-prefix VietOCR and exact leaf-plus-provision-to-net closure; independent
-  chroma-suppressed PP-OCR and Gemma full-page reads agree. This final audit
-  took 174.518 s with zero OCR replay. The next schema-order family is
+  chroma-suppressed PP-OCR and Gemma full-page reads agree. The clean formal
+  build took 207.093 s and its canonical artifact shape/cross-link gate took
+  1.325 s, both with zero OCR replay. The next schema-order family is
   `DERIVATIVE_FINANCIAL_INSTRUMENTS`; annual-2025 evidence will be reused.
 - The measured family topology bottleneck no longer requires a 140-document
   sequential pass on every edit. The unchanged engine/spec path fell from
