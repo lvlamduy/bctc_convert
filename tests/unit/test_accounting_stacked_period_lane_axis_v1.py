@@ -96,6 +96,40 @@ def _pages() -> list[dict[str, object]]:
     ]
 
 
+def _horizontal_pages() -> list[dict[str, object]]:
+    raw = [
+        ("CÁC CÔNG CỤ TÀI CHÍNH PHÁI SINH VÀ CÁC TÀI SẢN TÀI CHÍNH KHÁC", [40, 30, 900, 60]),
+        ("31/12/2025", [540, 80, 760, 110]),
+        ("31/12/2024", [1040, 80, 1260, 110]),
+        ("Giá trị", [500, 120, 650, 145]),
+        ("hợp đồng", [500, 146, 650, 171]),
+        ("Giá trị", [735, 120, 865, 145]),
+        ("ghi sổ", [735, 146, 865, 171]),
+        ("Giá trị", [1000, 120, 1150, 145]),
+        ("hợp đồng", [1000, 146, 1150, 171]),
+        ("Giá trị", [1235, 120, 1365, 145]),
+        ("ghi sổ", [1235, 146, 1365, 171]),
+        ("Hợp đồng hoán đổi tiền tệ", [50, 220, 500, 250]),
+        ("204.012.086", [535, 220, 665, 250]),
+        ("384.075", [755, 220, 845, 250]),
+        ("340.865.305", [1035, 220, 1165, 250]),
+        ("1.328.364", [1250, 220, 1350, 250]),
+        ("Hợp đồng kỳ hạn tiền tệ", [50, 280, 500, 310]),
+        ("(199.035)", [535, 280, 665, 310]),
+        ("(9.157)", [755, 280, 845, 310]),
+        ("(16.245.514)", [1035, 280, 1165, 310]),
+        ("(13.930)", [1250, 280, 1350, 310]),
+        ("Cho vay khách hàng", [50, 400, 500, 430]),
+    ]
+    return [
+        {
+            "lines": [_line(text, bbox, ordinal) for ordinal, (text, bbox) in enumerate(raw)],
+            "page_sequence": 1,
+            "page_width": 1600,
+        }
+    ]
+
+
 def _topology_pages(pages: list[dict[str, object]]) -> list[dict[str, object]]:
     return [
         {
@@ -240,3 +274,58 @@ def test_noncollinear_tall_ocr_artifacts_cannot_compose_a_short_header_alias() -
         )
         is None
     )
+
+
+def test_horizontal_period_groups_reuse_one_role_axis_without_transposing_pixels() -> None:
+    pages = _horizontal_pages()
+    scan = topology_v1.build_accounting_family_topology_scan_v1(_topology_pages(pages), TOPOLOGY)
+    assert scan["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    axis = build_accounting_stacked_period_lane_axis_v1(pages, TOPOLOGY, scan["regions"][0], LAYOUT)
+    assert axis["status"] == "STACKED_PERIOD_LANE_AXIS_BOUND_PROPOSAL_ONLY"
+    assert axis["orientation"] == "HORIZONTAL_PERIOD_GROUPS"
+    assert [block["period_role"] for block in axis["blocks"]] == [
+        "CURRENT_PERIOD",
+        "COMPARATIVE_PERIOD",
+    ]
+    assert [item["role"] for item in axis["lane_axis"]] == [
+        "CONTRACT_VALUE",
+        "SIGNED_CARRYING_VALUE",
+        "CONTRACT_VALUE",
+        "SIGNED_CARRYING_VALUE",
+    ]
+    assert [item["column_ordinal"] for item in axis["lane_axis"]] == [0, 1, 2, 3]
+    assert [len(block["rows"]) for block in axis["blocks"]] == [2, 2]
+    assert [value["sample_id"] for value in axis["blocks"][0]["rows"][0]["values"]] == [
+        "sample-12",
+        "sample-13",
+    ]
+    assert [value["sample_id"] for value in axis["blocks"][1]["rows"][0]["values"]] == [
+        "sample-14",
+        "sample-15",
+    ]
+
+
+def test_horizontal_period_groups_can_expose_only_one_signed_carrying_lane() -> None:
+    source = _horizontal_pages()[0]
+    removed = {3, 4, 7, 8, 12, 14, 17, 19}
+    retained = [line for ordinal, line in enumerate(source["lines"]) if ordinal not in removed]
+    pages = [
+        {
+            "lines": [
+                _line(line["vietocr_text"], line["bbox"], ordinal)
+                for ordinal, line in enumerate(retained)
+            ],
+            "page_sequence": 1,
+            "page_width": 1600,
+        }
+    ]
+    scan = topology_v1.build_accounting_family_topology_scan_v1(_topology_pages(pages), TOPOLOGY)
+    axis = build_accounting_stacked_period_lane_axis_v1(pages, TOPOLOGY, scan["regions"][0], LAYOUT)
+
+    assert axis["status"] == "STACKED_PERIOD_LANE_AXIS_BOUND_PROPOSAL_ONLY"
+    assert axis["orientation"] == "HORIZONTAL_PERIOD_GROUPS"
+    assert [item["role"] for item in axis["lane_axis"]] == [
+        "SIGNED_CARRYING_VALUE",
+        "SIGNED_CARRYING_VALUE",
+    ]
+    assert [len(block["rows"]) for block in axis["blocks"]] == [2, 2]

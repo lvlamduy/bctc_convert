@@ -1,6 +1,9 @@
 {
   "allowed_lane_role_sequences": [
     [
+      "SIGNED_CARRYING_VALUE"
+    ],
+    [
       "CONTRACT_VALUE",
       "ASSET_CARRYING_VALUE",
       "LIABILITY_CARRYING_VALUE",
@@ -23,6 +26,18 @@
     [
       "CONTRACT_VALUE",
       "NET_VALUE"
+    ],
+    [
+      "CONTRACT_VALUE",
+      "SIGNED_CARRYING_VALUE"
+    ],
+    [
+      "CONTRACT_VALUE",
+      "ASSET_CARRYING_VALUE"
+    ],
+    [
+      "CONTRACT_VALUE",
+      "LIABILITY_CARRYING_VALUE"
     ],
     [
       "CONTRACT_VALUE",
@@ -76,6 +91,17 @@
     },
     {
       "aliases": [
+        "Giá trị ghi sổ",
+        "Giá trị ghi sổ kế toán",
+        "Tài sản/(Công nợ)",
+        "Tài sản/(Khoản nợ)"
+      ],
+      "mapping_eligible": true,
+      "role": "SIGNED_CARRYING_VALUE",
+      "unit_kind": "MONEY"
+    },
+    {
+      "aliases": [
         "Tổng cộng",
         "Giá trị thuần",
         "Giá trị ròng",
@@ -106,5 +132,5 @@
   "max_period_blocks": 2,
   "minimum_distinct_valued_roles": 2,
   "minimum_period_blocks": 2,
-  "orientation": "STACKED_PERIOD_BLOCKS"
+  "orientation": "STACKED_OR_HORIZONTAL_PERIOD_GROUPS"
 }

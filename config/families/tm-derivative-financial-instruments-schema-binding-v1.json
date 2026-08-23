@@ -1,0 +1,129 @@
+{
+  "accounting_equations": [
+    {
+      "component_lane_roles": [
+        "ASSET_CARRYING_VALUE",
+        "LIABILITY_CARRYING_VALUE"
+      ],
+      "component_multipliers": [
+        1,
+        1
+      ],
+      "result_lane_role": "NET_VALUE"
+    },
+    {
+      "component_lane_roles": [
+        "ASSET_CARRYING_VALUE",
+        "LIABILITY_CARRYING_VALUE"
+      ],
+      "component_multipliers": [
+        1,
+        -1
+      ],
+      "result_lane_role": "NET_VALUE"
+    },
+    {
+      "component_lane_roles": [
+        "INFLOW",
+        "OUTFLOW"
+      ],
+      "component_multipliers": [
+        1,
+        1
+      ],
+      "result_lane_role": "NET_VALUE"
+    },
+    {
+      "component_lane_roles": [
+        "INFLOW",
+        "OUTFLOW"
+      ],
+      "component_multipliers": [
+        1,
+        -1
+      ],
+      "result_lane_role": "NET_VALUE"
+    }
+  ],
+  "family_id": "DERIVATIVE_FINANCIAL_INSTRUMENTS",
+  "family_root_report_norm_id": 631,
+  "format_version": "ACCOUNTING_STACKED_PERIOD_SCHEMA_BINDING_SPEC_V1",
+  "mapping_bindings": [
+    {
+      "lane_role": "CONTRACT_VALUE",
+      "period_role": "CURRENT_PERIOD",
+      "report_norm_id_by_source_role": {
+        "CURRENCY_DERIVATIVE_GROUP": 633,
+        "CURRENCY_FUTURE": 642,
+        "CURRENCY_SWAP": 635,
+        "FORWARD_CURRENCY": 634,
+        "INTEREST_RATE_SWAP": 644,
+        "OTHER_DERIVATIVE_GROUP": 643
+      }
+    },
+    {
+      "lane_role": "CONTRACT_VALUE",
+      "period_role": "COMPARATIVE_PERIOD",
+      "report_norm_id_by_source_role": {
+        "CURRENCY_DERIVATIVE_GROUP": 647,
+        "CURRENCY_FUTURE": 656,
+        "CURRENCY_SWAP": 649,
+        "FORWARD_CURRENCY": 648,
+        "INTEREST_RATE_SWAP": 658,
+        "OTHER_DERIVATIVE_GROUP": 657
+      }
+    },
+    {
+      "lane_role": "ASSET_CARRYING_VALUE",
+      "period_role": "CURRENT_PERIOD",
+      "report_norm_id_by_source_role": {
+        "CURRENCY_DERIVATIVE_GROUP": 661,
+        "CURRENCY_FUTURE": 670,
+        "CURRENCY_SWAP": 663,
+        "FORWARD_CURRENCY": 662,
+        "INTEREST_RATE_SWAP": 672,
+        "OTHER_DERIVATIVE_GROUP": 671
+      }
+    },
+    {
+      "lane_role": "ASSET_CARRYING_VALUE",
+      "period_role": "COMPARATIVE_PERIOD",
+      "report_norm_id_by_source_role": {
+        "CURRENCY_DERIVATIVE_GROUP": 675,
+        "CURRENCY_FUTURE": 684,
+        "CURRENCY_SWAP": 677,
+        "FORWARD_CURRENCY": 676,
+        "INTEREST_RATE_SWAP": 686,
+        "OTHER_DERIVATIVE_GROUP": 685
+      }
+    },
+    {
+      "lane_role": "LIABILITY_CARRYING_VALUE",
+      "period_role": "CURRENT_PERIOD",
+      "report_norm_id_by_source_role": {
+        "CURRENCY_DERIVATIVE_GROUP": 689,
+        "CURRENCY_FUTURE": 698,
+        "CURRENCY_SWAP": 691,
+        "FORWARD_CURRENCY": 690,
+        "INTEREST_RATE_SWAP": 700,
+        "OTHER_DERIVATIVE_GROUP": 699
+      }
+    },
+    {
+      "lane_role": "LIABILITY_CARRYING_VALUE",
+      "period_role": "COMPARATIVE_PERIOD",
+      "report_norm_id_by_source_role": {
+        "CURRENCY_DERIVATIVE_GROUP": 703,
+        "CURRENCY_FUTURE": 712,
+        "CURRENCY_SWAP": 705,
+        "FORWARD_CURRENCY": 704,
+        "INTEREST_RATE_SWAP": 714,
+        "OTHER_DERIVATIVE_GROUP": 713
+      }
+    }
+  ],
+  "mixed_grouped_integer_policy": "REQUIRE_SAME_CROP_SEMANTIC_AGREEMENT_AND_PEER_GROUPING_WITH_ACCOUNTING_IF_AVAILABLE",
+  "schema_period_type": "SNAPSHOT",
+  "signed_carrying_lane_policy": "POSITIVE_TO_ASSET_NEGATIVE_TO_LIABILITY_ZERO_UNRESOLVED",
+  "sole_net_carrying_lane_policy": "WHEN_NO_ATOMIC_CARRYING_LANES_POSITIVE_TO_ASSET_NEGATIVE_TO_LIABILITY_ZERO_UNRESOLVED"
+}

@@ -18,13 +18,15 @@
       "matchers": [
         {
           "aliases": [
-            "Giao dịch kỳ hạn tiền tệ"
+            "Giao dịch kỳ hạn tiền tệ",
+            "Hợp đồng kỳ hạn tiền tệ"
           ],
           "within_role": "CURRENCY_DERIVATIVE_GROUP"
         },
         {
           "aliases": [
-            "Giao dịch kỳ hạn tiền tệ"
+            "Giao dịch kỳ hạn tiền tệ",
+            "Hợp đồng kỳ hạn tiền tệ"
           ],
           "within_role": null
         }
@@ -37,13 +39,15 @@
       "matchers": [
         {
           "aliases": [
-            "Giao dịch hoán đổi tiền tệ"
+            "Giao dịch hoán đổi tiền tệ",
+            "Hợp đồng hoán đổi tiền tệ"
           ],
           "within_role": "CURRENCY_DERIVATIVE_GROUP"
         },
         {
           "aliases": [
-            "Giao dịch hoán đổi tiền tệ"
+            "Giao dịch hoán đổi tiền tệ",
+            "Hợp đồng hoán đổi tiền tệ"
           ],
           "within_role": null
         }
@@ -92,14 +96,18 @@
         {
           "aliases": [
             "Giao dịch hoán đổi lãi suất",
-            "Giao dịch hoán đổi lãi suất tiền tệ chéo"
+            "Giao dịch hoán đổi lãi suất tiền tệ chéo",
+            "Hoán đổi lãi suất",
+            "Hợp đồng hoán đổi lãi suất"
           ],
           "within_role": "OTHER_DERIVATIVE_GROUP"
         },
         {
           "aliases": [
             "Giao dịch hoán đổi lãi suất",
-            "Giao dịch hoán đổi lãi suất tiền tệ chéo"
+            "Giao dịch hoán đổi lãi suất tiền tệ chéo",
+            "Hoán đổi lãi suất",
+            "Hợp đồng hoán đổi lãi suất"
           ],
           "within_role": null
         }

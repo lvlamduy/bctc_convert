@@ -1,0 +1,147 @@
+{
+  "format_version": "FAMILY_FIRST_DERIVATIVE_HOSTED_GEMMA4_NUMERIC_CHALLENGER_EVALUATION_V1",
+  "state": "COMPLETE",
+  "claim_boundary": "THREE_EXACT_FULL_PAGE_200DPI_STATELESS_HOSTED_GEMMA4_NUMERIC_CHALLENGES_BOUND_TO_EXISTING_SAMPLE_AND_CROP_EVIDENCE_NO_SOLE_NUMERIC_GEOMETRY_SCHEMA_MAPPING_OR_ACCOUNTING_AUTHORITY",
+  "evaluation_id": "derivativegemma4v1:evaluation:407e9ce05d9c17344cae45eaf1ffbc2cfc577513f38d1703bed5893b1601a7f8",
+  "prompt": {
+    "text": "Chuyển các khoản mục thuyết minh và giá trị tương ứng trong ảnh thành JSON nhiều lớp, giữ riêng từng cột của bảng, giữ nguyên chính tả các tên khoản mục, không thay đổi chính tả. Trường hợp ảnh không có khoản mục nào thuyết minh, chỉ là phần diễn giải thì trả lời đúng chuỗi JSON {\"ket_qua\":\"không có khoản mục thuyết minh nào\"}. Không phản hồi gì thêm ngoài JSON.",
+    "sha256": "58c94dafc703690240920ab791292e17760b42182aecda1254e8be52b8426118"
+  },
+  "observations": [
+    {
+      "format_version": "HOSTED_GEMMA4_FULL_PAGE_NUMERIC_CHALLENGER_OBSERVATION_V1",
+      "state": "COMPLETED_STATELESS_FULL_PAGE_JSON_CHALLENGE",
+      "sample_id": "sample-000197648",
+      "crop_ref": {
+        "path": "output/calibration/family-first-semantic-label-cache-v1/documents/document-0038/page-0034/crops/line-0033.png",
+        "sha256": "5d94e2787fdd6d915c2e3b808b8d15838f45a33fb965d7e87ff8e36c4dbbea8d",
+        "size_bytes": 1869
+      },
+      "full_page_render_ref": {
+        "dpi": 200,
+        "pixel_width": 1658,
+        "pixel_height": 2272,
+        "sha256": "6cd4af63aadc80f4c9869dce931f06a9c00f9259835cf9ad996fbd28702fc6cf",
+        "size_bytes": 397492
+      },
+      "model": "gemma-4-26b-a4b-it",
+      "inference": {
+        "fresh_context": true,
+        "thinking_level": "MINIMAL",
+        "temperature": 0,
+        "max_output_tokens": 32768
+      },
+      "prompt_sha256": "58c94dafc703690240920ab791292e17760b42182aecda1254e8be52b8426118",
+      "response_ref": {
+        "sha256": "4229a266e9098340d18a567319039968ca384bfc4df23d3e32e4c31811ee9f26",
+        "size_bytes": 7188
+      },
+      "extraction_json_path": [
+        "thuyet_minh_bao_cao_tai_chinh",
+        "9_cac_cong_cu_tai_chinh_phai_sinh_va_cac_khoan_tai_san_cong_no_tai_chinh_khac",
+        "tai_ngay_31_thang_12_nam_2025",
+        0,
+        "tong_gia_tri_ghi_so_ke_toan_cong_no_trieu_vnd"
+      ],
+      "extracted_numeric_surface": "36.046"
+    },
+    {
+      "format_version": "HOSTED_GEMMA4_FULL_PAGE_NUMERIC_CHALLENGER_OBSERVATION_V1",
+      "state": "COMPLETED_STATELESS_FULL_PAGE_JSON_CHALLENGE",
+      "sample_id": "sample-000415290",
+      "crop_ref": {
+        "path": "output/calibration/family-first-semantic-label-cache-v1/documents/document-0088/page-0038/crops/line-0056.png",
+        "sha256": "efd8992d7f93a9779f7c5fff28485e746bb5a5d10b7db00e54baa16a3b3e0a7d",
+        "size_bytes": 762
+      },
+      "full_page_render_ref": {
+        "dpi": 200,
+        "pixel_width": 1654,
+        "pixel_height": 2339,
+        "sha256": "a1ea426fcc270d1b0328cc06740fcf4e011cd16f1850e3bbf40b0146904827d2",
+        "size_bytes": 85784
+      },
+      "model": "gemma-4-26b-a4b-it",
+      "inference": {
+        "fresh_context": true,
+        "thinking_level": "MINIMAL",
+        "temperature": 0,
+        "max_output_tokens": 32768
+      },
+      "prompt_sha256": "58c94dafc703690240920ab791292e17760b42182aecda1254e8be52b8426118",
+      "response_ref": {
+        "sha256": "f3eb2cc91c0b383182b1f617ce4ff1691dabcabea779d277557efd9eea3c2d6a",
+        "size_bytes": 6291
+      },
+      "extraction_json_path": [
+        "8. CÁC CÔNG CỤ TÀI CHÍNH PHÁI SINH VÀ CÁC TÀI SẢN/(KHOẢN NỢ) TÀI CHÍNH KHÁC",
+        "bang_cong_cu_tai_chinh",
+        "rows",
+        2,
+        "Tổng giá trị ghi sổ kế toán (theo tỷ giá tại ngày lập báo cáo) triệu đồng"
+      ],
+      "extracted_numeric_surface": "(19.039)"
+    },
+    {
+      "format_version": "HOSTED_GEMMA4_FULL_PAGE_NUMERIC_CHALLENGER_OBSERVATION_V1",
+      "state": "COMPLETED_STATELESS_FULL_PAGE_JSON_CHALLENGE",
+      "sample_id": "sample-000543238",
+      "crop_ref": {
+        "path": "output/calibration/family-first-semantic-label-cache-v1/documents/document-0112/page-0034/crops/line-0064.png",
+        "sha256": "1ef1dd21c498cbfa50c4459f762369d0939033a4cbba36faac83d9fd21fb6b76",
+        "size_bytes": 2705
+      },
+      "full_page_render_ref": {
+        "dpi": 200,
+        "pixel_width": 1700,
+        "pixel_height": 2200,
+        "sha256": "d01bc8daddb288d78afc71a0dfc55943caba3a9b6edba9134444b74740d4075b",
+        "size_bytes": 219987
+      },
+      "model": "gemma-4-26b-a4b-it",
+      "inference": {
+        "fresh_context": true,
+        "thinking_level": "MINIMAL",
+        "temperature": 0,
+        "max_output_tokens": 32768
+      },
+      "prompt_sha256": "58c94dafc703690240920ab791292e17760b42182aecda1254e8be52b8426118",
+      "response_ref": {
+        "sha256": "da3a5df4e4a1f86ddd66ebdcdfd5b1fd79b282de3a34380c6826c00f2e161d36",
+        "size_bytes": 3646
+      },
+      "extraction_json_path": [
+        "8. CÔNG CỤ TÀI CHÍNH PHÁI SINH VÀ CÁC KHOẢN NỢ PHẢI TRẢ TÀI CHÍNH KHÁC",
+        "Tại ngày 31 tháng 12 năm 2025",
+        "Tổng giá trị ghi sổ kế toán Theo tỷ giá tại ngày lập báo cáo - Giá trị thuần Triệu đồng",
+        "Giao dịch hoán đổi tiền tệ"
+      ],
+      "extracted_numeric_surface": "(250.520)"
+    }
+  ],
+  "metrics": {
+    "observation_count": 3,
+    "ppocrv6_gemma4_agreement_count": 2,
+    "vietocr_gemma4_agreement_with_noninteger_ppocrv6_count": 1,
+    "fresh_context_count": 3,
+    "full_page_200dpi_count": 3
+  },
+  "decision": {
+    "gemma4_used_only_when_ppocrv6_and_vietocr_disagreed": true,
+    "gemma4_may_act_as_sole_numeric_reader": false,
+    "two_independent_readers_must_agree_exactly": true,
+    "accounting_equations_remain_corroboration_or_veto": true,
+    "prior_ocr_observations_overwritten": false
+  },
+  "authority": {
+    "numeric_authority": false,
+    "geometry_authority": false,
+    "schema_authority": false,
+    "mapping_authority": false,
+    "accounting_authority": false,
+    "canonicalization_authority": false,
+    "export_authority": false,
+    "raw_api_response_self_authenticating": false,
+    "tracked_response_digest_and_extracted_surface_only": true
+  }
+}
