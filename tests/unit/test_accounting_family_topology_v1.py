@@ -9,6 +9,7 @@ import pytest
 from bctc_ai.evaluation.accounting_family_topology_v1 import (
     AccountingFamilyTopologyV1Error,
     build_accounting_family_topology_scan_v1,
+    enumerate_accounting_family_role_occurrences_v1,
     validate_accounting_family_topology_scan_replay_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
@@ -101,6 +102,74 @@ def test_geometry_joins_wrapped_label_around_interleaved_numeric_cells() -> None
     assert short["source_line_indices"] == [1, 4]
     assert short["source_line_index"] == 1
     assert short["end_source_line_index"] == 4
+
+
+def test_role_occurrences_collapse_only_byte_identical_scan_candidates() -> None:
+    spec = {
+        "children": [
+            {
+                "aliases": ["Nợ đủ tiêu chuẩn"],
+                "presence": "OPTIONAL",
+                "role": "STANDARD",
+                "role_kind": "ADDITIVE_CHILD",
+            },
+            {
+                "aliases": ["Nợ cần chú ý"],
+                "presence": "OPTIONAL",
+                "role": "SPECIAL_MENTION",
+                "role_kind": "ADDITIVE_CHILD",
+            },
+            {
+                "aliases": ["Nợ dưới tiêu chuẩn"],
+                "presence": "OPTIONAL",
+                "role": "SUBSTANDARD",
+                "role_kind": "ADDITIVE_CHILD",
+            },
+        ],
+        "family_id": "LOAN_QUALITY",
+        "format_version": "ACCOUNTING_FAMILY_TOPOLOGY_SPEC_V2",
+        "hard_negative_aliases": [],
+        "limits": {
+            "max_cluster_span_lines": 20,
+            "max_continuation_pages": 0,
+            "max_label_line_span": 2,
+        },
+        "parent": {
+            "aliases": ["Phân tích chất lượng nợ"],
+            "resolution_mode": "EXPLICIT_OR_UNIQUE_REQUIRED_CHILD_CLUSTER",
+            "role": "LOAN_QUALITY",
+        },
+        "presence_evidence_mode": "GLOBAL_CORE_HITS",
+        "required_role_combinations": [
+            ["STANDARD", "SPECIAL_MENTION"],
+            ["STANDARD", "SUBSTANDARD"],
+        ],
+        "structural_reset_aliases": [],
+    }
+    page = _page(
+        [
+            "Nội dung dẫn nhập",
+            "Nợ đủ tiêu chuẩn",
+            "Nợ cần chú ý",
+            "Nợ dưới tiêu chuẩn",
+        ]
+    )
+
+    scan = build_accounting_family_topology_scan_v1([page], spec)
+
+    assert len(scan["regions"]) == 2
+    assert scan["regions"][0] == scan["regions"][1]
+    occurrences = enumerate_accounting_family_role_occurrences_v1([page], spec, scan["regions"][0])
+    assert [item["role"] for item in occurrences] == [
+        "STANDARD",
+        "SPECIAL_MENTION",
+        "SUBSTANDARD",
+    ]
+
+    forged = copy.deepcopy(scan["regions"][0])
+    forged["cluster_end_document_line_ordinal_exclusive"] -= 1
+    with pytest.raises(AccountingFamilyTopologyV1Error):
+        enumerate_accounting_family_role_occurrences_v1([page], spec, forged)
 
 
 def _cash_spec() -> dict[str, object]:

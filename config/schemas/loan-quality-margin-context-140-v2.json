@@ -1,0 +1,52 @@
+{
+  "authority": {
+    "bank_page_or_filename_is_a_mapping_rule": false,
+    "bounded_loan_quality_normalization_only": true,
+    "canonical_or_export_authority": false,
+    "project_owner_decision_required": true,
+    "raw_text_similarity_is_mapping_authority": false,
+    "source_geometry_period_unit_and_accounting_replay_required": true
+  },
+  "context_id": "lqmc:140:v2:e9c96d51698ded34ab3eecad0406392f8a04e7e4f21a6f7ebc37f69607d9d4d9",
+  "explicit_excluded_footnote": {
+    "mapping_output_authority": true,
+    "parent_report_norm_id": 746,
+    "population_relation": "EXCLUDED_FROM_PRINTED_FIVE_GRADE_TOTAL",
+    "role": "NONADDITIVE_EXCLUDED_DISCLOSURE",
+    "standalone_report_norm_id": 1944
+  },
+  "family": {
+    "canonical_name": "Phân tích chất lượng nợ cho vay",
+    "report_norm_id": 746
+  },
+  "format_version": "LOAN_QUALITY_MARGIN_CONTEXT_140_V2",
+  "included_source_disclosure": {
+    "canonical_name": "Trong đó: Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
+    "mapping_output_authority": false,
+    "parent_report_norm_id": 747,
+    "report_norm_id": 5746,
+    "role": "SOURCE_PRESENTATION_BRIDGE_ONLY"
+  },
+  "normalization_policy": {
+    "double_count_permitted": false,
+    "explicitly_excluded_footnote": "KEEP_747_UNCHANGED_EMIT_INDEPENDENTLY_OBSERVED_1944_AND_RECONCILE_CORE_PLUS_1944_TO_PARENT",
+    "included_in_747": "SUBTRACT_EXACT_5746_VALUE_FROM_747_AND_EMIT_1944",
+    "standalone_after_five_grades": "KEEP_747_UNCHANGED_AND_EMIT_1944",
+    "unobserved": "DO_NOT_SYNTHESIZE_1944"
+  },
+  "presentation_modes": [
+    "STANDALONE_AFTER_FIVE_GRADES",
+    "INCLUDED_IN_747_VIA_5746",
+    "EXPLICITLY_EXCLUDED_FROM_CORE_VIA_FOOTNOTE",
+    "NOT_OBSERVED_DO_NOT_SYNTHESIZE"
+  ],
+  "standalone_item": {
+    "canonical_name": "Cho vay giao dịch ký quỹ và ứng trước tiền bán chứng khoán",
+    "hierarchy_level": 2,
+    "mapping_eligible_in_this_bounded_context": true,
+    "parent_report_norm_id": 746,
+    "report_norm_id": 1944,
+    "template_identity_reused": true
+  },
+  "state": "PROJECT_OWNER_ADJUDICATED_BOUNDED_SCHEMA_CONTEXT"
+}

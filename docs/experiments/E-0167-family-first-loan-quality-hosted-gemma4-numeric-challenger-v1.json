@@ -1,0 +1,107 @@
+{
+  "format_version": "FAMILY_FIRST_LOAN_QUALITY_HOSTED_GEMMA4_NUMERIC_CHALLENGER_EVALUATION_V1",
+  "state": "COMPLETE",
+  "claim_boundary": "TWO_EXACT_STATELESS_HOSTED_GEMMA4_CROP_NUMERIC_CHALLENGES_BOUND_TO_VIETOCR_PPOCRV6_INDEPENDENT_PIXEL_AND_EXACT_ACCOUNTING_EVIDENCE_NO_SOLE_NUMERIC_GEOMETRY_SCHEMA_MAPPING_OR_EXPORT_AUTHORITY",
+  "evaluation_id": "qualitygemma4v1:evaluation:6237058c4af26a26a1cd9376533464364c7bc9ba2f9728abdf62e1b1d56d7621",
+  "prompt": {
+    "text": "Đọc chính xác chuỗi số trong ảnh và trả về đúng JSON {\"gia_tri\":\"...\"}. Giữ nguyên mọi chữ số và dấu phân cách. Không phản hồi gì thêm ngoài JSON.",
+    "sha256": "8c6431ce2ae9651a1363ee90ccc4a9570030c6adf119020e249ea022adae5083"
+  },
+  "model": {
+    "name": "gemma-4-26b-a4b-it",
+    "version": "001",
+    "display_name": "Gemma 4 26B A4B IT",
+    "input_token_limit": 262144,
+    "output_token_limit": 32768
+  },
+  "observations": [
+    {
+      "format_version": "HOSTED_GEMMA4_CROP_NUMERIC_CHALLENGER_OBSERVATION_V1",
+      "state": "COMPLETED_STATELESS_CROP_JSON_CHALLENGE",
+      "sample_id": "sample-000384932",
+      "crop_ref": {
+        "path": "output/calibration/family-first-semantic-label-cache-v1/documents/document-0081/page-0021/crops/line-0031.png",
+        "sha256": "fb458d8edcc0b75bc3951a527d87a55f86a3b5fe1ec9df36e103a472e2eddb61",
+        "size_bytes": 4639
+      },
+      "inference": {
+        "fresh_context": true,
+        "thinking_level": "MINIMAL",
+        "temperature": 0,
+        "max_output_tokens": 128,
+        "prompt_token_count": 299,
+        "candidates_token_count": 24,
+        "total_token_count": 323,
+        "service_tier": "standard"
+      },
+      "response_content_ref": {
+        "sha256": "68dbd0300195c9368bd9367329375a84ffae5591d3baae4e03eb1b9ba9d8ecee",
+        "character_count": 39
+      },
+      "extracted_numeric_surface": "1,992,589,394",
+      "independent_pixel_transcription": "1,992,589,394",
+      "vietocr_transformer_surface": "1,992,589,394",
+      "ppocrv6_original_surface": "1,99,589,394",
+      "ppocrv6_original_score": 0.9647983908653259,
+      "accounting_effect": {
+        "candidate": "1,992,589,394",
+        "five_grade_sum": "2,056,082,420",
+        "printed_total": "2,056,082,420",
+        "status": "EXACT_ONLY_WITH_PIXEL_VIETOCR_AND_GEMMA4_CANDIDATE"
+      }
+    },
+    {
+      "format_version": "HOSTED_GEMMA4_CROP_NUMERIC_CHALLENGER_OBSERVATION_V1",
+      "state": "COMPLETED_STATELESS_CROP_JSON_CHALLENGE",
+      "sample_id": "sample-000655203",
+      "crop_ref": {
+        "path": "output/calibration/family-first-semantic-label-cache-v1/documents/document-0138/page-0063/crops/line-0089.png",
+        "sha256": "572805237f181bb3bf875eef5ca1f3eae382e96ec4b0d533157fcef22bfa1c89",
+        "size_bytes": 845
+      },
+      "inference": {
+        "fresh_context": true,
+        "thinking_level": "MINIMAL",
+        "temperature": 0,
+        "max_output_tokens": 128,
+        "prompt_token_count": 299,
+        "candidates_token_count": 20,
+        "total_token_count": 319,
+        "service_tier": "standard"
+      },
+      "response_content_ref": {
+        "sha256": "f49a64705a7fe81c6db00afa6c4a1e3d68781c89796637eeee1061d30d3afe8b",
+        "character_count": 35
+      },
+      "extracted_numeric_surface": "6.361.298",
+      "independent_pixel_transcription": "6.361.298",
+      "vietocr_transformer_surface": "6.361.298",
+      "ppocrv6_original_surface": "6.361.2988",
+      "ppocrv6_original_score": 0.8259657025337219,
+      "accounting_effect": {
+        "candidate": "6.361.298",
+        "customer_loan_grade_sum": "381.972.016",
+        "printed_customer_loan_total": "381.972.016",
+        "status": "EXACT_ONLY_WITH_PIXEL_VIETOCR_AND_GEMMA4_CANDIDATE"
+      }
+    }
+  ],
+  "decision": {
+    "gemma4_used_only_after_ppocrv6_vietocr_conflict": true,
+    "gemma4_may_act_as_sole_numeric_reader": false,
+    "independent_pixel_vietocr_and_gemma4_agree_exactly": true,
+    "accounting_equation_is_corroboration_and_veto": true,
+    "ppocrv6_observation_overwritten": false
+  },
+  "authority": {
+    "numeric_authority": false,
+    "geometry_authority": false,
+    "schema_authority": false,
+    "mapping_authority": false,
+    "accounting_authority": false,
+    "canonicalization_authority": false,
+    "raw_api_response_self_authenticating": false,
+    "tracked_response_digest_and_extracted_surface_only": true,
+    "crop_pixel_review_bound": true
+  }
+}

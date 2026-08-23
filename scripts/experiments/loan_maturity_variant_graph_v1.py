@@ -492,7 +492,7 @@ def _periods(
     enable_extended_annual_variants: bool,
 ) -> tuple[list[dict[str, Any]], str]:
     axes, mode = extract_period_axis_v1(header)
-    if len(axes) == 2 or not enable_extended_annual_variants:
+    if not enable_extended_annual_variants:
         return axes, mode
     relative_roles = {
         "so cuoi nam": "CURRENT_PERIOD_END",

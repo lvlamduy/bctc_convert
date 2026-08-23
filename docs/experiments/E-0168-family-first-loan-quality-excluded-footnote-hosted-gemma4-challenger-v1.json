@@ -1,0 +1,251 @@
+{
+  "format_version": "FAMILY_FIRST_LOAN_QUALITY_EXCLUDED_FOOTNOTE_HOSTED_GEMMA4_CHALLENGER_EVALUATION_V1",
+  "state": "COMPLETE",
+  "claim_boundary": "FOUR_EXACT_BOUND_FOOTNOTE_CROPS_TWO_FRESH_STATELESS_HOSTED_GEMMA4_REQUESTS_PER_CROP_VIETOCR_PIXEL_AND_PARENT_ACCOUNTING_CORROBORATION_NO_SOLE_NUMERIC_GEOMETRY_SCHEMA_MAPPING_OR_EXPORT_AUTHORITY",
+  "evaluation_id": "qualityfootnotegemma4v1:evaluation:c335636954de02bca9796ab45ceafb16e90797edc3a166abde9d8af830fef44f",
+  "prompt": {
+    "text": "Đọc dòng chú thích trong ảnh. Trả về đúng JSON {\"gia_tri_hien_tai\":\"...\",\"gia_tri_so_sanh\":\"...\"}. Chỉ lấy hai số tiền đi kèm cụm “triệu đồng”; không lấy ngày tháng. Giữ nguyên mọi chữ số và dấu phân cách. Không phản hồi gì thêm ngoài JSON.",
+    "sha256": "4dffa1721c95c2b45a69f60877d5ff919c4b4db09ae2fd5c7ea7c2acea6cefe4"
+  },
+  "model": {
+    "name": "gemma-4-26b-a4b-it",
+    "version": "001",
+    "display_name": "Gemma 4 26B A4B IT",
+    "input_token_limit": 262144,
+    "output_token_limit": 32768
+  },
+  "observations": [
+    {
+      "format_version": "HOSTED_GEMMA4_FOOTNOTE_MULTI_NUMBER_CHALLENGER_OBSERVATION_V1",
+      "state": "COMPLETED_TWO_FRESH_STATELESS_CROP_JSON_CHALLENGES",
+      "sample_id": "sample-000028509",
+      "crop_ref": {
+        "path": "output/calibration/family-first-semantic-label-cache-v1/documents/document-0005/page-0017/crops/line-0026.png",
+        "sha256": "b2ad635e9ed807e206ba0e3c92cd5e65ef4a87fe6b219f08614fdb0e219746e1",
+        "size_bytes": 58953
+      },
+      "requests": [
+        {
+          "fresh_request_ordinal": 1,
+          "credential_slot": 1,
+          "thinking_level": "MINIMAL",
+          "temperature": 0,
+          "max_output_tokens": 128,
+          "prompt_token_count": 333,
+          "candidates_token_count": 44,
+          "total_token_count": 377,
+          "service_tier": "standard",
+          "response_content_ref": {
+            "sha256": "7336ecbda6481ad796e420b04bf38d143a8787a94ebbeca5d9262a7d19b797ae",
+            "character_count": 74
+          }
+        },
+        {
+          "fresh_request_ordinal": 2,
+          "credential_slot": 2,
+          "thinking_level": "MINIMAL",
+          "temperature": 0,
+          "max_output_tokens": 128,
+          "prompt_token_count": 333,
+          "candidates_token_count": 44,
+          "total_token_count": 377,
+          "service_tier": "standard",
+          "response_content_ref": {
+            "sha256": "7336ecbda6481ad796e420b04bf38d143a8787a94ebbeca5d9262a7d19b797ae",
+            "character_count": 74
+          }
+        }
+      ],
+      "extracted_monetary_surfaces": ["9.423.424", "8.689.759"],
+      "independent_pixel_transcriptions": ["9.423.424", "8.689.759"],
+      "vietocr_transformer_surface": "(') Không bao gồm 9.423.424 triệu đồng (31.12.2024: 8.689.759 triệu đồng) cho vay giao",
+      "ppocrv6_original_surface": "(Khôngbaom9.423.424đng(31.12.2024:8.689.759đng)ya",
+      "ppocrv6_original_score": 0.750346839427948,
+      "accounting_effect": {
+        "printed_quality_totals": [589382442, 571996489],
+        "observed_excluded_margin_values": [9423424, 8689759],
+        "independently_observed_customer_loan_parent_totals": [598805866, 580686248],
+        "status": "EXACT_CORE_PLUS_OBSERVED_EXCLUDED_MARGIN_EQUALS_OBSERVED_PARENT_BOTH_LANES"
+      }
+    },
+    {
+      "format_version": "HOSTED_GEMMA4_FOOTNOTE_MULTI_NUMBER_CHALLENGER_OBSERVATION_V1",
+      "state": "COMPLETED_TWO_FRESH_STATELESS_CROP_JSON_CHALLENGES",
+      "sample_id": "sample-000033191",
+      "crop_ref": {
+        "path": "output/calibration/family-first-semantic-label-cache-v1/documents/document-0007/page-0018/crops/line-0026.png",
+        "sha256": "d0704ed848afbc73eefef79d632a0f842469c716c87c5a8f653dca08354a2624",
+        "size_bytes": 59530
+      },
+      "requests": [
+        {
+          "fresh_request_ordinal": 1,
+          "credential_slot": 1,
+          "thinking_level": "MINIMAL",
+          "temperature": 0,
+          "max_output_tokens": 128,
+          "prompt_token_count": 333,
+          "candidates_token_count": 45,
+          "total_token_count": 378,
+          "service_tier": "standard",
+          "response_content_ref": {
+            "sha256": "dd7b6c0ccd86697e5fd939d1ec5661b7b1bc7644b72830a2dcb93ab07b6c0e90",
+            "character_count": 75
+          }
+        },
+        {
+          "fresh_request_ordinal": 2,
+          "credential_slot": 2,
+          "thinking_level": "MINIMAL",
+          "temperature": 0,
+          "max_output_tokens": 128,
+          "prompt_token_count": 333,
+          "candidates_token_count": 45,
+          "total_token_count": 378,
+          "service_tier": "standard",
+          "response_content_ref": {
+            "sha256": "dd7b6c0ccd86697e5fd939d1ec5661b7b1bc7644b72830a2dcb93ab07b6c0e90",
+            "character_count": 75
+          }
+        }
+      ],
+      "extracted_monetary_surfaces": ["11.507.631", "8.689.759"],
+      "independent_pixel_transcriptions": ["11.507.631", "8.689.759"],
+      "vietocr_transformer_surface": "(?) Không bao gồm 11.507.631 triệu đồng (31.12.2024: 8.689.759 triệu đồng) cho vay giao",
+      "ppocrv6_original_surface": "(Khôngba507đ(31122024:9.75đ)",
+      "ppocrv6_original_score": 0.6016175150871277,
+      "accounting_effect": {
+        "printed_quality_totals": [622241052, 571996489],
+        "observed_excluded_margin_values": [11507631, 8689759],
+        "independently_observed_customer_loan_parent_totals": [633748683, 580686248],
+        "status": "EXACT_CORE_PLUS_OBSERVED_EXCLUDED_MARGIN_EQUALS_OBSERVED_PARENT_BOTH_LANES"
+      }
+    },
+    {
+      "format_version": "HOSTED_GEMMA4_FOOTNOTE_MULTI_NUMBER_CHALLENGER_OBSERVATION_V1",
+      "state": "COMPLETED_TWO_FRESH_STATELESS_CROP_JSON_CHALLENGES",
+      "sample_id": "sample-000038000",
+      "crop_ref": {
+        "path": "output/calibration/family-first-semantic-label-cache-v1/documents/document-0009/page-0018/crops/line-0026.png",
+        "sha256": "14c71e75ae86a3c138a4921193635cd36e97e7a5dbaaeb16b89f902bbc36dfb0",
+        "size_bytes": 59880
+      },
+      "requests": [
+        {
+          "fresh_request_ordinal": 1,
+          "credential_slot": 1,
+          "thinking_level": "MINIMAL",
+          "temperature": 0,
+          "max_output_tokens": 128,
+          "prompt_token_count": 333,
+          "candidates_token_count": 45,
+          "total_token_count": 378,
+          "service_tier": "standard",
+          "response_content_ref": {
+            "sha256": "cef539383e6c95ce8bf7068367f81391ba506039e71c41d4557627a87ec4ba1f",
+            "character_count": 75
+          }
+        },
+        {
+          "fresh_request_ordinal": 2,
+          "credential_slot": 2,
+          "thinking_level": "MINIMAL",
+          "temperature": 0,
+          "max_output_tokens": 128,
+          "prompt_token_count": 333,
+          "candidates_token_count": 45,
+          "total_token_count": 378,
+          "service_tier": "standard",
+          "response_content_ref": {
+            "sha256": "cef539383e6c95ce8bf7068367f81391ba506039e71c41d4557627a87ec4ba1f",
+            "character_count": 75
+          }
+        }
+      ],
+      "extracted_monetary_surfaces": ["16.266.352", "8.689.759"],
+      "independent_pixel_transcriptions": ["16.266.352", "8.689.759"],
+      "vietocr_transformer_surface": "(') Không bao gồm 16.266.352 triệu đồng (31.12.2024: 8.689,759 triệu đồng) cho vay giao",
+      "ppocrv6_original_surface": "(Khnba16.352đng(31.12.2024:8.69.759đ)a",
+      "ppocrv6_original_score": 0.7073870897293091,
+      "accounting_effect": {
+        "printed_quality_totals": [652921773, 571996489],
+        "observed_excluded_margin_values": [16266352, 8689759],
+        "independently_observed_customer_loan_parent_totals": [669188125, 580686248],
+        "status": "EXACT_CORE_PLUS_OBSERVED_EXCLUDED_MARGIN_EQUALS_OBSERVED_PARENT_BOTH_LANES"
+      }
+    },
+    {
+      "format_version": "HOSTED_GEMMA4_FOOTNOTE_MULTI_NUMBER_CHALLENGER_OBSERVATION_V1",
+      "state": "COMPLETED_TWO_FRESH_STATELESS_CROP_JSON_CHALLENGES",
+      "sample_id": "sample-000042889",
+      "crop_ref": {
+        "path": "output/calibration/family-first-semantic-label-cache-v1/documents/document-0011/page-0018/crops/line-0026.png",
+        "sha256": "d9284258e97865843df5f5f78caa4f3c0713eaf70bb7af000e3ada8933f63ea7",
+        "size_bytes": 69386
+      },
+      "requests": [
+        {
+          "fresh_request_ordinal": 1,
+          "credential_slot": 1,
+          "thinking_level": "MINIMAL",
+          "temperature": 0,
+          "max_output_tokens": 128,
+          "prompt_token_count": 333,
+          "candidates_token_count": 45,
+          "total_token_count": 378,
+          "service_tier": "standard",
+          "response_content_ref": {
+            "sha256": "692f0696a063d5546e3dd74c331dcf0126a5fa40d46915d9be22ff6e3c865cf5",
+            "character_count": 75
+          }
+        },
+        {
+          "fresh_request_ordinal": 2,
+          "credential_slot": 2,
+          "thinking_level": "MINIMAL",
+          "temperature": 0,
+          "max_output_tokens": 128,
+          "prompt_token_count": 333,
+          "candidates_token_count": 45,
+          "total_token_count": 378,
+          "service_tier": "standard",
+          "response_content_ref": {
+            "sha256": "692f0696a063d5546e3dd74c331dcf0126a5fa40d46915d9be22ff6e3c865cf5",
+            "character_count": 75
+          }
+        }
+      ],
+      "extracted_monetary_surfaces": ["17.340.705", "8.689.759"],
+      "independent_pixel_transcriptions": ["17.340.705", "8.689.759"],
+      "vietocr_transformer_surface": "(?) Không bao gồm 17.340.705 triệu đồng (31.12.2024: 8.689.759 triệu đồng) cho vay giao",
+      "ppocrv6_original_surface": "h170705d(122029.759)]",
+      "ppocrv6_original_score": 0.5199664831161499,
+      "accounting_effect": {
+        "printed_quality_totals": [669436647, 571996489],
+        "observed_excluded_margin_values": [17340705, 8689759],
+        "independently_observed_customer_loan_parent_totals": [686777352, 580686248],
+        "status": "EXACT_CORE_PLUS_OBSERVED_EXCLUDED_MARGIN_EQUALS_OBSERVED_PARENT_BOTH_LANES"
+      }
+    }
+  ],
+  "decision": {
+    "fresh_request_count": 8,
+    "two_independent_credentials_used": true,
+    "two_requests_per_crop_agree_exactly": true,
+    "gemma4_may_act_as_sole_numeric_reader": false,
+    "independent_pixel_vietocr_and_gemma4_agree_exactly": true,
+    "accounting_equation_is_corroboration_and_veto": true,
+    "ppocrv6_observation_overwritten": false
+  },
+  "authority": {
+    "numeric_authority": false,
+    "geometry_authority": false,
+    "schema_authority": false,
+    "mapping_authority": false,
+    "accounting_authority": false,
+    "canonicalization_authority": false,
+    "raw_api_response_self_authenticating": false,
+    "tracked_response_digest_and_extracted_surface_only": true,
+    "crop_pixel_review_bound": true
+  }
+}

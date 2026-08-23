@@ -1599,9 +1599,12 @@ def enumerate_accounting_family_role_occurrences_v1(
     built = _build_validated_scan(pages, spec, prepared_hits=prepared_hits)
     if type(topology_region) is not dict:
         raise _error("role-occurrence region must be one exact topology object")
-    selected = [
-        region for region in built["regions"] if same_typed_json_v1(region, topology_region)
-    ]
+    selected_by_payload = {
+        canonical_json_sha256_v1(region): region
+        for region in built["regions"]
+        if same_typed_json_v1(region, topology_region)
+    }
+    selected = list(selected_by_payload.values())
     if len(selected) != 1:
         raise _error("role-occurrence region is not one exact complete scan candidate")
     region = selected[0]

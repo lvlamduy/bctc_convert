@@ -28,9 +28,11 @@ __all__ = [
     "is_accounting_value_surface_v1",
     "extract_period_axis_v1",
     "extract_period_observations_v1",
+    "extract_row_aligned_typed_value_vector_v1",
     "extract_reporting_year_axis_v1",
     "extract_typed_value_vector_v1",
     "is_number_like_v1",
+    "line_has_accounting_value_surface_v1",
     "money_integer_v1",
     "money_values_v1",
     "percentage_values_v1",
@@ -40,15 +42,25 @@ __all__ = [
 
 
 _NUMBER = re.compile(r"^[()]*[+-]?[0-9][0-9., ]*%?[()]*$")
+_NUMBER_TOKEN = re.compile(r"\(?[+-]?[0-9]+(?:[.,][0-9]+)*%?\)?")
 _VISIBLE_DASHES = {"-", "–", "—", "−"}
 _FULL_DATE = re.compile(r"(?<!\d)(\d{1,2})\s*[./-]\s*(\d{1,2})\s*[./-]\s*(\d{4})(?!\d)")
 _DAY_MONTH = re.compile(r"\b(?:ngay\s+)?(\d{1,2})\s+thang\s+(\d{1,2})\b")
+_DAY_ONLY = re.compile(r"^(?:ngay\s+)?(\d{1,2})\s+thang$")
+_MONTH_YEAR = re.compile(r"^(\d{1,2})\s+nam\s+(\d{4})$")
 _YEAR = re.compile(r"\bnam\s+(\d{4})\b")
 _REPORTING_YEAR = re.compile(r"(?<!\d)(20\d{2})(?!\d)")
 _REPORTING_PERIOD_ENDS = {(3, 31), (6, 30), (9, 30), (12, 31)}
 _MAX_DOCUMENT_DATE_EVIDENCE = 8
 _MAX_DOCUMENT_UNIT_EVIDENCE = 12
 _MIN_NUMERIC_PERIOD_READER_SCORE = 0.95
+_RELATIVE_PERIOD_RESTATEMENT_SUFFIXES = {
+    "",
+    "da duoc trinh bay lai",
+    "da trinh bay lai",
+    "duoc trinh bay lai",
+    "trinh bay lai",
+}
 
 
 class AccountingTableAxesV1Error(ValueError):
@@ -99,6 +111,57 @@ def _contains_period_surface(value: str) -> bool:
         if 1 <= day <= 31 and 1 <= month <= 12:
             return True
     return _YEAR.search(normalized) is not None or _REPORTING_YEAR.search(value) is not None
+
+
+def _relative_period_role(normalized: str) -> str | None:
+    """Recognize a relative period label with an optional restatement qualifier."""
+
+    for prefix, role in (
+        ("so cuoi ky", "CURRENT_PERIOD_END"),
+        ("so cuoi nam", "CURRENT_PERIOD_END"),
+        ("so dau ky", "COMPARATIVE_PERIOD_START"),
+        ("so dau nam", "COMPARATIVE_PERIOD_START"),
+    ):
+        if normalized == prefix:
+            return role
+        marker = f"{prefix} "
+        if normalized.startswith(marker):
+            suffix = normalized[len(marker) :]
+            if suffix in _RELATIVE_PERIOD_RESTATEMENT_SUFFIXES:
+                return role
+    return None
+
+
+def _join_split_day_month_year_fragments(
+    day_only: Sequence[tuple[Mapping[str, Any], int]],
+    month_year: Sequence[tuple[Mapping[str, Any], int, int]],
+) -> list[tuple[Mapping[str, Any], Mapping[str, Any], int, int, int]]:
+    """Join OCR-split ``Ngày DD tháng`` + ``MM năm YYYY`` column headers.
+
+    Pairing is local in source order and horizontal geometry.  Ambiguous
+    candidates fail closed instead of choosing a date by proximity alone.
+    """
+
+    joined: list[tuple[Mapping[str, Any], Mapping[str, Any], int, int, int]] = []
+    remaining = list(month_year)
+    for day_line, day in day_only:
+        day_index = _source_line_index(day_line, "split period day fragment")
+        day_box = _bbox(day_line, "split period day fragment")
+        candidates: list[tuple[Mapping[str, Any], int, int]] = []
+        for candidate in remaining:
+            year_line = candidate[0]
+            year_index = _source_line_index(year_line, "split period month/year fragment")
+            year_box = _bbox(year_line, "split period month/year fragment")
+            if 0 < year_index - day_index <= 3 and max(day_box[0], year_box[0]) < min(
+                day_box[2], year_box[2]
+            ):
+                candidates.append(candidate)
+        if len(candidates) != 1:
+            continue
+        year_line, month, year = candidates[0]
+        remaining.remove(candidates[0])
+        joined.append((day_line, year_line, day, month, year))
+    return joined
 
 
 def _period_text(line: Mapping[str, Any], label: str) -> str:
@@ -186,6 +249,221 @@ def is_accounting_value_surface_v1(value: str) -> bool:
         raise _error("accounting value surface must be one exact string")
     compact = value.strip()
     return compact in _VISIBLE_DASHES or is_number_like_v1(value)
+
+
+def line_has_accounting_value_surface_v1(line: Mapping[str, Any]) -> bool:
+    """Return whether either bound reader exposes an accounting cell surface.
+
+    VietOCR remains the semantic-label reader, but PP-OCRv6 can legitimately
+    recognize a numeric cell whose Transformer proposal is empty or malformed.
+    Treating the two observations as one *candidate* surface prevents provider
+    serialization from hiding a cell; numeric authority is still granted only
+    later by :func:`extract_typed_value_vector_v1` from ``source_text``.
+    """
+
+    semantic = _text(line, "accounting value line")
+    source = line.get("source_text")
+    if source is not None and type(source) is not str:
+        raise _error("accounting value source surface drifted")
+    return is_accounting_value_surface_v1(semantic) or (
+        type(source) is str and is_accounting_value_surface_v1(source)
+    )
+
+
+def _split_bound_value_line_across_lanes(
+    line: Mapping[str, Any],
+    lane_centers_x2: Sequence[int],
+    peer_lines: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Split one detector-merged numeric line only with exact geometric proof."""
+
+    source = line.get("source_text")
+    if type(source) is not str:
+        return []
+    tokens = _NUMBER_TOKEN.findall(source)
+    if len(tokens) < 2 or _NUMBER_TOKEN.sub("", source).strip():
+        return []
+    box = _bbox(line, "merged accounting value line")
+    covered = [
+        lane_index
+        for lane_index, center_x2 in enumerate(lane_centers_x2)
+        if 2 * box[0] <= center_x2 <= 2 * box[2]
+    ]
+    semantic = _text(line, "merged accounting value line")
+    semantic_tokens = _NUMBER_TOKEN.findall(semantic)
+    if (
+        len(tokens) == len(covered) + 1
+        and covered
+        and covered[0] > 0
+        and re.fullmatch(r"\d{1,2}", tokens[0]) is not None
+    ):
+        # A detector seam can repeat the suffix of the immediately preceding
+        # cell at the start of a multi-lane merged box.  Remove that fragment
+        # only when a unique same-baseline, overlapping peer occupies the
+        # preceding declared lane and visibly ends in the exact fragment.
+        preceding_lane = covered[0] - 1
+        minimum_gap = min(
+            right - left for left, right in zip(lane_centers_x2, lane_centers_x2[1:], strict=False)
+        )
+        maximum_distance = max(8, minimum_gap * 2 // 5)
+        seam_peers = []
+        for peer in peer_lines:
+            if _source_line_index(peer, "merged accounting peer") == _source_line_index(
+                line, "merged accounting value line"
+            ):
+                continue
+            peer_source = peer.get("source_text")
+            if type(peer_source) is not str or not is_number_like_v1(peer_source):
+                continue
+            peer_tokens = _NUMBER_TOKEN.findall(peer_source)
+            if len(peer_tokens) != 1:
+                continue
+            peer_box = _bbox(peer, "merged accounting peer")
+            vertical_distance_x2 = abs((peer_box[1] + peer_box[3]) - (box[1] + box[3]))
+            if vertical_distance_x2 > max(peer_box[3] - peer_box[1], box[3] - box[1]):
+                continue
+            if not (peer_box[0] < box[0] < peer_box[2] <= box[2]):
+                continue
+            if abs(center_x2_v1(peer) - lane_centers_x2[preceding_lane]) > maximum_distance:
+                continue
+            peer_digits = re.sub(r"\D", "", peer_tokens[0])
+            if not peer_digits.endswith(tokens[0]):
+                continue
+            seam_peers.append(peer)
+        if len(seam_peers) == 1:
+            tokens = tokens[1:]
+            if (
+                len(semantic_tokens) == len(tokens) + 1
+                and semantic_tokens[0] == _NUMBER_TOKEN.findall(source)[0]
+            ):
+                semantic_tokens = semantic_tokens[1:]
+    if (
+        len(covered) == 1
+        and len(tokens) == 2
+        and re.fullmatch(r"\(?\d{1,2}\)?", tokens[0]) is not None
+        and re.fullmatch(r"\(?[+-]?\d{1,3}(?:[.,]\d{3})+\)?", tokens[1]) is not None
+    ):
+        # A detached numeric footnote marker can share one detector box with
+        # the actual value.  It is not a second lane when the box covers only
+        # one declared center.  Admit the grouped integer token while keeping
+        # the original source-line locator available to the caller.
+        semantic = _text(line, "annotated accounting value line")
+        semantic_tokens = _NUMBER_TOKEN.findall(semantic)
+        semantic_main = (
+            semantic_tokens[1]
+            if len(semantic_tokens) == 2
+            and not _NUMBER_TOKEN.sub("", semantic).strip()
+            and re.fullmatch(r"\(?\d{1,2}\)?", semantic_tokens[0]) is not None
+            else ""
+        )
+        center_x = lane_centers_x2[covered[0]] // 2
+        synthetic = dict(line)
+        synthetic["bbox"] = [center_x - 1, box[1], center_x + 1, box[3]]
+        synthetic["source_text"] = tokens[1]
+        synthetic["vietocr_text"] = semantic_main
+        return [synthetic]
+    if len(tokens) != len(covered):
+        return []
+    semantic_exact = (
+        len(semantic_tokens) == len(tokens) and not _NUMBER_TOKEN.sub("", semantic).strip()
+    )
+    result: list[dict[str, Any]] = []
+    for token_offset, (lane_index, source_token) in enumerate(zip(covered, tokens, strict=True)):
+        center_x = lane_centers_x2[lane_index] // 2
+        synthetic = dict(line)
+        synthetic["bbox"] = [center_x - 1, box[1], center_x + 1, box[3]]
+        synthetic["source_text"] = source_token
+        synthetic["vietocr_text"] = semantic_tokens[token_offset] if semantic_exact else ""
+        result.append(synthetic)
+    return result
+
+
+def extract_row_aligned_typed_value_vector_v1(
+    lines: Sequence[Mapping[str, Any]],
+    label_bbox: Sequence[int],
+    lane_types: Sequence[str],
+    lane_centers_x2: Sequence[int],
+    *,
+    primary_numeric_authority: bool,
+) -> list[dict[str, Any]] | None:
+    """Bind a visual row to typed lanes, independent of provider line order.
+
+    The label rectangle establishes the row band.  Candidate cells must lie to
+    its right and overlap it vertically (or have a center within one cell
+    height).  A detector-merged line may be split only when its exact ordered
+    numeric token count equals the number of lane centers covered by its bbox.
+    Blank cells are never synthesized and duplicate lane assignments fail
+    closed.
+    """
+
+    label = _bbox({"bbox": list(label_bbox)}, "accounting row label")
+    if (
+        isinstance(lane_centers_x2, (str, bytes, bytearray))
+        or list(lane_centers_x2) != sorted(set(lane_centers_x2))
+        or len(lane_centers_x2) != len(lane_types)
+    ):
+        raise _error("accounting row lane centers drifted")
+    label_center_y2 = label[1] + label[3]
+    label_height = label[3] - label[1]
+    candidates: list[Mapping[str, Any]] = []
+    for line in lines:
+        if not line_has_accounting_value_surface_v1(line):
+            continue
+        box = _bbox(line, "accounting row value candidate")
+        if box[0] <= label[2]:
+            continue
+        overlap = min(label[3], box[3]) - max(label[1], box[1])
+        center_distance = abs((box[1] + box[3]) - label_center_y2)
+        if overlap <= 0 and center_distance > max(label_height, box[3] - box[1]):
+            continue
+        split = _split_bound_value_line_across_lanes(line, lane_centers_x2, lines)
+        candidates.extend(split or [line])
+
+    if len(lane_centers_x2) < 2:
+        return None
+    minimum_gap = min(
+        right - left for left, right in zip(lane_centers_x2, lane_centers_x2[1:], strict=False)
+    )
+    maximum_distance = max(8, minimum_gap * 2 // 5)
+    candidates_by_lane: dict[int, list[tuple[int, int, int, Mapping[str, Any]]]] = {}
+    for line in candidates:
+        center = center_x2_v1(line)
+        distances = [abs(center - expected) for expected in lane_centers_x2]
+        lane_index = min(range(len(distances)), key=distances.__getitem__)
+        if distances[lane_index] > maximum_distance:
+            continue
+        box = _bbox(line, "accounting row value candidate")
+        vertical_distance = abs((box[1] + box[3]) - label_center_y2)
+        candidates_by_lane.setdefault(lane_index, []).append(
+            (
+                vertical_distance,
+                distances[lane_index],
+                _source_line_index(line, "accounting row value candidate"),
+                line,
+            )
+        )
+    by_lane: dict[int, Mapping[str, Any]] = {}
+    for lane_index, lane_candidates in candidates_by_lane.items():
+        lane_candidates.sort(key=lambda item: item[:3])
+        if len(lane_candidates) > 1 and lane_candidates[1][0] - lane_candidates[0][0] <= 2:
+            # Two observations on effectively the same baseline cannot be
+            # assigned by horizontal proximity alone.  Keep the row
+            # unresolved rather than selecting by provider order.
+            return None
+        by_lane[lane_index] = lane_candidates[0][3]
+    if set(by_lane) != set(range(len(lane_types))):
+        return None
+    ordered = [by_lane[index] for index in range(len(lane_types))]
+    vector = extract_typed_value_vector_v1(
+        ordered,
+        lane_types,
+        primary_numeric_authority=primary_numeric_authority,
+    )
+    if vector is None:
+        return None
+    for lane_index, item in enumerate(vector):
+        item["lane_index"] = lane_index
+    return vector
 
 
 def money_integer_v1(value: str) -> int | None:
@@ -392,6 +670,8 @@ def extract_period_axis_v1(
     full: list[dict[str, Any]] = []
     partial: list[tuple[Mapping[str, Any], int, int]] = []
     years: list[tuple[Mapping[str, Any], int]] = []
+    day_only: list[tuple[Mapping[str, Any], int]] = []
+    month_year: list[tuple[Mapping[str, Any], int, int]] = []
     relative: list[dict[str, Any]] = []
     for line in lines:
         text = _period_text(line, "period header")
@@ -429,53 +709,93 @@ def extract_period_axis_v1(
                 continue
             partial.append((line, day, month))
             continue
+        if matched := _DAY_ONLY.fullmatch(normalized):
+            day = int(matched.group(1))
+            if 1 <= day <= 31:
+                day_only.append((line, day))
+            continue
+        if matched := _MONTH_YEAR.fullmatch(normalized):
+            month = int(matched.group(1))
+            year = int(matched.group(2))
+            if 1 <= month <= 12:
+                month_year.append((line, month, year))
+            continue
         if (year := _standalone_or_prefixed_year(text)) is not None:
             years.append((line, year))
             continue
-        if normalized in {"so cuoi ky", "so cuoi nam"}:
+        relative_role = _relative_period_role(normalized)
+        if relative_role is not None:
             relative.append(
                 {
                     "evidence_source_line_indices": [
                         _source_line_index(line, "relative period header")
                     ],
-                    "period": "CURRENT_PERIOD_END",
+                    "period": relative_role,
                     "x_center_x2": center_x2_v1(line),
                 }
             )
-        elif normalized in {"so dau ky", "so dau nam"}:
-            relative.append(
+    exact_record_count = len(full)
+    for day_line, year_line, day, month, year in _join_split_day_month_year_fragments(
+        day_only, month_year
+    ):
+        surface = _date_surface(day, month, year)
+        if surface is not None:
+            full.append(
                 {
                     "evidence_source_line_indices": [
-                        _source_line_index(line, "relative period header")
-                    ],
-                    "period": "COMPARATIVE_PERIOD_START",
-                    "x_center_x2": center_x2_v1(line),
-                }
-            )
-    if len(full) == 2:
-        return sorted(full, key=lambda item: item["x_center_x2"]), "LOCAL_EXACT_DATES"
-    if len(partial) == 2 and len(years) == 2:
-        combined: list[dict[str, Any]] = []
-        remaining = list(years)
-        for line, day, month in sorted(partial, key=lambda item: center_x2_v1(item[0])):
-            year_line, year = min(
-                remaining, key=lambda item: abs(center_x2_v1(item[0]) - center_x2_v1(line))
-            )
-            remaining.remove((year_line, year))
-            surface = _date_surface(day, month, year)
-            if surface is None:
-                return [], "UNRESOLVED"
-            combined.append(
-                {
-                    "evidence_source_line_indices": [
-                        _source_line_index(line, "split period header"),
-                        _source_line_index(year_line, "split period year"),
+                        _source_line_index(day_line, "split period day fragment"),
+                        _source_line_index(year_line, "split period month/year fragment"),
                     ],
                     "period": surface,
-                    "x_center_x2": center_x2_v1(line),
+                    "x_center_x2": center_x2_v1(day_line),
                 }
             )
-        return sorted(combined, key=lambda item: item["x_center_x2"]), "LOCAL_SPLIT_DATES"
+    remaining = list(years)
+    for line, day, month in sorted(partial, key=lambda item: center_x2_v1(item[0])):
+        line_index = _source_line_index(line, "split period header")
+        line_box = _bbox(line, "split period header")
+        candidates = []
+        for item in remaining:
+            year_line = item[0]
+            year_box = _bbox(year_line, "split period year")
+            maximum_height = max(line_box[3] - line_box[1], year_box[3] - year_box[1])
+            if (
+                _source_line_index(year_line, "split period year") > line_index
+                and max(line_box[0], year_box[0]) < min(line_box[2], year_box[2])
+                and -maximum_height <= year_box[1] - line_box[3] <= 2 * maximum_height
+            ):
+                candidates.append(item)
+        if not candidates:
+            continue
+        ranked = sorted(
+            candidates,
+            key=lambda item: (
+                abs(center_x2_v1(item[0]) - center_x2_v1(line)),
+                _source_line_index(item[0], "split period year"),
+            ),
+        )
+        if len(ranked) > 1 and abs(center_x2_v1(ranked[0][0]) - center_x2_v1(line)) == abs(
+            center_x2_v1(ranked[1][0]) - center_x2_v1(line)
+        ):
+            continue
+        year_line, year = ranked[0]
+        remaining.remove((year_line, year))
+        surface = _date_surface(day, month, year)
+        if surface is None:
+            continue
+        full.append(
+            {
+                "evidence_source_line_indices": [
+                    line_index,
+                    _source_line_index(year_line, "split period year"),
+                ],
+                "period": surface,
+                "x_center_x2": center_x2_v1(line),
+            }
+        )
+    if len(full) == 2:
+        mode = "LOCAL_EXACT_DATES" if exact_record_count == 2 else "LOCAL_SPLIT_DATES"
+        return sorted(full, key=lambda item: item["x_center_x2"]), mode
     if len(relative) == 2:
         return sorted(relative, key=lambda item: item["x_center_x2"]), "LOCAL_RELATIVE_PERIOD_ROLES"
     return [], "UNRESOLVED"
@@ -497,6 +817,8 @@ def extract_period_observations_v1(
     observations: list[dict[str, Any]] = []
     partial: list[tuple[Mapping[str, Any], int, int]] = []
     years: list[tuple[Mapping[str, Any], int]] = []
+    day_only: list[tuple[Mapping[str, Any], int]] = []
+    month_year: list[tuple[Mapping[str, Any], int, int]] = []
     for line in lines:
         if not isinstance(line, Mapping):
             raise _error("period observation line must be one mapping")
@@ -532,16 +854,21 @@ def extract_period_observations_v1(
                 continue
             partial.append((line, day, month))
             continue
+        if matched := _DAY_ONLY.fullmatch(normalized):
+            day = int(matched.group(1))
+            if 1 <= day <= 31:
+                day_only.append((line, day))
+            continue
+        if matched := _MONTH_YEAR.fullmatch(normalized):
+            month = int(matched.group(1))
+            year = int(matched.group(2))
+            if 1 <= month <= 12:
+                month_year.append((line, month, year))
+            continue
         if (year := _standalone_or_prefixed_year(text)) is not None:
             years.append((line, year))
             continue
-        relative_role = (
-            "CURRENT_PERIOD_END"
-            if normalized in {"so cuoi ky", "so cuoi nam"}
-            else "COMPARATIVE_PERIOD_START"
-            if normalized in {"so dau ky", "so dau nam"}
-            else None
-        )
+        relative_role = _relative_period_role(normalized)
         if relative_role is not None:
             observations.append(
                 {
@@ -551,6 +878,26 @@ def extract_period_observations_v1(
                     "x_center_x2": center_x2_v1(line),
                 }
             )
+    for day_line, year_line, day, month, year in _join_split_day_month_year_fragments(
+        day_only, month_year
+    ):
+        surface = _date_surface(day, month, year)
+        if surface is None:
+            continue
+        evidence = sorted(
+            {
+                _source_line_index(day_line, "split period day fragment"),
+                _source_line_index(year_line, "split period month/year fragment"),
+            }
+        )
+        observations.append(
+            {
+                "evidence_source_line_indices": evidence,
+                "period": surface,
+                "source_line_index": min(evidence),
+                "x_center_x2": center_x2_v1(day_line),
+            }
+        )
     remaining = list(years)
     for line, day, month in partial:
         candidates = [
@@ -643,6 +990,8 @@ def _document_date_observations(
             raise _error("document period page identity or line axis drifted")
         partial: list[tuple[Mapping[str, Any], int, int]] = []
         year_only: list[tuple[Mapping[str, Any], int]] = []
+        day_only: list[tuple[Mapping[str, Any], int]] = []
+        month_year: list[tuple[Mapping[str, Any], int, int]] = []
         page_observations: set[tuple[date, tuple[int, ...]]] = set()
         seen_line_indices: set[int] = set()
         for line in lines:
@@ -679,8 +1028,35 @@ def _document_date_observations(
             if day_month_match is not None:
                 partial.append((line, int(day_month_match.group(1)), int(day_month_match.group(2))))
                 continue
+            if matched := _DAY_ONLY.fullmatch(normalized):
+                day = int(matched.group(1))
+                if 1 <= day <= 31:
+                    day_only.append((line, day))
+                continue
+            if matched := _MONTH_YEAR.fullmatch(normalized):
+                month = int(matched.group(1))
+                year = int(matched.group(2))
+                if 1 <= month <= 12:
+                    month_year.append((line, month, year))
+                continue
             if year_match is not None:
                 year_only.append((line, int(year_match.group(1))))
+
+        for day_line, year_line, day, month, year in _join_split_day_month_year_fragments(
+            day_only, month_year
+        ):
+            surface = _date_surface(day, month, year)
+            if surface is None:
+                continue
+            indices = tuple(
+                sorted(
+                    (
+                        _source_line_index(day_line, "split document period day fragment"),
+                        _source_line_index(year_line, "split document period month/year fragment"),
+                    )
+                )
+            )
+            page_observations.add((date(year, month, day), indices))
 
         remaining_years = list(year_only)
         for line, day, month in partial:
@@ -936,7 +1312,12 @@ def extract_typed_value_vector_v1(
     ):
         raise _error("typed lane declaration drifted")
     numeric = sorted(
-        (line for line in lines if is_number_like_v1(_text(line, "value line"))),
+        (
+            line
+            for line in lines
+            if is_number_like_v1(_text(line, "value line"))
+            or (type(line.get("source_text")) is str and is_number_like_v1(line["source_text"]))
+        ),
         key=center_x2_v1,
     )
     if len(numeric) != len(lane_types):

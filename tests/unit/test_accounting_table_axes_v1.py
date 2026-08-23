@@ -11,6 +11,7 @@ from bctc_ai.evaluation.accounting_table_axes_v1 import (
     extract_period_axis_v1,
     extract_period_observations_v1,
     extract_reporting_year_axis_v1,
+    extract_row_aligned_typed_value_vector_v1,
     extract_typed_value_vector_v1,
     infer_document_accounting_unit_context_v1,
     infer_document_reporting_period_context_v1,
@@ -90,6 +91,48 @@ def test_period_axis_supports_exact_split_and_relative_variants() -> None:
     )
     assert relative_kind == "LOCAL_RELATIVE_PERIOD_ROLES"
     assert [item["period"] for item in relative] == [
+        "CURRENT_PERIOD_END",
+        "COMPARATIVE_PERIOD_START",
+    ]
+
+
+def test_period_axis_joins_day_only_and_month_year_header_fragments() -> None:
+    axis, mode = extract_period_axis_v1(
+        [
+            _line(4, "Ngày 31 tháng 03 năm 2025", 100),
+            _line(5, "Ngày 31 tháng", 300),
+            _line(6, "12 năm 2024", 300),
+        ]
+    )
+
+    assert mode == "LOCAL_SPLIT_DATES"
+    assert [item["period"] for item in axis] == ["31/03/2025", "31/12/2024"]
+    assert axis[1]["evidence_source_line_indices"] == [5, 6]
+
+    interleaved, interleaved_mode = extract_period_axis_v1(
+        [
+            _line(57, "Ngày 30 tháng 9", 100),
+            _line(58, "Ngày 31 tháng 12", 300),
+            _line(59, "0", 800),
+            _line(60, "IN", 800),
+            _line(61, "năm 2025", 100),
+            _line(62, "năm 2024", 300),
+        ]
+    )
+    assert interleaved_mode == "LOCAL_SPLIT_DATES"
+    assert [item["period"] for item in interleaved] == ["30/09/2025", "31/12/2024"]
+
+
+def test_period_axis_accepts_bounded_restatement_qualifier() -> None:
+    axis, mode = extract_period_axis_v1(
+        [
+            _line(7, "Số cuối năm", 100),
+            _line(8, "Số đầu năm (Trình bày lại)", 300),
+        ]
+    )
+
+    assert mode == "LOCAL_RELATIVE_PERIOD_ROLES"
+    assert [item["period"] for item in axis] == [
         "CURRENT_PERIOD_END",
         "COMPARATIVE_PERIOD_START",
     ]
@@ -289,6 +332,22 @@ def test_document_period_context_supports_split_dates_and_fails_closed_without_r
     unresolved = infer_document_reporting_period_context_v1([_page(1, _line(1, "31/12/2025", 100))])
     assert unresolved["resolution"] == "UNRESOLVED_NO_REPEATED_REPORTING_END_DATE"
     assert unresolved["current_period_end"] is None
+
+
+def test_document_period_context_supports_split_day_and_month_year_fragments() -> None:
+    context = infer_document_reporting_period_context_v1(
+        [
+            _page(
+                1,
+                _line(1, "Ngày 31 tháng", 100),
+                _line(2, "12 năm 2025", 100),
+            ),
+            _page(2, _line(1, "31/12/2025", 100)),
+        ]
+    )
+
+    assert context["current_period_end"] == "31/12/2025"
+    assert context["supporting_page_count"] == 2
 
 
 def test_document_period_context_prefers_repeated_numeric_date_challenger() -> None:
@@ -515,6 +574,130 @@ def test_value_vector_rejects_hidden_extra_or_missing_lanes() -> None:
         )
         is None
     )
+
+
+def test_value_vector_uses_primary_numeric_surface_when_semantic_reader_is_malformed() -> None:
+    vector = extract_typed_value_vector_v1(
+        [_line(1, "1,99,589,394", 100, source_text="1,992,589,394")],
+        ["MONEY"],
+        primary_numeric_authority=True,
+    )
+
+    assert vector is not None
+    assert vector[0]["semantic_surface"] == "1,99,589,394"
+    assert vector[0]["surface"] == "1,992,589,394"
+    assert vector[0]["source_authoritative"] is True
+    assert money_values_v1(vector) == [1_992_589_394]
+
+
+def test_row_aligned_vector_uses_visual_geometry_and_splits_exact_merged_cells() -> None:
+    merged = _line(9, "", 100, source_text="603.040.884 587.136.924")
+    merged["bbox"] = [100, 10, 420, 30]
+
+    vector = extract_row_aligned_typed_value_vector_v1(
+        [
+            _line(2, "narrative", 120),
+            merged,
+            _line(1, "999", 700, source_text="999") | {"bbox": [700, 100, 780, 120]},
+        ],
+        [0, 10, 80, 30],
+        ["MONEY", "MONEY"],
+        [300, 700],
+        primary_numeric_authority=True,
+    )
+
+    assert vector is not None
+    assert [item["lane_index"] for item in vector] == [0, 1]
+    assert [item["source_line_index"] for item in vector] == [9, 9]
+    assert money_values_v1(vector) == [603_040_884, 587_136_924]
+
+
+def test_row_aligned_vector_excludes_detached_numeric_footnote_marker() -> None:
+    annotated = _line(9, "3 525.394.779", 300, source_text="3 525.394.779")
+    annotated["bbox"] = [300, 10, 420, 30]
+
+    vector = extract_row_aligned_typed_value_vector_v1(
+        [
+            _line(8, "103.061.873", 100, source_text="103.061.873"),
+            annotated,
+        ],
+        [0, 10, 80, 30],
+        ["MONEY", "MONEY"],
+        [280, 700],
+        primary_numeric_authority=True,
+    )
+
+    assert vector is not None
+    assert [item["source_line_index"] for item in vector] == [8, 9]
+    assert [item["semantic_surface"] for item in vector] == ["103.061.873", "525.394.779"]
+    assert money_values_v1(vector) == [103_061_873, 525_394_779]
+
+
+def test_row_aligned_vector_deduplicates_overlapping_detector_seam_suffix() -> None:
+    lane0 = _line(1, "324.009.713", 300, source_text="324.009.713") | {"bbox": [300, 10, 380, 30]}
+    lane1 = _line(2, "8.846", 400, source_text="8.846") | {"bbox": [400, 10, 450, 30]}
+    lane2 = _line(3, "40.104.713", 500, source_text="40.104.713") | {"bbox": [500, 10, 600, 30]}
+    merged = _line(
+        4,
+        "3 104.640.972 468.764.244",
+        590,
+        source_text="3 104.640.972 468.764.244",
+    ) | {"bbox": [590, 10, 820, 30]}
+
+    vector = extract_row_aligned_typed_value_vector_v1(
+        [lane0, lane1, lane2, merged],
+        [0, 10, 250, 30],
+        ["MONEY"] * 5,
+        [680, 850, 1100, 1300, 1550],
+        primary_numeric_authority=True,
+    )
+
+    assert vector is not None
+    assert [item["source_line_index"] for item in vector] == [1, 2, 3, 4, 4]
+    assert money_values_v1(vector) == [
+        324_009_713,
+        8_846,
+        40_104_713,
+        104_640_972,
+        468_764_244,
+    ]
+
+
+def test_row_aligned_vector_rejects_duplicate_or_geometrically_ambiguous_cells() -> None:
+    duplicate = [
+        _line(1, "100", 100, source_text="100"),
+        _line(2, "101", 110, source_text="101"),
+        _line(3, "200", 300, source_text="200"),
+    ]
+    assert (
+        extract_row_aligned_typed_value_vector_v1(
+            duplicate,
+            [0, 10, 80, 30],
+            ["MONEY", "MONEY"],
+            [280, 680],
+            primary_numeric_authority=True,
+        )
+        is None
+    )
+
+
+def test_row_aligned_vector_selects_nearest_baseline_when_rows_overlap() -> None:
+    prior_left = _line(1, "100", 100, source_text="100") | {"bbox": [100, 10, 180, 35]}
+    prior_right = _line(2, "200", 300, source_text="200") | {"bbox": [300, 10, 380, 35]}
+    current_left = _line(3, "101", 100, source_text="101") | {"bbox": [100, 35, 180, 60]}
+    current_right = _line(4, "201", 300, source_text="201") | {"bbox": [300, 35, 380, 60]}
+
+    vector = extract_row_aligned_typed_value_vector_v1(
+        [prior_left, prior_right, current_left, current_right],
+        [0, 30, 80, 58],
+        ["MONEY", "MONEY"],
+        [280, 680],
+        primary_numeric_authority=True,
+    )
+
+    assert vector is not None
+    assert [item["source_line_index"] for item in vector] == [3, 4]
+    assert money_values_v1(vector) == [101, 201]
 
 
 @pytest.mark.parametrize(
