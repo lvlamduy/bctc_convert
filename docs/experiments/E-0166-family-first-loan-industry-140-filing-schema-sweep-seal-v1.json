@@ -1,0 +1,74 @@
+{
+  "format_version": "FAMILY_FIRST_LOAN_INDUSTRY_140_FILING_SCHEMA_SWEEP_SEAL_V1",
+  "state": "COMPLETE",
+  "claim_boundary": "COMPACT_TRACKED_SEAL_FOR_ONE_EXACT_AUTHENTICATED_140_FILING_LOAN_INDUSTRY_SCHEMA_SWEEP_FULL_RESULT_REMAINS_LIVE_REPLAY_REQUIRED",
+  "seal_id": "e0166:seal:9fddbcfaf08937e5ac010d132e77775d8d44a3fb2659afacbab9a22b073f7ccc",
+  "family_id": "LOAN_INDUSTRY_CLASSIFICATION",
+  "git_commit": "fbde2411c614e42c8b2ae6a2181b85770948e713",
+  "sweep_id": "li140v1:sweep:7912ef1d78b469aec1f2b9fdaeb4a66edaeb98afcbcd0f1ba56541d1c46dfef2",
+  "formal_result_ref": {
+    "path": "output/calibration/family-first-loan-industry-140-filing-schema-sweep-v1/result.json",
+    "sha256": "d27ff2ba775a16bc6bfea301beec9f0d073716affb0e94d6673a502eedb8485e",
+    "size_bytes": 4006052
+  },
+  "metrics": {
+    "confirmed_absent_trial_count": 42,
+    "document_count": 140,
+    "hosted_gemma4_consensus_rescue_count": 1,
+    "mapped_child_record_count": 1520,
+    "numeric_exact_or_corroborated_trial_count": 98,
+    "source_rounding_corroborated_trial_count": 1,
+    "structure_unique_trial_count": 98,
+    "verified_present_trial_count": 98
+  },
+  "bank_summary": [
+    {"bank":"ACB","verified_document_count":6,"confirmed_absent_document_count":12,"mapped_child_record_count":78},
+    {"bank":"MBB","verified_document_count":18,"confirmed_absent_document_count":0,"mapped_child_record_count":369},
+    {"bank":"VPB","verified_document_count":18,"confirmed_absent_document_count":0,"mapped_child_record_count":387},
+    {"bank":"HDB","verified_document_count":16,"confirmed_absent_document_count":0,"mapped_child_record_count":176},
+    {"bank":"VCB","verified_document_count":4,"confirmed_absent_document_count":14,"mapped_child_record_count":36},
+    {"bank":"CTG","verified_document_count":2,"confirmed_absent_document_count":16,"mapped_child_record_count":20},
+    {"bank":"BID","verified_document_count":16,"confirmed_absent_document_count":0,"mapped_child_record_count":112},
+    {"bank":"VIB","verified_document_count":18,"confirmed_absent_document_count":0,"mapped_child_record_count":342}
+  ],
+  "numeric_rescue": {
+    "bank": "HDB",
+    "year": 2025,
+    "period": "ANNUAL",
+    "scope": "PARENT_OR_SEPARATE",
+    "assurance": "AUDITED",
+    "physical_page": 36,
+    "source_line_index": 51,
+    "role": "OTHER_INDUSTRIES",
+    "crop_ref": {
+      "path": "output/calibration/family-first-semantic-label-cache-v1/documents/document-0038/page-0036/crops/line-0051.png",
+      "sha256": "33e292117b8e61b2fbefcbef732086ce0936570b7bb0e209aaafe85ca60483ff",
+      "size_bytes": 2450
+    },
+    "ppocrv6_surface": "31.027.066",
+    "vietocr_surface": "31.027.068",
+    "independent_pixel_surface": "31.027.068",
+    "hosted_gemma4_surface": "31.027.068",
+    "accounting_disposition": "PIXEL_VIETOCR_GEMMA4_CONSENSUS_AND_UNIQUE_TWO_LANE_ACCOUNTING_CLOSURE"
+  },
+  "input_refs": {
+    "schema_graph":{"path":"reference/schemas/schema_graph.jsonl","sha256":"3fea408082263c171e98d1edc9b61608261b8a66b83706a5d7d029f9b0655403","size_bytes":1576376},
+    "tm_workbook":{"path":"template/Bank_TM_ReportNormId.v2.xlsx","sha256":"64589f7ee2b025ac0bd784c13e0b0ba0aff9d46456a83fa7fe2d68a7de375115","size_bytes":47006},
+    "hosted_gemma4_challenger":{"path":"docs/experiments/E-0165-family-first-loan-industry-hosted-gemma4-numeric-challenger-v1.json","sha256":"850f148e3b2f1b6205b616c1e89b62db4c794861270d40e399f144dbec25aea4","size_bytes":3520}
+  },
+  "implementation_refs": {
+    "orchestrator":{"path":"scripts/experiments/build_family_first_loan_industry_140_filing_schema_sweep_v1.py","sha256":"55006d1278501042fcb20243eef0f0c343ec3063eba25417663ae3f47e769ddf","size_bytes":20411},
+    "variant_graph":{"path":"scripts/experiments/loan_industry_variant_graph_v1.py","sha256":"e265d144e201e4f1f3e47b6332d8562d36bfbb16f6b5d5a87f070e53e8433c9a","size_bytes":69541},
+    "numeric_reconciliation":{"path":"scripts/experiments/loan_industry_numeric_row_reconciliation_v1.py","sha256":"0b2a147e112efbda1ee815e089f735f52c932d529e14c536c66a405455891735","size_bytes":18993},
+    "numeric_conflict_evidence":{"path":"scripts/experiments/loan_industry_numeric_conflict_evidence_v1.py","sha256":"b467157ebcafe2d6735f1ec9c3d1f13bd68bdc4f6913523904f5dba16fbdc799","size_bytes":16911}
+  },
+  "authority": {
+    "bounded_schema_mapping_authority": true,
+    "canonicalization_authority": false,
+    "export_authority": false,
+    "gemma4_used_as_sole_numeric_authority": false,
+    "persisted_seal_self_authenticating": false,
+    "public_exact_replay_required": true,
+    "schema_creation_authority": false
+  }
+}

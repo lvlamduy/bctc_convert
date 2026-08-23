@@ -22,6 +22,43 @@ Ledger total: **441 entries**.  Current open queue: **143**.  Closed history:
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
+## CLOSED — family-first 140-filing `Phân tích cho vay theo ngành nghề kinh doanh`
+
+Lượt sweep hiện hành dùng document evidence store, không OCR lại: 98 filing
+`VERIFIED_BY_CODEX`, 42 filing `CONFIRMED_NOT_PRESENT_IN_BOUND_REPORT`, không
+còn filing/source row `UNRESOLVED`, và có 1.520 child mapping. Theo bank:
+ACB 6 verified/12 absent, MBB 18/0, VPB 18/0, HDB 16/0, VCB 4/14, CTG 2/16,
+BID 16/0 và VIB 18/0.
+
+Các filing vắng family được liệt kê đầy đủ dưới đây. Mỗi mục gồm cả hợp nhất và
+công ty mẹ/riêng lẻ; `Q*` là không kiểm toán, `H1` là soát xét. Đường dẫn chính
+xác của từng PDF nằm trong formal result; thư mục gốc được ghi ở cột cuối.
+
+| Bank | Năm | Kỳ và phạm vi vắng family | Assurance | Thư mục nguồn |
+| --- | ---: | --- | --- | --- |
+| ACB | 2025 | Q1 hợp nhất; Q1 công ty mẹ; Q2 hợp nhất; Q2 công ty mẹ; Q3 hợp nhất; Q3 công ty mẹ; Q4 hợp nhất; Q4 công ty mẹ | Không kiểm toán | `vietstock_bctc/ACB/2025/` |
+| ACB | 2026 | Q1 hợp nhất; Q1 riêng lẻ; Q2 hợp nhất; Q2 công ty mẹ | Không kiểm toán | `vietstock_bctc/ACB/2026/` |
+| VCB | 2025 | H1 hợp nhất; H1 công ty mẹ; Q1 hợp nhất; Q1 công ty mẹ; Q2 hợp nhất; Q2 công ty mẹ; Q3 hợp nhất; Q3 công ty mẹ | H1 soát xét; Q1–Q3 không kiểm toán | `vietstock_bctc/VCB/2025/` |
+| VCB | 2026 | H1 hợp nhất; H1 công ty mẹ; Q1 hợp nhất; Q1 công ty mẹ; Q2 hợp nhất; Q2 công ty mẹ | H1 soát xét; Q1–Q2 không kiểm toán | `vietstock_bctc/VCB/2026/` |
+| CTG | 2025 | H1 hợp nhất; H1 công ty mẹ; Q1 hợp nhất; Q1 công ty mẹ; Q2 hợp nhất; Q2 công ty mẹ; Q3 hợp nhất; Q3 riêng lẻ; Q4 hợp nhất; Q4 công ty mẹ | H1 soát xét; Q1–Q4 không kiểm toán | `vietstock_bctc/CTG/2025/` |
+| CTG | 2026 | H1 hợp nhất; H1 công ty mẹ; Q1 hợp nhất; Q1 công ty mẹ; Q2 hợp nhất; Q2 công ty mẹ | H1 soát xét; Q1–Q2 không kiểm toán | `vietstock_bctc/CTG/2026/` |
+
+Graph chung quét toàn document, không dùng bank/page/note làm điều kiện. Nó chỉ
+nhận một region khi shortest unique combination của owner/child, trục kỳ, đơn
+vị, hình học lane và total accounting cùng khớp; branch title, hàng quấn dòng,
+child subset/thứ tự và hai/bốn lane có thể thay đổi. Vì vậy 42 dòng trên là
+absence của đúng filing, không phải false negative do một alias hoặc page cố
+định.
+
+Một xung đột số duy nhất đã đóng: HDB annual-2025 riêng lẻ p36, hàng `Khác`,
+PP-OCRv6 `31.027.066`; pixel + VietOCR Transformer + hosted Gemma 4 cùng đọc
+`31.027.068`, và chỉ số này đóng cả hai phương trình tổng. Một residual làm
+tròn VPB được corroborate bằng cột phần trăm nhìn thấy; không sửa số nguồn.
+Không còn dòng OPEN cho family này.
+
+Machine-readable seal:
+`docs/experiments/E-0166-family-first-loan-industry-140-filing-schema-sweep-seal-v1.json`.
+
 ## CLOSED — family-first 140-filing `Phân tích theo loại hình cho vay`
 
 Lượt sweep hiện hành dùng document evidence store, không OCR lại: đủ 140/140

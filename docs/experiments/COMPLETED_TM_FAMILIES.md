@@ -139,16 +139,36 @@ MBB p51, VPB p45, HDB p35, VCB p39, CTG p43, BID p41 và VIB p37.
 
 ## 7. Phân tích cho vay theo ngành nghề kinh doanh
 
-- **Đã xác minh trên BCTC hợp nhất kiểm toán năm 2025:** ACB p51, MBB p52,
-  VPB p47, HDB p37, VCB p40, BID p42 và VIB p38. Whole-PDF scan tìm đúng một
-  vùng ở mỗi báo cáo này; 102 dòng nguồn đã được map và 22 trục tiền tệ đóng
-  đúng với tổng in. Graph dùng một khung family chung nhưng cho phép tập con,
-  thứ tự hàng, nhãn branch, hai/bốn lane và owner-total đứng trước thay đổi.
-- **Không có trong báo cáo annual-2025 đã bind:** CTG. Toàn PDF không có vùng
-  phân tích cho vay theo ngành; kết luận này chỉ áp dụng cho đúng filing đã bind.
-- **Còn thiếu:** Không còn khoản mục nguồn chưa map. Dòng gộp VCB p40
-  `Thương mại, dịch vụ` được giữ nguyên một số nguồn và map vào leaf chuyên
-  biệt 6073; không tách giả sang hai leaf thành phần.
+- **Đã map/xác minh:** 98/140 filing hiện có, gồm ACB 6, MBB 18, VPB 18, HDB
+  16, VCB 4, CTG 2, BID 16 và VIB 18; tổng cộng 1.520 child mapping. Cả 98
+  filing có đúng một vùng cấu trúc và mọi trục số đều exact hoặc được nguồn
+  làm tròn có kiểm soát.
+- **Không có trong đúng báo cáo đã bind:** 42 filing, gồm ACB 12, VCB 14 và
+  CTG 16. MBB, VPB, HDB, BID và VIB không có filing vắng family. Danh sách
+  bank–năm–kỳ–scope–assurance nằm trong `UNRESOLVED_MAPPING_LEDGER.md`.
+- **Có nhưng còn khoản mục chưa map:** Không có. Các source role lớn/nhỏ đều
+  được giữ riêng và map vào schema hiện hành; dòng gộp `Thương mại, dịch vụ`
+  map một lần vào 6073, `Vận tải kho bãi` vào 736, `Dịch vụ` vào 6060, nhánh
+  cá nhân mua nhà vào 6059 và chi nhánh/ngân hàng con nước ngoài vào 6058.
+
+Graph chung không dùng bank/page làm rule. Nó cho phép branch title khác nhau,
+nhãn quấn dòng, child subset và thứ tự child thay đổi, owner-total đứng trước,
+hai/bốn lane tiền–%, và chọn shortest unique topology trước khi xét fuzzy text.
+ACB/VCB/CTG chỉ bị kết luận không có sau khi quét hết document và loại các
+family gần giống bằng owner, child, kỳ, đơn vị, hình học và tổng kế toán.
+
+Một ô HDB annual-2025 riêng lẻ p36 có PP-OCRv6 `31.027.066`; pixel, VietOCR
+Transformer và hosted Gemma 4 cùng đọc `31.027.068`, rồi cả hai lane đóng duy
+nhất với tổng in. Gemma không được dùng một mình. Một filing VPB có residual
+làm tròn được chấp nhận chỉ khi cột phần trăm đồng hành và toàn population cùng
+khớp; số nguồn không bị viết lại.
+
+Kết quả 140 filing:
+`docs/experiments/E-0166-family-first-loan-industry-140-filing-schema-sweep-seal-v1.json`.
+
+BCTC hợp nhất kiểm toán năm 2025 vẫn nằm trong denominator trên tại ACB p51,
+MBB p52, VPB p47, HDB p37, VCB p40, BID p42 và VIB p38; CTG filing này là một
+trong 42 bounded absences.
 
 ## 8. Phân tích chất lượng cho vay
 
@@ -1513,7 +1533,7 @@ dùng.
 | Chứng khoán kinh doanh | ✓ 18 | ✓ 18 | ✓ 12 / — 6 | ✓ 16 | ✓ 18 | ✓ 16 / — 2 | ✓ 16 | — 18 | 0; 114/140 filing, 457 mapping; 26 bounded `NOT_OBSERVED` |
 | Công cụ tài chính phái sinh | ✓ 18 | ✓ 18 | ✓ 18 | ✓ 16 | ✓ 4 / — 14 | ✓ 18 | ✓ 16 | ✓ 18 | 0; 126/140 filing, 1.684 mapping; 14 filing VCB bounded không có family |
 | Loại hình cho vay | ✓ 18 | ✓ 18 | ✓ 18 | ✓ 16 | ✓ 18 | ✓ 18 | ✓ 16 | ✓ 18 | 0; 140/140 filing, 732 child mapping, 140 DASH→0 và 2 targeted digit rescue |
-| Ngành nghề kinh doanh | ✓ p51 | ✓ p52 | ✓ p47 | ✓ p37 | ✓ p40 | — | ✓ p42 | ✓ p38 | 0 dòng; VCB gộp `Thương mại, dịch vụ` → 6073; CTG không có family trong filing annual-2025 |
+| Ngành nghề kinh doanh | ✓ 6 / — 12 | ✓ 18 | ✓ 18 | ✓ 16 | ✓ 4 / — 14 | ✓ 2 / — 16 | ✓ 16 | ✓ 18 | 0; 98/140 filing, 1.520 child mapping, 42 bounded absences |
 | Chất lượng cho vay | ✓ p50 | ✓ p51 | ✓ p45 | ✓ p36 | ✓ p39 | ✓ p43 | ✓ p42 | ✓ p66 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; 1944 tách riêng tại ACB/MBB/VPB |
 | Dư nợ theo thời gian | ✓ p50 | ✓ p51 | ✓ p45 | ✓ p36 | ✓ p40 | ✓ p44 | ✓ p42 | ✓ p38 | 0 dòng annual-2025; MBB/VPB map margin, HDB giữ dân số bổ sung source-only |
 | Cho vay theo loại tiền tệ | ✓ p51 | — p51–52 | — p45–47 | ✓ p37 | — p39–40 | — p43–44 | — p41–42 | — p37–39 | 0 dòng annual-2025; HDB giữ dân số thư tín dụng bổ sung source-only |
