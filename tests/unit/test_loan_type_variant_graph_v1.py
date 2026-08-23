@@ -246,6 +246,46 @@ def test_wrapped_label_may_be_interleaved_with_numeric_geometry() -> None:
     assert [item["semantic_surface"] for item in discount_row["values"]] == ["10", "9"]
 
 
+def test_wrapped_labels_follow_visual_order_when_provider_indices_are_interleaved() -> None:
+    surfaces = [
+        ("CHO VAY KHÁCH HÀNG", 0, 0),
+        ("31/12/2025", 500, 40),
+        ("31/12/2024", 800, 40),
+        ("Triệu đồng", 500, 70),
+        ("Triệu đồng", 800, 70),
+        ("Cho vay các tổ chức kinh tế, cá nhân trong nước", 0, 120),
+        ("100", 500, 120),
+        ("90", 800, 120),
+        ("Cho vay chiết khấu công cụ chuyển nhượng và", 0, 165),
+        ("10", 500, 165),
+        ("9", 800, 165),
+        ("Cho thuê tài chính", 0, 220),
+        ("5", 500, 220),
+        ("4", 800, 220),
+        # Some providers emit this wrapped continuation after the next row in
+        # their source array even though its pixel y-position is still above it.
+        ("các giấy tờ có giá", 0, 183),
+        ("115", 500, 265),
+        ("103", 800, 265),
+    ]
+
+    result = loan_type.build_loan_type_variant_graph_document_v1([_page(surfaces)])
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    graph = result["graphs"][0]
+    discount = next(row for row in graph["rows"] if row["role"] == "DISCOUNT_INSTRUMENTS")
+    assert discount["label"]["source_line_indices"] == [8, 14]
+    assert [row["role"] for row in graph["rows"]] == [
+        "DOMESTIC_ORGANIZATIONS_INDIVIDUALS",
+        "DISCOUNT_INSTRUMENTS",
+        "FINANCIAL_LEASE",
+    ]
+    assert all(
+        check["status"] == "CORROBORATED_SEMANTIC_PROPOSAL_ONLY"
+        for check in graph["accounting_checks"]
+    )
+
+
 def test_wrong_family_and_insufficient_child_subset_remain_near_unresolved() -> None:
     page = _page(
         [

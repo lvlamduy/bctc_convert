@@ -320,38 +320,40 @@ def _label_candidates(
 ) -> list[dict[str, Any]]:
     matches: list[dict[str, Any]] = []
     occupied: set[int] = set()
-    for line_index in range(start, stop):
+    visual_text_indices = [
+        index
+        for index in range(start, stop)
+        if not is_number_like_v1(lines[index]["vietocr_text"])
+        and (not enable_extended_owner_table_variants or lines[index]["vietocr_text"].strip())
+        and re.fullmatch(r"[ivx]+", normalize_vietnamese_anchor_v1(lines[index]["vietocr_text"]))
+        is None
+    ]
+    visual_text_indices.sort(
+        key=lambda index: (
+            lines[index]["bbox"][1],
+            lines[index]["bbox"][0],
+            lines[index]["source_line_index"],
+        )
+    )
+    for visual_position, line_index in enumerate(visual_text_indices):
         if line_index in occupied:
             continue
-        if enable_extended_owner_table_variants and not lines[line_index]["vietocr_text"].strip():
-            continue
-        if is_number_like_v1(lines[line_index]["vietocr_text"]):
-            continue
         text_indices: list[int] = []
-        for candidate_index in range(line_index, min(stop, line_index + 9)):
-            if (
-                enable_extended_owner_table_variants
-                and not lines[candidate_index]["vietocr_text"].strip()
-            ):
-                continue
-            if not is_number_like_v1(lines[candidate_index]["vietocr_text"]):
-                normalized_candidate = normalize_vietnamese_anchor_v1(
-                    lines[candidate_index]["vietocr_text"]
-                )
-                if re.fullmatch(r"[ivx]+", normalized_candidate):
-                    continue
-                if text_indices:
-                    previous_box = lines[text_indices[-1]]["bbox"]
-                    candidate_box = lines[candidate_index]["bbox"]
-                    previous_height = previous_box[3] - previous_box[1]
-                    if candidate_box[1] - previous_box[3] > max(12, previous_height):
-                        break
-                text_indices.append(candidate_index)
-                if len(text_indices) == _MAX_LABEL_WIDTH:
+        selected: tuple[list[int], str, str, str] | None = None
+        first_box = lines[line_index]["bbox"]
+        for candidate_index in visual_text_indices[
+            visual_position : visual_position + _MAX_LABEL_WIDTH
+        ]:
+            candidate_box = lines[candidate_index]["bbox"]
+            if text_indices:
+                previous_box = lines[text_indices[-1]]["bbox"]
+                previous_height = previous_box[3] - previous_box[1]
+                if candidate_box[1] - previous_box[3] > max(12, previous_height):
                     break
-        proposals: list[tuple[list[int], str, str, str]] = []
-        for width in range(1, len(text_indices) + 1):
-            indices = text_indices[:width]
+            if abs(candidate_box[0] - first_box[0]) > max(300, first_box[2] - first_box[0]):
+                break
+            text_indices.append(candidate_index)
+            indices = list(text_indices)
             surface = " ".join(lines[index]["vietocr_text"].strip() for index in indices).strip()
             match_surface = (
                 re.sub(r"\s*\([ivx]+\)\s*$", "", surface, flags=re.IGNORECASE)
@@ -366,15 +368,14 @@ def _label_candidates(
                 )
                 kind = match_vietnamese_anchor_alias_v1(match_surface, aliases)
                 if kind is not None:
-                    proposals.append((indices, role, kind, surface))
-        if not proposals:
+                    proposal = (indices, role, kind, surface)
+                    if selected is None or kind == "EXACT_ACCENTLESS_ALIAS":
+                        selected = proposal
+            if selected is not None:
+                break
+        if selected is None:
             continue
-        # Prefer the longest wrapped label, then the exact match.  A role may
-        # occur only once inside an accepted owner table.
-        indices, role, kind, surface = max(
-            proposals,
-            key=lambda item: (len(item[0]), item[2] == "EXACT_ACCENTLESS_ALIAS"),
-        )
+        indices, role, kind, surface = selected
         occupied.update(indices)
         box = _union_bbox(lines, indices)
         matches.append(
