@@ -67,6 +67,40 @@ def _row(
     }
 
 
+def _total_row(
+    ppocr: list[str | None],
+    *,
+    pages: tuple[int, int],
+    vietocr: list[str | None] | None,
+) -> dict:
+    row = _row(
+        "PRINTED_CUSTOMER_LOAN_TOTAL",
+        ppocr,
+        pages=pages,
+        vietocr=vietocr,
+    )
+    row["control_evidence"] = [
+        {
+            "evidence_refs": [f"line:{pages[lane]}:{lane + 10}"],
+            "label_evidence_ref": "label-PRINTED_CUSTOMER_LOAN_TOTAL",
+            "label_surface": "PRINTED_CUSTOMER_LOAN_TOTAL",
+            "lane_index": lane,
+            "page_sequence": pages[lane],
+            "resolution_mode": "LOCAL_LABELED_TOTAL",
+            "row_bbox": [100 + lane * 100, 200, 180 + lane * 100, 230],
+            "source_bboxes": [[100 + lane * 100, 200, 180 + lane * 100, 230]],
+            "source_line_indices": [lane + 10],
+            "source_surfaces_raw_nfc": [surface or "-"],
+        }
+        for lane, surface in enumerate(ppocr)
+    ]
+    row["label_evidence_ref"] = "|".join(
+        item["label_evidence_ref"] for item in row["control_evidence"]
+    )
+    row["label_surface"] = " | ".join(item["label_surface"] for item in row["control_evidence"])
+    return row
+
+
 def _source(
     *,
     domestic: list[str | None] | None = None,
@@ -118,9 +152,7 @@ def _source(
             },
         ],
         "presentation_mode": presentation,
-        "printed_customer_loan_total": _row(
-            "PRINTED_CUSTOMER_LOAN_TOTAL", total, pages=pages, vietocr=total_viet
-        ),
+        "printed_customer_loan_total": _total_row(total, pages=pages, vietocr=total_viet),
         "region_id": "region-geography-test",
         "source_id": "source-geography-test",
         "structure_challenger_refs": [] if challengers is None else challengers,
@@ -180,6 +212,13 @@ def test_one_current_period_lane_is_complete_without_a_comparative_lane() -> Non
     source["period_axis"] = source["period_axis"][:1]
     for row in [*source["mapped_rows"], source["printed_customer_loan_total"]]:
         row["cells"] = row["cells"][:1]
+    source["printed_customer_loan_total"]["control_evidence"] = source[
+        "printed_customer_loan_total"
+    ]["control_evidence"][:1]
+    source["printed_customer_loan_total"]["label_evidence_ref"] = (
+        "label-PRINTED_CUSTOMER_LOAN_TOTAL"
+    )
+    source["printed_customer_loan_total"]["label_surface"] = "PRINTED_CUSTOMER_LOAN_TOTAL"
     result = build_loan_geography_numeric_reconciliation_v1(source)
     assert result["status"] == "EXACT_OBSERVED_NUMERIC_RECONCILIATION"
     assert result["metrics"]["mapped_money_cell_count"] == 2
@@ -207,11 +246,89 @@ def test_three_observed_period_segments_remain_one_generic_matrix() -> None:
         strict=True,
     ):
         row["cells"].append(_cell(f"{row['role']}-2", 2, value, page=55))
+    source["printed_customer_loan_total"]["control_evidence"].append(
+        {
+            "evidence_refs": ["line:55:12"],
+            "label_evidence_ref": "label-PRINTED_CUSTOMER_LOAN_TOTAL",
+            "label_surface": "PRINTED_CUSTOMER_LOAN_TOTAL",
+            "lane_index": 2,
+            "page_sequence": 55,
+            "resolution_mode": "LOCAL_LABELED_TOTAL",
+            "row_bbox": [300, 200, 380, 230],
+            "source_bboxes": [[300, 200, 380, 230]],
+            "source_line_indices": [12],
+            "source_surfaces_raw_nfc": ["85"],
+        }
+    )
+    source["printed_customer_loan_total"]["label_evidence_ref"] += (
+        "|label-PRINTED_CUSTOMER_LOAN_TOTAL"
+    )
+    source["printed_customer_loan_total"]["label_surface"] += " | PRINTED_CUSTOMER_LOAN_TOTAL"
     result = build_loan_geography_numeric_reconciliation_v1(source)
     assert result["status"] == "EXACT_OBSERVED_NUMERIC_RECONCILIATION"
     assert result["metrics"]["mapped_money_cell_count"] == 6
     assert result["metrics"]["source_control_money_cell_count"] == 3
     assert result["metrics"]["exact_observed_equation_count"] == 3
+
+
+def _make_second_total_lane_unlabeled(source: dict) -> None:
+    total = source["printed_customer_loan_total"]
+    lane = total["control_evidence"][1]
+    lane["label_evidence_ref"] = "astgv1:trailing-total-resolution:unlabeled-lane-1"
+    lane["label_surface"] = None
+    lane["resolution_mode"] = "LOCAL_UNLABELED_TOTAL_ROW"
+    total["label_evidence_ref"] = "|".join(
+        item["label_evidence_ref"] for item in total["control_evidence"]
+    )
+    total["label_surface"] = None
+
+
+def test_total_control_mode_is_typed_per_lane_and_mixed_modes_replay() -> None:
+    source = _source()
+    _make_second_total_lane_unlabeled(source)
+
+    result = build_loan_geography_numeric_reconciliation_v1(source)
+
+    assert result["status"] == "EXACT_OBSERVED_NUMERIC_RECONCILIATION"
+    total = result["printed_customer_loan_total"]
+    assert total["label_surface"] is None
+    assert [item["resolution_mode"] for item in total["control_evidence"]] == [
+        "LOCAL_LABELED_TOTAL",
+        "LOCAL_UNLABELED_TOTAL_ROW",
+    ]
+    assert validate_loan_geography_numeric_reconciliation_replay_v1(result, source) == result
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "UNLABELED_LABEL",
+        "LABELED_NULL_LABEL",
+        "AGGREGATE_LABEL",
+        "SOURCE_BBOX",
+        "SOURCE_LINE",
+        "UNKNOWN_MODE",
+    ],
+)
+def test_total_control_mode_and_raw_geometry_tamper_fail_closed(mutation: str) -> None:
+    source = _source()
+    _make_second_total_lane_unlabeled(source)
+    total = source["printed_customer_loan_total"]
+    if mutation == "UNLABELED_LABEL":
+        total["control_evidence"][1]["label_surface"] = "Tổng cộng"
+    elif mutation == "LABELED_NULL_LABEL":
+        total["control_evidence"][0]["label_surface"] = None
+    elif mutation == "AGGREGATE_LABEL":
+        total["label_surface"] = "Tổng cộng"
+    elif mutation == "SOURCE_BBOX":
+        total["control_evidence"][1]["source_bboxes"][0][0] += 1
+    elif mutation == "SOURCE_LINE":
+        total["control_evidence"][1]["source_line_indices"][0] += 1
+    else:
+        total["control_evidence"][1]["resolution_mode"] = "INVENTED_TOTAL"
+
+    with pytest.raises(LoanGeographyNumericReconciliationV1Error, match="printed-total"):
+        build_loan_geography_numeric_reconciliation_v1(source)
 
 
 def test_period_and_source_role_order_are_not_presentation_routing_rules() -> None:
@@ -224,6 +341,9 @@ def test_period_and_source_role_order_are_not_presentation_routing_rules() -> No
         row["cells"].reverse()
         for lane, cell in enumerate(row["cells"]):
             cell["lane_index"] = lane
+    source["printed_customer_loan_total"]["control_evidence"].reverse()
+    for lane, evidence in enumerate(source["printed_customer_loan_total"]["control_evidence"]):
+        evidence["lane_index"] = lane
     result = build_loan_geography_numeric_reconciliation_v1(source)
     assert result["status"] == "EXACT_OBSERVED_NUMERIC_RECONCILIATION"
     assert [period["period_role"] for period in result["period_axis"]] == [

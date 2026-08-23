@@ -383,6 +383,9 @@ LOAN_GEOGRAPHY_SCOPED_TABLE_SPEC_V1 = {
         "max_role_gap_lines": 10,
         "max_wrap_lines": 3,
         "minimum_cell_row_overlap_ppm": 250_000,
+        "unlabeled_total_max_gap_lines": 2,
+        "unlabeled_total_max_numeric_columns": 8,
+        "unlabeled_total_min_numeric_columns": 5,
     },
     "owner_aliases": _surfaces("GEOGRAPHIC_CONCENTRATION_OWNER"),
     "owner_component_groups": [
@@ -1042,6 +1045,7 @@ def _structural_segment_fingerprint(segment: Mapping[str, Any]) -> dict[str, Any
         "segment_status": segment["segment_status"],
         "trailing_total_cells": canonical_clone_v1(segment["trailing_total_cells"]),
         "trailing_total_match": canonical_clone_v1(segment["trailing_total_match"]),
+        "trailing_total_resolution": canonical_clone_v1(segment["trailing_total_resolution"]),
         "unresolved_reasons": canonical_clone_v1(segment["unresolved_reasons"]),
     }
 
@@ -1603,6 +1607,9 @@ def project_loan_geography_visible_dash_graph_v1(
                 "scope_axis": canonical_clone_v1(segment["population_scope"]["match"]),
                 "segment_id": segment["segment_id"],
                 "trailing_total_cells": canonical_clone_v1(segment["trailing_total_cells"]),
+                "trailing_total_resolution": canonical_clone_v1(
+                    segment["trailing_total_resolution"]
+                ),
                 "unit_headings": canonical_clone_v1(segment["header_context"]["unit_evidence"]),
             }
             projected_segments.append(projected)
@@ -1791,15 +1798,62 @@ def project_loan_geography_numeric_input_v1(
     total_cells = []
     total_refs = []
     total_surfaces = []
+    total_control_evidence = []
     for segment in source_segments:
         lane = segment["period_lane_index"]
-        if len(segment["trailing_total_cells"]) != 1 or segment["trailing_total_match"] is None:
+        total_match = segment["trailing_total_match"]
+        total_resolution = segment["trailing_total_resolution"]
+        if len(segment["trailing_total_cells"]) != 1:
             raise _error("Family 11 printed customer-loan total is unresolved")
+        if total_match is not None and total_resolution is None:
+            row_evidence = total_match["line_evidence"]
+            evidence_refs = [
+                f"line:{item['page_sequence']}:{item['source_line_index']}" for item in row_evidence
+            ]
+            source_bboxes = [canonical_clone_v1(item["bbox"]) for item in row_evidence]
+            source_line_indices = [item["source_line_index"] for item in row_evidence]
+            source_surfaces = [item["vietocr_raw_nfc_surface"] for item in row_evidence]
+            label_ref = total_match["match_id"]
+            label_surface = total_match["surface_raw_nfc"]
+            resolution_mode = "LOCAL_LABELED_TOTAL"
+            row_bbox = canonical_clone_v1(total_match["bbox"])
+        elif (
+            total_match is None
+            and type(total_resolution) is dict
+            and total_resolution.get("mode") == "UNLABELED_COMPLETE_NUMERIC_TOTAL_ROW"
+        ):
+            row_evidence = total_resolution["row_evidence"]
+            evidence_refs = [
+                f"line:{item['page_sequence']}:{item['source_line_index']}" for item in row_evidence
+            ]
+            source_bboxes = [canonical_clone_v1(item["bbox"]) for item in row_evidence]
+            source_line_indices = [item["source_line_index"] for item in row_evidence]
+            source_surfaces = [item["vietocr_raw_nfc_surface"] for item in row_evidence]
+            label_ref = total_resolution["resolution_id"]
+            label_surface = None
+            resolution_mode = "LOCAL_UNLABELED_TOTAL_ROW"
+            row_bbox = canonical_clone_v1(total_resolution["row_bbox"])
+        else:
+            raise _error("Family 11 printed customer-loan total provenance is unresolved")
         total_cells.append(
             cell(segment["trailing_total_cells"][0], lane, "PRINTED_CUSTOMER_LOAN_TOTAL")
         )
-        total_refs.append(segment["trailing_total_match"]["match_id"])
-        total_surfaces.append(segment["trailing_total_match"]["surface_raw_nfc"])
+        total_refs.append(label_ref)
+        total_surfaces.append(label_surface)
+        total_control_evidence.append(
+            {
+                "evidence_refs": evidence_refs,
+                "label_evidence_ref": label_ref,
+                "label_surface": label_surface,
+                "lane_index": lane,
+                "page_sequence": segment["page_sequences"][0],
+                "resolution_mode": resolution_mode,
+                "row_bbox": row_bbox,
+                "source_bboxes": source_bboxes,
+                "source_line_indices": source_line_indices,
+                "source_surfaces_raw_nfc": source_surfaces,
+            }
+        )
     mode = (
         "REPEATED_FULL_SEGMENT_ONE_PERIOD_PER_PAGE"
         if document["graphs"][0]["continuation"]["mode"]
@@ -1807,6 +1861,11 @@ def project_loan_geography_numeric_input_v1(
         else "SINGLE_PAGE_GEOGRAPHY_ROWS_ACCOUNTING_COLUMNS"
         if source_segments[0]["layout_mode"] == "ROLES_AS_ROWS"
         else "SINGLE_PAGE_GEOGRAPHY_COLUMNS_ACCOUNTING_ROWS"
+    )
+    aggregate_total_surface = (
+        " | ".join(total_surfaces)
+        if all(type(surface) is str for surface in total_surfaces)
+        else None
     )
     return {
         "family_id": FAMILY_ID,
@@ -1824,8 +1883,9 @@ def project_loan_geography_numeric_input_v1(
         "presentation_mode": mode,
         "printed_customer_loan_total": {
             "cells": total_cells,
+            "control_evidence": total_control_evidence,
             "label_evidence_ref": "|".join(total_refs),
-            "label_surface": " | ".join(total_surfaces),
+            "label_surface": aggregate_total_surface,
             "role": "PRINTED_CUSTOMER_LOAN_TOTAL",
         },
         "region_id": logical[0]["graph_id"],

@@ -67,6 +67,31 @@ def _exact_page(page_sequence: int = 1) -> dict:
     return {"lines": list(reversed(lines)), "page_sequence": page_sequence, "page_width": 1_000}
 
 
+def _unlabeled_total_page(page_sequence: int = 1, *, period: str = "31/12/2025") -> dict:
+    lines = [
+        _line(90, "Mức độ tập trung tài sản và công nợ", [20, 20, 610, 46]),
+        _line(3, "theo khu vực địa lý", [20, 50, 310, 76]),
+        _line(88, period, [585, 82, 785, 108]),
+        _line(11, "Cho vay khách hàng", [575, 120, 795, 148]),
+        _line(14, "triệu đồng", [595, 160, 775, 188]),
+        _line(4, "Trong nước", [40, 220, 190, 248]),
+        _line(7, "Nước ngoài", [40, 270, 190, 298]),
+    ]
+    for lane, center in enumerate([285, 485, 685, 835, 945]):
+        left, right = center - 30, center + 30
+        domestic = 800 + lane
+        foreign = 100 + lane
+        total = 900 + lane * 2
+        lines.extend(
+            [
+                _line(20 + lane, str(domestic), [left, 220, right, 248], str(domestic)),
+                _line(30 + lane, str(foreign), [left, 270, right, 298], str(foreign)),
+                _line(40 + lane, str(total), [left, 310, right, 338], str(total)),
+            ]
+        )
+    return {"lines": list(reversed(lines)), "page_sequence": page_sequence, "page_width": 1_000}
+
+
 def _two_period_page() -> dict:
     lines = [
         _line(90, "Mức độ tập trung tài sản và công nợ", [20, 20, 610, 46]),
@@ -193,6 +218,73 @@ def test_thin_adapter_replays_and_projects_overlay_and_printed_total_matrix() ->
     assert numeric["status"] == "EXACT_OBSERVED_NUMERIC_RECONCILIATION"
 
 
+def test_unlabeled_printed_total_projects_nullable_label_and_raw_geometry() -> None:
+    snapshot = _snapshot(_unlabeled_total_page())
+    receipt = _receipt(snapshot)
+    document = build_loan_geography_scoped_graphs_v1(receipt, [snapshot])["documents"][0]
+
+    numeric_input = project_loan_geography_numeric_input_v1(document, snapshot["document_packet"])
+
+    segment = document["graphs"][0]["segments"][0]
+    assert segment["trailing_total_match"] is None
+    assert segment["trailing_total_resolution"]["mode"] == ("UNLABELED_COMPLETE_NUMERIC_TOTAL_ROW")
+    total = numeric_input["printed_customer_loan_total"]
+    assert total["label_surface"] is None
+    assert total["control_evidence"] == [
+        {
+            "evidence_refs": [
+                "line:1:40",
+                "line:1:41",
+                "line:1:42",
+                "line:1:43",
+                "line:1:44",
+            ],
+            "label_evidence_ref": segment["trailing_total_resolution"]["resolution_id"],
+            "label_surface": None,
+            "lane_index": 0,
+            "page_sequence": 1,
+            "resolution_mode": "LOCAL_UNLABELED_TOTAL_ROW",
+            "row_bbox": [255, 310, 975, 338],
+            "source_bboxes": [
+                [255, 310, 315, 338],
+                [455, 310, 515, 338],
+                [655, 310, 715, 338],
+                [805, 310, 865, 338],
+                [915, 310, 975, 338],
+            ],
+            "source_line_indices": [40, 41, 42, 43, 44],
+            "source_surfaces_raw_nfc": ["900", "902", "904", "906", "908"],
+        }
+    ]
+    assert total["cells"][0]["vietocr_surface"] == "904"
+    numeric = build_loan_geography_numeric_reconciliation_v1(numeric_input)
+    assert numeric["status"] == "EXACT_OBSERVED_NUMERIC_RECONCILIATION"
+
+
+def test_labeled_and_unlabeled_period_lanes_keep_per_lane_control_modes() -> None:
+    labeled = _unlabeled_total_page(1)
+    labeled["lines"].append(_line(50, "Tổng cộng", [40, 310, 190, 338]))
+    pages = [labeled, _unlabeled_total_page(2, period="31/12/2024")]
+    snapshot = _snapshot_pages(pages)
+    receipt = _receipt(snapshot)
+    document = build_loan_geography_scoped_graphs_v1(receipt, [snapshot])["documents"][0]
+
+    numeric_input = project_loan_geography_numeric_input_v1(document, snapshot["document_packet"])
+
+    total = numeric_input["printed_customer_loan_total"]
+    assert total["label_surface"] is None
+    assert [item["resolution_mode"] for item in total["control_evidence"]] == [
+        "LOCAL_LABELED_TOTAL",
+        "LOCAL_UNLABELED_TOTAL_ROW",
+    ]
+    assert [item["label_surface"] for item in total["control_evidence"]] == [
+        "Tổng cộng",
+        None,
+    ]
+    numeric = build_loan_geography_numeric_reconciliation_v1(numeric_input)
+    assert numeric["status"] == "EXACT_OBSERVED_NUMERIC_RECONCILIATION"
+
+
 def test_alias_provenance_is_exactly_the_executable_spec_axis() -> None:
     executable = {
         "CONTINUATION": LOAN_GEOGRAPHY_SCOPED_TABLE_SPEC_V1["continuation_aliases"],
@@ -232,6 +324,13 @@ def test_alias_provenance_is_exactly_the_executable_spec_axis() -> None:
         for records in LOAN_GEOGRAPHY_SCOPED_TABLE_ALIAS_PROVENANCE_V1.values()
         for item in records
     )
+
+
+def test_family11_pins_its_unlabeled_total_geometry_limits_declaratively() -> None:
+    limits = LOAN_GEOGRAPHY_SCOPED_TABLE_SPEC_V1["limits"]
+    assert limits["unlabeled_total_min_numeric_columns"] == 5
+    assert limits["unlabeled_total_max_numeric_columns"] == 8
+    assert limits["unlabeled_total_max_gap_lines"] == 2
 
 
 def test_authoritative_query_spec_is_adapter_content_bound_and_canonical_only() -> None:

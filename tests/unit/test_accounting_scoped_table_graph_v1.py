@@ -17,6 +17,9 @@ def _spec(
     layouts: list[str] | None = None,
     budget: int = 1,
     require_total: bool = True,
+    unlabeled_gap: int = 2,
+    unlabeled_max: int = 8,
+    unlabeled_min: int = 5,
 ) -> dict[str, object]:
     return {
         "continuation_aliases": ["Tiếp theo"],
@@ -30,6 +33,9 @@ def _spec(
             "max_role_gap_lines": 8,
             "max_wrap_lines": 3,
             "minimum_cell_row_overlap_ppm": 250_000,
+            "unlabeled_total_max_gap_lines": unlabeled_gap,
+            "unlabeled_total_max_numeric_columns": unlabeled_max,
+            "unlabeled_total_min_numeric_columns": unlabeled_min,
         },
         "owner_aliases": [
             "Mức độ tập trung tài sản và công nợ theo khu vực địa lý",
@@ -986,6 +992,411 @@ def _same_page_repeated_row_blocks(*, second_period: str = "31/12/2024") -> dict
             _line(18, "990", [685, 570, 755, 598], "990"),
         ],
     )
+
+
+def _unlabeled_complete_total_page(
+    *,
+    numeric_column_count: int = 5,
+    target_bbox: list[int] | None = None,
+    target_surface: str = "1.100",
+) -> dict[str, object]:
+    target_bbox = target_bbox or [640, 310, 720, 338]
+    target_center = (target_bbox[0] + target_bbox[2]) // 2
+    total_top = target_bbox[1]
+    row_height = target_bbox[3] - target_bbox[1]
+    foreign_bottom = total_top - max(2, row_height // 3)
+    foreign_top = foreign_bottom - row_height
+    domestic_bottom = foreign_top - max(8, row_height // 2)
+    domestic_top = domestic_bottom - row_height
+    owner_top = max(20, domestic_top - 250)
+    period_top = max(owner_top + 62, domestic_top - 190)
+    scope_top = max(period_top + 38, domestic_top - 140)
+    unit_top = max(scope_top + 40, domestic_top - 90)
+    target_lane = numeric_column_count // 2
+    axis_centers = [
+        target_center + (lane - target_lane) * 180 for lane in range(numeric_column_count)
+    ]
+    width = min(130, max(50, target_bbox[2] - target_bbox[0]))
+    lines: list[dict[str, object]] = [
+        _line(
+            90,
+            "Mức độ tập trung tài sản và công nợ",
+            [20, owner_top, 610, owner_top + 26],
+        ),
+        _line(3, "theo khu vực địa lý", [20, owner_top + 30, 310, owner_top + 56]),
+        _line(
+            88,
+            "31/12/2025",
+            [target_center - 100, period_top, target_center + 100, period_top + 26],
+        ),
+        _line(
+            11,
+            "Cho vay khách hàng",
+            [target_center - 110, scope_top, target_center + 110, scope_top + 28],
+        ),
+        _line(
+            14,
+            "triệu đồng",
+            [target_center - 90, unit_top, target_center + 90, unit_top + 28],
+        ),
+        _line(4, "Trong nước", [40, domestic_top, 190, domestic_bottom]),
+        _line(7, "Nước ngoài", [40, foreign_top, 190, foreign_bottom]),
+    ]
+    for lane, center in enumerate(axis_centers):
+        left = center - width // 2
+        right = center + width // 2
+        lines.extend(
+            [
+                _line(20 + lane, str(1_000 + lane), [left, domestic_top, right, domestic_bottom]),
+                _line(30 + lane, str(100 + lane), [left, foreign_top, right, foreign_bottom]),
+                _line(
+                    40 + lane,
+                    target_surface if lane == target_lane else str(1_100 + lane),
+                    target_bbox
+                    if lane == target_lane
+                    else [left, total_top, right, target_bbox[3]],
+                ),
+            ]
+        )
+    return {
+        "lines": list(reversed(lines)),
+        "page_height": max(1_000, target_bbox[3] + 100),
+        "page_sequence": 1,
+        "page_width": max(1_500, axis_centers[-1] + width),
+    }
+
+
+def test_numeric_only_complete_total_row_is_bound_without_inventing_a_label() -> None:
+    result = build_accounting_scoped_table_graph_v1(
+        [_unlabeled_complete_total_page()], _spec(layouts=["ROLES_AS_ROWS"])
+    )
+
+    assert len(result["graphs"]) == 1
+    segment = result["graphs"][0]["segments"][0]
+    assert segment["trailing_total_match"] is None
+    resolution = segment["trailing_total_resolution"]
+    assert resolution["mode"] == "UNLABELED_COMPLETE_NUMERIC_TOTAL_ROW"
+    assert resolution["row_bbox"] == [280, 310, 1080, 338]
+    assert resolution["target_body_axis_ordinal"] == 2
+    assert resolution["target_role_cell_axis_center_x2"] == 1_360
+    assert resolution["target_role_cell_source_ordinals"] == [0, 1]
+    assert {item["value_axis_center_x2"] for item in segment["role_cells"]} == {1_360}
+    assert [item["source_line_index"] for item in resolution["row_evidence"]] == [
+        40,
+        41,
+        42,
+        43,
+        44,
+    ]
+    assert [item["vietocr_raw_nfc_surface"] for item in segment["trailing_total_cells"]] == [
+        "1.100"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("column_count", "target_bbox"),
+    [
+        (3, [640, 310, 720, 338]),
+        (9, [1_040, 310, 1_120, 338]),
+    ],
+)
+def test_unlabeled_total_quorum_is_declarative_for_other_table_families(
+    column_count: int, target_bbox: list[int]
+) -> None:
+    spec = _spec(
+        layouts=["ROLES_AS_ROWS"],
+        unlabeled_min=column_count,
+        unlabeled_max=column_count,
+    )
+    page = _unlabeled_complete_total_page(
+        numeric_column_count=column_count,
+        target_bbox=target_bbox,
+    )
+
+    result = build_accounting_scoped_table_graph_v1([page], spec)
+
+    segment = result["graphs"][0]["segments"][0]
+    resolution = segment["trailing_total_resolution"]
+    assert len(resolution["body_axis_centers_x2"]) == column_count
+    assert len(resolution["row_evidence"]) == column_count
+    assert resolution["target_body_axis_ordinal"] == column_count // 2
+
+
+def test_unlabeled_total_gap_is_declarative_for_other_table_families() -> None:
+    page = _unlabeled_complete_total_page()
+    for line in page["lines"]:
+        if 40 <= line["source_line_index"] <= 44:
+            line["bbox"][1] += 15
+            line["bbox"][3] += 15
+
+    accepted = build_accounting_scoped_table_graph_v1(
+        [page], _spec(layouts=["ROLES_AS_ROWS"], unlabeled_gap=2)
+    )
+    rejected = build_accounting_scoped_table_graph_v1(
+        [page], _spec(layouts=["ROLES_AS_ROWS"], unlabeled_gap=1)
+    )
+
+    assert accepted["graphs"][0]["segments"][0]["trailing_total_resolution"] is not None
+    assert rejected["graphs"][0]["segments"][0]["trailing_total_resolution"] is None
+
+
+@pytest.mark.parametrize(
+    ("header", "top", "bottom"),
+    [
+        ("Bảng phân tích hoàn toàn khác", 303, 316),
+        ("Mức độ tập trung tài sản và", 303, 316),
+        ("1", 303, 316),
+        ("Bảng phân tích hoàn toàn khác", 301, 316),
+        ("Bảng phân tích hoàn toàn khác", 300, 316),
+        ("Bảng phân tích hoàn toàn khác", 303, 321),
+        ("Bảng phân tích hoàn toàn khác", 303, 324),
+    ],
+)
+def test_tight_intervening_visible_line_fences_following_complete_numeric_row(
+    header: str, top: int, bottom: int
+) -> None:
+    page = _unlabeled_complete_total_page()
+    for line in page["lines"]:
+        if 40 <= line["source_line_index"] <= 44:
+            line["bbox"][1] += 10
+            line["bbox"][3] += 10
+    page["lines"].append(_line(85, header, [20, top, 250, bottom]))
+
+    result = build_accounting_scoped_table_graph_v1([page], _spec(layouts=["ROLES_AS_ROWS"]))
+
+    segment = result["graphs"][0]["segments"][0]
+    assert segment["trailing_total_match"] is None
+    assert segment["trailing_total_resolution"] is None
+    assert segment["trailing_total_cells"] == []
+
+
+def test_ordinary_tight_spacing_and_empty_visual_decoration_preserve_total_row() -> None:
+    spec = _spec(layouts=["ROLES_AS_ROWS"])
+    ordinary = _unlabeled_complete_total_page()
+    decorated = _unlabeled_complete_total_page()
+    for page in (ordinary, decorated):
+        for line in page["lines"]:
+            if 40 <= line["source_line_index"] <= 44:
+                line["bbox"][1] += 10
+                line["bbox"][3] += 10
+    decorated["lines"].append(_line(85, "", [20, 303, 250, 316]))
+
+    ordinary_result = build_accounting_scoped_table_graph_v1([ordinary], spec)
+    decorated_result = build_accounting_scoped_table_graph_v1([decorated], spec)
+
+    assert ordinary_result["graphs"][0]["segments"][0]["trailing_total_resolution"] is not None
+    assert decorated_result["graphs"][0]["segments"][0]["trailing_total_resolution"] is not None
+
+
+def test_proven_role_body_value_jitter_is_not_an_intervening_row() -> None:
+    page = _unlabeled_complete_total_page()
+    for line in page["lines"]:
+        if 40 <= line["source_line_index"] <= 44:
+            line["bbox"][1] += 10
+            line["bbox"][3] += 10
+    foreign_body_value = next(line for line in page["lines"] if line["source_line_index"] == 30)
+    foreign_body_value["bbox"][3] += 2
+
+    result = build_accounting_scoped_table_graph_v1([page], _spec(layouts=["ROLES_AS_ROWS"]))
+
+    assert result["graphs"][0]["segments"][0]["trailing_total_resolution"] is not None
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("unlabeled_total_min_numeric_columns", True),
+        ("unlabeled_total_max_numeric_columns", True),
+        ("unlabeled_total_max_gap_lines", True),
+        ("unlabeled_total_min_numeric_columns", 1),
+        ("unlabeled_total_max_numeric_columns", 33),
+        ("unlabeled_total_max_gap_lines", 0),
+        ("unlabeled_total_max_gap_lines", 9),
+    ],
+)
+def test_unlabeled_total_limits_reject_bool_or_values_outside_closed_bounds(
+    field: str, value: object
+) -> None:
+    spec = _spec(layouts=["ROLES_AS_ROWS"])
+    spec["limits"][field] = value
+
+    with pytest.raises(AccountingScopedTableGraphV1Error, match="limits exceed|positive.*integer"):
+        build_accounting_scoped_table_graph_v1([_row_layout_page()], spec)
+
+
+def test_unlabeled_total_limit_axis_requires_all_fields_and_ordered_quorum() -> None:
+    missing = _spec(layouts=["ROLES_AS_ROWS"])
+    missing["limits"].pop("unlabeled_total_max_gap_lines")
+    with pytest.raises(AccountingScopedTableGraphV1Error, match="limits drifted"):
+        build_accounting_scoped_table_graph_v1([_row_layout_page()], missing)
+
+    reversed_quorum = _spec(layouts=["ROLES_AS_ROWS"], unlabeled_min=9, unlabeled_max=8)
+    with pytest.raises(AccountingScopedTableGraphV1Error, match="limits exceed"):
+        build_accounting_scoped_table_graph_v1([_row_layout_page()], reversed_quorum)
+
+
+@pytest.mark.parametrize(
+    ("target_bbox", "surface"),
+    [
+        ([780, 756, 943, 791], "686.777.352"),
+        ([775, 1187, 938, 1222], "580.686.248"),
+        ([750, 785, 911, 818], "633.748.683"),
+        ([748, 1215, 908, 1248], "580.686.248"),
+        ([730, 785, 892, 818], "619.850.276"),
+        ([728, 1215, 890, 1248], "569.734.624"),
+        ([704, 706, 892, 741], "1.084.019.370"),
+        ([726, 1076, 892, 1110], "776.657.846"),
+        ([912, 731, 1092, 758], "1.031.103.706"),
+        ([931, 1105, 1094, 1132], "734.594.094"),
+        ([739, 706, 899, 733], "879.888.513"),
+        ([736, 1071, 902, 1105], "776.657.846"),
+        ([926, 726, 1092, 761], "830.744.526"),
+        ([926, 1098, 1092, 1132], "734.594.094"),
+        ([726, 719, 912, 753], "1.227.554.477"),
+        ([724, 1088, 912, 1122], "1.084.019.370"),
+        ([890, 719, 1075, 753], "1.172.763.521"),
+        ([892, 1130, 1072, 1157], "1.031.103.706"),
+    ],
+)
+def test_observed_local_total_bbox_and_raw_surface_variants_are_retained(
+    target_bbox: list[int], surface: str
+) -> None:
+    result = build_accounting_scoped_table_graph_v1(
+        [_unlabeled_complete_total_page(target_bbox=target_bbox, target_surface=surface)],
+        _spec(layouts=["ROLES_AS_ROWS"]),
+    )
+
+    assert len(result["graphs"]) == 1
+    segment = result["graphs"][0]["segments"][0]
+    total = segment["trailing_total_cells"]
+    assert len(total) == 1
+    assert total[0]["bbox"] == target_bbox
+    assert total[0]["vietocr_raw_nfc_surface"] == surface
+    assert segment["trailing_total_resolution"]["row_evidence"][2]["bbox"] == target_bbox
+
+
+def test_unlabeled_total_geometry_rejects_labels_incomplete_or_competing_rows() -> None:
+    spec = _spec(layouts=["ROLES_AS_ROWS"])
+
+    labeled = _unlabeled_complete_total_page()
+    labeled["lines"].append(_line(60, "Diễn giải", [20, 310, 190, 338]))
+    labeled_result = build_accounting_scoped_table_graph_v1([labeled], spec)
+    assert labeled_result["graphs"][0]["segments"][0]["trailing_total_cells"] == []
+
+    incomplete = _unlabeled_complete_total_page()
+    incomplete["lines"] = [
+        line for line in incomplete["lines"] if line["source_line_index"] not in {40, 41, 43, 44}
+    ]
+    incomplete_result = build_accounting_scoped_table_graph_v1([incomplete], spec)
+    assert incomplete_result["graphs"][0]["segments"][0]["trailing_total_cells"] == []
+
+    dash = _unlabeled_complete_total_page()
+    next(line for line in dash["lines"] if line["source_line_index"] == 41)["vietocr_text"] = "-"
+    dash_result = build_accounting_scoped_table_graph_v1([dash], spec)
+    assert dash_result["graphs"][0]["segments"][0]["trailing_total_cells"] == []
+
+    blank = _unlabeled_complete_total_page()
+    next(line for line in blank["lines"] if line["source_line_index"] == 41)["vietocr_text"] = ""
+    blank_result = build_accounting_scoped_table_graph_v1([blank], spec)
+    assert blank_result["graphs"][0]["segments"][0]["trailing_total_cells"] == []
+
+    drift = _unlabeled_complete_total_page()
+    shifted = next(line for line in drift["lines"] if line["source_line_index"] == 44)
+    shifted["bbox"][0] += 90
+    shifted["bbox"][2] += 90
+    drift_result = build_accounting_scoped_table_graph_v1([drift], spec)
+    assert drift_result["graphs"][0]["segments"][0]["trailing_total_cells"] == []
+
+    competing = _unlabeled_complete_total_page()
+    for lane, line in enumerate(
+        sorted(
+            [item for item in competing["lines"] if 40 <= item["source_line_index"] <= 44],
+            key=lambda item: item["bbox"][0],
+        )
+    ):
+        competing["lines"].append(
+            _line(70 + lane, str(2_000 + lane), [line["bbox"][0], 332, line["bbox"][2], 356])
+        )
+    competing_result = build_accounting_scoped_table_graph_v1([competing], spec)
+    assert competing_result["graphs"][0]["segments"][0]["trailing_total_cells"] == []
+
+    duplicate_target = _unlabeled_complete_total_page()
+    duplicate_target["lines"].append(_line(81, "Cho vay khách hàng", [850, 120, 1070, 148]))
+    duplicate_result = build_accounting_scoped_table_graph_v1([duplicate_target], spec)
+    assert all(
+        item["trailing_total_resolution"] is None
+        for item in duplicate_result["physical_segments"]
+        if item["population_scope"]["disposition"] == "TARGET"
+    )
+
+
+def test_missing_current_total_does_not_borrow_next_period_unlabeled_row() -> None:
+    lines: list[dict[str, object]] = [
+        *_owner_lines(900),
+        _line(1, "31/12/2025", [650, 82, 810, 108]),
+        _line(2, "Cho vay khách hàng", [570, 120, 790, 148]),
+        _line(3, "triệu đồng", [650, 160, 810, 188]),
+        _line(4, "Trong nước", [40, 220, 190, 248]),
+        _line(5, "Nước ngoài", [40, 270, 190, 298]),
+        _line(20, "31/12/2024", [650, 322, 810, 348]),
+        _line(21, "Cho vay khách hàng", [570, 360, 790, 388]),
+        _line(22, "triệu đồng", [650, 400, 810, 428]),
+        _line(23, "Trong nước", [40, 460, 190, 488]),
+        _line(24, "Nước ngoài", [40, 510, 190, 538]),
+    ]
+    for lane, center in enumerate([320, 500, 680, 860, 1040]):
+        left, right = center - 55, center + 55
+        lines.extend(
+            [
+                _line(30 + lane, str(1_000 + lane), [left, 220, right, 248]),
+                _line(40 + lane, str(100 + lane), [left, 270, right, 298]),
+                _line(50 + lane, str(900 + lane), [left, 460, right, 488]),
+                _line(60 + lane, str(90 + lane), [left, 510, right, 538]),
+                _line(70 + lane, str(990 + lane), [left, 550, right, 578]),
+            ]
+        )
+    page = _page(1, list(reversed(lines)))
+    page["page_width"] = 1_300
+    spec = _spec(layouts=["ROLES_AS_ROWS"])
+    spec["limits"]["max_role_gap_lines"] = 6
+
+    result = build_accounting_scoped_table_graph_v1([page], spec)
+
+    assert len(result["graphs"]) == 1
+    assert len(result["graphs"][0]["segments"]) == 2
+    current, comparative = result["graphs"][0]["segments"]
+    assert current["period_key"] == "31/12/2025"
+    assert current["trailing_total_match"] is None
+    assert current["trailing_total_resolution"] is None
+    assert current["trailing_total_cells"] == []
+    assert comparative["period_key"] == "31/12/2024"
+    assert comparative["trailing_total_resolution"]["mode"] == (
+        "UNLABELED_COMPLETE_NUMERIC_TOTAL_ROW"
+    )
+
+
+@pytest.mark.parametrize(
+    ("surface", "bbox"),
+    [
+        ("31/12/2024", [300, 303, 500, 329]),
+        ("triệu đồng", [300, 303, 500, 329]),
+        ("Thuyết minh khác", [20, 303, 250, 329]),
+        ("Mức độ tập trung tài sản và công nợ", [20, 303, 610, 329]),
+    ],
+)
+def test_next_header_or_structural_boundary_fences_unlabeled_total(
+    surface: str, bbox: list[int]
+) -> None:
+    page = _unlabeled_complete_total_page()
+    for line in page["lines"]:
+        if 40 <= line["source_line_index"] <= 44:
+            line["bbox"][1] += 35
+            line["bbox"][3] += 35
+    page["lines"].append(_line(80, surface, bbox))
+
+    result = build_accounting_scoped_table_graph_v1([page], _spec(layouts=["ROLES_AS_ROWS"]))
+
+    assert result["graphs"][0]["segments"][0]["trailing_total_cells"] == []
 
 
 def test_same_page_repeated_full_blocks_group_only_for_distinct_compatible_periods() -> None:

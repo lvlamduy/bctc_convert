@@ -79,6 +79,10 @@ _PRESENTATION_MODES = {
 _PERIOD_ROLES = {"CURRENT", "COMPARATIVE"}
 _PERIOD_RESOLUTION_MODES = {"LOCAL_EXACT_DATE", "DOCUMENT_INHERITED_EXACT_DATE"}
 _UNIT_RESOLUTION_MODES = {"LOCAL_EXACT_UNIT", "DOCUMENT_INHERITED_EXACT_UNIT"}
+_TOTAL_CONTROL_RESOLUTION_MODES = {
+    "LOCAL_LABELED_TOTAL",
+    "LOCAL_UNLABELED_TOTAL_ROW",
+}
 _KNOWN_NESTED_ROLES = (
     "HO_CHI_MINH_CITY",
     "MEKONG_DELTA",
@@ -329,6 +333,137 @@ def _input_row(value: Any, role: str, lane_count: int) -> dict[str, Any]:
     }
 
 
+def _total_control_evidence(value: Any, lane_count: int) -> list[dict[str, Any]]:
+    if type(value) is not list or len(value) != lane_count:
+        raise _error("loan-geography printed-total control axis drifted")
+    result = []
+    fields = {
+        "evidence_refs",
+        "label_evidence_ref",
+        "label_surface",
+        "lane_index",
+        "page_sequence",
+        "resolution_mode",
+        "row_bbox",
+        "source_bboxes",
+        "source_line_indices",
+        "source_surfaces_raw_nfc",
+    }
+    for lane_index, raw in enumerate(value):
+        if (
+            type(raw) is not dict
+            or set(raw) != fields
+            or raw["lane_index"] != lane_index
+            or type(raw["page_sequence"]) is not int
+            or raw["page_sequence"] <= 0
+            or raw["resolution_mode"] not in _TOTAL_CONTROL_RESOLUTION_MODES
+        ):
+            raise _error("loan-geography printed-total control identity drifted")
+        _string(raw["label_evidence_ref"], "loan-geography printed-total lane evidence")
+        _surface(raw["label_surface"], "loan-geography printed-total lane label")
+        if (
+            raw["resolution_mode"] == "LOCAL_UNLABELED_TOTAL_ROW"
+            and raw["label_surface"] is not None
+        ) or (
+            raw["resolution_mode"] == "LOCAL_LABELED_TOTAL"
+            and type(raw["label_surface"]) is not str
+        ):
+            raise _error("loan-geography printed-total lane label/resolution mode conflicts")
+        row_bbox = raw["row_bbox"]
+        if (
+            type(row_bbox) is not list
+            or len(row_bbox) != 4
+            or any(type(item) is not int or item < 0 for item in row_bbox)
+            or not (row_bbox[0] < row_bbox[2] and row_bbox[1] < row_bbox[3])
+        ):
+            raise _error("loan-geography printed-total row bbox drifted")
+        evidence_refs = raw["evidence_refs"]
+        source_bboxes = raw["source_bboxes"]
+        source_indices = raw["source_line_indices"]
+        source_surfaces = raw["source_surfaces_raw_nfc"]
+        if (
+            type(evidence_refs) is not list
+            or not evidence_refs
+            or type(source_bboxes) is not list
+            or type(source_indices) is not list
+            or type(source_surfaces) is not list
+            or not (
+                len(evidence_refs)
+                == len(source_bboxes)
+                == len(source_indices)
+                == len(source_surfaces)
+            )
+            or any(type(item) is not str or not item for item in evidence_refs)
+            or any(type(item) is not int or item < 0 for item in source_indices)
+            or any(type(item) is not str for item in source_surfaces)
+            or len(source_indices) != len(set(source_indices))
+        ):
+            raise _error("loan-geography printed-total raw evidence axis drifted")
+        for bbox in source_bboxes:
+            if (
+                type(bbox) is not list
+                or len(bbox) != 4
+                or any(type(item) is not int or item < 0 for item in bbox)
+                or not (bbox[0] < bbox[2] and bbox[1] < bbox[3])
+            ):
+                raise _error("loan-geography printed-total evidence bbox drifted")
+        result.append(canonical_clone_v1(raw))
+    return result
+
+
+def _input_total_row(value: Any, lane_count: int) -> dict[str, Any]:
+    if type(value) is not dict or set(value) != {
+        "cells",
+        "control_evidence",
+        "label_evidence_ref",
+        "label_surface",
+        "role",
+    }:
+        raise _error("loan-geography printed-total row fields drifted")
+    if value["role"] != _TOTAL_ROLE:
+        raise _error("loan-geography printed-total row identity drifted")
+    _string(value["label_evidence_ref"], "loan-geography printed-total evidence")
+    _surface(value["label_surface"], "loan-geography printed-total label")
+    if type(value["cells"]) is not list or len(value["cells"]) != lane_count:
+        raise _error("loan-geography printed-total row must bind every money lane")
+    cells = [_input_cell(cell, lane) for lane, cell in enumerate(value["cells"])]
+    evidence = _total_control_evidence(value["control_evidence"], lane_count)
+    expected_ref = "|".join(item["label_evidence_ref"] for item in evidence)
+    lane_surfaces = [item["label_surface"] for item in evidence]
+    expected_surface = (
+        " | ".join(lane_surfaces) if all(type(item) is str for item in lane_surfaces) else None
+    )
+    if value["label_evidence_ref"] != expected_ref or value["label_surface"] != expected_surface:
+        raise _error("loan-geography printed-total label/resolution mode conflicts")
+    for cell, lane_evidence in zip(cells, evidence, strict=True):
+        expected_refs = [
+            f"line:{lane_evidence['page_sequence']}:{index}"
+            for index in lane_evidence["source_line_indices"]
+        ]
+        boxes = lane_evidence["source_bboxes"]
+        union = [
+            min(box[0] for box in boxes),
+            min(box[1] for box in boxes),
+            max(box[2] for box in boxes),
+            max(box[3] for box in boxes),
+        ]
+        if lane_evidence["evidence_refs"] != expected_refs or lane_evidence["row_bbox"] != union:
+            raise _error("loan-geography printed-total raw evidence binding drifted")
+        if lane_evidence["resolution_mode"] == "LOCAL_UNLABELED_TOTAL_ROW" and (
+            cell["page_sequence"] != lane_evidence["page_sequence"]
+            or cell["bbox"] not in boxes
+            or cell["source_line_index"] not in lane_evidence["source_line_indices"]
+        ):
+            raise _error("loan-geography unlabeled printed-total cell binding drifted")
+    return {
+        "cells": cells,
+        "control_evidence": evidence,
+        "label_evidence_ref": value["label_evidence_ref"],
+        "label_surface": value["label_surface"],
+        "role": _TOTAL_ROLE,
+    }
+
+
 def _validate_source(value: Any) -> dict[str, Any]:
     fields = {
         "family_id",
@@ -373,8 +508,8 @@ def _validate_source(value: Any) -> dict[str, Any]:
         **canonical_clone_v1(value),
         "mapped_rows": [_input_row(rows_by_role[role], role, lane_count) for role in _ROLES],
         "period_axis": periods,
-        "printed_customer_loan_total": _input_row(
-            value["printed_customer_loan_total"], _TOTAL_ROLE, lane_count
+        "printed_customer_loan_total": _input_total_row(
+            value["printed_customer_loan_total"], lane_count
         ),
         "structure_challenger_refs": _challenger_refs(value["structure_challenger_refs"]),
         "unit_context": _unit_context(value["unit_context"]),
@@ -514,12 +649,15 @@ def _resolved_cell(cell: Mapping[str, Any], dash_ref: Mapping[str, Any] | None) 
 def _resolved_row(
     row: Mapping[str, Any], dashes: Mapping[str, Mapping[str, Any]]
 ) -> dict[str, Any]:
-    return {
+    result = {
         "cells": [_resolved_cell(cell, dashes.get(cell["cell_id"])) for cell in row["cells"]],
         "label_evidence_ref": row["label_evidence_ref"],
         "label_surface": row["label_surface"],
         "role": row["role"],
     }
+    if "control_evidence" in row:
+        result["control_evidence"] = canonical_clone_v1(row["control_evidence"])
+    return result
 
 
 def _choices(cell: Mapping[str, Any]) -> list[tuple[int, list[str]]]:
@@ -675,12 +813,15 @@ def _raw_cell(value: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _raw_row(value: Mapping[str, Any]) -> dict[str, Any]:
-    return {
+    result = {
         "cells": [_raw_cell(cell) for cell in value["cells"]],
         "label_evidence_ref": value["label_evidence_ref"],
         "label_surface": value["label_surface"],
         "role": value["role"],
     }
+    if "control_evidence" in value:
+        result["control_evidence"] = canonical_clone_v1(value["control_evidence"])
+    return result
 
 
 def _source_from_result(value: Mapping[str, Any]) -> dict[str, Any]:
@@ -804,9 +945,12 @@ def _validate_result(value: Any) -> dict[str, Any]:
     for row, expected_role in zip(
         [*rows, value["printed_customer_loan_total"]], [*_ROLES, _TOTAL_ROLE], strict=True
     ):
+        expected_fields = {"cells", "label_evidence_ref", "label_surface", "role"}
+        if expected_role == _TOTAL_ROLE:
+            expected_fields.add("control_evidence")
         if (
             type(row) is not dict
-            or set(row) != {"cells", "label_evidence_ref", "label_surface", "role"}
+            or set(row) != expected_fields
             or row["role"] != expected_role
             or type(row["cells"]) is not list
             or len(row["cells"]) != len(source["period_axis"])

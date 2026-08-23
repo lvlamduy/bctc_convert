@@ -33,6 +33,7 @@ from bctc_ai.evaluation.accounting_table_axes_v1 import (
     accounting_unit_surface_v1,
     extract_period_observations_v1,
     is_accounting_value_surface_v1,
+    is_number_like_v1,
 )
 from bctc_ai.evaluation.accounting_variant_graph_engine_v1 import (
     match_vietnamese_anchor_alias_v1,
@@ -42,6 +43,8 @@ from bctc_ai.evaluation.adaptive_accounting_table_geometry_v1 import (
     AdaptiveAccountingTableGeometryV1Error,
     assign_value_row_lanes_v1,
     build_multilevel_header_graph_v1,
+    cluster_numeric_rows_v1,
+    infer_numeric_column_centers_v1,
     median_text_height_v1,
     propose_missing_value_lane_regions_v1,
 )
@@ -278,6 +281,9 @@ def _spec(value: Any) -> dict[str, Any]:
         "max_role_gap_lines",
         "max_wrap_lines",
         "minimum_cell_row_overlap_ppm",
+        "unlabeled_total_max_gap_lines",
+        "unlabeled_total_max_numeric_columns",
+        "unlabeled_total_min_numeric_columns",
     }:
         raise _error("scoped-table structural limits drifted")
     parsed_limits = {
@@ -293,11 +299,27 @@ def _spec(value: Any) -> dict[str, Any]:
         "minimum_cell_row_overlap_ppm": _positive_int(
             limits["minimum_cell_row_overlap_ppm"], "cell row overlap"
         ),
+        "unlabeled_total_max_gap_lines": _positive_int(
+            limits["unlabeled_total_max_gap_lines"], "unlabeled total row gap"
+        ),
+        "unlabeled_total_max_numeric_columns": _positive_int(
+            limits["unlabeled_total_max_numeric_columns"],
+            "unlabeled total maximum numeric columns",
+        ),
+        "unlabeled_total_min_numeric_columns": _positive_int(
+            limits["unlabeled_total_min_numeric_columns"],
+            "unlabeled total minimum numeric columns",
+        ),
     }
     if (
         parsed_limits["axis_tolerance_ppm"] > 1_000_000
         or parsed_limits["minimum_cell_row_overlap_ppm"] > 1_000_000
         or parsed_limits["max_wrap_lines"] > 6
+        or parsed_limits["unlabeled_total_min_numeric_columns"] < 2
+        or parsed_limits["unlabeled_total_max_numeric_columns"] > 32
+        or parsed_limits["unlabeled_total_min_numeric_columns"]
+        > parsed_limits["unlabeled_total_max_numeric_columns"]
+        or parsed_limits["unlabeled_total_max_gap_lines"] > parsed_limits["max_role_gap_lines"]
     ):
         raise _error("scoped-table structural limits exceed closed bounds")
     require_total = value["require_trailing_total_for_roles_as_columns"]
@@ -1450,6 +1472,22 @@ def _is_value(line: Mapping[str, Any]) -> bool:
     )
 
 
+def _is_printed_number(line: Mapping[str, Any]) -> bool:
+    """Require a visible number, excluding dash and blank cell proposals."""
+
+    return is_number_like_v1(line["vietocr_text"]) or (
+        type(line["source_text"]) is str and is_number_like_v1(line["source_text"])
+    )
+
+
+def _is_empty_visual_decoration(line: Mapping[str, Any]) -> bool:
+    """Return whether an OCR box carries no visible surface in either channel."""
+
+    return not line["vietocr_text"].strip() and (
+        line["source_text"] is None or not line["source_text"].strip()
+    )
+
+
 def _header_context(
     page: Mapping[str, Any], *, start: int, stop: int, centers: Sequence[float]
 ) -> dict[str, Any]:
@@ -1705,6 +1743,211 @@ def _trailing_total_row(
     )
 
 
+def _unlabeled_trailing_total_row(
+    page: Mapping[str, Any],
+    roles: Sequence[Mapping[str, Any]],
+    *,
+    role_cells: Sequence[Mapping[str, Any]],
+    bounds: Sequence[Sequence[int]],
+    scope_ordinal: int,
+    minimum_overlap_ppm: int,
+    maximum_gap_lines: int,
+    maximum_numeric_columns: int,
+    minimum_numeric_columns: int,
+    scale: float,
+    stop_before: int | None,
+) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
+    """Bind one printed numeric-only total row without inventing a label.
+
+    This is the region-local counterpart of the shared family row-axis
+    trailing-value-row geometry.  Candidate discovery reuses the adaptive
+    numeric row/column primitives, but visually reindexes the bounded lines so
+    provider ordinals never become ordering authority.  No candidate value is
+    parsed, summed, or selected by an accounting equation here.
+    """
+
+    lines_by_source = {line["source_line_index"]: line for line in page["lines"]}
+    role_label_boxes = []
+    role_label_source_indices: set[int] = set()
+    for role in roles:
+        label_lines = [
+            lines_by_source[item["source_line_index"]]
+            for item in role["line_evidence"]
+            if item["source_line_index"] in lines_by_source
+            and not _is_value(lines_by_source[item["source_line_index"]])
+        ]
+        if not label_lines:
+            return None, []
+        role_label_boxes.append(_union(label_lines))
+        role_label_source_indices.update(line["source_line_index"] for line in label_lines)
+    role_bottom = max(box[3] for box in role_label_boxes)
+    role_right = max(box[2] for box in role_label_boxes)
+    left_ratio = min(0.98, max(0.0, (role_right + scale * 0.25) / page["page_width"]))
+    maximum_ratio = 0.995
+    if left_ratio >= maximum_ratio:
+        return None, []
+    body_values = [
+        line
+        for line in page["lines"]
+        if _is_printed_number(line)
+        and line["bbox"][0] > page["page_width"] * left_ratio
+        and max(_overlap_ppm(line["bbox"], box) for box in role_label_boxes) >= minimum_overlap_ppm
+    ]
+    if len(body_values) < minimum_numeric_columns * 2:
+        return None, []
+    body_value_source_indices = {line["source_line_index"] for line in body_values}
+    body_centers = infer_numeric_column_centers_v1(
+        body_values,
+        is_numeric=_is_printed_number,
+        page_width=page["page_width"],
+        minimum_x_ratio=left_ratio,
+        maximum_x_ratio=maximum_ratio,
+        retain_singleton_columns=True,
+    )
+    if not minimum_numeric_columns <= len(body_centers) <= maximum_numeric_columns:
+        return None, []
+    body_tolerance = max(scale * 1.35, page["page_width"] * 0.012)
+    body_lane_counts = [0] * len(body_centers)
+    for line in body_values:
+        distances = [abs(_center_x(line) - center) for center in body_centers]
+        nearest = min(distances)
+        lanes = [index for index, distance in enumerate(distances) if distance == nearest]
+        if nearest <= body_tolerance and len(lanes) == 1:
+            body_lane_counts[lanes[0]] += 1
+    if any(count < 2 for count in body_lane_counts):
+        return None, []
+
+    start_y = role_bottom - scale * 0.2
+    stop_y = min(
+        float(page["page_height"]),
+        role_bottom + scale * maximum_gap_lines,
+        float(stop_before) if stop_before is not None else float(page["page_height"]),
+    )
+    bounded = [
+        line
+        for line in _visual(page["lines"])
+        if line["bbox"][1] >= start_y
+        and line["bbox"][3] <= stop_y
+        and line["bbox"][0] > page["page_width"] * left_ratio
+    ]
+    if not bounded:
+        return None, []
+    # The adaptive row clusterer consumes a source-index interval.  Feed it a
+    # visual-only temporary axis and restore every immutable source locator in
+    # the emitted evidence below.
+    visual_lines = []
+    original_by_visual: dict[int, Mapping[str, Any]] = {}
+    for visual_ordinal, line in enumerate(bounded):
+        original_by_visual[visual_ordinal] = line
+        visual_lines.append({**line, "source_line_index": visual_ordinal})
+    clusters = cluster_numeric_rows_v1(
+        visual_lines,
+        is_numeric=_is_printed_number,
+        start_index=-1,
+        stop_index=len(visual_lines),
+        page_width=page["page_width"],
+        minimum_x_ratio=left_ratio,
+        maximum_x_ratio=maximum_ratio,
+    )
+    tolerance = body_tolerance
+    complete: list[tuple[list[Mapping[str, Any]], dict[int, Mapping[str, Any]]]] = []
+    for raw_cluster in clusters:
+        cluster = [original_by_visual[item["source_line_index"]] for item in raw_cluster]
+        if not minimum_numeric_columns <= len(cluster) <= maximum_numeric_columns:
+            continue
+        by_lane: dict[int, Mapping[str, Any]] = {}
+        for line in cluster:
+            line_center = _center_x(line)
+            distances = [abs(line_center - center) for center in body_centers]
+            nearest = min(distances)
+            nearest_lanes = [
+                index for index, distance in enumerate(distances) if distance == nearest
+            ]
+            if nearest > tolerance or len(nearest_lanes) != 1 or nearest_lanes[0] in by_lane:
+                by_lane = {}
+                break
+            by_lane[nearest_lanes[0]] = line
+        if set(by_lane) != set(range(len(body_centers))):
+            continue
+        ordered_cluster = _visual(cluster)
+        row_bbox = _union(ordered_cluster)
+        candidate_source_indices = {line["source_line_index"] for line in ordered_cluster}
+        proven_source_indices = (
+            role_label_source_indices | body_value_source_indices | candidate_source_indices
+        )
+        if any(
+            line["source_line_index"] not in proven_source_indices
+            and line["bbox"][3] > role_bottom
+            and line["bbox"][1] < row_bbox[3]
+            and not _is_empty_visual_decoration(line)
+            for line in page["lines"]
+        ):
+            # A numeric-only total must be the first visible row band after the
+            # required role axis.  Crossing an unclassified header would borrow
+            # a complete row from an unrelated following table.
+            continue
+        if any(
+            not _is_value(line)
+            and line not in ordered_cluster
+            and _overlap_ppm(line["bbox"], row_bbox) >= minimum_overlap_ppm
+            for line in page["lines"]
+        ):
+            continue
+        complete.append((ordered_cluster, by_lane))
+    if len(complete) != 1:
+        return None, []
+
+    # The target is the axis persisted on every required role cell, never a
+    # broad semantic header bbox that could span several accounting columns.
+    role_axis_centers_x2 = {item["value_axis_center_x2"] for item in role_cells}
+    if len(role_cells) != len(roles) or len(role_axis_centers_x2) != 1:
+        return None, []
+    target_axis_center_x2 = next(iter(role_axis_centers_x2))
+    target_center = target_axis_center_x2 / 2
+    target_distances = [abs(target_center - center) for center in body_centers]
+    target_distance = min(target_distances)
+    target_lanes = [
+        index for index, distance in enumerate(target_distances) if distance == target_distance
+    ]
+    if target_distance > tolerance or len(target_lanes) != 1:
+        return None, []
+    target_lane = target_lanes[0]
+    cluster, by_lane = complete[0]
+    target_line = by_lane[target_lane]
+    row_bbox = _union(cluster)
+    cell = _cell_record(
+        assigned={"line": target_line},
+        expected_bounds=bounds[scope_ordinal],
+        expected_center=target_center,
+        page_sequence=page["page_sequence"],
+        period_lane_index=None,
+        role="TRAILING_TOTAL",
+        source_role_ordinal=0,
+        source_value_column_ordinal=scope_ordinal,
+        row_bbox=row_bbox,
+        minimum_overlap_ppm=minimum_overlap_ppm,
+        missing_proposal=None,
+    )
+    resolution_material = {
+        "body_axis_centers_x2": [int(round(center * 2)) for center in body_centers],
+        "mode": "UNLABELED_COMPLETE_NUMERIC_TOTAL_ROW",
+        "page_sequence": page["page_sequence"],
+        "row_bbox": row_bbox,
+        "row_evidence": [_line_evidence(line) for line in cluster],
+        "target_body_axis_ordinal": target_lane,
+        "target_role_cell_axis_center_x2": target_axis_center_x2,
+        "target_role_cell_source_ordinals": sorted(
+            item["source_role_ordinal"] for item in role_cells
+        ),
+    }
+    resolution = {
+        **resolution_material,
+        "resolution_id": "astgv1:trailing-total-resolution:"
+        + canonical_json_sha256_v1(resolution_material),
+    }
+    return resolution, [cell]
+
+
 def _period_resolution_for_lane(
     context: Mapping[str, Any],
     *,
@@ -1880,6 +2123,7 @@ def _segment(
     minimum_overlap = spec["limits"]["minimum_cell_row_overlap_ppm"]
     trailing_total = None
     trailing_total_cells: list[dict[str, Any]] = []
+    trailing_total_resolution = None
     if layout == "ROLES_AS_ROWS":
         all_scopes = _scope_candidates(
             semantic["scopes"], role_group, owner, layout, lower_bound=lower_bound
@@ -1887,6 +2131,9 @@ def _segment(
         centers = sorted({_scope_center(item) for item in all_scopes})
         scope_center = _scope_center(scope)
         scope_ordinal = centers.index(scope_center)
+        target_scope_centers = {
+            _scope_center(item) for item in all_scopes if item["scope_disposition"] == "TARGET"
+        }
         bounds = _axis_bounds(centers, left=0.0, right=float(page["page_width"]))
         cells = _row_cells(
             page,
@@ -1900,49 +2147,57 @@ def _segment(
         row_stop_candidates = [
             reset["bbox"][1] for reset in semantic["resets"] if reset["bbox"][1] >= role_bottom
         ]
-        if upper_bound is not None:
-            row_stop_candidates.extend(
-                scope_match["bbox"][1]
-                for scope_match in semantic["scopes"]
-                if role_bottom < scope_match["bbox"][1] < upper_bound
-            )
-            # A following repeated period block can print its total-column
-            # header a few pixels before its population label because OCR
-            # boxes jitter vertically.  Fence the current block at the first
-            # visible period caption in the bounded inter-block header band,
-            # rather than allowing that next-block header to masquerade as a
-            # trailing row total.  Captions above the current role group are
-            # intentionally outside this band and therefore cannot suppress
-            # the current block's genuine trailing total.
-            next_header_lines = [
-                line
-                for line in page["lines"]
-                if line["bbox"][1] >= role_bottom
-                and line["bbox"][3] <= upper_bound
-                and not _is_value(line)
+        header_search_stop = min(
+            upper_bound if upper_bound is not None else page["page_height"],
+            int(round(role_bottom + scale * spec["limits"]["max_role_gap_lines"])),
+        )
+        row_stop_candidates.extend(
+            match["bbox"][1]
+            for category in (semantic["scopes"], semantic["owners"])
+            for match in category
+            if role_bottom < match["bbox"][1] < header_search_stop
+        )
+        # A following repeated period block can print its total-column header
+        # a few pixels before its population label because OCR boxes jitter
+        # vertically.  Period, unit, owner, scope and reset evidence all close
+        # the current row block before either labeled or unlabeled total-row
+        # discovery.  Captions above the current roles remain outside the band.
+        next_header_lines = [
+            line
+            for line in page["lines"]
+            if line["bbox"][1] >= role_bottom
+            and line["bbox"][3] <= header_search_stop
+            and not _is_value(line)
+        ]
+        next_periods = extract_period_observations_v1(next_header_lines)
+        line_tops = {line["source_line_index"]: line["bbox"][1] for line in next_header_lines}
+        period_caption_tops: dict[str, int] = {}
+        for observation in next_periods:
+            evidence_tops = [
+                line_tops[index]
+                for index in observation["evidence_source_line_indices"]
+                if index in line_tops
             ]
-            next_periods = extract_period_observations_v1(next_header_lines)
-            line_tops = {line["source_line_index"]: line["bbox"][1] for line in next_header_lines}
-            period_caption_tops: dict[str, int] = {}
-            for observation in next_periods:
-                evidence_tops = [
-                    line_tops[index]
-                    for index in observation["evidence_source_line_indices"]
-                    if index in line_tops
-                ]
-                if evidence_tops:
-                    period_caption_tops[observation["period"]] = min(
-                        min(evidence_tops),
-                        period_caption_tops.get(observation["period"], upper_bound),
-                    )
-            row_stop_candidates.extend(period_caption_tops.values())
+            if evidence_tops:
+                period_caption_tops[observation["period"]] = min(
+                    min(evidence_tops),
+                    period_caption_tops.get(observation["period"], header_search_stop),
+                )
+        row_stop_candidates.extend(period_caption_tops.values())
+        row_stop_candidates.extend(
+            line["bbox"][1]
+            for line in next_header_lines
+            if accounting_unit_surface_v1(line["vietocr_text"]) is not None
+        )
+        if upper_bound is not None:
             row_stop_candidates.append(upper_bound)
+        row_stop = min(row_stop_candidates, default=None)
         trailing_total = _trailing_total_row(
             semantic,
             role_group,
             maximum_gap_lines=spec["limits"]["max_role_gap_lines"],
             scale=scale,
-            stop_before=min(row_stop_candidates, default=None),
+            stop_before=row_stop,
         )
         if trailing_total is not None:
             trailing_total_cells = _row_cells(
@@ -1952,6 +2207,20 @@ def _segment(
                 roles=[trailing_total],
                 scope_ordinal=scope_ordinal,
                 minimum_overlap_ppm=minimum_overlap,
+            )
+        elif scope["scope_disposition"] == "TARGET" and target_scope_centers == {scope_center}:
+            trailing_total_resolution, trailing_total_cells = _unlabeled_trailing_total_row(
+                page,
+                role_group,
+                role_cells=cells,
+                bounds=bounds,
+                scope_ordinal=scope_ordinal,
+                minimum_overlap_ppm=minimum_overlap,
+                maximum_gap_lines=spec["limits"]["unlabeled_total_max_gap_lines"],
+                maximum_numeric_columns=spec["limits"]["unlabeled_total_max_numeric_columns"],
+                minimum_numeric_columns=spec["limits"]["unlabeled_total_min_numeric_columns"],
+                scale=scale,
+                stop_before=row_stop,
             )
         header_stop = min(item["bbox"][1] for item in role_group)
     else:
@@ -2042,6 +2311,7 @@ def _segment(
         ),
         "trailing_total_cells": trailing_total_cells,
         "trailing_total_match": canonical_clone_v1(trailing_total),
+        "trailing_total_resolution": canonical_clone_v1(trailing_total_resolution),
         "unresolved_reasons": sorted(unresolved),
     }
     return {**material, "segment_id": "astgv1:segment:" + canonical_json_sha256_v1(material)}
