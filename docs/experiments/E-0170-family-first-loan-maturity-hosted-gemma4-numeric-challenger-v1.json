@@ -1,0 +1,255 @@
+{
+  "format_version": "FAMILY_FIRST_LOAN_MATURITY_HOSTED_GEMMA4_NUMERIC_CHALLENGER_EVALUATION_V1",
+  "state": "COMPLETE",
+  "claim_boundary": "TWO_EXACT_STATELESS_HOSTED_GEMMA4_FULL_PAGE_NUMERIC_CHALLENGES_BOUND_TO_ONE_AUTHENTICATED_PPOCRV6_VIETOCR_CONFLICT_CELL_AND_ONE_TOTAL_CONTROL_CELL_PLUS_EXACT_ACCOUNTING_NO_SOLE_NUMERIC_GEOMETRY_SCHEMA_MAPPING_CANONICALIZATION_OR_EXPORT_AUTHORITY",
+  "evaluation_id": "maturitygemma4v1:evaluation:4acfbe003cc28e83ee93832692fc02fabf2d1ecbd96dc38e3ba4027f99ca30e6",
+  "prompt": {
+    "text": "Chuyển các khoản mục thuyết minh và giá trị tương ứng trong ảnh thành JSON nhiều lớp, giữ riêng từng cột của bảng, giữ nguyên chính tả các tên khoản mục, không thay đổi chính tả. Trường hợp ảnh không có khoản mục nào thuyết minh, chỉ là phần diễn giải thì trả lời đúng chuỗi JSON {\"ket_qua\":\"không có khoản mục thuyết minh nào\"}. Không phản hồi gì thêm ngoài JSON.",
+    "sha256": "58c94dafc703690240920ab791292e17760b42182aecda1254e8be52b8426118"
+  },
+  "model": {
+    "name": "gemma-4-26b-a4b-it",
+    "thinking_level": "MINIMAL",
+    "temperature": 0,
+    "max_output_tokens": 32768
+  },
+  "document": {
+    "document_ordinal": 17,
+    "document_id": "ffsiv1:document:188b6baebd2faef9a66de1c2a810f0c32ee5adfbf6ac8fb76eeaccf78b322ef7",
+    "source_pdf_ref": {
+      "path": "vietstock_bctc/MBB/2025/BCTC Hợp nhất quý 1 năm 2025.pdf",
+      "sha256": "09421ed8d0d7a6dd3eece828b64be46d053aff70b4870bb27afc405b0e27cd33",
+      "size_bytes": 4230289
+    },
+    "authenticated_store_packet_binding": {
+      "packet_id": "ffdesv1:document:a0d8c25a01cc37e9250eebe0d2dea4341377a2790e7a6e3714f2ca6f71b13dbf",
+      "document_evidence_root_sha256": "e11be7fa93e498c2e6541c2eddd7d48ff84470d0985978fb24052f4e9490548b"
+    },
+    "physical_page": 30,
+    "full_page_render_ref": {
+      "path": "output/calibration/family-first-loan-maturity-hosted-gemma4-v1/document-0017/page-0030-300dpi.png",
+      "sha256": "717df29faee49a42870b2d22e54fad5f82c3dec0b821fd18c98c221efaba023f",
+      "size_bytes": 967001,
+      "pixel_width": 2481,
+      "pixel_height": 3508,
+      "renderer_target_dpi": 300
+    }
+  },
+  "target_observation": {
+    "sample_id": "sample-000077378",
+    "source_line_index": 95,
+    "source_bbox_cached_200dpi": [1284, 1846, 1435, 1889],
+    "crop_ref": {
+      "path": "output/calibration/family-first-semantic-label-cache-v1/documents/document-0017/page-0030/crops/line-0095.png",
+      "sha256": "16c48d4c16c0889a2a2be71901ab7a5de666a869b2562c03d310f00a30f0ff68",
+      "size_bytes": 5334
+    },
+    "role": "MEDIUM_TERM",
+    "lane_index": 1,
+    "lane_type": "MONEY",
+    "period_role": "COMPARATIVE",
+    "ppocrv6_original_surface": "8.454.207",
+    "ppocrv6_original_score": 0.9867074489593506,
+    "vietocr_transformer_surface": "88.454.207",
+    "hosted_gemma4_consensus_surface": "88.454.207",
+    "hosted_json_path": "/1/5. Cho vay khách hàng/Phân tích dư nợ theo thời gian:/rows/0/Dư nợ cho vay/Nợ trung hạn/1",
+    "selected_surface": "88.454.207",
+    "selected_value": 88454207
+  },
+  "total_control_observation": {
+    "sample_id": "sample-000077384",
+    "source_line_index": 101,
+    "source_bbox_cached_200dpi": [1272, 1929, 1435, 1971],
+    "crop_ref": {
+      "path": "output/calibration/family-first-semantic-label-cache-v1/documents/document-0017/page-0030/crops/line-0101.png",
+      "sha256": "32b3a92fae902afb6ef8cfaba6b19cfc7ed2717c78b1a1853710c3cf1c82f1d3",
+      "size_bytes": 3733
+    },
+    "role": "CORE_TOTAL",
+    "lane_index": 1,
+    "lane_type": "MONEY",
+    "period_role": "COMPARATIVE",
+    "ppocrv6_original_surface": "766.364.117",
+    "ppocrv6_original_score": 0.9965518712997437,
+    "vietocr_transformer_surface": "768.364.117",
+    "hosted_gemma4_consensus_surface": "766.364.117",
+    "hosted_json_paths": [
+      "/1/5. Cho vay khách hàng/Phân tích dư nợ theo thời gian:/rows/1/Tổng dư nợ cho vay/1",
+      "/1/5. Cho vay khách hàng/Dư nợ cho vay/rows/5/Tổng dư nợ cho vay/1"
+    ],
+    "selected_surface": "766.364.117",
+    "selected_value": 766364117
+  },
+  "requests": [
+    {
+      "request_ordinal": 1,
+      "credential_slot": 1,
+      "fresh_context": true,
+      "http_status": 200,
+      "response_id": "O9yKasSDMJiunsEP_pyowQY",
+      "model_version": "gemma-4-26b-a4b-it",
+      "finish_reason": "STOP",
+      "service_tier": "standard",
+      "prompt_token_count": 346,
+      "candidates_token_count": 1639,
+      "total_token_count": 1985,
+      "prompt_token_details": [
+        {"modality": "TEXT", "token_count": 88},
+        {"modality": "IMAGE", "token_count": 258}
+      ],
+      "response_content_ref": {
+        "sha256": "19f8e6754d11275bc8dd995e20a4f3f81a06fa86b3e62e72dc04e51927efeba7",
+        "size_bytes": 4933
+      },
+      "raw_response_ref": {
+        "path": "output/calibration/family-first-loan-maturity-hosted-gemma4-v1/document-0017/hosted-slot-1-raw-response.json",
+        "sha256": "61c44db52cbd261136a90d1ed27b8f28f3ea7ec15708f558e8b8bbef31b51eb0",
+        "size_bytes": 6051
+      }
+    },
+    {
+      "request_ordinal": 2,
+      "credential_slot": 2,
+      "fresh_context": true,
+      "http_status": 200,
+      "response_id": "O9yKavmfLfWpvdIPrOT8yAo",
+      "model_version": "gemma-4-26b-a4b-it",
+      "finish_reason": "STOP",
+      "service_tier": "standard",
+      "prompt_token_count": 346,
+      "candidates_token_count": 1639,
+      "total_token_count": 1985,
+      "prompt_token_details": [
+        {"modality": "TEXT", "token_count": 88},
+        {"modality": "IMAGE", "token_count": 258}
+      ],
+      "response_content_ref": {
+        "sha256": "19f8e6754d11275bc8dd995e20a4f3f81a06fa86b3e62e72dc04e51927efeba7",
+        "size_bytes": 4933
+      },
+      "raw_response_ref": {
+        "path": "output/calibration/family-first-loan-maturity-hosted-gemma4-v1/document-0017/hosted-slot-2-raw-response.json",
+        "sha256": "350cc4de55959fd3991241f235d3d5c3d0aa45e31e7ea721bd67c42a07f7c449",
+        "size_bytes": 6051
+      }
+    }
+  ],
+  "accounting_effect": {
+    "printed_control_cells": [
+      {
+        "role": "CORE_TOTAL",
+        "lane_index": 0,
+        "lane_type": "MONEY",
+        "period_role": "CURRENT",
+        "sample_id": "sample-000077383",
+        "source_line_index": 100,
+        "source_bbox_cached_200dpi": [1017, 1939, 1179, 1974],
+        "crop_ref": {
+          "path": "output/calibration/family-first-semantic-label-cache-v1/documents/document-0017/page-0030/crops/line-0100.png",
+          "sha256": "070c75041d69dd0d37e5523f8b2f3f6d1799a87d5b95d7ae4ffc22960fa278bd",
+          "size_bytes": 4063
+        },
+        "surface": "786.094.909",
+        "ppocrv6_original_score": 0.9999650716781616,
+        "vietocr_transformer_surface": "786.094.909",
+        "value": 786094909
+      },
+      {
+        "role": "CORE_TOTAL",
+        "lane_index": 1,
+        "lane_type": "MONEY",
+        "period_role": "COMPARATIVE",
+        "sample_id": "sample-000077384",
+        "source_line_index": 101,
+        "source_bbox_cached_200dpi": [1272, 1929, 1435, 1971],
+        "crop_ref": {
+          "path": "output/calibration/family-first-semantic-label-cache-v1/documents/document-0017/page-0030/crops/line-0101.png",
+          "sha256": "32b3a92fae902afb6ef8cfaba6b19cfc7ed2717c78b1a1853710c3cf1c82f1d3",
+          "size_bytes": 3733
+        },
+        "surface": "766.364.117",
+        "ppocrv6_original_score": 0.9965518712997437,
+        "vietocr_transformer_surface": "768.364.117",
+        "value": 766364117
+      },
+      {
+        "role": "GRAND_TOTAL",
+        "lane_index": 0,
+        "lane_type": "MONEY",
+        "period_role": "CURRENT",
+        "sample_id": "sample-000077389",
+        "source_line_index": 106,
+        "source_bbox_cached_200dpi": [1017, 2044, 1184, 2078],
+        "crop_ref": {
+          "path": "output/calibration/family-first-semantic-label-cache-v1/documents/document-0017/page-0030/crops/line-0106.png",
+          "sha256": "26cf31e5e8ba46568dbd998eda7d5efef01b8de389605da640b0e8f9a2bec101",
+          "size_bytes": 2821
+        },
+        "surface": "797.536.715",
+        "ppocrv6_original_score": 0.9999687075614929,
+        "vietocr_transformer_surface": "797.536.715",
+        "value": 797536715
+      },
+      {
+        "role": "GRAND_TOTAL",
+        "lane_index": 1,
+        "lane_type": "MONEY",
+        "period_role": "COMPARATIVE",
+        "sample_id": "sample-000077390",
+        "source_line_index": 107,
+        "source_bbox_cached_200dpi": [1275, 2039, 1437, 2073],
+        "crop_ref": {
+          "path": "output/calibration/family-first-semantic-label-cache-v1/documents/document-0017/page-0030/crops/line-0107.png",
+          "sha256": "3a06c73ebcdcdfcfd889352ed4b0ee3150e66b02ebc158c458ffe6e34447603e",
+          "size_bytes": 2912
+        },
+        "surface": "776.657.846",
+        "ppocrv6_original_score": 0.9999223351478577,
+        "vietocr_transformer_surface": "776.657.846",
+        "value": 776657846
+      }
+    ],
+    "checks": [
+      {
+        "name": "COMPARATIVE_THREE_BUCKET_CORE_EQUALS_PRINTED_CORE_TOTAL",
+        "component_values": [413956564, 88454207, 263953346],
+        "computed_value": 766364117,
+        "printed_value": 766364117,
+        "status": "CORROBORATED_EXACT"
+      },
+      {
+        "name": "COMPARATIVE_CORE_PLUS_MARGIN_EQUALS_PRINTED_GRAND_TOTAL",
+        "component_values": [766364117, 10293729],
+        "computed_value": 776657846,
+        "printed_value": 776657846,
+        "status": "CORROBORATED_EXACT"
+      }
+    ]
+  },
+  "decision": {
+    "fresh_request_count": 2,
+    "hosted_requests_are_stateless": true,
+    "both_hosted_responses_agree_exactly": true,
+    "gemma4_may_act_as_sole_numeric_reader": false,
+    "accounting_is_final_corroboration_and_veto": true,
+    "ppocrv6_and_vietocr_raw_surfaces_overwritten": false
+  },
+  "metrics": {
+    "challenged_page_count": 1,
+    "stateless_request_count": 2,
+    "selected_conflict_cell_count": 1,
+    "primary_total_control_cell_count": 1
+  },
+  "authority": {
+    "numeric_authority": false,
+    "geometry_authority": false,
+    "schema_authority": false,
+    "mapping_authority": false,
+    "accounting_authority": false,
+    "canonicalization_authority": false,
+    "export_authority": false,
+    "persisted_raw_api_response_bytes_authenticated": true,
+    "strict_raw_api_json_metadata_and_selected_paths_replayed": true,
+    "exact_full_page_and_crop_binding_required": true
+  }
+}

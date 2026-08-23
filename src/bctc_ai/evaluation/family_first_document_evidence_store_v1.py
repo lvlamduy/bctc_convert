@@ -44,9 +44,11 @@ __all__ = [
     "build_authenticated_family_first_document_evidence_manifest_v1",
     "project_authenticated_family_first_document_evidence_store_v1",
     "read_authenticated_family_first_document_evidence_snapshot_v1",
+    "read_authenticated_family_first_document_selected_pages_v1",
     "read_authenticated_family_first_document_packet_v1",
     "read_authenticated_family_first_document_page_renders_v1",
     "read_authenticated_family_first_topology_scans_v1",
+    "recompute_authenticated_family_first_topology_scans_v1",
     "validate_family_first_document_evidence_manifest_shape_v1",
 ]
 
@@ -852,6 +854,41 @@ def read_authenticated_family_first_topology_scans_v1(
     return tuple(canonical_clone_v1(scan) for scan in scans)
 
 
+def recompute_authenticated_family_first_topology_scans_v1(
+    capability: AuthenticatedFamilyFirstDocumentEvidenceStoreV1,
+    family_spec: Any,
+    *,
+    jobs: int = 12,
+) -> tuple[dict[str, Any], ...]:
+    """Recompute every topology scan directly from authenticated SQLite rows.
+
+    The separate topology-result database is intentionally bypassed here.  It
+    is a disposable acceleration cache whose rows can be self-rehashed, so it
+    cannot establish a formal whole-document uniqueness claim.  The OCR SQLite
+    bytes have already been authenticated by ``capability``; this operation
+    performs no OCR and scans those immutable source rows directly.
+    """
+
+    state = _live_store(capability)
+    denominator = state.manifest["metrics"]["document_count"]
+    if type(jobs) is not int or jobs <= 0:
+        raise _error("authenticated direct topology job count drifted")
+    try:
+        scans = cache_v1.scan_cached_accounting_family_topology_v1(
+            state.database_path,
+            family_spec,
+            document_ordinals=tuple(range(1, denominator + 1)),
+            jobs=jobs,
+        )
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise _error("cannot recompute topology from authenticated SQLite evidence") from exc
+    if len(scans) != denominator:
+        raise _error("authenticated direct topology denominator drifted")
+    if _live_store(capability) is not state:
+        raise _error("document evidence store changed during direct topology scan")
+    return tuple(canonical_clone_v1(scan) for scan in scans)
+
+
 def read_authenticated_family_first_document_evidence_snapshot_v1(
     capability: AuthenticatedFamilyFirstDocumentEvidenceStoreV1,
     *,
@@ -957,3 +994,68 @@ def read_authenticated_family_first_document_evidence_snapshot_v1(
             "snapshot_id": "ffdesv1:snapshot:" + canonical_json_sha256_v1(material),
         }
     )
+
+
+def read_authenticated_family_first_document_selected_pages_v1(
+    capability: AuthenticatedFamilyFirstDocumentEvidenceStoreV1,
+    *,
+    document_ordinal: int,
+    selected_pages: tuple[int, ...],
+) -> dict[str, Any]:
+    """Hydrate only shortlisted page rows from the authenticated SQLite store.
+
+    Store authentication has already bound every byte of the immutable SQLite
+    database to the tracked manifest.  This accessor therefore keeps the
+    authenticated document packet root as the enclosing identity while
+    pushing the selected-page predicate into SQLite; it does not re-read or
+    canonicalize unrelated pages in the same filing.
+    """
+
+    state = _live_store(capability)
+    if (
+        type(document_ordinal) is not int
+        or not 1 <= document_ordinal <= state.manifest["metrics"]["document_count"]
+        or type(selected_pages) is not tuple
+        or not selected_pages
+        or any(type(page) is not int or page <= 0 for page in selected_pages)
+        or tuple(sorted(set(selected_pages))) != selected_pages
+    ):
+        raise _error("document evidence selected-page identity drifted")
+    packet = state.manifest["documents"][document_ordinal - 1]
+    if any(page > packet["page_count"] for page in selected_pages):
+        raise _error("document evidence selected page lies outside its packet")
+    try:
+        selected = cache_v1.read_cached_selected_joined_pages_v1(
+            state.database_path,
+            document_ordinal,
+            selected_pages=selected_pages,
+        )
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise _error("cannot hydrate authenticated selected-page evidence") from exc
+    selected_material = canonical_clone_v1(selected)
+    selected_identity = selected_material.pop("selection_id", None)
+    if (
+        selected_identity != "ffoqcv1:selection:" + canonical_json_sha256_v1(selected_material)
+        or selected.get("document_id") != packet["document_id"]
+        or selected.get("document_ordinal") != document_ordinal
+        or [page.get("page_sequence") for page in selected.get("joined_pages", [])]
+        != list(selected_pages)
+        or [page.get("physical_page") for page in selected.get("selected_page_dimensions", [])]
+        != list(selected_pages)
+    ):
+        raise _error("selected-page evidence differs from its authenticated document packet")
+    material = {
+        "document_packet": canonical_clone_v1(packet),
+        "joined_pages": canonical_clone_v1(selected["joined_pages"]),
+        "manifest_id": state.manifest["manifest_id"],
+        "query_selection_id": selected_identity,
+        "selected_page_dimensions": canonical_clone_v1(selected["selected_page_dimensions"]),
+        "state": "AUTHENTICATED_IMMUTABLE_SQLITE_SELECTED_PAGE_EVIDENCE",
+    }
+    result = {
+        **material,
+        "snapshot_id": "ffdesv1:selected:" + canonical_json_sha256_v1(material),
+    }
+    if _live_store(capability) is not state:
+        raise _error("document evidence store changed during selected-page hydration")
+    return canonical_clone_v1(result)

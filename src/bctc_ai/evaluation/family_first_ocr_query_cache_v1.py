@@ -47,6 +47,7 @@ __all__ = [
     "read_cached_family_trials_v1",
     "read_cached_family_trials_from_incremental_cache_v1",
     "read_cached_joined_pages_v1",
+    "read_cached_selected_joined_pages_v1",
     "read_cached_topology_results_v1",
     "refresh_cached_topology_results_v1",
     "refresh_family_first_trial_query_cache_v1",
@@ -1450,6 +1451,118 @@ def read_cached_joined_pages_v1(
         }
         for page, lines in sorted(pages.items())
     ]
+
+
+def read_cached_selected_joined_pages_v1(
+    database_path: Path,
+    document_ordinal: int,
+    *,
+    selected_pages: Iterable[int],
+) -> dict[str, Any]:
+    """Read only selected page rows from the disposable OCR query cache.
+
+    Unlike :func:`read_cached_joined_pages_v1`, this accessor pushes the page
+    predicate into SQLite.  It is deliberately non-authoritative on its own;
+    the authenticated document-store wrapper binds the result to an already
+    authenticated immutable database, manifest, and document packet root.
+    """
+
+    selected = tuple(selected_pages)
+    if (
+        type(document_ordinal) is not int
+        or document_ordinal <= 0
+        or not selected
+        or any(type(page) is not int or page <= 0 for page in selected)
+        or tuple(sorted(set(selected))) != selected
+    ):
+        raise _error("cached selected-page query identity drifted")
+    placeholders = ",".join("?" for _page in selected)
+    with _connect(database_path) as connection:
+        document = connection.execute(
+            "SELECT document_id, page_count FROM documents WHERE document_ordinal = ?",
+            (document_ordinal,),
+        ).fetchone()
+        if document is None or any(page > document["page_count"] for page in selected):
+            raise _error("cached selected-page query lies outside the document axis")
+        page_rows = connection.execute(
+            "SELECT physical_page, pixel_width, pixel_height, render_sha256, "
+            "render_size_bytes FROM pages WHERE document_ordinal = ? "
+            f"AND physical_page IN ({placeholders}) ORDER BY physical_page",
+            (document_ordinal, *selected),
+        ).fetchall()
+        line_rows = connection.execute(
+            "SELECT physical_page, line_ordinal, sample_id, "
+            "bbox_left, bbox_top, bbox_right, bbox_bottom, "
+            "crop_path, crop_sha256, crop_size_bytes, vietocr_text, "
+            "numeric_text, numeric_score FROM lines WHERE document_ordinal = ? "
+            f"AND physical_page IN ({placeholders}) "
+            "ORDER BY physical_page, line_ordinal",
+            (document_ordinal, *selected),
+        ).fetchall()
+    if tuple(row["physical_page"] for row in page_rows) != selected:
+        raise _error("cached selected-page query is absent from the page axis")
+    lines_by_page: dict[int, list[dict[str, Any]]] = {page: [] for page in selected}
+    expected_line_ordinal = {page: 0 for page in selected}
+    for row in line_rows:
+        page = row["physical_page"]
+        if page not in lines_by_page or row["line_ordinal"] != expected_line_ordinal[page]:
+            raise _error("cached selected-page line order is not exact")
+        expected_line_ordinal[page] += 1
+        lines_by_page[page].append(
+            {
+                "bbox": [
+                    row["bbox_left"],
+                    row["bbox_top"],
+                    row["bbox_right"],
+                    row["bbox_bottom"],
+                ],
+                "crop_ref": {
+                    "path": row["crop_path"],
+                    "sha256": row["crop_sha256"],
+                    "size_bytes": row["crop_size_bytes"],
+                },
+                "line_ordinal": row["line_ordinal"],
+                "numeric_recognition": {
+                    "raw_prediction": row["numeric_text"],
+                    "reader_score": row["numeric_score"],
+                },
+                "sample_id": row["sample_id"],
+                "vietocr_text": row["vietocr_text"],
+            }
+        )
+    if any(not lines_by_page[page] for page in selected):
+        raise _error("cached selected page has no OCR line evidence")
+    dimensions = [
+        {
+            "physical_page": row["physical_page"],
+            "pixel_height": row["pixel_height"],
+            "pixel_width": row["pixel_width"],
+            "render_sha256": row["render_sha256"],
+            "render_size_bytes": row["render_size_bytes"],
+        }
+        for row in page_rows
+    ]
+    joined_pages = [
+        {
+            "lines": lines_by_page[page],
+            "page_sequence": page,
+            "page_width": next(
+                item["pixel_width"] for item in dimensions if item["physical_page"] == page
+            ),
+        }
+        for page in selected
+    ]
+    material = {
+        "document_id": document["document_id"],
+        "document_ordinal": document_ordinal,
+        "joined_pages": joined_pages,
+        "selected_page_dimensions": dimensions,
+    }
+    return {
+        **material,
+        "selection_id": "ffoqcv1:selection:"
+        + hashlib.sha256(canonical_json_bytes_v1(material)).hexdigest(),
+    }
 
 
 def family_trial_reason_counts_v1(database_path: Path, family_id: str) -> list[dict[str, Any]]:
