@@ -79,3 +79,48 @@ The current result cache already reuses all unchanged document/spec/engine keys.
 The next formal-boundary change is the authenticated per-document packet
 manifest and ordered result-root aggregate; it must replace, not merely bypass,
 the old whole-corpus downstream canonicalization gate.
+
+## New-only formal DAG planner V1
+
+`bctc_ai.evaluation.incremental_formal_dag_v1` now implements the pure planning
+boundary for
+`source -> normalized spans -> retrieval -> graph -> numeric/pixel -> mapping -> seal`.
+Gemma is a conditional side branch after the deterministic graph, so changing
+its exact model or short structure-prompt ref invalidates Gemma and the cheap
+mapping/seal descendants, but not source, normalization, retrieval, graph, or
+numeric/pixel evidence.
+
+The three execution modes have deliberately different authority:
+
+| Mode | Denominator | Release seal |
+|---|---|---|
+| `DEV_FAST` | Explicit document subset | Never |
+| `CORPUS_INCREMENTAL` | Every current document | Never |
+| `RELEASE_SEAL` | Every current document | Required |
+
+The planner is read-only: it neither authenticates bytes nor writes a cache.
+The runner must project per-document packet, source-PDF and page-set refs from
+the live authenticated store, authenticate any loaded output bytes, and pass
+exact code/spec/model/prompt content refs. It then executes only `plan.runnable`,
+adds immutable receipts for those outputs, and replans. An internally coherent
+receipt is still a miss when any caller-current ref differs. A zero-hit
+retrieval receipt must prove full-document fallback, and a `NOT_OBSERVED` graph
+receipt must bind complete-document coverage against the exact current page-set
+root and page count.
+
+Synthetic bookkeeping benchmark on the 2026-08-23 development container (50
+samples, 140 documents, 980 cached per-document receipts): a hot
+`CORPUS_INCREMENTAL` plan had median 75.880 ms and p95 81.350 ms, with 840 active
+hits and no runnable work. Changing one document page root had median 76.038 ms
+and p95 80.990 ms; 139 documents retained all six active hits and the only
+runnable node was that document's `SOURCE` stage. These figures measure planner
+overhead only, not OCR, graph, model, or artifact I/O.
+
+Integration order is therefore: wire existing authenticated document-store
+projections into `CurrentDocumentRefsV1`; pin each stage's actual implementation
+trust closure and declarative spec; store authenticated output refs beside the
+pure receipts; run `DEV_FAST` during bbox/row/column debugging;
+run `CORPUS_INCREMENTAL` after a family change; and invoke `RELEASE_SEAL` only at
+the publication boundary. The release aggregator must bind the ordered current
+document denominator and per-document seal refs; the planner itself adds no
+mapping, absence, numeric, or release authority.
