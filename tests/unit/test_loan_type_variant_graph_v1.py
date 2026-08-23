@@ -384,6 +384,41 @@ def test_short_exact_alias_extends_to_its_wrapped_longer_alias() -> None:
     ]
 
 
+def test_wrapped_label_uses_terminal_baseline_before_following_dash_row() -> None:
+    surfaces = [
+        ("CHO VAY KHÁCH HÀNG", 0, 0),
+        ("31/12/2025", 500, 40),
+        ("31/12/2024", 800, 40),
+        ("Triệu đồng", 500, 70),
+        ("Triệu đồng", 800, 70),
+        ("Cho vay các tổ chức kinh tế, cá nhân trong nước", 0, 120),
+        ("100", 500, 120),
+        ("90", 800, 120),
+        ("Cho vay chiết khấu công cụ chuyển nhượng và", 0, 154),
+        ("các giấy tờ có giá", 35, 192),
+        ("10", 500, 192),
+        ("9", 800, 192),
+        ("Cho thuê tài chính", 0, 225),
+        ("Các khoản trả thay khách hàng", 0, 264),
+        ("3", 500, 264),
+        ("2", 800, 264),
+        ("113", 500, 310),
+        ("101", 800, 310),
+    ]
+
+    result = loan_type.build_loan_type_variant_graph_document_v1([_page(surfaces)])
+
+    rows = {row["role"]: row for row in result["graphs"][0]["rows"]}
+    assert [item["semantic_surface"] for item in rows["DISCOUNT_INSTRUMENTS"]["values"]] == [
+        "10",
+        "9",
+    ]
+    assert [item["semantic_surface"] for item in rows["FINANCIAL_LEASE"]["values"]] == [
+        None,
+        None,
+    ]
+
+
 def test_long_visible_prefix_can_anchor_a_detector_dropped_continuation() -> None:
     surfaces = [
         ("CHO VAY KHÁCH HÀNG", 0, 0),

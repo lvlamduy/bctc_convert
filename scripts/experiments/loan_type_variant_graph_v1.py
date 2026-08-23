@@ -442,6 +442,18 @@ def _label_candidates(
                 "source_line_indices": indices,
                 "surface": surface,
                 "y_center_x2": box[1] + box[3],
+                # A wrapped accounting label can place its numeric cells on
+                # the terminal text baseline rather than the centre of the
+                # union box.  Retain every visible label-line baseline as an
+                # alignment candidate; the monotonic global assignment below
+                # still decides the row and prevents an isolated nearest-line
+                # match from crossing a sibling.
+                "y_center_candidates_x2": sorted(
+                    {
+                        box[1] + box[3],
+                        *(lines[index]["bbox"][1] + lines[index]["bbox"][3] for index in indices),
+                    }
+                ),
             }
         )
     return sorted(matches, key=lambda item: (item["y_center_x2"], item["source_line_indices"][0]))
@@ -712,9 +724,12 @@ def _align_labels_to_numeric_clusters(
                     )
                 )
             if label_index and cluster_index:
-                distance = abs(
-                    labels[label_index - 1]["y_center_x2"]
-                    - clusters[cluster_index - 1]["center_x2"]
+                candidates = labels[label_index - 1].get(
+                    "y_center_candidates_x2",
+                    [labels[label_index - 1]["y_center_x2"]],
+                )
+                distance = min(
+                    abs(center - clusters[cluster_index - 1]["center_x2"]) for center in candidates
                 )
                 if distance <= maximum_match_distance:
                     options.append(
