@@ -124,10 +124,10 @@ _DEFAULT_DIRECT_FULL_BATCH_SIZE = _DEFAULT_DIRECT_FULL_JOBS
 _DEFAULT_SPARSE_JOBS = _DEFAULT_DIRECT_FULL_JOBS
 _FAMILY11_GRAPH_WORKER_RECEIPT: dict[str, Any] | None = None
 _EXPECTED_REGION_QUERY_SPEC_ID = (
-    "fffrrv2:query:1a02086f1674dcbd8ffdb5381ca4618eb8316e54478435e3cf480f350fd5b888"
+    "fffrrv2:query:aa2700a3a54bf9a6ff79bbd4c51d8b3f1e55c7e2f16688a4f75b190673641cc9"
 )
 _EXPECTED_REGION_RECEIPT_ID = (
-    "fffrrv2:receipt:7edf0ac82a9020dea83cf757cf61c2c97e563ac94c8caa3e9767bd786b995be4"
+    "fffrrv2:receipt:4f27e3af157654bb4b5d8442a8b6c008a2d18b8da3646cfb67fcf4bae677198f"
 )
 _EXPECTED_REGION_IMPLEMENTATION_REFS = {
     "src/bctc_ai/evaluation/family_first_region_retrieval_v1.py": {
@@ -137,8 +137,8 @@ _EXPECTED_REGION_IMPLEMENTATION_REFS = {
     },
     "src/bctc_ai/evaluation/loan_geography_scoped_table_adapter_v1.py": {
         "path": "src/bctc_ai/evaluation/loan_geography_scoped_table_adapter_v1.py",
-        "sha256": "defbb4d4df0099064fbeff8058c7bd999741fb10c402db98ed2613463d3704fb",
-        "size_bytes": 77_644,
+        "sha256": "892cd2584429e232767ed840a641460c1c08baa97715e0728129fe2101f9921e",
+        "size_bytes": 123_674,
     },
 }
 
