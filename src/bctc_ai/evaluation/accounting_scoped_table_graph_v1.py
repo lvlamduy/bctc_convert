@@ -1787,7 +1787,7 @@ def _unlabeled_trailing_total_row(
             return None, []
         role_label_boxes.append(_union(label_lines))
         role_label_source_indices.update(line["source_line_index"] for line in label_lines)
-    role_bottom = max(box[3] for box in role_label_boxes)
+    label_role_bottom = max(box[3] for box in role_label_boxes)
     role_right = max(box[2] for box in role_label_boxes)
     left_ratio = min(0.98, max(0.0, (role_right + scale * 0.25) / page["page_width"]))
     maximum_ratio = 0.995
@@ -1802,6 +1802,13 @@ def _unlabeled_trailing_total_row(
     ]
     if len(body_values) < minimum_numeric_columns:
         return None, []
+    scale_x2 = int(round(scale * 2))
+    body_label_jitter_numerator = scale_x2 * gap_jitter_ppm
+    body_label_jitter_pixels = (body_label_jitter_numerator + 2_000_000 - 1) // 2_000_000
+    body_role_bottom = max(line["bbox"][3] for line in body_values)
+    if body_role_bottom - label_role_bottom > body_label_jitter_pixels:
+        return None, []
+    effective_role_bottom = max(label_role_bottom, body_role_bottom)
     body_value_source_indices = {line["source_line_index"] for line in body_values}
     body_centers = infer_numeric_column_centers_v1(
         body_values,
@@ -1824,14 +1831,13 @@ def _unlabeled_trailing_total_row(
     if any(not support for support in body_lane_support):
         return None, []
 
-    start_y = role_bottom - scale * 0.2
+    start_y = label_role_bottom - scale * 0.2
     # OCR bbox bottoms can drift by a small declarative fraction of one text
     # line.  Apply that tolerance only to the local role-gap ceiling: a proven
     # following scope/owner/period/unit/reset boundary remains an exact fence.
-    scale_x2 = int(round(scale * 2))
     gap_distance_numerator = scale_x2 * (maximum_gap_lines * 1_000_000 + gap_jitter_ppm)
     gap_distance_pixels = (gap_distance_numerator + 2_000_000 - 1) // 2_000_000
-    gap_stop = role_bottom + gap_distance_pixels
+    gap_stop = effective_role_bottom + gap_distance_pixels
     stop_y = min(
         float(page["page_height"]),
         gap_stop,
@@ -1891,7 +1897,7 @@ def _unlabeled_trailing_total_row(
         )
         if any(
             line["source_line_index"] not in proven_source_indices
-            and line["bbox"][3] > role_bottom
+            and line["bbox"][3] > label_role_bottom
             and line["bbox"][1] < row_bbox[3]
             and not _is_empty_visual_decoration(line)
             for line in page["lines"]
@@ -1959,6 +1965,22 @@ def _unlabeled_trailing_total_row(
         ],
         "mode": "UNLABELED_COMPLETE_NUMERIC_TOTAL_ROW",
         "page_sequence": page["page_sequence"],
+        "role_row_bottom_evidence": {
+            "body_numeric_bottom": body_role_bottom,
+            "body_support_line_ids": [
+                f"line:{line['page_sequence']}:{line['source_line_index']}"
+                for line in _visual(body_values)
+            ],
+            "effective_bottom": effective_role_bottom,
+            "jitter_cap_pixels": body_label_jitter_pixels,
+            "label_bottom": label_role_bottom,
+            "label_support_line_ids": [
+                f"line:{line['page_sequence']}:{line['source_line_index']}"
+                for line in _visual(
+                    [lines_by_source[source_index] for source_index in role_label_source_indices]
+                )
+            ],
+        },
         "row_bbox": row_bbox,
         "row_evidence": [_line_evidence(line) for line in cluster],
         "target_body_axis_ordinal": target_lane,

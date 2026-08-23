@@ -1373,7 +1373,61 @@ def test_proven_role_body_value_jitter_is_not_an_intervening_row() -> None:
 
     result = build_accounting_scoped_table_graph_v1([page], _spec(layouts=["ROLES_AS_ROWS"]))
 
-    assert result["graphs"][0]["segments"][0]["trailing_total_resolution"] is not None
+    resolution = result["graphs"][0]["segments"][0]["trailing_total_resolution"]
+    assert resolution is not None
+    bottom = resolution["role_row_bottom_evidence"]
+    assert bottom["label_bottom"] == 301
+    assert bottom["body_numeric_bottom"] == 303
+    assert bottom["effective_bottom"] == 303
+    assert bottom["jitter_cap_pixels"] == 6
+    assert bottom["label_support_line_ids"] == ["line:1:4", "line:1:7"]
+    assert bottom["body_support_line_ids"] == [
+        "line:1:20",
+        "line:1:21",
+        "line:1:22",
+        "line:1:23",
+        "line:1:24",
+        "line:1:30",
+        "line:1:31",
+        "line:1:32",
+        "line:1:33",
+        "line:1:34",
+    ]
+
+
+def test_role_body_bottom_within_jitter_cap_extends_local_gap_origin() -> None:
+    page = _unlabeled_complete_total_page()
+    foreign_body_value = next(line for line in page["lines"] if line["source_line_index"] == 30)
+    foreign_body_value["bbox"][3] += 3
+    for line in page["lines"]:
+        if 40 <= line["source_line_index"] <= 44:
+            line["bbox"][1] += 28
+            line["bbox"][3] += 28
+
+    result = build_accounting_scoped_table_graph_v1([page], _spec(layouts=["ROLES_AS_ROWS"]))
+
+    resolution = result["graphs"][0]["segments"][0]["trailing_total_resolution"]
+    assert resolution is not None
+    assert resolution["row_bbox"][3] == 366
+    assert resolution["role_row_bottom_evidence"]["effective_bottom"] == 304
+
+
+@pytest.mark.parametrize("stray", [False, True])
+def test_role_body_bottom_beyond_jitter_cap_cannot_inflate_local_gap(
+    stray: bool,
+) -> None:
+    page = _unlabeled_complete_total_page()
+    if stray:
+        page["lines"].append(_line(85, "9.999", [640, 273, 720, 308]))
+    else:
+        foreign_body_value = next(line for line in page["lines"] if line["source_line_index"] == 30)
+        foreign_body_value["bbox"][3] += 7
+
+    result = build_accounting_scoped_table_graph_v1([page], _spec(layouts=["ROLES_AS_ROWS"]))
+
+    segment = result["graphs"][0]["segments"][0]
+    assert segment["trailing_total_resolution"] is None
+    assert segment["trailing_total_cells"] == []
 
 
 @pytest.mark.parametrize(
