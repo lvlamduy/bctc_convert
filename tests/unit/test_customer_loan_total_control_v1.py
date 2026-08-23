@@ -134,6 +134,40 @@ def _rehash_nested_result(value: dict[str, Any], *, prefix: str) -> None:
     value["result_id"] = prefix + canonical_json_sha256_v1(material)
 
 
+def _coherently_rewrite_outer_total(value: dict[str, Any], parsed_value: int) -> None:
+    value["total_control"]["parsed_value"] = parsed_value
+    check = value["total_control"]["accounting_corroboration"]
+    check["observed_additive_sum"] = parsed_value
+    check["target_total"] = parsed_value
+    _rehash_result(value)
+
+
+def _coherently_rewrite_all_total_layers(value: dict[str, Any], parsed_value: int) -> None:
+    surface = str(parsed_value)
+    graph = value["loan_type_graph_result"]
+    graph_total = next(item for item in graph["graphs"][0]["total"] if item["lane_index"] == 0)
+    graph_total["semantic_surface"] = surface
+    _rehash_nested_result(graph, prefix="ltvgv1:result:")
+
+    numeric = value["loan_type_numeric_result"]
+    numeric["graph_result_id"] = graph["result_id"]
+    numeric_total = next(item for item in numeric["total"] if item["lane_index"] == 0)
+    numeric_total["parsed_value"] = parsed_value
+    numeric_total["ppocrv6_surface"] = surface
+    numeric_total["semantic_surface"] = surface
+    numeric_check = next(item for item in numeric["accounting_checks"] if item["lane_index"] == 0)
+    numeric_check["observed_additive_sum"] = parsed_value
+    numeric_check["target_total"] = parsed_value
+    _rehash_nested_result(numeric, prefix="ltnrrv1:result:")
+
+    total = value["total_control"]
+    total["parsed_value"] = parsed_value
+    total["source"]["ppocrv6_surface"] = surface
+    total["source"]["vietocr_transformer_surface"] = surface
+    total["accounting_corroboration"] = copy.deepcopy(numeric_check)
+    _rehash_result(value)
+
+
 def _line(snapshot: dict[str, Any], surface: str, *, occurrence: int = 0) -> dict[str, Any]:
     matches = [
         line
@@ -148,10 +182,12 @@ def test_build_and_public_replay_bind_one_exact_printed_total_control() -> None:
     snapshot = _snapshot()
 
     built = control_v1.build_customer_loan_total_control_v1(snapshot, "30/06/2026")
+    typed = control_v1.validate_customer_loan_total_control_v1(built)
     replayed = control_v1.validate_customer_loan_total_control_replay_v1(
         built, snapshot, "30/06/2026"
     )
 
+    assert typed == built
     assert replayed == built
     assert built["period_lane"]["lane_index"] == 0
     assert built["period_lane"]["evidence"][0]["source_line_index"] == 1
@@ -181,18 +217,84 @@ def test_build_and_public_replay_bind_one_exact_printed_total_control() -> None:
     assert built["authority"]["targeted_pixel_or_numeric_rescue_allowed"] is False
 
 
-def test_replay_rejects_coordinated_outer_result_rehash() -> None:
+def test_cheap_validator_is_typed_only_and_public_replay_remains_source_authority() -> None:
+    snapshot = _snapshot()
+    built = control_v1.build_customer_loan_total_control_v1(snapshot, "30/06/2026")
+    coherent = copy.deepcopy(built)
+    _coherently_rewrite_all_total_layers(coherent, 121)
+
+    # A coherent self-rehash can pass the deliberately cheap envelope gate.
+    # It gains no source authority because exact replay still rebuilds.
+    assert control_v1.validate_customer_loan_total_control_v1(coherent) == coherent
+    with pytest.raises(
+        control_v1.CustomerLoanTotalControlV1Error,
+        match="upstream public replay failed|does not replay exactly",
+    ):
+        control_v1.validate_customer_loan_total_control_replay_v1(coherent, snapshot, "30/06/2026")
+
+
+def test_cheap_validator_rejects_stale_identity_and_malformed_locator() -> None:
+    built = control_v1.build_customer_loan_total_control_v1(_snapshot(), "30/06/2026")
+
+    stale = copy.deepcopy(built)
+    stale["total_control"]["parsed_value"] = 121
+    with pytest.raises(
+        control_v1.CustomerLoanTotalControlV1Error,
+        match="result identity drifted",
+    ):
+        control_v1.validate_customer_loan_total_control_v1(stale)
+
+    malformed = copy.deepcopy(built)
+    malformed["total_control"]["source"]["page_render"]["physical_page"] = 2
+    _rehash_result(malformed)
+    with pytest.raises(
+        control_v1.CustomerLoanTotalControlV1Error,
+        match="total locator identity drifted",
+    ):
+        control_v1.validate_customer_loan_total_control_v1(malformed)
+
+
+def test_cheap_validator_rejects_outer_total_that_conflicts_with_nested_evidence() -> None:
     snapshot = _snapshot()
     built = control_v1.build_customer_loan_total_control_v1(snapshot, "30/06/2026")
     forged = copy.deepcopy(built)
-    forged["total_control"]["parsed_value"] = 121
+    _coherently_rewrite_outer_total(forged, 121)
+
+    with pytest.raises(
+        control_v1.CustomerLoanTotalControlV1Error,
+        match="selected nested total binding drifted",
+    ):
+        control_v1.validate_customer_loan_total_control_v1(forged)
+
+
+def test_cheap_validator_recomputes_requested_period_to_money_lane_binding() -> None:
+    snapshot = _snapshot()
+    current = control_v1.build_customer_loan_total_control_v1(snapshot, "30/06/2026")
+    comparative = control_v1.build_customer_loan_total_control_v1(snapshot, "31/12/2025")
+    forged = copy.deepcopy(current)
+    forged["period_lane"]["lane_index"] = comparative["period_lane"]["lane_index"]
+    forged["unit_evidence"] = copy.deepcopy(comparative["unit_evidence"])
+    forged["total_control"] = copy.deepcopy(comparative["total_control"])
     _rehash_result(forged)
 
     with pytest.raises(
         control_v1.CustomerLoanTotalControlV1Error,
-        match="does not replay exactly",
+        match="period lane drifted",
     ):
-        control_v1.validate_customer_loan_total_control_replay_v1(forged, snapshot, "30/06/2026")
+        control_v1.validate_customer_loan_total_control_v1(forged)
+
+
+def test_cheap_validator_recomputes_normalized_unit_surface() -> None:
+    built = control_v1.build_customer_loan_total_control_v1(_snapshot(), "30/06/2026")
+    forged = copy.deepcopy(built)
+    forged["unit_evidence"]["normalized_surface"] = "forged"
+    _rehash_result(forged)
+
+    with pytest.raises(
+        control_v1.CustomerLoanTotalControlV1Error,
+        match="normalized unit binding drifted",
+    ):
+        control_v1.validate_customer_loan_total_control_v1(forged)
 
 
 def test_replay_rejects_another_document_root_even_when_snapshot_is_rehashed() -> None:
@@ -333,7 +435,7 @@ def test_replay_rejects_self_rehashed_upstream_graph_and_numeric_tamper() -> Non
     _rehash_result(graph_forged)
     with pytest.raises(
         control_v1.CustomerLoanTotalControlV1Error,
-        match="upstream public replay failed",
+        match="owner evidence drifted|upstream public replay failed",
     ):
         control_v1.validate_customer_loan_total_control_replay_v1(
             graph_forged, snapshot, "30/06/2026"
@@ -346,7 +448,7 @@ def test_replay_rejects_self_rehashed_upstream_graph_and_numeric_tamper() -> Non
     _rehash_result(numeric_forged)
     with pytest.raises(
         control_v1.CustomerLoanTotalControlV1Error,
-        match="upstream public replay failed",
+        match="selected nested total binding drifted|upstream public replay failed",
     ):
         control_v1.validate_customer_loan_total_control_replay_v1(
             numeric_forged, snapshot, "30/06/2026"

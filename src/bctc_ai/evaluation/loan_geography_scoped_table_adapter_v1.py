@@ -30,6 +30,7 @@ from bctc_ai.evaluation.accounting_scoped_table_graph_v1 import (
 from bctc_ai.evaluation.accounting_table_axes_v1 import (
     infer_document_accounting_unit_context_v1,
     infer_document_reporting_period_context_v1,
+    money_integer_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
@@ -46,6 +47,8 @@ __all__ = [
     "LOAN_GEOGRAPHY_SCOPED_TABLE_ALIAS_PROVENANCE_V1",
     "LOAN_GEOGRAPHY_SCOPED_TABLE_SPEC_V1",
     "LoanGeographyScopedTableAdapterV1Error",
+    "TOTAL_CONTROL_REQUEST_FORMAT_VERSION",
+    "build_loan_geography_customer_loan_total_control_requests_v1",
     "build_loan_geography_scoped_graphs_v1",
     "build_loan_geography_document_context_v1",
     "build_loan_geography_region_query_spec_v2",
@@ -53,6 +56,8 @@ __all__ = [
     "compare_loan_geography_sparse_full_graphs_v1",
     "project_loan_geography_numeric_input_v1",
     "project_loan_geography_visible_dash_graph_v1",
+    "validate_loan_geography_customer_loan_total_control_requests_replay_v1",
+    "validate_loan_geography_customer_loan_total_control_requests_v1",
     "validate_loan_geography_document_context_replay_v1",
     "validate_loan_geography_scoped_graphs_replay_v1",
     "validate_loan_geography_whole_document_scoped_graph_replay_v1",
@@ -64,6 +69,26 @@ FORMAT_VERSION = "LOAN_GEOGRAPHY_SCOPED_GRAPH_BATCH_V1"
 DOCUMENT_FORMAT_VERSION = "LOAN_GEOGRAPHY_SCOPED_GRAPH_DOCUMENT_V1"
 OVERLAY_FORMAT_VERSION = "LOAN_GEOGRAPHY_SCOPED_GRAPH_OVERLAY_PROJECTION_V1"
 DOCUMENT_CONTEXT_FORMAT_VERSION = "LOAN_GEOGRAPHY_DOCUMENT_PERIOD_UNIT_CONTEXT_V1"
+TOTAL_CONTROL_REQUEST_FORMAT_VERSION = "LOAN_GEOGRAPHY_CUSTOMER_LOAN_TOTAL_CONTROL_REQUEST_SET_V1"
+_TOTAL_CONTROL_REQUEST_STATE = "CLASSIFIED_EXACT_CUSTOMER_LOAN_TOTAL_CONTROL_REQUIREMENTS"
+_TOTAL_CONTROL_REQUEST_AUTHORITY = {
+    "numeric_or_mapping_authority": False,
+    "source_snapshot_self_hash_is_authentication_authority": False,
+    "upstream_control_public_replay_required": True,
+}
+_TOTAL_CONTROL_REQUEST_CLAIM_BOUNDARY = (
+    "EXACT_WHOLE_DOCUMENT_FAMILY11_LANE_LOCAL_TOTAL_CLASSIFICATION_AND_"
+    "CONTENT_ADDRESSED_UPSTREAM_CONTROL_REQUEST_ONLY_NO_NUMERIC_OR_MAPPING_AUTHORITY"
+)
+_TOTAL_CONTROL_CLASSIFICATIONS = {
+    "LOCAL_LABELED_TOTAL",
+    "LOCAL_UNLABELED_TOTAL_ROW",
+    "STRUCTURALLY_ABSENT",
+}
+_UPSTREAM_TOTAL_CONTROL_FORMAT_VERSION = "CUSTOMER_LOAN_TOTAL_CONTROL_V1"
+_UPSTREAM_TOTAL_CONTROL_FAMILY_ID = "CUSTOMER_LOAN_TOTAL_CONTROL"
+_UPSTREAM_TOTAL_CONTROL_STATE = "EXACT_AUTHENTICATED_PRINTED_CUSTOMER_LOAN_TOTAL_CONTROL"
+_UPSTREAM_TOTAL_CONTROL_MODE = "UPSTREAM_AUTHENTICATED_CUSTOMER_LOAN_TOTAL_CONTROL"
 CLAIM_BOUNDARY = (
     "AUTHENTICATED_REGION_LOCAL_SHARED_SCOPED_TABLE_GRAPH_FAMILY11_SEMANTIC_"
     "ANCHOR_ASSIGNMENT_DOCUMENT_UNIQUENESS_AND_TYPED_PROJECTION_ONLY_NO_"
@@ -1637,19 +1662,19 @@ def project_loan_geography_visible_dash_graph_v1(
     return _content_address(material, prefix="lgstv1:overlay:")
 
 
-def project_loan_geography_numeric_input_v1(
+def _numeric_projection_axes(
     document: Mapping[str, Any],
     document_packet: Mapping[str, Any],
     *,
-    document_context: Mapping[str, Any] | None = None,
-) -> dict[str, Any]:
-    """Project role x period cells and printed totals; never parse a number.
-
-    Local exact dates/units are preferred.  Missing context may be inherited
-    only from the typed, replayed full-PDF period/unit context.  Document-packet
-    period/year metadata never supplies an evidence ref or source surface.
-    """
-
+    document_context: Mapping[str, Any] | None,
+) -> tuple[
+    dict[str, Any],
+    list[Mapping[str, Any]],
+    list[Mapping[str, Any]],
+    dict[tuple[int, int], Mapping[str, Any]],
+    dict[str, Any],
+    list[dict[str, Any]],
+]:
     overlay = project_loan_geography_visible_dash_graph_v1(
         document, document_packet, document_context=document_context
     )
@@ -1751,6 +1776,910 @@ def project_loan_geography_numeric_input_v1(
                 "source_surface": source_surface,
             }
         )
+    return overlay, segments, source_segments, locators, unit_context, period_axis
+
+
+def _local_total_classification(segment: Mapping[str, Any]) -> tuple[str, str | None, str | None]:
+    cells = segment.get("trailing_total_cells")
+    match = segment.get("trailing_total_match")
+    resolution = segment.get("trailing_total_resolution")
+    if type(cells) is not list:
+        raise _error("Family 11 local total cell axis drifted")
+    if len(cells) == 1 and type(match) is dict and resolution is None:
+        return "LOCAL_LABELED_TOTAL", cells[0].get("cell_id"), match.get("match_id")
+    if (
+        len(cells) == 1
+        and match is None
+        and type(resolution) is dict
+        and resolution.get("mode") == "UNLABELED_COMPLETE_NUMERIC_TOTAL_ROW"
+    ):
+        return (
+            "LOCAL_UNLABELED_TOTAL_ROW",
+            cells[0].get("cell_id"),
+            resolution.get("resolution_id"),
+        )
+    if not cells and match is None and resolution is None:
+        return "STRUCTURALLY_ABSENT", None, None
+    raise _error("Family 11 local printed-total lane classification is ambiguous")
+
+
+def _exact_digest(value: Any, label: str) -> str:
+    if (
+        type(value) is not str
+        or len(value) != 64
+        or any(character not in "0123456789abcdef" for character in value)
+    ):
+        raise _error(f"Family 11 {label} digest drifted")
+    return value
+
+
+def _exact_ref(value: Any, label: str) -> dict[str, Any]:
+    if (
+        type(value) is not dict
+        or set(value) != {"path", "sha256", "size_bytes"}
+        or type(value["path"]) is not str
+        or not value["path"]
+        or type(value["size_bytes"]) is not int
+        or value["size_bytes"] <= 0
+    ):
+        raise _error(f"Family 11 {label} reference drifted")
+    _exact_digest(value["sha256"], label)
+    return canonical_clone_v1(value)
+
+
+def _exact_bbox(value: Any, label: str) -> list[int]:
+    if (
+        type(value) is not list
+        or len(value) != 4
+        or any(type(item) is not int or item < 0 for item in value)
+        or not (value[0] < value[2] and value[1] < value[3])
+    ):
+        raise _error(f"Family 11 {label} bbox drifted")
+    return list(value)
+
+
+def _page_render(value: Any, label: str) -> dict[str, Any]:
+    fields = {
+        "physical_page",
+        "pixel_height",
+        "pixel_width",
+        "render_sha256",
+        "render_size_bytes",
+    }
+    if (
+        type(value) is not dict
+        or set(value) != fields
+        or type(value["physical_page"]) is not int
+        or value["physical_page"] <= 0
+        or type(value["pixel_height"]) is not int
+        or value["pixel_height"] <= 0
+        or type(value["pixel_width"]) is not int
+        or value["pixel_width"] <= 0
+        or type(value["render_size_bytes"]) is not int
+        or value["render_size_bytes"] <= 0
+    ):
+        raise _error(f"Family 11 {label} page-render binding drifted")
+    _exact_digest(value["render_sha256"], f"{label} page render")
+    return canonical_clone_v1(value)
+
+
+def _source_locator(value: Any, label: str) -> dict[str, Any]:
+    fields = {
+        "bbox",
+        "crop_ref",
+        "page_render",
+        "page_sequence",
+        "ppocrv6_reader_score",
+        "ppocrv6_surface",
+        "sample_id",
+        "source_line_index",
+        "vietocr_transformer_surface",
+    }
+    if type(value) is not dict or set(value) != fields:
+        raise _error(f"Family 11 {label} source locator shape drifted")
+    render = _page_render(value["page_render"], label)
+    score = value["ppocrv6_reader_score"]
+    if (
+        type(value["page_sequence"]) is not int
+        or value["page_sequence"] <= 0
+        or value["page_sequence"] != render["physical_page"]
+        or type(value["source_line_index"]) is not int
+        or value["source_line_index"] < 0
+        or type(value["sample_id"]) is not str
+        or not value["sample_id"]
+        or type(value["ppocrv6_surface"]) is not str
+        or type(value["vietocr_transformer_surface"]) is not str
+        or type(score) not in {int, float}
+        or not 0 <= score <= 1
+    ):
+        raise _error(f"Family 11 {label} source locator identity drifted")
+    bbox = _exact_bbox(value["bbox"], label)
+    if bbox[2] > render["pixel_width"] or bbox[3] > render["pixel_height"]:
+        raise _error(f"Family 11 {label} source locator exceeds its render")
+    _exact_ref(value["crop_ref"], f"{label} crop")
+    return canonical_clone_v1(value)
+
+
+def _source_locator_id(value: Mapping[str, Any]) -> str:
+    return "lgstv1:source-locator:" + canonical_json_sha256_v1(value)
+
+
+def _request_source_locator_axis(
+    document: Mapping[str, Any],
+) -> tuple[list[dict[str, Any]], list[str]]:
+    renders = {
+        item["physical_page"]: {
+            key: canonical_clone_v1(item[key])
+            for key in (
+                "physical_page",
+                "pixel_height",
+                "pixel_width",
+                "render_sha256",
+                "render_size_bytes",
+            )
+        }
+        for item in document["selected_page_bindings"]
+    }
+    render_axis = [_page_render(renders[page], "request source") for page in sorted(renders)]
+    locator_ids = []
+    for raw in document["source_line_bindings"]:
+        locator = {
+            **canonical_clone_v1(raw),
+            "page_render": canonical_clone_v1(renders[raw["page_sequence"]]),
+        }
+        locator_ids.append(_source_locator_id(_source_locator(locator, "request source")))
+    if len(locator_ids) != len(set(locator_ids)):
+        raise _error("Family 11 request source locators repeat")
+    return render_axis, sorted(locator_ids)
+
+
+def _control_request_id(
+    document_binding: Mapping[str, Any], graph_binding: Mapping[str, Any], lane: Mapping[str, Any]
+) -> str:
+    lane_material = canonical_clone_v1(lane)
+    lane_material.pop("control_request_id", None)
+    return "lgstv1:total-control-request:" + canonical_json_sha256_v1(
+        {
+            "document_binding": document_binding,
+            "graph_binding": graph_binding,
+            "lane": lane_material,
+        }
+    )
+
+
+def _validated_total_control_request_set(value: Any) -> dict[str, Any]:
+    fields = {
+        "authority",
+        "claim_boundary",
+        "document_binding",
+        "family_id",
+        "format_version",
+        "graph_binding",
+        "lane_requests",
+        "metrics",
+        "request_set_id",
+        "source_locator_ids",
+        "source_page_render_bindings",
+        "state",
+    }
+    if type(value) is not dict or set(value) != fields:
+        raise _error("Family 11 total-control request-set shape drifted")
+    material = canonical_clone_v1(value)
+    identity = material.pop("request_set_id")
+    if identity != "lgstv1:total-control-request-set:" + canonical_json_sha256_v1(material):
+        raise _error("Family 11 total-control request-set content identity drifted")
+    if (
+        value["format_version"] != TOTAL_CONTROL_REQUEST_FORMAT_VERSION
+        or value["family_id"] != FAMILY_ID
+        or value["state"] != _TOTAL_CONTROL_REQUEST_STATE
+        or not same_typed_json_v1(value["authority"], _TOTAL_CONTROL_REQUEST_AUTHORITY)
+        or value["claim_boundary"] != _TOTAL_CONTROL_REQUEST_CLAIM_BOUNDARY
+    ):
+        raise _error("Family 11 total-control request-set contract drifted")
+    binding = value["document_binding"]
+    binding_fields = {
+        "document_evidence_root_sha256",
+        "document_id",
+        "document_ordinal",
+        "document_packet_id",
+        "source_locator_axis_sha256",
+        "source_snapshot_id",
+        "source_whole_document_graph_result_id",
+    }
+    if (
+        type(binding) is not dict
+        or set(binding) != binding_fields
+        or type(binding["document_id"]) is not str
+        or not binding["document_id"]
+        or type(binding["document_ordinal"]) is not int
+        or binding["document_ordinal"] <= 0
+        or type(binding["document_packet_id"]) is not str
+        or not binding["document_packet_id"]
+        or type(binding["source_snapshot_id"]) is not str
+        or not binding["source_snapshot_id"].startswith("ffdesv1:")
+        or type(binding["source_whole_document_graph_result_id"]) is not str
+        or not binding["source_whole_document_graph_result_id"].startswith("lgstv1:document:")
+    ):
+        raise _error("Family 11 total-control request document binding drifted")
+    _exact_digest(binding["document_evidence_root_sha256"], "request document root")
+    _exact_digest(binding["source_locator_axis_sha256"], "request source locator axis")
+    graph_binding = value["graph_binding"]
+    if (
+        type(graph_binding) is not dict
+        or set(graph_binding) != {"graph_id", "region_fingerprint_sha256", "segment_count"}
+        or type(graph_binding["graph_id"]) is not str
+        or not graph_binding["graph_id"]
+        or type(graph_binding["segment_count"]) is not int
+        or graph_binding["segment_count"] <= 0
+    ):
+        raise _error("Family 11 total-control request graph binding drifted")
+    _exact_digest(graph_binding["region_fingerprint_sha256"], "request region fingerprint")
+    renders = value["source_page_render_bindings"]
+    if type(renders) is not list or not renders:
+        raise _error("Family 11 total-control request render axis is empty")
+    typed_renders = [_page_render(item, "request") for item in renders]
+    if [item["physical_page"] for item in typed_renders] != list(range(1, len(typed_renders) + 1)):
+        raise _error("Family 11 total-control request render axis is not the full denominator")
+    locator_ids = value["source_locator_ids"]
+    if (
+        type(locator_ids) is not list
+        or locator_ids != sorted(set(locator_ids))
+        or canonical_json_sha256_v1(locator_ids) != binding["source_locator_axis_sha256"]
+    ):
+        raise _error("Family 11 total-control request source locator axis drifted")
+    locator_prefix = "lgstv1:source-locator:"
+    for locator_id in locator_ids:
+        if type(locator_id) is not str or not locator_id.startswith(locator_prefix):
+            raise _error("Family 11 total-control request source locator identity drifted")
+        _exact_digest(
+            locator_id[len(locator_prefix) :],
+            "total-control request source locator identity",
+        )
+    lanes = value["lane_requests"]
+    lane_fields = {
+        "classification",
+        "control_request_id",
+        "graph_id",
+        "lane_index",
+        "local_total_cell_id",
+        "local_total_evidence_id",
+        "page_sequences",
+        "period_end",
+        "period_resolution",
+        "period_role",
+        "segment_id",
+        "unit_context",
+    }
+    if type(lanes) is not list or len(lanes) != graph_binding["segment_count"]:
+        raise _error("Family 11 total-control request lane axis drifted")
+    periods = []
+    for lane_index, lane in enumerate(lanes):
+        if (
+            type(lane) is not dict
+            or set(lane) != lane_fields
+            or lane["classification"] not in _TOTAL_CONTROL_CLASSIFICATIONS
+            or lane["graph_id"] != graph_binding["graph_id"]
+            or lane["lane_index"] != lane_index
+            or type(lane["segment_id"]) is not str
+            or not lane["segment_id"]
+            or type(lane["period_end"]) is not str
+            or _iso_period(lane["period_end"]) != lane["period_end"]
+            or lane["period_resolution"]
+            not in {"LOCAL_EXACT_DATE", "DOCUMENT_INHERITED_EXACT_DATE"}
+            or lane["period_role"] not in {"CURRENT", "COMPARATIVE"}
+            or type(lane["page_sequences"]) is not list
+            or not lane["page_sequences"]
+            or lane["page_sequences"] != sorted(set(lane["page_sequences"]))
+            or any(
+                type(page) is not int or page <= 0 or page > len(typed_renders)
+                for page in lane["page_sequences"]
+            )
+        ):
+            raise _error("Family 11 total-control request lane identity drifted")
+        unit = lane["unit_context"]
+        unit_fields = {
+            "currency",
+            "evidence_ref",
+            "resolution_mode",
+            "scale",
+            "source_surface",
+            "unit_kind",
+        }
+        if (
+            type(unit) is not dict
+            or set(unit) != unit_fields
+            or unit["unit_kind"] != "MONEY"
+            or unit["currency"] != "VND"
+            or unit["resolution_mode"] not in {"LOCAL_EXACT_UNIT", "DOCUMENT_INHERITED_EXACT_UNIT"}
+            or type(unit["scale"]) is not int
+            or unit["scale"] != 6
+            or type(unit["evidence_ref"]) is not str
+            or not unit["evidence_ref"]
+            or type(unit["source_surface"]) is not str
+            or not unit["source_surface"]
+        ):
+            raise _error("Family 11 total-control request lane unit drifted")
+        expected_request_id = _control_request_id(binding, graph_binding, lane)
+        if lane["classification"] == "STRUCTURALLY_ABSENT":
+            if (
+                lane["local_total_cell_id"] is not None
+                or lane["local_total_evidence_id"] is not None
+                or lane["control_request_id"] != expected_request_id
+            ):
+                raise _error("Family 11 absent total-control request binding drifted")
+        elif (
+            type(lane["local_total_cell_id"]) is not str
+            or not lane["local_total_cell_id"]
+            or type(lane["local_total_evidence_id"]) is not str
+            or not lane["local_total_evidence_id"]
+            or lane["control_request_id"] is not None
+        ):
+            raise _error("Family 11 local total-control classification binding drifted")
+        periods.append(lane["period_end"])
+    if len(periods) != len(set(periods)):
+        raise _error("Family 11 total-control request periods repeat")
+    metrics = value["metrics"]
+    expected_counts = {
+        classification: sum(lane["classification"] == classification for lane in lanes)
+        for classification in sorted(_TOTAL_CONTROL_CLASSIFICATIONS)
+    }
+    if metrics != {"classification_counts": expected_counts, "lane_count": len(lanes)}:
+        raise _error("Family 11 total-control request metrics drifted")
+    return canonical_clone_v1(value)
+
+
+def build_loan_geography_customer_loan_total_control_requests_v1(
+    whole_document: Mapping[str, Any],
+    document_packet: Mapping[str, Any],
+    source_snapshot: Mapping[str, Any],
+    *,
+    document_context: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Classify every exact lane and request controls only for absent local totals."""
+
+    document = _validated_document_envelope(whole_document)
+    snapshot = _snapshot(source_snapshot)
+    packet = snapshot["document_packet"]
+    page_axis = [item["page_sequence"] for item in snapshot["joined_pages"]]
+    if (
+        not same_typed_json_v1(document_packet, packet)
+        or document.get("disposition") != "EXACT_CUSTOMER_LOAN_GEOGRAPHY"
+        or document["uniqueness"]["exact_logical_graph_count"] != 1
+        or document["evidence_binding"].get("snapshot_id") != snapshot["snapshot_id"]
+        or document["evidence_binding"].get("document_packet_id") != packet.get("packet_id")
+        or page_axis != list(range(1, packet["page_count"] + 1))
+    ):
+        raise _error("Family 11 total-control request requires one exact whole-document source")
+    overlay, segments, source_segments, _locators, unit_context, period_axis = (
+        _numeric_projection_axes(
+            document,
+            packet,
+            document_context=document_context,
+        )
+    )
+    graph = overlay["graphs"][0]
+    document_binding = {
+        "document_evidence_root_sha256": packet["document_evidence_root_sha256"],
+        "document_id": packet["document_id"],
+        "document_ordinal": packet["document_ordinal"],
+        "document_packet_id": packet["packet_id"],
+        "source_locator_axis_sha256": "",
+        "source_snapshot_id": snapshot["snapshot_id"],
+        "source_whole_document_graph_result_id": document["result_id"],
+    }
+    render_axis, locator_ids = _request_source_locator_axis(document)
+    document_binding["source_locator_axis_sha256"] = canonical_json_sha256_v1(locator_ids)
+    graph_binding = {
+        "graph_id": graph["graph_id"],
+        "region_fingerprint_sha256": canonical_json_sha256_v1(document["region_fingerprint"]),
+        "segment_count": len(segments),
+    }
+    lanes = []
+    for segment, source_segment, period in zip(segments, source_segments, period_axis, strict=True):
+        classification, cell_id, evidence_id = _local_total_classification(source_segment)
+        lane = {
+            "classification": classification,
+            "control_request_id": None,
+            "graph_id": graph["graph_id"],
+            "lane_index": segment["period_lane_index"],
+            "local_total_cell_id": cell_id,
+            "local_total_evidence_id": evidence_id,
+            "page_sequences": canonical_clone_v1(segment["page_sequences"]),
+            "period_end": period["period_end"],
+            "period_resolution": period["resolution_mode"],
+            "period_role": period["period_role"],
+            "segment_id": segment["segment_id"],
+            "unit_context": canonical_clone_v1(unit_context),
+        }
+        if classification == "STRUCTURALLY_ABSENT":
+            lane["control_request_id"] = _control_request_id(document_binding, graph_binding, lane)
+        lanes.append(lane)
+    counts = {
+        classification: sum(lane["classification"] == classification for lane in lanes)
+        for classification in sorted(_TOTAL_CONTROL_CLASSIFICATIONS)
+    }
+    material = {
+        "authority": canonical_clone_v1(_TOTAL_CONTROL_REQUEST_AUTHORITY),
+        "claim_boundary": _TOTAL_CONTROL_REQUEST_CLAIM_BOUNDARY,
+        "document_binding": document_binding,
+        "family_id": FAMILY_ID,
+        "format_version": TOTAL_CONTROL_REQUEST_FORMAT_VERSION,
+        "graph_binding": graph_binding,
+        "lane_requests": lanes,
+        "metrics": {"classification_counts": counts, "lane_count": len(lanes)},
+        "source_locator_ids": locator_ids,
+        "source_page_render_bindings": render_axis,
+        "state": _TOTAL_CONTROL_REQUEST_STATE,
+    }
+    return _validated_total_control_request_set(
+        {
+            **material,
+            "request_set_id": "lgstv1:total-control-request-set:"
+            + canonical_json_sha256_v1(material),
+        }
+    )
+
+
+def validate_loan_geography_customer_loan_total_control_requests_v1(
+    value: Any,
+) -> dict[str, Any]:
+    """Cheap typed handoff gate; source authentication still requires replay."""
+
+    return _validated_total_control_request_set(value)
+
+
+def validate_loan_geography_customer_loan_total_control_requests_replay_v1(
+    value: Any,
+    whole_document: Mapping[str, Any],
+    document_packet: Mapping[str, Any],
+    source_snapshot: Mapping[str, Any],
+    *,
+    document_context: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Replay the generic graph and rebuild one whole-document request set exactly."""
+
+    persisted = _validated_total_control_request_set(value)
+    document = _validated_document_envelope(whole_document)
+    snapshot = _snapshot(source_snapshot)
+    validate_accounting_scoped_table_graph_replay_v1(
+        document["scoped_table_graph"],
+        _region_pages(snapshot)[0],
+        LOAN_GEOGRAPHY_SCOPED_TABLE_SPEC_V1,
+    )
+    rebuilt = build_loan_geography_customer_loan_total_control_requests_v1(
+        document,
+        document_packet,
+        snapshot,
+        document_context=document_context,
+    )
+    if not same_typed_json_v1(persisted, rebuilt):
+        raise _error("Family 11 total-control request set does not replay exactly")
+    return rebuilt
+
+
+def _content_addressed_result(value: Any, prefix: str, label: str) -> dict[str, Any]:
+    if type(value) is not dict:
+        raise _error(f"Family 11 {label} result shape drifted")
+    material = canonical_clone_v1(value)
+    identity = material.pop("result_id", None)
+    if identity != prefix + canonical_json_sha256_v1(material):
+        raise _error(f"Family 11 {label} result identity drifted")
+    return canonical_clone_v1(value)
+
+
+def _validated_upstream_total_control(value: Any) -> dict[str, Any]:
+    fields = {
+        "authority",
+        "claim_boundary",
+        "document_binding",
+        "family_id",
+        "format_version",
+        "loan_type_graph_result",
+        "loan_type_numeric_result",
+        "owner_evidence",
+        "period_lane",
+        "requested_period_end",
+        "result_id",
+        "state",
+        "total_control",
+        "unit_evidence",
+    }
+    if type(value) is not dict or set(value) != fields:
+        raise _error("Family 11 upstream customer-loan total control shape drifted")
+    control = _content_addressed_result(value, "cltcv1:result:", "upstream total control")
+    authority = control["authority"]
+    if (
+        control["format_version"] != _UPSTREAM_TOTAL_CONTROL_FORMAT_VERSION
+        or control["family_id"] != _UPSTREAM_TOTAL_CONTROL_FAMILY_ID
+        or control["state"] != _UPSTREAM_TOTAL_CONTROL_STATE
+        or type(authority) is not dict
+        or authority.get("arithmetic_backsolve_used") is not False
+        or authority.get("blank_or_missing_total_imputed_as_zero") is not False
+        or authority.get("complete_document_unique_loan_type_graph_required") is not True
+        or authority.get("local_exact_period_lane_required") is not True
+        or authority.get("local_million_vnd_unit_required") is not True
+        or authority.get("ppocrv6_printed_total_authority") is not True
+        or authority.get("public_exact_live_replay_required") is not True
+    ):
+        raise _error("Family 11 upstream customer-loan total control authority drifted")
+    resolved_period = _iso_period(control["requested_period_end"])
+    if resolved_period is None or control["requested_period_end"].count("/") != 2:
+        raise _error("Family 11 upstream customer-loan total period drifted")
+    binding = control["document_binding"]
+    binding_fields = {
+        "document_evidence_root_sha256",
+        "document_id",
+        "document_ordinal",
+        "document_packet_id",
+        "line_count",
+        "manifest_id",
+        "page_count",
+        "query_selection_id",
+        "snapshot_id",
+        "source_pdf_ref",
+    }
+    if (
+        type(binding) is not dict
+        or set(binding) != binding_fields
+        or type(binding["document_id"]) is not str
+        or not binding["document_id"]
+        or type(binding["document_ordinal"]) is not int
+        or binding["document_ordinal"] <= 0
+        or type(binding["document_packet_id"]) is not str
+        or not binding["document_packet_id"]
+        or type(binding["line_count"]) is not int
+        or binding["line_count"] < 0
+        or type(binding["page_count"]) is not int
+        or binding["page_count"] <= 0
+        or type(binding["manifest_id"]) is not str
+        or not binding["manifest_id"]
+        or (
+            binding["query_selection_id"] is not None
+            and (
+                type(binding["query_selection_id"]) is not str or not binding["query_selection_id"]
+            )
+        )
+        or type(binding["snapshot_id"]) is not str
+        or not binding["snapshot_id"].startswith("ffdesv1:")
+    ):
+        raise _error("Family 11 upstream customer-loan total document binding drifted")
+    _exact_digest(binding["document_evidence_root_sha256"], "upstream document root")
+    _exact_ref(binding["source_pdf_ref"], "upstream source PDF")
+    graph_result = _content_addressed_result(
+        control["loan_type_graph_result"], "ltvgv1:result:", "upstream loan-type graph"
+    )
+    numeric_result = _content_addressed_result(
+        control["loan_type_numeric_result"],
+        "ltnrrv1:result:",
+        "upstream loan-type numeric",
+    )
+    if numeric_result.get("graph_result_id") != graph_result["result_id"]:
+        raise _error("Family 11 upstream graph/numeric source binding drifted")
+    owner = control["owner_evidence"]
+    period = control["period_lane"]
+    unit = control["unit_evidence"]
+    total = control["total_control"]
+    if (
+        type(owner) is not dict
+        or set(owner) != {"evidence", "match_kind", "surface"}
+        or type(owner["match_kind"]) is not str
+        or not owner["match_kind"]
+        or type(owner["surface"]) is not str
+        or not owner["surface"]
+        or type(period) is not dict
+        or set(period) != {"evidence", "lane_index", "period_end", "x_center_x2"}
+        or period["period_end"] != control["requested_period_end"]
+        or type(period["lane_index"]) is not int
+        or period["lane_index"] < 0
+        or type(period["x_center_x2"]) is not int
+        or period["x_center_x2"] < 0
+        or type(unit) is not dict
+        or set(unit)
+        != {
+            "currency",
+            "lane_index",
+            "magnitude_power10",
+            "mode",
+            "normalized_surface",
+            "source",
+            "surface",
+        }
+        or unit["currency"] != "VND"
+        or unit["magnitude_power10"] != 6
+        or unit["mode"] != "LOCAL_PER_LANE"
+        or unit["lane_index"] != period["lane_index"]
+        or type(unit["surface"]) is not str
+        or not unit["surface"]
+        or type(total) is not dict
+        or set(total)
+        != {
+            "accounting_corroboration",
+            "lane_index",
+            "lane_type",
+            "parsed_value",
+            "source",
+            "status",
+        }
+        or total["lane_index"] != period["lane_index"]
+        or total["lane_type"] != "MONEY"
+        or total["status"] != "EXACT_PRINTED_PPOCRV6_TOTAL_CONTROL"
+        or type(total["parsed_value"]) is not int
+        or total["parsed_value"] < 0
+    ):
+        raise _error("Family 11 upstream customer-loan total semantic binding drifted")
+    locator_groups = (owner["evidence"], period["evidence"])
+    if any(type(group) is not list or not group for group in locator_groups):
+        raise _error("Family 11 upstream customer-loan total evidence axis drifted")
+    for label, group in zip(("owner", "period"), locator_groups, strict=True):
+        for locator in group:
+            _source_locator(locator, f"upstream {label}")
+    unit_source = _source_locator(unit["source"], "upstream unit")
+    total_source = _source_locator(total["source"], "upstream total")
+    parsed_surface = money_integer_v1(total_source["ppocrv6_surface"])
+    check = total["accounting_corroboration"]
+    if (
+        parsed_surface != total["parsed_value"]
+        or unit_source["vietocr_transformer_surface"] != unit["surface"]
+        or type(check) is not dict
+        or check.get("status") != "EXACT_PP_NUMERIC_EQUATION"
+        or check.get("target_total") != total["parsed_value"]
+        or check.get("observed_additive_sum") != total["parsed_value"]
+    ):
+        raise _error("Family 11 upstream customer-loan total source/control drifted")
+    graphs = graph_result.get("graphs")
+    graph = graphs[0] if type(graphs) is list and len(graphs) == 1 else None
+    graph_periods = graph.get("period_axis") if type(graph) is dict else None
+    lane_types = graph.get("lane_types") if type(graph) is dict else None
+    lane_centers = graph.get("lane_centers_x2") if type(graph) is dict else None
+    if (
+        type(graph) is not dict
+        or graph.get("period_mode") != "LOCAL_EXACT_DATES"
+        or type(graph_periods) is not list
+        or type(lane_types) is not list
+        or type(lane_centers) is not list
+        or len(lane_types) != len(lane_centers)
+        or any(type(item.get("x_center_x2")) is not int for item in graph_periods)
+    ):
+        raise _error("Family 11 upstream control typed period/lane axis drifted")
+    money_lanes = sorted(
+        (index for index, lane_type in enumerate(lane_types) if lane_type == "MONEY"),
+        key=lambda index: lane_centers[index],
+    )
+    ordered_periods = sorted(graph_periods, key=lambda item: item["x_center_x2"])
+    requested_positions = [
+        index
+        for index, item in enumerate(ordered_periods)
+        if item.get("period") == control["requested_period_end"]
+    ]
+    if (
+        len(money_lanes) != len(ordered_periods)
+        or len(requested_positions) != 1
+        or money_lanes[requested_positions[0]] != period["lane_index"]
+    ):
+        raise _error("Family 11 upstream control period-to-money-lane binding drifted")
+    period_matches = (
+        [
+            item
+            for item in graph_periods
+            if type(item) is dict
+            and item.get("period") == control["requested_period_end"]
+            and item.get("x_center_x2") == period["x_center_x2"]
+        ]
+        if type(graph_periods) is list
+        else []
+    )
+    graph_totals = graph.get("total") if type(graph) is dict else None
+    numeric_totals = numeric_result.get("total")
+    graph_total_matches = (
+        [item for item in graph_totals if item.get("lane_index") == total["lane_index"]]
+        if type(graph_totals) is list
+        else []
+    )
+    numeric_total_matches = (
+        [item for item in numeric_totals if item.get("lane_index") == total["lane_index"]]
+        if type(numeric_totals) is list
+        else []
+    )
+    if (
+        len(period_matches) != 1
+        or len(graph_total_matches) != 1
+        or len(numeric_total_matches) != 1
+        or graph_total_matches[0].get("source_line_index") != total_source["source_line_index"]
+        or numeric_total_matches[0].get("source_line_index") != total_source["source_line_index"]
+        or numeric_total_matches[0].get("parsed_value") != total["parsed_value"]
+        or numeric_total_matches[0].get("ppocrv6_surface") != total_source["ppocrv6_surface"]
+        or numeric_result.get("page_sequence") != graph.get("page_sequence")
+    ):
+        raise _error("Family 11 upstream outer/nested total control binding drifted")
+    return control
+
+
+def _upstream_control_locators(control: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    return [
+        *control["owner_evidence"]["evidence"],
+        *control["period_lane"]["evidence"],
+        control["unit_evidence"]["source"],
+        control["total_control"]["source"],
+    ]
+
+
+def _controls_for_absent_lanes(
+    request_set: Mapping[str, Any] | None,
+    controls: Sequence[Mapping[str, Any]],
+    *,
+    document: Mapping[str, Any],
+    graph_id: str,
+    source_segments: Sequence[Mapping[str, Any]],
+    projected_segments: Sequence[Mapping[str, Any]],
+    period_axis: Sequence[Mapping[str, Any]],
+    unit_context: Mapping[str, Any],
+) -> dict[int, tuple[dict[str, Any], dict[str, Any]]]:
+    if isinstance(controls, (str, bytes, bytearray)) or not isinstance(controls, Sequence):
+        raise _error("Family 11 upstream total controls must be one sequence")
+    if request_set is None:
+        if controls:
+            raise _error("Family 11 upstream total controls lack their request set")
+        absent = [
+            segment["period_lane_index"]
+            for segment in source_segments
+            if _local_total_classification(segment)[0] == "STRUCTURALLY_ABSENT"
+        ]
+        if absent:
+            raise _error("Family 11 printed customer-loan total is structurally absent")
+        return {}
+    request = _validated_total_control_request_set(request_set)
+    binding = request["document_binding"]
+    evidence = document["evidence_binding"]
+    if (
+        binding["document_id"] != document["document_id"]
+        or binding["document_ordinal"] != document["document_ordinal"]
+        or binding["document_packet_id"] != evidence["document_packet_id"]
+        or binding["document_evidence_root_sha256"] != evidence["document_evidence_root_sha256"]
+        or request["graph_binding"]["graph_id"] != graph_id
+        or request["graph_binding"]["region_fingerprint_sha256"]
+        != canonical_json_sha256_v1(document["region_fingerprint"])
+    ):
+        raise _error("Family 11 upstream total request document/root/graph binding drifted")
+    if len(request["lane_requests"]) != len(source_segments):
+        raise _error("Family 11 upstream total request sparse lane axis drifted")
+    absent_lanes = []
+    request_by_period = {}
+    for source, projected, period, lane_request in zip(
+        source_segments,
+        projected_segments,
+        period_axis,
+        request["lane_requests"],
+        strict=True,
+    ):
+        classification, cell_id, evidence_id = _local_total_classification(source)
+        expected = {
+            "classification": classification,
+            "graph_id": graph_id,
+            "lane_index": source["period_lane_index"],
+            "local_total_cell_id": cell_id,
+            "local_total_evidence_id": evidence_id,
+            "page_sequences": projected["page_sequences"],
+            "period_end": period["period_end"],
+            "period_resolution": period["resolution_mode"],
+            "period_role": period["period_role"],
+            "segment_id": source["segment_id"],
+            "unit_context": unit_context,
+        }
+        if any(lane_request[key] != value for key, value in expected.items()):
+            raise _error("Family 11 upstream total request sparse topology drifted")
+        if classification == "STRUCTURALLY_ABSENT":
+            absent_lanes.append(source["period_lane_index"])
+            request_by_period[period["period_end"]] = lane_request
+    typed_controls = [_validated_upstream_total_control(item) for item in controls]
+    control_ids = [item["result_id"] for item in typed_controls]
+    control_periods = [_iso_period(item["requested_period_end"]) for item in typed_controls]
+    if (
+        len(control_ids) != len(set(control_ids))
+        or len(control_periods) != len(set(control_periods))
+        or set(control_periods) != set(request_by_period)
+        or len(typed_controls) != len(absent_lanes)
+    ):
+        raise _error("Family 11 upstream total controls are missing, duplicate, or unused")
+    locator_ids = set(request["source_locator_ids"])
+    result = {}
+    for control, resolved_period in zip(typed_controls, control_periods, strict=True):
+        lane_request = request_by_period[resolved_period]
+        control_binding = control["document_binding"]
+        if (
+            control_binding["document_id"] != binding["document_id"]
+            or control_binding["document_ordinal"] != binding["document_ordinal"]
+            or control_binding["document_packet_id"] != binding["document_packet_id"]
+            or control_binding["document_evidence_root_sha256"]
+            != binding["document_evidence_root_sha256"]
+            or control_binding["snapshot_id"] != binding["source_snapshot_id"]
+            or any(
+                _source_locator_id(locator) not in locator_ids
+                for locator in _upstream_control_locators(control)
+            )
+        ):
+            raise _error("Family 11 upstream total control source snapshot/locator drifted")
+        result[lane_request["lane_index"]] = (lane_request, control)
+    return result
+
+
+def project_loan_geography_numeric_input_v1(
+    document: Mapping[str, Any],
+    document_packet: Mapping[str, Any],
+    *,
+    document_context: Mapping[str, Any] | None = None,
+    upstream_total_control_requests: Mapping[str, Any] | None = None,
+    upstream_total_control_source_document: Mapping[str, Any] | None = None,
+    upstream_total_control_source_snapshot: Mapping[str, Any] | None = None,
+    upstream_total_controls: Sequence[Mapping[str, Any]] = (),
+) -> dict[str, Any]:
+    """Project role x period cells and printed totals; never parse a number.
+
+    Local exact dates/units are preferred.  Missing context may be inherited
+    only from the typed, replayed full-PDF period/unit context.  Document-packet
+    period/year metadata never supplies an evidence ref or source surface.
+    """
+
+    document = _validated_document_envelope(document)
+    if upstream_total_control_requests is not None:
+        if (
+            upstream_total_control_source_document is None
+            or upstream_total_control_source_snapshot is None
+        ):
+            raise _error("Family 11 upstream total request lacks its exact full-document source")
+        upstream_total_control_requests = (
+            validate_loan_geography_customer_loan_total_control_requests_replay_v1(
+                upstream_total_control_requests,
+                upstream_total_control_source_document,
+                document_packet,
+                upstream_total_control_source_snapshot,
+                document_context=document_context,
+            )
+        )
+        from scripts.experiments.customer_loan_total_control_v1 import (
+            validate_customer_loan_total_control_replay_v1,
+        )
+
+        replayed_controls = []
+        for control in upstream_total_controls:
+            requested_period = (
+                control.get("requested_period_end") if type(control) is dict else None
+            )
+            try:
+                replayed_controls.append(
+                    validate_customer_loan_total_control_replay_v1(
+                        control,
+                        upstream_total_control_source_snapshot,
+                        requested_period,
+                    )
+                )
+            except (RuntimeError, ValueError) as exc:
+                raise _error(
+                    "Family 11 upstream customer-loan total control did not publicly replay"
+                ) from exc
+        upstream_total_controls = tuple(replayed_controls)
+    elif (
+        upstream_total_control_source_document is not None
+        or upstream_total_control_source_snapshot is not None
+    ):
+        raise _error("Family 11 unused upstream total-control source was supplied")
+    overlay, segments, source_segments, locators, unit_context, period_axis = (
+        _numeric_projection_axes(
+            document,
+            document_packet,
+            document_context=document_context,
+        )
+    )
+    logical = overlay["graphs"]
+    controls_by_lane = _controls_for_absent_lanes(
+        upstream_total_control_requests,
+        upstream_total_controls,
+        document=document,
+        graph_id=logical[0]["graph_id"],
+        source_segments=source_segments,
+        projected_segments=segments,
+        period_axis=period_axis,
+        unit_context=unit_context,
+    )
 
     def cell(raw: Mapping[str, Any], lane_index: int, role: str) -> dict[str, Any]:
         source_index = raw.get("source_line_index")
@@ -1774,6 +2703,37 @@ def project_loan_geography_numeric_input_v1(
             "vietocr_surface": raw.get("vietocr_raw_nfc_surface")
             if source_index is not None
             else None,
+        }
+
+    def upstream_total_cell(
+        source_segment: Mapping[str, Any],
+        lane_index: int,
+        lane_request: Mapping[str, Any],
+        control: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        source = control["total_control"]["source"]
+        locator_id = _source_locator_id(source)
+        identity_material = {
+            "control_request_id": lane_request["control_request_id"],
+            "control_result_id": control["result_id"],
+            "graph_id": logical[0]["graph_id"],
+            "lane_index": lane_index,
+            "role": "PRINTED_CUSTOMER_LOAN_TOTAL",
+            "segment_id": source_segment["segment_id"],
+            "source_locator_id": locator_id,
+        }
+        return {
+            "bbox": canonical_clone_v1(source["bbox"]),
+            "cell_id": "lgstv1:upstream-total-cell:" + canonical_json_sha256_v1(identity_material),
+            "crop_sha256": source["crop_ref"]["sha256"],
+            "lane_index": lane_index,
+            "lane_type": "MONEY",
+            "page_sequence": source["page_sequence"],
+            "ppocrv6_score": float(source["ppocrv6_reader_score"]),
+            "ppocrv6_surface": source["ppocrv6_surface"],
+            "sample_id": source["sample_id"],
+            "source_line_index": source["source_line_index"],
+            "vietocr_surface": source["vietocr_transformer_surface"],
         }
 
     rows = []
@@ -1804,9 +2764,8 @@ def project_loan_geography_numeric_input_v1(
         lane = segment["period_lane_index"]
         total_match = segment["trailing_total_match"]
         total_resolution = segment["trailing_total_resolution"]
-        if len(segment["trailing_total_cells"]) != 1:
-            raise _error("Family 11 printed customer-loan total is unresolved")
-        if total_match is not None and total_resolution is None:
+        classification, _local_cell_id, _local_evidence_id = _local_total_classification(segment)
+        if classification == "LOCAL_LABELED_TOTAL":
             row_evidence = total_match["line_evidence"]
             evidence_refs = [
                 f"line:{item['page_sequence']}:{item['source_line_index']}" for item in row_evidence
@@ -1818,11 +2777,12 @@ def project_loan_geography_numeric_input_v1(
             label_surface = total_match["surface_raw_nfc"]
             resolution_mode = "LOCAL_LABELED_TOTAL"
             row_bbox = canonical_clone_v1(total_match["bbox"])
-        elif (
-            total_match is None
-            and type(total_resolution) is dict
-            and total_resolution.get("mode") == "UNLABELED_COMPLETE_NUMERIC_TOTAL_ROW"
-        ):
+            control_page_sequence = segment["page_sequences"][0]
+            projected_total_cell = cell(
+                segment["trailing_total_cells"][0], lane, "PRINTED_CUSTOMER_LOAN_TOTAL"
+            )
+            upstream_evidence = {}
+        elif classification == "LOCAL_UNLABELED_TOTAL_ROW":
             row_evidence = total_resolution["row_evidence"]
             evidence_refs = [
                 f"line:{item['page_sequence']}:{item['source_line_index']}" for item in row_evidence
@@ -1834,11 +2794,46 @@ def project_loan_geography_numeric_input_v1(
             label_surface = None
             resolution_mode = "LOCAL_UNLABELED_TOTAL_ROW"
             row_bbox = canonical_clone_v1(total_resolution["row_bbox"])
+            control_page_sequence = segment["page_sequences"][0]
+            projected_total_cell = cell(
+                segment["trailing_total_cells"][0], lane, "PRINTED_CUSTOMER_LOAN_TOTAL"
+            )
+            upstream_evidence = {}
         else:
-            raise _error("Family 11 printed customer-loan total provenance is unresolved")
-        total_cells.append(
-            cell(segment["trailing_total_cells"][0], lane, "PRINTED_CUSTOMER_LOAN_TOTAL")
-        )
+            bound = controls_by_lane.get(lane)
+            if bound is None:
+                raise _error("Family 11 structurally absent printed total lacks upstream control")
+            lane_request, control = bound
+            source = control["total_control"]["source"]
+            locator_id = _source_locator_id(source)
+            evidence_refs = [f"line:{source['page_sequence']}:{source['source_line_index']}"]
+            source_bboxes = [canonical_clone_v1(source["bbox"])]
+            source_line_indices = [source["source_line_index"]]
+            source_surfaces = [source["vietocr_transformer_surface"]]
+            label_ref = control["result_id"]
+            label_surface = None
+            resolution_mode = _UPSTREAM_TOTAL_CONTROL_MODE
+            row_bbox = canonical_clone_v1(source["bbox"])
+            control_page_sequence = source["page_sequence"]
+            projected_total_cell = upstream_total_cell(segment, lane, lane_request, control)
+            upstream_evidence = {
+                "control_request_id": lane_request["control_request_id"],
+                "control_result_id": control["result_id"],
+                "request_set_id": upstream_total_control_requests["request_set_id"],
+                "source_control_graph_result_id": control["loan_type_graph_result"]["result_id"],
+                "source_control_numeric_result_id": control["loan_type_numeric_result"][
+                    "result_id"
+                ],
+                "source_document_graph_result_id": upstream_total_control_requests[
+                    "document_binding"
+                ]["source_whole_document_graph_result_id"],
+                "source_graph_id": logical[0]["graph_id"],
+                "source_locator": canonical_clone_v1(source),
+                "source_locator_id": locator_id,
+                "source_segment_id": segment["segment_id"],
+                "source_snapshot_id": control["document_binding"]["snapshot_id"],
+            }
+        total_cells.append(projected_total_cell)
         total_refs.append(label_ref)
         total_surfaces.append(label_surface)
         total_control_evidence.append(
@@ -1847,12 +2842,13 @@ def project_loan_geography_numeric_input_v1(
                 "label_evidence_ref": label_ref,
                 "label_surface": label_surface,
                 "lane_index": lane,
-                "page_sequence": segment["page_sequences"][0],
+                "page_sequence": control_page_sequence,
                 "resolution_mode": resolution_mode,
                 "row_bbox": row_bbox,
                 "source_bboxes": source_bboxes,
                 "source_line_indices": source_line_indices,
                 "source_surfaces_raw_nfc": source_surfaces,
+                **upstream_evidence,
             }
         )
     mode = (

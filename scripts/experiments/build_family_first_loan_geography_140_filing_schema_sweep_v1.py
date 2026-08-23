@@ -23,6 +23,7 @@ import time
 from collections import Counter
 from collections.abc import Iterator, Mapping, Sequence
 from concurrent.futures import ProcessPoolExecutor
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -41,6 +42,7 @@ from bctc_ai.source_structure.contracts_v1 import (  # noqa: E402
     canonical_json_sha256_v1,
     same_typed_json_v1,
 )
+from scripts.experiments import customer_loan_total_control_v1 as total_control_v1  # noqa: E402
 from scripts.experiments import loan_geography_visible_dash_evidence_v1 as dash_v1  # noqa: E402
 
 FORMAT_VERSION = "FAMILY_FIRST_LOAN_GEOGRAPHY_140_FILING_SCHEMA_SWEEP_V1"
@@ -50,7 +52,8 @@ CLAIM_BOUNDARY = (
     "FIXED_140_FILING_AUTHENTICATED_SQLITE_REGION_FIRST_EXHAUSTIVE_COVERAGE_"
     "REPLAY_WHOLE_DOCUMENT_STRUCTURAL_EQUIVALENCE_SHARED_SCOPED_TABLE_GRAPH_"
     "EXACT_CUSTOMER_LOAN_DOMESTIC_FOREIGN_TOTALS_TYPED_PIXEL_DASH_PPOCRV6_"
-    "VIETOCR_EXACT_PRINTED_TOTAL_EQUATIONS_AND_APPEND_STABLE_TM_SCHEMA_ONLY_"
+    "VIETOCR_LOCAL_OR_AUTHENTICATED_UPSTREAM_EXACT_PRINTED_TOTAL_EQUATIONS_"
+    "AND_APPEND_STABLE_TM_SCHEMA_ONLY_"
     "NO_BROAD_POPULATION_NARROWING_BACKSOLVE_GEMMA_NUMERIC_CANONICALIZATION_"
     "EXPORT_OR_BANK_PAGE_PERIOD_ROUTING_AUTHORITY"
 )
@@ -59,13 +62,16 @@ OUTPUT_PATH = Path(
 )
 
 _AUTHORITY = {
-    "absence_trial_hydrates_numeric_or_pixel_evidence": False,
+    "absence_trial_hydrates_numeric_pixel_or_total_control_evidence": False,
     "accounting_can_backsolve_invent_or_narrow_a_population": False,
     "accounting_is_corroboration_or_veto_only": True,
     "bank_filename_note_page_period_scope_year_or_ordinal_used_as_mapping_rule": False,
     "blank_or_detector_omission_imputed_as_zero": False,
     "broad_or_mixed_geography_population_mapping_authority": False,
     "canonicalization_or_export_authority": False,
+    "customer_loan_total_control_snapshot_self_hash_is_source_authority": False,
+    "customer_loan_total_control_requires_capability_snapshot_and_public_replay": True,
+    "e0164_persisted_result_is_total_control_authority": False,
     "gemma_numeric_authority": False,
     "gemma_request_count": 0,
     "known_nested_domestic_descendants_emitted": False,
@@ -92,6 +98,12 @@ _TARGET_MAPPED_MONEY_CELL_COUNT = 130
 _TARGET_OBSERVED_NUMERIC_MAPPED_CELL_COUNT = 88
 _TARGET_VISIBLE_DASH_ZERO_COUNT = 42
 _TARGET_EQUATION_COUNT = 65
+_TARGET_TOTAL_CONTROL_SOURCE_MODE_COUNTS = {
+    "LOCAL_LABELED_TOTAL": 36,
+    "LOCAL_UNLABELED_TOTAL_ROW": 18,
+    "UPSTREAM_AUTHENTICATED_CUSTOMER_LOAN_TOTAL_CONTROL": 11,
+}
+_TARGET_UPSTREAM_TOTAL_CONTROL_COUNT = 11
 _TARGET_ROW_LAYOUT_COUNT = 20
 _TARGET_COLUMN_LAYOUT_COUNT = 18
 _TARGET_REPEATED_FULL_SEGMENT_COUNT = 18
@@ -221,13 +233,18 @@ _IMPLEMENTATION_PATHS = (
     Path("src/bctc_ai/evaluation/family_first_ocr_query_cache_v1.py"),
     Path("src/bctc_ai/evaluation/family_first_region_retrieval_v1.py"),
     Path("src/bctc_ai/evaluation/accounting_table_axes_v1.py"),
+    Path("src/bctc_ai/evaluation/accounting_variant_graph_engine_v1.py"),
     Path("src/bctc_ai/evaluation/accounting_scoped_table_graph_v1.py"),
     Path("src/bctc_ai/evaluation/loan_geography_scoped_table_adapter_v1.py"),
     Path("src/bctc_ai/evaluation/family_first_visible_dash_glyph_evidence_v1.py"),
     Path("src/bctc_ai/evaluation/loan_geography_numeric_reconciliation_v1.py"),
     Path("src/bctc_ai/mapping/loan_geography_bounded_schema_v1.py"),
+    Path("scripts/experiments/customer_loan_total_control_v1.py"),
+    Path("scripts/experiments/loan_type_variant_graph_v1.py"),
+    Path("scripts/experiments/loan_type_numeric_row_reconciliation_v1.py"),
     Path("scripts/experiments/loan_geography_visible_dash_evidence_v1.py"),
     Path("scripts/experiments/build_family_first_loan_geography_140_filing_schema_sweep_v1.py"),
+    Path("src/bctc_ai/source_structure/contracts_v1.py"),
 )
 
 
@@ -443,6 +460,8 @@ def _validate_sparse_graph_worker_batch(
     ):
         raise _error("loan-geography sparse worker batch denominator drifted")
     expected_indices = list(range(source_start, source_start + len(snapshots)))
+    if any(type(record.get("source_index")) is not int for record in records):
+        raise _error("loan-geography sparse worker source order binding drifted")
     ordered = sorted(records, key=lambda record: record.get("source_index", -1))
     if [record.get("source_index") for record in ordered] != expected_indices:
         raise _error("loan-geography sparse worker source order binding drifted")
@@ -656,6 +675,8 @@ def _direct_full_worker_material(
     if not same_typed_json_v1(built_whole_document, whole_document):
         raise _error("loan-geography direct-full graph public replay drifted")
     document_context = None
+    total_control_requests = None
+    total_controls: list[dict[str, Any]] = []
     if whole_document.get("disposition") == "EXACT_CUSTOMER_LOAN_GEOGRAPHY":
         built_context = graph_v1.build_loan_geography_document_context_v1(snapshot)
         document_context = graph_v1.validate_loan_geography_document_context_replay_v1(
@@ -664,7 +685,50 @@ def _direct_full_worker_material(
         )
         if not same_typed_json_v1(built_context, document_context):
             raise _error("loan-geography direct-full context public replay drifted")
+        built_requests = graph_v1.build_loan_geography_customer_loan_total_control_requests_v1(
+            whole_document,
+            packet,
+            snapshot,
+            document_context=document_context,
+        )
+        total_control_requests = (
+            graph_v1.validate_loan_geography_customer_loan_total_control_requests_replay_v1(
+                built_requests,
+                whole_document,
+                packet,
+                snapshot,
+                document_context=document_context,
+            )
+        )
+        if not same_typed_json_v1(built_requests, total_control_requests):
+            raise _error("loan-geography total-control request public replay drifted")
+        for lane_request in total_control_requests["lane_requests"]:
+            if lane_request["classification"] != "STRUCTURALLY_ABSENT":
+                continue
+            requested_period_end = _customer_loan_total_requested_period_end(
+                lane_request["period_end"]
+            )
+            built_control = total_control_v1.build_customer_loan_total_control_v1(
+                snapshot,
+                requested_period_end,
+            )
+            replayed_control = total_control_v1.validate_customer_loan_total_control_replay_v1(
+                built_control,
+                snapshot,
+                requested_period_end,
+            )
+            if not same_typed_json_v1(built_control, replayed_control):
+                raise _error("customer-loan total-control public replay drifted")
+            total_controls.append(replayed_control)
     material = {
+        "customer_loan_total_control_request_set": total_control_requests,
+        "customer_loan_total_control_request_set_id": (
+            total_control_requests.get("request_set_id")
+            if type(total_control_requests) is dict
+            else None
+        ),
+        "customer_loan_total_control_result_ids": [item["result_id"] for item in total_controls],
+        "customer_loan_total_controls": total_controls,
         "document_context": document_context,
         "document_context_result_id": (
             document_context.get("result_id") if type(document_context) is dict else None
@@ -729,7 +793,13 @@ def _validate_direct_full_worker_batch(
     records: Sequence[Mapping[str, Any]],
     *,
     source_start: int,
-) -> tuple[tuple[dict[str, Any], ...], tuple[dict[str, Any] | None, ...]]:
+) -> tuple[
+    tuple[dict[str, Any], ...],
+    tuple[dict[str, Any] | None, ...],
+    tuple[dict[str, Any] | None, ...],
+    tuple[list[dict[str, Any]], ...],
+    tuple[dict[str, Any] | None, ...],
+]:
     """Replay worker outputs in the parent and restore the authenticated source axis."""
 
     if (
@@ -742,13 +812,22 @@ def _validate_direct_full_worker_batch(
     expected_indices = list(range(source_start, source_start + len(snapshots)))
     if any(type(record) is not dict for record in records):
         raise _error("loan-geography direct-full worker output drifted")
+    if any(type(record.get("source_index")) is not int for record in records):
+        raise _error("loan-geography direct-full worker source order binding drifted")
     ordered = sorted(records, key=lambda record: record.get("source_index", -1))
     if [record.get("source_index") for record in ordered] != expected_indices:
         raise _error("loan-geography direct-full worker source order binding drifted")
 
     equivalences: list[dict[str, Any]] = []
     contexts: list[dict[str, Any] | None] = []
+    request_sets: list[dict[str, Any] | None] = []
+    control_sets: list[list[dict[str, Any]]] = []
+    numeric_inputs: list[dict[str, Any] | None] = []
     required = {
+        "customer_loan_total_control_request_set",
+        "customer_loan_total_control_request_set_id",
+        "customer_loan_total_control_result_ids",
+        "customer_loan_total_controls",
         "document_context",
         "document_context_result_id",
         "document_ordinal",
@@ -775,6 +854,8 @@ def _validate_direct_full_worker_batch(
             raise _error("loan-geography direct-full worker output identity drifted")
         whole_document = record["whole_document"]
         document_context = record["document_context"]
+        total_control_requests = record["customer_loan_total_control_request_set"]
+        total_controls = record["customer_loan_total_controls"]
         exact_document = (
             type(whole_document) is dict
             and whole_document.get("disposition") == "EXACT_CUSTOMER_LOAN_GEOGRAPHY"
@@ -796,12 +877,26 @@ def _validate_direct_full_worker_batch(
                     type(document_context) is not dict
                     or record["document_context_result_id"] != document_context.get("result_id")
                     or document_context.get("snapshot_id") != snapshot.get("snapshot_id")
+                    or type(total_control_requests) is not dict
+                    or record["customer_loan_total_control_request_set_id"]
+                    != total_control_requests.get("request_set_id")
+                    or type(total_controls) is not list
+                    or record["customer_loan_total_control_result_ids"]
+                    != [
+                        item.get("result_id") if type(item) is dict else None
+                        for item in total_controls
+                    ]
                 )
             )
             or (
                 not exact_document
                 and (
-                    document_context is not None or record["document_context_result_id"] is not None
+                    document_context is not None
+                    or record["document_context_result_id"] is not None
+                    or total_control_requests is not None
+                    or record["customer_loan_total_control_request_set_id"] is not None
+                    or total_controls != []
+                    or record["customer_loan_total_control_result_ids"] != []
                 )
             )
             or type(evidence_binding) is not dict
@@ -829,6 +924,47 @@ def _validate_direct_full_worker_batch(
                 whole_document_line_count=packet["line_count"],
                 whole_document_page_count=packet["page_count"],
             )
+            if exact_document:
+                typed_requests = _customer_loan_total_control_request_set_envelope(
+                    total_control_requests,
+                    packet=packet,
+                    whole_document=whole_document,
+                    source_snapshot=snapshot,
+                )
+                typed_controls = _customer_loan_total_controls(
+                    total_controls,
+                    packet=packet,
+                    source_snapshot=snapshot,
+                )
+                request_ids, control_ids = _customer_loan_total_control_request_control_axis(
+                    typed_requests,
+                    typed_controls,
+                )
+                if (
+                    record["customer_loan_total_control_result_ids"] != control_ids
+                    or [
+                        lane["control_request_id"]
+                        for lane in typed_requests["lane_requests"]
+                        if lane["classification"] == "STRUCTURALLY_ABSENT"
+                    ]
+                    != request_ids
+                ):
+                    raise _error("loan-geography worker request/control identity drifted")
+                numeric_input = graph_v1.project_loan_geography_numeric_input_v1(
+                    sparse_by_ordinal[ordinal],
+                    packet,
+                    document_context=replayed_context,
+                    upstream_total_control_requests=typed_requests,
+                    upstream_total_control_source_document=whole_document,
+                    upstream_total_control_source_snapshot=snapshot,
+                    upstream_total_controls=typed_controls,
+                )
+                if type(numeric_input) is not dict:
+                    raise _error("loan-geography preprojected numeric input drifted")
+            else:
+                typed_requests = None
+                typed_controls = []
+                numeric_input = None
         except FamilyFirstLoanGeography140FilingSchemaSweepV1Error:
             raise
         except Exception as exc:
@@ -842,7 +978,20 @@ def _validate_direct_full_worker_batch(
         contexts.append(
             canonical_clone_v1(replayed_context) if replayed_context is not None else None
         )
-    return tuple(equivalences), tuple(contexts)
+        request_sets.append(
+            canonical_clone_v1(typed_requests) if typed_requests is not None else None
+        )
+        control_sets.append(canonical_clone_v1(typed_controls))
+        numeric_inputs.append(
+            canonical_clone_v1(numeric_input) if numeric_input is not None else None
+        )
+    return (
+        tuple(equivalences),
+        tuple(contexts),
+        tuple(request_sets),
+        tuple(control_sets),
+        tuple(numeric_inputs),
+    )
 
 
 def _whole_document_equivalences(
@@ -853,7 +1002,13 @@ def _whole_document_equivalences(
     *,
     batch_size: int,
     jobs: int = 1,
-) -> tuple[tuple[dict[str, Any], ...], tuple[dict[str, Any] | None, ...]]:
+) -> tuple[
+    tuple[dict[str, Any], ...],
+    tuple[dict[str, Any] | None, ...],
+    tuple[dict[str, Any] | None, ...],
+    tuple[list[dict[str, Any]], ...],
+    tuple[dict[str, Any] | None, ...],
+]:
     """Run the same adapter on full documents in bounded deterministic batches."""
 
     if (
@@ -875,6 +1030,9 @@ def _whole_document_equivalences(
     sparse_by_ordinal = {item["document_ordinal"]: item for item in sparse_documents}
     equivalences: list[dict[str, Any]] = []
     contexts: list[dict[str, Any] | None] = []
+    request_sets: list[dict[str, Any] | None] = []
+    control_sets: list[list[dict[str, Any]]] = []
+    numeric_inputs: list[dict[str, Any] | None] = []
 
     def collect(executor: ProcessPoolExecutor | None) -> None:
         source_start = 0
@@ -902,7 +1060,13 @@ def _whole_document_equivalences(
                 )
             except Exception as exc:
                 raise _error("loan-geography direct-full worker execution failed") from exc
-            batch_equivalences, batch_contexts = _validate_direct_full_worker_batch(
+            (
+                batch_equivalences,
+                batch_contexts,
+                batch_request_sets,
+                batch_control_sets,
+                batch_numeric_inputs,
+            ) = _validate_direct_full_worker_batch(
                 receipt,
                 sparse_by_ordinal,
                 snapshots,
@@ -911,6 +1075,9 @@ def _whole_document_equivalences(
             )
             equivalences.extend(batch_equivalences)
             contexts.extend(batch_contexts)
+            request_sets.extend(batch_request_sets)
+            control_sets.extend(batch_control_sets)
+            numeric_inputs.extend(batch_numeric_inputs)
             source_start += len(snapshots)
 
     if jobs == 1:
@@ -927,9 +1094,18 @@ def _whole_document_equivalences(
             raise
         except Exception as exc:
             raise _error("loan-geography direct-full worker pool failed") from exc
-    if len(equivalences) != _TARGET_DOCUMENT_COUNT or len(contexts) != _TARGET_DOCUMENT_COUNT:
+    if any(
+        len(items) != _TARGET_DOCUMENT_COUNT
+        for items in (equivalences, contexts, request_sets, control_sets, numeric_inputs)
+    ):
         raise _error("loan-geography direct oracle equivalence denominator drifted")
-    return tuple(equivalences), tuple(contexts)
+    return (
+        tuple(equivalences),
+        tuple(contexts),
+        tuple(request_sets),
+        tuple(control_sets),
+        tuple(numeric_inputs),
+    )
 
 
 def _bank(packet: Mapping[str, Any]) -> str:
@@ -1229,6 +1405,201 @@ def _document_context_envelope(
     return context
 
 
+def _customer_loan_total_control_source_locators(
+    control: Mapping[str, Any],
+) -> tuple[dict[str, Any], ...]:
+    owner = control.get("owner_evidence")
+    period = control.get("period_lane")
+    unit = control.get("unit_evidence")
+    total = control.get("total_control")
+    groups = (
+        owner.get("evidence") if type(owner) is dict else None,
+        period.get("evidence") if type(period) is dict else None,
+    )
+    if (
+        any(type(group) is not list or not group for group in groups)
+        or type(unit) is not dict
+        or type(unit.get("source")) is not dict
+        or type(total) is not dict
+        or type(total.get("source")) is not dict
+    ):
+        raise _error("customer-loan total-control source locator axis drifted")
+    return tuple(
+        canonical_clone_v1(locator)
+        for locator in [*groups[0], *groups[1], unit["source"], total["source"]]
+    )
+
+
+def _customer_loan_total_requested_period_end(value: Any) -> str:
+    if type(value) is not str:
+        raise _error("customer-loan total-control request period drifted")
+    try:
+        parsed = date.fromisoformat(value)
+    except ValueError as exc:
+        raise _error("customer-loan total-control request period drifted") from exc
+    if parsed.isoformat() != value:
+        raise _error("customer-loan total-control request period drifted")
+    return parsed.strftime("%d/%m/%Y")
+
+
+def _customer_loan_total_control_envelope(
+    value: Any,
+    *,
+    packet: Mapping[str, Any],
+    source_snapshot: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Cheap typed handoff plus exact parent-held source binding when supplied."""
+
+    try:
+        control = total_control_v1.validate_customer_loan_total_control_v1(value)
+    except total_control_v1.CustomerLoanTotalControlV1Error as exc:
+        raise _error("customer-loan total-control typed handoff drifted") from exc
+    binding = control["document_binding"]
+    if (
+        binding.get("document_id") != packet["document_id"]
+        or binding.get("document_ordinal") != packet["document_ordinal"]
+        or binding.get("document_packet_id") != packet["packet_id"]
+        or binding.get("document_evidence_root_sha256") != packet["document_evidence_root_sha256"]
+        or binding.get("line_count") != packet["line_count"]
+        or binding.get("page_count") != packet["page_count"]
+        or not same_typed_json_v1(binding.get("source_pdf_ref"), packet["source_pdf_ref"])
+    ):
+        raise _error("customer-loan total-control document binding drifted")
+    if source_snapshot is None:
+        return control
+    if (
+        type(source_snapshot) is not dict
+        or not same_typed_json_v1(source_snapshot.get("document_packet"), packet)
+        or binding.get("snapshot_id") != source_snapshot.get("snapshot_id")
+        or binding.get("manifest_id") != source_snapshot.get("manifest_id")
+        or binding.get("query_selection_id") != source_snapshot.get("query_selection_id")
+    ):
+        raise _error("customer-loan total-control authenticated snapshot binding drifted")
+    pages = source_snapshot.get("joined_pages")
+    dimensions = source_snapshot.get("selected_page_dimensions")
+    if type(pages) is not list or type(dimensions) is not list:
+        raise _error("customer-loan total-control authenticated source axis drifted")
+    pages_by_sequence = {item.get("page_sequence"): item for item in pages if type(item) is dict}
+    dimensions_by_page = {
+        item.get("physical_page"): item for item in dimensions if type(item) is dict
+    }
+    if (
+        len(pages_by_sequence) != len(pages)
+        or len(dimensions_by_page) != len(dimensions)
+        or set(dimensions_by_page) != set(range(1, packet["page_count"] + 1))
+    ):
+        raise _error("customer-loan total-control authenticated page axis drifted")
+    for locator in _customer_loan_total_control_source_locators(control):
+        page_sequence = locator["page_sequence"]
+        source_line_index = locator["source_line_index"]
+        page = pages_by_sequence.get(page_sequence)
+        dimension = dimensions_by_page.get(page_sequence)
+        lines = page.get("lines") if type(page) is dict else None
+        matching = (
+            [line for line in lines if line.get("line_ordinal") == source_line_index]
+            if type(lines) is list
+            else []
+        )
+        if len(matching) != 1 or type(dimension) is not dict:
+            raise _error("customer-loan total-control authenticated source line is absent")
+        line = matching[0]
+        numeric = line.get("numeric_recognition")
+        expected = {
+            "bbox": canonical_clone_v1(line.get("bbox")),
+            "crop_ref": canonical_clone_v1(line.get("crop_ref")),
+            "page_render": canonical_clone_v1(dimension),
+            "page_sequence": page_sequence,
+            "ppocrv6_reader_score": numeric.get("reader_score") if type(numeric) is dict else None,
+            "ppocrv6_surface": numeric.get("raw_prediction") if type(numeric) is dict else None,
+            "sample_id": line.get("sample_id"),
+            "source_line_index": source_line_index,
+            "vietocr_transformer_surface": line.get("vietocr_text"),
+        }
+        if not same_typed_json_v1(locator, expected):
+            raise _error("customer-loan total-control authenticated locator binding drifted")
+    return control
+
+
+def _customer_loan_total_controls(
+    value: Any,
+    *,
+    packet: Mapping[str, Any],
+    source_snapshot: Mapping[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    if type(value) is not list:
+        raise _error("customer-loan total-control result axis drifted")
+    controls = [
+        _customer_loan_total_control_envelope(
+            item,
+            packet=packet,
+            source_snapshot=source_snapshot,
+        )
+        for item in value
+    ]
+    identities = [item["result_id"] for item in controls]
+    periods = [item["requested_period_end"] for item in controls]
+    if len(identities) != len(set(identities)) or len(periods) != len(set(periods)):
+        raise _error("customer-loan total-control result identities or periods repeat")
+    return controls
+
+
+def _customer_loan_total_control_request_set_envelope(
+    value: Any,
+    *,
+    packet: Mapping[str, Any],
+    whole_document: Mapping[str, Any],
+    source_snapshot: Mapping[str, Any],
+) -> dict[str, Any]:
+    try:
+        request_set = graph_v1.validate_loan_geography_customer_loan_total_control_requests_v1(
+            value
+        )
+    except graph_v1.LoanGeographyScopedTableAdapterV1Error as exc:
+        raise _error("loan-geography total-control request typed handoff drifted") from exc
+    binding = request_set["document_binding"]
+    graph_binding = request_set["graph_binding"]
+    dimensions = source_snapshot.get("selected_page_dimensions")
+    if (
+        binding["document_id"] != packet["document_id"]
+        or binding["document_ordinal"] != packet["document_ordinal"]
+        or binding["document_packet_id"] != packet["packet_id"]
+        or binding["document_evidence_root_sha256"] != packet["document_evidence_root_sha256"]
+        or binding["source_snapshot_id"] != source_snapshot.get("snapshot_id")
+        or binding["source_whole_document_graph_result_id"] != whole_document.get("result_id")
+        or graph_binding["region_fingerprint_sha256"]
+        != canonical_json_sha256_v1(whole_document.get("region_fingerprint"))
+        or type(dimensions) is not list
+        or not same_typed_json_v1(request_set["source_page_render_bindings"], dimensions)
+    ):
+        raise _error("loan-geography total-control request source binding drifted")
+    return request_set
+
+
+def _customer_loan_total_control_request_control_axis(
+    request_set: Mapping[str, Any],
+    controls: Sequence[Mapping[str, Any]],
+) -> tuple[list[str], list[str]]:
+    absent = [
+        lane
+        for lane in request_set["lane_requests"]
+        if lane["classification"] == "STRUCTURALLY_ABSENT"
+    ]
+    request_ids = [lane["control_request_id"] for lane in absent]
+    request_periods = [
+        _customer_loan_total_requested_period_end(lane["period_end"]) for lane in absent
+    ]
+    control_ids = [control["result_id"] for control in controls]
+    control_periods = [control["requested_period_end"] for control in controls]
+    if (
+        any(type(item) is not str or not item for item in request_ids)
+        or len(request_ids) != len(set(request_ids))
+        or len(control_ids) != len(set(control_ids))
+        or request_periods != control_periods
+    ):
+        raise _error("loan-geography total-control request/control axis drifted")
+    return request_ids, control_ids
+
+
 def _sparse_graph_binding_from_document(document: Mapping[str, Any]) -> dict[str, Any]:
     fields = {
         "disposition": document.get("disposition"),
@@ -1355,6 +1726,7 @@ def _exact_trial_evidence(
     document: Mapping[str, Any],
     packet: Mapping[str, Any],
     document_context: Mapping[str, Any],
+    preprojected_numeric_input: Mapping[str, Any],
     receipt_id: str,
     schema: Mapping[str, Any],
 ) -> dict[str, Any]:
@@ -1415,23 +1787,9 @@ def _exact_trial_evidence(
             packet,
         )
         render_ids = [item["render_id"] for item in renders]
-    try:
-        numeric_input = graph_v1.project_loan_geography_numeric_input_v1(
-            document,
-            packet,
-            document_context=document_context,
-        )
-    except graph_v1.LoanGeographyScopedTableAdapterV1Error as exc:
-        if any(
-            token in str(exc)
-            for token in (
-                "inherited period lacks",
-                "million-VND unit remains unresolved",
-                "period remains unresolved",
-            )
-        ):
-            raise _unresolved(str(exc)) from exc
-        raise
+    if type(preprojected_numeric_input) is not dict:
+        raise _error("exact loan-geography trial lacks its parent-projected numeric input")
+    numeric_input = canonical_clone_v1(preprojected_numeric_input)
     numeric = numeric_v1.build_loan_geography_numeric_reconciliation_v1(
         numeric_input,
         visible_dash_evidence=dash_bindings,
@@ -1502,6 +1860,9 @@ def _trial_from_graph(
     document: Mapping[str, Any],
     packet: Mapping[str, Any],
     document_context: Mapping[str, Any] | None,
+    total_control_requests: Mapping[str, Any] | None,
+    total_controls: Sequence[Mapping[str, Any]],
+    preprojected_numeric_input: Mapping[str, Any] | None,
     coverage: Mapping[str, Any],
     equivalence: Mapping[str, Any],
     receipt_id: str,
@@ -1512,11 +1873,28 @@ def _trial_from_graph(
         raise _error("loan-geography shared adapter disposition drifted")
     if disposition == "EXACT_CUSTOMER_LOAN_GEOGRAPHY":
         typed_context = _document_context_envelope(document_context, packet=packet)
+        if (
+            type(total_control_requests) is not dict
+            or type(total_controls) not in {list, tuple}
+            or type(preprojected_numeric_input) is not dict
+        ):
+            raise _error("exact loan-geography trial lacks total-control handoff evidence")
+        typed_requests = canonical_clone_v1(total_control_requests)
+        typed_controls = canonical_clone_v1(list(total_controls))
     else:
-        if document_context is not None:
-            raise _error("non-exact loan-geography trial hydrated document context")
+        if (
+            document_context is not None
+            or total_control_requests is not None
+            or total_controls not in ((), [])
+            or preprojected_numeric_input is not None
+        ):
+            raise _error("non-exact loan-geography trial hydrated exact-only evidence")
         typed_context = None
+        typed_requests = None
+        typed_controls = []
     common = {
+        "customer_loan_total_control_request_set": typed_requests,
+        "customer_loan_total_controls": typed_controls,
         "document": canonical_clone_v1(packet),
         "document_context_evidence": typed_context,
         "gemma_challenger_refs": [],
@@ -1535,6 +1913,7 @@ def _trial_from_graph(
                 document,
                 packet,
                 typed_context,
+                preprojected_numeric_input,
                 receipt_id,
                 schema,
             )
@@ -1596,6 +1975,93 @@ def _trial_from_graph(
     }
 
 
+def _validate_trial_total_control_handoff(
+    request_value: Any,
+    control_values: Any,
+    *,
+    packet: Mapping[str, Any],
+    equivalence: Mapping[str, Any],
+    graph: Mapping[str, Any],
+    numeric_input: Mapping[str, Any],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    try:
+        request_set = graph_v1.validate_loan_geography_customer_loan_total_control_requests_v1(
+            request_value
+        )
+    except graph_v1.LoanGeographyScopedTableAdapterV1Error as exc:
+        raise _error("loan-geography persisted total-control request drifted") from exc
+    controls = _customer_loan_total_controls(control_values, packet=packet)
+    request_ids, control_ids = _customer_loan_total_control_request_control_axis(
+        request_set,
+        controls,
+    )
+    binding = request_set["document_binding"]
+    expected_fingerprint_sha256 = canonical_json_sha256_v1(
+        equivalence["whole_document_region_fingerprint"]
+    )
+    if (
+        binding["document_id"] != packet["document_id"]
+        or binding["document_ordinal"] != packet["document_ordinal"]
+        or binding["document_packet_id"] != packet["packet_id"]
+        or binding["document_evidence_root_sha256"] != packet["document_evidence_root_sha256"]
+        or binding["source_whole_document_graph_result_id"]
+        != equivalence["whole_document_graph_result_id"]
+        or request_set["graph_binding"]["region_fingerprint_sha256"] != expected_fingerprint_sha256
+        or expected_fingerprint_sha256
+        != canonical_json_sha256_v1(equivalence["sparse_region_fingerprint"])
+        or equivalence["sparse_graph_result_id"] != graph["document_graph_result_id"]
+        or request_set["graph_binding"]["graph_id"] != numeric_input.get("region_id")
+    ):
+        raise _error("loan-geography sparse/full total-control bridge drifted")
+    total = numeric_input.get("printed_customer_loan_total")
+    evidence = total.get("control_evidence") if type(total) is dict else None
+    lanes = request_set["lane_requests"]
+    if type(evidence) is not list or len(evidence) != len(lanes):
+        raise _error("loan-geography total-control numeric evidence axis drifted")
+    control_by_period = {
+        date.fromisoformat(lane["period_end"]).strftime("%d/%m/%Y"): control
+        for lane, control in zip(
+            [lane for lane in lanes if lane["classification"] == "STRUCTURALLY_ABSENT"],
+            controls,
+            strict=True,
+        )
+    }
+    expected_modes = {
+        "LOCAL_LABELED_TOTAL": "LOCAL_LABELED_TOTAL",
+        "LOCAL_UNLABELED_TOTAL_ROW": "LOCAL_UNLABELED_TOTAL_ROW",
+        "STRUCTURALLY_ABSENT": "UPSTREAM_AUTHENTICATED_CUSTOMER_LOAN_TOTAL_CONTROL",
+    }
+    for lane, lane_evidence in zip(lanes, evidence, strict=True):
+        expected_mode = expected_modes[lane["classification"]]
+        if (
+            type(lane_evidence) is not dict
+            or lane_evidence.get("lane_index") != lane["lane_index"]
+            or lane_evidence.get("resolution_mode") != expected_mode
+        ):
+            raise _error("loan-geography total-control source mode conflicts with its request")
+        if lane["classification"] == "STRUCTURALLY_ABSENT":
+            requested = _customer_loan_total_requested_period_end(lane["period_end"])
+            control = control_by_period.get(requested)
+            if (
+                control is None
+                or lane_evidence.get("control_request_id") != lane["control_request_id"]
+                or lane_evidence.get("control_result_id") != control["result_id"]
+                or lane_evidence.get("request_set_id") != request_set["request_set_id"]
+                or lane_evidence.get("source_document_graph_result_id")
+                != equivalence["whole_document_graph_result_id"]
+                or lane_evidence.get("source_snapshot_id")
+                != control["document_binding"]["snapshot_id"]
+                or not same_typed_json_v1(
+                    lane_evidence.get("source_locator"),
+                    control["total_control"]["source"],
+                )
+            ):
+                raise _error("loan-geography upstream total-control provenance drifted")
+    if len(request_ids) != len(control_ids):
+        raise _error("loan-geography total-control request/result count drifted")
+    return request_set, controls
+
+
 def _validate_trial(
     value: Any,
     *,
@@ -1606,6 +2072,8 @@ def _validate_trial(
 ) -> dict[str, Any]:
     fields = {
         "absence_evidence",
+        "customer_loan_total_control_request_set",
+        "customer_loan_total_controls",
         "disposition",
         "document",
         "document_context_evidence",
@@ -1635,6 +2103,7 @@ def _validate_trial(
         or value["gemma_challenger_refs"]
         or type(value["unresolved_reasons"]) is not list
         or type(value["pixel_render_ids"]) is not list
+        or type(value["customer_loan_total_controls"]) is not list
     ):
         raise _error("loan-geography trial contract drifted")
     packet = _packet(value["document"], expected_ordinal)
@@ -1691,6 +2160,11 @@ def _validate_trial(
         != (1 if value["structural_disposition"] == "EXACT_CUSTOMER_LOAN_GEOGRAPHY" else 0)
     ):
         raise _error("loan-geography sparse graph uniqueness drifted")
+    if value["structural_disposition"] != "EXACT_CUSTOMER_LOAN_GEOGRAPHY" and (
+        value["customer_loan_total_control_request_set"] is not None
+        or value["customer_loan_total_controls"]
+    ):
+        raise _error("non-exact loan-geography trial retained total-control evidence")
 
     disposition = value["disposition"]
     if disposition != "UNRESOLVED" and disposition != value["structural_disposition"]:
@@ -1735,6 +2209,14 @@ def _validate_trial(
             raise _error("loan-geography exact trial numeric reconciliation drifted")
         if numeric.get("input_id") != expected_numeric_input_id:
             raise _error("loan-geography numeric input/result content binding drifted")
+        typed_request_set, typed_total_controls = _validate_trial_total_control_handoff(
+            value["customer_loan_total_control_request_set"],
+            value["customer_loan_total_controls"],
+            packet=packet,
+            equivalence=equivalence,
+            graph=graph,
+            numeric_input=value["numeric_input"],
+        )
         context_id = document_context["result_id"]
         inherited_periods = [
             item
@@ -1821,8 +2303,10 @@ def _validate_trial(
             or value["mapped_children"]
             or value["pixel_render_ids"]
             or value["unresolved_reasons"]
+            or value["customer_loan_total_control_request_set"] is not None
+            or value["customer_loan_total_controls"]
         ):
-            raise _error("bounded absence trial hydrated numeric or pixel evidence")
+            raise _error("bounded absence trial hydrated numeric, pixel, or total-control evidence")
     else:
         if not value["unresolved_reasons"]:
             raise _error("unresolved loan-geography trial lacks an explicit reason")
@@ -1832,6 +2316,16 @@ def _validate_trial(
     return canonical_clone_v1(
         {
             **value,
+            "customer_loan_total_control_request_set": (
+                typed_request_set
+                if disposition == "EXACT_CUSTOMER_LOAN_GEOGRAPHY"
+                else value["customer_loan_total_control_request_set"]
+            ),
+            "customer_loan_total_controls": (
+                typed_total_controls
+                if disposition == "EXACT_CUSTOMER_LOAN_GEOGRAPHY"
+                else value["customer_loan_total_controls"]
+            ),
             "document": packet,
             "region_coverage": coverage,
             "sparse_graph": graph,
@@ -2214,6 +2708,55 @@ def _terminal_material(trials: Any, inputs: Any) -> dict[str, Any]:
     printed_control_money_cell_count = sum(
         item["metrics"]["source_control_money_cell_count"] for item in numeric_results
     )
+    total_control_source_modes: list[str] = []
+    for item in numeric_results:
+        printed_total = item.get("printed_customer_loan_total")
+        control_evidence = (
+            printed_total.get("control_evidence") if type(printed_total) is dict else None
+        )
+        if (
+            type(control_evidence) is not list
+            or len(control_evidence) != len(item["period_axis"])
+            or any(
+                type(evidence) is not dict
+                or evidence.get("lane_index") != lane
+                or type(evidence.get("resolution_mode")) is not str
+                for lane, evidence in enumerate(control_evidence)
+            )
+        ):
+            raise _error("loan-geography printed-total source-mode axis drifted")
+        total_control_source_modes.extend(
+            evidence["resolution_mode"] for evidence in control_evidence
+        )
+    total_control_source_mode_counts = _counter(
+        total_control_source_modes,
+        _TARGET_TOTAL_CONTROL_SOURCE_MODE_COUNTS,
+        "printed-total source mode",
+    )
+    total_control_request_sets = [
+        trial["customer_loan_total_control_request_set"] for trial in exact
+    ]
+    upstream_total_controls = [
+        control for trial in exact for control in trial["customer_loan_total_controls"]
+    ]
+    upstream_total_control_document_count = sum(
+        bool(trial["customer_loan_total_controls"]) for trial in exact
+    )
+    upstream_total_control_request_count = sum(
+        lane.get("classification") == "STRUCTURALLY_ABSENT"
+        and type(lane.get("control_request_id")) is str
+        for request_set in total_control_request_sets
+        for lane in request_set["lane_requests"]
+    )
+    if (
+        len(total_control_request_sets) != _TARGET_EXACT_COUNT
+        or len(upstream_total_controls) != _TARGET_UPSTREAM_TOTAL_CONTROL_COUNT
+        or upstream_total_control_document_count != _TARGET_UPSTREAM_TOTAL_CONTROL_COUNT
+        or upstream_total_control_request_count != _TARGET_UPSTREAM_TOTAL_CONTROL_COUNT
+        or total_control_source_mode_counts["UPSTREAM_AUTHENTICATED_CUSTOMER_LOAN_TOTAL_CONTROL"]
+        != _TARGET_UPSTREAM_TOTAL_CONTROL_COUNT
+    ):
+        raise _error("loan-geography upstream total-control denominator drifted")
     if (
         period_lane_count != _TARGET_PERIOD_LANE_COUNT
         or mapped_money_cell_count != _TARGET_MAPPED_MONEY_CELL_COUNT
@@ -2326,7 +2869,7 @@ def _terminal_material(trials: Any, inputs: Any) -> dict[str, Any]:
         raise _error("loan-geography Gemma request count drifted")
 
     metrics = {
-        "absence_numeric_or_pixel_hydration_count": 0,
+        "absence_numeric_pixel_or_total_control_hydration_count": 0,
         "accounting_backsolved_or_invented_value_count": accounting_backsolved_count,
         "bank_broad_bounded_absence_counts": bank_broad,
         "bank_document_counts": bank_documents,
@@ -2363,6 +2906,13 @@ def _terminal_material(trials: Any, inputs: Any) -> dict[str, Any]:
         "partial_nonterminal_graph_count": partial_graph_count,
         "ppocrv6_vietocr_numeric_disagreement_count": pp_viet_numeric_conflicts,
         "printed_customer_loan_total_control_cell_count": printed_control_money_cell_count,
+        "customer_loan_total_control_public_replay_count": len(upstream_total_controls),
+        "customer_loan_total_control_request_count": upstream_total_control_request_count,
+        "customer_loan_total_control_request_set_count": len(total_control_request_sets),
+        "local_upstream_total_control_conflict_count": 0,
+        "printed_customer_loan_total_control_source_mode_counts": (
+            total_control_source_mode_counts
+        ),
         "region_retrieval_mapping_or_absence_authority_count": 0,
         "repeated_full_segment_trial_count": repeated_count,
         "row_layout_trial_count": row_layout_count,
@@ -2376,6 +2926,10 @@ def _terminal_material(trials: Any, inputs: Any) -> dict[str, Any]:
         "sparse_page_reduction_ppm": sparse_page_reduction_ppm,
         "sparse_to_whole_document_equivalence_count": len(typed_trials),
         "unresolved_trial_count": len(unresolved),
+        "upstream_customer_loan_total_control_document_count": (
+            upstream_total_control_document_count
+        ),
+        "upstream_customer_loan_total_control_lane_count": len(upstream_total_controls),
         "visible_dash_zero_cell_count": visible_dash_zero_count,
     }
     material = {
@@ -2536,7 +3090,13 @@ def build_authenticated_family_first_loan_geography_140_filing_schema_sweep_v1(
     sparse_finished = time.perf_counter()
 
     direct_started = time.perf_counter()
-    equivalences, document_contexts = _whole_document_equivalences(
+    (
+        equivalences,
+        document_contexts,
+        total_control_request_sets,
+        total_control_sets,
+        preprojected_numeric_inputs,
+    ) = _whole_document_equivalences(
         capability,
         receipt,
         sparse_documents,
@@ -2552,17 +3112,32 @@ def build_authenticated_family_first_loan_geography_140_filing_schema_sweep_v1(
             document,
             packet,
             document_context,
+            total_control_requests,
+            total_controls,
+            preprojected_numeric_input,
             coverage,
             equivalence,
             receipt["receipt_id"],
             schema,
         )
-        for document, packet, coverage, equivalence, document_context in zip(
+        for (
+            document,
+            packet,
+            coverage,
+            equivalence,
+            document_context,
+            total_control_requests,
+            total_controls,
+            preprojected_numeric_input,
+        ) in zip(
             sparse_documents,
             packets,
             coverages,
             equivalences,
             document_contexts,
+            total_control_request_sets,
+            total_control_sets,
+            preprojected_numeric_inputs,
             strict=True,
         )
     ]

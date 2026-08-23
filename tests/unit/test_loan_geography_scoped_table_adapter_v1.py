@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import hashlib
+import os
+import sys
 from copy import deepcopy
 from pathlib import Path
 
@@ -14,6 +17,7 @@ from bctc_ai.evaluation.loan_geography_scoped_table_adapter_v1 import (
     LOAN_GEOGRAPHY_SCOPED_TABLE_ALIAS_PROVENANCE_V1,
     LOAN_GEOGRAPHY_SCOPED_TABLE_SPEC_V1,
     LoanGeographyScopedTableAdapterV1Error,
+    build_loan_geography_customer_loan_total_control_requests_v1,
     build_loan_geography_document_context_v1,
     build_loan_geography_region_query_spec_v2,
     build_loan_geography_scoped_graphs_v1,
@@ -21,11 +25,18 @@ from bctc_ai.evaluation.loan_geography_scoped_table_adapter_v1 import (
     compare_loan_geography_sparse_full_graphs_v1,
     project_loan_geography_numeric_input_v1,
     project_loan_geography_visible_dash_graph_v1,
+    validate_loan_geography_customer_loan_total_control_requests_replay_v1,
+    validate_loan_geography_customer_loan_total_control_requests_v1,
     validate_loan_geography_document_context_replay_v1,
     validate_loan_geography_scoped_graphs_replay_v1,
     validate_loan_geography_whole_document_scoped_graph_replay_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
+
+_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, os.fspath(_ROOT))
+
+from scripts.experiments import customer_loan_total_control_v1 as upstream_control_v1  # noqa: E402
 
 
 def _line(index: int, text: str, bbox: list[int], numeric: str | None = None) -> dict:
@@ -180,6 +191,153 @@ def _receipt(snapshot: dict) -> dict:
     }
 
 
+def _absent_local_total_snapshot() -> dict:
+    loan_type_surfaces = [
+        ("5. CHO VAY KHÁCH HÀNG", 0, 0),
+        ("30/06/2026", 500, 40),
+        ("31/12/2025", 800, 40),
+        ("Triệu đồng", 500, 70),
+        ("Triệu đồng", 800, 70),
+        ("Cho vay các tổ chức kinh tế, cá nhân trong nước", 0, 120),
+        ("100", 500, 120),
+        ("90", 800, 120),
+        ("Cho vay chiết khấu công cụ chuyển nhượng và các giấy tờ có giá", 0, 165),
+        ("10", 500, 165),
+        ("9", 800, 165),
+        ("Cho thuê tài chính", 0, 210),
+        ("5", 500, 210),
+        ("4", 800, 210),
+        ("Các khoản trả thay khách hàng", 0, 255),
+        ("3", 500, 255),
+        ("2", 800, 255),
+        ("Cho vay bằng vốn tài trợ, ủy thác đầu tư", 0, 300),
+        ("2", 500, 300),
+        ("1", 800, 300),
+        ("120", 500, 345),
+        ("106", 800, 345),
+        ("Phân tích chất lượng nợ cho vay", 0, 400),
+    ]
+
+    def strict_line(index: int, text: str, bbox: list[int], *, page: int) -> dict:
+        sample_id = f"sample-{page}-{index:03d}"
+        return {
+            "bbox": bbox,
+            "crop_ref": {
+                "path": f"crop/{sample_id}.png",
+                "sha256": hashlib.sha256(sample_id.encode()).hexdigest(),
+                "size_bytes": 1,
+            },
+            "line_ordinal": index,
+            "numeric_recognition": {"raw_prediction": text, "reader_score": 0.999},
+            "sample_id": sample_id,
+            "vietocr_text": text,
+        }
+
+    upstream_lines = [
+        strict_line(index, text, [x, y, x + 160, y + 24], page=1)
+        for index, (text, x, y) in enumerate(loan_type_surfaces)
+    ]
+    table = _exact_page(2)
+    table["lines"] = [item for item in table["lines"] if item["line_ordinal"] not in {16, 17}]
+    replacements = {88: "30/06/2026", 99: "100", 5: "20"}
+    for line in table["lines"]:
+        if line["line_ordinal"] in replacements:
+            surface = replacements[line["line_ordinal"]]
+            line["vietocr_text"] = surface
+            line["numeric_recognition"]["raw_prediction"] = surface
+    visual = sorted(table["lines"], key=lambda item: (item["bbox"][1], item["bbox"][0]))
+    table_lines = [
+        strict_line(index, line["vietocr_text"], line["bbox"], page=2)
+        for index, line in enumerate(visual)
+    ]
+    packet_material = {
+        "assurance": "UNAUDITED",
+        "bank_provenance": "TEST",
+        "document_evidence_root_sha256": "1" * 64,
+        "document_id": "ffsiv1:document:" + "2" * 64,
+        "document_ordinal": 1,
+        "line_count": len(upstream_lines) + len(table_lines),
+        "page_count": 2,
+        "period": "Q2",
+        "scope": "CONSOLIDATED",
+        "source_pdf_ref": {"path": "test.pdf", "sha256": "3" * 64, "size_bytes": 1},
+        "year": 2026,
+    }
+    packet = {
+        **packet_material,
+        "packet_id": "ffdesv1:document:" + canonical_json_sha256_v1(packet_material),
+    }
+    material = {
+        "document_packet": packet,
+        "joined_pages": [
+            {"lines": upstream_lines, "page_sequence": 1, "page_width": 1_200},
+            {"lines": table_lines, "page_sequence": 2, "page_width": 1_000},
+        ],
+        "manifest_id": "ffdesv1:manifest:" + "4" * 64,
+        "query_selection_id": "ffoqcv1:selection:" + "5" * 64,
+        "selected_page_dimensions": [
+            {
+                "physical_page": 1,
+                "pixel_height": 600,
+                "pixel_width": 1_200,
+                "render_sha256": "6" * 64,
+                "render_size_bytes": 1,
+            },
+            {
+                "physical_page": 2,
+                "pixel_height": 1_000,
+                "pixel_width": 1_000,
+                "render_sha256": "7" * 64,
+                "render_size_bytes": 1,
+            },
+        ],
+        "state": "AUTHENTICATED_IMMUTABLE_SQLITE_SELECTED_PAGE_EVIDENCE",
+    }
+    return {
+        **material,
+        "snapshot_id": "ffdesv1:selected:" + canonical_json_sha256_v1(material),
+    }
+
+
+def _rehash_nested(value: dict, prefix: str) -> None:
+    material = deepcopy(value)
+    material.pop("result_id", None)
+    value["result_id"] = prefix + canonical_json_sha256_v1(material)
+
+
+def _rehash_control(value: dict) -> None:
+    _rehash_nested(value, "cltcv1:result:")
+
+
+def _rehash_total_control_request_set(value: dict) -> None:
+    binding = value["document_binding"]
+    binding["source_locator_axis_sha256"] = canonical_json_sha256_v1(value["source_locator_ids"])
+    for lane in value["lane_requests"]:
+        if lane["classification"] != "STRUCTURALLY_ABSENT":
+            continue
+        lane_material = deepcopy(lane)
+        lane_material.pop("control_request_id")
+        lane["control_request_id"] = "lgstv1:total-control-request:" + canonical_json_sha256_v1(
+            {
+                "document_binding": binding,
+                "graph_binding": value["graph_binding"],
+                "lane": lane_material,
+            }
+        )
+    material = deepcopy(value)
+    material.pop("request_set_id")
+    value["request_set_id"] = "lgstv1:total-control-request-set:" + canonical_json_sha256_v1(
+        material
+    )
+
+
+def _upstream_total_control(_requests: dict, _document: dict, snapshot: dict) -> dict:
+    built = upstream_control_v1.build_customer_loan_total_control_v1(snapshot, "30/06/2026")
+    return upstream_control_v1.validate_customer_loan_total_control_replay_v1(
+        built, snapshot, "30/06/2026"
+    )
+
+
 def test_thin_adapter_replays_and_projects_overlay_and_printed_total_matrix() -> None:
     snapshot = _snapshot(_exact_page())
     receipt = _receipt(snapshot)
@@ -283,6 +441,380 @@ def test_labeled_and_unlabeled_period_lanes_keep_per_lane_control_modes() -> Non
     ]
     numeric = build_loan_geography_numeric_reconciliation_v1(numeric_input)
     assert numeric["status"] == "EXACT_OBSERVED_NUMERIC_RECONCILIATION"
+
+
+def test_total_control_request_public_replay_classifies_all_three_lane_states() -> None:
+    fixtures = [
+        (_snapshot(_exact_page()), "LOCAL_LABELED_TOTAL"),
+        (_snapshot(_unlabeled_total_page()), "LOCAL_UNLABELED_TOTAL_ROW"),
+        (_absent_local_total_snapshot(), "STRUCTURALLY_ABSENT"),
+    ]
+    for snapshot, expected in fixtures:
+        receipt = _receipt(snapshot)
+        document = build_loan_geography_whole_document_scoped_graph_v1(receipt, snapshot)
+        requests = build_loan_geography_customer_loan_total_control_requests_v1(
+            document, snapshot["document_packet"], snapshot
+        )
+
+        assert requests["lane_requests"][0]["classification"] == expected
+        assert validate_loan_geography_customer_loan_total_control_requests_v1(requests) == requests
+        assert (
+            validate_loan_geography_customer_loan_total_control_requests_replay_v1(
+                requests, document, snapshot["document_packet"], snapshot
+            )
+            == requests
+        )
+        has_request = requests["lane_requests"][0]["control_request_id"] is not None
+        assert has_request is (expected == "STRUCTURALLY_ABSENT")
+
+
+def test_labeled_missing_detector_total_is_not_reclassified_as_structural_absence() -> None:
+    page = _exact_page()
+    page["lines"] = [item for item in page["lines"] if item["line_ordinal"] != 17]
+    snapshot = _snapshot(page)
+    receipt = _receipt(snapshot)
+    whole = build_loan_geography_whole_document_scoped_graph_v1(receipt, snapshot)
+
+    requests = build_loan_geography_customer_loan_total_control_requests_v1(
+        whole, snapshot["document_packet"], snapshot
+    )
+
+    lane = requests["lane_requests"][0]
+    assert lane["classification"] == "LOCAL_LABELED_TOTAL"
+    assert lane["control_request_id"] is None
+    assert whole["graphs"][0]["segments"][0]["trailing_total_cells"][0]["source_line_index"] is None
+
+
+def test_request_replay_rejects_self_rehashed_request_document_or_snapshot_drift() -> None:
+    snapshot = _absent_local_total_snapshot()
+    receipt = _receipt(snapshot)
+    whole = build_loan_geography_whole_document_scoped_graph_v1(receipt, snapshot)
+    requests = build_loan_geography_customer_loan_total_control_requests_v1(
+        whole, snapshot["document_packet"], snapshot
+    )
+
+    forged_request = deepcopy(requests)
+    forged_request["source_locator_ids"].pop()
+    forged_request["document_binding"]["source_locator_axis_sha256"] = canonical_json_sha256_v1(
+        forged_request["source_locator_ids"]
+    )
+    lane_material = deepcopy(forged_request["lane_requests"][0])
+    lane_material.pop("control_request_id")
+    forged_request["lane_requests"][0]["control_request_id"] = (
+        "lgstv1:total-control-request:"
+        + canonical_json_sha256_v1(
+            {
+                "document_binding": forged_request["document_binding"],
+                "graph_binding": forged_request["graph_binding"],
+                "lane": lane_material,
+            }
+        )
+    )
+    material = deepcopy(forged_request)
+    material.pop("request_set_id")
+    forged_request["request_set_id"] = "lgstv1:total-control-request-set:" + (
+        canonical_json_sha256_v1(material)
+    )
+    assert validate_loan_geography_customer_loan_total_control_requests_v1(forged_request)
+    with pytest.raises(LoanGeographyScopedTableAdapterV1Error, match="replay exactly"):
+        validate_loan_geography_customer_loan_total_control_requests_replay_v1(
+            forged_request, whole, snapshot["document_packet"], snapshot
+        )
+
+    forged_document = deepcopy(whole)
+    forged_document["source_line_bindings"][0]["crop_ref"]["sha256"] = "5" * 64
+    _rehash_nested(forged_document, "lgstv1:document:")
+    with pytest.raises(LoanGeographyScopedTableAdapterV1Error, match="replay exactly"):
+        validate_loan_geography_customer_loan_total_control_requests_replay_v1(
+            requests, forged_document, snapshot["document_packet"], snapshot
+        )
+
+    forged_snapshot = deepcopy(snapshot)
+    forged_snapshot["joined_pages"][0]["lines"][0]["crop_ref"]["sha256"] = "6" * 64
+    snapshot_material = deepcopy(forged_snapshot)
+    snapshot_material.pop("snapshot_id")
+    forged_snapshot["snapshot_id"] = "ffdesv1:selected:" + canonical_json_sha256_v1(
+        snapshot_material
+    )
+    with pytest.raises(LoanGeographyScopedTableAdapterV1Error):
+        validate_loan_geography_customer_loan_total_control_requests_replay_v1(
+            requests, whole, snapshot["document_packet"], forged_snapshot
+        )
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "AUTHORITY_CONTRADICTION",
+        "AUTHORITY_EXTRA",
+        "CLAIM",
+        "UNIT_EXTRA",
+        "UNIT_EVIDENCE_EMPTY",
+        "UNIT_BOOL_SCALE",
+        "PAGE_ZERO",
+        "PAGE_BOOL",
+        "PAGE_PAST_DENOMINATOR",
+        "LOCATOR_NONHEX",
+        "LOCATOR_UPPERCASE",
+    ],
+)
+def test_total_control_request_cheap_gate_rejects_self_rehashed_contract_drift(
+    mutation: str,
+) -> None:
+    snapshot = _absent_local_total_snapshot()
+    receipt = _receipt(snapshot)
+    whole = build_loan_geography_whole_document_scoped_graph_v1(receipt, snapshot)
+    request = build_loan_geography_customer_loan_total_control_requests_v1(
+        whole, snapshot["document_packet"], snapshot
+    )
+    lane = request["lane_requests"][0]
+
+    if mutation == "AUTHORITY_CONTRADICTION":
+        request["authority"]["numeric_or_mapping_authority"] = True
+    elif mutation == "AUTHORITY_EXTRA":
+        request["authority"]["self_hash_is_source_authority"] = True
+    elif mutation == "CLAIM":
+        request["claim_boundary"] = "FORGED_BROADER_CLAIM"
+    elif mutation == "UNIT_EXTRA":
+        lane["unit_context"]["inferred"] = True
+    elif mutation == "UNIT_EVIDENCE_EMPTY":
+        lane["unit_context"]["evidence_ref"] = ""
+    elif mutation == "UNIT_BOOL_SCALE":
+        lane["unit_context"]["scale"] = True
+    elif mutation == "PAGE_ZERO":
+        lane["page_sequences"] = [0]
+    elif mutation == "PAGE_BOOL":
+        lane["page_sequences"] = [True]
+    elif mutation == "PAGE_PAST_DENOMINATOR":
+        lane["page_sequences"] = [len(request["source_page_render_bindings"]) + 1]
+    else:
+        prefix = "lgstv1:source-locator:"
+        suffix = "g" * 64 if mutation == "LOCATOR_NONHEX" else "A" * 64
+        request["source_locator_ids"][0] = prefix + suffix
+        request["source_locator_ids"].sort()
+    _rehash_total_control_request_set(request)
+
+    with pytest.raises(LoanGeographyScopedTableAdapterV1Error):
+        validate_loan_geography_customer_loan_total_control_requests_v1(request)
+
+
+def test_upstream_control_projects_cross_page_total_and_reconciles_without_backsolve() -> None:
+    snapshot = _absent_local_total_snapshot()
+    receipt = _receipt(snapshot)
+    whole = build_loan_geography_whole_document_scoped_graph_v1(receipt, snapshot)
+    requests = build_loan_geography_customer_loan_total_control_requests_v1(
+        whole, snapshot["document_packet"], snapshot
+    )
+    control = _upstream_total_control(requests, whole, snapshot)
+
+    numeric_input = project_loan_geography_numeric_input_v1(
+        whole,
+        snapshot["document_packet"],
+        upstream_total_control_requests=requests,
+        upstream_total_control_source_document=whole,
+        upstream_total_control_source_snapshot=snapshot,
+        upstream_total_controls=[control],
+    )
+
+    lane = numeric_input["printed_customer_loan_total"]["control_evidence"][0]
+    segment = whole["graphs"][0]["segments"][0]
+    assert segment["page_sequences"] == [2]
+    assert lane["page_sequence"] == 1
+    assert lane["resolution_mode"] == ("UPSTREAM_AUTHENTICATED_CUSTOMER_LOAN_TOTAL_CONTROL")
+    assert lane["control_result_id"] == control["result_id"]
+    assert lane["control_request_id"] == requests["lane_requests"][0]["control_request_id"]
+    assert lane["source_snapshot_id"] == snapshot["snapshot_id"]
+    assert lane["source_locator"]["page_render"]["physical_page"] == 1
+    assert lane["source_locator"]["crop_ref"] == control["total_control"]["source"]["crop_ref"]
+    numeric = build_loan_geography_numeric_reconciliation_v1(numeric_input)
+    assert numeric["status"] == "EXACT_OBSERVED_NUMERIC_RECONCILIATION"
+    assert numeric["accounting_checks"][0]["residual"] == 0
+    assert numeric["metrics"]["accounting_backsolved_or_invented_value_count"] == 0
+    assert numeric["authority"]["upstream_authenticated_total_control_can_backsolve"] is False
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "MISSING",
+        "DUPLICATE",
+        "DOCUMENT",
+        "ROOT",
+        "SNAPSHOT",
+        "PERIOD",
+        "UNIT",
+        "RENDER",
+        "CROP",
+        "SOURCE_LINE",
+        "LANE_TRANSPLANT",
+    ],
+)
+def test_upstream_control_binding_tamper_fails_closed(mutation: str) -> None:
+    snapshot = _absent_local_total_snapshot()
+    receipt = _receipt(snapshot)
+    whole = build_loan_geography_whole_document_scoped_graph_v1(receipt, snapshot)
+    requests = build_loan_geography_customer_loan_total_control_requests_v1(
+        whole, snapshot["document_packet"], snapshot
+    )
+    control = _upstream_total_control(requests, whole, snapshot)
+    controls = [control]
+    if mutation == "MISSING":
+        controls = []
+    elif mutation == "DUPLICATE":
+        controls = [control, deepcopy(control)]
+    elif mutation == "DOCUMENT":
+        control["document_binding"]["document_id"] = "different-document"
+        _rehash_control(control)
+    elif mutation == "ROOT":
+        control["document_binding"]["document_evidence_root_sha256"] = "9" * 64
+        _rehash_control(control)
+    elif mutation == "SNAPSHOT":
+        control["document_binding"]["snapshot_id"] = "ffdesv1:snapshot:different"
+        _rehash_control(control)
+    elif mutation == "PERIOD":
+        control["requested_period_end"] = "31/12/2024"
+        control["period_lane"]["period_end"] = "31/12/2024"
+        control["loan_type_graph_result"]["graphs"][0]["period_axis"][0]["period"] = "31/12/2024"
+        _rehash_nested(control["loan_type_graph_result"], "ltvgv1:result:")
+        control["loan_type_numeric_result"]["graph_result_id"] = control["loan_type_graph_result"][
+            "result_id"
+        ]
+        _rehash_nested(control["loan_type_numeric_result"], "ltnrrv1:result:")
+        _rehash_control(control)
+    elif mutation == "UNIT":
+        control["unit_evidence"]["magnitude_power10"] = 3
+        _rehash_control(control)
+    elif mutation == "RENDER":
+        control["total_control"]["source"]["page_render"]["render_sha256"] = "4" * 64
+        _rehash_control(control)
+    elif mutation == "CROP":
+        control["total_control"]["source"]["crop_ref"]["sha256"] = "4" * 64
+        _rehash_control(control)
+    elif mutation == "SOURCE_LINE":
+        control["total_control"]["source"]["source_line_index"] = 201
+        control["loan_type_graph_result"]["graphs"][0]["total"][0]["source_line_index"] = 201
+        control["loan_type_numeric_result"]["total"][0]["source_line_index"] = 201
+        _rehash_nested(control["loan_type_graph_result"], "ltvgv1:result:")
+        control["loan_type_numeric_result"]["graph_result_id"] = control["loan_type_graph_result"][
+            "result_id"
+        ]
+        _rehash_nested(control["loan_type_numeric_result"], "ltnrrv1:result:")
+        _rehash_control(control)
+    else:
+        graph = control["loan_type_graph_result"]["graphs"][0]
+        graph["lane_centers_x2"] = [1_400, 1_800]
+        graph["lane_types"] = ["MONEY", "MONEY"]
+        graph["period_axis"] = [
+            {"period": control["requested_period_end"], "x_center_x2": 1_400},
+            {"period": "31/12/2024", "x_center_x2": 1_800},
+        ]
+        graph["total"][0]["lane_index"] = 1
+        control["period_lane"]["lane_index"] = 1
+        control["total_control"]["lane_index"] = 1
+        control["unit_evidence"]["lane_index"] = 1
+        control["loan_type_numeric_result"]["total"][0]["lane_index"] = 1
+        _rehash_nested(control["loan_type_graph_result"], "ltvgv1:result:")
+        control["loan_type_numeric_result"]["graph_result_id"] = control["loan_type_graph_result"][
+            "result_id"
+        ]
+        _rehash_nested(control["loan_type_numeric_result"], "ltnrrv1:result:")
+        _rehash_control(control)
+
+    with pytest.raises(LoanGeographyScopedTableAdapterV1Error):
+        project_loan_geography_numeric_input_v1(
+            whole,
+            snapshot["document_packet"],
+            upstream_total_control_requests=requests,
+            upstream_total_control_source_document=whole,
+            upstream_total_control_source_snapshot=snapshot,
+            upstream_total_controls=controls,
+        )
+
+
+def test_coordinated_self_rehashed_control_requires_real_source_replay() -> None:
+    snapshot = _absent_local_total_snapshot()
+    receipt = _receipt(snapshot)
+    whole = build_loan_geography_whole_document_scoped_graph_v1(receipt, snapshot)
+    requests = build_loan_geography_customer_loan_total_control_requests_v1(
+        whole, snapshot["document_packet"], snapshot
+    )
+    control = _upstream_total_control(requests, whole, snapshot)
+
+    control["total_control"]["source"]["source_line_index"] = 201
+    control["loan_type_graph_result"]["graphs"][0]["total"][0]["source_line_index"] = 201
+    control["loan_type_numeric_result"]["total"][0]["source_line_index"] = 201
+    _rehash_nested(control["loan_type_graph_result"], "ltvgv1:result:")
+    control["loan_type_numeric_result"]["graph_result_id"] = control["loan_type_graph_result"][
+        "result_id"
+    ]
+    _rehash_nested(control["loan_type_numeric_result"], "ltnrrv1:result:")
+    _rehash_control(control)
+
+    assert upstream_control_v1.validate_customer_loan_total_control_v1(control) == control
+    with pytest.raises(LoanGeographyScopedTableAdapterV1Error, match="did not publicly replay"):
+        project_loan_geography_numeric_input_v1(
+            whole,
+            snapshot["document_packet"],
+            upstream_total_control_requests=requests,
+            upstream_total_control_source_document=whole,
+            upstream_total_control_source_snapshot=snapshot,
+            upstream_total_controls=[control],
+        )
+
+
+@pytest.mark.parametrize("local_total_surface", ["120", "121"])
+def test_local_total_rejects_equal_or_unequal_unused_upstream_control(
+    local_total_surface: str,
+) -> None:
+    snapshot = _absent_local_total_snapshot()
+    page = snapshot["joined_pages"][1]
+    for text, bbox in (
+        ("Tổng cộng", [40, 320, 190, 348]),
+        (local_total_surface, [685, 320, 755, 348]),
+    ):
+        index = len(page["lines"])
+        sample_id = f"sample-2-{index:03d}"
+        page["lines"].append(
+            {
+                "bbox": bbox,
+                "crop_ref": {
+                    "path": f"crop/{sample_id}.png",
+                    "sha256": hashlib.sha256(sample_id.encode()).hexdigest(),
+                    "size_bytes": 1,
+                },
+                "line_ordinal": index,
+                "numeric_recognition": {"raw_prediction": text, "reader_score": 0.999},
+                "sample_id": sample_id,
+                "vietocr_text": text,
+            }
+        )
+    packet = snapshot["document_packet"]
+    packet["line_count"] += 2
+    packet_material = deepcopy(packet)
+    packet_material.pop("packet_id")
+    packet["packet_id"] = "ffdesv1:document:" + canonical_json_sha256_v1(packet_material)
+    snapshot_material = deepcopy(snapshot)
+    snapshot_material.pop("snapshot_id")
+    snapshot["snapshot_id"] = "ffdesv1:selected:" + canonical_json_sha256_v1(snapshot_material)
+    receipt = _receipt(snapshot)
+    whole = build_loan_geography_whole_document_scoped_graph_v1(receipt, snapshot)
+    requests = build_loan_geography_customer_loan_total_control_requests_v1(
+        whole, snapshot["document_packet"], snapshot
+    )
+    assert requests["lane_requests"][0]["classification"] == "LOCAL_LABELED_TOTAL"
+    control = _upstream_total_control(requests, whole, snapshot)
+
+    with pytest.raises(
+        LoanGeographyScopedTableAdapterV1Error, match="missing, duplicate, or unused"
+    ):
+        project_loan_geography_numeric_input_v1(
+            whole,
+            snapshot["document_packet"],
+            upstream_total_control_requests=requests,
+            upstream_total_control_source_document=whole,
+            upstream_total_control_source_snapshot=snapshot,
+            upstream_total_controls=[control],
+        )
 
 
 def test_alias_provenance_is_exactly_the_executable_spec_axis() -> None:

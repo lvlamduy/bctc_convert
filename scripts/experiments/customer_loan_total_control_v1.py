@@ -20,7 +20,10 @@ from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
 
-from bctc_ai.evaluation.accounting_table_axes_v1 import accounting_unit_surface_v1
+from bctc_ai.evaluation.accounting_table_axes_v1 import (
+    accounting_unit_surface_v1,
+    money_integer_v1,
+)
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
     canonical_json_sha256_v1,
@@ -35,6 +38,7 @@ __all__ = [
     "FORMAT_VERSION",
     "CustomerLoanTotalControlV1Error",
     "build_customer_loan_total_control_v1",
+    "validate_customer_loan_total_control_v1",
     "validate_customer_loan_total_control_replay_v1",
 ]
 
@@ -131,6 +135,44 @@ _SOURCE_LOCATOR_FIELDS = {
     "sample_id",
     "source_line_index",
     "vietocr_transformer_surface",
+}
+_DOCUMENT_BINDING_FIELDS = {
+    "document_evidence_root_sha256",
+    "document_id",
+    "document_ordinal",
+    "document_packet_id",
+    "line_count",
+    "manifest_id",
+    "page_count",
+    "query_selection_id",
+    "snapshot_id",
+    "source_pdf_ref",
+}
+_OWNER_EVIDENCE_FIELDS = {"evidence", "match_kind", "surface"}
+_PERIOD_LANE_FIELDS = {"evidence", "lane_index", "period_end", "x_center_x2"}
+_TOTAL_CONTROL_FIELDS = {
+    "accounting_corroboration",
+    "lane_index",
+    "lane_type",
+    "parsed_value",
+    "source",
+    "status",
+}
+_TOTAL_CHECK_FIELDS = {
+    "lane_index",
+    "missing_cell_count",
+    "observed_additive_sum",
+    "status",
+    "target_total",
+}
+_UNIT_EVIDENCE_FIELDS = {
+    "currency",
+    "lane_index",
+    "magnitude_power10",
+    "mode",
+    "normalized_surface",
+    "source",
+    "surface",
 }
 _REF_FIELDS = {"path", "sha256", "size_bytes"}
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -406,6 +448,54 @@ def _validate_source_locator(value: Any, label: str) -> dict[str, Any]:
     return canonical_clone_v1(value)
 
 
+def _content_addressed_result(value: Any, *, prefix: str, label: str) -> dict[str, Any]:
+    if type(value) is not dict:
+        raise _error(f"customer-loan total-control {label} result shape drifted")
+    material = canonical_clone_v1(value)
+    identity = material.pop("result_id", None)
+    if identity != prefix + canonical_json_sha256_v1(material):
+        raise _error(f"customer-loan total-control {label} result identity drifted")
+    return canonical_clone_v1(value)
+
+
+def _typed_document_binding(value: Any) -> dict[str, Any]:
+    if type(value) is not dict or set(value) != _DOCUMENT_BINDING_FIELDS:
+        raise _error("customer-loan total-control document binding shape drifted")
+    if (
+        type(value["document_id"]) is not str
+        or not value["document_id"].startswith("ffsiv1:document:")
+        or type(value["document_ordinal"]) is not int
+        or value["document_ordinal"] <= 0
+        or type(value["document_packet_id"]) is not str
+        or not value["document_packet_id"].startswith("ffdesv1:document:")
+        or type(value["line_count"]) is not int
+        or value["line_count"] < 0
+        or type(value["page_count"]) is not int
+        or value["page_count"] <= 0
+        or type(value["manifest_id"]) is not str
+        or not value["manifest_id"].startswith("ffdesv1:manifest:")
+        or type(value["snapshot_id"]) is not str
+        or not value["snapshot_id"].startswith(("ffdesv1:selected:", "ffdesv1:snapshot:"))
+        or (
+            value["query_selection_id"] is not None
+            and (
+                type(value["query_selection_id"]) is not str
+                or not value["query_selection_id"].startswith("ffoqcv1:selection:")
+            )
+        )
+    ):
+        raise _error("customer-loan total-control document binding identity drifted")
+    _digest(value["document_evidence_root_sha256"], "document binding root")
+    _digest_ref(value["source_pdf_ref"], "document binding source PDF")
+    return canonical_clone_v1(value)
+
+
+def _typed_locator_axis(value: Any, *, label: str) -> list[dict[str, Any]]:
+    if type(value) is not list or not value:
+        raise _error(f"customer-loan total-control {label} evidence axis drifted")
+    return [_validate_source_locator(item, label) for item in value]
+
+
 def _evidence_lines(
     snapshot: Mapping[str, Any], *, page_sequence: int, source_line_indices: Any, label: str
 ) -> list[dict[str, Any]]:
@@ -661,18 +751,202 @@ def _validate_result(value: Any) -> dict[str, Any]:
         or type(value["unit_evidence"]) is not dict
     ):
         raise _error("customer-loan total-control result contract drifted")
-    _period_end(value["requested_period_end"])
-    evidence_groups = (
-        value["owner_evidence"].get("evidence"),
-        value["period_lane"].get("evidence"),
+    requested = _period_end(value["requested_period_end"])
+    document = _typed_document_binding(value["document_binding"])
+    graph_result = _content_addressed_result(
+        value["loan_type_graph_result"],
+        prefix="ltvgv1:result:",
+        label="loan-type graph",
     )
-    if any(type(group) is not list or not group for group in evidence_groups):
-        raise _error("customer-loan total-control result evidence axis drifted")
-    for group_name, group in zip(("owner", "period"), evidence_groups, strict=True):
-        for locator in group:
-            _validate_source_locator(locator, group_name)
-    _validate_source_locator(value["unit_evidence"].get("source"), "unit")
-    _validate_source_locator(value["total_control"].get("source"), "total")
+    numeric_result = _content_addressed_result(
+        value["loan_type_numeric_result"],
+        prefix="ltnrrv1:result:",
+        label="loan-type numeric",
+    )
+    if (
+        graph_result.get("status") != "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+        or graph_result.get("uniqueness") != {"full_match_count": 1, "status": "UNIQUE_FULL_MATCH"}
+        or type(graph_result.get("graphs")) is not list
+        or len(graph_result["graphs"]) != 1
+        or numeric_result.get("graph_result_id") != graph_result.get("result_id")
+        or numeric_result.get("status") != "PP_NUMERIC_EXACT"
+    ):
+        raise _error("customer-loan total-control nested graph/numeric binding drifted")
+    graph = graph_result["graphs"][0]
+    graph_page = graph.get("page_sequence")
+    if (
+        type(graph_page) is not int
+        or graph_page <= 0
+        or numeric_result.get("page_sequence") != graph_page
+    ):
+        raise _error("customer-loan total-control nested page binding drifted")
+
+    owner = value["owner_evidence"]
+    graph_owner = graph.get("owner")
+    if (
+        set(owner) != _OWNER_EVIDENCE_FIELDS
+        or owner["match_kind"] != "EXACT_ACCENTLESS_ALIAS"
+        or type(owner["surface"]) is not str
+        or not owner["surface"]
+        or type(graph_owner) is not dict
+        or graph_owner.get("match_kind") != owner["match_kind"]
+        or graph_owner.get("surface") != owner["surface"]
+    ):
+        raise _error("customer-loan total-control owner evidence drifted")
+    owner_evidence = _typed_locator_axis(owner["evidence"], label="owner")
+    if graph_owner.get("source_line_indices") != [
+        item["source_line_index"] for item in owner_evidence
+    ] or any(
+        item["page_sequence"] != graph_page
+        or item["vietocr_transformer_surface"] != owner["surface"]
+        for item in owner_evidence
+    ):
+        raise _error("customer-loan total-control owner source binding drifted")
+
+    period = value["period_lane"]
+    selected_lane_index, selected_period = _selected_lane(graph, requested)
+    if (
+        set(period) != _PERIOD_LANE_FIELDS
+        or type(period["lane_index"]) is not int
+        or period["lane_index"] < 0
+        or period["lane_index"] != selected_lane_index
+        or type(period["x_center_x2"]) is not int
+        or period["x_center_x2"] < 0
+        or _period_end(period["period_end"]) != requested
+        or selected_period.get("period") != period["period_end"]
+        or selected_period.get("x_center_x2") != period["x_center_x2"]
+    ):
+        raise _error("customer-loan total-control period lane drifted")
+    period_evidence = _typed_locator_axis(period["evidence"], label="period")
+    graph_periods = graph.get("period_axis")
+    matching_periods = (
+        [item for item in graph_periods if item.get("period") == requested]
+        if type(graph_periods) is list
+        else []
+    )
+    if (
+        len(matching_periods) != 1
+        or not same_typed_json_v1(matching_periods[0], selected_period)
+        or matching_periods[0].get("x_center_x2") != period["x_center_x2"]
+        or matching_periods[0].get("evidence_source_line_indices")
+        != [item["source_line_index"] for item in period_evidence]
+        or any(item["page_sequence"] != graph_page for item in period_evidence)
+    ):
+        raise _error("customer-loan total-control period source binding drifted")
+
+    unit = value["unit_evidence"]
+    if (
+        set(unit) != _UNIT_EVIDENCE_FIELDS
+        or unit["currency"] != "VND"
+        or type(unit["lane_index"]) is not int
+        or unit["lane_index"] != period["lane_index"]
+        or type(unit["magnitude_power10"]) is not int
+        or unit["magnitude_power10"] != 6
+        or unit["mode"] != "LOCAL_PER_LANE"
+        or type(unit["normalized_surface"]) is not str
+        or not unit["normalized_surface"]
+        or type(unit["surface"]) is not str
+        or not unit["surface"]
+    ):
+        raise _error("customer-loan total-control unit evidence drifted")
+    try:
+        parsed_unit = accounting_unit_surface_v1(unit["surface"])
+    except ValueError as exc:
+        raise _error("customer-loan total-control unit surface cannot be parsed") from exc
+    if parsed_unit != {
+        "currency": unit["currency"],
+        "magnitude_power10": unit["magnitude_power10"],
+        "normalized_surface": unit["normalized_surface"],
+        "unit_kind": "MONEY",
+    }:
+        raise _error("customer-loan total-control normalized unit binding drifted")
+    unit_source = _validate_source_locator(unit["source"], "unit")
+    graph_unit = graph.get("unit_scope")
+    if (
+        unit_source["vietocr_transformer_surface"] != unit["surface"]
+        or unit_source["page_sequence"] != graph_page
+        or type(graph_unit) is not dict
+        or graph_unit.get("mode") != unit["mode"]
+        or type(graph_unit.get("source_line_indices")) is not list
+        or type(graph_unit.get("surfaces")) is not list
+        or len(graph_unit["source_line_indices"]) <= period["lane_index"]
+        or len(graph_unit["surfaces"]) <= period["lane_index"]
+        or graph_unit["source_line_indices"][period["lane_index"]]
+        != unit_source["source_line_index"]
+        or graph_unit["surfaces"][period["lane_index"]] != unit["surface"]
+    ):
+        raise _error("customer-loan total-control unit surface binding drifted")
+
+    total = value["total_control"]
+    if (
+        set(total) != _TOTAL_CONTROL_FIELDS
+        or type(total["lane_index"]) is not int
+        or total["lane_index"] != period["lane_index"]
+        or total["lane_type"] != "MONEY"
+        or type(total["parsed_value"]) is not int
+        or total["status"] != "EXACT_PRINTED_PPOCRV6_TOTAL_CONTROL"
+        or type(total["accounting_corroboration"]) is not dict
+        or set(total["accounting_corroboration"]) != _TOTAL_CHECK_FIELDS
+    ):
+        raise _error("customer-loan total-control printed total drifted")
+    total_source = _validate_source_locator(total["source"], "total")
+    check = total["accounting_corroboration"]
+    if (
+        type(check["lane_index"]) is not int
+        or check["lane_index"] != period["lane_index"]
+        or type(check["missing_cell_count"]) is not int
+        or check["missing_cell_count"] != 0
+        or type(check["observed_additive_sum"]) is not int
+        or check["observed_additive_sum"] != total["parsed_value"]
+        or check["status"] != "EXACT_PP_NUMERIC_EQUATION"
+        or type(check["target_total"]) is not int
+        or check["target_total"] != total["parsed_value"]
+    ):
+        raise _error("customer-loan total-control accounting corroboration drifted")
+    graph_totals = graph.get("total")
+    numeric_totals = numeric_result.get("total")
+    graph_cells = (
+        [item for item in graph_totals if item.get("lane_index") == period["lane_index"]]
+        if type(graph_totals) is list
+        else []
+    )
+    numeric_cells = (
+        [item for item in numeric_totals if item.get("lane_index") == period["lane_index"]]
+        if type(numeric_totals) is list
+        else []
+    )
+    numeric_checks = numeric_result.get("accounting_checks")
+    matching_checks = (
+        [item for item in numeric_checks if item.get("lane_index") == period["lane_index"]]
+        if type(numeric_checks) is list
+        else []
+    )
+    if len(graph_cells) != 1 or len(numeric_cells) != 1 or len(matching_checks) != 1:
+        raise _error("customer-loan total-control selected nested lane drifted")
+    graph_cell = graph_cells[0]
+    numeric_cell = numeric_cells[0]
+    try:
+        parsed_source = money_integer_v1(total_source["ppocrv6_surface"])
+    except ValueError as exc:
+        raise _error("customer-loan total-control printed PP source cannot be parsed") from exc
+    if (
+        graph_cell.get("lane_type") != "MONEY"
+        or numeric_cell.get("lane_type") != "MONEY"
+        or numeric_cell.get("status") != "PP_OCRV6_NUMERIC_PROPOSAL"
+        or graph_cell.get("source_line_index") != total_source["source_line_index"]
+        or numeric_cell.get("source_line_index") != total_source["source_line_index"]
+        or graph_cell.get("semantic_surface") != total_source["vietocr_transformer_surface"]
+        or numeric_cell.get("semantic_surface") != total_source["vietocr_transformer_surface"]
+        or numeric_cell.get("ppocrv6_surface") != total_source["ppocrv6_surface"]
+        or numeric_cell.get("parsed_value") != total["parsed_value"]
+        or parsed_source != total["parsed_value"]
+        or total_source["page_sequence"] != graph_page
+        or not same_typed_json_v1(matching_checks[0], check)
+    ):
+        raise _error("customer-loan total-control selected nested total binding drifted")
+    all_locators = [*owner_evidence, *period_evidence, unit_source, total_source]
+    if any(item["page_sequence"] > document["page_count"] for item in all_locators):
+        raise _error("customer-loan total-control locator exceeds document denominator")
     return canonical_clone_v1(value)
 
 
@@ -693,6 +967,19 @@ def build_customer_loan_total_control_v1(
     except (RuntimeError, ValueError) as exc:
         raise _error("customer-loan total-control upstream build failed") from exc
     return _project(typed_snapshot, requested, graph_result, numeric_result)
+
+
+def validate_customer_loan_total_control_v1(value: Any) -> dict[str, Any]:
+    """Validate the typed envelope without claiming source authentication.
+
+    This is the cheap parent-process handoff gate for a result whose public
+    exact replay already ran against a capability-minted full snapshot in a
+    worker.  Content addressing and source-locator shape are checked here;
+    only :func:`validate_customer_loan_total_control_replay_v1` establishes
+    equality with authenticated source bytes.
+    """
+
+    return _validate_result(value)
 
 
 def validate_customer_loan_total_control_replay_v1(

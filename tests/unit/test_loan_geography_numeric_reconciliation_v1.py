@@ -283,6 +283,60 @@ def _make_second_total_lane_unlabeled(source: dict) -> None:
     total["label_surface"] = None
 
 
+def _make_second_total_lane_upstream(source: dict) -> None:
+    total = source["printed_customer_loan_total"]
+    cell = total["cells"][1]
+    locator = {
+        "bbox": copy.deepcopy(cell["bbox"]),
+        "crop_ref": {"path": "upstream-total.png", "sha256": "a" * 64, "size_bytes": 1},
+        "page_render": {
+            "physical_page": cell["page_sequence"],
+            "pixel_height": 1_000,
+            "pixel_width": 1_000,
+            "render_sha256": "b" * 64,
+            "render_size_bytes": 1,
+        },
+        "page_sequence": cell["page_sequence"],
+        "ppocrv6_reader_score": cell["ppocrv6_score"],
+        "ppocrv6_surface": cell["ppocrv6_surface"],
+        "sample_id": cell["sample_id"],
+        "source_line_index": cell["source_line_index"],
+        "vietocr_transformer_surface": cell["vietocr_surface"],
+    }
+    cell["crop_sha256"] = locator["crop_ref"]["sha256"]
+    evidence = total["control_evidence"][1]
+    evidence.clear()
+    evidence.update(
+        {
+            "control_request_id": "lgstv1:total-control-request:" + "1" * 64,
+            "control_result_id": "cltcv1:result:" + "2" * 64,
+            "evidence_refs": [f"line:{locator['page_sequence']}:{locator['source_line_index']}"],
+            "label_evidence_ref": "cltcv1:result:" + "2" * 64,
+            "label_surface": None,
+            "lane_index": 1,
+            "page_sequence": locator["page_sequence"],
+            "request_set_id": "lgstv1:total-control-request-set:" + "3" * 64,
+            "resolution_mode": "UPSTREAM_AUTHENTICATED_CUSTOMER_LOAN_TOTAL_CONTROL",
+            "row_bbox": copy.deepcopy(locator["bbox"]),
+            "source_bboxes": [copy.deepcopy(locator["bbox"])],
+            "source_control_graph_result_id": "ltvgv1:result:" + "4" * 64,
+            "source_control_numeric_result_id": "ltnrrv1:result:" + "5" * 64,
+            "source_document_graph_result_id": "lgstv1:document:" + "6" * 64,
+            "source_graph_id": "astgv1:graph:upstream-test",
+            "source_line_indices": [locator["source_line_index"]],
+            "source_locator": locator,
+            "source_locator_id": "lgstv1:source-locator:" + canonical_json_sha256_v1(locator),
+            "source_segment_id": "astgv1:segment:upstream-test",
+            "source_snapshot_id": "ffdesv1:snapshot:" + "7" * 64,
+            "source_surfaces_raw_nfc": [locator["vietocr_transformer_surface"]],
+        }
+    )
+    total["label_evidence_ref"] = "|".join(
+        item["label_evidence_ref"] for item in total["control_evidence"]
+    )
+    total["label_surface"] = None
+
+
 def test_total_control_mode_is_typed_per_lane_and_mixed_modes_replay() -> None:
     source = _source()
     _make_second_total_lane_unlabeled(source)
@@ -297,6 +351,69 @@ def test_total_control_mode_is_typed_per_lane_and_mixed_modes_replay() -> None:
         "LOCAL_UNLABELED_TOTAL_ROW",
     ]
     assert validate_loan_geography_numeric_reconciliation_replay_v1(result, source) == result
+
+
+def test_upstream_total_control_mode_retains_typed_source_ids_and_replays() -> None:
+    source = _source()
+    _make_second_total_lane_upstream(source)
+
+    result = build_loan_geography_numeric_reconciliation_v1(source)
+
+    assert result["status"] == "EXACT_OBSERVED_NUMERIC_RECONCILIATION"
+    evidence = result["printed_customer_loan_total"]["control_evidence"][1]
+    assert evidence["resolution_mode"] == ("UPSTREAM_AUTHENTICATED_CUSTOMER_LOAN_TOTAL_CONTROL")
+    assert evidence["control_request_id"].startswith("lgstv1:total-control-request:")
+    assert evidence["control_result_id"].startswith("cltcv1:result:")
+    assert evidence["source_locator_id"] == (
+        "lgstv1:source-locator:" + canonical_json_sha256_v1(evidence["source_locator"])
+    )
+    assert evidence["source_locator"]["page_render"]["render_sha256"] == "b" * 64
+    assert evidence["source_locator"]["crop_ref"]["sha256"] == "a" * 64
+    assert result["authority"]["upstream_authenticated_total_control_can_backsolve"] is False
+    assert validate_loan_geography_numeric_reconciliation_replay_v1(result, source) == result
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "MISSING_FIELD",
+        "CONTROL_ID",
+        "REQUEST_ID",
+        "LOCATOR_ID",
+        "RENDER",
+        "CROP",
+        "SOURCE_PAGE",
+        "CELL_CROP",
+        "CELL_SURFACE",
+    ],
+)
+def test_upstream_total_control_mode_tamper_fails_closed(mutation: str) -> None:
+    source = _source()
+    _make_second_total_lane_upstream(source)
+    total = source["printed_customer_loan_total"]
+    evidence = total["control_evidence"][1]
+    cell = total["cells"][1]
+    if mutation == "MISSING_FIELD":
+        evidence.pop("source_segment_id")
+    elif mutation == "CONTROL_ID":
+        evidence["control_result_id"] = "wrong-control"
+    elif mutation == "REQUEST_ID":
+        evidence["control_request_id"] = "wrong-request"
+    elif mutation == "LOCATOR_ID":
+        evidence["source_locator_id"] = "lgstv1:source-locator:" + "8" * 64
+    elif mutation == "RENDER":
+        evidence["source_locator"]["page_render"]["render_sha256"] = "8" * 64
+    elif mutation == "CROP":
+        evidence["source_locator"]["crop_ref"]["sha256"] = "8" * 64
+    elif mutation == "SOURCE_PAGE":
+        evidence["source_locator"]["page_sequence"] += 1
+    elif mutation == "CELL_CROP":
+        cell["crop_sha256"] = "8" * 64
+    else:
+        cell["ppocrv6_surface"] = "101"
+
+    with pytest.raises(LoanGeographyNumericReconciliationV1Error):
+        build_loan_geography_numeric_reconciliation_v1(source)
 
 
 @pytest.mark.parametrize(

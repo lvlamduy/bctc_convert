@@ -163,8 +163,37 @@ def _worker_inputs(
             "document_packet": packet,
             "joined_pages": [
                 {
-                    "lines": [{"source_line_index": 0}],
+                    "lines": [
+                        {
+                            "bbox": [10, 20, 100, 40],
+                            "crop_ref": {
+                                "path": "crop.png",
+                                "sha256": f"{packet['document_ordinal'] + 10000:064x}",
+                                "size_bytes": 5,
+                            },
+                            "line_ordinal": 0,
+                            "numeric_recognition": {
+                                "raw_prediction": "120",
+                                "reader_score": 0.99,
+                            },
+                            "sample_id": f"sample-{packet['document_ordinal']}",
+                            "vietocr_text": "120",
+                        }
+                    ],
                     "page_sequence": 1,
+                    "page_width": 300,
+                }
+            ],
+            "manifest_id": "ffdesv1:manifest:" + f"{packet['document_ordinal'] + 7000:064x}",
+            "query_selection_id": "ffoqcv1:selection:"
+            + f"{packet['document_ordinal'] + 8000:064x}",
+            "selected_page_dimensions": [
+                {
+                    "physical_page": 1,
+                    "pixel_height": 200,
+                    "pixel_width": 300,
+                    "render_sha256": f"{packet['document_ordinal'] + 9000:064x}",
+                    "render_size_bytes": 10,
                 }
             ],
             "snapshot_id": f"snapshot-{packet['document_ordinal']}",
@@ -200,8 +229,11 @@ def _install_worker_graph_stubs(
     monkeypatch: pytest.MonkeyPatch,
     *,
     context_replay_calls: list[str] | None = None,
+    control_replay_calls: list[str] | None = None,
+    request_replay_calls: list[str] | None = None,
     whole_replay_calls: list[str] | None = None,
     disposition: str = "NOT_OBSERVED",
+    upstream_control: bool = False,
 ) -> None:
     def whole(_receipt: dict, snapshot: dict) -> dict:
         packet = snapshot["document_packet"]
@@ -223,6 +255,141 @@ def _install_worker_graph_stubs(
         if context_replay_calls is not None:
             context_replay_calls.append(snapshot["snapshot_id"])
         return value
+
+    def requests(
+        whole_document: dict,
+        packet: dict,
+        snapshot: dict,
+        *,
+        document_context: dict,
+    ) -> dict:
+        assert document_context["snapshot_id"] == snapshot["snapshot_id"]
+        graph_id = f"graph-{packet['document_ordinal']}"
+        return {
+            "document_binding": {
+                "document_evidence_root_sha256": packet["document_evidence_root_sha256"],
+                "document_id": packet["document_id"],
+                "document_ordinal": packet["document_ordinal"],
+                "document_packet_id": packet["packet_id"],
+                "source_locator_axis_sha256": "1" * 64,
+                "source_snapshot_id": snapshot["snapshot_id"],
+                "source_whole_document_graph_result_id": whole_document["result_id"],
+            },
+            "graph_binding": {
+                "graph_id": graph_id,
+                "region_fingerprint_sha256": canonical_json_sha256_v1(
+                    whole_document["region_fingerprint"]
+                ),
+                "segment_count": 1,
+            },
+            "lane_requests": [
+                {
+                    "classification": (
+                        "STRUCTURALLY_ABSENT" if upstream_control else "LOCAL_LABELED_TOTAL"
+                    ),
+                    "control_request_id": (
+                        f"control-request-{packet['document_ordinal']}"
+                        if upstream_control
+                        else None
+                    ),
+                    "lane_index": 0,
+                    "period_end": "2025-12-31",
+                }
+            ],
+            "request_set_id": f"request-set-{packet['document_ordinal']}",
+            "source_page_render_bindings": copy.deepcopy(snapshot["selected_page_dimensions"]),
+        }
+
+    def replay_requests(
+        value: dict,
+        _whole_document: dict,
+        _packet: dict,
+        snapshot: dict,
+        *,
+        document_context: dict,
+    ) -> dict:
+        assert document_context["snapshot_id"] == snapshot["snapshot_id"]
+        if request_replay_calls is not None:
+            request_replay_calls.append(snapshot["snapshot_id"])
+        return value
+
+    def control(snapshot: dict, requested_period_end: str) -> dict:
+        packet = snapshot["document_packet"]
+        line = snapshot["joined_pages"][0]["lines"][0]
+        dimension = snapshot["selected_page_dimensions"][0]
+        locator = {
+            "bbox": copy.deepcopy(line["bbox"]),
+            "crop_ref": copy.deepcopy(line["crop_ref"]),
+            "page_render": copy.deepcopy(dimension),
+            "page_sequence": 1,
+            "ppocrv6_reader_score": 0.99,
+            "ppocrv6_surface": "120",
+            "sample_id": line["sample_id"],
+            "source_line_index": 0,
+            "vietocr_transformer_surface": "120",
+        }
+        return {
+            "document_binding": {
+                "document_evidence_root_sha256": packet["document_evidence_root_sha256"],
+                "document_id": packet["document_id"],
+                "document_ordinal": packet["document_ordinal"],
+                "document_packet_id": packet["packet_id"],
+                "line_count": packet["line_count"],
+                "manifest_id": snapshot["manifest_id"],
+                "page_count": packet["page_count"],
+                "query_selection_id": snapshot["query_selection_id"],
+                "snapshot_id": snapshot["snapshot_id"],
+                "source_pdf_ref": copy.deepcopy(packet["source_pdf_ref"]),
+            },
+            "owner_evidence": {"evidence": [copy.deepcopy(locator)]},
+            "period_lane": {"evidence": [copy.deepcopy(locator)]},
+            "requested_period_end": requested_period_end,
+            "result_id": f"control-{packet['document_ordinal']}",
+            "total_control": {"source": copy.deepcopy(locator)},
+            "unit_evidence": {"source": copy.deepcopy(locator)},
+        }
+
+    def replay_control(value: dict, snapshot: dict, _period: str) -> dict:
+        if control_replay_calls is not None:
+            control_replay_calls.append(snapshot["snapshot_id"])
+        return value
+
+    def numeric_input(
+        _document: dict,
+        _packet: dict,
+        **kwargs: object,
+    ) -> dict:
+        request_set = kwargs["upstream_total_control_requests"]
+        controls = kwargs["upstream_total_controls"]
+        if upstream_control:
+            assert len(controls) == 1
+            replay_control(
+                controls[0],
+                kwargs["upstream_total_control_source_snapshot"],
+                controls[0]["requested_period_end"],
+            )
+            control_evidence = {
+                "control_request_id": request_set["lane_requests"][0]["control_request_id"],
+                "control_result_id": controls[0]["result_id"],
+                "lane_index": 0,
+                "request_set_id": request_set["request_set_id"],
+                "resolution_mode": "UPSTREAM_AUTHENTICATED_CUSTOMER_LOAN_TOTAL_CONTROL",
+                "source_document_graph_result_id": request_set["document_binding"][
+                    "source_whole_document_graph_result_id"
+                ],
+                "source_locator": copy.deepcopy(controls[0]["total_control"]["source"]),
+                "source_snapshot_id": controls[0]["document_binding"]["snapshot_id"],
+            }
+        else:
+            control_evidence = {
+                "lane_index": 0,
+                "resolution_mode": "LOCAL_LABELED_TOTAL",
+            }
+        return {
+            "printed_customer_loan_total": {"control_evidence": [control_evidence]},
+            "region_id": request_set["graph_binding"]["graph_id"],
+            "source_id": "synthetic-overlay",
+        }
 
     def compare(sparse_document: dict, whole_document: dict, **kwargs: int) -> dict:
         result = _equivalence(
@@ -271,6 +438,41 @@ def _install_worker_graph_stubs(
     )
     monkeypatch.setattr(
         sweep_v1.graph_v1,
+        "build_loan_geography_customer_loan_total_control_requests_v1",
+        requests,
+    )
+    monkeypatch.setattr(
+        sweep_v1.graph_v1,
+        "validate_loan_geography_customer_loan_total_control_requests_replay_v1",
+        replay_requests,
+    )
+    monkeypatch.setattr(
+        sweep_v1.graph_v1,
+        "validate_loan_geography_customer_loan_total_control_requests_v1",
+        lambda value: copy.deepcopy(value),
+    )
+    monkeypatch.setattr(
+        sweep_v1.graph_v1,
+        "project_loan_geography_numeric_input_v1",
+        numeric_input,
+    )
+    monkeypatch.setattr(
+        sweep_v1.total_control_v1,
+        "build_customer_loan_total_control_v1",
+        control,
+    )
+    monkeypatch.setattr(
+        sweep_v1.total_control_v1,
+        "validate_customer_loan_total_control_replay_v1",
+        replay_control,
+    )
+    monkeypatch.setattr(
+        sweep_v1.total_control_v1,
+        "validate_customer_loan_total_control_v1",
+        lambda value: copy.deepcopy(value),
+    )
+    monkeypatch.setattr(
+        sweep_v1.graph_v1,
         "compare_loan_geography_sparse_full_graphs_v1",
         compare,
     )
@@ -300,7 +502,14 @@ def _equivalence(graph: dict, disposition: str, *, pages: int, lines: int) -> di
     }
 
 
-def _numeric(period_count: int, dash_count: int) -> dict:
+def _numeric(
+    period_count: int,
+    dash_count: int,
+    control_modes: list[str] | None = None,
+) -> dict:
+    if control_modes is None:
+        control_modes = ["LOCAL_LABELED_TOTAL"] * period_count
+    assert len(control_modes) == period_count
     periods = [
         {
             "lane_index": lane,
@@ -351,6 +560,12 @@ def _numeric(period_count: int, dash_count: int) -> dict:
             "visible_dash_zero_cell_count": dash_count,
         },
         "period_axis": periods,
+        "printed_customer_loan_total": {
+            "control_evidence": [
+                {"lane_index": lane, "resolution_mode": mode}
+                for lane, mode in enumerate(control_modes)
+            ]
+        },
         "synthetic_mappings": [domestic_mapping, foreign_mapping],
         "unit_context": {"resolution_mode": "LOCAL_EXACT_UNIT"},
     }
@@ -381,6 +596,8 @@ def _trial(
         continuation_mode=continuation_mode,
     )
     common = {
+        "customer_loan_total_control_request_set": None,
+        "customer_loan_total_controls": [],
         "document": packet,
         "document_context_evidence": None,
         "gemma_challenger_refs": [],
@@ -400,10 +617,47 @@ def _trial(
         "unresolved_reasons": [],
     }
     if disposition == "EXACT_CUSTOMER_LOAN_GEOGRAPHY":
-        numeric = _numeric(periods, dashes)
+        control_modes = (
+            ["LOCAL_LABELED_TOTAL"] * periods
+            if packet["bank_provenance"] == "VIB"
+            else ["UPSTREAM_AUTHENTICATED_CUSTOMER_LOAN_TOTAL_CONTROL"] * periods
+            if packet["bank_provenance"] == "MBB" and periods == 1
+            else ["LOCAL_UNLABELED_TOTAL_ROW"] * periods
+        )
+        numeric = _numeric(periods, dashes, control_modes)
+        lane_requests = [
+            {
+                "classification": (
+                    "STRUCTURALLY_ABSENT"
+                    if mode == "UPSTREAM_AUTHENTICATED_CUSTOMER_LOAN_TOTAL_CONTROL"
+                    else mode
+                ),
+                "control_request_id": (
+                    f"request-{packet['document_ordinal']}-{lane}"
+                    if mode == "UPSTREAM_AUTHENTICATED_CUSTOMER_LOAN_TOTAL_CONTROL"
+                    else None
+                ),
+                "lane_index": lane,
+                "period_end": numeric["period_axis"][lane]["period_end"],
+            }
+            for lane, mode in enumerate(control_modes)
+        ]
+        controls = [
+            {
+                "requested_period_end": "31/12/2025",
+                "result_id": f"control-{packet['document_ordinal']}-{lane}",
+            }
+            for lane, mode in enumerate(control_modes)
+            if mode == "UPSTREAM_AUTHENTICATED_CUSTOMER_LOAN_TOTAL_CONTROL"
+        ]
         return {
             **common,
             "absence_evidence": None,
+            "customer_loan_total_control_request_set": {
+                "lane_requests": lane_requests,
+                "request_set_id": f"request-set-{packet['document_ordinal']}",
+            },
+            "customer_loan_total_controls": controls,
             "disposition": disposition,
             "mapped_children": numeric.pop("synthetic_mappings"),
             "numeric_evidence": numeric,
@@ -525,6 +779,18 @@ def test_terminal_contract_closes_exact_family11_denominators(
     assert metrics["observed_numeric_mapped_cell_count"] == 88
     assert metrics["visible_dash_zero_cell_count"] == 42
     assert metrics["exact_accounting_equation_count"] == 65
+    assert metrics["printed_customer_loan_total_control_source_mode_counts"] == {
+        "LOCAL_LABELED_TOTAL": 36,
+        "LOCAL_UNLABELED_TOTAL_ROW": 18,
+        "UPSTREAM_AUTHENTICATED_CUSTOMER_LOAN_TOTAL_CONTROL": 11,
+    }
+    assert metrics["customer_loan_total_control_request_set_count"] == 38
+    assert metrics["customer_loan_total_control_request_count"] == 11
+    assert metrics["customer_loan_total_control_public_replay_count"] == 11
+    assert metrics["upstream_customer_loan_total_control_lane_count"] == 11
+    assert metrics["upstream_customer_loan_total_control_document_count"] == 11
+    assert metrics["local_upstream_total_control_conflict_count"] == 0
+    assert metrics["absence_numeric_pixel_or_total_control_hydration_count"] == 0
     assert metrics["continuation_mode_trial_counts"] == {
         "ADJACENT_REPEATED_FULL_SEGMENTS_PERIOD_COMPLEMENT": 18,
         "SINGLE_PAGE_MULTI_PERIOD_COMPLETE_SEGMENTS": 9,
@@ -599,6 +865,83 @@ def test_selected_page_batch_hydration_preserves_axis_and_bounds_memory(
     assert [len(item) for item in calls] == [3, 3, 1]
 
 
+def test_parent_cheap_total_control_gate_binds_every_locator_to_authenticated_snapshot(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    packet = _packet(1, "ACB", pages=1, lines=1)
+    dimension = {
+        "physical_page": 1,
+        "pixel_height": 200,
+        "pixel_width": 300,
+        "render_sha256": "4" * 64,
+        "render_size_bytes": 10,
+    }
+    line = {
+        "bbox": [10, 20, 100, 40],
+        "crop_ref": {"path": "crop.png", "sha256": "5" * 64, "size_bytes": 5},
+        "line_ordinal": 0,
+        "numeric_recognition": {"raw_prediction": "120", "reader_score": 0.99},
+        "sample_id": "sample-1",
+        "vietocr_text": "120",
+    }
+    snapshot = {
+        "document_packet": packet,
+        "joined_pages": [{"lines": [line], "page_sequence": 1, "page_width": 300}],
+        "manifest_id": "ffdesv1:manifest:" + "6" * 64,
+        "query_selection_id": "ffoqcv1:selection:" + "7" * 64,
+        "selected_page_dimensions": [dimension],
+        "snapshot_id": "ffdesv1:selected:" + "8" * 64,
+    }
+    locator = {
+        "bbox": line["bbox"],
+        "crop_ref": line["crop_ref"],
+        "page_render": dimension,
+        "page_sequence": 1,
+        "ppocrv6_reader_score": 0.99,
+        "ppocrv6_surface": "120",
+        "sample_id": "sample-1",
+        "source_line_index": 0,
+        "vietocr_transformer_surface": "120",
+    }
+    control = {
+        "document_binding": {
+            "document_evidence_root_sha256": packet["document_evidence_root_sha256"],
+            "document_id": packet["document_id"],
+            "document_ordinal": 1,
+            "document_packet_id": packet["packet_id"],
+            "line_count": 1,
+            "manifest_id": snapshot["manifest_id"],
+            "page_count": 1,
+            "query_selection_id": snapshot["query_selection_id"],
+            "snapshot_id": snapshot["snapshot_id"],
+            "source_pdf_ref": packet["source_pdf_ref"],
+        },
+        "owner_evidence": {"evidence": [locator]},
+        "period_lane": {"evidence": [locator]},
+        "requested_period_end": "31/12/2025",
+        "result_id": "cltcv1:result:" + "9" * 64,
+        "total_control": {"source": locator},
+        "unit_evidence": {"source": locator},
+    }
+    monkeypatch.setattr(
+        sweep_v1.total_control_v1,
+        "validate_customer_loan_total_control_v1",
+        lambda value: copy.deepcopy(value),
+    )
+
+    assert sweep_v1._customer_loan_total_controls(
+        [control], packet=packet, source_snapshot=snapshot
+    ) == [control]
+
+    tampered = copy.deepcopy(control)
+    tampered["total_control"]["source"]["crop_ref"]["sha256"] = "a" * 64
+    with pytest.raises(
+        sweep_v1.FamilyFirstLoanGeography140FilingSchemaSweepV1Error,
+        match="authenticated locator binding drifted",
+    ):
+        sweep_v1._customer_loan_total_controls([tampered], packet=packet, source_snapshot=snapshot)
+
+
 def test_direct_oracle_checks_actual_zero_line_page_and_line_denominators(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -661,16 +1004,21 @@ def test_direct_oracle_checks_actual_zero_line_page_and_line_denominators(
             lines=1,
         ),
     )
-    equivalences, contexts = sweep_v1._whole_document_equivalences(
-        object(),
-        receipt,
-        (sparse,),
-        (packet,),
-        batch_size=1,
+    equivalences, contexts, request_sets, controls, numeric_inputs = (
+        sweep_v1._whole_document_equivalences(
+            object(),
+            receipt,
+            (sparse,),
+            (packet,),
+            batch_size=1,
+        )
     )
     assert equivalences[0]["whole_document_page_count"] == 2
     assert equivalences[0]["whole_document_line_count"] == 1
     assert contexts == (None,)
+    assert request_sets == (None,)
+    assert controls == ([],)
+    assert numeric_inputs == (None,)
 
     bad = copy.deepcopy(snapshot)
     bad["joined_pages"][1]["lines"] = [{"unexpected": True}]
@@ -724,10 +1072,12 @@ def test_direct_pool_restores_out_of_order_results_and_matches_jobs_one(
     receipt, snapshots, sparse = _worker_inputs(disposition="EXACT_CUSTOMER_LOAN_GEOGRAPHY")
     packets = tuple(snapshot["document_packet"] for snapshot in snapshots)
     context_replay_calls: list[str] = []
+    request_replay_calls: list[str] = []
     whole_replay_calls: list[str] = []
     _install_worker_graph_stubs(
         monkeypatch,
         context_replay_calls=context_replay_calls,
+        request_replay_calls=request_replay_calls,
         whole_replay_calls=whole_replay_calls,
         disposition="EXACT_CUSTOMER_LOAN_GEOGRAPHY",
     )
@@ -772,6 +1122,15 @@ def test_direct_pool_restores_out_of_order_results_and_matches_jobs_one(
         "snapshot-1",
         "snapshot-2",
     ]
+    assert request_replay_calls == [
+        "snapshot-1",
+        "snapshot-2",
+        "snapshot-1",
+        "snapshot-2",
+    ]
+    assert all(item is not None for item in parallel[2])
+    assert parallel[3] == ([], [])
+    assert all(item is not None for item in parallel[4])
 
 
 def test_direct_worker_rejects_self_rehashed_source_binding_tamper(
@@ -801,6 +1160,107 @@ def test_direct_worker_rejects_self_rehashed_source_binding_tamper(
             (record,),
             source_start=0,
         )
+
+
+def test_upstream_control_replays_in_worker_and_parent_projects_before_snapshot_release(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    receipt, snapshots, sparse = _worker_inputs(
+        1,
+        disposition="EXACT_CUSTOMER_LOAN_GEOGRAPHY",
+    )
+    calls: list[str] = []
+    _install_worker_graph_stubs(
+        monkeypatch,
+        control_replay_calls=calls,
+        disposition="EXACT_CUSTOMER_LOAN_GEOGRAPHY",
+        upstream_control=True,
+    )
+    monkeypatch.setattr(sweep_v1, "_TARGET_DOCUMENT_COUNT", 1)
+    monkeypatch.setattr(
+        sweep_v1,
+        "_selected_page_batches",
+        lambda *_args, **_kwargs: iter((snapshots,)),
+    )
+
+    result = sweep_v1._whole_document_equivalences(
+        object(),
+        receipt,
+        sparse,
+        (snapshots[0]["document_packet"],),
+        batch_size=1,
+        jobs=1,
+    )
+
+    assert calls == ["snapshot-1", "snapshot-1"]
+    assert result[2][0]["lane_requests"][0]["control_request_id"] == "control-request-1"
+    assert [item["result_id"] for item in result[3][0]] == ["control-1"]
+    assert (
+        result[4][0]["printed_customer_loan_total"]["control_evidence"][0]["resolution_mode"]
+        == "UPSTREAM_AUTHENTICATED_CUSTOMER_LOAN_TOTAL_CONTROL"
+    )
+
+
+def test_parent_rejects_rehashed_worker_control_locator_tamper(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    receipt, snapshots, sparse = _worker_inputs(
+        1,
+        disposition="EXACT_CUSTOMER_LOAN_GEOGRAPHY",
+    )
+    _install_worker_graph_stubs(
+        monkeypatch,
+        disposition="EXACT_CUSTOMER_LOAN_GEOGRAPHY",
+        upstream_control=True,
+    )
+    record = sweep_v1._direct_full_worker_material(receipt, 0, snapshots[0])
+    record["customer_loan_total_controls"][0]["total_control"]["source"]["crop_ref"]["sha256"] = (
+        "a" * 64
+    )
+    material = copy.deepcopy(record)
+    material.pop("worker_output_id")
+    record["worker_output_id"] = "lg140v1:direct-full-worker:" + canonical_json_sha256_v1(material)
+
+    with pytest.raises(
+        sweep_v1.FamilyFirstLoanGeography140FilingSchemaSweepV1Error,
+        match="authenticated locator binding drifted",
+    ):
+        sweep_v1._validate_direct_full_worker_batch(
+            receipt,
+            {1: sparse[0]},
+            snapshots,
+            (record,),
+            source_start=0,
+        )
+
+
+def test_absence_path_never_builds_or_replays_total_control(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    receipt, snapshots, sparse = _worker_inputs(1, disposition="NOT_OBSERVED")
+    _install_worker_graph_stubs(monkeypatch, disposition="NOT_OBSERVED")
+    monkeypatch.setattr(sweep_v1, "_TARGET_DOCUMENT_COUNT", 1)
+    monkeypatch.setattr(
+        sweep_v1,
+        "_selected_page_batches",
+        lambda *_args, **_kwargs: iter((snapshots,)),
+    )
+    monkeypatch.setattr(
+        sweep_v1.total_control_v1,
+        "build_customer_loan_total_control_v1",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("forbidden hydration")),
+    )
+
+    result = sweep_v1._whole_document_equivalences(
+        object(),
+        receipt,
+        sparse,
+        (snapshots[0]["document_packet"],),
+        batch_size=1,
+        jobs=1,
+    )
+
+    assert result[1:] == ((None,), (None,), ([],), (None,))
 
 
 def test_direct_pool_surfaces_worker_failure_deterministically(
@@ -862,6 +1322,50 @@ def test_sparse_pool_restores_out_of_order_results_and_matches_jobs_one(
     assert parallel == sequential
     assert [item["document_ordinal"] for item in parallel[0]] == [1, 2]
     assert [item["outcome_id"] for item in parallel[2]] == ["outcome-1", "outcome-2"]
+
+
+def test_worker_parent_order_gates_reject_boolean_source_indices(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    receipt, snapshots, sparse = _worker_inputs(1)
+    _install_worker_graph_stubs(monkeypatch)
+
+    sparse_record = sweep_v1._sparse_graph_worker_material(receipt, 0, snapshots[0])
+    sparse_record["source_index"] = False
+    sparse_material = copy.deepcopy(sparse_record)
+    sparse_material.pop("worker_output_id")
+    sparse_record["worker_output_id"] = "lg140v1:sparse-worker:" + canonical_json_sha256_v1(
+        sparse_material
+    )
+    with pytest.raises(
+        sweep_v1.FamilyFirstLoanGeography140FilingSchemaSweepV1Error,
+        match="sparse worker source order binding drifted",
+    ):
+        sweep_v1._validate_sparse_graph_worker_batch(
+            receipt,
+            snapshots,
+            (sparse_record,),
+            source_start=0,
+        )
+
+    direct_record = sweep_v1._direct_full_worker_material(receipt, 0, snapshots[0])
+    direct_record["source_index"] = False
+    direct_material = copy.deepcopy(direct_record)
+    direct_material.pop("worker_output_id")
+    direct_record["worker_output_id"] = "lg140v1:direct-full-worker:" + canonical_json_sha256_v1(
+        direct_material
+    )
+    with pytest.raises(
+        sweep_v1.FamilyFirstLoanGeography140FilingSchemaSweepV1Error,
+        match="direct-full worker source order binding drifted",
+    ):
+        sweep_v1._validate_direct_full_worker_batch(
+            receipt,
+            {1: sparse[0]},
+            snapshots,
+            (direct_record,),
+            source_start=0,
+        )
 
 
 @pytest.mark.parametrize("keyword", ("sparse_jobs", "direct_full_jobs"))
@@ -1019,6 +1523,9 @@ def test_document_local_numeric_failure_becomes_an_unresolved_terminal(
         graph,
         packet,
         _context(packet),
+        {"synthetic": "request-set"},
+        [],
+        {"synthetic": "numeric-input"},
         _coverage(1, "receipt"),
         equivalence,
         "receipt",
@@ -1036,7 +1543,7 @@ def test_bounded_absence_rejects_numeric_or_pixel_hydration() -> None:
     trial["numeric_input"] = {"forbidden": True}
     with pytest.raises(
         sweep_v1.FamilyFirstLoanGeography140FilingSchemaSweepV1Error,
-        match="hydrated numeric or pixel",
+        match="hydrated numeric, pixel, or total-control",
     ):
         sweep_v1._validate_trial(
             trial,

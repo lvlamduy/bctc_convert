@@ -67,6 +67,8 @@ _AUTHORITY = {
     "table_discovery_authority": False,
     "unit_contract_is_exact_million_vnd": True,
     "unit_conversion_performed": False,
+    "upstream_authenticated_total_control_can_backsolve": False,
+    "upstream_authenticated_total_control_public_replay_required": True,
     "visible_dash_requires_exact_pixel_replay": True,
 }
 _ROLES = ("DOMESTIC_TOTAL", "FOREIGN_TOTAL")
@@ -82,6 +84,7 @@ _UNIT_RESOLUTION_MODES = {"LOCAL_EXACT_UNIT", "DOCUMENT_INHERITED_EXACT_UNIT"}
 _TOTAL_CONTROL_RESOLUTION_MODES = {
     "LOCAL_LABELED_TOTAL",
     "LOCAL_UNLABELED_TOTAL_ROW",
+    "UPSTREAM_AUTHENTICATED_CUSTOMER_LOAN_TOTAL_CONTROL",
 }
 _KNOWN_NESTED_ROLES = (
     "HO_CHI_MINH_CITY",
@@ -134,6 +137,51 @@ _DASH_REF_FIELDS = {
     "kind",
     "region_id",
 }
+_LOCAL_TOTAL_CONTROL_FIELDS = {
+    "evidence_refs",
+    "label_evidence_ref",
+    "label_surface",
+    "lane_index",
+    "page_sequence",
+    "resolution_mode",
+    "row_bbox",
+    "source_bboxes",
+    "source_line_indices",
+    "source_surfaces_raw_nfc",
+}
+_UPSTREAM_TOTAL_CONTROL_FIELDS = {
+    *_LOCAL_TOTAL_CONTROL_FIELDS,
+    "control_request_id",
+    "control_result_id",
+    "request_set_id",
+    "source_control_graph_result_id",
+    "source_control_numeric_result_id",
+    "source_document_graph_result_id",
+    "source_graph_id",
+    "source_locator",
+    "source_locator_id",
+    "source_segment_id",
+    "source_snapshot_id",
+}
+_UPSTREAM_SOURCE_LOCATOR_FIELDS = {
+    "bbox",
+    "crop_ref",
+    "page_render",
+    "page_sequence",
+    "ppocrv6_reader_score",
+    "ppocrv6_surface",
+    "sample_id",
+    "source_line_index",
+    "vietocr_transformer_surface",
+}
+_PAGE_RENDER_FIELDS = {
+    "physical_page",
+    "pixel_height",
+    "pixel_width",
+    "render_sha256",
+    "render_size_bytes",
+}
+_REF_FIELDS = {"path", "sha256", "size_bytes"}
 _ACCEPTED_CHECK_STATUSES = {
     "EXACT_OBSERVED_EQUATION",
     "EXACT_EQUATION_UNIQUELY_SELECTED_OBSERVED_CANDIDATES",
@@ -164,6 +212,58 @@ def _digest(value: Any, label: str) -> str:
     if type(value) is not str or _SHA.fullmatch(value) is None:
         raise _error(f"{label} digest drifted")
     return value
+
+
+def _upstream_source_locator(value: Any) -> dict[str, Any]:
+    if type(value) is not dict or set(value) != _UPSTREAM_SOURCE_LOCATOR_FIELDS:
+        raise _error("loan-geography upstream total source locator shape drifted")
+    render = value["page_render"]
+    crop = value["crop_ref"]
+    bbox = value["bbox"]
+    score = value["ppocrv6_reader_score"]
+    if (
+        type(render) is not dict
+        or set(render) != _PAGE_RENDER_FIELDS
+        or type(render["physical_page"]) is not int
+        or render["physical_page"] <= 0
+        or type(render["pixel_height"]) is not int
+        or render["pixel_height"] <= 0
+        or type(render["pixel_width"]) is not int
+        or render["pixel_width"] <= 0
+        or type(render["render_size_bytes"]) is not int
+        or render["render_size_bytes"] <= 0
+        or type(crop) is not dict
+        or set(crop) != _REF_FIELDS
+        or type(crop["path"]) is not str
+        or not crop["path"]
+        or type(crop["size_bytes"]) is not int
+        or crop["size_bytes"] <= 0
+        or type(bbox) is not list
+        or len(bbox) != 4
+        or any(type(item) is not int or item < 0 for item in bbox)
+        or not (bbox[0] < bbox[2] and bbox[1] < bbox[3])
+        or bbox[2] > render["pixel_width"]
+        or bbox[3] > render["pixel_height"]
+        or type(value["page_sequence"]) is not int
+        or value["page_sequence"] <= 0
+        or value["page_sequence"] != render["physical_page"]
+        or type(value["source_line_index"]) is not int
+        or value["source_line_index"] < 0
+        or type(value["sample_id"]) is not str
+        or not value["sample_id"]
+        or type(value["ppocrv6_surface"]) is not str
+        or type(value["vietocr_transformer_surface"]) is not str
+        or type(score) not in {int, float}
+        or not 0 <= score <= 1
+    ):
+        raise _error("loan-geography upstream total source locator identity drifted")
+    _digest(render["render_sha256"], "loan-geography upstream page render")
+    _digest(crop["sha256"], "loan-geography upstream crop")
+    return canonical_clone_v1(value)
+
+
+def _upstream_source_locator_id(value: Mapping[str, Any]) -> str:
+    return "lgstv1:source-locator:" + canonical_json_sha256_v1(value)
 
 
 def _parse(value: str | None) -> int | None:
@@ -337,22 +437,16 @@ def _total_control_evidence(value: Any, lane_count: int) -> list[dict[str, Any]]
     if type(value) is not list or len(value) != lane_count:
         raise _error("loan-geography printed-total control axis drifted")
     result = []
-    fields = {
-        "evidence_refs",
-        "label_evidence_ref",
-        "label_surface",
-        "lane_index",
-        "page_sequence",
-        "resolution_mode",
-        "row_bbox",
-        "source_bboxes",
-        "source_line_indices",
-        "source_surfaces_raw_nfc",
-    }
     for lane_index, raw in enumerate(value):
+        mode = raw.get("resolution_mode") if type(raw) is dict else None
+        expected_fields = (
+            _UPSTREAM_TOTAL_CONTROL_FIELDS
+            if mode == "UPSTREAM_AUTHENTICATED_CUSTOMER_LOAN_TOTAL_CONTROL"
+            else _LOCAL_TOTAL_CONTROL_FIELDS
+        )
         if (
             type(raw) is not dict
-            or set(raw) != fields
+            or set(raw) != expected_fields
             or raw["lane_index"] != lane_index
             or type(raw["page_sequence"]) is not int
             or raw["page_sequence"] <= 0
@@ -362,7 +456,11 @@ def _total_control_evidence(value: Any, lane_count: int) -> list[dict[str, Any]]
         _string(raw["label_evidence_ref"], "loan-geography printed-total lane evidence")
         _surface(raw["label_surface"], "loan-geography printed-total lane label")
         if (
-            raw["resolution_mode"] == "LOCAL_UNLABELED_TOTAL_ROW"
+            raw["resolution_mode"]
+            in {
+                "LOCAL_UNLABELED_TOTAL_ROW",
+                "UPSTREAM_AUTHENTICATED_CUSTOMER_LOAN_TOTAL_CONTROL",
+            }
             and raw["label_surface"] is not None
         ) or (
             raw["resolution_mode"] == "LOCAL_LABELED_TOTAL"
@@ -407,6 +505,35 @@ def _total_control_evidence(value: Any, lane_count: int) -> list[dict[str, Any]]
                 or not (bbox[0] < bbox[2] and bbox[1] < bbox[3])
             ):
                 raise _error("loan-geography printed-total evidence bbox drifted")
+        if mode == "UPSTREAM_AUTHENTICATED_CUSTOMER_LOAN_TOTAL_CONTROL":
+            locator = _upstream_source_locator(raw["source_locator"])
+            identity_fields = {
+                "control_request_id": "lgstv1:total-control-request:",
+                "control_result_id": "cltcv1:result:",
+                "request_set_id": "lgstv1:total-control-request-set:",
+                "source_control_graph_result_id": "ltvgv1:result:",
+                "source_control_numeric_result_id": "ltnrrv1:result:",
+                "source_document_graph_result_id": "lgstv1:document:",
+                "source_locator_id": "lgstv1:source-locator:",
+                "source_snapshot_id": "ffdesv1:",
+            }
+            if any(
+                type(raw[field]) is not str or not raw[field].startswith(prefix)
+                for field, prefix in identity_fields.items()
+            ) or any(
+                type(raw[field]) is not str or not raw[field]
+                for field in ("source_graph_id", "source_segment_id")
+            ):
+                raise _error("loan-geography upstream printed-total identity drifted")
+            if (
+                raw["source_locator_id"] != _upstream_source_locator_id(locator)
+                or raw["label_evidence_ref"] != raw["control_result_id"]
+                or raw["page_sequence"] != locator["page_sequence"]
+                or raw["source_line_indices"] != [locator["source_line_index"]]
+                or raw["source_bboxes"] != [locator["bbox"]]
+                or raw["source_surfaces_raw_nfc"] != [locator["vietocr_transformer_surface"]]
+            ):
+                raise _error("loan-geography upstream printed-total source binding drifted")
         result.append(canonical_clone_v1(raw))
     return result
 
@@ -455,6 +582,19 @@ def _input_total_row(value: Any, lane_count: int) -> dict[str, Any]:
             or cell["source_line_index"] not in lane_evidence["source_line_indices"]
         ):
             raise _error("loan-geography unlabeled printed-total cell binding drifted")
+        if lane_evidence["resolution_mode"] == "UPSTREAM_AUTHENTICATED_CUSTOMER_LOAN_TOTAL_CONTROL":
+            locator = lane_evidence["source_locator"]
+            if (
+                cell["page_sequence"] != locator["page_sequence"]
+                or cell["bbox"] != locator["bbox"]
+                or cell["source_line_index"] != locator["source_line_index"]
+                or cell["sample_id"] != locator["sample_id"]
+                or cell["crop_sha256"] != locator["crop_ref"]["sha256"]
+                or cell["ppocrv6_surface"] != locator["ppocrv6_surface"]
+                or cell["vietocr_surface"] != locator["vietocr_transformer_surface"]
+                or cell["ppocrv6_score"] != float(locator["ppocrv6_reader_score"])
+            ):
+                raise _error("loan-geography upstream printed-total cell binding drifted")
     return {
         "cells": cells,
         "control_evidence": evidence,
