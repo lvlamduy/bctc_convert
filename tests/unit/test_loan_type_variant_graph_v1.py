@@ -262,6 +262,7 @@ def test_wrapped_labels_follow_visual_order_when_provider_indices_are_interleave
         ("Cho thuê tài chính", 0, 220),
         ("5", 500, 220),
         ("4", 800, 220),
+        ("%nc", 1600, 174),
         # Some providers emit this wrapped continuation after the next row in
         # their source array even though its pixel y-position is still above it.
         ("các giấy tờ có giá", 0, 183),
@@ -274,12 +275,78 @@ def test_wrapped_labels_follow_visual_order_when_provider_indices_are_interleave
     assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
     graph = result["graphs"][0]
     discount = next(row for row in graph["rows"] if row["role"] == "DISCOUNT_INSTRUMENTS")
-    assert discount["label"]["source_line_indices"] == [8, 14]
+    assert discount["label"]["source_line_indices"] == [8, 15]
     assert [row["role"] for row in graph["rows"]] == [
         "DOMESTIC_ORGANIZATIONS_INDIVIDUALS",
         "DISCOUNT_INSTRUMENTS",
         "FINANCIAL_LEASE",
     ]
+    assert all(
+        check["status"] == "CORROBORATED_SEMANTIC_PROPOSAL_ONLY"
+        for check in graph["accounting_checks"]
+    )
+
+
+def test_long_label_allows_bounded_added_token_only_inside_complete_topology() -> None:
+    surfaces = [
+        ("CHO VAY KHÁCH HÀNG", 0, 0),
+        ("31/12/2025", 500, 40),
+        ("31/12/2024", 800, 40),
+        ("Triệu đồng", 500, 70),
+        ("Triệu đồng", 800, 70),
+        ("Cho vay các tổ chức kinh tế, cá nhân trong nước", 0, 120),
+        ("100", 500, 120),
+        ("90", 800, 120),
+        ("Cho vay đối với các tổ chức kinh tế, cá nhân nước ngoài", 0, 165),
+        ("6", 500, 165),
+        ("5", 800, 165),
+        ("106", 500, 210),
+        ("95", 800, 210),
+    ]
+
+    result = loan_type.build_loan_type_variant_graph_document_v1([_page(surfaces)])
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    foreign = next(
+        row
+        for row in result["graphs"][0]["rows"]
+        if row["role"] == "FOREIGN_ORGANIZATIONS_INDIVIDUALS"
+    )
+    assert (
+        foreign["label"]["match_kind"]
+        == "HIGH_SIMILARITY_ACCENTLESS_ANCHOR_IN_COMPLETE_TABLE_TOPOLOGY"
+    )
+
+
+def test_row_cluster_alignment_handles_staggered_numeric_columns() -> None:
+    surfaces = [
+        ("CHO VAY KHÁCH HÀNG", 0, 0),
+        ("31/12/2025", 500, 40),
+        ("31/12/2024", 800, 40),
+        ("Triệu đồng", 500, 70),
+        ("Triệu đồng", 800, 70),
+        ("Cho vay các tổ chức kinh tế, cá nhân trong nước", 0, 120),
+        ("100", 500, 112),
+        ("90", 800, 105),
+        ("Cho vay chiết khấu công cụ chuyển nhượng và các giấy tờ có giá", 0, 165),
+        ("10", 500, 157),
+        ("9", 800, 150),
+        ("Các khoản trả thay khách hàng", 0, 210),
+        ("3", 500, 202),
+        ("2", 800, 195),
+        ("113", 500, 250),
+        ("101", 800, 243),
+    ]
+
+    result = loan_type.build_loan_type_variant_graph_document_v1([_page(surfaces)])
+
+    graph = result["graphs"][0]
+    assert [[value["semantic_surface"] for value in row["values"]] for row in graph["rows"]] == [
+        ["100", "90"],
+        ["10", "9"],
+        ["3", "2"],
+    ]
+    assert [item["semantic_surface"] for item in graph["total"]] == ["113", "101"]
     assert all(
         check["status"] == "CORROBORATED_SEMANTIC_PROPOSAL_ONLY"
         for check in graph["accounting_checks"]

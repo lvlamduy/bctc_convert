@@ -19,7 +19,10 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping, Sequence
 from decimal import Decimal
+from functools import lru_cache
 from typing import Any
+
+from rapidfuzz.fuzz import ratio
 
 from bctc_ai.evaluation.accounting_table_axes_v1 import (
     AccountingTableAxesV1Error,
@@ -311,6 +314,32 @@ def _union_bbox(lines: Sequence[Mapping[str, Any]], indices: Sequence[int]) -> l
     ]
 
 
+@lru_cache(maxsize=4096)
+def _role_anchor_match(surface: str, aliases: tuple[str, ...]) -> str | None:
+    """Admit bounded OCR spelling drift only as a structural anchor.
+
+    VietOCR occasionally adds or drops several base characters in a long row
+    label even after accent removal.  A single-edit matcher is then too
+    brittle, while unconstrained fuzzy matching would let text decide the
+    mapping.  The high threshold below is restricted to long labels; callers
+    still require the owner, period/unit axes, value geometry, a final total,
+    uniqueness, and a separate numeric/mapping replay.
+    """
+
+    exact = match_vietnamese_anchor_alias_v1(surface, aliases)
+    if exact is not None:
+        return exact
+    normalized = normalize_vietnamese_anchor_v1(surface)
+    scores = [
+        ratio(normalized, normalize_vietnamese_anchor_v1(alias))
+        for alias in aliases
+        if len(normalize_vietnamese_anchor_v1(alias)) >= 20
+    ]
+    if scores and max(scores) >= 90.0:
+        return "HIGH_SIMILARITY_ACCENTLESS_ANCHOR_IN_COMPLETE_TABLE_TOPOLOGY"
+    return None
+
+
 def _label_candidates(
     lines: Sequence[Mapping[str, Any]],
     start: int,
@@ -351,7 +380,11 @@ def _label_candidates(
                 if candidate_box[1] - previous_box[3] > max(12, previous_height):
                     break
             if abs(candidate_box[0] - first_box[0]) > max(300, first_box[2] - first_box[0]):
-                break
+                # Provider order can interleave a stamp fragment or other
+                # far-right token between two visually wrapped label lines.
+                # Ignore the off-column token; the vertical-gap guard still
+                # prevents joining a genuinely later row.
+                continue
             text_indices.append(candidate_index)
             indices = list(text_indices)
             surface = " ".join(lines[index]["vietocr_text"].strip() for index in indices).strip()
@@ -366,12 +399,14 @@ def _label_candidates(
                     if enable_extended_owner_table_variants
                     else ()
                 )
-                kind = match_vietnamese_anchor_alias_v1(match_surface, aliases)
+                kind = _role_anchor_match(match_surface, aliases)
                 if kind is not None:
                     proposal = (indices, role, kind, surface)
                     if selected is None or kind == "EXACT_ACCENTLESS_ALIAS":
                         selected = proposal
-            if selected is not None:
+            if selected is not None and selected[2] != (
+                "HIGH_SIMILARITY_ACCENTLESS_ANCHOR_IN_COMPLETE_TABLE_TOPOLOGY"
+            ):
                 break
         if selected is None:
             continue
@@ -558,22 +593,135 @@ def _nearest_lane(x_center_x2: int, lane_centers: Sequence[int]) -> int | None:
     return nearest if abs(lane_centers[nearest] - x_center_x2) <= tolerance else None
 
 
-def _row_bands(labels: Sequence[Mapping[str, Any]]) -> list[tuple[int, int]]:
-    centers = [item["y_center_x2"] for item in labels]
-    bands: list[tuple[int, int]] = []
-    for index, center in enumerate(centers):
-        if index == 0:
-            next_gap = centers[1] - center if len(centers) > 1 else 120
-            lower = center - max(40, next_gap // 2)
-        else:
-            lower = (centers[index - 1] + center) // 2
-        if index + 1 == len(centers):
-            previous_gap = center - centers[index - 1] if index else 120
-            upper = center + max(40, previous_gap // 2)
-        else:
-            upper = (center + centers[index + 1]) // 2
-        bands.append((lower, upper))
-    return bands
+def _numeric_row_clusters(
+    lines: Sequence[Mapping[str, Any]],
+    first_line: int,
+    stop: int,
+    lane_centers: Sequence[int],
+) -> list[dict[str, Any]]:
+    candidates = []
+    for line in lines[first_line:stop]:
+        if not is_number_like_v1(line["vietocr_text"]):
+            continue
+        lane = _nearest_lane(center_x2_v1(line), lane_centers)
+        if lane is None:
+            continue
+        candidates.append(
+            {
+                "center_x2": line["bbox"][1] + line["bbox"][3],
+                "lane": lane,
+                "line": line,
+            }
+        )
+    candidates.sort(
+        key=lambda item: (
+            item["center_x2"],
+            item["lane"],
+            item["line"]["source_line_index"],
+        )
+    )
+    heights = sorted(item["line"]["bbox"][3] - item["line"]["bbox"][1] for item in candidates)
+    median_height = heights[len(heights) // 2] if heights else 20
+    tolerance = max(12, median_height * 3 // 4)
+    clusters: list[dict[str, Any]] = []
+    for item in candidates:
+        if (
+            not clusters
+            or item["lane"] in clusters[-1]["by_lane"]
+            or abs(item["center_x2"] - clusters[-1]["center_x2"]) > tolerance
+        ):
+            clusters.append(
+                {
+                    "by_lane": {item["lane"]: item["line"]},
+                    "center_values": [item["center_x2"]],
+                    "center_x2": item["center_x2"],
+                }
+            )
+            continue
+        cluster = clusters[-1]
+        cluster["by_lane"][item["lane"]] = item["line"]
+        cluster["center_values"].append(item["center_x2"])
+        ordered = sorted(cluster["center_values"])
+        cluster["center_x2"] = ordered[len(ordered) // 2]
+    return clusters
+
+
+def _align_labels_to_numeric_clusters(
+    labels: Sequence[Mapping[str, Any]], clusters: Sequence[Mapping[str, Any]]
+) -> dict[int, int]:
+    """Find a minimum-cost monotonic label/row alignment.
+
+    Columns in a PDF table can be vertically staggered and provider line order
+    can differ from pixel order.  Aligning complete cross-lane row clusters is
+    more stable than independently choosing the nearest number in each lane.
+    Optional/dash rows may skip a label; unmodelled visible rows or subtotals
+    may skip a numeric cluster.
+    """
+
+    skip_cost = 48
+    maximum_match_distance = 80
+    label_count = len(labels)
+    cluster_count = len(clusters)
+    costs = [[10**9] * (cluster_count + 1) for _ in range(label_count + 1)]
+    previous: list[list[tuple[int, int, str] | None]] = [
+        [None] * (cluster_count + 1) for _ in range(label_count + 1)
+    ]
+    costs[0][0] = 0
+    for label_index in range(label_count + 1):
+        for cluster_index in range(cluster_count + 1):
+            if label_index == 0 and cluster_index == 0:
+                continue
+            options: list[tuple[int, int, int, str]] = []
+            if label_index:
+                options.append(
+                    (
+                        costs[label_index - 1][cluster_index] + skip_cost,
+                        2,
+                        label_index - 1,
+                        "SKIP_LABEL",
+                    )
+                )
+            if cluster_index:
+                options.append(
+                    (
+                        costs[label_index][cluster_index - 1] + skip_cost,
+                        1,
+                        label_index,
+                        "SKIP_CLUSTER",
+                    )
+                )
+            if label_index and cluster_index:
+                distance = abs(
+                    labels[label_index - 1]["y_center_x2"]
+                    - clusters[cluster_index - 1]["center_x2"]
+                )
+                if distance <= maximum_match_distance:
+                    options.append(
+                        (
+                            costs[label_index - 1][cluster_index - 1] + distance,
+                            0,
+                            label_index - 1,
+                            "MATCH",
+                        )
+                    )
+            cost, _priority, prior_label, operation = min(options)
+            costs[label_index][cluster_index] = cost
+            prior_cluster = (
+                cluster_index - 1 if operation in {"SKIP_CLUSTER", "MATCH"} else cluster_index
+            )
+            previous[label_index][cluster_index] = (prior_label, prior_cluster, operation)
+    matches: dict[int, int] = {}
+    label_index = label_count
+    cluster_index = cluster_count
+    while label_index or cluster_index:
+        step = previous[label_index][cluster_index]
+        if step is None:
+            raise _error("loan-type row-cluster alignment is incomplete")
+        prior_label, prior_cluster, operation = step
+        if operation == "MATCH":
+            matches[label_index - 1] = cluster_index - 1
+        label_index, cluster_index = prior_label, prior_cluster
+    return matches
 
 
 def _value_record(line: Mapping[str, Any], lane_index: int, lane_type: str) -> dict[str, Any]:
@@ -597,45 +745,15 @@ def _rows_and_totals(
 ) -> tuple[list[dict[str, Any]], list[list[dict[str, Any]]], list[str]]:
     lines = page["lines"]
     reasons: list[str] = []
-    assigned: set[int] = set()
     rows: list[dict[str, Any]] = []
-    for label_index, (label, (row_lower_x2, row_upper_x2)) in enumerate(
-        zip(labels, _row_bands(labels), strict=True)
-    ):
-        candidates_by_lane: dict[int, list[Mapping[str, Any]]] = {}
-        for line in lines[first_line:stop]:
-            if not is_number_like_v1(line["vietocr_text"]):
-                continue
-            numeric_center_x2 = line["bbox"][1] + line["bbox"][3]
-            if not (
-                (
-                    numeric_center_x2 >= row_lower_x2
-                    if label_index == 0
-                    else numeric_center_x2 > row_lower_x2
-                )
-                and numeric_center_x2 < row_upper_x2
-            ):
-                continue
-            lane = _nearest_lane(center_x2_v1(line), lane_centers)
-            if lane is None:
-                continue
-            candidates_by_lane.setdefault(lane, []).append(line)
-        by_lane: dict[int, Mapping[str, Any]] = {}
-        for lane, candidates in candidates_by_lane.items():
-            distances = [
-                abs((line["bbox"][1] + line["bbox"][3]) - label["y_center_x2"])
-                for line in candidates
-            ]
-            nearest_distance = min(distances)
-            nearest = [
-                line
-                for line, distance in zip(candidates, distances, strict=True)
-                if distance == nearest_distance
-            ]
-            if len(nearest) != 1:
-                reasons.append(f"DUPLICATE_ROW_LANES_{label['role']}")
-            else:
-                by_lane[lane] = nearest[0]
+    clusters = _numeric_row_clusters(lines, first_line, stop, lane_centers)
+    aligned = _align_labels_to_numeric_clusters(labels, clusters)
+    assigned_clusters: set[int] = set()
+    for label_index, label in enumerate(labels):
+        cluster_index = aligned.get(label_index)
+        by_lane = {} if cluster_index is None else clusters[cluster_index]["by_lane"]
+        if cluster_index is not None:
+            assigned_clusters.add(cluster_index)
         values: list[dict[str, Any]] = []
         for lane_index, lane_type in enumerate(lane_types):
             line = by_lane.get(lane_index)
@@ -651,7 +769,6 @@ def _rows_and_totals(
                     }
                 )
             else:
-                assigned.add(line["source_line_index"])
                 values.append(_value_record(line, lane_index, lane_type))
         rows.append(
             {
@@ -664,36 +781,11 @@ def _rows_and_totals(
             }
         )
 
-    remaining: list[Mapping[str, Any]] = []
-    for line in lines[first_line:stop]:
-        if (
-            line["source_line_index"] not in assigned
-            and is_number_like_v1(line["vietocr_text"])
-            and _nearest_lane(center_x2_v1(line), lane_centers) is not None
-        ):
-            remaining.append(line)
-    remaining.sort(key=lambda line: (line["bbox"][1] + line["bbox"][3], center_x2_v1(line)))
-    heights = [line["bbox"][3] - line["bbox"][1] for line in remaining]
-    tolerance = max(20, (sorted(heights)[len(heights) // 2] if heights else 20) * 2)
-    clusters: list[list[Mapping[str, Any]]] = []
-    for line in remaining:
-        center = line["bbox"][1] + line["bbox"][3]
-        if not clusters:
-            clusters.append([line])
-            continue
-        previous_center = clusters[-1][0]["bbox"][1] + clusters[-1][0]["bbox"][3]
-        if abs(center - previous_center) <= tolerance:
-            clusters[-1].append(line)
-        else:
-            clusters.append([line])
-
     totals: list[list[dict[str, Any]]] = []
-    for cluster in clusters:
-        by_lane: dict[int, Mapping[str, Any]] = {}
-        for line in cluster:
-            lane = _nearest_lane(center_x2_v1(line), lane_centers)
-            if lane is not None and lane not in by_lane:
-                by_lane[lane] = line
+    for cluster_index, cluster in enumerate(clusters):
+        if cluster_index in assigned_clusters:
+            continue
+        by_lane = cluster["by_lane"]
         money_lanes = [index for index, kind in enumerate(lane_types) if kind == "MONEY"]
         if not money_lanes or any(index not in by_lane for index in money_lanes):
             continue
