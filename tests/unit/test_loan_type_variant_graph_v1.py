@@ -353,6 +353,79 @@ def test_row_cluster_alignment_handles_staggered_numeric_columns() -> None:
     )
 
 
+def test_short_exact_alias_extends_to_its_wrapped_longer_alias() -> None:
+    surfaces = [
+        ("CHO VAY KHÁCH HÀNG", 0, 0),
+        ("31/12/2025", 500, 40),
+        ("31/12/2024", 800, 40),
+        ("Triệu đồng", 500, 70),
+        ("Triệu đồng", 800, 70),
+        ("Cho vay các tổ chức kinh tế và cá nhân", 0, 120),
+        ("trong nước", 0, 142),
+        ("100", 500, 142),
+        ("90", 800, 142),
+        ("Các khoản trả thay khách hàng", 0, 180),
+        ("3", 500, 180),
+        ("2", 800, 180),
+        ("103", 500, 220),
+        ("92", 800, 220),
+    ]
+
+    result = loan_type.build_loan_type_variant_graph_document_v1([_page(surfaces)])
+
+    graph = result["graphs"][0]
+    assert graph["rows"][0]["label"]["surface"] == (
+        "Cho vay các tổ chức kinh tế và cá nhân trong nước"
+    )
+    assert graph["rows"][0]["label"]["source_line_indices"] == [5, 6]
+    assert [row["role"] for row in graph["rows"]] == [
+        "DOMESTIC_ORGANIZATIONS_INDIVIDUALS",
+        "PAYMENTS_ON_BEHALF",
+    ]
+
+
+def test_long_visible_prefix_can_anchor_a_detector_dropped_continuation() -> None:
+    surfaces = [
+        ("CHO VAY KHÁCH HÀNG", 0, 0),
+        ("31/12/2025", 500, 40),
+        ("31/12/2024", 800, 40),
+        ("Triệu đồng", 500, 70),
+        ("Triệu đồng", 800, 70),
+        ("Cho vay các tổ chức kinh tế, cá nhân trong nước", 0, 120),
+        ("100", 500, 120),
+        ("90", 800, 120),
+        ("Cho vay chiết khấu công cụ chuyển nhượng và các", 0, 165),
+        ("10", 500, 165),
+        ("9", 800, 165),
+        ("110", 500, 210),
+        ("99", 800, 210),
+    ]
+
+    result = loan_type.build_loan_type_variant_graph_document_v1([_page(surfaces)])
+
+    discount = next(
+        row for row in result["graphs"][0]["rows"] if row["role"] == "DISCOUNT_INSTRUMENTS"
+    )
+    assert discount["label"]["match_kind"] == ("LONG_PREFIX_ANCHOR_IN_COMPLETE_TABLE_TOPOLOGY")
+
+
+def test_ppocr_numeric_surface_retains_cell_when_vietocr_confuses_a_digit() -> None:
+    page = _page(_direct(), primary_numeric_authority=True)
+    confused = next(
+        line for line in page["lines"] if line["vietocr_text"] == "10" and line["bbox"][0] == 500
+    )
+    confused["vietocr_text"] = "1O"
+    assert confused["source_text"] == "10"
+
+    result = loan_type.build_loan_type_variant_graph_document_v1([page])
+
+    discount = next(
+        row for row in result["graphs"][0]["rows"] if row["role"] == "DISCOUNT_INSTRUMENTS"
+    )
+    assert discount["values"][0]["source_line_index"] == confused["source_line_index"]
+    assert discount["values"][0]["semantic_surface"] == "1O"
+
+
 def test_wrong_family_and_insufficient_child_subset_remain_near_unresolved() -> None:
     page = _page(
         [

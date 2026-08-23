@@ -314,6 +314,13 @@ def _union_bbox(lines: Sequence[Mapping[str, Any]], indices: Sequence[int]) -> l
     ]
 
 
+def _line_is_number_like(line: Mapping[str, Any]) -> bool:
+    if is_number_like_v1(line["vietocr_text"]):
+        return True
+    challenger = line.get("source_text")
+    return type(challenger) is str and is_number_like_v1(challenger)
+
+
 @lru_cache(maxsize=4096)
 def _role_anchor_match(surface: str, aliases: tuple[str, ...]) -> str | None:
     """Admit bounded OCR spelling drift only as a structural anchor.
@@ -330,11 +337,12 @@ def _role_anchor_match(surface: str, aliases: tuple[str, ...]) -> str | None:
     if exact is not None:
         return exact
     normalized = normalize_vietnamese_anchor_v1(surface)
-    scores = [
-        ratio(normalized, normalize_vietnamese_anchor_v1(alias))
-        for alias in aliases
-        if len(normalize_vietnamese_anchor_v1(alias)) >= 20
-    ]
+    normalized_aliases = tuple(normalize_vietnamese_anchor_v1(alias) for alias in aliases)
+    if len(normalized) >= 24 and any(
+        alias.startswith(normalized + " ") for alias in normalized_aliases
+    ):
+        return "LONG_PREFIX_ANCHOR_IN_COMPLETE_TABLE_TOPOLOGY"
+    scores = [ratio(normalized, alias) for alias in normalized_aliases if len(alias) >= 20]
     if scores and max(scores) >= 90.0:
         return "HIGH_SIMILARITY_ACCENTLESS_ANCHOR_IN_COMPLETE_TABLE_TOPOLOGY"
     return None
@@ -352,7 +360,7 @@ def _label_candidates(
     visual_text_indices = [
         index
         for index in range(start, stop)
-        if not is_number_like_v1(lines[index]["vietocr_text"])
+        if not _line_is_number_like(lines[index])
         and (not enable_extended_owner_table_variants or lines[index]["vietocr_text"].strip())
         and re.fullmatch(r"[ivx]+", normalize_vietnamese_anchor_v1(lines[index]["vietocr_text"]))
         is None
@@ -393,6 +401,8 @@ def _label_candidates(
                 if enable_extended_owner_table_variants
                 else surface
             )
+            normalized_surface = normalize_vietnamese_anchor_v1(match_surface)
+            exact_alias_can_extend = False
             for role, base_aliases in _ROLE_ALIASES.items():
                 aliases = base_aliases + (
                     _EXTENDED_ROLE_ALIASES.get(role, ())
@@ -404,8 +414,19 @@ def _label_candidates(
                     proposal = (indices, role, kind, surface)
                     if selected is None or kind == "EXACT_ACCENTLESS_ALIAS":
                         selected = proposal
-            if selected is not None and selected[2] != (
-                "HIGH_SIMILARITY_ACCENTLESS_ANCHOR_IN_COMPLETE_TABLE_TOPOLOGY"
+                    if kind == "EXACT_ACCENTLESS_ALIAS" and any(
+                        normalize_vietnamese_anchor_v1(alias).startswith(normalized_surface + " ")
+                        for alias in aliases
+                    ):
+                        exact_alias_can_extend = True
+            if (
+                selected is not None
+                and selected[2]
+                not in {
+                    "HIGH_SIMILARITY_ACCENTLESS_ANCHOR_IN_COMPLETE_TABLE_TOPOLOGY",
+                    "LONG_PREFIX_ANCHOR_IN_COMPLETE_TABLE_TOPOLOGY",
+                }
+                and not exact_alias_can_extend
             ):
                 break
         if selected is None:
@@ -601,7 +622,7 @@ def _numeric_row_clusters(
 ) -> list[dict[str, Any]]:
     candidates = []
     for line in lines[first_line:stop]:
-        if not is_number_like_v1(line["vietocr_text"]):
+        if not _line_is_number_like(line):
             continue
         lane = _nearest_lane(center_x2_v1(line), lane_centers)
         if lane is None:
