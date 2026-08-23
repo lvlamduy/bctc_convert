@@ -1828,9 +1828,13 @@ def _unlabeled_trailing_total_row(
     # OCR bbox bottoms can drift by a small declarative fraction of one text
     # line.  Apply that tolerance only to the local role-gap ceiling: a proven
     # following scope/owner/period/unit/reset boundary remains an exact fence.
+    scale_x2 = int(round(scale * 2))
+    gap_distance_numerator = scale_x2 * (maximum_gap_lines * 1_000_000 + gap_jitter_ppm)
+    gap_distance_pixels = (gap_distance_numerator + 2_000_000 - 1) // 2_000_000
+    gap_stop = role_bottom + gap_distance_pixels
     stop_y = min(
         float(page["page_height"]),
-        role_bottom + scale * (maximum_gap_lines + gap_jitter_ppm / 1_000_000),
+        gap_stop,
         float(stop_before) if stop_before is not None else float(page["page_height"]),
     )
     bounded = [

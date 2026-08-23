@@ -1220,7 +1220,7 @@ def test_unlabeled_total_gap_is_declarative_for_other_table_families() -> None:
     assert rejected["graphs"][0]["segments"][0]["trailing_total_resolution"] is None
 
 
-@pytest.mark.parametrize(("shift", "accepted"), [(24, True), (25, False)])
+@pytest.mark.parametrize(("shift", "accepted"), [(25, True), (26, False)])
 def test_unlabeled_total_gap_jitter_has_one_closed_bbox_boundary(
     shift: int, accepted: bool
 ) -> None:
@@ -1243,15 +1243,67 @@ def test_unlabeled_total_gap_jitter_has_one_closed_bbox_boundary(
     assert (resolution is not None) is accepted
 
 
+@pytest.mark.parametrize(("shift", "accepted"), [(19, True), (20, False)])
+def test_zero_unlabeled_total_gap_jitter_preserves_integer_boundary(
+    shift: int, accepted: bool
+) -> None:
+    page = _unlabeled_complete_total_page()
+    for line in page["lines"]:
+        if 40 <= line["source_line_index"] <= 44:
+            line["bbox"][1] += shift
+            line["bbox"][3] += shift
+
+    result = build_accounting_scoped_table_graph_v1(
+        [page],
+        _spec(
+            layouts=["ROLES_AS_ROWS"],
+            unlabeled_gap=2,
+            unlabeled_jitter_ppm=0,
+        ),
+    )
+
+    resolution = result["graphs"][0]["segments"][0]["trailing_total_resolution"]
+    assert (resolution is not None) is accepted
+
+
+@pytest.mark.parametrize(("relative_bottom", "accepted"), [(55, True), (56, False)])
+def test_unlabeled_total_gap_quantization_uses_exact_rational_integer_math(
+    relative_bottom: int, accepted: bool
+) -> None:
+    page = _unlabeled_complete_total_page()
+    for line in page["lines"]:
+        line["bbox"][3] = line["bbox"][1] + 25
+    role_bottom = max(
+        line["bbox"][3] for line in page["lines"] if line["source_line_index"] in {4, 7}
+    )
+    total_bottom = role_bottom + relative_bottom
+    for line in page["lines"]:
+        if 40 <= line["source_line_index"] <= 44:
+            line["bbox"][1] = total_bottom - 25
+            line["bbox"][3] = total_bottom
+
+    result = build_accounting_scoped_table_graph_v1(
+        [page],
+        _spec(
+            layouts=["ROLES_AS_ROWS"],
+            unlabeled_gap=2,
+            unlabeled_jitter_ppm=200_000,
+        ),
+    )
+
+    resolution = result["graphs"][0]["segments"][0]["trailing_total_resolution"]
+    assert (resolution is not None) is accepted
+
+
 def test_structural_stop_before_remains_exact_with_gap_jitter() -> None:
     page = _unlabeled_complete_total_page()
     for line in page["lines"]:
         if 40 <= line["source_line_index"] <= 44:
-            line["bbox"][1] += 24
-            line["bbox"][3] += 24
-    # The candidate row ends at y=362.  This reset starts exactly one pixel
+            line["bbox"][1] += 25
+            line["bbox"][3] += 25
+    # The candidate row ends at y=363.  This reset starts exactly one pixel
     # before it and must fence the row even though the role-gap jitter admits it.
-    page["lines"].append(_line(85, "Thuyết minh khác", [20, 361, 250, 387]))
+    page["lines"].append(_line(85, "Thuyết minh khác", [20, 362, 250, 388]))
 
     result = build_accounting_scoped_table_graph_v1(
         [page], _spec(layouts=["ROLES_AS_ROWS"], unlabeled_jitter_ppm=200_000)
