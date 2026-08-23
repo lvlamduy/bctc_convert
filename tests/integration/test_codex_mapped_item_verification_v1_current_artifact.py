@@ -123,6 +123,22 @@ def _request(real_shb_inputs):
 def test_exact_shb_request_replays_and_public_pinned_review_authenticates(real_shb_inputs):
     request, request_receipt = _request(real_shb_inputs)
     receipt, projection, binding, graph, candidate, context = real_shb_inputs
+    assert candidate["candidate_set_id"] == (
+        "slascv1:candidate:c297f71128bef07be383e684a9ff7ea33b11bf96e4fff154b2e05b39e72ef223"
+    )
+    assert canonical_json_sha256_v1(candidate) == (
+        "c567007cee02036d77ed4a0bf5dbf797f503694b66713ad2edac06b2b73f4214"
+    )
+    assert candidate["schema_authority"]["schema_revision"] == ("UNIVERSAL_BANK_BCTC_SCHEMA@6056")
+    assert [item["display_order"] for item in candidate["role_candidates"]] == [
+        157,
+        200,
+        201,
+        202,
+        203,
+        None,
+    ]
+    assert candidate["unassessed_schema_children"][0]["display_order"] == 204
     replayed, replay_receipt = validate_codex_mapped_item_verification_request_replay_v1(
         request,
         PROJECT_ROOT,

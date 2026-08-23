@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from types import SimpleNamespace
 
 import pytest
 
@@ -9,6 +10,9 @@ from bctc_ai.mapping.semantic_local_accounting_schema_candidate_v1 import (
     SemanticLocalAccountingSchemaCandidateV1Error,
     _authority_snapshot,
     _build_payload,
+    _git_file_bytes_at_commit,
+    _historical_loan_maturity_v1_epoch,
+    _historical_loan_maturity_v1_schema_view,
     _validate_payload,
 )
 
@@ -65,6 +69,9 @@ def test_exact_tm_authority_builds_candidate_only_strict_maturity_core(
     authority, by_id = authority_and_schema
     result = _validate_payload(_build_payload(_graph(), authority, by_id))
 
+    # This helper remains the live-schema authority used by later family
+    # builders; historical E-0045 replay has a separate, explicit seam.
+    assert authority["schema_revision"] == "UNIVERSAL_BANK_BCTC_SCHEMA@6076"
     assert result["status"] == "CANDIDATE_SET_READY"
     assert [item["typed_role"] for item in result["role_candidates"]] == [
         "OWNER_LABEL",
@@ -106,6 +113,113 @@ def test_exact_tm_authority_builds_candidate_only_strict_maturity_core(
     assert all(
         value is False for key, value in result["safety"].items() if key != "typed_graph_roles_only"
     )
+
+
+def _compatible_contexts() -> dict[int, SimpleNamespace]:
+    contexts = {
+        schema_id: SimpleNamespace(mapping_eligible=True, context_status="RESOLVED")
+        for schema_id in (560, 716, 752, 753, 754, 755, 5747)
+    }
+    contexts[1944] = SimpleNamespace(mapping_eligible=False, context_status="UNRESOLVED_ORPHAN")
+    return contexts
+
+
+def test_historical_epoch_is_git_authenticated_and_not_read_from_live_files(
+    project_root, monkeypatch
+) -> None:
+    authority, display_orders = _historical_loan_maturity_v1_epoch(project_root)
+
+    assert authority["schema_revision"] == "UNIVERSAL_BANK_BCTC_SCHEMA@6056"
+    assert authority["schema_item_count"] == 1935
+    assert authority["tm_item_count"] == 1701
+    assert display_orders == {
+        560: 0,
+        716: 157,
+        752: 200,
+        753: 201,
+        754: 202,
+        755: 203,
+        5747: 204,
+        1944: 1700,
+    }
+
+    original = candidate_module._git_file_bytes_at_commit
+
+    def _corrupt_one_blob(project_root, commit, relative):
+        payload = original(project_root, commit, relative)
+        return payload + b"x" if relative == "data/registered/schema_registry.json" else payload
+
+    monkeypatch.setattr(candidate_module, "_git_file_bytes_at_commit", _corrupt_one_blob)
+    with pytest.raises(SemanticLocalAccountingSchemaCandidateV1Error, match="identity drifted"):
+        _historical_loan_maturity_v1_epoch(project_root)
+
+
+def test_missing_historical_git_object_fails_closed(project_root) -> None:
+    with pytest.raises(
+        SemanticLocalAccountingSchemaCandidateV1Error,
+        match="commit identity is invalid",
+    ):
+        _git_file_bytes_at_commit(
+            project_root,
+            "7078ea7",
+            "template/Bank_TM_ReportNormId.v2.xlsx",
+        )
+    with pytest.raises(
+        SemanticLocalAccountingSchemaCandidateV1Error,
+        match="lacks authority input",
+    ):
+        _git_file_bytes_at_commit(
+            project_root,
+            "0" * 40,
+            "template/Bank_TM_ReportNormId.v2.xlsx",
+        )
+
+
+def test_unrelated_append_and_absolute_order_shift_do_not_drift_historical_family_view(
+    authority_and_schema, project_root
+) -> None:
+    _authority, live_by_id = authority_and_schema
+    shifted = deepcopy(live_by_id)
+    for item in shifted.values():
+        item.display_order += 17
+    shifted[716].children.insert(0, 9000)
+    _historical_authority, historical_orders = _historical_loan_maturity_v1_epoch(project_root)
+
+    frozen = _historical_loan_maturity_v1_schema_view(
+        shifted, _compatible_contexts(), historical_orders
+    )
+
+    assert {schema_id: frozen[schema_id].display_order for schema_id in historical_orders} == {
+        560: 0,
+        716: 157,
+        752: 200,
+        753: 201,
+        754: 202,
+        755: 203,
+        5747: 204,
+        1944: 1700,
+    }
+    assert live_by_id[752].display_order == 205
+    assert frozen[752].children[0] == 753
+
+
+@pytest.mark.parametrize("drift", ("name", "edge", "context"))
+def test_live_family_semantic_drift_still_fails_closed(
+    authority_and_schema, project_root, drift
+) -> None:
+    _authority, live_by_id = authority_and_schema
+    changed = deepcopy(live_by_id)
+    contexts = _compatible_contexts()
+    if drift == "name":
+        changed[753].canonical_name = "Forged short-term leaf"
+    elif drift == "edge":
+        changed[752].children.remove(754)
+    else:
+        contexts[754].mapping_eligible = False
+    _historical_authority, historical_orders = _historical_loan_maturity_v1_epoch(project_root)
+
+    with pytest.raises(SemanticLocalAccountingSchemaCandidateV1Error, match="live"):
+        _historical_loan_maturity_v1_schema_view(changed, contexts, historical_orders)
 
 
 def test_unresolved_graph_emits_no_schema_candidates_or_absence(authority_and_schema) -> None:

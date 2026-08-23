@@ -8,13 +8,18 @@ canonicalize observations, or authorize export.
 
 from __future__ import annotations
 
+import io
 import re
+import subprocess
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any
 
-from bctc_ai.core.hashing import sha256_file
+import yaml
+
+from bctc_ai.core.hashing import sha256_bytes, sha256_file
 from bctc_ai.mapping.ordered_subgraph_v2 import build_schema_projection_v2
 from bctc_ai.schema.hierarchy import apply_hierarchy_reference, load_hierarchy_reference
 from bctc_ai.schema.registry import (
@@ -29,6 +34,7 @@ from bctc_ai.schema.tm_context import (
     load_tm_context_policy,
     tm_context_projection_sha256,
 )
+from bctc_ai.schema.xlsx_reader import WorkbookReadError, read_rows
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
     canonical_json_sha256_v1,
@@ -134,6 +140,84 @@ _EXPECTED_TM_CONTEXT_SHA256 = "f3d13642c4c7c26fc3cd9110e8d7d4e4eece77e10f6a95300
 _EXPECTED_TM_SCHEMA_PROJECTION_SHA256 = (
     "22cd0c93b1a394931371b2075cfe3699af56d76bbac1c04c89bc4770fc00c0c5"
 )
+_HISTORICAL_SCHEMA_COMMIT = "7078ea7ba4bc2783b846f12b054a30287a355a2e"
+_HISTORICAL_SCHEMA_TREE = "1e2309ae31e5135df98e200f050c6b78262d3f04"
+_HISTORICAL_UNIVERSAL_SCHEMA = {
+    "revision": "UNIVERSAL_BANK_BCTC_SCHEMA@6056",
+    "item_count": 1935,
+    "counts": {"CDKT": 99, "KQKD": 25, "LCTT": 110, "TM": 1701},
+    "high_watermark": 6056,
+}
+_HISTORICAL_DISPLAY_ORDERS = {
+    560: 0,
+    716: 157,
+    752: 200,
+    753: 201,
+    754: 202,
+    755: 203,
+    5747: 204,
+    1944: 1700,
+}
+_HISTORICAL_AUTHORITY_IDENTITIES = {
+    "schema_registry": (
+        "data/registered/schema_registry.json",
+        "5ee4cc00689a22c252a3f5e194195683231624838034dd916fafe20daeb0d64c",
+        12_339,
+        "31c625a79673871f14a4575c68f7ef8336cd6456",
+    ),
+    "schema_graph": (
+        "reference/schemas/schema_graph.jsonl",
+        "2262c4c053d397754c65d4da66d3c05ca8fb053ed29ccee11981a7eb0982e770",
+        1_559_322,
+        "baac6ccad3a130c2717cd81b21f56d8ab2e3f1be",
+    ),
+    "schema_sources": (
+        "config/schemas/sources.yaml",
+        "b00679e6c2ed9b1311a09424dcff81e8d016dd54fa09d884b011ad66b2d3e1f9",
+        1_652,
+        "2ed3f48b5089c2aca53a81ac798aaf29eb969a5f",
+    ),
+    "hierarchy_config": (
+        "config/schemas/hierarchy_reference.yaml",
+        "3815316ea91ceaac640d42767324dfbcffd3aa326638c2c5c27d4c599298b4c3",
+        5_442,
+        "bb1eebdbe579a54fcff2599be237a7e1518f5fa7",
+    ),
+    "hierarchy_registry": (
+        "data/registered/hierarchy_registry.json",
+        "f31277502d9e568e738e621ac9c749d18c2ec47dd3076f4ae51afb260a1ac99c",
+        6_620,
+        "be80a768800cbed6991bd2a45a2a4762c8a07efd",
+    ),
+    "tm_hierarchy_workbook": (
+        "vst_level/vst_bank_detailed_notes_sheet.xlsx",
+        "6f322f7ba3b1b737643d21890b9bd51ea00224cea6ac65cfa41036d68ccd885b",
+        46_888,
+        "b5815c85472ccfa256c4a00be73851099817888e",
+    ),
+    "tm_context_policy": (
+        "config/schemas/tm-context-v1.yaml",
+        "9c7989fa742101ca6f63bd01be2a484b001efcfe493615d429433273741da98f",
+        5_697,
+        "5be9a50b268c3c046eef24e7a7705af039b67256",
+    ),
+    "schema_coverage_registry": (
+        "data/registered/schema_coverage_registry.json",
+        "16f1c52415f4a5eb6abd2650e081f74c0f6a2e9fa13552c2b4c535db7e03a9db",
+        3_489,
+        "9b2cad67703fb7c581567cff79bf3cf813561ba1",
+    ),
+    "tm_workbook": (
+        "template/Bank_TM_ReportNormId.v2.xlsx",
+        "82215c17f6d0aba33c01b03d6af76cc80ad53e0b129bf101f7e0b266cc9ea28f",
+        46_367,
+        "ad51fbdf2d84451d0776e985bcfc0e59ed252e44",
+    ),
+}
+_HISTORICAL_TM_CONTEXT_SHA256 = "f2874a66403834ec29a65dcb71b56abc26c55b822d921e4c5351e746f288ef6f"
+_HISTORICAL_TM_SCHEMA_PROJECTION_SHA256 = (
+    "e85deb68a14f6041e57a5d3ad48a209818c8b09bb2a921637e98ead172f3da53"
+)
 _SAFETY_ITEMS: tuple[tuple[str, bool], ...] = (
     ("typed_graph_roles_only", True),
     ("raw_text_used_for_schema_routing", False),
@@ -151,6 +235,7 @@ _SAFETY_ITEMS: tuple[tuple[str, bool], ...] = (
 )
 SAFETY: Mapping[str, bool] = MappingProxyType(dict(_SAFETY_ITEMS))
 _SHA_RE = re.compile(r"^[0-9a-f]{64}$")
+_GIT_COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 
 
 class SemanticLocalAccountingSchemaCandidateV1Error(ValueError):
@@ -163,6 +248,200 @@ def _error(message: str) -> SemanticLocalAccountingSchemaCandidateV1Error:
 
 def _fixed_safety() -> dict[str, bool]:
     return dict(_SAFETY_ITEMS)
+
+
+def _git_revision(project_root: Path, revision: str) -> str:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", revision],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError as exc:
+        raise _error("historical schema Git authority is unavailable") from exc
+    if result.returncode != 0:
+        raise _error("historical schema Git authority is unavailable")
+    return result.stdout.strip()
+
+
+def _git_file_bytes_at_commit(project_root: Path, commit: str, relative: str) -> bytes:
+    if _GIT_COMMIT_RE.fullmatch(commit) is None:
+        raise _error("historical schema commit identity is invalid")
+    try:
+        result = subprocess.run(
+            ["git", "show", f"{commit}:{relative}"],
+            cwd=project_root,
+            capture_output=True,
+            check=False,
+        )
+    except OSError as exc:
+        raise _error("historical schema Git authority is unavailable") from exc
+    if result.returncode != 0:
+        raise _error(f"historical schema commit lacks authority input {relative}")
+    return result.stdout
+
+
+def _historical_loan_maturity_v1_epoch(
+    project_root: Path,
+) -> tuple[dict[str, Any], dict[int, int]]:
+    """Authenticate the exact schema epoch reviewed by E-0045.
+
+    The V1 review is immutable, while the live universal schema is append-only.
+    Reading the old authority bytes from their full Git commit keeps that review
+    replayable without pretending today's expanded files still have the old
+    hashes, counts, or workbook positions.
+    """
+
+    root = project_root.resolve()
+    if (
+        _git_revision(root, f"{_HISTORICAL_SCHEMA_COMMIT}^{{commit}}") != _HISTORICAL_SCHEMA_COMMIT
+        or _git_revision(root, f"{_HISTORICAL_SCHEMA_COMMIT}^{{tree}}") != _HISTORICAL_SCHEMA_TREE
+    ):
+        raise _error("historical schema commit or tree identity drifted")
+
+    refs: dict[str, dict[str, Any]] = {}
+    payloads: dict[str, bytes] = {}
+    for name, (
+        relative,
+        expected_sha256,
+        expected_size,
+        expected_blob,
+    ) in _HISTORICAL_AUTHORITY_IDENTITIES.items():
+        if _git_revision(root, f"{_HISTORICAL_SCHEMA_COMMIT}:{relative}") != expected_blob:
+            raise _error(f"historical {name} Git blob identity drifted")
+        payload = _git_file_bytes_at_commit(root, _HISTORICAL_SCHEMA_COMMIT, relative)
+        if sha256_bytes(payload) != expected_sha256 or len(payload) != expected_size:
+            raise _error(f"historical {name} authority identity drifted")
+        refs[name] = {
+            "path": relative,
+            "sha256": expected_sha256,
+            "size_bytes": expected_size,
+        }
+        payloads[name] = payload
+
+    try:
+        source_contract = yaml.safe_load(payloads["schema_sources"].decode("utf-8"))
+    except (UnicodeDecodeError, yaml.YAMLError) as exc:
+        raise _error("historical schema source contract cannot be decoded") from exc
+    if (
+        not isinstance(source_contract, dict)
+        or source_contract.get("universal_schema") != _HISTORICAL_UNIVERSAL_SCHEMA
+    ):
+        raise _error("historical universal schema contract drifted")
+
+    try:
+        workbook_ids = [
+            int(raw_id)
+            for row in read_rows(io.BytesIO(payloads["tm_workbook"]))
+            if (raw_id := row.get("B", "").strip()).isdigit()
+        ]
+    except (OSError, ValueError, WorkbookReadError) as exc:
+        raise _error("historical TM workbook cannot be decoded") from exc
+    if len(workbook_ids) != _HISTORICAL_UNIVERSAL_SCHEMA["counts"]["TM"] or len(
+        set(workbook_ids)
+    ) != len(workbook_ids):
+        raise _error("historical TM workbook item denominator drifted")
+    order_by_id = {schema_id: order for order, schema_id in enumerate(workbook_ids)}
+    if {
+        schema_id: order_by_id.get(schema_id) for schema_id in _HISTORICAL_DISPLAY_ORDERS
+    } != _HISTORICAL_DISPLAY_ORDERS:
+        raise _error("historical loan-maturity workbook positions drifted")
+
+    universal = source_contract["universal_schema"]
+    return (
+        {
+            "schema_name": "UNIVERSAL_BANK_BCTC_SCHEMA",
+            "schema_revision": universal["revision"],
+            "schema_item_count": universal["item_count"],
+            "tm_item_count": universal["counts"]["TM"],
+            "order_authority": "WORKBOOK_DISPLAY_ORDER",
+            "tm_schema_projection_sha256": _HISTORICAL_TM_SCHEMA_PROJECTION_SHA256,
+            "tm_context_projection_sha256": _HISTORICAL_TM_CONTEXT_SHA256,
+            "refs": refs,
+        },
+        {schema_id: order_by_id[schema_id] for schema_id in _HISTORICAL_DISPLAY_ORDERS},
+    )
+
+
+def _historical_loan_maturity_v1_schema_view(
+    by_id: Mapping[int, SchemaItem],
+    context_by_id: Mapping[int, Any],
+    historical_display_orders: Mapping[int, int],
+) -> dict[int, SchemaItem]:
+    """Validate today's compatible semantic subgraph, then freeze V1 positions."""
+
+    for schema_id, name in _EXPECTED_SCHEMA_NAMES.items():
+        item = by_id.get(schema_id)
+        if (
+            item is None
+            or item.canonical_name != name
+            or item.statement_type != "TM"
+            or item.parent_id != _EXPECTED_PARENTS[schema_id]
+            or type(item.display_order) is not int
+        ):
+            raise _error(f"live TM schema identity/hierarchy drifted for ReportNormId {schema_id}")
+
+    required_child_sequences = {
+        716: (752,),
+        752: (753, 754, 755, 5747),
+    }
+    for parent_id, required in required_child_sequences.items():
+        children = by_id[parent_id].children
+        try:
+            positions = [children.index(child_id) for child_id in required]
+        except ValueError as exc:
+            raise _error(
+                f"live TM schema lacks a required edge below ReportNormId {parent_id}"
+            ) from exc
+        if positions != sorted(positions):
+            raise _error(f"live TM schema child order drifted for ReportNormId {parent_id}")
+
+    try:
+        resolved_contexts = [
+            context_by_id[schema_id] for schema_id in (560, 716, 752, 753, 754, 755, 5747)
+        ]
+        orphan = context_by_id[1944]
+    except KeyError as exc:
+        raise _error("live TM schema context lacks a maturity-family identity") from exc
+    if any(
+        not context.mapping_eligible or context.context_status != "RESOLVED"
+        for context in resolved_contexts
+    ):
+        raise _error("live target TM schema context is not mapping-eligible")
+    if orphan.mapping_eligible or orphan.context_status != "UNRESOLVED_ORPHAN":
+        raise _error("live TM orphan 1944 unexpectedly became mapping-eligible")
+
+    frozen = dict(by_id)
+    for schema_id, display_order in historical_display_orders.items():
+        frozen[schema_id] = replace(by_id[schema_id], display_order=display_order)
+    return frozen
+
+
+def _historical_loan_maturity_v1_authority_snapshot(
+    project_root: Path,
+) -> tuple[dict[str, Any], dict[int, SchemaItem]]:
+    """Return E-0045's epoch while independently checking today's family semantics."""
+
+    root = project_root.resolve()
+    historical_authority, historical_display_orders = _historical_loan_maturity_v1_epoch(root)
+    try:
+        load_schema_contract(root)
+        _, schema = load_all(root / "template", root)
+        _, hierarchy = load_hierarchy_reference(
+            root / "config/schemas/hierarchy_reference.yaml", root, schema
+        )
+        apply_hierarchy_reference(schema, hierarchy)
+        policy = load_tm_context_policy(root / TM_CONTEXT_POLICY_RELATIVE_PATH)
+        contexts = build_tm_schema_context(schema, policy)
+    except (OSError, ValueError) as exc:
+        raise _error("live mapping-safe TM schema authority could not be reconstructed") from exc
+    by_id = {item.schema_id: item for item in schema}
+    context_by_id = {context.report_norm_id: context for context in contexts}
+    return historical_authority, _historical_loan_maturity_v1_schema_view(
+        by_id, context_by_id, historical_display_orders
+    )
 
 
 def _authority_snapshot(project_root: Path) -> tuple[dict[str, Any], dict[int, SchemaItem]]:
@@ -432,7 +711,7 @@ def build_semantic_local_accounting_schema_candidate_v1(
         )
     except ValueError as exc:
         raise _error("semantic graph failed exact authenticated replay") from exc
-    authority, by_id = _authority_snapshot(project_root)
+    authority, by_id = _historical_loan_maturity_v1_authority_snapshot(project_root)
     return _validate_payload(_build_payload(graph, authority, by_id))
 
 

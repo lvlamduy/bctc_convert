@@ -30,7 +30,7 @@ from bctc_ai.evaluation.semantic_graph_numeric_proposal_receipt_v1 import (
     _validate_result as _validate_numeric_verification_result,
 )
 from bctc_ai.mapping.semantic_local_accounting_schema_candidate_v1 import (
-    _authority_snapshot,
+    _historical_loan_maturity_v1_authority_snapshot,
     validate_semantic_local_accounting_schema_candidate_replay_v1,
 )
 from bctc_ai.source_structure.contracts_v1 import (
@@ -684,7 +684,7 @@ def _build_request_payload(
     if len(numeric_cells) != 8:
         raise _error("numeric verification does not contain exact eight coordinates")
 
-    _, by_id = _authority_snapshot(root)
+    _, by_id = _historical_loan_maturity_v1_authority_snapshot(root)
     claims: list[dict[str, Any]] = []
     for row in rows:
         ordinal = row["attributes"]["ordinal"]
