@@ -391,3 +391,29 @@ def test_extended_year_end_axis_and_source_semantic_aliases_are_generic() -> Non
         check["status"] == "CORROBORATED_SEMANTIC_PROPOSAL_ONLY"
         for check in graph["accounting_checks"]
     )
+
+
+def test_standalone_footnote_after_totals_is_not_joined_to_wrapped_last_label() -> None:
+    surfaces = [
+        ("CHO VAY KHÁCH HÀNG", 0, 0),
+        ("Số cuối năm", 500, 40),
+        ("Số đầu năm", 800, 40),
+        ("Triệu VND", 500, 70),
+        ("Triệu VND", 800, 70),
+        ("Cho vay các tổ chức kinh tế, cá nhân trong nước", 0, 120),
+        ("100", 500, 120),
+        ("90", 800, 120),
+        ("Nghiệp vụ phát hành thư tín dụng trả chậm", 0, 165),
+        ("phát sinh trước ngày 01 tháng 7 năm 2024", 0, 195),
+        ("1", 800, 195),
+        ("100", 500, 240),
+        ("91", 800, 240),
+        ("(i)", 0, 300),
+    ]
+    result = loan_type.build_loan_type_variant_graph_document_v1(
+        [_page(surfaces)], enable_extended_owner_table_variants=True
+    )
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    graph = result["graphs"][0]
+    assert graph["rows"][-1]["label"]["source_line_indices"] == [8, 9]
+    assert [item["semantic_surface"] for item in graph["total"]] == ["100", "91"]

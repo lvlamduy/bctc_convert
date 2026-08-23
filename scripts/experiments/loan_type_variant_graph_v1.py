@@ -278,6 +278,7 @@ def _owner_window(lines: Sequence[Mapping[str, Any]], start: int) -> dict[str, A
 
 def _is_boundary(text: str, *, enable_extended_owner_table_variants: bool) -> bool:
     normalized = normalize_vietnamese_anchor_v1(text)
+    normalized = re.sub(r"^\d{1,3}(?:\s+\d{1,2})*\s+", "", normalized)
     prefixes = _BOUNDARY_PREFIXES + (
         _COMPACT_SIBLING_BOUNDARY_PREFIXES if enable_extended_owner_table_variants else ()
     )
@@ -334,6 +335,17 @@ def _label_candidates(
             ):
                 continue
             if not is_number_like_v1(lines[candidate_index]["vietocr_text"]):
+                normalized_candidate = normalize_vietnamese_anchor_v1(
+                    lines[candidate_index]["vietocr_text"]
+                )
+                if re.fullmatch(r"[ivx]+", normalized_candidate):
+                    continue
+                if text_indices:
+                    previous_box = lines[text_indices[-1]]["bbox"]
+                    candidate_box = lines[candidate_index]["bbox"]
+                    previous_height = previous_box[3] - previous_box[1]
+                    if candidate_box[1] - previous_box[3] > max(12, previous_height):
+                        break
                 text_indices.append(candidate_index)
                 if len(text_indices) == _MAX_LABEL_WIDTH:
                     break
@@ -404,16 +416,49 @@ def _axes(
     pages: Sequence[Mapping[str, Any]],
     page: Mapping[str, Any],
     owner_stop: int,
-    first_label: int,
+    owner: Mapping[str, Any],
+    labels: Sequence[Mapping[str, Any]],
     *,
     enable_extended_owner_table_variants: bool,
 ) -> tuple[list[dict[str, Any]], str, list[str], list[int], dict[str, Any], list[str]]:
-    header = page["lines"][owner_stop:first_label]
+    lines = page["lines"]
+    owner_indices = set(owner["source_line_indices"])
+    owner_top = min(lines[index]["bbox"][1] for index in owner_indices)
+    first_label_top = min(label["bbox"][1] for label in labels)
+    source_first_label = min(label["source_line_indices"][0] for label in labels)
+    header_by_geometry = [
+        line
+        for line in lines
+        if line["source_line_index"] not in owner_indices
+        and line["bbox"][1] >= owner_top
+        and line["bbox"][3] <= first_label_top
+    ]
+    header_by_index = lines[owner_stop:source_first_label]
+    header = list(
+        {
+            line["source_line_index"]: line for line in (*header_by_index, *header_by_geometry)
+        }.values()
+    )
+    period_header = []
+    for line in header:
+        challenger = line.get("source_text")
+        period_header.append(
+            {
+                **line,
+                **(
+                    {"numeric_score": 1.0, "numeric_text": challenger}
+                    if page["primary_numeric_authority"] and type(challenger) is str
+                    else {}
+                ),
+            }
+        )
     reasons: list[str] = []
     try:
-        periods, period_mode = extract_period_axis_v1(header)
+        periods, period_mode = extract_period_axis_v1(period_header)
     except AccountingTableAxesV1Error:
         periods, period_mode = [], "UNRESOLVED"
+    if enable_extended_owner_table_variants and period_mode == "LOCAL_RELATIVE_PERIOD_ROLES":
+        period_mode = "LOCAL_RELATIVE_YEAR_END_PERIOD_ROLES"
     if len(periods) != 2 and enable_extended_owner_table_variants:
         relative_by_surface = {
             "so cuoi nam": "CURRENT_PERIOD_END",
@@ -553,24 +598,43 @@ def _rows_and_totals(
     reasons: list[str] = []
     assigned: set[int] = set()
     rows: list[dict[str, Any]] = []
-    for label in labels:
-        by_lane: dict[int, Mapping[str, Any]] = {}
-        duplicates: set[int] = set()
+    for label_index, (label, (row_lower_x2, row_upper_x2)) in enumerate(
+        zip(labels, _row_bands(labels), strict=True)
+    ):
+        candidates_by_lane: dict[int, list[Mapping[str, Any]]] = {}
         for line in lines[first_line:stop]:
             if not is_number_like_v1(line["vietocr_text"]):
                 continue
             numeric_center_x2 = line["bbox"][1] + line["bbox"][3]
-            if not 2 * label["bbox"][1] <= numeric_center_x2 <= 2 * label["bbox"][3]:
+            if not (
+                (
+                    numeric_center_x2 >= row_lower_x2
+                    if label_index == 0
+                    else numeric_center_x2 > row_lower_x2
+                )
+                and numeric_center_x2 < row_upper_x2
+            ):
                 continue
             lane = _nearest_lane(center_x2_v1(line), lane_centers)
             if lane is None:
                 continue
-            if lane in by_lane:
-                duplicates.add(lane)
+            candidates_by_lane.setdefault(lane, []).append(line)
+        by_lane: dict[int, Mapping[str, Any]] = {}
+        for lane, candidates in candidates_by_lane.items():
+            distances = [
+                abs((line["bbox"][1] + line["bbox"][3]) - label["y_center_x2"])
+                for line in candidates
+            ]
+            nearest_distance = min(distances)
+            nearest = [
+                line
+                for line, distance in zip(candidates, distances, strict=True)
+                if distance == nearest_distance
+            ]
+            if len(nearest) != 1:
+                reasons.append(f"DUPLICATE_ROW_LANES_{label['role']}")
             else:
-                by_lane[lane] = line
-        if duplicates:
-            reasons.append(f"DUPLICATE_ROW_LANES_{label['role']}")
+                by_lane[lane] = nearest[0]
         values: list[dict[str, Any]] = []
         for lane_index, lane_type in enumerate(lane_types):
             line = by_lane.get(lane_index)
@@ -736,7 +800,8 @@ def _region(
         pages,
         page,
         owner_stop,
-        first_label,
+        owner,
+        labels,
         enable_extended_owner_table_variants=enable_extended_owner_table_variants,
     )
     if not lane_types:
