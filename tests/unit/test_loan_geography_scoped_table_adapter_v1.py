@@ -331,6 +331,7 @@ def test_family11_pins_its_unlabeled_total_geometry_limits_declaratively() -> No
     assert limits["unlabeled_total_min_numeric_columns"] == 5
     assert limits["unlabeled_total_max_numeric_columns"] == 8
     assert limits["unlabeled_total_max_gap_lines"] == 2
+    assert limits["unlabeled_total_gap_jitter_ppm"] == 200_000
 
 
 def test_authoritative_query_spec_is_adapter_content_bound_and_canonical_only() -> None:

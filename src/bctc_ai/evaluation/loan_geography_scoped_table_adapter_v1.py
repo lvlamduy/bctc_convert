@@ -383,6 +383,7 @@ LOAN_GEOGRAPHY_SCOPED_TABLE_SPEC_V1 = {
         "max_role_gap_lines": 10,
         "max_wrap_lines": 3,
         "minimum_cell_row_overlap_ppm": 250_000,
+        "unlabeled_total_gap_jitter_ppm": 200_000,
         "unlabeled_total_max_gap_lines": 2,
         "unlabeled_total_max_numeric_columns": 8,
         "unlabeled_total_min_numeric_columns": 5,

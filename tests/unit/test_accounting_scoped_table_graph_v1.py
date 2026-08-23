@@ -18,6 +18,7 @@ def _spec(
     budget: int = 1,
     require_total: bool = True,
     unlabeled_gap: int = 2,
+    unlabeled_jitter_ppm: int = 200_000,
     unlabeled_max: int = 8,
     unlabeled_min: int = 5,
 ) -> dict[str, object]:
@@ -33,6 +34,7 @@ def _spec(
             "max_role_gap_lines": 8,
             "max_wrap_lines": 3,
             "minimum_cell_row_overlap_ppm": 250_000,
+            "unlabeled_total_gap_jitter_ppm": unlabeled_jitter_ppm,
             "unlabeled_total_max_gap_lines": unlabeled_gap,
             "unlabeled_total_max_numeric_columns": unlabeled_max,
             "unlabeled_total_min_numeric_columns": unlabeled_min,
@@ -1140,6 +1142,48 @@ def test_unlabeled_total_gap_is_declarative_for_other_table_families() -> None:
     assert rejected["graphs"][0]["segments"][0]["trailing_total_resolution"] is None
 
 
+@pytest.mark.parametrize(("shift", "accepted"), [(24, True), (25, False)])
+def test_unlabeled_total_gap_jitter_has_one_closed_bbox_boundary(
+    shift: int, accepted: bool
+) -> None:
+    page = _unlabeled_complete_total_page()
+    for line in page["lines"]:
+        if 40 <= line["source_line_index"] <= 44:
+            line["bbox"][1] += shift
+            line["bbox"][3] += shift
+
+    result = build_accounting_scoped_table_graph_v1(
+        [page],
+        _spec(
+            layouts=["ROLES_AS_ROWS"],
+            unlabeled_gap=2,
+            unlabeled_jitter_ppm=200_000,
+        ),
+    )
+
+    resolution = result["graphs"][0]["segments"][0]["trailing_total_resolution"]
+    assert (resolution is not None) is accepted
+
+
+def test_structural_stop_before_remains_exact_with_gap_jitter() -> None:
+    page = _unlabeled_complete_total_page()
+    for line in page["lines"]:
+        if 40 <= line["source_line_index"] <= 44:
+            line["bbox"][1] += 24
+            line["bbox"][3] += 24
+    # The candidate row ends at y=362.  This reset starts exactly one pixel
+    # before it and must fence the row even though the role-gap jitter admits it.
+    page["lines"].append(_line(85, "Thuyết minh khác", [20, 361, 250, 387]))
+
+    result = build_accounting_scoped_table_graph_v1(
+        [page], _spec(layouts=["ROLES_AS_ROWS"], unlabeled_jitter_ppm=200_000)
+    )
+
+    segment = result["graphs"][0]["segments"][0]
+    assert segment["trailing_total_resolution"] is None
+    assert segment["trailing_total_cells"] == []
+
+
 @pytest.mark.parametrize(
     ("header", "top", "bottom"),
     [
@@ -1208,10 +1252,13 @@ def test_proven_role_body_value_jitter_is_not_an_intervening_row() -> None:
         ("unlabeled_total_min_numeric_columns", True),
         ("unlabeled_total_max_numeric_columns", True),
         ("unlabeled_total_max_gap_lines", True),
+        ("unlabeled_total_gap_jitter_ppm", True),
         ("unlabeled_total_min_numeric_columns", 1),
         ("unlabeled_total_max_numeric_columns", 33),
         ("unlabeled_total_max_gap_lines", 0),
         ("unlabeled_total_max_gap_lines", 9),
+        ("unlabeled_total_gap_jitter_ppm", -1),
+        ("unlabeled_total_gap_jitter_ppm", 500_001),
     ],
 )
 def test_unlabeled_total_limits_reject_bool_or_values_outside_closed_bounds(
@@ -1220,15 +1267,19 @@ def test_unlabeled_total_limits_reject_bool_or_values_outside_closed_bounds(
     spec = _spec(layouts=["ROLES_AS_ROWS"])
     spec["limits"][field] = value
 
-    with pytest.raises(AccountingScopedTableGraphV1Error, match="limits exceed|positive.*integer"):
+    with pytest.raises(
+        AccountingScopedTableGraphV1Error,
+        match="limits exceed|positive.*integer|nonnegative.*integer",
+    ):
         build_accounting_scoped_table_graph_v1([_row_layout_page()], spec)
 
 
 def test_unlabeled_total_limit_axis_requires_all_fields_and_ordered_quorum() -> None:
-    missing = _spec(layouts=["ROLES_AS_ROWS"])
-    missing["limits"].pop("unlabeled_total_max_gap_lines")
-    with pytest.raises(AccountingScopedTableGraphV1Error, match="limits drifted"):
-        build_accounting_scoped_table_graph_v1([_row_layout_page()], missing)
+    for field in ("unlabeled_total_max_gap_lines", "unlabeled_total_gap_jitter_ppm"):
+        missing = _spec(layouts=["ROLES_AS_ROWS"])
+        missing["limits"].pop(field)
+        with pytest.raises(AccountingScopedTableGraphV1Error, match="limits drifted"):
+            build_accounting_scoped_table_graph_v1([_row_layout_page()], missing)
 
     reversed_quorum = _spec(layouts=["ROLES_AS_ROWS"], unlabeled_min=9, unlabeled_max=8)
     with pytest.raises(AccountingScopedTableGraphV1Error, match="limits exceed"):

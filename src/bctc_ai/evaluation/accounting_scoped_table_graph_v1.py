@@ -281,6 +281,7 @@ def _spec(value: Any) -> dict[str, Any]:
         "max_role_gap_lines",
         "max_wrap_lines",
         "minimum_cell_row_overlap_ppm",
+        "unlabeled_total_gap_jitter_ppm",
         "unlabeled_total_max_gap_lines",
         "unlabeled_total_max_numeric_columns",
         "unlabeled_total_min_numeric_columns",
@@ -299,6 +300,10 @@ def _spec(value: Any) -> dict[str, Any]:
         "minimum_cell_row_overlap_ppm": _positive_int(
             limits["minimum_cell_row_overlap_ppm"], "cell row overlap"
         ),
+        "unlabeled_total_gap_jitter_ppm": _nonnegative_int(
+            limits["unlabeled_total_gap_jitter_ppm"],
+            "unlabeled total gap jitter",
+        ),
         "unlabeled_total_max_gap_lines": _positive_int(
             limits["unlabeled_total_max_gap_lines"], "unlabeled total row gap"
         ),
@@ -314,6 +319,7 @@ def _spec(value: Any) -> dict[str, Any]:
     if (
         parsed_limits["axis_tolerance_ppm"] > 1_000_000
         or parsed_limits["minimum_cell_row_overlap_ppm"] > 1_000_000
+        or parsed_limits["unlabeled_total_gap_jitter_ppm"] > 500_000
         or parsed_limits["max_wrap_lines"] > 6
         or parsed_limits["unlabeled_total_min_numeric_columns"] < 2
         or parsed_limits["unlabeled_total_max_numeric_columns"] > 32
@@ -1752,6 +1758,7 @@ def _unlabeled_trailing_total_row(
     scope_ordinal: int,
     minimum_overlap_ppm: int,
     maximum_gap_lines: int,
+    gap_jitter_ppm: int,
     maximum_numeric_columns: int,
     minimum_numeric_columns: int,
     scale: float,
@@ -1818,9 +1825,12 @@ def _unlabeled_trailing_total_row(
         return None, []
 
     start_y = role_bottom - scale * 0.2
+    # OCR bbox bottoms can drift by a small declarative fraction of one text
+    # line.  Apply that tolerance only to the local role-gap ceiling: a proven
+    # following scope/owner/period/unit/reset boundary remains an exact fence.
     stop_y = min(
         float(page["page_height"]),
-        role_bottom + scale * maximum_gap_lines,
+        role_bottom + scale * (maximum_gap_lines + gap_jitter_ppm / 1_000_000),
         float(stop_before) if stop_before is not None else float(page["page_height"]),
     )
     bounded = [
@@ -2217,6 +2227,7 @@ def _segment(
                 scope_ordinal=scope_ordinal,
                 minimum_overlap_ppm=minimum_overlap,
                 maximum_gap_lines=spec["limits"]["unlabeled_total_max_gap_lines"],
+                gap_jitter_ppm=spec["limits"]["unlabeled_total_gap_jitter_ppm"],
                 maximum_numeric_columns=spec["limits"]["unlabeled_total_max_numeric_columns"],
                 minimum_numeric_columns=spec["limits"]["unlabeled_total_min_numeric_columns"],
                 scale=scale,
