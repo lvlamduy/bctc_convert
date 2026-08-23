@@ -86,7 +86,12 @@ older queue priorities where they conflict.
   by footnote and 113 not observed/not synthesized. Hosted Gemma 4 corroborates
   two exact numeric crops and four exact footnote crops but never acts as sole
   numeric authority. Compact seal: E-0169; the next schema-order family is
-  `LOAN_MATURITY_BUCKETS`.
+  `LOAN_MATURITY_BUCKETS`. The formal result and pushed seal/control commit are
+  full-restore verified in S3 checkpoint
+  `20260823T112504472610Z-6a36b700910b`: manifest SHA-256
+  `30d9f3e46d7a5307ccf84ea44e8d28c27b032e6de60fe2b9c9e72440a393f246`
+  and bound PASS run SHA-256
+  `1d2712fd4a3eae25fd23c1156b8b8e7626d0e71219505c2af10ce3892c7017af`.
 - The measured family topology bottleneck no longer requires a 140-document
   sequential pass on every edit. The unchanged engine/spec path fell from
   137.071 seconds to 13.810 seconds with 12 balanced document processes; every
