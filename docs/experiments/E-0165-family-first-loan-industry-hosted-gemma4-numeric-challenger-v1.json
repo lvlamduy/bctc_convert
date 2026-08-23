@@ -1,0 +1,78 @@
+{
+  "format_version": "FAMILY_FIRST_LOAN_INDUSTRY_HOSTED_GEMMA4_NUMERIC_CHALLENGER_EVALUATION_V1",
+  "state": "COMPLETE",
+  "claim_boundary": "ONE_EXACT_FULL_PAGE_300DPI_STATELESS_HOSTED_GEMMA4_NUMERIC_CHALLENGE_BOUND_TO_EXISTING_SAMPLE_CROP_VIETOCR_PPOCRV6_AND_ACCOUNTING_EVIDENCE_NO_SOLE_NUMERIC_GEOMETRY_SCHEMA_MAPPING_OR_ACCOUNTING_AUTHORITY",
+  "evaluation_id": "industrygemma4v1:evaluation:c65c193b9fa88650a768d78291633e5e2e1b1bc6809b43e79c6f5f85867e45d8",
+  "prompt": {
+    "text": "Chuyển các khoản mục thuyết minh và giá trị tương ứng sau thành chuỗi JSON, giữ nguyên chính tả các tên khoản mục, không thay đổi chính tả. Trường hợp ảnh không có khoản mục nào thuyết minh, chỉ là phần diễn giải thì trả lời là không có khoản mục thuyết minh nào. Không phản hồi gì thêm ngoài JSON.",
+    "sha256": "588fc7b8bfde604db8d8851e07052563914c6792b98390173557eb4f9d75a6d2"
+  },
+  "observation": {
+    "format_version": "HOSTED_GEMMA4_FULL_PAGE_NUMERIC_CHALLENGER_OBSERVATION_V1",
+    "state": "COMPLETED_STATELESS_FULL_PAGE_JSON_CHALLENGE",
+    "sample_id": "sample-000197881",
+    "crop_ref": {
+      "path": "output/calibration/family-first-semantic-label-cache-v1/documents/document-0038/page-0036/crops/line-0051.png",
+      "sha256": "33e292117b8e61b2fbefcbef732086ce0936570b7bb0e209aaafe85ca60483ff",
+      "size_bytes": 2450
+    },
+    "full_page_render_ref": {
+      "dpi": 300,
+      "pixel_width": 2478,
+      "pixel_height": 3417,
+      "sha256": "a289cb87cbfa5ece18205899b38a8ac504c99d45b4575813e5ade48a623528f4",
+      "size_bytes": 402610
+    },
+    "model": "gemma-4-26b-a4b-it",
+    "inference": {
+      "fresh_context": true,
+      "thinking_level": "MINIMAL",
+      "temperature": 0,
+      "max_output_tokens": 16384
+    },
+    "prompt_sha256": "588fc7b8bfde604db8d8851e07052563914c6792b98390173557eb4f9d75a6d2",
+    "response_ref": {
+      "sha256": "6bc8a7db09ac24c00bb77883f83f5685cd4df3ee9e2c32c2e085bd8eee6d085a",
+      "character_count": 4146
+    },
+    "extraction_json_path": [
+      "Phân tích dư nợ cho vay theo ngành nghề đăng ký kinh doanh",
+      "Khác",
+      "Số cuối năm (Triệu VND)"
+    ],
+    "extracted_numeric_surface": "31.027.068",
+    "independent_pixel_transcription": "31.027.068",
+    "vietocr_transformer_surface": "31.027.068",
+    "ppocrv6_original_surface": "31.027.066",
+    "ppocrv6_original_score": 0.9715034365653992,
+    "ppocrv6_repeated_scale_surfaces": [
+      "31.027.066",
+      "31.027.066",
+      "31.027.066"
+    ],
+    "accounting_effect": {
+      "printed_total": "524.300.889",
+      "additive_sum_with_ppocrv6": "524.300.887",
+      "additive_sum_with_pixel_vietocr_gemma4": "524.300.889",
+      "status": "EXACT_ONLY_WITH_PIXEL_VIETOCR_AND_GEMMA4_AGREEMENT"
+    }
+  },
+  "decision": {
+    "gemma4_used_only_after_ppocrv6_vietocr_conflict": true,
+    "gemma4_may_act_as_sole_numeric_reader": false,
+    "independent_pixel_vietocr_and_gemma4_agree_exactly": true,
+    "accounting_equation_is_final_corroboration_and_veto": true,
+    "ppocrv6_observation_overwritten": false
+  },
+  "authority": {
+    "numeric_authority": false,
+    "geometry_authority": false,
+    "schema_authority": false,
+    "mapping_authority": false,
+    "accounting_authority": false,
+    "canonicalization_authority": false,
+    "export_authority": false,
+    "raw_api_response_self_authenticating": false,
+    "tracked_response_digest_and_extracted_surface_only": true
+  }
+}

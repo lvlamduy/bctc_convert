@@ -367,6 +367,25 @@ def test_document_period_consensus_rescues_one_corrupted_local_year(monkeypatch)
     ]
 
 
+@pytest.mark.parametrize(
+    "branch",
+    [
+        "Theo lĩnh vực kinh doanh",
+        "Phân tích dư nợ theo ngành nghề kinh tế",
+        "Phân tích dư nợ cho vay khách hàng theo ngành nghề kinh doanh",
+    ],
+)
+def test_general_industry_branch_surfaces_share_one_graph(branch: str) -> None:
+    surfaces = _two_money_industry()
+    surfaces[0] = (branch, 0, 0)
+
+    result = loan_industry.build_loan_industry_variant_graph_document_v1(
+        [_page(surfaces)], enable_extended_annual_variants=True
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+
+
 def test_unrelated_prior_heading_does_not_override_explicit_industry_parent() -> None:
     surfaces = _four_lane_industry()
     surfaces[0] = ("TIỀN GỬI KHÁCH HÀNG", 0, 0)
@@ -471,6 +490,152 @@ def test_extended_annual_compact_branch_leading_owner_total_and_population_bound
         check["status"] == "CORROBORATED_SEMANTIC_PROPOSAL_ONLY"
         for check in graph["accounting_checks"]
     )
+
+
+def test_wrapped_next_population_heading_terminates_before_duplicate_roles() -> None:
+    surfaces = [
+        ("Theo lĩnh vực kinh doanh", 0, 0),
+        ("Số cuối năm", 500, 40),
+        ("Số đầu năm", 800, 40),
+        ("Triệu VND", 500, 70),
+        ("Triệu VND", 800, 70),
+        ("Cho vay khách hàng", 0, 105),
+        ("100", 500, 105),
+        ("90", 800, 105),
+        ("Thương mại", 0, 150),
+        ("60", 500, 150),
+        ("55", 800, 150),
+        ("Khác", 0, 195),
+        ("40", 500, 195),
+        ("35", 800, 195),
+        ("Nghiệp vụ phát hành thư tín dụng", 0, 240),
+        ("trả chậm có điều khoản thanh toán trả ngay", 0, 270),
+        ("hoặc trả trước phát sinh trước 01/07/2024", 0, 300),
+        ("Thương mại", 0, 345),
+        ("5", 500, 345),
+        ("4", 800, 345),
+    ]
+
+    result = loan_industry.build_loan_industry_variant_graph_document_v1(
+        [_page(surfaces)], enable_extended_annual_variants=True
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    graph = result["graphs"][0]
+    assert [row["role"] for row in graph["rows"]] == ["TRADE_REPAIR", "OTHER_INDUSTRIES"]
+    assert graph["table_source_line_range"][1] == 13
+
+
+def test_two_period_headers_may_immediately_precede_the_family_branch() -> None:
+    surfaces = [
+        ("30/06/2026", 500, 35),
+        ("31/12/2025", 800, 35),
+        ("Phân tích dư nợ cho vay khách hàng theo ngành nghề kinh doanh", 0, 70),
+        ("Triệu VND", 500, 105),
+        ("Triệu VND", 800, 105),
+        ("Nông nghiệp, lâm nghiệp và thủy sản", 0, 150),
+        ("10", 500, 150),
+        ("9", 800, 150),
+        ("10", 500, 195),
+        ("9", 800, 195),
+    ]
+
+    result = loan_industry.build_loan_industry_variant_graph_document_v1(
+        [_page(surfaces)], enable_extended_annual_variants=True
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    graph = result["graphs"][0]
+    assert graph["period_mode"] == "LOCAL_EXACT_DATES_PRECEDING_FAMILY_BRANCH"
+    assert [item["period"] for item in graph["period_axis"]] == [
+        "30/06/2026",
+        "31/12/2025",
+    ]
+
+
+def test_long_label_glyph_corruption_is_only_a_topology_bounded_anchor() -> None:
+    surfaces = _minimal_unique_child_subset(child_count=1)
+    label_index = next(
+        index for index, (surface, _x, _y) in enumerate(surfaces) if surface == "Xây dựng"
+    )
+    surfaces[label_index] = (
+        "Bán buôn và bán lớ; sửa chữa 0 10, mô tô, 20 ináy và xe có động cơ khác",
+        0,
+        surfaces[label_index][2],
+    )
+
+    result = loan_industry.build_loan_industry_variant_graph_document_v1(
+        [_page(surfaces)], enable_extended_annual_variants=True
+    )
+
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    row = result["graphs"][0]["rows"][0]
+    assert row["role"] == "TRADE_REPAIR"
+    assert row["label"]["match_kind"] == "BOUNDED_LONG_LABEL_FUZZY_IN_COMPLETE_TOPOLOGY"
+
+
+def test_long_fuzzy_text_without_industry_branch_is_still_a_negative_control() -> None:
+    surfaces = _minimal_unique_child_subset(child_count=1)
+    surfaces[1] = ("Phân tích tiền gửi khách hàng theo lĩnh vực kinh doanh", 0, 35)
+    result = loan_industry.build_loan_industry_variant_graph_document_v1(
+        [_page(surfaces)], enable_extended_annual_variants=True
+    )
+    assert result["status"] == "UNRESOLVED_NO_COMPLETE_REGION"
+
+
+def test_explicit_leading_owner_total_outranks_an_unrecognised_child_cluster() -> None:
+    surfaces = [
+        ("Theo ngành nghề kinh doanh", 0, 0),
+        ("Số cuối năm", 500, 40),
+        ("Số đầu năm", 800, 40),
+        ("Triệu VND", 500, 70),
+        ("Triệu VND", 800, 70),
+        ("Cho vay khách hàng", 0, 105),
+        ("100", 500, 105),
+        ("90", 800, 105),
+        ("Thương mại", 0, 150),
+        ("60", 500, 150),
+        ("55", 800, 150),
+        ("Một ngành nguồn chưa có alias", 0, 195),
+        ("40", 500, 195),
+        ("35", 800, 195),
+    ]
+
+    result = loan_industry.build_loan_industry_variant_graph_document_v1(
+        [_page(surfaces)], enable_extended_annual_variants=True
+    )
+
+    graph = result["graphs"][0]
+    assert [item["semantic_surface"] for item in graph["total"]] == ["100", "90"]
+    assert [[item["semantic_surface"] for item in row] for row in graph["intermediate_totals"]] == [
+        ["40", "35"]
+    ]
+
+
+def test_numbered_next_family_heading_terminates_the_industry_table() -> None:
+    surfaces = _minimal_unique_child_subset(child_count=1)
+    surfaces[-1] = ("100", 500, 198)
+    surfaces.extend(
+        [
+            ("90", 800, 198),
+            ("10. Dự phòng rủi ro cho vay khách hàng", 0, 245),
+            ("Dự phòng chung", 0, 290),
+            ("12", 500, 290),
+            ("11", 800, 290),
+        ]
+    )
+
+    result = loan_industry.build_loan_industry_variant_graph_document_v1(
+        [_page(surfaces)], enable_extended_annual_variants=True
+    )
+
+    graph = result["graphs"][0]
+    assert graph["table_source_line_range"][1] < next(
+        index
+        for index, (surface, _x, _y) in enumerate(surfaces)
+        if surface.startswith("10. Dự phòng")
+    )
+    assert {item["semantic_surface"] for item in graph["total"]}.isdisjoint({"12", "11"})
 
 
 def test_extended_annual_suffix_and_detached_page_edge_noise_do_not_break_wrapped_label() -> None:

@@ -17,6 +17,8 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping, Sequence
 from decimal import Decimal
+from difflib import SequenceMatcher
+from functools import lru_cache
 from itertools import combinations
 from typing import Any
 
@@ -63,7 +65,10 @@ _BRANCH_ALIASES = (
 )
 _EXTENDED_BRANCH_ALIASES = (
     "Theo ngành nghề kinh doanh",
+    "Theo lĩnh vực kinh doanh",
+    "Phân tích dư nợ theo ngành nghề kinh tế",
     "Phân tích dư nợ cho vay theo một số ngành kinh tế của khách hàng",
+    "Phân tích dư nợ cho vay khách hàng theo ngành nghề kinh doanh",
     "Phân tích dư nợ cho vay theo ngành nghề kinh tế",
 )
 _ROLE_ALIASES: dict[str, tuple[str, ...]] = {
@@ -191,6 +196,8 @@ _EXTENDED_ROLE_ALIASES: dict[str, tuple[str, ...]] = {
     "FOREIGN_BRANCH_LOANS": (
         "Dư nợ tại chi nhánh và ngân hàng con nước ngoài",
         "Dư nợ tại tại chi nhánh và ngân hàng con nước ngoài",
+        "Dư nợ tại chi nhánh nước ngoài",
+        "Cho vay tại chi nhánh nước ngoài",
     ),
     "MARGIN_AND_SECURITIES_ADVANCE": (
         "Các khoản cho vay giao dịch ký quỹ và ứng trước cho khách hàng giao dịch đầu tư chứng khoán",
@@ -469,10 +476,15 @@ def _customer_loan_context(
 
 def _is_boundary(text: str, *, enable_extended_annual_variants: bool) -> bool:
     normalized = normalize_vietnamese_anchor_v1(text)
+    without_note_ordinal = re.sub(r"^(?:\d+[a-z]?|[ivxlcdm]+)\s+", "", normalized)
     prefixes = _BOUNDARY_PREFIXES + (
         _EXTENDED_BOUNDARY_PREFIXES if enable_extended_annual_variants else ()
     )
-    return any(normalized.startswith(prefix) for prefix in prefixes)
+    return any(
+        candidate.startswith(prefix)
+        for candidate in (normalized, without_note_ordinal)
+        for prefix in prefixes
+    )
 
 
 def _table_stop(
@@ -483,11 +495,22 @@ def _table_stop(
 ) -> int:
     hard_stop = min(len(lines), branch_stop + _MAX_OWNER_TABLE_LINE_SPAN)
     for index in range(branch_stop, hard_stop):
-        if _is_boundary(
-            lines[index]["vietocr_text"],
-            enable_extended_annual_variants=enable_extended_annual_variants,
-        ):
-            return index
+        # Never reinterpret a monetary/percentage cell immediately before a
+        # heading as the heading's note ordinal (for example ``100`` followed
+        # by ``Phan tich ...``).
+        if _line_is_number_like(lines[index]):
+            continue
+        # A next-family heading is often wrapped over two or three detector
+        # lines.  Test the ordered text windows, not only the first fragment;
+        # otherwise the following table can be absorbed and create duplicate
+        # industry roles.  This remains a family-boundary rule and does not
+        # depend on a bank, filing, note number, page or coordinate.
+        for width in range(1, min(_MAX_LABEL_WIDTH, hard_stop - index) + 1):
+            if _is_boundary(
+                _joined(lines, index, index + width),
+                enable_extended_annual_variants=enable_extended_annual_variants,
+            ):
+                return index
     return hard_stop
 
 
@@ -501,6 +524,52 @@ def _union_bbox(lines: Sequence[Mapping[str, Any]], indices: Sequence[int]) -> l
     ]
 
 
+def _line_is_number_like(line: Mapping[str, Any]) -> bool:
+    """Use VietOCR only for labels and the bound PP surface for numeric rows."""
+
+    if is_number_like_v1(line["vietocr_text"]):
+        return True
+    challenger = line.get("source_text")
+    return type(challenger) is str and is_number_like_v1(challenger)
+
+
+@lru_cache(maxsize=32768)
+def _cached_role_anchor_match(surface: str, aliases: tuple[str, ...]) -> str | None:
+    return match_vietnamese_anchor_alias_v1(surface, aliases)
+
+
+@lru_cache(maxsize=32768)
+def _cached_long_fuzzy_role_anchor_match(surface: str, aliases: tuple[str, ...]) -> str | None:
+    normalized = normalize_vietnamese_anchor_v1(surface)
+    # Long Vietnamese labels commonly retain nearly all lexical content while
+    # VietOCR corrupts two or three glyphs (including spurious digits for
+    # letters).  Permit a bounded fuzzy proposal only for long surfaces with
+    # strong character *and* token agreement.  Short anchors such as ``Khac``,
+    # ``Dich vu`` and ``Xay dung`` remain exact/one-edit only.  Geometry,
+    # parent/children, axes, total and accounting gates still decide whether
+    # the containing table is admissible.
+    if len(normalized) < 24:
+        return None
+    surface_tokens = set(normalized.split())
+    best_ratio = 0.0
+    for alias in aliases:
+        candidate = normalize_vietnamese_anchor_v1(alias)
+        if len(candidate) < 24:
+            continue
+        candidate_tokens = set(candidate.split())
+        surface_lead = " ".join(normalized.split()[:2])
+        candidate_lead = " ".join(candidate.split()[:2])
+        token_denominator = min(len(surface_tokens), len(candidate_tokens))
+        token_overlap = (
+            len(surface_tokens & candidate_tokens) / token_denominator if token_denominator else 0.0
+        )
+        ratio = SequenceMatcher(None, normalized, candidate, autojunk=False).ratio()
+        lead_ratio = SequenceMatcher(None, surface_lead, candidate_lead, autojunk=False).ratio()
+        if lead_ratio >= 0.65 and token_overlap >= 0.70 and ratio >= 0.86:
+            best_ratio = max(best_ratio, ratio)
+    return "BOUNDED_LONG_LABEL_FUZZY_IN_COMPLETE_TOPOLOGY" if best_ratio else None
+
+
 def _label_candidates(
     lines: Sequence[Mapping[str, Any]],
     start: int,
@@ -510,29 +579,43 @@ def _label_candidates(
 ) -> list[dict[str, Any]]:
     matches: list[dict[str, Any]] = []
     occupied: set[int] = set()
-    for line_index in range(start, stop):
+    visual_text_indices = [
+        index
+        for index in range(start, stop)
+        if not _line_is_number_like(lines[index])
+        and lines[index]["vietocr_text"].strip()
+        and re.fullmatch(r"[ivx]+", normalize_vietnamese_anchor_v1(lines[index]["vietocr_text"]))
+        is None
+    ]
+    visual_text_indices.sort(
+        key=lambda index: (
+            lines[index]["bbox"][1],
+            lines[index]["bbox"][0],
+            lines[index]["source_line_index"],
+        )
+    )
+    for visual_position, line_index in enumerate(visual_text_indices):
         if line_index in occupied:
-            continue
-        if is_number_like_v1(lines[line_index]["vietocr_text"]):
             continue
         text_indices: list[int] = []
         origin_box = lines[line_index]["bbox"]
-        for candidate_index in range(line_index, min(stop, line_index + 9)):
+        for candidate_index in visual_text_indices[
+            visual_position : visual_position + _MAX_LABEL_WIDTH
+        ]:
             candidate = lines[candidate_index]
-            if not is_number_like_v1(candidate["vietocr_text"]):
-                # Ignore detached stamps/page-edge noise between wrapped label
-                # fragments.  This is relative to the starting label geometry,
-                # not to a bank, page size, or fixed coordinate.
-                if (
-                    enable_extended_annual_variants
-                    and candidate_index != line_index
-                    and candidate["bbox"][0] > origin_box[2] + 200
-                ):
-                    continue
-                text_indices.append(candidate_index)
-                if len(text_indices) == _MAX_LABEL_WIDTH:
+            if text_indices:
+                previous_box = lines[text_indices[-1]]["bbox"]
+                previous_height = previous_box[3] - previous_box[1]
+                if candidate["bbox"][1] - previous_box[3] > max(12, previous_height):
                     break
+            # Ignore a detached stamp/page-edge token interleaved by provider
+            # order.  Visual y/x ordering, rather than source token order,
+            # keeps a later wrapped fragment attached to its row.
+            if candidate_index != line_index and candidate["bbox"][0] > origin_box[2] + 200:
+                continue
+            text_indices.append(candidate_index)
         proposals: list[tuple[list[int], str, str, str]] = []
+        surfaces: list[tuple[list[int], str, str]] = []
         for width in range(1, len(text_indices) + 1):
             indices = text_indices[:width]
             surface = " ".join(lines[index]["vietocr_text"].strip() for index in indices).strip()
@@ -540,27 +623,56 @@ def _label_candidates(
             # ``&`` in Vietnamese table labels.  Removing it is punctuation
             # normalization only; the original surface remains in evidence.
             match_surface = surface.replace("8", "&")
+            surfaces.append((indices, surface, match_surface))
             for role, base_aliases in _ROLE_ALIASES.items():
                 aliases = base_aliases + (
                     _EXTENDED_ROLE_ALIASES.get(role, ()) if enable_extended_annual_variants else ()
                 )
                 if not aliases:
                     continue
-                kind = match_vietnamese_anchor_alias_v1(match_surface, _distinct_aliases(aliases))
+                kind = _cached_role_anchor_match(match_surface, _distinct_aliases(aliases))
                 if kind is not None:
                     proposals.append((indices, role, kind, surface))
+        # Do not pay the fuzzy cost for already recognized rows.  This also
+        # prevents a fuzzy role from competing with an exact/one-edit role in
+        # another width of the same wrapped label.
+        if not proposals:
+            for indices, surface, match_surface in surfaces:
+                for role, base_aliases in _ROLE_ALIASES.items():
+                    aliases = base_aliases + (
+                        _EXTENDED_ROLE_ALIASES.get(role, ())
+                        if enable_extended_annual_variants
+                        else ()
+                    )
+                    if not aliases:
+                        continue
+                    kind = _cached_long_fuzzy_role_anchor_match(
+                        match_surface, _distinct_aliases(aliases)
+                    )
+                    if kind is not None:
+                        proposals.append((indices, role, kind, surface))
         if not proposals:
             continue
+
         # Prefer an exact role surface before a longer qualified-prefix
         # proposal.  Without this ordering, a complete short row label can
         # absorb the next row merely because intervening numeric lane cells
         # are intentionally omitted from ``text_indices``.  Among equally
         # exact candidates the longer wrapped label still wins, which keeps a
         # specific multi-line role ahead of a generic prefix role.
-        indices, role, kind, surface = max(
-            proposals,
-            key=lambda item: (item[2] == "EXACT_ACCENTLESS_ALIAS", len(item[0])),
-        )
+        def proposal_rank(item: tuple[list[int], str, str, str]) -> tuple[int, int]:
+            kind = item[2]
+            priority = {
+                "BOUNDED_LONG_LABEL_FUZZY_IN_COMPLETE_TOPOLOGY": 0,
+                "ONE_EDIT_ALIAS_IN_COMPLETE_TOPOLOGY": 1,
+                "EXACT_ACCENTLESS_ALIAS": 2,
+            }.get(kind, 1)
+            # A fuzzy match must stop at the shortest sufficient surface; a
+            # longer fuzzy window can otherwise consume the next sibling row.
+            length = -len(item[0]) if priority == 0 else len(item[0])
+            return priority, length
+
+        indices, role, kind, surface = max(proposals, key=proposal_rank)
         occupied.update(indices)
         box = _union_bbox(lines, indices)
         matches.append(
@@ -571,6 +683,12 @@ def _label_candidates(
                 "source_line_indices": indices,
                 "surface": surface,
                 "y_center_x2": box[1] + box[3],
+                "y_center_candidates_x2": sorted(
+                    {
+                        box[1] + box[3],
+                        *(lines[index]["bbox"][1] + lines[index]["bbox"][3] for index in indices),
+                    }
+                ),
             }
         )
     return sorted(matches, key=lambda item: (item["y_center_x2"], item["source_line_indices"][0]))
@@ -612,6 +730,21 @@ def _axes(
         periods, period_mode = extract_period_axis_v1(header)
     except AccountingTableAxesV1Error:
         periods, period_mode = [], "UNRESOLVED"
+    if len(periods) != 2 and enable_extended_annual_variants:
+        # In a compact continuation layout the two column dates can be
+        # printed immediately above the family heading while the units remain
+        # below it.  Reuse only the small local line window adjoining that
+        # heading; never infer dates from a filename, bank, note or expected
+        # page.  Exact two-period parsing remains delegated to the common axis
+        # parser.
+        local_preceding_header = page["lines"][max(0, owner_stop - _MAX_LABEL_WIDTH) : first_label]
+        try:
+            preceding_periods, preceding_mode = extract_period_axis_v1(local_preceding_header)
+        except AccountingTableAxesV1Error:
+            preceding_periods, preceding_mode = [], "UNRESOLVED"
+        if len(preceding_periods) == 2:
+            periods = preceding_periods
+            period_mode = f"{preceding_mode}_PRECEDING_FAMILY_BRANCH"
     if len(periods) != 2 and enable_extended_annual_variants:
         document_period = infer_document_reporting_period_context_v1(pages)
         expected_dates = [
@@ -765,6 +898,176 @@ def _value_record(line: Mapping[str, Any], lane_index: int, lane_type: str) -> d
     }
 
 
+_NUMERIC_TOKEN = re.compile(r"\(?\d+(?:[.,]\d+)*\)?%?")
+
+
+def _split_numeric_line_across_lanes(
+    line: Mapping[str, Any], lane_centers: Sequence[int]
+) -> list[tuple[int, Mapping[str, Any]]]:
+    """Split one detector line only when it exactly spans ordered value lanes."""
+
+    source = line.get("source_text")
+    if type(source) is not str:
+        return []
+    tokens = _NUMERIC_TOKEN.findall(source)
+    if len(tokens) < 2 or _NUMERIC_TOKEN.sub("", source).strip():
+        return []
+    covered = [
+        lane
+        for lane, center in enumerate(lane_centers)
+        if 2 * line["bbox"][0] <= center <= 2 * line["bbox"][2]
+    ]
+    if len(tokens) != len(covered):
+        return []
+    result = []
+    for lane, token in zip(covered, tokens, strict=True):
+        synthetic = dict(line)
+        x = lane_centers[lane] // 2
+        synthetic["bbox"] = [x - 1, line["bbox"][1], x + 1, line["bbox"][3]]
+        synthetic["source_text"] = token
+        synthetic["vietocr_text"] = token
+        result.append((lane, synthetic))
+    return result
+
+
+def _numeric_row_clusters(
+    lines: Sequence[Mapping[str, Any]],
+    first_line: int,
+    stop: int,
+    lane_centers: Sequence[int],
+) -> list[dict[str, Any]]:
+    candidates = []
+    for line in lines[first_line:stop]:
+        split = _split_numeric_line_across_lanes(line, lane_centers)
+        if split:
+            candidates.extend(
+                {
+                    "center_x2": item["bbox"][1] + item["bbox"][3],
+                    "lane": lane,
+                    "line": item,
+                }
+                for lane, item in split
+            )
+            continue
+        if not _line_is_number_like(line):
+            continue
+        lane = _nearest_lane(center_x2_v1(line), lane_centers)
+        if lane is None:
+            continue
+        candidates.append(
+            {
+                "center_x2": line["bbox"][1] + line["bbox"][3],
+                "lane": lane,
+                "line": line,
+            }
+        )
+    candidates.sort(
+        key=lambda item: (
+            item["center_x2"],
+            item["lane"],
+            item["line"]["source_line_index"],
+        )
+    )
+    heights = sorted(item["line"]["bbox"][3] - item["line"]["bbox"][1] for item in candidates)
+    median_height = heights[len(heights) // 2] if heights else 20
+    tolerance = max(12, median_height * 3 // 4)
+    clusters: list[dict[str, Any]] = []
+    for item in candidates:
+        if (
+            not clusters
+            or item["lane"] in clusters[-1]["by_lane"]
+            or abs(item["center_x2"] - clusters[-1]["center_x2"]) > tolerance
+        ):
+            clusters.append(
+                {
+                    "by_lane": {item["lane"]: item["line"]},
+                    "center_values": [item["center_x2"]],
+                    "center_x2": item["center_x2"],
+                }
+            )
+            continue
+        cluster = clusters[-1]
+        cluster["by_lane"][item["lane"]] = item["line"]
+        cluster["center_values"].append(item["center_x2"])
+        ordered = sorted(cluster["center_values"])
+        cluster["center_x2"] = ordered[len(ordered) // 2]
+    return clusters
+
+
+def _align_labels_to_numeric_clusters(
+    labels: Sequence[Mapping[str, Any]], clusters: Sequence[Mapping[str, Any]]
+) -> dict[int, int]:
+    """Globally align ordered labels to ordered numeric row clusters."""
+
+    skip_cost = 48
+    maximum_match_distance = 80
+    label_count = len(labels)
+    cluster_count = len(clusters)
+    costs = [[10**9] * (cluster_count + 1) for _ in range(label_count + 1)]
+    previous: list[list[tuple[int, int, str] | None]] = [
+        [None] * (cluster_count + 1) for _ in range(label_count + 1)
+    ]
+    costs[0][0] = 0
+    for label_index in range(label_count + 1):
+        for cluster_index in range(cluster_count + 1):
+            if label_index == 0 and cluster_index == 0:
+                continue
+            options: list[tuple[int, int, int, str]] = []
+            if label_index:
+                options.append(
+                    (
+                        costs[label_index - 1][cluster_index] + skip_cost,
+                        2,
+                        label_index - 1,
+                        "SKIP_LABEL",
+                    )
+                )
+            if cluster_index:
+                options.append(
+                    (
+                        costs[label_index][cluster_index - 1] + skip_cost,
+                        1,
+                        label_index,
+                        "SKIP_CLUSTER",
+                    )
+                )
+            if label_index and cluster_index:
+                candidates = labels[label_index - 1].get(
+                    "y_center_candidates_x2",
+                    [labels[label_index - 1]["y_center_x2"]],
+                )
+                distance = min(
+                    abs(center - clusters[cluster_index - 1]["center_x2"]) for center in candidates
+                )
+                if distance <= maximum_match_distance:
+                    options.append(
+                        (
+                            costs[label_index - 1][cluster_index - 1] + distance,
+                            0,
+                            label_index - 1,
+                            "MATCH",
+                        )
+                    )
+            cost, _priority, prior_label, operation = min(options)
+            costs[label_index][cluster_index] = cost
+            prior_cluster = (
+                cluster_index - 1 if operation in {"SKIP_CLUSTER", "MATCH"} else cluster_index
+            )
+            previous[label_index][cluster_index] = (prior_label, prior_cluster, operation)
+    matches: dict[int, int] = {}
+    label_index = label_count
+    cluster_index = cluster_count
+    while label_index or cluster_index:
+        step = previous[label_index][cluster_index]
+        if step is None:
+            raise _error("loan-industry row-cluster alignment is incomplete")
+        prior_label, prior_cluster, operation = step
+        if operation == "MATCH":
+            matches[label_index - 1] = cluster_index - 1
+        label_index, cluster_index = prior_label, prior_cluster
+    return matches
+
+
 def _rows_and_totals(
     page: Mapping[str, Any],
     labels: Sequence[Mapping[str, Any]],
@@ -775,26 +1078,15 @@ def _rows_and_totals(
 ) -> tuple[list[dict[str, Any]], list[list[dict[str, Any]]], list[str]]:
     lines = page["lines"]
     reasons: list[str] = []
-    assigned: set[int] = set()
     rows: list[dict[str, Any]] = []
-    for label in labels:
-        by_lane: dict[int, Mapping[str, Any]] = {}
-        duplicates: set[int] = set()
-        for line in lines[first_line:stop]:
-            if not is_number_like_v1(line["vietocr_text"]):
-                continue
-            numeric_center_x2 = line["bbox"][1] + line["bbox"][3]
-            if not 2 * label["bbox"][1] <= numeric_center_x2 <= 2 * label["bbox"][3]:
-                continue
-            lane = _nearest_lane(center_x2_v1(line), lane_centers)
-            if lane is None:
-                continue
-            if lane in by_lane:
-                duplicates.add(lane)
-            else:
-                by_lane[lane] = line
-        if duplicates:
-            reasons.append(f"DUPLICATE_ROW_LANES_{label['role']}")
+    clusters = _numeric_row_clusters(lines, first_line, stop, lane_centers)
+    aligned = _align_labels_to_numeric_clusters(labels, clusters)
+    assigned_clusters: set[int] = set()
+    for label_index, label in enumerate(labels):
+        cluster_index = aligned.get(label_index)
+        by_lane = {} if cluster_index is None else clusters[cluster_index]["by_lane"]
+        if cluster_index is not None:
+            assigned_clusters.add(cluster_index)
         values: list[dict[str, Any]] = []
         for lane_index, lane_type in enumerate(lane_types):
             line = by_lane.get(lane_index)
@@ -810,7 +1102,6 @@ def _rows_and_totals(
                     }
                 )
             else:
-                assigned.add(line["source_line_index"])
                 values.append(_value_record(line, lane_index, lane_type))
         rows.append(
             {
@@ -823,36 +1114,11 @@ def _rows_and_totals(
             }
         )
 
-    remaining: list[Mapping[str, Any]] = []
-    for line in lines[first_line:stop]:
-        if (
-            line["source_line_index"] not in assigned
-            and is_number_like_v1(line["vietocr_text"])
-            and _nearest_lane(center_x2_v1(line), lane_centers) is not None
-        ):
-            remaining.append(line)
-    remaining.sort(key=lambda line: (line["bbox"][1] + line["bbox"][3], center_x2_v1(line)))
-    heights = [line["bbox"][3] - line["bbox"][1] for line in remaining]
-    tolerance = max(20, (sorted(heights)[len(heights) // 2] if heights else 20) * 2)
-    clusters: list[list[Mapping[str, Any]]] = []
-    for line in remaining:
-        center = line["bbox"][1] + line["bbox"][3]
-        if not clusters:
-            clusters.append([line])
-            continue
-        previous_center = clusters[-1][0]["bbox"][1] + clusters[-1][0]["bbox"][3]
-        if abs(center - previous_center) <= tolerance:
-            clusters[-1].append(line)
-        else:
-            clusters.append([line])
-
     totals: list[list[dict[str, Any]]] = []
-    for cluster in clusters:
-        by_lane: dict[int, Mapping[str, Any]] = {}
-        for line in cluster:
-            lane = _nearest_lane(center_x2_v1(line), lane_centers)
-            if lane is not None and lane not in by_lane:
-                by_lane[lane] = line
+    for cluster_index, cluster in enumerate(clusters):
+        if cluster_index in assigned_clusters:
+            continue
+        by_lane = cluster["by_lane"]
         money_lanes = [index for index, kind in enumerate(lane_types) if kind == "MONEY"]
         if not money_lanes or any(index not in by_lane for index in money_lanes):
             continue
@@ -1027,7 +1293,7 @@ def _region(
     rows, totals, row_reasons = _rows_and_totals(
         page, labels, first_label, stop, lane_types, lane_centers
     )
-    if enable_extended_annual_variants and not totals:
+    if enable_extended_annual_variants:
         leading_total = _leading_owner_total(
             page,
             customer_loan_context,
@@ -1037,7 +1303,11 @@ def _region(
             lane_centers,
         )
         if leading_total is not None:
-            totals = [leading_total]
+            # A locally printed ``Cho vay khách hàng`` owner total is a
+            # stronger family-total candidate than an otherwise unassigned
+            # child row.  Retain every intervening cluster as an intermediate
+            # candidate, but make the explicit owner row the final total.
+            totals = [*totals, leading_total]
             row_reasons = [reason for reason in row_reasons if reason != "FINAL_TOTAL_NOT_RESOLVED"]
     reasons.extend(row_reasons)
     if len(periods) != 2 or not totals:
