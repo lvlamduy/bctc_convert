@@ -9,7 +9,10 @@ from pathlib import Path
 import pytest
 
 from bctc_ai.evaluation import family_first_document_evidence_store_v1 as store_v1
-from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
+from bctc_ai.source_structure.contracts_v1 import (
+    canonical_json_bytes_v1,
+    canonical_json_sha256_v1,
+)
 
 _ROOT = Path(__file__).resolve().parents[2]
 _PATH = _ROOT / "scripts/experiments/build_family_first_loan_currency_140_filing_schema_sweep_v1.py"
@@ -445,3 +448,27 @@ def test_strict_result_rejects_symlink_before_following_target(tmp_path: Path) -
         match="regular nofollow",
     ):
         sweep_v1._strict_result(link)
+
+
+def test_strict_result_requires_exactly_one_canonical_trailing_lf(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        sweep_v1,
+        "validate_authenticated_family_first_loan_currency_140_filing_schema_sweep_v1",
+        lambda value: value,
+    )
+    value = {"format": "synthetic"}
+    payload = canonical_json_bytes_v1(value)
+    assert payload.endswith(b"\n") and not payload.endswith(b"\n\n")
+    exact = tmp_path / "exact.json"
+    sweep_v1._write_exclusive(exact, payload)
+    assert sweep_v1._strict_result(exact) == value
+
+    doubled = tmp_path / "double.json"
+    sweep_v1._write_exclusive(doubled, payload + b"\n")
+    with pytest.raises(
+        sweep_v1.FamilyFirstLoanCurrency140FilingSchemaSweepV1Error,
+        match="exactly one LF",
+    ):
+        sweep_v1._strict_result(doubled)

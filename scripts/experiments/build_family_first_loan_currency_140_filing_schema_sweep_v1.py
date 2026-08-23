@@ -1814,8 +1814,8 @@ def _strict_result(path: Path) -> dict[str, Any]:
         raise
     except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
         raise _error("persisted loan-currency sweep is not strict JSON") from exc
-    if type(value) is not dict or payload != canonical_json_bytes_v1(value) + b"\n":
-        raise _error("persisted loan-currency sweep is not canonical JSON plus LF")
+    if type(value) is not dict or payload != canonical_json_bytes_v1(value):
+        raise _error("persisted loan-currency sweep is not canonical JSON with exactly one LF")
     return validate_authenticated_family_first_loan_currency_140_filing_schema_sweep_v1(value)
 
 
@@ -1887,7 +1887,7 @@ def run_family_first_loan_currency_140_filing_schema_sweep_v1(
         capability, root, topology_jobs=topology_jobs, _timing_sink=stage_timings
     )
     if command == "build":
-        _write_exclusive(output, canonical_json_bytes_v1(result) + b"\n")
+        _write_exclusive(output, canonical_json_bytes_v1(result))
     elif not same_typed_json_v1(persisted, result):
         raise _error("persisted loan-currency sweep differs from live exact replay")
     return {
