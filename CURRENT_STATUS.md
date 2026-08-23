@@ -72,6 +72,11 @@ older queue priorities where they conflict.
   build took 207.093 s and its canonical artifact shape/cross-link gate took
   1.325 s, both with zero OCR replay. The next schema-order family is
   `DERIVATIVE_FINANCIAL_INSTRUMENTS`; annual-2025 evidence will be reused.
+  The two formal artifacts and pushed Git control plane are restore-verified in
+  S3 checkpoint `20260823T042137019022Z-af3734c521eb`: manifest SHA-256
+  `05a5ad3292ae986a642f9ef8494ed6af6bc501572c1b060f5c0288b022da5a71`
+  and bound PASS run SHA-256
+  `e717e3bd54a20e8ffc9551cc35f4d3d9d82758551f1dab670b87f73f7eca2aab`.
 - The measured family topology bottleneck no longer requires a 140-document
   sequential pass on every edit. The unchanged engine/spec path fell from
   137.071 seconds to 13.810 seconds with 12 balanced document processes; every
