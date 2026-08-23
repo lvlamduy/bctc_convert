@@ -24,6 +24,7 @@ from bctc_ai.evaluation.accounting_table_axes_v1 import (
     AccountingTableAxesV1Error,
     center_x2_v1,
     extract_period_axis_v1,
+    infer_document_reporting_period_context_v1,
     is_number_like_v1,
     money_integer_v1,
     unit_kind_v1,
@@ -225,6 +226,7 @@ _SAFETY = {
     "bank_filename_note_or_page_used_for_inference": False,
     "blank_or_missing_companion_cells_imputed_as_zero": False,
     "complete_pdf_region_enumeration_required": True,
+    "explicit_industry_branch_may_supply_family_parent_without_note_owner": True,
     "fresh_vietocr_transformer_text_required": True,
     "legacy_ocr_used_for_semantic_anchors": False,
     "mapping_authority": False,
@@ -255,6 +257,7 @@ _RESULT_FIELDS = {
     "uniqueness",
 }
 _SECTION = re.compile(r"^\d{1,3}(?:\.\d{1,2})*\.?$")
+_LOCAL_DAY_MONTH = re.compile(r"\b(?:ngay\s+)?(\d{1,2})\s+thang\s+(\d{1,2})\b")
 
 
 class LoanIndustryVariantGraphV1Error(ValueError):
@@ -609,6 +612,32 @@ def _axes(
         periods, period_mode = extract_period_axis_v1(header)
     except AccountingTableAxesV1Error:
         periods, period_mode = [], "UNRESOLVED"
+    if len(periods) != 2 and enable_extended_annual_variants:
+        document_period = infer_document_reporting_period_context_v1(pages)
+        expected_dates = [
+            document_period.get("current_period_end"),
+            document_period.get("balance_comparative_period_end"),
+        ]
+        local_by_period: dict[str, dict[str, Any]] = {}
+        for line in header:
+            normalized = normalize_vietnamese_anchor_v1(line["vietocr_text"])
+            matched = _LOCAL_DAY_MONTH.search(normalized)
+            if matched is None:
+                continue
+            day, month = map(int, matched.groups())
+            for expected in expected_dates:
+                if type(expected) is not str:
+                    continue
+                expected_day, expected_month, _year = map(int, expected.split("/"))
+                if (day, month) == (expected_day, expected_month):
+                    local_by_period[expected] = {
+                        "evidence_source_line_indices": [line["source_line_index"]],
+                        "period": expected,
+                        "x_center_x2": center_x2_v1(line),
+                    }
+        if len(local_by_period) == 2:
+            periods = sorted(local_by_period.values(), key=lambda item: item["x_center_x2"])
+            period_mode = "DOCUMENT_PERIOD_CONTEXT_CORROBORATED_LOCAL_DAY_MONTH_HEADERS"
     if len(periods) != 2 and enable_extended_annual_variants:
         relative_by_surface = {
             "so cuoi nam": "CURRENT_PERIOD_END",
@@ -980,7 +1009,18 @@ def _region(
     )
     customer_loan_context = _customer_loan_context(pages, page, first_label)
     if customer_loan_context is None:
-        reasons.append("CUSTOMER_LOAN_OWNER_CONTEXT_NOT_RESOLVED")
+        # The explicit industry-analysis branch is itself the family parent.
+        # A separately printed ``Cho vay khach hang`` note owner is useful
+        # context but not mandatory when the branch precedes a typed child
+        # block whose visible total/accounting axis closes.  This is the same
+        # generic parent+child rule used by the minimal-anchor search; it does
+        # not depend on bank, page, filing or note number.
+        customer_loan_context = {
+            "mode": "EXPLICIT_INDUSTRY_BRANCH_PARENT",
+            "page_sequence": page["page_sequence"],
+            "source_line_indices": canonical_clone_v1(branch["source_line_indices"]),
+            "surface": branch["surface"],
+        }
     if not lane_types:
         near["unresolved_reasons"] = sorted(set(reasons))
         return None, near
@@ -1004,9 +1044,6 @@ def _region(
         near["unresolved_reasons"] = sorted(set(reasons))
         return None, near
     accounting_checks = _semantic_accounting(rows, totals)
-    if customer_loan_context is None:
-        near["unresolved_reasons"] = sorted(set(reasons))
-        return None, near
     graph = {
         "accounting_checks": accounting_checks,
         "branch": {

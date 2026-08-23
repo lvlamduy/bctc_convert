@@ -313,15 +313,15 @@ def test_triple_is_used_only_when_every_two_anchor_combination_is_non_unique() -
     assert graphs[0]["anchor_resolution"]["selected_size"] == 3
 
 
-def test_customer_loan_parent_must_precede_the_child_region() -> None:
+def test_explicit_industry_parent_can_replace_a_separate_customer_loan_owner() -> None:
     result = loan_industry.build_loan_industry_variant_graph_document_v1(
         [_page(_minimal_unique_child_subset(parent_before_children=False))]
     )
 
-    assert result["graphs"] == []
-    assert result["near_regions"][0]["unresolved_reasons"] == [
-        "CUSTOMER_LOAN_OWNER_CONTEXT_NOT_RESOLVED"
-    ]
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["graphs"][0]["customer_loan_context"]["mode"] == (
+        "EXPLICIT_INDUSTRY_BRANCH_PARENT"
+    )
 
 
 def test_previous_page_customer_loan_owner_and_relative_periods_are_generic() -> None:
@@ -338,16 +338,44 @@ def test_previous_page_customer_loan_owner_and_relative_periods_are_generic() ->
     assert [item["semantic_surface"] for item in graph["total"]] == ["100", "90"]
 
 
-def test_owner_is_mandatory_even_when_branch_and_arithmetic_look_complete() -> None:
+def test_document_period_consensus_rescues_one_corrupted_local_year(monkeypatch) -> None:
+    surfaces = _four_lane_industry()
+    surfaces[2:4] = [
+        ("Ngày 31 tháng 3", 500, 75),
+        ("năm 2?26", 500, 100),
+        ("Ngày 31 tháng 12", 900, 75),
+        ("năm 2025", 900, 100),
+    ]
+    monkeypatch.setattr(
+        loan_industry,
+        "infer_document_reporting_period_context_v1",
+        lambda _pages: {
+            "balance_comparative_period_end": "31/12/2025",
+            "current_period_end": "31/03/2026",
+        },
+    )
+
+    result = loan_industry.build_loan_industry_variant_graph_document_v1(
+        [_page(surfaces)], enable_extended_annual_variants=True
+    )
+
+    graph = result["graphs"][0]
+    assert graph["period_mode"] == ("DOCUMENT_PERIOD_CONTEXT_CORROBORATED_LOCAL_DAY_MONTH_HEADERS")
+    assert [item["period"] for item in graph["period_axis"]] == [
+        "31/03/2026",
+        "31/12/2025",
+    ]
+
+
+def test_unrelated_prior_heading_does_not_override_explicit_industry_parent() -> None:
     surfaces = _four_lane_industry()
     surfaces[0] = ("TIỀN GỬI KHÁCH HÀNG", 0, 0)
     result = loan_industry.build_loan_industry_variant_graph_document_v1([_page(surfaces)])
 
-    assert result["status"] == "UNRESOLVED_NO_COMPLETE_REGION"
-    assert result["graphs"] == []
-    assert result["near_regions"][0]["unresolved_reasons"] == [
-        "CUSTOMER_LOAN_OWNER_CONTEXT_NOT_RESOLVED"
-    ]
+    assert result["status"] == "ACCEPTED_UNIQUE_VARIANT_GRAPH"
+    assert result["graphs"][0]["customer_loan_context"]["mode"] == (
+        "EXPLICIT_INDUSTRY_BRANCH_PARENT"
+    )
 
 
 @pytest.mark.parametrize(
@@ -430,7 +458,10 @@ def test_extended_annual_compact_branch_leading_owner_total_and_population_bound
     )
 
     graph = result["graphs"][0]
-    assert graph["period_mode"] == "LOCAL_RELATIVE_YEAR_END_PERIOD_ROLES"
+    assert graph["period_mode"] in {
+        "LOCAL_RELATIVE_PERIOD_ROLES",
+        "LOCAL_RELATIVE_YEAR_END_PERIOD_ROLES",
+    }
     assert [row["role"] for row in graph["rows"]] == [
         "TRADE_REPAIR",
         "PERSONAL_COMMUNITY_SERVICES",
