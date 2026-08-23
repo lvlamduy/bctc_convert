@@ -1800,7 +1800,7 @@ def _unlabeled_trailing_total_row(
         and line["bbox"][0] > page["page_width"] * left_ratio
         and max(_overlap_ppm(line["bbox"], box) for box in role_label_boxes) >= minimum_overlap_ppm
     ]
-    if len(body_values) < minimum_numeric_columns * 2:
+    if len(body_values) < minimum_numeric_columns:
         return None, []
     body_value_source_indices = {line["source_line_index"] for line in body_values}
     body_centers = infer_numeric_column_centers_v1(
@@ -1814,14 +1814,14 @@ def _unlabeled_trailing_total_row(
     if not minimum_numeric_columns <= len(body_centers) <= maximum_numeric_columns:
         return None, []
     body_tolerance = max(scale * 1.35, page["page_width"] * 0.012)
-    body_lane_counts = [0] * len(body_centers)
+    body_lane_support: list[list[Mapping[str, Any]]] = [[] for _center in body_centers]
     for line in body_values:
         distances = [abs(_center_x(line) - center) for center in body_centers]
         nearest = min(distances)
         lanes = [index for index, distance in enumerate(distances) if distance == nearest]
         if nearest <= body_tolerance and len(lanes) == 1:
-            body_lane_counts[lanes[0]] += 1
-    if any(count < 2 for count in body_lane_counts):
+            body_lane_support[lanes[0]].append(line)
+    if any(not support for support in body_lane_support):
         return None, []
 
     start_y = role_bottom - scale * 0.2
@@ -1940,6 +1940,19 @@ def _unlabeled_trailing_total_row(
     )
     resolution_material = {
         "body_axis_centers_x2": [int(round(center * 2)) for center in body_centers],
+        "body_axis_support_counts": [len(support) for support in body_lane_support],
+        "body_axis_support_evidence": [
+            {
+                "axis_center_x2": int(round(body_centers[axis_ordinal] * 2)),
+                "axis_ordinal": axis_ordinal,
+                "support_line_evidence": [_line_evidence(line) for line in _visual(support)],
+                "support_line_ids": [
+                    f"line:{line['page_sequence']}:{line['source_line_index']}"
+                    for line in _visual(support)
+                ],
+            }
+            for axis_ordinal, support in enumerate(body_lane_support)
+        ],
         "mode": "UNLABELED_COMPLETE_NUMERIC_TOTAL_ROW",
         "page_sequence": page["page_sequence"],
         "row_bbox": row_bbox,

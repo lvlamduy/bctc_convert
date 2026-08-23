@@ -1082,6 +1082,14 @@ def test_numeric_only_complete_total_row_is_bound_without_inventing_a_label() ->
     assert resolution["target_body_axis_ordinal"] == 2
     assert resolution["target_role_cell_axis_center_x2"] == 1_360
     assert resolution["target_role_cell_source_ordinals"] == [0, 1]
+    assert resolution["body_axis_support_counts"] == [2, 2, 2, 2, 2]
+    assert [item["support_line_ids"] for item in resolution["body_axis_support_evidence"]] == [
+        ["line:1:20", "line:1:30"],
+        ["line:1:21", "line:1:31"],
+        ["line:1:22", "line:1:32"],
+        ["line:1:23", "line:1:33"],
+        ["line:1:24", "line:1:34"],
+    ]
     assert {item["value_axis_center_x2"] for item in segment["role_cells"]} == {1_360}
     assert [item["source_line_index"] for item in resolution["row_evidence"]] == [
         40,
@@ -1093,6 +1101,76 @@ def test_numeric_only_complete_total_row_is_bound_without_inventing_a_label() ->
     assert [item["vietocr_raw_nfc_surface"] for item in segment["trailing_total_cells"]] == [
         "1.100"
     ]
+
+
+@pytest.mark.parametrize("missing_surface", ["", "-"])
+def test_complete_total_row_accepts_partial_foreign_body_axis_and_provider_reorder(
+    missing_surface: str,
+) -> None:
+    page = _unlabeled_complete_total_page()
+    for source_index in (31, 33):
+        line = next(item for item in page["lines"] if item["source_line_index"] == source_index)
+        line["vietocr_text"] = missing_surface
+        line["source_text"] = missing_surface
+    page["lines"] = page["lines"][1::2] + page["lines"][::2]
+
+    result = build_accounting_scoped_table_graph_v1([page], _spec(layouts=["ROLES_AS_ROWS"]))
+
+    segment = result["graphs"][0]["segments"][0]
+    resolution = segment["trailing_total_resolution"]
+    assert resolution["body_axis_support_counts"] == [2, 1, 2, 1, 2]
+    assert [item["support_line_ids"] for item in resolution["body_axis_support_evidence"]] == [
+        ["line:1:20", "line:1:30"],
+        ["line:1:21"],
+        ["line:1:22", "line:1:32"],
+        ["line:1:23"],
+        ["line:1:24", "line:1:34"],
+    ]
+    assert [
+        item["source_line_index"]
+        for item in resolution["body_axis_support_evidence"][1]["support_line_evidence"]
+    ] == [21]
+    assert [item["source_line_index"] for item in resolution["row_evidence"]] == [
+        40,
+        41,
+        42,
+        43,
+        44,
+    ]
+
+
+def test_unlabeled_total_rejects_body_axis_count_and_candidate_axis_drift() -> None:
+    only_four_axes = _unlabeled_complete_total_page(numeric_column_count=4)
+    only_four = build_accounting_scoped_table_graph_v1(
+        [only_four_axes], _spec(layouts=["ROLES_AS_ROWS"])
+    )
+    assert only_four["graphs"][0]["segments"][0]["trailing_total_resolution"] is None
+
+    ninth_axis = _unlabeled_complete_total_page(
+        numeric_column_count=8,
+        target_bbox=[900, 310, 980, 338],
+    )
+    ninth_axis["page_width"] = 1_850
+    domestic = next(item for item in ninth_axis["lines"] if item["source_line_index"] == 20)
+    ninth_axis["lines"].append(
+        _line(89, "9.999", [1_680, domestic["bbox"][1], 1_780, domestic["bbox"][3]])
+    )
+    ninth = build_accounting_scoped_table_graph_v1([ninth_axis], _spec(layouts=["ROLES_AS_ROWS"]))
+    assert ninth["graphs"][0]["segments"][0]["trailing_total_resolution"] is None
+
+    missing_singleton_candidate = _unlabeled_complete_total_page()
+    foreign_singleton = next(
+        item for item in missing_singleton_candidate["lines"] if item["source_line_index"] == 31
+    )
+    foreign_singleton["vietocr_text"] = "-"
+    foreign_singleton["source_text"] = "-"
+    missing_singleton_candidate["lines"] = [
+        item for item in missing_singleton_candidate["lines"] if item["source_line_index"] != 41
+    ]
+    missing_candidate = build_accounting_scoped_table_graph_v1(
+        [missing_singleton_candidate], _spec(layouts=["ROLES_AS_ROWS"])
+    )
+    assert missing_candidate["graphs"][0]["segments"][0]["trailing_total_resolution"] is None
 
 
 @pytest.mark.parametrize(
