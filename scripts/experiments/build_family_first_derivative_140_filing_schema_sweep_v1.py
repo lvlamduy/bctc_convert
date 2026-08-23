@@ -46,7 +46,21 @@ def _inputs(root: Path) -> tuple[dict[str, object], ...]:
     topology = topology_cli._family_spec(root, TOPOLOGY_PATH)
     layout = topology_cli._family_spec(root, LAYOUT_PATH)
     binding = topology_cli._family_spec(root, SCHEMA_BINDING_PATH)
-    challenger = topology_cli._family_spec(root, CHALLENGER_PATH)
+    challenger_payload = topology_cli._stable_bytes(
+        root / CHALLENGER_PATH, "tracked hosted numeric-challenger evidence"
+    )
+    try:
+        challenger = json.loads(
+            challenger_payload.decode("utf-8", errors="strict"),
+            object_pairs_hook=topology_cli._duplicates,
+            parse_constant=lambda _value: (_ for _ in ()).throw(
+                ValueError("numeric-challenger evidence contains a non-finite JSON value")
+            ),
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError("numeric-challenger evidence is not strict UTF-8 JSON") from exc
+    if type(challenger) is not dict:
+        raise ValueError("numeric-challenger evidence must be one JSON object")
     family_id = "DERIVATIVE_FINANCIAL_INSTRUMENTS"
     if any(value.get("family_id", family_id) != family_id for value in (topology, layout, binding)):
         raise ValueError("fixed derivative specifications identify another family")
