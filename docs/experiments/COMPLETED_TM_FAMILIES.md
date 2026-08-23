@@ -94,20 +94,21 @@ Quy ước:
 
 ## 5. Công cụ tài chính phái sinh và tài sản/công nợ tài chính khác
 
-- **Đã xác minh trên BCTC hợp nhất kiểm toán năm 2025:** ACB p49, MBB p66,
-  VPB p44, HDB p35, CTG p42, BID p41 và VIB p37. Đã map 100 giao điểm hàng ×
-  trục giá trị hợp đồng/tài sản/công nợ cho kỳ hiện tại và so sánh; 62 phương
-  trình cha–con, tài sản cộng công nợ và dòng tiền vào/ra đóng chính xác. Hai
-  mươi bốn dấu `-` được bind từ đúng giao điểm hình học hàng–cột rồi chuẩn hóa
-  thành 0; ô trống không bị đổi thành 0. Header bốn tầng của MBB được nhận đủ
-  `hợp đồng → tài sản → nợ phải trả → giá trị thuần`.
-- **Không có trong BCTC annual-2025 đã bind:** VCB. Các dòng tổng/chính sách,
-  giá trị hợp lý hoặc kiểm soát rủi ro không bị relabel thành bảng giao dịch.
-- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong family này.
+- **Đã map/xác minh:** ACB 18/18 filing, MBB 18/18, VPB 18/18, HDB 16/16,
+  VCB 4/18, CTG 18/18, BID 16/16 và VIB 18/18. Tổng cộng 126 filing và 1.684
+  ô `VERIFIED_BY_CODEX`; không còn ô hay filing `UNRESOLVED`.
+- **Không có trong báo cáo đã bind:** 14 filing VCB: H1/Q1/Q2/Q3 năm 2025
+  (hợp nhất và riêng lẻ), cùng H1/Q1/Q2 năm 2026 (hợp nhất và riêng lẻ).
+  Bốn filing VCB còn lại có family và đã map. Đây là absence của đúng filing,
+  không phải kết luận chung cho VCB.
+- **Có nhưng còn khoản mục chưa map:** Không có.
 
-Ghi chú OCR số: MBB `173.426` của VietOCR được pixel, trục số nguồn và phép
-`136.362.265 - 136.188.840` xác nhận là `173.425`. Cột giá trị thuần và các
-cột dòng tiền vào/ra chỉ dùng kiểm tra vì schema không có trục tương đương.
+Ba bất đồng OCR số được đóng bằng đồng thuận từ cùng crop và phương trình kế
+toán: HDB `36.046`, VIB `(19.039)` và VPB `(250.520)`. Gemma 4 chỉ là challenger
+kết hợp với PP-OCRv6/VietOCR, không tự tạo numeric authority.
+
+Kết quả 140 filing:
+`docs/experiments/E-0163-family-first-derivative-140-filing-schema-sweep-seal-v1.json`.
 
 ## 6. Phân tích theo loại hình cho vay
 
@@ -1496,7 +1497,7 @@ dùng.
 | Tiền gửi tại/cho vay TCTD khác — tài sản (575) | ✓ 8 / △ 10 | ✓ 16 / △ 2 | ✓ 14 / △ 4 | ✓ 6 / △ 10 | ✓ 18 | ✓ 13 / △ 3 / — 2 | ✓ 3 / △ 1 / — 12 | ✓ 6 / △ 12 | 42 filing còn UNRESOLVED; 84/140 filing, 701 mapping đã xác minh |
 | Tiền, vàng gửi và vay TCTD khác — nguồn vốn (1040) | ✓ p61 | ✓ p64 | ✓\* p58–59 | ✓\* p44 | ✓ p52 | ✓ p51 | ✓ p50 | ✓ p45 | 2 hàng phụ source-only: VPB IFC và HDB UPAS LC |
 | Chứng khoán kinh doanh | ✓ 18 | ✓ 18 | ✓ 12 / — 6 | ✓ 16 | ✓ 18 | ✓ 16 / — 2 | ✓ 16 | — 18 | 0; 114/140 filing, 457 mapping; 26 bounded `NOT_OBSERVED` |
-| Công cụ tài chính phái sinh | ✓ p49 | ✓ p66 | ✓ p44 | ✓ p35 | — | ✓ p42 | ✓ p41 | ✓ p37 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; VCB không có family |
+| Công cụ tài chính phái sinh | ✓ 18 | ✓ 18 | ✓ 18 | ✓ 16 | ✓ 4 / — 14 | ✓ 18 | ✓ 16 | ✓ 18 | 0; 126/140 filing, 1.684 mapping; 14 filing VCB bounded không có family |
 | Loại hình cho vay | ✓ p17 | ✓ p31 | ✓ p42 | ✓ p26 | ✓ p30 | ✓ p38 | ✓ p22 | ✓ p33 | 0 |
 | Ngành nghề kinh doanh | ✓ p51 | ✓ p52 | ✓ p47 | ✓ p37 | ✓ p40 | — | ✓ p42 | ✓ p38 | 0 dòng; VCB gộp `Thương mại, dịch vụ` → 6073; CTG không có family trong filing annual-2025 |
 | Chất lượng cho vay | ✓ p50 | ✓ p51 | ✓ p45 | ✓ p36 | ✓ p39 | ✓ p43 | ✓ p42 | ✓ p66 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; 1944 tách riêng tại ACB/MBB/VPB |

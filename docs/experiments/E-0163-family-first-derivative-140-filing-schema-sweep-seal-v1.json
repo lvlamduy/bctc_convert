@@ -1,0 +1,72 @@
+{
+  "format_version": "FAMILY_FIRST_DERIVATIVE_140_FILING_SCHEMA_SWEEP_SEAL_V1",
+  "state": "COMPLETE",
+  "claim_boundary": "COMPACT_TRACKED_SEAL_FOR_ONE_EXACT_AUTHENTICATED_140_FILING_DERIVATIVE_SCHEMA_SWEEP_FULL_RESULT_REMAINS_LIVE_REPLAY_REQUIRED",
+  "seal_id": "e0163:seal:df5013d26202f773130799fb550be153ac72d633108792d64ad764bb754dc9d4",
+  "family_id": "DERIVATIVE_FINANCIAL_INSTRUMENTS",
+  "git_commit": "554531c9ec9c6444ea4a1daa8ccf169a8042ae2b",
+  "sweep_id": "ffspssv1:sweep:187c32882838f96e222ae28d7de1bc0bc8e9a864ddd34b2730eacd885aba0dc0",
+  "formal_result_ref": {
+    "path": "output/calibration/family-first-derivative-140-filing-schema-sweep-v1/result.json",
+    "sha256": "4b2f0f01bfaec5de708244ec75057fd7d35d8fd7ce698942831364ac5d732988",
+    "size_bytes": 7215438
+  },
+  "metrics": {
+    "bounded_not_observed_count": 14,
+    "document_count": 140,
+    "numeric_challenger_rescue_count": 3,
+    "unresolved_document_count": 0,
+    "verified_document_count": 126,
+    "verified_mapping_count": 1684
+  },
+  "bank_summary": [
+    {"bank":"ACB","verified_document_count":18,"bounded_not_observed_count":0,"verified_mapping_count":216},
+    {"bank":"MBB","verified_document_count":18,"bounded_not_observed_count":0,"verified_mapping_count":176},
+    {"bank":"VPB","verified_document_count":18,"bounded_not_observed_count":0,"verified_mapping_count":304},
+    {"bank":"HDB","verified_document_count":16,"bounded_not_observed_count":0,"verified_mapping_count":247},
+    {"bank":"VCB","verified_document_count":4,"bounded_not_observed_count":14,"verified_mapping_count":24},
+    {"bank":"CTG","verified_document_count":18,"bounded_not_observed_count":0,"verified_mapping_count":184},
+    {"bank":"BID","verified_document_count":16,"bounded_not_observed_count":0,"verified_mapping_count":317},
+    {"bank":"VIB","verified_document_count":18,"bounded_not_observed_count":0,"verified_mapping_count":216}
+  ],
+  "bounded_not_observed_filings": [
+    {"document_ordinal":51,"bank":"VCB","year":2025,"period":"H1","scope":"CONSOLIDATED","assurance":"REVIEWED"},
+    {"document_ordinal":52,"bank":"VCB","year":2025,"period":"H1","scope":"PARENT_OR_SEPARATE","assurance":"REVIEWED"},
+    {"document_ordinal":53,"bank":"VCB","year":2025,"period":"Q1","scope":"CONSOLIDATED","assurance":"UNAUDITED"},
+    {"document_ordinal":54,"bank":"VCB","year":2025,"period":"Q1","scope":"PARENT_OR_SEPARATE","assurance":"UNAUDITED"},
+    {"document_ordinal":55,"bank":"VCB","year":2025,"period":"Q2","scope":"CONSOLIDATED","assurance":"UNAUDITED"},
+    {"document_ordinal":56,"bank":"VCB","year":2025,"period":"Q2","scope":"PARENT_OR_SEPARATE","assurance":"UNAUDITED"},
+    {"document_ordinal":57,"bank":"VCB","year":2025,"period":"Q3","scope":"CONSOLIDATED","assurance":"UNAUDITED"},
+    {"document_ordinal":58,"bank":"VCB","year":2025,"period":"Q3","scope":"PARENT_OR_SEPARATE","assurance":"UNAUDITED"},
+    {"document_ordinal":119,"bank":"VCB","year":2026,"period":"H1","scope":"CONSOLIDATED","assurance":"REVIEWED"},
+    {"document_ordinal":120,"bank":"VCB","year":2026,"period":"H1","scope":"PARENT_OR_SEPARATE","assurance":"REVIEWED"},
+    {"document_ordinal":121,"bank":"VCB","year":2026,"period":"Q1","scope":"CONSOLIDATED","assurance":"UNAUDITED"},
+    {"document_ordinal":122,"bank":"VCB","year":2026,"period":"Q1","scope":"PARENT_OR_SEPARATE","assurance":"UNAUDITED"},
+    {"document_ordinal":123,"bank":"VCB","year":2026,"period":"Q2","scope":"CONSOLIDATED","assurance":"UNAUDITED"},
+    {"document_ordinal":124,"bank":"VCB","year":2026,"period":"Q2","scope":"PARENT_OR_SEPARATE","assurance":"UNAUDITED"}
+  ],
+  "input_refs": {
+    "topology":{"path":"config/families/tm-derivative-financial-instruments-topology-v1.json","sha256":"66a4335113c6c6397ac4ba9aa845f9d0f59c9da05bdd9c9d9c303572ffa989e2","size_bytes":6237},
+    "layout":{"path":"config/families/tm-derivative-financial-instruments-layout-v1.json","sha256":"a670cc0906527859227d2dbea77c1a6bc8dc6c6e17e9f52493223b32ba04a161","size_bytes":2854},
+    "schema_binding":{"path":"config/families/tm-derivative-financial-instruments-schema-binding-v1.json","sha256":"2ecee9628ce9e4a323ef058776c64de9b687e3a850f9b026adb1ecf781f3522a","size_bytes":3556},
+    "numeric_challenger":{"path":"docs/experiments/E-0162-family-first-derivative-hosted-gemma4-numeric-challenger-v1.json","sha256":"e11f73aa83511a4bbef7e6d32174aee78d5beaab4c0986dc83fcc23e226b1eec","size_bytes":6456},
+    "schema_graph":{"path":"reference/schemas/schema_graph.jsonl","sha256":"3fea408082263c171e98d1edc9b61608261b8a66b83706a5d7d029f9b0655403","size_bytes":1576376}
+  },
+  "implementation_refs": {
+    "orchestrator":{"path":"scripts/experiments/build_family_first_derivative_140_filing_schema_sweep_v1.py","sha256":"fe014c4eccf0c0fc37524414b8229d785ea7d83e59a890858a8e49d4926a8f80","size_bytes":4938},
+    "unit_context":{"path":"src/bctc_ai/evaluation/accounting_document_unit_context_v1.py","sha256":"3166e5da01036a4ce47e1d4e511bf5b5d75e01d91728dcfbb303958fa53ec4cc","size_bytes":9318},
+    "lane_axis":{"path":"src/bctc_ai/evaluation/accounting_stacked_period_lane_axis_v1.py","sha256":"2e3bfe590ef6e8053e4c80c73fb9938d2bc380da4b87ffc5a772feca9cf3ac29","size_bytes":47241},
+    "schema_mapping":{"path":"src/bctc_ai/evaluation/accounting_stacked_period_schema_mapping_v1.py","sha256":"f9302ee9831d7613967d04a57c99db8ea9423929dab8e7d9c5f9f3d740ba0903","size_bytes":40499},
+    "sweep":{"path":"src/bctc_ai/evaluation/family_first_stacked_period_schema_sweep_v1.py","sha256":"2bcf0a4c36ecf0f955efe2b7fe2d817db64ce18dfd021203a8c0e4b371b71621","size_bytes":15631}
+  },
+  "authority": {
+    "bounded_not_observed_authority": true,
+    "bounded_schema_mapping_authority": true,
+    "canonicalization_authority": false,
+    "export_authority": false,
+    "gemma4_used_as_sole_numeric_authority": false,
+    "persisted_seal_self_authenticating": false,
+    "public_exact_replay_required": true,
+    "schema_creation_authority": false
+  }
+}

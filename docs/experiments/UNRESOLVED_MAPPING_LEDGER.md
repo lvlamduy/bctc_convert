@@ -22,6 +22,29 @@ Ledger total: **441 entries**.  Current open queue: **143**.  Closed history:
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
+## CLOSED — family-first 140-filing `Công cụ tài chính phái sinh`
+
+Lượt sweep hiện hành dùng document evidence store, không OCR lại: 126 filing
+`VERIFIED_BY_CODEX`, 14 filing `NOT_OBSERVED_IN_BOUND_REPORT`, 0 filing/ô
+`UNRESOLVED`, 1.684 mapping và ba numeric challenger rescue. Theo bank: ACB
+18/18, MBB 18/18, VPB 18/18, HDB 16/16, CTG 18/18, BID 16/16 và VIB 18/18
+đã xác minh; VCB có 4 filing đã xác minh và 14 filing bounded không quan sát
+thấy family.
+
+14 bounded absence của VCB gồm: H1/Q1/Q2/Q3 năm 2025 hợp nhất và riêng lẻ;
+H1/Q1/Q2 năm 2026 hợp nhất và riêng lẻ. Các dòng chính sách, giá trị hợp lý,
+tổng tài sản/nợ và bảng kiểm soát rủi ro gần giống đã được giữ làm đối chứng âm,
+không bị relabel thành bảng giao dịch phái sinh.
+
+Ba bất đồng OCR đã đóng, không còn OPEN: HDB annual-2025 riêng lẻ p34 dùng
+`36.046` (PP-OCRv6 + Gemma đồng thuận); VIB H1/2025 riêng lẻ p38 dùng
+`(19.039)` (PP-OCRv6 + Gemma); VPB Q1/2026 riêng lẻ p34 dùng `(250.520)`
+(VietOCR + Gemma, đồng thời bác token PP có scale thập phân sai). Mỗi kết quả
+đều phải khép phương trình kế toán; Gemma không được dùng một mình.
+
+Machine-readable seal:
+`docs/experiments/E-0163-family-first-derivative-140-filing-schema-sweep-seal-v1.json`.
+
 ## CLOSED — family-first 140-filing `Chứng khoán kinh doanh`
 
 <!-- TRADING_SECURITIES_OPEN_FILINGS_BEGIN -->
