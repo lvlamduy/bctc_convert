@@ -112,16 +112,30 @@ Kết quả 140 filing:
 
 ## 6. Phân tích theo loại hình cho vay
 
-- **Đã xác minh trên BCTC hợp nhất kiểm toán năm 2025:** ACB p50, MBB p51,
-  VPB p45, HDB p35, VCB p39, CTG p43, BID p41 và VIB p37. Whole-PDF scan tìm
-  đúng một vùng owner–child hoàn chỉnh ở mỗi báo cáo; 44 hàng nguồn đã map vào
-  718–726 và 5745. VPB giữ đủ bốn lane tiền/% và `Cấp tín dụng khác` được map
-  vào 726; BID nhận biến thể `Các khoản phải thu từ cho thuê tài chính`;
-  HDB/CTG nhận nhánh thư tín dụng trả chậm vào `Cho vay khác`.
-- **Không có:** Không có bank nào trong tám BCTC annual-2025.
-- **Còn thiếu:** Không còn khoản mục nguồn chưa map. Ba dấu `-` được giữ trạng
-  thái nguồn rồi chuẩn hóa thành 0. Tổng so sánh HDB nhìn thấy là `442.484.841`;
-  kết quả VietOCR `442.464.841` bị pixel và phép cộng chính xác bác bỏ.
+- **Đã map/xác minh:** toàn bộ 140/140 filing hiện có: ACB 18, MBB 18, VPB 18,
+  HDB 16, VCB 18, CTG 18, BID 16 và VIB 18. Mỗi filing có đúng một vùng
+  `Cho vay khách hàng → các loại hình cho vay`, tổng cộng 732 child mapping;
+  mọi trục tiền đều đóng đúng với tổng nguồn. Hai/bốn lane tiền–%, branch có
+  hoặc không có tiêu đề, hàng quấn dòng, thứ tự con thay đổi, dòng margin và
+  các nhánh bổ sung đều đi qua cùng graph chung.
+- **Không có:** Không có filing nào trong 140 filing đã bind thiếu family này.
+- **Có nhưng còn khoản mục chưa map:** Không có. `Cấp tín dụng khác`, `Cho vay
+  khác` và các nhánh bổ sung như thấu chi/thẻ tín dụng hoặc thư tín dụng trả
+  chậm được giữ thành các source component riêng rồi cộng đúng một lần vào
+  ReportNormId 726. `Cho vay theo chỉ định của Chính phủ` map 6057; margin/ứng
+  trước map 5745.
+
+Numeric evidence: 101 filing vốn đã PP-OCRv6 exact; 39 filing còn lại được
+đóng bằng 140 dấu `-` nhìn thấy trực tiếp trên pixel và hai crop VPB mà detector
+bỏ chữ số `2`. Hai crop này được PP-OCRv6 reference-blind đọc lại là `2`; một
+crop còn được Gemma 4 full-page đọc đối chứng. Không số nào được suy ra chỉ từ
+tổng kế toán.
+
+Kết quả 140 filing:
+`docs/experiments/E-0164-family-first-loan-type-140-filing-schema-sweep-seal-v1.json`.
+
+BCTC hợp nhất kiểm toán năm 2025 vẫn nằm trong denominator trên tại ACB p50,
+MBB p51, VPB p45, HDB p35, VCB p39, CTG p43, BID p41 và VIB p37.
 
 ## 7. Phân tích cho vay theo ngành nghề kinh doanh
 
@@ -1498,7 +1512,7 @@ dùng.
 | Tiền, vàng gửi và vay TCTD khác — nguồn vốn (1040) | ✓ p61 | ✓ p64 | ✓\* p58–59 | ✓\* p44 | ✓ p52 | ✓ p51 | ✓ p50 | ✓ p45 | 2 hàng phụ source-only: VPB IFC và HDB UPAS LC |
 | Chứng khoán kinh doanh | ✓ 18 | ✓ 18 | ✓ 12 / — 6 | ✓ 16 | ✓ 18 | ✓ 16 / — 2 | ✓ 16 | — 18 | 0; 114/140 filing, 457 mapping; 26 bounded `NOT_OBSERVED` |
 | Công cụ tài chính phái sinh | ✓ 18 | ✓ 18 | ✓ 18 | ✓ 16 | ✓ 4 / — 14 | ✓ 18 | ✓ 16 | ✓ 18 | 0; 126/140 filing, 1.684 mapping; 14 filing VCB bounded không có family |
-| Loại hình cho vay | ✓ p17 | ✓ p31 | ✓ p42 | ✓ p26 | ✓ p30 | ✓ p38 | ✓ p22 | ✓ p33 | 0 |
+| Loại hình cho vay | ✓ 18 | ✓ 18 | ✓ 18 | ✓ 16 | ✓ 18 | ✓ 18 | ✓ 16 | ✓ 18 | 0; 140/140 filing, 732 child mapping, 140 DASH→0 và 2 targeted digit rescue |
 | Ngành nghề kinh doanh | ✓ p51 | ✓ p52 | ✓ p47 | ✓ p37 | ✓ p40 | — | ✓ p42 | ✓ p38 | 0 dòng; VCB gộp `Thương mại, dịch vụ` → 6073; CTG không có family trong filing annual-2025 |
 | Chất lượng cho vay | ✓ p50 | ✓ p51 | ✓ p45 | ✓ p36 | ✓ p39 | ✓ p43 | ✓ p42 | ✓ p66 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; 1944 tách riêng tại ACB/MBB/VPB |
 | Dư nợ theo thời gian | ✓ p50 | ✓ p51 | ✓ p45 | ✓ p36 | ✓ p40 | ✓ p44 | ✓ p42 | ✓ p38 | 0 dòng annual-2025; MBB/VPB map margin, HDB giữ dân số bổ sung source-only |

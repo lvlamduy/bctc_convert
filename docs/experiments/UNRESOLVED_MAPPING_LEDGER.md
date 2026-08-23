@@ -22,6 +22,31 @@ Ledger total: **441 entries**.  Current open queue: **143**.  Closed history:
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
+## CLOSED — family-first 140-filing `Phân tích theo loại hình cho vay`
+
+Lượt sweep hiện hành dùng document evidence store, không OCR lại: đủ 140/140
+filing `VERIFIED_BY_CODEX`, không có filing vắng family, không còn ô hoặc source
+row `UNRESOLVED`, và có 732 child mapping. Theo bank: ACB 18/18, MBB 18/18,
+VPB 18/18, HDB 16/16, VCB 18/18, CTG 18/18, BID 16/16, VIB 18/18.
+
+Graph chung quét toàn document và chỉ nhận một vùng khi owner, tập con các hàng
+loại hình, trục kỳ/đơn vị, hình học lane và tổng kế toán cùng khớp. Nó cho phép
+branch title ẩn/hiện, label quấn dòng, thứ tự con thay đổi, bốn lane tiền–%,
+margin và các source row bổ sung; bank/page không tham gia rule. Các source
+component `Cho vay khác`, `Cấp tín dụng khác`, thấu chi/thẻ tín dụng và thư tín
+dụng trả chậm được giữ riêng rồi cộng đúng một lần vào 726.
+
+Các thiếu hụt detector đã đóng, không còn OPEN: 140 ô có glyph `-` được crop
+pixel xác thực rồi mới chuẩn hóa thành 0. VPB H1/2025 riêng lẻ p38 và Q4/2025
+riêng lẻ p34 mỗi trang bị detector bỏ một chữ số `2` ở hàng `Cho vay đối với
+các tổ chức, cá nhân nước ngoài`, cột so sánh. PP-OCRv6 reference-blind đọc hai
+exact crop là `2` với score lần lượt 0,9999853373 và 0,9999754429; crop p38 còn
+được Gemma 4 full-page đọc đối chứng. Khi thêm `2`, child sum khớp đúng tổng
+in `620.775.177`; accounting chỉ là veto, không tự tạo chữ số.
+
+Machine-readable seal:
+`docs/experiments/E-0164-family-first-loan-type-140-filing-schema-sweep-seal-v1.json`.
+
 ## CLOSED — family-first 140-filing `Công cụ tài chính phái sinh`
 
 Lượt sweep hiện hành dùng document evidence store, không OCR lại: 126 filing

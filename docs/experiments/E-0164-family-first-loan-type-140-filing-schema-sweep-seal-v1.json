@@ -1,0 +1,90 @@
+{
+  "format_version": "FAMILY_FIRST_LOAN_TYPE_140_FILING_SCHEMA_SWEEP_SEAL_V1",
+  "state": "COMPLETE",
+  "claim_boundary": "COMPACT_TRACKED_SEAL_FOR_ONE_EXACT_AUTHENTICATED_140_FILING_CUSTOMER_LOAN_TYPE_SCHEMA_SWEEP_FULL_RESULT_REMAINS_LIVE_REPLAY_REQUIRED",
+  "seal_id": "e0164:seal:909a759797d68718d565cfbda92037fccd261939fd74895ef85124acaec570d1",
+  "family_id": "LOAN_TYPE_CLASSIFICATION",
+  "git_commit": "c27b69244fbcd0fad86410ad55737284b4c7ffa9",
+  "sweep_id": "lt140v1:sweep:0fba7b9d57ed090e4e0caf7e75baea2c459c7b58a2546502e110621590f289f8",
+  "formal_result_ref": {
+    "path": "output/calibration/family-first-loan-type-140-filing-schema-sweep-v1/result.json",
+    "sha256": "3621dd94b2122672d08f4d27dfd9afdb8cb5804e764855218f1fb41fbb705c69",
+    "size_bytes": 2725014
+  },
+  "metrics": {
+    "document_count": 140,
+    "mapped_child_record_count": 732,
+    "numeric_exact_trial_count": 140,
+    "structure_unique_trial_count": 140,
+    "targeted_same_crop_ppocrv6_rescue_count": 2,
+    "verified_trial_count": 140,
+    "visible_pixel_dash_zero_count": 140
+  },
+  "bank_summary": [
+    {"bank":"ACB","verified_document_count":18,"mapped_child_record_count":120},
+    {"bank":"MBB","verified_document_count":18,"mapped_child_record_count":99},
+    {"bank":"VPB","verified_document_count":18,"mapped_child_record_count":114},
+    {"bank":"HDB","verified_document_count":16,"mapped_child_record_count":92},
+    {"bank":"VCB","verified_document_count":18,"mapped_child_record_count":72},
+    {"bank":"CTG","verified_document_count":18,"mapped_child_record_count":117},
+    {"bank":"BID","verified_document_count":16,"mapped_child_record_count":64},
+    {"bank":"VIB","verified_document_count":18,"mapped_child_record_count":54}
+  ],
+  "targeted_numeric_rescues": [
+    {
+      "document_ordinal": 28,
+      "bank": "VPB",
+      "year": 2025,
+      "period": "H1",
+      "scope": "PARENT_OR_SEPARATE",
+      "assurance": "REVIEWED",
+      "physical_page": 38,
+      "source_pdf_ref": {"path":"vietstock_bctc/VPB/2025/BCTC Công ty mẹ Soát xét 6 tháng đầu năm 2025.pdf","sha256":"a1e74b14a1d601e7bec8e18795bca623ce66b184f12dc6031a45e20558e3cf27","size_bytes":9463870},
+      "full_page_render_ref": {"dpi":200,"pixel_width":1654,"pixel_height":2339,"sha256":"2f78b8695c94bb1bba34417a65d5cbe604ff1452c4986d5da47d5fd9a65b11f3","size_bytes":1032757},
+      "role": "FOREIGN_ORGANIZATIONS_INDIVIDUALS",
+      "lane_index": 2,
+      "crop_sha256": "f88fad945ea353fc9e007689832d924732d8d487e80a4ed0db5cb6e352e9b984",
+      "ppocrv6_raw_prediction": "2",
+      "ppocrv6_reader_score": 0.9999853372573853,
+      "gemma4_full_page_challenger": {"model":"gemma-4-26b-a4b-it","thinking_level":"MINIMAL","temperature":0,"raw_response_sha256":"2324af97abbff400c9ecb71318267d2b86a7fe46526762de6cafa3b99941eceb","content_sha256":"c452315a2fb9f25c50171c63fda5085c4a1245c3c7c813f61285d1aa2a748a66","extracted_surface":"2"},
+      "accounting_disposition": "PP_OCRV6_2_PLUS_VISIBLE_ROW_AND_EXACT_TOTAL_RECONCILIATION"
+    },
+    {
+      "document_ordinal": 36,
+      "bank": "VPB",
+      "year": 2025,
+      "period": "Q4",
+      "scope": "PARENT_OR_SEPARATE",
+      "assurance": "UNAUDITED",
+      "physical_page": 34,
+      "source_pdf_ref": {"path":"vietstock_bctc/VPB/2025/bctc-rieng-le.pdf","sha256":"7d7b39151a3a377da08d03914248690238d782f5e05a0deeccffb28f6c99cd3a","size_bytes":31231585},
+      "full_page_render_ref": {"dpi":200,"pixel_width":1700,"pixel_height":2200,"sha256":"31f0066fb3d2c68702742eb24829fabe9d84d3f7300c14e82abdebaa15c8782b","size_bytes":476271},
+      "role": "FOREIGN_ORGANIZATIONS_INDIVIDUALS",
+      "lane_index": 2,
+      "crop_sha256": "e60ada731eaa7faee340232ca7a6779e45cb0745825413f9aaf0bb6179598a1c",
+      "ppocrv6_raw_prediction": "2",
+      "ppocrv6_reader_score": 0.9999754428863525,
+      "gemma4_full_page_challenger": null,
+      "accounting_disposition": "PP_OCRV6_2_PLUS_VISIBLE_ROW_AND_EXACT_TOTAL_RECONCILIATION"
+    }
+  ],
+  "input_refs": {
+    "schema_graph":{"path":"reference/schemas/schema_graph.jsonl","sha256":"3fea408082263c171e98d1edc9b61608261b8a66b83706a5d7d029f9b0655403","size_bytes":1576376},
+    "tm_workbook":{"path":"template/Bank_TM_ReportNormId.v2.xlsx","sha256":"64589f7ee2b025ac0bd784c13e0b0ba0aff9d46456a83fa7fe2d68a7de375115","size_bytes":47006}
+  },
+  "implementation_refs": {
+    "orchestrator":{"path":"scripts/experiments/build_family_first_loan_type_140_filing_schema_sweep_v1.py","sha256":"cdf74005646dcca949c52b47f41854d01abc4db342690ecc20e563c9bc2ef013","size_bytes":16762},
+    "variant_graph":{"path":"scripts/experiments/loan_type_variant_graph_v1.py","sha256":"e55dca8dc49ea2300a608ff25dda21d1b4c5076d105eb11b0e4931f1b1f32a65","size_bytes":46223},
+    "numeric_reconciliation":{"path":"scripts/experiments/loan_type_numeric_row_reconciliation_v1.py","sha256":"2af256e1d4a7995d1a0621a632cc6c8bf7256aa3c4bb86a9b95bb00092759d31","size_bytes":14072},
+    "missing_cell_evidence":{"path":"scripts/experiments/loan_type_missing_cell_evidence_v1.py","sha256":"4c629f0dad2fc93038a12d26da93de2b7635eeb20646e30d216208b38d8169d4","size_bytes":17664}
+  },
+  "authority": {
+    "bounded_schema_mapping_authority": true,
+    "canonicalization_authority": false,
+    "export_authority": false,
+    "gemma4_used_as_sole_numeric_authority": false,
+    "persisted_seal_self_authenticating": false,
+    "public_exact_replay_required": true,
+    "schema_creation_authority": false
+  }
+}
