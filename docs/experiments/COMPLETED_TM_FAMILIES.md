@@ -191,23 +191,25 @@ Kết quả 140 filing:
 
 ## 9. Phân tích dư nợ theo thời gian/thời hạn gốc
 
-- **Đã xác minh trên BCTC hợp nhất kiểm toán năm 2025:** ACB p50, MBB p51,
-  VPB p45, HDB p36, VCB p40, CTG p44, BID p42, VIB p38. Ba hàng `Nợ ngắn
-  hạn`, `Nợ trung hạn`, `Nợ dài hạn` đã được map cho cả 8 bank; hai hàng
-  margin độc lập của MBB và VPB cũng đã được map. VIB có thêm hai cột tỷ lệ
-  phần trăm và cả hai kỳ đều khép đúng 100%.
-- **Không có:** Không có bank nào.
-- **Còn thiếu:** Không còn khoản mục mục tiêu chưa map. Các dòng tổng vẫn là
-  dòng kiểm tra nguồn, không map thành khoản mục chi tiết. HDB có thêm dân số
-  `Thư tín dụng trả chậm có điều khoản trả ngay` đứng ngoài lõi ba kỳ hạn; dòng
-  này được xác minh nguồn và dùng để khép tổng lớn nhưng không bị ép vào schema
-  kỳ hạn.
+- **Đã map/xác minh:** đủ 140/140 filing: ACB 18, MBB 18, VPB 18, HDB 16,
+  VCB 18, CTG 18, BID 16 và VIB 18. Có 420 mapping lõi 753/754/755 và 18
+  mapping margin 5747, tổng cộng 438 mapping/876 ô tiền.
+- **Không có trong báo cáo:** Không có; family hiện diện duy nhất và đóng số
+  trên cả 140 filing.
+- **Có nhưng còn khoản mục chưa map:** Không có; `OPEN = 0`.
 
-Kết quả exact-replay:
-`docs/experiments/E-0115-annual-2025-loan-maturity-8bank-codex-verified-mapping-v1.json`.
+Graph chung chấp nhận parent kỳ hạn hiện hoặc ẩn, owner cùng trang/trang trước,
+hai hoặc bốn lane tiền–%, nhiều cách ghi kỳ và đơn vị cục bộ/kế thừa. 108 ô tỷ
+lệ child và 36 ô tổng tỷ lệ cùng 352 phương trình nguồn đã đóng. Sáu population
+HDB bổ sung gồm 12 dòng/24 ô được giữ source-only để khép tổng, không bị ép vào
+ba bucket schema và không phải khoản mục chưa map. Tám dấu gạch HDB chỉ đổi
+thành 0 sau khi bind pixel. Một trang MBB dùng hai request hosted Gemma 4 làm
+challenger; Gemma không quyết định số một mình.
 
-Lượt BCTC hiện hành trước đó tại ACB p18, MBB p31, VPB p42, HDB p26, VCB p31,
-CTG p39, BID p22 và VIB p33 vẫn giữ nguyên kết quả đã xác minh.
+Kết quả 140 filing:
+`docs/experiments/E-0171-family-first-loan-maturity-140-filing-schema-sweep-seal-v1.json`.
+E-0115 là tập con annual-2025 lịch sử. S3 registration đang chờ; public exact
+replay cần restored snapshot, không chỉ bare Git checkout.
 
 ## 10. Phân tích cho vay theo loại hình tiền tệ
 
@@ -1519,7 +1521,7 @@ dùng.
 | Loại hình cho vay | ✓ 18 | ✓ 18 | ✓ 18 | ✓ 16 | ✓ 18 | ✓ 18 | ✓ 16 | ✓ 18 | 0; 140/140 filing, 732 child mapping, 140 DASH→0 và 2 targeted digit rescue |
 | Ngành nghề kinh doanh | ✓ 6 / — 12 | ✓ 18 | ✓ 18 | ✓ 16 | ✓ 4 / — 14 | ✓ 2 / — 16 | ✓ 16 | ✓ 18 | 0; 98/140 filing, 1.520 child mapping, 42 bounded absences |
 | Chất lượng cho vay | ✓ 18 | ✓ 18 | ✓ 18 | ✓ 16 | ✓ 18 | ✓ 18 | ✓ 16 | ✓ 18 | 0; 140/140 filing, 700 core + 27 margin = 727 mapping |
-| Dư nợ theo thời gian | ✓ p50 | ✓ p51 | ✓ p45 | ✓ p36 | ✓ p40 | ✓ p44 | ✓ p42 | ✓ p38 | 0 dòng annual-2025; MBB/VPB map margin, HDB giữ dân số bổ sung source-only |
+| Dư nợ theo thời gian | ✓ 18 | ✓ 18 | ✓ 18 | ✓ 16 | ✓ 18 | ✓ 18 | ✓ 16 | ✓ 18 | 0; 140/140 filing, 420 core + 18 margin = 438 mapping; HDB additional population chỉ làm source control |
 | Cho vay theo loại tiền tệ | ✓ p51 | — p51–52 | — p45–47 | ✓ p37 | — p39–40 | — p43–44 | — p41–42 | — p37–39 | 0 dòng annual-2025; HDB giữ dân số thư tín dụng bổ sung source-only |
 | Cho vay theo khu vực địa lý | ✓ p77 | ✓ p91 | — p81 | — p60 | — | — | — p63 | ✓ p59–60 | 0 dòng annual-2025; ba bảng địa lý rộng hơn không bị thu hẹp ngầm |
 | Doanh nghiệp/đối tượng KH | — | ✓ p52 | ✓ p46 | ✓ p36 | ✓ p40 | — | ✓ p42 | ✓ p39 | 0 dòng; VCB gộp `Hợp tác xã và công ty tư nhân` → 6074 |

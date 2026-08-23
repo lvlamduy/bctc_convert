@@ -22,6 +22,27 @@ Ledger total: **441 entries**.  Current open queue: **143**.  Closed history:
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
+## CLOSED — family-first 140-filing `Phân tích dư nợ theo thời gian/thời hạn gốc`
+
+Lượt sweep hiện hành dùng SQLite document evidence store và page shortlist,
+không OCR lại: đủ 140/140 filing `VERIFIED_BY_CODEX`, không có filing vắng
+family, không còn ô/source row `UNRESOLVED`, và có 438 mapping. Theo bank: ACB
+18 filing/54 mapping, MBB 18/63, VPB 18/63, HDB 16/48, VCB 18/54, CTG 18/54,
+BID 16/48 và VIB 18/54.
+
+420 mapping lõi là ba bucket ngắn/trung/dài hạn; 18 mapping còn lại là margin.
+876 ô tiền, 108 ô phần trăm child, 36 ô tổng phần trăm và 352 phương trình
+nguồn đã đóng. Sáu population HDB bổ sung được xác minh source-only để khép
+tổng và nằm ngoài schema bucket, nên không tạo dòng OPEN. Tám dấu gạch HDB
+thành 0 chỉ sau pixel binding. Hai request hosted Gemma 4 trên một full page
+MBB chỉ làm challenger cho một conflict cell đã có control/accounting độc lập;
+Gemma không là numeric authority duy nhất.
+
+E-0115 là tập con annual-2025 lịch sử và được sweep này supersede. Seal:
+`docs/experiments/E-0171-family-first-loan-maturity-140-filing-schema-sweep-seal-v1.json`.
+S3 registration đang chờ; public exact replay cần restored snapshot chứa formal
+result và hosted assets, không thể chỉ dùng bare Git checkout.
+
 ## CLOSED — family-first 140-filing `Phân tích chất lượng cho vay`
 
 Lượt sweep hiện hành dùng document evidence store, không OCR lại: đủ 140/140

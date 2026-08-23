@@ -1,0 +1,155 @@
+{
+  "format_version": "FAMILY_FIRST_LOAN_MATURITY_140_FILING_SCHEMA_SWEEP_SEAL_V1",
+  "state": "COMPLETE",
+  "claim_boundary": "COMPACT_TRACKED_SEAL_FOR_ONE_EXACT_AUTHENTICATED_140_FILING_LOAN_MATURITY_SCHEMA_SWEEP_FULL_RESULT_AND_HOSTED_ASSETS_REQUIRE_RESTORED_SNAPSHOT_PUBLIC_REPLAY_NOT_BARE_GIT",
+  "seal_id": "e0171:seal:950a5889b3dd999f471014d5b6532de854527d765d329537d1cd250ebb5c9c85",
+  "family_id": "LOAN_MATURITY_BUCKETS",
+  "git_commit": "047711b2e8e7e7eccdfea8a6c16126d350912aad",
+  "sweep_id": "lm140v1:sweep:3bfe3d4c0c412b013686ca553a690fc2a2a3246ac332736cac488e9e64da029c",
+  "formal_result_ref": {
+    "path": "output/calibration/family-first-loan-maturity-140-filing-schema-sweep-v1/result.json",
+    "sha256": "1c0a5aff8a6653abfab5546cf78d99ebcef66c032ef4a403da74cdfbb3dc5797",
+    "size_bytes": 4259054,
+    "mode": "0444"
+  },
+  "metrics": {
+    "additional_source_population_count": 6,
+    "additional_source_population_money_cell_count": 24,
+    "additional_source_population_row_count": 12,
+    "bank_mapped_record_counts": {
+      "ACB": 54,
+      "BID": 48,
+      "CTG": 54,
+      "HDB": 48,
+      "MBB": 63,
+      "VCB": 54,
+      "VIB": 54,
+      "VPB": 63
+    },
+    "branch_variant_trial_counts": {
+      "INITIAL_TERM_WORDING": 12,
+      "ORIGINAL_TERM_WORDING": 50,
+      "TENOR_WORDING": 10,
+      "TERM_WORDING": 14,
+      "TIME_WORDING": 54
+    },
+    "computed_unprinted_core_identity_count": 24,
+    "continuation_page_count": 0,
+    "document_count": 140,
+    "explicit_parent_branch_variant_trial_counts": {
+      "INITIAL_TERM_WORDING": 11,
+      "ORIGINAL_TERM_WORDING": 44,
+      "TENOR_WORDING": 10,
+      "TERM_WORDING": 12,
+      "TIME_WORDING": 54
+    },
+    "hosted_gemma4_challenged_full_page_count": 1,
+    "hosted_gemma4_conflict_cell_count": 1,
+    "hosted_gemma4_control_cell_count": 1,
+    "hosted_gemma4_stateless_request_count": 2,
+    "implied_parent_branch_variant_trial_counts": {
+      "INITIAL_TERM_WORDING": 1,
+      "ORIGINAL_TERM_WORDING": 6,
+      "TERM_WORDING": 2
+    },
+    "mapped_core_record_count": 420,
+    "mapped_margin_record_count": 18,
+    "mapped_money_cell_count": 876,
+    "mapped_parent_716_or_752_record_count": 0,
+    "mapped_record_count": 438,
+    "minimal_pair_unique_trial_count": 140,
+    "numeric_exact_trial_count": 140,
+    "observed_accounting_equation_count": 352,
+    "observed_accounting_equation_counts": {
+      "ADDITIONAL_PARENT_BREAKDOWN_MONEY": 12,
+      "CORE_AND_ADDITIONAL_GRAND_MONEY": 24,
+      "CORE_ONLY_MONEY": 232,
+      "CORE_SUBTOTAL_AND_MARGIN_MONEY": 24,
+      "DIRECT_CORE_ROWS_PLUS_MARGIN_MONEY": 24,
+      "PERCENTAGE": 36
+    },
+    "owner_mode_trial_counts": {
+      "IMMEDIATE_PRECEDING_PAGE": 37,
+      "POST_BRANCH_TABLE_PARENT": 6,
+      "SAME_PAGE_NEAREST_PRECEDING": 97
+    },
+    "percentage_child_cell_count": 108,
+    "percentage_total_control_cell_count": 36,
+    "period_mode_trial_counts": {
+      "BOUND_SOURCE_EXACT_DATE_CHALLENGER": 1,
+      "LOCAL_EXACT_DATES": 100,
+      "LOCAL_RELATIVE_PERIOD_ROLES": 12,
+      "LOCAL_RELATIVE_YEAR_END_ROLES": 4,
+      "LOCAL_SPLIT_DATES": 22,
+      "LOCAL_UNAMBIGUOUS_MONTH_DAY_YEAR": 1
+    },
+    "raw_resolved_total_variant_divergence_count": 1,
+    "raw_total_variant_trial_counts": {
+      "CORE_SUBTOTAL_MARGIN_GRAND_TOTAL": 5,
+      "CORE_TOTAL_ONLY": 116,
+      "LEADING_CORE_ADDITIONAL_POPULATION_GRAND_TOTAL": 6,
+      "MARGIN_GRAND_TOTAL_NO_CORE_SUBTOTAL": 13
+    },
+    "shortlisted_page_hydration_count": 281,
+    "structure_unique_trial_count": 140,
+    "total_variant_trial_counts": {
+      "CORE_SUBTOTAL_MARGIN_GRAND_TOTAL": 6,
+      "CORE_TOTAL_ONLY": 116,
+      "LEADING_CORE_ADDITIONAL_POPULATION_GRAND_TOTAL": 6,
+      "MARGIN_GRAND_TOTAL_NO_CORE_SUBTOTAL": 12
+    },
+    "typed_lane_axis_trial_counts": {
+      "MONEY,MONEY": 122,
+      "MONEY,PERCENT,MONEY,PERCENT": 18
+    },
+    "unit_scope_trial_counts": {
+      "INHERITED_DOCUMENT_MONEY_UNIT": 12,
+      "LOCAL_PER_LANE": 128
+    },
+    "unresolved_trial_count": 0,
+    "verified_trial_count": 140,
+    "visible_dash_zero_cell_count": 8
+  },
+  "bank_summary": [
+    {"bank":"ACB","verified_document_count":18,"mapped_record_count":54},
+    {"bank":"MBB","verified_document_count":18,"mapped_record_count":63},
+    {"bank":"VPB","verified_document_count":18,"mapped_record_count":63},
+    {"bank":"HDB","verified_document_count":16,"mapped_record_count":48},
+    {"bank":"VCB","verified_document_count":18,"mapped_record_count":54},
+    {"bank":"CTG","verified_document_count":18,"mapped_record_count":54},
+    {"bank":"BID","verified_document_count":16,"mapped_record_count":48},
+    {"bank":"VIB","verified_document_count":18,"mapped_record_count":54}
+  ],
+  "input_refs": {
+    "schema_graph":{"path":"reference/schemas/schema_graph.jsonl","sha256":"3fea408082263c171e98d1edc9b61608261b8a66b83706a5d7d029f9b0655403","size_bytes":1576376},
+    "tm_workbook":{"path":"template/Bank_TM_ReportNormId.v2.xlsx","sha256":"64589f7ee2b025ac0bd784c13e0b0ba0aff9d46456a83fa7fe2d68a7de375115","size_bytes":47006},
+    "document_evidence_manifest":{"path":"data/registered/family_first_document_evidence_store_v1.json","sha256":"07b06a79e5fe830d9565082e96ce1d8ba7b83a85377d804c7154eba8becad32c","size_bytes":92051},
+    "hosted_gemma4_challenger":{"path":"docs/experiments/E-0170-family-first-loan-maturity-hosted-gemma4-numeric-challenger-v1.json","sha256":"57d4d481e20f349786480d569b21370860a204ae4479d46a2f6d601dedaffbfa","size_bytes":10570}
+  },
+  "restored_snapshot_refs": {
+    "hosted_full_page_png":{"path":"output/calibration/family-first-loan-maturity-hosted-gemma4-v1/document-0017/page-0030-300dpi.png","sha256":"717df29faee49a42870b2d22e54fad5f82c3dec0b821fd18c98c221efaba023f","size_bytes":967001},
+    "hosted_slot_1_raw_response":{"path":"output/calibration/family-first-loan-maturity-hosted-gemma4-v1/document-0017/hosted-slot-1-raw-response.json","sha256":"61c44db52cbd261136a90d1ed27b8f28f3ea7ec15708f558e8b8bbef31b51eb0","size_bytes":6051},
+    "hosted_slot_2_raw_response":{"path":"output/calibration/family-first-loan-maturity-hosted-gemma4-v1/document-0017/hosted-slot-2-raw-response.json","sha256":"350cc4de55959fd3991241f235d3d5c3d0aa45e31e7ea721bd67c42a07f7c449","size_bytes":6051}
+  },
+  "implementation_refs": {
+    "orchestrator":{"path":"scripts/experiments/build_family_first_loan_maturity_140_filing_schema_sweep_v1.py","sha256":"37d891920111daa59f0e5eb93145ed75142b0ddc54518338a12747320fcfdc4a","size_bytes":61877},
+    "variant_graph":{"path":"scripts/experiments/loan_maturity_variant_graph_v2.py","sha256":"e2fa863776610929662021539b82ae27dc549aba6abf7c3e6679b375fc0b86ce","size_bytes":56862},
+    "numeric_conflict_evidence":{"path":"scripts/experiments/loan_maturity_numeric_conflict_evidence_v1.py","sha256":"64c04a1fc5cd94655e3ef31bb5176e64c58d3820ce54e42fe6212caa59fb5412","size_bytes":40061},
+    "additional_population_evidence":{"path":"scripts/experiments/loan_maturity_additional_population_evidence_v1.py","sha256":"060dc9564146ee638cba5a627f080c12d1d8a5abeac65db331debec33bfd686f","size_bytes":24898},
+    "document_evidence_store":{"path":"src/bctc_ai/evaluation/family_first_document_evidence_store_v1.py","sha256":"96f618d989a61212908767751f6e6fe7abfade8be3c0ac4d83f049f2766b54a3","size_bytes":44268},
+    "sqlite_query_cache":{"path":"src/bctc_ai/evaluation/family_first_ocr_query_cache_v1.py","sha256":"a50e270a74829ea1ad5768dd2437b9fa45c6ffad97c14b80581e88864b8a802c","size_bytes":67694},
+    "numeric_reconciliation":{"path":"src/bctc_ai/evaluation/loan_maturity_numeric_reconciliation_v1.py","sha256":"8b8285e01d23648157d933443b0c8f50cb086390ca5d9fcfb3a92f098a7ecbee","size_bytes":43523},
+    "bounded_schema":{"path":"src/bctc_ai/mapping/loan_maturity_bounded_schema_v1.py","sha256":"08157e0141ed7b613968f49413072f0ad482dd6f926918b77292da8d1dc2b6ca","size_bytes":13624}
+  },
+  "authority": {
+    "bounded_schema_mapping_authority": true,
+    "canonicalization_authority": false,
+    "export_authority": false,
+    "gemma4_used_as_sole_numeric_authority": false,
+    "persisted_seal_self_authenticating": false,
+    "public_exact_replay_requires_restored_snapshot": true,
+    "bare_git_checkout_sufficient_for_public_exact_replay": false,
+    "schema_creation_authority": false,
+    "s3_registration_pending": true
+  }
+}

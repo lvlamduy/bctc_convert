@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-08-23T11:19:43Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
+Updated: 2026-08-23T13:09:11Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
 The detailed historical receipts below remain evidence, but that directive supersedes
@@ -85,13 +85,28 @@ older queue priorities where they conflict.
   standalone, six included through source bridge 5746, four explicitly excluded
   by footnote and 113 not observed/not synthesized. Hosted Gemma 4 corroborates
   two exact numeric crops and four exact footnote crops but never acts as sole
-  numeric authority. Compact seal: E-0169; the next schema-order family is
-  `LOAN_MATURITY_BUCKETS`. The formal result and pushed seal/control commit are
+  numeric authority. Compact seal: E-0169. The formal result and pushed
+  seal/control commit are
   full-restore verified in S3 checkpoint
   `20260823T112504472610Z-6a36b700910b`: manifest SHA-256
   `30d9f3e46d7a5307ccf84ea44e8d28c27b032e6de60fe2b9c9e72440a393f246`
   and bound PASS run SHA-256
   `1d2712fd4a3eae25fd23c1156b8b8e7626d0e71219505c2af10ce3892c7017af`.
+- `LOAN_MATURITY_BUCKETS`, the ninth schema-order family, is formally complete
+  across all 140 available filings: **140 verified / 420 core mappings / 18
+  margin mappings / 438 total mappings / 876 money cells / 144 percentage
+  controls / 352 observed accounting equations / 0 unresolved**. The shared
+  graph resolves all 140 tables from a shortest unique two-anchor topology,
+  supports explicit or implied maturity parents, two- and four-lane axes,
+  local/inherited units, period wording/date variants and six HDB additional
+  source populations. Eight visible HDB dashes become zero only from bound
+  pixel evidence. One MBB full page has two stateless hosted Gemma 4 challenger
+  reads; the single corrected conflict cell is also bound to a printed control
+  and accounting closure, so Gemma is not sole numeric authority. Compact seal:
+  E-0171 at clean engine Git `047711b2e8e7e7eccdfea8a6c16126d350912aad`.
+  S3 registration is pending. Public exact replay requires the restored
+  snapshot containing the formal result and hosted assets; a bare Git checkout
+  is intentionally insufficient.
 - The measured family topology bottleneck no longer requires a 140-document
   sequential pass on every edit. The unchanged engine/spec path fell from
   137.071 seconds to 13.810 seconds with 12 balanced document processes; every
