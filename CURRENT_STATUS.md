@@ -1,6 +1,6 @@
 # Current status — scalable bank-PDF BCTC digitization
 
-Updated: 2026-08-23T04:04:20Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
+Updated: 2026-08-23T11:19:43Z (UTC fixed progress snapshot; the V2 native-order stop occurred at 2026-08-10T13:56:58+07:00)
 
 Standing execution authority: [`PROJECT_OPERATING_DIRECTIVE.md`](PROJECT_OPERATING_DIRECTIVE.md).
 The detailed historical receipts below remain evidence, but that directive supersedes
@@ -77,6 +77,16 @@ older queue priorities where they conflict.
   `05a5ad3292ae986a642f9ef8494ed6af6bc501572c1b060f5c0288b022da5a71`
   and bound PASS run SHA-256
   `e717e3bd54a20e8ffc9551cc35f4d3d9d82758551f1dab670b87f73f7eca2aab`.
+- `LOAN_QUALITY_CLASSIFICATION`, the eighth schema-order family, is formally
+  complete across all 140 available filings: **140 verified / 700 core-grade
+  mappings / 27 margin mappings / 727 total mappings / 0 unresolved**. The
+  shared graph covers 122 horizontal and 18 stacked multi-asset layouts, plus
+  136 two-money-lane and four money–%–money–% axes. Margin presentation is 17
+  standalone, six included through source bridge 5746, four explicitly excluded
+  by footnote and 113 not observed/not synthesized. Hosted Gemma 4 corroborates
+  two exact numeric crops and four exact footnote crops but never acts as sole
+  numeric authority. Compact seal: E-0169; the next schema-order family is
+  `LOAN_MATURITY_BUCKETS`.
 - The measured family topology bottleneck no longer requires a 140-document
   sequential pass on every edit. The unchanged engine/spec path fell from
   137.071 seconds to 13.810 seconds with 12 balanced document processes; every

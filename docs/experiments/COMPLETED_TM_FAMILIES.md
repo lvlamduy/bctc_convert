@@ -172,38 +172,22 @@ trong 42 bounded absences.
 
 ## 8. Phân tích chất lượng cho vay
 
-- **Đã xác minh trên BCTC hợp nhất kiểm toán năm 2025:** ACB p50, MBB p51,
-  VPB p45, HDB p36, VCB p39, CTG p43, BID p42 và VIB p66. Whole-PDF scan
-  tìm đúng một graph `Cho vay khách hàng → năm nhóm chất lượng` ở mỗi báo cáo;
-  hai bảng chất lượng chứng khoán gần giống của CTG bị loại đúng bởi owner.
-  Đã map 40 dòng nhóm 1–5 và ba dòng margin riêng của ACB/MBB/VPB vào 1944;
-  16 phương trình tiền đóng đúng, mười ô % của BID đóng về 100% và ô trống
-  trong bảng nhiều cột của VIB không bị đổi thành 0.
-- **Không có trong annual-2025:** Không có bank nào; cả tám filing đều có
-  family này.
-- **Còn thiếu trên annual-2025:** Không còn khoản mục nguồn chưa map. HDB dùng
-  tổng `546.370.779 / 431.306.069` của đúng population cho vay khách hàng;
-  population thư tín dụng trả chậm kế bên được giữ ngoài core. Mười bốn lỗi
-  chữ/dấu của VietOCR được đối chiếu pixel; 86 ô tiền đều khớp ảnh nguồn.
+- **Đã map/xác minh:** đủ 140/140 filing: ACB 18, MBB 18, VPB 18, HDB 16,
+  VCB 18, CTG 18, BID 16 và VIB 18. Có 700 mapping năm nhóm chất lượng và 27
+  mapping margin/ứng trước, tổng cộng 727 mapping.
+- **Không có trong báo cáo:** Không có; family hiện diện duy nhất và đóng số
+  trên cả 140 filing.
+- **Có nhưng còn khoản mục chưa map:** Không có; `OPEN = 0`.
 
-- **Đã xác minh:** ACB p18, MBB p31, VPB p42, HDB p26, VCB p30, CTG p39,
-  BID p22, VIB p60. Năm nhóm chất lượng nợ đã được map cho cả 8 bank. Bản
-  chuẩn hóa E-0067B còn tách `Cho vay giao dịch ký quỹ và ứng trước tiền bán
-  chứng khoán` thành ReportNormId 1944, là con trực tiếp của 746 trong context
-  đã được chủ dự án phê duyệt: ACB `20.644.553 / 17.340.705`, MBB
-  `16.828.054 / 15.040.585`, VPB `36.278.045 / 34.093.219`.
-- **Không có:** Không có bank nào.
-- **Còn thiếu:** Không còn khoản mục nguồn chưa map. Với ACB/VPB, 747 giữ
-  nguyên vì margin là dòng đứng ngoài năm nhóm. Với MBB, 5746 chỉ giữ làm cầu
-  nối cách trình bày nguồn; 747 được điều chỉnh từ
-  `1.197.767.532 / 1.059.781.834` xuống
-  `1.180.939.478 / 1.044.741.249`, còn giá trị tách ra map vào 1944. Tổng sau
-  chuẩn hóa vẫn đóng đúng và không double count.
+Trong 140 cách trình bày, 122 bảng có trục kỳ nằm ngang và 18 bảng VIB dùng
+khối kỳ xếp dọc/nhiều cột tài sản; 136 bảng có hai lane tiền và bốn bảng có
+bốn lane tiền–%–tiền–%. Margin xuất hiện độc lập ở 17 filing, nằm trong 747 qua
+5746 ở sáu filing, được footnote loại khỏi core ở bốn filing và không được tự
+tạo ở 113 filing còn lại. Sáu crop khó được hosted Gemma 4 đối chứng (hai ô số
+và bốn footnote), nhưng Gemma không được dùng làm numeric authority duy nhất.
 
-Kết quả exact-replay:
-`docs/experiments/E-0114-annual-2025-loan-quality-8bank-codex-verified-mapping-v1.json`
-và
-`docs/experiments/E-0067B-loan-quality-margin-separation-project-owner-v1.json`.
+Kết quả 140 filing:
+`docs/experiments/E-0169-family-first-loan-quality-140-filing-schema-sweep-seal-v1.json`.
 
 ## 9. Phân tích dư nợ theo thời gian/thời hạn gốc
 
@@ -1534,7 +1518,7 @@ dùng.
 | Công cụ tài chính phái sinh | ✓ 18 | ✓ 18 | ✓ 18 | ✓ 16 | ✓ 4 / — 14 | ✓ 18 | ✓ 16 | ✓ 18 | 0; 126/140 filing, 1.684 mapping; 14 filing VCB bounded không có family |
 | Loại hình cho vay | ✓ 18 | ✓ 18 | ✓ 18 | ✓ 16 | ✓ 18 | ✓ 18 | ✓ 16 | ✓ 18 | 0; 140/140 filing, 732 child mapping, 140 DASH→0 và 2 targeted digit rescue |
 | Ngành nghề kinh doanh | ✓ 6 / — 12 | ✓ 18 | ✓ 18 | ✓ 16 | ✓ 4 / — 14 | ✓ 2 / — 16 | ✓ 16 | ✓ 18 | 0; 98/140 filing, 1.520 child mapping, 42 bounded absences |
-| Chất lượng cho vay | ✓ p50 | ✓ p51 | ✓ p45 | ✓ p36 | ✓ p39 | ✓ p43 | ✓ p42 | ✓ p66 | 0 dòng trong 8 BCTC hợp nhất kiểm toán annual-2025; 1944 tách riêng tại ACB/MBB/VPB |
+| Chất lượng cho vay | ✓ 18 | ✓ 18 | ✓ 18 | ✓ 16 | ✓ 18 | ✓ 18 | ✓ 16 | ✓ 18 | 0; 140/140 filing, 700 core + 27 margin = 727 mapping |
 | Dư nợ theo thời gian | ✓ p50 | ✓ p51 | ✓ p45 | ✓ p36 | ✓ p40 | ✓ p44 | ✓ p42 | ✓ p38 | 0 dòng annual-2025; MBB/VPB map margin, HDB giữ dân số bổ sung source-only |
 | Cho vay theo loại tiền tệ | ✓ p51 | — p51–52 | — p45–47 | ✓ p37 | — p39–40 | — p43–44 | — p41–42 | — p37–39 | 0 dòng annual-2025; HDB giữ dân số thư tín dụng bổ sung source-only |
 | Cho vay theo khu vực địa lý | ✓ p77 | ✓ p91 | — p81 | — p60 | — | — | — p63 | ✓ p59–60 | 0 dòng annual-2025; ba bảng địa lý rộng hơn không bị thu hẹp ngầm |

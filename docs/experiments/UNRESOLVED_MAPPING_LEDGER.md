@@ -22,6 +22,24 @@ Ledger total: **441 entries**.  Current open queue: **143**.  Closed history:
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
+## CLOSED — family-first 140-filing `Phân tích chất lượng cho vay`
+
+Lượt sweep hiện hành dùng document evidence store, không OCR lại: đủ 140/140
+filing `VERIFIED_BY_CODEX`, không có filing vắng family, không còn ô/source row
+`UNRESOLVED`, và có 727 mapping. Theo bank: ACB 18 filing/99 mapping, MBB
+18/99, VPB 18/99, HDB 16/80, VCB 18/90, CTG 18/90, BID 16/80 và VIB 18/90.
+
+700 mapping lõi là năm nhóm chất lượng; 27 mapping còn lại là khoản margin và
+ứng trước tiền bán chứng khoán đã được chuẩn hóa theo đúng bốn presentation
+mode nguồn. 122 bảng ngang, 18 bảng xếp dọc/nhiều cột tài sản, 136 trục hai
+lane tiền và bốn trục tiền–%–tiền–% đều đóng số. Hai crop số và bốn crop
+footnote khó được hosted Gemma 4 đối chứng trên exact crop; Gemma không quyết
+định số một mình, ô trống không thành 0 và không có dòng OPEN mới.
+
+Các scope E-0067B/E-0114 trước đây là tập con lịch sử và được sweep này
+supersede. Machine-readable seal:
+`docs/experiments/E-0169-family-first-loan-quality-140-filing-schema-sweep-seal-v1.json`.
+
 ## CLOSED — family-first 140-filing `Phân tích cho vay theo ngành nghề kinh doanh`
 
 Lượt sweep hiện hành dùng document evidence store, không OCR lại: 98 filing

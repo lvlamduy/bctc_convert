@@ -1,0 +1,71 @@
+{
+  "format_version": "FAMILY_FIRST_LOAN_QUALITY_140_FILING_SCHEMA_SWEEP_SEAL_V1",
+  "state": "COMPLETE",
+  "claim_boundary": "COMPACT_TRACKED_SEAL_FOR_ONE_EXACT_AUTHENTICATED_140_FILING_LOAN_QUALITY_SCHEMA_SWEEP_FULL_RESULT_REMAINS_LIVE_REPLAY_REQUIRED",
+  "seal_id": "e0169:seal:7c7f65ba385ba043414242a4d21946ca501984be9208ebbe9f9000bdc7afb923",
+  "family_id": "LOAN_QUALITY_CLASSIFICATION",
+  "git_commit": "05d64aa3dea86c9e92712ec47ba367fcb5b0bf2c",
+  "sweep_id": "lq140v1:sweep:02e476ed3e2e0cbbbf9e3bbf7ecea0e444cabb1c4aa89b59e78462ada12d70ff",
+  "formal_result_ref": {
+    "path": "output/calibration/family-first-loan-quality-140-filing-schema-sweep-v1/result.json",
+    "sha256": "2d15fc2d4be4f0885139477cb81a71ea3a990d0d43709d9437fd59a2051031e6",
+    "size_bytes": 3633514
+  },
+  "metrics": {
+    "document_count": 140,
+    "excluded_footnote_hosted_gemma4_bound_crop_count": 4,
+    "hosted_gemma4_consensus_challenger_hit_count": 2,
+    "layout_mode_trial_counts": {
+      "HORIZONTAL_TYPED_PERIOD_LANES": 122,
+      "STACKED_PERIOD_BLOCKS_MULTI_ASSET_COLUMNS": 18
+    },
+    "mapped_core_grade_record_count": 700,
+    "mapped_margin_record_count": 27,
+    "mapped_record_count": 727,
+    "margin_presentation_mode_trial_counts": {
+      "EXPLICITLY_EXCLUDED_FROM_CORE_VIA_FOOTNOTE": 4,
+      "INCLUDED_IN_747_VIA_5746": 6,
+      "NOT_OBSERVED_DO_NOT_SYNTHESIZE": 113,
+      "STANDALONE_AFTER_FIVE_GRADES": 17
+    },
+    "numeric_exact_trial_count": 140,
+    "structure_unique_trial_count": 140,
+    "typed_lane_axis_trial_counts": {
+      "MONEY,MONEY": 136,
+      "MONEY,PERCENT,MONEY,PERCENT": 4
+    },
+    "unresolved_trial_count": 0,
+    "verified_trial_count": 140
+  },
+  "bank_summary": [
+    {"bank":"ACB","verified_document_count":18,"mapped_record_count":99},
+    {"bank":"MBB","verified_document_count":18,"mapped_record_count":99},
+    {"bank":"VPB","verified_document_count":18,"mapped_record_count":99},
+    {"bank":"HDB","verified_document_count":16,"mapped_record_count":80},
+    {"bank":"VCB","verified_document_count":18,"mapped_record_count":90},
+    {"bank":"CTG","verified_document_count":18,"mapped_record_count":90},
+    {"bank":"BID","verified_document_count":16,"mapped_record_count":80},
+    {"bank":"VIB","verified_document_count":18,"mapped_record_count":90}
+  ],
+  "input_refs": {
+    "schema_graph":{"path":"reference/schemas/schema_graph.jsonl","sha256":"3fea408082263c171e98d1edc9b61608261b8a66b83706a5d7d029f9b0655403","size_bytes":1576376},
+    "tm_workbook":{"path":"template/Bank_TM_ReportNormId.v2.xlsx","sha256":"64589f7ee2b025ac0bd784c13e0b0ba0aff9d46456a83fa7fe2d68a7de375115","size_bytes":47006},
+    "margin_context":{"path":"config/schemas/loan-quality-margin-context-140-v2.json","sha256":"977805c2a38a0b892dfe2779129bca32738784d7dc60fd97d6fb0dbcfb09ec5a","size_bytes":2123},
+    "hosted_gemma4_numeric_challenger":{"path":"docs/experiments/E-0167-family-first-loan-quality-hosted-gemma4-numeric-challenger-v1.json","sha256":"04a3fdcf1b6743e0da093151094364687611b94a515ff747ce67bd9fe990bb17","size_bytes":4470},
+    "excluded_footnote_hosted_gemma4_challenger":{"path":"docs/experiments/E-0168-family-first-loan-quality-excluded-footnote-hosted-gemma4-challenger-v1.json","sha256":"242f41dfe225f2fd5c2a91dda73e92677dbf5c075c7b986afbf507e2cdd91beb","size_bytes":10992}
+  },
+  "implementation_refs": {
+    "orchestrator":{"path":"scripts/experiments/build_family_first_loan_quality_140_filing_schema_sweep_v1.py","sha256":"9ff39bcabe8a984b85bfee71ca8022bde08e096c351c897d1fb69b7e53324fa6","size_bytes":67796},
+    "variant_graph":{"path":"scripts/experiments/loan_quality_variant_graph_v2.py","sha256":"3699304bc827595020e24137f6781869a99bbb95a5dcf8b1987f9e346727f4c2","size_bytes":91527},
+    "numeric_reconciliation":{"path":"src/bctc_ai/evaluation/loan_quality_numeric_row_reconciliation_v1.py","sha256":"35e0dded4197519dfe3b2a197527c1a66a595cb2282994fc963bfb0dd4a95ab5","size_bytes":73026}
+  },
+  "authority": {
+    "bounded_schema_mapping_authority": true,
+    "canonicalization_authority": false,
+    "export_authority": false,
+    "gemma4_used_as_sole_numeric_authority": false,
+    "persisted_seal_self_authenticating": false,
+    "public_exact_replay_required": true,
+    "schema_creation_authority": false
+  }
+}
