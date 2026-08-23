@@ -963,3 +963,24 @@ Status meanings:
 - **Status:** `RESOLVED`; five chroma thresholds all reread `3.202.820`
   (PP-OCR confidence 0.956–0.998), hosted Gemma agrees, and the source leaves
   plus provision close exactly to printed net `13.110.971`.
+
+## RFP-045 — Isolated replay changes authority-file transport semantics
+
+- **Pattern:** an isolated replay hardlinks an authority file or appends another
+  newline to bytes already returned by `canonical_json_bytes_v1`.
+- **Cause:** staging optimization and serialization transport were treated as
+  semantically neutral even though inode/link and exact-byte contracts are part
+  of the evidence boundary.
+- **Do not:** hardlink authority inputs/results into a replay workspace, or add
+  `b"\n"` after `canonical_json_bytes_v1`, which already emits exactly one LF.
+- **Generic primitive/fix:** stage with reflink/copy to a distinct inode, require
+  `st_nlink == 1`, verify the hash before use, and clean the isolated staging
+  tree afterward. New canonical writers persist `canonical_json_bytes_v1(value)`
+  directly and readers require exactly one terminal LF. Legacy Family8/Family9
+  raw results retain exactly one surplus LF; their typed mappings and seals stay
+  valid because those seals bind the historical raw bytes and grant
+  `canonicalization_authority=false`. Do not reopen or rewrite them; any cleanup
+  is a later transport-only V2 migration with new artifact identities and no new
+  mapping authority.
+- **Status:** `RESOLVED` for Family10; keep the staging and single-LF gates on
+  every later formal family.

@@ -1,0 +1,256 @@
+{
+  "format_version": "FAMILY_FIRST_LOAN_CURRENCY_140_FILING_SCHEMA_SWEEP_SEAL_V1",
+  "state": "COMPLETE",
+  "claim_boundary": "COMPACT_TRACKED_SEAL_FOR_ONE_EXACT_AUTHENTICATED_140_FILING_LOAN_CURRENCY_SCHEMA_SWEEP_FORMAL_RESULT_RESTORE_PENDING_SECURITY_HOLD_NO_GEMMA_OCR_REPLAY_CANONICALIZATION_OR_EXPORT_AUTHORITY",
+  "seal_id": "e0173:seal:7bfe9125f43d0dc865f9c7d56f62cbf8a90bcea65a46f69cc00c18dfd8410e55",
+  "family_id": "LOAN_CURRENCY_CLASSIFICATION",
+  "git_commit": "3199e34620e347cf7ff4c720d997f9e09e0b77e3",
+  "sweep_id": "lc140v1:sweep:bbcdfe8091911419de5e41637ee6a974511a9013655a76551a59b7ac864beb2d",
+  "formal_result_ref": {
+    "path": "output/calibration/family-first-loan-currency-140-filing-schema-sweep-v1/result.json",
+    "sha256": "a81b3be4a6691903bb09a78b4a2dc140d3e97b96574e9c3ec55d86b2f6e4c4d7",
+    "size_bytes": 828093,
+    "mode": "0444"
+  },
+  "metrics": {
+    "absence_numeric_hydration_count": 0,
+    "additional_source_population_document_count": 4,
+    "additional_source_population_money_cell_count": 24,
+    "additional_source_population_row_count": 12,
+    "bounded_absence_trial_count": 130,
+    "bounded_paired_dash_zero_cell_count": 2,
+    "direct_visible_dash_zero_cell_count": 6,
+    "document_count": 140,
+    "full_axis_positive_document_count": 10,
+    "full_axis_positive_joined_line_count": 63028,
+    "full_axis_positive_nonempty_page_count": 818,
+    "full_axis_positive_packet_page_count": 822,
+    "full_axis_positive_registered_zero_line_page_count": 4,
+    "mapped_money_cell_count": 40,
+    "mapped_parent_716_or_756_record_count": 0,
+    "mapped_record_count": 20,
+    "minimal_unique_two_anchor_region_count": 10,
+    "numeric_exact_trial_count": 10,
+    "observed_accounting_equation_count": 36,
+    "pixel_overlay_document_count": 4,
+    "pixel_render_replay_count": 4,
+    "ppocrv6_vietocr_numeric_disagreement_count": 1,
+    "ppocrv6_vietocr_raw_surface_disagreement_count": 2,
+    "schema_report_norm_id_record_counts": {
+      "757": 10,
+      "758": 10
+    },
+    "source_control_money_cell_count": 28,
+    "source_control_row_count": 14,
+    "structure_unique_trial_count": 10,
+    "typed_lane_axis_trial_counts": {
+      "MONEY,MONEY": 10
+    },
+    "unresolved_trial_count": 0,
+    "verified_trial_count": 140,
+    "visible_dash_detector_hole_count": 8,
+    "visible_dash_rescue_cell_count_distribution": {
+      "1": 2,
+      "3": 2
+    },
+    "visible_dash_zero_cell_count": 8,
+    "bank_document_counts": {
+      "ACB": 18,
+      "MBB": 18,
+      "VPB": 18,
+      "HDB": 16,
+      "VCB": 18,
+      "CTG": 18,
+      "BID": 16,
+      "VIB": 18
+    },
+    "bank_presence_counts": {
+      "ACB": 6,
+      "MBB": 0,
+      "VPB": 0,
+      "HDB": 4,
+      "VCB": 0,
+      "CTG": 0,
+      "BID": 0,
+      "VIB": 0
+    },
+    "bank_bounded_absence_counts": {
+      "ACB": 12,
+      "MBB": 18,
+      "VPB": 18,
+      "HDB": 12,
+      "VCB": 18,
+      "CTG": 18,
+      "BID": 16,
+      "VIB": 18
+    },
+    "bank_mapped_record_counts": {
+      "ACB": 12,
+      "MBB": 0,
+      "VPB": 0,
+      "HDB": 8,
+      "VCB": 0,
+      "CTG": 0,
+      "BID": 0,
+      "VIB": 0
+    },
+    "owner_mode_trial_counts": {
+      "PRECEDING_SECTION_OWNER": 6,
+      "POST_BRANCH_VISIBLE_CORE_OWNER": 4
+    },
+    "period_mode_trial_counts": {
+      "LOCAL_EXACT_DATES": 6,
+      "LOCAL_RELATIVE_YEAR_END_ROLES": 2,
+      "LOCAL_RELATIVE_PERIOD_ROLES": 2
+    },
+    "unit_scope_trial_counts": {
+      "LOCAL_MILLION_VND": 10
+    }
+  },
+  "bank_summary": [
+    {
+      "bank": "ACB",
+      "document_count": 18,
+      "verified_present_document_count": 6,
+      "verified_bounded_absence_document_count": 12,
+      "mapped_record_count": 12
+    },
+    {
+      "bank": "MBB",
+      "document_count": 18,
+      "verified_present_document_count": 0,
+      "verified_bounded_absence_document_count": 18,
+      "mapped_record_count": 0
+    },
+    {
+      "bank": "VPB",
+      "document_count": 18,
+      "verified_present_document_count": 0,
+      "verified_bounded_absence_document_count": 18,
+      "mapped_record_count": 0
+    },
+    {
+      "bank": "HDB",
+      "document_count": 16,
+      "verified_present_document_count": 4,
+      "verified_bounded_absence_document_count": 12,
+      "mapped_record_count": 8
+    },
+    {
+      "bank": "VCB",
+      "document_count": 18,
+      "verified_present_document_count": 0,
+      "verified_bounded_absence_document_count": 18,
+      "mapped_record_count": 0
+    },
+    {
+      "bank": "CTG",
+      "document_count": 18,
+      "verified_present_document_count": 0,
+      "verified_bounded_absence_document_count": 18,
+      "mapped_record_count": 0
+    },
+    {
+      "bank": "BID",
+      "document_count": 16,
+      "verified_present_document_count": 0,
+      "verified_bounded_absence_document_count": 16,
+      "mapped_record_count": 0
+    },
+    {
+      "bank": "VIB",
+      "document_count": 18,
+      "verified_present_document_count": 0,
+      "verified_bounded_absence_document_count": 18,
+      "mapped_record_count": 0
+    }
+  ],
+  "input_identities": {
+    "bounded_schema_projection_id": "lcbspv1:projection:eae7d44cf8bd20c9cc4516de62115819b86c3755c82ddfa7459c48072aa3a664",
+    "document_evidence_store_manifest_id": "ffdesv1:manifest:1d1bfcaf1c61274cea93c990a85e6e8dc9d2b42a077d4283150a1008987d5b93",
+    "numeric_axis_sha256": "dd5bc33c9645798100129fc1309714472958fded41b9e371fac75cd7ec524871",
+    "numeric_receipt_id": "ffpniv3:receipt:2d5021adaa068363ea9dbbbdca934998ce27cd0d023fba4c402258fb571e5dc5",
+    "semantic_index_id": "ffsiv1:index:3aba376f04e965ba3bfb53290046c7b3488091022b74f2bd187ec5d5986890c2",
+    "evaluation_spec_sha256": "dad00a8c8bb582d8fb319308aadd5e3e26b022da4b32879552a6586db8ba73f9",
+    "hierarchy_spec_sha256": "dcfb1cab38b6f796f7d1d88c03929a77c0eccaa661c314783a7a740d191ce521",
+    "topology_spec_sha256": "8a493837d5144c17012f1f242f71dbd6b2b5113768c7497b1e6d5b626764fb61"
+  },
+  "implementation_refs": {
+    "orchestrator": {
+      "path": "scripts/experiments/build_family_first_loan_currency_140_filing_schema_sweep_v1.py",
+      "sha256": "117a91a868592aa937653e4b43b2d089f1958dc369ec3c503ce2fcfdf5de87e0",
+      "size_bytes": 80322
+    },
+    "variant_graph": {
+      "path": "scripts/experiments/loan_currency_variant_graph_v2.py",
+      "sha256": "2f5140d5ece05fa524e380a13970372fb78d2a18a6da6c0ad973ecda22d78ae5",
+      "size_bytes": 11083
+    },
+    "visible_dash_evidence": {
+      "path": "scripts/experiments/loan_currency_visible_dash_evidence_v1.py",
+      "sha256": "f73bd31e8245c092625cacec5539e02a005716cf0533f041820943ed4128d948",
+      "size_bytes": 35629
+    },
+    "column_context": {
+      "path": "src/bctc_ai/evaluation/accounting_family_column_context_v1.py",
+      "sha256": "1ce4bff636481c84e7a053f92f76c143647e386807de32000b58962a5bd35e03",
+      "size_bytes": 54372
+    },
+    "row_axis": {
+      "path": "src/bctc_ai/evaluation/accounting_family_row_axis_v1.py",
+      "sha256": "333c6b811d5d72229b5a0adbaa500265959426babc08304af9f1a9eb4b8d000a",
+      "size_bytes": 79925
+    },
+    "topology": {
+      "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
+      "sha256": "60da089b5df5a6ee9f53dac8569bc4a9484bf5816721fb992f8d4d09a43bc236",
+      "size_bytes": 68515
+    },
+    "hierarchical_closure": {
+      "path": "src/bctc_ai/evaluation/accounting_hierarchical_table_closure_v1.py",
+      "sha256": "377971ebce7fa0d891b982396eb8614a3c09fa9c004371d095023685af4b05b5",
+      "size_bytes": 29256
+    },
+    "document_evidence_store": {
+      "path": "src/bctc_ai/evaluation/family_first_document_evidence_store_v1.py",
+      "sha256": "96f618d989a61212908767751f6e6fe7abfade8be3c0ac4d83f049f2766b54a3",
+      "size_bytes": 44268
+    },
+    "sqlite_query_cache": {
+      "path": "src/bctc_ai/evaluation/family_first_ocr_query_cache_v1.py",
+      "sha256": "a50e270a74829ea1ad5768dd2437b9fa45c6ffad97c14b80581e88864b8a802c",
+      "size_bytes": 67694
+    },
+    "visible_dash_glyph": {
+      "path": "src/bctc_ai/evaluation/family_first_visible_dash_glyph_evidence_v1.py",
+      "sha256": "05bfd3d24b3ee5ac2ea372fe9be26f56c8bfb3ce4cef06026afd0939883b7228",
+      "size_bytes": 16684
+    },
+    "numeric_reconciliation": {
+      "path": "src/bctc_ai/evaluation/loan_currency_numeric_reconciliation_v1.py",
+      "sha256": "c64754815c16fd51dc4b338109175aec9e779216242faf1d11fb92494c340f6f",
+      "size_bytes": 50886
+    },
+    "bounded_schema": {
+      "path": "src/bctc_ai/mapping/loan_currency_bounded_schema_v1.py",
+      "sha256": "65261d0876ef53ec25a84f1024bffb9ae28acfae2c3cb4e3b32e297ae5ab13e3",
+      "size_bytes": 13697
+    }
+  },
+  "authority": {
+    "absence_trial_hydrates_numeric_or_page_evidence": false,
+    "accounting_can_backsolve_or_invent_a_value": false,
+    "bounded_schema_mapping_authority": true,
+    "canonicalization_authority": false,
+    "export_authority": false,
+    "gemma4_used": false,
+    "parent_716_or_756_emitted_as_mapping": false,
+    "persisted_seal_self_authenticating": false,
+    "public_exact_replay_requires_restored_formal_result": true,
+    "bare_git_checkout_sufficient_for_public_exact_replay": false,
+    "schema_creation_authority": false,
+    "s3_registration_pending": true,
+    "s3_registration_security_hold": "PENDING_USER_CONFIRMED_ROTATION_OF_EXPOSED_GEMINI_API_KEYS",
+    "new_s3_write_authorized_by_this_seal": false
+  }
+}

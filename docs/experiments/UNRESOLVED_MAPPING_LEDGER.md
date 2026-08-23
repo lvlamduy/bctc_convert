@@ -22,6 +22,40 @@ Ledger total: **441 entries**.  Current open queue: **143**.  Closed history:
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
 
+## CLOSED — family-first 140-filing `Phân tích cho vay theo loại hình tiền tệ`
+
+Lượt sweep hiện hành dùng authenticated SQLite document evidence store và chỉ
+hydrate full axis cho mười filing dương tính, không OCR lại 130 filing absence:
+đủ 140/140 filing đã có disposition, gồm 10 `VERIFIED_BY_CODEX` và 130
+`VERIFIED_BOUNDED_ABSENCE`; không còn filing, ô hoặc source row `UNRESOLVED`.
+Theo bank: ACB 6 present/12 absent/12 mapping, HDB 4/12/8; MBB, VPB, VCB, CTG
+và VIB mỗi bank 0/18/0; BID 0/16/0. Tổng cộng có 20 mapping 757/758, 40 ô tiền
+và 36 phương trình nguồn đã đóng.
+
+| Bank | Năm/kỳ | Phạm vi | Assurance | Trang |
+| --- | --- | --- | --- | ---: |
+| ACB | 2025 annual | Hợp nhất / công ty mẹ | Kiểm toán | 51 / 44 |
+| ACB | 2025 H1 | Hợp nhất / công ty mẹ | Soát xét | 50 / 46 |
+| ACB | 2026 H1 | Hợp nhất / công ty mẹ | Soát xét | 49 / 44 |
+| HDB | 2025 annual | Hợp nhất / công ty mẹ | Kiểm toán | 37 / 36 |
+| HDB | 2025 H1 | Hợp nhất / công ty mẹ | Soát xét | 35 / 34 |
+
+Tám detector hole tại bốn filing HDB được bind lại từ exact full-page pixel:
+sáu glyph DASH trực tiếp và hai ô chỉ được nhận sau bounded same-row peer
+evidence; cả tám mới được chuẩn hóa thành 0. Bốn filing này còn có 12 dòng/24
+ô dân số thư tín dụng trả chậm được xác minh source-only để khép tổng, không
+được map vào 757/758. Hai bất đồng bề mặt PP-OCRv6/VietOCR và một bất đồng số
+được pixel cùng accounting corroborate/veto; Gemma không được dùng. Parent 716
+và 756 không phát sinh mapping, còn 130 absence trial không hydrate numeric/page
+evidence.
+
+Không có Family10-specific OPEN ID và tổng ledger `441 / 143 OPEN` không đổi.
+E-0116 annual-2025 cùng E-0064 lượt tám PDF hiện hành được giữ làm tập con lịch
+sử. Seal:
+`docs/experiments/E-0173-family-first-loan-currency-140-filing-schema-sweep-seal-v1.json`.
+E-0174 chưa chạy và không có receipt: S3 registration đang security hold cho
+đến khi chủ dự án xác nhận đã xoay/thu hồi hai Gemini API key bị lộ trước đó.
+
 ## CLOSED — family-first 140-filing `Phân tích dư nợ theo thời gian/thời hạn gốc`
 
 Lượt sweep hiện hành dùng SQLite document evidence store và page shortlist,

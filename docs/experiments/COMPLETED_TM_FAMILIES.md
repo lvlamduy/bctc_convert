@@ -215,22 +215,29 @@ restored checkpoint này, không chỉ bare Git checkout.
 
 ## 10. Phân tích cho vay theo loại hình tiền tệ
 
-- **Đã xác minh trên BCTC hợp nhất kiểm toán năm 2025:** ACB p51 và HDB p37.
-  Hai hàng `Cho vay bằng VND` và `Cho vay bằng ngoại tệ` đã map vào 757/758;
-  cả hai kỳ và các dòng tổng khép đúng.
-- **Không có trong báo cáo:** MBB p51–52, VPB p45–47, VCB p39–40, CTG
-  p43–44, BID p41–42 và VIB p37–39. Whole-PDF scan đã kiểm tra tới family kế
-  tiếp. Các cặp VND/ngoại tệ gần đó thuộc bảng lãi suất hoặc liên ngân hàng.
-- **Còn thiếu:** Không còn khoản mục nguồn cần map. HDB có thêm dân số thư tín
-  dụng trả chậm đứng ngoài `Cho vay khách hàng`; dân số này chỉ dùng để khép
-  tổng lớn. Hai chữ số VietOCR sai tại HDB được số nguồn, pixel và phương trình
-  kế toán sửa thành `418.599.063` và `442.484.841`.
+- **Đã map/xác minh:** 10/140 filing, gồm ACB 6 và HDB 4. Mỗi filing có đúng
+  hai hàng `Cho vay bằng đồng Việt Nam` và `Cho vay bằng ngoại tệ và vàng` map
+  vào 757/758; tổng cộng 20 mapping, 40 ô tiền và 36 phương trình nguồn đã
+  đóng. Sáu filing ACB là annual-2025 hợp nhất p51/công ty mẹ p44, H1/2025 hợp
+  nhất p50/công ty mẹ p46 và H1/2026 hợp nhất p49/công ty mẹ p44. Bốn filing
+  HDB là annual-2025 hợp nhất p37/công ty mẹ p36 và H1/2025 hợp nhất p35/công
+  ty mẹ p34.
+- **Không có trong báo cáo đã bind:** 130 filing: ACB 12, MBB 18, VPB 18, HDB
+  12, VCB 18, CTG 18, BID 16 và VIB 18. Absence chỉ được xác minh trong đúng
+  ranh giới note của từng PDF; các cặp VND/ngoại tệ thuộc liên ngân hàng, tiền
+  gửi hoặc bảng rủi ro vẫn là đối chứng âm.
+- **Có nhưng còn khoản mục chưa map:** Không có; `OPEN = 0`. Tám dấu gạch HDB
+  chỉ thành 0 sau pixel replay: sáu glyph trực tiếp và hai ô được xác nhận bằng
+  cặp cùng hàng có giới hạn. Bốn filing HDB có thêm 12 dòng/24 ô dân số thư tín
+  dụng trả chậm source-only để khép tổng, không bị ép vào 757/758. Có hai bất
+  đồng bề mặt PP-OCRv6/VietOCR và một bất đồng số; source pixel cùng phương
+  trình đóng kết quả, không dùng Gemma.
 
-Kết quả exact-replay:
-`docs/experiments/E-0116-annual-2025-loan-currency-8bank-codex-verified-mapping-v1.json`.
-
-Lượt tám PDF hiện hành trước đó vẫn giữ kết quả bounded absence E-0064 riêng,
-không bị suy rộng sang annual-2025.
+Kết quả 140 filing:
+`docs/experiments/E-0173-family-first-loan-currency-140-filing-schema-sweep-seal-v1.json`.
+E-0116 annual-2025 và E-0064 lượt tám PDF hiện hành là các tập con lịch sử,
+không bị sửa hoặc suy rộng. Đăng ký S3 E-0174 chưa chạy do security hold chờ
+xác nhận đã xoay/thu hồi hai Gemini API key bị lộ trong checkpoint cũ.
 
 ## 11. Phân tích dư nợ cho vay theo khu vực địa lý
 
@@ -1524,7 +1531,7 @@ dùng.
 | Ngành nghề kinh doanh | ✓ 6 / — 12 | ✓ 18 | ✓ 18 | ✓ 16 | ✓ 4 / — 14 | ✓ 2 / — 16 | ✓ 16 | ✓ 18 | 0; 98/140 filing, 1.520 child mapping, 42 bounded absences |
 | Chất lượng cho vay | ✓ 18 | ✓ 18 | ✓ 18 | ✓ 16 | ✓ 18 | ✓ 18 | ✓ 16 | ✓ 18 | 0; 140/140 filing, 700 core + 27 margin = 727 mapping |
 | Dư nợ theo thời gian | ✓ 18 | ✓ 18 | ✓ 18 | ✓ 16 | ✓ 18 | ✓ 18 | ✓ 16 | ✓ 18 | 0; 140/140 filing, 420 core + 18 margin = 438 mapping; HDB additional population chỉ làm source control |
-| Cho vay theo loại tiền tệ | ✓ p51 | — p51–52 | — p45–47 | ✓ p37 | — p39–40 | — p43–44 | — p41–42 | — p37–39 | 0 dòng annual-2025; HDB giữ dân số thư tín dụng bổ sung source-only |
+| Cho vay theo loại tiền tệ | ✓ 6 / — 12 | — 18 | — 18 | ✓ 4 / — 12 | — 18 | — 18 | — 16 | — 18 | 0; 10 filing có family, 20 mapping/40 ô/36 phương trình; 8 DASH→0; HDB giữ dân số bổ sung source-only |
 | Cho vay theo khu vực địa lý | ✓ p77 | ✓ p91 | — p81 | — p60 | — | — | — p63 | ✓ p59–60 | 0 dòng annual-2025; ba bảng địa lý rộng hơn không bị thu hẹp ngầm |
 | Doanh nghiệp/đối tượng KH | — | ✓ p52 | ✓ p46 | ✓ p36 | ✓ p40 | — | ✓ p42 | ✓ p39 | 0 dòng; VCB gộp `Hợp tác xã và công ty tư nhân` → 6074 |
 | Dự phòng cho vay | ✓ p51 | ✓ p53 | ✓ p48 | ✓ p38 | ✓ p41 | ✓ p44 | ✓ p43 | ✓ p39 | 0 dòng annual-2025; 18 lane/79 dòng/18 phương trình; 9 DASH→0 |
