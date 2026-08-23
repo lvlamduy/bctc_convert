@@ -241,6 +241,25 @@ def test_incremental_checkpoint_rejects_secret_output_before_aws_preflight(tmp_p
     assert not any(operation.startswith("put:") for operation in client.operations)
 
 
+def test_incremental_checkpoint_rejects_tracked_control_secret_before_aws_preflight(
+    tmp_path,
+):
+    project = _project(tmp_path)
+    secret = project / "docs" / "security-fixture.txt"
+    secret.parent.mkdir()
+    secret.write_text("AIza" + "C" * 35 + "\n", encoding="utf-8")
+    _git(project, "add", "docs/security-fixture.txt")
+    _git(project, "commit", "-m", "tracked fixture")
+    _manifest_key, _manifest_sha, _run_key, _run_sha, objects = _parent(tmp_path)
+    client = FakeCheckpointClient(SETTINGS, objects)
+
+    with pytest.raises(S3IncrementalCheckpointError, match="control-plane backup rejected"):
+        _run(project, tmp_path, client)
+
+    assert client.preflight_count == 0
+    assert not any(operation.startswith("put:") for operation in client.operations)
+
+
 def test_incremental_checkpoint_rejects_sensitive_output_path(tmp_path):
     project = _project(tmp_path)
     (project / "output" / ".env").write_text("NOT_A_REAL_SECRET=fixture\n", encoding="utf-8")

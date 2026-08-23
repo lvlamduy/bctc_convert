@@ -19,7 +19,14 @@ from PIL import Image
 
 from bctc_ai.core.atomic import atomic_write_json
 from bctc_ai.core.hashing import sha256_file
-from bctc_ai.storage.backup import create_backup, restore_test
+from bctc_ai.storage.backup import (
+    SELECTION_POLICY as CONTROL_SELECTION_POLICY,
+)
+from bctc_ai.storage.backup import (
+    ControlPlaneBackupError,
+    create_backup,
+    restore_test,
+)
 from bctc_ai.storage.codex_session_backup import _scan_stream
 from bctc_ai.storage.s3_artifact_backup import (
     S3ArtifactBackupError,
@@ -233,6 +240,19 @@ def _validate_control_manifest(path: Path) -> None:
     records = payload.get("files")
     if not isinstance(records, list) or not records:
         raise _raise("generated control-plane manifest is empty")
+    selection = payload.get("selection")
+    credential_scan = payload.get("credential_scan")
+    if (
+        not isinstance(selection, dict)
+        or selection.get("policy") != CONTROL_SELECTION_POLICY
+        or selection.get("tracked_allowlisted_file_count") != len(records)
+        or not isinstance(credential_scan, dict)
+        or credential_scan.get("status") != "PASS"
+        or credential_scan.get("scanned_file_count") != len(records)
+        or credential_scan.get("scanned_bytes")
+        != sum(int(record.get("size_bytes", -1)) for record in records if isinstance(record, dict))
+    ):
+        raise _raise("generated control-plane selection or credential scan drifted")
     for record in records:
         if not isinstance(record, dict):
             raise _raise("generated control-plane manifest is malformed")
@@ -561,7 +581,10 @@ def create_incremental_project_checkpoint(
     client = client or AwsCli(settings)
     with tempfile.TemporaryDirectory(prefix="bctc-incremental-project-checkpoint-") as temporary:
         temporary_root = Path(temporary)
-        control = create_backup(project_root, temporary_root / "control", off_machine=False)
+        try:
+            control = create_backup(project_root, temporary_root / "control", off_machine=False)
+        except ControlPlaneBackupError as error:
+            raise _raise("control-plane backup rejected local content") from error
         if not control.restored_and_verified:
             raise _raise("local control-plane restore test failed")
         control_archive_path = Path(control.archive)

@@ -26,6 +26,7 @@ _EXPECTED_V2_DETECTORS = [
     "github_classic_token",
     "github_fine_grained_token",
     "openai_project_key",
+    "google_api_key",
     "aws_access_key_id",
     "aws_secret_assignment",
     "private_key_header",
@@ -170,6 +171,7 @@ _DETECTOR_CASES = [
     ("ghp_" + "A" * 36, "ghp_" + "A" * 36, "github_classic_token"),
     ("github_pat_" + "B" * 40, "github_pat_" + "B" * 40, "github_fine_grained_token"),
     ("sk-proj-" + "C" * 48, "sk-proj-" + "C" * 48, "openai_project_key"),
+    ("AIza" + "G" * 35, "AIza" + "G" * 35, "google_api_key"),
     ("AKIA" + "D" * 16, "AKIA" + "D" * 16, "aws_access_key_id"),
     (
         f'\\"aws_secret_access_key\\": \\"{_AWS_SECRET}\\"',
@@ -178,8 +180,8 @@ _DETECTOR_CASES = [
     ),
     (f'{{"SecretAccessKey":"{_AWS_SECRET}"}}', _AWS_SECRET, "aws_secret_assignment"),
     (
-        "-----BEGIN ENCRYPTED PRIVATE KEY-----",
-        "-----BEGIN ENCRYPTED PRIVATE KEY-----",
+        "-----BEGIN " + "ENCRYPTED PRIVATE KEY-----",
+        "-----BEGIN " + "ENCRYPTED PRIVATE KEY-----",
         "private_key_header",
     ),
 ]
