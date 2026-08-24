@@ -16,6 +16,11 @@ Quy ước:
 - **Còn thiếu**: đã thấy vùng nguồn nhưng chưa đủ điều kiện map.
 - Dòng tổng hoặc subtotal chỉ dùng để kiểm tra cộng trừ không được tính là khoản
   mục còn thiếu map.
+- Một family chỉ được ghi là đã xử lý xong khi cùng checkpoint đã cập nhật cả
+  file này và `UNRESOLVED_MAPPING_LEDGER.md`. File này giữ tổng disposition và
+  nhóm nguyên nhân; ledger phải có một dòng định danh cho từng filing còn
+  `UNRESOLVED` (hoặc ghi rõ zero unresolved). Thiếu một trong hai cập nhật thì
+  family chưa được xem là hoàn tất bàn giao.
 
 ## 1. Tiền, kim loại quý và đá quý
 
@@ -66,11 +71,16 @@ Quy ước:
   CTG 2. Đây là `NOT_OBSERVED_PROPOSAL_ONLY` của đúng PDF đã bind, không phải
   khẳng định ngoài filing.
 - **Còn thiếu:** 42 filing: ACB 10, MBB 2, VPB 4, HDB 10, CTG 3, BID 1 và VIB
-  12. Các nhóm còn mở là ô role chưa đủ hai lane, subtotal/tổng nguồn không
-  đóng đúng population đã thấy, một ca kế thừa kỳ/đơn vị qua trang chưa được
-  chứng minh, và các filing có cả bảng tóm tắt lẫn bảng chi tiết nhưng chưa đủ
-  geometry/header để chọn duy nhất. Chi tiết bank, kỳ, trang, nhãn nguồn và lý
-  do nằm trong `UNRESOLVED_MAPPING_LEDGER.md`.
+  12. Mỗi filing chỉ được tính vào một nguyên nhân gốc chính: 16
+  `ROLE_LANE_OR_HEADER_AXIS_INCOMPLETE`, 15
+  `MULTI_REGION_CANDIDATES_FAIL_DISTINCT_EVIDENCE_GATES`, 6
+  `VISIBLE_RESULT_NOT_EXACT_COMPONENT_SUM`, 4
+  `TRAILING_RESULT_NOT_ONE_EXACT_COMPONENT_SUM` và 1
+  `CROSS_PAGE_PERIOD_UNIT_INHERITANCE_NOT_PROVEN`; tổng đúng 42, không cộng lại
+  các lỗi closure phát sinh từ lane chưa đầy đủ. Xem
+  [bảng chi tiết 42 filing](UNRESOLVED_MAPPING_LEDGER.md#family-3-rnid-575-unresolved)
+  để đối chiếu bank, kỳ, scope, exact PDF/SHA-256, physical page/region và toàn
+  bộ machine reason nguyên văn.
 
 ## 4. Chứng khoán kinh doanh
 
