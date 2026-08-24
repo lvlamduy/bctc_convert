@@ -367,6 +367,60 @@ def _clear_dash_region(raw_pixel_bbox: list[int]) -> dict[str, object]:
     )
 
 
+def _unique_dash_with_acb_scan_speck_region(
+    raw_pixel_bbox: list[int],
+) -> dict[str, object]:
+    """Preserve ACB's 10x4 dash / 4x3 speck morphology in a proposal-sized crop."""
+
+    width = raw_pixel_bbox[2] - raw_pixel_bbox[0]
+    height = raw_pixel_bbox[3] - raw_pixel_bbox[1]
+    image = Image.new("RGB", (width + 24, height + 16), "white")
+    draw = ImageDraw.Draw(image)
+    dash_left = image.width - 35
+    dash_top = image.height // 2 + 5
+    for y, row in enumerate((".########.", ".#########", "##########", ".#########"), dash_top):
+        for x, pixel in enumerate(row, dash_left):
+            if pixel == "#":
+                draw.point((x, y), fill="black")
+    speck_left = max(13, dash_left - 100)
+    speck_top = dash_top - 17
+    for y, row in enumerate(("##..", "####", ".##."), speck_top):
+        for x, pixel in enumerate(row, speck_left):
+            if pixel == "#":
+                draw.point((x, y), fill="black")
+    stream = io.BytesIO()
+    image.save(stream, format="PNG", optimize=False, compress_level=9)
+    payload = stream.getvalue()
+    material = {
+        "authority": dict(region_v1._REGION_AUTHORITY),
+        "document_ordinal": 1,
+        "format_version": region_v1.FORMAT_VERSION,
+        "index_id": "index-unique-dash-acb-speck",
+        "ink_localization_status": "GLYPH_COMPONENT_TIGHTENED_WITHIN_PROPOSED_CELL",
+        "physical_page": 1,
+        "proposed_raw_pixel_bbox": list(raw_pixel_bbox),
+        "recognition_raw_pixel_bbox": list(raw_pixel_bbox),
+        "region_png_ref": {
+            "sha256": hashlib.sha256(payload).hexdigest(),
+            "size_bytes": len(payload),
+        },
+        "render_id": "render-unique-dash-acb-speck",
+        "render_ref": {
+            "pixel_height": 1200,
+            "pixel_width": 1000,
+            "sha256": "4" * 64,
+            "size_bytes": 100,
+        },
+        "state": "AUTHENTICATED_RENDER_CALLER_PROPOSED_REGION_CROP",
+        "white_border": [12, 8, 12, 8],
+    }
+    return {
+        **material,
+        "region_id": "ffaprv1:region:" + canonical_json_sha256_v1(material),
+        "region_png_bytes": payload,
+    }
+
+
 def _optional_blank_v1_axis(*, partial: bool) -> dict:
     pages = _pages(
         [
@@ -1798,6 +1852,144 @@ def test_f3_normal_size_detector_dash_remains_owned_by_loan_foreign_currency_lea
     assert axis["row_axis"]["visible_dash_rescues"][0]["dash_evidence"]["glyph_metrics"][
         "component_bbox"
     ] == [16, 14, 25, 18]
+
+
+def test_v4_unique_material_dash_plus_acb_scan_speck_binds_exact_leaf_parent_and_lane() -> None:
+    pages = _f3_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Cho vay các TCTD khác", "50", "40"),
+            ("Bằng VND", "", "150.979"),
+            ("Bằng ngoại tệ", "0", "0"),
+        ]
+    )
+    scan, effective, rescues = _f3_detector_dash_rescues(
+        pages,
+        role="INTERBANK_LOAN_VND",
+        region_builders=[_unique_dash_with_acb_scan_speck_region],
+    )
+    topology_pages = row_v1._topology_pages(pages)
+    candidates = candidates_v2.build_accounting_family_topology_candidates_v2(
+        topology_pages, _f3_spec()
+    )
+    assert len(candidates["regions"]) == 1
+    candidate_binding = candidates_v2.bind_accounting_family_topology_candidate_v2(
+        topology_pages,
+        _f3_spec(),
+        candidates,
+        candidates["regions"][0],
+    )
+    axis = subject.build_accounting_family_occurrence_row_axis_v2(
+        pages,
+        _f3_spec(),
+        scan,
+        candidates["regions"][0],
+        {
+            "format_version": subject.POLICY_FORMAT_VERSION,
+            "require_authenticated_existing_dash_pixels": True,
+            "retain_all_context_bound_role_occurrences": True,
+        },
+        effective_topology_region=candidate_binding["effective_topology_region"],
+        topology_candidates=candidates,
+        visible_dash_rescues=rescues,
+    )
+
+    vnd = next(row for row in axis["row_axis"]["rows"] if row["role"] == "INTERBANK_LOAN_VND")
+    assert vnd["status"] == "VISIBLE_VALUE_LANES_BOUND"
+    assert [value["parsed_token"]["coefficient"] for value in vnd["values"]] == [0, 150979]
+    assert len(axis["authenticated_unique_dash_speck_evidence"]) == 1
+    evidence = axis["authenticated_unique_dash_speck_evidence"][0]
+    assert evidence["classification"] == ("VISIBLE_HORIZONTAL_DASH_WITH_ISOLATED_TINY_SCAN_SPECKS")
+    assert evidence["authority"]["split_glyph_authority"] is False
+    occurrence = next(
+        item for item in axis["role_occurrences"] if item["role"] == "INTERBANK_LOAN_VND"
+    )
+    parent = next(
+        item for item in axis["role_occurrences"] if item["role"] == "INTERBANK_LOAN_GROUP"
+    )
+    assert (
+        evidence["input_binding"]["occurrence_binding"]["occurrence_id"]
+        == occurrence["occurrence_id"]
+    )
+    assert evidence["input_binding"]["parent_binding"]["occurrence_id"] == parent["occurrence_id"]
+    assert evidence["input_binding"]["lane_binding"]["column_ordinal"] == 0
+    assert (
+        evidence["input_binding"]["lane_binding"]["proposed_raw_pixel_bbox"]
+        == rescues[0]["region"]["proposed_raw_pixel_bbox"]
+    )
+    assert evidence["component_analysis"]["selected_component"]["ink_pixel_count"] == 36
+    assert evidence["component_analysis"]["discarded_total_ink_pixel_count"] == 8
+    unresolved = axis["row_axis"]["visible_dash_rescues"][0]
+    assert unresolved["classification"] == "UNRESOLVED_NOT_ONE_DASH_GLYPH"
+    assert unresolved["dash_evidence"] == evidence["original_dash_evidence"]
+
+    # The identical crop has no authority through the non-V4 seam.
+    legacy = subject.build_accounting_family_occurrence_row_axis_v2(
+        pages,
+        _f3_spec(),
+        scan,
+        scan["regions"][0],
+        {
+            "format_version": subject.POLICY_FORMAT_VERSION,
+            "require_authenticated_existing_dash_pixels": True,
+            "retain_all_context_bound_role_occurrences": True,
+        },
+        effective_topology_region=effective,
+        visible_dash_rescues=rescues,
+    )
+    legacy_vnd = next(
+        row for row in legacy["row_axis"]["rows"] if row["role"] == "INTERBANK_LOAN_VND"
+    )
+    assert legacy_vnd["status"] == "PARTIAL_VISIBLE_VALUE_LANES_REQUIRES_PIXEL_RESCUE"
+    assert legacy["authenticated_unique_dash_speck_evidence"] == []
+
+    removed = copy.deepcopy(axis)
+    removed["authenticated_unique_dash_speck_evidence"] = []
+    _coherently_rehash_occurrence(removed)
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="lacks exact unique-dash/speck ownership",
+    ):
+        subject._validate_result(removed)
+
+    parent_tamper = copy.deepcopy(axis)
+    receipt = parent_tamper["authenticated_unique_dash_speck_evidence"][0]
+    receipt["input_binding"]["parent_binding"]["role"] = "FORGED_PARENT"
+    receipt_material = copy.deepcopy(receipt)
+    receipt_material.pop("evidence_id")
+    receipt["evidence_id"] = "ffaudsv1:evidence:" + canonical_json_sha256_v1(receipt_material)
+    _coherently_rehash_occurrence(parent_tamper)
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="unique-dash/speck receipt drifted",
+    ):
+        subject._validate_result(parent_tamper)
+
+    # A second same-role occurrence on the page makes the receipt ineligible,
+    # even if all pixels and the first occurrence's binding remain unchanged.
+    unresolved_axis = copy.deepcopy(axis["row_axis"])
+    unresolved_row = next(
+        row for row in unresolved_axis["rows"] if row["role"] == "INTERBANK_LOAN_VND"
+    )
+    unresolved_row["values"] = [
+        value for value in unresolved_row["values"] if value["sample_id"] != unresolved["region_id"]
+    ]
+    unresolved_row["missing_column_ordinals"] = [0]
+    unresolved_row["status"] = "PARTIAL_VISIBLE_VALUE_LANES_REQUIRES_PIXEL_RESCUE"
+    unresolved_axis = subject._regenerate_v1_axis(unresolved_axis)
+    repeated_matches = [item["label_match"] for item in axis["role_occurrences"]]
+    repeated = copy.deepcopy(occurrence["label_match"])
+    repeated["occurrence_id"] = "aforav2:occurrence:" + "f" * 64
+    repeated_matches.append(repeated)
+    unchanged, repeated_receipts = subject._project_unique_dash_speck_rescues_v2(
+        unresolved_axis,
+        repeated_matches,
+        rescues,
+        topology_candidates_id=candidates["result_id"],
+        topology_scan_id=scan["scan_id"],
+    )
+    assert repeated_receipts == []
+    assert unchanged == unresolved_axis
 
 
 def test_f3_blank_discount_does_not_steal_vnd_total_at_close_row_gaps() -> None:

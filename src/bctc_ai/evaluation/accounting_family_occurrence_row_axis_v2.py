@@ -6,11 +6,13 @@ visible local parents.  This add-only adapter expands only occurrences that
 the shared topology engine can replay inside the already selected region.  It
 then delegates all row/lane geometry to the sealed V1 primitive.
 
-The adapter also closes one narrow numeric evidence gap: a PP-OCR token whose
+The adapter also closes two narrow numeric evidence gaps.  A PP-OCR token whose
 surface parses as ``DASH_ZERO`` is retained only after the committed
 selected-snapshot/exact-page-render pixel bridge proves a visible dash glyph.
-Detector-hole dash proposals remain owned by row-axis V1 and are not
-reclassified here.
+For V4 only, one unresolved detector-hole crop may additionally be promoted by
+a versioned receipt proving exactly one material dash plus only isolated tiny
+off-baseline scan specks.  This is not split-glyph authority, and sealed row
+axis V1 remains unchanged.
 """
 
 from __future__ import annotations
@@ -33,6 +35,7 @@ from bctc_ai.evaluation import accounting_family_topology_v1 as topology_v1
 from bctc_ai.evaluation import authenticated_semantic_region_snapshot_v1 as snapshot_v1
 from bctc_ai.evaluation import family_first_authenticated_page_region_v1 as render_v1
 from bctc_ai.evaluation import family_first_authenticated_snapshot_cell_dash_v1 as dash_v1
+from bctc_ai.evaluation import family_first_authenticated_unique_dash_speck_v1 as speck_dash_v1
 from bctc_ai.evaluation.accounting_variant_graph_engine_v1 import (
     normalize_vietnamese_anchor_v1,
 )
@@ -57,6 +60,7 @@ POLICY_FORMAT_VERSION = "ACCOUNTING_FAMILY_OCCURRENCE_ROW_AXIS_POLICY_V1"
 CLAIM_BOUNDARY = (
     "EXACT_SELECTED_TOPOLOGY_REGION_CONTEXT_BOUND_ROLE_OCCURRENCE_EXPANSION_"
     "SEALED_V1_ROW_GEOMETRY_AUTHENTICATED_EXISTING_CELL_PIXEL_DASH_GATE_AND_"
+    "AUTHENTICATED_V4_UNIQUE_MATERIAL_DASH_PLUS_ISOLATED_TINY_SCAN_SPECK_GATE_"
     "EXACT_PRECEDING_SCOPE_SUBTOTAL_SOURCE_OWNERSHIP_AND_REVIEWED_EXACT_"
     "SOURCE_SUBSCOPE_INTERVAL_SCHEMA_ROLE_TYPING_"
     "AUTHENTICATED_EXTREME_MARGIN_CHROMATIC_FURNITURE_NUMERIC_DENOMINATOR_"
@@ -66,6 +70,7 @@ _SAFETY = {
     "accounting_authority": False,
     "bank_file_page_period_scope_used_for_routing": False,
     "detector_hole_dash_authority_changed": False,
+    "detector_hole_unique_dash_speck_requires_exact_occurrence_parent_lane": True,
     "existing_dash_text_alone_means_zero": False,
     "extreme_margin_furniture_requires_authenticated_exact_page_pixels": True,
     "extreme_margin_numeric_may_be_silently_deleted": False,
@@ -77,6 +82,7 @@ _SAFETY = {
     "schema_authority": False,
     "schema_role_typing_requires_exact_source_scope_receipt": True,
     "sealed_row_axis_v1_bytes_changed": False,
+    "split_dash_glyph_authority": False,
     "visible_existing_dash_requires_authenticated_exact_cell_pixels": True,
 }
 _POLICY_FIELDS = {
@@ -87,6 +93,7 @@ _POLICY_FIELDS = {
 _RESULT_FIELDS = {
     "authenticated_extreme_margin_furniture_evidence",
     "authenticated_existing_dash_evidence",
+    "authenticated_unique_dash_speck_evidence",
     "claim_boundary",
     "coextensive_structural_numeric_evidence",
     "dependency_content_refs",
@@ -380,6 +387,11 @@ _DEPENDENCIES = {
         "path": "src/bctc_ai/evaluation/family_first_authenticated_snapshot_cell_dash_v1.py",
         "sha256": "4d868880e2e997a997b2c4549301ed97c10641d76c8c5030de8c29dc86b195cb",
         "size_bytes": 18_259,
+    },
+    "unique_dash_isolated_speck_bridge": {
+        "path": ("src/bctc_ai/evaluation/family_first_authenticated_unique_dash_speck_v1.py"),
+        "sha256": "90e2a6be40281e42df7472989798e5e4dd88e565e023b577b485c9fc60943ea5",
+        "size_bytes": 32_177,
     },
     "row_axis_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_row_axis_v1.py",
@@ -2765,6 +2777,194 @@ def _regenerate_v1_axis(axis: Mapping[str, Any]) -> dict[str, Any]:
     )
 
 
+def _unique_dash_occurrence_binding(match: Mapping[str, Any]) -> dict[str, Any]:
+    """Project the exact semantic row fields sealed into the V4 receipt."""
+
+    return {
+        "document_line_ordinal": match["document_line_ordinal"],
+        "end_document_line_ordinal": match["end_document_line_ordinal"],
+        "end_source_line_index": match["end_source_line_index"],
+        "label_match_sha256": canonical_json_sha256_v1(match),
+        "occurrence_id": match["occurrence_id"],
+        "page_sequence": match["page_sequence"],
+        "role": match["role"],
+        "role_kind": match["role_kind"],
+        "scope_owner_occurrence_id": match["scope_owner_occurrence_id"],
+        "scope_owner_role": match["scope_owner_role"],
+        "source_line_index": match["source_line_index"],
+    }
+
+
+def _unique_dash_parent_binding(match: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "document_line_ordinal": match["document_line_ordinal"],
+        "end_document_line_ordinal": match["end_document_line_ordinal"],
+        "end_source_line_index": match["end_source_line_index"],
+        "label_match_sha256": canonical_json_sha256_v1(match),
+        "occurrence_id": match["occurrence_id"],
+        "page_sequence": match["page_sequence"],
+        "role": match["role"],
+        "role_kind": match["role_kind"],
+        "source_line_index": match["source_line_index"],
+    }
+
+
+def _unique_dash_lane_binding(
+    projection: Mapping[str, Any], region: Mapping[str, Any]
+) -> dict[str, Any]:
+    return {
+        "column_center": projection["column_center"],
+        "column_ordinal": projection["column_ordinal"],
+        "document_ordinal": region["document_ordinal"],
+        "index_id": region["index_id"],
+        "physical_page": region["physical_page"],
+        "proposed_raw_pixel_bbox": canonical_clone_v1(region["proposed_raw_pixel_bbox"]),
+        "recognition_raw_pixel_bbox": canonical_clone_v1(region["recognition_raw_pixel_bbox"]),
+        "region_id": region["region_id"],
+        "region_png_ref": canonical_clone_v1(region["region_png_ref"]),
+        "render_id": region["render_id"],
+        "render_ref": canonical_clone_v1(region["render_ref"]),
+        "white_border": canonical_clone_v1(region["white_border"]),
+    }
+
+
+def _unique_dash_rescued_value(
+    row: Mapping[str, Any], projection: Mapping[str, Any], receipt: Mapping[str, Any]
+) -> dict[str, Any]:
+    crop_ref = receipt["original_dash_evidence"]["crop_ref"]
+    return {
+        "bbox": canonical_clone_v1(projection["recognition_raw_pixel_bbox"]),
+        "column_center": projection["column_center"],
+        "column_ordinal": projection["column_ordinal"],
+        "crop_ref": {
+            "path": f"authenticated-render-region/{projection['region_id']}.png",
+            "sha256": crop_ref["sha256"],
+            "size_bytes": crop_ref["size_bytes"],
+        },
+        "line_ordinal": row["label_match"]["source_line_index"],
+        "page_sequence": projection["page_sequence"],
+        "parsed_token": row_v1.parse_visible_financial_numeric_token_v1("-"),
+        "raw_prediction": "-",
+        "reader_score": 1.0,
+        "row_affinity": None,
+        "sample_id": projection["region_id"],
+    }
+
+
+def _project_unique_dash_speck_rescues_v2(
+    axis: Mapping[str, Any],
+    matches: Sequence[Mapping[str, Any]],
+    visible_dash_rescues: Any,
+    *,
+    topology_candidates_id: str | None,
+    topology_scan_id: str,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Promote only V4's exact one-dash-plus-isolated-speck detector holes."""
+
+    if topology_candidates_id is None:
+        return canonical_clone_v1(axis), []
+    if type(visible_dash_rescues) is not tuple:
+        raise _error("V4 unique-dash rescue inputs must remain one exact tuple")
+    completed = canonical_clone_v1(axis)
+    raw_regions: dict[str, dict[str, Any]] = {}
+    for raw in visible_dash_rescues:
+        if (
+            type(raw) is not dict
+            or set(raw) != row_v1._RESCUE_INPUT_FIELDS
+            or type(raw.get("page_sequence")) is not int
+        ):
+            raise _error("V4 unique-dash rescue input shape drifted")
+        try:
+            region = row_v1._region_record(raw["region"], page_sequence=raw["page_sequence"])
+        except row_v1.AccountingFamilyRowAxisV1Error as exc:
+            raise _error("V4 unique-dash authenticated region drifted") from exc
+        if region["region_id"] in raw_regions:
+            raise _error("V4 unique-dash authenticated region repeats")
+        raw_regions[region["region_id"]] = region
+    matches_by_id = {match["occurrence_id"]: match for match in matches}
+    if len(matches_by_id) != len(matches):
+        raise _error("V4 unique-dash occurrence denominator repeats")
+    receipts: list[dict[str, Any]] = []
+    claimed_keys: set[tuple[str, int]] = set()
+    for projection in completed["visible_dash_rescues"]:
+        original = projection.get("dash_evidence")
+        if (
+            projection.get("classification") != "UNRESOLVED_NOT_ONE_DASH_GLYPH"
+            or type(original) is not dict
+            or original.get("classification") != "UNRESOLVED_NOT_ONE_DASH_GLYPH"
+            or original.get("glyph_metrics", {}).get("component_count") not in {2, 3, 4}
+        ):
+            continue
+        region = raw_regions.get(projection["region_id"])
+        if region is None:
+            continue
+        candidates = [
+            row
+            for row in completed["rows"]
+            if row["role"] == projection["role"]
+            and row["label_match"]["page_sequence"] == projection["page_sequence"]
+            and projection["column_ordinal"] in row["missing_column_ordinals"]
+        ]
+        role_page_matches = [
+            match
+            for match in matches
+            if match["role"] == projection["role"]
+            and match["page_sequence"] == projection["page_sequence"]
+        ]
+        if len(candidates) != 1 or len(role_page_matches) != 1:
+            # Repeated same-role rows on one page are intentionally ineligible.
+            continue
+        row = candidates[0]
+        occurrence = matches_by_id.get(row["label_match"].get("occurrence_id"))
+        parent = (
+            matches_by_id.get(occurrence.get("scope_owner_occurrence_id"))
+            if type(occurrence) is dict
+            else None
+        )
+        if (
+            type(occurrence) is not dict
+            or role_page_matches[0]["occurrence_id"] != occurrence["occurrence_id"]
+            or occurrence.get("scope_owner_role") is None
+            or type(parent) is not dict
+            or parent["occurrence_id"] != occurrence["scope_owner_occurrence_id"]
+            or parent["role"] != occurrence["scope_owner_role"]
+        ):
+            continue
+        key = (occurrence["occurrence_id"], projection["column_ordinal"])
+        if key in claimed_keys:
+            raise _error("V4 unique-dash occurrence lane repeats")
+        binding = {
+            "lane_binding": _unique_dash_lane_binding(projection, region),
+            "occurrence_binding": _unique_dash_occurrence_binding(occurrence),
+            "parent_binding": _unique_dash_parent_binding(parent),
+            "source_row_sha256": canonical_json_sha256_v1(row),
+            "topology_candidates_id": topology_candidates_id,
+            "topology_scan_id": topology_scan_id,
+        }
+        try:
+            receipt = speck_dash_v1.build_family_first_authenticated_unique_dash_speck_v1(
+                crop_png_bytes=region["region_png_bytes"],
+                input_binding=binding,
+            )
+        except speck_dash_v1.FamilyFirstAuthenticatedUniqueDashSpeckV1Error:
+            continue
+        rescued = _unique_dash_rescued_value(row, projection, receipt)
+        row["values"].append(rescued)
+        row["values"].sort(key=lambda item: item["column_ordinal"])
+        row["missing_column_ordinals"].remove(projection["column_ordinal"])
+        receipts.append(receipt)
+        claimed_keys.add(key)
+    for row in completed["rows"]:
+        row["status"] = (
+            "UNRESOLVED_NO_VISIBLE_RECOGNIZED_VALUE_CELL"
+            if not row["values"]
+            else "PARTIAL_VISIBLE_VALUE_LANES_REQUIRES_PIXEL_RESCUE"
+            if row["missing_column_ordinals"]
+            else "VISIBLE_VALUE_LANES_BOUND"
+        )
+    return _regenerate_v1_axis(completed), receipts
+
+
 def _authenticate_existing_dashes(
     axis: Mapping[str, Any],
     *,
@@ -4320,6 +4520,134 @@ def _validate_numeric_sample_universe(
         raise _error("numeric sample universe differs from its exact source owner")
 
 
+def _validate_unique_dash_speck_evidence_axis(
+    evidence_axis: Any,
+    *,
+    axis: Mapping[str, Any],
+    occurrence_by_id: Mapping[str, Mapping[str, Any]],
+    topology_candidates_id: str | None,
+    topology_scan_id: str,
+) -> None:
+    """Bind every receipt back to one exact unresolved V1 projection and row."""
+
+    if type(evidence_axis) is not list or len(evidence_axis) > _MAX_EXISTING_DASH_CELLS:
+        raise _error("authenticated unique-dash/speck evidence axis drifted")
+    receipts_by_occurrence: dict[str, list[dict[str, Any]]] = {}
+    evidence_ids: list[str] = []
+    region_ids: list[str] = []
+    occurrence_lane_keys: list[tuple[str, int]] = []
+    rescue_by_region = {item["region_id"]: item for item in axis["visible_dash_rescues"]}
+    row_by_occurrence = {row["label_match"].get("occurrence_id"): row for row in axis["rows"]}
+    for raw in evidence_axis:
+        try:
+            receipt = speck_dash_v1._validate(raw)
+        except speck_dash_v1.FamilyFirstAuthenticatedUniqueDashSpeckV1Error as exc:
+            raise _error("authenticated unique-dash/speck receipt drifted") from exc
+        binding = receipt["input_binding"]
+        occurrence_binding = binding["occurrence_binding"]
+        parent_binding = binding["parent_binding"]
+        lane = binding["lane_binding"]
+        occurrence = occurrence_by_id.get(occurrence_binding["occurrence_id"])
+        parent = occurrence_by_id.get(parent_binding["occurrence_id"])
+        row = row_by_occurrence.get(occurrence_binding["occurrence_id"])
+        rescue = rescue_by_region.get(lane["region_id"])
+        row_values = (
+            [item for item in row["values"] if item["sample_id"] == lane["region_id"]]
+            if type(row) is dict
+            else []
+        )
+        crop_ref = receipt["original_dash_evidence"]["crop_ref"]
+        expected_value = {
+            "bbox": canonical_clone_v1(lane["recognition_raw_pixel_bbox"]),
+            "column_center": lane["column_center"],
+            "column_ordinal": lane["column_ordinal"],
+            "crop_ref": {
+                "path": f"authenticated-render-region/{lane['region_id']}.png",
+                "sha256": crop_ref["sha256"],
+                "size_bytes": crop_ref["size_bytes"],
+            },
+            "line_ordinal": occurrence_binding["source_line_index"],
+            "page_sequence": occurrence_binding["page_sequence"],
+            "parsed_token": row_v1.parse_visible_financial_numeric_token_v1("-"),
+            "raw_prediction": "-",
+            "reader_score": 1.0,
+            "row_affinity": None,
+            "sample_id": lane["region_id"],
+        }
+        if (
+            topology_candidates_id is None
+            or binding["topology_candidates_id"] != topology_candidates_id
+            or binding["topology_scan_id"] != topology_scan_id
+            or type(occurrence) is not dict
+            or type(parent) is not dict
+            or type(row) is not dict
+            or not same_typed_json_v1(
+                occurrence_binding,
+                _unique_dash_occurrence_binding(occurrence["label_match"]),
+            )
+            or not same_typed_json_v1(
+                parent_binding,
+                _unique_dash_parent_binding(parent["label_match"]),
+            )
+            or occurrence["scope_owner_occurrence_id"] != parent["occurrence_id"]
+            or occurrence["scope_owner_role"] != parent["role"]
+            or occurrence["role"] != row["role"]
+            or len(row_values) != 1
+            or not same_typed_json_v1(row_values[0], expected_value)
+            or lane["column_ordinal"] in row["missing_column_ordinals"]
+            or type(rescue) is not dict
+            or rescue["classification"] != "UNRESOLVED_NOT_ONE_DASH_GLYPH"
+            or rescue["role"] != occurrence["role"]
+            or rescue["page_sequence"] != occurrence_binding["page_sequence"]
+            or rescue["column_ordinal"] != lane["column_ordinal"]
+            or rescue["column_center"] != lane["column_center"]
+            or rescue["proposed_raw_pixel_bbox"] != lane["proposed_raw_pixel_bbox"]
+            or rescue["recognition_raw_pixel_bbox"] != lane["recognition_raw_pixel_bbox"]
+            or not same_typed_json_v1(rescue["dash_evidence"], receipt["original_dash_evidence"])
+        ):
+            raise _error("authenticated unique-dash/speck occurrence/parent/lane binding drifted")
+        evidence_ids.append(receipt["evidence_id"])
+        region_ids.append(lane["region_id"])
+        occurrence_lane_keys.append((occurrence_binding["occurrence_id"], lane["column_ordinal"]))
+        receipts_by_occurrence.setdefault(occurrence_binding["occurrence_id"], []).append(receipt)
+    if (
+        len(evidence_ids) != len(set(evidence_ids))
+        or len(region_ids) != len(set(region_ids))
+        or len(occurrence_lane_keys) != len(set(occurrence_lane_keys))
+    ):
+        raise _error("authenticated unique-dash/speck ownership repeats")
+    assigned_region_ids = {item["sample_id"] for row in axis["rows"] for item in row["values"]}
+    unresolved_rescue_ids = {
+        item["region_id"]
+        for item in axis["visible_dash_rescues"]
+        if item["classification"] == "UNRESOLVED_NOT_ONE_DASH_GLYPH"
+    }
+    if assigned_region_ids & unresolved_rescue_ids != set(region_ids):
+        raise _error("unresolved V1 rescue assignment lacks exact unique-dash/speck ownership")
+    for occurrence_id, receipts in receipts_by_occurrence.items():
+        source = canonical_clone_v1(row_by_occurrence[occurrence_id])
+        receipt_region_ids = {
+            receipt["input_binding"]["lane_binding"]["region_id"] for receipt in receipts
+        }
+        receipt_lanes = {
+            receipt["input_binding"]["lane_binding"]["column_ordinal"] for receipt in receipts
+        }
+        source["values"] = [
+            item for item in source["values"] if item["sample_id"] not in receipt_region_ids
+        ]
+        source["missing_column_ordinals"] = sorted(
+            [*source["missing_column_ordinals"], *receipt_lanes]
+        )
+        source["status"] = (
+            "UNRESOLVED_NO_VISIBLE_RECOGNIZED_VALUE_CELL"
+            if not source["values"]
+            else "PARTIAL_VISIBLE_VALUE_LANES_REQUIRES_PIXEL_RESCUE"
+        )
+        source_hashes = {receipt["input_binding"]["source_row_sha256"] for receipt in receipts}
+        if source_hashes != {canonical_json_sha256_v1(source)}:
+            raise _error("authenticated unique-dash/speck exact source row binding drifted")
+
+
 def _validate_result(value: Any) -> dict[str, Any]:
     if (
         type(value) is not dict
@@ -4343,6 +4671,8 @@ def _validate_result(value: Any) -> dict[str, Any]:
         or len(value["role_occurrences"]) > _MAX_ROLE_OCCURRENCES
         or type(value["authenticated_existing_dash_evidence"]) is not list
         or len(value["authenticated_existing_dash_evidence"]) > _MAX_EXISTING_DASH_CELLS
+        or type(value["authenticated_unique_dash_speck_evidence"]) is not list
+        or len(value["authenticated_unique_dash_speck_evidence"]) > _MAX_EXISTING_DASH_CELLS
         or type(value["authenticated_extreme_margin_furniture_evidence"]) is not list
         or len(value["authenticated_extreme_margin_furniture_evidence"]) > _MAX_ROLE_OCCURRENCES
         or type(value["coextensive_structural_numeric_evidence"]) is not list
@@ -5268,6 +5598,13 @@ def _validate_result(value: Any) -> dict[str, Any]:
         coextensive_sample_ids
     ) != len(set(coextensive_sample_ids)):
         raise _error("coextensive structural numeric evidence repeats source ownership")
+    _validate_unique_dash_speck_evidence_axis(
+        value["authenticated_unique_dash_speck_evidence"],
+        axis=axis,
+        occurrence_by_id=occurrence_by_id,
+        topology_candidates_id=value["topology_candidates_id"],
+        topology_scan_id=value["topology_scan_id"],
+    )
     _validate_numeric_sample_universe(value, axis, occurrence_by_id)
     dash_sample_ids = []
     for item in value["authenticated_existing_dash_evidence"]:
@@ -5407,6 +5744,13 @@ def _build(
         )
     except row_v1.AccountingFamilyRowAxisV1Error as exc:
         raise _error("sealed V1 occurrence row/lane projection failed") from exc
+    raw_axis, unique_dash_speck_evidence = _project_unique_dash_speck_rescues_v2(
+        raw_axis,
+        row_matches,
+        visible_dash_rescues,
+        topology_candidates_id=topology_candidates_id,
+        topology_scan_id=scan["scan_id"],
+    )
     axis, dash_evidence, dash_reasons = _authenticate_existing_dashes(
         raw_axis,
         selected_snapshot=selected_snapshot,
@@ -5480,6 +5824,7 @@ def _build(
             authenticated_extreme_margin_furniture_evidence
         ),
         "authenticated_existing_dash_evidence": dash_evidence,
+        "authenticated_unique_dash_speck_evidence": unique_dash_speck_evidence,
         "claim_boundary": CLAIM_BOUNDARY,
         "coextensive_structural_numeric_evidence": coextensive_evidence,
         "dependency_content_refs": _dependency_refs(),
