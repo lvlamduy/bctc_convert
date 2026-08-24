@@ -5,9 +5,9 @@ That tolerance is deliberately not accounting or mapping authority.  This
 module closes that gap for V4 callers: after downstream evidence has selected
 one candidate, every selected parent/expanded-occurrence one-edit match must be
 re-observed as an exact declared alias on the identical bound source-text
-lines, in the identical family/role/structural-parent context.  Expanded
-children are bound by occurrence ID so one exact occurrence can never
-corroborate a fuzzy repetition of the same role.
+lines, in the identical family/role/recursive structural-owner context.
+Expanded children are bound by occurrence ID so one exact occurrence can
+never corroborate a fuzzy repetition of the same role.
 
 Only accent removal/case/punctuation normalization, an enumeration prefix,
 and the topology engine's bounded decorative parenthetical removal are exact
@@ -43,8 +43,8 @@ __all__ = [
 FORMAT_VERSION = "ACCOUNTING_FAMILY_ONE_EDIT_EXACT_AUTHORITY_V1"
 CLAIM_BOUNDARY = (
     "SELECTED_V4_TOPOLOGY_ONE_EDIT_RETRIEVAL_MATCHES_REQUIRE_INDEPENDENT_EXACT_"
-    "BOUND_SOURCE_TEXT_ALIAS_ON_IDENTICAL_OCCURRENCE_FAMILY_ROLE_PARENT_PAGE_AND_LINE_SPAN_"
-    "NO_NUMERIC_SCHEMA_MAPPING_OR_DISCARDED_CANDIDATE_VETO_AUTHORITY"
+    "BOUND_SOURCE_TEXT_ALIAS_ON_IDENTICAL_OCCURRENCE_FAMILY_ROLE_RECURSIVE_PARENT_CHAIN_"
+    "PAGE_AND_LINE_SPAN_NO_NUMERIC_SCHEMA_MAPPING_OR_DISCARDED_CANDIDATE_VETO_AUTHORITY"
 )
 _AUTHORITY_SPEC = {
     "allowed_exact_transforms": [
@@ -57,6 +57,8 @@ _AUTHORITY_SPEC = {
     "exact_alias_requires_same_family_parent_context": True,
     "exact_alias_requires_same_expanded_occurrence_id": True,
     "exact_alias_requires_same_page_and_source_line_indices": True,
+    "exact_alias_requires_same_recursive_nearest_structural_owner_chain": True,
+    "exact_source_occurrence_axis": "PPOCR_EXACT_DECLARED_ALIASES_ONLY",
     "one_edit_channel": "VIETOCR_TRANSFORMER_RETRIEVAL_ONLY",
     "selected_candidate_only": True,
 }
@@ -66,6 +68,7 @@ _SAFETY = {
     "mapping_authority": False,
     "one_edit_similarity_can_grant_exact_authority": False,
     "schema_authority": False,
+    "same_role_span_with_different_parent_context_can_authorize": False,
     "source_text_exact_alias_and_context_required": True,
     "expanded_occurrence_identity_required": True,
 }
@@ -608,6 +611,69 @@ def _context_bound_source_records(
     )
 
 
+def _source_occurrence_id_v1(match: Mapping[str, Any]) -> str:
+    return "afeoeav1:source-occurrence:" + canonical_json_sha256_v1(
+        {
+            "document_line_ordinal": match["document_line_ordinal"],
+            "end_document_line_ordinal": match["end_document_line_ordinal"],
+            "matched_within_role": match.get("matched_within_role"),
+            "page_sequence": match["page_sequence"],
+            "role": match["role"],
+            "role_occurrence_ordinal": match["role_occurrence_ordinal"],
+            "source_line_index": match["source_line_index"],
+            "end_source_line_index": match["end_source_line_index"],
+        }
+    )
+
+
+def _decorate_exact_source_occurrences_v1(
+    source_records: Sequence[Mapping[str, Any]],
+    selected_region: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    """Give exact PP-OCR records an independent deterministic owner axis."""
+
+    root_scope_id = "afeoeav1:source-root:" + canonical_json_sha256_v1(
+        {
+            "family_parent": selected_region.get("parent_match"),
+            "region_end": selected_region["cluster_end_document_line_ordinal_exclusive"],
+            "region_start": selected_region["cluster_start_document_line_ordinal"],
+        }
+    )
+    decorated = []
+    for source_record in source_records:
+        match = canonical_clone_v1(source_record)
+        match["source_occurrence_id"] = _source_occurrence_id_v1(match)
+        decorated.append(match)
+    if len({item["source_occurrence_id"] for item in decorated}) != len(decorated):
+        raise _error("exact-source occurrence identity repeats")
+    for match in decorated:
+        within_role = match.get("matched_within_role")
+        owners = [
+            candidate
+            for candidate in decorated
+            if candidate["role"] == within_role
+            and candidate["document_line_ordinal"] <= match["document_line_ordinal"]
+            and candidate["source_occurrence_id"] != match["source_occurrence_id"]
+        ]
+        owner = max(
+            owners,
+            key=lambda item: (
+                item["document_line_ordinal"],
+                item["end_document_line_ordinal"],
+            ),
+            default=None,
+        )
+        match["source_scope_owner_occurrence_id"] = (
+            owner["source_occurrence_id"]
+            if owner is not None
+            else root_scope_id
+            if within_role is None
+            else None
+        )
+        match["source_scope_owner_role"] = owner["role"] if owner is not None else None
+    return decorated
+
+
 def _nearest_selected_owner(
     match: Mapping[str, Any], effective_matches: Sequence[Mapping[str, Any]]
 ) -> Mapping[str, Any] | None:
@@ -633,6 +699,86 @@ def _nearest_selected_owner(
             item.get("end_document_line_ordinal", -1),
         ),
         default=None,
+    )
+
+
+def _nearest_source_owner(
+    match: Mapping[str, Any], source_occurrences: Sequence[Mapping[str, Any]]
+) -> Mapping[str, Any] | None:
+    owner_id = match.get("source_scope_owner_occurrence_id")
+    selected = [item for item in source_occurrences if item.get("source_occurrence_id") == owner_id]
+    if len(selected) == 1:
+        return selected[0]
+    return None
+
+
+def _exact_source_occurrence_matches_retrieval_v1(
+    retrieval: Mapping[str, Any],
+    source: Mapping[str, Any],
+    *,
+    compiled: Mapping[str, Any],
+    pages: Sequence[Mapping[str, Any]],
+) -> bool:
+    if (
+        source.get("role") != retrieval.get("role")
+        or source.get("matched_within_role") != retrieval.get("matched_within_role")
+        or not _same_match_span(source, retrieval, pages)
+    ):
+        return False
+    surface = _source_surface(source, pages)
+    if surface is None:
+        return False
+    aliases = _alias_entries(
+        compiled,
+        role=retrieval["role"],
+        within_role=retrieval.get("matched_within_role"),
+    )
+    return len(_exact_alias_bindings(surface, aliases)) == 1
+
+
+def _exact_source_owner_chain_matches_retrieval_v1(
+    retrieval: Mapping[str, Any],
+    source: Mapping[str, Any],
+    *,
+    compiled: Mapping[str, Any],
+    effective_matches: Sequence[Mapping[str, Any]],
+    pages: Sequence[Mapping[str, Any]],
+    source_occurrences: Sequence[Mapping[str, Any]],
+    visited: set[tuple[str, str]] | None = None,
+) -> bool:
+    """Recursively bind one exact occurrence and every nearest owner."""
+
+    if not _exact_source_occurrence_matches_retrieval_v1(
+        retrieval,
+        source,
+        compiled=compiled,
+        pages=pages,
+    ):
+        return False
+    retrieval_id = retrieval.get("occurrence_id")
+    source_id = source.get("source_occurrence_id")
+    if type(retrieval_id) is not str or type(source_id) is not str:
+        return False
+    pair = (retrieval_id, source_id)
+    seen = set() if visited is None else visited
+    if pair in seen:
+        return False
+    seen.add(pair)
+    retrieval_owner = _nearest_selected_owner(retrieval, effective_matches)
+    source_owner = _nearest_source_owner(source, source_occurrences)
+    within_role = retrieval.get("matched_within_role")
+    if within_role is None:
+        return retrieval_owner is None and source_owner is None
+    if retrieval_owner is None or source_owner is None:
+        return False
+    return _exact_source_owner_chain_matches_retrieval_v1(
+        retrieval_owner,
+        source_owner,
+        compiled=compiled,
+        effective_matches=effective_matches,
+        pages=pages,
+        source_occurrences=source_occurrences,
+        visited=seen,
     )
 
 
@@ -666,7 +812,7 @@ def _check(
     exact_hits: Mapping[str, Any],
     pages: Sequence[Mapping[str, Any]],
     selected_region: Mapping[str, Any],
-    source_records: Sequence[Mapping[str, Any]],
+    source_occurrences: Sequence[Mapping[str, Any]],
     match_scope: str,
 ) -> dict[str, Any]:
     indices = _match_line_indices(match, pages)
@@ -732,7 +878,7 @@ def _check(
             for item in exact_hits["children"].get(role, [])
         ]
     else:
-        source_role_axis = [item for item in source_records if item["role"] == role]
+        source_role_axis = [item for item in source_occurrences if item["role"] == role]
     same_role_context_span = [
         item
         for item in source_role_axis
@@ -761,16 +907,24 @@ def _check(
             None,
         )
     )
-    exact_owner = None
-    if owner is not None:
-        exact_owner = next(
-            (
-                item
-                for item in source_records
-                if item["role"] == owner["role"] and _same_match_span(item, owner, pages)
-            ),
-            None,
+    source_occurrence = (
+        same_role_context_span[0]
+        if len(same_role_context_span) == 1
+        and type(same_role_context_span[0].get("source_occurrence_id")) is str
+        else None
+    )
+    source_owner_chain_bound = (
+        match_scope == "FAMILY_PARENT"
+        or source_occurrence is not None
+        and _exact_source_owner_chain_matches_retrieval_v1(
+            match,
+            source_occurrence,
+            compiled=compiled,
+            effective_matches=effective_matches,
+            pages=pages,
+            source_occurrences=source_occurrences,
         )
+    )
     if retrieval_candidates and surface is not None:
         if not exact_bindings:
             if any(
@@ -794,7 +948,7 @@ def _check(
                 status = "NO_EXACT_DECLARED_ALIAS_ON_RETRIEVAL_SOURCE_SPAN"
         elif selected_parent is not None and exact_parent is None:
             status = "EXACT_FAMILY_PARENT_CONTEXT_MISMATCH"
-        elif owner is not None and exact_owner is None:
+        elif match_scope == "EXPANDED_OCCURRENCE" and not source_owner_chain_bound:
             status = "EXACT_STRUCTURAL_PARENT_CONTEXT_MISMATCH"
         elif len(exact_bindings) != 1 or len(same_role_context_span) != 1:
             # An exact surface under another role/parent or on another span is
@@ -1061,9 +1215,12 @@ def build_accounting_family_one_edit_exact_authority_v1(
         ("EXPANDED_OCCURRENCE", match) for match in effective_matches if _is_one_edit(match)
     )
     exact_hits, _source_pages = _source_exact_axes(pages, compiled)
-    source_records = _context_bound_source_records(
-        exact_hits,
-        compiled,
+    source_occurrences = _decorate_exact_source_occurrences_v1(
+        _context_bound_source_records(
+            exact_hits,
+            compiled,
+            selected_topology_region,
+        ),
         selected_topology_region,
     )
     checks = []
@@ -1079,7 +1236,7 @@ def build_accounting_family_one_edit_exact_authority_v1(
                 exact_hits=exact_hits,
                 pages=pages,
                 selected_region=selected_topology_region,
-                source_records=source_records,
+                source_occurrences=source_occurrences,
                 match_scope=match_scope,
             )
         )
