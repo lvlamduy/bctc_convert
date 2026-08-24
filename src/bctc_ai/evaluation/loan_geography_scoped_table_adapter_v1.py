@@ -2016,9 +2016,10 @@ def _numeric_projection_axes(
         elif segment["period_resolution"] == "DOCUMENT_INHERITED_EXACT_DATE":
             if typed_context is None:
                 raise _error("Family 11 inherited period lacks PDF-internal document context")
-            evidence_ref, source_surface = _raw_inherited_period_evidence(
+            _raw_evidence_ref, source_surface = _raw_inherited_period_evidence(
                 typed_context, resolved_period=segment["resolved_period"]
             )
+            evidence_ref = typed_context["result_id"]
         else:
             raise _error("Family 11 period resolution mode drifted")
         period_axis.append(

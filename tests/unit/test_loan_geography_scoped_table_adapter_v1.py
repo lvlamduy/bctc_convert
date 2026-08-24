@@ -1226,6 +1226,8 @@ def test_pdf_internal_context_rescues_missing_local_date_and_unit_not_packet_yea
     )
     assert numeric["unit_context"]["resolution_mode"] == "DOCUMENT_INHERITED_EXACT_UNIT"
     assert numeric["period_axis"][0]["resolution_mode"] == ("DOCUMENT_INHERITED_EXACT_DATE")
+    assert numeric["period_axis"][0]["evidence_ref"] == context["result_id"]
+    assert numeric["period_axis"][0]["evidence_ref"] != snapshot["document_packet"]["packet_id"]
 
     tampered_packet = deepcopy(snapshot["document_packet"])
     tampered_packet["year"] = 2099

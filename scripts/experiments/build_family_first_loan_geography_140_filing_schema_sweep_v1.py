@@ -128,7 +128,7 @@ _DEFAULT_DIRECT_FULL_BATCH_SIZE = _DEFAULT_DIRECT_FULL_JOBS
 _DEFAULT_SPARSE_JOBS = _DEFAULT_DIRECT_FULL_JOBS
 _FAMILY11_GRAPH_WORKER_RECEIPT: Any | None = None
 _EXPECTED_REGION_QUERY_SPEC_ID = (
-    "fffrrv2:query:c8ed395a51ff6bfccef47d9ef8bb66b57512395837842c3f906a17f3b7ec92f1"
+    "fffrrv2:query:94dea056831227562ee83a6f9b93ea244991058ff2753d90c9917c7f752cd232"
 )
 _EXPECTED_REGION_RECEIPT_ID = (
     "fffrrv2:receipt:7e73c91781a1ecc4045d742bfc14da0a6540ef027fd4d07bcb9a70874a3ff181"
@@ -141,8 +141,8 @@ _EXPECTED_REGION_IMPLEMENTATION_REFS = {
     },
     "src/bctc_ai/evaluation/loan_geography_scoped_table_adapter_v1.py": {
         "path": "src/bctc_ai/evaluation/loan_geography_scoped_table_adapter_v1.py",
-        "sha256": "81b97e8330d5407ad3192da7b83592f9c862a0f0a504bd75483b4581a7a27674",
-        "size_bytes": 134_097,
+        "sha256": "baed02373e4f3f8bc88b1e3ddcf5b2937f942ab65db069cf71cf281fba218a7d",
+        "size_bytes": 134_156,
     },
 }
 
