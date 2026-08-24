@@ -1,0 +1,187 @@
+{
+  "experiment_id": "E-0177",
+  "artifact_type": "CANONICAL_OPEN_DIRECT_PIXEL_REVIEW_RECEIPT_V1",
+  "review_date_utc": "2026-08-24",
+  "scope": "Six physical PDF pages cited as newly opened direct pixel reviews in the canonical OPEN ledger",
+  "authority": {
+    "asserts": [
+      "exact source-PDF identity",
+      "deterministic 200-DPI render identity",
+      "physical-page identity",
+      "human direct-pixel-review provenance"
+    ],
+    "does_not_assert": [
+      "mapping closure",
+      "schema equivalence",
+      "numeric export authority",
+      "production readiness"
+    ]
+  },
+  "renderers": {
+    "implementation": "src/bctc_ai/evaluation/family_first_authenticated_page_region_v1.py::_render_page",
+    "implementation_sha256": "5759b50dbe35aa5fe5a302f42f3e96229ec5764d3ae50f4c45a460533acd1def",
+    "dpi": 200,
+    "recipe": "fitz.open(stream=source, filetype='pdf'); document[physical_page - 1].get_pixmap(matrix=fitz.Matrix(dpi / 72, dpi / 72), colorspace=fitz.csRGB, alpha=False).tobytes('png')",
+    "direct_review_observed": {
+      "interpreter": "system python3 with PYTHONPATH=src",
+      "pymupdf_VersionBind": "1.26.3",
+      "pymupdf_VersionFitz": "1.26.3"
+    },
+    "canonical_replay": {
+      "interpreter": ".venv/bin/python",
+      "pymupdf_VersionBind": "1.28.0",
+      "pymupdf_VersionFitz": "1.29.0"
+    }
+  },
+  "reviews": [
+    {
+      "review_key": "E0078-CAF-009:p27",
+      "composite_id": "E0078-CAF-009",
+      "bank": "BID",
+      "source_pdf": {
+        "path": "vietstock_bctc/BID/2026/BCTC Hợp nhất quý 2 năm 2026.pdf",
+        "sha256": "73d9ead38e4e60b2241ae7d41a6e5382f8f2e5cc59f2e7a70ca0bedb95792003",
+        "size_bytes": 13263197
+      },
+      "physical_page": 27,
+      "printed_page": 24,
+      "review_observed_render": {
+        "format": "PNG",
+        "sha256": "c027fb01e25f35bd453f343920ce5d395a7059079237ca29fd07c8c336612c2e",
+        "size_bytes": 983712
+      },
+      "canonical_replay_render": {
+        "format": "PNG",
+        "sha256": "c027fb01e25f35bd453f343920ce5d395a7059079237ca29fd07c8c336612c2e",
+        "size_bytes": 983712
+      },
+      "finding": "Rotated statement of changes in equity; row, column and numeric pixels are legible."
+    },
+    {
+      "review_key": "E0078-CAF-009:p28",
+      "composite_id": "E0078-CAF-009",
+      "bank": "BID",
+      "source_pdf": {
+        "path": "vietstock_bctc/BID/2026/BCTC Hợp nhất quý 2 năm 2026.pdf",
+        "sha256": "73d9ead38e4e60b2241ae7d41a6e5382f8f2e5cc59f2e7a70ca0bedb95792003",
+        "size_bytes": 13263197
+      },
+      "physical_page": 28,
+      "printed_page": 25,
+      "review_observed_render": {
+        "format": "PNG",
+        "sha256": "d43878ddf4e846c5198240fcc5e0360559f99adc13638dd1697d40d1537f9258",
+        "size_bytes": 1457977
+      },
+      "canonical_replay_render": {
+        "format": "PNG",
+        "sha256": "d43878ddf4e846c5198240fcc5e0360559f99adc13638dd1697d40d1537f9258",
+        "size_bytes": 1457977
+      },
+      "finding": "The source has moved to capital/share detail after the rotated equity table."
+    },
+    {
+      "review_key": "E0078-CAF-010:p44",
+      "composite_id": "E0078-CAF-010",
+      "bank": "VIB",
+      "source_pdf": {
+        "path": "vietstock_bctc/VIB/2026/BCTC Hợp nhất quý 2 năm 2026.pdf",
+        "sha256": "416a104007cb0ed20ca43f9771a698f789b812866f7937617ec42be85e0c852c",
+        "size_bytes": 2558489
+      },
+      "physical_page": 44,
+      "printed_page": 42,
+      "review_observed_render": {
+        "format": "PNG",
+        "sha256": "c15f60c04ac13348c4566feccff0ba8955009a5a2ff23e5d9ad7b1a4240ec9e0",
+        "size_bytes": 113594
+      },
+      "canonical_replay_render": {
+        "format": "PNG",
+        "sha256": "c15f60c04ac13348c4566feccff0ba8955009a5a2ff23e5d9ad7b1a4240ec9e0",
+        "size_bytes": 113594
+      },
+      "finding": "Rotated statement of changes in equity; row, column and numeric pixels are legible."
+    },
+    {
+      "review_key": "E0078-CAF-010:p45",
+      "composite_id": "E0078-CAF-010",
+      "bank": "VIB",
+      "source_pdf": {
+        "path": "vietstock_bctc/VIB/2026/BCTC Hợp nhất quý 2 năm 2026.pdf",
+        "sha256": "416a104007cb0ed20ca43f9771a698f789b812866f7937617ec42be85e0c852c",
+        "size_bytes": 2558489
+      },
+      "physical_page": 45,
+      "printed_page": 43,
+      "review_observed_render": {
+        "format": "PNG",
+        "sha256": "d61bf7597038ee6731fbdcd45f71d7ea382ab2f2712a884a78274008269c836e",
+        "size_bytes": 93872
+      },
+      "canonical_replay_render": {
+        "format": "PNG",
+        "sha256": "d61bf7597038ee6731fbdcd45f71d7ea382ab2f2712a884a78274008269c836e",
+        "size_bytes": 93872
+      },
+      "finding": "The source has moved to another note after the rotated equity table."
+    },
+    {
+      "review_key": "E0161-ASEG-005:p83",
+      "composite_id": "E0161-ASEG-005",
+      "bank": "MBB",
+      "source_pdf": {
+        "path": "vietstock_bctc/MBB/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+        "sha256": "9853cc4909dc73ddea9907465b09d7ecdb96cf6c1627f56943f3a20d14b49f80",
+        "size_bytes": 10165066
+      },
+      "physical_page": 83,
+      "printed_page": 79,
+      "review_observed_render": {
+        "format": "PNG",
+        "sha256": "9b699dca3c6c84a4263f0b93acf291d77097f0c0c5df9b414649c7e828baaa48",
+        "size_bytes": 1157539
+      },
+      "canonical_replay_render": {
+        "format": "PNG",
+        "sha256": "9b699dca3c6c84a4263f0b93acf291d77097f0c0c5df9b414649c7e828baaa48",
+        "size_bytes": 1157539
+      },
+      "finding": "Segment table, elimination column and internal-income/internal-expense rows are legible."
+    },
+    {
+      "review_key": "E0161-ASEG-014:p82",
+      "composite_id": "E0161-ASEG-014",
+      "bank": "CTG",
+      "source_pdf": {
+        "path": "vietstock_bctc/CTG/2025/BCTC Hợp nhất Kiểm toán năm 2025.pdf",
+        "sha256": "b82eeb879b667e80d0b5322969c808089fd39b83835b75dc47f9a890189fc137",
+        "size_bytes": 11853560
+      },
+      "physical_page": 82,
+      "printed_page": 80,
+      "review_observed_render": {
+        "format": "PNG",
+        "sha256": "f3fb0c18b88ff2137ed0f03351bbf019adbb29c6c66eca96c16ca1880cec9e79",
+        "size_bytes": 1438284
+      },
+      "canonical_replay_render": {
+        "format": "PNG",
+        "sha256": "01c83ad86684b837c60c1a94dbcd47eea0fe7d870a1352688518e8a541b3438d",
+        "size_bytes": 1438261
+      },
+      "finding": "The complete rotated business-segment table, result rows and numbers are legible."
+    }
+  ],
+  "verification": {
+    "source_pdf_count": 4,
+    "physical_page_count": 6,
+    "all_source_sha256_recomputed": true,
+    "all_review_observed_render_sha256_recomputed_with_system_python": true,
+    "all_canonical_render_sha256_recomputed_with_project_venv": true,
+    "cross_version_byte_identity_count": 5,
+    "cross_version_byte_difference_count": 1,
+    "cross_version_difference": "CTG p82: system PyMuPDF/MuPDF 1.26.3 produced f3fb0c18... (1,438,284 bytes); project-venv PyMuPDF 1.28.0/MuPDF 1.29.0 produced 01c83ad8... (1,438,261 bytes). Both are retained; canonical replay uses the project venv.",
+    "temporary_render_files_required": false
+  }
+}

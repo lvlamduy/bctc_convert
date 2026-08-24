@@ -12,6 +12,49 @@ ROOT = Path(__file__).resolve().parents[2]
 REGISTRY = ROOT / "data/registered/family_first_accounting_checkpoints_v1.json"
 COMPLETED = ROOT / "docs/experiments/COMPLETED_TM_FAMILIES.md"
 LEDGER = ROOT / "docs/experiments/UNRESOLVED_MAPPING_LEDGER.md"
+DIRECT_REVIEW_RECEIPT = (
+    ROOT / "docs/experiments/E-0177-canonical-open-direct-pixel-review-receipt-v1.json"
+)
+DIRECT_REVIEW_RENDERER = (
+    ROOT / "src/bctc_ai/evaluation/family_first_authenticated_page_region_v1.py"
+)
+STALE_SCHEMA_PIN_EXPERIMENTS = {
+    "0073",
+    "0076",
+    "0078",
+    "0088",
+    "0091",
+    "0097",
+    "0098",
+    "0099",
+    "0127",
+    "0129",
+    "0131",
+    "0133",
+}
+STALE_SCHEMA_FORMAL_ARTIFACT_COUNTS = {
+    "docs/experiments/E-0073-other-assets-8bank-codex-verified-mapping-v1.json": 12,
+    "docs/experiments/E-0076-issued-valuable-papers-8bank-codex-verified-mapping-v1.json": 0,
+    "docs/experiments/E-0078-capital-and-funds-8bank-codex-verified-mapping-v1.json": 8,
+    "docs/experiments/E-0088-operating-expense-8bank-codex-verified-mapping-v1.json": 4,
+    "docs/experiments/E-0091-income-tax-8bank-codex-verified-mapping-v1.json": 1,
+    "docs/experiments/E-0097-bank-pledged-assets-8bank-codex-verified-mapping-v1.json": 0,
+    "docs/experiments/E-0098-contingent-liabilities-8bank-codex-verified-mapping-v1.json": 13,
+    "docs/experiments/E-0099-financial-instruments-8bank-codex-verified-mapping-v1.json": 0,
+    "docs/experiments/E-0127-annual-2025-other-assets-8bank-codex-verified-mapping-v1.json": 29,
+    "docs/experiments/E-0129-annual-2025-customer-deposit-8bank-codex-verified-mapping-v1.json": 0,
+    "docs/experiments/E-0131-annual-2025-issued-valuable-papers-8bank-codex-verified-mapping-v1.json": 2,
+    "docs/experiments/E-0133-annual-2025-capital-and-funds-8bank-codex-verified-mapping-v1.json": 7,
+}
+STALE_SCHEMA_LIVE_REFS = {
+    "config/schemas/hierarchy_reference.yaml",
+    "config/schemas/sources.yaml",
+    "data/registered/hierarchy_registry.json",
+    "data/registered/schema_coverage_registry.json",
+    "data/registered/schema_registry.json",
+    "reference/schemas/schema_graph.jsonl",
+    "template/Bank_TM_ReportNormId.v2.xlsx",
+}
 INTERBANK_EVIDENCE = (
     ROOT
     / "output/calibration/family-first-accounting-evidence-sweeps-v1"
@@ -566,13 +609,15 @@ def test_canonical_open_queue_covers_every_source_row_with_human_and_pixel_evide
     allowed_statuses = {
         "RESOLVABLE_PENDING_GENERIC_FIX",
         "KEEP_UNRESOLVED_SCHEMA_GAP",
+        "KEEP_UNRESOLVED_SCHEMA_GAP_REQUIRES_LIVE_SCHEMA_REPLAY",
         "KEEP_UNRESOLVED_SEMANTIC_GAP",
         "KEEP_UNRESOLVED_SOURCE_SCOPE",
         "KEEP_UNRESOLVED_SOURCE_CONFLICT",
         "KEEP_UNRESOLVED_SOURCE_VALUE_UNAVAILABLE",
     }
     assert Counter(row[7] for row in rows) == {
-        "KEEP_UNRESOLVED_SCHEMA_GAP": 156,
+        "KEEP_UNRESOLVED_SCHEMA_GAP": 80,
+        "KEEP_UNRESOLVED_SCHEMA_GAP_REQUIRES_LIVE_SCHEMA_REPLAY": 76,
         "RESOLVABLE_PENDING_GENERIC_FIX": 51,
         "KEEP_UNRESOLVED_SEMANTIC_GAP": 17,
         "KEEP_UNRESOLVED_SOURCE_SCOPE": 11,
@@ -625,6 +670,176 @@ def test_canonical_open_queue_covers_every_source_row_with_human_and_pixel_evide
         assert stale not in ledger
     assert "545 entries = 247 OPEN + 298 closed/history" in ledger
     assert "CLOSED_STALE_PERIOD_GAP" in ledger
+
+
+def test_direct_pixel_review_receipt_is_complete_and_linked_from_every_direct_row() -> None:
+    receipt = json.loads(DIRECT_REVIEW_RECEIPT.read_text(encoding="utf-8"))
+    renderer = receipt["renderers"]
+    reviews = receipt["reviews"]
+
+    assert receipt["experiment_id"] == "E-0177"
+    assert renderer["dpi"] == 200
+    assert renderer["implementation"].endswith(
+        "family_first_authenticated_page_region_v1.py::_render_page"
+    )
+    assert (
+        renderer["implementation_sha256"]
+        == hashlib.sha256(DIRECT_REVIEW_RENDERER.read_bytes()).hexdigest()
+    )
+    assert renderer["direct_review_observed"] == {
+        "interpreter": "system python3 with PYTHONPATH=src",
+        "pymupdf_VersionBind": "1.26.3",
+        "pymupdf_VersionFitz": "1.26.3",
+    }
+    assert renderer["canonical_replay"] == {
+        "interpreter": ".venv/bin/python",
+        "pymupdf_VersionBind": "1.28.0",
+        "pymupdf_VersionFitz": "1.29.0",
+    }
+    assert {review["review_key"] for review in reviews} == {
+        "E0078-CAF-009:p27",
+        "E0078-CAF-009:p28",
+        "E0078-CAF-010:p44",
+        "E0078-CAF-010:p45",
+        "E0161-ASEG-005:p83",
+        "E0161-ASEG-014:p82",
+    }
+    assert all(review["source_pdf"]["sha256"] for review in reviews)
+    assert all(review["physical_page"] > 0 for review in reviews)
+    assert all(review["review_observed_render"]["sha256"] for review in reviews)
+    assert all(review["canonical_replay_render"]["sha256"] for review in reviews)
+
+    differing = [
+        review
+        for review in reviews
+        if review["review_observed_render"] != review["canonical_replay_render"]
+    ]
+    assert [review["review_key"] for review in differing] == ["E0161-ASEG-014:p82"]
+    assert differing[0]["review_observed_render"] == {
+        "format": "PNG",
+        "sha256": "f3fb0c18b88ff2137ed0f03351bbf019adbb29c6c66eca96c16ca1880cec9e79",
+        "size_bytes": 1438284,
+    }
+    assert differing[0]["canonical_replay_render"] == {
+        "format": "PNG",
+        "sha256": "01c83ad86684b837c60c1a94dbcd47eea0fe7d870a1352688518e8a541b3438d",
+        "size_bytes": 1438261,
+    }
+
+    direct_rows = {
+        row[0]: row for row in _canonical_open_source_rows() if row[6].startswith("DIRECT_")
+    }
+    assert set(direct_rows) == {
+        "E0078-CAF-009",
+        "E0078-CAF-010",
+        "E0161-ASEG-005",
+        "E0161-ASEG-014",
+    }
+    assert all(
+        "[receipt E-0177](E-0177-canonical-open-direct-pixel-review-receipt-v1.json)" in row[6]
+        for row in direct_rows.values()
+    )
+    assert (
+        "f3fb0c18b88ff2137ed0f03351bbf019adbb29c6c66eca96c16ca1880cec9e79"
+        in (direct_rows["E0161-ASEG-014"][6])
+    )
+    assert (
+        "01c83ad86684b837c60c1a94dbcd47eea0fe7d870a1352688518e8a541b3438d"
+        in (direct_rows["E0161-ASEG-014"][6])
+    )
+
+
+@pytest.mark.skipif(
+    not DIRECT_REVIEW_RECEIPT.exists()
+    or any(
+        not (ROOT / review["source_pdf"]["path"]).exists()
+        for review in json.loads(DIRECT_REVIEW_RECEIPT.read_text(encoding="utf-8"))["reviews"]
+    ),
+    reason="the four private source PDFs are not restored in this checkout",
+)
+def test_direct_pixel_review_receipt_replays_all_six_pages_without_temp_files() -> None:
+    import fitz
+
+    from bctc_ai.evaluation.family_first_authenticated_page_region_v1 import _render_page
+
+    receipt = json.loads(DIRECT_REVIEW_RECEIPT.read_text(encoding="utf-8"))
+    renderer = receipt["renderers"]
+
+    assert fitz.VersionBind == renderer["canonical_replay"]["pymupdf_VersionBind"]
+    assert fitz.VersionFitz == renderer["canonical_replay"]["pymupdf_VersionFitz"]
+    for review in receipt["reviews"]:
+        source = (ROOT / review["source_pdf"]["path"]).read_bytes()
+        assert hashlib.sha256(source).hexdigest() == review["source_pdf"]["sha256"]
+        assert len(source) == review["source_pdf"]["size_bytes"]
+
+        render = _render_page(
+            source,
+            physical_page=review["physical_page"],
+            dpi=renderer["dpi"],
+        )
+        assert hashlib.sha256(render).hexdigest() == review["canonical_replay_render"]["sha256"]
+        assert len(render) == review["canonical_replay_render"]["size_bytes"]
+
+
+def test_stale_schema_pins_fail_closed_only_for_the_76_affected_schema_gap_rows() -> None:
+    ledger = LEDGER.read_text(encoding="utf-8")
+    note = ledger[
+        ledger.index("<!-- STALE_SCHEMA_PIN_LIVE_REPLAY_BEGIN -->") : ledger.index(
+            "<!-- STALE_SCHEMA_PIN_LIVE_REPLAY_END -->"
+        )
+    ]
+    rows = _canonical_open_source_rows()
+
+    assert "84 cặp hash/kích thước không còn khớp" in note
+    assert "không phải exact replay của schema hiện hành" in note
+    assert "KEEP_UNRESOLVED_SCHEMA_GAP_REQUIRES_LIVE_SCHEMA_REPLAY" in note
+    assert all(f"`{path}`" in note for path in STALE_SCHEMA_FORMAL_ARTIFACT_COUNTS)
+    assert all(f"`{path}`" in note for path in STALE_SCHEMA_LIVE_REFS)
+
+    replay_rows = [
+        row for row in rows if row[7] == "KEEP_UNRESOLVED_SCHEMA_GAP_REQUIRES_LIVE_SCHEMA_REPLAY"
+    ]
+    assert len(replay_rows) == 76
+    counts = Counter(row[9].rsplit("<br>formal: ", 1)[1] for row in replay_rows)
+    assert counts == Counter(
+        {path: count for path, count in STALE_SCHEMA_FORMAL_ARTIFACT_COUNTS.items() if count}
+    )
+    for row in rows:
+        match = re.match(r"^E([0-9]{4})-", row[0])
+        if match is None:
+            continue
+        belongs_to_stale_artifact = match.group(1) in STALE_SCHEMA_PIN_EXPERIMENTS
+        if belongs_to_stale_artifact and "SCHEMA_GAP" in row[7]:
+            assert row[7] == "KEEP_UNRESOLVED_SCHEMA_GAP_REQUIRES_LIVE_SCHEMA_REPLAY"
+        if row[7] == "KEEP_UNRESOLVED_SCHEMA_GAP_REQUIRES_LIVE_SCHEMA_REPLAY":
+            assert belongs_to_stale_artifact
+
+
+def test_corrected_open_human_reasons_name_the_exact_axis_or_margin_population() -> None:
+    rows = {row[0]: row for row in _canonical_open_source_rows()}
+
+    for row_id, currency in {
+        "E0155-A2025-CRISK-001": "AUD",
+        "E0155-A2025-CRISK-002": "CAD",
+        "E0155-A2025-CRISK-004": "JPY",
+    }.items():
+        assert f"Trục {currency}" in rows[row_id][8]
+        assert "năm ô nguồn" in rows[row_id][8]
+        assert "nhánh vàng" not in rows[row_id][8]
+
+    for experiment in ("E0098", "E0153"):
+        for row_id in ("003", "007"):
+            assert "nhóm L/C" in rows[f"{experiment}-CL-{row_id}"][8]
+            assert "parent L/C" in rows[f"{experiment}-CL-{row_id}"][8]
+        for row_id in ("005", "009"):
+            assert "nhóm bảo lãnh" in rows[f"{experiment}-CL-{row_id}"][8]
+            assert "parent bảo lãnh" in rows[f"{experiment}-CL-{row_id}"][8]
+
+    keep_e0161 = {f"E0161-ASEG-{ordinal:03d}" for ordinal in range(1, 18) if ordinal not in {5, 14}}
+    assert all(
+        "không đồng nhất schema hoặc là blank thật" not in rows[row_id][8] for row_id in keep_e0161
+    )
+    assert "blank thật, không phải dấu gạch và không phải 0" in rows["E0161-ASEG-017"][8]
 
 
 def test_family11_zero_unresolved_is_recorded_in_both_status_docs() -> None:
