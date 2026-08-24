@@ -1505,12 +1505,22 @@ def _strict_same_population_selection_policy() -> dict:
 
 def test_same_population_summary_control_yields_to_unique_role_rich_detail() -> None:
     summary = _ready_hierarchical_candidate(
-        ["DEPOSIT_GROUP", "LOAN_GROUP", "FAMILY"], candidate_ordinal=0
+        ["EXPLICIT_FAMILY_TOTAL", "DEPOSIT_GROUP", "LOAN_GROUP", "FAMILY"],
+        candidate_ordinal=0,
     )
     detail = _ready_hierarchical_candidate(
         ["DEPOSIT_VND", "DEPOSIT_GROUP", "LOAN_VND", "LOAN_GROUP", "FAMILY"],
         candidate_ordinal=1,
     )
+    for candidate in (summary, detail):
+        candidate["additive_closure"]["equations"] = {
+            "global": [
+                {
+                    "result_role": "FAMILY",
+                    "visible_result_roles": ["EXPLICIT_FAMILY_TOTAL"],
+                }
+            ]
+        }
 
     selected, reasons = subject._select_candidate_evidence(
         [summary, detail],
@@ -1519,6 +1529,43 @@ def test_same_population_summary_control_yields_to_unique_role_rich_detail() -> 
 
     assert selected is detail
     assert reasons == []
+
+
+@pytest.mark.parametrize("mutation", ["ROOT", "PERIOD", "UNIT"])
+def test_root_presentation_alias_never_bypasses_population_signature(
+    mutation: str,
+) -> None:
+    summary = _ready_hierarchical_candidate(
+        ["EXPLICIT_FAMILY_TOTAL", "DEPOSIT_GROUP", "LOAN_GROUP", "FAMILY"],
+        candidate_ordinal=0,
+    )
+    detail = _ready_hierarchical_candidate(
+        ["DEPOSIT_VND", "DEPOSIT_GROUP", "LOAN_VND", "LOAN_GROUP", "FAMILY"],
+        candidate_ordinal=1,
+    )
+    for candidate in (summary, detail):
+        candidate["additive_closure"]["equations"] = {
+            "global": [
+                {
+                    "result_role": "FAMILY",
+                    "visible_result_roles": ["EXPLICIT_FAMILY_TOTAL"],
+                }
+            ]
+        }
+    if mutation == "ROOT":
+        detail["additive_closure"]["resolved_roles"][-1]["values"][0]["number"]["coefficient"] += 1
+    elif mutation == "PERIOD":
+        detail["column_context"]["period_axis"][0]["resolved_period"] = "30/06/2025"
+    else:
+        detail["column_context"]["unit_axis"][0]["magnitude_power10"] = 3
+
+    selected, reasons = subject._select_candidate_evidence(
+        [summary, detail],
+        _strict_same_population_selection_policy(),
+    )
+
+    assert selected is None
+    assert reasons == ["MULTIPLE_DOWNSTREAM_EVIDENCE_COMPLETE_TOPOLOGY_REGIONS"]
 
 
 def test_v4_same_population_summary_cannot_launder_detail_numeric_schema_gap() -> None:
@@ -1812,6 +1859,33 @@ def test_default_v3_preserves_legacy_role_superset_selection_without_population_
     )
 
     assert selected is detail
+    assert reasons == []
+
+
+def test_default_v3_preserves_presentation_alias_in_legacy_raw_role_richness() -> None:
+    base = _ready_hierarchical_candidate(
+        ["DEPOSIT_GROUP", "LOAN_GROUP", "FAMILY"], candidate_ordinal=0
+    )
+    presentation_superset = _ready_hierarchical_candidate(
+        ["EXPLICIT_FAMILY_TOTAL", "DEPOSIT_GROUP", "LOAN_GROUP", "FAMILY"],
+        candidate_ordinal=1,
+    )
+    for candidate in (base, presentation_superset):
+        candidate["additive_closure"]["equations"] = {
+            "global": [
+                {
+                    "result_role": "FAMILY",
+                    "visible_result_roles": ["EXPLICIT_FAMILY_TOTAL"],
+                }
+            ]
+        }
+
+    selected, reasons = subject._select_candidate_evidence(
+        [base, presentation_superset],
+        {"closure_policy": "HIERARCHICAL_RECURSIVE_CORROBORATE_OR_DERIVE"},
+    )
+
+    assert selected is presentation_superset
     assert reasons == []
 
 

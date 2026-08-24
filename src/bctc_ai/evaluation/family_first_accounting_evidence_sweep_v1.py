@@ -897,6 +897,38 @@ def _candidate_population_signature(candidate: dict[str, Any]) -> dict[str, Any]
     }
 
 
+def _candidate_role_richness_set(candidate: Mapping[str, Any]) -> set[str]:
+    """Return semantic decomposition roles, excluding root presentation aliases."""
+
+    closure = candidate.get("additive_closure")
+    resolved = closure.get("resolved_roles") if type(closure) is dict else None
+    if type(resolved) is not list:
+        return set()
+    roles = {
+        record["role"]
+        for record in resolved
+        if type(record) is dict and type(record.get("role")) is str
+    }
+    family_id = closure.get("family_id")
+    equations = closure.get("equations")
+    global_equations = equations.get("global") if type(equations) is dict else None
+    if type(family_id) is not str or type(global_equations) is not list:
+        return roles
+    root_equations = [
+        equation
+        for equation in global_equations
+        if type(equation) is dict and equation.get("result_role") == family_id
+    ]
+    if len(root_equations) != 1 or type(root_equations[0].get("visible_result_roles")) is not list:
+        return roles
+    presentation_aliases = {
+        role
+        for role in root_equations[0]["visible_result_roles"]
+        if type(role) is str and role != family_id
+    }
+    return roles - presentation_aliases
+
+
 def _threat_matches_ready_component_population(
     ready: Mapping[str, Any], threat: Mapping[str, Any]
 ) -> bool:
@@ -1139,19 +1171,6 @@ def _select_candidate_evidence(
             "SOURCE_ONLY_SCHEMA_INELIGIBLE_ROLE",
         }
 
-        def roles(candidate: Mapping[str, Any]) -> set[str]:
-            closure = candidate.get("additive_closure")
-            resolved = closure.get("resolved_roles") if type(closure) is dict else None
-            return (
-                {
-                    record["role"]
-                    for record in resolved
-                    if type(record) is dict and type(record.get("role")) is str
-                }
-                if type(resolved) is list
-                else set()
-            )
-
         def pages(candidate: Mapping[str, Any]) -> str:
             row_axis = candidate.get("row_axis")
             rows = row_axis.get("rows") if type(row_axis) is dict else None
@@ -1179,13 +1198,13 @@ def _select_candidate_evidence(
             threat_signature = _candidate_population_signature(threat)
             if not gap_reasons:
                 continue
-            threat_roles = roles(threat)
+            threat_roles = _candidate_role_richness_set(threat)
             for admitted in ready:
                 admitted_signature = _candidate_population_signature(admitted)
                 full_root_population_match = (
                     threat_signature is not None
                     and admitted_signature is not None
-                    and roles(admitted) <= threat_roles
+                    and _candidate_role_richness_set(admitted) <= threat_roles
                     and same_typed_json_v1(admitted_signature, threat_signature)
                 )
                 if not full_root_population_match and not (
@@ -1210,13 +1229,10 @@ def _select_candidate_evidence(
         "HIERARCHICAL_RECURSIVE_CORROBORATE_OR_DERIVE",
         "SCOPED_HIERARCHICAL_EXHAUSTIVE_CORROBORATE_OR_DERIVE",
     }:
-        role_sets = [
-            {record["role"] for record in candidate["additive_closure"]["resolved_roles"]}
-            for candidate in ready
-        ]
         if evaluation_spec.get("candidate_selection_policy") == (
             "SAME_POPULATION_STRICT_ROLE_SUPERSET_WITH_EXACT_PERIOD_UNIT_ROOT_TOTAL"
         ):
+            role_sets = [_candidate_role_richness_set(candidate) for candidate in ready]
             population_signatures = [
                 _candidate_population_signature(candidate) for candidate in ready
             ]
@@ -1235,6 +1251,10 @@ def _select_candidate_evidence(
                 )
             ]
         else:
+            role_sets = [
+                {record["role"] for record in candidate["additive_closure"]["resolved_roles"]}
+                for candidate in ready
+            ]
             ready = [
                 candidate
                 for index, candidate in enumerate(ready)
