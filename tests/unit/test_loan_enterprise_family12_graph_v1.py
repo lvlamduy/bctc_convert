@@ -1022,6 +1022,41 @@ def test_branchless_owner_and_two_distinct_children_veto_bounded_absence() -> No
     )
 
 
+def test_distant_branchless_table_challenges_an_explicit_branch_table() -> None:
+    distant = [
+        _line(10, "Cho vay khách hàng", 40, 40, 410, 70),
+        _line(11, "Công ty TNHH", 70, 130, 570, 158),
+        _line(12, "100", 730, 130, 820, 158),
+        _line(13, "Công ty cổ phần khác", 70, 190, 570, 218),
+        _line(14, "200", 730, 190, 820, 218),
+    ]
+    result = build_loan_enterprise_family12_graph_v1([_page(1, _table_lines()), _page(2, distant)])
+
+    assert len(result["regions"]) == 1
+    assert result["bounded_absences"] == []
+    assert result["metrics"]["branchless_rescue_challenger_count"] == 1
+    challenger = result["branchless_rescue_challengers"][0]
+    assert challenger["candidate_child_report_norm_ids"] == [768, 773]
+    assert challenger["reset_fence"]["page_sequence"] == 2
+
+
+def test_explicit_branch_filter_binds_to_closest_preceding_owner() -> None:
+    evidence = {
+        "owner_matches": [
+            {"page_sequence": 1, "source_line_indices_in_visual_order": [0]},
+            {"page_sequence": 1, "source_line_indices_in_visual_order": [10]},
+        ],
+        "page_sequence": 1,
+        "role_matches": [
+            {"page_sequence": 1, "source_line_indices_in_visual_order": [11]},
+            {"page_sequence": 1, "source_line_indices_in_visual_order": [13]},
+        ],
+    }
+
+    assert not family12_graph_module._branch_inside_scoped_structure(evidence, {1: {1}})
+    assert family12_graph_module._branch_inside_scoped_structure(evidence, {1: {12}})
+
+
 def test_branchless_rescue_rejects_reset_between_and_cross_page_borrowing() -> None:
     reset_between = _branchless_owner_two_child_lines()
     reset_between.insert(1, _line(9, "Tài sản cố định", 40, 90, 410, 118))

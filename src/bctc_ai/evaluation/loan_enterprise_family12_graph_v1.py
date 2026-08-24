@@ -244,6 +244,24 @@ def _component_query_probes(component: Mapping[str, Any]) -> list[str]:
     return sorted(probes)
 
 
+def _local_role_query_probes(surface: str, *, allow_bounded_edit: bool) -> list[str]:
+    """Keep local role validation at least as inclusive as the shared row matcher."""
+
+    normalized = normalize_vietnamese_anchor_v1(surface)
+    if not allow_bounded_edit:
+        return [normalized]
+    # These anchors are never global seeds.  Trigram probes only make the
+    # bounded local matcher reachable after one OCR edit; the full edit-distance
+    # check still decides whether the occurrence is proved.
+    probes = {normalized}
+    probes.update(
+        gram
+        for index in range(len(normalized) - 2)
+        if (gram := normalized[index : index + 3]).isalnum()
+    )
+    return sorted(probes)
+
+
 def _query_spec(project_root: Path) -> dict[str, Any]:
     """Build only a retrieval shortlist; the shared graph retains semantics."""
 
@@ -271,21 +289,32 @@ def _query_spec(project_root: Path) -> dict[str, Any]:
         )
         for ordinal, surface in enumerate(owner["aliases"], 1)
     )
-    role_surfaces = {
-        child["report_norm_id"]: (
+    for child in family_spec["children"]:
+        preferred = normalize_vietnamese_anchor_v1(
             "Thành phần kinh tế khác" if child["report_norm_id"] == 782 else child["canonical_name"]
         )
-        for child in family_spec["children"]
-    }
-    anchors.extend(
-        _query_anchor(
-            f"SEMANTIC_ROLE_{report_norm_id}",
-            surface,
-            maximum_edit_distance=0,
-            role="CONTEXT",
-        )
-        for report_norm_id, surface in sorted(role_surfaces.items())
-    )
+        for ordinal, surface in enumerate(child["aliases"], 1):
+            # Bare ``Khác`` is intentionally too generic for retrieval.  A real
+            # branchless rescue needs two distinct child roles, so its other
+            # declared role remains a complete and substantially safer gate.
+            if child["report_norm_id"] == 782 and normalize_vietnamese_anchor_v1(surface) == "khac":
+                continue
+            anchor_id = f"SEMANTIC_ROLE_{child['report_norm_id']}"
+            if normalize_vietnamese_anchor_v1(surface) != preferred:
+                anchor_id += f"_ALIAS_{ordinal:02d}"
+            allow_bounded_edit = bool(child["bounded_edit_on_exact_miss"])
+            anchors.append(
+                _query_anchor(
+                    anchor_id,
+                    surface,
+                    maximum_edit_distance=int(allow_bounded_edit),
+                    probes=_local_role_query_probes(
+                        surface,
+                        allow_bounded_edit=allow_bounded_edit,
+                    ),
+                    role="CONTEXT",
+                )
+            )
     branch_ids = sorted(
         item["anchor_id"] for item in anchors if item["anchor_id"].startswith("BRANCH_")
     )
@@ -329,12 +358,19 @@ def _query_spec(project_root: Path) -> dict[str, Any]:
         "neighbor_pages_before": 2,
         "seed_groups": [
             {
+                "anchor_ids": owner_ids,
+                "group_id": "FAMILY12_OWNER_SEED",
+                "mode": "ANY",
+                "page_relation": "SAME_PAGE",
+                "priority": 2,
+            },
+            {
                 "anchor_ids": branch_ids,
                 "group_id": "FAMILY12_SHORT_BRANCH_SEED",
                 "mode": "ANY",
                 "page_relation": "SAME_PAGE",
                 "priority": 1,
-            }
+            },
         ],
         "semantic_assignment_adapter_ref": _stable_query_content_ref(
             project_root,
@@ -547,11 +583,44 @@ def _compact_branchless_match(match: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _branch_inside_scoped_structure(
+    evidence: Mapping[str, Any],
+    explicit_branch_indices_by_page: Mapping[int, set[int]],
+) -> bool:
+    """Reject the branchful table itself without hiding a separate table."""
+
+    page_sequence = evidence["page_sequence"]
+    branch_indices = explicit_branch_indices_by_page.get(page_sequence, set())
+    if not branch_indices:
+        return False
+    owner_indices = [
+        index
+        for match in evidence["owner_matches"]
+        if match["page_sequence"] == page_sequence
+        for index in match["source_line_indices_in_visual_order"]
+    ]
+    role_indices = [
+        index
+        for match in evidence["role_matches"]
+        if match["page_sequence"] == page_sequence
+        for index in match["source_line_indices_in_visual_order"]
+    ]
+    if not owner_indices or not role_indices:
+        return False
+    first_role = min(role_indices)
+    preceding_owners = [index for index in owner_indices if index <= first_role]
+    if not preceding_owners:
+        return False
+    closest_owner = max(preceding_owners)
+    return any(closest_owner <= index <= max(role_indices) for index in branch_indices)
+
+
 def _branchless_rescue_challengers(
     region_pages: Sequence[Mapping[str, Any]],
     family_spec: Mapping[str, Any],
     semantic_spec: Mapping[str, Any],
     *,
+    explicit_branch_indices_by_page: Mapping[int, set[int]],
     source_page_evidence_sha256: str,
 ) -> list[dict[str, Any]]:
     scoped_spec = _branchless_scoped_spec(family_spec, semantic_spec)
@@ -613,6 +682,8 @@ def _branchless_rescue_challengers(
             if segment["owner"].get("semantic_id") == "OWNER"
         )
         for item in evidence:
+            if _branch_inside_scoped_structure(item, explicit_branch_indices_by_page):
+                continue
             candidate_ids = sorted(
                 {
                     child_ids[match["semantic_id"]]
@@ -881,17 +952,20 @@ def _build(region_pages: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         raise _error(str(error)) from error
     children = _semantic_to_child(family_spec)
     context_ids = _context_to_report_ids(family_spec)
-    branchless_rescue_challengers = (
-        _branchless_rescue_challengers(
-            region_pages,
-            family_spec,
-            semantic_spec,
-            source_page_evidence_sha256=semantic_result["evidence_binding"][
-                "canonical_page_evidence_sha256"
-            ],
-        )
-        if semantic_result["metrics"]["branch_candidate_count"] == 0
-        else []
+    explicit_branch_indices_by_page: dict[int, set[int]] = {}
+    for candidate in [*semantic_result["regions"], *semantic_result["near_regions"]]:
+        for item in candidate["branch"]["evidence"]:
+            explicit_branch_indices_by_page.setdefault(item["page_sequence"], set()).add(
+                item["source_line_index"]
+            )
+    branchless_rescue_challengers = _branchless_rescue_challengers(
+        region_pages,
+        family_spec,
+        semantic_spec,
+        explicit_branch_indices_by_page=explicit_branch_indices_by_page,
+        source_page_evidence_sha256=semantic_result["evidence_binding"][
+            "canonical_page_evidence_sha256"
+        ],
     )
     pending_regions = []
     near_regions = []

@@ -13,6 +13,9 @@ import pytest
 
 from bctc_ai.evaluation import family_first_ocr_query_cache_v1 as cache_v1
 from bctc_ai.evaluation import family_first_region_retrieval_v1 as retrieval_v1
+from bctc_ai.evaluation.accounting_variant_graph_engine_v1 import (
+    normalize_vietnamese_anchor_v1,
+)
 from bctc_ai.evaluation.loan_enterprise_family12_graph_v1 import (
     LOAN_ENTERPRISE_FAMILY12_REGION_QUERY_SPEC_V2,
     LOAN_ENTERPRISE_FAMILY12_REGION_QUERY_TRUST_CLOSURE_V2,
@@ -174,6 +177,12 @@ def test_query_is_bank_blind_short_nfc_and_exact_local_semantic_proof() -> None:
     query = build_loan_enterprise_family12_region_query_spec_v2(_PROJECT_ROOT)
     family_spec = build_loan_enterprise_family12_spec_v1()
     branch_anchors = [item for item in query["anchors"] if item["anchor_id"].startswith("BRANCH_")]
+    owner_anchors = [
+        item for item in query["anchors"] if item["anchor_id"].startswith("OWNER_716_")
+    ]
+    role_anchors = [
+        item for item in query["anchors"] if item["anchor_id"].startswith("SEMANTIC_ROLE_")
+    ]
     local_anchor_ids = {
         anchor_id for group in query["local_required_groups"] for anchor_id in group["anchor_ids"]
     }
@@ -204,11 +213,22 @@ def test_query_is_bank_blind_short_nfc_and_exact_local_semantic_proof() -> None:
         "EXACT_FAMILY12_SEMANTIC_ROLE",
         "OWNER_716_LOCAL",
     }
-    assert all(
-        item["max_edit_distance"] == 0
-        for item in query["anchors"]
-        if item["anchor_id"] in local_anchor_ids
-    )
+    assert all(item["max_edit_distance"] == 0 for item in owner_anchors)
+    expected_role_policy = {
+        normalize_vietnamese_anchor_v1(alias): int(child["bounded_edit_on_exact_miss"])
+        for child in family_spec["children"]
+        for alias in child["aliases"]
+        if not (child["report_norm_id"] == 782 and normalize_vietnamese_anchor_v1(alias) == "khac")
+    }
+    assert {
+        normalize_vietnamese_anchor_v1(item["surface"]): item["max_edit_distance"]
+        for item in role_anchors
+    } == expected_role_policy
+    assert all(item["anchor_id"] in local_anchor_ids for item in [*owner_anchors, *role_anchors])
+    assert {item["group_id"]: item["priority"] for item in query["seed_groups"]} == {
+        "FAMILY12_OWNER_SEED": 2,
+        "FAMILY12_SHORT_BRANCH_SEED": 1,
+    }
     assert query["neighbor_pages_before"] == 2
     assert query["zero_hit_policy"] == "FULL_DOCUMENT_FALLBACK"
     assert all(not item["verified_historical_variants"] for item in query["anchors"])
@@ -277,10 +297,14 @@ def test_distant_owner_and_child_poison_cannot_validate_branch_region(tmp_path: 
     )
     outcome = _outcome(receipt)
 
-    assert outcome["selection_mode"] == "FULL_DOCUMENT_FALLBACK_NO_LOCALLY_VALIDATED_REGION"
-    assert outcome["selected_pages"] == list(range(1, 9))
-    assert outcome["requires_full_document_review"] is True
-    assert outcome["fallback_reason"] == outcome["selection_mode"]
+    assert outcome["selection_mode"] == "INDEXED_LOCALLY_VALIDATED_CANDIDATE_REGIONS"
+    assert outcome["selected_pages"] == [6, 7, 8]
+    poisoned_branch = next(
+        item
+        for item in outcome["candidate_region_results"]
+        if item["group_id"] == "FAMILY12_SHORT_BRANCH_SEED"
+    )
+    assert poisoned_branch["status"] == "REJECTED_LOCAL_REQUIRED_GROUPS"
 
 
 @pytest.mark.parametrize(
@@ -353,13 +377,75 @@ def test_zero_line_intervening_page_retains_supplied_page_axis(tmp_path: Path) -
     assert outcome["document_page_count"] == 3
 
 
+def test_owner_seed_retains_distant_branchless_multirole_challenger(tmp_path: Path) -> None:
+    receipt = _retrieve(
+        tmp_path / "distant-branchless.sqlite3",
+        {
+            1: ["Nội dung trước"],
+            2: ["Cho vay khách hàng", "Loại hình doanh nghiệp", "Công ty TNHH"],
+            3: ["Nội dung sau"],
+            4: ["Nội dung cách biệt"],
+            5: ["Nội dung cách biệt"],
+            6: ["Nội dung cách biệt"],
+            7: ["Nội dung cách biệt"],
+            8: ["Cho vay khách hàng", "Doanh nghiệp TNHH", "Công ty CP khxác"],
+            9: ["Nội dung sau vùng thiếu nhánh"],
+        },
+    )
+    outcome = _outcome(receipt)
+
+    assert outcome["selection_mode"] == "INDEXED_LOCALLY_VALIDATED_CANDIDATE_REGIONS"
+    assert outcome["selected_pages"] == [1, 2, 3, 6, 7, 8, 9]
+    distant = next(
+        item
+        for item in outcome["candidate_region_results"]
+        if item["group_id"] == "FAMILY12_OWNER_SEED" and item["seed_pages"] == [8]
+    )
+    assert distant["status"] == "ACCEPTED_LOCAL_REQUIRED_GROUPS"
+    distant_roles = [
+        item
+        for item in outcome["local_occurrences"]
+        if item["anchor_id"].startswith("SEMANTIC_ROLE_")
+        and item["start_locator"]["physical_page"] == 8
+    ]
+    assert len({item["anchor_id"].split("_ALIAS_")[0] for item in distant_roles}) == 2
+    assert any("BOUNDED_EDIT" in item["channels"] for item in distant_roles)
+
+
+def test_owner_seed_cannot_borrow_roles_across_structural_reset(tmp_path: Path) -> None:
+    receipt = _retrieve(
+        tmp_path / "distant-reset.sqlite3",
+        {
+            1: ["Nội dung trước"],
+            2: ["Cho vay khách hàng", "Loại hình doanh nghiệp", "Công ty TNHH"],
+            3: ["Nội dung sau"],
+            4: ["Nội dung cách biệt"],
+            5: ["Nội dung cách biệt"],
+            6: ["Nội dung cách biệt"],
+            7: ["Cho vay khách hàng"],
+            8: ["Tài sản cố định", "Doanh nghiệp TNHH", "Công ty CP khác"],
+            9: ["Nội dung sau"],
+        },
+    )
+    outcome = _outcome(receipt)
+
+    assert outcome["selected_pages"] == [1, 2, 3]
+    assert outcome["structural_reset_pages"] == [8]
+    fenced = next(
+        item
+        for item in outcome["candidate_region_results"]
+        if item["group_id"] == "FAMILY12_OWNER_SEED" and item["seed_pages"] == [7]
+    )
+    assert fenced["status"] == "REJECTED_LOCAL_REQUIRED_GROUPS"
+
+
 def test_query_rehashes_exact_adapter_and_rejects_dependency_drift(tmp_path: Path) -> None:
     query = build_loan_enterprise_family12_region_query_spec_v2(_PROJECT_ROOT)
     reference = query["semantic_assignment_adapter_ref"]
     adapter = _PROJECT_ROOT / reference["path"]
 
     assert retrieval_v1.family_first_region_query_spec_id_v2(query) == (
-        "fffrrv2:query:c4bf3ee6441b51644aea51043ab94bbd57a8704888bfc5874e126ce13d5c2dc4"
+        "fffrrv2:query:542e7b1fad5c1488b12019f94ed00d363a2e7b5d817fa00223a7c51522e15886"
     )
     assert reference["size_bytes"] == adapter.stat().st_size
     assert reference["sha256"] == hashlib.sha256(adapter.read_bytes()).hexdigest()
