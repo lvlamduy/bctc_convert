@@ -108,6 +108,30 @@ def test_v4_schema_exact_roles_partition_ambiguous_and_context_bound_sources() -
     assert roles["INTERBANK_LOAN_VND"]["role_kind"] == "ADDITIVE_CHILD"
     assert roles["INTERBANK_LOAN_FOREIGN_CURRENCY"]["role_kind"] == "ADDITIVE_CHILD"
 
+    bindings = {item["role"] for item in binding["role_bindings"]}
+    for target_role, ambiguous_role, owner_role in (
+        (
+            "EXPLICIT_INTERBANK_DEPOSIT_TOTAL",
+            "EXPLICIT_INTERBANK_DEPOSIT_TOTAL_AMBIGUOUS",
+            "INTERBANK_DEPOSIT_GROUP",
+        ),
+        (
+            "EXPLICIT_INTERBANK_LOAN_TOTAL",
+            "EXPLICIT_INTERBANK_LOAN_TOTAL_AMBIGUOUS",
+            "INTERBANK_LOAN_GROUP",
+        ),
+    ):
+        assert roles[target_role]["role_kind"] == "TOTAL"
+        assert all(
+            matcher["within_role"] == owner_role for matcher in roles[target_role]["matchers"]
+        )
+        assert roles[ambiguous_role]["role_kind"] == "NONADDITIVE_CHILD"
+        assert all(matcher["within_role"] is None for matcher in roles[ambiguous_role]["matchers"])
+        assert target_role not in source_only
+        assert ambiguous_role in source_only
+        assert {target_role, ambiguous_role} <= set(binding["ignored_roles"])
+        assert {target_role, ambiguous_role}.isdisjoint(bindings)
+
     assert "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_AMBIGUOUS" in source_only
     assert "INTERBANK_PROVISION_AMBIGUOUS" in source_only
     assert {

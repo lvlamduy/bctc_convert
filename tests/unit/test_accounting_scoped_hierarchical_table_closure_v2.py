@@ -339,6 +339,61 @@ def _vib_shaped_unlabeled_subtotal_pages() -> list[dict[str, object]]:
     return pages
 
 
+def _acb_explicit_totals_unlabeled_term_pages(
+    *,
+    deposit_total_prior: str = "110",
+    term_subtotal_current: str = "120",
+    term_subtotal_prior: str = "90",
+) -> list[dict[str, object]]:
+    pages = _pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "", ""),
+            ("Tiền gửi không kỳ hạn", "", ""),
+            ("Bằng VND", "30", "20"),
+            ("Bằng ngoại tệ", "0", "0"),
+            ("Tiền gửi có kỳ hạn", "", ""),
+            ("Bằng VND", "100", "80"),
+            ("Bằng ngoại tệ", "20", "10"),
+            ("Tổng tiền gửi tại các TCTD khác", "150", deposit_total_prior),
+            ("Cho vay các TCTD khác", "", ""),
+            ("Bằng VND", "50", "40"),
+            ("Tổng cho vay các TCTD khác", "50", "40"),
+            ("Tổng tiền gửi và cho vay các TCTD khác", "200", "150"),
+        ]
+    )
+    pages[0]["lines"][0]["vietocr_text"] = "Tiền gửi và cho vay các TCTD khác"
+    lines = pages[0]["lines"]
+    boundary_index = next(
+        index
+        for index, line in enumerate(lines)
+        if line["vietocr_text"] == "Tổng tiền gửi tại các TCTD khác"
+    )
+    boundary_top = lines[boundary_index]["bbox"][1]
+    lines[boundary_index:boundary_index] = [
+        _line(
+            10_001,
+            term_subtotal_current,
+            term_subtotal_current,
+            [610, boundary_top - 25, 700, boundary_top - 5],
+        ),
+        _line(
+            10_002,
+            term_subtotal_prior,
+            term_subtotal_prior,
+            [810, boundary_top - 25, 900, boundary_top - 5],
+        ),
+    ]
+    for ordinal, line in enumerate(lines):
+        line["line_ordinal"] = ordinal
+        line["sample_id"] = f"sample-{ordinal + 1:09d}"
+        line["crop_ref"] = {
+            "path": f"opaque/crop-{ordinal + 1:04d}.png",
+            "sha256": f"{ordinal + 1:064x}",
+            "size_bytes": 100 + ordinal,
+        }
+    return pages
+
+
 def _axis(
     pages: list[dict[str, object]],
     topology: dict[str, object] | None = None,
@@ -384,14 +439,18 @@ def _clear_detector_dash_rescue(
     pages: list[dict[str, object]],
     topology: dict[str, object],
     *,
+    base_row_axis: dict[str, object] | None = None,
     role: str,
 ) -> tuple[dict[str, object], ...]:
     parsed_pages = row_v1._pages(pages)
-    scan = topology_v1.build_accounting_family_topology_scan_v1(
-        row_v1._topology_pages(pages), topology
-    )
-    region = scan["regions"][0]
-    base = row_v1._build_axis(parsed_pages, scan, region, ())
+    if base_row_axis is None:
+        scan = topology_v1.build_accounting_family_topology_scan_v1(
+            row_v1._topology_pages(pages), topology
+        )
+        region = scan["regions"][0]
+        base = row_v1._build_axis(parsed_pages, scan, region, ())
+    else:
+        base = base_row_axis
     target = next(row for row in base["rows"] if row["role"] == role)
     centers, visible_cells = row_v1._resolved_page_grid_inputs(
         base["rows"], target, base["column_grids"]
@@ -669,6 +728,287 @@ def test_v4_unlabeled_deposit_and_loan_subtotals_are_exact_coverage_only() -> No
             closure, axis, topology, hierarchy
         )
         == closure
+    )
+
+
+def test_v4_acb_explicit_deposit_total_binds_exact_unlabeled_term_subtotal() -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+
+    axis, closure = _closure(
+        _acb_explicit_totals_unlabeled_term_pages(),
+        topology=topology,
+        hierarchy=hierarchy,
+    )
+
+    receipt = next(
+        item
+        for item in closure["coverage_receipt"]
+        if item["disposition"] == subject._UNLABELED_EXACT_SUBTOTAL_CORROBORATION
+        and item["role"] == "TERM_DEPOSIT_GROUP"
+    )
+    assert receipt["row_kind"] == "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
+    term = next(item for item in axis["role_occurrences"] if item["role"] == "TERM_DEPOSIT_GROUP")
+    assert receipt["occurrence_id"] == term["occurrence_id"]
+    boundary = next(
+        item
+        for item in axis["role_occurrences"]
+        if item["role"] == "EXPLICIT_INTERBANK_DEPOSIT_TOTAL"
+    )
+    assert boundary["source_scope_binding"]["binding_kind"] == (
+        "UNIQUE_EXACT_EXPLICIT_GROUP_TOTAL_INTERVAL"
+    )
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    assert (
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            closure, axis, topology, hierarchy
+        )
+        == closure
+    )
+
+
+def test_v4_acb_explicit_loan_total_owns_authenticated_current_dash_and_closes() -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+    pages = _acb_explicit_totals_unlabeled_term_pages()
+    lines = pages[0]["lines"]
+    loan_start = next(
+        index for index, line in enumerate(lines) if line["vietocr_text"] == "Cho vay các TCTD khác"
+    )
+    loan_vnd = next(
+        index
+        for index in range(loan_start + 1, len(lines))
+        if lines[index]["vietocr_text"] == "Bằng VND"
+    )
+    loan_total = next(
+        index
+        for index, line in enumerate(lines)
+        if line["vietocr_text"] == "Tổng cho vay các TCTD khác"
+    )
+    family_total = next(
+        index
+        for index, line in enumerate(lines)
+        if line["vietocr_text"] == "Tổng tiền gửi và cho vay các TCTD khác"
+    )
+    lines[loan_vnd + 1]["vietocr_text"] = "0"
+    lines[loan_vnd + 1]["numeric_recognition"]["raw_prediction"] = "0"
+    lines[loan_total + 1]["vietocr_text"] = ""
+    lines[loan_total + 1]["numeric_recognition"]["raw_prediction"] = ""
+    lines[family_total + 1]["vietocr_text"] = "150"
+    lines[family_total + 1]["numeric_recognition"]["raw_prediction"] = "150"
+    base_axis = _axis(pages, topology)
+    base_total = next(
+        row
+        for row in base_axis["row_axis"]["rows"]
+        if row["role"] == "EXPLICIT_INTERBANK_LOAN_TOTAL"
+    )
+    assert base_total["status"] == "PARTIAL_VISIBLE_VALUE_LANES_REQUIRES_PIXEL_RESCUE"
+    assert base_total["missing_column_ordinals"] == [0]
+    rescues = _clear_detector_dash_rescue(
+        pages,
+        topology,
+        base_row_axis=base_axis["row_axis"],
+        role="EXPLICIT_INTERBANK_LOAN_TOTAL",
+    )
+
+    axis, closure = _closure(
+        pages,
+        topology=topology,
+        hierarchy=hierarchy,
+        visible_dash_rescues=rescues,
+    )
+
+    total_occurrence = next(
+        occurrence
+        for occurrence in axis["role_occurrences"]
+        if occurrence["role"] == "EXPLICIT_INTERBANK_LOAN_TOTAL"
+    )
+    total_row = next(
+        row
+        for row in axis["row_axis"]["rows"]
+        if row["label_match"].get("occurrence_id") == total_occurrence["occurrence_id"]
+    )
+    assert total_row["status"] == "VISIBLE_VALUE_LANES_BOUND"
+    assert [value["parsed_token"]["classification"] for value in total_row["values"]] == [
+        "DASH_ZERO",
+        "SIGNED_NUMBER",
+    ]
+    assert [value["parsed_token"]["coefficient"] for value in total_row["values"]] == [0, 40]
+    assert not any(
+        occurrence["role"] == "EXPLICIT_INTERBANK_LOAN_TOTAL_AMBIGUOUS"
+        for occurrence in axis["role_occurrences"]
+    )
+    loan_equation = next(
+        equation
+        for equation in closure["equations"]["global"]
+        if equation["result_role"] == "INTERBANK_LOAN_GROUP"
+    )
+    assert loan_equation["status"] == "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+    loan = next(
+        record for record in closure["resolved_roles"] if record["role"] == "INTERBANK_LOAN_GROUP"
+    )
+    assert (
+        loan["source"]["record"]["label_match"]["occurrence_id"]
+        == (total_occurrence["occurrence_id"])
+    )
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    assert (
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            closure, axis, topology, hierarchy
+        )
+        == closure
+    )
+
+
+@pytest.mark.parametrize(
+    "attack",
+    [
+        "MISSING_TOTAL",
+        "ONE_EDIT_TOTAL",
+        "PARTIAL_TOTAL",
+        "MISMATCHING_TOTAL",
+        "DUPLICATE_TOTAL",
+        "NONEXACT_TERM_SUBTOTAL",
+    ],
+)
+def test_v4_term_subtotal_requires_one_complete_exact_deposit_total_boundary(
+    attack: str,
+) -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+    pages = _acb_explicit_totals_unlabeled_term_pages(
+        deposit_total_prior=""
+        if attack == "PARTIAL_TOTAL"
+        else "109"
+        if attack == "MISMATCHING_TOTAL"
+        else "110",
+        term_subtotal_current="121" if attack == "NONEXACT_TERM_SUBTOTAL" else "120",
+    )
+    lines = pages[0]["lines"]
+    boundary_index = next(
+        index
+        for index, line in enumerate(lines)
+        if line["vietocr_text"] == "Tổng tiền gửi tại các TCTD khác"
+    )
+    if attack == "MISSING_TOTAL":
+        del lines[boundary_index : boundary_index + 3]
+    elif attack == "ONE_EDIT_TOTAL":
+        lines[boundary_index]["vietocr_text"] = "Tổng tiền gửi tại các TCTD kháx"
+    elif attack == "DUPLICATE_TOTAL":
+        duplicate = copy.deepcopy(lines[boundary_index : boundary_index + 3])
+        for line in duplicate:
+            line["bbox"][1] += 22
+            line["bbox"][3] += 22
+        lines[boundary_index + 3 : boundary_index + 3] = duplicate
+    for ordinal, line in enumerate(lines):
+        line["line_ordinal"] = ordinal
+        line["sample_id"] = f"sample-{ordinal + 1:09d}"
+        line["crop_ref"] = {
+            "path": f"opaque/crop-{ordinal + 1:04d}.png",
+            "sha256": f"{ordinal + 1:064x}",
+            "size_bytes": 100 + ordinal,
+        }
+
+    _axis_value, closure = _closure(pages, topology=topology, hierarchy=hierarchy)
+
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert not any(
+        item["disposition"] == subject._UNLABELED_EXACT_SUBTOTAL_CORROBORATION
+        and item["role"] == "TERM_DEPOSIT_GROUP"
+        for item in closure["coverage_receipt"]
+    )
+    assert any(
+        item["row_kind"] == "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
+        and item["disposition"] == "UNRESOLVED_SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER"
+        for item in closure["coverage_receipt"]
+    )
+
+
+@pytest.mark.parametrize("collision", ["DEMAND_EQUALS_TERM", "DEPOSIT_EQUALS_TERM"])
+def test_v4_term_subtotal_equal_cross_equation_vector_stays_unresolved(
+    collision: str,
+) -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+    pages = _acb_explicit_totals_unlabeled_term_pages()
+    lines = pages[0]["lines"]
+    demand_index = next(
+        index for index, line in enumerate(lines) if line["vietocr_text"] == "Tiền gửi không kỳ hạn"
+    )
+    demand_vnd_index = next(
+        index
+        for index in range(demand_index + 1, len(lines))
+        if lines[index]["vietocr_text"] == "Bằng VND"
+    )
+    demand_fx_index = next(
+        index
+        for index in range(demand_vnd_index + 1, len(lines))
+        if lines[index]["vietocr_text"] == "Bằng ngoại tệ"
+    )
+
+    def replace_row_values(label_index: int, current: str, prior: str) -> None:
+        for offset, replacement in ((1, current), (2, prior)):
+            lines[label_index + offset]["vietocr_text"] = replacement
+            lines[label_index + offset]["numeric_recognition"]["raw_prediction"] = replacement
+
+    if collision == "DEMAND_EQUALS_TERM":
+        replace_row_values(demand_vnd_index, "100", "80")
+        replace_row_values(demand_fx_index, "20", "10")
+        deposit_values = ("240", "180")
+        family_values = ("290", "220")
+    else:
+        replace_row_values(demand_vnd_index, "0", "0")
+        replace_row_values(demand_fx_index, "0", "0")
+        deposit_values = ("120", "90")
+        family_values = ("170", "130")
+    deposit_index = next(
+        index
+        for index, line in enumerate(lines)
+        if line["vietocr_text"] == "Tổng tiền gửi tại các TCTD khác"
+    )
+    family_index = next(
+        index
+        for index, line in enumerate(lines)
+        if line["vietocr_text"] == "Tổng tiền gửi và cho vay các TCTD khác"
+    )
+    replace_row_values(deposit_index, *deposit_values)
+    replace_row_values(family_index, *family_values)
+
+    _axis_value, closure = _closure(pages, topology=topology, hierarchy=hierarchy)
+
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert not any(
+        item["disposition"] == subject._UNLABELED_EXACT_SUBTOTAL_CORROBORATION
+        and item["role"] == "TERM_DEPOSIT_GROUP"
+        for item in closure["coverage_receipt"]
     )
 
 

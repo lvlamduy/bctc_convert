@@ -919,13 +919,24 @@ def _candidate_population_signature(candidate: dict[str, Any]) -> dict[str, Any]
     }
 
 
-def _candidate_role_richness_set(candidate: Mapping[str, Any]) -> set[str]:
-    """Return semantic decomposition roles, excluding root presentation aliases."""
+def _candidate_role_richness_set(
+    candidate: Mapping[str, Any], *, canonicalize_all_presentations: bool = False
+) -> set[str] | None:
+    """Return semantic roles after policy-scoped presentation canonicalization."""
 
     closure = candidate.get("additive_closure")
     resolved = closure.get("resolved_roles") if type(closure) is dict else None
     if type(resolved) is not list:
-        return set()
+        return None if canonicalize_all_presentations else set()
+    if canonicalize_all_presentations and (
+        any(
+            type(record) is not dict or type(record.get("role")) is not str or not record["role"]
+            for record in resolved
+        )
+        or len([record["role"] for record in resolved])
+        != len({record["role"] for record in resolved})
+    ):
+        return None
     roles = {
         record["role"]
         for record in resolved
@@ -935,7 +946,39 @@ def _candidate_role_richness_set(candidate: Mapping[str, Any]) -> set[str]:
     equations = closure.get("equations")
     global_equations = equations.get("global") if type(equations) is dict else None
     if type(family_id) is not str or type(global_equations) is not list:
-        return roles
+        return None if canonicalize_all_presentations else roles
+    if canonicalize_all_presentations:
+        if not global_equations or any(type(equation) is not dict for equation in global_equations):
+            return None
+        result_roles = [equation.get("result_role") for equation in global_equations]
+        if any(type(role) is not str or not role for role in result_roles) or len(
+            result_roles
+        ) != len(set(result_roles)):
+            return None
+        presentation_aliases: list[str] = []
+        alias_results: dict[str, str] = {}
+        for equation in global_equations:
+            visible_roles = equation.get("visible_result_roles")
+            if (
+                type(visible_roles) is not list
+                or any(type(role) is not str or not role for role in visible_roles)
+                or len(visible_roles) != len(set(visible_roles))
+            ):
+                return None
+            for role in visible_roles:
+                if role != equation["result_role"]:
+                    presentation_aliases.append(role)
+                    alias_results[role] = equation["result_role"]
+        if (
+            len(presentation_aliases) != len(set(presentation_aliases))
+            or set(presentation_aliases) & set(result_roles)
+            or any(
+                alias in roles and result_role not in roles
+                for alias, result_role in alias_results.items()
+            )
+        ):
+            return None
+        return roles - set(presentation_aliases)
     root_equations = [
         equation
         for equation in global_equations
@@ -1178,6 +1221,9 @@ def _select_candidate_evidence(
     candidate_evidence: list[dict[str, Any]], evaluation_spec: dict[str, Any]
 ) -> tuple[dict[str, Any] | None, list[str]]:
     ready = [candidate for candidate in candidate_evidence if not candidate["reasons"]]
+    canonicalize_all_presentations = (
+        evaluation_spec.get("format_version") == EVALUATION_SPEC_FORMAT_V4
+    )
     if (
         ready
         and evaluation_spec.get("format_version") == EVALUATION_SPEC_FORMAT_V4
@@ -1220,13 +1266,41 @@ def _select_candidate_evidence(
             threat_signature = _candidate_population_signature(threat)
             if not gap_reasons:
                 continue
-            threat_roles = _candidate_role_richness_set(threat)
+            threat_roles = _candidate_role_richness_set(
+                threat,
+                canonicalize_all_presentations=canonicalize_all_presentations,
+            )
+            if threat_roles is None:
+                blockers.extend(
+                    "COMPATIBLE_CANDIDATE_NUMERIC_SCHEMA_GAP_VETO:"
+                    f"READY_CANDIDATE_{admitted['candidate_ordinal'] + 1}:"
+                    f"THREAT_CANDIDATE_{threat['candidate_ordinal'] + 1}:"
+                    f"THREAT_PAGES_{pages(threat)}:{reason}"
+                    for admitted in ready
+                    if (
+                        (
+                            threat_signature is not None
+                            and (admitted_signature := _candidate_population_signature(admitted))
+                            is not None
+                            and same_typed_json_v1(admitted_signature, threat_signature)
+                        )
+                        or _threat_matches_ready_component_population(admitted, threat)
+                    )
+                    for reason in gap_reasons
+                )
+                continue
             for admitted in ready:
                 admitted_signature = _candidate_population_signature(admitted)
+                admitted_roles = _candidate_role_richness_set(
+                    admitted,
+                    canonicalize_all_presentations=canonicalize_all_presentations,
+                )
                 full_root_population_match = (
                     threat_signature is not None
                     and admitted_signature is not None
-                    and _candidate_role_richness_set(admitted) <= threat_roles
+                    and admitted_roles is not None
+                    and threat_roles is not None
+                    and admitted_roles <= threat_roles
                     and same_typed_json_v1(admitted_signature, threat_signature)
                 )
                 if not full_root_population_match and not (
@@ -1254,7 +1328,13 @@ def _select_candidate_evidence(
         if evaluation_spec.get("candidate_selection_policy") == (
             "SAME_POPULATION_STRICT_ROLE_SUPERSET_WITH_EXACT_PERIOD_UNIT_ROOT_TOTAL"
         ):
-            role_sets = [_candidate_role_richness_set(candidate) for candidate in ready]
+            role_sets = [
+                _candidate_role_richness_set(
+                    candidate,
+                    canonicalize_all_presentations=canonicalize_all_presentations,
+                )
+                for candidate in ready
+            ]
             population_signatures = [
                 _candidate_population_signature(candidate) for candidate in ready
             ]
@@ -1263,6 +1343,8 @@ def _select_candidate_evidence(
                 for index, candidate in enumerate(ready)
                 if not any(
                     other_index != index
+                    and role_sets[index] is not None
+                    and other is not None
                     and role_sets[index] < other
                     and population_signatures[index] is not None
                     and population_signatures[other_index] is not None

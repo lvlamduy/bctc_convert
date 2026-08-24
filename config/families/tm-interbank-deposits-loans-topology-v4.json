@@ -213,6 +213,36 @@
       "matchers": [
         {
           "aliases": [
+            "Tổng tiền gửi tại các TCTD khác",
+            "Tổng tiền gửi tại TCTD khác",
+            "Tổng tiền gửi tại các tổ chức tín dụng khác"
+          ],
+          "within_role": "INTERBANK_DEPOSIT_GROUP"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EXPLICIT_INTERBANK_DEPOSIT_TOTAL",
+      "role_kind": "TOTAL"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Tổng tiền gửi tại các TCTD khác",
+            "Tổng tiền gửi tại TCTD khác",
+            "Tổng tiền gửi tại các tổ chức tín dụng khác"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EXPLICIT_INTERBANK_DEPOSIT_TOTAL_AMBIGUOUS",
+      "role_kind": "NONADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
             "Cho vay các TCTD khác",
             "Cho vay TCTD khác",
             "Cho vay các tổ chức tín dụng khác",
@@ -381,6 +411,40 @@
       "presence": "OPTIONAL",
       "role": "INTERBANK_LOAN_OTHER",
       "role_kind": "ADDITIVE_CHILD"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Tổng cho vay các TCTD khác",
+            "Tổng cho vay TCTD khác",
+            "Tổng cho vay các tổ chức tín dụng khác",
+            "Tổng cấp tín dụng cho các TCTD khác",
+            "Tổng cấp tín dụng cho các tổ chức tín dụng khác"
+          ],
+          "within_role": "INTERBANK_LOAN_GROUP"
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EXPLICIT_INTERBANK_LOAN_TOTAL",
+      "role_kind": "TOTAL"
+    },
+    {
+      "matchers": [
+        {
+          "aliases": [
+            "Tổng cho vay các TCTD khác",
+            "Tổng cho vay TCTD khác",
+            "Tổng cho vay các tổ chức tín dụng khác",
+            "Tổng cấp tín dụng cho các TCTD khác",
+            "Tổng cấp tín dụng cho các tổ chức tín dụng khác"
+          ],
+          "within_role": null
+        }
+      ],
+      "presence": "OPTIONAL",
+      "role": "EXPLICIT_INTERBANK_LOAN_TOTAL_AMBIGUOUS",
+      "role_kind": "NONADDITIVE_CHILD"
     },
     {
       "matchers": [

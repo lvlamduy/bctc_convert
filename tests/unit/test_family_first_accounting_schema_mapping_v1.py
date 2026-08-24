@@ -890,11 +890,16 @@ def test_tracked_interbank_v5_binds_the_full_reviewed_role_to_rnid_matrix() -> N
     assert binding["ignored_roles"] == [
         "DEMAND_DEPOSIT_GOLD_AND_FOREIGN_CURRENCY",
         "TERM_DEPOSIT_GOLD_AND_FOREIGN_CURRENCY",
+        "EXPLICIT_INTERBANK_DEPOSIT_TOTAL",
+        "EXPLICIT_INTERBANK_DEPOSIT_TOTAL_AMBIGUOUS",
         "INTERBANK_LOAN_GOLD_AND_FOREIGN_CURRENCY",
         "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_AMBIGUOUS",
+        "EXPLICIT_INTERBANK_LOAN_TOTAL",
+        "EXPLICIT_INTERBANK_LOAN_TOTAL_AMBIGUOUS",
         "INTERBANK_PROVISION_AMBIGUOUS",
         "EXPLICIT_FAMILY_TOTAL",
     ]
+    assert not set(binding["ignored_roles"]) & set(direct)
     assert aggregates == []
 
     attacked_without_parents = copy.deepcopy(binding)

@@ -1646,6 +1646,145 @@ def test_same_population_summary_control_yields_to_unique_role_rich_detail() -> 
     assert reasons == []
 
 
+@pytest.mark.parametrize("include_root_alias", [False, True])
+def test_v4_all_equation_presentation_totals_do_not_inflate_role_richness(
+    include_root_alias: bool,
+) -> None:
+    aliases = ["EXPLICIT_DEPOSIT_TOTAL", "EXPLICIT_LOAN_TOTAL"]
+    if include_root_alias:
+        aliases.append("EXPLICIT_FAMILY_TOTAL")
+    summary = _ready_hierarchical_candidate(
+        [*aliases, "DEPOSIT_GROUP", "LOAN_GROUP", "FAMILY"],
+        candidate_ordinal=0,
+    )
+    detail = _ready_hierarchical_candidate(
+        ["DEPOSIT_VND", "DEPOSIT_GROUP", "LOAN_VND", "LOAN_GROUP", "FAMILY"],
+        candidate_ordinal=1,
+    )
+    equations = {
+        "global": [
+            {
+                "result_role": "DEPOSIT_GROUP",
+                "visible_result_roles": ["DEPOSIT_GROUP", "EXPLICIT_DEPOSIT_TOTAL"],
+            },
+            {
+                "result_role": "LOAN_GROUP",
+                "visible_result_roles": ["LOAN_GROUP", "EXPLICIT_LOAN_TOTAL"],
+            },
+            {
+                "result_role": "FAMILY",
+                "visible_result_roles": ["FAMILY", "EXPLICIT_FAMILY_TOTAL"],
+            },
+            {
+                "result_role": "OPTIONAL_UNOBSERVED_GROUP",
+                "visible_result_roles": [
+                    "OPTIONAL_UNOBSERVED_GROUP",
+                    "OPTIONAL_UNOBSERVED_TOTAL",
+                ],
+            },
+        ]
+    }
+    for candidate in (summary, detail):
+        candidate["additive_closure"]["equations"] = copy.deepcopy(equations)
+    policy = {
+        **_strict_same_population_selection_policy(),
+        "format_version": subject.EVALUATION_SPEC_FORMAT_V4,
+    }
+
+    selected, reasons = subject._select_candidate_evidence([summary, detail], policy)
+
+    assert selected is detail
+    assert reasons == []
+
+
+def test_v4_same_semantic_roles_with_or_without_presentation_totals_are_equal() -> None:
+    base = _ready_hierarchical_candidate(
+        ["DEPOSIT_GROUP", "LOAN_GROUP", "FAMILY"], candidate_ordinal=0
+    )
+    aliases = _ready_hierarchical_candidate(
+        [
+            "EXPLICIT_DEPOSIT_TOTAL",
+            "EXPLICIT_LOAN_TOTAL",
+            "EXPLICIT_FAMILY_TOTAL",
+            "DEPOSIT_GROUP",
+            "LOAN_GROUP",
+            "FAMILY",
+        ],
+        candidate_ordinal=1,
+    )
+    equations = {
+        "global": [
+            {
+                "result_role": "DEPOSIT_GROUP",
+                "visible_result_roles": ["DEPOSIT_GROUP", "EXPLICIT_DEPOSIT_TOTAL"],
+            },
+            {
+                "result_role": "LOAN_GROUP",
+                "visible_result_roles": ["LOAN_GROUP", "EXPLICIT_LOAN_TOTAL"],
+            },
+            {
+                "result_role": "FAMILY",
+                "visible_result_roles": ["FAMILY", "EXPLICIT_FAMILY_TOTAL"],
+            },
+        ]
+    }
+    for candidate in (base, aliases):
+        candidate["additive_closure"]["equations"] = copy.deepcopy(equations)
+
+    selected, reasons = subject._select_candidate_evidence(
+        [base, aliases],
+        {
+            **_strict_same_population_selection_policy(),
+            "format_version": subject.EVALUATION_SPEC_FORMAT_V4,
+        },
+    )
+
+    assert selected is None
+    assert reasons == ["MULTIPLE_DOWNSTREAM_EVIDENCE_COMPLETE_TOPOLOGY_REGIONS"]
+
+
+@pytest.mark.parametrize("malformation", ["REUSED_ALIAS", "MISSING_RESULT"])
+def test_v4_malformed_presentation_metadata_is_noncomparable(malformation: str) -> None:
+    observed_alias = "PRESENTATION_ALIAS" if malformation == "REUSED_ALIAS" else "FAMILY_ALIAS"
+    first = _ready_hierarchical_candidate(
+        [observed_alias, "DEPOSIT_GROUP", "LOAN_GROUP", "FAMILY"], candidate_ordinal=0
+    )
+    second = _ready_hierarchical_candidate(
+        [observed_alias, "DEPOSIT_VND", "DEPOSIT_GROUP", "LOAN_GROUP", "FAMILY"],
+        candidate_ordinal=1,
+    )
+    equations = [
+        {
+            "result_role": "DEPOSIT_GROUP",
+            "visible_result_roles": ["DEPOSIT_GROUP", "PRESENTATION_ALIAS"],
+        },
+        {
+            "result_role": "LOAN_GROUP",
+            "visible_result_roles": [
+                "LOAN_GROUP",
+                "PRESENTATION_ALIAS" if malformation == "REUSED_ALIAS" else "LOAN_ALIAS",
+            ],
+        },
+        {
+            "result_role": "MISSING" if malformation == "MISSING_RESULT" else "FAMILY",
+            "visible_result_roles": ["FAMILY_ALIAS"],
+        },
+    ]
+    for candidate in (first, second):
+        candidate["additive_closure"]["equations"] = {"global": copy.deepcopy(equations)}
+
+    selected, reasons = subject._select_candidate_evidence(
+        [first, second],
+        {
+            **_strict_same_population_selection_policy(),
+            "format_version": subject.EVALUATION_SPEC_FORMAT_V4,
+        },
+    )
+
+    assert selected is None
+    assert reasons == ["MULTIPLE_DOWNSTREAM_EVIDENCE_COMPLETE_TOPOLOGY_REGIONS"]
+
+
 @pytest.mark.parametrize("mutation", ["ROOT", "PERIOD", "UNIT"])
 def test_root_presentation_alias_never_bypasses_population_signature(
     mutation: str,
@@ -2026,6 +2165,15 @@ def test_v4_prepruning_candidates_reach_strict_downstream_comparator(monkeypatch
             candidate_ordinal=1,
         ),
     }
+    for candidate in candidate_by_region.values():
+        candidate["additive_closure"]["equations"] = {
+            "global": [
+                {
+                    "result_role": "FAMILY",
+                    "visible_result_roles": ["FAMILY"],
+                }
+            ]
+        }
     occurrence_calls: list[dict[str, object]] = []
 
     monkeypatch.setattr(

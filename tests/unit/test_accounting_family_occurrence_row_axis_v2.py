@@ -982,6 +982,77 @@ def _build_f3(pages: list[dict[str, object]]) -> tuple[dict, dict]:
     return scan, axis
 
 
+def _f3_explicit_group_total_rows() -> list[tuple[str, str, str]]:
+    return [
+        ("Tiền gửi tại các TCTD khác", "150", "130"),
+        ("Tiền gửi không kỳ hạn", "30", "20"),
+        ("Bằng VND", "20", "10"),
+        ("Bằng ngoại tệ", "10", "10"),
+        ("Tiền gửi có kỳ hạn", "120", "110"),
+        ("Bằng VND", "100", "90"),
+        ("Bằng ngoại tệ", "20", "20"),
+        ("Tổng tiền gửi tại các TCTD khác", "150", "130"),
+        ("Cho vay các TCTD khác", "50", "40"),
+        ("Bằng VND", "50", "40"),
+        ("Tổng cho vay các TCTD khác", "50", "40"),
+        ("Tổng tiền gửi và cho vay các TCTD khác", "200", "170"),
+    ]
+
+
+def test_f3_explicit_group_totals_bind_once_to_exact_nearest_parent_intervals() -> None:
+    _scan, axis = _build_f3(_f3_pages(_f3_explicit_group_total_rows()))
+
+    totals = [
+        item
+        for item in axis["role_occurrences"]
+        if item["role"] in {"EXPLICIT_INTERBANK_DEPOSIT_TOTAL", "EXPLICIT_INTERBANK_LOAN_TOTAL"}
+    ]
+    assert [item["role"] for item in totals] == [
+        "EXPLICIT_INTERBANK_DEPOSIT_TOTAL",
+        "EXPLICIT_INTERBANK_LOAN_TOTAL",
+    ]
+    assert not any(item["role"].endswith("_TOTAL_AMBIGUOUS") for item in axis["role_occurrences"])
+    assert [item["source_scope_binding"]["binding_kind"] for item in totals] == [
+        "UNIQUE_EXACT_EXPLICIT_GROUP_TOTAL_INTERVAL",
+        "UNIQUE_EXACT_EXPLICIT_GROUP_TOTAL_INTERVAL",
+    ]
+    assert [item["scope_owner_role"] for item in totals] == [
+        "INTERBANK_DEPOSIT_GROUP",
+        "INTERBANK_LOAN_GROUP",
+    ]
+    assert [
+        item["source_scope_binding"]["geometry"]["anchor_occurrence_id"] for item in totals
+    ] == [item["scope_owner_occurrence_id"] for item in totals]
+    assert totals[0]["label_match"]["retrieval_role"] == (
+        "EXPLICIT_INTERBANK_DEPOSIT_TOTAL_AMBIGUOUS"
+    )
+    assert totals[0]["label_match"]["retrieval_within_role"] is None
+    assert totals[1]["label_match"]["retrieval_role"] == "EXPLICIT_INTERBANK_LOAN_TOTAL"
+    assert totals[1]["label_match"]["retrieval_within_role"] == "INTERBANK_LOAN_GROUP"
+
+
+def test_f3_contextual_explicit_total_receipt_binds_exact_parent_occurrence_id() -> None:
+    _scan, axis = _build_f3(_f3_pages(_f3_explicit_group_total_rows()))
+    loan_total = next(
+        item for item in axis["role_occurrences"] if item["role"] == "EXPLICIT_INTERBANK_LOAN_TOTAL"
+    )
+    receipt = copy.deepcopy(loan_total["source_scope_binding"])
+    receipt["geometry"]["anchor_occurrence_id"] = "aforav2:occurrence:" + "0" * 64
+    material = copy.deepcopy(receipt)
+    material.pop("binding_id")
+    receipt["binding_id"] = "aforav2:scope-binding:" + canonical_json_sha256_v1(material)
+
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="semantic matrix",
+    ):
+        subject._validate_source_scope_binding(
+            receipt,
+            label_match=loan_total["label_match"],
+            role=loan_total["role"],
+        )
+
+
 def _extreme_margin_fixture_pages(
     *,
     candidate_bbox: list[int] | None = None,

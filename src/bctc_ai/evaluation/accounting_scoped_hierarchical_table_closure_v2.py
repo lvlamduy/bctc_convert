@@ -216,8 +216,8 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEPENDENCIES = {
     "occurrence_row_axis_v2": {
         "path": "src/bctc_ai/evaluation/accounting_family_occurrence_row_axis_v2.py",
-        "sha256": "2e142bbf95112f9d2c6d3f512bc5904ee2c1af582b67a392835a557b0f89466f",
-        "size_bytes": 225_801,
+        "sha256": "7f608e22a4f511f63284077e62f1f70472dba86fcce8efeca10480c69e45ae05",
+        "size_bytes": 247_745,
     },
     "topology_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
@@ -1715,7 +1715,7 @@ def _numeric_source_candidate_axis(
     )
 
 
-def _unlabeled_exact_subtotal_for_equation(
+def _legacy_unlabeled_exact_subtotal_for_equation(
     *,
     family_id: str,
     equation_record: Mapping[str, Any],
@@ -1725,13 +1725,7 @@ def _unlabeled_exact_subtotal_for_equation(
     role_occurrences: Sequence[Mapping[str, Any]],
     source_candidates: Sequence[Mapping[str, Any]],
 ) -> dict[str, Any] | None:
-    """Recognize one exact printed subtotal as coverage/corroboration only.
-
-    This is deliberately Family-3-specific and does not create a source role.
-    The target remains the exact component-derived record.  A partial, off-lane,
-    duplicate, mismatching, reordered, or out-of-subtree row receives no
-    authority and therefore keeps its ordinary source-only/trailing veto.
-    """
+    """Preserve the reviewed V4 deposit/loan subtotal path unchanged."""
 
     target_role = equation_record.get("result_role")
     target = resolved_by_role.get(target_role)
@@ -1915,6 +1909,389 @@ def _unlabeled_exact_subtotal_for_equation(
     }
 
 
+def _unlabeled_exact_subtotal_for_equation(
+    *,
+    family_id: str,
+    equation_record: Mapping[str, Any],
+    numeric_sample_universe: Sequence[Mapping[str, Any]],
+    reserved_source_keys: set[tuple[str, str | int]],
+    resolved_by_role: Mapping[str, Mapping[str, Any]],
+    role_occurrences: Sequence[Mapping[str, Any]],
+    source_candidates: Sequence[Mapping[str, Any]],
+    equation_records: Sequence[Mapping[str, Any]] | None = None,
+) -> dict[str, Any] | None:
+    """Recognize one exact printed subtotal as coverage/corroboration only.
+
+    The target remains the exact component-derived record; this projector never
+    creates a schema role.  Legacy deposit/loan rules remain isolated above.
+    The only new target is the term-deposit subgroup, and it requires the typed,
+    replayed explicit deposit-total boundary observed in the reviewed Family-3
+    layout.  A partial, labeled, duplicate, mismatching, reordered, or
+    out-of-interval row keeps its ordinary source-only/trailing veto.
+    """
+
+    target_role = equation_record.get("result_role")
+    if target_role in _UNLABELED_EXACT_SUBTOTAL_TARGET_ROLES:
+        return _legacy_unlabeled_exact_subtotal_for_equation(
+            family_id=family_id,
+            equation_record=equation_record,
+            numeric_sample_universe=numeric_sample_universe,
+            reserved_source_keys=reserved_source_keys,
+            resolved_by_role=resolved_by_role,
+            role_occurrences=role_occurrences,
+            source_candidates=source_candidates,
+        )
+    if target_role != "TERM_DEPOSIT_GROUP":
+        return None
+    target = resolved_by_role.get(target_role)
+    if (
+        family_id != "INTERBANK_DEPOSITS_AND_LOANS"
+        or equation_record.get("status") != "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM"
+        or not equation_record.get("component_roles_present")
+        or equation_record.get("selected_trailing_candidate_ordinal") is not None
+        or type(target) is not dict
+        or target.get("source") is not None
+        or target.get("resolution_kind") != "DERIVED_EXACT_COMPONENT_SUM"
+        or target.get("component_roles") != equation_record["component_roles_present"]
+        or type(target.get("values")) is not list
+        or not target["values"]
+    ):
+        return None
+    all_target_occurrences = [
+        occurrence for occurrence in role_occurrences if occurrence.get("role") == target_role
+    ]
+    target_occurrences = [
+        occurrence
+        for occurrence in all_target_occurrences
+        if occurrence.get("role_kind") == "STRUCTURAL_GROUP"
+        and occurrence_v2._match_has_effective_exact_source_authority(  # noqa: SLF001
+            occurrence.get("label_match", {})
+        )
+    ]
+    # Preserve the pre-existing flat deposit layout where the provider prints
+    # demand/term subgroups without a deposit heading.  Every other equation
+    # requires one physical structural target occurrence.
+    flat_deposit_layout = target_role == "INTERBANK_DEPOSIT_GROUP" and not all_target_occurrences
+    if (
+        len(all_target_occurrences) > 1
+        or (bool(all_target_occurrences) != bool(target_occurrences))
+        or (not target_occurrences and not flat_deposit_layout)
+    ):
+        return None
+    target_occurrence = target_occurrences[0] if target_occurrences else None
+    if flat_deposit_layout and len(equation_record["component_roles_present"]) < 2:
+        return None
+    target_match = target_occurrence.get("label_match") if target_occurrence is not None else None
+    target_bbox = target_match.get("source_label_bbox") if type(target_match) is dict else None
+    if target_occurrence is not None and (
+        type(target_bbox) is not list
+        or len(target_bbox) != 4
+        or any(type(item) is not int for item in target_bbox)
+    ):
+        return None
+    component_sample_ids = list(
+        dict.fromkeys(
+            sample_id
+            for value in target["values"]
+            for sample_id in value.get("source_sample_ids", [])
+        )
+    )
+    sample_by_id = {sample["sample_id"]: sample for sample in numeric_sample_universe}
+    component_samples = [sample_by_id.get(sample_id) for sample_id in component_sample_ids]
+    if (
+        not component_sample_ids
+        or any(type(sample) is not dict for sample in component_samples)
+        or any(
+            sample["owner_kind"] in {"SOURCE_ONLY_INTERNAL_CLUSTER", "TRAILING_VALUE_ROW"}
+            for sample in component_samples
+        )
+        or len({sample["page_sequence"] for sample in component_samples}) != 1
+    ):
+        return None
+    page_sequence = component_samples[0]["page_sequence"]
+    if target_match is not None and target_match["page_sequence"] != page_sequence:
+        return None
+    component_top = max(sample["bbox"][1] for sample in component_samples)
+    component_bottom = max(sample["bbox"][3] for sample in component_samples)
+    if target_bbox is not None and target_bbox[1] >= component_top:
+        return None
+
+    occurrence_by_id = {
+        occurrence["occurrence_id"]: occurrence
+        for occurrence in role_occurrences
+        if type(occurrence.get("occurrence_id")) is str
+    }
+    component_roles = set(equation_record["component_roles_present"])
+    component_occurrences = [
+        occurrence
+        for occurrence in role_occurrences
+        if occurrence.get("role") in component_roles
+        and occurrence.get("label_match", {}).get("page_sequence") == page_sequence
+    ]
+    if any(
+        len(
+            [
+                occurrence
+                for occurrence in component_occurrences
+                if occurrence["role"] == component_role
+            ]
+        )
+        != 1
+        or not occurrence_v2._match_has_effective_exact_source_authority(  # noqa: SLF001
+            next(
+                occurrence
+                for occurrence in component_occurrences
+                if occurrence["role"] == component_role
+            )["label_match"]
+        )
+        for component_role in component_roles
+    ):
+        return None
+    component_occurrence_ids = {occurrence["occurrence_id"] for occurrence in component_occurrences}
+
+    def descends_from_target(occurrence: Mapping[str, Any]) -> bool:
+        if target_occurrence is None:
+            return False
+        cursor = occurrence
+        visited: set[str] = set()
+        while type(owner_id := cursor.get("scope_owner_occurrence_id")) is str:
+            if owner_id == target_occurrence["occurrence_id"]:
+                return True
+            if owner_id in visited or owner_id not in occurrence_by_id:
+                return False
+            visited.add(owner_id)
+            cursor = occurrence_by_id[owner_id]
+        return False
+
+    component_owned_sample_ids = {
+        sample["sample_id"]
+        for sample in numeric_sample_universe
+        if sample.get("owner_kind") == "ROLE_OCCURRENCE"
+        and sample.get("owner_id") in component_occurrence_ids
+    }
+    if (
+        any(not descends_from_target(occurrence) for occurrence in component_occurrences)
+        or set(component_sample_ids) != component_owned_sample_ids
+    ):
+        return None
+
+    demand = resolved_by_role.get("DEMAND_DEPOSIT_GROUP")
+    if type(demand) is dict and _same_values(demand.get("values", []), target["values"]):
+        return None
+
+    explicit_deposit_total_occurrences = [
+        occurrence
+        for occurrence in role_occurrences
+        if occurrence.get("role")
+        in {
+            "EXPLICIT_INTERBANK_DEPOSIT_TOTAL",
+            "EXPLICIT_INTERBANK_DEPOSIT_TOTAL_AMBIGUOUS",
+        }
+        and occurrence.get("label_match", {}).get("page_sequence") == page_sequence
+    ]
+    if (
+        len(explicit_deposit_total_occurrences) != 1
+        or explicit_deposit_total_occurrences[0].get("role") != "EXPLICIT_INTERBANK_DEPOSIT_TOTAL"
+    ):
+        return None
+    boundary = explicit_deposit_total_occurrences[0]
+    boundary_match = boundary["label_match"]
+    boundary_bbox = boundary_match.get("source_label_bbox")
+    boundary_binding = boundary.get("source_scope_binding")
+    prior_deposit_groups = [
+        occurrence
+        for occurrence in role_occurrences
+        if occurrence.get("role") == "INTERBANK_DEPOSIT_GROUP"
+        and occurrence.get("label_match", {}).get("page_sequence") == page_sequence
+        and occurrence["label_match"]["document_line_ordinal"]
+        < target_match["document_line_ordinal"]
+    ]
+    nearest_deposit_ordinal = max(
+        (occurrence["label_match"]["document_line_ordinal"] for occurrence in prior_deposit_groups),
+        default=None,
+    )
+    nearest_deposit_groups = [
+        occurrence
+        for occurrence in prior_deposit_groups
+        if occurrence["label_match"]["document_line_ordinal"] == nearest_deposit_ordinal
+    ]
+    deposit_owner = nearest_deposit_groups[0] if len(nearest_deposit_groups) == 1 else None
+    target_root_scope_id = target_occurrence.get("scope_owner_occurrence_id")
+    deposit_root_scope_id = (
+        deposit_owner.get("scope_owner_occurrence_id") if type(deposit_owner) is dict else None
+    )
+    if (
+        type(boundary_bbox) is not list
+        or len(boundary_bbox) != 4
+        or any(type(item) is not int for item in boundary_bbox)
+        or boundary_bbox[1] <= component_top
+        or not occurrence_v2._match_has_effective_exact_source_authority(  # noqa: SLF001
+            boundary_match
+        )
+        or type(boundary_binding) is not dict
+        or boundary_binding.get("status") != occurrence_v2._SOURCE_SCOPE_BINDING_STATUS  # noqa: SLF001
+        or boundary_binding.get("binding_kind") != occurrence_v2._EXPLICIT_GROUP_TOTAL_BINDING_KIND  # noqa: SLF001
+        or boundary_binding.get("source_scope_role") != "INTERBANK_DEPOSIT_GROUP"
+        or boundary_binding.get("target_role") != "EXPLICIT_INTERBANK_DEPOSIT_TOTAL"
+        or boundary.get("scope_owner_role") != "INTERBANK_DEPOSIT_GROUP"
+        or deposit_owner is None
+        or not occurrence_v2._match_has_effective_exact_source_authority(  # noqa: SLF001
+            deposit_owner["label_match"]
+        )
+        or boundary.get("scope_owner_occurrence_id") != deposit_owner["occurrence_id"]
+        or boundary_binding.get("geometry")
+        != {
+            "anchor_occurrence_id": deposit_owner["occurrence_id"],
+            "status": occurrence_v2._EXPLICIT_GROUP_TOTAL_PARENT_GEOMETRY_STATUS,  # noqa: SLF001
+        }
+        or type(target_root_scope_id) is not str
+        or not target_root_scope_id
+        or target_root_scope_id != deposit_root_scope_id
+        or target_occurrence.get("scope_owner_role") is not None
+        or deposit_owner.get("scope_owner_role") is not None
+        or not (
+            deposit_owner["label_match"]["document_line_ordinal"]
+            < target_match["document_line_ordinal"]
+            < boundary_match["document_line_ordinal"]
+        )
+        or boundary_binding.get("interval", {}).get("start_document_line_ordinal")
+        != deposit_owner["label_match"]["document_line_ordinal"]
+        or boundary_match["document_line_ordinal"]
+        >= boundary_binding.get("interval", {}).get("end_document_line_ordinal_exclusive", -1)
+    ):
+        return None
+    boundary_top = boundary_bbox[1]
+
+    deposit = resolved_by_role.get("INTERBANK_DEPOSIT_GROUP")
+    deposit_equations = [
+        equation
+        for equation in equation_records or ()
+        if equation.get("result_role") == "INTERBANK_DEPOSIT_GROUP"
+    ]
+    boundary_samples = [
+        sample
+        for sample in numeric_sample_universe
+        if sample.get("owner_kind") == "ROLE_OCCURRENCE"
+        and sample.get("owner_id") == boundary["occurrence_id"]
+    ]
+    boundary_values = [
+        {
+            "column_ordinal": sample["column_ordinal"],
+            "number": _number(sample),
+            "source_sample_ids": [sample["sample_id"]],
+        }
+        for sample in sorted(boundary_samples, key=lambda sample: sample["column_ordinal"])
+    ]
+    if (
+        type(deposit) is not dict
+        or len(deposit_equations) != 1
+        or deposit_equations[0].get("status")
+        != "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+        or not deposit_equations[0].get("component_roles_present")
+        or deposit.get("resolution_kind") != "VISIBLE_SOURCE_ROLE_CORROBORATED_BY_COMPONENTS"
+        or deposit.get("component_roles") != deposit_equations[0]["component_roles_present"]
+        or deposit.get("source", {}).get("kind") != "ROLE_ROW"
+        or deposit.get("source", {}).get("record", {}).get("status") != "VISIBLE_VALUE_LANES_BOUND"
+        or deposit.get("source", {}).get("record", {}).get("label_match", {}).get("occurrence_id")
+        != boundary["occurrence_id"]
+        or boundary.get("has_bound_value_row") is not True
+        or _same_values(deposit.get("values", []), target["values"])
+        or not _same_values(boundary_values, deposit.get("values", []))
+    ):
+        return None
+
+    interval_sources = [
+        source
+        for source in source_candidates
+        if source["key"] not in reserved_source_keys
+        and source["page_sequence"] == page_sequence
+        and source["top"] > component_top
+        and source["bottom"] > component_bottom
+        and (boundary_top is None or source["top"] < boundary_top)
+    ]
+    if not interval_sources:
+        return None
+    first_top = min(source["top"] for source in interval_sources)
+    first_sources = [source for source in interval_sources if source["top"] == first_top]
+    if len(first_sources) != 1:
+        return None
+    selected = first_sources[0]
+    if not selected["complete"] or not _same_values(selected["values"], target["values"]):
+        return None
+    if target_role != "INTERBANK_LOAN_GROUP" and len(interval_sources) != 1:
+        return None
+    if any(
+        source["key"] != selected["key"] and _same_values(source["values"], target["values"])
+        for source in interval_sources
+    ):
+        return None
+
+    disposition = _UNLABELED_EXACT_SUBTOTAL_CORROBORATION
+    if target_role == "INTERBANK_LOAN_GROUP":
+        deposit = resolved_by_role.get("INTERBANK_DEPOSIT_GROUP")
+        if type(deposit) is not dict:
+            return None
+        root_component_sets = [
+            [deposit, target],
+            *(
+                [deposit, target, resolved_by_role[provision_role]]
+                for provision_role in (
+                    "TOTAL_INTERBANK_PROVISION",
+                    "INTERBANK_DEPOSIT_PROVISION",
+                    "INTERBANK_LOAN_PROVISION",
+                )
+                if provision_role in resolved_by_role
+            ),
+        ]
+        root_value_axes = [_sum_records(records) for records in root_component_sets]
+        later_root_candidates = [
+            source
+            for source in source_candidates
+            if source["key"] not in reserved_source_keys
+            and source["key"] != selected["key"]
+            and source["page_sequence"] == page_sequence
+            and source["top"] > selected["top"]
+            and source["complete"]
+            and any(_same_values(source["values"], values) for values in root_value_axes)
+            and not _same_values(source["values"], target["values"])
+        ]
+        if len(later_root_candidates) != 1:
+            if not later_root_candidates and any(
+                _same_values(values, target["values"]) for values in root_value_axes
+            ):
+                disposition = _UNLABELED_AMBIGUOUS_SUBTOTAL_DISPOSITION
+            else:
+                return None
+
+    candidate_top = selected["top"]
+    later_target_semantics = [
+        occurrence
+        for occurrence in component_occurrences
+        if occurrence["label_match"]["source_label_bbox"][1] > candidate_top
+        and (
+            boundary_top is None or occurrence["label_match"]["source_label_bbox"][1] < boundary_top
+        )
+    ]
+    if later_target_semantics:
+        return None
+    return {
+        "candidate_ordinal": (
+            selected["source_record"].get("candidate_ordinal")
+            if selected["row_kind"] == "TRAILING_VALUE_ROW"
+            else None
+        ),
+        "disposition": disposition,
+        "occurrence_id": (
+            target_occurrence["occurrence_id"] if target_occurrence is not None else None
+        ),
+        "role": target_role,
+        "row_kind": selected["row_kind"],
+        "sample_ids": canonical_clone_v1(selected["sample_ids"]),
+        "source_key": selected["key"],
+        "source_record": canonical_clone_v1(selected["source_record"]),
+    }
+
+
 def _validate_unlabeled_exact_subtotal_receipts(value: Mapping[str, Any]) -> None:
     trailing_rows = [
         receipt["source_record"]
@@ -1930,6 +2307,8 @@ def _validate_unlabeled_exact_subtotal_receipts(value: Mapping[str, Any]) -> Non
     reserved: set[tuple[str, str | int]] = set()
     expected_by_key: dict[tuple[str, str | int], Mapping[str, Any]] = {}
     for equation in value["equations"]["global"]:
+        if equation["result_role"] == "TERM_DEPOSIT_GROUP":
+            continue
         evidence = _unlabeled_exact_subtotal_for_equation(
             equation_record=equation,
             family_id=value["family_id"],
@@ -1938,10 +2317,33 @@ def _validate_unlabeled_exact_subtotal_receipts(value: Mapping[str, Any]) -> Non
             resolved_by_role=resolved_by_role,
             role_occurrences=value["role_occurrences"],
             source_candidates=source_candidates,
+            equation_records=value["equations"]["global"],
         )
         if evidence is not None:
             reserved.add(evidence["source_key"])
             expected_by_key[evidence["source_key"]] = evidence
+    term_equations = [
+        equation
+        for equation in value["equations"]["global"]
+        if equation["result_role"] == "TERM_DEPOSIT_GROUP"
+    ]
+    if len(term_equations) == 1:
+        term_evidence = _unlabeled_exact_subtotal_for_equation(
+            equation_record=term_equations[0],
+            family_id=value["family_id"],
+            numeric_sample_universe=value["numeric_sample_universe"],
+            reserved_source_keys=set(),
+            resolved_by_role=resolved_by_role,
+            role_occurrences=value["role_occurrences"],
+            source_candidates=source_candidates,
+            equation_records=value["equations"]["global"],
+        )
+        if term_evidence is not None:
+            source_key = term_evidence["source_key"]
+            if source_key in expected_by_key:
+                expected_by_key.pop(source_key)
+            else:
+                expected_by_key[source_key] = term_evidence
     actual_by_key: dict[tuple[str, str | int], Mapping[str, Any]] = {}
     for receipt in value["coverage_receipt"]:
         if receipt["disposition"] not in _UNLABELED_SUBTOTAL_DISPOSITIONS:
@@ -3238,6 +3640,12 @@ def _validate_result(value: Any) -> dict[str, Any]:
         _UNLABELED_EXACT_SUBTOTAL_CORROBORATION,
         _UNLABELED_AMBIGUOUS_SUBTOTAL_DISPOSITION,
     }
+    unlabeled_exact_subtotal_target_roles = {
+        equation["result_role"]
+        for equation in value["equations"]["global"]
+        if equation["status"] == "DERIVED_EXACT_EXHAUSTIVE_COMPONENT_SUM"
+        and equation["component_roles_present"]
+    } & {*_UNLABELED_EXACT_SUBTOTAL_TARGET_ROLES, "TERM_DEPOSIT_GROUP"}
     if (
         None in occurrence_ids
         or len(coverage_ids) != len(set(coverage_ids))
@@ -3288,7 +3696,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
                                 record["occurrence_id"] is not None
                                 and record["occurrence_id"] not in occurrence_ids
                             )
-                            or record["role"] not in _UNLABELED_EXACT_SUBTOTAL_TARGET_ROLES
+                            or record["role"] not in unlabeled_exact_subtotal_target_roles
                         )
                     )
                     or (
@@ -3354,7 +3762,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
                                 record["occurrence_id"] is not None
                                 and record["occurrence_id"] not in occurrence_ids
                             )
-                            or record["role"] not in _UNLABELED_EXACT_SUBTOTAL_TARGET_ROLES
+                            or record["role"] not in unlabeled_exact_subtotal_target_roles
                         )
                     )
                     or (
@@ -3708,14 +4116,18 @@ def _build(
         )
         global_records.append(record)
         reasons.extend(equation_reasons)
-        unlabeled_subtotal = _unlabeled_exact_subtotal_for_equation(
-            equation_record=record,
-            family_id=spec["family_id"],
-            numeric_sample_universe=axis["numeric_sample_universe"],
-            reserved_source_keys=reserved_unlabeled_source_keys,
-            resolved_by_role=resolved,
-            role_occurrences=axis["role_occurrences"],
-            source_candidates=source_candidates,
+        unlabeled_subtotal = (
+            None
+            if record["result_role"] == "TERM_DEPOSIT_GROUP"
+            else _unlabeled_exact_subtotal_for_equation(
+                equation_record=record,
+                family_id=spec["family_id"],
+                numeric_sample_universe=axis["numeric_sample_universe"],
+                reserved_source_keys=reserved_unlabeled_source_keys,
+                resolved_by_role=resolved,
+                role_occurrences=axis["role_occurrences"],
+                source_candidates=source_candidates,
+            )
         )
         if unlabeled_subtotal is not None:
             source_key = unlabeled_subtotal["source_key"]
@@ -3730,6 +4142,34 @@ def _build(
                     + ":"
                     + str(source_key[1])
                 )
+    term_records = [
+        record for record in global_records if record["result_role"] == "TERM_DEPOSIT_GROUP"
+    ]
+    if len(term_records) == 1:
+        term_subtotal = _unlabeled_exact_subtotal_for_equation(
+            equation_record=term_records[0],
+            family_id=spec["family_id"],
+            numeric_sample_universe=axis["numeric_sample_universe"],
+            reserved_source_keys=set(),
+            resolved_by_role=resolved,
+            role_occurrences=axis["role_occurrences"],
+            source_candidates=source_candidates,
+            equation_records=global_records,
+        )
+        if term_subtotal is not None:
+            source_key = term_subtotal["source_key"]
+            if source_key in unlabeled_subtotal_by_source_key:
+                unlabeled_subtotal_by_source_key.pop(source_key)
+                reserved_unlabeled_source_keys.discard(source_key)
+                reasons.append(
+                    "AMBIGUOUS_UNLABELED_SUBTOTAL_MULTI_EQUATION_CLAIM:"
+                    + str(source_key[0])
+                    + ":"
+                    + str(source_key[1])
+                )
+            else:
+                reserved_unlabeled_source_keys.add(source_key)
+                unlabeled_subtotal_by_source_key[source_key] = term_subtotal
     corroborated_occurrence_ids = {
         evidence["occurrence_id"]
         for evidence in unlabeled_subtotal_by_source_key.values()

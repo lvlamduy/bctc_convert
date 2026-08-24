@@ -181,6 +181,26 @@ _DISCOUNT_SCOPE_TARGETS = {
     "INTERBANK_LOAN_FOREIGN_CURRENCY": ("INTERBANK_LOAN_DISCOUNT_REDISCOUNT_FOREIGN_CURRENCY"),
 }
 _PROVISION_GENERIC_ROLE = "INTERBANK_PROVISION_AMBIGUOUS"
+_EXPLICIT_GROUP_TOTAL_SOURCE_TARGETS = {
+    "EXPLICIT_INTERBANK_DEPOSIT_TOTAL_AMBIGUOUS": (
+        "EXPLICIT_INTERBANK_DEPOSIT_TOTAL",
+        "INTERBANK_DEPOSIT_GROUP",
+    ),
+    "EXPLICIT_INTERBANK_LOAN_TOTAL_AMBIGUOUS": (
+        "EXPLICIT_INTERBANK_LOAN_TOTAL",
+        "INTERBANK_LOAN_GROUP",
+    ),
+}
+_EXPLICIT_GROUP_TOTAL_TARGET_SOURCES = {
+    target: (source, owner)
+    for source, (target, owner) in _EXPLICIT_GROUP_TOTAL_SOURCE_TARGETS.items()
+}
+_EXPLICIT_GROUP_TOTAL_ROLES = {
+    *_EXPLICIT_GROUP_TOTAL_SOURCE_TARGETS,
+    *_EXPLICIT_GROUP_TOTAL_TARGET_SOURCES,
+}
+_EXPLICIT_GROUP_TOTAL_BINDING_KIND = "UNIQUE_EXACT_EXPLICIT_GROUP_TOTAL_INTERVAL"
+_EXPLICIT_GROUP_TOTAL_PARENT_GEOMETRY_STATUS = "EXACT_EXPLICIT_GROUP_TOTAL_PARENT_OCCURRENCE"
 _SCHEMA_SCOPE_REQUIRED_ROLES = {
     _DISCOUNT_GENERIC_ROLE,
     _PROVISION_GENERIC_ROLE,
@@ -222,6 +242,7 @@ _LOAN_SEMANTIC_INTERVAL_ROLES = {
 _LOAN_SOURCE_SUBSCOPE_BOUNDARY_ROLES = {
     *_LOAN_SEMANTIC_INTERVAL_ROLES,
     *_DEPOSIT_SEMANTIC_INTERVAL_ROLES,
+    *_EXPLICIT_GROUP_TOTAL_ROLES,
     "EXPLICIT_FAMILY_TOTAL",
     "INTERBANK_LOAN_GROUP",
     "TOTAL_INTERBANK_PROVISION",
@@ -1263,6 +1284,215 @@ def _project_reviewed_schema_source_scopes(
         (match for match in projected if match["role"] == "INTERBANK_LOAN_GROUP"),
         key=lambda item: item["document_line_ordinal"],
     )
+
+    def explicit_total_definition(
+        match: Mapping[str, Any],
+    ) -> tuple[str, str, str] | None:
+        role = match.get("role")
+        if role in _EXPLICIT_GROUP_TOTAL_SOURCE_TARGETS:
+            target, owner = _EXPLICIT_GROUP_TOTAL_SOURCE_TARGETS[role]
+            return role, target, owner
+        if role in _EXPLICIT_GROUP_TOTAL_TARGET_SOURCES:
+            source, owner = _EXPLICIT_GROUP_TOTAL_TARGET_SOURCES[role]
+            return source, role, owner
+        return None
+
+    def downgrade_explicit_total(match: dict[str, Any], source_role: str) -> None:
+        definition = by_role_definition[source_role]
+        match.update(
+            {
+                "matched_within_role": None,
+                "preferred_ordinal": definition["preferred_ordinal"],
+                "presence": definition["presence"],
+                "role": source_role,
+                "role_kind": definition["role_kind"],
+                "source_scope_binding": None,
+            }
+        )
+
+    if _EXPLICIT_GROUP_TOTAL_ROLES <= set(by_role_definition):
+
+        def physical_total_key(match: Mapping[str, Any]) -> tuple[Any, ...]:
+            explicit_indices = match.get("source_line_indices")
+            return (
+                match["page_sequence"],
+                match["document_line_ordinal"],
+                match["end_document_line_ordinal"],
+                tuple(
+                    explicit_indices
+                    if type(explicit_indices) is list
+                    else range(
+                        match["source_line_index"],
+                        match["end_source_line_index"] + 1,
+                    )
+                ),
+                match["normalized_surface"],
+            )
+
+        # The contextual and retrieval-only aliases deliberately share exact
+        # surfaces.  Keep one physical occurrence, preferring the contextual
+        # role when legacy topology could bind it.  Distinct physical rows are
+        # never collapsed, so a repeated explicit total still fails closed.
+        total_groups: dict[tuple[Any, ...], list[dict[str, Any]]] = {}
+        for candidate in projected:
+            if explicit_total_definition(candidate) is not None:
+                total_groups.setdefault(physical_total_key(candidate), []).append(candidate)
+        total_matches = []
+        superseded_total_ids: set[int] = set()
+        for group in total_groups.values():
+            contextual = [
+                candidate
+                for candidate in group
+                if candidate["role"] in _EXPLICIT_GROUP_TOTAL_TARGET_SOURCES
+                and candidate.get("matched_within_role") is not None
+            ]
+            winner = min(
+                contextual or group,
+                key=lambda candidate: (
+                    not _match_has_effective_exact_source_authority(candidate),
+                    candidate["preferred_ordinal"],
+                    candidate["role"],
+                ),
+            )
+            total_matches.append(winner)
+            superseded_total_ids.update(
+                id(candidate) for candidate in group if candidate is not winner
+            )
+        if superseded_total_ids:
+            projected = [
+                candidate for candidate in projected if id(candidate) not in superseded_total_ids
+            ]
+
+        top_boundary_roles = {
+            "EXPLICIT_FAMILY_TOTAL",
+            "INTERBANK_DEPOSIT_GROUP",
+            "INTERBANK_LOAN_GROUP",
+        }
+        for match in total_matches:
+            definition = explicit_total_definition(match)
+            if definition is None:
+                continue
+            source_role, target_role, owner_role = definition
+            source_ordinal = match["document_line_ordinal"]
+            page_sequence = match["page_sequence"]
+            exact_source = _match_has_effective_exact_source_authority(match)
+            preceding_top = [
+                item
+                for item in projected
+                if item["role"] in {"INTERBANK_DEPOSIT_GROUP", "INTERBANK_LOAN_GROUP"}
+                and item["page_sequence"] == page_sequence
+                and item["document_line_ordinal"] < source_ordinal
+            ]
+            nearest_owner_ordinal = max(
+                (item["document_line_ordinal"] for item in preceding_top),
+                default=None,
+            )
+            nearest_owners = [
+                item
+                for item in preceding_top
+                if item["document_line_ordinal"] == nearest_owner_ordinal
+            ]
+            owner = nearest_owners[0] if len(nearest_owners) == 1 else None
+            exact_owner = (
+                owner is not None
+                and owner["role"] == owner_role
+                and _match_has_effective_exact_source_authority(owner)
+            )
+            later_boundaries = [
+                item
+                for item in projected
+                if item["role"] in top_boundary_roles
+                and item["page_sequence"] == page_sequence
+                and item["document_line_ordinal"] > source_ordinal
+            ]
+            nearest_boundary_ordinal = min(
+                (item["document_line_ordinal"] for item in later_boundaries),
+                default=None,
+            )
+            nearest_boundaries = [
+                item
+                for item in later_boundaries
+                if item["document_line_ordinal"] == nearest_boundary_ordinal
+            ]
+            boundary = nearest_boundaries[0] if len(nearest_boundaries) == 1 else None
+            exact_boundary = boundary is not None and _match_has_effective_exact_source_authority(
+                boundary
+            )
+            retrieval_role = match.get("retrieval_role", match.get("role"))
+            retrieval_owner_matches_interval_owner = (
+                retrieval_role == source_role
+                or owner is not None
+                and match.get("retrieval_scope_owner_occurrence_id") == owner.get("occurrence_id")
+            )
+            interval_totals = [
+                item
+                for item in total_matches
+                if owner is not None
+                and boundary is not None
+                and explicit_total_definition(item) is not None
+                and explicit_total_definition(item)[1] == target_role
+                and item["page_sequence"] == page_sequence
+                and owner["document_line_ordinal"]
+                < item["document_line_ordinal"]
+                < boundary["document_line_ordinal"]
+            ]
+            semantic_roles = (
+                _DEPOSIT_SEMANTIC_INTERVAL_ROLES
+                if owner_role == "INTERBANK_DEPOSIT_GROUP"
+                else _LOAN_SEMANTIC_INTERVAL_ROLES
+            )
+            prior_semantics = [
+                item
+                for item in projected
+                if owner is not None
+                and item["role"] in semantic_roles
+                and item["role"] != owner_role
+                and item["page_sequence"] == page_sequence
+                and owner["document_line_ordinal"] < item["document_line_ordinal"] < source_ordinal
+                and _match_has_effective_exact_source_authority(item)
+            ]
+            later_semantics = [
+                item
+                for item in projected
+                if boundary is not None
+                and item["role"] in semantic_roles
+                and item["page_sequence"] == page_sequence
+                and source_ordinal
+                < item["document_line_ordinal"]
+                < boundary["document_line_ordinal"]
+            ]
+            proved = (
+                exact_source
+                and exact_owner
+                and exact_boundary
+                and retrieval_owner_matches_interval_owner
+                and len(interval_totals) == 1
+                and interval_totals[0] is match
+                and bool(prior_semantics)
+                and not later_semantics
+            )
+            if not proved:
+                if match["role"] == target_role:
+                    downgrade_explicit_total(match, source_role)
+                continue
+            receipt = _scope_binding(
+                anchor=owner,
+                binding_kind=_EXPLICIT_GROUP_TOTAL_BINDING_KIND,
+                geometry={
+                    "anchor_occurrence_id": owner["occurrence_id"],
+                    "status": _EXPLICIT_GROUP_TOTAL_PARENT_GEOMETRY_STATUS,
+                },
+                interval_end_exclusive=boundary["document_line_ordinal"],
+                interval_start=owner["document_line_ordinal"],
+                source=match,
+                anchor_exact_source_authority_check=_bound_one_edit_exact_source_check(owner),
+                source_exact_source_authority_check=_bound_one_edit_exact_source_check(match),
+                source_role=match.get("retrieval_role", match["role"]),
+                source_scope_role=owner_role,
+                target_role=target_role,
+            )
+            retype(match, target_role, receipt, matched_within_role=owner_role)
+
     currency_scopes = sorted(
         (match for match in projected if match["role"] in _DISCOUNT_SCOPE_TARGETS),
         key=lambda item: (
@@ -1444,6 +1674,14 @@ def _project_reviewed_schema_source_scopes(
         if prior_deposits and not prior_loans and later_loans:
             next_loan_ordinal = min(item["document_line_ordinal"] for item in later_loans)
             deposit_interval_start = min(item["document_line_ordinal"] for item in prior_deposits)
+            prior_explicit_group_totals = [
+                item
+                for item in projected
+                if item["role"] in _EXPLICIT_GROUP_TOTAL_ROLES
+                and deposit_interval_start
+                < item["document_line_ordinal"]
+                < match["document_line_ordinal"]
+            ]
             interval_provisions = [
                 item
                 for item in generic_provision_sources
@@ -1466,6 +1704,7 @@ def _project_reviewed_schema_source_scopes(
                     for item in projected
                     if item is not match
                 )
+                or prior_explicit_group_totals
                 or len(interval_provisions) != 1
                 or explicit_interval_provisions
             ):
@@ -1512,6 +1751,14 @@ def _project_reviewed_schema_source_scopes(
             continue
         if prior_deposits and prior_loans and not later_loans:
             loan = max(prior_loans, key=lambda item: item["document_line_ordinal"])
+            prior_explicit_group_totals = [
+                item
+                for item in projected
+                if item["role"] in _EXPLICIT_GROUP_TOTAL_ROLES
+                and loan["document_line_ordinal"]
+                < item["document_line_ordinal"]
+                < match["document_line_ordinal"]
+            ]
             root_interval_provisions = [
                 item
                 for item in generic_provision_sources
@@ -1564,6 +1811,7 @@ def _project_reviewed_schema_source_scopes(
             if (not prior_loan_leaves and not exact_group_total_without_leaf_labels) or (
                 len(root_interval_provisions) != 1
                 or explicit_root_interval_provisions
+                or prior_explicit_group_totals
                 or later_loan_leaves
                 or later_loan_semantics
                 or later_deposit_roles
@@ -1804,7 +2052,46 @@ def _validate_source_scope_binding(
     reviewed_matrix_valid = False
     if value["status"] == _SOURCE_SCOPE_BINDING_STATUS:
         expected_subscope = discount_pair.get(role)
-        if kind == "EXPLICIT_EXACT_SOURCE_SUBSCOPE_IN_LABEL":
+        if kind == _EXPLICIT_GROUP_TOTAL_BINDING_KIND:
+            explicit_total_source = _EXPLICIT_GROUP_TOTAL_TARGET_SOURCES.get(role)
+            retrieval_role = label_match.get("retrieval_role", label_match.get("role"))
+            retrieval_within_role = label_match.get(
+                "retrieval_within_role", label_match.get("matched_within_role")
+            )
+            retrieval_scope_owner_occurrence_id = label_match.get(
+                "retrieval_scope_owner_occurrence_id"
+            )
+            explicit_total_parent_geometry_valid = (
+                type(geometry) is dict
+                and set(geometry) == {"anchor_occurrence_id", "status"}
+                and geometry["status"] == _EXPLICIT_GROUP_TOTAL_PARENT_GEOMETRY_STATUS
+                and type(geometry["anchor_occurrence_id"]) is str
+                and bool(geometry["anchor_occurrence_id"])
+            )
+            reviewed_matrix_valid = (
+                explicit_total_source is not None
+                and value["source_role"] == retrieval_role
+                and (
+                    retrieval_role == explicit_total_source[0]
+                    and retrieval_within_role is None
+                    or retrieval_role == role
+                    and retrieval_within_role == explicit_total_source[1]
+                    and type(retrieval_scope_owner_occurrence_id) is str
+                    and explicit_total_parent_geometry_valid
+                    and retrieval_scope_owner_occurrence_id == geometry["anchor_occurrence_id"]
+                )
+                and value["source_scope_role"] == explicit_total_source[1]
+                and exact_source
+                and exact_anchor
+                and source_proof_shape_valid
+                and anchor_proof_shape_valid
+                and anchor.get("role") == explicit_total_source[1]
+                and explicit_total_parent_geometry_valid
+                and interval["start_document_line_ordinal"] == anchor["document_line_ordinal"]
+                and interval["end_document_line_ordinal_exclusive"]
+                > label_match["document_line_ordinal"]
+            )
+        elif kind == "EXPLICIT_EXACT_SOURCE_SUBSCOPE_IN_LABEL":
             normalized = value["source_span"]["normalized_surface"]
             explicit_scope_surface = (
                 "bang vnd" in normalized
@@ -4330,6 +4617,12 @@ def _validate_result(value: Any) -> dict[str, Any]:
             label_match=item["label_match"],
             role=item["role"],
         )
+        if item["role"] in _EXPLICIT_GROUP_TOTAL_TARGET_SOURCES and (
+            type(item["source_scope_binding"]) is not dict
+            or item["source_scope_binding"].get("binding_kind")
+            != _EXPLICIT_GROUP_TOTAL_BINDING_KIND
+        ):
+            raise _error("explicit group total lacks its exact parent-interval receipt")
     actual_span_occurrences: dict[str, list[Mapping[str, Any]]] = {}
     for occurrence in value["role_occurrences"]:
         span = _source_span(occurrence["label_match"])
@@ -4353,6 +4646,37 @@ def _validate_result(value: Any) -> dict[str, Any]:
             and item["source_scope_binding"].get("source_role") == _DISCOUNT_GENERIC_ROLE
         )
     ]
+    explicit_group_total_sources = [
+        item
+        for item in value["role_occurrences"]
+        if item["role"] in _EXPLICIT_GROUP_TOTAL_ROLES
+        or (
+            type(item.get("source_scope_binding")) is dict
+            and item["source_scope_binding"].get("source_role") in _EXPLICIT_GROUP_TOTAL_ROLES
+        )
+    ]
+
+    def explicit_total_physical_key(item: Mapping[str, Any]) -> tuple[Any, ...]:
+        label = item["label_match"]
+        explicit_indices = label.get("source_line_indices")
+        return (
+            label["page_sequence"],
+            label["document_line_ordinal"],
+            label["end_document_line_ordinal"],
+            tuple(
+                explicit_indices
+                if type(explicit_indices) is list
+                else range(label["source_line_index"], label["end_source_line_index"] + 1)
+            ),
+            label["normalized_surface"],
+        )
+
+    explicit_total_physical_keys = [
+        explicit_total_physical_key(item) for item in explicit_group_total_sources
+    ]
+    if len(set(explicit_total_physical_keys)) != len(explicit_total_physical_keys):
+        raise _error("one physical explicit group total has duplicate typed occurrences")
+
     for occurrence in value["role_occurrences"]:
         receipt = occurrence["source_scope_binding"]
         anchor_span = receipt.get("anchor_span") if type(receipt) is dict else None
@@ -4381,7 +4705,145 @@ def _validate_result(value: Any) -> dict[str, Any]:
         ):
             raise _error("reviewed schema source-scope anchor does not precede its source")
         kind = receipt["binding_kind"]
-        if kind == "UNIQUE_EXACT_PRECEDING_SOURCE_SUBSCOPE_INTERVAL":
+        if kind == _EXPLICIT_GROUP_TOTAL_BINDING_KIND:
+            source_role = receipt["source_role"]
+            target_role = occurrence["role"]
+            target_definition = _EXPLICIT_GROUP_TOTAL_TARGET_SOURCES.get(target_role)
+            if target_definition is None:
+                raise _error("explicit group total receipt targets an unknown role")
+            expected_source_role, owner_role = target_definition
+            retrieval_role = source_match.get("retrieval_role", source_match.get("role"))
+            retrieval_within_role = source_match.get(
+                "retrieval_within_role", source_match.get("matched_within_role")
+            )
+            if source_role != retrieval_role or not (
+                retrieval_role == expected_source_role
+                and retrieval_within_role is None
+                or retrieval_role == target_role
+                and retrieval_within_role == owner_role
+                and source_match.get("retrieval_scope_owner_occurrence_id")
+                == anchor["occurrence_id"]
+            ):
+                raise _error("explicit group total receipt source role drifted")
+            source_ordinal = source_match["document_line_ordinal"]
+            page_sequence = source_match["page_sequence"]
+            preceding_top = [
+                item
+                for item in value["role_occurrences"]
+                if item["role"] in {"INTERBANK_DEPOSIT_GROUP", "INTERBANK_LOAN_GROUP"}
+                and item["label_match"]["page_sequence"] == page_sequence
+                and item["label_match"]["document_line_ordinal"] < source_ordinal
+            ]
+            nearest_owner_ordinal = max(
+                (item["label_match"]["document_line_ordinal"] for item in preceding_top),
+                default=None,
+            )
+            nearest_owners = [
+                item
+                for item in preceding_top
+                if item["label_match"]["document_line_ordinal"] == nearest_owner_ordinal
+            ]
+            owner = nearest_owners[0] if len(nearest_owners) == 1 else None
+            later_boundaries = [
+                item
+                for item in value["role_occurrences"]
+                if item["role"]
+                in {
+                    "EXPLICIT_FAMILY_TOTAL",
+                    "INTERBANK_DEPOSIT_GROUP",
+                    "INTERBANK_LOAN_GROUP",
+                }
+                and item["label_match"]["page_sequence"] == page_sequence
+                and item["label_match"]["document_line_ordinal"] > source_ordinal
+            ]
+            nearest_boundary_ordinal = min(
+                (item["label_match"]["document_line_ordinal"] for item in later_boundaries),
+                default=None,
+            )
+            nearest_boundaries = [
+                item
+                for item in later_boundaries
+                if item["label_match"]["document_line_ordinal"] == nearest_boundary_ordinal
+            ]
+            boundary = nearest_boundaries[0] if len(nearest_boundaries) == 1 else None
+
+            def total_target(item: Mapping[str, Any]) -> str | None:
+                item_role = item["role"]
+                if item_role in _EXPLICIT_GROUP_TOTAL_TARGET_SOURCES:
+                    return item_role
+                if item_role in _EXPLICIT_GROUP_TOTAL_SOURCE_TARGETS:
+                    return _EXPLICIT_GROUP_TOTAL_SOURCE_TARGETS[item_role][0]
+                binding = item.get("source_scope_binding")
+                binding_source = binding.get("source_role") if type(binding) is dict else None
+                if binding_source in _EXPLICIT_GROUP_TOTAL_SOURCE_TARGETS:
+                    return _EXPLICIT_GROUP_TOTAL_SOURCE_TARGETS[binding_source][0]
+                return None
+
+            interval_totals = [
+                item
+                for item in explicit_group_total_sources
+                if owner is not None
+                and boundary is not None
+                and total_target(item) == target_role
+                and item["label_match"]["page_sequence"] == page_sequence
+                and owner["label_match"]["document_line_ordinal"]
+                < item["label_match"]["document_line_ordinal"]
+                < boundary["label_match"]["document_line_ordinal"]
+            ]
+            semantic_roles = (
+                _DEPOSIT_SEMANTIC_INTERVAL_ROLES
+                if owner_role == "INTERBANK_DEPOSIT_GROUP"
+                else _LOAN_SEMANTIC_INTERVAL_ROLES
+            )
+            prior_semantics = [
+                item
+                for item in value["role_occurrences"]
+                if owner is not None
+                and item["role"] in semantic_roles
+                and item["role"] != owner_role
+                and item["label_match"]["page_sequence"] == page_sequence
+                and owner["label_match"]["document_line_ordinal"]
+                < item["label_match"]["document_line_ordinal"]
+                < source_ordinal
+                and _match_has_effective_exact_source_authority(item["label_match"])
+            ]
+            later_semantics = [
+                item
+                for item in value["role_occurrences"]
+                if boundary is not None
+                and item["role"] in semantic_roles
+                and item["label_match"]["page_sequence"] == page_sequence
+                and source_ordinal
+                < item["label_match"]["document_line_ordinal"]
+                < boundary["label_match"]["document_line_ordinal"]
+            ]
+            if (
+                not _match_has_effective_exact_source_authority(source_match)
+                or owner is None
+                or owner["role"] != owner_role
+                or not _match_has_effective_exact_source_authority(owner["label_match"])
+                or owner["occurrence_id"] != anchor["occurrence_id"]
+                or boundary is None
+                or not _match_has_effective_exact_source_authority(boundary["label_match"])
+                or len(interval_totals) != 1
+                or interval_totals[0]["occurrence_id"] != occurrence["occurrence_id"]
+                or not prior_semantics
+                or later_semantics
+                or occurrence["scope_owner_occurrence_id"] != owner["occurrence_id"]
+                or occurrence["scope_owner_role"] != owner_role
+                or receipt["source_scope_role"] != owner_role
+                or receipt["geometry"]
+                != {
+                    "anchor_occurrence_id": anchor["occurrence_id"],
+                    "status": _EXPLICIT_GROUP_TOTAL_PARENT_GEOMETRY_STATUS,
+                }
+                or receipt["interval"]["start_document_line_ordinal"]
+                != owner["label_match"]["document_line_ordinal"]
+                or receipt["interval"]["end_document_line_ordinal_exclusive"]
+                != boundary["label_match"]["document_line_ordinal"]
+            ):
+                raise _error("explicit group total parent-interval proof drifted")
+        elif kind == "UNIQUE_EXACT_PRECEDING_SOURCE_SUBSCOPE_INTERVAL":
             prior_loan_groups = [
                 item
                 for item in value["role_occurrences"]
@@ -4587,11 +5049,20 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 <= item["label_match"]["document_line_ordinal"]
                 < next_loan_ordinal
             ]
+            prior_explicit_group_totals = [
+                item
+                for item in explicit_group_total_sources
+                if type(deposit_interval_start) is int
+                and deposit_interval_start
+                < item["label_match"]["document_line_ordinal"]
+                < source_ordinal
+            ]
             if (
                 expected_anchor is None
                 or expected_anchor["occurrence_id"] != anchor["occurrence_id"]
                 or len(interval_provisions) != 1
                 or explicit_interval_provisions
+                or prior_explicit_group_totals
                 or prior_loans
                 or not later_loans
                 or later_deposits_before_loan
@@ -4667,6 +5138,11 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 and item["role"] in _LOAN_SEMANTIC_INTERVAL_ROLES
                 and item["label_match"]["document_line_ordinal"] > source_ordinal
             ]
+            prior_explicit_group_totals = [
+                item
+                for item in explicit_group_total_sources
+                if anchor_ordinal < item["label_match"]["document_line_ordinal"] < source_ordinal
+            ]
             all_loan_leaf_occurrences = [
                 item
                 for item in value["role_occurrences"]
@@ -4720,6 +5196,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 or later_loans
                 or later_deposits
                 or later_loan_semantics
+                or prior_explicit_group_totals
                 or occurrence["scope_owner_role"] is not None
                 or receipt["interval"]["start_document_line_ordinal"] != anchor_ordinal
                 or type(region_end) is not int
