@@ -9,6 +9,7 @@ the strongest output is a replayable schema-review readiness proposal.
 
 from __future__ import annotations
 
+import copy
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from time import perf_counter
@@ -836,7 +837,9 @@ def _candidate_population_signature(candidate: dict[str, Any]) -> dict[str, Any]
     roots = [record for record in resolved if record.get("role") == family_id]
     if len(roots) != 1 or roots[0].get("resolution_kind") not in {
         "VISIBLE_SOURCE_ROLE_CORROBORATED_BY_COMPONENTS",
+        "VISIBLE_SOURCE_ROLE_ROUNDING_CORROBORATED_BY_COMPONENTS",
         "VISIBLE_TRAILING_TOTAL_CORROBORATED_BY_COMPONENTS",
+        "VISIBLE_TRAILING_TOTAL_ROUNDING_CORROBORATED_BY_COMPONENTS",
     }:
         return None
     values = roots[0].get("values")
@@ -894,10 +897,315 @@ def _candidate_population_signature(candidate: dict[str, Any]) -> dict[str, Any]
     }
 
 
+def _threat_matches_ready_component_population(
+    ready: Mapping[str, Any], threat: Mapping[str, Any]
+) -> bool:
+    """Directional same-population proof used only to preserve a veto.
+
+    A detailed candidate with a schema-gap can lose its family root while
+    still resolving the exact top-level deposit and loan populations printed
+    by a READY summary.  Those exact component lanes may block laundering, but
+    they never authorize the threat candidate itself.
+    """
+
+    ready_closure = ready.get("additive_closure")
+    threat_closure = threat.get("additive_closure")
+    if type(ready_closure) is not dict or type(threat_closure) is not dict:
+        return False
+    family_id = ready_closure.get("family_id")
+    if type(family_id) is not str or threat_closure.get("family_id") != family_id:
+        return False
+    equations = ready_closure.get("equations")
+    global_equations = equations.get("global") if type(equations) is dict else None
+    family_equations = (
+        [
+            equation
+            for equation in global_equations
+            if type(equation) is dict and equation.get("result_role") == family_id
+        ]
+        if type(global_equations) is list
+        else []
+    )
+    if len(family_equations) != 1:
+        return False
+    component_roles = family_equations[0].get("component_roles_present")
+    if (
+        type(component_roles) is not list
+        or len(component_roles) < 2
+        or any(type(role) is not str or not role for role in component_roles)
+        or len(component_roles) != len(set(component_roles))
+    ):
+        return False
+
+    def resolved_by_role(candidate_closure: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
+        records = candidate_closure.get("resolved_roles")
+        if type(records) is not list:
+            return {}
+        result = {
+            record["role"]: record
+            for record in records
+            if type(record) is dict and type(record.get("role")) is str
+        }
+        return result if len(result) == len(records) else {}
+
+    def value_axis(record: Mapping[str, Any] | None) -> list[dict[str, Any]] | None:
+        values = record.get("values") if type(record) is dict else None
+        if type(values) is not list or not values:
+            return None
+        try:
+            axis = sorted(
+                (
+                    {
+                        "column_ordinal": value["column_ordinal"],
+                        "number": canonical_clone_v1(value["number"]),
+                    }
+                    for value in values
+                ),
+                key=lambda item: item["column_ordinal"],
+            )
+        except (KeyError, TypeError):
+            return None
+        ordinals = [item["column_ordinal"] for item in axis]
+        return axis if ordinals == sorted(set(ordinals)) else None
+
+    def source_row_value_axis(record: Mapping[str, Any]) -> list[dict[str, Any]] | None:
+        values = record.get("values")
+        if type(values) is not list or not values:
+            return None
+        try:
+            axis = sorted(
+                (
+                    {
+                        "column_ordinal": value["column_ordinal"],
+                        "number": {
+                            "coefficient": value["parsed_token"]["coefficient"],
+                            "percentage_mark_present": value["parsed_token"][
+                                "percentage_mark_present"
+                            ],
+                            "scale": value["parsed_token"]["scale"],
+                        },
+                    }
+                    for value in values
+                    if value["parsed_token"]["classification"] == "SIGNED_NUMBER"
+                ),
+                key=lambda item: item["column_ordinal"],
+            )
+        except (KeyError, TypeError):
+            return None
+        ordinals = [item["column_ordinal"] for item in axis]
+        return (
+            axis
+            if len(axis) == len(values)
+            and ordinals == list(range(len(axis)))
+            and all(
+                type(item["number"]["coefficient"]) is int
+                and type(item["number"]["scale"]) is int
+                and item["number"]["scale"] >= 0
+                and item["number"]["percentage_mark_present"] is False
+                for item in axis
+            )
+            else None
+        )
+
+    def exact_component_sum_matches_root(
+        component_axes: Sequence[Sequence[Mapping[str, Any]]],
+        root_axis: Sequence[Mapping[str, Any]],
+    ) -> bool:
+        if not component_axes or any(len(axis) != len(root_axis) for axis in component_axes):
+            return False
+        for lane, root_value in enumerate(root_axis):
+            numbers = [axis[lane]["number"] for axis in component_axes]
+            root_number = root_value["number"]
+            if (
+                any(
+                    axis[lane]["column_ordinal"] != root_value["column_ordinal"]
+                    for axis in component_axes
+                )
+                or any(number.get("percentage_mark_present") is not False for number in numbers)
+                or root_number.get("percentage_mark_present") is not False
+                or any(type(number.get("coefficient")) is not int for number in numbers)
+                or any(
+                    type(number.get("scale")) is not int or number["scale"] < 0
+                    for number in numbers
+                )
+                or type(root_number.get("coefficient")) is not int
+                or type(root_number.get("scale")) is not int
+                or root_number["scale"] < 0
+            ):
+                return False
+            common_scale = max(root_number["scale"], *(number["scale"] for number in numbers))
+            component_sum = sum(
+                number["coefficient"] * 10 ** (common_scale - number["scale"]) for number in numbers
+            )
+            printed_root = root_number["coefficient"] * 10 ** (common_scale - root_number["scale"])
+            if component_sum != printed_root:
+                return False
+        return True
+
+    ready_resolved = resolved_by_role(ready_closure)
+    threat_resolved = resolved_by_role(threat_closure)
+    ready_signature = _candidate_population_signature(dict(ready))
+    if ready_signature is None:
+        return False
+    threat_context = dict(threat)
+    synthetic_threat = copy.deepcopy(threat_context)
+    # Reuse the closed period/unit parser without letting a missing threat root
+    # become authorization: temporarily compare against the READY visible root.
+    threat_records = synthetic_threat["additive_closure"].get("resolved_roles")
+    ready_root = ready_resolved.get(family_id)
+    if type(threat_records) is not list or type(ready_root) is not dict:
+        return False
+    synthetic_threat["additive_closure"]["resolved_roles"] = [
+        record for record in threat_records if record.get("role") != family_id
+    ] + [canonical_clone_v1(ready_root)]
+    threat_signature = _candidate_population_signature(synthetic_threat)
+    if threat_signature is None or not same_typed_json_v1(ready_signature, threat_signature):
+        return False
+    ready_component_axes = {role: value_axis(ready_resolved.get(role)) for role in component_roles}
+    if any(axis is None for axis in ready_component_axes.values()):
+        return False
+    matched_roles = {
+        role
+        for role, ready_values in ready_component_axes.items()
+        if (threat_values := value_axis(threat_resolved.get(role))) is not None
+        and same_typed_json_v1(ready_values, threat_values)
+    }
+    unmatched_roles = [role for role in component_roles if role not in matched_roles]
+    selected_component_axes = {role: ready_component_axes[role] for role in matched_roles}
+    if unmatched_roles:
+        # A schema-gap can make exactly one detailed top-level group unresolved
+        # while its complete printed subtotal remains as one unowned trailing
+        # row.  Use that row only as a directional population witness: one
+        # other top-level role must already match, the row must uniquely match
+        # the missing READY component, and it must not be the family root.
+        row_axis = threat.get("row_axis")
+        trailing_rows = row_axis.get("trailing_value_rows") if type(row_axis) is dict else None
+        if (
+            len(unmatched_roles) != 1
+            or not matched_roles
+            or type(trailing_rows) is not list
+            or len(trailing_rows) != 1
+            or trailing_rows[0].get("status") != "COMPLETE_VISIBLE_TRAILING_VALUE_ROW"
+            or trailing_rows[0].get("missing_column_ordinals") != []
+        ):
+            return False
+        trailing_axis = source_row_value_axis(trailing_rows[0])
+        missing_role = unmatched_roles[0]
+        if (
+            trailing_axis is None
+            or same_typed_json_v1(trailing_axis, ready_signature["numeric_lanes"])
+            or not same_typed_json_v1(trailing_axis, ready_component_axes[missing_role])
+        ):
+            return False
+        selected_component_axes[missing_role] = trailing_axis
+    if set(selected_component_axes) != set(component_roles):
+        return False
+    if exact_component_sum_matches_root(
+        [selected_component_axes[role] for role in component_roles],
+        ready_signature["numeric_lanes"],
+    ):
+        return True
+    return (
+        family_equations[0].get("status")
+        in {
+            "VISIBLE_RESULT_ROUNDING_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
+            "VISIBLE_TRAILING_RESULT_ROUNDING_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
+        }
+        and type(family_equations[0].get("rounding_evidence")) is list
+        and any(
+            type(evidence) is dict
+            and evidence.get("status") == "ROUNDING_BOUND_SATISFIED_ALL_LANES"
+            for evidence in family_equations[0]["rounding_evidence"]
+        )
+    )
+
+
 def _select_candidate_evidence(
     candidate_evidence: list[dict[str, Any]], evaluation_spec: dict[str, Any]
 ) -> tuple[dict[str, Any] | None, list[str]]:
     ready = [candidate for candidate in candidate_evidence if not candidate["reasons"]]
+    if (
+        ready
+        and evaluation_spec.get("format_version") == EVALUATION_SPEC_FORMAT_V4
+        and evaluation_spec.get("candidate_selection_policy")
+        == "SAME_POPULATION_STRICT_ROLE_SUPERSET_WITH_EXACT_PERIOD_UNIT_ROOT_TOTAL"
+    ):
+        source_gap_tokens = {
+            "OFF_LANE_NUMERIC_SOURCE_ONLY_VETO",
+            "ONE_EDIT_COEXTENSIVE_SOURCE_OR_OWNER_SCHEMA_INELIGIBLE",
+            "ONE_EDIT_ROLE_OR_SCOPE_MATCH_SCHEMA_INELIGIBLE",
+            "SOURCE_ONLY_AMBIGUOUS_TOUCHING_WRAPPED_LABEL",
+            "SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER_VETO",
+            "SOURCE_ONLY_SCHEMA_INELIGIBLE_ROLE",
+        }
+
+        def roles(candidate: Mapping[str, Any]) -> set[str]:
+            closure = candidate.get("additive_closure")
+            resolved = closure.get("resolved_roles") if type(closure) is dict else None
+            return (
+                {
+                    record["role"]
+                    for record in resolved
+                    if type(record) is dict and type(record.get("role")) is str
+                }
+                if type(resolved) is list
+                else set()
+            )
+
+        def pages(candidate: Mapping[str, Any]) -> str:
+            row_axis = candidate.get("row_axis")
+            rows = row_axis.get("rows") if type(row_axis) is dict else None
+            page_axis = (
+                sorted(
+                    {
+                        row.get("label_match", {}).get("page_sequence")
+                        for row in rows
+                        if type(row) is dict
+                        and type(row.get("label_match", {}).get("page_sequence")) is int
+                    }
+                )
+                if type(rows) is list
+                else []
+            )
+            return ",".join(map(str, page_axis)) if page_axis else "UNKNOWN"
+
+        blockers = []
+        for threat in candidate_evidence:
+            gap_reasons = [
+                reason
+                for reason in threat["reasons"]
+                if any(token in reason for token in source_gap_tokens)
+            ]
+            threat_signature = _candidate_population_signature(threat)
+            if not gap_reasons:
+                continue
+            threat_roles = roles(threat)
+            for admitted in ready:
+                admitted_signature = _candidate_population_signature(admitted)
+                full_root_population_match = (
+                    threat_signature is not None
+                    and admitted_signature is not None
+                    and roles(admitted) <= threat_roles
+                    and same_typed_json_v1(admitted_signature, threat_signature)
+                )
+                if not full_root_population_match and not (
+                    admitted_signature is not None
+                    and _threat_matches_ready_component_population(admitted, threat)
+                ):
+                    continue
+                if admitted_signature is None:
+                    # Defensive clarity: both compatibility routes require one
+                    # authenticated visible READY root population.
+                    continue
+                blockers.extend(
+                    "COMPATIBLE_CANDIDATE_NUMERIC_SCHEMA_GAP_VETO:"
+                    f"READY_CANDIDATE_{admitted['candidate_ordinal'] + 1}:"
+                    f"THREAT_CANDIDATE_{threat['candidate_ordinal'] + 1}:"
+                    f"THREAT_PAGES_{pages(threat)}:{reason}"
+                    for reason in gap_reasons
+                )
+        if blockers:
+            return None, list(dict.fromkeys(blockers))
     if len(ready) > 1 and evaluation_spec["closure_policy"] in {
         "HIERARCHICAL_RECURSIVE_CORROBORATE_OR_DERIVE",
         "SCOPED_HIERARCHICAL_EXHAUSTIVE_CORROBORATE_OR_DERIVE",
@@ -958,6 +1266,7 @@ def _one_edit_authority_pages_v1(
             "lines": [
                 {
                     "bbox": canonical_clone_v1(line["bbox"]),
+                    "numeric_recognition": canonical_clone_v1(line["numeric_recognition"]),
                     "source_line_index": line["line_ordinal"],
                     "source_text": line["numeric_recognition"]["raw_prediction"],
                     "vietocr_text": line["vietocr_text"],
@@ -965,6 +1274,7 @@ def _one_edit_authority_pages_v1(
                 for line in page["lines"]
             ],
             "page_sequence": page["page_sequence"],
+            "page_width": page.get("page_width"),
         }
         for page in joined_pages
     ]
@@ -984,19 +1294,42 @@ def _selected_v4_one_edit_authority_v1(
     ordinal = selected.get("candidate_ordinal")
     if type(ordinal) is not int or not 0 <= ordinal < len(topology_candidates["regions"]):
         raise _error("selected V4 candidate lost its pre-pruning topology identity")
-    expanded_occurrence_region = selected["row_axis"].get("topology_region")
-    if type(expanded_occurrence_region) is not dict:
-        raise _error("selected V4 candidate lost its expanded occurrence region")
+    persisted = selected.get("one_edit_exact_source_structural_proofs")
+    if type(persisted) is not dict:
+        raise _error("selected V4 candidate lost its occurrence exact-source proof")
     try:
-        receipt = one_edit_v1.build_accounting_family_one_edit_exact_authority_v1(
-            _one_edit_authority_pages_v1(joined_pages),
-            family_spec,
-            topology_candidates["regions"][ordinal],
-            expanded_occurrence_region,
+        receipt = one_edit_v1.validate_accounting_family_one_edit_exact_authority_receipt_shape_v1(
+            persisted
         )
     except one_edit_v1.AccountingFamilyOneEditExactAuthorityV1Error as exc:
         raise _error("selected V4 one-edit exact authority drifted") from exc
-    return receipt, canonical_clone_v1(receipt["unresolved_reasons"])
+    authority_pages = _one_edit_authority_pages_v1(joined_pages)
+    if (
+        receipt["family_id"] != family_spec["family_id"]
+        or receipt["input_binding"]["document_pages_sha256"]
+        != canonical_json_sha256_v1(authority_pages)
+        or receipt["input_binding"]["family_spec_sha256"] != canonical_json_sha256_v1(family_spec)
+        or receipt["input_binding"]["selected_topology_region_sha256"]
+        != canonical_json_sha256_v1(topology_candidates["regions"][ordinal])
+    ):
+        raise _error("selected V4 one-edit exact authority input binding drifted")
+    try:
+        canonical_expanded = one_edit_v1._canonical_expanded_occurrence_region_v1(  # noqa: SLF001
+            one_edit_v1._pages_with_occurrence_geometry_v1(authority_pages),  # noqa: SLF001
+            family_spec,
+            topology_candidates["regions"][ordinal],
+        )
+        rebuilt = one_edit_v1.build_accounting_family_one_edit_exact_authority_v1(
+            authority_pages,
+            family_spec,
+            topology_candidates["regions"][ordinal],
+            canonical_expanded,
+        )
+    except one_edit_v1.AccountingFamilyOneEditExactAuthorityV1Error as exc:
+        raise _error("selected V4 one-edit exact authority replay failed") from exc
+    if not same_typed_json_v1(receipt, rebuilt):
+        raise _error("selected V4 one-edit exact authority differs from occurrence proof")
+    return rebuilt, canonical_clone_v1(rebuilt["unresolved_reasons"])
 
 
 def _candidate_evidence_from_joined_pages(
@@ -1099,8 +1432,12 @@ def _candidate_evidence_from_joined_pages(
                     occurrence_axis = base_occurrence_axis
                     _telemetry_add(runtime_telemetry, "occurrence_base_reuse_count", 1)
                 row_axis = occurrence_axis["row_axis"]
+                one_edit_exact_source_structural_proofs = occurrence_axis[
+                    "one_edit_exact_source_structural_proofs"
+                ]
             else:
                 occurrence_axis = None
+                one_edit_exact_source_structural_proofs = None
                 row_axis = (
                     row_axis_v1._build_accounting_family_row_axis_from_authenticated_topology_scan_v1(
                         joined_pages,
@@ -1140,6 +1477,9 @@ def _candidate_evidence_from_joined_pages(
                     "column_context": None,
                     "reasons": [f"COLUMN_CONTEXT_ERROR:{type(exc).__name__}:{exc}"],
                     "row_axis": row_axis,
+                    "one_edit_exact_source_structural_proofs": (
+                        one_edit_exact_source_structural_proofs
+                    ),
                 }
             )
             continue
@@ -1180,6 +1520,9 @@ def _candidate_evidence_from_joined_pages(
                     "column_context": column_context,
                     "reasons": [f"ACCOUNTING_CLOSURE_ERROR:{type(exc).__name__}:{exc}"],
                     "row_axis": row_axis,
+                    "one_edit_exact_source_structural_proofs": (
+                        one_edit_exact_source_structural_proofs
+                    ),
                 }
             )
             continue
@@ -1205,6 +1548,9 @@ def _candidate_evidence_from_joined_pages(
                 "column_context": column_context,
                 "reasons": list(dict.fromkeys(reasons)),
                 "row_axis": row_axis,
+                "one_edit_exact_source_structural_proofs": (
+                    one_edit_exact_source_structural_proofs
+                ),
             }
         )
     return candidate_evidence
@@ -2201,6 +2547,18 @@ def _validate(value: Any) -> dict[str, Any]:
                     )
                 ):
                     raise _error("family-first V4 one-edit authority status binding drifted")
+                closure_proofs = (
+                    trial["additive_closure"].get("one_edit_exact_source_structural_proofs")
+                    if type(trial["additive_closure"]) is dict
+                    else None
+                )
+                if closure_proofs is not None and not same_typed_json_v1(
+                    closure_proofs,
+                    receipt,
+                ):
+                    raise _error(
+                        "family-first V4 selected one-edit receipt differs from closure proof"
+                    )
     if (
         type(value["metrics"]) is not dict
         or set(value["metrics"]) != _METRIC_FIELDS

@@ -115,6 +115,13 @@ def _pages(*lines: dict) -> list[dict]:
     return [{"lines": list(lines), "page_sequence": 1}]
 
 
+def _numeric_line(index: int, text: str, *, row_index: int, left: int = 600) -> dict:
+    line = _line(index, text, text, left=left)
+    line["bbox"][1] = 100 + row_index * 30
+    line["bbox"][3] = 122 + row_index * 30
+    return line
+
+
 def _selected(pages: list[dict], spec: dict | None = None) -> dict:
     retrieval_pages = [
         {
@@ -133,6 +140,25 @@ def _expanded(pages: list[dict], region: dict, spec: dict | None = None) -> dict
         topology_v1._pages(pages),
         spec or _spec(),
         region,
+    )
+
+
+def _persisted_occurrence_proof(
+    joined_pages: list[dict], region: dict, spec: dict | None = None
+) -> dict:
+    family_spec = spec or _spec()
+    authority_pages = sweep_v1._one_edit_authority_pages_v1(joined_pages)
+    parsed_pages = subject._pages_with_occurrence_geometry_v1(authority_pages)
+    expanded = subject._canonical_expanded_occurrence_region_v1(
+        parsed_pages,
+        family_spec,
+        region,
+    )
+    return subject.build_accounting_family_one_edit_exact_authority_v1(
+        authority_pages,
+        family_spec,
+        region,
+        expanded,
     )
 
 
@@ -194,9 +220,10 @@ def test_canonical_coextensive_effective_child_is_retained_on_exact_parent() -> 
     )
     pages = _pages(
         _line(0, "Family assets", "Family assets"),
-        _line(1, "Domestic depositx", "Domestic deposits"),
-        _line(2, "Vietnam dong balancx", "Vietnam dong balance"),
-        _line(3, "Next family", "Next family"),
+        _numeric_line(1, "120", row_index=0),
+        _line(2, "Domestic depositx", "Domestic deposits"),
+        _line(3, "Vietnam dong balancx", "Vietnam dong balance"),
+        _line(4, "Next family", "Next family"),
     )
     region = _selected(pages, spec)
     expanded = _expanded(pages, region, spec)
@@ -300,6 +327,7 @@ def test_nested_leaf_rejects_same_span_owner_from_context_free_matcher() -> None
     exact_hits, _source_pages = subject._source_exact_axes(topology_v1._pages(pages), compiled)
     source_axis = subject._decorate_exact_source_occurrences_v1(
         subject._context_bound_source_records(exact_hits, compiled, region),
+        topology_v1._pages(pages),
         region,
     )
     source_inner = next(match for match in source_axis if match["role"] == "INNER")
@@ -394,7 +422,7 @@ def test_repeated_nested_owners_bind_leaf_to_nearest_exact_source_occurrences() 
     assert tampered_leaf["status"] == "EXACT_STRUCTURAL_PARENT_CONTEXT_MISMATCH"
 
 
-def test_exact_leaf_without_the_exact_selected_family_parent_cannot_corroborate() -> None:
+def test_exact_retrieval_parent_anchors_child_when_independent_parent_ocr_is_noisy() -> None:
     pages = _pages(
         _line(0, "Family assets", "Another family"),
         _line(1, "Domestic deposits", "Domestic deposits"),
@@ -407,7 +435,21 @@ def test_exact_leaf_without_the_exact_selected_family_parent_cannot_corroborate(
         pages, _spec(), region, _expanded(pages, region)
     )
 
-    assert receipt["checks"][0]["status"] == "EXACT_FAMILY_PARENT_CONTEXT_MISMATCH"
+    assert receipt["checks"][0]["status"] == "EXACT_SOURCE_ROLE_CONTEXT_SPAN_BOUND"
+    assert receipt["status"] == "EXACT_SOURCE_AUTHORITY_BOUND"
+
+
+def test_one_edit_parent_without_exact_same_span_source_cannot_anchor_child() -> None:
+    pages = _three_level_pages(parent_source="Another family")
+    region = _selected(pages)
+
+    receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
+        pages, _spec(), region, _expanded(pages, region)
+    )
+
+    assert receipt["checks"][0]["match_scope"] == "FAMILY_PARENT"
+    assert receipt["checks"][0]["status"] == "NO_EXACT_DECLARED_ALIAS_ON_RETRIEVAL_SOURCE_SPAN"
+    assert receipt["status"] == "UNRESOLVED_SELECTED_ONE_EDIT_WITHOUT_EXACT_SOURCE_AUTHORITY"
 
 
 def test_repeated_exact_first_occurrence_cannot_corroborate_fuzzy_second_occurrence() -> None:
@@ -685,6 +727,9 @@ def test_v4_integration_does_not_gate_a_discarded_complete_one_edit_candidate() 
     receipt, reasons = sweep_v1._selected_v4_one_edit_authority_v1(
         {
             "candidate_ordinal": 0,
+            "one_edit_exact_source_structural_proofs": _persisted_occurrence_proof(
+                joined, selected_region
+            ),
             "row_axis": {"topology_region": _expanded(pages, selected_region)},
         },
         joined_pages=joined,
@@ -735,6 +780,7 @@ def test_v4_evidence_integration_turns_failed_selected_receipt_into_trial_reason
     ]
     selected = {
         "candidate_ordinal": 0,
+        "one_edit_exact_source_structural_proofs": _persisted_occurrence_proof(joined, region),
         "row_axis": {"topology_region": _expanded(pages, region)},
     }
 

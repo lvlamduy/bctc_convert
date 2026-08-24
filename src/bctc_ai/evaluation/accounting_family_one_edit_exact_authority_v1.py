@@ -167,6 +167,77 @@ def _is_one_edit(match: Mapping[str, Any]) -> bool:
     return str(match.get("match_kind", "")).startswith("ONE_EDIT_ALIAS")
 
 
+def _pages_with_occurrence_geometry_v1(document_pages: Any) -> list[dict[str, Any]]:
+    """Parse topology fields while retaining production occurrence evidence.
+
+    The public authority input may carry the canonical numeric-recognizer
+    record used by occurrence geometry.  It is excluded from topology text
+    retrieval, but retained byte-for-byte for the coextensive/wrapped-row
+    replay so a fabricated score or stripped page cannot change that replay.
+    """
+
+    if type(document_pages) is not list:
+        raise _error("one-edit exact-authority document pages drifted")
+    topology_pages = []
+    widths = []
+    numeric_axes = []
+    for raw_page in document_pages:
+        if type(raw_page) is not dict or set(raw_page) not in (
+            {"lines", "page_sequence"},
+            {"lines", "page_sequence", "page_width"},
+        ):
+            raise _error("one-edit exact-authority document page drifted")
+        width = raw_page.get("page_width")
+        if width is not None and (type(width) is not int or width <= 0):
+            raise _error("one-edit exact-authority page width drifted")
+        if type(raw_page.get("lines")) is not list:
+            raise _error("one-edit exact-authority document line axis drifted")
+        topology_lines = []
+        numeric_axis = []
+        for raw_line in raw_page["lines"]:
+            if type(raw_line) is not dict or set(raw_line) not in (
+                {"bbox", "source_line_index", "source_text", "vietocr_text"},
+                {
+                    "bbox",
+                    "numeric_recognition",
+                    "source_line_index",
+                    "source_text",
+                    "vietocr_text",
+                },
+            ):
+                raise _error("one-edit exact-authority document line drifted")
+            numeric_recognition = raw_line.get("numeric_recognition")
+            if numeric_recognition is not None and (
+                type(numeric_recognition) is not dict
+                or type(numeric_recognition.get("raw_prediction")) is not str
+            ):
+                raise _error("one-edit exact-authority numeric recognition drifted")
+            topology_lines.append(
+                {
+                    "bbox": canonical_clone_v1(raw_line["bbox"]),
+                    "source_line_index": raw_line["source_line_index"],
+                    "source_text": raw_line["source_text"],
+                    "vietocr_text": raw_line["vietocr_text"],
+                }
+            )
+            numeric_axis.append(canonical_clone_v1(numeric_recognition))
+        topology_pages.append(
+            {
+                "lines": topology_lines,
+                "page_sequence": raw_page.get("page_sequence"),
+            }
+        )
+        widths.append(width)
+        numeric_axes.append(numeric_axis)
+    pages = topology_v1._pages(topology_pages)  # noqa: SLF001
+    for page, width, numeric_axis in zip(pages, widths, numeric_axes, strict=True):
+        page["page_width"] = width
+        for line, numeric_recognition in zip(page["lines"], numeric_axis, strict=True):
+            if numeric_recognition is not None:
+                line["numeric_recognition"] = numeric_recognition
+    return pages
+
+
 def _retrieval_only_pages_v1(
     pages: Sequence[Mapping[str, Any]],
 ) -> list[dict[str, Any]]:
@@ -194,7 +265,16 @@ def _retrieval_only_pages_v1(
 def _occurrence_row_pages_v1(
     pages: Sequence[Mapping[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Project parsed topology pages into the input used by occurrence V2."""
+    """Project the complete fields consumed by occurrence expansion.
+
+    Occurrence expansion is semantic, but it also uses exact same-row numeric
+    evidence to reject a heading-only coextensive total and to distinguish an
+    independently complete row from a wrapped label.  Stripping the PP-OCR
+    source text here made the independent replay crash on those legitimate V4
+    shapes.  The source channel remains retrieval-inert: it is exposed only as
+    ``numeric_recognition`` to the occurrence geometry predicates, never as
+    topology match input.
+    """
 
     return [
         {
@@ -202,11 +282,21 @@ def _occurrence_row_pages_v1(
                 {
                     "bbox": canonical_clone_v1(line["bbox"]),
                     "line_ordinal": line["source_line_index"],
+                    "numeric_recognition": canonical_clone_v1(
+                        line.get("numeric_recognition")
+                        or {
+                            "raw_prediction": (
+                                line["source_text"] if type(line["source_text"]) is str else ""
+                            ),
+                            "reader_score": 1.0,
+                        }
+                    ),
                     "vietocr_text": line["vietocr_text"],
                 }
                 for line in page["lines"]
             ],
             "page_sequence": page["page_sequence"],
+            "page_width": page.get("page_width"),
         }
         for page in pages
     ]
@@ -269,33 +359,22 @@ def _validate_canonical_expanded_occurrence_axis_v1(
         or len(physical_signatures) != len(set(physical_signatures))
     ):
         raise _error("canonical expanded occurrence identity axis drifted")
-    root_scope_id = _root_scope_id_v1(selected_region)
+    undecorated = []
     for match in matches:
-        within_role = match.get("matched_within_role")
-        owners = [
-            candidate
-            for candidate in matches
-            if candidate["role"] == within_role
-            and candidate["document_line_ordinal"] <= match["document_line_ordinal"]
-            and candidate["occurrence_id"] != match["occurrence_id"]
-        ]
-        owner = max(
-            owners,
-            key=lambda item: (
-                item["document_line_ordinal"],
-                item["end_document_line_ordinal"],
-            ),
-            default=None,
+        raw = canonical_clone_v1(match)
+        raw.pop("occurrence_id", None)
+        raw.pop("scope_owner_occurrence_id", None)
+        raw.pop("scope_owner_role", None)
+        undecorated.append(raw)
+    try:
+        expected = occurrence_row_v2._decorate_scopes(  # noqa: SLF001
+            undecorated,
+            selected_region,
         )
-        if within_role is not None and owner is None:
-            raise _error("canonical occurrence lost its nearest structural owner")
-        expected_owner_id = owner["occurrence_id"] if owner is not None else root_scope_id
-        expected_owner_role = owner["role"] if owner is not None else None
-        if (
-            match.get("scope_owner_occurrence_id") != expected_owner_id
-            or match.get("scope_owner_role") != expected_owner_role
-        ):
-            raise _error("canonical occurrence nearest structural owner drifted")
+    except occurrence_row_v2.AccountingFamilyOccurrenceRowAxisV2Error as exc:
+        raise _error("canonical occurrence lost its nearest structural owner") from exc
+    if not same_typed_json_v1(matches, expected):
+        raise _error("canonical occurrence nearest structural owner drifted")
 
 
 def _canonical_expanded_occurrence_region_v1(
@@ -341,6 +420,11 @@ def _canonical_expanded_occurrence_region_v1(
         )
         if not same_typed_json_v1(replayed_selected, canonical_selected):
             raise _error("selected candidate changed during occurrence replay")
+        matches = occurrence_row_v2._attach_schema_scope_source_label_bboxes(  # noqa: SLF001
+            _occurrence_row_pages_v1(pages),
+            topology_v1._spec(family_spec),  # noqa: SLF001
+            matches,
+        )
         decorated = occurrence_row_v2._decorate_scopes(  # noqa: SLF001
             matches,
             replayed_selected,
@@ -628,6 +712,7 @@ def _source_occurrence_id_v1(match: Mapping[str, Any]) -> str:
 
 def _decorate_exact_source_occurrences_v1(
     source_records: Sequence[Mapping[str, Any]],
+    pages: Sequence[Mapping[str, Any]],
     selected_region: Mapping[str, Any],
 ) -> list[dict[str, Any]]:
     """Give exact PP-OCR records an independent deterministic owner axis."""
@@ -642,24 +727,48 @@ def _decorate_exact_source_occurrences_v1(
     decorated = []
     for source_record in source_records:
         match = canonical_clone_v1(source_record)
+        page = next(item for item in pages if item["page_sequence"] == match["page_sequence"])
+        source_line = next(
+            line
+            for line in page["lines"]
+            if line["source_line_index"] == match["source_line_index"]
+        )
+        match["source_label_bbox"] = canonical_clone_v1(source_line["bbox"])
         match["source_occurrence_id"] = _source_occurrence_id_v1(match)
         decorated.append(match)
     if len({item["source_occurrence_id"] for item in decorated}) != len(decorated):
         raise _error("exact-source occurrence identity repeats")
     for match in decorated:
         within_role = match.get("matched_within_role")
-        owners = [
-            candidate
-            for candidate in decorated
-            if candidate["role"] == within_role
-            and candidate["document_line_ordinal"] <= match["document_line_ordinal"]
-            and candidate["source_occurrence_id"] != match["source_occurrence_id"]
-        ]
+        owners = []
+        for candidate in decorated:
+            if (
+                candidate["role"] != within_role
+                or candidate["source_occurrence_id"] == match["source_occurrence_id"]
+            ):
+                continue
+            source_precedes = candidate["document_line_ordinal"] <= match["document_line_ordinal"]
+            parent_bbox = candidate["source_label_bbox"]
+            child_bbox = match["source_label_bbox"]
+            text_height = max(
+                parent_bbox[3] - parent_bbox[1],
+                child_bbox[3] - child_bbox[1],
+            )
+            visual_precedes = (
+                candidate["page_sequence"] == match["page_sequence"]
+                and parent_bbox[1] <= child_bbox[1]
+                and parent_bbox[3] <= child_bbox[3]
+                and 2 * (child_bbox[1] - parent_bbox[3]) >= -text_height
+            )
+            if source_precedes or visual_precedes:
+                owners.append(candidate)
         owner = max(
             owners,
             key=lambda item: (
+                item["page_sequence"],
+                item["source_label_bbox"][1],
+                item["source_label_bbox"][3],
                 item["document_line_ordinal"],
-                item["end_document_line_ordinal"],
             ),
             default=None,
         )
@@ -757,19 +866,32 @@ def _exact_source_owner_chain_matches_retrieval_v1(
         return False
     retrieval_id = retrieval.get("occurrence_id")
     source_id = source.get("source_occurrence_id")
-    if type(retrieval_id) is not str or type(source_id) is not str:
+    if type(retrieval_id) is not str:
         return False
-    pair = (retrieval_id, source_id)
+    pair = (retrieval_id, source_id if type(source_id) is str else "EXACT_RAW_SAME_SPAN")
     seen = set() if visited is None else visited
     if pair in seen:
         return False
     seen.add(pair)
     retrieval_owner = _nearest_selected_owner(retrieval, effective_matches)
-    source_owner = _nearest_source_owner(source, source_occurrences)
     within_role = retrieval.get("matched_within_role")
     if within_role is None:
-        return retrieval_owner is None and source_owner is None
-    if retrieval_owner is None or source_owner is None:
+        return retrieval_owner is None
+    if retrieval_owner is None or retrieval_owner.get("role") != within_role:
+        return False
+    source_owner = _nearest_source_owner(source, source_occurrences)
+    # An exact retrieval owner already seals the selected role/parent context
+    # and nearest-owner geometry.  Independent PP-OCR exactness is required
+    # only for retrieval nodes that themselves used one-edit search.  But an
+    # independently exact *contradictory* owner may not be ignored.
+    if not _is_one_edit(retrieval_owner):
+        return source_owner is None or _exact_source_occurrence_matches_retrieval_v1(
+            retrieval_owner,
+            source_owner,
+            compiled=compiled,
+            pages=pages,
+        )
+    if source_owner is None:
         return False
     return _exact_source_owner_chain_matches_retrieval_v1(
         retrieval_owner,
@@ -868,8 +990,8 @@ def _check(
     )
     if match_scope == "FAMILY_PARENT":
         source_role_axis = exact_hits["parents"]
-    elif coextensive_parent_child:
-        source_role_axis = [
+    else:
+        raw_source_role_axis = [
             {
                 **canonical_clone_v1(item),
                 "matched_within_role": item.get("_within_role"),
@@ -877,8 +999,34 @@ def _check(
             }
             for item in exact_hits["children"].get(role, [])
         ]
-    else:
         source_role_axis = [item for item in source_occurrences if item["role"] == role]
+        if coextensive_parent_child:
+            source_role_axis = raw_source_role_axis
+        else:
+            decorated_same_physical_span = [
+                item for item in source_role_axis if _same_match_span(item, match, pages)
+            ]
+            decorated_signatures = {
+                (
+                    item.get("page_sequence"),
+                    item.get("source_line_index"),
+                    item.get("end_source_line_index"),
+                    item.get("matched_within_role"),
+                )
+                for item in source_role_axis
+            }
+            if not decorated_same_physical_span:
+                source_role_axis.extend(
+                    item
+                    for item in raw_source_role_axis
+                    if (
+                        item.get("page_sequence"),
+                        item.get("source_line_index"),
+                        item.get("end_source_line_index"),
+                        item.get("matched_within_role"),
+                    )
+                    not in decorated_signatures
+                )
     same_role_context_span = [
         item
         for item in source_role_axis
@@ -907,12 +1055,7 @@ def _check(
             None,
         )
     )
-    source_occurrence = (
-        same_role_context_span[0]
-        if len(same_role_context_span) == 1
-        and type(same_role_context_span[0].get("source_occurrence_id")) is str
-        else None
-    )
+    source_occurrence = same_role_context_span[0] if len(same_role_context_span) == 1 else None
     source_owner_chain_bound = (
         match_scope == "FAMILY_PARENT"
         or source_occurrence is not None
@@ -946,7 +1089,7 @@ def _check(
                 status = "EXACT_ALIAS_DIFFERENT_SOURCE_SPAN"
             else:
                 status = "NO_EXACT_DECLARED_ALIAS_ON_RETRIEVAL_SOURCE_SPAN"
-        elif selected_parent is not None and exact_parent is None:
+        elif selected_parent is not None and _is_one_edit(selected_parent) and exact_parent is None:
             status = "EXACT_FAMILY_PARENT_CONTEXT_MISMATCH"
         elif match_scope == "EXPANDED_OCCURRENCE" and not source_owner_chain_bound:
             status = "EXACT_STRUCTURAL_PARENT_CONTEXT_MISMATCH"
@@ -1149,34 +1292,28 @@ def _validate_result(value: Any) -> dict[str, Any]:
     return canonical_clone_v1(value)
 
 
-def build_accounting_family_one_edit_exact_authority_v1(
+def _build_from_canonical_expanded_occurrences_v1(
+    pages: Sequence[Mapping[str, Any]],
+    compiled: Mapping[str, Any],
+    *,
     document_pages: Any,
     family_spec: Any,
-    selected_topology_region: Any,
-    expanded_occurrence_region: Any,
+    selected_topology_region: Mapping[str, Any],
+    expanded_occurrence_region: Mapping[str, Any],
 ) -> dict[str, Any]:
-    """Gate one selected V4 candidate and every expanded role occurrence."""
+    """Build the receipt from one already canonical retrieval occurrence axis.
 
-    try:
-        pages = topology_v1._pages(document_pages)  # noqa: SLF001
-        compiled = topology_v1._spec(family_spec)  # noqa: SLF001
-    except (ValueError, RuntimeError) as exc:
-        raise _error("one-edit exact-authority document or family spec drifted") from exc
-    if type(selected_topology_region) is not dict or type(expanded_occurrence_region) is not dict:
-        raise _error("one-edit exact-authority selected/expanded region binding drifted")
-    canonical_expanded_occurrence_region = _canonical_expanded_occurrence_region_v1(
-        pages,
-        family_spec,
+    Occurrence V2 uses this low-level primitive before its schema projector.
+    It deliberately performs no occurrence replay of its own, avoiding a
+    private replay cycle; the caller supplies an axis it has just derived from
+    the same canonical pages/spec/selected region.  The public builder below
+    still independently replays that axis before entering this primitive.
+    """
+
+    _validate_canonical_expanded_occurrence_axis_v1(
+        expanded_occurrence_region,
         selected_topology_region,
     )
-    if not same_typed_json_v1(
-        expanded_occurrence_region,
-        canonical_expanded_occurrence_region,
-    ):
-        raise _error("expanded occurrence region does not replay exactly")
-    # Never derive authority from the caller-owned object, even after the
-    # typed comparison.  All later checks and hashes consume the replayed axis.
-    expanded_occurrence_region = canonical_expanded_occurrence_region
     selected_parent = selected_topology_region.get("parent_match")
     effective_matches = expanded_occurrence_region["child_matches"]
     occurrence_ids = [
@@ -1221,6 +1358,7 @@ def build_accounting_family_one_edit_exact_authority_v1(
             compiled,
             selected_topology_region,
         ),
+        pages,
         selected_topology_region,
     )
     checks = []
@@ -1289,6 +1427,43 @@ def build_accounting_family_one_edit_exact_authority_v1(
             **material,
             "receipt_id": "afeoeav1:receipt:" + canonical_json_sha256_v1(material),
         }
+    )
+
+
+def build_accounting_family_one_edit_exact_authority_v1(
+    document_pages: Any,
+    family_spec: Any,
+    selected_topology_region: Any,
+    expanded_occurrence_region: Any,
+) -> dict[str, Any]:
+    """Gate one selected V4 candidate and every expanded role occurrence."""
+
+    try:
+        pages = _pages_with_occurrence_geometry_v1(document_pages)
+        compiled = topology_v1._spec(family_spec)  # noqa: SLF001
+    except (ValueError, RuntimeError) as exc:
+        raise _error("one-edit exact-authority document or family spec drifted") from exc
+    if type(selected_topology_region) is not dict or type(expanded_occurrence_region) is not dict:
+        raise _error("one-edit exact-authority selected/expanded region binding drifted")
+    canonical_expanded_occurrence_region = _canonical_expanded_occurrence_region_v1(
+        pages,
+        family_spec,
+        selected_topology_region,
+    )
+    if not same_typed_json_v1(
+        expanded_occurrence_region,
+        canonical_expanded_occurrence_region,
+    ):
+        raise _error("expanded occurrence region does not replay exactly")
+    # Never derive authority from the caller-owned object, even after the
+    # typed comparison.  All later checks and hashes consume the replayed axis.
+    return _build_from_canonical_expanded_occurrences_v1(
+        pages,
+        compiled,
+        document_pages=document_pages,
+        family_spec=family_spec,
+        selected_topology_region=selected_topology_region,
+        expanded_occurrence_region=canonical_expanded_occurrence_region,
     )
 
 

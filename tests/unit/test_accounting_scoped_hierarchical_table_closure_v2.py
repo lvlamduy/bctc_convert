@@ -582,6 +582,120 @@ def test_v4_unlabeled_deposit_and_loan_subtotals_are_exact_coverage_only() -> No
     )
 
 
+def test_v4_explicit_unknown_same_row_label_cannot_be_laundered_as_unlabeled_subtotal() -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+    pages = _vib_shaped_unlabeled_subtotal_pages()
+    lines = pages[0]["lines"]
+    subtotal_index = next(index for index, line in enumerate(lines) if line["bbox"][1] == 390)
+    lines.insert(subtotal_index, _line(10_001, "UPAS L/C", "", [45, 390, 430, 410]))
+    for ordinal, line in enumerate(lines):
+        line["line_ordinal"] = ordinal
+        line["sample_id"] = f"sample-{ordinal + 1:09d}"
+        line["crop_ref"] = {
+            "path": f"opaque/crop-{ordinal + 1:04d}.png",
+            "sha256": f"{ordinal + 1:064x}",
+            "size_bytes": 100 + ordinal,
+        }
+
+    axis, closure = _closure(pages, topology=topology, hierarchy=hierarchy)
+
+    cluster = next(
+        item
+        for item in axis["internal_unassigned_numeric_clusters"]
+        if item["same_row_label_evidence"]
+    )
+    assert cluster["label_lane_status"] == occurrence_v2._LABELED_LABEL_LANE_STATUS
+    assert cluster["same_row_label_evidence"][0]["vietocr_text"] == "UPAS L/C"
+    receipt = next(
+        item
+        for item in closure["coverage_receipt"]
+        if item["source_record"].get("cluster_id") == cluster["cluster_id"]
+    )
+    assert receipt["disposition"] == "UNRESOLVED_SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER"
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert not any(
+        item["disposition"] == subject._UNLABELED_EXACT_SUBTOTAL_CORROBORATION
+        and item["source_record"].get("cluster_id") == cluster["cluster_id"]
+        for item in closure["coverage_receipt"]
+    )
+
+    def rekey_cluster(attacked: dict, attacked_cluster: dict, old_cluster_id: str) -> None:
+        material = copy.deepcopy(attacked_cluster)
+        material.pop("cluster_id")
+        attacked_cluster["cluster_id"] = "aforav2:unassigned:" + canonical_json_sha256_v1(material)
+        for sample in attacked["numeric_sample_universe"]:
+            if sample["owner_id"] == old_cluster_id:
+                sample["owner_id"] = attacked_cluster["cluster_id"]
+        axis_material = copy.deepcopy(attacked)
+        axis_material.pop("occurrence_axis_id")
+        attacked["occurrence_axis_id"] = "aforav2:axis:" + canonical_json_sha256_v1(axis_material)
+
+    evidence_deleted = copy.deepcopy(axis)
+    attacked_cluster = next(
+        item
+        for item in evidence_deleted["internal_unassigned_numeric_clusters"]
+        if item["same_row_label_evidence"]
+    )
+    old_cluster_id = attacked_cluster["cluster_id"]
+    attacked_cluster["same_row_label_evidence"] = []
+    attacked_cluster["label_lane_status"] = occurrence_v2._UNLABELED_LABEL_LANE_STATUS
+    rekey_cluster(evidence_deleted, attacked_cluster, old_cluster_id)
+    with pytest.raises(
+        occurrence_v2.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="label-lane status did not replay",
+    ):
+        occurrence_v2._validate_result(evidence_deleted)
+
+    band_deleted = copy.deepcopy(axis)
+    attacked_cluster = next(
+        item
+        for item in band_deleted["internal_unassigned_numeric_clusters"]
+        if item["same_row_label_evidence"]
+    )
+    old_cluster_id = attacked_cluster["cluster_id"]
+    band = attacked_cluster["inspected_label_band"]
+    band["source_line_axis"] = [
+        line for line in band["source_line_axis"] if line["vietocr_text"] != "UPAS L/C"
+    ]
+    band["source_line_axis_sha256"] = canonical_json_sha256_v1(band["source_line_axis"])
+    band_material = copy.deepcopy(band)
+    band_material.pop("receipt_id")
+    band["receipt_id"] = "aforav2:label-band:" + canonical_json_sha256_v1(band_material)
+    attacked_cluster["same_row_label_evidence"] = []
+    attacked_cluster["label_lane_status"] = occurrence_v2._UNLABELED_LABEL_LANE_STATUS
+    rekey_cluster(band_deleted, attacked_cluster, old_cluster_id)
+    assert occurrence_v2._validate_result(band_deleted) == band_deleted
+
+    scan = topology_v1.build_accounting_family_topology_scan_v1(
+        row_v1._topology_pages(pages), topology
+    )
+    policy = {
+        "format_version": occurrence_v2.POLICY_FORMAT_VERSION,
+        "require_authenticated_existing_dash_pixels": True,
+        "retain_all_context_bound_role_occurrences": True,
+    }
+    with pytest.raises(
+        occurrence_v2.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="does not replay exactly",
+    ):
+        occurrence_v2.validate_accounting_family_occurrence_row_axis_replay_v2(
+            band_deleted,
+            pages,
+            topology,
+            scan,
+            scan["regions"][0],
+            policy,
+        )
+
+
 def test_v4_single_equal_loan_and_root_unlabeled_row_is_ambiguous() -> None:
     project_root = Path(__file__).resolve().parents[2]
     topology = json.loads(

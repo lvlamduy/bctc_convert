@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 from pathlib import Path
 
@@ -807,7 +808,7 @@ def test_tracked_interbank_specs_bind_recursive_roles_to_live_schema_descendants
     assert binding["ignored_roles"] == ["EXPLICIT_FAMILY_TOTAL"]
 
 
-def test_tracked_interbank_v4_binds_the_full_reviewed_role_to_rnid_matrix() -> None:
+def test_tracked_interbank_v5_binds_the_full_reviewed_role_to_rnid_matrix() -> None:
     config_root = _PROJECT_ROOT / "config/families"
     family = json.loads(
         (config_root / "tm-interbank-deposits-loans-topology-v4.json").read_text(encoding="utf-8")
@@ -820,6 +821,7 @@ def test_tracked_interbank_v4_binds_the_full_reviewed_role_to_rnid_matrix() -> N
             encoding="utf-8"
         )
     )
+    assert binding["format_version"] == subject.SPEC_FORMAT_VERSION_V5
 
     compiled = topology_v1._spec(family)
     evidence_v1._evaluation_spec(evaluation, compiled, raw_family_spec=family)
@@ -939,13 +941,25 @@ def test_tracked_trading_securities_specs_partition_variants_without_bank_routes
     evaluation = json.loads(
         (config_root / "tm-trading-securities-evaluation-v1.json").read_text(encoding="utf-8")
     )
-    binding = json.loads(
-        (config_root / "tm-trading-securities-schema-binding-v1.json").read_text(encoding="utf-8")
+    binding_path = config_root / "tm-trading-securities-schema-binding-v1.json"
+    binding_bytes = binding_path.read_bytes()
+    assert hashlib.sha256(binding_bytes).hexdigest() == (
+        "26ff67c7f14c88a6f37c7fb4a94d021818fef4926d1aab568b088ebb4c78b0bd"
     )
+    binding = json.loads(binding_bytes.decode("utf-8"))
+    assert binding["format_version"] == subject.SPEC_FORMAT_VERSION_V4
+    assert all(set(item) == {"report_norm_id", "role"} for item in binding["role_bindings"])
 
     compiled = topology_v1._spec(family)
     evidence_v1._evaluation_spec(evaluation, compiled, raw_family_spec=family)
     parsed_binding = subject._schema_spec(binding, family)
+    attacked_v4 = copy.deepcopy(binding)
+    attacked_v4["role_bindings"][0]["parent_report_norm_id"] = 593
+    with pytest.raises(
+        subject.FamilyFirstAccountingSchemaMappingV1Error,
+        match="schema role binding",
+    ):
+        subject._schema_spec(attacked_v4, family)
     nodes, _ = subject._schema_graph(_PROJECT_ROOT)
     parent, direct, aggregates = subject._bind_schema(nodes, parsed_binding)
 

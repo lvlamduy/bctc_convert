@@ -18,6 +18,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import stat
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
@@ -89,6 +90,7 @@ _RESULT_FIELDS = {
     "internal_unassigned_numeric_clusters",
     "numeric_sample_universe",
     "occurrence_axis_id",
+    "one_edit_exact_source_structural_proofs",
     "role_occurrences",
     "row_axis",
     "safety",
@@ -101,6 +103,8 @@ _OCCURRENCE_FIELDS = {
     "has_bound_value_row",
     "label_match",
     "occurrence_id",
+    "retrieval_occurrence_id",
+    "retrieval_scope_owner_occurrence_id",
     "role",
     "role_kind",
     "scope_owner_occurrence_id",
@@ -149,11 +153,13 @@ _NUMERIC_SAMPLE_OWNER_KINDS = {
 }
 _SOURCE_SCOPE_BINDING_FIELDS = {
     "anchor_span",
+    "anchor_exact_source_authority_check",
     "binding_id",
     "binding_kind",
     "geometry",
     "interval",
     "source_role",
+    "source_exact_source_authority_check",
     "source_scope_role",
     "source_span",
     "status",
@@ -161,12 +167,22 @@ _SOURCE_SCOPE_BINDING_FIELDS = {
 }
 _SOURCE_SCOPE_BINDING_STATUS = "REVIEWED_EXACT_SOURCE_SCOPE_TO_SCHEMA_ROLE_BINDING"
 _AMBIGUOUS_WRAPPED_LABEL_STATUS = "SOURCE_ONLY_AMBIGUOUS_TOUCHING_WRAPPED_LABEL"
+_ONE_EDIT_EXACT_BOUND_STATUS = "EXACT_SOURCE_ROLE_CONTEXT_SPAN_BOUND"
 _DISCOUNT_GENERIC_ROLE = "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_AMBIGUOUS"
 _DISCOUNT_SCOPE_TARGETS = {
     "INTERBANK_LOAN_VND": "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND",
     "INTERBANK_LOAN_FOREIGN_CURRENCY": ("INTERBANK_LOAN_DISCOUNT_REDISCOUNT_FOREIGN_CURRENCY"),
 }
 _PROVISION_GENERIC_ROLE = "INTERBANK_PROVISION_AMBIGUOUS"
+_SCHEMA_SCOPE_REQUIRED_ROLES = {
+    _DISCOUNT_GENERIC_ROLE,
+    _PROVISION_GENERIC_ROLE,
+    *_DISCOUNT_SCOPE_TARGETS,
+    *_DISCOUNT_SCOPE_TARGETS.values(),
+    "INTERBANK_DEPOSIT_PROVISION",
+    "INTERBANK_LOAN_GROUP",
+    "TOTAL_INTERBANK_PROVISION",
+}
 _DEPOSIT_SCOPE_ROLES = {
     "DEMAND_DEPOSIT_FOREIGN_CURRENCY",
     "DEMAND_DEPOSIT_GROUP",
@@ -206,10 +222,31 @@ _LOAN_SOURCE_SUBSCOPE_BOUNDARY_ROLES = {
 _INTERNAL_UNASSIGNED_CLUSTER_FIELDS = {
     "cluster_id",
     "column_ordinals",
+    "inspected_label_band",
+    "label_lane_status",
     "page_sequence",
+    "same_row_label_evidence",
     "sample_ids",
     "status",
 }
+_SAME_ROW_LABEL_EVIDENCE_FIELDS = {
+    "bbox",
+    "line_ordinal",
+    "numeric_raw_prediction",
+    "vietocr_text",
+}
+_INSPECTED_LABEL_BAND_FIELDS = {
+    "document_pages_sha256",
+    "input_page_line_count",
+    "numeric_row_bboxes",
+    "numeric_row_sample_ids",
+    "page_sequence",
+    "receipt_id",
+    "source_line_axis",
+    "source_line_axis_sha256",
+}
+_UNLABELED_LABEL_LANE_STATUS = "NO_SAME_ROW_LABEL_FRAGMENT_IN_EXACT_LABEL_BAND"
+_LABELED_LABEL_LANE_STATUS = "EXPLICIT_SAME_ROW_LABEL_FRAGMENT_PRESENT"
 _INTERNAL_UNASSIGNED_CLUSTER_STATUS = "SOURCE_ONLY_INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
 _OFF_LANE_NUMERIC_CLUSTER_STATUS = "SOURCE_ONLY_OFF_LANE_NUMERIC_CLUSTER"
 _MAX_ROLE_OCCURRENCES = 4_096
@@ -790,6 +827,7 @@ def _expanded_matches(
 
 
 def _source_span(match: Mapping[str, Any]) -> dict[str, Any]:
+    explicit_indices = match.get("source_line_indices")
     result = {
         "document_line_ordinal": match["document_line_ordinal"],
         "end_document_line_ordinal": match["end_document_line_ordinal"],
@@ -799,6 +837,11 @@ def _source_span(match: Mapping[str, Any]) -> dict[str, Any]:
         "page_sequence": match["page_sequence"],
         "role": match["role"],
         "source_line_index": match["source_line_index"],
+        "source_line_indices": (
+            list(explicit_indices)
+            if type(explicit_indices) is list
+            else list(range(match["source_line_index"], match["end_source_line_index"] + 1))
+        ),
     }
     if "source_label_bbox" in match:
         result["source_label_bbox"] = canonical_clone_v1(match["source_label_bbox"])
@@ -808,11 +851,13 @@ def _source_span(match: Mapping[str, Any]) -> dict[str, Any]:
 def _scope_binding(
     *,
     anchor: Mapping[str, Any] | None,
+    anchor_exact_source_authority_check: Mapping[str, Any] | None = None,
     binding_kind: str,
     geometry: Mapping[str, Any] | None,
     interval_end_exclusive: int,
     interval_start: int,
     source: Mapping[str, Any],
+    source_exact_source_authority_check: Mapping[str, Any] | None = None,
     source_role: str,
     source_scope_role: str,
     status: str = _SOURCE_SCOPE_BINDING_STATUS,
@@ -820,6 +865,11 @@ def _scope_binding(
 ) -> dict[str, Any]:
     material = {
         "anchor_span": _source_span(anchor) if anchor is not None else None,
+        "anchor_exact_source_authority_check": (
+            canonical_clone_v1(anchor_exact_source_authority_check)
+            if anchor_exact_source_authority_check is not None
+            else None
+        ),
         "binding_kind": binding_kind,
         "geometry": canonical_clone_v1(geometry) if geometry is not None else None,
         "interval": {
@@ -827,6 +877,11 @@ def _scope_binding(
             "start_document_line_ordinal": interval_start,
         },
         "source_role": source_role,
+        "source_exact_source_authority_check": (
+            canonical_clone_v1(source_exact_source_authority_check)
+            if source_exact_source_authority_check is not None
+            else None
+        ),
         "source_scope_role": source_scope_role,
         "source_span": _source_span(source),
         "status": status,
@@ -887,6 +942,28 @@ def _source_line_bbox(pages: Sequence[Mapping[str, Any]], match: Mapping[str, An
     return list(bbox)
 
 
+def _attach_schema_scope_source_label_bboxes(
+    pages: Sequence[Mapping[str, Any]],
+    compiled_family: Mapping[str, Any],
+    matches: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Expose canonical visual order before nearest-owner decoration.
+
+    Some providers emit a child line before its visually preceding structural
+    heading.  Family-3 source-scope projection already needs the exact label
+    bboxes; attaching them before either retrieval-proof or projected-scope
+    decoration gives both paths the same visual parent axis.
+    """
+
+    projected = [canonical_clone_v1(match) for match in matches]
+    roles = {child["role"] for child in compiled_family["children"]}
+    if not _SCHEMA_SCOPE_REQUIRED_ROLES <= roles:
+        return projected
+    for match in projected:
+        match["source_label_bbox"] = _source_line_bbox(pages, match)
+    return projected
+
+
 def _same_row_numeric_samples(
     pages: Sequence[Mapping[str, Any]], match: Mapping[str, Any]
 ) -> list[Mapping[str, Any]]:
@@ -912,6 +989,81 @@ def _same_row_numeric_samples(
     )
 
 
+def _same_row_numeric_samples_are_complete(
+    pages: Sequence[Mapping[str, Any]],
+    match: Mapping[str, Any],
+    semantic_matches: Sequence[Mapping[str, Any]],
+) -> bool:
+    """Fail closed unless a structural total exposes every page money lane.
+
+    Scope projection runs before the sealed row axis is available.  The
+    complete-lane proof therefore uses the same exact same-row samples and the
+    maximum visible semantic-row lane count on that page.  A lone visible
+    value in a two-lane table is not evidence that the structural subtree is
+    complete; the sealed row-axis validator later replays the stronger
+    ``VISIBLE_VALUE_LANES_BOUND`` status.
+    """
+
+    samples = _same_row_numeric_samples(pages, match)
+    if not samples:
+        return False
+    expected_lane_count = max(
+        (
+            len(_same_row_numeric_samples(pages, peer))
+            for peer in semantic_matches
+            if peer["page_sequence"] == match["page_sequence"]
+        ),
+        default=0,
+    )
+    return expected_lane_count > 0 and len(samples) == expected_lane_count
+
+
+def _bound_one_edit_exact_source_check(
+    match: Mapping[str, Any],
+) -> Mapping[str, Any] | None:
+    check = match.get("one_edit_exact_source_authority_check")
+    retrieval_occurrence_id = match.get("retrieval_occurrence_id", match.get("occurrence_id"))
+    retrieval_role = match.get("retrieval_role", match.get("role"))
+    retrieval_role_kind = match.get("retrieval_role_kind", match.get("role_kind"))
+    retrieval_within_role = match.get("retrieval_within_role", match.get("matched_within_role"))
+    explicit_indices = match.get("source_line_indices")
+    expected_indices = (
+        explicit_indices
+        if type(explicit_indices) is list
+        else list(range(match["source_line_index"], match["end_source_line_index"] + 1))
+    )
+    if (
+        type(check) is not dict
+        or check.get("status") != _ONE_EDIT_EXACT_BOUND_STATUS
+        or check.get("match_scope") != "EXPANDED_OCCURRENCE"
+        or check.get("occurrence_id") != retrieval_occurrence_id
+        or check.get("page_sequence") != match.get("page_sequence")
+        or check.get("role") != retrieval_role
+        or check.get("role_kind") != retrieval_role_kind
+        or check.get("within_role") != retrieval_within_role
+        or check.get("source_line_indices") != expected_indices
+        or type(check.get("retrieval_channel")) is not dict
+        or check["retrieval_channel"].get("match_kind") != match.get("match_kind")
+        or check["retrieval_channel"].get("surface") != match.get("surface")
+        or type(check.get("exact_channel")) is not dict
+        or type(check["exact_channel"].get("alias_normalized")) is not str
+        or not check["exact_channel"]["alias_normalized"]
+        or check["exact_channel"].get("context_binding", {}).get("occurrence_id")
+        != retrieval_occurrence_id
+        or check["exact_channel"].get("context_binding", {}).get("scope_owner_occurrence_id")
+        != match.get("retrieval_scope_owner_occurrence_id")
+    ):
+        return None
+    return check
+
+
+def _match_has_effective_exact_source_authority(match: Mapping[str, Any]) -> bool:
+    return str(match.get("match_kind", "")).startswith("EXACT_") or (
+        str(match.get("match_kind", "")).startswith("ONE_EDIT_")
+        and _bound_one_edit_exact_source_check(match) is not None
+    )
+
+
 def _project_reviewed_schema_source_scopes(
     pages: Sequence[Mapping[str, Any]],
     compiled_family: Mapping[str, Any],
@@ -927,20 +1079,10 @@ def _project_reviewed_schema_source_scopes(
     """
 
     by_role_definition = {child["role"]: child for child in compiled_family["children"]}
-    required_roles = {
-        _DISCOUNT_GENERIC_ROLE,
-        _PROVISION_GENERIC_ROLE,
-        *_DISCOUNT_SCOPE_TARGETS,
-        *_DISCOUNT_SCOPE_TARGETS.values(),
-        "INTERBANK_DEPOSIT_PROVISION",
-        "INTERBANK_LOAN_GROUP",
-        "TOTAL_INTERBANK_PROVISION",
-    }
-    projected = [canonical_clone_v1(match) for match in matches]
-    if not required_roles <= set(by_role_definition):
+    projected = _attach_schema_scope_source_label_bboxes(pages, compiled_family, matches)
+    if not _SCHEMA_SCOPE_REQUIRED_ROLES <= set(by_role_definition):
         return projected
     for match in projected:
-        match["source_label_bbox"] = _source_line_bbox(pages, match)
         binding = match.get("source_scope_binding")
         if type(binding) is dict and binding.get("status") == _AMBIGUOUS_WRAPPED_LABEL_STATUS:
             match["source_scope_binding"] = _scope_binding(
@@ -1001,7 +1143,7 @@ def _project_reviewed_schema_source_scopes(
     for match in projected:
         reverse_scope = {target: scope for scope, target in _DISCOUNT_SCOPE_TARGETS.items()}
         source_scope_role = reverse_scope.get(match["role"])
-        if source_scope_role is None or not str(match["match_kind"]).startswith("EXACT_"):
+        if source_scope_role is None or not _match_has_effective_exact_source_authority(match):
             continue
         match["source_scope_binding"] = _scope_binding(
             anchor=None,
@@ -1010,6 +1152,7 @@ def _project_reviewed_schema_source_scopes(
             interval_end_exclusive=match["end_document_line_ordinal"] + 1,
             interval_start=match["document_line_ordinal"],
             source=match,
+            source_exact_source_authority_check=_bound_one_edit_exact_source_check(match),
             source_role=match["role"],
             source_scope_role=source_scope_role,
             target_role=match["role"],
@@ -1023,7 +1166,8 @@ def _project_reviewed_schema_source_scopes(
         preceding_loan = [
             group
             for group in loan_groups
-            if group["document_line_ordinal"] <= match["document_line_ordinal"]
+            if group["page_sequence"] == match["page_sequence"]
+            and group["document_line_ordinal"] <= match["document_line_ordinal"]
         ]
         if not preceding_loan:
             continue
@@ -1039,7 +1183,8 @@ def _project_reviewed_schema_source_scopes(
         preceding_scopes = [
             scope
             for scope in currency_scopes
-            if loan["document_line_ordinal"] <= scope["document_line_ordinal"]
+            if scope["page_sequence"] == match["page_sequence"]
+            and loan["document_line_ordinal"] <= scope["document_line_ordinal"]
             and scope["end_document_line_ordinal"] < match["document_line_ordinal"]
             and scope["document_line_ordinal"] < next_loan
         ]
@@ -1050,7 +1195,7 @@ def _project_reviewed_schema_source_scopes(
             scope for scope in preceding_scopes if scope["end_document_line_ordinal"] == nearest_end
         ]
         if len({scope["role"] for scope in nearest}) != 1 or not all(
-            str(scope["match_kind"]).startswith("EXACT_") for scope in nearest
+            _match_has_effective_exact_source_authority(scope) for scope in nearest
         ):
             continue
         anchor = max(nearest, key=lambda item: item["document_line_ordinal"])
@@ -1096,6 +1241,7 @@ def _project_reviewed_schema_source_scopes(
             continue
         receipt = _scope_binding(
             anchor=anchor,
+            anchor_exact_source_authority_check=_bound_one_edit_exact_source_check(anchor),
             binding_kind="UNIQUE_EXACT_PRECEDING_SOURCE_SUBSCOPE_INTERVAL",
             geometry=None,
             interval_end_exclusive=match["end_document_line_ordinal"] + 1,
@@ -1126,8 +1272,9 @@ def _project_reviewed_schema_source_scopes(
         prior_deposits = [
             item
             for item in deposit_matches
-            if item["document_line_ordinal"] < before
-            and str(item["match_kind"]).startswith("EXACT_")
+            if item["page_sequence"] == match["page_sequence"]
+            and item["document_line_ordinal"] < before
+            and _match_has_effective_exact_source_authority(item)
         ]
         active_deposit_groups = [
             item for item in prior_deposits if item["role"] == "INTERBANK_DEPOSIT_GROUP"
@@ -1141,8 +1288,18 @@ def _project_reviewed_schema_source_scopes(
                 for item in prior_deposits
                 if item["document_line_ordinal"] >= active_deposit_start
             ]
-        prior_loans = [item for item in loan_groups if item["document_line_ordinal"] < before]
-        later_loans = [item for item in loan_groups if item["document_line_ordinal"] > before]
+        prior_loans = [
+            item
+            for item in loan_groups
+            if item["page_sequence"] == match["page_sequence"]
+            and item["document_line_ordinal"] < before
+        ]
+        later_loans = [
+            item
+            for item in loan_groups
+            if item["page_sequence"] == match["page_sequence"]
+            and item["document_line_ordinal"] > before
+        ]
         if prior_deposits and not prior_loans and later_loans:
             next_loan_ordinal = min(item["document_line_ordinal"] for item in later_loans)
             deposit_interval_start = min(item["document_line_ordinal"] for item in prior_deposits)
@@ -1181,10 +1338,11 @@ def _project_reviewed_schema_source_scopes(
                     item["role"],
                 ),
             )
-            if not str(anchor["match_kind"]).startswith("EXACT_"):
+            if not _match_has_effective_exact_source_authority(anchor):
                 continue
             receipt = _scope_binding(
                 anchor=anchor,
+                anchor_exact_source_authority_check=_bound_one_edit_exact_source_check(anchor),
                 binding_kind="EXACT_DEPOSIT_SUBTREE_BEFORE_NEXT_LOAN_BOUNDARY",
                 geometry=None,
                 interval_end_exclusive=next_loan_ordinal,
@@ -1230,7 +1388,7 @@ def _project_reviewed_schema_source_scopes(
                 for item in projected
                 if item["role"] in _LOAN_LEAF_ROLES
                 and loan["document_line_ordinal"] <= item["document_line_ordinal"] < before
-                and str(item["match_kind"]).startswith("EXACT_")
+                and _match_has_effective_exact_source_authority(item)
             ]
             later_loan_leaves = [
                 item
@@ -1258,8 +1416,9 @@ def _project_reviewed_schema_source_scopes(
                 if item["role"] in _LOAN_LEAF_ROLES
                 and loan["document_line_ordinal"] <= item["document_line_ordinal"] < region_end
             ]
-            exact_group_total_without_leaf_labels = not all_loan_leaves and bool(
-                _same_row_numeric_samples(pages, loan)
+            exact_group_total_without_leaf_labels = (
+                not all_loan_leaves
+                and _same_row_numeric_samples_are_complete(pages, loan, projected)
             )
             if (not prior_loan_leaves and not exact_group_total_without_leaf_labels) or (
                 len(root_interval_provisions) != 1
@@ -1269,7 +1428,7 @@ def _project_reviewed_schema_source_scopes(
                 or later_deposit_roles
             ):
                 continue
-            if not str(loan["match_kind"]).startswith("EXACT_"):
+            if not _match_has_effective_exact_source_authority(loan):
                 continue
             source_bbox = match["source_label_bbox"]
             loan_bbox = loan["source_label_bbox"]
@@ -1286,6 +1445,7 @@ def _project_reviewed_schema_source_scopes(
             }
             receipt = _scope_binding(
                 anchor=loan,
+                anchor_exact_source_authority_check=_bound_one_edit_exact_source_check(loan),
                 binding_kind="EXACT_TOP_SIBLING_AFTER_COMPLETE_DEPOSIT_AND_LOAN_SUBTREES",
                 geometry=geometry,
                 interval_end_exclusive=region_end,
@@ -1417,6 +1577,14 @@ def _validate_source_scope_binding(
         )
         or (value["anchor_span"] is not None and type(value["anchor_span"]) is not dict)
         or (
+            value["anchor_exact_source_authority_check"] is not None
+            and type(value["anchor_exact_source_authority_check"]) is not dict
+        )
+        or (
+            value["source_exact_source_authority_check"] is not None
+            and type(value["source_exact_source_authority_check"]) is not dict
+        )
+        or (
             type(value["anchor_span"]) is dict
             and (
                 type(value["anchor_span"].get("source_label_bbox")) is not list
@@ -1443,8 +1611,50 @@ def _validate_source_scope_binding(
     anchor = value["anchor_span"]
     interval = value["interval"]
     geometry = value["geometry"]
-    exact_source = str(value["source_span"].get("match_kind", "")).startswith("EXACT_")
-    exact_anchor = type(anchor) is dict and str(anchor.get("match_kind", "")).startswith("EXACT_")
+    source_check = value["source_exact_source_authority_check"]
+    anchor_check = value["anchor_exact_source_authority_check"]
+    bound_label_check = _bound_one_edit_exact_source_check(label_match)
+    exact_source = str(value["source_span"].get("match_kind", "")).startswith("EXACT_") or (
+        type(source_check) is dict
+        and type(bound_label_check) is dict
+        and same_typed_json_v1(source_check, bound_label_check)
+    )
+    exact_anchor = type(anchor) is dict and (
+        str(anchor.get("match_kind", "")).startswith("EXACT_")
+        or (
+            type(anchor_check) is dict
+            and anchor_check.get("status") == _ONE_EDIT_EXACT_BOUND_STATUS
+            and anchor_check.get("match_scope") == "EXPANDED_OCCURRENCE"
+            and anchor_check.get("page_sequence") == anchor.get("page_sequence")
+            and anchor_check.get("role") == anchor.get("role")
+            and anchor_check.get("source_line_indices") == anchor.get("source_line_indices")
+            and anchor_check.get("retrieval_channel", {}).get("match_kind")
+            == anchor.get("match_kind")
+        )
+    )
+    source_proof_shape_valid = (
+        str(value["source_span"].get("match_kind", "")).startswith("EXACT_")
+        and source_check is None
+    ) or (
+        str(value["source_span"].get("match_kind", "")).startswith("ONE_EDIT_")
+        and type(source_check) is dict
+        and type(bound_label_check) is dict
+        and same_typed_json_v1(source_check, bound_label_check)
+    )
+    anchor_proof_shape_valid = (
+        anchor is None
+        and anchor_check is None
+        or (
+            type(anchor) is dict
+            and (
+                str(anchor.get("match_kind", "")).startswith("EXACT_")
+                and anchor_check is None
+                or str(anchor.get("match_kind", "")).startswith("ONE_EDIT_")
+                and type(anchor_check) is dict
+                and exact_anchor
+            )
+        )
+    )
     discount_pair = {
         "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND": "INTERBANK_LOAN_VND",
         "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_FOREIGN_CURRENCY": ("INTERBANK_LOAN_FOREIGN_CURRENCY"),
@@ -1465,8 +1675,11 @@ def _validate_source_scope_binding(
                 and value["source_role"] == role
                 and value["source_scope_role"] == expected_subscope
                 and exact_source
+                and source_proof_shape_valid
+                and anchor_proof_shape_valid
                 and explicit_scope_surface
                 and anchor is None
+                and value["anchor_exact_source_authority_check"] is None
                 and geometry is None
                 and interval["start_document_line_ordinal"] == label_match["document_line_ordinal"]
                 and interval["end_document_line_ordinal_exclusive"]
@@ -1479,6 +1692,8 @@ def _validate_source_scope_binding(
                 and value["source_scope_role"] == expected_subscope
                 and exact_source
                 and exact_anchor
+                and source_proof_shape_valid
+                and anchor_proof_shape_valid
                 and anchor.get("role") == expected_subscope
                 and geometry is None
                 and anchor["end_document_line_ordinal"] < label_match["document_line_ordinal"]
@@ -1491,6 +1706,8 @@ def _validate_source_scope_binding(
                 and value["source_scope_role"] == "INTERBANK_DEPOSIT_GROUP"
                 and exact_source
                 and exact_anchor
+                and source_proof_shape_valid
+                and anchor_proof_shape_valid
                 and anchor.get("role") in _DEPOSIT_SCOPE_ROLES
                 and geometry is None
                 and anchor["document_line_ordinal"] < label_match["document_line_ordinal"]
@@ -1502,6 +1719,8 @@ def _validate_source_scope_binding(
                 and value["source_scope_role"] == "INTERBANK_DEPOSITS_AND_LOANS"
                 and exact_source
                 and exact_anchor
+                and source_proof_shape_valid
+                and anchor_proof_shape_valid
                 and anchor.get("role") == "INTERBANK_LOAN_GROUP"
                 and type(geometry) is dict
                 and set(geometry)
@@ -1571,7 +1790,11 @@ def _validate_source_scope_binding(
                 in {"INTERBANK_DEPOSIT_GROUP", "INTERBANK_LOAN_GROUP"}
                 and kind == "AMBIGUOUS_TOUCHING_PRECEDING_LABEL_FRAGMENT"
                 and anchor is None
+                and value["anchor_exact_source_authority_check"] is None
+                and value["source_exact_source_authority_check"] is None
                 and exact_source
+                and source_proof_shape_valid
+                and anchor_proof_shape_valid
                 and type(geometry["absolute_left_delta"]) is int
                 and geometry["absolute_left_delta"] == abs(preceding_bbox[0] - candidate_bbox[0])
                 and geometry["absolute_left_delta"] <= 6
@@ -1615,6 +1838,90 @@ def _expanded_region(
     result["child_matches"] = canonical_clone_v1(matches)
     result["observed_roles"] = list(dict.fromkeys(match["role"] for match in matches))
     return result
+
+
+def _one_edit_authority_pages_v2(
+    pages: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Expose the independent PP-OCR source channel on identical line spans."""
+
+    return [
+        {
+            "lines": [
+                {
+                    "bbox": canonical_clone_v1(line["bbox"]),
+                    "numeric_recognition": canonical_clone_v1(line["numeric_recognition"]),
+                    "source_line_index": line["line_ordinal"],
+                    "source_text": line["numeric_recognition"]["raw_prediction"],
+                    "vietocr_text": line["vietocr_text"],
+                }
+                for line in page["lines"]
+            ],
+            "page_sequence": page["page_sequence"],
+            "page_width": page.get("page_width"),
+        }
+        for page in pages
+    ]
+
+
+def _one_edit_exact_source_structural_proofs_v2(
+    pages: Sequence[Mapping[str, Any]],
+    family_spec: Mapping[str, Any],
+    compiled_family: Mapping[str, Any],
+    selected_region: Mapping[str, Any],
+    effective_region: Mapping[str, Any],
+    expanded_matches: Sequence[Mapping[str, Any]],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Derive structural-only exact-source proofs before schema projection.
+
+    The one-edit module owns the exact second-channel contract.  Importing it
+    at call time avoids a module-initialization cycle (that module replays this
+    occurrence implementation) while keeping one canonical proof builder.
+    The receipt never grants mapping authority here; it only makes an exact
+    structural occurrence view available to the reviewed scope projector and
+    later closure.  The selected-trial gate must independently rebuild and
+    persist the same receipt before schema mapping can become ready.
+    """
+
+    from bctc_ai.evaluation import (  # noqa: PLC0415
+        accounting_family_one_edit_exact_authority_v1 as one_edit_v1,
+    )
+
+    visual_matches = _attach_schema_scope_source_label_bboxes(
+        pages,
+        compiled_family,
+        expanded_matches,
+    )
+    decorated = _decorate_scopes(visual_matches, selected_region)
+    retrieval_region = _expanded_region(effective_region, decorated)
+    authority_pages = _one_edit_authority_pages_v2(pages)
+    try:
+        receipt = one_edit_v1._build_from_canonical_expanded_occurrences_v1(  # noqa: SLF001
+            one_edit_v1._pages_with_occurrence_geometry_v1(authority_pages),  # noqa: SLF001
+            compiled_family,
+            document_pages=authority_pages,
+            family_spec=family_spec,
+            selected_topology_region=selected_region,
+            expanded_occurrence_region=retrieval_region,
+        )
+    except one_edit_v1.AccountingFamilyOneEditExactAuthorityV1Error as exc:
+        raise _error("one-edit exact-source structural proof replay failed") from exc
+    checks_by_occurrence_id = {
+        check["occurrence_id"]: check
+        for check in receipt["checks"]
+        if check["match_scope"] == "EXPANDED_OCCURRENCE"
+    }
+    for match in decorated:
+        match["retrieval_occurrence_id"] = match["occurrence_id"]
+        match["retrieval_role"] = match["role"]
+        match["retrieval_role_kind"] = match["role_kind"]
+        match["retrieval_role_occurrence_ordinal"] = match["role_occurrence_ordinal"]
+        match["retrieval_scope_owner_occurrence_id"] = match["scope_owner_occurrence_id"]
+        match["retrieval_within_role"] = match.get("matched_within_role")
+        check = checks_by_occurrence_id.get(match["occurrence_id"])
+        if type(check) is dict and check["status"] == _ONE_EDIT_EXACT_BOUND_STATUS:
+            match["one_edit_exact_source_authority_check"] = canonical_clone_v1(check)
+    return receipt, decorated
 
 
 def _local_page_sequence(selected_pages: Sequence[int], physical_page: int) -> int:
@@ -2142,6 +2449,71 @@ def _numeric_universe_record(
     }
 
 
+def _inspected_label_band_line(line: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "bbox": canonical_clone_v1(line["bbox"]),
+        "line_ordinal": line["line_ordinal"],
+        "numeric_raw_prediction": line["numeric_recognition"]["raw_prediction"],
+        "vietocr_text": line["vietocr_text"],
+    }
+
+
+def _same_row_label_evidence_from_inspected_band(
+    source_line_axis: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    evidence = []
+    for line in source_line_axis:
+        numeric_probe = {
+            "bbox": line["bbox"],
+            "line_ordinal": line["line_ordinal"],
+            "numeric_recognition": {"raw_prediction": line["numeric_raw_prediction"]},
+            "vietocr_text": line["vietocr_text"],
+        }
+        if row_v1._is_numeric(numeric_probe):  # noqa: SLF001
+            continue
+        if not (line["vietocr_text"].strip() or line["numeric_raw_prediction"].strip()):
+            continue
+        evidence.append(canonical_clone_v1(line))
+    return sorted(evidence, key=lambda item: (item["bbox"][0], item["line_ordinal"]))
+
+
+def _build_inspected_label_band(
+    *,
+    ordered_numeric_lines: Sequence[Mapping[str, Any]],
+    page: Mapping[str, Any],
+    pages: Sequence[Mapping[str, Any]],
+    local_lines: Sequence[Mapping[str, Any]],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    numeric_left = min(line["bbox"][0] for line in ordered_numeric_lines)
+    source_line_axis = []
+    for line in local_lines:
+        if line["bbox"][0] >= numeric_left:
+            continue
+        line_height = line["bbox"][3] - line["bbox"][1]
+        if not any(
+            abs(line["bbox"][1] + line["bbox"][3] - numeric["bbox"][1] - numeric["bbox"][3])
+            <= max(line_height, numeric["bbox"][3] - numeric["bbox"][1])
+            for numeric in ordered_numeric_lines
+        ):
+            continue
+        source_line_axis.append(_inspected_label_band_line(line))
+    source_line_axis.sort(key=lambda item: (item["line_ordinal"], item["bbox"]))
+    material = {
+        "document_pages_sha256": canonical_json_sha256_v1(pages),
+        "input_page_line_count": len(page["lines"]),
+        "numeric_row_bboxes": [canonical_clone_v1(line["bbox"]) for line in ordered_numeric_lines],
+        "numeric_row_sample_ids": [line["sample_id"] for line in ordered_numeric_lines],
+        "page_sequence": page["page_sequence"],
+        "source_line_axis": source_line_axis,
+        "source_line_axis_sha256": canonical_json_sha256_v1(source_line_axis),
+    }
+    receipt = {
+        **material,
+        "receipt_id": "aforav2:label-band:" + canonical_json_sha256_v1(material),
+    }
+    return receipt, _same_row_label_evidence_from_inspected_band(source_line_axis)
+
+
 def _build_numeric_sample_universe(
     pages: Sequence[Mapping[str, Any]],
     expanded_region: Mapping[str, Any],
@@ -2267,9 +2639,22 @@ def _build_numeric_sample_universe(
                     line["sample_id"],
                 ),
             )
+            inspected_label_band, same_row_label_evidence = _build_inspected_label_band(
+                ordered_numeric_lines=ordered,
+                page=page,
+                pages=pages,
+                local_lines=local_lines,
+            )
             cluster_material = {
                 "column_ordinals": [lanes_by_sample[line["sample_id"]] for line in ordered],
+                "inspected_label_band": inspected_label_band,
+                "label_lane_status": (
+                    _LABELED_LABEL_LANE_STATUS
+                    if same_row_label_evidence
+                    else _UNLABELED_LABEL_LANE_STATUS
+                ),
                 "page_sequence": page_sequence,
+                "same_row_label_evidence": same_row_label_evidence,
                 "sample_ids": [line["sample_id"] for line in ordered],
                 "status": (
                     _OFF_LANE_NUMERIC_CLUSTER_STATUS
@@ -2349,6 +2734,60 @@ def _validate_numeric_sample_record(record: Any) -> dict[str, Any]:
     if not same_typed_json_v1(validated_ref, record["crop_ref"]):
         raise _error("numeric sample universe crop reference drifted")
     return canonical_clone_v1(record)
+
+
+def _validate_inspected_label_band(
+    cluster: Mapping[str, Any], by_sample: Mapping[str, Mapping[str, Any]]
+) -> None:
+    receipt = cluster.get("inspected_label_band")
+    if type(receipt) is not dict or set(receipt) != _INSPECTED_LABEL_BAND_FIELDS:
+        raise _error("internal numeric cluster inspected label-band receipt drifted")
+    source_axis = receipt["source_line_axis"]
+    if (
+        type(receipt["document_pages_sha256"]) is not str
+        or not re.fullmatch(r"[0-9a-f]{64}", receipt["document_pages_sha256"])
+        or type(receipt["input_page_line_count"]) is not int
+        or receipt["input_page_line_count"] < len(source_axis)
+        or receipt["page_sequence"] != cluster["page_sequence"]
+        or receipt["numeric_row_sample_ids"] != cluster["sample_ids"]
+        or type(receipt["numeric_row_bboxes"]) is not list
+        or len(receipt["numeric_row_bboxes"]) != len(cluster["sample_ids"])
+        or type(source_axis) is not list
+        or any(
+            type(item) is not dict
+            or set(item) != _SAME_ROW_LABEL_EVIDENCE_FIELDS
+            or type(item["bbox"]) is not list
+            or len(item["bbox"]) != 4
+            or any(type(coordinate) is not int for coordinate in item["bbox"])
+            or type(item["line_ordinal"]) is not int
+            or item["line_ordinal"] < 0
+            or type(item["numeric_raw_prediction"]) is not str
+            or type(item["vietocr_text"]) is not str
+            for item in source_axis
+        )
+        or source_axis != sorted(source_axis, key=lambda item: (item["line_ordinal"], item["bbox"]))
+        or len({item["line_ordinal"] for item in source_axis}) != len(source_axis)
+        or receipt["source_line_axis_sha256"] != canonical_json_sha256_v1(source_axis)
+    ):
+        raise _error("internal numeric cluster inspected label-band denominator drifted")
+    expected_bboxes = []
+    for sample_id in cluster["sample_ids"]:
+        sample = by_sample.get(sample_id)
+        if type(sample) is not dict:
+            raise _error("inspected label-band numeric source sample is absent")
+        expected_bboxes.append(sample["bbox"])
+    if not same_typed_json_v1(receipt["numeric_row_bboxes"], expected_bboxes):
+        raise _error("inspected label-band numeric row geometry drifted")
+    material = canonical_clone_v1(receipt)
+    receipt_id = material.pop("receipt_id", None)
+    if receipt_id != "aforav2:label-band:" + canonical_json_sha256_v1(material):
+        raise _error("internal numeric cluster inspected label-band identity drifted")
+    expected_evidence = _same_row_label_evidence_from_inspected_band(source_axis)
+    if not same_typed_json_v1(cluster["same_row_label_evidence"], expected_evidence) or (
+        cluster["label_lane_status"]
+        != (_LABELED_LABEL_LANE_STATUS if expected_evidence else _UNLABELED_LABEL_LANE_STATUS)
+    ):
+        raise _error("internal numeric cluster label-lane status did not replay from its band")
 
 
 def _validate_numeric_sample_universe(
@@ -2432,8 +2871,26 @@ def _validate_numeric_sample_universe(
             or type(cluster["column_ordinals"]) is not list
             or len(cluster["column_ordinals"]) != len(cluster["sample_ids"])
             or any(type(item) is not int or item < 0 for item in cluster["column_ordinals"])
+            or cluster["label_lane_status"]
+            not in {_UNLABELED_LABEL_LANE_STATUS, _LABELED_LABEL_LANE_STATUS}
+            or type(cluster["same_row_label_evidence"]) is not list
+            or any(
+                type(item) is not dict
+                or set(item) != _SAME_ROW_LABEL_EVIDENCE_FIELDS
+                or type(item["bbox"]) is not list
+                or len(item["bbox"]) != 4
+                or any(type(coordinate) is not int for coordinate in item["bbox"])
+                or type(item["line_ordinal"]) is not int
+                or item["line_ordinal"] < 0
+                or type(item["numeric_raw_prediction"]) is not str
+                or type(item["vietocr_text"]) is not str
+                for item in cluster["same_row_label_evidence"]
+            )
+            or (cluster["label_lane_status"] == _UNLABELED_LABEL_LANE_STATUS)
+            != (not cluster["same_row_label_evidence"])
         ):
             raise _error("internal unassigned numeric cluster drifted")
+        _validate_inspected_label_band(cluster, by_sample)
         material = canonical_clone_v1(cluster)
         cluster_id = material.pop("cluster_id", None)
         if type(
@@ -2505,6 +2962,20 @@ def _validate_result(value: Any) -> dict[str, Any]:
         }
     ):
         raise _error("occurrence row-axis result contract drifted")
+    from bctc_ai.evaluation import (  # noqa: PLC0415
+        accounting_family_one_edit_exact_authority_v1 as one_edit_v1,
+    )
+
+    try:
+        one_edit_proofs = (
+            one_edit_v1.validate_accounting_family_one_edit_exact_authority_receipt_shape_v1(
+                value["one_edit_exact_source_structural_proofs"]
+            )
+        )
+    except one_edit_v1.AccountingFamilyOneEditExactAuthorityV1Error as exc:
+        raise _error("one-edit exact-source structural proof receipt drifted") from exc
+    if one_edit_proofs["family_id"] != value["family_id"]:
+        raise _error("one-edit exact-source structural proof family drifted")
     try:
         axis = row_v1._validate_result(value["row_axis"])
     except row_v1.AccountingFamilyRowAxisV1Error as exc:
@@ -2515,6 +2986,9 @@ def _validate_result(value: Any) -> dict[str, Any]:
     ):
         raise _error("occurrence row-axis family or topology identity differs")
     occurrence_ids = [item.get("occurrence_id") for item in value["role_occurrences"]]
+    retrieval_occurrence_ids = [
+        item.get("retrieval_occurrence_id") for item in value["role_occurrences"]
+    ]
     if (
         any(
             type(item) is not dict or set(item) != _OCCURRENCE_FIELDS
@@ -2522,9 +2996,111 @@ def _validate_result(value: Any) -> dict[str, Any]:
         )
         or any(type(item) is not str or not item for item in occurrence_ids)
         or len(occurrence_ids) != len(set(occurrence_ids))
+        or any(type(item) is not str or not item for item in retrieval_occurrence_ids)
+        or len(retrieval_occurrence_ids) != len(set(retrieval_occurrence_ids))
     ):
         raise _error("role occurrence identity axis repeats or drifted")
     occurrence_by_id = {item["occurrence_id"]: item for item in value["role_occurrences"]}
+    proof_checks_by_occurrence_id = {
+        check["occurrence_id"]: check
+        for check in one_edit_proofs["checks"]
+        if check["match_scope"] == "EXPANDED_OCCURRENCE"
+    }
+    if any(
+        (
+            str(item["label_match"].get("match_kind", "")).startswith("ONE_EDIT_")
+            and (
+                item["retrieval_occurrence_id"] not in proof_checks_by_occurrence_id
+                or proof_checks_by_occurrence_id[item["retrieval_occurrence_id"]].get("role")
+                != item["label_match"].get("retrieval_role")
+                or proof_checks_by_occurrence_id[item["retrieval_occurrence_id"]].get("within_role")
+                != item["label_match"].get("retrieval_within_role")
+            )
+        )
+        or (
+            "one_edit_exact_source_authority_check" in item["label_match"]
+            and (
+                _bound_one_edit_exact_source_check(item["label_match"]) is None
+                or not same_typed_json_v1(
+                    item["label_match"]["one_edit_exact_source_authority_check"],
+                    proof_checks_by_occurrence_id.get(item["retrieval_occurrence_id"]),
+                )
+            )
+        )
+        for item in value["role_occurrences"]
+    ):
+        raise _error("one-edit exact-source structural occurrence proof drifted")
+    retrieval_proxies = []
+    for item in value["role_occurrences"]:
+        label = canonical_clone_v1(item["label_match"])
+        if (
+            type(label.get("retrieval_role")) is not str
+            or not label["retrieval_role"]
+            or type(label.get("retrieval_role_kind")) is not str
+            or not label["retrieval_role_kind"]
+            or type(label.get("retrieval_role_occurrence_ordinal")) is not int
+            or label["retrieval_role_occurrence_ordinal"] < 0
+            or label.get("retrieval_within_role") is not None
+            and (
+                type(label["retrieval_within_role"]) is not str
+                or not label["retrieval_within_role"]
+            )
+        ):
+            raise _error("retrieval occurrence semantic identity drifted")
+        label["role"] = label["retrieval_role"]
+        label["role_kind"] = label["retrieval_role_kind"]
+        label["role_occurrence_ordinal"] = label["retrieval_role_occurrence_ordinal"]
+        label["matched_within_role"] = label["retrieval_within_role"]
+        label.pop("occurrence_id", None)
+        label.pop("scope_owner_occurrence_id", None)
+        label.pop("scope_owner_role", None)
+        retrieval_proxies.append(label)
+    try:
+        replayed_retrieval = _decorate_scopes(retrieval_proxies, axis["topology_region"])
+    except AccountingFamilyOccurrenceRowAxisV2Error as exc:
+        raise _error("retrieval occurrence owner replay failed") from exc
+    replayed_retrieval_by_id = {item["occurrence_id"]: item for item in replayed_retrieval}
+
+    def retrieval_physical_signature(match: Mapping[str, Any]) -> dict[str, Any]:
+        explicit_indices = match.get("source_line_indices")
+        return {
+            "document_line_ordinal": match["document_line_ordinal"],
+            "end_document_line_ordinal": match["end_document_line_ordinal"],
+            "end_source_line_index": match["end_source_line_index"],
+            "matched_within_role": match.get("matched_within_role"),
+            "page_sequence": match["page_sequence"],
+            "role": match["role"],
+            "role_kind": match["role_kind"],
+            "role_occurrence_ordinal": match["role_occurrence_ordinal"],
+            "source_label_bbox": canonical_clone_v1(match.get("source_label_bbox")),
+            "source_line_index": match["source_line_index"],
+            "source_line_indices": (
+                list(explicit_indices)
+                if type(explicit_indices) is list
+                else list(range(match["source_line_index"], match["end_source_line_index"] + 1))
+            ),
+        }
+
+    # Bind every final projected item to the retrieval occurrence reconstructed
+    # from that same physical row.  Set membership is insufficient: two exact
+    # repeated rows with the same role and owner could otherwise exchange their
+    # retrieval IDs while leaving both IDs and both owners globally valid.
+    if (
+        len(replayed_retrieval_by_id) != len(replayed_retrieval)
+        or len(replayed_retrieval) != len(value["role_occurrences"])
+        or any(
+            item["retrieval_occurrence_id"] != replayed["occurrence_id"]
+            or item["retrieval_scope_owner_occurrence_id"] != replayed["scope_owner_occurrence_id"]
+            or not same_typed_json_v1(
+                retrieval_physical_signature(retrieval_proxies[index]),
+                retrieval_physical_signature(replayed),
+            )
+            for index, (item, replayed) in enumerate(
+                zip(value["role_occurrences"], replayed_retrieval, strict=True)
+            )
+        )
+    ):
+        raise _error("retrieval occurrence physical identity or owner drifted")
     row_occurrence_ids = {row["label_match"].get("occurrence_id") for row in axis["rows"]}
     row_by_occurrence = {row["label_match"].get("occurrence_id"): row for row in axis["rows"]}
     root_scope_ids = {
@@ -2538,6 +3114,9 @@ def _validate_result(value: Any) -> dict[str, Any]:
         or not item["scope_owner_match_kind"]
         or type(item["label_match"]) is not dict
         or item["label_match"].get("occurrence_id") != item["occurrence_id"]
+        or item["label_match"].get("retrieval_occurrence_id") != item["retrieval_occurrence_id"]
+        or item["label_match"].get("retrieval_scope_owner_occurrence_id")
+        != item["retrieval_scope_owner_occurrence_id"]
         or item["label_match"].get("role") != item["role"]
         or item["label_match"].get("role_kind") != item["role_kind"]
         or item["label_match"].get("scope_owner_occurrence_id") != item["scope_owner_occurrence_id"]
@@ -2672,6 +3251,15 @@ def _validate_result(value: Any) -> dict[str, Any]:
         anchor = anchors[0]
         source_match = occurrence["label_match"]
         anchor_match = anchor["label_match"]
+        anchor_exact_check = receipt.get("anchor_exact_source_authority_check")
+        if anchor_exact_check is not None and (
+            _bound_one_edit_exact_source_check(anchor_match) is None
+            or not same_typed_json_v1(
+                anchor_exact_check,
+                anchor_match.get("one_edit_exact_source_authority_check"),
+            )
+        ):
+            raise _error("reviewed schema source-scope anchor exact-source proof drifted")
         if (
             anchor_match["page_sequence"] != source_match["page_sequence"]
             or anchor_match["end_document_line_ordinal"] >= source_match["document_line_ordinal"]
@@ -2709,7 +3297,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 and item["label_match"]["page_sequence"] == source_match["page_sequence"]
                 and item["label_match"]["end_document_line_ordinal"]
                 < source_match["document_line_ordinal"]
-                and str(item["label_match"]["match_kind"]).startswith("EXACT_")
+                and _match_has_effective_exact_source_authority(item["label_match"])
                 and type(expected_loan) is dict
                 and item["label_match"]["document_line_ordinal"]
                 >= expected_loan["label_match"]["document_line_ordinal"]
@@ -2785,8 +3373,9 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 item
                 for item in value["role_occurrences"]
                 if item["role"] in _DEPOSIT_SCOPE_ROLES
+                and item["label_match"]["page_sequence"] == source_match["page_sequence"]
                 and item["label_match"]["document_line_ordinal"] < source_ordinal
-                and str(item["label_match"]["match_kind"]).startswith("EXACT_")
+                and _match_has_effective_exact_source_authority(item["label_match"])
             ]
             active_deposit_groups = [
                 item for item in prior_deposits if item["role"] == "INTERBANK_DEPOSIT_GROUP"
@@ -2804,12 +3393,14 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 item
                 for item in value["role_occurrences"]
                 if item["role"] == "INTERBANK_LOAN_GROUP"
+                and item["label_match"]["page_sequence"] == source_match["page_sequence"]
                 and item["label_match"]["document_line_ordinal"] < source_ordinal
             ]
             later_loans = [
                 item
                 for item in value["role_occurrences"]
                 if item["role"] == "INTERBANK_LOAN_GROUP"
+                and item["label_match"]["page_sequence"] == source_match["page_sequence"]
                 and item["label_match"]["document_line_ordinal"] > source_ordinal
             ]
             next_loan_ordinal = min(
@@ -2907,19 +3498,22 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 item
                 for item in value["role_occurrences"]
                 if item["role"] in _DEPOSIT_SCOPE_ROLES
+                and item["label_match"]["page_sequence"] == source_match["page_sequence"]
                 and item["label_match"]["document_line_ordinal"] < source_ordinal
-                and str(item["label_match"]["match_kind"]).startswith("EXACT_")
+                and _match_has_effective_exact_source_authority(item["label_match"])
             ]
             prior_loans = [
                 item
                 for item in value["role_occurrences"]
                 if item["role"] == "INTERBANK_LOAN_GROUP"
+                and item["label_match"]["page_sequence"] == source_match["page_sequence"]
                 and item["label_match"]["document_line_ordinal"] < source_ordinal
             ]
             later_loans = [
                 item
                 for item in value["role_occurrences"]
                 if item["role"] == "INTERBANK_LOAN_GROUP"
+                and item["label_match"]["page_sequence"] == source_match["page_sequence"]
                 and item["label_match"]["document_line_ordinal"] > source_ordinal
             ]
             later_deposits = [
@@ -2941,8 +3535,9 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 item
                 for item in value["role_occurrences"]
                 if item["role"] in _LOAN_LEAF_ROLES
+                and item["label_match"]["page_sequence"] == source_match["page_sequence"]
                 and anchor_ordinal <= item["label_match"]["document_line_ordinal"] < source_ordinal
-                and str(item["label_match"]["match_kind"]).startswith("EXACT_")
+                and _match_has_effective_exact_source_authority(item["label_match"])
             ]
             later_leaves = [
                 item
@@ -3005,7 +3600,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
                 or explicit_root_interval_provisions
                 or expected_loan is None
                 or expected_loan["occurrence_id"] != anchor["occurrence_id"]
-                or not str(anchor_match["match_kind"]).startswith("EXACT_")
+                or not _match_has_effective_exact_source_authority(anchor_match)
                 or not (exact_leaf_completion or exact_group_total_completion)
                 or later_loans
                 or later_deposits
@@ -3189,6 +3784,16 @@ def _build(
             prepared_topology_binding,
         )
     )
+    one_edit_exact_source_structural_proofs, expanded_matches = (
+        _one_edit_exact_source_structural_proofs_v2(
+            parsed_pages,
+            family_spec,
+            compiled_family,
+            selected_region,
+            expected_effective,
+            expanded_matches,
+        )
+    )
     expanded_matches = _project_reviewed_schema_source_scopes(
         parsed_pages,
         compiled_family,
@@ -3239,6 +3844,8 @@ def _build(
             "has_bound_value_row": match["occurrence_id"] in rows_by_occurrence,
             "label_match": canonical_clone_v1(match),
             "occurrence_id": match["occurrence_id"],
+            "retrieval_occurrence_id": match["retrieval_occurrence_id"],
+            "retrieval_scope_owner_occurrence_id": match["retrieval_scope_owner_occurrence_id"],
             "role": match["role"],
             "role_kind": match["role_kind"],
             "scope_owner_occurrence_id": match["scope_owner_occurrence_id"],
@@ -3273,6 +3880,7 @@ def _build(
         "format_version": FORMAT_VERSION,
         "internal_unassigned_numeric_clusters": internal_unassigned_numeric_clusters,
         "numeric_sample_universe": numeric_sample_universe,
+        "one_edit_exact_source_structural_proofs": one_edit_exact_source_structural_proofs,
         "role_occurrences": role_occurrences,
         "row_axis": axis,
         "safety": canonical_clone_v1(_SAFETY),

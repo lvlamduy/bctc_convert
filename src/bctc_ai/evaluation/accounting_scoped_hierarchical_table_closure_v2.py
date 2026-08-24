@@ -111,6 +111,7 @@ _RESULT_FIELDS = {
     "numeric_sample_universe",
     "occurrence_axis_binding",
     "occurrence_axis_id",
+    "one_edit_exact_source_structural_proofs",
     "resolved_roles",
     "role_occurrences",
     "row_axis_id",
@@ -211,8 +212,8 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEPENDENCIES = {
     "occurrence_row_axis_v2": {
         "path": "src/bctc_ai/evaluation/accounting_family_occurrence_row_axis_v2.py",
-        "sha256": "418575d167f69598926a601edb2b2075f52a3256deaf7f965808d1bd1df91a0d",
-        "size_bytes": 147_989,
+        "sha256": "75cd8b9e6ff69663739cf74f366a0e1b542a54c78c278dda2bb428021982ff87",
+        "size_bytes": 176_404,
     },
     "topology_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
@@ -458,12 +459,24 @@ def _source_role_vetoes(
     rows: Sequence[Mapping[str, Any]],
     role_occurrences: Sequence[Mapping[str, Any]],
     source_role_policy: Mapping[str, Any],
+    one_edit_exact_source_structural_proofs: Mapping[str, Any],
 ) -> tuple[set[str], set[str], list[str]]:
     """Separate typed source evidence that is ineligible for schema closure."""
 
     source_only_roles = set(source_role_policy["source_only_veto_roles"])
     veto_one_edit = source_role_policy["one_edit_role_or_scope_match_policy"] == "VETO"
     occurrence_by_id = {occurrence["occurrence_id"]: occurrence for occurrence in role_occurrences}
+    bound_retrieval_occurrence_ids = {
+        check["occurrence_id"]
+        for check in one_edit_exact_source_structural_proofs["checks"]
+        if check["match_scope"] == "EXPANDED_OCCURRENCE"
+        and check["status"] == occurrence_v2._ONE_EDIT_EXACT_BOUND_STATUS  # noqa: SLF001
+    }
+    family_parent_is_bound = any(
+        check["match_scope"] == "FAMILY_PARENT"
+        and check["status"] == occurrence_v2._ONE_EDIT_EXACT_BOUND_STATUS  # noqa: SLF001
+        for check in one_edit_exact_source_structural_proofs["checks"]
+    )
     source_only_occurrences: set[str] = set()
     one_edit_occurrences: set[str] = set()
     reasons: list[str] = []
@@ -490,10 +503,23 @@ def _source_role_vetoes(
                 )
                 + f":{role}:{occurrence_id}"
             )
-        if veto_one_edit and (
+        label_one_edit_unbound = (
             str(row["label_match"].get("match_kind", "")).startswith("ONE_EDIT_")
-            or str(occurrence["scope_owner_match_kind"]).startswith("ONE_EDIT_")
-        ):
+            and occurrence["retrieval_occurrence_id"] not in bound_retrieval_occurrence_ids
+        )
+        scope_one_edit_unbound = str(occurrence["scope_owner_match_kind"]).startswith(
+            "ONE_EDIT_"
+        ) and (
+            (occurrence["scope_owner_role"] is None and not family_parent_is_bound)
+            or (
+                occurrence["scope_owner_role"] is not None
+                and occurrence_by_id[occurrence["scope_owner_occurrence_id"]][
+                    "retrieval_occurrence_id"
+                ]
+                not in bound_retrieval_occurrence_ids
+            )
+        )
+        if veto_one_edit and (label_one_edit_unbound or scope_one_edit_unbound):
             one_edit_occurrences.add(occurrence_id)
             reasons.append(f"ONE_EDIT_ROLE_OR_SCOPE_MATCH_SCHEMA_INELIGIBLE:{role}:{occurrence_id}")
     return source_only_occurrences, one_edit_occurrences, reasons
@@ -1646,6 +1672,7 @@ def _numeric_source_candidate_axis(
                 sample_ids=cluster["sample_ids"],
                 source_complete=(
                     cluster["status"] == occurrence_v2._INTERNAL_UNASSIGNED_CLUSTER_STATUS
+                    and cluster["label_lane_status"] == occurrence_v2._UNLABELED_LABEL_LANE_STATUS
                 ),
                 source_record=cluster,
             )
@@ -2483,8 +2510,32 @@ def _validate_numeric_sample_coverage(value: Mapping[str, Any]) -> None:
             or type(cluster.get("column_ordinals")) is not list
             or len(cluster["column_ordinals"]) != len(cluster["sample_ids"])
             or any(type(item) is not int or item < 0 for item in cluster["column_ordinals"])
+            or cluster.get("label_lane_status")
+            not in {
+                occurrence_v2._UNLABELED_LABEL_LANE_STATUS,
+                occurrence_v2._LABELED_LABEL_LANE_STATUS,
+            }
+            or type(cluster.get("same_row_label_evidence")) is not list
+            or any(
+                type(item) is not dict
+                or set(item) != occurrence_v2._SAME_ROW_LABEL_EVIDENCE_FIELDS
+                or type(item.get("bbox")) is not list
+                or len(item["bbox"]) != 4
+                or any(type(coordinate) is not int for coordinate in item["bbox"])
+                or type(item.get("line_ordinal")) is not int
+                or item["line_ordinal"] < 0
+                or type(item.get("numeric_raw_prediction")) is not str
+                or type(item.get("vietocr_text")) is not str
+                for item in cluster["same_row_label_evidence"]
+            )
+            or (cluster["label_lane_status"] == occurrence_v2._UNLABELED_LABEL_LANE_STATUS)
+            != (not cluster["same_row_label_evidence"])
         ):
             raise _error("scoped hierarchical internal numeric cluster drifted")
+        try:
+            occurrence_v2._validate_inspected_label_band(cluster, by_sample)  # noqa: SLF001
+        except occurrence_v2.AccountingFamilyOccurrenceRowAxisV2Error as exc:
+            raise _error("scoped hierarchical inspected label-band receipt drifted") from exc
         material = canonical_clone_v1(cluster)
         cluster_id = material.pop("cluster_id")
         if (
@@ -2773,6 +2824,20 @@ def _validate_result(value: Any) -> dict[str, Any]:
         }
     ):
         raise _error("scoped hierarchical result contract drifted")
+    from bctc_ai.evaluation import (  # noqa: PLC0415
+        accounting_family_one_edit_exact_authority_v1 as one_edit_v1,
+    )
+
+    try:
+        one_edit_proofs = (
+            one_edit_v1.validate_accounting_family_one_edit_exact_authority_receipt_shape_v1(
+                value["one_edit_exact_source_structural_proofs"]
+            )
+        )
+    except one_edit_v1.AccountingFamilyOneEditExactAuthorityV1Error as exc:
+        raise _error("scoped hierarchical one-edit structural proof drifted") from exc
+    if one_edit_proofs["family_id"] != value["family_id"]:
+        raise _error("scoped hierarchical one-edit structural proof family drifted")
     roles = [record.get("role") for record in value["resolved_roles"]]
     if any(type(role) is not str or not role for role in roles) or len(roles) != len(set(roles)):
         raise _error("scoped hierarchical resolved role axis repeats or drifted")
@@ -2793,6 +2858,20 @@ def _validate_result(value: Any) -> dict[str, Any]:
         for occurrence in value["role_occurrences"]
         if type(occurrence) is dict and type(occurrence.get("occurrence_id")) is str
     }
+    proof_check_by_retrieval_occurrence_id = {
+        check["occurrence_id"]: check
+        for check in one_edit_proofs["checks"]
+        if check["match_scope"] == "EXPANDED_OCCURRENCE"
+    }
+    if any(
+        "one_edit_exact_source_authority_check" in occurrence.get("label_match", {})
+        and not same_typed_json_v1(
+            occurrence["label_match"]["one_edit_exact_source_authority_check"],
+            proof_check_by_retrieval_occurrence_id.get(occurrence.get("retrieval_occurrence_id")),
+        )
+        for occurrence in role_occurrence_by_id.values()
+    ):
+        raise _error("scoped hierarchical one-edit occurrence proof drifted")
     for equation in value["equations"]["global"]:
         if (
             type(equation) is not dict
@@ -3381,11 +3460,45 @@ def _build(
         numeric_rows,
         axis["role_occurrences"],
         spec["source_role_policy"],
+        axis["one_edit_exact_source_structural_proofs"],
     )
     reasons.extend(source_role_reasons)
     occurrence_by_id = {
         occurrence["occurrence_id"]: occurrence for occurrence in axis["role_occurrences"]
     }
+    bound_one_edit_retrieval_occurrence_ids = {
+        check["occurrence_id"]
+        for check in axis["one_edit_exact_source_structural_proofs"]["checks"]
+        if check["match_scope"] == "EXPANDED_OCCURRENCE"
+        and check["status"] == occurrence_v2._ONE_EDIT_EXACT_BOUND_STATUS  # noqa: SLF001
+    }
+    bound_one_edit_family_parent = any(
+        check["match_scope"] == "FAMILY_PARENT"
+        and check["status"] == occurrence_v2._ONE_EDIT_EXACT_BOUND_STATUS  # noqa: SLF001
+        for check in axis["one_edit_exact_source_structural_proofs"]["checks"]
+    )
+
+    def one_edit_source_or_owner_is_unbound(
+        occurrence: Mapping[str, Any], *, source_match_kind: Any = None
+    ) -> bool:
+        source_unbound = str(source_match_kind).startswith("ONE_EDIT_") and (
+            occurrence["retrieval_occurrence_id"] not in bound_one_edit_retrieval_occurrence_ids
+        )
+        label_unbound = str(occurrence["label_match"].get("match_kind", "")).startswith(
+            "ONE_EDIT_"
+        ) and (occurrence["retrieval_occurrence_id"] not in bound_one_edit_retrieval_occurrence_ids)
+        owner_unbound = str(occurrence["scope_owner_match_kind"]).startswith("ONE_EDIT_") and (
+            (occurrence["scope_owner_role"] is None and not bound_one_edit_family_parent)
+            or (
+                occurrence["scope_owner_role"] is not None
+                and occurrence_by_id[occurrence["scope_owner_occurrence_id"]][
+                    "retrieval_occurrence_id"
+                ]
+                not in bound_one_edit_retrieval_occurrence_ids
+            )
+        )
+        return source_unbound or label_unbound or owner_unbound
+
     coextensive_one_edit_occurrences: set[str] = set()
     if spec["source_role_policy"]["one_edit_role_or_scope_match_policy"] == "VETO":
         for evidence in axis["coextensive_structural_numeric_evidence"]:
@@ -3393,15 +3506,10 @@ def _build(
                 continue
             projected = occurrence_by_id[evidence["projected_occurrence_id"]]
             owner = occurrence_by_id[evidence["owner_occurrence_id"]]
-            if any(
-                str(match_kind).startswith("ONE_EDIT_")
-                for match_kind in (
-                    evidence["source_record"]["label_match"].get("match_kind"),
-                    projected["scope_owner_match_kind"],
-                    owner["label_match"].get("match_kind"),
-                    owner["scope_owner_match_kind"],
-                )
-            ):
+            if one_edit_source_or_owner_is_unbound(
+                projected,
+                source_match_kind=evidence["source_record"]["label_match"].get("match_kind"),
+            ) or one_edit_source_or_owner_is_unbound(owner):
                 occurrence_id = evidence["projected_occurrence_id"]
                 coextensive_one_edit_occurrences.add(occurrence_id)
                 reasons.append(
@@ -3739,6 +3847,9 @@ def _build(
         },
         "occurrence_axis_id": axis["occurrence_axis_id"],
         "numeric_sample_universe": canonical_clone_v1(axis["numeric_sample_universe"]),
+        "one_edit_exact_source_structural_proofs": canonical_clone_v1(
+            axis["one_edit_exact_source_structural_proofs"]
+        ),
         "resolved_roles": resolved_axis,
         "role_occurrences": canonical_clone_v1(axis["role_occurrences"]),
         "row_axis_id": row_axis["row_axis_id"],

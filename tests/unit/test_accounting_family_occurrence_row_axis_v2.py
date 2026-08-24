@@ -1006,6 +1006,154 @@ def test_f3_generic_discount_requires_nearest_exact_currency_interval() -> None:
     )
 
 
+def test_f3_repeated_retrieval_occurrence_ids_cannot_swap_physical_rows() -> None:
+    pages = _f3_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Cho vay các TCTD khác", "50", "40"),
+            ("Bằng VND", "50", "40"),
+            ("Chiết khấu, tái chiết khấu", "5", "4"),
+            ("Chiết khấu, tái chiết khấu", "6", "5"),
+        ]
+    )
+
+    _scan, axis = _build_f3(pages)
+    repeated = [
+        item
+        for item in axis["role_occurrences"]
+        if item["label_match"]["retrieval_role"] == "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_AMBIGUOUS"
+    ]
+    assert len(repeated) == 2
+    assert len({item["retrieval_scope_owner_occurrence_id"] for item in repeated}) == 1
+
+    attacked = copy.deepcopy(axis)
+    attacked_repeated = [
+        item
+        for item in attacked["role_occurrences"]
+        if item["label_match"]["retrieval_role"] == "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_AMBIGUOUS"
+    ]
+    first_id, second_id = [item["retrieval_occurrence_id"] for item in attacked_repeated]
+    for item, swapped_id in zip(attacked_repeated, (second_id, first_id), strict=True):
+        original_id = item["retrieval_occurrence_id"]
+        item["retrieval_occurrence_id"] = swapped_id
+        item["label_match"]["retrieval_occurrence_id"] = swapped_id
+        row = next(
+            row
+            for row in attacked["row_axis"]["rows"]
+            if row["label_match"].get("occurrence_id") == item["occurrence_id"]
+        )
+        assert row["label_match"]["retrieval_occurrence_id"] == original_id
+        row["label_match"]["retrieval_occurrence_id"] = swapped_id
+    attacked["row_axis"] = subject._regenerate_v1_axis(attacked["row_axis"])
+    _coherently_rehash_occurrence(attacked)
+
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="retrieval occurrence physical identity or owner drifted",
+    ):
+        subject._validate_result(attacked)
+
+
+def test_f3_one_edit_vnd_with_exact_same_crop_source_anchors_generic_discount() -> None:
+    pages = _f3_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Cho vay các TCTD khác", "50", "40"),
+            ("Bằng VNB", "50", "40"),
+            ("Chiết khấu, tái chiết khấu", "5", "4"),
+            ("Bằng ngoại tệ", "0", "0"),
+        ]
+    )
+    vnd_line = next(line for line in pages[0]["lines"] if line["vietocr_text"] == "Bằng VNB")
+    vnd_line["numeric_recognition"]["raw_prediction"] = "Bằng VND"
+
+    _scan, axis = _build_f3(pages)
+
+    vnd = next(item for item in axis["role_occurrences"] if item["role"] == "INTERBANK_LOAN_VND")
+    assert vnd["label_match"]["match_kind"].startswith("ONE_EDIT_")
+    assert vnd["label_match"]["one_edit_exact_source_authority_check"]["status"] == (
+        "EXACT_SOURCE_ROLE_CONTEXT_SPAN_BOUND"
+    )
+    discount = next(
+        item
+        for item in axis["role_occurrences"]
+        if item["role"] == "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_VND"
+    )
+    assert discount["occurrence_id"] != discount["retrieval_occurrence_id"]
+    assert discount["source_scope_binding"]["binding_kind"] == (
+        "UNIQUE_EXACT_PRECEDING_SOURCE_SUBSCOPE_INTERVAL"
+    )
+    assert (
+        discount["source_scope_binding"]["anchor_exact_source_authority_check"]
+        == (vnd["label_match"]["one_edit_exact_source_authority_check"])
+    )
+    closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+        axis, _f3_spec(), _f3_hierarchy()
+    )
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    assert not any("ONE_EDIT" in reason for reason in closure["unresolved_reasons"])
+
+    attacked = copy.deepcopy(axis)
+    attacked_vnd = next(
+        item for item in attacked["role_occurrences"] if item["role"] == "INTERBANK_LOAN_VND"
+    )
+    attacked_deposit = next(
+        item for item in attacked["role_occurrences"] if item["role"] == "INTERBANK_DEPOSIT_GROUP"
+    )
+    attacked_vnd["retrieval_scope_owner_occurrence_id"] = attacked_deposit[
+        "retrieval_occurrence_id"
+    ]
+    attacked_vnd["label_match"]["retrieval_scope_owner_occurrence_id"] = attacked_deposit[
+        "retrieval_occurrence_id"
+    ]
+    row = next(
+        row
+        for row in attacked["row_axis"]["rows"]
+        if row["label_match"]["occurrence_id"] == attacked_vnd["occurrence_id"]
+    )
+    row["label_match"]["retrieval_scope_owner_occurrence_id"] = attacked_deposit[
+        "retrieval_occurrence_id"
+    ]
+    attacked["row_axis"] = subject._regenerate_v1_axis(attacked["row_axis"])
+    _coherently_rehash_occurrence(attacked)
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="one-edit exact-source structural occurrence proof|retrieval occurrence owner",
+    ):
+        subject._validate_result(attacked)
+
+
+def test_f3_one_edit_vnd_without_independent_exact_source_keeps_discount_ambiguous() -> None:
+    pages = _f3_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Cho vay các TCTD khác", "50", "40"),
+            ("Bằng VNB", "50", "40"),
+            ("Chiết khấu, tái chiết khấu", "5", "4"),
+            ("Bằng ngoại tệ", "0", "0"),
+        ]
+    )
+    vnd_line = next(line for line in pages[0]["lines"] if line["vietocr_text"] == "Bằng VNB")
+    vnd_line["numeric_recognition"]["raw_prediction"] = "Bằng VNB"
+
+    _scan, axis = _build_f3(pages)
+
+    vnd = next(item for item in axis["role_occurrences"] if item["role"] == "INTERBANK_LOAN_VND")
+    assert "one_edit_exact_source_authority_check" not in vnd["label_match"]
+    assert any(
+        item["role"] == "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_AMBIGUOUS"
+        for item in axis["role_occurrences"]
+    )
+    closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+        axis, _f3_spec(), _f3_hierarchy()
+    )
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert any(
+        "ONE_EDIT_ROLE_OR_SCOPE_MATCH_SCHEMA_INELIGIBLE" in reason
+        for reason in closure["unresolved_reasons"]
+    )
+
+
 @pytest.mark.parametrize(
     "intervening_label",
     ["Khác", "Dự phòng rủi ro cho vay các TCTD khác"],
@@ -1217,6 +1365,94 @@ def test_f3_root_provision_accepts_complete_exact_loan_group_total_without_leave
         if row["label_match"]["occurrence_id"] == loan["occurrence_id"]
     )
     assert loan_row["status"] == "VISIBLE_VALUE_LANES_BOUND"
+
+
+def test_f3_partial_loan_group_total_cannot_complete_root_provision_scope() -> None:
+    _scan, axis = _build_f3(
+        _f3_pages(
+            [
+                ("Tiền gửi tại các TCTD khác", "100", "90"),
+                ("Cho vay các TCTD khác", "50", ""),
+                ("Dự phòng rủi ro", "-2", "-1"),
+            ]
+        )
+    )
+
+    provision = next(
+        item for item in axis["role_occurrences"] if item["role"] == "INTERBANK_PROVISION_AMBIGUOUS"
+    )
+    assert provision["source_scope_binding"] is None
+    loan = next(item for item in axis["role_occurrences"] if item["role"] == "INTERBANK_LOAN_GROUP")
+    loan_row = next(
+        row
+        for row in axis["row_axis"]["rows"]
+        if row["label_match"]["occurrence_id"] == loan["occurrence_id"]
+    )
+    assert loan_row["status"] == "PARTIAL_VISIBLE_VALUE_LANES_REQUIRES_PIXEL_RESCUE"
+    closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+        axis, _f3_spec(), _f3_hierarchy()
+    )
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+
+
+def test_f3_discount_scope_never_borrows_an_anchor_from_a_prior_page() -> None:
+    pages = _f3_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Cho vay các TCTD khác", "50", "40"),
+            ("Bằng VND", "50", "40"),
+            ("Chiết khấu, tái chiết khấu", "5", "4"),
+        ]
+    )
+    lines = pages[0]["lines"]
+    split = next(
+        index
+        for index, line in enumerate(lines)
+        if line["vietocr_text"] == "Chiết khấu, tái chiết khấu"
+    )
+    second_page_lines = lines[split:]
+    pages[0]["lines"] = lines[:split]
+    for ordinal, line in enumerate(second_page_lines):
+        line["line_ordinal"] = ordinal
+    pages.append({"lines": second_page_lines, "page_sequence": 2, "page_width": 1000})
+
+    _scan, axis = _build_f3(pages)
+
+    source = next(
+        item
+        for item in axis["role_occurrences"]
+        if item["role"] == "INTERBANK_LOAN_DISCOUNT_REDISCOUNT_AMBIGUOUS"
+    )
+    assert source["label_match"]["page_sequence"] == 2
+    assert source["source_scope_binding"] is None
+
+
+def test_f3_provision_scope_never_borrows_an_anchor_from_a_prior_page() -> None:
+    pages = _f3_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Dự phòng rủi ro", "-2", "-1"),
+            ("Cho vay các TCTD khác", "50", "40"),
+            ("Bằng VND", "50", "40"),
+        ]
+    )
+    lines = pages[0]["lines"]
+    split = next(
+        index for index, line in enumerate(lines) if line["vietocr_text"] == "Dự phòng rủi ro"
+    )
+    second_page_lines = lines[split:]
+    pages[0]["lines"] = lines[:split]
+    for ordinal, line in enumerate(second_page_lines):
+        line["line_ordinal"] = ordinal
+    pages.append({"lines": second_page_lines, "page_sequence": 2, "page_width": 1000})
+
+    _scan, axis = _build_f3(pages)
+
+    source = next(
+        item for item in axis["role_occurrences"] if item["role"] == "INTERBANK_PROVISION_AMBIGUOUS"
+    )
+    assert source["label_match"]["page_sequence"] == 2
+    assert source["source_scope_binding"] is None
 
 
 def test_f3_bare_provisions_are_unique_per_exact_parent_interval() -> None:

@@ -16,102 +16,82 @@
   ],
   "role_bindings": [
     {
-      "parent_report_norm_id": 593,
       "report_norm_id": 595,
       "role": "DEBT_GOVERNMENT"
     },
     {
-      "parent_report_norm_id": 593,
       "report_norm_id": 596,
       "role": "DEBT_DOMESTIC_CREDIT_INSTITUTIONS"
     },
     {
-      "parent_report_norm_id": 593,
       "report_norm_id": 597,
       "role": "DEBT_DOMESTIC_ECONOMIC_ORGANIZATIONS"
     },
     {
-      "parent_report_norm_id": 593,
       "report_norm_id": 598,
       "role": "DEBT_FOREIGN_ECONOMIC_ORGANIZATIONS"
     },
     {
-      "parent_report_norm_id": 593,
       "report_norm_id": 599,
       "role": "DEBT_OTHER"
     },
     {
-      "parent_report_norm_id": 616,
       "report_norm_id": 618,
       "role": "DEBT_LISTED"
     },
     {
-      "parent_report_norm_id": 616,
       "report_norm_id": 619,
       "role": "DEBT_UNLISTED"
     },
     {
-      "parent_report_norm_id": 593,
       "report_norm_id": 601,
       "role": "EQUITY_GOVERNMENT"
     },
     {
-      "parent_report_norm_id": 593,
       "report_norm_id": 602,
       "role": "EQUITY_DOMESTIC_CREDIT_INSTITUTIONS"
     },
     {
-      "parent_report_norm_id": 593,
       "report_norm_id": 603,
       "role": "EQUITY_DOMESTIC_ECONOMIC_ORGANIZATIONS"
     },
     {
-      "parent_report_norm_id": 593,
       "report_norm_id": 604,
       "role": "EQUITY_FOREIGN_ECONOMIC_ORGANIZATIONS"
     },
     {
-      "parent_report_norm_id": 593,
       "report_norm_id": 605,
       "role": "EQUITY_OTHER"
     },
     {
-      "parent_report_norm_id": 616,
       "report_norm_id": 621,
       "role": "EQUITY_LISTED"
     },
     {
-      "parent_report_norm_id": 616,
       "report_norm_id": 622,
       "role": "EQUITY_UNLISTED"
     },
     {
-      "parent_report_norm_id": 593,
       "report_norm_id": 607,
       "role": "OTHER_GOVERNMENT"
     },
     {
-      "parent_report_norm_id": 593,
       "report_norm_id": 608,
       "role": "OTHER_DOMESTIC_CREDIT_INSTITUTIONS"
     },
     {
-      "parent_report_norm_id": 593,
       "report_norm_id": 609,
       "role": "OTHER_DOMESTIC_ECONOMIC_ORGANIZATIONS"
     },
     {
-      "parent_report_norm_id": 593,
       "report_norm_id": 610,
       "role": "OTHER_FOREIGN_ECONOMIC_ORGANIZATIONS"
     },
     {
-      "parent_report_norm_id": 616,
       "report_norm_id": 624,
       "role": "OTHER_LISTED"
     },
     {
-      "parent_report_norm_id": 616,
       "report_norm_id": 625,
       "role": "OTHER_UNLISTED"
     }

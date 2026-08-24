@@ -1521,6 +1521,183 @@ def test_same_population_summary_control_yields_to_unique_role_rich_detail() -> 
     assert reasons == []
 
 
+def test_v4_same_population_summary_cannot_launder_detail_numeric_schema_gap() -> None:
+    summary = _ready_hierarchical_candidate(
+        ["DEPOSIT_GROUP", "LOAN_GROUP", "FAMILY"], candidate_ordinal=0
+    )
+    detail = _ready_hierarchical_candidate(
+        ["DEPOSIT_VND", "DEPOSIT_GROUP", "LOAN_VND", "LOAN_GROUP", "FAMILY"],
+        candidate_ordinal=1,
+    )
+    detail["reasons"] = ["SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER_VETO:aforav2:unassigned:upas"]
+    detail["row_axis"] = {
+        "rows": [{"label_match": {"page_sequence": 33}}],
+    }
+    policy = {
+        **_strict_same_population_selection_policy(),
+        "format_version": subject.EVALUATION_SPEC_FORMAT_V4,
+    }
+
+    selected, reasons = subject._select_candidate_evidence([summary, detail], policy)
+
+    assert selected is None
+    assert reasons == [
+        "COMPATIBLE_CANDIDATE_NUMERIC_SCHEMA_GAP_VETO:READY_CANDIDATE_1:"
+        "THREAT_CANDIDATE_2:THREAT_PAGES_33:"
+        "SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER_VETO:aforav2:unassigned:upas"
+    ]
+
+
+def test_v4_ready_summary_cannot_launder_rootless_hdb_shaped_detail_gap() -> None:
+    def values(coefficients: tuple[int, int]) -> list[dict]:
+        return [
+            {
+                "column_ordinal": ordinal,
+                "number": {
+                    "coefficient": coefficient,
+                    "percentage_mark_present": False,
+                    "scale": 0,
+                },
+            }
+            for ordinal, coefficient in enumerate(coefficients)
+        ]
+
+    deposit = (156_312_673, 94_198_824)
+    loan = (31_521_384, 12_474_353)
+    root = tuple(left + right for left, right in zip(deposit, loan, strict=True))
+    summary = _ready_hierarchical_candidate(
+        ["DEPOSIT_GROUP", "LOAN_GROUP", "FAMILY"],
+        candidate_ordinal=0,
+        coefficients=root,
+    )
+    summary["additive_closure"]["resolved_roles"] = [
+        {"role": "DEPOSIT_GROUP", "values": values(deposit)},
+        {"role": "LOAN_GROUP", "values": values(loan)},
+        summary["additive_closure"]["resolved_roles"][-1],
+    ]
+    summary["additive_closure"]["equations"] = {
+        "global": [
+            {
+                "component_roles_present": ["DEPOSIT_GROUP", "LOAN_GROUP"],
+                "result_role": "FAMILY",
+            }
+        ]
+    }
+    detail = copy.deepcopy(summary)
+    detail["candidate_ordinal"] = 1
+    detail["additive_closure"]["resolved_roles"] = [
+        {"role": "DEPOSIT_GROUP", "values": values(deposit)},
+        # The known branch excludes the schema-unknown UPAS L/C source.
+        {"role": "LOAN_GROUP", "values": values((31_521_384, 11_316_686))},
+    ]
+    detail["additive_closure"]["equations"] = {"global": []}
+    detail["row_axis"] = {
+        "rows": [{"label_match": {"page_sequence": 33}}],
+        "trailing_value_rows": [
+            {
+                "candidate_ordinal": 0,
+                "missing_column_ordinals": [],
+                "page_sequence": 33,
+                "status": "COMPLETE_VISIBLE_TRAILING_VALUE_ROW",
+                "values": [
+                    {
+                        "column_ordinal": ordinal,
+                        "parsed_token": {
+                            "classification": "SIGNED_NUMBER",
+                            "coefficient": coefficient,
+                            "percentage_mark_present": False,
+                            "scale": 0,
+                        },
+                    }
+                    for ordinal, coefficient in enumerate(loan)
+                ],
+            }
+        ],
+    }
+    detail["reasons"] = ["SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER_VETO:aforav2:unassigned:upas"]
+    policy = {
+        **_strict_same_population_selection_policy(),
+        "format_version": subject.EVALUATION_SPEC_FORMAT_V4,
+    }
+
+    assert subject._candidate_population_signature(detail) is None
+    selected, reasons = subject._select_candidate_evidence([summary, detail], policy)
+
+    assert selected is None
+    assert reasons == [
+        "COMPATIBLE_CANDIDATE_NUMERIC_SCHEMA_GAP_VETO:READY_CANDIDATE_1:"
+        "THREAT_CANDIDATE_2:THREAT_PAGES_33:"
+        "SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER_VETO:aforav2:unassigned:upas"
+    ]
+
+    for mutation in ("TRAILING_VALUE", "MATCHED_COMPONENT", "PERIOD", "UNIT"):
+        unrelated = copy.deepcopy(detail)
+        if mutation == "TRAILING_VALUE":
+            unrelated["row_axis"]["trailing_value_rows"][0]["values"][1]["parsed_token"][
+                "coefficient"
+            ] += 1
+        elif mutation == "MATCHED_COMPONENT":
+            unrelated["additive_closure"]["resolved_roles"][0]["values"][0]["number"][
+                "coefficient"
+            ] += 1
+        elif mutation == "UNIT":
+            unrelated["column_context"]["unit_axis"][0]["magnitude_power10"] = 3
+        else:
+            unrelated["column_context"]["period_axis"][0]["resolved_period"] = "30/06/2025"
+        selected, reasons = subject._select_candidate_evidence([summary, unrelated], policy)
+        assert selected is summary
+        assert reasons == []
+
+    for resolution_kind, equation_status in (
+        (
+            "VISIBLE_SOURCE_ROLE_ROUNDING_CORROBORATED_BY_COMPONENTS",
+            "VISIBLE_RESULT_ROUNDING_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
+        ),
+        (
+            "VISIBLE_TRAILING_TOTAL_ROUNDING_CORROBORATED_BY_COMPONENTS",
+            "VISIBLE_TRAILING_RESULT_ROUNDING_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
+        ),
+    ):
+        rounded_summary = copy.deepcopy(summary)
+        rounded_root = next(
+            record
+            for record in rounded_summary["additive_closure"]["resolved_roles"]
+            if record["role"] == "FAMILY"
+        )
+        rounded_root["resolution_kind"] = resolution_kind
+        rounded_root["values"][0]["number"]["coefficient"] -= 2
+        rounded_equation = rounded_summary["additive_closure"]["equations"]["global"][0]
+        rounded_equation["status"] = equation_status
+        rounded_equation["rounding_evidence"] = [{"status": "ROUNDING_BOUND_SATISFIED_ALL_LANES"}]
+
+        selected, reasons = subject._select_candidate_evidence([rounded_summary, detail], policy)
+        assert selected is None
+        assert reasons[0].startswith("COMPATIBLE_CANDIDATE_NUMERIC_SCHEMA_GAP_VETO:")
+
+
+def test_v4_numeric_schema_gap_from_different_population_does_not_veto_summary() -> None:
+    summary = _ready_hierarchical_candidate(
+        ["DEPOSIT_GROUP", "LOAN_GROUP", "FAMILY"], candidate_ordinal=0
+    )
+    unrelated = _ready_hierarchical_candidate(
+        ["DEPOSIT_VND", "DEPOSIT_GROUP", "LOAN_VND", "LOAN_GROUP", "FAMILY"],
+        candidate_ordinal=1,
+        coefficients=(149_990_682, 117_882_259),
+    )
+    unrelated["reasons"] = ["SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER_VETO:unrelated"]
+
+    selected, reasons = subject._select_candidate_evidence(
+        [summary, unrelated],
+        {
+            **_strict_same_population_selection_policy(),
+            "format_version": subject.EVALUATION_SPEC_FORMAT_V4,
+        },
+    )
+
+    assert selected is summary
+    assert reasons == []
+
+
 def test_equal_hierarchical_candidates_remain_unresolved_without_page_routing() -> None:
     candidates = [
         _ready_hierarchical_candidate(
@@ -1587,7 +1764,10 @@ def test_numeric_statement_candidate_wins_only_because_policy_prose_fails_eviden
 
     selected, reasons = subject._select_candidate_evidence(
         [statement, policy_prose],
-        {"closure_policy": "HIERARCHICAL_RECURSIVE_CORROBORATE_OR_DERIVE"},
+        {
+            **_strict_same_population_selection_policy(),
+            "format_version": subject.EVALUATION_SPEC_FORMAT_V4,
+        },
     )
 
     assert selected is statement
@@ -1701,6 +1881,7 @@ def test_v4_prepruning_candidates_reach_strict_downstream_comparator(monkeypatch
         )
         return {
             "candidate": candidate_by_region[received_region["region"]],
+            "one_edit_exact_source_structural_proofs": {"checks": []},
             "row_axis": {"region": received_region["region"]},
         }
 
