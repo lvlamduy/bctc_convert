@@ -97,6 +97,7 @@ _VISIBLE_SOURCE_POLICIES = {
     "REQUIRE_EXHAUSTIVE_COMPONENTS",
 }
 _RESULT_FIELDS = {
+    "authenticated_extreme_margin_furniture_evidence",
     "authenticated_existing_dash_evidence",
     "claim_boundary",
     "closure_id",
@@ -129,6 +130,9 @@ _COVERAGE_FIELDS = {
     "sample_ids",
     "source_record",
 }
+_EXTREME_MARGIN_FURNITURE_DISPOSITION = (
+    "AUTHENTICATED_EXTREME_MARGIN_FURNITURE_EXCLUDED_FROM_ACCOUNTING_SOURCE"
+)
 _COEXTENSIVE_STRUCTURAL_NUMERIC_FIELDS = {
     "owner_component_occurrence_ids",
     "owner_occurrence_id",
@@ -212,8 +216,8 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEPENDENCIES = {
     "occurrence_row_axis_v2": {
         "path": "src/bctc_ai/evaluation/accounting_family_occurrence_row_axis_v2.py",
-        "sha256": "e659f892168219cff9e00b63da655b3c8dd14edbcea798cc6ebc58d96d7bb67f",
-        "size_bytes": 193_172,
+        "sha256": "1537c62848edbf10614432fb1125c1d12d1ee8e5fe2ab429ed7a894e4817877d",
+        "size_bytes": 224_724,
     },
     "topology_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
@@ -2618,6 +2622,24 @@ def _validate_numeric_sample_coverage(value: Mapping[str, Any]) -> None:
         for item in value["coextensive_structural_numeric_evidence"]
         if item.get("status") == _COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_STATUS
     }
+    furniture_by_id: dict[str, Mapping[str, Any]] = {}
+    for evidence in value["authenticated_extreme_margin_furniture_evidence"]:
+        if (
+            type(evidence) is not dict
+            or set(evidence) != occurrence_v2._EXTREME_MARGIN_FURNITURE_FIELDS
+            or evidence.get("status") != occurrence_v2._EXTREME_MARGIN_FURNITURE_STATUS
+            or type(evidence.get("evidence_id")) is not str
+        ):
+            raise _error("scoped hierarchical extreme-margin furniture evidence drifted")
+        material = canonical_clone_v1(evidence)
+        evidence_id = material.pop("evidence_id")
+        if (
+            evidence_id in furniture_by_id
+            or evidence_id
+            != "aforav2:extreme-margin-furniture:" + canonical_json_sha256_v1(material)
+        ):
+            raise _error("scoped hierarchical extreme-margin furniture identity drifted")
+        furniture_by_id[evidence_id] = evidence
     receipt_sample_ids: list[str] = []
     source_only_receipts: set[str] = set()
     for receipt in value["coverage_receipt"]:
@@ -2648,6 +2670,15 @@ def _validate_numeric_sample_coverage(value: Mapping[str, Any]) -> None:
                 or sample["owner_id"] != receipt["source_record"].get("cluster_id")
             ):
                 raise _error("source-only receipt differs from numeric universe ownership")
+            if receipt["row_kind"] == "AUTHENTICATED_EXTREME_MARGIN_FURNITURE":
+                evidence = furniture_by_id.get(sample["owner_id"])
+                if (
+                    sample["owner_kind"] != occurrence_v2._EXTREME_MARGIN_FURNITURE_OWNER_KIND
+                    or type(evidence) is not dict
+                    or receipt["sample_ids"] != [evidence["sample_id"]]
+                    or not same_typed_json_v1(receipt["source_record"], evidence)
+                ):
+                    raise _error("furniture receipt differs from numeric universe ownership")
             receipt_sample_ids.append(sample_id)
         if receipt["row_kind"] == "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER":
             cluster_id = receipt["source_record"]["cluster_id"]
@@ -2670,10 +2701,24 @@ def _validate_numeric_sample_coverage(value: Mapping[str, Any]) -> None:
             ):
                 raise _error("numeric cluster status, source record, or disposition drifted")
             source_only_receipts.add(cluster_id)
+    furniture_receipts = {
+        receipt["source_record"]["evidence_id"]: receipt
+        for receipt in value["coverage_receipt"]
+        if receipt["row_kind"] == "AUTHENTICATED_EXTREME_MARGIN_FURNITURE"
+    }
     if (
         len(receipt_sample_ids) != len(set(receipt_sample_ids))
         or set(receipt_sample_ids) != set(by_sample)
         or source_only_receipts != set(cluster_by_id)
+        or set(furniture_receipts) != set(furniture_by_id)
+        or any(
+            receipt["coverage_id"] != "ashtcv2:coverage:extreme-margin-furniture:" + evidence_id
+            or receipt["disposition"] != _EXTREME_MARGIN_FURNITURE_DISPOSITION
+            or receipt["candidate_ordinal"] is not None
+            or receipt["occurrence_id"] is not None
+            or receipt["role"] is not None
+            for evidence_id, receipt in furniture_receipts.items()
+        )
     ):
         raise _error("numeric universe does not have exactly one owning coverage receipt")
     cluster_receipts = {
@@ -2848,6 +2893,8 @@ def _validate_result(value: Any) -> dict[str, Any]:
         or not same_typed_json_v1(value["dependency_content_refs"], _dependency_refs())
         or type(value["role_occurrences"]) is not list
         or type(value["authenticated_existing_dash_evidence"]) is not list
+        or type(value["authenticated_extreme_margin_furniture_evidence"]) is not list
+        or len(value["authenticated_extreme_margin_furniture_evidence"]) > _MAX_COVERAGE_RECORDS
         or type(value["occurrence_axis_binding"]) is not dict
         or set(value["occurrence_axis_binding"])
         != {
@@ -3187,6 +3234,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
         "UNRESOLVED_ONE_EDIT_COEXTENSIVE_SOURCE_OR_OWNER",
         "UNRESOLVED_SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER",
         "UNRESOLVED_OFF_LANE_NUMERIC_SOURCE_ONLY",
+        _EXTREME_MARGIN_FURNITURE_DISPOSITION,
         _UNLABELED_EXACT_SUBTOTAL_CORROBORATION,
         _UNLABELED_AMBIGUOUS_SUBTOTAL_DISPOSITION,
     }
@@ -3209,10 +3257,26 @@ def _validate_result(value: Any) -> dict[str, Any]:
             or record["row_kind"]
             not in {
                 "COEXTENSIVE_PRECEDING_NUMERIC_SOURCE",
+                "AUTHENTICATED_EXTREME_MARGIN_FURNITURE",
                 "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER",
                 "ROLE_ROW",
                 "TRAILING_VALUE_ROW",
             }
+            or (
+                record["row_kind"] == "AUTHENTICATED_EXTREME_MARGIN_FURNITURE"
+                and (
+                    record["candidate_ordinal"] is not None
+                    or record["occurrence_id"] is not None
+                    or record["role"] is not None
+                    or record["disposition"] != _EXTREME_MARGIN_FURNITURE_DISPOSITION
+                    or record["source_record"].get("evidence_id")
+                    not in {
+                        evidence.get("evidence_id")
+                        for evidence in value["authenticated_extreme_margin_furniture_evidence"]
+                        if type(evidence) is dict
+                    }
+                )
+            )
             or (
                 record["row_kind"] == "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
                 and (
@@ -3303,6 +3367,8 @@ def _validate_result(value: Any) -> dict[str, Any]:
             != (
                 record["source_record"].get("sample_ids", [])
                 if record["row_kind"] == "INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
+                else [record["source_record"].get("sample_id")]
+                if record["row_kind"] == "AUTHENTICATED_EXTREME_MARGIN_FURNITURE"
                 else [item.get("sample_id") for item in record["source_record"].get("values", [])]
             )
             for record in value["coverage_receipt"]
@@ -3871,6 +3937,20 @@ def _build(
                 "source_record": canonical_clone_v1(cluster),
             }
         )
+    for evidence in axis["authenticated_extreme_margin_furniture_evidence"]:
+        evidence_id = evidence["evidence_id"]
+        coverage_receipt.append(
+            {
+                "candidate_ordinal": None,
+                "coverage_id": "ashtcv2:coverage:extreme-margin-furniture:" + evidence_id,
+                "disposition": _EXTREME_MARGIN_FURNITURE_DISPOSITION,
+                "occurrence_id": None,
+                "role": None,
+                "row_kind": "AUTHENTICATED_EXTREME_MARGIN_FURNITURE",
+                "sample_ids": [evidence["sample_id"]],
+                "source_record": canonical_clone_v1(evidence),
+            }
+        )
     reasons = list(dict.fromkeys(reasons))
     resolved_axis = []
     for record in resolved.values():
@@ -3879,6 +3959,9 @@ def _build(
         resolved_axis.append(public_record)
     equation_axis = {"global": global_records, "local": local_records}
     material = {
+        "authenticated_extreme_margin_furniture_evidence": canonical_clone_v1(
+            axis["authenticated_extreme_margin_furniture_evidence"]
+        ),
         "authenticated_existing_dash_evidence": canonical_clone_v1(
             axis["authenticated_existing_dash_evidence"]
         ),

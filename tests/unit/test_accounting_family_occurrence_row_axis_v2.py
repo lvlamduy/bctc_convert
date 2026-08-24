@@ -182,7 +182,10 @@ def _ref(label: str) -> dict[str, object]:
 
 
 def _snapshot_and_render(
-    pages: list[dict[str, object]], dash_bboxes: list[list[int]]
+    pages: list[dict[str, object]],
+    dash_bboxes: list[list[int]],
+    *,
+    colored_bboxes: list[tuple[list[int], str]] | None = None,
 ) -> tuple[dict, dict]:
     image = Image.new("RGB", (1000, 800), "white")
     draw = ImageDraw.Draw(image)
@@ -190,6 +193,8 @@ def _snapshot_and_render(
         center_y = (top + bottom) // 2
         center_x = (left + right) // 2
         draw.rectangle((center_x - 8, center_y - 2, center_x + 8, center_y + 2), fill="black")
+    for bbox, color in colored_bboxes or []:
+        draw.rectangle(tuple(bbox), fill=color)
     stream = io.BytesIO()
     image.save(stream, format="PNG", optimize=False, compress_level=9)
     payload = stream.getvalue()
@@ -975,6 +980,329 @@ def _build_f3(pages: list[dict[str, object]]) -> tuple[dict, dict]:
         effective_topology_region=effective,
     )
     return scan, axis
+
+
+def _extreme_margin_fixture_pages(
+    *,
+    candidate_bbox: list[int] | None = None,
+    include_peers: bool = True,
+    candidate_vietocr: str = "304",
+) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
+    pages = _f3_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Cho vay các TCTD khác", "50", "40"),
+        ]
+    )
+    bbox = candidate_bbox or [950, 290, 995, 310]
+    stamp_lines = []
+    if include_peers:
+        stamp_lines.extend(
+            [
+                _line(900, "DẤU", "", [952, 270, 997, 289]),
+                _line(901, "MỘC", "", [951, 311, 996, 331]),
+            ]
+        )
+    stamp_lines.append(_line(902, candidate_vietocr, "506", bbox))
+    pages[0]["lines"].extend(stamp_lines)
+    _reindex_page_lines(pages[0]["lines"])
+    return pages, stamp_lines
+
+
+def _build_authenticated_extreme_margin_fixture(
+    pages: list[dict[str, object]],
+    stamp_lines: list[dict[str, object]],
+    *,
+    color: str,
+    with_render: bool,
+    with_topology_candidates: bool = True,
+) -> tuple[dict, dict, dict, dict]:
+    spec = _f3_spec()
+    topology_pages = row_v1._topology_pages(pages)
+    scan = topology_v1.build_accounting_family_topology_scan_v1(topology_pages, spec)
+    candidates = candidates_v2.build_accounting_family_topology_candidates_v2(topology_pages, spec)
+    region = candidates["regions"][0]
+    binding = candidates_v2.bind_accounting_family_topology_candidate_v2(
+        topology_pages, spec, candidates, region
+    )
+    snapshot, render = _snapshot_and_render(
+        pages,
+        [],
+        colored_bboxes=[(line["bbox"], color) for line in stamp_lines],
+    )
+    axis = subject.build_accounting_family_occurrence_row_axis_v2(
+        pages,
+        spec,
+        scan,
+        region,
+        {
+            "format_version": subject.POLICY_FORMAT_VERSION,
+            "require_authenticated_existing_dash_pixels": True,
+            "retain_all_context_bound_role_occurrences": True,
+        },
+        effective_topology_region=binding["effective_topology_region"],
+        topology_candidates=candidates if with_topology_candidates else None,
+        selected_snapshot=snapshot,
+        render_snapshots=(render,) if with_render else (),
+    )
+    return scan, candidates, snapshot, axis
+
+
+def _coherently_rehash_furniture_axis(axis: dict) -> None:
+    evidence = axis["authenticated_extreme_margin_furniture_evidence"][0]
+    evidence_material = copy.deepcopy(evidence)
+    evidence_material.pop("evidence_id")
+    evidence["evidence_id"] = "aforav2:extreme-margin-furniture:" + canonical_json_sha256_v1(
+        evidence_material
+    )
+    sample = next(
+        item
+        for item in axis["numeric_sample_universe"]
+        if item["sample_id"] == evidence["sample_id"]
+    )
+    sample["owner_id"] = evidence["evidence_id"]
+    _coherently_rehash_occurrence(axis)
+
+
+def _coherently_rehash_scoped_closure(closure: dict) -> None:
+    closure["metrics"] = closure_v2._metrics(
+        closure["resolved_roles"],
+        closure["equations"]["global"],
+        closure["equations"]["local"],
+        closure["coverage_receipt"],
+        closure["unresolved_reasons"],
+    )
+    material = copy.deepcopy(closure)
+    material.pop("closure_id")
+    closure["closure_id"] = "ashtcv2:closure:" + canonical_json_sha256_v1(material)
+
+
+def test_authenticated_extreme_margin_chromatic_furniture_keeps_one_owned_sample() -> None:
+    pages, stamp_lines = _extreme_margin_fixture_pages()
+    scan, candidates, snapshot, axis = _build_authenticated_extreme_margin_fixture(
+        pages, stamp_lines, color="red", with_render=True
+    )
+
+    assert axis["status"] == (
+        "OCCURRENCE_ROW_AXIS_BOUND_WITH_AUTHENTICATED_EXISTING_DASHES_PROPOSAL_ONLY"
+    )
+    assert axis["internal_unassigned_numeric_clusters"] == []
+    assert len(axis["authenticated_extreme_margin_furniture_evidence"]) == 1
+    evidence = axis["authenticated_extreme_margin_furniture_evidence"][0]
+    sample = next(
+        item
+        for item in axis["numeric_sample_universe"]
+        if item["sample_id"] == evidence["sample_id"]
+    )
+    assert sample["owner_kind"] == "AUTHENTICATED_EXTREME_MARGIN_FURNITURE"
+    assert sample["owner_id"] == evidence["evidence_id"]
+    assert evidence["topology_candidates_id"] == candidates["result_id"]
+    assert evidence["margin_band"]["qualifying_peer_line_ordinals"] == sorted(
+        line["line_ordinal"] for line in stamp_lines if line["vietocr_text"] != "304"
+    )
+    assert evidence["candidate_crop_proof"]["chromatic_ink_pixel_count"] * 3 >= (
+        evidence["candidate_crop_proof"]["ink_pixel_count"] * 2
+    )
+    closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+        axis, _f3_spec(), _f3_hierarchy()
+    )
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    furniture_receipt = next(
+        item
+        for item in closure["coverage_receipt"]
+        if item["row_kind"] == "AUTHENTICATED_EXTREME_MARGIN_FURNITURE"
+    )
+    assert furniture_receipt["sample_ids"] == [evidence["sample_id"]]
+    assert furniture_receipt["source_record"] == evidence
+    assert closure["metrics"]["source_only_numeric_sample_count"] == 0
+    deleted = copy.deepcopy(closure)
+    deleted["coverage_receipt"] = [
+        item
+        for item in deleted["coverage_receipt"]
+        if item["row_kind"] != "AUTHENTICATED_EXTREME_MARGIN_FURNITURE"
+    ]
+    _coherently_rehash_scoped_closure(deleted)
+    with pytest.raises(
+        closure_v2.AccountingScopedHierarchicalTableClosureV2Error,
+        match="exactly one owning coverage receipt",
+    ):
+        closure_v2._validate_result(deleted)
+
+    duplicated = copy.deepcopy(closure)
+    duplicate_receipt = copy.deepcopy(furniture_receipt)
+    duplicate_receipt["coverage_id"] += ":duplicate"
+    duplicated["coverage_receipt"].append(duplicate_receipt)
+    _coherently_rehash_scoped_closure(duplicated)
+    with pytest.raises(
+        closure_v2.AccountingScopedHierarchicalTableClosureV2Error,
+        match="exactly one owning coverage receipt",
+    ):
+        closure_v2._validate_result(duplicated)
+
+    swapped = copy.deepcopy(closure)
+    swapped_receipt = next(
+        item
+        for item in swapped["coverage_receipt"]
+        if item["row_kind"] == "AUTHENTICATED_EXTREME_MARGIN_FURNITURE"
+    )
+    swapped_receipt["sample_ids"] = [
+        next(
+            item["sample_id"]
+            for item in swapped["numeric_sample_universe"]
+            if item["owner_kind"] == "ROLE_OCCURRENCE"
+        )
+    ]
+    _coherently_rehash_scoped_closure(swapped)
+    with pytest.raises(
+        closure_v2.AccountingScopedHierarchicalTableClosureV2Error,
+        match="furniture receipt differs|visible occurrence coverage receipt drifted",
+    ):
+        closure_v2._validate_result(swapped)
+    assert (
+        subject.validate_accounting_family_occurrence_row_axis_replay_v2(
+            axis,
+            pages,
+            _f3_spec(),
+            scan,
+            candidates["regions"][0],
+            {
+                "format_version": subject.POLICY_FORMAT_VERSION,
+                "require_authenticated_existing_dash_pixels": True,
+                "retain_all_context_bound_role_occurrences": True,
+            },
+            effective_topology_region=candidates_v2.bind_accounting_family_topology_candidate_v2(
+                row_v1._topology_pages(pages),
+                _f3_spec(),
+                candidates,
+                candidates["regions"][0],
+            )["effective_topology_region"],
+            topology_candidates=candidates,
+            selected_snapshot=snapshot,
+            render_snapshots=(
+                _snapshot_and_render(
+                    pages,
+                    [],
+                    colored_bboxes=[(line["bbox"], "red") for line in stamp_lines],
+                )[1],
+            ),
+        )
+        == axis
+    )
+
+
+def test_extreme_margin_furniture_fails_closed_without_every_gate() -> None:
+    pages, stamp_lines = _extreme_margin_fixture_pages()
+    _scan, _candidates, _snapshot, no_render = _build_authenticated_extreme_margin_fixture(
+        pages, stamp_lines, color="red", with_render=False
+    )
+    assert no_render["authenticated_extreme_margin_furniture_evidence"] == []
+    assert no_render["internal_unassigned_numeric_clusters"][0]["status"] == (
+        "SOURCE_ONLY_OFF_LANE_NUMERIC_CLUSTER"
+    )
+    assert no_render["unresolved_reasons"][-1] == (
+        "EXTREME_MARGIN_ANNOTATION_RENDER_REQUIRED:PAGE_SEQUENCE:1"
+    )
+
+    for color, peers, topology_authority, vietocr in [
+        ("black", True, True, "304"),
+        ("red", False, True, "304"),
+        ("red", True, False, "304"),
+        ("red", True, True, "UNKNOWN LABEL"),
+    ]:
+        variant_pages, variant_lines = _extreme_margin_fixture_pages(
+            include_peers=peers,
+            candidate_vietocr=vietocr,
+        )
+        _scan, _candidates, _snapshot, variant = _build_authenticated_extreme_margin_fixture(
+            variant_pages,
+            variant_lines,
+            color=color,
+            with_render=True,
+            with_topology_candidates=topology_authority,
+        )
+        assert variant["authenticated_extreme_margin_furniture_evidence"] == []
+        assert variant["internal_unassigned_numeric_clusters"][0]["status"] == (
+            "SOURCE_ONLY_OFF_LANE_NUMERIC_CLUSTER"
+        )
+
+    in_lane_pages, in_lane_lines = _extreme_margin_fixture_pages(
+        candidate_bbox=[610, 290, 700, 310]
+    )
+    _scan, _candidates, _snapshot, in_lane = _build_authenticated_extreme_margin_fixture(
+        in_lane_pages, in_lane_lines, color="red", with_render=True
+    )
+    assert in_lane["authenticated_extreme_margin_furniture_evidence"] == []
+
+
+def test_extreme_margin_furniture_coherent_band_and_owner_tamper_rejects() -> None:
+    pages, stamp_lines = _extreme_margin_fixture_pages()
+    scan, candidates, snapshot, axis = _build_authenticated_extreme_margin_fixture(
+        pages, stamp_lines, color="red", with_render=True
+    )
+    attacked = copy.deepcopy(axis)
+    evidence = attacked["authenticated_extreme_margin_furniture_evidence"][0]
+    evidence["margin_band"]["qualifying_peer_line_ordinals"] = evidence["margin_band"][
+        "qualifying_peer_line_ordinals"
+    ][1:]
+    evidence["peer_crop_proofs"] = evidence["peer_crop_proofs"][1:]
+    _coherently_rehash_furniture_axis(attacked)
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="repeated peer source binding|chromatic peer axis",
+    ):
+        subject._validate_result(attacked)
+
+    swapped = copy.deepcopy(axis)
+    furniture_sample = next(
+        item
+        for item in swapped["numeric_sample_universe"]
+        if item["owner_kind"] == "AUTHENTICATED_EXTREME_MARGIN_FURNITURE"
+    )
+    furniture_sample["owner_id"] = swapped["role_occurrences"][0]["occurrence_id"]
+    _coherently_rehash_occurrence(swapped)
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="furniture universe owner",
+    ):
+        subject._validate_result(swapped)
+
+    coherent_pixel_hash = copy.deepcopy(axis)
+    coherent_pixel_hash["authenticated_extreme_margin_furniture_evidence"][0][
+        "candidate_crop_proof"
+    ]["exact_bbox_rgb_sha256"] = "0" * 64
+    _coherently_rehash_furniture_axis(coherent_pixel_hash)
+    assert subject._validate_result(coherent_pixel_hash) == coherent_pixel_hash
+    render = _snapshot_and_render(
+        pages,
+        [],
+        colored_bboxes=[(line["bbox"], "red") for line in stamp_lines],
+    )[1]
+    binding = candidates_v2.bind_accounting_family_topology_candidate_v2(
+        row_v1._topology_pages(pages),
+        _f3_spec(),
+        candidates,
+        candidates["regions"][0],
+    )
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="does not replay exactly",
+    ):
+        subject.validate_accounting_family_occurrence_row_axis_replay_v2(
+            coherent_pixel_hash,
+            pages,
+            _f3_spec(),
+            scan,
+            candidates["regions"][0],
+            {
+                "format_version": subject.POLICY_FORMAT_VERSION,
+                "require_authenticated_existing_dash_pixels": True,
+                "retain_all_context_bound_role_occurrences": True,
+            },
+            effective_topology_region=binding["effective_topology_region"],
+            topology_candidates=candidates,
+            selected_snapshot=snapshot,
+            render_snapshots=(render,),
+        )
 
 
 def _f3_detector_dash_rescues(

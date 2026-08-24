@@ -10,6 +10,7 @@ the strongest output is a replayable schema-review readiness proposal.
 from __future__ import annotations
 
 import copy
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from time import perf_counter
@@ -1561,6 +1562,12 @@ def _candidate_evidence_from_joined_pages(
                 closure=closure,
             )
         )
+        if occurrence_axis is not None:
+            reasons.extend(
+                reason
+                for reason in occurrence_axis["unresolved_reasons"]
+                if reason.startswith(occurrence_row_v2._EXTREME_MARGIN_RENDER_REASON_PREFIX)
+            )
         candidate_evidence.append(
             {
                 "additive_closure": closure,
@@ -1901,7 +1908,49 @@ def _missing_render_pages_for_document_store_trial_v1(
     )
     if topology_candidates is not None and not is_v4:
         raise _error("pre-pruning render-page candidates require evaluation V4")
+
+    margin_render_pages: set[int] = set()
+    margin_pattern = re.compile(
+        r"^(?:CANDIDATE_([1-9][0-9]{0,8}):)?"
+        + re.escape(occurrence_row_v2._EXTREME_MARGIN_RENDER_REASON_PREFIX)
+        + r"([1-9][0-9]{0,8})$"
+    )
+    for reason in trial["unresolved_reasons"] if is_v4 else ():
+        match = margin_pattern.fullmatch(reason)
+        if match is None:
+            continue
+        candidate_number = int(match.group(1)) if match.group(1) is not None else None
+        page_sequence = int(match.group(2))
+        authority = topology_candidates if topology_candidates is not None else topology_scan
+        regions = authority["regions"]
+        if candidate_number is None:
+            if len(regions) != 1:
+                continue
+            region = regions[0]
+        else:
+            if topology_candidates is None or candidate_number > len(regions):
+                continue
+            region = regions[candidate_number - 1]
+        admitted_pages = _selected_topology_pages_v1(
+            joined_pages,
+            {"regions": [region]},
+        )
+        if page_sequence in admitted_pages:
+            margin_render_pages.add(page_sequence)
     row_axis = trial["row_axis"]
+    if margin_render_pages:
+        if row_axis is not None:
+            margin_render_pages.update(
+                row["label_match"]["page_sequence"]
+                for row in row_axis["rows"]
+                if row["missing_column_ordinals"]
+            )
+            margin_render_pages.update(
+                trailing["page_sequence"]
+                for trailing in row_axis["trailing_value_rows"]
+                if trailing["missing_column_ordinals"]
+            )
+        return tuple(sorted(margin_render_pages))
     if row_axis is not None:
         if is_v4 and topology_candidates is not None and len(topology_candidates["regions"]) > 1:
             # Candidate selection intentionally returns only the winning row
@@ -1909,7 +1958,12 @@ def _missing_render_pages_for_document_store_trial_v1(
             # candidate whose existing DASH cells still need pixel replay.
             # Render the bounded union before final V4 selection; otherwise
             # the discarded detail reasons can never schedule their own page.
-            return tuple(sorted(_selected_topology_pages_v1(joined_pages, topology_candidates)))
+            return tuple(
+                sorted(
+                    _selected_topology_pages_v1(joined_pages, topology_candidates)
+                    | margin_render_pages
+                )
+            )
         missing_pages = {
             row["label_match"]["page_sequence"]
             for row in row_axis["rows"]
@@ -1925,18 +1979,22 @@ def _missing_render_pages_for_document_store_trial_v1(
                 if trailing["missing_column_ordinals"]
             )
         if missing_pages:
-            return tuple(sorted(missing_pages))
+            return tuple(sorted(missing_pages | margin_render_pages))
         if row_axis["status"] == "VISIBLE_ROW_LANE_AXIS_BOUND_PROPOSAL_ONLY":
-            return ()
-        return ()
+            return tuple(sorted(margin_render_pages))
+        return tuple(sorted(margin_render_pages))
     region_authority = topology_candidates if topology_candidates is not None else topology_scan
     if region_authority["status"] == ("UNRESOLVED_MULTIPLE_OR_NONUNIQUE_COMPLETE_REGIONS") and any(
         "VISIBLE_ROLE_ROW_LANES_NOT_COMPLETE" in reason
         or "VISIBLE_ROLE_OCCURRENCE_ROW_LANES_NOT_COMPLETE" in reason
         for reason in trial["unresolved_reasons"]
     ):
-        return tuple(sorted(_selected_topology_pages_v1(joined_pages, region_authority)))
-    return ()
+        return tuple(
+            sorted(
+                _selected_topology_pages_v1(joined_pages, region_authority) | margin_render_pages
+            )
+        )
+    return tuple(sorted(margin_render_pages))
 
 
 def _document_store_axis_binding_v1(

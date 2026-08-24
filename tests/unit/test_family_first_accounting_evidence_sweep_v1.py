@@ -1957,6 +1957,7 @@ def test_v4_prepruning_candidates_reach_strict_downstream_comparator(monkeypatch
             "candidate": candidate_by_region[received_region["region"]],
             "one_edit_exact_source_structural_proofs": {"checks": []},
             "row_axis": {"region": received_region["region"]},
+            "unresolved_reasons": [],
         }
 
     monkeypatch.setattr(
@@ -2063,6 +2064,114 @@ def test_multiple_candidates_with_missing_lanes_request_only_candidate_pages() -
     assert (
         subject._missing_render_pages_for_document_store_trial_v1(
             trial, topology_scan, joined_pages
+        )
+        == ()
+    )
+
+
+def test_v4_extreme_margin_render_request_selects_only_its_bound_candidate_page() -> None:
+    joined_pages = [{"lines": [{} for _ in range(10)], "page_sequence": page} for page in (1, 2, 3)]
+    topology_scan = {
+        "regions": [
+            {
+                "cluster_start_document_line_ordinal": 12,
+                "cluster_end_document_line_ordinal_exclusive": 18,
+            }
+        ],
+        "status": "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL",
+    }
+    topology_candidates = {
+        "regions": [
+            {
+                "cluster_start_document_line_ordinal": 2,
+                "cluster_end_document_line_ordinal_exclusive": 8,
+            },
+            topology_scan["regions"][0],
+        ],
+        "status": "UNRESOLVED_MULTIPLE_OR_NONUNIQUE_COMPLETE_REGIONS",
+    }
+    trial = {
+        "row_axis": None,
+        "unresolved_reasons": [
+            "CANDIDATE_1:VISIBLE_ROLE_OCCURRENCE_ROW_LANES_NOT_COMPLETE",
+            "CANDIDATE_2:EXTREME_MARGIN_ANNOTATION_RENDER_REQUIRED:PAGE_SEQUENCE:2",
+        ],
+    }
+
+    assert subject._missing_render_pages_for_document_store_trial_v1(
+        trial,
+        topology_scan,
+        joined_pages,
+        evaluation_spec={"format_version": subject.EVALUATION_SPEC_FORMAT_V4},
+        topology_candidates=topology_candidates,
+    ) == (2,)
+
+
+@pytest.mark.parametrize(
+    "reason",
+    [
+        "CANDIDATE_2:EXTREME_MARGIN_ANNOTATION_RENDER_REQUIRED:PAGE_SEQUENCE:1",
+        "CANDIDATE_3:EXTREME_MARGIN_ANNOTATION_RENDER_REQUIRED:PAGE_SEQUENCE:2",
+        "EXTREME_MARGIN_ANNOTATION_RENDER_REQUIRED:PAGE_SEQUENCE:2",
+        "CANDIDATE_2:EXTREME_MARGIN_ANNOTATION_RENDER_REQUIRED:PAGE_SEQUENCE:" + "9" * 100,
+        "CANDIDATE_2:OFF_LANE_NUMERIC_SOURCE_ONLY_VETO:PAGE_SEQUENCE:2",
+    ],
+)
+def test_extreme_margin_render_request_must_be_exact_and_candidate_bound(reason: str) -> None:
+    joined_pages = [{"lines": [{} for _ in range(10)], "page_sequence": page} for page in (1, 2)]
+    topology_scan = {
+        "regions": [
+            {
+                "cluster_start_document_line_ordinal": 12,
+                "cluster_end_document_line_ordinal_exclusive": 18,
+            }
+        ],
+        "status": "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL",
+    }
+    topology_candidates = {
+        "regions": [
+            {
+                "cluster_start_document_line_ordinal": 2,
+                "cluster_end_document_line_ordinal_exclusive": 8,
+            },
+            topology_scan["regions"][0],
+        ],
+        "status": "UNRESOLVED_MULTIPLE_OR_NONUNIQUE_COMPLETE_REGIONS",
+    }
+    trial = {"row_axis": None, "unresolved_reasons": [reason]}
+
+    assert (
+        subject._missing_render_pages_for_document_store_trial_v1(
+            trial,
+            topology_scan,
+            joined_pages,
+            evaluation_spec={"format_version": subject.EVALUATION_SPEC_FORMAT_V4},
+            topology_candidates=topology_candidates,
+        )
+        == ()
+    )
+
+
+def test_v3_never_schedules_extreme_margin_furniture_render_request() -> None:
+    trial = {
+        "row_axis": None,
+        "unresolved_reasons": ["EXTREME_MARGIN_ANNOTATION_RENDER_REQUIRED:PAGE_SEQUENCE:1"],
+    }
+    topology_scan = {
+        "regions": [
+            {
+                "cluster_start_document_line_ordinal": 0,
+                "cluster_end_document_line_ordinal_exclusive": 1,
+            }
+        ],
+        "status": "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL",
+    }
+    assert (
+        subject._missing_render_pages_for_document_store_trial_v1(
+            trial,
+            topology_scan,
+            [{"lines": [{}], "page_sequence": 1}],
+            evaluation_spec={"format_version": subject.EVALUATION_SPEC_FORMAT_V3},
         )
         == ()
     )
