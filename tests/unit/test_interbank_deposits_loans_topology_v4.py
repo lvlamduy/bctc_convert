@@ -313,3 +313,38 @@ def test_numeric_statement_and_policy_prose_remain_for_evidence_adjudication() -
         {"INTERBANK_DEPOSIT_GROUP", "INTERBANK_LOAN_GROUP"} <= set(region["observed_roles"])
         for region in scan["regions"]
     )
+
+
+def test_ctg_wrapped_owner_is_exact_and_customer_loan_starts_the_next_family() -> None:
+    lines = [
+        _line(0, "Tiền gửi và cho vay các tổ chức tín dụng", top=100),
+        _line(1, '(TCTD") khác', top=124),
+        _line(2, "422.318.628", left=900, top=124),
+        _line(3, "374.863.906", left=1150, top=124),
+        _line(4, "Tiền gửi tại các tổ chức tín dụng khác", top=170),
+        _line(5, "419.162.106", left=900, top=170),
+        _line(6, "371.252.257", left=1150, top=170),
+        _line(7, "Cho vay các tổ chức tín dụng khác", top=210),
+        _line(8, "3.156.522", left=900, top=210),
+        _line(9, "3.611.649", left=1150, top=210),
+        _line(10, "Cho vay khách hàng", top=250),
+        _line(11, "1.850.880.450", left=900, top=250),
+        _line(12, "1.672.377.122", left=1150, top=250),
+    ]
+    spec = _spec()
+    scan = topology_v1.build_accounting_family_topology_scan_v1(_page(lines), spec)
+
+    assert scan["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
+    region = scan["regions"][0]
+    assert region["parent_match"]["match_kind"] == "EXACT_ACCENTLESS_ALIAS"
+    assert (
+        region["parent_match"]["source_line_index"],
+        region["parent_match"]["end_source_line_index"],
+    ) == (0, 1)
+    assert region["cluster_end_document_line_ordinal_exclusive"] == 10
+    projected = project_accounting_family_coextensive_parent_total_region_v1(spec, scan, region)
+    total = next(
+        item for item in projected["child_matches"] if item["role"] == "EXPLICIT_FAMILY_TOTAL"
+    )
+    assert (total["source_line_index"], total["end_source_line_index"]) == (0, 1)
+    assert all(item["source_line_index"] < 10 for item in projected["child_matches"])

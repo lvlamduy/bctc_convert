@@ -418,6 +418,7 @@
             "Tiền gửi và cho vay các TCTD khác",
             "Tiền gửi tại và cho vay các TCTD khác",
             "Tiền gửi và cho vay các tổ chức tín dụng khác",
+            "Tiền gửi và cho vay các tổ chức tín dụng (TCTD) khác",
             "Tiền gửi tại và cho vay các tổ chức tín dụng khác",
             "Tiền gửi và cấp tín dụng cho các TCTD khác",
             "Tiền gửi và cấp tín dụng cho các tổ chức tín dụng khác",
@@ -475,6 +476,7 @@
       "Tiền gửi và cho vay các TCTD khác",
       "Tiền gửi tại và cho vay các TCTD khác",
       "Tiền gửi và cho vay các tổ chức tín dụng khác",
+      "Tiền gửi và cho vay các tổ chức tín dụng (TCTD) khác",
       "Tiền gửi tại và cho vay các tổ chức tín dụng khác",
       "Tiền gửi và cấp tín dụng cho các TCTD khác",
       "Tiền gửi và cấp tín dụng cho các tổ chức tín dụng khác",
@@ -524,6 +526,7 @@
     "Giảm các công cụ tài chính phái sinh và các khoản nợ tài chính khác",
     "Các công cụ tài chính phái sinh và các khoản nợ tài chính khác",
     "Chứng khoán kinh doanh",
-    "Chứng khoán đầu tư"
+    "Chứng khoán đầu tư",
+    "Cho vay khách hàng"
   ]
 }

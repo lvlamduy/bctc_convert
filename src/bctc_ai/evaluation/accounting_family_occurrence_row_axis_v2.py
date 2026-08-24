@@ -981,6 +981,37 @@ def _attach_schema_scope_source_label_bboxes(
     return projected
 
 
+def _source_label_fragment_bboxes(
+    pages: Sequence[Mapping[str, Any]], match: Mapping[str, Any]
+) -> list[list[int]]:
+    page = next(
+        (item for item in pages if item["page_sequence"] == match["page_sequence"]),
+        None,
+    )
+    if type(page) is not dict:
+        return []
+    result = []
+    for source_line_index in row_v1._match_source_line_indices(match):  # noqa: SLF001
+        if not 0 <= source_line_index < len(page["lines"]):
+            raise _error("logical label fragment is absent from its authenticated page")
+        result.append(list(page["lines"][source_line_index]["bbox"]))
+    return result
+
+
+def _same_row_fragment_distance(
+    numeric_line: Mapping[str, Any], label_bbox: Sequence[int]
+) -> int | None:
+    distance = abs(
+        numeric_line["bbox"][1] + numeric_line["bbox"][3] - label_bbox[1] - label_bbox[3]
+    )
+    if numeric_line["bbox"][0] < label_bbox[2] or distance > max(
+        label_bbox[3] - label_bbox[1],
+        numeric_line["bbox"][3] - numeric_line["bbox"][1],
+    ):
+        return None
+    return distance
+
+
 def _same_row_numeric_samples(
     pages: Sequence[Mapping[str, Any]], match: Mapping[str, Any]
 ) -> list[Mapping[str, Any]]:
@@ -990,17 +1021,16 @@ def _same_row_numeric_samples(
     )
     if type(page) is not dict:
         return []
-    label_bbox = _source_line_bbox(pages, match)
-    label_center_twice = label_bbox[1] + label_bbox[3]
-    label_height = label_bbox[3] - label_bbox[1]
+    label_bboxes = _source_label_fragment_bboxes(pages, match)
     return sorted(
         (
             line
             for line in page["lines"]
             if row_v1._is_numeric(line)  # noqa: SLF001
-            and line["bbox"][0] >= label_bbox[2]
-            and abs(line["bbox"][1] + line["bbox"][3] - label_center_twice)
-            <= max(label_height, line["bbox"][3] - line["bbox"][1])
+            and any(
+                _same_row_fragment_distance(line, label_bbox) is not None
+                for label_bbox in label_bboxes
+            )
         ),
         key=lambda line: (line["bbox"][0], line["line_ordinal"]),
     )
@@ -1024,11 +1054,31 @@ def _same_row_numeric_samples_are_complete(
     samples = _same_row_numeric_samples(pages, match)
     if not samples:
         return False
+    match_label_bboxes = _source_label_fragment_bboxes(pages, match)
+    for sample in samples:
+        match_distances = [
+            distance
+            for bbox in match_label_bboxes
+            if (distance := _same_row_fragment_distance(sample, bbox)) is not None
+        ]
+        if not match_distances:
+            raise _error("same-row numeric sample lost every eligible logical label fragment")
+        match_distance = min(match_distances)
+        for peer in semantic_matches:
+            if peer is match or peer["page_sequence"] != match["page_sequence"]:
+                continue
+            peer_distances = [
+                distance
+                for bbox in _source_label_fragment_bboxes(pages, peer)
+                if (distance := _same_row_fragment_distance(sample, bbox)) is not None
+            ]
+            if peer_distances and min(peer_distances) <= match_distance:
+                return False
     expected_lane_count = max(
         (
             len(_same_row_numeric_samples(pages, peer))
             for peer in semantic_matches
-            if peer["page_sequence"] == match["page_sequence"]
+            if peer is not match and peer["page_sequence"] == match["page_sequence"]
         ),
         default=0,
     )

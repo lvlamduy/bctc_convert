@@ -2038,6 +2038,390 @@ def test_heading_only_parent_total_clone_is_pruned_but_same_row_values_are_retai
     ]
 
 
+def test_wrapped_parent_total_owns_values_aligned_to_its_terminal_fragment() -> None:
+    lines = [
+        _line(0, "Tiền gửi và cho vay các tổ chức tín dụng", "", [25, 15, 560, 37]),
+        _line(1, '(TCTD") khác', "", [30, 35, 220, 58]),
+        _line(2, "422318628", "422318628", [610, 35, 700, 58]),
+        _line(3, "374863906", "374863906", [810, 35, 900, 58]),
+        _line(4, "30.06.2025", "30.06.2025", [610, 65, 700, 85]),
+        _line(5, "31.12.2024", "31.12.2024", [810, 65, 900, 85]),
+        _line(
+            6,
+            "Tiền gửi tại các tổ chức tín dụng khác",
+            "",
+            [45, 95, 430, 117],
+        ),
+        _line(7, "419162106", "419162106", [610, 95, 700, 117]),
+        _line(8, "371252257", "371252257", [810, 95, 900, 117]),
+        _line(
+            9,
+            "Cho vay các tổ chức tín dụng khác",
+            "",
+            [45, 130, 430, 152],
+        ),
+        _line(10, "3156522", "3156522", [610, 130, 700, 152]),
+        _line(11, "3611649", "3611649", [810, 130, 900, 152]),
+        _line(12, "Cho vay khách hàng", "", [45, 170, 430, 192]),
+        _line(13, "1850880450", "1850880450", [610, 170, 700, 192]),
+        _line(14, "1672377122", "1672377122", [810, 170, 900, 192]),
+    ]
+    pages = [{"lines": lines, "page_sequence": 1, "page_width": 1000}]
+
+    _scan, axis = _build_f3(pages)
+
+    total = next(row for row in axis["row_axis"]["rows"] if row["role"] == "EXPLICIT_FAMILY_TOTAL")
+    assert (
+        total["label_match"]["source_line_index"],
+        total["label_match"]["end_source_line_index"],
+    ) == (0, 1)
+    assert [value["parsed_token"]["coefficient"] for value in total["values"]] == [
+        422_318_628,
+        374_863_906,
+    ]
+    assert {
+        value["parsed_token"]["coefficient"]
+        for sample in axis["numeric_sample_universe"]
+        for value in [sample]
+    }.isdisjoint({1_850_880_450, 1_672_377_122})
+    assert axis["internal_unassigned_numeric_clusters"] == []
+    closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+        axis, _f3_spec(), _f3_hierarchy()
+    )
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+
+
+def test_wrapped_parent_does_not_borrow_a_nearer_neighbor_row() -> None:
+    lines = [
+        _line(0, "Tiền gửi và cho vay các tổ chức tín dụng", "", [25, 15, 560, 37]),
+        _line(1, "(TCTD) khác", "", [30, 35, 220, 58]),
+        _line(
+            2,
+            "Tiền gửi tại các tổ chức tín dụng khác",
+            "",
+            [45, 45, 430, 67],
+        ),
+        _line(3, "419162106", "419162106", [610, 45, 700, 67]),
+        _line(4, "371252257", "371252257", [810, 45, 900, 67]),
+        _line(
+            5,
+            "Cho vay các tổ chức tín dụng khác",
+            "",
+            [45, 95, 430, 117],
+        ),
+        _line(6, "3156522", "3156522", [610, 95, 700, 117]),
+        _line(7, "3611649", "3611649", [810, 95, 900, 117]),
+    ]
+    pages = [{"lines": lines, "page_sequence": 1, "page_width": 1000}]
+
+    _scan, axis = _build_f3(pages)
+
+    total = next(row for row in axis["row_axis"]["rows"] if row["role"] == "EXPLICIT_FAMILY_TOTAL")
+    assert total["status"] == "UNRESOLVED_NO_VISIBLE_RECOGNIZED_VALUE_CELL"
+    assert total["values"] == []
+    assert axis["status"] == "UNRESOLVED_OCCURRENCE_ROW_AXIS_OR_EXISTING_DASH_EVIDENCE"
+    closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+        axis, _f3_spec(), _f3_hierarchy()
+    )
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    deposit = next(
+        row for row in axis["row_axis"]["rows"] if row["role"] == "INTERBANK_DEPOSIT_GROUP"
+    )
+    assert [value["sample_id"] for value in deposit["values"]] == [
+        lines[3]["sample_id"],
+        lines[4]["sample_id"],
+    ]
+
+
+def test_wrapped_parent_rejects_partial_or_note_reference_lane_shapes() -> None:
+    def pages_with_root_values(values: list[tuple[str, list[int]]]) -> list[dict[str, object]]:
+        lines = [
+            _line(
+                0,
+                "Tiền gửi và cho vay các tổ chức tín dụng",
+                "",
+                [25, 15, 560, 37],
+            ),
+            _line(1, "(TCTD) khác", "", [30, 35, 220, 58]),
+        ]
+        lines.extend(
+            _line(index + 2, value, value, bbox) for index, (value, bbox) in enumerate(values)
+        )
+        start = len(lines)
+        lines.extend(
+            [
+                _line(
+                    start,
+                    "Tiền gửi tại các tổ chức tín dụng khác",
+                    "",
+                    [45, 95, 430, 117],
+                ),
+                _line(start + 1, "419162106", "419162106", [610, 95, 700, 117]),
+                _line(start + 2, "371252257", "371252257", [810, 95, 900, 117]),
+                _line(
+                    start + 3,
+                    "Cho vay các tổ chức tín dụng khác",
+                    "",
+                    [45, 130, 430, 152],
+                ),
+                _line(start + 4, "3156522", "3156522", [610, 130, 700, 152]),
+                _line(start + 5, "3611649", "3611649", [810, 130, 900, 152]),
+            ]
+        )
+        return [{"lines": lines, "page_sequence": 1, "page_width": 1000}]
+
+    for root_values in (
+        [("422318628", [610, 35, 700, 58])],
+        [
+            ("422318628", [610, 35, 700, 58]),
+            ("8", [710, 35, 760, 58]),
+            ("374863906", [810, 35, 900, 58]),
+        ],
+    ):
+        pages = pages_with_root_values(root_values)
+        _scan, axis = _build_f3(pages)
+        total = next(
+            row for row in axis["row_axis"]["rows"] if row["role"] == "EXPLICIT_FAMILY_TOTAL"
+        )
+        universe_ids = [sample["sample_id"] for sample in axis["numeric_sample_universe"]]
+        root_sample_ids = {
+            line["sample_id"] for line in pages[0]["lines"][2 : 2 + len(root_values)]
+        }
+        assert root_sample_ids <= set(universe_ids)
+        assert len(universe_ids) == len(set(universe_ids))
+        if len(root_values) == 1:
+            assert total["status"] == "PARTIAL_VISIBLE_VALUE_LANES_REQUIRES_PIXEL_RESCUE"
+            assert axis["status"] == ("UNRESOLVED_OCCURRENCE_ROW_AXIS_OR_EXISTING_DASH_EVIDENCE")
+        else:
+            assert total["status"] == "VISIBLE_VALUE_LANES_BOUND"
+            assert axis["internal_unassigned_numeric_clusters"]
+        closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+            axis, _f3_spec(), _f3_hierarchy()
+        )
+        assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+
+
+def test_interleaved_wrapped_parent_fragments_own_each_value_sample_once() -> None:
+    lines = [
+        _line(0, "Tiền gửi và cho vay các tổ chức tín dụng", "", [25, 15, 560, 37]),
+        _line(1, "422318628", "422318628", [610, 15, 700, 37]),
+        _line(2, "374863906", "374863906", [810, 15, 900, 37]),
+        _line(3, "(TCTD) khác", "", [30, 37, 220, 60]),
+        _line(
+            4,
+            "Tiền gửi tại các tổ chức tín dụng khác",
+            "",
+            [45, 95, 430, 117],
+        ),
+        _line(5, "419162106", "419162106", [610, 95, 700, 117]),
+        _line(6, "371252257", "371252257", [810, 95, 900, 117]),
+        _line(
+            7,
+            "Cho vay các tổ chức tín dụng khác",
+            "",
+            [45, 130, 430, 152],
+        ),
+        _line(8, "3156522", "3156522", [610, 130, 700, 152]),
+        _line(9, "3611649", "3611649", [810, 130, 900, 152]),
+    ]
+    pages = [{"lines": lines, "page_sequence": 1, "page_width": 1000}]
+
+    _scan, axis = _build_f3(pages)
+
+    total = next(row for row in axis["row_axis"]["rows"] if row["role"] == "EXPLICIT_FAMILY_TOTAL")
+    assert total["label_match"]["source_line_indices"] == [0, 3]
+    assert [value["sample_id"] for value in total["values"]] == [
+        lines[1]["sample_id"],
+        lines[2]["sample_id"],
+    ]
+    universe_ids = [sample["sample_id"] for sample in axis["numeric_sample_universe"]]
+    assert universe_ids.count(lines[1]["sample_id"]) == 1
+    assert universe_ids.count(lines[2]["sample_id"]) == 1
+    total_occurrence = next(
+        item for item in axis["role_occurrences"] if item["role"] == "EXPLICIT_FAMILY_TOTAL"
+    )
+    for sample_id in (lines[1]["sample_id"], lines[2]["sample_id"]):
+        sample = next(
+            item for item in axis["numeric_sample_universe"] if item["sample_id"] == sample_id
+        )
+        assert (sample["owner_kind"], sample["owner_id"]) == (
+            "ROLE_OCCURRENCE",
+            total_occurrence["occurrence_id"],
+        )
+    closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+        axis, _f3_spec(), _f3_hierarchy()
+    )
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+
+
+def test_interleaved_wrapped_parent_lone_sample_is_owned_and_replay_bound() -> None:
+    lines = [
+        _line(0, "Tiền gửi và cho vay các tổ chức tín dụng", "", [25, 15, 560, 37]),
+        _line(1, "8", "8", [610, 15, 700, 37]),
+        _line(2, "(TCTD) khác", "", [30, 37, 220, 60]),
+        _line(
+            3,
+            "Tiền gửi tại các tổ chức tín dụng khác",
+            "",
+            [45, 95, 430, 117],
+        ),
+        _line(4, "100", "100", [610, 95, 700, 117]),
+        _line(5, "90", "90", [810, 95, 900, 117]),
+        _line(
+            6,
+            "Cho vay các tổ chức tín dụng khác",
+            "",
+            [45, 130, 430, 152],
+        ),
+        _line(7, "50", "50", [610, 130, 700, 152]),
+        _line(8, "40", "40", [810, 130, 900, 152]),
+    ]
+    pages = [{"lines": lines, "page_sequence": 1, "page_width": 1000}]
+
+    scan, axis = _build_f3(pages)
+
+    total_occurrence = next(
+        item for item in axis["role_occurrences"] if item["role"] == "EXPLICIT_FAMILY_TOTAL"
+    )
+    total = next(
+        row
+        for row in axis["row_axis"]["rows"]
+        if row["label_match"]["occurrence_id"] == total_occurrence["occurrence_id"]
+    )
+    assert total["label_match"]["source_line_indices"] == [0, 2]
+    assert total["status"] == "PARTIAL_VISIBLE_VALUE_LANES_REQUIRES_PIXEL_RESCUE"
+    assert [value["sample_id"] for value in total["values"]] == [lines[1]["sample_id"]]
+    sample = next(
+        item
+        for item in axis["numeric_sample_universe"]
+        if item["sample_id"] == lines[1]["sample_id"]
+    )
+    assert (sample["owner_kind"], sample["owner_id"]) == (
+        "ROLE_OCCURRENCE",
+        total_occurrence["occurrence_id"],
+    )
+    assert axis["status"] == "UNRESOLVED_OCCURRENCE_ROW_AXIS_OR_EXISTING_DASH_EVIDENCE"
+    closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+        axis, _f3_spec(), _f3_hierarchy()
+    )
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+
+    attacked = copy.deepcopy(axis)
+    attacked_total = next(
+        row
+        for row in attacked["row_axis"]["rows"]
+        if row["label_match"]["occurrence_id"] == total_occurrence["occurrence_id"]
+    )
+    attacked_total["values"] = []
+    attacked_total["missing_column_ordinals"] = [0, 1]
+    attacked_total["status"] = "UNRESOLVED_NO_VISIBLE_RECOGNIZED_VALUE_CELL"
+    attacked["row_axis"] = subject._regenerate_v1_axis(attacked["row_axis"])
+    attacked["numeric_sample_universe"] = [
+        item
+        for item in attacked["numeric_sample_universe"]
+        if item["sample_id"] != lines[1]["sample_id"]
+    ]
+    _coherently_rehash_occurrence(attacked)
+    effective = total_v1.project_accounting_family_coextensive_parent_total_region_v1(
+        _f3_spec(), scan, scan["regions"][0]
+    )
+    with pytest.raises(subject.AccountingFamilyOccurrenceRowAxisV2Error):
+        subject.validate_accounting_family_occurrence_row_axis_replay_v2(
+            attacked,
+            pages,
+            _f3_spec(),
+            scan,
+            scan["regions"][0],
+            {
+                "format_version": subject.POLICY_FORMAT_VERSION,
+                "require_authenticated_existing_dash_pixels": True,
+                "retain_all_context_bound_role_occurrences": True,
+            },
+            effective_topology_region=effective,
+        )
+
+
+def test_wrapped_parent_adjacent_outside_tolerance_number_stays_source_only() -> None:
+    lines = [
+        _line(0, "Tiền gửi và cho vay các tổ chức tín dụng", "", [25, 15, 560, 37]),
+        _line(1, "(TCTD) khác", "", [30, 35, 220, 58]),
+        _line(2, "8", "8", [610, 62, 700, 84]),
+        _line(
+            3,
+            "Tiền gửi tại các tổ chức tín dụng khác",
+            "",
+            [45, 95, 430, 117],
+        ),
+        _line(4, "100", "100", [610, 95, 700, 117]),
+        _line(5, "90", "90", [810, 95, 900, 117]),
+        _line(
+            6,
+            "Cho vay các tổ chức tín dụng khác",
+            "",
+            [45, 130, 430, 152],
+        ),
+        _line(7, "50", "50", [610, 130, 700, 152]),
+        _line(8, "40", "40", [810, 130, 900, 152]),
+    ]
+    pages = [{"lines": lines, "page_sequence": 1, "page_width": 1000}]
+
+    _scan, axis = _build_f3(pages)
+
+    assert "EXPLICIT_FAMILY_TOTAL" not in {
+        occurrence["role"] for occurrence in axis["role_occurrences"]
+    }
+    sample = next(
+        item
+        for item in axis["numeric_sample_universe"]
+        if item["sample_id"] == lines[2]["sample_id"]
+    )
+    assert sample["owner_kind"] == "SOURCE_ONLY_INTERNAL_CLUSTER"
+    cluster = next(
+        item
+        for item in axis["internal_unassigned_numeric_clusters"]
+        if lines[2]["sample_id"] in item["sample_ids"]
+    )
+    assert cluster["status"] == "SOURCE_ONLY_INTERNAL_UNASSIGNED_NUMERIC_CLUSTER"
+    closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+        axis, _f3_spec(), _f3_hierarchy()
+    )
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+
+
+def test_complete_same_row_proof_uses_only_eligible_fragments_and_independent_peers() -> None:
+    pages = [
+        {
+            "lines": [
+                _line(0, "Wide owner fragment", "", [0, 90, 900, 110]),
+                _line(1, "5", "5", [650, 90, 750, 110]),
+                _line(2, "Terminal owner fragment", "", [0, 98, 200, 118]),
+                _line(3, "Closer semantic peer", "", [0, 94, 300, 114]),
+                _line(4, "7", "7", [650, 140, 750, 160]),
+            ],
+            "page_sequence": 1,
+            "page_width": 1000,
+        }
+    ]
+    owner = {
+        "end_source_line_index": 2,
+        "page_sequence": 1,
+        "source_line_index": 0,
+        "source_line_indices": [0, 2],
+    }
+    peer = {
+        "end_source_line_index": 3,
+        "page_sequence": 1,
+        "source_line_index": 3,
+    }
+
+    assert subject._same_row_numeric_samples(pages, owner) == [pages[0]["lines"][1]]
+    assert not subject._same_row_numeric_samples_are_complete(pages, owner, [owner, peer])
+    assert not subject._same_row_numeric_samples_are_complete(pages, owner, [owner])
+
+    pages[0]["lines"][3]["bbox"] = [0, 140, 300, 160]
+    assert subject._same_row_numeric_samples_are_complete(pages, owner, [owner, peer])
+
+
 def test_f3_scope_receipts_reject_coherent_status_anchor_and_explicit_surface_forgery() -> None:
     unknown = _f3_pages(
         [
