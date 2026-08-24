@@ -15,13 +15,14 @@ import argparse
 import errno
 import hashlib
 import json
+import math
 import os
 import secrets
 import stat
 import sys
 import time
 from collections import Counter
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from concurrent.futures import ProcessPoolExecutor
 from datetime import date
 from pathlib import Path
@@ -88,6 +89,9 @@ _AUTHORITY = {
 }
 
 _TARGET_DOCUMENT_COUNT = 140
+_PROJECTED_RUNTIME_LIMIT_SECONDS = 180.0
+_HARD_RUNTIME_LIMIT_SECONDS = 300.0
+_PROGRESS_FORMAT_VERSION = "FAMILY11_RUNTIME_PROGRESS_V1"
 _TARGET_EXACT_COUNT = 38
 _TARGET_BROAD_COUNT = 78
 _TARGET_NOT_OBSERVED_COUNT = 24
@@ -385,6 +389,110 @@ def _snapshot_selected_line_count(snapshot: Mapping[str, Any]) -> int:
     return total
 
 
+def _runtime_progress_controller_v1(
+    *,
+    selected_page_total: int,
+    source_page_total: int,
+    source_line_total: int,
+    sink: Callable[[Mapping[str, Any]], None] | None,
+    projected_limit_seconds: float | None,
+    hard_limit_seconds: float | None,
+) -> Callable[[Mapping[str, Any]], None]:
+    """Emit private progress and stop only at committed deterministic checkpoints."""
+
+    slowest_seconds = 0.0
+    slowest_stage: str | None = None
+    slowest_batch_index: int | None = None
+
+    def emit(observed: Mapping[str, Any]) -> None:
+        nonlocal slowest_batch_index, slowest_seconds, slowest_stage
+        stage = observed["stage"]
+        batch_seconds = observed["batch_seconds"]
+        if observed["batch_index"] > 0 and batch_seconds > slowest_seconds:
+            slowest_seconds = batch_seconds
+            slowest_stage = stage
+            slowest_batch_index = observed["batch_index"]
+
+        elapsed = observed["elapsed_seconds"]
+        stage_elapsed = observed["stage_elapsed_seconds"]
+        completed_documents = observed["documents_completed"]
+        completed_pages = observed["pages_completed"]
+        completed_lines = observed["lines_completed"]
+        projected_stage_finish: float | None = None
+        projected_total: float | None = None
+        projection_kind = "NOT_AVAILABLE"
+        if stage == "sparse" and completed_documents >= min(16, _TARGET_DOCUMENT_COUNT):
+            projected_stage_finish = (
+                elapsed
+                - stage_elapsed
+                + (stage_elapsed * selected_page_total / max(1, completed_pages))
+            )
+            projection_kind = "SPARSE_FINISH_LOWER_BOUND"
+        elif stage == "direct_full" and completed_documents >= min(8, _TARGET_DOCUMENT_COUNT):
+            projected_total = (
+                elapsed
+                - stage_elapsed
+                + (stage_elapsed * source_line_total / max(1, completed_lines))
+            )
+            projection_kind = "FULL_RUN_FROM_DIRECT_LINE_RATE"
+        elif stage == "terminal":
+            projected_total = elapsed
+            projection_kind = "OBSERVED_TOTAL"
+        projected_for_budget = (
+            projected_total if projected_total is not None else projected_stage_finish
+        )
+
+        budget_status = "WITHIN_LIMITS"
+        if hard_limit_seconds is not None and elapsed >= hard_limit_seconds:
+            budget_status = "HARD_LIMIT_EXCEEDED"
+        elif (
+            projected_for_budget is not None
+            and projected_limit_seconds is not None
+            and projected_for_budget > projected_limit_seconds
+        ):
+            budget_status = "PROJECTED_LIMIT_EXCEEDED"
+        elif projected_for_budget is None and stage != "retrieval":
+            budget_status = "PROJECTION_WARMUP"
+
+        event = {
+            **observed,
+            "batch_seconds": round(batch_seconds, 6),
+            "budget_status": budget_status,
+            "elapsed_seconds": round(elapsed, 6),
+            "format_version": _PROGRESS_FORMAT_VERSION,
+            "projected_stage_finish_seconds": (
+                round(projected_stage_finish, 6) if projected_stage_finish is not None else None
+            ),
+            "projected_total_seconds": (
+                round(projected_total, 6) if projected_total is not None else None
+            ),
+            "projection_kind": projection_kind,
+            "selected_page_total": selected_page_total,
+            "slowest_batch_index": slowest_batch_index,
+            "slowest_batch_seconds": round(slowest_seconds, 6),
+            "slowest_batch_stage": slowest_stage,
+            "source_line_total": source_line_total,
+            "source_page_total": source_page_total,
+            "stage_elapsed_seconds": round(stage_elapsed, 6),
+        }
+        if sink is not None:
+            sink(event)
+        if budget_status == "HARD_LIMIT_EXCEEDED":
+            raise _error("loan-geography hard runtime checkpoint exhausted")
+        if budget_status == "PROJECTED_LIMIT_EXCEEDED":
+            raise _error("loan-geography projected runtime budget exhausted")
+
+    return emit
+
+
+def _stderr_progress_v1(event: Mapping[str, Any]) -> None:
+    print(
+        json.dumps(event, ensure_ascii=False, separators=(",", ":"), sort_keys=True),
+        file=sys.stderr,
+        flush=True,
+    )
+
+
 def _sparse_graph_worker_material(
     receipt: Mapping[str, Any],
     source_index: int,
@@ -555,6 +663,8 @@ def _sparse_graph_path(
     batch_size: int,
     jobs: int = 1,
     prepared_receipt: Any | None = None,
+    _progress_sink: Callable[[Mapping[str, Any]], None] | None = None,
+    _progress_started: float | None = None,
 ) -> tuple[tuple[dict[str, Any], ...], tuple[dict[str, Any], ...], tuple[dict[str, Any], ...]]:
     """Build and replay each sparse batch before releasing its source snapshots."""
 
@@ -582,6 +692,10 @@ def _sparse_graph_path(
 
     def collect(executor: ProcessPoolExecutor | None) -> None:
         source_start = 0
+        completed_pages = 0
+        completed_lines = 0
+        stage_started = time.perf_counter()
+        batch_started = stage_started
         for snapshots in _selected_page_batches(
             capability,
             selections,
@@ -611,6 +725,29 @@ def _sparse_graph_path(
             packets.extend(batch_packets)
             coverages.extend(batch_coverages)
             source_start += len(snapshots)
+            completed_pages += sum(len(snapshot["joined_pages"]) for snapshot in snapshots)
+            completed_lines += sum(
+                _snapshot_selected_line_count(snapshot) for snapshot in snapshots
+            )
+            committed = time.perf_counter()
+            if _progress_sink is not None:
+                _progress_sink(
+                    {
+                        "batch_index": (source_start - 1) // batch_size + 1,
+                        "batch_seconds": committed - batch_started,
+                        "documents_completed": source_start,
+                        "documents_total": _TARGET_DOCUMENT_COUNT,
+                        "elapsed_seconds": committed
+                        - (stage_started if _progress_started is None else _progress_started),
+                        "lines_completed": completed_lines,
+                        "lines_total": None,
+                        "pages_completed": completed_pages,
+                        "pages_total": sum(len(pages) for _ordinal, pages in selections),
+                        "stage": "sparse",
+                        "stage_elapsed_seconds": committed - stage_started,
+                    }
+                )
+            batch_started = time.perf_counter()
 
     if jobs == 1:
         collect(None)
@@ -1017,6 +1154,8 @@ def _whole_document_equivalences(
     batch_size: int,
     jobs: int = 1,
     prepared_receipt: Any | None = None,
+    _progress_sink: Callable[[Mapping[str, Any]], None] | None = None,
+    _progress_started: float | None = None,
 ) -> tuple[
     tuple[dict[str, Any], ...],
     tuple[dict[str, Any] | None, ...],
@@ -1056,6 +1195,10 @@ def _whole_document_equivalences(
 
     def collect(executor: ProcessPoolExecutor | None) -> None:
         source_start = 0
+        completed_pages = 0
+        completed_lines = 0
+        stage_started = time.perf_counter()
+        batch_started = stage_started
         for snapshots in _selected_page_batches(
             capability,
             selections,
@@ -1099,6 +1242,29 @@ def _whole_document_equivalences(
             control_sets.extend(batch_control_sets)
             numeric_inputs.extend(batch_numeric_inputs)
             source_start += len(snapshots)
+            completed_pages += sum(len(snapshot["joined_pages"]) for snapshot in snapshots)
+            completed_lines += sum(
+                _snapshot_selected_line_count(snapshot) for snapshot in snapshots
+            )
+            committed = time.perf_counter()
+            if _progress_sink is not None:
+                _progress_sink(
+                    {
+                        "batch_index": (source_start - 1) // batch_size + 1,
+                        "batch_seconds": committed - batch_started,
+                        "documents_completed": source_start,
+                        "documents_total": _TARGET_DOCUMENT_COUNT,
+                        "elapsed_seconds": committed
+                        - (stage_started if _progress_started is None else _progress_started),
+                        "lines_completed": completed_lines,
+                        "lines_total": sum(packet["line_count"] for packet in packets),
+                        "pages_completed": completed_pages,
+                        "pages_total": sum(packet["page_count"] for packet in packets),
+                        "stage": "direct_full",
+                        "stage_elapsed_seconds": committed - stage_started,
+                    }
+                )
+            batch_started = time.perf_counter()
 
     if jobs == 1:
         collect(None)
@@ -3043,6 +3209,9 @@ def build_authenticated_family_first_loan_geography_140_filing_schema_sweep_v1(
     direct_full_batch_size: int = _DEFAULT_DIRECT_FULL_BATCH_SIZE,
     direct_full_jobs: int = _DEFAULT_DIRECT_FULL_JOBS,
     _timing_sink: dict[str, float] | None = None,
+    _progress_sink: Callable[[Mapping[str, Any]], None] | None = None,
+    _projected_runtime_limit_seconds: float | None = None,
+    _hard_runtime_limit_seconds: float | None = None,
 ) -> dict[str, Any]:
     """Build the fixed Family 11 seal from live authenticated evidence."""
 
@@ -3061,6 +3230,14 @@ def build_authenticated_family_first_loan_geography_140_filing_schema_sweep_v1(
         raise _error("loan-geography graph batch sizes/jobs must be positive exact integers")
     if _timing_sink is not None and type(_timing_sink) is not dict:
         raise _error("loan-geography timing sink must be one private mutable dictionary")
+    if _progress_sink is not None and not callable(_progress_sink):
+        raise _error("loan-geography progress sink must be callable")
+    if any(
+        value is not None
+        and (type(value) not in {int, float} or value <= 0 or not math.isfinite(value))
+        for value in (_projected_runtime_limit_seconds, _hard_runtime_limit_seconds)
+    ):
+        raise _error("loan-geography runtime budgets must be finite positive numbers")
 
     started = time.perf_counter()
     root = project_root.resolve()
@@ -3102,12 +3279,48 @@ def build_authenticated_family_first_loan_geography_140_filing_schema_sweep_v1(
         receipt=receipt,
     )
     prepared_receipt = graph_v1._prepare_loan_geography_receipt_v1(receipt)  # noqa: SLF001
+    receipt_metrics = receipt["metrics"]
+    progress = None
+    if any(
+        value is not None
+        for value in (
+            _progress_sink,
+            _projected_runtime_limit_seconds,
+            _hard_runtime_limit_seconds,
+        )
+    ):
+        progress = _runtime_progress_controller_v1(
+            selected_page_total=receipt_metrics["selected_page_count"],
+            source_page_total=receipt_metrics["source_page_count"],
+            source_line_total=receipt_metrics["source_line_count"],
+            sink=_progress_sink,
+            projected_limit_seconds=_projected_runtime_limit_seconds,
+            hard_limit_seconds=_hard_runtime_limit_seconds,
+        )
+        retrieved = time.perf_counter()
+        progress(
+            {
+                "batch_index": 0,
+                "batch_seconds": 0.0,
+                "documents_completed": receipt_metrics["document_count"],
+                "documents_total": _TARGET_DOCUMENT_COUNT,
+                "elapsed_seconds": retrieved - started,
+                "lines_completed": receipt_metrics["source_line_count"],
+                "lines_total": receipt_metrics["source_line_count"],
+                "pages_completed": receipt_metrics["selected_page_count"],
+                "pages_total": receipt_metrics["selected_page_count"],
+                "stage": "retrieval",
+                "stage_elapsed_seconds": retrieved - sparse_started,
+            }
+        )
     sparse_documents, packets, coverages = _sparse_graph_path(
         capability,
         receipt,
         batch_size=sparse_batch_size,
         jobs=sparse_jobs,
         prepared_receipt=prepared_receipt,
+        _progress_sink=progress,
+        _progress_started=started,
     )
     sparse_finished = time.perf_counter()
 
@@ -3126,6 +3339,8 @@ def build_authenticated_family_first_loan_geography_140_filing_schema_sweep_v1(
         batch_size=direct_full_batch_size,
         jobs=direct_full_jobs,
         prepared_receipt=prepared_receipt,
+        _progress_sink=progress,
+        _progress_started=started,
     )
     direct_finished = time.perf_counter()
 
@@ -3199,6 +3414,22 @@ def build_authenticated_family_first_loan_geography_140_filing_schema_sweep_v1(
     ):
         raise _error("authenticated document evidence store changed after Family 11 result")
     completed = time.perf_counter()
+    if progress is not None:
+        progress(
+            {
+                "batch_index": 0,
+                "batch_seconds": 0.0,
+                "documents_completed": _TARGET_DOCUMENT_COUNT,
+                "documents_total": _TARGET_DOCUMENT_COUNT,
+                "elapsed_seconds": completed - started,
+                "lines_completed": receipt_metrics["source_line_count"],
+                "lines_total": receipt_metrics["source_line_count"],
+                "pages_completed": receipt_metrics["source_page_count"],
+                "pages_total": receipt_metrics["source_page_count"],
+                "stage": "terminal",
+                "stage_elapsed_seconds": completed - exact_evidence_finished,
+            }
+        )
     if _timing_sink is not None:
         _timing_sink.update(
             {
@@ -3223,6 +3454,9 @@ def validate_authenticated_family_first_loan_geography_140_filing_schema_sweep_r
     direct_full_batch_size: int = _DEFAULT_DIRECT_FULL_BATCH_SIZE,
     direct_full_jobs: int = _DEFAULT_DIRECT_FULL_JOBS,
     _timing_sink: dict[str, float] | None = None,
+    _progress_sink: Callable[[Mapping[str, Any]], None] | None = None,
+    _projected_runtime_limit_seconds: float | None = None,
+    _hard_runtime_limit_seconds: float | None = None,
 ) -> dict[str, Any]:
     """Run both live sparse and direct-full paths and require byte-model equality."""
 
@@ -3235,6 +3469,9 @@ def validate_authenticated_family_first_loan_geography_140_filing_schema_sweep_r
         direct_full_batch_size=direct_full_batch_size,
         direct_full_jobs=direct_full_jobs,
         _timing_sink=_timing_sink,
+        _progress_sink=_progress_sink,
+        _projected_runtime_limit_seconds=_projected_runtime_limit_seconds,
+        _hard_runtime_limit_seconds=_hard_runtime_limit_seconds,
     )
     if not same_typed_json_v1(persisted, rebuilt):
         raise _error("persisted Family 11 sweep differs from live exact replay")
@@ -3272,6 +3509,9 @@ def run_family_first_loan_geography_140_filing_schema_sweep_v1(
                 direct_full_batch_size=direct_full_batch_size,
                 direct_full_jobs=direct_full_jobs,
                 _timing_sink=timings,
+                _progress_sink=_stderr_progress_v1,
+                _projected_runtime_limit_seconds=_PROJECTED_RUNTIME_LIMIT_SECONDS,
+                _hard_runtime_limit_seconds=_HARD_RUNTIME_LIMIT_SECONDS,
             )
         )
     else:
@@ -3283,6 +3523,9 @@ def run_family_first_loan_geography_140_filing_schema_sweep_v1(
             direct_full_batch_size=direct_full_batch_size,
             direct_full_jobs=direct_full_jobs,
             _timing_sink=timings,
+            _progress_sink=_stderr_progress_v1,
+            _projected_runtime_limit_seconds=_PROJECTED_RUNTIME_LIMIT_SECONDS,
+            _hard_runtime_limit_seconds=_HARD_RUNTIME_LIMIT_SECONDS,
         )
         _write_exclusive(output, canonical_json_bytes_v1(result))
     return {

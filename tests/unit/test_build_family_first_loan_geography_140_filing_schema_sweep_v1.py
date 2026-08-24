@@ -1425,6 +1425,132 @@ def test_pool_prepares_once_in_parent_and_once_in_initialized_worker_not_per_tas
     assert snapshot_calls == ["snapshot-1", "snapshot-2"]
 
 
+def test_sparse_progress_fake_clock_preserves_results_and_reports_committed_work(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    receipt, snapshots, _sparse = _worker_inputs()
+    _install_worker_graph_stubs(monkeypatch)
+    monkeypatch.setattr(sweep_v1, "_TARGET_DOCUMENT_COUNT", 2)
+    monkeypatch.setattr(
+        sweep_v1,
+        "_selected_page_batches",
+        lambda *_args, **_kwargs: iter(((snapshots[0],), (snapshots[1],))),
+    )
+
+    def run(sink: object | None) -> tuple[object, ...]:
+        ticks = iter((0.0, 2.0, 2.1, 5.0, 5.1))
+        monkeypatch.setattr(sweep_v1.time, "perf_counter", lambda: next(ticks))
+        return sweep_v1._sparse_graph_path(
+            object(),
+            receipt,
+            batch_size=1,
+            jobs=1,
+            _progress_sink=sink,
+            _progress_started=-1.0,
+        )
+
+    baseline = run(None)
+    events: list[dict[str, object]] = []
+    controller = sweep_v1._runtime_progress_controller_v1(
+        selected_page_total=2,
+        source_page_total=2,
+        source_line_total=2,
+        sink=lambda event: events.append(dict(event)),
+        projected_limit_seconds=None,
+        hard_limit_seconds=None,
+    )
+    observed = run(controller)
+
+    assert observed == baseline
+    assert [event["documents_completed"] for event in events] == [1, 2]
+    assert [event["pages_completed"] for event in events] == [1, 2]
+    assert [event["lines_completed"] for event in events] == [1, 2]
+    assert events[-1]["slowest_batch_seconds"] == 2.9
+    assert events[-1]["projection_kind"] == "SPARSE_FINISH_LOWER_BOUND"
+    assert events[-1]["projected_total_seconds"] is None
+
+
+def test_runtime_progress_budget_boundaries_and_stderr_flush(
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(
+        sweep_v1.FamilyFirstLoanGeography140FilingSchemaSweepV1Error,
+        match="finite positive",
+    ):
+        sweep_v1.build_authenticated_family_first_loan_geography_140_filing_schema_sweep_v1(
+            object(), tmp_path, _hard_runtime_limit_seconds=float("nan")
+        )
+    events: list[dict[str, object]] = []
+    controller = sweep_v1._runtime_progress_controller_v1(
+        selected_page_total=170,
+        source_page_total=200,
+        source_line_total=1_000,
+        sink=lambda event: events.append(dict(event)),
+        projected_limit_seconds=180.0,
+        hard_limit_seconds=300.0,
+    )
+    sparse = {
+        "batch_index": 1,
+        "batch_seconds": 10.0,
+        "documents_completed": 16,
+        "documents_total": 140,
+        "elapsed_seconds": 20.0,
+        "lines_completed": 100,
+        "lines_total": None,
+        "pages_completed": 10,
+        "pages_total": 170,
+        "stage": "sparse",
+        "stage_elapsed_seconds": 10.0,
+    }
+    controller(sparse)
+    assert events[-1]["projected_stage_finish_seconds"] == 180.0
+    assert events[-1]["budget_status"] == "WITHIN_LIMITS"
+    with pytest.raises(
+        sweep_v1.FamilyFirstLoanGeography140FilingSchemaSweepV1Error,
+        match="projected runtime",
+    ):
+        controller(
+            {
+                **sparse,
+                "documents_completed": 8,
+                "elapsed_seconds": 40.0,
+                "lines_completed": 100,
+                "lines_total": 1_000,
+                "stage": "direct_full",
+                "stage_elapsed_seconds": 20.0,
+            }
+        )
+    assert events[-1]["projected_total_seconds"] == 220.0
+    assert events[-1]["projection_kind"] == "FULL_RUN_FROM_DIRECT_LINE_RATE"
+    with pytest.raises(
+        sweep_v1.FamilyFirstLoanGeography140FilingSchemaSweepV1Error,
+        match="projected runtime",
+    ):
+        controller({**sparse, "stage_elapsed_seconds": 10.1})
+    with pytest.raises(
+        sweep_v1.FamilyFirstLoanGeography140FilingSchemaSweepV1Error,
+        match="hard runtime",
+    ):
+        controller(
+            {
+                **sparse,
+                "batch_index": 0,
+                "batch_seconds": 0.0,
+                "elapsed_seconds": 300.0,
+                "stage": "terminal",
+            }
+        )
+    assert events[-1]["projection_kind"] == "OBSERVED_TOTAL"
+    assert events[-1]["budget_status"] == "HARD_LIMIT_EXCEEDED"
+
+    sweep_v1._stderr_progress_v1(events[0])
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err.endswith("\n")
+    assert '"format_version":"FAMILY11_RUNTIME_PROGRESS_V1"' in captured.err
+
+
 def test_worker_parent_order_gates_reject_boolean_source_indices(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
