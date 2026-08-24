@@ -1,6 +1,6 @@
 # Recurring failure-pattern registry
 
-Updated: 2026-08-23 (UTC)
+Updated: 2026-08-24 (UTC)
 
 Đây là registry bắt buộc phải kiểm tra trước khi sửa shared OCR/table/mapping
 logic. Chỉ ghi failure đã lặp lại, có khả năng tái diễn hoặc làm sai authority;
@@ -242,6 +242,37 @@ Trạng thái:
 - **Status:** `RESOLVED` cho disposition semantics; coverage của từng family vẫn
   theo `UNRESOLVED_MAPPING_LEDGER.md`.
 
+## RFP-011 — Family graph scans the whole PDF or duplicates a private parser
+
+- **Failure pattern:** combination/topology/geometry graph chạy trên toàn bộ
+  PDF hoặc toàn selected snapshot trước khi khoanh vùng family; mỗi family lại
+  copy owner window, row/column clustering, unit inheritance và bbox tolerance.
+  Chi phí tăng theo mọi dòng của corpus, cùng lỗi geometry phải sửa nhiều nơi,
+  và một release replay bị nhân trong từng worker/document.
+- **Evidence:** Family11 sparse path từng tạo hàng trăm semantic windows và hàng
+  nghìn q-gram operations chỉ trên một trang nhỏ rồi rebuild lại để replay;
+  full run không hoàn tất trong development budget. Các active loan type,
+  industry, maturity và quality routes vẫn có private owner/boundary/axis/row
+  logic; type và industry có nhiều function cùng hình dạng. Xem RFP-002,
+  RFP-005 và RFP-009.
+- **Cause:** graph được dùng như retrieval engine; normalized span features
+  không content-cache; shortlist không mang typed owner/child/reset evidence;
+  family adapter chứa layout algorithm thay vì declarative family semantics.
+- **Anti-fix:** không tăng worker để che full scan; không chạy fuzzy/full-PDF
+  graph trước shortlist; không tuyên bố absence chỉ từ zero index hit; không tạo
+  parser/bbox/column thresholds riêng theo bank/family; không exact-rebuild cùng
+  graph trong inner loop.
+- **Current primitive:** pipeline bắt buộc là immutable line/span feature index
+  → family/owner/child shortlist → bounded region gồm trang trước/sau và hard
+  reset/veto fence → combination 2→3 + shared geometry/topology chỉ trong vùng.
+  Branchless owner+child topology là absence veto/rescue; unresolved coverage
+  mới được full-document fallback. Feature/result cache dùng document content
+  root + selected page set + family spec + shared-engine trust closure; cache
+  không tạo authority. Exact public replay nằm tại changed-set/release boundary.
+- **Status:** `OPEN`; Family12 đã dùng phần lớn shared structural primitives,
+  nhưng active legacy families và Family11 runtime path chưa chứng minh đầy đủ
+  region-first/cached execution.
+
 ## Pre-change gate
 
 Trước một generic fix mới:
@@ -273,6 +304,16 @@ implementation/spec revision; bank, page, filing ordinal và expected value khô
   dưới cùng revision cũng trở thành `ALGORITHM_REVIEW_REQUIRED`; tối ưu bằng
   region-first, per-document content roots, incremental DAG hoặc batch snapshot,
   không bỏ authority gate.
+- Default development budgets cho family-first là: focused unit/contract panel
+  dưới 10 giây; targeted impacted-document panel dưới 30 giây; cold 140-filing
+  family build mục tiêu dưới 180 giây và hard stop ở 300 giây. Warm unchanged
+  run phải chủ yếu là verified cache hits. Family có OCR/model rescue phải khai
+  báo riêng số crop và per-crop budget, nhưng deterministic graph/release stage
+  vẫn không được vượt hard stop bằng cách giấu model time vào subprocess.
+- Mọi benchmark phải báo ít nhất source lines/pages, candidate lines/pages,
+  semantic-window count, cache hit/miss, cold/warm elapsed và peak worker count.
+  Dữ liệu lớn chạy bằng content-addressed incremental shards; không được dùng
+  extrapolation của full sequential scan làm production plan.
 - Chỉ mở lại full sweep sau khi revision/spec thực sự đổi (hoặc source drift độc
   lập được chứng minh), focused + adversarial + targeted panels đều xanh, và
   telemetry cho thấy stage nằm trong budget. Full build/verify là release gate,
