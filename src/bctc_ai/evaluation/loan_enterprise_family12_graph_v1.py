@@ -9,8 +9,12 @@ dispositions. Every binding remains a proposal without mapping authority.
 
 from __future__ import annotations
 
+import hashlib
 import re
+import stat
+import unicodedata
 from collections.abc import Mapping, Sequence
+from pathlib import Path
 from typing import Any
 
 from bctc_ai.evaluation.accounting_semantic_region_graph_v1 import (
@@ -37,8 +41,11 @@ from bctc_ai.source_structure.contracts_v1 import (
 
 __all__ = [
     "FORMAT_VERSION",
+    "LOAN_ENTERPRISE_FAMILY12_REGION_QUERY_SPEC_V2",
+    "LOAN_ENTERPRISE_FAMILY12_REGION_QUERY_TRUST_CLOSURE_V2",
     "LoanEnterpriseFamily12GraphV1Error",
     "build_loan_enterprise_family12_graph_v1",
+    "build_loan_enterprise_family12_region_query_spec_v2",
     "validate_loan_enterprise_family12_graph_replay_v1",
 ]
 
@@ -55,6 +62,20 @@ _REASON_PROJECTION = {
     ),
 }
 
+_ADAPTER_PATH = Path("src/bctc_ai/evaluation/loan_enterprise_family12_graph_v1.py")
+LOAN_ENTERPRISE_FAMILY12_REGION_QUERY_TRUST_CLOSURE_V2 = {
+    "shared_semantic_engine_ref": {
+        "path": "src/bctc_ai/evaluation/accounting_semantic_region_graph_v1.py",
+        "sha256": "bad85c88e3b257fbc950e4d916f0efd020961d668ae15584f1e7941791f5c621",
+        "size_bytes": 46_991,
+    },
+    "family_spec_ref": {
+        "path": "src/bctc_ai/evaluation/loan_enterprise_family12_spec_v1.py",
+        "sha256": "c4323276c622c6d133771ea6b6057d20c62553ae9d06a93c03fb28732a26e546",
+        "size_bytes": 12_888,
+    },
+}
+
 
 class LoanEnterpriseFamily12GraphV1Error(ValueError):
     """Family-12 projection identity or exact replay drifted."""
@@ -66,6 +87,215 @@ def _error(message: str) -> LoanEnterpriseFamily12GraphV1Error:
 
 def _semantic_id(report_norm_id: int) -> str:
     return f"ROLE_{report_norm_id}"
+
+
+def _stable_query_content_ref(
+    project_root: Path,
+    relative: Path,
+    *,
+    label: str,
+) -> dict[str, Any]:
+    path = project_root / relative
+    try:
+        before = path.lstat()
+        if path.is_symlink() or not stat.S_ISREG(before.st_mode):
+            raise _error(f"Family-12 query {label} is not one regular nofollow file")
+        payload = path.read_bytes()
+        after = path.lstat()
+    except OSError as error:
+        raise _error(f"Family-12 query {label} cannot be read stably") from error
+    before_identity = (
+        before.st_dev,
+        before.st_ino,
+        before.st_mode,
+        before.st_size,
+        before.st_mtime_ns,
+    )
+    after_identity = (
+        after.st_dev,
+        after.st_ino,
+        after.st_mode,
+        after.st_size,
+        after.st_mtime_ns,
+    )
+    if before_identity != after_identity or len(payload) != before.st_size:
+        raise _error(f"Family-12 query {label} changed during stable read")
+    return {
+        "path": relative.as_posix(),
+        "sha256": hashlib.sha256(payload).hexdigest(),
+        "size_bytes": len(payload),
+    }
+
+
+def _verified_query_trust_closure(project_root: Path) -> dict[str, Any]:
+    observed = {
+        key: _stable_query_content_ref(
+            project_root,
+            Path(reference["path"]),
+            label=key.replace("_", " "),
+        )
+        for key, reference in sorted(LOAN_ENTERPRISE_FAMILY12_REGION_QUERY_TRUST_CLOSURE_V2.items())
+    }
+    if not same_typed_json_v1(
+        observed,
+        LOAN_ENTERPRISE_FAMILY12_REGION_QUERY_TRUST_CLOSURE_V2,
+    ):
+        raise _error("Family-12 query spec/shared semantic trust closure drifted")
+    return observed
+
+
+def _query_anchor(
+    anchor_id: str,
+    surface: str,
+    *,
+    maximum_edit_distance: int,
+    role: str,
+    probes: Sequence[str] | None = None,
+) -> dict[str, Any]:
+    canonical_surface = unicodedata.normalize("NFC", " ".join(surface.split()))
+    normalized_probes = probes or [normalize_vietnamese_anchor_v1(canonical_surface)]
+    return {
+        "anchor_id": anchor_id,
+        "canonical_alias_id": anchor_id + "_CANONICAL",
+        "fts_probes": sorted(
+            {normalize_vietnamese_anchor_v1(probe) for probe in normalized_probes}
+        ),
+        "max_edit_distance": maximum_edit_distance,
+        "role": role,
+        "surface": canonical_surface,
+        "verified_historical_variants": [],
+    }
+
+
+def _query_spec(project_root: Path) -> dict[str, Any]:
+    """Build only a retrieval shortlist; the shared graph retains semantics."""
+
+    _verified_query_trust_closure(project_root)
+    family_spec = build_loan_enterprise_family12_spec_v1()
+    owner = next(
+        item for item in family_spec["context_classes"] if item["context_id"] == "OWNER_716"
+    )
+    anchors = [
+        _query_anchor(
+            "BRANCH_LOAI_HINH_DOANH_NGHIEP",
+            "Loại hình doanh nghiệp",
+            maximum_edit_distance=1,
+            probes=["hình doanh nghiệp", "loại hình doanh nghiệp"],
+            role="TARGET",
+        ),
+        _query_anchor(
+            "BRANCH_THEO_DOI_TUONG_KHACH_HANG",
+            "Theo đối tượng khách hàng",
+            maximum_edit_distance=1,
+            probes=["đối tượng khách hàng", "theo đối tượng khách hàng"],
+            role="TARGET",
+        ),
+    ]
+    anchors.extend(
+        _query_anchor(
+            f"OWNER_716_{ordinal:02d}",
+            surface,
+            maximum_edit_distance=0,
+            role="OWNER",
+        )
+        for ordinal, surface in enumerate(owner["aliases"], 1)
+    )
+    role_surfaces = {
+        child["report_norm_id"]: (
+            "Thành phần kinh tế khác" if child["report_norm_id"] == 782 else child["canonical_name"]
+        )
+        for child in family_spec["children"]
+    }
+    anchors.extend(
+        _query_anchor(
+            f"SEMANTIC_ROLE_{report_norm_id}",
+            surface,
+            maximum_edit_distance=0,
+            role="CONTEXT",
+        )
+        for report_norm_id, surface in sorted(role_surfaces.items())
+    )
+    branch_ids = sorted(
+        item["anchor_id"] for item in anchors if item["anchor_id"].startswith("BRANCH_")
+    )
+    owner_ids = sorted(
+        item["anchor_id"] for item in anchors if item["anchor_id"].startswith("OWNER_716_")
+    )
+    role_ids = sorted(
+        item["anchor_id"] for item in anchors if item["anchor_id"].startswith("SEMANTIC_ROLE_")
+    )
+    reset_surfaces = {
+        *family_spec["structural_reset_aliases"],
+        "Các giao dịch với bên liên quan",
+        "Các giao dịch với các bên liên quan",
+        "Giao dịch tiền gửi với MB",
+        "Phân tích tiền gửi khách hàng theo loại hình doanh nghiệp",
+        "Phân tích tiền gửi khách hàng theo đối tượng khách hàng",
+        "Theo loại hình doanh nghiệp tiền gửi",
+        "Tiền gửi khách hàng",
+    }
+    return {
+        "anchors": sorted(anchors, key=lambda item: item["anchor_id"]),
+        "family_id": FAMILY_ID,
+        "format_version": "FAMILY_FIRST_REGION_QUERY_SPEC_V2",
+        "local_required_groups": [
+            {
+                "anchor_ids": role_ids,
+                "group_id": "EXACT_FAMILY12_SEMANTIC_ROLE",
+                "mode": "ANY",
+                "page_relation": "SAME_OR_ADJACENT_PAGE",
+            },
+            {
+                "anchor_ids": owner_ids,
+                "group_id": "OWNER_716_LOCAL",
+                "mode": "ANY",
+                "page_relation": "SAME_OR_ADJACENT_PAGE",
+            },
+        ],
+        "max_hit_lines": 100_000,
+        "max_selected_pages_per_document": 24,
+        "neighbor_pages_after": 1,
+        "neighbor_pages_before": 2,
+        "seed_groups": [
+            {
+                "anchor_ids": branch_ids,
+                "group_id": "FAMILY12_SHORT_BRANCH_SEED",
+                "mode": "ANY",
+                "page_relation": "SAME_PAGE",
+                "priority": 1,
+            }
+        ],
+        "semantic_assignment_adapter_ref": _stable_query_content_ref(
+            project_root,
+            _ADAPTER_PATH,
+            label="semantic assignment adapter",
+        ),
+        "structural_reset_fragments": sorted(
+            unicodedata.normalize("NFC", " ".join(surface.split())) for surface in reset_surfaces
+        ),
+        "structural_reset_max_line_ordinal": 3,
+        "window_line_span": 3,
+        "zero_hit_policy": "FULL_DOCUMENT_FALLBACK",
+    }
+
+
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+LOAN_ENTERPRISE_FAMILY12_REGION_QUERY_SPEC_V2 = _query_spec(_PROJECT_ROOT)
+
+
+def build_loan_enterprise_family12_region_query_spec_v2(
+    project_root: str | Path,
+) -> dict[str, Any]:
+    """Return the bank-blind, adapter-bound Family-12 V2 shortlist spec."""
+
+    observed = _query_spec(Path(project_root).resolve())
+    if not same_typed_json_v1(observed, LOAN_ENTERPRISE_FAMILY12_REGION_QUERY_SPEC_V2):
+        raise _error("Family-12 query differs from its loaded adapter trust closure")
+    from bctc_ai.evaluation.family_first_region_retrieval_v1 import (
+        validate_family_first_region_query_spec_v2,
+    )
+
+    return validate_family_first_region_query_spec_v2(observed)
 
 
 def _generic_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
