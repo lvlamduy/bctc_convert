@@ -19,6 +19,8 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from bctc_ai.evaluation import accounting_family_occurrence_row_axis_v2 as occurrence_row_v2
+from bctc_ai.evaluation import accounting_family_topology_candidates_v2 as candidates_v2
 from bctc_ai.evaluation import accounting_family_topology_v1 as topology_v1
 from bctc_ai.evaluation.accounting_variant_graph_engine_v1 import (
     normalize_vietnamese_anchor_v1,
@@ -160,6 +162,194 @@ def _error(message: str) -> AccountingFamilyOneEditExactAuthorityV1Error:
 
 def _is_one_edit(match: Mapping[str, Any]) -> bool:
     return str(match.get("match_kind", "")).startswith("ONE_EDIT_ALIAS")
+
+
+def _retrieval_only_pages_v1(
+    pages: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Rebuild the exact page contract used by V2 topology retrieval."""
+
+    return [
+        {
+            "lines": [
+                {
+                    "bbox": canonical_clone_v1(line["bbox"]),
+                    "source_line_index": line["source_line_index"],
+                    # PP-OCR is the independent exact-authority channel.  It
+                    # must never participate in the retrieval replay.
+                    "source_text": None,
+                    "vietocr_text": line["vietocr_text"],
+                }
+                for line in page["lines"]
+            ],
+            "page_sequence": page["page_sequence"],
+        }
+        for page in pages
+    ]
+
+
+def _occurrence_row_pages_v1(
+    pages: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Project parsed topology pages into the input used by occurrence V2."""
+
+    return [
+        {
+            "lines": [
+                {
+                    "bbox": canonical_clone_v1(line["bbox"]),
+                    "line_ordinal": line["source_line_index"],
+                    "vietocr_text": line["vietocr_text"],
+                }
+                for line in page["lines"]
+            ],
+            "page_sequence": page["page_sequence"],
+        }
+        for page in pages
+    ]
+
+
+def _expected_occurrence_id_v1(match: Mapping[str, Any]) -> str:
+    return "aforav2:occurrence:" + canonical_json_sha256_v1(
+        {
+            "document_line_ordinal": match["document_line_ordinal"],
+            "end_document_line_ordinal": match["end_document_line_ordinal"],
+            "page_sequence": match["page_sequence"],
+            "role": match["role"],
+            "role_occurrence_ordinal": match["role_occurrence_ordinal"],
+        }
+    )
+
+
+def _root_scope_id_v1(selected_region: Mapping[str, Any]) -> str:
+    return "aforav2:root:" + canonical_json_sha256_v1(
+        {
+            "end": selected_region["cluster_end_document_line_ordinal_exclusive"],
+            "parent_match": selected_region.get("parent_match"),
+            "start": selected_region["cluster_start_document_line_ordinal"],
+        }
+    )
+
+
+def _physical_occurrence_signature_v1(match: Mapping[str, Any]) -> str:
+    """Typed physical identity; distinct coextensive semantic roles remain valid."""
+
+    return canonical_json_sha256_v1(
+        {
+            "document_line_ordinal": match["document_line_ordinal"],
+            "end_document_line_ordinal": match["end_document_line_ordinal"],
+            "end_source_line_index": match["end_source_line_index"],
+            "page_sequence": match["page_sequence"],
+            "role": match["role"],
+            "source_line_index": match["source_line_index"],
+        }
+    )
+
+
+def _validate_canonical_expanded_occurrence_axis_v1(
+    expanded_region: Mapping[str, Any],
+    selected_region: Mapping[str, Any],
+) -> None:
+    """Verify identities and nearest structural owners on the replayed axis."""
+
+    matches = expanded_region.get("child_matches")
+    if type(matches) is not list or any(type(match) is not dict for match in matches):
+        raise _error("canonical expanded occurrence child axis drifted")
+    occurrence_ids = [match.get("occurrence_id") for match in matches]
+    physical_signatures = [_physical_occurrence_signature_v1(match) for match in matches]
+    if (
+        any(
+            type(occurrence_id) is not str or occurrence_id != _expected_occurrence_id_v1(match)
+            for occurrence_id, match in zip(occurrence_ids, matches, strict=True)
+        )
+        or len(occurrence_ids) != len(set(occurrence_ids))
+        or len(physical_signatures) != len(set(physical_signatures))
+    ):
+        raise _error("canonical expanded occurrence identity axis drifted")
+    root_scope_id = _root_scope_id_v1(selected_region)
+    for match in matches:
+        within_role = match.get("matched_within_role")
+        owners = [
+            candidate
+            for candidate in matches
+            if candidate["role"] == within_role
+            and candidate["document_line_ordinal"] <= match["document_line_ordinal"]
+            and candidate["occurrence_id"] != match["occurrence_id"]
+        ]
+        owner = max(
+            owners,
+            key=lambda item: (
+                item["document_line_ordinal"],
+                item["end_document_line_ordinal"],
+            ),
+            default=None,
+        )
+        if within_role is not None and owner is None:
+            raise _error("canonical occurrence lost its nearest structural owner")
+        expected_owner_id = owner["occurrence_id"] if owner is not None else root_scope_id
+        expected_owner_role = owner["role"] if owner is not None else None
+        if (
+            match.get("scope_owner_occurrence_id") != expected_owner_id
+            or match.get("scope_owner_role") != expected_owner_role
+        ):
+            raise _error("canonical occurrence nearest structural owner drifted")
+
+
+def _canonical_expanded_occurrence_region_v1(
+    pages: Sequence[Mapping[str, Any]],
+    family_spec: Mapping[str, Any],
+    selected_topology_region: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Replay the complete selected V2 occurrence authority from source inputs."""
+
+    retrieval_pages = _retrieval_only_pages_v1(pages)
+    try:
+        prepared = candidates_v2._prepare_accounting_family_topology_candidates_v2(  # noqa: SLF001
+            retrieval_pages,
+            family_spec,
+        )
+        topology_scan, topology_candidates, bindings = (
+            candidates_v2._prepared_accounting_family_topology_authority_v2(  # noqa: SLF001
+                prepared
+            )
+        )
+    except candidates_v2.AccountingFamilyTopologyCandidatesV2Error as exc:
+        raise _error("canonical V2 topology candidate replay failed") from exc
+    selected_ordinals = [
+        ordinal
+        for ordinal, region in enumerate(topology_candidates["regions"])
+        if same_typed_json_v1(region, selected_topology_region)
+    ]
+    if len(selected_ordinals) != 1:
+        raise _error("selected topology region is not one exact canonical V2 candidate")
+    selected_ordinal = selected_ordinals[0]
+    canonical_selected = topology_candidates["regions"][selected_ordinal]
+    try:
+        matches, replayed_selected, effective_region, _topology_candidates_id = (
+            occurrence_row_v2._expanded_matches(  # noqa: SLF001
+                _occurrence_row_pages_v1(pages),
+                family_spec,
+                topology_scan,
+                canonical_selected,
+                None,
+                topology_candidates,
+                bindings[selected_ordinal],
+            )
+        )
+        if not same_typed_json_v1(replayed_selected, canonical_selected):
+            raise _error("selected candidate changed during occurrence replay")
+        decorated = occurrence_row_v2._decorate_scopes(  # noqa: SLF001
+            matches,
+            replayed_selected,
+        )
+        expanded_region = occurrence_row_v2._expanded_region(  # noqa: SLF001
+            effective_region,
+            decorated,
+        )
+    except occurrence_row_v2.AccountingFamilyOccurrenceRowAxisV2Error as exc:
+        raise _error("canonical V2 occurrence-axis replay failed") from exc
+    _validate_canonical_expanded_occurrence_axis_v1(expanded_region, canonical_selected)
+    return canonical_clone_v1(expanded_region)
 
 
 def _match_line_indices(
@@ -818,24 +1008,21 @@ def build_accounting_family_one_edit_exact_authority_v1(
         compiled = topology_v1._spec(family_spec)  # noqa: SLF001
     except (ValueError, RuntimeError) as exc:
         raise _error("one-edit exact-authority document or family spec drifted") from exc
-    if (
-        type(selected_topology_region) is not dict
-        or type(expanded_occurrence_region) is not dict
-        or not same_typed_json_v1(
-            selected_topology_region.get("parent_match"),
-            expanded_occurrence_region.get("parent_match"),
-        )
-        or any(
-            selected_topology_region.get(field) != expanded_occurrence_region.get(field)
-            for field in (
-                "cluster_end_document_line_ordinal_exclusive",
-                "cluster_start_document_line_ordinal",
-                "parent_resolution",
-            )
-        )
-        or type(expanded_occurrence_region.get("child_matches")) is not list
-    ):
+    if type(selected_topology_region) is not dict or type(expanded_occurrence_region) is not dict:
         raise _error("one-edit exact-authority selected/expanded region binding drifted")
+    canonical_expanded_occurrence_region = _canonical_expanded_occurrence_region_v1(
+        pages,
+        family_spec,
+        selected_topology_region,
+    )
+    if not same_typed_json_v1(
+        expanded_occurrence_region,
+        canonical_expanded_occurrence_region,
+    ):
+        raise _error("expanded occurrence region does not replay exactly")
+    # Never derive authority from the caller-owned object, even after the
+    # typed comparison.  All later checks and hashes consume the replayed axis.
+    expanded_occurrence_region = canonical_expanded_occurrence_region
     selected_parent = selected_topology_region.get("parent_match")
     effective_matches = expanded_occurrence_region["child_matches"]
     occurrence_ids = [

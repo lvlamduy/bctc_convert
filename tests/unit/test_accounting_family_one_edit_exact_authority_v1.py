@@ -72,29 +72,24 @@ def _pages(*lines: dict) -> list[dict]:
 
 
 def _selected(pages: list[dict], spec: dict | None = None) -> dict:
-    scan = topology_v1.build_accounting_family_topology_scan_v1(pages, spec or _spec())
+    retrieval_pages = [
+        {
+            "lines": [{**line, "source_text": None} for line in page["lines"]],
+            "page_sequence": page["page_sequence"],
+        }
+        for page in pages
+    ]
+    scan = topology_v1.build_accounting_family_topology_scan_v1(retrieval_pages, spec or _spec())
     assert scan["status"] == "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"
     return scan["regions"][0]
 
 
-def _expanded(region: dict) -> dict:
-    expanded = copy.deepcopy(region)
-    decorated = []
-    for ordinal, raw_match in enumerate(expanded["child_matches"]):
-        match = {
-            **raw_match,
-            "occurrence_id": f"test:occurrence:{ordinal}:{raw_match['role']}",
-        }
-        within_role = match.get("matched_within_role")
-        owners = [item for item in decorated if item["role"] == within_role]
-        owner = owners[-1] if owners else None
-        match["scope_owner_occurrence_id"] = (
-            owner["occurrence_id"] if owner is not None else "test:root"
-        )
-        match["scope_owner_role"] = owner["role"] if owner is not None else None
-        decorated.append(match)
-    expanded["child_matches"] = decorated
-    return expanded
+def _expanded(pages: list[dict], region: dict, spec: dict | None = None) -> dict:
+    return subject._canonical_expanded_occurrence_region_v1(
+        topology_v1._pages(pages),
+        spec or _spec(),
+        region,
+    )
 
 
 def _three_level_pages(
@@ -116,7 +111,7 @@ def test_parent_group_and_leaf_one_edit_retrievals_need_exact_same_span_source()
     region = _selected(pages)
 
     receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
-        pages, _spec(), region, _expanded(region)
+        pages, _spec(), region, _expanded(pages, region)
     )
 
     assert receipt["status"] == "EXACT_SOURCE_AUTHORITY_BOUND"
@@ -134,8 +129,8 @@ def test_parent_group_and_leaf_one_edit_retrievals_need_exact_same_span_source()
     ]
     assert [item["occurrence_id"] for item in receipt["checks"]] == [
         None,
-        "test:occurrence:0:DOMESTIC_GROUP",
-        "test:occurrence:1:VND_BALANCE",
+        _expanded(pages, region)["child_matches"][0]["occurrence_id"],
+        _expanded(pages, region)["child_matches"][1]["occurrence_id"],
     ]
     assert all(
         item["status"] == "EXACT_SOURCE_ROLE_CONTEXT_SPAN_BOUND" for item in receipt["checks"]
@@ -143,7 +138,7 @@ def test_parent_group_and_leaf_one_edit_retrievals_need_exact_same_span_source()
     assert all(item["exact_channel"]["alias_pointer"] for item in receipt["checks"])
 
 
-def test_coextensive_effective_child_copied_from_parent_needs_its_own_role_alias() -> None:
+def test_canonical_coextensive_effective_child_is_retained_on_exact_parent() -> None:
     spec = _spec()
     spec["children"].append(
         {
@@ -153,27 +148,22 @@ def test_coextensive_effective_child_copied_from_parent_needs_its_own_role_alias
             "role_kind": "TOTAL",
         }
     )
-    pages = _three_level_pages()
+    pages = _pages(
+        _line(0, "Family assets", "Family assets"),
+        _line(1, "Domestic depositx", "Domestic deposits"),
+        _line(2, "Vietnam dong balancx", "Vietnam dong balance"),
+        _line(3, "Next family", "Next family"),
+    )
     region = _selected(pages, spec)
-    effective = copy.deepcopy(region)
-    effective_total = {
-        **copy.deepcopy(region["parent_match"]),
-        "matched_within_role": None,
-        "preferred_ordinal": 3,
-        "presence": "OPTIONAL",
-        "role": "EXPLICIT_FAMILY_TOTAL",
-        "role_kind": "TOTAL",
-    }
-    effective["child_matches"].append(effective_total)
+    expanded = _expanded(pages, region, spec)
+    assert any(match["role"] == "EXPLICIT_FAMILY_TOTAL" for match in expanded["child_matches"])
 
     receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
-        pages, spec, region, _expanded(effective)
+        pages, spec, region, expanded
     )
 
     assert receipt["status"] == "EXACT_SOURCE_AUTHORITY_BOUND"
-    total = next(item for item in receipt["checks"] if item["role"] == "EXPLICIT_FAMILY_TOTAL")
-    assert total["status"] == "EXACT_SOURCE_ROLE_CONTEXT_SPAN_BOUND"
-    assert total["exact_channel"]["alias_pointer"] == "/children/3/matchers/0/aliases/0"
+    assert all(item["role"] != "EXPLICIT_FAMILY_TOTAL" for item in receipt["checks"])
 
 
 def test_missing_bound_source_text_fails_closed() -> None:
@@ -181,7 +171,7 @@ def test_missing_bound_source_text_fails_closed() -> None:
     region = _selected(pages)
 
     receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
-        pages, _spec(), region, _expanded(region)
+        pages, _spec(), region, _expanded(pages, region)
     )
 
     leaf = next(item for item in receipt["checks"] if item["role"] == "VND_BALANCE")
@@ -194,7 +184,7 @@ def test_source_channel_that_is_still_one_edit_is_not_exact_authority() -> None:
     region = _selected(pages)
 
     receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
-        pages, _spec(), region, _expanded(region)
+        pages, _spec(), region, _expanded(pages, region)
     )
 
     leaf = next(item for item in receipt["checks"] if item["role"] == "VND_BALANCE")
@@ -213,7 +203,7 @@ def test_exact_alias_on_a_different_source_span_does_not_corroborate_retrieval()
     region = _selected(pages)
 
     receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
-        pages, _spec(), region, _expanded(region)
+        pages, _spec(), region, _expanded(pages, region)
     )
 
     assert receipt["checks"][0]["role"] == "VND_BALANCE"
@@ -233,7 +223,7 @@ def test_same_exact_leaf_under_a_different_structural_parent_cannot_corroborate(
     region = _selected(pages)
 
     receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
-        pages, _spec(), region, _expanded(region)
+        pages, _spec(), region, _expanded(pages, region)
     )
 
     leaf = next(item for item in receipt["checks"] if item["role"] == "VND_BALANCE")
@@ -252,7 +242,7 @@ def test_exact_leaf_without_the_exact_selected_family_parent_cannot_corroborate(
     region = _selected(pages)
 
     receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
-        pages, _spec(), region, _expanded(region)
+        pages, _spec(), region, _expanded(pages, region)
     )
 
     assert receipt["checks"][0]["status"] == "EXACT_FAMILY_PARENT_CONTEXT_MISMATCH"
@@ -267,16 +257,9 @@ def test_repeated_exact_first_occurrence_cannot_corroborate_fuzzy_second_occurre
         _line(4, "Next family", "Next family"),
     )
     region = _selected(pages)
-    occurrences = topology_v1.enumerate_accounting_family_role_occurrences_v1(
-        pages, _spec(), region
-    )
-    assert [item["source_line_index"] for item in occurrences if item["role"] == "VND_BALANCE"] == [
-        2,
-        3,
-    ]
-    expanded = copy.deepcopy(region)
-    expanded["child_matches"] = occurrences
-    expanded = _expanded(expanded)
+    expanded = _expanded(pages, region)
+    vnd_occurrences = [item for item in expanded["child_matches"] if item["role"] == "VND_BALANCE"]
+    assert [item["source_line_index"] for item in vnd_occurrences] == [2, 3]
 
     receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
         pages, _spec(), region, expanded
@@ -284,31 +267,156 @@ def test_repeated_exact_first_occurrence_cannot_corroborate_fuzzy_second_occurre
 
     assert receipt["metrics"]["selected_one_edit_match_count"] == 1
     repeated = receipt["checks"][0]
-    assert repeated["occurrence_id"] == "test:occurrence:2:VND_BALANCE"
+    assert repeated["occurrence_id"] == vnd_occurrences[1]["occurrence_id"]
     assert repeated["source_line_indices"] == [3]
     assert repeated["status"] == "BOUND_SOURCE_TEXT_REMAINS_ONE_EDIT_NOT_EXACT"
-    assert "OCCURRENCE_test:occurrence:2:VND_BALANCE" in receipt["unresolved_reasons"][0]
+    assert f"OCCURRENCE_{vnd_occurrences[1]['occurrence_id']}" in receipt["unresolved_reasons"][0]
 
 
 def test_expanded_one_edit_occurrence_without_occurrence_id_is_rejected() -> None:
     pages = _three_level_pages()
     region = _selected(pages)
-    expanded = _expanded(region)
+    expanded = _expanded(pages, region)
     expanded["child_matches"][-1].pop("occurrence_id")
 
     with pytest.raises(
         subject.AccountingFamilyOneEditExactAuthorityV1Error,
-        match="expanded occurrence identity axis drifted",
+        match="expanded occurrence region does not replay exactly",
     ):
         subject.build_accounting_family_one_edit_exact_authority_v1(
             pages, _spec(), region, expanded
         )
 
 
+def test_caller_cannot_omit_a_selected_expanded_occurrence() -> None:
+    pages = _pages(
+        _line(0, "Family assets", "Family assets"),
+        _line(1, "Domestic deposits", "Domestic deposits"),
+        _line(2, "Vietnam dong balance", "Vietnam dong balance"),
+        _line(3, "Vietnam dong balancx", "Vietnam dong balancz"),
+        _line(4, "Next family", "Next family"),
+    )
+    region = _selected(pages)
+    attacked = _expanded(pages, region)
+    attacked["child_matches"].pop()
+
+    with pytest.raises(
+        subject.AccountingFamilyOneEditExactAuthorityV1Error,
+        match="expanded occurrence region does not replay exactly",
+    ):
+        subject.build_accounting_family_one_edit_exact_authority_v1(
+            pages, _spec(), region, attacked
+        )
+
+
+def test_caller_cannot_add_a_duplicate_physical_occurrence_with_a_coherent_id() -> None:
+    pages = _three_level_pages()
+    region = _selected(pages)
+    attacked = _expanded(pages, region)
+    duplicate = copy.deepcopy(attacked["child_matches"][-1])
+    duplicate["role_occurrence_ordinal"] += 1
+    duplicate["occurrence_id"] = subject._expected_occurrence_id_v1(duplicate)
+    attacked["child_matches"].append(duplicate)
+
+    with pytest.raises(
+        subject.AccountingFamilyOneEditExactAuthorityV1Error,
+        match="expanded occurrence region does not replay exactly",
+    ):
+        subject.build_accounting_family_one_edit_exact_authority_v1(
+            pages, _spec(), region, attacked
+        )
+
+
+def test_caller_cannot_rebind_deterministic_ids_between_repeated_role_hits() -> None:
+    pages = _pages(
+        _line(0, "Family assets", "Family assets"),
+        _line(1, "Domestic deposits", "Domestic deposits"),
+        _line(2, "Vietnam dong balance", "Vietnam dong balance"),
+        _line(3, "Vietnam dong balancx", "Vietnam dong balancz"),
+        _line(4, "Next family", "Next family"),
+    )
+    region = _selected(pages)
+    attacked = _expanded(pages, region)
+    repeated = [match for match in attacked["child_matches"] if match["role"] == "VND_BALANCE"]
+    repeated[0]["occurrence_id"], repeated[1]["occurrence_id"] = (
+        repeated[1]["occurrence_id"],
+        repeated[0]["occurrence_id"],
+    )
+
+    with pytest.raises(
+        subject.AccountingFamilyOneEditExactAuthorityV1Error,
+        match="expanded occurrence region does not replay exactly",
+    ):
+        subject.build_accounting_family_one_edit_exact_authority_v1(
+            pages, _spec(), region, attacked
+        )
+
+
+def test_caller_cannot_rebind_leaf_to_a_non_nearest_structural_owner() -> None:
+    pages = _pages(
+        _line(0, "Family assets", "Family assets"),
+        _line(1, "Domestic deposits", "Domestic deposits"),
+        _line(2, "Vietnam dong balance", "Vietnam dong balance"),
+        _line(3, "Foreign deposits", "Foreign deposits"),
+        _line(4, "Vietnam dong balancx", "Vietnam dong balance"),
+        _line(5, "Next family", "Next family"),
+    )
+    region = _selected(pages)
+    attacked = _expanded(pages, region)
+    domestic = next(
+        match for match in attacked["child_matches"] if match["role"] == "DOMESTIC_GROUP"
+    )
+    second_leaf = [match for match in attacked["child_matches"] if match["role"] == "VND_BALANCE"][
+        1
+    ]
+    assert second_leaf["scope_owner_role"] == "FOREIGN_GROUP"
+    second_leaf["scope_owner_occurrence_id"] = domestic["occurrence_id"]
+    second_leaf["scope_owner_role"] = domestic["role"]
+
+    with pytest.raises(
+        subject.AccountingFamilyOneEditExactAuthorityV1Error,
+        match="expanded occurrence region does not replay exactly",
+    ):
+        subject.build_accounting_family_one_edit_exact_authority_v1(
+            pages, _spec(), region, attacked
+        )
+
+
+def test_caller_cannot_move_fuzzy_occurrence_onto_an_exact_occurrence_span() -> None:
+    pages = _pages(
+        _line(0, "Family assets", "Family assets"),
+        _line(1, "Domestic deposits", "Domestic deposits"),
+        _line(2, "Vietnam dong balance", "Vietnam dong balance"),
+        _line(3, "Vietnam dong balancx", "Vietnam dong balancz"),
+        _line(4, "Next family", "Next family"),
+    )
+    region = _selected(pages)
+    attacked = _expanded(pages, region)
+    exact, fuzzy = [match for match in attacked["child_matches"] if match["role"] == "VND_BALANCE"]
+    assert fuzzy["match_kind"].startswith("ONE_EDIT_ALIAS")
+    for field in (
+        "document_line_ordinal",
+        "end_document_line_ordinal",
+        "page_sequence",
+        "source_line_index",
+        "end_source_line_index",
+    ):
+        fuzzy[field] = exact[field]
+    fuzzy["occurrence_id"] = subject._expected_occurrence_id_v1(fuzzy)
+
+    with pytest.raises(
+        subject.AccountingFamilyOneEditExactAuthorityV1Error,
+        match="expanded occurrence region does not replay exactly",
+    ):
+        subject.build_accounting_family_one_edit_exact_authority_v1(
+            pages, _spec(), region, attacked
+        )
+
+
 def test_receipt_tamper_and_coherent_identity_rehash_are_rejected_by_replay() -> None:
     pages = _three_level_pages()
     region = _selected(pages)
-    expanded = _expanded(region)
+    expanded = _expanded(pages, region)
     receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
         pages, _spec(), region, expanded
     )
@@ -374,7 +482,7 @@ def test_unselected_or_near_one_edit_match_cannot_veto_selected_exact_region() -
     selected = _selected(pages)
 
     receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
-        pages, _spec(), selected, _expanded(selected)
+        pages, _spec(), selected, _expanded(pages, selected)
     )
 
     assert receipt["status"] == "NOT_REQUIRED_NO_SELECTED_ONE_EDIT_RETRIEVAL"
@@ -413,7 +521,10 @@ def test_v4_integration_does_not_gate_a_discarded_complete_one_edit_candidate() 
     ]
 
     receipt, reasons = sweep_v1._selected_v4_one_edit_authority_v1(
-        {"candidate_ordinal": 0, "row_axis": {"topology_region": _expanded(selected_region)}},
+        {
+            "candidate_ordinal": 0,
+            "row_axis": {"topology_region": _expanded(pages, selected_region)},
+        },
         joined_pages=joined,
         family_spec=_spec(),
         topology_candidates={"regions": scan["regions"]},
@@ -433,7 +544,7 @@ def test_enumeration_and_bounded_decorative_parenthetical_are_exact_transforms()
     region = _selected(pages)
 
     receipt = subject.build_accounting_family_one_edit_exact_authority_v1(
-        pages, _spec(), region, _expanded(region)
+        pages, _spec(), region, _expanded(pages, region)
     )
 
     parent = receipt["checks"][0]
@@ -462,7 +573,7 @@ def test_v4_evidence_integration_turns_failed_selected_receipt_into_trial_reason
     ]
     selected = {
         "candidate_ordinal": 0,
-        "row_axis": {"topology_region": _expanded(region)},
+        "row_axis": {"topology_region": _expanded(pages, region)},
     }
 
     receipt, reasons = sweep_v1._selected_v4_one_edit_authority_v1(
