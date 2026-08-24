@@ -23,10 +23,109 @@ have one auditable filing row per unresolved trial here; a zero count must be
 stated explicitly. A family is not complete for handoff if either file is
 missing that update.
 
-Ledger total: **441 entries**.  Current open queue: **143**.  Closed history:
+Ledger total: **441 entries**. Current open work queue: **143**, recomputed as
+41 Family 3 `RESOLVABLE_PENDING_GENERIC_FIX` + 1 Family 3
+`UNRESOLVED_AFTER_PDF_REVIEW` + 101 existing OPEN entries of other families;
+none of the 41 pending generic fixes is counted as closed. Closed history remains
 **210** row/graph resolutions and **88** confirmed bound-report family absences.
 Later families append here rather than creating disconnected candidate lists.
 Bank/report/page fields below are evidence locators only, never matching rules.
+
+## Danh mục OPEN cần xử lý
+
+Bảng này nằm trước toàn bộ phần `CLOSED` và dẫn tới mọi heading `OPEN` hiện có
+trong ledger. Nó tách case chờ sửa primitive chung khỏi case còn bất định sau
+review; **41 filing chờ generic fix của Family 3 vẫn là OPEN**, không được tính
+như đã đóng. Tổng hiện hành là **143 work item = 42 Family 3 + 101 item của các
+family khác**.
+
+<!-- OPEN_FAMILY_INDEX_BEGIN -->
+
+| Family | Số OPEN | Tình trạng/nguyên nhân dễ hiểu | Link chi tiết |
+| --- | ---: | --- | --- |
+| Family 3 — Tiền gửi tại/cho vay TCTD khác — tài sản (575) | 42 | 41 filing nhìn rõ trên PDF, chờ sửa primitive chung; 1 filing MBB có tổng nguồn lệch 2 triệu sau pixel review. | [Bảng review 42 filing](#open-family3-rnid575) |
+| Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra | 13 | Schema thiếu leaf L/C, ký quỹ, swap và một số dòng `Trong đó`; giữ source-only để tránh cộng lặp. | [Chi tiết](#open-contingent-liabilities-annual-2025) |
+| Công cụ tài chính — giá trị ghi sổ và giá trị hợp lý | 2 | PDF dùng `(*)` và nói giá trị hợp lý chưa xác định/không ước tính đáng tin cậy; không đổi thành 0 hay giá trị ghi sổ. | [Chi tiết](#open-financial-instruments-fair-value-annual-2025) |
+| Rủi ro tiền tệ | 7 | Thiếu trục AUD/CAD/JPY và vàng trong schema; số nguồn vẫn được giữ để đóng tổng. | [Chi tiết](#open-currency-risk-annual-2025) |
+| Rủi ro lãi suất | 1 | Tổng kết hợp VPB lệch 2 so với nội bảng cộng ngoại bảng; giữ nguyên 5 ô nguồn. | [Chi tiết](#open-interest-rate-risk-annual-2025) |
+| Chi phí thuế thu nhập doanh nghiệp | 7 | Các điều chỉnh rộng, component thuế hoãn lại và dòng roll-forward chưa có leaf chính xác; ô trống không thành 0. | [Chi tiết](#open-income-tax-expense-annual-2025) |
+| Chi phí quản lý chung | 14 | Nhiều leaf chi phí nguồn chưa có schema tương đương; aggregate vẫn giữ source-only để tránh double-count. | [Chi tiết](#open-operating-expense-annual-2025) |
+| Thu nhập từ góp vốn, mua cổ phần và cổ tức | 1 | CTG gộp thu nhập từ chứng khoán vốn kinh doanh và đầu tư, không có căn cứ phân bổ. | [Chi tiết](#open-dividend-income-annual-2025) |
+| Thu nhập, chi phí và lãi thuần dịch vụ | 2 | CTG gộp tư vấn với đại lý/ủy thác trong cùng số nguồn, không có căn cứ chia leaf. | [Chi tiết](#open-service-income-expense-annual-2025) |
+| Vốn và các quỹ | 9 | 7 leaf số dư annual chưa có schema; 2 bảng xoay BID/VIB của queue kỳ trước còn chờ numeric challenger độc lập. | [Annual](#open-equity-funds-annual-2025); [legacy](#open-equity-funds-legacy-current) |
+| Phát hành giấy tờ có giá | 8 | 5 dòng annual là trục gộp/contra; 3 tenor VPB của queue kỳ trước áp dụng toàn family nên chưa thể phân bổ theo công cụ. | [Annual](#open-issued-valuable-papers-annual-2025); [legacy](#open-issued-valuable-papers-legacy-current) |
+| Tiền gửi của khách hàng | 2 | BID gộp các population pháp lý trong một số in, không có dữ liệu để tách. | [Chi tiết](#open-customer-deposits-annual-2025) |
+| Tài sản Có khác | 35 | Còn schema/semantic gap, dòng gộp và một số dấu gạch chưa có bbox số độc lập. | [Chi tiết](#open-other-assets-annual-2025) |
+
+<!-- OPEN_FAMILY_INDEX_END -->
+
+<a id="open-family3-rnid575"></a>
+
+## OPEN — Family 3: Tiền gửi tại/cho vay TCTD khác — tài sản (575)
+
+Family này **chưa hoàn tất**. Toàn bộ 42/42 filing đã được xem trên pixel:
+`PDF_VIEWED = 42`, tương ứng 58 ảnh physical page đã render trong ba lượt
+`17 + 12 + 29 = 58`. Sau review, 41 filing là
+`RESOLVABLE_PENDING_GENERIC_FIX`: PDF đủ rõ và cần sửa primitive chung, không
+phải 41 ambiguity nguồn. Chỉ trial 18 / `IDL-575-008` là
+`UNRESOLVED_AFTER_PDF_REVIEW`: tại MBB Q1/2025 công ty mẹ p26, **sáu dòng
+thành phần trên lane 31/12/2024** cộng thành `72.305.188` nhưng tổng in là
+`72.305.186`, residual `2 triệu đồng`. Không backsolve hoặc sửa số nguồn để ép
+closure.
+
+Bảng này là queue dành cho người review; không chứa SHA hay machine reason.
+Phụ lục [technical/pre-review provenance](#family-3-rnid-575-unresolved) bên
+dưới vẫn giữ nguyên source identity, region và reason của hai artifact.
+
+<!-- INTERBANK_575_PDF_REVIEW_BEGIN -->
+
+| ID | Trial | Ngân hàng | Kỳ báo cáo | Loại báo cáo/phạm vi | Trang PDF (và trang in nếu có) | Đã xem PDF | Kết luận dễ hiểu | Việc cần sửa |
+| --- | ---: | --- | --- | --- | --- | --- | --- | --- |
+| IDL-575-001 | 1 | ACB | Năm 2025 | BCTC hợp nhất | PDF p7, p46; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Bảng tóm tắt p7 in đúng tổng `149.990.681 / 117.882.259` và dẫn `Thuyết minh 6`; p46 phân rã đúng cùng population. | Chọn shared authority giữa summary và note detail bằng cột `Thuyết minh`, owner, kỳ và coverage; không cộng hai vùng. |
+| IDL-575-002 | 3 | ACB | H1 2025 | BCTC hợp nhất | PDF p7, p45; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Bảng tóm tắt p7 in `125.447.269 / 117.882.259` và dẫn `Thuyết minh 6`; p45 là bảng chi tiết của đúng population đó. | Chọn shared authority giữa summary và detail, giữ summary làm đối chiếu tổng và detail làm nguồn leaf. |
+| IDL-575-003 | 5 | ACB | Q1 2025 | BCTC hợp nhất | PDF p15; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Tổng in `129.347.480 / 117.882.259`; lane so sánh có khoản vay `150.979` và dự phòng `(50.000)`, còn các ô ngoại tệ/dự phòng hiện kỳ là dấu gạch bị crop bỏ. | Bổ sung dash-cell recovery và bind đủ hai lane theo geometry trước khi chạy closure. |
+| IDL-575-004 | 6 | ACB | Q1 2025 | BCTC công ty mẹ/riêng lẻ | PDF p15; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Tổng in `115.347.683 / 108.003.288`; khoản vay ngoại tệ là `- / -` và dự phòng cho vay là `- / (50.000)`, nhưng các dash không thành role-lane đầy đủ. | Bổ sung dash-cell recovery theo cùng hàng/cột và complete-lane receipt dùng chung cho mọi bank. |
+| IDL-575-005 | 11 | ACB | Q4 2025 | BCTC hợp nhất | PDF p16; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Tổng in `149.990.681 / 117.882.259`; khoản vay là `- / 150.979`, dự phòng so sánh `(50.000)` và một số dash cùng hàng bị detector bỏ. | Khôi phục dash bằng bbox/crop cùng hàng rồi bind hai kỳ; không suy ô trống thành 0. |
+| IDL-575-006 | 12 | ACB | Q4 2025 | BCTC công ty mẹ/riêng lẻ | PDF p16; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Tổng in `139.216.637 / 108.003.288`; các dòng ngoại tệ/dự phòng có dash và lane so sánh `(50.000)`, nên OCR text-only làm mất cấu trúc hai kỳ. | Dùng geometry + dash crop để hoàn tất lane rồi mới kiểm tổng; không thêm rule theo ACB. |
+| IDL-575-007 | 17 | MBB | Q1 2025 | BCTC hợp nhất | PDF p29; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Subtotal tiền gửi in `53.258.553`, trong khi ba child engine đã giữ chỉ cộng `7.228.307 + 5.711.171 + 37.081.841 = 50.021.319`; bảng còn một child tiền tệ cùng group. | Bắt buộc exhaustive visible-row coverage của bốn child tiền gửi trước khi đối chiếu subtotal. |
+| IDL-575-008 | 18 | MBB | Q1 2025 | BCTC công ty mẹ/riêng lẻ | PDF p26; trang in: p18 | PDF_VIEWED | OPEN — UNRESOLVED_AFTER_PDF_REVIEW — Trên lane `31/12/2024`, sáu dòng in `5.499.868 + 5.157.164 + 55.404.500 + 3.361.724 + 2.881.932 + 0 = 72.305.188`, nhưng tổng in `72.305.186`; lệch 2 triệu đồng. | Giữ nguyên source và unresolved; không backsolve/sửa 2 triệu. Chỉ đóng khi có đính chính hoặc evidence nguồn độc lập. |
+| IDL-575-009 | 25 | VPB | Năm 2025 | BCTC hợp nhất | PDF p42; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Bảng số tiền có dòng `Cấp tín dụng bằng ngoại tệ`, nhưng bảng lãi suất ngay cùng trang dùng đơn vị `%/năm` và giá trị `Không áp dụng`; engine đang trộn hai bảng. | Thêm table-role fence theo đơn vị tiền so với `%/năm`, coi `Không áp dụng` là text của bảng lãi suất. |
+| IDL-575-010 | 26 | VPB | Năm 2025 | BCTC công ty mẹ/riêng lẻ | PDF p36; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Dòng tiền `Cấp tín dụng bằng ngoại tệ` nằm trên bảng balance, còn `%/năm`/`Không áp dụng` thuộc bảng lãi suất phía dưới; hai surface bị nhập chung. | Tách region bằng unit/header/reset và chỉ bind numeric lane tiền trong bảng balance. |
+| IDL-575-011 | 27 | VPB | H1 2025 | BCTC hợp nhất | PDF p44; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Trên p44, `Cấp tín dụng bằng ngoại tệ` của bảng số tiền đứng gần bảng lãi suất có header `%/năm` và ô `Không áp dụng`; lỗi là nhầm loại bảng. | Dùng classifier tiền tệ-vs-lãi suất và hard boundary trước `%/năm`; không diễn giải `Không áp dụng` thành ô tiền. |
+| IDL-575-012 | 28 | VPB | H1 2025 | BCTC công ty mẹ/riêng lẻ | PDF p36; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Bảng balance và bảng rate cùng chứa nhãn tín dụng/TCTD, nhưng chỉ bảng rate in `%/năm` và `Không áp dụng`; engine chưa chặn cross-table binding. | Thêm shared unit incompatibility gate và reset vùng tại header bảng lãi suất. |
+| IDL-575-013 | 37 | HDB | Năm 2025 | BCTC hợp nhất | PDF p34; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Subtotal cho vay in `27.921.384 / 7.374.353`; nhóm `Trong đó: Chiết khấu, tái chiết khấu` lặp, khoản vay VND có `- / 1.157.667`, và dash làm thiếu lane. | Nhận repeated subgroup là detail không cộng dồn, đồng thời recover dash theo geometry cho cả hai kỳ. |
+| IDL-575-014 | 38 | HDB | Năm 2025 | BCTC công ty mẹ/riêng lẻ | PDF p33; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Subtotal cho vay in `31.521.384 / 12.474.353`; subgroup `Chiết khấu, tái chiết khấu` xuất hiện lặp và khoản vay VND có dash cạnh `1.157.667`. | Deduplicate repeated subgroup theo topology và bind dash cùng hàng trước closure. |
+| IDL-575-015 | 39 | HDB | H1 2025 | BCTC hợp nhất | PDF p31; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Các nhánh có subtotal cục bộ; dòng cuối `7.746.366 / 7.374.353` là footer/subtotal của nhánh gần nhất, không phải một family total tự do. | Phân loại local subtotal/footer theo indentation và owner span; chỉ đóng tổng đúng population. |
+| IDL-575-016 | 40 | HDB | H1 2025 | BCTC công ty mẹ/riêng lẻ | PDF p30; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — footer cuối `10.446.366 / 12.474.353` đứng sau các subtotal tiền gửi/cho vay cục bộ; engine đang thử nó như tổng của population rộng hơn. | Thêm trailing-footer boundary và receipt chứng minh owner của subtotal, không gán theo vị trí cuối vùng. |
+| IDL-575-017 | 41 | HDB | Q1 2025 | BCTC hợp nhất | PDF p3; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Subtotal cho vay in `8.833.734 / 7.374.353`; dòng `Dự phòng rủi ro` là sibling/contra ở cấp family với `- / -`, không phải child duy nhất phải cộng ra subtotal cho vay. | Gán provision đúng sibling level và bind hai dash; closure chỉ dùng component cùng source group. |
+| IDL-575-018 | 42 | HDB | Q1 2025 | BCTC công ty mẹ/riêng lẻ | PDF p3; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Subtotal cho vay in `13.583.734 / 12.474.353`, còn `Dự phòng rủi ro - / -` là sibling root; hierarchy hiện tại kéo nó xuống sai nhánh. | Sửa shared hierarchy-level inference cho provision và dash-cell binding. |
+| IDL-575-019 | 43 | HDB | Q2 2025 | BCTC hợp nhất | PDF p3; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Subtotal cho vay in `7.746.366 / 7.374.353`; provision `- / -` là sibling root ngang cấp với nhánh tiền gửi/cho vay, không phải component của subtotal. | Dùng indentation/owner span để giữ provision ở sibling level và xác thực dash trước closure. |
+| IDL-575-020 | 44 | HDB | Q2 2025 | BCTC công ty mẹ/riêng lẻ | PDF p3; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Subtotal cho vay in `10.446.366 / 12.474.353`; provision sibling root kế tiếp có hai dash nhưng bị đưa vào tập component sai population. | Tách source-group của loan khỏi family-level provision bằng shared topology rule. |
+| IDL-575-021 | 45 | HDB | Q3 2025 | BCTC hợp nhất | PDF p3; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Subtotal cho vay in `13.618.632 / 7.374.353`; provision là sibling root và detector chỉ giữ một trong hai dash nhìn thấy. | Recover dash còn thiếu rồi gán provision ở cấp family, không ép nó đóng subtotal cho vay. |
+| IDL-575-022 | 46 | HDB | Q3 2025 | BCTC công ty mẹ/riêng lẻ | PDF p3; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Subtotal cho vay in `17.218.632 / 12.474.353`; sibling root provision có hai dash nhìn thấy nhưng một lane bị bỏ và hierarchy đang ở sai cấp. | Kết hợp dash recovery với sibling-level provision inference dùng chung. |
+| IDL-575-023 | 62 | CTG | Năm 2025 | BCTC công ty mẹ/riêng lẻ | PDF p39–40; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — p39 chứa nhánh tiền gửi, p40 tiếp sang nhánh cho vay và **lặp lại ngay** header kỳ/đơn vị; tại p40 `5.922.473 + 8.883.891 = 14.806.364`, lane so sánh `2.500.000 + 1.111.649 = 3.611.649`. | Ưu tiên header local lặp trên p40; continuation không cần suy thừa kế kỳ/đơn vị từ p39. |
+| IDL-575-024 | 64 | CTG | H1 2025 | BCTC công ty mẹ/riêng lẻ | PDF p11, p21; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — p11 là bảng số tiền thật; p21 chỉ là prose chính sách có cụm `tiền gửi/cho vay TCTD khác`, không có topology bảng tiền. | Đưa policy prose thành hard-negative và chọn p11 bằng owner + monetary lanes + table geometry. |
+| IDL-575-025 | 65 | CTG | Q1 2025 | BCTC hợp nhất | PDF p4; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Tiền gửi in `401.757.806 / 370.530.038`, cho vay `4.821.450 / 7.952.847`; provision `- / -` là sibling/contra cấp family chứ không phải component duy nhất của loan. | Sửa hierarchy level cho provision và chỉ chạy component-sum trong đúng sibling group. |
+| IDL-575-026 | 75 | BID | H1 2025 | BCTC hợp nhất | PDF p9; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Nhãn provision bị xuống dòng nhưng số `(102.971) / (80.854)` vẫn thuộc family; tổng nhìn thấy khép `381.762.553 + 10.938.582 - 102.971 = 392.598.164` và `268.366.137 + 11.686.232 - 80.854 = 279.971.515`. | Nối wrapped provision label theo geometry, gán contra sibling rồi nhận owner-visible family total bằng phương trình có dấu. |
+| IDL-575-027 | 86 | VIB | Năm 2025 | BCTC công ty mẹ/riêng lẻ | PDF p9, p37; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — p9 là summary có lane tham chiếu `Thuyết minh`; p37 mở đúng cùng population thành các dòng không kỳ hạn/có kỳ hạn và VND/ngoại tệ. | Nhận hai view là alias: dùng note detail cho leaf, summary cho tổng đối chiếu; loại lane `Thuyết minh` khỏi numeric values. |
+| IDL-575-028 | 87 | VIB | H1 2025 | BCTC hợp nhất | PDF p9, p37; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — p9 chỉ tóm tắt owner/tổng và số `Thuyết minh`; p37 là detail cùng kỳ với các hàng currency, không phải population thứ hai. | Sửa dual-view arbitration bằng note reference, kỳ và leaf coverage; không cộng summary với detail. |
+| IDL-575-029 | 88 | VIB | H1 2025 | BCTC công ty mẹ/riêng lẻ | PDF p10, p38; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Summary p10 có cột `Thuyết minh`, còn p38 phân rã cùng tổng thành VND/ngoại tệ; engine đang coi cả hai là candidate ngang nhau. | Bind reference lane riêng, chọn detail làm leaf authority và dùng summary làm control total. |
+| IDL-575-030 | 89 | VIB | Q1 2025 | BCTC hợp nhất | PDF p9, p37; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Owner/tổng tại p9 dẫn bằng lane `Thuyết minh`; p37 lặp owner rồi có các child currency của cùng population. | Liên kết summary-to-note bằng reference/owner/period và deduplicate population trước mapping. |
+| IDL-575-031 | 90 | VIB | Q1 2025 | BCTC công ty mẹ/riêng lẻ | PDF p10, p37; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — p10 là balance-sheet summary có note reference, p37 là note detail với `Tiền gửi không kỳ hạn`, `Tiền gửi có kỳ hạn`, `Cho vay`; đây là hai mức trình bày của một tổng. | Thêm shared summary/detail role và cấm chọn cột `Thuyết minh` như monetary lane. |
+| IDL-575-032 | 92 | VIB | Q2 2025 | BCTC công ty mẹ/riêng lẻ | PDF p5, p32; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Summary p5 có owner/tổng cùng cột `Thuyết minh`; detail p32 mới chứa các hàng VND/ngoại tệ của đúng tổng đó. | Ghép hai vùng theo note reference + exact period; detail cấp leaf, summary chỉ corroborate total. |
+| IDL-575-033 | 93 | VIB | Q3 2025 | BCTC hợp nhất | PDF p8, p36; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — p8 trình bày summary kèm lane `Thuyết minh`, p36 trình bày currency detail của cùng family/kỳ; không có hai population độc lập. | Áp dụng shared dual-view deduplication và complete-lane check trên detail. |
+| IDL-575-034 | 94 | VIB | Q3 2025 | BCTC công ty mẹ/riêng lẻ | PDF p9, p37; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Summary p9 dẫn note bằng `Thuyết minh`; p37 mở các dòng không kỳ hạn/có kỳ hạn và cho vay của cùng tổng nguồn. | Tách reference lane, liên kết note detail và giữ một population receipt duy nhất. |
+| IDL-575-035 | 95 | VIB | Q4 2025 | BCTC hợp nhất | PDF p5, p33; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — p5 chỉ có family summary/note reference; p33 có đầy đủ child VND/ngoại tệ của cùng population, nên hai candidate không được cộng dồn. | Chọn detail bằng leaf coverage, giữ summary total làm equation control và loại note-reference lane. |
+| IDL-575-036 | 96 | VIB | Q4 2025 | BCTC công ty mẹ/riêng lẻ | PDF p5, p32; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Summary p5 và detail p32 có cùng owner/kỳ; p32 chứa các dòng currency trong khi p5 có lane `Thuyết minh`. | Thêm generic same-population summary/detail merge thay vì fail vì hai complete regions. |
+| IDL-575-037 | 99 | ACB | Q1 2026 | BCTC hợp nhất | PDF p16; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Tổng in `131.619.452 / 149.990.681`; khoản vay VND `2.000.000 / -`, còn các dòng ngoại tệ/provision có dash hoặc ô không sinh text nên thiếu lane. | Recover dash/cell bằng geometry và hoàn tất hai period lanes trước mapping. |
+| IDL-575-038 | 100 | ACB | Q1 2026 | BCTC công ty mẹ/riêng lẻ | PDF p16; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Tổng in `119.456.384 / 139.216.637`; khoản vay VND `3.399.504 / 1.294.915`, ngoại tệ `- / -`, còn provision không có đủ text box. | Dùng dash crop + row geometry để bind mọi role trên cả hai kỳ; blank thật vẫn giữ blank. |
+| IDL-575-039 | 101 | ACB | Q2 2026 | BCTC hợp nhất | PDF p16; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Tổng in `123.441.277 / 149.990.681`; khoản vay VND `6.392.840 / -`, các ô ngoại tệ và provision là dash nhưng detector bỏ một phần lane. | Bổ sung shared dash recovery và exact two-lane coverage receipt. |
+| IDL-575-040 | 102 | ACB | Q2 2026 | BCTC công ty mẹ/riêng lẻ | PDF p16; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Tổng in `113.314.155 / 139.216.637`; khoản vay VND `8.229.242 / 1.294.915`, còn ngoại tệ/provision dùng dash không được bind đủ. | Khôi phục dash theo bbox cùng hàng/cột và chạy accounting chỉ sau khi đủ lane. |
+| IDL-575-041 | 139 | VIB | Q2 2026 | BCTC hợp nhất | PDF p5, p32; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — p5 là summary có lane `Thuyết minh`; p32 là detail cùng population với các hàng VND/ngoại tệ và subtotal cho vay. | Merge hai view theo owner/reference/kỳ, detail cấp leaf và summary cấp total control. |
+| IDL-575-042 | 140 | VIB | Q2 2026 | BCTC công ty mẹ/riêng lẻ | PDF p5, p32; trang in: — | PDF_VIEWED | OPEN — RESOLVABLE_PENDING_GENERIC_FIX — Summary p5 và detail p32 là cùng population; ngay sau detail p32 bắt đầu family kế tiếp, nên candidate hiện bị kéo quá ranh giới. | Dùng note-reference để merge hai view và thêm hard reset tại owner của family kế tiếp. |
+
+<!-- INTERBANK_575_PDF_REVIEW_END -->
+
 
 ## CLOSED — family-first 140-filing `Phân tích dư nợ cho vay theo khu vực địa lý`
 
@@ -392,6 +491,8 @@ BPA-001–BPA-003 của lượt hiện hành E-0097 vẫn OPEN theo đúng sourc
 cũ và không bị kết quả annual relabel. Machine-readable result:
 `docs/experiments/E-0152-annual-2025-bank-pledged-assets-8bank-codex-verified-mapping-v1.json`.
 
+<a id="open-contingent-liabilities-annual-2025"></a>
+
 ## OPEN/CLOSED — annual-2025 `Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra`
 
 E-0153 quét đủ 695 trang và tìm đúng một vùng value-bearing tại ACB p75,
@@ -426,6 +527,8 @@ hành, nên ledger giữ cùng ID thay vì tạo 13 schema-gap ID trùng nghĩa.
 Machine-readable result:
 `docs/experiments/E-0153-annual-2025-contingent-liabilities-8bank-codex-verified-mapping-v1.json`.
 
+<a id="open-financial-instruments-fair-value-annual-2025"></a>
+
 ## OPEN/CLOSED — annual-2025 `Công cụ tài chính — giá trị ghi sổ và giá trị hợp lý`
 
 E-0154 quét đủ 695 trang và tìm đúng hai bảng đồng thời có nhánh giá trị ghi
@@ -449,6 +552,8 @@ schema-gap trùng nghĩa:
 
 Machine-readable result:
 `docs/experiments/E-0154-annual-2025-financial-instruments-8bank-codex-verified-mapping-v1.json`.
+
+<a id="open-currency-risk-annual-2025"></a>
 
 ## OPEN/CLOSED — annual-2025 `Rủi ro tiền tệ`
 
@@ -480,6 +585,8 @@ nguồn và không bị gộp ngầm sang một trục tiền tệ khác.
 
 Machine-readable result:
 `docs/experiments/E-0155-annual-2025-currency-risk-8bank-codex-verified-mapping-v1.json`.
+
+<a id="open-interest-rate-risk-annual-2025"></a>
 
 ## OPEN — annual-2025 `Rủi ro lãi suất`
 
@@ -521,6 +628,8 @@ zero. Không có family absence, disagreement số hay dòng OPEN mới.
 Machine-readable result:
 `docs/experiments/E-0147-annual-2025-cash-equivalents-8bank-codex-verified-mapping-v1.json`.
 
+<a id="open-income-tax-expense-annual-2025"></a>
+
 ## OPEN — annual-2025 `Chi phí thuế thu nhập doanh nghiệp`
 
 E-0146 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025 và tìm đúng
@@ -542,6 +651,8 @@ số VietOCR sai được giữ nguyên và bị numeric challenger bác bỏ: C
 
 Machine-readable result:
 `docs/experiments/E-0146-annual-2025-income-tax-8bank-codex-verified-mapping-v1.json`.
+
+<a id="open-operating-expense-annual-2025"></a>
 
 ## OPEN — annual-2025 `Chi phí quản lý chung (Chi phí hoạt động)`
 
@@ -572,6 +683,8 @@ trong evidence và bị source/pixel/accounting bác bỏ: HDB `11.960.755` →
 
 Machine-readable result:
 `docs/experiments/E-0143-annual-2025-operating-expense-8bank-codex-verified-mapping-v1.json`.
+
+<a id="open-dividend-income-annual-2025"></a>
 
 ## OPEN/CLOSED — annual-2025 `Thu nhập từ góp vốn, mua cổ phần và thu nhập cổ tức`
 
@@ -675,6 +788,8 @@ VietOCR.
 Machine-readable result:
 `docs/experiments/E-0138-annual-2025-fx-gold-activity-8bank-codex-verified-mapping-v1.json`.
 
+<a id="open-service-income-expense-annual-2025"></a>
+
 ## OPEN — annual-2025 `Thu nhập, chi phí và lãi thuần từ hoạt động dịch vụ`
 
 E-0137 quét đủ 695 trang của tám BCTC hợp nhất kiểm toán năm 2025 và tìm đúng
@@ -765,6 +880,8 @@ Machine-readable results:
 và
 `docs/experiments/E-0132A-other-payables-project-owner-other-closure-v1.json`.
 
+<a id="open-equity-funds-annual-2025"></a>
+
 ## OPEN — annual-2025 `Vốn và các quỹ`
 
 E-0133 quét toàn bộ tám BCTC hợp nhất kiểm toán năm 2025 và tìm đúng một vùng
@@ -788,6 +905,8 @@ BID dùng word boxes để tách hai số chung một line. HDB fresh VietOCR đ
 Machine-readable result:
 `docs/experiments/E-0133-annual-2025-capital-and-funds-8bank-codex-verified-mapping-v1.json`.
 
+<a id="open-issued-valuable-papers-annual-2025"></a>
+
 ## OPEN — annual-2025 `Phát hành giấy tờ có giá`
 
 E-0131 quét toàn bộ tám BCTC hợp nhất kiểm toán năm 2025 và tìm đúng một vùng
@@ -810,6 +929,8 @@ Tổng đầu năm HDB trên pixel là `81.349.744`; fresh VietOCR đọc nhầm
 
 Machine-readable result:
 `docs/experiments/E-0131-annual-2025-issued-valuable-papers-8bank-codex-verified-mapping-v1.json`.
+
+<a id="open-customer-deposits-annual-2025"></a>
 
 ## OPEN — annual-2025 `Tiền gửi của khách hàng`
 
@@ -863,6 +984,8 @@ mapping/101 ô giá trị cùng 46 phương trình và không còn dòng OPEN. S
 
 Machine-readable result:
 `docs/experiments/E-0128-annual-2025-government-nhnn-liabilities-8bank-codex-verified-mapping-v1.json`.
+
+<a id="open-other-assets-annual-2025"></a>
 
 ## OPEN — annual-2025 `Tài sản Có khác`
 
@@ -1722,6 +1845,8 @@ Current exact-replay result:
   and trailing total in the supplied PDFs. Statement aggregates, policies and
   explanatory mentions remain negative controls and are not relabelled.
 
+<a id="open-equity-funds-legacy-current"></a>
+
 ## Capital and funds (`CAPITAL_AND_FUNDS`)
 
 Current exact-replay result:
@@ -1752,6 +1877,8 @@ Current exact-replay result:
   for source rows without a dedicated leaf. Their amounts remain inside verified
   source parents/totals, and overlapping parent/detail views stay explicitly
   non-additive. VPB remains the supplied Q1/2026 source.
+
+<a id="open-issued-valuable-papers-legacy-current"></a>
 
 ## Issued valuable papers (`ISSUED_VALUABLE_PAPERS`)
 
@@ -1878,7 +2005,12 @@ Project-owner absence closure:
 
 <a id="family-3-rnid-575-unresolved"></a>
 
-## Deposits at and loans to other credit institutions (`INTERBANK_DEPOSITS_AND_LOANS`)
+## Technical/pre-review provenance appendix — Family 3 (`INTERBANK_DEPOSITS_AND_LOANS`)
+
+Phụ lục này bảo toàn nguyên văn disposition và reason của machine sweep trước
+pixel review. Mọi nhãn `OPEN` trong phần bank summary bên dưới là trạng thái
+**pre-review**, không thay thế bảng human-review ở đầu file: hiện tại 41 filing
+chờ generic fix và chỉ trial 18 còn unresolved sau khi xem PDF.
 
 Current all-filing artifacts:
 `output/calibration/family-first-accounting-evidence-sweeps-v1/interbank-deposits-and-loans.json`
@@ -2002,9 +2134,11 @@ Diễn giải nguyên nhân chính:
   p5/p32, p8–9/p36–37, p5/p32–33 and p5/p32. Header/body geometry or complete
   role lanes do not yet choose one region uniquely; no bank/page routing is
   used to break the tie.
-- **CLOSED COUNTS:** 84/140 filing and 701 source mappings are
+- **PRE-REVIEW MACHINE COUNTS:** 84/140 filing and 701 source mappings are
   `VERIFIED_BY_CODEX`; 14 filing are `NOT_OBSERVED_PROPOSAL_ONLY` (BID 12,
-  CTG 2); the 42 filing above remain `UNRESOLVED`.
+  CTG 2); machine sweep đã gắn 42 filing là `UNRESOLVED` trước pixel review.
+  Human-review hiện hành supersede disposition này thành 41 pending generic fix
+  và 1 unresolved-after-review, nhưng không sửa artifact lịch sử.
 
 ## Deposits at central banks (`CENTRAL_BANK_DEPOSITS`)
 

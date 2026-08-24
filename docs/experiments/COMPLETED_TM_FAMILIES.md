@@ -70,17 +70,21 @@ Quy ước:
 - **Không quan sát thấy trong phạm vi filing đã quét:** 14 filing, gồm BID 12 và
   CTG 2. Đây là `NOT_OBSERVED_PROPOSAL_ONLY` của đúng PDF đã bind, không phải
   khẳng định ngoài filing.
-- **Còn thiếu:** 42 filing: ACB 10, MBB 2, VPB 4, HDB 10, CTG 3, BID 1 và VIB
-  12. Mỗi filing chỉ được tính vào một nguyên nhân gốc chính: 16
-  `ROLE_LANE_OR_HEADER_AXIS_INCOMPLETE`, 15
-  `MULTI_REGION_CANDIDATES_FAIL_DISTINCT_EVIDENCE_GATES`, 6
-  `VISIBLE_RESULT_NOT_EXACT_COMPONENT_SUM`, 4
-  `TRAILING_RESULT_NOT_ONE_EXACT_COMPONENT_SUM` và 1
-  `CROSS_PAGE_PERIOD_UNIT_INHERITANCE_NOT_PROVEN`; tổng đúng 42, không cộng lại
-  các lỗi closure phát sinh từ lane chưa đầy đủ. Xem
-  [bảng chi tiết 42 filing](UNRESOLVED_MAPPING_LEDGER.md#family-3-rnid-575-unresolved)
-  để đối chiếu bank, kỳ, scope, exact PDF/SHA-256, physical page/region và toàn
-  bộ machine reason nguyên văn.
+- **Family chưa hoàn tất:** 42 filing đã được review trên PDF/pixel, gồm ACB 10,
+  MBB 2, VPB 4, HDB 10, CTG 3, BID 1 và VIB 12. Coverage review là
+  `PDF_VIEWED = 42`, tương ứng 58 ảnh physical page đã render qua ba lượt
+  `17 + 12 + 29 = 58`. Có 41 filing
+  `OPEN — RESOLVABLE_PENDING_GENERIC_FIX`: nguồn nhìn rõ, nhưng còn chờ sửa
+  shared header/lane, arbitration giữa vùng tóm tắt–chi tiết, exhaustive
+  source-group coverage, trailing-total boundary hoặc continuation qua trang.
+  Không ca nào trong 41 ca này được coi là closed.
+- **Unresolved thực sự sau PDF review:** đúng 1 filing — trial 18,
+  `IDL-575-008`, MBB Q1/2025 công ty mẹ, PDF p26 / trang in p18. Sáu dòng
+  thành phần nhìn thấy trên lane `31/12/2024` cộng thành `72.305.188`, trong
+  khi tổng in là `72.305.186`, lệch `2 triệu đồng`; giữ nguyên source, không
+  backsolve hoặc sửa số để ép closure.
+  Xem [bảng human-review 42 filing](UNRESOLVED_MAPPING_LEDGER.md#open-family3-rnid575)
+  và [phụ lục technical/pre-review](UNRESOLVED_MAPPING_LEDGER.md#family-3-rnid-575-unresolved).
 
 ## 4. Chứng khoán kinh doanh
 

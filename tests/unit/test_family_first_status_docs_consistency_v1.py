@@ -152,6 +152,114 @@ def _interbank_unresolved_rows() -> list[list[str]]:
     ]
 
 
+def _interbank_pdf_review_rows() -> list[list[str]]:
+    ledger = LEDGER.read_text(encoding="utf-8")
+    start = ledger.index("<!-- INTERBANK_575_PDF_REVIEW_BEGIN -->")
+    stop = ledger.index("<!-- INTERBANK_575_PDF_REVIEW_END -->")
+    block = ledger[start:stop]
+    return [
+        [cell.strip() for cell in line.split("|")[1:-1]]
+        for line in block.splitlines()
+        if line.startswith("| IDL-575-")
+    ]
+
+
+def _open_family_index_rows() -> list[list[str]]:
+    ledger = LEDGER.read_text(encoding="utf-8")
+    start = ledger.index("<!-- OPEN_FAMILY_INDEX_BEGIN -->")
+    stop = ledger.index("<!-- OPEN_FAMILY_INDEX_END -->")
+    block = ledger[start:stop]
+    return [
+        [cell.strip() for cell in line.split("|")[1:-1]]
+        for line in block.splitlines()
+        if re.match(r"^\| .+ \| [0-9]+ \|", line)
+    ]
+
+
+def _rendered_physical_page_count(page_locator: str) -> int:
+    physical = page_locator.removeprefix("PDF ").split(";", 1)[0]
+    count = 0
+    for part in physical.split(", "):
+        match = re.fullmatch(r"p([0-9]+)(?:–([0-9]+))?", part)
+        assert match is not None
+        start = int(match.group(1))
+        end = int(match.group(2) or match.group(1))
+        count += end - start + 1
+    return count
+
+
+def test_interbank_575_human_review_queue_has_41_fixable_and_one_unresolved() -> None:
+    rows = _interbank_pdf_review_rows()
+
+    assert len(rows) == 42
+    assert len({row[0] for row in rows}) == 42
+    assert {int(row[1]) for row in rows} == INTERBANK_UNRESOLVED_TRIALS
+    assert Counter(row[2] for row in rows) == {
+        "ACB": 10,
+        "MBB": 2,
+        "VPB": 4,
+        "HDB": 10,
+        "CTG": 3,
+        "BID": 1,
+        "VIB": 12,
+    }
+    assert all(row[6] == "PDF_VIEWED" for row in rows)
+    assert sum(_rendered_physical_page_count(row[5]) for row in rows) == 58
+    assert sum("OPEN — RESOLVABLE_PENDING_GENERIC_FIX" in row[7] for row in rows) == 41
+    assert sum("OPEN — UNRESOLVED_AFTER_PDF_REVIEW" in row[7] for row in rows) == 1
+
+    actual_unresolved = next(row for row in rows if "UNRESOLVED_AFTER_PDF_REVIEW" in row[7])
+    assert actual_unresolved[:7] == [
+        "IDL-575-008",
+        "18",
+        "MBB",
+        "Q1 2025",
+        "BCTC công ty mẹ/riêng lẻ",
+        "PDF p26; trang in: p18",
+        "PDF_VIEWED",
+    ]
+    assert "72.305.188" in actual_unresolved[7]
+    assert "72.305.186" in actual_unresolved[7]
+    assert "sáu dòng" in actual_unresolved[7]
+    assert "31/12/2024" in actual_unresolved[7]
+    assert "lệch 2 triệu đồng" in actual_unresolved[7]
+    assert "không backsolve/sửa 2 triệu" in actual_unresolved[8]
+
+
+def test_interbank_575_human_table_stays_human_readable() -> None:
+    for row in _interbank_pdf_review_rows():
+        cause = row[7]
+        next_fix = row[8]
+        assert cause and next_fix
+        assert "sha256:" not in " ".join(row)
+        assert "COLUMN_CONTEXT:" not in cause
+        assert "HIERARCHICAL_CLOSURE:" not in cause
+        assert "CANDIDATE_" not in cause
+        assert "Hàng và cột kỳ nhìn thấy rõ" not in cause
+        assert "Có hai vùng cùng family" not in cause
+        assert "Subtotal in rõ" not in cause
+        assert "Dòng kết quả cuối vùng nhìn thấy" not in cause
+        assert re.search(r"`|p[0-9]+|[0-9]+\.[0-9]+", cause)
+
+
+def test_interbank_575_human_causes_retain_pdf_specific_visual_findings() -> None:
+    rows = {int(row[1]): row[7] for row in _interbank_pdf_review_rows()}
+
+    assert "149.990.681 / 117.882.259" in rows[1]
+    assert "125.447.269 / 117.882.259" in rows[3]
+    assert all("%/năm" in rows[trial] for trial in (25, 26, 27, 28))
+    assert all("Không áp dụng" in rows[trial] for trial in (25, 26, 27, 28))
+    assert all("Chiết khấu, tái chiết khấu" in rows[trial] for trial in (37, 38))
+    assert all("footer" in rows[trial] for trial in (39, 40))
+    assert all("sibling" in rows[trial] for trial in (41, 42, 43, 44, 45, 46))
+    assert "lặp lại ngay" in rows[62]
+    assert "p21 chỉ là prose chính sách" in rows[64]
+    assert "sibling/contra cấp family" in rows[65]
+    assert "392.598.164" in rows[75]
+    assert all("Thuyết minh" in rows[trial] for trial in (86, 87, 88, 89, 92, 93, 94, 96, 139))
+    assert "family kế tiếp" in rows[140]
+
+
 def test_interbank_575_open_ledger_has_one_auditable_row_per_trial() -> None:
     rows = _interbank_unresolved_rows()
 
@@ -240,11 +348,13 @@ def test_interbank_575_ledger_rows_exact_match_both_replayed_artifacts() -> None
         if trial["mapping_status"] == "UNRESOLVED"
     }
     rows = _interbank_unresolved_rows()
+    review_rows = {int(row[1]): row for row in _interbank_pdf_review_rows()}
 
     assert f"`{hashlib.sha256(INTERBANK_EVIDENCE.read_bytes()).hexdigest()}`" in ledger
     assert f"`{hashlib.sha256(INTERBANK_MAPPING.read_bytes()).hexdigest()}`" in ledger
     assert len(rows) == len(evidence_trials) == len(mapping_trials) == 42
     assert set(evidence_trials) == set(mapping_trials) == {int(row[1]) for row in rows}
+    assert set(review_rows) == set(evidence_trials)
     for row in rows:
         trial = evidence_trials[int(row[1])]
         mapping_trial = mapping_trials[int(row[1])]
@@ -276,6 +386,22 @@ def test_interbank_575_ledger_rows_exact_match_both_replayed_artifacts() -> None
         assert row[5] == f"`{_primary_interbank_cause(trial)}`"
         assert row[6] == "<br>".join(f"`{reason}`" for reason in trial["unresolved_reasons"])
 
+        review_row = review_rows[int(row[1])]
+        assert review_row[2] == provenance["bank"]
+        assert review_row[3] == f"{period} {provenance['year']}"
+        assert review_row[4] == (
+            "BCTC hợp nhất" if provenance["scope"] == "CONSOLIDATED" else "BCTC công ty mẹ/riêng lẻ"
+        )
+        physical_pages = []
+        for region in regions:
+            page_start = region["page_sequence"]
+            page_end = region["cluster_end_page_sequence_inclusive"]
+            page = f"p{page_start}" if page_start == page_end else f"p{page_start}–{page_end}"
+            if page not in physical_pages:
+                physical_pages.append(page)
+        printed_page = "p18" if int(row[1]) == 18 else "—"
+        assert review_row[5] == (f"PDF {', '.join(physical_pages)}; trang in: {printed_page}")
+
 
 def test_family_completion_rule_and_interbank_summary_are_in_both_status_docs() -> None:
     completed = COMPLETED.read_text(encoding="utf-8")
@@ -286,9 +412,72 @@ def test_family_completion_rule_and_interbank_summary_are_in_both_status_docs() 
     assert "every family checkpoint must update both" in ledger
     assert "COMPLETED_TM_FAMILIES.md" in ledger
     assert "UNRESOLVED_MAPPING_LEDGER.md#family-3-rnid-575-unresolved" in completed
-    assert "tổng đúng 42" in completed
-    for cause, count in INTERBANK_PRIMARY_CAUSE_COUNTS.items():
-        assert f"{count}\n  `{cause}`" in completed or f"{count} `{cause}`" in completed
+    assert "UNRESOLVED_MAPPING_LEDGER.md#open-family3-rnid575" in completed
+    assert "Family chưa hoàn tất" in completed
+    assert "`PDF_VIEWED = 42`" in completed
+    assert "`17 + 12 + 29 = 58`" in completed
+    assert "41 filing\n  `OPEN — RESOLVABLE_PENDING_GENERIC_FIX`" in completed
+    assert "Unresolved thực sự sau PDF review" in completed
+    assert "MBB Q1/2025 công ty mẹ, PDF p26 / trang in p18" in completed
+    assert "`2 triệu đồng`" in completed
+    assert "41 Family 3 `RESOLVABLE_PENDING_GENERIC_FIX`" in ledger
+    assert "1 Family 3\n`UNRESOLVED_AFTER_PDF_REVIEW`" in ledger
+    assert "none of the 41 pending generic fixes is counted as closed" in ledger
+    assert "Technical/pre-review provenance appendix" in ledger
+
+
+def test_open_family_index_reconciles_143_items_and_links_every_open_heading() -> None:
+    ledger = LEDGER.read_text(encoding="utf-8")
+    lines = ledger.splitlines()
+    start = ledger.index("<!-- OPEN_FAMILY_INDEX_BEGIN -->")
+    stop = ledger.index("<!-- OPEN_FAMILY_INDEX_END -->")
+    index = ledger[start:stop]
+    index_rows = _open_family_index_rows()
+    indexed_targets = set(re.findall(r"\]\(#([a-z0-9-]+)\)", index))
+    heading_targets = set()
+
+    for line_index, line in enumerate(lines):
+        if not line.startswith("## ") or "OPEN" not in line:
+            continue
+        if line == "## Danh mục OPEN cần xử lý":
+            continue
+        previous = line_index - 1
+        while previous >= 0 and not lines[previous].strip():
+            previous -= 1
+        anchor = re.fullmatch(r'<a id="([a-z0-9-]+)"></a>', lines[previous])
+        assert anchor is not None, line
+        heading_targets.add(anchor.group(1))
+
+    counts = {row[0]: int(row[1]) for row in index_rows}
+    assert counts == {
+        "Family 3 — Tiền gửi tại/cho vay TCTD khác — tài sản (575)": 42,
+        "Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra": 13,
+        "Công cụ tài chính — giá trị ghi sổ và giá trị hợp lý": 2,
+        "Rủi ro tiền tệ": 7,
+        "Rủi ro lãi suất": 1,
+        "Chi phí thuế thu nhập doanh nghiệp": 7,
+        "Chi phí quản lý chung": 14,
+        "Thu nhập từ góp vốn, mua cổ phần và cổ tức": 1,
+        "Thu nhập, chi phí và lãi thuần dịch vụ": 2,
+        "Vốn và các quỹ": 9,
+        "Phát hành giấy tờ có giá": 8,
+        "Tiền gửi của khách hàng": 2,
+        "Tài sản Có khác": 35,
+    }
+    assert counts["Family 3 — Tiền gửi tại/cho vay TCTD khác — tài sản (575)"] == len(
+        _interbank_pdf_review_rows()
+    )
+    assert sum(counts.values()) == 143
+    assert sum(counts.values()) - 42 == 101
+    assert heading_targets <= indexed_targets
+    assert len(heading_targets) == 13
+    assert {
+        "open-equity-funds-legacy-current",
+        "open-issued-valuable-papers-legacy-current",
+    } <= indexed_targets
+    for target in indexed_targets:
+        assert f'<a id="{target}"></a>' in ledger
+    assert stop < ledger.index("## CLOSED — family-first 140-filing")
 
 
 def test_family11_zero_unresolved_is_recorded_in_both_status_docs() -> None:
