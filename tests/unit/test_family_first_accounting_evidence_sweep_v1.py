@@ -350,6 +350,33 @@ def test_all_documents_scan_and_only_unique_region_opens_numeric_and_render(monk
     assert result["authority"]["not_observed_authority"] is False
 
 
+def test_public_full_index_entry_rejects_v4_before_expensive_reads(monkeypatch) -> None:
+    monkeypatch.setattr(subject.topology_v1, "_spec", lambda _value: {"family_id": "FAMILY"})
+    monkeypatch.setattr(
+        subject,
+        "_evaluation_spec",
+        lambda *_args, **_kwargs: {"format_version": subject.EVALUATION_SPEC_FORMAT_V4},
+    )
+    monkeypatch.setattr(
+        subject.semantic_v1,
+        "project_authenticated_family_first_semantic_index_v1",
+        lambda *_args, **_kwargs: pytest.fail("V4 full-index path read semantic evidence"),
+    )
+    monkeypatch.setattr(
+        subject.numeric_v3,
+        "project_authenticated_family_first_ppocrv6_numeric_index_v3",
+        lambda *_args, **_kwargs: pytest.fail("V4 full-index path read numeric evidence"),
+    )
+
+    with pytest.raises(
+        subject.FamilyFirstAccountingEvidenceSweepV1Error,
+        match="V4_REQUIRES_AUTHENTICATED_DOCUMENT_STORE_SELECTED_SNAPSHOT",
+    ):
+        subject.build_authenticated_family_first_accounting_evidence_sweep_v1(
+            object(), object(), {}, {}
+        )
+
+
 def test_exact_live_replay_rejects_numeric_change(monkeypatch) -> None:
     _documents, numeric, _render_calls = _patch_live_inputs(monkeypatch)
     result = subject.build_authenticated_family_first_accounting_evidence_sweep_v1(
@@ -586,6 +613,174 @@ def test_mixed_separator_candidate_never_passes_from_model_vote_without_equation
     assert reasons == ["MIXED_SEPARATOR:EXACT_VISIBLE_ACCOUNTING_CLOSURE_ABSENT:mixed"]
 
 
+def test_scoped_closure_mixed_token_requires_exact_visible_equation_use() -> None:
+    closure = {
+        "coverage_receipt": [
+            {
+                "candidate_ordinal": None,
+                "disposition": "GLOBAL_HIERARCHY_SOURCE_OCCURRENCE",
+                "occurrence_id": "exact-occurrence",
+                "role": "EXACT_COMPONENT",
+                "row_kind": "ROLE_ROW",
+                "sample_ids": ["exact-mixed"],
+                "source_record": {},
+            },
+            {
+                "candidate_ordinal": None,
+                "disposition": "NONADDITIVE_VISIBLE_SOURCE_ROLE",
+                "occurrence_id": "nonadditive-occurrence",
+                "role": "NONADDITIVE_NOTE",
+                "row_kind": "ROLE_ROW",
+                "sample_ids": ["nonadditive-mixed"],
+                "source_record": {},
+            },
+        ],
+        "equations": {
+            "global": [
+                {
+                    "component_roles_present": ["EXACT_COMPONENT"],
+                    "result_role": "VISIBLE_TOTAL",
+                    "status": "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
+                }
+            ],
+            "local": [],
+        },
+        "format_version": "ACCOUNTING_SCOPED_HIERARCHICAL_TABLE_CLOSURE_V2",
+        "resolved_roles": [
+            {
+                "role": "EXACT_COMPONENT",
+                "source": None,
+                "values": [{"source_sample_ids": ["exact-mixed"]}],
+            },
+            {
+                "role": "NONADDITIVE_NOTE",
+                "source": None,
+                "values": [{"source_sample_ids": ["nonadditive-mixed"]}],
+            },
+        ],
+        "status": "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO",
+    }
+
+    assert subject._mixed_candidate_has_accounting_corroboration(
+        role="EXACT_COMPONENT", sample_id="exact-mixed", closure=closure
+    )
+    assert not subject._mixed_candidate_has_accounting_corroboration(
+        role="NONADDITIVE_NOTE", sample_id="nonadditive-mixed", closure=closure
+    )
+
+
+def test_scoped_closure_mixed_token_is_bound_to_its_exact_local_occurrence() -> None:
+    closure = {
+        "coverage_receipt": [
+            {
+                "candidate_ordinal": None,
+                "disposition": "LOCAL_SUBTOTAL_RESULT_OCCURRENCE",
+                "occurrence_id": occurrence,
+                "role": "REPEATED_GROUP",
+                "row_kind": "ROLE_ROW",
+                "sample_ids": [sample],
+                "source_record": {},
+            }
+            for occurrence, sample in (
+                ("exact-owner", "exact-local"),
+                ("source-owner", "source-only"),
+            )
+        ],
+        "equations": {
+            "global": [
+                {
+                    "component_roles_present": ["REPEATED_GROUP"],
+                    "result_role": "VISIBLE_TOTAL",
+                    "status": "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
+                }
+            ],
+            "local": [
+                {
+                    "component_roles_present": ["CHILD"],
+                    "result_occurrence_id": "exact-owner",
+                    "result_role": "REPEATED_GROUP",
+                    "status": "LOCAL_VISIBLE_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS",
+                },
+                {
+                    "component_roles_present": [],
+                    "result_occurrence_id": "source-owner",
+                    "result_role": "REPEATED_GROUP",
+                    "status": "LOCAL_VISIBLE_SOURCE_ONLY_NO_DECLARED_COMPONENT_VISIBLE",
+                },
+            ],
+        },
+        "format_version": "ACCOUNTING_SCOPED_HIERARCHICAL_TABLE_CLOSURE_V2",
+        "resolved_roles": [
+            {
+                "role": "REPEATED_GROUP",
+                "source": None,
+                "values": [{"source_sample_ids": ["exact-local", "source-only"]}],
+            }
+        ],
+        "status": "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO",
+    }
+
+    assert subject._mixed_candidate_has_accounting_corroboration(
+        role="REPEATED_GROUP", sample_id="exact-local", closure=closure
+    )
+    assert not subject._mixed_candidate_has_accounting_corroboration(
+        role="REPEATED_GROUP", sample_id="source-only", closure=closure
+    )
+
+
+def test_scoped_closure_mixed_trailing_token_requires_unique_selected_exact_source() -> None:
+    closure = {
+        "coverage_receipt": [
+            {
+                "candidate_ordinal": 0,
+                "disposition": "SELECTED_VISIBLE_TRAILING_ROOT_SOURCE",
+                "occurrence_id": None,
+                "role": None,
+                "row_kind": "TRAILING_VALUE_ROW",
+                "sample_ids": ["selected-total"],
+                "source_record": {},
+            },
+            {
+                "candidate_ordinal": 1,
+                "disposition": "UNRESOLVED_UNSELECTED_COMPLETE_TRAILING_NUMERIC_CHALLENGER",
+                "occurrence_id": None,
+                "role": None,
+                "row_kind": "TRAILING_VALUE_ROW",
+                "sample_ids": ["footer"],
+                "source_record": {},
+            },
+        ],
+        "equations": {
+            "global": [
+                {
+                    "component_roles_present": ["COMPONENT"],
+                    "result_role": "ROOT",
+                    "selected_trailing_candidate_ordinal": 0,
+                    "status": "VISIBLE_TRAILING_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS",
+                    "trailing_candidate_evidence": [
+                        {
+                            "candidate_ordinal": 0,
+                            "sample_ids": ["selected-total"],
+                            "status": "SELECTED_VISIBLE_TRAILING_ROOT_SOURCE",
+                        }
+                    ],
+                }
+            ],
+            "local": [],
+        },
+        "format_version": "ACCOUNTING_SCOPED_HIERARCHICAL_TABLE_CLOSURE_V2",
+        "resolved_roles": [],
+        "status": "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO",
+    }
+
+    assert subject._mixed_candidate_has_accounting_corroboration(
+        role=None, sample_id="selected-total", closure=closure
+    )
+    assert not subject._mixed_candidate_has_accounting_corroboration(
+        role=None, sample_id="footer", closure=closure
+    )
+
+
 def test_noise_suffix_candidate_needs_shared_prefix_money_peers_and_exact_equation() -> None:
     candidate = _noise_suffix_value("stamped", "3.202.820 0UNG", 3_202_820)
     row_axis = {
@@ -806,31 +1001,321 @@ def test_document_store_sweep_recomputes_each_packet_once_without_live_ocr(monke
     assert calls["snapshot"] == [(1, (1, 2)), (2, (1,))]
 
 
-def test_hierarchical_downstream_role_superset_selects_detail_over_summary() -> None:
-    summary = {
-        "additive_closure": {
-            "resolved_roles": [
-                {"role": "DEPOSIT_GROUP"},
-                {"role": "LOAN_GROUP"},
-                {"role": "FAMILY"},
-            ]
+def test_document_store_v4_rehydrates_multi_candidate_union_before_final_selection(
+    monkeypatch,
+) -> None:
+    legacy_scan = {
+        "regions": [
+            {
+                "cluster_start_document_line_ordinal": 12,
+                "cluster_end_document_line_ordinal_exclusive": 18,
+            }
+        ],
+        "scan_id": "legacy-scan",
+        "status": "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL",
+    }
+    topology_candidates = {
+        "regions": [
+            {
+                "cluster_start_document_line_ordinal": 2,
+                "cluster_end_document_line_ordinal_exclusive": 8,
+            },
+            *legacy_scan["regions"],
+        ],
+        "status": "UNRESOLVED_MULTIPLE_OR_NONUNIQUE_COMPLETE_REGIONS",
+    }
+    joined_pages = [
+        {
+            "lines": [
+                {
+                    "bbox": [0, line * 10, 100, line * 10 + 8],
+                    "line_ordinal": line,
+                    "vietocr_text": f"line-{page}-{line}",
+                }
+                for line in range(10)
+            ],
+            "page_sequence": page,
+        }
+        for page in (1, 2)
+    ]
+    snapshot = {
+        "document_packet": {"document_ordinal": 1, "page_count": 2},
+        "joined_pages": joined_pages,
+    }
+    render_calls = []
+    trial_calls = []
+
+    def trial_from_snapshot(_snapshot, _family, _policy, *, render_snapshots=(), **_kwargs):
+        selected = "DETAIL" if render_snapshots else "SUMMARY"
+        trial_calls.append(selected)
+        return {
+            "additive_closure": None,
+            "column_context": None,
+            "document_axis_binding": None,
+            "document_ordinal": 1,
+            "evidence_status": "READY_FOR_SCHEMA_MAPPING_REVIEW_PROPOSAL_ONLY",
+            "private_provenance": {},
+            "row_axis": {
+                "rows": [
+                    {
+                        "label_match": {"page_sequence": 2 if render_snapshots else 1},
+                        "missing_column_ordinals": [],
+                    }
+                ],
+                "selected_fixture_candidate": selected,
+                "status": "VISIBLE_ROW_LANE_AXIS_BOUND_PROPOSAL_ONLY",
+                "trailing_value_rows": [],
+            },
+            "source_pdf_ref": {},
+            "topology_scan": legacy_scan,
+            "unresolved_reasons": [],
+        }
+
+    monkeypatch.setattr(subject.topology_v1, "_spec", lambda _value: {"family_id": "FAMILY"})
+    monkeypatch.setattr(
+        subject,
+        "_evaluation_spec",
+        lambda *_args, **_kwargs: {"format_version": subject.EVALUATION_SPEC_FORMAT_V4},
+    )
+    monkeypatch.setattr(subject, "_validate", lambda value: value)
+    monkeypatch.setattr(subject, "_trial_from_document_store_snapshot_v1", trial_from_snapshot)
+    monkeypatch.setattr(
+        subject,
+        "_v4_topology_authority",
+        lambda *_args, **_kwargs: (legacy_scan, topology_candidates),
+    )
+    monkeypatch.setattr(
+        subject.document_store_v1,
+        "project_authenticated_family_first_document_evidence_store_v1",
+        lambda _cap: {
+            "input_indices": {
+                "numeric_receipt_id": "ffpniv3:receipt:" + "1" * 64,
+                "semantic_index_id": "ffsiv1:index:" + "2" * 64,
+            },
+            "metrics": {"document_count": 1},
         },
-        "candidate_ordinal": 0,
+    )
+    monkeypatch.setattr(
+        subject.document_store_v1,
+        "read_authenticated_family_first_topology_scans_v1",
+        lambda *_args, **_kwargs: (legacy_scan,),
+    )
+    monkeypatch.setattr(
+        subject.document_store_v1,
+        "read_authenticated_family_first_document_packet_v1",
+        lambda *_args, **_kwargs: snapshot["document_packet"],
+    )
+    monkeypatch.setattr(
+        subject.document_store_v1,
+        "read_authenticated_family_first_document_evidence_snapshot_v1",
+        lambda *_args, **_kwargs: snapshot,
+    )
+
+    def renders(_cap, *, document_ordinal, physical_pages):
+        render_calls.append((document_ordinal, physical_pages))
+        return ({"render": "authenticated"},)
+
+    monkeypatch.setattr(
+        subject.document_store_v1,
+        "read_authenticated_family_first_document_page_renders_v1",
+        renders,
+    )
+
+    result = (
+        subject.build_authenticated_family_first_accounting_evidence_sweep_from_document_store_v1(
+            object(), {}, {}
+        )
+    )
+
+    assert render_calls == [(1, (1, 2))]
+    assert trial_calls == ["SUMMARY", "DETAIL"]
+    assert result["trials"][0]["row_axis"]["selected_fixture_candidate"] == "DETAIL"
+
+
+def _ready_hierarchical_candidate(
+    roles: list[str],
+    *,
+    candidate_ordinal: int,
+    coefficients: tuple[int, int] = (149_990_681, 117_882_259),
+    magnitude_power10: int = 6,
+    periods: tuple[str, str] = ("31/12/2025", "31/12/2024"),
+    root_resolution: str = "VISIBLE_SOURCE_ROLE_CORROBORATED_BY_COMPONENTS",
+) -> dict:
+    resolved = [{"role": role} for role in roles if role != "FAMILY"]
+    resolved.append(
+        {
+            "resolution_kind": root_resolution,
+            "role": "FAMILY",
+            "values": [
+                {
+                    "column_ordinal": ordinal,
+                    "number": {
+                        "coefficient": coefficient,
+                        "percentage_mark_present": False,
+                        "scale": 0,
+                    },
+                }
+                for ordinal, coefficient in enumerate(coefficients)
+            ],
+        }
+    )
+    return {
+        "additive_closure": {
+            "family_id": "FAMILY",
+            "resolved_roles": resolved,
+        },
+        "candidate_ordinal": candidate_ordinal,
+        "column_context": {
+            "period_axis": [
+                {"column_ordinal": ordinal, "resolved_period": period}
+                for ordinal, period in enumerate(periods)
+            ],
+            "period_semantics": "BALANCE_COMPARATIVE",
+            "unit_axis": [
+                {
+                    "column_ordinal": ordinal,
+                    "currency": "VND",
+                    "magnitude_power10": magnitude_power10,
+                    "unit_kind": "MONEY",
+                }
+                for ordinal in range(2)
+            ],
+        },
         "reasons": [],
     }
-    detail = {
-        "additive_closure": {
-            "resolved_roles": [
-                {"role": "DEPOSIT_VND"},
-                {"role": "DEPOSIT_GROUP"},
-                {"role": "LOAN_VND"},
-                {"role": "LOAN_GROUP"},
-                {"role": "FAMILY"},
-            ]
-        },
+
+
+def _strict_same_population_selection_policy() -> dict:
+    return {
+        "candidate_selection_policy": (
+            "SAME_POPULATION_STRICT_ROLE_SUPERSET_WITH_EXACT_PERIOD_UNIT_ROOT_TOTAL"
+        ),
+        "closure_policy": "SCOPED_HIERARCHICAL_EXHAUSTIVE_CORROBORATE_OR_DERIVE",
+    }
+
+
+def test_same_population_summary_control_yields_to_unique_role_rich_detail() -> None:
+    summary = _ready_hierarchical_candidate(
+        ["DEPOSIT_GROUP", "LOAN_GROUP", "FAMILY"], candidate_ordinal=0
+    )
+    detail = _ready_hierarchical_candidate(
+        ["DEPOSIT_VND", "DEPOSIT_GROUP", "LOAN_VND", "LOAN_GROUP", "FAMILY"],
+        candidate_ordinal=1,
+    )
+
+    selected, reasons = subject._select_candidate_evidence(
+        [summary, detail],
+        _strict_same_population_selection_policy(),
+    )
+
+    assert selected is detail
+    assert reasons == []
+
+
+def test_equal_hierarchical_candidates_remain_unresolved_without_page_routing() -> None:
+    candidates = [
+        _ready_hierarchical_candidate(
+            ["DEPOSIT_GROUP", "LOAN_GROUP", "FAMILY"],
+            candidate_ordinal=ordinal,
+        )
+        for ordinal in range(2)
+    ]
+
+    selected, reasons = subject._select_candidate_evidence(
+        candidates,
+        {"closure_policy": "HIERARCHICAL_RECURSIVE_CORROBORATE_OR_DERIVE"},
+    )
+
+    assert selected is None
+    assert reasons == ["MULTIPLE_DOWNSTREAM_EVIDENCE_COMPLETE_TOPOLOGY_REGIONS"]
+
+
+@pytest.mark.parametrize(
+    ("summary_kwargs", "detail_kwargs"),
+    [
+        ({}, {"coefficients": (149_990_682, 117_882_259)}),
+        ({}, {"periods": ("30/06/2025", "31/12/2024")}),
+        ({}, {"magnitude_power10": 3}),
+        (
+            {},
+            {"root_resolution": "DERIVED_EXACT_COMPONENT_SUM"},
+        ),
+    ],
+)
+def test_role_superset_never_routes_across_population_or_source_total_mismatch(
+    summary_kwargs: dict, detail_kwargs: dict
+) -> None:
+    summary = _ready_hierarchical_candidate(
+        ["DEPOSIT_GROUP", "LOAN_GROUP", "FAMILY"],
+        candidate_ordinal=0,
+        **summary_kwargs,
+    )
+    detail = _ready_hierarchical_candidate(
+        ["DEPOSIT_VND", "DEPOSIT_GROUP", "LOAN_VND", "LOAN_GROUP", "FAMILY"],
+        candidate_ordinal=1,
+        **detail_kwargs,
+    )
+
+    selected, reasons = subject._select_candidate_evidence(
+        [summary, detail],
+        _strict_same_population_selection_policy(),
+    )
+
+    assert selected is None
+    assert reasons == ["MULTIPLE_DOWNSTREAM_EVIDENCE_COMPLETE_TOPOLOGY_REGIONS"]
+
+
+def test_numeric_statement_candidate_wins_only_because_policy_prose_fails_evidence() -> None:
+    statement = _ready_hierarchical_candidate(
+        ["DEPOSIT_GROUP", "LOAN_GROUP", "FAMILY"], candidate_ordinal=0
+    )
+    policy_prose = {
+        "additive_closure": None,
         "candidate_ordinal": 1,
-        "reasons": [],
+        "column_context": None,
+        "reasons": ["VISIBLE_ROLE_ROW_LANES_NOT_COMPLETE"],
     }
+
+    selected, reasons = subject._select_candidate_evidence(
+        [statement, policy_prose],
+        {"closure_policy": "HIERARCHICAL_RECURSIVE_CORROBORATE_OR_DERIVE"},
+    )
+
+    assert selected is statement
+    assert reasons == []
+
+
+def test_role_superset_rejects_json_equal_but_differently_typed_total_lane() -> None:
+    summary = _ready_hierarchical_candidate(
+        ["DEPOSIT_GROUP", "LOAN_GROUP", "FAMILY"],
+        candidate_ordinal=0,
+        coefficients=(1, 117_882_259),
+    )
+    detail = _ready_hierarchical_candidate(
+        ["DEPOSIT_VND", "DEPOSIT_GROUP", "LOAN_VND", "LOAN_GROUP", "FAMILY"],
+        candidate_ordinal=1,
+        coefficients=(1, 117_882_259),
+    )
+    detail["additive_closure"]["resolved_roles"][-1]["values"][0]["number"]["coefficient"] = True
+
+    selected, reasons = subject._select_candidate_evidence(
+        [summary, detail],
+        _strict_same_population_selection_policy(),
+    )
+
+    assert selected is None
+    assert reasons == ["MULTIPLE_DOWNSTREAM_EVIDENCE_COMPLETE_TOPOLOGY_REGIONS"]
+
+
+def test_default_v3_preserves_legacy_role_superset_selection_without_population_gate() -> None:
+    summary = _ready_hierarchical_candidate(
+        ["DEPOSIT_GROUP", "LOAN_GROUP", "FAMILY"], candidate_ordinal=0
+    )
+    detail = _ready_hierarchical_candidate(
+        ["DEPOSIT_VND", "DEPOSIT_GROUP", "LOAN_VND", "LOAN_GROUP", "FAMILY"],
+        candidate_ordinal=1,
+        coefficients=(149_990_682, 117_882_259),
+    )
 
     selected, reasons = subject._select_candidate_evidence(
         [summary, detail],
@@ -841,21 +1326,139 @@ def test_hierarchical_downstream_role_superset_selects_detail_over_summary() -> 
     assert reasons == []
 
 
-def test_equal_hierarchical_candidates_remain_unresolved_without_page_routing() -> None:
-    candidates = [
-        {
-            "additive_closure": {
-                "resolved_roles": [{"role": "DEPOSIT_GROUP"}, {"role": "LOAN_GROUP"}]
-            },
-            "candidate_ordinal": ordinal,
-            "reasons": [],
+def test_v4_prepruning_candidates_reach_strict_downstream_comparator(monkeypatch) -> None:
+    summary_region = {"region": "SUMMARY_CONTROL"}
+    detail_region = {"region": "ROLE_RICH_DETAIL"}
+    topology_scan = {
+        "regions": [detail_region],
+        "scan_id": "aftv1:scan:" + "1" * 64,
+    }
+    topology_candidates = {
+        "input_binding": {"legacy_topology_scan_id": topology_scan["scan_id"]},
+        "regions": [summary_region, detail_region],
+    }
+    family_spec = {"family_id": "FAMILY"}
+    candidate_by_region = {
+        "SUMMARY_CONTROL": _ready_hierarchical_candidate(
+            ["DEPOSIT_GROUP", "LOAN_GROUP", "FAMILY"],
+            candidate_ordinal=0,
+        ),
+        "ROLE_RICH_DETAIL": _ready_hierarchical_candidate(
+            ["DEPOSIT_VND", "DEPOSIT_GROUP", "LOAN_VND", "LOAN_GROUP", "FAMILY"],
+            candidate_ordinal=1,
+        ),
+    }
+    occurrence_calls: list[dict[str, object]] = []
+
+    monkeypatch.setattr(
+        subject.row_axis_v1,
+        "_topology_pages",
+        lambda _pages: [{"exact": "COMPLETE_TOPOLOGY_PAGES"}],
+    )
+    monkeypatch.setattr(
+        subject.row_axis_v1,
+        "_build_accounting_family_row_axis_from_authenticated_topology_scan_v1",
+        lambda *_args, **_kwargs: pytest.fail(
+            "V4 candidate was routed through the legacy pruned-region selector"
+        ),
+    )
+    monkeypatch.setattr(subject, "_visible_dash_rescue_inputs", lambda **_kwargs: ())
+    monkeypatch.setattr(
+        subject.topology_candidates_v2,
+        "validate_accounting_family_topology_candidates_replay_v2",
+        lambda received, _pages, received_spec: (
+            received
+            if received is topology_candidates and received_spec is family_spec
+            else pytest.fail("candidate envelope lost exact replay inputs")
+        ),
+    )
+
+    def occurrence_builder(
+        _pages,
+        received_spec,
+        received_scan,
+        received_region,
+        received_policy,
+        **kwargs,
+    ):
+        occurrence_calls.append(
+            {
+                "candidates": kwargs["topology_candidates"],
+                "policy": received_policy,
+                "region": received_region,
+                "scan": received_scan,
+                "spec": received_spec,
+            }
+        )
+        return {
+            "candidate": candidate_by_region[received_region["region"]],
+            "row_axis": {"region": received_region["region"]},
         }
-        for ordinal in range(2)
+
+    monkeypatch.setattr(
+        subject.occurrence_row_v2,
+        "_build_accounting_family_occurrence_row_axis_from_authenticated_topology_scan_v2",
+        occurrence_builder,
+    )
+    monkeypatch.setattr(
+        subject.column_context_v1,
+        "_build_accounting_family_column_context_from_authenticated_row_axis_v1",
+        lambda row_axis, *_args, **_kwargs: candidate_by_region[row_axis["region"]][
+            "column_context"
+        ],
+    )
+    monkeypatch.setattr(
+        subject.scoped_v2,
+        "_build_accounting_scoped_hierarchical_table_closure_from_authenticated_axis_v2",
+        lambda occurrence_axis, *_args, **_kwargs: occurrence_axis["candidate"]["additive_closure"],
+    )
+    monkeypatch.setattr(subject, "_unresolved_reasons", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(subject, "_mixed_separator_consensus_reasons", lambda **_kwargs: [])
+    monkeypatch.setattr(subject, "_degraded_dash_consensus_reasons", lambda **_kwargs: [])
+    policy = {
+        **_strict_same_population_selection_policy(),
+        "expected_lane_unit_kinds": ["MONEY"],
+        "format_version": subject.EVALUATION_SPEC_FORMAT_V4,
+        "hierarchical_closure_spec": {"closed": True},
+        "occurrence_row_axis_policy": {"closed": True},
+        "period_semantics": "BALANCE_COMPARATIVE",
+    }
+
+    evidence = subject._candidate_evidence_from_joined_pages(
+        joined_pages=[],
+        topology_scan=topology_scan,
+        family_spec=family_spec,
+        evaluation_spec=policy,
+        render_snapshots=(),
+        topology_candidates=topology_candidates,
+    )
+    selected, reasons = subject._select_candidate_evidence(evidence, policy)
+
+    assert [call["region"] for call in occurrence_calls] == [
+        summary_region,
+        summary_region,
+        detail_region,
+        detail_region,
+    ]
+    assert all(call["scan"] is topology_scan for call in occurrence_calls)
+    assert all(call["candidates"] is topology_candidates for call in occurrence_calls)
+    assert [candidate["candidate_ordinal"] for candidate in evidence] == [0, 1]
+    assert selected is evidence[1]
+    assert reasons == []
+
+
+def test_two_independent_role_rich_v4_details_remain_unresolved() -> None:
+    details = [
+        _ready_hierarchical_candidate(
+            ["DEPOSIT_VND", "DEPOSIT_GROUP", "LOAN_VND", "LOAN_GROUP", "FAMILY"],
+            candidate_ordinal=ordinal,
+        )
+        for ordinal in (1, 0)
     ]
 
     selected, reasons = subject._select_candidate_evidence(
-        candidates,
-        {"closure_policy": "HIERARCHICAL_RECURSIVE_CORROBORATE_OR_DERIVE"},
+        details,
+        _strict_same_population_selection_policy(),
     )
 
     assert selected is None
@@ -893,6 +1496,133 @@ def test_multiple_candidates_with_missing_lanes_request_only_candidate_pages() -
     assert (
         subject._missing_render_pages_for_document_store_trial_v1(
             trial, topology_scan, joined_pages
+        )
+        == ()
+    )
+
+
+def test_v4_render_scheduler_uses_prepruning_candidate_page_union() -> None:
+    joined_pages = [{"lines": [{} for _ in range(10)], "page_sequence": page} for page in (1, 2, 3)]
+    topology_scan = {
+        "regions": [
+            {
+                "cluster_start_document_line_ordinal": 22,
+                "cluster_end_document_line_ordinal_exclusive": 28,
+            }
+        ],
+        "status": "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL",
+    }
+    topology_candidates = {
+        "regions": [
+            {
+                "cluster_start_document_line_ordinal": 12,
+                "cluster_end_document_line_ordinal_exclusive": 18,
+            },
+            *topology_scan["regions"],
+        ],
+        "status": "UNRESOLVED_MULTIPLE_OR_NONUNIQUE_COMPLETE_REGIONS",
+    }
+    trial = {
+        "row_axis": None,
+        "unresolved_reasons": [
+            "CANDIDATE_1:VISIBLE_ROLE_OCCURRENCE_ROW_LANES_NOT_COMPLETE",
+        ],
+    }
+
+    assert subject._missing_render_pages_for_document_store_trial_v1(
+        trial,
+        topology_scan,
+        joined_pages,
+        evaluation_spec={"format_version": subject.EVALUATION_SPEC_FORMAT_V4},
+        topology_candidates=topology_candidates,
+    ) == (2, 3)
+
+
+def test_v4_ready_summary_cannot_hide_detail_candidate_dash_page() -> None:
+    joined_pages = [{"lines": [{} for _ in range(10)], "page_sequence": page} for page in (1, 2)]
+    summary_region = {
+        "cluster_start_document_line_ordinal": 2,
+        "cluster_end_document_line_ordinal_exclusive": 8,
+    }
+    detail_region = {
+        "cluster_start_document_line_ordinal": 12,
+        "cluster_end_document_line_ordinal_exclusive": 18,
+    }
+    topology_scan = {
+        "regions": [detail_region],
+        "status": "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL",
+    }
+    topology_candidates = {
+        "regions": [summary_region, detail_region],
+        "status": "UNRESOLVED_MULTIPLE_OR_NONUNIQUE_COMPLETE_REGIONS",
+    }
+    trial = {
+        # The first-pass selector kept the complete summary and discarded the
+        # detail candidate's missing-DASH reason from the public trial shape.
+        "row_axis": {
+            "rows": [
+                {
+                    "label_match": {"page_sequence": 1},
+                    "missing_column_ordinals": [],
+                }
+            ],
+            "status": "VISIBLE_ROW_LANE_AXIS_BOUND_PROPOSAL_ONLY",
+            "trailing_value_rows": [],
+        },
+        "unresolved_reasons": [],
+    }
+
+    assert subject._missing_render_pages_for_document_store_trial_v1(
+        trial,
+        topology_scan,
+        joined_pages,
+        evaluation_spec={"format_version": subject.EVALUATION_SPEC_FORMAT_V4},
+        topology_candidates=topology_candidates,
+    ) == (1, 2)
+    assert (
+        subject._missing_render_pages_for_document_store_trial_v1(
+            trial,
+            topology_scan,
+            joined_pages,
+            evaluation_spec={"format_version": subject.EVALUATION_SPEC_FORMAT_V3},
+        )
+        == ()
+    )
+
+
+def test_v4_trailing_dash_hole_requests_render_even_when_role_rows_are_complete() -> None:
+    trial = {
+        "row_axis": {
+            "rows": [
+                {
+                    "label_match": {"page_sequence": 6},
+                    "missing_column_ordinals": [],
+                }
+            ],
+            "status": "VISIBLE_ROW_LANE_AXIS_BOUND_PROPOSAL_ONLY",
+            "trailing_value_rows": [
+                {
+                    "missing_column_ordinals": [0],
+                    "page_sequence": 7,
+                }
+            ],
+        },
+        "unresolved_reasons": [],
+    }
+    topology_scan = {"regions": [], "status": "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL"}
+
+    assert subject._missing_render_pages_for_document_store_trial_v1(
+        trial,
+        topology_scan,
+        [],
+        evaluation_spec={"format_version": subject.EVALUATION_SPEC_FORMAT_V4},
+    ) == (7,)
+    assert (
+        subject._missing_render_pages_for_document_store_trial_v1(
+            trial,
+            topology_scan,
+            [],
+            evaluation_spec={"format_version": subject.EVALUATION_SPEC_FORMAT_V3},
         )
         == ()
     )

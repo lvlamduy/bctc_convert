@@ -13,9 +13,12 @@ from typing import Any
 
 from bctc_ai.evaluation import accounting_additive_table_closure_v1 as additive_v1
 from bctc_ai.evaluation import accounting_family_column_context_v1 as column_context_v1
+from bctc_ai.evaluation import accounting_family_occurrence_row_axis_v2 as occurrence_row_v2
 from bctc_ai.evaluation import accounting_family_row_axis_v1 as row_axis_v1
+from bctc_ai.evaluation import accounting_family_topology_candidates_v2 as topology_candidates_v2
 from bctc_ai.evaluation import accounting_family_topology_v1 as topology_v1
 from bctc_ai.evaluation import accounting_hierarchical_table_closure_v1 as hierarchical_v1
+from bctc_ai.evaluation import accounting_scoped_hierarchical_table_closure_v2 as scoped_v2
 from bctc_ai.evaluation import family_first_accounting_input_snapshot_v1 as snapshot_v1
 from bctc_ai.evaluation import family_first_authenticated_page_region_v1 as render_v1
 from bctc_ai.evaluation import family_first_document_evidence_store_v1 as document_store_v1
@@ -51,6 +54,7 @@ FORMAT_VERSION = "FAMILY_FIRST_ACCOUNTING_EVIDENCE_SWEEP_V1"
 EVALUATION_SPEC_FORMAT = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V1"
 EVALUATION_SPEC_FORMAT_V2 = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V2"
 EVALUATION_SPEC_FORMAT_V3 = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V3"
+EVALUATION_SPEC_FORMAT_V4 = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V4"
 CLAIM_BOUNDARY = (
     "AUTHENTICATED_ALL_FILING_COMPLETE_DOCUMENT_TOPOLOGY_FRESH_VIETOCR_LABEL_"
     "PPOCRV6_MEDIUM_NUMERIC_PERIOD_UNIT_AND_VISIBLE_ADDITIVE_CLOSURE_EVIDENCE_"
@@ -90,6 +94,11 @@ _SPEC_FIELDS = {
 }
 _SPEC_FIELDS_V2 = {*_SPEC_FIELDS, "source_group_equivalences"}
 _SPEC_FIELDS_V3 = {*_SPEC_FIELDS, "hierarchical_closure_spec"}
+_SPEC_FIELDS_V4 = {
+    *_SPEC_FIELDS_V3,
+    "candidate_selection_policy",
+    "occurrence_row_axis_policy",
+}
 _SOURCE_GROUP_EQUIVALENCE_FIELDS = {"component_roles", "group_role"}
 _TRIAL_FIELDS = {
     "additive_closure",
@@ -131,14 +140,25 @@ def _evaluation_spec(
 ) -> dict[str, Any]:
     is_v2 = type(value) is dict and value.get("format_version") == EVALUATION_SPEC_FORMAT_V2
     is_v3 = type(value) is dict and value.get("format_version") == EVALUATION_SPEC_FORMAT_V3
+    is_v4 = type(value) is dict and value.get("format_version") == EVALUATION_SPEC_FORMAT_V4
     if (
         type(value) is not dict
-        or set(value) != (_SPEC_FIELDS_V3 if is_v3 else _SPEC_FIELDS_V2 if is_v2 else _SPEC_FIELDS)
+        or set(value)
+        != (
+            _SPEC_FIELDS_V4
+            if is_v4
+            else _SPEC_FIELDS_V3
+            if is_v3
+            else _SPEC_FIELDS_V2
+            if is_v2
+            else _SPEC_FIELDS
+        )
         or value["format_version"]
         not in {
             EVALUATION_SPEC_FORMAT,
             EVALUATION_SPEC_FORMAT_V2,
             EVALUATION_SPEC_FORMAT_V3,
+            EVALUATION_SPEC_FORMAT_V4,
         }
         or value["family_id"] != family_spec["family_id"]
         or value["period_semantics"] not in {"BALANCE_COMPARATIVE", "CURRENT_ROLLFORWARD"}
@@ -147,12 +167,25 @@ def _evaluation_spec(
             "CORROBORATE_IF_VISIBLE",
             "HIERARCHICAL_RECURSIVE_CORROBORATE_OR_DERIVE",
             "REQUIRE_EXACT_UNIQUE_VISIBLE_TRAILING_TOTAL",
+            "SCOPED_HIERARCHICAL_EXHAUSTIVE_CORROBORATE_OR_DERIVE",
         }
         or type(value["expected_lane_unit_kinds"]) is not list
         or not value["expected_lane_unit_kinds"]
         or any(item not in {"MONEY", "PERCENT"} for item in value["expected_lane_unit_kinds"])
     ):
         raise _error("family evaluation specification drifted")
+    if is_v4:
+        if (
+            value["closure_policy"] != "SCOPED_HIERARCHICAL_EXHAUSTIVE_CORROBORATE_OR_DERIVE"
+            or value["candidate_selection_policy"]
+            != "SAME_POPULATION_STRICT_ROLE_SUPERSET_WITH_EXACT_PERIOD_UNIT_ROOT_TOTAL"
+        ):
+            raise _error("scoped hierarchical family evaluation policy drifted")
+        try:
+            occurrence_row_v2._policy(value["occurrence_row_axis_policy"])
+            scoped_v2._spec(value["hierarchical_closure_spec"], raw_family_spec)
+        except (ValueError, RuntimeError) as exc:
+            raise _error("scoped hierarchical family evaluation specification drifted") from exc
     if is_v3:
         if value["closure_policy"] != "HIERARCHICAL_RECURSIVE_CORROBORATE_OR_DERIVE":
             raise _error("hierarchical family evaluation closure policy drifted")
@@ -210,6 +243,32 @@ def _blind_pages(document: dict[str, Any]) -> list[dict[str, Any]]:
         }
         for page in document["pages"]
     ]
+
+
+def _v4_topology_authority(
+    topology_pages: list[dict[str, Any]],
+    family_spec: dict[str, Any],
+    *,
+    expected_legacy_scan: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Rebuild one V1 scan and its complete pre-pruning V2 candidate axis."""
+
+    legacy_scan = topology_v1.build_accounting_family_topology_scan_v1(
+        topology_pages,
+        family_spec,
+    )
+    if expected_legacy_scan is not None and not same_typed_json_v1(
+        legacy_scan,
+        expected_legacy_scan,
+    ):
+        raise _error("V4 legacy topology scan differs from its complete source replay")
+    candidates = topology_candidates_v2.build_accounting_family_topology_candidates_v2(
+        topology_pages,
+        family_spec,
+    )
+    if candidates["input_binding"]["legacy_topology_scan_id"] != legacy_scan["scan_id"]:
+        raise _error("V4 topology candidate authority lost its legacy scan binding")
+    return legacy_scan, candidates
 
 
 def _region_pages(document: dict[str, Any], region: dict[str, Any]) -> tuple[int, ...]:
@@ -328,7 +387,10 @@ def _unresolved_reasons(
         reasons.extend(
             f"COLUMN_CONTEXT:{reason}" for reason in column_context["unresolved_reasons"]
         )
-    if policy["closure_policy"] == "HIERARCHICAL_RECURSIVE_CORROBORATE_OR_DERIVE":
+    if policy["closure_policy"] in {
+        "HIERARCHICAL_RECURSIVE_CORROBORATE_OR_DERIVE",
+        "SCOPED_HIERARCHICAL_EXHAUSTIVE_CORROBORATE_OR_DERIVE",
+    }:
         if closure["status"] != "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO":
             reasons.extend(
                 f"HIERARCHICAL_CLOSURE:{reason}" for reason in closure["unresolved_reasons"]
@@ -386,6 +448,78 @@ def _mixed_candidate_has_accounting_corroboration(
             }
             and (role == equation["result_role"] or role in equation["component_roles_present"])
             for equation in closure["equations"]
+        )
+    if closure["format_version"] == "ACCOUNTING_SCOPED_HIERARCHICAL_TABLE_CLOSURE_V2":
+        if closure["status"] != "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO":
+            return False
+        receipts = [
+            receipt for receipt in closure["coverage_receipt"] if sample_id in receipt["sample_ids"]
+        ]
+        if len(receipts) != 1:
+            return False
+        receipt = receipts[0]
+        if role is None:
+            if (
+                receipt["row_kind"] != "TRAILING_VALUE_ROW"
+                or receipt["disposition"] != "SELECTED_VISIBLE_TRAILING_ROOT_SOURCE"
+            ):
+                return False
+            exact_trailing = [
+                equation
+                for equation in closure["equations"]["global"]
+                if equation["status"]
+                == "VISIBLE_TRAILING_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+                and equation["selected_trailing_candidate_ordinal"] == receipt["candidate_ordinal"]
+                and any(
+                    evidence["candidate_ordinal"] == receipt["candidate_ordinal"]
+                    and evidence["status"] == "SELECTED_VISIBLE_TRAILING_ROOT_SOURCE"
+                    and sample_id in evidence["sample_ids"]
+                    for evidence in equation["trailing_candidate_evidence"]
+                )
+            ]
+            return len(exact_trailing) == 1
+        if (
+            receipt["row_kind"] != "ROLE_ROW"
+            or receipt["role"] != role
+            or receipt["occurrence_id"] is None
+        ):
+            return False
+        if receipt["disposition"] in {
+            "LOCAL_EXHAUSTIVE_COMPONENT_OCCURRENCE",
+            "LOCAL_SUBTOTAL_RESULT_OCCURRENCE",
+        }:
+            owner_occurrence_id = (
+                receipt["occurrence_id"]
+                if receipt["disposition"] == "LOCAL_SUBTOTAL_RESULT_OCCURRENCE"
+                else receipt["source_record"]["label_match"]["scope_owner_occurrence_id"]
+            )
+            exact_local = [
+                equation
+                for equation in closure["equations"]["local"]
+                if equation["result_occurrence_id"] == owner_occurrence_id
+                and equation["status"]
+                == "LOCAL_VISIBLE_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS"
+                and (role == equation["result_role"] or role in equation["component_roles_present"])
+            ]
+            return len(exact_local) == 1
+        if receipt["disposition"] != "GLOBAL_HIERARCHY_SOURCE_OCCURRENCE":
+            return False
+        accounting_roles = {role}
+        accounting_roles.update(
+            record["role"]
+            for record in closure["resolved_roles"]
+            if record["source"] is not None
+            and record["source"]["kind"] == "ROLE_ROW"
+            and record["source"]["record"]["label_match"].get("occurrence_id")
+            == receipt["occurrence_id"]
+            and any(
+                value["sample_id"] == sample_id for value in record["source"]["record"]["values"]
+            )
+        )
+        return any(
+            equation["status"] == "VISIBLE_RESULT_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+            and accounting_roles & {equation["result_role"], *equation["component_roles_present"]}
+            for equation in closure["equations"]["global"]
         )
     return False
 
@@ -603,23 +737,134 @@ def _degraded_dash_consensus_reasons(
     return list(dict.fromkeys(reasons))
 
 
+def _candidate_population_signature(candidate: dict[str, Any]) -> dict[str, Any] | None:
+    """Return exact period/unit/root-total lanes for safe region subsumption.
+
+    A primary-statement summary can be a useful control for a richer note, but
+    page order and role count alone cannot prove that both regions describe the
+    same population.  The signature ignores evidence locators while preserving
+    every typed semantic field that changes the accounting value.  The root
+    must be a visible total already corroborated by its components; a merely
+    derived root is not a source control and cannot authorize pruning.
+    """
+
+    closure = candidate.get("additive_closure")
+    context = candidate.get("column_context")
+    if type(closure) is not dict or type(context) is not dict:
+        return None
+    family_id = closure.get("family_id")
+    resolved = closure.get("resolved_roles")
+    period_axis = context.get("period_axis")
+    unit_axis = context.get("unit_axis")
+    if (
+        type(family_id) is not str
+        or not family_id
+        or type(resolved) is not list
+        or type(period_axis) is not list
+        or type(unit_axis) is not list
+        or not period_axis
+        or len(period_axis) != len(unit_axis)
+    ):
+        return None
+    roots = [record for record in resolved if record.get("role") == family_id]
+    if len(roots) != 1 or roots[0].get("resolution_kind") not in {
+        "VISIBLE_SOURCE_ROLE_CORROBORATED_BY_COMPONENTS",
+        "VISIBLE_TRAILING_TOTAL_CORROBORATED_BY_COMPONENTS",
+    }:
+        return None
+    values = roots[0].get("values")
+    if type(values) is not list or not values:
+        return None
+    try:
+        periods = sorted(
+            (
+                {
+                    "column_ordinal": record["column_ordinal"],
+                    "resolved_period": record["resolved_period"],
+                }
+                for record in period_axis
+            ),
+            key=lambda record: record["column_ordinal"],
+        )
+        units = sorted(
+            (
+                {
+                    "column_ordinal": record["column_ordinal"],
+                    "currency": record["currency"],
+                    "magnitude_power10": record["magnitude_power10"],
+                    "unit_kind": record["unit_kind"],
+                }
+                for record in unit_axis
+            ),
+            key=lambda record: record["column_ordinal"],
+        )
+        numeric_lanes = sorted(
+            (
+                {
+                    "column_ordinal": record["column_ordinal"],
+                    "number": canonical_clone_v1(record["number"]),
+                }
+                for record in values
+            ),
+            key=lambda record: record["column_ordinal"],
+        )
+    except (KeyError, TypeError):
+        return None
+    ordinals = [record["column_ordinal"] for record in numeric_lanes]
+    if (
+        not ordinals
+        or ordinals != [record["column_ordinal"] for record in periods]
+        or ordinals != [record["column_ordinal"] for record in units]
+        or any(type(ordinal) is not int or ordinal < 0 for ordinal in ordinals)
+        or ordinals != sorted(set(ordinals))
+    ):
+        return None
+    return {
+        "numeric_lanes": numeric_lanes,
+        "period_axis": periods,
+        "period_semantics": context.get("period_semantics"),
+        "unit_axis": units,
+    }
+
+
 def _select_candidate_evidence(
     candidate_evidence: list[dict[str, Any]], evaluation_spec: dict[str, Any]
 ) -> tuple[dict[str, Any] | None, list[str]]:
     ready = [candidate for candidate in candidate_evidence if not candidate["reasons"]]
-    if (
-        len(ready) > 1
-        and evaluation_spec["closure_policy"] == "HIERARCHICAL_RECURSIVE_CORROBORATE_OR_DERIVE"
-    ):
+    if len(ready) > 1 and evaluation_spec["closure_policy"] in {
+        "HIERARCHICAL_RECURSIVE_CORROBORATE_OR_DERIVE",
+        "SCOPED_HIERARCHICAL_EXHAUSTIVE_CORROBORATE_OR_DERIVE",
+    }:
         role_sets = [
             {record["role"] for record in candidate["additive_closure"]["resolved_roles"]}
             for candidate in ready
         ]
-        ready = [
-            candidate
-            for index, candidate in enumerate(ready)
-            if not any(role_sets[index] < other for other in role_sets)
-        ]
+        if evaluation_spec.get("candidate_selection_policy") == (
+            "SAME_POPULATION_STRICT_ROLE_SUPERSET_WITH_EXACT_PERIOD_UNIT_ROOT_TOTAL"
+        ):
+            population_signatures = [
+                _candidate_population_signature(candidate) for candidate in ready
+            ]
+            ready = [
+                candidate
+                for index, candidate in enumerate(ready)
+                if not any(
+                    other_index != index
+                    and role_sets[index] < other
+                    and population_signatures[index] is not None
+                    and population_signatures[other_index] is not None
+                    and same_typed_json_v1(
+                        population_signatures[index], population_signatures[other_index]
+                    )
+                    for other_index, other in enumerate(role_sets)
+                )
+            ]
+        else:
+            ready = [
+                candidate
+                for index, candidate in enumerate(ready)
+                if not any(role_sets[index] < other for other in role_sets)
+            ]
     if len(ready) == 1:
         return ready[0], []
     if len(candidate_evidence) == 1:
@@ -643,32 +888,86 @@ def _candidate_evidence_from_joined_pages(
     family_spec: dict[str, Any],
     evaluation_spec: dict[str, Any],
     render_snapshots: tuple[dict[str, Any], ...],
+    selected_snapshot: dict[str, Any] | None = None,
+    topology_candidates: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
+    is_v4 = evaluation_spec["format_version"] == EVALUATION_SPEC_FORMAT_V4
+    if is_v4:
+        topology_pages = row_axis_v1._topology_pages(joined_pages)
+        if topology_candidates is None:
+            topology_candidates = (
+                topology_candidates_v2.build_accounting_family_topology_candidates_v2(
+                    topology_pages,
+                    family_spec,
+                )
+            )
+        else:
+            topology_candidates = (
+                topology_candidates_v2.validate_accounting_family_topology_candidates_replay_v2(
+                    topology_candidates,
+                    topology_pages,
+                    family_spec,
+                )
+            )
+        if (
+            topology_candidates["input_binding"]["legacy_topology_scan_id"]
+            != topology_scan["scan_id"]
+        ):
+            raise _error("V4 topology candidates differ from their legacy scan binding")
+        topology_regions = topology_candidates["regions"]
+    else:
+        if topology_candidates is not None:
+            raise _error("pre-pruning topology candidates require evaluation V4")
+        topology_regions = topology_scan["regions"]
     candidate_evidence = []
-    for candidate_ordinal, topology_region in enumerate(topology_scan["regions"]):
+    for candidate_ordinal, topology_region in enumerate(topology_regions):
         try:
-            base_row_axis = (
-                row_axis_v1._build_accounting_family_row_axis_from_authenticated_topology_scan_v1(
+            if is_v4:
+                base_occurrence_axis = occurrence_row_v2._build_accounting_family_occurrence_row_axis_from_authenticated_topology_scan_v2(
+                    joined_pages,
+                    family_spec,
+                    topology_scan,
+                    topology_region,
+                    evaluation_spec["occurrence_row_axis_policy"],
+                    topology_candidates=topology_candidates,
+                    selected_snapshot=selected_snapshot,
+                    render_snapshots=render_snapshots,
+                )
+                base_row_axis = base_occurrence_axis["row_axis"]
+            else:
+                base_row_axis = row_axis_v1._build_accounting_family_row_axis_from_authenticated_topology_scan_v1(
                     joined_pages,
                     family_spec,
                     topology_scan,
                     topology_region,
                 )
-            )
             dash_rescues = _visible_dash_rescue_inputs(
                 joined_pages=joined_pages,
                 row_axis=base_row_axis,
                 render_snapshots=render_snapshots,
             )
-            row_axis = (
-                row_axis_v1._build_accounting_family_row_axis_from_authenticated_topology_scan_v1(
+            if is_v4:
+                occurrence_axis = occurrence_row_v2._build_accounting_family_occurrence_row_axis_from_authenticated_topology_scan_v2(
+                    joined_pages,
+                    family_spec,
+                    topology_scan,
+                    topology_region,
+                    evaluation_spec["occurrence_row_axis_policy"],
+                    topology_candidates=topology_candidates,
+                    selected_snapshot=selected_snapshot,
+                    render_snapshots=render_snapshots,
+                    visible_dash_rescues=dash_rescues,
+                )
+                row_axis = occurrence_axis["row_axis"]
+            else:
+                occurrence_axis = None
+                row_axis = row_axis_v1._build_accounting_family_row_axis_from_authenticated_topology_scan_v1(
                     joined_pages,
                     family_spec,
                     topology_scan,
                     topology_region,
                     visible_dash_rescues=dash_rescues,
                 )
-            )
         except ValueError as exc:
             candidate_evidence.append(
                 {
@@ -701,7 +1000,19 @@ def _candidate_evidence_from_joined_pages(
             )
             continue
         try:
-            if evaluation_spec["closure_policy"] == "HIERARCHICAL_RECURSIVE_CORROBORATE_OR_DERIVE":
+            if evaluation_spec["closure_policy"] == (
+                "SCOPED_HIERARCHICAL_EXHAUSTIVE_CORROBORATE_OR_DERIVE"
+            ):
+                if occurrence_axis is None:
+                    raise _error("scoped hierarchical closure lost its occurrence row axis")
+                closure = scoped_v2._build_accounting_scoped_hierarchical_table_closure_from_authenticated_axis_v2(
+                    occurrence_axis,
+                    family_spec,
+                    evaluation_spec["hierarchical_closure_spec"],
+                )
+            elif (
+                evaluation_spec["closure_policy"] == "HIERARCHICAL_RECURSIVE_CORROBORATE_OR_DERIVE"
+            ):
                 closure = hierarchical_v1._build_accounting_hierarchical_table_closure_from_authenticated_row_axis_v1(
                     row_axis,
                     joined_pages,
@@ -763,14 +1074,40 @@ def _trial(
     *,
     numeric_document: dict[str, Any] | None,
     render_snapshots: tuple[dict[str, Any], ...],
+    topology_candidates: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    if evaluation_spec["format_version"] == EVALUATION_SPEC_FORMAT_V4:
+        if topology_candidates is None:
+            topology_scan, topology_candidates = _v4_topology_authority(
+                _blind_pages(document),
+                family_spec,
+                expected_legacy_scan=topology_scan,
+            )
+        else:
+            topology_candidates = (
+                topology_candidates_v2.validate_accounting_family_topology_candidates_replay_v2(
+                    topology_candidates,
+                    _blind_pages(document),
+                    family_spec,
+                )
+            )
+            if (
+                topology_candidates["input_binding"]["legacy_topology_scan_id"]
+                != topology_scan["scan_id"]
+            ):
+                raise _error("V4 trial topology candidate authority differs from its legacy scan")
+        topology_status = topology_candidates["status"]
+    else:
+        if topology_candidates is not None:
+            raise _error("pre-pruning topology candidates require evaluation V4")
+        topology_status = topology_scan["status"]
     base = {
         "document_ordinal": document["document_ordinal"],
         "private_provenance": canonical_clone_v1(document["private_provenance"]),
         "source_pdf_ref": canonical_clone_v1(document["source_pdf_ref"]),
         "topology_scan": topology_scan,
     }
-    if topology_scan["status"] == "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY":
+    if topology_status == "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY":
         return {
             **base,
             "additive_closure": None,
@@ -784,7 +1121,7 @@ def _trial(
         "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL",
         "UNRESOLVED_MULTIPLE_OR_NONUNIQUE_COMPLETE_REGIONS",
     }
-    if topology_scan["status"] not in candidate_topology_statuses:
+    if topology_status not in candidate_topology_statuses:
         return {
             **base,
             "additive_closure": None,
@@ -792,7 +1129,7 @@ def _trial(
             "document_axis_binding": None,
             "evidence_status": "UNRESOLVED_NO_UNIQUE_COMPLETE_TOPOLOGY",
             "row_axis": None,
-            "unresolved_reasons": [topology_scan["status"]],
+            "unresolved_reasons": [topology_status],
         }
     if numeric_document is None or not render_snapshots:
         raise _error("unique topology trial lacks its authenticated batch snapshots")
@@ -808,6 +1145,7 @@ def _trial(
         family_spec=family_spec,
         evaluation_spec=evaluation_spec,
         render_snapshots=render_snapshots,
+        topology_candidates=topology_candidates,
     )
     selected, reasons = _select_candidate_evidence(candidate_evidence, evaluation_spec)
     return {
@@ -890,8 +1228,18 @@ def rebuild_family_first_accounting_trial_from_document_snapshot_v1(
         or sum(len(page.get("lines", [])) for page in joined_pages) != packet["line_count"]
     ):
         raise _error("bounded document snapshot denominator drifted")
+    if policy["format_version"] == EVALUATION_SPEC_FORMAT_V4:
+        _rebuilt_scan, topology_candidates = _v4_topology_authority(
+            row_axis_v1._topology_pages(joined_pages),
+            family_spec,
+            expected_legacy_scan=topology_scan,
+        )
+        region_authority = topology_candidates
+    else:
+        topology_candidates = None
+        region_authority = topology_scan
     expected_selected_pages: set[int] = set()
-    for region in topology_scan["regions"]:
+    for region in region_authority["regions"]:
         start = region["cluster_start_document_line_ordinal"]
         stop = region["cluster_end_document_line_ordinal_exclusive"]
         offset = 0
@@ -925,6 +1273,7 @@ def rebuild_family_first_accounting_trial_from_document_snapshot_v1(
         family_spec=family_spec,
         evaluation_spec=policy,
         render_snapshots=(),
+        topology_candidates=topology_candidates,
     )
     selected, reasons = _select_candidate_evidence(candidate_evidence, policy)
     return canonical_clone_v1(
@@ -988,6 +1337,9 @@ def _missing_render_pages_for_document_store_trial_v1(
     trial: dict[str, Any],
     topology_scan: dict[str, Any],
     joined_pages: list[dict[str, Any]],
+    *,
+    evaluation_spec: dict[str, Any] | None = None,
+    topology_candidates: dict[str, Any] | None = None,
 ) -> tuple[int, ...]:
     """Select only pages whose missing lanes can benefit from pixel replay.
 
@@ -1000,23 +1352,47 @@ def _missing_render_pages_for_document_store_trial_v1(
     ambiguity therefore does not trigger an unnecessary PDF render.
     """
 
+    is_v4 = (
+        evaluation_spec is not None
+        and evaluation_spec.get("format_version") == EVALUATION_SPEC_FORMAT_V4
+    )
+    if topology_candidates is not None and not is_v4:
+        raise _error("pre-pruning render-page candidates require evaluation V4")
     row_axis = trial["row_axis"]
     if row_axis is not None:
+        if is_v4 and topology_candidates is not None and len(topology_candidates["regions"]) > 1:
+            # Candidate selection intentionally returns only the winning row
+            # axis.  A complete summary can therefore hide a richer detail
+            # candidate whose existing DASH cells still need pixel replay.
+            # Render the bounded union before final V4 selection; otherwise
+            # the discarded detail reasons can never schedule their own page.
+            return tuple(sorted(_selected_topology_pages_v1(joined_pages, topology_candidates)))
+        missing_pages = {
+            row["label_match"]["page_sequence"]
+            for row in row_axis["rows"]
+            if row["missing_column_ordinals"]
+        }
+        if (
+            evaluation_spec is not None
+            and evaluation_spec.get("format_version") == EVALUATION_SPEC_FORMAT_V4
+        ):
+            missing_pages.update(
+                trailing["page_sequence"]
+                for trailing in row_axis["trailing_value_rows"]
+                if trailing["missing_column_ordinals"]
+            )
+        if missing_pages:
+            return tuple(sorted(missing_pages))
         if row_axis["status"] == "VISIBLE_ROW_LANE_AXIS_BOUND_PROPOSAL_ONLY":
             return ()
-        return tuple(
-            sorted(
-                {
-                    row["label_match"]["page_sequence"]
-                    for row in row_axis["rows"]
-                    if row["missing_column_ordinals"]
-                }
-            )
-        )
-    if topology_scan["status"] == "UNRESOLVED_MULTIPLE_OR_NONUNIQUE_COMPLETE_REGIONS" and any(
-        "VISIBLE_ROLE_ROW_LANES_NOT_COMPLETE" in reason for reason in trial["unresolved_reasons"]
+        return ()
+    region_authority = topology_candidates if topology_candidates is not None else topology_scan
+    if region_authority["status"] == ("UNRESOLVED_MULTIPLE_OR_NONUNIQUE_COMPLETE_REGIONS") and any(
+        "VISIBLE_ROLE_ROW_LANES_NOT_COMPLETE" in reason
+        or "VISIBLE_ROLE_OCCURRENCE_ROW_LANES_NOT_COMPLETE" in reason
+        for reason in trial["unresolved_reasons"]
     ):
-        return tuple(sorted(_selected_topology_pages_v1(joined_pages, topology_scan)))
+        return tuple(sorted(_selected_topology_pages_v1(joined_pages, region_authority)))
     return ()
 
 
@@ -1064,10 +1440,24 @@ def _trial_from_document_store_snapshot_v1(
 ) -> dict[str, Any]:
     packet = snapshot["document_packet"]
     joined_pages = snapshot["joined_pages"]
-    if topology_scan is None:
+    if evaluation_spec["format_version"] == EVALUATION_SPEC_FORMAT_V4:
+        topology_scan, topology_candidates = _v4_topology_authority(
+            row_axis_v1._topology_pages(joined_pages),
+            family_spec,
+        )
+        topology_status = topology_candidates["status"]
+        region_authority = topology_candidates
+    elif topology_scan is None:
         topology_scan = topology_v1.build_accounting_family_topology_scan_v1(
             _topology_pages_from_document_snapshot_v1(joined_pages), family_spec
         )
+        topology_candidates = None
+        topology_status = topology_scan["status"]
+        region_authority = topology_scan
+    else:
+        topology_candidates = None
+        topology_status = topology_scan["status"]
+        region_authority = topology_scan
     base = {
         "document_ordinal": packet["document_ordinal"],
         "private_provenance": {
@@ -1079,7 +1469,7 @@ def _trial_from_document_store_snapshot_v1(
         "source_pdf_ref": canonical_clone_v1(packet["source_pdf_ref"]),
         "topology_scan": topology_scan,
     }
-    if topology_scan["status"] == "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY":
+    if topology_status == "NOT_OBSERVED_NO_SEMANTIC_ANCHOR_PROPOSAL_ONLY":
         return {
             **base,
             "additive_closure": None,
@@ -1089,7 +1479,7 @@ def _trial_from_document_store_snapshot_v1(
             "row_axis": None,
             "unresolved_reasons": [],
         }
-    if topology_scan["status"] not in {
+    if topology_status not in {
         "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL",
         "UNRESOLVED_MULTIPLE_OR_NONUNIQUE_COMPLETE_REGIONS",
     }:
@@ -1100,9 +1490,9 @@ def _trial_from_document_store_snapshot_v1(
             "document_axis_binding": None,
             "evidence_status": "UNRESOLVED_NO_UNIQUE_COMPLETE_TOPOLOGY",
             "row_axis": None,
-            "unresolved_reasons": [topology_scan["status"]],
+            "unresolved_reasons": [topology_status],
         }
-    selected_pages = _selected_topology_pages_v1(joined_pages, topology_scan)
+    selected_pages = _selected_topology_pages_v1(joined_pages, region_authority)
     if not selected_pages:
         raise _error("document-store topology selected no physical page")
     projected_pages = [
@@ -1118,6 +1508,8 @@ def _trial_from_document_store_snapshot_v1(
         family_spec=family_spec,
         evaluation_spec=evaluation_spec,
         render_snapshots=render_snapshots,
+        selected_snapshot=snapshot,
+        topology_candidates=topology_candidates,
     )
     selected, reasons = _select_candidate_evidence(candidates, evaluation_spec)
     return {
@@ -1180,8 +1572,20 @@ def build_authenticated_family_first_accounting_evidence_sweep_from_document_sto
             policy,
             topology_scan=topology_scans[ordinal - 1],
         )
+        if policy["format_version"] == EVALUATION_SPEC_FORMAT_V4:
+            _render_scan, render_topology_candidates = _v4_topology_authority(
+                row_axis_v1._topology_pages(snapshot["joined_pages"]),
+                family_spec,
+                expected_legacy_scan=trial["topology_scan"],
+            )
+        else:
+            render_topology_candidates = None
         missing_pages = _missing_render_pages_for_document_store_trial_v1(
-            trial, topology_scans[ordinal - 1], snapshot["joined_pages"]
+            trial,
+            trial["topology_scan"],
+            snapshot["joined_pages"],
+            evaluation_spec=policy,
+            topology_candidates=render_topology_candidates,
         )
         if missing_pages:
             renders = document_store_v1.read_authenticated_family_first_document_page_renders_v1(
@@ -1311,6 +1715,8 @@ def build_authenticated_family_first_accounting_evidence_sweep_v1(
     except (ValueError, RuntimeError) as exc:
         raise _error("family topology specification drifted") from exc
     policy = _evaluation_spec(evaluation_spec, compiled, raw_family_spec=family_spec)
+    if policy["format_version"] == EVALUATION_SPEC_FORMAT_V4:
+        raise _error("V4_REQUIRES_AUTHENTICATED_DOCUMENT_STORE_SELECTED_SNAPSHOT")
     try:
         semantic_projection = semantic_v1.project_authenticated_family_first_semantic_index_v1(
             semantic_index_capability
@@ -1335,15 +1741,24 @@ def build_authenticated_family_first_accounting_evidence_sweep_v1(
     )
     prepared = []
     for document in semantic_documents:
-        topology_scan = topology_v1.build_accounting_family_topology_scan_v1(
-            _blind_pages(document), family_spec
-        )
-        prepared.append((document, topology_scan))
+        topology_pages = _blind_pages(document)
+        if policy["format_version"] == EVALUATION_SPEC_FORMAT_V4:
+            topology_scan, topology_candidates = _v4_topology_authority(
+                topology_pages,
+                family_spec,
+            )
+        else:
+            topology_scan = topology_v1.build_accounting_family_topology_scan_v1(
+                topology_pages,
+                family_spec,
+            )
+            topology_candidates = None
+        prepared.append((document, topology_scan, topology_candidates))
 
     accepted = [
-        (document, topology_scan)
-        for document, topology_scan in prepared
-        if topology_scan["status"]
+        (document, topology_scan, topology_candidates)
+        for document, topology_scan, topology_candidates in prepared
+        if (topology_candidates or topology_scan)["status"]
         in {
             "ACCEPTED_UNIQUE_TOPOLOGY_PROPOSAL",
             "UNRESOLVED_MULTIPLE_OR_NONUNIQUE_COMPLETE_REGIONS",
@@ -1352,7 +1767,7 @@ def build_authenticated_family_first_accounting_evidence_sweep_v1(
     numeric_by_document = {}
     renders_by_document: dict[int, list[dict[str, Any]]] = {}
     if accepted:
-        ordinals = tuple(document["document_ordinal"] for document, _scan in accepted)
+        ordinals = tuple(document["document_ordinal"] for document, _scan, _candidates in accepted)
         numeric_documents = (
             snapshot_v1.read_authenticated_family_first_numeric_documents_snapshot_v1(
                 numeric_index_capability, document_ordinals=ordinals
@@ -1369,8 +1784,8 @@ def build_authenticated_family_first_accounting_evidence_sweep_v1(
             for document_ordinal, physical_page in sorted(
                 {
                     (document["document_ordinal"], page)
-                    for document, topology_scan in accepted
-                    for region in topology_scan["regions"]
+                    for document, topology_scan, topology_candidates in accepted
+                    for region in (topology_candidates or topology_scan)["regions"]
                     for page in _region_pages(document, region)
                 }
             )
@@ -1389,8 +1804,9 @@ def build_authenticated_family_first_accounting_evidence_sweep_v1(
             policy,
             numeric_document=numeric_by_document.get(document["document_ordinal"]),
             render_snapshots=tuple(renders_by_document.get(document["document_ordinal"], [])),
+            topology_candidates=topology_candidates,
         )
-        for document, topology_scan in prepared
+        for document, topology_scan, topology_candidates in prepared
     ]
     snapshot_v1.validate_authenticated_family_first_semantic_documents_snapshot_v1(
         semantic_index_capability, semantic_documents
