@@ -3,11 +3,13 @@ from __future__ import annotations
 import hashlib
 import os
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from pathlib import Path
 
 import pytest
 
+from bctc_ai.evaluation import loan_geography_scoped_table_adapter_v1 as adapter_v1
 from bctc_ai.evaluation.loan_geography_numeric_reconciliation_v1 import (
     build_loan_geography_numeric_reconciliation_v1,
 )
@@ -900,6 +902,114 @@ def test_unproved_coverage_and_self_rehashed_result_are_rejected() -> None:
     forged["result_id"] = "lgstv1:batch:" + canonical_json_sha256_v1(material)
     with pytest.raises(LoanGeographyScopedTableAdapterV1Error, match="replay exactly"):
         validate_loan_geography_scoped_graphs_replay_v1(forged, receipt, [snapshot])
+
+
+def test_self_rehashed_boolean_document_ordinal_is_rejected_as_untyped() -> None:
+    snapshot = _snapshot(_exact_page())
+    receipt = _receipt(snapshot)
+    receipt["documents"][0]["document_ordinal"] = True
+    outcome_material = deepcopy(receipt["documents"][0])
+    outcome_material.pop("outcome_id")
+    receipt["documents"][0]["outcome_id"] = (
+        "fffrrv2:document:" + canonical_json_sha256_v1(outcome_material)
+    )
+    receipt_material = deepcopy(receipt)
+    receipt_material.pop("receipt_id")
+    receipt["receipt_id"] = "fffrrv2:receipt:" + canonical_json_sha256_v1(receipt_material)
+
+    with pytest.raises(LoanGeographyScopedTableAdapterV1Error, match="coverage"):
+        adapter_v1._prepare_loan_geography_receipt_v1(receipt)
+
+
+def test_prepared_receipt_is_detached_from_nested_and_coordinated_rehash_mutation() -> None:
+    snapshot = _snapshot(_exact_page())
+    receipt = _receipt(snapshot)
+    prepared = adapter_v1._prepare_loan_geography_receipt_v1(receipt)
+    baseline = build_loan_geography_scoped_graphs_v1(prepared, [snapshot])
+    assert prepared.canonical_payload_sha256 == hashlib.sha256(
+        adapter_v1.canonical_json_bytes_v1(receipt)
+    ).hexdigest()
+
+    receipt["documents"][0]["retrieval_diagnostics"] = {"nested": ["changed"]}
+    outcome_material = deepcopy(receipt["documents"][0])
+    outcome_material.pop("outcome_id")
+    receipt["documents"][0]["outcome_id"] = (
+        "fffrrv2:document:" + canonical_json_sha256_v1(outcome_material)
+    )
+    receipt_material = deepcopy(receipt)
+    receipt_material.pop("receipt_id")
+    receipt["receipt_id"] = "fffrrv2:receipt:" + canonical_json_sha256_v1(receipt_material)
+    changed = adapter_v1._prepare_loan_geography_receipt_v1(receipt)
+
+    assert prepared.canonical_payload_sha256 != changed.canonical_payload_sha256
+    assert build_loan_geography_scoped_graphs_v1(prepared, [snapshot]) == baseline
+    assert build_loan_geography_scoped_graphs_v1(changed, [snapshot]) != baseline
+
+
+def test_raw_nested_mutation_does_not_turn_prepared_receipt_into_cache_authority() -> None:
+    snapshot = _snapshot(_exact_page())
+    receipt = _receipt(snapshot)
+    prepared = adapter_v1._prepare_loan_geography_receipt_v1(receipt)
+    baseline = build_loan_geography_scoped_graphs_v1(prepared, [snapshot])
+    receipt["documents"][0]["selected_pages"].append(2)
+
+    assert build_loan_geography_scoped_graphs_v1(prepared, [snapshot]) == baseline
+    with pytest.raises(LoanGeographyScopedTableAdapterV1Error, match="content identity"):
+        build_loan_geography_scoped_graphs_v1(receipt, [snapshot])
+
+
+def test_prepared_receipt_rejects_loaded_query_trust_drift(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    snapshot = _snapshot(_exact_page())
+    prepared = adapter_v1._prepare_loan_geography_receipt_v1(_receipt(snapshot))
+    drifted_query = deepcopy(adapter_v1.LOAN_GEOGRAPHY_REGION_QUERY_SPEC_V2)
+    drifted_query["window_line_span"] += 1
+    monkeypatch.setattr(adapter_v1, "LOAN_GEOGRAPHY_REGION_QUERY_SPEC_V2", drifted_query)
+
+    with pytest.raises(LoanGeographyScopedTableAdapterV1Error, match="query spec"):
+        build_loan_geography_scoped_graphs_v1(prepared, [snapshot])
+
+
+def test_prepared_receipt_is_safe_for_concurrent_repeated_document_builds() -> None:
+    snapshot = _snapshot(_exact_page())
+    prepared = adapter_v1._prepare_loan_geography_receipt_v1(_receipt(snapshot))
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        results = list(
+            executor.map(
+                lambda _index: build_loan_geography_scoped_graphs_v1(prepared, [snapshot]),
+                range(12),
+            )
+        )
+
+    assert all(result == results[0] for result in results)
+
+
+def test_prepared_receipt_replay_still_invokes_shared_graph_public_replay(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    snapshot = _snapshot(_exact_page())
+    prepared = adapter_v1._prepare_loan_geography_receipt_v1(_receipt(snapshot))
+    whole = build_loan_geography_whole_document_scoped_graph_v1(prepared, snapshot)
+    calls: list[str] = []
+    original = adapter_v1.validate_accounting_scoped_table_graph_replay_v1
+
+    def replay(value: dict, pages: list[dict], spec: dict) -> dict:
+        calls.append(value["result_id"])
+        return original(value, pages, spec)
+
+    monkeypatch.setattr(adapter_v1, "validate_accounting_scoped_table_graph_replay_v1", replay)
+
+    assert (
+        validate_loan_geography_whole_document_scoped_graph_replay_v1(
+            whole,
+            prepared,
+            snapshot,
+        )
+        == whole
+    )
+    assert calls == [whole["scoped_table_graph"]["result_id"]]
 
 
 def test_sparse_full_equivalence_uses_visual_region_not_result_identity() -> None:

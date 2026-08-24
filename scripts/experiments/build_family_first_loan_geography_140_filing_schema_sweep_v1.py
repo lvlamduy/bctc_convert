@@ -122,7 +122,7 @@ _TARGET_FULL_FALLBACK_DOCUMENT_COUNT = 24
 _DEFAULT_DIRECT_FULL_JOBS = max(1, min(8, os.cpu_count() or 1))
 _DEFAULT_DIRECT_FULL_BATCH_SIZE = _DEFAULT_DIRECT_FULL_JOBS
 _DEFAULT_SPARSE_JOBS = _DEFAULT_DIRECT_FULL_JOBS
-_FAMILY11_GRAPH_WORKER_RECEIPT: dict[str, Any] | None = None
+_FAMILY11_GRAPH_WORKER_RECEIPT: Any | None = None
 _EXPECTED_REGION_QUERY_SPEC_ID = (
     "fffrrv2:query:aa2700a3a54bf9a6ff79bbd4c51d8b3f1e55c7e2f16688a4f75b190673641cc9"
 )
@@ -551,6 +551,7 @@ def _sparse_graph_path(
     *,
     batch_size: int,
     jobs: int = 1,
+    prepared_receipt: Any | None = None,
 ) -> tuple[tuple[dict[str, Any], ...], tuple[dict[str, Any], ...], tuple[dict[str, Any], ...]]:
     """Build and replay each sparse batch before releasing its source snapshots."""
 
@@ -564,6 +565,11 @@ def _sparse_graph_path(
         or jobs <= 0
     ):
         raise _error("loan-geography sparse receipt document axis drifted")
+    local_receipt = (
+        graph_v1._prepare_loan_geography_receipt_v1(receipt)  # noqa: SLF001
+        if prepared_receipt is None
+        else prepared_receipt
+    )
     selections = tuple(
         (outcome["document_ordinal"], tuple(outcome["selected_pages"])) for outcome in outcomes
     )
@@ -584,7 +590,7 @@ def _sparse_graph_path(
             try:
                 records = (
                     tuple(
-                        _sparse_graph_worker_material(receipt, index, snapshot)
+                        _sparse_graph_worker_material(local_receipt, index, snapshot)
                         for index, snapshot in work
                     )
                     if executor is None
@@ -648,7 +654,9 @@ def _initialize_family11_graph_worker(receipt: Mapping[str, Any]) -> None:
     global _FAMILY11_GRAPH_WORKER_RECEIPT
     if type(receipt) is not dict:
         raise _error("loan-geography direct-full worker receipt drifted")
-    _FAMILY11_GRAPH_WORKER_RECEIPT = canonical_clone_v1(receipt)
+    _FAMILY11_GRAPH_WORKER_RECEIPT = graph_v1._prepare_loan_geography_receipt_v1(  # noqa: SLF001
+        receipt
+    )
 
 
 def _direct_full_worker_material(
@@ -1002,6 +1010,7 @@ def _whole_document_equivalences(
     *,
     batch_size: int,
     jobs: int = 1,
+    prepared_receipt: Any | None = None,
 ) -> tuple[
     tuple[dict[str, Any], ...],
     tuple[dict[str, Any] | None, ...],
@@ -1020,6 +1029,11 @@ def _whole_document_equivalences(
         or jobs <= 0
     ):
         raise _error("loan-geography direct oracle document denominator drifted")
+    local_receipt = (
+        graph_v1._prepare_loan_geography_receipt_v1(receipt)  # noqa: SLF001
+        if prepared_receipt is None
+        else prepared_receipt
+    )
     selections = tuple(
         (
             packet["document_ordinal"],
@@ -1052,7 +1066,7 @@ def _whole_document_equivalences(
             try:
                 records = (
                     tuple(
-                        _direct_full_worker_material(receipt, index, snapshot)
+                        _direct_full_worker_material(local_receipt, index, snapshot)
                         for index, snapshot in work
                     )
                     if executor is None
@@ -3081,11 +3095,13 @@ def build_authenticated_family_first_loan_geography_140_filing_schema_sweep_v1(
         query_spec=query_spec,
         receipt=receipt,
     )
+    prepared_receipt = graph_v1._prepare_loan_geography_receipt_v1(receipt)  # noqa: SLF001
     sparse_documents, packets, coverages = _sparse_graph_path(
         capability,
         receipt,
         batch_size=sparse_batch_size,
         jobs=sparse_jobs,
+        prepared_receipt=prepared_receipt,
     )
     sparse_finished = time.perf_counter()
 
@@ -3103,6 +3119,7 @@ def build_authenticated_family_first_loan_geography_140_filing_schema_sweep_v1(
         packets,
         batch_size=direct_full_batch_size,
         jobs=direct_full_jobs,
+        prepared_receipt=prepared_receipt,
     )
     direct_finished = time.perf_counter()
 

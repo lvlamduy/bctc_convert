@@ -18,6 +18,7 @@ import hashlib
 import stat
 import unicodedata
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
@@ -34,7 +35,9 @@ from bctc_ai.evaluation.accounting_table_axes_v1 import (
 )
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
+    canonical_json_bytes_v1,
     canonical_json_sha256_v1,
+    decode_canonical_json_bytes_v1,
     same_typed_json_v1,
 )
 
@@ -123,6 +126,58 @@ class LoanGeographyScopedTableAdapterV1Error(ValueError):
 
 def _error(message: str) -> LoanGeographyScopedTableAdapterV1Error:
     return LoanGeographyScopedTableAdapterV1Error(message)
+
+
+@dataclass(frozen=True, slots=True)
+class _PreparedReceiptOutcomeV1:
+    """Compact immutable worker view of one fully validated receipt outcome."""
+
+    document_evidence_root_sha256: str
+    document_id: str
+    document_ordinal: int
+    document_packet_id: str
+    outcome_id: str
+    selected_pages: tuple[int, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class _PreparedReceiptV1:
+    """Process-local receipt proof; never a persisted or public authority."""
+
+    canonical_payload_sha256: str
+    documents: tuple[_PreparedReceiptOutcomeV1, ...]
+    prepared_binding_sha256: str
+    query_spec_sha256: str
+    receipt_id: str
+    seal: object
+
+
+_PREPARED_RECEIPT_SEAL = object()
+
+
+def _prepared_receipt_material(
+    *,
+    canonical_payload_sha256: str,
+    documents: Sequence[_PreparedReceiptOutcomeV1],
+    query_spec_sha256: str,
+    receipt_id: str,
+) -> dict[str, Any]:
+    return {
+        "canonical_payload_sha256": canonical_payload_sha256,
+        "documents": [
+            {
+                "document_evidence_root_sha256": item.document_evidence_root_sha256,
+                "document_id": item.document_id,
+                "document_ordinal": item.document_ordinal,
+                "document_packet_id": item.document_packet_id,
+                "outcome_id": item.outcome_id,
+                "selected_pages": list(item.selected_pages),
+            }
+            for item in documents
+        ],
+        "query_spec_sha256": query_spec_sha256,
+        "receipt_id": receipt_id,
+    }
 
 
 # ``CANONICAL`` means the accounting wording itself is canonical.  A
@@ -707,7 +762,26 @@ def _content_address(value: Mapping[str, Any], *, prefix: str) -> dict[str, Any]
     return {**material, "result_id": prefix + canonical_json_sha256_v1(material)}
 
 
-def _receipt(value: Any) -> dict[str, Any]:
+def _validate_prepared_receipt_v1(value: _PreparedReceiptV1) -> _PreparedReceiptV1:
+    if value.seal is not _PREPARED_RECEIPT_SEAL:
+        raise _error("Family 11 prepared receipt seal drifted")
+    material = _prepared_receipt_material(
+        canonical_payload_sha256=value.canonical_payload_sha256,
+        documents=value.documents,
+        query_spec_sha256=value.query_spec_sha256,
+        receipt_id=value.receipt_id,
+    )
+    if value.prepared_binding_sha256 != canonical_json_sha256_v1(material):
+        raise _error("Family 11 prepared receipt binding drifted")
+    expected_query = build_loan_geography_region_query_spec_v2(_PROJECT_ROOT)
+    if value.query_spec_sha256 != canonical_json_sha256_v1(expected_query):
+        raise _error("Family 11 prepared receipt query trust closure drifted")
+    return value
+
+
+def _receipt(value: Any) -> _PreparedReceiptV1:
+    if type(value) is _PreparedReceiptV1:
+        return _validate_prepared_receipt_v1(value)
     if (
         type(value) is not dict
         or value.get("family_id") != FAMILY_ID
@@ -717,28 +791,69 @@ def _receipt(value: Any) -> dict[str, Any]:
         or not value["documents"]
     ):
         raise _error("Family 11 retrieval receipt identity drifted")
+    canonical_payload = canonical_json_bytes_v1(value)
+    typed_value = decode_canonical_json_bytes_v1(canonical_payload)
     expected_query = build_loan_geography_region_query_spec_v2(_PROJECT_ROOT)
-    if not same_typed_json_v1(value.get("query_spec"), expected_query):
+    if not same_typed_json_v1(typed_value.get("query_spec"), expected_query):
         raise _error("Family 11 receipt is not bound to the authoritative adapter query spec")
-    material = canonical_clone_v1(value)
+    material = dict(typed_value)
     receipt_id = material.pop("receipt_id")
     if receipt_id != "fffrrv2:receipt:" + canonical_json_sha256_v1(material):
         raise _error("Family 11 retrieval receipt content identity drifted")
-    for ordinal, outcome in enumerate(value["documents"], 1):
+    for ordinal, outcome in enumerate(typed_value["documents"], 1):
         if (
             type(outcome) is not dict
+            or type(outcome.get("document_ordinal")) is not int
             or outcome.get("document_ordinal") != ordinal
             or outcome.get("coverage_status") != "PROVEN_COMPLETE_FOR_DECLARED_SPEC"
+            or type(outcome.get("document_evidence_root_sha256")) is not str
+            or type(outcome.get("document_id")) is not str
+            or type(outcome.get("document_packet_id")) is not str
             or type(outcome.get("selected_pages")) is not list
+            or any(
+                type(page) is not int or page <= 0 for page in outcome.get("selected_pages", [])
+            )
             or outcome["selected_pages"] != sorted(set(outcome["selected_pages"]))
             or type(outcome.get("outcome_id")) is not str
         ):
             raise _error("Family 11 retrieval outcome coverage drifted")
-        outcome_material = canonical_clone_v1(outcome)
+        outcome_material = dict(outcome)
         outcome_id = outcome_material.pop("outcome_id")
         if outcome_id != "fffrrv2:document:" + canonical_json_sha256_v1(outcome_material):
             raise _error("Family 11 retrieval outcome content identity drifted")
-    return canonical_clone_v1(value)
+    documents = tuple(
+        _PreparedReceiptOutcomeV1(
+            document_evidence_root_sha256=outcome.get("document_evidence_root_sha256"),
+            document_id=outcome.get("document_id"),
+            document_ordinal=outcome["document_ordinal"],
+            document_packet_id=outcome.get("document_packet_id"),
+            outcome_id=outcome["outcome_id"],
+            selected_pages=tuple(outcome["selected_pages"]),
+        )
+        for outcome in typed_value["documents"]
+    )
+    canonical_payload_sha256 = hashlib.sha256(canonical_payload).hexdigest()
+    query_spec_sha256 = canonical_json_sha256_v1(expected_query)
+    prepared_material = _prepared_receipt_material(
+        canonical_payload_sha256=canonical_payload_sha256,
+        documents=documents,
+        query_spec_sha256=query_spec_sha256,
+        receipt_id=receipt_id,
+    )
+    return _PreparedReceiptV1(
+        canonical_payload_sha256=canonical_payload_sha256,
+        documents=documents,
+        prepared_binding_sha256=canonical_json_sha256_v1(prepared_material),
+        query_spec_sha256=query_spec_sha256,
+        receipt_id=receipt_id,
+        seal=_PREPARED_RECEIPT_SEAL,
+    )
+
+
+def _prepare_loan_geography_receipt_v1(value: Mapping[str, Any]) -> _PreparedReceiptV1:
+    """Validate and detach one raw receipt for repeated work in this process."""
+
+    return _receipt(value)
 
 
 def _snapshot(value: Any) -> dict[str, Any]:
@@ -1129,8 +1244,8 @@ def _validated_document_envelope(value: Any) -> dict[str, Any]:
 
 
 def _document(
-    receipt: Mapping[str, Any],
-    outcome: Mapping[str, Any],
+    receipt: _PreparedReceiptV1,
+    outcome: _PreparedReceiptOutcomeV1,
     snapshot: Mapping[str, Any],
     *,
     require_selected_axis: bool,
@@ -1139,12 +1254,12 @@ def _document(
     ordinal = packet["document_ordinal"]
     page_axis = [item["page_sequence"] for item in snapshot["joined_pages"]]
     if (
-        outcome["document_ordinal"] != ordinal
-        or outcome.get("document_id") != packet["document_id"]
-        or outcome.get("document_packet_id") != packet["packet_id"]
-        or outcome.get("document_evidence_root_sha256")
+        outcome.document_ordinal != ordinal
+        or outcome.document_id != packet["document_id"]
+        or outcome.document_packet_id != packet["packet_id"]
+        or outcome.document_evidence_root_sha256
         != packet.get("document_evidence_root_sha256")
-        or (require_selected_axis and page_axis != outcome["selected_pages"])
+        or (require_selected_axis and page_axis != list(outcome.selected_pages))
         or (not require_selected_axis and page_axis != list(range(1, packet["page_count"] + 1)))
     ):
         raise _error("Family 11 receipt/snapshot document or page binding drifted")
@@ -1183,8 +1298,8 @@ def _document(
             "document_evidence_root_sha256": packet["document_evidence_root_sha256"],
             "document_ordinal": ordinal,
             "document_packet_id": packet["packet_id"],
-            "outcome_id": outcome["outcome_id"],
-            "receipt_id": receipt["receipt_id"],
+            "outcome_id": outcome.outcome_id,
+            "receipt_id": receipt.receipt_id,
             "snapshot_id": snapshot["snapshot_id"],
         },
         "family_id": FAMILY_ID,
@@ -1249,7 +1364,7 @@ def build_loan_geography_scoped_graphs_v1(
     ordinals = [item["document_packet"]["document_ordinal"] for item in snapshots]
     if ordinals != sorted(set(ordinals)):
         raise _error("Family 11 snapshot document axis must be sorted and unique")
-    outcomes = {item["document_ordinal"]: item for item in typed_receipt["documents"]}
+    outcomes = {item.document_ordinal: item for item in typed_receipt.documents}
     documents = [
         _document(typed_receipt, outcomes[ordinal], snapshot, require_selected_axis=True)
         for ordinal, snapshot in zip(ordinals, snapshots, strict=True)
@@ -1277,8 +1392,8 @@ def build_loan_geography_scoped_graphs_v1(
             "selected_page_count": sum(len(item["joined_pages"]) for item in snapshots),
         },
         "receipt_binding": {
-            "receipt_id": typed_receipt["receipt_id"],
-            "source_document_count": len(typed_receipt["documents"]),
+            "receipt_id": typed_receipt.receipt_id,
+            "source_document_count": len(typed_receipt.documents),
         },
         "safety": canonical_clone_v1(_SAFETY),
         "spec": canonical_clone_v1(LOAN_GEOGRAPHY_SCOPED_TABLE_SPEC_V1),
@@ -1296,7 +1411,7 @@ def build_loan_geography_whole_document_scoped_graph_v1(
     typed_receipt = _receipt(receipt)
     typed_snapshot = _snapshot(snapshot)
     ordinal = typed_snapshot["document_packet"]["document_ordinal"]
-    outcome = typed_receipt["documents"][ordinal - 1]
+    outcome = typed_receipt.documents[ordinal - 1]
     return _document(typed_receipt, outcome, typed_snapshot, require_selected_axis=False)
 
 

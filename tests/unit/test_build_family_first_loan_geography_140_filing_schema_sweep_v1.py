@@ -235,6 +235,12 @@ def _install_worker_graph_stubs(
     disposition: str = "NOT_OBSERVED",
     upstream_control: bool = False,
 ) -> None:
+    monkeypatch.setattr(
+        sweep_v1.graph_v1,
+        "_prepare_loan_geography_receipt_v1",
+        lambda receipt: receipt,
+    )
+
     def whole(_receipt: dict, snapshot: dict) -> dict:
         packet = snapshot["document_packet"]
         return _bound_graph(
@@ -976,6 +982,11 @@ def test_direct_oracle_checks_actual_zero_line_page_and_line_denominators(
     )
     monkeypatch.setattr(
         sweep_v1.graph_v1,
+        "_prepare_loan_geography_receipt_v1",
+        lambda value: value,
+    )
+    monkeypatch.setattr(
+        sweep_v1.graph_v1,
         "build_loan_geography_whole_document_scoped_graph_v1",
         lambda *_args: _bound_graph(packet, snapshot_id="snapshot-1"),
     )
@@ -1274,6 +1285,11 @@ def test_direct_pool_surfaces_worker_failure_deterministically(
         "_selected_page_batches",
         lambda *_args, **_kwargs: iter((snapshots,)),
     )
+    monkeypatch.setattr(
+        sweep_v1.graph_v1,
+        "_prepare_loan_geography_receipt_v1",
+        lambda value: value,
+    )
 
     class FailingProcessPool(_ReverseProcessPool):
         def map(self, _function: object, _work: tuple, *, chunksize: int) -> list[dict]:
@@ -1322,6 +1338,66 @@ def test_sparse_pool_restores_out_of_order_results_and_matches_jobs_one(
     assert parallel == sequential
     assert [item["document_ordinal"] for item in parallel[0]] == [1, 2]
     assert [item["outcome_id"] for item in parallel[2]] == ["outcome-1", "outcome-2"]
+
+
+def test_jobs_one_prepares_receipt_once_per_sparse_or_direct_execution(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    receipt, snapshots, sparse = _worker_inputs()
+    packets = tuple(snapshot["document_packet"] for snapshot in snapshots)
+    _install_worker_graph_stubs(monkeypatch)
+    calls: list[str] = []
+
+    def prepare(value: dict) -> dict:
+        calls.append(value["receipt_id"])
+        return value
+
+    monkeypatch.setattr(sweep_v1.graph_v1, "_prepare_loan_geography_receipt_v1", prepare)
+    monkeypatch.setattr(sweep_v1, "_TARGET_DOCUMENT_COUNT", 2)
+    monkeypatch.setattr(
+        sweep_v1,
+        "_selected_page_batches",
+        lambda *_args, **_kwargs: iter((snapshots,)),
+    )
+
+    sweep_v1._sparse_graph_path(object(), receipt, batch_size=2, jobs=1)
+    assert calls == ["receipt"]
+    sweep_v1._whole_document_equivalences(
+        object(),
+        receipt,
+        sparse,
+        packets,
+        batch_size=2,
+        jobs=1,
+    )
+    assert calls == ["receipt", "receipt"]
+
+
+def test_pool_prepares_once_in_parent_and_once_in_initialized_worker_not_per_task(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    receipt, snapshots, _sparse = _worker_inputs()
+    _install_worker_graph_stubs(monkeypatch)
+    calls: list[str] = []
+
+    def prepare(value: dict) -> dict:
+        calls.append(value["receipt_id"])
+        return value
+
+    monkeypatch.setattr(sweep_v1.graph_v1, "_prepare_loan_geography_receipt_v1", prepare)
+    monkeypatch.setattr(sweep_v1, "_TARGET_DOCUMENT_COUNT", 2)
+    monkeypatch.setattr(sweep_v1, "ProcessPoolExecutor", _ReverseProcessPool)
+    monkeypatch.setattr(
+        sweep_v1,
+        "_selected_page_batches",
+        lambda *_args, **_kwargs: iter((snapshots,)),
+    )
+
+    sweep_v1._sparse_graph_path(object(), receipt, batch_size=2, jobs=2)
+
+    # The fake pool models one initialized worker.  Its two tasks reuse the
+    # prepared object; only the parent and initializer validate raw receipt.
+    assert calls == ["receipt", "receipt"]
 
 
 def test_worker_parent_order_gates_reject_boolean_source_indices(
