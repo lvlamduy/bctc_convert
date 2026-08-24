@@ -136,6 +136,15 @@ def _exact_graph() -> dict:
                     }
                 ],
                 "branch": {"page_sequence": 5},
+                "row_proposals": [
+                    {
+                        "evidence": [{"page_sequence": 5, "source_line_index": 0}],
+                        "proposal_id": "evidence-6058",
+                        "report_norm_id": 6058,
+                        "schema_parent_report_norm_id": 727,
+                        "status": "SCHEMA_ROW_TEXT_AND_GEOMETRY_PROPOSAL_REQUIRES_REPLAY",
+                    }
+                ],
             }
         ],
     }
@@ -153,6 +162,120 @@ def _projection() -> dict:
         "source_binding": {
             "document_page_count": 8,
         }
+    }
+
+
+def _flat_numeric_inputs(
+    layout: list[str],
+    *,
+    report_norm_id: int = 767,
+    first_pp: str = "100",
+    first_viet: str | None = None,
+) -> dict:
+    surfaces = [first_pp, "25.00", "90", "25.00"] if len(layout) == 4 else [first_pp, "90"]
+    viet_surfaces = list(surfaces)
+    viet_surfaces[0] = first_viet if first_viet is not None else first_pp
+
+    def value(sample_id: str, column: int, surface: str) -> dict:
+        return {
+            "column_ordinal": column,
+            "parsed_token": sweep_v1.parse_visible_financial_numeric_token_v1(surface),
+            "raw_prediction": surface,
+            "sample_id": sample_id,
+        }
+
+    lines = [
+        {
+            "numeric_recognition": {"raw_prediction": "", "reader_score": 1.0},
+            "sample_id": "label",
+            "vietocr_text": "Doanh nghiệp nhà nước",
+        }
+    ]
+    row_values = []
+    total_values = []
+    for column, (pp_surface, viet_surface) in enumerate(zip(surfaces, viet_surfaces, strict=True)):
+        sample_id = f"row-{column}"
+        row_values.append(value(sample_id, column, pp_surface))
+        lines.append(
+            {
+                "numeric_recognition": {"raw_prediction": pp_surface, "reader_score": 1.0},
+                "sample_id": sample_id,
+                "vietocr_text": viet_surface,
+            }
+        )
+    for column, surface in enumerate(surfaces):
+        sample_id = f"total-{column}"
+        total_values.append(value(sample_id, column, surface))
+        lines.append(
+            {
+                "numeric_recognition": {"raw_prediction": surface, "reader_score": 1.0},
+                "sample_id": sample_id,
+                "vietocr_text": surface,
+            }
+        )
+    parent = 727 if report_norm_id == 6058 else 766
+    binding = {
+        "binding_id": f"binding-{report_norm_id}",
+        "evidence_proposal_id": f"evidence-{report_norm_id}",
+        "foreign_branch_or_subsidiary_component": False,
+        "report_norm_id": report_norm_id,
+        "schema_parent_report_norm_id": parent,
+        "status": "UNIQUE_SCHEMA_BINDING_PROPOSAL_NO_MAPPING_AUTHORITY",
+    }
+    graph_region = {
+        "binding_proposals": [binding],
+        "row_proposals": [
+            {
+                "evidence": [{"page_sequence": 5, "source_line_index": 0}],
+                "proposal_id": binding["evidence_proposal_id"],
+                "report_norm_id": report_norm_id,
+                "schema_parent_report_norm_id": parent,
+                "status": "SCHEMA_ROW_TEXT_AND_GEOMETRY_PROPOSAL_REQUIRES_REPLAY",
+            }
+        ],
+    }
+    closure = {
+        "exact_total_candidates": [{"sample_ids": [item["sample_id"] for item in total_values]}],
+        "row_axis_id": "afrav1:axis:test",
+        "status": "CORROBORATED_EXACT_UNIQUE_TRAILING_TOTAL",
+        "unresolved_reasons": [],
+    }
+    schema_proposal = {
+        "evidence_proposal_id": binding["evidence_proposal_id"],
+        "graph_binding_id": binding["binding_id"],
+        "report_norm_id": report_norm_id,
+        "schema_parent_report_norm_id": parent,
+        "schema_projection_id": "lebspv1:projection:test",
+        "status": "LIVE_SCHEMA_IDENTITY_JOIN_PROPOSAL_ONLY_AWAITS_NUMERIC",
+    }
+    schema_proposal["proposal_id"] = "lef12s140v1:schema:" + canonical_json_sha256_v1(
+        schema_proposal
+    )
+    return {
+        "closure": closure,
+        "context": _context(layout),
+        "graph_region": graph_region,
+        "page_binding": [{"local_page_sequence": 1, "physical_page": 5}],
+        "pages": [{"lines": lines, "page_sequence": 1, "page_width": 1000}],
+        "row_axis": {
+            "metrics": {"missing_lane_count": 0},
+            "row_axis_id": "afrav1:axis:test",
+            "rows": [
+                {
+                    "label_match": {
+                        "end_source_line_index": 0,
+                        "page_sequence": 1,
+                        "source_line_index": 0,
+                    },
+                    "missing_column_ordinals": [],
+                    "role": "STATE_ENTERPRISE_LOANS",
+                    "role_kind": "ADDITIVE_CHILD",
+                    "values": row_values,
+                }
+            ],
+            "trailing_value_rows": [{"values": total_values}],
+        },
+        "schema_proposals": [schema_proposal],
     }
 
 
@@ -230,6 +353,249 @@ def test_live_schema_join_keeps_foreign_branch_at_6058_under_parent_727() -> Non
         sweep_v1._schema_binding_proposals(drifted, _schema())
 
 
+def test_flat_four_lane_numeric_gate_maps_money_and_retains_percent_only_as_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    inputs = _flat_numeric_inputs(
+        ["MONEY", "PERCENT", "MONEY", "PERCENT"],
+        first_pp="1.000",
+        first_viet="1,000",
+    )
+    monkeypatch.setattr(
+        sweep_v1.additive_v1,
+        "build_accounting_additive_table_closure_v1",
+        lambda *_args: inputs["closure"],
+    )
+
+    stage = sweep_v1._numeric_gate(
+        inputs["row_axis"],
+        inputs["context"],
+        inputs["pages"],
+        {},
+        inputs["graph_region"],
+        inputs["schema_proposals"],
+        inputs["page_binding"],
+    )
+
+    assert stage["status"] == "EXACT_FLAT_TABLE_NUMERIC_ACCOUNTING_AND_SCHEMA_BOUND"
+    assert stage["unresolved_reasons"] == []
+    assert len(stage["mapped_rows"]) == 1
+    assert [cell["column_ordinal"] for cell in stage["mapped_rows"][0]["money_cells"]] == [
+        0,
+        2,
+    ]
+    percent = [cell for cell in stage["numeric_cells"] if cell["unit"]["unit_kind"] == "PERCENT"]
+    assert len(percent) == 4
+    assert all(cell["emission_eligible"] is False for cell in percent)
+
+
+@pytest.mark.parametrize(
+    ("pp_surface", "viet_surface", "reason_prefix"),
+    [
+        ("-", "-", "PIXEL_DASH_EVIDENCE_REQUIRED:"),
+        ("100", "101", "PPOCRV6_VIETOCR_TYPED_TOKEN_CONFLICT:"),
+        ("+100", "100", "PPOCRV6_VIETOCR_TYPED_TOKEN_CONFLICT:"),
+        ("-0", "0", "PPOCRV6_VIETOCR_TYPED_TOKEN_CONFLICT:"),
+        ("-100", "(100)", "PPOCRV6_VIETOCR_TYPED_TOKEN_CONFLICT:"),
+    ],
+)
+def test_dash_or_cross_reader_conflict_never_uses_additive_closure_to_repair_a_cell(
+    monkeypatch: pytest.MonkeyPatch,
+    pp_surface: str,
+    viet_surface: str,
+    reason_prefix: str,
+) -> None:
+    inputs = _flat_numeric_inputs(["MONEY", "MONEY"], first_pp=pp_surface, first_viet=viet_surface)
+    monkeypatch.setattr(
+        sweep_v1.additive_v1,
+        "build_accounting_additive_table_closure_v1",
+        lambda *_args: inputs["closure"],
+    )
+
+    stage = sweep_v1._numeric_gate(
+        inputs["row_axis"],
+        inputs["context"],
+        inputs["pages"],
+        {},
+        inputs["graph_region"],
+        inputs["schema_proposals"],
+        inputs["page_binding"],
+    )
+
+    assert stage["status"] == "UNRESOLVED_NUMERIC_ACCOUNTING_OR_SCHEMA_GATES"
+    assert stage["mapped_rows"] == []
+    assert any(reason.startswith(reason_prefix) for reason in stage["unresolved_reasons"])
+
+
+@pytest.mark.parametrize("falsifier", ["VISIBLE_GROUP", "AMBIGUOUS_GRAPH_ROW"])
+def test_flat_gate_rejects_nested_or_source_only_population(
+    monkeypatch: pytest.MonkeyPatch,
+    falsifier: str,
+) -> None:
+    inputs = _flat_numeric_inputs(["MONEY", "MONEY"])
+    if falsifier == "VISIBLE_GROUP":
+        inputs["row_axis"]["rows"][0]["role_kind"] = "STRUCTURAL_GROUP"
+    else:
+        inputs["graph_region"]["row_proposals"].append(
+            {
+                "evidence": [{"page_sequence": 5, "source_line_index": 1}],
+                "proposal_id": "source-only-ambiguous",
+                "report_norm_id": None,
+                "schema_parent_report_norm_id": None,
+                "status": "DUPLICATE_SCHEMA_ROLE_SOURCE_ONLY_AMBIGUOUS",
+            }
+        )
+    monkeypatch.setattr(
+        sweep_v1.additive_v1,
+        "build_accounting_additive_table_closure_v1",
+        lambda *_args: inputs["closure"],
+    )
+
+    stage = sweep_v1._numeric_gate(
+        inputs["row_axis"],
+        inputs["context"],
+        inputs["pages"],
+        {},
+        inputs["graph_region"],
+        inputs["schema_proposals"],
+        inputs["page_binding"],
+    )
+
+    assert stage["mapped_rows"] == []
+    assert "NESTED_OR_SOURCE_ONLY_ROW_REQUIRES_DECLARED_CLOSURE" in stage["unresolved_reasons"]
+
+
+def test_flat_gate_rejects_an_extra_complete_additive_row(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    inputs = _flat_numeric_inputs(["MONEY", "MONEY"])
+    extra = copy.deepcopy(inputs["row_axis"]["rows"][0])
+    extra["label_match"]["source_line_index"] = 1
+    extra["label_match"]["end_source_line_index"] = 1
+    extra["role"] = "OTHER_COMPLETE_ADDITIVE_ROW"
+    lines = inputs["pages"][0]["lines"]
+    for value in extra["values"]:
+        source = next(line for line in lines if line["sample_id"] == value["sample_id"])
+        value["sample_id"] = "extra-" + value["sample_id"]
+        extra_line = copy.deepcopy(source)
+        extra_line["sample_id"] = value["sample_id"]
+        lines.append(extra_line)
+    inputs["row_axis"]["rows"].append(extra)
+    monkeypatch.setattr(
+        sweep_v1.additive_v1,
+        "build_accounting_additive_table_closure_v1",
+        lambda *_args: inputs["closure"],
+    )
+
+    stage = sweep_v1._numeric_gate(
+        inputs["row_axis"],
+        inputs["context"],
+        inputs["pages"],
+        {},
+        inputs["graph_region"],
+        inputs["schema_proposals"],
+        inputs["page_binding"],
+    )
+
+    assert stage["mapped_rows"] == []
+    assert "NESTED_OR_SOURCE_ONLY_ROW_REQUIRES_DECLARED_CLOSURE" in stage["unresolved_reasons"]
+
+
+def test_exact_crosslinks_reject_wrong_closure_axis_and_forged_rnid(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    inputs = _flat_numeric_inputs(["MONEY", "MONEY"])
+    monkeypatch.setattr(
+        sweep_v1.additive_v1,
+        "build_accounting_additive_table_closure_v1",
+        lambda *_args: inputs["closure"],
+    )
+    stage = sweep_v1._numeric_gate(
+        inputs["row_axis"],
+        inputs["context"],
+        inputs["pages"],
+        {},
+        inputs["graph_region"],
+        inputs["schema_proposals"],
+        inputs["page_binding"],
+    )
+    trial = {
+        "column_context": inputs["context"],
+        "graph_region": inputs["graph_region"],
+        "numeric_stage": stage,
+        "row_axis": inputs["row_axis"],
+        "schema_binding_proposals": inputs["schema_proposals"],
+        "sparse_topology_replays": [{"page_binding": inputs["page_binding"], "scan": {}}],
+    }
+    assert sweep_v1._valid_exact_trial_crosslinks(trial, "lebspv1:projection:test")
+
+    wrong_axis = copy.deepcopy(trial)
+    wrong_axis["numeric_stage"]["accounting_closure"]["row_axis_id"] = "afrav1:axis:wrong"
+    assert not sweep_v1._valid_exact_trial_crosslinks(wrong_axis, "lebspv1:projection:test")
+    forged_rnid = copy.deepcopy(trial)
+    forged_rnid["numeric_stage"]["mapped_rows"][0]["report_norm_id"] = 999999
+    assert not sweep_v1._valid_exact_trial_crosslinks(forged_rnid, "lebspv1:projection:test")
+
+
+def test_numeric_stage_exact_nested_schemas_reject_extra_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    inputs = _flat_numeric_inputs(["MONEY", "MONEY"])
+    monkeypatch.setattr(
+        sweep_v1.additive_v1,
+        "build_accounting_additive_table_closure_v1",
+        lambda *_args: inputs["closure"],
+    )
+    monkeypatch.setattr(sweep_v1.additive_v1, "_validate_result", lambda value: value)
+    stage = sweep_v1._numeric_gate(
+        inputs["row_axis"],
+        inputs["context"],
+        inputs["pages"],
+        {},
+        inputs["graph_region"],
+        inputs["schema_proposals"],
+        inputs["page_binding"],
+    )
+    assert sweep_v1._valid_numeric_stage(stage)
+
+    for forged in ("numeric_cell", "mapped_row", "mapped_cell"):
+        tampered = copy.deepcopy(stage)
+        target = {
+            "numeric_cell": tampered["numeric_cells"][0],
+            "mapped_row": tampered["mapped_rows"][0],
+            "mapped_cell": tampered["mapped_rows"][0]["money_cells"][0],
+        }[forged]
+        target["unexpected"] = True
+        assert not sweep_v1._valid_numeric_stage(tampered)
+
+
+def test_6058_requires_nested_source_group_closure_even_when_flat_total_closes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    inputs = _flat_numeric_inputs(["MONEY", "MONEY"], report_norm_id=6058)
+    monkeypatch.setattr(
+        sweep_v1.additive_v1,
+        "build_accounting_additive_table_closure_v1",
+        lambda *_args: inputs["closure"],
+    )
+
+    stage = sweep_v1._numeric_gate(
+        inputs["row_axis"],
+        inputs["context"],
+        inputs["pages"],
+        {},
+        inputs["graph_region"],
+        inputs["schema_proposals"],
+        inputs["page_binding"],
+    )
+
+    assert stage["mapped_rows"] == []
+    assert (
+        "NESTED_SOURCE_GROUP_CLOSURE_REQUIRED_FOR_REPORT_NORM_ID_6058"
+        in stage["unresolved_reasons"]
+    )
+
+
 def test_not_observed_requires_sparse_and_whole_topology_plus_whole_family12_graph(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -278,7 +644,7 @@ def test_not_observed_requires_sparse_and_whole_topology_plus_whole_family12_gra
     assert unresolved["structural_disposition"] == "UNRESOLVED"
 
 
-def test_exact_is_only_structurally_ready_and_full_snapshot_is_forbidden(
+def test_6058_structural_exact_stays_unresolved_without_nested_source_group_closure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     scan = _exact_scan()
@@ -297,6 +663,14 @@ def test_exact_is_only_structurally_ready_and_full_snapshot_is_forbidden(
         lambda value, *_args: value,
     )
     monkeypatch.setattr(sweep_v1, "_column_gate", lambda *_args: (_context(layout), layout))
+    unresolved_numeric = {
+        "accounting_closure": None,
+        "mapped_rows": [],
+        "numeric_cells": [],
+        "status": "UNRESOLVED_NUMERIC_ACCOUNTING_OR_SCHEMA_GATES",
+        "unresolved_reasons": ["NESTED_SOURCE_GROUP_CLOSURE_REQUIRED_FOR_REPORT_NORM_ID_6058"],
+    }
+    monkeypatch.setattr(sweep_v1, "_numeric_gate", lambda *_args: unresolved_numeric)
 
     trial = sweep_v1._trial(
         _document(_exact_graph()),
@@ -308,9 +682,9 @@ def test_exact_is_only_structurally_ready_and_full_snapshot_is_forbidden(
     )
 
     assert trial["structural_disposition"] == "EXACT"
-    assert trial["terminal_disposition"] == "STRUCTURALLY_READY_FOR_NUMERIC"
+    assert trial["terminal_disposition"] == "UNRESOLVED"
     assert trial["column_layout"] == layout
-    assert trial["numeric_stage"] == sweep_v1._NUMERIC_PLACEHOLDER
+    assert trial["numeric_stage"] == unresolved_numeric
     assert trial["whole_graph"] is None
     assert trial["schema_binding_proposals"][0]["report_norm_id"] == 6058
 
