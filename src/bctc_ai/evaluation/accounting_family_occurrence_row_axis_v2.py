@@ -274,6 +274,12 @@ _INTERNAL_UNASSIGNED_CLUSTER_STATUS = "SOURCE_ONLY_INTERNAL_UNASSIGNED_NUMERIC_C
 _OFF_LANE_NUMERIC_CLUSTER_STATUS = "SOURCE_ONLY_OFF_LANE_NUMERIC_CLUSTER"
 _EXTREME_MARGIN_FURNITURE_STATUS = "AUTHENTICATED_EXTREME_MARGIN_CHROMATIC_ANNOTATION_FURNITURE"
 _EXTREME_MARGIN_FURNITURE_OWNER_KIND = "AUTHENTICATED_EXTREME_MARGIN_FURNITURE"
+_EXTREME_MARGIN_ADMITTED_NUMERIC_CLASSIFICATIONS = {
+    "DASH_ZERO",
+    "MIXED_GROUPED_INTEGER_CANDIDATE",
+    "NOISE_SUFFIXED_GROUPED_INTEGER_CANDIDATE",
+    "SIGNED_NUMBER",
+}
 _EXTREME_MARGIN_RENDER_REASON_PREFIX = "EXTREME_MARGIN_ANNOTATION_RENDER_REQUIRED:PAGE_SEQUENCE:"
 _EXTREME_MARGIN_FURNITURE_FIELDS = {
     "candidate_crop_proof",
@@ -2977,6 +2983,15 @@ def _extreme_margin_line_record(line: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _extreme_margin_peer_surfaces_are_nonnumeric(line: Mapping[str, Any]) -> bool:
+    return all(
+        not any(character.isdigit() for character in surface)
+        and row_v1.parse_visible_financial_numeric_token_v1(surface)["classification"]
+        not in _EXTREME_MARGIN_ADMITTED_NUMERIC_CLASSIFICATIONS
+        for surface in (line["numeric_raw_prediction"], line["vietocr_text"])
+    )
+
+
 def _extreme_margin_band_axis(
     page: Mapping[str, Any], candidate: Mapping[str, Any]
 ) -> list[dict[str, Any]]:
@@ -3141,6 +3156,12 @@ def _build_authenticated_extreme_margin_furniture_evidence(
         line for line in margin_axis if line["line_ordinal"] == candidate["line_ordinal"]
     ]
     geometric_peers = _extreme_margin_geometric_peer_ordinals(margin_axis, candidate)
+    margin_by_ordinal = {line["line_ordinal"]: line for line in margin_axis}
+    geometric_peers = [
+        ordinal
+        for ordinal in geometric_peers
+        if _extreme_margin_peer_surfaces_are_nonnumeric(margin_by_ordinal[ordinal])
+    ]
     if len(candidate_records) != 1 or not _extreme_margin_has_bidirectional_peers(
         margin_axis, candidate, geometric_peers
     ):
@@ -3803,6 +3824,12 @@ def _validate_extreme_margin_furniture_evidence_axis(
             )
             or not set(peer_ordinals).issubset(
                 _extreme_margin_geometric_peer_ordinals(source_axis, candidate_lines[0])
+            )
+            or any(
+                not _extreme_margin_peer_surfaces_are_nonnumeric(
+                    next(line for line in source_axis if line["line_ordinal"] == ordinal)
+                )
+                for ordinal in peer_ordinals
             )
             or not _extreme_margin_has_bidirectional_peers(
                 source_axis, candidate_lines[0], peer_ordinals

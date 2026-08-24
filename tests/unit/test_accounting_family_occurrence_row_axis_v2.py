@@ -1234,6 +1234,65 @@ def test_extreme_margin_furniture_fails_closed_without_every_gate() -> None:
     assert in_lane["authenticated_extreme_margin_furniture_evidence"] == []
 
 
+@pytest.mark.parametrize(
+    ("numeric_channel", "numeric_surface", "expected_cluster_count"),
+    [
+        ("PP", "111", 3),
+        ("VIETOCR", "111", 1),
+        ("PP", "-", 3),
+        ("PP", "1.460,873", 3),
+        ("PP", "3.202.820 0UNG", 3),
+        ("PP", "1O0", 1),
+        ("VIETOCR", "123abc", 1),
+        ("PP", "DẤU ١", 1),
+        ("VIETOCR", "12/34", 1),
+        ("PP", "DẤU ²", 1),
+    ],
+)
+def test_chromatic_numeric_margin_peers_cannot_prove_furniture(
+    numeric_channel: str,
+    numeric_surface: str,
+    expected_cluster_count: int,
+) -> None:
+    pages, stamp_lines = _extreme_margin_fixture_pages()
+    peer_lines = [line for line in stamp_lines if line["vietocr_text"] != "304"]
+    for peer in peer_lines:
+        if numeric_channel == "PP":
+            peer["numeric_recognition"]["raw_prediction"] = numeric_surface
+        else:
+            peer["vietocr_text"] = numeric_surface
+    _scan, _candidates, _snapshot, axis = _build_authenticated_extreme_margin_fixture(
+        pages,
+        stamp_lines,
+        color="red",
+        with_render=True,
+    )
+
+    assert axis["authenticated_extreme_margin_furniture_evidence"] == []
+    assert len(axis["internal_unassigned_numeric_clusters"]) == expected_cluster_count
+    candidate_sample_id = next(
+        line["sample_id"] for line in stamp_lines if line["vietocr_text"] == "304"
+    )
+    candidate_cluster = next(
+        cluster
+        for cluster in axis["internal_unassigned_numeric_clusters"]
+        if candidate_sample_id in cluster["sample_ids"]
+    )
+    assert candidate_cluster["status"] in {
+        "SOURCE_ONLY_INTERNAL_UNASSIGNED_NUMERIC_CLUSTER",
+        "SOURCE_ONLY_OFF_LANE_NUMERIC_CLUSTER",
+    }
+    closure = closure_v2.build_accounting_scoped_hierarchical_table_closure_v2(
+        axis, _f3_spec(), _f3_hierarchy()
+    )
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert any(
+        "SOURCE_ONLY_INTERNAL_NUMERIC_CLUSTER_VETO" in reason
+        or "OFF_LANE_NUMERIC_SOURCE_ONLY_VETO" in reason
+        for reason in closure["unresolved_reasons"]
+    )
+
+
 def test_extreme_margin_furniture_coherent_band_and_owner_tamper_rejects() -> None:
     pages, stamp_lines = _extreme_margin_fixture_pages()
     scan, candidates, snapshot, axis = _build_authenticated_extreme_margin_fixture(
@@ -1266,6 +1325,66 @@ def test_extreme_margin_furniture_coherent_band_and_owner_tamper_rejects() -> No
     ):
         subject._validate_result(swapped)
 
+    for numeric_surface in ("111", "1O0"):
+        numeric_peer = copy.deepcopy(axis)
+        numeric_evidence = numeric_peer["authenticated_extreme_margin_furniture_evidence"][0]
+        peer_ordinal = numeric_evidence["margin_band"]["qualifying_peer_line_ordinals"][0]
+        margin_peer = next(
+            line
+            for line in numeric_evidence["margin_band"]["source_line_axis"]
+            if line["line_ordinal"] == peer_ordinal
+        )
+        crop_peer = next(
+            proof["source_line_record"]
+            for proof in numeric_evidence["peer_crop_proofs"]
+            if proof["source_line_record"]["line_ordinal"] == peer_ordinal
+        )
+        margin_peer["vietocr_text"] = numeric_surface
+        crop_peer["vietocr_text"] = numeric_surface
+        numeric_evidence["margin_band"]["source_line_axis_sha256"] = canonical_json_sha256_v1(
+            numeric_evidence["margin_band"]["source_line_axis"]
+        )
+        _coherently_rehash_furniture_axis(numeric_peer)
+        with pytest.raises(
+            subject.AccountingFamilyOccurrenceRowAxisV2Error,
+            match="repeated peer source binding",
+        ):
+            subject._validate_result(numeric_peer)
+
+    coherent_peer_relabel = copy.deepcopy(axis)
+    relabel_evidence = coherent_peer_relabel["authenticated_extreme_margin_furniture_evidence"][0]
+    peer_ordinal = relabel_evidence["margin_band"]["qualifying_peer_line_ordinals"][0]
+    margin_peer = next(
+        line
+        for line in relabel_evidence["margin_band"]["source_line_axis"]
+        if line["line_ordinal"] == peer_ordinal
+    )
+    crop_peer = next(
+        proof["source_line_record"]
+        for proof in relabel_evidence["peer_crop_proofs"]
+        if proof["source_line_record"]["line_ordinal"] == peer_ordinal
+    )
+    margin_peer["vietocr_text"] = "DẤU KHÁC"
+    margin_peer["sample_id"] = "forged-peer-sample"
+    crop_peer["vietocr_text"] = "DẤU KHÁC"
+    crop_peer["sample_id"] = "forged-peer-sample"
+    relabel_evidence["margin_band"]["source_line_axis_sha256"] = canonical_json_sha256_v1(
+        relabel_evidence["margin_band"]["source_line_axis"]
+    )
+    _coherently_rehash_furniture_axis(coherent_peer_relabel)
+    assert subject._validate_result(coherent_peer_relabel) == coherent_peer_relabel
+
+    bbox_drift = copy.deepcopy(axis)
+    bbox_drift["authenticated_extreme_margin_furniture_evidence"][0]["candidate_crop_proof"][
+        "render_binding"
+    ]["raw_pixel_bbox"][0] += 1
+    _coherently_rehash_furniture_axis(bbox_drift)
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="authenticated render binding",
+    ):
+        subject._validate_result(bbox_drift)
+
     coherent_pixel_hash = copy.deepcopy(axis)
     coherent_pixel_hash["authenticated_extreme_margin_furniture_evidence"][0][
         "candidate_crop_proof"
@@ -1289,6 +1408,26 @@ def test_extreme_margin_furniture_coherent_band_and_owner_tamper_rejects() -> No
     ):
         subject.validate_accounting_family_occurrence_row_axis_replay_v2(
             coherent_pixel_hash,
+            pages,
+            _f3_spec(),
+            scan,
+            candidates["regions"][0],
+            {
+                "format_version": subject.POLICY_FORMAT_VERSION,
+                "require_authenticated_existing_dash_pixels": True,
+                "retain_all_context_bound_role_occurrences": True,
+            },
+            effective_topology_region=binding["effective_topology_region"],
+            topology_candidates=candidates,
+            selected_snapshot=snapshot,
+            render_snapshots=(render,),
+        )
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="does not replay exactly",
+    ):
+        subject.validate_accounting_family_occurrence_row_axis_replay_v2(
+            coherent_peer_relabel,
             pages,
             _f3_spec(),
             scan,
