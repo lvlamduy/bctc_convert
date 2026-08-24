@@ -358,6 +358,9 @@ def test_query_rehashes_exact_adapter_and_rejects_dependency_drift(tmp_path: Pat
     reference = query["semantic_assignment_adapter_ref"]
     adapter = _PROJECT_ROOT / reference["path"]
 
+    assert retrieval_v1.family_first_region_query_spec_id_v2(query) == (
+        "fffrrv2:query:617ed316eba42a96db3a19f2437ac632462385a4c93bbc14ec91705f96de5839"
+    )
     assert reference["size_bytes"] == adapter.stat().st_size
     assert reference["sha256"] == hashlib.sha256(adapter.read_bytes()).hexdigest()
     for dependency in LOAN_ENTERPRISE_FAMILY12_REGION_QUERY_TRUST_CLOSURE_V2.values():

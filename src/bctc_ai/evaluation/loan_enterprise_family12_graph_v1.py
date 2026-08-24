@@ -123,8 +123,8 @@ LOAN_ENTERPRISE_FAMILY12_REGION_QUERY_TRUST_CLOSURE_V2 = {
     },
     "shared_scoped_table_engine_ref": {
         "path": "src/bctc_ai/evaluation/accounting_scoped_table_graph_v1.py",
-        "sha256": "f3b989062bba66b120567762b601feeda29c913a2fa002cb16b277eaa00b8784",
-        "size_bytes": 164_343,
+        "sha256": "347782a12e7da48d52807bf0a035e4df6727a05822b99c9566b72afe175de014",
+        "size_bytes": 178_406,
     },
     "family_spec_ref": {
         "path": "src/bctc_ai/evaluation/loan_enterprise_family12_spec_v1.py",
