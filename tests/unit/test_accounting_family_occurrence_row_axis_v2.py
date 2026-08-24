@@ -297,6 +297,71 @@ def _blank_region(raw_pixel_bbox: list[int]) -> dict[str, object]:
     }
 
 
+def _dash_rescue_region(
+    raw_pixel_bbox: list[int],
+    *,
+    width: int,
+    height: int,
+    include_noncentral_artifact: bool,
+) -> dict[str, object]:
+    image = Image.new("RGB", (40, 32), "white")
+    draw = ImageDraw.Draw(image)
+    left = 20 - width // 2
+    top = 16 - height // 2
+    draw.rectangle((left, top, left + width - 1, top + height - 1), fill="black")
+    if include_noncentral_artifact:
+        draw.rectangle((2, 2, 3, 3), fill="black")
+    stream = io.BytesIO()
+    image.save(stream, format="PNG", optimize=False, compress_level=9)
+    payload = stream.getvalue()
+    material = {
+        "authority": dict(region_v1._REGION_AUTHORITY),
+        "document_ordinal": 1,
+        "format_version": region_v1.FORMAT_VERSION,
+        "index_id": f"index-dash-{width}x{height}-{include_noncentral_artifact}",
+        "ink_localization_status": "GLYPH_COMPONENT_TIGHTENED_WITHIN_PROPOSED_CELL",
+        "physical_page": 1,
+        "proposed_raw_pixel_bbox": list(raw_pixel_bbox),
+        "recognition_raw_pixel_bbox": list(raw_pixel_bbox),
+        "region_png_ref": {
+            "sha256": hashlib.sha256(payload).hexdigest(),
+            "size_bytes": len(payload),
+        },
+        "render_id": f"render-dash-{width}x{height}-{include_noncentral_artifact}",
+        "render_ref": {
+            "pixel_height": 1200,
+            "pixel_width": 1000,
+            "sha256": "2" * 64,
+            "size_bytes": 100,
+        },
+        "state": "AUTHENTICATED_RENDER_CALLER_PROPOSED_REGION_CROP",
+        "white_border": [12, 8, 12, 8],
+    }
+    return {
+        **material,
+        "region_id": "ffaprv1:region:" + canonical_json_sha256_v1(material),
+        "region_png_bytes": payload,
+    }
+
+
+def _tiny_artifact_dash_region(raw_pixel_bbox: list[int]) -> dict[str, object]:
+    return _dash_rescue_region(
+        raw_pixel_bbox,
+        width=4,
+        height=2,
+        include_noncentral_artifact=True,
+    )
+
+
+def _clear_dash_region(raw_pixel_bbox: list[int]) -> dict[str, object]:
+    return _dash_rescue_region(
+        raw_pixel_bbox,
+        width=9,
+        height=4,
+        include_noncentral_artifact=False,
+    )
+
+
 def _optional_blank_v1_axis(*, partial: bool) -> dict:
     pages = _pages(
         [
@@ -912,6 +977,50 @@ def _build_f3(pages: list[dict[str, object]]) -> tuple[dict, dict]:
     return scan, axis
 
 
+def _f3_detector_dash_rescues(
+    pages: list[dict[str, object]],
+    *,
+    role: str,
+    region_builders: list,
+) -> tuple[dict, dict, tuple[dict[str, object], ...]]:
+    spec = _f3_spec()
+    parsed_pages = row_v1._pages(pages)
+    scan = topology_v1.build_accounting_family_topology_scan_v1(row_v1._topology_pages(pages), spec)
+    region = scan["regions"][0]
+    effective = total_v1.project_accounting_family_coextensive_parent_total_region_v1(
+        spec, scan, region
+    )
+    base = row_v1._build_axis(parsed_pages, scan, effective, ())
+    target = next(row for row in base["rows"] if row["role"] == role)
+    centers, visible_cells = row_v1._resolved_page_grid_inputs(
+        base["rows"], target, base["column_grids"]
+    )
+    label_indices = row_v1._match_source_line_indices(target["label_match"])
+    label_boxes = [
+        line["bbox"] for line in parsed_pages[0]["lines"] if line["line_ordinal"] in label_indices
+    ]
+    proposals = propose_missing_value_lane_regions_v1(
+        [{**line, "source_line_index": line["line_ordinal"]} for line in parsed_pages[0]["lines"]],
+        label_boxes=label_boxes,
+        is_numeric=row_v1._is_numeric,
+        page_width=1000,
+        page_height=1200,
+        resolved_column_centers=centers,
+        resolved_visible_value_cells=visible_cells,
+    )
+    assert len(proposals) == len(region_builders)
+    rescues = tuple(
+        {
+            "column_ordinal": proposal["column_ordinal"],
+            "page_sequence": 1,
+            "region": builder(proposal["raw_pixel_bbox"]),
+            "role": role,
+        }
+        for proposal, builder in zip(proposals, region_builders, strict=True)
+    )
+    return scan, effective, rescues
+
+
 def _coherently_rehash_occurrence(axis: dict) -> None:
     material = copy.deepcopy(axis)
     material.pop("occurrence_axis_id")
@@ -927,6 +1036,230 @@ def _coherently_replace_source_scope_binding(
         if row["label_match"].get("occurrence_id") == occurrence["occurrence_id"]:
             row["label_match"]["source_scope_binding"] = copy.deepcopy(receipt)
     axis["row_axis"] = subject._regenerate_v1_axis(axis["row_axis"])
+
+
+def test_f3_tiny_isolated_structural_rescue_becomes_owner_only_with_complete_subtree() -> None:
+    pages = _f3_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "", ""),
+            ("Tiền gửi không kỳ hạn", "", ""),
+            ("Bằng VND", "60", "50"),
+            ("Bằng ngoại tệ", "10", "10"),
+            ("Tiền gửi có kỳ hạn", "", ""),
+            ("Bằng VND", "30", "25"),
+            ("Bằng ngoại tệ", "0", "5"),
+            ("Cho vay các TCTD khác", "", ""),
+            ("Bằng VND", "50", "40"),
+        ]
+    )
+    scan, effective, rescues = _f3_detector_dash_rescues(
+        pages,
+        role="INTERBANK_DEPOSIT_GROUP",
+        region_builders=[_tiny_artifact_dash_region, _blank_region],
+    )
+    axis = subject.build_accounting_family_occurrence_row_axis_v2(
+        pages,
+        _f3_spec(),
+        scan,
+        scan["regions"][0],
+        {
+            "format_version": subject.POLICY_FORMAT_VERSION,
+            "require_authenticated_existing_dash_pixels": True,
+            "retain_all_context_bound_role_occurrences": True,
+        },
+        effective_topology_region=effective,
+        visible_dash_rescues=rescues,
+    )
+
+    deposit = next(
+        item for item in axis["role_occurrences"] if item["role"] == "INTERBANK_DEPOSIT_GROUP"
+    )
+    assert deposit["has_bound_value_row"] is False
+    assert all(
+        row["label_match"].get("occurrence_id") != deposit["occurrence_id"]
+        for row in axis["row_axis"]["rows"]
+    )
+    assert axis["row_axis"]["visible_dash_rescues"] == []
+    assert len(axis["structural_owner_only_rescue_rejections"]) == 1
+    evidence = axis["structural_owner_only_rescue_rejections"][0]
+    assert evidence["occurrence_id"] == deposit["occurrence_id"]
+    assert evidence["status"] == "STRUCTURAL_OWNER_ONLY_TINY_ISOLATED_RESCUE_REJECTED"
+    assert len(evidence["complete_descendant_occurrence_ids"]) >= 4
+    assert evidence["source_record"]["status"] == (
+        "PARTIAL_VISIBLE_VALUE_LANES_REQUIRES_PIXEL_RESCUE"
+    )
+    tiny = next(
+        item
+        for item in evidence["rejected_rescue_projections"]
+        if item["classification"] == "VISIBLE_HORIZONTAL_DASH_GLYPH"
+    )
+    assert tiny["dash_evidence"]["glyph_metrics"]["component_bbox"] == [18, 15, 22, 17]
+    assert tiny["dash_evidence"]["glyph_metrics"]["discarded_noncentral_component_count"] == 1
+    assert axis["status"] == (
+        "OCCURRENCE_ROW_AXIS_BOUND_WITH_AUTHENTICATED_EXISTING_DASHES_PROPOSAL_ONLY"
+    )
+
+    attacked = copy.deepcopy(axis)
+    attacked["structural_owner_only_rescue_rejections"][0]["source_record"]["role"] = (
+        "INTERBANK_LOAN_GROUP"
+    )
+    _coherently_rehash_occurrence(attacked)
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="owner-only rescue rejection",
+    ):
+        subject._validate_result(attacked)
+
+    removed = copy.deepcopy(axis)
+    removed["structural_owner_only_rescue_rejections"] = []
+    _coherently_rehash_occurrence(removed)
+    with pytest.raises(subject.AccountingFamilyOccurrenceRowAxisV2Error, match="replay exactly"):
+        subject.validate_accounting_family_occurrence_row_axis_replay_v2(
+            removed,
+            pages,
+            _f3_spec(),
+            scan,
+            scan["regions"][0],
+            {
+                "format_version": subject.POLICY_FORMAT_VERSION,
+                "require_authenticated_existing_dash_pixels": True,
+                "retain_all_context_bound_role_occurrences": True,
+            },
+            effective_topology_region=effective,
+            visible_dash_rescues=rescues,
+        )
+
+    forged_descendants = copy.deepcopy(axis)
+    forged_evidence = forged_descendants["structural_owner_only_rescue_rejections"][0]
+    forged_evidence["complete_descendant_occurrence_ids"] = [
+        item["occurrence_id"]
+        for item in forged_descendants["role_occurrences"]
+        if item["role"] in {"INTERBANK_LOAN_GROUP", "INTERBANK_LOAN_VND"}
+    ]
+    evidence_material = copy.deepcopy(forged_evidence)
+    evidence_material.pop("evidence_id")
+    forged_evidence["evidence_id"] = "aforav2:owner-only-rescue:" + canonical_json_sha256_v1(
+        evidence_material
+    )
+    _coherently_rehash_occurrence(forged_descendants)
+    with pytest.raises(
+        subject.AccountingFamilyOccurrenceRowAxisV2Error,
+        match="owner-only rescue rejection replay",
+    ):
+        subject._validate_result(forged_descendants)
+
+
+def test_f3_structural_rescue_rejection_requires_complete_subtree_and_tiny_artifact() -> None:
+    incomplete_pages = _f3_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "", ""),
+            ("Tiền gửi không kỳ hạn", "", ""),
+            ("Bằng VND", "100", "90"),
+            ("Cho vay các TCTD khác", "50", "40"),
+        ]
+    )
+    scan, effective, rescues = _f3_detector_dash_rescues(
+        incomplete_pages,
+        role="INTERBANK_DEPOSIT_GROUP",
+        region_builders=[_tiny_artifact_dash_region, _blank_region],
+    )
+    incomplete_axis = subject.build_accounting_family_occurrence_row_axis_v2(
+        incomplete_pages,
+        _f3_spec(),
+        scan,
+        scan["regions"][0],
+        {
+            "format_version": subject.POLICY_FORMAT_VERSION,
+            "require_authenticated_existing_dash_pixels": True,
+            "retain_all_context_bound_role_occurrences": True,
+        },
+        effective_topology_region=effective,
+        visible_dash_rescues=rescues,
+    )
+    incomplete_parent = next(
+        row
+        for row in incomplete_axis["row_axis"]["rows"]
+        if row["role"] == "INTERBANK_DEPOSIT_GROUP"
+    )
+    assert incomplete_parent["status"] == "PARTIAL_VISIBLE_VALUE_LANES_REQUIRES_PIXEL_RESCUE"
+    assert incomplete_axis["structural_owner_only_rescue_rejections"] == []
+    assert incomplete_axis["status"] == "UNRESOLVED_OCCURRENCE_ROW_AXIS_OR_EXISTING_DASH_EVIDENCE"
+
+    complete_pages = _f3_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "", ""),
+            ("Tiền gửi không kỳ hạn", "", ""),
+            ("Bằng VND", "60", "50"),
+            ("Bằng ngoại tệ", "10", "10"),
+            ("Tiền gửi có kỳ hạn", "", ""),
+            ("Bằng VND", "30", "25"),
+            ("Bằng ngoại tệ", "0", "5"),
+            ("Cho vay các TCTD khác", "50", "40"),
+        ]
+    )
+    scan, effective, rescues = _f3_detector_dash_rescues(
+        complete_pages,
+        role="INTERBANK_DEPOSIT_GROUP",
+        region_builders=[_clear_dash_region, _blank_region],
+    )
+    clear_axis = subject.build_accounting_family_occurrence_row_axis_v2(
+        complete_pages,
+        _f3_spec(),
+        scan,
+        scan["regions"][0],
+        {
+            "format_version": subject.POLICY_FORMAT_VERSION,
+            "require_authenticated_existing_dash_pixels": True,
+            "retain_all_context_bound_role_occurrences": True,
+        },
+        effective_topology_region=effective,
+        visible_dash_rescues=rescues,
+    )
+    clear_parent = next(
+        row for row in clear_axis["row_axis"]["rows"] if row["role"] == "INTERBANK_DEPOSIT_GROUP"
+    )
+    assert clear_parent["status"] == "PARTIAL_VISIBLE_VALUE_LANES_REQUIRES_PIXEL_RESCUE"
+    assert clear_parent["values"][0]["parsed_token"]["classification"] == "DASH_ZERO"
+    assert clear_axis["structural_owner_only_rescue_rejections"] == []
+
+
+def test_f3_normal_size_detector_dash_remains_owned_by_loan_foreign_currency_leaf() -> None:
+    pages = _f3_pages(
+        [
+            ("Tiền gửi tại các TCTD khác", "100", "90"),
+            ("Cho vay các TCTD khác", "50", "40"),
+            ("Bằng VND", "49", "40"),
+            ("Bằng ngoại tệ", "1", ""),
+        ]
+    )
+    scan, effective, rescues = _f3_detector_dash_rescues(
+        pages,
+        role="INTERBANK_LOAN_FOREIGN_CURRENCY",
+        region_builders=[_clear_dash_region],
+    )
+    axis = subject.build_accounting_family_occurrence_row_axis_v2(
+        pages,
+        _f3_spec(),
+        scan,
+        scan["regions"][0],
+        {
+            "format_version": subject.POLICY_FORMAT_VERSION,
+            "require_authenticated_existing_dash_pixels": True,
+            "retain_all_context_bound_role_occurrences": True,
+        },
+        effective_topology_region=effective,
+        visible_dash_rescues=rescues,
+    )
+
+    foreign = next(
+        row for row in axis["row_axis"]["rows"] if row["role"] == "INTERBANK_LOAN_FOREIGN_CURRENCY"
+    )
+    assert foreign["status"] == "VISIBLE_VALUE_LANES_BOUND"
+    assert [value["parsed_token"]["coefficient"] for value in foreign["values"]] == [1, 0]
+    assert axis["structural_owner_only_rescue_rejections"] == []
+    assert axis["row_axis"]["visible_dash_rescues"][0]["dash_evidence"]["glyph_metrics"][
+        "component_bbox"
+    ] == [16, 14, 25, 18]
 
 
 def test_f3_blank_discount_does_not_steal_vnd_total_at_close_row_gaps() -> None:

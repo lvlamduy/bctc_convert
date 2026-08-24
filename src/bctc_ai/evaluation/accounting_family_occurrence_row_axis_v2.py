@@ -95,6 +95,7 @@ _RESULT_FIELDS = {
     "row_axis",
     "safety",
     "status",
+    "structural_owner_only_rescue_rejections",
     "topology_candidates_id",
     "topology_scan_id",
     "unresolved_reasons",
@@ -218,6 +219,22 @@ _LOAN_SOURCE_SUBSCOPE_BOUNDARY_ROLES = {
     "EXPLICIT_FAMILY_TOTAL",
     "INTERBANK_LOAN_GROUP",
     "TOTAL_INTERBANK_PROVISION",
+}
+_STRUCTURAL_OWNER_ONLY_RESCUE_STATUS = "STRUCTURAL_OWNER_ONLY_TINY_ISOLATED_RESCUE_REJECTED"
+_STRUCTURAL_OWNER_ONLY_RESCUE_FIELDS = {
+    "complete_descendant_occurrence_ids",
+    "evidence_id",
+    "interval",
+    "occurrence_id",
+    "page_sequence",
+    "rejected_rescue_projections",
+    "role",
+    "source_record",
+    "status",
+}
+_STRUCTURAL_OWNER_ONLY_INTERVAL_FIELDS = {
+    "end_document_line_ordinal_exclusive",
+    "start_document_line_ordinal",
 }
 _INTERNAL_UNASSIGNED_CLUSTER_FIELDS = {
     "cluster_id",
@@ -2425,6 +2442,322 @@ def _authenticate_existing_dashes(
     return _regenerate_v1_axis(completed), projections, list(dict.fromkeys(reasons))
 
 
+def _is_tiny_isolated_structural_rescue(
+    projection: Mapping[str, Any],
+) -> bool:
+    """Reject one empirically grounded false-DASH shape, never a normal dash.
+
+    MBB's label-only deposit parent intersects a 4x2-pixel scan speck plus one
+    discarded noncentral artifact.  A genuine peer cell DASH in the same PDF
+    is 9x4 pixels with no discarded component.  Keep this rule intentionally
+    conjunctive and integer-based: it cannot reject a normal-size dash, a
+    peer-supported degraded mark, or a two-lane all-DASH row.
+    """
+
+    dash = projection.get("dash_evidence")
+    metrics = dash.get("glyph_metrics") if type(dash) is dict else None
+    bbox = metrics.get("component_bbox") if type(metrics) is dict else None
+    if (
+        projection.get("classification") != "VISIBLE_HORIZONTAL_DASH_GLYPH"
+        or projection.get("supporting_peer_dash_column_ordinal") is not None
+        or type(bbox) is not list
+        or len(bbox) != 4
+        or any(type(coordinate) is not int for coordinate in bbox)
+        or type(metrics.get("discarded_noncentral_component_count")) is not int
+        or metrics["discarded_noncentral_component_count"] < 1
+    ):
+        return False
+    width = bbox[2] - bbox[0]
+    height = bbox[3] - bbox[1]
+    return 0 < width <= 4 and 0 < height <= 2 and width * height <= 8
+
+
+def _structural_owner_only_descendants(
+    source_record: Mapping[str, Any],
+    matches: Sequence[Mapping[str, Any]],
+    row_by_occurrence: Mapping[str, Mapping[str, Any]],
+) -> tuple[list[str], dict[str, int]] | None:
+    """Prove one closed Family-3 deposit subtree after its label-only owner.
+
+    Demand/term headings are intentionally flattened topology roles, so sealed
+    V1 cannot see them as direct children of the deposit group.  V2 uses the
+    already declared Family-3 semantic interval: one deposit owner ends at the
+    next deposit owner or loan group.  Every visible numeric descendant in the
+    interval must be complete, every visible nonstructural semantic role must
+    own a row, and at least two complete descendants are required.  This only
+    decides whether an isolated rescue may be rejected; it grants no numeric,
+    accounting, or mapping authority.
+    """
+
+    match = source_record.get("label_match")
+    if (
+        source_record.get("role") != "INTERBANK_DEPOSIT_GROUP"
+        or source_record.get("role_kind") != "STRUCTURAL_GROUP"
+        or type(match) is not dict
+        or type(match.get("occurrence_id")) is not str
+    ):
+        return None
+    start = match.get("document_line_ordinal")
+    page_sequence = match.get("page_sequence")
+    if type(start) is not int or type(page_sequence) is not int:
+        return None
+    later_boundaries = [
+        item
+        for item in matches
+        if type(item.get("document_line_ordinal")) is int
+        and item["document_line_ordinal"] > start
+        and item.get("role") in {"INTERBANK_DEPOSIT_GROUP", "INTERBANK_LOAN_GROUP"}
+    ]
+    if not later_boundaries:
+        return None
+    boundary = min(later_boundaries, key=lambda item: item["document_line_ordinal"])
+    if (
+        boundary.get("role") != "INTERBANK_LOAN_GROUP"
+        or boundary.get("page_sequence") != page_sequence
+    ):
+        return None
+    end = boundary["document_line_ordinal"]
+    interval_occurrences = [
+        item
+        for item in matches
+        if type(item.get("document_line_ordinal")) is int
+        and start < item["document_line_ordinal"] < end
+        and item.get("role") in _DEPOSIT_SEMANTIC_INTERVAL_ROLES
+        and item.get("role") != "INTERBANK_DEPOSIT_GROUP"
+    ]
+    if not interval_occurrences:
+        return None
+    if any(item.get("page_sequence") != page_sequence for item in interval_occurrences):
+        return None
+    complete_ids: list[str] = []
+    for item in interval_occurrences:
+        occurrence_id = item.get("occurrence_id")
+        if type(occurrence_id) is not str:
+            return None
+        row = row_by_occurrence.get(occurrence_id)
+        if row is not None:
+            if row.get("status") != "VISIBLE_VALUE_LANES_BOUND":
+                return None
+            complete_ids.append(occurrence_id)
+            continue
+        if item.get("role_kind") != "STRUCTURAL_GROUP":
+            return None
+        direct_complete_children = [
+            child
+            for child in interval_occurrences
+            if child.get("scope_owner_occurrence_id") == occurrence_id
+            and row_by_occurrence.get(child.get("occurrence_id"), {}).get("status")
+            == "VISIBLE_VALUE_LANES_BOUND"
+        ]
+        if not direct_complete_children:
+            return None
+    if len(complete_ids) < 2:
+        return None
+    return sorted(complete_ids), {
+        "end_document_line_ordinal_exclusive": end,
+        "start_document_line_ordinal": start,
+    }
+
+
+def _project_structural_owner_only_rescue_rejections(
+    axis: Mapping[str, Any],
+    matches: Sequence[Mapping[str, Any]],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Remove only a tiny isolated false rescue from a proved structural owner."""
+
+    completed = canonical_clone_v1(axis)
+    row_by_occurrence = {row["label_match"].get("occurrence_id"): row for row in completed["rows"]}
+    rescue_by_region = {item["region_id"]: item for item in completed["visible_dash_rescues"]}
+    rejected_occurrence_ids: set[str] = set()
+    rejected_region_ids: set[str] = set()
+    evidence_axis: list[dict[str, Any]] = []
+    for source_record in completed["rows"]:
+        match = source_record["label_match"]
+        occurrence_id = match.get("occurrence_id")
+        if (
+            type(occurrence_id) is not str
+            or source_record.get("role_kind") != "STRUCTURAL_GROUP"
+            or source_record.get("status") != "PARTIAL_VISIBLE_VALUE_LANES_REQUIRES_PIXEL_RESCUE"
+            or len(source_record.get("values", [])) != 1
+            or not source_record.get("missing_column_ordinals")
+        ):
+            continue
+        value = source_record["values"][0]
+        admitted = rescue_by_region.get(value.get("sample_id"))
+        if admitted is None or not _is_tiny_isolated_structural_rescue(admitted):
+            continue
+        page = match.get("page_sequence")
+        role = source_record.get("role")
+        role_page_rows = [
+            row
+            for row in completed["rows"]
+            if row.get("role") == role and row.get("label_match", {}).get("page_sequence") == page
+        ]
+        role_page_matches = [
+            item
+            for item in matches
+            if item.get("role") == role and item.get("page_sequence") == page
+        ]
+        if (
+            len(role_page_rows) != 1
+            or len(role_page_matches) != 1
+            or role_page_matches[0].get("occurrence_id") != occurrence_id
+        ):
+            continue
+        projections = sorted(
+            (
+                item
+                for item in completed["visible_dash_rescues"]
+                if item.get("page_sequence") == page and item.get("role") == role
+            ),
+            key=lambda item: item["column_ordinal"],
+        )
+        lane_ordinals = sorted(
+            [item["column_ordinal"] for item in source_record["values"]]
+            + source_record["missing_column_ordinals"]
+        )
+        if (
+            len(projections) != len(lane_ordinals)
+            or [item["column_ordinal"] for item in projections] != lane_ordinals
+            or sum(
+                item["classification"] == "VISIBLE_HORIZONTAL_DASH_GLYPH" for item in projections
+            )
+            != 1
+            or any(
+                item is not admitted and item["classification"] != "UNRESOLVED_NOT_ONE_DASH_GLYPH"
+                for item in projections
+            )
+        ):
+            continue
+        descendant_proof = _structural_owner_only_descendants(
+            source_record,
+            matches,
+            row_by_occurrence,
+        )
+        if descendant_proof is None:
+            continue
+        complete_descendant_ids, interval = descendant_proof
+        material = {
+            "complete_descendant_occurrence_ids": complete_descendant_ids,
+            "interval": interval,
+            "occurrence_id": occurrence_id,
+            "page_sequence": page,
+            "rejected_rescue_projections": canonical_clone_v1(projections),
+            "role": role,
+            "source_record": canonical_clone_v1(source_record),
+            "status": _STRUCTURAL_OWNER_ONLY_RESCUE_STATUS,
+        }
+        evidence_axis.append(
+            {
+                **material,
+                "evidence_id": "aforav2:owner-only-rescue:" + canonical_json_sha256_v1(material),
+            }
+        )
+        rejected_occurrence_ids.add(occurrence_id)
+        rejected_region_ids.update(item["region_id"] for item in projections)
+    if not evidence_axis:
+        return completed, []
+    completed["rows"] = [
+        row
+        for row in completed["rows"]
+        if row["label_match"].get("occurrence_id") not in rejected_occurrence_ids
+    ]
+    completed["visible_dash_rescues"] = [
+        item
+        for item in completed["visible_dash_rescues"]
+        if item["region_id"] not in rejected_region_ids
+    ]
+    return _regenerate_v1_axis(completed), evidence_axis
+
+
+def _validate_structural_owner_only_rescue_rejections(
+    evidence_axis: Any,
+    axis: Mapping[str, Any],
+    occurrences: Sequence[Mapping[str, Any]],
+) -> None:
+    if type(evidence_axis) is not list or len(evidence_axis) > _MAX_ROLE_OCCURRENCES:
+        raise _error("structural owner-only rescue rejection axis drifted")
+    occurrence_by_id = {item["occurrence_id"]: item for item in occurrences}
+    evidence_ids: list[str] = []
+    occurrence_ids: list[str] = []
+    region_ids: list[str] = []
+    restored = canonical_clone_v1(axis)
+    for evidence in evidence_axis:
+        source = evidence.get("source_record") if type(evidence) is dict else None
+        projections = (
+            evidence.get("rejected_rescue_projections") if type(evidence) is dict else None
+        )
+        interval = evidence.get("interval") if type(evidence) is dict else None
+        occurrence = occurrence_by_id.get(
+            evidence.get("occurrence_id", "") if type(evidence) is dict else ""
+        )
+        if (
+            type(evidence) is not dict
+            or set(evidence) != _STRUCTURAL_OWNER_ONLY_RESCUE_FIELDS
+            or evidence["status"] != _STRUCTURAL_OWNER_ONLY_RESCUE_STATUS
+            or type(evidence["evidence_id"]) is not str
+            or type(evidence["occurrence_id"]) is not str
+            or type(evidence["role"]) is not str
+            or type(evidence["page_sequence"]) is not int
+            or evidence["page_sequence"] <= 0
+            or type(evidence["complete_descendant_occurrence_ids"]) is not list
+            or len(evidence["complete_descendant_occurrence_ids"]) < 2
+            or len(evidence["complete_descendant_occurrence_ids"])
+            != len(set(evidence["complete_descendant_occurrence_ids"]))
+            or type(interval) is not dict
+            or set(interval) != _STRUCTURAL_OWNER_ONLY_INTERVAL_FIELDS
+            or any(type(value) is not int for value in interval.values())
+            or interval["start_document_line_ordinal"]
+            >= interval["end_document_line_ordinal_exclusive"]
+            or type(source) is not dict
+            or source.get("label_match", {}).get("occurrence_id") != evidence["occurrence_id"]
+            or source.get("role") != evidence["role"]
+            or source.get("label_match", {}).get("page_sequence") != evidence["page_sequence"]
+            or type(projections) is not list
+            or len(projections) < 2
+            or type(occurrence) is not dict
+            or occurrence["role"] != evidence["role"]
+            or occurrence["role_kind"] != "STRUCTURAL_GROUP"
+            or occurrence["has_bound_value_row"] is not False
+            or not same_typed_json_v1(occurrence["label_match"], source["label_match"])
+            or any(
+                type(item) is not dict
+                or item.get("role") != evidence["role"]
+                or item.get("page_sequence") != evidence["page_sequence"]
+                or type(item.get("region_id")) is not str
+                for item in projections
+            )
+        ):
+            raise _error("structural owner-only rescue rejection evidence drifted")
+        material = canonical_clone_v1(evidence)
+        evidence_id = material.pop("evidence_id")
+        if evidence_id != "aforav2:owner-only-rescue:" + canonical_json_sha256_v1(material):
+            raise _error("structural owner-only rescue rejection identity drifted")
+        evidence_ids.append(evidence_id)
+        occurrence_ids.append(evidence["occurrence_id"])
+        region_ids.extend(item["region_id"] for item in projections)
+        restored["rows"].append(canonical_clone_v1(source))
+        restored["visible_dash_rescues"].extend(canonical_clone_v1(projections))
+    if (
+        len(evidence_ids) != len(set(evidence_ids))
+        or len(occurrence_ids) != len(set(occurrence_ids))
+        or len(region_ids) != len(set(region_ids))
+        or set(region_ids) & {item["region_id"] for item in axis["visible_dash_rescues"]}
+    ):
+        raise _error("structural owner-only rescue rejection ownership repeats")
+    if not evidence_axis:
+        return
+    restored = _regenerate_v1_axis(restored)
+    replayed_axis, replayed_evidence = _project_structural_owner_only_rescue_rejections(
+        restored,
+        [item["label_match"] for item in occurrences],
+    )
+    if not same_typed_json_v1(replayed_axis, axis) or not same_typed_json_v1(
+        replayed_evidence, evidence_axis
+    ):
+        raise _error("structural owner-only rescue rejection replay drifted")
+
+
 def _numeric_universe_record(
     value: Mapping[str, Any],
     *,
@@ -2952,6 +3285,8 @@ def _validate_result(value: Any) -> dict[str, Any]:
         or len(value["authenticated_existing_dash_evidence"]) > _MAX_EXISTING_DASH_CELLS
         or type(value["coextensive_structural_numeric_evidence"]) is not list
         or len(value["coextensive_structural_numeric_evidence"]) > _MAX_ROLE_OCCURRENCES
+        or type(value["structural_owner_only_rescue_rejections"]) is not list
+        or len(value["structural_owner_only_rescue_rejections"]) > _MAX_ROLE_OCCURRENCES
         or not same_typed_json_v1(value["dependency_content_refs"], _dependency_refs())
         or type(value["unresolved_reasons"]) is not list
         or any(type(reason) is not str or not reason for reason in value["unresolved_reasons"])
@@ -3209,6 +3544,11 @@ def _validate_result(value: Any) -> dict[str, Any]:
             or expected_owner["occurrence_id"] != item["scope_owner_occurrence_id"]
         ):
             raise _error("role occurrence nearest visual parent replay drifted")
+    _validate_structural_owner_only_rescue_rejections(
+        value["structural_owner_only_rescue_rejections"],
+        axis,
+        value["role_occurrences"],
+    )
     for item in value["role_occurrences"]:
         _validate_source_scope_binding(
             item["source_scope_binding"],
@@ -3820,6 +4160,9 @@ def _build(
         selected_snapshot=selected_snapshot,
         render_snapshots=render_snapshots,
     )
+    axis, structural_owner_only_rescue_rejections = (
+        _project_structural_owner_only_rescue_rejections(axis, row_matches)
+    )
     try:
         axis, coextensive_evidence = (
             total_v1.project_accounting_family_coextensive_structural_numeric_rows_v1(
@@ -3891,6 +4234,7 @@ def _build(
         ),
         "topology_candidates_id": topology_candidates_id,
         "topology_scan_id": scan["scan_id"],
+        "structural_owner_only_rescue_rejections": (structural_owner_only_rescue_rejections),
         "unresolved_reasons": list(dict.fromkeys(reasons)),
     }
     return _validate_result(

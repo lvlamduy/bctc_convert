@@ -212,8 +212,8 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEPENDENCIES = {
     "occurrence_row_axis_v2": {
         "path": "src/bctc_ai/evaluation/accounting_family_occurrence_row_axis_v2.py",
-        "sha256": "75cd8b9e6ff69663739cf74f366a0e1b542a54c78c278dda2bb428021982ff87",
-        "size_bytes": 176_404,
+        "sha256": "05c15cb89ae90ee475ddabfef19831cba00b28b7f808d7d1aaab43e59654930d",
+        "size_bytes": 191_272,
     },
     "topology_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
@@ -767,10 +767,12 @@ def _rounding_assessment(
 ) -> dict[str, Any] | None:
     """Test one exhaustive printed sum in integer display-unit space.
 
-    Every contributing source sample is one independently printed component.
-    The separately printed result contributes the final half-unit uncertainty,
-    giving the exact rational bound ``2 * abs(residual) <= n + 1``.  No value
-    is replaced by the component sum and no floating-point tolerance enters.
+    Every ``SIGNED_NUMBER`` source sample is one independently rounded printed
+    component.  An authenticated ``DASH_ZERO`` remains exact visible zero but
+    contributes no half-unit uncertainty.  The separately printed signed-number
+    result contributes the final half-unit, giving the exact rational bound
+    ``2 * abs(residual) <= numeric_component_count + 1``.  No value is replaced
+    by the component sum and no floating-point tolerance enters.
     """
 
     residuals = _residuals(printed["values"], component["values"])
@@ -840,7 +842,8 @@ def _rounding_assessment(
             or set(printed_samples) & set(component_samples)
             or precision_sample_ids != component_samples
             or any(
-                cell.get("classification") != "SIGNED_NUMBER" for cell in printed_component_cells
+                cell.get("classification") not in {"DASH_ZERO", "SIGNED_NUMBER"}
+                for cell in printed_component_cells
             )
             or printed_result_cells[0].get("classification") != "SIGNED_NUMBER"
             or any(
@@ -851,6 +854,10 @@ def _rounding_assessment(
                 or number["scale"] != 0
                 for number in precision_numbers
             )
+            or any(
+                cell["classification"] == "DASH_ZERO" and cell["number"]["coefficient"] != 0
+                for cell in printed_component_cells
+            )
             or (
                 printed_number["coefficient"] != 0
                 and component_number["coefficient"] != 0
@@ -858,7 +865,11 @@ def _rounding_assessment(
             )
         ):
             return None
-        component_count = len(component_samples)
+        component_count = sum(
+            cell["classification"] == "SIGNED_NUMBER" for cell in printed_component_cells
+        )
+        if component_count < 1:
+            return None
         twice_absolute_residual = 2 * abs(residual_number["coefficient"])
         bound = component_count + 1
         lanes.append(
@@ -892,8 +903,10 @@ def _rounding_assessment(
         "component_roles": list(component_roles),
         "lanes": lanes,
         "policy": (
-            "ALL_PRINTED_CELLS_INTEGER_DISPLAY_UNIT_AND_SAME_NONZERO_RESULT_SUM_SIGN;"
-            "2*ABS(PRINTED_MINUS_COMPONENT_SUM)<=INDEPENDENTLY_PRINTED_COMPONENT_COUNT+1"
+            "RESULT_AND_NON_DASH_COMPONENTS_SIGNED_INTEGER_DISPLAY_UNIT;"
+            "AUTHENTICATED_DASH_ZERO_EXACT_ZERO_EXCLUDED_FROM_ROUNDING_COUNT;"
+            "SAME_NONZERO_RESULT_SUM_SIGN;2*ABS(PRINTED_MINUS_COMPONENT_SUM)<="
+            "INDEPENDENTLY_PRINTED_NUMERIC_COMPONENT_COUNT+1"
         ),
         "printed_result_owner": printed_result_owner,
         "result_role": result_role,
@@ -2221,9 +2234,10 @@ def _validate_rounding_evidence_axis(
             != {"candidate_ordinal", "occurrence_id", "role", "source_kind"}
             or evidence["policy"]
             != (
-                "ALL_PRINTED_CELLS_INTEGER_DISPLAY_UNIT_AND_SAME_NONZERO_RESULT_SUM_SIGN;"
-                "2*ABS(PRINTED_MINUS_COMPONENT_SUM)<="
-                "INDEPENDENTLY_PRINTED_COMPONENT_COUNT+1"
+                "RESULT_AND_NON_DASH_COMPONENTS_SIGNED_INTEGER_DISPLAY_UNIT;"
+                "AUTHENTICATED_DASH_ZERO_EXACT_ZERO_EXCLUDED_FROM_ROUNDING_COUNT;"
+                "SAME_NONZERO_RESULT_SUM_SIGN;2*ABS(PRINTED_MINUS_COMPONENT_SUM)<="
+                "INDEPENDENTLY_PRINTED_NUMERIC_COMPONENT_COUNT+1"
             )
             or (
                 evidence["candidate_ordinal"] is not None
@@ -2251,7 +2265,6 @@ def _validate_rounding_evidence_axis(
         if type(residual) is not dict or len(residual["lanes"]) != len(evidence["lanes"]):
             raise _error("rounding assessment lost its exact typed residual evidence")
         lane_statuses = []
-        component_counts = set()
         printed_owner = evidence["printed_result_owner"]
         if printed_owner["source_kind"] == "TRAILING_VALUE_ROW":
             printed_owner_valid = (
@@ -2283,11 +2296,23 @@ def _validate_rounding_evidence_axis(
             number = lane.get("residual_number") if type(lane) is dict else None
             component_samples = residual_lane["component_source_sample_ids"]
             printed_samples = residual_lane["printed_result_source_sample_ids"]
-            expected_count = len(component_samples)
+            expected_source_count = len(component_samples)
             printed_component_cells = (
                 lane.get("printed_component_cells") if type(lane) is dict else None
             )
             printed_result_cell = lane.get("printed_result_cell") if type(lane) is dict else None
+            component_universe_samples = [
+                numeric_sample_by_id.get(sample_id) for sample_id in component_samples
+            ]
+            component_classifications = [
+                sample.get("parsed_token", {}).get("classification")
+                if type(sample) is dict
+                else None
+                for sample in component_universe_samples
+            ]
+            numeric_component_count = sum(
+                classification == "SIGNED_NUMBER" for classification in component_classifications
+            )
             if (
                 type(lane) is not dict
                 or set(lane)
@@ -2315,7 +2340,7 @@ def _validate_rounding_evidence_axis(
                 or len(printed_samples) != 1
                 or set(printed_samples) & set(component_samples)
                 or type(printed_component_cells) is not list
-                or len(printed_component_cells) != expected_count
+                or len(printed_component_cells) != expected_source_count
                 or any(
                     type(cell) is not dict
                     or set(cell) != {"number", "source_sample_id"}
@@ -2345,9 +2370,14 @@ def _validate_rounding_evidence_axis(
                     is not (residual_lane["component_sum_number"]["coefficient"] > 0)
                 )
                 or type(lane["independently_printed_component_count"]) is not int
-                or lane["independently_printed_component_count"] != expected_count
+                or numeric_component_count < 1
+                or any(
+                    classification not in {"DASH_ZERO", "SIGNED_NUMBER"}
+                    for classification in component_classifications
+                )
+                or lane["independently_printed_component_count"] != numeric_component_count
                 or type(lane["bound_component_count_plus_one"]) is not int
-                or lane["bound_component_count_plus_one"] != expected_count + 1
+                or lane["bound_component_count_plus_one"] != numeric_component_count + 1
                 or type(lane["twice_absolute_residual"]) is not int
                 or lane["twice_absolute_residual"] != 2 * abs(number["coefficient"])
                 or lane["status"]
@@ -2398,7 +2428,7 @@ def _validate_rounding_evidence_axis(
                     expected_component_ids.extend(owned_lane_samples)
             if component_ids != expected_component_ids:
                 raise _error("rounding component count is not derived from selected source roles")
-            for cell in [*printed_component_cells, printed_result_cell]:
+            for cell in printed_component_cells:
                 sample = numeric_sample_by_id.get(cell["source_sample_id"])
                 parsed = sample.get("parsed_token") if type(sample) is dict else None
                 sample_number = (
@@ -2414,10 +2444,39 @@ def _validate_rounding_evidence_axis(
                     type(sample) is not dict
                     or sample.get("column_ordinal") != expected_lane
                     or type(parsed) is not dict
-                    or parsed.get("classification") != "SIGNED_NUMBER"
+                    or parsed.get("classification") not in {"DASH_ZERO", "SIGNED_NUMBER"}
+                    or (
+                        parsed.get("classification") == "DASH_ZERO"
+                        and parsed.get("coefficient") != 0
+                    )
                     or not same_typed_json_v1(cell["number"], sample_number)
                 ):
                     raise _error("rounding printed cell differs from its numeric universe sample")
+            result_sample_for_classification = numeric_sample_by_id.get(
+                printed_result_cell["source_sample_id"]
+            )
+            result_parsed = (
+                result_sample_for_classification.get("parsed_token")
+                if type(result_sample_for_classification) is dict
+                else None
+            )
+            result_sample_number = (
+                {
+                    "coefficient": result_parsed.get("coefficient"),
+                    "percentage_mark_present": result_parsed.get("percentage_mark_present"),
+                    "scale": result_parsed.get("scale"),
+                }
+                if type(result_parsed) is dict
+                else None
+            )
+            if (
+                type(result_sample_for_classification) is not dict
+                or result_sample_for_classification.get("column_ordinal") != expected_lane
+                or type(result_parsed) is not dict
+                or result_parsed.get("classification") != "SIGNED_NUMBER"
+                or not same_typed_json_v1(printed_result_cell["number"], result_sample_number)
+            ):
+                raise _error("rounding printed result is not one signed numeric universe sample")
             result_sample = numeric_sample_by_id[printed_result_cell["source_sample_id"]]
             if evidence["candidate_ordinal"] is not None:
                 result_owner_valid = (
@@ -2447,7 +2506,6 @@ def _validate_rounding_evidence_axis(
             if not result_owner_valid:
                 raise _error("rounding printed result lost its exact selected source owner")
             lane_statuses.append(lane["status"])
-            component_counts.add(expected_count)
         expected_status = (
             "ROUNDING_BOUND_SATISFIED_ALL_LANES"
             if all(
@@ -2455,7 +2513,7 @@ def _validate_rounding_evidence_axis(
             )
             else "ROUNDING_BOUND_EXCEEDED_AT_LEAST_ONE_LANE"
         )
-        if len(component_counts) != 1 or evidence["status"] != expected_status:
+        if evidence["status"] != expected_status:
             raise _error("scoped hierarchical integer rounding assessment drifted")
     if len(keys) != len(set(keys)):
         raise _error("scoped hierarchical rounding assessment ownership repeats")

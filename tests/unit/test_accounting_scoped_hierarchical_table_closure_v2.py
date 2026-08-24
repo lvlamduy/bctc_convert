@@ -1,16 +1,23 @@
 from __future__ import annotations
 
 import copy
+import hashlib
+import io
 import json
 from pathlib import Path
 
 import pytest
+from PIL import Image, ImageDraw
 
 from bctc_ai.evaluation import accounting_family_occurrence_row_axis_v2 as occurrence_v2
 from bctc_ai.evaluation import accounting_family_row_axis_v1 as row_v1
 from bctc_ai.evaluation import accounting_family_topology_v1 as topology_v1
 from bctc_ai.evaluation import accounting_scoped_hierarchical_table_closure_v2 as subject
 from bctc_ai.evaluation import family_first_accounting_schema_mapping_v1 as mapping_v1
+from bctc_ai.evaluation import family_first_authenticated_page_region_v1 as region_v1
+from bctc_ai.evaluation.adaptive_accounting_table_geometry_v1 import (
+    propose_missing_value_lane_regions_v1,
+)
 from bctc_ai.source_structure.contracts_v1 import canonical_json_sha256_v1
 
 
@@ -332,7 +339,12 @@ def _vib_shaped_unlabeled_subtotal_pages() -> list[dict[str, object]]:
     return pages
 
 
-def _axis(pages: list[dict[str, object]], topology: dict[str, object] | None = None) -> dict:
+def _axis(
+    pages: list[dict[str, object]],
+    topology: dict[str, object] | None = None,
+    *,
+    visible_dash_rescues: tuple[dict[str, object], ...] = (),
+) -> dict:
     topology = _topology() if topology is None else topology
     scan = topology_v1.build_accounting_family_topology_scan_v1(
         row_v1._topology_pages(pages), topology
@@ -348,6 +360,7 @@ def _axis(pages: list[dict[str, object]], topology: dict[str, object] | None = N
             "require_authenticated_existing_dash_pixels": True,
             "retain_all_context_bound_role_occurrences": True,
         },
+        visible_dash_rescues=visible_dash_rescues,
     )
 
 
@@ -356,14 +369,91 @@ def _closure(
     *,
     topology: dict[str, object] | None = None,
     hierarchy: dict[str, object] | None = None,
+    visible_dash_rescues: tuple[dict[str, object], ...] = (),
 ) -> tuple[dict, dict]:
     topology = _topology() if topology is None else topology
     hierarchy = _hierarchy() if hierarchy is None else hierarchy
-    axis = _axis(pages, topology)
+    axis = _axis(pages, topology, visible_dash_rescues=visible_dash_rescues)
     closure = subject.build_accounting_scoped_hierarchical_table_closure_v2(
         axis, topology, hierarchy
     )
     return axis, closure
+
+
+def _clear_detector_dash_rescue(
+    pages: list[dict[str, object]],
+    topology: dict[str, object],
+    *,
+    role: str,
+) -> tuple[dict[str, object], ...]:
+    parsed_pages = row_v1._pages(pages)
+    scan = topology_v1.build_accounting_family_topology_scan_v1(
+        row_v1._topology_pages(pages), topology
+    )
+    region = scan["regions"][0]
+    base = row_v1._build_axis(parsed_pages, scan, region, ())
+    target = next(row for row in base["rows"] if row["role"] == role)
+    centers, visible_cells = row_v1._resolved_page_grid_inputs(
+        base["rows"], target, base["column_grids"]
+    )
+    label_indices = row_v1._match_source_line_indices(target["label_match"])
+    label_boxes = [
+        line["bbox"] for line in parsed_pages[0]["lines"] if line["line_ordinal"] in label_indices
+    ]
+    proposals = propose_missing_value_lane_regions_v1(
+        [{**line, "source_line_index": line["line_ordinal"]} for line in parsed_pages[0]["lines"]],
+        label_boxes=label_boxes,
+        is_numeric=row_v1._is_numeric,
+        page_width=1000,
+        page_height=1200,
+        resolved_column_centers=centers,
+        resolved_visible_value_cells=visible_cells,
+    )
+    assert len(proposals) == 1
+    proposal = proposals[0]
+    image = Image.new("RGB", (40, 32), "white")
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((16, 14, 24, 17), fill="black")
+    stream = io.BytesIO()
+    image.save(stream, format="PNG", optimize=False, compress_level=9)
+    payload = stream.getvalue()
+    raw_bbox = proposal["raw_pixel_bbox"]
+    material = {
+        "authority": dict(region_v1._REGION_AUTHORITY),
+        "document_ordinal": 1,
+        "format_version": region_v1.FORMAT_VERSION,
+        "index_id": "index-rounding-dash",
+        "ink_localization_status": "GLYPH_COMPONENT_TIGHTENED_WITHIN_PROPOSED_CELL",
+        "physical_page": 1,
+        "proposed_raw_pixel_bbox": list(raw_bbox),
+        "recognition_raw_pixel_bbox": list(raw_bbox),
+        "region_png_ref": {
+            "sha256": hashlib.sha256(payload).hexdigest(),
+            "size_bytes": len(payload),
+        },
+        "render_id": "render-rounding-dash",
+        "render_ref": {
+            "pixel_height": 1200,
+            "pixel_width": 1000,
+            "sha256": "3" * 64,
+            "size_bytes": 100,
+        },
+        "state": "AUTHENTICATED_RENDER_CALLER_PROPOSED_REGION_CROP",
+        "white_border": [12, 8, 12, 8],
+    }
+    detector_region = {
+        **material,
+        "region_id": "ffaprv1:region:" + canonical_json_sha256_v1(material),
+        "region_png_bytes": payload,
+    }
+    return (
+        {
+            "column_ordinal": proposal["column_ordinal"],
+            "page_sequence": 1,
+            "region": detector_region,
+            "role": role,
+        },
+    )
 
 
 def _coherently_rehash_closure(closure: dict) -> None:
@@ -1565,6 +1655,126 @@ def test_v4_printed_residual_two_with_six_components_is_rounding_corroborated_wi
     ]
 
 
+def test_v4_mbb_shaped_authenticated_dash_zero_uses_five_cell_prior_rounding_bound() -> None:
+    topology = _rounding_topology()
+    rows = [
+        (label, str(current), "" if prior is None else str(prior))
+        for label, current, prior in zip(
+            _ROUNDING_COMPONENT_LABELS,
+            [10, 20, 30, 40, 50, 60],
+            [10, 20, 30, 40, 50, None],
+            strict=True,
+        )
+    ]
+    pages = _pages(rows, trailing=[("210", "148")])
+    rescues = _clear_detector_dash_rescue(
+        pages,
+        topology,
+        role=_ROUNDING_COMPONENT_ROLES[-1],
+    )
+    axis, closure = _closure(
+        pages,
+        topology=topology,
+        hierarchy=_rounding_hierarchy(),
+        visible_dash_rescues=rescues,
+    )
+
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    root = closure["equations"]["global"][0]
+    assert root["status"] == (
+        "VISIBLE_TRAILING_RESULT_ROUNDING_CORROBORATED_BY_EXHAUSTIVE_COMPONENTS"
+    )
+    rounding = root["rounding_evidence"][0]
+    assert [lane["independently_printed_component_count"] for lane in rounding["lanes"]] == [
+        6,
+        5,
+    ]
+    assert [lane["bound_component_count_plus_one"] for lane in rounding["lanes"]] == [7, 6]
+    assert [lane["twice_absolute_residual"] for lane in rounding["lanes"]] == [0, 4]
+    assert [lane["residual_number"]["coefficient"] for lane in rounding["lanes"]] == [0, -2]
+    dash_samples = [
+        sample
+        for sample in axis["numeric_sample_universe"]
+        if sample["parsed_token"]["classification"] == "DASH_ZERO"
+    ]
+    assert len(dash_samples) == 1
+    resolved = next(item for item in closure["resolved_roles"] if item["role"] == "INTERBANK")
+    assert [value["number"]["coefficient"] for value in resolved["values"]] == [210, 148]
+    assert [value["number"]["coefficient"] for value in resolved["values"]] != [210, 150]
+    assert (
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            closure,
+            axis,
+            topology,
+            _rounding_hierarchy(),
+        )
+        == closure
+    )
+
+    count_tamper = copy.deepcopy(closure)
+    prior_lane = count_tamper["equations"]["global"][0]["rounding_evidence"][0]["lanes"][1]
+    prior_lane["independently_printed_component_count"] = 6
+    prior_lane["bound_component_count_plus_one"] = 7
+    _coherently_rehash_closure(count_tamper)
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="integer rounding lane|numeric universe record",
+    ):
+        subject._validate_result(count_tamper)
+
+    classification_tamper = copy.deepcopy(closure)
+    dash_sample = next(
+        sample
+        for sample in classification_tamper["numeric_sample_universe"]
+        if sample["sample_id"] == dash_samples[0]["sample_id"]
+    )
+    dash_sample["parsed_token"]["classification"] = "SIGNED_NUMBER"
+    _coherently_rehash_closure(classification_tamper)
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="integer rounding lane|numeric universe record",
+    ):
+        subject._validate_result(classification_tamper)
+
+    over_bound_pages = _pages(rows, trailing=[("210", "146")])
+    over_bound_axis, over_bound = _closure(
+        over_bound_pages,
+        topology=topology,
+        hierarchy=_rounding_hierarchy(),
+        visible_dash_rescues=_clear_detector_dash_rescue(
+            over_bound_pages,
+            topology,
+            role=_ROUNDING_COMPONENT_ROLES[-1],
+        ),
+    )
+    assert over_bound_axis["row_axis"]["metrics"]["visible_dash_zero_count"] == 1
+    assert over_bound["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    over_lane = over_bound["equations"]["global"][0]["rounding_evidence"][0]["lanes"][1]
+    assert over_lane["independently_printed_component_count"] == 5
+    assert over_lane["bound_component_count_plus_one"] == 6
+    assert over_lane["twice_absolute_residual"] == 8
+
+    unauthenticated_pages = _pages(
+        [
+            (label, str(current), "-" if prior is None else str(prior))
+            for label, current, prior in zip(
+                _ROUNDING_COMPONENT_LABELS,
+                [10, 20, 30, 40, 50, 60],
+                [10, 20, 30, 40, 50, None],
+                strict=True,
+            )
+        ],
+        trailing=[("210", "148")],
+    )
+    _unauthenticated_axis, unauthenticated = _closure(
+        unauthenticated_pages,
+        topology=topology,
+        hierarchy=_rounding_hierarchy(),
+    )
+    assert unauthenticated["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert unauthenticated["equations"]["global"][0]["rounding_evidence"] == []
+
+
 @pytest.mark.parametrize(
     ("residual", "expected_status"),
     [
@@ -1609,7 +1819,6 @@ def test_v4_rounding_bound_is_exact_at_boundary_and_vetoes_over_bound(
 @pytest.mark.parametrize(
     "disallowed_classification",
     [
-        "DASH_ZERO",
         "MIXED_GROUPED_INTEGER_CANDIDATE",
         "NOISE_SUFFIXED_GROUPED_INTEGER_CANDIDATE",
     ],
@@ -1697,10 +1906,98 @@ def test_v4_only_signed_number_cells_may_support_integer_rounding_bound(
         )
         is None
     )
-
     for cell in component_cells:
         cell["classification"] = "SIGNED_NUMBER"
     printed[subject._PRINTED_SOURCE_CELLS_KEY][0][0]["classification"] = disallowed_classification
+    assert (
+        subject._rounding_assessment(
+            result_role="INTERBANK",
+            printed=printed,
+            component=component,
+            component_roles=_ROUNDING_COMPONENT_ROLES,
+        )
+        is None
+    )
+
+
+def test_v4_authenticated_dash_zero_is_exact_zero_but_does_not_enlarge_rounding_bound() -> None:
+    component_cells = [
+        {
+            "classification": "SIGNED_NUMBER" if ordinal < 4 else "DASH_ZERO",
+            "number": {
+                "coefficient": 10 if ordinal < 4 else 0,
+                "percentage_mark_present": False,
+                "scale": 0,
+            },
+            "source_sample_id": f"component-{ordinal}",
+        }
+        for ordinal in range(6)
+    ]
+    component = {
+        subject._PRINTED_SOURCE_CELLS_KEY: [component_cells],
+        "values": [
+            {
+                "column_ordinal": 0,
+                "number": {
+                    "coefficient": 40,
+                    "percentage_mark_present": False,
+                    "scale": 0,
+                },
+                "source_sample_ids": [cell["source_sample_id"] for cell in component_cells],
+            }
+        ],
+    }
+    printed = {
+        subject._PRINTED_SOURCE_CELLS_KEY: [
+            [
+                {
+                    "classification": "SIGNED_NUMBER",
+                    "number": {
+                        "coefficient": 43,
+                        "percentage_mark_present": False,
+                        "scale": 0,
+                    },
+                    "source_sample_id": "printed-result",
+                }
+            ]
+        ],
+        "source": {
+            "kind": "ROLE_ROW",
+            "record": {
+                "label_match": {"occurrence_id": "printed-result-occurrence"},
+                "role": "EXPLICIT_FAMILY_TOTAL",
+            },
+        },
+        "values": [
+            {
+                "column_ordinal": 0,
+                "number": {
+                    "coefficient": 43,
+                    "percentage_mark_present": False,
+                    "scale": 0,
+                },
+                "source_sample_ids": ["printed-result"],
+            }
+        ],
+    }
+
+    assessment = subject._rounding_assessment(
+        result_role="INTERBANK",
+        printed=printed,
+        component=component,
+        component_roles=_ROUNDING_COMPONENT_ROLES,
+    )
+    assert assessment is not None
+    lane = assessment["lanes"][0]
+    assert lane["independently_printed_component_count"] == 4
+    assert lane["bound_component_count_plus_one"] == 5
+    assert lane["twice_absolute_residual"] == 6
+    assert assessment["status"] == "ROUNDING_BOUND_EXCEEDED_AT_LEAST_ONE_LANE"
+
+    for cell in component_cells:
+        cell["classification"] = "DASH_ZERO"
+        cell["number"]["coefficient"] = 0
+    component["values"][0]["number"]["coefficient"] = 0
     assert (
         subject._rounding_assessment(
             result_role="INTERBANK",
@@ -2030,7 +2327,7 @@ def test_v4_rounding_validator_cross_binds_cells_count_and_arithmetic_to_numeric
     _coherently_rehash_closure(padded)
     with pytest.raises(
         subject.AccountingScopedHierarchicalTableClosureV2Error,
-        match="selected source roles",
+        match="selected source roles|integer rounding lane",
     ):
         subject._validate_result(padded)
 
