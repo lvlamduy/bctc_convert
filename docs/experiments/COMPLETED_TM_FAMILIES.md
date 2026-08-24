@@ -2,9 +2,12 @@
 
 Phạm vi: ACB, MBB, VPB, HDB, VCB, CTG, BID, VIB.
 
-Thứ tự các mục dưới đây theo `display_order` của schema TM và thứ tự trình bày
-thông dụng trong PDF; mỗi family được khóa bằng khoản mục đầu cụm, khoản mục cuối
-cụm và ranh giới family/note kế tiếp trước khi chọn các trục/cột có ý nghĩa.
+Queue family-first lấy thứ tự chuẩn trực tiếp từ `display_order` trong
+`reference/schemas/schema_graph.jsonl`. Các section lịch sử từ Family 15 trở đi
+chưa được đánh lại số sau khi schema thay đổi, nên không được dùng làm authority
+để chọn family kế tiếp. Mỗi family vẫn được khóa bằng khoản mục đầu cụm, khoản
+mục cuối cụm và ranh giới family/note kế tiếp trước khi chọn các trục/cột có ý
+nghĩa.
 
 Quy ước:
 
@@ -241,23 +244,26 @@ xác nhận đã xoay/thu hồi hai Gemini API key bị lộ trong checkpoint c�
 
 ## 11. Phân tích dư nợ cho vay theo khu vực địa lý
 
-- **Đã xác minh trên BCTC hợp nhất kiểm toán năm 2025:** ACB p77, MBB p91 và
-  VIB p59–60. Một graph chung nhận cả biến thể khu vực theo hàng × family theo
-  cột và family theo hàng × khu vực theo cột, kể cả bảng so sánh tiếp trang.
-  Đã map `Trong nước` (5752) và `Nước ngoài` (765): 6 khoản mục, 12 ô tiền và
-  6 phương trình `trong nước + nước ngoài = tổng Cho vay khách hàng` đều đóng
-  đúng. Dấu `-` của ACB và VIB được bind từ đúng ô ảnh rồi chuẩn hóa thành 0.
-- **Không có đúng family trong báo cáo annual-2025 đã bind:** VPB, HDB, VCB,
-  CTG và BID. VPB p81, HDB p60 và BID p63 có bảng địa lý nhưng population là
-  dư nợ rộng hơn `Cho vay khách hàng`; chúng là đối chứng âm và không bị thu
-  hẹp ngầm. VCB/CTG không có vùng địa lý đúng family trong toàn PDF.
-- **Còn thiếu:** Không còn khoản mục nguồn chưa map trong family annual-2025.
+- **Đã xác minh trên ma trận family-first 140 filing:** 38 filing có đúng
+  population `Cho vay khách hàng`, gồm ACB 3, MBB 17 và VIB 18. Mỗi filing map
+  `Trong nước` (5752) và `Nước ngoài` (765), tổng cộng 76 mapping/130 ô tiền;
+  65 phương trình tổng in nguồn đóng chính xác. Graph chung nhận cả biến thể
+  khu vực theo hàng × family theo cột, family theo hàng × khu vực theo cột và
+  bảng so sánh tiếp trang. 42 dấu gạch chỉ thành 0 sau pixel replay.
+- **Bằng chứng bounded không được thu hẹp population:** 78 filing có bảng địa
+  lý nhưng population là tổng dư nợ hoặc population trộn/rộng hơn; chúng được
+  giữ `BROAD_POPULATION_BOUNDED_ABSENCE`, không map sang 5752/765 và không dùng
+  phép cộng để suy ngược `Cho vay khách hàng`.
+- **Không quan sát thấy đúng family trong PDF đã bind:** 24 filing. Đây là
+  bounded `NOT_OBSERVED` sau sparse/full structural equivalence, không phải
+  tuyên bố ngoài đúng 140 tài liệu đã xác thực.
+- **Còn thiếu:** Không còn trial unresolved trong denominator này. Không map
+  parent 716/759 và không phát sinh schema ID mới.
 
-Kết quả exact-replay:
-`docs/experiments/E-0117-annual-2025-loan-geography-8bank-codex-verified-mapping-v1.json`.
-
-Lượt BCTC hiện hành trước đó tại MBB p52 và VIB p53–54 vẫn giữ nguyên kết quả
-đã xác minh riêng.
+Kết quả 140 filing:
+`docs/experiments/E-0175-family-first-loan-geography-140-filing-schema-sweep-seal-v1.json`.
+E-0117 annual-2025 là tập con lịch sử được tái sử dụng, không bị chạy lại hoặc
+trộn kỳ.
 
 ## 12. Phân tích theo loại hình doanh nghiệp/đối tượng khách hàng
 
