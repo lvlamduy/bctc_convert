@@ -803,10 +803,16 @@ def _direct_full_worker_material(
     receipt: Mapping[str, Any],
     source_index: int,
     snapshot: Mapping[str, Any],
+    sparse_document: Mapping[str, Any],
 ) -> dict[str, Any]:
-    """Build graph/context only; capability and sparse authority stay in the parent."""
+    """Replay full authority and return only its compact, source-bound handoff."""
 
-    if type(source_index) is not int or source_index < 0 or type(snapshot) is not dict:
+    if (
+        type(source_index) is not int
+        or source_index < 0
+        or type(snapshot) is not dict
+        or type(sparse_document) is not dict
+    ):
         raise _error("loan-geography direct-full worker input drifted")
     packet = snapshot.get("document_packet")
     if type(packet) is not dict or type(packet.get("document_ordinal")) is not int:
@@ -828,6 +834,7 @@ def _direct_full_worker_material(
     document_context = None
     total_control_requests = None
     total_controls: list[dict[str, Any]] = []
+    numeric_input = None
     if whole_document.get("disposition") == "EXACT_CUSTOMER_LOAN_GEOGRAPHY":
         built_context = graph_v1.build_loan_geography_document_context_v1(prepared_snapshot)
         document_context = graph_v1.validate_loan_geography_document_context_replay_v1(
@@ -836,23 +843,14 @@ def _direct_full_worker_material(
         )
         if not same_typed_json_v1(built_context, document_context):
             raise _error("loan-geography direct-full context public replay drifted")
-        built_requests = graph_v1.build_loan_geography_customer_loan_total_control_requests_v1(
-            whole_document,
-            packet,
-            prepared_snapshot,
-            document_context=document_context,
-        )
         total_control_requests = (
-            graph_v1.validate_loan_geography_customer_loan_total_control_requests_replay_v1(
-                built_requests,
+            graph_v1.build_loan_geography_customer_loan_total_control_requests_v1(
                 whole_document,
                 packet,
                 prepared_snapshot,
                 document_context=document_context,
             )
         )
-        if not same_typed_json_v1(built_requests, total_control_requests):
-            raise _error("loan-geography total-control request public replay drifted")
         for lane_request in total_control_requests["lane_requests"]:
             if lane_request["classification"] != "STRUCTURALLY_ABSENT":
                 continue
@@ -863,14 +861,25 @@ def _direct_full_worker_material(
                 snapshot,
                 requested_period_end,
             )
-            replayed_control = total_control_v1.validate_customer_loan_total_control_replay_v1(
-                built_control,
-                snapshot,
-                requested_period_end,
-            )
-            if not same_typed_json_v1(built_control, replayed_control):
-                raise _error("customer-loan total-control public replay drifted")
-            total_controls.append(replayed_control)
+            total_controls.append(built_control)
+    equivalence = graph_v1.compare_loan_geography_sparse_full_graphs_v1(
+        sparse_document,
+        whole_document,
+        whole_document_line_count=packet["line_count"],
+        whole_document_page_count=packet["page_count"],
+    )
+    if whole_document.get("disposition") == "EXACT_CUSTOMER_LOAN_GEOGRAPHY":
+        numeric_input = graph_v1.project_loan_geography_numeric_input_v1(
+            sparse_document,
+            packet,
+            document_context=document_context,
+            upstream_total_control_requests=total_control_requests,
+            upstream_total_control_source_document=whole_document,
+            upstream_total_control_source_snapshot=snapshot,
+            upstream_total_controls=total_controls,
+        )
+        if type(numeric_input) is not dict:
+            raise _error("loan-geography preprojected numeric input drifted")
     material = {
         "customer_loan_total_control_request_set": total_control_requests,
         "customer_loan_total_control_request_set_id": (
@@ -885,9 +894,13 @@ def _direct_full_worker_material(
             document_context.get("result_id") if type(document_context) is dict else None
         ),
         "document_ordinal": packet["document_ordinal"],
+        "equivalence": equivalence,
+        "numeric_input": numeric_input,
         "snapshot_id": snapshot.get("snapshot_id"),
         "source_index": source_index,
-        "whole_document": whole_document,
+        "whole_document_evidence_binding": canonical_clone_v1(
+            whole_document.get("evidence_binding")
+        ),
         "whole_document_result_id": whole_document.get("result_id"),
     }
     return {
@@ -897,15 +910,16 @@ def _direct_full_worker_material(
 
 
 def _direct_full_worker_task(
-    item: tuple[int, dict[str, Any]],
+    item: tuple[int, dict[str, Any], dict[str, Any]],
 ) -> dict[str, Any]:
     """Pickle-safe ProcessPool entrypoint receiving one exact full snapshot."""
 
     if (
         type(item) is not tuple
-        or len(item) != 2
+        or len(item) != 3
         or type(item[0]) is not int
         or type(item[1]) is not dict
+        or type(item[2]) is not dict
         or _FAMILY11_GRAPH_WORKER_RECEIPT is None
     ):
         raise _error("loan-geography direct-full worker was not initialized exactly")
@@ -913,6 +927,7 @@ def _direct_full_worker_task(
         _FAMILY11_GRAPH_WORKER_RECEIPT,
         item[0],
         item[1],
+        item[2],
     )
 
 
@@ -982,9 +997,11 @@ def _validate_direct_full_worker_batch(
         "document_context",
         "document_context_result_id",
         "document_ordinal",
+        "equivalence",
+        "numeric_input",
         "snapshot_id",
         "source_index",
-        "whole_document",
+        "whole_document_evidence_binding",
         "whole_document_result_id",
         "worker_output_id",
     }
@@ -1003,25 +1020,23 @@ def _validate_direct_full_worker_batch(
         worker_output_id = material.pop("worker_output_id")
         if worker_output_id != "lg140v1:direct-full-worker:" + canonical_json_sha256_v1(material):
             raise _error("loan-geography direct-full worker output identity drifted")
-        whole_document = record["whole_document"]
         document_context = record["document_context"]
+        worker_equivalence = record["equivalence"]
+        worker_numeric_input = record["numeric_input"]
         total_control_requests = record["customer_loan_total_control_request_set"]
         total_controls = record["customer_loan_total_controls"]
         exact_document = (
-            type(whole_document) is dict
-            and whole_document.get("disposition") == "EXACT_CUSTOMER_LOAN_GEOGRAPHY"
+            type(worker_equivalence) is dict
+            and worker_equivalence.get("disposition") == "EXACT_CUSTOMER_LOAN_GEOGRAPHY"
         )
-        evidence_binding = (
-            whole_document.get("evidence_binding") if type(whole_document) is dict else None
-        )
+        evidence_binding = record["whole_document_evidence_binding"]
         outcome = (
             outcomes[ordinal - 1] if type(outcomes) is list and len(outcomes) >= ordinal else None
         )
         if (
             record["document_ordinal"] != ordinal
             or record["snapshot_id"] != snapshot.get("snapshot_id")
-            or type(whole_document) is not dict
-            or record["whole_document_result_id"] != whole_document.get("result_id")
+            or type(record["whole_document_result_id"]) is not str
             or (
                 exact_document
                 and (
@@ -1032,6 +1047,7 @@ def _validate_direct_full_worker_batch(
                     or record["customer_loan_total_control_request_set_id"]
                     != total_control_requests.get("request_set_id")
                     or type(total_controls) is not list
+                    or type(worker_numeric_input) is not dict
                     or record["customer_loan_total_control_result_ids"]
                     != [
                         item.get("result_id") if type(item) is dict else None
@@ -1047,6 +1063,7 @@ def _validate_direct_full_worker_batch(
                     or total_control_requests is not None
                     or record["customer_loan_total_control_request_set_id"] is not None
                     or total_controls != []
+                    or worker_numeric_input is not None
                     or record["customer_loan_total_control_result_ids"] != []
                 )
             )
@@ -1068,18 +1085,36 @@ def _validate_direct_full_worker_batch(
                 if exact_document
                 else None
             )
-            _graph_envelope(whole_document)
-            equivalence = graph_v1.compare_loan_geography_sparse_full_graphs_v1(
-                sparse_by_ordinal[ordinal],
-                whole_document,
-                whole_document_line_count=packet["line_count"],
-                whole_document_page_count=packet["page_count"],
+            sparse_binding = _sparse_graph_binding(
+                _sparse_graph_binding_from_document(sparse_by_ordinal[ordinal])
             )
+            equivalence = _equivalence(
+                worker_equivalence,
+                disposition=sparse_binding["disposition"],
+            )
+            if (
+                sparse_binding["document_id"] != packet["document_id"]
+                or sparse_binding["document_ordinal"] != ordinal
+                or equivalence["sparse_graph_result_id"]
+                != sparse_binding["document_graph_result_id"]
+                or not same_typed_json_v1(
+                    equivalence["sparse_region_fingerprint"],
+                    sparse_binding["region_fingerprint"],
+                )
+                or equivalence["whole_document_graph_result_id"]
+                != record["whole_document_result_id"]
+                or equivalence["whole_document_line_count"] != packet["line_count"]
+                or equivalence["whole_document_page_count"] != packet["page_count"]
+            ):
+                raise _error("loan-geography worker equivalence source binding drifted")
             if exact_document:
                 typed_requests = _customer_loan_total_control_request_set_envelope(
                     total_control_requests,
                     packet=packet,
-                    whole_document=whole_document,
+                    whole_document_graph_result_id=record["whole_document_result_id"],
+                    whole_document_region_fingerprint=equivalence[
+                        "whole_document_region_fingerprint"
+                    ],
                     source_snapshot=snapshot,
                 )
                 typed_controls = _customer_loan_total_controls(
@@ -1101,17 +1136,22 @@ def _validate_direct_full_worker_batch(
                     != request_ids
                 ):
                     raise _error("loan-geography worker request/control identity drifted")
-                numeric_input = graph_v1.project_loan_geography_numeric_input_v1(
-                    sparse_by_ordinal[ordinal],
-                    packet,
-                    document_context=replayed_context,
-                    upstream_total_control_requests=typed_requests,
-                    upstream_total_control_source_document=whole_document,
-                    upstream_total_control_source_snapshot=snapshot,
-                    upstream_total_controls=typed_controls,
+                numeric_input = canonical_clone_v1(worker_numeric_input)
+                bridged_requests, bridged_controls = _validate_trial_total_control_handoff(
+                    typed_requests,
+                    typed_controls,
+                    packet=packet,
+                    equivalence=equivalence,
+                    graph=sparse_binding,
+                    numeric_input=numeric_input,
                 )
-                if type(numeric_input) is not dict:
-                    raise _error("loan-geography preprojected numeric input drifted")
+                if not same_typed_json_v1(
+                    bridged_requests, typed_requests
+                ) or not same_typed_json_v1(
+                    bridged_controls,
+                    typed_controls,
+                ):
+                    raise _error("loan-geography worker numeric handoff drifted")
             else:
                 typed_requests = None
                 typed_controls = []
@@ -1120,12 +1160,7 @@ def _validate_direct_full_worker_batch(
             raise
         except Exception as exc:
             raise _error("loan-geography direct-full worker output replay failed") from exc
-        equivalences.append(
-            _equivalence(
-                equivalence,
-                disposition=sparse_by_ordinal[ordinal]["disposition"],
-            )
-        )
+        equivalences.append(canonical_clone_v1(equivalence))
         contexts.append(
             canonical_clone_v1(replayed_context) if replayed_context is not None else None
         )
@@ -1204,19 +1239,24 @@ def _whole_document_equivalences(
             selections,
             batch_size=batch_size,
         ):
-            for offset, snapshot in enumerate(snapshots):
-                _direct_full_snapshot_packet(
-                    snapshot,
-                    expected_ordinal=source_start + offset + 1,
-                )
             work = tuple(
-                (source_start + offset, snapshot) for offset, snapshot in enumerate(snapshots)
+                (
+                    source_start + offset,
+                    snapshot,
+                    sparse_by_ordinal[source_start + offset + 1],
+                )
+                for offset, snapshot in enumerate(snapshots)
             )
             try:
                 records = (
                     tuple(
-                        _direct_full_worker_material(local_receipt, index, snapshot)
-                        for index, snapshot in work
+                        _direct_full_worker_material(
+                            local_receipt,
+                            index,
+                            snapshot,
+                            sparse_document,
+                        )
+                        for index, snapshot, sparse_document in work
                     )
                     if executor is None
                     else tuple(executor.map(_direct_full_worker_task, work, chunksize=1))
@@ -1241,11 +1281,10 @@ def _whole_document_equivalences(
             request_sets.extend(batch_request_sets)
             control_sets.extend(batch_control_sets)
             numeric_inputs.extend(batch_numeric_inputs)
+            batch_packets = [snapshot["document_packet"] for snapshot in snapshots]
             source_start += len(snapshots)
-            completed_pages += sum(len(snapshot["joined_pages"]) for snapshot in snapshots)
-            completed_lines += sum(
-                _snapshot_selected_line_count(snapshot) for snapshot in snapshots
-            )
+            completed_pages += sum(packet["page_count"] for packet in batch_packets)
+            completed_lines += sum(packet["line_count"] for packet in batch_packets)
             committed = time.perf_counter()
             if _progress_sink is not None:
                 _progress_sink(
@@ -1733,7 +1772,8 @@ def _customer_loan_total_control_request_set_envelope(
     value: Any,
     *,
     packet: Mapping[str, Any],
-    whole_document: Mapping[str, Any],
+    whole_document_graph_result_id: str,
+    whole_document_region_fingerprint: Mapping[str, Any],
     source_snapshot: Mapping[str, Any],
 ) -> dict[str, Any]:
     try:
@@ -1751,9 +1791,9 @@ def _customer_loan_total_control_request_set_envelope(
         or binding["document_packet_id"] != packet["packet_id"]
         or binding["document_evidence_root_sha256"] != packet["document_evidence_root_sha256"]
         or binding["source_snapshot_id"] != source_snapshot.get("snapshot_id")
-        or binding["source_whole_document_graph_result_id"] != whole_document.get("result_id")
+        or binding["source_whole_document_graph_result_id"] != whole_document_graph_result_id
         or graph_binding["region_fingerprint_sha256"]
-        != canonical_json_sha256_v1(whole_document.get("region_fingerprint"))
+        != canonical_json_sha256_v1(whole_document_region_fingerprint)
         or type(dimensions) is not list
         or not same_typed_json_v1(request_set["source_page_render_bindings"], dimensions)
     ):

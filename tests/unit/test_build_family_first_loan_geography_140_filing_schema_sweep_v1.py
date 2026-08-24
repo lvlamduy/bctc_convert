@@ -367,11 +367,18 @@ def _install_worker_graph_stubs(
 
     def numeric_input(
         _document: dict,
-        _packet: dict,
+        packet: dict,
         **kwargs: object,
     ) -> dict:
         request_set = kwargs["upstream_total_control_requests"]
         controls = kwargs["upstream_total_controls"]
+        replay_requests(
+            request_set,
+            kwargs["upstream_total_control_source_document"],
+            packet,
+            kwargs["upstream_total_control_source_snapshot"],
+            document_context=kwargs["document_context"],
+        )
         if upstream_control:
             assert len(controls) == 1
             replay_control(
@@ -970,16 +977,7 @@ def test_direct_oracle_checks_actual_zero_line_page_and_line_denominators(
         ],
         "snapshot_id": "snapshot-1",
     }
-    sparse = {
-        "disposition": "NOT_OBSERVED",
-        "document_ordinal": 1,
-        "ordinal": 1,
-        "region_fingerprint": {
-            "disposition": "NOT_OBSERVED",
-            "partial": False,
-        },
-        "result_id": "lgstv1:document:" + "1" * 64,
-    }
+    sparse = _bound_graph(packet, snapshot_id="sparse-snapshot-1")
     monkeypatch.setattr(
         sweep_v1,
         "_selected_page_batches",
@@ -1018,12 +1016,15 @@ def test_direct_oracle_checks_actual_zero_line_page_and_line_denominators(
     monkeypatch.setattr(
         sweep_v1.graph_v1,
         "compare_loan_geography_sparse_full_graphs_v1",
-        lambda sparse_document, _whole_document, **_kwargs: _equivalence(
-            sparse_document,
-            sparse_document["disposition"],
-            pages=2,
-            lines=1,
-        ),
+        lambda sparse_document, whole_document, **_kwargs: {
+            **_equivalence(
+                sparse_document,
+                sparse_document["disposition"],
+                pages=2,
+                lines=1,
+            ),
+            "whole_document_graph_result_id": whole_document["result_id"],
+        },
     )
     equivalences, contexts, request_sets, controls, numeric_inputs = (
         sweep_v1._whole_document_equivalences(
@@ -1165,7 +1166,7 @@ def test_direct_worker_rejects_self_rehashed_source_binding_tamper(
         monkeypatch,
         disposition="EXACT_CUSTOMER_LOAN_GEOGRAPHY",
     )
-    record = sweep_v1._direct_full_worker_material(receipt, 0, snapshots[0])
+    record = sweep_v1._direct_full_worker_material(receipt, 0, snapshots[0], sparse[0])
     record["snapshot_id"] = "tampered-snapshot"
     material = copy.deepcopy(record)
     material.pop("worker_output_id")
@@ -1183,17 +1184,149 @@ def test_direct_worker_rejects_self_rehashed_source_binding_tamper(
         )
 
 
-def test_upstream_control_replays_in_worker_and_parent_projects_before_snapshot_release(
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    (
+        ("sparse_result", "equivalence source binding"),
+        ("whole_result", "equivalence source binding"),
+        ("record_whole_result", "equivalence source binding"),
+        ("fingerprints", "equivalence source binding"),
+        ("line_count", "equivalence source binding"),
+        ("page_count", "equivalence source binding"),
+        ("numeric_region", "sparse/full total-control bridge"),
+        ("evidence_root", "source binding"),
+        ("receipt", "source binding"),
+        ("outcome", "source binding"),
+        ("swap", "source binding"),
+    ),
+)
+def test_parent_rejects_self_rehashed_compact_worker_tamper(
+    monkeypatch: pytest.MonkeyPatch,
+    mutation: str,
+    message: str,
+) -> None:
+    count = 2 if mutation == "swap" else 1
+    receipt, snapshots, sparse = _worker_inputs(
+        count,
+        disposition="EXACT_CUSTOMER_LOAN_GEOGRAPHY",
+    )
+    _install_worker_graph_stubs(
+        monkeypatch,
+        disposition="EXACT_CUSTOMER_LOAN_GEOGRAPHY",
+    )
+    records = [
+        sweep_v1._direct_full_worker_material(receipt, index, snapshot, sparse[index])
+        for index, snapshot in enumerate(snapshots)
+    ]
+    record = records[0]
+    equivalence = record["equivalence"]
+    if mutation == "sparse_result":
+        equivalence["sparse_graph_result_id"] = "tampered-sparse"
+    elif mutation == "whole_result":
+        equivalence["whole_document_graph_result_id"] = "tampered-whole"
+    elif mutation == "record_whole_result":
+        record["whole_document_result_id"] = "tampered-whole"
+    elif mutation == "fingerprints":
+        equivalence["sparse_region_fingerprint"] = {"tampered": True}
+        equivalence["whole_document_region_fingerprint"] = {"tampered": True}
+    elif mutation in {"line_count", "page_count"}:
+        equivalence[f"whole_document_{mutation}"] += 1
+    elif mutation == "numeric_region":
+        record["numeric_input"]["region_id"] = "tampered-graph"
+    elif mutation in {"evidence_root", "receipt", "outcome"}:
+        field = {
+            "evidence_root": "document_evidence_root_sha256",
+            "receipt": "receipt_id",
+            "outcome": "outcome_id",
+        }[mutation]
+        record["whole_document_evidence_binding"][field] = "tampered"
+    else:
+        records[0]["source_index"], records[1]["source_index"] = 1, 0
+    for candidate in records:
+        material = copy.deepcopy(candidate)
+        material.pop("worker_output_id")
+        candidate["worker_output_id"] = "lg140v1:direct-full-worker:" + canonical_json_sha256_v1(
+            material
+        )
+
+    with pytest.raises(
+        sweep_v1.FamilyFirstLoanGeography140FilingSchemaSweepV1Error,
+        match=message,
+    ):
+        sweep_v1._validate_direct_full_worker_batch(
+            receipt,
+            {item["document_ordinal"]: item for item in sparse},
+            snapshots,
+            tuple(records),
+            source_start=0,
+        )
+
+
+def test_parent_accepts_compact_worker_handoff_without_public_replay_or_projection(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     receipt, snapshots, sparse = _worker_inputs(
         1,
         disposition="EXACT_CUSTOMER_LOAN_GEOGRAPHY",
     )
-    calls: list[str] = []
     _install_worker_graph_stubs(
         monkeypatch,
-        control_replay_calls=calls,
+        disposition="EXACT_CUSTOMER_LOAN_GEOGRAPHY",
+        upstream_control=True,
+    )
+    record = sweep_v1._direct_full_worker_material(receipt, 0, snapshots[0], sparse[0])
+
+    def forbidden(*_args: object, **_kwargs: object) -> object:
+        raise AssertionError("parent repeated worker authority")
+
+    monkeypatch.setattr(
+        sweep_v1.graph_v1,
+        "compare_loan_geography_sparse_full_graphs_v1",
+        forbidden,
+    )
+    monkeypatch.setattr(
+        sweep_v1.graph_v1,
+        "project_loan_geography_numeric_input_v1",
+        forbidden,
+    )
+    monkeypatch.setattr(
+        sweep_v1.graph_v1,
+        "validate_loan_geography_customer_loan_total_control_requests_replay_v1",
+        forbidden,
+    )
+    monkeypatch.setattr(
+        sweep_v1.total_control_v1,
+        "validate_customer_loan_total_control_replay_v1",
+        forbidden,
+    )
+
+    equivalences, _contexts, _requests, _controls, numeric_inputs = (
+        sweep_v1._validate_direct_full_worker_batch(
+            receipt,
+            {1: sparse[0]},
+            snapshots,
+            (record,),
+            source_start=0,
+        )
+    )
+
+    assert equivalences == (record["equivalence"],)
+    assert numeric_inputs == (record["numeric_input"],)
+
+
+def test_worker_projector_replays_request_and_control_once_before_snapshot_release(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    receipt, snapshots, sparse = _worker_inputs(
+        1,
+        disposition="EXACT_CUSTOMER_LOAN_GEOGRAPHY",
+    )
+    control_calls: list[str] = []
+    request_calls: list[str] = []
+    _install_worker_graph_stubs(
+        monkeypatch,
+        control_replay_calls=control_calls,
+        request_replay_calls=request_calls,
         disposition="EXACT_CUSTOMER_LOAN_GEOGRAPHY",
         upstream_control=True,
     )
@@ -1213,7 +1346,8 @@ def test_upstream_control_replays_in_worker_and_parent_projects_before_snapshot_
         jobs=1,
     )
 
-    assert calls == ["snapshot-1", "snapshot-1"]
+    assert request_calls == ["snapshot-1"]
+    assert control_calls == ["snapshot-1"]
     assert result[2][0]["lane_requests"][0]["control_request_id"] == "control-request-1"
     assert [item["result_id"] for item in result[3][0]] == ["control-1"]
     assert (
@@ -1234,7 +1368,7 @@ def test_parent_rejects_rehashed_worker_control_locator_tamper(
         disposition="EXACT_CUSTOMER_LOAN_GEOGRAPHY",
         upstream_control=True,
     )
-    record = sweep_v1._direct_full_worker_material(receipt, 0, snapshots[0])
+    record = sweep_v1._direct_full_worker_material(receipt, 0, snapshots[0], sparse[0])
     record["customer_loan_total_controls"][0]["total_control"]["source"]["crop_ref"]["sha256"] = (
         "a" * 64
     )
@@ -1575,7 +1709,12 @@ def test_worker_parent_order_gates_reject_boolean_source_indices(
             source_start=0,
         )
 
-    direct_record = sweep_v1._direct_full_worker_material(receipt, 0, snapshots[0])
+    direct_record = sweep_v1._direct_full_worker_material(
+        receipt,
+        0,
+        snapshots[0],
+        sparse[0],
+    )
     direct_record["source_index"] = False
     direct_material = copy.deepcopy(direct_record)
     direct_material.pop("worker_output_id")
