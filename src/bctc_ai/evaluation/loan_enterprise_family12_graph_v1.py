@@ -18,11 +18,15 @@ from pathlib import Path
 from typing import Any
 
 from bctc_ai.evaluation import family_first_document_evidence_store_v1 as document_store_v1
+from bctc_ai.evaluation.accounting_minimal_unique_anchor_resolution_v1 import (
+    build_accounting_minimal_unique_anchor_resolution_v1,
+)
 from bctc_ai.evaluation.accounting_semantic_region_graph_v1 import (
     SPEC_FORMAT_VERSION as SEMANTIC_SPEC_FORMAT_VERSION,
 )
 from bctc_ai.evaluation.accounting_semantic_region_graph_v1 import (
     AccountingSemanticRegionGraphV1Error,
+    ScopedTableEnforcementV1,
     build_accounting_semantic_region_graph_v1,
 )
 from bctc_ai.evaluation.accounting_variant_graph_engine_v1 import (
@@ -107,15 +111,20 @@ _REASON_PROJECTION = {
 
 _ADAPTER_PATH = Path("src/bctc_ai/evaluation/loan_enterprise_family12_graph_v1.py")
 LOAN_ENTERPRISE_FAMILY12_REGION_QUERY_TRUST_CLOSURE_V2 = {
+    "minimal_unique_anchor_resolver_ref": {
+        "path": "src/bctc_ai/evaluation/accounting_minimal_unique_anchor_resolution_v1.py",
+        "sha256": "b24b5fa936bbc4b168548e9317d124aa42af39a100a434ea5afcaa827274d640",
+        "size_bytes": 10_110,
+    },
     "shared_semantic_engine_ref": {
         "path": "src/bctc_ai/evaluation/accounting_semantic_region_graph_v1.py",
-        "sha256": "bad85c88e3b257fbc950e4d916f0efd020961d668ae15584f1e7941791f5c621",
-        "size_bytes": 46_991,
+        "sha256": "59542b4bab1c8c27efbc4b76b50bf829865237860b6fc67b43b2e6ccead1dccc",
+        "size_bytes": 72_793,
     },
     "family_spec_ref": {
         "path": "src/bctc_ai/evaluation/loan_enterprise_family12_spec_v1.py",
-        "sha256": "c4323276c622c6d133771ea6b6057d20c62553ae9d06a93c03fb28732a26e546",
-        "size_bytes": 12_888,
+        "sha256": "f40b84f53493d89462ac1adabcc685deb3a92bb0aa35d726079663c66ff52748",
+        "size_bytes": 13_664,
     },
 }
 
@@ -210,6 +219,17 @@ def _query_anchor(
     }
 
 
+def _component_query_probes(component: Mapping[str, Any]) -> list[str]:
+    probes = set()
+    for alias in component["aliases"]:
+        normalized = normalize_vietnamese_anchor_v1(alias)
+        probes.add(normalized)
+        tokens = normalized.split()
+        if len(tokens) >= 4:
+            probes.add(" ".join(tokens[1:]))
+    return sorted(probes)
+
+
 def _query_spec(project_root: Path) -> dict[str, Any]:
     """Build only a retrieval shortlist; the shared graph retains semantics."""
 
@@ -220,19 +240,13 @@ def _query_spec(project_root: Path) -> dict[str, Any]:
     )
     anchors = [
         _query_anchor(
-            "BRANCH_LOAI_HINH_DOANH_NGHIEP",
-            "Loại hình doanh nghiệp",
-            maximum_edit_distance=1,
-            probes=["hình doanh nghiệp", "loại hình doanh nghiệp"],
+            component["component_id"],
+            component["aliases"][0],
+            maximum_edit_distance=int(component["bounded_edit_on_exact_miss"]),
+            probes=_component_query_probes(component),
             role="TARGET",
-        ),
-        _query_anchor(
-            "BRANCH_THEO_DOI_TUONG_KHACH_HANG",
-            "Theo đối tượng khách hàng",
-            maximum_edit_distance=1,
-            probes=["đối tượng khách hàng", "theo đối tượng khách hàng"],
-            role="TARGET",
-        ),
+        )
+        for component in family_spec["branch_components"]
     ]
     anchors.extend(
         _query_anchor(
@@ -357,9 +371,11 @@ def _generic_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
     ]
     return {
         "branch_aliases": canonical_clone_v1(spec["branch_aliases"]),
+        "branch_components": canonical_clone_v1(spec["branch_components"]),
         "context_classes": [
             {
                 "aliases": canonical_clone_v1(item["aliases"]),
+                "allow_token_subsequence_fence": item.get("allow_token_subsequence_fence", False),
                 "context_id": item["context_id"],
                 "disposition": item["disposition"],
             }
@@ -369,6 +385,7 @@ def _generic_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
         "format_version": SEMANTIC_SPEC_FORMAT_VERSION,
         "limits": {
             "branch_line_span": spec["limits"]["branch_line_span"],
+            "context_line_span": spec["limits"]["context_line_span"],
             "context_page_budget": spec["limits"]["context_page_budget"],
             "maximum_body_lines_per_page": spec["limits"]["maximum_body_lines_per_page"],
             "row_label_line_span": 3,
@@ -384,6 +401,7 @@ def _generic_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
         ],
         "scoped_table": {
             "continuation_aliases": ["Tiếp theo"],
+            "enforcement": ScopedTableEnforcementV1.ADVISORY_CHALLENGER.value,
             "hard_veto_scope_aliases": [
                 "Giao dịch với các bên liên quan",
                 "Tiền gửi của khách hàng",
@@ -406,6 +424,9 @@ def _generic_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
         },
         "source_only_ambiguities": ambiguities,
         "structural_reset_aliases": canonical_clone_v1(spec["structural_reset_aliases"]),
+        "structural_reset_component_aliases": canonical_clone_v1(
+            spec["structural_reset_component_aliases"]
+        ),
     }
 
 
@@ -521,20 +542,100 @@ def _near_region(
     branch: Mapping[str, Any],
     owner: Mapping[str, Any],
     reason: str,
+    body_limit_reached: bool | None = None,
+    bindings: Sequence[Mapping[str, Any]] = (),
     geometry: Mapping[str, Any] | None = None,
+    minimal_anchor_resolution: Mapping[str, Any] | None = None,
+    promotion_eligible: bool | None = None,
     rows: Sequence[Mapping[str, Any]] = (),
+    shared_scoped_table: Mapping[str, Any] | None = None,
+    topology_candidate_id: str | None = None,
 ) -> dict[str, Any]:
     material = {
+        "body_limit_reached": body_limit_reached,
         "branch": canonical_clone_v1(branch),
+        "minimal_unique_anchor_resolution_v1": (
+            canonical_clone_v1(minimal_anchor_resolution)
+            if minimal_anchor_resolution is not None
+            else None
+        ),
         "owner_context": canonical_clone_v1(owner),
+        "promotion_eligible": promotion_eligible,
         "reason": _project_reason(reason),
+        "shared_scoped_table_v1": (
+            canonical_clone_v1(shared_scoped_table) if shared_scoped_table is not None else None
+        ),
         "source_only_geometry_proposal": (
             canonical_clone_v1(geometry) if geometry is not None else None
         ),
+        "source_only_binding_proposals": canonical_clone_v1(list(bindings)),
         "source_only_row_proposals": canonical_clone_v1(list(rows)),
         "status": "SOURCE_ONLY_NEAR_REGION_FAIL_CLOSED",
+        "topology_candidate_id": topology_candidate_id,
     }
     return {**material, "near_region_id": "lef12v1:near:" + canonical_json_sha256_v1(material)}
+
+
+_TOPOLOGY_PARENT_ANCHOR_ID = "PARENT_RNID_766"
+
+
+def _topology_child_anchor_id(report_norm_id: int) -> str:
+    return f"CHILD_RNID_{report_norm_id}"
+
+
+def _topology_candidate_id(disposition: str, material: Mapping[str, Any]) -> str:
+    return f"lef12v1:topology_{disposition.casefold()}:" + canonical_json_sha256_v1(material)
+
+
+def _near_topology_child_anchor_ids(near: Mapping[str, Any]) -> list[str]:
+    report_norm_ids = set()
+    for row in near["source_only_row_proposals"]:
+        report_norm_id = row["report_norm_id"]
+        if type(report_norm_id) is int:
+            report_norm_ids.add(report_norm_id)
+            continue
+        candidates = row["candidate_report_norm_ids"]
+        if row["status"] == "DUPLICATE_SCHEMA_ROLE_SOURCE_ONLY_AMBIGUOUS" and len(candidates) == 1:
+            report_norm_ids.add(candidates[0])
+    return [_topology_child_anchor_id(item) for item in sorted(report_norm_ids)]
+
+
+def _near_topology_parent_anchor_id(near: Mapping[str, Any]) -> str | None:
+    owner = near["owner_context"]
+    if (
+        owner.get("disposition") == "EXPLICIT_OWNER_CONTEXT_ACCEPTED_FOR_PROPOSAL"
+        and owner.get("report_norm_id") == PARENT_REPORT_NORM_ID
+    ):
+        return _TOPOLOGY_PARENT_ANCHOR_ID
+    return None
+
+
+def _attach_near_topology_resolution(
+    near: Mapping[str, Any],
+    resolution: Mapping[str, Any],
+    topology_candidate_id: str | None,
+) -> dict[str, Any]:
+    material = canonical_clone_v1(near)
+    material.pop("near_region_id")
+    material["minimal_unique_anchor_resolution_v1"] = canonical_clone_v1(resolution)
+    material["topology_candidate_id"] = topology_candidate_id
+    return {**material, "near_region_id": "lef12v1:near:" + canonical_json_sha256_v1(material)}
+
+
+def _anchorless_near_resolution() -> dict[str, Any]:
+    return {
+        "best_nonunique_anchor_ids": [],
+        "candidate_anchor_ids": [],
+        "matching_candidate_ids": [],
+        "matching_count": 0,
+        "parent_child_pairs_precede_child_child_pairs": True,
+        "pair_combinations_exhausted_before_triples": True,
+        "searched_pair_count": 0,
+        "searched_triple_count": 0,
+        "selected_anchor_ids": [],
+        "selected_size": None,
+        "status": "NOT_RUN_ANCHORLESS_NEAR_CANDIDATE",
+    }
 
 
 def _build(region_pages: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
@@ -546,14 +647,18 @@ def _build(region_pages: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         raise _error(str(error)) from error
     children = _semantic_to_child(family_spec)
     context_ids = _context_to_report_ids(family_spec)
-    regions = []
+    pending_regions = []
     near_regions = []
     for near in semantic_result["near_regions"]:
+        rows = [_project_row(row, children) for row in near["source_only_row_proposals"]]
         near_regions.append(
             _near_region(
                 branch=near["branch"],
                 owner=_project_owner(near["owner_context"], context_ids),
                 reason=near["reason"],
+                body_limit_reached=near["body_limit_reached"],
+                geometry=near["source_only_geometry_proposal"],
+                rows=rows,
             )
         )
     for semantic_region in semantic_result["regions"]:
@@ -561,18 +666,26 @@ def _build(region_pages: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         rows = [_project_row(row, children) for row in semantic_region["row_proposals"]]
         bindings = _unique_bindings(rows, promotion_eligible=semantic_region["promotion_eligible"])
         if not bindings:
-            reason = (
-                "SHARED_SCOPED_TABLE_FAIL_CLOSED"
-                if not semantic_region["promotion_eligible"]
-                else "NO_UNIQUE_SCHEMA_ROW_WITH_VALUE_GEOMETRY"
-            )
+            shared = semantic_region["shared_scoped_table_v1"]
+            if semantic_region["body_limit_reached"]:
+                reason = "SEMANTIC_REGION_BODY_LIMIT_REACHED"
+            elif (
+                not semantic_region["promotion_eligible"]
+                and shared["status"] == "SHARED_SCOPED_TABLE_FAIL_CLOSED"
+            ):
+                reason = shared["reason"]
+            else:
+                reason = "NO_UNIQUE_SCHEMA_ROW_WITH_VALUE_GEOMETRY"
             near_regions.append(
                 _near_region(
                     branch=semantic_region["branch"],
                     owner=owner,
                     reason=reason,
+                    body_limit_reached=semantic_region["body_limit_reached"],
                     geometry=semantic_region["adaptive_geometry_v2"],
+                    promotion_eligible=semantic_region["promotion_eligible"],
                     rows=rows,
+                    shared_scoped_table=shared,
                 )
             )
             continue
@@ -584,6 +697,94 @@ def _build(region_pages: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             "row_proposals": rows,
             "shared_scoped_table_v1": semantic_region["shared_scoped_table_v1"],
             "status": "FAMILY12_STRUCTURAL_PROPOSAL_REQUIRES_NUMERIC_AND_SCHEMA_REPLAY",
+        }
+        pending_regions.append(
+            {
+                **material,
+                "topology_candidate_id": _topology_candidate_id("COMPLETE", material),
+            }
+        )
+    topology_candidates = [
+        {
+            "candidate_id": item["topology_candidate_id"],
+            "child_anchor_ids": [
+                _topology_child_anchor_id(binding["report_norm_id"])
+                for binding in item["binding_proposals"]
+            ],
+            "disposition": "COMPLETE",
+            "parent_anchor_id": _TOPOLOGY_PARENT_ANCHOR_ID,
+        }
+        for item in pending_regions
+    ]
+    for near in near_regions:
+        child_anchor_ids = _near_topology_child_anchor_ids(near)
+        parent_anchor_id = _near_topology_parent_anchor_id(near)
+        if parent_anchor_id is None and not child_anchor_ids:
+            continue
+        topology_candidate_id = _topology_candidate_id("NEAR", near)
+        topology_candidates.append(
+            {
+                "candidate_id": topology_candidate_id,
+                "child_anchor_ids": child_anchor_ids,
+                "disposition": "NEAR",
+                "parent_anchor_id": parent_anchor_id,
+            }
+        )
+    topology_result = None
+    topology_resolution_by_id = {}
+    if topology_candidates:
+        topology_result = build_accounting_minimal_unique_anchor_resolution_v1(
+            topology_candidates,
+            document_scope_id=(
+                "SEMANTIC_PAGE_EVIDENCE_"
+                + semantic_result["evidence_binding"]["canonical_page_evidence_sha256"]
+            ),
+        )
+        topology_resolution_by_id = {
+            item["candidate_id"]: item["resolution"] for item in topology_result["candidates"]
+        }
+    attached_near_regions = []
+    for near in near_regions:
+        if _near_topology_parent_anchor_id(near) is None and not _near_topology_child_anchor_ids(
+            near
+        ):
+            attached_near_regions.append(
+                _attach_near_topology_resolution(near, _anchorless_near_resolution(), None)
+            )
+            continue
+        topology_candidate_id = _topology_candidate_id("NEAR", near)
+        attached_near_regions.append(
+            _attach_near_topology_resolution(
+                near,
+                topology_resolution_by_id[topology_candidate_id],
+                topology_candidate_id,
+            )
+        )
+    near_regions = attached_near_regions
+    regions = []
+    for pending in pending_regions:
+        topology_candidate_id = pending["topology_candidate_id"]
+        resolution = topology_resolution_by_id[topology_candidate_id]
+        if resolution["status"] != "UNIQUE_MINIMAL_ANCHOR_COMBINATION":
+            near_regions.append(
+                _near_region(
+                    branch=pending["branch"],
+                    owner=pending["owner_context"],
+                    reason=resolution["status"],
+                    body_limit_reached=False,
+                    bindings=pending["binding_proposals"],
+                    geometry=pending["adaptive_geometry_v2"],
+                    minimal_anchor_resolution=resolution,
+                    promotion_eligible=True,
+                    rows=pending["row_proposals"],
+                    shared_scoped_table=pending["shared_scoped_table_v1"],
+                    topology_candidate_id=topology_candidate_id,
+                )
+            )
+            continue
+        material = {
+            **pending,
+            "minimal_unique_anchor_resolution_v1": canonical_clone_v1(resolution),
         }
         regions.append(
             {**material, "region_id": "lef12v1:region:" + canonical_json_sha256_v1(material)}
@@ -611,10 +812,27 @@ def _build(region_pages: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         ],
         "bounded_absence_count": len(bounded_absences),
         "branch_candidate_count": semantic_result["metrics"]["branch_candidate_count"],
+        "branch_component_fallback_candidate_count": semantic_result["metrics"][
+            "branch_component_fallback_candidate_count"
+        ],
         "cross_page_owner_region_count": sum(
             item["owner_context"]["page_distance"] > 0 for item in regions
         ),
+        "context_event_count": semantic_result["metrics"]["context_event_count"],
+        "context_event_wrapped_count": semantic_result["metrics"]["context_event_wrapped_count"],
         "region_count": len(regions),
+        "minimal_anchor_collision_demoted_region_count": len(pending_regions) - len(regions),
+        "minimal_anchor_anchorless_near_region_count": sum(
+            item["topology_candidate_id"] is None for item in near_regions
+        ),
+        "minimal_anchor_topology_candidate_count": len(topology_candidates),
+        "minimal_anchor_unique_complete_region_count": len(regions),
+        "scoped_table_advisory_failure_region_count": semantic_result["metrics"][
+            "scoped_table_advisory_failure_region_count"
+        ],
+        "scoped_table_required_failure_region_count": semantic_result["metrics"][
+            "scoped_table_required_failure_region_count"
+        ],
         "source_only_ambiguous_row_count": sum(
             row["status"].endswith("AMBIGUOUS")
             for region in regions
@@ -635,6 +853,12 @@ def _build(region_pages: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             "authenticated_store_or_full_corpus_used": False,
             "gemma_or_other_model_authority": False,
             "historical_evidence_metadata_used_for_matching": False,
+            "minimal_unique_anchor_resolution_grants_mapping_authority": False,
+            "minimal_unique_pair_or_triple_required_for_complete_region": True,
+            "parent_child_anchor_pairs_precede_child_child_pairs": True,
+            "topology_bearing_near_candidates_participate_in_collision_resolution": True,
+            "owner_branch_and_child_value_geometry_required_for_binding_proposal": True,
+            "single_branch_component_can_create_binding_proposal": False,
             "shared_geometry_or_scoped_graph_grants_mapping_authority": False,
             "shared_semantic_region_failure_can_promote_mapping": False,
             "two_role_table_without_owner_716_can_accept": False,
@@ -653,6 +877,7 @@ def _build(region_pages: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         "family_id": FAMILY_ID,
         "format_version": FORMAT_VERSION,
         "historical_evidence_summary": family_spec["historical_evidence_summary"],
+        "minimal_unique_anchor_resolution_v1": topology_result,
         "metrics": metrics,
         "near_regions": near_regions,
         "parent_report_norm_id": PARENT_REPORT_NORM_ID,
@@ -843,16 +1068,41 @@ def _authenticated_snapshot_graphs(
     receipt_metrics = receipt["metrics"]
     metrics = {
         "bounded_absence_count": sum(item["bounded_absence_count"] for item in graph_metrics),
+        "branch_component_fallback_candidate_count": sum(
+            item["branch_component_fallback_candidate_count"] for item in graph_metrics
+        ),
         "cross_page_owner_region_count": sum(
             item["cross_page_owner_region_count"] for item in graph_metrics
+        ),
+        "context_event_count": sum(item["context_event_count"] for item in graph_metrics),
+        "context_event_wrapped_count": sum(
+            item["context_event_wrapped_count"] for item in graph_metrics
         ),
         "document_count": len(documents),
         "fallback_document_count": receipt_metrics["fallback_document_count"],
         "indexed_document_count": (len(documents) - receipt_metrics["fallback_document_count"]),
         "line_count": sum(item["line_count"] for item in projection_metrics),
         "near_region_count": sum(len(document["graph"]["near_regions"]) for document in documents),
+        "minimal_anchor_collision_demoted_region_count": sum(
+            item["minimal_anchor_collision_demoted_region_count"] for item in graph_metrics
+        ),
+        "minimal_anchor_anchorless_near_region_count": sum(
+            item["minimal_anchor_anchorless_near_region_count"] for item in graph_metrics
+        ),
+        "minimal_anchor_topology_candidate_count": sum(
+            item["minimal_anchor_topology_candidate_count"] for item in graph_metrics
+        ),
+        "minimal_anchor_unique_complete_region_count": sum(
+            item["minimal_anchor_unique_complete_region_count"] for item in graph_metrics
+        ),
         "page_count": sum(item["page_count"] for item in projection_metrics),
         "region_count": sum(item["region_count"] for item in graph_metrics),
+        "scoped_table_advisory_failure_region_count": sum(
+            item["scoped_table_advisory_failure_region_count"] for item in graph_metrics
+        ),
+        "scoped_table_required_failure_region_count": sum(
+            item["scoped_table_required_failure_region_count"] for item in graph_metrics
+        ),
         "source_only_ambiguous_row_count": sum(
             item["source_only_ambiguous_row_count"] for item in graph_metrics
         ),

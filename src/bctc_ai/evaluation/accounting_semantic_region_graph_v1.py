@@ -18,7 +18,8 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
+from enum import StrEnum
 from functools import lru_cache
 from typing import Any
 
@@ -47,6 +48,7 @@ __all__ = [
     "FORMAT_VERSION",
     "SPEC_FORMAT_VERSION",
     "AccountingSemanticRegionGraphV1Error",
+    "ScopedTableEnforcementV1",
     "build_accounting_semantic_region_graph_v1",
     "validate_accounting_semantic_region_graph_replay_v1",
 ]
@@ -67,6 +69,20 @@ _TIER_ORDER = {
     "EXACT_ACCENTLESS_ALIAS": 1,
     "ONE_BASE_CHARACTER_EDIT_AFTER_ALL_EXACT_MISSES": 2,
 }
+_BRANCH_PRIORITY = {
+    ("FULL_BRANCH_ALIAS", "EXACT_ACCENTED_ALIAS"): 0,
+    ("FULL_BRANCH_ALIAS", "EXACT_ACCENTLESS_ALIAS"): 1,
+    ("DECLARATIVE_BRANCH_COMPONENT", "EXACT_ACCENTED_ALIAS"): 2,
+    ("DECLARATIVE_BRANCH_COMPONENT", "EXACT_ACCENTLESS_ALIAS"): 3,
+    (
+        "FULL_BRANCH_ALIAS",
+        "ONE_BASE_CHARACTER_EDIT_AFTER_ALL_EXACT_MISSES",
+    ): 4,
+    (
+        "DECLARATIVE_BRANCH_COMPONENT",
+        "ONE_BASE_CHARACTER_EDIT_AFTER_ALL_EXACT_MISSES",
+    ): 5,
+}
 _CONTEXT_DISPOSITIONS = {"HARD_VETO", "REQUIRED_OWNER"}
 _SCOPED_LIMIT_FIELDS = {
     "axis_tolerance_ppm",
@@ -80,6 +96,13 @@ _SCOPED_LIMIT_FIELDS = {
     "unlabeled_total_max_numeric_columns",
     "unlabeled_total_min_numeric_columns",
 }
+
+
+class ScopedTableEnforcementV1(StrEnum):
+    """How a scoped-table challenge affects an otherwise valid region."""
+
+    REQUIRED_PROMOTION_GATE = "REQUIRED_PROMOTION_GATE"
+    ADVISORY_CHALLENGER = "ADVISORY_CHALLENGER"
 
 
 class AccountingSemanticRegionGraphV1Error(ValueError):
@@ -128,7 +151,7 @@ def _aliases(value: Any, label: str, *, allow_empty: bool = False) -> list[str]:
 
 
 def _spec(value: Any) -> dict[str, Any]:
-    expected = {
+    required = {
         "branch_aliases",
         "context_classes",
         "family_id",
@@ -140,11 +163,46 @@ def _spec(value: Any) -> dict[str, Any]:
         "source_only_ambiguities",
         "structural_reset_aliases",
     }
-    if type(value) is not dict or set(value) != expected:
+    optional = {"branch_components", "structural_reset_component_aliases"}
+    if (
+        type(value) is not dict
+        or not required <= set(value)
+        or not set(value) <= required | optional
+    ):
         raise _error("semantic-region family spec fields drifted")
     if value["format_version"] != SPEC_FORMAT_VERSION:
         raise _error("semantic-region family spec version drifted")
     family_id = _identifier(value["family_id"], "family ID")
+
+    raw_components = value.get("branch_components", [])
+    if type(raw_components) is not list:
+        raise _error("semantic-region branch components must be one list")
+    components = []
+    component_ids: set[str] = set()
+    component_aliases: set[str] = set()
+    for raw in raw_components:
+        if type(raw) is not dict or set(raw) != {
+            "aliases",
+            "bounded_edit_on_exact_miss",
+            "component_id",
+        }:
+            raise _error("semantic-region branch component fields drifted")
+        component_id = _identifier(raw["component_id"], "branch component ID")
+        if component_id in component_ids or type(raw["bounded_edit_on_exact_miss"]) is not bool:
+            raise _error("semantic-region branch component identity/edit policy drifted")
+        aliases = _aliases(raw["aliases"], component_id)
+        normalized_aliases = {normalize_vietnamese_anchor_v1(alias) for alias in aliases}
+        if normalized_aliases & component_aliases:
+            raise _error("semantic-region branch component aliases repeat across components")
+        component_ids.add(component_id)
+        component_aliases.update(normalized_aliases)
+        components.append(
+            {
+                "aliases": aliases,
+                "bounded_edit_on_exact_miss": raw["bounded_edit_on_exact_miss"],
+                "component_id": component_id,
+            }
+        )
 
     raw_contexts = value["context_classes"]
     if type(raw_contexts) is not list or len(raw_contexts) < 2:
@@ -152,15 +210,26 @@ def _spec(value: Any) -> dict[str, Any]:
     contexts = []
     context_ids: set[str] = set()
     for raw in raw_contexts:
-        if type(raw) is not dict or set(raw) != {"aliases", "context_id", "disposition"}:
+        context_required = {"aliases", "context_id", "disposition"}
+        if type(raw) is not dict or set(raw) not in (
+            context_required,
+            context_required | {"allow_token_subsequence_fence"},
+        ):
             raise _error("semantic-region context fields drifted")
         context_id = _identifier(raw["context_id"], "context ID")
-        if context_id in context_ids or raw["disposition"] not in _CONTEXT_DISPOSITIONS:
+        allow_containment = raw.get("allow_token_subsequence_fence", False)
+        if (
+            context_id in context_ids
+            or raw["disposition"] not in _CONTEXT_DISPOSITIONS
+            or type(allow_containment) is not bool
+            or (allow_containment and raw["disposition"] != "HARD_VETO")
+        ):
             raise _error("semantic-region context identity/disposition repeats or drifted")
         context_ids.add(context_id)
         contexts.append(
             {
                 "aliases": _aliases(raw["aliases"], context_id),
+                "allow_token_subsequence_fence": allow_containment,
                 "context_id": context_id,
                 "disposition": raw["disposition"],
             }
@@ -228,15 +297,21 @@ def _spec(value: Any) -> dict[str, Any]:
         )
 
     limits = value["limits"]
-    if type(limits) is not dict or set(limits) != {
+    required_limit_fields = {
         "branch_line_span",
         "context_page_budget",
         "maximum_body_lines_per_page",
         "row_label_line_span",
-    }:
+    }
+    if (
+        type(limits) is not dict
+        or not required_limit_fields <= set(limits)
+        or not set(limits) <= required_limit_fields | {"context_line_span"}
+    ):
         raise _error("semantic-region structural limit fields drifted")
     parsed_limits = {
         "branch_line_span": _positive_int(limits["branch_line_span"], "branch line span"),
+        "context_line_span": _positive_int(limits.get("context_line_span", 1), "context line span"),
         "context_page_budget": _nonnegative_int(
             limits["context_page_budget"], "context page budget"
         ),
@@ -247,6 +322,7 @@ def _spec(value: Any) -> dict[str, Any]:
     }
     if (
         parsed_limits["branch_line_span"] > 3
+        or parsed_limits["context_line_span"] > 3
         or parsed_limits["context_page_budget"] > 8
         or parsed_limits["maximum_body_lines_per_page"] > 512
         or parsed_limits["row_label_line_span"] > 3
@@ -254,14 +330,18 @@ def _spec(value: Any) -> dict[str, Any]:
         raise _error("semantic-region structural limits exceed closed bounds")
 
     scoped = value["scoped_table"]
-    if type(scoped) is not dict or set(scoped) != {
+    scoped_required = {
         "continuation_aliases",
         "hard_veto_scope_aliases",
         "layout_modes",
         "limits",
         "require_trailing_total_for_roles_as_columns",
         "trailing_total_aliases",
-    }:
+    }
+    if type(scoped) is not dict or set(scoped) not in (
+        scoped_required,
+        scoped_required | {"enforcement"},
+    ):
         raise _error("semantic-region scoped-table configuration fields drifted")
     layouts = scoped["layout_modes"]
     if (
@@ -279,11 +359,19 @@ def _spec(value: Any) -> dict[str, Any]:
     require_total = scoped["require_trailing_total_for_roles_as_columns"]
     if type(require_total) is not bool:
         raise _error("semantic-region scoped-table total policy drifted")
+    enforcement = scoped.get("enforcement", ScopedTableEnforcementV1.REQUIRED_PROMOTION_GATE.value)
+    if type(enforcement) is not str:
+        raise _error("semantic-region scoped-table enforcement drifted")
+    try:
+        parsed_enforcement = ScopedTableEnforcementV1(enforcement).value
+    except ValueError as error:
+        raise _error("semantic-region scoped-table enforcement drifted") from error
     parsed_scoped = {
         "continuation_aliases": _aliases(
             scoped["continuation_aliases"], "scoped continuation", allow_empty=True
         ),
         "hard_veto_scope_aliases": _aliases(scoped["hard_veto_scope_aliases"], "scoped hard veto"),
+        "enforcement": parsed_enforcement,
         "layout_modes": list(layouts),
         "limits": canonical_clone_v1(scoped_limits),
         "require_trailing_total_for_roles_as_columns": require_total,
@@ -293,8 +381,22 @@ def _spec(value: Any) -> dict[str, Any]:
     }
     if require_total and not parsed_scoped["trailing_total_aliases"]:
         raise _error("semantic-region required scoped total needs aliases")
+    structural_resets = _aliases(
+        value["structural_reset_aliases"], "structural reset", allow_empty=True
+    )
+    reset_components = _aliases(
+        value.get("structural_reset_component_aliases", []),
+        "structural reset component",
+        allow_empty=True,
+    )
+    normalized_resets = {normalize_vietnamese_anchor_v1(alias) for alias in structural_resets}
+    if any(
+        normalize_vietnamese_anchor_v1(alias) not in normalized_resets for alias in reset_components
+    ):
+        raise _error("structural reset component aliases must be declared reset aliases")
     return {
         "branch_aliases": _aliases(value["branch_aliases"], "branch"),
+        "branch_components": components,
         "context_classes": contexts,
         "family_id": family_id,
         "format_version": SPEC_FORMAT_VERSION,
@@ -303,9 +405,8 @@ def _spec(value: Any) -> dict[str, Any]:
         "row_axis": rows,
         "scoped_table": parsed_scoped,
         "source_only_ambiguities": ambiguities,
-        "structural_reset_aliases": _aliases(
-            value["structural_reset_aliases"], "structural reset", allow_empty=True
-        ),
+        "structural_reset_aliases": structural_resets,
+        "structural_reset_component_aliases": reset_components,
     }
 
 
@@ -425,6 +526,32 @@ def _line_evidence(line: Mapping[str, Any], *, page_sequence: int) -> dict[str, 
     }
 
 
+def _is_value(line: Mapping[str, Any]) -> bool:
+    return is_accounting_value_surface_v1(line["vietocr_text"]) or (
+        type(line["source_text"]) is str and is_accounting_value_surface_v1(line["source_text"])
+    )
+
+
+def _can_join_wrapped_label(
+    current: tuple[int, Mapping[str, Any]],
+    following: tuple[int, Mapping[str, Any]],
+    body: Sequence[Mapping[str, Any]],
+) -> bool:
+    current_index, current_line = current
+    following_index, following_line = following
+    if any(_is_value(line) for line in body[current_index + 1 : following_index]):
+        return False
+    current_height = current_line["bbox"][3] - current_line["bbox"][1]
+    following_height = following_line["bbox"][3] - following_line["bbox"][1]
+    gap = following_line["bbox"][1] - current_line["bbox"][3]
+    maximum_gap = max(4, min(current_height, following_height) // 2)
+    maximum_indent = max(current_height, following_height) * 3
+    return (
+        gap <= maximum_gap
+        and abs(following_line["bbox"][0] - current_line["bbox"][0]) <= maximum_indent
+    )
+
+
 def _exact_matches(surface: str, aliases: Sequence[str]) -> tuple[str | None, list[str]]:
     accented = _accented(surface)
     matches = [alias for alias in aliases if accented == _accented(alias)]
@@ -486,38 +613,394 @@ def _best_alias_match(
     )
 
 
-def _branch_candidates(
+def _contains_token_sequence(surface: str, alias: str, *, accentless: bool) -> bool:
+    normalize = _accentless if accentless else _accented
+    surface_tokens = normalize(surface).split()
+    alias_tokens = normalize(alias).split()
+    width = len(alias_tokens)
+    return bool(width) and any(
+        surface_tokens[start : start + width] == alias_tokens
+        for start in range(len(surface_tokens) - width + 1)
+    )
+
+
+def _exact_component_matches(
+    surface: str, components: Sequence[Mapping[str, Any]]
+) -> tuple[str | None, list[str], list[str]]:
+    for tier, accentless in (
+        ("EXACT_ACCENTED_ALIAS", False),
+        ("EXACT_ACCENTLESS_ALIAS", True),
+    ):
+        matched = [
+            (component["component_id"], alias)
+            for component in components
+            for alias in component["aliases"]
+            if _contains_token_sequence(surface, alias, accentless=accentless)
+        ]
+        if matched:
+            return (
+                tier,
+                sorted({alias for _, alias in matched}),
+                sorted({component_id for component_id, _ in matched}),
+            )
+    return None, [], []
+
+
+def _bounded_component_alias_matches(surface: str, alias: str) -> tuple[bool, int]:
+    surface_tokens = _accentless(surface).split()
+    alias_tokens = _accentless(alias).split()
+    comparisons = 0
+    widths = sorted(
+        {
+            width
+            for width in (len(alias_tokens) - 1, len(alias_tokens), len(alias_tokens) + 1)
+            if width > 0
+        }
+    )
+    for width in widths:
+        for start in range(len(surface_tokens) - width + 1):
+            candidate = " ".join(surface_tokens[start : start + width])
+            if abs(len(candidate) - len(_accentless(alias))) > 1:
+                continue
+            comparisons += 1
+            if (
+                match_vietnamese_anchor_alias_v1(candidate, [alias])
+                == "ONE_EDIT_ALIAS_IN_COMPLETE_ORDERED_TOPOLOGY"
+            ):
+                return True, comparisons
+    return False, comparisons
+
+
+def _best_component_match(
+    surfaces: Sequence[str],
+    components: Sequence[Mapping[str, Any]],
+    *,
+    allow_bounded: bool,
+) -> tuple[str | None, str | None, list[str], list[str], int, int | None]:
+    exact = []
+    for span, surface in enumerate(surfaces, start=1):
+        tier, aliases, component_ids = _exact_component_matches(surface, components)
+        if tier is not None:
+            exact.append((tier, span, surface, aliases, component_ids))
+    if exact:
+        tier, span, surface, aliases, component_ids = min(
+            exact, key=lambda item: (_TIER_ORDER[item[0]], item[1], item[2])
+        )
+        return tier, surface, aliases, component_ids, 0, span
+    if not allow_bounded:
+        return None, None, [], [], 0, None
+    bounded = []
+    comparisons = 0
+    for span, surface in enumerate(surfaces, start=1):
+        matched = []
+        for component in components:
+            if not component["bounded_edit_on_exact_miss"]:
+                continue
+            for alias in component["aliases"]:
+                is_match, count = _bounded_component_alias_matches(surface, alias)
+                comparisons += count
+                if is_match:
+                    matched.append((component["component_id"], alias))
+        if matched:
+            bounded.append(
+                (
+                    span,
+                    surface,
+                    sorted({alias for _, alias in matched}),
+                    sorted({component_id for component_id, _ in matched}),
+                )
+            )
+    if not bounded:
+        return None, None, [], [], comparisons, None
+    span, surface, aliases, component_ids = min(
+        bounded, key=lambda item: (item[0], item[1], item[2], item[3])
+    )
+    return (
+        "ONE_BASE_CHARACTER_EDIT_AFTER_ALL_EXACT_MISSES",
+        surface,
+        aliases,
+        component_ids,
+        comparisons,
+        span,
+    )
+
+
+def _cohesive_nonvalue_surfaces(
+    lines: Sequence[Mapping[str, Any]],
+    start: int,
+    maximum_span: int,
+    context_fence_indices: set[int],
+) -> list[str]:
+    if _is_value(lines[start]) or start in context_fence_indices:
+        return []
+    surfaces = []
+    for span in range(1, maximum_span + 1):
+        stop = start + span
+        if stop > len(lines):
+            break
+        current = lines[stop - 1]
+        if _is_value(current) or stop - 1 in context_fence_indices:
+            break
+        if span > 1 and not _can_join_wrapped_label(
+            (stop - 2, lines[stop - 2]), (stop - 1, current), lines
+        ):
+            break
+        surfaces.append(_joined(lines[start:stop]))
+    return surfaces
+
+
+def _context_event_specificity(event: Mapping[str, Any]) -> tuple[int, int]:
+    return max(
+        (len(_accentless(alias).split()), len(_accentless(alias)))
+        for alias in event["matched_aliases"]
+    )
+
+
+def _select_context_event(candidates: Sequence[Mapping[str, Any]]) -> dict[str, Any] | None:
+    if not candidates:
+        return None
+    ranked = [
+        (
+            (
+                candidate["disposition"] != "HARD_VETO",
+                -_context_event_specificity(candidate)[0],
+                -_context_event_specificity(candidate)[1],
+                _TIER_ORDER[candidate["match_tier"]],
+                candidate["context_id"] == "STRUCTURAL_RESET",
+            ),
+            candidate,
+        )
+        for candidate in candidates
+    ]
+    best_rank = min(item[0] for item in ranked)
+    winners = [candidate for rank, candidate in ranked if rank == best_rank]
+    context_ids = {candidate["context_id"] for candidate in winners}
+    aliases = sorted({alias for candidate in winners for alias in candidate["matched_aliases"]})
+    if len(context_ids) != 1 or "AMBIGUOUS_CONTEXT_EVENT" in context_ids:
+        return {
+            "context_id": "AMBIGUOUS_CONTEXT_EVENT",
+            "disposition": "HARD_VETO",
+            "match_tier": winners[0]["match_tier"],
+            "matched_aliases": aliases,
+        }
+    selected = canonical_clone_v1(winners[0])
+    selected["matched_aliases"] = aliases
+    return selected
+
+
+def _select_priority_intervals(
+    candidates: Sequence[Mapping[str, Any]],
+    *,
+    priority_key: Callable[[Mapping[str, Any]], Any],
+    same_priority_key: Callable[[Mapping[str, Any]], Any],
+    is_fail_closed_blocker: Callable[[Mapping[str, Any]], bool],
+) -> tuple[list[dict[str, Any]], set[int], int]:
+    blockers = [dict(item) for item in candidates if is_fail_closed_blocker(item)]
+    ordinary = [dict(item) for item in candidates if not is_fail_closed_blocker(item)]
+    selected = sorted(blockers, key=same_priority_key)
+    selected_coverage = {index for item in selected for index in range(item["start"], item["stop"])}
+    # Every enumerated higher-priority interval reserves coverage for all lower
+    # tiers, even when it loses same-tier arbitration.  This prevents chains
+    # HIGH[0,2), HIGH[1,3), LOW[2,3) from leaking LOW through a greedy gap.
+    higher_priority_coverage = set(selected_coverage)
+    priorities = sorted({priority_key(item) for item in ordinary})
+    for priority in priorities:
+        tier = [item for item in ordinary if priority_key(item) == priority]
+        tier_selected_coverage: set[int] = set()
+        for candidate in sorted(tier, key=same_priority_key):
+            covered = set(range(candidate["start"], candidate["stop"]))
+            if covered & (higher_priority_coverage | tier_selected_coverage):
+                continue
+            selected.append(candidate)
+            selected_coverage.update(covered)
+            tier_selected_coverage.update(covered)
+        higher_priority_coverage.update(
+            index for item in tier for index in range(item["start"], item["stop"])
+        )
+    return selected, selected_coverage, len(candidates) - len(selected)
+
+
+def _context_event_plan(
     pages: Sequence[Mapping[str, Any]], spec: Mapping[str, Any]
-) -> tuple[list[dict[str, Any]], int]:
+) -> tuple[list[dict[str, Any]], int, dict[str, int]]:
+    plans = []
+    comparisons = 0
+    enumerated_count = 0
+    suppressed_count = 0
+    maximum_span = spec["limits"]["context_line_span"]
+    for page_ordinal, page in enumerate(pages):
+        lines = page["lines"]
+        candidates = []
+        for start in range(len(lines)):
+            surfaces = _cohesive_nonvalue_surfaces(lines, start, maximum_span, set())
+            seen_start_event_keys = set()
+            for span, surface in enumerate(surfaces, 1):
+                event, count = _context_class(surface, spec, allow_bounded=True)
+                comparisons += count
+                if event is None:
+                    continue
+                event_key = (
+                    event["context_id"],
+                    event["disposition"],
+                    event["match_tier"],
+                    tuple(event["matched_aliases"]),
+                )
+                if event_key in seen_start_event_keys:
+                    continue
+                seen_start_event_keys.add(event_key)
+                material = {
+                    **event,
+                    "evidence": [
+                        _line_evidence(line, page_sequence=page["page_sequence"])
+                        for line in lines[start : start + span]
+                    ],
+                    "line_ordinal": start,
+                    "line_stop_exclusive": start + span,
+                    "page_sequence": page["page_sequence"],
+                    "surface": surface,
+                }
+                candidates.append(
+                    {
+                        **material,
+                        "context_event_id": "asrgv1:context_event:"
+                        + canonical_json_sha256_v1(material),
+                        "page_ordinal": page_ordinal,
+                        "start": start,
+                        "stop": start + span,
+                    }
+                )
+        enumerated_count += len(candidates)
+        selected, _, suppressed = _select_priority_intervals(
+            candidates,
+            priority_key=lambda item: (
+                -_context_event_specificity(item)[0],
+                -_context_event_specificity(item)[1],
+                _TIER_ORDER[item["match_tier"]],
+            ),
+            same_priority_key=lambda item: (
+                item["stop"] - item["start"],
+                item["start"],
+                item["context_event_id"],
+            ),
+            is_fail_closed_blocker=lambda item: item["disposition"] == "HARD_VETO",
+        )
+        # Branch construction must not reinterpret the uncovered tail of a
+        # recognized context candidate.  Reserve the union of every enumerated
+        # context interval, including same-tier candidates that lose diagnostic
+        # arbitration.  Redundant longer windows for the same semantic event
+        # have already been removed above, so this does not let a containment
+        # superset consume an otherwise independent following context event.
+        context_coverage = {
+            index for item in candidates for index in range(item["start"], item["stop"])
+        }
+        suppressed_count += suppressed
+        plans.append(
+            {
+                "events": sorted(
+                    selected,
+                    key=lambda item: (item["start"], item["stop"], item["context_event_id"]),
+                ),
+                "fence_indices": context_coverage,
+            }
+        )
+    return (
+        plans,
+        comparisons,
+        {
+            "enumerated_event_count": enumerated_count,
+            "overlap_suppressed_event_count": suppressed_count,
+            "selected_event_count": sum(len(plan["events"]) for plan in plans),
+            "wrapped_event_count": sum(
+                event["stop"] - event["start"] > 1 for plan in plans for event in plan["events"]
+            ),
+        },
+    )
+
+
+def _branch_match(
+    surfaces: Sequence[str], spec: Mapping[str, Any]
+) -> tuple[dict[str, Any] | None, int]:
+    tier, surface, aliases, _ = _best_alias_match(
+        surfaces, spec["branch_aliases"], allow_bounded=False
+    )
+    if tier is not None and surface is not None:
+        span = max(index for index, item in enumerate(surfaces, 1) if item == surface)
+        return {
+            "match_basis": "FULL_BRANCH_ALIAS",
+            "match_tier": tier,
+            "matched_aliases": sorted(aliases),
+            "matched_component_ids": [],
+            "span": span,
+            "surface": surface,
+        }, 0
+
+    tier, surface, aliases, component_ids, _, span = _best_component_match(
+        surfaces, spec["branch_components"], allow_bounded=False
+    )
+    if tier is not None and surface is not None and span is not None:
+        return {
+            "match_basis": "DECLARATIVE_BRANCH_COMPONENT",
+            "match_tier": tier,
+            "matched_aliases": aliases,
+            "matched_component_ids": component_ids,
+            "span": span,
+            "surface": surface,
+        }, 0
+
+    tier, surface, aliases, comparisons = _best_alias_match(
+        surfaces, spec["branch_aliases"], allow_bounded=True
+    )
+    if tier is not None and surface is not None:
+        span = max(index for index, item in enumerate(surfaces, 1) if item == surface)
+        return {
+            "match_basis": "FULL_BRANCH_ALIAS",
+            "match_tier": tier,
+            "matched_aliases": sorted(aliases),
+            "matched_component_ids": [],
+            "span": span,
+            "surface": surface,
+        }, comparisons
+
+    component = _best_component_match(surfaces, spec["branch_components"], allow_bounded=True)
+    tier, surface, aliases, component_ids, count, span = component
+    comparisons += count
+    if tier is None or surface is None or span is None:
+        return None, comparisons
+    return {
+        "match_basis": "DECLARATIVE_BRANCH_COMPONENT",
+        "match_tier": tier,
+        "matched_aliases": aliases,
+        "matched_component_ids": component_ids,
+        "span": span,
+        "surface": surface,
+    }, comparisons
+
+
+def _branch_candidates(
+    pages: Sequence[Mapping[str, Any]],
+    spec: Mapping[str, Any],
+    context_event_plans: Sequence[Mapping[str, Any]],
+) -> tuple[list[dict[str, Any]], int, dict[str, int]]:
     candidates = []
     comparisons = 0
     maximum_span = spec["limits"]["branch_line_span"]
     for page_ordinal, page in enumerate(pages):
         lines = page["lines"]
+        context_fences = context_event_plans[page_ordinal]["fence_indices"]
         for start in range(len(lines)):
-            surfaces = [
-                _joined(lines[start : start + span])
-                for span in range(1, maximum_span + 1)
-                if start + span <= len(lines)
-            ]
-            tier, surface, aliases, count = _best_alias_match(
-                surfaces, spec["branch_aliases"], allow_bounded=True
-            )
+            surfaces = _cohesive_nonvalue_surfaces(lines, start, maximum_span, context_fences)
+            matched, count = _branch_match(surfaces, spec)
             comparisons += count
-            if tier is None or surface is None:
+            if matched is None:
                 continue
-            span = next(
-                value for value in range(len(surfaces), 0, -1) if surfaces[value - 1] == surface
-            )
+            span = matched.pop("span")
             material = {
                 "evidence": [
                     _line_evidence(line, page_sequence=page["page_sequence"])
                     for line in lines[start : start + span]
                 ],
-                "matched_aliases": sorted(aliases),
-                "match_tier": tier,
                 "page_sequence": page["page_sequence"],
-                "surface": surface,
+                **matched,
             }
             candidates.append(
                 {
@@ -528,122 +1011,218 @@ def _branch_candidates(
                     "stop": start + span,
                 }
             )
+    enumerated_count = len(candidates)
     selected = []
-    occupied: dict[int, set[int]] = {}
-    for candidate in sorted(
-        candidates,
-        key=lambda item: (
-            item["page_ordinal"],
-            item["start"],
-            _TIER_ORDER[item["match_tier"]],
-            item["start"] - item["stop"],
-            item["branch_id"],
+    suppressed_count = 0
+    for page_ordinal in range(len(pages)):
+        page_selected, _, page_suppressed = _select_priority_intervals(
+            [item for item in candidates if item["page_ordinal"] == page_ordinal],
+            priority_key=lambda item: _BRANCH_PRIORITY[(item["match_basis"], item["match_tier"])],
+            same_priority_key=lambda item: (
+                item["start"],
+                item["stop"] - item["start"],
+                item["branch_id"],
+            ),
+            is_fail_closed_blocker=lambda _item: False,
+        )
+        selected.extend(page_selected)
+        suppressed_count += page_suppressed
+    return (
+        selected,
+        comparisons,
+        {
+            "enumerated_candidate_count": enumerated_count,
+            "overlap_suppressed_candidate_count": suppressed_count,
+        },
+    )
+
+
+def _hard_context_components(spec: Mapping[str, Any]) -> list[dict[str, Any]]:
+    return [
+        *(
+            {
+                "aliases": context["aliases"],
+                "bounded_edit_on_exact_miss": True,
+                "component_id": context["context_id"],
+            }
+            for context in spec["context_classes"]
+            if context["disposition"] == "HARD_VETO" and context["allow_token_subsequence_fence"]
         ),
+        {
+            "aliases": spec["structural_reset_component_aliases"],
+            "bounded_edit_on_exact_miss": True,
+            "component_id": "STRUCTURAL_RESET",
+        },
+    ]
+
+
+def _hard_context_component_event(
+    surface: str, spec: Mapping[str, Any], *, allow_bounded: bool
+) -> tuple[dict[str, Any] | None, int]:
+    components = [component for component in _hard_context_components(spec) if component["aliases"]]
+    exact = []
+    for tier, accentless in (
+        ("EXACT_ACCENTED_ALIAS", False),
+        ("EXACT_ACCENTLESS_ALIAS", True),
     ):
-        covered = set(range(candidate["start"], candidate["stop"]))
-        if covered & occupied.setdefault(candidate["page_ordinal"], set()):
-            continue
-        occupied[candidate["page_ordinal"]].update(covered)
-        selected.append(candidate)
-    return selected, comparisons
+        matches = [
+            (component["component_id"], alias)
+            for component in components
+            for alias in component["aliases"]
+            if _contains_token_sequence(surface, alias, accentless=accentless)
+        ]
+        if matches:
+            exact = [(tier, *item) for item in matches]
+            break
+    comparisons = 0
+    matches = exact
+    if not matches and allow_bounded:
+        for component in components:
+            for alias in component["aliases"]:
+                matched, count = _bounded_component_alias_matches(surface, alias)
+                comparisons += count
+                if matched:
+                    matches.append(
+                        (
+                            "ONE_BASE_CHARACTER_EDIT_AFTER_ALL_EXACT_MISSES",
+                            component["component_id"],
+                            alias,
+                        )
+                    )
+    if not matches:
+        return None, comparisons
+    # Longer declared events are more specific than their nested short fences.
+    # Equal-specificity events remain ambiguous and therefore fail closed.
+    maximum_specificity = max(
+        (len(_accentless(alias).split()), len(_accentless(alias))) for _, _, alias in matches
+    )
+    winners = [
+        (tier, context_id, alias)
+        for tier, context_id, alias in matches
+        if (len(_accentless(alias).split()), len(_accentless(alias))) == maximum_specificity
+    ]
+    tier = winners[0][0]
+    aliases = sorted({alias for _, _, alias in winners})
+    context_ids = sorted({context_id for _, context_id, _ in winners})
+    if "STRUCTURAL_RESET" in context_ids and len(context_ids) > 1:
+        winners = [item for item in winners if item[1] != "STRUCTURAL_RESET"]
+        aliases = sorted({alias for _, _, alias in winners})
+        context_ids = sorted({context_id for _, context_id, _ in winners})
+    if len(context_ids) != 1:
+        return {
+            "context_id": "AMBIGUOUS_CONTEXT_EVENT",
+            "disposition": "HARD_VETO",
+            "match_basis": "TOKEN_BOUNDED_HARD_CONTEXT_OR_RESET",
+            "match_tier": tier,
+            "matched_aliases": aliases,
+        }, comparisons
+    context_id = context_ids[0]
+    record = next(
+        (context for context in spec["context_classes"] if context["context_id"] == context_id),
+        {"context_id": "STRUCTURAL_RESET", "disposition": "HARD_VETO"},
+    )
+    return {
+        **canonical_clone_v1(record),
+        "match_basis": "TOKEN_BOUNDED_HARD_CONTEXT_OR_RESET",
+        "match_tier": tier,
+        "matched_aliases": aliases,
+    }, comparisons
 
 
 def _context_class(
     surface: str, spec: Mapping[str, Any], *, allow_bounded: bool
 ) -> tuple[dict[str, Any] | None, int]:
-    exact = []
+    exact: list[dict[str, Any]] = []
     for record in spec["context_classes"]:
         tier, aliases = _exact_matches(surface, record["aliases"])
         if tier is not None:
-            exact.append((tier, record, aliases))
-    if exact:
-        best = min(_TIER_ORDER[item[0]] for item in exact)
-        winners = [item for item in exact if _TIER_ORDER[item[0]] == best]
-        if len(winners) != 1:
-            return {
-                "context_id": "AMBIGUOUS_CONTEXT_EVENT",
-                "disposition": "HARD_VETO",
-                "match_tier": winners[0][0],
-                "matched_aliases": sorted({alias for item in winners for alias in item[2]}),
-            }, 0
-        tier, record, aliases = winners[0]
-        return {**canonical_clone_v1(record), "match_tier": tier, "matched_aliases": aliases}, 0
+            exact.append(
+                {
+                    **canonical_clone_v1(record),
+                    "match_tier": tier,
+                    "matched_aliases": aliases,
+                }
+            )
     reset_tier, reset_aliases = _exact_matches(surface, spec["structural_reset_aliases"])
     if reset_tier is not None:
-        return {
-            "context_id": "STRUCTURAL_RESET",
-            "disposition": "HARD_VETO",
-            "match_tier": reset_tier,
-            "matched_aliases": reset_aliases,
-        }, 0
-    if not allow_bounded:
-        return None, 0
-    bounded = []
-    comparisons = 0
+        exact.append(
+            {
+                "context_id": "STRUCTURAL_RESET",
+                "disposition": "HARD_VETO",
+                "match_tier": reset_tier,
+                "matched_aliases": reset_aliases,
+            }
+        )
+    hard_component, comparisons = _hard_context_component_event(surface, spec, allow_bounded=False)
+    if hard_component is not None:
+        exact.append(hard_component)
+    if not allow_bounded or any(item["disposition"] == "HARD_VETO" for item in exact):
+        return _select_context_event(exact), comparisons
+    bounded: list[dict[str, Any]] = []
     for record in spec["context_classes"]:
         aliases, count = _bounded_matches(surface, record["aliases"])
         comparisons += count
         if aliases:
-            bounded.append((record, aliases))
+            bounded.append(
+                {
+                    **canonical_clone_v1(record),
+                    "match_tier": "ONE_BASE_CHARACTER_EDIT_AFTER_ALL_EXACT_MISSES",
+                    "matched_aliases": aliases,
+                }
+            )
     reset_aliases, count = _bounded_matches(surface, spec["structural_reset_aliases"])
     comparisons += count
     if reset_aliases:
         bounded.append(
-            (
-                {"context_id": "STRUCTURAL_RESET", "disposition": "HARD_VETO"},
-                reset_aliases,
-            )
+            {
+                "context_id": "STRUCTURAL_RESET",
+                "disposition": "HARD_VETO",
+                "match_tier": "ONE_BASE_CHARACTER_EDIT_AFTER_ALL_EXACT_MISSES",
+                "matched_aliases": reset_aliases,
+            }
         )
-    if not bounded:
-        return None, comparisons
-    if len(bounded) != 1:
-        return {
-            "context_id": "AMBIGUOUS_CONTEXT_EVENT",
-            "disposition": "HARD_VETO",
-            "match_tier": "ONE_BASE_CHARACTER_EDIT_AFTER_ALL_EXACT_MISSES",
-            "matched_aliases": sorted({alias for _, aliases in bounded for alias in aliases}),
-        }, comparisons
-    record, aliases = bounded[0]
-    return {
-        **canonical_clone_v1(record),
-        "match_tier": "ONE_BASE_CHARACTER_EDIT_AFTER_ALL_EXACT_MISSES",
-        "matched_aliases": aliases,
-    }, comparisons
+    hard_component, count = _hard_context_component_event(surface, spec, allow_bounded=True)
+    comparisons += count
+    if hard_component is not None:
+        bounded.append(hard_component)
+    if exact:
+        bounded = [item for item in bounded if item["disposition"] == "HARD_VETO"]
+    return _select_context_event([*exact, *bounded]), comparisons
 
 
 def _owner_context(
-    branch: Mapping[str, Any], pages: Sequence[Mapping[str, Any]], spec: Mapping[str, Any]
-) -> tuple[dict[str, Any], int]:
+    branch: Mapping[str, Any],
+    pages: Sequence[Mapping[str, Any]],
+    spec: Mapping[str, Any],
+    context_event_plans: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
     branch_ordinal = branch["page_ordinal"]
     branch_sequence = branch["page_sequence"]
     budget = spec["limits"]["context_page_budget"]
     events = []
-    comparisons = 0
     for page_ordinal in range(max(0, branch_ordinal - budget), branch_ordinal + 1):
         page = pages[page_ordinal]
         distance = branch_sequence - page["page_sequence"]
         if not 0 <= distance <= budget:
             continue
         stop = branch["start"] if page_ordinal == branch_ordinal else len(page["lines"])
-        for line_ordinal, line in enumerate(page["lines"][:stop]):
-            event, count = _context_class(line["vietocr_text"], spec, allow_bounded=True)
-            comparisons += count
-            if event is not None:
-                events.append(
-                    {
-                        **event,
-                        "evidence": _line_evidence(line, page_sequence=page["page_sequence"]),
-                        "line_ordinal": line_ordinal,
-                        "page_distance": distance,
-                        "page_ordinal": page_ordinal,
-                    }
-                )
+        events.extend(
+            {
+                **event,
+                "page_distance": distance,
+            }
+            for event in context_event_plans[page_ordinal]["events"]
+            if event["stop"] <= stop
+        )
     if not events:
         return {
             "disposition": "OWNER_REQUIRED_FAIL_CLOSED",
             "reason": "EXPLICIT_OWNER_NOT_FOUND_INSIDE_CONTEXT_PAGE_BUDGET",
-        }, comparisons
-    closest = max(events, key=lambda item: (item["page_ordinal"], item["line_ordinal"]))
+        }
+    closest = max(
+        events,
+        key=lambda item: (item["page_ordinal"], item["line_stop_exclusive"], item["line_ordinal"]),
+    )
     if (
         closest["disposition"] != "REQUIRED_OWNER"
         or closest["context_id"] != spec["required_owner_context_id"]
@@ -652,8 +1231,8 @@ def _owner_context(
             "closest_context_event": closest,
             "disposition": "OWNER_REQUIRED_FAIL_CLOSED",
             "reason": "CLOSEST_CONTEXT_IS_HARD_VETO_OR_STRUCTURAL_RESET",
-        }, comparisons
-    owner_sequence = closest["evidence"]["page_sequence"]
+        }
+    owner_sequence = closest["page_sequence"]
     observed_sequences = {page["page_sequence"] for page in pages}
     if any(
         sequence not in observed_sequences
@@ -663,24 +1242,18 @@ def _owner_context(
             "closest_context_event": closest,
             "disposition": "OWNER_REQUIRED_FAIL_CLOSED",
             "reason": "OWNER_CARRY_HAS_UNOBSERVED_INTERVENING_PAGE",
-        }, comparisons
+        }
     distance = closest["page_distance"]
     return {
         "context_id": closest["context_id"],
         "disposition": "EXPLICIT_OWNER_CONTEXT_ACCEPTED_FOR_PROPOSAL",
-        "evidence": closest["evidence"],
+        "event_evidence": canonical_clone_v1(closest["evidence"]),
+        "evidence": canonical_clone_v1(closest["evidence"][0]),
         "match_tier": closest["match_tier"],
         "mode": "SAME_PAGE" if distance == 0 else f"CARRIED_FROM_PREVIOUS_PAGE_{distance}",
         "page_distance": distance,
-    }, comparisons
-
-
-def _is_boundary(surface: str, spec: Mapping[str, Any]) -> tuple[bool, int]:
-    event, comparisons = _context_class(surface, spec, allow_bounded=True)
-    if event is not None:
-        return True, comparisons
-    tier, _, _, count = _best_alias_match([surface], spec["branch_aliases"], allow_bounded=True)
-    return tier is not None, comparisons + count
+        "surface": closest["surface"],
+    }
 
 
 def _row_match(
@@ -786,48 +1359,36 @@ def _row_match(
     }, comparisons
 
 
-def _is_value(line: Mapping[str, Any]) -> bool:
-    return is_accounting_value_surface_v1(line["vietocr_text"]) or (
-        type(line["source_text"]) is str and is_accounting_value_surface_v1(line["source_text"])
-    )
-
-
-def _can_join_wrapped_label(
-    current: tuple[int, Mapping[str, Any]],
-    following: tuple[int, Mapping[str, Any]],
-    body: Sequence[Mapping[str, Any]],
-) -> bool:
-    current_index, current_line = current
-    following_index, following_line = following
-    if any(_is_value(line) for line in body[current_index + 1 : following_index]):
-        return False
-    current_height = current_line["bbox"][3] - current_line["bbox"][1]
-    following_height = following_line["bbox"][3] - following_line["bbox"][1]
-    gap = following_line["bbox"][1] - current_line["bbox"][3]
-    maximum_gap = max(4, min(current_height, following_height) // 2)
-    maximum_indent = max(current_height, following_height) * 3
-    return (
-        gap <= maximum_gap
-        and abs(following_line["bbox"][0] - current_line["bbox"][0]) <= maximum_indent
-    )
-
-
 def _body_and_rows(
-    branch: Mapping[str, Any], page: Mapping[str, Any], spec: Mapping[str, Any]
+    branch: Mapping[str, Any],
+    page: Mapping[str, Any],
+    spec: Mapping[str, Any],
+    context_fence_indices: set[int],
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], int, bool]:
     body = []
     comparisons = 0
     maximum = spec["limits"]["maximum_body_lines_per_page"]
-    tail = page["lines"][branch["stop"] :]
+    lines = page["lines"]
+    tail_length = len(lines) - branch["stop"]
     boundary_seen = False
-    for line in tail[:maximum]:
-        boundary, count = _is_boundary(line["vietocr_text"], spec)
-        comparisons += count
+    for offset in range(min(tail_length, maximum)):
+        line_index = branch["stop"] + offset
+        boundary = line_index in context_fence_indices
+        if not boundary:
+            surfaces = _cohesive_nonvalue_surfaces(
+                lines,
+                line_index,
+                spec["limits"]["branch_line_span"],
+                context_fence_indices,
+            )
+            branch_boundary, count = _branch_match(surfaces, spec)
+            comparisons += count
+            boundary = branch_boundary is not None
         if boundary:
             boundary_seen = True
             break
-        body.append(line)
-    limit_reached = len(tail) > maximum and not boundary_seen
+        body.append(lines[line_index])
+    limit_reached = tail_length > maximum and not boundary_seen
     semantic = [(index, line) for index, line in enumerate(body) if not _is_value(line)]
     candidates = []
     max_span = spec["limits"]["row_label_line_span"]
@@ -963,8 +1524,10 @@ def _scoped_receipt(
     rows: Sequence[Mapping[str, Any]],
     spec: Mapping[str, Any],
 ) -> dict[str, Any]:
+    enforcement = spec["scoped_table"]["enforcement"]
     if owner["mode"] != "SAME_PAGE":
         return {
+            "enforcement": enforcement,
             "reason": "SCOPED_TABLE_V1_REQUIRES_SAME_PAGE_OWNER_EVIDENCE",
             "status": "NOT_APPLICABLE_TO_EXPLICIT_CROSS_PAGE_OWNER_CARRY_RECEIPT",
         }
@@ -980,6 +1543,7 @@ def _scoped_receipt(
     unique = [row for row in supported if counts[row["semantic_id"]] == 1]
     if len(unique) < 2:
         return {
+            "enforcement": enforcement,
             "reason": "AT_LEAST_TWO_UNIQUE_SEMANTIC_ROWS_REQUIRED",
             "status": "NOT_RUN_INSUFFICIENT_ROLE_TOPOLOGY",
         }
@@ -990,7 +1554,7 @@ def _scoped_receipt(
         "format_version": SCOPED_SPEC_FORMAT_VERSION,
         "layout_modes": scoped["layout_modes"],
         "limits": scoped["limits"],
-        "owner_aliases": [owner["evidence"]["vietocr_raw_nfc_surface"]],
+        "owner_aliases": [owner["surface"]],
         "require_trailing_total_for_roles_as_columns": scoped[
             "require_trailing_total_for_roles_as_columns"
         ],
@@ -1015,16 +1579,20 @@ def _scoped_receipt(
         result = build_accounting_scoped_table_graph_v1([page], scoped_spec)
     except AccountingScopedTableGraphV1Error:
         return {
+            "enforcement": enforcement,
             "reason": "SCOPED_TABLE_V1_REJECTED_DYNAMIC_EXACT_SPEC",
+            "result": None,
             "status": "SHARED_SCOPED_TABLE_FAIL_CLOSED",
         }
     if not result["graphs"]:
         return {
+            "enforcement": enforcement,
             "reason": "SCOPED_TABLE_V1_RETURNED_NO_COMPLETE_GRAPH",
             "result": result,
             "status": "SHARED_SCOPED_TABLE_FAIL_CLOSED",
         }
     return {
+        "enforcement": enforcement,
         "result": result,
         "spec_id": "asrgv1:scoped_spec:" + canonical_json_sha256_v1(scoped_spec),
         "status": "SHARED_SCOPED_TABLE_PROPOSAL_RETAINED_NO_MAPPING_AUTHORITY",
@@ -1037,7 +1605,9 @@ def _public_branch(branch: Mapping[str, Any]) -> dict[str, Any]:
         for key in (
             "branch_id",
             "evidence",
+            "match_basis",
             "matched_aliases",
+            "matched_component_ids",
             "match_tier",
             "page_sequence",
             "surface",
@@ -1057,12 +1627,23 @@ def _public_rows(rows: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
 
 
 def _near_region(
-    branch: Mapping[str, Any], owner: Mapping[str, Any], reason: str
+    branch: Mapping[str, Any],
+    owner: Mapping[str, Any],
+    reason: str,
+    *,
+    body_limit_reached: bool | None = None,
+    geometry: Mapping[str, Any] | None = None,
+    rows: Sequence[Mapping[str, Any]] = (),
 ) -> dict[str, Any]:
     material = {
+        "body_limit_reached": body_limit_reached,
         "branch": _public_branch(branch),
         "owner_context": canonical_clone_v1(owner),
         "reason": reason,
+        "source_only_geometry_proposal": (
+            canonical_clone_v1(geometry) if geometry is not None else None
+        ),
+        "source_only_row_proposals": _public_rows(rows),
         "status": "SOURCE_ONLY_NEAR_REGION_FAIL_CLOSED",
     }
     return {**material, "near_region_id": "asrgv1:near:" + canonical_json_sha256_v1(material)}
@@ -1073,17 +1654,35 @@ def _build(
 ) -> dict[str, Any]:
     pages = _pages(region_pages)
     spec = _spec(family_spec)
-    branches, comparisons = _branch_candidates(pages, spec)
+    context_event_plans, comparisons, context_plan_metrics = _context_event_plan(pages, spec)
+    branches, count, branch_enumeration = _branch_candidates(pages, spec, context_event_plans)
+    comparisons += count
     regions = []
     near_regions = []
     for branch in branches:
-        owner, count = _owner_context(branch, pages, spec)
-        comparisons += count
+        owner = _owner_context(branch, pages, spec, context_event_plans)
+        context_fences = context_event_plans[branch["page_ordinal"]]["fence_indices"]
         if owner["disposition"] != "EXPLICIT_OWNER_CONTEXT_ACCEPTED_FOR_PROPOSAL":
-            near_regions.append(_near_region(branch, owner, owner["reason"]))
+            page = pages[branch["page_ordinal"]]
+            body, rows, count, limit_reached = _body_and_rows(branch, page, spec, context_fences)
+            comparisons += count
+            geometry = None
+            if body:
+                geometry = _geometry(branch, body, page, rows)
+                _geometry_support(rows, geometry)
+            near_regions.append(
+                _near_region(
+                    branch,
+                    owner,
+                    owner["reason"],
+                    body_limit_reached=limit_reached,
+                    geometry=geometry,
+                    rows=rows,
+                )
+            )
             continue
         page = pages[branch["page_ordinal"]]
-        body, rows, count, limit_reached = _body_and_rows(branch, page, spec)
+        body, rows, count, limit_reached = _body_and_rows(branch, page, spec, context_fences)
         comparisons += count
         if not body:
             near_regions.append(_near_region(branch, owner, "BRANCH_HAS_NO_BOUNDED_BODY"))
@@ -1092,7 +1691,11 @@ def _build(
         _geometry_support(rows, geometry)
         shared = _scoped_receipt(branch=branch, owner=owner, page=page, rows=rows, spec=spec)
         shared_failed = shared["status"] == "SHARED_SCOPED_TABLE_FAIL_CLOSED"
-        promotion_eligible = not limit_reached and not shared_failed
+        scoped_gate_required = (
+            spec["scoped_table"]["enforcement"]
+            == ScopedTableEnforcementV1.REQUIRED_PROMOTION_GATE.value
+        )
+        promotion_eligible = not limit_reached and not (shared_failed and scoped_gate_required)
         material = {
             "adaptive_geometry_v2": geometry,
             "body_limit_reached": limit_reached,
@@ -1140,9 +1743,34 @@ def _build(
         "metrics": {
             "bounded_absence_count": len(bounded_absences),
             "branch_candidate_count": len(branches),
+            "branch_enumerated_candidate_count": branch_enumeration["enumerated_candidate_count"],
+            "branch_component_fallback_candidate_count": sum(
+                branch["match_basis"] == "DECLARATIVE_BRANCH_COMPONENT" for branch in branches
+            ),
+            "branch_overlap_suppressed_candidate_count": branch_enumeration[
+                "overlap_suppressed_candidate_count"
+            ],
+            "context_event_count": context_plan_metrics["selected_event_count"],
+            "context_event_enumerated_count": context_plan_metrics["enumerated_event_count"],
+            "context_event_overlap_suppressed_count": context_plan_metrics[
+                "overlap_suppressed_event_count"
+            ],
+            "context_event_wrapped_count": context_plan_metrics["wrapped_event_count"],
             "explicit_zero_line_page_count": sum(not page["lines"] for page in pages),
             "near_region_count": len(near_regions),
             "region_count": len(regions),
+            "scoped_table_advisory_failure_region_count": sum(
+                region["shared_scoped_table_v1"]["status"] == "SHARED_SCOPED_TABLE_FAIL_CLOSED"
+                and region["shared_scoped_table_v1"]["enforcement"]
+                == ScopedTableEnforcementV1.ADVISORY_CHALLENGER.value
+                for region in regions
+            ),
+            "scoped_table_required_failure_region_count": sum(
+                region["shared_scoped_table_v1"]["status"] == "SHARED_SCOPED_TABLE_FAIL_CLOSED"
+                and region["shared_scoped_table_v1"]["enforcement"]
+                == ScopedTableEnforcementV1.REQUIRED_PROMOTION_GATE.value
+                for region in regions
+            ),
         },
         "near_regions": near_regions,
         "regions": sorted(
@@ -1155,11 +1783,19 @@ def _build(
         ),
         "safety": {
             "accounting_or_mapping_authority": False,
+            "all_hard_context_interval_coverage_blocks_owner_events": True,
             "bounded_edit_runs_when_any_exact_row_candidate_exists": False,
+            "branch_lower_tier_can_override_overlapping_higher_tier_candidate": False,
+            "context_event_plan_is_reused_for_branch_body_and_owner_scans": True,
             "empty_page_creates_structural_reset": False,
             "family_schema_or_report_norm_id_known": False,
+            "lower_priority_interval_candidates_cannot_leak_through_suppressed_higher_coverage": True,
             "provider_line_or_page_serialization_controls_order": False,
-            "scoped_table_failure_can_promote_region": False,
+            "scoped_table_advisory_failure_can_coexist_with_otherwise_eligible_region": True,
+            "scoped_table_advisory_failure_bypasses_other_required_gates": False,
+            "scoped_table_advisory_failure_is_promotion_authority": False,
+            "scoped_table_required_failure_can_promote_region": False,
+            "spatially_distinct_lower_tier_branch_candidates_are_retained": True,
             "text_or_geometry_alone_can_map": False,
             "zero_search_hit_is_global_absence": False,
         },

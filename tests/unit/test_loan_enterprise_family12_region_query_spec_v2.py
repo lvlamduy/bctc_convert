@@ -19,6 +19,9 @@ from bctc_ai.evaluation.loan_enterprise_family12_graph_v1 import (
     LoanEnterpriseFamily12GraphV1Error,
     build_loan_enterprise_family12_region_query_spec_v2,
 )
+from bctc_ai.evaluation.loan_enterprise_family12_spec_v1 import (
+    build_loan_enterprise_family12_spec_v1,
+)
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _ENGINE_REF = {"path": "synthetic-engine.py", "sha256": "7" * 64, "size_bytes": 1}
@@ -169,6 +172,7 @@ def _outcome(receipt: dict) -> dict:
 
 def test_query_is_bank_blind_short_nfc_and_exact_local_semantic_proof() -> None:
     query = build_loan_enterprise_family12_region_query_spec_v2(_PROJECT_ROOT)
+    family_spec = build_loan_enterprise_family12_spec_v1()
     branch_anchors = [item for item in query["anchors"] if item["anchor_id"].startswith("BRANCH_")]
     local_anchor_ids = {
         anchor_id for group in query["local_required_groups"] for anchor_id in group["anchor_ids"]
@@ -179,10 +183,27 @@ def test_query_is_bank_blind_short_nfc_and_exact_local_semantic_proof() -> None:
         "Loại hình doanh nghiệp",
         "Theo đối tượng khách hàng",
     ]
+    assert {item["anchor_id"]: item["surface"] for item in branch_anchors} == {
+        component["component_id"]: component["aliases"][0]
+        for component in family_spec["branch_components"]
+    }
+    assert {item["anchor_id"]: item["max_edit_distance"] for item in branch_anchors} == {
+        component["component_id"]: int(component["bounded_edit_on_exact_miss"])
+        for component in family_spec["branch_components"]
+    }
     assert all(
         item["surface"] == unicodedata.normalize("NFC", item["surface"]) for item in branch_anchors
     )
     assert all(item["max_edit_distance"] == 1 for item in branch_anchors)
+    assert {item["role"] for item in query["anchors"]} == {
+        "CONTEXT",
+        "OWNER",
+        "TARGET",
+    }
+    assert {group["group_id"] for group in query["local_required_groups"]} == {
+        "EXACT_FAMILY12_SEMANTIC_ROLE",
+        "OWNER_716_LOCAL",
+    }
     assert all(
         item["max_edit_distance"] == 0
         for item in query["anchors"]

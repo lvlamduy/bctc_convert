@@ -115,6 +115,22 @@ def test_spec_locks_schema_history_and_safety_policy() -> None:
         6058,
     ]
     assert spec["safety"]["mapping_authority"] is False
+    assert [item["component_id"] for item in spec["branch_components"]] == [
+        "BRANCH_LOAI_HINH_DOANH_NGHIEP",
+        "BRANCH_THEO_DOI_TUONG_KHACH_HANG",
+    ]
+    deposit_1075 = next(
+        item for item in spec["context_classes"] if item["context_id"] == "DEPOSIT_1075"
+    )
+    owner_716 = next(item for item in spec["context_classes"] if item["context_id"] == "OWNER_716")
+    assert "Theo loại hình doanh nghiệp" not in deposit_1075["aliases"]
+    assert "Loại hình doanh nghiệp" not in deposit_1075["aliases"]
+    assert owner_716.get("allow_token_subsequence_fence", False) is False
+    assert all(
+        item.get("allow_token_subsequence_fence") is True
+        for item in spec["context_classes"]
+        if item["disposition"] == "HARD_VETO"
+    )
 
 
 @pytest.mark.parametrize(
@@ -135,33 +151,101 @@ def test_generic_and_vpb_inserted_word_headings_need_and_accept_owner716(heading
     assert len(result["regions"]) == 1
     assert _binding_ids(result) == [768, 773]
     assert result["regions"][0]["owner_context"]["report_norm_id"] == 716
+    assert result["regions"][0]["shared_scoped_table_v1"]["enforcement"] == ("ADVISORY_CHALLENGER")
+    resolution = result["regions"][0]["minimal_unique_anchor_resolution_v1"]
+    assert resolution["selected_anchor_ids"] == ["PARENT_RNID_766", "CHILD_RNID_768"]
+    assert resolution["selected_size"] == 2
+    assert resolution["matching_count"] == 1
+    assert result["safety"]["minimal_unique_pair_or_triple_required_for_complete_region"] is True
+    assert result["safety"]["parent_child_anchor_pairs_precede_child_child_pairs"] is True
+    assert (
+        "minimal_unique_parent_child_or_triple_required_for_complete_region" not in result["safety"]
+    )
 
 
 @pytest.mark.parametrize(
-    ("heading", "tier"),
+    ("heading", "tier", "basis", "component_ids"),
     [
         (
             "Phân tích dư nợ cho vay theo đối turọng khách hàng và theo loại hình doanh nghiệp",
-            "ONE_BASE_CHARACTER_EDIT_AFTER_ALL_EXACT_MISSES",
+            "EXACT_ACCENTED_ALIAS",
+            "DECLARATIVE_BRANCH_COMPONENT",
+            ["BRANCH_LOAI_HINH_DOANH_NGHIEP"],
         ),
         (
             "Phân tích dư nợ cho vay theo đối trọng khách hàng và theo loại hình doanh nghiệp",
-            "ONE_BASE_CHARACTER_EDIT_AFTER_ALL_EXACT_MISSES",
+            "EXACT_ACCENTED_ALIAS",
+            "DECLARATIVE_BRANCH_COMPONENT",
+            ["BRANCH_LOAI_HINH_DOANH_NGHIEP"],
         ),
         (
             "Phân tích dư nợ cho vay theo đổi tượng khách hàng và theo loại hình doanh nghiệp",
             "EXACT_ACCENTLESS_ALIAS",
+            "FULL_BRANCH_ALIAS",
+            [],
         ),
         (
             "Phân tích dư nợ cho vay theo đối tượng khách hằng và theo loại hình doanh nghiệp",
             "EXACT_ACCENTLESS_ALIAS",
+            "FULL_BRANCH_ALIAS",
+            [],
         ),
     ],
 )
-def test_branch_ocr_variants_use_exact_then_one_edit_only_on_miss(heading: str, tier: str) -> None:
+def test_branch_ocr_variants_use_exact_then_one_edit_only_on_miss(
+    heading: str,
+    tier: str,
+    basis: str,
+    component_ids: list[str],
+) -> None:
     result = build_loan_enterprise_family12_graph_v1([_page(1, _table_lines(heading=heading))])
 
-    assert result["regions"][0]["branch"]["match_tier"] == tier
+    branch = result["regions"][0]["branch"]
+    assert branch["match_tier"] == tier
+    assert branch["match_basis"] == basis
+    assert branch["matched_component_ids"] == component_ids
+    assert _binding_ids(result) == [768, 773]
+
+
+@pytest.mark.parametrize(
+    ("heading", "tier", "component_id"),
+    [
+        (
+            "Dư nợ cho vay được trình bày theo đối tượng khách hàng",
+            "EXACT_ACCENTED_ALIAS",
+            "BRANCH_THEO_DOI_TUONG_KHACH_HANG",
+        ),
+        (
+            "Theo đối tượng khách hàng",
+            "EXACT_ACCENTED_ALIAS",
+            "BRANCH_THEO_DOI_TUONG_KHACH_HANG",
+        ),
+        (
+            "Dư nợ phân theo loại hình doanh nghiệp như sau:",
+            "EXACT_ACCENTED_ALIAS",
+            "BRANCH_LOAI_HINH_DOANH_NGHIEP",
+        ),
+        (
+            "Cho vay khách hàng, chi tiết theo loại hình doanh nghiệp",
+            "EXACT_ACCENTED_ALIAS",
+            "BRANCH_LOAI_HINH_DOANH_NGHIEP",
+        ),
+        (
+            "Dư nợ theo đối turọng khách hàng",
+            "ONE_BASE_CHARACTER_EDIT_AFTER_ALL_EXACT_MISSES",
+            "BRANCH_THEO_DOI_TUONG_KHACH_HANG",
+        ),
+    ],
+)
+def test_component_fallback_covers_historical_heading_classes(
+    heading: str, tier: str, component_id: str
+) -> None:
+    result = build_loan_enterprise_family12_graph_v1([_page(1, _table_lines(heading=heading))])
+
+    branch = result["regions"][0]["branch"]
+    assert branch["match_basis"] == "DECLARATIVE_BRANCH_COMPONENT"
+    assert branch["match_tier"] == tier
+    assert component_id in branch["matched_component_ids"]
     assert _binding_ids(result) == [768, 773]
 
 
@@ -183,6 +267,122 @@ def test_split_heading_and_tightly_wrapped_child_label_are_composed() -> None:
     assert result["regions"][0]["branch"]["surface"] == (
         "Phân tích dư nợ cho vay theo đối tượng khách hàng và theo loại hình doanh nghiệp"
     )
+
+
+def test_split_component_fallback_is_geometry_cohesive_and_provider_order_invariant() -> None:
+    lines = [
+        _line(0, "Cho vay khách hàng", 40, 40, 410, 70),
+        _line(1, "Dư nợ trình bày theo đối tượng", 40, 105, 700, 130),
+        _line(2, "khách hàng, như sau:", 40, 134, 430, 159),
+        _line(3, "Công ty TNHH", 70, 210, 500, 238),
+        _line(4, "100", 730, 210, 820, 238),
+        _line(5, "Công ty cổ phần khác", 70, 260, 570, 288),
+        _line(6, "200", 730, 260, 820, 288),
+    ]
+    expected = build_loan_enterprise_family12_graph_v1([_page(1, lines)])
+    reordered = copy.deepcopy(lines)
+    reordered.reverse()
+
+    assert expected["regions"][0]["branch"]["match_basis"] == ("DECLARATIVE_BRANCH_COMPONENT")
+    assert len(expected["regions"][0]["branch"]["evidence"]) == 2
+    assert build_loan_enterprise_family12_graph_v1([_page(1, reordered)]) == expected
+
+
+def test_distinct_exact_and_fuzzy_regions_with_same_topology_both_fail_closed() -> None:
+    lines = [
+        *_table_lines(rows=["Công ty TNHH"]),
+        _line(20, "Cho vay khách hàng", 40, 380, 410, 410),
+        _line(21, "Chi tiết loại hình doanh nghiệx", 40, 450, 650, 480),
+        _line(22, "Công ty TNHH", 70, 540, 500, 568),
+        _line(23, "300", 730, 540, 820, 568),
+    ]
+
+    result = build_loan_enterprise_family12_graph_v1([_page(1, lines)])
+
+    assert result["regions"] == []
+    assert result["metrics"]["branch_candidate_count"] == 2
+    assert result["metrics"]["minimal_anchor_collision_demoted_region_count"] == 2
+    assert {near["branch"]["match_tier"] for near in result["near_regions"]} == {
+        "EXACT_ACCENTED_ALIAS",
+        "ONE_BASE_CHARACTER_EDIT_AFTER_ALL_EXACT_MISSES",
+    }
+    assert {
+        near["minimal_unique_anchor_resolution_v1"]["status"] for near in result["near_regions"]
+    } == {"UNRESOLVED_NO_UNIQUE_PAIR_OR_TRIPLE_COMBINATION"}
+
+
+def test_distinct_regions_with_unique_parent_child_pairs_are_both_retained() -> None:
+    lines = [
+        *_table_lines(rows=["Công ty TNHH"]),
+        _line(20, "Cho vay khách hàng", 40, 380, 410, 410),
+        _line(21, "Chi tiết loại hình doanh nghiệp", 40, 450, 650, 480),
+        _line(22, "Doanh nghiệp nhà nước", 70, 540, 500, 568),
+        _line(23, "300", 730, 540, 820, 568),
+    ]
+
+    result = build_loan_enterprise_family12_graph_v1([_page(1, lines)])
+
+    assert len(result["regions"]) == 2
+    assert result["metrics"]["minimal_anchor_collision_demoted_region_count"] == 0
+    assert {
+        tuple(region["minimal_unique_anchor_resolution_v1"]["selected_anchor_ids"])
+        for region in result["regions"]
+    } == {
+        ("PARENT_RNID_766", "CHILD_RNID_767"),
+        ("PARENT_RNID_766", "CHILD_RNID_768"),
+    }
+
+
+def test_hard_veto_near_region_controls_topology_but_never_promotes() -> None:
+    lines = [
+        *_table_lines(rows=["Công ty TNHH"]),
+        _line(20, "Tiền gửi của khách hàng", 40, 380, 500, 410),
+        _line(21, "Loại hình doanh nghiệp", 40, 450, 650, 480),
+        _line(22, "Công ty TNHH", 70, 540, 500, 568),
+        _line(23, "300", 730, 540, 820, 568),
+    ]
+
+    result = build_loan_enterprise_family12_graph_v1([_page(1, lines)])
+
+    assert _binding_ids(result) == [768]
+    assert result["metrics"]["minimal_anchor_topology_candidate_count"] == 2
+    assert result["metrics"]["minimal_anchor_collision_demoted_region_count"] == 0
+    assert len(result["near_regions"]) == 1
+    veto = result["near_regions"][0]
+    assert veto["reason"] == "CLOSEST_CONTEXT_IS_HARD_VETO_OR_STRUCTURAL_RESET"
+    assert veto["source_only_binding_proposals"] == []
+    assert veto["source_only_row_proposals"][0]["report_norm_id"] == 768
+    candidates = result["minimal_unique_anchor_resolution_v1"]["candidates"]
+    veto_candidate = next(item for item in candidates if item["disposition"] == "NEAR")
+    assert veto_candidate["parent_anchor_id"] is None
+    assert result["regions"][0]["minimal_unique_anchor_resolution_v1"]["selected_anchor_ids"] == [
+        "PARENT_RNID_766",
+        "CHILD_RNID_768",
+    ]
+
+
+def test_owner_accepted_duplicate_near_region_collides_with_complete_parent_child_pair() -> None:
+    lines = [
+        *_table_lines(rows=["Công ty TNHH"]),
+        _line(20, "Cho vay khách hàng", 40, 380, 410, 410),
+        _line(21, "Chi tiết loại hình doanh nghiệp", 40, 450, 650, 480),
+        _line(22, "Công ty TNHH", 70, 540, 500, 568),
+        _line(23, "300", 730, 540, 820, 568),
+        _line(24, "Công ty TNHH", 70, 590, 500, 618),
+        _line(25, "400", 730, 590, 820, 618),
+    ]
+
+    result = build_loan_enterprise_family12_graph_v1([_page(1, lines)])
+
+    assert result["regions"] == []
+    assert result["metrics"]["minimal_anchor_collision_demoted_region_count"] == 1
+    candidates = result["minimal_unique_anchor_resolution_v1"]["candidates"]
+    owner_accepted_near = next(item for item in candidates if item["disposition"] == "NEAR")
+    assert owner_accepted_near["parent_anchor_id"] == "PARENT_RNID_766"
+    assert owner_accepted_near["child_anchor_ids"] == ["CHILD_RNID_768"]
+    assert {
+        near["minimal_unique_anchor_resolution_v1"]["status"] for near in result["near_regions"]
+    } == {"UNRESOLVED_NO_UNIQUE_PAIR_OR_TRIPLE_COMBINATION"}
 
 
 def test_hdb_owner_context_can_carry_exactly_two_pages() -> None:
@@ -296,6 +496,12 @@ def test_source_only_rows_are_retained_when_no_schema_binding_survives() -> None
         "SOURCE_ONLY_AMBIGUOUS",
     ]
     assert result["near_regions"][0]["source_only_geometry_proposal"] is not None
+    assert result["near_regions"][0]["shared_scoped_table_v1"]["enforcement"] == (
+        "ADVISORY_CHALLENGER"
+    )
+    assert result["near_regions"][0]["shared_scoped_table_v1"]["status"] == (
+        "NOT_RUN_INSUFFICIENT_ROLE_TOPOLOGY"
+    )
 
 
 def test_numeric_cell_between_labels_prevents_false_wrapped_label_composition() -> None:
@@ -328,6 +534,170 @@ def test_deposit_and_related_party_closest_contexts_are_hard_veto(poison: str) -
     assert result["near_regions"][0]["reason"] == (
         "CLOSEST_CONTEXT_IS_HARD_VETO_OR_STRUCTURAL_RESET"
     )
+
+
+def test_deposit_owner_with_generic_component_heading_remains_hard_veto() -> None:
+    result = build_loan_enterprise_family12_graph_v1(
+        [
+            _page(
+                1,
+                _table_lines(
+                    owner="Tiền gửi của khách hàng",
+                    heading="Loại hình doanh nghiệp",
+                ),
+            )
+        ]
+    )
+
+    assert result["regions"] == []
+    assert result["near_regions"][0]["reason"] == (
+        "CLOSEST_CONTEXT_IS_HARD_VETO_OR_STRUCTURAL_RESET"
+    )
+    assert (
+        result["near_regions"][0]["owner_context"]["closest_context_event"]["context_id"]
+        == "DEPOSIT_1055"
+    )
+
+
+@pytest.mark.parametrize(
+    ("poison", "context_id"),
+    [
+        ("Tiền gửi củ khách hàng", "DEPOSIT_1055"),
+        ("Tiền gởi của khách hàng", "DEPOSIT_1055"),
+        ("Tiền gửi của khách hàn", "DEPOSIT_1055"),
+        ("Tài sả cố định", "STRUCTURAL_RESET"),
+    ],
+)
+def test_one_edit_context_fence_cannot_be_absorbed_into_component_branch(
+    poison: str, context_id: str
+) -> None:
+    lines = _table_lines(heading="Loại hình doanh nghiệp")
+    lines.insert(1, _line(20, poison, 40, 80, 620, 105))
+
+    result = build_loan_enterprise_family12_graph_v1([_page(1, lines)])
+
+    assert result["regions"] == []
+    assert len(result["near_regions"]) == 1
+    near = result["near_regions"][0]
+    assert near["branch"]["surface"] == "Loại hình doanh nghiệp"
+    assert near["reason"] == "CLOSEST_CONTEXT_IS_HARD_VETO_OR_STRUCTURAL_RESET"
+    assert near["owner_context"]["closest_context_event"]["context_id"] == context_id
+
+
+@pytest.mark.parametrize("deposit_first", ["Tiền gửi của", "Tiền gửi củ"])
+def test_wrapped_deposit_context_event_vetoes_following_generic_branch(
+    deposit_first: str,
+) -> None:
+    lines = [
+        _line(0, "Cho vay khách hàng", 40, 40, 410, 70),
+        _line(1, deposit_first, 40, 90, 420, 112),
+        _line(2, "khách hàng", 40, 116, 300, 138),
+        _line(3, "Loại hình doanh nghiệp", 40, 190, 650, 218),
+        _line(4, "Công ty TNHH", 70, 260, 500, 288),
+        _line(5, "100", 730, 260, 820, 288),
+    ]
+
+    result = build_loan_enterprise_family12_graph_v1([_page(1, lines)])
+
+    assert result["regions"] == []
+    assert len(result["near_regions"]) == 1
+    closest = result["near_regions"][0]["owner_context"]["closest_context_event"]
+    assert closest["disposition"] == "HARD_VETO"
+    assert len(closest["evidence"]) == 2
+    assert result["metrics"]["context_event_wrapped_count"] == 1
+
+
+def test_wrapped_deposit_event_fences_the_component_line_inside_its_interval() -> None:
+    lines = [
+        _line(0, "Cho vay khách hàng", 40, 40, 410, 70),
+        _line(1, "Phân tích tiền gửi khách hàng theo", 40, 90, 650, 112),
+        _line(2, "loại hình doanh nghiệp", 40, 116, 500, 138),
+        _line(3, "Công ty TNHH", 70, 200, 500, 228),
+        _line(4, "100", 730, 200, 820, 228),
+    ]
+
+    result = build_loan_enterprise_family12_graph_v1([_page(1, lines)])
+
+    assert result["regions"] == []
+    assert result["near_regions"] == []
+    assert result["metrics"]["branch_candidate_count"] == 0
+    assert result["metrics"]["context_event_wrapped_count"] == 1
+
+
+@pytest.mark.parametrize(
+    ("poison", "context_id"),
+    [
+        (
+            "Phân tích tiền gửi khách hàng theo loại hình doanh nghiệp và các chi tiết",
+            "DEPOSIT_1075",
+        ),
+        (
+            "Phân tích theo ngành nghề kinh doanh và loại hình doanh nghiệp",
+            "STRUCTURAL_RESET",
+        ),
+        (
+            "Phân tíc tiền gửi khách hàng theo loại hình doanh nghiệp và các chi tiết",
+            "DEPOSIT_1055",
+        ),
+        (
+            "Phân tíc theo ngành nghề kinh doanh và loại hình doanh nghiệp",
+            "STRUCTURAL_RESET",
+        ),
+    ],
+)
+def test_long_hard_veto_or_reset_component_precedes_branch_substring(
+    poison: str, context_id: str
+) -> None:
+    lines = _table_lines(heading="Loại hình doanh nghiệp")
+    lines.insert(1, _line(20, poison, 40, 80, 900, 105))
+
+    result = build_loan_enterprise_family12_graph_v1([_page(1, lines)])
+
+    assert result["regions"] == []
+    assert len(result["near_regions"]) == 1
+    event = result["near_regions"][0]["owner_context"]["closest_context_event"]
+    assert event["context_id"] == context_id
+    assert event["disposition"] == "HARD_VETO"
+
+
+@pytest.mark.parametrize(
+    "poison_branch",
+    [
+        "Các giao dịch với bên liên quan theo loại hình doanh nghiệp",
+        "Các giao dịch với bên liên quax theo loại hình doanh nghiệp",
+        "Giao dịch tiền gửi với MB theo loại hình doanh nghiệp",
+        "Giao dịch tiền gửi với MX theo loại hình doanh nghiệp",
+    ],
+)
+def test_related_party_exact_and_one_edit_suffix_cannot_become_family_branch(
+    poison_branch: str,
+) -> None:
+    lines = [
+        _line(0, "Cho vay khách hàng", 40, 40, 410, 70),
+        _line(1, poison_branch, 40, 110, 900, 140),
+        _line(2, "Công ty TNHH", 70, 200, 570, 228),
+        _line(3, "100", 730, 200, 820, 228),
+    ]
+
+    result = build_loan_enterprise_family12_graph_v1([_page(1, lines)])
+
+    assert result["regions"] == []
+    assert result["near_regions"] == []
+    assert result["metrics"]["branch_candidate_count"] == 0
+
+
+def test_branch_containing_loan_owner_words_does_not_gain_hard_veto_containment() -> None:
+    result = build_loan_enterprise_family12_graph_v1(
+        [
+            _page(
+                1,
+                _table_lines(heading="Phân tích cho vay khách hàng theo loại hình doanh nghiệp"),
+            )
+        ]
+    )
+
+    assert _binding_ids(result) == [768, 773]
+    assert result["regions"][0]["owner_context"]["report_norm_id"] == 716
 
 
 def test_closer_reset_poison_overrides_previous_owner() -> None:
@@ -368,6 +738,59 @@ def test_heading_alone_never_becomes_owner() -> None:
     )
 
 
+@pytest.mark.parametrize(
+    "lines",
+    [
+        [_line(0, "Loại hình doanh nghiệp", 40, 110, 600, 140)],
+        [
+            _line(0, "Loại hình doanh nghiệp", 40, 110, 600, 140),
+            _line(1, "Nội dung không thuộc schema", 70, 200, 550, 228),
+            _line(2, "100", 730, 200, 820, 228),
+        ],
+        [
+            _line(0, "Tiền gửi của khách hàng", 40, 40, 500, 70),
+            _line(1, "Loại hình doanh nghiệp", 40, 110, 600, 140),
+            _line(2, "Nội dung không thuộc schema", 70, 200, 550, 228),
+            _line(3, "100", 730, 200, 820, 228),
+        ],
+    ],
+)
+def test_anchorless_near_region_is_retained_without_entering_topology_resolver(
+    lines: list[dict],
+) -> None:
+    result = build_loan_enterprise_family12_graph_v1([_page(1, lines)])
+
+    assert result["regions"] == []
+    assert len(result["near_regions"]) == 1
+    near = result["near_regions"][0]
+    assert near["topology_candidate_id"] is None
+    assert near["minimal_unique_anchor_resolution_v1"]["status"] == (
+        "NOT_RUN_ANCHORLESS_NEAR_CANDIDATE"
+    )
+    assert result["minimal_unique_anchor_resolution_v1"] is None
+    assert result["metrics"]["minimal_anchor_topology_candidate_count"] == 0
+    assert result["metrics"]["minimal_anchor_anchorless_near_region_count"] == 1
+
+
+def test_owner_and_component_without_child_value_geometry_cannot_bind() -> None:
+    lines = [
+        _line(0, "Cho vay khách hàng", 40, 40, 410, 70),
+        _line(1, "Loại hình doanh nghiệp", 40, 110, 600, 140),
+        _line(2, "Nội dung không phải khoản mục", 70, 200, 550, 228),
+        _line(3, "100", 730, 200, 820, 228),
+    ]
+
+    result = build_loan_enterprise_family12_graph_v1([_page(1, lines)])
+
+    assert result["regions"] == []
+    assert result["near_regions"][0]["reason"] == ("NO_UNIQUE_SCHEMA_ROW_WITH_VALUE_GEOMETRY")
+    assert result["safety"]["single_branch_component_can_create_binding_proposal"] is False
+    assert (
+        result["safety"]["owner_branch_and_child_value_geometry_required_for_binding_proposal"]
+        is True
+    )
+
+
 def test_two_role_investment_pair_fails_without_loan_owner() -> None:
     result = build_loan_enterprise_family12_graph_v1(
         [
@@ -384,6 +807,25 @@ def test_two_role_investment_pair_fails_without_loan_owner() -> None:
 
     assert result["regions"] == []
     assert result["safety"]["two_role_table_without_owner_716_can_accept"] is False
+
+
+def test_subsidiary_context_cannot_replace_explicit_loan_owner() -> None:
+    result = build_loan_enterprise_family12_graph_v1(
+        [
+            _page(
+                1,
+                _table_lines(
+                    owner="Chi nhánh và công ty con tại nước ngoài",
+                    heading="Dư nợ theo đối tượng khách hàng",
+                ),
+            )
+        ]
+    )
+
+    assert result["regions"] == []
+    assert result["near_regions"][0]["reason"] == (
+        "EXPLICIT_OWNER_716_NOT_FOUND_WITHIN_TWO_PRECEDING_PAGES"
+    )
 
 
 def test_foreign_branch_component_binds_782_once_and_never_765_or_6058() -> None:
@@ -437,7 +879,10 @@ def test_label_without_visible_value_geometry_cannot_bind() -> None:
 
 def test_provider_and_page_reordering_does_not_change_result() -> None:
     first = _page(7, [_line(0, "Cho vay khách hàng", 40, 80, 410, 110)])
-    second = _page(8, _table_lines()[1:])
+    second = _page(
+        8,
+        _table_lines(heading="Dư nợ phân theo loại hình doanh nghiệp như sau")[1:],
+    )
     canonical = build_loan_enterprise_family12_graph_v1([first, second])
     reordered = copy.deepcopy([second, first])
     for page in reordered:
@@ -485,7 +930,7 @@ def test_historical_84_56_metadata_never_changes_matching_or_projection(
     assert changed["historical_evidence_summary"] != baseline["historical_evidence_summary"]
 
 
-def test_shared_scoped_failure_cannot_create_family12_binding(
+def test_shared_scoped_failure_is_an_advisory_challenge_with_exact_diagnostics(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def _reject(*_args: object, **_kwargs: object) -> dict:
@@ -499,9 +944,16 @@ def test_shared_scoped_failure_cannot_create_family12_binding(
 
     result = build_loan_enterprise_family12_graph_v1([_page(1, _table_lines())])
 
-    assert result["regions"] == []
-    assert result["near_regions"][0]["reason"] == "SHARED_SCOPED_TABLE_FAIL_CLOSED"
-    assert result["metrics"]["unique_binding_proposal_count"] == 0
+    assert _binding_ids(result) == [768, 773]
+    shared = result["regions"][0]["shared_scoped_table_v1"]
+    assert shared == {
+        "enforcement": "ADVISORY_CHALLENGER",
+        "reason": "SCOPED_TABLE_V1_REJECTED_DYNAMIC_EXACT_SPEC",
+        "result": None,
+        "status": "SHARED_SCOPED_TABLE_FAIL_CLOSED",
+    }
+    assert result["metrics"]["scoped_table_advisory_failure_region_count"] == 1
+    assert result["metrics"]["unique_binding_proposal_count"] == 2
     assert result["safety"]["shared_semantic_region_failure_can_promote_mapping"] is False
 
 

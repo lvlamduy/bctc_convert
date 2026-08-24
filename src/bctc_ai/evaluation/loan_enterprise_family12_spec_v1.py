@@ -48,6 +48,19 @@ _BRANCH_ALIASES = [
     "Phân tích dư nợ cho vay theo đối tượng khách hàng theo loại hình doanh nghiệp",
 ]
 
+_BRANCH_COMPONENTS = [
+    {
+        "aliases": ["Loại hình doanh nghiệp"],
+        "bounded_edit_on_exact_miss": True,
+        "component_id": "BRANCH_LOAI_HINH_DOANH_NGHIEP",
+    },
+    {
+        "aliases": ["Theo đối tượng khách hàng"],
+        "bounded_edit_on_exact_miss": True,
+        "component_id": "BRANCH_THEO_DOI_TUONG_KHACH_HANG",
+    },
+]
+
 _OWNER_ALIASES = [
     "Cho vay khách hàng",
     "Cho vay khách hàng (tiếp theo)",
@@ -63,6 +76,7 @@ _CONTEXT_CLASSES = [
         "report_norm_ids": [716],
     },
     {
+        "allow_token_subsequence_fence": True,
         "aliases": [
             "Tiền gửi của khách hàng",
             "Tiền gửi khách hàng",
@@ -72,9 +86,8 @@ _CONTEXT_CLASSES = [
         "report_norm_ids": [1055],
     },
     {
+        "allow_token_subsequence_fence": True,
         "aliases": [
-            "Theo loại hình doanh nghiệp",
-            "Loại hình doanh nghiệp",
             "Theo loại hình doanh nghiệp tiền gửi",
             "Phân tích tiền gửi khách hàng theo loại hình doanh nghiệp",
             "Phân tích tiền gửi khách hàng theo đối tượng khách hàng",
@@ -84,6 +97,7 @@ _CONTEXT_CLASSES = [
         "report_norm_ids": [1075],
     },
     {
+        "allow_token_subsequence_fence": True,
         "aliases": [
             "IV. Một số thông tin khác",
             "Một số thông tin khác",
@@ -93,6 +107,7 @@ _CONTEXT_CLASSES = [
         "report_norm_ids": [1259],
     },
     {
+        "allow_token_subsequence_fence": True,
         "aliases": [
             "Giao dịch với các bên liên quan",
             "Các giao dịch với bên liên quan",
@@ -103,6 +118,7 @@ _CONTEXT_CLASSES = [
         "report_norm_ids": [5750],
     },
     {
+        "allow_token_subsequence_fence": True,
         "aliases": [
             "Giao dịch tiền gửi tại MB",
             "Giao dịch tiền gửi với MB",
@@ -121,6 +137,7 @@ _STRUCTURAL_RESET_ALIASES = [
     "IV. Một số thông tin khác",
     "Một số thông tin khác",
     "Chứng khoán đầu tư",
+    "Tài sản cố định",
     "Các khoản đầu tư dài hạn khác",
     "Biến động số dư dự phòng rủi ro cho vay khách hàng",
     "Phân tích theo loại hình cho vay",
@@ -316,6 +333,7 @@ _SOURCE_ONLY_AMBIGUITIES = [
 
 _SPEC: dict[str, Any] = {
     "branch_aliases": _BRANCH_ALIASES,
+    "branch_components": _BRANCH_COMPONENTS,
     "children": _CHILDREN,
     "context_classes": _CONTEXT_CLASSES,
     "family_id": FAMILY_ID,
@@ -330,6 +348,7 @@ _SPEC: dict[str, Any] = {
     },
     "limits": {
         "branch_line_span": 3,
+        "context_line_span": 3,
         "context_page_budget": 2,
         "maximum_body_lines_per_page": 96,
     },
@@ -337,10 +356,12 @@ _SPEC: dict[str, Any] = {
     "report_norm_id": REPORT_NORM_ID,
     "source_only_ambiguities": _SOURCE_ONLY_AMBIGUITIES,
     "structural_reset_aliases": _STRUCTURAL_RESET_ALIASES,
+    "structural_reset_component_aliases": _STRUCTURAL_RESET_ALIASES,
     "safety": {
         "branch_heading_alone_is_owner": False,
-        "bounded_edit_runs_when_any_exact_candidate_exists": False,
+        "bounded_edit_runs_when_any_exact_row_candidate_exists": False,
         "deposit_report_norm_ids_are_hard_veto": [1055, 1075],
+        "distinct_fuzzy_branch_regions_are_retained_for_topology_resolution": True,
         "foreign_branch_or_subsidiary_allowed_report_norm_ids": [782],
         "foreign_branch_or_subsidiary_forbidden_report_norm_ids": [765, 6058],
         "mapping_authority": False,
