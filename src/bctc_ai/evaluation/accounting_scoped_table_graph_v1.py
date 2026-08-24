@@ -23,10 +23,15 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from bisect import bisect_right
+from collections import Counter, OrderedDict
 from collections.abc import Mapping, Sequence
+from contextvars import ContextVar
 from datetime import datetime
+from functools import lru_cache
 from itertools import product
 from statistics import median
+from threading import RLock
 from typing import Any
 
 from bctc_ai.evaluation.accounting_table_axes_v1 import (
@@ -53,7 +58,9 @@ from bctc_ai.source_structure.adjacent_page_table_geometry_relations_v1 import (
 )
 from bctc_ai.source_structure.contracts_v1 import (
     canonical_clone_v1,
+    canonical_json_bytes_v1,
     canonical_json_sha256_v1,
+    decode_canonical_json_bytes_v1,
     same_typed_json_v1,
 )
 
@@ -95,6 +102,18 @@ _ID = re.compile(r"^[A-Z][A-Z0-9_]*$")
 _INLINE_VALUE = re.compile(r"\s+(?:[-\u2013\u2014\u2212]|\(?[+-]?\d[\d.,\u00a0\u202f ]*%?\)?)\s*$")
 _LAYOUTS = {"ROLES_AS_ROWS", "ROLES_AS_COLUMNS"}
 _DISPOSITIONS = {"TARGET", "HARD_VETO_BROAD", "HARD_VETO_MIXED"}
+_ENGINE_CACHE_REVISION = "ACCOUNTING_SCOPED_TABLE_GRAPH_REGION_FIRST_CACHE_V2"
+_MATCHER_METRICS_FORMAT_VERSION = "ACCOUNTING_SCOPED_TABLE_MATCHER_METRICS_V2"
+_SURFACE_CACHE_MAXSIZE = 8_192
+_BUILD_CACHE_MAXSIZE = 8
+_BUILD_CACHE: OrderedDict[tuple[bytes, bytes, tuple[Any, ...]], tuple[bytes, bytes]] = OrderedDict()
+_BUILD_CACHE_LOCK = RLock()
+_BUILD_CACHE_HITS = 0
+_BUILD_CACHE_MISSES = 0
+_LAST_BUILD_TELEMETRY: ContextVar[dict[str, Any] | None] = ContextVar(
+    "accounting_scoped_table_graph_v1_last_build_telemetry",
+    default=None,
+)
 
 
 class AccountingScopedTableGraphV1Error(ValueError):
@@ -113,9 +132,21 @@ def _nfc(value: Any, label: str, *, nonempty: bool = True) -> str:
     return value
 
 
+@lru_cache(maxsize=65_536)
 def _accented_surface(value: str) -> str:
     value = unicodedata.normalize("NFC", value.casefold())
     return " ".join(re.sub(r"[^0-9a-zà-ỹđ%]+", " ", value).split())
+
+
+@lru_cache(maxsize=65_536)
+def _accentless_surface_cached(value: str, normalizer: Any) -> str:
+    """Cache the pure semantic normalization shared by overlapping windows."""
+
+    return normalizer(value)
+
+
+def _accentless_surface(value: str) -> str:
+    return _accentless_surface_cached(value, normalize_vietnamese_anchor_v1)
 
 
 def _positive_int(value: Any, label: str) -> int:
@@ -134,7 +165,7 @@ def _aliases(value: Any, label: str, *, allow_empty: bool = False) -> list[str]:
     if type(value) is not list or (not allow_empty and not value):
         raise _error(f"{label} must be one {'possibly empty' if allow_empty else 'nonempty'} list")
     result = [_nfc(item, f"{label} alias") for item in value]
-    normalized = [normalize_vietnamese_anchor_v1(item) for item in result]
+    normalized = [_accentless_surface(item) for item in result]
     if any(not item for item in normalized) or len(set(normalized)) != len(normalized):
         raise _error(f"{label} aliases must be unique after accentless normalization")
     return result
@@ -153,7 +184,7 @@ def _component_groups(value: Any, label: str) -> list[dict[str, Any]]:
         if _ID.fullmatch(component_id) is None or component_id in seen_ids:
             raise _error(f"{label} component identity repeats or drifted")
         aliases = _aliases(raw["aliases"], f"{label} {component_id}")
-        normalized = {normalize_vietnamese_anchor_v1(item) for item in aliases}
+        normalized = {_accentless_surface(item) for item in aliases}
         if normalized & seen_aliases:
             raise _error(f"{label} component aliases overlap across required groups")
         seen_ids.add(component_id)
@@ -462,15 +493,17 @@ def _line_evidence(line: Mapping[str, Any]) -> dict[str, Any]:
         "page_sequence": line["page_sequence"],
         "source_line_index": line["source_line_index"],
         "source_text": line["source_text"],
-        "vietocr_accentless_surface": normalize_vietnamese_anchor_v1(raw),
+        "vietocr_accentless_surface": _accentless_surface(raw),
         "vietocr_raw_nfc_surface": raw,
     }
 
 
+@lru_cache(maxsize=65_536)
 def _semantic_prefix(value: str) -> str:
     return _INLINE_VALUE.sub("", value).strip()
 
 
+@lru_cache(maxsize=65_536)
 def _qgrams(value: str) -> frozenset[str]:
     padded = f"^{value}$"
     return frozenset(padded[index : index + 2] for index in range(len(padded) - 1))
@@ -492,7 +525,7 @@ def _compiled_alias_index(spec: Mapping[str, Any]) -> dict[str, Any]:
         scope_disposition: str | None = None,
     ) -> None:
         for alias in aliases:
-            accentless = normalize_vietnamese_anchor_v1(alias)
+            accentless = _accentless_surface(alias)
             material = {
                 "alias_accented": _accented_surface(alias),
                 "alias_accentless": accentless,
@@ -593,9 +626,111 @@ def _compiled_alias_index(spec: Mapping[str, Any]) -> dict[str, Any]:
         "by_accentless": by_accentless,
         "edit_buckets": edit_buckets,
         "compact_unique": compact_unique,
+        "compact_alias_ids": frozenset(
+            entry["alias_id"] for candidates in compact_unique.values() for entry in candidates
+        ),
         "entries": entries,
         "maximum_alias_token_count": max(entry["token_count"] for entry in entries),
+        # The values are read-only match proposals tied to this exact compiled
+        # spec.  Keeping the cache build-local prevents one family spec from
+        # lending semantic entries to another while bounding worker memory.
+        "surface_cache": OrderedDict(),
+        "surface_cache_hit_count": 0,
+        "surface_cache_miss_count": 0,
         "token_counts": sorted({entry["token_count"] for entry in entries}),
+    }
+
+
+def _counter_covers(available: Counter[str], required: Counter[str]) -> bool:
+    return all(available[token] >= count for token, count in required.items())
+
+
+def _coarse_alias_possible(
+    entry: Mapping[str, Any],
+    token_counts: Counter[str],
+    tokens_by_length: Mapping[int, set[str]],
+    *,
+    compact_alias_ids: frozenset[str],
+) -> bool:
+    """Overinclude every exact, one-edit, or one-whitespace alias channel."""
+
+    alias_tokens = entry["alias_accentless"].split()
+    required = Counter(alias_tokens)
+    if _counter_covers(token_counts, required):
+        return True
+
+    # The bounded edit matcher requires the same token count.  Therefore one
+    # character edit can affect at most one token; every other token remains
+    # available verbatim.  The loose token q-gram gate deliberately admits
+    # false positives but cannot reject a true one-edit span.
+    for alias_token in alias_tokens:
+        remainder = Counter(alias_tokens)
+        remainder[alias_token] -= 1
+        if remainder[alias_token] == 0:
+            del remainder[alias_token]
+        if not _counter_covers(token_counts, remainder):
+            continue
+        for length in range(max(1, len(alias_token) - 1), len(alias_token) + 2):
+            if any(
+                len(_qgrams(candidate) ^ _qgrams(alias_token)) <= 6
+                for candidate in tokens_by_length.get(length, set())
+            ):
+                return True
+
+    if entry["alias_id"] not in compact_alias_ids:
+        return False
+    # The compact matcher changes exactly one whitespace: either two adjacent
+    # alias tokens fuse, or one alias token splits.  Check those two channels
+    # explicitly against the page multiset without constructing visual paths.
+    for ordinal in range(len(alias_tokens) - 1):
+        fused = alias_tokens[ordinal] + alias_tokens[ordinal + 1]
+        compact_required = Counter(alias_tokens[:ordinal] + alias_tokens[ordinal + 2 :])
+        compact_required[fused] += 1
+        if _counter_covers(token_counts, compact_required):
+            return True
+    for ordinal, alias_token in enumerate(alias_tokens):
+        for split in range(1, len(alias_token)):
+            compact_required = Counter(alias_tokens[:ordinal] + alias_tokens[ordinal + 1 :])
+            compact_required[alias_token[:split]] += 1
+            compact_required[alias_token[split:]] += 1
+            if _counter_covers(token_counts, compact_required):
+                return True
+    return False
+
+
+def _coarse_page_category_index(
+    page: Mapping[str, Any], alias_index: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Index page tokens once before any wrapped-window enumeration."""
+
+    tokens = [
+        token
+        for line in page["lines"]
+        for token in _accentless_surface(line["vietocr_text"]).split()
+    ]
+    token_counts = Counter(tokens)
+    tokens_by_length: dict[int, set[str]] = {}
+    for token in token_counts:
+        tokens_by_length.setdefault(len(token), set()).add(token)
+    possible = [
+        entry
+        for entry in alias_index["entries"]
+        if _coarse_alias_possible(
+            entry,
+            token_counts,
+            tokens_by_length,
+            compact_alias_ids=alias_index["compact_alias_ids"],
+        )
+    ]
+    categories = {entry["category"] for entry in possible}
+    distinct_role_ids = {entry["semantic_id"] for entry in possible if entry["category"] == "ROLE"}
+    owner_possible = bool(categories & {"OWNER", "OWNER_COMPONENT"})
+    scope_possible = bool(categories & {"SCOPE", "SCOPE_COMPONENT", "SCOPE_LANE_COMPONENT"})
+    return {
+        "candidate_possible": owner_possible
+        and bool(distinct_role_ids)
+        and (scope_possible or len(distinct_role_ids) >= 2),
+        "reset_possible": "STRUCTURAL_RESET" in categories,
     }
 
 
@@ -699,11 +834,23 @@ def _surface_matches(
 ) -> tuple[list[tuple[Mapping[str, Any], dict[str, Any]]], int]:
     """Look up one visual window without scanning every alias."""
 
+    cache_key = (surface, line_count)
+    cache = index["surface_cache"]
+    cached = cache.pop(cache_key, None)
+    if cached is not None:
+        cache[cache_key] = cached
+        index["surface_cache_hit_count"] += 1
+        return list(cached[0]), cached[1]
+    index["surface_cache_miss_count"] += 1
     candidate = _semantic_prefix(surface)
     accented_tokens = _accented_surface(candidate).split()
-    accentless_tokens = normalize_vietnamese_anchor_v1(candidate).split()
+    accentless_tokens = _accentless_surface(candidate).split()
     if len(accented_tokens) != len(accentless_tokens):
-        return [], 0
+        result: list[tuple[Mapping[str, Any], dict[str, Any]]] = []
+        cache[cache_key] = (tuple(result), 0)
+        if len(cache) > _SURFACE_CACHE_MAXSIZE:
+            cache.popitem(last=False)
+        return result, 0
     selected: dict[str, tuple[int, Mapping[str, Any], dict[str, Any]]] = {}
     approximate_comparisons = 0
     for token_count in index["token_counts"]:
@@ -803,13 +950,17 @@ def _surface_matches(
                 window_token_count=len(accentless_tokens),
             )
             selected[entry["alias_id"]] = (4, entry, match)
-    return [
+    result = [
         (entry, match)
         for _rank, entry, match in sorted(
             selected.values(),
             key=lambda item: (item[0], -item[1]["char_count"], item[1]["alias_id"]),
         )
-    ], approximate_comparisons
+    ]
+    cache[cache_key] = (tuple(result), approximate_comparisons)
+    if len(cache) > _SURFACE_CACHE_MAXSIZE:
+        cache.popitem(last=False)
+    return result, approximate_comparisons
 
 
 def _can_wrap(left: Mapping[str, Any], right: Mapping[str, Any], *, scale: float) -> bool:
@@ -829,6 +980,32 @@ def _can_wrap(left: Mapping[str, Any], right: Mapping[str, Any], *, scale: float
 def _windows(page: Mapping[str, Any], max_lines: int) -> list[list[Mapping[str, Any]]]:
     visual = [line for line in _visual(page["lines"]) if line["vietocr_text"].strip()]
     scale = median_text_height_v1(visual)
+    # Followers depend only on the last line, not on the path used to reach
+    # it: every edge strictly increases center-y, so a prior path member can
+    # never be a follower again.  The former DFS rescanned every page line for
+    # every emitted window (O(window_count * line_count)).  Precompute the
+    # exact same ordered, six-wide adjacency once.  ``_can_wrap`` proves that
+    # a follower starting below this y fence cannot qualify, so bisecting the
+    # visual y-order is an exact bounded sweep rather than a loose heuristic.
+    tops = [line["bbox"][1] for line in visual]
+    followers_by_source_index: dict[int, tuple[Mapping[str, Any], ...]] = {}
+    for left in visual:
+        left_center_y = (left["bbox"][1] + left["bbox"][3]) / 2
+        upper = bisect_right(tops, left["bbox"][3] + scale * 1.55)
+        followers = [
+            candidate
+            for candidate in visual[:upper]
+            if (candidate["bbox"][1] + candidate["bbox"][3]) / 2 > left_center_y
+            and _can_wrap(left, candidate, scale=scale)
+        ]
+        followers.sort(
+            key=lambda item: (
+                item["bbox"][1] - left["bbox"][3],
+                abs(item["bbox"][0] - left["bbox"][0]),
+                item["bbox"][0],
+            )
+        )
+        followers_by_source_index[left["source_line_index"]] = tuple(followers[:6])
     result: list[list[Mapping[str, Any]]] = []
     for line in visual:
         stack = [[line]]
@@ -838,25 +1015,84 @@ def _windows(page: Mapping[str, Any], max_lines: int) -> list[list[Mapping[str, 
             if len(block) >= max_lines:
                 continue
             last = block[-1]
-            last_center_y = (last["bbox"][1] + last["bbox"][3]) / 2
-            followers = [
-                candidate
-                for candidate in visual
-                if (candidate["bbox"][1] + candidate["bbox"][3]) / 2 > last_center_y
-                and candidate not in block
-                and _can_wrap(last, candidate, scale=scale)
-            ]
-            # Branch over a small geometric neighborhood.  This deliberately
-            # skips provider-interleaved text from a different header column.
-            followers.sort(
-                key=lambda item: (
-                    item["bbox"][1] - last["bbox"][3],
-                    abs(item["bbox"][0] - last["bbox"][0]),
-                    item["bbox"][0],
-                )
-            )
-            stack.extend([*block, follower] for follower in reversed(followers[:6]))
+            # Branch over the same small geometric neighborhood and preserve
+            # the prior stack/reversal order byte-for-byte.
+            followers = followers_by_source_index[last["source_line_index"]]
+            stack.extend([*block, follower] for follower in reversed(followers))
     return result
+
+
+def _prepare_semantic_windows(
+    page: Mapping[str, Any],
+    spec: Mapping[str, Any],
+    alias_index: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Build one content-feature pass before any accounting geometry.
+
+    This pass retains the exhaustive match/count semantics, but records only
+    immutable line references and text proposals.  A page cannot produce a
+    physical segment or partial fragment unless it has both local owner and
+    role evidence; scope is recorded separately so owner+role branchless pages
+    remain a fail-closed rescue candidate rather than an absence claim.
+    """
+
+    prepared = []
+    categories: set[str] = set()
+    distinct_role_ids: set[str] = set()
+    approximate_comparisons = 0
+    windows = _windows(page, spec["limits"]["max_wrap_lines"])
+    for block in windows:
+        ordered = _visual(block)
+        surface = " ".join(line["vietocr_text"].strip() for line in ordered).strip()
+        matches, comparisons = _surface_matches(
+            surface,
+            alias_index,
+            line_count=len(block),
+        )
+        approximate_comparisons += comparisons
+        categories.update(entry["category"] for entry, _match in matches)
+        distinct_role_ids.update(
+            entry["semantic_id"] for entry, _match in matches if entry["category"] == "ROLE"
+        )
+        prepared.append((block, matches, comparisons))
+    owner_possible = bool(categories & {"OWNER", "OWNER_COMPONENT"})
+    role_possible = "ROLE" in categories
+    scope_possible = bool(
+        categories
+        & {
+            "SCOPE",
+            "SCOPE_COMPONENT",
+            "SCOPE_LANE_COMPONENT",
+        }
+    )
+    return {
+        "approximate_alias_comparison_count": approximate_comparisons,
+        "has_reset": "STRUCTURAL_RESET" in categories,
+        "owner_possible": owner_possible,
+        "primary_candidate": owner_possible and role_possible and scope_possible,
+        "rescue_candidate": (owner_possible and len(distinct_role_ids) >= 2 and not scope_possible),
+        "role_possible": role_possible,
+        "scope_possible": scope_possible,
+        "visual_window_count": len(windows),
+        "windows": prepared,
+    }
+
+
+def _empty_semantic_matches(spec: Mapping[str, Any], prepared: Mapping[str, Any]) -> dict[str, Any]:
+    """Return the exact unused-page shape without invoking geometry."""
+
+    return {
+        "continuations": [],
+        "matcher_metrics": {
+            "approximate_alias_comparison_count": prepared["approximate_alias_comparison_count"],
+            "visual_window_count": prepared["visual_window_count"],
+        },
+        "owners": [],
+        "resets": [],
+        "roles": {item["role"]: [] for item in spec["role_axis"]},
+        "scopes": [],
+        "trailing_totals": [],
+    }
 
 
 def _match_record(
@@ -871,7 +1107,7 @@ def _match_record(
         "page_sequence": ordered[0]["page_sequence"],
         "semantic_id": semantic_id,
         "source_line_indices_in_visual_order": [line["source_line_index"] for line in ordered],
-        "surface_accentless": normalize_vietnamese_anchor_v1(surface),
+        "surface_accentless": _accentless_surface(surface),
         "surface_raw_nfc": surface,
     }
     return {**material, "match_id": "astgv1:match:" + canonical_json_sha256_v1(material)}
@@ -983,11 +1219,17 @@ def _row_has_visible_accounting_value(
     label: Mapping[str, Any],
     *,
     later_wrapped_lines: Sequence[Mapping[str, Any]],
+    visible_value_lines: Sequence[Mapping[str, Any]] | None = None,
 ) -> bool:
     """Prove that a value closes ``label`` rather than its continuation."""
 
-    for line in page["lines"]:
-        if not _is_value(line) or line["bbox"][0] < label["bbox"][2]:
+    candidates = (
+        visible_value_lines
+        if visible_value_lines is not None
+        else [line for line in page["lines"] if _is_value(line)]
+    )
+    for line in candidates:
+        if line["bbox"][0] < label["bbox"][2]:
             continue
         label_overlap = _overlap_ppm(line["bbox"], label["bbox"])
         later_overlap = max(
@@ -1004,9 +1246,13 @@ def _row_has_visible_accounting_value(
 
 
 def _semantic_matches(
-    page: Mapping[str, Any], spec: Mapping[str, Any], alias_index: Mapping[str, Any]
+    page: Mapping[str, Any],
+    spec: Mapping[str, Any],
+    alias_index: Mapping[str, Any],
+    *,
+    prepared: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    windows = _windows(page, spec["limits"]["max_wrap_lines"])
+    prepared = _prepare_semantic_windows(page, spec, alias_index) if prepared is None else prepared
     scale = median_text_height_v1(page["lines"])
     by_category: dict[str, list[dict[str, Any]]] = {
         "CONTINUATION": [],
@@ -1017,9 +1263,8 @@ def _semantic_matches(
     }
     raw_scopes: list[dict[str, Any]] = []
     approximate_comparisons = 0
-    for block in windows:
-        surface = " ".join(line["vietocr_text"].strip() for line in _visual(block)).strip()
-        matches, comparisons = _surface_matches(surface, alias_index, line_count=len(block))
+    visible_value_lines = [line for line in page["lines"] if _is_value(line)]
+    for block, matches, comparisons in prepared["windows"]:
         approximate_comparisons += comparisons
         scope_matches = [(entry, match) for entry, match in matches if entry["category"] == "SCOPE"]
         for scope in spec["scope_axis"]:
@@ -1045,6 +1290,7 @@ def _semantic_matches(
                 page,
                 line,
                 later_wrapped_lines=ordered_block[index + 1 :],
+                visible_value_lines=visible_value_lines,
             )
             for index, line in enumerate(ordered_block[:-1])
         ):
@@ -1141,7 +1387,7 @@ def _semantic_matches(
         "continuations": continuations,
         "matcher_metrics": {
             "approximate_alias_comparison_count": approximate_comparisons,
-            "visual_window_count": len(windows),
+            "visual_window_count": prepared["visual_window_count"],
         },
         "owners": owners,
         "resets": resets,
@@ -1501,9 +1747,20 @@ def _overlap_ppm(cell: Sequence[int], row: Sequence[int]) -> int:
     return overlap * 1_000_000 // denominator
 
 
+@lru_cache(maxsize=65_536)
+def _is_value_surfaces_cached(
+    vietocr_text: str,
+    source_text: str | None,
+    classifier: Any,
+) -> bool:
+    return classifier(vietocr_text) or (type(source_text) is str and classifier(source_text))
+
+
 def _is_value(line: Mapping[str, Any]) -> bool:
-    return is_accounting_value_surface_v1(line["vietocr_text"]) or (
-        type(line["source_text"]) is str and is_accounting_value_surface_v1(line["source_text"])
+    return _is_value_surfaces_cached(
+        line["vietocr_text"],
+        line["source_text"],
+        is_accounting_value_surface_v1,
     )
 
 
@@ -1631,7 +1888,7 @@ def _cell_record(
         ),
         "value_axis_center_x2": int(round(expected_center * 2)),
         "vietocr_accentless_surface": (
-            normalize_vietnamese_anchor_v1(line["vietocr_text"]) if line is not None else None
+            _accentless_surface(line["vietocr_text"]) if line is not None else None
         ),
         "vietocr_raw_nfc_surface": line["vietocr_text"] if line is not None else None,
     }
@@ -3134,12 +3391,192 @@ def _merge_partials(
     return graphs, unresolved, used
 
 
-def _build(region_pages: Any, family_spec: Any) -> dict[str, Any]:
-    pages = _pages(region_pages)
-    spec = _spec(family_spec)
+def _candidate_region_sequences(
+    pages: Sequence[Mapping[str, Any]],
+    prepared_by_page: Mapping[int, Mapping[str, Any]],
+    spec: Mapping[str, Any],
+) -> tuple[set[int], set[int]]:
+    """Expand proved owner+role pages through bounded, reset-fenced neighbors."""
+
+    seeds = {
+        sequence
+        for sequence, prepared in prepared_by_page.items()
+        if prepared["primary_candidate"] or prepared["rescue_candidate"]
+    }
+    candidates = set(seeds)
+    page_sequences = {page["page_sequence"] for page in pages}
+    budget = spec["limits"]["continuation_page_budget"]
+    for seed in seeds:
+        for direction in (-1, 1):
+            for distance in range(1, budget + 1):
+                sequence = seed + direction * distance
+                if sequence not in page_sequences:
+                    break
+                candidates.add(sequence)
+                if prepared_by_page[sequence]["has_reset"]:
+                    break
+    return candidates, seeds
+
+
+def _semantic_region_index(
+    pages: Sequence[Mapping[str, Any]],
+    spec: Mapping[str, Any],
+    alias_index: Mapping[str, Any],
+    *,
+    region_first: bool,
+) -> tuple[dict[int, dict[str, Any]], dict[str, Any]]:
+    """Index semantic text everywhere and run geometry only in proved regions."""
+
+    if not region_first:
+        semantic = {}
+        primary_count = 0
+        rescue_count = 0
+        visual_window_count = 0
+        for page in pages:
+            prepared = _prepare_semantic_windows(page, spec, alias_index)
+            primary_count += prepared["primary_candidate"]
+            rescue_count += prepared["rescue_candidate"]
+            visual_window_count += prepared["visual_window_count"]
+            semantic[page["page_sequence"]] = _semantic_matches(
+                page,
+                spec,
+                alias_index,
+                prepared=prepared,
+            )
+        return semantic, {
+            "candidate_line_count": sum(len(page["lines"]) for page in pages),
+            "candidate_page_count": len(pages),
+            "coarse_index_page_count": len(pages),
+            "coarse_skipped_page_count": 0,
+            "geometry_page_count": len(pages),
+            "neighbor_page_count": 0,
+            "primary_candidate_page_count": primary_count,
+            "rescue_candidate_page_count": rescue_count,
+            "source_line_count": sum(len(page["lines"]) for page in pages),
+            "source_page_count": len(pages),
+            "visual_window_count": visual_window_count,
+            "wrapped_match_page_count": len(pages),
+        }
+
+    coarse_by_page = {
+        page["page_sequence"]: _coarse_page_category_index(page, alias_index) for page in pages
+    }
+    coarse_candidate_sequences = {
+        sequence for sequence, coarse in coarse_by_page.items() if coarse["candidate_possible"]
+    }
+    prepared_by_page: dict[int, dict[str, Any]] = {
+        page["page_sequence"]: {
+            "approximate_alias_comparison_count": 0,
+            "has_reset": False,
+            "owner_possible": False,
+            "primary_candidate": False,
+            "rescue_candidate": False,
+            "role_possible": False,
+            "scope_possible": False,
+            "visual_window_count": 0,
+        }
+        for page in pages
+    }
+    retained_prepared: dict[int, dict[str, Any]] = {}
+    pages_by_sequence = {page["page_sequence"]: page for page in pages}
+    for sequence in sorted(coarse_candidate_sequences):
+        page = pages_by_sequence[sequence]
+        prepared = _prepare_semantic_windows(page, spec, alias_index)
+        prepared_by_page[sequence] = {
+            key: value for key, value in prepared.items() if key != "windows"
+        }
+        if prepared["primary_candidate"] or prepared["rescue_candidate"]:
+            retained_prepared[sequence] = prepared
+    # Reset-like footers are common and cannot make a page a global matcher
+    # candidate.  Probe a reset only while walking the declared continuation
+    # radius from one exact owner/role seed, and stop that walk at a proved
+    # reset.  This retains the reset fence without scanning unrelated pages.
+    wrapped_match_sequences = set(coarse_candidate_sequences)
+    page_sequences = set(pages_by_sequence)
+    budget = spec["limits"]["continuation_page_budget"]
+    for seed in sorted(retained_prepared):
+        for direction in (-1, 1):
+            for distance in range(1, budget + 1):
+                sequence = seed + direction * distance
+                if sequence not in page_sequences:
+                    break
+                if (
+                    coarse_by_page[sequence]["reset_possible"]
+                    and sequence not in wrapped_match_sequences
+                ):
+                    prepared = _prepare_semantic_windows(
+                        pages_by_sequence[sequence],
+                        spec,
+                        alias_index,
+                    )
+                    prepared_by_page[sequence] = {
+                        key: value for key, value in prepared.items() if key != "windows"
+                    }
+                    wrapped_match_sequences.add(sequence)
+                if prepared_by_page[sequence]["has_reset"]:
+                    break
+    candidate_sequences, seed_sequences = _candidate_region_sequences(
+        pages,
+        prepared_by_page,
+        spec,
+    )
+    semantic: dict[int, dict[str, Any]] = {}
+    for page in pages:
+        sequence = page["page_sequence"]
+        # Neighbor/reset pages remain in the bounded source region, but a page
+        # without its own owner+role proof cannot produce this engine's local
+        # segment or partial fragment.  Keep its exact matcher counts and skip
+        # all match-record hashing and geometry.
+        if sequence not in seed_sequences:
+            semantic[sequence] = _empty_semantic_matches(spec, prepared_by_page[sequence])
+            continue
+        prepared = retained_prepared.get(sequence)
+        if prepared is None:
+            prepared = _prepare_semantic_windows(page, spec, alias_index)
+        semantic[sequence] = _semantic_matches(
+            page,
+            spec,
+            alias_index,
+            prepared=prepared,
+        )
+    return semantic, {
+        "candidate_line_count": sum(
+            len(page["lines"]) for page in pages if page["page_sequence"] in candidate_sequences
+        ),
+        "candidate_page_count": len(candidate_sequences),
+        "coarse_index_page_count": len(pages),
+        "coarse_skipped_page_count": len(pages) - len(wrapped_match_sequences),
+        "geometry_page_count": len(seed_sequences),
+        "neighbor_page_count": len(candidate_sequences - seed_sequences),
+        "primary_candidate_page_count": sum(
+            prepared["primary_candidate"] for prepared in prepared_by_page.values()
+        ),
+        "rescue_candidate_page_count": sum(
+            prepared["rescue_candidate"] for prepared in prepared_by_page.values()
+        ),
+        "source_line_count": sum(len(page["lines"]) for page in pages),
+        "source_page_count": len(pages),
+        "visual_window_count": sum(
+            prepared["visual_window_count"] for prepared in prepared_by_page.values()
+        ),
+        "wrapped_match_page_count": len(wrapped_match_sequences),
+    }
+
+
+def _build_parsed(
+    pages: list[dict[str, Any]],
+    spec: dict[str, Any],
+    *,
+    region_first: bool,
+) -> tuple[dict[str, Any], dict[str, Any]]:
     alias_index = _compiled_alias_index(spec)
     by_page = {page["page_sequence"]: page for page in pages}
-    semantic = {page["page_sequence"]: _semantic_matches(page, spec, alias_index) for page in pages}
+    semantic, telemetry = _semantic_region_index(
+        pages,
+        spec,
+        alias_index,
+        region_first=region_first,
+    )
     segments = []
     lane_approximate_comparisons = 0
     for page in pages:
@@ -3159,6 +3596,51 @@ def _build(region_pages: Any, family_spec: Any) -> dict[str, Any]:
     ]
     partial_graphs, unresolved, _used = _merge_partials(partials, spec, semantic)
     graphs.extend(partial_graphs)
+    segment_pages = {item["page_sequences"][0] for item in segments}
+    partial_pages = {item["page_sequence"] for item in partials}
+    branchless_candidates = []
+    branchless_unresolved = []
+    for page in pages:
+        page_semantic = semantic[page["page_sequence"]]
+        role_matches = [
+            match
+            for role_id, matches in page_semantic["roles"].items()
+            for match in matches
+            if role_id == match["semantic_id"]
+        ]
+        distinct_role_ids = {match["semantic_id"] for match in role_matches}
+        if not page_semantic["owners"] or len(distinct_role_ids) < 2 or page_semantic["scopes"]:
+            continue
+        branchless_candidates.append(page["page_sequence"])
+        # A branchless page may still resolve a safe lane-derived scope inside
+        # `_page_segments`.  Persist fail-closed evidence only when neither
+        # physical geometry nor a partial fragment consumed the page.
+        if page["page_sequence"] in segment_pages or page["page_sequence"] in partial_pages:
+            continue
+        branchless_material = {
+            "owner_matches": canonical_clone_v1(page_semantic["owners"]),
+            "page_sequence": page["page_sequence"],
+            "role_matches": canonical_clone_v1(
+                sorted(
+                    role_matches,
+                    key=lambda item: (
+                        item["semantic_id"],
+                        item["bbox"][1],
+                        item["bbox"][0],
+                        item["match_id"],
+                    ),
+                )
+            ),
+            "unresolved_reason": "BRANCHLESS_OWNER_MULTIROLE_SCOPE_MISSING",
+        }
+        branchless_unresolved.append(
+            {
+                **branchless_material,
+                "unresolved_fragment_id": "astgv1:unresolved:"
+                + canonical_json_sha256_v1(branchless_material),
+            }
+        )
+    telemetry["rescue_candidate_page_count"] = len(branchless_candidates)
     bounded_absences = [
         item for item in segments if item["segment_status"] == "HARD_VETO_SCOPE_BOUNDED_ABSENCE"
     ]
@@ -3178,7 +3660,10 @@ def _build(region_pages: Any, family_spec: Any) -> dict[str, Any]:
             for graph in graphs
         ),
         "unresolved_fragment_count": (
-            len(unresolved) + len(unresolved_segments) + len(unresolved_complete_chains)
+            len(unresolved)
+            + len(unresolved_segments)
+            + len(unresolved_complete_chains)
+            + len(branchless_unresolved)
         ),
     }
     material = {
@@ -3199,27 +3684,181 @@ def _build(region_pages: Any, family_spec: Any) -> dict[str, Any]:
                 )
                 + lane_approximate_comparisons
             ),
+            "coarse_index_page_count": telemetry["coarse_index_page_count"],
+            "coarse_skipped_page_count": telemetry["coarse_skipped_page_count"],
             "compiled_alias_count": len(alias_index["entries"]),
+            "evaluation_format_version": _MATCHER_METRICS_FORMAT_VERSION,
             "lane_approximate_alias_comparison_count": lane_approximate_comparisons,
             "visual_window_count": sum(
                 item["matcher_metrics"]["visual_window_count"] for item in semantic.values()
             ),
+            "wrapped_match_page_count": telemetry["wrapped_match_page_count"],
         },
         "metrics": metrics,
         "physical_segments": segments,
         "safety": canonical_clone_v1(_SAFETY),
         "status": (
             "COMPLETE_REGION_GRAPH_ENUMERATION"
-            if not unresolved and not unresolved_segments and not unresolved_complete_chains
+            if not unresolved
+            and not unresolved_segments
+            and not unresolved_complete_chains
+            and not branchless_unresolved
             else "UNRESOLVED_REGION_GRAPH_ENUMERATION"
         ),
         "unresolved_fragments": [
             *unresolved,
             *unresolved_segments,
             *unresolved_complete_chains,
+            *branchless_unresolved,
         ],
     }
-    return {**material, "result_id": "astgv1:result:" + canonical_json_sha256_v1(material)}
+    telemetry.update(
+        {
+            "build_cache_engine_revision": _ENGINE_CACHE_REVISION,
+            "region_first": region_first,
+            "surface_cache_hit_count": alias_index["surface_cache_hit_count"],
+            "surface_cache_miss_count": alias_index["surface_cache_miss_count"],
+        }
+    )
+    return (
+        {**material, "result_id": "astgv1:result:" + canonical_json_sha256_v1(material)},
+        telemetry,
+    )
+
+
+def _engine_trust_closure() -> tuple[Any, ...]:
+    """Bind hot results to every replaceable shared dependency in this process."""
+
+    return (
+        _ENGINE_CACHE_REVISION,
+        _build_parsed,
+        _compiled_alias_index,
+        _coarse_page_category_index,
+        _semantic_region_index,
+        _candidate_region_sequences,
+        _surface_matches,
+        _windows,
+        _semantic_matches,
+        _page_segments,
+        _segment,
+        _header_context,
+        accounting_unit_surface_v1,
+        extract_period_observations_v1,
+        is_accounting_value_surface_v1,
+        is_number_like_v1,
+        build_multilevel_header_graph_v1,
+        assign_value_row_lanes_v1,
+        cluster_numeric_rows_v1,
+        infer_numeric_column_centers_v1,
+        propose_missing_value_lane_regions_v1,
+        match_vietnamese_anchor_alias_v1,
+        normalize_vietnamese_anchor_v1,
+    )
+
+
+def _cached_build_payload(
+    pages_payload: bytes,
+    spec_payload: bytes,
+    engine_trust_closure: tuple[Any, ...],
+) -> tuple[bytes, bytes, bool, int, int, int]:
+    """Serialize cache decisions so hit attribution is exact under threads."""
+
+    global _BUILD_CACHE_HITS, _BUILD_CACHE_MISSES
+    if not engine_trust_closure or engine_trust_closure[0] != _ENGINE_CACHE_REVISION:
+        raise _error("scoped-table graph cache engine trust closure drifted")
+    key = (pages_payload, spec_payload, engine_trust_closure)
+    with _BUILD_CACHE_LOCK:
+        cached = _BUILD_CACHE.pop(key, None)
+        if cached is not None:
+            _BUILD_CACHE[key] = cached
+            _BUILD_CACHE_HITS += 1
+            return (
+                cached[0],
+                cached[1],
+                True,
+                _BUILD_CACHE_HITS,
+                _BUILD_CACHE_MISSES,
+                len(_BUILD_CACHE),
+            )
+        pages = decode_canonical_json_bytes_v1(pages_payload)
+        spec = decode_canonical_json_bytes_v1(spec_payload)
+        result, telemetry = _build_parsed(pages, spec, region_first=True)
+        cached = (canonical_json_bytes_v1(result), canonical_json_bytes_v1(telemetry))
+        _BUILD_CACHE[key] = cached
+        if len(_BUILD_CACHE) > _BUILD_CACHE_MAXSIZE:
+            _BUILD_CACHE.popitem(last=False)
+        _BUILD_CACHE_MISSES += 1
+        return (
+            cached[0],
+            cached[1],
+            False,
+            _BUILD_CACHE_HITS,
+            _BUILD_CACHE_MISSES,
+            len(_BUILD_CACHE),
+        )
+
+
+def _build(region_pages: Any, family_spec: Any) -> dict[str, Any]:
+    pages = _pages(region_pages)
+    spec = _spec(family_spec)
+    pages_payload = canonical_json_bytes_v1(pages)
+    spec_payload = canonical_json_bytes_v1(spec)
+    (
+        result_payload,
+        telemetry_payload,
+        cache_hit,
+        cache_hits,
+        cache_misses,
+        cache_size,
+    ) = _cached_build_payload(
+        pages_payload,
+        spec_payload,
+        _engine_trust_closure(),
+    )
+    telemetry = decode_canonical_json_bytes_v1(telemetry_payload)
+    telemetry.update(
+        {
+            "build_cache_hit": cache_hit,
+            "build_cache_hits": cache_hits,
+            "build_cache_maxsize": _BUILD_CACHE_MAXSIZE,
+            "build_cache_misses": cache_misses,
+            "build_cache_size": cache_size,
+        }
+    )
+    _LAST_BUILD_TELEMETRY.set(telemetry)
+    return decode_canonical_json_bytes_v1(result_payload)
+
+
+def _build_exhaustive_for_test(region_pages: Any, family_spec: Any) -> dict[str, Any]:
+    """Reference path for byte-equivalence falsifiers; never a public authority."""
+
+    result, _telemetry = _build_parsed(
+        _pages(region_pages),
+        _spec(family_spec),
+        region_first=False,
+    )
+    return result
+
+
+def _accounting_scoped_table_graph_last_telemetry_v1() -> dict[str, Any]:
+    value = _LAST_BUILD_TELEMETRY.get()
+    return canonical_clone_v1(value) if value is not None else {}
+
+
+def _clear_accounting_scoped_table_graph_caches_v1() -> None:
+    """Bounded test/benchmark reset; it changes no source or public result."""
+
+    global _BUILD_CACHE_HITS, _BUILD_CACHE_MISSES
+    with _BUILD_CACHE_LOCK:
+        _BUILD_CACHE.clear()
+        _BUILD_CACHE_HITS = 0
+        _BUILD_CACHE_MISSES = 0
+    _accented_surface.cache_clear()
+    _accentless_surface_cached.cache_clear()
+    _semantic_prefix.cache_clear()
+    _qgrams.cache_clear()
+    _is_value_surfaces_cached.cache_clear()
+    _LAST_BUILD_TELEMETRY.set(None)
 
 
 def build_accounting_scoped_table_graph_v1(
@@ -3246,7 +3885,14 @@ def validate_accounting_scoped_table_graph_replay_v1(
     material.pop("result_id", None)
     if identity != "astgv1:result:" + canonical_json_sha256_v1(material):
         raise _error("scoped-table graph content identity drifted")
-    rebuilt = _build(region_pages, family_spec)
+    rebuilt, telemetry = _build_parsed(
+        _pages(region_pages),
+        _spec(family_spec),
+        region_first=True,
+    )
+    telemetry["build_cache_hit"] = False
+    telemetry["authoritative_replay_rebuilt"] = True
+    _LAST_BUILD_TELEMETRY.set(telemetry)
     if not same_typed_json_v1(value, rebuilt):
         raise _error("scoped-table graph does not replay exactly")
     return rebuilt

@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import unicodedata
+from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
+from random import Random
+from threading import Event
 
 import pytest
 
@@ -395,6 +398,351 @@ def test_compiled_matcher_avoids_window_times_alias_edit_scan_and_persists_featu
         "phrase_window_allowed": True,
         "source_window_line_count": 2,
     }
+
+
+def _without_matcher_diagnostics(value: dict[str, object]) -> dict[str, object]:
+    projected = deepcopy(value)
+    projected.pop("matcher_metrics")
+    projected.pop("result_id")
+    return projected
+
+
+def test_region_first_semantics_equal_exhaustive_with_noise_and_continuation() -> None:
+    noise = _page(
+        1,
+        [
+            _line(
+                index,
+                "Cho vay khách hàng" if index % 2 else "Tổng cộng",
+                [20, 10 + index * 12, 260, 18 + index * 12],
+            )
+            for index in range(40)
+        ],
+    )
+    pages = [
+        noise,
+        _partial_row_page(2, "DOMESTIC_TOTAL"),
+        _partial_row_page(3, "FOREIGN_TOTAL"),
+    ]
+    spec = _spec(layouts=["ROLES_AS_ROWS"])
+
+    scoped_table_module._clear_accounting_scoped_table_graph_caches_v1()
+    actual = build_accounting_scoped_table_graph_v1(pages, spec)
+    exhaustive = scoped_table_module._build_exhaustive_for_test(pages, spec)
+
+    assert _without_matcher_diagnostics(actual) == _without_matcher_diagnostics(exhaustive)
+    assert actual["graphs"][0]["continuation"]["mode"] == (
+        "ADJACENT_PARTIAL_ROLE_DEFICIT_COMPLETION"
+    )
+    telemetry = scoped_table_module._accounting_scoped_table_graph_last_telemetry_v1()
+    assert telemetry["source_page_count"] == 3
+    assert telemetry["geometry_page_count"] == 2
+    assert telemetry["candidate_page_count"] == 3
+
+
+def test_precomputed_wrap_adjacency_matches_exhaustive_scan_after_provider_reorder() -> None:
+    page = _row_layout_page()
+
+    def reference_windows(candidate_page: dict[str, object]) -> list[list[int]]:
+        visual = [
+            line
+            for line in scoped_table_module._visual(candidate_page["lines"])
+            if line["vietocr_text"].strip()
+        ]
+        scale = scoped_table_module.median_text_height_v1(visual)
+        result: list[list[int]] = []
+        for line in visual:
+            stack = [[line]]
+            while stack:
+                block = stack.pop()
+                result.append([item["source_line_index"] for item in block])
+                if len(block) >= 3:
+                    continue
+                last = block[-1]
+                last_center_y = (last["bbox"][1] + last["bbox"][3]) / 2
+                followers = [
+                    candidate
+                    for candidate in visual
+                    if (candidate["bbox"][1] + candidate["bbox"][3]) / 2 > last_center_y
+                    and candidate not in block
+                    and scoped_table_module._can_wrap(last, candidate, scale=scale)
+                ]
+                followers.sort(
+                    key=lambda item: (
+                        item["bbox"][1] - last["bbox"][3],
+                        abs(item["bbox"][0] - last["bbox"][0]),
+                        item["bbox"][0],
+                    )
+                )
+                stack.extend([*block, follower] for follower in reversed(followers[:6]))
+        return result
+
+    for candidate in (page, {**page, "lines": list(reversed(page["lines"]))}):
+        observed = [
+            [line["source_line_index"] for line in block]
+            for block in scoped_table_module._windows(candidate, 3)
+        ]
+        assert observed == reference_windows(candidate)
+
+
+def test_immutable_build_cache_invalidates_on_exact_page_spec_and_engine_content() -> None:
+    pages = [_row_layout_page()]
+    spec = _spec()
+    scoped_table_module._clear_accounting_scoped_table_graph_caches_v1()
+
+    first = build_accounting_scoped_table_graph_v1(pages, spec)
+    assert not scoped_table_module._accounting_scoped_table_graph_last_telemetry_v1()[
+        "build_cache_hit"
+    ]
+    first["metrics"]["complete_graph_count"] = 999
+    warm = build_accounting_scoped_table_graph_v1(pages, spec)
+    assert scoped_table_module._accounting_scoped_table_graph_last_telemetry_v1()["build_cache_hit"]
+    assert warm["metrics"]["complete_graph_count"] == 1
+
+    changed_pages = deepcopy(pages)
+    changed_pages[0]["lines"][0]["source_text"] = "1.000 "
+    changed = build_accounting_scoped_table_graph_v1(changed_pages, spec)
+    assert not scoped_table_module._accounting_scoped_table_graph_last_telemetry_v1()[
+        "build_cache_hit"
+    ]
+    assert changed["result_id"] != warm["result_id"]
+    with pytest.raises(AccountingScopedTableGraphV1Error, match="does not replay exactly"):
+        validate_accounting_scoped_table_graph_replay_v1(warm, changed_pages, spec)
+
+    changed_spec = deepcopy(spec)
+    changed_spec["continuation_aliases"].append("Phần tiếp")
+    changed_spec_result = build_accounting_scoped_table_graph_v1(pages, changed_spec)
+    assert not scoped_table_module._accounting_scoped_table_graph_last_telemetry_v1()[
+        "build_cache_hit"
+    ]
+    assert changed_spec_result["result_id"] != warm["result_id"]
+    with pytest.raises(AccountingScopedTableGraphV1Error, match="does not replay exactly"):
+        validate_accounting_scoped_table_graph_replay_v1(warm, pages, changed_spec)
+
+
+def test_authoritative_replay_bypasses_warm_cache_after_unkeyed_engine_drift(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pages = [_row_layout_page()]
+    spec = _spec()
+    scoped_table_module._clear_accounting_scoped_table_graph_caches_v1()
+    base = build_accounting_scoped_table_graph_v1(pages, spec)
+    assert build_accounting_scoped_table_graph_v1(pages, spec) == base
+
+    original = scoped_table_module._match_record
+
+    def drifted_match_record(*args: object, **kwargs: object) -> dict[str, object]:
+        record = original(*args, **kwargs)
+        return {**record, "audit_engine_drift": True}
+
+    monkeypatch.setattr(scoped_table_module, "_match_record", drifted_match_record)
+    assert build_accounting_scoped_table_graph_v1(pages, spec) == base
+    assert scoped_table_module._accounting_scoped_table_graph_last_telemetry_v1()["build_cache_hit"]
+    with pytest.raises(AccountingScopedTableGraphV1Error, match="does not replay exactly"):
+        validate_accounting_scoped_table_graph_replay_v1(base, pages, spec)
+
+
+def test_normalization_cache_is_keyed_by_exact_imported_callable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pages = [_row_layout_page()]
+    spec = _spec()
+    scoped_table_module._clear_accounting_scoped_table_graph_caches_v1()
+    base = build_accounting_scoped_table_graph_v1(pages, spec)
+    original = scoped_table_module.normalize_vietnamese_anchor_v1
+
+    def drifted_normalizer(value: str) -> str:
+        if value == "Nuoc ngoai":
+            return "normalization drift sentinel"
+        return original(value)
+
+    monkeypatch.setattr(
+        scoped_table_module,
+        "normalize_vietnamese_anchor_v1",
+        drifted_normalizer,
+    )
+    drifted = build_accounting_scoped_table_graph_v1(pages, spec)
+
+    assert drifted != base
+    assert not scoped_table_module._accounting_scoped_table_graph_last_telemetry_v1()[
+        "build_cache_hit"
+    ]
+    with pytest.raises(AccountingScopedTableGraphV1Error, match="does not replay exactly"):
+        validate_accounting_scoped_table_graph_replay_v1(base, pages, spec)
+
+
+def test_concurrent_cache_miss_and_hit_have_exact_per_call_telemetry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pages = [_row_layout_page()]
+    spec = _spec()
+    entered = Event()
+    release = Event()
+    original = scoped_table_module._build_parsed
+
+    def blocked_build(*args: object, **kwargs: object) -> object:
+        entered.set()
+        assert release.wait(timeout=2)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(scoped_table_module, "_build_parsed", blocked_build)
+    scoped_table_module._clear_accounting_scoped_table_graph_caches_v1()
+
+    def build_with_telemetry() -> tuple[dict[str, object], dict[str, object]]:
+        result = build_accounting_scoped_table_graph_v1(pages, spec)
+        return result, scoped_table_module._accounting_scoped_table_graph_last_telemetry_v1()
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        first = executor.submit(build_with_telemetry)
+        assert entered.wait(timeout=2)
+        second = executor.submit(build_with_telemetry)
+        release.set()
+        first_result, first_telemetry = first.result(timeout=3)
+        second_result, second_telemetry = second.result(timeout=3)
+
+    assert first_result == second_result
+    assert first_telemetry["build_cache_hit"] is False
+    assert second_telemetry["build_cache_hit"] is True
+
+
+def test_branchless_owner_role_rescue_and_reset_stay_fail_closed_and_exact() -> None:
+    branchless = _column_layout_page(1, "31/12/2025")
+    branchless["lines"] = [
+        line for line in branchless["lines"] if line["source_line_index"] not in {24, 25}
+    ]
+    branchless["lines"].append(_line(29, "Thuyết minh khác", [20, 170, 300, 198]))
+    spec = _spec(layouts=["ROLES_AS_COLUMNS"])
+    scoped_table_module._clear_accounting_scoped_table_graph_caches_v1()
+
+    actual = build_accounting_scoped_table_graph_v1([branchless], spec)
+    exhaustive = scoped_table_module._build_exhaustive_for_test([branchless], spec)
+
+    assert _without_matcher_diagnostics(actual) == _without_matcher_diagnostics(exhaustive)
+    assert actual["graphs"] == []
+    assert actual["status"] == "UNRESOLVED_REGION_GRAPH_ENUMERATION"
+    assert [item["unresolved_reason"] for item in actual["unresolved_fragments"]] == [
+        "BRANCHLESS_OWNER_MULTIROLE_SCOPE_MISSING"
+    ]
+    telemetry = scoped_table_module._accounting_scoped_table_graph_last_telemetry_v1()
+    assert telemetry["primary_candidate_page_count"] == 0
+    assert telemetry["rescue_candidate_page_count"] == 1
+    assert telemetry["geometry_page_count"] == 1
+
+    one_role = deepcopy(branchless)
+    one_role["lines"] = [line for line in one_role["lines"] if line["source_line_index"] != 23]
+    actual = build_accounting_scoped_table_graph_v1([one_role], spec)
+    exhaustive = scoped_table_module._build_exhaustive_for_test([one_role], spec)
+
+    assert _without_matcher_diagnostics(actual) == _without_matcher_diagnostics(exhaustive)
+    telemetry = scoped_table_module._accounting_scoped_table_graph_last_telemetry_v1()
+    assert telemetry["rescue_candidate_page_count"] == 0
+    assert telemetry["geometry_page_count"] == 0
+
+
+def test_region_first_perf_guard_reduces_geometry_lines_and_caches_public_replay() -> None:
+    pages = []
+    for page_sequence in range(1, 10):
+        lines = []
+        for index in range(80):
+            top = 10 + index * 12
+            surface = (
+                "Cho vay khách hàng"
+                if index % 3 == 0
+                else "Tổng cộng"
+                if index % 3 == 1
+                else f"Dòng thuyết minh {index}"
+            )
+            lines.append(_line(index, surface, [20, top, 260, top + 8]))
+        pages.append(_page(page_sequence, lines))
+    candidate = _row_layout_page()
+    candidate["page_sequence"] = 10
+    pages.append(candidate)
+    spec = _spec(layouts=["ROLES_AS_ROWS"])
+    scoped_table_module._clear_accounting_scoped_table_graph_caches_v1()
+
+    built = build_accounting_scoped_table_graph_v1(pages, spec)
+    cold = scoped_table_module._accounting_scoped_table_graph_last_telemetry_v1()
+    replayed = validate_accounting_scoped_table_graph_replay_v1(built, pages, spec)
+    warm = scoped_table_module._accounting_scoped_table_graph_last_telemetry_v1()
+
+    exhaustive = scoped_table_module._build_exhaustive_for_test(pages, spec)
+    assert replayed == built
+    assert _without_matcher_diagnostics(built) == _without_matcher_diagnostics(exhaustive)
+    assert cold["source_page_count"] == 10
+    assert cold["source_line_count"] == 734
+    assert cold["candidate_page_count"] == 2
+    assert cold["candidate_line_count"] == 94
+    assert cold["geometry_page_count"] == 1
+    assert cold["surface_cache_hit_count"] > 0
+    assert not cold["build_cache_hit"]
+    assert not warm["build_cache_hit"]
+    assert warm["authoritative_replay_rebuilt"]
+
+
+def test_randomized_coarse_index_has_no_semantic_false_negative_against_exhaustive() -> None:
+    random = Random(20260824)
+    spec = _spec(layouts=["ROLES_AS_ROWS"])
+    for case in range(12):
+        candidate = _row_layout_page(2)
+        for line in candidate["lines"]:
+            if line["source_line_index"] == 7 and random.randrange(2):
+                line["vietocr_text"] = "Nuoc ngoai"
+            if line["source_line_index"] == 4 and random.randrange(2):
+                line["vietocr_text"] = "Trong nuocx"
+            if line["source_line_index"] == 12 and random.randrange(2):
+                line["vietocr_text"] = "Chovay"
+        random.shuffle(candidate["lines"])
+        noise = _page(
+            1,
+            [
+                _line(
+                    index,
+                    f"Chuỗi nhiễu omega zeta {case:02d} {index:03d}",
+                    [20, 10 + index * 12, 360, 18 + index * 12],
+                )
+                for index in range(60)
+            ],
+        )
+        pages = [noise, candidate]
+        scoped_table_module._clear_accounting_scoped_table_graph_caches_v1()
+
+        actual = build_accounting_scoped_table_graph_v1(pages, spec)
+        exhaustive = scoped_table_module._build_exhaustive_for_test(pages, spec)
+
+        assert _without_matcher_diagnostics(actual) == _without_matcher_diagnostics(exhaustive)
+        assert (
+            scoped_table_module._accounting_scoped_table_graph_last_telemetry_v1()[
+                "coarse_skipped_page_count"
+            ]
+            == 1
+        )
+
+
+def test_reset_like_footers_are_probed_only_inside_candidate_continuation_budget() -> None:
+    pages = []
+    for page_sequence in range(1, 20):
+        lines = [
+            _line(
+                index,
+                f"Chuỗi nhiễu omega zeta {page_sequence:02d} {index:03d}",
+                [20, 10 + index * 12, 360, 18 + index * 12],
+            )
+            for index in range(39)
+        ]
+        lines.append(_line(39, "Thuyết minh khác", [20, 478, 300, 486]))
+        pages.append(_page(page_sequence, lines))
+    pages.append(_row_layout_page(20))
+    spec = _spec(layouts=["ROLES_AS_ROWS"], budget=1)
+    scoped_table_module._clear_accounting_scoped_table_graph_caches_v1()
+
+    actual = build_accounting_scoped_table_graph_v1(pages, spec)
+    telemetry = scoped_table_module._accounting_scoped_table_graph_last_telemetry_v1()
+    exhaustive = scoped_table_module._build_exhaustive_for_test(pages, spec)
+
+    assert _without_matcher_diagnostics(actual) == _without_matcher_diagnostics(exhaustive)
+    assert telemetry["wrapped_match_page_count"] == 2
+    assert telemetry["coarse_skipped_page_count"] == 18
+    assert telemetry["candidate_page_count"] == 2
 
 
 def test_non_nfc_source_surface_is_rejected_instead_of_silently_rewritten() -> None:
@@ -1042,6 +1390,11 @@ def test_actual_multilevel_lane_leaf_resolves_customer_without_sibling_mixed_vet
     assert segment["population_scope"]["match"]["lane_axis_center_x2"] == 1_646
     assert [item["source_line_index"] for item in segment["role_cells"]] == [29, 36]
     assert segment["period_key"] == "31/12/2025"
+    assert result["status"] == "COMPLETE_REGION_GRAPH_ENUMERATION"
+    assert not any(
+        item.get("unresolved_reason") == "BRANCHLESS_OWNER_MULTIROLE_SCOPE_MISSING"
+        for item in result["unresolved_fragments"]
+    )
     assert result["matcher_metrics"]["lane_approximate_alias_comparison_count"] > 0
     assert (
         result["matcher_metrics"]["approximate_alias_comparison_count"]
