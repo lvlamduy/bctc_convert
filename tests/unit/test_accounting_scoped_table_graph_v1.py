@@ -5,6 +5,7 @@ from copy import deepcopy
 
 import pytest
 
+from bctc_ai.evaluation import accounting_scoped_table_graph_v1 as scoped_table_module
 from bctc_ai.evaluation.accounting_scoped_table_graph_v1 import (
     AccountingScopedTableGraphV1Error,
     build_accounting_scoped_table_graph_v1,
@@ -597,6 +598,85 @@ def test_far_or_equidistant_narrative_periods_do_not_bind_a_value_lane() -> None
     )
     assert tied_exact["period_key"] is None
     assert tied_exact["period_resolution"] == "UNRESOLVED"
+
+
+def test_stub_period_header_does_not_claim_a_lane_before_bounded_fallback() -> None:
+    page = _row_layout_page()
+    page["lines"] = [line for line in page["lines"] if line["source_line_index"] not in {11, 15}]
+    period_line = next(line for line in page["lines"] if line["source_line_index"] == 88)
+    period_line["vietocr_text"] = "Tại ngày 31 tháng 12 năm 2025:"
+    # The adaptive header graph correctly classifies this as a left stub.  Its
+    # box still intersects the wider body-derived lane enough to exercise the
+    # span predicate before the existing bounded nearest-lane fallback.
+    period_line["bbox"] = [260, 82, 550, 108]
+
+    result = build_accounting_scoped_table_graph_v1([page], _spec(layouts=["ROLES_AS_ROWS"]))
+    exact = result["graphs"][0]["segments"][0]
+    period_cell = next(
+        cell
+        for cell in exact["header_context"]["header_geometry"]["cells"]
+        if cell["source_line_index"] == 88
+    )
+
+    assert period_cell["geometry_status"] == "STUB_HEADER_OUTSIDE_NUMERIC_COLUMNS"
+    assert period_cell["column_start"] is None
+    assert period_cell["column_stop"] is None
+    assert [cell["source_line_index"] for cell in exact["role_cells"]] == [99, 5]
+    assert exact["period_key"] == "31/12/2025"
+    assert exact["period_resolution"] == "LOCAL_PERIOD_HEADER_UNIQUE_NEAREST_VALUE_LANE"
+
+
+@pytest.mark.parametrize(
+    "span_mutation",
+    [
+        pytest.param(
+            {"column_start": 0, "column_stop": None},
+            id="half-resolved",
+        ),
+        pytest.param(
+            {
+                "column_start": 0,
+                "column_stop": 1,
+                "geometry_status": "STUB_HEADER_OUTSIDE_NUMERIC_COLUMNS",
+            },
+            id="contradictory-stub-with-integer-span",
+        ),
+        pytest.param(
+            {"column_start": 0, "column_stop": 99},
+            id="span-exceeds-header-column-count",
+        ),
+    ],
+)
+def test_malformed_period_header_span_is_ignored(
+    monkeypatch: pytest.MonkeyPatch,
+    span_mutation: dict[str, object],
+) -> None:
+    page = _row_layout_page()
+    page["lines"] = [line for line in page["lines"] if line["source_line_index"] not in {11, 15}]
+    original = scoped_table_module.build_multilevel_header_graph_v1
+
+    def malformed_header(*args: object, **kwargs: object) -> dict[str, object]:
+        graph = original(*args, **kwargs)
+        period_cell = next(cell for cell in graph["cells"] if cell["source_line_index"] == 88)
+        period_cell.update(span_mutation)
+        return graph
+
+    monkeypatch.setattr(
+        scoped_table_module,
+        "build_multilevel_header_graph_v1",
+        malformed_header,
+    )
+    result = build_accounting_scoped_table_graph_v1([page], _spec(layouts=["ROLES_AS_ROWS"]))
+    exact = result["graphs"][0]["segments"][0]
+    period_cell = next(
+        cell
+        for cell in exact["header_context"]["header_geometry"]["cells"]
+        if cell["source_line_index"] == 88
+    )
+
+    assert all(period_cell[key] == value for key, value in span_mutation.items())
+    assert exact["period_key"] == "31/12/2025"
+    assert exact["period_resolution"] == "LOCAL_PERIOD_HEADER_UNIQUE_NEAREST_VALUE_LANE"
 
 
 def test_unique_nearby_left_stub_period_caption_binds_to_bounded_table_block() -> None:

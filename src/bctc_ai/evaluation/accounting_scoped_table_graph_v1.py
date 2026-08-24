@@ -1306,6 +1306,21 @@ def _scope_interval(scope: Mapping[str, Any]) -> tuple[float, float]:
     return float(scope["bbox"][0]), float(scope["bbox"][2])
 
 
+def _has_resolved_column_span(cell: Mapping[str, Any], *, column_count: int) -> bool:
+    """Return whether one header cell owns a complete, usable column span."""
+
+    start = cell.get("column_start")
+    stop = cell.get("column_stop")
+    return (
+        type(column_count) is int
+        and column_count > 0
+        and type(start) is int
+        and type(stop) is int
+        and 0 <= start < stop <= column_count
+        and cell.get("geometry_status") != "STUB_HEADER_OUTSIDE_NUMERIC_COLUMNS"
+    )
+
+
 def _lane_scope_candidates(
     page: Mapping[str, Any],
     spec: Mapping[str, Any],
@@ -1357,7 +1372,7 @@ def _lane_scope_candidates(
         cells = [
             cell
             for cell in graph.get("cells", [])
-            if type(cell.get("column_start")) is int
+            if _has_resolved_column_span(cell, column_count=len(centers))
             and cell["column_start"] <= lane_ordinal < cell["column_stop"]
             and cell.get("source_line_index") in source_lines
             and cell["source_line_index"] not in unit_ids
@@ -2022,6 +2037,8 @@ def _period_resolution_for_lane(
 
     observations = context["period_observations"]
     graph = context["header_geometry"]
+    graph_column_centers = graph.get("column_centers") if type(graph) is dict else None
+    column_count = len(graph_column_centers) if type(graph_column_centers) is list else 0
     by_line = (
         {
             cell["source_line_index"]: cell
@@ -2056,7 +2073,11 @@ def _period_resolution_for_lane(
         if (
             cells
             and spatially_bound
-            and any(cell["column_start"] <= lane_ordinal < cell["column_stop"] for cell in cells)
+            and any(
+                _has_resolved_column_span(cell, column_count=column_count)
+                and cell["column_start"] <= lane_ordinal < cell["column_stop"]
+                for cell in cells
+            )
         ):
             spanning.append(observation)
     unique = {item["period"]: item for item in spanning}
