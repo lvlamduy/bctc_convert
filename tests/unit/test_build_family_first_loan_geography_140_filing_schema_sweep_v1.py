@@ -1487,17 +1487,17 @@ def test_parallel_job_counts_reject_bool(
 
 def test_frozen_retrieval_contract_pins_final_adapter_query_receipt_and_engine() -> None:
     assert sweep_v1._EXPECTED_REGION_QUERY_SPEC_ID == (
-        "fffrrv2:query:aa2700a3a54bf9a6ff79bbd4c51d8b3f1e55c7e2f16688a4f75b190673641cc9"
+        "fffrrv2:query:c8ed395a51ff6bfccef47d9ef8bb66b57512395837842c3f906a17f3b7ec92f1"
     )
     assert sweep_v1._EXPECTED_REGION_RECEIPT_ID == (
-        "fffrrv2:receipt:4f27e3af157654bb4b5d8442a8b6c008a2d18b8da3646cfb67fcf4bae677198f"
+        "fffrrv2:receipt:7e73c91781a1ecc4045d742bfc14da0a6540ef027fd4d07bcb9a70874a3ff181"
     )
     assert sweep_v1._EXPECTED_REGION_IMPLEMENTATION_REFS[
         "src/bctc_ai/evaluation/loan_geography_scoped_table_adapter_v1.py"
     ] == {
         "path": "src/bctc_ai/evaluation/loan_geography_scoped_table_adapter_v1.py",
-        "sha256": "892cd2584429e232767ed840a641460c1c08baa97715e0728129fe2101f9921e",
-        "size_bytes": 123_674,
+        "sha256": "81b97e8330d5407ad3192da7b83592f9c862a0f0a504bd75483b4581a7a27674",
+        "size_bytes": 134_097,
     }
     query = sweep_v1._adapter_region_query_spec(_ROOT)
     implementation_refs = {
