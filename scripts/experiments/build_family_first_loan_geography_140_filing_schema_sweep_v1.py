@@ -131,7 +131,7 @@ _EXPECTED_REGION_QUERY_SPEC_ID = (
     "fffrrv2:query:94dea056831227562ee83a6f9b93ea244991058ff2753d90c9917c7f752cd232"
 )
 _EXPECTED_REGION_RECEIPT_ID = (
-    "fffrrv2:receipt:7e73c91781a1ecc4045d742bfc14da0a6540ef027fd4d07bcb9a70874a3ff181"
+    "fffrrv2:receipt:fb74c78482a026dfe46d8d1dac78b45bf5eeea72f2d7ef14043be7550729d598"
 )
 _EXPECTED_REGION_IMPLEMENTATION_REFS = {
     "src/bctc_ai/evaluation/family_first_region_retrieval_v1.py": {

@@ -1755,7 +1755,7 @@ def test_frozen_retrieval_contract_pins_final_adapter_query_receipt_and_engine()
         "fffrrv2:query:94dea056831227562ee83a6f9b93ea244991058ff2753d90c9917c7f752cd232"
     )
     assert sweep_v1._EXPECTED_REGION_RECEIPT_ID == (
-        "fffrrv2:receipt:7e73c91781a1ecc4045d742bfc14da0a6540ef027fd4d07bcb9a70874a3ff181"
+        "fffrrv2:receipt:fb74c78482a026dfe46d8d1dac78b45bf5eeea72f2d7ef14043be7550729d598"
     )
     assert sweep_v1._EXPECTED_REGION_IMPLEMENTATION_REFS[
         "src/bctc_ai/evaluation/loan_geography_scoped_table_adapter_v1.py"
