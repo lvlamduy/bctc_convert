@@ -107,8 +107,8 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEPENDENCIES = {
     "coextensive_parent_total_projector_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_coextensive_parent_total_v1.py",
-        "sha256": "c0b7a03d49e667fbeab397739de712d2822dbdd9f902b94f521ef174b06f5fcb",
-        "size_bytes": 4_726,
+        "sha256": "31a7e42e85c6b16689a1148a1ccb3d02cee18f85139b6f800bed3aa309b48e68",
+        "size_bytes": 14_722,
     },
     "topology_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",

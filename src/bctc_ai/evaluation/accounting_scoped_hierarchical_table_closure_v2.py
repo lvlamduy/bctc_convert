@@ -89,6 +89,7 @@ _RESULT_FIELDS = {
     "authenticated_existing_dash_evidence",
     "claim_boundary",
     "closure_id",
+    "coextensive_structural_numeric_evidence",
     "coverage_receipt",
     "dependency_content_refs",
     "equations",
@@ -114,6 +115,20 @@ _COVERAGE_FIELDS = {
     "sample_ids",
     "source_record",
 }
+_COEXTENSIVE_STRUCTURAL_NUMERIC_FIELDS = {
+    "owner_component_occurrence_ids",
+    "owner_occurrence_id",
+    "owner_role",
+    "projected_occurrence_id",
+    "projected_role",
+    "source_record",
+    "source_sample_ids",
+    "status",
+}
+_COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_STATUS = "COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_ALREADY_OWNED"
+_COEXTENSIVE_PRECEDING_NUMERIC_AMBIGUITY_STATUS = (
+    "COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_AMBIGUOUS_OWNERSHIP_VETO"
+)
 _MAX_EQUATIONS = 128
 _MAX_COVERAGE_RECORDS = 16_384
 _MAX_RESOLVED_ROLES = 4_096
@@ -121,8 +136,8 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEPENDENCIES = {
     "occurrence_row_axis_v2": {
         "path": "src/bctc_ai/evaluation/accounting_family_occurrence_row_axis_v2.py",
-        "sha256": "f051bf18083246cacfb3fff01863e5d62b2a451e06de551df56cef7dbba2785b",
-        "size_bytes": 38_923,
+        "sha256": "4d7d47f34b482f883b9b88e674a082cea3cc6d413a4af4bb0757e5994942bf6b",
+        "size_bytes": 43_816,
     },
     "topology_v1": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_v1.py",
@@ -663,6 +678,24 @@ def _local_equations(
         ]
         result_row = rows_by_occurrence.get(result_occurrence)
         has_valued_scoped_component = result_occurrence in active_component_scope_ids
+        if (
+            result_row is not None
+            and result_row.get("values")
+            and result_row.get("status") != "VISIBLE_VALUE_LANES_BOUND"
+        ):
+            records.append(
+                {
+                    "component_roles_present": [],
+                    "result_occurrence_id": result_occurrence,
+                    "result_role": equation["result_role"],
+                    "status": "LOCAL_SUBTOTAL_RESULT_PARTIAL_VALUE_LANES_VETO",
+                }
+            )
+            reasons.append(
+                f"LOCAL_SUBTOTAL_RESULT_PARTIAL_VALUE_LANES:"
+                f"{equation['result_role']}:{result_occurrence}"
+            )
+            continue
         if result_row is None and has_valued_scoped_component:
             if len(active_local_scope_ids) == 1:
                 authorized_component_scopes.add(result_occurrence)
@@ -691,11 +724,7 @@ def _local_equations(
                 f"{equation['result_role']}:{result_occurrence}"
             )
             continue
-        if (
-            result_row is not None
-            and result_row["status"] != "VISIBLE_VALUE_LANES_BOUND"
-            and has_valued_scoped_component
-        ):
+        if result_row is not None and result_row["status"] != "VISIBLE_VALUE_LANES_BOUND":
             records.append(
                 {
                     "component_roles_present": [],
@@ -1112,6 +1141,8 @@ def _validate_result(value: Any) -> dict[str, Any]:
         or len(value["resolved_roles"]) > _MAX_RESOLVED_ROLES
         or type(value["coverage_receipt"]) is not list
         or len(value["coverage_receipt"]) > _MAX_COVERAGE_RECORDS
+        or type(value["coextensive_structural_numeric_evidence"]) is not list
+        or len(value["coextensive_structural_numeric_evidence"]) > _MAX_COVERAGE_RECORDS
         or not same_typed_json_v1(value["dependency_content_refs"], _dependency_refs())
         or type(value["role_occurrences"]) is not list
         or type(value["authenticated_existing_dash_evidence"]) is not list
@@ -1301,11 +1332,23 @@ def _validate_result(value: Any) -> dict[str, Any]:
             raise _error("scoped hierarchical local equation record drifted")
     occurrence_ids = {record.get("occurrence_id") for record in value["role_occurrences"]}
     coverage_ids = [record.get("coverage_id") for record in value["coverage_receipt"]]
+    role_coverage_occurrence_ids = [
+        record.get("occurrence_id")
+        for record in value["coverage_receipt"]
+        if type(record) is dict
+        and record.get("row_kind") in {"COEXTENSIVE_PRECEDING_NUMERIC_SOURCE", "ROLE_ROW"}
+    ]
+    trailing_coverage_ordinals = [
+        record.get("candidate_ordinal")
+        for record in value["coverage_receipt"]
+        if type(record) is dict and record.get("row_kind") == "TRAILING_VALUE_ROW"
+    ]
     allowed_dispositions = {
         "GLOBAL_HIERARCHY_SOURCE_OCCURRENCE",
         "LOCAL_EXHAUSTIVE_COMPONENT_OCCURRENCE",
         "LOCAL_SUBTOTAL_RESULT_OCCURRENCE",
         "NONADDITIVE_VISIBLE_SOURCE_ROLE",
+        "COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_ALREADY_OWNED",
         "UNBOUND_VISIBLE_ACCOUNTING_OCCURRENCE",
         "UNRESOLVED_PARTIAL_ROLE_NUMERIC_OCCURRENCE",
         "UNRESOLVED_HIERARCHY_SOURCE_OCCURRENCE",
@@ -1317,6 +1360,8 @@ def _validate_result(value: Any) -> dict[str, Any]:
     if (
         None in occurrence_ids
         or len(coverage_ids) != len(set(coverage_ids))
+        or len(role_coverage_occurrence_ids) != len(set(role_coverage_occurrence_ids))
+        or len(trailing_coverage_ordinals) != len(set(trailing_coverage_ordinals))
         or any(
             type(record) is not dict
             or set(record) != _COVERAGE_FIELDS
@@ -1328,7 +1373,12 @@ def _validate_result(value: Any) -> dict[str, Any]:
             or len(record["sample_ids"]) != len(set(record["sample_ids"]))
             or any(type(item) is not str or not item for item in record["sample_ids"])
             or type(record["source_record"]) is not dict
-            or record["row_kind"] not in {"ROLE_ROW", "TRAILING_VALUE_ROW"}
+            or record["row_kind"]
+            not in {
+                "COEXTENSIVE_PRECEDING_NUMERIC_SOURCE",
+                "ROLE_ROW",
+                "TRAILING_VALUE_ROW",
+            }
             or (
                 record["row_kind"] == "ROLE_ROW"
                 and (
@@ -1339,6 +1389,19 @@ def _validate_result(value: Any) -> dict[str, Any]:
                     or record["source_record"].get("role") != record["role"]
                     or record["source_record"].get("label_match", {}).get("occurrence_id")
                     != record["occurrence_id"]
+                )
+            )
+            or (
+                record["row_kind"] == "COEXTENSIVE_PRECEDING_NUMERIC_SOURCE"
+                and (
+                    record["occurrence_id"] not in occurrence_ids
+                    or record["candidate_ordinal"] is not None
+                    or type(record["role"]) is not str
+                    or not record["role"]
+                    or record["source_record"].get("role") != record["role"]
+                    or record["source_record"].get("label_match", {}).get("occurrence_id")
+                    != record["occurrence_id"]
+                    or record["disposition"] != "COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_ALREADY_OWNED"
                 )
             )
             or (
@@ -1358,6 +1421,107 @@ def _validate_result(value: Any) -> dict[str, Any]:
         )
     ):
         raise _error("scoped hierarchical visible occurrence coverage receipt drifted")
+    coextensive_receipts = {
+        record["occurrence_id"]: record
+        for record in value["coverage_receipt"]
+        if record["row_kind"] == "COEXTENSIVE_PRECEDING_NUMERIC_SOURCE"
+    }
+    role_receipts = {
+        record["occurrence_id"]: record
+        for record in value["coverage_receipt"]
+        if record["row_kind"] == "ROLE_ROW"
+    }
+    occurrence_by_id = {
+        record.get("occurrence_id"): record
+        for record in value["role_occurrences"]
+        if type(record) is dict and type(record.get("occurrence_id")) is str
+    }
+    coextensive_projected_ids: list[str] = []
+    coextensive_sample_ids: list[str] = []
+    owned_coextensive_ids: list[str] = []
+    for evidence in value["coextensive_structural_numeric_evidence"]:
+        if type(evidence) is not dict:
+            raise _error("scoped hierarchical coextensive source receipt drifted")
+        status = evidence.get("status")
+        is_owned = status == _COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_STATUS
+        is_ambiguous = status == _COEXTENSIVE_PRECEDING_NUMERIC_AMBIGUITY_STATUS
+        projected_id = evidence.get("projected_occurrence_id")
+        owner_id = evidence.get("owner_occurrence_id")
+        projected = occurrence_by_id.get(projected_id)
+        owner = occurrence_by_id.get(owner_id)
+        component_ids = evidence.get("owner_component_occurrence_ids")
+        source_record = evidence.get("source_record")
+        source_values = source_record.get("values") if type(source_record) is dict else None
+        source_label = source_record.get("label_match") if type(source_record) is dict else None
+        source_sample_ids = evidence.get("source_sample_ids")
+        expected_receipt = (
+            coextensive_receipts.get(projected_id) if is_owned else role_receipts.get(projected_id)
+        )
+        if (
+            set(evidence) != _COEXTENSIVE_STRUCTURAL_NUMERIC_FIELDS
+            or not (is_owned or is_ambiguous)
+            or type(projected_id) is not str
+            or not projected_id
+            or type(evidence.get("projected_role")) is not str
+            or not evidence["projected_role"]
+            or type(owner_id) is not str
+            or not owner_id
+            or type(evidence.get("owner_role")) is not str
+            or not evidence["owner_role"]
+            or type(projected) is not dict
+            or projected.get("role_kind") != "STRUCTURAL_GROUP"
+            or projected.get("role") != evidence["projected_role"]
+            or projected.get("has_bound_value_row") is not is_ambiguous
+            or type(owner) is not dict
+            or owner.get("role_kind") != "STRUCTURAL_GROUP"
+            or owner.get("role") != evidence["owner_role"]
+            or type(component_ids) is not list
+            or len(component_ids) < 2
+            or any(
+                type(component_id) is not str or not component_id for component_id in component_ids
+            )
+            or len(component_ids) != len(set(component_ids))
+            or any(
+                component_id not in occurrence_by_id
+                or occurrence_by_id[component_id].get("role_kind") != "ADDITIVE_CHILD"
+                or occurrence_by_id[component_id].get("scope_owner_occurrence_id") != owner_id
+                for component_id in component_ids
+            )
+            or type(source_record) is not dict
+            or source_record.get("status") != "VISIBLE_VALUE_LANES_BOUND"
+            or source_record.get("role") != evidence["projected_role"]
+            or type(source_label) is not dict
+            or source_label.get("occurrence_id") != projected_id
+            or type(source_values) is not list
+            or not source_values
+            or any(type(source_value) is not dict for source_value in source_values)
+            or type(source_sample_ids) is not list
+            or not source_sample_ids
+            or any(type(sample_id) is not str or not sample_id for sample_id in source_sample_ids)
+            or len(source_sample_ids) != len(set(source_sample_ids))
+            or source_sample_ids
+            != [source_value.get("sample_id") for source_value in source_values]
+            or type(expected_receipt) is not dict
+            or expected_receipt["role"] != evidence["projected_role"]
+            or expected_receipt["sample_ids"] != source_sample_ids
+            or not same_typed_json_v1(expected_receipt["source_record"], source_record)
+            or (
+                is_ambiguous
+                and f"{_COEXTENSIVE_PRECEDING_NUMERIC_AMBIGUITY_STATUS}:{projected_id}"
+                not in value["unresolved_reasons"]
+            )
+        ):
+            raise _error("scoped hierarchical coextensive source receipt drifted")
+        coextensive_projected_ids.append(projected_id)
+        coextensive_sample_ids.extend(source_sample_ids)
+        if is_owned:
+            owned_coextensive_ids.append(projected_id)
+    if (
+        len(coextensive_projected_ids) != len(set(coextensive_projected_ids))
+        or len(coextensive_sample_ids) != len(set(coextensive_sample_ids))
+        or set(coextensive_receipts) != set(owned_coextensive_ids)
+    ):
+        raise _error("scoped hierarchical coextensive source receipt drifted")
     trailing_evidence = {
         candidate["candidate_ordinal"]: candidate["status"]
         for equation in value["equations"]["global"]
@@ -1540,6 +1704,25 @@ def _build(
                 "source_record": canonical_clone_v1(row),
             }
         )
+    for evidence in axis["coextensive_structural_numeric_evidence"]:
+        if evidence["status"] != "COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_ALREADY_OWNED":
+            continue
+        occurrence_id = evidence["projected_occurrence_id"]
+        if occurrence_id in coverage_occurrences:
+            raise _error("coextensive numeric source repeats one valued occurrence receipt")
+        coverage_occurrences.add(occurrence_id)
+        coverage_receipt.append(
+            {
+                "candidate_ordinal": None,
+                "coverage_id": "ashtcv2:coverage:coextensive:" + occurrence_id,
+                "disposition": "COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_ALREADY_OWNED",
+                "occurrence_id": occurrence_id,
+                "role": evidence["projected_role"],
+                "row_kind": "COEXTENSIVE_PRECEDING_NUMERIC_SOURCE",
+                "sample_ids": canonical_clone_v1(evidence["source_sample_ids"]),
+                "source_record": canonical_clone_v1(evidence["source_record"]),
+            }
+        )
     trailing_ordinals: set[int] = set()
     for trailing in row_axis["trailing_value_rows"]:
         ordinal = trailing["candidate_ordinal"]
@@ -1571,6 +1754,9 @@ def _build(
             axis["authenticated_existing_dash_evidence"]
         ),
         "claim_boundary": CLAIM_BOUNDARY,
+        "coextensive_structural_numeric_evidence": canonical_clone_v1(
+            axis["coextensive_structural_numeric_evidence"]
+        ),
         "coverage_receipt": coverage_receipt,
         "dependency_content_refs": _dependency_refs(),
         "equations": equation_axis,

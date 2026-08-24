@@ -48,7 +48,8 @@ FORMAT_VERSION = "ACCOUNTING_FAMILY_OCCURRENCE_ROW_AXIS_V2"
 POLICY_FORMAT_VERSION = "ACCOUNTING_FAMILY_OCCURRENCE_ROW_AXIS_POLICY_V1"
 CLAIM_BOUNDARY = (
     "EXACT_SELECTED_TOPOLOGY_REGION_CONTEXT_BOUND_ROLE_OCCURRENCE_EXPANSION_"
-    "SEALED_V1_ROW_GEOMETRY_AND_AUTHENTICATED_EXISTING_CELL_PIXEL_DASH_GATE_"
+    "SEALED_V1_ROW_GEOMETRY_AUTHENTICATED_EXISTING_CELL_PIXEL_DASH_GATE_AND_"
+    "EXACT_PRECEDING_SCOPE_SUBTOTAL_SOURCE_OWNERSHIP_"
     "PROPOSAL_ONLY_NO_ACCOUNTING_PERIOD_UNIT_SCHEMA_MAPPING_OR_EXPORT_AUTHORITY"
 )
 _SAFETY = {
@@ -58,6 +59,8 @@ _SAFETY = {
     "existing_dash_text_alone_means_zero": False,
     "mapping_authority": False,
     "occurrences_may_cross_selected_topology_region": False,
+    "preceding_numeric_source_ambiguous_ownership_can_resolve": False,
+    "preceding_scope_subtotal_may_be_reused_by_next_structural_group": False,
     "repeated_roles_may_be_silently_collapsed": False,
     "schema_authority": False,
     "sealed_row_axis_v1_bytes_changed": False,
@@ -71,6 +74,7 @@ _POLICY_FIELDS = {
 _RESULT_FIELDS = {
     "authenticated_existing_dash_evidence",
     "claim_boundary",
+    "coextensive_structural_numeric_evidence",
     "dependency_content_refs",
     "family_id",
     "format_version",
@@ -101,14 +105,24 @@ _DASH_PROJECTION_FIELDS = {
     "sample_id",
     "status",
 }
+_COEXTENSIVE_STRUCTURAL_NUMERIC_FIELDS = {
+    "owner_component_occurrence_ids",
+    "owner_occurrence_id",
+    "owner_role",
+    "projected_occurrence_id",
+    "projected_role",
+    "source_record",
+    "source_sample_ids",
+    "status",
+}
 _MAX_ROLE_OCCURRENCES = 4_096
 _MAX_EXISTING_DASH_CELLS = 16_384
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEPENDENCIES = {
     "coextensive_parent_total_projector": {
         "path": "src/bctc_ai/evaluation/accounting_family_coextensive_parent_total_v1.py",
-        "sha256": "c0b7a03d49e667fbeab397739de712d2822dbdd9f902b94f521ef174b06f5fcb",
-        "size_bytes": 4_726,
+        "sha256": "31a7e42e85c6b16689a1148a1ccb3d02cee18f85139b6f800bed3aa309b48e68",
+        "size_bytes": 14_722,
     },
     "exact_page_render_validator": {
         "path": "src/bctc_ai/evaluation/family_first_authenticated_page_region_v1.py",
@@ -137,8 +151,8 @@ _DEPENDENCIES = {
     },
     "topology_candidates_v2": {
         "path": "src/bctc_ai/evaluation/accounting_family_topology_candidates_v2.py",
-        "sha256": "db2c5b0b9b1b9e9e9b3ec6cfcde58d8ea7b3b51db48c180c475f9bd4864b3c3a",
-        "size_bytes": 20_159,
+        "sha256": "1bdac40e8d8b3b073de7286875756beedcbd7ca9ec5053bba45dbd03919e31ba",
+        "size_bytes": 20_160,
     },
 }
 
@@ -651,6 +665,8 @@ def _validate_result(value: Any) -> dict[str, Any]:
         or len(value["role_occurrences"]) > _MAX_ROLE_OCCURRENCES
         or type(value["authenticated_existing_dash_evidence"]) is not list
         or len(value["authenticated_existing_dash_evidence"]) > _MAX_EXISTING_DASH_CELLS
+        or type(value["coextensive_structural_numeric_evidence"]) is not list
+        or len(value["coextensive_structural_numeric_evidence"]) > _MAX_ROLE_OCCURRENCES
         or not same_typed_json_v1(value["dependency_content_refs"], _dependency_refs())
         or type(value["unresolved_reasons"]) is not list
         or any(type(reason) is not str or not reason for reason in value["unresolved_reasons"])
@@ -682,6 +698,7 @@ def _validate_result(value: Any) -> dict[str, Any]:
         raise _error("role occurrence identity axis repeats or drifted")
     occurrence_by_id = {item["occurrence_id"]: item for item in value["role_occurrences"]}
     row_occurrence_ids = {row["label_match"].get("occurrence_id") for row in axis["rows"]}
+    row_by_occurrence = {row["label_match"].get("occurrence_id"): row for row in axis["rows"]}
     root_scope_ids = {
         item["scope_owner_occurrence_id"]
         for item in value["role_occurrences"]
@@ -707,6 +724,71 @@ def _validate_result(value: Any) -> dict[str, Any]:
         for item in value["role_occurrences"]
     ):
         raise _error("role occurrence nearest-parent scope axis drifted")
+    retained_sample_ids = {
+        source_value.get("sample_id")
+        for row in [*axis["rows"], *axis["trailing_value_rows"]]
+        for source_value in row.get("values", [])
+    }
+    coextensive_projected_ids: list[str] = []
+    coextensive_sample_ids: list[str] = []
+    for item in value["coextensive_structural_numeric_evidence"]:
+        if type(item) is not dict:
+            raise _error("coextensive structural numeric evidence axis drifted")
+        source_record = item.get("source_record")
+        source_values = source_record.get("values") if type(source_record) is dict else None
+        projected = occurrence_by_id.get(item.get("projected_occurrence_id"))
+        owner = occurrence_by_id.get(item.get("owner_occurrence_id"))
+        component_ids = item.get("owner_component_occurrence_ids")
+        is_owned = item.get("status") == total_v1.COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_STATUS
+        is_ambiguous = item.get("status") == total_v1.COEXTENSIVE_PRECEDING_NUMERIC_AMBIGUITY_STATUS
+        if (
+            set(item) != _COEXTENSIVE_STRUCTURAL_NUMERIC_FIELDS
+            or not (is_owned or is_ambiguous)
+            or type(projected) is not dict
+            or projected["role_kind"] != "STRUCTURAL_GROUP"
+            or projected["role"] != item["projected_role"]
+            or projected["has_bound_value_row"] is not is_ambiguous
+            or type(owner) is not dict
+            or owner["role_kind"] != "STRUCTURAL_GROUP"
+            or owner["role"] != item["owner_role"]
+            or type(component_ids) is not list
+            or len(component_ids) < 2
+            or len(component_ids) != len(set(component_ids))
+            or any(
+                component_id not in occurrence_by_id
+                or occurrence_by_id[component_id]["role_kind"] != "ADDITIVE_CHILD"
+                or occurrence_by_id[component_id]["scope_owner_occurrence_id"]
+                != item["owner_occurrence_id"]
+                for component_id in component_ids
+            )
+            or type(source_record) is not dict
+            or source_record.get("status") != "VISIBLE_VALUE_LANES_BOUND"
+            or source_record.get("role") != item["projected_role"]
+            or source_record.get("label_match", {}).get("occurrence_id")
+            != item["projected_occurrence_id"]
+            or type(source_values) is not list
+            or not source_values
+            or item["source_sample_ids"]
+            != [source_value.get("sample_id") for source_value in source_values]
+            or any(
+                (sample_id in retained_sample_ids) is not is_ambiguous
+                for sample_id in item["source_sample_ids"]
+            )
+            or (
+                is_ambiguous
+                and not same_typed_json_v1(
+                    source_record,
+                    row_by_occurrence.get(item["projected_occurrence_id"]),
+                )
+            )
+        ):
+            raise _error("coextensive structural numeric evidence axis drifted")
+        coextensive_projected_ids.append(item["projected_occurrence_id"])
+        coextensive_sample_ids.extend(item["source_sample_ids"])
+    if len(coextensive_projected_ids) != len(set(coextensive_projected_ids)) or len(
+        coextensive_sample_ids
+    ) != len(set(coextensive_sample_ids)):
+        raise _error("coextensive structural numeric evidence repeats source ownership")
     dash_sample_ids = []
     for item in value["authenticated_existing_dash_evidence"]:
         embedded = item.get("dash_evidence") if type(item) is dict else None
@@ -823,6 +905,17 @@ def _build(
         selected_snapshot=selected_snapshot,
         render_snapshots=render_snapshots,
     )
+    try:
+        axis, coextensive_evidence = (
+            total_v1.project_accounting_family_coextensive_structural_numeric_rows_v1(
+                axis,
+                matches,
+            )
+        )
+        if coextensive_evidence:
+            axis = _regenerate_v1_axis(axis)
+    except total_v1.AccountingFamilyCoextensiveParentTotalV1Error as exc:
+        raise _error("coextensive structural numeric source projection failed") from exc
     rows_by_occurrence = {row["label_match"].get("occurrence_id"): row for row in axis["rows"]}
     role_occurrences = [
         {
@@ -837,11 +930,17 @@ def _build(
         for match in matches
     ]
     reasons = list(dash_reasons)
+    reasons.extend(
+        f"{evidence['status']}:{evidence['projected_occurrence_id']}"
+        for evidence in coextensive_evidence
+        if evidence["status"] == total_v1.COEXTENSIVE_PRECEDING_NUMERIC_AMBIGUITY_STATUS
+    )
     if axis["status"] != "VISIBLE_ROW_LANE_AXIS_BOUND_PROPOSAL_ONLY":
         reasons.insert(0, "VISIBLE_ROLE_OCCURRENCE_ROW_LANES_NOT_COMPLETE")
     material = {
         "authenticated_existing_dash_evidence": dash_evidence,
         "claim_boundary": CLAIM_BOUNDARY,
+        "coextensive_structural_numeric_evidence": coextensive_evidence,
         "dependency_content_refs": _dependency_refs(),
         "family_id": compiled_family["family_id"],
         "format_version": FORMAT_VERSION,

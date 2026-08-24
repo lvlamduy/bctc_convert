@@ -176,6 +176,57 @@ def _pages(
     return [{"lines": lines, "page_sequence": 1, "page_width": 1000}]
 
 
+def _acb_shaped_preceding_subtotal_pages(
+    *, demand_subtotal_current: str = "30", demand_subtotal_prior: str = "20"
+) -> list[dict[str, object]]:
+    """Provider-order fixture: prior subtotal touches the next group label."""
+
+    lines = [
+        _line(0, "Tiền gửi và cho vay các TCTD khác", "", [25, 15, 500, 49]),
+        _line(1, "31/12/2025", "", [610, 65, 700, 92]),
+        _line(2, "31/12/2024", "", [810, 65, 900, 92]),
+        _line(3, "Đơn vị: Triệu đồng", "", [610, 96, 900, 123]),
+        _line(4, "Tiền gửi không kỳ hạn", "", [45, 120, 430, 154]),
+        _line(5, "Bằng Đồng Việt Nam", "", [65, 155, 430, 189]),
+        _line(6, "20", "20", [610, 157, 700, 184]),
+        _line(7, "15", "15", [810, 157, 900, 184]),
+        _line(8, "Bằng ngoại tệ", "", [65, 190, 430, 224]),
+        _line(9, "10", "10", [610, 192, 700, 219]),
+        _line(10, "5", "5", [810, 192, 900, 219]),
+        _line(
+            11,
+            demand_subtotal_current,
+            demand_subtotal_current,
+            [610, 245, 700, 279],
+        ),
+        _line(
+            12,
+            demand_subtotal_prior,
+            demand_subtotal_prior,
+            [810, 245, 900, 279],
+        ),
+        _line(13, "Tiền gửi có kỳ hạn", "", [45, 274, 430, 314]),
+        _line(14, "Bằng Đồng Việt Nam", "", [65, 309, 430, 343]),
+        _line(15, "100", "100", [610, 311, 700, 338]),
+        _line(16, "80", "80", [810, 311, 900, 338]),
+        _line(17, "Bằng ngoại tệ", "", [65, 344, 430, 378]),
+        _line(18, "20", "20", [610, 346, 700, 373]),
+        _line(19, "10", "10", [810, 346, 900, 373]),
+        _line(20, "Cho vay các TCTD khác", "", [45, 410, 430, 444]),
+        _line(21, "50", "50", [610, 412, 700, 439]),
+        _line(22, "40", "40", [810, 412, 900, 439]),
+        _line(
+            23,
+            "Tổng tiền gửi và cho vay các TCTD khác",
+            "",
+            [45, 470, 500, 504],
+        ),
+        _line(24, "200", "200", [610, 472, 700, 499]),
+        _line(25, "150", "150", [810, 472, 900, 499]),
+    ]
+    return [{"lines": lines, "page_sequence": 1, "page_width": 1000}]
+
+
 def _axis(pages: list[dict[str, object]], topology: dict[str, object] | None = None) -> dict:
     topology = _topology() if topology is None else topology
     scan = topology_v1.build_accounting_family_topology_scan_v1(
@@ -208,6 +259,19 @@ def _closure(
         axis, topology, hierarchy
     )
     return axis, closure
+
+
+def _coherently_rehash_closure(closure: dict) -> None:
+    closure["metrics"] = subject._metrics(
+        closure["resolved_roles"],
+        closure["equations"]["global"],
+        closure["equations"]["local"],
+        closure["coverage_receipt"],
+        closure["unresolved_reasons"],
+    )
+    material = copy.deepcopy(closure)
+    material.pop("closure_id")
+    closure["closure_id"] = "ashtcv2:closure:" + canonical_json_sha256_v1(material)
 
 
 @pytest.mark.parametrize(
@@ -433,6 +497,194 @@ def test_real_v4_config_rejects_singleton_that_omits_visible_deposit_subtree() -
     )
 
 
+def test_real_v4_acb_shaped_preceding_demand_subtotal_is_not_reused_as_term_total() -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+
+    axis, closure = _closure(
+        _acb_shaped_preceding_subtotal_pages(),
+        topology=topology,
+        hierarchy=hierarchy,
+    )
+
+    assert "TERM_DEPOSIT_GROUP" not in {row["role"] for row in axis["row_axis"]["rows"]}
+    assert [evidence["status"] for evidence in axis["coextensive_structural_numeric_evidence"]] == [
+        "COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_ALREADY_OWNED"
+    ]
+    assert closure["status"] == "HIERARCHICAL_ROLE_AXIS_RESOLVED_WITHOUT_ACCOUNTING_VETO"
+    resolved = {record["role"]: record for record in closure["resolved_roles"]}
+    assert [
+        value["number"]["coefficient"] for value in resolved["TERM_DEPOSIT_GROUP"]["values"]
+    ] == [
+        120,
+        90,
+    ]
+    assert [
+        value["number"]["coefficient"]
+        for value in resolved["INTERBANK_DEPOSITS_AND_LOANS"]["values"]
+    ] == [200, 150]
+    receipt = next(
+        record
+        for record in closure["coverage_receipt"]
+        if record["row_kind"] == "COEXTENSIVE_PRECEDING_NUMERIC_SOURCE"
+    )
+    assert receipt["disposition"] == "COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_ALREADY_OWNED"
+    assert (
+        subject.validate_accounting_scoped_hierarchical_table_closure_replay_v2(
+            closure,
+            axis,
+            topology,
+            hierarchy,
+        )
+        == closure
+    )
+
+
+def test_validator_rejects_duplicate_coextensive_receipt_after_coherent_rehash() -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+    _axis_value, closure = _closure(
+        _acb_shaped_preceding_subtotal_pages(),
+        topology=topology,
+        hierarchy=hierarchy,
+    )
+    attacked = copy.deepcopy(closure)
+    duplicate = copy.deepcopy(
+        next(
+            record
+            for record in attacked["coverage_receipt"]
+            if record["row_kind"] == "COEXTENSIVE_PRECEDING_NUMERIC_SOURCE"
+        )
+    )
+    duplicate["coverage_id"] += ":duplicate"
+    attacked["coverage_receipt"].append(duplicate)
+    _coherently_rehash_closure(attacked)
+
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="coverage receipt drifted",
+    ):
+        subject._validate_result(attacked)
+
+
+def test_real_v4_acb_shaped_one_unit_prior_subtotal_conflict_is_not_suppressed() -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+
+    axis, closure = _closure(
+        _acb_shaped_preceding_subtotal_pages(demand_subtotal_current="31"),
+        topology=topology,
+        hierarchy=hierarchy,
+    )
+
+    assert axis["coextensive_structural_numeric_evidence"] == []
+    assert next(row for row in axis["row_axis"]["rows"] if row["role"] == "TERM_DEPOSIT_GROUP")
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert any(
+        reason.startswith("LOCAL_VISIBLE_RESULT_NOT_EXACT_COMPONENT_SUM:TERM_DEPOSIT_GROUP:")
+        for reason in closure["unresolved_reasons"]
+    )
+
+
+def test_real_v4_equal_prior_and_current_scope_subtotal_is_ambiguous_veto() -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+    pages = _acb_shaped_preceding_subtotal_pages()
+    replacements = {15: "20", 16: "15", 18: "10", 19: "5", 24: "110", 25: "80"}
+    for line in pages[0]["lines"]:
+        if line["line_ordinal"] in replacements:
+            replacement = replacements[line["line_ordinal"]]
+            line["vietocr_text"] = replacement
+            line["numeric_recognition"]["raw_prediction"] = replacement
+
+    axis, closure = _closure(pages, topology=topology, hierarchy=hierarchy)
+
+    term_row = next(row for row in axis["row_axis"]["rows"] if row["role"] == "TERM_DEPOSIT_GROUP")
+    assert [value["parsed_token"]["coefficient"] for value in term_row["values"]] == [30, 20]
+    assert [evidence["status"] for evidence in axis["coextensive_structural_numeric_evidence"]] == [
+        "COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_AMBIGUOUS_OWNERSHIP_VETO"
+    ]
+    assert axis["status"] == "UNRESOLVED_OCCURRENCE_ROW_AXIS_OR_EXISTING_DASH_EVIDENCE"
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert any(
+        reason.startswith("COEXTENSIVE_PRECEDING_NUMERIC_SOURCE_AMBIGUOUS_OWNERSHIP_VETO:")
+        for reason in closure["unresolved_reasons"]
+    )
+    assert not any(
+        record["row_kind"] == "COEXTENSIVE_PRECEDING_NUMERIC_SOURCE"
+        for record in closure["coverage_receipt"]
+    )
+    local = next(
+        record
+        for record in closure["equations"]["local"]
+        if record["result_role"] == "TERM_DEPOSIT_GROUP"
+    )
+    assert local["status"] == "LOCAL_VISIBLE_SUBTOTAL_CORROBORATED_BY_EXACT_SCOPED_COMPONENTS"
+
+
+@pytest.mark.parametrize("tamper", ["EMPTY_EVIDENCE", "UNKNOWN_STATUS"])
+def test_validator_rejects_malformed_ambiguous_evidence_after_coherent_rehash(
+    tamper: str,
+) -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    topology = json.loads(
+        (project_root / "config/families/tm-interbank-deposits-loans-topology-v4.json").read_text()
+    )
+    hierarchy = json.loads(
+        (
+            project_root / "config/families/tm-interbank-deposits-loans-evaluation-v4.json"
+        ).read_text()
+    )["hierarchical_closure_spec"]
+    pages = _acb_shaped_preceding_subtotal_pages()
+    replacements = {15: "20", 16: "15", 18: "10", 19: "5", 24: "110", 25: "80"}
+    for line in pages[0]["lines"]:
+        if line["line_ordinal"] in replacements:
+            replacement = replacements[line["line_ordinal"]]
+            line["vietocr_text"] = replacement
+            line["numeric_recognition"]["raw_prediction"] = replacement
+    _axis_value, closure = _closure(pages, topology=topology, hierarchy=hierarchy)
+    attacked = copy.deepcopy(closure)
+    if tamper == "EMPTY_EVIDENCE":
+        attacked["coextensive_structural_numeric_evidence"] = [{}]
+    else:
+        attacked["coextensive_structural_numeric_evidence"][0]["status"] = "GARBAGE"
+    _coherently_rehash_closure(attacked)
+
+    with pytest.raises(
+        subject.AccountingScopedHierarchicalTableClosureV2Error,
+        match="coextensive source receipt drifted",
+    ):
+        subject._validate_result(attacked)
+
+
 def test_partial_and_unbound_visible_numeric_occurrences_each_receive_one_veto_receipt() -> None:
     topology = _topology()
     topology["children"].append(
@@ -467,6 +719,55 @@ def test_partial_and_unbound_visible_numeric_occurrences_each_receive_one_veto_r
             }
         )
         == 2
+    )
+
+
+def test_partial_local_subtotal_without_children_is_one_typed_veto_not_an_exception() -> None:
+    pages = _pages(
+        [
+            ("Tiền gửi tại TCTD khác", "100", "90"),
+            ("Cho vay TCTD khác", "50", ""),
+            ("Tổng cộng", "150", "130"),
+        ]
+    )
+
+    axis, closure = _closure(pages)
+
+    assert axis["status"] == "UNRESOLVED_OCCURRENCE_ROW_AXIS_OR_EXISTING_DASH_EVIDENCE"
+    local = next(
+        record for record in closure["equations"]["local"] if record["result_role"] == "LOAN_GROUP"
+    )
+    assert local["status"] == "LOCAL_SUBTOTAL_RESULT_PARTIAL_VALUE_LANES_VETO"
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert any(
+        reason.startswith("LOCAL_SUBTOTAL_RESULT_PARTIAL_VALUE_LANES:LOAN_GROUP:")
+        for reason in closure["unresolved_reasons"]
+    )
+    receipt = next(
+        record for record in closure["coverage_receipt"] if record["role"] == "LOAN_GROUP"
+    )
+    assert receipt["disposition"] == "UNRESOLVED_PARTIAL_ROLE_NUMERIC_OCCURRENCE"
+
+
+def test_empty_local_subtotal_without_children_is_typed_instead_of_raising() -> None:
+    pages = _pages(
+        [
+            ("Tiền gửi tại TCTD khác", "100", "90"),
+            ("Cho vay TCTD khác", "", ""),
+            ("Tổng cộng", "150", "130"),
+        ]
+    )
+
+    _axis_value, closure = _closure(pages)
+
+    local = next(
+        record for record in closure["equations"]["local"] if record["result_role"] == "LOAN_GROUP"
+    )
+    assert local["status"] == "LOCAL_SUBTOTAL_RESULT_MISSING_OR_INCOMPLETE_VETO"
+    assert closure["status"] == "UNRESOLVED_HIERARCHICAL_ACCOUNTING_VETO"
+    assert any(
+        reason.startswith("LOCAL_SUBTOTAL_RESULT_MISSING_OR_INCOMPLETE:LOAN_GROUP:")
+        for reason in closure["unresolved_reasons"]
     )
 
 
