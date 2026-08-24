@@ -364,6 +364,9 @@ def test_query_rehashes_exact_adapter_and_rejects_dependency_drift(tmp_path: Pat
         path = _PROJECT_ROOT / dependency["path"]
         assert dependency["size_bytes"] == path.stat().st_size
         assert dependency["sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
+    assert "shared_scoped_table_engine_ref" in (
+        LOAN_ENTERPRISE_FAMILY12_REGION_QUERY_TRUST_CLOSURE_V2
+    )
     assert retrieval_v1.family_first_region_query_spec_id_v2(query) == (
         retrieval_v1.family_first_region_query_spec_id_v2(
             build_loan_enterprise_family12_region_query_spec_v2(_PROJECT_ROOT)
@@ -386,6 +389,14 @@ def test_query_rehashes_exact_adapter_and_rejects_dependency_drift(tmp_path: Pat
     spec_ref = LOAN_ENTERPRISE_FAMILY12_REGION_QUERY_TRUST_CLOSURE_V2["family_spec_ref"]
     spec_path = copied_root / spec_ref["path"]
     spec_path.write_bytes(spec_path.read_bytes() + b"\n")
+    with pytest.raises(LoanEnterpriseFamily12GraphV1Error, match="trust closure drifted"):
+        build_loan_enterprise_family12_region_query_spec_v2(copied_root)
+    shutil.copyfile(_PROJECT_ROOT / spec_ref["path"], spec_path)
+    scoped_ref = LOAN_ENTERPRISE_FAMILY12_REGION_QUERY_TRUST_CLOSURE_V2[
+        "shared_scoped_table_engine_ref"
+    ]
+    scoped_path = copied_root / scoped_ref["path"]
+    scoped_path.write_bytes(scoped_path.read_bytes() + b"\n")
     with pytest.raises(LoanEnterpriseFamily12GraphV1Error, match="trust closure drifted"):
         build_loan_enterprise_family12_region_query_spec_v2(copied_root)
 
