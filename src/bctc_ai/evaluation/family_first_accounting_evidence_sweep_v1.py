@@ -19,6 +19,7 @@ from bctc_ai.evaluation import accounting_family_topology_candidates_v2 as topol
 from bctc_ai.evaluation import accounting_family_topology_v1 as topology_v1
 from bctc_ai.evaluation import accounting_hierarchical_table_closure_v1 as hierarchical_v1
 from bctc_ai.evaluation import accounting_scoped_hierarchical_table_closure_v2 as scoped_v2
+from bctc_ai.evaluation import authenticated_semantic_region_snapshot_v1 as region_snapshot_v1
 from bctc_ai.evaluation import family_first_accounting_input_snapshot_v1 as snapshot_v1
 from bctc_ai.evaluation import family_first_authenticated_page_region_v1 as render_v1
 from bctc_ai.evaluation import family_first_document_evidence_store_v1 as document_store_v1
@@ -55,6 +56,7 @@ EVALUATION_SPEC_FORMAT = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V1"
 EVALUATION_SPEC_FORMAT_V2 = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V2"
 EVALUATION_SPEC_FORMAT_V3 = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V3"
 EVALUATION_SPEC_FORMAT_V4 = "ACCOUNTING_FAMILY_EVALUATION_SPEC_V4"
+_DOCUMENT_STORE_SELECTED_PAGE_BATCH_SIZE = 16
 CLAIM_BOUNDARY = (
     "AUTHENTICATED_ALL_FILING_COMPLETE_DOCUMENT_TOPOLOGY_FRESH_VIETOCR_LABEL_"
     "PPOCRV6_MEDIUM_NUMERIC_PERIOD_UNIT_AND_VISIBLE_ADDITIVE_CLOSURE_EVIDENCE_"
@@ -1430,6 +1432,44 @@ def _document_store_axis_binding_v1(
     }
 
 
+def _validate_v4_document_store_selected_snapshot_v1(
+    snapshot: Any,
+    *,
+    expected_packet: dict[str, Any] | None,
+) -> None:
+    """Require the public authenticated full-page snapshot contract for V4.
+
+    V4's occurrence axis authenticates existing textual dashes against exact
+    page pixels. The legacy five-field document snapshot is not that public
+    contract and can omit pages with zero recognized lines, so it must never
+    be upgraded locally by fabricating the two missing identity fields.
+    """
+
+    try:
+        projection = region_snapshot_v1.build_authenticated_semantic_region_snapshot_v1(snapshot)
+        region_snapshot_v1.validate_authenticated_semantic_region_snapshot_replay_v1(
+            projection,
+            snapshot,
+        )
+    except (ValueError, RuntimeError) as exc:
+        raise _error("V4 document-store selected snapshot contract drifted") from exc
+    packet = snapshot["document_packet"]
+    selected_pages = list(range(1, packet["page_count"] + 1))
+    selected_line_count = sum(len(page["lines"]) for page in snapshot["joined_pages"])
+    source = projection["source_binding"]
+    if (
+        (expected_packet is not None and not same_typed_json_v1(packet, expected_packet))
+        or source["document_ordinal"] != packet["document_ordinal"]
+        or source["document_packet_id"] != packet["packet_id"]
+        or source["selected_pages"] != selected_pages
+        or selected_line_count != packet["line_count"]
+        or [page["page_sequence"] for page in snapshot["joined_pages"]] != selected_pages
+        or [dimension["physical_page"] for dimension in snapshot["selected_page_dimensions"]]
+        != selected_pages
+    ):
+        raise _error("V4 document-store selected snapshot packet or full-page axis drifted")
+
+
 def _trial_from_document_store_snapshot_v1(
     snapshot: dict[str, Any],
     family_spec: dict[str, Any],
@@ -1437,13 +1477,19 @@ def _trial_from_document_store_snapshot_v1(
     *,
     render_snapshots: tuple[dict[str, Any], ...] = (),
     topology_scan: dict[str, Any] | None = None,
+    expected_packet: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     packet = snapshot["document_packet"]
     joined_pages = snapshot["joined_pages"]
     if evaluation_spec["format_version"] == EVALUATION_SPEC_FORMAT_V4:
+        _validate_v4_document_store_selected_snapshot_v1(
+            snapshot,
+            expected_packet=expected_packet,
+        )
         topology_scan, topology_candidates = _v4_topology_authority(
             row_axis_v1._topology_pages(joined_pages),
             family_spec,
+            expected_legacy_scan=topology_scan,
         )
         topology_status = topology_candidates["status"]
         region_authority = topology_candidates
@@ -1527,6 +1573,55 @@ def _trial_from_document_store_snapshot_v1(
     }
 
 
+def _document_store_trial_with_render_rescue_v1(
+    document_store_capability: document_store_v1.AuthenticatedFamilyFirstDocumentEvidenceStoreV1,
+    *,
+    packet: dict[str, Any],
+    snapshot: dict[str, Any],
+    family_spec: dict[str, Any],
+    policy: dict[str, Any],
+    topology_scan: dict[str, Any] | None,
+) -> dict[str, Any]:
+    is_v4 = policy["format_version"] == EVALUATION_SPEC_FORMAT_V4
+    trial = _trial_from_document_store_snapshot_v1(
+        snapshot,
+        family_spec,
+        policy,
+        topology_scan=topology_scan,
+        expected_packet=packet if is_v4 else None,
+    )
+    if is_v4:
+        _render_scan, render_topology_candidates = _v4_topology_authority(
+            row_axis_v1._topology_pages(snapshot["joined_pages"]),
+            family_spec,
+            expected_legacy_scan=trial["topology_scan"],
+        )
+    else:
+        render_topology_candidates = None
+    missing_pages = _missing_render_pages_for_document_store_trial_v1(
+        trial,
+        trial["topology_scan"],
+        snapshot["joined_pages"],
+        evaluation_spec=policy,
+        topology_candidates=render_topology_candidates,
+    )
+    if missing_pages:
+        renders = document_store_v1.read_authenticated_family_first_document_page_renders_v1(
+            document_store_capability,
+            document_ordinal=packet["document_ordinal"],
+            physical_pages=missing_pages,
+        )
+        trial = _trial_from_document_store_snapshot_v1(
+            snapshot,
+            family_spec,
+            policy,
+            render_snapshots=renders,
+            topology_scan=trial["topology_scan"] if is_v4 else topology_scan,
+            expected_packet=packet if is_v4 else None,
+        )
+    return trial
+
+
 def build_authenticated_family_first_accounting_evidence_sweep_from_document_store_v1(
     document_store_capability: document_store_v1.AuthenticatedFamilyFirstDocumentEvidenceStoreV1,
     family_spec: Any,
@@ -1550,57 +1645,80 @@ def build_authenticated_family_first_accounting_evidence_sweep_from_document_sto
         document_store_capability
     )
     document_count = projection["metrics"]["document_count"]
-    topology_scans = document_store_v1.read_authenticated_family_first_topology_scans_v1(
-        document_store_capability,
-        family_spec,
-    )
-    if len(topology_scans) != document_count:
-        raise _error("document-store topology denominator differs from its packet axis")
-    trials = []
-    for ordinal in range(1, document_count + 1):
-        packet = document_store_v1.read_authenticated_family_first_document_packet_v1(
-            document_store_capability, document_ordinal=ordinal
-        )
-        snapshot = document_store_v1.read_authenticated_family_first_document_evidence_snapshot_v1(
+    if policy["format_version"] == EVALUATION_SPEC_FORMAT_V4:
+        topology_scans = None
+    else:
+        topology_scans = document_store_v1.read_authenticated_family_first_topology_scans_v1(
             document_store_capability,
-            document_ordinal=ordinal,
-            selected_pages=tuple(range(1, packet["page_count"] + 1)),
-        )
-        trial = _trial_from_document_store_snapshot_v1(
-            snapshot,
             family_spec,
-            policy,
-            topology_scan=topology_scans[ordinal - 1],
         )
-        if policy["format_version"] == EVALUATION_SPEC_FORMAT_V4:
-            _render_scan, render_topology_candidates = _v4_topology_authority(
-                row_axis_v1._topology_pages(snapshot["joined_pages"]),
-                family_spec,
-                expected_legacy_scan=trial["topology_scan"],
-            )
-        else:
-            render_topology_candidates = None
-        missing_pages = _missing_render_pages_for_document_store_trial_v1(
-            trial,
-            trial["topology_scan"],
-            snapshot["joined_pages"],
-            evaluation_spec=policy,
-            topology_candidates=render_topology_candidates,
-        )
-        if missing_pages:
-            renders = document_store_v1.read_authenticated_family_first_document_page_renders_v1(
+        if len(topology_scans) != document_count:
+            raise _error("document-store topology denominator differs from its packet axis")
+    trials = []
+    if policy["format_version"] == EVALUATION_SPEC_FORMAT_V4:
+        packets = tuple(
+            document_store_v1.read_authenticated_family_first_document_packet_v1(
                 document_store_capability,
                 document_ordinal=ordinal,
-                physical_pages=missing_pages,
             )
-            trial = _trial_from_document_store_snapshot_v1(
-                snapshot,
-                family_spec,
-                policy,
-                render_snapshots=renders,
-                topology_scan=topology_scans[ordinal - 1],
+            for ordinal in range(1, document_count + 1)
+        )
+        if [packet.get("document_ordinal") for packet in packets] != list(
+            range(1, document_count + 1)
+        ):
+            raise _error("V4 document-store packet source order drifted")
+        selections = tuple(
+            (
+                packet["document_ordinal"],
+                tuple(range(1, packet["page_count"] + 1)),
             )
-        trials.append(trial)
+            for packet in packets
+        )
+        for start in range(0, document_count, _DOCUMENT_STORE_SELECTED_PAGE_BATCH_SIZE):
+            requested = selections[start : start + _DOCUMENT_STORE_SELECTED_PAGE_BATCH_SIZE]
+            snapshots = (
+                document_store_v1.read_authenticated_family_first_documents_selected_pages_v1(
+                    document_store_capability,
+                    document_page_selections=requested,
+                )
+            )
+            if type(snapshots) is not tuple or len(snapshots) != len(requested):
+                raise _error("V4 document-store selected snapshot batch axis drifted")
+            for offset, snapshot in enumerate(snapshots):
+                packet = packets[start + offset]
+                trials.append(
+                    _document_store_trial_with_render_rescue_v1(
+                        document_store_capability,
+                        packet=packet,
+                        snapshot=snapshot,
+                        family_spec=family_spec,
+                        policy=policy,
+                        topology_scan=None,
+                    )
+                )
+    else:
+        for ordinal in range(1, document_count + 1):
+            packet = document_store_v1.read_authenticated_family_first_document_packet_v1(
+                document_store_capability,
+                document_ordinal=ordinal,
+            )
+            snapshot = (
+                document_store_v1.read_authenticated_family_first_document_evidence_snapshot_v1(
+                    document_store_capability,
+                    document_ordinal=ordinal,
+                    selected_pages=tuple(range(1, packet["page_count"] + 1)),
+                )
+            )
+            trials.append(
+                _document_store_trial_with_render_rescue_v1(
+                    document_store_capability,
+                    packet=packet,
+                    snapshot=snapshot,
+                    family_spec=family_spec,
+                    policy=policy,
+                    topology_scan=topology_scans[ordinal - 1],
+                )
+            )
     material = {
         "authority": canonical_clone_v1(_AUTHORITY),
         "claim_boundary": CLAIM_BOUNDARY,

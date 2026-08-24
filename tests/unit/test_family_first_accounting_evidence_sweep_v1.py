@@ -208,6 +208,47 @@ def _document_store_snapshot(document: dict[str, object]) -> dict[str, object]:
     return {"document_packet": packet, "joined_pages": joined_pages}
 
 
+def _authenticated_selected_document_store_snapshot(
+    document: dict[str, object],
+) -> dict[str, object]:
+    legacy = _document_store_snapshot(document)
+    packet = copy.deepcopy(legacy["document_packet"])
+    packet_material = copy.deepcopy(packet)
+    packet_material.pop("packet_id")
+    packet["packet_id"] = "ffdesv1:document:" + canonical_json_sha256_v1(packet_material)
+    joined_pages = copy.deepcopy(legacy["joined_pages"])
+    selected_page_dimensions = [
+        {
+            "physical_page": page["page_sequence"],
+            "pixel_height": 1_400,
+            "pixel_width": page["page_width"],
+            "render_sha256": hashlib.sha256(
+                f"render-{document['document_ordinal']}-{page['page_sequence']}".encode()
+            ).hexdigest(),
+            "render_size_bytes": 100 + page["page_sequence"],
+        }
+        for page in joined_pages
+    ]
+    selection_material = {
+        "document_id": packet["document_id"],
+        "document_ordinal": packet["document_ordinal"],
+        "joined_pages": joined_pages,
+        "selected_page_dimensions": selected_page_dimensions,
+    }
+    material = {
+        "document_packet": packet,
+        "joined_pages": joined_pages,
+        "manifest_id": "ffdesv1:manifest:authenticated-fixture",
+        "query_selection_id": ("ffoqcv1:selection:" + canonical_json_sha256_v1(selection_material)),
+        "selected_page_dimensions": selected_page_dimensions,
+        "state": "AUTHENTICATED_IMMUTABLE_SQLITE_SELECTED_PAGE_EVIDENCE",
+    }
+    return {
+        **material,
+        "snapshot_id": "ffdesv1:selected:" + canonical_json_sha256_v1(material),
+    }
+
+
 def _render(document: int, page: int):
     stream = io.BytesIO()
     Image.new("RGB", (1000, 1400), color=(255, 255, 255)).save(stream, format="PNG")
@@ -1001,6 +1042,189 @@ def test_document_store_sweep_recomputes_each_packet_once_without_live_ocr(monke
     assert calls["snapshot"] == [(1, (1, 2)), (2, (1,))]
 
 
+def test_document_store_v4_uses_exact_full_page_batch_snapshot_with_zero_line_page(
+    monkeypatch,
+) -> None:
+    document = _document(
+        1,
+        [
+            [("Thuyết minh tài sản khác", [30, 20, 430, 42])],
+            [],
+            [("Thuyết minh nợ phải trả khác", [30, 20, 430, 42])],
+        ],
+        1,
+    )
+    snapshot = _authenticated_selected_document_store_snapshot(document)
+    calls = {"batch": []}
+    monkeypatch.setattr(
+        subject,
+        "_evaluation_spec",
+        lambda *_args, **_kwargs: {"format_version": subject.EVALUATION_SPEC_FORMAT_V4},
+    )
+    monkeypatch.setattr(subject, "_validate", lambda value: value)
+    monkeypatch.setattr(
+        subject.document_store_v1,
+        "project_authenticated_family_first_document_evidence_store_v1",
+        lambda _cap: {
+            "input_indices": {
+                "numeric_receipt_id": "ffpniv3:receipt:" + "1" * 64,
+                "semantic_index_id": "ffsiv1:index:" + "2" * 64,
+            },
+            "metrics": {"document_count": 1},
+        },
+    )
+    monkeypatch.setattr(
+        subject.document_store_v1,
+        "read_authenticated_family_first_topology_scans_v1",
+        lambda *_args, **_kwargs: pytest.fail("V4 used the zero-line-dropping topology cache"),
+    )
+    monkeypatch.setattr(
+        subject.document_store_v1,
+        "read_authenticated_family_first_document_packet_v1",
+        lambda *_args, **_kwargs: copy.deepcopy(snapshot["document_packet"]),
+    )
+    monkeypatch.setattr(
+        subject.document_store_v1,
+        "read_authenticated_family_first_document_evidence_snapshot_v1",
+        lambda *_args, **_kwargs: pytest.fail("V4 used the legacy five-field snapshot accessor"),
+    )
+
+    def selected_pages(_cap, *, document_page_selections):
+        calls["batch"].append(document_page_selections)
+        return (copy.deepcopy(snapshot),)
+
+    monkeypatch.setattr(
+        subject.document_store_v1,
+        "read_authenticated_family_first_documents_selected_pages_v1",
+        selected_pages,
+    )
+    monkeypatch.setattr(
+        subject.document_store_v1,
+        "read_authenticated_family_first_document_page_renders_v1",
+        lambda *_args, **_kwargs: pytest.fail("NOT_OBSERVED trial requested a page render"),
+    )
+
+    result = (
+        subject.build_authenticated_family_first_accounting_evidence_sweep_from_document_store_v1(
+            object(), _family_spec(), {}
+        )
+    )
+
+    assert calls["batch"] == [((1, (1, 2, 3)),)]
+    assert [page["page_sequence"] for page in snapshot["joined_pages"]] == [1, 2, 3]
+    assert snapshot["joined_pages"][1]["lines"] == []
+    assert result["trials"][0]["evidence_status"] == "NOT_OBSERVED_PROPOSAL_ONLY"
+
+
+def test_document_store_v4_rejects_legacy_five_field_snapshot_before_topology(
+    monkeypatch,
+) -> None:
+    document = _document(
+        1,
+        [[("Thuyết minh tài sản khác", [30, 20, 430, 42])], []],
+        1,
+    )
+    selected = _authenticated_selected_document_store_snapshot(document)
+    legacy_material = {
+        "document_packet": copy.deepcopy(selected["document_packet"]),
+        "joined_pages": copy.deepcopy(selected["joined_pages"][:1]),
+        "manifest_id": selected["manifest_id"],
+        "selected_page_dimensions": copy.deepcopy(selected["selected_page_dimensions"]),
+    }
+    legacy = {
+        **legacy_material,
+        "snapshot_id": "ffdesv1:snapshot:" + canonical_json_sha256_v1(legacy_material),
+    }
+    monkeypatch.setattr(
+        subject,
+        "_v4_topology_authority",
+        lambda *_args, **_kwargs: pytest.fail("legacy snapshot reached V4 topology"),
+    )
+
+    with pytest.raises(
+        subject.FamilyFirstAccountingEvidenceSweepV1Error,
+        match="selected snapshot contract drifted",
+    ):
+        subject._trial_from_document_store_snapshot_v1(
+            legacy,
+            _family_spec(),
+            {"format_version": subject.EVALUATION_SPEC_FORMAT_V4},
+        )
+
+
+def test_document_store_v4_rejects_selected_snapshot_from_another_packet(
+    monkeypatch,
+) -> None:
+    document = _document(
+        1,
+        [[("Thuyết minh tài sản khác", [30, 20, 430, 42])]],
+        1,
+    )
+    selected = _authenticated_selected_document_store_snapshot(document)
+    other_packet = copy.deepcopy(selected["document_packet"])
+    other_packet["source_pdf_ref"]["sha256"] = "f" * 64
+    monkeypatch.setattr(
+        subject,
+        "_v4_topology_authority",
+        lambda *_args, **_kwargs: pytest.fail("cross-packet snapshot reached V4 topology"),
+    )
+
+    with pytest.raises(
+        subject.FamilyFirstAccountingEvidenceSweepV1Error,
+        match="packet or full-page axis drifted",
+    ):
+        subject._trial_from_document_store_snapshot_v1(
+            selected,
+            _family_spec(),
+            {"format_version": subject.EVALUATION_SPEC_FORMAT_V4},
+            expected_packet=other_packet,
+        )
+
+
+def test_document_store_v4_rejects_coherently_rehashed_truncated_full_line_axis(
+    monkeypatch,
+) -> None:
+    document = _document(
+        1,
+        [
+            [("Thuyết minh tài sản khác", [30, 20, 430, 42])],
+            [],
+            [("Thuyết minh nợ phải trả khác", [30, 20, 430, 42])],
+        ],
+        1,
+    )
+    selected = _authenticated_selected_document_store_snapshot(document)
+    selected["joined_pages"][2]["lines"] = []
+    selection_material = {
+        "document_id": selected["document_packet"]["document_id"],
+        "document_ordinal": selected["document_packet"]["document_ordinal"],
+        "joined_pages": selected["joined_pages"],
+        "selected_page_dimensions": selected["selected_page_dimensions"],
+    }
+    selected["query_selection_id"] = "ffoqcv1:selection:" + canonical_json_sha256_v1(
+        selection_material
+    )
+    snapshot_material = copy.deepcopy(selected)
+    snapshot_material.pop("snapshot_id")
+    selected["snapshot_id"] = "ffdesv1:selected:" + canonical_json_sha256_v1(snapshot_material)
+    monkeypatch.setattr(
+        subject,
+        "_v4_topology_authority",
+        lambda *_args, **_kwargs: pytest.fail("truncated snapshot reached V4 topology"),
+    )
+
+    with pytest.raises(
+        subject.FamilyFirstAccountingEvidenceSweepV1Error,
+        match="packet or full-page axis drifted",
+    ):
+        subject._trial_from_document_store_snapshot_v1(
+            selected,
+            _family_spec(),
+            {"format_version": subject.EVALUATION_SPEC_FORMAT_V4},
+            expected_packet=selected["document_packet"],
+        )
+
+
 def test_document_store_v4_rehydrates_multi_candidate_union_before_final_selection(
     monkeypatch,
 ) -> None:
@@ -1042,11 +1266,14 @@ def test_document_store_v4_rehydrates_multi_candidate_union_before_final_selecti
         "document_packet": {"document_ordinal": 1, "page_count": 2},
         "joined_pages": joined_pages,
     }
+    batch_calls = []
     render_calls = []
+    snapshot_object_ids = []
     trial_calls = []
 
     def trial_from_snapshot(_snapshot, _family, _policy, *, render_snapshots=(), **_kwargs):
         selected = "DETAIL" if render_snapshots else "SUMMARY"
+        snapshot_object_ids.append(id(_snapshot))
         trial_calls.append(selected)
         return {
             "additive_closure": None,
@@ -1098,7 +1325,7 @@ def test_document_store_v4_rehydrates_multi_candidate_union_before_final_selecti
     monkeypatch.setattr(
         subject.document_store_v1,
         "read_authenticated_family_first_topology_scans_v1",
-        lambda *_args, **_kwargs: (legacy_scan,),
+        lambda *_args, **_kwargs: pytest.fail("V4 used the cached topology accessor"),
     )
     monkeypatch.setattr(
         subject.document_store_v1,
@@ -1108,7 +1335,17 @@ def test_document_store_v4_rehydrates_multi_candidate_union_before_final_selecti
     monkeypatch.setattr(
         subject.document_store_v1,
         "read_authenticated_family_first_document_evidence_snapshot_v1",
-        lambda *_args, **_kwargs: snapshot,
+        lambda *_args, **_kwargs: pytest.fail("V4 used the legacy snapshot accessor"),
+    )
+
+    def selected_pages(_cap, *, document_page_selections):
+        batch_calls.append(document_page_selections)
+        return (snapshot,)
+
+    monkeypatch.setattr(
+        subject.document_store_v1,
+        "read_authenticated_family_first_documents_selected_pages_v1",
+        selected_pages,
     )
 
     def renders(_cap, *, document_ordinal, physical_pages):
@@ -1127,8 +1364,10 @@ def test_document_store_v4_rehydrates_multi_candidate_union_before_final_selecti
         )
     )
 
+    assert batch_calls == [((1, (1, 2)),)]
     assert render_calls == [(1, (1, 2))]
     assert trial_calls == ["SUMMARY", "DETAIL"]
+    assert snapshot_object_ids[0] == snapshot_object_ids[1]
     assert result["trials"][0]["row_axis"]["selected_fixture_candidate"] == "DETAIL"
 
 
