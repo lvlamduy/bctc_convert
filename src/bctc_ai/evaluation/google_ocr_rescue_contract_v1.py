@@ -18,6 +18,8 @@ versus normalized coordinates fail closed.
 
 from __future__ import annotations
 
+import base64
+import binascii
 import json
 import re
 from collections.abc import Mapping
@@ -34,27 +36,44 @@ __all__ = [
     "FORMAT_VERSION",
     "OUTPUT_AUTHORITY",
     "PLAN_CLAIM_BOUNDARY",
+    "QUARANTINED_GENERATED_AUTHORITY",
     "AuthenticatedUnresolvedPageV1",
     "ContentRefKindV1",
     "ExactContentRefV1",
     "GoogleOcrProfileV1",
+    "GoogleOcrProfileDerivationV1",
     "GoogleOcrReleaseChannelV1",
+    "GoogleOcrResidencyAssuranceV1",
+    "GoogleOcrExecutionReceiptV1",
+    "GoogleOcrExecutionStatusV1",
+    "GoogleOcrInputBindingKindV1",
+    "GoogleOcrInlineInputV1",
+    "GoogleOcrImmutableGcsInputV1",
     "GoogleOcrRescueContractV1Error",
     "GoogleOcrRescuePlanV1",
     "GoogleOcrRouteV1",
     "PageAuthenticationStateV1",
     "PageResolutionStateV1",
+    "TransportAuthenticationStateV1",
+    "build_google_ocr_execution_receipt_v1",
     "build_google_ocr_rescue_plan_v1",
+    "derive_google_ocr_profile_v1",
     "normalize_google_ocr_response_v1",
+    "validate_google_ocr_execution_receipt_v1",
     "validate_google_ocr_rescue_plan_v1",
 ]
 
 
 FORMAT_VERSION = "GOOGLE_OCR_RESCUE_CHALLENGER_V1"
 PLAN_FORMAT_VERSION = "GOOGLE_OCR_RESCUE_REQUEST_PLAN_V1"
+EXECUTION_RECEIPT_FORMAT_VERSION = "GOOGLE_OCR_EXECUTION_RECEIPT_V1"
 PLAN_CLAIM_BOUNDARY = (
     "OFFLINE_PLAN_ONLY_CALLER_MUST_SUPPLY_CURRENT_AUTHENTICATED_REFS_"
     "NO_UPLOAD_AUTHORIZATION_NO_PROVIDER_EXECUTION"
+)
+EXECUTION_RECEIPT_CLAIM_BOUNDARY = (
+    "CALLER_AUTHENTICATED_TRANSPORT_CAPTURE_REQUIRED_SELF_HASH_IS_CONTENT_"
+    "BOOKKEEPING_ONLY_NOT_AUTHORITY_NO_UPLOAD_AUTHORIZATION"
 )
 _TASK = (
     "Extract source-visible Vietnamese text, hierarchy, geometry, and table structure "
@@ -62,6 +81,12 @@ _TASK = (
 )
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _POSITIVE_INDEX = re.compile(r"^(0|[1-9][0-9]*)$")
+_DOC_PROCESSOR_RESOURCE = re.compile(
+    r"^projects/([^/]+)/locations/([a-z0-9-]+)/processors/([^/]+)/"
+    r"processorVersions/([^/]+)$"
+)
+_VISION_REGIONAL_RESOURCE = re.compile(r"^projects/([^/]+)/locations/(eu|us)/images:annotate$")
+_GCS_BUCKET = re.compile(r"^[a-z0-9][a-z0-9._-]{1,221}[a-z0-9]$")
 _MAX_RESPONSE_BYTES = 64 * 1024 * 1024
 _PPM = 1_000_000
 _ORIENTATIONS = {
@@ -92,10 +117,65 @@ _TEXT_BLOCK_TYPES = {
     "header",
     "footer",
 }
+_LAYOUT_STABLE_VERSION = "pretrained-layout-parser-v1.0-2024-06-03"
+_LAYOUT_PREVIEW_VERSIONS = {
+    "pretrained-layout-parser-v1.5-2025-08-25",
+    "pretrained-layout-parser-v1.5-pro-2025-08-25",
+    "pretrained-layout-parser-v1.6-pro-2025-12-01",
+    "pretrained-layout-parser-v1.6-2026-01-13",
+}
+_LAYOUT_NON_RESIDENT_VERSIONS = {
+    "pretrained-layout-parser-v1.6-pro-2025-12-01",
+    "pretrained-layout-parser-v1.6-2026-01-13",
+}
+_OCR_STABLE_VERSIONS = {
+    "pretrained-ocr-v1.2-2022-11-10",
+    "pretrained-ocr-v2.0-2023-06-02",
+    "pretrained-ocr-v2.1-2024-08-07",
+}
+_OCR_PREVIEW_VERSIONS = {"pretrained-ocr-v2.1.1-2025-01-31"}
+_VISION_KNOWN_VERSIONS = {"builtin-document-text-detection", "vision-rest-v1"}
+_DOCUMENT_AI_LOCATIONS = {
+    "global",
+    "us",
+    "eu",
+    "asia-south1",
+    "asia-southeast1",
+    "northamerica-northeast1",
+    "australia-southeast1",
+    "europe-west2",
+    "europe-west3",
+}
+_OCR_STABLE_LOCATIONS = _DOCUMENT_AI_LOCATIONS - {"global"}
+_OCR_V211_PREVIEW_LOCATIONS = {
+    "asia-south1",
+    "northamerica-northeast1",
+    "australia-southeast1",
+    "europe-west2",
+    "europe-west3",
+}
+_LAYOUT_VERSION_LOCATIONS = {"eu", "us"}
+_HUMAN_REVIEW_STATES = {
+    "STATE_UNSPECIFIED",
+    "SKIPPED",
+    "VALIDATION_PASSED",
+    "IN_PROGRESS",
+    "ERROR",
+}
 
 OUTPUT_AUTHORITY: Mapping[str, bool] = MappingProxyType(
     {
         "source_text_structure_challenger": True,
+        "numeric_authority": False,
+        "mapping_authority": False,
+        "absence_authority": False,
+        "graph_validation_required": True,
+    }
+)
+QUARANTINED_GENERATED_AUTHORITY: Mapping[str, bool] = MappingProxyType(
+    {
+        "generated_or_image_annotation": True,
+        "source_visible_text_authority": False,
         "numeric_authority": False,
         "mapping_authority": False,
         "absence_authority": False,
@@ -117,6 +197,23 @@ class GoogleOcrRouteV1(StrEnum):
 class GoogleOcrReleaseChannelV1(StrEnum):
     STABLE = "STABLE"
     PREVIEW = "PREVIEW"
+    UNKNOWN = "UNKNOWN"
+
+
+class GoogleOcrResidencyAssuranceV1(StrEnum):
+    COMPLIANT = "COMPLIANT"
+    NONCOMPLIANT = "NONCOMPLIANT"
+    UNVERIFIED = "UNVERIFIED"
+
+
+class GoogleOcrExecutionStatusV1(StrEnum):
+    SUCCEEDED = "SUCCEEDED"
+    FAILED = "FAILED"
+
+
+class GoogleOcrInputBindingKindV1(StrEnum):
+    INLINE = "INLINE"
+    IMMUTABLE_GCS = "IMMUTABLE_GCS"
 
 
 class ContentRefKindV1(StrEnum):
@@ -125,11 +222,14 @@ class ContentRefKindV1(StrEnum):
     AUTHENTICATION_RECEIPT = "AUTHENTICATION_RECEIPT"
     UNRESOLVED_GRAPH = "UNRESOLVED_GRAPH"
     PROVIDER = "PROVIDER"
+    API_VERSION = "API_VERSION"
+    ENDPOINT = "ENDPOINT"
     PROCESSOR = "PROCESSOR"
     PROCESSOR_VERSION = "PROCESSOR_VERSION"
     REGION = "REGION"
     PROMPT = "PROMPT"
     CONFIG = "CONFIG"
+    TRANSPORT_CAPTURE = "TRANSPORT_CAPTURE"
 
 
 class PageAuthenticationStateV1(StrEnum):
@@ -138,6 +238,10 @@ class PageAuthenticationStateV1(StrEnum):
 
 class PageResolutionStateV1(StrEnum):
     UNRESOLVED_AFTER_DETERMINISTIC_GRAPH = "UNRESOLVED_AFTER_DETERMINISTIC_GRAPH"
+
+
+class TransportAuthenticationStateV1(StrEnum):
+    CALLER_AUTHENTICATED_TRANSPORT_CAPTURE = "CALLER_AUTHENTICATED_TRANSPORT_CAPTURE"
 
 
 @dataclass(frozen=True, slots=True)
@@ -169,18 +273,49 @@ class AuthenticatedUnresolvedPageV1:
 class GoogleOcrProfileV1:
     route: GoogleOcrRouteV1
     provider_name: str
+    api_version: str
+    endpoint_hostname: str
     processor_name: str
+    processor_resource: str
     processor_version: str
-    region: str
-    release_channel: GoogleOcrReleaseChannelV1
-    uses_global_endpoint: bool
-    data_residency_compliant: bool | None
     provider_ref: ExactContentRefV1
+    api_version_ref: ExactContentRefV1
+    endpoint_ref: ExactContentRefV1
     processor_ref: ExactContentRefV1
     processor_version_ref: ExactContentRefV1
     region_ref: ExactContentRefV1
     prompt_ref: ExactContentRefV1
     config_ref: ExactContentRefV1
+
+
+@dataclass(frozen=True, slots=True)
+class GoogleOcrProfileDerivationV1:
+    location: str
+    release_channel: GoogleOcrReleaseChannelV1
+    residency_assurance: GoogleOcrResidencyAssuranceV1
+    source_visible_geometry_supported: bool
+    http_method: str
+    request_resource: str
+
+
+@dataclass(frozen=True, slots=True)
+class GoogleOcrInlineInputV1:
+    kind: GoogleOcrInputBindingKindV1
+    sha256: str
+    size_bytes: int
+
+
+@dataclass(frozen=True, slots=True)
+class GoogleOcrImmutableGcsInputV1:
+    kind: GoogleOcrInputBindingKindV1
+    bucket: str
+    object_name: str
+    generation: str
+    caller_verified_content_sha256: str
+    caller_verified_content_size_bytes: int
+
+
+GoogleOcrInputBindingV1 = GoogleOcrInlineInputV1 | GoogleOcrImmutableGcsInputV1
 
 
 @dataclass(frozen=True, slots=True)
@@ -190,6 +325,9 @@ class GoogleOcrRescuePlanV1:
     task: str
     page: AuthenticatedUnresolvedPageV1
     profile: GoogleOcrProfileV1
+    derived_location: str
+    release_channel: GoogleOcrReleaseChannelV1
+    residency_assurance: GoogleOcrResidencyAssuranceV1
     external_upload_requires_explicit_authorization: bool
     external_upload_authorized_by_plan: bool
     network_call_performed: bool
@@ -198,6 +336,31 @@ class GoogleOcrRescuePlanV1:
     execution_state: str
     data_residency_warning: str
     plan_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class GoogleOcrExecutionReceiptV1:
+    format_version: str
+    claim_boundary: str
+    plan_id: str
+    endpoint_hostname: str
+    http_method: str
+    api_version: str
+    processor_resource: str
+    request_body_sha256: str
+    request_body_size_bytes: int
+    input_binding: GoogleOcrInputBindingV1
+    request_id: str | None
+    operation_id: str | None
+    status: GoogleOcrExecutionStatusV1
+    http_status_code: int
+    response_sha256: str
+    response_size_bytes: int
+    transport_capture_ref: ExactContentRefV1
+    transport_authentication_state: TransportAuthenticationStateV1
+    self_hash_is_authority: bool
+    external_upload_authorized_by_receipt: bool
+    receipt_id: str
 
 
 def _error(message: str) -> GoogleOcrRescueContractV1Error:
@@ -293,39 +456,48 @@ def _validate_page(page: AuthenticatedUnresolvedPageV1) -> None:
         raise _error("unresolved_reason_codes must be one nonempty sorted unique string tuple")
 
 
-def _validate_profile(profile: GoogleOcrProfileV1) -> None:
+def _document_endpoint_location(hostname: str) -> str:
+    if hostname == "documentai.googleapis.com":
+        return "global"
+    suffix = "-documentai.googleapis.com"
+    if hostname.endswith(suffix):
+        location = hostname[: -len(suffix)]
+        if location in _DOCUMENT_AI_LOCATIONS:
+            return location
+    raise _error("Document AI endpoint hostname is not a documented exact hostname")
+
+
+def _vision_endpoint_location(hostname: str) -> str:
+    if hostname == "vision.googleapis.com":
+        return "global"
+    if hostname in {"eu-vision.googleapis.com", "us-vision.googleapis.com"}:
+        return hostname.split("-", 1)[0]
+    raise _error("Cloud Vision endpoint hostname is not a documented exact hostname")
+
+
+def derive_google_ocr_profile_v1(profile: GoogleOcrProfileV1) -> GoogleOcrProfileDerivationV1:
+    """Derive location, release, residency, method, and resource from exact pins.
+
+    No caller-provided boolean can upgrade residency.  Unknown processor
+    versions deliberately remain ``UNVERIFIED``.
+    """
+
     if type(profile) is not GoogleOcrProfileV1:
         raise _error("profile must be GoogleOcrProfileV1")
     if type(profile.route) is not GoogleOcrRouteV1:
         raise _error("profile.route drifted")
-    _require_string(profile.provider_name, "profile.provider_name")
+    if profile.provider_name != "GOOGLE_CLOUD_REST":
+        raise _error("profile.provider_name must be exact GOOGLE_CLOUD_REST")
+    if profile.api_version != "v1":
+        raise _error("profile.api_version must pin the supported REST v1 contract")
+    _require_string(profile.endpoint_hostname, "profile.endpoint_hostname")
     _require_string(profile.processor_name, "profile.processor_name")
+    _require_string(profile.processor_resource, "profile.processor_resource")
     _require_string(profile.processor_version, "profile.processor_version")
-    _require_string(profile.region, "profile.region")
-    if type(profile.release_channel) is not GoogleOcrReleaseChannelV1:
-        raise _error("profile.release_channel drifted")
-    if type(profile.uses_global_endpoint) is not bool:
-        raise _error("profile.uses_global_endpoint must be exact boolean")
-    if (
-        profile.data_residency_compliant is not None
-        and type(profile.data_residency_compliant) is not bool
-    ):
-        raise _error("profile.data_residency_compliant must be boolean or null")
-    if profile.uses_global_endpoint != (profile.region.casefold() == "global"):
-        raise _error("profile region and global-endpoint declaration disagree")
-    if (
-        profile.release_channel is GoogleOcrReleaseChannelV1.PREVIEW
-        and profile.uses_global_endpoint
-        and profile.data_residency_compliant is not False
-    ):
-        raise _error("preview global profile must explicitly declare non-compliant Data Residency")
-    if (
-        profile.route is GoogleOcrRouteV1.CLOUD_VISION_DOCUMENT_TEXT_DETECTION
-        and profile.processor_name != "DOCUMENT_TEXT_DETECTION"
-    ):
-        raise _error("Cloud Vision route must pin DOCUMENT_TEXT_DETECTION")
     for ref, kind, label in (
         (profile.provider_ref, ContentRefKindV1.PROVIDER, "provider_ref"),
+        (profile.api_version_ref, ContentRefKindV1.API_VERSION, "api_version_ref"),
+        (profile.endpoint_ref, ContentRefKindV1.ENDPOINT, "endpoint_ref"),
         (profile.processor_ref, ContentRefKindV1.PROCESSOR, "processor_ref"),
         (
             profile.processor_version_ref,
@@ -337,6 +509,122 @@ def _validate_profile(profile: GoogleOcrProfileV1) -> None:
         (profile.config_ref, ContentRefKindV1.CONFIG, "config_ref"),
     ):
         _content_ref(ref, kind, label)
+    if profile.provider_ref.logical_id != "provider/google-cloud-rest":
+        raise _error("provider_ref logical ID must bind exact GOOGLE_CLOUD_REST")
+    if profile.api_version_ref.logical_id != f"google-api-version/{profile.api_version}":
+        raise _error("api_version_ref logical ID does not bind profile.api_version")
+    if profile.endpoint_ref.logical_id != f"google-endpoint/{profile.endpoint_hostname}":
+        raise _error("endpoint_ref logical ID does not bind profile.endpoint_hostname")
+    if (
+        profile.processor_ref.logical_id
+        != f"google-processor-resource/{profile.processor_resource}"
+    ):
+        raise _error("processor_ref logical ID does not bind profile.processor_resource")
+    if (
+        profile.processor_version_ref.logical_id
+        != f"google-processor-version/{profile.processor_version}"
+    ):
+        raise _error("processor_version_ref logical ID does not bind profile.processor_version")
+
+    if profile.route is GoogleOcrRouteV1.CLOUD_VISION_DOCUMENT_TEXT_DETECTION:
+        if profile.processor_name != "DOCUMENT_TEXT_DETECTION":
+            raise _error("Cloud Vision route must pin DOCUMENT_TEXT_DETECTION")
+        endpoint_location = _vision_endpoint_location(profile.endpoint_hostname)
+        if endpoint_location == "global":
+            if profile.processor_resource != "images:annotate":
+                raise _error("global Cloud Vision route must pin images:annotate")
+            resource_location = "global"
+        else:
+            match = _VISION_REGIONAL_RESOURCE.fullmatch(profile.processor_resource)
+            if match is None:
+                raise _error(
+                    "regional Cloud Vision route must pin its exact project/location resource"
+                )
+            resource_location = match.group(2)
+        release = (
+            GoogleOcrReleaseChannelV1.STABLE
+            if profile.processor_version in _VISION_KNOWN_VERSIONS
+            else GoogleOcrReleaseChannelV1.UNKNOWN
+        )
+        geometry_supported = profile.processor_version in _VISION_KNOWN_VERSIONS
+    else:
+        endpoint_location = _document_endpoint_location(profile.endpoint_hostname)
+        match = _DOC_PROCESSOR_RESOURCE.fullmatch(profile.processor_resource)
+        if match is None:
+            raise _error("Document AI route must pin an exact ProcessorVersion resource")
+        resource_location = match.group(2)
+        resource_version = match.group(4)
+        if resource_version != profile.processor_version:
+            raise _error("processor resource and exact processor_version disagree")
+        expected_name = (
+            "OCR_PROCESSOR"
+            if profile.route is GoogleOcrRouteV1.DOCUMENT_AI_OCR_PROCESSOR
+            else "LAYOUT_PARSER_PROCESSOR"
+        )
+        if profile.processor_name != expected_name:
+            raise _error(f"{profile.route.value} must pin {expected_name}")
+        if profile.route is GoogleOcrRouteV1.DOCUMENT_AI_LAYOUT_PARSER:
+            if profile.processor_version == _LAYOUT_STABLE_VERSION:
+                release = GoogleOcrReleaseChannelV1.STABLE
+            elif profile.processor_version in _LAYOUT_PREVIEW_VERSIONS:
+                release = GoogleOcrReleaseChannelV1.PREVIEW
+            else:
+                release = GoogleOcrReleaseChannelV1.UNKNOWN
+            geometry_supported = profile.processor_version == _LAYOUT_STABLE_VERSION
+            if (
+                profile.processor_version in {*_LAYOUT_PREVIEW_VERSIONS, _LAYOUT_STABLE_VERSION}
+                and resource_location not in _LAYOUT_VERSION_LOCATIONS
+            ):
+                raise _error("Layout Parser version is not documented for the resource location")
+        else:
+            if profile.processor_version in _OCR_STABLE_VERSIONS:
+                release = GoogleOcrReleaseChannelV1.STABLE
+            elif profile.processor_version in _OCR_PREVIEW_VERSIONS:
+                release = GoogleOcrReleaseChannelV1.PREVIEW
+            else:
+                release = GoogleOcrReleaseChannelV1.UNKNOWN
+            geometry_supported = True
+            if (
+                profile.processor_version in _OCR_STABLE_VERSIONS
+                and resource_location not in _OCR_STABLE_LOCATIONS
+            ):
+                raise _error("stable OCR version is not documented for the resource location")
+            if (
+                profile.processor_version in _OCR_PREVIEW_VERSIONS
+                and resource_location not in _OCR_V211_PREVIEW_LOCATIONS
+            ):
+                raise _error("preview OCR version is not documented for the resource location")
+
+    if endpoint_location != resource_location:
+        raise _error(
+            "endpoint hostname location and processor resource location disagree "
+            f"({endpoint_location!r} != {resource_location!r})"
+        )
+    if profile.region_ref.logical_id != f"google-location/{resource_location}":
+        raise _error("region_ref logical ID does not bind the derived resource location")
+
+    known_version = release is not GoogleOcrReleaseChannelV1.UNKNOWN
+    if (
+        profile.route is GoogleOcrRouteV1.DOCUMENT_AI_LAYOUT_PARSER
+        and profile.processor_version in _LAYOUT_NON_RESIDENT_VERSIONS
+    ):
+        residency = GoogleOcrResidencyAssuranceV1.NONCOMPLIANT
+    elif not known_version or resource_location == "global":
+        residency = GoogleOcrResidencyAssuranceV1.UNVERIFIED
+    else:
+        residency = GoogleOcrResidencyAssuranceV1.COMPLIANT
+    return GoogleOcrProfileDerivationV1(
+        location=resource_location,
+        release_channel=release,
+        residency_assurance=residency,
+        source_visible_geometry_supported=geometry_supported,
+        http_method="POST",
+        request_resource=profile.processor_resource,
+    )
+
+
+def _validate_profile(profile: GoogleOcrProfileV1) -> GoogleOcrProfileDerivationV1:
+    return derive_google_ocr_profile_v1(profile)
 
 
 def _page_projection(page: AuthenticatedUnresolvedPageV1) -> dict[str, Any]:
@@ -361,13 +649,14 @@ def _profile_projection(profile: GoogleOcrProfileV1) -> dict[str, Any]:
     return {
         "route": profile.route.value,
         "provider_name": profile.provider_name,
+        "api_version": profile.api_version,
+        "endpoint_hostname": profile.endpoint_hostname,
         "processor_name": profile.processor_name,
+        "processor_resource": profile.processor_resource,
         "processor_version": profile.processor_version,
-        "region": profile.region,
-        "release_channel": profile.release_channel.value,
-        "uses_global_endpoint": profile.uses_global_endpoint,
-        "data_residency_compliant": profile.data_residency_compliant,
         "provider_ref": _ref_projection(profile.provider_ref),
+        "api_version_ref": _ref_projection(profile.api_version_ref),
+        "endpoint_ref": _ref_projection(profile.endpoint_ref),
         "processor_ref": _ref_projection(profile.processor_ref),
         "processor_version_ref": _ref_projection(profile.processor_version_ref),
         "region_ref": _ref_projection(profile.region_ref),
@@ -376,20 +665,35 @@ def _profile_projection(profile: GoogleOcrProfileV1) -> dict[str, Any]:
     }
 
 
-def _residency_warning(profile: GoogleOcrProfileV1) -> str:
-    if (
-        profile.release_channel is GoogleOcrReleaseChannelV1.PREVIEW
-        and profile.uses_global_endpoint
-    ):
-        return (
-            "PREVIEW_GLOBAL_ENDPOINT_NOT_DATA_RESIDENCY_COMPLIANT_"
-            "EXPLICIT_UPLOAD_AUTHORIZATION_REQUIRED"
-        )
-    if profile.uses_global_endpoint:
-        return "GLOBAL_ENDPOINT_DATA_RESIDENCY_NOT_ASSURED_EXPLICIT_UPLOAD_AUTHORIZATION_REQUIRED"
-    if profile.data_residency_compliant is not True:
+def _residency_warning(derivation: GoogleOcrProfileDerivationV1) -> str:
+    if derivation.residency_assurance is GoogleOcrResidencyAssuranceV1.NONCOMPLIANT:
+        return "DATA_RESIDENCY_NONCOMPLIANT_EXPLICIT_UPLOAD_AUTHORIZATION_REQUIRED"
+    if derivation.residency_assurance is GoogleOcrResidencyAssuranceV1.UNVERIFIED:
         return "DATA_RESIDENCY_UNVERIFIED_EXPLICIT_UPLOAD_AUTHORIZATION_REQUIRED"
     return "REGIONAL_DATA_RESIDENCY_PROFILE_STILL_REQUIRES_EXPLICIT_UPLOAD_AUTHORIZATION"
+
+
+def _validate_plan_route_compatibility(
+    page: AuthenticatedUnresolvedPageV1,
+    profile: GoogleOcrProfileV1,
+    derivation: GoogleOcrProfileDerivationV1,
+) -> None:
+    if profile.route is GoogleOcrRouteV1.CLOUD_VISION_DOCUMENT_TEXT_DETECTION:
+        if page.mime_type not in {"image/png", "image/jpeg"}:
+            raise _error(
+                "Cloud Vision images:annotate rescue supports only one-page image/png or image/jpeg; "
+                "PDF/TIFF require a separately contracted files route"
+            )
+        if not derivation.source_visible_geometry_supported:
+            raise _error("unknown Cloud Vision processor version has no frozen geometry contract")
+    if (
+        profile.route is GoogleOcrRouteV1.DOCUMENT_AI_LAYOUT_PARSER
+        and not derivation.source_visible_geometry_supported
+    ):
+        raise _error(
+            "source-visible geometry rescue supports only stable Layout Parser "
+            f"{_LAYOUT_STABLE_VERSION}; preview/unknown versions fail at plan time"
+        )
 
 
 def _plan_payload(plan: GoogleOcrRescuePlanV1) -> dict[str, Any]:
@@ -399,6 +703,11 @@ def _plan_payload(plan: GoogleOcrRescuePlanV1) -> dict[str, Any]:
         "task": plan.task,
         "page": _page_projection(plan.page),
         "profile": _profile_projection(plan.profile),
+        "derived_profile": {
+            "location": plan.derived_location,
+            "release_channel": plan.release_channel.value,
+            "residency_assurance": plan.residency_assurance.value,
+        },
         "privacy": {
             "external_upload_requires_explicit_authorization": (
                 plan.external_upload_requires_explicit_authorization
@@ -423,15 +732,19 @@ def validate_google_ocr_rescue_plan_v1(plan: GoogleOcrRescuePlanV1) -> None:
     if plan.task != _TASK or len(plan.task) > 240:
         raise _error("plan task drifted from the short extraction-only instruction")
     _validate_page(plan.page)
-    _validate_profile(plan.profile)
+    derivation = _validate_profile(plan.profile)
+    _validate_plan_route_compatibility(plan.page, plan.profile, derivation)
     if (
-        plan.external_upload_requires_explicit_authorization is not True
+        plan.derived_location != derivation.location
+        or plan.release_channel is not derivation.release_channel
+        or plan.residency_assurance is not derivation.residency_assurance
+        or plan.external_upload_requires_explicit_authorization is not True
         or plan.external_upload_authorized_by_plan is not False
         or plan.network_call_performed is not False
         or plan.credentials_accessed is not False
         or plan.image_bytes_embedded is not False
         or plan.execution_state != "PLANNED_NOT_EXECUTED"
-        or plan.data_residency_warning != _residency_warning(plan.profile)
+        or plan.data_residency_warning != _residency_warning(derivation)
     ):
         raise _error("plan privacy, execution, or Data Residency boundary drifted")
     expected = f"gocrpv1:plan:{canonical_json_sha256_v1(_plan_payload(plan))}"
@@ -445,20 +758,24 @@ def build_google_ocr_rescue_plan_v1(
     """Build, but never execute or authorize, one single-page rescue request."""
 
     _validate_page(page)
-    _validate_profile(profile)
+    derivation = _validate_profile(profile)
+    _validate_plan_route_compatibility(page, profile, derivation)
     shell = GoogleOcrRescuePlanV1(
         format_version=PLAN_FORMAT_VERSION,
         claim_boundary=PLAN_CLAIM_BOUNDARY,
         task=_TASK,
         page=page,
         profile=profile,
+        derived_location=derivation.location,
+        release_channel=derivation.release_channel,
+        residency_assurance=derivation.residency_assurance,
         external_upload_requires_explicit_authorization=True,
         external_upload_authorized_by_plan=False,
         network_call_performed=False,
         credentials_accessed=False,
         image_bytes_embedded=False,
         execution_state="PLANNED_NOT_EXECUTED",
-        data_residency_warning=_residency_warning(profile),
+        data_residency_warning=_residency_warning(derivation),
         plan_id="",
     )
     plan = replace(
@@ -467,6 +784,215 @@ def build_google_ocr_rescue_plan_v1(
     )
     validate_google_ocr_rescue_plan_v1(plan)
     return plan
+
+
+def _input_binding_projection(binding: GoogleOcrInputBindingV1) -> dict[str, Any]:
+    if type(binding) is GoogleOcrInlineInputV1:
+        return {
+            "kind": binding.kind.value,
+            "sha256": binding.sha256,
+            "size_bytes": binding.size_bytes,
+        }
+    if type(binding) is GoogleOcrImmutableGcsInputV1:
+        return {
+            "kind": binding.kind.value,
+            "bucket": binding.bucket,
+            "object_name": binding.object_name,
+            "generation": binding.generation,
+            "caller_verified_content_sha256": binding.caller_verified_content_sha256,
+            "caller_verified_content_size_bytes": binding.caller_verified_content_size_bytes,
+        }
+    raise _error("execution receipt input_binding has an unsupported union member")
+
+
+def _receipt_payload(receipt: GoogleOcrExecutionReceiptV1) -> dict[str, Any]:
+    return {
+        "format_version": receipt.format_version,
+        "claim_boundary": receipt.claim_boundary,
+        "plan_id": receipt.plan_id,
+        "endpoint_hostname": receipt.endpoint_hostname,
+        "http_method": receipt.http_method,
+        "api_version": receipt.api_version,
+        "processor_resource": receipt.processor_resource,
+        "request_body_sha256": receipt.request_body_sha256,
+        "request_body_size_bytes": receipt.request_body_size_bytes,
+        "input_binding": _input_binding_projection(receipt.input_binding),
+        "request_id": receipt.request_id,
+        "operation_id": receipt.operation_id,
+        "status": receipt.status.value,
+        "http_status_code": receipt.http_status_code,
+        "response_sha256": receipt.response_sha256,
+        "response_size_bytes": receipt.response_size_bytes,
+        "transport_capture_ref": _ref_projection(receipt.transport_capture_ref),
+        "transport_authentication_state": receipt.transport_authentication_state.value,
+        "self_hash_is_authority": receipt.self_hash_is_authority,
+        "external_upload_authorized_by_receipt": receipt.external_upload_authorized_by_receipt,
+    }
+
+
+def _validate_optional_transport_id(value: Any, label: str) -> None:
+    if value is not None and (type(value) is not str or not value or len(value) > 512):
+        raise _error(f"{label} must be null or one nonempty bounded string")
+
+
+def _validate_input_binding(
+    binding: GoogleOcrInputBindingV1, page: AuthenticatedUnresolvedPageV1
+) -> None:
+    if type(binding) is GoogleOcrInlineInputV1:
+        if binding.kind is not GoogleOcrInputBindingKindV1.INLINE:
+            raise _error("inline input binding kind drifted")
+        if binding.sha256 != page.page_image_ref.sha256:
+            raise _error("inline input SHA does not equal the authenticated page_image_ref SHA")
+        if binding.size_bytes != page.page_image_ref.size_bytes:
+            raise _error("inline input size does not equal the authenticated page_image_ref size")
+        return
+    if type(binding) is GoogleOcrImmutableGcsInputV1:
+        if binding.kind is not GoogleOcrInputBindingKindV1.IMMUTABLE_GCS:
+            raise _error("GCS input binding kind drifted")
+        if _GCS_BUCKET.fullmatch(binding.bucket) is None:
+            raise _error("GCS bucket name drifted")
+        if (
+            type(binding.object_name) is not str
+            or not binding.object_name
+            or "\r" in binding.object_name
+            or "\n" in binding.object_name
+        ):
+            raise _error("GCS object name must be one nonempty line")
+        if (
+            type(binding.generation) is not str
+            or not binding.generation.isdigit()
+            or int(binding.generation) <= 0
+        ):
+            raise _error("GCS generation must be one immutable positive decimal string")
+        if binding.caller_verified_content_sha256 != page.page_image_ref.sha256:
+            raise _error("caller-verified GCS content SHA does not equal page_image_ref SHA")
+        if binding.caller_verified_content_size_bytes != page.page_image_ref.size_bytes:
+            raise _error("caller-verified GCS content size does not equal page_image_ref size")
+        return
+    raise _error("execution receipt input_binding has an unsupported union member")
+
+
+def validate_google_ocr_execution_receipt_v1(
+    receipt: GoogleOcrExecutionReceiptV1,
+    *,
+    plan: GoogleOcrRescuePlanV1,
+) -> None:
+    """Validate caller-authenticated transport facts against the current plan."""
+
+    validate_google_ocr_rescue_plan_v1(plan)
+    if type(receipt) is not GoogleOcrExecutionReceiptV1:
+        raise _error("receipt must be GoogleOcrExecutionReceiptV1")
+    if (
+        receipt.format_version != EXECUTION_RECEIPT_FORMAT_VERSION
+        or receipt.claim_boundary != EXECUTION_RECEIPT_CLAIM_BOUNDARY
+    ):
+        raise _error("execution receipt format or claim boundary drifted")
+    derivation = derive_google_ocr_profile_v1(plan.profile)
+    if receipt.plan_id != plan.plan_id:
+        raise _error("execution receipt belongs to a different request plan")
+    if (
+        receipt.endpoint_hostname != plan.profile.endpoint_hostname
+        or receipt.http_method != derivation.http_method
+        or receipt.api_version != plan.profile.api_version
+        or receipt.processor_resource != plan.profile.processor_resource
+    ):
+        raise _error("transport endpoint/method/API/resource does not match the exact request plan")
+    if (
+        type(receipt.request_body_sha256) is not str
+        or _SHA256.fullmatch(receipt.request_body_sha256) is None
+    ):
+        raise _error("request_body_sha256 must be lowercase SHA-256")
+    _positive_int(receipt.request_body_size_bytes, "request_body_size_bytes")
+    _validate_input_binding(receipt.input_binding, plan.page)
+    _validate_optional_transport_id(receipt.request_id, "request_id")
+    _validate_optional_transport_id(receipt.operation_id, "operation_id")
+    if type(receipt.status) is not GoogleOcrExecutionStatusV1:
+        raise _error("execution status drifted")
+    if type(receipt.http_status_code) is not int or not 100 <= receipt.http_status_code <= 599:
+        raise _error("http_status_code must be one exact HTTP status integer")
+    if receipt.status is GoogleOcrExecutionStatusV1.SUCCEEDED:
+        if not 200 <= receipt.http_status_code <= 299:
+            raise _error("SUCCEEDED receipt requires a 2xx HTTP status")
+    elif receipt.http_status_code < 400:
+        raise _error("FAILED receipt requires a 4xx/5xx HTTP status")
+    if (
+        type(receipt.response_sha256) is not str
+        or _SHA256.fullmatch(receipt.response_sha256) is None
+    ):
+        raise _error("response_sha256 must be lowercase SHA-256")
+    _positive_int(receipt.response_size_bytes, "response_size_bytes")
+    _content_ref(
+        receipt.transport_capture_ref,
+        ContentRefKindV1.TRANSPORT_CAPTURE,
+        "transport_capture_ref",
+    )
+    if receipt.transport_capture_ref.size_bytes <= 0:
+        raise _error("transport_capture_ref must bind nonempty authenticated capture bytes")
+    if (
+        receipt.transport_authentication_state
+        is not TransportAuthenticationStateV1.CALLER_AUTHENTICATED_TRANSPORT_CAPTURE
+        or receipt.self_hash_is_authority is not False
+        or receipt.external_upload_authorized_by_receipt is not False
+    ):
+        raise _error(
+            "receipt caller-authentication, self-hash, or upload-authority boundary drifted"
+        )
+    expected = f"gocrpv1:execution:{canonical_json_sha256_v1(_receipt_payload(receipt))}"
+    if receipt.receipt_id != expected:
+        raise _error("receipt_id does not bind the exact caller-authenticated transport facts")
+
+
+def build_google_ocr_execution_receipt_v1(
+    *,
+    plan: GoogleOcrRescuePlanV1,
+    endpoint_hostname: str,
+    http_method: str,
+    api_version: str,
+    processor_resource: str,
+    request_body_sha256: str,
+    request_body_size_bytes: int,
+    input_binding: GoogleOcrInputBindingV1,
+    status: GoogleOcrExecutionStatusV1,
+    http_status_code: int,
+    response_sha256: str,
+    response_size_bytes: int,
+    transport_capture_ref: ExactContentRefV1,
+    request_id: str | None = None,
+    operation_id: str | None = None,
+) -> GoogleOcrExecutionReceiptV1:
+    """Bind caller-captured transport metadata; never execute or authorize it."""
+
+    shell = GoogleOcrExecutionReceiptV1(
+        format_version=EXECUTION_RECEIPT_FORMAT_VERSION,
+        claim_boundary=EXECUTION_RECEIPT_CLAIM_BOUNDARY,
+        plan_id=plan.plan_id,
+        endpoint_hostname=endpoint_hostname,
+        http_method=http_method,
+        api_version=api_version,
+        processor_resource=processor_resource,
+        request_body_sha256=request_body_sha256,
+        request_body_size_bytes=request_body_size_bytes,
+        input_binding=input_binding,
+        request_id=request_id,
+        operation_id=operation_id,
+        status=status,
+        http_status_code=http_status_code,
+        response_sha256=response_sha256,
+        response_size_bytes=response_size_bytes,
+        transport_capture_ref=transport_capture_ref,
+        transport_authentication_state=(
+            TransportAuthenticationStateV1.CALLER_AUTHENTICATED_TRANSPORT_CAPTURE
+        ),
+        self_hash_is_authority=False,
+        external_upload_authorized_by_receipt=False,
+        receipt_id="",
+    )
+    receipt = replace(
+        shell,
+        receipt_id=f"gocrpv1:execution:{canonical_json_sha256_v1(_receipt_payload(shell))}",
+    )
+    validate_google_ocr_execution_receipt_v1(receipt, plan=plan)
+    return receipt
 
 
 def _no_duplicate_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -1046,20 +1572,66 @@ def _doc_table(
     }
 
 
+def _human_review_status(value: Any) -> dict[str, Any]:
+    status = _require_exact_dict(
+        value,
+        allowed={"state", "stateMessage", "humanReviewOperation"},
+        required={"state"},
+        label="Document AI humanReviewStatus",
+    )
+    state = _require_string(status["state"], "Document AI humanReviewStatus.state")
+    if state not in _HUMAN_REVIEW_STATES:
+        raise _error("Document AI humanReviewStatus.state drifted")
+    state_message = (
+        _require_string(
+            status["stateMessage"],
+            "Document AI humanReviewStatus.stateMessage",
+            allow_empty=True,
+        )
+        if "stateMessage" in status
+        else ""
+    )
+    operation = (
+        _require_string(
+            status["humanReviewOperation"],
+            "Document AI humanReviewStatus.humanReviewOperation",
+        )
+        if "humanReviewOperation" in status
+        else None
+    )
+    if (state == "IN_PROGRESS") != (operation is not None):
+        raise _error("humanReviewOperation must be present exactly for IN_PROGRESS")
+    return {
+        "state": state,
+        "state_message": state_message,
+        "human_review_operation": operation,
+    }
+
+
 def _document_ai_root(root: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     wrapper = _require_exact_dict(
         root,
-        allowed={"document", "humanReviewStatus", "humanReviewOperation"},
+        allowed={"document", "humanReviewStatus"},
         required={"document"},
         label="Document AI response",
     )
-    metadata: dict[str, Any] = {}
-    for field in ("humanReviewStatus", "humanReviewOperation"):
-        if field in wrapper:
-            metadata[field] = _require_string(wrapper[field], f"Document AI {field}")
+    metadata: dict[str, Any] = {
+        "human_review_status": (
+            _human_review_status(wrapper["humanReviewStatus"])
+            if "humanReviewStatus" in wrapper
+            else None
+        )
+    }
     document = _require_exact_dict(
         wrapper["document"],
-        allowed={"text", "mimeType", "pages", "documentLayout"},
+        allowed={
+            "text",
+            "mimeType",
+            "pages",
+            "documentLayout",
+            "chunkedDocument",
+            "blobAssets",
+        },
         required={"text"},
         label="Document AI document",
     )
@@ -1070,8 +1642,8 @@ def _normalize_document_ai_ocr(
     root: dict[str, Any], plan: GoogleOcrRescuePlanV1
 ) -> tuple[str, dict]:
     document, metadata = _document_ai_root(root)
-    if "documentLayout" in document:
-        raise _error("Document AI OCR route cannot accept a Layout Parser document union")
+    if any(field in document for field in ("documentLayout", "chunkedDocument", "blobAssets")):
+        raise _error("Document AI OCR route cannot accept Layout Parser document unions")
     if "pages" not in document:
         raise _error("Document AI OCR document.pages is required")
     raw_text = _require_string(document["text"], "Document AI text", allow_empty=True)
@@ -1171,7 +1743,7 @@ def _normalize_document_ai_ocr(
     }
 
 
-def _annotations(value: Any, label: str) -> dict[str, str] | None:
+def _annotations(value: Any, label: str) -> dict[str, Any] | None:
     if value is None:
         return None
     item = _require_exact_dict(
@@ -1183,8 +1755,73 @@ def _annotations(value: Any, label: str) -> dict[str, str] | None:
     return {
         "description": _require_string(
             item["description"], f"{label}.description", allow_empty=True
-        )
+        ),
+        "authority": dict(QUARANTINED_GENERATED_AUTHORITY),
     }
+
+
+def _image_source(
+    value: dict[str, Any], *, allowed_blob_asset_ids: set[str], label: str
+) -> dict[str, Any]:
+    source_keys = [key for key in ("blobAssetId", "gcsUri", "dataUri") if key in value]
+    if len(source_keys) != 1:
+        raise _error(f"{label} must contain exactly one documented image source union member")
+    key = source_keys[0]
+    raw = _require_string(value[key], f"{label}.{key}")
+    if key == "blobAssetId":
+        if raw not in allowed_blob_asset_ids:
+            raise _error(f"{label}.blobAssetId is not present in document.blobAssets")
+        source = {"kind": "BLOB_ASSET", "blob_asset_id": raw}
+    elif key == "gcsUri":
+        if not raw.startswith("gs://") or raw.count("/") < 3:
+            raise _error(f"{label}.gcsUri must be one exact gs:// object URI")
+        source = {
+            "kind": "GCS_URI_QUARANTINED",
+            "reference_sha256": sha256(raw.encode()).hexdigest(),
+            "reference_size_bytes": len(raw.encode()),
+        }
+    else:
+        if not raw.startswith("data:"):
+            raise _error(f"{label}.dataUri must be one exact data URI")
+        source = {
+            "kind": "DATA_URI_QUARANTINED",
+            "reference_sha256": sha256(raw.encode()).hexdigest(),
+            "reference_size_bytes": len(raw.encode()),
+        }
+    source["authority"] = dict(QUARANTINED_GENERATED_AUTHORITY)
+    return source
+
+
+def _blob_assets(value: Any, label: str) -> tuple[list[dict[str, Any]], set[str]]:
+    output = []
+    seen_ids: set[str] = set()
+    for index, raw in enumerate(_require_list(value, label)):
+        item_label = f"{label}[{index}]"
+        item = _require_exact_dict(
+            raw,
+            allowed={"assetId", "content", "mimeType"},
+            required={"assetId", "content", "mimeType"},
+            label=item_label,
+        )
+        asset_id = _require_string(item["assetId"], f"{item_label}.assetId")
+        if asset_id in seen_ids:
+            raise _error(f"{item_label}.assetId is duplicated")
+        seen_ids.add(asset_id)
+        encoded = _require_string(item["content"], f"{item_label}.content", allow_empty=True)
+        try:
+            decoded = base64.b64decode(encoded, validate=True)
+        except (binascii.Error, ValueError) as exc:
+            raise _error(f"{item_label}.content is not strict base64") from exc
+        output.append(
+            {
+                "asset_id": asset_id,
+                "mime_type": _require_string(item["mimeType"], f"{item_label}.mimeType"),
+                "content_sha256": sha256(decoded).hexdigest(),
+                "content_size_bytes": len(decoded),
+                "authority": dict(QUARANTINED_GENERATED_AUTHORITY),
+            }
+        )
+    return output, seen_ids
 
 
 def _layout_page_span(value: Any, label: str) -> dict[str, int]:
@@ -1209,6 +1846,7 @@ def _layout_parser_rows(
     label: str,
     depth: int,
     seen_ids: set[str],
+    blob_asset_ids: set[str],
 ) -> list[dict[str, Any]]:
     rows = []
     for row_index, raw_row in enumerate(_require_list(value, label)):
@@ -1239,6 +1877,7 @@ def _layout_parser_rows(
                             label=f"{cell_label}.blocks[{index}]",
                             depth=depth + 1,
                             seen_ids=seen_ids,
+                            blob_asset_ids=blob_asset_ids,
                         )
                         for index, block in enumerate(
                             _require_list(cell["blocks"], f"{cell_label}.blocks")
@@ -1260,16 +1899,25 @@ def _layout_parser_block(
     label: str,
     depth: int,
     seen_ids: set[str],
+    blob_asset_ids: set[str],
 ) -> dict[str, Any]:
     if depth > 32:
         raise _error("Layout Parser block nesting exceeds the bounded depth")
     item = _require_exact_dict(
         value,
-        allowed={"blockId", "pageSpan", "boundingBox", "textBlock", "tableBlock", "listBlock"},
+        allowed={
+            "blockId",
+            "pageSpan",
+            "boundingBox",
+            "textBlock",
+            "tableBlock",
+            "listBlock",
+            "imageBlock",
+        },
         required={"blockId", "pageSpan", "boundingBox"},
         label=label,
     )
-    union = [key for key in ("textBlock", "tableBlock", "listBlock") if key in item]
+    union = [key for key in ("textBlock", "tableBlock", "listBlock", "imageBlock") if key in item]
     if len(union) != 1:
         raise _error(f"{label} must contain exactly one supported block union member")
     block_id = _require_string(item["blockId"], f"{label}.blockId")
@@ -1312,6 +1960,7 @@ def _layout_parser_block(
                         label=f"{label}.textBlock.blocks[{index}]",
                         depth=depth + 1,
                         seen_ids=seen_ids,
+                        blob_asset_ids=blob_asset_ids,
                     )
                     for index, child in enumerate(
                         _require_list(text_block.get("blocks", []), f"{label}.textBlock.blocks")
@@ -1342,6 +1991,7 @@ def _layout_parser_block(
                     label=f"{label}.tableBlock.headerRows",
                     depth=depth,
                     seen_ids=seen_ids,
+                    blob_asset_ids=blob_asset_ids,
                 ),
                 "body_rows": _layout_parser_rows(
                     table["bodyRows"],
@@ -1350,10 +2000,11 @@ def _layout_parser_block(
                     label=f"{label}.tableBlock.bodyRows",
                     depth=depth,
                     seen_ids=seen_ids,
+                    blob_asset_ids=blob_asset_ids,
                 ),
             }
         )
-    else:
+    elif kind == "listBlock":
         list_block = _require_exact_dict(
             item[kind],
             allowed={"listEntries", "type"},
@@ -1384,6 +2035,7 @@ def _layout_parser_block(
                             label=f"{entry_label}.blocks[{index}]",
                             depth=depth + 1,
                             seen_ids=seen_ids,
+                            blob_asset_ids=blob_asset_ids,
                         )
                         for index, child in enumerate(
                             _require_list(entry["blocks"], f"{entry_label}.blocks")
@@ -1392,7 +2044,183 @@ def _layout_parser_block(
                 }
             )
         base.update({"kind": "LIST", "list_type": list_type, "list_entries": entries})
+    else:
+        image = _require_exact_dict(
+            item[kind],
+            allowed={
+                "mimeType",
+                "imageText",
+                "annotations",
+                "blobAssetId",
+                "gcsUri",
+                "dataUri",
+            },
+            required={"mimeType"},
+            label=f"{label}.imageBlock",
+        )
+        base.update(
+            {
+                "kind": "IMAGE_QUARANTINED",
+                "mime_type": _require_string(image["mimeType"], f"{label}.imageBlock.mimeType"),
+                "image_text": (
+                    _require_string(
+                        image["imageText"],
+                        f"{label}.imageBlock.imageText",
+                        allow_empty=True,
+                    )
+                    if "imageText" in image
+                    else ""
+                ),
+                "annotations": _annotations(
+                    image.get("annotations"), f"{label}.imageBlock.annotations"
+                ),
+                "image_source": _image_source(
+                    image,
+                    allowed_blob_asset_ids=blob_asset_ids,
+                    label=f"{label}.imageBlock",
+                ),
+                "authority": dict(QUARANTINED_GENERATED_AUTHORITY),
+            }
+        )
     return base
+
+
+def _chunk_page_text(value: Any, *, label: str) -> dict[str, Any]:
+    item = _require_exact_dict(
+        value,
+        allowed={"text", "pageSpan"},
+        required={"text", "pageSpan"},
+        label=label,
+    )
+    return {
+        "text": _require_string(item["text"], f"{label}.text", allow_empty=True),
+        "page_span": _layout_page_span(item["pageSpan"], f"{label}.pageSpan"),
+        "authority": dict(QUARANTINED_GENERATED_AUTHORITY),
+    }
+
+
+def _chunk_field(value: Any, *, blob_asset_ids: set[str], label: str) -> dict[str, Any]:
+    item = _require_exact_dict(
+        value,
+        allowed={"imageChunkField", "tableChunkField"},
+        required=set(),
+        label=label,
+    )
+    if len(item) != 1:
+        raise _error(f"{label} must contain exactly one chunk field union member")
+    if "imageChunkField" in item:
+        image = _require_exact_dict(
+            item["imageChunkField"],
+            allowed={"annotations", "blobAssetId", "gcsUri", "dataUri"},
+            required=set(),
+            label=f"{label}.imageChunkField",
+        )
+        return {
+            "kind": "IMAGE_CHUNK_QUARANTINED",
+            "annotations": _annotations(
+                image.get("annotations"), f"{label}.imageChunkField.annotations"
+            ),
+            "image_source": _image_source(
+                image,
+                allowed_blob_asset_ids=blob_asset_ids,
+                label=f"{label}.imageChunkField",
+            ),
+            "authority": dict(QUARANTINED_GENERATED_AUTHORITY),
+        }
+    table = _require_exact_dict(
+        item["tableChunkField"],
+        allowed={"annotations"},
+        required=set(),
+        label=f"{label}.tableChunkField",
+    )
+    return {
+        "kind": "TABLE_CHUNK_ANNOTATION_QUARANTINED",
+        "annotations": _annotations(
+            table.get("annotations"), f"{label}.tableChunkField.annotations"
+        ),
+        "authority": dict(QUARANTINED_GENERATED_AUTHORITY),
+    }
+
+
+def _chunked_document(
+    value: Any,
+    *,
+    known_block_ids: set[str],
+    blob_asset_ids: set[str],
+    label: str,
+) -> dict[str, Any]:
+    document = _require_exact_dict(
+        value,
+        allowed={"chunks"},
+        required={"chunks"},
+        label=label,
+    )
+    chunks = []
+    seen_chunk_ids: set[str] = set()
+    for index, raw in enumerate(_require_list(document["chunks"], f"{label}.chunks")):
+        chunk_label = f"{label}.chunks[{index}]"
+        chunk = _require_exact_dict(
+            raw,
+            allowed={
+                "chunkId",
+                "sourceBlockIds",
+                "content",
+                "pageSpan",
+                "pageHeaders",
+                "pageFooters",
+                "chunkFields",
+            },
+            required={"chunkId", "content", "pageSpan"},
+            label=chunk_label,
+        )
+        chunk_id = _require_string(chunk["chunkId"], f"{chunk_label}.chunkId")
+        if chunk_id in seen_chunk_ids:
+            raise _error(f"{chunk_label}.chunkId is duplicated")
+        seen_chunk_ids.add(chunk_id)
+        source_ids = [
+            _require_string(item, f"{chunk_label}.sourceBlockIds[{source_index}]")
+            for source_index, item in enumerate(
+                _require_list(chunk.get("sourceBlockIds", []), f"{chunk_label}.sourceBlockIds")
+            )
+        ]
+        if len(set(source_ids)) != len(source_ids) or any(
+            item not in known_block_ids for item in source_ids
+        ):
+            raise _error(f"{chunk_label}.sourceBlockIds are duplicated or unknown")
+        chunks.append(
+            {
+                "chunk_id": chunk_id,
+                "source_block_ids": source_ids,
+                "content": _require_string(
+                    chunk["content"], f"{chunk_label}.content", allow_empty=True
+                ),
+                "page_span": _layout_page_span(chunk["pageSpan"], f"{chunk_label}.pageSpan"),
+                "page_headers": [
+                    _chunk_page_text(item, label=f"{chunk_label}.pageHeaders[{item_index}]")
+                    for item_index, item in enumerate(
+                        _require_list(chunk.get("pageHeaders", []), f"{chunk_label}.pageHeaders")
+                    )
+                ],
+                "page_footers": [
+                    _chunk_page_text(item, label=f"{chunk_label}.pageFooters[{item_index}]")
+                    for item_index, item in enumerate(
+                        _require_list(chunk.get("pageFooters", []), f"{chunk_label}.pageFooters")
+                    )
+                ],
+                "chunk_fields": [
+                    _chunk_field(
+                        item,
+                        blob_asset_ids=blob_asset_ids,
+                        label=f"{chunk_label}.chunkFields[{item_index}]",
+                    )
+                    for item_index, item in enumerate(
+                        _require_list(chunk.get("chunkFields", []), f"{chunk_label}.chunkFields")
+                    )
+                ],
+                "authority": dict(QUARANTINED_GENERATED_AUTHORITY),
+            }
+        )
+    return {"chunks": chunks, "authority": dict(QUARANTINED_GENERATED_AUTHORITY)}
 
 
 def _normalize_document_ai_layout_parser(
@@ -1412,6 +2240,9 @@ def _normalize_document_ai_layout_parser(
         required={"blocks"},
         label="Document AI documentLayout",
     )
+    blob_assets, blob_asset_ids = _blob_assets(
+        document.get("blobAssets", []), "Document AI document.blobAssets"
+    )
     seen_ids: set[str] = set()
     blocks = [
         _layout_parser_block(
@@ -1421,12 +2252,23 @@ def _normalize_document_ai_layout_parser(
             label=f"Document AI documentLayout.blocks[{index}]",
             depth=0,
             seen_ids=seen_ids,
+            blob_asset_ids=blob_asset_ids,
         )
         for index, block in enumerate(
             _require_list(layout["blocks"], "Document AI documentLayout.blocks")
         )
     ]
     tables = [block for block in blocks if block["kind"] == "TABLE"]
+    chunked = (
+        _chunked_document(
+            document["chunkedDocument"],
+            known_block_ids=seen_ids,
+            blob_asset_ids=blob_asset_ids,
+            label="Document AI document.chunkedDocument",
+        )
+        if "chunkedDocument" in document
+        else None
+    )
     return raw_text, {
         "kind": "DOCUMENT_AI_DOCUMENT_LAYOUT",
         "response_metadata": metadata,
@@ -1435,11 +2277,17 @@ def _normalize_document_ai_layout_parser(
         "pixel_height": plan.page.pixel_height,
         "blocks": blocks,
         "tables": tables,
+        "chunked_document": chunked,
+        "blob_assets": blob_assets,
+        "generated_and_image_evidence_quarantined": True,
     }
 
 
 def normalize_google_ocr_response_v1(
-    *, plan: GoogleOcrRescuePlanV1, raw_response_bytes: bytes
+    *,
+    plan: GoogleOcrRescuePlanV1,
+    execution_receipt: GoogleOcrExecutionReceiptV1,
+    raw_response_bytes: bytes,
 ) -> dict[str, Any]:
     """Normalize captured REST JSON without executing or trusting the provider.
 
@@ -1448,6 +2296,14 @@ def normalize_google_ocr_response_v1(
     """
 
     validate_google_ocr_rescue_plan_v1(plan)
+    validate_google_ocr_execution_receipt_v1(execution_receipt, plan=plan)
+    if execution_receipt.status is not GoogleOcrExecutionStatusV1.SUCCEEDED:
+        raise _error("only a caller-authenticated successful transport receipt can be normalized")
+    raw_sha256 = sha256(raw_response_bytes).hexdigest() if type(raw_response_bytes) is bytes else ""
+    if execution_receipt.response_sha256 != raw_sha256 or execution_receipt.response_size_bytes != (
+        len(raw_response_bytes) if type(raw_response_bytes) is bytes else -1
+    ):
+        raise _error("raw response bytes do not match the caller-authenticated execution receipt")
     root = _parse_response(raw_response_bytes)
     if plan.profile.route is GoogleOcrRouteV1.CLOUD_VISION_DOCUMENT_TEXT_DETECTION:
         raw_text, structure = _normalize_cloud_vision(root, plan)
@@ -1470,8 +2326,10 @@ def normalize_google_ocr_response_v1(
         },
         "provider": _profile_projection(plan.profile),
         "raw_response": {
-            "sha256": sha256(raw_response_bytes).hexdigest(),
+            "sha256": raw_sha256,
             "size_bytes": len(raw_response_bytes),
+            "execution_receipt_id": execution_receipt.receipt_id,
+            "transport_capture_ref": _ref_projection(execution_receipt.transport_capture_ref),
         },
         "raw_text": raw_text,
         "structure": structure,

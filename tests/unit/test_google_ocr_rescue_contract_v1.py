@@ -9,17 +9,26 @@ import pytest
 import bctc_ai.evaluation.google_ocr_rescue_contract_v1 as contract
 from bctc_ai.evaluation.google_ocr_rescue_contract_v1 import (
     OUTPUT_AUTHORITY,
+    QUARANTINED_GENERATED_AUTHORITY,
     AuthenticatedUnresolvedPageV1,
     ContentRefKindV1,
     ExactContentRefV1,
+    GoogleOcrExecutionStatusV1,
+    GoogleOcrImmutableGcsInputV1,
+    GoogleOcrInlineInputV1,
+    GoogleOcrInputBindingKindV1,
     GoogleOcrProfileV1,
     GoogleOcrReleaseChannelV1,
     GoogleOcrRescueContractV1Error,
+    GoogleOcrResidencyAssuranceV1,
     GoogleOcrRouteV1,
     PageAuthenticationStateV1,
     PageResolutionStateV1,
+    build_google_ocr_execution_receipt_v1,
     build_google_ocr_rescue_plan_v1,
+    derive_google_ocr_profile_v1,
     normalize_google_ocr_response_v1,
+    validate_google_ocr_execution_receipt_v1,
     validate_google_ocr_rescue_plan_v1,
 )
 
@@ -54,40 +63,68 @@ def unresolved_page() -> AuthenticatedUnresolvedPageV1:
 def _profile(
     route: GoogleOcrRouteV1,
     *,
-    preview_global: bool = False,
+    location: str = "eu",
+    endpoint_location: str | None = None,
+    processor_version: str | None = None,
     revision: str = "v1",
 ) -> GoogleOcrProfileV1:
     if route is GoogleOcrRouteV1.CLOUD_VISION_DOCUMENT_TEXT_DETECTION:
         processor = "DOCUMENT_TEXT_DETECTION"
-        version = "vision-rest-v1"
-    elif route is GoogleOcrRouteV1.DOCUMENT_AI_OCR_PROCESSOR:
-        processor = "projects/redacted/locations/eu/processors/ocr"
-        version = "pretrained-ocr-v2.1-2024-08-07"
-    else:
-        processor = "projects/redacted/locations/eu/processors/layout"
-        version = (
-            "pretrained-layout-parser-v1.5-pro-2025-08-25"
-            if preview_global
-            else "pretrained-layout-parser-v1.0-2024-06-03"
+        version = processor_version or "builtin-document-text-detection"
+        endpoint = (
+            "vision.googleapis.com"
+            if (endpoint_location or location) == "global"
+            else f"{endpoint_location or location}-vision.googleapis.com"
         )
-    region = "global" if preview_global else "eu"
+        resource = (
+            "images:annotate"
+            if location == "global"
+            else f"projects/test-project/locations/{location}/images:annotate"
+        )
+    elif route is GoogleOcrRouteV1.DOCUMENT_AI_OCR_PROCESSOR:
+        processor = "OCR_PROCESSOR"
+        version = processor_version or "pretrained-ocr-v2.1-2024-08-07"
+        endpoint = (
+            "documentai.googleapis.com"
+            if (endpoint_location or location) == "global"
+            else f"{endpoint_location or location}-documentai.googleapis.com"
+        )
+        resource = (
+            f"projects/test-project/locations/{location}/processors/ocr-processor/"
+            f"processorVersions/{version}"
+        )
+    else:
+        processor = "LAYOUT_PARSER_PROCESSOR"
+        version = processor_version or "pretrained-layout-parser-v1.0-2024-06-03"
+        endpoint = (
+            "documentai.googleapis.com"
+            if (endpoint_location or location) == "global"
+            else f"{endpoint_location or location}-documentai.googleapis.com"
+        )
+        resource = (
+            f"projects/test-project/locations/{location}/processors/layout-processor/"
+            f"processorVersions/{version}"
+        )
     return GoogleOcrProfileV1(
         route=route,
         provider_name="GOOGLE_CLOUD_REST",
+        api_version="v1",
+        endpoint_hostname=endpoint,
         processor_name=processor,
+        processor_resource=resource,
         processor_version=version,
-        region=region,
-        release_channel=(
-            GoogleOcrReleaseChannelV1.PREVIEW
-            if preview_global
-            else GoogleOcrReleaseChannelV1.STABLE
-        ),
-        uses_global_endpoint=preview_global,
-        data_residency_compliant=False if preview_global else True,
         provider_ref=_ref(ContentRefKindV1.PROVIDER, "provider/google-cloud-rest", revision),
-        processor_ref=_ref(ContentRefKindV1.PROCESSOR, processor, revision),
-        processor_version_ref=_ref(ContentRefKindV1.PROCESSOR_VERSION, version, revision),
-        region_ref=_ref(ContentRefKindV1.REGION, f"region/{region}", revision),
+        api_version_ref=_ref(ContentRefKindV1.API_VERSION, "google-api-version/v1", revision),
+        endpoint_ref=_ref(ContentRefKindV1.ENDPOINT, f"google-endpoint/{endpoint}", revision),
+        processor_ref=_ref(
+            ContentRefKindV1.PROCESSOR, f"google-processor-resource/{resource}", revision
+        ),
+        processor_version_ref=_ref(
+            ContentRefKindV1.PROCESSOR_VERSION,
+            f"google-processor-version/{version}",
+            revision,
+        ),
+        region_ref=_ref(ContentRefKindV1.REGION, f"google-location/{location}", revision),
         prompt_ref=_ref(ContentRefKindV1.PROMPT, "prompt/source-structure-short-v1", revision),
         config_ref=_ref(ContentRefKindV1.CONFIG, f"config/{route.value.lower()}", revision),
     )
@@ -101,6 +138,41 @@ def _plan(
 
 def _json_bytes(value: dict) -> bytes:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode()
+
+
+def _execution_receipt(plan, raw: bytes, *, input_binding=None):
+    if input_binding is None:
+        input_binding = GoogleOcrInlineInputV1(
+            GoogleOcrInputBindingKindV1.INLINE,
+            plan.page.page_image_ref.sha256,
+            plan.page.page_image_ref.size_bytes,
+        )
+    return build_google_ocr_execution_receipt_v1(
+        plan=plan,
+        endpoint_hostname=plan.profile.endpoint_hostname,
+        http_method="POST",
+        api_version=plan.profile.api_version,
+        processor_resource=plan.profile.processor_resource,
+        request_body_sha256=_digest(f"request:{plan.plan_id}"),
+        request_body_size_bytes=137,
+        input_binding=input_binding,
+        status=GoogleOcrExecutionStatusV1.SUCCEEDED,
+        http_status_code=200,
+        response_sha256=sha256(raw).hexdigest(),
+        response_size_bytes=len(raw),
+        transport_capture_ref=_ref(
+            ContentRefKindV1.TRANSPORT_CAPTURE, f"transport/{plan.plan_id}", "capture"
+        ),
+        request_id="request-123",
+    )
+
+
+def _normalize(plan, raw: bytes):
+    return normalize_google_ocr_response_v1(
+        plan=plan,
+        execution_receipt=_execution_receipt(plan, raw),
+        raw_response_bytes=raw,
+    )
 
 
 def _bbox(*, normalized: bool) -> dict:
@@ -193,6 +265,7 @@ def _layout(start: int, end: int, *, normalized: bool, confidence: float = 0.93)
 def _document_ai_ocr_response(*, normalized: bool) -> dict:
     text = "Công ty\t2025\n"
     return {
+        "humanReviewStatus": {"state": "SKIPPED", "stateMessage": ""},
         "document": {
             "text": text,
             "mimeType": "image/png",
@@ -241,7 +314,7 @@ def _document_ai_ocr_response(*, normalized: bool) -> dict:
                     ],
                 }
             ],
-        }
+        },
     }
 
 
@@ -262,9 +335,36 @@ def _layout_parser_text_block(
 
 def _layout_parser_response(*, normalized: bool) -> dict:
     return {
+        "humanReviewStatus": {"state": "SKIPPED", "stateMessage": ""},
         "document": {
             "text": "Thuyết minh\nKhoản mục\nDư nợ\n",
             "mimeType": "image/png",
+            "blobAssets": [{"assetId": "asset-1", "content": "aW1hZ2U=", "mimeType": "image/png"}],
+            "chunkedDocument": {
+                "chunks": [
+                    {
+                        "chunkId": "chunk-1",
+                        "sourceBlockIds": ["title", "table-1", "image-1"],
+                        "content": "Thuyết minh\nKhoản mục\nDư nợ\n",
+                        "pageSpan": {"pageStart": 1, "pageEnd": 1},
+                        "pageHeaders": [
+                            {
+                                "text": "Thuyết minh",
+                                "pageSpan": {"pageStart": 1, "pageEnd": 1},
+                            }
+                        ],
+                        "chunkFields": [
+                            {
+                                "imageChunkField": {
+                                    "blobAssetId": "asset-1",
+                                    "annotations": {"description": "Ảnh minh hoạ"},
+                                }
+                            },
+                            {"tableChunkField": {"annotations": {"description": "Bảng được sinh"}}},
+                        ],
+                    }
+                ]
+            },
             "documentLayout": {
                 "blocks": [
                     _layout_parser_text_block(
@@ -311,9 +411,20 @@ def _layout_parser_response(*, normalized: bool) -> dict:
                             ],
                         },
                     },
+                    {
+                        "blockId": "image-1",
+                        "pageSpan": {"pageStart": 1, "pageEnd": 1},
+                        "boundingBox": _bbox(normalized=normalized),
+                        "imageBlock": {
+                            "mimeType": "image/png",
+                            "imageText": "Số 999 do mô hình mô tả",
+                            "annotations": {"description": "Mô tả do mô hình sinh"},
+                            "blobAssetId": "asset-1",
+                        },
+                    },
                 ]
             },
-        }
+        },
     }
 
 
@@ -328,6 +439,8 @@ def test_request_plan_is_single_page_offline_and_binds_all_exact_refs(
     assert plan.page.page_image_ref.sha256 == unresolved_page.page_image_ref.sha256
     assert {
         plan.profile.provider_ref.kind,
+        plan.profile.api_version_ref.kind,
+        plan.profile.endpoint_ref.kind,
         plan.profile.processor_ref.kind,
         plan.profile.processor_version_ref.kind,
         plan.profile.region_ref.kind,
@@ -335,6 +448,8 @@ def test_request_plan_is_single_page_offline_and_binds_all_exact_refs(
         plan.profile.config_ref.kind,
     } == {
         ContentRefKindV1.PROVIDER,
+        ContentRefKindV1.API_VERSION,
+        ContentRefKindV1.ENDPOINT,
         ContentRefKindV1.PROCESSOR,
         ContentRefKindV1.PROCESSOR_VERSION,
         ContentRefKindV1.REGION,
@@ -347,6 +462,9 @@ def test_request_plan_is_single_page_offline_and_binds_all_exact_refs(
     assert plan.credentials_accessed is False
     assert plan.image_bytes_embedded is False
     assert plan.execution_state == "PLANNED_NOT_EXECUTED"
+    assert plan.derived_location == "eu"
+    assert plan.release_channel is GoogleOcrReleaseChannelV1.STABLE
+    assert plan.residency_assurance is GoogleOcrResidencyAssuranceV1.COMPLIANT
     validate_google_ocr_rescue_plan_v1(plan)
 
 
@@ -389,26 +507,136 @@ def test_exact_profile_ref_change_changes_plan_and_tampered_plan_fails(
         validate_google_ocr_rescue_plan_v1(replace(first, external_upload_authorized_by_plan=True))
     with pytest.raises(GoogleOcrRescueContractV1Error, match="plan_id"):
         validate_google_ocr_rescue_plan_v1(replace(first, profile=second.profile))
+    aws = replace(
+        first.profile,
+        provider_name="AWS_TEXTRACT",
+        provider_ref=_ref(ContentRefKindV1.PROVIDER, "provider/aws"),
+    )
+    with pytest.raises(GoogleOcrRescueContractV1Error, match="GOOGLE_CLOUD_REST"):
+        build_google_ocr_rescue_plan_v1(page=unresolved_page, profile=aws)
 
 
-def test_preview_global_profile_has_explicit_data_residency_warning(
+def test_release_geometry_and_residency_are_derived_from_exact_version_and_location(
     unresolved_page: AuthenticatedUnresolvedPageV1,
 ) -> None:
-    plan = build_google_ocr_rescue_plan_v1(
-        page=unresolved_page,
-        profile=_profile(
+    stable = derive_google_ocr_profile_v1(
+        _profile(GoogleOcrRouteV1.DOCUMENT_AI_LAYOUT_PARSER, location="eu")
+    )
+    assert stable.location == "eu"
+    assert stable.release_channel is GoogleOcrReleaseChannelV1.STABLE
+    assert stable.residency_assurance is GoogleOcrResidencyAssuranceV1.COMPLIANT
+    assert stable.source_visible_geometry_supported is True
+
+    for version, location in (
+        ("pretrained-layout-parser-v1.6-2026-01-13", "eu"),
+        ("pretrained-layout-parser-v1.6-pro-2025-12-01", "us"),
+    ):
+        profile = _profile(
             GoogleOcrRouteV1.DOCUMENT_AI_LAYOUT_PARSER,
-            preview_global=True,
-        ),
+            location=location,
+            processor_version=version,
+        )
+        derived = derive_google_ocr_profile_v1(profile)
+        assert derived.release_channel is GoogleOcrReleaseChannelV1.PREVIEW
+        assert derived.residency_assurance is GoogleOcrResidencyAssuranceV1.NONCOMPLIANT
+        assert derived.source_visible_geometry_supported is False
+        with pytest.raises(GoogleOcrRescueContractV1Error, match="stable Layout Parser"):
+            build_google_ocr_rescue_plan_v1(page=unresolved_page, profile=profile)
+
+    unknown = _profile(
+        GoogleOcrRouteV1.DOCUMENT_AI_LAYOUT_PARSER,
+        processor_version="pretrained-layout-parser-v9-unknown",
     )
-    assert plan.data_residency_warning == (
-        "PREVIEW_GLOBAL_ENDPOINT_NOT_DATA_RESIDENCY_COMPLIANT_"
-        "EXPLICIT_UPLOAD_AUTHORIZATION_REQUIRED"
-    )
-    with pytest.raises(GoogleOcrRescueContractV1Error, match="non-compliant"):
+    derived = derive_google_ocr_profile_v1(unknown)
+    assert derived.release_channel is GoogleOcrReleaseChannelV1.UNKNOWN
+    assert derived.residency_assurance is GoogleOcrResidencyAssuranceV1.UNVERIFIED
+    with pytest.raises(GoogleOcrRescueContractV1Error, match="preview/unknown"):
+        build_google_ocr_rescue_plan_v1(page=unresolved_page, profile=unknown)
+
+
+def test_cross_location_and_cloud_vision_file_route_profiles_fail_at_plan_time(
+    unresolved_page: AuthenticatedUnresolvedPageV1,
+) -> None:
+    with pytest.raises(GoogleOcrRescueContractV1Error, match="documented exact hostname"):
+        derive_google_ocr_profile_v1(
+            _profile(GoogleOcrRouteV1.DOCUMENT_AI_OCR_PROCESSOR, location="mars")
+        )
+    with pytest.raises(GoogleOcrRescueContractV1Error, match="location.*disagree"):
         build_google_ocr_rescue_plan_v1(
             page=unresolved_page,
-            profile=replace(plan.profile, data_residency_compliant=True),
+            profile=_profile(
+                GoogleOcrRouteV1.DOCUMENT_AI_OCR_PROCESSOR,
+                location="eu",
+                endpoint_location="us",
+            ),
+        )
+    for mime_type in ("application/pdf", "image/tiff"):
+        with pytest.raises(GoogleOcrRescueContractV1Error, match="PDF/TIFF"):
+            build_google_ocr_rescue_plan_v1(
+                page=replace(unresolved_page, mime_type=mime_type),
+                profile=_profile(GoogleOcrRouteV1.CLOUD_VISION_DOCUMENT_TEXT_DETECTION),
+            )
+
+
+def test_execution_receipt_binds_inline_or_immutable_gcs_input_to_page_sha(
+    unresolved_page: AuthenticatedUnresolvedPageV1,
+) -> None:
+    plan = _plan(unresolved_page, GoogleOcrRouteV1.CLOUD_VISION_DOCUMENT_TEXT_DETECTION)
+    raw = _json_bytes(_vision_response(normalized=True))
+    inline = _execution_receipt(plan, raw)
+    validate_google_ocr_execution_receipt_v1(inline, plan=plan)
+    assert inline.self_hash_is_authority is False
+    assert inline.external_upload_authorized_by_receipt is False
+
+    gcs = GoogleOcrImmutableGcsInputV1(
+        GoogleOcrInputBindingKindV1.IMMUTABLE_GCS,
+        "private-bctc-source",
+        "bank/report/page-17.png",
+        "1735689600000000",
+        plan.page.page_image_ref.sha256,
+        plan.page.page_image_ref.size_bytes,
+    )
+    receipt = _execution_receipt(plan, raw, input_binding=gcs)
+    validate_google_ocr_execution_receipt_v1(receipt, plan=plan)
+    assert receipt.input_binding.generation == "1735689600000000"
+
+    forged = replace(
+        gcs,
+        caller_verified_content_sha256="0" * 64,
+    )
+    with pytest.raises(GoogleOcrRescueContractV1Error, match="GCS content SHA"):
+        _execution_receipt(plan, raw, input_binding=forged)
+
+
+def test_normalizer_rejects_response_or_receipt_replayed_under_another_plan(
+    unresolved_page: AuthenticatedUnresolvedPageV1,
+) -> None:
+    plan_a = _plan(unresolved_page, GoogleOcrRouteV1.CLOUD_VISION_DOCUMENT_TEXT_DETECTION)
+    plan_b = build_google_ocr_rescue_plan_v1(
+        page=unresolved_page,
+        profile=_profile(
+            GoogleOcrRouteV1.CLOUD_VISION_DOCUMENT_TEXT_DETECTION,
+            revision="v2",
+        ),
+    )
+    raw_a = _json_bytes(_vision_response(normalized=True))
+    receipt_a = _execution_receipt(plan_a, raw_a)
+    with pytest.raises(GoogleOcrRescueContractV1Error, match="different request plan"):
+        normalize_google_ocr_response_v1(
+            plan=plan_b,
+            execution_receipt=receipt_a,
+            raw_response_bytes=raw_a,
+        )
+    with pytest.raises(GoogleOcrRescueContractV1Error, match="raw response bytes"):
+        normalize_google_ocr_response_v1(
+            plan=plan_a,
+            execution_receipt=receipt_a,
+            raw_response_bytes=raw_a + b" ",
+        )
+    with pytest.raises(GoogleOcrRescueContractV1Error, match="self-hash"):
+        validate_google_ocr_execution_receipt_v1(
+            replace(receipt_a, self_hash_is_authority=True),
+            plan=plan_a,
         )
 
 
@@ -418,10 +646,12 @@ def test_cloud_vision_preserves_vietnamese_hierarchy_confidence_and_response_sha
     plan = _plan(unresolved_page, GoogleOcrRouteV1.CLOUD_VISION_DOCUMENT_TEXT_DETECTION)
     raw = _json_bytes(_vision_response(normalized=True))
 
-    result = normalize_google_ocr_response_v1(plan=plan, raw_response_bytes=raw)
+    result = _normalize(plan, raw)
 
     assert result["raw_text"] == "Công ty TNHH\nDư nợ 2025\n"
-    assert result["raw_response"] == {"sha256": sha256(raw).hexdigest(), "size_bytes": len(raw)}
+    assert result["raw_response"]["sha256"] == sha256(raw).hexdigest()
+    assert result["raw_response"]["size_bytes"] == len(raw)
+    assert result["raw_response"]["execution_receipt_id"].startswith("gocrpv1:execution:")
     page = result["structure"]["pages"][0]
     assert page["confidence"] == 0.88
     assert page["property"]["detected_languages"][0]["language_code"] == "vi"
@@ -458,12 +688,8 @@ def test_pixel_and_normalized_vertices_have_identical_canonical_geometry(
     geometry_path: tuple,
 ) -> None:
     plan = _plan(unresolved_page, route)
-    pixel = normalize_google_ocr_response_v1(
-        plan=plan, raw_response_bytes=_json_bytes(response_factory(normalized=False))
-    )
-    normalized = normalize_google_ocr_response_v1(
-        plan=plan, raw_response_bytes=_json_bytes(response_factory(normalized=True))
-    )
+    pixel = _normalize(plan, _json_bytes(response_factory(normalized=False)))
+    normalized = _normalize(plan, _json_bytes(response_factory(normalized=True)))
 
     def at(value: dict, path: tuple):
         for key in path:
@@ -485,14 +711,16 @@ def test_document_ai_ocr_preserves_text_anchors_and_table_structure(
     unresolved_page: AuthenticatedUnresolvedPageV1,
 ) -> None:
     plan = _plan(unresolved_page, GoogleOcrRouteV1.DOCUMENT_AI_OCR_PROCESSOR)
-    result = normalize_google_ocr_response_v1(
-        plan=plan,
-        raw_response_bytes=_json_bytes(_document_ai_ocr_response(normalized=True)),
-    )
+    result = _normalize(plan, _json_bytes(_document_ai_ocr_response(normalized=True)))
 
     assert result["raw_text"] == "Công ty\t2025\n"
     structure = result["structure"]
     assert structure["kind"] == "DOCUMENT_AI_PAGE_LAYOUT"
+    assert structure["response_metadata"]["human_review_status"] == {
+        "state": "SKIPPED",
+        "state_message": "",
+        "human_review_operation": None,
+    }
     page = structure["pages"][0]
     assert page["paragraphs"][0]["layout"]["text"] == "Công ty"
     assert page["symbols"][0]["layout"]["text"] == "ô"
@@ -508,22 +736,41 @@ def test_layout_parser_preserves_nested_text_and_table_blocks(
 ) -> None:
     plan = _plan(unresolved_page, GoogleOcrRouteV1.DOCUMENT_AI_LAYOUT_PARSER)
     raw = _json_bytes(_layout_parser_response(normalized=True))
-    result = normalize_google_ocr_response_v1(plan=plan, raw_response_bytes=raw)
+    result = _normalize(plan, raw)
 
     assert result["raw_text"] == "Thuyết minh\nKhoản mục\nDư nợ\n"
     assert result["structure"]["kind"] == "DOCUMENT_AI_DOCUMENT_LAYOUT"
-    title, table = result["structure"]["blocks"]
+    title, table, image = result["structure"]["blocks"]
     assert title["kind"] == "TEXT"
     assert title["text"] == "Thuyết minh"
     assert title["text_type"] == "heading-2"
     assert table["kind"] == "TABLE"
     assert table["caption"] == "Dư nợ"
-    assert table["annotations"] == {"description": "Bảng thuyết minh"}
+    assert table["annotations"]["description"] == "Bảng thuyết minh"
+    assert table["annotations"]["authority"] == QUARANTINED_GENERATED_AUTHORITY
     header = table["header_rows"][0]["cells"][0]
     assert header["col_span"] == 2
     assert header["blocks"][0]["text"] == "Khoản mục"
     assert table["body_rows"][0]["cells"][0]["blocks"][0]["text"] == "Dư nợ"
     assert result["structure"]["tables"] == [table]
+    assert image["kind"] == "IMAGE_QUARANTINED"
+    assert image["image_text"] == "Số 999 do mô hình mô tả"
+    assert image["authority"] == QUARANTINED_GENERATED_AUTHORITY
+    assert image["authority"]["numeric_authority"] is False
+    assert image["image_source"] == {
+        "kind": "BLOB_ASSET",
+        "blob_asset_id": "asset-1",
+        "authority": dict(QUARANTINED_GENERATED_AUTHORITY),
+    }
+    assert result["structure"]["blob_assets"][0]["content_sha256"] == sha256(b"image").hexdigest()
+    assert result["structure"]["blob_assets"][0]["content_size_bytes"] == 5
+    chunk = result["structure"]["chunked_document"]["chunks"][0]
+    assert chunk["source_block_ids"] == ["title", "table-1", "image-1"]
+    assert [field["kind"] for field in chunk["chunk_fields"]] == [
+        "IMAGE_CHUNK_QUARANTINED",
+        "TABLE_CHUNK_ANNOTATION_QUARANTINED",
+    ]
+    assert all(field["authority"]["numeric_authority"] is False for field in chunk["chunk_fields"])
 
 
 @pytest.mark.parametrize(
@@ -542,7 +789,7 @@ def test_cloud_vision_unknown_or_flexible_response_variants_fail_closed(
 ) -> None:
     plan = _plan(unresolved_page, GoogleOcrRouteV1.CLOUD_VISION_DOCUMENT_TEXT_DETECTION)
     with pytest.raises(GoogleOcrRescueContractV1Error, match=match):
-        normalize_google_ocr_response_v1(plan=plan, raw_response_bytes=raw)
+        _normalize(plan, raw)
 
 
 def test_ambiguous_or_inconsistent_coordinate_variants_fail_closed(
@@ -558,14 +805,14 @@ def test_ambiguous_or_inconsistent_coordinate_variants_fail_closed(
     ]
     plan = _plan(unresolved_page, GoogleOcrRouteV1.CLOUD_VISION_DOCUMENT_TEXT_DETECTION)
     with pytest.raises(GoogleOcrRescueContractV1Error, match="disagree"):
-        normalize_google_ocr_response_v1(plan=plan, raw_response_bytes=_json_bytes(response))
+        _normalize(plan, _json_bytes(response))
 
     response = _vision_response(normalized=False)
     response["responses"][0]["fullTextAnnotation"]["pages"][0]["blocks"][0]["boundingBox"] = {
         "vertices": [{}, {"x": 10}, {"x": 10}, {}]
     }
     with pytest.raises(GoogleOcrRescueContractV1Error, match="positive polygon area"):
-        normalize_google_ocr_response_v1(plan=plan, raw_response_bytes=_json_bytes(response))
+        _normalize(plan, _json_bytes(response))
 
 
 def test_documented_zero_coordinate_omission_and_consistent_dual_bbox_are_supported(
@@ -580,7 +827,7 @@ def test_documented_zero_coordinate_omission_and_consistent_dual_bbox_are_suppor
         {"x": 0.9, "y": 0.2},
         {"x": 0.1, "y": 0.2},
     ]
-    result = normalize_google_ocr_response_v1(plan=plan, raw_response_bytes=_json_bytes(response))
+    result = _normalize(plan, _json_bytes(response))
     assert result["structure"]["pages"][0]["blocks"][0]["geometry"]["pixel_vertices"][0] == {
         "x": 10,
         "y": 20,
@@ -590,7 +837,7 @@ def test_documented_zero_coordinate_omission_and_consistent_dual_bbox_are_suppor
     response["responses"][0]["fullTextAnnotation"]["pages"][0]["blocks"][0]["boundingBox"] = {
         "normalizedVertices": [{}, {"x": 1}, {"x": 1, "y": 1}, {"y": 1}]
     }
-    result = normalize_google_ocr_response_v1(plan=plan, raw_response_bytes=_json_bytes(response))
+    result = _normalize(plan, _json_bytes(response))
     assert result["structure"]["pages"][0]["blocks"][0]["geometry"]["pixel_vertices"] == [
         {"x": 0, "y": 0},
         {"x": 100, "y": 0},
@@ -608,20 +855,20 @@ def test_document_ai_text_anchor_and_union_drift_fail_closed(
         "textSegments": [{"startIndex": "7", "endIndex": "99"}]
     }
     with pytest.raises(GoogleOcrRescueContractV1Error, match="outside"):
-        normalize_google_ocr_response_v1(plan=plan, raw_response_bytes=_json_bytes(response))
+        _normalize(plan, _json_bytes(response))
 
     response = _document_ai_ocr_response(normalized=True)
     response["document"]["pages"][0]["paragraphs"][0]["layout"]["textAnchor"]["content"] = (
         "sửa chính tả"
     )
     with pytest.raises(GoogleOcrRescueContractV1Error, match="disagrees"):
-        normalize_google_ocr_response_v1(plan=plan, raw_response_bytes=_json_bytes(response))
+        _normalize(plan, _json_bytes(response))
 
     layout_plan = _plan(unresolved_page, GoogleOcrRouteV1.DOCUMENT_AI_LAYOUT_PARSER)
     response = _layout_parser_response(normalized=True)
     response["document"]["pages"] = []
     with pytest.raises(GoogleOcrRescueContractV1Error, match="ambiguously mix"):
-        normalize_google_ocr_response_v1(plan=layout_plan, raw_response_bytes=_json_bytes(response))
+        _normalize(layout_plan, _json_bytes(response))
 
 
 def test_layout_parser_rejects_duplicate_ids_multi_page_spans_and_union_ambiguity(
@@ -634,12 +881,12 @@ def test_layout_parser_rejects_duplicate_ids_multi_page_spans_and_union_ambiguit
     ][0]["blocks"][0]
     nested["blockId"] = "title"
     with pytest.raises(GoogleOcrRescueContractV1Error, match="duplicated"):
-        normalize_google_ocr_response_v1(plan=plan, raw_response_bytes=_json_bytes(response))
+        _normalize(plan, _json_bytes(response))
 
     response = _layout_parser_response(normalized=True)
     response["document"]["documentLayout"]["blocks"][0]["pageSpan"]["pageEnd"] = 2
     with pytest.raises(GoogleOcrRescueContractV1Error, match="exactly"):
-        normalize_google_ocr_response_v1(plan=plan, raw_response_bytes=_json_bytes(response))
+        _normalize(plan, _json_bytes(response))
 
     response = _layout_parser_response(normalized=True)
     response["document"]["documentLayout"]["blocks"][0]["tableBlock"] = {
@@ -647,7 +894,7 @@ def test_layout_parser_rejects_duplicate_ids_multi_page_spans_and_union_ambiguit
         "bodyRows": [],
     }
     with pytest.raises(GoogleOcrRescueContractV1Error, match="exactly one"):
-        normalize_google_ocr_response_v1(plan=plan, raw_response_bytes=_json_bytes(response))
+        _normalize(plan, _json_bytes(response))
 
 
 def test_normalizer_has_no_executor_and_raw_byte_spelling_changes_only_response_receipt(
@@ -657,8 +904,8 @@ def test_normalizer_has_no_executor_and_raw_byte_spelling_changes_only_response_
     response = _vision_response(normalized=True)
     compact = _json_bytes(response)
     pretty = json.dumps(response, ensure_ascii=False, indent=2).encode()
-    compact_result = normalize_google_ocr_response_v1(plan=plan, raw_response_bytes=compact)
-    pretty_result = normalize_google_ocr_response_v1(plan=plan, raw_response_bytes=pretty)
+    compact_result = _normalize(plan, compact)
+    pretty_result = _normalize(plan, pretty)
 
     assert compact_result["raw_response"]["sha256"] != pretty_result["raw_response"]["sha256"]
     assert compact_result["raw_text"] == pretty_result["raw_text"]
