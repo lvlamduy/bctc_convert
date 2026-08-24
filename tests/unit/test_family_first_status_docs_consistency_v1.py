@@ -176,6 +176,18 @@ def _open_family_index_rows() -> list[list[str]]:
     ]
 
 
+def _canonical_open_source_rows() -> list[list[str]]:
+    ledger = LEDGER.read_text(encoding="utf-8")
+    start = ledger.index("<!-- CANONICAL_OPEN_SOURCE_ROWS_BEGIN -->")
+    stop = ledger.index("<!-- CANONICAL_OPEN_SOURCE_ROWS_END -->")
+    block = ledger[start:stop]
+    return [
+        [cell.strip() for cell in line.split("|")[1:-1]]
+        for line in block.splitlines()
+        if line.startswith("| F3-") or line.startswith("| E0")
+    ]
+
+
 def _rendered_physical_page_count(page_locator: str) -> int:
     physical = page_locator.removeprefix("PDF ").split(";", 1)[0]
     count = 0
@@ -420,13 +432,15 @@ def test_family_completion_rule_and_interbank_summary_are_in_both_status_docs() 
     assert "Unresolved thực sự sau PDF review" in completed
     assert "MBB Q1/2025 công ty mẹ, PDF p26 / trang in p18" in completed
     assert "`2 triệu đồng`" in completed
-    assert "41 Family 3 `RESOLVABLE_PENDING_GENERIC_FIX`" in ledger
-    assert "1 Family 3\n`UNRESOLVED_AFTER_PDF_REVIEW`" in ledger
-    assert "none of the 41 pending generic fixes is counted as closed" in ledger
+    canonical_family3 = [
+        row for row in _canonical_open_source_rows() if row[0].startswith("F3-")
+    ]
+    assert sum(row[7] == "RESOLVABLE_PENDING_GENERIC_FIX" for row in canonical_family3) == 41
+    assert sum(row[7] == "KEEP_UNRESOLVED_SOURCE_CONFLICT" for row in canonical_family3) == 1
     assert "Technical/pre-review provenance appendix" in ledger
 
 
-def test_open_family_index_reconciles_143_items_and_links_every_open_heading() -> None:
+def test_open_family_index_reconciles_247_items_and_links_every_open_heading() -> None:
     ledger = LEDGER.read_text(encoding="utf-8")
     lines = ledger.splitlines()
     start = ledger.index("<!-- OPEN_FAMILY_INDEX_BEGIN -->")
@@ -451,26 +465,31 @@ def test_open_family_index_reconciles_143_items_and_links_every_open_heading() -
     counts = {row[0]: int(row[1]) for row in index_rows}
     assert counts == {
         "Family 3 — Tiền gửi tại/cho vay TCTD khác — tài sản (575)": 42,
-        "Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra": 13,
-        "Công cụ tài chính — giá trị ghi sổ và giá trị hợp lý": 2,
-        "Rủi ro tiền tệ": 7,
+        "Tài sản/GTCG đem thế chấp, cầm cố, chiết khấu": 3,
+        "Nghĩa vụ nợ tiềm ẩn và các cam kết đưa ra": 26,
+        "Công cụ tài chính — giá trị ghi sổ và giá trị hợp lý": 5,
+        "Rủi ro tiền tệ": 10,
         "Rủi ro lãi suất": 1,
-        "Chi phí thuế thu nhập doanh nghiệp": 7,
-        "Chi phí quản lý chung": 14,
+        "Rủi ro thanh khoản": 4,
+        "Tỷ giá ngoại tệ": 34,
+        "Chi phí thuế thu nhập doanh nghiệp": 8,
+        "Chi phí quản lý chung": 18,
         "Thu nhập từ góp vốn, mua cổ phần và cổ tức": 1,
         "Thu nhập, chi phí và lãi thuần dịch vụ": 2,
-        "Vốn và các quỹ": 9,
+        "Vốn và các quỹ": 17,
         "Phát hành giấy tờ có giá": 8,
         "Tiền gửi của khách hàng": 2,
-        "Tài sản Có khác": 35,
+        "Tài sản Có khác": 47,
+        "Tiền gửi/vay TCTD khác — nguồn vốn": 2,
+        "Báo cáo bộ phận hợp nhất": 17,
     }
     assert counts["Family 3 — Tiền gửi tại/cho vay TCTD khác — tài sản (575)"] == len(
         _interbank_pdf_review_rows()
     )
-    assert sum(counts.values()) == 143
-    assert sum(counts.values()) - 42 == 101
+    assert sum(counts.values()) == 247
+    assert sum(counts.values()) - 42 == 205
     assert heading_targets <= indexed_targets
-    assert len(heading_targets) == 13
+    assert len(heading_targets) == 14
     assert {
         "open-equity-funds-legacy-current",
         "open-issued-valuable-papers-legacy-current",
@@ -478,6 +497,134 @@ def test_open_family_index_reconciles_143_items_and_links_every_open_heading() -
     for target in indexed_targets:
         assert f'<a id="{target}"></a>' in ledger
     assert stop < ledger.index("## CLOSED — family-first 140-filing")
+
+
+def test_canonical_open_queue_covers_every_source_row_with_human_and_pixel_evidence() -> None:
+    rows = _canonical_open_source_rows()
+    ids = [row[0] for row in rows]
+
+    assert len(rows) == 247
+    assert all(len(row) == 10 for row in rows)
+    assert len(set(ids)) == 247
+    assert sum(item.startswith("F3-IDL-575-") for item in ids) == 42
+    assert sum(item.startswith("E") for item in ids) == 205
+    assert "PM-001" not in " ".join(ids)
+    assert not any(re.fullmatch(r"(?:CL|FI)-[0-9]+", item) for item in ids)
+
+    experiment_counts = Counter(
+        match.group(1)
+        for item in ids
+        if (match := re.match(r"^E([0-9]{4})-", item))
+    )
+    assert experiment_counts == {
+        "0073": 12,
+        "0076": 3,
+        "0078": 10,
+        "0088": 4,
+        "0091": 1,
+        "0097": 3,
+        "0098": 13,
+        "0099": 3,
+        "0101": 3,
+        "0103": 4,
+        "0104": 15,
+        "0127": 35,
+        "0129": 2,
+        "0131": 5,
+        "0133": 7,
+        "0137": 2,
+        "0142": 1,
+        "0143": 14,
+        "0146": 7,
+        "0153": 13,
+        "0154": 2,
+        "0155": 7,
+        "0156": 1,
+        "0158": 19,
+        "0159": 2,
+        "0161": 17,
+    }
+    annual_experiments = {
+        "0127",
+        "0129",
+        "0131",
+        "0133",
+        "0137",
+        "0142",
+        "0143",
+        "0146",
+        "0153",
+        "0154",
+        "0155",
+        "0156",
+        "0158",
+        "0159",
+        "0161",
+    }
+    assert sum(experiment_counts[key] for key in annual_experiments) == 134
+    assert sum(
+        count for key, count in experiment_counts.items() if key not in annual_experiments
+    ) == 71
+
+    allowed_statuses = {
+        "RESOLVABLE_PENDING_GENERIC_FIX",
+        "KEEP_UNRESOLVED_SCHEMA_GAP",
+        "KEEP_UNRESOLVED_SEMANTIC_GAP",
+        "KEEP_UNRESOLVED_SOURCE_SCOPE",
+        "KEEP_UNRESOLVED_SOURCE_CONFLICT",
+        "KEEP_UNRESOLVED_SOURCE_VALUE_UNAVAILABLE",
+    }
+    assert Counter(row[7] for row in rows) == {
+        "KEEP_UNRESOLVED_SCHEMA_GAP": 156,
+        "RESOLVABLE_PENDING_GENERIC_FIX": 51,
+        "KEEP_UNRESOLVED_SEMANTIC_GAP": 17,
+        "KEEP_UNRESOLVED_SOURCE_SCOPE": 11,
+        "KEEP_UNRESOLVED_SOURCE_CONFLICT": 7,
+        "KEEP_UNRESOLVED_SOURCE_VALUE_UNAVAILABLE": 5,
+    }
+    for row in rows:
+        assert row[0] and row[1] and "source " in row[1]
+        assert row[2]
+        assert re.fullmatch(
+            r"(?:ACB|MBB|VPB|HDB|VCB|CTG|BID|VIB) / "
+            r"(?:Năm|H1|Q[1-4]) 20[0-9]{2} / "
+            r"BCTC (?:hợp nhất|công ty mẹ/riêng lẻ) / "
+            r"(?:kiểm toán|soát xét|không kiểm toán)",
+            row[3],
+        )
+        assert re.search(r"[.]pdf<br>sha256:[0-9a-f]{64}$", row[4])
+        assert row[5].startswith("physical p")
+        assert "printed" in row[5] or "trang in" in row[5]
+        assert row[6].startswith("DIRECT_PIXEL_REVIEW_2026-08-24") or row[6].startswith(
+            "PERSISTED_"
+        )
+        assert row[7] in allowed_statuses
+        assert len(row[8]) >= 45
+        assert not re.fullmatch(r"[A-Z0-9_:; ./-]+", row[8])
+        assert "formal:" in row[9]
+
+    direct_rows = {row[0]: row for row in rows if row[6].startswith("DIRECT_")}
+    assert set(direct_rows) == {
+        "E0078-CAF-009",
+        "E0078-CAF-010",
+        "E0161-ASEG-005",
+        "E0161-ASEG-014",
+    }
+    assert direct_rows["E0078-CAF-009"][5] == "physical p27–28; printed p24–25"
+    assert direct_rows["E0078-CAF-010"][5] == "physical p44–45; printed p42–43"
+    assert direct_rows["E0161-ASEG-005"][5] == "physical p83; printed p79"
+    assert direct_rows["E0161-ASEG-014"][5] == "physical p82; printed p80"
+
+    ledger = LEDGER.read_text(encoding="utf-8")
+    assert "NEEDS_DIRECT_PIXEL_REVIEW" not in ledger[
+        ledger.index("<!-- CANONICAL_OPEN_SOURCE_ROWS_BEGIN -->") : ledger.index(
+            "<!-- CANONICAL_OPEN_SOURCE_ROWS_END -->"
+        )
+    ]
+    for stale in ("143 work item", "101 item", "441 / 143 OPEN"):
+        assert stale not in ledger
+    assert "545 entries = 247 OPEN + 298 closed/history" in ledger
+    assert "CLOSED_STALE_PERIOD_GAP" in ledger
 
 
 def test_family11_zero_unresolved_is_recorded_in_both_status_docs() -> None:
